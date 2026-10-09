@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/broadcasting_proof_sol/cycle03_tree/verify_tree_moments.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/broadcasting_proof_sol/cycle03_tree/verify_tree_moments.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact one-level replay using the already supplied spin-one Choi witness.
+
+No optimizer, random sampling, new covariance family, or theorem inference.
+Run with system python3 (SymPy). The general proof is in the frozen text.
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+import sympy as s
+
+R = s.Rational
+d = 3
+I = s.eye(d)
+J = [s.Matrix(d,d,lambda j,k:-s.I*s.LeviCivita(i,j,k)) for i in range(d)]
+E = [s.sqrt(R(3,2))*A for A in J]
+full = E[:]
+for i,j in [(0,1),(0,2),(1,2)]:
+    A=s.zeros(d); A[i,j]=A[j,i]=s.sqrt(R(3,2)); full.append(A)
+full.extend([s.sqrt(R(3,2))*s.diag(1,-1,0),s.sqrt(R(1,2))*s.diag(1,1,-2)])
+V=[]
+for i in range(d):
+    v=s.zeros(d,d*d)
+    v[i,i*d+i]=4
+    for j in range(d):
+        if j!=i:
+            v[i,j*d+j]=-2
+            v[j,i*d+j]=v[j,j*d+i]=3
+    V.append(v)
+def Badjoint(O):
+    return sum((v*O*v.T for v in V),s.zeros(d))/60
+rhoBC=sum((v.T*v for v in V),s.zeros(d*d))/180
+tau=lambda A:s.trace(A)/d
+checks={}
+checks[&#x27;B_is_TP&#x27;]=Badjoint(s.eye(d*d))==I
+checks[&#x27;normalized_HS_full_basis&#x27;]=s.Matrix(8,8,lambda i,j:tau(full[i]*full[j]))==s.eye(8)
+checks[&#x27;slow_spin_eigenvalues_three_quarters&#x27;]=all(s.simplify(Badjoint(s.kronecker_product(A,I))-R(3,4)*A)==s.zeros(d) for A in E)
+C=s.Matrix(3,3,lambda a,b:s.simplify(s.trace(rhoBC*s.kronecker_product(E[a],E[b]))))
+checks[&#x27;C_equals_half_identity&#x27;]=C==s.eye(3)/2
+leaf=[]
+for a,A in enumerate(J):
+    for value,P in [(1,(A*A+A)/2),(-1,(A*A-A)/2),(0,I-A*A)]:
+        x=s.zeros(3,1); x[a]=3*value*s.sqrt(R(3,2))
+        leaf.append((P/3,x))
+N0=sum((tau(F)*x*x.T for F,x in leaf),s.zeros(3))
+checks[&#x27;N0_equals_three_identity&#x27;]=N0==3*s.eye(3)
+N1=s.zeros(3); cross=s.zeros(8,3); S=s.zeros(8); sumEffects=s.zeros(3)
+moment=[s.zeros(3) for _ in range(3)]
+nonzero=0
+for F,x in leaf:
+    for G,y in leaf:
+        M=Badjoint(s.kronecker_product(F,G))
+        z=(x+y)*R(2,3)
+        sumEffects+=M
+        for a in range(3): moment[a]+=z[a]*M
+        p=s.simplify(tau(M))
+        if not p:
+            continue
+        nonzero+=1
+        u=s.Matrix([s.simplify(tau(M*A)) for A in full])
+        N1+=p*z*z.T
+        cross+=u*z.T
+        S+=u*u.T/p
+N1=N1.applyfunc(s.simplify); cross=cross.applyfunc(s.simplify); S=S.applyfunc(s.simplify)
+embed=s.zeros(8,3)
+for a in range(3): embed[a,a]=1
+checks[&#x27;sum_joint_input_effects_is_identity&#x27;]=sumEffects==I
+checks[&#x27;each_unbiased_pullback_is_exact&#x27;]=all((moment[a]-E[a]).applyfunc(s.simplify)==s.zeros(3) for a in range(3))
+checks[&#x27;full_crossmoment_including_fast_complement&#x27;]=cross==embed
+checks[&#x27;N1_exact_recursion&#x27;]=N1==(N0+C)*R(8,9)
+D1=s.eye(3)*R(32,9)
+checks[&#x27;N1_exact_value&#x27;]=N1==s.eye(3)*R(28,9)
+checks[&#x27;N1_le_D1&#x27;]=D1-N1==s.eye(3)*R(4,9)
+lower=(S-embed*(D1.inv())*embed.T).applyfunc(s.simplify)
+checks[&#x27;canonical_full_covariance_diagonal_in_test_basis&#x27;]=all(lower[i,j]==0 for i in range(8) for j in range(8) if i!=j)
+checks[&#x27;canonical_full_schur_lower_bound_exact_PSD&#x27;]=checks[&#x27;canonical_full_covariance_diagonal_in_test_basis&#x27;] and all(lower[i,i]&gt;=0 for i in range(8))
+result={&#x27;status&#x27;:&#x27;EXACT_FINITE_MOMENT_REPLAY_ONLY&#x27;,&#x27;source_witness&#x27;:&#x27;authorized SPIN1_ALL_WEIGHTS_THEOREM.txt R0, vectors vi&#x27;,
+        &#x27;checks&#x27;:checks,&#x27;all_pass&#x27;:all(checks.values()),&#x27;nonzero_joint_outcomes&#x27;:nonzero,
+        &#x27;C&#x27;:str(C),&#x27;N0&#x27;:str(N0),&#x27;N1&#x27;:str(N1),&#x27;D1&#x27;:str(D1),
+        &#x27;canonical_S_diagonal&#x27;:[str(S[i,i]) for i in range(8)],
+        &#x27;S_minus_embedded_inverse_D1_diagonal&#x27;:[str(lower[i,i]) for i in range(8)],
+        &#x27;limitation&#x27;:&#x27;Finite algebra does not establish the general compactness/tree proof or external correctness.&#x27;}
+path=Path(__file__).with_name(&#x27;exact_tree_moment_replay.json&#x27;)
+path.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(result,indent=2))
+assert result[&#x27;all_pass&#x27;]
+</pre><p><a href="../assets/3e325f3d3971d2bb841ed42c0559189c47e740cbf24f9304045decf55fea9203.py">Exact original</a></p></html>

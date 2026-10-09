@@ -1,0 +1,258 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/kms-regularity/independent-origin-and-review/verify_endpoint_counterexample.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/kms-regularity/independent-origin-and-review/verify_endpoint_counterexample.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact, solver-free replay of the independent KMS FOUR counterexample.
+
+No floating-point arithmetic is used to establish any assertion. SymPy is
+needed only for finite algebra. Integral/Taylor bounds are proved in the
+frozen text; this replay verifies their constants and the final strict sign.
+&quot;&quot;&quot;
+import json
+import sympy as sp
+
+
+Q = sp.Rational
+I2 = sp.eye(2)
+checks = []
+
+
+def equal(actual, expected, label):
+    delta = actual - expected
+    if isinstance(delta, sp.MatrixBase):
+        ok = all(sp.simplify(x) == 0 for x in delta)
+    else:
+        ok = sp.simplify(delta) == 0
+    if not ok:
+        raise AssertionError(f&quot;{label}: {delta}&quot;)
+    checks.append(label)
+
+
+def positive_rational(value, label):
+    value = sp.factor(value)
+    if not value.is_Rational or not value &gt; 0:
+        raise AssertionError(f&quot;{label}: {value}&quot;)
+    checks.append(label)
+
+
+def adjoint(a):
+    return a.conjugate().T
+
+
+def hs(a, b):
+    return sp.simplify(sp.trace(adjoint(a) * b))
+
+
+def partial_trace(a, dims, traced):
+    &quot;&quot;&quot;Exact matrix partial trace, retaining tensor factors in given order.&quot;&quot;&quot;
+    from itertools import product
+    kept = [k for k in range(len(dims)) if k not in traced]
+    retained = list(product(*(range(dims[k]) for k in kept)))
+    deleted = list(product(*(range(dims[k]) for k in traced)))
+
+    def index(coords):
+        index_value = 0
+        for dim, coordinate in zip(dims, coords):
+            index_value = dim * index_value + coordinate
+        return index_value
+
+    out = sp.zeros(len(retained))
+    for row, rcoords in enumerate(retained):
+        for col, ccoords in enumerate(retained):
+            value = 0
+            for tcoords in deleted:
+                rr, cc = [0] * len(dims), [0] * len(dims)
+                for k, r, c in zip(kept, rcoords, ccoords):
+                    rr[k], cc[k] = r, c
+                for k, t in zip(traced, tcoords):
+                    rr[k] = cc[k] = t
+                value += a[index(rr), index(cc)]
+            out[row, col] = sp.simplify(value)
+    return out
+
+
+sigma = sp.diag(Q(4, 5), Q(1, 5))
+sqrt_sigma = sp.diag(2, 1) / sp.sqrt(5)
+inv_sqrt_sigma = sp.diag(Q(1, 2), 1) * sp.sqrt(5)
+S = sp.diag(sp.sqrt(2), 1) / 5 ** Q(1, 4)
+Sinv = S.inv()
+vectors = [sp.Matrix([1, 0]), sp.Matrix([Q(3, 5), Q(4, 5)]),
+           sp.Matrix([Q(4, 5), -Q(3, 5)])]
+probabilities = [Q(3, 5), Q(1, 5), Q(1, 5)]
+projectors = [v * adjoint(v) for v in vectors]
+effects = [p * inv_sqrt_sigma * pi * inv_sqrt_sigma
+           for p, pi in zip(probabilities, projectors)]
+expected_effects = [sp.diag(Q(3, 4), 0),
+                    sp.Matrix([[Q(9, 100), Q(6, 25)], [Q(6, 25), Q(16, 25)]]),
+                    sp.Matrix([[Q(4, 25), -Q(6, 25)], [-Q(6, 25), Q(9, 25)]])]
+for z, (v, pi, effect, expected) in enumerate(zip(vectors, projectors, effects,
+                                                 expected_effects)):
+    equal(hs(v, v), 1, f&quot;pure vector {z} normalized&quot;)
+    equal(pi * pi, pi, f&quot;projector {z} rank-one identity&quot;)
+    equal(effect, expected, f&quot;effect {z} rational identity&quot;)
+    equal(effect.det(), 0, f&quot;effect {z} determinant zero&quot;)
+    positive_rational(sp.trace(effect), f&quot;effect {z} positive nonzero eigenvalue&quot;)
+equal(sum(effects, sp.zeros(2)), I2, &quot;POVM normalization&quot;)
+equal(sum((p * pi for p, pi in zip(probabilities, projectors)), sp.zeros(2)),
+      sigma, &quot;ensemble barycenter&quot;)
+
+
+def phi(a):
+    return sp.simplify(sum((pi * sp.trace(m * a)
+                           for pi, m in zip(projectors, effects)), sp.zeros(2)))
+
+
+def H(a):
+    return sp.simplify(sum((m * sp.trace(pi * a)
+                           for pi, m in zip(projectors, effects)), sp.zeros(2)))
+
+
+def broadcaster(a):
+    return sum((sp.kronecker_product(pi, pi) * sp.trace(m * a)
+                for pi, m in zip(projectors, effects)), sp.zeros(4))
+
+
+def T(a):
+    return sp.simplify(Sinv * phi(S * a * S) * Sinv)
+
+
+def D(a):
+    return sp.simplify(a - T(a))
+
+
+kraus = [sp.sqrt(p) * v * adjoint(inv_sqrt_sigma * v)
+         for p, v in zip(probabilities, vectors)]
+broadcast_kraus = [sp.sqrt(p) * sp.kronecker_product(v, v)
+                   * adjoint(inv_sqrt_sigma * v)
+                   for p, v in zip(probabilities, vectors)]
+equal(sum((adjoint(k) * k for k in kraus), sp.zeros(2)), I2,
+      &quot;channel Kraus completeness&quot;)
+equal(sum((adjoint(k) * k for k in broadcast_kraus), sp.zeros(2)), I2,
+      &quot;broadcaster Kraus completeness&quot;)
+equal(phi(sigma), sigma, &quot;stationarity&quot;)
+equal(H(I2), I2, &quot;adjoint unitality&quot;)
+units = []
+for i in range(2):
+    for j in range(2):
+        e = sp.zeros(2)
+        e[i, j] = 1
+        units.append(e)
+for k, e in enumerate(units):
+    equal(phi(e), sum((a * e * adjoint(a) for a in kraus), sp.zeros(2)),
+          f&quot;full-domain channel Kraus identity {k}&quot;)
+    equal(broadcaster(e), sum((a * e * adjoint(a) for a in broadcast_kraus),
+                             sp.zeros(4)), f&quot;full-domain broadcast Kraus identity {k}&quot;)
+    equal(partial_trace(broadcaster(e), [2, 2], [1]), phi(e),
+          f&quot;first full channel marginal {k}&quot;)
+    equal(partial_trace(broadcaster(e), [2, 2], [0]), phi(e),
+          f&quot;second full channel marginal {k}&quot;)
+    equal(sqrt_sigma * H(e) * sqrt_sigma,
+          phi(sqrt_sigma * e * sqrt_sigma), f&quot;KMS adjoint intertwining {k}&quot;)
+choi = sum((sp.kronecker_product(m.T, pi)
+            for m, pi in zip(effects, projectors)), sp.zeros(4))
+choi_broadcast = sum((sp.kronecker_product(m.T, pi, pi)
+                      for m, pi in zip(effects, projectors)), sp.zeros(8))
+# Both Choi matrices are sums of positive tensor factors; no numerical PSD test.
+equal(partial_trace(choi, [2, 2], [1]), I2, &quot;Choi trace preservation&quot;)
+equal(partial_trace(choi_broadcast, [2, 2, 2], [1, 2]), I2,
+      &quot;broadcast Choi trace preservation&quot;)
+equal(partial_trace(choi_broadcast, [2, 2, 2], [2]), choi,
+      &quot;first broadcast Choi marginal&quot;)
+equal(partial_trace(choi_broadcast, [2, 2, 2], [1]), choi,
+      &quot;second broadcast Choi marginal&quot;)
+
+X = sp.Matrix([[0, 1], [1, 0]])
+Y = sp.Matrix([[0, -sp.I], [sp.I, 0]])
+Z = sp.diag(1, -1)
+basis = [sqrt_sigma, X / sp.sqrt(2), Y / sp.sqrt(2),
+         sp.diag(1, -2) / sp.sqrt(5)]
+equal(sp.Matrix([[hs(a, b) for b in basis] for a in basis]), sp.eye(4),
+      &quot;weighted transformed basis HS-orthonormal&quot;)
+T_matrix = sp.Matrix([[hs(a, T(b)) for b in basis] for a in basis])
+expected_T = sp.Matrix([[1, 0, 0, 0],
+                        [0, Q(288, 625), 0, -42 * sp.sqrt(5) / 625],
+                        [0, 0, 0, 0],
+                        [0, -42 * sp.sqrt(5) / 625, 0, Q(53, 125)]])
+equal(T_matrix, expected_T, &quot;exact HS-transformed channel matrix&quot;)
+equal(T_matrix, T_matrix.T, &quot;HS self-adjointness&quot;)
+block = T_matrix.extract([1, 3], [1, 3])
+equal(block.det(), Q(108, 625), &quot;centered block determinant&quot;)
+equal(sp.trace(block), Q(553, 625), &quot;centered block trace&quot;)
+positive_rational(block[0, 0], &quot;centered block positive diagonal&quot;)
+positive_rational(block.det(), &quot;centered block positive determinant&quot;)
+positive_rational(1 - sp.trace(block), &quot;centered positive eigenvalues below one&quot;)
+equal(D(sqrt_sigma), sp.zeros(2), &quot;reference fixed by transformed channel&quot;)
+if T_matrix[1, 3] == 0:
+    raise AssertionError(&quot;commutant/coherence coupling absent&quot;)
+checks.append(&quot;commutant/coherence coupling strictly nonzero&quot;)
+
+A = Q(2, 5) * Z - Q(1, 15) * X
+C = Sinv * A * Sinv
+equal(sp.trace(A), 0, &quot;state direction trace zero&quot;)
+equal(A * A, Q(37, 225) * I2, &quot;state direction norm squared&quot;)
+positive_rational(Q(1, 4) - Q(37, 225), &quot;state direction norm below one half&quot;)
+equal(sp.Matrix([hs(u, C) for u in basis]),
+      sp.Matrix([0, -sp.sqrt(5) / 15, 0, 1]), &quot;state direction HS coordinates&quot;)
+delta = A - phi(A)
+equal(delta, sp.Matrix([[Q(692, 3125), Q(293, 9375)],
+                       [Q(293, 9375), -Q(692, 3125)]]), &quot;exact channel defect&quot;)
+log_derivative = sp.Matrix([[Q(1, 2), -2 * sp.log(2) / 9],
+                            [-2 * sp.log(2) / 9, -2]])
+root_derivative = sp.Matrix([[sp.sqrt(5) / 10, -sp.sqrt(5) / 45],
+                             [-sp.sqrt(5) / 45, -sp.sqrt(5) / 5]])
+for i in range(2):
+    for j in range(2):
+        si, sj = sigma[i, i], sigma[j, j]
+        log_factor = (1 / si if i == j else (sp.log(si) - sp.log(sj)) / (si - sj))
+        root_factor = 1 / (sp.sqrt(si) + sp.sqrt(sj))
+        equal(log_derivative[i, j], A[i, j] * log_factor,
+              f&quot;log derivative divided difference {i}{j}&quot;)
+        equal(root_derivative[i, j], A[i, j] * root_factor,
+              f&quot;sqrt derivative divided difference {i}{j}&quot;)
+J2 = sp.simplify(sp.trace(delta * log_derivative))
+E2 = hs(root_derivative, D(root_derivative))
+equal(J2, Q(346, 625) - Q(1172, 84375) * sp.log(2), &quot;exact J Hessian&quot;)
+equal(E2, Q(37124, 253125) - Q(14, 1875) * sp.sqrt(2), &quot;exact E Hessian&quot;)
+q = sp.simplify(J2 - 4 * E2)
+equal(q, -Q(8366, 253125) - Q(1172, 84375) * sp.log(2)
+      + Q(56, 1875) * sp.sqrt(2), &quot;exact FOUR Hessian gap&quot;)
+log_lower = Q(34657, 50000)
+root_upper = Q(70711, 50000)
+five_terms = sum((Q(2, (2 * k + 1) * 3 ** (2 * k + 1)) for k in range(5)), Q(0))
+positive_rational(five_terms - log_lower, &quot;five log series terms exceed rational lower bound&quot;)
+positive_rational(root_upper ** 2 - 2, &quot;rational sqrt upper bound&quot;)
+q_upper = -Q(8366, 253125) - Q(1172, 84375) * log_lower + Q(56, 1875) * root_upper
+equal(q_upper, -Q(1394713, 3164062500), &quot;strict rational Hessian bound&quot;)
+positive_rational(-Q(1, 2500) - q_upper, &quot;strict Hessian bound below minus one over 2500&quot;)
+
+epsilon = Q(1, 10 ** 6)
+rho = sigma + epsilon * A
+equal(rho, sp.Matrix([[Q(2000001, 2500000), -Q(1, 15000000)],
+                     [-Q(1, 15000000), Q(499999, 2500000)]]), &quot;actual rational state&quot;)
+equal(sp.trace(rho), 1, &quot;actual state trace one&quot;)
+positive_rational(rho[0, 0], &quot;actual state positive diagonal&quot;)
+positive_rational(rho.det(), &quot;actual state positive determinant&quot;)
+m, t_max = Q(1, 10), Q(1, 5)
+equal(sigma[1, 1] - t_max * Q(1, 2), m, &quot;uniform path eigenvalue lower bound&quot;)
+equal(Q(1, 4) / (2 * m ** 2), Q(25, 2), &quot;log Taylor remainder coefficient&quot;)
+positive_rational(1 - Q(250, 256), &quot;sqrt Taylor coefficient 5sqrt10 over16 below one&quot;)
+positive_rational(1 - hs(root_derivative, root_derivative), &quot;sqrt derivative HS norm below one&quot;)
+positive_rational(5 - (4 + 4 * t_max), &quot;energy Taylor bound at path endpoint&quot;)
+positive_rational(t_max - epsilon, &quot;certified state within path&quot;)
+equal(25 + 4 * 5, 45, &quot;combined analytic remainder coefficient&quot;)
+gap_upper = epsilon ** 2 * (-Q(1, 2500) + 45 * epsilon)
+equal(gap_upper, -Q(71, 200000) * epsilon ** 2, &quot;actual scalar gap strictly negative&quot;)
+positive_rational(-gap_upper, &quot;strict rational FOUR exclusion&quot;)
+
+print(json.dumps({
+    &quot;status&quot;: &quot;PASS_EXACT&quot;,
+    &quot;checks&quot;: len(checks),
+    &quot;all_assertions&quot;: checks,
+    &quot;dimension&quot;: 2,
+    &quot;ensemble_atoms&quot;: 3,
+    &quot;broadcaster_choi_dimension&quot;: 8,
+    &quot;rho_epsilon&quot;: str(epsilon),
+    &quot;certified_J_minus_4E_upper_bound&quot;: str(gap_upper),
+    &quot;universal_two_status&quot;: &quot;UNKNOWN&quot;,
+    &quot;external_formal_validation&quot;: &quot;UNKNOWN&quot;,
+    &quot;floating_point_used_for_certificate&quot;: False,
+    &quot;scope&quot;: &quot;Finite algebra and analytic bound constants replay; integral derivations are in the frozen proof&quot;
+}, indent=2))
+</pre><p><a href="../assets/07666a6c25164635a6585e3d0be576fd557e691040308cd0e49a4d66d83e9679.py">Exact original</a></p></html>

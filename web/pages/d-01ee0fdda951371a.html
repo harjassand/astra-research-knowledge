@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/spin1-proof/verify_coefficients_stdlib.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/spin1-proof/verify_coefficients_stdlib.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent exact rational replay. Python standard library only.
+
+Determinants use the Leibniz permutation formula and sparse Fraction
+polynomials, rather than the CAS path that generated the certificate.
+Congruence scaling by 1/sqrt(2) on the two u nodes removes radicals.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import permutations
+from pathlib import Path
+import hashlib,json,time
+
+OUT=Path(__file__).resolve().parent
+ZERO=(0,0,0)
+
+def add(*polys):
+    out={}
+    for P in polys:
+        for m,c in P.items():out[m]=out.get(m,F(0))+c
+    return {m:c for m,c in out.items() if c}
+
+def scale(P,c):return {m:c*v for m,v in P.items() if c*v}
+
+def mul(A,B):
+    out={}
+    for m,x in A.items():
+        for n,y in B.items():
+            k=tuple(m[i]+n[i] for i in range(3))
+            out[k]=out.get(k,F(0))+x*y
+    return {m:c for m,c in out.items() if c}
+
+def lin(v):
+    return {tuple(int(i==j) for i in range(3)):F(c) for j,c in enumerate(v) if c}
+
+def determinant(M):
+    n=len(M);out={}
+    for perm in permutations(range(n)):
+        inversions=sum(perm[i]&gt;perm[j] for i in range(n) for j in range(i+1,n))
+        product={ZERO:F((-1)**inversions)}
+        for i,j in enumerate(perm):
+            product=mul(product,M[i][j])
+            if not product:break
+        out=add(out,product)
+    return out
+
+def parityblock(w,K,i):
+    j,k=[u for u in range(3) if u!=i]
+    diag=[scale(K[i],5),add(scale(K[i],3),scale(K[j],2)),add(scale(K[i],3),scale(K[k],2)),scale(add(K[i],scale(K[j],4)),F(1,2)),scale(add(K[i],scale(K[k],4)),F(1,2))]
+    M=[[{} for _ in range(5)] for _ in range(5)]
+    for u,x in enumerate(diag):M[u][u]=x
+    for u,v,x in [(0,3,scale(w[k],-5)),(1,3,scale(w[k],-5)),(0,4,scale(w[j],-5)),(2,4,scale(w[j],-5)),(3,4,scale(w[i],F(-5,2)))]:M[u][v]=M[v][u]=x
+    return M
+
+def oddblock(w,K):
+    M=[[{} for _ in range(3)] for _ in range(3)]
+    for i in range(3):
+        M[i][i]=add(scale(K[i],2),*K)
+        for j in range(i+1,3):M[i][j]=M[j][i]=scale(w[3-i-j],-5)
+    return M
+
+def run():
+    started=time.perf_counter()
+    certpath=OUT/&#x27;triaxial_symbolic_certificate.json&#x27;
+    data=json.loads(certpath.read_text())
+    inputs={
+      &#x27;A_allactive&#x27;:[(2,3,1),(1,3,1),(1,2,1)],
+      &#x27;B1_twoactive&#x27;:[(2,2,1),(1,1,1),(1,0,0)],
+      &#x27;B2_twoactive&#x27;:[(2,3,1),(1,3,1),(1,2,0)],
+      &#x27;C_oneactive&#x27;:[(2,2,1),(1,1,0),(1,0,0)],
+    }
+    checks=[]
+    for cone in data[&#x27;cones&#x27;]:
+        name=cone[&#x27;name&#x27;];a=[lin(x) for x in inputs[name]]
+        if name.startswith(&#x27;A&#x27;):
+            z=[add(*(a[j] for j in range(3) if j!=i),scale(a[i],-1)) for i in range(3)]
+        elif name.startswith(&#x27;B&#x27;):
+            z=[scale(add(scale(a[1],2),scale(a[0],-1)),F(2,3)),scale(add(scale(a[0],2),scale(a[1],-1)),F(2,3)),scale(add(a[0],a[1]),F(2,3))]
+        else:z=[{},a[0],a[0]]
+        w=[mul(x,x) for x in a]
+        K=[add(*(w[j] for j in range(3) if j!=i),mul(z[i],z[i])) for i in range(3)]
+        assert all(P and all(c&gt;=0 for c in P.values()) for P in K)
+        matrices={f&#x27;parity{i+1}&#x27;:parityblock(w,K,i) for i in range(3)}
+        matrices[&#x27;odd&#x27;]=oddblock(w,K)
+        for label,record in cone[&#x27;minors&#x27;].items():
+            kind,size=label.split(&#x27;_leading&#x27;);size=int(size)
+            M=matrices[kind];P=determinant([row[:size] for row in M[:size]])
+            # Each scaled u node multiplies its leading determinant by 1/2.
+            undo=2 if kind.startswith(&#x27;parity&#x27;) and size==4 else 4 if kind.startswith(&#x27;parity&#x27;) and size==5 else 1
+            P=scale(P,undo)
+            expected={tuple(term[&#x27;powers&#x27;]):F(term[&#x27;coefficient&#x27;]) for term in record[&#x27;positive_terms&#x27;]+record[&#x27;negative_terms&#x27;]}
+            assert P==expected,(name,label)
+            assert P and all(c&gt;=0 for c in P.values()),(name,label)
+            checks.append({&#x27;cone&#x27;:name,&#x27;minor&#x27;:label,&#x27;term_count&#x27;:len(P),&#x27;nonzero&#x27;:True,&#x27;all_coefficients_nonnegative&#x27;:True,&#x27;CAS_coefficients_match&#x27;:True,&#x27;min_nonzero_coefficient&#x27;:str(min(P.values()))})
+    report={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;certificate_sha256&#x27;:hashlib.sha256(certpath.read_bytes()).hexdigest(),&#x27;checks&#x27;:checks,&#x27;checked_count&#x27;:len(checks),&#x27;seconds&#x27;:time.perf_counter()-started,&#x27;method&#x27;:&#x27;stdlib Fraction polynomial arithmetic and Leibniz permutation determinant; independent from SymPy generation&#x27;}
+    (OUT/&#x27;independent_coefficient_replay.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:report[&#x27;status&#x27;],&#x27;checked_count&#x27;:len(checks),&#x27;seconds&#x27;:report[&#x27;seconds&#x27;],&#x27;certificate_sha256&#x27;:report[&#x27;certificate_sha256&#x27;]}))
+
+if __name__==&#x27;__main__&#x27;:run()
+</pre><p><a href="../assets/581792c0b8869eb277fa561b43ae61e797e67a857322c72d29804d9d081cfcd5.py">Exact original</a></p></html>

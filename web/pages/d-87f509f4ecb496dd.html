@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/universal-entropy-pi/qubit-exposed-review/designed_controls.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/universal-entropy-pi/qubit-exposed-review/designed_controls.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Replay the 81 preregistered finite controls; no universal certification.&quot;&quot;&quot;
+from pathlib import Path
+import json
+import numpy as np
+
+OUT = Path(__file__).parent / &quot;DESIGNED_CONTROLS.json&quot;
+P = [np.array([[0, 1], [1, 0]], dtype=complex),
+     np.array([[0, -1j], [1j, 0]], dtype=complex),
+     np.diag([1, -1]).astype(complex)]
+
+def herm_function(x, fn):
+    vals, vec = np.linalg.eigh(x)
+    return (vec * fn(vals)) @ vec.conj().T
+
+def quantities(rho, sigma, noise):
+    s = np.sqrt(np.diag(sigma)).real
+    bsb = noise @ np.diag(s) @ noise
+    v = 2 * bsb / (s[:, None] + s[None, :])
+    k = (np.sqrt(s)[:, None] * noise) / np.sqrt(s)[None, :]
+    c = (np.sqrt(s)[:, None] * v) / np.sqrt(s)[None, :]
+    n, vf, kf, cf = [np.kron(np.eye(2), q) for q in (noise, v, k, c)]
+    q = herm_function(rho, np.sqrt)
+    log_rho = herm_function(rho, np.log)
+    log_sigma = np.kron(np.eye(2), np.diag(np.log(np.diag(sigma))))
+    drho = (cf @ rho + rho @ cf.conj().T) / 2 - kf @ rho @ kf.conj().T
+    j = np.trace(drho @ (log_rho - log_sigma)).real
+    e = (np.trace(vf @ rho) - np.trace(n @ q @ n @ q)).real
+    tau_log = np.kron(np.diag(np.log([1/3, 2/3])), np.eye(2))
+    checks = {
+        &quot;trace_annihilation&quot;: abs(np.trace(drho)),
+        &quot;reference_log_cancellation&quot;: abs(np.trace(drho @ tau_log)),
+        &quot;stationarity&quot;: np.linalg.norm((c @ sigma + sigma @ c.conj().T)/2-k @ sigma @ k.conj().T),
+        &quot;Hs_zero&quot;: np.linalg.norm((v @ np.diag(s)+np.diag(s) @ v)/2-noise @ np.diag(s) @ noise),
+    }
+    return float(j), float(e), {key:float(value) for key,value in checks.items()}
+
+rows=[]
+for p_label,p in [(&quot;1/2&quot;,.5),(&quot;9/10&quot;,.9),(&quot;99/100&quot;,.99)]:
+    sigma=np.diag([p,1-p])
+    r=(p/(1-p))**.25
+    vp=np.array([r,1])/np.sqrt(r*r+1)
+    vm=np.array([r,-1])/np.sqrt(r*r+1)
+    for h_label,h in [(&quot;0&quot;,0.),(&quot;3/5&quot;,.6),(&quot;1&quot;,1.)]:
+        ap=np.kron([1.,0.],vp)
+        am=np.kron([h,np.sqrt(1-h*h)],vm)
+        for z_label,z in [(&quot;-1/4&quot;,-.25),(&quot;0&quot;,0.),(&quot;1/4&quot;,.25)]:
+            w=(np.outer(ap,ap)+np.outer(am,am))/2+z*(np.outer(ap,am)+np.outer(am,ap))
+            w=w/np.trace(w)
+            for eps_label,eps in [(&quot;1/10&quot;,.1),(&quot;1/100&quot;,.01),(&quot;1/1000&quot;,.001)]:
+                rho=((1-eps)*w+eps*np.eye(4)/4).astype(complex)
+                jm=np.zeros((3,3));em=np.zeros((3,3));errors={}
+                for i,pi in enumerate(P):
+                    j,e,ch=quantities(rho,sigma,pi)
+                    jm[i,i]=j;em[i,i]=e
+                    for key,value in ch.items():errors[key]=max(errors.get(key,0.),value)
+                for i in range(3):
+                    for j in range(i+1,3):
+                        js,es,ch=quantities(rho,sigma,P[i]+P[j])
+                        jm[i,j]=jm[j,i]=(js-jm[i,i]-jm[j,j])/2
+                        em[i,j]=em[j,i]=(es-em[i,i]-em[j,j])/2
+                        for key,value in ch.items():errors[key]=max(errors.get(key,0.),value)
+                fm=jm-np.pi*em
+                vals,vec=np.linalg.eigh(fm)
+                a=vec[:,0]
+                noise=sum(a[i]*P[i] for i in range(3))
+                jj,ee,ch=quantities(rho,sigma,noise)
+                rows.append({
+                    &quot;exact_parameters&quot;:{&quot;p&quot;:p_label,&quot;h&quot;:h_label,&quot;z&quot;:z_label,&quot;epsilon&quot;:eps_label},
+                    &quot;rho_real_float&quot;:rho.real.tolist(),
+                    &quot;minimum_rho_eigenvalue&quot;:float(np.linalg.eigvalsh(rho)[0]),
+                    &quot;J_matrix&quot;:jm.tolist(),&quot;E_matrix&quot;:em.tolist(),
+                    &quot;F_pi_eigenvalues&quot;:vals.tolist(),&quot;minimum_noise_Pauli_coefficients&quot;:a.tolist(),
+                    &quot;J_at_minimum_noise&quot;:jj,&quot;E_at_minimum_noise&quot;:ee,
+                    &quot;J_over_E_at_minimum_noise&quot;:jj/ee if ee&gt;1e-14 else None,
+                    &quot;F_pi_direct_at_minimum_noise&quot;:jj-np.pi*ee,
+                    &quot;algebra_residuals&quot;:errors,
+                    &quot;negative_candidate&quot;:bool(vals[0]&lt;-1e-8)
+                })
+
+assert len(rows)==81
+report={
+    &quot;status&quot;:&quot;finite floating-point diagnostics only; cannot prove universal inequality&quot;,
+    &quot;input_exact_specification&quot;:&quot;DESIGNED_CONTROL_PREREG.txt, faithful algebraic state formula plus exact rational parameters in every row&quot;,
+    &quot;numpy_version&quot;:np.__version__,
+    &quot;number_of_states&quot;:len(rows),
+    &quot;negative_candidates&quot;:sum(row[&quot;negative_candidate&quot;] for row in rows),
+    &quot;minimum_F_pi&quot;:min(row[&quot;F_pi_eigenvalues&quot;][0] for row in rows),
+    &quot;worst_algebra_residual&quot;:max(value for row in rows for value in row[&quot;algebra_residuals&quot;].values()),
+    &quot;rows&quot;:rows,
+}
+OUT.write_text(json.dumps(report,indent=2,sort_keys=True)+&quot;\n&quot;)
+print(json.dumps({key:report[key] for key in [&quot;status&quot;,&quot;numpy_version&quot;,&quot;number_of_states&quot;,&quot;negative_candidates&quot;,&quot;minimum_F_pi&quot;,&quot;worst_algebra_residual&quot;]},indent=2))
+</pre><p><a href="../assets/2e7c4e99aee41019c6ed406a7bbbd7e0ad496b83130942b2d9ee63c6f317e52f.py">Exact original</a></p></html>

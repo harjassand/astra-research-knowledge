@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/foundational_transfer_sol/cycle04_transfers/acquire_primary.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/foundational_transfer_sol/cycle04_transfers/acquire_primary.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Cache named primary sources read during Cycle04; read-only network GETs.&quot;&quot;&quot;
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from urllib.request import Request, urlopen
+from datetime import datetime, timezone
+import hashlib
+import json
+
+BASE = Path(__file__).resolve().parent
+SOURCE = [
+ (&#x27;hsr_2003.html&#x27;, &#x27;https://arxiv.org/html/quant-ph/0302031v2&#x27;),
+ (&#x27;jencova_2016.html&#x27;, &#x27;https://arxiv.org/html/1601.06370v1&#x27;),
+ (&#x27;monras_2010.html&#x27;, &#x27;https://arxiv.org/html/1002.2337v2&#x27;),
+ (&#x27;spekkens_2008.html&#x27;, &#x27;https://arxiv.org/html/0805.1463v2&#x27;),
+ (&#x27;jokinen_2024.html&#x27;, &#x27;https://arxiv.org/html/2406.07305v1&#x27;),
+ (&#x27;jain_QStateGen.pdf&#x27;, &#x27;https://www.cse.cuhk.edu.hk/~syzhang/papers/QStateGen.pdf&#x27;),
+ (&#x27;braun_eccc_2013_rev5.pdf&#x27;, &#x27;https://eccc.weizmann.ac.il/report/2013/056/revision/5/download/&#x27;),
+ (&#x27;braun_jain_lee_pokutta_eccc158_rev2.pdf&#x27;, &#x27;https://eccc.weizmann.ac.il/report/2013/158/revision/2/download/&#x27;),
+]
+
+
+def acquire(item):
+    name, url = item
+    rec = {&#x27;path&#x27;: str(BASE/&#x27;primary&#x27;/name), &#x27;url&#x27;: url,
+           &#x27;retrieved_UTC&#x27;: datetime.now(timezone.utc).isoformat()}
+    try:
+        if (BASE/&#x27;primary&#x27;/name).exists() and (BASE/&#x27;primary_cache_manifest.json&#x27;).exists():
+            old = json.loads((BASE/&#x27;primary_cache_manifest.json&#x27;).read_text())[&#x27;retrievals&#x27;]
+            for previous in old:
+                if previous[&#x27;path&#x27;] == rec[&#x27;path&#x27;] and previous[&#x27;url&#x27;] == url and previous[&#x27;status&#x27;] == &#x27;cached&#x27;:
+                    data = (BASE/&#x27;primary&#x27;/name).read_bytes()
+                    if hashlib.sha256(data).hexdigest() == previous[&#x27;sha256&#x27;]:
+                        return previous
+        req = Request(url, headers={&#x27;User-Agent&#x27;: &#x27;Mozilla/5.0&#x27;})
+        with urlopen(req, timeout=30) as response:
+            data = response.read()
+            rec[&#x27;final_url&#x27;] = response.geturl()
+            rec[&#x27;content_type&#x27;] = response.headers.get(&#x27;Content-Type&#x27;)
+        (BASE/&#x27;primary&#x27;/name).write_bytes(data)
+        rec.update(status=&#x27;cached&#x27;, bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+        if name.endswith(&#x27;.pdf&#x27;):
+            from pypdf import PdfReader
+            reader = PdfReader(BASE/&#x27;primary&#x27;/name)
+            text = &#x27;\n&#x27;.join(f&#x27;PAGE {i+1}\n&#x27;+page.extract_text() for i, page in enumerate(reader.pages))
+            (BASE/&#x27;primary&#x27;/name.replace(&#x27;.pdf&#x27;,&#x27;.txt&#x27;)).write_text(text)
+            rec[&#x27;pages&#x27;] = len(reader.pages)
+    except Exception as exc:
+        rec.update(status=&#x27;CACHE_FAILED_WEB_INSPECTION_RETAINED&#x27;, error=repr(exc))
+    return rec
+
+
+def main():
+    (BASE/&#x27;primary&#x27;).mkdir(exist_ok=True)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        acquired = list(executor.map(acquire, SOURCE))
+    manifest = {&#x27;retrievals&#x27;: acquired,
+                &#x27;limitations&#x27;: &#x27;Snapshots and hashes do not certify proof or priority.&#x27;}
+    (BASE/&#x27;primary_cache_manifest.json&#x27;).write_text(json.dumps(manifest, indent=2)+&#x27;\n&#x27;)
+    print(json.dumps([{&#x27;name&#x27;:Path(r[&#x27;path&#x27;]).name, &#x27;status&#x27;:r[&#x27;status&#x27;], &#x27;bytes&#x27;:r.get(&#x27;bytes&#x27;)}
+                      for r in acquired]))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/8e514d2dc75446ae053508bdcee882fcaca717b2ff839b76f9595ec800476a84.py">Exact original</a></p></html>

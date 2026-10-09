@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/ppt_cube_chain_sol/separability_bounds.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/ppt_cube_chain_sol/separability_bounds.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Sufficient separability diagnostics; numerical bounds only.&quot;&quot;&quot;
+import json
+import numpy as np
+from diagnostics import K,C,superop,choi
+
+def invsqrt(a):
+    w,v=np.linalg.eigh(a)
+    return (v*(1/np.sqrt(w)))@v.T
+
+def whiten(j,d,e,steps=40):
+    x=np.eye(d); y=np.eye(e)
+    for _ in range(steps):
+        t=j.reshape(d,e,d,e)
+        ma=np.einsum(&#x27;iaja-&gt;ij&#x27;,t)
+        f=invsqrt(ma)
+        ff=np.kron(f,np.eye(e)); j=ff@j@ff.T; x=f@x
+        t=j.reshape(d,e,d,e)
+        mb=np.einsum(&#x27;iaib-&gt;ab&#x27;,t)
+        f=invsqrt(mb)
+        ff=np.kron(np.eye(d),f); j=ff@j@ff.T; y=f@y
+        j=j/np.trace(j)
+    return j,x,y
+
+def basis(d):
+    b=[]
+    for i in range(d):
+        for k in range(i+1,d):
+            z=np.zeros((d,d)); z[i,k]=z[k,i]=1/np.sqrt(2); b.append(z)
+    for i in range(1,d):
+        z=np.zeros((d,d)); z[np.arange(i),np.arange(i)]=1
+        z[i,i]=-i; z/=np.sqrt(i*(i+1)); b.append(z)
+    return np.array(b)
+
+def bounds(j,d,e):
+    a=basis(d); b=basis(e); t=j.reshape(d,e,d,e)
+    corr=np.einsum(&#x27;nij,mab,iajb-&gt;nm&#x27;,a,b,t)
+    u,s,vh=np.linalg.svd(corr,full_matrices=False)
+    aa=np.einsum(&#x27;ik,imn-&gt;kmn&#x27;,u,a)
+    bb=np.einsum(&#x27;ki,imn-&gt;kmn&#x27;,vh,b)
+    cost=sum(z*max(abs(np.linalg.eigvalsh(x)))*max(abs(np.linalg.eigvalsh(y)))
+             for z,x,y in zip(s,aa,bb))*d*e
+    # elementary coordinate rectangle decomposition
+    residual=np.diag(j).copy().reshape(d,e)
+    for i in range(d):
+      for k in range(i,d):
+        for a0 in range(e):
+          for b0 in range(a0,e):
+            if i==k and a0==b0:continue
+            c=abs(t[i,a0,k,b0])
+            for ii in set([i,k]):
+              for aa0 in set([a0,b0]):residual[ii,aa0]-=c
+    return dict(purity=float(np.trace(j@j)),
+       hs_distance=float(np.linalg.norm(j-np.eye(d*e)/(d*e))),
+       standard_ball_radius=float(1/np.sqrt(d*e*(d*e-1))),
+       correlation_cost=float(cost),coordinate_residual_min=float(residual.min()),
+       min_eig=float(np.linalg.eigvalsh(j)[0]))
+
+a=superop(K);b=superop(np.array([(C@k).T for k in K]));out={}
+for name,m,d,e in [(&#x27;ABA&#x27;,a@b@a,10,6),(&#x27;BAB&#x27;,b@a@b,6,10),(&#x27;AB&#x27;,a@b,6,6),(&#x27;BA&#x27;,b@a,10,10)]:
+    j=choi(m,d,e);j/=np.trace(j);out[name]={&#x27;original&#x27;:bounds(j,d,e)}
+    jw,x,y=whiten(j,d,e);out[name][&#x27;whitened&#x27;]=bounds(jw,d,e)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/b19f59f556768a582eb2246cff21154893b262a9f9b96ed796e44426a2c7e957.py">Exact original</a></p></html>

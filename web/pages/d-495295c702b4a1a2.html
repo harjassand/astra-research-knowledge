@@ -1,0 +1,334 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/stationary-regularity-and-raw-classicality/kms-origin/CHECK_ALL_P_PHYSICAL_CONTROLS.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/stationary-regularity-and-raw-classicality/kms-origin/CHECK_ALL_P_PHYSICAL_CONTROLS.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Fixed finite diagnostics for the independently frozen all-p KMS profile.
+
+No optimization or catalogue scan. Writes exactly one exclusive-create JSON.
+Do not run again against an existing output; use the read-only replay helper.
+&quot;&quot;&quot;
+from pathlib import Path
+import hashlib
+import json
+import math
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+PS = (1.25, 1.5, 2.0, 3.0, 5.0)
+
+
+def spectral_power(a, exponent):
+    vals, vecs = np.linalg.eigh((a+a.conj().T)/2)
+    assert vals.min() &gt; 0, vals
+    return (vecs * vals**exponent) @ vecs.conj().T
+
+
+def density(a):
+    return a / np.trace(a).real
+
+
+def kernel(x, y, t):
+    return (np.cosh((x+y)/2)*np.cosh(t*(x-y)/2)/np.cosh((x-y)/2)
+            -np.cosh(t*(x+y)/2))
+
+
+def choi(fn, n):
+    out = np.zeros((n*n,n*n), complex)
+    for a in range(n):
+        for b in range(n):
+            e = np.zeros((n,n), complex)
+            e[a,b] = 1
+            out += np.kron(fn(e),e)
+    return out
+
+
+def check_case(name, sigma_diagonal, B, rho, tau):
+    sigma_diagonal = np.asarray(sigma_diagonal, float)
+    sigma = np.diag(sigma_diagonal)
+    n, refdim = len(sigma_diagonal), len(tau)
+    assert np.allclose(B, B.conj().T)
+    assert rho.shape == (refdim*n,refdim*n)
+    svals = np.sqrt(sigma_diagonal)
+    s, d, dinv = np.diag(svals), np.diag(np.sqrt(svals)), np.diag(1/np.sqrt(svals))
+    V = 2*(B@s@B)/(svals[:,None]+svals[None,:])
+    K, C = d@B@dinv, d@V@dinv
+    Bb, Vb = np.kron(np.eye(refdim),B), np.kron(np.eye(refdim),V)
+    omega = np.kron(tau,sigma)
+    st = spectral_power(omega,.5)
+    dt, dit = spectral_power(omega,.25), spectral_power(omega,-.25)
+
+    def H(x):
+        return (Vb@x+x@Vb)/2-Bb@x@Bb
+
+    def L(x):
+        return dit@H(dt@x@dt)@dit
+
+    roots, U = np.linalg.eigh(rho)
+    assert roots.min() &gt; 0
+    sqrt_lam = np.sqrt(roots)
+    sqrho = spectral_power(rho,.5)
+    eroot = np.trace(sqrho@H(sqrho)).real
+    u = np.log(svals)
+    parts_dict = {}
+    for a in range(n):
+        for b in range(n):
+            if B[a,b] != 0:
+                alpha = round(float(u[a]-u[b]),13)
+                parts_dict.setdefault(alpha,np.zeros_like(B))[a,b] += B[a,b]
+    alphas = np.asarray(sorted(parts_dict))
+    parts = [parts_dict[alpha] for alpha in alphas]
+    components = np.asarray([U.conj().T@np.kron(np.eye(refdim),part)@U for part in parts])
+    rows = []
+    for p in PS:
+        r, a, t = 1/p, .5-1/p, 1-2/p
+        eta, cp = math.sin(math.pi/p), p*math.sin(math.pi/p)/(2*(p-1))
+        sr, sinvr = spectral_power(omega,r/2), spectral_power(omega,-r/2)
+        f = sinvr@spectral_power(rho,r)@sinvr
+        bare = sr@f@sr
+        outer_q = spectral_power(omega,-(1-r)/2)
+        iq = outer_q@spectral_power(bare,p-1)@outer_q
+        i2 = dit@spectral_power(bare,p/2)@dit
+        ep_direct = p/(2*(p-1))*np.trace(st@iq@st@L(f)).real
+        eroot_direct = np.trace(st@i2@st@L(i2)).real
+        sa, sma = spectral_power(omega,a/2), spectral_power(omega,-a/2)
+        h = sa@spectral_power(rho,r)@sa
+        g = sma@spectral_power(rho,1-r)@sma
+        tr = np.trace(g@H(h)).real
+        transport_error = max(np.linalg.norm(dt@f@dt-h),
+                              np.linalg.norm(dt@iq@dt-g),
+                              np.linalg.norm(dt@i2@dt-sqrho))
+        ep_error = abs(ep_direct-tr/(2*(1-r)))
+        root_error = abs(eroot_direct-eroot)
+        complete_gram = 0j
+        root_gram = 0j
+        diagonal_gram = 0j
+        imaginary_cross_mass = 0.0
+        min_difference_gram_eigenvalue = 0.0
+        max_hardy_congruence_error = 0.0
+        for i in range(len(roots)):
+            for j in range(len(roots)):
+                beta = math.log(sqrt_lam[i]/sqrt_lam[j])
+                nodes = beta-alphas
+                xx, yy = nodes[:,None], nodes[None,:]
+                kt, k0 = kernel(xx,yy,t), kernel(xx,yy,0)
+                difference = kt-eta*k0
+                min_difference_gram_eigenvalue = min(min_difference_gram_eigenvalue,
+                    float(np.linalg.eigvalsh(difference).min()))
+                c = components[:,i,j]
+                weight = sqrt_lam[i]*sqrt_lam[j]
+                term = weight*np.vdot(c,kt@c)
+                complete_gram += term
+                root_gram += weight*np.vdot(c,k0@c)
+                if i == j:
+                    diagonal_gram += term
+                imaginary_cross_mass += float(np.abs(np.outer(c.conj(),c).imag).sum())
+                v = np.tanh(nodes/2)
+                cc = np.cosh(t*nodes/2)
+                psi = np.full_like(v,t)
+                nonzero = np.abs(v) &gt; 1e-14
+                psi[nonzero] = np.tanh(t*nodes[nonzero]/2)/v[nonzero]
+                bb = 1/cc
+                nn = (1-np.outer(psi,psi)-eta*np.outer(bb,bb))/(1-np.outer(v,v))
+                congruence = 2*np.outer(v*cc,v*cc)*nn
+                max_hardy_congruence_error = max(max_hardy_congruence_error,
+                    float(np.linalg.norm(congruence-difference)))
+        gram_error = abs(complete_gram-tr)
+        root_gram_error = abs(root_gram-eroot)
+        potential_from_frequencies = np.zeros_like(B)
+        for alpha, ba in zip(alphas,parts):
+            for gamma, bg in zip(alphas,parts):
+                m, h0 = (alpha+gamma)/2,(alpha-gamma)/2
+                potential_from_frequencies += (np.exp(m)*np.cosh(t*h0)/np.cosh(h0))*(ba.conj().T@bg)
+        sla, slma = np.diag(svals**a),np.diag(svals**(-a))
+        potential_direct = (sla@V@slma+slma@V@sla)/2
+        potential_error = np.linalg.norm(potential_from_frequencies-potential_direct)
+        profile_gap = ep_direct-cp*eroot
+        scale = 1+abs(tr)+abs(eroot)
+        assert max(transport_error,ep_error,root_error,gram_error,root_gram_error,
+                   potential_error,max_hardy_congruence_error) &lt;= 1e-9*scale, (name,p,scale)
+        assert profile_gap &gt;= -3e-10*scale, (name,p,profile_gap)
+        assert min_difference_gram_eigenvalue &gt;= -3e-9*scale, (name,p,min_difference_gram_eigenvalue)
+        rows.append({&quot;p&quot;:p,&quot;coefficient&quot;:cp,&quot;E_p&quot;:float(ep_direct),&quot;E_root&quot;:float(eroot),
+            &quot;profile_gap&quot;:float(profile_gap),&quot;T_r&quot;:float(tr),
+            &quot;transport_operator_error&quot;:float(transport_error),&quot;E_p_normalization_error&quot;:float(ep_error),
+            &quot;E_root_normalization_error&quot;:float(root_error),&quot;complete_gram_real&quot;:float(complete_gram.real),
+            &quot;complete_gram_imaginary&quot;:float(complete_gram.imag),&quot;identity_absolute_error&quot;:float(gram_error),
+            &quot;root_gram_absolute_error&quot;:float(root_gram_error),&quot;potential_operator_error&quot;:float(potential_error),
+            &quot;minimum_difference_gram_eigenvalue&quot;:float(min_difference_gram_eigenvalue),
+            &quot;maximum_hardy_congruence_error&quot;:float(max_hardy_congruence_error),
+            &quot;diagonal_gram_real&quot;:float(diagonal_gram.real),
+            &quot;imaginary_cross_product_mass&quot;:float(imaginary_cross_mass)})
+    duality_errors = {}
+    for p, q in ((1.25,5.0),(1.5,3.0)):
+        ep = next(row[&quot;E_p&quot;] for row in rows if row[&quot;p&quot;] == p)
+        eq = next(row[&quot;E_p&quot;] for row in rows if row[&quot;p&quot;] == q)
+        error = abs(eq-(p-1)*ep)
+        assert error &lt;= 1e-9*(1+abs(eq)+abs(ep))
+        duality_errors[str(p)] = float(error)
+    lindblad_error = np.linalg.norm((C+C.conj().T)/2-K.conj().T@K)
+    stationarity_error = np.linalg.norm((C@sigma+sigma@C.conj().T)/2-K@sigma@K.conj().T)
+    assert max(lindblad_error,stationarity_error) &lt;= 3e-10
+    return {&quot;case&quot;:name,&quot;local_dimension&quot;:n,&quot;reference_dimension&quot;:refdim,
+            &quot;frequency_count&quot;:len(alphas),&quot;rho_min_eigenvalue&quot;:float(roots.min()),
+            &quot;reference_min_eigenvalue&quot;:float(np.linalg.eigvalsh(tau).min()),
+            &quot;physical_hamiltonian_norm&quot;:float(np.linalg.norm((C-C.conj().T)/(2j))),
+            &quot;physical_lindblad_error&quot;:float(lindblad_error),&quot;stationarity_error&quot;:float(stationarity_error),
+            &quot;same_rho_conjugate_duality_errors&quot;:duality_errors,&quot;p_checks&quot;:rows}
+
+
+def check_qutrit_counterfamily():
+    r, t, eta = 1/3,1/3,8/9
+    us = np.array([101/100,2.0])
+    xs = 3*np.log(us)
+    vs = (us**3-1)/(us**3+1)
+    psi = (us**2-us+1)/(us**2+us+1)
+    bb = 2*np.sqrt(us)/(us+1)
+    cc = (us+1)/(2*np.sqrt(us))
+    N = (1-np.outer(psi,psi)-eta*np.outer(bb,bb))/(1-np.outer(vs,vs))
+    assert 0&lt;N[0,0]&lt;1e-5 and N[0,1]&gt;.01
+    assert abs(N[1,1]-13/196)&lt;1e-13 and np.linalg.det(N)&lt;0
+    y = np.array([1,-N[0,1]/N[1,1]])
+    s0 = 1/math.sqrt(1+float(np.exp(-2*xs).sum()))
+    sv = s0*np.r_[1,np.exp(-xs)]
+    s, sigma = np.diag(sv),np.diag(sv**2)
+    B = np.zeros((3,3),complex)
+    B[1:,1:] = 1
+    A0 = float(sv[1:].sum())
+    V = 2*(B@s@B)/(sv[:,None]+sv[None,:])
+    d = np.exp(xs/2)/np.sinh(r*xs)
+    qnodes = math.sqrt(2)*vs*cc
+    z = y/(d*qnodes)
+    Q = np.zeros((3,3),complex)
+    Q[0,1:] = Q[1:,0] = z
+    di = np.diag(1/np.sqrt(sv))
+    A = di@Q@di
+    dr, cr = np.sinh((1-r)*xs)/np.sinh(r*xs),np.sinh(xs/2)/np.sinh(r*xs)
+    DQ, CQ = Q.copy(),Q.copy()
+    DQ[0,1:] = DQ[1:,0] = dr*z
+    CQ[0,1:] = CQ[1:,0] = cr*z
+    M = V[1:,1:]*((dr[:,None]+dr[None,:])/2-eta*np.outer(cr,cr))
+    Lt, L0 = kernel(xs[:,None],xs[None,:],t),kernel(xs[:,None],xs[None,:],0)
+    congruent_M = A0/(2*s0)*np.outer(d,d)*(Lt-eta*L0)
+    M_error = np.linalg.norm(M-congruent_M)
+    N_error = np.linalg.norm(Lt-eta*L0-np.outer(qnodes,qnodes)*N)
+    assert max(M_error,N_error)&lt;1e-11
+
+    def HB(x):
+        return (V@x+x@V)/2-B@x@B
+
+    def HR(x):
+        return x-s*np.trace(s@x)
+
+    mB = np.trace(DQ@HB(Q)).real-eta*np.trace(CQ@HB(CQ)).real
+    mR = np.trace(DQ@HR(Q)).real-eta*np.trace(CQ@HR(CQ)).real
+    delta = -mB/(2*(1+abs(mR)))
+    assert mB&lt;0 and delta&gt;0
+    assert abs(mB-z@M@z)&lt;1e-11 and mB+delta*mR&lt;=mB/2+1e-12
+
+    def H(x):
+        return HB(x)+delta*HR(x)
+
+    df = np.diag(np.sqrt(sv))
+    K, C = df@B@di,df@V@di
+    lindblad_error = np.linalg.norm((C+C.conj().T)/2-K.conj().T@K)
+    stationarity_error = np.linalg.norm(H(s))
+    n = 3
+    hs = np.stack([H(np.eye(n*n)[k].reshape(n,n)).reshape(-1) for k in range(n*n)],axis=1)
+    h_evals, h_vecs = np.linalg.eigh(hs)
+    assert abs(h_evals[0])&lt;1e-11 and h_evals[1] &gt;= delta-1e-11
+    semigroup_hs = (h_vecs*np.exp(-.2*h_evals))@h_vecs.conj().T
+    def heisenberg_semigroup(x):
+        return di@(semigroup_hs@(df@x@df).reshape(-1)).reshape(n,n)@di
+    semigroup_choi_min = float(np.linalg.eigvalsh(choi(heisenberg_semigroup,n)).min())
+    assert semigroup_choi_min &gt;= -1e-11
+    rows = []
+    A_norm = float(np.linalg.norm(A,2))
+    for relative_step in (.005,.0025):
+        epsilon = relative_step/A_norm
+        f = np.eye(3)+epsilon*A
+        assert np.linalg.eigvalsh(f).min()&gt;0
+        bare = np.diag(sv**r)@f@np.diag(sv**r)
+        rho = spectral_power(bare,1/r)
+        h = df@f@df
+        iq = np.diag(sv**(-(1-r)))@spectral_power(bare,(1-r)/r)@np.diag(sv**(-(1-r)))
+        g = df@iq@df
+        tr = np.trace(g@H(h)).real
+        root = spectral_power(rho,.5)
+        eroot = np.trace(root@H(root)).real
+        ep3 = tr/(2*(1-r))
+        strong_gap = ep3-(2/3)*eroot
+        sharp_gap = ep3-(3*math.sqrt(3)/8)*eroot
+        normalized_hessian = (tr-eta*eroot)/epsilon**2
+        rq = 1-r
+        aq = .5-rq
+        hq = np.diag(sv**aq)@spectral_power(rho,rq)@np.diag(sv**aq)
+        gq = np.diag(sv**(-aq))@spectral_power(rho,1-rq)@np.diag(sv**(-aq))
+        epq = np.trace(gq@H(hq)).real/(2*(1-rq))
+        dual_error = abs(epq-2*ep3)
+        assert strong_gap&lt;0 and sharp_gap&gt;0
+        assert normalized_hessian&lt;0
+        assert abs(normalized_hessian-(mB+delta*mR))&lt;=.005*(1+abs(mB+delta*mR))
+        assert dual_error &lt;= 3e-11
+        assert epq-(4/3)*eroot&lt;0
+        rows.append({&quot;relative_positive_step&quot;:relative_step,&quot;epsilon&quot;:epsilon,
+            &quot;f_min_eigenvalue&quot;:float(np.linalg.eigvalsh(f).min()),
+            &quot;rho_min_eigenvalue&quot;:float(np.linalg.eigvalsh(rho).min()),
+            &quot;E_3&quot;:float(ep3),&quot;E_root&quot;:float(eroot),&quot;strong_p3_gap&quot;:float(strong_gap),
+            &quot;sharp_profile_gap&quot;:float(sharp_gap),&quot;normalized_hessian_residual&quot;:float(normalized_hessian),
+            &quot;E_conjugate_1_5&quot;:float(epq),&quot;same_rho_duality_error&quot;:float(dual_error),
+            &quot;strong_p1_5_gap&quot;:float(epq-(4/3)*eroot)})
+    return {&quot;local_dimension&quot;:3,&quot;p&quot;:3,&quot;N&quot;:N.tolist(),&quot;N_determinant&quot;:float(np.linalg.det(N)),
+            &quot;negative_N_vector&quot;:y.tolist(),&quot;sigma_diagonal&quot;:(sv**2).tolist(),
+            &quot;physical_coherence_z&quot;:z.tolist(),&quot;primitive_replacer_delta&quot;:float(delta),
+            &quot;base_negative_hessian&quot;:float(mB),&quot;replacer_hessian&quot;:float(mR),
+            &quot;primitive_negative_hessian&quot;:float(mB+delta*mR),
+            &quot;minimum_nonzero_H_eigenvalue&quot;:float(h_evals[1]),
+            &quot;semigroup_time_0_2_choi_min_eigenvalue&quot;:semigroup_choi_min,
+            &quot;physical_lindblad_error&quot;:float(lindblad_error),&quot;stationarity_error&quot;:float(stationarity_error),
+            &quot;physical_hamiltonian_norm&quot;:float(np.linalg.norm((C-C.conj().T)/(2j))),
+            &quot;hessian_congruence_error&quot;:float(M_error),&quot;hardy_congruence_error&quot;:float(N_error),
+            &quot;positive_state_checks&quot;:rows}
+
+
+B3=np.array([[.3,1,1j],[1,-.2,1+.5j],[-1j,1-.5j,.4]],complex)
+sigma3=np.array([1,4,9])/14
+X=np.array([[1,.2j,.4],[.3,1.2,-.5j],[.1j,.2,.8]],complex)
+rho3=density(X@X.conj().T+.15*np.eye(3))
+psi6=np.array([1,0,.4,0,1j,.3],complex)
+psi6/=np.linalg.norm(psi6)
+rho6=.63*np.outer(psi6,psi6.conj())+.37*np.diag(np.arange(1,7)/21)
+tau=np.array([[.6,.2j],[-.2j,.4]],complex)
+B4=np.array([[.2,1,1j,.2-.4j],[1,-.1,.3j,1+.2j],
+             [-1j,-.3j,.3,.6],[.2+.4j,1-.2j,.6,-.4]],complex)
+psi4=np.array([1,.2j,-.3,1j],complex)
+psi4/=np.linalg.norm(psi4)
+rho4=.55*np.outer(psi4,psi4.conj())+.45*np.eye(4)/4
+inputs=[
+    (&quot;complex_noncommuting_qutrit&quot;,sigma3,B3,rho3,np.ones((1,1))),
+    (&quot;entangled_reference_with_nontracial_weight&quot;,sigma3,B3,rho6,tau),
+    (&quot;stationary_quantum_reference&quot;,sigma3,B3,np.kron(tau,np.diag(sigma3)),tau),
+    (&quot;tracial_null_remainder_control&quot;,np.ones(3)/3,
+        np.array([[0,1,0],[1,0,0],[0,0,0]],complex),np.diag([4/9,4/9,1/9]),np.ones((1,1))),
+    (&quot;identity_noise_noncommuting_state&quot;,sigma3,np.eye(3,dtype=complex),rho3,np.ones((1,1))),
+    (&quot;degenerate_local_and_full_state_spectra&quot;,np.array([1,1,4,9])/15,B4,rho4,np.ones((1,1))),
+]
+rows=[check_case(*args) for args in inputs]
+pt=rho6.reshape(2,3,2,3).transpose(2,1,0,3).reshape(6,6)
+npt_min=float(np.linalg.eigvalsh(pt).min())
+assert npt_min&lt;0
+qutrit=check_qutrit_counterfamily()
+out={&quot;status&quot;:&quot;PASS_FINITE_DIAGNOSTICS_ONLY&quot;,&quot;no_optimization&quot;:True,
+     &quot;case_count&quot;:len(rows),&quot;p_values&quot;:list(PS),&quot;case_p_count&quot;:len(rows)*len(PS),
+     &quot;entangled_reference_partial_transpose_min&quot;:npt_min,
+     &quot;positive_profile_proof_sha256&quot;:hashlib.sha256((HERE/&quot;INDEPENDENT_ALL_P_PROFILE_PROOF.txt&quot;).read_bytes()).hexdigest(),
+     &quot;qutrit_counterfamily_proof_sha256&quot;:hashlib.sha256((HERE/&quot;CONCRETE_QUTRIT_STRONG_P3_COUNTERFAMILY.txt&quot;).read_bytes()).hexdigest(),
+     &quot;checks&quot;:rows,&quot;primitive_qutrit_strong_counterfamily&quot;:qutrit,
+     &quot;limitations&quot;:[&quot;Finite diagnostics are not an all-dimension proof&quot;,
+                    &quot;No external or formal validation&quot;,&quot;No historical priority certification&quot;]}
+with (HERE/&quot;ALL_P_PHYSICAL_CONTROLS.json&quot;).open(&quot;x&quot;) as f:
+    json.dump(out,f,indent=2)
+    f.write(&quot;\n&quot;)
+print(json.dumps({&quot;status&quot;:out[&quot;status&quot;],&quot;case_p_count&quot;:out[&quot;case_p_count&quot;],
+    &quot;maximum_general_p_identity_error&quot;:max(x[&quot;identity_absolute_error&quot;] for row in rows for x in row[&quot;p_checks&quot;]),
+    &quot;maximum_transport_error&quot;:max(x[&quot;transport_operator_error&quot;] for row in rows for x in row[&quot;p_checks&quot;]),
+    &quot;maximum_hardy_congruence_error&quot;:max(x[&quot;maximum_hardy_congruence_error&quot;] for row in rows for x in row[&quot;p_checks&quot;]),
+    &quot;qutrit_N_determinant&quot;:qutrit[&quot;N_determinant&quot;],&quot;qutrit_primitive_delta&quot;:qutrit[&quot;primitive_replacer_delta&quot;],
+    &quot;qutrit_strong_p3_gaps&quot;:[x[&quot;strong_p3_gap&quot;] for x in qutrit[&quot;positive_state_checks&quot;]],
+    &quot;qutrit_strong_p1_5_gaps&quot;:[x[&quot;strong_p1_5_gap&quot;] for x in qutrit[&quot;positive_state_checks&quot;]]}))
+</pre><p><a href="../assets/fa46b05c354be1b46ac8c6a2a2f85347b0e4617decfcb5976c74a8cec11aa610.py">Exact original</a></p></html>

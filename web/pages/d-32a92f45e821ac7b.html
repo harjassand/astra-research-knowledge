@@ -1,0 +1,657 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/state/audit_usage.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/state/audit_usage.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Summarize token usage for one Codex session and its descendant agents.
+
+Discovery reads only the first JSONL record (session_meta) from sibling session
+logs to establish parentage. Full records are read only from the requested root
+session and sessions proven to be descendants by session_meta or dispatch IDs.
+No message, prompt, tool input, or tool output content is emitted.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from collections import defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_ROOT = Path(
+    &quot;/Users/harjas/.codex/sessions/2026/10/09/&quot;
+    &quot;rollout-2026-10-09T00-43-59-01a11bf8-98a4-7342-b565-17a798a3759f.jsonl&quot;
+)
+
+# Standard short-context rates, USD per million tokens. These are the rates
+# supplied for this audit from the official comparison page, not billing data.
+PRICE_SOURCE = &quot;https://developers.openai.com/api/docs/models/compare&quot;
+RATES_USD_PER_MTOK = {
+    &quot;gpt-6-astra&quot;: {&quot;input&quot;: 10.0, &quot;cached_input&quot;: 1.0, &quot;output&quot;: 50.0},
+    &quot;gpt-6.1-sol&quot;: {&quot;input&quot;: 2.0, &quot;cached_input&quot;: 0.1, &quot;output&quot;: 10.0},
+    &quot;gpt-6-sol&quot;: {&quot;input&quot;: 2.0, &quot;cached_input&quot;: 0.1, &quot;output&quot;: 10.0},
+    &quot;gpt-6-luna&quot;: {&quot;input&quot;: 0.1, &quot;cached_input&quot;: 0.01, &quot;output&quot;: 0.5},
+}
+PRICE_SCALE = 1_000_000
+CONCURRENT_SOL_MAX_CEILING = 30.0
+ACTIVE_RESERVATION_WEIGHTS = {
+    &quot;gpt-6-astra&quot;: 10.0,
+    &quot;gpt-6.1-sol&quot;: 1.0,
+    &quot;gpt-6-sol&quot;: 1.0,
+    &quot;gpt-6-luna&quot;: 0.1,
+}
+
+
+def _as_int(value: Any) -&gt; int:
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def _read_meta(path: Path) -&gt; dict[str, Any] | None:
+    &quot;&quot;&quot;Read only the first record, which is session metadata.&quot;&quot;&quot;
+    try:
+        with path.open(&quot;r&quot;, encoding=&quot;utf-8&quot;) as handle:
+            first = handle.readline()
+        row = json.loads(first)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    if row.get(&quot;type&quot;) != &quot;session_meta&quot; or not isinstance(row.get(&quot;payload&quot;), dict):
+        return None
+    return row[&quot;payload&quot;]
+
+
+def _nested_parent_ids(value: Any) -&gt; set[str]:
+    found: set[str] = set()
+    if isinstance(value, dict):
+        parent = value.get(&quot;parent_thread_id&quot;)
+        if isinstance(parent, str) and parent:
+            found.add(parent)
+        for child in value.values():
+            found.update(_nested_parent_ids(child))
+    elif isinstance(value, list):
+        for child in value:
+            found.update(_nested_parent_ids(child))
+    return found
+
+
+def _meta_id(meta: dict[str, Any]) -&gt; str | None:
+    value = meta.get(&quot;id&quot;) or meta.get(&quot;session_id&quot;)
+    return value if isinstance(value, str) and value else None
+
+
+def _meta_parents(meta: dict[str, Any]) -&gt; set[str]:
+    parents = _nested_parent_ids(meta)
+    # Older subagent metadata can identify its parent only through session_id.
+    own_id = _meta_id(meta)
+    session_id = meta.get(&quot;session_id&quot;)
+    if not parents and isinstance(session_id, str) and session_id and session_id != own_id:
+        parents.add(session_id)
+    return parents
+
+
+def _dispatch_ids(path: Path | None) -&gt; set[str]:
+    if path is None or not path.exists():
+        return set()
+    raw = path.read_text(encoding=&quot;utf-8&quot;)
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError:
+        # Plain-text dispatch files may list one UUID/thread ID per line.
+        return {
+            item.strip().strip(&#x27;&quot;\&#x27;&#x27;)
+            for item in raw.splitlines()
+            if re.fullmatch(r&quot;[A-Za-z0-9][A-Za-z0-9_-]{7,}&quot;, item.strip().strip(&#x27;&quot;\&#x27;&#x27;))
+        }
+
+    ids: set[str] = set()
+    id_keys = {
+        &quot;id&quot;,
+        &quot;session_id&quot;,
+        &quot;thread_id&quot;,
+        &quot;agent_id&quot;,
+        &quot;sessionId&quot;,
+        &quot;threadId&quot;,
+        &quot;agentId&quot;,
+        &quot;root_session_id&quot;,
+        &quot;descendant_session_id&quot;,
+    }
+    many_keys = {&quot;session_ids&quot;, &quot;thread_ids&quot;, &quot;agent_ids&quot;, &quot;descendant_ids&quot;, &quot;descendants&quot;}
+
+    def visit(node: Any, key: str | None = None) -&gt; None:
+        if isinstance(node, dict):
+            for child_key, child in node.items():
+                visit(child, child_key)
+        elif isinstance(node, list):
+            for child in node:
+                visit(child, key)
+        elif isinstance(node, str) and key in id_keys | many_keys:
+            if re.fullmatch(r&quot;[A-Za-z0-9][A-Za-z0-9_-]{7,}&quot;, node):
+                ids.add(node)
+
+    visit(value)
+    return ids
+
+
+def _active_ids(path: Path | None) -&gt; set[str]:
+    &quot;&quot;&quot;Read the active roster, refreshed from live agent status before each run.&quot;&quot;&quot;
+    if path is None or not path.exists():
+        return set()
+    try:
+        value = json.loads(path.read_text(encoding=&quot;utf-8&quot;))
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        return set()
+    ids: set[str] = set()
+    active_keys = {&quot;active_session_ids&quot;, &quot;active_thread_ids&quot;, &quot;active_agent_ids&quot;, &quot;active_ids&quot;}
+
+    def visit(node: Any, key: str | None = None) -&gt; None:
+        if isinstance(node, dict):
+            for child_key, child in node.items():
+                visit(child, child_key)
+        elif isinstance(node, list):
+            for child in node:
+                visit(child, key)
+        elif isinstance(node, str) and key in active_keys:
+            if re.fullmatch(r&quot;[A-Za-z0-9][A-Za-z0-9_-]{7,}&quot;, node):
+                ids.add(node)
+
+    visit(value)
+    return ids
+
+
+def _latest_context_and_usage(path: Path) -&gt; dict[str, Any]:
+    context: dict[str, Any] | None = None
+    usage: dict[str, Any] | None = None
+    usage_source: str | None = None
+    usage_record_time: str | None = None
+    usage_thread_id: str | None = None
+    usage_session_id: str | None = None
+    record_count = 0
+    try:
+        with path.open(&quot;r&quot;, encoding=&quot;utf-8&quot;) as handle:
+            for line_number, line in enumerate(handle, start=1):
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                kind = row.get(&quot;type&quot;)
+                payload = row.get(&quot;payload&quot;) or {}
+                if kind == &quot;turn_context&quot; and isinstance(payload, dict):
+                    context = payload
+                elif kind == &quot;token_usage_record&quot; and isinstance(payload, dict):
+                    record_count += 1
+                    # thread_token_usage is the cumulative total in the current
+                    # JSONL schema; usage is only the latest response delta.
+                    for field in (
+                        &quot;thread_token_usage&quot;,
+                        &quot;total_token_usage&quot;,
+                        &quot;turn_token_usage&quot;,
+                        &quot;usage&quot;,
+                    ):
+                        candidate = payload.get(field)
+                        if isinstance(candidate, dict):
+                            usage = candidate
+                            usage_source = field
+                            usage_record_time = row.get(&quot;timestamp&quot;)
+                            usage_thread_id = payload.get(&quot;thread_id&quot;)
+                            usage_session_id = payload.get(&quot;session_id&quot;)
+                            break
+                    if usage is None:
+                        nested = payload.get(&quot;usage&quot;)
+                        if isinstance(nested, dict):
+                            for field in (&quot;thread_token_usage&quot;, &quot;total_token_usage&quot;, &quot;turn_token_usage&quot;):
+                                candidate = nested.get(field)
+                                if isinstance(candidate, dict):
+                                    usage = candidate
+                                    usage_source = f&quot;usage.{field}&quot;
+                                    usage_record_time = row.get(&quot;timestamp&quot;)
+                                    usage_thread_id = payload.get(&quot;thread_id&quot;)
+                                    usage_session_id = payload.get(&quot;session_id&quot;)
+                                    break
+    except OSError as error:
+        return {&quot;error&quot;: str(error), &quot;path&quot;: str(path)}
+
+    if context is None:
+        context = {}
+    if usage is None:
+        usage = {}
+
+    tokens = {
+        &quot;input_tokens&quot;: _as_int(usage.get(&quot;input_tokens&quot;)),
+        &quot;cached_input_tokens&quot;: _as_int(usage.get(&quot;cached_input_tokens&quot;)),
+        &quot;cache_write_input_tokens&quot;: _as_int(usage.get(&quot;cache_write_input_tokens&quot;)),
+        &quot;output_tokens&quot;: _as_int(usage.get(&quot;output_tokens&quot;)),
+        &quot;reasoning_output_tokens&quot;: _as_int(usage.get(&quot;reasoning_output_tokens&quot;)),
+        &quot;reported_total_tokens&quot;: _as_int(usage.get(&quot;total_tokens&quot;)),
+    }
+    tokens[&quot;uncached_input_tokens&quot;] = max(
+        0, tokens[&quot;input_tokens&quot;] - tokens[&quot;cached_input_tokens&quot;]
+    )
+    token_warnings: list[str] = []
+    if tokens[&quot;cached_input_tokens&quot;] &gt; tokens[&quot;input_tokens&quot;]:
+        token_warnings.append(&quot;cached_input_tokens exceeds input_tokens&quot;)
+    if tokens[&quot;reasoning_output_tokens&quot;] &gt; tokens[&quot;output_tokens&quot;]:
+        token_warnings.append(&quot;reasoning_output_tokens exceeds output_tokens&quot;)
+
+    return {
+        &quot;path&quot;: str(path),
+        &quot;session_meta_id&quot;: None,
+        &quot;model&quot;: context.get(&quot;model&quot;),
+        &quot;effort&quot;: context.get(&quot;effort&quot;),
+        &quot;turn_id&quot;: context.get(&quot;turn_id&quot;),
+        &quot;root_turn_id&quot;: context.get(&quot;root_turn_id&quot;),
+        &quot;token_usage_source&quot;: usage_source,
+        &quot;token_usage_record_timestamp&quot;: usage_record_time,
+        &quot;token_usage_record_count&quot;: record_count,
+        &quot;token_usage_thread_id&quot;: usage_thread_id,
+        &quot;token_usage_session_id&quot;: usage_session_id,
+        &quot;tokens&quot;: tokens,
+        &quot;warnings&quot;: token_warnings,
+    }
+
+
+def _rates_for_model(model: Any) -&gt; tuple[str | None, dict[str, float] | None]:
+    if not isinstance(model, str):
+        return None, None
+    normalized = model.lower()
+    if normalized in RATES_USD_PER_MTOK:
+        return normalized, RATES_USD_PER_MTOK[normalized]
+    if &quot;astra&quot; in normalized:
+        return &quot;gpt-6-astra&quot;, RATES_USD_PER_MTOK[&quot;gpt-6-astra&quot;]
+    if &quot;luna&quot; in normalized:
+        return &quot;gpt-6-luna&quot;, RATES_USD_PER_MTOK[&quot;gpt-6-luna&quot;]
+    if &quot;sol&quot; in normalized:
+        return &quot;gpt-6.1-sol&quot;, RATES_USD_PER_MTOK[&quot;gpt-6.1-sol&quot;]
+    return None, None
+
+
+def _reservation_family(model: Any) -&gt; str | None:
+    key, _ = _rates_for_model(model)
+    if key == &quot;gpt-6-astra&quot;:
+        return key
+    if key in (&quot;gpt-6-sol&quot;, &quot;gpt-6.1-sol&quot;):
+        return &quot;gpt-6.1-sol&quot;
+    if key == &quot;gpt-6-luna&quot;:
+        return key
+    return None
+
+
+def _price_proxy(session: dict[str, Any]) -&gt; dict[str, Any]:
+    model_key, rates = _rates_for_model(session.get(&quot;model&quot;))
+    if rates is None:
+        return {
+            &quot;status&quot;: &quot;unpriced_model&quot;,
+            &quot;pricing_family&quot;: None,
+            &quot;usd_proxy&quot;: None,
+        }
+
+    tokens = session[&quot;tokens&quot;]
+    uncached = tokens[&quot;uncached_input_tokens&quot;]
+    cached = tokens[&quot;cached_input_tokens&quot;]
+    output = tokens[&quot;output_tokens&quot;]
+    dollars = (
+        uncached * rates[&quot;input&quot;]
+        + cached * rates[&quot;cached_input&quot;]
+        + output * rates[&quot;output&quot;]
+    ) / PRICE_SCALE
+    return {
+        &quot;status&quot;: &quot;estimated_from_standard_short_context_rates&quot;,
+        &quot;pricing_family&quot;: model_key,
+        &quot;usd_proxy&quot;: round(dollars, 9),
+        &quot;components_usd_proxy&quot;: {
+            &quot;uncached_input&quot;: round(uncached * rates[&quot;input&quot;] / PRICE_SCALE, 9),
+            &quot;cached_input&quot;: round(cached * rates[&quot;cached_input&quot;] / PRICE_SCALE, 9),
+            &quot;output_including_reasoning&quot;: round(output * rates[&quot;output&quot;] / PRICE_SCALE, 9),
+        },
+    }
+
+
+def _dispatch_requests(root_path: Path) -&gt; list[dict[str, Any]]:
+    &quot;&quot;&quot;Extract safe dispatch metadata without retaining prompt/message fields.&quot;&quot;&quot;
+    requests: list[dict[str, Any]] = []
+    try:
+        with root_path.open(&quot;r&quot;, encoding=&quot;utf-8&quot;) as handle:
+            for line in handle:
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                payload = row.get(&quot;payload&quot;) or {}
+                if (
+                    row.get(&quot;type&quot;) != &quot;response_item&quot;
+                    or payload.get(&quot;type&quot;) != &quot;function_call&quot;
+                    or payload.get(&quot;name&quot;) != &quot;spawn_agent&quot;
+                ):
+                    continue
+                arguments = payload.get(&quot;arguments&quot;)
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError:
+                        arguments = {}
+                if not isinstance(arguments, dict):
+                    arguments = {}
+                # Deliberately discard the free-form task message and all other
+                # fields. It can contain prompts or private source material.
+                task_name = arguments.get(&quot;task_name&quot;)
+                requests.append(
+                    {
+                        &quot;task_name&quot;: task_name if isinstance(task_name, str) else None,
+                        &quot;requested_model&quot;: arguments.get(&quot;model&quot;)
+                        if isinstance(arguments.get(&quot;model&quot;), str)
+                        else None,
+                        &quot;requested_effort&quot;: arguments.get(&quot;reasoning_effort&quot;)
+                        if isinstance(arguments.get(&quot;reasoning_effort&quot;), str)
+                        else None,
+                    }
+                )
+    except OSError:
+        return []
+    return requests
+
+
+def _load_candidate_metadata(
+    directory: Path, root_path: Path, explicit_ids: set[str]
+) -&gt; tuple[dict[str, tuple[Path, dict[str, Any]]], int]:
+    candidates: dict[str, tuple[Path, dict[str, Any]]] = {}
+    scanned = 0
+    try:
+        if explicit_ids:
+            # With an ID dispatch file, resolve only those filenames; do not
+            # open metadata from unrelated sibling sessions.
+            paths = []
+            for session_id in sorted(explicit_ids):
+                paths.extend(directory.rglob(f&quot;*{session_id}*.jsonl&quot;))
+        else:
+            # Source-tree fallback: inspect only session_meta (the first line)
+            # until parentage proves which logs are descendants.
+            paths = directory.rglob(&quot;*.jsonl&quot;)
+        for path in paths:
+            if path.resolve() == root_path.resolve():
+                continue
+            scanned += 1
+            meta = _read_meta(path)
+            if meta is None:
+                continue
+            own_id = _meta_id(meta)
+            if own_id:
+                candidates[own_id] = (path, meta)
+    except OSError:
+        pass
+    return candidates, scanned
+
+
+def _discover(root_path: Path, dispatch_path: Path | None) -&gt; tuple[list[tuple[Path, dict[str, Any]]], dict[str, Any]]:
+    root_meta = _read_meta(root_path)
+    if root_meta is None:
+        raise ValueError(f&quot;root session has no readable session_meta first record: {root_path}&quot;)
+    root_id = _meta_id(root_meta)
+    if not root_id:
+        raise ValueError(&quot;root session_meta has no session id&quot;)
+
+    explicit_ids = _dispatch_ids(dispatch_path)
+    explicit_ids.discard(root_id)
+    candidates, scanned = _load_candidate_metadata(root_path.parent, root_path, explicit_ids)
+
+    descendant_ids: set[str] = set()
+    frontier = {root_id}
+    changed = True
+    while changed:
+        changed = False
+        for candidate_id, (_, meta) in candidates.items():
+            if candidate_id in descendant_ids:
+                continue
+            if _meta_parents(meta) &amp; frontier:
+                descendant_ids.add(candidate_id)
+                frontier.add(candidate_id)
+                changed = True
+
+    # An explicit dispatch ID is accepted only if its metadata proves ancestry.
+    unresolved = sorted(explicit_ids - set(candidates))
+    unverified = sorted(explicit_ids &amp; set(candidates) - descendant_ids)
+    sessions = [(root_path, root_meta)]
+    sessions.extend(candidates[item] for item in sorted(descendant_ids) if item in candidates)
+    discovery = {
+        &quot;root_session_id&quot;: root_id,
+        &quot;discovery_method&quot;: &quot;session_meta_parent_tree&quot; + (&quot;+dispatch_ids&quot; if explicit_ids else &quot;&quot;),
+        &quot;metadata_only_candidate_files_scanned&quot;: scanned,
+        &quot;dispatch_file&quot;: str(dispatch_path) if dispatch_path and dispatch_path.exists() else None,
+        &quot;dispatch_ids_requested&quot;: sorted(explicit_ids),
+        &quot;dispatch_ids_unresolved&quot;: unresolved,
+        &quot;dispatch_ids_not_proven_descendants&quot;: unverified,
+        &quot;session_count_including_root&quot;: len(sessions),
+        &quot;descendant_count&quot;: len(sessions) - 1,
+    }
+    return sessions, discovery
+
+
+def build_snapshot(root_path: Path, dispatch_path: Path | None) -&gt; dict[str, Any]:
+    sessions_found, discovery = _discover(root_path, dispatch_path)
+    active_ids = _active_ids(dispatch_path)
+    session_results: list[dict[str, Any]] = []
+    totals: dict[str, int] = defaultdict(int)
+    by_model: dict[str, dict[str, Any]] = {}
+    priced_sessions = 0
+    unpriced_sessions = 0
+    total_cost = 0.0
+
+    for path, meta in sessions_found:
+        item = _latest_context_and_usage(path)
+        item[&quot;session_meta_id&quot;] = _meta_id(meta)
+        usage_thread_id = item.get(&quot;token_usage_thread_id&quot;)
+        item[&quot;usage_thread_id_matches_session_meta&quot;] = (
+            usage_thread_id == item[&quot;session_meta_id&quot;]
+            if usage_thread_id is not None and item.get(&quot;session_meta_id&quot;) is not None
+            else None
+        )
+        if item[&quot;usage_thread_id_matches_session_meta&quot;] is False:
+            item.setdefault(&quot;warnings&quot;, []).append(
+                &quot;token usage thread_id differs from session_meta id; usage may not be thread-local&quot;
+            )
+        item[&quot;parent_thread_id&quot;] = next(iter(sorted(_meta_parents(meta))), None)
+        item[&quot;agent_path&quot;] = meta.get(&quot;agent_path&quot;)
+        item[&quot;session_source&quot;] = meta.get(&quot;thread_source&quot;) or meta.get(&quot;source&quot;)
+        item[&quot;active_for_reservation&quot;] = item[&quot;session_meta_id&quot;] in active_ids
+        item[&quot;price_proxy&quot;] = _price_proxy(item)
+        tokens = item.get(&quot;tokens&quot;, {})
+        for key in (
+            &quot;input_tokens&quot;,
+            &quot;uncached_input_tokens&quot;,
+            &quot;cached_input_tokens&quot;,
+            &quot;cache_write_input_tokens&quot;,
+            &quot;output_tokens&quot;,
+            &quot;reasoning_output_tokens&quot;,
+            &quot;reported_total_tokens&quot;,
+        ):
+            totals[key] += _as_int(tokens.get(key))
+
+        proxy = item[&quot;price_proxy&quot;]
+        model_key = proxy.get(&quot;pricing_family&quot;) or str(item.get(&quot;model&quot;) or &quot;UNKNOWN&quot;)
+        bucket = by_model.setdefault(
+            model_key,
+            {
+                &quot;latest_context_model_names&quot;: set(),
+                &quot;efforts&quot;: set(),
+                &quot;session_count&quot;: 0,
+                &quot;tokens&quot;: defaultdict(int),
+                &quot;usd_proxy&quot;: 0.0,
+                &quot;unpriced_session_count&quot;: 0,
+            },
+        )
+        bucket[&quot;latest_context_model_names&quot;].add(str(item.get(&quot;model&quot;) or &quot;UNKNOWN&quot;))
+        bucket[&quot;efforts&quot;].add(str(item.get(&quot;effort&quot;) or &quot;UNKNOWN&quot;))
+        bucket[&quot;session_count&quot;] += 1
+        for key in totals:
+            bucket[&quot;tokens&quot;][key] += _as_int(tokens.get(key))
+        if proxy.get(&quot;usd_proxy&quot;) is None:
+            unpriced_sessions += 1
+            bucket[&quot;unpriced_session_count&quot;] += 1
+        else:
+            priced_sessions += 1
+            total_cost += proxy[&quot;usd_proxy&quot;]
+            bucket[&quot;usd_proxy&quot;] += proxy[&quot;usd_proxy&quot;]
+        session_results.append(item)
+
+    for value in by_model.values():
+        value[&quot;latest_context_model_names&quot;] = sorted(value[&quot;latest_context_model_names&quot;])
+        value[&quot;efforts&quot;] = sorted(value[&quot;efforts&quot;])
+        value[&quot;tokens&quot;] = dict(value[&quot;tokens&quot;])
+        value[&quot;usd_proxy&quot;] = round(value[&quot;usd_proxy&quot;], 9)
+
+    active_sessions = [item for item in session_results if item.get(&quot;active_for_reservation&quot;)]
+    active_model_counts: dict[str, int] = defaultdict(int)
+    reservation = 0.0
+    unweighted_active: list[str] = []
+    for item in active_sessions:
+        family = _reservation_family(item.get(&quot;model&quot;))
+        if family is None:
+            unweighted_active.append(str(item.get(&quot;session_meta_id&quot;)))
+            continue
+        active_model_counts[family] += 1
+        reservation += ACTIVE_RESERVATION_WEIGHTS[family]
+    active_ids_not_found = active_ids - {item.get(&quot;session_meta_id&quot;) for item in session_results}
+    reservation_complete = bool(active_ids) and not unweighted_active and not active_ids_not_found
+    active_roster_as_of = None
+    if dispatch_path and dispatch_path.exists():
+        try:
+            dispatch_data = json.loads(dispatch_path.read_text(encoding=&quot;utf-8&quot;))
+            if isinstance(dispatch_data, dict):
+                active_roster_as_of = dispatch_data.get(&quot;active_as_of_utc&quot;)
+        except (OSError, json.JSONDecodeError, UnicodeError):
+            pass
+
+    for item in session_results:
+        item.pop(&quot;path&quot;, None)
+        # Paths are available through source filenames during the run, but are
+        # intentionally omitted from the durable snapshot to avoid leaking the
+        # user&#x27;s local directory layout.
+
+    generated = datetime.now(timezone.utc).isoformat(timespec=&quot;seconds&quot;)
+    return {
+        &quot;snapshot_generated_at_utc&quot;: generated,
+        &quot;scope&quot;: &quot;root_session_and_metadata_proven_descendant_sessions&quot;,
+        &quot;discovery&quot;: discovery,
+        &quot;sessions&quot;: session_results,
+        &quot;aggregate_tokens&quot;: dict(totals),
+        &quot;aggregate_pricing_proxy&quot;: {
+            &quot;status&quot;: &quot;estimate_not_actual_billing&quot;,
+            &quot;priced_session_count&quot;: priced_sessions,
+            &quot;unpriced_session_count&quot;: unpriced_sessions,
+            &quot;usd_proxy&quot;: round(total_cost, 9),
+            &quot;by_pricing_family&quot;: by_model,
+        },
+        &quot;concurrent_reservation&quot;: {
+            &quot;ceiling_sol_max_equivalents&quot;: CONCURRENT_SOL_MAX_CEILING,
+            &quot;status&quot;: &quot;within_limit&quot;
+            if reservation_complete and reservation &lt;= CONCURRENT_SOL_MAX_CEILING
+            else &quot;exceeded_limit&quot;
+            if reservation_complete
+            else &quot;active_roster_unavailable_or_unpriced&quot;,
+            &quot;active_roster_source&quot;: str(dispatch_path) if dispatch_path else None,
+            &quot;active_roster_as_of_utc&quot;: active_roster_as_of,
+            &quot;active_thread_count&quot;: len(active_sessions),
+            &quot;active_model_counts&quot;: dict(active_model_counts),
+            &quot;reservation_weights_in_sol_max_equivalents&quot;: ACTIVE_RESERVATION_WEIGHTS,
+            &quot;active_reservation_sol_max_equivalents&quot;: round(reservation, 3)
+            if reservation_complete
+            else None,
+            &quot;headroom_sol_max_equivalents&quot;: round(
+                max(0.0, CONCURRENT_SOL_MAX_CEILING - reservation), 3
+            )
+            if reservation_complete
+            else None,
+            &quot;excess_sol_max_equivalents&quot;: round(
+                max(0.0, reservation - CONCURRENT_SOL_MAX_CEILING), 3
+            )
+            if reservation_complete
+            else None,
+            &quot;active_session_ids_not_in_audited_tree&quot;: sorted(active_ids_not_found),
+            &quot;active_sessions_without_reservation_weight&quot;: sorted(unweighted_active),
+            &quot;basis&quot;: &quot;Active model reservations are separate from cumulative token use and price proxy; coordinator-supplied ratios: Astra max component 10, Sol 1, Luna 0.1.&quot;,
+        },
+        &quot;dispatch_verification&quot;: _dispatch_summary(_dispatch_requests(root_path), session_results),
+        &quot;pricing_basis&quot;: {
+            &quot;source&quot;: PRICE_SOURCE,
+            &quot;rates_usd_per_million_tokens&quot;: RATES_USD_PER_MTOK,
+            &quot;sol_reference_model&quot;: &quot;gpt-6.1-sol&quot;,
+            &quot;rate_date&quot;: &quot;2026-10-09; supplied by coordinator from official comparison page&quot;,
+            &quot;effort_multiplier&quot;: &quot;none applied; effort is reported as metadata only&quot;,
+            &quot;proxy_formula&quot;: &quot;(uncached input x input rate + cached input x cached rate + output x output rate) / 1,000,000&quot;,
+        },
+        &quot;accounting_notes&quot;: [
+            &quot;Current token_usage_record schema exposes thread_token_usage as the latest cumulative total; usage is a response delta and is not used when the cumulative field exists.&quot;,
+            &quot;cached_input_tokens is a subset of input_tokens; uncached input is input_tokens minus cached_input_tokens.&quot;,
+            &quot;reasoning_output_tokens is reported separately as a subset of output_tokens and is not added a second time.&quot;,
+            &quot;cache_write_input_tokens is reported separately; with only input and cached-input rates supplied, it remains in the uncached-input price bucket.&quot;,
+            &quot;If a thread changed models during its history, this snapshot uses its latest turn_context model to price its cumulative thread total; historical model-specific attribution is unavailable from this summary method.&quot;,
+            &quot;The pricing estimate excludes service-specific adjustments, long-context rates, discounts, retries not represented in these usage records, non-token charges, and any billing corrections.&quot;,
+            &quot;Concurrent reservation and cumulative token usage answer different questions; the 30 Sol-max limit is applied only to the active roster using the specified reservation weights.&quot;,
+            &quot;Metadata discovery scans only the first session_meta line of sibling JSONL candidates. Full session records are parsed only after metadata proves descendant parentage.&quot;,
+        ],
+    }
+
+
+def _dispatch_summary(
+    requests: list[dict[str, Any]], sessions: list[dict[str, Any]]
+) -&gt; dict[str, Any]:
+    observed = {
+        item.get(&quot;agent_path&quot;, &quot;&quot;).rsplit(&quot;/&quot;, 1)[-1]: item
+        for item in sessions
+        if item.get(&quot;agent_path&quot;)
+    }
+    requested_names = {item[&quot;task_name&quot;] for item in requests if item.get(&quot;task_name&quot;)}
+    requested_models: dict[str, int] = defaultdict(int)
+    requested_efforts: dict[str, int] = defaultdict(int)
+    effective_models: dict[str, int] = defaultdict(int)
+    effective_efforts: dict[str, int] = defaultdict(int)
+    for item in requests:
+        requested_models[item.get(&quot;requested_model&quot;) or &quot;unspecified&quot;] += 1
+        requested_efforts[item.get(&quot;requested_effort&quot;) or &quot;unspecified&quot;] += 1
+    for item in sessions:
+        effective_models[item.get(&quot;model&quot;) or &quot;unspecified&quot;] += 1
+        effective_efforts[item.get(&quot;effort&quot;) or &quot;unspecified&quot;] += 1
+    return {
+        &quot;spawn_agent_call_count&quot;: len(requests),
+        &quot;requested_model_counts&quot;: dict(requested_models),
+        &quot;requested_effort_counts&quot;: dict(requested_efforts),
+        &quot;effective_context_model_counts_including_root&quot;: dict(effective_models),
+        &quot;effective_context_effort_counts_including_root&quot;: dict(effective_efforts),
+        &quot;dispatched_task_names&quot;: sorted(requested_names),
+        &quot;task_names_with_session_metadata&quot;: sorted(requested_names &amp; set(observed)),
+        &quot;task_names_without_session_metadata_yet&quot;: sorted(requested_names - set(observed)),
+        &quot;all_dispatched_task_names_have_session_metadata&quot;: requested_names &lt;= set(observed),
+        &quot;observed_agent_paths_without_matching_dispatch_name&quot;: sorted(set(observed) - requested_names),
+        &quot;prompt_content_retained&quot;: False,
+    }
+
+
+def main() -&gt; int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--root-session&quot;, type=Path, default=DEFAULT_ROOT)
+    parser.add_argument(&quot;--dispatch-file&quot;, type=Path, default=None)
+    parser.add_argument(&quot;--output&quot;, type=Path, default=None, help=&quot;Write JSON here; otherwise print to stdout.&quot;)
+    args = parser.parse_args()
+    root_path = args.root_session.expanduser().resolve()
+    dispatch_path = args.dispatch_file.expanduser().resolve() if args.dispatch_file else None
+    if not root_path.is_file():
+        parser.error(f&quot;root session file does not exist: {root_path}&quot;)
+    try:
+        snapshot = build_snapshot(root_path, dispatch_path)
+    except (OSError, ValueError) as error:
+        print(f&quot;audit_usage: {error}&quot;, file=sys.stderr)
+        return 2
+    rendered = json.dumps(snapshot, indent=2, sort_keys=True) + &quot;\n&quot;
+    if args.output:
+        output_path = args.output.expanduser().resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(rendered, encoding=&quot;utf-8&quot;)
+    else:
+        sys.stdout.write(rendered)
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main())
+</pre><p><a href="../assets/2c79e46b1f5c73a376a7db8699804ab800010c6d7a3a46ab77624cc68c8ee369.py">Exact original</a></p></html>

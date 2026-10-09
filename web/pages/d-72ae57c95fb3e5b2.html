@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/kms-regularity/weak-endpoint-independent/verify_qubit_reduction.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/kms-regularity/weak-endpoint-independent/verify_qubit_reduction.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Checks exact formulas numerically; never a general proof certificate.&quot;&quot;&quot;
+from pathlib import Path
+import json
+import numpy as np
+from explore_quadratic import evaluate, hermitian_basis
+
+HERE=Path(__file__).resolve().parent
+sx=np.array([[0,1],[1,0]],complex)
+sy=np.array([[0,-1j],[1j,0]],complex)
+sz=np.diag([1.,-1.]).astype(complex)
+
+
+def k(x):
+    return x*np.sinh(x)-np.cosh(x)+1
+
+
+def actual(alpha,beta,c,B):
+    sigma=np.array([(1+np.tanh(alpha))/2,(1-np.tanh(alpha))/2])
+    r=np.tanh(beta)
+    rho=(np.eye(2)+r*(np.sqrt(1-c*c)*sx+c*sz))/2
+    s=np.sqrt(sigma)
+    d=np.power(sigma,.25)
+    V=2*(B@np.diag(s)@B)/(s[:,None]+s[None,:])
+    def H(X):
+        return (V@X+X@V)/2-B@X@B
+    vals,U=np.linalg.eigh(rho)
+    root=(U*np.sqrt(vals))@U.conj().T
+    logs=(U*np.log(vals))@U.conj().T-np.diag(np.log(sigma))
+    Lrho=H(rho/np.outer(d,d))*np.outer(d,d)
+    assert abs(np.trace(Lrho))&lt;1e-8
+    assert np.linalg.norm(H(np.diag(s)))&lt;1e-8
+    J=np.trace(Lrho@logs).real
+    E=np.trace(root@H(root)).real
+    return J,E
+
+
+def formulas(alpha,beta,c,a):
+    C,S=np.cosh(alpha),np.sinh(alpha)
+    A=np.cosh(alpha/2)
+    r=np.tanh(beta)
+    h=1-1/np.cosh(beta)
+    G=beta*r
+    K=G-h
+    E0=C-1+h*c*c-S*r*c
+    E1=2*np.sqrt(1-c*c)*(np.tanh(alpha/2)*r-h*c)
+    E2=h*(1-c*c)
+    J0=G*((C-1)+(C+1)*c*c)-2*c*(alpha*r*C+beta*S)+2*alpha*S
+    J1=2*np.sqrt(1-c*c)*((beta*S+alpha*r)/A-2*A*G*c)
+    J2=2*G*(1-c*c)
+    U=(beta*S+alpha*r)/A-2*np.tanh(alpha/2)*r
+    W=2*(h-A*G)
+    F0,Jminus=J0-2*E0, J1-2*E1
+    assert abs(Jminus-2*np.sqrt(1-c*c)*(U+W*c))&lt;1e-8
+    concave=F0-(U+W*c)**2/(2*K)
+    concave_coefficient=((C+1)*G-2*h)-W*W/(2*K)
+    predicted=-2*G*h*(A-1)**2/K
+    assert abs(concave_coefficient-predicted)&lt;1e-8
+    return J0+a*J1+a*a*J2,E0+a*E1+a*a*E2,concave
+
+
+def endpoint(alpha,beta,sign):
+    b=sign*beta
+    delta=b-alpha
+    T=b*np.sinh(delta)+delta*np.sinh(b)-4*np.sinh(b/2)*np.sinh(delta/2)
+    numerator=4*np.cosh(alpha/2)**2*k(beta)*k(delta)-T*T
+    denominator=2*np.cosh(alpha/2)**2*np.cosh(beta)*k(beta)
+    return numerator/denominator
+
+
+def main():
+    rng=np.random.default_rng(6006312)
+    count=0
+    worst=0
+    for i in range(1000):
+        alpha=rng.uniform(0,5)
+        beta=rng.uniform(.05,5)
+        c=rng.uniform(-.99,.99)
+        a=rng.uniform(-5,5)
+        J,E,F=formulas(alpha,beta,c,a)
+        J0,E0=actual(alpha,beta,c,sx+a*sz)
+        err=max(abs(J-J0),abs(E-E0))
+        assert err&lt;1e-7*max(1,abs(J),abs(E))
+        worst=max(worst,err)
+        for sign in [-1,1]:
+            _,_,lim=formulas(alpha,beta,float(sign),0)
+            rhs=endpoint(alpha,beta,sign)
+            assert abs(lim-rhs)&lt;1e-7*max(1,abs(lim),abs(rhs))
+            assert rhs&gt;=-1e-7
+        Jy,Ey=actual(alpha,beta,c,sy)
+        Jx,Ex=actual(alpha,beta,c,sx)
+        K=beta*np.tanh(beta)-1+1/np.cosh(beta)
+        assert abs((Jy-2*Ey)-(Jx-2*Ex)-2*K*(1-c*c))&lt;1e-7
+        B=1.3*sx+.7*sy-1.1*sz+2.3*np.eye(2)
+        Jr,Er=actual(alpha,beta,c,1.3*sx-1.1*sz)
+        Jb,Eb=actual(alpha,beta,c,B)
+        assert abs(Jb-Jr-.7**2*Jy)&lt;1e-7*max(1,abs(Jb))
+        assert abs(Eb-Er-.7**2*Ey)&lt;1e-7*max(1,abs(Eb))
+        assert Jb&gt;=2*Eb-1e-7
+        count+=1
+    xs=np.array([-.9,-.5,0.,.2,.6,.95])
+    aa=lambda t:(1-t*t)*np.arctanh(t)/t if t else 1.
+    bb=lambda t:np.sqrt(1-t*t)
+    C=np.array([[(aa(t)+aa(u)-bb(t)*bb(u))/(1-t*u) for u in xs] for t in xs])
+    assert np.linalg.eigvalsh(C).min()&gt;-1e-12
+    report={&#x27;status&#x27;:&#x27;PASS_FINITE_FORMULA_DIAGNOSTICS_ONLY&#x27;,
+            &#x27;no_sibling_cycle06_proofs_read&#x27;:True,
+            &#x27;random_formula_states&#x27;:count,&#x27;largest_absolute_formula_error&#x27;:worst,
+            &#x27;endpoint_factorizations&#x27;:&#x27;PASS&#x27;,&#x27;identity_noise_cancellation&#x27;:&#x27;PASS&#x27;,
+            &#x27;perpendicular_noise_separation&#x27;:&#x27;PASS&#x27;,
+            &#x27;Hardy_kernel_min_eigenvalue_numeric&#x27;:float(np.linalg.eigvalsh(C).min()),
+            &#x27;universal_dimensions_ge_3_status&#x27;:&#x27;UNRESOLVED&#x27;,
+            &#x27;entangled_reference_status&#x27;:&#x27;UNRESOLVED&#x27;}
+    (HERE/&#x27;qubit_formula_checks.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(report,indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/dd1f1d920efb10969cc4498684d7765646703da4dc822b9a4e005ae1ad24488f.py">Exact original</a></p></html>

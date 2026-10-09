@@ -1,0 +1,165 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/variance_monogamy_sol/general_escalation/replay_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/variance_monogamy_sol/general_escalation/replay_exact.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact standard-library replay of the fixed C5 obstruction and local dual.
+
+No floating point, eigenvalue optimizer, SDP solver, or external package.
+The full 125-dimensional matrix splits into 27 blocks of size at most 27.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product
+from pathlib import Path
+import json
+
+ROOT = Path(__file__).resolve().parent
+t = F(21, 20)
+h = [t, F(1), F(1)]
+w = [x*x for x in h]
+z = [F(2)-t, t, t]
+gs = [x*x for x in z]
+ls = [F(2), t*t+1, t*t+1]
+ks = [a+b for a,b in zip(ls, gs)]
+dval = [F(-7,5)]*3 + [F(2), F(11,5)]
+d2 = [x*x for x in dval]
+L = [ls[i]+d2[i] if i&lt;3 else d2[i] for i in range(5)]
+G = [gs[i]+d2[i] if i&lt;3 else d2[i] for i in range(5)]
+K = [a+b for a,b in zip(L,G)]
+X = [F(3,5)*ks[i]+d2[i] if i&lt;3 else d2[i] for i in range(5)]
+Y = [F(1,5)*ks[i]+d2[i]/2 if i&lt;3 else d2[i]/2 for i in range(5)]
+assert sum(dval)==0
+assert [X[i]+2*Y[i] for i in range(5)]==K
+V, kval = sum(L)/5, sum(G)/5
+assert V==F(837,200) and kval==F(7131,2000)
+assert V-kval==F(1239,2000) and V+kval==F(15501,2000)
+
+# Check the matching spin plane-pair ensemble using rational populations.
+beta = [4*hi-sum(h) for hi in h]
+p = []
+pop = [F(0)]*3
+score = F(0)
+for i in range(3):
+    j,k = [q for q in range(3) if q!=i]
+    pi = beta[i]*(z[j]+z[k])/(6*z[j]*z[k])
+    ti = z[k]/(z[j]+z[k])
+    p.append(pi)
+    pop[j] += pi*ti
+    pop[k] += pi*(1-ti)
+    score += pi*4*w[i]*ti*(1-ti)
+assert sum(p)==1 and pop==[F(1,3)]*3
+assert score==sum(gs)/3
+assert F(3,5)*score+sum(d2)/5==kval
+
+# Ji=i Ri. Hence Ji^T tensor Ji = Ri tensor Ri, fixing the Choi sign.
+R = [
+    [[0,0,0],[0,0,-1],[0,1,0]],
+    [[0,0,1],[0,0,0],[-1,0,0]],
+    [[0,-1,0],[1,0,0],[0,0,0]],
+]
+def rval(q,a,b):
+    return R[q][a][b] if a&lt;3 and b&lt;3 else 0
+
+basis = list(product(range(5), repeat=3))
+index = {v:i for i,v in enumerate(basis)}
+def wentry(row,col):
+    a,b,c = row
+    aa,bb,cc = col
+    value = F(0)
+    if c==cc:
+        value += sum(w[q]*rval(q,a,aa)*rval(q,b,bb) for q in range(3))
+    if b==bb:
+        value += sum(w[q]*rval(q,a,aa)*rval(q,c,cc) for q in range(3))
+    if row==col:
+        value += dval[a]*(dval[b]+dval[c])
+    return value
+
+W = [[wentry(row,col) for col in basis] for row in basis]
+def local_deficit(row,col):
+    a,b,c = row
+    return (X[a]+Y[b]+Y[c] if row==col else F(0))-W[index[row]][index[col]]
+Dmat = [[local_deficit(row,col) for col in basis] for row in basis]
+assert all(Dmat[i][j]==Dmat[j][i] for i in range(125) for j in range(125))
+
+v = {(0,0,0):4,(0,1,1):-2,(0,2,2):-2,
+     (1,0,1):3,(1,1,0):3,(2,0,2):3,(2,2,0):3}
+norm = sum(c*c for c in v.values())
+assert norm==60
+q0=q1=F(0)
+for row,cr in v.items():
+    for col,cc in v.items():
+        a,b,c=row
+        q0 += cr*cc*((K[b]+K[c])/2 if row==col else 0)
+        q0 -= cr*cc*W[index[row]][index[col]]
+        if row==col:
+            q1 += cr*cc*(K[a]-(K[b]+K[c])/2)
+q0/=norm
+q1/=norm
+assert q0==F(-67,2400) and q1==F(121,2400)
+row=(3,4,4)
+a,b,c=row
+c0=(K[b]+K[c])/2-W[index[row]][index[row]]
+c1=K[a]-(K[b]+K[c])/2
+assert c0==F(22,25) and c1==F(-42,25)
+lower,upper = -q0/q1,-c0/c1
+assert lower==F(67,121) and upper==F(11,21) and lower&gt;upper
+
+def sector(row):
+    return tuple(0 if a&lt;3 else a for a in row)
+groups={}
+for i,row in enumerate(basis):
+    groups.setdefault(sector(row),[]).append(i)
+assert len(groups)==27 and sum(map(len,groups.values()))==125
+for i,row in enumerate(basis):
+    for j,col in enumerate(basis):
+        if sector(row)!=sector(col):
+            assert Dmat[i][j]==0
+
+def exact_psd_ldl(matrix):
+    m=[row[:] for row in matrix]
+    n=len(m)
+    pivots=[]
+    for k in range(n):
+        pivot=m[k][k]
+        assert pivot&gt;=0, (k,pivot)
+        pivots.append(pivot)
+        if pivot==0:
+            assert all(m[k][j]==0 for j in range(k,n)), (k,&#x27;zero pivot with nonzero row&#x27;)
+            continue
+        column=[m[i][k] for i in range(n)]
+        for i in range(k+1,n):
+            for j in range(i,n):
+                m[i][j] -= column[i]*column[j]/pivot
+                m[j][i] = m[i][j]
+        for i in range(k+1,n):
+            m[i][k]=m[k][i]=F(0)
+    return pivots
+
+blocks=[]
+for tag,ids in sorted(groups.items()):
+    matrix=[[Dmat[i][j] for j in ids] for i in ids]
+    pivots=exact_psd_ldl(matrix)
+    blocks.append({&#x27;sector&#x27;:tag,&#x27;size&#x27;:len(ids),
+                   &#x27;positive_pivots&#x27;:sum(x&gt;0 for x in pivots),
+                   &#x27;zero_pivots&#x27;:sum(x==0 for x in pivots),
+                   &#x27;pivots&#x27;:[str(x) for x in pivots]})
+
+gap=F(17,5)
+pair_norm_upper_bound=sum(w)
+mixed_margin=gap*gap/2-pair_norm_upper_bound
+assert pair_norm_upper_bound==F(1241,400)
+assert mixed_margin==F(1071,400)&gt;0
+result={
+    &#x27;status&#x27;:&#x27;ALL_EXACT_ASSERTIONS_PASSED&#x27;,
+    &#x27;arithmetic&#x27;:&#x27;fractions.Fraction only&#x27;,
+    &#x27;scope&#x27;:&#x27;fixed C5 scalar obstruction and corrected dual; not the general broadcast gate&#x27;,
+    &#x27;V&#x27;:str(V),&#x27;k&#x27;:str(kval),&#x27;V_minus_k&#x27;:str(V-kval),
+    &#x27;dual_budget&#x27;:str(V+kval),
+    &#x27;spin_ensemble_pair_weights&#x27;:[str(x) for x in p],
+    &#x27;spin_witness_q0&#x27;:str(q0),&#x27;spin_witness_q1&#x27;:str(q1),
+    &#x27;classical_witness_q0&#x27;:str(c0),&#x27;classical_witness_q1&#x27;:str(c1),
+    &#x27;alpha_lower&#x27;:str(lower),&#x27;alpha_upper&#x27;:str(upper),
+    &#x27;pair_norm_analytic_upper_bound&#x27;:str(pair_norm_upper_bound),
+    &#x27;mixed_sector_margin&#x27;:str(mixed_margin),
+    &#x27;full_dimension&#x27;:125,&#x27;block_count&#x27;:len(blocks),
+    &#x27;largest_block&#x27;:max(item[&#x27;size&#x27;] for item in blocks),
+    &#x27;blocks&#x27;:blocks,
+}
+(ROOT/&#x27;REPLAY_RESULT.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({k:v for k,v in result.items() if k!=&#x27;blocks&#x27;},indent=2))
+</pre><p><a href="../assets/6b481732b3408ca9febe08f52265ce510302fa377894cfa7ba9f79e565b0e612.py">Exact original</a></p></html>

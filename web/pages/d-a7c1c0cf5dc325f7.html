@@ -1,0 +1,151 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/recoverable-records/classical-basis-gate/replay_controls.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/recoverable-records/classical-basis-gate/replay_controls.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite diagnostics for the independently derived Cycle06 controls.
+
+No optimization over global B bases; no test of the unresolved uniform gate.
+Run with OPENBLAS_NUM_THREADS=1 python3 replay_controls.py.
+&quot;&quot;&quot;
+
+from pathlib import Path
+import json
+import math
+import numpy as np
+
+
+X = np.array([[0, 1], [1, 0]], dtype=complex)
+Z = np.diag([1.0, -1.0]).astype(complex)
+I2 = np.eye(2, dtype=complex)
+
+
+def kron_all(items):
+    out = np.ones((1, 1), dtype=complex)
+    for item in items:
+        out = np.kron(out, item)
+    return out
+
+
+def trace_distance(a, b):
+    return float(np.abs(np.linalg.eigvalsh((a - b + (a - b).conj().T) / 2)).sum() / 2)
+
+
+def binary_entropy(p):
+    return -p * math.log(p) - (1 - p) * math.log1p(-p)
+
+
+def weak_product(n):
+    s = 1 / math.sqrt(n)
+    kappa = math.sqrt(1 - s * s)
+    sigma = (I2 + s * X) / 2
+    sigmap = (I2 + s * X + s * Z) / 2
+    sigmap_out = (I2 + s * X + s * kappa * Z) / 2
+    omega = [(I2 + s * X + z * kappa * Z) / 2 for z in (1, -1)]
+    fixed_error = float(np.linalg.norm(sum(omega) / 2 - sigma))
+    pure_error = max(float(np.linalg.norm(w @ w - w)) for w in omega)
+    joint_error = trace_distance(kron_all([sigmap] * n), kron_all([sigmap_out] * n))
+    info = n * (
+        binary_entropy((1 + s) / 2)
+        - binary_entropy((1 + math.sqrt(2) * s) / 2)
+    )
+    delta = s * (1 - kappa)
+    fidelity_bound = math.sqrt(n) * delta
+    assert fixed_error &lt; 1e-12
+    assert pure_error &lt; 1e-12
+    assert joint_error &lt;= fidelity_bound + 1e-10
+    assert fidelity_bound &lt;= 1 / n + 1e-12
+    assert info &lt;= 1 + 1e-12
+    return {
+        &quot;N&quot;: n,
+        &quot;s&quot;: s,
+        &quot;I_nats_exact_entropy_formula&quot;: info,
+        &quot;actual_displayed_broadcaster_joint_marginal_error&quot;: joint_error,
+        &quot;proved_fidelity_error_bound&quot;: fidelity_bound,
+        &quot;coarser_bound_1_over_N&quot;: 1 / n,
+        &quot;sigma_fixed_residual&quot;: fixed_error,
+        &quot;prepared_state_purity_residual&quot;: pure_error,
+        &quot;q_global_basis_status&quot;: &quot;UNKNOWN; not computed or lower bounded&quot;,
+    }
+
+
+def clifford_frame(n):
+    m = 2 ** n
+    d = m // 2
+    identity = np.eye(m, dtype=complex)
+    zz = [kron_all([Z if j == i else I2 for j in range(n)]) for i in range(n)]
+    gg = [kron_all([Z if j &lt; i else X if j == i else I2 for j in range(n)])
+          for i in range(n)]
+    h = sum(gg) / math.sqrt(n)
+    p = (identity + h) / 2
+    r = gg[-1]
+    ss = sum(gg[:-1]) / math.sqrt(n - 1)
+    a = 1 / math.sqrt(n)
+    c = math.sqrt((1 + a) / 2)
+    u = (1 - a) / 2
+    rotation = c * identity + math.sqrt(u) * ss @ r
+
+    vr = np.zeros((m, d), dtype=complex)
+    for prefix in range(d):
+        sign = (-1) ** prefix.bit_count()
+        vr[2 * prefix, prefix] = 1 / math.sqrt(2)
+        vr[2 * prefix + 1, prefix] = sign / math.sqrt(2)
+    v = rotation @ vr
+    ortho = float(np.linalg.norm(v.conj().T @ v - np.eye(d)))
+    support = float(np.linalg.norm(p @ v - v))
+    rotation_residual = float(np.linalg.norm(rotation @ r @ rotation.conj().T - h))
+    bb = [v.conj().T @ z @ v for z in zz]
+    eigen_residual = 0.0
+    hs_energy = 0.0
+    variance_sum = 0.0
+    for b in bb:
+        ambient = v @ b @ v.conj().T
+        gamma_b = 2 * v.conj().T @ np.diag(np.diag(ambient)) @ v
+        eigen_residual = max(eigen_residual,
+                             float(np.linalg.norm(gamma_b - (1 - 1 / n) * b)))
+        diff = b - np.diag(np.diag(b))
+        hs_energy += float(np.trace(diff.conj().T @ diff).real / d / n)
+        variance_sum += float(1 - np.mean(np.abs(np.diag(b)) ** 2))
+
+    alpha = 0.9
+    q_op = sum(np.kron(g, b) for g, b in zip(gg, bb)) / math.sqrt(n)
+    q_diag = sum(np.kron(g, np.diag(np.diag(b))) for g, b in zip(gg, bb)) / math.sqrt(n)
+    rho = (np.eye(m * d) + alpha * q_op) / (m * d)
+    rho_dephased = (np.eye(m * d) + alpha * q_diag) / (m * d)
+    rho_reconstructed = (np.eye(m * d) + alpha * (1 - 1 / n) * q_op) / (m * d)
+    q_upper = trace_distance(rho, rho_dephased)
+    eb_error = trace_distance(rho, rho_reconstructed)
+    hs_bound = alpha * math.sqrt(hs_energy) / 2
+    proof_q_bound = alpha * math.sqrt(3 / n) / 2
+    min_eigenvalue = float(np.linalg.eigvalsh(rho).min())
+    assert max(ortho, support, rotation_residual, eigen_residual) &lt; 1e-10
+    assert hs_energy &lt;= 3 / n + 1e-10
+    assert variance_sum &lt; 3 + 1e-10
+    assert q_upper &lt;= hs_bound + 1e-10
+    assert hs_bound &lt;= proof_q_bound + 1e-10
+    assert eb_error &lt;= alpha / (2 * n) + 1e-10
+    assert min_eigenvalue &gt; -1e-12
+    return {
+        &quot;n&quot;: n,
+        &quot;B_dimension&quot;: d,
+        &quot;alpha&quot;: alpha,
+        &quot;orthonormality_residual&quot;: ortho,
+        &quot;P_support_residual&quot;: support,
+        &quot;rotation_identity_residual&quot;: rotation_residual,
+        &quot;canonical_frame_eigen_identity_residual&quot;: eigen_residual,
+        &quot;sum_Z_variance_in_constructed_basis&quot;: variance_sum,
+        &quot;mean_HS_dephasing_energy&quot;: hs_energy,
+        &quot;actual_EB_reconstruction_error&quot;: eb_error,
+        &quot;actual_CQ_candidate_trace_error&quot;: q_upper,
+        &quot;computed_HS_trace_upper_bound&quot;: hs_bound,
+        &quot;proved_coarser_CQ_upper_bound&quot;: proof_q_bound,
+        &quot;rho_min_eigenvalue&quot;: min_eigenvalue,
+        &quot;gate_verdict_for_this_family&quot;: &quot;NOT A COUNTEREXAMPLE: explicit q upper bound tends to zero&quot;,
+    }
+
+
+result = {
+    &quot;status&quot;: &quot;PASS finite diagnostics only&quot;,
+    &quot;unresolved_gate_status&quot;: &quot;UNKNOWN&quot;,
+    &quot;weak_qubit_product&quot;: [weak_product(n) for n in (4, 5, 6, 7)],
+    &quot;clifford_frame_failed_counterexample&quot;: [clifford_frame(n) for n in (3, 4, 5)],
+}
+path = Path(__file__).with_name(&quot;CONTROLS_REPLAY.json&quot;)
+path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/3c246a3ae6a0c250165eacd792f8d328cc662d1d391bed47c87ff7265d9ea76e.py">Exact original</a></p></html>

@@ -1,0 +1,168 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/root_cycle07/finite_dimension7_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/root_cycle07/finite_dimension7_certificate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact, stdlib-only interval certificate for a legal primitive KMS example.
+
+All computational decisions use integers/Fraction; no floating-point number
+enters any assertion. This finite certificate supports, but does not replace,
+the separate all-kappa stationary sharpness proof. Read the companion note
+for the legality/transport proof and the meaning of J and E.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb, factorial, isqrt
+from pathlib import Path
+import hashlib
+import json
+
+PRECISION = 420
+SCALE = 10**PRECISION
+TERMS = 120
+DIM = 7
+ZERO = (0, 0)
+
+def enc(x):
+    x = F(x)
+    n, d = x.numerator*SCALE, x.denominator
+    return n//d, -((-n)//d)
+
+def add(a, b): return a[0]+b[0], a[1]+b[1]
+def neg(a): return -a[1], -a[0]
+def sub(a, b): return add(a, neg(b))
+def mul(a, b):
+    p = (a[0]*b[0], a[0]*b[1], a[1]*b[0], a[1]*b[1])
+    return min(p)//SCALE, -((-max(p))//SCALE)
+
+def times(a, x):
+    x=F(x); n,d=x.numerator,x.denominator
+    p=(a[0]*n,a[1]*n)
+    return min(p)//d,-((-max(p))//d)
+
+def sqrt_rational(x):
+    x=F(x); v=isqrt((x.numerator*SCALE*SCALE)//x.denominator)
+    assert v*v*x.denominator &lt;= x.numerator*SCALE*SCALE
+    assert (v+1)*(v+1)*x.denominator &gt; x.numerator*SCALE*SCALE
+    return v,v+1
+
+def isum(items):
+    result=ZERO
+    for item in items: result=add(result,item)
+    return result
+
+def imatmul(a,b):
+    return [[isum(mul(a[i][k],b[k][j]) for k in range(DIM))
+             for j in range(DIM)] for i in range(DIM)]
+
+def qmatmul(a,b):
+    return [[sum((a[i][k]*b[k][j] for k in range(DIM)),F(0))
+             for j in range(DIM)] for i in range(DIM)]
+
+def transpose(a): return list(map(list,zip(*a)))
+
+def print_interval(a, places=14):
+    # Decimal endpoint strings are outward rounded, not float summaries.
+    divisor=10**(PRECISION-places)
+    lo=a[0]//divisor; hi=-((-a[1])//divisor)
+    def fmt(v):
+        sign=&#x27;-&#x27; if v&lt;0 else &#x27;&#x27;; v=abs(v)
+        return f&#x27;{sign}{v//10**places}.{v%10**places:0{places}d}&#x27;
+    return [fmt(lo),fmt(hi)]
+
+def run():
+    h=F(1,65536); eps=F(1,10**100); eta=F(1,10**50)
+    r=[(1+i*h)/(1-i*h) for i in range(5)]
+    gamma=[F((-1)**(4-i)*comb(4,i),factorial(4))*h**-4 for i in range(5)]
+    # Basis order: center, anchor, five leaves.
+    s=[F(1),F(1)]+r; Z=sum(x*x for x in s)
+    stationary=[[s[i]**2 if i==j else F(0) for j in range(DIM)] for i in range(DIM)]
+    R=[row[:] for row in stationary]
+    for i in range(5): R[i+2][1]=R[1][i+2]=eps*(r[i]+1)*gamma[i]
+    assert sum(R[i][i] for i in range(DIM))==Z
+    # Symmetric norm bound implies every eigenvalue R is in (1-rad,1+rad).
+    D=[[R[i][j]-(1 if i==j else 0) for j in range(DIM)] for i in range(DIM)]
+    row_norm=max(sum(abs(x) for x in row) for row in D)
+    rad=F(1,1000)
+    assert row_norm&lt;rad&lt;1
+
+    # K=d B d^-1 and C=d V d^-1 are rational even though B is algebraic.
+    K=[[F(0) for _ in range(DIM)] for _ in range(DIM)]
+    C=[[F(0) for _ in range(DIM)] for _ in range(DIM)]
+    C[0][0]=sum(x*x for x in r)
+    for i in range(5):
+        K[0][i+2]=1; K[i+2][0]=r[i]
+        for j in range(5): C[i+2][j+2]=2*r[i]/(r[i]+r[j])
+    def generator(X):
+        CX=qmatmul(C,X); XC=qmatmul(X,transpose(C)); KXK=qmatmul(qmatmul(K,X),transpose(K))
+        return [[(CX[i][j]+XC[i][j])/2-KXK[i][j] for j in range(DIM)] for i in range(DIM)]
+    assert all(x==0 for row in generator(stationary) for x in row)
+    assert all(C[i][j]+C[j][i]==2*qmatmul(transpose(K),K)[i][j]
+               for i in range(DIM) for j in range(DIM))
+    G=generator(R)
+    for i in range(DIM):
+        for j in range(DIM): G[i][j]+=eta*(R[i][j]-stationary[i][j])
+    assert all(G[i][i]==0 for i in range(DIM))
+    assert all(G[i][j]==G[j][i] for i in range(DIM) for j in range(DIM))
+
+    # Spectral log/sqrt series around I, outward-rounded at every operation.
+    Di=[[enc(x) for x in row] for row in D]
+    power=[[enc(int(i==j)) for j in range(DIM)] for i in range(DIM)]
+    root=[row[:] for row in power]
+    log=[[ZERO for _ in range(DIM)] for _ in range(DIM)]
+    coefficient=F(1)
+    for n in range(1,TERMS+1):
+        power=imatmul(power,Di)
+        coefficient*=F(3-2*n,2*n)
+        for i in range(DIM):
+            for j in range(DIM):
+                root[i][j]=add(root[i][j],times(power[i][j],coefficient))
+                log[i][j]=add(log[i][j],times(power[i][j],F((-1)**(n+1),n)))
+    # Both absolute series coefficients &lt;=1, so this bounds the operator
+    # norm of each omitted tail and therefore every matrix entry error.
+    tail=rad**(TERMS+1)/(1-rad)
+    tail_hi=enc(tail)[1]
+    for i in range(DIM):
+        for j in range(DIM):
+            root[i][j]=add(root[i][j],(-tail_hi,tail_hi))
+            log[i][j]=add(log[i][j],(-tail_hi,tail_hi))
+
+    # J=Tr L_*rho(log rho-log sigma). G has zero diagonal, so all
+    # stationary-log and scalar normalization terms vanish exactly.
+    J=times(isum(times(log[j][i],G[i][j]) for i in range(DIM) for j in range(DIM)),1/Z)
+    sqrt_products=[[sqrt_rational(r[i]*r[j]) for j in range(5)] for i in range(5)]
+    star_cross=isum(mul(sqrt_products[i][j],root[i+2][j+2]) for i in range(5) for j in range(5))
+    E_star=times(sub(enc(2*sum(x*x for x in r)),times(star_cross,2)),1/Z)
+    overlap=times(isum(times(root[i][i],s[i]) for i in range(DIM)),1/Z)
+    E_replacement=sub(enc(1),mul(overlap,overlap))
+    E=add(E_star,times(E_replacement,eta))
+    gap=sub(J,times(E,F(16,5)))
+    assert E[0]&gt;0 and J[0]&gt;0
+    assert F(gap[1],SCALE)&lt;-eps**2/F(250)
+    scale=eps**-2
+    record={
+        &#x27;status&#x27;:&#x27;PASS_EXACT_INTEGER_INTERVAL_CERTIFICATE&#x27;,
+        &#x27;scope&#x27;:&#x27;One faithful rational state for a legal primitive seven-dimensional KMS generator has J &lt; (16/5) E. Not a general nonlinear lower bound.&#x27;,
+        &#x27;parameters&#x27;:{&#x27;dimension&#x27;:DIM,&#x27;h&#x27;:str(h),&#x27;epsilon&#x27;:str(eps),&#x27;replacement_rate&#x27;:str(eta),&#x27;gamma&#x27;:[str(x) for x in gamma],&#x27;raw_stationary_root&#x27;:[str(x) for x in s],&#x27;Z&#x27;:str(Z)},
+        &#x27;arithmetic&#x27;:{&#x27;kind&#x27;:&#x27;outward fixed-denominator integer intervals; exact Fraction inputs&#x27;,&#x27;decimal_denominator_exponent&#x27;:PRECISION,&#x27;series_terms&#x27;:TERMS,&#x27;spectral_radius_upper&#x27;:str(rad),&#x27;series_tail_upper&#x27;:str(tail)},
+        &#x27;scaled_by_epsilon_squared&#x27;:{&#x27;J&#x27;:print_interval(times(J,scale)),&#x27;E&#x27;:print_interval(times(E,scale)),&#x27;J_minus_16E_over_5&#x27;:print_interval(times(gap,scale))},
+        &#x27;exact_certified_gap&#x27;:&#x27;J-(16/5)E &lt; -(1/250)*epsilon^2&#x27;,
+        &#x27;checks&#x27;:[&#x27;rational trace and normalization&#x27;,&#x27;strict faithfulness via exact row norm&#x27;,&#x27;stationary state killed exactly&#x27;,&#x27;trace preservation C+C^T=2K^TK&#x27;,&#x27;zero diagonal physical generator on the input&#x27;,&#x27;positive J and E interval lower bounds&#x27;,&#x27;strict negative full nonlinear endpoint gap&#x27;],
+        &#x27;script_sha256&#x27;:hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    }
+    out=Path(__file__).with_name(&#x27;FINITE_DIMENSION7_CERTIFICATE.json&#x27;)
+    assert not out.exists(), &#x27;Refuse to replace a frozen certificate; use --verify.&#x27;
+    out.write_text(json.dumps(record,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(record[&#x27;scaled_by_epsilon_squared&#x27;],indent=2))
+    return record
+
+if __name__==&#x27;__main__&#x27;:
+    import sys
+    if len(sys.argv)&gt;1 and sys.argv[1]==&#x27;--verify&#x27;:
+        # Recompute to a temporary sibling while preserving frozen output.
+        import tempfile
+        source=Path(__file__)
+        with tempfile.TemporaryDirectory(prefix=&#x27;cycle07-replay-&#x27;) as td:
+            clone=Path(td)/source.name; clone.write_bytes(source.read_bytes())
+            import runpy
+            result=runpy.run_path(str(clone))[&#x27;run&#x27;]()
+            assert result==json.loads(source.with_name(&#x27;FINITE_DIMENSION7_CERTIFICATE.json&#x27;).read_text())
+        print(&#x27;Frozen certificate exactly reproduced.&#x27;)
+    else:
+        run()
+</pre><p><a href="../assets/c0f6773b74e48156a8cfc8b6c0eee7750cd1e0c7bf027ca60ad0ac3f05f2b5d6.py">Exact original</a></p></html>

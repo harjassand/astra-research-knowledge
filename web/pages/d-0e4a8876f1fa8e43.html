@@ -1,0 +1,149 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/tensor_frame_sol/cycle06_kms_endpoint/verify_classification_kraus.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/tensor_frame_sol/cycle06_kms_endpoint/verify_classification_kraus.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite exact orientation controls for the frozen analytic classification.
+
+One modular channel/noncommuting state, one complex Choi control, and the
+already frozen counterexample with a tuned ancilla. Not a theorem prover.
+&quot;&quot;&quot;
+import json
+import sympy as s
+
+Q = s.Rational
+checks = []
+
+
+def adj(a):
+    return a.conjugate().T
+
+
+def equal(a, b, label):
+    delta = a - b
+    ok = (all(s.simplify(x) == 0 for x in delta) if isinstance(delta, s.MatrixBase)
+          else s.simplify(delta) == 0)
+    assert ok, (label, delta)
+    checks.append(label)
+
+
+def vec(a):
+    return s.Matrix([a[0, 0], a[1, 0], a[0, 1], a[1, 1]])
+
+
+def absolute_square(a):
+    return s.simplify(s.conjugate(a) * a)
+
+
+ident = s.eye(2)
+swap = s.Matrix([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+E01 = s.Matrix([[0, 1], [0, 0]])
+E10 = E01.T
+complex_hermitian = s.Matrix([[1, s.I], [-s.I, 2]])
+equal(adjoint_control := swap * vec(complex_hermitian).conjugate(),
+      vec(adj(complex_hermitian)), &quot;Choi antiunitary implements Kraus adjoint&quot;)
+equal(adjoint_control, vec(complex_hermitian), &quot;complex Hermitian zero-frequency Choi vector fixed&quot;)
+choi_complex = vec(complex_hermitian) * adj(vec(complex_hermitian))
+equal(swap * choi_complex.conjugate() * swap, choi_complex,
+      &quot;complex CP HS-self-adjoint Choi invariant under swap plus conjugation&quot;)
+assert swap * choi_complex * swap != choi_complex
+checks.append(&quot;swap without conjugation rejected by complex Choi control&quot;)
+
+sigma = s.diag(Q(1, 5), Q(4, 5))
+sqrt_sigma = s.diag(1, 2) / s.sqrt(5)
+S = s.diag(1, s.sqrt(2)) / 5 ** Q(1, 4)
+V = [s.I * E01 / 2, -s.I * E10 / 2,
+     s.diag(1 / s.sqrt(2), s.sqrt(14) / 4)]
+weights = [Q(1, 2), Q(2), Q(1)]  # exp(omega/2)
+K = [s.sqrt(w) * v for w, v in zip(weights, V)]
+for index, (v, k, weight) in enumerate(zip(V, K, weights)):
+    equal(S * v * S.inv(), k, f&quot;physical Kraus frequency sign {index}&quot;)
+    equal(sigma * v * sigma.inv(), weight ** 2 * v,
+          f&quot;modular eigenvalue {index}&quot;)
+equal(V[1], adj(V[0]), &quot;nonzero frequency Kraus adjoint pair&quot;)
+equal(V[2], adj(V[2]), &quot;zero frequency Kraus Hermitian&quot;)
+equal(sum((adj(k) * k for k in K), s.zeros(2)), ident, &quot;physical Kraus TP completeness&quot;)
+
+
+def phi(a):
+    return s.simplify(sum((k * a * adj(k) for k in K), s.zeros(2)))
+
+
+def T(a):
+    return s.simplify(sum((v * a * adj(v) for v in V), s.zeros(2)))
+
+
+def H(a):
+    return s.simplify(sum((adj(k) * a * k for k in K), s.zeros(2)))
+
+
+equal(phi(sigma), sigma, &quot;modular control stationary&quot;)
+for i in range(2):
+    for j in range(2):
+        unit = s.zeros(2)
+        unit[i, j] = 1
+        equal(S.inv() * phi(S * unit * S) * S.inv(), T(unit),
+              f&quot;weighted transform orientation {i}{j}&quot;)
+        equal(sqrt_sigma * H(unit) * sqrt_sigma,
+              phi(sqrt_sigma * unit * sqrt_sigma), f&quot;KMS symmetry {i}{j}&quot;)
+choi_T = sum((vec(v) * adj(vec(v)) for v in V), s.zeros(4))
+equal(swap * choi_T.conjugate() * swap, choi_T, &quot;paired Choi invariant&quot;)
+log_sigma = s.diag(s.log(Q(1, 5)), s.log(Q(4, 5)))
+frequencies = [s.log(Q(1, 4)), s.log(Q(4)), 0]
+expected_log_image = log_sigma + sum((omega * weight * adj(v) * v
+                                     for omega, weight, v in zip(frequencies, weights, V)),
+                                    s.zeros(2))
+equal(H(log_sigma), expected_log_image, &quot;H log sigma frequency sign&quot;)
+
+unitary = s.Matrix([[3, 4 * s.I], [4 * s.I, 3]]) / 5
+equal(adj(unitary) * unitary, ident, &quot;complex state eigenbasis unitary&quot;)
+eigenvalues = [Q(1, 3), Q(2, 3)]
+rho = unitary * s.diag(*eigenvalues) * adj(unitary)
+log_rho = unitary * s.diag(*(s.log(x) for x in eigenvalues)) * adj(unitary)
+root_rho = unitary * s.diag(*(s.sqrt(x) for x in eigenvalues)) * adj(unitary)
+equal(root_rho * root_rho, rho, &quot;physical state square root&quot;)
+assert rho * sigma != sigma * rho
+checks.append(&quot;actual scalar control state noncommutes with reference&quot;)
+J = s.simplify(s.trace((rho - phi(rho)) * (log_rho - log_sigma)))
+E = s.simplify(s.trace(root_rho * (root_rho - T(root_rho))))
+J_sum = E_sum = s.Integer(0)
+for v, weight in zip(V, weights):
+    in_rho_basis = adj(unitary) * v * unitary
+    for i in range(2):
+        for j in range(2):
+            x = weight * eigenvalues[j]
+            y = eigenvalues[i] / weight
+            coefficient = absolute_square(in_rho_basis[i, j]) / 2
+            J_sum += coefficient * (x - y) * s.log(x / y)
+            E_sum += coefficient * (s.sqrt(x) - s.sqrt(y)) ** 2
+equal(J, J_sum, &quot;full noncommuting scalar entropy paired-sum identity&quot;)
+equal(E, E_sum, &quot;full noncommuting root-energy paired-sum identity&quot;)
+
+# The frozen nonmodular witness, amplified by root&#x27;s supplied tuned ratio.
+old_sigma = s.diag(Q(4, 5), Q(1, 5))
+tau = s.diag(Q(1, 5), Q(4, 5))
+reference = s.kronecker_product(old_sigma, tau)
+old_S = s.diag(s.sqrt(2), 1) / 5 ** Q(1, 4)
+vectors = [s.Matrix([1, 0]), s.Matrix([Q(3, 5), Q(4, 5)]),
+           s.Matrix([Q(4, 5), -Q(3, 5)])]
+probabilities = [Q(3, 5), Q(1, 5), Q(1, 5)]
+old_V = [s.sqrt(p) * old_S.inv() * v * adj(v) * old_S.inv()
+         for p, v in zip(probabilities, vectors)]
+U = s.kronecker_product(E01, E01)
+commuting_input = U + adj(U)
+equal(commuting_input * reference, reference * commuting_input,
+      &quot;tuned two-level reference cancels input modular frequency&quot;)
+amplified_output = sum((s.kronecker_product(v, ident) * commuting_input
+                        * adj(s.kronecker_product(v, ident)) for v in old_V), s.zeros(4))
+commutator = s.simplify(amplified_output * reference - reference * amplified_output)
+assert commutator != s.zeros(4)
+checks.append(&quot;tuned reference detects nonmodular output frequency&quot;)
+equal(s.trace(commuting_input * s.kronecker_product(s.diag(2, 1), s.diag(1, 2))),
+      0, &quot;ancilla real direction lies in physical weighted trace tangent&quot;)
+
+print(json.dumps({
+    &#x27;status&#x27;: &#x27;PASS_EXACT_ORIENTATION_CONTROLS&#x27;,
+    &#x27;checks&#x27;: len(checks),
+    &#x27;assertions&#x27;: checks,
+    &#x27;scalar_control_J&#x27;: str(s.simplify(J)),
+    &#x27;scalar_control_E&#x27;: str(s.simplify(E)),
+    &#x27;scope&#x27;: &#x27;One analytic modular control, one complex Choi control, and one tuned amplification; not a proof of the universal classification&#x27;,
+    &#x27;floating_point_used&#x27;: False
+}, indent=2))
+</pre><p><a href="../assets/a2fd6297f268e5636c94c9674117702fc59f1682e42deaa2fbcfc0321ee2f89f.py">Exact original</a></p></html>

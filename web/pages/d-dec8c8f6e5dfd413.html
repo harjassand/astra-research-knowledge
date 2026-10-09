@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/spin1_anisotropic_sol/cycle08_complete_qubit_review/verify_exposed_kernel.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/spin1_anisotropic_sol/cycle08_complete_qubit_review/verify_exposed_kernel.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite congruence checks and identity controls; not a Hardy verifier.&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction
+import json
+import numpy as np
+import sympy as sp
+
+base=Path(__file__).parent
+u,v=sp.symbols(&#x27;u v&#x27;,positive=True)
+alpha,beta,kappa=sp.symbols(&#x27;alpha beta kappa&#x27;,real=True)
+A=(u+1/u)/2;B=(u-1/u)/2
+c=(u**2+u**-2)/2;h=(u**2-u**-2)/2
+C=(v**2+v**-2)/2;sb=(v**2-v**-2)/2
+tanhb=sb/C
+m=2*beta*tanhb;n=1-1/C
+da=2*alpha*h/c-kappa*(1-1/c)
+P=h*beta+(alpha*c-kappa*h/2)*tanhb
+Q=2*B*beta+(alpha-kappa*B)*tanhb/A
+M=sp.Matrix([[A*A*m-kappa*n+B*B*da,-P,A*m-kappa*n],
+             [-P,B*B*m+A*A*da,-Q],
+             [A*m-kappa*n,-Q,m-kappa*n]])
+S=sp.Matrix([[1,1,0],[1,-1,0],[0,0,1]])
+nodes=[(beta-alpha,v/u),(beta+alpha,v*u),(beta,v)]
+def kernel(i,j):
+    x,ex=nodes[i];y,ey=nodes[j]
+    sx=(ex**2-ex**-2)/2;sy=(ey**2-ey**-2)/2
+    hx=(ex-ex**-1)/2;hy=(ey-ey**-1)/2
+    return (x*sy+y*sx-2*kappa*hx*hy)/(ex/ey+ey/ex)
+gram=sp.Matrix(3,3,kernel)
+checks=[]
+for i in range(3):
+    for j in range(i,3):
+        residual=sp.cancel((C*S.T*M*S/2-gram)[i,j])
+        assert residual==0,(i,j,residual)
+        checks.append({&#x27;name&#x27;:f&#x27;congruence_{i}_{j}&#x27;,&#x27;residual&#x27;:str(residual)})
+extras={
+ &#x27;stationary_constant&#x27;:c*da-(2*alpha*h-kappa*(c-1)),
+ &#x27;physical_Im_XY&#x27;:4*A*B*beta+(2*alpha*c-kappa*h)*tanhb-2*P,
+ &#x27;physical_a_Im_ZY&#x27;:4*B*beta+2*(alpha-kappa*B)*tanhb/A-2*Q,
+}
+for name,expression in extras.items():
+    residual=sp.cancel(expression)
+    assert residual==0,(name,residual)
+    checks.append({&#x27;name&#x27;:name,&#x27;residual&#x27;:str(residual)})
+
+controls=json.loads((base/&#x27;DESIGNED_CONTROLS.json&#x27;).read_text())[&#x27;rows&#x27;]
+paulis=[np.kron(np.eye(2),p) for p in [np.array([[0.,1.],[1.,0.]]),np.array([[0.,-1j],[1j,0.]]),np.diag([1.,-1.])]]
+results=[]
+for row in controls:
+    rho=np.array(row[&#x27;rho_real_float&#x27;],dtype=complex)
+    p=float(Fraction(row[&#x27;exact_parameters&#x27;][&#x27;p&#x27;]))
+    al=.5*np.log(p/(1-p))
+    aa=np.cosh(al/2);bb=np.sinh(al/2);cc=np.cosh(al);hh=np.sinh(al)
+    dd=2*al*np.tanh(al)-np.pi*(1-1/cc)
+    vals,vec=np.linalg.eigh(rho)
+    vals=vals[::-1];vec=vec[:,::-1]
+    rotated=[vec.conj().T @ p @ vec for p in paulis]
+    for noise_a in [0.,1.,-2.]:
+        energy=dd*sum(vals[i]*(bb*bb*abs(rotated[0][i,i])**2+aa*aa*abs(rotated[1][i,i])**2) for i in range(4))
+        for i in range(4):
+            for j in range(i+1,4):
+                w=vals[i]+vals[j];be=.5*np.log(vals[i]/vals[j])
+                mm=2*be*np.tanh(be);nn=1-1/np.cosh(be)
+                pp=hh*be+(al*cc-np.pi*hh/2)*np.tanh(be)
+                qq=2*bb*be+(al-np.pi*bb)*np.tanh(be)/aa
+                mat=np.array([[aa*aa*mm-np.pi*nn+bb*bb*dd,-pp,aa*mm-np.pi*nn],
+                              [-pp,bb*bb*mm+aa*aa*dd,-qq],
+                              [aa*mm-np.pi*nn,-qq,mm-np.pi*nn]])
+                xyz=np.array([rotated[0][i,j],1j*rotated[1][i,j],noise_a*rotated[2][i,j]])
+                energy+=w*np.vdot(xyz,mat @ xyz).real
+        jm=np.array(row[&#x27;J_matrix&#x27;]);em=np.array(row[&#x27;E_matrix&#x27;])
+        co=np.array([1.,0.,noise_a])
+        direct=float(co @ (jm-np.pi*em) @ co)
+        results.append({&#x27;exact_parameters&#x27;:row[&#x27;exact_parameters&#x27;],&#x27;noise_a&#x27;:noise_a,
+                        &#x27;spectral_M_value&#x27;:float(energy),&#x27;direct_value&#x27;:direct,
+                        &#x27;absolute_residual&#x27;:float(abs(energy-direct))})
+report={&#x27;status&#x27;:&#x27;9 exact rational-function identities, plus finite physical identity diagnostics; no universal Hardy/operator verifier&#x27;,
+        &#x27;symbolic_exponential_parameters&#x27;:&#x27;u=exp(alpha/2), v=exp(beta/2); identities are rational in u,v and linear in alpha,beta,kappa&#x27;,
+        &#x27;sympy_version&#x27;:sp.__version__,&#x27;numpy_version&#x27;:np.__version__,
+        &#x27;exact_checks&#x27;:checks,&#x27;number_of_control_checks&#x27;:len(results),
+        &#x27;maximum_control_absolute_residual&#x27;:max(r[&#x27;absolute_residual&#x27;] for r in results),
+        &#x27;controls&#x27;:results}
+(base/&#x27;EXPOSED_KERNEL_REPLAY.json&#x27;).write_text(json.dumps(report,indent=2,sort_keys=True)+&#x27;\n&#x27;)
+print(json.dumps({key:report[key] for key in [&#x27;status&#x27;,&#x27;sympy_version&#x27;,&#x27;number_of_control_checks&#x27;,&#x27;maximum_control_absolute_residual&#x27;]},indent=2))
+</pre><p><a href="../assets/08001f32e3b715166e3d4461c86a15ac38eb5a9cacbd963ed361246e22b17153.py">Exact original</a></p></html>

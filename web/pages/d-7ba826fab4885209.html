@@ -1,0 +1,162 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/covariant_review_sol/cycle09_nonreversible_lp_review/verify_blind_quarter_kernel.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/covariant_review_sol/cycle09_nonreversible_lp_review/verify_blind_quarter_kernel.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;One exact complex repeated-spectrum control at r=1/4 and 3/4.
+
+Gaussian rational arithmetic only, with rational matrix powers constructed
+from a specified exact unitary. No scan or floating spectral calculation.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import hashlib
+import json
+import runpy
+import sys
+
+
+def run():
+    helper=Path(__file__).resolve().parent.parent/&#x27;cycle09_lp_review&#x27;/&#x27;verify_exposed_p4_exact.py&#x27;
+    assert hashlib.sha256(helper.read_bytes()).hexdigest()==&#x27;aee20be2e4228bdd9d4c349ed7a9d338ebb0efb3042e7ed86880e0cd5fce896b&#x27;
+    ns=runpy.run_path(str(helper),run_name=&#x27;readonly_exact_helper&#x27;)
+    C,diag,add,scale,mul,adj,tr=[ns[k] for k in [&#x27;C&#x27;,&#x27;diag&#x27;,&#x27;add&#x27;,&#x27;scale&#x27;,&#x27;mul&#x27;,&#x27;adj&#x27;,&#x27;tr&#x27;]]
+    sv=[F(1),F(1),F(16)]
+    S=diag(sv)
+    B1=[[C(1),C(2,1),C(-1)],[C(0,1),C(-2),C(3,-1)],[C(2),C(1,2),C(F(1,2))]]
+    vv=[C(1),C(1),C(0,1)]
+    noises=[B1,adj(B1),[[vv[i] for _ in range(3)] for i in range(3)]]
+    Y,Z=diag([0,0,0]),diag([0,0,0])
+    for B in noises:
+        Y=add(Y,mul(mul(adj(B),S),B))
+        Z=add(Z,mul(mul(B,S),adj(B)))
+    D=[]
+    for i in range(3):
+        row=[]
+        for j in range(3):
+            if sv[i]==sv[j]:
+                assert Y[i][j]==Z[i][j]
+                row.append(Y[i][j]/sv[i])
+            else:row.append(2*(sv[i]*Y[i][j]-sv[j]*Z[i][j])/(sv[i]**2-sv[j]**2))
+        D.append(row)
+    assert D!=adj(D)
+
+    def H(X):
+        out=scale(add(mul(adj(D),X),mul(X,D)),F(1,2))
+        for B in noises:out=add(out,scale(mul(mul(adj(B),X),B),-1))
+        return out
+
+    def Hstar(X):
+        out=scale(add(mul(D,X),mul(X,adj(D))),F(1,2))
+        for B in noises:out=add(out,scale(mul(mul(B,X),adj(B)),-1))
+        return out
+
+    assert H(S)==Hstar(S)==diag([0,0,0])
+    rootS,invrootS=diag([1,1,4]),diag([1,1,F(1,4)])
+    Cphys=mul(mul(rootS,D),invrootS)
+    KKs=diag([0,0,0])
+    for B in noises:
+        K=mul(mul(rootS,B),invrootS)
+        KKs=add(KKs,mul(adj(K),K))
+    assert add(Cphys,adj(Cphys))==scale(KKs,2)
+    ve=[F(1),F(2),F(3)]
+    O=[[C((1 if i==j else 0)-ve[i]*ve[j]/7) for j in range(3)] for i in range(3)]
+    phase=[C(1),C(0,1),C(F(3,5),F(4,5))]
+    U=[[phase[i]*O[i][j] for j in range(3)] for i in range(3)]
+    assert mul(adj(U),U)==diag([1,1,1])
+
+    def spectral(xs):return mul(mul(U,diag(xs)),adj(U))
+    qs=[F(1),F(4),F(9)]
+    rootqs=[F(1),F(2),F(3)]
+    q=spectral(qs)
+    assert ns[&#x27;comm&#x27;](q,S)!=diag([0,0,0])
+    sq,siq=diag([1,1,2]),diag([1,1,F(1,2)])
+    g=mul(mul(siq,spectral([1,8,27])),siq)
+    h=mul(mul(sq,spectral([1,2,3])),sq)
+    direct={F(1,4):tr(mul(g,H(h))),F(3,4):tr(mul(h,H(g)))}
+    energy=tr(mul(q,scale(add(H(q),Hstar(q)),F(1,2))))
+    assert all(x.i==0 for x in [*direct.values(),energy])
+    assert direct[F(1,4)]!=direct[F(3,4)]
+    grams={F(1,4):C(),F(3,4):C()}
+    gram_E=C()
+    pos=[0,0,1]
+    for B in noises:
+        parts={}
+        for n in [-1,0,1]:
+            Bn=[[B[i][j] if pos[i]-pos[j]==n else C() for j in range(3)] for i in range(3)]
+            parts[n]=mul(mul(adj(U),Bn),U)
+        for i in range(3):
+            for k in range(3):
+                for n in parts:
+                    for m in parts:
+                        ez=(qs[i]/qs[k])/(F(4)**(n+m))
+                        root_ez=(rootqs[i]/rootqs[k])/(F(2)**(n+m))
+                        dh=m-n
+                        if dh:
+                            dy=ns[&#x27;sh&#x27;](F(8)**dh)/ns[&#x27;sh&#x27;](F(16)**dh)
+                            dz=ns[&#x27;sh&#x27;](F(2)**dh)/ns[&#x27;sh&#x27;](F(16)**dh)
+                        else:dy,dz=F(3,4),F(1,4)
+                        kr={F(1,4):dy/ez+dz*ez-1/root_ez,F(3,4):dz/ez+dy*ez-root_ez}
+                        amp=qs[i]*qs[k]*parts[n][i][k].star()*parts[m][i][k]
+                        for r in grams:grams[r]+=amp*kr[r]
+                        gram_E+=amp*(ns[&#x27;ch&#x27;](ez)/ns[&#x27;ch&#x27;](F(4)**dh)-1)
+    assert grams==direct
+    assert gram_E==energy
+    scalar_checks=0
+    for r in [F(1,4),F(3,4)]:
+        alpha=1-r
+        for i in range(3):
+            for j in range(3):
+                R,Uv=F(16)**i,F(16)**j
+                v,w=R*R,Uv*Uv
+                vp=F(64 if alpha==F(3,4) else 4)**i
+                wp=F(64 if alpha==F(3,4) else 4)**j
+                if v==w:
+                    dd=alpha*(1-alpha)/2 if v==1 else ((vp-1)-alpha*(vp/v)*(v-1))/(v-1)**2
+                else:
+                    fv=alpha if v==1 else (vp-1)/(v-1)
+                    fw=alpha if w==1 else (wp-1)/(w-1)
+                    dd=-(fv-fw)/(v-w)
+                pref=F(2)**((1 if r==F(3,4) else -1)*(i+j))
+                integral_form=pref*(v-1)*(w-1)*dd
+                dh=i-j
+                ez=F(4)**(i+j)
+                if dh:
+                    y=ns[&#x27;sh&#x27;](F(8)**dh)/ns[&#x27;sh&#x27;](F(16)**dh)
+                    z=ns[&#x27;sh&#x27;](F(2)**dh)/ns[&#x27;sh&#x27;](F(16)**dh)
+                else:y,z=F(3,4),F(1,4)
+                direct_scalar=y/ez+z*ez-F(2)**(-(i+j)) if r==F(1,4) else z/ez+y*ez-F(2)**(i+j)
+                assert integral_form==direct_scalar
+                scalar_checks+=1
+    return {
+        &#x27;status&#x27;:&#x27;PASS&#x27;,
+        &#x27;arithmetic&#x27;:&#x27;Exact Gaussian rational; specified exact unitary and rational quarter powers&#x27;,
+        &#x27;dimension&#x27;:3,
+        &#x27;raw_s&#x27;:[&#x27;1&#x27;,&#x27;1&#x27;,&#x27;16&#x27;],
+        &#x27;r_values&#x27;:[&#x27;1/4&#x27;,&#x27;3/4&#x27;],
+        &#x27;T_1_over_4&#x27;:str(direct[F(1,4)].r),
+        &#x27;T_3_over_4&#x27;:str(direct[F(3,4)].r),
+        &#x27;E_root&#x27;:str(energy.r),
+        &#x27;orientations_distinct&#x27;:True,
+        &#x27;full_complex_noncommuting_state&#x27;:True,
+        &#x27;summed_degenerate_stationarity&#x27;:True,
+        &#x27;physical_legality_exact&#x27;:True,
+        &#x27;kernel_matches_both_actual_pairings&#x27;:True,
+        &#x27;power_Loewner_checks&#x27;:scalar_checks,
+        &#x27;readonly_helper_sha256&#x27;:hashlib.sha256(helper.read_bytes()).hexdigest(),
+        &#x27;scan_count&#x27;:0,
+        &#x27;scope&#x27;:&#x27;One exact identity diagnostic; analytic proof, not this control, establishes universal lower.&#x27;
+    }
+
+
+def main():
+    p=Path(__file__).resolve().parent/&#x27;BLIND_QUARTER_KERNEL_REPLAY.json&#x27;
+    result=run()
+    if sys.argv[1:]==[&#x27;--verify&#x27;]:
+        assert json.loads(p.read_text())==result
+        print(&#x27;PASS: exact blind quarter-power kernel replay reproduced.&#x27;)
+    elif not sys.argv[1:]:
+        with p.open(&#x27;x&#x27;) as f:json.dump(result,f,indent=2,sort_keys=True);f.write(&#x27;\n&#x27;)
+        print(&#x27;PASS: wrote exact blind quarter-power kernel replay.&#x27;)
+    else:raise SystemExit(&#x27;Usage: verify_blind_quarter_kernel.py [--verify]&#x27;)
+    print(&#x27;sha256&#x27;,hashlib.sha256(p.read_bytes()).hexdigest())
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/b764cc4ce3d35dc8fa3864454d728831f4d9ccf78afa597748460f3725415aea.py">Exact original</a></p></html>

@@ -1,0 +1,175 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/ppt_index_tangent_sol/check_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/ppt_index_tangent_sol/check_exact.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact rational checks for the near-dephasing PPT channel and TILES witness.
+
+No numerical optimization and no proof by sampled product vectors.  Block
+positivity is proved in PROOFS.txt; the finite linear-algebra obligations of
+that proof are enumerated here.  SymPy is the only nonstandard dependency.
+&quot;&quot;&quot;
+from itertools import combinations
+from pathlib import Path
+import hashlib
+import json
+import sympy as s
+
+HERE = Path(__file__).resolve().parent
+q = s.Rational
+mu = q(1, 320000)
+eps = s.symbols(&quot;epsilon&quot;, nonnegative=True)
+I3 = s.eye(3)
+e = [I3[:, i] for i in range(3)]
+aa = [e[0], e[0]-e[1], e[2], e[1]-e[2], e[0]+e[1]+e[2]]
+bb = [e[0]-e[1], e[2], e[1]-e[2], e[0], e[0]+e[1]+e[2]]
+tile_projectors = []
+for a, b in zip(aa, bb):
+    z = s.kronecker_product(a, b)
+    tile_projectors.append(z*z.T/(z.T*z)[0])
+P = sum(tile_projectors, s.zeros(9))
+J = s.eye(9)-P
+W = P-mu*s.eye(9)
+
+def pt(M, da, db):
+    return s.Matrix(da*db, da*db,
+        lambda r, c: M[(r//db)*db+c%db, (c//db)*db+r%db])
+
+def partial_output_trace(M, da, db):
+    return s.Matrix(da, da,
+        lambda i, j: sum(M[i*db+k, j*db+k] for k in range(db)))
+
+assert P*P == P and s.trace(P) == 5
+assert J*J == J and s.trace(J) == 4
+assert pt(J, 3, 3) == J
+assert s.trace(W*J) == -4*mu
+
+# Four unnormalized tile linear forms in each product factor.  If their
+# products have modulus &lt;= 1/400, each pair has a factor &lt;= 1/20.
+Arows = s.Matrix.vstack(*(a.T for a in aa[:4]))
+Brows = s.Matrix.vstack(*(b.T for b in bb[:4]))
+cases = []
+for n in range(5):
+    for chosen in combinations(range(4), n):
+        comp = tuple(i for i in range(4) if i not in chosen)
+        A = Arows[list(chosen), :] if chosen else s.zeros(0, 3)
+        B = Brows[list(comp), :] if comp else s.zeros(0, 3)
+        row = {&quot;A_small&quot;: list(chosen), &quot;B_small&quot;: list(comp),
+               &quot;A_rank&quot;: A.rank(), &quot;B_rank&quot;: B.rank()}
+        if n == 2:
+            assert A.rank() == B.rank() == 2
+            for C, name in [(A, &quot;A&quot;), (B, &quot;B&quot;)]:
+                G = C*C.T
+                # For positive 2x2 Gram matrices, lambda_min &gt;= det/trace.
+                assert G.det()/s.trace(G) &gt;= q(1, 4)
+                v = C.nullspace()[0]
+                # Along each one-dimensional kernel, |sum v| &gt;= ||v||.
+                ratio = sum(v)**2/(v.T*v)[0]
+                assert ratio &gt;= 1
+                row[name+&quot;_kernel_sum_ratio_squared&quot;] = str(ratio)
+        else:
+            assert A.rank() == 3 or B.rank() == 3
+        cases.append(row)
+for C in [Arows, Brows]:
+    for subset in combinations(range(4), 3):
+        N = C[list(subset), :]
+        assert abs(N.det()) == 1
+        assert all(abs(x) &lt;= 1 for x in N.inv())
+assert 3*s.sqrt(3)*q(1, 20) &lt; 1
+assert q(11, 20)**4/9 &gt; mu
+
+E = partial_output_trace(J, 3, 3).T
+Def = I3-E/4
+assert s.trace(E) == 4
+# Positivity follows analytically from J&gt;=0 and E&lt;=Tr(E) I; Sylvester
+# checks here establish even strict positivity of this concrete defect.
+assert all(Def[:k, :k].det() &gt; 0 for k in range(1, 4))
+
+def F(X):
+    out = s.zeros(7)
+    for i in range(3):
+        for j in range(3):
+            for a in range(3):
+                for b in range(3):
+                    out[3+a, 3+b] += X[i, j]*J[3*i+a, 3*j+b]/4
+    out[6, 6] = s.trace(Def*X)
+    return out
+
+def DA(X):
+    M = s.zeros(7)
+    for i in range(3): M[i, i] = X[i, i]
+    return M
+
+def DC(X):
+    M = s.zeros(7)
+    for i in range(3, 7): M[i, i] = X[i, i]
+    return M
+
+def phi(X):
+    return (1-eps)*DA(X)+eps*F(X[:3, :3])+DC(X)
+
+def square_eb_formula(X):
+    XA = X[:3, :3]
+    return ((1-eps)**2*DA(X) + eps*(1-eps)*F(s.diag(*[XA[i,i] for i in range(3)]))
+            + eps*DC(F(XA))+DC(X))
+
+def choi(mapfn, d):
+    M = s.zeros(d*d)
+    for i in range(d):
+        for j in range(d):
+            X = s.zeros(d); X[i, j] = 1
+            M[i*d:(i+1)*d, j*d:(j+1)*d] = mapfn(X)
+    return M
+
+for i in range(7):
+    for j in range(7):
+        X = s.zeros(7); X[i,j] = 1
+        assert s.expand(s.trace(phi(X))-s.trace(X)) == 0
+        assert (phi(phi(X))-square_eb_formula(X)).applyfunc(s.expand) == s.zeros(7)
+
+Jphi = choi(phi, 7)
+Jphi2 = choi(square_eb_formula, 7)
+Wlift = s.zeros(49)
+for i in range(3):
+    for j in range(3):
+        for a in range(3):
+            for b in range(3):
+                Wlift[7*i+3+a, 7*j+3+b] = W[3*i+a, 3*j+b]
+assert s.expand(s.trace(Wlift*Jphi)) == -eps*mu
+assert partial_output_trace(Jphi, 7, 7) == s.eye(7)
+
+# All coefficient matrices of the CP+coCP decomposition have PSD/PPT
+# analytic proofs; exact invariance under PT supplies the concrete check.
+assert pt(Jphi, 7, 7) == Jphi
+assert pt(Jphi2, 7, 7) == Jphi2
+
+# Exact counterexample to the output-supported B identity displayed in
+# Park v2 Proposition 3.6. The corrected input-supported factorization
+# agrees for powers one and two in this smallest example.
+P0 = s.diag(1, 0)
+Q0 = s.diag(0, 1)
+X11 = Q0
+B_X11 = P0
+assert Q0*B_X11*Q0 == s.zeros(2)
+assert B_X11 != s.zeros(2)
+# B^2(X11)=0 because the first B output lies in P, not Q.
+assert B_X11[1,1]*P0 == s.zeros(2)
+
+report = {
+    &quot;status&quot;: &quot;exact rational algebra passed; block positivity proved in PROOFS.txt&quot;,
+    &quot;dimension&quot;: 7,
+    &quot;parameter_range&quot;: &quot;0 &lt; epsilon &lt;= 1&quot;,
+    &quot;EB_index&quot;: 2,
+    &quot;witness_mu&quot;: str(mu),
+    &quot;unnormalized_witness_first_power&quot;: str(s.trace(Wlift*Jphi)),
+    &quot;unnormalized_witness_second_power&quot;: str(s.factor(s.trace(Wlift*Jphi2))),
+    &quot;UPB_effect&quot;: [[str(x) for x in E.row(i)] for i in range(3)],
+    &quot;Park_B_identity_counterexample&quot;: {
+        &quot;dimension&quot;: 2, &quot;map&quot;: &quot;Phi(X)=Tr(X)|0&gt;&lt;0|&quot;,
+        &quot;input&quot;: &quot;|1&gt;&lt;1|&quot;, &quot;B_output&quot;: &quot;|0&gt;&lt;0|&quot;, &quot;Q_B_Q&quot;: &quot;zero&quot;,
+        &quot;repair_checked&quot;: &quot;B^p=B e_Q Phi_Q^(p-1) c_Q; p=1,2 in this example&quot;
+    },
+    &quot;threshold_cases&quot;: cases,
+    &quot;tests&quot;: [&quot;UPB orthogonality and rank&quot;, &quot;PPT invariance&quot;, &quot;rational witness trace&quot;,
+              &quot;16 threshold cases&quot;, &quot;Gram and inverse bounds&quot;, &quot;TP on all matrix units&quot;,
+              &quot;square EB formula on all matrix units&quot;, &quot;Choi TP&quot;, &quot;Choi PT invariance&quot;,
+              &quot;Park displayed B identity counterexample&quot;],
+}
+(HERE/&#x27;exact_results.json&#x27;).write_text(json.dumps(report, indent=2)+&quot;\n&quot;)
+print(json.dumps({k: v for k, v in report.items() if k not in [&quot;threshold_cases&quot;, &quot;UPB_effect&quot;]}, indent=2))
+</pre><p><a href="../assets/49f87da79184b23c2ee7a59faa51fe535c95b655138b60fd099eec7fffb8c073.py">Exact original</a></p></html>

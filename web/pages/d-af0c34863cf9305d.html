@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/tensor_frame_sol/cycle04_sharp/verify_seven_ray_cone.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/tensor_frame_sol/cycle04_sharp/verify_seven_ray_cone.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite-cone derivation and rational PSD certificates. No solver.&quot;&quot;&quot;
+from itertools import combinations
+from functools import reduce
+from math import gcd
+from pathlib import Path
+import json
+import sympy as s
+
+OUT=Path(__file__).resolve().parent
+L=[s.Matrix(v) for v in [(8,0,0),(2,6,0),(0,6,3),(0,0,12)]]
+e=[s.Matrix(v) for v in [(1,0,0),(0,1,0),(0,0,1)]]
+rays=set()
+cone_rays=[]
+for a in range(4):
+ normals=e+[L[a]-L[b] for b in range(4) if b!=a]
+ found=set()
+ for n,m in combinations(normals,2):
+  cross=n.cross(m)
+  if cross==s.zeros(3,1): continue
+  for v in [cross,-cross]:
+   if all(v.dot(k)&gt;=0 for k in normals):
+    ints=[int(q) for q in v]
+    common=reduce(gcd, [abs(q) for q in ints])
+    found.add(tuple(q//common for q in ints))
+ cone_rays.append(sorted(found)); rays.update(found)
+expected={(1,0,0),(0,1,0),(0,0,1),(1,1,0),(3,0,2),(0,3,2),(3,3,2)}
+assert rays==expected,(rays,expected)
+I=s.eye(3)
+k3=lambda A,B,C:s.kronecker_product(A,B,C)
+WX=s.zeros(27); WY=s.zeros(27)
+for i,j in combinations(range(3),2):
+ X=s.zeros(3); X[i,j]=X[j,i]=1
+ Y=s.zeros(3); Y[i,j]=s.I; Y[j,i]=-s.I
+ WX+=k3(X.T,X,I)+k3(X.T,I,X)
+ WY+=k3(Y.T,Y,I)+k3(Y.T,I,Y)
+WD=s.diag(*[3*(int(a==b)+int(a==c))-2
+              for a in range(3) for b in range(3) for c in range(3)])
+def exact_psd(M):
+ M=[list(row) for row in M.tolist()]
+ positive=[]; zero=[]
+ for k in range(27):
+  p=M[k][k]
+  assert p.is_Rational and p&gt;=0,(k,p)
+  if p==0:
+   assert all(M[i][k]==M[k][i]==0 for i in range(k+1,27)),k
+   zero.append(k); continue
+  positive.append(str(p))
+  for i in range(k+1,27):
+   for j in range(k+1,27):
+    M[i][j]-=M[i][k]*M[k][j]/p
+ return {&#x27;positive_pivots&#x27;:positive,&#x27;zero_pivot_indices&#x27;:zero}
+cert=[]
+for ray in sorted(rays):
+ x,y,z=map(s.Rational,ray)
+ V=2*(x+y+z)
+ k=max(s.Rational(4,3)*x,x/3+y,y+z/2,2*z)
+ W=x*WX+y*WY+z*WD
+ upper=V+k
+ pivots=exact_psd(upper*s.eye(27)-W)
+ cert.append({&#x27;ray&#x27;:ray,&#x27;V&#x27;:str(V),&#x27;k&#x27;:str(k),&#x27;star_upper_bound&#x27;:str(upper),**pivots})
+report={&#x27;status&#x27;:&#x27;EXACT_PASS&#x27;,&#x27;unique_ray_count&#x27;:len(rays),
+        &#x27;ray_list&#x27;:sorted(rays),&#x27;cones&#x27;:cone_rays,&#x27;ray_psd_certificates&#x27;:cert,
+        &#x27;scope&#x27;:&#x27;Seven cone generators exhaust all nonnegative sector weights. Rational LDL proves W &lt;= (V+k) I on each generator, hence all weights by conic linearity inside each support cone. A full-domain common-map conclusion additionally requires the channel itself to be signed-permutation covariant.&#x27;}
+(OUT/&#x27;seven_ray_cone_replay.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+print(&#x27;EXACT_PASS: seven distinct rays, all rational PSD certificates.&#x27;)
+print(&#x27;Ray list:&#x27;,sorted(rays))
+</pre><p><a href="../assets/881653babb1863dfe8f032b84f7f8cef80ec125f16d8d5f7f054e2c5135a80a6.py">Exact original</a></p></html>

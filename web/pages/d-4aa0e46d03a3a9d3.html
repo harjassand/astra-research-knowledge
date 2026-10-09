@@ -1,0 +1,145 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/foundational_transfer_sol/cycle04_transfers/orthogonality_diagnostics.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/foundational_transfer_sol/cycle04_transfers/orthogonality_diagnostics.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite checks of the exposed finite-field baseline, not a proof verifier.&quot;&quot;&quot;
+from itertools import combinations, product
+from fractions import Fraction as F
+from math import comb, factorial, log2
+from pathlib import Path
+from collections import defaultdict
+import hashlib
+import json
+
+BASE = Path(__file__).resolve().parent
+ROOT = BASE.parents[3]
+ORIGIN = ROOT/&#x27;work/agents/complexity_proof_recon/cycle04_memory_blind/INDEPENDENT_BASELINE.txt&#x27;
+EXPECTED = &#x27;342987893f1a0101d905afa6f35b0a3de067cfae431a208495dd034f6780ff55&#x27;
+
+
+def dot(x, y):
+    return (x &amp; y).bit_count() &amp; 1
+
+
+def binary_rank(vectors):
+    pivots = {}
+    for v in vectors:
+        while v:
+            p = v.bit_length()-1
+            if p in pivots:
+                v ^= pivots[p]
+            else:
+                pivots[p] = v
+                break
+    return len(pivots)
+
+
+def subspaces(m, r):
+    for piv in combinations(range(m), r):
+        slots = [(i,j) for i,p in enumerate(piv) for j in range(p+1,m) if j not in piv]
+        for bits in product((0,1), repeat=len(slots)):
+            basis = [1 &lt;&lt; p for p in piv]
+            for bit, (i,j) in zip(bits,slots):
+                if bit:
+                    basis[i] |= 1 &lt;&lt; j
+            space = {0}
+            for v in basis:
+                space |= {x ^ v for x in tuple(space)}
+            assert len(space) == 2**r
+            yield basis, space-{0}
+
+
+def h2(p):
+    p = float(p)
+    return 0.0 if p in (0,1) else -p*log2(p)-(1-p)*log2(1-p)
+
+
+def entropy(p):
+    return -sum(float(v)*log2(float(v)) for v in p.values() if v)
+
+
+def mix_uniform(support, whole, noise):
+    return {x:(1-noise)*(F(1,len(support)) if x in support else 0)+noise*F(1,len(whole))
+            for x in whole}
+
+
+def check(m):
+    v = range(1, 2**m)
+    n, d, c = 2**m-1, 2**(m-1)-1, 2**(m-2)-1
+    orth = {x:{y for y in v if dot(x,y)==0} for x in v}
+    assert all(len(s)==d for s in orth.values())
+    assert all((x in orth[y])==(y in orth[x]) for x in v for y in v)
+    assert any(x in orth[x] for x in v)
+    for x in v:
+        for y in v:
+            assert len(orth[x] &amp; orth[y]) == (d if x == y else c)
+    gamma = F(2**(m-2),d*d)
+    assert gamma == F(n+1,(n-1)**2) &lt;= F(2,9)
+    assert F(c,d*d) == (1-gamma)/n
+    # Uniform subspace witness, including all self-orthogonal diagonal pairs.
+    r = m//2
+    b_m = (2**r-1)*(2**(m-r)-1)
+    counts = defaultdict(int)
+    total_spaces = 0
+    first_basis = None
+    for basis, space in subspaces(m,r):
+        first_basis = first_basis or basis
+        perp = {y for y in v if all(dot(u,y)==0 for u in basis)}
+        assert len(space)*len(perp)==b_m
+        for x,y in product(space,perp):
+            counts[(x,y)] += 1
+        total_spaces += 1
+    target_pairs = {(x,y) for x in v for y in orth[x]}
+    assert counts.keys() == target_pairs
+    assert len(set(counts.values())) == 1
+    incidence = next(iter(counts.values()))
+    assert total_spaces*b_m == n*d*incidence
+    # Every support-size split is bounded by the balanced split.
+    for rr in range(1,m):
+        assert (2**rr-1)*(2**(m-rr)-1) &lt;= b_m
+    assert n*d &gt;= 2**(2*m-2)
+    # Exercise robust component inequality for low and high forbidden mass.
+    support_x = {0}
+    for z in first_basis:
+        support_x |= {x^z for x in tuple(support_x)}
+    support_x -= {0}
+    support_y = {y for y in v if all(dot(x,y)==0 for x in first_basis)}
+    eta = F(1,20)
+    tests = 0
+    for nx,ny in product((F(0),F(1,100),F(1,25),F(1,5),F(1)), repeat=2):
+        a = mix_uniform(support_x,v,nx)
+        b = mix_uniform(support_y,v,ny)
+        parity_error = {y:sum(a[x] for x in v if dot(x,y)) for y in v}
+        e = sum(b[y]*parity_error[y] for y in v)
+        g = {y for y in v if parity_error[y] &lt;= eta}
+        tau = sum(b[y] for y in v if y not in g)
+        rr = binary_rank(g)
+        assert tau &lt;= e/eta
+        assert entropy(a) &lt;= m-rr+rr*h2(eta)+1e-10
+        assert entropy(b) &lt;= rr+float(tau)*m+h2(tau)+1e-10
+        rhs = (1+h2(eta)+(1-h2(eta))*float(tau))*m+(1-h2(eta))*h2(tau)
+        assert entropy(a)+entropy(b) &lt;= rhs+1e-10
+        tests += 1
+    return {&#x27;m&#x27;:m,&#x27;N&#x27;:n,&#x27;d&#x27;:d,&#x27;B_m&#x27;:b_m,&#x27;subspaces&#x27;:total_spaces,
+            &#x27;incidence_per_orthogonal_pair&#x27;:incidence,&#x27;exact_capacity&#x27;:f&#x27;ln({n}/{d})&#x27;,
+            &#x27;exact_Wyner&#x27;:f&#x27;ln({n*d}/{b_m})&#x27;,&#x27;component_tests&#x27;:tests,
+            &#x27;diagonal_pairs_included&#x27;:True,&#x27;A_squared_identity&#x27;:True,
+            &#x27;two_step_TV_contraction&#x27;:str(gamma)}
+
+
+def main():
+    assert hashlib.sha256(ORIGIN.read_bytes()).hexdigest() == EXPECTED
+    assert sum(F(3**k,factorial(k)) for k in range(9)) &gt; 20
+    assert sum(F(5**k,factorial(k)) for k in range(7)) &gt; 100
+    assert h2(F(1,20)) &lt; .3 and h2(F(1,100)) &lt; .1
+    alpha = 1-.02-h2(.05)-(1-h2(.05))*.2
+    additive = 2+h2(.01)+(1-h2(.05))*h2(.2)
+    assert alpha &gt; .54 and additive &lt; 3.1
+    output = {&#x27;status&#x27;:&#x27;EXPOSED_FINITE_DIAGNOSTICS_PASS&#x27;,&#x27;origin_sha256&#x27;:EXPECTED,
+              &#x27;scope&#x27;:&#x27;Exact incidence counts and scalar normalization; floating entropy spot checks; not a general or formal verifier.&#x27;,
+              &#x27;alpha_at_delta_point01&#x27;:alpha,&#x27;additive_at_delta_point01&#x27;:additive,
+              &#x27;examples&#x27;:[check(m) for m in range(3,7)]}
+    (BASE/&#x27;orthogonality_diagnostics.json&#x27;).write_text(json.dumps(output,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:output[&#x27;status&#x27;],&#x27;m&#x27;:[3,4,5,6],
+                      &#x27;alpha&#x27;:alpha,&#x27;additive&#x27;:additive,&#x27;general_quantifiers_verified&#x27;:False}))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/2435456899e5a6c43130353e99b2723e439661115bad9d5299a92ede0d1c54bf.py">Exact original</a></p></html>

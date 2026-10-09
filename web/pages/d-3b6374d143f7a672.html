@@ -1,0 +1,472 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/effective-broadcasting-compiler/proof/verify_effective_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/effective-broadcasting-compiler/proof/verify_effective_exact.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact mechanism replay, not a generic quantum-channel compiler.
+
+Uses one depth of a rational qubit copy/cloning mixture. Every mathematical
+comparison below is exact over rational complex entries; floats are display
+only. A seeded pseudorandom source makes the sampler diagnostic reproducible.
+The theorem&#x27;s Las Vegas algorithm instead assumes independent unbiased bits.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import hashlib
+import itertools
+import json
+import math
+from pathlib import Path
+import random
+import time
+
+import sympy as sp
+
+
+HERE = Path(__file__).resolve().parent
+R = sp.Rational
+I = sp.I
+d = 2
+ID = sp.eye(d)
+PAULI = [ID, sp.Matrix([[0, 1], [1, 0]]),
+         sp.Matrix([[0, -I], [I, 0]]), sp.diag(1, -1)]
+DELTA = R(1, 100)
+# Optional warm start: the final exact certificate, not concentration, decides.
+WARM_T = 40
+WARM_EPSILON = R(1, 20)
+SEED = 20261009
+
+
+def clean(matrix):
+    return matrix.applyfunc(sp.expand)
+
+
+def tr(matrix):
+    return sp.expand(sp.trace(matrix))
+
+
+def psd_factors(matrix):
+    &quot;&quot;&quot;Exact pivoted LDL rank-one factors, including zero-pivot decisions.&quot;&quot;&quot;
+    residual = clean(matrix)
+    assert residual == residual.H
+    factors = []
+    pivots = []
+    while residual != sp.zeros(residual.rows):
+        diagonal = [residual[i, i] for i in range(residual.rows)]
+        if any(x &lt; 0 for x in diagonal):
+            return None
+        positive = [i for i, x in enumerate(diagonal) if x &gt; 0]
+        if not positive:
+            return None  # zero diagonals with a nonzero row cannot be PSD
+        pivot = positive[0]
+        q = residual[pivot, pivot]
+        v = residual[:, pivot] / q
+        factors.append((q, v))
+        pivots.append(q)
+        residual = clean(residual - q * v * v.H)
+    return factors, pivots
+
+
+def require_psd(matrix, label):
+    result = psd_factors(matrix)
+    assert result is not None, label
+    factors, pivots = result
+    rebuilt = sp.zeros(matrix.rows)
+    for q, v in factors:
+        rebuilt += q * v * v.H
+    assert clean(rebuilt) == matrix, label + &quot; reconstruction&quot;
+    return pivots
+
+
+def adjoint(branch, output_effect):
+    q, w = branch
+    return clean(q * w.H * output_effect * w)
+
+
+def channel(branches, state):
+    result = sp.zeros(4)
+    for q, w in branches:
+        result += q * w * state * w.H
+    return clean(result)
+
+
+def partial_trace_left(state):
+    return sp.Matrix(2, 2,
+                     lambda i, j: sum(state[2*i+k, 2*j+k] for k in range(2)))
+
+
+def partial_trace_right(state):
+    return sp.Matrix(2, 2,
+                     lambda i, j: sum(state[2*k+i, 2*k+j] for k in range(2)))
+
+
+def pauli_vector(posterior):
+    return sp.Matrix([tr(e * posterior) for e in PAULI])
+
+
+def canonical_matrix(effects):
+    result = sp.zeros(4)
+    for effect in effects:
+        mass = tr(effect)
+        if mass == 0:
+            continue
+        posterior = effect / mass
+        a = pauli_vector(posterior)
+        result += (mass / d) * a * a.T
+    return clean(result)
+
+
+def rational_json(x):
+    x = sp.expand(x)
+    real, imag = x.as_real_imag()
+    return {&quot;real&quot;: str(real), &quot;imag&quot;: str(imag)}
+
+
+def matrix_json(matrix):
+    return [[rational_json(matrix[i, j]) for j in range(matrix.cols)]
+            for i in range(matrix.rows)]
+
+
+def input_height(matrix):
+    bit_height = 0
+    for z in matrix:
+        for x in z.as_real_imag():
+            numerator, denominator = sp.fraction(x)
+            bit_height = max(bit_height, abs(int(numerator)).bit_length(),
+                             int(denominator).bit_length())
+    return bit_height
+
+
+def scalar_depth_certificate(r, delta_tree):
+    &quot;&quot;&quot;Exact Sturm certificate for a uniform, spectrum-independent depth.&quot;&quot;&quot;
+    lam = sp.Symbol(&quot;lambda&quot;)
+    lo = (3 + delta_tree) / 4
+    m = 0
+    while R(r) * R(8, 9)**m &gt; delta_tree:
+        m += 1
+    safe_m = m
+    attempts = []
+    for m in range(safe_m + 1):
+        polynomial = sp.Poly(
+            (2*(1-lam)**2+delta_tree)*(2*lam**2)**m
+            -(4*lam-3-delta_tree)*(r*(2*lam**2-1)-1), lam)
+        endpoints_positive = polynomial.eval(lo) &gt; 0 and polynomial.eval(1) &gt; 0
+        roots = int(polynomial.count_roots(lo, 1))
+        attempts.append({&quot;depth&quot;: m, &quot;roots_on_interval&quot;: roots,
+                         &quot;positive_endpoints&quot;: bool(endpoints_positive)})
+        if endpoints_positive and roots == 0:
+            return {&quot;r&quot;: r, &quot;delta_tree&quot;: str(delta_tree),
+                    &quot;certified_depth&quot;: m, &quot;safe_depth&quot;: safe_m,
+                    &quot;leaves&quot;: 2**m, &quot;safe_leaves&quot;: 2**safe_m,
+                    &quot;interval&quot;: [str(lo), &quot;1&quot;],
+                    &quot;polynomial&quot;: str(polynomial.as_expr()),
+                    &quot;attempts&quot;: attempts}
+    raise AssertionError(&quot;safe depth failed exact uniform scalar certificate&quot;)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--output&quot;, type=Path, default=None,
+                        help=&quot;Optional evidence JSON destination; default does not edit frozen evidence.&quot;)
+    args = parser.parse_args()
+    started = time.monotonic()
+    checks = []
+
+    def checked(label, condition=True):
+        assert condition, label
+        checks.append(label)
+
+    sym = sp.Matrix([[1, 0, 0, 0], [0, R(1, 2), R(1, 2), 0],
+                     [0, R(1, 2), R(1, 2), 0], [0, 0, 0, 1]])
+    hand_branches = []
+    for j in range(2):
+        copied = sp.zeros(4, 2)
+        copied[3*j, j] = 1
+        hand_branches.append((R(9, 10), copied))
+        embedded = sp.zeros(4, 2)
+        for k in range(2):
+            embedded[2*k+j, k] = 1
+        hand_branches.append((R(1, 15), sym * embedded))
+
+    choi = sp.zeros(8)
+    for q, w in hand_branches:
+        v = sp.Matrix([w[alpha, i] for i in range(2) for alpha in range(4)])
+        choi += q * v * v.H
+    choi = clean(choi)
+    factors, _ = psd_factors(choi)
+    branches = [(q, sp.Matrix(4, 2, lambda alpha, i: v[4*i+alpha]))
+                for q, v in factors]
+    checked(&quot;rational Choi PSD and LDL reconstruction&quot;,
+            clean(sum((q*v*v.H for q, v in factors), sp.zeros(8))) == choi)
+    checked(&quot;LDL Kraus orientation and TP&quot;,
+            clean(sum((q*w.H*w for q, w in branches), sp.zeros(2))) == ID)
+    for e in PAULI:
+        checked(&quot;LDL and supplied broadcaster agree on &quot; + str(PAULI.index(e)),
+                channel(branches, e) == channel(hand_branches, e))
+
+    phi_matrix = sp.zeros(4)
+    for j, e in enumerate(PAULI):
+        output = channel(branches, e)
+        left, right = partial_trace_left(output), partial_trace_right(output)
+        checked(&quot;both marginals agree on Pauli &quot; + str(j), left == right)
+        for i, f in enumerate(PAULI):
+            phi_matrix[i, j] = tr(f * left) / 2
+    expected_phi = sp.diag(1, R(1, 15), R(1, 15), R(29, 30))
+    checked(&quot;marginal bistochastic HS-self-adjoint and exact eigenvalues&quot;,
+            phi_matrix == expected_phi)
+
+    vectors = [sp.Matrix([1, 0]), sp.Matrix([0, 1]), sp.Matrix([1, 1]),
+               sp.Matrix([1, -1]), sp.Matrix([1, I]), sp.Matrix([1, -I])]
+    leaves = [v*v.H / (3*(v.H*v)[0]) for v in vectors]
+    checked(&quot;fixed rational rank-one leaf sums to I&quot;, sum(leaves, sp.zeros(2)) == ID)
+    leaf_canonical = canonical_matrix(leaves)
+    checked(&quot;fixed IC leaf spectrum&quot;, leaf_canonical == sp.diag(1, R(1, 3), R(1, 3), R(1, 3)))
+    leaf_target = (3 + DELTA)*sp.eye(4) - 4*phi_matrix + leaf_canonical
+    checked(&quot;leaf comparator fails target on nontrivial slow Z mode&quot;,
+            leaf_target[3, 3] &lt; 0)
+
+    records = {}
+    for j, zl, zr in itertools.product(range(len(branches)), range(6), range(6)):
+        effect = adjoint(branches[j], sp.kronecker_product(leaves[zl], leaves[zr]))
+        records[(j, zl, zr)] = effect
+        checked(&quot;fine record rank &lt;=1: &quot; + str((j, zl, zr)), effect.det() == 0)
+    checked(&quot;fine effects sum exactly to I&quot;, sum(records.values(), sp.zeros(2)) == ID)
+    fine_cov = canonical_matrix(records.values())
+    checked(&quot;fine common comparator fixes identity&quot;, fine_cov[:, 0] == sp.Matrix([1, 0, 0, 0]))
+    checked(&quot;fine common comparator full C4 certificate&quot;,
+            psd_factors((3 + DELTA)*sp.eye(4)-4*phi_matrix+fine_cov) is not None)
+
+    coarse_effects = [sum((records[(j, zl, zr)] for j in range(len(branches))),
+                          sp.zeros(2)) for zl in range(6) for zr in range(6)]
+    coarse_cov = canonical_matrix(coarse_effects)
+    coarse_target = (3+DELTA)*sp.eye(4)-4*phi_matrix+coarse_cov
+    checked(&quot;one-depth COARSE comparator also fails on slow Z mode&quot;,
+            coarse_target[3, 3] &lt; 0)
+    fine_minus_coarse_pivots = require_psd(fine_cov-coarse_cov, &quot;refinement full Schur order&quot;)
+    checked(&quot;fine &gt;= coarse canonical channel on FULL Hermitian space&quot;)
+
+    contraction_cache = {}
+
+    def partial_effect(h):
+        if h not in contraction_cache:
+            j, zl, zr = h
+            left = ID if zl is None else leaves[zl]
+            right = ID if zr is None else leaves[zr]
+            output_effect = sp.kronecker_product(left, right)
+            active = branches if j is None else [branches[j]]
+            contraction_cache[h] = clean(sum(
+                (adjoint(branch, output_effect) for branch in active), sp.zeros(2)))
+        return contraction_cache[h]
+
+    def probability(h):
+        return tr(partial_effect(h)) / 2
+
+    domains = [range(len(branches)), range(6), range(6)]
+    partial_count = 0
+    for h in itertools.product(*[[None, *domain] for domain in domains]):
+        enumerated = sp.zeros(2)
+        for w, effect in records.items():
+            if all(v is None or v == w[i] for i, v in enumerate(h)):
+                enumerated += effect
+        checked(&quot;partial contraction equals exact enumeration: &quot; + str(h),
+                partial_effect(h) == clean(enumerated))
+        require_psd(partial_effect(h), &quot;partial effect&quot;)
+        require_psd(ID-partial_effect(h), &quot;partial complement&quot;)
+        partial_count += 1
+        for i, domain in enumerate(domains):
+            if h[i] is None:
+                children = []
+                for v in domain:
+                    child = list(h)
+                    child[i] = v
+                    children.append(probability(tuple(child)))
+                checked(&quot;conditional integer normalization: &quot; + str((h, i)),
+                        sum(children) == probability(h))
+
+    # Specifically exhibits correlated siblings, so independent sampling is wrong.
+    p_both = probability((None, 0, 0))
+    p_left = probability((None, 0, None))
+    p_right = probability((None, None, 0))
+    checked(&quot;sibling outcomes are NOT independent&quot;, p_both != p_left*p_right)
+
+    # Verify every positive complete-record chain, with a deliberately noncausal order.
+    order = [1, 0, 2]  # left leaf, internal Kraus, right leaf
+    for w, effect in records.items():
+        if tr(effect) == 0:
+            continue
+        h = [None, None, None]
+        product_probability = R(1)
+        for variable in order:
+            old_probability = probability(tuple(h))
+            h[variable] = w[variable]
+            product_probability *= probability(tuple(h)) / old_probability
+        checked(&quot;exact sampled chain law: &quot; + str(w), product_probability == tr(effect)/2)
+
+    # First moment and sibling second moment for the slow mode.
+    lam_z = R(29, 30)
+    c_zz = tr(channel(branches, ID/2) * sp.kronecker_product(PAULI[3], PAULI[3]))
+    cross = sp.zeros(4, 1)
+    moment = R(0)
+    mean = R(0)
+    for (j, zl, zr), effect in records.items():
+        mass = tr(effect)
+        if mass == 0:
+            continue
+        a = pauli_vector(effect/mass)
+        az_left = tr((3*leaves[zl])*PAULI[3])
+        az_right = tr((3*leaves[zr])*PAULI[3])
+        estimator = 3*(az_left+az_right)/(2*lam_z)
+        p = mass/2
+        mean += p*estimator
+        moment += p*estimator**2
+        cross += p*a*estimator
+    checked(&quot;unbiased coarse estimator retained after fine refinement&quot;,
+            mean == 0 and cross == sp.Matrix([0, 0, 0, 1]))
+    checked(&quot;correlated exact sibling moment recursion&quot;,
+            moment == (3+c_zz)/(2*lam_z**2) and c_zz == R(14, 15))
+    full_moment = fine_cov.row_join(cross).col_join(cross.T.row_join(sp.Matrix([[moment]])))
+    require_psd(full_moment, &quot;full posterior-estimator crossmoment&quot;)
+    require_psd(fine_cov-cross*cross.T/moment, &quot;full Schur comparator&quot;)
+    checked(&quot;FULL crossmoment PSD and common-channel Schur complement&quot;)
+
+    rng = random.Random(SEED)
+    random_bits = 0
+    rejections = 0
+
+    def exact_integer_below(n):
+        nonlocal random_bits, rejections
+        assert n &gt; 0
+        bits = (n-1).bit_length()
+        while True:
+            random_bits += bits
+            value = rng.getrandbits(bits)
+            if value &lt; n:
+                return value
+            rejections += 1
+
+    def sample_record():
+        h = [None, None, None]
+        for variable in order:
+            weights = []
+            for value in domains[variable]:
+                child = h.copy()
+                child[variable] = value
+                weights.append(probability(tuple(child)))
+            denominator = math.lcm(*(int(sp.denom(x)) for x in weights))
+            integers = [int(x*denominator) for x in weights]
+            total = sum(integers)
+            assert R(total, denominator) == probability(tuple(h))
+            draw = exact_integer_below(total)
+            accumulated = 0
+            for value, weight in enumerate(integers):
+                accumulated += weight
+                if draw &lt; accumulated:
+                    h[variable] = value
+                    break
+            else:
+                raise AssertionError(&quot;categorical integer sample failed&quot;)
+        return tuple(h)
+
+    rejected_first = 0
+    rejected_second = 0
+    for batch_number in range(1, 513):
+        sampled_records = [sample_record() for _ in range(WARM_T)]
+        sampled_posteriors = [records[w]/tr(records[w]) for w in sampled_records]
+        s_matrix = clean((R(2, WARM_T))*sum(sampled_posteriors, sp.zeros(2)))
+        residual = clean(ID-s_matrix/(1+WARM_EPSILON))
+        residual_decomposition = psd_factors(residual)
+        if residual_decomposition is None:
+            rejected_first += 1
+            continue
+        effects = [clean(R(2, WARM_T)/(1+WARM_EPSILON)*pi)
+                   for pi in sampled_posteriors]
+        residual_factors, _ = residual_decomposition
+        effects += [clean(q*v*v.H) for q, v in residual_factors]
+        candidate = canonical_matrix(effects)
+        qform = clean((3+DELTA)*sp.eye(4)-4*phi_matrix+candidate)
+        q_factors = psd_factors(qform)
+        if q_factors is None:
+            rejected_second += 1
+            continue
+        break
+    else:
+        raise AssertionError(&quot;bounded warm-start diagnostic found no certified batch&quot;)
+
+    checked(&quot;sampled/residual POVM sums exactly to I&quot;, sum(effects, sp.zeros(2)) == ID)
+    for effect in effects:
+        checked(&quot;returned effect rank-one or zero&quot;, effect.det() == 0)
+        require_psd(effect, &quot;returned effect PSD&quot;)
+    checked(&quot;returned canonical channel fixes identity&quot;, candidate[:, 0] == sp.Matrix([1, 0, 0, 0]))
+    checked(&quot;returned channel is full HS-self-adjoint&quot;, candidate == candidate.T)
+    require_psd(candidate, &quot;returned canonical HS PSD&quot;)
+    require_psd(sp.eye(4)-candidate, &quot;returned canonical HS contraction&quot;)
+    final_pivots = require_psd(qform, &quot;FULL exact target certificate&quot;)
+    checked(&quot;returned FULL C4+delta certificate&quot;)
+
+    # Preserve a concrete negative control: direct empirical covariance is not TP.
+    unbalanced = [vectors[0]*vectors[0].H]*7 + [vectors[1]*vectors[1].H]*3
+    bad_effects = [R(2, 10)*pi for pi in unbalanced]
+    bad_mean = sum(bad_effects, sp.zeros(2))
+    checked(&quot;direct empirical candidate is NOT unital/TP&quot;, bad_mean != ID)
+    checked(&quot;unbalanced sample rejected by first structural test&quot;,
+            psd_factors((1+WARM_EPSILON)*ID-bad_mean) is None)
+
+    # These are uniform scalar certificates, not tests on this one Phi spectrum.
+    scalar_certificates = [scalar_depth_certificate(r, DELTA/8) for r in [3, 5]]
+    checked(&quot;two exact Sturm uniform depth certificates&quot;)
+
+    atoms = []
+    for effect in effects:
+        mass = tr(effect)
+        if mass:
+            atoms.append({&quot;effect&quot;: matrix_json(effect),
+                          &quot;posterior&quot;: matrix_json(effect/mass),
+                          &quot;mass&quot;: str(mass)})
+    output = {
+        &quot;status&quot;: &quot;EXACT_FINITE_DIAGNOSTICS_PASS&quot;,
+        &quot;scope&quot;: &quot;one-depth rational qubit control and two uniform scalar depth certificates; not a generic compiler&quot;,
+        &quot;matrix_input&quot;: &quot;B=(9/10) computational dephase-and-copy+(1/10) universal 1-&gt;2 cloner&quot;,
+        &quot;choi&quot;: matrix_json(choi), &quot;choi_max_coefficient_bits&quot;: input_height(choi),
+        &quot;phi_pauli_matrix&quot;: matrix_json(phi_matrix),
+        &quot;fine_kraus_count&quot;: len(branches), &quot;raw_fine_record_count&quot;: len(records),
+        &quot;nonzero_fine_record_count&quot;: sum(bool(tr(m)&gt;0) for m in records.values()),
+        &quot;partial_events_checked&quot;: partial_count,
+        &quot;conditional_variable_order&quot;: order,
+        &quot;leaf_Z_certificate_slack&quot;: str(leaf_target[3, 3]),
+        &quot;coarse_Z_certificate_slack&quot;: str(coarse_target[3, 3]),
+        &quot;fine_canonical_pauli_matrix&quot;: matrix_json(fine_cov),
+        &quot;coarse_canonical_pauli_matrix&quot;: matrix_json(coarse_cov),
+        &quot;fine_minus_coarse_PSD_pivots&quot;: [str(x) for x in fine_minus_coarse_pivots],
+        &quot;sibling_joint_probability&quot;: str(p_both),
+        &quot;sibling_product_probability&quot;: str(p_left*p_right),
+        &quot;sibling_correlation_C_ZZ&quot;: str(c_zz),
+        &quot;estimator_second_moment&quot;: str(moment),
+        &quot;warm_delta&quot;: str(DELTA), &quot;warm_epsilon&quot;: str(WARM_EPSILON),
+        &quot;warm_T&quot;: WARM_T, &quot;seed&quot;: SEED, &quot;accepted_batch&quot;: batch_number,
+        &quot;rejected_first_test&quot;: rejected_first, &quot;rejected_second_test&quot;: rejected_second,
+        &quot;seeded_random_bits&quot;: random_bits, &quot;integer_rejections&quot;: rejections,
+        &quot;accepted_fine_records&quot;: [list(w) for w in sampled_records],
+        &quot;returned_support&quot;: len(atoms), &quot;returned_atoms&quot;: atoms,
+        &quot;returned_pauli_matrix&quot;: matrix_json(candidate),
+        &quot;full_certificate_pauli_matrix&quot;: matrix_json(qform),
+        &quot;full_certificate_PSD_pivots&quot;: [str(x) for x in final_pivots],
+        &quot;returned_max_coefficient_bits&quot;: max(input_height(m) for m in effects),
+        &quot;scalar_depth_certificates&quot;: scalar_certificates,
+        &quot;exact_assertions&quot;: len(checks), &quot;checks&quot;: checks,
+        &quot;elapsed_seconds&quot;: round(time.monotonic()-started, 6),
+        &quot;source_sha256&quot;: hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    }
+    target = args.output
+    if target is not None:
+        target.write_text(json.dumps(output, indent=2, sort_keys=True)+&quot;\n&quot;)
+    print(json.dumps({k: output[k] for k in [
+        &quot;status&quot;, &quot;scope&quot;, &quot;partial_events_checked&quot;, &quot;exact_assertions&quot;,
+        &quot;leaf_Z_certificate_slack&quot;, &quot;fine_kraus_count&quot;, &quot;accepted_batch&quot;,
+        &quot;rejected_first_test&quot;, &quot;rejected_second_test&quot;, &quot;returned_support&quot;,
+        &quot;returned_max_coefficient_bits&quot;, &quot;seeded_random_bits&quot;, &quot;elapsed_seconds&quot;]}, indent=2))
+    print(&quot;Exact scalar uniform depths:&quot;, [(c[&quot;r&quot;], c[&quot;certified_depth&quot;], c[&quot;safe_depth&quot;])
+                                           for c in scalar_certificates])
+    print(&quot;Full certificate pivots positive:&quot;, all(x&gt;0 for x in final_pivots))
+    print(&quot;Evidence:&quot;, target if target is not None else &quot;not saved; supplied frozen evidence unchanged&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/caefe22083ef6f5c5efced1b94a83c179fc851a58a27cbd43bb82bfdaecd893f.py">Exact original</a></p></html>

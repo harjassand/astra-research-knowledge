@@ -1,0 +1,134 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/stationary-regularity-and-raw-classicality/petz-origin/check_fixed_qubit_stationary_margin_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/stationary-regularity-and-raw-classicality/petz-origin/check_fixed_qubit_stationary_margin_exact.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;One exact K=4 identity replay; no scan. Requires SymPy, writes only own JSON.&quot;&quot;&quot;
+from pathlib import Path
+import hashlib
+import json
+import time
+import sympy as sp
+
+t0 = time.perf_counter()
+checks = []
+
+def exact_zero(x):
+    if isinstance(x, sp.MatrixBase):
+        return all(sp.simplify(z) == 0 for z in x)
+    return sp.simplify(x) == 0
+
+def check(name, condition):
+    if not condition:
+        raise AssertionError(name)
+    checks.append(name)
+
+K = 4
+v = sp.Rational(1, K*K)
+c = sp.sqrt(v*(1-v))
+sigma = sp.diag(sp.Rational(3,4), sp.Rational(1,4))
+sigma_root = sp.diag(sp.sqrt(3)/2, sp.Rational(1,2))
+sigma_inverse_root = sigma_root.inv()
+tau = [sp.Matrix([[1-v/3,-c/3],[-c/3,v/3]]),
+       sp.Matrix([[v,c],[c,1-v]])]
+E = [sp.Matrix([[int(i==a and j==b) for j in range(2)]
+                 for i in range(2)]) for b in range(2) for a in range(2)]
+
+def phi(X):
+    return X[0,0]*tau[0]+X[1,1]*tau[1]
+
+def phi_star(X):
+    return sp.diag(sp.trace(tau[0]*X), sp.trace(tau[1]*X))
+
+def gamma(X):
+    return sigma_root*X*sigma_root
+
+def sharp(X):
+    return gamma(phi_star(sigma_inverse_root*X*sigma_inverse_root))
+
+def S(X):
+    return sharp(phi(X))
+
+def broadcaster(X):
+    return (X[0,0]*sp.kronecker_product(tau[0],tau[0])
+            +X[1,1]*sp.kronecker_product(tau[1],tau[1]))
+
+def partial_trace_second(X):
+    return sp.Matrix(2,2,lambda i,j: sum(X[2*i+k,2*j+k] for k in range(2)))
+
+def partial_trace_first(X):
+    return sp.Matrix(2,2,lambda i,j: sum(X[2*k+i,2*k+j] for k in range(2)))
+
+def postprocessed_broadcaster(X):
+    return (X[0,0]*sp.kronecker_product(sharp(tau[0]),sharp(tau[0]))
+            +X[1,1]*sp.kronecker_product(sharp(tau[1]),sharp(tau[1])))
+
+def superoperator(fn):
+    return sp.Matrix.hstack(*[fn(x).vec() for x in E])
+
+for j in range(2):
+    check(f&#x27;tau_{j} trace one&#x27;, exact_zero(sp.trace(tau[j])-1))
+    check(f&#x27;tau_{j} positive diagonal&#x27;, all(tau[j][i,i]&gt;0 for i in range(2)))
+check(&#x27;tau_0 exact determinant&#x27;, exact_zero(tau[0].det()-2*v/9))
+check(&#x27;tau_1 rank-one positive&#x27;, exact_zero(tau[1].det()))
+check(&#x27;exact channel stationarity&#x27;, exact_zero(phi(sigma)-sigma))
+check(&#x27;Petz exact stationarity&#x27;, exact_zero(sharp(sigma)-sigma))
+check(&#x27;original genuinely non-KMS&#x27;, not exact_zero(phi(E[1])-sharp(E[1])))
+check(&#x27;Petz coherence formula&#x27;, exact_zero(sharp(E[2])-sp.diag(-c/sp.sqrt(3),c/sp.sqrt(3))))
+
+for n,X in enumerate(E):
+    check(f&#x27;full input {n}: Phi trace preservation&#x27;, exact_zero(sp.trace(phi(X))-sp.trace(X)))
+    check(f&#x27;full input {n}: Petz trace preservation&#x27;, exact_zero(sp.trace(sharp(X))-sp.trace(X)))
+    check(f&#x27;full input {n}: actual first marginal&#x27;, exact_zero(partial_trace_second(broadcaster(X))-phi(X)))
+    check(f&#x27;full input {n}: actual second marginal&#x27;, exact_zero(partial_trace_first(broadcaster(X))-phi(X)))
+    check(f&#x27;full input {n}: symmetrized first marginal&#x27;, exact_zero(partial_trace_second(postprocessed_broadcaster(X))-S(X)))
+    check(f&#x27;full input {n}: symmetrized second marginal&#x27;, exact_zero(partial_trace_first(postprocessed_broadcaster(X))-S(X)))
+    check(f&#x27;full input {n}: Petz output diagonal&#x27;, exact_zero(sharp(X)[0,1]) and exact_zero(sharp(X)[1,0]))
+
+P = superoperator(phi)
+Ps = superoperator(sharp)
+G = superoperator(gamma)
+Sm = superoperator(S)
+check(&#x27;Petz superoperator orientation&#x27;, exact_zero(Ps-G*P.conjugate().T*G.inv()))
+check(&#x27;S KMS self-adjoint&#x27;, exact_zero(Sm*G-G*Sm.conjugate().T))
+
+qvalues = [sp.Rational(3,8),sp.Rational(1,8)]
+rhos = [sp.Matrix([[1-q,(4*sp.Rational(1,3))*c*(q-sp.Rational(1,4))],
+                  [(4*sp.Rational(1,3))*c*(q-sp.Rational(1,4)),q]]) for q in qvalues]
+m = 1-4*v/3
+ell = m*m+8*c*c/(3*sp.sqrt(3))
+check(&#x27;S positive population eigenvalue&#x27;, ell&gt;0)
+check(&#x27;S population eigenvalue &lt;= one&#x27;, ell&lt;1)
+check(&#x27;exact local stationary margin&#x27;, exact_zero((rhos[0]+rhos[1])/2-sigma))
+check(&#x27;exact reference dimension two&#x27;, len(rhos)==2)
+
+for n,(q,rho) in enumerate(zip(qvalues,rhos)):
+    h = rho[0,1]
+    check(f&#x27;state {n} trace one&#x27;, exact_zero(sp.trace(rho)-1))
+    check(f&#x27;state {n} faithful&#x27;, rho[0,0]&gt;0 and rho.det()&gt;0)
+    check(f&#x27;state {n} uniform determinant lower bound&#x27;, rho.det()&gt;=sp.Rational(5,48))
+    check(f&#x27;state {n} preserved off-diagonal&#x27;, exact_zero(phi(rho)[0,1]-h))
+    check(f&#x27;state {n} exact forward diagonal change&#x27;, exact_zero((rho-phi(rho))[1,1]-4*v*(q-sp.Rational(1,4))/3))
+    check(f&#x27;state {n} exact forward half-error&#x27;, exact_zero((rho-phi(rho))[1,1]**2-(v/6)**2))
+    check(f&#x27;state {n} exact S tail probability&#x27;, exact_zero(S(rho)[1,1]-(sp.Rational(1,4)+ell*(q-sp.Rational(1,4)))))
+    delta = rho-S(rho)
+    check(f&#x27;state {n} exact residual squared&#x27;, exact_zero(delta[0,0]**2+delta[0,1]**2-((1-ell)**2/64+c**2/36)))
+    check(f&#x27;state {n} residual coherence lower bound&#x27;, exact_zero(delta[0,1]**2-c**2/36))
+
+check(&#x27;r lower bound &gt;= 1/(7K)&#x27;, c*c/36&gt;=sp.Rational(1,49*K*K))
+check(&#x27;exact forward b=1/(6K^2)&#x27;, v/6==sp.Rational(1,6*K*K))
+check(&#x27;uniform entropy budget analytic certificate&#x27;, sigma[0,0]+sigma[1,1]==1 and sigma[0,0]!=sigma[1,1])
+
+out = {
+    &#x27;status&#x27;:&#x27;PASS&#x27;, &#x27;K&#x27;:K, &#x27;checks&#x27;:len(checks), &#x27;check_names&#x27;:checks,
+    &#x27;v&#x27;:str(v), &#x27;c&#x27;:str(c), &#x27;sigma&#x27;:&#x27;diag(3/4,1/4)&#x27;,
+    &#x27;forward_half_error&#x27;:str(v/6),
+    &#x27;S_population_eigenvalue&#x27;:str(sp.simplify(ell)),
+    &#x27;Petz_half_error_squared&#x27;:str(sp.simplify((1-ell)**2/64+c*c/36)),
+    &#x27;Petz_half_error_lower_bound&#x27;:str(c/6),
+    &#x27;information_bound&#x27;:&#x27;I(R:B)&lt;=S(diag(3/4,1/4))&lt;ln 2; analytic entropy nonnegativity&#x27;,
+    &#x27;elapsed_seconds&#x27;:time.perf_counter()-t0,
+    &#x27;script_sha256&#x27;:hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    &#x27;sympy_version&#x27;:sp.__version__,
+    &#x27;invocation&#x27;:&#x27;python3 work/agents/tensor_frame_sol/cycle09_petz_symmetrization/check_fixed_qubit_stationary_margin_exact.py&#x27;,
+    &#x27;purpose&#x27;:&#x27;one exact matrix identity control; analytic all-K proof separate; no scan&#x27;
+}
+Path(__file__).with_name(&#x27;fixed_qubit_stationary_margin_exact_checks.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/2734f7674c37e0e2589498958595668f9bc1bc5b30dee03336d5c44cac8a1278.py">Exact original</a></p></html>

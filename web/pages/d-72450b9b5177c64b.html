@@ -1,0 +1,222 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/covariant_review_sol/cycle08_universal_gram_review/verify_exact_noncommuting.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/covariant_review_sol/cycle08_universal_gram_review/verify_exact_noncommuting.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;One prescribed exact noncommuting complex qutrit modular-Gram replay.
+
+No scans, floating point, numerical eigenvectors, or third-party packages.
+All quantities are Gaussian rationals. The physical gap is represented by
+its exact coefficients of ln(2) and the formal variable kappa.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+N = 3
+
+def z(a=0, b=0): return F(a), F(b)
+ZERO = z()
+def za(a,b): return a[0]+b[0],a[1]+b[1]
+def zn(a): return -a[0],-a[1]
+def zs(a,b): return za(a,zn(b))
+def zm(a,b): return a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]
+def zc(a): return a[0],-a[1]
+def zx(a,x): x=F(x); return a[0]*x,a[1]*x
+def abs2(a): return a[0]*a[0]+a[1]*a[1]
+def real(a):
+    assert a[1]==0
+    return a[0]
+def zsum(xs):
+    result=ZERO
+    for x in xs: result=za(result,x)
+    return result
+
+def zeros(): return [[ZERO for _ in range(N)] for _ in range(N)]
+def diag(xs): return [[z(xs[i]) if i==j else ZERO for j in range(N)] for i in range(N)]
+def eye(): return diag([1]*N)
+def adj(a): return [[zc(a[j][i]) for j in range(N)] for i in range(N)]
+def ma(a,b): return [[za(a[i][j],b[i][j]) for j in range(N)] for i in range(N)]
+def mn(a): return [[zn(x) for x in row] for row in a]
+def ms(a,b): return ma(a,mn(b))
+def mx(a,x): return [[zx(y,x) for y in row] for row in a]
+def mm(a,b): return [[zsum(zm(a[i][k],b[k][j]) for k in range(N)) for j in range(N)] for i in range(N)]
+def tr(a): return zsum(a[i][i] for i in range(N))
+def similar(a,ds): return [[zx(a[i][j],ds[i]/ds[j]) for j in range(N)] for i in range(N)]
+def transform(a,u): return mm(mm(adj(u),a),u)
+def pow2(n): return F(2)**n
+def ch(n): return (pow2(n)+pow2(-n))/2
+def sh(n): return (pow2(n)-pow2(-n))/2
+def th(n): return sh(n)/ch(n)
+
+def c_coeff(w,v):
+    assert (w+v)%2==0 and (v-w)%2==0
+    m=(w+v)//2
+    e=pow2((v-w)//2)
+    # c(w ln2,v ln2) = c_L ln2 + c_k kappa.
+    return e*(v-w-(w+v)*th(m)),1-e/ch(m)
+
+def kernel_coeff(a,b):
+    assert (a-b)%2==0 and (a+b)%2==0
+    h=(a-b)//2; m=(a+b)//2
+    return (a*sh(b)+b*sh(a))/(2*ch(h)),(ch(h)-ch(m))/(2*ch(h))
+
+def enc(a): return [str(a[0]),str(a[1])]
+def encm(a): return [[enc(x) for x in row] for row in a]
+
+def run():
+    assert __debug__ and sys.flags.optimize==0
+    # Raw stationary roots are 2^(2m), so their square roots and every
+    # modular half-frequency coefficient remain rational.
+    m=[0,1,3]; ds=[F(1),F(2),F(8)]
+    s=[x*x for x in ds]
+    n=[0,1,2]; roots=[pow2(x) for x in n]
+    p=[x*x for x in roots]; Z=sum(p); Zsigma=sum(x*x for x in s)
+    o=[[z(int(i==j)-F((i+1)*(j+1),7)) for j in range(N)] for i in range(N)]
+    phases=[[z(1),ZERO,ZERO],[ZERO,z(0,1),ZERO],[ZERO,ZERO,z(F(3,5),F(4,5))]]
+    u=mm(phases,o)
+    assert mm(adj(u),u)==eye() and mm(u,adj(u))==eye()
+    R=mm(mm(u,diag(p)),adj(u))
+    Q=mm(mm(u,diag(roots)),adj(u))
+    stationary=diag([x*x for x in s])
+    assert mm(Q,Q)==R and real(tr(R))==Z
+    assert ms(mm(R,diag(s)),mm(diag(s),R))!=zeros()
+    B=[[z(1),z(2,3),z(-1,2)],
+       [z(2,-3),z(-2),z(3,-1)],
+       [z(-1,-2),z(3,1),z(F(1,2))]]
+    assert adj(B)==B
+    BsB=mm(mm(B,diag(s)),B)
+    V=[[zx(BsB[i][j],F(2,s[i]+s[j])) for j in range(N)] for i in range(N)]
+    assert adj(V)==V
+    assert ms(mx(ma(mm(V,diag(s)),mm(diag(s),V)),F(1,2)),BsB)==zeros()
+    K=similar(B,ds); C=similar(V,ds)
+    assert ma(C,adj(C))==mx(mm(adj(K),K),2)
+    def state_gen(X): return ms(mx(ma(mm(C,X),mm(X,adj(C))),F(1,2)),mm(mm(K,X),adj(K)))
+    def heis_gen(X): return ms(mx(ma(mm(adj(C),X),mm(X,C)),F(1,2)),mm(mm(adj(K),X),K))
+    assert state_gen(stationary)==zeros() and heis_gen(eye())==zeros()
+    delta=state_gen(R)
+    assert adj(delta)==delta and tr(delta)==ZERO
+    Ucoef=diag([2*x for x in m])
+    logRcoef=mm(mm(u,diag([2*x for x in n])),adj(u))
+    J_L=real(tr(mm(delta,ms(logRcoef,mx(Ucoef,2)))))/Z
+    E=real(zs(tr(mm(V,R)),tr(mm(mm(mm(B,Q),B),Q))))/Z
+    assert J_L&gt;0 and E&gt;0
+
+    frequencies=sorted(set(2*(m[i]-m[j]) for i in range(N) for j in range(N)))
+    bw={w:[[B[i][j] if 2*(m[i]-m[j])==w else ZERO for j in range(N)] for i in range(N)] for w in frequencies}
+    total=zeros()
+    for w in frequencies:
+        assert adj(bw[w])==bw[-w]
+        assert ms(mm(Ucoef,bw[w]),mm(bw[w],Ucoef))==mx(bw[w],w)
+        total=ma(total,bw[w])
+    assert total==B
+    product_V=zeros(); product_C=zeros(); product_LU=zeros()
+    product_P_L=zeros(); product_P_k=zeros()
+    for w in frequencies:
+        for v in frequencies:
+            product=mm(bw[w],bw[v]); mid=(w+v)//2
+            e=pow2((v-w)//2)
+            product_V=ma(product_V,mx(product,e/ch(mid)))
+            product_C=ma(product_C,mx(product,pow2(v)/ch(mid)))
+            lu=e*(F(w-v,2)+F(w+v,2)*th(mid))
+            product_LU=ma(product_LU,mx(product,lu))
+            cl,ck=c_coeff(w,v)
+            product_P_L=ma(product_P_L,mx(product,cl))
+            product_P_k=ma(product_P_k,mx(product,ck))
+    assert product_V==V and product_C==C
+    assert product_LU==heis_gen(Ucoef)
+    P_L=mx(heis_gen(Ucoef),-2)
+    P_k=mn(ms(V,mm(B,B)))
+    assert product_P_L==P_L and product_P_k==P_k
+
+    amps={w:transform(bw[w],u) for w in frequencies}
+    assert any(amps[w][i][j][1]!=0 for w in frequencies for i in range(N) for j in range(N))
+    kt=transform(K,u); bt=transform(B,u)
+    rhs_L=[[ZERO for _ in range(N)] for _ in range(N)]
+    rhs_k=[[ZERO for _ in range(N)] for _ in range(N)]
+    for i in range(N):
+        for j in range(N):
+            beta=n[i]-n[j]
+            for w in frequencies:
+                for v in frequencies:
+                    a=beta-w; b=beta-v
+                    kl,kk=kernel_coeff(a,b)
+                    amplitude=zm(zc(amps[w][i][j]),amps[v][i][j])
+                    factor=F(2)*roots[i]*roots[j]/Z
+                    rhs_L[i][j]=za(rhs_L[i][j],zx(amplitude,factor*kl))
+                    rhs_k[i][j]=za(rhs_k[i][j],zx(amplitude,factor*kk))
+            real(rhs_L[i][j]); real(rhs_k[i][j])
+    total_L=real(zsum(rhs_L[i][j] for i in range(N) for j in range(N)))
+    total_k=real(zsum(rhs_k[i][j] for i in range(N) for j in range(N)))
+    assert total_L==J_L and total_k==-E
+
+    # Stress the diagonal reflection and unordered-pair factor independently
+    # of the total sum. Diagonal entropy/WY contributions vanish exactly.
+    for i in range(N):
+        actual_diagonal_L=ZERO; actual_diagonal_k=ZERO
+        for w in frequencies:
+            for v in frequencies:
+                cl,ck=c_coeff(w,v)
+                amplitude=zm(amps[w][i][i],amps[v][i][i])
+                actual_diagonal_L=za(actual_diagonal_L,zx(amplitude,p[i]*cl/Z))
+                actual_diagonal_k=za(actual_diagonal_k,zx(amplitude,p[i]*ck/Z))
+        assert rhs_L[i][i]==actual_diagonal_L
+        assert rhs_k[i][i]==actual_diagonal_k
+    assert any(rhs_L[i][i]!=ZERO or rhs_k[i][i]!=ZERO for i in range(N))
+    for i in range(N):
+        for j in range(i+1,N):
+            beta=n[i]-n[j]
+            pair_L=z(F(2)*beta*(p[i]*abs2(kt[j][i])-p[j]*abs2(kt[i][j]))/Z)
+            pair_k=z(-(roots[i]-roots[j])**2*abs2(bt[i][j])/Z)
+            for w in frequencies:
+                for v in frequencies:
+                    cl1,ck1=c_coeff(-w,v); cl2,ck2=c_coeff(v,-w)
+                    amplitude=zm(zc(amps[w][i][j]),amps[v][i][j])
+                    pair_L=za(pair_L,zx(amplitude,(p[j]*cl1+p[i]*cl2)/Z))
+                    pair_k=za(pair_k,zx(amplitude,(p[j]*ck1+p[i]*ck2)/Z))
+            assert pair_L==za(rhs_L[i][j],rhs_L[j][i])
+            assert pair_k==za(rhs_k[i][j],rhs_k[j][i])
+
+    # Optional one-witness numerical-sign certificate, still exact rational
+    # arithmetic: ln2=2sum_(j&gt;=0)3^(-2j-1)/(2j+1), with a geometric tail.
+    log_terms=60
+    log_lo=2*sum((F(1,3)**(2*j+1)/F(2*j+1) for j in range(log_terms)),F(0))
+    log_tail=2*(F(1,3)**(2*log_terms+1))/F(2*log_terms+1)/(1-F(1,9))
+    gap_lo=J_L*log_lo-F(22,7)*E
+    assert gap_lo&gt;0
+    record={
+        &#x27;status&#x27;:&#x27;PASS_EXACT_AFFINE_MODULAR_GRAM_IDENTITY&#x27;,
+        &#x27;scope&#x27;:&#x27;One prescribed faithful noncommuting complex qutrit state and legal KMS generator; diagnostic, not the universal positivity proof.&#x27;,
+        &#x27;raw_stationary_root&#x27;:[str(x) for x in s],
+        &#x27;raw_state_root_eigenvalues&#x27;:[str(x) for x in roots],
+        &#x27;state_eigenunitary&#x27;:encm(u),&#x27;noise&#x27;:encm(B),
+        &#x27;state_normalization&#x27;:str(Z),&#x27;stationary_normalization&#x27;:str(Zsigma),
+        &#x27;modular_frequencies_in_units_ln2&#x27;:frequencies,
+        &#x27;physical_J_ln2_coefficient&#x27;:str(J_L),&#x27;physical_E&#x27;:str(E),
+        &#x27;gram_ln2_coefficient&#x27;:str(total_L),&#x27;gram_kappa_coefficient&#x27;:str(total_k),
+        &#x27;diagonal_gram_ln2&#x27;:[str(real(rhs_L[i][i])) for i in range(N)],
+        &#x27;diagonal_gram_kappa&#x27;:[str(real(rhs_k[i][i])) for i in range(N)],
+        &#x27;exact_positive_gap_lower_using_pi_lt_22_over_7&#x27;:str(gap_lo),
+        &#x27;log2_interval&#x27;:[str(log_lo),str(log_lo+log_tail)],
+        &#x27;checks&#x27;:[&#x27;known exact faithful spectra&#x27;,&#x27;complex rational unitary&#x27;,&#x27;rho-sigma noncommutation&#x27;,&#x27;Hermitian complex noise&#x27;,&#x27;stationarity and trace preservation&#x27;,&#x27;physical Hamiltonian retained&#x27;,&#x27;V and C modular products&#x27;,&#x27;physical L(U) coefficient&#x27;,&#x27;potential matrix coefficients&#x27;,&#x27;total ordered-pair affine identity&#x27;,&#x27;nonzero diagonal reflection separately&#x27;,&#x27;each unordered pair separately&#x27;,&#x27;exact positive one-witness pi gap&#x27;],
+        &#x27;floating_point_operations&#x27;:0,&#x27;numerical_eigensolvers&#x27;:0,&#x27;scan_count&#x27;:0,
+        &#x27;script_sha256&#x27;:hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    }
+    out=Path(__file__).with_name(&#x27;EXACT_NONCOMMUTING_REPLAY.json&#x27;)
+    assert not out.exists(), &#x27;Refuse to overwrite a frozen record; use --verify.&#x27;
+    out.write_text(json.dumps(record,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:record[k] for k in [&#x27;status&#x27;,&#x27;physical_J_ln2_coefficient&#x27;,&#x27;physical_E&#x27;,&#x27;gram_ln2_coefficient&#x27;,&#x27;gram_kappa_coefficient&#x27;]},indent=2))
+    return record
+
+if __name__==&#x27;__main__&#x27;:
+    if len(sys.argv)&gt;1 and sys.argv[1]==&#x27;--verify&#x27;:
+        import runpy
+        import tempfile
+        source=Path(__file__)
+        with tempfile.TemporaryDirectory(prefix=&#x27;cycle08-exact-gram-&#x27;) as td:
+            clone=Path(td)/source.name
+            clone.write_bytes(source.read_bytes())
+            result=runpy.run_path(str(clone))[&#x27;run&#x27;]()
+            assert result==json.loads(source.with_name(&#x27;EXACT_NONCOMMUTING_REPLAY.json&#x27;).read_text())
+        print(&#x27;Frozen exact identity record reproduced.&#x27;)
+    else:
+        run()
+</pre><p><a href="../assets/4ef5d7bfe1809e80d989ab6180e44d84d4024aee55c4e3044b17ad3a9b2a9ee3.py">Exact original</a></p></html>

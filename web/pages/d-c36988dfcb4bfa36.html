@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/record-stability-refinements/origin-and-failed-families/check_one_record.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/record-stability-refinements/origin-and-failed-families/check_one_record.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Verify fixed one-record EB output and exact entropy identity on finite states.&quot;&quot;&quot;
+from pathlib import Path
+import json, math
+import numpy as np
+ROOT=Path(__file__).resolve().parent
+rng=np.random.default_rng(2707)
+dims=[2,2,2]
+def partial(x,dims,keep):
+ ds=list(dims); a=x.reshape(ds+ds)
+ for i in sorted(set(range(len(ds)))-set(keep),reverse=True):
+  a=np.trace(a,axis1=i,axis2=i+len(ds)); ds.pop(i)
+ return a.reshape(math.prod(ds),math.prod(ds))
+def entropy(x):
+ es=np.linalg.eigvalsh((x+x.conj().T)/2); es=es[es&gt;1e-12]
+ return float(-np.dot(es,np.log(es)))
+def dephase_last(x,ds):
+ a=x.reshape(ds+ds); out=np.zeros_like(a)
+ for c in range(ds[-1]):
+  ind=[slice(None)]*(2*len(ds));ind[len(ds)-1]=c;ind[-1]=c
+  out[tuple(ind)]=a[tuple(ind)]
+ return out.reshape(x.shape)
+def relative(x,y):
+ ey,vy=np.linalg.eigh((y+y.conj().T)/2)
+ good=ey&gt;1e-12; support=vy[:,good]@vy[:,good].conj().T
+ assert np.linalg.norm(x-support@x@support)&lt;1e-9
+ logy=(vy[:,good]*np.log(ey[good]))@vy[:,good].conj().T
+ return float(-entropy(x)-np.trace(x@logy).real)
+def eb_output(rho):
+ k=partial(rho,dims,[1,2]); ac=partial(rho,dims,[0,2])
+ out=np.zeros((8,8),complex)
+ for c in range(2):
+  bc=k.reshape(2,2,2,2)[:,c,:,c]; p=np.trace(bc).real
+  beta=bc/p if p&gt;1e-12 else np.eye(2)/2
+  xa=ac.reshape(2,2,2,2)[:,c,:,c]
+  label=np.zeros((2,2));label[c,c]=1
+  out+=np.kron(np.kron(xa,beta),label)
+ return out
+states=[]
+up=np.array([1,0]);plus=np.array([1,1])/math.sqrt(2)
+psi=math.sqrt(.4)*np.kron(np.kron(up,up),up)+math.sqrt(.6)*np.kron(np.kron([0,1],plus),[0,1])
+pure=np.outer(psi,psi.conj());kap=partial(pure,dims,[1,2])
+for mix in [1,.3]:
+ rho=mix*pure+(1-mix)*np.kron(np.eye(2)/2,kap)
+ states.append((&quot;CQ_NOT_CC_COHERENT_EXTENSION&quot;,rho))
+for i in range(8):
+ z=rng.normal(size=(8,8))+1j*rng.normal(size=(8,8))
+ rho=z@z.conj().T;rho/=np.trace(rho)
+ states.append((&quot;ARBITRARY_KAPPA&quot;,rho))
+rows=[]
+for kind,rho in states:
+ kap=partial(rho,dims,[1,2]);a=partial(rho,dims,[0]);b=partial(rho,dims,[1]);c=partial(rho,dims,[2])
+ ab=partial(rho,dims,[0,1]);ac=partial(rho,dims,[0,2])
+ rp=dephase_last(rho,dims);kp=dephase_last(kap,[2,2])
+ acp=dephase_last(ac,[2,2]);cp=dephase_last(c,[2])
+ db=entropy(ab)+entropy(kap)-entropy(b)-entropy(rho)
+ dc=entropy(ac)+entropy(kap)-entropy(c)-entropy(rho)
+ U=entropy(rp)-entropy(rho);V=entropy(acp)-entropy(ac)
+ Q=entropy(kp)-entropy(kap);qC=entropy(cp)-entropy(c)
+ out=eb_output(rho);D=relative(rho,out)
+ error=abs(D-(dc+V+Q-qC))
+ ma=np.linalg.norm(partial(out,dims,[0])-a)
+ mk=np.linalg.norm(partial(out,dims,[1,2])-kp)
+ assert error&lt;1e-10
+ assert ma&lt;1e-10 and mk&lt;1e-10
+ assert D&lt;=db+dc+2*Q-qC+1e-10
+ assert V&lt;=U+1e-10
+ if kind.startswith(&quot;CQ&quot;):
+  assert np.linalg.norm(kap-kp)&lt;1e-10
+  assert D&lt;=db+dc+1e-10
+  beta0=kap.reshape(2,2,2,2)[:,0,:,0]/.4
+  beta1=kap.reshape(2,2,2,2)[:,1,:,1]/.6
+  assert np.linalg.norm(beta0@beta1-beta1@beta0)&gt;.1
+ rows.append({&quot;family&quot;:kind,&quot;delta_B&quot;:db,&quot;delta_C&quot;:dc,
+              &quot;direct_relative_entropy_to_EC_output&quot;:D,
+              &quot;partial_coherence_kappa&quot;:Q,
+              &quot;identity_error&quot;:error,&quot;exact_A_error&quot;:ma,
+              &quot;raw_dephased_BC_error&quot;:mk,
+              &quot;original_BC_error&quot;:float(np.linalg.norm(partial(out,dims,[1,2])-kap))})
+out={&quot;status&quot;:&quot;PASS&quot;,&quot;scope&quot;:&quot;10 finite direct matrix diagnostics only, not general proof or formal certification; arbitrary-kappa raw output verified as DEPHASED marginal.&quot;,&quot;results&quot;:rows}
+(ROOT/&quot;ONE_RECORD_DIAGNOSTICS.json&quot;).write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+print(json.dumps({&quot;status&quot;:&quot;PASS&quot;,&quot;cases&quot;:len(rows),&quot;max_identity_error&quot;:max(r[&quot;identity_error&quot;] for r in rows)}))
+
+</pre><p><a href="../assets/226a57a276a4e12051daff85444e682ca383d18c15919b48d480bde7c1c80ee3.py">Exact original</a></p></html>

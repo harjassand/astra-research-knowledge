@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-411 scoped research cards, full supplied A–I research documents, J/K result summaries, and 20,573 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+422 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,688 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -146,6 +146,12 @@ Added AX: N322–329: finite-support Card-ASM sparse-graph polynomial peak-HF br
 
 
 Added AY: N330–341: supplied complete binary-tree/covariance/regression argument yields ONE full-space EB comparator atC4 for arbitrary observables on reversible bistochastic self-compatible channels; dimension-free power approximation, r-output extension, spectral obstruction,2<=C*<=4, sharpC2/nonnormal/bounded-Holevo gates separate. Coarse divisibility plus canonical maximal transfer amplifies to continuum-dimensional rational kernels; stationarity-only L1 smoothing has sharp local8 and global224. Fixed mu3 rational detector, S3 arithmetic-selective Euclidean-real cover, quadratic-CI/closure compiler and degree5 integer versus conditional degree11 rational undecidability preserve different representation costs. Symmetric cubic noise gives exact finite-mean explosion/equality-recurrence threshold and fixed stable-flow bounded-rate lifetime undecidability. All five original texts preserved; linked sandbox scripts/archives and seven-reaction listing absent. External correctness/priority/formal status unverified; no intake scientific replay or capability promotion. [Sources](web/AY-sources.txt);[scopes](web/AY-reports.txt);[archive/availability](web/AY-package.txt).
+
+
+
+
+
+Added AZ: N342–352: sharp complete physical KMS J>=pi E and primitive faithful upper witnesses; full finite positive Lp KMS sine/non-KMS tangent profiles and forward pi/2, explicit KMS signed/polar and ordinary hypercontractivity. One raw-broadcaster/sigma-selected classical channel has common-margin bounded-I squared exponent1/3 via full-domain repair and Petz ENERGY bypass; earlier mixed-reference Petz TRACE gate remains unknown. Mandatory physical Hamiltonian factor-four correction, costs, limits and temporal authority retained. User pi update is08; exact linked authored archive/status is later09. All3101 authored members/3098 manifest payloads preserved. Source-reported internal proof/audit, external/formal correctness/priority unverified and10/10 unmet; no new intake scientific replay/capability promotion. [Sources](web/AZ-sources.txt);[scopes](web/AZ-reports.txt);[archive/availability](web/AZ-package.txt).
 
 
 

@@ -1,0 +1,184 @@
+"""Independent exact physical replay of the exposed four-dimensional witness.
+
+Uses only Fraction and the prescribed B,D matrices. Computes the physical
+L_* entropy Hessian directly; no KMS-only J identity and no origin code.
+An individual nonlinear epsilon is not certified by this replay.
+"""
+from fractions import Fraction as F
+import json
+from pathlib import Path
+
+N = 4
+checks = 0
+
+def zeros():
+    return [[F(0) for _ in range(N)] for _ in range(N)]
+
+def diagonal(a):
+    m = zeros()
+    for i in range(N):
+        m[i][i] = F(a[i])
+    return m
+
+def transpose(a):
+    return [list(row) for row in zip(*a)]
+
+def add(a, b):
+    return [[a[i][j] + b[i][j] for j in range(N)] for i in range(N)]
+
+def scale(c, a):
+    return [[c * a[i][j] for j in range(N)] for i in range(N)]
+
+def sub(a, b):
+    return add(a, scale(F(-1), b))
+
+def mul(a, b):
+    return [[sum((a[i][k] * b[k][j] for k in range(N)), F(0))
+             for j in range(N)] for i in range(N)]
+
+def trace(a):
+    return sum((a[i][i] for i in range(N)), F(0))
+
+def check(condition):
+    global checks
+    assert condition
+    checks += 1
+
+def frac(x):
+    return str(x.numerator) + "/" + str(x.denominator)
+
+S_values = [1, 2**18, 2**20, 2**22]
+sqrt_values = [1, 512, 1024, 2048]
+exponents = [0, 18, 20, 22]
+phase = [0, 1, -1, 1]
+h = [0, 1, 2, 1]
+S = diagonal(S_values)
+Z0 = sum(s * s for s in S_values)
+A0 = sum(S_values[1:])
+sigma = scale(F(1, Z0), mul(S, S))
+B = zeros()
+for i in range(1, N):
+    for j in range(1, N):
+        B[i][j] = F(phase[i])
+Y = mul(mul(transpose(B), S), B)
+Z = mul(mul(B, S), transpose(B))
+D = zeros()
+for i in range(1, N):
+    D[i][i] = Y[i][i] / S_values[i]
+    for j in range(1, N):
+        if i != j:
+            D[i][j] = 2 * (S_values[i] * Y[i][j] - S_values[j] * Z[i][j])
+            D[i][j] /= S_values[i]**2 - S_values[j]**2
+
+def H(x):
+    return sub(scale(F(1, 2), add(mul(transpose(D), x), mul(x, D))),
+               mul(mul(transpose(B), x), B))
+
+def H_adj(x):
+    return sub(scale(F(1, 2), add(mul(D, x), mul(x, transpose(D)))),
+               mul(mul(B, x), transpose(B)))
+
+K = [[F(sqrt_values[i], sqrt_values[j]) * B[i][j]
+      for j in range(N)] for i in range(N)]
+C = [[F(sqrt_values[i], sqrt_values[j]) * D[i][j]
+      for j in range(N)] for i in range(N)]
+KstarK = mul(transpose(K), K)
+Qphys_imaginary_amplitudes = scale(F(-1, 4), sub(C, transpose(C)))
+# Qphys = i * Qphys_imaginary_amplitudes = (C-C*)/(4i).
+
+def Lstar(x):
+    return sub(scale(F(1, 2), add(mul(C, x), mul(x, transpose(C)))),
+               mul(mul(K, x), transpose(K)))
+
+def negative_gksl(x):
+    dissipative = sub(mul(mul(K, x), transpose(K)),
+                      scale(F(1, 2), add(mul(KstarK, x), mul(x, KstarK))))
+    # -i[i R,x]=[R,x], where R is the real imaginary-amplitude matrix.
+    return add(dissipative, sub(mul(Qphys_imaginary_amplitudes, x),
+                               mul(x, Qphys_imaginary_amplitudes)))
+
+check(H(S) == zeros())
+check(H_adj(S) == zeros())
+check(add(C, transpose(C)) == scale(F(2), KstarK))
+check(Lstar(sigma) == zeros())
+for i in range(N):
+    for j in range(N):
+        e = zeros(); e[i][j] = F(1)
+        check(scale(F(-1), Lstar(e)) == negative_gksl(e))
+        check(trace(Lstar(e)) == 0)
+
+Q = zeros()
+for i in range(1, N):
+    Q[0][i] = Q[i][0] = F(h[i] * sqrt_values[i])
+delta = scale(F(1, Z0), add(mul(S, Q), mul(Q, S)))
+log_derivative_coeff = zeros()  # Dlog_sigma(delta) / log(2).
+for i in range(N):
+    for j in range(N):
+        if i != j and delta[i][j]:
+            log_derivative_coeff[i][j] = (
+                F(2 * (exponents[i] - exponents[j]) * Z0,
+                  S_values[i]**2 - S_values[j]**2) * delta[i][j]
+            )
+J2_over_log2 = trace(mul(Lstar(delta), log_derivative_coeff))
+E2 = trace(mul(Q, H(Q))) / Z0
+J2_rep_over_log2 = trace(mul(delta, log_derivative_coeff))
+E2_rep = trace(mul(Q, Q)) / Z0
+eta = F(1, 4096)
+J2_primitive_over_log2 = J2_over_log2 + eta * J2_rep_over_log2
+E2_primitive = E2 + eta * E2_rep
+scaled_J = J2_over_log2 * Z0 / A0
+scaled_E = E2 * Z0 / A0
+check(scaled_J == F(316301432858573464, 16131331232096465))
+check(scaled_E == F(118, 17))
+check(E2 > 0 and E2_primitive > 0 and J2_over_log2 > 0)
+
+log2_four_terms = 2 * sum((F(1, (2*j+1) * 3**(2*j+1)) for j in range(4)), F(0))
+log2_tail_upper = F(2, 9) * F(1, 3**9) / (1 - F(1, 9))
+log2_upper = log2_four_terms + log2_tail_upper
+check(log2_upper < F(7, 10))
+check(J2_over_log2 * F(7, 10) - 2 * E2 < 0)
+check(J2_primitive_over_log2 * F(7, 10) - 2 * E2_primitive < 0)
+check(sum(h[i]**2 * S_values[i] for i in range(1, N)) == 33 * 2**18)
+check(33 * 2**18 < 4096**2)
+
+# Verify the exact reverse generator's representation and stationary legality.
+Dsharp = transpose(D)
+Bsharp = transpose(B)
+Csharp = [[F(sqrt_values[i], sqrt_values[j]) * Dsharp[i][j]
+           for j in range(N)] for i in range(N)]
+Ksharp = [[F(sqrt_values[i], sqrt_values[j]) * Bsharp[i][j]
+           for j in range(N)] for i in range(N)]
+
+def Lsharp_star(x):
+    return sub(scale(F(1, 2), add(mul(Csharp, x), mul(x, transpose(Csharp)))),
+               mul(mul(Ksharp, x), transpose(Ksharp)))
+
+check(add(Csharp, transpose(Csharp)) == scale(F(2), mul(transpose(Ksharp), Ksharp)))
+check(Lsharp_star(sigma) == zeros())
+
+result = {
+    "status": "PASS_EXACT_PHYSICAL_HESSIAN_AND_LEGALITY",
+    "exact_checks": checks,
+    "Z0": Z0,
+    "A0": A0,
+    "J2_over_log2": frac(J2_over_log2),
+    "E2": frac(E2),
+    "scaled_J2_over_log2": frac(scaled_J),
+    "scaled_E2": frac(scaled_E),
+    "J2_replacer_over_log2": frac(J2_rep_over_log2),
+    "E2_replacer": frac(E2_rep),
+    "J2_primitive_over_log2": frac(J2_primitive_over_log2),
+    "E2_primitive": frac(E2_primitive),
+    "base_gap_scaled_log2_7_10_upper": frac((J2_over_log2*F(7,10)-2*E2)*Z0/A0),
+    "primitive_gap_scaled_log2_7_10_upper": frac((J2_primitive_over_log2*F(7,10)-2*E2_primitive)*Z0/A0),
+    "log2_four_term_upper": frac(log2_upper),
+    "Hamiltonian_convention": "Qphys=(C-C*)/(4i)",
+    "nonlinear_individual_epsilon": "NOT_CERTIFIED_BY_REPLAY; analytic existential implication audited separately",
+}
+output = Path(__file__).with_suffix(".json")
+if output.exists():
+    if json.loads(output.read_text()) != result:
+        raise RuntimeError("Existing replay result differs; refusing overwrite")
+else:
+    output.write_text(json.dumps(result, indent=2) + "\n")
+print(json.dumps(result, indent=2))

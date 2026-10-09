@@ -1,0 +1,764 @@
+
+[PDF PAGE 1]
+arXiv:quant-ph/0505030v2  23 Aug 2005
+Quantum Information and Computation, Vol. 0, No. 0 (2005) 00 0–000
+c© Rinton Press
+THE SOLOV A Y-KIT AEV ALGORITHM
+CHRISTOPHER M. DA WSON
+School of Physical Sciences, The University of Queensland,
+Brisbane, Queensland 4072, Australia
+MICHAEL A. NIELSEN
+School of Physical Sciences, The University of Queensland,
+Brisbane, Queensland 4072, Australia
+Received November 26, 2024
+Revised
+This pedagogical review presents the proof of the Solovay-K itaev theorem in the form of
+an eﬃcient classical algorithm for compiling an arbitrary s ingle-qubit gate into a sequence
+of gates from a ﬁxed and ﬁnite set. The algorithm can be used, f or example, to compile
+Shor’s algorithm, which uses rotations of π/2k, into an eﬃcient fault-tolerant form using
+only Hadamard, controlled- not, and π/8 gates. The algorithm runs in O(log2.71(1/ǫ))
+time, and produces as output a sequence of O(log3.97(1/ǫ)) quantum gates which is
+guaranteed to approximate the desired quantum gate to an acc uracy within ǫ > 0. W e
+also explain how the algorithm can be generalized to apply to multi-qubit gates and to
+gates from SU (d).
+Keywords: Solovay-Kitaev algorithm, universality, fault-toleran ce
+1 Introduction
+“I have been impressed by numerous instances of mathematica l theories that are
+really about particular algorithms; these theories are typ ically formulated in math-
+ematical terms that are much more cumbersome and less natura l than the equiva-
+lent formulation today’s computer scientists would use.” — Donald E. Knuth [16]
+The Solovay-Kitaev (SK) theorem is one of the most important fundamental results in the
+theory of quantum computation. In its simplest form the SK th eorem shows that, roughly
+speaking, if a set of single-qubit quantum gates generates a dense subset of SU (2), then that
+set is guaranteed to ﬁll SU (2) quickly, i.e., it is possible to obtain good approximations to
+any desired gate using surprisingly short sequences of gate s from the given generating set.
+The SK theorem is important if one wishes to apply a wide varie ty of diﬀerent single-qubit
+gates during a quantum algorithm, but is restricted to use ga tes from a more limited reper-
+toire. Such a situation arises naturally in the context of fa ult-tolerant quantum computation,
+where direct fault-tolerant constructions are typically a vailable only for a limited number of
+gates (e.g., the Cliﬀord group gates and π/8 gate), but one may wish to implement a wider
+variety of gates, such as the π/2k rotations occurring in Shor’s algorithm [22, 23]. In this si t-
+uation one must use the limited set of fault-tolerant gates t o build up accurate fault-tolerant
+1
+
+[PDF PAGE 2]
+2 The Solovay-Kitaev algorithm . . .
+approximations to all the gates used in the algorithm, prefe rably in the most eﬃcient manner
+possible. The SK theorem tells us that such eﬃcient construc tions are possible.
+The purpose of the present paper is to present the proof of the SK theorem in the form of
+a concrete algorithm which can be used to approximate a desired unitary, U , using a given set
+of quantum gates. We believe that this algorithmic perspect ive is useful in its own right, and,
+as the quote by Knuth suggests, also makes the ideas behind th e SK theorem considerably
+easier to understand than in previous presentations. Howev er, we stress that the paper is a
+review paper, as all the essential ideas appear in previous w ork; a detailed history of the SK
+theorem and algorithm is given in Section 6.
+The structure of the paper is as follows. Section 2 introduce s the fundamental deﬁni-
+tions needed to understand the SK theorem and algorithm, and provides a formal statement
+of the SK theorem. Section 3 explains the SK algorithm for qub its, in the form of nine
+easily-understood lines of pseudocode. This section conce ntrates on developing a broad un-
+derstanding of how the SK algorithm works. The few remaining details of the algorithm which
+need veriﬁcation are explained in Section 4. Section 5 exten ds the algorithm so it applies also
+to qudits, i.e., quantum systems with d-dimensional state spaces. As a special case we ob-
+tain a version of the SK algorithm applicable to multiple qub its, simply by setting d = 2n.
+Section 6 discusses the relationship of the results we have p resented to prior work on the SK
+theorem. This placement of the discussion of prior work is pe rhaps somewhat unusual, and
+deserves comment: we chose to defer the discussion until lat e in the paper in order to make
+the comparisons between the present paper and prior work as c oncrete and transparent as
+possible. Section 7 concludes.
+2 F undamentals
+In this section we introduce the fundamental deﬁnitions nec essary to understand the SK
+theorem and algorithm, and give a precise statement of the SK theorem.
+The basic goal of the SK algorithm is to take an arbitrary quan tum gate U and ﬁnd a
+good approximation to it using a sequence of gates g1,...,g m drawn from some ﬁnite set
+G. In analogy with classical computation, where an algorithm written in a programming
+language such as C or Perl must be compiled into a sequence of i nstructions in the native
+machine language, we will call the set G of quantum gates an instruction set , and the process
+of ﬁnding good approximations compilation. Note that while this nomenclature, introduced
+in [10], is inspired by classical computer science, the anal ogies between the classical and
+quantum concepts are obviously somewhat imprecise, and sho uld not be taken too seriously.
+Let’s deﬁne these concepts more precisely, beginning with i nstruction sets:
+Deﬁnition 1 An instruction set G for a d-dimensional qudit is a ﬁnite set of quantum
+gates satisfying:
+1. All gates g ∈ G are in SU (d), that is, they are unitary and have determinant 1.
+2. For each g ∈ G the inverse operation g† is also in G.
+3. G is a universal set for SU (d), i.e., the group generated by G is dense in SU (d). This
+means that given any quantum gate U ∈ SU (d) and any accuracy ǫ >0 there exists a
+productS ≡g1...g m of gates from G which is an ǫ-approximation to U .
+
+[PDF PAGE 3]
+Christopher M. Dawson and Michael A. Nielsen . . . 3
+The notion of approximation being used in this deﬁnition, an d throughout this paper, is
+approximation in operator norm. That is, a sequence of instr uctions generating a unitary
+operation S is said to be an ǫ-approximation to a quantum gate U if d(U,S ) ≡ ‖U −S‖ ≡
+sup‖ψ‖=1 ‖(U −S)ψ‖< ǫ. In diﬀerent contexts we will ﬁnd it convenient to use both th e
+operator norm ‖ · ‖, and the associated distance function d(·, ·). Another convenient notation
+is to use S to refer both to a sequence of instructions, g1,g 2,...g m, and also to the unitary
+operation g1g2...g m corresponding to that sequence. With this convention the “s equence”
+g1,g 2,... corresponds to the unitary formed by applying g1,g 2,... in the reverse order. While
+this is somewhat nonintuitive, in later use it will prove to b e the simplest and most natural
+convention.
+We assume the reader is familiar with the elementary propert ies of the operator norm,
+which we will mostly use without note. One perhaps somewhat l ess familiar property we’ll
+have occasion to use is that if H is Hermitian then d(I, exp(iH)) = maxE 2 sin(|E|/2), where
+the maximum is over all eigenvalues E of H. From this it follows easily that d(I, exp(iH)) ≤
+‖H‖. Furthermore, provided all the eigenvalues are in the range −π to π it follows that
+d(I, exp(iH)) = ‖H‖+O(‖H‖3).
+It is easy to understand the motivation behind parts 1 and 3 of our deﬁnition of an
+instruction set. Less clear is the reason for part 2, namely, the requirement that if g ∈ G
+then we must also have g† ∈ G . Our reason for imposing this requirement is that it is used i n
+the proof of the SK theorem, not for any a priori reason. In particular, we will make use of
+the easily-veriﬁed fact that if we have an instruction seque nce providing an ǫ-approximation
+to some unitary U , then we can obtain an ǫ-approximation to U † simply by reversing the
+order of the sequence, and applying the corresponding inver se instructions. It appears to be
+an open problem whether a result analogous to the SK theorem h olds when condition 2 is
+relaxed.
+The problem of quantum compilation may now be stated more pre cisely: given an in-
+struction set, G, how may we approximate an arbitrary quantum gate with a sequ ence of
+instructions from G; how does the sequence length increase as we require more acc urate ap-
+proximations; and how quickly may we ﬁnd such an approximati ng sequence? These ﬁnal two
+questions are vitally important, as an inaccurate or ineﬃci ent quantum compiler may negate
+any improvements quantum computers have over classical com puters.
+As an illustration, suppose we have a quantum algorithm, suc h as Shor’s, which can be
+broken up into a sequence of m quantum gates, U1,...,U m. However, let us also suppose that
+not all of those quantum gates are in our instruction set, and so it is necessary to compile
+the algorithm so that each gate Uj is re-expressed in terms of the available instruction set.
+If the compiled algorithm is required to approximate the ori ginal to within ǫ, then it is
+suﬃcient that each gate Uj be approximated to an accuracy ǫ/m [3]. If we make the a
+priori reasonable assumption [20] that an accuracy of δ >0 requires an instruction sequence
+of length O(1/δ), then each gate Uj will require a sequence of length O(m/ǫ), and so the
+total number of instructions required to implement the algo rithm is O(m2/ǫ) — a quadratic
+increase in the complexity of the algorithm. For quantum alg orithms such as Grover’s search
+algorithm [7, 8], which purports to give a quadratic increas e over the best classical algorithm,
+this may be problematic if the available instruction set doe s not coincide with the gates used
+in the algorithm.
+
+[PDF PAGE 4]
+4 The Solovay-Kitaev algorithm . . .
+The SK theorem may be stated as follows:
+Theorem 1 (Solovay-Kitaev) Let G be an instruction set for SU (d), and let a desired
+accuracyǫ >0 be given. There is a constant c such that for any U ∈ SU (d) there exists a
+ﬁnite sequence S of gates from G of length O(logc (1/ǫ)) and such that d(U,S )<ǫ .
+Diﬀerent proofs of the theorem give diﬀerent values for c; the proof we describe gives
+c ≈ 3.97. We discuss some other proofs (and their corresponding va lues of c) in Section 6.
+A critical issue not addressed in this statement of the SK the orem is the question of
+how eﬃciently the approximating sequence S may be found on a classical computer. The
+SK algorithm both provides a proof of the SK theorem, and also shows that an approxi-
+mating sequence S may be found eﬃciently on a classical computer, with a runnin g time of
+O(log2.71(1/ǫ)).
+At ﬁrst sight it appears paradoxical that the SK algorithm ca n produce as output a
+gate sequence of length O(log3.97(1/ǫ)) in the asymptotically shorter time O(log2.71(1/ǫ)).
+We will see that the reason this is possible is because the gat e sequence has considerable
+redundancy, enabling the output to be substantially compre ssed, i.e., not all the gates need
+be explicitly output. When this compression is not done, the SK algorithm runs instead in
+time O(log3.97(1/ǫ)). Regardless of which method is used, the key point is that t he running
+time is polylogarithmic in 1/ǫ.
+Returning to our earlier example, suppose we have a quantum a lgorithm expressed in
+terms of quantum gates U1,...,U m. If we wish for the compiled algorithm to have accuracy
+ǫ, then each gate needs accuracy ǫ/m. Using the SK algorithm this can be achieved using
+a sequence of O(log3.97(m/ǫ)) quantum gates, and a running time of O(log2.71(m/ǫ)) on a
+classical computer. The total number of instructions requi red to implement the algorithm is
+therefore O(m log3.97(m/ǫ)), with an associated classical compile time of O(m log2.71(m/ǫ)).
+Thus, the SK algorithm reduces the overhead due to quantum co mpilation from quadratic to
+polylogarithmic, which is much more acceptable.
+3 The Solovay-Kitaev algorithm for qubits
+In this section we present the main ideas used in the SK algori thm. At the conclusion of the
+section the reader should have a good broad understanding of how and why the algorithm
+works. Rigorous veriﬁcation of a few details has been deferr ed until the next section, in order
+that those details not obscure the big picture. We also restr ict our attention in this section to
+that form of the SK theorem which applies to qubits. The extension to qudits involves some
+new ideas, and is described in Section 5.
+The SK algorithm may be expressed in nine lines of pseudocode . We explain each of these
+lines in detail below, but present it here in its entirety bot h for the reader’s reference, and to
+stress the conceptual simplicity of the algorithm:
+function Solovay-Kitaev(Gate U , depth n)
+if ( n == 0)
+Return Basic Approximation to U
+else
+Set Un−1 = Solovay-Kitaev( U ,n − 1)
+Set V , W = GC-Decompose( UU †
+n−1)
+
+[PDF PAGE 5]
+Christopher M. Dawson and Michael A. Nielsen . . . 5
+Set Vn−1 = Solovay-Kitaev( V ,n − 1)
+Set Wn−1 = Solovay-Kitaev( W ,n − 1)
+Return Un =Vn−1Wn−1V †
+n−1W †
+n−1Un−1;
+Let’s examine each of these lines in detail. The ﬁrst line:
+function Solovay-Kitaev(Gate U , depth n)
+indicates that the algorithm is a function with two inputs: a n arbitrary single-qubit quan-
+tum gate, U , which we desire to approximate, and a non-negative integer , n, which controls
+the accuracy of the approximation. The function returns a se quence of instructions which
+approximates U to an accuracy ǫn, where ǫn is a decreasing function of n, so that as n gets
+larger, the accuracy gets better, with ǫn → 0 as n → ∞. We describe ǫn in detail below.
+The Solovay-Kitaev function is recursive, so that to obtain an ǫn-approximation to U ,
+it will call itself to obtain ǫn−1-approximations to certain unitaries. The recursion termi nates
+at n = 0, beyond which no further recursive calls are made:
+if ( n == 0)
+Return Basic Approximation to U
+In order to implement this step we assume that a preprocessin g stage has been completed
+which allows us to ﬁnd a basic ǫ0-approximation to arbitrary U ∈ SU (2). Since ǫ0 is a
+constant, in principle this preprocessing stage may be acco mplished simply by enumerating
+and storing a large number of instruction sequences from G, say up to some suﬃciently large
+(but ﬁxed) length l0, and then providing a lookup routine which, given U , returns the closest
+sequence. Appropriate values for ǫ0 and l0 will be discussed later in this section.
+At higher levels of recursion, to ﬁnd an ǫn-approximation to U , we begin by ﬁnding an
+ǫn−1-approximation to U :
+else
+Set Un−1 = Solovay-Kitaev( U ,n − 1)
+We will use Un−1 as a step towards ﬁnding an improved approximation to U . Deﬁning
+∆ ≡ UU †
+n−1, the next three steps of the algorithm aim to ﬁnd an ǫn-approximation to ∆,
+where ǫn is some improved level of accuracy, i.e., ǫn < ǫn−1. Finding such an approxima-
+tion also enables us to obtain an ǫn-approximation to U , simply by concatenating our exact
+sequence of instructions for Un−1 with our ǫn-approximating sequence for ∆.
+How do we ﬁnd such an approximation to ∆? First, observe that ∆ is within a distance
+ǫn−1 of the identity. This follows from the deﬁnition of ∆ and the f act that Un−1 is within a
+distance ǫn−1 of U .
+Second, decompose ∆ as a group commutator ∆ = VWV †W † of unitary gates V and
+W . For any ∆ it turns out — this is not obvious — that there is alwa ys an inﬁnite set of
+choices for V and W such that ∆ = VWV †W †. For our purposes it is important that we
+ﬁnd V and W such that d(I,V ),d (I,W ) < cgc
+√ǫn−1 for some constant cgc. We call such
+
+[PDF PAGE 6]
+6 The Solovay-Kitaev algorithm . . .
+a decomposition a balanced group commutator . In Subsection 4.1 we will use the fact that
+d(I, ∆)<ǫ n−1 to show that such a balanced group commutator can always be fo und:
+Set V , W = GC-Decompose( UU †
+n−1)
+For practical implementations we will see below that it is us eful to have cgc as small as
+possible; the arguments of Subsection 4.1 show that cgc ≈ 1/
+√
+2.
+The next step is to ﬁnd instruction sequences which are ǫn−1-approximations toV andW :
+Set Vn−1 = Solovay-Kitaev( V ,n − 1)
+Set Wn−1 = Solovay-Kitaev( W ,n − 1)
+Remarkably, in Subsection 4.2 we show that the group commuta tor of Vn−1 and Wn−1 turns
+out to be an ǫn ≡capproxǫ3/2
+n−1-approximation to ∆, for some small constant capprox. Provided
+ǫn−1 < 1/c2
+approx, we see that ǫn < ǫn−1, and this procedure therefore provides an improved
+approximation to ∆, and thus to U . This is surprising, since we are using imperfect ap-
+proximations to V and W to obtain an improved approximation to the group commutator
+VWV †W †. We will see in Subsection 4.2 that the reason this improved a pproximation is
+possible is because of cancellation of error terms in the gro up commutator.
+The constant capprox is important as it determines the precision ǫ0 required of the initial
+approximations. In particular, we see that for this constru ction to guarantee thatǫ0>ǫ 1>...
+we must have ǫ0< 1/c2
+approx. Following the discussion in Subsection 4.2, we obtain capprox ≈
+8cgc ≈ 4
+√
+2 and therefore require ǫ0< 1/32. Of course, the analysis in Subsection 4.2 simply
+bounds capprox, and it is possible that a more detailed analysis will give be tter bounds on
+capprox, and thus on ǫ0. Numerically we have found that for the single-qubit instru ction set
+consisting of the Hadamard gate, the π/8 gate, and its inverse, ǫ0 ≈ 0.14 and l0 = 16 is
+suﬃcient for practical purposes.
+The algorithm concludes by returning the sequences approxi mating the group commuta-
+tor, as well as Un−1:
+Return Un =Vn−1Wn−1V †
+n−1W †
+n−1Un−1;
+Summing up, the function Solovay-Kitaev(U, n) returns a sequence which provides an
+ǫn = capproxǫ3/2
+n−1-approximation to the desired unitary U . The ﬁve constituents in this se-
+quence are all obtained by calling the function at the n − 1th level of recursion.
+Analysis: We now analyse the runtime of the SK algorithm, and the accura cy of the
+approximating sequence of instructions. Let ln be the length of the sequence of instructions
+returned by Solovay-Kitaev(U, n) , and let tn be the corresponding runtime. Inspection of
+the pseudocode and the above discussion shows that we have th e recurrences
+ǫn = capproxǫ3/2
+n−1 (1)
+ln = 5 ln−1 (2)
+tn ≤ 3tn−1 + const, (3)
+where the constant overhead in tn comes from the need to perform tasks like ﬁnding the
+
+[PDF PAGE 7]
+Christopher M. Dawson and Michael A. Nielsen . . . 7
+balanced group commutator, and other small overheads in the pseudocode. Note that the
+cost of doing tn is assumed to come entirely from the calls to Solovay-Kitaev(., n-1) , and
+we have assigned a constant cost for the ﬁnal line of the algor ithm, which returns the new
+sequenceUn. This assumption is justiﬁed if the ﬁnal line is implemented using pointers to the
+output from the earlier calls to Solovay-Kitaev(., n-1) , rather than returning an actual
+sequence of gates. This enables us to avoid explicitly retur ning the (redundant) sequences
+for V †
+n−1 and W †
+n−1. If this is not done, then this analysis needs a little modiﬁc ation; we
+won’t go through the details, but the end result is that the ti me and length both scale as
+O(log3.97(1/ǫ)). Assuming that pointers have been used, the recurrences a bove imply:
+ǫn = 1
+c2approx
+(
+ǫ0c2
+approx
+) ( 3
+2 )
+n
+. (4)
+ln = O(5n) (5)
+tn = O(3n). (6)
+To obtain a given accuracy ǫ it follows that we must choose n to satisfy the equation:
+n =
+
+
+ln
+[ ln(1/ǫc2
+approx)
+ln(1/ǫ0c2approx)
+]
+ln(3/2)
+
+
+. (7)
+Substituting this value of n back into Eqs. (5) and (6) we obtain expressions for the lengt h of
+the approximating sequence and the time of execution, now as a function of ǫ rather than n:
+lǫ = O
+(
+lnln 5/ ln(3/2)(1/ǫ)
+)
+(8)
+tǫ = O
+(
+lnln 3/ ln(3/2)(1/ǫ)
+)
+. (9)
+These are the desired expressions for the length and executi on time. Note that the exponent
+in the ﬁrst expression is ln 5 / ln(3/2) ≈ 3.97, while the exponent in the second expression is
+ln 3/ ln(3/2) ≈ 2.71.
+A caveat to this discussion is that we have entirely ignored t he precision with which
+arithmetical operations are carried out. In practice we can not compute with precisely speciﬁed
+unitary operations, since such operations in general requi re an inﬁnite amount of classical
+information to specify. Instead, we must work with approxim ations to such operations, and do
+all our calculations using ﬁnite precision arithmetic. A co mplete analysis of the SK algorithm
+should include an account of the cost of such approximations . In practice, we have found that
+for the values of precision of most interest to us, standard ﬂ oating-point arithmetic works
+admirably well, and there seems to be little need for such an a nalysis.
+4 V eriﬁcation of details
+In this section we verify those details of the SK algorithm no t fully explained in the previous
+section. Subsection 4.1 describes how to ﬁnd balanced group commutators generating a
+desired unitary, while Subsection 4.2 discusses the error i n the group commutator VWV †W †
+when only approximations to the constituent unitaries are a vailable.
+
+[PDF PAGE 8]
+8 The Solovay-Kitaev algorithm . . .
+4.1 Balanced commutators in SU (2)
+The earlier discussion of balanced group commutators was in a somewhat specialized nota-
+tion, which arose out of the application to the Solovay-Kita ev algorithm. To emphasize the
+generality of the results in this subsection we will use a mor e generic notation. In particular,
+supposeU ∈SU (2) satisﬁes d(I,U )<ǫ . Our goal is to ﬁnd V andW so that the group com-
+mutator satisﬁes VWV †W † = U , and such that d(I,V ),d (I,W ) < cgc
+√ǫ for some constant
+cgc.
+In order to ﬁnd such a V and W we ﬁrst examine what seems like a special case. In
+particular, we choose V to be a rotation by an angle φ about the ˆx axis of the Bloch sphere,
+and W to be a rotation by an angle φ about the ˆy axis of the Bloch sphere. The resulting
+group commutator VWV †W † is a rotation about some axis ˆ n on the Bloch sphere, by an
+angle θ satisfying:
+sin(θ/2) = 2 sin 2(φ/2)
+√
+1 − sin4(φ/2). (10)
+There are many ways of verifying Eq. (10), including simple b rute force calculation, perhaps
+with the aid of a computer mathematics package. One somewhat more elegant way of verifying
+Eq. (10) is as follows. First, observe that V † is a rotation by an angle φ about the −ˆx axis,
+and thus WV †W † must be a rotation by an angle φ about the axis ˆm that results when −ˆx
+is rotated by an angle φ about the ˆy axis. That is, ˆm(− cos(φ), 0, sin(φ)). The commutator
+V (WV †W †) is thus the composition of these two rotations. The resulti ng angle of rotation is
+easy to calculate (see, e.g., Exercise 4.15 on page 177 of [19 ]), with Eq. (10) the result after
+some simpliﬁcation. The exact form of the axis of rotation, ˆ n, is not so important for our
+purposes, but it is easily computed using similar technique s.
+We can easily invert this construction. Suppose now that U is a rotation by an arbitrary
+angle θ about an arbitrary axis ˆp on the Bloch sphere. Deﬁne φ to be a solution to Eq. (10)
+for the given value of θ, and deﬁne V and W to be rotations by φ about the ˆx and ˆy axes of
+the Bloch sphere. Then it is easy to see that U must be conjugate to a rotation by θ about
+the ˆn axis identiﬁed in the previous two paragraphs, i.e., U = S(VWV †W †)S†, for some
+easily-computed unitary S. It follows that
+U = ˜V ˜W ˜V † ˜W †, (11)
+where ˜V ≡SVS † and ˜W ≡SWS †. Thus, we can express any unitary U rotating the Bloch
+sphere by an angle θ as the group commutator of unitaries V and W which rotate the Bloch
+sphere by an angle φ, providing θ and φ are related by Eq. (10).
+To conclude the argument, note that for a unitary T rotating the Bloch sphere by an angle
+τ , the distance to the identity satisﬁes d(I,T ) = 2 sin(τ/ 4) = τ/ 2 +O(τ 3). Combining this
+observation with Eq. (10), we see that for U near the identity we can express U in terms of a
+group commutator of V andW satisfyingd(I,U ) ≈ 2d(I,V )2 = 2d(I,W )2. That is, we have:
+U = VWV †W † (12)
+d(I,V ) = d(I,W ) ≈
+√
+d(I,U )
+2 <
+√ ǫ
+2. (13)
+This is the desired balanced group commutator, and gives cgc ≈ 1/
+√
+2. This argument can
+
+[PDF PAGE 9]
+Christopher M. Dawson and Michael A. Nielsen . . . 9
+also easily be modiﬁed to give a more rigorous bound on cgc. The details are tedious, but
+easy to supply, and so we won’t do this here.
+4.2 Approximating a commutator
+Just as in the last subsection, for clarity we state the main r esult of this subsection in general
+terms, rather than in the special notation used in Section 3.
+Lemma 1 SupposeV,W, ˜V, and ˜W are unitaries such that d(V, ˜V ),d (W, ˜W )< ∆, and also
+d(I,V ),d (I,W )<δ . Then:
+d(VWV †W †, ˜V ˜W ˜V † ˜W †)< 8∆δ + 4∆δ2 + 8∆2 + 4∆3 + ∆4. (14)
+In applying this lemma to the SK algorithm, we replace ∆ by ǫn−1, and δ by cgc
+√ǫn−1.
+This gives rise to the inequality:
+d(VWV †W †, ˜V ˜W ˜V † ˜W †)<c approxǫ3/2
+n−1, (15)
+where capprox ≈ 8cgc. With a little more detailed work we can modify this argument to give
+a rigorous upper bound on capprox. However, just as in the last subsection, the details of this
+argument are tedious and not especially enlightening, but e asy to supply, and so we won’t do
+this here.
+Proof: We begin by writing ˜V =V + ∆V, ˜WW + ∆W , which gives:
+˜V ˜W ˜V † ˜W † = VWV †W † + ∆VWV †W † +V ∆WV †W † +VW ∆†
+VW † +VWV †∆†
+W
++O(∆2) +O(∆3) +O(∆4). (16)
+The O(∆2) terms are terms like ∆ V ∆WV †W †. There are
+(4
+2
+)
+= 6 such terms. The O(∆3)
+terms are terms like ∆ V ∆W ∆†
+VW †, of which there are
+(4
+3
+)
+= 4 terms. There is just a single
+O(∆4) term, ∆ V ∆W ∆†
+V ∆†
+W . It follows from these observations, Eq. (16), and the trian gle
+inequality that:
+d(VWV †W †, ˜V ˜W ˜V † ˜W †) < ‖∆VWV †W † +V ∆WV †W † +VW ∆†
+VW † +VWV †∆†
+W ‖
++6∆2 + 4∆3 + ∆4. (17)
+To complete the proof it suﬃces to prove that ‖∆VWV †W † +VW ∆†
+VW †‖< ∆2 +4∆δ+2∆δ2
+and ‖V ∆WV †W † +VWV †∆†
+W ‖< ∆2 + 4∆δ + 2∆δ2. The proofs of the two results are
+analogous, with the roles of V andW interchanged, and so we only provide the details of the
+ﬁrst proof. We expand W =I +δW , so that
+∆VWV †W † +VW ∆†
+VW †∆VV † +V ∆†
+V +O(∆δ) +O(∆δ2). (18)
+In this expression the O(∆δ) terms are terms like ∆ VδWV †W †. By inspection we see that
+there are four such terms. The O(∆δ2) terms are terms like ∆ VδWV †δ†
+W , and, again by
+inspection, we see that there are two such terms. It follows t hat:
+‖∆VWV †W † +VW ∆†
+VW †‖< ‖∆VV † +V ∆†
+V ‖+ 4∆δ + 2∆δ2. (19)
+The unitarity of V and V + ∆V implies that ∆ VV † +V ∆†
+V = −∆V ∆†
+V . Combining these
+observations and using the triangle inequality we obtain
+‖∆VWV †W † +VW ∆†
+VW †‖< ∆2 + 4∆δ + 2∆δ2, (20)
+which completes the proof of the lemma.
+
+[PDF PAGE 10]
+10 The Solovay-Kitaev algorithm . . .
+5 The Solovay-Kitaev algorithm for qudits
+In this section we present a generalization of the SK algorit hm that can be applied to qudits,
+i.e., to d ×d unitary gates. The main diﬀerence is in the group commutator decomposition.
+In Subsection 5.1 we give a broad description of the modiﬁed a lgorithm, and in Subsection 5.2
+we describe the modiﬁed group commutator decomposition.
+5.1 The modiﬁed algorithm
+The modiﬁed pseudocode for the qudit SK algorithm is as follo ws:
+function Solovay-Kitaev(Gate U , depth n)
+if ( n == 0)
+Return Basic Approximation to U
+else
+Set Un−1 = Solovay-Kitaev( U ,n − 1)
+Set V , W = GC-Approx-Decompose( UU †
+n−1)
+Set Vn−1 = Solovay-Kitaev( V ,n − 1)
+Set Wn−1 = Solovay-Kitaev( W ,n − 1)
+Return Un =Vn−1Wn−1V †
+n−1W †
+n−1Un−1;
+Comparing with the earlier pseudocode for the qubit SK algor ithm, we see that the only
+explicit diﬀerence is in the line taking the group commutato r:
+Set V , W = GC-Approx-Decompose( UU †
+n−1)
+Recall that in the qubit algorithm the corresponding line ﬁn ds a balanced group commu-
+tator decomposition, i.e., ﬁnds V and W such that (a) VWV †W † = ∆ ≡ UU †
+n−1, and (b)
+d(I,V ),d (I,W )<c gc
+√ǫn−1 for some constant cgc.
+In the qudit algorithm this line ﬁnds a balanced group commut ator which approximates ∆.
+More precisely, we ﬁnd V andW such that (a) d(VWV †W †, ∆)<c gc′ǫ3/2
+n−1, for some constant
+cgc′, and (b) d(I,V ),d (I,W )<c gc′′
+√ǫn−1 for some constant cgc′′. The explicit procedure for
+doing this is explained in Subsection 5.2, which shows that cgc′ ≈ 4d3/4((d − 1)/2)3/2 and
+cgc′′ ≈d1/4((d − 1)/2)1/2, where d is the dimensionality of the Hilbert space we are working
+in.
+The remaining lines work just as in the qubit algorithm, ﬁndi ng instruction sequences Vn−1
+and Wn−1 which are ǫn−1-approximations to ∆, and then returning the group commutat or
+corresponding to those sequences, together with the sequen ce for Un−1, as the output of the
+algorithm:
+Set Vn−1 = Solovay-Kitaev( V ,n − 1)
+Set Wn−1 = Solovay-Kitaev( W ,n − 1)
+Return Un =Vn−1Wn−1V †
+n−1W †
+n−1Un−1;
+Although the steps are the same, the analysis is a little diﬀe rent, due to the fact that the
+
+[PDF PAGE 11]
+Christopher M. Dawson and Michael A. Nielsen . . . 11
+group commutator of V and W only approximates ∆. In particular, we have
+d(Vn−1Wn−1V †
+n−1W †
+n−1, ∆) ≤ d(Vn−1Wn−1V †
+n−1W †
+n−1,VWV †W †) +d(VWV †W †, ∆)
+(21)
+< (cgc′ +capprox)ǫ3/2
+n−1, (22)
+where capprox is the same constant that arose in the qubit algorithm (Subse ction 4.2), where
+we estimated capprox ≈ 8cgc′′, in the notation of the current section. Thus, just as for the
+qubit algorithm, the qudit algorithm returns a sequence Un which provides an ǫn =O(ǫ3/2
+n−1)-
+approximation to the desired unitary, U . Furthermore, the ﬁve constituents in the sequence
+are all obtained by calling the function at the n − 1th level of recursion, just as in the qubit
+algorithm.
+The analysis of the accuracy and running time of the qudit SK a lgorithm proceeds in
+a fashion analogous to the qubit algorithm, giving lǫ = O
+(
+lnln 5/ ln(3/2)(1/ǫ)
+)
+and tǫ =
+O
+(
+lnln 3/ ln(3/2)(1/ǫ)
+)
+. An important practical caveat concerns the diﬃculty of con struct-
+ing the lookup table used to obtain the basic ǫ0-approximations. This is done by enumerating
+all possible gate sequences up to some suﬃcient length. SU (d) is a manifold of dimension
+d2 − 1, so if we wish to approximate every gate in SU (d) to within ǫ0 then we generate
+O(1/ǫd2−1
+0 ) sequences. For an instruction set G there are O(|G|l) sequences of length ≤ l,
+some fraction of which may be redundant. We will therefore ne ed to enumerate all sequences
+up to a length l0 satisfying
+l0 ≥O
+(d2 − 1
+log |G| log(1/ǫ0)
+)
+. (23)
+The complexity of the enumeration is exponential in l0 and thus scales quite poorly with
+d. While our algorithm is practical for the small values of d of most interest in applications
+to fault-tolerance (e.g., d = 2, 3, 4), it will require great computational eﬀort to scale it to
+substantially larger values of d.
+5.2 Balanced commutators in SU (d)
+In this subsection our goal is to show that if U satisﬁes d(I,U ) < ǫthen there exist V and
+W satisfying d(VWV †W †,U ) < cgc′ǫ3/2 and such that d(I,V ),d (I,W ) < cgc′′
+√ǫ, for some
+constantscgc′ and cgc′′. The proof combines two lemmas.
+Lemma 2 (Based on Theorem 4.5.2 on page 288 of [11]) Let H be a traceless d-dimensional
+Hermitian matrix. Then we can ﬁnd Hermitian F and G such that:
+[F,G ] = iH (24)
+‖F ‖, ‖G‖ ≤ d1/4
+(d − 1
+2
+) 1/2 √
+‖H‖. (25)
+A variant of this lemma may be found in Problem 8.15 on page 79 o f [14]. The variant
+in [14] has the advantage that the prefactor to
+√
+‖H‖ on the right-hand side of Eq. (25) is
+replaced by a constant that does not depend on d. We use the present version since the proof
+is a little simpler, and it suﬃces to establish the correctne ss of the SK algorithm. Readers
+serious about optimizing this aspect of the SK algorithm sho uld consult [14] for details.
+
+[PDF PAGE 12]
+12 The Solovay-Kitaev algorithm . . .
+Proof: It is convenient to work in a basis which is Fourier conjugate to the basis in which
+H is diagonal. (This can, of course, be done, since the commuta tor bracket is preserved under
+conjugation, i.e., S[A,B ]S† = [SAS †,SBS †] for any matrices A and B, and any unitary S.)
+In this basis H has the representation
+H =W diag(E1,...,E d)W †, (26)
+where E1,...,E d are the eigenvalues of H, and W is the Fourier matrix, with elements
+Wjk ≡ ωjk/
+√
+d, where ω ≡ exp(2πi/d) is a dth root of unity. From Eq. (26) we see that in
+this basis the diagonal matrix elements of H vanish:
+Hjj =
+∑
+kωjkEkωjk ∗
+d =
+∑
+kEk
+d = tr(H)
+d = 0. (27)
+As a trial solution to the equation [ F,G ] = iH we will assume that G is some diagonal matrix,
+with real entries. The condition [ F,G ]iH is then equivalent to iHjk =Fjk (Gkk −Gjj ). This
+suggests imposing the condition that the diagonal entries o fG all be distinct, and deﬁning
+Fjk ≡
+{
+iHjk
+Gkk−Gjj
+if j ⁄=k;
+0 if j =k. (28)
+It is easy to see that with these choices F and G are Hermitian, and satisfy [ F,G ] = iH.
+What of the norms ‖F ‖ and ‖G‖? Suppose we choose the diagonal entries of G as −(d −
+1)/2, −(d − 1)/2 + 1,..., (d − 1)/2. With this choice it is clear from our deﬁnition that the
+entries of F satisfy |Fjk | ≤ |Hjk |, and we have
+‖F ‖2 ≤ tr(F 2) (29)
+≤ tr(H 2) (30)
+≤ d‖H‖2, (31)
+where the ﬁrst and third inequalities follow easily from the deﬁnitions, and the second in-
+equality follows from the fact that |Fjk | ≤ | Hjk |. With these choices we therefore have
+‖F ‖ ≤
+√
+d‖H‖ and ‖G‖ = (d − 1)/2. Rescaling F and G appropriately we can ensure that
+the equation [ F,G ] = iH remains satisﬁed, while satisfying Eq. (25). This complete s the
+proof.
+Lemma 3 SupposeF and G are Hermitian matrices such that ‖F ‖, ‖G‖<δ . Then:
+d (exp(iF ) exp(iG) exp(−iF ) exp(−iG), exp(i ×i[F,G ])) ≤c1δ3, (32)
+for some constant c1 ≈ 4.
+Proof: This is easily veriﬁed using the standard series expansion f or matrix exponentials.
+Alternately, this is also a standard result in the theory of L ie groups. See, e.g., Proposition 2
+on page 25 in Section 1.3 of [21].
+The result we desire may be obtained by combining these two le mmas. Suppose d(I,U )<
+ǫ. We can ﬁnd Hermitian H such that U exp(iH) and d(I,U ) = ‖H‖ + O(‖H‖3). By
+Lemma 2 we can ﬁnd Hermitian F and G such that [ F,G ] = iH, and ‖F ‖, ‖G‖ ≤ cgc′′
+√ǫ
+
+[PDF PAGE 13]
+Christopher M. Dawson and Michael A. Nielsen . . . 13
+for cgc′′ ≈ d1/4√
+(d − 1)/2. Setting V ≡ exp(iF ),W ≡ exp(iG), δ ≡ cgc′′
+√ǫ and applying
+Lemma 3, we obtain:
+d(VWV †W †,U )<c 1(cgc′′
+√ǫ)3 =cgc′ǫ3/2, (33)
+where cgc′ =c1c3
+gc′′ ≈ 4d3/4((d − 1)/2)3/2. Furthermore, we have d(I,V ),d (I,W ) <c gc′′
+√ǫ,
+as desired.
+6 Prior work
+The treatment of the SK theorem and algorithm given in this pa per is based upon Appendix 3
+in [19]. That appendix gave a detailed description of the SK t heorem, and included an exercise
+(Exercise A3.6) asking the reader to ﬁnd an algorithm for eﬃc iently ﬁnding accurate sequences
+of instructions approximating a desired unitary. Reader fe edback on [19] suggests that this
+was not one of the easier exercises in that volume, a fact that partially inspired the present
+review paper.
+The history of the SK theorem and algorithm is interesting. F or SU (2) the SK theorem
+was announced by Solovay in 1995 on an email discussion list, but no paper has subsequently
+appeared. Independently, in 1997 Kitaev [12] outlined a pro of in a review paper, for the gen-
+eral case of SU (d). After hearing of this result, Solovay announced that he ha d generalized his
+proof in a similar fashion. Kitaev’s paper also addressed th e question of eﬃcient implementa-
+tion, sketching out an algorithm to quickly ﬁnd accurate ins truction sequences approximating
+a desired gate. The proof of the SK theorem given in [19] was ba sed on [12], discussions with
+Kitaev, Solovay, and M. Freedman, and on a 1999 lecture by Fre edman, based on Kitaev’s
+proof.
+Kitaev’s 1997 discussion [12] of the SK theorem and algorith m is described and extended
+in the 2002 text by Kitaev, Shen and Vyalyi [14]. Indeed, that text actually presents two
+diﬀerent approaches to the problem. The ﬁrst approach, desc ribed in Section 8.3 of [14], uses
+very similar ideas to the description we have given, with a fe w technical diﬀerences resulting
+in somewhat diﬀerent behaviour for the algorithm’s running time, and for the length of the
+instruction sequences produced. In particular, the algori thm in [14] has a running time
+O(log3+δ(1/ǫ)) and produces an instruction sequence of length O(log3+δ(1/ǫ), where δ can
+be chosen to be any positive real number.
+The second approach, described in Section 13.7 of [14], is qu ite diﬀerent in ﬂavour. It
+modiﬁes our setting for the SK theorem and algorithm in two wa ys: (1) it makes use of
+ancilla qubits, and (2) it constrains the allowed instructi on set somewhat, for example,
+to Cliﬀord group gates, together with the Toﬀoli gate; certa in other instruction sets are
+also possible, but not an arbitrary instruction set. A varia nt of Kitaev’s phase estima-
+tion algorithm [15, 13] is used to construct instruction seq uences providing exponentially
+accurate conditional phase shifts. Standard construction s (e.g. [2]), together with these
+phase shift gates, can then be used to approximate the desire d gates. The running time
+for this approach is O(log2(1/ǫ) log(log(1/ǫ))), and the length of the instruction sequence is
+O(log2(1/ǫ) log(log(1/ǫ))). This approach also has the advantage of being easily par allelizable,
+when acting on multiple qubits.
+A non-constructive approach to the SK theorem was taken by Ha rrow, Recht and Chuang
+in [9], based on Harrow’s undergraduate thesis [10] and pape rs by Arnold and Krylov [1],
+
+[PDF PAGE 14]
+14 The Solovay-Kitaev algorithm . . .
+and by Lubotsky, Phillips and Sarnak [17, 18] (c.f. [6]). In p articular, [9] proves that for
+a suitable choice of instruction set, an approximation of ac curacy ǫ may be achieved using
+a sequence of O(log(1/ǫ)) instructions. It does not yet seem to be well understood ex actly
+which instruction sets achieve such a fast rate of convergen ce. Furthermore, [9] describe a
+simple volume argument establishing that, up to a constant f actor, it is not possible to obtain
+shorter approximating sequences, and so this result is opti mal. However, they do not provide
+a constructive means of eﬃciently ﬁnding these short instru ction sequences.
+We conclude by noting two papers that, while not directly con cerned with the SK theorem
+or algorithm, are likely of interest to anyone interested in quantum compilation. The ﬁrst is a
+paper by Freedman, Kitaev, and Lurie [5], who develop some ge neral conditions under which
+a subset G of a semisimple Lie group G must generate a dense subset of G. In particular, they
+introduce a natural family of metrics deﬁned for any semisim ple Lie group G, and show that
+there is a universal constantc, independent of G, so that provided all points in G are within
+a distance c of G, then G must generate a dense subset of G. Roughly speaking, provided G
+“ﬁlls” G suﬃciently well, it is guaranteed to generate a dense subset of G.
+The second paper of interest is by Fowler [4], who investigat es the feasibility of compil-
+ing Shor’s algorithm into fault-tolerant form using a searc h technique that, while while not
+“eﬃcient” in the sense of the SK algorithm, in practice seems to yield promising results.
+7 Conclusion
+The Solovay-Kitaev theorem and algorithm are fundamental r esults in the theory of quan-
+tum computation, and it seems likely that variants of these r esults will be used in future
+implementations of quantum computers to compile quantum al gorithms such as Shor’s into a
+fault-tolerant form. The discussion of these results in the present review paper has been ped-
+agogical, aimed at a formulation that brings out the key idea s, rather than being optimized
+for accuracy and eﬃciency. It is an interesting open problem to determine the extent to which
+these constructions can be improved, perhaps even developi ng a version of the Solovay-Kitaev
+algorithm achieving optimal or near-optimal accuracy and e ﬃciency.
+Acknowledgments
+We thank Mike Freedman, Aram Harrow, and Alexei Kitaev for en lightening discussions
+about the Solovay-Kitaev theorem and algorithm, and to Mark de Burgh, Mark Dowling, and
+Yeong Cherng Liang for helpful comments on a draft of the pape r.
+1. V. I. Arnold and A. L. Krylov. Soviet Math. Dokl. , 4:1, 1962.
+2. A. Barenco, C. H. Bennett, R. Cleve, D. P. DiVincenzo, N. Ma rgolus, P. Shor, T. Sleator, J. A.
+Smolin, and H. Weinfurter. Elementary gates for quantum com putation. Phys. Rev. A , 52:3457–
+3467, 1995. arXiv:quant-ph/9503016.
+3. E. Bernstein and U. Vazirani. Quantum complexity theory. SIAM J. Comp. , 26(5):1411–1473,
+1997. arXiv:quant-ph/9701001.
+4. A. G. Fowler. Constructing arbitrary single-qubit fault -tolerant gates. arXiv:quant-ph/0411206,
+2004.
+5. M. Freedman, A. Kitaev, and J. Lurie. Diameters of homogen eous spaces. arXiv:quant-
+ph/0209113, 2002.
+6. A. Gamburd, D. Jakobson, and P. Sarnak. Spectra of element s in the group ring of su(2). J. Eur.
+math. Soc. , 1(1):51–85, 1999.
+
+[PDF PAGE 15]
+Christopher M. Dawson and Michael A. Nielsen . . . 15
+7. Lov K. Grover. A fast quantum mechanical algorithm for dat abase search. In 28th ACM Sympo-
+sium on Theory of Computation , page 212, New York, 1996. Association for Computing Machin ery.
+8. Lov K. Grover. Quantum mechanics helps in searching for a n eedle in a haystack. Phys. Rev.
+Lett., 79(2):325, 1997. arXiv:quant-ph/9706033.
+9. A. Harrow, B. Recht, and I. L. Chuang. Eﬃcient discrete app roximations of quantum gates.
+J. Math. Phys. , 43:4445, 2002. arXiv:quant-ph/0111031.
+10. A. W. Harrow. Quantum compiling. MIT undergraduate thes is, 2001.
+11. R. A. Horn and C. R. Johnson. Topics in matrix analysis . Cambridge University Press, Cambridge,
+1991.
+12. A. Y. Kitaev. Quantum computations: algorithms and erro r correction. Russ. Math. Surv. ,
+52(6):1191–1249, 1997.
+13. A. Y. Kitaev. Quantum error correction with imperfect ga tes. In A. S. Holevo O. Hirota and
+C. M. Caves, editors, Quantum Communication, Computing, and Measurement , pages 181–188,
+New York, 1997. Plenum Press.
+14. A. Y. Kitaev, A. H. Shen, and M. N. Vyalyi. Classical and quantum computation , volume 47 of
+Graduate Studies in Mathematics . American Mathematical Society, Providence, Rhode Island ,
+2002.
+15. A. Yu. Kitaev. Quantum measurements and the Abelian stab ilizer problem. arXiv:quant-
+ph/9511026,, 1995.
+16. D. E. Knuth. Computer science and its relation to mathema tics. Amer. Math. Month. , 81(4),
+April 1974.
+17. A. Lubotsky, R. Phillips, and P. Sarnak. Hecke operators and distributing points on the sphere i.
+I. Comm. Pure Appl. Math. , 39:S149–S186, 1986.
+18. A. Lubotsky, R. Phillips, and P. Sarnak. Hecke operators and distributing points on the sphere
+ii. I. Comm. Pure Appl. Math. , 40:401–420, 1987.
+19. M. A. Nielsen and I. L. Chuang. Quantum computation and quantum information . Cambridge
+University Press, Cambridge, 2000.
+20. J. Preskill. Reliable quantum computers. Proc. Roy. Soc. A: Math., Phys. and Eng. ,
+454(1969):385–410, 1998.
+21. W. Rossmann. Lie Groups: An Introduction Through Linear Groups . Oxford University Press,
+Oxford, 2002.
+22. P. W. Shor. Algorithms for quantum computation: discret e logarithms and factoring. In Proceed-
+ings, 35th Annual Symposium on Fundamentals of Computer Sci ence, Los Alamitos, 1994. IEEE
+Press.
+23. P. W. Shor. Polynomial-time algorithms for prime factor ization and discrete logarithms on a
+quantum computer. SIAM J. Comp. , 26(5):1484–1509, 1997.

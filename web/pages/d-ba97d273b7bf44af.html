@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/tensor_frame_sol/cycle04_sharp/mub_rank5_gate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/tensor_frame_sol/cycle04_sharp/mub_rank5_gate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Targeted discovery gate, never a final certificate by solver status alone.&quot;&quot;&quot;
+import json
+from pathlib import Path
+import numpy as np
+import cvxpy as cp
+
+OUT=Path(__file__).resolve().parent
+d=3
+I=np.eye(d,dtype=complex)
+w=np.exp(2j*np.pi/3)
+Z=np.diag([1,w,w*w])
+X=np.array([[0,0,1],[1,0,0],[0,1,0]],complex)
+def quad(U):
+    return [(U+U.conj().T)/np.sqrt(2),(U-U.conj().T)/(1j*np.sqrt(2))]
+basis=sum([quad(U) for U in [Z,X,X@Z,X@Z@Z]],[])
+frame=basis[:5]
+assert np.max(np.abs(np.array([[np.trace(A@B)/d for B in basis] for A in basis])-np.eye(8)))&lt;1e-12
+def kron3(A,B,C): return np.kron(np.kron(A,B),C)
+W=sum([kron3(A.T,A,I)+kron3(A.T,I,A) for A in frame])
+P=np.zeros((27,27))
+for a in range(3):
+ for b in range(3):
+  for c in range(3):
+   P[a*9+c*3+b,a*9+b*3+c]=1
+R=cp.Variable((27,27),hermitian=True)
+expect=lambda O: cp.real(cp.trace(R@O))
+constraints=[R&gt;&gt;0,cp.trace(R)==1,R==P@R@P]
+for A in basis:
+    for O in [kron3(A,I,I),kron3(I,A,I),kron3(I,I,A)]:
+        constraints.append(expect(O)==0)
+for i,A in enumerate(basis):
+    for j in range(i):
+        B=basis[j]
+        constraints.append(expect(kron3(A.T,B,I)-kron3(B.T,A,I))==0)
+problem=cp.Problem(cp.Maximize(expect(W)),constraints)
+print(&#x27;bare_max&#x27;,np.linalg.eigvalsh(W)[-1], &#x27;exact_C2_threshold&#x27;,7,flush=True)
+problem.solve(solver=&#x27;CLARABEL&#x27;,tol_gap_abs=1e-8,tol_feas=1e-8,tol_gap_rel=1e-8,max_iter=150)
+r=np.array(R.value)
+data={&#x27;status&#x27;:problem.status,&#x27;objective&#x27;:float(problem.value),
+      &#x27;min_eigenvalue&#x27;:float(np.linalg.eigvalsh(r)[0]),
+      &#x27;max_constraint_violation&#x27;:float(max(np.max(np.abs(c.violation())) for c in constraints)),
+      &#x27;bare_max&#x27;:float(np.linalg.eigvalsh(W)[-1]),&#x27;V&#x27;:5,&#x27;k&#x27;:2,
+      &#x27;note&#x27;:&#x27;Numerical discovery only. Fixed singleton marginals, equal receivers, and HS-self-adjoint marginal imposed.&#x27;}
+dual_t=float(np.real(constraints[1].dual_value))
+dual_lambdas=np.array([float(c.dual_value) for c in constraints[3:]])
+data[&#x27;dual_trace_multiplier&#x27;]=dual_t
+data[&#x27;dual_zero_moment_multipliers&#x27;]=dual_lambdas.tolist()
+np.savez(OUT/&#x27;mub_rank5_gate.npz&#x27;,R=r,W=W,basis=np.array(basis),frame=np.array(frame),dual_t=dual_t,dual_lambdas=dual_lambdas)
+(OUT/&#x27;mub_rank5_gate.json&#x27;).write_text(json.dumps(data,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(data,indent=2),flush=True)
+</pre><p><a href="../assets/39479fccf2da6f51ba015d964c5c1153a68946259fa70a2cf4a94e019a46f6f1.py">Exact original</a></p></html>

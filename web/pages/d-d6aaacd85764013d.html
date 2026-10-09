@@ -1,0 +1,129 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/sharp-entropy-constants/global-qubit-review/verify_blind_angular_reduction.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/sharp-entropy-constants/global-qubit-review/verify_blind_angular_reduction.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact algebra replay of the blind angular reduction, not a PI proof.&quot;&quot;&quot;
+import json
+import sympy as s
+
+checks = []
+
+
+def equal(a, b, label):
+    delta = a - b
+    ok = (all(s.simplify(x) == 0 for x in delta) if isinstance(delta, s.MatrixBase)
+          else s.simplify(delta) == 0)
+    assert ok, (label, s.simplify(delta))
+    checks.append(label)
+
+
+g = s.symbols(&#x27;g&#x27;, positive=True)
+x, y, z, pop, coh = s.symbols(&#x27;x y z pop coh&#x27;, real=True)
+rad, v, angle_sine, nu, R, K, bound = s.symbols(&#x27;r v h nu R K c&#x27;, real=True)
+X = s.Matrix([[0, 1], [1, 0]])
+Z = s.diag(1, -1)
+N = s.Matrix([[z, x - s.I * y], [x + s.I * y, -z]])
+ref_s = s.diag(g, 1)
+mu = (g - 1) / (g + 1)
+lam = 2 * s.sqrt(g) / (g + 1)
+ref_b = 2 * g / (g ** 2 + 1)
+ref_q = (g ** 2 - 1) / (g ** 2 + 1)
+Cosh = (g + 1 / g) / 2
+Sinh = (g - 1 / g) / 2
+VN = s.Matrix([[z ** 2 + (x ** 2 + y ** 2) / g, 2 * mu * z * (x - s.I * y)],
+               [2 * mu * z * (x + s.I * y), z ** 2 + g * (x ** 2 + y ** 2)]])
+equal(VN * ref_s + ref_s * VN, 2 * N * ref_s * N, &#x27;exact Lyapunov noise coefficient&#x27;)
+S = s.diag(s.sqrt(g), 1)
+noise = S * N * S.inv()
+left = S * VN * S.inv()
+equal((left + left.conjugate().T) / 2, noise.conjugate().T * noise,
+      &#x27;physical TP identity including Hamiltonian component&#x27;)
+rho = s.Matrix([[pop, coh], [coh, 1 - pop]])
+delta = (left * rho + rho * left.conjugate().T) / 2 - noise * rho * noise.conjugate().T
+equal(s.trace(delta), 0, &#x27;physical Schrodinger defect trace zero&#x27;)
+expected_dz = (x ** 2 + y ** 2) * ((g + 1 / g) * pop - g) - 2 * lam * z * coh * x
+expected_dx = coh * (2 * z ** 2 + (Cosh - 1) * x ** 2 + (Cosh + 1) * y ** 2) \
+              - lam * ((g + 1 / g) * pop - g) * z * x
+equal(delta[0, 0], expected_dz, &#x27;actual defect diagonal formula&#x27;)
+equal(s.re(delta[0, 1]).expand(complex=True), expected_dx, &#x27;actual defect real coherence formula&#x27;)
+equal(Cosh, 1 / ref_b, &#x27;reference cosh/Bloch identity&#x27;)
+equal(Sinh, ref_q / ref_b, &#x27;reference sinh/Bloch identity&#x27;)
+equal(mu, ref_q / (1 + ref_b), &#x27;reference root-imbalance identity&#x27;)
+equal(lam ** 2, 2 * ref_b / (1 + ref_b), &#x27;reference lambda identity&#x27;)
+
+sub_state = {pop: (1 + rad * v) / 2, coh: rad * angle_sine / 2}
+J = s.expand(2 * R * angle_sine * expected_dx.subs(sub_state)
+             + 2 * (R * v - K) * expected_dz.subs(sub_state))
+J = s.expand(J).subs(angle_sine ** 2, 1 - v ** 2)
+Jz = 2 * rad * R * (1 - v ** 2)
+Jx = rad * R * (1 - v ** 2) * (1 / ref_b - 1) \
+     + 2 * (R * v - K) * (rad * v - ref_q) / ref_b
+Jy = Jx + Jz
+Jzx = -lam * angle_sine * (R * (rad * v - ref_q) / ref_b + rad * (R * v - K))
+equal(J, Jz * z ** 2 + Jx * x ** 2 + Jy * y ** 2 + 2 * Jzx * z * x,
+      &#x27;full actual entropy-production quadratic form&#x27;)
+
+alpha, beta = s.symbols(&#x27;alpha beta&#x27;, real=True)
+root = alpha * s.eye(2) + beta * (angle_sine * X + v * Z)
+Hroot = (VN * root + root * VN) / 2 - N * root * N
+E_raw = s.Poly(s.expand(s.trace(root * Hroot)), alpha, beta)
+E = 0
+sub_roots = {(2, 0): (1 + nu) / 4, (0, 2): (1 - nu) / 4,
+             (1, 1): rad / 4}
+for powers, coefficient in E_raw.terms():
+    assert powers in sub_roots
+    E += coefficient * sub_roots[powers]
+E = s.expand(E).subs(angle_sine ** 2, 1 - v ** 2)
+Ez = (1 - nu) * (1 - v ** 2)
+Ex = 1 / ref_b - rad * v * ref_q / ref_b - 1 + (1 - nu) * v ** 2
+Ey = Ex + Ez
+Ezx = angle_sine * (mu * rad - (1 - nu) * v)
+equal(E, Ez * z ** 2 + Ex * x ** 2 + Ey * y ** 2 + 2 * Ezx * z * x,
+      &#x27;full actual root-energy quadratic form&#x27;)
+
+Zc = 2 * rad * R - bound * (1 - nu)
+P0 = (1 / ref_b - 1) * (rad * R - bound) + 2 * ref_q * K / ref_b
+P1 = -2 * (ref_q * R + rad * K) / ref_b + bound * rad * ref_q / ref_b
+P2 = rad * R * (1 + 1 / ref_b) - bound * (1 - nu)
+Q0 = lam * (ref_q * R / ref_b + rad * K) - bound * mu * rad
+Q1 = -lam * rad * R * (1 + 1 / ref_b) + bound * (1 - nu)
+Pv = P0 + P1 * v + P2 * v ** 2
+Qv = Q0 + Q1 * v
+equal(Jx - bound * Ex, Pv, &#x27;noise block polynomial P&#x27;)
+equal(Jzx - bound * Ezx, angle_sine * Qv, &#x27;noise block polynomial Q&#x27;)
+equal(Jy - bound * Ey, Pv + (1 - v ** 2) * Zc, &#x27;decoupled y equals trace of real block&#x27;)
+det_normalized = s.expand(Zc * Pv - Qv ** 2)
+concavity_coefficient = s.Poly(det_normalized, v).coeff_monomial(v ** 2)
+expected_concavity = -2 * bound * rad * R * (1 - nu) * (1 - lam) ** 2 / lam ** 2
+equal(concavity_coefficient, expected_concavity, &#x27;exact normalized determinant concavity coefficient&#x27;)
+for sign in [-1, 1]:
+    boundary_P = 2 * (sign * R - K) * (sign * rad - ref_q) / ref_b \
+                 - bound * ((1 - sign * rad * ref_q) / ref_b - nu)
+    boundary_Q = -lam * (R * (sign * rad - ref_q) / ref_b + rad * (sign * R - K)) \
+                 - bound * (mu * rad - sign * (1 - nu))
+    equal(Pv.subs(v, sign), boundary_P, f&#x27;boundary P at angle {sign}&#x27;)
+    equal(Qv.subs(v, sign), boundary_Q, f&#x27;boundary Q at angle {sign}&#x27;)
+
+# Exact leading determinant as rho approaches the maximally mixed state.
+q, b, l, m = s.symbols(&#x27;q b l m&#x27;, real=True)
+u, U = s.symbols(&#x27;u U&#x27;, real=True)
+N00 = 2 - bound / 2
+Nuu = 2 * U / u - bound / 2
+N0u = 1 + (1 - u ** 2) * U / u - bound * s.sqrt(1 - u ** 2) / 2
+limit_P = (2 * q * K - bound * (1 - b)) / b
+limit_Q = l * (q / b + K) - bound * m
+limit_F = (2 - bound / 2) * limit_P - limit_Q ** 2
+limit_subs = {q: 2 * u / (1 + u ** 2), b: (1 - u ** 2) / (1 + u ** 2),
+              l: s.sqrt(1 - u ** 2), m: u, K: 2 * U}
+equal(s.simplify(limit_F.subs(limit_subs)),
+      4 * u ** 2 * (N00 * Nuu - N0u ** 2) / (1 - u ** 2),
+      &#x27;maximally mixed state limit exactly matches two-point Hardy determinant&#x27;)
+
+print(json.dumps({
+    &#x27;status&#x27;: &#x27;PASS_EXACT_BLIND_REDUCTION&#x27;,
+    &#x27;checks&#x27;: len(checks),
+    &#x27;assertions&#x27;: checks,
+    &#x27;global_pi_status&#x27;: &#x27;UNKNOWN before proof exposure&#x27;,
+    &#x27;remaining_gate&#x27;: &#x27;F_pi(r,q,+1)&gt;=0 and F_pi(r,q,-1)&gt;=0 for all admissible r,q&#x27;,
+    &#x27;supplied_Hardy_kernel_interface&#x27;: &#x27;Exact match in r-&gt;0 limit; full boundary interface not derived in blind attempt&#x27;,
+    &#x27;floating_point_used&#x27;: False,
+    &#x27;numeric_scan&#x27;: False
+}, indent=2))
+</pre><p><a href="../assets/6fb1c234c70f20f1a52a41d57b06bf53283b1146efe6e3c675e02c0703a147b3.py">Exact original</a></p></html>

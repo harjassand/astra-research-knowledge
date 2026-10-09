@@ -1,0 +1,140 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/tensor_frame_sol/cycle07_global_qubit_pi_review/verify_exposed_factorization_and_witness.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/tensor_frame_sol/cycle07_global_qubit_pi_review/verify_exposed_factorization_and_witness.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exposed exact identity audit and one independently embedded upper witness.&quot;&quot;&quot;
+from pathlib import Path
+import hashlib
+import json
+import subprocess
+import sys
+import time
+import sympy as s
+
+checks = []
+
+
+def equal(a, b, label):
+    delta = a - b
+    ok = (all(s.simplify(x) == 0 for x in delta) if isinstance(delta, s.MatrixBase)
+          else s.simplify(delta) == 0)
+    assert ok, (label, delta)
+    checks.append(label)
+
+
+x, y, lam = s.symbols(&#x27;x y lambda&#x27;, real=True)
+alpha = x - y
+expanded_endpoint = x * (s.sinh(alpha) * s.cosh(x)
+                         - (s.cosh(alpha) + 1) * s.sinh(x)) \
+                    + alpha * s.sinh(x) - 2 * lam * s.sinh(alpha / 2) * s.sinh(x) \
+                    + 2 * lam * s.cosh(alpha / 2) * (s.cosh(x) - 1)
+Txy = x * s.sinh(y) + y * s.sinh(x) \
+      - 4 * lam * s.sinh(x / 2) * s.sinh(y / 2)
+equal(s.simplify(s.expand_trig((expanded_endpoint + Txy).rewrite(s.exp))), 0,
+      &#x27;general endpoint cross identity with x-y=alpha&#x27;)
+equal(Txy.subs(y, x), 2 * (x * s.sinh(x) - lam * (s.cosh(x) - 1)),
+      &#x27;hyperbolic kernel diagonal normalization&#x27;)
+t, u, At, Au = s.symbols(&#x27;t u At Au&#x27;, real=True)
+bt, bu = s.sqrt(1 - t ** 2), s.sqrt(1 - u ** 2)
+kernel_disk = ((1 - t ** 2) * At / t + (1 - u ** 2) * Au / u - lam * bt * bu) / (1 - t * u)
+T_in_disk = (2 * At) * 2 * u / (1 - u ** 2) \
+            + (2 * Au) * 2 * t / (1 - t ** 2) - 4 * lam * t * u / (bt * bu)
+hyperbolic_cos_difference = (1 - t * u) / (bt * bu)
+equal(T_in_disk / (2 * hyperbolic_cos_difference),
+      2 * t * u * kernel_disk / (bt * bu),
+      &#x27;exact Hardy-to-hyperbolic signed congruence&#x27;)
+
+Q = s.Rational
+I = s.eye(2)
+X = s.Matrix([[0, 1], [1, 0]])
+Y = s.Matrix([[0, -s.I], [s.I, 0]])
+Z = s.diag(1, -1)
+sigma = s.diag(Q(9, 10), Q(1, 10))
+stationary_root = s.diag(3, 1) / s.sqrt(10)
+noise = X + 9 * Z
+potential = s.Matrix([[Q(244, 3), 9], [9, 84]])
+equal((potential * stationary_root + stationary_root * potential) / 2,
+      noise * stationary_root * noise, &#x27;upper witness exact Lyapunov stationarity&#x27;)
+
+
+def H(a):
+    return (potential * a + a * potential) / 2 - noise * a * noise
+
+
+S = s.diag(s.sqrt(3), 1) / 10 ** Q(1, 4)
+physical_noise = S * noise * S.inv()
+physical_left = S * potential * S.inv()
+hamiltonian_correction = 3 * s.sqrt(3) * Y
+equal(physical_noise, s.Matrix([[9, s.sqrt(3)], [1 / s.sqrt(3), -9]]),
+      &#x27;upper physical jump orientation&#x27;)
+equal(physical_left, physical_noise.conjugate().T * physical_noise
+      + s.I * hamiltonian_correction, &#x27;upper physical Hamiltonian retained&#x27;)
+
+
+def LS(a):
+    return (physical_left * a + a * physical_left.conjugate().T) / 2 \
+           - physical_noise * a * physical_noise.conjugate().T
+
+
+equal(LS(sigma), s.zeros(2), &#x27;upper physical stationary reference&#x27;)
+for i in range(2):
+    for j in range(2):
+        unit = s.zeros(2)
+        unit[i, j] = 1
+        equal(s.trace(LS(unit)), 0, f&#x27;upper full physical trace conservation {i}{j}&#x27;)
+        equal(S.inv() * LS(S * unit * S) * S.inv(), H(unit),
+              f&#x27;upper full physical KMS similarity {i}{j}&#x27;)
+basis = [I / s.sqrt(2), X / s.sqrt(2), Y / s.sqrt(2), Z / s.sqrt(2)]
+matrix = s.Matrix([[s.trace(a * H(b)) for b in basis] for a in basis])
+equal(matrix, s.Matrix([[Q(2, 3), 9, 0, -Q(4, 3)],
+                        [9, Q(488, 3), 0, -18], [0, 0, Q(494, 3), 0],
+                        [-Q(4, 3), -18, 0, Q(8, 3)]]), &#x27;upper exact transformed Pauli matrix&#x27;)
+spectral_variable = s.symbols(&#x27;spectral_variable&#x27;)
+equal(matrix.charpoly(spectral_variable).as_expr(),
+      spectral_variable * (spectral_variable - Q(494, 3))
+      * ((spectral_variable - 83) ** 2 - Q(60766, 9)),
+      &#x27;upper primitive spectrum characteristic polynomial&#x27;)
+assert 60766 &lt; 249 ** 2
+checks.append(&#x27;upper all nonzero eigenvalues strictly positive&#x27;)
+equal(H(2 * I + Z), s.zeros(2), &#x27;upper fixed root direction&#x27;)
+
+rad = Q(364, 365)
+rho = (I + rad * (s.sqrt(1999) * X + 999 * Z) / 1000) / 2
+equal(s.trace(rho), 1, &#x27;upper actual density trace one&#x27;)
+equal(rho.det(), Q(729, 532900), &#x27;upper actual faithful determinant&#x27;)
+root_rho = (rho + Q(27, 730) * I) / s.sqrt(Q(784, 730))
+equal(root_rho * root_rho, rho, &#x27;upper actual physical root&#x27;)
+delta = LS(rho)
+equal(s.trace(delta), 0, &#x27;upper actual defect trace zero&#x27;)
+# Scalar log determinants cancel against trace-zero delta. beta=ln27=3ln3.
+J_over_log3 = s.simplify(s.trace(delta * (3 * (2 * rho - I) / rad - Z)))
+E = s.simplify(s.trace(root_rho * H(root_rho)))
+equal(E, Q(2822593, 6843750) - Q(700479, 91250000) * s.sqrt(1999),
+      &#x27;upper E independently from full physical root&#x27;)
+equal(J_over_log3, Q(311978753, 136875000) - Q(305181, 11406250) * s.sqrt(5997),
+      &#x27;upper J independently from full physical generator and log&#x27;)
+
+folder = Path(__file__).resolve().parent
+workspace = folder.parents[3]
+origin_folder = workspace / &#x27;work/agents/complexity_proof_recon/cycle07_qubit_constant&#x27;
+source = origin_folder / &#x27;check_exact_upper.py&#x27;
+copy = folder / &#x27;authorized_upper_replay_copy.py&#x27;
+copy.write_bytes(source.read_bytes())
+started = time.perf_counter()
+completed = subprocess.run([sys.executable, str(copy)], capture_output=True, text=True, check=True)
+child_wall = time.perf_counter() - started
+copied_result = json.loads(completed.stdout)
+assert copied_result[&#x27;status&#x27;] == &#x27;PASS_EXACT_SINGLE_CERTIFICATE&#x27;
+assert copied_result[&#x27;ratio_interval&#x27;] == [&#x27;82271/25000&#x27;, &#x27;32908401/10000000&#x27;]
+checks.append(&#x27;authorized owned-copy exact integer rational ratio replay passes&#x27;)
+
+print(json.dumps({
+    &#x27;status&#x27;: &#x27;PASS_EXPOSED_EXACT_AUDIT&#x27;,
+    &#x27;checks&#x27;: len(checks),
+    &#x27;assertions&#x27;: checks,
+    &#x27;origin_script_sha256&#x27;: hashlib.sha256(source.read_bytes()).hexdigest(),
+    &#x27;origin_replay_assertions&#x27;: copied_result[&#x27;checks_passed&#x27;],
+    &#x27;origin_replay_child_wall_seconds&#x27;: child_wall,
+    &#x27;upper_ratio_interval&#x27;: copied_result[&#x27;ratio_interval&#x27;],
+    &#x27;scope&#x27;: &#x27;Post-exposure factorization identities plus one supplied analytic witness; no scan, and no universal theorem by replay&#x27;,
+    &#x27;floating_point_used_for_certificate&#x27;: False,
+    &#x27;source_proof_edits&#x27;: False
+}, indent=2))
+</pre><p><a href="../assets/fd25d93cd77ca504eedec64dab898e0eb36dd24a3963e6e1d33dfc925dfbf303.py">Exact original</a></p></html>

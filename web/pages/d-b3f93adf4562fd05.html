@@ -1,0 +1,44 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/ppt_cube_chain_sol/phase_d_alignment/gram_sdp.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/ppt_cube_chain_sol/phase_d_alignment/gram_sdp.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;One structured exact target: the Hodge-cancelling input permutation cube.&quot;&quot;&quot;
+import sys,json,time
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).parent.parent))
+from exact_rank import rational_model
+from diagnostics import choi,syms
+from sep_sdp import whiten
+import cvxpy as cp
+import numpy as np
+
+def gram_model():
+    ks,s,_,_=rational_model()
+    d=np.diag([2 if i==j else 1 for i,j in syms]).astype(object)
+    m=s@np.kron(d,d)@s.T@s
+    return choi(m,10,6)
+
+def main():
+    ji=gram_model();j=np.array(ji,dtype=float)/float(np.trace(ji))
+    j,x,y=whiten(j,10,6);rng=np.random.default_rng(2724)
+    vec=[np.eye(10)[i] for i in range(10)]
+    for sign in (1,-1):
+        vec += [np.eye(10)[i]+sign*np.eye(10)[k] for i in range(10) for k in range(i+1,10)]
+    vec += list(rng.normal(size=(300,10)))
+    vec=np.array(vec);vec/=np.linalg.norm(vec,axis=1,keepdims=True)
+    pu=[(i,k) for i in range(10) for k in range(i,10)]
+    qu=[(a,b) for a in range(6) for b in range(a,6)]
+    p=np.array([[v[i]*v[k] for i,k in pu] for v in vec])
+    target=np.array([[j[i*6+a,k*6+b] for a,b in qu] for i,k in pu])
+    factors=[cp.Variable((6,6),symmetric=True) for _ in vec]
+    v=cp.vstack([cp.hstack([b[a,c] for a,c in qu]) for b in factors])
+    t=cp.Variable();prob=cp.Problem(cp.Maximize(t),[p.T@v==target]+[b-t*np.eye(6)&gt;&gt;0 for b in factors])
+    before=time.monotonic();prob.solve(solver=&#x27;SCS&#x27;,eps=1e-6,max_iters=5000,verbose=False)
+    out=dict(status=prob.status,margin=None if t.value is None else float(t.value),
+             atoms=400,seconds=time.monotonic()-before,solver_iterations=prob.solver_stats.num_iters)
+    if t.value is not None:
+        bs=np.array([b.value for b in factors]);res=np.einsum(&#x27;ni,nj,nab-&gt;iajb&#x27;,vec,vec,bs)
+        out.update(residual=float(np.max(abs(res-j.reshape(10,6,10,6)))),
+                   min_factor_eig=float(min(np.linalg.eigvalsh(b)[0] for b in bs)))
+        np.savez(Path(__file__).with_name(&#x27;gram_candidate.npz&#x27;),vec=vec,bs=bs,x=x,y=y,j=j)
+    Path(__file__).with_name(&#x27;gram_sdp.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/d133974b0b3f2c09def2382bed668db8ecbad87cf57f5ed1b61f49aca34a0745.py">Exact original</a></p></html>

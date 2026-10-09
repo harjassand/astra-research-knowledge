@@ -1,0 +1,192 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/tensor_frame_sol/cycle03_universal_blind/verify_generic.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/tensor_frame_sol/cycle03_universal_blind/verify_generic.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact independent formula/interface checks; not universal proof validation.&quot;&quot;&quot;
+from pathlib import Path
+import hashlib
+import json
+import sympy as s
+
+BASE = Path(__file__).resolve().parent
+tests = []
+
+def eq(a, b):
+    if isinstance(a, s.MatrixBase):
+        assert a.shape == b.shape
+        assert all(s.simplify(x) == 0 for x in a-b)
+    else:
+        assert s.simplify(a-b) == 0
+
+def psd(a):
+    eq(a, a.conjugate().T)
+    import itertools
+    for r in range(1, a.rows+1):
+        for ix in itertools.combinations(range(a.rows),r):
+            x = s.simplify(a.extract(ix,ix).det())
+            assert x &gt;= 0, (ix,x)
+
+def record(name, **details):
+    tests.append(dict(name=name,status=&quot;PASS&quot;,**details))
+
+# 1. Fully symbolic noncommuting covariance and signed inverses.
+u,v = s.symbols(&quot;u v&quot;,real=True,nonzero=True)
+m = s.symbols(&quot;m&quot;,positive=True)
+g0,g1,g2 = s.symbols(&quot;g0 g1 g2&quot;,real=True)
+F = s.diag(u,v)
+G = s.Matrix([[g0,g1],[g1,g2]])
+I = s.eye(2)
+N = m*I
+for n in range(1,5):
+    N = F.inv()*(N+G)*F.inv()/2
+    A = (2*F**2)**(-n)
+    closed = m*A+s.zeros(2)
+    D = m*A+s.zeros(2)
+    slack = s.zeros(2)
+    for r in range(1,n+1):
+        closed += F**(-r)*G*F**(-r)/2**r
+        D += (2*F**2)**(-r)
+        slack += F**(-r)*(I-G)*F**(-r)/2**r
+    eq(N,closed)
+    eq(D-N,slack)
+    H = 2*F**2-I
+    eq(D,H.inv()*(I-A)+m*A)
+Fex=s.diag(s.Rational(4,5),-s.Rational(9,10))
+Gex=s.Matrix([[s.Rational(3,5),s.Rational(1,10)],
+              [s.Rational(1,10),s.Rational(4,5)]])
+assert Fex*Gex != Gex*Fex
+psd(I-Gex)
+Nex=2*I
+for n in range(1,5):
+    Nex=Fex.inv()*(Nex+Gex)*Fex.inv()/2
+    Dex=2*(2*Fex**2)**(-n)+sum(
+        ((2*Fex**2)**(-r) for r in range(1,n+1)),s.zeros(2))
+    psd(Dex-Nex)
+record(&quot;generic_signed_noncommuting_tree_covariance&quot;,
+       symbolic_depths=[1,2,3,4],initial_variance=&quot;mI&quot;,
+       identities=[&quot;exact recursion&quot;,&quot;same-leaf closed formula&quot;,
+                   &quot;congruence slack&quot;,&quot;finite geometric bound&quot;],
+       physical_channel_claim_for_abstract_example=False)
+
+# 2. An actual pure six-effect POVM with fast/slow covariance cross terms.
+X=s.Matrix([[0,1],[1,0]])
+Y=s.Matrix([[0,-s.I],[s.I,0]])
+Z=s.diag(1,-1)
+pauli=[X,Y,Z]
+vecs=[s.Matrix([1,0,0]),s.Matrix([s.Rational(3,5),0,s.Rational(4,5)]),
+      s.Matrix([0,1,0])]
+
+def pi(r):
+    return (s.eye(2)+sum((r[a]*pauli[a] for a in range(3)),s.zeros(2)))/2
+
+effects=[]
+states=[]
+scores=[]
+for j,r in enumerate(vecs):
+    for sign in [1,-1]:
+        P=pi(sign*r)
+        eq(P*P,P)
+        eq(s.trace(P),1)
+        effects.append(P/3)
+        states.append(P)
+        scores.append(sign*3 if j==0 else 0)
+eq(sum(effects,s.zeros(2)),s.eye(2))
+eq(sum((z*M for z,M in zip(scores,effects)),s.zeros(2)),X)
+C=s.zeros(3);cross=s.zeros(3,1);K=0
+for M,P,z in zip(effects,states,scores):
+    p=s.trace(M)/2
+    xx=s.Matrix([s.trace(P*A) for A in pauli])
+    C+=p*xx*xx.T
+    cross+=p*xx*z
+    K+=p*z*z
+J=s.Matrix([1,0,0])
+eq(cross,J)
+eq(K,3)
+assert C[0,2] == s.Rational(4,25)
+eq(C-J*J.T/K,(vecs[1]*vecs[1].T+vecs[2]*vecs[2].T)/3)
+psd(C-J*J.T/K)
+gram=C.row_join(J).col_join(J.T.row_join(s.Matrix([[K]])))
+psd(gram)
+record(&quot;full_input_Gram_with_nonzero_fast_slow_cross&quot;,
+       effects=6,fast_slow_cross=&quot;4/25&quot;,estimator_variance=&quot;3&quot;,
+       full_domain_schur_bound=&quot;C&gt;=eX eX^T/3&quot;)
+
+# 3. Actual mixed effects refined spectrally, retaining the tracial barycenter.
+coarse=[(pi(vecs[0])+pi(vecs[1]))/3,
+        (pi(-vecs[0])+pi(-vecs[1]))/3,
+        pi(vecs[2])/3,pi(-vecs[2])/3]
+eq(sum(coarse,s.zeros(2)),s.eye(2))
+h=s.Matrix([2/s.sqrt(5),0,1/s.sqrt(5)])
+cp=(1+2/s.sqrt(5))/3
+cm=(1-2/s.sqrt(5))/3
+assert cp&gt;0 and cm&gt;0
+eq(cp*pi(h)+cm*pi(-h),coarse[0])
+eq(cm*pi(h)+cp*pi(-h),coarse[1])
+refined=[(cp,pi(h)),(cm,pi(-h)),(cm,pi(h)),(cp,pi(-h)),
+         (s.Rational(1,3),pi(vecs[2])),(s.Rational(1,3),pi(-vecs[2]))]
+eq(sum((c*P for c,P in refined),s.zeros(2)),s.eye(2))
+eq(sum((c*P/2 for c,P in refined),s.zeros(2)),s.eye(2)/2)
+CC=s.zeros(3);CR=s.zeros(3)
+for M in coarse:
+    p=s.trace(M)/2
+    R=M/s.trace(M)
+    xx=s.Matrix([s.trace(R*A) for A in pauli])
+    CC+=p*xx*xx.T
+for c,P in refined:
+    xx=s.Matrix([s.trace(P*A) for A in pauli])
+    CR+=(c/2)*xx*xx.T
+eq(CR-CC,s.Rational(2,15)*h*h.T)
+psd(CR-CC)
+record(&quot;exact_pure_effect_refinement&quot;,
+       refined_effects=6,barycenter=&quot;I2/2&quot;,
+       covariance_gain=&quot;(2/15)h h^T&quot;)
+
+# 4. Faithful tracial M2 direct-sum C with a genuinely center-mixing Phi.
+weights=s.Matrix([s.Rational(3,10),s.Rational(3,10),s.Rational(2,5)])
+W=s.diag(*weights)
+P=s.Matrix([[s.Rational(9,10),0,s.Rational(1,10)],
+            [0,1,0],
+            [s.Rational(3,40),0,s.Rational(37,40)]])
+eq(P*s.ones(3,1),s.ones(3,1))
+eq(weights.T*P,weights.T)
+eq(W*P,P.T*W)
+assert all(x&gt;=0 for x in P)
+tt=s.symbols(&quot;t&quot;)
+eq(P.charpoly(tt).as_expr(),(tt-1)**2*(tt-s.Rational(33,40)))
+center=s.Matrix([0,0,1])
+image=P*center
+assert image[0] != image[1]  # first M2 block is not scalar
+eq(image,s.Matrix([s.Rational(1,10),0,s.Rational(37,40)]))
+# Three minimal projection atoms: probabilities equal tau(pi), not 1/3.
+prob=weights
+eq(sum((prob[j]/weights[j]*s.eye(3)[:,j] for j in range(3)),s.zeros(3,1)),
+   s.ones(3,1))
+assert prob != s.ones(3,1)/3
+# Their relative canonical map is identity on diagonal coordinates and
+# dephasing on the full M2 block, thus fixes the entire algebra center.
+Psi=s.eye(3)
+psd(W*(Psi-P**2))
+psd(W*(Psi-(2*P**2-s.eye(3))))
+record(&quot;unequal_weight_tracial_center_mixing_interface&quot;,
+       algebra=&quot;M2 direct_sum C&quot;,block_weights=[&quot;3/5&quot;,&quot;2/5&quot;],
+       minimal_projection_weights=[&quot;3/10&quot;,&quot;3/10&quot;,&quot;2/5&quot;],
+       Phi_center_image=[&quot;1/10&quot;,&quot;0&quot;,&quot;37/40&quot;],
+       Phi_diagonal_spectrum=[&quot;1&quot;,&quot;1&quot;,&quot;33/40&quot;],
+       compatibility=&quot;UCP copy-state joint formula with row probabilities P&quot;,
+       posterior_density=&quot;M/tau(M)&quot;,
+       refined_probability=&quot;c tau(pi)&quot;,
+       comparator_center_preserved=True)
+
+# 5. Exact residual supplying factor four.
+q=s.symbols(&quot;q&quot;,real=True)
+eq(4*(1-q)-2*(1-q*q),2*(1-q)**2)
+record(&quot;factor_four_residual&quot;,identity=&quot;4(I-Phi)-2(I-Phi^2)=2(I-Phi)^2&quot;)
+
+out=dict(
+ scope=&quot;Independent exact generic identities and finite weighted-interface controls; analytic quantified proofs separate&quot;,
+ sympy_version=s.__version__,
+ proof_sha256=hashlib.sha256((BASE/&quot;BLIND_BASELINE.txt&quot;).read_bytes()).hexdigest(),
+ extension_sha256=hashlib.sha256((BASE/&quot;FAITHFUL_TRACIAL_EXTENSION.txt&quot;).read_bytes()).hexdigest(),
+ originator_physical_scripts_executed=False,
+ tests=tests,all_pass=True,external_formal_validation=&quot;unverified&quot;)
+(BASE/&quot;generic_replay.json&quot;).write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+print(json.dumps(out,indent=2))
+
+</pre><p><a href="../assets/92c08ea941302525eaaa88f6c76247ec94ffb3b0e64fdcd90e5d3e4ab81e9e8c.py">Exact original</a></p></html>

@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/kms-regularity/weak-endpoint-independent/explore_qubit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/kms-regularity/weak-endpoint-independent/explore_qubit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent CP--KMS family diagnostic, not a theorem certificate.&quot;&quot;&quot;
+from pathlib import Path
+import json
+import numpy as np
+import mpmath as mp
+
+HERE=Path(__file__).resolve().parent
+
+
+def coefficients(p, r, theta):
+    z0=2*p-1
+    u,v=np.sqrt(p),np.sqrt(1-p)
+    R=1/(u*v)
+    ell=.5*np.log(p/(1-p))
+    x,z=r*np.sin(theta),r*np.cos(theta)
+    q=np.sqrt(1-r*r)
+    D=np.arctanh(r)
+    E0=R/2-q-(1-q)*x*x/(r*r)-z0*R*z/2
+    E1=2*(u-v)/(u+v)*x-2*(1-q)*x*z/(r*r)
+    E2=(1-q)*x*x/(r*r)
+    J0=.5*(R-2)*D*x*x/r+R*(z-z0)*(D*z/r-ell)
+    J1=-2*R/np.sqrt(R+2)*(z-z0)*D*x/r-4/np.sqrt(R+2)*x*(D*z/r-ell)
+    J2=2*D*x*x/r
+    return (J0,J1,J2),(E0,E1,E2)
+
+
+def high_precision(p_text,r_text,theta_text):
+    mp.mp.dps=90
+    p,r,t=map(mp.mpf,[p_text,r_text,theta_text])
+    z0=2*p-1
+    u,v=mp.sqrt(p),mp.sqrt(1-p)
+    R=1/(u*v)
+    ell=mp.log(p/(1-p))/2
+    x,z=r*mp.sin(t),r*mp.cos(t)
+    q=mp.sqrt(1-r*r)
+    D=mp.atanh(r)
+    E0=R/2-q-(1-q)*x*x/(r*r)-z0*R*z/2
+    E1=2*(u-v)/(u+v)*x-2*(1-q)*x*z/(r*r)
+    E2=(1-q)*x*x/(r*r)
+    J0=(R-2)*D*x*x/(2*r)+R*(z-z0)*(D*z/r-ell)
+    J1=-2*R/mp.sqrt(R+2)*(z-z0)*D*x/r-4/mp.sqrt(R+2)*x*(D*z/r-ell)
+    J2=2*D*x*x/r
+    f0,f1,f2=J0-2*E0,J1-2*E1,J2-2*E2
+    a=-f1/(2*f2)
+    J=J0+a*J1+a*a*J2
+    E=E0+a*E1+a*a*E2
+    return {&quot;p&quot;:str(p),&quot;r&quot;:str(r),&quot;theta&quot;:str(t),&quot;a&quot;:str(a),
+            &quot;J&quot;:str(J),&quot;E&quot;:str(E),&quot;J_over_E&quot;:str(J/E),&quot;J_minus_2E&quot;:str(J-2*E)}
+
+
+def main():
+    theta=np.unique(np.r_[np.linspace(.001,np.pi-.001,721),np.geomspace(1e-6,.1,60)])
+    ps=[.51,.6,.75,.9,.95,.99]+[1-10.**(-k) for k in range(3,13)]
+    radii=np.unique(np.r_[np.linspace(.001,.999,120),1-np.geomspace(1e-12,.1,45)])
+    records=[]
+    total=0
+    for p in ps:
+        extra=[2*p-1]+[min(.999999999999,max(1e-6,2*p-1+sgn*10.**(-k)))
+                       for k in range(2,10) for sgn in [-1,1]]
+        for r in np.unique(np.r_[radii,extra]):
+            js,es=coefficients(p,r,theta)
+            f0,f1,f2=[js[i]-2*es[i] for i in range(3)]
+            a=-f1/(2*f2)
+            J=js[0]+a*js[1]+a*a*js[2]
+            E=es[0]+a*es[1]+a*a*es[2]
+            good=(E&gt;1e-10*(1+a*a+1/np.sqrt(p*(1-p)))) &amp; (J&gt;=0)
+            ratio=np.where(good,J/E,np.inf)
+            idx=int(np.argmin(ratio))
+            if np.isfinite(ratio[idx]):
+                records.append({&quot;ratio_float&quot;:float(ratio[idx]),&quot;p&quot;:str(p),&quot;r&quot;:str(r),
+                                &quot;theta&quot;:str(theta[idx]),&quot;a_float&quot;:float(a[idx])})
+            total+=len(theta)
+    records.sort(key=lambda x:x[&#x27;ratio_float&#x27;])
+    high=[high_precision(rec[&#x27;p&#x27;],rec[&#x27;r&#x27;],rec[&#x27;theta&#x27;]) for rec in records[:8]]
+    report={&quot;status&quot;:&quot;NUMERICAL_DIAGNOSTIC_ONLY&quot;,&quot;no_sibling_cycle06_read&quot;:True,
+            &quot;family&quot;:&quot;Hermitian B=[[a,1],[1,-a]], Lyapunov drift at diagonal sigma&quot;,
+            &quot;grid_states&quot;:total,&quot;float_best&quot;:records[:8],&quot;high_precision_best&quot;:high,
+            &quot;universal_inequality_status&quot;:&quot;UNRESOLVED&quot;}
+    (HERE/&#x27;qubit_search.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&quot;grid_states&quot;:total,&quot;best&quot;:high[0]},indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/902f95a80e261b16f7d4b3b694f3fc327258c8b1c070c9cfb7b977029d6d6237.py">Exact original</a></p></html>

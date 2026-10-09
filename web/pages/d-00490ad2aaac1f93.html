@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/foundational_transfer_sol/cycle07_two_record_gate/check_spin_and_identity.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/foundational_transfer_sol/cycle07_two_record_gate/check_spin_and_identity.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostic of spin normalization/marginals and entropy identity.&quot;&quot;&quot;
+from pathlib import Path
+import json, math
+import numpy as np
+ROOT=Path(__file__).resolve().parent
+def spins(j):
+ m=np.arange(-j,j+1,1,dtype=float)
+ plus=np.zeros((len(m),len(m)),complex)
+ for i,x in enumerate(m[:-1]):
+  plus[i+1,i]=math.sqrt(j*(j+1)-x*(x+1))
+ minus=plus.conj().T
+ return [(plus+minus)/2,(plus-minus)/(2j),np.diag(m)]
+def partial(x,dims,keep):
+ ds=list(dims); a=x.reshape(ds+ds)
+ for i in sorted(set(range(len(ds)))-set(keep),reverse=True):
+  a=np.trace(a,axis1=i,axis2=i+len(ds)); ds.pop(i)
+ d=math.prod(ds)
+ return a.reshape(d,d)
+def entropy(x):
+ es=np.linalg.eigvalsh((x+x.conj().T)/2)
+ es=es[es&gt;1e-12]
+ return float(-np.sum(es*np.log(es)))
+def cmi(x,dims,X,Y,Z):
+ def h(ks):
+  return entropy(partial(x,dims,sorted(ks)))
+ return h(set(X)|set(Z))+h(set(Y)|set(Z))-h(Z)-h(set(X)|set(Y)|set(Z))
+def dephase_records(x,dims):
+ a=x.reshape(dims+dims); out=np.zeros_like(a)
+ for b in range(dims[1]):
+  for c in range(dims[2]):
+   out[:,b,c,:,b,c]=a[:,b,c,:,b,c]
+ return out.reshape(x.shape)
+def halfnorm(x):
+ return float(np.abs(np.linalg.eigvalsh((x+x.conj().T)/2)).sum()/2)
+def hbin(q):
+ return -q*math.log(q)-(1-q)*math.log(1-q)
+spin_results=[]
+for j in [.5,1,1.5,2,3,4]:
+ d=int(2*j+1); dims=[2,d,d]; J=2*j
+ sj=spins(j); sa=spins(.5); eye=np.eye(d)
+ big=[np.kron(s,eye)+np.kron(eye,s) for s in sj]
+ cas=sum(s@s for s in big)
+ eig,vec=np.linalg.eigh(cas)
+ pj=vec[:,np.abs(eig-J*(J+1))&lt;1e-8]
+ PJ=pj@pj.conj().T
+ ident=np.kron(np.eye(2),PJ)
+ coupling=sum(np.kron(a,b) for a,b in zip(sa,big))
+ PM=ident@(J*np.eye(2*d*d)-2*coupling)/(2*J+1)
+ PP=ident-PM
+ rho=PM/(2*J); rhop=PP/(2*J+2)
+ p=2*J/(2*J+1); sep=p*rho+(1-p)*rhop
+ q=1/(4*j+2)
+ HAB=hbin(q)+(1-q)*math.log(2*j)+q*math.log(2*j+2)
+ delta=HAB+math.log(4*j+1)-math.log(2*j+1)-math.log(4*j)
+ db=cmi(rho,dims,[0],[2],[1])
+ dc=cmi(rho,dims,[0],[1],[2])
+ ab=partial(rho,dims,[0,1]); bc=partial(rho,dims,[1,2])
+ rd=dephase_records(rho,dims); bcd=partial(rd,dims,[1,2])
+ cb=entropy(np.diag(np.diag(partial(rho,dims,[1]))))-entropy(partial(rho,dims,[1]))
+ cc=entropy(np.diag(np.diag(partial(rho,dims,[2]))))-entropy(partial(rho,dims,[2]))
+ CR=entropy(rd)-entropy(rho); CK=entropy(bcd)-entropy(bc)
+ tprime=cmi(rd,dims,[0],[2],[1])+cmi(rd,dims,[0],[1],[2])
+ cdrop=cmi(rho,dims,[1],[2],[0])-cmi(rd,dims,[1],[2],[0])
+ identity=(db+dc)-tprime+2*CK-cb-cc-cdrop
+ row={
+  &quot;j&quot;:j,&quot;dimension_ABC&quot;:2*d*d,
+  &quot;projector_defect_frobenius&quot;:float(np.linalg.norm(PM@PM-PM)),
+  &quot;projector_rank&quot;:int(round(np.trace(PM).real)),
+  &quot;trace_error&quot;:float(abs(np.trace(rho)-1)),
+  &quot;AB_entropy_error&quot;:abs(entropy(ab)-HAB),
+  &quot;delta_numeric&quot;:db,&quot;delta_exact&quot;:delta,
+  &quot;two_CMI_difference&quot;:abs(db-dc),
+  &quot;delta_formula_error&quot;:abs(db-delta),
+  &quot;halftrace_to_explicit_sep&quot;:halfnorm(rho-sep),
+  &quot;exact_sep_distance_formula&quot;:1/(4*j+1),
+  &quot;A_marginal_error&quot;:halfnorm(partial(rho,dims,[0])-partial(sep,dims,[0])),
+  &quot;BC_marginal_error&quot;:halfnorm(bc-partial(sep,dims,[1,2])),
+  &quot;dephasing_identity_error&quot;:abs(CR-identity),
+  &quot;CMI_drop_under_dephasing&quot;:cdrop,
+  &quot;proof_scope&quot;:&quot;Finite diagnostics only; twirl separability and all-dimensional theorem are analytic.&quot;
+ }
+ for key in [&quot;projector_defect_frobenius&quot;,&quot;trace_error&quot;,&quot;AB_entropy_error&quot;,&quot;two_CMI_difference&quot;,&quot;delta_formula_error&quot;,&quot;A_marginal_error&quot;,&quot;BC_marginal_error&quot;,&quot;dephasing_identity_error&quot;]:
+  assert row[key]&lt;2e-9,(j,key,row[key])
+ assert cdrop&gt;-2e-9
+ assert abs(row[&quot;halftrace_to_explicit_sep&quot;]-row[&quot;exact_sep_distance_formula&quot;])&lt;2e-9
+ spin_results.append(row)
+out={&quot;status&quot;:&quot;PASS&quot;,&quot;scope&quot;:&quot;Finite six-spin diagnostic; not a proof of arbitrary states or a counterexample.&quot;,&quot;results&quot;:spin_results}
+(ROOT/&quot;FINITE_DIAGNOSTICS.json&quot;).write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+print(json.dumps({&quot;status&quot;:&quot;PASS&quot;,&quot;cases&quot;:len(spin_results),&quot;max_entropy_formula_error&quot;:max(r[&quot;delta_formula_error&quot;] for r in spin_results),&quot;max_identity_error&quot;:max(r[&quot;dephasing_identity_error&quot;] for r in spin_results)}))
+
+</pre><p><a href="../assets/4351e866f5cb0f9110e5fab89815c8e3376d16b54b3fbde246d7e0b7be608451.py">Exact original</a></p></html>

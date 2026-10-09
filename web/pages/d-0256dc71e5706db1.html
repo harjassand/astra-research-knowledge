@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/record-stability-refinements/origin-and-failed-families/check_rare_sector.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/record-stability-refinements/origin-and-failed-families/check_rare_sector.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostic: rare-sector exact entropy and conservative cost gates.&quot;&quot;&quot;
+from pathlib import Path
+from decimal import Decimal, localcontext
+import itertools, math, json
+import numpy as np
+ROOT=Path(__file__).resolve().parent
+def F(q,a):
+ if not q: return Decimal(0)
+ if q==1: return -(a.ln())
+ v=a+q*(1-a)
+ return v*(v/a).ln()+(1-v)*((1-v)/(1-a)).ln()
+def bern(v,s):
+ if v==1: return -s.ln()
+ if v==0: return -(1-s).ln()
+ return v*(v/s).ln()+(1-v)*((1-v)/(1-s)).ln()
+rows=[]
+with localcontext() as ctx:
+ ctx.prec=70
+ for m in [1,2,3,10,100,1000]:
+  k=2*m+1
+  for d in [4*m,100*m+1,100000*m+1]:
+   a=Decimal(d-2*m)/(d*k)
+   A=Decimal(d-m)/(d*(m+1))
+   for qstr in [&quot;0&quot;,&quot;1e-12&quot;,&quot;1e-8&quot;,&quot;1e-4&quot;,&quot;0.01&quot;,&quot;0.1&quot;,&quot;0.5&quot;,&quot;0.99&quot;,&quot;1&quot;]:
+    q=Decimal(qstr)
+    delta=F(q,a)-F(q,A)
+    bound=q*q*k/32 if q&lt;=a else q/32
+    assert delta+Decimal(&quot;1e-60&quot;)&gt;=bound,(m,d,q,delta,bound)
+    status=&quot;SEPARABLE_BELOW_THRESHOLD&quot;
+    dsep=None
+    if q&gt;Decimal(1)/(d+1) and q&lt;=a:
+     s=Decimal(1)/k; v=a+q*(1-a)
+     dsep=bern(v,s)
+     assert dsep&lt;=48*delta+Decimal(&quot;1e-60&quot;)
+     status=&quot;LOW_LIKELIHOOD_RELATIVE_ENTROPY&quot;
+    elif q&gt;a:
+     assert q&lt;=32*delta+Decimal(&quot;1e-60&quot;)
+     status=&quot;HIGH_LIKELIHOOD_TRACE&quot;
+    rows.append({&quot;m&quot;:m,&quot;d&quot;:d,&quot;q&quot;:qstr,&quot;delta&quot;:str(delta),
+                 &quot;lower_bound&quot;:str(bound),&quot;regime&quot;:status,
+                 &quot;relative_entropy_to_explicit_sep&quot;:None if dsep is None else str(dsep)})
+def wedge(d,r):
+ n=d**r; cols=[]
+ for subset in itertools.combinations(range(d),r):
+  v=np.zeros(n,complex)
+  for perm in itertools.permutations(subset):
+   sign=(-1)**sum(perm[i]&gt;perm[j] for i in range(r) for j in range(i+1,r))
+   idx=sum(x*d**(r-1-i) for i,x in enumerate(perm))
+   v[idx]=sign/math.sqrt(math.factorial(r))
+  cols.append(v)
+ mat=np.stack(cols,axis=1)
+ return mat@mat.conj().T
+def partial(x,dims,keep):
+ ds=list(dims); a=x.reshape(ds+ds)
+ for i in sorted(set(range(len(ds)))-set(keep),reverse=True):
+  a=np.trace(a,axis1=i,axis2=i+len(ds)); ds.pop(i)
+ return a.reshape(math.prod(ds),math.prod(ds))
+def entropy(x):
+ es=np.linalg.eigvalsh((x+x.conj().T)/2); es=es[es&gt;1e-12]
+ return float(-np.dot(es,np.log(es)))
+dense=[]
+for d in [4,5]:
+ m=1; k=3; D=d*math.comb(d,2); R=math.comb(d,3)
+ P=wedge(d,3); Q=np.kron(np.eye(d),wedge(d,2))
+ prod=Q/D; omega=P/R; kappa=wedge(d,2)/math.comb(d,2)
+ s=1/3; sep=s*omega+(1-s)*(Q-P)/(D-R)
+ pt=sep.reshape(d,d*d,d,d*d).swapaxes(0,2).reshape(d**3,d**3)
+ assert np.linalg.eigvalsh(pt).min()&gt;-1e-10
+ assert np.linalg.norm(partial(sep,[d,d,d],[1,2])-kappa)&lt;1e-10
+ for q in [.0001,.2,.8,1]:
+  rho=(1-q)*prod+q*omega
+  hab=entropy(partial(rho,[d,d,d],[0,1]))
+  hbc=entropy(kappa); hg=entropy(rho)
+  delta=hab+hbc-math.log(d)-hg
+  with localcontext() as ctx:
+   ctx.prec=50
+   a=Decimal(d-2)/(3*d); A=Decimal(d-1)/(2*d)
+   exact=float(F(Decimal(str(q)),a)-F(Decimal(str(q)),A))
+  assert abs(delta-exact)&lt;2e-10
+  dense.append({&quot;d&quot;:d,&quot;q&quot;:q,&quot;delta_numeric&quot;:delta,&quot;delta_binary_formula&quot;:exact,&quot;error&quot;:abs(delta-exact),&quot;sep_boundary_PT_minimum&quot;:float(np.linalg.eigvalsh(pt).min())})
+out={&quot;status&quot;:&quot;PASS&quot;,&quot;scope&quot;:&quot;Finite decimal parameter inequalities and 8 dense matrices only; not a general proof or a counterfamily.&quot;,&quot;parameter_cases&quot;:len(rows),&quot;dense_cases&quot;:len(dense),&quot;parameters&quot;:rows,&quot;dense&quot;:dense}
+(ROOT/&quot;RARE_SECTOR_DIAGNOSTICS.json&quot;).write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+print(json.dumps({&quot;status&quot;:&quot;PASS&quot;,&quot;parameter_cases&quot;:len(rows),&quot;dense_cases&quot;:len(dense),&quot;max_entropy_formula_error&quot;:max(r[&quot;error&quot;] for r in dense)}))
+
+</pre><p><a href="../assets/39a4829a743e277f252d9bb6c952f7fd8aceef98558f5d450bab2b5710d89817.py">Exact original</a></p></html>

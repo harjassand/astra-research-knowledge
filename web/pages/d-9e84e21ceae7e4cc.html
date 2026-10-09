@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/universal-entropy-pi/qubit-origin/check_independent_spectral_kernel_polynomial.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/universal-entropy-pi/qubit-origin/check_independent_spectral_kernel_polynomial.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact identity controls; no PSD scan and no global theorem certificate.&quot;&quot;&quot;
+import hashlib
+import json
+import pathlib
+import time
+import sympy as sp
+
+started = time.perf_counter()
+checks = []
+
+def zero(expr, name):
+    reduced = sp.expand(sp.expand_log(sp.expand(expr), force=True))
+    if reduced != 0:
+        reduced = sp.simplify(reduced)
+    print(name, flush=True)
+    assert reduced == 0, (name, reduced)
+    checks.append(name)
+
+def matrix_zero(mat, name):
+    for i in range(mat.rows):
+        for j in range(mat.cols):
+            zero(mat[i, j], f&quot;{name}[{i},{j}]&quot;)
+
+I = sp.I
+X = sp.Matrix([[0, 1], [1, 0]])
+Y = sp.Matrix([[0, -I], [I, 0]])
+Z = sp.diag(1, -1)
+X4, Y4, Z4 = [sp.kronecker_product(P, sp.eye(2)) for P in [X, Y, Z]]
+
+# A faithful explicit joint state with known eigenbasis. No optimization.
+R = sp.Matrix([[sp.Rational(3, 5), -sp.Rational(4, 5)],
+               [sp.Rational(4, 5), sp.Rational(3, 5)]])
+T = sp.Matrix([[sp.Rational(3, 5), 4*I/5], [4*I/5, sp.Rational(3, 5)]])
+U = sp.diag(1, 1, 1, -1) * sp.kronecker_product(R, T)
+matrix_zero(U.H*U-sp.eye(4), &quot;joint eigenbasis unitary&quot;)
+lambdas = [sp.Rational(1, 2), sp.Rational(1, 4), sp.Rational(1, 5), sp.Rational(1, 20)]
+zero(sum(lambdas)-1, &quot;faithful density normalization&quot;)
+rho = (U*sp.diag(*lambdas)*U.H).applyfunc(sp.expand)
+q = (U*sp.diag(*[sp.sqrt(p) for p in lambdas])*U.H).applyfunc(sp.expand)
+log2, log5 = sp.symbols(&quot;log2 log5&quot;, real=True)
+log_eigenvalues = [-log2, -2*log2, -log5, -2*log2-log5]
+ell = (U*sp.diag(*log_eigenvalues)*U.H).applyfunc(sp.expand)
+matrix_zero(q*q-rho, &quot;actual full square root&quot;)
+assert rho[:2, 2:] != rho[:2, 2:].H
+checks.append(&quot;joint off-diagonal block not Hermitian&quot;)
+assert rho[:2, :2]*rho[2:, 2:] != rho[2:, 2:]*rho[:2, :2]
+checks.append(&quot;joint diagonal blocks do not commute&quot;)
+
+log2, log5 = sp.symbols(&quot;log2 log5&quot;, real=True)
+alpha = log2
+A, B, c, h = 3/(2*sp.sqrt(2)), 1/(2*sp.sqrt(2)), sp.Rational(5, 4), sp.Rational(3, 4)
+a = sp.Rational(3, 7)
+kap = sp.Symbol(&quot;kappa&quot;, real=True)
+N = X4+a*Z4
+V = (a*a+c)*sp.eye(4)-h*Z4+2*a*(B/A)*X4
+K = A*X4+I*B*Y4+a*Z4
+S = sp.kronecker_product(sp.diag(2**sp.Rational(1, 4), 2**sp.Rational(-1, 4)), sp.eye(2))
+D = sp.kronecker_product(sp.Matrix([[a*a+sp.Rational(1,2), 2*a*sp.sqrt(2)/3], [2*a/(3*sp.sqrt(2)), a*a+2]]), sp.eye(2))
+matrix_zero((D+D.H)/2-K.H*K, &quot;physical drift Lyapunov identity&quot;)
+Lrho = ((D*rho+rho*D.H)/2-K*rho*K.H).applyfunc(sp.expand)
+zero(sp.trace(Lrho), &quot;physical generator trace annihilation&quot;)
+J = sp.trace(Lrho*(ell-alpha*Z4))
+E = sp.trace(V*rho)-sp.trace(N*q*N*q)
+direct = J-kap*E
+
+XX, YY, ZZ = [(U.H*P*U).applyfunc(sp.expand) for P in [X4, Y4, Z4]]
+dalpha = 2*alpha*h/c-kap*(1-1/c)
+paired = 0
+for i in range(4):
+    for j in range(i+1, 4):
+        p, qlambda = lambdas[i], lambdas[j]
+        w = p+qlambda
+        beta = (log_eigenvalues[i]-log_eigenvalues[j])/2
+        t = (p-qlambda)/w
+        m = 2*beta*t
+        n = 1-2*sp.sqrt(p*qlambda)/w
+        P = h*beta+(alpha*c-kap*h/2)*t
+        Q = 2*B*beta+(alpha-kap*B)/A*t
+        M = sp.Matrix([[A*A*m-kap*n+B*B*dalpha, -P, A*m-kap*n],
+                       [-P, B*B*m+A*A*dalpha, -Q],
+                       [A*m-kap*n, -Q, m-kap*n]])
+        v = sp.Matrix([XX[i,j], I*YY[i,j], a*ZZ[i,j]])
+        paired += w*(v.H*M*v)[0]
+remainder = dalpha*sum(lambdas[i]*(B*B*abs(XX[i,i])**2+A*A*abs(YY[i,i])**2) for i in range(4))
+zero(direct-paired-remainder, &quot;full physical J-kappa E equals spectral kernel identity&quot;)
+
+# Independent exact cross orientations from the full Pauli products.
+cross_xy = sum((lambdas[i]-lambdas[j])*sp.im(sp.conjugate(XX[i,j])*YY[i,j])
+               for i in range(4) for j in range(i+1,4))
+cross_zy = sum((lambdas[i]-lambdas[j])*sp.im(sp.conjugate(ZZ[i,j])*YY[i,j])
+               for i in range(4) for j in range(i+1,4))
+zero(cross_xy+sp.trace(rho*Z4), &quot;XY commutator orientation&quot;)
+zero(cross_zy-sp.trace(rho*X4), &quot;ZY commutator orientation&quot;)
+
+root = pathlib.Path(__file__).resolve().parent
+result = {&quot;status&quot;: &quot;PASS&quot;, &quot;purpose&quot;: &quot;exact physical spectral identity on a fixed noncommuting-block faithful joint state; no numerical PSD scan&quot;,
+          &quot;checks&quot;: len(checks), &quot;check_names&quot;: checks,
+          &quot;elapsed_seconds&quot;: time.perf_counter()-started,
+          &quot;invocation&quot;: &quot;python3 work/agents/tensor_frame_sol/cycle08_complete_qubit/check_independent_spectral_kernel_polynomial.py&quot;,
+          &quot;sympy_version&quot;: sp.__version__,
+          &quot;script_sha256&quot;: hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest()}
+(root/&quot;independent_spectral_kernel_polynomial_checks.json&quot;).write_text(json.dumps(result, indent=2)+&quot;\n&quot;)
+print(json.dumps({k: result[k] for k in [&quot;status&quot;, &quot;checks&quot;, &quot;elapsed_seconds&quot;, &quot;purpose&quot;]}))
+</pre><p><a href="../assets/0756251860970dedbb3e21d0b78d81ad3e6acc077f6f20ea8c59fa09a11293d8.py">Exact original</a></p></html>

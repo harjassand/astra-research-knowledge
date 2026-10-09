@@ -1,0 +1,293 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/outputs/memory-obstructions/exposed-review/checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/outputs/memory-obstructions/exposed-review/checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite exact diagnostics; these are not formal or external validation.
+
+Implemented after authorized candidate exposure. The independently frozen
+orthogonality baseline is never rewritten by this file.
+&quot;&quot;&quot;
+from collections import Counter, defaultdict
+from fractions import Fraction as F
+from itertools import combinations, product
+from math import comb, log, log2
+from pathlib import Path
+import hashlib
+import json
+import random
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
+BASELINE = ROOT / &quot;work/agents/complexity_proof_recon/cycle04_memory_blind/INDEPENDENT_BASELINE.txt&quot;
+CANDIDATE = ROOT / &quot;work/agents/foundational_transfer_sol/cycle04_transfers/TRANSFER_PROOFS.txt&quot;
+EXPECTED_BASELINE = &quot;342987893f1a0101d905afa6f35b0a3de067cfae431a208495dd034f6780ff55&quot;
+EXPECTED_CANDIDATE = &quot;de2fa4f741505a52fc5d11b147dfa22e24596fc6692d46542e187502ecdd212c&quot;
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def dot(x, y):
+    return (x &amp; y).bit_count() &amp; 1
+
+
+def span(basis):
+    result = {0}
+    for x in basis:
+        result |= {v ^ x for v in tuple(result)}
+    return result
+
+
+def dimension(vectors):
+    pivots = {}
+    for x in vectors:
+        while x:
+            p = x.bit_length() - 1
+            if p not in pivots:
+                pivots[p] = x
+                break
+            x ^= pivots[p]
+    return len(pivots)
+
+
+def entropy_bits(probs):
+    return -sum(float(p) * log2(float(p)) for p in probs if p)
+
+
+def h2(p):
+    if p in (0, 1):
+        return 0.0
+    return -p * log2(p) - (1-p) * log2(1-p)
+
+
+def orthogonality_checks():
+    checks = []
+    for m in range(3, 9):
+        N, d = 2**m-1, 2**(m-1)-1
+        rows = [sum(1 &lt;&lt; (y-1) for y in range(1, N+1) if not dot(x, y))
+                for x in range(1, N+1)]
+        assert all(row.bit_count() == d for row in rows)
+        c, a = 2**(m-2)-1, 2**(m-2)
+        assert all((rows[x] &amp; rows[z]).bit_count() == (d if x == z else c)
+                   for x in range(N) for z in range(N))
+        assert d*d == a+c*N
+        assert F(N, d) &lt; 4
+        assert F(a, d*d) &lt;= F(2, 9)
+        rec = {&quot;m&quot;: m, &quot;N&quot;: N, &quot;d&quot;: d,
+               &quot;capacity_nats_numeric&quot;: log(N/d),
+               &quot;two_step_Doeblin_beta_exact&quot;: str(F(a, d*d)),
+               &quot;gram_identity&quot;: &quot;PASS&quot;}
+        if m &lt;= 4:
+            allmask = (1 &lt;&lt; N)-1
+            intersections = [allmask] * (1 &lt;&lt; N)
+            maximum = 0
+            for mask in range(1, 1 &lt;&lt; N):
+                lowbit = mask &amp; -mask
+                intersections[mask] = intersections[mask ^ lowbit] &amp; rows[lowbit.bit_length()-1]
+                maximum = max(maximum, mask.bit_count()*intersections[mask].bit_count())
+            B = (2**(m//2)-1)*(2**((m+1)//2)-1)
+            assert maximum == B
+            rec.update(exhaustive_rectangle_maximum=maximum,
+                       row_support_subsets_checked=(1 &lt;&lt; N)-1)
+        if m &lt;= 6:
+            r = m//2
+            subspaces = {tuple(sorted(span(basis)))
+                         for basis in combinations(range(1, N+1), r)
+                         if dimension(basis) == r}
+            incidences = Counter()
+            B = (2**r-1)*(2**(m-r)-1)
+            for U in subspaces:
+                xs = [x for x in U if x]
+                ys = [y for y in range(1, N+1) if all(not dot(x, y) for x in U)]
+                assert len(xs)*len(ys) == B
+                incidences.update(product(xs, ys))
+            assert len(incidences) == N*d
+            assert len(set(incidences.values())) == 1
+            assert sum(incidences.values()) == len(subspaces)*B
+            rec.update(subspaces_enumerated=len(subspaces),
+                       Wyner_witness_edge_incidence=int(next(iter(incidences.values()))),
+                       Wyner_witness_uniformity=&quot;PASS&quot;)
+        checks.append(rec)
+    return checks
+
+
+def parity_entropy_checks():
+    rng = random.Random(41003)
+    count = 0
+    for m in range(3, 7):
+        V = list(range(1, 2**m))
+        N = len(V)
+        for r in range(1, m):
+            U = [x for x in V if x &lt; 2**r]
+            W = [y for y in V if y % 2**r == 0]
+            for noise_a, noise_b in product([F(0), F(1,100), F(1,20), F(1,5)], repeat=2):
+                wa = [rng.randrange(1, 8) for _ in U]
+                wb = [rng.randrange(1, 8) for _ in W]
+                a0 = dict(zip(U, [F(v, sum(wa)) for v in wa]))
+                b0 = dict(zip(W, [F(v, sum(wb)) for v in wb]))
+                a = {x: (1-noise_a)*a0.get(x, 0)+noise_a/N for x in V}
+                b = {y: (1-noise_b)*b0.get(y, 0)+noise_b/N for y in V}
+                bad = {y: sum(a[x] for x in V if dot(x, y)) for y in V}
+                eta = F(1,20)
+                G = [y for y in V if bad[y] &lt;= eta]
+                tau = sum(b[y] for y in V if y not in G)
+                e = sum(b[y]*bad[y] for y in V)
+                assert tau &lt;= e/eta
+                rank = dimension(G)
+                actual = entropy_bits(a.values())+entropy_bits(b.values())
+                h = h2(float(eta))
+                rhs = (1+h+(1-h)*float(tau))*m+(1-h)*h2(float(tau))
+                assert actual &lt;= rhs+1e-10, (m, r, noise_a, noise_b, actual, rhs, rank)
+                count += 1
+    delta, eta = .01, .05
+    alpha = 1-2*delta-h2(eta)-(1-h2(eta))*delta/eta
+    constant = 2+h2(delta)+(1-h2(eta))*h2(delta/eta)
+    assert alpha &gt; .54 and constant &lt; 4
+    assert all(alpha*m-constant &gt;= m/2-4 for m in range(3, 1001))
+    return {&quot;seeded_product_components_checked&quot;: count,
+            &quot;floating_entropy_diagnostic_only&quot;: True,
+            &quot;alpha_at_0_01&quot;: alpha, &quot;constant_at_0_01&quot;: constant,
+            &quot;clean_bound_checked_m_3_to_1000&quot;: &quot;PASS&quot;}
+
+
+def incidence_checks():
+    checks = []
+    for N in [8, 16, 32, 64, 128]:
+        M = comb(N, N//2)
+        max_rectangle = max(t*comb(N-t, N//2-t) for t in range(1, N//2+1))
+        assert max_rectangle == M//2
+        for t in range(1, N//2+1):
+            assert M &gt;= 2**t*comb(N-t, N//2-t)
+            assert 2**(t-1) &gt;= t
+        diagonal, off = M//2, comb(N-2, N//2-2)
+        assert diagonal-off == M*N//(4*(N-1))
+        assert diagonal &gt; off
+        rec = {&quot;N&quot;: N, &quot;M&quot;: M,
+               &quot;maximum_incidence_rectangle&quot;: max_rectangle,
+               &quot;Gram_positive_diagonal_increment&quot;: diagonal-off,
+               &quot;exact_full_pair_matrix_rank&quot;: N+2,
+               &quot;Wyner_lower_ratio_exact&quot;: N}
+        if N &lt;= 16:
+            subsets = [sum(1 &lt;&lt; i for i in S) for S in combinations(range(N), N//2)]
+            code = []
+            for S in subsets:
+                if all((S ^ T).bit_count() &gt;= N//4 for T in code):
+                    code.append(S)
+            assert len(code) &gt;= 2**(N*(1-h2(.25)))/(N+1)
+            rec.update(greedy_code_size=len(code),
+                       greedy_pairwise_separation=&quot;PASS&quot;)
+        checks.append(rec)
+    return checks
+
+
+def advance(law, kernel):
+    result = defaultdict(F)
+    for (word, state), p in law.items():
+        for symbol, target, q in kernel[state]:
+            result[word+(symbol,), target] += p*q
+    return dict(result)
+
+
+def output_marginal(law):
+    result = defaultdict(F)
+    for (word, state), p in law.items():
+        result[word] += p
+    return dict(result)
+
+
+def balanced_stationarity_checks():
+    N = 8
+    subsets = [sum(1 &lt;&lt; i for i in S) for S in combinations(range(N), N//2)]
+    M = len(subsets)
+    blank = (&quot;B&quot;, 0)
+    edge = {&quot;init&quot;: [((&quot;S&quot;, S), (&quot;i&quot;, i), F(2, M*N))
+                     for S in subsets for i in range(N) if S &gt;&gt; i &amp; 1],
+            &quot;done&quot;: [(blank, &quot;init&quot;, F(1))]}
+    edge.update({(&quot;i&quot;, i): [((&quot;i&quot;, i), &quot;done&quot;, F(1))] for i in range(N)})
+    pi_edge = {&quot;init&quot;: F(1,3), &quot;done&quot;: F(1,3)}
+    pi_edge.update({(&quot;i&quot;, i): F(1, 3*N) for i in range(N)})
+    moore = {&quot;blank&quot;: [(blank, (&quot;Sphase&quot;, i), F(1,N)) for i in range(N)]}
+    for i in range(N):
+        moore[(&quot;Sphase&quot;, i)] = [((&quot;S&quot;, S), (&quot;iphase&quot;, i), F(2,M))
+                                for S in subsets if S &gt;&gt; i &amp; 1]
+        moore[(&quot;iphase&quot;, i)] = [((&quot;i&quot;, i), &quot;blank&quot;, F(1))]
+    pi_moore = {&quot;blank&quot;: F(1,3)}
+    pi_moore.update({(phase, i): F(1,3*N)
+                    for phase in [&quot;Sphase&quot;, &quot;iphase&quot;] for i in range(N)})
+    for kernel, pi in [(edge, pi_edge), (moore, pi_moore)]:
+        assert all(sum(q for a, z, q in kernel[state]) == 1 for state in kernel)
+        stationary = defaultdict(F)
+        for state, p in pi.items():
+            for a, target, q in kernel[state]:
+                stationary[target] += p*q
+        assert dict(stationary) == pi
+    law_edge = {((), state): p for state, p in pi_edge.items()}
+    law_moore = {((), state): p for state, p in pi_moore.items()}
+    sizes = []
+    for n in range(1,5):
+        law_edge, law_moore = advance(law_edge, edge), advance(law_moore, moore)
+        p, q = output_marginal(law_edge), output_marginal(law_moore)
+        assert p == q and sum(p.values()) == 1
+        sizes.append({&quot;horizon&quot;: n, &quot;nonzero_words&quot;: len(p)})
+    assert abs(entropy_bits(pi_edge.values())-(log2(3)+log2(N)/3)) &lt; 1e-10
+    assert abs(entropy_bits(pi_moore.values())-(log2(3)+2*log2(N)/3)) &lt; 1e-10
+    return {&quot;N&quot;: N, &quot;edge_states&quot;: len(edge), &quot;Moore_states&quot;: len(moore),
+            &quot;stationarity_exact&quot;: &quot;PASS&quot;, &quot;same_output_laws_exact&quot;: sizes,
+            &quot;entropy_bits_numeric_edge&quot;: entropy_bits(pi_edge.values()),
+            &quot;entropy_bits_numeric_Moore&quot;: entropy_bits(pi_moore.values())}
+
+
+def simulator_hybrid_checks():
+    # Noncommuting two-state prepare-and-measure instrument: tau_a have x Bloch
+    # coordinate +/-1/10, z coordinate +/-1/2. Gamma dephases z, error 1/20.
+    # L_a measures x then prepares tau_a. Gamma(tau_a) is outside the original
+    # finite reachable family; the audited hybrid still uses only tau_a.
+    epsilon = F(1,20)
+    output = []
+    for n in range(1,11):
+        words = list(product([0,1], repeat=n))
+        prefix = {}
+        for word in words:
+            p = F(1)
+            current = 0
+            seq = [p]
+            for symbol in word:
+                p0 = F(1,2)+(epsilon if current == 0 else -epsilon)
+                p *= p0 if symbol == 0 else 1-p0
+                current = symbol
+                seq.append(p)
+            prefix[word] = seq
+        hybrids = [{word: prefix[word][j]*F(1,2**(n-j)) for word in words}
+                   for j in range(n+1)]
+        assert all(sum(h.values()) == 1 for h in hybrids)
+        distances = [sum(abs(hybrids[j][w]-hybrids[j+1][w]) for w in words)/2
+                     for j in range(n)]
+        assert all(distance == epsilon for distance in distances)
+        final_tv = sum(abs(hybrids[0][w]-hybrids[n][w]) for w in words)/2
+        assert final_tv &lt;= n*epsilon
+        output.append({&quot;horizon&quot;: n, &quot;TV_exact&quot;: str(final_tv),
+                       &quot;adjacent_hybrid_TV_exact&quot;: str(epsilon),
+                       &quot;bound_exact&quot;: str(n*epsilon)})
+    return {&quot;Gamma_reachable_states_not_in_original_family&quot;: True,
+            &quot;statewise_epsilon_exact&quot;: str(epsilon), &quot;checks&quot;: output}
+
+
+def main():
+    assert sha(BASELINE) == EXPECTED_BASELINE
+    assert sha(CANDIDATE) == EXPECTED_CANDIDATE
+    report = {&quot;status&quot;: &quot;PASS_FINITE_DIAGNOSTICS_ONLY&quot;,
+              &quot;baseline_sha256&quot;: sha(BASELINE), &quot;candidate_sha256&quot;: sha(CANDIDATE),
+              &quot;implemented_after_authorized_exposure&quot;: True,
+              &quot;orthogonality&quot;: orthogonality_checks(),
+              &quot;parity_entropy&quot;: parity_entropy_checks(),
+              &quot;balanced_incidence&quot;: incidence_checks(),
+              &quot;balanced_stationary_models&quot;: balanced_stationarity_checks(),
+              &quot;supplied_simulator_hybrids&quot;: simulator_hybrid_checks(),
+              &quot;formal_validation&quot;: &quot;NOT_RUN&quot;, &quot;external_validation&quot;: &quot;NOT_OBTAINED&quot;}
+    (HERE / &quot;checks.json&quot;).write_text(json.dumps(report, indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: report[&quot;status&quot;],
+                      &quot;parity_components&quot;: report[&quot;parity_entropy&quot;][&quot;seeded_product_components_checked&quot;],
+                      &quot;output&quot;: str(HERE / &quot;checks.json&quot;)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/3bb22bd3de6d703fa8a7834cd4e1a25eff09970e64e3a70c5bbb960ae594a858.py">Exact original</a></p></html>

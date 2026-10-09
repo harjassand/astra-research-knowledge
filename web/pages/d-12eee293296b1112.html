@@ -1,0 +1,216 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/foundational_transfer_sol/cycle09_nonreversible_lower/CHECK_FORWARD_ENTROPY_CONTROLS.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/foundational_transfer_sol/cycle09_nonreversible_lower/CHECK_FORWARD_ENTROPY_CONTROLS.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Fixed distinct legal non-KMS controls; one exclusive-create output only.&quot;&quot;&quot;
+from pathlib import Path
+import hashlib
+import json
+import math
+import numpy as np
+
+HERE=Path(__file__).resolve().parent
+
+
+def positive_f(a,fn):
+    val,U=np.linalg.eigh((a+a.conj().T)/2)
+    assert val.min()&gt;0
+    return (U*fn(val))@U.conj().T
+
+
+def fwd_kernel(x,y):
+    z,w=(x+y)/2,(x-y)/2
+    aa,bb=np.full_like(w,.5),np.full_like(w,.5)
+    mask=np.abs(w)&gt;1e-10
+    aa[mask]=w[mask]*np.cosh(2*w[mask])/np.sinh(2*w[mask])
+    bb[mask]=w[mask]/np.sinh(2*w[mask])
+    return 2*(np.exp(-z)*(-z-aa)+np.exp(z)*bb)
+
+
+def root_kernel(x,y):
+    return np.cosh((x+y)/2)/np.cosh((x-y)/2)-1
+
+
+def choi(fn,n):
+    out=np.zeros((n*n,n*n),complex)
+    for i in range(n):
+        for j in range(n):
+            e=np.zeros((n,n),complex)
+            e[i,j]=1
+            out+=np.kron(fn(e),e)
+    return out
+
+
+def integral_half_line(fn,nodes=256):
+    points,weights=np.polynomial.legendre.leggauss(nodes)
+    q=(points+1)/2
+    ts=q/(1-q)
+    vals=np.asarray([fn(float(t)) for t in ts])/(1-q)**2
+    return float(np.dot(weights/2,vals))
+
+
+def check_case(name,sig,B,rho,tau):
+    sig=np.asarray(sig,float)
+    sv=np.sqrt(sig)
+    s,df,di=np.diag(sv),np.diag(np.sqrt(sv)),np.diag(1/np.sqrt(sv))
+    P,Q=B.conj().T@s@B,B@s@B.conj().T
+    n,nr=len(sig),len(tau)
+    A=np.zeros((n,n),complex)
+    for i in range(n):
+        for j in range(n):
+            if abs(sv[i]-sv[j])&lt;1e-13:
+                assert abs(P[i,j]-Q[i,j])&lt;1e-12
+                A[i,j]=(P[i,j]+Q[i,j])/(sv[i]+sv[j])
+            else:
+                A[i,j]=2*(sv[i]*P[i,j]-sv[j]*Q[i,j])/(sv[i]**2-sv[j]**2)
+    Bf,Af=np.kron(np.eye(nr),B),np.kron(np.eye(nr),A)
+    K,C=df@B@di,df@A@di
+    Kf,Cf=np.kron(np.eye(nr),K),np.kron(np.eye(nr),C)
+    def H(x):
+        return (Af.conj().T@x+x@Af)/2-Bf.conj().T@x@Bf
+    def Hlocal(x):
+        return (A.conj().T@x+x@A)/2-B.conj().T@x@B
+    def LP(x):
+        return (Cf@x+x@Cf.conj().T)/2-Kf@x@Kf.conj().T
+    omega=np.kron(tau,np.diag(sig))
+    omega_d=positive_f(omega,lambda v:v**.25)
+    omega_di=positive_f(omega,lambda v:v**(-.25))
+    log_rho=positive_f(rho,np.log)
+    log_omega=positive_f(omega,np.log)
+    sqrho=positive_f(rho,np.sqrt)
+    J=np.trace(LP(rho)@(log_rho-log_omega)).real
+    E=np.trace(sqrho@H(sqrho)).real
+    Jadj=np.trace(omega_d@H(omega_di@rho@omega_di)@omega_d@(log_rho-log_omega)).real
+    operator_lindblad_error=np.linalg.norm((C+C.conj().T)/2-K.conj().T@K)
+    stationary_error=np.linalg.norm((C@np.diag(sig)+np.diag(sig)@C.conj().T)/2-K@np.diag(sig)@K.conj().T)
+    h_stationary_error=np.linalg.norm((A.conj().T@s+s@A)/2-P)
+    hadj_stationary_error=np.linalg.norm((A@s+s@A.conj().T)/2-Q)
+    assert max(operator_lindblad_error,stationary_error,h_stationary_error,hadj_stationary_error)&lt;1e-11
+    freq={}
+    for i in range(n):
+        for j in range(n):
+            if B[i,j]!=0:
+                alpha=round(float(math.log(sv[i]/sv[j])),13)
+                freq.setdefault(alpha,np.zeros_like(B))[i,j]+=B[i,j]
+    alphas=np.asarray(sorted(freq))
+    val,U=np.linalg.eigh(rho)
+    roots=np.sqrt(val)
+    comp=np.array([U.conj().T@np.kron(np.eye(nr),freq[a])@U for a in alphas])
+    Jgram,Egram,diag_J=0j,0j,0j
+    minimum_kernel_eigenvalue=0.0
+    imaginary_cross_mass=0.0
+    for i in range(len(val)):
+        for j in range(len(val)):
+            nodes=math.log(roots[i]/roots[j])-alphas
+            xx,yy=nodes[:,None],nodes[None,:]
+            kj,ke=fwd_kernel(xx,yy),root_kernel(xx,yy)
+            c=comp[:,i,j]
+            weight=roots[i]*roots[j]
+            term=weight*np.vdot(c,kj@c)
+            Jgram+=term
+            Egram+=weight*np.vdot(c,ke@c)
+            if i==j:
+                diag_J+=term
+            minimum_kernel_eigenvalue=min(minimum_kernel_eigenvalue,
+                float(np.linalg.eigvalsh(kj-(math.pi/2)*ke).min()))
+            imaginary_cross_mass+=float(np.abs(np.outer(c.conj(),c).imag).sum())
+    Jerr,Eerr=abs(Jgram-J),abs(Egram-E)
+    assert max(Jerr,Eerr)&lt;1e-9*(1+abs(J)+abs(E)),(name,Jerr,Eerr)
+    assert J-(math.pi/2)*E&gt;=-1e-10
+    assert (J+Jadj)/2-math.pi*E&gt;=-1e-10
+    hs=np.stack([Hlocal(np.eye(n*n)[k].reshape(n,n)).reshape(-1) for k in range(n*n)],axis=1)
+    hs_sym=(hs+hs.conj().T)/2
+    nonkms_norm=float(np.linalg.norm(hs-hs.conj().T))
+    assert np.linalg.eigvalsh(hs_sym).min()&gt;-1e-11
+    et=np.eye(n*n,dtype=complex)
+    term=et.copy()
+    for order in range(1,81):
+        term=(-.17*hs)@term/order
+        et+=term
+    assert np.linalg.norm(term)&lt;1e-14
+    def heis_t(x):
+        return di@(et@(df@x@df).reshape(-1)).reshape(n,n)@di
+    cp_min=float(np.linalg.eigvalsh(choi(heis_t,n)).min())
+    unital_error=float(np.linalg.norm(heis_t(np.eye(n))-np.eye(n)))
+    assert cp_min&gt;=-1e-10 and unital_error&lt;1e-10
+    reference_log_conservation=0.0
+    if nr&gt;1:
+        reference_log_conservation=float(abs(np.trace(LP(rho)@np.kron(positive_f(tau,np.log),np.eye(n)))))
+        assert reference_log_conservation&lt;1e-11
+    return {&quot;case&quot;:name,&quot;local_dimension&quot;:n,&quot;reference_dimension&quot;:nr,
+        &quot;J_forward&quot;:float(J),&quot;J_KMS_adjoint&quot;:float(Jadj),&quot;E_sym&quot;:float(E),
+        &quot;forward_pi_over_two_gap&quot;:float(J-(math.pi/2)*E),
+        &quot;symmetrized_KMS_pi_gap&quot;:float((J+Jadj)/2-math.pi*E),
+        &quot;J_identity_error&quot;:float(Jerr),&quot;E_identity_error&quot;:float(Eerr),
+        &quot;J_gram_imaginary&quot;:float(Jgram.imag),&quot;diagonal_J_gram_real&quot;:float(diag_J.real),
+        &quot;minimum_difference_kernel_eigenvalue&quot;:minimum_kernel_eigenvalue,
+        &quot;imaginary_cross_product_mass&quot;:imaginary_cross_mass,
+        &quot;physical_lindblad_error&quot;:float(operator_lindblad_error),
+        &quot;physical_stationarity_error&quot;:float(stationary_error),
+        &quot;H_stationarity_error&quot;:float(h_stationary_error),&quot;H_adjoint_stationarity_error&quot;:float(hadj_stationary_error),
+        &quot;nonKMS_H_antisymmetry_norm&quot;:nonkms_norm,
+        &quot;physical_hamiltonian_norm&quot;:float(np.linalg.norm((C-C.conj().T)/(2j))),
+        &quot;finite_time_0_17_choi_min_eigenvalue&quot;:cp_min,&quot;finite_time_unital_error&quot;:unital_error,
+        &quot;fixed_exponential_taylor_order&quot;:80,&quot;exponential_last_term_norm&quot;:float(np.linalg.norm(term)),
+        &quot;reference_log_conservation_error&quot;:reference_log_conservation,
+        &quot;rho_min_eigenvalue&quot;:float(val.min())}
+
+
+B=np.array([[.3j,1,1j],[1j,-.2,1+.5j],[1,-1+.5j,.4j]],complex)
+sig=np.array([1,4,9])/14
+X=np.array([[1,.2j,.4],[.3,1.2,-.5j],[.1j,.2,.8]],complex)
+rho3=X@X.conj().T+.15*np.eye(3)
+rho3/=np.trace(rho3).real
+psi=np.array([1,0,.4,0,1j,.3],complex)
+psi/=np.linalg.norm(psi)
+rho6=.63*np.outer(psi,psi.conj())+.37*np.diag(np.arange(1,7)/21)
+tau=np.array([[.6,.2j],[-.2j,.4]],complex)
+cycle=np.array([[0,1,0],[0,0,1],[1,0,0]],complex)
+inputs=[(&quot;distinct_nonHermitian_stationary_qutrit&quot;,sig,B,rho3,np.ones((1,1))),
+        (&quot;entangled_reference_distinct_nonHermitian_qutrit&quot;,sig,B,rho6,tau),
+        (&quot;stationary_quantum_reference&quot;,sig,B,np.kron(tau,np.diag(sig)),tau),
+        (&quot;tracial_directed_unitary_cycle&quot;,np.ones(3)/3,cycle,rho3,np.ones((1,1)))]
+rows=[check_case(*a) for a in inputs]
+assert rows[0][&quot;nonKMS_H_antisymmetry_norm&quot;]&gt;1
+assert abs(rows[0][&quot;J_forward&quot;]-rows[0][&quot;J_KMS_adjoint&quot;])&gt;1e-3
+rr=np.array([.25,.6,1,2,5.])
+xx=np.log(rr)
+Jmat,E_mat=fwd_kernel(xx[:,None],xx[None,:]),root_kernel(xx[:,None],xx[None,:])
+Imat=np.empty((len(rr),len(rr)))
+quaderr=0.0
+for i,r in enumerate(rr):
+    for j,u in enumerate(rr):
+        fn=lambda a:a/((1+a)*(r*r+a)*(u*u+a))
+        val=integral_half_line(fn,256)
+        err=abs(val-integral_half_line(fn,128))
+        Imat[i,j]=val
+        quaderr=max(quaderr,float(err))
+factor=(rr**2-1)/np.sqrt(rr)
+loewner_error=float(np.linalg.norm(Jmat-np.outer(factor,factor)*Imat))
+kernel_min=float(np.linalg.eigvalsh(Jmat-(math.pi/2)*E_mat).min())
+assert loewner_error&lt;1e-10 and kernel_min&gt;=-1e-11
+v=np.array([1,.2j,-.3,.5-.1j,-.2],complex)
+br=rr**1.5/(1+rr)
+def fn(t):
+    f=np.sum(v/(rr**2+t*t))
+    return t**3/(1+t*t)*abs(f)**2
+half_norm=integral_half_line(fn,256)
+err=abs(half_norm-integral_half_line(fn,128))
+Gnorm=2*half_norm
+Pnorm=float((math.pi/2)*np.vdot(v,((np.outer(br,br)/(np.outer(rr,rr)*(rr[:,None]+rr[None,:])))@v)).real)
+assert Gnorm&gt;=Pnorm-1e-12
+scalar={&quot;nodes_r&quot;:rr.tolist(),&quot;fixed_node_count&quot;:len(rr),&quot;loewner_integral_congruence_error&quot;:loewner_error,
+        &quot;quadrature_resolution_change_max&quot;:quaderr,&quot;minimum_pi_over_two_difference_eigenvalue&quot;:kernel_min,
+        &quot;fixed_complex_coefficient_G_norm_squared&quot;:float(Gnorm),&quot;exact_projected_norm_squared&quot;:Pnorm,
+        &quot;hardy_projection_gap&quot;:float(Gnorm-Pnorm),&quot;hardy_quadrature_resolution_change&quot;:float(err),
+        &quot;quadrature_note&quot;:&quot;Fixed Gauss-Legendre 128/256 resolution comparison; not a rigorous error bound&quot;}
+out={&quot;status&quot;:&quot;PASS_FIXED_FINITE_DIAGNOSTICS_ONLY&quot;,&quot;no_optimization&quot;:True,&quot;case_count&quot;:len(rows),
+     &quot;independent_kernel_baseline_sha256&quot;:hashlib.sha256((HERE/&quot;INDEPENDENT_FORWARD_KERNEL_BASELINE.txt&quot;).read_bytes()).hexdigest(),
+     &quot;hardy_proof_sha256&quot;:hashlib.sha256((HERE/&quot;FORWARD_PI_OVER_TWO_HARDY_PROOF.txt&quot;).read_bytes()).hexdigest(),
+     &quot;cases&quot;:rows,&quot;scalar_integral_and_complex_hardy_control&quot;:scalar,
+     &quot;limitations&quot;:[&quot;Finite controls are not a universal proof&quot;,&quot;No optimality conclusion&quot;,&quot;No external/formal or historical-priority certification&quot;]}
+with (HERE/&quot;FORWARD_ENTROPY_CONTROLS.json&quot;).open(&quot;x&quot;) as f:
+    json.dump(out,f,indent=2)
+    f.write(&quot;\n&quot;)
+print(json.dumps({&quot;status&quot;:out[&quot;status&quot;],&quot;cases&quot;:len(rows),
+    &quot;maximum_J_identity_error&quot;:max(x[&quot;J_identity_error&quot;] for x in rows),
+    &quot;maximum_E_identity_error&quot;:max(x[&quot;E_identity_error&quot;] for x in rows),
+    &quot;distinct_nonKMS_H_antisymmetry_norm&quot;:rows[0][&quot;nonKMS_H_antisymmetry_norm&quot;],
+    &quot;loewner_integral_error&quot;:loewner_error,&quot;hardy_projection_gap&quot;:scalar[&quot;hardy_projection_gap&quot;]}))
+</pre><p><a href="../assets/53129c08d408a834b04a50a5c2dc8d1035bb24d976ecffe0b774fd18fcbe83db.py">Exact original</a></p></html>

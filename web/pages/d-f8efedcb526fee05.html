@@ -1,0 +1,215 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/agents/ppt_index_tangent_sol/verify_phase_d_stdlib.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/agents/ppt_index_tangent_sol/verify_phase_d_stdlib.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Replay all Phase D exact claims using the Python standard library only.
+
+Requires the authorized original frozen cube certificate and original stdlib
+verifier in ../ppt_cube_chain_sol. It does not import numpy, sympy or a solver.
+&quot;&quot;&quot;
+import hashlib, importlib.util, json, sys, time
+from pathlib import Path
+
+HERE=Path(__file__).resolve().parent
+SOURCE=HERE.parent/&#x27;ppt_cube_chain_sol&#x27;
+sys.dont_write_bytecode=True
+spec=importlib.util.spec_from_file_location(&#x27;cube_stdlib&#x27;,SOURCE/&#x27;verify_cube_stdlib.py&#x27;)
+v=importlib.util.module_from_spec(spec);spec.loader.exec_module(v)
+FROZEN_HASH=&#x27;256745ff4887eadb653a8fdb416ccb15e91051756065396eb58d11761173d961&#x27;
+
+def load(name):return json.loads((HERE/name).read_text())
+def digest(name):return hashlib.sha256((HERE/name).read_bytes()).hexdigest()
+def ident(n):return [[int(i==j) for j in range(n)] for i in range(n)]
+def scale(a,c):return [[c*x for x in r] for r in a]
+def diag(xs):return [[x*int(i==j) for j in range(len(xs))] for i,x in enumerate(xs)]
+def sub(a,b):return [[x-y for x,y in zip(r,s)] for r,s in zip(a,b)]
+
+def reconstruct():
+    qs=[[[v.BLOCKS[j][r][i] for j in range(4)] for i in range(4)] for r in range(6)]
+    ts=[]
+    for q in qs:
+      for r in qs:
+        ts.append([[q[a][i]*r[b][j]-q[b][i]*r[a][j]+(
+                    q[a][j]*r[b][i]-q[b][j]*r[a][i] if i!=j else 0)
+                    for i,j in v.SYMS] for a,b in v.WEDS])
+    a0=[[sum(k[a][i]*k[b][j] for k in ts) for i in range(10) for j in range(10)]
+        for a in range(6) for b in range(6)]
+    assert all(a0[a*6+b][i*10+j]==a0[b*6+a][i*10+j]==a0[a*6+b][j*10+i]
+               for a in range(6) for b in range(6) for i in range(10) for j in range(10))
+    return ts,a0,[2 if i==j else 1 for i,j in v.SYMS]
+
+def target(a0,d,p,q):
+    den=p*p+q*q
+    un=scale(ident(10),den)
+    un[0][0]=un[4][4]=q*q-p*p;un[0][4]=2*p*q;un[4][0]=-2*p*q
+    assert v.matmul(un,v.transpose(un))==scale(ident(10),den*den)
+    ud=v.matmul(un,diag(d))
+    m=v.matmul(v.matmul(v.matmul(v.matmul(a0,v.kron(ud,ud)),v.transpose(a0)),v.kron(v.K,v.K)),a0)
+    j=[[m[a*6+b][i*10+j0] for j0 in range(10) for b in range(6)] for i in range(10) for a in range(6)]
+    assert j==v.transpose(j)
+    assert all(j[i*6+a][j0*6+b]==j[j0*6+a][i*6+b]==j[i*6+b][j0*6+a]
+               for i in range(10) for j0 in range(10) for a in range(6) for b in range(6))
+    return j,den*den
+
+def pd(a):
+    assert a==v.transpose(a)
+    n=len(a);b=[r[:] for r in a];prev=1
+    for k in range(n):
+        pivot=b[k][k]
+        if pivot&lt;=0:return False,k+1,pivot
+        if k==n-1:break
+        for i in range(k+1,n):
+          for j in range(i,n):
+            z=b[i][j]*pivot-b[i][k]*b[k][j]
+            assert z%prev==0
+            b[i][j]=b[j][i]=z//prev
+        for i in range(k+1,n):b[i][k]=b[k][i]=0
+        prev=pivot
+    return True,n,pivot
+
+def determinant_mod(a,prime):
+    b=[[x%prime for x in row] for row in a];n=len(b);value=1
+    assert all(len(r)==n for r in b)
+    for k in range(n):
+        pivot=next((i for i in range(k,n) if b[i][k]),None)
+        if pivot is None:return 0
+        if pivot!=k:b[k],b[pivot]=b[pivot],b[k];value=-value
+        x=b[k][k];value=value*x%prime;inv=pow(x,-1,prime)
+        for i in range(k+1,n):
+            f=b[i][k]*inv%prime
+            for j in range(k+1,n):b[i][j]=(b[i][j]-f*b[k][j])%prime
+            b[i][k]=0
+    return value%prime
+
+def rank_mod(a,prime):
+    b=[[x%prime for x in row] for row in a];rows=len(b);cols=len(b[0]);rank=0
+    for k in range(cols):
+        pivot=next((i for i in range(rank,rows) if b[i][k]),None)
+        if pivot is None:continue
+        b[rank],b[pivot]=b[pivot],b[rank];inv=pow(b[rank][k],-1,prime)
+        for i in range(rank+1,rows):
+            f=b[i][k]*inv%prime
+            for j in range(k,cols):b[i][j]=(b[i][j]-f*b[rank][j])%prime
+        rank+=1
+        if rank==rows:break
+    return rank
+
+def check_rank(ts,d):
+    z=load(&#x27;phase_d_rank_certificate.json&#x27;)
+    prime=z[&#x27;prime&#x27;];assert prime==1009
+    assert all(prime%k for k in range(2,32))
+    basis=[ts[i] for i in z[&#x27;source_kraus_basis_indices&#x27;]]
+    assert z[&#x27;source_kraus_basis_indices&#x27;]==[p*6+q for p in range(6) for q in range(p+1,6)]
+    assert all(ts[p*6+p]==[[0]*10 for _ in range(6)] for p in range(6))
+    assert all(ts[p*6+q]==scale(ts[q*6+p],-1) for p in range(6) for q in range(p+1,6))
+    basis_columns=[[t[a][i] for t in basis] for a in range(6) for i in range(10)]
+    constraints=[[t[a][i] for t in basis] for a in range(6) for i in (0,4)]
+    assert rank_mod(basis_columns,prime)==15 and rank_mod(constraints,prime)==11
+    assert rank_mod(z[&#x27;annihilator_coefficients&#x27;],prime)==4
+    ls=[]
+    for cs in z[&#x27;annihilator_coefficients&#x27;]:
+        l=[[sum(cs[k]*basis[k][a][i] for k in range(len(basis))) for i in range(10)] for a in range(6)]
+        assert all(l[a][i]==0 for a in range(6) for i in (0,4))
+        ls.append(l)
+    assert ls==z[&#x27;annihilator_matrices&#x27;]
+    rows=[]
+    for a,b,c in z[&#x27;selected_product_indices&#x27;]:
+        r=v.matmul(v.matmul(v.matmul(v.matmul(ls[a],diag(d)),v.transpose(ts[b])),v.K),ts[c])
+        rows.append([x for row in r for x in row])
+    assert rows==z[&#x27;minor_rows_exact_integer&#x27;] and len(rows)==60
+    determinant=determinant_mod(rows,prime);assert determinant!=0
+    kappa=sum(x*x for cs in z[&#x27;annihilator_coefficients&#x27;] for x in cs)
+    tau=sum(x*x for row in rows for x in row)
+    assert kappa==42 and tau==8974168593985584
+    return {&#x27;rank_mod_prime&#x27;:60,&#x27;prime&#x27;:prime,&#x27;determinant_mod_prime&#x27;:determinant,
+            &#x27;annihilators_exactly_reconstructed&#x27;:len(ls),
+            &#x27;kraus_space_dimension&#x27;:15,&#x27;two_column_constraint_rank&#x27;:11,&#x27;annihilator_space_dimension&#x27;:4,
+            &#x27;annihilator_coefficient_frobenius_squared&#x27;:kappa,
+            &#x27;fixed_Gram_trace&#x27;:tau,
+            &#x27;uniform_eigenvalue_lower_bound&#x27;:&#x27;1/[42*(8974168593985584)^59]&#x27;,
+            &#x27;uniform_claim&#x27;:&#x27;J(M_F) strictly positive for every complex2x2 block F on coordinates0,4, identity on other8&#x27;}
+
+def bh(j,side):
+    e=6;d=10
+    def s(i):return 1 if i%2==0 else -1
+    if side==&#x27;output&#x27;:
+        pt=[[sum(j[i*e+a][k*e+a] for a in range(e)) for k in range(d)] for i in range(d)]
+        return [[pt[i][k]*int(a==b)-j[i*e+a][k*e+b]-s(a)*s(b)*j[i*e+(b^1)][k*e+(a^1)]
+                 for k in range(d) for b in range(e)] for i in range(d) for a in range(e)]
+    assert side==&#x27;reference&#x27;
+    pt=[[sum(j[i*e+a][i*e+b] for i in range(d)) for b in range(e)] for a in range(e)]
+    return [[pt[a][b]*int(i==k)-j[i*e+a][k*e+b]-s(i)*s(k)*j[(k^1)*e+a][(i^1)*e+b]
+             for k in range(d) for b in range(e)] for i in range(d) for a in range(e)]
+
+def check_correction(name,j,den2,j0,cert):
+    z=load(&#x27;phase_d_correction_&#x27;+name+&#x27;.json&#x27;)
+    local=v.kron(cert[&#x27;x_numerator&#x27;],cert[&#x27;y_numerator&#x27;])
+    residual=v.matmul(v.matmul(local,sub(j,scale(j0,den2))),v.transpose(local))
+    rd=cert[&#x27;rational_target_trace&#x27;]*cert[&#x27;filter_denominator&#x27;]**4*den2
+    bd=cert[&#x27;output_denominator&#x27;];assert z[&#x27;corrected_output_denominator&#x27;]==rd*bd
+    cs=[[[residual[i*6+a][i*6+b] for b in range(6)] for a in range(6)] for i in range(10)]
+    ps=[]
+    for i in range(10):
+      for k in range(i+1,10):
+        r=[[residual[i*6+a][k*6+b] for b in range(6)] for a in range(6)]
+        assert r==v.transpose(r);ps.append(r);cs[i]=sub(cs[i],r);cs[k]=sub(cs[k],r)
+    cs+=ps;checks=[]
+    for i,r in enumerate(cs):
+        old=cert[&#x27;output_numerators&#x27;][i]
+        num=[[old[a][b]*rd+r[a][b]*bd for b in range(6)] for a in range(6)]
+        assert num==z[&#x27;corrected_output_numerators&#x27;][i]
+        checks.append(pd(num)[0])
+    qv=cert[&#x27;input_denominator&#x27;]
+    assert cert[&#x27;input_numerators&#x27;][:10]==[[qv*int(i==j) for j in range(10)] for i in range(10)]
+    assert cert[&#x27;input_numerators&#x27;][10:55]==[[qv*(int(k==i)+int(k==j)) for k in range(10)]
+                        for i in range(10) for j in range(i+1,10)]
+    # The displayed elementary residual correction proves equality. Verify it
+    # independently on every block, not by trusting the saved result string.
+    out=[[0]*60 for _ in range(60)]
+    for vec,corr in zip(cert[&#x27;input_numerators&#x27;][:55],cs):
+      for i in range(10):
+        for k in range(10):
+          for a in range(6):
+            for b in range(6):out[i*6+a][k*6+b]+=vec[i]*vec[k]*corr[a][b]
+    assert out==scale(residual,qv*qv)
+    assert all(checks)==z[&#x27;all_corrected_strict_pd&#x27;]
+    return {&#x27;all_corrected_strict_pd&#x27;:all(checks),&#x27;failed_atom_indices&#x27;:[i for i,c in enumerate(checks) if not c]}
+
+def main():
+    if not __debug__:raise RuntimeError(&#x27;Run without -O or -OO&#x27;)
+    before=time.monotonic();protocol=load(&#x27;phase_d_preregistration.json&#x27;);report=load(&#x27;phase_d_results.json&#x27;)
+    assert digest(&#x27;phase_d_preregistration.json&#x27;)==report[&#x27;protocol_sha256&#x27;]
+    raw=(SOURCE/&#x27;cube_separable_certificate.json&#x27;).read_bytes()
+    assert hashlib.sha256(raw).hexdigest()==FROZEN_HASH==report[&#x27;original_certificate_sha256&#x27;]
+    cert=json.loads(raw);v.verify(SOURCE/&#x27;cube_separable_certificate.json&#x27;)
+    ts,a0,d=reconstruct();rank=check_rank(ts,d);j0,den0=target(a0,d,0,1)
+    assert j0==v.rational_model()[0] and den0==1
+    assert len(report[&#x27;samples&#x27;])==len(protocol[&#x27;samples_p_q&#x27;])==7
+    out=[];witness_count=0
+    for sample,pq in zip(report[&#x27;samples&#x27;],protocol[&#x27;samples_p_q&#x27;]):
+        p,q=pq;assert [sample[&#x27;p&#x27;],sample[&#x27;q&#x27;]]==pq
+        name=f&#x27;p{p}_q{q}&#x27;;j,den2=target(a0,d,p,q)
+        z=load(&#x27;phase_d_target_&#x27;+name+&#x27;.json&#x27;)
+        assert z[&#x27;choi_numerator&#x27;]==j and z[&#x27;denominator&#x27;]==den2
+        assert digest(&#x27;phase_d_target_&#x27;+name+&#x27;.json&#x27;)==sample[&#x27;target_sha256&#x27;]
+        assert pd(j)[0]
+        assert len(sample[&#x27;witness_tests&#x27;])==4
+        for result,(side,filtered) in zip(sample[&#x27;witness_tests&#x27;],[(&#x27;output&#x27;,False),(&#x27;output&#x27;,True),(&#x27;reference&#x27;,False),(&#x27;reference&#x27;,True)]):
+            assert (result[&#x27;side&#x27;],result[&#x27;frozen_filter&#x27;])==(side,filtered)
+            filt=v.kron(ident(10),cert[&#x27;y_numerator&#x27;]) if side==&#x27;output&#x27; else v.kron(cert[&#x27;x_numerator&#x27;],ident(6))
+            jf=v.matmul(v.matmul(filt,j),v.transpose(filt)) if filtered else j
+            h=bh(jf,side);hname=f&#x27;phase_d_bh_{name}_{side}_{int(filtered)}.json&#x27;
+            assert load(hname)[&#x27;operator_numerator&#x27;]==h and digest(hname)==result[&#x27;operator_sha256&#x27;]
+            assert pd(h)[0] and result[&#x27;exact&#x27;][&#x27;strict_pd&#x27;] and result[&#x27;negative_vector&#x27;] is None
+            witness_count+=1
+        correction=check_correction(name,j,den2,j0,cert)
+        assert digest(&#x27;phase_d_correction_&#x27;+name+&#x27;.json&#x27;)==sample[&#x27;frozen_400_atom_attempt&#x27;][&#x27;certificate_sha256&#x27;]
+        assert correction[&#x27;all_corrected_strict_pd&#x27;]==sample[&#x27;frozen_400_atom_attempt&#x27;][&#x27;all_corrected_strict_pd&#x27;]
+        out.append({&#x27;p&#x27;:p,&#x27;q&#x27;:q,&#x27;cube_corner_choi&#x27;:&#x27;strictly positive&#x27;,
+                    &#x27;BH_tests_strictly_positive&#x27;:4,&#x27;frozen_correction&#x27;:correction})
+    result={&#x27;status&#x27;:&#x27;ALL_EXACT_PHASE_D_CLAIMS_REPLAYED&#x27;,&#x27;arithmetic&#x27;:&#x27;Python stdlib integers only&#x27;,
+            &#x27;analytic_rank&#x27;:rank,&#x27;positive_BH_tests&#x27;:witness_count,&#x27;samples&#x27;:out,
+            &#x27;nonzero_sample_separability&#x27;:&#x27;UNKNOWN&#x27;,&#x27;universal_PPT_cube&#x27;:&#x27;UNKNOWN&#x27;,
+            &#x27;elapsed_seconds&#x27;:time.monotonic()-before}
+    (HERE/&#x27;phase_d_stdlib_replay.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/4d1d254dd7c19c298c70e4ff4e06eb49ecaa936f737d3a0b104bddec7c75f18a.py">Exact original</a></p></html>

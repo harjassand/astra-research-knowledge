@@ -1,0 +1,180 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AZ: research/work/root_replays/cycle04/tradeoff/check_exact_objects.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AZ-sources.txt">Source map</a><h1>AZ: research/work/root_replays/cycle04/tradeoff/check_exact_objects.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Exact supplied authored checkpoint09 ZIP retained; full checkpoint08/09 proofs, blind/exposed audits, scripts/receipts and selected primary PDF/HTML captures available. Summary describes08; current09 STATUS/dependency closure governs later scoped claims. Old conditional/pending/erroneous freezes remain historical with mandatory errata. Code archived, no intake scientific execution or independent proof reconstruction; external/formal correctness/novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small-object and scalar diagnostics, not general proof validation.&quot;&quot;&quot;
+from __future__ import annotations
+
+import itertools
+import json
+import math
+from pathlib import Path
+
+import sympy as s
+
+
+HERE = Path(__file__).resolve().parent
+checks: list[dict] = []
+
+
+def exact(name: str, condition: bool, detail: str) -&gt; None:
+    if not condition:
+        raise AssertionError(name + &quot;: &quot; + detail)
+    checks.append({&quot;name&quot;: name, &quot;status&quot;: &quot;PASS&quot;, &quot;kind&quot;: &quot;exact&quot;, &quot;detail&quot;: detail})
+
+
+def is_zero(mat: s.Matrix) -&gt; bool:
+    return all(s.simplify(x) == 0 for x in mat)
+
+
+# Full-domain d=2,L=2 channel, including bottom-sector replacement.
+dim = 5
+k0 = s.zeros(dim * dim, dim)
+k1 = s.zeros(dim * dim, dim)
+v = s.zeros(dim * dim, dim)
+k0[0, 0] = 1
+k1[0, 1] = 1
+v[0, 2] = 1
+v[1, 3] = 1 / s.sqrt(2)
+v[5, 3] = 1 / s.sqrt(2)
+v[6, 4] = 1
+kraus = [k0, k1, v]
+exact(&quot;full_domain_Kraus_TP&quot;, is_zero(sum((k.H * k for k in kraus), s.zeros(dim)) - s.eye(dim)),
+      &quot;Three 25x5 algebraic Kraus matrices have sum K* K=I_5, including bottom inputs.&quot;)
+exact(&quot;splitter_isometry&quot;, is_zero(v[:, 2:5].H * v[:, 2:5] - s.eye(3)),
+      &quot;Occupation-basis Sym^2(C^2) grouping is an exact isometry.&quot;)
+
+
+def partial_trace_second(mat: s.Matrix) -&gt; s.Matrix:
+    return s.Matrix(dim, dim, lambda a, b: sum(mat[a * dim + c, b * dim + c] for c in range(dim)))
+
+
+def partial_trace_first(mat: s.Matrix) -&gt; s.Matrix:
+    return s.Matrix(dim, dim, lambda a, b: sum(mat[c * dim + a, c * dim + b] for c in range(dim)))
+
+
+u, w = s.symbols(&quot;u w&quot;, real=True)
+norm_ideal = s.groebner([u * u + w * w - 1], w, u, extension=s.sqrt(2))
+
+
+def norm_zero(mat: s.Matrix) -&gt; bool:
+    return all(norm_ideal.reduce(s.expand(x))[1] == 0 for x in mat)
+
+
+omega = s.zeros(dim)
+omega[0, 0] = 1
+for phase in [s.Integer(1), s.I, s.Integer(-1), -s.I]:
+    psi = s.Matrix([u, phase * w])
+    psi2 = s.Matrix([u * u, s.sqrt(2) * u * phase * w, phase * phase * w * w])
+    rho = s.diag(psi * psi.H, psi2 * psi2.H) / 2
+    out = sum((k * rho * k.H for k in kraus), s.zeros(dim * dim))
+    target = (s.diag(psi * psi.H, s.zeros(3)) + omega) / 2
+    # Include i in coefficient field for exact polynomial reductions.
+    norm_ideal = s.groebner([u * u + w * w - 1], w, u, extension=[s.sqrt(2), s.I])
+    exact(&quot;broadcast_marginals_phase_&quot; + str(phase),
+          norm_zero(partial_trace_second(out) - target) and norm_zero(partial_trace_first(out) - target),
+          &quot;Both marginals equal (bottom psi+omega)/2 under u^2+w^2=1; top input is shifted down.&quot;)
+
+# Eight algebraic directions: two Gauss-Legendre magnitude nodes x four phases.
+y_nodes = [(1 - 1 / s.sqrt(3)) / 2, (1 + 1 / s.sqrt(3)) / 2]
+phases = [s.Integer(1), s.I, s.Integer(-1), -s.I]
+for n in [1, 2, 3]:
+    for a, b in itertools.product(range(n + 1), repeat=2):
+        phase_mean = sum((z ** a) * s.conjugate(z ** b) for z in phases) / 4
+        if a != b:
+            moment = s.Integer(0) if s.simplify(phase_mean) == 0 else None
+            exact(f&quot;design_{n}_offdiag_{a}_{b}&quot;, moment == 0,
+                  &quot;Fourth-root phase sum kills all nonzero exponent differences through order 3.&quot;)
+        else:
+            moment = sum(s.binomial(n, a) * y ** (n - a) * (1 - y) ** a for y in y_nodes) / 2
+            exact(f&quot;design_{n}_diag_{a}&quot;, s.simplify(moment - s.Rational(1, n + 1)) == 0,
+                  &quot;Weighted occupation-basis diagonal moment equals 1/(n+1) exactly.&quot;)
+
+# Two EPR-projection subspaces and the exact d=2 Choi score operator.
+epr = s.Matrix([1, 0, 0, 1]) / s.sqrt(2)
+p_ab = s.kronecker_product(epr * epr.H, s.eye(2))
+embed_ac = s.zeros(8, 2)
+for b in range(2):
+    for a in range(2):
+        embed_ac[a * 4 + b * 2 + a, b] = 1 / s.sqrt(2)
+p_ac = embed_ac * embed_ac.H
+omega_choi = (s.eye(8) + p_ab + p_ac) / 6
+eigenvalues = omega_choi.eigenvals()
+exact(&quot;Choi_score_norm&quot;, max(eigenvalues) == s.Rational(5, 12),
+      &quot;Largest score-operator eigenvalue is 5/12; unnormalized Choi trace 2 gives score&lt;=5/6.&quot;)
+
+# Finite scalar checks cover trace-inactive clipping, trace-active clipping,
+# and the exact included reference, as diagnostics of the KKT branches.
+for name, avec, zvec, cap, lam, multiplier in [
+    (&quot;inactive_trace_clipped&quot;, [s.Integer(2), s.Integer(0)], [s.Rational(3, 2), s.Integer(0)],
+     s.Rational(3, 2), s.Rational(1, 100), s.Integer(0)),
+    (&quot;active_trace_clipped&quot;, [s.Rational(2331, 1250), s.Rational(169, 1250)],
+     [s.Rational(3, 2), s.Rational(1, 2)], s.Rational(3, 2), s.Rational(1, 100), s.Rational(1, 4)),
+    (&quot;exact_reference&quot;, [s.Integer(1), s.Integer(1)], [s.Integer(1), s.Integer(1)],
+     s.Integer(2), s.Rational(1, 100), s.Rational(12, 25)),
+]:
+    c = 2 * multiplier
+    stationary = True
+    for ai, zi in zip(avec, zvec):
+        if ai == 0:
+            stationary &amp;= zi == 0
+        elif zi == cap:
+            stationary &amp;= ai / cap &gt;= (c + 4 * lam * cap) ** 2
+        else:
+            stationary &amp;= s.simplify(ai / zi - (c + 4 * lam * zi) ** 2) == 0
+    trace = sum(zvec) / 2
+    stationary &amp;= sum(avec) / 2 == 1 and trace &lt;= 1
+    stationary &amp;= multiplier == 0 or trace == 1
+    lower = all(zi &gt;= min(ai, cap) / (1 + 4 * lam * cap) ** 2 for ai, zi in zip(avec, zvec))
+    exact(&quot;KKT_&quot; + name, bool(stationary and c &lt; 1 and lower),
+          &quot;Rational fixture satisfies stationarity/complementarity, c&lt;1 and clipped-component lower bound.&quot;)
+
+scalar_conditions = {
+    &quot;normalization_t_above_half&quot;: s.Rational(16, 27) &gt; s.Rational(1, 2),
+    &quot;beta_coefficient_below_27&quot;: s.Rational(187, 7) &lt; 27,
+    &quot;tail_coefficient_below_8&quot;: s.Rational(5, 3) ** 8 &gt; 27,
+    &quot;rate_derivative_domain&quot;: 288 &gt; 68,
+    &quot;optimized_tail_below_epsilon&quot;: s.Rational(625, 16) &gt; 24,
+    &quot;final_500_constant&quot;: 3 * 144 &lt; 500,
+    &quot;large_error_branch&quot;: 500 &gt; 288,
+}
+for name, value in scalar_conditions.items():
+    exact(name, bool(value), &quot;Exact rational inequality used by the tracial logarithmic composition.&quot;)
+
+parameter_diagnostics = []
+for ladder_l in [2, 3, 4, 6, 8]:
+    m = 2 ** (ladder_l - 1)
+    d = ladder_l * m
+    ds = [math.comb(2 ** j + d - 1, 2 ** j) for j in range(ladder_l)]
+    capacity = sum(math.log(x) for x in ds) / ladder_l
+    c_lower = m * math.log(ladder_l) / ladder_l
+    c_upper = 2 * m * (1 + math.log(ladder_l + 1) + math.log(2)) / ladder_l
+    if not c_lower &lt;= capacity &lt;= c_upper:
+        raise AssertionError(&quot;capacity interval diagnostic&quot;)
+    parameter_diagnostics.append({
+        &quot;L&quot;: ladder_l, &quot;d&quot;: d, &quot;max_copy_number&quot;: m,
+        &quot;C_nats_numeric&quot;: capacity, &quot;C_explicit_lower_numeric&quot;: c_lower,
+        &quot;C_explicit_upper_numeric&quot;: c_upper,
+        &quot;b_lower_rational&quot;: str(s.Rational(d - 1, 2 * ladder_l * (d + 1))),
+        &quot;displayed_b_rational&quot;: str(s.Rational(1, ladder_l)),
+        &quot;e_lower_rational&quot;: str(1 - s.Rational(m + 1, m + d)),
+        &quot;kind&quot;: &quot;finite_numeric_formula_diagnostic_not_asymptotic_materialization&quot;,
+    })
+
+sparse_matrices = []
+for name, mat in zip([&quot;bottom_basis_0_replacement&quot;, &quot;bottom_basis_1_replacement&quot;, &quot;Sym2_splitter&quot;], kraus):
+    sparse_matrices.append({
+        &quot;name&quot;: name, &quot;shape&quot;: list(mat.shape),
+        &quot;entries&quot;: [[a, b, str(mat[a, b])] for a in range(mat.rows) for b in range(mat.cols) if mat[a, b] != 0],
+    })
+
+report = {
+    &quot;schema&quot;: &quot;cycle04-exact-diagnostics-v1&quot;, &quot;status&quot;: &quot;PASS&quot;,
+    &quot;exact_check_count&quot;: len(checks), &quot;checks&quot;: checks,
+    &quot;fixture&quot;: {&quot;d&quot;: 2, &quot;L&quot;: 2, &quot;H_dimension&quot;: 5, &quot;output_dimension&quot;: 25,
+                &quot;third_design_label_count&quot;: 8, &quot;C_exact&quot;: &quot;ln(6)/2&quot;,
+                &quot;e_lower_exact&quot;: &quot;7/24&quot;, &quot;b_lower_exact&quot;: &quot;1/12&quot;, &quot;displayed_b_exact&quot;: &quot;1/2&quot;},
+    &quot;parameter_diagnostics&quot;: parameter_diagnostics,
+    &quot;scope&quot;: &quot;Finite exact object and scalar diagnostics; not general theorem, external validation, solver proof, or materialized asymptotic family.&quot;,
+}
+(HERE / &quot;EXACT_REPLAY_RESULTS.json&quot;).write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+(HERE / &quot;EXACT_SMALL_KRAUS_MATRICES.json&quot;).write_text(json.dumps(sparse_matrices, indent=2) + &quot;\n&quot;)
+print(json.dumps({&quot;status&quot;: &quot;PASS&quot;, &quot;exact_check_count&quot;: len(checks), &quot;finite_parameter_count&quot;: len(parameter_diagnostics)}))
+</pre><p><a href="../assets/114918114b3ec82498f99c8cf137f6f63371c99c6f1aa3e85f23ee41926d2a31.py">Exact original</a></p></html>
