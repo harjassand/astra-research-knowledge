@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-555 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,461 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+563 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,483 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -220,6 +220,10 @@ Added BL: N460–474: noise-robust population lineage moment pencils and reversi
 
 
 Added BM: N475–485: monotone and bounded-slope cosmic-density integral envelopes, smooth nonphantom competitor and actual compressed DESI DR2 BAO-only likelihood fits; exact ideal-real local Hopf–Lax likelihood update, journal/block costs, strong grouped SMAWK benchmark, negative Python/single-time results and scoped posterior/FV checks. No newphysics, joint SN/CMB/significance calibration, external/formal/priority certification or demonstrated compiled-block MCMC ESS gain. [Sources](web/BM-sources.txt);[scopes](web/BM-reports.txt);[archive/availability](web/BM-package.txt).
+
+
+
+Added BN: N486–493: verified-continuation local/global relative-second-moment certificates, exponential-outdegree corner reduction, exact binary dyadic minimax and confidence sampler; sharp stopping-time variance obstruction and absorbing-chain supersolutions; charged chemical diagnostics and explicit acquisition bottleneck; credited Gaussian seed absorption with additive-TV/relative-event boundary. No high-dimensional or physical-time capability, external/formal/priority or discovery-gain promotion. [Sources](web/BN-sources.txt);[scopes](web/BN-reports.txt);[archive/availability](web/BN-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

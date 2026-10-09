@@ -1,0 +1,136 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BN: run_experiments.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BN-sources.txt">Source map</a><h1>BN: run_experiments.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=0. All11 supplied files and10 native checksums preserved; full authored derivations, compiler/verifier, rational and floating receipt distinctions, negative resource findings and source-access limitations retained. No ingestion scientific replay or new independent proof certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Reproduce finite-state diagnostics and exact stopping-time counterexample.
+
+No claim of superiority to high-dimensional state-of-the-art samplers.
+The same bracket-acquisition step already bounds the target probability.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+from fractions import Fraction as F
+import json
+from pathlib import Path
+import platform
+import time
+import numpy as np
+import mpmath as mp
+from certified_paths import (
+    chemical_excursion, compile_chain, reference_values, proposal_array,
+    second_moment_relative, reversed_drift, simulate,
+    stopped_two_state_second_moment, verify_compiled,
+)
+
+
+def high_precision_probability(chain,horizon,digits=80):
+    with mp.workdps(digits):
+        n=chain.size
+        p=[mp.mpf(x.numerator)/x.denominator for x in chain.p_up]
+        row=[mp.mpf(0)]*n
+        row[-1]=mp.mpf(1)
+        for _ in range(horizon):
+            nxt=[mp.mpf(0)]*n
+            nxt[-1]=mp.mpf(1)
+            for x in range(1,n-1):
+                nxt[x]=p[x]*row[x+1]+(1-p[x])*row[x-1]
+            row=nxt
+        return mp.nstr(row[chain.start],digits)
+
+
+def run(volumes,samples):
+    rows=[]
+    for volume in volumes:
+        horizon=2*volume
+        chain=chemical_excursion(volume)
+        started=time.perf_counter()
+        h=reference_values(chain,horizon)
+        dp_seconds=time.perf_counter()-started
+        precision_started=time.perf_counter()
+        p80=high_precision_probability(chain,horizon)
+        mp_seconds=time.perf_counter()-precision_started
+        p=h[-1,chain.start]
+        compiled=compile_chain(chain,horizon,bracket_bits=12)
+        verify_start=time.perf_counter()
+        verification=verify_compiled(compiled)
+        verify_seconds=time.perf_counter()-verify_start
+        q=proposal_array(compiled)
+        drift=reversed_drift(chain,horizon)
+        rv=second_moment_relative(chain,h,q)
+        baseline_rv=second_moment_relative(chain,h,drift)
+        cert=float(compiled.bound[-1][chain.start])-1
+        lo=compiled.lower[-1][chain.start]
+        hi=compiled.upper[-1][chain.start]
+        midpoint=(lo+hi)/2
+        relative_midpoint_bound=float((hi-lo)/(2*lo))
+        diag=simulate(chain,horizon,q,samples,20261009+volume)
+        drift_diag=simulate(chain,horizon,drift,samples,20262009+volume)
+        row={
+            &#x27;volume&#x27;:volume,&#x27;states&#x27;:chain.size,&#x27;reaction_event_horizon&#x27;:horizon,
+            &#x27;probability_float&#x27;:float(p),&#x27;probability_80_digits&#x27;:p80,
+            &#x27;lower_rational&#x27;:str(lo),&#x27;upper_rational&#x27;:str(hi),
+            &#x27;midpoint_relative_error_bound&#x27;:relative_midpoint_bound,
+            &#x27;crude_monte_carlo_relative_variance&#x27;:float((1-p)/p),
+            &#x27;reversed_drift_relative_variance&#x27;:baseline_rv,
+            &#x27;compiled_relative_variance&#x27;:rv,
+            &#x27;certified_relative_variance_upper&#x27;:cert,
+            &#x27;root_second_moment_bound_rational&#x27;:str(compiled.bound[-1][chain.start]),
+            &#x27;float_dynamic_program_seconds&#x27;:dp_seconds,
+            &#x27;mpmath_80_digit_dynamic_program_seconds&#x27;:mp_seconds,
+            &#x27;rational_bracket_acquisition_seconds&#x27;:compiled.acquire_seconds,
+            &#x27;rational_proposal_certification_seconds&#x27;:compiled.compile_seconds,
+            &#x27;compiled_nodes&#x27;:compiled.processed_nodes,
+            &#x27;independent_rational_verifier&#x27;:verification,
+            &#x27;independent_rational_verifier_seconds&#x27;:verify_seconds,
+            &#x27;compiled_monte_carlo&#x27;:diag,&#x27;reversed_drift_monte_carlo&#x27;:drift_diag,
+        }
+        rows.append(row)
+        print(json.dumps({k:row[k] for k in [
+            &#x27;volume&#x27;,&#x27;probability_float&#x27;,&#x27;midpoint_relative_error_bound&#x27;,
+            &#x27;crude_monte_carlo_relative_variance&#x27;,
+            &#x27;reversed_drift_relative_variance&#x27;,&#x27;compiled_relative_variance&#x27;,
+            &#x27;certified_relative_variance_upper&#x27;,
+            &#x27;rational_bracket_acquisition_seconds&#x27;,
+            &#x27;rational_proposal_certification_seconds&#x27;]},indent=2),flush=True)
+    s,d=F(1,100000),F(1,100)
+    ratio=(1-s)/(1-d*d)
+    return {
+        &#x27;status&#x27;:&#x27;Research prototype and diagnostic examples, not a transformative invention.&#x27;,
+        &#x27;date&#x27;:&#x27;2026-10-09&#x27;,
+        &#x27;runtime&#x27;:{&#x27;python&#x27;:platform.python_version(),&#x27;numpy&#x27;:np.__version__,
+                   &#x27;mpmath&#x27;:mp.__version__,&#x27;platform&#x27;:platform.platform()},
+        &#x27;configuration&#x27;:{&#x27;bracket_bits&#x27;:12,&#x27;certificate_bits&#x27;:36,
+                         &#x27;proposal_bits&#x27;:30,&#x27;samples_per_proposal&#x27;:samples},
+        &#x27;chemical_diagnostics&#x27;:rows,
+        &#x27;counterexample&#x27;:{
+            &#x27;description&#x27;:&#x27;Two transient states, approximate normalized Doob transform.&#x27;,
+            &#x27;hazard&#x27;:str(s),&#x27;uniform_relative_committor_error&#x27;:str(d),
+            &#x27;expected_proposal_steps&#x27;:str(1/s),
+            &#x27;second_moment_continuation_ratio&#x27;:str(ratio),
+            &#x27;relative_variance&#x27;:&#x27;infinite&#x27;,
+            &#x27;threshold&#x27;:&#x27;finite if and only if hazard &gt; relative_error**2&#x27;,
+            &#x27;finite_formula&#x27;:&#x27;hazard*(1-relative_error**2)/(hazard-relative_error**2)&#x27;,
+        },
+        &#x27;critical_resource_finding&#x27;:(
+            &#x27;Backward interval acquisition already gives a certified probability &#x27;
+            &#x27;bracket. Its cost is O(horizon*states) arithmetic and remains &#x27;
+            &#x27;exponential for an explicitly enumerated high-dimensional state space. &#x27;
+            &#x27;The compiled sampler has not eliminated that acquisition bottleneck.&#x27;),
+        &#x27;limitations&#x27;:[
+            &#x27;Finite reaction-event horizon, not physical-time rate estimation.&#x27;,
+            &#x27;Chemical example has a one-dimensional count coordinate.&#x27;,
+            &#x27;No neural committor, high-dimensional molecule, or learned-model training run.&#x27;,
+            &#x27;Timing measurements are single process runs, not controlled performance benchmarks.&#x27;,
+            &#x27;Certificate arithmetic is exact rational with outward rounding; diagnostic paths use floats.&#x27;,
+            &#x27;General theorem has a written proof and finite tests, not a proof-assistant formalization.&#x27;,
+        ],
+    }
+
+
+if __name__==&#x27;__main__&#x27;:
+    parser=argparse.ArgumentParser()
+    parser.add_argument(&#x27;--volumes&#x27;,type=int,nargs=&#x27;+&#x27;,default=[40,80,160])
+    parser.add_argument(&#x27;--samples&#x27;,type=int,default=20000)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;results.json&#x27;))
+    args=parser.parse_args()
+    if args.samples&lt;2:
+        parser.error(&#x27;--samples must be at least 2&#x27;)
+    results=run(args.volumes,args.samples)
+    args.output.write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+</pre><p><a href="../assets/e5e012cf2c56e76234709773d87a7f63f7c0b35af3cfe36402986b3047529157.py">Exact original</a></p></html>

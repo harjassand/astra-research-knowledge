@@ -1,0 +1,175 @@
+"""Exact-rational and randomized diagnostic tests; no formal verification claim."""
+from fractions import Fraction as F
+import math
+import random
+import unittest
+
+from certified_paths import (
+    ONE, ZERO, Chain, outward, bernoulli_cost, minimax_binary,
+    compile_chain, chemical_excursion, stopped_two_state_second_moment,
+    verify_compiled, sample_exact, certified_estimate,
+)
+
+
+class CertificateTests(unittest.TestCase):
+    def test_outward_rounding(self):
+        rng = random.Random(193)
+        for _ in range(2000):
+            x = F(rng.randrange(1,10**8), rng.randrange(1,10**8))
+            bits = rng.randrange(2,40)
+            lo, hi = outward(x,bits,False), outward(x,bits,True)
+            self.assertLessEqual(lo,x)
+            self.assertLessEqual(x,hi)
+            self.assertGreater(lo,0)
+            self.assertLessEqual(hi/lo, 1+F(1,1<<(bits-1)))
+        self.assertEqual(outward(ZERO,12,True),ZERO)
+        self.assertEqual(outward(F(1,1<<1200),8,False),F(1,1<<1200))
+
+    def test_unweighted_minimax(self):
+        for ia in range(21):
+            for ib in range(ia,21):
+                a,b = F(ia,20),F(ib,20)
+                if (a,b) in [(ZERO,ZERO),(ONE,ONE)]:
+                    continue
+                midpoint=(a+b)/2
+                exact=1+(b-a)**2/(4*midpoint*(1-midpoint))
+                self.assertEqual(bernoulli_cost(a,midpoint),exact)
+                self.assertEqual(bernoulli_cost(b,midpoint),exact)
+                q,cost=minimax_binary(a,b,ONE,ONE)
+                self.assertGreaterEqual(cost,exact)
+                self.assertLess(float(cost-exact),2e-7)
+
+    def test_weighted_minimax_against_grid(self):
+        rng = random.Random(711)
+        for _ in range(200):
+            ends=sorted([rng.randrange(101),rng.randrange(101)])
+            a,b=F(ends[0],100),F(ends[1],100)
+            c,d=F(rng.randrange(1,100)),F(rng.randrange(1,100))
+            q,cost=minimax_binary(a,b,c,d)
+            self.assertEqual(cost,max(bernoulli_cost(a,q,c,d),
+                                      bernoulli_cost(b,q,c,d)))
+            grid_best=min(max(float(bernoulli_cost(a,F(j,200),c,d)),
+                              float(bernoulli_cost(b,F(j,200),c,d)))
+                          for j in range(1,200))
+            self.assertLessEqual(float(cost),grid_best+1e-5)
+            for _ in range(5):
+                p=a+(b-a)*F(rng.randrange(1001),1000)
+                self.assertLessEqual(bernoulli_cost(p,q,c,d),cost)
+
+    def test_exact_global_certificates(self):
+        """Independent exact h and second moment, with no floating reference."""
+        rng=random.Random(3004)
+        checked=0
+        for size in range(3,9):
+            for repeat in range(3):
+                chain=Chain([ZERO]+[F(rng.randrange(1,20),20)
+                                   for _ in range(size-2)]+[ONE])
+                horizon=2*size+1
+                result=compile_chain(chain,horizon,bracket_bits=5,
+                                     certificate_bits=24,proposal_bits=16)
+                h=[[ZERO]*size for _ in range(horizon+1)]
+                second=[[ZERO]*size for _ in range(horizon+1)]
+                for t in range(horizon+1):
+                    h[t][-1]=second[t][-1]=ONE
+                for t in range(1,horizon+1):
+                    for x in range(1,size-1):
+                        p=chain.p_up[x]
+                        h[t][x]=p*h[t-1][x+1]+(1-p)*h[t-1][x-1]
+                        self.assertLessEqual(result.lower[t][x],h[t][x])
+                        self.assertLessEqual(h[t][x],result.upper[t][x])
+                        if not h[t][x]:
+                            continue
+                        q=result.proposal[t][x]
+                        if q==ONE:
+                            second[t][x]=p*p*second[t-1][x+1]
+                            self.assertEqual(h[t-1][x-1],ZERO)
+                        elif q==ZERO:
+                            second[t][x]=(1-p)**2*second[t-1][x-1]
+                            self.assertEqual(h[t-1][x+1],ZERO)
+                        else:
+                            second[t][x]=(p*p*second[t-1][x+1]/q
+                              +(1-p)**2*second[t-1][x-1]/(1-q))
+                        actual=second[t][x]/h[t][x]**2
+                        self.assertGreaterEqual(actual,ONE)
+                        self.assertLessEqual(actual,result.bound[t][x])
+                        checked+=1
+        self.assertGreater(checked,500)
+
+    def test_exact_dyadic_minimax_and_large_bound_fallback(self):
+        rng=random.Random(490)
+        for _ in range(50):
+            ends=sorted([rng.randrange(101),rng.randrange(101)])
+            a,b=F(ends[0],100),F(ends[1],100)
+            c,d=F(rng.randrange(1,100)),F(rng.randrange(1,100))
+            q,cost=minimax_binary(a,b,c,d,proposal_bits=8)
+            true=min(max(bernoulli_cost(a,F(j,256),c,d),
+                         bernoulli_cost(b,F(j,256),c,d))
+                     for j in range(1,256))
+            self.assertEqual(cost,true)
+        q,cost=minimax_binary(F(1,3),F(2,3),F(10**1000),ONE,proposal_bits=8)
+        self.assertEqual(q,F(255,256))
+        self.assertEqual(cost,max(bernoulli_cost(F(1,3),q,F(10**1000),ONE),
+                                  bernoulli_cost(F(2,3),q,F(10**1000),ONE)))
+
+    def test_counterexample_threshold(self):
+        self.assertEqual(stopped_two_state_second_moment(F(1,10),F(1,5)),F(8,5))
+        self.assertIsNone(stopped_two_state_second_moment(F(1,100),F(1,10)))
+        self.assertIsNone(stopped_two_state_second_moment(F(1,100000),F(1,100)))
+        # Exact partial sums approach the finite answer from below.
+        s,d=F(1,5),F(1,10)
+        ratio=(1-s)/(1-d*d)
+        total=s*sum((ratio**j for j in range(100)),ZERO)
+        target=stopped_two_state_second_moment(s,d)
+        self.assertLess(total,target)
+        self.assertLess(float(target-total),1e-9)
+
+    def test_missed_channel(self):
+        eta=F(1,10**6)
+        qa,qb=1/(1+eta),eta/(1+eta)
+        normalized_second=F(1,4)/qa+F(1,4)/qb
+        self.assertEqual(normalized_second-1,(1-eta)**2/(4*eta))
+
+    def test_independent_verifier_and_exact_sampler(self):
+        import copy
+        compiled=compile_chain(chemical_excursion(20),40,bracket_bits=8)
+        self.assertEqual(verify_compiled(compiled)['status'],'PASS')
+        rng=random.Random(193)
+        for _ in range(200):
+            w,steps=sample_exact(compiled,rng.getrandbits)
+            self.assertIsInstance(w,F)
+            self.assertGreater(w,0)
+            self.assertLessEqual(steps,40)
+        broken=copy.deepcopy(compiled)
+        broken.bound[-1][1]=ONE
+        with self.assertRaises(ValueError):
+            verify_compiled(broken)
+        broken=copy.deepcopy(compiled)
+        broken.lower[-1][1]=ONE
+        with self.assertRaises(ValueError):
+            verify_compiled(broken)
+
+    def test_certified_estimator(self):
+        from certified_paths import reference_values
+        compiled=compile_chain(chemical_excursion(40),80,bracket_bits=12)
+        rng=random.Random(20261009)
+        result=certified_estimate(compiled,F(1,10),F(1,20),rng.getrandbits)
+        self.assertLessEqual(result['failure_bound'],F(1,20))
+        self.assertEqual(result['samples'],result['groups']*result['group_size'])
+        self.assertIsInstance(result['estimate'],F)
+        truth=reference_values(compiled.chain,80)[-1,1]
+        self.assertLess(abs(float(result['estimate'])/truth-1),0.1)
+        with self.assertRaises(RuntimeError):
+            certified_estimate(compiled,F(1,100000),F(1,20),rng.getrandbits,
+                               max_samples=1)
+
+    def test_chemical_input(self):
+        c=chemical_excursion(40)
+        self.assertEqual(c.size,11)
+        self.assertEqual(c.p_up[1],F(19*18,19*18+21*20))
+        for bad in [8,13,42]:
+            with self.assertRaises(ValueError):
+                chemical_excursion(bad)
+
+
+if __name__=='__main__':
+    unittest.main(verbosity=2)

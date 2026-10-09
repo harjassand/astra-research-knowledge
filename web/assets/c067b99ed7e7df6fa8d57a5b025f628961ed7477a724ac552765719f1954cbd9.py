@@ -1,0 +1,449 @@
+"""Exact local certificates for finite-horizon rare-event importance sampling.
+
+Research prototype, 2026-10-09. This is not a claimed foundational invention.
+The certificate arithmetic uses fractions and outward dyadic rounding.
+Monte Carlo and diagnostic reference moments use floating-point arithmetic.
+Python >=3.10; NumPy is needed for diagnostic simulation only.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from fractions import Fraction as F
+import math
+import time
+from typing import Sequence
+import numpy as np
+
+ZERO, ONE = F(0), F(1)
+
+
+def pow2(exponent: int) -> F:
+    return F(1 << exponent) if exponent >= 0 else F(1, 1 << -exponent)
+
+
+def outward(value: F, bits: int, upper: bool) -> F:
+    """Round a nonnegative rational outward to `bits` binary significant bits."""
+    if value < 0 or bits < 2:
+        raise ValueError("Require nonnegative value and at least 2 bits.")
+    if not value:
+        return ZERO
+    exponent = value.numerator.bit_length() - value.denominator.bit_length()
+    if value < pow2(exponent):
+        exponent -= 1
+    step = pow2(exponent - bits + 1)
+    scaled = value / step
+    integer = scaled.numerator // scaled.denominator
+    if upper and scaled.denominator != 1:
+        integer += 1
+    return integer * step
+
+
+def bernoulli_cost(p: F, q: F, b_up: F = ONE, b_down: F = ONE) -> F:
+    if not 0 < q < 1:
+        raise ValueError("Proposal q must lie strictly between zero and one.")
+    return p*p*b_up/q + (1-p)*(1-p)*b_down/(1-q)
+
+
+def minimax_binary(a: F, b: F, b_up: F, b_down: F,
+                   proposal_bits: int = 30) -> tuple[F, F]:
+    """Return the EXACT minimax dyadic q and its EXACT worst endpoint cost.
+
+    Float candidates accelerate the search but are not trusted. Exact neighbor
+    checks certify a global discrete minimum of the convex objective. When they
+    fail, exact convex binary search takes O(proposal_bits) evaluations.
+    """
+    if not all(isinstance(z,F) for z in (a,b,b_up,b_down)):
+        raise TypeError('Use Fraction inputs for exact certificate arithmetic.')
+    if not (0 <= a <= b <= 1) or min(b_up,b_down) < 1 or proposal_bits < 2:
+        raise ValueError('Invalid probability interval, bound, or bit budget.')
+    lattice=1 << proposal_bits
+    cache={}
+    def cost(k: int) -> F:
+        if k not in cache:
+            q=F(k,lattice)
+            cache[k]=max(bernoulli_cost(a,q,b_up,b_down),
+                         bernoulli_cost(b,q,b_up,b_down))
+        return cache[k]
+    try:
+        af,bf=float(a),float(b)
+        c,d=float(b_up),float(b_down)
+        scale=max(c,d)
+        if not math.isfinite(scale):
+            raise OverflowError('Use exact search for large bounds.')
+        c,d=c/scale,d/scale
+        sc,sd=math.sqrt(c),math.sqrt(d)
+        def opt(p: float) -> float:
+            return p*sc/(p*sc+(1-p)*sd)
+        denom=(af+bf)*c+(2-af-bf)*d
+        candidates=[opt(af),opt(bf),(af+bf)*c/denom]
+        ks={max(1,min(lattice-1,integer)) for x in candidates
+            for integer in (math.floor(x*lattice),math.ceil(x*lattice))}
+        k=min(ks,key=cost)
+        if ((k==1 or cost(k)<=cost(k-1)) and
+                (k==lattice-1 or cost(k)<=cost(k+1))):
+            return F(k,lattice),cost(k)
+    except (OverflowError,ZeroDivisionError,ValueError):
+        pass
+    left,right=1,lattice-1
+    while left<right:
+        mid=(left+right)//2
+        if cost(mid)<=cost(mid+1):
+            right=mid
+        else:
+            left=mid+1
+    return F(left,lattice),cost(left)
+
+
+@dataclass
+class Chain:
+    """Nearest-neighbor chain. Index 0 is failure; last index is success."""
+    p_up: list[F]
+    start: int = 1
+
+    @property
+    def size(self) -> int:
+        return len(self.p_up)
+
+    def __post_init__(self) -> None:
+        if not all(isinstance(p,F) for p in self.p_up):
+            raise TypeError('Transition probabilities must be Fractions.')
+        if self.size < 3 or not 0 < self.start < self.size-1:
+            raise ValueError("Need two absorbing boundaries and interior start.")
+        if any(not 0 < p < 1 for p in self.p_up[1:-1]):
+            raise ValueError("Interior up probabilities must be in (0,1).")
+
+
+def chemical_excursion(volume: int) -> Chain:
+    """Embedded event chain for 2A->A+B and 2B->A+B, equal rate constants.
+
+    A+B=volume. Event: A hits 3V/4 before returning to V/2, starting at V/2+1.
+    A finite horizon in this module counts reaction events, NOT physical time.
+    """
+    if volume < 12 or volume % 4:
+        raise ValueError("Volume must be a multiple of four, at least 12.")
+    mid, high = volume//2, 3*volume//4
+    probs = [ZERO]
+    for count in range(mid+1, high):
+        birth = (volume-count)*(volume-count-1)
+        death = count*(count-1)
+        probs.append(F(birth,birth+death))
+    probs.append(ONE)
+    return Chain(probs)
+
+
+@dataclass
+class Compiled:
+    chain: Chain
+    horizon: int
+    lower: list[list[F]]
+    upper: list[list[F]]
+    proposal: list[list[F | None]]
+    bound: list[list[F]]
+    acquire_seconds: float
+    compile_seconds: float
+    processed_nodes: int
+
+
+def acquire_brackets(chain: Chain, horizon: int, bits: int) -> tuple[list, list]:
+    if horizon < 1:
+        raise ValueError("Horizon must be positive.")
+    n = chain.size
+    lower = [[ZERO]*n for _ in range(horizon+1)]
+    upper = [[ZERO]*n for _ in range(horizon+1)]
+    for t in range(horizon+1):
+        lower[t][-1] = upper[t][-1] = ONE
+    for t in range(1,horizon+1):
+        for x in range(1,n-1):
+            p = chain.p_up[x]
+            lo = p*lower[t-1][x+1] + (1-p)*lower[t-1][x-1]
+            hi = p*upper[t-1][x+1] + (1-p)*upper[t-1][x-1]
+            lower[t][x] = min(ONE,outward(lo,bits,False))
+            upper[t][x] = min(ONE,outward(hi,bits,True))
+    return lower,upper
+
+
+def compile_chain(chain: Chain, horizon: int, bracket_bits: int = 10,
+                  certificate_bits: int = 36, proposal_bits: int = 30) -> Compiled:
+    begin = time.perf_counter()
+    lower, upper = acquire_brackets(chain,horizon,bracket_bits)
+    acquired = time.perf_counter()
+    n = chain.size
+    proposal = [[None]*n for _ in range(horizon+1)]
+    bounds = [[ONE]*n for _ in range(horizon+1)]
+    processed = 0
+    for t in range(1,horizon+1):
+        for x in range(1,n-1):
+            if upper[t][x] == 0:
+                continue
+            processed += 1
+            p = chain.p_up[x]
+            lu, uu = lower[t-1][x+1], upper[t-1][x+1]
+            ld, ud = lower[t-1][x-1], upper[t-1][x-1]
+            bu, bd = bounds[t-1][x+1], bounds[t-1][x-1]
+            if ud == 0:
+                q, cost = ONE, bu
+            elif uu == 0:
+                q, cost = ZERO, bd
+            else:
+                a = p*lu/(p*lu+(1-p)*ud)
+                b = p*uu/(p*uu+(1-p)*ld)
+                q,cost = minimax_binary(a,b,bu,bd,proposal_bits)
+            proposal[t][x] = q
+            bounds[t][x] = outward(cost,certificate_bits,True)
+    ended = time.perf_counter()
+    return Compiled(chain,horizon,lower,upper,proposal,bounds,
+                    acquired-begin,ended-acquired,processed)
+
+
+def reference_values(chain: Chain, horizon: int) -> np.ndarray:
+    """Ordinary positive backward dynamic programming; floating diagnostic."""
+    h = np.zeros((horizon+1,chain.size))
+    h[:,-1] = 1.
+    p = np.array([float(x) for x in chain.p_up])
+    for t in range(1,horizon+1):
+        h[t,1:-1] = p[1:-1]*h[t-1,2:] + (1-p[1:-1])*h[t-1,:-2]
+    return h
+
+
+def reversed_drift(chain: Chain, horizon: int) -> np.ndarray:
+    """Established state-dependent drift-reversal baseline, with reachability.
+
+    No true committor values are used. Only branches with a possible successful
+    continuation are retained. Masking failure branches is valid importance
+    sampling: it discards no successful original path.
+    """
+    n = chain.size
+    reach = np.zeros((horizon+1,n),dtype=bool)
+    reach[:,-1] = True
+    q = np.full((horizon+1,n),np.nan)
+    for t in range(1,horizon+1):
+        for x in range(1,n-1):
+            ru,rd = reach[t-1,x+1],reach[t-1,x-1]
+            reach[t,x] = ru or rd
+            if ru and rd:
+                q[t,x] = 1-float(chain.p_up[x])
+            elif ru:
+                q[t,x] = 1.
+            elif rd:
+                q[t,x] = 0.
+    return q
+
+
+def proposal_array(compiled: Compiled) -> np.ndarray:
+    return np.array([[np.nan if q is None else float(q) for q in row]
+                     for row in compiled.proposal])
+
+
+def second_moment_relative(chain: Chain, h: np.ndarray, q: np.ndarray) -> float:
+    """Exact recurrence in floating arithmetic, no Monte Carlo approximation.
+
+    Uses conditional likelihood ratios, avoiding cancellation and p^2 underflow.
+    """
+    horizon = h.shape[0]-1
+    bound = np.ones_like(h)
+    for t in range(1,horizon+1):
+        for x in range(1,chain.size-1):
+            if h[t,x] == 0:
+                continue
+            pstar = float(chain.p_up[x])*h[t-1,x+1]/h[t,x]
+            qi = q[t,x]
+            if qi == 1:
+                value = bound[t-1,x+1]
+            elif qi == 0:
+                value = bound[t-1,x-1]
+            else:
+                value = (pstar*pstar*bound[t-1,x+1]/qi +
+                         (1-pstar)**2*bound[t-1,x-1]/(1-qi))
+            bound[t,x] = value
+    return max(0.,bound[horizon,chain.start]-1.)
+
+
+def simulate(chain: Chain, horizon: int, q: np.ndarray, samples: int,
+             seed: int = 20261009) -> dict[str,float|int]:
+    """Diagnostic simulation with log weights; not an exact-real sampler."""
+    rng = np.random.default_rng(seed)
+    state = np.full(samples,chain.start,dtype=int)
+    logw = np.zeros(samples)
+    active = np.ones(samples,dtype=bool)
+    event_steps = 0
+    p = np.array([float(z) for z in chain.p_up])
+    begin = time.perf_counter()
+    for t in range(horizon,0,-1):
+        ix = np.flatnonzero(active)
+        if not len(ix):
+            break
+        x = state[ix]
+        qq = q[t,x]
+        if not np.all(np.isfinite(qq)):
+            raise RuntimeError("Reached state without successful continuation.")
+        up = rng.random(len(ix)) < qq
+        pp = p[x]
+        selected_p = np.where(up,pp,1-pp)
+        selected_q = np.where(up,qq,1-qq)
+        logw[ix] += np.log(selected_p)-np.log(selected_q)
+        state[ix] += np.where(up,1,-1)
+        active[ix] = (state[ix]>0)&(state[ix]<chain.size-1)
+        event_steps += len(ix)
+    success = state == chain.size-1
+    weights = np.where(success,np.exp(logw),0.)
+    mean = float(weights.mean())
+    variance = float(weights.var(ddof=1))
+    return {'samples':samples,'estimate':mean,
+            'sample_relative_variance':variance/(mean*mean),
+            'standard_error':math.sqrt(variance/samples),
+            'reaction_steps':event_steps,'seconds':time.perf_counter()-begin,
+            'success_fraction':float(success.mean())}
+
+
+def stopped_two_state_second_moment(hazard: F, relative_error: F) -> F | None:
+    """None means +infinity, including equality at the exact threshold."""
+    if not (0 < hazard < 1 and 0 < relative_error < 1):
+        raise ValueError("hazard and error must lie in (0,1).")
+    square = relative_error*relative_error
+    if hazard <= square:
+        return None
+    return hazard*(1-square)/(hazard-square)
+
+
+def verify_compiled(compiled: Compiled) -> dict[str, int | str]:
+    """Independently verify all probability and moment inequalities exactly.
+
+    This checker does not need the true committor, simulations, or a floating
+    optimizer. A PASS is a finite rational certificate, not a formal software
+    verification. It checks the explicit table, not an unseen learned function.
+    """
+    c=compiled
+    n,H=c.chain.size,c.horizon
+    checked=0
+    for table in [c.lower,c.upper,c.bound,c.proposal]:
+        if len(table)!=H+1 or any(len(row)!=n for row in table):
+            raise ValueError('Certificate table dimensions do not agree.')
+    for t in range(H+1):
+        for x in range(n):
+            lo,hi,B=c.lower[t][x],c.upper[t][x],c.bound[t][x]
+            if not all(isinstance(z,F) for z in (lo,hi,B)):
+                raise TypeError('Certificate entries must be exact Fractions.')
+            if c.proposal[t][x] is not None and not isinstance(c.proposal[t][x],F):
+                raise TypeError('Proposal entries must be exact Fractions or None.')
+            if not (0 <= lo <= hi <= 1 and B >= 1):
+                raise ValueError(f'Invalid interval or moment bound at {(t,x)}.')
+            if x in (0,n-1) or t==0:
+                truth=ONE if x==n-1 else ZERO
+                if not lo <= truth <= hi:
+                    raise ValueError(f'Invalid boundary bracket at {(t,x)}.')
+            else:
+                p=c.chain.p_up[x]
+                pl=p*c.lower[t-1][x+1]+(1-p)*c.lower[t-1][x-1]
+                pu=p*c.upper[t-1][x+1]+(1-p)*c.upper[t-1][x-1]
+                if lo>pl or hi<pu:
+                    raise ValueError(f'Invalid backward interval at {(t,x)}.')
+                if hi==0:
+                    continue
+                lu,uu=c.lower[t-1][x+1],c.upper[t-1][x+1]
+                ld,ud=c.lower[t-1][x-1],c.upper[t-1][x-1]
+                bu,bd=c.bound[t-1][x+1],c.bound[t-1][x-1]
+                q=c.proposal[t][x]
+                if q==ONE:
+                    if ud!=0 or B<bu:
+                        raise ValueError(f'Unsafe forced-up branch at {(t,x)}.')
+                elif q==ZERO:
+                    if uu!=0 or B<bd:
+                        raise ValueError(f'Unsafe forced-down branch at {(t,x)}.')
+                elif q is not None and 0<q<1:
+                    den_a=p*lu+(1-p)*ud
+                    den_b=p*uu+(1-p)*ld
+                    if den_a==0 or den_b==0:
+                        raise ValueError('Use forced branches for exact zero continuations.')
+                    a=p*lu/den_a
+                    b=p*uu/den_b
+                    need=max(bernoulli_cost(a,q,bu,bd),bernoulli_cost(b,q,bu,bd))
+                    if B<need:
+                        raise ValueError(f'Invalid second moment certificate at {(t,x)}.')
+                else:
+                    raise ValueError(f'Missing or invalid proposal at {(t,x)}.')
+                checked+=1
+    return {'status':'PASS','verified_success_reachable_nodes':checked,
+            'probability_table_entries':(H+1)*n}
+
+
+def sample_exact(compiled: Compiled, random_bits) -> tuple[F, int]:
+    """One exact rational likelihood-weight sample using a random-bit callable.
+
+    `random_bits(k)` must produce a uniform integer in range(2**k). For example,
+    pass random.Random(seed).getrandbits for reproducible pseudorandom tests.
+    True unbiasedness is with respect to an ideal independent uniform bit stream.
+    Rational-weight bit lengths may grow linearly in path length and rate bits.
+    """
+    x=compiled.chain.start
+    if compiled.upper[compiled.horizon][x]==0:
+        return ZERO,0
+    weight=ONE
+    used=0
+    for t in range(compiled.horizon,0,-1):
+        q=compiled.proposal[t][x]
+        if q is None:
+            raise ValueError('No proposal at current success-reachable node.')
+        if q==ONE:
+            up=True
+        elif q==ZERO:
+            up=False
+        else:
+            denominator=q.denominator
+            if denominator & (denominator-1):
+                raise ValueError('Exact sampling expects a dyadic proposal.')
+            up=random_bits(denominator.bit_length()-1)<q.numerator
+        p=compiled.chain.p_up[x]
+        weight*=p/q if up else (1-p)/(1-q)
+        x+=1 if up else -1
+        used+=1
+        if x==compiled.chain.size-1:
+            return weight,used
+        if x==0:
+            return ZERO,used
+    return ZERO,used
+
+
+def certified_estimate(compiled: Compiled, epsilon: F, alpha: F, random_bits,
+                       max_samples: int = 100000) -> dict:
+    """Exact-weight median-of-means estimate with a finite rational error bound.
+
+    Under the documented independent-uniform-bit assumption, the probability
+    that |estimate-p| > epsilon*p is at most alpha. Input-model errors are not
+    covered. Verification and the requested sample count are explicitly charged.
+    """
+    if not isinstance(epsilon,F) or not isinstance(alpha,F):
+        raise TypeError('epsilon and alpha must be Fractions.')
+    if not (0<epsilon<1 and 0<alpha<1):
+        raise ValueError('Require epsilon and alpha in (0,1).')
+    verification=verify_compiled(compiled)
+    x=compiled.chain.start
+    if compiled.upper[compiled.horizon][x]==0:
+        return {'estimate':ZERO,'samples':0,'steps':0,
+                'failure_bound':ZERO,'verification':verification}
+    variance_bound=compiled.bound[compiled.horizon][x]-1
+    requested=4*variance_bound/(epsilon*epsilon)
+    group_size=max(1,(requested.numerator+requested.denominator-1)//requested.denominator)
+    groups=1
+    while True:
+        failure=sum((F(math.comb(groups,j)*3**(groups-j),4**groups)
+                     for j in range((groups+1)//2,groups+1)),ZERO)
+        if failure<=alpha:
+            break
+        groups+=2
+        if group_size*groups>max_samples:
+            raise RuntimeError('Certified sampling budget exceeds max_samples.')
+    if group_size*groups>max_samples:
+        raise RuntimeError('Certified sampling budget exceeds max_samples.')
+    means=[]
+    steps=0
+    for _ in range(groups):
+        total=ZERO
+        for _ in range(group_size):
+            weight,cost=sample_exact(compiled,random_bits)
+            total+=weight
+            steps+=cost
+        means.append(total/group_size)
+    estimate=sorted(means)[groups//2]
+    return {'estimate':estimate,'samples':group_size*groups,'groups':groups,
+            'group_size':group_size,'steps':steps,'failure_bound':failure,
+            'epsilon':epsilon,'alpha':alpha,'verification':verification}
