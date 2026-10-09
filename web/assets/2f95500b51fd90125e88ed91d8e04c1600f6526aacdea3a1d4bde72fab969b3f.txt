@@ -1,0 +1,226 @@
+A24 GLOBAL ROBUST GRADIENT REFINEMENT — V2
+2026-10-09 (Australia/Brisbane)
+Status: internally derived candidate theorem; source interface and composition audited locally, no external review or implementation. V2 preserves V1 and corrects the randomized-partition counterexample and zero-covariance implementation edge case.
+
+1. Target and claim boundary
+
+Clean data are iid pairs (a_i,y_i), with a_i~N(0,I_d), y_i=(a_i^T x*)^2+zeta_i, E[zeta_i|a_i]=0 and E[zeta_i^2|a_i]<=sigma^2. Write q=||x*||>0. A strong adversary sees the entire clean sample and replaces at most eps m whole pairs before the learner gets the data. A supplied initializer x_init satisfies dist(x_init,x*)<=q/9 up to sign. For the same-sample initializer from work/sol/robust_recovery/v1.txt, the learner also has h in [(26/27)q^2,(28/27)q^2] and dist(x_init,x*)<=2q/27, on its stated event.
+
+The result below gives a finite optimization-tolerance guarantee using one globally corrupted sample and no fresh-batch independence. For any requested relative optimization tolerance p in (0,0.1], the output satisfies
+
+  dist(x_T,x*) <= p q + 8 B_m sigma/q,
+  B_m = 808 [1200 sqrt(d/n) + sqrt(1200 K/n)].                 (1.1)
+
+The exact definitions of n,K and the confidence events are in Sections 5–7. In particular, if m is large enough that B_m=O(sqrt(eps)), then the statistical part is O(sigma sqrt(eps)/q). For eps>0 and known sigma, choosing p <= sigma sqrt(eps)/q^2 gives the requested O(sigma sqrt(eps)/q) total error. If sigma is unknown, (1.1) is the unconditional interface: the user supplies p, and the theorem retains p q. For eps=0 the finite-sample term sigma sqrt(d/n)/q remains; no finite-sample exact-recovery claim is made. With sigma=0, p q remains as the explicit finite-optimization/rounding floor.
+
+This is a candidate composition of source-established primitives and an internal proof. It is not an external correctness, novelty or priority claim. It requires the initializer's upper noise-ratio input R>=sigma/q^2 and its finite-sample conditions from Sol V1; the refinement itself only needs the certified scale h, eps, confidence and p.
+
+2. Why batch splitting does not repair the source proof
+
+Buna and Rebeschini's AISTATS 2025 gradient-estimator definition guarantees a fixed-x deviation event. Their proof conditions on x_t being independent of the batch used at step t. Das and Batra's AISTATS 2026 Remark 4.3 partitions a single globally corrupted sample and controls corruption counts, but count control alone does not give that independence under an adversary that saw every clean pair.
+
+Exact dependence counterexample, including a randomized partition: take d=1 and noiseless clean pairs (a_k,y_k), with a_k~N(0,1) and y_k=a_k^2. Fix distinct indices i,j before seeing the data or the learner's random partition. The strong adversary replaces pair i by (a=1,y=2+1{a_j>0}); this is one allowed whole-pair replacement whenever eps m>=1. Now randomly partition the corrupted sample into disjoint batches B_1,B_2. The event i∈B_1 and j∈B_2 has positive probability. Conditional on this event and the partition, the replaced response in B_1 reveals 1{a_j>0}, which is measurable from the clean pair in B_2; hence the two batch sigma-fields are dependent. A learner iterate that reads this response can encode the sign of a later-batch clean sample. This refutes the implication “randomly balanced corruption counts => fresh-batch independence”; it does not assert that every robust estimator actually leaks this bit. The repair below proves a certificate simultaneously for every possible finite-precision query, so the iterate need not be independent of the data.
+
+3. Population risk, local geometry, and score covariance
+
+For the zero-mean noise model define
+
+  R(x) = (1/4) E[((a^T x)^2-y)^2],
+  P_x(a,y) = ((a^T x)^2-y)(a^T x)a.
+
+Conditional centering and Gaussian fourth moments give
+
+  g(x)=E P_x=(3||x||^2-q^2)x-2<x,x*>x*,
+  H(x)=nabla^2 R(x)=(3||x||^2-q^2)I+6xx^T-2x*x*^T.          (3.1)
+
+Fix z*=x* or -x*, whichever is within q/9 of x_init. Both g and H have the same formulas with x*x*^T=z*z*^T. For e=||x-z*||<=q/4 and a unit vector v, put t=v^T z* and z=v^T(x-z*). Then
+
+  v^T H(x)v = 3||x||^2-q^2+6(t+z)^2-2t^2
+             =3||x||^2-q^2+4(t+3z/2)^2-3z^2
+             >= 3(q-e)^2-q^2-3e^2
+             = 2q^2-6qe >= q^2/2.
+
+Also H(x) <= (9||x||^2-q^2)I <= (209/16)q^2 I <14q^2 I. Thus R is mu-strongly convex and L-smooth on the radius-q/4 ball about either target sign, with mu=q^2/2 and L=14q^2. The ball is convex, so the Hessian bounds apply along every segment from x to z* inside it.
+
+For a fixed x in that ball, set e=x-z*, U=a^Tz*, V=a^Te, W=U+V=a^Tx, and T_v=a^Tv. Then
+
+  v^T P_x = [2U^2V+3UV^2+V^3]T_v - zeta W T_v.
+
+The signal term has mean g(x) in direction v; the noise term has zero mean. Their cross second moment vanishes since E[zeta|a]=0. Hölder and E[G^8]=105 for G~N(0,1) give
+
+  E[U^4 V^2 T_v^2] <= 105 q^4 e^2,
+  E[U^2 V^4 T_v^2] <= 105 q^2 e^4,
+  E[V^6 T_v^2]     <= 105 e^6.
+
+Therefore, using (r+s+t)^2<=3(r^2+s^2+t^2),
+
+  E[(v^T P_signal)^2]
+    <=315(4q^4e^2+9q^2e^4+e^6)
+    <=315(4+9/16+1/256)q^4e^2 <1500q^4e^2.
+
+The noise covariance obeys
+
+  E[zeta^2(a^T x)^2(v^T a)^2]
+    <=sigma^2 E[(a^T x)^2(v^T a)^2]
+    =sigma^2(||x||^2+2(v^Tx)^2)
+    <=(75/16)sigma^2q^2 <5sigma^2q^2.
+
+Consequently, for every x with e<=q/4,
+
+  Cov(P_x) <= V_x I,  tr Cov(P_x)<=d V_x,
+  V_x := 1500 q^4 e^2 + 5 sigma^2 q^2.                    (3.2)
+
+Only the conditional second-moment bound is used. No fourth moment of zeta is needed in refinement.
+
+4. Strong-adversary robust-mean interface and event split
+
+Primary source: J. Depersin and G. Lecué, “Robust sub-Gaussian estimation of a mean vector in nearly linear time,” Annals of Statistics 50(1), 511–536 (2022), DOI 10.1214/21-AOS2118, author-hosted published PDF https://lecueguillaume.github.io/assets/AOS2118.pdf. Local pinned working copy: work/sol/robust_recovery/research/dl22.pdf and .txt. Exact accessed portions: Assumption 1 (strong adaptive replacement and possibly correlated surviving inliers), Theorem 2.1, Proposition 1 and Lemma 1 including Eq. (6), Theorem 4.1, and the conditional proof of Theorem 2.1 in Section 5.
+
+For N independent clean vectors in R^d with mean mu and covariance Sigma, then <=|O| arbitrary whole-vector replacements after the adversary sees the clean sample, the source algorithm uses K equal-size blocks with K>=300|O| and integer u_alg>=1. It returns mu_hat with
+
+  ||mu_hat-mu|| <= 808(1200 sqrt(tr Sigma/N)
+                          + sqrt(1200 ||Sigma||_op K/N))
+
+and runs in O-tilde(Nd+u_alg Kd). The theorem's failure probability is exp(-K/180000)+10^(-u_alg). The estimator is covariance-oblivious. These source claims apply to the strong replacement model; the source explicitly allows the selected inlier set to be correlated after an adaptive replacement decision.
+
+For adaptivity, separate its probability sources. For a fixed score map P_x, the source's Proposition 1 event E_x is proved from the ORIGINAL clean block means. Lemma 1, Eq. (6), bounds the number of clean directional bad blocks by 2K/300 simultaneously over all unit directions, except with probability exp(-K/180000). At most |O| blocks can contain replaced observations. Thus if K>=600|O|, at least
+
+  K - 2K/300 - |O| >= (1-1/150-1/600)K = 595K/600 > 0.98K
+
+observed block means are good in every direction, for every replacement set and every replacement value. This exceeds the 9K/10 required by Proposition 1. The Proposition 1 rounding argument then gives E_x, including its PSD-matrix statement, and the Section 5 proof of Theorem 2.1 is deterministic conditional on E_x except for fresh covering-SDP solver seeds. Conditional on any fixed input dataset satisfying E_x, those seeds fail with probability at most 10^(-u_alg). We do not treat the mixed theorem failure probability as a conditional guarantee without this source proof split.
+
+The same equipartition of raw sample indices is drawn once by the learner and reused for every score query. Conditional on the equipartition, clean score vectors for a fixed x remain independent. The clean event is uniform over replacements, so it remains valid even if the adversary knows or anticipates the partition. A fresh independent SDP seed is used at each gradient call.
+
+Zero-radius guard for the robust-mean call. Before invoking the source routine on K block means, check whether some vector z occurs at least 9K/10 times (integer counts are interpreted with ceiling). If so, return z; otherwise call the source routine unchanged. On E_x, for every unit v at least 9K/10 block means satisfy |v^T( Xbar_k−mu)|<=8r. The duplicate set and this directional good set have intersection size at least 8K/10, so |v^T(z−mu)|<=8r for every v and therefore ||z−mu||<=8r. This is no worse than the source error 808r. If Cov(X)=0, every clean observation equals mu almost surely; since at most K/600 blocks are touched when K>=600|O|, at least 599K/600 block means equal mu, so the guard returns the exact mean and avoids any zero-radius division in an implementation of the source routine. Duplicate detection costs O-tilde(Kd), absorbed by its stated runtime. This wrapper is used at each score query.
+
+5. Finite deterministic query grid despite the data-selected initializer
+
+The scale h and initializer may depend on the same globally corrupted data. Set qhat=sqrt(h), and let
+
+  s = 2^floor(log_2(qhat)),  rho=p/10000,
+  lattice spacing a_s = rho s/sqrt(d),
+  Lambda_s = a_s Z^d intersect [-3s,3s]^d.
+
+From h in [(26/27)q^2,(28/27)q^2], qhat is in [sqrt(26/27)q,sqrt(28/27)q]. For fixed true q, s therefore belongs to at most two deterministic dyadic values (the two endpoints of this interval can cross at most one power-of-two boundary). The candidate set Lambda_* is the union of Lambda_s over those at-most-two possible dyadic values. The learner computes only its selected s and current lattice point; it never enumerates Lambda_*.
+
+The cardinality bound is
+
+  J_0 := 2(3+6sqrt(d)/rho)^d,
+  |Lambda_*|<=J_0,  log J_0=log 2+d log(3+60000sqrt(d)/p). (5.1)
+
+This set is deterministic for the probability argument once q and p are fixed, even though the realized h and selected s are data-dependent. J_0 is known from d,p without knowing q, so it is used in the algorithm's confidence and block-count formulas. The set includes every lattice query in the algorithm below.
+
+Define the known closed convex projection ball C=B(x_init,qhat/8). The initializer guarantee dist(x_init,x*)<=q/9 and qhat>=sqrt(26/27)q imply that z* lies strictly inside C. Every x in C satisfies
+
+  ||x-z*|| <= q/9 + qhat/8
+            <= (1/9+sqrt(28/27)/8)q < q/4.                (5.2)
+
+Thus the whole projection domain has the geometry and covariance bounds from Section 3. C is data-dependent, but all its lattice points lie in the deterministic master set Lambda_*. Indeed ||x||<=||x_init||+qhat/8<=q+q/9+sqrt(28/27)q/8<1.24q, while 3s>3sqrt(26/27)q/2>1.47q.
+
+Projection plus rounding: the lattice covering radius is Delta=rho s/2. For y in C, first shrink radially about x_init by 2Delta, obtaining y'=x_init+(1-2Delta/r_C)(y-x_init), with r_C=qhat/8. Round y' coordinatewise to the nearest point z in a_s Z^d. Then ||z-y'||<=Delta and ||z-x_init||<=r_C-Delta, so z is in C and ||z-y||<=3Delta. This gives an explicit operation Q_C(y) with error at most 3Delta without searching over the lattice. The same construction applies to y=x_init. Since p<=0.1, 2Delta<r_C.
+
+For every fixed x in Lambda_*, the clean vectors P_x(a_i,y_i) are iid and have finite covariance. Apply the clean-block event E_x with the shared equipartition. A union bound over the J deterministic points gives a single data/partition event E_all on which E_x holds for every x in Lambda_* and every allowed global replacement. Its failure is at most J exp(-K/180000). This is the uniform certificate used for all data-dependent iterates.
+
+6. Exact same-sample algorithm, sample accounting, and confidence
+
+Let the total raw sample size be m. Use the same m globally corrupted pairs for the Sol V1 initializer and for every refinement call. This avoids a hidden blockwise contamination reallocation. For refinement set
+
+  K = ceil(600 eps m + 180000 log(2J_0/delta_stat)),
+  n = K floor(m/K),
+
+and require K<=m/2. The mean primitive uses the first n rows, divided into K equal-size blocks; the leftover m-n rows are ignored by refinement. Since the global adversary replaced <=eps m pairs, this prefix contains <=eps m replacements, so K>=600|O_prefix|. Also n>=m/2. The contamination fraction relative to the prefix may be as large as 2eps; this is already charged through K/n and no independence between prefix and initializer is used.
+
+Algorithm:
+
+1. Run the same-sample initializer, obtaining x_init,h with its V1 certificate. Set qhat=sqrt(h), s=2^floor(log_2 qhat), C=B(x_init,qhat/8), eta=1/(16h), and x_0=Q_C(x_init).
+2. For t=0,...,T-1, compute the robust mean estimate ghat_t of the n score vectors P_{x_t}(a_i,y_i) using the fixed K-block partition, first applying the zero-radius duplicate guard above and otherwise using fresh covering-SDP seeds. Set y_t=Proj_C(x_t-eta ghat_t), then x_{t+1}=Q_C(y_t).
+3. Return x_T.
+
+Take delta_init,delta_stat,delta_alg>0 with their sum <=delta. Set
+
+  T = ceil(log(1/(2p))/log(50/49)),
+  u_alg = ceil(log_10(2T/delta_alg)).
+
+The clean-grid event failure is at most delta_stat/2 by the definition of K and |Lambda_*|<=J_0. Conditional on E_all and all previous successful calls, x_t is a fixed lattice point, and the next fresh solver seed fails with probability <=10^(-u_alg). A union bound over T calls costs at most delta_alg/2. The initializer's own uniform data events and PCA seeds cost delta_init. The combined success probability is >=1-delta. No iterate is conditioned to be independent of the sample.
+
+7. Refinement theorem and proof
+
+Define the computable factor
+
+  B_m = 808[1200 sqrt(d/n)+sqrt(1200K/n)].                (7.1)
+
+Assume B_m<=1/400. On E_all, for every query x_t in C, the robust mean theorem and (3.2) give
+
+  ||ghat_t-g(x_t)||
+    <= B_m sqrt(1500 q^4 e_t^2+5sigma^2 q^2)
+    <= B_m( sqrt(1500)q^2 e_t + sqrt(5)sigma q),
+  e_t=||x_t-z*||.                                         (7.2)
+
+Because z* lies in C and C is convex, Euclidean projection onto C is nonexpansive relative to z*. Population gradient descent contracts on C: with mu=q^2/2, L=14q^2, eta=1/(16h), and eta L<=14/(16(26/27))=189/208<1,
+
+  ||Proj_C(x_t-eta g(x_t))-z*|| <= (1-eta mu)e_t.
+
+The rounding map contributes at most 3Delta. Since eta q^2<=27/416 and sqrt(1500)<39,
+
+  eta B_m sqrt(1500)q^2 <= (27/416)39/400 < 0.0064.
+
+Also eta mu>=27/896. Therefore 1-eta mu+eta B_m sqrt(1500)q^2 <0.977<0.98. The noise coefficient obeys eta sqrt(5)q <= (27sqrt(5)/416)(1/q). Thus
+
+  e_{t+1} <= (49/50)e_t + (27sqrt(5)/416)B_m sigma/q + 3Delta.  (7.3)
+
+Initially e_0<=q/9+3Delta<q/8. Iterating (7.3) and using 1/(1-49/50)=50 gives
+
+  e_T <= (49/50)^T q/8 + (1350sqrt(5)/416)B_m sigma/q + 150Delta.
+
+The first term is <=pq/4 by the chosen T. Since Delta=rho s/2, s<=sqrt(28/27)q, and rho=p/10000,
+
+  150Delta <= 75(p/10000)s <0.0077pq.
+
+Finally 1350sqrt(5)/416<7.27<8. This proves (1.1) with slack. The sign z* is selected only in the proof; the algorithm and every event are sign-invariant.
+
+8. Explicit statistical regime, full sample/runtime costs, and endpoints
+
+Let
+
+  D_p = d log(3+60000sqrt(d)/p) + log(8/delta_stat) + 1.
+
+For K<=m/2, n>=m/2 and
+
+  K/n <= 1200eps + 360000 log(2J_0/delta_stat)/m + 2/m.
+
+Hence (7.1) is checked exactly from m,K,n, and the explicit bound
+
+  B_m <= 808[1200sqrt(2d/m)
+             + sqrt(1200(1200eps+360000log(2J_0/delta_stat)/m+2/m))]
+
+is sufficient. In particular, a sufficient asymptotic regime is eps<=c_mean and m>=C_mean D_p/eps for eps>0, with absolute constants c_mean,C_mean chosen from the displayed primitive constants so that B_m<=1/400; for eps=0, use m>=C_mean D_p. More generally, retain the exact check (7.1), which is sharper and fully explicit. Under m>=C D_p/eps, (7.1)'s error term satisfies B_m<=C'[sqrt(eps)+sqrt(D_p/m)], so
+
+  dist(x_T,x*) <= p q + C'' (sigma/q)[sqrt(eps)+sqrt(D_p/m)]. (8.1)
+
+To reach O(sigma sqrt(eps)/q), take eps>0, m>=C D_p/eps, and p<=sigma sqrt(eps)/q^2. If sigma is given only as an upper bound, use that upper bound in this choice, which yields the corresponding upper-bound rate. If sigma is unknown, (8.1) with the explicit p term is the certified output statement. At eps=0, the finite-sample term is not zero. At sigma=0, only the user-selected precision p q is certified in finitely many iterations.
+
+The initializer and refinement use the same m pairs, so total samples are m, not m plus a hidden per-step batch allocation. The refinement uses n>=m/2 pairs once and reuses them for all T=O(log(1/p)) calls. The exact refinement arithmetic cost is
+
+  O(T * O-tilde(nd+u_alg Kd) + Td),
+
+where the O-tilde hides the published covering-SDP logarithms. Since n<=m, K<=m/2 and u_alg=O(log(T/delta_alg)), this is O-tilde(m d log(1/p) log(T/delta_alg)). It includes score construction, robust-mean calls, projection, and rounding. The initializer cost from Sol V1 is
+
+  O(m d_+ gamma^(-2) log^4(d_+/eps_alg) log(1/delta_init)
+     + d_+ log^2(1/delta_init)+m),
+
+where d_+=max(d,3), eps_alg=max(eps,1/m), gamma=Theta((1+R^2)^(-1)), with the V1 exact scale/stability conditions and confidence allocation. Thus the composed arithmetic runtime remains near-linear in the dense input length md up to the displayed factors in R, p, delta and eps. The full sample condition is the maximum of the exact V1 initializer inequality, K<=m/2, and B_m<=1/400. The strong initializer condition may dominate the refinement's m=O(D_p/eps) cost, particularly when p is not extremely small.
+
+The method is covariance-oblivious at the robust-gradient stage and uses no fourth noise moment. It does assume the supplied/constructed initializer includes a certified scale h. The imported source algorithms use real-arithmetic operation counts. With unrestricted adversarial real coordinates of unbounded bit length, no bit-runtime bound depending only on m,d is possible; finite-precision solver tolerances, Gaussian sampling precision, and roundoff have not been incorporated into the proof. The lattice precision itself is explicit: coordinate spacing a_s=rho s/sqrt(d), so its relative representation uses O(log(sqrt(d)/p)) bits per coordinate beyond the scale exponent.
+
+9. Source comparison and claim ledger
+
+• Das and Batra, “Tractable Gaussian Phase Retrieval with Heavy Tails and Adversarial Corruption with Near-Linear Sample Complexity,” AISTATS 2026, PMLR 300, https://proceedings.mlr.press/v300/das26a.html; local source work/applied/a07_robust_optimization/research/das26a.pdf/.txt. Relevant source ranges in .txt: Model 1.1/1.2 and §2.2.2/Definition 2.1.1; Algorithm 2 and Theorem 3.3 of the 2025 gradient source are imported there; Remark 4.3 explicitly uses corruption-balanced sample splitting and says whether one batch suffices is open. This V1 replaces that freshness premise with a finite-grid uniform event.
+• Buna and Rebeschini, “Robust Gradient Descent for Phase Retrieval,” AISTATS 2025, PMLR 258:2080–2088, https://proceedings.mlr.press/v258/buna25a.html. Exact accessed portions: §2.2.2, Definition 2.1.1, Proposition 2.2.1, Algorithm 2, Theorem 3.3 and proof Section D.3. The source's stated deviation event is for fixed x; in the proof it is conditioned on x_t independent of the fresh batch.
+• Depersin and Lecué, published 2022 source and ranges recorded in Section 4. It supplies the strong-adversary covariance-oblivious robust mean algorithm, the clean-block event, and conditional solver-randomness guarantee used here.
+• The Astra navigation source was opened at work/sources/astra/00_START_HERE.txt as required. A targeted search found no task-relevant robust-phase-retrieval review card; no archived Astra claim is used as a proof premise. Source pins: work/SOURCE_PINS.json lists Astra commit 939f697c151e779619d4fa7c4e2aee4bc59672fb and openai_math commit fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb. Source repositories were not modified.
+
+Claim ledger:
+  Source-reported: Depersin–Lecué strong replacement mean theorem and proof event; AISTATS local-gradient theorem and its fresh-sample proof interface; Sol V1 same-sample initializer theorem.
+  Internally derived: local gradient/covariance bounds under conditional second moments; exact finite-grid uniformization; same-sample projected-gradient composition and finite optimization-tolerance bound (1.1); zero-radius duplicate guard.
+  Finite-tested: none. No numerical check is needed for the displayed algebra; no implementation was run.
+  Unresolved: independent proof review of all source imports and this composition; compatible finite-precision solver implementation; optimal contamination/noise/sample tradeoffs; any priority or novelty claim.

@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/sol/hidden_realization/build_exact_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/sol/hidden_realization/build_exact_certificate.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact rational construction. SymPy is used only to solve one finite linear system.&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+import sympy as sp
+
+folder=Path(__file__).parent
+seed=json.loads((folder/&#x27;frame_rational_seed_v3.json&#x27;).read_text())
+v=sp.Matrix([[sp.Rational(a) for a in row] for row in seed[&#x27;points&#x27;]])
+B=sp.Matrix([[sp.Rational(a) for a in row] for row in seed[&#x27;B&#x27;]])
+m=sp.Matrix([sum(v[:,k])/5 for k in range(2)])
+u=v-sp.ones(5,1)*m.T
+C=u.T*u/5
+D0=B*C.inv()
+edges=seed[&#x27;directed_edges&#x27;]
+columns=[]
+for i,j in edges:
+    column=sp.zeros(15,1)
+    column[2*i:2*i+2,0]=(v[i,:]-v[j,:]).T
+    column[10+i]=1;column[10+j]=-1
+    columns.append(column)
+matrix=sp.Matrix.hstack(*columns)
+rhs=sp.Matrix([(D0*u[i,:].T)[k]/5 for i in range(5) for k in range(2)]+[0]*5)
+flow=matrix.inv()*rhs if matrix.rows==matrix.cols else sp.linsolve((matrix,rhs))
+if isinstance(flow,set) or isinstance(flow,sp.FiniteSet):
+    solution=list(flow)[0]
+else: solution=list(flow)
+assert not any(x.free_symbols for x in solution)
+assert all(x&gt;0 for x in solution)
+assert matrix*sp.Matrix(solution)==rhs
+reset=sp.Rational(seed[&#x27;reset_rate&#x27;])
+D=D0+reset*sp.eye(2)
+Q=sp.zeros(10)
+for (i,j),w in zip(edges,solution):Q[i,j]=5*w
+for i in range(5):
+    for j in range(5):
+        if i!=j:Q[i,j]+=reset/5
+order=[0,3,1,4,2]
+eta=sp.Rational(1,10)
+facets=[]
+for k in range(5):
+    i,j=order[k],order[(k+1)%5]
+    edge=v[j,:]-v[i,:]
+    # l(x,y)=constant+cx*x+cy*y, determinant(edge, point-v_i).
+    coeff=[edge[1]*v[i,0]-edge[0]*v[i,1],-edge[1],edge[0]]
+    facets.append(coeff)
+    for h in range(5):
+        rate=eta*(coeff[0]+coeff[1]*v[h,0]+coeff[2]*v[h,1])
+        assert rate&gt;=0
+        Q[h,5+k]=Q[5+k,h]=rate
+for i in range(10):Q[i,i]=-sum(Q[i,j] for j in range(10) if i!=j)
+z=sp.Matrix([[sp.Rational(a) for a in row] for row in seed[&#x27;farkas_z&#x27;]])
+mono=[((z[i,:]-z[j,:])*(v[i,:]-v[j,:]).T)[0] for i in range(5) for j in range(i+1,5)]
+pair=sum((z[i,:]*D*u[i,:].T)[0]/5 for i in range(5))
+assert min(mono)&gt;0
+assert pair&lt;0
+assert C*D.T==D*C
+assert B.det()&gt;0 and B[0,0]&gt;0
+assert sp.ones(1,10)*Q==sp.zeros(1,10)
+assert Q*sp.ones(10,1)==sp.zeros(10,1)
+hidden=sp.Matrix.hstack(sp.ones(5,1),v)
+H=sp.zeros(10,8);H[:5,:3]=hidden
+for k in range(5):H[5+k,3+k]=1
+M=H.T*H/10
+L=M.inv()*H.T*Q*H/10
+assert Q*H==H*L
+assert M*L==L.T*M
+moment=sp.Matrix([[1,v[i,0],v[i,1],v[i,0]**2,v[i,0]*v[i,1]] for i in range(5)]).T
+assert moment.det()!=0
+
+def strings(matrix):return [[str(a) for a in row] for row in matrix.tolist()]
+out=dict(points=strings(v),mean=[str(a) for a in m],covariance=strings(C),B=strings(B),internal_D=strings(D),reset_rate=str(reset),marker_eta=str(eta),ccw_order=order,facets=[[str(a) for a in row] for row in facets],base_directed_edges=edges,base_directed_flows=[str(a) for a in solution],farkas_z=strings(z),monotonicity_pairings=[str(a) for a in mono],farkas_drift_pairing=str(pair),Q=strings(Q),H=strings(H),M=strings(M),L=strings(L),five_point_moment_determinant=str(moment.det()),summary=dict(states=10,outputs=6,observable_rank=8,min_monotonicity=float(min(mono)),negative_pairing=float(pair),all_internal_offdiagonal_positive=True,stationary_uniform=True,restricted_generator_symmetric=True))
+(folder/&#x27;exact_certificate_v1.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out[&#x27;summary&#x27;],indent=2))
+</pre><p><a href="../assets/79b13479216c561fda1c7e69c032b025e589d4533ecf8e95e597c59f65fea337.py">Exact original</a></p></html>

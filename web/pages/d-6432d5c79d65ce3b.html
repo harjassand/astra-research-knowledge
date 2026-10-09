@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/sol/hidden_realization/observable_audit_v1.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/sol/hidden_realization/observable_audit_v1.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent exact arithmetic audit of Sol7&#x27;s finite-word coefficient bounds.
+
+Standard library only; this is scoped checking, not a proof assistant.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+from math import factorial
+
+record = json.loads((Path(__file__).parent / &quot;exact_certificate_v1.json&quot;).read_text())
+
+
+def mat(key):
+    return [[F(s) for s in row] for row in record[key]]
+
+
+def require(condition, name):
+    if not condition:
+        raise RuntimeError(name)
+
+
+def trans(a):
+    return [list(row) for row in zip(*a)]
+
+
+def mul(a, b):
+    return [[sum(x * y for x, y in zip(row, col)) for col in zip(*b)] for row in a]
+
+
+def inv(a):
+    n = len(a)
+    aug = [row[:] + [F(i == j) for j in range(n)] for i, row in enumerate(a)]
+    for j in range(n):
+        pivot = next((i for i in range(j, n) if aug[i][j]), None)
+        require(pivot is not None, &quot;matrix invertible&quot;)
+        aug[j], aug[pivot] = aug[pivot], aug[j]
+        scale = aug[j][j]
+        aug[j] = [x / scale for x in aug[j]]
+        for i in range(n):
+            if i != j:
+                scale = aug[i][j]
+                aug[i] = [x - scale * y for x, y in zip(aug[i], aug[j])]
+    return [row[n:] for row in aug]
+
+
+def norminf(a):
+    return max(sum(abs(x) for x in row) for row in a)
+
+
+def frobsq(a):
+    return sum(x * x for row in a for x in row)
+
+
+def exponential_polynomial(a, s, degree):
+    n = len(a)
+    power = [[F(i == j) for j in range(n)] for i in range(n)]
+    result = [row[:] for row in power]
+    for k in range(1, degree + 1):
+        power = mul(power, a)
+        coefficient = s**k / factorial(k)
+        result = [[x + coefficient * y for x, y in zip(row, prow)] for row, prow in zip(result, power)]
+    return result
+
+
+L, Q, H = mat(&quot;L&quot;), mat(&quot;Q&quot;), mat(&quot;H&quot;)
+vertices, z, facets = mat(&quot;points&quot;), mat(&quot;farkas_z&quot;), mat(&quot;facets&quot;)
+Z = [[F(0), *z[i], *[sum(x * y for x, y in zip(z[i], vertices[i]))] * 5] for i in range(5)] + [[F(0)] * 8 for _ in range(5)]
+h, t, tau, eta = F(1, 10**12), F(1, 1000), F(1, 2_000_000), F(1, 10)
+Eh = exponential_polynomial(L, h, 4)
+Et = exponential_polynomial(L, t, 16)
+K = trans(Et)
+require(frobsq(L) &lt; 9, &quot;L Frobenius norm &lt;3&quot;)
+require(norminf(Q) &lt;= 2, &quot;Q infinity norm &lt;=2&quot;)
+require(max(sum(x*x for x in row) for row in Z) &lt; 9, &quot;field Euclidean norm &lt;3&quot;)
+require(sum(sum(abs(x) for x in row) for row in Z) / 10 &lt; 2, &quot;field L1 average &lt;2&quot;)
+require(min(sum((x-y)**2 for x, y in zip(vertices[i], vertices[j])) for i in range(5) for j in range(i)) &gt; F(25,64), &quot;vertex distances &gt;5/8&quot;)
+
+V = [[F(1), x, y, x*x, x*y] for x, y in vertices]
+require(norminf(inv(V)) &lt; 5, &quot;V inverse infinity norm &lt;5&quot;)
+for i in range(5):
+    normals = [facets[i][1:], facets[(i+1) % 5][1:]]
+    require(frobsq(inv(normals)) &lt; 9, &quot;adjacent normal inverse Frobenius norm &lt;3&quot;)
+    require(sum(x*x for x in facets[i][1:]) &gt; F(1,9), &quot;single normal reciprocal &lt;3&quot;)
+
+a = [Eh[0][3+k] for k in range(5)]
+b = [[Eh[1][3+k], Eh[2][3+k]] for k in range(5)]
+Bhinv = inv([b[4], b[0]])
+require(norminf(Bhinv) &lt; 12 / h, &quot;B_h inverse infinity norm &lt;12/h&quot;)
+require(frobsq(b) &lt; (F(9,20)*h)**2, &quot;all marker coordinate coefficients Frobenius norm &lt;.45h&quot;)
+
+f_values, d_values = [], []
+for output0 in range(6):
+    for outputh in range(6):
+        internal = F(output0 == 0)
+        psi = [F(output0 == 0 and outputh == k+1) for k in range(5)]
+        xy = mul(Bhinv, [[psi[4] - a[4]*internal], [psi[0] - a[0]*internal]])
+        features = [internal, xy[0][0], xy[1][0]] + [F(output0 == k+1) for k in range(5)]
+        residuals = [psi[k] - a[k]*internal - sum(b[k][j]*features[j+1] for j in range(2)) for k in range(5)]
+        f_values.append(features)
+        d_values.append(residuals)
+require(max(abs(row[j]) for row in f_values for j in (1,2)) &lt; 20/h, &quot;pointwise F_x,F_y &lt;20/h&quot;)
+require(max(sum(x*x for x in row) for row in f_values) &lt; (30/h)**2, &quot;pointwise F Euclidean norm &lt;30/h&quot;)
+require(max(abs(x) for row in d_values for x in row) &lt; 7, &quot;pointwise D_k &lt;7&quot;)
+require(all(row[0] == row[4] == 0 for row in d_values), &quot;D_0,D_4 identically zero&quot;)
+
+bvertex = [[sum(Z[i][k] * (H[i][k] - sum(K[k][j]*H[i][j] for j in range(8))) for k in range(8))] for i in range(5)]
+alpha = [row[0] for row in mul(inv(V), bvertex)]
+require(max(abs(x) for x in alpha) &lt; F(1,10), &quot;quadratic coefficients &lt;1/10&quot;)
+
+# Exact bounds used in the analytic target-error argument. The better 72 h^4
+# feature error follows from ||B^-1||_2 &lt;=sqrt(2)||B^-1||_infinity.
+remainder_h = (3*h)**5 / (factorial(5)*(1-3*h))
+remainder_t = (3*t)**17 / (factorial(17)*(1-3*t))
+require(remainder_h &lt; 3*h**5, &quot;degree-4 exponential remainder &lt;3h^5&quot;)
+require(remainder_t &lt; F(1,10**55), &quot;degree-16 exponential remainder &lt;1e-55&quot;)
+require(F(1,2) * 37**2 &lt; 1000, &quot;R_h bound from 72h^4 feature error and .45h coefficient norm&quot;)
+
+gamma = -F(record[&quot;farkas_drift_pairing&quot;]) / 2
+require(gamma &gt; F(59,10000), &quot;negative drift magnitude &gt;59/10000&quot;)
+Lambda = F(202500) / (2*eta**2*h**2*tau)
+Mu = F(9) / (4*tau)
+W_target_upper = -gamma*t + 4*t*t/(1-2*t) + 200*h**4 + 3*F(1,10**55)
+W_target_upper += 14400*h**4 + (45000*h+tau)*(1+200*h**4) + tau/2
+W_target_upper += Lambda * 1000*h**10 + Mu * 90000*h**8
+require(W_target_upper &lt; -F(1,10**6), &quot;strict target witness &lt;-1e-6&quot;)
+
+summand_bound = 100/h**2 + 72*(1+800/h**2)
+summand_bound += (45000*h+tau)*(1+800/h**2) + tau
+summand_bound += Lambda*245 + Mu*4000/h**2
+M = F(6*10**39)
+require(summand_bound &lt; M, &quot;pointwise witness normalization &lt;6e39&quot;)
+delta = F(1,6*10**45)
+T = 2*(t+h)
+require(2*delta**2/T &gt; F(2,10**89), &quot;EP floor &gt;2e-89&quot;)
+
+print(json.dumps({
+    &quot;status&quot;: &quot;PASS&quot;,
+    &quot;checks&quot;: &quot;independent exact arithmetic audit of coefficient/normalization bounds&quot;,
+    &quot;target_upper_bound_decimal&quot;: float(W_target_upper),
+    &quot;summand_bound_decimal&quot;: float(summand_bound),
+    &quot;EP_floor_lower_decimal&quot;: float(2*delta**2/T),
+    &quot;arithmetic&quot;: &quot;fractions.Fraction; decimals only for presentation&quot;,
+}, indent=2))
+</pre><p><a href="../assets/ad575200a61ad2fb0edd131987a26f5b5753747ecdacfc7732ce787bea0c958b.py">Exact original</a></p></html>

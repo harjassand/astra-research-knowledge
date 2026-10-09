@@ -1,0 +1,153 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a19_transport_computation/v1.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a19_transport_computation/v1.txt</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>A19 transport computation — Phase II bounded record v1
+Date: 2026-10-09
+Status: candidate construction internally derived under a strengthened compact-support/coverage assumption; no discovery, novelty, or scalability claim established. The computational open problem in the cited paper is not solved in its original scope. A finite interpolation diagnostic is recorded separately.
+
+1. Target, exact interface, and source boundary
+
+The motivating objective is the explicitly open question in Nietert and Goldfeld, “Estimation of Stochastic Optimal Transport Maps,” NeurIPS 2025 / arXiv:2512.09499v1, Discussion: can a computationally efficient estimator attain the optimal rate when an optimal Lipschitz kernel exists?
+
+For p=1 their loss is
+
+  E_1(kappa; mu,nu)
+   = [ int ||x-y|| d kappa(y|x)d mu(x) - W_1(mu,nu) ]_+
+       + W_1(kappa#mu,nu).
+
+The first summand is excess transport cost and the second is target-feasibility error. A kernel is scored under the true pair (mu,nu), not only at the observed source atoms. The source paper’s general domain is X,Y subset R^d; its Section 4 Assumption 1 requires an optimal kernel kappa* with W_p(kappa*_x,kappa*_{x&#x27;}) &lt;= L||x-x&#x27;||^alpha on X. Theorem 3 accepts arbitrary proxies muhat,nuhat satisfying W_p(muhat,mu)&lt;=rho_mu and W_p(nuhat,nu)&lt;=rho_nu, and gives E_p &lt;= O(L rho_mu^alpha+rho_mu+rho_nu). It assumes no density lower bound, global support covering, or compact cube. Corollary 1 specializes to mu,nu in P_{2p}(R^d), uses empirical proxies, and states the minimax rate up to logs with probability .9. The estimator there is the all-kernels Wasserstein-DRO argmin and is explicitly called computationally inefficient.
+
+This record explores a restricted p=1 candidate. Input: n iid source samples X_1,...,X_n and n iid target samples Y_1,...,Y_n; known d, n, rational lower density bound m&gt;0, rational Lipschitz upper bound L&gt;=1, and a rational precision parameter. Assumptions: X=[0,1]^d, Y=[0,1]^d; mu and nu have Lebesgue densities at least m everywhere on the cube; and there is an E_1-optimal kernel kappa* with W_1(kappa*_x,kappa*_{x&#x27;})&lt;=L||x-x&#x27;|| for all x,x&#x27; in the cube. The desired output is a finite-precision evaluable Markov kernel kappa_hat(x) supported on observed target points. This is strictly stronger than the source paper’s support assumptions and materially excludes distributions with holes, lower-dimensional supports, and point masses. The lower density bound is used to acquire a global geometric cover from data; it is not free geometric information.
+
+2. Candidate finite algorithm
+
+Assume n is large enough that M=1 satisfies the cover inequality below, and let M be the largest positive integer satisfying it:
+
+  (M+1)^d exp[- n m d^{-d} M^{-d}] &lt;= delta/2,
+
+Here m is supplied as a rational lower bound and delta in (0,1) is requested failure probability. The cube of side s/d directed into the domain from any grid vertex lies inside its radius-s ball, so d^{-d}s^d is a rational lower bound on ball volume. This computable one-dimensional search defines a regular grid G of the cube with mesh s=1/M and K=(M+1)^d vertices; choosing the largest admissible M makes the grid as fine as the union bound permits. For each grid vertex v, compute a(v) in [n] nearest to v among the source sample and b(v) in [n] nearest to v among the target sample. Exact ties are broken by smallest index. Define the Freudenthal triangulation of every grid cube. For x in a simplex with vertices v_0,...,v_d and barycentric weights lambda_0(x),...,lambda_d(x), the returned kernel will be
+
+  kappa_hat_x = sum_{l=0}^d lambda_l(x) q_{v_l},
+
+where each q_v is a probability vector on the n observed target points. Thus evaluation never requires an ambient-space mesh finer than G; one query needs simplex location and a mixture of at most d+1 stored distributions.
+
+Choose a target-side interpolation kernel T_y as follows. Locate y in its grid simplex and set
+
+  T_y = sum_{l=0}^d lambda_l(y) delta_{Y_{b(v_l)}}.
+
+On the joint cover event A that every grid vertex is within s of some source sample and some target sample, every grid-edge pair of target anchors is at distance at most 3s. For a single simplex, barycentric weights satisfy sum_l |lambda_l(y)-lambda_l(y&#x27;)| &lt;= 2 sqrt(d)||y-y&#x27;||/s when y,y&#x27; stay in that simplex. Kantorovich duality, after subtracting the integral against one reference vertex measure, gives
+
+  W_1(T_y,T_{y&#x27;}) &lt;= 6 d^(3/2)||y-y&#x27;||.
+
+Subdivision of a line segment across simplex boundaries gives the same global bound. Also every target anchor used at y is within (1+sqrt(d))s of y, hence W_1(T_y,delta_y)&lt;=(1+sqrt(d))s. For rational LP coefficients, set A_d=ceil(6d^(3/2)) and B_d=d+1, so Lip(T)&lt;=A_d and the displacement is at most B_d s. Use these integer constants below.
+
+The optimization variables are q_v in P({Y_1,...,Y_n}), one per grid vertex. For each grid edge (v,w), impose
+
+  W_1(q_v,q_w) &lt;= L A_d ||X_{a(v)}-X_{a(w)}||.
+
+For each observed source point X_i, compute its Freudenthal simplex and weights lambda_{iv}. Its induced kernel value is q_{X_i}=sum_v lambda_{iv}q_v. Minimize the empirical E_1 objective
+
+  [ n^{-1} sum_i sum_v lambda_{iv} sum_j q_{v,j}||X_i-Y_j||
+       - W_1(muhat,nuhat) ]_+
+    + W_1( n^{-1} sum_i q_{X_i}, nuhat ).                         (A)
+
+This is a finite convex program. It is an LP: q variables are simplex vectors; each edge constraint is represented by a nonnegative n-by-n coupling flow z^{vw} with row/column marginals q_v,q_w and cost at most its right-hand side; the final W_1 term is represented by another n-by-n flow; a nonnegative scalar represents the positive-part term. The empirical W_1(muhat,nuhat) is computed once by a standard discrete OT solve. The output is the above interpolated kernel. If A fails, return the constant kernel delta_0; its E_1 loss on the cube is at most 2sqrt(d).
+
+3. Conditional theorem and complete derivation
+
+All statements in this section are internal derivations for the restricted assumptions in Section 1. They do not validate a novelty claim. Treat the LP as solved to additive objective tolerance epsilon_LP and exactly feasible for its rational input. Initially use exact Euclidean costs; finite precision is accounted below.
+
+Coverage. For each grid vertex v, a cube of side s/d directed into [0,1]^d lies inside B(v,s) intersect [0,1]^d, so this intersection has volume at least d^{-d}s^d, including boundary vertices. Since each density is at least m, the probability a given ball contains no sample from one of the two independent size-n samples is at most exp(-n m d^{-d}s^d). A union bound over K vertices and both samples gives P(A^c)&lt;=2K exp(-n m d^{-d}s^d)&lt;=delta by the displayed M choice. The anchors at adjacent grid vertices are at distance at most 3s on A.
+
+Target interpolation. If y lies in a Freudenthal simplex with vertices v_0,...,v_d, then T_y is a mixture of the target anchors at these vertices. For any 1-Lipschitz test function f, subtract int f d delta_{Y_{b(v_0)}} from the signed mixture difference. Each remaining integral has absolute value at most W_1(delta_{Y_{b(v_l)}},delta_{Y_{b(v_0)}}), which is at most 3ds by a path of at most d grid edges. Therefore
+
+  W_1(T_y,T_{y&#x27;}) &lt;= 3ds sum_l |lambda_l(y)-lambda_l(y&#x27;)|
+                  &lt;= 6d^(3/2)||y-y&#x27;||
+
+inside one simplex. A segment crossing multiple simplices is partitioned into finitely many such pieces, proving the global bound. The displacement claim follows from |Y_{b(v_l)}-y|&lt;=|Y_{b(v_l)}-v_l|+|v_l-y|&lt;=(1+sqrt(d))s and convexity of expectation.
+
+Feasible comparator. Define q*_v=T#kappa*_{X_{a(v)}}. Markov-kernel contraction under a W_1-Lipschitz kernel gives
+
+  W_1(q*_v,q*_w) &lt;= A_d W_1(kappa*_{X_{a(v)}},kappa*_{X_{a(w)}})
+                  &lt;= L A_d ||X_{a(v)}-X_{a(w)}||.
+
+Thus q* is feasible for every edge constraint. Its interpolant kappa_tilde satisfies, uniformly in x on A,
+
+  W_1(kappa_tilde_x,kappa*_x)
+     &lt;= W_1(T#kappa*_x,kappa*_x)
+        + sum_{v in simplex(x)} lambda_v(x) W_1(T#kappa*_{X_{a(v)}},T#kappa*_x)
+     &lt;= B_d(1+A_d L)s =: e_h.
+
+Here each source anchor X_{a(v)} is within (1+sqrt(d))s&lt;=B_d s of x, and T is A_d-Lipschitz in W_1. This establishes comparator feasibility and its uniform approximation without assuming the unknown kernel itself is computable.
+
+Empirical objective of comparator. Put rho_mu=W_1(muhat,mu) and rho_nu=W_1(nuhat,nu). For a W_1-Lipschitz kernel of constant L, coupling the two source laws and then optimally coupling the conditional outputs gives
+
+  |C_1(kappa*;muhat)-C_1(kappa*;mu)| &lt;= (1+L)rho_mu,
+  W_1(kappa*#muhat,nu) &lt;= L rho_mu,
+  |W_1(muhat,nuhat)-W_1(mu,nu)| &lt;= rho_mu+rho_nu.
+
+Since C_1(kappa*;mu)=W_1(mu,nu), it follows that
+
+  E_1(kappa*;muhat,nuhat) &lt;= (2+2L)rho_mu+2rho_nu.
+
+Uniform W_1-kernel error e_h changes the cost term by at most e_h and the target marginal by at most e_h. Hence the feasible comparator kappa_tilde has empirical objective at most (2+2L)rho_mu+2rho_nu+2e_h. The LP minimizer, with additive tolerance epsilon_LP, has no larger objective plus epsilon_LP.
+
+Output regularity and transfer to the population. On A, each source-grid edge satisfies ||X_{a(v)}-X_{a(w)}||&lt;=3s. Thus its constraint gives W_1(q_v,q_w)&lt;=3L A_d s. Any two vertices in one Freudenthal simplex are joined by at most d grid edges, so their q values are within 3d L A_d s in W_1. The same dual subtraction and barycentric-weight estimate as above imply
+
+  Lip_{W_1}(x -&gt; kappa_hat_x) &lt;= 6d^(3/2) L A_d &lt;= 42 d^3 L =: L_hat.
+
+For any W_1-Lipschitz kernel with constant L_hat, direct coupling and the triangle inequality give
+
+  |E_1(kappa;mu,nu&#x27;)-E_1(kappa;muhat,nu&#x27;)| &lt;= 2(1+L_hat)rho_mu,
+  |E_1(kappa;muhat,nu)-E_1(kappa;muhat,nuhat)| &lt;= 2rho_nu.
+
+Consequently on A,
+
+  E_1(kappa_hat;mu,nu)
+   &lt;= (4+2L+84d^3L)rho_mu + 4rho_nu
+        + 2B_d(1+A_d L)s + epsilon_LP.                         (B)
+
+The stability inequalities are also stated in Nietert–Goldfeld, Lemmas 3 and 4 for general p; the p=1 version follows from the W_1 triangle inequality. The proof above records the terms to make the supplied/acquired boundary explicit.
+
+For compactly supported laws on [0,1]^d, empirical W_1 convergence has expected rate tilde-O_d(n^{-1/(d vee 2)}). Thus, after the fallback on A^c and with delta=n^{-2}, (B) yields the candidate expected bound
+
+  E E_1(kappa_hat;mu,nu) = tilde-O_{d,L,m}(n^{-1/(d vee 2)}) + epsilon_LP.
+
+The covering term s is order (d^d log(n/delta)/(m n))^{1/d} up to constants depending on d and m. For d&gt;=3 it is at the same n^{-1/d} exponent as the empirical W_1 term; for d=2 it is order sqrt(log n/n); for d=1 it is smaller than n^{-1/2}. The factor 2sqrt(d)P(A^c) from the fallback is charged. This is an upper bound only. The source paper’s unrestricted minimax lower bound cannot be inherited as a lower bound for this density-restricted subclass; no class-matched lower bound is proved here.
+
+4. Finite precision, information acquisition, and resource ledger
+
+Supplied: d,n,m,L,delta, coordinate precision b, and two iid sample arrays. Acquired: source and target grid anchors by exact nearest scans; simplex weights; all n-by-n source-target and target-target distances; the finite LP plan. No manifold, subspace, score, or transport oracle is supplied. The density lower bound m is supplied and is a strong structural assumption. The algorithm does not estimate m or L.
+
+Let K=(M+1)^d and let E be the number of grid edges, E&lt;=dK. Exact brute-force anchor discovery costs O(dKn) arithmetic operations and O(Kd+n d) memory; with the chosen covering scale K is at most a dimension- and m-dependent multiple of n/log(n/delta), so this is O(d n^2/log n) nearest-distance work up to constants. Pairwise cost acquisition costs O(dn^2) operations and stores O(n^2) distances. Computing every observed-source simplex and barycentric weights costs O(nd log d) (plus indexing); evaluating the output kernel at one x costs O(d log d) to locate its Freudenthal simplex plus O(dn) to emit its full probability vector. Sampling one y from the represented mixture costs O(d) after alias tables are built in O(Kn) time and memory.
+
+The LP stores Kn kernel masses, E n^2 edge-flow variables, n^2 final-margin-flow variables, and O(En) marginal/cost constraints; its sparse constraint matrix has O(E n^2) nonzeros. Since K=Theta(h^{-d}), this is O(d h^{-d} n^2) memory and variables, which is O(d n^3/log n) at the selected bandwidth up to constants. The LP is polynomial-time in the bit model by general rational LP algorithms, but that statement hides a severe exponent and constants; it is not an empirical runtime claim and does not establish practical scalability. A general-purpose interior-point solve may have additional conditioning costs. An exact ellipsoid/bit-complexity guarantee avoids silently assuming a condition number, at a substantially worse practical runtime.
+
+For b-bit rational sample coordinates, nearest-anchor identities and grid barycentric weights can be computed from rational squared distances and rational grid coordinates. Use rational upper approximations A_d for the interpolation constant and rational lower bound m. Replace each Euclidean cost by a certified rational interval of width eta. Use upper endpoints in objective costs, a lower endpoint for the subtracted constant W_1(muhat,nuhat), and upper endpoints for anchor distances and edge-flow costs. Increase edge right-hand sides by eta. With L_0=L A_d, the candidate comparator remains feasible; any LP-feasible output then has true edge W_1 at most L_0||X_a-X_a&#x27;||+(L_0+1)eta. Therefore its output Lipschitz constant is at most 6d^(3/2)L_0+2d^(3/2)(L_0+1)eta/s. The objective interval changes E_1 by at most 3eta because all couplings have mass one. Thus the finite-precision version of (B) adds 3eta+epsilon_LP and uses the displayed inflated Lipschitz constant in the stability term. Choosing eta&lt;=s/(L_0+1) keeps the extra Lipschitz term at most 2d^(3/2); smaller eta can make it any prescribed epsilon_geom. Exact rational LP optimization has no numerical feasibility residual; the additive objective solve error epsilon_LP is separately charged. This is a bit-model design, not an implemented robust solver. Floating-point solvers require primal feasibility and objective-gap certificates; no unverified floating result counts as an output guarantee.
+
+5. Prior art and novelty gate
+
+Primary source checked live on 2026-10-09: Nietert and Goldfeld, arXiv:2512.09499v1, https://arxiv.org/html/2512.09499v1. Relevant exact locations: §1.1 defines stochastic maps and E_p; §1.2 gives empirical W_p rates; §2 equation (4) is the loss; §3 Theorem 2 gives the rounded estimator rate tilde-O(n^{-1/(d+2p)}) and computation O((C_infty+d)n^{2+o_d(1)}); §4 Assumption 1, Theorem 3 and Corollary 1 give the Lipschitz-kernel minimax-rate information reduction via computationally inefficient WDRO; Remark 4 explicitly says for p=1 the WDRO guarantee is matched by minimizing empirical E_1 plus a W_1-Lipschitz regularizer; §7 Discussion asks whether an efficient estimator can attain the optimal rate. The paper’s point-mass lower-bound reduction is not valid on the full-support subclass imposed here.
+
+Primary deterministic-map precedent checked live: Manole, Balakrishnan, Niles-Weed, and Wasserman, “Plugin Estimation of Smooth Optimal Transport Maps,” Annals of Statistics 52(3), 2024, https://arxiv.org/abs/2107.12364 and https://doi.org/10.1214/24-AOS2379. Their empirical optimal coupling plus linear-smoother extension is minimax under a Lipschitz Brenier map, but their loss estimates a unique deterministic map in L^2, unlike E_1 for stochastic kernels. This makes the interpolation principle itself established prior art.
+
+Other primary prior checked live: Weed and Bach, “Sharp asymptotic and finite-sample rates of convergence of empirical measures in Wasserstein distance,” https://arxiv.org/abs/1707.00087; Divol, “Measure estimation on manifolds: an optimal transport approach,” https://arxiv.org/abs/2102.07595; Huguet et al., “Geodesic Sinkhorn for Fast and Accurate Optimal Transport on Manifolds,” https://arxiv.org/abs/2211.00805. These confirm that intrinsic metric/sample complexity and graph-based manifold OT are already active lines. Multi-marginal treewidth algorithms are also established (Fan et al., PMLR 2022; Altschuler and Boix-Adsera, 2022), so treewidth is not a new target.
+
+The present candidate is essentially a finite convex, Lipschitz-constrained plugin/smoother instantiation of the source paper’s own p=1 regularization remark. Its exact finite LP and proof are internally reconstructed here, but this is too close to known methodology to claim discovery. More seriously, full-support lower density is added solely to obtain global grid covers; it narrows the paper’s open problem, and cubic-in-n LP memory may not be scalable. The exact class-matched minimax lower bound, a lower-memory solver, removal of the density lower bound, and independent novelty review remain open. Therefore the algorithm and rate below are candidate/internal derivations, not externally established and not a solved open problem.
+
+6. Counterexamples, boundaries, and alternatives
+
+• If source or target has a hole or lower-dimensional support, the global cube-grid nearest-sample cover event can fail at all scales described by the density lower bound; the construction must use an adaptive support geometry and pay its acquisition error. No such replacement is proved.
+• A nearest-neighbor extension of empirical conditionals alone is discontinuous and need not have bounded W_1-Lipschitz constant; this is why a grid interpolation and explicit edge constraints appear. The added interpolation smoothness can blur the optimizer, and its O_d(Lh) cost is charged in (B).
+• Grid and target sample counts have dimension-dependent constants at least of order d^d in this conservative cover bound; the n^{-1/d} exponent is not dimension-free. This construction does not remove the high-dimensional sample curse.
+• Exact LP is polynomial in input size but has O(d h^{-d}n^2) flow variables. It cannot be advertised as practical-scale without a solver and memory reduction.
+• The Astra transport cards N393 (planar radial Coulomb non-Monge) and N395 (all-N repulsive Monge obstruction) are marked source_derived_unreviewed; they supply no computational theorem used here. N60 records overlap warnings. The earlier transport-theorem bound mismatch is preserved only as an audit caveat; it is not a premise or discovery target in this construction.
+
+7. Claim ledger
+
+Source-reported: the exact E_p definition, WDRO theorem, empirical-rate corollary, rounded estimator and runtime statement, p=1 Lipschitz-regularization remark, and open question; live primary source listed above.
+Source-reported: deterministic Brenier map empirical-OT plus smoother estimator and its minimax theory; Manole et al. primary source listed above.
+Internally derived, conditional: the grid target interpolator has Lip &lt;=6d^(3/2) and moves points by &lt;=(1+sqrt(d))s on the cover event; the LP formulation; comparator feasibility; output Lip &lt;=42d^3L; risk bound (B); polynomial LP size.
+Finite-tested: only the barycentric interpolation inequalities in the one-dimensional special case (see diagnostics_v1.py); this is not testing the LP, the stochastic risk theorem, high-dimensional constants, or finite-precision solver.
+Unresolved: proof review of all extension details under arbitrary tie configurations; whether the numerical constants in the barycentric l1 bound remain as stated across every Freudenthal simplex convention; class-matched minimax lower bound; practical solver complexity and memory; data-dependent support geometry without the lower-density/full-cube assumption; whether any novelty survives the known p=1 regularization and plugin-smoother prior art.
+Not achieved: a new scalable high-dimensional OT capability or a verified improvement over equally informed practical methods.
+
+Sources are read-only. Astra pin 939f697c151e779619d4fa7c4e2aee4bc59672fb; openai_math pin fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb; see work/SOURCE_PINS.json and required navigation work/sources/astra/00_START_HERE.txt. Relevant Astra files: work/sources/astra/frontier/review_cards/N393-planar-radial-Coulomb-non-Monge.txt, N395-all-N-repulsive-Monge-obstruction.txt, N60-geometry-transport-ledger.txt and matching sidecars under work/sources/astra/frontier/cards/.
+</pre><p><a href="../assets/a7fc86ba2f71c0fff89dfde13e7b09509645f911bcb4fd94ba6788ccfcb4f4d9.txt">Exact original</a></p></html>

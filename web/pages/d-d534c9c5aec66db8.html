@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a03_safe_control/safe_quotient_demo.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a03_safe_control/safe_quotient_demo.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact rational branch check for adaptive safe-behavior acquisition.
+
+The output dynamics are z&#x27; = G u + e, with K=[0,1], U=[0,1]^2,
+E=[0,1/20], and three possible row maps.  The disturbance is observed and
+subtracted for identification, but the full E is charged in every safety
+check.  This is a finite test of the branch geometry, not a proof of the
+general polyhedral theorem.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+
+MODELS = {
+    &quot;a&quot;: (Q(1, 2), Q(1, 4)),
+    &quot;b&quot;: (Q(1, 2), Q(3, 4)),
+    &quot;c&quot;: (Q(0), Q(-1, 4)),
+}
+E_MAX = Q(1, 20)
+K_LO, K_HI = Q(0), Q(1)
+U_LO, U_HI = Q(0), Q(1)
+
+
+def image(g, u):
+    return sum((gi * ui for gi, ui in zip(g, u)), Q(0))
+
+
+def robustly_safe(u, models):
+    if any(not (U_LO &lt;= ui &lt;= U_HI) for ui in u):
+        return False
+    for g in models:
+        lo = image(g, u)  # min over e in [0,E_MAX]
+        hi = lo + E_MAX
+        if lo &lt; K_LO or hi &gt; K_HI:
+            return False
+    return True
+
+
+def observe(models, actual, u, e):
+    z_next = image(MODELS[actual], u) + e
+    residual = z_next - e
+    posterior = {name for name in models if image(MODELS[name], u) == residual}
+    assert actual in posterior
+    return z_next, residual, posterior
+
+
+def main():
+    prior = set(MODELS)
+    e1, e2 = (Q(1), Q(0)), (Q(0), Q(1))
+    assert robustly_safe(e1, [MODELS[k] for k in prior])
+    assert not robustly_safe((Q(0), Q(1, 100)), [MODELS[k] for k in prior])
+    # The c-model forces u_2=0; with u_2=0 every u_1 in [0,1] is safe.
+    print(&quot;initial_common_safe_set_exactly={u in [0,1]^2: u2=0}&quot;)
+
+    e = Q(1, 40)
+    for actual in (&quot;a&quot;, &quot;b&quot;, &quot;c&quot;):
+        z1, y1, post1 = observe(prior, actual, e1, e)
+        assert robustly_safe(e1, [MODELS[k] for k in prior])
+        if actual == &quot;c&quot;:
+            assert post1 == {&quot;c&quot;}
+            assert not robustly_safe(e2, [MODELS[k] for k in post1])
+            print(f&quot;branch={actual}; z1={z1}; residual={y1}; posterior={sorted(post1)}; e2_safe=False&quot;)
+        else:
+            assert post1 == {&quot;a&quot;, &quot;b&quot;}
+            assert robustly_safe(e2, [MODELS[k] for k in post1])
+            z2, y2, post2 = observe(post1, actual, e2, e)
+            assert post2 == {actual}
+            assert robustly_safe(e2, [MODELS[k] for k in post2])
+            print(
+                f&quot;branch={actual}; z1={z1}; residual1={y1}; &quot;
+                f&quot;posterior1={sorted(post1)}; e2_safe=True; &quot;
+                f&quot;z2={z2}; residual2={y2}; posterior2={sorted(post2)}&quot;
+            )
+    print(&quot;all exact-rational assertions passed&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/a2764776c8cabffba428699083b65e74c40e624755217aff2c498276224deea9.py">Exact original</a></p></html>

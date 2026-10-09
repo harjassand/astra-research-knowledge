@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/n06_evolutionary_memory/check_acquisition_bound.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/n06_evolutionary_memory/check_acquisition_bound.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the finite-founder acquisition-bound example in v3.txt.
+
+This is a calculation check for one finite model, not a biological validation.
+Uses only the Python standard library.
+&quot;&quot;&quot;
+from collections import deque
+from math import exp, log
+
+B = 100
+s = 0.99
+c = 0.02
+eta = 0.01
+eps = 0.25
+mu_edge = 0.01
+
+# A binary transition table has row coordinate r in {1,2,3}, with
+# K(1|e)=r/4 and K(0|e)=1-r/4. The target is the q=3/4 persistence table.
+tables = [(r0, r1) for r0 in range(1, 4) for r1 in range(1, 4)]
+target = (1, 3)
+
+def neighbors(theta):
+    out = []
+    for row in range(2):
+        for delta in (-1, 1):
+            x = list(theta)
+            x[row] += delta
+            if 1 &lt;= x[row] &lt;= 3:
+                out.append(tuple(x))
+    return out
+
+# The generic mutation kernel assigns mu_edge to each one-transfer neighbor
+# and its residual mass to staying put.
+degrees = {theta: len(neighbors(theta)) for theta in tables}
+qself_min = min(1.0 - mu_edge * degree for degree in degrees.values())
+
+# Verify the entire mutation graph is connected and compute its maximum
+# shortest-path distance to the target.
+dist = {target: 0}
+queue = deque([target])
+while queue:
+    theta = queue.popleft()
+    for nxt in neighbors(theta):
+        if nxt not in dist:
+            dist[nxt] = dist[theta] + 1
+            queue.append(nxt)
+assert set(dist) == set(tables)
+ell = max(dist.values())
+assert ell == 4 and qself_min == 0.96
+
+retention = s * exp(-c)
+alpha = 1.0 - (1.0 - retention * eta * eps) ** B
+p_target = retention * qself_min * eps
+mean_target = B * p_target
+assert mean_target &gt; 1.0
+
+# Smallest fixed point of q=(1-p+p*q)^B, iterating from zero.
+q_ext = 0.0
+for _ in range(1_000_000):
+    q_next = (1.0 - p_target + p_target * q_ext) ** B
+    if abs(q_next - q_ext) &lt; 1e-15:
+        q_ext = q_next
+        break
+    q_ext = q_next
+else:
+    raise RuntimeError(&quot;extinction-root iteration did not converge&quot;)
+
+path_probability = alpha ** ell
+survival_after_target = 1.0 - q_ext
+combined_lower_bound = path_probability * survival_after_target
+
+q_env = 0.75
+h = -(q_env * log(q_env) + (1.0 - q_env) * log(1.0 - q_env))
+mutual_information = log(2.0) - h
+conservative_growth_advantage = mutual_information + log(qself_min)
+assert conservative_growth_advantage &gt; 0
+
+print(f&quot;table_count={len(tables)}&quot;)
+print(f&quot;max_mutation_distance={ell}&quot;)
+print(f&quot;min_self_mutation_probability={qself_min:.12g}&quot;)
+print(f&quot;per-step_path_success_lower_bound={alpha:.12g}&quot;)
+print(f&quot;target_embedded_offspring_probability_lower_bound={p_target:.12g}&quot;)
+print(f&quot;target_embedded_mean_lower_bound={mean_target:.12g}&quot;)
+print(f&quot;target_GW_extinction_root={q_ext:.12g}&quot;)
+print(f&quot;conditional_target_survival_lower_bound={survival_after_target:.12g}&quot;)
+print(f&quot;finite-founder_acquisition_and_survival_lower_bound={combined_lower_bound:.12g}&quot;)
+print(f&quot;predictive_mutual_information_nats={mutual_information:.12g}&quot;)
+print(f&quot;conservative_growth_advantage_after_mutation_nats={conservative_growth_advantage:.12g}&quot;)
+</pre><p><a href="../assets/b4206f8004adba47eba7670add443b0120b7aa316f5bc20a94ec14b6be166332.py">Exact original</a></p></html>

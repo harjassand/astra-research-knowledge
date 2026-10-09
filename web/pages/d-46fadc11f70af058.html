@@ -1,0 +1,61 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a01_rare_event/diagnostics.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a01_rare_event/diagnostics.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite arithmetic checks for the A01 rare-event derivations.
+
+This script checks formulas on finite parameter grids; it is not proof evidence.
+&quot;&quot;&quot;
+from math import isclose, prod
+
+
+def geometric_clock_second_moment(lam: float, rho: float) -&gt; float:
+    threshold = 2 * lam - lam * lam
+    if rho &gt;= threshold:
+        return float(&quot;inf&quot;)
+    return lam * lam * (1 - rho) / (rho * (threshold - rho))
+
+
+def finite_geometric_sum(lam: float, rho: float, terms: int = 2_000_000) -&gt; float:
+    p = lam
+    q = rho
+    ratio = (1 - lam) ** 2 / (1 - rho)
+    if ratio &gt;= 1:
+        return float(&quot;inf&quot;)
+    # Closed partial sum avoids looping over millions of terms.
+    return lam * lam / rho * (1 - ratio**terms) / (1 - ratio)
+
+
+def product_second_moment(theta, n):
+    p = prod(theta)
+    second_ratio = prod(1 + (1 - x) / (n * x) for x in theta)
+    return p, second_ratio
+
+
+def main():
+    # Check the clock formula against its convergent geometric partial sum.
+    clock_cases = [(0.01, 0.005), (0.01, 0.01), (0.01, 0.015), (0.1, 0.05)]
+    for lam, rho in clock_cases:
+        closed = geometric_clock_second_moment(lam, rho)
+        partial = finite_geometric_sum(lam, rho, 100_000)
+        assert isclose(closed, partial, rel_tol=1e-10, abs_tol=1e-10), (lam, rho, closed, partial)
+    assert geometric_clock_second_moment(0.01, 0.01995) == float(&quot;inf&quot;)
+
+    # Check the product-estimator moment identity for a non-identical chain.
+    theta = [0.3, 0.7, 0.51, 0.91]
+    n = 10_000
+    p, ratio = product_second_moment(theta, n)
+    direct = prod(x * x + x * (1 - x) / n for x in theta) / (p * p)
+    assert isclose(ratio, direct, rel_tol=1e-12, abs_tol=1e-12)
+
+    # Show the cost scale separation on a modest rare event.
+    T, alpha, eps, eta = 40, 0.5, 0.1, 0.05
+    p = alpha**T
+    n_row = int(10 * T / (alpha * eps**2) + 0.999999)
+    k = int((32 / 9) * __import__(&quot;math&quot;).log(1 / eta) + 0.999999)
+    local_calls = T * n_row * k
+    crude_scale = 1 / (p * eps**2)
+    print(f&quot;clock cases checked: {len(clock_cases)}&quot;)
+    print(f&quot;product p={p:.8g}; local calls upper scale={local_calls:,}; crude relative-MSE scale={crude_scale:.3e}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/9d0b61f7e51f9525f2dfa5ff271b455ed64d47d98840fa7f0624ad9b6d57cbc5.py">Exact original</a></p></html>

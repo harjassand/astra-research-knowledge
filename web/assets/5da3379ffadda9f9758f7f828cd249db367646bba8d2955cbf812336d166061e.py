@@ -1,0 +1,179 @@
+"""Exact small-instance diagnostic for a sample-improvement candidate core.
+
+The exact common-independent optimizer is intentionally exponential. This file
+is a diagnostic, not an online algorithm or a scalable oracle implementation.
+Run from any directory with Python 3:
+
+    python3 work/theory/t20_matroid_secretary/feasible_candidate_diagnostic.py
+"""
+
+from __future__ import annotations
+
+import random
+from typing import Callable, Iterable
+
+
+Independence = Callable[[set[int]], bool]
+
+
+def partition_matroid(n: int, labels: list[int]) -> Independence:
+    blocks: dict[int, set[int]] = {}
+    for e, label in enumerate(labels):
+        blocks.setdefault(label, set()).add(e)
+
+    def independent(items: set[int]) -> bool:
+        return all(len(items & block) <= 1 for block in blocks.values())
+
+    return independent
+
+
+def feasible_masks(mats: list[Independence], n: int) -> list[int]:
+    feasible: list[int] = []
+    for mask in range(1 << n):
+        items = {e for e in range(n) if mask >> e & 1}
+        if all(mat(items) for mat in mats):
+            feasible.append(mask)
+    return feasible
+
+
+def weight(mask: int, weights: list[float]) -> float:
+    return sum(w for e, w in enumerate(weights) if mask >> e & 1)
+
+
+def best_sub(feasible: list[int], support: int, weights: list[float]) -> tuple[int, float]:
+    best_mask, best_value = 0, 0.0
+    for mask in feasible:
+        if mask & ~support:
+            continue
+        value = weight(mask, weights)
+        if value > best_value or (value == best_value and mask < best_mask):
+            best_mask, best_value = mask, value
+    return best_mask, best_value
+
+
+def greedy(mat: Independence, support: int, values: list[float]) -> int:
+    picked: set[int] = set()
+    order = sorted(
+        (e for e, value in enumerate(values) if value > 0 and support >> e & 1),
+        key=lambda e: (-values[e], e),
+    )
+    for e in order:
+        if mat(picked | {e}):
+            picked.add(e)
+    return sum(1 << e for e in picked)
+
+
+def exact_metrics(
+    mats: list[Independence], weights: list[float], p: float = 0.5
+) -> tuple[float, float, float, float, float]:
+    """Return ratios for candidate mass, candidate feasible optimum, core,
+    plus the two sides of the exact flip identity.
+
+    C(P)={e outside P: e is in the fixed-tie maximum common independent
+    subset of P union {e}}. B(a) is the intersection of the k individual
+    weighted greedy sets for a_e=w_e on C(P), zero otherwise.
+    """
+    n = len(weights)
+    feasible = feasible_masks(mats, n)
+    _, opt = best_sub(feasible, (1 << n) - 1, weights)
+    candidate_mass = candidate_opt = core_value = 0.0
+    h_mean = 0.0
+
+    for sample in range(1 << n):
+        q = 1.0 - p
+        probability = p ** sample.bit_count() * q ** (n - sample.bit_count())
+        if probability == 0:
+            continue
+
+        _, h_value = best_sub(feasible, sample, weights)
+        h_mean += probability * h_value
+
+        values = [0.0] * n
+        candidates = 0
+        for e in range(n):
+            bit = 1 << e
+            if sample & bit:
+                continue
+            h, _ = best_sub(feasible, sample | bit, weights)
+            if h & bit:
+                values[e] = weights[e]
+                candidates |= bit
+
+        candidate_mass += probability * weight(candidates, weights)
+        _, feasible_value = best_sub(feasible, candidates, weights)
+        candidate_opt += probability * feasible_value
+
+        greedy_sets = [greedy(mat, candidates, values) for mat in mats]
+        core = greedy_sets[0]
+        for selected in greedy_sets[1:]:
+            core &= selected
+        core_value += probability * weight(core, values)
+
+    # For each P and e in H(P), flip e out. This is a bijection with the
+    # candidate incidences (Q,e), and Pr[Q]/Pr[P]=(1-p)/p.
+    predicted_candidate_mass = ((1.0 - p) / p) * h_mean
+    return (
+        candidate_mass / opt,
+        candidate_opt / opt,
+        core_value / opt,
+        candidate_mass,
+        predicted_candidate_mass,
+    )
+
+
+def random_partition(n: int, rng: random.Random) -> list[int]:
+    count = rng.randint(max(2, n // 3), n)
+    labels = [rng.randrange(count) for _ in range(n)]
+    compact = {label: i for i, label in enumerate(sorted(set(labels)))}
+    return [compact[label] for label in labels]
+
+
+def partition_trials(n: int, k: int, trials: int, rng: random.Random) -> None:
+    rows = []
+    for _ in range(trials):
+        mats = [partition_matroid(n, random_partition(n, rng)) for _ in range(k)]
+        weights = rng.sample(range(1, 10000), n)
+        rows.append(exact_metrics(mats, weights))
+    labels = ("candidate mass", "OPT(C)", "B(a)")
+    mean = [sum(row[i] for row in rows) / len(rows) for i in range(3)]
+    minimum = [min(row[i] for row in rows) for i in range(3)]
+    print(
+        f"partition n={n} k={k} trials={trials}: "
+        + ", ".join(
+            f"{name} min/mean={minimum[i]:.4f}/{mean[i]:.4f}"
+            for i, name in enumerate(labels)
+        )
+    )
+    for row in rows:
+        assert abs(row[3] - row[4]) < 1e-8
+
+
+def rank_one_checks(n: int = 8) -> None:
+    mat = partition_matroid(n, [0] * n)
+    metrics = exact_metrics([mat], [1.0] * n)
+    # For P=empty every singleton is a candidate: total candidate mass n,
+    # while the maximum feasible candidate set has value 1.
+    feasible = feasible_masks([mat], n)
+    h, _ = best_sub(feasible, 0, [1.0] * n)
+    assert h == 0
+    candidates = (1 << n) - 1
+    _, feasible_value = best_sub(feasible, candidates, [1.0] * n)
+    assert weight(candidates, [1.0] * n) == n
+    assert feasible_value == 1.0
+    print(
+        f"rank-one n={n}: E[candidate mass]/OPT={metrics[0]:.6f}, "
+        f"E[OPT(C)]/OPT={metrics[1]:.6f}, E[B]/OPT={metrics[2]:.6f}; "
+        f"at P=empty, mass={n}, feasible candidate value=1"
+    )
+
+
+def main() -> None:
+    rng = random.Random(20261009)
+    rank_one_checks()
+    for n, k, trials in ((8, 2, 20), (8, 4, 20), (8, 6, 20),
+                         (10, 2, 8), (10, 4, 8), (10, 6, 8)):
+        partition_trials(n, k, trials, rng)
+
+
+if __name__ == "__main__":
+    main()

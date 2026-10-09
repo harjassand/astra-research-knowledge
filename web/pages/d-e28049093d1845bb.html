@@ -1,0 +1,219 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/t17_prime_parity/parity_identities.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/t17_prime_parity/parity_identities.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite checks for the T17 parity/short-interval note.
+
+Only Python&#x27;s standard library is used.  These checks validate finite
+identities and exhibit finite counterexamples; they do not test an
+asymptotic prime-distribution claim.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+
+
+def arithmetic_sieve(n: int):
+    &quot;&quot;&quot;Return SPF, primes, Mobius, Liouville, and von Mangoldt arrays.&quot;&quot;&quot;
+    spf = [0] * (n + 1)
+    primes: list[int] = []
+    for value in range(2, n + 1):
+        if spf[value] == 0:
+            spf[value] = value
+            primes.append(value)
+        for prime in primes:
+            if prime &gt; spf[value] or value * prime &gt; n:
+                break
+            spf[value * prime] = prime
+
+    mobius = [0] * (n + 1)
+    liouville = [0] * (n + 1)
+    von_mangoldt = [0.0] * (n + 1)
+    mobius[1] = 1
+    liouville[1] = 1
+    for value in range(2, n + 1):
+        prime = spf[value]
+        quotient = value // prime
+        liouville[value] = -liouville[quotient]
+        if quotient % prime == 0:
+            mobius[value] = 0
+        else:
+            mobius[value] = -mobius[quotient]
+
+        residual = value
+        while residual % prime == 0:
+            residual //= prime
+        if residual == 1:
+            von_mangoldt[value] = math.log(prime)
+    return spf, primes, mobius, liouville, von_mangoldt
+
+
+def dirichlet_convolution(left, right, n: int):
+    result = [0.0] * (n + 1)
+    for a in range(1, n + 1):
+        if left[a] == 0:
+            continue
+        for b in range(1, n // a + 1):
+            if right[b] != 0:
+                result[a * b] += left[a] * right[b]
+    return result
+
+
+def check_vaughan_identity(n: int, cutoff_mu: int, cutoff_lambda: int):
+    &quot;&quot;&quot;Check one exact Vaughan decomposition numerically through n.&quot;&quot;&quot;
+    spf, _, mobius, _, von_mangoldt = arithmetic_sieve(n)
+    log_values = [0.0] * (n + 1)
+    for value in range(1, n + 1):
+        if value &gt;= 2:
+            log_values[value] = math.log(value)
+
+    mu_small = [0.0] * (n + 1)
+    mu_large = [0.0] * (n + 1)
+    for value in range(1, n + 1):
+        if value &lt;= cutoff_mu:
+            mu_small[value] = float(mobius[value])
+        else:
+            mu_large[value] = float(mobius[value])
+
+    one = [0.0] * (n + 1)
+    one[1:] = [1.0] * n
+    lambda_small = [0.0] * (n + 1)
+    lambda_large = [0.0] * (n + 1)
+    for value in range(1, n + 1):
+        if value &lt;= cutoff_lambda:
+            lambda_small[value] = von_mangoldt[value]
+        else:
+            lambda_large[value] = von_mangoldt[value]
+
+    mu_small_times_one = dirichlet_convolution(mu_small, one, n)
+    mu_large_times_one = dirichlet_convolution(mu_large, one, n)
+    mu_small_times_log = dirichlet_convolution(mu_small, log_values, n)
+    small_product = dirichlet_convolution(mu_small_times_one, lambda_small, n)
+    large_product = dirichlet_convolution(mu_large_times_one, lambda_large, n)
+
+    maximum_error = 0.0
+    for value in range(1, n + 1):
+        rhs = (
+            lambda_small[value]
+            + mu_small_times_log[value]
+            - small_product[value]
+            + large_product[value]
+        )
+        maximum_error = max(maximum_error, abs(rhs - von_mangoldt[value]))
+    assert maximum_error &lt; 2e-9
+    return maximum_error
+
+
+def main():
+    x = 100_000
+    nmax = 2 * x
+    spf, primes, mobius, liouville, von_mangoldt = arithmetic_sieve(nmax)
+    prime_set = set(primes)
+
+    # Selberg&#x27;s sequence: it is nonnegative and vanishes at every prime.
+    prime_model_nonzero = [p for p in primes if 1 + liouville[p] != 0]
+    assert not prime_model_nonzero
+    assert all((1 + liouville[value]) in (0, 2) for value in range(2, nmax + 1))
+
+    # Verify the exact divisor-class formula and compare finite local densities.
+    prefix_lambda = [0] * (nmax + 1)
+    for value in range(1, nmax + 1):
+        prefix_lambda[value] = prefix_lambda[value - 1] + liouville[value]
+    divisibility_samples = []
+    for divisor in (1, 2, 3, 5, 6, 10, 30, 97, 210, 1000):
+        quotient = x // divisor
+        direct = sum(1 + liouville[divisor * k] for k in range(1, quotient + 1))
+        formula = quotient + liouville[divisor] * prefix_lambda[quotient]
+        assert direct == formula
+        divisibility_samples.append(
+            {
+                &quot;d&quot;: divisor,
+                &quot;multiples&quot;: quotient,
+                &quot;model_mass&quot;: direct,
+                &quot;uniform_mass&quot;: quotient,
+                &quot;relative_error&quot;: direct / quotient - 1.0,
+                &quot;exact_lambda_remainder&quot;: liouville[divisor]
+                * prefix_lambda[quotient],
+            }
+        )
+
+    # At this cutoff a rough integer &lt;=2x has at most two prime factors
+    # with multiplicity.  The parity character then isolates primes exactly.
+    z = math.floor(nmax ** (1 / 3)) + 1
+    assert z**3 &gt; nmax
+    interval_checks = []
+    for left, right in ((x, 2 * x), (x, x + 5_000), (x + 25_000, x + 35_000)):
+        rough_count = 0
+        rough_liouville = 0
+        parity_detector = 0
+        actual_primes = 0
+        for value in range(left + 1, right + 1):
+            if spf[value] &lt;= z:
+                continue
+            rough_count += 1
+            rough_liouville += liouville[value]
+            parity_detector += (1 - liouville[value]) // 2
+            actual_primes += int(value in prime_set)
+        assert parity_detector == actual_primes
+        interval_checks.append(
+            {
+                &quot;interval&quot;: [left, right],
+                &quot;cutoff_z&quot;: z,
+                &quot;rough_count&quot;: rough_count,
+                &quot;rough_liouville_sum&quot;: rough_liouville,
+                &quot;half_difference&quot;: (rough_count - rough_liouville) // 2,
+                &quot;prime_count&quot;: actual_primes,
+                &quot;exact_identity_holds&quot;: True,
+            }
+        )
+
+    # Check Lambda = mu * log and one Vaughan decomposition on a smaller range.
+    convolution_errors = []
+    for value in range(1, 5_001):
+        rhs = sum(
+            mobius[d] * math.log(value // d)
+            for d in range(1, value + 1)
+            if value % d == 0 and value // d &gt;= 1
+        )
+        assert abs(rhs - von_mangoldt[value]) &lt; 2e-9
+        convolution_errors.append(abs(rhs - von_mangoldt[value]))
+
+    vaughan_error = check_vaughan_identity(2_000, 17, 23)
+    global_lambda_sum = prefix_lambda[nmax]
+    global_uniform_sum = nmax
+    output = {
+        &quot;status&quot;: &quot;finite_identity_checks_only_not_asymptotic_evidence&quot;,
+        &quot;range&quot;: {&quot;N&quot;: x, &quot;maximum_n&quot;: nmax},
+        &quot;selberg_model&quot;: {
+            &quot;a_n&quot;: &quot;1 + lambda(n)&quot;,
+            &quot;prime_count_checked&quot;: len(primes),
+            &quot;nonzero_prime_weights&quot;: len(prime_model_nonzero),
+            &quot;weight_values_for_n_ge_2&quot;: [0, 2],
+        },
+        &quot;divisibility_samples&quot;: divisibility_samples,
+        &quot;global_liouville&quot;: {
+            &quot;sum_lambda&quot;: global_lambda_sum,
+            &quot;sum_uniform_weight&quot;: global_uniform_sum,
+            &quot;relative_lambda_sum&quot;: global_lambda_sum / nmax,
+        },
+        &quot;rough_parity_detector&quot;: {
+            &quot;criterion&quot;: &quot;spf(n) &gt; z and n &lt;= 2N, where z^3 &gt; 2N&quot;,
+            &quot;cutoff_z&quot;: z,
+            &quot;intervals&quot;: interval_checks,
+        },
+        &quot;mu_log_identity&quot;: {
+            &quot;range&quot;: 5_000,
+            &quot;maximum_absolute_error&quot;: max(convolution_errors),
+        },
+        &quot;vaughan_identity&quot;: {
+            &quot;range&quot;: 2_000,
+            &quot;U&quot;: 17,
+            &quot;V&quot;: 23,
+            &quot;maximum_absolute_error&quot;: vaughan_error,
+        },
+    }
+    print(json.dumps(output, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/74b96fa99b86cdce1178607b1ca775c12afd9045d712c6316b0eda660b1ec5f0.py">Exact original</a></p></html>

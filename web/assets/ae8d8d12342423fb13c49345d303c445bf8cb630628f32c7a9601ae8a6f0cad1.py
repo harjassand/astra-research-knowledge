@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Exact-rate check of an accuracy plateau for an asymmetric telegraph input."""
+
+from fractions import Fraction as F
+from math import exp, log
+
+
+def solve_linear(matrix, rhs):
+    a = [list(row) + [value] for row, value in zip(matrix, rhs)]
+    n = len(a)
+    for col in range(n):
+        pivot = next(row for row in range(col, n) if a[row][col] != 0)
+        a[col], a[pivot] = a[pivot], a[col]
+        scale = a[col][col]
+        a[col] = [x / scale for x in a[col]]
+        for row in range(n):
+            if row == col:
+                continue
+            scale = a[row][col]
+            a[row] = [x - scale * y for x, y in zip(a[row], a[col])]
+    return [a[row][-1] for row in range(n)]
+
+
+def build(alpha, beta, response, delta, mean_one):
+    pi = beta / (alpha + beta)
+    ups = (response * mean_one + (1 - pi) * delta,
+           response * mean_one - pi * delta)
+    downs = (response - ups[0], response - ups[1])
+    assert all(rate > 0 for rate in ups + downs)
+
+    # State order: (+,0), (+,1), (-,0), (-,1).
+    q = [[F(0) for _ in range(4)] for _ in range(4)]
+    for m in range(2):
+        q[m][2 + m] = alpha
+        q[2 + m][m] = beta
+    for e in range(2):
+        for m in range(2):
+            i = 2 * e + m
+            q[i][2 * e + (1 - m)] = ups[e] if m == 0 else downs[e]
+    for i in range(4):
+        q[i][i] = -sum(q[i])
+
+    matrix = [[q[j][i] for j in range(4)] for i in range(4)]
+    rhs = [F(0)] * 4
+    matrix[-1] = [F(1)] * 4
+    rhs[-1] = F(1)
+    p = tuple(solve_linear(matrix, rhs))
+    return p, ups, downs, pi
+
+
+def entropy(x):
+    x = float(x)
+    return -x * log(x) - (1 - x) * log(1 - x)
+
+
+def bayes_accuracy(p, pi, alpha, beta, tau):
+    decay = exp(-(float(alpha) + float(beta)) * tau)
+    plus_given_plus = float(pi) + (1 - float(pi)) * decay
+    plus_given_minus = float(pi) * (1 - decay)
+    acc = 0.0
+    for m in range(2):
+        future_plus_joint = float(p[m]) * plus_given_plus
+        future_plus_joint += float(p[2 + m]) * plus_given_minus
+        marginal = float(p[m] + p[2 + m])
+        future_minus_joint = marginal - future_plus_joint
+        acc += max(future_plus_joint, future_minus_joint)
+    return acc
+
+
+def main():
+    alpha, beta = F(1), F(3)
+    response, delta = F(3), F(1, 2)
+    s = alpha + beta
+    pi = beta / s
+    c = delta / (response + s)
+    rows = []
+
+    # Both means lie below the exact no-classification-gain threshold at tau=0.
+    for mean_one in (F(1, 4), F(1, 2)):
+        p, ups, downs, solved_pi = build(alpha, beta, response, delta, mean_one)
+        assert solved_pi == pi
+        assert ups[0] + downs[0] == response
+        assert ups[1] + downs[1] == response
+        assert ups[0] - ups[1] == delta
+        assert p == (
+            pi * (1 - mean_one - (1 - pi) * c),
+            pi * (mean_one + (1 - pi) * c),
+            (1 - pi) * (1 - mean_one + pi * c),
+            (1 - pi) * (mean_one - pi * c),
+        )
+
+        cycle_affinity = log(float(ups[0] * downs[1] / (downs[0] * ups[1])))
+        cycle_current = float(pi * alpha * c)
+        power = cycle_current * cycle_affinity
+        info = []
+        for tau in (0.0, 0.5, 2.0):
+            z = float(c) * exp(-float(s) * tau)
+            predictive_info = entropy(mean_one) - float(pi) * entropy(
+                float(mean_one) + float(1 - pi) * z
+            ) - float(1 - pi) * entropy(float(mean_one) - float(pi) * z)
+            info.append(predictive_info)
+            assert abs(bayes_accuracy(p, pi, alpha, beta, tau) - float(pi)) < 1e-12
+        rows.append((float(mean_one), p, ups, downs, power, tuple(info)))
+
+    assert rows[0][4] != rows[1][4]
+    assert rows[0][5] != rows[1][5]
+    print("Asymmetric exogenous telegraph: alpha=1, beta=3; pi_plus=3/4")
+    print("Both sensors have R=3, Delta=1/2, c=1/14, and Bayes accuracy 3/4 at every listed horizon.")
+    for m, p, ups, downs, power, info in rows:
+        print(f"m={m:.6f}; u={tuple(map(float, ups))}; d={tuple(map(float, downs))}")
+        print(f"  stationary p={p}")
+        print(f"  beta*P_min=sigma_obs/kB={power:.12f}")
+        print(f"  I(M;E_future) at tau 0,0.5,2 = {info}")
+    print("Verified: identical optimal classification accuracy does not identify work or predictive information.")
+
+
+if __name__ == "__main__":
+    main()

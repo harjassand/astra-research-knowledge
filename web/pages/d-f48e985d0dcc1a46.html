@@ -1,0 +1,118 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/n16_biosignature_dynamics/mimic_and_budget.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/n16_biosignature_dynamics/mimic_and_budget.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Reproduce the finite-trace abiotic mimic and a bounded-budget exclusion.
+
+Uses only the Python standard library. The mimic is a constructed identifiability
+counterexample, not a photochemical simulation or empirical planetary model.
+&quot;&quot;&quot;
+from math import exp
+
+
+def advance_constant_source(x0: float, source: float, loss_rate: float,
+                            duration: float) -&gt; float:
+    &quot;&quot;&quot;Exact solution of dx/dt = source - loss_rate*x over one interval.&quot;&quot;&quot;
+    if loss_rate == 0:
+        return x0 + source * duration
+    decay = exp(-loss_rate * duration)
+    return x0 * decay + (source / loss_rate) * (1.0 - decay)
+
+
+def trace(forcing, source_efficiency, loss_rate, x0, dt):
+    x = x0
+    values = [x]
+    integrated_source = 0.0
+    for u in forcing:
+        source = source_efficiency * u
+        x = advance_constant_source(x, source, loss_rate, dt)
+        values.append(x)
+        integrated_source += source * dt
+    return values, integrated_source
+
+
+def water_photolysis_capacity(water_molecules, escaping_h_atoms):
+    &quot;&quot;&quot;O2 capacity from 2 H2O -&gt; O2 + 4 H(escape), in mole-event units.&quot;&quot;&quot;
+    return min(water_molecules / 2.0, escaping_h_atoms / 4.0)
+
+
+def co2_photolysis_capacity(co2_molecules, co_storage_molecules):
+    &quot;&quot;&quot;O2 capacity from 2 CO2 -&gt; 2 CO + O2, with CO hidden storage bounded.&quot;&quot;&quot;
+    return min(co2_molecules / 2.0, co_storage_molecules / 2.0)
+
+
+def abiotic_o2_upper_bound(water_molecules, escaping_h_atoms,
+                           co2_molecules, co_storage_molecules,
+                           absorbed_photolysis_events):
+    &quot;&quot;&quot;Maximum O2 for two listed channels sharing a photon-event budget.
+
+    Each O2 requires at least two dissociations in either listed route.
+    This bound is catalogue-specific; it excludes other possible pathways.
+    &quot;&quot;&quot;
+    water_cap = water_photolysis_capacity(water_molecules, escaping_h_atoms)
+    co2_cap = co2_photolysis_capacity(co2_molecules, co_storage_molecules)
+    photons_cap = absorbed_photolysis_events / 2.0
+    return min(photons_cap, water_cap + co2_cap)
+
+
+def isotope_pair_fractions(heavy_atom_fraction):
+    &quot;&quot;&quot;Random pairing of water oxygen atoms into O2, with no fractionation.&quot;&quot;&quot;
+    r = heavy_atom_fraction
+    return ((1.0 - r) ** 2, 2.0 * r * (1.0 - r), r ** 2)
+
+
+def main():
+    # A prescribed finite gray-scaled stellar light record. Under fixed spectral
+    # shape, a biological source in its unsaturated linear-light regime and an
+    # abiotic water-photolysis source at fixed water column both have rate eta*u.
+    forcing = (1.0, 3.0, 1.0, 0.5, 2.0)
+    alpha = 0.4
+    loss_rate = 0.2
+    initial_o2 = 1.0
+    dt = 1.0
+    biotic, produced = trace(forcing, alpha, loss_rate, initial_o2, dt)
+    abiotic_quantum_efficiency = alpha
+    abiotic, produced_again = trace(
+        forcing, abiotic_quantum_efficiency, loss_rate, initial_o2, dt)
+    max_trace_difference = max(abs(a - b) for a, b in zip(biotic, abiotic))
+
+    # Water photolysis has finite, atom-balanced requirements. These are
+    # illustrative units, not estimates for a real planet. Holding water
+    # activity/optical depth fixed is valid only while this reserve remains.
+    water_need = 2.0 * produced
+    hydrogen_escape = 4.0 * produced
+    minimum_photolysis_events = 2.0 * produced
+    isotope_mix = isotope_pair_fractions(0.002)
+
+    # With independently measured caps, the two-channel abiotic explanation
+    # can be ruled out: the measured source residual is 3.0, while all allowed
+    # abiotic paths can supply at most 2.0. A 0.1 measurement/model margin
+    # leaves a strict 0.9 separation.
+    upper = abiotic_o2_upper_bound(
+        water_molecules=4.0,
+        escaping_h_atoms=6.0,
+        co2_molecules=10.0,
+        co_storage_molecules=1.0,
+        absorbed_photolysis_events=10.0,
+    )
+    observed_source = produced
+    uncertainty = 0.1
+    excluded = observed_source - uncertainty &gt; upper
+
+    print(f&quot;finite-trace source integral: {produced:.6f}&quot;)
+    print(f&quot;constructed water-path requirements: H2O={water_need:.6f}, &quot;
+          f&quot;H_escape_atoms={hydrogen_escape:.6f}, &quot;
+          f&quot;photolysis_events&gt;={minimum_photolysis_events:.6f}&quot;)
+    print(f&quot;max O2 trajectory difference: {max_trace_difference:.12g}&quot;)
+    print(&quot;O2 isotopologue fractions (16-16, 16-18, 18-18): &quot;
+          + &quot;, &quot;.join(f&quot;{v:.9f}&quot; for v in isotope_mix))
+    print(f&quot;bounded two-channel abiotic O2 upper bound: {upper:.6f}&quot;)
+    print(f&quot;measurement/model uncertainty: {uncertainty:.6f}&quot;)
+    print(f&quot;abiotic catalog excluded: {excluded}&quot;)
+
+    assert max_trace_difference == 0.0
+    assert abs(produced - produced_again) &lt; 1e-12
+    assert abs(sum(isotope_mix) - 1.0) &lt; 1e-12
+    assert upper == 2.0
+    assert excluded
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/ac5ec48e785e645cb9ebced5e13cb97f57983461328ca460b1d4e0578f2b7951.py">Exact original</a></p></html>

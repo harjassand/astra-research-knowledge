@@ -1,0 +1,138 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/n12_cell_size/derive.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/n12_cell_size/derive.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Reproduce the finite-state cell-size calculations in v1.txt.
+
+Uses only the Python standard library. All volumes are dimensionless.
+&quot;&quot;&quot;
+
+from math import exp, log
+
+
+EPS = 0.1
+B = [1.0 - EPS, 1.0, 1.0 + EPS]
+P_ADDER = [
+    [0.5, 0.5, 0.0],
+    [0.5, 0.0, 0.5],
+    [0.0, 0.5, 0.5],
+]
+P_SIZER = [
+    [0.0, 1.0, 0.0],
+    [0.25, 0.5, 0.25],
+    [0.0, 1.0, 0.0],
+]
+
+
+def row_means(matrix, values):
+    return [sum(p * x for p, x in zip(row, values)) for row in matrix]
+
+
+def stationary_row(matrix, iterations=100000, tolerance=1e-15):
+    n = len(matrix)
+    pi = [1.0 / n] * n
+    for _ in range(iterations):
+        nxt = [sum(pi[i] * matrix[i][j] for i in range(n)) for j in range(n)]
+        if max(abs(nxt[i] - pi[i]) for i in range(n)) &lt; tolerance:
+            return nxt
+        pi = nxt
+    raise RuntimeError(&quot;stationary iteration did not converge&quot;)
+
+
+def ols_slope(x, y, weights):
+    xbar = sum(w * z for w, z in zip(weights, x))
+    ybar = sum(w * z for w, z in zip(weights, y))
+    cov = sum(w * (xx - xbar) * (yy - ybar)
+              for w, xx, yy in zip(weights, x, y))
+    var = sum(w * (xx - xbar) ** 2 for w, xx in zip(weights, x))
+    return cov / var
+
+
+def leading_eigenpair(matrix, iterations=10000, tolerance=1e-14):
+    n = len(matrix)
+    vector = [1.0] * n
+    for _ in range(iterations):
+        nxt = [sum(matrix[i][j] * vector[j] for j in range(n))
+               for i in range(n)]
+        scale = max(nxt)
+        nxt = [z / scale for z in nxt]
+        if max(abs(nxt[i] - vector[i]) for i in range(n)) &lt; tolerance:
+            vector = nxt
+            break
+        vector = nxt
+    rayleigh = sum(vector[i] * sum(matrix[i][j] * vector[j]
+                                   for j in range(n))
+                   for i in range(n)) / sum(z * z for z in vector)
+    return rayleigh, vector
+
+
+def tree_tilt(matrix, birth_sizes, generation_times):
+    &quot;&quot;&quot;Euler-Lotka tilt for a random extant tip&#x27;s ancestral lineage.
+
+    A_ij(r) = 2 exp(-r T_i) P_ij. Solve rho(A)=1, then
+    Q_ij = A_ij v_j / v_i, where A v = v.
+    &quot;&quot;&quot;
+    n = len(matrix)
+
+    def tilted(r):
+        return [[2.0 * exp(-r * generation_times[i]) * matrix[i][j]
+                 for j in range(n)] for i in range(n)]
+
+    low = 0.0
+    high = 10.0 / min(generation_times)
+    for _ in range(100):
+        mid = (low + high) / 2.0
+        rho, _ = leading_eigenpair(tilted(mid), iterations=3000)
+        if rho &gt; 1.0:
+            low = mid
+        else:
+            high = mid
+    growth_rate = (low + high) / 2.0
+    a = tilted(growth_rate)
+    _, reproductive_value = leading_eigenpair(a)
+    q = [[a[i][j] * reproductive_value[j] / reproductive_value[i]
+          for j in range(n)] for i in range(n)]
+    phase_weights = stationary_row(q)
+    mean_added = [2.0 * sum(q[i][j] * birth_sizes[j] for j in range(n))
+                  - birth_sizes[i] for i in range(n)]
+    slope = ols_slope(birth_sizes, mean_added, phase_weights)
+    return growth_rate, q, phase_weights, mean_added, slope
+
+
+def main():
+    mean_next_adder = row_means(P_ADDER, B)
+    delta_adder = [2.0 * x - b for x, b in zip(mean_next_adder, B)]
+    pi_adder = [1.0 / 3.0] * 3
+    var_adder = sum(pi_adder[i] * (B[i] - 1.0) ** 2 for i in range(3))
+
+    mean_next_sizer = row_means(P_SIZER, B)
+    delta_sizer = [2.0 * x - b for x, b in zip(mean_next_sizer, B)]
+    pi_sizer = stationary_row(P_SIZER)
+    mean_sizer = sum(pi_sizer[i] * B[i] for i in range(3))
+    var_sizer = sum(pi_sizer[i] * (B[i] - mean_sizer) ** 2
+                    for i in range(3))
+
+    print(&quot;finite-state forward models&quot;)
+    print(&quot;volumes:&quot;, B)
+    print(&quot;adder P stationary: &quot;, pi_adder)
+    print(&quot;adder row E[B_next|H]:&quot;, mean_next_adder)
+    print(&quot;adder E[Delta|H]:    &quot;, delta_adder)
+    print(&quot;adder stationary Var(B):&quot;, var_adder)
+    print(&quot;sizer P stationary: &quot;, pi_sizer)
+    print(&quot;sizer row E[B_next|H]:&quot;, mean_next_sizer)
+    print(&quot;sizer E[Delta|H]:    &quot;, delta_sizer)
+    print(&quot;sizer stationary Var(B):&quot;, var_sizer)
+    print(&quot;adder do(B) Delta slopes:&quot;, [1.0 / b for b in B])
+    print(&quot;sizer do(B) Delta slopes:&quot;, [2.0 / b - 1.0 for b in B])
+
+    print(&quot;\nvariable-timer population tilt for forward adder P&quot;)
+    result = tree_tilt(P_ADDER, B, [0.2, 1.0, 2.0])
+    growth_rate, q, phase_weights, mean_added, slope = result
+    print(&quot;Euler-Lotka r:&quot;, growth_rate)
+    print(&quot;retrospective Q:&quot;)
+    for row in q:
+        print(&quot;  &quot;, row)
+    print(&quot;retrospective phase weights:&quot;, phase_weights)
+    print(&quot;retrospective E[Delta|H]:&quot;, mean_added)
+    print(&quot;retrospective OLS slope:&quot;, slope)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b2bc3481fe5d01cd33d3f47112f8b63e1c0b494f85b05316a66b09e436a5634e.py">Exact original</a></p></html>

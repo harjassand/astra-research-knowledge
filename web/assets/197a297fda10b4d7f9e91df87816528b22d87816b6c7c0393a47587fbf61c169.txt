@@ -1,0 +1,142 @@
+FROZEN A13 STATISTICAL / ALGORITHMIC CANDIDATE V1 — 2026-10-09
+Status: internally derived finite-data method; finite-tested in simulation; historical novelty, experimental value, and broader model scope unresolved. This record does not claim a scientific breakthrough.
+
+1. TARGET AND EXACT INTERFACE
+
+Target. Produce a finite-data lower confidence bound on hidden stationary entropy-production rate from time-even coarse observations, including observed path laws whose forward/reverse KL is exactly zero. The bound must not assume the hidden state count, hidden mixing time, exact word probabilities, or a CP factorization.
+
+Admissible model class. A finite-state stationary continuous-time Markov chain X_t with generator Q, stationary law pi, and only even-parity state variables. Each positive stationary edge flow has a reverse edge. The entropy-production rate in nats per unit time is
+
+  sigma = sum_{i<j} (pi_i Q_ij - pi_j Q_ji) log[(pi_i Q_ij)/(pi_j Q_ji)].
+
+If a one-way edge makes sigma infinite, every finite lower bound below is automatic. The observed variable is Y_t=g(X_t) in a known finite alphabet; the same deterministic observation map is applied at every readout. The target is hidden stochastic entropy production. A dissipated-heat interpretation additionally requires local detailed balance and a specified thermodynamic convention.
+
+Observation input. Choose a finite outward-time stencil 0 < s_1 < ... < s_m = s and observe independent stationary windows. For window r, record
+
+  U_r = (Y_{-s_1}, ..., Y_{-s_m}),   V_r = (Y_{s_1}, ..., Y_{s_m}).
+
+Each window has full span T=2s. The independent samples are pairs (U_r,V_r), not transitions or hidden states. Training and validation windows must be independent draws from the same stationary path law. A physical implementation can acquire one full forward segment of length T from a stationary initialization and read four or more points; it does not run the apparatus backward.
+
+Output. For a predeclared finite validation family of K trained features, output either zero or a simultaneous (1-alpha)-confidence lower bound in nats per unit time. The output is valid for every compatible hidden CTMC in the model class. It is a lower confidence bound, not an estimate of the exact sigma.
+
+Inherited material. The additive-reversibilization path-KL inequality and the two-state ring construction are supplied in work/root/hidden_dissipation_v1.txt and strengthened in work/root/hidden_dissipation_v2.txt. This A13 result extends the midpoint argument from one-time state observables to learned functions of whole reflected half-window words, then adds a holdout statistical certificate and a finite spectral search.
+
+2. POPULATION MIDPOINT LEMMA FOR A REFLECTED WORD FEATURE
+
+Let Q* be the stationary time-reversed generator, Q*_{ij}=pi_j Q_{ji}/pi_i for i!=j. Under the assumptions above, the stationary path relative entropy over a duration s is
+
+  D(P_Q^{[0,s]} || P_{Q*}^{[0,s]}) = s sigma.
+
+Fix any real function F on the finite half-word alphabet and let R=max_w F(w)-min_w F(w)>0. Define the population score
+
+  mu_F = E_Q[F(U) F(V)].
+
+Then every compatible Q satisfies
+
+  sigma >= 16 [-mu_F]_+ / (R^2 T).                         (A13.1)
+
+This implication uses no observed time-reversal asymmetry. In particular, it can certify sigma>0 when the complete observed path law equals its time reversal.
+
+Proof. Conditional on X_0=i, the Markov property makes U and V independent. The outward past word U has the law of the observation of a Q* trajectory of length s started at i; the future word V has the law of a Q trajectory of length s started at i. Write
+
+  u_i = E[F(V)|X_0=i],   v_i = E[F(U)|X_0=i].
+
+Then mu_F=sum_i pi_i u_i v_i. Let A_i and B_i be the two conditional half-path laws before observation. Data processing gives D(A_i||B_i) >= D(Law(V|i)||Law(U|i)); hence
+
+  |u_i-v_i| <= R TV(Law(V|i),Law(U|i))
+             <= R sqrt(D(A_i||B_i)/2),
+
+where the second inequality is Pinsker. Since uv=((u+v)^2-(u-v)^2)/4,
+
+  u_i v_i >= -(u_i-v_i)^2/4 >= -R^2 D(A_i||B_i)/8.
+
+The stationary average of the conditional path divergences is the joint path divergence with the same initial pi, namely sum_i pi_i D(A_i||B_i)=s sigma. Therefore mu_F >= -R^2 s sigma/8. With T=2s this is (A13.1). The proof is unchanged if F has a nonzero mean or if the observed process is non-Markovian. A shift of F leaves R unchanged, though it changes mu_F; training may choose that shift, and validation then treats it as fixed.
+
+Universal hidden-model implication. If the observed law fixes the distribution of (U,V), it fixes mu_F. The proof applies separately to every finite all-even hidden CTMC realizing that law; thus (A13.1) holds for the infimum over all such realizations, with no hidden-state count or rate cap.
+
+Relation to reflected-word matrices. For an alphabet of size D=|Y|^m, define P_uv=Pr(U=u,V=v). Any reversible hidden CTMC gives P=BB^T with B entrywise nonnegative, so P is completely positive and positive semidefinite. A trained F is a rank-one test of P: mu_F=F^T P F. A negative training eigen-direction is an inexpensive way to propose a witness. The proof of (A13.1) does not need the exact P, a CP factorization, or an optimizer over the CP cone. It uses the midpoint divergence directly. No sufficiency claim is made: a positive-semidefinite/reflection-positive table need not come from a reversible Markov generator.
+
+3. FINITE-DATA LEARN-THEN-VALIDATE CERTIFICATE
+
+Training. Fix the time stencil and finite word alphabet in advance. From n_tr independent windows, form the empirical table P_tr and its symmetric part G_tr=(P_tr+P_tr^T)/2. Compute a minimum-eigenvalue direction z. Set F(w)=z_w-c, where c is the training value minimizing the empirical product mean E_tr[(F(U))(F(V))]; explicitly c=(E_tr z(U)+E_tr z(V))/2. Compute R=max F-min F and re-evaluate the training score. If it is not negative, return no witness. Otherwise freeze the feature, the lag stencil, and its exact finite representation before inspecting validation scores. For numerical eigenvectors, convert the stored coefficients to exact binary rationals, recompute c and R exactly from training counts, and recompute the training score exactly. A failed exact recheck discards the feature.
+
+The full-table method costs O(n_tr + D^2 + D^3) arithmetic operations and O(D^2) memory, where D=|Y|^m. It is trivial for the binary two-symbol witness (D=2) and remains small in the example (D=4). For large D, use a predeclared bounded feature bank psi(w) in R^r, form
+
+  G_tr = (1/(2 n_tr)) sum_r [psi(U_r) psi(V_r)^T + psi(V_r) psi(U_r)^T],
+
+and learn one negative direction c in that r-dimensional span. The cost is O(n_tr r^2+r^3) time and O(r^2) memory; evaluating a validation feature costs O(r) per window. A certified range R can be computed by enumerating the finite word alphabet or by a valid bound on the feature bank. The exponential dependence D=|Y|^m is a real limitation of full word enumeration, not hidden by this alternative.
+
+Validation. For each frozen feature define
+
+  X_r = F(U_r)F(V_r)/R^2,   xbar = (1/n) sum_r X_r,
+  V_n = (1/(n(n-1))) sum_{r<q}(X_r-X_q)^2.
+
+Because the training offset c is an average of values in the range of z, |F(w)|<=R and X_r is in [-1,1]. Conditional on all training data, the validation scores are IID. For K fixed validation candidates and confidence failure probability alpha, the one-sided empirical Bernstein bound of Maurer–Pontil gives, simultaneously with probability at least 1-alpha,
+
+  E[X_j] <= xbar_j + r_j,
+  r_j = sqrt(2 V_{n,j} L/n) + 14 L/[3(n-1)],
+  L = log(2K/alpha).
+
+The script uses rational arithmetic for scores, sample variance, and the final endpoint. Instead of evaluating log(2K/alpha), it chooses an integer L with 2^L >= 2K/alpha, so L >= log(2K/alpha), and rounds the square root upward by integer arithmetic. For alpha=1/20 and K=1 it uses L=6 because 64>=40. The reported endpoint is therefore conservative. Let delta_j=[-(xbar_j+r_j)]_+. Combining with (A13.1) yields
+
+  sigma >= max_j 16 delta_j/T                         (A13.2)
+
+with confidence at least 1-alpha. The confidence statement is conditional on the training data, then unconditional by averaging. A feature, lag, threshold, or eigenvector may be selected adaptively on training. If several features are selected using validation and all are reported, K counts them in L; selecting one feature on training and validating only that feature has K=1.
+
+Exact input/calibration boundary. The inference receives only the observations on the fixed windows plus the observation alphabet and time stamps. The code estimates no hidden states, generator, mixing time, word probabilities, or CP decomposition. The IID stationary-window design is an explicit acquisition assumption; it is not inferred from the samples. Stationary preparation/reset cost must be reported separately by any experimenter.
+
+4. RARE-PATTERN COSTS AND SINGLE-TRAJECTORY LIMIT
+
+The actual validation radius is data-dependent and fully displayed in (A13.2). If a normalized score is zero except on an event A with probability rho, then Var(X)<=E[X^2]<=rho. Thus rare informative words lower the variance term but do not disappear from the cost: the leading uncertainty is of order sqrt(rho L/n) when the observed sample variance is of order rho, and the finite-sample floor is 14L/[3(n-1)]. A conservative planned Bernstein radius with a valid supplied upper bound rho_U is sqrt(2 rho_U L/n)+4L/(3n); requiring this radius <=delta/2 takes n>=32 rho_U L/delta^2 and n>=16L/(3delta). This optional planning formula is not used by the implementation and does require a certified rho_U. Without an upper variance or probability bound, the implemented empirical radius is the statement to use. If a rare witness event is never observed, the lower bound is zero rather than extrapolated.
+
+The confidence theorem does not cover overlapping windows from one trajectory. With no lower bound on mixing, one long path has no uniform finite-horizon effective sample size. Counterexample: a reversible two-state CTMC with stationary probabilities (1/2,1/2) and both jump rates epsilon has probability exp(-epsilon H) of no jump over a record of length H. For any fixed H this tends to 1 as epsilon tends to zero, so every set of many within-record windows can be almost copies of one state despite their number. Any single-trajectory confidence interval that treats them as IID is invalid. One may use independent stationary replicas as above, or add and charge a justified regenerative/mixing assumption; no nonmixing sequential substitute is established here.
+
+5. FINITE-TESTED RING CONSEQUENCE
+
+Generator. On states 0,1,2, move clockwise at rate a=1 and counterclockwise at rate b=0.01; pi is uniform. Observe Y=1_{X=0}. The true hidden rate is sigma=(a-b)log(a/b)=4.5591184841 nats/time. The permutation swapping states 1 and 2 fixes Y and conjugates Q to Q*. Therefore the complete stationary observed path law is invariant under time reversal and its observed forward/reverse path KL is exactly zero, even though sigma>0. Any stationary two-state Markov coarse-graining of Y has zero net current and zero apparent Markov entropy production.
+
+Use m=2 and outward times s_1=0.01, s_2=0.31, so T=0.62 and the word alphabet has D=4 entries 00,01,10,11. The population reflected table computed from the exact three-state transition formula is symmetric; its numerical entries are saved in finite_evidence_v1.json. Its symmetry is consistent with zero observed arrow-of-time KL. A learned range-normalized feature has population score -0.00559731850, giving the population midpoint bound 0.1444469291 nats/time. At the same total span t=0.62, the one-time binary covariance is positive 0.07488055825 and gives no covariance certificate.
+
+For the optimized one-time binary midpoint bound, C(t)=(2/9)exp[-3(a+b)t/2]cos[sqrt(3)(a-b)t/2]. Its lower-bound objective is 16[-C(t)]_+/t. The first negative lobe contains the global maximum because each later negative lobe is multiplied by exp[-3(a+b)pi/(sqrt(3)(a-b))] and has a larger denominator. Solving the first-lobe stationary equation numerically gives t=2.3159783242 and bound 0.01852317739 nats/time. The learned two-word population bound is 7.80 times this one-time bound.
+
+Finite run. The frozen reproducible command is
+
+  python3 work/applied/a13_dissipation_inference/finite_certificate.py --output work/applied/a13_dissipation_inference/finite_evidence_v1.json
+
+It uses 10,000 independent training windows and 250,000 independent validation windows with seed 20261009. The learned feature values, in word order 00,01,10,11, are approximately (-0.154124, 0.993948, 0.010743, 0.008106); their exact binary-rational values and exact range are in the JSON. The validation mean is -0.00563256439, empirical variance 0.00522931092, and conservative rational empirical-Bernstein radius 0.00061300636. At alpha=0.05 the score upper endpoint is -0.00501955803, so the finite-sample lower confidence bound is 0.1295369813 nats/time. It is 6.99 times the optimized one-time population bound and 2.84% of the generator's true EP. This is one seeded simulation, not a repeated-run performance claim or empirical experiment.
+
+Reversible control. With a=b=1, seed 20261010, and the same sample counts and stencil, training still finds a small negative empirical direction, but validation's 95% upper endpoint is positive (0.00141106) and the reported EP lower bound is exactly zero. This is a finite control, not evidence that false-positive probability was empirically calibrated; coverage follows from the interval theorem.
+
+Acquisition and compute accounting for the positive run. There are 260,000 independent stationary windows, each of physical duration 0.62, for 161,200 device-time units in serial, plus 260,000 stationary initializations/resets and four observations per window. The reset/burn-in time is not priced: the mathematical design supplies independent stationary starts, and unknown mixing gives no bound on how to obtain them. Training forms a 4x4 table and solves one 4x4 symmetric eigensystem; validation evaluates one four-entry lookup and product per window. The current Python 3 script uses standard-library floating point for the generator/eigensolver, freezes the selected coefficients as exact binary rationals, then computes the training score, validation score, sample variance, confidence radius upper bound, and final certificate exactly/rationally. Floating-point transition probabilities make the simulator a finite diagnostic only.
+
+6. COMPARISON WITH ESTABLISHED METHODS ON THIS OBSERVATION
+
+The strongest established model-free path-irreversibility lower bound from the observed forward/reverse trajectory KL is zero here, exactly, because the entire observed path law is reversible. The same is true of any bound whose numerator is an observed time-asymmetry: for example, Raux–Maier–Seifert define chi_AB(t,tau)=C_AB-C_BA and their NESS bound is proportional to chi squared; under the exact Y path symmetry chi=0 for every pair of state observables and lag. A visible two-state current TUR and the apparent two-state Markov EP also return zero. This campaign method detects a different obstruction: time-even reflected product positivity fails, despite time-reversal symmetry.
+
+The direct comparator is not the strongest topology-informed estimator. Ehrich's hidden-model fit uses all observable jump statistics and assumes the correct number of hidden states is known (arXiv:2105.08803v2, Sec. 4); it may infer positive EP for this ring if supplied the correct hidden-state count. Nitzan–Ghosal–Bisker optimize over systems constrained to have the same topology and observed transition/waiting-time statistics (Phys. Rev. Research 5, 043251 (2023), Eq. 16). Their paper reports nonzero/tight optimized estimates at a no-visible-current stall in its motor example. Those methods can be substantially tighter when their topology/count inputs are available. No same-ring optimization run was performed, and no dominance over those methods is claimed. The A13 operational advantage is a finite-sample confidence certificate without a hidden-state count, topology, or exact waiting-time distribution. Its statistical input is the same coarse trajectory data, although the topology-informed methods add structural prior information.
+
+The population decomposition P=sum_i pi_i v_i u_i^T is necessary but a list of independent CP factorizations is not sufficient to produce a common reversible generator. Jorgensen–Tian explicitly distinguish Markov property from reflection positivity and state the implication is one-way in their setup (arXiv:1705.05262v2, Sec. 1 and Sec. 5). Accordingly, this work uses negative reflected score only as a necessary-condition violation and makes no complete-classification claim.
+
+7. COUNTEREXAMPLES, BOUNDARIES, AND RESIDUAL GAPS
+
+1. Constant observation Y_t=c hides every transition. A hidden driven ring can have sigma>0 while all observed windows are constant and every F score is nonnegative/zero. No method using only these observations can guarantee a positive bound in this case.
+2. The method is stationary. It does not yet give an instantaneous EP bound for time-dependent generators, relaxation from an unknown initial law, or periodic protocols.
+3. All variables are even under time reversal. Underdamped equilibrium dynamics can have negative ordinary velocity autocorrelation while carrying no steady EP; applying this theorem to odd momentum without changing its reversal convention is invalid.
+4. Only negative rank-one reflected scores are searched in the current code. Positive-semidefinite tables outside the CP cone require a genuinely copositive witness, which is not found by the spectral routine. Larger optimization over CP/coplanar cones is unresolved.
+5. The exact output applies to finite-state stationary CTMC realizations with the fixed observation channel. It does not establish bounds for arbitrary non-Markov hidden physics, memoryful sensors, unknown state parity, or thermodynamic heat without local detailed balance.
+6. Single-trajectory finite confidence without a mixing/regeneration input remains an acquisition obstruction, not a solved feature. Independent stationary reset data may itself be experimentally difficult.
+7. Historical priority is unresolved. The statistical interval is standard empirical-Bernstein calibration applied to a midpoint EP inequality; novelty of the complete learned-word procedure is not established by this search.
+
+8. CLAIM LEDGER
+
+- Internally derived: the bounded reflected-word midpoint inequality (A13.1), conditional on the stated finite stationary all-even CTMC assumptions.
+- Internally derived from a primary-source concentration theorem: the split-sample finite-data confidence lower bound (A13.2), conditional on IID stationary windows.
+- Finite-tested: the executable 3-state ring run and reversible control at the exact saved seeds, sample counts, and stencils.
+- Source-reported: prior methods and hypotheses described in the primary literature listed in source_review_v1.json.
+- Unresolved: external proof review of this A13 extension; historical novelty; topology-informed same-ring numerical comparison; experimental stationary-reset feasibility; single-trajectory nonmixing confidence; time-dependent extension; CP-positive but non-CP witness discovery; any natural-science generalization beyond the stated CTMC class.
+
+9. SOURCE AND WORK ROUTE
+
+Campaign instructions: work/CAMPAIGN_CONTRACT.txt; exact local pins in work/SOURCE_PINS.json. Required Astra entry work/sources/astra/00_START_HERE.txt was read. The task-relevant route files work/sources/astra/agent/topics.txt, work/sources/astra/agent/topics/complexity.tsv, work/sources/astra/agent/topics/acquisition.tsv, work/sources/astra/agent/topics/quantum.tsv, and work/sources/astra/literature/topics.tsv were searched; no entropy-production / reflected-word route or relevant card was found, so no Astra claim is used. The input derivation files work/root/hidden_dissipation_v1.txt and work/root/hidden_dissipation_v2.txt were read in full. Live primary-source details and line ranges are in source_review_v1.json.
+
+Executable artifacts: finite_certificate.py; finite_evidence_v1.json; reversible_control_v1.json. All were written under work/applied/a13_dissipation_inference/. No source corpus file was modified.

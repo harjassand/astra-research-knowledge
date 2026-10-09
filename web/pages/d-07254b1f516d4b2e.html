@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/sol/hidden_realization/verify_exact_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/sol/hidden_realization/verify_exact_certificate.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Standard-library exact replay; no floating arithmetic or assert statements.&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+
+d=json.loads((Path(__file__).parent/&#x27;exact_certificate_v1.json&#x27;).read_text())
+def matrix(key):return [[F(a) for a in row] for row in d[key]]
+def require(test,label):
+    if not test:raise RuntimeError(label)
+def transpose(a):return [list(row) for row in zip(*a)]
+def mul(a,b):return [[sum(x*y for x,y in zip(row,col)) for col in zip(*b)] for row in a]
+def sub(a,b):return [[x-y for x,y in zip(ar,br)] for ar,br in zip(a,b)]
+def zero(a):return all(x==0 for row in a for x in row)
+def det(a):
+    a=[row[:] for row in a];out=F(1);n=len(a)
+    for i in range(n):
+        pivot=next((j for j in range(i,n) if a[j][i]),None)
+        if pivot is None:return F(0)
+        if pivot!=i:a[i],a[pivot]=a[pivot],a[i];out=-out
+        p=a[i][i];out*=p
+        for j in range(i+1,n):
+            ratio=a[j][i]/p
+            for k in range(i,n):a[j][k]-=ratio*a[i][k]
+    return out
+
+v=matrix(&#x27;points&#x27;);z=matrix(&#x27;farkas_z&#x27;);D=matrix(&#x27;internal_D&#x27;);C=matrix(&#x27;covariance&#x27;);B=matrix(&#x27;B&#x27;)
+Q=matrix(&#x27;Q&#x27;);H=matrix(&#x27;H&#x27;);M=matrix(&#x27;M&#x27;);L=matrix(&#x27;L&#x27;)
+mean=[sum(row[k] for row in v)/5 for k in range(2)]
+u=[[row[k]-mean[k] for k in range(2)] for row in v]
+require(all(sum(a*a for a in row)==1 for row in v),&#x27;all circle points&#x27;)
+require(len(set(tuple(row) for row in v))==5,&#x27;distinct points&#x27;)
+require(all(Q[i][j]&gt;=0 for i in range(10) for j in range(10) if i!=j),&#x27;CTMC positivity&#x27;)
+require(all(sum(row)==0 for row in Q),&#x27;generator row sums&#x27;)
+require(all(sum(row[j] for row in Q)==0 for j in range(10)),&#x27;uniform stationarity&#x27;)
+require(all(Q[i][j]&gt;0 for i in range(5) for j in range(5) if i!=j),&#x27;internal irreducibility&#x27;)
+require(all((Q[i][j]&gt;0)==(Q[j][i]&gt;0) for i in range(10) for j in range(i+1,10)),&#x27;finite EPR support&#x27;)
+require(zero(sub(mul(Q,H),mul(H,L))),&#x27;observable subspace invariant&#x27;)
+require(zero(sub(mul(M,L),mul(transpose(L),M))),&#x27;restricted generator selfadjoint&#x27;)
+require(M==[[sum(H[k][i]*H[k][j] for k in range(10))/10 for j in range(8)] for i in range(8)],&#x27;observable Gram&#x27;)
+require(det(M)&gt;0,&#x27;observable rank eight&#x27;)
+require(zero(sub(mul(C,transpose(D)),mul(D,C))),&#x27;internal selfadjoint drift&#x27;)
+require(B[0][0]&gt;0 and det(B)&gt;0,&#x27;positive internal drift&#x27;)
+facets=matrix(&#x27;facets&#x27;)
+require(all(f[0]+f[1]*p[0]+f[2]*p[1]&gt;=0 for f in facets for p in v),&#x27;polygon facets&#x27;)
+require(sum(f[1] for f in facets)==sum(f[2] for f in facets)==0,&#x27;constant total marker rate&#x27;)
+require(any(det([facets[i],facets[j],facets[k]])!=0 for i in range(5) for j in range(i+1,5) for k in range(j+1,5)),&#x27;marker reachability of hidden affine coordinates&#x27;)
+moment=[[1,p[0],p[1],p[0]*p[0],p[0]*p[1]] for p in v]
+require(det(transpose(moment))==F(d[&#x27;five_point_moment_determinant&#x27;])!=0,&#x27;unique five-point moments&#x27;)
+pairings=[]
+for i in range(5):
+    for j in range(i+1,5):
+        pairing=sum((z[i][k]-z[j][k])*(v[i][k]-v[j][k]) for k in range(2))
+        require(pairing&gt;0,&#x27;strict Farkas monotonicity&#x27;)
+        pairings.append(pairing)
+drift_pairing=sum(sum(z[i][k]*sum(D[k][h]*u[i][h] for h in range(2)) for k in range(2))/5 for i in range(5))
+require(drift_pairing==F(d[&#x27;farkas_drift_pairing&#x27;])&lt;0,&#x27;negative Farkas drift pairing&#x27;)
+# Full eight-coordinate monotone field, with marker terms cancelling exactly.
+Z=[[F(0),*z[i],*[sum(z[i][k]*v[i][k] for k in range(2))]*5] for i in range(5)]+[[F(0)]*8 for _ in range(5)]
+for i in range(10):
+    for j in range(i+1,10):
+        require(sum((Z[i][k]-Z[j][k])*(H[i][k]-H[j][k]) for k in range(8))&gt;=0,&#x27;full monotone field&#x27;)
+negative_QH=mul([[-a for a in row] for row in Q],H)
+full_pairing=sum(sum(Z[i][k]*negative_QH[i][k] for k in range(8))/10 for i in range(10))
+require(full_pairing==drift_pairing/2&lt;0,&#x27;full marker cancellation and Farkas obstruction&#x27;)
+# Remove the known symmetric marker links and check the internal drift directly.
+for i in range(5):
+    for k in range(2):
+        lhs=sum(Q[i][j]*(v[j][k]-v[i][k]) for j in range(5))
+        rhs=-sum(D[k][h]*u[i][h] for h in range(2))
+        require(lhs==rhs,&#x27;exact internal drift&#x27;)
+print(json.dumps(dict(status=&#x27;PASS&#x27;,arithmetic=&#x27;fractions.Fraction&#x27;,states=10,outputs=6,observable_rank=8,strict_monotonicity_min=str(min(pairings)),negative_farkas_pairing=str(drift_pairing),full_farkas_pairing=str(full_pairing)),indent=2))
+</pre><p><a href="../assets/b832c2369eada3d7505902f2789c5ae17c497add810e74067672435447457d5a.py">Exact original</a></p></html>

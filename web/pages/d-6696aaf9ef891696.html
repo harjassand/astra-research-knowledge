@@ -1,0 +1,133 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a03_safe_control/finite_safe_experiment.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a03_safe_control/finite_safe_experiment.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite belief-game solver for the A03 scalar unknown-gain example.
+
+All numeric quantities are integer-scaled: x units are quarters; observation
+units are eighths. Disturbance w in {-1/4,0,1/4}, sensor error v in
+{-1/8,0,1/8}, actions u in {-3/4,0,3/4}, and safety X=[-1/4,1].
+The unknown gain theta is fixed in {-1,+1}; dynamics are x&#x27; = theta*u+w.
+&quot;&quot;&quot;
+from functools import lru_cache
+
+THETA = (-1, 1)
+ACTIONS = (-2, 0, 2)  # quarter units
+W = (-1, 0, 1)        # quarter units
+V = (-1, 0, 1)        # eighth units
+SAFE_X = (-1, 0, 1, 2, 3, 4)  # quarter units in [-1/4,1]
+Q = tuple((th, x) for th in THETA for x in SAFE_X)
+Q_INDEX = {q: i for i, q in enumerate(Q)}
+N = len(Q)
+ALL = (1 &lt;&lt; N) - 1
+
+# For each (state-model hypothesis, action), store every possible
+# (next-hypothesis, observation) pair and whether every successor is safe.
+TRANS = {}
+for qi, (theta, _x) in enumerate(Q):
+    for a in ACTIONS:
+        pairs = set()
+        safe = True
+        for w in W:
+            x_next = theta * a + w
+            if x_next not in SAFE_X:
+                safe = False
+                continue
+            q_next = Q_INDEX[(theta, x_next)]
+            for v in V:
+                y = 2 * x_next + v  # quarter x to eighth y
+                pairs.add((q_next, y))
+        TRANS[(qi, a)] = (safe, tuple(sorted(pairs)))
+
+
+def qbits(mask):
+    &quot;&quot;&quot;Indices set in an integer belief mask.&quot;&quot;&quot;
+    while mask:
+        bit = mask &amp; -mask
+        yield bit.bit_length() - 1
+        mask ^= bit
+
+
+def model_count(mask):
+    return len({Q[i][0] for i in qbits(mask)})
+
+
+def successors(mask, action):
+    &quot;&quot;&quot;Return None if unsafe; otherwise map each observation to a belief mask.&quot;&quot;&quot;
+    posts = {}
+    for qi in qbits(mask):
+        safe, pairs = TRANS[(qi, action)]
+        if not safe:
+            return None
+        for qj, y in pairs:
+            posts[y] = posts.get(y, 0) | (1 &lt;&lt; qj)
+    return posts
+
+
+def safe_actions(mask, viable):
+    allowed = []
+    for action in ACTIONS:
+        posts = successors(mask, action)
+        if posts is not None and all(post in viable for post in posts.values()):
+            allowed.append(action)
+    return allowed
+
+
+def greatest_safe_viability_kernel():
+    &quot;&quot;&quot;Greatest fixed point over all nonempty beliefs of safe hypotheses.&quot;&quot;&quot;
+    viable = set(range(1, ALL + 1))
+    iterations = 0
+    while True:
+        iterations += 1
+        keep = set()
+        for mask in viable:
+            if safe_actions(mask, viable):
+                keep.add(mask)
+        if keep == viable:
+            return viable, iterations
+        viable = keep
+
+
+def robust_distinguishing_value(initial, horizon, viable):
+    &quot;&quot;&quot;Minimize worst-case terminal number of consistent models.
+
+    The returned policy is a finite observation tree. Ties minimize the
+    worst-case sum of |u| (scaled action units); sensor and table costs are
+    charged separately in the report.
+    &quot;&quot;&quot;
+    @lru_cache(None)
+    def solve(mask, h):
+        if h == 0:
+            return model_count(mask), 0, None
+        candidates = []
+        for action in safe_actions(mask, viable):
+            posts = successors(mask, action)
+            child_rows = {y: solve(post, h - 1) for y, post in sorted(posts.items())}
+            worst_models = max(row[0] for row in child_rows.values())
+            worst_action_cost = abs(action) + max(row[1] for row in child_rows.values())
+            candidates.append((worst_models, worst_action_cost, action, child_rows))
+        if not candidates:
+            return float(&quot;inf&quot;), float(&quot;inf&quot;), None
+        best = min(candidates, key=lambda row: (row[0], row[1], abs(row[2]), row[2]))
+        return best
+
+    return solve(initial, horizon), solve.cache_info()
+
+
+def main():
+    initial = (1 &lt;&lt; Q_INDEX[(1, 0)]) | (1 &lt;&lt; Q_INDEX[(-1, 0)])
+    viable, iterations = greatest_safe_viability_kernel()
+    actions = safe_actions(initial, viable)
+    value, cache = robust_distinguishing_value(initial, 4, viable)
+
+    print(f&quot;hypotheses={N}; beliefs_enumerated={ALL}; viability_beliefs={len(viable)}&quot;)
+    print(f&quot;viability_fixpoint_iterations={iterations}&quot;)
+    print(f&quot;initial_model_count={model_count(initial)}&quot;)
+    print(f&quot;initial_robust_safe_actions_quarters={actions}&quot;)
+    print(f&quot;horizon=4; minimum_worst_case_terminal_model_count={value[0]}&quot;)
+    print(f&quot;selected_first_action_quarters={value[2]}&quot;)
+    print(f&quot;memoized_belief_horizon_states={cache.currsize}&quot;)
+    print(&quot;known_gain_policy: theta=+1 -&gt; u=+1/2; theta=-1 -&gt; u=-1/2&quot;)
+    print(&quot;known_gain_all_disturbance_states=[1/4,3/4] subset [-1/4,1]&quot;)
+    print(&quot;unknown_gain_robust_policy: u=0; y support is identical for both gains&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/525a908bd09b97c44004a5eb166d56512c58495a8b181d228e11ada0d42ea6b0.py">Exact original</a></p></html>

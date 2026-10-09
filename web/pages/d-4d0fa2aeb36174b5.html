@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_02/n25_fault_boundary/edge_gap_demo.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_02/n25_fault_boundary/edge_gap_demo.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Numerical scaling check for the half-space edge weighted Rayleigh quotient.
+
+The proof in v1.txt is analytic. This script checks its dilation prediction on
+a periodic box: for m(d) ~ d^(3/2), a smooth test bump at distance/width eps
+from the edge has H^(1/2) Hessian energy O(1), weighted norm squared
+O(eps^(-1/2)), and decay-rate quotient O(sqrt(eps)).
+&quot;&quot;&quot;
+
+import numpy as np
+
+
+LBOX = 8.0
+N = 1 &lt;&lt; 15
+DX = LBOX / N
+X = -LBOX / 2 + DX * np.arange(N)
+K = 2 * np.pi * np.fft.fftfreq(N, d=DX)
+
+
+def bump(t):
+    &quot;&quot;&quot;C-infinity positive bump on (1, 2), zero elsewhere.&quot;&quot;&quot;
+    out = np.zeros_like(t)
+    inside = (t &gt; 1.0) &amp; (t &lt; 2.0)
+    z = t[inside]
+    out[inside] = np.exp(-1.0 / ((z - 1.0) * (2.0 - z)))
+    return out
+
+
+def interior_corrector():
+    &quot;&quot;&quot;Fixed even smooth unit-mass corrector, away from both edges.&quot;&quot;&quot;
+    out = np.zeros_like(X)
+    for center in (-1.5, 1.5):
+        t = (X - (center - 0.25)) / 0.5
+        inside = (t &gt; 0.0) &amp; (t &lt; 1.0)
+        z = t[inside]
+        out[inside] += np.exp(-1.0 / (z * (1.0 - z)))
+    return out / (DX * out.sum())
+
+
+ETA = interior_corrector()
+
+
+def weighted_rayleigh(eps):
+    # Two symmetric edge bumps remove the translation-odd direction.
+    d = -X
+    right = bump(d / eps)
+    left = bump((2.0 - d) / eps)
+    v = right + left
+
+    # c is constant here; subtract a fixed interior function to impose
+    # the normalized-amplitude tangent condition integral(v)=0.
+    mass = DX * v.sum()
+    v = v - mass * ETA
+
+    # Periodic Fourier approximation to &lt;v, |D|v&gt; on the large box.
+    vhat = DX * np.fft.fft(v)
+    kinetic = (np.abs(K) * np.abs(vhat) ** 2).sum() / LBOX
+
+    # Lower-order slip-weakening term. Its contribution vanishes as O(eps).
+    beta = 0.3
+    hessian = kinetic - beta * DX * np.dot(v, v)
+
+    # m(d)=d^(3/2), the mobility profile inherited from W*~A*d^(3/2).
+    active = (X &gt; -2.0) &amp; (X &lt; 0.0)
+    edge_distance = np.minimum(-X[active], X[active] + 2.0)
+    mobility = np.maximum(edge_distance, 1e-300) ** 1.5
+    weighted_norm2 = DX * np.sum(v[active] ** 2 / mobility)
+    return hessian, weighted_norm2, hessian / weighted_norm2
+
+
+if __name__ == &quot;__main__&quot;:
+    print(&quot;eps       Q_H             ||v||_Hm^2      Q_H/||v||_Hm^2   rate/sqrt(eps)&quot;)
+    for eps in (0.25, 0.125, 0.0625, 0.03125, 0.015625):
+        q, norm2, rate = weighted_rayleigh(eps)
+        print(f&quot;{eps:&lt;9.4g} {q:&lt;15.8g} {norm2:&lt;15.8g} {rate:&lt;17.8g} {rate / np.sqrt(eps):.8g}&quot;)
+</pre><p><a href="../assets/2b5742e9e12e1fc3d31c049c04a620891868565f479d889d6f0074b3475a2b7c.py">Exact original</a></p></html>

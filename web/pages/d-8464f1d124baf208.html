@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/t06_learning_compression/version_space_vc_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/t06_learning_compression/version_space_vc_check.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite check: realizable version spaces can have large VC dimension.
+
+The concept class consists of the n co-singletons c_i(j)=1 iff i != j.
+It has VC dimension 1, but the range family of version spaces induced by
+realizable partial samples shatters n-1 concepts.
+&quot;&quot;&quot;
+
+from itertools import combinations
+
+
+def concept(i, n):
+    return tuple(int(j != i) for j in range(n))
+
+
+def all_realizable_faces(n):
+    faces = set()
+    concepts = [concept(i, n) for i in range(n)]
+    for c in concepts:
+        for mask in range(1 &lt;&lt; n):
+            value = sum(c[j] &lt;&lt; j for j in range(n) if mask &gt;&gt; j &amp; 1)
+            faces.add((mask, value))
+    return concepts, faces
+
+
+def vc_dimension(rows):
+    n = len(rows[0])
+    for k in range(n, -1, -1):
+        for coords in combinations(range(n), k):
+            traces = {tuple(row[j] for j in coords) for row in rows}
+            if len(traces) == 1 &lt;&lt; k:
+                return k
+    raise AssertionError(&quot;empty set should be shattered&quot;)
+
+
+def range_vc_dimension(ranges, ground_size):
+    for k in range(ground_size, -1, -1):
+        for points in combinations(range(ground_size), k):
+            traces = {tuple(int(p in r) for p in points) for r in ranges}
+            if len(traces) == 1 &lt;&lt; k:
+                return k
+    raise AssertionError(&quot;empty set should be shattered&quot;)
+
+
+def check(n=7):
+    concepts, faces = all_realizable_faces(n)
+    version_spaces = set()
+    for mask, value in faces:
+        version_spaces.add(frozenset(
+            i for i, c in enumerate(concepts)
+            if all(not (mask &gt;&gt; j &amp; 1) or ((value &gt;&gt; j) &amp; 1) == c[j]
+                   for j in range(n))
+        ))
+
+    # All positive samples on a subset A have version space {c_i : i not in A}.
+    # Taking A among {0,...,n-2} realizes every trace on those n-1 concepts,
+    # while concept c_(n-1) remains a consistent witness.
+    shattered = tuple(range(n - 1))
+    traces = {
+        tuple(int(i in r) for i in shattered)
+        for r in version_spaces
+    }
+    assert len(traces) == 1 &lt;&lt; (n - 1)
+    assert vc_dimension(concepts) == 1
+    assert range_vc_dimension(version_spaces, n) == n - 1
+
+    # The cone family with a fixed empty root has VC dimension exactly n:
+    # positive singleton faces are shattered, and there are only 2^n tops.
+    positive_singletons = [
+        (1 &lt;&lt; j, 1 &lt;&lt; j) for j in range(n)
+    ]
+    assert all(face in faces for face in positive_singletons)
+    cone_traces = {
+        tuple((h &gt;&gt; j) &amp; 1 for j in range(n))
+        for h in range(1 &lt;&lt; n)
+    }
+    assert len(cone_traces) == 1 &lt;&lt; n
+
+    # A tiny improper scheme exists despite the large version-space VC number:
+    # empty root -&gt; all-ones hypothesis; root (j,0) -&gt; co-singleton c_j.
+    for mask, value in faces:
+        negative = [j for j in range(n) if mask &gt;&gt; j &amp; 1 and not (value &gt;&gt; j &amp; 1)]
+        if negative:
+            assert len(negative) == 1
+            j = negative[0]
+            h = concepts[j]
+            assert (1 &lt;&lt; j) &amp; mask
+            assert all(h[x] == ((value &gt;&gt; x) &amp; 1)
+                       for x in range(n) if mask &gt;&gt; x &amp; 1)
+        else:
+            assert all((value &gt;&gt; j) &amp; 1 for j in range(n) if mask &gt;&gt; j &amp; 1)
+    return len(faces), len(version_spaces)
+
+
+if __name__ == &quot;__main__&quot;:
+    n = 7
+    face_count, range_count = check(n)
+    print(
+        f&quot;PASS: co-singleton class on {n} points has VCdim=1; &quot;
+        f&quot;{face_count} realizable faces induce {range_count} version spaces; &quot;
+        f&quot;version-space VC={n - 1}; fixed-empty-root cone VC={n}; &quot;
+        &quot;an improper size-1 decoder covers every face.&quot;
+    )
+</pre><p><a href="../assets/26d29ebcbf200f2224757b535b172d0dd2035a7074e55c1f70866a26eac012f3.py">Exact original</a></p></html>

@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a23_quantum_syndrome/exact_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a23_quantum_syndrome/exact_check.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact GF(2) check of the [[5,1,3]] syndrome-subsystem counterexample.&quot;&quot;&quot;
+from itertools import product
+
+N = 5
+
+def bits(word):
+    x = tuple(int(c in &quot;XY&quot;) for c in word)
+    z = tuple(int(c in &quot;ZY&quot;) for c in word)
+    return x, z
+
+def word(x, z):
+    return &quot;&quot;.join(&quot;Y&quot; if a and b else &quot;X&quot; if a else &quot;Z&quot; if b else &quot;I&quot; for a, b in zip(x, z))
+
+def xor(a, b):
+    return tuple(x ^ y for x, y in zip(a, b))
+
+def mul(a, b):
+    ax, az = bits(a); bx, bz = bits(b)
+    return word(xor(ax, bx), xor(az, bz))  # phase-free; enough for cosets
+
+def weight(p):
+    return sum(c != &quot;I&quot; for c in p)
+
+# Standard cyclic [[5,1,3]] stabilizer.
+gens = [&quot;XZZXI&quot;, &quot;IXZZX&quot;, &quot;XIXZZ&quot;, &quot;ZXIXZ&quot;]
+gbits = [bits(g) for g in gens]
+
+def syndrome(p):
+    x, z = bits(p)
+    return tuple(sum((x[i] &amp; gz[i]) ^ (z[i] &amp; gx[i]) for i in range(N)) % 2
+                 for gx, gz in gbits)
+
+stab = set()
+for coeff in product((0, 1), repeat=4):
+    p = &quot;IIIII&quot;
+    for take, g in zip(coeff, gens):
+        if take:
+            p = mul(p, g)
+    stab.add(p)
+
+paulis = [&quot;I&quot;, &quot;X&quot;, &quot;Y&quot;, &quot;Z&quot;]
+all_paulis = [&quot;&quot;.join(v) for v in product(paulis, repeat=N)]
+centralizer = [p for p in all_paulis if syndrome(p) == (0, 0, 0, 0)]
+nontrivial_logicals = [p for p in centralizer if p not in stab]
+distance = min(weight(p) for p in nontrivial_logicals)
+
+single_errors = [&quot;IIIII&quot;] + [&quot;&quot;.join(p if i == j else &quot;I&quot; for i in range(N))
+                              for j in range(N) for p in &quot;XYZ&quot;]
+by_syndrome = {}
+for p in single_errors:
+    s = syndrome(p)
+    assert s not in by_syndrome
+    by_syndrome[s] = p
+assert len(by_syndrome) == 16
+
+# L = X^5 * g1 = IYYIX, a weight-three logical representative.
+L = &quot;IYYIX&quot;
+assert syndrome(L) == (0, 0, 0, 0)
+assert L not in stab
+assert weight(L) == distance == 3
+
+P = &quot;IIXII&quot;  # X on qubit 3
+R_s_natural = by_syndrome[syndrome(&quot;IIIXX&quot;)]
+R_t_natural = by_syndrome[syndrome(&quot;XXIII&quot;)]
+s = syndrome(R_s_natural)
+t = syndrome(R_t_natural)
+assert s != t
+assert tuple(a ^ b for a, b in zip(s, syndrome(P))) == t
+Q = mul(mul(R_t_natural, P), R_s_natural)
+assert syndrome(Q) == (0, 0, 0, 0)
+assert Q not in stab
+assert weight(Q) == 3
+# Q and L differ by a stabilizer, so their induced logical class is the same.
+assert mul(Q, L) in stab
+
+# On the code sector, P is itself the chosen representative of its syndrome,
+# so applying its inverse correction leaves the logical subsystem unchanged.
+assert by_syndrome[syndrome(P)] == P
+
+print({
+    &quot;code&quot;: &quot;[[5,1,3]]&quot;,
+    &quot;syndrome_count&quot;: len(by_syndrome),
+    &quot;syndrome_reps_unique_at_weight_le_1&quot;: True,
+    &quot;selected_input_rep&quot;: R_s_natural,
+    &quot;selected_output_rep&quot;: R_t_natural,
+    &quot;fault_pauli&quot;: P,
+    &quot;input_syndrome&quot;: &quot;&quot;.join(map(str, s)),
+    &quot;output_syndrome&quot;: &quot;&quot;.join(map(str, t)),
+    &quot;decoded_residual&quot;: Q,
+    &quot;logical_representative&quot;: L,
+    &quot;Q_times_L_in_stabilizer&quot;: True,
+    &quot;logical_holonomy_on_syndrome_sector&quot;: &quot;Xbar&quot;,
+    &quot;logical_action_on_code_sector_after_correction&quot;: &quot;I&quot;,
+    &quot;r&quot;: 1,
+    &quot;two_r_lt_d&quot;: 2 * 1 &lt; distance,
+})
+</pre><p><a href="../assets/76bcec55e131274c9de30655d8050507ba5cfd63bf10044b9b05bc1059750567.py">Exact original</a></p></html>

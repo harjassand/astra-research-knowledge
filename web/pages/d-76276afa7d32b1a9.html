@@ -1,0 +1,170 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/t01_algebraic_pit/verify_rank2_skew.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/t01_algebraic_pit/verify_rank2_skew.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite checks for two rank-two determinant controls.
+
+Only Python&#x27;s standard library is used.  Determinants are evaluated by the
+Leibniz formula, which is intentionally exponential but adequate for these
+3x3 and 6x6 witness matrices.
+&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations, permutations
+
+
+def det(a):
+    n = len(a)
+    assert all(len(row) == n for row in a)
+    ans = 0
+    for p in permutations(range(n)):
+        inv = sum(p[i] &gt; p[j] for i in range(n) for j in range(i + 1, n))
+        term = (-1 if inv % 2 else 1)
+        for i, j in enumerate(p):
+            term *= a[i][j]
+        ans += term
+    return ans
+
+
+def rank(a):
+    a = [[Fraction(v) for v in row] for row in a]
+    rows, cols = len(a), len(a[0])
+    r = 0
+    for c in range(cols):
+        pivot = next((i for i in range(r, rows) if a[i][c]), None)
+        if pivot is None:
+            continue
+        a[r], a[pivot] = a[pivot], a[r]
+        scale = a[r][c]
+        a[r] = [v / scale for v in a[r]]
+        for i in range(rows):
+            if i != r and a[i][c]:
+                scale = a[i][c]
+                a[i] = [u - scale * v for u, v in zip(a[i], a[r])]
+        r += 1
+        if r == rows:
+            break
+    return r
+
+
+# Polynomial maps exponent tuples (x,y,z) to integer coefficients.
+def padd(a, b):
+    out = dict(a)
+    for exp, c in b.items():
+        out[exp] = out.get(exp, 0) + c
+        if out[exp] == 0:
+            del out[exp]
+    return out
+
+
+def pmul(a, b):
+    out = {}
+    for ea, ca in a.items():
+        for eb, cb in b.items():
+            e = tuple(x + y for x, y in zip(ea, eb))
+            out[e] = out.get(e, 0) + ca * cb
+    return {e: c for e, c in out.items() if c}
+
+
+def pdet(a):
+    n = len(a)
+    out = {}
+    for p in permutations(range(n)):
+        inv = sum(p[i] &gt; p[j] for i in range(n) for j in range(i + 1, n))
+        term = {(0, 0, 0): -1 if inv % 2 else 1}
+        for i, j in enumerate(p):
+            term = pmul(term, a[i][j])
+        out = padd(out, term)
+    return out
+
+
+def minor_from_columns(columns, selected):
+    return det([[columns[j][i] for j in selected] for i in range(3)])
+
+
+# L = x A1 + y A2 + z A3, each coefficient has rank exactly 2.
+A1 = [[0, 0, 0], [0, 0, 1], [0, -1, 0]]
+A2 = [[0, 0, -1], [0, 0, 0], [1, 0, 0]]
+A3 = [[0, 1, 0], [-1, 0, 0], [0, 0, 0]]
+assert [rank(a) for a in (A1, A2, A3)] == [2, 2, 2]
+EX, EY, EZ = (1, 0, 0), (0, 1, 0), (0, 0, 1)
+zero = {}
+L = [
+    [zero, {EZ: 1}, {EY: -1}],
+    [{EZ: -1}, zero, {EX: 1}],
+    [{EY: 1}, {EX: -1}, zero],
+]
+assert pdet(L) == {}
+
+# Rank factorizations A_i = U_i V_i^T, columns listed in order.
+U_blocks = [
+    [[0, 1, 0], [0, 0, 1]],  # e2,e3
+    [[0, 0, 1], [1, 0, 0]],  # e3,e1
+    [[1, 0, 0], [0, 1, 0]],  # e1,e2
+]
+V_blocks = [
+    [[0, 0, 1], [0, -1, 0]], # e3,-e2
+    [[1, 0, 0], [0, 0, -1]], # e1,-e3
+    [[0, 1, 0], [-1, 0, 0]], # e2,-e1
+]
+U = [col for block in U_blocks for col in block]
+V = [col for block in V_blocks for col in block]
+for i, (u, v) in enumerate(zip(U_blocks, V_blocks)):
+    reconstructed = [[sum(u[a][r] * v[a][c] for a in range(2)) for c in range(3)] for r in range(3)]
+    assert reconstructed == (A1, A2, A3)[i]
+
+coeff = {}
+terms_xyz = []
+for S in combinations(range(6), 3):
+    du = minor_from_columns(U, S)
+    dv = minor_from_columns(V, S)
+    contribution = du * dv
+    alpha = tuple(sum(1 for j in S if j // 2 == i) for i in range(3))
+    coeff[alpha] = coeff.get(alpha, 0) + contribution
+    if alpha == (1, 1, 1) and contribution:
+        terms_xyz.append((tuple(j + 1 for j in S), du, dv, contribution))
+assert terms_xyz == [((1, 3, 5), 1, 1, 1), ((2, 4, 6), 1, -1, -1)]
+assert coeff.get((1, 1, 1), 0) == 0
+assert not any(coeff.values())
+
+P = [[1, 0], [0, -1]]
+Q = [[0, 1], [1, 0]]
+I = [[1, 0], [0, 1]]
+Z2 = [[0, 0], [0, 0]]
+blocks = [[Z2, Q, [[-v for v in row] for row in P]],
+          [[[-v for v in row] for row in Q], Z2, I],
+          [P, [[-v for v in row] for row in I], Z2]]
+M = [[0 for _ in range(6)] for _ in range(6)]
+for bi in range(3):
+    for bj in range(3):
+        for r in range(2):
+            for c in range(2):
+                M[2 * bi + r][2 * bj + c] = blocks[bi][bj][r][c]
+assert det(M) == 4
+
+# A different rank-two pencil has no nonsingular assignment with support &lt; 3,
+# yet its determinant is x_1*x_2*x_3. This rules out bounded-support search as
+# a general PIT method, while remaining easy for a full-support evaluation.
+B1 = [[1, 0, 0], [0, 0, 1], [0, 0, 0]]  # E11 + E23
+B2 = [[0, 0, 1], [0, 1, 0], [0, 0, 0]]  # E13 + E22
+B3 = [[0, 1, 0], [0, 0, 0], [0, 0, 1]]  # E12 + E33
+assert [rank(b) for b in (B1, B2, B3)] == [2, 2, 2]
+XP, YP, ZP = (1, 0, 0), (0, 1, 0), (0, 0, 1)
+BL = [
+    [{XP: 1}, {ZP: 1}, {YP: 1}],
+    [zero, {YP: 1}, {XP: 1}],
+    [zero, zero, {ZP: 1}],
+]
+assert pdet(BL) == {(1, 1, 1): 1}
+for support_mask in range(1 &lt;&lt; 3):
+    if support_mask.bit_count() &lt; 3:
+        values = [int(bool(support_mask &amp; (1 &lt;&lt; i))) for i in range(3)]
+        assert values[0] * values[1] * values[2] == 0
+
+print(&quot;rank(A_i):&quot;, [rank(a) for a in (A1, A2, A3)])
+print(&quot;det(L) polynomial coefficients:&quot;, pdet(L))
+print(&quot;nonzero Cauchy-Binet xyz terms:&quot;, terms_xyz)
+print(&quot;collected grouped coefficients:&quot;, {a: c for a, c in coeff.items() if c})
+print(&quot;det(2x2 blow-up):&quot;, det(M))
+print(&quot;bounded-support control rank(A_i):&quot;, [rank(a) for a in (B1, B2, B3)])
+print(&quot;bounded-support control determinant:&quot;, pdet(BL))
+print(&quot;proper supports with invertible 0/1 assignment: 0 of 7&quot;)
+print(&quot;For k independent 3x3 skew blocks: n=3k, m=3k, each generator rank 2,&quot;)
+print(&quot;commutative rank=2k and the block-diagonal 2x2 blow-up has determinant 4^k.&quot;)
+</pre><p><a href="../assets/0818588aba8f4fb3b9513a1518c8cbfcc06240061b12b15eeae71182bda9aa24.py">Exact original</a></p></html>

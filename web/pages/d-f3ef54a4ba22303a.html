@@ -1,0 +1,126 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/n22_reversible_frame/verify_frame_obstruction.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/n22_reversible_frame/verify_frame_obstruction.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact rational replay of the finite-rank CP / no-reversible-frame example.
+
+Reads the frozen certificate at work/sol/hidden_realization/exact_certificate_v1.json.
+Only Python&#x27;s standard library is required; all mathematical comparisons use Fraction.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+
+CERT = Path(__file__).resolve().parents[2] / &#x27;sol&#x27; / &#x27;hidden_realization&#x27; / &#x27;exact_certificate_v1.json&#x27;
+d = json.loads(CERT.read_text())
+def mat(k): return [[F(x) for x in row] for row in d[k]]
+def req(ok, label):
+    if not ok: raise RuntimeError(label)
+def tr(a): return [list(row) for row in zip(*a)]
+def mm(a,b): return [[sum(x*y for x,y in zip(row,col)) for col in zip(*b)] for row in a]
+def minus(a,b): return [[x-y for x,y in zip(ra,rb)] for ra,rb in zip(a,b)]
+def iszero(a): return all(x == 0 for row in a for x in row)
+def det(a):
+    a = [row[:] for row in a]
+    out = F(1)
+    for i in range(len(a)):
+        q = next((j for j in range(i, len(a)) if a[j][i]), None)
+        if q is None: return F(0)
+        if q != i: a[i], a[q], out = a[q], a[i], -out
+        p = a[i][i]; out *= p
+        for j in range(i+1, len(a)):
+            r = a[j][i] / p
+            for k in range(i, len(a)): a[j][k] -= r*a[i][k]
+    return out
+
+def dot(a,b): return sum(x*y for x,y in zip(a,b))
+
+def main():
+    v, z, D, M, L, Q, H = (mat(k) for k in (&#x27;points&#x27;,&#x27;farkas_z&#x27;,&#x27;internal_D&#x27;,&#x27;M&#x27;,&#x27;L&#x27;,&#x27;Q&#x27;,&#x27;H&#x27;))
+    C, facets, B = mat(&#x27;covariance&#x27;), mat(&#x27;facets&#x27;), mat(&#x27;B&#x27;)
+    eta, reset = F(d[&#x27;marker_eta&#x27;]), F(d[&#x27;reset_rate&#x27;])
+    n, r = 10, 8
+    req(len(v)==5 and len(Q)==n and len(H)==n and len(H[0])==r, &#x27;declared dimensions&#x27;)
+    req(all(dot(p,p)==1 for p in v) and len({tuple(p) for p in v})==5, &#x27;distinct rational unit-circle points&#x27;)
+    req(all(x &gt;= 0 for i,row in enumerate(Q) for j,x in enumerate(row) if i!=j), &#x27;nonnegative CTMC off-diagonal&#x27;)
+    req(all(sum(row)==0 for row in Q), &#x27;generator row sums&#x27;)
+    req(all(sum(Q[i][j] for i in range(n))==0 for j in range(n)), &#x27;uniform stationarity&#x27;)
+    req(Q[0][1] != Q[1][0], &#x27;hidden generator is not reversible&#x27;)
+    req(all(Q[i][j] &gt; 0 for i in range(5) for j in range(5) if i!=j), &#x27;strictly positive internal rates&#x27;)
+    req(all(sum(Q[i][5+k] for i in range(5)) &gt; 0 for k in range(5)), &#x27;every marker is connected&#x27;)
+    req(B[0][0] &gt; 0 and det(B) == F(911,40000), &#x27;positive-definite base drift matrix&#x27;)
+    req(C[0][0] &gt; 0 and det(C) &gt; 0, &#x27;positive-definite centered covariance&#x27;)
+    req(iszero(minus(mm(C,tr(D)),mm(D,C))), &#x27;C D^T = D C: internal drift selfadjointness&#x27;)
+    req(det([[sum(D[i][k]*C[k][j] for k in range(2)) for j in range(2)] for i in range(2)]) &gt; 0, &#x27;positive internal dissipation form&#x27;)
+    req(all((Q[i][j]&gt;0)==(Q[j][i]&gt;0) for i in range(n) for j in range(i+1,n)), &#x27;symmetric support&#x27;)
+    req(iszero(minus(mm(Q,H),mm(H,L))), &#x27;QH=HL: observable subspace invariant&#x27;)
+    req(iszero(minus(mm(M,L),mm(tr(L),M))), &#x27;M-selfadjoint restricted generator&#x27;)
+    req(M==[[sum(H[k][i]*H[k][j] for k in range(n))/10 for j in range(r)] for i in range(r)], &#x27;observable Gram matrix&#x27;)
+    req(det(M)&gt;0, &#x27;full observable rank (Gram matrix is positive definite)&#x27;)
+    omega=[F(1),F(0),F(0),F(1),F(1),F(1),F(1),F(1)]
+    req(mm(L, [[x] for x in omega]) == [[F(0)] for _ in range(r)], &#x27;stationary observable vector&#x27;)
+    req(dot(omega, [sum(M[i][j]*omega[j] for j in range(r)) for i in range(r)]) == 1, &#x27;unit norm constant&#x27;)
+    req(M[1][1]+M[2][2] == F(1,2), &#x27;internal position second-moment trace&#x27;)
+    req(M[0][0] == F(1,2), &#x27;internal frame mass&#x27;)
+    req(all(M[3+k][3+k] == F(1,10) for k in range(5)), &#x27;marker masses&#x27;)
+    # The five polygon facets are exactly the oriented edges in the recorded CCW order.
+    order=d[&#x27;ccw_order&#x27;]
+    derived=[]
+    for k,i in enumerate(order):
+        j=order[(k+1)%5]
+        ex,ey=v[j][0]-v[i][0],v[j][1]-v[i][1]
+        derived.append([ey*v[i][0]-ex*v[i][1], ey, -ex])
+        # Certificate uses determinant(edge, point - start): (c,-ey,ex).
+        derived[-1]=[ey*v[i][0]-ex*v[i][1], -ey, ex]
+    req(derived==facets, &#x27;recorded facet equations&#x27;)
+    req(all(f[0]+f[1]*p[0]+f[2]*p[1] &gt;= 0 for f in facets for p in v), &#x27;vertices satisfy every facet&#x27;)
+    req(all(f[0]+f[1]*p[0]+f[2]*p[1] &gt; 0 for k,f in enumerate(facets) for j,p in enumerate(v) if j not in (order[k],order[(k+1)%5])), &#x27;strictly convex pentagon facets&#x27;)
+    req(any(det([facets[i],facets[j],facets[k]]) != 0 for i in range(5) for j in range(i+1,5) for k in range(j+1,5)), &#x27;facet affine functions span internal affine space&#x27;)
+    req(all(f[0]+f[1]*v[order[k]][0]+f[2]*v[order[k]][1] == 0 and f[0]+f[1]*v[order[(k+1)%5]][0]+f[2]*v[order[(k+1)%5]][1] == 0 for k,f in enumerate(facets)), &#x27;each facet is its ordered edge&#x27;)
+    req(all(sum(f[1] for f in facets)==0 and sum(f[2] for f in facets)==0 for _ in [0]), &#x27;constant total facet slack&#x27;)
+    req(all(Q[i][5+k] == eta*(facets[k][0]+facets[k][1]*v[i][0]+facets[k][2]*v[i][1]) == Q[5+k][i] for i in range(5) for k in range(5)), &#x27;symmetric marker rates equal eta times facet slack&#x27;)
+    req(len({sum(Q[i][5+k] for k in range(5)) for i in range(5)})==1, &#x27;constant total marker exit rate&#x27;)
+    # Exact stationary five-point moment representation and nondegenerate recovery.
+    mean=[sum(p[k] for p in v)/5 for k in range(2)]
+    u=[[p[k]-mean[k] for k in range(2)] for p in v]
+    req(C==[[sum(u[i][a]*u[i][b] for i in range(5))/5 for b in range(2)] for a in range(2)], &#x27;centered covariance&#x27;)
+    feat=[[1,p[0],p[1],p[0]*p[0],p[0]*p[1]] for p in v]
+    req(det(tr(feat)) == F(d[&#x27;five_point_moment_determinant&#x27;]) != 0, &#x27;unique vertex moment weights&#x27;)
+    req(sum(F(1,10) for p in v)==M[0][0], &#x27;uniform internal mass&#x27;)
+    req(sum(F(1,10)*p[0] for p in v)==M[0][1] and sum(F(1,10)*p[1] for p in v)==M[0][2], &#x27;uniform first moments agree with M&#x27;)
+    req(sum(F(1,10)*p[0]**2 for p in v)==M[1][1] and sum(F(1,10)*p[0]*p[1] for p in v)==M[1][2], &#x27;uniform second moments agree with M&#x27;)
+    # Exact planar monotone-field witness, including all 10 internal pairs.
+    pairings=[]
+    for i in range(5):
+        for j in range(i+1,5):
+            q=dot([z[i][k]-z[j][k] for k in range(2)],[v[i][k]-v[j][k] for k in range(2)])
+            req(q&gt;0, &#x27;strict monotonicity between distinct vertices&#x27;)
+            pairings.append(q)
+    req(pairings==[F(x) for x in d[&#x27;monotonicity_pairings&#x27;]], &#x27;exact monotonicity values&#x27;)
+    planar=sum(dot(z[i], [sum(D[a][b]*u[i][b] for b in range(2)) for a in range(2)])/5 for i in range(5))
+    req(planar==F(d[&#x27;farkas_drift_pairing&#x27;])&lt;0, &#x27;negative planar drift pairing&#x27;)
+    # Internal generator drift is -D(p_i-mean); marker killing contributes only -kappa*p_i.
+    for i in range(5):
+        drift=[sum(Q[i][j]*(v[j][a]-v[i][a]) for j in range(5)) for a in range(2)]
+        req(drift==[-sum(D[a][b]*u[i][b] for b in range(2)) for a in range(2)], &#x27;exact internal drift&#x27;)
+    # Lift the planar monotone fields to the full 8-coordinate OS space.
+    # Test coefficient d_i=(0,z_i,(z_i dot p_i) 1_5); marker test vectors are zero.
+    # This makes internal/marker monotonicity exactly zero and cancels marker killing in the Farkas sum.
+    full=F(0)
+    xis=[]
+    for i in range(5):
+        xi=H[i]
+        xis.append(xi)
+        di=[F(0),z[i][0],z[i][1]]+[dot(z[i],v[i])]*5
+        full += F(1,10)*dot(di,[-x for x in mm([xi],L)[0]])
+    for k in range(5): xis.append(H[5+k])
+    req(all(dot([0,z[i][0],z[i][1]]+[dot(z[i],v[i])]*5,[xis[i][a]-xis[5+k][a] for a in range(8)])==0 for i in range(5) for k in range(5)), &#x27;zero internal-marker monotonicity&#x27;)
+    req(full==planar/2&lt;0, &#x27;full eight-dimensional Farkas pairing remains strictly negative&#x27;)
+    # Keep the Farkas test valid with arbitrary duplicate atoms at a forced vertex/marker.
+    print(json.dumps({
+        &#x27;status&#x27;:&#x27;PASS&#x27;, &#x27;arithmetic&#x27;:&#x27;fractions.Fraction&#x27;, &#x27;states&#x27;:10, &#x27;labels&#x27;:6,
+        &#x27;observable_rank&#x27;:8, &#x27;generator_nonreversible_witness&#x27;:[str(Q[0][1]),str(Q[1][0])],
+        &#x27;min_internal_monotonicity&#x27;:str(min(pairings)),
+        &#x27;planar_pairing&#x27;:str(planar), &#x27;full_frame_pairing&#x27;:str(full),
+        &#x27;five_point_moment_determinant&#x27;:str(det(tr(feat))),
+        &#x27;marker_total_exit&#x27;:str(sum(Q[0][5+k] for k in range(5)))
+    },indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/7b9e75c0a618d8a723719c19d13b50cc97fb75799a14f6d75ccd1d39b1be1dd9.py">Exact original</a></p></html>

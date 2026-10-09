@@ -1,0 +1,184 @@
+SOL ROBUST RECOVERY V2 — SAME-SAMPLE GLOBAL-ADVERSARY REFINEMENT
+2026-10-09. Append-only extension of v1. Internal derivation; complete independent review pending.
+
+0. What this version adds
+
+V1 establishes a finite-conditional-variance initializer. This version derives a full nonlinear refinement algorithm on ONE globally corrupted sample by quantizing all iterates to a finite lattice. It does not require causal corruption, independent fresh data, a supplied sigma, a fourth noise moment, or enumeration of the lattice. The statistical event is uniform over possible queries; fresh algorithm seeds then provide only solver confidence. It imports the explicit strong-adaptive-replacement mean primitive of Depersin--Lecue, Annals of Statistics2022, Theorem2.1 and its deterministic Proposition1 event. The original ICML2023 PCA primitive remains an import from V1. The resulting guarantee is an existence/algorithm theorem in real arithmetic with exact query/sample costs; full word-RAM solver precision is not claimed.
+
+1. Model and inputs
+
+Take d>=1, x*!=0, q=||x*||, u=q^2. A clean iid sample of m pairs has a_i~N(0,I_d), y_i=(a_i^Tx*)^2+zeta_i,
+  E[zeta_i|a_i]=0, E[zeta_i^2|a_i]<=sigma^2.
+After inspecting EVERY clean pair, an arbitrary adversary replaces <=eps m entire pairs, for eps>=0. The corrupted sample is fixed before the learner's new random seeds. The learner knows eps, R>=sigma/q^2, confidence delta in (0,1/4), and a requested relative optimization precision p in (0,1/10]. Under the original question, R=r_up suffices. The learner does not know q,x*,sigma or a noise-law parameter.
+
+All data access below is to this one sample. The phase distance is dist(x,x*)=min(||x-x*||,||x+x*||).
+
+2. Initializer, zero-contamination and low-dimension repairs
+
+Use the explicit scalar median-of-means and shifted-PCA initializer from V1, allocating delta/4 to all its statistical/PCA confidence events, and obtaining
+  h in [(26/27)q^2,(28/27)q^2],
+  dist(x_init,x*)<=2q/27.                                  (2.1)
+The data-selected scale h is safe under the global adversary because V1's covariance event is uniform over its allowed L interval. Scalar and spectral stages can use the same m observations.
+
+For the PCA routine's positive-eps prerequisite at eps=0 (or eps m<1), run it with eps_alg=max(eps,1/m), prove full-clean (21eps_alg,gamma)-stability, and require 20eps_alg<gamma. A distribution with actual contamination less than eps_alg can be padded by moving an additional portion of inliers into B. This costs only the added O(log m/m) Gaussian deletion term and replaces log(d/eps) by log(d/eps_alg). In V1's exact theorem, replace beta=21eps by21eps_alg, all corresponding Gaussian subset ceilings, and the robust-PCA parameter accordingly. Scalar scale acquisition can still use actual eps (or the looser eps_alg).
+
+For d=1, no direction estimation is necessary: return sqrt(h) as the initializer, with dist<=q/27. For d=2, append one fresh learner-generated N(0,1) sensing coordinate z_i to every received a_i and embed the true signal as (x*,0). Clean augmented pairs are iid with standard Gaussian design and satisfy the same conditional noise moment bounds because z_i is independent of all received clean variables. Augmented corrupted rows are admissible arbitrary outliers. Apply the literal d=3 source theorem, then project x_init to the original two coordinates. Projection cannot increase the distance to either embedded sign of x*. Do not renormalize after projection. Thus (2.1) remains valid. Write d_+=max(d,3) for initializer complexity.
+
+The corrected baseline comparison is explicit: Das--Batra Theorem4.1/4.5 (Kong PCA) has eps<=c(1+r_up^2)^(-2), or r_up^(-4), and runtime Õ(m^2d). Its alternative stable-PCA TheoremF.5 has eps<=c(16+r_up^2)^(-4), or r_up^(-8), plus a d^5 sample term. V1's eps log(e/eps)<=c/(1+R^2) compares to these different displayed sufficient bounds; no maximality is asserted.
+
+3. Population gradient and local geometry, derived directly
+
+Define the sample gradient vector
+  P_x(a,y)=((a^Tx)^2-y)(a^Tx)a.
+Conditional centering and Gaussian fourth moments give the exact population gradient
+  g(x)=E P_x=(3||x||^2-q^2)x-2<x,x*>x*.                   (3.1)
+Its Jacobian/Hessian is
+  H(x)=(3||x||^2-q^2)I+6xx^T-2x*x*^T.                   (3.2)
+These are the gradient and Hessian of one fourth of E[((a^Tx)^2-y)^2]; an additive noise variance term does not affect the derivatives.
+
+Fix either target sign z*=+x* or -x*. In the ball ||x-z*||=e<=q/9 the Hessian obeys
+  (4/3)q^2 I <= H(x) <=11q^2 I.                         (3.3)
+Proof of the lower bound: put t=v^Tz*, z=v^T(x-z*) for a unit v. Complete the square
+  6(t+z)^2-2t^2=4(t+3z/2)^2-3z^2>=-3e^2.
+Hence v^THv>=3(q-e)^2-q^2-3e^2=2q^2-6qe>=4q^2/3. For the upper bound, drop the negative rank-one term and use ||x||<=10q/9:
+  H<= (9||x||^2-q^2)I <=(91/9)q^2 I <=11q^2 I.
+
+Use eta=1/(12h). By (2.1), eta11q^2<=99/104<1 and eta(4/3)q^2>=3/28. Integrating H along the segment from z* to x gives
+  ||x-eta g(x)-z*|| <=(25/28)e.                          (3.4)
+The true sign may be selected after initialization because every subsequent statistical event and geometric statement covers both balls.
+
+4. Only finite noise variance is needed for gradient covariance
+
+For e=x-z*, put U=a^Tz*, V=a^Te and W=a^Tx=U+V. Then
+  P_x=[2U^2V+3UV^2+V^3]a-zeta W a.
+For every unit v put T=a^Tv. The noise term has mean zero and has zero cross covariance with the signal term by E[zeta|a]=0. Holder's inequality and E G^8=105 for G~N(0,1) give
+  E[U^4V^2T^2]<=105q^4e^2,
+  E[U^2V^4T^2]<=105q^2e^4,
+  E[V^6T^2]<=105e^6.
+The inequality (r+s+t)^2<=3(r^2+s^2+t^2) therefore yields, for e<=q/9,
+  E[(v^T P_signal)^2]
+    <=315(4q^4e^2+9q^2e^4+e^6)<1300q^4e^2.
+For the noise term, conditional variance domination and Gaussian moments give
+  E[zeta^2W^2aa^T]<=sigma^2(||x||^2 I+2xx^T)
+                  <=4sigma^2q^2 I.
+Subtracting the signal mean can only reduce its covariance. Thus
+  Cov(P_x)<=v_x I,
+  v_x:=1300q^4e^2+4sigma^2q^2,
+  tr Cov(P_x)<=d v_x.                                    (4.1)
+This derivation does not use E zeta^4, symmetry or independence of zeta and a.
+
+5. Imported mean primitive: exact deterministic event versus solver randomness
+
+Primary source: Depersin and Lecue, "Robust sub-Gaussian estimation of a mean vector in nearly linear time", Annals of Statistics2022,50(1):511--536, DOI10.1214/21-AOS2118; author-hosted primary PDF
+  https://lecueguillaume.github.io/assets/AOS2118.pdf
+retrieved2026-10-09 to work/sol/robust_recovery/research/dl22.pdf and .txt.
+
+Its published Assumption1 explicitly generates N independent clean vectors first, lets an adversary inspect and replace arbitrary |O| vectors, and notes that surviving informative vectors can be correlated. Thus its model is the required strong replacement model. Theorem2.1 gives, for equal-size blocks and K>=300|O|, a completely covariance-oblivious estimator with error
+  ||mean_hat-mu|| <=808[1200sqrt(trSigma/N)+sqrt(1200||Sigma||op K/N)],
+runtime Õ(Nd+u_alg Kd), and failure exp(-K/180000)+10^(-u_alg). The statement does not require a supplied covariance or scale.
+
+For composition at adaptive queries, the combined probability statement alone is insufficient. The source proof provides the stronger exact split needed here:
+
+  Statistical event E: for every PSD M with trM=1, at least9K/10 observed block means obey ||M^(1/2)(mean_k-mu)||<=8r, where
+    r=1200sqrt(trSigma/N)+sqrt(1200||Sigma||op K/N).
+  Proposition1/Lemma1 prove this from an event involving the ORIGINAL CLEAN block means. In the proof of Lemma1, the clean directional bad-block count is at most K/300, simultaneously for every unit vector, except on probability exp(-K/180000). Replacing <=|O| points modifies at most |O| block means. When K>=600|O|, the same clean event leaves >=(1-1/300-1/600)K>.99K good directional blocks for EVERY possible choice and contents of the replacements. The source's rounding proof from Lemma1 to Proposition1 then gives E uniformly over all allowed replacements.
+  Conditional algorithm statement: for EVERY fixed dataset satisfying E, the proof of Theorem2.1 (Section5, using Theorem4.1/SolveSDP) fails with probability at most10^(-u_alg) only over the covering-SDP seeds, in runtime Õ(Nd+u_alg Kd), and its deterministic error bound is808r.
+
+The last item is taken from the conditional proof, not deduced merely by subtracting a statistical probability from the theorem statement. Exact local accessed ranges: dl22.txt lines97--118 (model),286--301 (Theorem2.1),357--438 (Proposition1, clean-block proof),1129--1140 (conditional SolveSDP),1458--1483 (conditional theorem proof).
+
+Degenerate zero radius: if more than9K/10 block means are exactly one common vector, a preliminary identical-majority check may return that vector. On E, it is within8r of mu, so it satisfies the larger808r guarantee. When r=0 the clean block means all equal mu and <K/600 modified blocks cannot defeat this check. This avoids dividing by a zero scale in the source's SDP pseudocode. Detecting an identical vector by sorting/hashing costs Õ(Kd), within the stated runtime. All other cases use the original primitive.
+
+6. Finite lattice and one uniform event; no enumeration
+
+Let rho=p/100<=1/1000. Define the dyadic scale
+  s=2^floor(log2 sqrt(h)).
+On (2.1),
+  (sqrt(26/27)/2)q < s <=sqrt(28/27)q.
+For the fixed true q, the certified h interval contains at most two possible dyadic scales. Denote those two deterministic scales by S_q; the algorithm need not know S_q.
+
+For each s in S_q take the coordinate lattice spacing a_s=rho s/sqrt(d), and the finite box of lattice points whose coordinate indices have absolute value at most ceil(3sqrt(d)/rho). Its size is at most
+  B_grid=(3+6sqrt(d)/rho)^d.
+The rounding map rounds every coordinate to the nearest lattice coordinate and clamps its index to this box. For x already in either true q/9 basin or an update within that basin, clamping is inactive because each coordinate is <=10q/9<3s. Ordinary coordinate rounding then changes Euclidean norm by <=rho s/2<=rho q. More generally, coordinate clamping onto a box containing both target signs cannot increase distance to either target; the same rho q rounding bound applies after clamping.
+
+Let J_grid=2B_grid be an upper bound on all possible grid queries over the two scales. This is a proof cardinality; the learner stores only its s and current d lattice coordinates. It does not materialize J_grid or enumerate any points.
+
+Fix confidence delta_stat. Set
+  K=ceil(600eps m+180000log(2J_grid/delta_stat)),
+require K<=m/2, and use the first n=K floor(m/K)>=m/2 sample rows in K equal-size blocks. This prefix and its blocks are chosen before reading their values. At most eps m original pairs can be corrupted inside this prefix, so K>=600|O| regardless of adversarial concentration. For every fixed grid x in either true q/9 basin, apply the source clean-block event to the iid clean vectors P_x(a_i,y_i), with Sigma=v_x I from (4.1). A union bound over <=J_grid fixed grid points gives a statistical event of probability >=1-delta_stat/2 that implies E_x for EVERY such grid x and EVERY allowed replacement of the original m pairs.
+
+Why the quantifier is safe: x is fixed in each probability calculation, including all possible dyadic-scale grids selected by the data. The clean events are generated before corruption and are uniform over all replacements. Earlier corrupted rows can encode every future clean observation; the final intersection event still covers the resulting quantized iterate. At a query x, the transformed rows P_x(corrupted_pair_i) differ from the iid originals only at the original corrupted indices, so each query is a valid strong-replacement mean instance with the same block count. There is no conditional independence claim about the clean observations at an adaptive iterate.
+
+For each x on this event the mean primitive gives, conditional on fresh solver seeds,
+  ||g_hat(x)-g(x)||<=B_m sqrt(v_x),
+  B_m=808[1200sqrt(d/n)+sqrt(1200K/n)],                     (6.1)
+with failure<=10^(-u_alg). B_m is computable from m,K,n,d, not sigma or x*. This is the key uniform statistical interface.
+
+7. Exact algorithm and recovery theorem
+
+Compute h,x_init,s as above. Let x_0 be the lattice rounding of x_init. For
+  T=ceil(log(5/(9p))/log(56/53))
+iterations, evaluate the source mean primitive at x_t using the SAME n sample rows, K fixed blocks, and fresh independent solver seeds with
+  u_alg=ceil(log10(2T/delta_alg)).
+Then update
+  x_{t+1}=Round_s[x_t-(1/(12h))g_hat(x_t)].
+Return x_T.
+
+Assume the exact V1 initializer inequalities (with eps_alg and confidence allocation) hold and
+  K<=m/2,
+  B_m<=1/[100(1+R)].                                      (7.1)
+Choose delta_stat<=delta/4, delta_alg<=delta/4 and initializer failure<=delta/4. Then the algorithm, for EVERY globally strong adversary of budget eps m, succeeds with probability>=1-delta and satisfies
+  dist(x_T,x*)<=p q+(42/13) B_m sigma/q.                    (7.2)
+
+Proof. Select the closer sign z* in (2.1). The rounded initial point satisfies e_0<=2q/27+rho q<q/9. Suppose x_t is a lattice point in this basin and no previous solver failure has occurred. The single uniform event from Section6 applies to its query irrespective of the query's dependence on all clean observations. Its fresh solver seeds fail with conditional probability<=10^(-u_alg). On solver success, use sqrt(v_x)<=sqrt(1300)q^2e+2sigma q, (3.4), eta<=9/(104q^2), and the rounding bound to get
+  e_{t+1}<=[25/28+(9sqrt(1300)/104)B_m]e_t
+                  +(9/52)B_m sigma/q+rho q
+          <=(53/56)e_t+(9/52)B_m sigma/q+rho q.             (7.3)
+The last inequality follows from B_m<=1/100 and 9sqrt(1300)/10400<3/56. At e_t=q/9 the contraction slack is q/168; the additive term is at most
+  [9/5200+1/1000]q<q/168,
+using sigma/q^2<=R and (7.1). Therefore the same basin remains invariant. This proves the induction and makes every later queried point covered by the finite clean event.
+
+Summing (7.3), with kappa=53/56, gives
+  e_T <=kappa^T e_0+(42/13)B_m sigma/q+(56/3)rho q.
+By the chosen T and e_0<=q/9, the first term is <=p q/5. By rho=p/100, the rounding term is <=(14/75)pq< pq/5. This proves the looser (7.2). Fresh seed union bound gives <=T10^(-u_alg)<=delta_alg/2 failure along the successful path. Its bound is conditional on arbitrary data satisfying every required E_x, so an exponential lattice cardinality does NOT multiply the solver-confidence cost. Intersect the initializer, clean-grid and solver events to obtain success>=1-delta. QED.
+
+This proof keeps the p q term for sigma=0. There is no claim of exact finite-step recovery of arbitrary real x*. Every requested p>0 is achievable with the stated quantization and sample/runtime costs.
+
+8. Transparent sample, noise, contamination and runtime tradeoffs
+
+Let
+  D_p=d log(Csqrt(d)/p)+log(C/delta).
+The fixed block count obeys K=O(eps m+D_p), n>=m/2, and thus
+  B_m<=C_mean[sqrt(eps)+sqrt(D_p/m)].
+Here C_mean is an explicit absolute constant from (6.1), not a hidden model parameter. Conditions (7.1) hold for
+  eps<=c/(1+R^2),
+  m>=C(1+R^2)D_p,
+with absolute, numerically large c,C determined by the stated primitive constants. The initializer additionally needs eps_alg log(e/eps_alg)<=c/(1+R^2) and m>=C(1+R^2)^2[d_++log((1+R^2)/(delta eps_alg))], or more precisely V1 inequality(6.1).
+
+Consequently (7.2) implies the full finite-variance/global-adversary bound
+  dist(x_T,x*) <=p q+C sigma/q [sqrt(eps)+sqrt(D_p/m)].     (8.1)
+This has the usual sigma sqrt(eps)/q contamination floor, an explicitly charged extra log(d/p) in the sampling term, and the requested optimization precision p q. To obtain the contamination-dominated statistical term, take m>=C D_p/eps when eps>0. This extra accuracy sample cost is independent of an assumed fourth moment.
+
+The algorithm makes one scalar scale pass, O(log(1/delta)) PCA runs on the same feature sample, and T=O(log(1/p)) gradient-mean calls, each using the same n rows. Transforming gradient vectors costs O(nd) per query. The complete arithmetic runtime is
+  O(md_+ gamma^(-2) log^4(d_+/eps_alg) log(1/delta)
+       +d_+log^2(1/delta)+m
+       +T * Õ(nd+u_alg Kd)),                              (8.2)
+where gamma=Theta((1+R^2)^(-1)), K<=n (up to the K<=m/2 construction), and u_alg=O(log(T/delta)). The suppressed logarithms in the last term are exactly those of the imported covering-SDP algorithm (constant relative tolerance0.0001; published Section5). For fixed R and fixed desired confidence, this is near-linear in the input md up to log factors in dimension, contamination and requested precision. Dependence on R and eps has NOT been discarded: gamma^(-2)=Theta((1+R^2)^2), and the exact initializer/block inequalities remain part of the guarantee.
+
+Memory: storing the input costs O(md) real numbers. Each refinement call stores K block means and source solver state of Õ(Kd), and the lattice/current iterate needs O(d) numbers. Batch PCA and its repeated candidates contribute the source memory plus O(dlog(1/delta)). These are real-number counts, not a bounded-bit theorem.
+
+9. Precision/access accounting and remaining practical limits
+
+Access: the input consists of m dense sensing vectors and scalar responses, and all mean calls use the fixed same-row prefix. The statistical procedure does not request new data, outlier labels, conditional expectations, a covariance oracle, sigma, x* or a fourth-moment parameter. It computes one new d-vector gradient score per observed pair per iteration; no lattice-wide search is executed.
+
+Output precision: lattice coordinates have spacing rho s/sqrt(d), so representing the output relative to the acquired dyadic scale uses O(log(sqrt(d)/p)) bits per coordinate. The dyadic exponent records the acquired signal scale. If the input is a finite bitstring, reading it costs Omega(total encoded input length), including malicious coordinates of arbitrary bit length. Hence no uniform bit-runtime bound depending only on m,d can be true in the stated unrestricted-adversarial-real model.
+
+Current imported PCA and covering-SDP costs are arithmetic operation counts. A full finite-precision implementation additionally needs (i) encoded input ranges/rounding error, (ii) finite approximations to Gaussian draws and square roots, (iii) solver mantissa/relative tolerance safeguards, and (iv) a quantitative perturbation proof charging all roundoff to the p q term. The source PCA paper discusses bit complexity for its streaming implementation, which is a different interface; it has not been silently transferred to this batch composition. This V2 claims the exact real-arithmetic theorem (7.2)/(8.1)/(8.2), not an implementation performance result.
+
+Practical constants of the published mean theorem are enormous: its explicit808,1200,180000 constants make the sufficient contamination constant and sample factor correspondingly conservative. The theorem is asymptotically dimension-linear and demonstrates a statistical/computational interface, but no practical speedup or measured robustness is claimed. Improved robust-mean constants or later implementations can be substituted only after their deterministic-event/strong-adversary interfaces are audited.
+
+10. Source versus internal status and next checks
+
+Internally derived: exact shifted initialization V1; direct gradient geometry/covariance; dyadic finite-lattice quantifier repair; no-enumeration same-sample refinement; invariant-basin and finite-error bound; all quantitative access/sample/runtime equations above.
+Imported source-established: stable-PCA primitive ICML2023 C.1/Algorithm5, and covariance-oblivious strong-replacement robust mean algorithm AoS2022 Theorem2.1/conditional proof. Source existence is established; correct composition and this new consequence are internal derivations pending blind review.
+Unresolved: complete independent proof review, actual algorithm implementation, full finite-precision bit complexity, best achievable sigma/sample/epsilon constants and lower bounds, novelty/priority.
+No source-level novelty claim follows from live searches. No external expert has validated this result. Finite numerical diagnostics have not yet been performed and would not constitute proof.

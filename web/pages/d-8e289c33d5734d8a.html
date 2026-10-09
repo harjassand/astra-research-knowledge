@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a16_physical_computation/v1.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a16_physical_computation/v1.txt</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre># A16 Phase II, v1: margin-certified analog sensor trigger
+
+Date: 2026-10-09. Scope: one bounded physical-computation candidate. Status is a model-level derivation and numerical diagnostic, not a measured device result or novelty claim.
+
+## Target and exact interface
+
+Given a fixed weight vector `w in R^N`, threshold `theta`, and one simultaneous analog sensor vector `x in [-1,1]^N`, return the single bit
+
+    y = 1{ w^T x - theta &gt;= 0 }.
+
+The promised input class is the margin class
+
+    |z| &gt;= gamma W,  z = w^T x - theta,  W = ||w||_1 &gt; 0,
+
+with known `gamma &gt; 0`; no accuracy guarantee is claimed for inputs inside the margin band. The application is a one-bit threshold trigger on a sensor array (for example, an event detector or linear screening stage) where analog sensor voltages already exist at the array pins. The interface does not take digital inputs for free: sensor generation and the shared input-wire energy are common terms in both implementations; the digital baseline must digitize each analog channel.
+
+## Candidate architecture and complete operation
+
+Use a signed differential conductance array. At query time, open the input isolation switches, short the output integration capacitor `C` to its reference, and reset the one-bit output latch. Close the `N` input switches under a broadcast control line, apply the existing sensor voltages, and integrate the differential output current onto `C` for a fixed interval `t`. Disconnect all sensor branches, compare the resulting capacitor charge with zero using one regenerative latch, emit the bit, discharge `C`, and reset the latch for the next query. Weight programming and a reference-based calibration are setup operations; for `K` queries their measured energies and times are charged as `(E_prog+E_cal)/K` and `(T_prog+T_cal)/K` per query. The conductances persist between queries, so there is no per-query weight rewrite. The protocol has no error-correction retries: it buys the target error rate by choosing `t` from the bound below.
+
+The idealized signed transconductor has signal current `I = lambda V z`, where `lambda` is the conductance scale and `V` the input-drive voltage. Its total Johnson-noise conductance is `G = lambda kappa W`; `kappa &gt;= 1` accounts for the extra conductance of the physical differential encoding. The model includes a worst-case bounded static error `rho W` from weight programming, `epsilon_x W` from sensor encoding, and `epsilon_o W` input-referred comparator offset. Define `mu = gamma-rho-epsilon_x-epsilon_o` and require `mu &gt; 0`. This condition is necessary for the stated uniform margin guarantee; if it fails, an allowed calibration/encoding error can reverse the sign even at zero thermal noise.
+
+The capacitor&#x27;s reset leaves equilibrium charge noise `Q_0 ~ N(0,C k_B T)`. The integrated Johnson noise has variance `2 k_B T G t` under the two-sided white-noise convention. Comparator and sampling noise are represented by an independently measured input-referred charge variance `sigma_r^2`. Thus, under the stated Gaussian model, the worst-case decision error on the margin class is exactly bounded by
+
+    P(error) &lt;= Phi(-lambda V mu W t / sqrt(2 k_B T lambda kappa W t + C k_B T + sigma_r^2)).
+
+For target error `delta &lt; 1/2`, set `q = Phi^{-1}(1-delta)`, `a=lambda V mu W`, `b=2 k_B T lambda kappa W`, and `c=C k_B T+sigma_r^2`. The smallest fixed integration time in this model is the positive root
+
+    t_delta = (q^2 b + sqrt(q^4 b^2 + 4 q^2 a^2 c))/(2 a^2).
+
+This is an exact Gaussian-tail calculation for the specified model, not an asymptotic claim. With `C k_B T=sigma_r^2=0`, it reduces to `t_delta = 2 k_B T kappa q^2/(lambda V^2 mu^2 W)`. The branch-array dissipation is `E_branch = lambda V^2 t sum_i |w_i| x_i^2`, bounded above by `lambda V^2 W t_delta`. The noise-only worst-case read energy therefore saturates at `2 k_B T kappa q^2/mu^2`, independent of `N` when `W` and the margin fraction are normalized. This is only the branch-noise floor.
+
+## Full energy, latency, volume, and digital control
+
+The operation&#x27;s energy ledger is
+
+    E_phys = E_input,common + E_prog/K + E_cal/K
+           + E_branch + Q_max^2/(2C)
+           + E_switch(N) + E_control-wire(N) + E_latch
+           + E_cap-reset-control + E_latch-reset.
+
+Here `Q_max=lambda V W t_delta` is the full-scale charge, so the capacitor must satisfy `Q_max/C &lt;= V_FS`; its `Q_max^2/(2C)` stored energy is later dissipated by the reset. `E_switch(N)` includes every input-isolation gate transition. `E_control-wire(N)` includes charging the broadcast clock/control capacitance. The latch-reset work is at least `k_B T ln 2` for a logically irreversible reset to a known bit state; actual circuit energy must be measured and may be larger. `E_latch`, reset time, and `sigma_r` must come from the actual comparator. The model has no free output ADC: one comparator produces the requested one-bit result. Calibration must establish bounds on `rho`, `epsilon_o`, `sigma_r`, and `kappa`; it is not free or inferred from the readout itself.
+
+The physical latency is
+
+    T_phys = T_reset + T_switch + t_delta + T_latch + T_disconnect + T_rearm.
+
+The active volume is `N` signed conductance cells, `N` input gates, their control wiring, one capacitor, and one comparator/latch. At fixed total conductance and power, the Johnson term gives no latency gain with `N`; increasing `lambda W` can shorten `t_delta` only by increasing conductance, peak power, and physical resource. If each of `N` branches instead keeps a fixed conductance, the apparent `1/N` latency scaling is purchased with `O(N)` aggregate conductance and power. This is not a resource-free speedup.
+
+The matched digital implementation starts from the same analog sensor interface, samples all `N` inputs with `b`-bit ADCs, computes the exact fixed-point weighted sum and threshold, and emits one bit. For uniform quantization on `[-1,1]`, `b &gt;= ceil(log2(2/gamma))` makes the worst-case input quantization contribution at most `gamma W/2`; exact integer accumulation then preserves the promised sign. If ADCs run in parallel, its latency is `T_ADC(b)+T_tree(N,b)` and its active volume includes `N` ADCs and the adder tree. If fewer ADCs are used, the resulting longer latency is charged. Its energy is
+
+    E_digital = E_input,common + N E_ADC(b) + N E_MAC(b,b_w)
+              + E_weight-read(N,b_w) + E_accumulator-reset + E_output-latch/reset.
+
+All symbols are component measurements for a chosen technology, not universal constants. The analog protocol has a strict energy advantage exactly when its full `E_phys` is below this `E_digital`; it has a latency advantage only when the full serial latency above is below the selected digital schedule under matched active volume and peak power. The computed Johnson floor alone does not establish either inequality. The decisive experimentally measurable crossover is
+
+    E_switch(N)+E_control-wire(N)+E_latch+E_reset+E_prog/K+E_cal/K
+      + E_branch + Q_max^2/(2C)
+      &lt; N(E_ADC(b)+E_MAC(b,b_w)) + E_weight-read + E_accumulator-reset,
+
+alongside equal sensor interface, error target, total active volume, and peak power. For fixed per-input switch and control cost, the physical total is at least linear in `N`; an asymptotic `O(1)` system-energy claim is therefore unsupported by this construction.
+
+## Sharp limitation and strongest supported consequence
+
+The deterministic error gate `mu&gt;0` is sharp for the declared worst-case uncertainty set: if `rho+epsilon_x+epsilon_o &gt;= gamma`, choose the error signs opposite the true margin and the physical classifier can return the wrong bit with probability one in the zero-noise limit. In the remaining regime, the Gaussian tail equation is tight for an input attaining the margin and aligned worst-case static error. The thermal term yields the `mu^-2` noise-energy penalty, while the finite capacitor and readout terms can dominate it; increasing precision or reducing the margin cannot be advertised as free.
+
+The useful consequence is a testable design rule for one-bit sensor triggers: use this protocol only for a workload with a certified positive margin, stable calibrated weights, analog sensor outputs, and enough repeated queries to amortize programming/calibration. Measure all peripheral terms and compare with a parallel ADC baseline at the same error, peak power, and volume. The model predicts a `mu^-2` read-energy floor when the capacitor/readout contribution is negligible and a separate capacitor-limited regime otherwise. No actual energy or latency win is claimed before those component measurements.
+
+## Attempts and counterexamples
+
+1. The natural broader claim that analog crossbars compute signed dot products at size-independent reliable energy is false without a margin condition. With `w_i=1/N`, input `x_1=1`, `x_2=-1+1/N`, and all other entries zero, the output can be `z=1/N^2` while `W=1`; the relative condition number `W/|z|=N^2` makes the Johnson energy floor grow as `N^4`. Exact cancellation `z=0` makes a uniform sign guarantee impossible for any nonzero noise.
+2. The common fixed-conductance latency argument is rejected as a resource-matched comparison: total conductance and read power then grow as `N`. With fixed total conductance, this model gives no such `1/N` latency gain.
+3. The candidate&#x27;s per-input switch, control-line, latch, reset, calibration, and full-scale capacitor costs can erase the branch-noise advantage. No numerical inequality for a real chip is established here because no matched component table for this task was acquired.
+4. A stochastic first-passage/early-stop variant was considered but not promoted: comparator monitoring power and reset-state noise would need a new full accounting, and digital interval-based early termination is a necessary matched control.
+
+## Primary literature checked live (2026-10-09)
+
+- Merolla et al., “Energy Scaling Advantages of Resistive Memory Crossbar Based Computation and Its Application to Sparse Coding,” 2015, https://pmc.ncbi.nlm.nih.gov/articles/PMC4701906/. This primary paper already establishes the noise-limited `O(1)` read-energy claim for positive-input/positive-weight fixed-output-precision dot products and discusses the signed centered-input case. It also distinguishes the capacitance-limited regime, models the full crossbar capacitance cost, and explicitly flags drivers, ADCs, access-device limits, device noise, nonlinearity, and parasitic voltage drops. The architecture and broad scaling effect are therefore prior art; this record claims no novelty for them.
+- Wan et al., “A compute-in-memory chip based on resistive random-access memory,” Nature 608 (2022), https://www.nature.com/articles/s41586-022-04992-8. The primary report describes a measured 48-core/3-million-device chip with a voltage-mode neuron performing analog-to-digital conversion and reports hardware inference. It states its MVM energy/delay are peak values at 100% utilization and do not include intermediate data transfer. This confirms that integrated peripheral/readout accounting matters; it does not measure the one-bit margin protocol here.
+- Shanbhag et al., “Fundamental Limits on the Precision of In-memory Architectures,” IEEE ISCAS 2021, https://ieeexplore.ieee.org/document/9256802/. Primary accuracy-limit work already treats circuit nonidealities and ADC precision as first-order constraints. The present Gaussian margin formula is a scoped reconstruction, not a claim that all crossbar precision limitations are new.
+
+## Astra and evidence provenance
+
+Required navigation read: `work/sources/astra/00_START_HERE.txt`. Pinned Astra revision: `939f697c151e779619d4fa7c4e2aee4bc59672fb`. The task-first topic routes searched for analog/physical/thermodynamic computation, Landauer, and reversible computing; no directly relevant review card or proof route appeared, so no Astra claim is used. The repository is read-only. Primary papers above were checked live; their claims remain source-reported.
+
+## Claim status
+
+- Source-reported: passive resistive crossbars implement current-summing dot products; prior art already contains fixed-precision energy-scaling analyses and measured integrated analog CIM systems.
+- Internally derived: the Gaussian fixed-window reliability root, the `mu^-2` noise-only floor, the sharp bounded-error margin gate, and the stated resource-accounting inequality for the idealized differential-conductance model.
+- Numerically diagnosed: see `margin_trigger_diagnostic.py`; simulation samples the declared Gaussian noise model only.
+- Candidate/unverified: a real end-to-end energy-latency win for a sensor trigger after all control, calibration, reset, readout, and volume costs.
+- Unresolved: measured values for conductance drift, comparator noise/energy/reset, high-fanout gate cost, source impedance, full-scale capacitor, and a same-process digital ADC/MAC baseline under equal latency, peak power, and volume. No external validation, novelty, or empirical device result is claimed.
+</pre><p><a href="../assets/79a2a16ec0cf66802f3201a802f844e68750c9852f7fa3c8a936b47303f7574f.txt">Exact original</a></p></html>

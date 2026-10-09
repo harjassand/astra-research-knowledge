@@ -1,0 +1,191 @@
+A27 constructive elliptic solver — Phase IV research record v1
+Date: 2026-10-09
+Scope: an a-posteriori energy certificate for a structured approximate inverse, and an audit of whether known rank-existence and adaptive-multilevel results make it constructible. The requested contrast-polylogarithmic solver is not completed.
+
+## Contract and status
+
+The meaningful finite-input contract used here is: an assembled sparse Dirichlet P1 FEM matrix $A\succ0$, its shape-regular quasi-uniform mesh in a fixed dimension $d$, and a supplied ellipticity lower bound $a_->0$ for the element tensors. The coefficient is normalized so its maximum eigenvalue is at most one, giving $a_-=1/\kappa$ when the coefficient contrast is \(\kappa\). The target is a deterministic or Las Vegas construction of a structured SPD approximate inverse $M$, with total setup, storage, application, local eigensolves and verification costs near-linear in \(n\) times factors polynomial in \(\log n,\log\kappa,\log(1/\varepsilon)\), and a certified relative energy error.
+
+This input contract matters. “Arbitrary measurable \(A(x)\)” alone is not a finite algorithmic input: P1 element matrices require element integrals of $A(x)$, which cannot be recovered exactly from finitely many point queries to an arbitrary measurable function. One must supply the assembled matrix, element averages, or an effective coefficient-integration oracle. All claims below assume the sparse assembled matrix is supplied (or its element tensors can be integrated at stated cost).
+
+Claim status:
+
+- Internally proved: an explicit Frobenius residual certificate for an approximate inverse $M$ implies a one-shot relative energy error bound, without solving the original system or estimating a spectrum.
+- Internally derived: the certificate can be evaluated from a hierarchical representation using block Frobenius calculations, conditional on certified hierarchical arithmetic and rank control.
+- Source-reported: high-contrast Green-function blocks and H-matrix inverse/factor representations have polylogarithmic contrast-dependent ranks under the cited geometric FEM assumptions.
+- Source-reported: a practical recursive H-LU route does not inherit the cited rank theorem; its intermediate ranks are explicitly unknown.
+- Unresolved: how to construct a candidate $M$ from only the sparse FEM input with a guaranteed polylogarithmic rank bound and near-linear charged work. Therefore there is no end-to-end solver claim, matched performance result, or finite-precision solver evidence here.
+- No novelty, priority, or external-validation claim.
+
+## Link to the A02 obstruction
+
+The inspected starting artifacts are `work/applied/a02_elliptic_solver/v1.txt`, `v2.txt`, and `v3.txt`. A02 v1 gives the seven-element, three-free-node rotated-tensor patch and a signed-SDD lower bound. V2 strengthens it to every factor-width-two PSD energy preconditioner and gives the principal-angle inequality
+
+\[
+\operatorname{cond}(B^{-1/2}A_\kappa B^{-1/2})\ge
+\frac{\kappa\|h\|_2^2\rho_k(h)}{\operatorname{tr}C}
+\quad (B=\sum_\ell\beta_\ell g_\ell g_\ell^T,\ \beta_\ell\ge0,\ |\operatorname{supp}g_\ell|\le k<|\operatorname{supp}h|).
+\]
+
+For the explicit triangle patch at $k=2$, the bound is \(\kappa/114\). V2 also notes the exact element factorization has width $d+1$, but applying its inverse is the original solve. V3 audits the H-matrix route and the residual-to-energy lemma, leaving the practical rank-controlled H-LU construction as the decisive gap. A27 therefore targets a certificate for a broad structured inverse; it does not revisit or weaken the A02 lower bound.
+
+## A directly checkable energy certificate
+
+Let \(A\succ0\) and let \(M=M^T\) be any finite matrix represented by an algorithmically applicable structure (for example, an H-matrix). Define
+
+\[
+R:=AMA-A,\qquad E:=A^{-1/2}RA^{-1/2}.
+\]
+
+Since (A) is symmetric,
+
+\[
+E=A^{1/2}MA^{1/2}-I.
+\]
+
+Thus if a computable upper bound \(U\) satisfies \(\|R\|_F\le U\), and a certified lower bound \(\underline\lambda\le\lambda_{\min}(A)\) is available, then
+
+\[
+\|E\|_2\le\|E\|_F
+\le\|A^{-1/2}\|_2^2\|R\|_F
+\le U/\underline\lambda.
+\]
+
+If \(U\le\delta\underline\lambda\) for $0\le\delta<1$, then \(A^{1/2}MA^{1/2}\) lies between \((1-\delta)I\) and $(1+\delta)I$. In particular \(M\succ0\); positivity need not be checked by a separate spectral oracle. For every right-hand side \(b\), with $x^*=A^{-1}b$ and \(\widehat x=Mb\),
+
+\[
+\frac{\|\widehat x-x^*\|_A}{\|x^*\|_A}
+=\frac{\|(A^{1/2}MA^{1/2}-I)A^{-1/2}b\|_2}{\|A^{-1/2}b\|_2}
+\le\delta.
+\]
+
+This is a one-application guarantee. If $M$ is used as a PCG preconditioner, it also gives
+
+\[
+\operatorname{cond}(A^{1/2}MA^{1/2})\le\frac{1+\delta}{1-\delta}.
+\]
+
+No original-system solve is used by the certificate. It requires only sparse products with \(A\), the candidate \(M\), and a lower ellipticity bound. In the inverse-factor variant with square nonsingular \(Z\) and \(M=ZZ^T\), an alternative certificate is \(\|Z^TAZ-I\|_F\le\delta\): the two Gram matrices $Z^TAZ$ and $A^{1/2}ZZ^TA^{1/2}$ have the same eigenvalues. This avoids a small \(\lambda_{\min}\)-scaled absolute tolerance, but requires an explicit applicable factor \(Z\).
+
+### A FEM lower bound for the certificate scale
+
+For a fixed bounded Lipschitz domain, a shape-regular quasi-uniform P1 mesh, homogeneous Dirichlet boundary data, and element tensor eigenvalues bounded below by $a_->0$, finite-element Poincaré and mass-matrix norm equivalence give
+
+\[
+x^TAx\ge a_-\|\nabla u_h\|_{L^2}^2
+\ge c_\Omega a_-\|u_h\|_{L^2}^2
+\ge c_{\Omega,\mathrm{mesh}}a_-h^d\|x\|_2^2.
+\]
+
+Therefore one may use the explicit geometry/shape-regularity bound
+
+\[
+\underline\lambda=c_{\Omega,\mathrm{mesh}}a_-h^d
+\asymp c_{\Omega,\mathrm{mesh}}\frac{1}{\kappa n}
+\]
+
+for fixed \(d\), after normalizing the maximum tensor eigenvalue to one. The constants must be supplied or derived for the mesh family; they are not universal across degenerating elements. The verifier asks for \(U\le c\delta/(\kappa n)\), so the logarithm of the required absolute tolerance is only \(O(\log n+\log\kappa+\log(1/\delta))\). The tolerance can be very small, but its bit precision is still polylogarithmic in the stated parameters if the candidate arithmetic is stable.
+
+### Hierarchical residual acquisition and cost boundary
+
+For a disjoint admissible block partition, the Frobenius norm of each rank-\(r\) block \(UV^T\) is available without expanding its entries:
+
+\[
+\|UV^T\|_F^2=\operatorname{tr}\big((U^TU)(V^TV)\big).
+\]
+
+The work is \(O((|I|+|J|)r^2+r^3)\) for a block \(I\times J\). Summing over an H-tree with \(O(n\log n)\) block positions costs \(O(r^2n\log n)\) for this norm evaluation, up to fixed-dimension and tree constants. Near-field leaves contribute their dense leaf costs. To evaluate \(R=AMA-A\), one can use two sparse-H products, then add the blockwise Frobenius-squared values over the disjoint partition. For bounded-degree P1 sparsity and a tree closed under fixed-size mesh halos, each sparse-H product preserves a rank bounded by a fixed multiple of the H ranks; the resulting arithmetic is \(O(\operatorname{poly}(r)n\log^q n)\) for a fixed \(q\). This is a conditional implementation cost: the exact rank growth and truncation schedule must be proved for the chosen tree and product routine.
+
+An auditable finite-precision check would use outward-rounded interval arithmetic or a proved backward-error enclosure. If \(\widetilde R\) is the computed hierarchical residual and \(\eta_{\rm trunc}+\eta_{\rm round}\) rigorously encloses all compression and rounding error in Frobenius norm, accept only when
+
+\[
+U:=\|\widetilde R\|_F+\eta_{\rm trunc}+\eta_{\rm round}
+\le\delta\underline\lambda.
+\]
+
+If candidate and intermediate norms are polynomially bounded in \(n,\kappa\) (as a passing certificate implies for a normalized inverse factor), standard ball arithmetic needs \(O(\log n+\log\kappa+\log(1/\delta))\) guard bits beyond input precision. This is a design requirement; no interval H-arithmetic implementation was built in this phase.
+
+## Candidate adaptive procedure, and the missing theorem
+
+The following is a test-and-reject wrapper, not an end-to-end solver yet.
+
+1. Build a geometric cluster tree and an H-matrix format for the inverse, with a declared rank cap \(r\) and a certified truncation/error ledger.
+2. Generate a symmetric trial inverse \(M_r\) using a proposed H-inverse or H-Cholesky routine. All local solves, rank truncations, and precision are charged.
+3. Form an interval enclosure of \(A M_r A-A\) using sparse-H products. Add truncation and rounding bounds.
+4. Return the solver only if \(U_r\le\delta\underline\lambda\). Otherwise increase \(r\), increase precision, or report failure.
+
+Acceptance is conclusive and does not rely on rank-existence claims. Rejection is safe but does not prove that no good H-inverse exists. A termination theorem would require proving that the specific sparse-input construction finds a passing \(M_r\) at a rank \(r=\operatorname{poly}(\log n,\log\kappa,\log(1/\delta))\), with total charged work near-linear. That is precisely what is not supplied below.
+
+If a global relative Frobenius inverse approximation \(\|M-A^{-1}\|_F\le\epsilon\|A^{-1}\|_F\) were available, then
+
+\[
+\|AMA-A\|_F\le\|A\|_2^2\|M-A^{-1}\|_F
+\le\epsilon\|A\|_2^2\frac{\sqrt n}{\lambda_{\min}(A)}.
+\]
+
+Thus it suffices to take
+
+\[
+\epsilon\le\frac{\delta\lambda_{\min}(A)^2}{\sqrt n\,\|A\|_2^2}.
+\]
+
+For a quasi-uniform fixed-dimensional FEM matrix, \(\operatorname{cond}_2(A)\le C\kappa h^{-2}\), so this precision is still logarithmic in \(n,\kappa,1/\delta\). This translates inverse-approximation existence into a certificate-scale accuracy requirement. It does not construct the approximant, and the blockwise continuum estimates must still be transferred to a global discrete Frobenius estimate with their constants and aggregation factors tracked.
+
+## Literature audit and matched baselines
+
+### High-contrast H-matrix existence route
+
+The pinned source used is M. Bebendorf, “Low-rank approximation of elliptic boundary value problems with high-contrast coefficients,” arXiv:1410.3717v1 (2014), https://arxiv.org/html/1410.3717v1, especially Theorems 1, 3, and 4. Theorem 1 proves an \(A\)-independent rank \(O(|\log\varepsilon|^{d+1})\) approximation in a coefficient-dependent flux norm. Its construction defines the local space \(Y_K=\mathcal P_{D,K}V_p\): the projection \(\mathcal P_{D,K}\) is the orthogonal projection onto local \(\mathcal L\)-harmonic functions. The defining functions solve local coefficient-dependent PDE problems. The proof is an existence/approximation argument; the paper does not charge a sparse-input algorithm for these projections.
+
+Theorem 4 converts to ordinary \(L^2\) block error and gives
+
+\[
+k\le c_\eta\left\lceil\left|\log\left(\varepsilon\kappa_A^{-3/2}/\lambda_{\max}\right)\right|\right\rceil^{d+1}.
+\]
+
+After scaling \(\lambda_{\max}=1\), this is polylogarithmic in coefficient contrast and tolerance. Theorem 4 is for separated continuum Green-function blocks. The paper explains that such estimates yield H-matrix inverse and factor approximation results by prior arguments, but it does not give the rank-controlled, finite-precision factor routine required here. The 2014 theorem is a genuine representability escape from A02's bounded-support obstruction, not an acquisition-to-solution theorem.
+
+### Strong H-LU/H-Cholesky baseline
+
+The primary preprint for M. Bebendorf, “Why finite element discretizations can be factored by triangular hierarchical matrices,” MPI MiS Preprint 8/2005, published as SIAM J. Numer. Anal. 45(4), 1472–1494 (2007), DOI 10.1137/060669747, is https://files-www.mis.mpg.de/mpi-typo3/preprints/2005/preprint2005_8.pdf. Theorem 3.4 transfers rank-\(k\) approximants to exact admissible Schur complements into approximate H-LU factors of a suitably perturbed matrix. Its rank formula includes powers of \(\log n\), the approximation tolerance, and \(\log(n\rho_n\operatorname{cond}_2(A))\).
+
+The paper's Section 4 gives a practical recursive H-LU based on truncated H-arithmetic, but Remark 4.1 states that its intermediate blockwise rank \(k\) is unknown and that the paper's theory cannot be applied because its computed Schur complements are approximate. The reported rank dependence is supported there by numerical experiments. This is the exact implementation gap targeted by A27. A rank cap plus residual rejection gives a safe verifier but no success/termination bound.
+
+### Adaptive spectral multilevel baseline
+
+J. Willems, “Robust Multilevel Solvers for High-Contrast Anisotropic Multiscale Problems,” RICAM Report 2012-17, https://www.ricam.oeaw.ac.at/files/reports/12/rep12-17.pdf (published in J. Comput. Appl. Math. 251 (2013), 47–60), gives a contrast-robust AMLI framework using local generalized eigenvalue problems. It is an appropriate strong multigrid baseline for convergence under high-contrast anisotropic coefficients. Section 6.2 charges preprocessing and states that dense eigenproblems solved by LAPACK cost cubic time in their sizes; near-linear preprocessing follows only when eigenproblem sizes remain uniformly bounded. Online linear complexity also assumes bounded local direct-solve sizes and algebraic coarsening factor \(c_a>\nu\). Remark 4.11 says the eigenproblem sizes should stay small, while the analysis and experiments do not prove a contrast-uniform bound on those sizes for arbitrary coefficients. The paper itself says understanding space dimension dependence on coefficient geometry and anisotropy is ongoing work. Thus robust iteration counts alone do not meet A27's total-cost contract.
+
+### Cost comparison under the requested contract
+
+| Method | Robustness evidence | Charged cost status for arbitrary tensor contrast |
+|---|---|---|
+| Recursive truncated H-LU/H-Cholesky | H ranks are often small empirically; candidate can be checked by the residual certificate above | No theorem controlling the intermediate ranks or finite-precision residual; may reject or exceed the cap |
+| Adaptive spectral AMLI/GenEO | Contrast-robust spectral convergence under the method's hypotheses | Eigenproblems cost \(O(m^3)\) with dense solvers; no general bound here on their sizes or the algebraic coarsening ratio |
+| A27 certificate wrapper | A passing candidate has a rigorous relative energy guarantee | Verification is near-linear up to rank/polylog factors if hierarchical products are rank-controlled; candidate generation remains unresolved |
+| Chebyshev/CG with FEM spectral bounds | Constructive and certifiable with contrast-dependent iteration count | Standard bound is \(O(n\sqrt{\kappa(A)}\log(1/\varepsilon))\), so it misses polylogarithmic contrast |
+
+## Finite precision and failure cases
+
+The certificate is a theorem only if all arithmetic enclosures are valid. A floating-point residual with no rounding/truncation bound is not a certificate. Hierarchical residual products can create rank growth; silently truncating them invalidates the Frobenius upper bound. If the ellipticity lower bound or mesh-shape constants are absent, \(\underline\lambda\) is unavailable and the \(AMA-A\) certificate cannot be accepted. A factor-Gram certificate avoids \(\underline\lambda\) but moves the burden to constructing and stably applying \(Z\).
+
+The certificate verifies the operator approximation, not novelty or complexity. A dense exact Cholesky factor would pass with \(M=A^{-1}\) but costs \(O(n^3)\) arithmetic and \(O(n^2)\) storage. A rank-existence theorem does not imply the candidate generator reaches a passing point. If the H rank cap fails, the safe result is “no certificate at this cap,” not a lower bound on the best hierarchical rank.
+
+No new executable solver or finite-precision experiment was produced. The A02 rational patch check remains evidence only for A02's local matrix identities and is not reused as solver evidence. No matched numerical run against H-LU and adaptive AMLI was done.
+
+## Decisive remaining gate
+
+Construct a deterministic sparse-input method that produces an inverse or inverse factor \(M\) (or $Z$) in a geometrically nested representation and prove all of:
+
+1. At every recursive update, rank is bounded by an explicit polynomial in \(\log n,\log\kappa,\log(1/\delta)\); this must cover perturbed/intermediate Schur complements, not only exact Schur complements.
+2. Local harmonic basis acquisition and every generalized eigenproblem are solved with charged near-linear/polylog-contrast work, with a proof that dimensions/coarsening remain bounded on the stated arbitrary tensor class.
+3. Truncation and finite precision propagate to the certificate \(U\le\delta\underline\lambda\) in total \(O(n\operatorname{polylog}(n\kappa/\delta))\) work and storage.
+4. The resulting accepted \(M\) gives \(\|Mb-A^{-1}b\|_A\le\varepsilon\|A^{-1}b\|_A\) for every \(b\), including the A02 simplex orientation/channel family.
+
+The certificate lemma closes the “how can a proposed hierarchical object be certified without solving \(A\)?” subgap. It does not close the construction/rank-control gap. Overall A27 status: partial internal theorem; primary objective not achieved.
+
+## Provenance
+
+- Astra source checkout read-only pin: `work/sources/astra` commit `939f697c151e779619d4fa7c4e2aee4bc59672fb`; read `AGENTS.md` and `00_START_HERE.txt` first. No relevant upstream elliptic card was found in the searched topic/frontier routes; the live primary papers above control the source claims.
+- A02 source artifacts read: `work/applied/a02_elliptic_solver/v1.txt`, `v2.txt`, `v3.txt`.
+- PDF inspection skill: `/Users/harjas/.codex/skills/pdf/SKILL.md`. Primary preprints were read/extracted from temporary files under `work/tmp/pdfs/`; the Astra source checkout was not modified.
+- No external communication, publication, subagents, goals, schedules, commits, or canonical-source edits.

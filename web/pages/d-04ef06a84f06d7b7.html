@@ -1,0 +1,184 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a14_causal_experiments/diagnostics.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a14_causal_experiments/diagnostics.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite diagnostics for the A14 causal-policy boundary record.
+
+This is an executable illustration, not a data experiment or proof checker.
+It verifies hand-built finite counterexamples and runs the stated direct-policy
+confidence race on synthetic Bernoulli rewards.
+&quot;&quot;&quot;
+
+from collections import defaultdict
+from fractions import Fraction
+import math
+import random
+
+
+def observed_iv_distribution(model):
+    &quot;&quot;&quot;Return the exact law of (Z,D,Y) when Z is fair and D(z)=z.&quot;&quot;&quot;
+    law = defaultdict(Fraction)
+    for z in (0, 1):
+        d = z
+        y = d if model == &quot;treatment-causes-y&quot; else z
+        law[(z, d, y)] += Fraction(1, 2)
+    return dict(law)
+
+
+def verify_iv_nonidentification():
+    m1 = observed_iv_distribution(&quot;treatment-causes-y&quot;)
+    m2 = observed_iv_distribution(&quot;assignment-directly-causes-y&quot;)
+    assert m1 == m2 == {
+        (0, 0, 0): Fraction(1, 2),
+        (1, 1, 1): Fraction(1, 2),
+    }
+    # M1 has Y(z,d)=d and M2 has Y(z,d)=z.
+    ate_m1 = Fraction(1, 1)
+    ate_m2 = Fraction(0, 1)
+    assert ate_m1 != ate_m2
+    return m1, ate_m1, ate_m2
+
+
+def verify_observational_nonidentification():
+    obs_1 = {(0, 0): Fraction(1, 2), (1, 1): Fraction(1, 2)}
+    obs_2 = {(0, 0): Fraction(1, 2), (1, 1): Fraction(1, 2)}
+    # O1: X=U,Y=U gives do-means (1/2,1/2).
+    do_o1 = (Fraction(1, 2), Fraction(1, 2))
+    # O2: X=U,Y=X gives do-means (0,1).
+    do_o2 = (Fraction(0, 1), Fraction(1, 1))
+    assert obs_1 == obs_2
+    assert do_o1 != do_o2
+    return obs_1, do_o1, do_o2
+
+
+def bernoulli_kl(p, q):
+    if p == 0:
+        return -math.log1p(-q)
+    if p == 1:
+        return -math.log(q)
+    if q == 0 or q == 1:
+        return math.inf
+    return p * math.log(p / q) + (1 - p) * math.log((1 - p) / (1 - q))
+
+
+def radius(n, k, delta):
+    if n &lt;= 0:
+        return math.inf
+    return math.sqrt(math.log(k * math.pi**2 * n * n / (3 * delta)) / (2 * n))
+
+
+def uniform_pac_count(k, epsilon, delta):
+    &quot;&quot;&quot;A finite fixed allocation with P(regret &gt; epsilon) &lt;= delta.&quot;&quot;&quot;
+    n = math.ceil(2 * math.log(2 * k / delta) / epsilon**2)
+    assert 2 * k * math.exp(-n * epsilon**2 / 2) &lt;= delta
+    return n
+
+
+def cost_aware_race(sample_arm, costs, epsilon, delta, deployment_costs=None,
+                    validation_costs=None, max_samples=None):
+    &quot;&quot;&quot;Run the anytime confidence race described in v1.txt.
+
+    `sample_arm(i)` must return a fresh/reset independent value in [0,1]. The
+    caller is responsible for acquiring and documenting the randomization and
+    reset validity represented by validation_costs.
+    &quot;&quot;&quot;
+    k = len(costs)
+    if k &lt; 2 or epsilon &lt;= 0 or not 0 &lt; delta &lt; 1 or any(c &lt;= 0 for c in costs):
+        raise ValueError(&quot;need K&gt;=2, epsilon&gt;0, delta in (0,1), and positive costs&quot;)
+    penalties = deployment_costs or [0.0] * k
+    fixed = validation_costs or [0.0] * k
+    if len(penalties) != k or len(fixed) != k:
+        raise ValueError(&quot;all per-arm arrays must have length K&quot;)
+
+    cap = 1
+    while radius(cap, k, delta) &gt; epsilon / 2:
+        cap += 1
+
+    counts = [0] * k
+    sums = [0.0] * k
+    active = set(range(k))
+    total_samples = 0
+
+    def interval(i):
+        if counts[i] == 0:
+            return -math.inf, math.inf
+        m = sums[i] / counts[i] - penalties[i]
+        r = radius(counts[i], k, delta)
+        return m - r, m + r
+
+    while True:
+        bounds = {i: interval(i) for i in active}
+        best_lower = max(bounds[i][0] for i in active)
+        leader = max(active, key=lambda i: bounds[i][0])
+
+        # Remove only actions whose confidence intervals certify them to be
+        # more than epsilon below a surviving action.
+        active = {
+            i for i in active
+            if bounds[i][1] &gt;= best_lower - epsilon
+        }
+        bounds = {i: interval(i) for i in active}
+        leader = max(active, key=lambda i: bounds[i][0])
+        if len(active) == 1 or max(bounds[i][1] for i in active) - bounds[leader][0] &lt;= epsilon:
+            selected = leader
+            break
+
+        if all(counts[i] &gt;= cap for i in active):
+            selected = max(active, key=lambda i: sums[i] / counts[i] - penalties[i])
+            break
+
+        eligible = [i for i in active if counts[i] &lt; cap]
+        # Radius/sqrt(cost) is a cost-aware urgency heuristic; correctness
+        # comes from the anytime intervals and finite fallback, not this rule.
+        chosen = max(eligible, key=lambda i: radius(counts[i], k, delta) / math.sqrt(costs[i]))
+        y = float(sample_arm(chosen))
+        if not 0 &lt;= y &lt;= 1:
+            raise ValueError(&quot;sample_arm must return a value in [0,1]&quot;)
+        sums[chosen] += y
+        counts[chosen] += 1
+        total_samples += 1
+        if max_samples is not None and total_samples &gt;= max_samples:
+            raise RuntimeError(&quot;max_samples reached before the finite-confidence stop&quot;)
+
+    total_cost = sum(fixed) + sum(costs[i] * counts[i] for i in range(k))
+    return {
+        &quot;selected&quot;: selected,
+        &quot;counts&quot;: counts,
+        &quot;active&quot;: sorted(active),
+        &quot;samples&quot;: total_samples,
+        &quot;charged_cost&quot;: total_cost,
+        &quot;fixed_validation_cost&quot;: sum(fixed),
+        &quot;sample_cost&quot;: sum(costs[i] * counts[i] for i in range(k)),
+        &quot;uniform_fallback_cap_per_active_arm&quot;: cap,
+    }
+
+
+def main():
+    iv_law, ate_1, ate_2 = verify_iv_nonidentification()
+    obs_law, do_1, do_2 = verify_observational_nonidentification()
+    epsilon, delta, k = 0.02, 0.05, 16
+    kl = bernoulli_kl(0.5, 0.5 + 4 * epsilon)
+    exact_kl = -0.5 * math.log1p(-64 * epsilon**2)
+    assert abs(kl - exact_kl) &lt; 1e-14
+    per_competitor_lb = math.log((1 - delta) / delta) * (1 - 2 * delta) / kl
+    n_uniform = uniform_pac_count(k, 0.1, delta)
+
+    rng = random.Random(20261009)
+    means = [0.15, 0.30, 0.90, 0.20]
+    costs = [1.0, 2.0, 3.0, 1.5]
+    sampler = lambda i: 1.0 if rng.random() &lt; means[i] else 0.0
+    race = cost_aware_race(
+        sampler, costs, epsilon=0.18, delta=0.05,
+        deployment_costs=[0.0, 0.0, 0.0, 0.0],
+        validation_costs=[2.0, 2.0, 2.0, 2.0],
+    )
+
+    print(&quot;IV observed law:&quot;, iv_law)
+    print(&quot;receipt ATEs with that same law:&quot;, ate_1, ate_2)
+    print(&quot;observational law:&quot;, obs_law)
+    print(&quot;do-means with that same law:&quot;, do_1, do_2)
+    print(&quot;K=16, epsilon=.02, delta=.05 lower bound per competitor:&quot;,
+          f&quot;{per_competitor_lb:.3f} samples&quot;)
+    print(&quot;K=16, epsilon=.1, delta=.05 uniform samples per arm:&quot;, n_uniform)
+    print(&quot;seeded adaptive race:&quot;, race)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/6a9d340494c46993d006e05f4a0a9ba2e6283faed78ed85244aeb06e3b6361fa.py">Exact original</a></p></html>

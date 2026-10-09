@@ -1,0 +1,115 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/sol/observable_separation/evaluate_witness_v1.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/sol/observable_separation/evaluate_witness_v1.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Evaluate the frozen witness using only observed seven-letter words.
+
+--word accepts the observations at -t-h,-t,-h,0,h,t,t+h.
+--counts accepts a CSV with no header: seven letters followed by count.
+No hidden chain or source-model artifact is read.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from decimal import Decimal, localcontext
+import argparse
+import csv
+import json
+
+
+def dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+
+
+def mv(a, b):
+    return [dot(row, b) for row in a]
+
+
+def raw(first, second):
+    return ([F(first == 0)]
+            + [F(first == 0 and second == k + 1) for k in range(5)]
+            + [F(first == k) for k in range(1, 6)])
+
+
+def decimal_string(value):
+    with localcontext() as ctx:
+        ctx.prec = 70
+        return str(Decimal(value.numerator) / Decimal(value.denominator))
+
+
+class Witness:
+    def __init__(self, filename):
+        data = json.loads(Path(filename).read_text())
+        self.F = [[F(x) for x in row] for row in data[&#x27;feature_matrix&#x27;]]
+        self.D = [[F(x) for x in row] for row in data[&#x27;facet_residual_matrix&#x27;]]
+        self.K = [[F(x) for x in row] for row in data[&#x27;K&#x27;]]
+        self.alpha = [F(x) for x in data[&#x27;quadratic_coefficients&#x27;]]
+        self.constants = {name: F(value) for name, value in data[&#x27;constants&#x27;].items()}
+
+    def __call__(self, word):
+        if len(word) != 7 or any(x not in range(6) for x in word):
+            raise ValueError(&#x27;A word must have exactly seven letters in {0,...,5}.&#x27;)
+        before = raw(word[3], word[2])
+        after = raw(word[3], word[4])
+        shifted_before = raw(word[1], word[0])
+        shifted_after = raw(word[5], word[6])
+        fm = mv(self.F, before)
+        fp = mv(self.F, after)
+        fsm = mv(self.F, shifted_before)
+        fsp = mv(self.F, shifted_after)
+        gm = [x - y for x, y in zip(fsm, mv(self.K, fm))]
+        gp = [x - y for x, y in zip(fsp, mv(self.K, fp))]
+        dm = mv(self.D, before)
+        dp = mv(self.D, after)
+        p0 = F(word[3] == 0)
+        s2 = fm[1] * fp[1] + fm[2] * fp[2]
+        a = self.alpha
+        sq = (a[0] * p0 + a[1] * (fm[1] + fp[1]) / 2
+              + a[2] * (fm[2] + fp[2]) / 2 + a[3] * fm[1] * fp[1]
+              + a[4] * (fm[1] * fp[2] + fm[2] * fp[1]) / 2)
+        rh = dot(dm, dp)
+        rt = dot(gm, gp)
+        c = self.constants
+        value = (sq + c[&#x27;circle_coefficient&#x27;] * (p0 - s2)
+                 + (c[&#x27;finite_facet_coefficient&#x27;] + c[&#x27;tau&#x27;]) * (p0 + s2)
+                 + c[&#x27;tau&#x27;] * p0 + c[&#x27;Lambda&#x27;] * rh + c[&#x27;Mu&#x27;] * rt) / c[&#x27;M&#x27;]
+        if abs(value) &gt; 1:
+            raise RuntimeError(&#x27;The supplied coefficient artifact violates its certified range.&#x27;)
+        return value
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--certificate&#x27;, default=str(Path(__file__).with_name(&#x27;witness_rational_v1.json&#x27;)))
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(&#x27;--word&#x27;, nargs=7, type=int)
+    group.add_argument(&#x27;--counts&#x27;)
+    args = parser.parse_args()
+    witness = Witness(args.certificate)
+    if args.word is not None:
+        value = witness(args.word)
+        result = {&#x27;word&#x27;: args.word, &#x27;statistic&#x27;: decimal_string(value), &#x27;range&#x27;:[-1,1]}
+    else:
+        total = 0
+        weighted = F(0)
+        rows = 0
+        with open(args.counts, newline=&#x27;&#x27;) as handle:
+            for row in csv.reader(handle):
+                if len(row) != 8:
+                    raise ValueError(&#x27;Each CSV row must contain seven letters and one count.&#x27;)
+                values = [int(x) for x in row]
+                count = values[7]
+                if count &lt; 0:
+                    raise ValueError(&#x27;Counts must be nonnegative integers.&#x27;)
+                weighted += count * witness(values[:7])
+                total += count
+                rows += 1
+        if total == 0:
+            raise ValueError(&#x27;At least one observation window is required.&#x27;)
+        value = weighted / total
+        delta = witness.constants[&#x27;normalized_gap&#x27;]
+        result = {&#x27;windows&#x27;:total, &#x27;distinct_rows&#x27;:rows, &#x27;mean_statistic&#x27;:decimal_string(value),
+                  &#x27;below_target_half_gap&#x27;:value &lt; -delta / 2,
+                  &#x27;half_gap_threshold&#x27;:decimal_string(-delta / 2),
+                  &#x27;sampling_note&#x27;:&#x27;Confidence requires independent stationary windows or a separate dependence analysis.&#x27;}
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/8567348b500e4b8ff0772e6854f21e3f6c55dfe2feda11deb30e02d98060fe35.py">Exact original</a></p></html>

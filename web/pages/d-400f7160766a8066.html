@@ -1,0 +1,310 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/n13_replication_fidelity/markov_cluster_bound.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/n13_replication_fidelity/markov_cluster_bound.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Markov burst/reset and reversible-write-cost diagnostics.
+
+The q, alpha model is an effective post-selection incorporation process, not
+an empirical fit to a particular polymerase. The run-reset calculation is exact
+for the stated renewal policy. The example values are illustrative only.
+&quot;&quot;&quot;
+from math import lgamma, log, log2
+
+
+def h2(p: float) -&gt; float:
+    if p in (0.0, 1.0):
+        return 0.0
+    return -p * log2(p) - (1.0 - p) * log2(1.0 - p)
+
+
+def stationary_markov(q: float, alpha: float) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Stationary error-chain cluster and equilibrium-register work terms.
+
+    q = P(E_i=1), alpha = P(E_{i+1}=1 | E_i=1).
+    Wrong bases are uniform among the other 3 choices, independently given E.
+    The register reference is initially uniform over equal-energy 4-letter
+    sequences. Work units are kBT*ln(2) per reported bit.
+    &quot;&quot;&quot;
+    if not (0.0 &lt; q &lt; 1.0 and 0.0 &lt;= alpha &lt; 1.0):
+        raise ValueError(&quot;require 0&lt;q&lt;1 and 0&lt;=alpha&lt;1&quot;)
+    beta = q * (1.0 - alpha) / (1.0 - q)
+    if beta &gt; 1.0:
+        raise ValueError(&quot;alpha is incompatible with a stochastic stationary chain&quot;)
+    assert abs(q - ((1.0 - q) * beta + q * alpha)) &lt; 1e-12
+    h_rate = (1.0 - q) * h2(beta) + q * h2(alpha)
+    iid_bits = 2.0 - h2(q) - q * log2(3.0)
+    corr_bits = h2(q) - h_rate
+    write_bits = 2.0 - q * log2(3.0) - h_rate
+    assert abs(write_bits - iid_bits - corr_bits) &lt; 1e-12
+    return {
+        &quot;q&quot;: q,
+        &quot;alpha&quot;: alpha,
+        &quot;beta&quot;: beta,
+        &quot;cluster_start_rate&quot;: q * (1.0 - alpha),
+        &quot;mean_cluster_length&quot;: 1.0 / (1.0 - alpha),
+        &quot;cluster_tail_ge_10&quot;: alpha ** 9,
+        &quot;error_entropy_rate_bits&quot;: h_rate,
+        &quot;iid_register_write_bound_bits_per_site&quot;: iid_bits,
+        &quot;error_correlation_excess_bits_per_site&quot;: corr_bits,
+        &quot;total_register_write_bound_bits_per_site&quot;: write_bits,
+    }
+
+
+def work_bits_per_site(q: float, alpha: float) -&gt; float:
+    &quot;&quot;&quot;Reversible work lower bound in bits/site for the uniform-register model.&quot;&quot;&quot;
+    row = stationary_markov(q, alpha)
+    return row[&quot;total_register_write_bound_bits_per_site&quot;]
+
+
+def max_cluster_tail_at_work(q: float, budget_bits: float, m: int) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Sharp max P(L&gt;=m) in the homogeneous first-order Markov class.
+
+    Positive clustering means alpha&gt;=q. Work is monotone increasing with alpha
+    there, so bisection gives the exact Markov-class frontier. The bound is a
+    reversible-work lower bound for a randomized equal-energy output register,
+    not a prediction for an autonomous biological copier.
+    &quot;&quot;&quot;
+    if m &lt; 1:
+        raise ValueError(&quot;m must be positive&quot;)
+    iid = work_bits_per_site(q, q)
+    if budget_bits &lt; iid - 1e-12:
+        raise ValueError(&quot;budget is below the independent-channel work bound&quot;)
+    high_work = 2.0 - q * log2(3.0)
+    if budget_bits &gt;= high_work:
+        alpha_max = 1.0
+    else:
+        lo, hi = q, 1.0
+        for _ in range(100):
+            mid = (lo + hi) / 2.0
+            if work_bits_per_site(q, mid) &lt;= budget_bits:
+                lo = mid
+            else:
+                hi = mid
+        alpha_max = lo
+    return {
+        &quot;iid_work_floor_bits_per_site&quot;: iid,
+        &quot;work_budget_bits_per_site&quot;: budget_bits,
+        &quot;max_alpha_in_Markov_class&quot;: alpha_max,
+        &quot;max_cluster_tail_ge_m&quot;: alpha_max ** (m - 1),
+        &quot;max_mean_cluster_length&quot;: float(&quot;inf&quot;) if alpha_max == 1.0 else 1.0 / (1.0 - alpha_max),
+    }
+
+
+def latent_bad_blocks(q: float, bad_fraction: float, block_length: int,
+                      run_length: int) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Stationary block-mode counterexample to exponential cluster suppression.
+
+    Independently for each block, choose a bad mode with probability
+    `bad_fraction`; in that mode every site is wrong. In the good mode, errors
+    are iid Bernoulli(q0), where q0 preserves the marginal error rate q. A
+    uniform random block phase makes the bi-infinite process stationary. Wrong
+    base identities are assumed iid uniform among the three alternatives.
+
+    The block entropy is computed exactly from its probability mass function.
+    `excess_correlation_bits_per_site` is the extra equilibrium-register write
+    bound over an iid error channel with the same q. The controller&#x27;s finite
+    phase/mode reset and chemical implementation are not included.
+    &quot;&quot;&quot;
+    lam = bad_fraction
+    b = block_length
+    m = run_length
+    if not (0.0 &lt; q &lt; 1.0 and 0.0 &lt; lam &lt; q and q &lt; 1.0):
+        raise ValueError(&quot;require 0 &lt; bad_fraction &lt; q &lt; 1&quot;)
+    if not (1 &lt;= m &lt;= b):
+        raise ValueError(&quot;require 1 &lt;= run_length &lt;= block_length&quot;)
+    q0 = (q - lam) / (1.0 - lam)
+    p_all = lam + (1.0 - lam) * q0 ** b
+    h_block = -p_all * log2(p_all)
+    ln2 = log(2.0)
+    # Every non-all-one error word has probability
+    # (1-lambda) q0^k (1-q0)^(B-k); sum by Hamming weight.
+    for k in range(b):
+        log_count = (lgamma(b + 1) - lgamma(k + 1) - lgamma(b - k + 1)) / ln2
+        log_word_probability = (log2(1.0 - lam) + k * log2(q0)
+                                + (b - k) * log2(1.0 - q0))
+        layer_probability = 2.0 ** (log_count + log_word_probability)
+        h_block -= layer_probability * log_word_probability
+    h_rate = h_block / b
+    iid_error_entropy = h2(q)
+    write_floor = 2.0 - q * log2(3.0) - iid_error_entropy
+    excess = iid_error_entropy - h_rate
+    # Exact m-window event under a uniform random block phase. A window that
+    # crosses one boundary splits into independent suffix/prefix events.
+    p_m_lower = lam * (b - m + 1) / b
+    p_m_exact = ((b - m + 1) * (lam + (1.0 - lam) * q0 ** m)
+                 + sum((lam + (1.0 - lam) * q0 ** k)
+                       * (lam + (1.0 - lam) * q0 ** (m-k))
+                       for k in range(1, m))) / b
+    return {
+        &quot;q&quot;: q,
+        &quot;bad_mode_fraction&quot;: lam,
+        &quot;good_mode_error_probability&quot;: q0,
+        &quot;block_length&quot;: float(b),
+        &quot;run_length&quot;: float(m),
+        &quot;error_entropy_rate_bits_per_site&quot;: h_rate,
+        &quot;iid_error_entropy_bits_per_site&quot;: iid_error_entropy,
+        &quot;excess_correlation_bits_per_site&quot;: excess,
+        &quot;iid_uniform_register_copy_floor_bits_per_site&quot;: write_floor,
+        &quot;excess_as_fraction_of_iid_copy_floor&quot;: excess / write_floor,
+        &quot;all_error_window_probability_lower_bound&quot;: p_m_lower,
+        &quot;all_error_window_probability_exact&quot;: p_m_exact,
+        &quot;iid_all_error_window_probability&quot;: q ** m,
+    }
+
+
+def universal_run_tail_envelope(q: float, excess_correlation_bits: float,
+                                run_length: int) -&gt; dict[str, float]:
+    &quot;&quot;&quot;A non-sharp stationary-process bound on run tails from q and entropy.
+
+    For q&lt;=1/2, the entropy rate h=h2(q)-c is at most
+    G_q(s)=H(E_i|E_{i-1}), where s=P(0,1)=P(1,0) is the run-start density.
+    Inverting the increasing branch of G_q gives a lower bound on s. The
+    mass-transport identity q=s E[L] and Markov&#x27;s inequality then bound
+    P(L&gt;=m | run start) &lt;= q/(m s). This is universal but generally loose.
+    &quot;&quot;&quot;
+    if not (0.0 &lt; q &lt;= 0.5):
+        raise ValueError(&quot;require 0 &lt; q &lt;= 1/2&quot;)
+    if run_length &lt; 1:
+        raise ValueError(&quot;run_length must be positive&quot;)
+    if not (0.0 &lt;= excess_correlation_bits &lt;= h2(q) + 1e-12):
+        raise ValueError(&quot;correlation excess must be between zero and h2(q)&quot;)
+    h_rate = max(0.0, h2(q) - excess_correlation_bits)
+
+    def pair_conditional_entropy(s: float) -&gt; float:
+        return ((1.0 - q) * h2(s / (1.0 - q))
+                + q * h2(1.0 - s / q))
+
+    lo, hi = 0.0, q * (1.0 - q)
+    for _ in range(100):
+        mid = (lo + hi) / 2.0
+        if pair_conditional_entropy(mid) &gt;= h_rate:
+            hi = mid
+        else:
+            lo = mid
+    start_rate_lower = hi
+    tail_upper = (1.0 if start_rate_lower == 0.0 else
+                  min(1.0, q / (run_length * start_rate_lower)))
+    return {
+        &quot;error_entropy_rate_bits_per_site&quot;: h_rate,
+        &quot;run_start_rate_lower_bound&quot;: start_rate_lower,
+        &quot;run_tail_upper_bound&quot;: tail_upper,
+    }
+
+
+def reset_after_run(q: float, alpha: float, m: int) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Exact renewal quantities if m consecutive errors are clipped and retried.
+
+    A burst begins after a correct base with probability beta. Within a burst,
+    each next base is wrong with probability alpha. On reaching length m, the
+    last m bases are excised and the same segment is retried from a clean state.
+    A terminal accepted burst therefore has length 0,...,m-1.
+    &quot;&quot;&quot;
+    if m &lt; 2:
+        raise ValueError(&quot;m must be at least 2&quot;)
+    beta = q * (1.0 - alpha) / (1.0 - q)
+    reset_prob = beta * alpha ** (m - 1)
+    accepted_prob = 1.0 - reset_prob
+    # Unnormalised terminal-episode probabilities; reset attempts are geometric.
+    masses = {ell: beta * (1.0 - alpha) * alpha ** (ell - 1)
+              for ell in range(1, m)}
+    out_length_num = (1.0 - beta) + sum(mass * (ell + 1)
+                                          for ell, mass in masses.items())
+    error_num = sum(ell * mass for ell, mass in masses.items())
+    cluster_num = sum(masses.values())
+    q_after = error_num / out_length_num
+    cluster_rate = cluster_num / out_length_num
+    resets_per_output = reset_prob / out_length_num
+    extra_insertions_per_output = m * resets_per_output
+    return {
+        &quot;beta&quot;: beta,
+        &quot;per_episode_reset_probability&quot;: reset_prob,
+        &quot;accepted_episode_probability&quot;: accepted_prob,
+        &quot;terminal_output_length_numerator&quot;: out_length_num,
+        &quot;post_reset_error_rate_before_MMR&quot;: q_after,
+        &quot;post_reset_cluster_rate&quot;: cluster_rate,
+        &quot;reset_events_per_output_base&quot;: resets_per_output,
+        &quot;extra_dNTP_insertions_per_output_base&quot;: extra_insertions_per_output,
+        &quot;copy_insertions_per_output_base&quot;: 1.0 + extra_insertions_per_output,
+        &quot;max_accepted_error_run&quot;: m - 1,
+    }
+
+
+def uncorrected_long_run_errors(q: float, alpha: float, m: int) -&gt; float:
+    &quot;&quot;&quot;Error fraction in runs of length &gt;=m in the no-reset Markov process.&quot;&quot;&quot;
+    return q * alpha ** (m - 1) * (m - (m - 1) * alpha)
+
+
+def illustrative_costs(q: float, alpha: float, m: int, flank: int,
+                       copy_attempt: float, reset_setup: float,
+                       mmr_setup: float, mmr_per_base: float,
+                       sitewise_setup: float) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Compare a reset+patch design to a same-raw-channel sitewise editor.
+
+    Costs are arbitrary kBT units, not measured biological parameters.
+    The baseline makes one first-pass copy and performs one replacement per
+    initial mismatch. The candidate pays failed m-base reset insertions,
+    resets, one MMR setup per surviving run, and patch synthesis. Patches are
+    assumed not to overlap; epsilon=0 is the idealized perfect-repair case.
+    &quot;&quot;&quot;
+    reset = reset_after_run(q, alpha, m)
+    q0 = q * alpha ** (m - 1) * (m - (m - 1) * alpha)
+    # Exact expression above is long-run error mass left in unreset runs &gt;=m.
+    # The candidate clips all such runs; MMR repairs every accepted run &lt;m.
+    patched_bases = reset[&quot;post_reset_error_rate_before_MMR&quot;] + flank * reset[&quot;post_reset_cluster_rate&quot;]
+    candidate_cost = (
+        copy_attempt * reset[&quot;copy_insertions_per_output_base&quot;]
+        + reset_setup * reset[&quot;reset_events_per_output_base&quot;]
+        + mmr_setup * reset[&quot;post_reset_cluster_rate&quot;]
+        + mmr_per_base * patched_bases
+    )
+    sitewise_cost = (
+        copy_attempt * (1.0 + q)
+        + sitewise_setup * q
+        + mmr_per_base * q
+    )
+    return {
+        &quot;no_reset_long_run_error_fraction_if_MMR_limit_is_m_minus_1&quot;: q0,
+        &quot;candidate_expected_patched_bases_per_output&quot;: patched_bases,
+        &quot;candidate_fuel_units_per_output&quot;: candidate_cost,
+        &quot;sitewise_fuel_units_per_output&quot;: sitewise_cost,
+        &quot;candidate_minus_sitewise_fuel&quot;: candidate_cost - sitewise_cost,
+    }
+
+
+def main() -&gt; None:
+    q, alpha, m = 0.01, 0.99, 3
+    for label, a in ((&quot;iid&quot;, q), (&quot;bursty&quot;, alpha), (&quot;isolated-errors&quot;, 0.0)):
+        row = stationary_markov(q, a)
+        print(label)
+        for key, value in row.items():
+            print(f&quot;  {key}={value:.12g}&quot;)
+    frontier = max_cluster_tail_at_work(q, work_bits_per_site(q, q) + 0.01, m=10)
+    print(&quot;Markov-class work/cluster frontier; 0.01 extra bits/site&quot;)
+    for key, value in frontier.items():
+        print(f&quot;  {key}={value:.12g}&quot;)
+    reset = reset_after_run(q, alpha, m)
+    print(&quot;run-reset policy; m=3&quot;)
+    for key, value in reset.items():
+        print(f&quot;  {key}={value:.12g}&quot;)
+    block = latent_bad_blocks(q=0.01, bad_fraction=0.001,
+                              block_length=1000, run_length=10)
+    print(&quot;stationary latent bad-block counterexample&quot;)
+    for key, value in block.items():
+        print(f&quot;  {key}={value:.12g}&quot;)
+    run_bound = universal_run_tail_envelope(
+        q=block[&quot;q&quot;],
+        excess_correlation_bits=block[&quot;excess_correlation_bits_per_site&quot;],
+        run_length=10,
+    )
+    print(&quot;universal conditional run-tail envelope for block example&quot;)
+    for key, value in run_bound.items():
+        print(f&quot;  {key}={value:.12g}&quot;)
+    costs = illustrative_costs(q, alpha, m, flank=25,
+                               copy_attempt=1.0, reset_setup=5.0,
+                               mmr_setup=4.0, mmr_per_base=1.0,
+                               sitewise_setup=4.0)
+    print(&quot;illustrative cost comparison; arbitrary kBT units&quot;)
+    for key, value in costs.items():
+        print(f&quot;  {key}={value:.12g}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/fef7074f5e51a29e52b28760686eecdecc5eda5f2076653c56d4c6f0c83946a4.py">Exact original</a></p></html>

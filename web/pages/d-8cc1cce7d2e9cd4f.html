@@ -1,0 +1,123 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_01/n21_climate_response/verify_n21_protocol.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_01/n21_climate_response/verify_n21_protocol.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Synthetic checks for N21&#x27;s intervention-identification calculation.
+
+These calculations are not observations or a calibrated Earth model. Requires NumPy.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import numpy as np
+
+
+def rk4_ramp_feedback(b: float, dt: float = 0.01) -&gt; tuple[np.ndarray, float, float]:
+    &quot;&quot;&quot;3-box energy-balanced EBM; return eigenvalues, TCR-like mean, max budget residual.&quot;&quot;&quot;
+    cs, cd, lam, kappa, tau = 8.0, 100.0, 1.3, 0.7, 300.0
+    f_2x = 3.9
+    t_2x = float(np.log(2.0) / np.log(1.01))
+    t_end = t_2x + 10.0
+    a = np.array(
+        [
+            [-(lam + kappa) / cs, kappa / cs, b / cs],
+            [kappa / cd, -kappa / cd, 0.0],
+            [1.0 / tau, 0.0, -1.0 / tau],
+        ],
+        dtype=float,
+    )
+    forcing_direction = np.array([1.0 / cs, 0.0, 0.0])
+    eig = np.linalg.eigvals(a)
+    x = np.zeros(3)
+    mean_values: list[float] = []
+    max_budget_residual = 0.0
+    nsteps = round(t_end / dt)
+
+    def derivative(t: float, state: np.ndarray) -&gt; np.ndarray:
+        forcing = f_2x * t / t_2x
+        return a @ state + forcing_direction * forcing
+
+    for i in range(nsteps):
+        t = i * dt
+        k1 = derivative(t, x)
+        k2 = derivative(t + dt / 2, x + dt * k1 / 2)
+        k3 = derivative(t + dt / 2, x + dt * k2 / 2)
+        k4 = derivative(t + dt, x + dt * k3)
+        x += (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+
+        # Directly check C_s*Tdot_s + C_d*Tdot_d = F-lambda*T_s+b*z.
+        f_now = f_2x * (t + dt) / t_2x
+        dx_now = derivative(t + dt, x)
+        lhs = cs * dx_now[0] + cd * dx_now[1]
+        rhs = f_now - lam * x[0] + b * x[2]
+        max_budget_residual = max(max_budget_residual, abs(lhs - rhs))
+
+        if t_2x - 10.0 &lt; t + dt &lt;= t_2x + 10.0:
+            mean_values.append(float(x[0]))
+
+    return eig, float(np.mean(mean_values)), max_budget_residual
+
+
+def randomized_input_check(seed: int = 21, n: int = 400_000, max_lag: int = 8) -&gt; None:
+    &quot;&quot;&quot;Recover a hidden-state impulse response by cross-covariance with white input.&quot;&quot;&quot;
+    rng = np.random.default_rng(seed)
+    a = np.array([[0.94, 0.04], [0.01, 0.985]])
+    b = np.array([0.10, 0.005])
+    c = np.array([1.0, 0.0])
+    noise_scale = np.array([0.12, 0.025])
+    u = rng.choice(np.array([-1.0, 1.0]), size=n)
+    w = rng.normal(size=(n, 2)) * noise_scale
+    x = np.zeros((n + 1, 2))
+    for t in range(n):
+        x[t + 1] = a @ x[t] + b * u[t] + w[t]
+    y = (x @ c)[1:]
+    burn = 2_000
+    u = u[burn:]
+    y = y[burn:]
+    u -= u.mean()
+    y -= y.mean()
+    var_u = float(np.mean(u * u))
+
+    print(&quot;randomized input check (lag, exact G, cross-covariance estimate)&quot;)
+    a_power = np.eye(2)
+    for lag in range(1, max_lag + 1):
+        if lag &gt; 1:
+            a_power = a_power @ a
+        exact = float(c @ a_power @ b)
+        n_pairs = len(u) - lag + 1
+        estimate = float(np.mean(y[lag - 1 : lag - 1 + n_pairs] * u[:n_pairs]) / var_u)
+        print(f&quot;  {lag:2d}  {exact: .7f}  {estimate: .7f}&quot;)
+
+    # Under no intervention, B does not enter the state law. Reuse the same A,
+    # innovations, and initial condition: B and 2B have exactly the same passive y.
+    x0 = np.zeros(2)
+    y_passive_1 = np.empty(n)
+    y_passive_2 = np.empty(n)
+    for t in range(n):
+        x0 = a @ x0 + w[t]
+        y_passive_1[t] = c @ x0
+        y_passive_2[t] = c @ x0
+    y_passive_2 -= y_passive_1  # exact pathwise difference under shared innovations
+    print(&quot;max passive-output difference for forcing couplings B and 2B:&quot;,
+          float(np.max(np.abs(y_passive_2))))
+    print(&quot;causal impulse at lag 1 for B and 2B:&quot;, float(c @ b), float(c @ (2 * b)))
+
+
+def main() -&gt; None:
+    cs, cd, lam, kappa, tau = 8.0, 100.0, 1.3, 0.7, 300.0
+    del cs, cd, kappa, tau
+    f_2x = 3.9
+    means: list[float] = []
+    for b in (0.0, 0.8):
+        eig, tcr20, residual = rk4_ramp_feedback(b)
+        means.append(tcr20)
+        ecs = f_2x / (lam - b)
+        times = sorted(1.0 / abs(float(ev.real)) for ev in eig if ev.real &lt; 0)
+        print(f&quot;b={b:.1f}: ECS={ecs:.3f} K; 20-y mean={tcr20:.6f} K&quot;)
+        print(f&quot;  low-frequency restoring feedback={lam-b:.3f} W m^-2 K^-1&quot;)
+        print(&quot;  decay times (years):&quot;, &quot;, &quot;.join(f&quot;{v:.2f}&quot; for v in times))
+        print(f&quot;  maximum differential budget residual={residual:.3e} W m^-2&quot;)
+    print(f&quot;20-y mean difference (b=0.8 minus b=0): {means[1]-means[0]:.6f} K&quot;)
+    randomized_input_check()
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/3d3ed872432507cca041d0b0d827a65421e3d3248352586a6f460b304c27fbfc.py">Exact original</a></p></html>

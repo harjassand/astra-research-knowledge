@@ -1,0 +1,153 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_01/n13_replication_fidelity/markov_cluster_bound.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_01/n13_replication_fidelity/markov_cluster_bound.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Markov burst/reset and reversible-write-cost diagnostics.
+
+The q, alpha model is an effective post-selection incorporation process, not
+an empirical fit to a particular polymerase. The run-reset calculation is exact
+for the stated renewal policy. The example values are illustrative only.
+&quot;&quot;&quot;
+from math import log2
+
+
+def h2(p: float) -&gt; float:
+    if p in (0.0, 1.0):
+        return 0.0
+    return -p * log2(p) - (1.0 - p) * log2(1.0 - p)
+
+
+def stationary_markov(q: float, alpha: float) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Stationary error-chain cluster and equilibrium-register work terms.
+
+    q = P(E_i=1), alpha = P(E_{i+1}=1 | E_i=1).
+    Wrong bases are uniform among the other 3 choices, independently given E.
+    The register reference is initially uniform over equal-energy 4-letter
+    sequences. Work units are kBT*ln(2) per reported bit.
+    &quot;&quot;&quot;
+    if not (0.0 &lt; q &lt; 1.0 and 0.0 &lt;= alpha &lt; 1.0):
+        raise ValueError(&quot;require 0&lt;q&lt;1 and 0&lt;=alpha&lt;1&quot;)
+    beta = q * (1.0 - alpha) / (1.0 - q)
+    if beta &gt; 1.0:
+        raise ValueError(&quot;alpha is incompatible with a stochastic stationary chain&quot;)
+    assert abs(q - ((1.0 - q) * beta + q * alpha)) &lt; 1e-12
+    h_rate = (1.0 - q) * h2(beta) + q * h2(alpha)
+    iid_bits = 2.0 - h2(q) - q * log2(3.0)
+    corr_bits = h2(q) - h_rate
+    write_bits = 2.0 - q * log2(3.0) - h_rate
+    assert abs(write_bits - iid_bits - corr_bits) &lt; 1e-12
+    return {
+        &quot;q&quot;: q,
+        &quot;alpha&quot;: alpha,
+        &quot;beta&quot;: beta,
+        &quot;cluster_start_rate&quot;: q * (1.0 - alpha),
+        &quot;mean_cluster_length&quot;: 1.0 / (1.0 - alpha),
+        &quot;cluster_tail_ge_10&quot;: alpha ** 9,
+        &quot;error_entropy_rate_bits&quot;: h_rate,
+        &quot;iid_register_write_bound_bits_per_site&quot;: iid_bits,
+        &quot;error_correlation_excess_bits_per_site&quot;: corr_bits,
+        &quot;total_register_write_bound_bits_per_site&quot;: write_bits,
+    }
+
+
+def reset_after_run(q: float, alpha: float, m: int) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Exact renewal quantities if m consecutive errors are clipped and retried.
+
+    A burst begins after a correct base with probability beta. Within a burst,
+    each next base is wrong with probability alpha. On reaching length m, the
+    last m bases are excised and the same segment is retried from a clean state.
+    A terminal accepted burst therefore has length 0,...,m-1.
+    &quot;&quot;&quot;
+    if m &lt; 2:
+        raise ValueError(&quot;m must be at least 2&quot;)
+    beta = q * (1.0 - alpha) / (1.0 - q)
+    reset_prob = beta * alpha ** (m - 1)
+    accepted_prob = 1.0 - reset_prob
+    # Unnormalised terminal-episode probabilities; reset attempts are geometric.
+    masses = {ell: beta * (1.0 - alpha) * alpha ** (ell - 1)
+              for ell in range(1, m)}
+    out_length_num = (1.0 - beta) + sum(mass * (ell + 1)
+                                          for ell, mass in masses.items())
+    error_num = sum(ell * mass for ell, mass in masses.items())
+    cluster_num = sum(masses.values())
+    q_after = error_num / out_length_num
+    cluster_rate = cluster_num / out_length_num
+    resets_per_output = reset_prob / out_length_num
+    extra_insertions_per_output = m * resets_per_output
+    return {
+        &quot;beta&quot;: beta,
+        &quot;per_episode_reset_probability&quot;: reset_prob,
+        &quot;accepted_episode_probability&quot;: accepted_prob,
+        &quot;terminal_output_length_numerator&quot;: out_length_num,
+        &quot;post_reset_error_rate_before_MMR&quot;: q_after,
+        &quot;post_reset_cluster_rate&quot;: cluster_rate,
+        &quot;reset_events_per_output_base&quot;: resets_per_output,
+        &quot;extra_dNTP_insertions_per_output_base&quot;: extra_insertions_per_output,
+        &quot;copy_insertions_per_output_base&quot;: 1.0 + extra_insertions_per_output,
+        &quot;max_accepted_error_run&quot;: m - 1,
+    }
+
+
+def uncorrected_long_run_errors(q: float, alpha: float, m: int) -&gt; float:
+    &quot;&quot;&quot;Error fraction in runs of length &gt;=m in the no-reset Markov process.&quot;&quot;&quot;
+    return q * alpha ** (m - 1) * (m - (m - 1) * alpha)
+
+
+def illustrative_costs(q: float, alpha: float, m: int, flank: int,
+                       copy_attempt: float, reset_setup: float,
+                       mmr_setup: float, mmr_per_base: float,
+                       sitewise_setup: float) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Compare a reset+patch design to a same-raw-channel sitewise editor.
+
+    Costs are arbitrary kBT units, not measured biological parameters.
+    The baseline makes one first-pass copy and performs one replacement per
+    initial mismatch. The candidate pays failed m-base reset insertions,
+    resets, one MMR setup per surviving run, and patch synthesis. Patches are
+    assumed not to overlap; epsilon=0 is the idealized perfect-repair case.
+    &quot;&quot;&quot;
+    base = stationary_markov(q, alpha)
+    reset = reset_after_run(q, alpha, m)
+    q0 = q * alpha ** (m - 1) * (m - (m - 1) * alpha)
+    # Exact expression above is long-run error mass left in unreset runs &gt;=m.
+    # The candidate clips all such runs; MMR repairs every accepted run &lt;m.
+    patched_bases = reset[&quot;post_reset_error_rate_before_MMR&quot;] + flank * reset[&quot;post_reset_cluster_rate&quot;]
+    candidate_cost = (
+        copy_attempt * reset[&quot;copy_insertions_per_output_base&quot;]
+        + reset_setup * reset[&quot;reset_events_per_output_base&quot;]
+        + mmr_setup * reset[&quot;post_reset_cluster_rate&quot;]
+        + mmr_per_base * patched_bases
+    )
+    sitewise_cost = (
+        copy_attempt * (1.0 + q)
+        + sitewise_setup * q
+        + mmr_per_base * q
+    )
+    return {
+        &quot;no_reset_long_run_error_fraction_if_MMR_limit_is_m_minus_1&quot;: q0,
+        &quot;candidate_expected_patched_bases_per_output&quot;: patched_bases,
+        &quot;candidate_fuel_units_per_output&quot;: candidate_cost,
+        &quot;sitewise_fuel_units_per_output&quot;: sitewise_cost,
+        &quot;candidate_minus_sitewise_fuel&quot;: candidate_cost - sitewise_cost,
+    }
+
+
+def main() -&gt; None:
+    q, alpha, m = 0.01, 0.99, 3
+    for label, a in ((&quot;iid&quot;, q), (&quot;bursty&quot;, alpha), (&quot;isolated-errors&quot;, 0.0)):
+        row = stationary_markov(q, a)
+        print(label)
+        for key, value in row.items():
+            print(f&quot;  {key}={value:.12g}&quot;)
+    reset = reset_after_run(q, alpha, m)
+    print(&quot;run-reset policy; m=3&quot;)
+    for key, value in reset.items():
+        print(f&quot;  {key}={value:.12g}&quot;)
+    costs = illustrative_costs(q, alpha, m, flank=25,
+                               copy_attempt=1.0, reset_setup=5.0,
+                               mmr_setup=4.0, mmr_per_base=1.0,
+                               sitewise_setup=4.0)
+    print(&quot;illustrative cost comparison; arbitrary kBT units&quot;)
+    for key, value in costs.items():
+        print(f&quot;  {key}={value:.12g}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/838e5e3ab581eb62188a9cab8220d56787b6f6b833e4f2871d3ea5528dd1725d.py">Exact original</a></p></html>

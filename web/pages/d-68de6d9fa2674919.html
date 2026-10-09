@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/t25_exchange_snapshot/finite_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/t25_exchange_snapshot/finite_checks.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Small exhaustive checks accompanying v1.txt; not proofs of the lemmas.&quot;&quot;&quot;
+
+from collections import Counter
+from fractions import Fraction
+from itertools import permutations, product
+from math import factorial
+
+
+def rank_one_greedy(items):
+    &quot;&quot;&quot;Unit-weight U_{1,3}, with labels breaking ties increasingly.&quot;&quot;&quot;
+    return {min(items)} if items else set()
+
+
+def snapshot_before_target(initial_bits, order, target, accepted_only):
+    C = {i for i, bit in enumerate(initial_bits) if bit}
+    accepted = set()
+    for t, e in enumerate(order):
+        if t == target:
+            return frozenset(C)
+        C_next = C ^ {e}
+        finalized = set(accepted) if accepted_only else set(order[:t])
+        passes = (rank_one_greedy(C) &amp; finalized) == (
+            rank_one_greedy(C_next) &amp; finalized
+        )
+        if passes:
+            # Real value is the complement of the initial sample bit.
+            if e not in C and e in rank_one_greedy(C_next):
+                accepted.add(e)
+            C = C_next
+    raise ValueError(&quot;target must be a virtual step in the order&quot;)
+
+
+def check_accepted_only_bias():
+    order = (1, 0, 2)
+    all_finalized = Counter(
+        snapshot_before_target(bits, order, 2, False)
+        for bits in product((0, 1), repeat=3)
+    )
+    accepted_only = Counter(
+        snapshot_before_target(bits, order, 2, True)
+        for bits in product((0, 1), repeat=3)
+    )
+    assert set(all_finalized.values()) == {1}
+    assert accepted_only == Counter(
+        {
+            frozenset({1}): 2,
+            frozenset({1, 2}): 2,
+            frozenset({0}): 1,
+            frozenset({0, 2}): 1,
+            frozenset(): 1,
+            frozenset({2}): 1,
+        }
+    )
+    assert frozenset({0, 1}) not in accepted_only
+    assert frozenset({0, 1, 2}) not in accepted_only
+    print(&quot;accepted-only rank-one snapshot check: PASS&quot;)
+    print(&quot;  all-finalized:&quot;, dict(all_finalized))
+    print(&quot;  accepted-only:&quot;, dict(accepted_only))
+
+
+def check_candidate_flip_identity():
+    &quot;&quot;&quot;Exhaust the identity for a rank-one exact optimizer at p=1/3.&quot;&quot;&quot;
+    weights = (5, 4, 2)
+    n = len(weights)
+    p, q = Fraction(1, 3), Fraction(2, 3)
+
+    def H(S):
+        return frozenset({max(S, key=lambda i: (weights[i], -i))}) if S else frozenset()
+
+    def prob(S):
+        return p ** len(S) * q ** (n - len(S))
+
+    lhs = Fraction(0)
+    rhs_inner = Fraction(0)
+    for mask in range(1 &lt;&lt; n):
+        P = frozenset(i for i in range(n) if mask &gt;&gt; i &amp; 1)
+        candidates = [
+            e for e in range(n)
+            if e not in P and e in H(P | {e})
+        ]
+        lhs += prob(P) * sum(weights[e] for e in candidates)
+        rhs_inner += prob(P) * sum(weights[e] for e in H(P))
+    assert lhs == (q / p) * rhs_inner
+    assert lhs == Fraction(154, 27)
+    print(&quot;candidate flip identity check: PASS&quot;, &quot;lhs=&quot;, lhs)
+
+
+def check_k_blocker_probability(max_k=6):
+    &quot;&quot;&quot;Enumerate orders of one target plus k distinct blockers.&quot;&quot;&quot;
+    for k in range(1, max_k + 1):
+        universe = tuple(range(k + 1))  # target is 0
+        wins = sum(order[0] == 0 for order in permutations(universe))
+        assert Fraction(wins, factorial(k + 1)) == Fraction(1, k + 1)
+    print(f&quot;distinct-blocker probability check, k=1..{max_k}: PASS&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    check_accepted_only_bias()
+    check_candidate_flip_identity()
+    check_k_blocker_probability()
+</pre><p><a href="../assets/c74aafd0cfcfa91cd604cff884362e0c0d353de86cb6186ec1024443e1a0a80c.py">Exact original</a></p></html>

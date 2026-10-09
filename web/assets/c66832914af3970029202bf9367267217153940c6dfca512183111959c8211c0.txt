@@ -1,0 +1,172 @@
+# A17 v1 — one-message private inference for paired recurrent-event studies
+
+Status: internally derived candidate theorem; finite diagnostics will be recorded separately below. Novelty, optimality outside the stated noninteractive pure-LDP model, and external validation are unresolved. No claim of priority is made.
+
+## 1. Target and obstruction
+
+The target is inference from paired, repeated event counts when a participant is the privacy unit, subject-specific event rates are unbounded, and the population can have an infinite-mean frailty distribution. A direct private release of a count or count difference has no finite global sensitivity. Clipping it requires a tail assumption or incurs a tail-bias term. Fitting a separate random effect is also not an acceptable escape: the mixing law may be arbitrary and can have no moments.
+
+There is a more basic identifiability obstruction for a population average of individual log rate ratios. If a population stratum has both arm rates zero, its individual rate ratio cannot be learned from any data, private or otherwise. Even if zero rates are excluded, rates can approach zero arbitrarily closely, so uniform inference for an unweighted average log ratio has no uniform information lower bound. The protocol below therefore estimates an explicitly event-positive estimand. It does not label that estimand as the arithmetic mean treatment effect.
+
+## 2. Scientific model and estimand
+
+There are n independently sampled participants. Each participant supplies a paired assay under control and treatment, with equal known exposure duration T>0. The two arm labels are randomized in the paired design; interference and carryover are absent. Participant i has arbitrary nonnegative latent rates (Lambda_i0,Lambda_i1). Conditional on these rates,
+
+    N_i0 ~ Poisson(T Lambda_i0),   N_i1 ~ Poisson(T Lambda_i1), independently.
+
+The latent rate pairs are iid from an unrestricted distribution G on [0,infinity)^2. In particular, E_G[Lambda_i0] or E_G[Lambda_i1] may be infinite. The paired counts are generally dependent after integrating out G. Write
+
+    q_i = 1 - exp(-T(Lambda_i0+Lambda_i1)),
+    p_i = Lambda_i1/(Lambda_i0+Lambda_i1) when Lambda_i0+Lambda_i1>0,
+    Q = E_G[q_i],
+    p_* = E_G[q_i p_i]/Q,     beta_* = log(p_*/(1-p_*)).
+
+The product q_i p_i is defined as zero when both rates are zero. Assume Q>=rho>0. For a finite beta_* accuracy statement also assume the public parameter range beta_* in [-B,B], where B is known. The p_* statement needs no such compactness assumption.
+
+Interpretation: choose a participant uniformly, condition on that participant having at least one event in the pooled pair, then choose one pooled event uniformly. p_* is the probability that the selected event came from the treated arm; beta_* is its log odds. This is a causal event-allocation contrast for the paired randomized assay. When Lambda_i1=exp(beta)Lambda_i0 for every i, beta_*=beta exactly, regardless of the frailty distribution. Under heterogeneous arm ratios, beta_* is a q_i-weighted log-odds contrast and need not equal E[log(Lambda_i1/Lambda_i0)].
+
+The useful sufficient property is the Poisson thinning identity. Let K_i=N_i0+N_i1. Given K_i and the latent rates, N_i1 is Binomial(K_i,p_i). If K_i>0 and one event is sampled uniformly from the K_i events, its arm label is Bernoulli(p_i), independent of K_i and of the magnitude of the latent rates. Thus the selected category Z_i in {empty,control,treatment} obeys
+
+    Pr(Z_i=empty) = 1-Q,
+    Pr(Z_i=treatment) = Q p_*,
+    Pr(Z_i=control) = Q(1-p_*).
+
+This identity does not require finite count moments. It also shows why the event-positive target is identifiable from one category per participant while an unweighted individual effect is not.
+
+## 3. Protocol and exact privacy model
+
+Privacy is pure, noninteractive, one-message epsilon-local differential privacy for the whole participant record X_i=(N_i0,N_i1) in N_0^2. The privacy comparison is over every pair x,x' in N_0^2, with no bound on either count. The participant sends one 2-bit symbol; the analyst may know which participant sent it. The public inputs are n, T, the paired design, epsilon in (0,1], rho, and B. No private count, frailty, event label, or event total is public. This is not a shuffle-amplified or trusted-aggregator claim.
+
+For each participant:
+
+1. If K_i=0 set Z_i=empty. Otherwise sample J_i~Binomial(1,N_i1/K_i); set Z_i=treatment if J_i=1, else control. This is exactly uniform sampling of one pooled event without enumerating events.
+2. Apply 3-symbol randomized response. Let r=exp(epsilon)/(exp(epsilon)+2), s=1/(exp(epsilon)+2), and c=r-s. Report Y_i=Z_i with probability r, and each of the two other symbols with probability s.
+
+For any fixed output symbol y and any raw pair x, Pr(Y_i=y|X_i=x) is a convex combination of r and s, hence lies in [s,r]. Therefore, for every x,x',
+
+    Pr(Y_i=y|x) / Pr(Y_i=y|x') <= r/s = exp(epsilon).
+
+Summing over output subsets proves pure epsilon-LDP for the entire paired count record. This proof covers the random event-selection step: its output is a mixture of the three randomized-response columns, and every mixture remains in [s,r]. There is one release per participant, so the per-person longitudinal composition cost is exactly epsilon, not epsilon times the number of periods or events. If a participant releases another message in a later wave, ordinary sequential composition applies to the full transcript.
+
+## 4. Estimator and finite-sample guarantee
+
+Let C_T and C_C be the numbers of reports equal to treatment and control. Define
+
+    A_i = 1{Y_i=treatment} - 1{Y_i=control},
+    B_i = 1{Y_i=treatment or control},
+    A = sum_i A_i,    D = sum_i B_i - 2 n s.
+
+Direct calculation gives
+
+    E[A_i] = c E[q_i(2p_i-1)],
+    E[B_i] = 2s + c Q,
+    E[A] = n c Q (2p_*-1),
+    E[D] = n c Q.
+
+Also E[A_i^2]=E[B_i]=2s+cQ_i for a fixed participant, where Q_i=q_i; hence Var(A_i),Var(B_i) are each at most 2s+cQ_i. Independence across participants gives total variance at most V=n(2s+cQ) under iid sampling; the same bound with Q=n^{-1}sum_i q_i holds conditional on a fixed heterogeneous rate array.
+
+For delta in (0,1), set L=log(4/delta), V=n(2s+cQ), and
+
+    t_delta = sqrt(2 V L) + (2/3)L.
+
+Bernstein's inequality, applied to A_i (range length 2) and B_i (range length 1), and a union bound imply with probability at least 1-delta that
+
+    |A - n c Q (2p_*-1)| <= t_delta,
+    |D - n c Q| <= t_delta.
+
+If n c Q >= 2 t_delta, D is positive on this event. Then
+
+    |A/D - (2p_*-1)|
+      = |(A-EA) - (2p_*-1)(D-ED)| / D
+      <= 2 t_delta/(n c Q-t_delta)
+      <= 4 t_delta/(n c Q).
+
+Let u_B=tanh(B/2), project A/D to [-u_B,u_B] (set it to zero if D<=0), and output beta_hat=2 atanh(projected value). Projection cannot increase error because the true 2p_*-1 lies in this interval. Since d(2 atanh u)/du=2/(1-u^2),
+
+    Pr( |beta_hat-beta_*| <= 8 t_delta/[n c Q (1-u_B^2)] ) >= 1-delta,
+
+whenever n c Q >= 2t_delta. An implementable confidence interval replaces Q by the public lower bound rho and V by n, since 2s+cQ<=2s+c=(exp(epsilon)+1)/(exp(epsilon)+2)<1. If n c rho < 2(sqrt(2n log(4/delta))+(2/3)log(4/delta)), return the full interval [-B,B]; otherwise the clipped estimator and radius
+
+    R_delta = 8 [sqrt(2n log(4/delta))+(2/3)log(4/delta)]
+              / [n c rho (1-u_B^2)]
+
+give uniform coverage at least 1-delta. For p_*, use p_hat=(1+project_{[-1,1]}(A/D))/2; its absolute error is at most 2t_delta/(n c Q), with no B assumption.
+
+For epsilon<=1, c=(exp(epsilon)-1)/(exp(epsilon)+2)>=epsilon/(exp(1)+2)>epsilon/5. Thus, once n is at least a universal constant times log(1/delta)/(epsilon^2 rho^2), the confidence radius is at most C_B sqrt(log(1/delta))/(epsilon rho sqrt(n)). The dependence on epsilon, rho, and n is the sharp frontier below, up to numerical constants. The privacy mechanism and estimator take O(1) arithmetic operations after the two counts are locally available; the exact bit complexity is O(log(1+N_i0)+log(1+N_i1)) for reading the two integer counts and one Bernoulli draw. Communication is one 2-bit category per participant. The server uses O(n) time and O(1) streaming memory (or O(1) aggregate counters).
+
+## 5. Matching local-privacy lower bound
+
+Consider the homogeneous submodel Lambda_i1=exp(beta)Lambda_i0. Fix rho<=1/2 and set mu=-log(1-rho). For each beta in {+a,-a}, choose
+
+    T Lambda_i0 = mu/(1+exp(beta)),
+    T Lambda_i1 = mu exp(beta)/(1+exp(beta)).
+
+Then K_i~Poisson(mu) under both hypotheses, q_i=rho, p_i=logistic(beta), and beta_*=beta. The nuisance rate is allowed to differ between the hypotheses because it is unknown to the analyst. Couple the two raw records by drawing the same K_i and K_i independent uniform variables for event marks. The chance that at least one mark differs is at most E[K_i]|p_+-p_-|. For a<=1/4, logistic's derivative bound 1/4 gives |p_+-p_-|<=a/2, and mu<=2rho, so
+
+    TV(P_+,P_-) <= rho a.
+
+Here P_+,P_- are the complete raw-count laws, not just the three-symbol reductions.
+
+For any one-message epsilon-LDP channel Q on the full count-pair domain, let f_x(y) be the output density at raw record x with respect to a common dominating measure, m(y)=inf_x f_x(y), and M(y)=sup_x f_x(y). The domain is countable; LDP implies M<=exp(epsilon)m almost everywhere. For any input laws P_+,P_-, their output densities g_+,g_- satisfy
+
+    |g_+(y)-g_-(y)| <= TV(P_+,P_-) [M(y)-m(y)],
+    g_-(y) >= m(y),
+    integral m(y)dy <= 1.
+
+Consequently chi-square(g_+||g_-) <= (exp(epsilon)-1)^2 TV(P_+,P_-)^2, and KL(g_+||g_-) is no larger. For n independent users, KL of the full transcript is at most n(exp(epsilon)-1)^2 rho^2 a^2. For epsilon<=1, exp(epsilon)-1<2epsilon. Set a=1/(16 epsilon rho sqrt(n)); when a<=1/4 and beta range contains [-a,a], the transcript KL is at most 1/64. Pinsker and Le Cam then imply that every estimator has probability at least 0.45 of error at least a/2 under one of the two hypotheses. Therefore a universal c0>0 satisfies
+
+    inf_{all noninteractive one-message epsilon-LDP estimators}
+    sup_{G: Q>=rho, beta_*=beta in [-B,B]}
+    Pr(|beta_hat-beta_*| >= c0/(epsilon rho sqrt(n))) >= 0.4,
+
+for n large enough that the displayed local alternatives lie in [-B,B]. This lower bound allows arbitrary output alphabets and unlimited computation. It matches the upper rate up to constants. It is a lower bound for full raw paired counts, so retaining all event counts, fitting a mixture, or privately releasing a different statistic cannot improve the rate under the stated local model.
+
+The nonprivate benchmark has rate 1/sqrt(n rho): among the M event-positive participants, the selected event marks are Bernoulli(p_*), and M is binomial with mean nQ. The LDP penalty is therefore an unavoidable factor 1/(epsilon sqrt(rho)) in the sparse-event regime. All methods have the same paired design, T, parameter class, and lower bound Q>=rho; the lower bound grants any estimator the same public information and does not assume a restricted count statistic.
+
+## 6. Failure attacks and scope
+
+1. No informative events: if Q=0, all counts are zero and beta_* is undefined; no procedure can estimate a treatment contrast. The condition Q>=rho is necessary for the stated finite target and rate.
+2. Average individual log effects: beta_* is not E[log(Lambda_1/Lambda_0)]. A zero-rate stratum can change an assigned latent beta_i without changing any observed counts. Thus an unweighted mean of latent log effects is not identified in the unrestricted model. Even when all rates are positive, allowing rates arbitrarily close to zero prevents a uniform information bound for that mean.
+3. Zero-event participants: the protocol does not recover the fraction Q. It only needs Q>=rho to control its denominator. If the application requires Q itself, it is estimable from the same ternary reports by (sum_i B_i-2ns)/(nc), but its absolute error scales as sqrt(n)/(nc), with no division by Q.
+4. Unequal known exposure ratios across participants: selected arm labels then have subject-specific probabilities. The pooled log odds no longer equals a common log-rate coefficient. The theorem still estimates the precisely defined pooled event-allocation p_*, but an exposure-adjusted common slope with arbitrary participant-specific q_i is not covered.
+5. Carryover, cross-arm dependence that breaks conditional Poisson thinning, unequal unmodeled observation windows, or private linked metadata are outside the theorem. The paired assay design and the full-record privacy scope must be retained.
+6. A local guarantee does not solve data provenance or communication metadata. The 2-bit payload is private; network identifiers, timing, and side channels must be treated as public or protected separately.
+
+Alternative attacked: privatize clipped N_i1-N_i0 and debias. It fails to give a uniform result over the stated class because the rate mixture can have infinite mean and no deterministic clipping threshold controls the bias. Alternative attacked: privatize each event independently. It composes privacy within a participant and makes utility depend on an unbounded, heterogeneous number of events. Selecting one mark before the single user-level randomizer avoids both failures; it intentionally discards multiplicity, which is also why the minimax lower bound depends on event-positive mass rather than the event-count mean.
+
+## 7. Prior-art comparison (live primary sources checked 2026-10-09)
+
+* Ohnishi and Awan, “Locally Private Causal Inference for Randomized Experiments,” JMLR 26 (2025), https://jmlr.org/papers/v26/23-1401.html and PDF https://www.jmlr.org/papers/volume26/23-1401/23-1401.pdf. Their paper develops noninteractive LDP PATE inference and minimax mechanisms for randomized experiments. The proof setup explicitly assumes potential outcomes in [0,1] for bounded sensitivity (PDF pp. 4–5, lines 225–242 in the browser extraction); Section 7 calls analytical treatment of unbounded outcomes future work (PDF p. 16, lines 995–999). It does not state the paired recurrent-count, arbitrary-frailty, event-positive log-odds result here. This is close prior art and makes any novelty claim unresolved.
+* Duchi, Jordan, and Wainwright, “Minimax Optimal Procedures for Locally Private Estimation,” JASA 113 (2018), https://doi.org/10.1080/01621459.2017.1389735; also the authors' earlier primary manuscript https://web.stanford.edu/~jduchi/projects/DuchiJoWa13_focs.pdf. Their information-contraction and minimax methods are the basis for the style of the lower-bound attack; the contraction needed here is proved directly for the full count-pair laws and the nuisance-matched alternatives.
+* Kairouz, Oh, and Viswanath, “Extremal Mechanisms for Local Differential Privacy,” JMLR 17 (2016), https://jmlr.org/papers/volume17/15-135/15-135.pdf. Their Corollary 11 gives an exact total-variation contraction for arbitrary LDP channels, and their results identify binary/randomized-response mechanisms as optimal in specified regimes. This candidate uses 3-symbol randomized response for a convenient one-trit estimator; it does not claim that this channel is an exact finite-epsilon optimal channel for the three-category nuisance problem. The rate lower bound is mechanism-independent.
+* Kamath, Singhal, and Ullman, “Private Mean Estimation of Heavy-Tailed Distributions,” COLT 2020, https://proceedings.mlr.press/v125/kamath20a.html. They establish central-DP heavy-tail mean bounds under bounded kth moments. The present target is a paired event-allocation contrast under local privacy, and requires no moment bound; direct mean estimation is not the route used here.
+* Schein et al., “Locally Private Bayesian Inference for Count Models,” ICML 2019, https://proceedings.mlr.press/v97/schein19a.html. They give locally private Bayesian inference for Poisson factorization using limited-precision local privacy and MCMC. That is relevant count-model prior art, but it does not supply this pure-LDP, paired causal contrast with a finite-sample minimax frontier.
+
+The live search is selective, not exhaustive. A full novelty audit for paired-count privacy and conditional event-mark mechanisms remains open. These sources are source-reported facts, not independent validation of this derivation.
+
+## 8. Status and remaining work
+
+Claim status: internally derived candidate upper bound and lower bound for a noninteractive one-message pure epsilon-LDP model; internally checked algebra in this file; finite-tested status pending execution of `simulate_frontier.py`; not externally reviewed; novelty unresolved. The proof uses standard Poisson splitting, Bernstein, chi-square/KL comparison, Pinsker, and Le Cam, but the combination and stated estimand have not been independently checked.
+
+Next decisive gates: (i) blind algebra review of the LDP contraction and heterogeneous target; (ii) compare against all directly relevant paired/recurrent-event private inference papers; (iii) optimize the 3-symbol channel or prove whether a smaller binary score channel matches the same constants; (iv) derive a sharp confidence radius rather than the conservative Bernstein interval; (v) attack unequal exposures and event-dependent censoring. Do not promote this candidate to a foundational discovery before those gates.
+
+## 9. Reproducible finite diagnostics
+
+The script `simulate_frontier.py` is a finite diagnostic, not proof. Command run from the campaign root:
+
+    python3 work/applied/a17_private_inference/simulate_frontier.py
+
+Observed output on 2026-10-09 (NumPy 2.5.3):
+
+    finite_grid_max_likelihood_ratio = 2.2255409284924683
+    exp(epsilon) = 2.225540928492468
+    n = 150000, repetitions = 80, epsilon = 0.8, rho = 0.5
+    minimum empirical q across replications = 0.6613082818366347
+    c = 0.2900317259332997, theorem condition = true
+    empirical coverage of the conservative 95% interval = 80/80
+    median absolute beta error = 0.01799470208846169
+    90th percentile absolute beta error = 0.04006168168893193
+    median error / theorem radius = 0.0334755742422342
+    frailty law used: Pareto(shape 0.8, scale 0.2), infinite mean
+
+The finite grid check confirms the maximum channel likelihood ratio over count pairs 0<=N_0,N_1<=5 is exp(epsilon); it does not replace the pointwise all-count proof. The simulation uses heterogeneous beta_i and a heavy-tailed random effect, but its 80/80 coverage is finite empirical evidence only. The radius is deliberately conservative and the simulation does not establish asymptotic performance or novelty.

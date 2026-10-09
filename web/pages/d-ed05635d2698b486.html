@@ -1,0 +1,182 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_02/n27_correlated_repair/finite_controller.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_02/n27_correlated_repair/finite_controller.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite hidden-conformation copying/repair controller diagnostics.
+
+This is an explicit finite-state model, not a fit to a named polymerase.
+The latent polymerase conformation X is good (0) or bad (1), with Markov
+transition probabilities a=P(B|G), b=P(G|B).  Conditional error rates are
+eG,eB.  A mismatch cue has sensitivity s and false-positive probability f.
+
+The physical controller stores only the preceding cue m.  Each deterministic
+reset policy is a four-bit truth table A(m,z).  A=1 attempts one ATP-driven
+finite-efficacy conformational reset.  All policies patch a current site on
+z=+ using an excision/resynthesis reaction; a successful patch consumes one
+additional dNTP and the replacement error probability is that of the
+post-reset conformation.  Reset transitions B-&gt;G and G-&gt;B have probabilities
+rho and delta, respectively, so the reset is not an oracle or a one-way map.
+
+The script enumerates all 16 one-bit reset controllers, solves their exact
+finite-state Markov chains numerically, and reports errors, dNTP, time, ATP,
+cue frequencies, and Landauer lower bounds for cue/register erasure.  All
+reported numerical outputs are internal model diagnostics only.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from itertools import product
+import math
+import numpy as np
+
+
+def h2(p: float) -&gt; float:
+    if p &lt;= 0.0 or p &gt;= 1.0:
+        return 0.0
+    return -p * math.log2(p) - (1.0 - p) * math.log2(1.0 - p)
+
+
+@dataclass(frozen=True)
+class Params:
+    a: float = 0.004       # G -&gt; B per incorporation
+    b: float = 0.05        # B -&gt; G per incorporation
+    e_g: float = 1e-4      # initial wrong-incorporation probability in G
+    e_b: float = 0.02      # initial wrong-incorporation probability in B
+    s: float = 0.90        # P(Z=+ | E=1)
+    f: float = 0.01        # P(Z=+ | E=0)
+    rho: float = 0.80      # reset probability B -&gt; G on an alarm
+    delta: float = 0.002   # reset side-effect probability G -&gt; B on an alarm
+    eta: float = 0.98      # excision/resynthesis completion probability on Z=+
+    t0: float = 1.0        # base-copy time
+    t_patch: float = 0.4   # time per attempted patch (also false alarms)
+    t_reset: float = 1.0   # time per reset attempt
+    w_patch_atp: float = 1.0  # ATP equivalents per cue-triggered patch attempt
+    w_reset_atp: float = 1.0  # ATP equivalents per reset attempt
+
+
+def stationary(P: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;Solve pi P=pi, sum(pi)=1, and verify the residual.&quot;&quot;&quot;
+    n = P.shape[0]
+    A = P.T - np.eye(n)
+    A[-1, :] = 1.0
+    rhs = np.zeros(n)
+    rhs[-1] = 1.0
+    pi = np.linalg.solve(A, rhs)
+    if np.min(pi) &lt; -1e-10:
+        raise ArithmeticError(&quot;negative stationary mass&quot;)
+    pi = np.maximum(pi, 0.0)
+    pi /= pi.sum()
+    residual = np.max(np.abs(pi @ P - pi))
+    if residual &gt; 2e-11:
+        raise ArithmeticError(f&quot;stationarity residual {residual}&quot;)
+    return pi
+
+
+def run(policy: tuple[int, int, int, int], p: Params = Params()) -&gt; dict[str, float | str]:
+    &quot;&quot;&quot;Exact-state enumeration for one policy; index bits by 2*m+z.&quot;&quot;&quot;
+    # State is (X,m), with X in {G=0,B=1} and previous cue m in {-,+}.
+    nstate = 4
+    P = np.zeros((nstate, nstate), dtype=float)
+    rewards = {name: np.zeros(nstate, dtype=float) for name in (
+        &quot;errors&quot;, &quot;dntp&quot;, &quot;patches&quot;, &quot;resets&quot;, &quot;cue_plus&quot;, &quot;bad_after_reset&quot;,
+        &quot;sensor_conditional_entropy_bits&quot;)}
+    for x, m, e, z in product((0, 1), repeat=4):
+        i = 2 * x + m
+        pe = p.e_b if x else p.e_g
+        p_e = pe if e else 1.0 - pe
+        p_z = (p.s if e else p.f) if z else ((1.0-p.s) if e else (1.0-p.f))
+        mass = p_e * p_z
+        alarm = policy[2*m+z]
+        # Finite reset channel. Its reverse branch is nonzero in both states.
+        if alarm:
+            reset_branches = ((1, p.delta), (0, 1-p.delta)) if x == 0 else ((0, p.rho), (1, 1-p.rho))
+        else:
+            reset_branches = ((x, 1.0),)
+        for xp, p_xp in reset_branches:
+            # Expected final error: no patch leaves E; successful patch replaces
+            # it with a fresh incorporation at the post-reset conformation.
+            e_new = p.e_b if xp else p.e_g
+            err = (p.eta * e_new + (1-p.eta) * e) if z else float(e)
+            rewards[&quot;errors&quot;][i] += mass * p_xp * err
+            rewards[&quot;dntp&quot;][i] += mass * p_xp * (1.0 + p.eta * z)
+            rewards[&quot;patches&quot;][i] += mass * p_xp * z
+            rewards[&quot;resets&quot;][i] += mass * p_xp * alarm
+            rewards[&quot;cue_plus&quot;][i] += mass * p_xp * z
+            rewards[&quot;bad_after_reset&quot;][i] += mass * p_xp * xp
+            rewards[&quot;sensor_conditional_entropy_bits&quot;][i] += mass * p_xp * (
+                h2(p.s) if e else h2(p.f))
+            # Advance the polymerase mode one incorporation step; remember z.
+            for xn, p_xn in ((1, p.a), (0, 1-p.a)) if xp == 0 else ((0, p.b), (1, 1-p.b)):
+                j = 2 * xn + z
+                P[i, j] += mass * p_xp * p_xn
+    pi = stationary(P)
+    avg = {k: float(pi @ v) for k, v in rewards.items()}
+    # Joint law of (previous cue,current cue) is obtained from stationary state
+    # mass and cue emission. The cost is the minimum work to overwrite the old
+    # one-bit shift register while retaining the new cue.
+    joint = np.zeros((2, 2), dtype=float)
+    q_error = 0.0
+    for x, m in product((0, 1), repeat=2):
+        i = 2*x+m
+        pe = p.e_b if x else p.e_g
+        q_error += pi[i] * pe
+        for e in (0, 1):
+            p_e = pe if e else 1-pe
+            for z in (0, 1):
+                p_z = (p.s if e else p.f) if z else ((1-p.s) if e else (1-p.f))
+                joint[m,z] += pi[i] * p_e * p_z
+    pz = joint.sum(axis=0)
+    memory_erase_bits = 0.0
+    for m in (0,1):
+        for z in (0,1):
+            if joint[m,z] &gt; 0 and pz[z] &gt; 0:
+                memory_erase_bits -= joint[m,z] * math.log2(joint[m,z]/pz[z])
+    avg[&quot;q_initial&quot;] = q_error
+    avg[&quot;memory_erase_bits&quot;] = memory_erase_bits
+    avg[&quot;sensor_erase_bits&quot;] = avg[&quot;sensor_conditional_entropy_bits&quot;]
+    avg[&quot;speed_time&quot;] = p.t0 + p.t_patch*avg[&quot;patches&quot;] + p.t_reset*avg[&quot;resets&quot;]
+    avg[&quot;atp_equiv&quot;] = p.w_patch_atp*avg[&quot;patches&quot;] + p.w_reset_atp*avg[&quot;resets&quot;]
+    avg[&quot;total_dntp&quot;] = avg[&quot;dntp&quot;]
+    avg[&quot;policy&quot;] = &quot;&quot;.join(map(str, policy))
+    avg[&quot;stationary_residual&quot;] = float(np.max(np.abs(pi @ P - pi)))
+    return avg
+
+
+def named_policies() -&gt; dict[str, tuple[int,int,int,int]]:
+    # A(m,z), table index 2*m+z. Sitewise alarm reacts to current +.
+    sitewise = (0, 1, 0, 1)
+    burst2 = (0, 0, 0, 1)  # reset only after a two-cue ++ burst
+    delayed = (0, 0, 1, 1) # reset on any cue following a preceding +
+    return {&quot;none&quot;: (0,0,0,0), &quot;sitewise_current_plus&quot;: sitewise,
+            &quot;two_plus_burst&quot;: burst2, &quot;delayed_after_plus&quot;: delayed}
+
+
+def main() -&gt; None:
+    p = Params()
+    print(&quot;params&quot;, p)
+    print(&quot;policy,initial_error,final_error,reset_rate,patch_rate,dNTP/site,time/site,ATP/site,sensor_bits,memory_bits,residual&quot;)
+    rows = []
+    for bits in product((0,1), repeat=4):
+        row = run(bits, p)
+        rows.append(row)
+    for name, policy in named_policies().items():
+        row = run(policy, p)
+        print(f&quot;{name},{row[&#x27;q_initial&#x27;]:.9g},{row[&#x27;errors&#x27;]:.9g},{row[&#x27;resets&#x27;]:.9g},&quot;
+              f&quot;{row[&#x27;patches&#x27;]:.9g},{row[&#x27;dntp&#x27;]:.9g},{row[&#x27;speed_time&#x27;]:.9g},&quot;
+              f&quot;{row[&#x27;atp_equiv&#x27;]:.9g},{row[&#x27;sensor_erase_bits&#x27;]:.9g},&quot;
+              f&quot;{row[&#x27;memory_erase_bits&#x27;]:.9g},{row[&#x27;stationary_residual&#x27;]:.2e}&quot;)
+    # Find deterministic controllers that improve the named baselines at equal
+    # or lower reset rate and no larger total work/time.
+    targets = [run(x,p) for x in named_policies().values() if x != (0,0,0,0)]
+    print(&quot;\ncontrollers that weakly use no more resets/time than sitewise and have fewer errors:&quot;)
+    site = run(named_policies()[&quot;sitewise_current_plus&quot;], p)
+    for row in rows:
+        if row[&quot;errors&quot;] &lt; site[&quot;errors&quot;]-1e-12 and row[&quot;resets&quot;] &lt;= site[&quot;resets&quot;]+1e-12 and row[&quot;speed_time&quot;] &lt;= site[&quot;speed_time&quot;]+1e-12:
+            print(f&quot;policy={row[&#x27;policy&#x27;]} err={row[&#x27;errors&#x27;]:.9g} resets={row[&#x27;resets&#x27;]:.9g} &quot;
+                  f&quot;dNTP={row[&#x27;dntp&#x27;]:.9g} time={row[&#x27;speed_time&#x27;]:.9g} ATP={row[&#x27;atp_equiv&#x27;]:.9g}&quot;)
+    # Exact scope of the controller class: 16 truth tables, one stored cue bit.
+    print(f&quot;\nfinite policies enumerated={len(rows)}; max stationarity residual=&quot;
+          f&quot;{max(float(r[&#x27;stationary_residual&#x27;]) for r in rows):.3e}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/5b769a1987ededbac1bab545b6c9c01851e9a0a53ac1a65830deba7a87cc0fe3.py">Exact original</a></p></html>

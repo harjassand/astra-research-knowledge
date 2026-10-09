@@ -1,0 +1,182 @@
+A03 SAFE CONTROL — FROZEN MATHEMATICAL RECORD v1
+Date: 2026-10-09
+Scope: exact safe information acquisition on an invariant partially observed linear quotient.
+Status labels are local to this record; no novelty, priority, or external-correctness claim is made.
+
+0. Result status
+
+The main result below is an internally derived exact theorem for a deliberately structured class. It gives an executable LP-based policy which is safe for every disturbance sequence and whose terminal model set is contained in the terminal model set of every other policy using the same initial uncertainty and the same robust invariant-action contract. It learns only the action-to-output behavior that is safely distinguishable, not the full hidden plant. Its query bound is at most the input dimension m, with a matching generic worst-case lower bound. The positive result relies on exact output residuals: the safety disturbance is bounded and adversarial but separately observed and subtracted for identification. If measurement error or disturbance is bounded but unobserved, the information-dominance proof fails; an explicit counterexample is included.
+
+The finite belief-state minimax program is retained only as a standard comparator. The continuous theorem is close to existing safe-learning work, especially controlled safe learning in Ahmadi–Chaudhry–Sindhwani–Tu; novelty is unresolved. The strongest supported consequence is an exact safe-behavior quotient and a least-posterior safe acquisition policy in the stated interface, not general safe adaptive control or regret optimality.
+
+1. Exact system, observations, safety, and costs
+
+Let the physical state be x_t in R^n, the measured output be z_t=C x_t in R^p, and the applied control be u_t in a known compact polytope U0 subset R^m. The plant is linear but only its task-relevant output quotient is assumed known to close:
+
+    x_(t+1) = A x_t + B u_t + w_t,
+    C A = F C,
+    G_* = C B in P0,
+    z_(t+1) = F z_t + G_* u_t + e_t,       e_t=Cw_t in E.
+
+Here F is known, G_* is fixed and unknown, P0 is a known nonempty compact polytope in R^(p x m), and E is a known compact polytope. The output z_t is observed exactly. The projected disturbance e_t is observed exactly after each transition, but before the next action. At action time its value is not known, so safety is certified against every e in E. The unmeasured coordinates of x_t may be arbitrary; the task constraints and rewards in this record depend only on z_t. The closure condition CA=FC is what makes z a sufficient state for those tasks. If hidden coordinates themselves have safety constraints or affect the measured output outside this quotient, this theorem does not apply.
+
+The output safety set is a known compact polytope
+
+    K = {z : H z <= k} = {z : h_j^T z <= k_j, j=1,...,s},
+
+and the supplied initial output satisfies z_0 in K. A control is called K-preserving for a model set P subseteq P0 when it preserves K from every output state in K, for every G in P, and for every e in E:
+
+    U_K(P) = {u in U0 : F K + G u + E subseteq K for every G in P}.
+
+This is a uniform invariant-corridor contract. Policies outside it, including policies safe only from the current point z_t or policies that leave K and later return, are outside the comparison class. K is supplied and certified as the corridor; this record does not compute a maximal robust viability kernel or the cost of reaching K from outside it.
+
+The only information acquired at a transition is the exact residual
+
+    r_t = z_(t+1) - F z_t - e_t = G_* u_t.
+
+The posterior is the set-membership polytope
+
+    P_t = {G in P0 : G u_i = r_i for each i < t}.
+
+The true G_* remains in P_t. A query costs one applied action, one exact p-vector output reading, and one exact p-vector disturbance reading; z_0 is also read or supplied. Thus q queries cost q transitions, q output readings, q disturbance readings, and one initial output reading. There is no restart or reset. Arithmetic is exact; bit complexity statements below assume rational polytope descriptions and rational observations. No uncharged plant-state sensor or initial safe controller is used after z_0 in K.
+
+2. Safe behavioral agreement and executable acquisition policy
+
+For any nonempty P subseteq P0, define the agreement subspace
+
+    I(P) = {v in R^m : Gv = G'v for every G,G' in P}.
+
+Thus P may contain many full matrices even when its action-to-output map is already known on I(P). The relevant unknown behavior is the quotient of R^m by I(P), restricted to controls in U_K(P).
+
+Policy SafeSpanClose:
+
+  (i) Set P=P0 and compute I=I(P).
+  (ii) Compute U=U_K(P). If U is empty or U subseteq I, stop and return P, I, U.
+  (iii) Find B={b_1,...,b_q} subseteq U such that the images of B form a basis of span(I union U)/I. A concrete LP routine starts with S=I; for a basis q_1,...,q_d of S-perp, maximize both q_l^T u and -q_l^T u over the LP representation of U. If any optimum is positive, add its optimizer u to B and replace S by span(S,u); repeat. Stop when all these optima are zero, which certifies U subseteq S. The set B is finite, each b is in U, and q<=m-dim(I).
+  (iv) Process the b_i in order. Every b_i remains safe because P only shrinks and U_K is monotone under shrinking uncertainty. If b_i is already in I(P), skip it. Otherwise apply u=b_i, observe z^+ and e, set r=z^+-Fz-e, update P <- {G in P : Gu=r}, and recompute I(P). The state remains in K. A skipped b_i needs no observation because its output is already common to all models in the current P.
+  (v) Return to (ii) with the new posterior.
+
+For exact computation of I(P), write P={g : M g<=b}, g=vec(G). For each listed inequality, maximize its slack over P. Those with maximum slack zero are exactly the inequalities tight everywhere on P; their equalities span the affine hull of P. A basis D_1,...,D_r of the direction space of aff(P), reshaped as p by m matrices, gives
+
+    I(P) = ker([D_1; ...; D_r]).
+
+This requires one LP per current inequality plus linear algebra. The affine hull can alternatively be maintained from explicit equalities and only refreshed when a new observation makes an inequality universally tight.
+
+3. Main theorem and proof
+
+Theorem (least-posterior safe behavior closure). Under the model and cost contract in Section 1, SafeSpanClose terminates after at most m-dim I(P0) transitions. For every disturbance sequence e_t in E, it stays in K. At termination, writing P_* for its posterior,
+
+    U_K(P_*) subseteq I(P_*).
+
+Moreover, for each fixed true G_* in P0 and every finite adaptive policy pi that starts from P0 and at each step chooses u_t in U_K(Q_t), where Q_t is its own set-membership posterior, the terminal posterior P_* of SafeSpanClose satisfies
+
+    P_* subseteq Q_pi.
+
+Thus P_* is a least element under set inclusion among the posteriors achievable by policies obeying the same uniform K-preserving contract. Every K-preserving action's transition map G u is known at termination, including actions not themselves queried. No other such policy can safely distinguish two models that SafeSpanClose still leaves observationally equivalent. This is an information-order optimum; it does not minimize reward loss, total query cost over every instance, or wall-clock computation.
+
+Proof. (Safety and monotonicity.) If P' subseteq P, then U_K(P) subseteq U_K(P'), since a robust inclusion required for every member of P is also true for every member of P'. By definition, for u in U_K(P_t), every z in K, G in P_t, and e in E satisfy Fz+Gu+e in K. The true G_* is in P_t. Starting from z_0 in K, induction therefore gives z_t in K for every t, including while processing a batch. After an observation, P_{t+1} subseteq P_t, so every not-yet-processed batch action remains in U_K(P_{t+1}).
+
+(LP representation of U_K.) For an output facet j, robust preservation is equivalent to
+
+    max_{z in K, G in P, e in E} h_j^T(Fz+Gu+e) <= k_j.
+
+The variables z,G,e range independently, so the left side is
+
+    sigma_K(F^T h_j) + sigma_E(h_j) + max_{g in P} c_j(u)^T g,
+    c_j(u)=u tensor h_j,
+
+using column-major vec(G), for which h_j^T G u=(u tensor h_j)^T vec(G). If P={g:Mg<=b}, the last maximum is a linear program. By strong LP duality it is at most k_j-sigma_K(F^T h_j)-sigma_E(h_j) exactly when there is lambda_j>=0 such that
+
+    M^T lambda_j = u tensor h_j,
+    b^T lambda_j <= k_j-sigma_K(F^T h_j)-sigma_E(h_j).
+
+These are linear constraints in u and lambda_j. Intersecting them over j and with U0 gives an exact LP extended formulation for U_K(P), including an exact emptiness test.
+
+(Termination.) In a batch, B is chosen so that span(I(P) union U_K(P))=span(I(P) union B). Each non-skipped query b_i is outside the current I(P), hence after observing G_*b_i every model in the posterior agrees on b_i; therefore dim I(P) increases by at least one. I(P) is monotone as P shrinks. Since dim I<=m, there are at most m-dim I(P0) queries in the entire run. If a batch makes no query, all its basis vectors were already in I, so U_K(P) subseteq I and the stopping condition holds. Since each nonterminal batch has at least one query and total queries are bounded, the algorithm terminates. When it terminates, it explicitly checks U_K(P_*) subseteq I(P_*); this is precisely the claim that all safe action outputs are known.
+
+(Posterior dominance.) Compare SafeSpanClose with any other safe policy pi, both under the same fixed true G_* and exact residual observations. Initially the algorithm posterior P and competitor posterior Q are equal. Assume at the start of a batch P subseteq Q. Any competitor action v in U_K(Q) also lies in U_K(P), by monotonicity. The batch basis B satisfies v in span(I(P) union B). After the batch, every vector in I(P) and every b in B belongs to I(P_end): a queried b is in the new agreement subspace by the exact observation, and a skipped b already belonged to it; agreement subspaces only grow as P shrinks. Therefore v in I(P_end), so every model in P_end predicts the same residual Gv as G_*. The competitor's observation at v is already implied by P_end. Also P_end subseteq P subseteq Q. Consequently P_end is contained in the competitor posterior after its action, preserving the induction. At the terminal posterior P_*, the same argument applies to every future competitor-safe action: if Q contains P_*, then U_K(Q) subseteq U_K(P_*) subseteq I(P_*), so such observations cannot remove any member of P_*. Hence P_* is contained in every competitor terminal posterior, proving least-posterior dominance.
+
+4. Exact frontier and sharp generic query lower bound
+
+The terminal object is a quotient, not a full system estimate. It reports P_* and the maximal common safe set U_K(P_*); the inclusion U_K(P_*) subseteq I(P_*) certifies that every control that robustly preserves the supplied corridor has a known projected transition. Differences between remaining models act only on directions excluded from this safe action set (or on hidden coordinates invisible to C). They are not identifiable under the stipulated experiments and are irrelevant to the stated output-safety task.
+
+The query count q<=m-dim I(P0) is a deterministic upper bound. For the unrestricted full-matrix prior, it is generically tight. Let P0 contain a neighborhood of G0 in R^(p x m), and let the robust safe action set contain a relatively open set spanning R^m throughout the relevant observations. If q<m actions u_1,...,u_q are used, their span has a nonzero annihilator a. For any nonzero c in R^p, the perturbation DeltaG=c a^T satisfies DeltaG u_i=0 for every observed action but DeltaG v is nonzero for any safe v with a^T v!=0. For sufficiently small scalar multiples, G0+DeltaG remains in P0. The observations therefore cannot determine the map on the safe open set. At least m linearly independent input experiments are necessary in this generic class. This lower bound does not apply to structured P0: one vector observation can identify multiple columns through parameter correlations, which is why SafeSpanClose computes I(P) rather than assuming that one query adds only its own direction.
+
+The policy is information-order optimal under the invariant-corridor contract, but not instance-wise sample-minimal. A competitor may learn the whole model from fewer action vectors because of prior correlations; SafeSpanClose skips such directions when its affine-hull computation detects that they are already in I(P), but it does not solve a separate minimum-query decision tree objective over possible noisy or partial observations. In the present exact linear-output interface, the output of each candidate action is a deterministic function of the true G, so the stated least-posterior order is the relevant maximal safe distinguishability result.
+
+5. Continuous polyhedral computation and resource accounting
+
+Let d=pm and let the current posterior have N_t inequalities after representing each of the p equalities from each past experiment by two inequalities. With q past experiments, N_t<=N0+2pq. The robust safe-action LP has m action variables plus at most s N_t dual variables, and O(s d+s N_t) linear constraints, in addition to U0. The constants sigma_K(F^T h_j) and sigma_E(h_j) are computed by one support LP per facet (or directly from vertex lists). No robust reachability iteration is hidden inside this safe-set computation; the K corridor is an explicit input.
+
+To extract B, each added basis vector requires at most 2m linear optimization calls over the extended safe-action LP; at most m vectors are added per batch and at most m batches occur, so a conservative bound is O(m^3) LP optimization calls over the full run. Computing I(P) by testing which posterior inequalities are universally tight requires at most N_t LPs at each posterior, hence O(m N0 + p m^2) such calls over the run, followed by nullspace calculations in dimension pm. These are polynomial operation counts; standard rational LP and exact linear algebra give bit-polynomial computation in the encoded input and observation lengths. This is not a strongly polynomial bound, and no numeric conditioning guarantee is claimed for floating-point solvers.
+
+At most m transitions occur, each returning p output and p disturbance coordinates. The initial output is one additional p-vector measurement if not supplied. A direct H-representation posterior stores O((N0+2pm)pm) rational entries in the worst case; the action list and observations require O(m^2+pm) additional scalar entries. The LP solver's polynomial workspace is charged to the above LP instance size. The system must provide the exact projected disturbance reading e_t; if each coordinate costs c_e and each output coordinate costs c_z, the sensing bill is at most m p(c_e+c_z)+p c_z, plus any chosen computation charges. A supplied initial point z0 in K is assumed, so there is no uncharged reset or safe-controller invocation. Computing K or transporting an initial state into K is outside the theorem and must be charged separately in an application.
+
+Robustness is worst-case and deterministic for safety: for every G_* in P0 and every adversarial disturbance sequence e_t in E, the output remains in K with zero violation. Exact learning is conditional on exact z_t and e_t. The result gives no statistical confidence parameter because it assumes no hidden measurement noise. If readings are probabilistic, a separate confidence-sequence layer and its failure probability, samples, and safety margins are required.
+
+6. Exact examples and adversarial limits
+
+6.1 Adaptive safe directions: a direction can become safe only after a first query.
+
+Take p=1, m=2, F=0, K=[0,1], E=[0,1/20], U0=[0,1]^2, and
+
+    G_a=(1/2,1/4),  G_b=(1/2,3/4),  G_c=(0,-1/4),
+    P0=conv{G_a,G_b,G_c}.
+
+For every u=(u1,u2) in U0, robust lower safety against G_c and e=0 forces u2=0. Conversely every u=(u1,0) with 0<=u1<=1 satisfies all upper/lower constraints, since the largest successor is 1/2+1/20<1. Thus U_K(P0)={(u1,0):0<=u1<=1}; its span is e1. Query u=e1. Because e is separately observed, the residual is 0 for model c and 1/2 for models a,b. On the c branch, the posterior is {G_c} and e2 remains unsafe. On the {a,b} branch, e2 is robustly safe because outputs lie in [1/4,4/5]; querying e2 gives residual 1/4 or 3/4 and identifies a or b. This proves why a one-time span of the initial common safe set is insufficient: the safe set must be recomputed after information arrives. The adaptive closure takes one query on the c branch and two on the a/b branch, never leaving K.
+
+The exact rational replay is `work/applied/a03_safe_control/safe_quotient_demo.py`. It prints all three branches and checks safety, posterior updates, and observations using fractions. This is finite-tested evidence for the example only, not validation of the general theorem.
+
+6.2 Exact no-excitation obstruction under adversarial model ambiguity.
+
+Take p=m=1, F=0, K=[-1/4,1], E=[-1/4,1/4], U0=[-1/2,1/2], and P0={-1,+1}. For G=+1, robust one-step safety requires u in [0,3/4]; for G=-1 it requires u in [-3/4,0]. Hence U_K(P0)={0}. The only robustly safe observation has residual Gu=0 under both models, so the posterior remains P0 forever. This is not a weakness of an algorithm: every uniformly safe policy has the same uninformative action. If the sign were supplied, u=G/2 is safe and gives z^+ in [1/4,3/4]. Under reward r(z)=z+1/4, the model-informed policy has worst-case reward 1/2 per step while the robust unknown-model action has worst-case reward 0, a T/2 finite-horizon gap. This comparison deliberately gives the oracle extra model information; a robust controller with the same prior and observations also chooses u=0. Thus no regret claim against a known-model oracle follows from the safe quotient theorem.
+
+The runnable finite comparator `work/applied/a03_safe_control/finite_safe_experiment.py` uses a finite grid of states, gains, bounded disturbances, bounded sensor errors, and actions. It enumerates all 4095 nonempty beliefs, computes the robust viability fixed point, and solves a four-step finite minimax identification DP. Its output has initial robust safe actions {0}, worst-case terminal model count 2, and identical observation support for the two gains under u=0. This is a correct finite comparator, not the continuous theorem and not claimed as novel.
+
+6.3 Safe behavior can be known while the full model remains unidentified.
+
+Let p=1,m=2,F=0,K=[0,1],E={0},U0=[0,1]^2, and P0={G_a=(0,a): -1<=a<=1}. A robustly K-preserving action must have u2=0; every such action gives output 0 for every model. Therefore I(P0)=span(e1), U_K(P0)=span-positive-segment(e1), and the algorithm stops with no query, even though a remains completely unknown. This is correct for the quotient objective and would be reported as failure by any requirement to identify the full B matrix.
+
+6.4 Why unobserved bounded output noise breaks span redundancy.
+
+Consider a fixed unknown row G=(g1,g2), prior square [-1,1]^2, and observations y=u^T G+nu with a fresh adversarial nu in [-1,1] at each query. Querying e1 and observing 0 imposes no restriction on g1; querying e2 and observing 0 imposes no restriction on g2. A later query at e1+e2 with y=0 imposes |g1+g2|<=1 and strictly cuts the posterior square. Thus e1+e2 lying in the span of earlier regressors does not make its noisy observation redundant. The exact least-posterior theorem needs the observed disturbance/exact residual interface, or a different quantitative statistical experiment-design proof. Bounded but unobserved noise is not covered.
+
+6.5 State-dependent safe actions and maximal viability are excluded.
+
+An action safe from the current measured point may fail the all-z-in-K condition, and a control that leaves K but safely returns can be useful. The theorem does not compare against such policies. It also takes K as supplied rather than solving the general robust reachability/viability problem. Replacing the common invariant-action contract with state-dependent viability changes the comparison class and destroys the simple monotone action-set simulation used in the proof; no exact polynomial algorithm for that broader case is established here.
+
+7. Prior-art comparison from primary sources
+
+The closest source located is Ahmadi, Chaudhry, Sindhwani, and Tu, “Safely Learning Dynamical Systems,” arXiv:2305.12284 (2024 version), primary PDF https://arxiv.org/pdf/2305.12284. Its Section 3 formulates one-step safe learning of an unknown linear map by choosing safe query states and updating an exact polyhedral uncertainty set; it gives an LP-based algorithm using at most n safe queries or certifying impossibility (PDF pp. 6–12, especially lines 335–351 and 182–197 in the extracted PDF). Section 9 treats controlled affine dynamics x^+=Ax+Bu, gives an LP description of the one-step controlled safe set, defines full A,B identification, and states a bound of n+m measurements (PDF pp. 54–55, extracted lines 4717–4724, 4780–4791, 4896–4924). The same paper says it extends selected results to bounded disturbances and noisy measurements at T=1 (PDF p. 4, lines 207–211). This overlaps the present safe LP and finite-query mechanism strongly. The candidate difference is the output-behavior quotient rather than full parameter recovery, its least-posterior dominance statement, and a single nonresettable measured-output trajectory constrained to a supplied invariant corridor. These distinctions have not been checked against every theorem/proof in that source, and the quotient statement may be derivable from its controlled-safe-learning algorithm. Novelty is therefore explicitly unresolved.
+
+Li, Das, Shamma, and Li, “Safe Adaptive Learning-based Control for Constrained Linear Quadratic Regulators with Regret Guarantees,” arXiv:2111.00411, https://arxiv.org/html/2111.00411, studies constrained unknown A,B on one trajectory and reports a polynomial-time high-probability safe controller with tilde-O(T^(2/3)) regret (abstract/introduction lines 66–82). It assumes a bounded initial model set with a common stabilizer, a strictly feasible safe linear controller, and i.i.d. sub-Gaussian anti-concentrated disturbances for excitation (lines 126–149). It is substantially broader on long-horizon performance but has different stochastic and controller assumptions; it does not establish the exact safe behavior quotient proved here.
+
+Lu, Zinkevich, Boutilier, Roy, and Schuurmans, “Safe Exploration for Identifying Linear Systems via Robust Optimization,” arXiv:1711.11165, https://arxiv.org/html/1711.11165, uses linear Gaussian models, PAC parameter-confidence bounds, a nominal safe action, and robustly certified growing safe action regions (abstract lines 0–6; sections 4–6, especially lines 83–99 and 116–117). It provides a close safe-region comparator, but the inspected primary text does not state a least-posterior exact quotient theorem.
+
+These comparisons are not exhaustive. No priority claim is made. The claims above are source-reported summaries of the cited primary texts; they are not independent validation of those papers or this theorem.
+
+8. Failed routes and exact missing implications
+
+(a) Finite belief-support minimax DP. It is a useful exact solution for a finite observation/action/state alphabet, but belief enumeration is exponential and its finite-horizon objective is not the continuous safe frontier. It remains in the repository only as a baseline comparator.
+
+(b) Initial safe-span-only criterion. The three-model example in 6.1 refutes it: an e1 query removes the model that blocks e2, so recomputation is necessary. SafeSpanClose performs this adaptive closure.
+
+(c) Replacing exact residuals by bounded unobserved noise. The example in 6.4 refutes the implication “regressor in old span => no extra information.” A sample-complexity or confidence-sequence argument is missing and cannot be inferred from the exact theorem.
+
+(d) Extending the theorem to general unknown A and B. If the unknown state matrix multiplies an uncertain state in K, robust invariant tests introduce bilinear uncertainty-state terms. The LP dual above no longer applies. No polynomial-time exact frontier or complexity lower bound was derived in this record.
+
+(e) Regret against a model-informed safe controller. The sign example shows an unavoidable linear gap when no safe experiment distinguishes the models. A sublinear regret result would require a restricted benchmark, a safe informative-action condition derived from data, or additional excitation assumptions; none is proved here.
+
+9. Evidence ledger
+
+Internally derived: exact posterior/action-set theorem, LP dual representation, agreement-subspace quotient, adaptive closure, least-posterior dominance proof, sample upper bound, generic full-matrix lower bound, examples 6.1–6.5, resource accounting, and stated limits.
+
+Finite-tested locally: `safe_quotient_demo.py` (exact rational three-model branches) and `finite_safe_experiment.py` (finite belief game). Their test scope is only their encoded examples; neither proves the theorem or establishes novelty.
+
+Source-reported: primary-source claims recorded in Section 7. Live source URLs and exact sections/pages are included there. Astra source intake began at `work/sources/astra/00_START_HERE.txt`; acquisition notices/cards N25 and N189 were inspected. Their own status is source-derived/unreviewed, proof completeness or external correctness is not established, and no archived mathematical claim is used as a premise here. Pinned repository metadata was checked: Astra `939f697c151e779619d4fa7c4e2aee4bc59672fb`; OpenAI math `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`. Source trees were not modified.
+
+Unresolved: external proof review; exact relationship to controlled safe learning in Ahmadi et al.; novelty/priority; applications where hidden physical state has safety constraints; unknown/unobserved disturbance or sensor noise; state-dependent viability and leaving/returning K; computing/reaching the invariant corridor; reward/regret bounds; optimal query count under structured priors; finite-precision LP robustness; stability of hidden unobserved coordinates.
+
+Refuted: the claim that the initial safe-action span alone describes the whole adaptive frontier (6.1); the claim that exact span coverage makes noisy observations redundant (6.4); full model identification in the sign obstruction (6.2) under robust safety.
+
+No external messages, publication, source modifications, or uncharged initial controller were used.

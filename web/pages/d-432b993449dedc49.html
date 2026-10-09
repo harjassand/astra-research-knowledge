@@ -1,0 +1,199 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/n05_homochirality/verify_driven_contact_network.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/n05_homochirality/verify_driven_contact_network.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite-state checks for the N05 driven chiral-contact construction.
+
+The script enumerates a 4x4 periodic Ising contact lattice, partitioned into
+horizontal dimers. Each dimer has a parity-even four-state, fuel-driven cycle.
+It verifies the Gibbs stationary law, nonzero cycle affinity/current, and
+mirror-covariance of the complete finite-state generator without sampling.
+Only the Python standard library is required.
+&quot;&quot;&quot;
+
+from itertools import product
+from math import exp, log
+
+
+L = 4
+N = L * L
+BETA = 1.0
+J_CONTACT = 0.6
+CONDUCTANCE = 0.02  # conditional probability-flux units per unit time
+CURRENT = 0.01
+
+assert 0.0 &lt; CURRENT &lt; CONDUCTANCE
+AFFINITY = log((CONDUCTANCE + CURRENT) / (CONDUCTANCE - CURRENT))
+
+
+def index(row, col):
+    return (row % L) * L + (col % L)
+
+
+EDGES = []
+for row in range(L):
+    for col in range(L):
+        EDGES.append((index(row, col), index(row, col + 1)))
+        EDGES.append((index(row, col), index(row + 1, col)))
+
+BLOCKS = []
+for row in range(L):
+    BLOCKS.append((index(row, 0), index(row, 1)))
+    BLOCKS.append((index(row, 2), index(row, 3)))
+
+# Forward cycle: LL -&gt; DL -&gt; DD -&gt; LD -&gt; LL. Whole-system reflection maps
+# each cycle state to the state two places later, preserving cycle direction.
+CYCLE = ((1, 1), (-1, 1), (-1, -1), (1, -1))
+STATE_INDEX = {state: k for k, state in enumerate(CYCLE)}
+
+
+def spin(config, site):
+    return 1 if (config &gt;&gt; site) &amp; 1 else -1
+
+
+def local_state(config, block):
+    return (spin(config, block[0]), spin(config, block[1]))
+
+
+def with_local_state(config, block, state):
+    result = config &amp; ~(1 &lt;&lt; block[0]) &amp; ~(1 &lt;&lt; block[1])
+    for site, value in zip(block, state):
+        if value == 1:
+            result |= 1 &lt;&lt; site
+    return result
+
+
+def mirror(config):
+    return config ^ ((1 &lt;&lt; N) - 1)
+
+
+def energy(config):
+    return -J_CONTACT * sum(
+        spin(config, left) * spin(config, right) for left, right in EDGES
+    )
+
+
+ENERGIES = [energy(config) for config in range(1 &lt;&lt; N)]
+LOG_WEIGHTS = [-BETA * value for value in ENERGIES]
+MAX_LOG_WEIGHT = max(LOG_WEIGHTS)
+WEIGHTS = [exp(value - MAX_LOG_WEIGHT) for value in LOG_WEIGHTS]
+PARTITION = sum(WEIGHTS)
+GLOBAL_PROB = [value / PARTITION for value in WEIGHTS]
+
+max_mirror_energy_error = max(
+    abs(ENERGIES[config] - ENERGIES[mirror(config)])
+    for config in range(1 &lt;&lt; N)
+)
+max_mirror_probability_error = max(
+    abs(GLOBAL_PROB[config] - GLOBAL_PROB[mirror(config)])
+    for config in range(1 &lt;&lt; N)
+)
+
+max_stationarity_residual = 0.0
+max_affinity_error = 0.0
+max_drive_parity_error = 0.0
+total_entropy_production = 0.0
+block_cycle_current = 0.0
+
+for block in BLOCKS:
+    block_sites = set(block)
+    for outside in range(1 &lt;&lt; N):
+        if outside &amp; (1 &lt;&lt; block[0]) or outside &amp; (1 &lt;&lt; block[1]):
+            continue
+
+        configs = [with_local_state(outside, block, state) for state in CYCLE]
+        logw = [-BETA * ENERGIES[config] for config in configs]
+        max_logw = max(logw)
+        w = [exp(value - max_logw) for value in logw]
+        local_z = sum(w)
+        conditional = [value / local_z for value in w]
+        outside_probability = sum(GLOBAL_PROB[config] for config in configs)
+
+        forward_rates = []
+        reverse_rates = []
+        for k in range(4):
+            kp = (k + 1) % 4
+            q_forward = (CONDUCTANCE + CURRENT) / conditional[k]
+            q_reverse = (CONDUCTANCE - CURRENT) / conditional[kp]
+            forward_rates.append(q_forward)
+            reverse_rates.append(q_reverse)
+
+            forward_flux = conditional[k] * q_forward
+            reverse_flux = conditional[kp] * q_reverse
+            log_ratio = log(forward_flux / reverse_flux)
+            max_affinity_error = max(
+                max_affinity_error, abs(log_ratio - AFFINITY)
+            )
+            total_entropy_production += (
+                outside_probability
+                * (forward_flux - reverse_flux)
+                * log_ratio
+            )
+
+        # Local master-equation residual for the conditional Gibbs law.
+        for k in range(4):
+            km = (k - 1) % 4
+            kp = (k + 1) % 4
+            outgoing = forward_rates[k] + reverse_rates[km]
+            incoming = (
+                conditional[km] * forward_rates[km]
+                + conditional[kp] * reverse_rates[k]
+            ) / conditional[k]
+            residual = conditional[k] * (incoming - outgoing)
+            max_stationarity_residual = max(
+                max_stationarity_residual, abs(residual)
+            )
+
+        # Conditional rates must transform covariantly under global reflection.
+        mirrored_outside = mirror(outside)
+        mirrored_configs = [
+            with_local_state(mirrored_outside, block, state) for state in CYCLE
+        ]
+        mirrored_logw = [-BETA * ENERGIES[c] for c in mirrored_configs]
+        mirrored_max = max(mirrored_logw)
+        mirrored_w = [exp(value - mirrored_max) for value in mirrored_logw]
+        mirrored_z = sum(mirrored_w)
+        mirrored_conditional = [value / mirrored_z for value in mirrored_w]
+        for k in range(4):
+            reflected_k = (k + 2) % 4
+            q_forward = (CONDUCTANCE + CURRENT) / conditional[k]
+            q_forward_reflected = (
+                (CONDUCTANCE + CURRENT) / mirrored_conditional[reflected_k]
+            )
+            q_reverse = (CONDUCTANCE - CURRENT) / conditional[k]
+            q_reverse_reflected = (
+                (CONDUCTANCE - CURRENT) / mirrored_conditional[reflected_k]
+            )
+            max_drive_parity_error = max(
+                max_drive_parity_error,
+                abs(q_forward - q_forward_reflected),
+                abs(q_reverse - q_reverse_reflected),
+            )
+
+        block_cycle_current += outside_probability * 2.0 * CURRENT
+
+expected_blocks = len(BLOCKS)
+expected_current = expected_blocks * 2.0 * CURRENT
+expected_entropy_production = expected_blocks * 8.0 * CURRENT * AFFINITY
+
+magnetization_mass = {}
+for config, probability in enumerate(GLOBAL_PROB):
+    magnetization = sum(spin(config, site) for site in range(N))
+    magnetization_mass[magnetization] = (
+        magnetization_mass.get(magnetization, 0.0) + probability
+    )
+peak_magnetization = max(magnetization_mass, key=magnetization_mass.get)
+
+print(f&quot;states={1 &lt;&lt; N} sites={N} blocks={expected_blocks}&quot;)
+print(f&quot;betaJ={BETA * J_CONTACT:.6f} affinity_per_step={AFFINITY:.12f}&quot;)
+print(f&quot;cycle_affinity={4.0 * AFFINITY:.12f}&quot;)
+print(f&quot;max_mirror_energy_error={max_mirror_energy_error:.3e}&quot;)
+print(f&quot;max_mirror_probability_error={max_mirror_probability_error:.3e}&quot;)
+print(f&quot;max_local_stationarity_residual={max_stationarity_residual:.3e}&quot;)
+print(f&quot;max_local_affinity_error={max_affinity_error:.3e}&quot;)
+print(f&quot;max_drive_parity_error={max_drive_parity_error:.3e}&quot;)
+print(f&quot;stationary_mean_magnetization={sum(m * p for m, p in magnetization_mass.items()):.3e}&quot;)
+print(f&quot;most_probable_magnetization={peak_magnetization}&quot;)
+print(f&quot;net_cycle_current_all_blocks={block_cycle_current:.12f}&quot;)
+print(f&quot;expected_cycle_current_all_blocks={expected_current:.12f}&quot;)
+print(f&quot;net_cycle_current_per_block={block_cycle_current / expected_blocks:.12f}&quot;)
+print(f&quot;entropy_production={total_entropy_production:.12f}&quot;)
+print(f&quot;expected_entropy_production={expected_entropy_production:.12f}&quot;)
+</pre><p><a href="../assets/0af64ae504367362c1e18e4be63edfe8482ae76e8e961986fda1a7dd7f73758d.py">Exact original</a></p></html>

@@ -1,0 +1,87 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_01/n11_plasma_reconnection/diagnostics.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_01/n11_plasma_reconnection/diagnostics.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the 2-D resistive-MHD initial-data counterexample in v1.txt.
+
+Dimensionless units: square 2-torus of side 2*pi, mu0=1, eta_m=eps,
+z-invariant field B=(A_y,-A_x,0), and u=0 at t=0. Integrals are per unit
+length in z. This checks initial flux-transfer rates, magnetic energies,
+and Ohmic powers; it does not evolve the MHD equations or establish a
+macroscopic-duration fast-reconnection solution.
+&quot;&quot;&quot;
+
+import numpy as np
+
+
+def bump(q):
+    &quot;&quot;&quot;C^3 compact bump f(q)=-q^2(1-q^2)^4/2 on |q|&lt;1.&quot;&quot;&quot;
+    q = np.asarray(q)
+    inside = np.abs(q) &lt; 1.0
+    f = np.zeros_like(q, dtype=float)
+    fp = np.zeros_like(q, dtype=float)
+    fpp = np.zeros_like(q, dtype=float)
+    z = q[inside]
+    f[inside] = -0.5 * (z**2 - 4*z**4 + 6*z**6 - 4*z**8 + z**10)
+    fp[inside] = -z + 8*z**3 - 18*z**5 + 16*z**7 - 5*z**9
+    fpp[inside] = -1 + 24*z**2 - 90*z**4 + 112*z**6 - 45*z**8
+    return f, fp, fpp
+
+
+def integ(v, dx):
+    return float(np.sum(v) * dx)
+
+
+def one_case(eps, nx=16384, ny=2048):
+    x = np.linspace(-np.pi, np.pi, nx, endpoint=False)
+    y = np.linspace(-np.pi, np.pi, ny, endpoint=False)
+    dx = 2*np.pi/nx
+    dy = 2*np.pi/ny
+    fx, fpx, fppx = bump(x/eps)
+    g = 0.5*(1+np.cos(y))
+    gp = -0.5*np.sin(y)
+    gpp = -0.5*np.cos(y)
+
+    # A=A0+eps*f(x/eps)g(y), A0=cos(x)-cos(y).
+    # Integrate |grad A|^2 by separating the x and y factors.
+    ax2 = (integ(np.sin(x)**2, dx) * (2*np.pi)
+           - 2*integ(np.sin(x)*fpx, dx)*integ(g, dy)
+           + integ(fpx**2, dx)*integ(g**2, dy))
+    ay2 = (integ(np.sin(y)**2, dy) * (2*np.pi)
+           + 2*eps*integ(fx, dx)*integ(np.sin(y)*gp, dy)
+           + eps**2*integ(fx**2, dx)*integ(gp**2, dy))
+    e_raw = 0.5*(ax2+ay2)
+    e_smooth = 2*np.pi**2
+    scale = np.sqrt(e_smooth/e_raw)
+
+    # Delta A = -cos(x)+cos(y)+(1/eps)f&#x27;&#x27;(x/eps)g(y)+eps*f(x/eps)g&#x27;&#x27;(y).
+    fpp = fppx/eps
+    p = eps*fx
+    xx = -np.cos(x)
+    yy = np.cos(y)
+    q = gpp
+    delta2 = (
+        integ(xx**2, dx)*(2*np.pi)
+        + integ(yy**2, dy)*(2*np.pi)
+        + integ(fpp**2, dx)*integ(g**2, dy)
+        + integ(p**2, dx)*integ(q**2, dy)
+        + 2*integ(xx*fpp, dx)*integ(g, dy)
+        + 2*integ(p, dx)*integ(yy*q, dy)
+        + 2*integ(fpp*p, dx)*integ(g*q, dy)
+    )
+    ohmic_raw = eps*delta2
+    ohmic_fast = scale**2*ohmic_raw
+
+    # X=(0,0), O=(0,-pi); f&#x27;&#x27;(0)=-1, g(0)=1, g(-pi)=0.
+    delta_x = -1/eps
+    delta_o = -2.0
+    rate = eps*scale*abs(delta_x-delta_o)
+    smooth_rate = 2*eps
+    # Exact global helicity is zero for every planar field in this gauge.
+    ohmic_smooth = eps*4*np.pi**2
+    return e_raw, scale, ohmic_fast, ohmic_smooth, rate, smooth_rate
+
+
+if __name__ == &quot;__main__&quot;:
+    print(&quot;eps       E_fast(raw)   scale       P_fast     P_smooth   R_fast      R_smooth&quot;)
+    for eps in (0.2, 0.1, 0.05, 0.025):
+        e, s, d, ds, r, rs = one_case(eps)
+        print(f&quot;{eps:0.3f}  {e:12.8f}  {s:9.6f}  {d:9.6f}  {ds:9.6f}  {r:9.6f}  {rs:9.6f}&quot;)
+</pre><p><a href="../assets/768ba3fcd0160a79db926c77f79018a4a71d71373b1e48e19a91abbab71ec726.py">Exact original</a></p></html>

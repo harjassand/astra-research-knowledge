@@ -1,0 +1,279 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/sol/observable_separation/portable_replay_check_v1/sol/observable_separation/build_and_verify_witness_v2.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/sol/observable_separation/portable_replay_check_v1/sol/observable_separation/build_and_verify_witness_v2.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Portable read-only replay of the frozen finite observable witness.
+
+All arithmetic is preserved from build_and_verify_witness_v1.py. The recorded
+absolute source path is historical metadata. The actual relative source SHA256
+and every other JSON payload field are checked. Frozen coefficient bytes are
+never regenerated or changed; their original SHA256 is independently pinned.
+The universal conditional-Markov/geometric proof still requires mathematical
+audit. No third-party package or assert statement is used.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from math import factorial, log
+import hashlib
+import json
+
+FOLDER = Path(__file__).parent
+SOURCE = FOLDER.parent / &#x27;hidden_realization&#x27; / &#x27;exact_certificate_v1.json&#x27;
+DATA = json.loads(SOURCE.read_text())
+
+
+def require(test, label):
+    if not test:
+        raise RuntimeError(label)
+
+
+def matrix(name):
+    return [[F(x) for x in row] for row in DATA[name]]
+
+
+def transpose(a):
+    return [list(x) for x in zip(*a)]
+
+
+def eye(n):
+    return [[F(i == j) for j in range(n)] for i in range(n)]
+
+
+def mul(a, b):
+    return [[sum(x * y for x, y in zip(row, col))
+             for col in zip(*b)] for row in a]
+
+
+def scale(a, s):
+    return [[s * x for x in row] for row in a]
+
+
+def add(a, b):
+    return [[x + y for x, y in zip(ar, br)]
+            for ar, br in zip(a, b)]
+
+
+def inv(a):
+    n = len(a)
+    b = [ar[:] + ir for ar, ir in zip(a, eye(n))]
+    for i in range(n):
+        pivot = next((j for j in range(i, n) if b[j][i]), None)
+        require(pivot is not None, &#x27;invertible matrix&#x27;)
+        b[i], b[pivot] = b[pivot], b[i]
+        q = b[i][i]
+        b[i] = [x / q for x in b[i]]
+        for j in range(n):
+            if j != i:
+                q = b[j][i]
+                b[j] = [x - q * y for x, y in zip(b[j], b[i])]
+    return [row[n:] for row in b]
+
+
+def dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+
+
+def mv(a, b):
+    return [dot(row, b) for row in a]
+
+
+def frob2(a):
+    return sum(x * x for row in a for x in row)
+
+
+def inf_norm(a):
+    return max(sum(abs(x) for x in row) for row in a)
+
+
+def polynomial_exponential(a, time, degree):
+    n = len(a)
+    total = eye(n)
+    term = eye(n)
+    for k in range(1, degree + 1):
+        term = scale(mul(term, a), time / k)
+        total = add(total, term)
+    return total
+
+
+def strings(a):
+    return [[str(x) for x in row] for row in a]
+
+
+def scalar_row(a):
+    return [str(x) for x in a]
+
+
+Q = matrix(&#x27;Q&#x27;)
+L = matrix(&#x27;L&#x27;)
+H = matrix(&#x27;H&#x27;)
+points = matrix(&#x27;points&#x27;)
+facets = matrix(&#x27;facets&#x27;)
+z = matrix(&#x27;farkas_z&#x27;)
+
+Z = [[F(0)] + zi + [dot(zi, vi)] * 5
+     for zi, vi in zip(z, points)] + [[F(0)] * 8 for _ in range(5)]
+require(frob2(L) &lt; 9, &#x27;generator feature norm &lt;3&#x27;)
+require(inf_norm(Q) &lt;= 2, &#x27;hidden generator infinity norm &lt;=2&#x27;)
+require(all(dot(zi, zi) &lt; 9 for zi in Z), &#x27;Farkas field norm &lt;3&#x27;)
+beta = sum(sum(abs(x) for x in zi) for zi in Z[:5]) / 10
+require(beta &lt; 2, &#x27;weighted Farkas l1 beta &lt;2&#x27;)
+derivative = sum(dot(zi, mv(scale(transpose(L), F(-1)), xi))
+                 for zi, xi in zip(Z, H)) / 10
+gamma = -derivative
+require(gamma == -F(DATA[&#x27;farkas_drift_pairing&#x27;]) / 2,
+        &#x27;full negative Farkas pairing matches internal seed&#x27;)
+require(gamma &gt; F(59, 10000), &#x27;gamma &gt; .0059&#x27;)
+for i in range(10):
+    for j in range(i + 1, 10):
+        mono = dot([x - y for x, y in zip(Z[i], Z[j])],
+                   [x - y for x, y in zip(H[i], H[j])])
+        require(mono &gt;= 0, &#x27;all ten-frame monotonicities&#x27;)
+minimum_separation2 = min(sum((a - b) ** 2 for a, b in zip(x, y))
+                          for i, x in enumerate(points)
+                          for j, y in enumerate(points) if i &lt; j)
+require(minimum_separation2 &gt; F(25, 64), &#x27;vertex separation &gt;5/8&#x27;)
+
+V = [[F(1), x, y, x * x, x * y] for x, y in points]
+V_inverse = inv(V)
+require(inf_norm(V_inverse) &lt; 5, &#x27;quadratic interpolation norm &lt;5&#x27;)
+for i in range(5):
+    normals = [facets[i][1:], facets[(i + 1) % 5][1:]]
+    require(frob2(inv(normals)) &lt; 9, &#x27;adjacent Hoffman inverse norm &lt;3&#x27;)
+    require(dot(facets[i][1:], facets[i][1:]) &gt; F(1, 9),
+            &#x27;single-normal Hoffman inverse norm &lt;3&#x27;)
+
+h = F(1, 10 ** 12)
+t = F(1, 1000)
+tau = F(1, 2_000_000)
+eta = F(1, 10)
+Eh = polynomial_exponential(L, h, 4)
+Et = polynomial_exponential(L, t, 16)
+K = transpose(Et)
+ak = [Eh[0][3 + k] for k in range(5)]
+bk = [[Eh[1][3 + k], Eh[2][3 + k]] for k in range(5)]
+Bh = [bk[4], bk[0]]
+Bh_inverse = inv(Bh)
+require(inf_norm(Bh_inverse) &lt; 12 / h, &#x27;basis inversion bound&#x27;)
+require(all(abs(a) &lt; h for a in ak), &#x27;finite marker constant bound&#x27;)
+require(all(sum(abs(x) for x in b) &lt; h / 4 for b in bk),
+        &#x27;finite marker gradient bound&#x27;)
+require(sum((3 * h) ** n / factorial(n) for n in range(2, 5)) &lt; 5 * h * h,
+        &#x27;facet Taylor remainder bound&#x27;)
+rh = (3 * h) ** 5 / (factorial(5) * (1 - 3 * h))
+rt = (3 * t) ** 17 / (factorial(17) * (1 - 3 * t))
+require(rh &lt; 3 * h ** 5, &#x27;target degree4 Taylor remainder&#x27;)
+require(rt &lt; F(1, 10 ** 55), &#x27;target degree16 Taylor remainder&#x27;)
+require(1 / (1 - 3 * t) &lt; F(101, 100), &#x27;transition norm &lt;1.01&#x27;)
+require(3 * (3 * t) / (1 - 3 * t) &lt; 1, &#x27;rounded-drift Lipschitz constant &lt;=1&#x27;)
+
+# Raw function basis: I0, psi0,...,psi4, I1,...,I5.
+F_coeff = [[F(0)] * 11 for _ in range(8)]
+F_coeff[0][0] = 1
+for coordinate in range(2):
+    row = coordinate + 1
+    F_coeff[row][0] = -Bh_inverse[coordinate][0] * ak[4] - Bh_inverse[coordinate][1] * ak[0]
+    F_coeff[row][5] = Bh_inverse[coordinate][0]
+    F_coeff[row][1] = Bh_inverse[coordinate][1]
+for k in range(5):
+    F_coeff[3 + k][6 + k] = 1
+D_coeff = [[F(0)] * 11 for _ in range(5)]
+for k in range(5):
+    D_coeff[k][1 + k] = 1
+    D_coeff[k] = [x - ak[k] * f0 - bk[k][0] * fx - bk[k][1] * fy
+                  for x, f0, fx, fy in zip(D_coeff[k], F_coeff[0], F_coeff[1], F_coeff[2])]
+require(all(sum(abs(x) for x in row) &lt; 20 / h for row in F_coeff[1:3]),
+        &#x27;feature sup norm bound&#x27;)
+feature_sup2 = sum(sum(abs(x) for x in row) ** 2 for row in F_coeff)
+require(feature_sup2 &lt; 900 / (h * h), &#x27;feature vector sup norm &lt;30/h&#x27;)
+require(all(sum(abs(x) for x in row) &lt; 7 for row in D_coeff), &#x27;facet residual sup norm &lt;7&#x27;)
+require(all(x == 0 for x in D_coeff[0] + D_coeff[4]), &#x27;selected facet residuals identically zero&#x27;)
+
+I_minus_K = add(eye(8), scale(K, F(-1)))
+vertex_costs = [dot(zi, mv(I_minus_K, xi))
+                for zi, xi in zip(Z[:5], H[:5])]
+alpha = mv(V_inverse, vertex_costs)
+require(all(abs(x) &lt; F(1, 10) for x in alpha), &#x27;quadratic coefficient bounds&#x27;)
+require(mv(V, alpha) == vertex_costs, &#x27;exact quadratic interpolation&#x27;)
+
+Lambda = F(150 ** 2 * 3 ** 2, 1) / (2 * eta ** 2 * h ** 2 * tau)
+Mu = F(9, 1) / (4 * tau)
+require(Lambda == F(20_250_000_000_000, 1) / (h * h), &#x27;facet Young coefficient&#x27;)
+require(Mu == 4_500_000, &#x27;regression Young coefficient&#x27;)
+require(8 ** 2 + 145 ** 2 &lt; 150 ** 2, &#x27;rounding Cauchy constant&#x27;)
+target_F_bound = -gamma * t + 4 * t * t / (1 - 2 * t)
+require(target_F_bound &lt; -F(18, 10 ** 7), &#x27;finite-time negative drift margin&#x27;)
+moment_error = 200 * h ** 4
+target_W_bound = (target_F_bound + 200 * h ** 4 + 3 * F(1, 10 ** 55)
+                  + 72 * moment_error
+                  + (45000 * h + tau) * (1 + moment_error) + tau / 2
+                  + Lambda * 1000 * h ** 10 + Mu * 90000 * h ** 8)
+require(target_W_bound &lt; -F(1, 10 ** 6), &#x27;strict target observable witness&#x27;)
+M = F(6 * 10 ** 39)
+stat_sup_bound = (100 / (h * h) + 72 * (1 + 800 / (h * h))
+                  + (45000 * h + tau) * (1 + 800 / (h * h)) + tau
+                  + Lambda * 245 + Mu * 4000 / (h * h))
+require(stat_sup_bound &lt; M, &#x27;observed statistic normalization&#x27;)
+T = 2 * (t + h)
+require(T &lt; F(1, 400), &#x27;finite observation span&#x27;)
+delta = F(1, 10 ** 6) / M
+sigma_floor = 2 * delta * delta / T
+require(sigma_floor &gt; F(2, 10 ** 89), &#x27;dimension-free entropy floor&#x27;)
+
+payload = {
+    &#x27;status&#x27;: &#x27;internally derived rational certificate; proof in v1.txt and clarifications in v2.txt&#x27;,
+    &#x27;source&#x27;: str(SOURCE),
+    &#x27;source_sha256&#x27;: hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
+    &#x27;alphabet&#x27;: list(range(6)),
+    &#x27;observation_times&#x27;: scalar_row([-t-h, -t, -h, F(0), h, t, t+h]),
+    &#x27;raw_function_basis&#x27;: [&#x27;I0&#x27;] + [&#x27;psi&#x27; + str(k) for k in range(5)] + [&#x27;I&#x27; + str(k) for k in range(1,6)],
+    &#x27;raw_function_definition&#x27;: &#x27;I0=1(Y0=0); psik=1(Y0=0,Yh=k+1); Ik=1(Y0=k)&#x27;,
+    &#x27;feature_matrix&#x27;: strings(F_coeff),
+    &#x27;facet_residual_matrix&#x27;: strings(D_coeff),
+    &#x27;K&#x27;: strings(K),
+    &#x27;quadratic_coefficients&#x27;: scalar_row(alpha),
+    &#x27;quadratic_monomials&#x27;: [&#x27;1&#x27;,&#x27;x&#x27;,&#x27;y&#x27;,&#x27;x^2&#x27;,&#x27;xy&#x27;],
+    &#x27;constants&#x27;: {name: str(value) for name, value in {
+        &#x27;h&#x27;:h, &#x27;t&#x27;:t, &#x27;tau&#x27;:tau, &#x27;eta&#x27;:eta, &#x27;circle_coefficient&#x27;:F(72),
+        &#x27;finite_facet_coefficient&#x27;:45000*h, &#x27;Lambda&#x27;:Lambda, &#x27;Mu&#x27;:Mu,
+        &#x27;M&#x27;:M, &#x27;raw_target_gap&#x27;:F(1,10**6), &#x27;normalized_gap&#x27;:delta,
+        &#x27;span&#x27;:T, &#x27;entropy_floor&#x27;:sigma_floor}.items()},
+    &#x27;statistic_formula&#x27;: &#x27;Sq +72(p0-s2)+(45000*h+tau)*(p0+s2)+tau*p0+Lambda*Rh+Mu*Rt, divided by M&#x27;,
+    &#x27;verification&#x27;: {
+        &#x27;gamma&#x27;:str(gamma), &#x27;beta&#x27;:str(beta),
+        &#x27;minimum_vertex_distance_squared&#x27;:str(minimum_separation2),
+        &#x27;target_drift_upper_bound&#x27;:str(target_F_bound),
+        &#x27;target_witness_upper_bound&#x27;:str(target_W_bound),
+        &#x27;statistic_sup_bound&#x27;:str(stat_sup_bound),
+        &#x27;arithmetic&#x27;:&#x27;fractions.Fraction&#x27;, &#x27;Taylor_degrees&#x27;:[4,16]
+    }
+}
+output = FOLDER / &#x27;witness_rational_v1.json&#x27;
+require(output.is_file(), &#x27;frozen coefficient artifact exists&#x27;)
+frozen_bytes = output.read_bytes()
+recorded = json.loads(frozen_bytes)
+require(isinstance(recorded, dict), &#x27;frozen coefficient JSON object&#x27;)
+require(isinstance(recorded.get(&#x27;source&#x27;), str), &#x27;historical source path is metadata&#x27;)
+require(set(recorded) == set(payload), &#x27;all frozen payload fields are present&#x27;)
+require(recorded[&#x27;source_sha256&#x27;] == hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
+        &#x27;actual relative source SHA256 matches frozen provenance&#x27;)
+# Ignore only the old checkout location, never any mathematical payload field.
+expected_fields = {key: value for key, value in payload.items() if key != &#x27;source&#x27;}
+recorded_fields = {key: value for key, value in recorded.items() if key != &#x27;source&#x27;}
+require(recorded_fields == expected_fields,
+        &#x27;every mathematical and non-path metadata field agrees on portable replay&#x27;)
+frozen_sha256 = hashlib.sha256(frozen_bytes).hexdigest()
+require(frozen_sha256 == &#x27;2e9f7eb0e67839b60c5345f42b4bb6b764053bae32f72aeabbaa960b89fd0123&#x27;,
+        &#x27;original frozen coefficient bytes and SHA256 are preserved&#x27;)
+
+print(json.dumps({
+    &#x27;status&#x27;:&#x27;PASS&#x27;, &#x27;arithmetic&#x27;:&#x27;fractions.Fraction&#x27;,
+    &#x27;certificate_file&#x27;:str(output), &#x27;certificate_bytes&#x27;:len(frozen_bytes),
+    &#x27;certificate_sha256&#x27;:frozen_sha256,
+    &#x27;portable_validation&#x27;:&#x27;actual relative source SHA256 and every payload field except historical source path&#x27;,
+    &#x27;historical_source_path&#x27;:recorded[&#x27;source&#x27;],
+    &#x27;actual_source_sha256&#x27;:recorded[&#x27;source_sha256&#x27;],
+    &#x27;finite_drift_upper_bound&#x27;:float(target_F_bound),
+    &#x27;witness_upper_bound&#x27;:float(target_W_bound),
+    &#x27;statistic_sup_bound&#x27;:float(stat_sup_bound), &#x27;normalization&#x27;:float(M),
+    &#x27;normalized_gap&#x27;:float(delta), &#x27;entropy_floor&#x27;:float(sigma_floor),
+    &#x27;h&#x27;:float(h), &#x27;t&#x27;:float(t), &#x27;span&#x27;:float(T),
+    &#x27;N_independent_windows_95_percent&#x27;:float(8/(delta*delta))*log(40),
+    &#x27;interpretation&#x27;:&#x27;finite algebra and constants replayed; universal proof requires mathematical audit&#x27;
+}, indent=2))
+</pre><p><a href="../assets/7b9be4112598f7387e324c147a5cf464269ab7545be361f0fb41b9ea8931eaad.py">Exact original</a></p></html>

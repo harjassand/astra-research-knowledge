@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/sol/causal_cosmology/exact_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/sol/causal_cosmology/exact_checks.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact symbolic checks of the finite-media Ward coefficients and dS response.
+Scientific diagnostics, not external verification or a general proof.
+Run: python3 work/sol/causal_cosmology/exact_checks.py
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+import sympy as s
+
+# One clock plus two cross-coupled rotational triplets. At one point beta=(1,2).
+x,e,t,u=s.symbols(&#x27;x e t u&#x27;, real=True)
+B0=s.diag(-9,1,1,1,4,4,4)
+for i in range(3):
+    B0[i+1,i+4]=B0[i+4,i+1]=2
+bx=s.Matrix([0,1,0,0,2,0,0])
+bz=s.Matrix([0,0,0,1,0,0,2])
+w1,w2=s.symbols(&#x27;w1 w2&#x27;, real=True)
+wx=s.Matrix([0,w1,0,0,w2,0,0])
+wz=s.Matrix([0,0,0,w1,0,0,w2])
+
+def symuv(a,b):
+    return (a*b.T+b*a.T)/2
+
+def Sn(w):
+    return bz*w.T+w*bz.T
+
+def P(B):
+    A=B[1:4,1:4]; D=B[4:7,4:7]; E=B[1:4,4:7]
+    va=B[0,1:4]; vd=B[0,4:7]
+    # Includes symmetric shear, relative species, cubic mixed blocks, clock
+    # coupling, and antisymmetric relative-orientation contributions.
+    return (-s.trace(A)/2-3*s.trace(D)/2+s.trace(E)/7
+            +s.trace(A)**2/11+s.trace(A*A)/13
+            +s.trace(A)*s.trace(D)/17+s.trace(A*D)/19
+            +s.trace(E*E.T)/23+s.trace(E*E)/29
+            +s.trace(E)**2/31+s.trace(A*E*D)/37
+            +B[0,0]*(s.trace(A)/41+s.trace(E)/43)
+            +(va*va.T)[0]/47+(va*vd.T)[0]/53)
+
+def dP(B,U):
+    return s.diff(P(B+t*U),t).subs(t,0)
+
+def H(U,V):
+    return s.diff(P(B0+t*U+u*V),t,u).subs({t:0,u:0})
+
+def pform(a,b):
+    return dP(B0,symuv(a,b))
+
+def C(a,b):
+    return -2*pform(a,b)-H(Sn(a),Sn(b))
+
+# Independently differentiate the exact mixed stress with perturbed gradients.
+Vz=bz+e*wz
+Bscalar=B0+e*Sn(wz)+e**2*wz*wz.T
+stress_diff=-2*dP(Bscalar,Vz*Vz.T-bx*bx.T)
+scalar_coefficient=s.diff(stress_diff,e).subs(e,0)
+scalar_residual=s.simplify(scalar_coefficient-2*C(bx,wx))
+
+# h_xz inverse-metric perturbation and mixed index raising.
+Bmetric=B0-x*Sn(bx)
+Vraised=bx-x*bz
+crossstress=-2*dP(Bmetric,symuv(Vraised,bz))
+tensor_coefficient=s.diff(crossstress,x).subs(x,0)
+tensor_residual=s.simplify(tensor_coefficient+C(bx,bx))
+spin_residual=s.simplify(H(bz*bz.T-bx*bx.T,Sn(wz))-H(Sn(bx),Sn(wx)))
+
+# Counterexample without positivity: isotropic Hessian jets can have zero
+# tensor contact but nonzero scalar shear cross coefficient. A two-species
+# transverse form [[1,0],[0,-1]] and beta=(1,1) gives mu=0, cross=1.
+Bad=s.diag(1,-1); bbad=s.Matrix([1,1]); wbad=s.Matrix([1,0])
+
+# Exact de Sitter conformally coupled scalar response.
+tau,ti,k,Hs,Q,M0=s.symbols(&#x27;tau ti k Hs Q M0&#x27;, real=True, nonzero=True)
+a=-1/(Hs*tau)
+dF=Q*(1-s.cos(k*(tau-ti)))/(3*M0**2*k**2*a)
+fr_residual=s.simplify(s.diff(dF,tau,2)+2*s.diff(a,tau)/a*s.diff(dF,tau)
+                       +(k**2+2*a**2*Hs**2)*dF-Q/(3*M0**2*a))
+chi=s.simplify(a*dF)
+chi_residual=s.simplify(s.diff(chi,tau,2)+k**2*chi-Q/(3*M0**2))
+M2=3*M0**2
+V=-Q/(2*M2*k**2*a)
+Phi=s.simplify(V+dF/6); Psi=s.simplify(V-dF/6)
+eta_residual=s.simplify(Phi/Psi-(2+s.cos(k*(tau-ti)))/(4-s.cos(k*(tau-ti))))
+results={
+    &#x27;scope&#x27;:&#x27;Exact diagnostic on one clock and two cross-coupled O(3) triplets; not proof for all P.&#x27;,
+    &#x27;tensor_identity_residual&#x27;:str(tensor_residual),
+    &#x27;scalar_identity_residual&#x27;:str(scalar_residual),
+    &#x27;spin2_identity_residual&#x27;:str(spin_residual),
+    &#x27;bad_form_tensor_contact&#x27;:str((bbad.T*Bad*bbad)[0]),
+    &#x27;bad_form_scalar_cross&#x27;:str((bbad.T*Bad*wbad)[0]),
+    &#x27;bad_form_eigenvalues&#x27;:[str(v) for v in Bad.eigenvals()],
+    &#x27;fR_scalar_eq_residual&#x27;:str(fr_residual),
+    &#x27;fR_chi_eq_residual&#x27;:str(chi_residual),
+    &#x27;fR_initial_scalar&#x27;:str(s.simplify(dF.subs(tau,ti))),
+    &#x27;fR_initial_scalar_derivative&#x27;:str(s.simplify(s.diff(dF,tau).subs(tau,ti))),
+    &#x27;fR_eta_residual&#x27;:str(eta_residual),
+    &#x27;fR_lensing_residual&#x27;:str(s.simplify(Phi+Psi-2*V)),
+    &#x27;all_claimed_residuals_zero&#x27;: all(v==0 for v in [tensor_residual,scalar_residual,spin_residual,fr_residual,chi_residual,eta_residual]),
+}
+print(json.dumps(results,indent=2))
+Path(__file__).with_name(&#x27;exact_checks_v1.json&#x27;).write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+assert results[&#x27;all_claimed_residuals_zero&#x27;]
+</pre><p><a href="../assets/ddc12b3e11e7aa02e802a54c8cbb64fb78be1f8008adc5914786966eea32722a.py">Exact original</a></p></html>

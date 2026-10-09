@@ -1,0 +1,146 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/t21_tensor_canonization/small_f2_counterexamples.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/t21_tensor_canonization/small_f2_counterexamples.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exhaustive F_2 matrix-code orbit search for T21.
+
+Enumerates 2-dimensional subspaces of M_2(F_2) under left-right equivalence
+and compares simple local signatures.  All arithmetic is exact over F_2.
+&quot;&quot;&quot;
+from itertools import combinations
+
+
+def mat_mul(a, b):
+    out = 0
+    for i in range(2):
+        for j in range(2):
+            bit = 0
+            for k in range(2):
+                bit ^= ((a &gt;&gt; (2 * i + k)) &amp; 1) &amp; ((b &gt;&gt; (2 * k + j)) &amp; 1)
+            out |= bit &lt;&lt; (2 * i + j)
+    return out
+
+
+def mat_add(a, b):
+    return a ^ b
+
+
+def det(a):
+    return ((a &gt;&gt; 0) &amp; 1) * ((a &gt;&gt; 3) &amp; 1) ^ (((a &gt;&gt; 1) &amp; 1) * ((a &gt;&gt; 2) &amp; 1))
+
+
+def inv(a):
+    assert det(a)
+    # For 2x2 matrices over F_2, the adjugate equals the inverse when det=1.
+    return (((a &gt;&gt; 3) &amp; 1) &lt;&lt; 0) | (((a &gt;&gt; 1) &amp; 1) &lt;&lt; 1) | (((a &gt;&gt; 2) &amp; 1) &lt;&lt; 2) | (((a &gt;&gt; 0) &amp; 1) &lt;&lt; 3)
+
+
+GL2 = [a for a in range(16) if det(a)]
+
+
+def span2(a, b):
+    return tuple(sorted({0, a, b, a ^ b}))
+
+
+def canonical_subspaces():
+    ans = set()
+    for a, b in combinations(range(1, 16), 2):
+        if a != b:
+            ans.add(span2(a, b))
+    return sorted(ans)
+
+
+def rank(a):
+    if a == 0:
+        return 0
+    return 2 if det(a) else 1
+
+
+def act(code, p, q):
+    pi, qi = inv(p), inv(q)
+    return tuple(sorted(mat_mul(mat_mul(p, a), qi) for a in code))
+
+
+def orbit(code):
+    return min(act(code, p, q) for p in GL2 for q in GL2)
+
+
+def rref_rank(rows, ncols):
+    rows = [x for x in rows if x]
+    piv = 0
+    for col in range(ncols):
+        found = next((i for i in range(piv, len(rows)) if (rows[i] &gt;&gt; col) &amp; 1), None)
+        if found is None:
+            continue
+        rows[piv], rows[found] = rows[found], rows[piv]
+        for i in range(len(rows)):
+            if i != piv and ((rows[i] &gt;&gt; col) &amp; 1):
+                rows[i] ^= rows[piv]
+        piv += 1
+        if piv == len(rows):
+            break
+    return piv
+
+
+def adjoint_dimension(code):
+    # Variables are entries of X followed by entries of Y; impose XA=AY.
+    eqs = []
+    for a in code:
+        for i in range(2):
+            for j in range(2):
+                row = 0
+                for k in range(2):
+                    # (X A)[i,j] coefficient of X[i,k]
+                    row ^= ((a &gt;&gt; (2 * k + j)) &amp; 1) &lt;&lt; (2 * i + k)
+                    # (A Y)[i,j] coefficient of Y[k,j]
+                    row ^= ((a &gt;&gt; (2 * i + k)) &amp; 1) &lt;&lt; (4 + 2 * k + j)
+                eqs.append(row)
+    return 8 - rref_rank(eqs, 8)
+
+
+def generated_algebra_dimension(code):
+    # Compute the unital associative algebra spanned by products of generators.
+    basis = {1 &lt;&lt; 0, 1 &lt;&lt; 3}  # identity matrix in the bit encoding
+    basis.update(code)
+    changed = True
+    while changed:
+        changed = False
+        current = list(basis)
+        for a in current:
+            for b in current:
+                c = mat_mul(a, b)
+                if c not in basis:
+                    # Add c only if it increases the F_2-span.
+                    old = rref_rank(list(basis), 4)
+                    new = rref_rank(list(basis) + [c], 4)
+                    if new &gt; old:
+                        basis.add(c)
+                        changed = True
+    return rref_rank(list(basis), 4)
+
+
+def signature(code):
+    counts = tuple(sum(rank(a) == r for a in code) for r in range(3))
+    # The distribution of determinant-zero elements is equivalent to rank counts here.
+    return counts, adjoint_dimension(code), generated_algebra_dimension(code)
+
+
+def main():
+    codes = canonical_subspaces()
+    reps = {}
+    for code in codes:
+        reps.setdefault(orbit(code), code)
+    buckets = {}
+    for rep in reps:
+        buckets.setdefault(signature(rep), []).append(rep)
+    print(f&quot;2D subspaces: {len(codes)}; left-right orbits: {len(reps)}&quot;)
+    print(&quot;signature buckets with multiple orbits:&quot;)
+    found = 0
+    for sig, orbit_reps in sorted(buckets.items(), key=lambda x: (x[0], x[1])):
+        if len(orbit_reps) &gt; 1:
+            print(f&quot;  {sig}: {orbit_reps}&quot;)
+            found += 1
+    if not found:
+        print(&quot;  none&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/7976195af3ae5018f6d6f4ddec167a6fcc98f96afa99537434cb3d072658749a.py">Exact original</a></p></html>

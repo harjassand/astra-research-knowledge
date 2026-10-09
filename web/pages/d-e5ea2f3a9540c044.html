@@ -1,0 +1,162 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_02/n27_correlated_repair/exact_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_02/n27_correlated_repair/exact_check.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact-rational finite-chain check for the N27 controller example.
+
+No simulation or floating-point stationary solve is used here.  It verifies
+the rational stationary distributions and the stated strict inequalities for
+the evidence-crossing controller against sitewise and positive-run controls.
+The model remains synthetic; exact arithmetic validates only these equations.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import product
+
+
+P = {
+    &quot;a&quot;: F(1,200), &quot;b&quot;: F(1,50),
+    &quot;eg&quot;: F(1,10000), &quot;eb&quot;: F(1,10),
+    &quot;s&quot;: F(4,5), &quot;f&quot;: F(1,5),
+    &quot;rho&quot;: F(3,5), &quot;delta&quot;: F(1,5), &quot;eta&quot;: F(49,50),
+    &quot;t0&quot;: F(1), &quot;tpatch&quot;: F(2,5), &quot;treset&quot;: F(1),
+}
+L=3
+NM=1&lt;&lt;L
+N=2*NM
+
+
+def stationary_exact(T):
+    &quot;&quot;&quot;Exact pi solving pi*T=pi, sum(pi)=1 by rational Gauss-Jordan.&quot;&quot;&quot;
+    A=[[T[j][i]-(F(1) if i==j else F(0)) for j in range(N)] for i in range(N)]
+    A[-1]=[F(1) for _ in range(N)]
+    rhs=[F(0) for _ in range(N)]
+    rhs[-1]=F(1)
+    for col in range(N):
+        pivot=next((r for r in range(col,N) if A[r][col]),None)
+        if pivot is None:
+            raise ArithmeticError(&quot;stationary system singular&quot;)
+        A[col],A[pivot]=A[pivot],A[col]
+        rhs[col],rhs[pivot]=rhs[pivot],rhs[col]
+        scale=A[col][col]
+        A[col]=[v/scale for v in A[col]]
+        rhs[col]/=scale
+        for r in range(N):
+            if r==col: continue
+            c=A[r][col]
+            if c:
+                A[r]=[A[r][j]-c*A[col][j] for j in range(N)]
+                rhs[r]-=c*rhs[col]
+    pi=rhs
+    assert sum(pi)==1
+    assert all(v&gt;=0 for v in pi)
+    assert all(sum(pi[i]*T[i][j] for i in range(N))==pi[j] for j in range(N))
+    return pi
+
+
+def evaluate(policy):
+    if len(policy)!=2*NM or any(a not in (0,1) for a in policy):
+        raise ValueError(&quot;expected a deterministic three-cue controller&quot;)
+    T=[[F(0) for _ in range(N)] for _ in range(N)]
+    rewards={k:[F(0) for _ in range(N)] for k in
+             (&quot;errors&quot;,&quot;dntp&quot;,&quot;patches&quot;,&quot;resets&quot;,&quot;q_initial&quot;,&quot;false_cue&quot;,
+              &quot;true_cue&quot;,&quot;missed_error&quot;,&quot;reset_bad&quot;,&quot;reset_good&quot;,&quot;reset_success&quot;,
+              &quot;reset_reverse&quot;)}
+    for x,mem,e,z in product((0,1),range(NM),(0,1),(0,1)):
+        i=x*NM+mem
+        eprob=P[&quot;eb&quot;] if x else P[&quot;eg&quot;]
+        pe=eprob if e else 1-eprob
+        pplus=(P[&quot;s&quot;] if e else P[&quot;f&quot;])
+        pz=pplus if z else 1-pplus
+        obs=pe*pz
+        alarm=policy[2*mem+z]
+        if alarm:
+            reset=((1,P[&quot;delta&quot;]),(0,1-P[&quot;delta&quot;])) if x==0 else ((0,P[&quot;rho&quot;]),(1,1-P[&quot;rho&quot;]))
+        else:
+            reset=((x,F(1)),)
+        next_mem=((mem&lt;&lt;1)|z)&amp;(NM-1)
+        for xp,pr in reset:
+            mass=obs*pr
+            repl=P[&quot;eb&quot;] if xp else P[&quot;eg&quot;]
+            final=(P[&quot;eta&quot;]*repl+(1-P[&quot;eta&quot;])*e) if z else F(e)
+            rewards[&quot;errors&quot;][i]+=mass*final
+            rewards[&quot;dntp&quot;][i]+=mass*(1+P[&quot;eta&quot;]*z)
+            rewards[&quot;patches&quot;][i]+=mass*z
+            rewards[&quot;resets&quot;][i]+=mass*alarm
+            rewards[&quot;q_initial&quot;][i]+=mass*e
+            rewards[&quot;false_cue&quot;][i]+=mass*int(z==1 and e==0)
+            rewards[&quot;true_cue&quot;][i]+=mass*int(z==1 and e==1)
+            rewards[&quot;missed_error&quot;][i]+=mass*int(z==0 and e==1)
+            rewards[&quot;reset_bad&quot;][i]+=mass*int(alarm and x==1)
+            rewards[&quot;reset_good&quot;][i]+=mass*int(alarm and x==0)
+            rewards[&quot;reset_success&quot;][i]+=mass*int(alarm and x==1 and xp==0)
+            rewards[&quot;reset_reverse&quot;][i]+=mass*int(alarm and x==0 and xp==1)
+            trans=((1,P[&quot;a&quot;]),(0,1-P[&quot;a&quot;])) if xp==0 else ((0,P[&quot;b&quot;]),(1,1-P[&quot;b&quot;]))
+            for xn,pt in trans:
+                T[i][xn*NM+next_mem]+=obs*pr*pt
+    assert all(sum(row)==1 for row in T)
+    pi=stationary_exact(T)
+    out={name:sum(pi[i]*v[i] for i in range(N)) for name,v in rewards.items()}
+    out[&quot;time&quot;]=P[&quot;t0&quot;]+P[&quot;tpatch&quot;]*out[&quot;patches&quot;]+P[&quot;treset&quot;]*out[&quot;resets&quot;]
+    out[&quot;atp&quot;]=out[&quot;patches&quot;]+out[&quot;resets&quot;]
+    return out
+
+
+def sitewise():
+    return tuple(z for mem in range(NM) for z in (0,1))
+
+
+def burst_repeated(k):
+    out=[]
+    for mem in range(NM):
+        bits=[(mem&gt;&gt;j)&amp;1 for j in reversed(range(L))]
+        for z in (0,1):
+            out.append(int(z==1 and all((bits+[z])[-k:])))
+    return tuple(out)
+
+
+def burst_one_shot(k):
+    out=[]
+    for mem in range(NM):
+        bits=[(mem&gt;&gt;j)&amp;1 for j in reversed(range(L))]
+        for z in (0,1):
+            seq=bits+[z]
+            reached=z==1 and all(seq[-k:])
+            was_reached=len(bits)&gt;=k and all(bits[-k:])
+            out.append(int(reached and not was_reached))
+    return tuple(out)
+
+
+def main():
+    # Posterior-crossing truth table: trigger when the four-cue pattern has
+    # three positives and the previous three-cue window was below threshold.
+    # State/index order is (oldest-to-newest 3-bit memory,current cue).
+    candidate=tuple(int(2*mem+z in (7,11,13)) for mem in range(NM) for z in (0,1))
+    cases={
+        &quot;candidate_3of4_crossing&quot;:candidate,
+        &quot;sitewise_each_plus&quot;:sitewise(),
+        &quot;burst_1plus_one_shot&quot;:burst_one_shot(1),
+        &quot;burst_2plus_repeated&quot;:burst_repeated(2),
+        &quot;burst_2plus_one_shot&quot;:burst_one_shot(2),
+        &quot;burst_3plus_repeated&quot;:burst_repeated(3),
+        &quot;burst_3plus_one_shot&quot;:burst_one_shot(3),
+    }
+    results={name:evaluate(pol) for name,pol in cases.items()}
+    c=results[&quot;candidate_3of4_crossing&quot;]
+    print(&quot;name,errors,initial_errors,reset_rate,reset_on_G,reset_on_B,successful_B_reset,reverse_G_to_B,dNTP,time,ATP&quot;)
+    for name,r in results.items():
+        print(name,*[f&quot;{float(r[k]):.12g}&quot; for k in
+              (&quot;errors&quot;,&quot;q_initial&quot;,&quot;resets&quot;,&quot;reset_good&quot;,&quot;reset_bad&quot;,&quot;reset_success&quot;,&quot;reset_reverse&quot;,&quot;dntp&quot;,&quot;time&quot;,&quot;atp&quot;)],sep=&quot;,&quot;)
+    strict=[]
+    for name in (&quot;sitewise_each_plus&quot;,&quot;burst_1plus_one_shot&quot;,&quot;burst_2plus_repeated&quot;,&quot;burst_2plus_one_shot&quot;):
+        r=results[name]
+        assert c[&quot;errors&quot;]&lt;r[&quot;errors&quot;]
+        assert c[&quot;resets&quot;]&lt;r[&quot;resets&quot;]
+        assert c[&quot;dntp&quot;]&lt;r[&quot;dntp&quot;]
+        assert c[&quot;time&quot;]&lt;r[&quot;time&quot;]
+        assert c[&quot;atp&quot;]&lt;r[&quot;atp&quot;]
+        strict.append(name)
+    print(&quot;EXACT strict componentwise improvements:&quot;,&quot;, &quot;.join(strict))
+    print(&quot;exact stationary equations, nonnegative masses, and row stochasticity all verified&quot;)
+
+
+if __name__==&quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b5495ee52f5b0eea3568097d88b9a1fbe330b53d6ae72a295e4ce9c97c9d603a.py">Exact original</a></p></html>

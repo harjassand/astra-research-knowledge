@@ -1,0 +1,123 @@
+A02 elliptic solver — Phase II record v3 (H-matrix route audit)
+Date: 2026-10-09
+Scope: audit of a known hierarchical-factorization escape for high-contrast tensor FEM, an exact solve-error lemma, and the unresolved end-to-end certification gap. v1 and v2 remain frozen.
+
+## Claim status
+
+- Source-reported: high-contrast continuum Green-function blocks for arbitrary measurable SPD tensor coefficients admit separated approximants whose rank depends logarithmically on contrast in ordinary L2 error (Bebendorf 2014, Theorem 4).
+- Source-reported: for quasi-uniform finite-element meshes, H-matrix approximants to Schur complements and LU factors have near-linear arithmetic/storage bounds when the requisite low-rank approximants exist (Bebendorf 2005, Theorems 2.7 and 3.4 and Section 4).
+- Internally derived: a relative spectral factor residual implies an explicit energy-norm forward-error guarantee for one triangular-factor solve; an SPD approximate Cholesky gives a PCG condition bound.
+- Unresolved: the cited rank-existence theorems do not certify rank/error bounds for the practical recursive H-LU/H-Cholesky construction under arbitrary tensor contrast. This prevents a certified end-to-end near-linear algorithm from being claimed here.
+- No novelty or priority claim. The literature route is established H-matrix work, not an original solver discovery.
+
+## Primary-source audit
+
+1. Mario Bebendorf, “Why finite element discretizations can be factored by triangular hierarchical matrices,” *SIAM Journal on Numerical Analysis* 45(4), 1472–1494 (2007), DOI https://doi.org/10.1137/060669747. The pinned primary preprint read for this audit is https://files-www.mis.mpg.de/mpi-typo3/preprints/2005/preprint2005_8.pdf (MPI MiS Preprint 8/2005, 25 pages; downloaded locally to `/tmp/bebendorf_hlu_2005.pdf`; pages 3–22 were selectively extracted).
+
+2. Mario Bebendorf, “Low-rank approximation of elliptic boundary value problems with high-contrast coefficients,” arXiv:1410.3717v1, https://arxiv.org/html/1410.3717v1 (accessed 2026-10-09). This is the primary source for the tensor-coefficient contrast improvement; use the pinned v1 rather than silently substituting the 2016 journal edition.
+
+The cited tensor problem is −div(A(x)∇u), with symmetric positive-definite (A(x)in L^∞(Ω)^{d×d}) and eigenvalues bounded between positive (lambda_{min}) and finite (lambda_{max}). The source defines contrast (kappa_A=lambda_{max}/lambda_{min}). It treats Green-function approximation on geometrically separated domains; the mesh hierarchy is geometric and is not adapted to coefficient jumps. For transfer to a discrete inverse/factorization, use the finite-element assumptions and proofs in the 2005 paper as well: locally supported basis, quasi-uniform mesh, geometrically constructed cluster trees, and the stated elliptic FE approximation conditions. The records do not establish an analogous theorem for arbitrary graph SPD matrices without geometric/FEM structure.
+
+### Contrast dependence in the continuum rank estimate
+
+In Bebendorf 2014 Theorem 4, for separated domains (D_1,D_2) satisfying its admissibility condition, the Green kernel admits rank (k) satisfying
+
+\[
+k\le c_\eta\left\lceil\left|\log\!\left(\varepsilon\,\kappa_A^{-3/2}/\lambda_{\max}\right)\right|\right\rceil^{d+1},
+\]
+
+with an L2-in-the-second-variable relative error for every first-variable point. The theorem's (c_\eta) is independent of the coefficient; see HTML Theorem 4 and proof, lines 477–516. The flux-norm estimate before conversion has rank (O(|\log\varepsilon|^{d+1})) independent of (A), but is not the ordinary L2 estimate used to transfer directly to matrix blocks. Converting to L2 reintroduces contrast inside the logarithm. If the operator is rescaled so λmax=1, the displayed rank is polylogarithmic in κA and (1/\varepsilon), not contrast-independent. This is an existence statement for separated Green blocks; the theorem does not give a complete algorithm for acquiring the separated bases from only a sparse matrix.
+
+The 2014 introduction (HTML lines 68–78) states that the new estimates feed into the existing inverse-matrix and LU-factor approximation arguments. This supports a polylogarithmic-contrast representability route for geometrically clustered FEM matrices. It is not by itself a complete cost theorem for a specific implementable factorization, and the local rank bound should not be confused with an end-to-end solve guarantee.
+
+### Factor rank transfer and resource accounting
+
+For a quasi-uniform FE mesh in dimension (d), Bebendorf 2005 builds a PCA/geometric cluster tree in (O(n\log n)), with (n) degrees of freedom. Its admissible block partition has (O(\eta^{-d}n\log n)) storage positions up to constants. An H-matrix with maximum block rank (r) has storage and matrix-vector cost (O(\eta^{-d} r n\log n)); H-matrix multiplication costs (O(\eta^{-d}r^2n(\log n)^2)) (preprint pages 7–9). The exact elliptic PDE does not make the construction free: geometry and sparse matrix assembly are inputs; these costs are additional setup, and tensor integration/assembly must be charged if (A) is not supplied.
+
+Theorem 2.7 (page 12) proves that Schur complements have approximants of rank
+
+\[
+r_S\sim (\log n)^2|\log\varepsilon|^{d+1}
+\]
+
+at the displayed absolute spectral-norm tolerance, with its stated scaling factor (c p n^{2(1-2/d)}\varepsilon) and constants. Its preceding Theorem 2.3 (page 10) has coefficient-dependent constants in the inverse approximation; the 2014 high-contrast result is intended to improve those rank constants by replacing the old contrast dependence with the logarithmic rank factor above.
+
+Theorem 3.4 (pages 17–18) gives a rank transfer: if every admissible Schur block has a rank-
+\(k\) approximation with accuracy \(\varepsilon\), then triangular H-factors exist with rank
+
+\[
+r_{LU}\sim (\log n)^{\alpha+\beta}|\log\varepsilon|^\beta
+  \bigl(\log(n\rho_n\operatorname{cond}_2(A))\bigr)^\beta,
+\]
+
+when the Schur-block rank scales as (k\sim(\log n)^\alpha|\log\varepsilon|^\beta). Here \(\rho_n\) is the LU growth factor. For the 2005 elliptic bound, \(\alpha=2,\beta=d+1\). Its formula is an existence/rank theorem for factors of an appropriately perturbed matrix, not an unconditional rank guarantee for every recursive truncation run.
+
+Combining the 2014 contrast-sensitive local rank with this 2005 transfer suggests the schematic fixed-dimension envelope
+
+\[
+r_{LU}=\operatorname{poly}\!\left(\log n,\ \log\kappa_A,\ \log(1/\delta)\right),
+\]
+
+with the explicit 2005 exponents taking the form
+
+\[
+r_{LU}\ \text{of order}\ (\log n)^{d+3}
+\,q^{d+1}\,\bigl(\log(n\rho_n\operatorname{cond}_2(A))\bigr)^{d+1},
+\quad q=O(\log n+\log\kappa_A+\log(1/\delta)),
+\]
+
+after scaling the coefficient and converting the desired relative residual to blockwise absolute tolerances. This is an inference from the two proof chains, not a theorem restated with complete constants here: the tolerance conversion and all dependencies in its constants must be reconstructed before using it as a certified complexity bound. The 2005 Theorem 2.3 initially proves an inverse approximation at finite-element-error accuracy; its Remark 2.4 assumes arbitrary accuracy based on numerical evidence. The 2014 continuum estimates are a route to repairing that precision gap at the existence level, but not the recursive-algorithm gap below.
+
+For a fixed-dimensional shape-regular quasi-uniform P1 mesh with Dirichlet conditions, coefficient eigenvalues in ([1/\kappa_A,1]), and standard nodal coordinates, the usual FE Rayleigh estimates give \(\operatorname{cond}_2(A)\le C\kappa_A h^{-2}\le C'\kappa_A n^{2/d}\). Also for SPD elimination the Schur entries are bounded by \(\|A\|_2\), while \(\max_{ij}|A_{ij}|\ge\|A\|_2/n\), hence the source's pointwise growth factor is at most (n) under its definition. Thus the logarithmic growth term in the existence rank is (O(\log n+\log\kappa_A)). Absolute tolerances can be scaled with (A); normalizing \(\lambda_{\max}=1\) makes the remaining precision requirement depend on \(\lambda_{\min}(A)\), hence on at most \(\log n+\log\kappa_A+\log(1/\delta)\) under these FE hypotheses.
+
+Consequently, if a constructive algorithm were proved to realize the source's ranks with a fixed-residual factor, the charged asymptotic envelope would be near-linear in (n), with factors polynomial in (r_{LU}): setup/factorization roughly (O(\eta^{-d}r_{LU}^2 n(\log n)^2)), storage (O(\eta^{-d}r_{LU} n\log n)), and factor application (O(\eta^{-d}r_{LU} n\log n)). A PCG solve with a certified fixed spectral-equivalence constant would then take (O(\log(1/\varepsilon_{solve}))) preconditioned iterations, each charging sparse (A\)-matvec and factor application. These are conditional costs, not a completed algorithm guarantee.
+
+### Why this is not yet a certified solver
+
+The implementation gap is explicit in the primary paper. Section 4 describes recursive block H-LU using truncated H-matrix arithmetic, but its Remark 4.1 (page 19) states that intermediate block ranks are not known and that the paper's theory cannot be applied to this particular recursive construction; the reported logarithmic rank dependence there is numerical. Theorem 3.4 instead constructs an exact factorization of a suitably perturbed matrix from approximants to exact Schur complements. The proof does not give a near-linear procedure for acquiring those exact Schur approximants from only the sparse input matrix. The source's stability estimate for truncated block LU also requires a product-norm condition such as \(\|L\|\|U\|\approx\|A\|\); it does not provide a contrast-uniform finite-precision forward-error theorem. The 2014 high-contrast paper strengthens representability estimates, but it does not close these algorithmic and rounding gaps.
+
+No factorization algorithm that overcomes this gap was derived in this investigation. In particular, do not infer a certified contrast-robust solver merely from low-rank existence, empirical H-ranks, or low-rank H-arithmetic operation counts.
+
+## Exact residual-to-energy certificate
+
+This algebraic lemma identifies the certificate a constructive factor algorithm would need to provide. Let (A\succ0), (b\in\mathbb R^n), (x^*=A^{-1}b), and let \(\widehat A\) be any real square matrix. Suppose
+
+\[
+\left\|A^{-1/2}(\widehat A-A)A^{-1/2}\right\|_2\le\delta<1.
+\]
+
+Then \(\widehat A\) is nonsingular, and \(\widehat x=\widehat A^{-1}b\) obeys
+
+\[
+\frac{\|\widehat x-x^*\|_A}{\|x^*\|_A}\le\frac{\delta}{1-\delta},
+\qquad \|z\|_A=(z^TAz)^{1/2}.
+\]
+
+Proof. Set \(E=A^{-1/2}(\widehat A-A)A^{-1/2}\), so \(A^{-1/2}\widehat A A^{-1/2}=I+E\). Since \(\|E\|_2<1\), the Neumann bound gives \(\|(I+E)^{-1}\|_2\le(1-\delta)^{-1}\). With \(y=A^{-1/2}b=A^{1/2}x^*\), one has \(A^{1/2}\widehat x=(I+E)^{-1}y\). Therefore
+
+\[
+\|\widehat x-x^*\|_A
+=\|((I+E)^{-1}-I)y\|_2
+\le\|(I+E)^{-1}\|_2\|E\|_2\|y\|_2
+\le\frac{\delta}{1-\delta}\|x^*\|_A.
+\]
+
+The convenient sufficient condition \(\|\widehat A-A\|_2\le\delta\lambda_{\min}(A)\) implies the premise by submultiplicativity. If \(\widehat C\succ0\) is symmetric and \(\|\widehat C-A\|_2\le\delta\lambda_{\min}(A)\), then
+
+\[
+(1-\delta)A\preceq\widehat C\preceq(1+\delta)A,
+\qquad
+\operatorname{cond}(\widehat C^{-1/2}A\widehat C^{-1/2})\le\frac{1+\delta}{1-\delta}.
+\]
+
+This gives an energy-accurate approximate direct solve or a condition-bounded PCG preconditioner once such a factor and residual bound are actually constructed. The lemma is exact-real algebra; it says nothing about obtaining the factor efficiently, evaluating the certificate cheaply, or controlling floating-point errors.
+
+## Consequence for the factor-width obstruction
+
+The v2 principal-angle lower bound remains unchanged. It excludes every factor-width-(k) PSD energy representation with (k\le d) on the generic stiff mode of a (d)-simplex. The H-matrix route is a genuine structural escape from that local limitation: its factors are globally hierarchical and are not bounded-support sums on the physical simplex nodes. However, the literature audited here establishes low-rank representability for such factors, not a contrast-certified end-to-end acquisition/solve method. It therefore does not prove that bounded physical arity (d+1) suffices, nor does it refute the width threshold. For the exact width-(d+1) element decomposition in v2, acquisition/apply are linear in element count, but inversion remains the original hard problem.
+
+## Finite evidence and remaining gap
+
+The only executable artifact is the exact-rational seven-element FEM check in `check_v1.py`; it validates the v1/v2 matrix identity and finite signs, not any H-matrix theorem or solver. No H-LU implementation, contrast sweep, finite-precision solve, or certificate experiment was run here.
+
+The original target remains unresolved: give a constructive, rank/error-controlled factorization or different hierarchy for arbitrary heterogeneous SPD tensor coefficients on an explicit mesh class; charge construction, truncation, storage, application, and arithmetic; guarantee \(\|x-x^*\|_A\le\varepsilon\|x^*\|_A\); and preserve the bound under the v2 simplex orientation/channel degeneracies. The decisive missing inference in the audited route is a theorem that the actual sparse-input H-Cholesky/H-LU truncation algorithm produces the high-contrast ranks and a certified relative residual in near-linear charged cost.

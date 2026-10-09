@@ -1,0 +1,106 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a25_shifted_initializer/a25_finite_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a25_shifted_initializer/a25_finite_checks.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite diagnostics for A25 signed/shifted spectral initialization.
+
+These computations illustrate exact algebraic bounds; they are not theorem proofs.
+Requires NumPy.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+import numpy as np
+
+
+def two_point_parameters(sigma: float, L: float):
+    &quot;&quot;&quot;Variance-sigma^2 mean-zero noise with rare atom A=2L.&quot;&quot;&quot;
+    A = 2.0 * L
+    p = sigma**2 / (A**2 + sigma**2)
+    b = sigma**2 / A
+    return A, p, b
+
+
+def clipping_bias_mc(*, n=2_000_000, d=4, q=1.0, sigma=1.0, L=20.0,
+                     batch=50_000, seed=2501):
+    rng = np.random.default_rng(seed)
+    A, p, b = two_point_parameters(sigma, L)
+    x = np.zeros(d)
+    x[0] = q
+    total = np.zeros((d, d), dtype=np.float64)
+    rare_count = 0
+    done = 0
+    while done &lt; n:
+        k = min(batch, n - done)
+        a = rng.standard_normal((k, d))
+        signal = (a @ x) ** 2
+        rare = rng.random(k) &lt; p
+        zeta = np.where(rare, A, -b)
+        y = signal + zeta
+        clipped = np.clip(y, -L, L)
+        residual = y - clipped
+        total += np.einsum(&quot;i,ij,ik-&gt;jk&quot;, residual, a, a, optimize=True)
+        rare_count += int(rare.sum())
+        done += k
+    empirical = total / n
+    predicted_rare_floor = p * L
+    exact_rare_diagonal = np.array([p * (L + 3 * q**2)] +
+                                   [p * (L + q**2)] * (d - 1))
+    return {
+        &quot;n&quot;: n, &quot;d&quot;: d, &quot;q&quot;: q, &quot;sigma&quot;: sigma, &quot;L&quot;: L,
+        &quot;A&quot;: A, &quot;p&quot;: p, &quot;b&quot;: b,
+        &quot;mean_noise_exact&quot;: 0.0,
+        &quot;variance_noise_exact&quot;: p * A**2 + (1 - p) * b**2,
+        &quot;expected_rare_count&quot;: n * p,
+        &quot;observed_rare_count&quot;: rare_count,
+        &quot;sigma2_over_L&quot;: sigma**2 / L,
+        &quot;conditional_bias_floor_pL&quot;: predicted_rare_floor,
+        &quot;floor_ratio_to_sigma2_over_L&quot;: predicted_rare_floor / (sigma**2 / L),
+        &quot;rare_only_population_bias_diagonal&quot;: exact_rare_diagonal.tolist(),
+        &quot;empirical_bias_diagonal&quot;: np.diag(empirical).tolist(),
+        &quot;empirical_bias_eigenvalues&quot;: np.linalg.eigvalsh(empirical).tolist(),
+    }
+
+
+def contamination_modulus_mc(*, n=2_000_000, d=8, q=1.0, theta=0.3,
+                             sigma=5.0, seed=2502):
+    rng = np.random.default_rng(seed)
+    x = np.zeros(d)
+    x[0] = q
+    xp = np.zeros(d)
+    xp[0] = q * math.cos(theta)
+    xp[1] = q * math.sin(theta)
+    delta2_sum = 0.0
+    p_sum = 0.0
+    done = 0
+    batch = 50_000
+    while done &lt; n:
+        k = min(batch, n - done)
+        a = rng.standard_normal((k, d))
+        delta = (a @ x) ** 2 - (a @ xp) ** 2
+        delta2_sum += float(delta @ delta)
+        p_sum += float(np.sum(delta**2 / (delta**2 + 4 * sigma**2)))
+        done += k
+    empirical_delta2 = delta2_sum / n
+    empirical_tv = p_sum / n
+    theory_delta2 = 4 * q**4 * math.sin(theta)**2
+    theory_tv_upper = theory_delta2 / (4 * sigma**2)
+    return {
+        &quot;n&quot;: n, &quot;d&quot;: d, &quot;q&quot;: q, &quot;theta&quot;: theta, &quot;sigma&quot;: sigma,
+        &quot;empirical_E_delta2&quot;: empirical_delta2,
+        &quot;theory_E_delta2&quot;: theory_delta2,
+        &quot;empirical_pair_TV_for_constructed_noise&quot;: empirical_tv,
+        &quot;theory_TV_upper_bound&quot;: theory_tv_upper,
+        &quot;contamination_floor_scale_sin2_over_s2&quot;: math.sin(theta)**2 / (sigma / q**2)**2,
+    }
+
+
+def main():
+    result = {
+        &quot;scope&quot;: &quot;finite numerical diagnostics only; exact proof is in v6.txt&quot;,
+        &quot;clipping_skew_example&quot;: clipping_bias_mc(),
+        &quot;two_point_TV_example&quot;: contamination_modulus_mc(),
+    }
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/2a5f8190c711ecf96247e5ddc3e06bf7af99d2c2e18fc3f40268458d022cac77.py">Exact original</a></p></html>

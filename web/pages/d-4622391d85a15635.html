@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a05_inverse_problem/wave_layer_resolution.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a05_inverse_problem/wave_layer_resolution.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostics for EIT evanescence versus wave travel-time echoes.
+
+This is an equation check and scale illustration, not a proof or a simulated
+instrument. EIT numbers use the exact 2-D radial transfer recursion; wave
+numbers use the exact single-interface reflection response.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import math
+
+
+def radial_admittance(n: int, sigmas: list[float], widths: list[float]) -&gt; float:
+    &quot;&quot;&quot;Return y_n=lambda_n/n for concentric 2-D constant-conductivity shells.
+
+    sigmas has one more entry than widths; the final entry is the conductivity
+    of the core. Widths are shell thicknesses in x=-log(r), from outside in.
+    &quot;&quot;&quot;
+    if n &lt; 1 or len(sigmas) != len(widths) + 1:
+        raise ValueError(&quot;need n&gt;=1 and len(sigmas)=len(widths)+1&quot;)
+    y = sigmas[-1]
+    for j in range(len(widths) - 1, -1, -1):
+        s = sigmas[j]
+        t = math.tanh(n * widths[j])
+        y = s * (y + s * t) / (s + y * t)
+    return y
+
+
+def radial_reflection(n: int, sigmas: list[float], widths: list[float]) -&gt; float:
+    y = radial_admittance(n, sigmas, widths)
+    s0 = sigmas[0]
+    return (y - s0) / (y + s0)
+
+
+def annulus_reflection(n: int, depth: float, width: float, contrast: float) -&gt; float:
+    &quot;&quot;&quot;Exact reflection for sigma0 / sigma1 annulus / sigma0 core.
+
+    ``contrast`` is rho=(sigma1-sigma0)/(sigma1+sigma0). The model has an
+    outer sigma0 region of log-thickness ``depth``, then a sigma1 shell of
+    log-thickness ``width``, then sigma0 to the center.
+    &quot;&quot;&quot;
+    q = math.exp(-2 * n * width)
+    return math.exp(-2 * n * depth) * contrast * (1 - q) / (1 - contrast**2 * q)
+
+
+def annulus_reflection_by_transfer(
+    n: int, depth: float, width: float, contrast: float
+) -&gt; float:
+    &quot;&quot;&quot;Evaluate the same annulus by the full admittance recurrence.&quot;&quot;&quot;
+    sigma0 = 1.0
+    sigma1 = (1 + contrast) / (1 - contrast)
+    y = radial_admittance(n, [sigma0, sigma1, sigma0], [depth, width])
+    return (y - sigma0) / (y + sigma0)
+
+
+def radial_peel_identity_error(n: int) -&gt; float:
+    &quot;&quot;&quot;Check R_outer=e^(-2nd) R_inner for a three-region example.&quot;&quot;&quot;
+    s0, s1, s2 = 1.0, 2.2, 0.7
+    d0, d1 = 0.38, 0.21
+    y_inner = radial_admittance(n, [s1, s2], [d1])
+    r_inner = (y_inner - s0) / (y_inner + s0)
+    r_outer = radial_reflection(n, [s0, s1, s2], [d0, d1])
+    return abs(r_outer - math.exp(-2 * n * d0) * r_inner)
+
+
+def wave_difference_norm(bandwidth: float, shift: float, contrast: float) -&gt; float:
+    &quot;&quot;&quot;Compute ||r(exp(2 i omega h)-1)||_{L2[-B,B]} by midpoint quadrature.&quot;&quot;&quot;
+    count = 200_000
+    step = 2 * bandwidth / count
+    total = 0.0
+    for j in range(count):
+        omega = -bandwidth + (j + 0.5) * step
+        value = 2 * contrast * math.sin(omega * shift)
+        total += value * value
+    return math.sqrt(total * step)
+
+
+def wave_difference_norm_asymptotic(bandwidth: float, shift: float, contrast: float) -&gt; float:
+    return math.sqrt(8.0 / 3.0) * abs(contrast) * bandwidth ** 1.5 * abs(shift)
+
+
+if __name__ == &quot;__main__&quot;:
+    print(&quot;exact radial reflection identity residuals&quot;)
+    for n in (1, 2, 5, 10, 20):
+        print(f&quot;n={n:2d} residual={radial_peel_identity_error(n):.3e}&quot;)
+
+    print(&quot;\nclosed-form versus transfer for an annular perturbation&quot;)
+    for n in (1, 2, 5, 10, 20):
+        closed = annulus_reflection(n, 0.8, 0.06, 0.2)
+        transfer = annulus_reflection_by_transfer(n, 0.8, 0.06, 0.2)
+        print(f&quot;n={n:2d} residual={abs(closed-transfer):.3e}&quot;)
+
+    print(&quot;\nrelative EIT reflection for a single interface at log-depth d=0.8&quot;)
+    contrast, depth = 0.2, 0.8
+    for n in (1, 2, 5, 10, 20, 40):
+        print(f&quot;n={n:2d} |R_n|={abs(contrast) * math.exp(-2*n*depth):.6e}&quot;)
+
+    print(&quot;\nwave phase-difference norm for B=20, |r|=0.2, h=1e-4&quot;)
+    b, h, r = 20.0, 1e-4, 0.2
+    exact = wave_difference_norm(b, h, r)
+    approx = wave_difference_norm_asymptotic(b, h, r)
+    print(f&quot;quadrature={exact:.6e} small-shift={approx:.6e} ratio={exact/approx:.8f}&quot;)
+</pre><p><a href="../assets/eaf221836264e8fbfb0025368a4b126f967ecd7d65e8d97fdcc43bea4927f904.py">Exact original</a></p></html>

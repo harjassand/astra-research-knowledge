@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/n10_hidden_dissipation/verify_ring.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/n10_hidden_dissipation/verify_ring.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Numerically check the three-state hidden-cycle candidate from v1.txt.
+
+Uses only the Python standard library. Rates are in inverse time units;
+entropy rates are in nats per time unit (multiply by k_B for physical
+entropy/time).
+&quot;&quot;&quot;
+from itertools import product
+from math import atan, cos, exp, log, pi, sin, sqrt
+
+A = 10.0
+B = 1.0
+S = A + B
+D = A - B
+p = 1.0 / 3.0
+alpha = 1.5 * S
+omega = sqrt(3.0) * D / 2.0
+phase = pi - atan(alpha / omega)
+tau = phase / omega
+
+# For this circulant generator, exp(Q t) is explicit on the constant mode
+# and the two-dimensional zero-sum mode. K has entries (C-C^T)/sqrt(3).
+K = [
+    [0.0, 1.0 / sqrt(3.0), -1.0 / sqrt(3.0)],
+    [-1.0 / sqrt(3.0), 0.0, 1.0 / sqrt(3.0)],
+    [1.0 / sqrt(3.0), -1.0 / sqrt(3.0), 0.0],
+]
+def transition_matrix(t):
+    decay = exp(-alpha * t)
+    theta = omega * t
+    return [
+        [1.0 / 3.0 + decay * (cos(theta) * ((1.0 if i == j else 0.0) - 1.0 / 3.0) + sin(theta) * K[i][j])
+         for j in range(3)]
+        for i in range(3)
+    ]
+
+P = transition_matrix(tau)
+q = p * P[0][0]
+cov = q - p * p
+
+joint = [
+    [1.0 - 2.0 * p + q, p - q],
+    [p - q, q],
+]
+independent = [
+    [(1.0 - p) ** 2, p * (1.0 - p)],
+    [p * (1.0 - p), p ** 2],
+]
+mutual_information = sum(
+    joint[i][j] * log(joint[i][j] / independent[i][j])
+    for i in range(2) for j in range(2)
+    if joint[i][j] &gt; 0.0
+)
+
+epr = D * log(A / B)
+rate_lower_bound = 4.0 * mutual_information / tau
+
+# Additive reversibilization has rates (A+B)/2 in both directions.
+R_decay = exp(-alpha * tau)
+cov_R = (2.0 / 9.0) * R_decay
+h_LR = A * log(2.0 * A / S) + B * log(2.0 * B / S)
+
+# Five-frame word probabilities of the binary observation Y=1_{X=0}.
+I3 = [[1.0 if i == j else 0.0 for j in range(3)] for i in range(3)]
+D1 = [[1.0 if i == j == 0 else 0.0 for j in range(3)] for i in range(3)]
+D0 = [[I3[i][j] - D1[i][j] for j in range(3)] for i in range(3)]
+
+def matmul(X, Y):
+    return [[sum(X[i][k] * Y[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+
+def word_probability(word):
+    # Row vector pi=(1/3,1/3,1/3), with alternating emissions and propagators.
+    row = [1.0 / 3.0] * 3
+    for idx, symbol in enumerate(word):
+        emission = D1 if symbol else D0
+        row = [sum(row[k] * emission[k][j] for k in range(3)) for j in range(3)]
+        if idx != len(word) - 1:
+            row = [sum(row[k] * P[k][j] for k in range(3)) for j in range(3)]
+    return sum(row)
+
+word_probs = {w: word_probability(w) for w in product((0, 1), repeat=5)}
+max_reversal_error = max(
+    abs(word_probs[w] - word_probs[tuple(reversed(w))])
+    for w in word_probs
+)
+
+print(f&quot;rates cw={A:g}, ccw={B:g}; sampling lag tau={tau:.12g}&quot;)
+print(f&quot;stationary p(Y=1)={p:.12g}, q=P(1,1)={q:.12g}, covariance={cov:.12g}&quot;)
+print(f&quot;binary pair mutual information={mutual_information:.12g} nats&quot;)
+print(f&quot;universal EPR lower bound 4 I/tau={rate_lower_bound:.12g} nats/time&quot;)
+print(f&quot;ring EPR={epr:.12g} nats/time&quot;)
+print(f&quot;additive-reversible comparison covariance={cov_R:.12g}&quot;)
+print(f&quot;path KL rate L||R={h_LR:.12g}; EPR/4={epr/4:.12g}&quot;)
+print(f&quot;max 5-frame observed reversal discrepancy={max_reversal_error:.12g}&quot;)
+
+assert cov &lt; 0.0
+assert cov_R &gt;= -1e-12
+assert h_LR &lt;= epr / 4.0 + 1e-12
+assert max_reversal_error &lt; 1e-11
+assert 0.0 &lt; rate_lower_bound &lt; epr
+</pre><p><a href="../assets/710109ec69729155998e234c5439cc01729eb11b3a5e1a4e41a723fca9efde99.py">Exact original</a></p></html>

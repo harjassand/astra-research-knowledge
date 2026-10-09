@@ -1,0 +1,117 @@
+# T20 Phase II: exchange snapshots for intersections of matroids
+
+## Status and scope
+
+The O(k)-competitive extension is **unresolved**. I did not prove a constant-expected-value feasible candidate core, and the finite tests below are not evidence of a uniform theorem. This continuation follows the director's pivot from the original single-matroid secretary objective to the stronger unsolved k-fold-intersection setting. It does not audit or claim the source-reported single-matroid breakthrough.
+
+The target is an online algorithm for k fixed matroids M_1,...,M_k on a common n-element universe. Nonnegative weights are adversarially fixed before a uniformly random arrival order. The algorithm knows n and k; identities and weights are revealed only as elements arrive. For each j it may query the independence oracle only on subsets of identities that have already arrived. It must make immediate irrevocable decisions and return a set independent in every M_j. The benchmark is the maximum-weight common-independent set on the same realized weight vector. The target under this access model is an expected total-weight guarantee OPT/O(k), with no future-identity or hidden-weight oracle.
+
+## Imported snapshot algorithm and source-reported baseline
+
+The primary source checked for the mechanism is Sahil Singla, “The Matroid Secretary Conjecture is True,” arXiv:2609.14555v2, posted 2026-09-29, HTML version https://arxiv.org/html/2609.14555v2. Its claims are recorded here as **source-reported**, not independently established. Relevant ranges are §2 lines 85–190 (two-sided random-order model, one-coordinate sensitivity, and one-matroid selector), §3 lines 257–313 (virtual order and direct secretary simulation), and §5 lines 341–379 (intersection theorem and its proof). The Astra navigation entry was read; no task-specific matroid-secretary card was located by the narrow topic search.
+
+For a fixed sample P and remaining stream U=V\\P, the source's inner selector draws X uniformly from {0,1}^m, where m=|U|, and K=|X|_1. It stores the first K physical arrivals as an inner sample S and uses the rest as the real stream. At virtual position i, X_i=1 replays the next stored sample identity in physical order; X_i=0 consumes the next real arrival and makes the decision immediately. It maintains a reference set C, initially S, and finalized set F, initially empty. On each virtual identity e it proposes C'=C Δ {e}; it updates C iff, for every j,
+
+\[
+  \operatorname{Greedy}_j(C')\cap F
+  =\operatorname{Greedy}_j(C)\cap F.
+\]
+
+It accepts e only on a real position and only if e belongs to every proposed greedy set. It adds e to F after every virtual step, including a replayed sample step. Greedy scans omit zero auxiliary values. The invariant ALG⊆∩_j Greedy_j(C) proves feasibility. On arrival, a candidate auxiliary value is computable from the already-seen outer sample and that arriving element, so the arrived-only oracle condition is respected.
+
+For fixed outer P, the source's interleaving bijection gives
+
+\[
+  \Pr[S=T,\Pi=\pi\mid P]=2^{-m}/m!
+\]
+
+for every T⊆U and permutation π of U. For each fixed π, the permitted update is reversible: swapping C and C Δ {e} swaps the two sides of each equality in the test, so the same transition is permitted in both directions. Hence the reference snapshot C^e immediately before a fixed e is uniform on 2^U and independent of Π.
+
+For fixed nonnegative auxiliary weights a, set B(a)=∩_{j=1}^k Greedy_j(a). If e∈B(a), then inserting e into each Greedy_j(T) changes membership by either adding e or exchanging e for at most one element f_j. Let D be the distinct blockers across the k matroids, so |D|≤k. Conditional on C^e=T with e∉T, e is a real item and belongs to every proposed greedy set by greedy monotonicity. The all-finalized consistency test passes exactly when e precedes every member of D. Snapshot independence makes this order uniform after conditioning on T, giving
+
+\[
+  \Pr[e\text{ accepted}\mid P,C^e=T]
+  =\frac{1}{|D|+1}\ge\frac{1}{k+1}.
+\]
+
+Since Pr[e∉C^e|P]=1/2, every e∈B(a) is accepted with probability at least 1/[2(k+1)].
+
+For outer preprocessing, the source chooses P by rejecting the first L physical arrivals with L~Binomial(n,p), p=1−1/(2k), which makes each identity enter P independently with probability p. It defines H(T) by decreasing-value greedy subject to all k constraints, and sets
+
+\[
+ a_e=v_e\quad\text{iff}\quad e\notin P\text{ and }e\in H(P\cup\{e\}),
+ \qquad a_e=0\text{ otherwise}.
+\]
+
+The source invokes the overlapping-optima result of Feldman–Svensson–Zenklusen to report
+
+\[
+  \mathbb E_P[a(B(a))]\ge \frac{OPT}{4k^2}.
+\]
+
+Together with the selector probability this yields the source-reported total-weight ratio 8k²(k+1). The source's H is an efficient decreasing-value greedy set, not an exact maximum-weight common-independent set. The latter distinction matters below: replacing H by an exact optimizer changes computational cost and does not by itself prove an O(k) bound.
+
+## Candidate flip identity: an exact but insufficient leverage
+
+I tested replacing the source's preprocessing with an exact common optimizer. Let P be a Bernoulli-p outer sample, q=1−p, and let H(T) be a fixed deterministic maximum-weight common-independent subset of T (with deterministic tie-breaking). Define
+
+\[
+ C(P)=\{e\notin P:e\in H(P\cup\{e\})\}.
+\]
+
+There is an exact one-bit-flip identity:
+
+\[
+  \mathbb E[w(C(P))]=\frac{q}{p}\,\mathbb E[w(H(P))].
+\]
+
+Indeed, each incidence e∈H(P) maps bijectively to the candidate incidence (P\\{e},e), because H((P\\{e})∪{e})=H(P). The Bernoulli probabilities satisfy Pr[P\\{e}]=(q/p)Pr[P]. Summing w_e over these incidences proves the identity. If I* is an optimal common-independent set, then H(P) has value at least w(I*∩P), so E[w(H(P))]≥p·OPT. Therefore
+
+\[
+  \mathbb E[w(C(P))]\ge q\,OPT.
+\]
+
+For p=1/2 this gives expected candidate mass at least OPT/2. This derivation is internally proved for exact H. It is not a feasible-output guarantee: C(P) need not be common-independent, and its total weight can be spread across mutually conflicting elements. Also, exact maximum-weight common independence on P∪{e} can require enumerating 2^{|P|+1} subsets per arriving e, hence O(nk2^{|P|}) independence queries in the direct exhaustive implementation. This uses only arrived identities but is exponential in the sample size. The source's greedy H avoids that cost, but its generic k-approximation only gives E[w(H(P))]≥(p/k)OPT; the flip identity then gives only q·OPT/k candidate mass.
+
+The exact candidate vector can be defined online, since a_e is evaluated when e arrives using P∪{e}. The hindsight quantities OPT(C(P)) and B(a), used in diagnostics and analysis, are not known to the online algorithm before future identities and weights arrive. Any proposed theorem about these quantities must be proved as an expectation under the same random sample, rather than treated as a computable preprocessing step.
+
+## Feasibility obstruction, failed relaxation, and finite tests
+
+There is no pointwise conversion from candidate mass to feasible candidate value. In a rank-one uniform matroid with n equal-weight elements and P=∅, every e is a candidate, so w(C(P))=n while the maximum feasible subset of C(P) has weight 1. This does not disprove an expected constant guarantee; it shows why the flip identity alone is insufficient.
+
+The tempting relaxation that preserves only previously accepted elements in the update test instead of all finalized elements destroys snapshot bijectivity, even for rank one. For U={0,1,2}, unit weights, virtual order (1,0,2), and target position 2, enumerate all eight initial sample bit-vectors and set each real bit to its complement. The all-finalized test maps them to all eight target snapshots once each. The accepted-only test gives snapshots ∅,{0},{0,2},{2} once each and {1},{1,2} twice each, while {0,1},{0,1,2} are absent. This exact check is in `accepted_only_search.py`. It refutes this relaxation, not every possible exchange scheme.
+
+The runnable exact diagnostic `feasible_candidate_diagnostic.py` enumerates all sample subsets and all common-independent subsets for small partition instances. It computes three different normalized expectations: total candidate mass w(C), maximum feasible candidate value OPT(C), and the source-style core B(a)=∩_j Greedy_j(a). The exact flip identity is asserted for each random instance. For rank-one equal weights at p=1/2 and n=8, the measured ratios are 0.996094, 0.500000, and 0.500000 respectively; at the single sample P=∅, candidate mass is 8 but feasible value is 1.
+
+For 20 random partition-matroid instances at each n=8,k∈{2,4,6}, the minimum/mean ratios were:
+
+| n,k | candidate mass / OPT | OPT(C) / OPT | B(a) / OPT |
+|---|---:|---:|---:|
+| 8,2 | 0.5763 / 0.6786 | 0.4268 / 0.4787 | 0.3816 / 0.4595 |
+| 8,4 | 0.5462 / 0.7144 | 0.3802 / 0.4634 | 0.3499 / 0.4414 |
+| 8,6 | 0.6067 / 0.7204 | 0.3778 / 0.4547 | 0.3559 / 0.4365 |
+
+For 8 random instances at each n=10,k∈{2,4,6}, the minimum/mean ratios were:
+
+| n,k | candidate mass / OPT | OPT(C) / OPT | B(a) / OPT |
+|---|---:|---:|---:|
+| 10,2 | 0.5783 / 0.6887 | 0.4568 / 0.4775 | 0.4316 / 0.4581 |
+| 10,4 | 0.5950 / 0.7100 | 0.4412 / 0.4712 | 0.4057 / 0.4417 |
+| 10,6 | 0.6521 / 0.7361 | 0.3932 / 0.4421 | 0.3535 / 0.4045 |
+
+These numbers are finite diagnostics with distinct random integer weights, not a lower-bound proof. A structured rank hierarchy was also tested: d unit-weight goods g_1,...,g_d and d decoys f_1,...,f_d of weight 3d/4; M_0 has a rank-one block on all decoys, and M_j has a rank-one block on all decoys plus g_j. The common-independent optimum is all goods of value d; any decoy conflicts with every good in the intersection. With p=1/2 and fixed identity tie-breaking, exact enumeration gave B(a)/OPT = 0.40625, 0.390625, 0.3828125, 0.3984375 for d=2,3,4,5. This failed to produce a vanishing core and illustrates that a candidate decoy can pay for the goods it suppresses. It remains a finite family check.
+
+## Remaining exact gap
+
+The useful proved identity controls only the sum of candidate weights. With the exact online-computable-on-arrival values a_e above and the source snapshot selector, an O(k) total ratio would follow from a proof that E[a(B(a))]=Ω(OPT), since the selector retains each element of B(a) with probability at least 1/[2(k+1)]. No such proof was found. A different route using OPT(C(P)) would also need an online-compatible selection argument; OPT(C(P)) is only an analysis quantity until future candidates are seen. The finite partition data suggest a constant core for the exact-optimizer, p=1/2 diagnostic but cannot establish one; the source preprocessor's p=1−1/(2k) and efficient greedy H have different behavior and cost. The independently explored multi-blocker snapshot mechanism is the assigned companion task. Current claim status: source theorem source-reported; flip identity internally derived; code finite-tested; O(k) extension unresolved; no novelty or priority claim.
+
+## Reproduction
+
+From the campaign root run:
+
+```sh
+python3 work/theory/t20_matroid_secretary/feasible_candidate_diagnostic.py
+python3 work/theory/t20_matroid_secretary/accepted_only_search.py
+```
+
+The exact common-optimizer experiments in `core_overlap_search.py` are also exponential diagnostics. None of these scripts tests a scalable online algorithm or proves a competitive ratio.

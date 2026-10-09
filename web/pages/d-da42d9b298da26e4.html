@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/root/run_portable_checks_v1.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/root/run_portable_checks_v1.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Run selected scoped diagnostics from a pack containing no third-party sources.
+
+The tests check stated finite identities or arithmetic. Passing is not external
+proof validation, a novelty determination, or empirical confirmation.
+&quot;&quot;&quot;
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import time
+
+TESTS = [
+    (&#x27;hidden_seed&#x27;, [&#x27;work/sol/hidden_realization/verify_exact_certificate.py&#x27;]),
+    (&#x27;hidden_seed_optimized&#x27;, [&#x27;-O&#x27;, &#x27;work/sol/hidden_realization/verify_exact_certificate.py&#x27;]),
+    (&#x27;hidden_fixed_lag&#x27;, [&#x27;work/sol/hidden_realization/fixed_lag_certificate_v1.py&#x27;]),
+    (&#x27;independent_frame&#x27;, [&#x27;work/natural/n22_reversible_frame/verify_frame_obstruction.py&#x27;]),
+    (&#x27;observable_coefficients&#x27;, [&#x27;work/sol/observable_separation/build_and_verify_witness_v1.py&#x27;]),
+    (&#x27;observable_coefficients_optimized&#x27;, [&#x27;-O&#x27;, &#x27;work/sol/observable_separation/build_and_verify_witness_v1.py&#x27;]),
+    (&#x27;independent_observable&#x27;, [&#x27;work/sol/hidden_realization/observable_audit_v1.py&#x27;]),
+    (&#x27;word_evaluator&#x27;, [&#x27;work/sol/observable_separation/evaluate_witness_v1.py&#x27;, &#x27;--word&#x27;, &#x27;0&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, &#x27;3&#x27;]),
+    (&#x27;intrinsic_arrays_t3&#x27;, [&#x27;work/sol/local_chart_decoder/check_intrinsic_bicomplex.py&#x27;, &#x27;--t&#x27;, &#x27;3&#x27;, &#x27;--trials&#x27;, &#x27;64&#x27;]),
+    (&#x27;intrinsic_arrays_t4&#x27;, [&#x27;work/sol/local_chart_decoder/check_intrinsic_bicomplex.py&#x27;, &#x27;--t&#x27;, &#x27;4&#x27;, &#x27;--trials&#x27;, &#x27;64&#x27;]),
+    (&#x27;fixed_color&#x27;, [&#x27;work/sol/local_chart_decoder/check_fixed_color_charging.py&#x27;]),
+    (&#x27;global_fault_masks&#x27;, [&#x27;work/applied/a22_quantum_global_mask/check_masks.py&#x27;]),
+    (&#x27;encoded_transfer&#x27;, [&#x27;work/sol/quantum_faults/teleport_check.py&#x27;]),
+    (&#x27;cosmology_cross_species&#x27;, [&#x27;work/sol/causal_cosmology/exact_checks.py&#x27;]),
+    (&#x27;cosmology_tensor_kernel&#x27;, [&#x27;work/sol/causal_cosmology/tensor_kernel_checks_v1.py&#x27;]),
+    (&#x27;cosmology_health_source&#x27;, [&#x27;work/sol/causal_cosmology/health_source_checks_v1.py&#x27;]),
+    (&#x27;robust_gaussian_moments&#x27;, [&#x27;work/sol/robust_recovery/exact_checks_v1.py&#x27;]),
+    (&#x27;horn30&#x27;, [&#x27;work/natural/n24_small_horn/certify_small_horn.py&#x27;]),
+    (&#x27;binary_hierarchy&#x27;, [&#x27;work/natural/n10_hidden_dissipation/verify_binary_hierarchy.py&#x27;]),
+    (&#x27;arithmetic_parameters&#x27;, [&#x27;work/theory/arithmetic_review/parameter_check_v1.py&#x27;]),
+]
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(&#x27;--root&#x27;, type=Path, required=True)
+    args = ap.parse_args()
+    root = args.root.resolve()
+    for forbidden in [&#x27;work/sources&#x27;, &#x27;work/sol/hidden_realization/.venv&#x27;]:
+        if (root / forbidden).exists():
+            raise RuntimeError(&#x27;Replay must omit source repositories and private runtimes&#x27;)
+    out = root / &#x27;checks&#x27;
+    out.mkdir(exist_ok=True)
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE=&#x27;1&#x27;)
+
+    def run(item):
+        name, command = item
+        start = time.monotonic()
+        try:
+            p = subprocess.run([sys.executable, *command], cwd=root, env=env,
+                               capture_output=True, text=True, timeout=240)
+            text = p.stdout + (&#x27;\nSTDERR:\n&#x27; + p.stderr if p.stderr else &#x27;&#x27;)
+            code = p.returncode
+        except subprocess.TimeoutExpired as exc:
+            text = str(exc)
+            code = 124
+        log = out / (name + &#x27;.txt&#x27;)
+        log.write_text(text)
+        return dict(name=name, command=[sys.executable, *command], exit_code=code,
+                    status=&#x27;PASS&#x27; if code == 0 else &#x27;FAIL&#x27;, seconds=round(time.monotonic()-start, 3),
+                    log=str(log.relative_to(root)), sha256=hashlib.sha256(log.read_bytes()).hexdigest())
+
+    results = []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(run, item) for item in TESTS]
+        for future in as_completed(futures):
+            r = future.result()
+            results.append(r)
+            print(r[&#x27;name&#x27;], r[&#x27;status&#x27;], r[&#x27;seconds&#x27;], flush=True)
+    result = dict(scope=&#x27;Selected finite diagnostics and arithmetic only; no source repositories or PDFs present.&#x27;,
+                  python=sys.version, count=len(results), passed=sum(r[&#x27;exit_code&#x27;] == 0 for r in results),
+                  results=sorted(results, key=lambda x: x[&#x27;name&#x27;]))
+    (out / &#x27;REPLAY_RESULTS.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    if result[&#x27;passed&#x27;] != result[&#x27;count&#x27;]:
+        raise SystemExit(1)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/9394cebd996599cf85670e2e1a4739badc4eb5743cb5638064e62218832ab29f.py">Exact original</a></p></html>

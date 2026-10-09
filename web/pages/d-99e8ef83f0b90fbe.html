@@ -1,0 +1,140 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_02/n20_protocell_heredity/mechanism.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_02/n20_protocell_heredity/mechanism.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite-partition calculations for redundant autocatalytic seed cores.
+
+This is a mathematical model check, not a chemical simulation or empirical
+validation.  Molecules are independently assigned to either daughter with
+probability 1/2.  Each of r disjoint k-molecule cores is sufficient to
+reconstruct the same catalytic state; a daughter is active iff it receives at
+least one whole core.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from math import comb, log
+from typing import Dict, Tuple
+
+
+def exact(k: int, r: int) -&gt; Dict[str, float]:
+    if k &lt; 1 or r &lt; 1:
+        raise ValueError(&quot;k and r must be positive integers&quot;)
+    a = 2.0 ** (-k)  # chance a specified core is assigned wholly to a specified daughter
+    A = 1.0 - a
+    B = 1.0 - 2.0 * a  # chance a specified core is split between daughters
+    q = 1.0 - A**r
+    p0 = B**r  # neither daughter gets a complete core
+    p2 = 1.0 - 2.0 * A**r + B**r
+    p1 = 2.0 * A**r - 2.0 * B**r
+    mean = 2.0 * q
+    if abs(mean - 1.0) &lt; 1e-14 and abs(p1 - 1.0) &lt; 1e-14:
+        # Degenerate critical process: exactly one active daughter forever.
+        surv = 1.0
+    elif mean &lt;= 1.0 or p2 == 0.0:
+        surv = 0.0
+    else:
+        surv = (mean - 1.0) / p2
+    # Exact expected number of activated fuel molecules needed to restore r
+    # copies of each of the k catalyst species in every active daughter.
+    fuel = k * r * (1.0 - A ** (r - 1))
+    return {&quot;q&quot;: q, &quot;p0&quot;: p0, &quot;p1&quot;: p1, &quot;p2&quot;: p2,
+            &quot;mean&quot;: mean, &quot;survival&quot;: surv, &quot;fuel&quot;: fuel}
+
+
+def enumerate_partition(k: int, r: int) -&gt; Dict[str, float]:
+    &quot;&quot;&quot;Brute-force all 2**(k*r) assignments; used to check closed forms.&quot;&quot;&quot;
+    m = k * r
+    count0 = count1 = count2 = 0
+    fuel_sum = 0
+    for mask in range(1 &lt;&lt; m):
+        v1 = v2 = False
+        counts1 = [0] * k
+        counts2 = [0] * k
+        for core in range(r):
+            intact1 = intact2 = True
+            for species in range(k):
+                pos = core * k + species
+                in1 = (mask &gt;&gt; pos) &amp; 1
+                if in1:
+                    counts1[species] += 1
+                else:
+                    counts2[species] += 1
+                intact1 &amp;= bool(in1)
+                intact2 &amp;= not bool(in1)
+            v1 |= intact1
+            v2 |= intact2
+        active = int(v1) + int(v2)
+        if active == 0:
+            count0 += 1
+        elif active == 1:
+            count1 += 1
+        else:
+            count2 += 1
+        if v1:
+            fuel_sum += sum(r - c for c in counts1)
+        if v2:
+            fuel_sum += sum(r - c for c in counts2)
+    den = float(1 &lt;&lt; m)
+    return {&quot;p0&quot;: count0 / den, &quot;p1&quot;: count1 / den, &quot;p2&quot;: count2 / den,
+            &quot;fuel&quot;: fuel_sum / den}
+
+
+def minimum_r(k: int, target_q: float) -&gt; int:
+    if not 0.0 &lt; target_q &lt; 1.0:
+        raise ValueError(&quot;target_q must be between zero and one&quot;)
+    r = 1
+    while exact(k, r)[&quot;q&quot;] &lt; target_q:
+        r += 1
+    return r
+
+
+def growth_exponent(q: float, tau: float, mutation_hazard: float = 0.0) -&gt; float:
+    &quot;&quot;&quot;Per-time Malthus rate when wrong-state mutation is Poisson at rate mu.&quot;&quot;&quot;
+    if q &lt;= 0.0 or tau &lt;= 0.0:
+        raise ValueError(&quot;q and tau must be positive&quot;)
+    return (log(2.0 * q) - mutation_hazard * tau) / tau
+
+
+def binomial_reporter_error(M: int, p_a: float, p_b: float) -&gt; Tuple[float, float]:
+    &quot;&quot;&quot;Exact equal-prior Bayes error and Bhattacharyya upper bound.
+
+    Each of M finite reporter precursors independently converts with
+    probability p_a or p_b according to the state.  The observed product count
+    is Binomial(M,p).  The exact optimal error is 1/2 sum_z min(P_a(z),P_b(z)).
+    &quot;&quot;&quot;
+    if M &lt; 0 or not (0.0 &lt;= p_a &lt;= 1.0 and 0.0 &lt;= p_b &lt;= 1.0):
+        raise ValueError(&quot;invalid reporter parameters&quot;)
+    pa = pb = 0.0
+    for z in range(M + 1):
+        c = comb(M, z)
+        pa_z = c * p_a**z * (1.0 - p_a)**(M - z)
+        pb_z = c * p_b**z * (1.0 - p_b)**(M - z)
+        pa += min(pa_z, pb_z)
+    exact_error = 0.5 * pa
+    bc = (p_a * p_b) ** 0.5 + ((1.0 - p_a) * (1.0 - p_b)) ** 0.5
+    return exact_error, 0.5 * bc**M
+
+
+def main() -&gt; None:
+    print(&quot;k r q mean P0 P1 P2 survival expected_seed_fuel&quot;)
+    for k, r in [(2, 1), (2, 2), (2, 3), (2, 4), (2, 17), (3, 6)]:
+        d = exact(k, r)
+        if k * r &lt;= 20:
+            brute = enumerate_partition(k, r)
+            for key in (&quot;p0&quot;, &quot;p1&quot;, &quot;p2&quot;, &quot;fuel&quot;):
+                assert abs(d[key] - brute[key]) &lt; 1e-12, (k, r, key, d[key], brute[key])
+        print(k, r, *(f&quot;{d[key]:.9g}&quot; for key in
+                      (&quot;q&quot;, &quot;mean&quot;, &quot;p0&quot;, &quot;p1&quot;, &quot;p2&quot;, &quot;survival&quot;, &quot;fuel&quot;)))
+
+    q = exact(2, 17)[&quot;q&quot;]
+    print(&quot;\n17 two-species alternative cores: per-daughter retention&quot;, q)
+    print(&quot;10-generation tracked-lineage retention&quot;, q**10)
+    print(&quot;same-state supercritical mutation limit at tau=1&quot;, log(2.0 * q))
+    pe, bound = binomial_reporter_error(100, 0.60, 0.40)
+    print(&quot;100-molecule reporter exact Bayes error&quot;, pe)
+    print(&quot;100-molecule reporter Bhattacharyya bound&quot;, bound)
+    print(&quot;example growth exponent q=0.578125, tau=10, mu=0.005&quot;,
+          growth_exponent(exact(2, 3)[&quot;q&quot;], 10.0, 0.005))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/6bd7b4ce5ca5d4d82b8b870fc56e2b7a6cd1ca0f7cf26f5a3fdf4b9bba05ab4a.py">Exact original</a></p></html>

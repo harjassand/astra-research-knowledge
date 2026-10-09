@@ -1,0 +1,203 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/t21_tensor_canonization/check_f4_extension.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/t21_tensor_canonization/check_f4_extension.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Partial F_4 search for whether the T21 code C is equivalent to C^T.
+
+Uses F_4=F_2[w]/(w^2+w+1). The determinant polynomial x*z^2 forces a
+variable change preserving it to have rows (a,0,0),(b,c,d),(0,0,e).
+For each such GL_3(F_4) change, solve the linear intertwiner equations for
+P A_i = B_i Q. Small solution spaces are exhausted; large ones are sampled
+for an invertible witness. Failure to find a witness is not a proof.
+&quot;&quot;&quot;
+from itertools import product
+import random
+
+
+MUL = [[0, 0, 0, 0], [0, 1, 2, 3], [0, 2, 3, 1], [0, 3, 1, 2]]
+INV = [0, 1, 3, 2]
+
+
+def add(a, b):
+    return a ^ b
+
+
+def mul(a, b):
+    return MUL[a][b]
+
+
+def mat_mul(a, b, n=3):
+    return tuple(sum(0 for _ in ()) or _mat_entry(a, b, i, j, n)
+                 for i in range(n) for j in range(n))
+
+
+def _mat_entry(a, b, i, j, n):
+    out = 0
+    for k in range(n):
+        out ^= mul(a[n*i+k], b[n*k+j])
+    return out
+
+
+def det(a, n=3):
+    out = 0
+    def rec(row, cols, term):
+        nonlocal out
+        if row == n:
+            out ^= term
+            return
+        for col in range(n):
+            if col not in cols:
+                rec(row+1, cols | {col}, mul(term, a[n*row+col]))
+    rec(0, set(), 1)
+    return out
+
+
+def inv_matrix(a, n=3):
+    rows = []
+    for i in range(n):
+        left = list(a[n*i:n*i+n])
+        right = [int(i == j) for j in range(n)]
+        rows.append(left + right)
+    for col in range(n):
+        pivot = next((i for i in range(col, n) if rows[i][col]), None)
+        if pivot is None:
+            return None
+        rows[col], rows[pivot] = rows[pivot], rows[col]
+        scale = INV[rows[col][col]]
+        rows[col] = [mul(x, scale) for x in rows[col]]
+        for i in range(n):
+            if i != col and rows[i][col]:
+                scale = rows[i][col]
+                rows[i] = [add(x, mul(scale, y)) for x, y in zip(rows[i], rows[col])]
+    return tuple(rows[i][n+j] for i in range(n) for j in range(n))
+
+
+def rank_and_nullspace(rows, ncols):
+    a = [list(row) for row in rows]
+    pivots = []
+    r = 0
+    for col in range(ncols):
+        p = next((i for i in range(r, len(a)) if a[i][col]), None)
+        if p is None:
+            continue
+        a[r], a[p] = a[p], a[r]
+        scale = INV[a[r][col]]
+        a[r] = [mul(x, scale) for x in a[r]]
+        for i in range(len(a)):
+            if i != r and a[i][col]:
+                scale = a[i][col]
+                a[i] = [add(x, mul(scale, y)) for x, y in zip(a[i], a[r])]
+        pivots.append(col)
+        r += 1
+        if r == len(a):
+            break
+    free = [j for j in range(ncols) if j not in pivots]
+    basis = []
+    for f in free:
+        v = [0] * ncols
+        v[f] = 1
+        for i, p in enumerate(pivots):
+            v[p] = a[i][f]
+        basis.append(tuple(v))
+    return len(pivots), basis
+
+
+def transpose(a, n=3):
+    return tuple(a[n*j+i] for i in range(n) for j in range(n))
+
+
+def linear_matrix(a, b, c):
+    return tuple(add(add(mul(a, x), mul(b, y)), mul(c, z))
+                 for x, y, z in zip(A1, A2, A3))
+
+
+A1 = (0,1,0, 0,0,0, 0,0,0)
+A2 = (0,0,0, 0,1,0, 1,1,0)
+A3 = (0,0,0, 1,0,0, 0,0,1)
+AT = (transpose(A1), transpose(A2), transpose(A3))
+
+
+def intertwiner_rows(targets):
+    # Unknowns are row-major P (9 entries), then Q (9 entries).
+    eqs = []
+    for A, B in zip((A1,A2,A3), targets):
+        for i in range(3):
+            for j in range(3):
+                row = [0] * 18
+                for k in range(3):
+                    row[3*i+k] ^= A[3*k+j]
+                    row[9+3*k+j] ^= B[3*i+k]
+                eqs.append(row)
+    return eqs
+
+
+def find_invertible_pair(nullbasis):
+    d = len(nullbasis)
+    for coeffs in product(range(4), repeat=d):
+        if not any(coeffs):
+            continue
+        v = [0] * 18
+        for c, b in zip(coeffs, nullbasis):
+            if c:
+                v = [add(x, mul(c, y)) for x, y in zip(v, b)]
+        p, q = tuple(v[:9]), tuple(v[9:])
+        if det(p) and det(q):
+            return p, q
+    return None
+
+
+def random_invertible_pair(nullbasis, rng, samples):
+    d = len(nullbasis)
+    for _ in range(samples):
+        coeffs = [rng.randrange(4) for _ in range(d)]
+        if not any(coeffs):
+            continue
+        v = [0] * 18
+        for c, b in zip(coeffs, nullbasis):
+            if c:
+                v = [add(x, mul(c, y)) for x, y in zip(v, b)]
+        p, q = tuple(v[:9]), tuple(v[9:])
+        if det(p) and det(q):
+            return p, q
+    return None
+
+
+def main():
+    tried = 0
+    dim_hist = {}
+    rng = random.Random(20261009)
+    large_no_witness = 0
+    for a, e in product((1,2,3), repeat=2):
+        for b, c, d in product(range(4), repeat=3):
+            if c == 0:
+                continue
+            R = (a,0,0, b,c,d, 0,0,e)
+            assert det(R)
+            # x&#x27; = a*x, y&#x27; = b*x+c*y+d*z, z&#x27;=e*z.
+            targets = (linear_matrix(a,b,0), linear_matrix(0,c,0), linear_matrix(0,d,e))
+            # Replace by transpose slices, since D=C^T.
+            targets = tuple(tuple(add(add(mul(co[0], AT[0][k]), mul(co[1], AT[1][k])),
+                                       mul(co[2], AT[2][k])) for k in range(9))
+                             for co in ((a,b,0),(0,c,0),(0,d,e)))
+            dim, basis = rank_and_nullspace(intertwiner_rows(targets), 18)
+            dim_hist[dim] = dim_hist.get(dim, 0) + 1
+            tried += 1
+            witness = (find_invertible_pair(basis) if dim &lt;= 10
+                       else random_invertible_pair(basis, rng, 200))
+            if witness:
+                print(&quot;equivalent over F4; witness is exact and can be replayed&quot;)
+                print(&quot;R=&quot;, R)
+                print(&quot;P=&quot;, witness[0])
+                print(&quot;Q=&quot;, witness[1])
+                return
+            if dim &gt; 10:
+                large_no_witness += 1
+    if large_no_witness:
+        print(&quot;no F4 witness found, but extension equivalence remains UNKNOWN&quot;)
+        print(&quot;large intertwiner spaces with randomized search:&quot;, large_no_witness)
+    else:
+        print(&quot;not equivalent over F4 in all determinant-preserving variable changes&quot;)
+    print(&quot;variable changes checked:&quot;, tried)
+    print(&quot;intertwiner nullity histogram:&quot;, sorted(dim_hist.items()))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4eb5cbe0d26a02e92843ef701f92c513c68e20a853dd355d0886a886e6a5407a.py">Exact original</a></p></html>

@@ -1,0 +1,77 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/sol/quantum_faults/teleport_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/sol/quantum_faults/teleport_check.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite CSS teleportation covariance checks.
+
+This checks a [[4,2,2]] CSS block algebra, not a threshold or QTC implementation.
+Uses only Python standard library; scalars are unnormalised integers, preserving
+exact signs and zeroes. X stabilizer space A=&lt;1111&gt;, Z space B=&lt;1111&gt;.
+&quot;&quot;&quot;
+from itertools import product
+
+N = 4
+SIZE = 1 &lt;&lt; N
+A = (0, 15)
+REPS = (0, 3, 5, 9)
+
+
+def parity(x):
+    return x.bit_count() &amp; 1
+
+
+def sign(x):
+    return 1 - 2 * parity(x)
+
+
+def encoded_basis(u):
+    v = [0] * SIZE
+    for a in A:
+        v[u ^ a] = 1
+    return v
+
+
+def pauli(v, x, z):
+    out = [0] * SIZE
+    for y, amp in enumerate(v):
+        out[y ^ x] = amp * sign(z &amp; y)
+    return out
+
+
+def branch_output(u, ax, az, bx, bz, outcome, readout_flip):
+    va = pauli(encoded_basis(u), ax, az)
+    vb = pauli(encoded_basis(0), bx, bz)
+    out = [0] * SIZE
+    # CNOT A-&gt;B, X measurement A, Z feedforward to B using recorded outcome.
+    for y, amp_a in enumerate(va):
+        if not amp_a:
+            continue
+        for z, amp_b in enumerate(vb):
+            if not amp_b:
+                continue
+            target = y ^ z
+            out[target] += amp_a * amp_b * sign(outcome &amp; y) * sign((outcome ^ readout_flip) &amp; target)
+    return out
+
+
+def check():
+    transitions = 0
+    # Every one-site source/target Pauli, and all readout flip patterns. For
+    # each branch check one common scalar across all logical basis vectors.
+    # An initial all-16^5-error-pattern run was interrupted as oversized;
+    # this bounded test is the reported scope. The general theorem is algebraic.
+    local_paulis = [(0, 0)] + [(1 &lt;&lt; i, 0) for i in range(N)] + [(0, 1 &lt;&lt; i) for i in range(N)] + [(1 &lt;&lt; i, 1 &lt;&lt; i) for i in range(N)]
+    for (ax, az), (bx, bz), delta in product(local_paulis, local_paulis, range(SIZE)):
+        for outcome in range(SIZE):
+            scalar = None
+            for u in REPS:
+                actual = branch_output(u, ax, az, bx, bz, outcome, delta)
+                expected = pauli(encoded_basis(u), ax ^ bx, az ^ delta)
+                branch_scalar = next((v // e for v, e in zip(actual, expected) if e), 0)
+                assert all(v == branch_scalar * e for v, e in zip(actual, expected))
+                if scalar is None:
+                    scalar = branch_scalar
+                assert scalar == branch_scalar
+            transitions += 1
+    print(f&quot;PASS: {transitions} branch/operator covariances, common scalar across all 4 logical basis states&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    check()
+</pre><p><a href="../assets/62b523f192fa68611c68da50cf73bfedbcae5ccbf2d9ef40213571c61e898df5.py">Exact original</a></p></html>

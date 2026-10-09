@@ -1,0 +1,80 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/t10_information_network/ah_parity.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/t10_information_network/ah_parity.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite-alphabet enumeration of adjacent-parity AH sum rates.
+
+This is a diagnostic for the binary modulo-sum source only.  For iid
+P_XY=(theta_00, theta_01, theta_10, theta_11), let
+U_i=X_i xor X_{i+1}, V_i=Y_i xor Y_{i+1}.  The m-letter AH point has sum
+rate (2 H(U,V,Z_m) - H(U,V))/m, because Z_1,...,Z_{m-1} are determined by
+(U,V,Z_m).  The code enumerates the 4^m source words and evaluates those
+entropies directly; it is not an encoder simulation or a converse proof.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import itertools
+import math
+from collections import defaultdict
+
+
+def entropy(probabilities):
+    return -sum(p * math.log2(p) for p in probabilities if p &gt; 0.0)
+
+
+def ah_adjacent_parity_sum_rate(theta, m):
+    if len(theta) != 4 or any(p &lt; 0.0 for p in theta):
+        raise ValueError(&quot;theta must be four nonnegative probabilities&quot;)
+    if not math.isclose(sum(theta), 1.0, rel_tol=0.0, abs_tol=1e-12):
+        raise ValueError(&quot;theta must sum to one&quot;)
+    if m &lt; 1:
+        raise ValueError(&quot;m must be positive&quot;)
+
+    mass_uv = defaultdict(float)
+    mass_uvz = defaultdict(float)
+    for x in itertools.product((0, 1), repeat=m):
+        for y in itertools.product((0, 1), repeat=m):
+            probability = math.prod(theta[2 * xi + yi] for xi, yi in zip(x, y))
+            u = tuple(x[i] ^ x[i + 1] for i in range(m - 1))
+            v = tuple(y[i] ^ y[i + 1] for i in range(m - 1))
+            z_m = x[-1] ^ y[-1]
+            mass_uv[(u, v)] += probability
+            mass_uvz[(u, v, z_m)] += probability
+
+    return (2.0 * entropy(mass_uvz.values()) - entropy(mass_uv.values())) / m
+
+
+def report(theta, max_m):
+    h_xy = entropy(theta)
+    p_z_one = theta[1] + theta[2]
+    h_z = entropy((p_z_one, 1.0 - p_z_one))
+    p_x_one = theta[2] + theta[3]
+    p_y_one = theta[1] + theta[3]
+    h_x = entropy((p_x_one, 1.0 - p_x_one))
+    h_y = entropy((p_y_one, 1.0 - p_y_one))
+
+    print(f&quot;theta={tuple(theta)}&quot;)
+    print(f&quot;H(X,Y)={h_xy:.12f}&quot;)
+    print(f&quot;H(Z)={h_z:.12f}; 2 H(Z)={2.0 * h_z:.12f}&quot;)
+    print(f&quot;H(X)={h_x:.12f}; H(Y)={h_y:.12f}&quot;)
+    print(&quot;m, AH adjacent-parity sum rate&quot;)
+    for m in range(1, max_m + 1):
+        print(f&quot;{m}, {ah_adjacent_parity_sum_rate(theta, m):.12f}&quot;)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        &quot;--theta&quot;,
+        nargs=4,
+        type=float,
+        default=(0.379, 0.008, 0.246, 0.367),
+        metavar=(&quot;P00&quot;, &quot;P01&quot;, &quot;P10&quot;, &quot;P11&quot;),
+    )
+    parser.add_argument(&quot;--max-m&quot;, type=int, default=5)
+    args = parser.parse_args()
+    report(args.theta, args.max_m)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/868656a2f9c643206e481d1f5b41fe22fa3ceb6bd209908cc4c2e3d460917b92.py">Exact original</a></p></html>

@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/sol/local_chart_decoder/check_fixed_color_charging.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/sol/local_chart_decoder/check_fixed_color_charging.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exhaustive finite test of v2&#x27;s scheduling/charging lemma only.
+
+Random fixed local binary correction subspaces on overlapping syndrome
+patches; neither GGJ geometry nor global expansion is assumed or tested.
+&quot;&quot;&quot;
+import json
+import random
+from pathlib import Path
+
+
+def xor_span(gens):
+    values=[0]
+    for x in gens: values += [y^x for y in values]
+    return sorted(set(values))
+
+
+def test_system(rng,n=12,vertices=9):
+    patches=[]; candidates=[]
+    for _ in range(vertices):
+        bits=rng.sample(range(n),rng.randrange(2,6))
+        patch=sum(1&lt;&lt;b for b in bits)
+        gens=[rng.getrandbits(n)&amp;patch for _ in range(rng.randrange(1,4))]
+        patches.append(patch); candidates.append(xor_span(gens))
+    colors=[]
+    for v,p in enumerate(patches):
+        used={colors[u] for u in range(v) if p&amp;patches[u]}
+        color=0
+        while color in used: color+=1
+        colors.append(color)
+    incidence=max(sum((p&gt;&gt;b)&amp;1 for p in patches) for b in range(n))
+    footprint=max(p.bit_count() for p in patches)
+    constant=1+2*incidence*footprint
+
+    def gain(v,s):
+        choices=[(s.bit_count()-(s^c).bit_count(),c) for c in candidates[v]]
+        g,c=max(choices,key=lambda x:(x[0],-x[1]))
+        return (g,c if g else 0)
+
+    for s0 in range(1&lt;&lt;n):
+        initial=sum(gain(v,s0)[0] for v in range(vertices))
+        s=s0; recorded=0
+        for color in range(max(colors)+1):
+            flip=0
+            for v in range(vertices):
+                if colors[v]==color:
+                    g,c=gain(v,s); recorded+=g; flip^=c
+            old=s.bit_count(); s^=flip
+            assert s.bit_count()&lt;=old
+        decrease=s0.bit_count()-s.bit_count()
+        assert recorded==decrease
+        assert initial&lt;=constant*decrease
+    return {&#x27;syndromes&#x27;:1&lt;&lt;n,&#x27;vertices&#x27;:vertices,&#x27;colors&#x27;:max(colors)+1,
+            &#x27;max_patch&#x27;:footprint,&#x27;max_incidence&#x27;:incidence,&#x27;charge_constant&#x27;:constant}
+
+
+def main():
+    rng=random.Random(20261009)
+    systems=[test_system(rng) for _ in range(16)]
+    out={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;scope&#x27;:&#x27;fixed-color integer-gain charging only&#x27;,
+         &#x27;seed&#x27;:20261009,&#x27;systems&#x27;:16,
+         &#x27;exhaustive_syndrome_cases&#x27;:sum(x[&#x27;syndromes&#x27;] for x in systems),
+         &#x27;global_expansion_or_full_decoder_validated&#x27;:False,&#x27;details&#x27;:systems}
+    print(json.dumps(out,indent=2))
+    Path(__file__).with_name(&#x27;finite_charging_v1.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/ae55e7bf4444a80f49a13f9ae5d7ed4634c44a65a49892f74748c33183bad933.py">Exact original</a></p></html>

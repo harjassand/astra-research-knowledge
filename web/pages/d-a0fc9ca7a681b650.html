@@ -1,0 +1,159 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/t02_entropy_union/finite_profiles.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/t02_entropy_union/finite_profiles.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small-family diagnostics for entropy couplings on union-closed families.
+
+No external packages are required.  The enumerator is exhaustive on a fixed
+ground set [n] and checks closure directly.  It records exact integer pair
+union multiplicities, coordinate frequencies, and the double-centered
+log-multiplicity variance V used by the inverse-multiplicity coupling.
+
+This is finite evidence only; it does not establish a universal inequality.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from itertools import product
+from typing import Iterable
+
+
+def members_from_code(code: int, universe_size: int) -&gt; tuple[int, ...]:
+    return tuple(s for s in range(1 &lt;&lt; universe_size) if (code &gt;&gt; s) &amp; 1)
+
+
+def is_union_closed(members: tuple[int, ...]) -&gt; bool:
+    present = set(members)
+    return all((a | b) in present for a in members for b in members)
+
+
+def pair_data(members: tuple[int, ...], universe_size: int) -&gt; dict:
+    n = len(members)
+    counts = {s: 0 for s in members}
+    for a in members:
+        for b in members:
+            counts[a | b] += 1
+    logs = {(a, b): math.log(counts[a | b]) for a in members for b in members}
+    row = {a: sum(logs[a, b] for b in members) / n for a in members}
+    mean = sum(row.values()) / n
+    residual = {
+        (a, b): logs[a, b] - row[a] - row[b] + mean
+        for a in members for b in members
+    }
+    variance = sum(x * x for x in residual.values()) / (n * n)
+    p = [sum(1 for a in members if (a &gt;&gt; i) &amp; 1) / n for i in range(universe_size)]
+    return {
+        &quot;N&quot;: n,
+        &quot;p&quot;: max(p, default=0.0),
+        &quot;frequencies&quot;: p,
+        &quot;V2&quot;: variance,
+        &quot;V2_over_logN&quot;: variance / math.log(n) if n &gt; 1 else None,
+        &quot;V2_over_logN_squared&quot;: variance / (math.log(n) ** 2) if n &gt; 1 else None,
+        &quot;r&quot;: [counts[s] for s in members],
+    }
+
+
+def kway_residual_variance(members: tuple[int, ...], k: int) -&gt; float:
+    &quot;&quot;&quot;Compute V_k after projecting log r_k(union) off all one-slot terms.
+
+    This is only intended for small N and k; it uses the full N**k tensor.
+    The least-squares projection has a closed form for the product-uniform
+    measure: R(x_1,...,x_k)=c-sum_j E[c|X_j]+(k-1)E[c].
+    &quot;&quot;&quot;
+    n = len(members)
+    if n ** k &gt; 2_000_000:
+        raise ValueError(f&quot;N^k={n**k} too large for direct k-way diagnostic&quot;)
+    tuples = list(product(members, repeat=k))
+    union_values = []
+    for tup in tuples:
+        u = 0
+        for a in tup:
+            u |= a
+        union_values.append(u)
+    counts: dict[int, int] = {}
+    for u in union_values:
+        counts[u] = counts.get(u, 0) + 1
+    cvals = [math.log(counts[u]) for u in union_values]
+    mean = sum(cvals) / len(cvals)
+    cond = []
+    for slot in range(k):
+        accum = {a: [0.0, 0] for a in members}
+        for tup, c in zip(tuples, cvals):
+            accum[tup[slot]][0] += c
+            accum[tup[slot]][1] += 1
+        cond.append({a: accum[a][0] / accum[a][1] for a in members})
+    v = 0.0
+    for tup, c in zip(tuples, cvals):
+        r = c - sum(cond[j][tup[j]] for j in range(k)) + (k - 1) * mean
+        v += r * r
+    return v / len(tuples)
+
+
+def boolean_cube_profile(n: int, k: int) -&gt; dict:
+    &quot;&quot;&quot;Closed-form V_k for F=2^[n], with independent uniform input slots.&quot;&quot;&quot;
+    if n &lt; 1 or k &lt; 2:
+        raise ValueError(&quot;require n&gt;=1 and k&gt;=2&quot;)
+    log_mult = math.log((1 &lt;&lt; k) - 1)
+    per_coordinate = log_mult**2 * (2.0 ** (-k) - (k + 1) * 2.0 ** (-2 * k))
+    return {
+        &quot;family&quot;: &quot;2^[n]&quot;,
+        &quot;n&quot;: n,
+        &quot;N&quot;: 1 &lt;&lt; n,
+        &quot;k&quot;: k,
+        &quot;V_k_closed_form&quot;: n * per_coordinate,
+        &quot;V_k_over_logN&quot;: per_coordinate / math.log(2.0),
+    }
+
+
+def enumerate_families(n: int) -&gt; Iterable[tuple[int, ...]]:
+    powerset_size = 1 &lt;&lt; n
+    if powerset_size &gt; 20:
+        raise ValueError(&quot;exhaustive family-code scan capped at n&lt;=4&quot;)
+    for code in range(1, 1 &lt;&lt; powerset_size):
+        members = members_from_code(code, n)
+        if any(s != 0 for s in members) and is_union_closed(members):
+            yield members
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--n&quot;, type=int, default=4, help=&quot;ground-set size (exhaustive cap 4)&quot;)
+    parser.add_argument(&quot;--k&quot;, type=int, default=3, help=&quot;also compute V_k for N^k &lt;= 2,000,000&quot;)
+    parser.add_argument(&quot;--json&quot;, action=&quot;store_true&quot;)
+    parser.add_argument(&quot;--cube&quot;, action=&quot;store_true&quot;, help=&quot;print the closed-form Boolean-cube profile&quot;)
+    parser.add_argument(&quot;--cube-n&quot;, type=int, default=4)
+    args = parser.parse_args()
+
+    if args.cube:
+        print(json.dumps(boolean_cube_profile(args.cube_n, args.k), indent=2))
+        return
+
+    records = []
+    for members in enumerate_families(args.n):
+        rec = pair_data(members, args.n)
+        if args.k &gt;= 2 and rec[&quot;N&quot;] ** args.k &lt;= 2_000_000:
+            rec[f&quot;V{args.k}&quot;] = kway_residual_variance(members, args.k)
+        rec[&quot;family&quot;] = list(members)
+        records.append(rec)
+
+    if args.json:
+        print(json.dumps({&quot;n&quot;: args.n, &quot;k&quot;: args.k, &quot;families&quot;: len(records), &quot;records&quot;: records}, indent=2))
+        return
+
+    print(f&quot;n={args.n}; enumerated_nontrivial_union_closed_families={len(records)}&quot;)
+    if not records:
+        return
+    print(&quot;Smallest p record:&quot;)
+    print(json.dumps(min(records, key=lambda r: (r[&quot;p&quot;], r[&quot;N&quot;])), indent=2))
+    candidates = [r for r in records if r[&quot;N&quot;] &gt; 1]
+    print(&quot;Smallest V2/log(N) among N&gt;1:&quot;)
+    print(json.dumps(min(candidates, key=lambda r: r[&quot;V2_over_logN&quot;]), indent=2))
+    if args.k &gt;= 2:
+        print(f&quot;Smallest V{args.k}/log(N) among computed N&gt;1:&quot;)
+        eligible = [r for r in candidates if f&quot;V{args.k}&quot; in r]
+        print(json.dumps(min(eligible, key=lambda r: r[f&quot;V{args.k}&quot;] / math.log(r[&quot;N&quot;])), indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/6a5acd1e1eec9a188107a09b07078c7cdc2843f398fe5dbcd8a2c1899176e1d5.py">Exact original</a></p></html>

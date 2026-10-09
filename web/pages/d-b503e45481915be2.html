@@ -1,0 +1,166 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a15_distributed_computation/v1.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a15_distributed_computation/v1.txt</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>A15 distributed scientific computation — bounded Phase II record v1
+Date: 2026-10-09
+Status: candidate construction internally derived and finitely tested; no new capability or priority established.
+
+1. Target and status
+
+Target. Compute an exact matrix product from coded worker outputs with up to b arbitrary Byzantine replies and s stragglers, while using fewer worker replies than ordinary unique Reed–Solomon error correction. Preserve an exact finite-field contract and expose all verifier, communication, storage, conditioning, and worker costs. The motivating question was whether product-specific random checks can be integrated with polynomial error location to reduce the cost of checking every worker.
+
+Result of this bounded attempt. A sound task-aware locator construction is derived below for a degree-k matrix-product polynomial from k+b responses. It is a candidate protocol, not a discovery claim. It does not improve the strongest primary-source baseline found: AVCC already reaches the same k+b+s worker count with per-worker Freivalds verification, and FLCC already uses product evaluations as side information with folded-RS list decoding. The candidate locator scans all worker outputs b times in its worst case, so it can move a larger arithmetic cost to the master. It is therefore not a demonstrated Pareto improvement. The remaining promising gap is a bit-level, finite-precision certified real-number protocol with explicit adaptive-adversary guarantees and a measured end-to-end frontier; this record does not solve that gap.
+
+Claim ledger.
+
+- Source-reported: AVCC combines coded straggler tolerance with per-worker Freivalds checks and states a Byzantine-worker cost of M instead of 2M in its LCC comparison.
+- Source-reported: FLCC uses folded Reed–Solomon list decoding and master-computed polynomial evaluations to prune candidate outputs, and reports an adversarial threshold approaching the Singleton limit.
+- Internally derived: the task-aware error-locator equations below have the true locator as a solution for any fixed Byzantine output matrices; when the true error count is e and a stated random-rank event occurs, that locator is unique.
+- Finite-tested: 1,000 small MatDot instances over F_257 with two rank-one-correlated worker errors produced a unique locator and exact target in 992 cases. This is diagnostic evidence only.
+- Unresolved: whether the locator protocol can beat AVCC, FLCC, GVCC, or the 2026 FVCC verifier after full costs; whether the real-number literature contains a stronger fully adaptive finite-precision certificate; and any novelty or priority claim.
+
+2. Exact computation and adversary contract
+
+Let A in F_q^{m x r} and B in F_q^{r x p}. Partition the inner dimension into ell equal blocks, A=[A_0 ... A_{ell-1}] and B=[B_0; ...; B_{ell-1}], and define
+
+  A(x) = sum_{j=0}^{ell-1} A_j x^j,
+  B(x) = sum_{j=0}^{ell-1} B_j x^{ell-1-j},
+  P(x) = A(x)B(x) = sum_{j=0}^{2ell-2} P_j x^j.
+
+Then deg P &lt;= 2ell-2, k=2ell-1 coefficients suffice, and the desired product is
+
+  AB = P_{ell-1} = sum_{j=0}^{ell-1} A_j B_j.
+
+Choose N=k+b+s distinct worker points alpha_i in F_q. Worker i receives A(alpha_i), B(alpha_i) and should return P(alpha_i). At most s workers fail to return before the deadline, and at most b of the first k+b responders return arbitrary matrices. The Byzantine outputs may depend on all public encodings, worker identities, and previous public traffic, but are fixed before fresh verifier randomness is sampled. The master is trusted, stores the received bytes, and does not expose the fresh challenges. A worker cannot replace its response after the master freezes it. If these timing and storage conditions fail, the probability claims below do not apply.
+
+The master waits for k+b responses. Since at most b of them are Byzantine, at least k are honest. All field arithmetic is exact. A false output is never silently rounded into correctness; the protocol either returns the exact coefficient AB or declares failure.
+
+3. Candidate post-response product-probe locator
+
+Write each received response as Y_i=P(alpha_i)+E_i, with support Bset={i:E_i != 0} of size e&lt;=b. First suppose e is known. Let X={alpha_i:i among the k+b responders}; for x outside X let L_i(x) be the Lagrange basis for X. Draw e independent triples (x_a,u_a,v_a), where x_a is uniform in F_q\X, u_a uniform in F_q^m and v_a uniform in F_q^p. Draw all of them only after the k+b responses have been durably frozen.
+
+For each challenge a, define the scalar fingerprint phi_a(M)=u_a^T M v_a, and compute
+
+  t_a = u_a^T A(x_a)B(x_a)v_a.
+
+This task value costs two matrix-vector products, not a full matrix product: compute z=B(x_a)v_a, then w=A(x_a)z, then u_a^T w. For j=0,...,e define
+
+  c_{a,j} = sum_i L_i(x_a) phi_a(Y_i) alpha_i^j - x_a^j t_a.
+
+Solve the e by e system
+
+  sum_{j=0}^{e-1} c_{a,j} lambda_j = -c_{a,e},  a=1,...,e,
+
+and set Lambda(x)=sum_{j=0}^{e-1}lambda_j x^j + x^e. If the system is singular, declare decoding failure. Find the roots of Lambda among the worker points. If there are e such roots, discard those e outputs and interpolate the degree-&lt;k matrix polynomial P from any k remaining outputs. Return its coefficient of x^(ell-1), AB. Otherwise declare failure.
+
+Why the true locator solves the equations. Let Lambda_B(x)=product_{i in Bset}(x-alpha_i). At every honest point, Y_i Lambda_B(alpha_i)=P(alpha_i)Lambda_B(alpha_i). At every bad point, Lambda_B(alpha_i)=0, so the same equality holds. Since deg(P Lambda_B)&lt;k+e&lt;=k+b, interpolation from the k+b response points is exact. Evaluating at x_a and applying phi_a gives
+
+  sum_i L_i(x_a) phi_a(Y_i) Lambda_B(alpha_i)
+       = phi_a(P(x_a) Lambda_B(x_a))
+       = t_a Lambda_B(x_a),
+
+which is exactly sum_j c_{a,j} lambda_j=0.
+
+Why the solution is unique with high probability. For a polynomial delta with deg(delta)&lt;e, define the matrix polynomial
+
+  R_delta(x) = Interp_X( (E_i delta(alpha_i))_i ),
+
+where interpolation is entrywise and has degree at most k+b-1. If R_delta is identically zero, then E_i delta(alpha_i)=0 for each bad i. Since each E_i is a nonzero matrix, delta(alpha_i)=0 at all e bad points; the degree bound forces delta=0. Thus delta -&gt; R_delta is injective. For any nonzero delta, some entry of R_delta is a nonzero scalar polynomial of degree at most k+b-1. A uniform x outside X hits one of its roots with probability at most (k+b-1)/(q-k-b). If R_delta(x) is nonzero, a rank-one Freivalds fingerprint misses it with probability at most 2/q: first Mv=0 has probability at most 1/q, and conditional on Mv!=0, u^T Mv=0 has probability 1/q. Therefore one independent challenge row annihilates any fixed nonzero delta with probability at most
+
+  rho = (k+b-1)/(q-k-b) + 2/q.
+
+Condition on all previous challenge rows. If their span has rank below e, choose a nonzero delta in its nullspace. The next independent row lies in that span with probability at most rho. Hence the locator matrix is nonsingular with probability at least 1-e rho. This is a conservative bound and assumes q&gt;k+b.
+
+The actual error count need not be known. A bounded implementation can use one set of b random probe triples and solve for degrees d=0,1,...,b in increasing order, using the first d probe equations and coefficients c_{a,j} for j&lt;=d. For each candidate it checks that Lambda has d worker roots, reconstructs from k nonroot responses, and runs a separate fresh final product fingerprint. A true degree-e locator is unique except with probability at most e rho. Any false reconstructed polynomial differs from P in some matrix entry; a fresh uniform x outside X and fresh rank-one fingerprint accepts it with probability at most
+
+  rho_final = (k-1)/(q-k-b) + 2/q.
+
+By a union bound, the probability of returning a wrong matrix polynomial is at most (b+1)rho_final. If the true degree-e attempt is nonsingular and no earlier false candidate passes the final check, the protocol returns AB exactly. This is a Monte Carlo protocol with fail-stop behavior, not a zero-error protocol. The operational version should reject if any root count, linear-system, interpolation, or final check fails.
+
+4. Converting finite IEEE inputs to an exact field problem
+
+Each finite IEEE value is an exact dyadic rational. Choose exponents E_A,E_B so A&#x27;=2^E_A A and B&#x27;=2^E_B B have integer entries. Let U_A=max|A&#x27;_{ij}| and U_B=max|B&#x27;_{ij}|. Every product entry obeys |(A&#x27;B&#x27;)_{ij}|&lt;=r U_A U_B. Choose a prime q&gt;max(N,2r U_A U_B). Run the finite-field protocol on A&#x27; mod q and B&#x27; mod q. Center-lift the exact residue of each output entry to the unique integer in (-q/2,q/2), then return that integer times 2^(-(E_A+E_B)). This recovers the exact real product of the input bit patterns. It avoids interpolation conditioning because field operations are exact. It does not give a fast floating-point worker: all encoding, multiplication, checks, and communication use O(log q)-bit residues, and q grows with the input exponent span and product bound. A multi-prime CRT implementation can replace one very large prime, multiplying worker arithmetic and communication by the number of primes; the Byzantine checks and decoding must be run consistently for each prime.
+
+5. Full resource ledger for the candidate
+
+Use MatDot parameters above and let a worker&#x27;s coded operands have shapes m x (r/ell) and (r/ell) x p.
+
+- Workers: total N=k+b+s=2ell-1+b+s; the master waits for k+b responses. The normal RS errors-and-erasures route uses k+2b+s workers and waits for k+2b. AVCC&#x27;s per-worker verifier already uses the k+b+s count.
+- Worker arithmetic: each response requires approximately 2mrp/ell scalar multiply-add work for ordinary dense multiplication, plus encoding; exact modular arithmetic uses bit operations on O(log q)-bit residues. Each worker stores mr/ell + rp/ell + mp field elements.
+- Master encoding and upload: each worker receives mr/ell + rp/ell field elements; total upload is N(mr/ell+rp/ell) field elements, or this count times ceil(log2 q) bits. Encoding coefficients and evaluation points must be computed and stored.
+- Download: the first k+b responses cost (k+b)mp field elements, or (k+b)mp ceil(log2 q) bits. Worst-case uncancelled traffic is Nmp field elements if late stragglers have already sent outputs.
+- Locator checks: for known e, computing phi_a(Y_i) scans every response matrix, so it costs e(k+b)mp field multiplications/additions. The Lagrange coefficient arithmetic and the degree-e equations add O(e^2(k+b)+e^3) field operations. Computing each t_a costs O((m+p)r/ell) field multiplications plus polynomial evaluation. The unknown-e search can reuse b challenge fingerprints and coefficients; worst-case projection work remains b(k+b)mp, with additional polynomial-sized linear-system work.
+- Interpolation: direct Vandermonde interpolation of k matrix responses costs O(k^2 mp); fast multipoint/FFT methods can lower this when evaluation points and field support them. Root checks cost O((k+b)e).
+- Final check: one fresh product fingerprint costs O(kmp) to evaluate the candidate polynomial naively, plus O((m+p)r/ell) for the encoded input product fingerprint. It uses no worker communication.
+- Storage: the master must retain k+b full response matrices, O((k+b)mp) field elements, plus encoded coefficient matrices, probe data, and interpolation workspace. Each worker stores its encoded operands and one output matrix. No worker-to-worker network traffic is used.
+- Conditioning/precision: finite-field execution has no condition number or floating roundoff in the code arithmetic. The exact IEEE conversion&#x27;s prime size is controlled by the integer bounds. If the product is instead evaluated over reals with Chebyshev/Vandermonde codes, condition numbers, input scaling, floating error, and verifier tolerance must all be included; this construction does not supply those bounds.
+- Adaptivity: probe randomness must be sampled after the responses are frozen and remain private. Reusing probes or revealing pass/fail state can invalidate the stated conditional error analysis. If a worker sees a rank-one challenge before choosing its output, it can forge a miss: with u=v=(1,0)^T in F_q^2, the nonzero error matrix [[0,0],[0,1]] satisfies u^T E v=0 exactly.
+
+The dominant scan term e(k+b)mp is the central negative result. AVCC checks each response once using worker-specific Freivalds keys and therefore has a lower or comparable verifier scan cost for e&gt;1, while achieving the same worker threshold. This candidate is not an improvement on AVCC as presently stated.
+
+6. Baseline comparison and primary-source audit
+
+1) Replication. Replicate each independent subtask 2b+s+1 times to ensure a strict honest majority even if b Byzantine and s stragglers all target that group. This is a simple exact baseline; total task copies scale as (2b+s+1)k and each output block is downloaded repeatedly. More adaptive replication can save expected work under a stochastic latency/fault model, but does not improve the worst-case guarantee without a stated model.
+
+2) Polynomial / LCC unique decoding. A degree-&lt;k RS output polynomial with b unknown errors and s erasures requires k+2b+s points: the [n,k] RS minimum distance is n-k+1, and unique correction needs n-k+1&gt;=2b+s+1. It has no randomized false-acceptance probability, but spends 2b response slots and decodes each output coordinate. It is the relevant baseline if workers are treated as arbitrary channel symbols and the master does not independently verify each task.
+
+3) AVCC. Tang et al., arXiv:2107.12958v2 (2022), §§II-B, II-D, III-A, IV-A. The master makes a private Freivalds key for each worker, checks each result independently, discards failures, and waits for enough verified results. The paper states N &gt;= (K+T-1)deg(f)+S+M+1 versus LCC&#x27;s +2M, and explicitly says the approach is suitable for matrix-matrix multiplication. This matches the k+b+s responder budget in the present nonprivate MatDot specialization. Its check is O(output matrix-vector work) per response and can run as replies arrive. A one-time private key and key reuse need a separate adaptive-leakage analysis; this record does not assert one.
+
+4) FLCC / list decoding with task side information. Soleymani et al., arXiv:2101.11653 (2021), §§I-A, II-A, III-V. The master list-decodes folded RS outputs, then computes extra evaluations of the known task polynomial to prune the candidate subspace. The paper reports approaching the Singleton limit, reducing adversary cost toward straggler cost. It is a stronger threshold comparison than ordinary RS decoding and may require folded output symbols and list-decoding work; compare at matched download and decoder cost before claiming an advantage.
+
+5) Group-wise verifiable coded computation. Hong et al., IEEE TIFS 19 (2024), DOI 10.1109/TIFS.2024.3377929. It uses group-wise verification and group-wise codes to address stragglers and Byzantine outputs. The publisher abstract confirms the scope and reports cloud experiments; exact parameter comparison is unresolved here.
+
+6) Current matrix-multiplication verifier. Hong et al., FVCC, IEEE TIFS 21 (2026), DOI 10.1109/TIFS.2026.3723143, published 2026-08-12. The publisher abstract reports two-dimensional shift-and-add encoding, bidirectional four-dimensional zigzag decoding, and Freivalds verification for straggler and Byzantine workers. Only the publisher abstract was accessible in this pass, so no theorem-level numerical comparison is asserted.
+
+7) Real-number coded matrix multiplication. Tan et al., IEEE Signal Processing Letters 30 (2023), DOI 10.1109/LSP.2023.3326055. The publisher abstract reports a numerically stable real-field scheme that detects malicious workers and mitigates stragglers. Search results for the paper identify local and global group tests. This rules out treating &#x27;stable real arithmetic plus Byzantine detection plus stragglers&#x27; as an unoccupied objective. The publisher page did not expose enough theorem detail here to verify a finite-precision soundness bound.
+
+8) Numerical stability without the current adversary objective. Fahim and Cadambe, arXiv:1903.08326 / IEEE TIT 67(5) (2021), Theorem 4.1 and §§III-IV. Their orthonormal/Chebyshev polynomial codes give a polynomial-in-worker-count condition-number bound for their decoding construction. This source covers straggler-coded matrix products and numerical stability, not a complete Byzantine verification protocol.
+
+9) Interleaved RS. Makkonen and Hollanti, arXiv:2205.07052 (2022), §IV; Schmidt, Sidorenko, and Bossert, ISIT 2015, pp. 1876-1880. Interleaved decoding can exceed half-distance under stated error-distribution/rank conditions. The matrix-multiplication paper explicitly warns that Byzantine servers can choose other distributions. It cannot be used as a worst-case adversarial guarantee without an additional mechanism that randomizes error values while preserving the code structure; simple post-response invertible projections do not do that.
+
+No priority statement is supported. Live checks found that the main abstract ideas in the candidate (Freivalds verification, side-information pruning, grouped verification, stable real-field coding) all have direct prior-art analogues.
+
+7. Counterexamples, impossibility, and unresolved alternatives
+
+- In the evaluation-only model, where the master treats P as opaque apart from worker values, fewer than k honest evaluations do not determine an arbitrary coefficient of a degree-&lt;k polynomial in general: a nonzero degree-&lt;k polynomial can vanish at k-1 observed points while changing the target coefficient for generic points. Thus k+b+s workers are needed to guarantee k honest evaluations against b Byzantine workers and s stragglers in that model. This is not a lower bound once task-specific side information is allowed; AVCC and FLCC deliberately use such information.
+- If the master relies only on RS-distance decoding, k+2b+s is necessary for worst-case unique correction; random error assumptions are a different model.
+- If a Freivalds seed is known before a worker commits, a nonzero error can lie in the verifier&#x27;s kernel, as the exact 2x2 example in the resource ledger shows. Post-commit challenge timing or an equally strong commitment/secret-key model is required.
+- The direct locator candidate&#x27;s dominant b-pass response scan can cost more than AVCC&#x27;s individual checks. Group tests/GVCC and the 2026 FVCC method may improve wall-clock verification or decode cost; their exact matched costs need full-text access and derivation.
+- Real-field condition-number bounds are not a complete certificate: they do not alone account for rounding in encoding, worker multiplication, malicious near-correct outputs, tolerance tests, or accumulation across repeated iterations.
+- An exact modular product is not a certified iterative solve. A solver needs a complete residual and conditioning certificate, including the cost of obtaining a valid lower bound on the smallest singular value/eigenvalue. No such solver is claimed here.
+
+Alternatives considered and status:
+
+- Randomly project each received matrix once and use interleaved RS beyond half distance: rejected for arbitrary Byzantine workers because fixed error matrices can have rank one across workers; the random-error theorem does not cover that adversary.
+- Post-response random worker-specific scalar rescaling: rejected as a claimed rank-randomizer. It merely maps each interleaved RS row to a generalized RS code; the dual multipliers cancel the rescaling in the syndrome, so the hard error-rank condition is not removed.
+- Per-worker Freivalds after response freeze: technically sound and cost-competitive, but already the AVCC mechanism. Keep as a baseline, not a discovery.
+- Task-aware locator equations: correct under the contract above, but the b scans of all returned matrices erase the apparent verifier-cost gain. Retain as an internal candidate and negative comparison only.
+- Exact dyadic-to-prime embedding: fully specifies exact multiplication of IEEE inputs, but is a direct representation conversion and does not alone satisfy the originality objective.
+
+8. Executable evidence
+
+File: work/applied/a15_distributed_computation/finite_protocol.py.
+Command: python3 work/applied/a15_distributed_computation/finite_protocol.py
+Observed output:
+
+  field=F_257 trials=1000 degree=2 errors=2 rank-one-error-pattern
+  unique_locator=992/1000 (99.200%)
+  exact_target_after_interpolation=992/1000 (99.200%)
+
+The script creates p=2 MatDot inputs, so k=3, chooses five distinct worker points, corrupts two outputs by scalar multiples of one nonzero error matrix (a low-rank-across-workers pattern), samples post-response probes, solves the locator equations, and interpolates AB from three roots-excluded responses. Eight trials failed at the rank-check stage; no successful locator returned an incorrect target. This is a finite implementation diagnostic, not a proof, not an empirical-system test, and not independent validation.
+
+9. Provenance and source pins
+
+Campaign contract: work/CAMPAIGN_CONTRACT.txt (read 2026-10-09). Source pin manifest: work/SOURCE_PINS.json (read 2026-10-09). Astra navigation: work/sources/astra/00_START_HERE.txt (read first as required); task-keyword searches of agent/topics.txt, literature/topics.tsv, frontier/PRIORITIES.md, and frontier/OPEN_PROOF_GATES.jsonl returned no direct distributed-matrix/Byzantine/straggler route, so no archived technical claim was used to set the agenda. Pinned revisions are Astra 939f697c151e779619d4fa7c4e2aee4bc59672fb and openai_math fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb.
+
+Live primary-source URLs and exact version/scope used:
+
+- Tang et al., Adaptive Verifiable Coded Computing, arXiv:2107.12958v2, 2022-03-22: https://arxiv.org/abs/2107.12958 and https://arxiv.org/html/2107.12958; abstract and §§II-B, II-D, III-A, IV-A (per-worker checks, worker threshold, threat assumptions, matrix multiplication applicability).
+- Soleymani et al., List-Decodable Coded Computing, arXiv:2101.11653, 2021-01-27: https://arxiv.org/abs/2101.11653; abstract and §§I-A, II-A, III-V (FRS list decoding plus deterministic/random side-information pruning).
+- Makkonen and Hollanti, General Framework for Linear Secure Distributed Matrix Multiplication with Byzantine Servers, arXiv:2205.07052, 2022-05-14: https://arxiv.org/abs/2205.07052; abstract and §IV (interleaved-code correction plus explicit distribution caveat).
+- Hong et al., Group-Wise Verifiable Coded Computing Under Byzantine Attacks and Stragglers, IEEE TIFS 19 (2024): https://doi.org/10.1109/TIFS.2024.3377929; publisher abstract and the authors&#x27; ICLR 2023 preprint indexed at https://openreview.net/ (group verification mechanism).
+- Hong et al., FVCC, IEEE TIFS 21 (2026), 2026-08-12: https://doi.org/10.1109/TIFS.2026.3723143; publisher abstract only (2D shift-and-add, 4D zigzag decoding, Freivalds verification).
+- Tan et al., Coded Real Number Matrix Multiplication for On-Device Edge Computing, IEEE SPL 30 (2023): https://doi.org/10.1109/LSP.2023.3326055; publisher abstract (real-field stability, straggler mitigation, Byzantine detection).
+- Fahim and Cadambe, Numerically Stable Polynomially Coded Computing, arXiv:1903.08326 / IEEE TIT 67(5) (2021): https://arxiv.org/abs/1903.08326 and https://par.nsf.gov/servlets/purl/10110650; abstract and §§III-IV, Theorem 4.1 (Chebyshev/orthonormal construction and condition-number scope).
+- Schmidt, Sidorenko, and Bossert, Decoding of Interleaved Reed-Solomon Codes, ISIT 2015: https://www.isiweb.ee.ethz.ch/papers/docu/jiyu-aloe-ISIT2015.pdf; pp. 1-5 (high-probability decoding radius under random error matrix conditions).
+- Yu, Maddah-Ali, and Avestimehr, Straggler Mitigation in Distributed Matrix Multiplication: Fundamental Limits and Optimal Coding, arXiv:1801.07487: https://arxiv.org/abs/1801.07487; abstract and recovery-threshold results, for the coded matrix-multiplication/straggler baseline.
+
+Finite completion state: this single bounded attempt is complete. No external communication, publication, canonical-source edits, goals, schedules, or additional research workers were used. Await the director&#x27;s next instruction.
+</pre><p><a href="../assets/2855547434d06b9679d34aa9b8daaabe26e956cc42a17a71f3896e966065ee14.txt">Exact original</a></p></html>

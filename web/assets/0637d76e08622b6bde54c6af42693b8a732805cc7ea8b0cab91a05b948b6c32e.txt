@@ -1,0 +1,91 @@
+# A04 Phase II update: exact coherent union bound across rounds
+
+Date: 2026-10-09  
+Status: internal combinatorial derivation, conditional on the complete-circuit AKP cylinder bound. This append-only version sharpens the repeated-round step from `v3.txt` and fixes its threshold notation.
+
+## Exact-set and cylinder definitions
+
+Let the complete `T`-round circuit have macro-location set `L`, partitioned into round blocks `L_1,...,L_T`, each of size `N=N_0 n`. Let `W_F` be the coarse-grained fault-path operator whose *exact* faulty macro-location set is `F subseteq L`. These operators need not be positive, orthogonal, or mutually commuting. For any required set `S subseteq L`, define the aggregate cylinder operator
+\[
+E(S):=\sum_{F\supseteq S}W_F.
+\tag{1}
+\]
+The required physical noise hypothesis is the global local fault-path bound
+\[
+\|E(S)\|\leq\eta^{|S|}\quad\text{for every }S\subseteq L,
+\tag{2}
+\]
+including sets spanning different rounds and with no restriction on faults outside `S`. This is an operator-norm hypothesis on one shared-bath expansion, not stochastic independence. The AKP pairwise system–bath Hamiltonian derivation is a source for (2) in its own macro-location model; extension to all QTC readout/reset/classical/control locations remains a separate gate, as recorded in `v2.txt`.
+
+## Global bad-path operator by Möbius inversion
+
+Möbius inversion of (1) gives
+\[
+W_F=\sum_{S\supseteq F}(-1)^{|S|-|F|}E(S).
+\tag{3}
+\]
+Choose a per-round fault threshold `k` and call a global path good when `|F cap L_j|<k` for every round `j`. Write `g(F)=1` for these paths and define the good operator `G=\sum_F g(F)W_F`. Substituting (3) and exchanging finite sums gives
+\[
+G=\sum_{S\subseteq L}a(S)E(S),\qquad
+a(S)=\sum_{F\subseteq S}g(F)(-1)^{|S|-|F|}.
+\tag{4}
+\]
+The indicator `g` is a product over round blocks, so `a(S)=\prod_{j=1}^T a_k(s_j)`, where `s_j=|S cap L_j|` and
+\[
+a_k(s)=\sum_{f=0}^{\min(s,k-1)}(-1)^{s-f}{s\choose f}
+=\begin{cases}
+1,&s=0,\\
+0,&1\le s<k,\\
+(-1)^{s+k-1}{s-1\choose k-1},&s\ge k.
+\end{cases}
+\tag{5}
+\]
+For `1<=s<k` this is the complete alternating binomial sum. For `s>=k`, use `sum_{f=0}^{k-1}(-1)^f C(s,f)=(-1)^{k-1}C(s-1,k-1)`.
+
+The full circuit operator is `U=E(empty)=sum_F W_F`. Its bad-path part is `B=U-G`. The coefficient of `E(S)` in `B` is zero for `S=empty`; for nonempty `S`, it is `-a(S)`, since `sum_{F subseteq S}(-1)^{|S|-|F|}=0`. Thus only sets whose size in every nonempty round block is at least `k` contribute to the norm estimate. Let
+\[
+x:=\sum_{s=k}^{N}{N\choose s}{s-1\choose k-1}\eta^s.
+\tag{6}
+\]
+Using (2), (4)–(5), and summing over the choices `s_j=0` or `s_j>=k` in each round gives the exact bound
+\[
+\|B\|\leq (1+x)^T-1\leq e^{Tx}-1.
+\tag{7}
+\]
+This proves a coherent union bound across rounds without multiplying round probabilities or resetting the bath. The product terms account for paths bad in several rounds; simply stating a stochastic-style union bound would omit them.
+
+## One-round tail and exponential storage consequence
+
+Since `C(s-1,k-1)=(k/s)C(s,k)`,
+\[
+{N\choose s}{s-1\choose k-1}
+\leq {N\choose k}{N-k\choose s-k}.
+\]
+Consequently
+\[
+x\leq {N\choose k}\eta^k(1+\eta)^{N-k}
+\leq\left(\frac{eN\eta}{k}\right)^k e^{N\eta}.
+\tag{8}
+\]
+For `k=k_n=floor(tau n)+1`, `N=N_0 n`, and `tau>0` from `v2.txt`, the good-path convention `|F cap L_j|<k_n` means at most `floor(tau n)` faulty locations per cycle, matching the pathwise recurrence. As `n` grows, `k_n/n -> tau`, and the exponent per `n` in (8) is bounded by
+\[
+\tau\log\left(\frac{eN_0\eta}{\tau}\right)+N_0\eta.
+\tag{9}
+\]
+For sufficiently small fixed `eta`, this equals `-c` for some `c>0`. If `T<=exp(cn/2)`, then `Tx<=exp(-cn/2+o(n))`, and (7) gives `||B||<=exp(-cn/2+o(n))`. Combining with the conditional Knill–Laflamme closure and diamond estimate in `v3.txt` yields an exponential logical-memory bound **after exact final recovery**, provided (2) holds for all the physical circuit locations.
+
+The displayed exponent is negative whenever
+\[
+\frac{N_0\eta}{\tau}<W(e^{-1})\simeq0.2784645,
+\tag{10}
+\]
+where `W` is the positive Lambert W function: set `x=N_0 eta/tau` and solve `log(e x)+x<0`, equivalently `x exp(x)<e^{-1}`. This is only the sufficient threshold from the coarse binomial estimate, not an optimized physical noise threshold.
+
+## Scope and exact remaining gate
+
+- **Internally proved:** (7) is a finite combinatorial identity and operator-norm estimate from (2); it allows arbitrary interference and one shared bath across all rounds.
+- **Conditional:** if `v2.txt`'s pathwise decoder recurrence is valid for the exact fault-set convention in (1), then all paths not counted in `B` leave the joint CSS error in a distance-correctable span, and `v3.txt` gives logical diamond error `O(||B||)` after an exact recovery.
+- **Not established:** AKP's Hamiltonian-to-cylinder derivation must be matched to every location in the chosen extraction, readout, reset, classical decoder, control, and output circuit. The original AKP treatment of classical records takes them to be stable. We have not derived a certified end-to-end value of `eta` from physical device parameters, nor shown that ordinary calibration data suffices.
+- **Not established:** noisy implementation of final exact recovery and logical output. The repeated constant-depth storage cycle has `O(n)` locations; the simple QTC exact decoder uses `O(log n)` iterations and `O(n log n)` classical gates, for which (8) with `k=Theta(n)` is not a fixed-noise exponential bound. This remains a resource/capability gap.
+
+No discovery claim: this update closes the shared-bath *round-union combinatorics* conditionally, while the physical noise interface and noisy final output remain unresolved.

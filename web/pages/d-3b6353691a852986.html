@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/root/horn_clock_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/root/horn_clock_check.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite clock construction: floating diagnostics, not proof certification.&quot;&quot;&quot;
+import math
+import json
+from pathlib import Path
+import numpy as np
+
+M = 100
+mix = 14 / 25
+switch_rate = 1e-5
+
+def poisson_terms(mean, last):
+    terms = [math.exp(-mean)]
+    for k in range(last):
+        terms.append(terms[-1] * mean / (k + 1))
+    return terms
+
+forward = poisson_terms(M + 1, 300)
+backward = poisson_terms(1, 30)
+probs = np.zeros(5)
+for a, pa in enumerate(forward):
+    for b, pb in enumerate(backward):
+        q, rem = divmod(a-b, M)
+        probs[q % 5] += pa * pb * (1-rem/M)
+        probs[(q+1) % 5] += pa * pb * (rem/M)
+sym = (probs + probs[(-np.arange(5)) % 5]) / 2
+row = mix * sym
+row[0] += 1-mix
+P = np.array([[row[(j-i) % 5]/5 for j in range(5)] for i in range(5)])
+W = np.ones((5,5))
+for i in range(5):
+    W[i,(i+1)%5] = W[i,(i-1)%5] = -1
+
+# Chernoff bound for upper Poisson tail P[N &gt;= K], K &gt; mean.
+def poisson_tail_bound(mean, K):
+    return math.exp(-mean + K * (1 + math.log(mean/K)))
+tail = poisson_tail_bound(M+1,301) + poisson_tail_bound(1,31)
+switch_tv = switch_rate * max(1,mix/(1-mix))
+eigenvalues = np.linalg.eigvalsh(P)
+witness = float(np.sum(W*P))
+out = {
+  &#x27;scope&#x27;:&#x27;Floating diagnostic plus analytic Poisson-tail and added-switch coupling formulas; no exact-arithmetic certificate&#x27;,
+  &#x27;hidden_states&#x27;: 2*5*M+5,
+  &#x27;M&#x27;:M, &#x27;active_mixture&#x27;:mix, &#x27;switch_rate&#x27;:switch_rate,
+  &#x27;lag&#x27;:1, &#x27;observed_pair_table&#x27;:P.tolist(),
+  &#x27;eigenvalues&#x27;:eigenvalues.tolist(),
+  &#x27;horn_pairing&#x27;:witness,
+  &#x27;poisson_omitted_mass_upper&#x27;:tail,
+  &#x27;switch_total_variation_upper&#x27;:switch_tv,
+  &#x27;psd_margin_after_analytic_perturbation&#x27;:float(eigenvalues[0]-2*(tail+switch_tv)),
+  &#x27;horn_pairing_upper_after_analytic_perturbation&#x27;:witness+2*(tail+switch_tv),
+  &#x27;copositive_linear_ep_lower&#x27;:4*max(0,-witness-2*(tail+switch_tv)),
+  &#x27;actual_ep&#x27;:mix*M*math.log(M+1),
+}
+Path(&#x27;work/root/horn_clock_check_v1.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/1d97f635fe1345d560e75b1fa84e8415ee8935e2e89cf23952e0fda07da482c4.py">Exact original</a></p></html>

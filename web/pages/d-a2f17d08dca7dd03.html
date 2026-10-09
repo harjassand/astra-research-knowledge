@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_02/n23_sharp_ep/verify_n23_midpoint.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_02/n23_sharp_ep/verify_n23_midpoint.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Reproduce a finite 4-cycle midpoint-factorization check (stdlib only).&quot;&quot;&quot;
+import math
+
+
+def mm(A, B):
+    n, m, k = len(A), len(B), len(B[0])
+    return [[sum(A[i][j] * B[j][l] for j in range(m)) for l in range(k)] for i in range(n)]
+
+
+def exp_generator(Q, time):
+    &quot;&quot;&quot;Uniformization for a row-generator; the omitted Poisson tail is tiny.&quot;&quot;&quot;
+    n = len(Q)
+    rate = max(-Q[i][i] for i in range(n))
+    x = rate * time
+    R = [[(1.0 if i == j else 0.0) + Q[i][j] / rate for j in range(n)] for i in range(n)]
+    power = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+    weight = math.exp(-x)
+    cumulative = weight
+    P = [[weight * power[i][j] for j in range(n)] for i in range(n)]
+    order = 0
+    while 1.0 - cumulative &gt; 1e-15:
+        order += 1
+        power = mm(power, R)
+        weight *= x / order
+        cumulative += weight
+        for i in range(n):
+            for j in range(n):
+                P[i][j] += weight * power[i][j]
+        if order &gt; 10000:
+            raise RuntimeError(&quot;uniformization failed to converge&quot;)
+    return P
+
+
+def generator(clockwise, counterclockwise):
+    Q = [[0.0] * 4 for _ in range(4)]
+    for i in range(4):
+        Q[i][(i + 1) % 4] = clockwise
+        Q[i][(i - 1) % 4] = counterclockwise
+        Q[i][i] = -(clockwise + counterclockwise)
+    return Q
+
+
+def bernoulli_jeffreys(u, v):
+    if u == v:
+        return 0.0
+    return (u - v) * (math.log(u / (1 - u)) - math.log(v / (1 - v)))
+
+
+# Set t=1, J t=pi, S t=4&gt;pi. Then Js=pi/2 at s=t/2.
+t = 1.0
+J = math.pi / t
+S = 4.0 / t
+a = (S + J) / 2
+b = (S - J) / 2
+s = t / 2
+Q = generator(a, b)
+Qstar = generator(b, a)
+Ps = exp_generator(Q, s)
+Pstars = exp_generator(Qstar, s)
+Pt = exp_generator(Q, t)
+observed = {0, 1}
+
+def obs_probability(P, i):
+    return sum(P[i][j] for j in observed)
+
+U = [obs_probability(Pstars, i) for i in range(4)]
+V = [obs_probability(Ps, i) for i in range(4)]
+midpoint_cost = sum(bernoulli_jeffreys(U[i], V[i]) for i in range(4)) / 4
+p11 = sum(Pt[i][j] for i in observed for j in observed) / 4
+p = 0.5
+covariance = p11 - p * p
+delta = 0.25 * math.exp(-S * t)
+relaxation = 8 * math.sqrt(delta) * math.atanh(2 * math.sqrt(delta))
+epr_t = 2 * (J * t) * math.atanh(J / S)
+
+assert max(abs(U[i] + V[i] - 1.0) for i in range(4)) &lt; 2e-13
+assert max(abs(abs(U[i] - V[i]) - math.exp(-S * s)) for i in range(4)) &lt; 2e-13
+assert abs(covariance + delta) &lt; 2e-13
+assert abs(midpoint_cost - relaxation) &lt; 2e-12
+assert 0 &lt; b &lt; a
+
+print(f&quot;t={t:g}, a={a:.12g}, b={b:.12g}, S={S:.12g}, J={J:.12g}&quot;)
+print(f&quot;U={[&#x27;%.12g&#x27; % x for x in U]}&quot;)
+print(f&quot;V={[&#x27;%.12g&#x27; % x for x in V]}&quot;)
+print(f&quot;covariance={covariance:.12g}; delta={delta:.12g}&quot;)
+print(f&quot;midpoint Jeffreys={midpoint_cost:.12g}; K relaxation={relaxation:.12g}&quot;)
+print(f&quot;actual EPR*t={epr_t:.12g}; strict gap={epr_t-midpoint_cost:.12g}&quot;)
+</pre><p><a href="../assets/72c62b7f84b900db56b2051c9dc4f8f43738dad7d969f5e2ebd798b359417729.py">Exact original</a></p></html>

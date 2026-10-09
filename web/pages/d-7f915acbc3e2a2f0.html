@@ -1,0 +1,142 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_01/n02_neutrino_flavor/first_pulse.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_01/n02_neutrino_flavor/first_pulse.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite three-angle fast-flavor first-pulse diagnostic.
+
+This is an internal mean-field computation, not an astrophysical simulation.
+It checks whether a single unstable mode produces a seed-independent first
+nonlinear conversion pulse after removing its logarithmic onset delay.
+&quot;&quot;&quot;
+
+import numpy as np
+
+
+V = np.array([-1.0, 1.0 / 3.0, 1.0])
+G = np.array([-4.0, -4.0, 1.0])
+
+
+def rhs(_t, flat):
+    p = flat.reshape(3, 3)
+    d0 = p.sum(axis=0)
+    d1 = (V[:, None] * p).sum(axis=0)
+    return np.cross(d0[None, :] - V[:, None] * d1[None, :], p).ravel()
+
+
+def conversion(p):
+    # Charge-balanced flip amount, zero initially; the total z lepton charge
+    # makes the positive- and negative-G sector conversions equal.
+    return 0.5 * np.sum(np.abs(G) - np.sign(G) * p[:, 2])
+
+
+def rk4_step(t, y, h):
+    k1 = rhs(t, y)
+    k2 = rhs(t + h / 2.0, y + h * k1 / 2.0)
+    k3 = rhs(t + h / 2.0, y + h * k2 / 2.0)
+    k4 = rhs(t + h, y + h * k3)
+    return y + h * (k1 + 2 * k2 + 2 * k3 + k4) / 6.0
+
+
+def main():
+    d1z = float(V @ G)
+    # q_i = P_i^x+iP_i^y.  In the frame corotating with D_0^z,
+    # qdot_i = -i v_i D_1^z q_i - i G_i sum_j q_j
+    #          + i v_i G_i sum_j v_j q_j.
+    a = (
+        -1j * np.diag(V * d1z)
+        - 1j * np.diag(G) @ np.ones((len(G), len(G)))
+        + 1j * np.outer(V * G, V)
+    )
+    eigvals, eigvecs = np.linalg.eig(a)
+    j = int(np.argmax(eigvals.real))
+    lam = eigvals[j]
+    q = eigvecs[:, j]
+    q /= np.max(np.abs(q))
+    gamma = float(lam.real)
+    if gamma &lt;= 0:
+        raise RuntimeError(f&quot;No unstable mode found: {eigvals}&quot;)
+
+    # Include a global-rotation neutral vector and the stable eigenvector as
+    # seed contamination.  They are O(epsilon) at t=0 and disappear from the
+    # first-pulse limit after the logarithmic shift.
+    neutral = G.astype(complex) / np.max(np.abs(G))
+    neutral_index = int(np.argmin(np.abs(eigvals.real)))
+    stable_index = int(np.argmin(eigvals.real))
+    stable = eigvecs[:, stable_index]
+    stable /= np.max(np.abs(stable))
+    seeds = (
+        (&quot;pure&quot;, 1.0 + 0.0j, 0.0j, 0.0j),
+        (&quot;phase_and_neutral&quot;, 0.3 * np.exp(0.7j), 0.7 + 0.2j, 0.0j),
+        (&quot;phase_and_stable&quot;, 0.6 * np.exp(-1.1j), 0.0j, 0.8 - 0.1j),
+    )
+    taus = np.linspace(-2.0, 8.0, 2001)
+    peak_offset = np.log(4.0 * np.sqrt(2.0)) / gamma
+    predicted_pulse = 2.0 / np.cosh(gamma * (taus - peak_offset)) ** 2
+    report = []
+    curves = {}
+    for seed_name, alpha, beta, delta in seeds:
+      for eps in (1e-3, 1e-4, 1e-5):
+        unstable_amplitude = eps * abs(alpha)
+        onset = np.log(1.0 / unstable_amplitude) / gamma
+        initial_transverse = eps * (alpha * q + beta * neutral + delta * stable)
+        if np.max(np.abs(initial_transverse)) &gt;= np.min(np.abs(G)):
+            raise RuntimeError(&quot;Seed is too large to preserve the beam lengths&quot;)
+        z0 = np.sign(G) * np.sqrt(G**2 - np.abs(initial_transverse) ** 2)
+        p0 = np.column_stack(
+            (initial_transverse.real, initial_transverse.imag, z0)
+        )
+        # Starting exactly at tau=-2 means t=onset-2; integrate through the
+        # nonlinear pulse in onset-shifted time.
+        t0 = onset + taus[0]
+        if t0 &lt;= 0:
+            raise RuntimeError(&quot;Chosen tau window starts before physical t=0&quot;)
+        final_time = onset + taus[-1]
+        nsteps = int(np.ceil(final_time / 0.001))
+        h = final_time / nsteps
+        times = np.linspace(0.0, final_time, nsteps + 1)
+        history = np.empty((nsteps + 1, 9))
+        history[0] = p0.ravel()
+        state = p0.ravel()
+        for n in range(nsteps):
+            state = rk4_step(times[n], state, h)
+            history[n + 1] = state
+        targets = onset + taus
+        p = np.column_stack(
+            [np.interp(targets, times, history[:, k]) for k in range(9)]
+        ).reshape(len(taus), 3, 3)
+        c = np.array([conversion(frame) for frame in p])
+        curves[(seed_name, eps)] = c
+        imax = int(np.argmax(c))
+        report.append(
+            {
+                &quot;seed&quot;: seed_name,
+                &quot;epsilon&quot;: eps,
+                &quot;onset_time&quot;: onset,
+                &quot;peak_tau&quot;: float(taus[imax]),
+                &quot;peak_conversion&quot;: float(c[imax]),
+                &quot;z_at_peak&quot;: p[imax, :, 2].tolist(),
+                &quot;d0_error&quot;: float(np.max(np.abs(p.sum(axis=1) - p[0].sum(axis=0)))),
+                &quot;length_error&quot;: float(
+                    np.max(np.abs(np.linalg.norm(p, axis=2) - np.linalg.norm(p[0], axis=1)))
+                ),
+            }
+        )
+
+    reference = curves[(&quot;pure&quot;, 1e-5)]
+    pairwise = {
+        key: float(np.max(np.abs(curve - reference)))
+        for key, curve in curves.items()
+        if key != (&quot;pure&quot;, 1e-5)
+    }
+    print(f&quot;D1z={d1z:.12g}; unstable eigenvalue={lam}; gamma={gamma:.12g}&quot;)
+    print(f&quot;unstable eigenvector={q}; sum={sum(q)}&quot;)
+    print(f&quot;neutral eigenvalue={eigvals[neutral_index]}; stable eigenvalue={eigvals[stable_index]}&quot;)
+    print(f&quot;predicted logarithmic-shift peak offset={peak_offset:.12g}&quot;)
+    for row in report:
+        print(row)
+    print(f&quot;max shifted-conversion differences vs pure eps=1e-5: {pairwise}&quot;)
+    print(
+        &quot;max absolute error versus first-pulse law for pure eps=1e-5: &quot;
+        f&quot;{np.max(np.abs(reference - predicted_pulse)):.12g}&quot;
+    )
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/e22ae5eebb0686d56c9d480b5b9e693986e4ecd6f7c2875640b5a6653255a68c.py">Exact original</a></p></html>

@@ -1,0 +1,115 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a16_physical_computation/margin_trigger_diagnostic.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a16_physical_computation/margin_trigger_diagnostic.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Numerical diagnostic for the A16 Gaussian fixed-window model.
+
+This samples the declared stochastic model. It is not a device simulation or
+experimental validation. All parameters are exposed in main().
+&quot;&quot;&quot;
+
+from math import ceil, erfc, log, sqrt
+from random import Random
+from statistics import NormalDist
+
+
+KB = 1.380649e-23
+
+
+def gaussian_tail(z):
+    return 0.5 * erfc(z / sqrt(2.0))
+
+
+def integration_time(kbt, lam, voltage, weight_l1, kappa, margin, delta,
+                     capacitance, readout_charge_sd):
+    q = NormalDist().inv_cdf(1.0 - delta)
+    signal_rate = lam * voltage * margin * weight_l1
+    noise_rate = 2.0 * kbt * lam * kappa * weight_l1
+    initial_variance = capacitance * kbt + readout_charge_sd**2
+    return (q*q*noise_rate + sqrt(q**4*noise_rate**2
+                                  + 4.0*q*q*signal_rate**2*initial_variance)) \
+           / (2.0*signal_rate**2)
+
+
+def main():
+    # Deliberately explicit illustrative values; these are not claimed as a
+    # measured implementation. A 3-bit ADC is the digital input interface.
+    temperature = 300.0
+    kbt = KB * temperature
+    lam = 1.0e-4       # S, total differential conductance scale for ||w||_1=1
+    voltage = 0.05     # V
+    weight_l1 = 1.0
+    kappa = 1.5         # equivalent Johnson-noise conductance factor
+    gamma = 0.25
+    rho = 0.02
+    epsilon_x = 0.02
+    epsilon_o = 0.01
+    margin = gamma - rho - epsilon_x - epsilon_o
+    delta = 0.01
+    capacitance = 1.0e-13  # F
+    readout_charge_sd = 1.0e-17  # C, illustrative comparator/sampling noise
+    front_end_time_floor = 1.0e-9  # s, illustrative measured-bandwidth slot
+    switch_cap = 1.0e-16  # F per input gate
+    switch_voltage = 0.5  # V
+    switches_per_input = 2
+    control_cap = 1.0e-14  # F, illustrative broadcast line
+    latch_energy = 1.0e-14  # J, illustrative, not measured
+    adc_fj_per_level = 0.85  # source-reported 200-kHz example, not matched
+    n = 256
+
+    t_noise = integration_time(kbt, lam, voltage, weight_l1, kappa, margin,
+                               delta, capacitance, readout_charge_sd)
+    # The bandwidth/settling slot is a separately charged physical constraint.
+    t = max(t_noise, front_end_time_floor)
+    q = NormalDist().inv_cdf(1.0 - delta)
+    signal_noise = lam * voltage * margin * weight_l1 * t_noise
+    variance_noise = (2.0*kbt*lam*kappa*weight_l1*t_noise
+                      + capacitance*kbt + readout_charge_sd**2)
+    predicted_noise_error = gaussian_tail(signal_noise / sqrt(variance_noise))
+    signal = lam * voltage * margin * weight_l1 * t
+    variance = (2.0*kbt*lam*kappa*weight_l1*t
+                + capacitance*kbt + readout_charge_sd**2)
+    predicted_error = gaussian_tail(signal / sqrt(variance))
+
+    trials = 300_000
+    rng = Random(20261009)
+    noise_bound_errors = sum(
+        signal_noise + rng.gauss(0.0, sqrt(variance_noise)) &lt; 0.0
+        for _ in range(trials)
+    )
+    actual_errors = sum(
+        signal + rng.gauss(0.0, sqrt(variance)) &lt; 0.0
+        for _ in range(trials)
+    )
+
+    branch_energy = lam * voltage**2 * weight_l1 * t
+    q_full_scale = lam * voltage * weight_l1 * t
+    capacitor_energy = q_full_scale**2 / (2.0*capacitance)
+    gate_energy = (switches_per_input*n*0.5*switch_cap*switch_voltage**2
+                   + 0.5*control_cap*switch_voltage**2)
+    physical_subtotal = branch_energy + capacitor_energy + gate_energy + latch_energy
+    adc_bits = ceil(log(2.0/gamma, 2.0))
+    adc_energy_per_input = adc_fj_per_level * (2**adc_bits) * 1.0e-15
+    digital_adc_energy = n * adc_energy_per_input
+
+    print(f&quot;N={n}, gamma={gamma}, deterministic_error_budget=&quot;
+          f&quot;{rho+epsilon_x+epsilon_o}, effective_margin={margin}&quot;)
+    print(f&quot;q_delta={q:.9f}, t_noise_bound_s={t_noise:.9e}, &quot;
+          f&quot;analytic_error_at_bound={predicted_noise_error:.9g}, &quot;
+          f&quot;MC_errors_at_bound={noise_bound_errors}/{trials}, &quot;
+          f&quot;MC_rate_at_bound={noise_bound_errors/trials:.9g}&quot;)
+    print(f&quot;front_end_floor_s={front_end_time_floor:.9e}, &quot;
+          f&quot;operation_integration_s={t:.9e}, analytic_error_at_operation=&quot;
+          f&quot;{predicted_error:.9g}, MC_errors_at_operation={actual_errors}/{trials}&quot;)
+    print(f&quot;branch_dissipation_J={branch_energy:.9e}, &quot;
+          f&quot;full_scale_capacitor_energy_J={capacitor_energy:.9e}&quot;)
+    print(f&quot;switch_and_control_energy_J={gate_energy:.9e}, &quot;
+          f&quot;illustrative_latch_energy_J={latch_energy:.9e}&quot;)
+    print(f&quot;illustrative_physical_subtotal_J={physical_subtotal:.9e}&quot;)
+    print(f&quot;ADC_bits={adc_bits}, source_example_ADC_energy_per_channel_J=&quot;
+          f&quot;{adc_energy_per_input:.9e}, N_channel_ADC_energy_J={digital_adc_energy:.9e}&quot;)
+    print(&quot;WARNING: the ADC datum is a source-reported low-rate example; these &quot;
+          &quot;numbers do not match process, latency, volume, calibration, or &quot;
+          &quot;complete peripherals and are not an energy-advantage claim.&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/d6fa9ad9b3e981277498b7152eedd9f1f39f69fa1e3e817e07a472cbd5f002d3.py">Exact original</a></p></html>

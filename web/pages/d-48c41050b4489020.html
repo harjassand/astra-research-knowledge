@@ -1,0 +1,382 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/sol/local_chart_decoder/check_intrinsic_bicomplex.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/sol/local_chart_decoder/check_intrinsic_bicomplex.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite exact diagnostic of v1&#x27;s intrinsic maps, not a good-code test.
+
+Toy cells are a product of two-vertex, three-parallel-edge graphs. The source
+global strict-intersection/mixing hypotheses are not asserted for this toy.
+It tests the local array algebra under independently chosen nonorthogonal
+F_2 stalk bases, including the L=2 homology chase and arbitrary noisy input.
+Only the Python standard library is used.
+&quot;&quot;&quot;
+import argparse
+import itertools
+import json
+import random
+from pathlib import Path
+
+
+def apply(rows, x):
+    return sum(((r &amp; x).bit_count() &amp; 1) &lt;&lt; i for i, r in enumerate(rows))
+
+
+def compose(a, b):
+    out = []
+    for row in a:
+        value = 0
+        for j in range(len(b)):
+            if row &gt;&gt; j &amp; 1:
+                value ^= b[j]
+        out.append(value)
+    return out
+
+
+def inverse(rows):
+    n = len(rows)
+    z = [r | (1 &lt;&lt; (n+i)) for i, r in enumerate(rows)]
+    for j in range(n):
+        q = next(i for i in range(j, n) if z[i] &gt;&gt; j &amp; 1)
+        z[j], z[q] = z[q], z[j]
+        for i in range(n):
+            if i != j and z[i] &gt;&gt; j &amp; 1:
+                z[i] ^= z[j]
+    assert [v &amp; ((1 &lt;&lt; n)-1) for v in z] == [1 &lt;&lt; i for i in range(n)]
+    return [v &gt;&gt; n for v in z]
+
+
+def transpose(rows, ncol):
+    return [sum(((r &gt;&gt; j) &amp; 1) &lt;&lt; i for i, r in enumerate(rows))
+            for j in range(ncol)]
+
+
+def random_gl(n, rng):
+    rows = [1 &lt;&lt; i for i in range(n)]
+    if n &gt; 1:
+        for _ in range(5*n):
+            i, j = rng.sample(range(n), 2)
+            if rng.randrange(2):
+                rows[i] ^= rows[j]
+            else:
+                rows[i], rows[j] = rows[j], rows[i]
+    inverse(rows)
+    return rows
+
+
+def xor(*arrays):
+    out = {}
+    for a in arrays:
+        for pair, val in a.items():
+            out[pair] = out.get(pair, 0) ^ val
+            if not out[pair]:
+                del out[pair]
+    return out
+
+
+def weight(a):
+    return len({f for f, _ in a})
+
+
+class ImageSection:
+    &quot;&quot;&quot;Linear right inverse on the image, projected linear extension outside.&quot;&quot;&quot;
+    def __init__(self, columns):
+        self.basis = {}
+        self.kernel = []
+        for i, col in enumerate(columns):
+            y, x = col, 1 &lt;&lt; i
+            while y:
+                pivot = y.bit_length()-1
+                if pivot in self.basis:
+                    b, pre = self.basis[pivot]
+                    y, x = y ^ b, x ^ pre
+                else:
+                    self.basis[pivot] = (y, x)
+                    break
+            if not y:
+                self.kernel.append(x)
+
+    def lift(self, y):
+        x = 0
+        for pivot in sorted(self.basis, reverse=True):
+            if y &gt;&gt; pivot &amp; 1:
+                b, pre = self.basis[pivot]
+                y, x = y ^ b, x ^ pre
+        return x
+
+    def contains(self, y):
+        for pivot in sorted(self.basis, reverse=True):
+            if y &gt;&gt; pivot &amp; 1:
+                y ^= self.basis[pivot][0]
+        return y == 0
+
+
+class Toy:
+    def __init__(self, t, seed):
+        self.t = t
+        self.rng = random.Random(seed)
+        self.faces = sorted(itertools.product(range(5), repeat=t))
+        self.level = {d: [f for f in self.faces if self.degree(f)==d]
+                      for d in range(t+1)}
+        self.dim = {f: 1 &lt;&lt; (t-self.degree(f)) for f in self.faces}
+        self.above = {f: {p: [u for u in self.level[p] if self.leq(f,u)]
+                          for p in range(self.degree(f), t+1)} for f in self.faces}
+        self.up = {f: self.above[f].get(self.degree(f)+1, []) for f in self.faces}
+        self.down = {u: [f for f in self.level.get(self.degree(u)-1, [])
+                         if self.leq(f,u)] for u in self.faces}
+        self.gauge = {f: random_gl(self.dim[f], self.rng) for f in self.faces}
+        self.gauge_inv = {f: inverse(q) for f,q in self.gauge.items()}
+        self.rt = {}
+        for f in self.faces:
+            inactive = [i for i in range(t) if f[i] &lt; 2]
+            for u in self.up[f]:
+                j = next(i for i in range(t) if f[i] != u[i])
+                other = [i for i in inactive if i != j]
+                erow = (1,2,3)[u[j]-2]
+                ref = []
+                for outidx in range(self.dim[u]):
+                    row = 0
+                    for b in range(2):
+                        if erow &gt;&gt; b &amp; 1:
+                            idx = 0
+                            for a,i in enumerate(inactive):
+                                bit = b if i==j else ((outidx &gt;&gt; other.index(i)) &amp; 1)
+                                idx |= bit &lt;&lt; a
+                            row |= 1 &lt;&lt; idx
+                    ref.append(row)
+                actual = compose(self.gauge_inv[u], compose(ref, self.gauge[f]))
+                self.rt[u,f] = transpose(actual, self.dim[f])
+        self.sections = {}
+        self.ksections = {}
+        for f in self.faces:
+            r = self.degree(f)
+            for p in range(r,t):
+                cols=[]
+                for u in self.above[f][p+1]:
+                    for bit in range(self.dim[u]):
+                        cols.append(self.pack(f,p,self.T({(f,u):1&lt;&lt;bit})))
+                self.sections[f,p] = ImageSection(cols)
+            top = self.sections.get((f,t-1))
+            if top is None:
+                # At a top anchor there are no equations, and K is its full stalk.
+                kernel = [1]
+            else:
+                kernel = top.kernel
+            self.ksections[f] = ImageSection(kernel)
+        cols=[]
+        for u in self.level[2]:
+            for bit in range(self.dim[u]):
+                cols.append(self.pack_global(1,self.B({u:1&lt;&lt;bit})))
+        self.boundaries = ImageSection(cols)
+
+    @staticmethod
+    def degree(f):
+        return sum(a&gt;=2 for a in f)
+
+    @staticmethod
+    def leq(f,u):
+        return all(a==b if b&lt;2 else (a&lt;2 or a==b) for a,b in zip(f,u))
+
+    def pack(self,f,p,a):
+        value=offset=0
+        for u in self.above[f][p]:
+            value |= a.get((f,u),0) &lt;&lt; offset
+            offset += self.dim[u]
+        return value
+
+    def unpack(self,f,p,value):
+        out={}
+        for u in self.above[f][p]:
+            x=value &amp; ((1&lt;&lt;self.dim[u])-1)
+            if x: out[f,u]=x
+            value &gt;&gt;= self.dim[u]
+        assert value==0
+        return out
+
+    def pack_global(self,p,a):
+        value=offset=0
+        for f in self.level[p]:
+            value |= a.get(f,0) &lt;&lt; offset
+            offset += self.dim[f]
+        return value
+
+    def T(self,a):
+        out={}
+        for (f,u),x in a.items():
+            for v in self.down[u]:
+                if self.leq(f,v):
+                    out=xor(out,{(f,v):apply(self.rt[u,v],x)})
+        return out
+
+    def Delta(self,a):
+        out={}
+        for (f,u),x in a.items():
+            for g in self.up[f]:
+                if self.leq(g,u): out=xor(out,{(g,u):x})
+        return out
+
+    def H(self,a):
+        out={}
+        for (f,u),x in a.items():
+            active=[i for i in range(self.t) if u[i]&gt;=2]
+            for pos,i in enumerate(active):
+                if f[i]&gt;=2 and all(f[j]==0 for j in active[:pos]):
+                    for labels in itertools.product(range(2),repeat=pos):
+                        g=list(f); g[i]=1
+                        for j,b in zip(active[:pos],labels): g[j]=b
+                        out=xor(out,{(tuple(g),u):x})
+        return out
+
+    def P(self,a):
+        if not a or self.degree(next(iter(a))[0])&gt;0: return {}
+        return self.copy(self.J(a))
+
+    def J(self,a):
+        out={}
+        for u in {u for _,u in a}:
+            v=tuple(0 if x&gt;=2 else x for x in u)
+            x=a.get((v,u),0)
+            if x: out[u]=x
+        return out
+
+    def copy(self,e):
+        return {(v,u):x for u,x in e.items() for v in self.level[0]
+                if self.leq(v,u) and x}
+
+    def B(self,e):
+        out={}
+        for u,x in e.items():
+            for f in self.down[u]:
+                val=out.get(f,0)^apply(self.rt[u,f],x)
+                if val: out[f]=val
+                elif f in out: del out[f]
+        return out
+
+    def lift(self,a,r,p):
+        out={}
+        for f in self.level[r]:
+            x=self.pack(f,p,a)
+            if x: out=xor(out,self.unpack(f,p+1,self.sections[f,p].lift(x)))
+        return out
+
+    def Kproject(self,a,r):
+        out={}
+        for f in self.level[r]:
+            sec=self.ksections[f]
+            x=self.pack(f,self.t,a)
+            y=0
+            for pivot in sorted(sec.basis,reverse=True):
+                if x&gt;&gt;pivot&amp;1:
+                    b,_=sec.basis[pivot]; x^=b; y^=b
+            out=xor(out,self.unpack(f,self.t,y))
+        return out
+
+    def randomK(self,r):
+        out={}
+        for f in self.level[r]:
+            sec=self.ksections[f]
+            x=0
+            for b,_ in sec.basis.values():
+                if self.rng.randrange(2): x^=b
+            out=xor(out,self.unpack(f,self.t,x))
+        assert not self.T(out)
+        return out
+
+    def forward(self,y,k):
+        g=[self.lift(self.copy(y),0,k-1)]
+        for r in range(1,self.t-k+1):
+            g.append(self.lift(self.Delta(g[-1]),r,k+r-1))
+        return g,self.Kproject(self.Delta(g[-1]),self.t-k+1)
+
+    def reverse(self,g,topcorrection,k):
+        a=xor(g[-1],topcorrection)
+        for r in range(len(g)-2,-1,-1):
+            a=xor(g[r],self.T(self.H(a)))
+        return self.J(a)
+
+    def clean_top_error(self,e,g,k):
+        x=self.copy(e)
+        for r in range(self.t-k):
+            z=self.lift(xor(g[r],x),r,k+r)
+            assert self.T(z)==xor(g[r],x)
+            x=self.Delta(z)
+        c=xor(g[-1],x)
+        assert not self.T(c)
+        assert self.Delta(c)==self.Delta(g[-1])
+        return c
+
+    def basis_arrays(self):
+        for p in range(self.t+1):
+            for r in range(p+1):
+                for u in self.level[p]:
+                    for f in self.level[r]:
+                        if self.leq(f,u):
+                            for bit in range(self.dim[u]):
+                                yield r,p,{(f,u):1&lt;&lt;bit}
+
+
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument(&#x27;--t&#x27;,type=int,default=3)
+    ap.add_argument(&#x27;--seed&#x27;,type=int,default=640210)
+    ap.add_argument(&#x27;--trials&#x27;,type=int,default=64)
+    ap.add_argument(&#x27;--output&#x27;,default=None)
+    args=ap.parse_args()
+    toy=Toy(args.t,args.seed)
+    checks={&quot;array_basis_vectors&quot;:0,&quot;homology_trials&quot;:0,&quot;noise_trials&quot;:0}
+    for r,p,a in toy.basis_arrays():
+        assert not toy.T(toy.T(a))
+        assert not toy.Delta(toy.Delta(a))
+        assert toy.T(toy.Delta(a))==toy.Delta(toy.T(a))
+        assert xor(toy.Delta(toy.H(a)),toy.H(toy.Delta(a)))==xor(a,toy.P(a))
+        checks[&#x27;array_basis_vectors&#x27;]+=1
+    k=args.t-2 if args.t&gt;=4 else 1
+    L=args.t-k
+    for _ in range(args.trials):
+        e={f:toy.rng.randrange(1&lt;&lt;toy.dim[f]) for f in toy.level[k]}
+        e={f:x for f,x in e.items() if x}
+        g,s=toy.forward(toy.B(e),k)
+        c=toy.clean_top_error(e,g,k)
+        assert s==toy.Delta(c)
+        q=toy.randomK(L-1)
+        corrected=xor(c,toy.Delta(q))
+        f=toy.reverse(g,corrected,k)
+        residual={u:e.get(u,0)^f.get(u,0) for u in toy.level[k]}
+        residual={u:x for u,x in residual.items() if x}
+        # B_{k+1} boundary basis: t=3,k=1 uses precomputed B2; t=4,k=2 builds B3.
+        if k==1:
+            boundaries=toy.boundaries
+        else:
+            cols=[]
+            for u in toy.level[k+1]:
+                for bit in range(toy.dim[u]):
+                    cols.append(toy.pack_global(k,toy.B({u:1&lt;&lt;bit})))
+            boundaries=ImageSection(cols)
+        assert boundaries.contains(toy.pack_global(k,residual))
+        checks[&#x27;homology_trials&#x27;]+=1
+        m={f:toy.rng.randrange(1&lt;&lt;toy.dim[f]) for f in toy.level[k-1]}
+        m={f:x for f,x in m.items() if x}
+        y={u:toy.B(e).get(u,0)^m.get(u,0) for u in toy.level[k-1]}
+        y={u:x for u,x in y.items() if x}
+        gn,sn=toy.forward(y,k)
+        D=3*args.t; cm=1&lt;&lt;(k-1)
+        for r in range(L+1):
+            assert weight(xor(gn[r],g[r]))&lt;=cm*(D**r)*len(m)
+        assert weight(xor(sn,s))&lt;=cm*(D**(L+1))*len(m)
+        # An assumed K-decoder output with an explicit residual w. This is not
+        # an operational decoder test; it isolates the reverse transport map.
+        w=toy.randomK(L) if m else {}
+        noisycorrection=xor(corrected,w)
+        fn=toy.reverse(gn,noisycorrection,k)
+        alphaK=len({a for a,_ in w})/max(1,len(m))
+        H=(4*3)**args.t; G=(2*3)**args.t
+        bound=G*cm*(sum((H*D)**r for r in range(L))
+                    +(H*D)**L*(1+alphaK*D))*len(m)
+        assert len({u for u in toy.level[k] if fn.get(u,0)!=f.get(u,0)})&lt;=bound
+        checks[&#x27;noise_trials&#x27;]+=1
+    result={&quot;status&quot;:&quot;PASS&quot;,&quot;scope&quot;:&quot;finite intrinsic-array algebra only&quot;,
+            &quot;t&quot;:args.t,&quot;k&quot;:k,&quot;seed&quot;:args.seed,&quot;n_i&quot;:3,
+            &quot;independently_nonorthogonal_stalk_bases&quot;:True,
+            &quot;good_qLTC_or_global_expansion_validated&quot;:False,**checks}
+    print(json.dumps(result,indent=2))
+    if args.output: Path(args.output).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/b833944d1462b667da02e935b6e8c97bfddea9cc4fd6f5069ad8a0ce2a51b0c6.py">Exact original</a></p></html>

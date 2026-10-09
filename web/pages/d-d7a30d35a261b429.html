@@ -1,0 +1,193 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a15_distributed_computation/finite_protocol.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a15_distributed_computation/finite_protocol.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite diagnostic for a task-aware error-locator candidate.
+
+This is a small exact-arithmetic witness, not a performance benchmark or proof
+of novelty.  It tests MatDot&#x27;s degree-2 product polynomial over F_257 with two
+arbitrary, fixed worker corruptions and post-response random product probes.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import random
+
+Q = 257
+
+
+def inv(x: int) -&gt; int:
+    return pow(x % Q, Q - 2, Q)
+
+
+def matmul(a: list[list[int]], b: list[list[int]]) -&gt; list[list[int]]:
+    return [
+        [sum(a[i][t] * b[t][j] for t in range(len(b))) % Q for j in range(len(b[0]))]
+        for i in range(len(a))
+    ]
+
+
+def madd(a: list[list[int]], b: list[list[int]]) -&gt; list[list[int]]:
+    return [[(x + y) % Q for x, y in zip(ar, br)] for ar, br in zip(a, b)]
+
+
+def mscale(a: list[list[int]], c: int) -&gt; list[list[int]]:
+    return [[(c * x) % Q for x in row] for row in a]
+
+
+def eval_matrix_poly(coeffs: list[list[list[int]]], x: int) -&gt; list[list[int]]:
+    out = [[0 for _ in coeffs[0][0]] for _ in coeffs[0]]
+    power = 1
+    for coeff in coeffs:
+        out = madd(out, mscale(coeff, power))
+        power = power * x % Q
+    return out
+
+
+def eval_scalar_poly(coeffs: list[int], x: int) -&gt; int:
+    out = 0
+    power = 1
+    for c in coeffs:
+        out = (out + c * power) % Q
+        power = power * x % Q
+    return out
+
+
+def lagrange_weights(xs: list[int], x: int) -&gt; list[int]:
+    weights = []
+    for i, xi in enumerate(xs):
+        w = 1
+        for j, xj in enumerate(xs):
+            if i != j:
+                w = w * (x - xj) * inv(xi - xj) % Q
+        weights.append(w)
+    return weights
+
+
+def dot(u: list[int], v: list[int]) -&gt; int:
+    return sum(x * y for x, y in zip(u, v)) % Q
+
+
+def row_times_matrix(u: list[int], a: list[list[int]]) -&gt; list[int]:
+    return [sum(u[i] * a[i][j] for i in range(len(u))) % Q for j in range(len(a[0]))]
+
+
+def matrix_times_col(a: list[list[int]], v: list[int]) -&gt; list[int]:
+    return [sum(a[i][j] * v[j] for j in range(len(v))) % Q for i in range(len(a))]
+
+
+def solve_unique(a: list[list[int]], b: list[int]) -&gt; list[int] | None:
+    &quot;&quot;&quot;Solve A x=b over F_Q, returning None unless A is nonsingular.&quot;&quot;&quot;
+    n = len(a)
+    aug = [[x % Q for x in row] + [b[i] % Q] for i, row in enumerate(a)]
+    for col in range(n):
+        pivot = next((r for r in range(col, n) if aug[r][col] % Q), None)
+        if pivot is None:
+            return None
+        aug[col], aug[pivot] = aug[pivot], aug[col]
+        scale = inv(aug[col][col])
+        aug[col] = [(x * scale) % Q for x in aug[col]]
+        for r in range(n):
+            if r != col and aug[r][col]:
+                c = aug[r][col]
+                aug[r] = [(x - c * y) % Q for x, y in zip(aug[r], aug[col])]
+    return [aug[i][-1] for i in range(n)]
+
+
+def interpolate_matrix_coeffs(xs: list[int], ys: list[list[list[int]]]) -&gt; list[list[list[int]]]:
+    &quot;&quot;&quot;Interpolate a degree &lt; len(xs) matrix polynomial from its values.&quot;&quot;&quot;
+    k = len(xs)
+    vander = [[pow(x, j, Q) for j in range(k)] for x in xs]
+    out = [[[0 for _ in range(len(ys[0][0]))] for _ in range(len(ys[0]))] for _ in range(k)]
+    for i in range(len(ys[0])):
+        for j in range(len(ys[0][0])):
+            solution = solve_unique(vander, [ys[r][i][j] for r in range(k)])
+            assert solution is not None
+            for degree, value in enumerate(solution):
+                out[degree][i][j] = value
+    return out
+
+
+def challenge_row(
+    responses: list[list[list[int]]],
+    xs: list[int],
+    x: int,
+    u: list[int],
+    v: list[int],
+    a_coeffs: list[list[list[int]]],
+    b_coeffs: list[list[list[int]]],
+    degree: int,
+) -&gt; list[int]:
+    &quot;&quot;&quot;Return c_j so the true locator satisfies sum_j c_j lambda_j=0.&quot;&quot;&quot;
+    weights = lagrange_weights(xs, x)
+    # Compute u^T Y_i v with two matrix-vector products.
+    fingerprints = [dot(u, matrix_times_col(y, v)) for y in responses]
+    task_value = dot(row_times_matrix(u, eval_matrix_poly(a_coeffs, x)), matrix_times_col(eval_matrix_poly(b_coeffs, x), v))
+    coeffs = []
+    for j in range(degree + 1):
+        total = 0
+        for i, alpha in enumerate(xs):
+            total = (total + weights[i] * fingerprints[i] * pow(alpha, j, Q)) % Q
+        coeffs.append((total - task_value * pow(x, j, Q)) % Q)
+    return coeffs
+
+
+def run_trial(seed: int) -&gt; tuple[bool, bool]:
+    rng = random.Random(seed)
+    # MatDot with p=2: A is horizontal [A0 A1], B is vertical [B0; B1].
+    a0 = [[rng.randrange(Q) for _ in range(2)] for _ in range(2)]
+    a1 = [[rng.randrange(Q) for _ in range(2)] for _ in range(2)]
+    b0 = [[rng.randrange(Q) for _ in range(2)] for _ in range(2)]
+    b1 = [[rng.randrange(Q) for _ in range(2)] for _ in range(2)]
+    a_coeffs = [a0, a1]
+    b_coeffs = [b1, b0]  # B(x)=B1+x B0, so coeff x^1 of A(x)B(x) is A0B0+A1B1.
+    product_coeffs = [matmul(a0, b1), madd(matmul(a0, b0), matmul(a1, b1)), matmul(a1, b0)]
+    target = product_coeffs[1]
+
+    k, b, n = 3, 2, 5
+    xs = list(range(n))
+    ys = [eval_matrix_poly(product_coeffs, x) for x in xs]
+    bad = sorted(rng.sample(range(n), b))
+    e = [[rng.randrange(1, Q) for _ in range(2)] for _ in range(2)]
+    # Corruptions are deliberately rank-one across workers: E_i is a scalar multiple of E.
+    scales = [rng.randrange(1, Q) for _ in bad]
+    for i, c in zip(bad, scales):
+        ys[i] = madd(ys[i], mscale(e, c))
+
+    challenge_points = [x for x in range(n, Q)]
+    rng.shuffle(challenge_points)
+    rows = []
+    rhs = []
+    for x in challenge_points[:b]:
+        u = [rng.randrange(Q) for _ in range(2)]
+        v = [rng.randrange(Q) for _ in range(2)]
+        c = challenge_row(ys, xs, x, u, v, a_coeffs, b_coeffs, b)
+        rows.append(c[:b])
+        rhs.append((-c[b]) % Q)
+    low = solve_unique(rows, rhs)
+    if low is None:
+        return False, False
+    locator = low + [1]
+    roots = [i for i, x in enumerate(xs) if eval_scalar_poly(locator, x) == 0]
+    if roots != bad:
+        return False, False
+
+    good = [i for i in range(n) if i not in roots][:k]
+    candidate = interpolate_matrix_coeffs([xs[i] for i in good], [ys[i] for i in good])
+    correct = candidate[1] == target
+    return True, correct
+
+
+def main() -&gt; None:
+    trials = 1000
+    decoded = 0
+    exact = 0
+    for seed in range(trials):
+        ok, correct = run_trial(seed)
+        decoded += int(ok)
+        exact += int(ok and correct)
+    print(f&quot;field=F_{Q} trials={trials} degree=2 errors=2 rank-one-error-pattern&quot;)
+    print(f&quot;unique_locator={decoded}/{trials} ({decoded/trials:.3%})&quot;)
+    print(f&quot;exact_target_after_interpolation={exact}/{trials} ({exact/trials:.3%})&quot;)
+    print(&quot;This finite result is diagnostic only; it does not establish the probability bound or novelty.&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/484994f2c87f87211cc2428e6417186f8b1929d942c6ca4543509fa1d35c19f2.py">Exact original</a></p></html>

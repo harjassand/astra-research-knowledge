@@ -1,0 +1,131 @@
+T03 / finite-state observed processes: exact realization, memory-limited prediction, and horizon barrier
+Version: v1, 2026-10-09
+Status: internally derived partial result; no novel discovery or robust efficient HMM learner established
+
+0. Target and scope
+
+Target from the assignment: characterize when a stationary finite-alphabet observed process has a finite-dimensional predictive realization, and determine whether predictive quotients or multiscale memory remove the rare/ill-conditioned Hankel-direction barrier for passive learning without a smallest-nonzero-singular-value assumption. A useful result must distinguish exact linear realization from nonnegative HMM realization; fixed-horizon prediction from arbitrary-horizon TV; and independent samples from one passive trajectory.
+
+Outcome of this record: (i) the generalized Hankel rank exactly characterizes finite-dimensional signed linear word-probability realizations, but not finite-state stochastic realizations; (ii) a simple finite-hidden-state entropy bottleneck gives a no-mixing finite-memory bias bound, which combined with KT/context-tree coding yields a concrete single-trajectory cumulative-KL guarantee with explicit memory and runtime; (iii) even the fully observed two-state symmetric Markov subclass has a terminal H-step prediction minimax TV rate of order min(1,sqrt(H/N)), so no learner can have horizon-uniform vanishing future-TV risk from N passive observations. The construction in (ii) is a standard universal-coding idea and is not claimed as new. The lower bound in (iii) is a precise baseline, not a novelty claim. No result here removes the computational barrier for general HMM acquisition.
+
+1. Exact word-probability realization
+
+Let A be a finite alphabet, A* all finite words, and f(w)=P(X_1...X_|w|=w), with f(empty)=1, for a stationary process. Its generalized Hankel matrix is H[u,v]=f(uv), u,v in A*. Rows are infinite vectors r_u(v)=f(uv).
+
+Theorem 1 (finite Hankel rank iff a finite-dimensional signed linear realization). rank(H)=r<infinity if and only if there are a row vector alpha in R^r, matrices M_a in R^(r x r), and a column beta in R^r such that f(a_1...a_n)=alpha M_{a_1}...M_{a_n} beta for every word.
+
+Proof. If such a representation exists, H[u,v]=(alpha M_u)(M_v beta), so H factors through R^r. Conversely, let V=span{r_u:u in A*}, dim V=r. For each symbol a define S_a r_u=r_{ua}; this is well-defined: if sum_i c_i r_{u_i}=0, then at every v, sum_i c_i r_{u_i a}(v)=sum_i c_i r_{u_i}(av)=0. In a basis of V, let M_a represent S_a, alpha represent r_empty, and beta represent evaluation at the empty suffix, lambda(r)=r(empty). Then lambda(S_{a_n}...S_{a_1}r_empty) has the required word probability, with the matrix/action convention chosen consistently (equivalently reverse the row/column convention). This is an exact algebraic construction and uses no singular-value threshold.
+
+This theorem is about real linear representations. It does not make the M_a nonnegative or make their sum stochastic. A finite-state HMM with s hidden states has a nonnegative stochastic realization: under the convention that each hidden state emits then transitions, M_a=E_a A, where E_a is the diagonal emission matrix for a, A is row stochastic, sum_a M_a=A, alpha=stationary hidden law, and beta=1. Thus rank(H)<=s. The converse “finite Hankel rank implies a finite-state HMM” is false in general; HMM synthesis is a positive-realization/cone problem. The directly checkable exact criterion, when probabilities are known, is the existence of some finite s, alpha>=0 with alpha 1=1, M_a>=0 with (sum_a M_a)1=1 and alpha(sum_a M_a)=alpha, and f(w)=alpha M_w 1. This is an exact positive matrix factorization criterion, but not an efficient data-driven test.
+
+Finite HMM state count does not imply finitely many normalized predictive histories. Example: choose a static hidden Z uniform on {0,1}; conditional on Z=0 emit iid Bernoulli(1/3), and conditional on Z=1 emit iid Bernoulli(2/3). This is a stationary 2-state HMM. Its word probabilities are a mixture of two product laws, so rank(H)<=2, and the two product-law rows are independent, so rank(H)=2. For a history u with d=#1(u)-#0(u), the posterior probability of Z=1 is b(u)=2^d/(1+2^d), and P(X_next=1|u)=1/3+b(u)/3. The histories 1^n give infinitely many distinct predictions. Therefore finite Hankel rank, finite hidden-state count, and finite number of predictive-equivalence classes are distinct properties.
+
+2. A no-gap finite-memory prediction bound
+
+For k>=0 write h_k=H(X_0|X_{-k:-1}) (h_0=H(X_0)), h_inf=H(X_0|X_{-infinity:-1}), and delta_k=h_k-h_inf. These are stationary entropy quantities in nats; delta_k>=0 is nonincreasing in k.
+
+Lemma 2 (hidden-state information budget). If the process is emitted by a stationary HMM with s hidden states Z_t, then for every n>=1,
+  sum_{k=0}^{n-1} delta_k = I(X_{1:n};X_{-infinity:0}) <= H(Z_0) <= log s.
+Consequently delta_L <= log(s)/(L+1).
+
+Proof. By stationarity and the entropy chain rule, sum_{k=0}^{n-1}h_k=H(X_{1:n}). Also H(X_{1:n}|X_{-infinity:0})=sum_{t=1}^n H(X_t|X_{-infinity:t-1})=n h_inf. Their difference is the mutual information displayed. The hidden Markov conditional-independence chain X_{-infinity:0} -> Z_0 -> X_{1:n} and data processing bound it by H(Z_0). Since delta_k is nonincreasing, (L+1)delta_L<=sum_{k=0}^L delta_k<=log s.
+
+This gives an average-information statement, not a mixing or uniform filter-stability statement. It has no minimum transition, emission, or Hankel singular-value assumption. It is also elementary and should not be presented as a new theorem.
+
+The order 1/L cannot be improved uniformly, even for two hidden states. For each large L take hidden states A,B with edge-emitting rules: from A emit 0 with probability eta=1/L and stay A, or emit 1 with probability p=1-eta and move to B; from B emit 1 surely and move to A. The hidden chain is irreducible with stationary probabilities pi_A=1/(1+p), pi_B=p/(1+p). Because eta>0, a zero occurs in the infinite past almost surely; the most recent zero and the parity of subsequent ones determine the current hidden state. Thus the infinite past determines the next-symbol entropy, h_inf=pi_A h_b(eta), where h_b is binary entropy in nats.
+
+If a length-L suffix contains a zero, that same parity argument makes its current-state posterior exact, so its conditional-entropy gap is zero. If the suffix is 1^L, let alpha=P(Z_0=A|X_{-L:-1}=1^L). A direct two-path calculation gives alpha=1/(1+p) for even L and alpha=1/2 for odd L; also P(1^L)=p^(L/2) for even L and 2p/(1+p) p^((L-1)/2) for odd L. Consequently
+  delta_L=P(1^L)[h_b(alpha eta)-alpha h_b(eta)].
+As L tends to infinity, P(1^L)->e^(-1/2), alpha->1/2, and h_b(alpha eta)-alpha h_b(eta)=alpha eta log(1/alpha)+O(eta^2). Hence delta_L=Theta(1/L) for this sequence of 2-state stationary HMMs. The no-mixing entropy-tail bound is sharp in order for suffix prediction; this does not prove a minimax lower bound for arbitrary predictive algorithms.
+
+3. Concrete passive one-trajectory mechanism and costs
+
+For known L, define Q_L on a sequence x_1...x_N as follows. The first L symbols are uniform. For every length-L context c, maintain counts n_{c,a}; after c, predict
+  Q_L(a|c)=(n_{c,a}+1/2)/(n_c+q/2),  q=|A|.
+This is the KT/Dirichlet(1/2) predictor for each context. It is updated online from the one observed trajectory and needs no hidden-state labels or model parameters.
+
+For every sample string, its negative log probability is at most the order-L maximum-likelihood conditional log loss plus C_q q^L log(N+1)+L log q, for a finite constant C_q depending only on q. This follows by applying the standard Dirichlet-mixture redundancy bound separately to each of the q^L contexts; empty contexts add no cost. Since the maximum-likelihood context likelihood is at least the likelihood of the true order-L conditional probabilities, stationarity and H(X_{1:N})>=N h_inf give
+  D(P_{1:N}||Q_L) <= N delta_L + C_q q^L log(N+1)+L log q
+                  <= N log(s)/(L+1)+C_q q^L log(N+1)+L log q.                 (1)
+
+To avoid choosing L with knowledge of s, mix these predictors for l=0,...,Lmax with equal prior weight 1/(Lmax+1): Q=average_l Q_l. Since Q(x)>=Q_L(x)/(Lmax+1),
+  D(P_{1:N}||Q) <= min_{0<=L<=Lmax}{N delta_L+C_q q^L log(N+1)+L log q}+log(Lmax+1). (2)
+The code can update each l-specific KT table and its log likelihood, then compute the posterior-weighted average of their next-symbol predictions. This is a standard finite mixture of context predictors.
+
+Take Lmax=floor((1/2)log_q N), for fixed q>=2. Since q^Lmax<=sqrt(N), (2) implies
+  D(P_{1:N}||Q)/N <= O(log(s)/log_q N) + O(q log N/sqrt(N)) + O(log N/N).
+The first term is the finite-hidden-information memory bias; the second is context estimation cost. For explicit resource bounds, keep only contexts that occurred: there are at most min(N,q^Lmax) per order. Storing counts and context IDs for all depths uses O(q sqrt(N) log N) bits for fixed q, and each input symbol updates at most Lmax+1 tables, so O(log_q N) arithmetic updates per symbol, plus O(Lmax) work to combine forecasts. Dense arrays have the same worst-case asymptotic memory. This is polynomial and independent of minimum nonzero Hankel singular value, but it is not an HMM learner or a finite-dimensional HMM realization. Arithmetic cost assumes O(log N)-bit counters and fixed-alphabet symbols; exact log-likelihood evaluation needs ordinary precision control, and the bound is for the ideal KT probabilities.
+
+Random-cut consequence (not a terminal guarantee). Let B_N=D(P_{1:N}||Q), and for each t let d_t be the expected one-step conditional KL of P versus Q along its own online history. Then sum_{t=1}^N d_t=B_N. For H<=N/4 choose T uniformly from {ceil(N/2),...,N-H}; its number of choices m is at least N/4. By the chain rule, the expected KL between the true H-symbol conditional future law and Q's conditional H-symbol law at cut T is the sum of the d_t terms in that window. Each d_t occurs in at most H windows, hence the average block KL is at most H B_N/m<=4 H B_N/N. Pinsker gives E[TV^2]<=2 H B_N/N. This is an average over a random late cut of one passive trajectory. It does not bound the terminal cut after N observations, nor the supremum over all horizons.
+
+Known-status comparison. This mechanism is a fixed-order KT/context predictor plus model-order mixture, in the established universal source-coding line. Willems, Shtarkov, and Tjalkens, “The context-tree weighting method: basic properties,” IEEE Transactions on Information Theory 41(3), 653–664 (1995), DOI 10.1109/18.382012, give recursive weighting over bounded-memory tree sources with unknown structure and parameters and cumulative redundancy bounds. Their later “Context weighting for general finite-context sources,” IEEE TIT 42(5), 1514–1520 (1996), DOI 10.1109/18.532891, broadens the context class. Our fixed-depth KT construction and finite mixture do not improve those algorithms' known computational/statistical frontiers. The contribution here is only the explicit finite-hidden-state information bound plugged into a transparent memory/runtime accounting.
+
+4. Horizon-uniform future TV is impossible from finite passive data
+
+The following lower bound uses no rare state. It is a two-state observed stationary Markov chain with transition probability theta of flipping state and stationary law (1/2,1/2). Given a length-N training path, its M=N-1 flip bits are iid Bernoulli(theta); X_1 is uniform and independent of them. Given X_N, the next H observations are in bijection with H iid future flip bits.
+
+Theorem 3 (terminal H-step minimax prediction frontier on this subclass). There are universal constants c,C>0 such that for every N>=2 and H>=1,
+  c min{1,sqrt(H/N)} <= inf_Q sup_{theta in [1/4,3/4]} E_theta[TV(Q(X_{1:N}), P_theta(X_{N+1:N+H}|X_N))]
+                         <= C min{1,sqrt(H/N)}.
+The infimum ranges over all possibly randomized predictors that see only the one length-N path. Thus no prediction rule has vanishing expected terminal-block TV uniformly over unbounded H as N grows.
+
+Upper proof. From K observed flips let p_hat=(K+1/2)/(M+1), the KT estimate, and forecast H independent Bern(p_hat) flip bits. Uniformly in theta=p,
+  E D(Ber(p)||Ber(p_hat)) <= E chi^2(Ber(p),Ber(p_hat)) <= 36/(M+2).                (3)
+Here is a direct bound for the last inequality. Put lambda=Mp, A=K-lambda, b=p-1/2. Then p-p_hat=(-A+b)/(M+1), and (K+1/2)(M-K+1/2)>=(K+1)(M-K+1)/4. Using (u-v)^2<=2u^2+2v^2 and
+  1/((K+1)(M-K+1))=(1/(K+1)+1/(M-K+1))/(M+2),
+it suffices to use E[A^2/(K+1)]<=2 and, by symmetry, E[A^2/(M-K+1)]<=2. For the first, the binomial identity E[1/(K+1)]=(1-(1-p)^(M+1))/((M+1)p) implies
+  E[A^2/(K+1)]=-lambda-1+(lambda+1)^2 E[1/(K+1)]<=2;
+split into lambda+p<=1, where E[1/(K+1)]<=1, and lambda+p>1, where it is <=1/(lambda+p). The remaining b^2 terms are bounded by 1/2. This yields (3). The H-step conditional KL is H times the one-step KL, so expected TV^2<=18H/(M+2) by Pinsker and expected TV<=min(1,sqrt(18H/(M+2))).
+
+Lower proof. Let theta_0=1/2 and theta_1=1/2+a/sqrt(N), for a fixed sufficiently small positive constant. The training-path divergence is
+  D(P_{theta_0}^{train}||P_{theta_1}^{train})=-(M/2)log(1-4a^2/N)<=3a^2
+for a<=1/8, so its total variation is at most sqrt(3/2)a by Pinsker. The endpoint X_N has the same uniform law under both, and conditioned on it the future law is the Bernoulli product B_theta^H encoded as flip bits.
+
+For H<=N, the product-law gap Delta=TV(B_{1/2}^H,B_{1/2+delta}^H), delta=a/sqrt(N), is at least c_0 delta sqrt(H). To verify it, for S~Bin(H,p), take f(S)=sign(S-H/2), with f=0 on a tie, and g(p)=E_p f(S). The score identity gives
+  g'(p)=E_p[f(S)(S-Hp)]/[p(1-p)].
+For p in [1/2,1/2+a/sqrt(N)], Var(S)=Hp(1-p)>=c_1 H, and the binomial fourth central moment is 3V^2+V(1-6p(1-p)); the moment inequality E|S-Hp| >= (E(S-Hp)^2)^(3/2)/(E(S-Hp)^4)^(1/2) therefore gives E|S-Hp|>=c_2 sqrt(H), with universal c_2>0. Since |f|<=1, the numerator is at least E|S-Hp|-2H(p-1/2), which is >=(c_2/2)sqrt(H) by choosing a small enough. Divide by p(1-p)<=1/4 and integrate over the delta interval. Since f is bounded by 1, the expectation gap is at most 2 TV, yielding Delta>=c_0 delta sqrt(H). For H>N, marginalization to the first N future flips gives Delta>=c_0 a. Hence Delta>=c min{1,sqrt(H/N)} for all H.
+
+For any predictor Q and any fixed training string x, triangle inequality gives TV(Q(x),B_{theta_0}^H)+TV(Q(x),B_{theta_1}^H)>=Delta; the same holds with the endpoint-coded future observations. Integrating against the common part of the two training laws yields
+  E_0 loss_0 + E_1 loss_1 >= Delta (1-TV(P_0^train,P_1^train)).
+The right parenthesis is bounded below by a positive universal constant. The larger of the two risks is at least half their sum, proving the lower bound.
+
+This two-point argument is local around theta=1/2, with no rare transition or hidden state. It sharply separates one-step/sample-average KL from fixed terminal H-block TV. The standard chain rule allows per-step excess KL of order 1/N to accumulate into H/N block KL, and product-TV fluctuations yield the square-root rate. It also shows why a horizon-free approximate predictive quotient cannot by itself imply horizon-uniform TV: any fixed positive uncertainty about theta eventually separates the future product laws.
+
+5. Exact quotient attempt and why it does not solve acquisition
+
+If a finite candidate HMM mixture is already supplied, it can be represented as one larger HMM whose hidden state includes the model index. Its exact linear quotient can be computed by reachability/observability linear algebra on rational parameters; rank reduction preserves every word probability at every horizon. However, its quotient rank can equal the full augmented state dimension. Replacing exact rank by a numerical/approximate rank needs a threshold, and without a singular-value or condition assumption the thresholded space may delete an arbitrarily small but nonzero direction. A small one-step discrepancy can then accumulate across a long future block; Theorem 3 proves an unavoidable statistical version even in a fully observed two-state model.
+
+There is a known finite-horizon alternative: use an H-dependent predictive metric / finite-horizon state net and allocate error roughly epsilon/H per step. This may be valid for supplied model parameters, but its net size and construction depend on the horizon and model description; it does not create horizon-uniform TV or a teacher-free, polynomial-time HMM estimator. A posterior over candidate HMM parameters can be maintained by the explicit finite grid mixture below, but the candidate count is N^{O(D^2+Dq)}. No exact dynamic program, tensor compression, or predictive quotient with uniform nontrivial savings was proved here. This is the unresolved central implication.
+
+6. Exponential-compute baseline for unknown finite HMMs
+
+For completeness, a universal mixture over a finite rational grid gives a single-trajectory cumulative-KL guarantee without mixing or singular-value assumptions, but incurs exponential-in-state-count computation.
+
+For a k-simplex and J=ceil(log_2 N), define
+  G_{k,J}={q: q_i=(m_i+1)/(k(2^J+1)), m_i integers >=0, sum_i m_i=k 2^J}.
+For any p in the simplex, choose each m_i>=floor(k2^J p_i), then distribute the leftover units so sum m_i=k2^J. This ensures q_i>=p_i/(1+2^-J), and hence D(p||q)<=log(1+2^-J)<=2^-J. Approximate the initial hidden law (one row), every transition row, and every emission row independently. The KL chain rule on the complete hidden/observed path gives at most (2N+1)2^-J<=3. Marginalizing hidden states cannot increase KL.
+
+With s hidden states and q observed symbols, the candidate count is
+  K_{s,J}=|G_{s,J}|^(s+1) |G_{q,J}|^s,
+and log K_{s,J}=O((s^2+s q) log N). Put a uniform prior on these candidates and prior pi_s on state counts s<=D. For any true HMM with s<=D,
+  D(P_{1:N}||Xi) <= 3+log K_{s,J}+log(1/pi_s).
+The predictor Xi is computable by forward recursion separately on each candidate. Its time is O(N sum_{s<=D} K_s(s^2+s q)) and persistent numerical state is O(sum_{s<=D} K_s(s^2+s q)); rational likelihood storage and arithmetic bit-costs also grow polynomially with N per candidate. This baseline has no smallest nonzero Hankel singular-value assumption and gives expected cumulative KL on a passive trajectory, but the candidate count is N^{O(D^2+Dq)}. It is universal coding with honest exponential computation, not a computational breakthrough or the requested mechanism.
+
+7. Primary-source comparison and scoped novelty audit
+
+1. B.D.O. Anderson, “Realization problem for hidden Markov models,” Mathematics of Control, Signals, and Systems 12(1), 80–120 (1999), DOI 10.1007/pl00009846. Live publisher/bibliographic records describe the problem as reconstructing a finite-state Markov generator from all finite output-string probabilities and explicitly place Hankel matrices and polyhedral cones/positive realization at the center. This supports the distinction between finite linear Hankel rank and nonnegative HMM realizability; it does not validate any of the learning bounds above.
+2. M. Vidyasagar, “Synthesis of hidden Markov models and processes with finite-rank Hankel matrices” (2004 author manuscript; author-uploaded copy located at https://www.researchgate.net/publication/228994423_Synthesis_of_hidden_Markov_models_and_processes_with_finite-rank_Hankel_matrices). The manuscript's finite-rank/HMM discussion states the necessity of finite Hankel rank and the failure of the converse without additional positive-realization conditions. Its linked author PDF endpoint redirected during the live check, so source-status is author manuscript corroboration rather than a verified publisher copy.
+3. Y. Ohta, “On the Realization of Hidden Markov Models and Tensor Decomposition,” arXiv:2008.11487, https://arxiv.org/abs/2008.11487. The abstract specifically cautions that generic tensor decomposition does not solve minimum HMM realization for deterministic observations and relates tensor rank to effective subspace/generalized Hankel rank. It does not provide a gap-free passive learner.
+4. Willems, Shtarkov, Tjalkens, “The context-tree weighting method: basic properties,” IEEE TIT 41(3), 653–664 (1995), DOI 10.1109/18.382012; and “Context weighting for general finite-context sources,” IEEE TIT 42(5), 1514–1520 (1996), DOI 10.1109/18.532891. The live primary-paper PDFs/records establish the known universal-context prediction lineage of Section 3. The present KT suffix construction is therefore not claimed as original.
+5. L. Dębowski, “On Hidden Markov Processes with Infinite Excess Entropy,” Journal of Theoretical Probability 27, 539–551 (2014), arXiv:1211.0834, https://arxiv.org/abs/1211.0834. Its stated scope is finite observed alphabet with countably infinite hidden states and examples of infinite past-future mutual information. Our log(s) bound for a finite hidden state is the direct elementary data-processing complement, not a claimed priority result.
+6. Abe and Warmuth, “On the computational complexity of approximating distributions by probabilistic automata,” Machine Learning 9, 205–260 (1992), DOI 10.1007/BF00992677, is a relevant computational warning about hard probabilistic-automaton approximation tasks. Its target task differs from learning a correctly specified stationary HMM from a single passive path; no hardness theorem is transferred here.
+
+8. Claim ledger
+
+Internally derived, full proofs given here: Hankel rank iff finite signed linear realization; the two-iid-component HMM has rank two but infinitely many predictive next-symbol laws; finite-hidden-state excess entropy <=log s and delta_L<=log(s)/(L+1); the suffix-KT cumulative-KL inequality (1) and finite depth mixture (2); random-late-cut block-KL implication; two-sided terminal H-step TV minimax rate on the observed symmetric two-state Markov family; finite rational-grid HMM mixture KL and explicit exponential cost.
+
+Source-reported only: the positive-realization/Hankel perspective in the realization literature; established context-tree/KT universal coding; the stated scope of Dębowski's countable-state excess-entropy work and Ohta's tensor-realization paper. Source reports are not proof validation for any broader synthesis claim.
+
+Finite-tested: none. No code, numerical experiment, external theorem checker, or source-corpus archive was used to validate the proofs.
+
+Unresolved: characterization/acquisition of a finite nonnegative HMM realization from finite passive data; efficient teacher-free filter/parameter learning without spectral-gap assumptions; a computationally efficient predictive quotient with proved uniform savings; minimax complexity in a genuinely operational predictive-complexity parameter; terminal/random-cut guarantees stronger than the stated bounds; and whether any improvement is novel relative to the full prediction literature. No claim of discovery, priority, or robust efficient HMM learnability is made.

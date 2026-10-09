@@ -1,0 +1,405 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/frozen_snapshot_02/n15_ecological_tipping/simulate_trophic_debt.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/frozen_snapshot_02/n15_ecological_tipping/simulate_trophic_debt.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproducible model diagnostics for adaptive trophic attack-debt tipping.
+
+This is a constructed two-patch model, not empirical validation. The optional
+loss-memory term is a falsifiable hypothesis: recent alternate-prey loss
+temporarily raises the shared consumer&#x27;s attack pressure on focal prey.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from dataclasses import asdict, dataclass
+
+import numpy as np
+
+
+@dataclass(frozen=True)
+class Params:
+    r1: float = 1.2
+    r2: float = 1.0
+    allee: float = 0.22
+    gamma: float = 0.8
+    alpha: float = 1.0
+    predation: float = 1.5
+    beta_loss_memory: float = 3.0
+    kappa_memory: float = 0.3
+    demographic_turnover: float = 1.0
+
+
+def stress(t: float, amplitude: float, ramp_duration: float) -&gt; float:
+    if amplitude &lt;= 0.0:
+        return 0.0
+    if ramp_duration &lt;= 0.0:
+        return amplitude
+    return amplitude * min(max(t / ramp_duration, 0.0), 1.0)
+
+
+def allee_growth(x: float, p: Params) -&gt; float:
+    return p.r1 * (x - p.allee) * (1.0 - x)
+
+
+def vector_field(y: np.ndarray, t: float, amplitude: float,
+                 ramp_duration: float, p: Params, beta: float | None = None,
+                 gate_open: bool = True):
+    x1, x2, q, s = y[:4]
+    u = stress(t, amplitude, ramp_duration)
+    dx2 = x2 * (p.r2 * (1.0 - x2) - u)
+    # s is a decaying memory of the realized alternate-prey loss flux.
+    loss_flux = max(0.0, -dx2)
+    beta_eff = p.beta_loss_memory if beta is None else beta
+    q_target = p.alpha * max(0.0, 1.0 - x2) + beta_eff * s
+    q_attack = q if gate_open else 0.0
+    dx1 = x1 * (allee_growth(x1, p) - p.predation * q_attack)
+    dq = p.gamma * (q_target - q)
+    ds = loss_flux - p.kappa_memory * s
+    # Exposure and nonlinear compensatory growth, for the exact log identity.
+    return np.array([dx1, dx2, dq, ds, q_attack,
+                     (x1 - p.allee) * (1.0 - x1)])
+
+
+def rk4_step(y, t, dt, amplitude, ramp_duration, p, beta, gate_open):
+    f = vector_field
+    k1 = f(y, t, amplitude, ramp_duration, p, beta, gate_open)
+    k2 = f(y + 0.5 * dt * k1, t + 0.5 * dt, amplitude,
+           ramp_duration, p, beta, gate_open)
+    k3 = f(y + 0.5 * dt * k2, t + 0.5 * dt, amplitude,
+           ramp_duration, p, beta, gate_open)
+    k4 = f(y + dt * k3, t + dt, amplitude, ramp_duration, p, beta, gate_open)
+    return y + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+
+
+def static_fold(p: Params):
+    q_fold = p.r1 * (1.0 - p.allee) ** 2 / (4.0 * p.predation)
+    u_fold = p.r2 * q_fold / p.alpha
+    return q_fold, u_fold
+
+
+def static_roots(u: float, p: Params):
+    qeq = p.alpha * u / p.r2
+    disc = (1.0 - p.allee) ** 2 - 4.0 * p.predation * qeq / p.r1
+    if disc &lt; 0.0 or u &gt;= p.r2:
+        return None
+    root = math.sqrt(max(0.0, disc))
+    return ((1.0 + p.allee - root) / 2.0,
+            (1.0 + p.allee + root) / 2.0)
+
+
+def deterministic_case(case: dict, p: Params, horizon: float, dt: float):
+    y = np.array([case[&quot;x10&quot;], 1.0, 0.0, 0.0, 0.0, 0.0], dtype=float)
+    n = int(math.ceil(horizon / dt))
+    min_x = y[0]
+    peak_q = 0.0
+    peak_s = 0.0
+    first_allee = None
+    first_low_root = None
+    max_log_identity_error = 0.0
+    q_fold, _ = static_fold(p)
+    roots = static_roots(case[&quot;amplitude&quot;], p)
+    low_root = roots[0] if roots else None
+    for i in range(n):
+        t = i * dt
+        before = y.copy()
+        y = rk4_step(y, t, dt, case[&quot;amplitude&quot;], case[&quot;ramp_duration&quot;],
+                     p, case.get(&quot;beta&quot;), case.get(&quot;gate_open&quot;, True))
+        y[:4] = np.maximum(y[:4], 0.0)
+        # RK stages remain inside the ecological range for these parameters;
+        # clipping only removes roundoff-scale negatives.
+        y[0:2] = np.minimum(y[0:2], 1.0)
+        min_x = min(min_x, y[0])
+        peak_q = max(peak_q, y[2])
+        peak_s = max(peak_s, y[3])
+        if first_allee is None and before[0] &gt; p.allee &gt;= y[0]:
+            first_allee = t + dt
+        if (low_root is not None and first_low_root is None
+                and t + dt &gt;= case[&quot;ramp_duration&quot;]
+                and before[0] &gt; low_root &gt;= y[0]):
+            first_low_root = t + dt
+        if p.allee &lt;= y[0] &lt;= 1.0:
+            log_error = (math.log(y[0] / case[&quot;x10&quot;])
+                         - p.r1 * y[5] + p.predation * y[4])
+            max_log_identity_error = max(max_log_identity_error, abs(log_error))
+    row = {
+        &quot;label&quot;: case[&quot;label&quot;],
+        &quot;stress_endpoint&quot;: case[&quot;amplitude&quot;],
+        &quot;ramp_duration&quot;: case[&quot;ramp_duration&quot;],
+        &quot;initial_focal_density&quot;: case[&quot;x10&quot;],
+        &quot;loss_memory_gain&quot;: p.beta_loss_memory if case.get(&quot;beta&quot;) is None else case[&quot;beta&quot;],
+        &quot;consumer_access_gate_open&quot;: case.get(&quot;gate_open&quot;, True),
+        &quot;minimum_focal_density&quot;: float(min_x),
+        &quot;first_crossing_of_allee_boundary&quot;: first_allee,
+        &quot;first_crossing_of_final_low_equilibrium&quot;: first_low_root,
+        &quot;peak_attack_pressure&quot;: float(peak_q),
+        &quot;peak_effective_attack_pressure&quot;: float(peak_q if case.get(&quot;gate_open&quot;, True) else 0.0),
+        &quot;peak_loss_memory&quot;: float(peak_s),
+        &quot;final_state&quot;: [float(v) for v in y[:4]],
+        &quot;max_log_identity_residual_before_underflow&quot;: max_log_identity_error,
+        &quot;static_equilibria_at_endpoint&quot;: list(roots) if roots else None,
+        &quot;time_above_static_fold_attack_pressure&quot;: None,
+        &quot;attack_debt_at_allee_hit&quot;: None,
+        &quot;required_log_margin_at_allee&quot;: math.log(case[&quot;x10&quot;] / p.allee),
+    }
+    # Re-run the deterministic path only as needed for two exact path summaries.
+    y = np.array([case[&quot;x10&quot;], 1.0, 0.0, 0.0, 0.0, 0.0], dtype=float)
+    above_fold_time = 0.0
+    debt_at_hit = None
+    for i in range(n):
+        t = i * dt
+        before = y.copy()
+        y = rk4_step(y, t, dt, case[&quot;amplitude&quot;], case[&quot;ramp_duration&quot;],
+                     p, case.get(&quot;beta&quot;), case.get(&quot;gate_open&quot;, True))
+        y[:4] = np.maximum(y[:4], 0.0)
+        y[0:2] = np.minimum(y[0:2], 1.0)
+        if (y[2] if case.get(&quot;gate_open&quot;, True) else 0.0) &gt; q_fold:
+            above_fold_time += dt
+        if debt_at_hit is None and before[0] &gt; p.allee &gt;= y[0]:
+            debt_at_hit = p.predation * y[4] - p.r1 * y[5]
+    row[&quot;time_above_static_fold_attack_pressure&quot;] = above_fold_time
+    row[&quot;attack_debt_at_allee_hit&quot;] = debt_at_hit
+    return row
+
+
+def wilson(k: int, n: int, z: float = 1.96):
+    if n == 0:
+        return [None, None]
+    phat = k / n
+    den = 1.0 + z * z / n
+    center = (phat + z * z / (2.0 * n)) / den
+    half = z * math.sqrt(phat * (1.0 - phat) / n + z * z / (4.0 * n * n)) / den
+    return [max(0.0, center - half), min(1.0, center + half)]
+
+
+def stochastic_case(amplitude, ramp_duration, x10, p, N, reps, horizon, dt,
+                    rng, beta=None, gate_open=True):
+    &quot;&quot;&quot;Tau-leap diagnostic with absorbing zero counts; not empirical evidence.&quot;&quot;&quot;
+    beta_eff = p.beta_loss_memory if beta is None else beta
+    outcomes = []
+    for _ in range(reps):
+        n1 = max(1, int(round(N * x10)))
+        n2 = N
+        q = 0.0
+        s = 0.0
+        crossed = False
+        extinct = False
+        for j in range(int(math.ceil(horizon / dt))):
+            t = j * dt
+            x1, x2 = n1 / N, n2 / N
+            u = stress(t, amplitude, ramp_duration)
+            g1 = allee_growth(x1, p) - p.predation * (q if gate_open else 0.0)
+            g2 = p.r2 * (1.0 - x2) - u
+            turn = p.demographic_turnover
+            b1, d1 = turn + max(g1, 0.0), turn + max(-g1, 0.0)
+            b2, d2 = turn + max(g2, 0.0), turn + max(-g2, 0.0)
+            born1 = rng.poisson(n1 * b1 * dt) if n1 else 0
+            died1 = rng.binomial(n1, 1.0 - math.exp(-d1 * dt)) if n1 else 0
+            born2 = rng.poisson(n2 * b2 * dt) if n2 else 0
+            died2 = rng.binomial(n2, 1.0 - math.exp(-d2 * dt)) if n2 else 0
+            n1 = max(0, n1 + born1 - died1)
+            n2 = max(0, n2 + born2 - died2)
+            # s responds to the modelled stress-driven expected loss flux;
+            # demographic birth/death noise is isolated in n1,n2 counts.
+            loss_flux = max(0.0, -x2 * g2)
+            s = s * math.exp(-p.kappa_memory * dt)
+            if p.kappa_memory &gt; 0.0:
+                s += (loss_flux / p.kappa_memory) * (1.0 - math.exp(-p.kappa_memory * dt))
+            x2_new = n2 / N
+            target = p.alpha * max(0.0, 1.0 - x2_new) + beta_eff * s
+            q = target + (q - target) * math.exp(-p.gamma * dt)
+            crossed = crossed or n1 / N &lt;= p.allee
+            if n1 == 0:
+                extinct = True
+                break
+        outcomes.append((crossed, extinct, n1 / N))
+    k_cross = sum(int(row[0]) for row in outcomes)
+    k_ext = sum(int(row[1]) for row in outcomes)
+    return {
+        &quot;population_scale_N&quot;: N,
+        &quot;replicates&quot;: reps,
+        &quot;allee_crossings&quot;: k_cross,
+        &quot;allee_crossing_risk&quot;: k_cross / reps,
+        &quot;allee_crossing_wilson_95&quot;: wilson(k_cross, reps),
+        &quot;absorbing_extinctions&quot;: k_ext,
+        &quot;extinction_risk&quot;: k_ext / reps,
+        &quot;extinction_wilson_95&quot;: wilson(k_ext, reps),
+        &quot;mean_final_density&quot;: float(np.mean([row[2] for row in outcomes])),
+    }
+
+
+def equilibrium_spectrum(u: float, p: Params):
+    roots = static_roots(u, p)
+    if not roots:
+        return {&quot;endpoint&quot;: u, &quot;exists&quot;: False}
+    xminus, xplus = roots
+    x2 = 1.0 - u / p.r2
+    lam_x = p.r1 * xplus * (1.0 + p.allee - 2.0 * xplus)
+    # At the loss-flux kink s=0, the one-sided Jacobian has the same diagonal
+    # eigenvalues; off-diagonal trophic links make it triangular/nonnormal.
+    vals = [lam_x, -p.r2 * x2, -p.gamma, -p.kappa_memory]
+    return {
+        &quot;endpoint&quot;: u,
+        &quot;exists&quot;: True,
+        &quot;low_unstable_equilibrium&quot;: xminus,
+        &quot;high_stable_equilibrium&quot;: xplus,
+        &quot;one_sided_jacobian_eigenvalues&quot;: vals,
+        &quot;largest_real_eigenvalue&quot;: max(vals),
+    }
+
+
+def one_sided_transient_response(u: float, p: Params, beta: float,
+                                 horizon: float = 20.0, dt: float = 0.001):
+    &quot;&quot;&quot;Linearized loss-pulse gain at the high equilibrium, for dx2(0)&gt;0.
+
+    A small positive alternate-prey displacement above its stressed equilibrium
+    naturally declines back toward that equilibrium, so the positive-part loss
+    flux is active on this side. Reported state responses are derivatives per
+    unit-density perturbation, not finite perturbations.
+    &quot;&quot;&quot;
+    roots = static_roots(u, p)
+    if roots is None:
+        return {&quot;endpoint&quot;: u, &quot;exists&quot;: False}
+    _, xplus = roots
+    x2eq = 1.0 - u / p.r2
+    loss_rate = p.r2 * x2eq
+    lam_x = p.r1 * xplus * (1.0 + p.allee - 2.0 * xplus)
+    # State order is (x1, x2, q, s). This is the one-sided Jacobian for
+    # perturbations above x2*, where spontaneous return decay makes L&gt;0.
+    J = np.array([
+        [lam_x, 0.0, -p.predation * xplus, 0.0],
+        [0.0, -loss_rate, 0.0, 0.0],
+        [0.0, -p.gamma * p.alpha, -p.gamma, p.gamma * beta],
+        [0.0, loss_rate, 0.0, -p.kappa_memory],
+    ], dtype=float)
+    v = np.array([0.0, 1.0, 0.0, 0.0], dtype=float)
+    samples = [(0.0, *v)]
+    steps = int(math.ceil(horizon / dt))
+    for i in range(steps):
+        h = min(dt, horizon - i * dt)
+        k1 = J @ v
+        k2 = J @ (v + 0.5 * h * k1)
+        k3 = J @ (v + 0.5 * h * k2)
+        k4 = J @ (v + h * k3)
+        v = v + (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+        samples.append(((i + 1) * h, *v))
+    arr = np.asarray(samples)
+    return {
+        &quot;endpoint&quot;: u,
+        &quot;exists&quot;: True,
+        &quot;beta_loss_memory&quot;: beta,
+        &quot;linearization_side&quot;: &quot;dx2(0)&gt;0; positive-part alternate-prey loss active&quot;,
+        &quot;initial_tangent_per_unit_dx2&quot;: [0.0, 1.0, 0.0, 0.0],
+        &quot;state_order&quot;: [&quot;x1&quot;, &quot;x2&quot;, &quot;q&quot;, &quot;s&quot;],
+        &quot;one_sided_jacobian&quot;: J.tolist(),
+        &quot;eigenvalues&quot;: np.real_if_close(np.linalg.eigvals(J)).astype(float).tolist(),
+        &quot;peak_positive_q_response_per_unit_dx2&quot;: float(np.max(arr[:, 3])),
+        &quot;time_of_peak_positive_q_response&quot;: float(arr[int(np.argmax(arr[:, 3])), 0]),
+        &quot;minimum_q_response_per_unit_dx2&quot;: float(np.min(arr[:, 3])),
+        &quot;maximum_x1_response_per_unit_dx2&quot;: float(np.max(arr[:, 1])),
+        &quot;time_of_maximum_x1_response&quot;: float(arr[int(np.argmax(arr[:, 1])), 0]),
+        &quot;minimum_x1_response_per_unit_dx2&quot;: float(np.min(arr[:, 1])),
+        &quot;time_of_minimum_x1_response&quot;: float(arr[int(np.argmin(arr[:, 1])), 0]),
+        &quot;interpretation&quot;: &quot;finite stable eigenvalues coexist with transient trophic gain; local tangent only&quot;,
+    }
+
+
+def run(seed: int, reps: int, dt: float):
+    p = Params()
+    horizon = 160.0
+    q_fold, u_fold = static_fold(p)
+    cases = [
+        {&quot;label&quot;: &quot;R_fast_from_healthy_attractor&quot;, &quot;amplitude&quot;: 0.09,
+         &quot;ramp_duration&quot;: 0.1, &quot;x10&quot;: 1.0},
+        {&quot;label&quot;: &quot;R_slow_same_endpoint_from_healthy_attractor&quot;, &quot;amplitude&quot;: 0.09,
+         &quot;ramp_duration&quot;: 100.0, &quot;x10&quot;: 1.0},
+        {&quot;label&quot;: &quot;R_intermediate_ramp_3&quot;, &quot;amplitude&quot;: 0.09,
+         &quot;ramp_duration&quot;: 3.0, &quot;x10&quot;: 1.0},
+        {&quot;label&quot;: &quot;R_intermediate_ramp_4&quot;, &quot;amplitude&quot;: 0.09,
+         &quot;ramp_duration&quot;: 4.0, &quot;x10&quot;: 1.0},
+        {&quot;label&quot;: &quot;R_fast_no_loss_memory_control&quot;, &quot;amplitude&quot;: 0.09,
+         &quot;ramp_duration&quot;: 0.1, &quot;x10&quot;: 1.0, &quot;beta&quot;: 0.0},
+        {&quot;label&quot;: &quot;R_fast_consumer_access_gate_closed&quot;, &quot;amplitude&quot;: 0.09,
+         &quot;ramp_duration&quot;: 0.1, &quot;x10&quot;: 1.0, &quot;gate_open&quot;: False},
+        {&quot;label&quot;: &quot;B_slow_ramp_to_superfold_held&quot;, &quot;amplitude&quot;: 0.14,
+         &quot;ramp_duration&quot;: 100.0, &quot;x10&quot;: 1.0},
+        # This reproduces the earlier basin-state contrast and labels it
+        # correctly: it starts close to the Allee separator, not at an attractor.
+        {&quot;label&quot;: &quot;near_separator_fast_basin_state&quot;, &quot;amplitude&quot;: 0.09,
+         &quot;ramp_duration&quot;: 0.1, &quot;x10&quot;: 0.225, &quot;beta&quot;: 0.0},
+        {&quot;label&quot;: &quot;near_separator_slow_basin_state&quot;, &quot;amplitude&quot;: 0.09,
+         &quot;ramp_duration&quot;: 100.0, &quot;x10&quot;: 0.225, &quot;beta&quot;: 0.0},
+    ]
+    det = [deterministic_case(c, p, horizon, dt) for c in cases]
+    rng = np.random.default_rng(seed)
+    noise_horizon = 10.0
+    noise_open = [stochastic_case(0.0, 0.0, 1.0, p, N, reps,
+                                  noise_horizon, max(dt, 0.005), rng,
+                                  gate_open=True)
+                  for N in (80, 320, 1280)]
+    noise_closed = [stochastic_case(0.0, 0.0, 1.0, p, N, reps,
+                                   noise_horizon, max(dt, 0.005), rng,
+                                   gate_open=False)
+                    for N in (80, 320, 1280)]
+    allee_noise = [stochastic_case(0.0, 0.0, 0.30, p, N, reps,
+                                   noise_horizon, max(dt, 0.005), rng,
+                                   gate_open=False)
+                   for N in (80, 320, 1280)]
+    return {
+        &quot;status&quot;: &quot;finite model diagnostic only; proposed loss-memory law is unvalidated&quot;,
+        &quot;parameters&quot;: asdict(p),
+        &quot;seed&quot;: seed,
+        &quot;stochastic_replicates_per_N&quot;: reps,
+        &quot;deterministic_time_step&quot;: dt,
+        &quot;deterministic_horizon&quot;: horizon,
+        &quot;fold&quot;: {
+            &quot;q_fold&quot;: q_fold,
+            &quot;u_fold&quot;: u_fold,
+            &quot;formula&quot;: &quot;u_B = r2*r1*(1-allee)^2/(4*predation*alpha)&quot;,
+            &quot;subfold_endpoint_roots&quot;: static_roots(0.09, p),
+        },
+        &quot;frozen_equilibrium_spectra&quot;: [
+            equilibrium_spectrum(0.0, p), equilibrium_spectrum(0.09, p),
+        ],
+        &quot;one_sided_transient_response_at_subfold_endpoint&quot;: {
+            &quot;with_loss_memory&quot;: one_sided_transient_response(
+                0.09, p, p.beta_loss_memory),
+            &quot;without_loss_memory&quot;: one_sided_transient_response(0.09, p, 0.0),
+            &quot;numerical_step&quot;: 0.001,
+            &quot;horizon&quot;: 20.0,
+        },
+        &quot;deterministic_cases&quot;: det,
+        &quot;demographic_noise_diagnostics&quot;: {
+            &quot;stress_endpoint&quot;: 0.0,
+            &quot;horizon&quot;: noise_horizon,
+            &quot;healthy_initial_state_with_adaptive_access_open&quot;: noise_open,
+            &quot;same_state_with_consumer_access_gate_closed&quot;: noise_closed,
+            &quot;near_allee_initial_state_with_gate_closed&quot;: allee_noise,
+        },
+        &quot;limitations&quot;: [
+            &quot;The recent-loss memory s and its gain beta are a falsifiable candidate, not an empirically established ecological law.&quot;,
+            &quot;The stochastic process is a tau-leap approximation to density-dependent birth/death dynamics; q and s follow expected stress-driven loss, not noisy abundance differences.&quot;,
+            &quot;No common environmental noise, dispersal, consumer abundance dynamics, or observation error is simulated.&quot;,
+            &quot;A high-field mesocosm must measure attack pressure and loss flux and use a sham access gate; independent tanks are randomized, not assumed to be exact ecosystem clones.&quot;,
+            &quot;Scaling demographic risk with N assumes comparable per-capita rates and spatial geometry; shared shocks do not vanish with N.&quot;,
+        ],
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument(&quot;--seed&quot;, type=int, default=1509)
+    ap.add_argument(&quot;--replicates&quot;, type=int, default=120)
+    ap.add_argument(&quot;--dt&quot;, type=float, default=0.01)
+    ap.add_argument(&quot;--output&quot;, type=str, default=&quot;&quot;)
+    args = ap.parse_args()
+    result = run(args.seed, args.replicates, args.dt)
+    rendered = json.dumps(result, indent=2, sort_keys=True)
+    if args.output:
+        with open(args.output, &quot;w&quot;, encoding=&quot;utf-8&quot;) as f:
+            f.write(rendered + &quot;\n&quot;)
+    print(rendered)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/7f823acca31b63f2058c50045860ff69692d99f14a4d2010a2ec93d14249152b.py">Exact original</a></p></html>

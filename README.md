@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-576 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,501 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+591 scoped research cards, full supplied A–I research documents, J/K result summaries, and 25,129 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -228,6 +228,10 @@ Added BN: N486–493: verified-continuation local/global relative-second-moment 
 
 
 Added BO: N494–506: delayed division-pulse covariance, positive-response half-period bound and flat-age-variance counterexample; proper-Gaussian intensity reversal and dissipative radial material-clock construction, with empirical/data gaps. Exact finite self-coupled join tight cuts, exchangeable/SCC synthesis, rational round bounds, closure/least-majorized entropy and sharp three-state/Petri examples. Only two written records supplied; named scripts/receipts absent. No causal biological/glass validation, conjecture resolution or external/formal/priority/discovery promotion. [Sources](web/BO-sources.txt);[scopes](web/BO-reports.txt);[archive/availability](web/BO-package.txt).
+
+
+
+Added BP: N507–521: rational10-state/6-letter/rank8 all-word reflection-CP obstruction to stationary hidden equilibrium, exact reversible frames/rigid-support closure, finite7-time rationalwitness and linear path-affinity entropy floor>6e-44. Sufficient acquisition~1.1e93 independentwindows,h1e-12; no practical capability. Other scoped periodic-fault, tensor-response/f(R), source-dependent syndrome decoder/global-reset memory, finite-variance robust phase retrieval, arithmetic transfers and elliptic-import counterexample preserved. Native21-check replay source-reported, initial failures and source omissions retained; historic/external/formal/priority objectives unestablished. [Sources](web/BP-sources.txt);[scopes](web/BP-reports.txt);[archive/availability](web/BP-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

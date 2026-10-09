@@ -1,0 +1,238 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/t21_tensor_canonization/search_3x3_transpose_obstruction.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/t21_tensor_canonization/search_3x3_transpose_obstruction.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Find a small exact matrix-space equivalence obstruction over F_2.
+
+Searches 3-dimensional subspaces C &lt;= M_3(F_2) for which C and C^t have
+identical rank and evaluation/singularity profiles, matching two-sided
+adjoint dimensions, but are not equivalent under independent left/right GL_3.
+The final orbit test is exhaustive over GL_3(F_2)^2.
+&quot;&quot;&quot;
+from itertools import combinations
+from itertools import product
+import random
+
+
+N = 3
+MASK = (1 &lt;&lt; N) - 1
+
+
+def mat_mul(a, b):
+    out = 0
+    for i in range(N):
+        for j in range(N):
+            bit = 0
+            for k in range(N):
+                bit ^= ((a &gt;&gt; (N * i + k)) &amp; 1) &amp; ((b &gt;&gt; (N * k + j)) &amp; 1)
+            out |= bit &lt;&lt; (N * i + j)
+    return out
+
+
+def transpose(a):
+    out = 0
+    for i in range(N):
+        for j in range(N):
+            out |= ((a &gt;&gt; (N * i + j)) &amp; 1) &lt;&lt; (N * j + i)
+    return out
+
+
+def rank_bits(rows, ncols):
+    rows = [x for x in rows if x]
+    piv = 0
+    for col in range(ncols):
+        found = next((i for i in range(piv, len(rows)) if (rows[i] &gt;&gt; col) &amp; 1), None)
+        if found is None:
+            continue
+        rows[piv], rows[found] = rows[found], rows[piv]
+        for i in range(len(rows)):
+            if i != piv and ((rows[i] &gt;&gt; col) &amp; 1):
+                rows[i] ^= rows[piv]
+        piv += 1
+        if piv == len(rows):
+            break
+    return piv
+
+
+def det(a):
+    rows = [sum(((a &gt;&gt; (N * i + j)) &amp; 1) &lt;&lt; j for j in range(N)) for i in range(N)]
+    return rank_bits(rows, N) == N
+
+
+def inverse(a):
+    rows = []
+    for i in range(N):
+        left = sum(((a &gt;&gt; (N * i + j)) &amp; 1) &lt;&lt; j for j in range(N))
+        rows.append(left | (1 &lt;&lt; (N + i)))
+    piv = 0
+    for col in range(N):
+        found = next((i for i in range(piv, N) if (rows[i] &gt;&gt; col) &amp; 1), None)
+        if found is None:
+            return None
+        rows[piv], rows[found] = rows[found], rows[piv]
+        for i in range(N):
+            if i != piv and ((rows[i] &gt;&gt; col) &amp; 1):
+                rows[i] ^= rows[piv]
+        piv += 1
+    return sum(((rows[i] &gt;&gt; (N + j)) &amp; 1) &lt;&lt; (N * i + j) for i in range(N) for j in range(N))
+
+
+GL = [(a, inverse(a)) for a in range(1 &lt;&lt; (N * N)) if det(a)]
+
+
+def span(gens):
+    vals = {0}
+    for g in gens:
+        vals |= {x ^ g for x in list(vals)}
+    return tuple(sorted(vals))
+
+
+def subspaces_of_f2_3():
+    subs = {frozenset({0})}
+    for gens in combinations(range(1, 1 &lt;&lt; N), 1):
+        subs.add(frozenset(span(gens)))
+    for gens in combinations(range(1, 1 &lt;&lt; N), 2):
+        subs.add(frozenset(span(gens)))
+    for gens in combinations(range(1, 1 &lt;&lt; N), 3):
+        subs.add(frozenset(span(gens)))
+    return sorted((tuple(sorted(s)) for s in subs), key=lambda s: (len(s), s))
+
+
+SUBSPACES = subspaces_of_f2_3()
+
+
+def mat_vec(a, v):
+    out = 0
+    for i in range(N):
+        bit = 0
+        for j in range(N):
+            bit ^= ((a &gt;&gt; (N * i + j)) &amp; 1) &amp; ((v &gt;&gt; j) &amp; 1)
+        out |= bit &lt;&lt; i
+    return out
+
+
+def eval_profile(code):
+    bydim = {}
+    for s in SUBSPACES:
+        images = [mat_vec(a, v) for a in code for v in s]
+        bydim.setdefault((len(s).bit_length() - 1), []).append(rank_bits(images, N))
+    return tuple((d, tuple(sorted(vals))) for d, vals in sorted(bydim.items()))
+
+
+def pair_eval_spectrum(code):
+    counts = [0] * (2 * N + 1)
+    for x in range(1 &lt;&lt; N):
+        for y in range(1 &lt;&lt; N):
+            values = [mat_vec(a, x) | (mat_vec(a, y) &lt;&lt; N) for a in code]
+            counts[rank_bits(values, 2 * N)] += 1
+    return tuple(counts)
+
+
+def k_eval_spectrum(code, k):
+    counts = [0] * (N + 1)
+    for xs in product(range(1 &lt;&lt; N), repeat=k):
+        values = []
+        for a in code:
+            out = 0
+            for j, x in enumerate(xs):
+                out |= mat_vec(a, x) &lt;&lt; (N * j)
+            values.append(out)
+        counts[rank_bits(values, N * k)] += 1
+    return tuple(counts)
+
+
+def rank_profile(code):
+    counts = [0] * (N + 1)
+    for a in code:
+        counts[rank_bits([sum(((a &gt;&gt; (N * i + j)) &amp; 1) &lt;&lt; j for j in range(N)) for i in range(N)], N)] += 1
+    return tuple(counts)
+
+
+def adjoint_dimension(code):
+    # Variables are entries of X then Y; equations are XA=AY for all A in code.
+    eqs = []
+    for a in code:
+        for i in range(N):
+            for j in range(N):
+                row = 0
+                for k in range(N):
+                    row ^= ((a &gt;&gt; (N * k + j)) &amp; 1) &lt;&lt; (N * i + k)
+                    row ^= ((a &gt;&gt; (N * i + k)) &amp; 1) &lt;&lt; (N * N + N * k + j)
+                eqs.append(row)
+    return 2 * N * N - rank_bits(eqs, 2 * N * N)
+
+
+def signature(code):
+    trans = tuple(sorted(transpose(a) for a in code))
+    return (rank_profile(code), eval_profile(code), adjoint_dimension(code),
+            rank_profile(trans), eval_profile(trans))
+
+
+def equivalent(c, d):
+    target = set(d)
+    for p, _ in GL:
+        for q, qi in GL:
+            image = {mat_mul(mat_mul(p, a), qi) for a in c}
+            if image == target:
+                return True
+    return False
+
+
+def orbit_key(c):
+    return min(tuple(sorted(mat_mul(mat_mul(p, a), qi) for a in c))
+               for p, _ in GL for _, qi in GL)
+
+
+def stabilizer_size(c):
+    target = set(c)
+    return sum({mat_mul(mat_mul(p, a), qi) for a in c} == target
+               for p, _ in GL for _, qi in GL)
+
+
+def rand_code(rng):
+    while True:
+        gens = [rng.randrange(1 &lt;&lt; (N * N)) for _ in range(N)]
+        if len(span(gens)) == (1 &lt;&lt; N):
+            return span(gens)
+
+
+def main():
+    rng = random.Random(20261009)
+    seen = {}
+    print(f&quot;|GL_3(F_2)|={len(GL)}; subspaces of F_2^3={len(SUBSPACES)}&quot;)
+    for i in range(5000):
+        c = rand_code(rng)
+        d = tuple(sorted(transpose(a) for a in c))
+        sig = signature(c)
+        if sig not in seen:
+            seen[sig] = c
+        if sig == signature(d) and c != d and not equivalent(c, d):
+            print(f&quot;transpose obstruction found at sample {i}&quot;)
+            print(f&quot;C={c}&quot;)
+            print(f&quot;C^t={d}&quot;)
+            print(&quot;basis of C:&quot;)
+            basis = []
+            for a in c:
+                if len(span(basis + [a])) &gt; len(span(basis)):
+                    basis.append(a)
+                if len(basis) == N:
+                    break
+            for a in basis:
+                print(&quot;  &quot; + str([[((a &gt;&gt; (N * r + s)) &amp; 1) for s in range(N)] for r in range(N)]))
+            print(f&quot;rank profile={rank_profile(c)}&quot;)
+            print(f&quot;evaluation profile={eval_profile(c)}&quot;)
+            print(f&quot;transpose evaluation profile={eval_profile(d)}&quot;)
+            print(f&quot;pair evaluation spectrum(C)={pair_eval_spectrum(c)}&quot;)
+            print(f&quot;pair evaluation spectrum(C^t)={pair_eval_spectrum(d)}&quot;)
+            for k in (1, 2, 3, 4):
+                print(f&quot;{k}-tuple eval spectrum(C)={k_eval_spectrum(c, k)}&quot;)
+                print(f&quot;{k}-tuple eval spectrum(C^t)={k_eval_spectrum(d, k)}&quot;)
+            print(f&quot;adjoint dimension={adjoint_dimension(c)}&quot;)
+            print(f&quot;matrix-code stabilizer sizes: {stabilizer_size(c)}, {stabilizer_size(d)}&quot;)
+            print(f&quot;signature(C)==signature(C^t): {signature(c) == signature(d)}&quot;)
+            print(f&quot;orbit_key(C)={orbit_key(c)}&quot;)
+            print(f&quot;orbit_key(C^t)={orbit_key(d)}&quot;)
+            return
+    print(&quot;no transpose obstruction found in 5000 samples&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/6a69488bbe8f1bf6dffc3525bc5bd05fa849e3cad7fd8fa401a3749b562a2f63.py">Exact original</a></p></html>

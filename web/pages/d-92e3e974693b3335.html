@@ -1,0 +1,121 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/natural/n19_active_matter/com_sum_rule.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/natural/n19_active_matter/com_sum_rule.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-particle checks for the nonreciprocal COM-force identity.
+
+This is an algebra/numerics check for a specified short-range pair kernel,
+not a simulation of phase separation and not empirical evidence.
+&quot;&quot;&quot;
+
+from cmath import exp as cexp
+from math import exp, pi, sqrt
+import json
+
+
+def grad_ua(r, epsilon=1.0, ell=1.0):
+    &quot;&quot;&quot;Derivative of U_a(r) = epsilon exp(-r^2/(2 ell^2)).&quot;&quot;&quot;
+    return -epsilon * r / (ell * ell) * exp(-0.5 * (r / ell) ** 2)
+
+
+def nonreciprocal_com_force(xa, xb, epsilon=1.0, ell=1.0):
+    &quot;&quot;&quot;Sum pair forces for U_AB=U_s+U_a, U_BA=U_s-U_a.
+
+    Reciprocal U_s cancels pairwise.  The remaining force on A and B
+    together is -2 U_a&#x27;(x_A-x_B).
+    &quot;&quot;&quot;
+    return sum(-2.0 * grad_ua(x - y, epsilon, ell) for x in xa for y in xb)
+
+
+def direct_pair_force_sum(xa, xb, epsilon=1.0, ell=1.0):
+    &quot;&quot;&quot;Compute both members&#x27; forces explicitly, with reciprocal part zero.&quot;&quot;&quot;
+    force = 0.0
+    for x in xa:
+        for y in xb:
+            r = x - y
+            # Force on A from B: -U_AB&#x27;(r) = -U_a&#x27;(r).
+            force += -grad_ua(r, epsilon, ell)
+            # Force on B from A: +U_BA&#x27;(r) = -U_a&#x27;(r).
+            force += -grad_ua(r, epsilon, ell)
+    return force
+
+
+def periodized_grad_ua(r, L, epsilon=1.0, ell=1.0):
+    &quot;&quot;&quot;Derivative of the periodized Gaussian on a ring of length L.&quot;&quot;&quot;
+    return sum(grad_ua(r + n * L, epsilon, ell) for n in range(-3, 4))
+
+
+def periodic_direct_force(xa, xb, L, epsilon=1.0, ell=1.0):
+    return sum(-2.0 * periodized_grad_ua(x - y, L, epsilon, ell)
+               for x in xa for y in xb)
+
+
+def periodic_spectral_force(xa, xb, L, epsilon=1.0, ell=1.0, nmax=80):
+    &quot;&quot;&quot;Fourier form of -2 sum_AB U_a&#x27;(x_A-x_B), with periodized U_a.&quot;&quot;&quot;
+    total = 0.0
+    for n in range(1, nmax + 1):
+        k = 2.0 * pi * n / L
+        uhat = epsilon * sqrt(2.0 * pi) * ell * exp(-0.5 * ell * ell * k * k)
+        ahat = sum(cexp(-1j * k * x) for x in xa)
+        bhat = sum(cexp(-1j * k * x) for x in xb)
+        total += k * uhat * (ahat * bhat.conjugate()).imag
+    return -4.0 * total / L
+
+
+def interface_positions(R, spacing=0.2, gap=0.0):
+    &quot;&quot;&quot;Two flat 1D slabs meeting at one unlike-species interface.&quot;&quot;&quot;
+    n = round(R / spacing)
+    xa = [-spacing / 2.0 - i * spacing for i in range(n)]
+    xb = [gap + spacing / 2.0 + i * spacing for i in range(n)]
+    return xa, xb, n * spacing
+
+
+def main():
+    # Identity check on a deliberately irregular configuration.
+    xa = [-1.3, -0.2, 0.8]
+    xb = [-0.7, 0.4, 1.9, 2.3]
+    identity_error = abs(
+        nonreciprocal_com_force(xa, xb) - direct_pair_force_sum(xa, xb)
+    )
+
+    # Check the continuum Fourier identity against the exact periodic pair sum.
+    L = 12.0
+    ring_a = [i * L / 12.0 for i in range(12)]
+    phase = 0.23
+    ring_b = [(x + phase) % L for x in ring_a]
+    periodic_force = periodic_direct_force(ring_a, ring_b, L)
+    spectral_force = periodic_spectral_force(ring_a, ring_b, L)
+    reversed_b = [(x - phase) % L for x in ring_a]
+    reversed_force = periodic_direct_force(ring_a, reversed_b, L)
+
+    rows = []
+    for requested_R in (2, 4, 8, 16, 32):
+        xa, xb, R = interface_positions(requested_R)
+        force = nonreciprocal_com_force(xa, xb)
+        N = len(xa) + len(xb)
+        speed = force / N  # unit drag coefficient
+        rows.append({
+            &quot;R&quot;: R,
+            &quot;N&quot;: N,
+            &quot;nonreciprocal_force&quot;: force,
+            &quot;rigid_COM_speed&quot;: speed,
+            &quot;R_times_speed&quot;: R * speed,
+        })
+
+    # Mirror the interface.  Since U_a&#x27; is odd, the force must reverse.
+    xa, xb, _ = interface_positions(16)
+    force = nonreciprocal_com_force(xa, xb)
+    mirror_force = nonreciprocal_com_force([-x for x in xa], [-x for x in xb])
+
+    print(json.dumps({
+        &quot;identity_error&quot;: identity_error,
+        &quot;mirror_force_sum&quot;: force + mirror_force,
+        &quot;periodic_spectral_error&quot;: abs(periodic_force - spectral_force),
+        &quot;phase_lag_force&quot;: periodic_force,
+        &quot;reversed_phase_lag_force&quot;: reversed_force,
+        &quot;phase_reversal_sum&quot;: periodic_force + reversed_force,
+        &quot;interface_scaling&quot;: rows,
+        &quot;status&quot;: &quot;finite algebraic check; no phase-separation dynamics or empirical confirmation&quot;,
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/6c0a6dfe0189e970a488e588409f454da364047b19e3a716bef5ef9c866b58a2.py">Exact original</a></p></html>

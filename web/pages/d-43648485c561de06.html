@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/theory/arithmetic_review/parameter_check_v1.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/theory/arithmetic_review/parameter_check_v1.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact rational interval audit; display rounding is not used for assertions.&quot;&quot;&quot;
+from fractions import Fraction as F
+from decimal import Decimal, localcontext
+import json
+
+class I:
+    def __init__(self, lo, hi=None):
+        self.lo, self.hi = F(lo), F(lo if hi is None else hi)
+        assert self.lo &lt;= self.hi
+    def __add__(self, x):
+        x = x if isinstance(x, I) else I(x)
+        return I(self.lo+x.lo, self.hi+x.hi)
+    __radd__ = __add__
+    def __neg__(self): return I(-self.hi, -self.lo)
+    def __sub__(self, x): return self + (-x if isinstance(x, I) else -I(x))
+    def __rsub__(self, x): return I(x)+(-self)
+    def __mul__(self, x):
+        x = x if isinstance(x, I) else I(x)
+        p = [self.lo*x.lo, self.lo*x.hi, self.hi*x.lo, self.hi*x.hi]
+        return I(min(p), max(p))
+    __rmul__ = __mul__
+    def __truediv__(self, x):
+        x = x if isinstance(x, I) else I(x)
+        assert x.lo*x.hi &gt; 0
+        return self*I(1/x.hi, 1/x.lo)
+    def display(self):
+        with localcontext() as c:
+            c.prec=28
+            return [str(Decimal(x.numerator)/Decimal(x.denominator)) for x in (self.lo,self.hi)]
+
+def log_reduced(y):
+    assert 1 &lt;= y &lt;= 2
+    z=(y-1)/(y+1)
+    low=2*sum((z**(2*j+1)/F(2*j+1) for j in range(50)),F(0))
+    tail=2*z**101/(101*(1-z*z))
+    return I(low,low+tail)
+
+LN2=log_reduced(F(2))
+def ln(x):
+    x=F(x)
+    assert x&gt;0
+    k=0
+    while x&gt;2: x/=2; k+=1
+    while x&lt;1: x*=2; k-=1
+    return k*LN2+log_reduced(x)
+
+q=1024
+alpha,beta,s=F(34),F(4053,100),F(31)
+lnq=10*LN2
+def logq(x): return ln(x)/lnq
+def entropy(x,y): return ((x+y)*ln(x+y)-x*ln(x)-y*ln(y))/lnq
+ell=logq(F(1023,1024))
+rho_minus=entropy(beta,s)+alpha+62*ell-2
+rho_plus=alpha-1+31*ell+entropy(beta,s)
+a_star=(alpha+beta-1)*I(1)/rho_minus
+b_star=1+(I(F(1,330))+entropy(2*beta,s)-entropy(beta,s)+alpha+31*ell-1)/rho_minus
+
+checks={
+    &quot;a_star_lt_1_889&quot;:a_star.hi&lt;F(1889,1000),
+    &quot;b_star_lt_1_909&quot;:b_star.hi&lt;F(1909,1000),
+    &quot;three_rho_plus_lt_121&quot;:(3*rho_plus).hi&lt;121,
+    &quot;rho_minus_over_242_gt_0_16&quot;:(rho_minus/242).lo&gt;F(4,25),
+    &quot;rho_plus_over_242_lt_0_17&quot;:(rho_plus/242).hi&lt;F(17,100),
+    &quot;d_rate_lt_85&quot;:alpha+beta&lt;85,
+    &quot;balanced_bad_exponent_lt_2_rho_minus&quot;:(3*rho_plus-F(85,2)-2*rho_minus).hi&lt;0,
+    &quot;balanced_rho_minus_over_85_gt_0_459&quot;:(rho_minus/85).lo&gt;F(459,1000),
+    &quot;balanced_rho_plus_over_85_lt_0_472&quot;:(rho_plus/85).hi&lt;F(472,1000),
+}
+assert all(checks.values()),checks
+values={&quot;rho_minus&quot;:rho_minus,&quot;rho_plus&quot;:rho_plus,&quot;a_star&quot;:a_star,&quot;b_star&quot;:b_star,
+        &quot;constant_cap_bad_rate&quot;:3*rho_plus-121,
+        &quot;constant_cap_density_lower&quot;:rho_minus/242,&quot;constant_cap_density_upper&quot;:rho_plus/242,
+        &quot;balanced_bad_minus_2size_rate&quot;:3*rho_plus-F(85,2)-2*rho_minus}
+print(json.dumps({&quot;method&quot;:&quot;Fraction interval arithmetic; 50-term positive atanh series with geometric tail&quot;,
+                  &quot;checks&quot;:checks,&quot;intervals&quot;:{k:v.display() for k,v in values.items()}},indent=2))
+</pre><p><a href="../assets/50e63f98b14f2e0b5e5fc1a1b98b29e9ebe0e5d80dd1a0a30b08d80144340c39.py">Exact original</a></p></html>

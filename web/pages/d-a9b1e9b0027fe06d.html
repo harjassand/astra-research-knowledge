@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BP: work/applied/a22_quantum_global_mask/check_masks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BP-sources.txt">Source map</a><h1>BP: work/applied/a22_quantum_global_mask/check_masks.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Full supplied607-member original archive and2 byte-identical standalone reports preserved. Proofs, code, exact certificates and internal audits available; all21 source-reported selected checks retained, not rerun at ingestion. Third-party source bodies omitted with their native manifests. No new independent analytic reconstruction or scientific certification. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite exhaustive checks of the threshold-mask identities in v1.txt.&quot;&quot;&quot;
+from itertools import combinations, chain
+from math import comb
+
+
+def subsets(items):
+    items = tuple(items)
+    return chain.from_iterable(combinations(items, r) for r in range(len(items) + 1))
+
+
+def coeff(s, k):
+    if s &lt; k:
+        return 0
+    return (-1) ** (s - k) * comb(s - 1, k - 1)
+
+
+def local_expansion(f, k):
+    return sum(comb(f, s) * coeff(s, k) for s in range(k, f + 1))
+
+
+def union_expansion(F, rounds, k):
+    # Evaluate the scalar coefficient of W_F in the inclusion-exclusion/cylinder sum.
+    total = 0
+    for J in subsets(range(rounds)):
+        if not J:
+            continue
+        subtotal = 1
+        for j in J:
+            f_j = sum(x // 10 == j for x in F)
+            subtotal *= local_expansion(f_j, k)
+        total += (-1) ** (len(J) + 1) * subtotal
+    return total
+
+
+def main():
+    for N in range(1, 8):
+        for k in range(1, N + 1):
+            for f in range(N + 1):
+                assert local_expansion(f, k) == int(f &gt;= k), (N, k, f)
+            for eta in (0.01, 0.2, 1.0):
+                beta = sum(comb(N, s) * comb(s - 1, k - 1) * eta**s
+                           for s in range(k, N + 1))
+                b = comb(N, k) * eta**k * (1 + eta) ** (N - k)
+                assert beta &lt;= b + 1e-12, (N, k, eta, beta, b)
+
+    # Two and three disjoint rounds, each with N=3 locations, represented as
+    # 10*j + local_index so every exact global mask can be enumerated.
+    for rounds in (2, 3):
+        N = 3
+        locations = tuple(10 * j + i for j in range(rounds) for i in range(N))
+        for k in range(1, N + 1):
+            for F in subsets(locations):
+                expected = int(any(sum(x // 10 == j for x in F) &gt;= k
+                                   for j in range(rounds)))
+                actual = union_expansion(F, rounds, k)
+                assert actual == expected, (rounds, k, F, actual, expected)
+    print(&quot;PASS: local and multiround threshold-mask identities; beta &lt;= b&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/9a4e400881bdb16266e1a32cffbda662a977b12f7d8664ee9eb8d0b37ae2033d.py">Exact original</a></p></html>
