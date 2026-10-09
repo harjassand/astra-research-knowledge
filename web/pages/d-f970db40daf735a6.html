@@ -1,0 +1,62 @@
+<!doctype html><meta charset="utf-8"><title>matched_stein_comparator.py</title><aside>Archived source = DATA<p>Source-reported analytic derivations and synthetic numerical diagnostics; no external proof review, formal verification, publication-priority clearance or physical system identification is established. No historic-scale or 9–10/10 breakthrough is claimed. This intake checked source/archive integrity and static repository routes only; it did not rerun scientific analyses.</p></aside><pre>&quot;&quot;&quot;Matched-labelled-snapshot comparison of exact density-ratio and score-moment estimators.
+
+Model is an affine-tilted nonlinear quartic stationary family. Both algorithms
+observe exactly the same baseline + three perturbed sample populations.
+The score-moment estimator is additionally allowed to exploit the GIVEN form
+of the quartic potential (its coefficients must be fitted from baseline data).
+No hidden true coefficients are passed to either estimator. Count every draw.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse,json,time
+import numpy as np
+from stationary_tilt_experiment import sample_exact, estimate_ratio, H,D,K,B,U,A_TRUE,DIM
+from entropy_production_experiment import fit_potential
+
+
+def estimate_once(n,rng):
+    start=time.perf_counter()
+    x0,work=sample_exact(n,np.zeros(DIM),rng)
+    Hhat, lam=fit_potential(x0)
+    C0=np.cov(x0.T)
+    mu0=np.mean(x0,axis=0)
+    A_log=np.empty((DIM,DIM)); A_stein=np.empty_like(A_log);A_gauss=np.empty_like(A_log)
+    for j in range(DIM):
+        xi,wi=sample_exact(n,A_TRUE[:,j],rng);work+=wi
+        A_log[:,j]=estimate_ratio(x0,xi)
+        A_stein[:,j]=np.mean(xi@Hhat+lam*xi**3,axis=0)
+        A_gauss[:,j]=np.linalg.solve(C0,np.mean(xi,axis=0)-mu0)
+    truth_norm=np.linalg.norm(B)
+    errs={}
+    for label,a in [(&#x27;ratio_logistic&#x27;,A_log),(&#x27;potential_score_mean&#x27;,A_stein),(&#x27;Gaussian_moment&#x27;,A_gauss)]:
+        try:
+            Bhat=U@np.linalg.inv(a)
+            errs[label+&#x27;_matrix_err&#x27;]=float(np.linalg.norm(Bhat-B)/truth_norm)
+            errs[label+&#x27;_D_err&#x27;]=float(np.linalg.norm((Bhat+Bhat.T)/2-D)/np.linalg.norm(D))
+            errs[label+&#x27;_K_err&#x27;]=float(np.linalg.norm((Bhat-Bhat.T)/2-K)/np.linalg.norm(K))
+        except np.linalg.LinAlgError:
+            errs[label+&#x27;_matrix_err&#x27;]=float(&#x27;nan&#x27;)
+    errs.update({&#x27;n_per_regime&#x27;:n,&#x27;total_samples&#x27;:4*n,&#x27;proposals&#x27;:work,
+                 &#x27;acquire_sample_fit_seconds&#x27;:time.perf_counter()-start,
+                 &#x27;quartic_estimated&#x27;:float(lam),&#x27;potential_H_rel_error&#x27;:float(np.linalg.norm(Hhat-H)/np.linalg.norm(H))})
+    return errs
+
+
+def main():
+    p=argparse.ArgumentParser();p.add_argument(&#x27;--sizes&#x27;,type=int,nargs=&#x27;+&#x27;,default=[500,2000,8000,32000]);p.add_argument(&#x27;--reps&#x27;,type=int,default=25);p.add_argument(&#x27;--output&#x27;,default=&#x27;matched_comparator_results.json&#x27;);a=p.parse_args()
+    rng=np.random.default_rng(12026)
+    data={&#x27;model&#x27;:&#x27;3D stationary quartic affine ratio&#x27;,&#x27;potential_basis_known_and_parameters_estimated&#x27;:True,
+          &#x27;model_parameter_advantage&#x27;:&#x27;score-moment estimator uses supplied quartic form; ratio logistic is correct without it&#x27;,
+          &#x27;rows&#x27;:[],&#x27;aggregate&#x27;:[]}
+    for n in a.sizes:
+        rows=[estimate_once(n,rng) for _ in range(a.reps)]
+        data[&#x27;rows&#x27;].extend(rows)
+        summary={&#x27;n_per_regime&#x27;:n,&#x27;replications&#x27;:len(rows)}
+        for k in [&#x27;ratio_logistic_matrix_err&#x27;,&#x27;potential_score_mean_matrix_err&#x27;,&#x27;Gaussian_moment_matrix_err&#x27;,
+                  &#x27;potential_H_rel_error&#x27;,&#x27;proposals&#x27;,&#x27;acquire_sample_fit_seconds&#x27;]:
+            vals=np.array([r[k] for r in rows]);summary[k+&#x27;_mean&#x27;]=float(np.nanmean(vals));summary[k+&#x27;_median&#x27;]=float(np.nanmedian(vals))
+        data[&#x27;aggregate&#x27;].append(summary)
+        print(json.dumps(summary,indent=2))
+    with open(a.output,&#x27;w&#x27;) as f:json.dump(data,f,indent=2)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

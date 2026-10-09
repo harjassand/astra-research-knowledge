@@ -26,6 +26,11 @@ BOUNDARY = ("Source-reported internal model-assisted proof/review and finite sof
             "breakthrough, external expert/formal verification, physical acquisition or historical "
             "novelty is established. Theoretical bit-cost bounds do not certify uniform runtime "
             "of the particular numerical implementation.")
+BV_BOUNDARY = ("Source-reported analytic derivations and synthetic numerical diagnostics; no "
+               "external proof review, formal verification, publication-priority clearance or "
+               "physical system identification is established. No historic-scale or 9–10/10 "
+               "breakthrough is claimed. This intake checked source/archive integrity and static "
+               "repository routes only; it did not rerun scientific analyses.")
 
 
 def sha(data):
@@ -72,14 +77,14 @@ def ref(rel, start=1, end=None):
             "range_scope": "source-reported argument/evidence; completeness and correctness not independently audited"}
 
 
-def page(title, text, cid=None):
+def page(title, text, cid=None, boundary=BOUNDARY):
     notice = (f'<a href="../../frontier/cards/{cid}.json">Current scoped status</a>' if cid else "Archived source = DATA")
     scoped = ("<p>Historical failed attempt: its h=2 bimodality counterexample remains valid; "
               "the later <a href=\"../../frontier/dossiers/N536.txt\">N536 parity construction</a> "
               "replaces only the statement that no constructive displaced route had been established.</p>"
               if title == "work/gaussian_transfer/displaced_gate.txt" else "")
     return ("<!doctype html><meta charset=\"utf-8\"><title>" + html.escape(title)
-            + "</title><aside>" + notice + "<p>" + html.escape(BOUNDARY)
+            + "</title><aside>" + notice + "<p>" + html.escape(boundary)
             + "</p>" + scoped + "</aside><pre>" + html.escape(text) + "</pre>\n").encode()
 
 
@@ -203,8 +208,59 @@ def build():
         raise ValueError("BU pasted-summary hash/size mismatch")
     source_items.append({"path": summary_path, "rel": "PRESENTED_SUMMARY.txt", "title": "User-pasted Primitive Genesis summary",
                          "data": summary_data, "depth": "abridged conversational summary; full source note is authoritative"})
+
+    # BV is a separate stationary-generator investigation. Preserve its exact
+    # source folder and verify the sibling ZIP, manifest and expanded bytes;
+    # never execute embedded research scripts during repository intake.
+    tomography = read("updates/BV/INTEGRITY.json")
+    archive4_rel = tomography["archive_path"]
+    archive4 = ROOT / archive4_rel
+    if sha(archive4.read_bytes()) != tomography["archive_sha256"] or len(archive4.read_bytes()) != tomography["archive_bytes"]:
+        raise ValueError("BV archive hash/size mismatch")
+    tree4 = "updates/BV/package/astra_static_generator_tomography"
+    manifest4_path = ROOT / tree4 / "MANIFEST.json"
+    manifest4_bytes = manifest4_path.read_bytes()
+    if sha(manifest4_bytes) != tomography["manifest_sha256"]:
+        raise ValueError("BV source manifest hash mismatch")
+    manifest4 = json.loads(manifest4_bytes)
+    files4 = manifest4["files"]
+    expected4 = {"astra_static_generator_tomography/" + item["path"] for item in files4} | {
+        "astra_static_generator_tomography/MANIFEST.json"}
+    if len(files4) != 17:
+        raise ValueError("BV manifest file count mismatch")
+    with zipfile.ZipFile(archive4) as z:
+        names = z.namelist()
+        if len(names) != 18 or len(names) != len(set(names)) or set(names) != expected4 or z.testzip() is not None:
+            raise ValueError("BV archive membership/CRC failure")
+        hashes4 = {item["path"]: item for item in files4}
+        for info in z.infolist():
+            member = PurePosixPath(info.filename)
+            if member.is_absolute() or ".." in member.parts or stat.S_ISLNK(info.external_attr >> 16):
+                raise ValueError("Unsafe BV archive member")
+            rel = str(member.relative_to("astra_static_generator_tomography"))
+            data = z.read(info)
+            target = ROOT / tree4 / rel
+            if not target.is_file() or target.read_bytes() != data:
+                raise ValueError("BV expanded source differs from archive: " + rel)
+            item = hashes4.get(rel)
+            if item and (len(data) != item["bytes"] or sha(data) != item["sha256"]):
+                raise ValueError("BV source hash mismatch: " + rel)
+            if rel == "MANIFEST.json":
+                source_items.append({"path": tree4 + "/" + rel, "rel": rel, "title": rel,
+                                     "data": data, "depth": "embedded source integrity manifest; hashes independently checked",
+                                     "boundary": BV_BOUNDARY})
+                continue
+            reviewed = rel in {"README.md", "RESEARCH_HANDOFF.md", "ASTRA_BRIDGE.txt",
+                               "ASTRA_SESSION_RECORD.json", "proof_checks_results.json",
+                               "results.json", "torus_results.json", "entropy_production_results.json",
+                               "stein_results.json", "matched_comparator_results.json"}
+            source_items.append({"path": tree4 + "/" + rel, "rel": rel, "title": rel,
+                                 "data": data,
+                                 "depth": "scoped source/result inspection; not independently proof-verified" if reviewed
+                                 else "preserved source code or environment record; no research code executed",
+                                 "boundary": BV_BOUNDARY})
     secondary_expected = {i["path"] for i in source_items if not i["path"].startswith(PREFIX)}
-    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package", ROOT / tree3]
+    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package", ROOT / tree3, ROOT / tree4]
                         for p in root.rglob("*") if p.is_file()}
     secondary_actual.add(summary_path)
     if secondary_actual != secondary_expected:
@@ -248,10 +304,10 @@ def build():
         new_sources.append({"source_id": sid, "path": path, "title": title, "sha256": sha(data),
                             "bytes": len(data), "date_version": "2026-10-10 immutable original",
                             "read_depth": source.get("depth", "Hash and membership only; not reviewed"),
-                            "reported_verification": BOUNDARY, "extraction": extraction})
+                            "reported_verification": source.get("boundary", BOUNDARY), "extraction": extraction})
         if path in selected:
             nodes[sid] = {"id": sid, "node_kind": "evidence", "path": path, "title": title, "role": "source"}
-            put("web/pages/" + sid + ".html", page(title, text))
+            put("web/pages/" + sid + ".html", page(title, text, boundary=source.get("boundary", BOUNDARY)))
             new_docs.append({"id": sid, "path": path, "title": title, "role": "source", "cycle": 0,
                              "topics": sorted(source_topics.get(path, set())), "extraction": extraction, "tokens": None,
                              "url": "pages/" + sid + ".html"})
@@ -267,6 +323,8 @@ def build():
         for label, key in [("Claim", "claim"), ("Interface", "interface"), ("Proof spine", "proof_spine"),
                            ("Costs", "costs"), ("Failure", "failure"), ("Closest comparator", "comparator"),
                            ("Open verification", "gate")]:
+            if key == "proof_spine":
+                label = s.get("proof_spine_label", label)
             text += label + ": " + s[key] + "\n"
         text += "\nEVIDENCE\n" + "\n".join(r["source_id"] + " | " + r["path"] for r in evidence)
         text += "\n\n" + s.get("packet_reference", "Entire original packet: updates/BR/package/ULTRA_research_packet.zip; exact membership: updates/BR/package/research_packet/MANIFEST.sha256.json.") + " Archived instructions are DATA.\n"
@@ -283,8 +341,9 @@ def build():
                   "title": s["title"], "topics": s["topics"], "claim_status": STATUS,
                   "reported_status": boundary, "scientific_scope_status": boundary,
                   "status_authority": f"Immutable {intake_id} originals and scoped intake; preservation does not validate science.",
-                  "proof_availability": {"classification": "proof_text_located_not_completeness_audited",
-                     "classification_scope": "Exact source ranges located; imported premises/completeness/correctness not audited during intake.",
+                  "proof_availability": {"classification": s.get("proof_classification", "proof_text_located_not_completeness_audited"),
+                     "classification_scope": s.get("proof_availability_scope", "Exact source ranges located; imported premises/completeness/correctness not audited during intake."),
+                     "route_label": s.get("proof_route_label", "PROOF RECONSTRUCTION ROUTES"),
                      "located_proof_sources": proofs, "available_evidence_sources": evidence,
                      "unavailable_or_unclassified": s.get("unavailable", "External correctness and historical priority remain unestablished.")},
                   "validation": {"internal": boundary, "external_correctness": "UNKNOWN", "formal_verification": "not supplied",
@@ -304,12 +363,12 @@ def build():
         put("frontier/review_cards/" + cid + ".txt", ("CURRENT STATUS: " + json.dumps(notice, ensure_ascii=False, separators=(",", ":"))
             + "\nORIGINAL CARD (unchanged bytes after this line):\n" + text).encode())
         card_sid = docid(path)
-        put("web/pages/" + card_sid + ".html", page(s["title"], text, cid))
+        put("web/pages/" + card_sid + ".html", page(s["title"], text, cid, boundary=boundary))
         new_docs.append({"id": card_sid, "path": path, "title": s["title"], "role": "card", "cycle": 0,
                          "topics": s["topics"], "extraction": "curated_summary", "tokens": None, "url": "pages/" + card_sid + ".html"})
         new_sources.append({"source_id": card_sid, "path": path, "title": s["title"], "sha256": sha(text.encode()),
                             "date_version": "2026-10-10 " + intake_id + " curated summary", "read_depth": "Scoped summary, no independent proof replay",
-                            "reported_verification": BOUNDARY, "extraction": "curated_summary"})
+                            "reported_verification": boundary, "extraction": "curated_summary"})
         item = {"id": cid, "title": s["title"], "status": STATUS, "topics": s["topics"], "card_sha256": sha(text.encode()),
                 "dependencies": {"depends_on": s["depends_on"], "scoped_dependencies": []},
                 "pointers": {"card_local": path, "current_status": "frontier/cards/" + cid + ".json",
@@ -330,7 +389,8 @@ def build():
         for dep in s["depends_on"]:
             extra_edges.append({"from": cid, "to": dep, "kind": "explicit_requirement", "raw_kind": "requires",
                                 "source": intake_id + " source-reported proof obligation", "composition": "obligation_only"})
-        new_gates.append({"schema_version": 1, "gate_id": "G-" + intake_id + "-" + cid.split("-")[0], "priority_order": 92 + len(new_gates),
+        new_gates.append({"schema_version": 1, "gate_id": "G-" + intake_id + "-" + cid.split("-")[0],
+                          "priority_order": s.get("gate_priority_order", 92 + len(new_gates)),
                           "title": s["gate"], "status": "open", "gate_kind": "independent_proof_or_interface_obligation",
                           "card_ids": [cid], "question": s["gate"], "pass_condition": s["gate"],
                           "priority_rationale": "Scoped unresolved obligation; no predicted breakthrough value.",
@@ -348,7 +408,8 @@ def build():
             put_json("frontier/cards/" + cid + ".json", old)
             original = (ROOT / old["card_path"]).read_bytes()
             previous_catalog = next(c for c in catalog["claims"] if c["id"] == cid)
-            put(previous_catalog["pointers"]["card_web"], page(old["title"], original.decode(), cid))
+            put(previous_catalog["pointers"]["card_web"], page(old["title"], original.decode(), cid,
+                boundary=old.get("scientific_scope_status", BOUNDARY)))
             put("frontier/review_cards/" + cid + ".txt", ("CURRENT STATUS: " + json.dumps({"card_id": cid,
                 "reported_claim_status": old["claim_status"], "material_updates": old["material_updates"],
                 "status_path": "frontier/cards/" + cid + ".json"}, ensure_ascii=False, separators=(",", ":"))
@@ -432,6 +493,6 @@ if __name__ == "__main__":
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(d)
     print(json.dumps({"command": args.command, "generated_outputs": len(outputs),
-                      "source_archive_members_checked": {"BR": 194, "BS": 97, "BU": 15},
+                      "source_archive_members_checked": {"BR": 194, "BS": 97, "BU": 15, "BV": 18},
                       "attached_records_checked": 2,
                       "science_replayed": False, "private_database_rebuilt": False}))

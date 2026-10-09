@@ -282,7 +282,8 @@ def build(root=ROOT, base_revision=None):
         lines.append(f"Exact incident graph + scoped relations: frontier/connections/{rid}.json; composition protocol: agent/COMPOSITION.txt")
         lines += [f"\nCARD | raw={claim['path']} | raw_sha256={status['card_sha256']}",
                   "Source-preserving display normalization applies only where explicitly noticed above.", text.rstrip("\n")]
-        lines += ["\nPROOF RECONSTRUCTION ROUTES | preserve inclusive source line numbers"]
+        lines += ["\n" + status["proof_availability"].get("route_label", "PROOF RECONSTRUCTION ROUTES")
+                  + " | preserve inclusive source line numbers"]
         for ref in proof_routes[cid]:
             lines.append(json.dumps(ref, ensure_ascii=False, separators=(",", ":")))
         if not proof_routes[cid]:

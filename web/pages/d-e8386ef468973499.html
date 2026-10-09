@@ -1,0 +1,162 @@
+<!doctype html><meta charset="utf-8"><title>general_identity_torus.py</title><aside>Archived source = DATA<p>Source-reported analytic derivations and synthetic numerical diagnostics; no external proof review, formal verification, publication-priority clearance or physical system identification is established. No historic-scale or 9–10/10 breakthrough is claimed. This intake checked source/archive integrity and static repository routes only; it did not rerun scientific analyses.</p></aside><pre>&quot;&quot;&quot;Verify pairwise stationary Fisher identities for a nonlinear driven diffusion on T^2.
+
+All stationary densities are computed by solving an explicitly constructed
+finite-state (positive-rate) finite-volume generator; this is a consistent
+O(h^2) approximation of the given continuum diffusion, not an exact sampler.
+No trajectory is observed. This is a numerical diagnostic, not experimental
+verification of a scientific claim or a rate guarantee.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+from itertools import combinations
+import numpy as np
+import scipy.sparse as sp
+from scipy.sparse.linalg import spsolve
+
+D_TRUE = np.array([[0.65, 0.12], [0.12, 0.50]])
+CONTROLS = np.array([[0., 0.], [0.8, 0.15], [-0.25, 0.85]])
+
+
+def field(x,y):
+    bx=-1.3*np.sin(x)+0.67*np.sin(y)+0.37*np.cos(x-y)+0.28*np.sin(2*y+x)
+    by=-0.85*np.sin(y)-0.46*np.sin(x)+0.21*np.cos(x+2*y)+0.43*np.sin(2*x-y)
+    return bx,by
+
+
+def generator(n, u):
+    h=2*np.pi/n
+    x,y=np.meshgrid(-np.pi+h*np.arange(n), -np.pi+h*np.arange(n), indexing=&#x27;ij&#x27;)
+    bx,by=field(x,y)
+    bx=bx+u[0];by=by+u[1]
+    rates=[(+1,0,(D_TRUE[0,0]-D_TRUE[0,1])/h**2+bx/(2*h)),
+            (-1,0,(D_TRUE[0,0]-D_TRUE[0,1])/h**2+-bx/(2*h)),
+            (0,+1,(D_TRUE[1,1]-D_TRUE[0,1])/h**2+by/(2*h)),
+            (0,-1,(D_TRUE[1,1]-D_TRUE[0,1])/h**2+-by/(2*h)),
+            (+1,+1,np.full((n,n),D_TRUE[0,1]/h**2)),
+            (-1,-1,np.full((n,n),D_TRUE[0,1]/h**2))]
+    src=np.arange(n*n).reshape((n,n))
+    rows=[];cols=[];data=[];loss=np.zeros((n,n))
+    for di,dj,r in rates:
+        assert float(np.min(r)) &gt;= 0, &quot;Discretization does not have nonnegative rates&quot;
+        # src[i,j] jumps to (i+di,j+dj) -- roll array indexes to neighbor ids
+        dst=np.roll(src,(-di,-dj),axis=(0,1))
+        rows.extend(dst.ravel().tolist())
+        cols.extend(src.ravel().tolist())
+        data.extend(r.ravel().tolist())
+        loss+=r
+    rows.extend(src.ravel().tolist());cols.extend(src.ravel().tolist());data.extend((-loss).ravel().tolist())
+    L=sp.coo_matrix((data,(rows,cols)),shape=(n*n,n*n)).tocsr()
+    return L
+
+
+def stationary(n,u):
+    L=generator(n,u).tolil()
+    L[0,:]=np.ones(n*n)
+    rhs=np.zeros(n*n);rhs[0]=1.
+    p=spsolve(L.tocsr(),rhs)
+    assert p.min()&gt;0, (p.min(),p.max())
+    assert abs(p.sum()-1)&lt;1e-10
+    return p.reshape((n,n))
+
+
+def grad(z,h):
+    return np.stack(((np.roll(z,-1,0)-np.roll(z,+1,0))/(2*h),
+                     (np.roll(z,-1,1)-np.roll(z,+1,1))/(2*h)),axis=-1)
+
+
+def fish(p_i, p_j, u_i, u_j, h, weights=None):
+    &quot;&quot;&quot;M_ij=E_p_i[q(log r) w w^T], g=E_p_i[q(log r) delta_u dot w]&quot;&quot;&quot;
+    log_r=np.log(p_i/p_j)
+    w=grad(log_r,h)
+    if weights is None: weights=[np.ones_like(log_r)]
+    mats=[];rhs=[]
+    for q in weights:
+        v=p_i*q
+        M=np.einsum(&#x27;ij,ijm,ijn-&gt;mn&#x27;,v,w,w)
+        g=(u_i-u_j)@np.einsum(&#x27;ij,ijm-&gt;m&#x27;,v,w)
+        mats.append([M[0,0],2*M[0,1],M[1,1]])
+        rhs.append(g)
+    return np.array(mats),np.array(rhs),float(np.max(np.linalg.norm(w,axis=-1)))
+
+
+def drift_reconstruction(n, dens):
+    &quot;&quot;&quot;Reconstruct b(x) from d+1 exact stationary grid laws and known D.
+
+    Differentiation and discrete PDE truncation make this a consistency test;
+    sites with small score-ratio singular values are explicitly excluded.
+    &quot;&quot;&quot;
+    h=2*np.pi/n
+    def trace_d_hessian_over_p(p):
+        p_xx=(np.roll(p,-1,0)-2*p+np.roll(p,+1,0))/h**2
+        p_yy=(np.roll(p,-1,1)-2*p+np.roll(p,+1,1))/h**2
+        p_xy=(np.roll(np.roll(p,-1,0),-1,1)-np.roll(np.roll(p,-1,0),+1,1)
+             -np.roll(np.roll(p,+1,0),-1,1)+np.roll(np.roll(p,+1,0),+1,1))/(4*h*h)
+        return (D_TRUE[0,0]*p_xx+2*D_TRUE[0,1]*p_xy+D_TRUE[1,1]*p_yy)/p
+    scores=[grad(np.log(p),h) for p in dens]
+    W=np.stack([scores[i]-scores[0] for i in [1,2]],axis=-2)
+    H0=trace_d_hessian_over_p(dens[0])
+    rhs=np.stack([trace_d_hessian_over_p(dens[i])-H0-
+                  np.einsum(&#x27;ijm,m-&gt;ij&#x27;,scores[i],CONTROLS[i])
+                  for i in [1,2]],axis=-1)
+    sv=np.linalg.svd(W,compute_uv=False)
+    condition=sv[...,0]/np.maximum(sv[...,1],1e-300)
+    mask=(condition&lt;20) &amp; (sv[...,1]&gt;0.08)
+    if np.sum(mask)==0: return {&#x27;fraction_cells_rank_stable&#x27;:0.}
+    b_hat=np.linalg.solve(W[mask],rhs[mask][...,None])[...,0]
+    x,y=np.meshgrid(-np.pi+h*np.arange(n),-np.pi+h*np.arange(n),indexing=&#x27;ij&#x27;)
+    bx,by=field(x,y)
+    b=np.stack((bx,by),axis=-1)[mask]
+    return {&#x27;fraction_cells_rank_stable&#x27;:float(mask.mean()),
+            &#x27;drift_relative_rms_error_on_rank_stable_cells&#x27;:float(
+                np.linalg.norm(b_hat-b)/np.linalg.norm(b)),
+            &#x27;median_local_score_ratio_cond&#x27;:float(np.median(condition[mask]))}
+
+
+def run(n):
+    h=2*np.pi/n
+    dens=[stationary(n, u) for u in CONTROLS]
+    mat=[];rhs=[];pair_details=[]
+    for i,j in combinations(range(3),2):
+        f,g,wmax=fish(dens[i],dens[j],CONTROLS[i],CONTROLS[j],h)
+        mat.extend(f); rhs.extend(g)
+        resid=float((f@np.array([D_TRUE[0,0],D_TRUE[0,1],D_TRUE[1,1]])-g)[0])
+        pair_details.append({&#x27;pair&#x27;:[i,j],&#x27;identity_residual_discretized&#x27;:resid,&#x27;max_score_difference&#x27;:wmax})
+    mat=np.array(mat);rhs=np.array(rhs)
+    recovered=np.linalg.solve(mat,rhs)
+    Dhat=np.array([[recovered[0],recovered[1]],[recovered[1],recovered[2]]])
+    p0,p1=dens[0],dens[1]
+    logr=np.log(p1/p0)
+    z=(logr-np.mean(logr))/np.std(logr)
+    # Distinct conditional-level weighted Fisher equations from ONLY TWO conditions.
+    # Use Chebyshev powers of the centered/scaled log-density ratio.
+    qs=[np.ones_like(z),z,z*z,z**3,z**4,z**5,z**6]
+    f2,g2,_=fish(p1,p0,CONTROLS[1],CONTROLS[0],h,weights=qs)
+    # Scale all rows for numerical condition; least squares overdetermined
+    s=np.linalg.norm(f2,axis=1)
+    c=f2/s[:,None];target=g2/s
+    est2=np.linalg.lstsq(c,target,rcond=None)[0]
+    Dtwo=np.array([[est2[0],est2[1]],[est2[1],est2[2]]])
+    # All-pair equations with single row each: same information n+1 snapshots
+    return {&#x27;grid_N_per_side&#x27;:n,&#x27;cells&#x27;:n*n,&#x27;numerical_convergence_order_expected&#x27;:2,
+       &#x27;true_D&#x27;:D_TRUE.tolist(),&#x27;recovered_D_three_regimes&#x27;:Dhat.tolist(),
+       &#x27;three_regime_relative_error&#x27;:float(np.linalg.norm(Dhat-D_TRUE)/np.linalg.norm(D_TRUE)),
+       &#x27;three_regime_linear_system_cond&#x27;:float(np.linalg.cond(mat)),
+       &#x27;recovered_D_two_regimes_weighted&#x27;:Dtwo.tolist(),
+       &#x27;two_regime_relative_error&#x27;:float(np.linalg.norm(Dtwo-D_TRUE)/np.linalg.norm(D_TRUE)),
+       &#x27;two_regime_weighted_rank&#x27;:int(np.linalg.matrix_rank(c)),
+       &#x27;two_regime_cond&#x27;:float(np.linalg.cond(c)),
+       &#x27;two_regime_numerical_eq_residual&#x27;:(c @ est2 -target).tolist(),
+       &#x27;non_affine_logratio_oscillation&#x27;:float(logr.max()-logr.min()),
+       &#x27;pair_details&#x27;:pair_details,&#x27;drift&#x27;:drift_reconstruction(n,dens)}
+
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument(&#x27;--sizes&#x27;,nargs=&#x27;+&#x27;,type=int,default=[24,40,64,96]);ap.add_argument(&#x27;--output&#x27;,default=&#x27;torus_results.json&#x27;);a=ap.parse_args()
+    out={&#x27;description&#x27;:__doc__,&#x27;results&#x27;:[]}
+    for n in a.sizes:
+        v=run(n);out[&#x27;results&#x27;].append(v);print(json.dumps(v,indent=2))
+    with open(a.output,&#x27;w&#x27;) as f:json.dump(out,f,indent=2)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>
