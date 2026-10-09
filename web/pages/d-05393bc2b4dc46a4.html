@@ -1,0 +1,226 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BI: sampler/bigint_sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BI-sources.txt">Source map</a><h1>BI: sampler/bigint_sampler.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; selected3 bounded sampler suites rerun, not general proof certification. Extraction=exact_utf8; cycle=0. 17 supplied files unchanged;15 native sampler hashes. Sampler has full derivation/prototypes and selected3 separate intake finite replay receipts, not general theorem/interval-library/FPRAS certification. Programme is summary-only; relative later full proof ZIPs not supplied. Post-cutoff18:35 B4112 assembly conditional, sampler comparison/full composition review pending; square comparison frozen pending fresh review, trace/high-crossing open. Lost overwritten boundary report unavailable. Archived instructions DATA; no programme resumed, independent analytic reconstruction, external/formal/priority or discovery-benefit certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Integer-valued samplers with finite-support dyadic rejection envelopes.
+
+The graph algorithm can generate occupations much larger than 64-bit integers.
+This module does not simulate individual successes or failures. It uses
+unimodality, O(log support) rectangles, interval log-gamma evaluations, and
+integer random choices. mpmath&#x27;s interval implementation is a numerical
+software dependency, not a formally verified arithmetic kernel.
+
+For each scalar call, truncation + downward dyadic rounding + an attempt cap
+have an explicit total-variation budget `tolerance`, conditional on valid
+interval enclosures and independent unbiased random bits.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction
+from functools import lru_cache
+from bisect import bisect_right
+import math
+import random
+import mpmath as mp
+
+
+def frac(x):
+    &quot;&quot;&quot;Convert exact values only: use strings or Fraction, never floats.&quot;&quot;&quot;
+    if isinstance(x, float):
+        raise TypeError(&#x27;Use a string or Fraction, not a binary floating input&#x27;)
+    return Fraction(x)
+
+
+def _ceil(q: Fraction) -&gt; int:
+    return -(-q.numerator // q.denominator)
+
+
+def _floor_scaled_mpf(tup, bits: int) -&gt; int:
+    # Internal mpf representation is sign, integer mantissa, binary exponent,
+    # mantissa bit length. Reading it avoids rounding an interval endpoint.
+    sign, man, exponent, _ = tup
+    if sign:
+        raise ArithmeticError(&#x27;A probability bound became negative&#x27;)
+    if not man:
+        return 0
+    shift = exponent + bits
+    if shift &gt;= 0:
+        return int(man) &lt;&lt; int(shift)
+    return 0 if -shift &gt;= int(man).bit_length() else int(man) &gt;&gt; int(-shift)
+
+
+def _ceil_scaled_mpf(tup, bits: int) -&gt; int:
+    sign, man, exponent, _ = tup
+    if sign:
+        raise ArithmeticError(&#x27;A probability bound became negative&#x27;)
+    if not man:
+        return 0
+    shift = exponent + bits
+    if shift &gt;= 0:
+        return int(man) &lt;&lt; int(shift)
+    shift = int(-shift)
+    if shift &gt;= int(man).bit_length():
+        return 1
+    return (int(man) + (1 &lt;&lt; shift) - 1) &gt;&gt; shift
+
+
+def _as_iv(q):
+    q = Fraction(q)
+    return mp.iv.mpf(q.numerator) / mp.iv.mpf(q.denominator)
+
+
+class DyadicUnimodal:
+    &quot;&quot;&quot;Finite unimodal integer law supplied by interval log mass ratios.&quot;&quot;&quot;
+    def __init__(self, maximum: int, mode: int, logratio, tolerance: Fraction,
+                 input_bits: int = 0):
+        self.maximum, self.mode = int(maximum), int(mode)
+        self.tolerance = frac(tolerance)
+        if not 0 &lt; self.tolerance &lt; Fraction(1, 4):
+            raise ValueError(&#x27;Tolerance must lie in (0, 1/4)&#x27;)
+        if not 0 &lt;= self.mode &lt;= self.maximum:
+            raise ValueError(&#x27;Mode lies outside the support&#x27;)
+        # 2*(M+1)*2^-bits &lt;= tolerance/16, conservatively.
+        precision_factor = _ceil(Fraction(64) / self.tolerance)
+        self.bits = (self.maximum + 1).bit_length() + precision_factor.bit_length()
+        self.scale = 1 &lt;&lt; self.bits
+        self.working_precision = max(100, 2*int(input_bits) + self.bits + 64)
+        self.logratio = logratio
+        self.interval_refinements = 0
+
+        @lru_cache(maxsize=None)
+        def bounds(k: int):
+            if k == self.mode:
+                return self.scale, self.scale
+            # Evaluate at increasing precision until a two-grid-unit enclosure
+            # is achieved. An explicit failure is preferable to silently
+            # claiming an error guarantee if interval evaluation is unreliable.
+            old = mp.iv.prec
+            try:
+                for factor in (1, 2, 4, 8, 16):
+                    mp.iv.prec = self.working_precision * factor
+                    value = mp.iv.exp(self.logratio(k, self.mode))
+                    lo = max(0, _floor_scaled_mpf(value._mpi_[0], self.bits))
+                    hi = min(self.scale, _ceil_scaled_mpf(value._mpi_[1], self.bits))
+                    if lo &lt;= hi and hi-lo &lt;= 2:
+                        self.interval_refinements += factor &gt; 1
+                        return lo, hi
+                raise ArithmeticError(&#x27;Interval precision was insufficient&#x27;)
+            finally:
+                mp.iv.prec = old
+        self.bounds = bounds
+        # Every dyadic block is dominated by the mass at its nearest-to-mode
+        # endpoint. Two-sided monotonicity gives envelope mass &lt;= 3*true mass,
+        # before the explicitly budgeted dyadic upward rounding.
+        blocks = [(self.mode, self.mode, self.mode)]
+        distance = 1
+        while distance &lt;= max(self.mode, self.maximum-self.mode):
+            if distance &lt;= self.mode:
+                low = max(0, self.mode-(2*distance-1))
+                high = self.mode-distance
+                blocks.append((low, high, high))
+            if self.mode+distance &lt;= self.maximum:
+                low = self.mode+distance
+                high = min(self.maximum, self.mode+2*distance-1)
+                blocks.append((low, high, low))
+            distance *= 2
+        self.blocks = []
+        self.cumulative = []
+        total = 0
+        for low, high, peak in blocks:
+            _, height = self.bounds(peak)
+            total += (high-low+1)*height
+            self.blocks.append((low, high, height))
+            self.cumulative.append(total)
+        self.total = total
+        # Success probability &gt;1/5 by the envelope and rounding bounds.
+        # log(1/tolerance) obtained from integer bit lengths without underflow.
+        log_inv_tol_bound = self.tolerance.denominator.bit_length()*math.log(2)
+        self.max_attempts = math.ceil((log_inv_tol_bound+math.log(4))/math.log(1.25))
+        self.last_attempts = 0
+        self.used_fallback = False
+
+    def draw(self, rng: random.Random) -&gt; int:
+        for attempts in range(1, self.max_attempts+1):
+            ticket = rng.randrange(self.total)
+            j = bisect_right(self.cumulative, ticket)
+            low, high, height = self.blocks[j]
+            point = rng.randrange(low, high+1)
+            accepted_height, _ = self.bounds(point)
+            if accepted_height &gt; height:
+                raise ArithmeticError(&#x27;Unimodality/envelope consistency failed&#x27;)
+            if rng.randrange(height) &lt; accepted_height:
+                self.last_attempts = attempts
+                return point
+        self.last_attempts = self.max_attempts
+        self.used_fallback = True
+        return self.mode
+
+
+def _parameter_bits(*values):
+    ans = 1
+    for value in values:
+        q=Fraction(value)
+        ans=max(ans, abs(q.numerator).bit_length(), q.denominator.bit_length())
+    return ans
+
+
+def binomial(n: int, p, rng: random.Random, tolerance=Fraction(1, 10**12)) -&gt; int:
+    n=int(n); p=frac(p); tolerance=frac(tolerance)
+    if n&lt;0 or not 0 &lt;= p &lt;= 1:
+        raise ValueError(&#x27;Invalid binomial parameters&#x27;)
+    if n == 0 or p == 0: return 0
+    if p == 1: return n
+    mode=((n+1)*p.numerator)//p.denominator
+    mode=min(n,mode)
+    def logratio(k,m):
+        # Normalization cancels: no factorial with O(n) digits is constructed.
+        pp=_as_iv(p); qq=_as_iv(1-p)
+        return (mp.iv.loggamma(m+1)+mp.iv.loggamma(n-m+1)
+                -mp.iv.loggamma(k+1)-mp.iv.loggamma(n-k+1)
+                +(k-m)*(mp.iv.log(pp)-mp.iv.log(qq)))
+    law=DyadicUnimodal(n,mode,logratio,tolerance,
+                       _parameter_bits(n,p))
+    return law.draw(rng)
+
+
+def negative_binomial(shape, p, rng: random.Random,
+                      tolerance=Fraction(1,10**12)) -&gt; int:
+    shape=frac(shape); p=frac(p); tolerance=frac(tolerance)
+    if shape&lt;=0 or not 0&lt;p&lt;=1:
+        raise ValueError(&#x27;Invalid negative-binomial parameters&#x27;)
+    if p==1: return 0
+    mean=shape*(1-p)/p
+    maximum=_ceil(4*mean/tolerance)  # Markov upper-tail budget tolerance/4.
+    mode=max(0, ((shape-1)*(1-p)/p).numerator // ((shape-1)*(1-p)/p).denominator)
+    def logratio(k,m):
+        rr=_as_iv(shape); qq=_as_iv(1-p)
+        return (mp.iv.loggamma(k+rr)-mp.iv.loggamma(k+1)
+                -mp.iv.loggamma(m+rr)+mp.iv.loggamma(m+1)
+                +(k-m)*mp.iv.log(qq))
+    law=DyadicUnimodal(maximum,mode,logratio,tolerance,
+                       _parameter_bits(maximum,shape,p))
+    return law.draw(rng)
+
+
+def rational_choice(weights, rng: random.Random) -&gt; int:
+    weights=[Fraction(w) for w in weights]
+    if not weights or any(w&lt;0 for w in weights) or not any(weights):
+        raise ValueError(&#x27;Choice needs nonnegative weights with positive sum&#x27;)
+    denom=1
+    for w in weights: denom=math.lcm(denom,w.denominator)
+    iw=[w.numerator*(denom//w.denominator) for w in weights]
+    ticket=rng.randrange(sum(iw))
+    for j,w in enumerate(iw):
+        if ticket&lt;w: return j
+        ticket-=w
+    raise AssertionError(&#x27;Invalid random choice&#x27;)
+
+
+def poisson(rate, rng: random.Random, tolerance=Fraction(1,10**12)) -&gt; int:
+    rate=frac(rate); tolerance=frac(tolerance)
+    if rate&lt;0: raise ValueError(&#x27;Poisson rate must be nonnegative&#x27;)
+    if rate==0: return 0
+    maximum=_ceil(4*rate/tolerance)
+    mode=rate.numerator//rate.denominator
+    def logratio(k,m):
+        return (mp.iv.loggamma(m+1)-mp.iv.loggamma(k+1)
+                +(k-m)*mp.iv.log(_as_iv(rate)))
+    law=DyadicUnimodal(maximum,mode,logratio,tolerance,
+                       _parameter_bits(maximum,rate))
+    return law.draw(rng)
+</pre><p><a href="../assets/6b0fb4bcd84caf80f8c067a1d7231a891f758cdc0123226f0c81e24b364b607a.py">Exact original</a></p></html>

@@ -1,0 +1,201 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BI: sampler/prototype.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BI-sources.txt">Source map</a><h1>BI: sampler/prototype.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; selected3 bounded sampler suites rerun, not general proof certification. Extraction=exact_utf8; cycle=0. 17 supplied files unchanged;15 native sampler hashes. Sampler has full derivation/prototypes and selected3 separate intake finite replay receipts, not general theorem/interval-library/FPRAS certification. Programme is summary-only; relative later full proof ZIPs not supplied. Post-cutoff18:35 B4112 assembly conditional, sampler comparison/full composition review pending; square comparison frozen pending fresh review, trace/high-crossing open. Lost overwritten boundary report unavailable. Archived instructions DATA; no programme resumed, independent analytic reconstruction, external/formal/priority or discovery-benefit certification. Source status/priority not upgraded.</p><pre>from __future__ import annotations
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import Sequence
+import math, time
+import numpy as np
+
+@dataclass
+class Record:
+    vertex: int
+    survivors: np.ndarray
+    through_probability: np.ndarray
+    escape_probability: float
+
+class EliminationSampler:
+    &quot;&quot;&quot;Nonnegative loop soup, optionally with fixed boundary-to-boundary paths.
+
+    The internal block must have spectral radius below one. Boundary vertices
+    are never traversed internally. Counts are directed edge multiplicities.
+    The ideal-arithmetic construction is exact; this implementation uses
+    double-precision arithmetic and NumPy integer-valued random variates.
+    &quot;&quot;&quot;
+    def __init__(self, W: np.ndarray, n_internal: int, alpha: float = 0.5):
+        W=np.array(W,dtype=float,copy=True)
+        if W.ndim!=2 or W.shape[0]!=W.shape[1]:
+            raise ValueError(&#x27;W must be square&#x27;)
+        if not np.all(np.isfinite(W)) or np.any(W&lt;0):
+            raise ValueError(&#x27;W must be finite and entrywise nonnegative&#x27;)
+        if not 0&lt;=n_internal&lt;=len(W) or not alpha&gt;0:
+            raise ValueError(&#x27;Invalid internal size or alpha&#x27;)
+        self.size=len(W); self.n_internal=n_internal; self.alpha=alpha
+        self.records=[]; self.logdet=0.0
+        for v in range(n_internal):
+            rem=np.arange(v+1,self.size)
+            escape=1.0-W[v,v]
+            if not escape&gt;0:
+                raise ValueError(&#x27;Nonpositive pivot: unstable block or insufficient precision&#x27;)
+            via=np.outer(W[rem,v], W[v,rem])/escape
+            direct=W[np.ix_(rem,rem)]
+            reduced=direct+via
+            probs=np.divide(via,reduced,out=np.zeros_like(via),where=reduced&gt;0)
+            if np.any(probs&lt;0) or np.any(probs&gt;1):
+                raise ArithmeticError(&#x27;Invalid routing probability&#x27;)
+            self.records.append(Record(v,rem,probs,escape))
+            self.logdet+=math.log(escape)
+            W[np.ix_(rem,rem)]=reduced
+        self.boundary=W[n_internal:,n_internal:].copy()
+
+    def sample(self, rng: np.random.Generator, boundary_counts: np.ndarray|None=None)-&gt;np.ndarray:
+        C=np.zeros((self.size,self.size),dtype=np.int64)
+        if boundary_counts is not None:
+            bc=np.asarray(boundary_counts,dtype=np.int64)
+            if bc.shape!=self.boundary.shape or np.any(bc&lt;0):
+                raise ValueError(&#x27;Invalid boundary edge counts&#x27;)
+            C[self.n_internal:,self.n_internal:]=bc
+        occ=np.zeros(self.n_internal,dtype=np.int64)
+        for rec in reversed(self.records):
+            rem=rec.survivors; sub=C[np.ix_(rem,rem)]
+            via=rng.binomial(sub,rec.through_probability)
+            C[np.ix_(rem,rem)]=sub-via
+            # Refuse a regime where an int64 reduction could overflow.
+            if sum(int(x) for x in via.flat)&gt;np.iinfo(np.int64).max//4:
+                raise OverflowError(&#x27;Use the rational arbitrary-integer backend&#x27;)
+            incoming=via.sum(axis=1); outgoing=via.sum(axis=0)
+            K=int(incoming.sum())
+            C[rem,rec.vertex]=incoming
+            C[rec.vertex,rem]=outgoing
+            if rec.escape_probability==1:
+                loops=0
+            else:
+                loops=int(rng.negative_binomial(self.alpha+K,rec.escape_probability))
+            if K+loops&gt;np.iinfo(np.int64).max:
+                raise OverflowError(&#x27;Use arbitrary-precision backend for these counts&#x27;)
+            C[rec.vertex,rec.vertex]=loops
+            occ[rec.vertex]=K+loops
+        assert np.array_equal(occ,C[:self.n_internal].sum(axis=1))
+        return occ
+
+class MatchingSampler:
+    &quot;&quot;&quot;Exact finite-state recurrence for labeled matchings with repeated types.
+
+    Arithmetic is log-domain floating point. State count is bounded by
+    product(counts[a]+1), not the number of pairings.
+    &quot;&quot;&quot;
+    def __init__(self,S:np.ndarray,counts:Sequence[int]):
+        self.S=np.asarray(S,dtype=float)
+        self.initial=tuple(int(n) for n in counts)
+        t=len(self.initial)
+        if self.S.shape!=(t,t) or any(n&lt;0 for n in self.initial):
+            raise ValueError(&#x27;Inconsistent matching input&#x27;)
+        if sum(self.initial)%2:
+            raise ValueError(&#x27;Odd number of matching tokens&#x27;)
+        if not np.allclose(self.S,self.S.T,rtol=1e-9,atol=0):
+            raise ArithmeticError(&#x27;Effective pairing matrix lost symmetry&#x27;)
+        self.S=(self.S+self.S.T)/2
+        @lru_cache(None)
+        def logZ(state):
+            if not any(state): return 0.0
+            a=next(i for i,n in enumerate(state) if n)
+            terms=[]
+            for b in range(t):
+                multiplicity=state[b]-(b==a)
+                if multiplicity&lt;=0 or self.S[a,b]&lt;=0: continue
+                nxt=list(state); nxt[a]-=1; nxt[b]-=1
+                rest=logZ(tuple(nxt))
+                if math.isfinite(rest):
+                    terms.append(math.log(multiplicity)+math.log(self.S[a,b])+rest)
+            if not terms: return -math.inf
+            mx=max(terms)
+            return mx+math.log(sum(math.exp(x-mx) for x in terms))
+        self.logZ=logZ
+        self.log_partition=logZ(self.initial)
+        if not math.isfinite(self.log_partition):
+            raise ValueError(&#x27;The prescribed photon event has zero probability&#x27;)
+
+    def sample(self,rng):
+        state=self.initial; C=np.zeros_like(self.S,dtype=np.int64)
+        while any(state):
+            a=next(i for i,n in enumerate(state) if n)
+            opts=[]; vals=[]
+            for b in range(len(state)):
+                mult=state[b]-(b==a)
+                if mult&lt;=0 or self.S[a,b]&lt;=0: continue
+                nxt=list(state); nxt[a]-=1; nxt[b]-=1; nxt=tuple(nxt)
+                rest=self.logZ(nxt)
+                if math.isfinite(rest):
+                    opts.append((b,nxt))
+                    vals.append(math.log(mult)+math.log(self.S[a,b])+rest)
+            vmax=max(vals); probs=np.exp(np.array(vals)-vmax); probs/=probs.sum()
+            b,state=opts[int(rng.choice(len(opts),p=probs))]
+            C[a,b]+=1
+        return C
+
+class PositiveGBS:
+    def __init__(self,B:np.ndarray,herald_modes:Sequence[int]=(),herald_counts:Sequence[int]=()):
+        B=np.asarray(B,dtype=float)
+        if B.ndim!=2 or B.shape[0]!=B.shape[1] or not np.allclose(B,B.T,rtol=1e-13,atol=0):
+            raise ValueError(&#x27;B must be symmetric and square&#x27;)
+        if np.any(B&lt;0) or not np.all(np.isfinite(B)):
+            raise ValueError(&#x27;B must be finite and entrywise nonnegative&#x27;)
+        if np.max(np.abs(np.linalg.eigvalsh(B)))&gt;=1:
+            raise ValueError(&#x27;B must be a strict contraction&#x27;)
+        self.B=B; self.m=len(B)
+        H=list(map(int,herald_modes)); hc=list(map(int,herald_counts))
+        if len(H)!=len(hc) or len(set(H))!=len(H) or any(not 0&lt;=i&lt;self.m for i in H) or any(n&lt;0 for n in hc):
+            raise ValueError(&#x27;Invalid herald specification&#x27;)
+        U=[i for i in range(self.m) if i not in H]
+        self.H=H; self.U=U; self.hc=hc
+        K=np.block([[B,np.zeros_like(B)],[np.zeros_like(B),B]])
+        ui=U+[i+self.m for i in U]; hi=H+[i+self.m for i in H]
+        d=len(ui); t=len(hi)
+        X=np.zeros((d,d)); s=len(U)
+        X[:s,s:]=np.eye(s); X[s:,:s]=np.eye(s)
+        W=np.zeros((d+t,d+t))
+        W[:d,:d]=X@K[np.ix_(ui,ui)]
+        W[:d,d:]=X@K[np.ix_(ui,hi)]
+        W[d:,:d]=K[np.ix_(hi,ui)]
+        W[d:,d:]=K[np.ix_(hi,hi)]
+        self.W=W; self.engine=EliminationSampler(W,d)
+        self.matching=MatchingSampler(self.engine.boundary,hc+hc)
+        # No success probability is used by the sampling routine.
+        _,ldm=np.linalg.slogdet(np.eye(self.m)-B)
+        _,ldp=np.linalg.slogdet(np.eye(self.m)+B)
+        self.log_herald_probability=.5*(ldm+ldp-self.engine.logdet)+self.matching.log_partition-sum(math.lgamma(n+1) for n in hc)
+
+    def sample(self,rng:np.random.Generator)-&gt;np.ndarray:
+        bc=self.matching.sample(rng)
+        aux=self.engine.sample(rng,bc)
+        s=len(self.U)
+        if any(int(a)+int(b)&gt;np.iinfo(np.int64).max for a,b in zip(aux[:s],aux[s:])):
+            raise OverflowError(&#x27;Use the rational arbitrary-integer backend&#x27;)
+        return aux[:s]+aux[s:]
+
+    def sample_many(self,n:int,seed:int=0)-&gt;np.ndarray:
+        rng=np.random.default_rng(seed)
+        return np.array([self.sample(rng) for _ in range(n)],dtype=np.int64)
+
+    def conditional_pgf(self,z:Sequence[float])-&gt;float:
+        z=np.array(z,dtype=float)
+        if z.shape!=(len(self.U),) or np.any(z&lt;0) or np.any(z&gt;1):
+            raise ValueError(&#x27;z must have one [0,1] entry per unobserved mode&#x27;)
+        d=2*len(self.U); W=self.W.copy()
+        W[:d,:]*=np.r_[z,z][:,None]
+        e=EliminationSampler(W,d)
+        try:
+            ms=MatchingSampler(e.boundary,self.hc+self.hc)
+        except ValueError as exc:
+            if &#x27;zero probability&#x27; in str(exc): return 0.0
+            raise
+        return math.exp(.5*(self.engine.logdet-e.logdet)+ms.log_partition-self.matching.log_partition)
+
+if __name__==&#x27;__main__&#x27;:
+    B=np.array([[.13,.21,.08],[.21,.19,.12],[.08,.12,.10]])
+    for H,h in [((),()),((0,),(1,)),((0,),(2,)),((0,1),(1,1)),((0,),(0,))]:
+        p=PositiveGBS(B,H,h)
+        t=time.perf_counter(); samples=p.sample_many(10000,7)
+        z=np.linspace(.65,.85,len(p.U))
+        values=np.prod(z**samples,axis=1)
+        mean=values.mean(); se=values.std(ddof=1)/np.sqrt(len(values)); exact=p.conditional_pgf(z)
+        print(H,h,&#x27;pgf&#x27;,mean,&#x27;target&#x27;,exact,&#x27;zscore&#x27;,(mean-exact)/se,&#x27;Pherald&#x27;,math.exp(p.log_herald_probability),&#x27;sec&#x27;,time.perf_counter()-t)
+</pre><p><a href="../assets/db688ad2a2e9f192a2ae69628db02fb3a6f1d205d4c102ad06a1d2cedb77be57.py">Exact original</a></p></html>

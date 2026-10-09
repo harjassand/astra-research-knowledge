@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-486 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,007 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+501 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,049 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -196,6 +196,10 @@ Added BG: N402–410: internally checked exact complete/conditional entropy Choi
 
 
 Added BH: N411–416: full strict-subcritical weighted equal-order Riesz integral Liouville candidate for positive continuous everywhere-finite pointwise solutions, low-order simultaneous-source local virial, cap/source-layer energy closure, n1 coincident-line extension, separate n>=2/0<s<2 global weak fractional-PDE representation/nonexistence, singular-a.e./bounded-priority/formal-source boundaries.20 unchanged supplied files include8 pinned source/comparator/license files;19 native SHA256 and8 locally recomputed Git blobs checked. AI-assisted audits retained; no new analytic/scientific/kernel replay or external/formal/priority/discovery certification. [Sources](web/BH-sources.txt);[scopes](web/BH-reports.txt);[archive/availability](web/BH-package.txt).
+
+
+
+Added BI: N417–431: count-compressed positive Gaussian photon sampler/full proof+code with rational finite-bit backend and conditional weighted-matching extension; dated programme synthesis of sharp stationary QMS, varying-margin complete observational reconstruction, smoothing/coherence, signed graph fields, square-lattice GFF/interfaces, smooth stationary varifolds/rectifiability and commuting-game B4112 conditional assembly. Full sampler evidence versus summary-only programme proofs separated; post-cutoff/pending reviews, costs and lost report retained. [Sources](web/BI-sources.txt);[scopes](web/BI-reports.txt);[archive/availability](web/BI-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

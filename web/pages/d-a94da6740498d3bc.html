@@ -1,0 +1,79 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BI: sampler/matching_gadgets.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BI-sources.txt">Source map</a><h1>BI: sampler/matching_gadgets.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; selected3 bounded sampler suites rerun, not general proof certification. Extraction=exact_utf8; cycle=0. 17 supplied files unchanged;15 native sampler hashes. Sampler has full derivation/prototypes and selected3 separate intake finite replay receipts, not general theorem/interval-library/FPRAS certification. Programme is summary-only; relative later full proof ZIPs not supplied. Post-cutoff18:35 B4112 assembly conditional, sampler comparison/full composition review pending; square comparison frozen pending fresh review, trace/high-crossing open. Lost overwritten boundary report unavailable. Archived instructions DATA; no programme resumed, independent analytic reconstruction, external/formal/priority or discovery-benefit certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Explicit positive rational weighted-to-unweighted perfect-matching reduction.
+
+No FPRAS is implemented here. Supplying an FPRAS for simple unweighted general
+graphs makes this reduction usable with that counter. The exact counter below
+is only a small-instance diagnostic.
+&quot;&quot;&quot;
+from fractions import Fraction
+from functools import lru_cache
+from math import lcm
+
+
+def path_count_dag(weight: int):
+    &quot;&quot;&quot;A simple DAG with exactly `weight` source-to-target paths, O(log weight).&quot;&quot;&quot;
+    if not isinstance(weight,int) or weight&lt;1:
+        raise ValueError(&#x27;Weight must be a positive integer&#x27;)
+    source=0; current=1; edges=[(source,current)]; size=2
+    for bit in bin(weight)[3:]:
+        a,b,target=size,size+1,size+2; size+=3
+        edges.extend([(current,a),(current,b),(a,target),(b,target)])
+        if bit==&#x27;1&#x27;: edges.append((source,target))
+        current=target
+    return size,edges,source,current
+
+
+def edge_gadget(weight: int):
+    &quot;&quot;&quot;Ports 0,1: both used =&gt; weight completions; neither used =&gt; one.&quot;&quot;&quot;
+    n,dag,s,t=path_count_dag(weight)
+    edges=[]
+    left=lambda v: 2+2*v
+    right=lambda v: 3+2*v
+    for v in range(n): edges.append((left(v),right(v)))
+    for i,j in dag: edges.append((left(i),right(j)))
+    edges.extend([(0,right(s)),(1,left(t))])
+    return 2+2*n,edges
+
+
+def weighted_to_unweighted(weights):
+    &quot;&quot;&quot;Return a simple graph and D: Z_weighted=Z_graph/D^(n/2).&quot;&quot;&quot;
+    A=[[Fraction(w) for w in row] for row in weights]; n=len(A)
+    if n%2 or any(len(row)!=n for row in A):
+        raise ValueError(&#x27;Input must be an even-order square matrix&#x27;)
+    if any(A[i][j]!=A[j][i] or A[i][j]&lt;0 for i in range(n) for j in range(n)):
+        raise ValueError(&#x27;Weights must be symmetric and nonnegative&#x27;)
+    denominator=1
+    for i in range(n):
+        for j in range(i): denominator=lcm(denominator,A[i][j].denominator)
+    size=n; output=[]
+    for i in range(n):
+        for j in range(i):
+            if not A[i][j]: continue
+            w=A[i][j]*denominator
+            gsize,gedges=edge_gadget(int(w))
+            def vertex(v): return i if v==0 else j if v==1 else size+v-2
+            output.extend((vertex(a),vertex(b)) for a,b in gedges)
+            size+=gsize-2
+    return size,output,denominator
+
+
+def exact_count(n,edges,deleted=()):
+    adjacency=[0]*n
+    for a,b in edges:
+        if a==b: raise ValueError(&#x27;Self-edges are not allowed&#x27;)
+        adjacency[a]|=1&lt;&lt;b; adjacency[b]|=1&lt;&lt;a
+    @lru_cache(None)
+    def recurse(mask):
+        if not mask: return 1
+        if mask.bit_count()%2: return 0
+        active=[i for i in range(n) if (mask&gt;&gt;i)&amp;1]
+        i=min(active,key=lambda v:(adjacency[v]&amp;mask).bit_count())
+        neighbors=adjacency[i]&amp;mask
+        value=0
+        while neighbors:
+            bit=neighbors&amp;-neighbors; neighbors-=bit
+            value+=recurse(mask^(1&lt;&lt;i)^bit)
+        return value
+    mask=(1&lt;&lt;n)-1
+    for v in deleted: mask&amp;=~(1&lt;&lt;v)
+    return recurse(mask)
+</pre><p><a href="../assets/446dd939a1dfab5d06dbd93ccf859f1993d809fc688204ac369f4159c8c4867f.py">Exact original</a></p></html>
