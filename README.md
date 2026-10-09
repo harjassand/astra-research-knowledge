@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-511 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,066 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+529 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,355 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -204,6 +204,14 @@ Added BI: N417–431: count-compressed positive Gaussian photon sampler/full pro
 
 
 Added BJ: N432–441: full proposed universal recurrence-rigidity manuscript (one arbitrarily large compact perfect alphabet, all real recurrence parameters, prescribed-modulus robustness, analytic/nonlinear/controlled-rate consequences, sharp C1 quantifier obstruction) and source-dependent AC invariant smooth-model exclusion for a MODIFIED zero-entropy symbolic system (localized switch, vanishing TV list entropy, coding/contamination contradiction). Neither independently audited/formal/externally validated; cited scripts/primary source captures absent. [Sources](web/BJ-sources.txt);[scopes](web/BJ-reports.txt);[archive/availability](web/BJ-package.txt).
+
+
+
+Added BK: N442–459: final closed programme; internally completed commuting cubic-gap repetition, exact PSD rectifiability with mandatory source correction, conditional CAT0 apex application and upper-growth mixed energy. Square full bulk proof availability, interior/adaptive scoped review PASS; actual TRACE/weightedQHC/hookup/SLE and critical-varifold curved fit OPEN.2 historical lost addendum versions disclosed; no external/formal/priority/foundational10/10 promotion. [Sources](web/BK-sources.txt);[scopes](web/BK-reports.txt);[archive/availability](web/BK-package.txt).
+
+
+
+
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

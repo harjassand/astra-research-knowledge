@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BK: final-research-handoff/RESTORE.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BK-sources.txt">Source map</a><h1>BK: final-research-handoff/RESTORE.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. Supplied compactZIP83 members/79-entry manifest;41 principal originals/copies and121 square artifacts restored. All168400 fullarchiveblobs SHA256/CRC rechecked;2.30GB archive LOCAL-ONLY, compact and selected originals public. Navigation/retrieval/restoration not proof certification. Final source receipts override historical pending only at precise scopes.2 original frozen-version losses remain LOST_NOT_RESTORED. No new exploration/independent analytic/kernel/scientific replay at intake. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Restore verified original paths from the ASTRA content-addressed checkpoint.
+Standard-library only. A fresh destination directory is required.
+&quot;&quot;&quot;
+import argparse, hashlib, json, os, pathlib, shutil, stat, zipfile
+
+def admitted(path, profile):
+    if profile == &#x27;all&#x27;: return True
+    if profile == &#x27;sources&#x27;: return path.startswith(&#x27;work/sources/&#x27;)
+    if profile == &#x27;research&#x27;: return not path.startswith(&#x27;work/sources/&#x27;)
+    if profile == &#x27;handoff&#x27;: return path.startswith(&#x27;outputs/final-research-handoff/&#x27;)
+    if profile == &#x27;square&#x27;:
+        # Include the entire non-cache agent tree, so inherited square premises
+        # cannot be dropped merely because their directory has a generic name.
+        return path.startswith((&#x27;work/agents/&#x27;, &#x27;work/state/&#x27;, &#x27;work/handoff/&#x27;, &#x27;outputs/&#x27;))
+    return False
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument(&#x27;archive&#x27;); p.add_argument(&#x27;destination&#x27;)
+    p.add_argument(&#x27;--profile&#x27;, choices=[&#x27;handoff&#x27;,&#x27;square&#x27;,&#x27;research&#x27;,&#x27;sources&#x27;,&#x27;all&#x27;], default=&#x27;handoff&#x27;)
+    p.add_argument(&#x27;--path&#x27;, action=&#x27;append&#x27;, default=[], help=&#x27;Exact original path or directory prefix; overrides profile&#x27;)
+    p.add_argument(&#x27;--allow-internal-symlinks&#x27;, action=&#x27;store_true&#x27;)
+    a=p.parse_args(); dst=pathlib.Path(a.destination).absolute()
+    if dst.exists() and any(dst.iterdir()): raise SystemExit(&#x27;Destination must be absent or empty.&#x27;)
+    dst.mkdir(parents=True,exist_ok=True)
+    count=0; skipped=[]
+    with zipfile.ZipFile(a.archive) as z:
+        rows=[json.loads(x) for x in z.read(&#x27;PATH_INDEX.jsonl&#x27;).splitlines()]
+        selected=[r for r in rows if (any(r[&#x27;path&#x27;]==x.rstrip(&#x27;/&#x27;) or r[&#x27;path&#x27;].startswith(x.rstrip(&#x27;/&#x27;)+&#x27;/&#x27;) for x in a.path) if a.path else admitted(r[&#x27;path&#x27;], a.profile))]
+        for r in selected:
+            rel=pathlib.PurePosixPath(r[&#x27;path&#x27;])
+            if rel.is_absolute() or &#x27;..&#x27; in rel.parts: raise ValueError(&#x27;Unsafe archive path&#x27;)
+            out=dst.joinpath(*rel.parts)
+            if not out.resolve().is_relative_to(dst.resolve()): raise ValueError(&#x27;Unsafe destination path&#x27;)
+            out.parent.mkdir(parents=True,exist_ok=True)
+            if r[&#x27;kind&#x27;]==&#x27;symlink&#x27;:
+                target=r[&#x27;target&#x27;]
+                safe=not os.path.isabs(target) and (out.parent/target).resolve().is_relative_to(dst.resolve())
+                if a.allow_internal_symlinks and safe: out.symlink_to(target)
+                else: skipped.append({&#x27;path&#x27;:r[&#x27;path&#x27;],&#x27;target&#x27;:target})
+                continue
+            h=hashlib.sha256()
+            with z.open(&#x27;blobs/&#x27;+r[&#x27;sha256&#x27;]) as source, out.open(&#x27;xb&#x27;) as f:
+                while block:=source.read(1024*1024): h.update(block); f.write(block)
+            if h.hexdigest()!=r[&#x27;sha256&#x27;]: raise ValueError(&#x27;Digest mismatch: &#x27;+r[&#x27;path&#x27;])
+            os.chmod(out, r[&#x27;mode&#x27;] &amp; 0o777)
+            os.utime(out, ns=(r[&#x27;mtime_ns&#x27;],r[&#x27;mtime_ns&#x27;]))
+            count+=1
+    receipt={&#x27;profile&#x27;:a.profile,&#x27;paths&#x27;:a.path,&#x27;files_restored_and_verified&#x27;:count,&#x27;symlinks_not_restored&#x27;:skipped}
+    (dst/&#x27;RESTORE_RECEIPT.json&#x27;).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(receipt))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/27dcccb0086631f2d036392b71d6fdb0949f29cc7ee7676022ca48b3993978de.py">Exact original</a></p></html>
