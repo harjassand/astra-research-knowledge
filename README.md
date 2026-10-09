@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-399 scoped research cards, full supplied A–I research documents, J/K result summaries, and 20,553 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+411 scoped research cards, full supplied A–I research documents, J/K result summaries, and 20,573 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -142,6 +142,12 @@ Added AW: N308–321: sharp common C2 EB comparators for all defining-O(d) self-
 
 
 Added AX: N322–329: finite-support Card-ASM sparse-graph polynomial peak-HF bridge; conditional polynomial-space noncapture with original-grid qualitative and additionally imported expander exponential scales. Degree-only mu(log alpha)<=2degree(alpha) via independently reconstructed moving-center interpolation, entrywise integral norm ledger and charged impractical parameter schedule; general exponent2 and supplementary2d/r remain unproved, Pell defeats generic norm shortcut. Fixed-dimensional quadratic symplectic integer-fixed-point undecidability with a supplied rational fixed point on every input, complete cubic-Hamiltonian shear proof and all-ring affine-scheme retract. Classical ingredients and current final audits credited; exact26-file second record and separate full pasted proof captured. Internal proof/finite checks source-reported, no intake scientific replay, external correctness/priority or capability promotion. [Sources](web/AX-sources.txt);[scopes](web/AX-reports.txt);[archive/availability](web/AX-package.txt).
+
+
+
+Added AY: N330–341: supplied complete binary-tree/covariance/regression argument yields ONE full-space EB comparator atC4 for arbitrary observables on reversible bistochastic self-compatible channels; dimension-free power approximation, r-output extension, spectral obstruction,2<=C*<=4, sharpC2/nonnormal/bounded-Holevo gates separate. Coarse divisibility plus canonical maximal transfer amplifies to continuum-dimensional rational kernels; stationarity-only L1 smoothing has sharp local8 and global224. Fixed mu3 rational detector, S3 arithmetic-selective Euclidean-real cover, quadratic-CI/closure compiler and degree5 integer versus conditional degree11 rational undecidability preserve different representation costs. Symmetric cubic noise gives exact finite-mean explosion/equality-recurrence threshold and fixed stable-flow bounded-rate lifetime undecidability. All five original texts preserved; linked sandbox scripts/archives and seven-reaction listing absent. External correctness/priority/formal status unverified; no intake scientific replay or capability promotion. [Sources](web/AY-sources.txt);[scopes](web/AY-reports.txt);[archive/availability](web/AY-package.txt).
+
+
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
