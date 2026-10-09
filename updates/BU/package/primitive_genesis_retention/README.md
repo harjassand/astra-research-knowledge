@@ -1,0 +1,41 @@
+# Astra Primitive Genesis — action-compatible retention
+
+**Date:** 10 October 2026. **Repository status:** No repository changes were made.
+
+The strongest result developed in this packet is the full-unitary finite-horizon state law:
+
+\[
+m_*(T;D,\delta,\epsilon)=\Theta_{D,\delta,\epsilon}(T^{D-1}),
+\]
+
+for the precisely specified weak-measurement family in `QUANTUM_ORBIT_EXTENSION.md`, with fixed D>=2, 0<delta<=1/(D^2-1), and 0<epsilon<delta/[2(D^2-1)]. Its static positive factorization size is exactly D^2. Its quantum realization uses Hilbert-space dimension D for every horizon. The classical bit count is (D-1)log_2(T)+O_(D,delta,epsilon)(1), not T^(D-1) bits.
+
+The primitive is a composition-sensitive retention functional and its representation-valued transfer operator. Its ingredients include known representation transforms, quantization and convex geometry. The operational identities and finite-horizon theorems were derived in this session; that does not certify historical novelty.
+
+## Read order
+
+1. `QUANTUM_ORBIT_EXTENSION.md`: strongest theorem and complete matrix-orbit proof.
+2. `RESEARCH_NOTE.md`: foundational setup, sharp spherical retention, exact circle coefficient, matching sphere memory law, counterexamples and finite-alphabet block profile.
+3. `HANDOFF.md`: one unresolved mathematical obligation and branch-specific reuse limits.
+4. `CLAIMS.json` and `SOURCE_PROVENANCE.json`: exact claim scopes, source pins and evidence boundaries.
+
+## Reproduction
+
+Requirements: Python >=3.10, NumPy and SymPy. No network is used by the verifiers.
+
+```sh
+python verify.py --output verification_receipt.json
+python -O verify.py --output verification_receipt_optimized.json
+python verify_quantum.py --output quantum_verification_receipt.json
+python -O verify_quantum.py --output quantum_verification_receipt_optimized.json
+```
+
+There are 181 spherical/general checks and 316 matrix-extension checks: 497 distinct checks, replayed in ordinary and optimized Python. Of these, 79 are exact symbolic/rational checks, 25 are finite exhaustive encoder cases using floating complex arithmetic, and 393 are numerical diagnostics. The enumeration covers 25,361 encoder assignments. These counts are not evidence of historical importance, external correctness, or a general theorem's formal verification.
+
+The first matrix verifier used structural symbolic equality in its final graph-projection check. Equivalent unsimplified expressions failed that test. `CHECKER_CORRECTION.json` records the diagnosis and correction; `verify_quantum_initial_failed.py` preserves the original failing checker and is **not** the recommended verifier.
+
+## Status
+
+Written proofs: supplied. Finite checks: replayed as recorded. Independent external review: not performed. Proof-assistant verification: not performed. Priority audit: incomplete. Historic foundational objective: not established. Bit complexity, practical sampling, empirical validation, and fixed finite-gate sharpness are outside the established claims.
+
+`MANIFEST.sha256` hashes the supplied local artifacts. Upstream digests in `SOURCE_PROVENANCE.json` are labeled according to whether they were independently recomputed or merely reported by the source.

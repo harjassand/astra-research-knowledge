@@ -153,9 +153,60 @@ def build():
         raise ValueError("BT attached record hash mismatch")
     source_items.append({"path": bt_path, "rel": "research_record.md", "title": "Delayed division responses: a falsification-first continuation",
                          "data": bt_data, "depth": "complete attached record read; cited code/data bundle not supplied"})
+    # BU is the first Primitive Genesis handoff. Preserve the exact folder and
+    # its sibling ZIP; verify both against the internal SHA-256 manifest.
+    genesis = read("updates/BU/INTEGRITY.json")
+    archive3_rel = genesis["archive_path"]
+    archive3 = ROOT / archive3_rel
+    if sha(archive3.read_bytes()) != genesis["archive_sha256"] or len(archive3.read_bytes()) != genesis["archive_bytes"]:
+        raise ValueError("BU archive hash/size mismatch")
+    tree3 = "updates/BU/package/primitive_genesis_retention"
+    manifest_path = ROOT / tree3 / "MANIFEST.sha256"
+    manifest3 = {}
+    for line in manifest_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            digest, rel = line.split(None, 1)
+            manifest3[rel.strip().lstrip("*")] = digest
+    if len(manifest3) != 14 or sha(manifest_path.read_bytes()) != genesis["manifest_sha256"]:
+        raise ValueError("BU source manifest mismatch")
+    with zipfile.ZipFile(archive3) as z:
+        names = z.namelist()
+        expected_names = {"primitive_genesis_retention/" + p for p in manifest3} | {
+            "primitive_genesis_retention/MANIFEST.sha256"}
+        if len(names) != 15 or len(names) != len(set(names)) or set(names) != expected_names or z.testzip() is not None:
+            raise ValueError("BU archive membership/CRC failure")
+        for info in z.infolist():
+            member = PurePosixPath(info.filename)
+            if member.is_absolute() or ".." in member.parts or stat.S_ISLNK(info.external_attr >> 16):
+                raise ValueError("Unsafe BU archive member")
+            rel = str(member.relative_to("primitive_genesis_retention"))
+            data = z.read(info)
+            target = ROOT / tree3 / rel
+            if not target.is_file() or target.read_bytes() != data:
+                raise ValueError("BU expanded source differs from archive: " + rel)
+            if rel in manifest3 and sha(data) != manifest3[rel]:
+                raise ValueError("BU source hash mismatch: " + rel)
+            if rel == "MANIFEST.sha256":
+                source_items.append({"path": tree3 + "/" + rel, "rel": rel, "title": rel,
+                                     "data": data, "depth": "internal source checksum manifest; hashes independently checked"})
+                continue
+            reviewed = rel in {"README.md", "RESEARCH_NOTE.md", "QUANTUM_ORBIT_EXTENSION.md",
+                               "HANDOFF.md", "CLAIMS.json", "SOURCE_PROVENANCE.json",
+                               "CHECKER_CORRECTION.json"}
+            source_items.append({"path": tree3 + "/" + rel, "rel": rel, "title": rel,
+                                 "data": data,
+                                 "depth": "scoped source reading; not independently proof-verified" if reviewed
+                                 else "preserved receipt or code; no scientific verifier executed"})
+    summary_path = "updates/BU/PRESENTED_SUMMARY.txt"
+    summary_data = (ROOT / summary_path).read_bytes()
+    if sha(summary_data) != genesis["presented_summary_sha256"] or len(summary_data) != genesis["presented_summary_bytes"]:
+        raise ValueError("BU pasted-summary hash/size mismatch")
+    source_items.append({"path": summary_path, "rel": "PRESENTED_SUMMARY.txt", "title": "User-pasted Primitive Genesis summary",
+                         "data": summary_data, "depth": "abridged conversational summary; full source note is authoritative"})
     secondary_expected = {i["path"] for i in source_items if not i["path"].startswith(PREFIX)}
-    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package"]
+    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package", ROOT / tree3]
                         for p in root.rglob("*") if p.is_file()}
+    secondary_actual.add(summary_path)
     if secondary_actual != secondary_expected:
         raise ValueError("Supplemental source tree membership mismatch")
     outputs = {}
@@ -381,6 +432,6 @@ if __name__ == "__main__":
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(d)
     print(json.dumps({"command": args.command, "generated_outputs": len(outputs),
-                      "source_archive_members_checked": {"BR": 194, "BS": 97},
-                      "attached_records_checked": 1,
+                      "source_archive_members_checked": {"BR": 194, "BS": 97, "BU": 15},
+                      "attached_records_checked": 2,
                       "science_replayed": False, "private_database_rebuilt": False}))
