@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-501 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,049 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+511 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,066 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -200,6 +200,10 @@ Added BH: N411–416: full strict-subcritical weighted equal-order Riesz integra
 
 
 Added BI: N417–431: count-compressed positive Gaussian photon sampler/full proof+code with rational finite-bit backend and conditional weighted-matching extension; dated programme synthesis of sharp stationary QMS, varying-margin complete observational reconstruction, smoothing/coherence, signed graph fields, square-lattice GFF/interfaces, smooth stationary varifolds/rectifiability and commuting-game B4112 conditional assembly. Full sampler evidence versus summary-only programme proofs separated; post-cutoff/pending reviews, costs and lost report retained. [Sources](web/BI-sources.txt);[scopes](web/BI-reports.txt);[archive/availability](web/BI-package.txt).
+
+
+
+Added BJ: N432–441: full proposed universal recurrence-rigidity manuscript (one arbitrarily large compact perfect alphabet, all real recurrence parameters, prescribed-modulus robustness, analytic/nonlinear/controlled-rate consequences, sharp C1 quantifier obstruction) and source-dependent AC invariant smooth-model exclusion for a MODIFIED zero-entropy symbolic system (localized switch, vanishing TV list entropy, coding/contamination contradiction). Neither independently audited/formal/externally validated; cited scripts/primary source captures absent. [Sources](web/BJ-sources.txt);[scopes](web/BJ-reports.txt);[archive/availability](web/BJ-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
