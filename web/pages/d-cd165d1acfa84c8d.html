@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BD: npt/npt_core.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BD-sources.txt">Source map</a><h1>BD: npt/npt_core.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Twenty-four supplied NPT files have full restricted algebra, eight Python sources and finite receipts. Two identical pasted broadcast reports resolve to one exact summary object with both provenance paths. The separate339-line full broadcast manuscript and160-check artifacts are absent. No scientific replay, independent proof reconstruction or external/formal/priority validation at intake. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite computations for the Werner endpoint. No numerical run proves all-copy positivity.&quot;&quot;&quot;
+from __future__ import annotations
+from numbers import Integral
+import numpy as np
+from numpy.typing import NDArray
+
+
+def partial_trace(a: NDArray, dims: tuple[int, ...], traced: tuple[int, ...]) -&gt; NDArray:
+    &quot;&quot;&quot;Contract matching row/column tensor slots, retaining their original order.&quot;&quot;&quot;
+    if a.shape != (int(np.prod(dims)),) * 2:
+        raise ValueError(&#x27;Matrix shape and tensor dimensions disagree.&#x27;)
+    t = a.reshape(dims + dims)
+    left = list(dims)
+    for i in sorted(traced, reverse=True):
+        if not 0 &lt;= i &lt; len(left):
+            raise ValueError(&#x27;Invalid trace slot.&#x27;)
+        t = np.trace(t, axis1=i, axis2=i+len(left))
+        left.pop(i)
+    outdim = int(np.prod(left)) if left else 1
+    return np.asarray(t).reshape(outdim, outdim)
+
+
+def endpoint_action(a: NDArray, dims: tuple[int, ...]) -&gt; NDArray:
+    &quot;&quot;&quot;Apply the commuting Hilbert--Schmidt operators I - (1/2) Tr_i(.) tensor I_i.&quot;&quot;&quot;
+    n = len(dims)
+    out = a.reshape(dims + dims).copy()
+    for i, d in enumerate(dims):
+        perm = [i, n+i] + [j for j in range(2*n) if j not in (i, n+i)]
+        inv = np.argsort(perm)
+        v = out.transpose(perm)
+        tr = np.trace(v, axis1=0, axis2=1)
+        correction = np.eye(d).reshape((d,d)+(1,)*(2*n-2)) * tr
+        out = (v - 0.5*correction).transpose(inv)
+    return out.reshape(a.shape)
+
+
+def endpoint(a: NDArray, dims: tuple[int, ...]) -&gt; float:
+    return float(np.vdot(a, endpoint_action(a, dims)).real)
+
+
+def endpoint_numerator(a: NDArray, dims: tuple[int, ...]) -&gt; int:
+    &quot;&quot;&quot;Return exactly 2**n*q_n(a) for a matrix of Python integer entries.&quot;&quot;&quot;
+    a = np.asarray(a, dtype=object)
+    if any(not isinstance(x, Integral) for x in a.flat):
+        raise TypeError(&#x27;Exact evaluation requires integer entries, without rounding.&#x27;)
+    n = len(dims)
+    total = 0
+    for mask in range(1 &lt;&lt; n):
+        traced = tuple(i for i in range(n) if (mask &gt;&gt; i) &amp; 1)
+        t = partial_trace(a, dims, traced)
+        norm2 = sum(int(x)*int(x) for x in t.flat)
+        total += (-1)**len(traced) * 2**(n-len(traced))*norm2
+    return int(total)
+
+
+def swap_metric_numerator(z: NDArray, dims: tuple[int, ...]) -&gt; int:
+    &quot;&quot;&quot;Exactly evaluate z^T [tensor_i (2I-F_i)] z using integer arithmetic.&quot;&quot;&quot;
+    n = len(dims)
+    z = np.asarray(z, dtype=object).reshape(dims+dims)
+    if any(not isinstance(x, Integral) for x in z.flat):
+        raise TypeError(&#x27;Exact evaluation requires integer entries, without rounding.&#x27;)
+    out = z.copy()
+    for i in range(n):
+        out = 2*out - out.swapaxes(i,n+i)
+    return int(sum(int(a)*int(b) for a,b in zip(z.flat, out.flat)))
+</pre><p><a href="../assets/aee306ba75aa747209b60d9ef383c871ca397639395fdcdaef6c2e9923db2435.py">Exact original</a></p></html>
