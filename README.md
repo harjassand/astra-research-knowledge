@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-432 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,738 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+437 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,747 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -158,6 +158,12 @@ Added AZ: N342–352: sharp complete physical KMS J>=pi E and primitive faithful
 
 
 Added BA: N353–362: source-internally closed bounded Holevo CAPACITY plus approximate two-receiver broadcasting gives one uniform full-domain finite-outcome EB reconstruction across growing dimensions/families; compatible optimizer, independently reconstructed pair bridge, finite flagged centralization, physical Petz correction and weighted-tracial C4 explicitly stitched/audited. General nonnormal bistochastic C8 and correct binary2/sqrt(n+1) EB insertion averages, tracial entropy truncation, robust fixed-flow halting bands with rational-endpoint variant, left-c.e. phase volume degree0prime, factorial/busy-beaver finite lifetimes and second-moment obstruction, maximal diamond-versus-tiny-HS cloner boundary. All37 original files/36checksums/34manifest payloads retained; earlier pending wording remains historical. Norm obstruction credited as established amplification corollary. External/formal correctness/priority and scientific capability gain unverified; no new intake scientific replay. [Sources](web/BA-sources.txt);[scopes](web/BA-reports.txt);[archive/availability](web/BA-package.txt).
+
+
+
+
+
+Added BB: N363–367: sharp bipartite KMS correlation via established Lieb concavity supplies a faithful nontracial broadcast-tree C4 proof, arbitrary stationary/nonnormal C8 via legal KMS-adjoint square, one full observable-frame ensemble, weighted reversible/normal pointwise power rates and arbitrary Cesaro4/sqrtN. One complete465-line derivation preserved; independent review explicitly outstanding, no separate audit/script/check receipt supplied. Historical bounded-Holevo-open and diamond-unknown wording retained with later BA exact capacity closure and power-norm obstruction notices; not new proof/priority/capability certification. [Sources](web/BB-sources.txt);[scopes](web/BB-reports.txt);[archive/availability](web/BB-package.txt).
 
 
 
