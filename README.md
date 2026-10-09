@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-457 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,862 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+462 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,871 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -178,6 +178,10 @@ Added BC: N368–379: internally audited linear logarithmic capacity upper bound
 
 
 Added BD: N380–387: exact restricted Werner rank-two qutrit lifting/local-dimension descent and finite-field graph-character evaluation;10496 repeated finite span tests do not close all-copy NPT. Complete-reference bistochastic entropy/entanglement candidate, arbitrary fixed random-time diamond obstruction and independent local cloner EB cutoff are summary/sketch-only in this intake.24 NPT originals plus one canonical duplicate summary preserved; both attachment paths retained; missing339-line full note and160-check artifacts explicit. No intake scientific replay or correctness/priority/capability promotion. [Sources](web/BD-sources.txt);[scopes](web/BD-reports.txt);[archive/availability](web/BD-package.txt).
+
+
+
+Added BE: N388–392: unreviewed arbitrary-independent-input amplifier EPnI/signed-multiport variational candidate; exact signed thermal/four-weight interpolation transfer, reversed defects/OU characteristic covariance/centered-energy cancellation, proposed non-passive weighted Fock substitute and exact nonpositive phase-space dilation obstruction. Full273-line note preserved; substantial imported analytic/Lean source captures and independent squeezing-domain audits absent. Global closure remains a candidate, not a solved historic conjecture. No intake scientific replay/kernel audit/priority or capability promotion. [Sources](web/BE-sources.txt);[scopes](web/BE-reports.txt);[archive/availability](web/BE-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
