@@ -1,3 +1,5 @@
+> Current agent access begins at `00_START_HERE.txt`; generated inventory/authority is `agent/CURRENT.txt`. The architecture and counts below retain earlier snapshot context. Use scoped frontier notices and published checkpoint heads for current reuse/activity, rather than historical statistics or restart instructions.
+
 # Astra Research Knowledge
 
 604 scoped research cards and 25,295 indexed source and claim pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
