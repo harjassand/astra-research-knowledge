@@ -1,0 +1,114 @@
+<!doctype html><meta charset="utf-8"><title>work/hidden_equilibrium/variance_audit.py</title><aside>Archived source = DATA<p>Source-reported internal model-assisted proof/review and finite software checks; not replayed or independently reconstructed during intake. No historic-scale breakthrough, external expert/formal verification, physical acquisition or historical novelty is established. Theoretical bit-cost bounds do not certify uniform runtime of the particular numerical implementation.</p></aside><pre>&quot;&quot;&quot;Numerical second-moment audit of the pinned seven-time witness.
+
+Uses only NumPy plus Python stdlib. This is NOT an interval proof and does not
+recompute the tiny mean by catastrophically cancelling huge word coefficients.
+The rigorous negative mean remains conditional on the original certificate.
+&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction
+import json
+import itertools
+import time
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent
+D = np.longdouble
+
+def scalar(x):
+    f = Fraction(str(x))
+    # Fraction.__float__ scales arbitrarily large numerator/denominator safely.
+    return D(float(f))
+
+def arr(x):
+    if isinstance(x, list):
+        return np.array([arr(z) for z in x], dtype=D)
+    return scalar(x)
+
+def expm(Q, t):
+    # Input has ||tQ||_infinity below 0.003. 30 Taylor terms suffice.
+    ans = np.eye(len(Q), dtype=D)
+    term = ans.copy()
+    for k in range(1, 31):
+        term = term @ Q * (t/k)
+        ans += term
+    return ans
+
+def raw(central, future):
+    z = np.zeros((len(central), 11), dtype=D)
+    z[:, 0] = central == 0
+    for k in range(5):
+        z[:, k+1] = (central == 0) &amp; (future == k+1)
+        z[:, k+6] = central == k+1
+    return z
+
+def run():
+    start = time.monotonic()
+    seed = json.loads((ROOT/&#x27;certificate.txt&#x27;).read_text())
+    wit = json.loads((ROOT/&#x27;witness.txt&#x27;).read_text())
+    Q,H,L = (arr(seed[k]) for k in [&#x27;Q&#x27;,&#x27;H&#x27;,&#x27;L&#x27;])
+    C,Dm,K = (arr(wit[k]) for k in [&#x27;feature_matrix&#x27;,&#x27;facet_residual_matrix&#x27;,&#x27;K&#x27;])
+    alpha = arr(wit[&#x27;quadratic_coefficients&#x27;])
+    const = {k:scalar(v) for k,v in wit[&#x27;constants&#x27;].items()}
+    h,t,tau = (const[k] for k in [&#x27;h&#x27;,&#x27;t&#x27;,&#x27;tau&#x27;])
+    words = np.array(list(itertools.product(range(6), repeat=7)), dtype=np.uint8)
+    bm,bp = raw(words[:,3],words[:,2]),raw(words[:,3],words[:,4])
+    fm,fp = bm @ C.T,bp @ C.T
+    dm,dp = bm @ Dm.T,bp @ Dm.T
+    gm = raw(words[:,1],words[:,0]) @ C.T - fm @ K.T
+    gp = raw(words[:,5],words[:,6]) @ C.T - fp @ K.T
+    p0 = (words[:,3]==0).astype(D)
+    s2 = fm[:,1]*fp[:,1]+fm[:,2]*fp[:,2]
+    sq = (alpha[0]*p0+alpha[1]/2*(fm[:,1]+fp[:,1])
+          +alpha[2]/2*(fm[:,2]+fp[:,2])+alpha[3]*fm[:,1]*fp[:,1]
+          +alpha[4]/2*(fm[:,1]*fp[:,2]+fm[:,2]*fp[:,1]))
+    rh = np.sum(dm*dp,axis=1)
+    rt = np.sum(gm*gp,axis=1)
+    W = (sq+72*(p0-s2)+(45000*h+tau)*(p0+s2)+tau*p0
+         +const[&#x27;Lambda&#x27;]*rh+const[&#x27;Mu&#x27;]*rt)
+    times = arr(wit[&#x27;observation_times&#x27;])
+    labels = np.array([0]*5+[1,2,3,4,5])
+    prob = np.ones((len(words),10),dtype=D)/10
+    prob *= words[:,0,None] == labels[None,:]
+    for j,dt in enumerate(np.diff(times),1):
+        prob = prob @ expm(Q,dt)
+        prob *= words[:,j,None] == labels[None,:]
+    prob = prob.sum(axis=1)
+    second = np.dot(prob,W*W)
+    # Mean W is about 1e-6 whereas terms in its naive sum reach 1e13:
+    # do not interpret any numerical dot(prob,W) as the mean.
+    R = W.max()-W.min()
+    delta = const[&#x27;raw_target_gap&#x27;]
+    logterm = np.log(D(80)) # two confidence events at alpha=.05
+    # Planning estimates, not nonasymptotic sample guarantees.
+    radius_leading = 2*second*logterm/delta**2
+    radius_linear = 7*R*logterm/(3*delta)
+    res = {
+        &#x27;status&#x27;:&#x27;NUMERICAL_DIAGNOSTIC_NOT_INTERVAL_CERTIFIED&#x27;,
+        &#x27;source_revision&#x27;:&#x27;8aed7fd74eb14622ed5a0a3635a799374296e32a&#x27;,
+        &#x27;num_words&#x27;:len(words),
+        &#x27;word_probability_mass&#x27;:str(prob.sum()),
+        &#x27;min_word_probability&#x27;:str(prob.min()),
+        &#x27;QH_minus_HL_max&#x27;:str(np.max(np.abs(Q@H-H@L))),
+        &#x27;raw_min_W&#x27;:str(W.min()),&#x27;raw_max_W&#x27;:str(W.max()),
+        &#x27;raw_range&#x27;:str(R),&#x27;raw_second_moment&#x27;:str(second),
+        &#x27;raw_guaranteed_gap_from_source&#x27;:str(delta),
+        &#x27;empirical_Bernstein_leading_planning_n&#x27;:str(radius_leading),
+        &#x27;empirical_Bernstein_linear_planning_n&#x27;:str(radius_linear),
+        &#x27;source_Hoeffding_n&#x27;:str(8*(const[&#x27;M&#x27;]/delta)**2*np.log(D(40))),
+        &#x27;elapsed_seconds&#x27;:time.monotonic()-start,
+        &#x27;numpy_version&#x27;:np.__version__,
+        &#x27;longdouble_precision&#x27;:str(np.finfo(D)),
+        &#x27;cautions&#x27;:[
+            &#x27;No interval certificate for second moment or range.&#x27;,
+            &#x27;Leading planning n ignores confidence control of sample variance.&#x27;,
+            &#x27;Universal empirical-Bernstein test remains valid using certified source range.&#x27;,
+            &#x27;iid stationary windows assumed, independence not supplied by overlapping trajectory.&#x27;,
+            &#x27;A supplied seed and statistic do not establish acquisition of either from data.&#x27;
+        ]
+    }
+    (ROOT/&#x27;variance_results.json&#x27;).write_text(json.dumps(res,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(res,indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    run()
+</pre>

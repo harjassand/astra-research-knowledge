@@ -1,0 +1,89 @@
+<!doctype html><meta charset="utf-8"><title>work/hidden_equilibrium/exact_variance_bound.py</title><aside>Archived source = DATA<p>Source-reported internal model-assisted proof/review and finite software checks; not replayed or independently reconstructed during intake. No historic-scale breakthrough, external expert/formal verification, physical acquisition or historical novelty is established. Theoretical bit-cost bounds do not certify uniform runtime of the particular numerical implementation.</p></aside><pre>&quot;&quot;&quot;Exact rational coefficient checks and conservative finite-sample power bound.
+
+The probability reasoning is in RESULT.md. This checks only finite arithmetic;
+the inherited universal mean inequality remains a source-dependent premise.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+import math
+
+ROOT = Path(__file__).resolve().parent
+
+def matrix(x):
+    return [[F(a) for a in row] for row in x]
+
+def mul(A,z):
+    return [sum(a*b for a,b in zip(row,z)) for row in A]
+
+def sq(v):
+    return sum(x*x for x in v)
+
+def run():
+    seed=json.loads((ROOT/&#x27;certificate.txt&#x27;).read_text())
+    wit=json.loads((ROOT/&#x27;witness.txt&#x27;).read_text())
+    Q=matrix(seed[&#x27;Q&#x27;]); C=matrix(wit[&#x27;feature_matrix&#x27;])
+    D=matrix(wit[&#x27;facet_residual_matrix&#x27;]); K=matrix(wit[&#x27;K&#x27;])
+    h=F(wit[&#x27;constants&#x27;][&#x27;h&#x27;]); tau=F(wit[&#x27;constants&#x27;][&#x27;tau&#x27;])
+    Lam=F(wit[&#x27;constants&#x27;][&#x27;Lambda&#x27;]); Mu=F(wit[&#x27;constants&#x27;][&#x27;Mu&#x27;])
+    checks={}
+    checks[&#x27;Q_exit_rate_at_most_one&#x27;]=all(-Q[i][i]&lt;=1 for i in range(10))
+    checks[&#x27;Q_uniform_stationary&#x27;]=all(sum(Q[i][j] for i in range(10))==0 for j in range(10))
+    checks[&#x27;Q_rows_zero&#x27;]=all(sum(row)==0 for row in Q)
+    checks[&#x27;Q_offdiagonal_nonnegative&#x27;]=all(Q[i][j]&gt;=0 for i in range(10) for j in range(10) if i!=j)
+    checks[&#x27;K_Frobenius_squared_below_nine&#x27;]=sum(sq(row) for row in K)&lt;9
+    checks[&#x27;quadratic_coefficients_below_one_tenth&#x27;]=all(abs(F(a))&lt;F(1,10) for a in wit[&#x27;quadratic_coefficients&#x27;])
+    for c in range(6):
+        for f in range(6):
+            z=[F(0) for _ in range(11)]
+            z[0]=F(c==0)
+            if c==0 and f&gt;0:z[f]=F(1)
+            if c&gt;0:z[c+5]=F(1)
+            fv,dv=mul(C,z),mul(D,z)
+            event=(c==0 and f&gt;0)
+            checks[f&#x27;F_squared_{c}_{f}&#x27;]=sq(fv)&lt;=(100/h**2 if event else 3)
+            checks[f&#x27;D_squared_{c}_{f}&#x27;]=sq(dv)&lt;=(1 if event else h**2)
+    if not all(checks.values()):
+        raise AssertionError([k for k,v in checks.items() if not v])
+    # Target conditional second-moment estimates, for both Q and Q*:
+    f2=F(103)/h
+    d2=h+h*h
+    g2=20*f2
+    # Minkowski L2 bound for the entire raw observable W.
+    # ||Sq||_2 &lt;= 41/h follows from coefficient bounds and h&lt;=1.
+    bound=(41/h+72*(1+f2)+(45000*h+tau)*(1+f2)+tau+Lam*d2+Mu*g2)
+    variance_bound=bound*bound
+    n=2*10**64; alpha=0.05; eta=0.025; delta=1e-6
+    range_bound=1.2e40
+    lp=math.log(1/eta); ls=math.log(2/alpha)
+    v=float(variance_bound)
+    deviation=math.sqrt(2*v*lp/n)+range_bound*lp/(3*n)
+    sample_sd_bound=math.sqrt(v)+range_bound*math.sqrt(2*lp/(n-1))
+    radius=math.sqrt(2*ls/n)*sample_sd_bound+7*range_bound*ls/(3*(n-1))
+    # The final decimal check is a numerical convenience; proof uses log(40)&lt;4
+    # and the exact rational inequalities v&lt;4.105e50, range&lt;=1.2e40.
+    checks[&#x27;rational_variance_bound_below_4_105e50&#x27;]=variance_bound&lt;F(4105)*10**47
+    checks[&#x27;chosen_n_exact&#x27;]=n==2*10**64
+    assert all(checks.values()), [k for k,v in checks.items() if not v]
+    results={
+      &#x27;status&#x27;:&#x27;EXACT_FINITE_COEFFICIENT_CHECKS_PLUS_ANALYTIC_BOUND&#x27;,
+      &#x27;all_checks_pass&#x27;:all(checks.values()),&#x27;checks&#x27;:checks,
+      &#x27;L2_bound_decimal&#x27;:str(float(bound)),
+      &#x27;variance_upper_bound_decimal&#x27;:str(v),
+      &#x27;variance_upper_bound_simple&#x27;:&#x27;4.105e50&#x27;,
+      &#x27;iid_stationary_windows&#x27;:n,&#x27;null_type_I_error_at_most&#x27;:alpha,
+      &#x27;target_power_at_least&#x27;:1-2*eta,
+      &#x27;raw_gap_inherited_from_source&#x27;:delta,
+      &#x27;source_range_bound&#x27;:&#x27;1.2e40&#x27;,
+      &#x27;power_budget_left_side_numerical&#x27;:deviation+radius,
+      &#x27;proof_note&#x27;:&#x27;Use log(40)&lt;4: square-root total &lt;8.105e-7; all range/n terms &lt;1e-22; sum&lt;1e-6.&#x27;,
+      &#x27;limitations&#x27;:[&#x27;Requires inherited universal witness inequality and target gap.&#x27;,
+                    &#x27;No external proof verification.&#x27;,
+                    &#x27;Independent stationary windows and 1e-12 resolution required.&#x27;,
+                    &#x27;The enormous sample budget is not practical and is not a lower bound.&#x27;]
+    }
+    (ROOT/&#x27;exact_variance_results.json&#x27;).write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in results.items() if k!=&#x27;checks&#x27;},indent=2))
+
+if __name__==&#x27;__main__&#x27;:run()
+</pre>

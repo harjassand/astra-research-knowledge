@@ -1,0 +1,111 @@
+# Family 113: adversarial audit of the matching sampler
+
+Date: 2026-10-10 (Australia/Brisbane).
+Status: **NO VERIFIED COUNTEREXAMPLE FOUND. LOCAL ARGUMENTS INTERNALLY RECONSTRUCTED; FULL FPRAS AND FORMAL DEPENDENCY CLOSURE NOT CERTIFIED.**
+
+## Pinned source
+
+- Repository: `https://github.com/openai/math`.
+- Revision: `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`.
+- Source: `preprints/A-Fully-Polynomial-Randomized-Approximation-Scheme-for-Perfect-Matchings-in-General-Graphs-September-23-2026/build/main.tex`.
+- Exact extracted source: `matching_source.tex` beside this report, SHA-256 `dcf28553d442dfc53a9f90f7c52bd48c9e2e7e5e27b197aa7ca4be1c8daed703`.
+- Line references below refer to that exact source. No sparse-checkout changes or research-repository edits were made.
+
+The audit sought a concrete failure in the source's passage from an additive two-coordinate energy inequality to full product-chain mixing, then in the combinatorial and hole-capacity premises supplying that inequality. It did not find one. Absence of a found error is not certification.
+
+## The decisive mixing claim survives reconstruction
+
+Source lines 2319–2418 claim that the replicated adjacent-tier chain has gap at least `3/(8M)`, with `q=32L` replicas per tier and `M=Tq²+q` update choices. A suspected multiplicity defect in the residual sum is absent.
+
+Here is the complete abstract argument, isolated from the matching construction. This is a reconstruction of the source mechanism, not a claimed new theorem.
+
+Let `ν` be a finite product law over ordered slots. Nonbase slots `x` each have `q` allowed guides `y`, all later in the order. Suppose every pair update is stationary and reversible for its two-coordinate marginal, independent of other slots, and satisfies
+
+`Var_x a <= C E_xy(a(x)+b(y))`
+
+for every pair of one-coordinate functions. Base slots admit exact independent refreshes. Define `h_x=E[f|U_x,x]-E[f|U_x]`, with `U_x` the earlier slots. The martingale identity is `Var(f)=sum_x ||h_x||²`.
+
+For an allowed pair put
+
+`g_xy=E[f|U_x,x,y]`,
+`k_xy=E[f|U_x,y]-E[f|U_x]`,
+`r_xy=g_xy-E[f|U_x]-h_x-k_xy`.
+
+Apply the assumed additive inequality conditionally on `U_x`. Jensen contracts pair energy under conditional expectation, and every stationary Markov energy obeys `E(v)<=2||v||²`. Therefore
+
+`||h_x||² <= 2C E_xy(f)+4C ||r_xy||²`.
+
+Use the orthogonal product decomposition `f=sum_S f_S`. Direct substitution gives
+
+`r_xy = sum_{S subset U_x union {x,y}, x,y in S} f_S`.
+
+Every such `S` has last coordinate `y` and penultimate coordinate `x`. These determine the pair uniquely, including when different pairs share a slot. Hence
+
+`sum_xy ||r_xy||² <= Var(f)`.
+
+A base refresh satisfies `||h_i||²<=E_i(f)`. Averaging each upper-slot bound over its `q` guides and summing gives
+
+`Var(f) <= (2C/q) sum_xy E_xy(f)+(4C/q)Var(f)+sum_base E_i(f)`.
+
+For `q>=16C`, absorption gives
+
+`Var(f) <= (1/6) sum_xy E_xy(f)+(4/3)sum_base E_i(f)`.
+
+For the lazy uniform scan over the `M` updates, `E_scan=(sum_pair E+sum_base E)/(2M)`, so `Var(f)<=(8M/3)E_scan(f)`. In the manuscript `C=2L`, giving exactly `q=32L`.
+
+The hypotheses are indispensable. For example, on two independent uniform spins `(x,y)∈{-1,1}²`, the update `(x,y)->(-x,-y)` satisfies the additive bound `Var(a(x)) <= E(a(x)+b(y))/2`, yet has the nonconstant invariant `xy` and zero full spectral gap. This verifies that the source is right to require its separate replicated-product argument. It is **not** a counterexample to that argument.
+
+## Earlier combinatorics also survives the targeted audit
+
+- **Lines 1373–1521, label-adapted quadrangulation.** Reconstructed the good-exterior and bad-exterior recursive splits. The tree-walk condition supplies all claimed endpoint and leaf intersections. The complements must be taken in the original full cycle, as the source explicitly requires.
+- **Lines 1528–1572, comparability.** Side-chord labels have pairwise tree distance at most two; boundary edges and repair edges add at most two at either end, giving distance at most six. Heights differ by at most `2^6`, so activity ratio at most `192D < 1000D` follows. A common clamp contracts ratios.
+- **Lines 1807–1847, signed identity.** The complementary-arc gains add to the whole-cycle difference, rather than cancelling to zero. Counting cells minus diagonals gives the claimed global identity. This was tested by exact symbolic coefficient extraction for arbitrary values of `f` on matchings.
+- **Lines 1859–1955, encoding.** The output multiset union changes by at most four added and four deleted edges. Restoring the tagged multiset union and one layer orientation reconstructs the active cycle. The unchanged output layers reconstruct everything outside it. No exponential ambiguity was found.
+- **Lines 1975–2073, conditional guide mass and swap sum.** The factor `p_X` from guides containing the closed pattern remains in the demand bound and cancels the conditional-expectation denominator. Dropping this factor would have been fatal, but the source does not drop it. Once `A` contains the through pattern and `B` the closed pattern, their union on those vertices is a whole discrepancy cycle, so the swap is legal. Marking its chord and direction costs at most `2N`, as claimed.
+
+Independent finite checker: `matching_quadrangulation_check.py`, standard-library Python, seed 113. It exhausts all closed lazy label walks of lengths 4,6,8,10 on a four-node path and four-node star, then tests seeded random tree walks. It checks recursive arc admissibility, both repair conditions, cell count, and the whole-cycle identity by integer coefficients. Result: **46,504 cases, 184,305 cells, zero failures**. Of these cases, 1,854 are randomized constructions; the remainder are exhaustive walks on the two specified trees. This is finite evidence only.
+
+## Independent hole-capacity check
+
+A separate investigator reconstructed lines 536–706 (hole relocation and continuation), 985–1091 (subdivision deletion identity), 1167–1225 (threshold charge), and 1236–1260 (inflation expansion).
+
+No error was found. In particular, the partner `p` may itself be a fixed hole; it is then isolated in the overlay, and the endpoint classification still works. Activities below one do not reverse the threshold-charge inequality: replacing `log λ` by `log max(1,λ)` makes the integrated charge smaller.
+
+`capacity_check.py` independently enumerates path endpoint-use patterns using exact `Fraction` arithmetic, and computes bottleneck capacities by a separate pairing maximization. It checks 20,369 hole sets, including 13,306 with real completions, over `n=2,K=0` and `n=4,K=0,1,2`. All 512 even hole sets are exhaustive in the `n=2` profile; the larger profiles include all pairs and seeded sets of sizes 4,6,8. There were zero deletion-identity or threshold-charge failures; the maximal charge ratio was exactly one. A separate relocation checker tested 25,766 structural matching-pair cases through `n=10`, with zero failures. See `capacity_report.txt`, `capacity_results.json`, and `capacity_relocation_*`.
+
+These computations check deterministic deletion/charge identities without a balance assumption. They are not a finite proof of the balanced logical-hole theorem, and they do not test the entire FPRAS.
+
+## Concrete applied resource obstruction
+
+Even if every manuscript theorem is correct, its prescribed sampler is not a practical algorithm under available physical resources.
+
+The exact formulas are:
+
+- source lines 723–729: `p=2K+2`, `N=n+4p binom(n,2)`, `D0=10^8(n+1)^4`, `D=100N²D0`;
+- lines 1593–1598: `L=(10^4ND)^100`;
+- lines 2247–2255: `q=32L` replicas per tier;
+- lines 2425–2435: mixing length `ceil(20LM(Λ+ceil(log2(1/ξ))+1))`, where `Λ` itself is proportional to `Nq(T+1)`;
+- lines 2485–2503: explicit representation and update of the `q(T+1)` matching coordinates.
+
+At the smallest enlargement profile `n=2,K=0`, the source formulas give `N=10`, `D0=8.1×10^9`, `D=8.1×10^13`, and
+
+`log10(q)=1892.353651866185`.
+
+Thus even that profile prescribes over `10^1892` slots per tier. This calculation is an obstruction to executing the construction **as prescribed**, not a disproof of an asymptotic FPRAS and not a lower bound on all algorithms for the same problem. Special-casing tiny inputs or proving much sharper constants would change this particular calculation, but no such replacement was established in this audit. Reporting the source as an immediately usable general hafnian solver would conceal this cost.
+
+## Contemporary and classical comparators
+
+Verified from primary arXiv pages on 2026-10-10:
+
+- Štefankovič–Vigoda–Wilmes, [On Counting Perfect Matchings in General Graphs](https://arxiv.org/abs/1712.07504v1), proves torpid mixing for the JSV chain under arbitrary hole-pattern weighting. The source's product of perfect-matching spaces with cycle exchanges differs from the state space in that obstruction. That known result therefore does not itself refute this manuscript.
+- Chen–Guo–Vigoda–Yang, [Fast FPRAS for the Permanent](https://arxiv.org/abs/2609.20717v1), reports `O~(n^3.5 ε^-2)` for zero-one permanents. It is a strong bipartite comparator and provides no general-graph validation of family 113. Its energy-flow ideas suggest a meaningful target for reducing the source's enormous comparison and replication constants.
+
+## Formalization status and remaining gate
+
+The pinned `lean/docs/113.md` advertises formalization of the general-graph FPRAS. The pinned comparator statement `lean/ComparatorChallenges/MatchingFPRAS.lean` ends in `sorry` at lines 105–106. This is a comparator stub and is **not evidence that the separate implementation proof is missing**. The repository contains substantial `lean/OAI/Combinatorics/MatchingCount` code; a targeted grep there found no textual `sorry` or top-level `axiom`. Neither observation is proof checking. This audit did not build Lean, check the dependency closure, verify compiler trust, or inspect all algorithm and machine-execution statements. No formal certification is asserted.
+
+The narrow audit's single remaining practical obstacle is: **replace the gigantic comparison/replication overhead by a proved and executable bound at useful sizes, without losing the general-graph guarantee**. For the manuscript's mathematical status, independent whole-proof and formal-dependency verification remains a separate unresolved gate.
+
+## Cross-branch transfer
+
+The useful transferable principle is source-derived: an additive pair-energy estimate can imply full product mixing after guide replication, because an ordering charges each product interaction to its final two coordinates once. This may be useful for other replica or exchange samplers. It assumes computable pair updates, their genuine stationary law, a proved additive inequality, and an accessible base refresh. It does not acquire an unknown model, identify latent coefficients, or make an inaccessible base law sampleable.

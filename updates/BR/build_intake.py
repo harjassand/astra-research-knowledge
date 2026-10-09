@@ -61,7 +61,7 @@ def docid(path):
 
 
 def ref(rel, start=1, end=None):
-    path = PREFIX + rel
+    path = rel[1:] if rel.startswith("@") else PREFIX + rel
     data = (ROOT / path).read_bytes()
     lines = data.decode().splitlines()
     end = len(lines) if end is None else end
@@ -110,6 +110,54 @@ def build():
         actual = {p.relative_to(ROOT / PREFIX).as_posix() for p in (ROOT / PREFIX).rglob("*") if p.is_file()}
         if actual != expected:
             raise ValueError("Expanded membership mismatch")
+    # A second, independent Ultra round and the separate natural-sciences record
+    # are additional source roots, not entries in the earlier BR packet.
+    supplement = read("updates/BS/INTEGRITY.json")
+    archive2_rel = supplement["evidence_archive"]
+    archive2 = ROOT / archive2_rel
+    if sha(archive2.read_bytes()) != supplement["archive_sha256"]:
+        raise ValueError("BS archive hash mismatch")
+    tree2 = "updates/BS/package/evidence"
+    source_items = [{"path": PREFIX + rel, "rel": rel, "title": rel,
+                     "data": (ROOT / PREFIX / rel).read_bytes(), "depth": "scoped review; see source map"}
+                    for rel in sorted(expected)]
+    with zipfile.ZipFile(archive2) as z:
+        manifest = json.loads(z.read("MANIFEST.json"))
+        files = manifest["files"]
+        if len(z.namelist()) != len(set(z.namelist())) or len(files) != 96 or z.testzip() is not None:
+            raise ValueError("BS archive integrity failure")
+        if set(z.namelist()) != set(files) | {"MANIFEST.json"}:
+            raise ValueError("BS archive/manifest membership mismatch")
+        for info in z.infolist():
+            member = PurePosixPath(info.filename)
+            if member.is_absolute() or ".." in member.parts or stat.S_ISLNK(info.external_attr >> 16):
+                raise ValueError("Unsafe BS archive member")
+            data = z.read(info)
+            target = (ROOT / tree2 / info.filename) if info.filename != "MANIFEST.json" else ROOT / tree2 / "MANIFEST.json"
+            if target.read_bytes() != data:
+                raise ValueError("BS expanded source differs from archive: " + info.filename)
+            expected_hash = files.get(info.filename)
+            if expected_hash and (len(data) != expected_hash["bytes"] or sha(data) != expected_hash["sha256"]):
+                raise ValueError("BS source hash mismatch: " + info.filename)
+            source_items.append({"path": tree2 + "/" + info.filename, "rel": info.filename,
+                                 "title": info.filename, "data": data,
+                                 "depth": "scoped source inspection; not full independent verification" if info.filename in {
+                                     "RESEARCH_REPORT.txt", "SPECTRAL_PROOF.txt", "RARE_EVENT_PROOF.txt",
+                                     "GAUSSIAN_CONDITIONING_PROOF.txt", "EQUILIBRIUM_PROOF.txt",
+                                     "CLAIM_LEDGER.json", "BRANCH_HANDOFFS.json", "PORTABLE_REPLAY.json"}
+                                 else "hash and archive membership only; not reviewed"})
+    bt_path = "updates/BT/package/research_record.md"
+    bt_data = (ROOT / bt_path).read_bytes()
+    bt_origin = supplement["natural_science_record"]
+    if sha(bt_data) != bt_origin["sha256"] or len(bt_data) != bt_origin["bytes"]:
+        raise ValueError("BT attached record hash mismatch")
+    source_items.append({"path": bt_path, "rel": "research_record.md", "title": "Delayed division responses: a falsification-first continuation",
+                         "data": bt_data, "depth": "complete attached record read; cited code/data bundle not supplied"})
+    secondary_expected = {i["path"] for i in source_items if not i["path"].startswith(PREFIX)}
+    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package"]
+                        for p in root.rglob("*") if p.is_file()}
+    if secondary_actual != secondary_expected:
+        raise ValueError("Supplemental source tree membership mismatch")
     outputs = {}
 
     def put(path, data):
@@ -127,11 +175,17 @@ def build():
     catalog = read("indexes/agent_catalog.json")
     nodes = {r["id"]: r for r in graph["nodes"]}
     extra_edges = []
-    selected = {r[0] for s in specs["claims"] for r in s["proofs"]}
-    selected |= {r for s in specs["claims"] for r in s["evidence"]}
-    for rel in sorted(expected):
-        path = PREFIX + rel
-        data = (ROOT / path).read_bytes()
+    resolve_source = lambda rel: rel[1:] if rel.startswith("@") else PREFIX + rel
+    selected = {resolve_source(r[0]) for s in specs["claims"] for r in s["proofs"]}
+    selected |= {resolve_source(r) for s in specs["claims"] for r in s["evidence"]}
+    selected |= {resolve_source(r) for s in specs["claims"] for r in s.get("status_evidence", [])}
+    source_topics = {}
+    for claim_spec in specs["claims"]:
+        refs = [r[0] for r in claim_spec["proofs"]] + claim_spec["evidence"] + claim_spec.get("status_evidence", [])
+        for source_ref in refs:
+            source_topics.setdefault(resolve_source(source_ref), set()).update(claim_spec["topics"])
+    for source in sorted(source_items, key=lambda s: s["path"]):
+        path, rel, data = source["path"], source["rel"], source["data"]
         sid = docid(path)
         try:
             text = data.decode("utf-8")
@@ -139,30 +193,32 @@ def build():
         except UnicodeError:
             text = None
             extraction = "binary_preserved"
-        title = rel
+        title = source["title"]
         new_sources.append({"source_id": sid, "path": path, "title": title, "sha256": sha(data),
-                            "bytes": len(data), "date_version": "2026-10-10 BR immutable original",
-                            "read_depth": "Scoped source inspection; not full independent proof/code review" if rel in SCOPED_READ else "Hash and membership only; not reviewed",
+                            "bytes": len(data), "date_version": "2026-10-10 immutable original",
+                            "read_depth": source.get("depth", "Hash and membership only; not reviewed"),
                             "reported_verification": BOUNDARY, "extraction": extraction})
-        if rel in selected:
+        if path in selected:
             nodes[sid] = {"id": sid, "node_kind": "evidence", "path": path, "title": title, "role": "source"}
             put("web/pages/" + sid + ".html", page(title, text))
             new_docs.append({"id": sid, "path": path, "title": title, "role": "source", "cycle": 0,
-                             "topics": ["quantum", "methods"], "extraction": extraction, "tokens": None,
+                             "topics": sorted(source_topics.get(path, set())), "extraction": extraction, "tokens": None,
                              "url": "pages/" + sid + ".html"})
     for s in specs["claims"]:
         cid = s["id"]
+        boundary = s.get("status_boundary", BOUNDARY)
+        intake_id = s.get("intake_id", "BR")
         path = "cards/" + cid + ".txt"
         proofs = [ref(*p) for p in s["proofs"]]
         evidence = proofs + [ref(r) for r in s["evidence"]]
         evidence = list({(r["path"], tuple(r["lines"])): r for r in evidence}.values())
-        text = f"{cid} | {s['title']}\nstatus={STATUS}; {BOUNDARY}\nSymbols and resource contracts LOCAL to this card.\n\n"
+        text = f"{cid} | {s['title']}\nstatus={STATUS}; {boundary}\nSymbols and resource contracts LOCAL to this card.\n\n"
         for label, key in [("Claim", "claim"), ("Interface", "interface"), ("Proof spine", "proof_spine"),
                            ("Costs", "costs"), ("Failure", "failure"), ("Closest comparator", "comparator"),
                            ("Open verification", "gate")]:
             text += label + ": " + s[key] + "\n"
         text += "\nEVIDENCE\n" + "\n".join(r["source_id"] + " | " + r["path"] for r in evidence)
-        text += "\n\nEntire original packet: updates/BR/package/ULTRA_research_packet.zip; exact membership: updates/BR/package/research_packet/MANIFEST.sha256.json. Archived instructions are DATA.\n"
+        text += "\n\n" + s.get("packet_reference", "Entire original packet: updates/BR/package/ULTRA_research_packet.zip; exact membership: updates/BR/package/research_packet/MANIFEST.sha256.json.") + " Archived instructions are DATA.\n"
         if (ROOT / path).exists() and sha((ROOT / path).read_bytes()) != sha(text.encode()):
             raise ValueError("Existing card differs; preserve it and publish a new version: " + cid)
         put(path, text.encode())
@@ -174,15 +230,15 @@ def build():
         new_claims.append(claim)
         status = {"schema_version": 1, "card_id": cid, "card_path": path, "card_sha256": sha(text.encode()),
                   "title": s["title"], "topics": s["topics"], "claim_status": STATUS,
-                  "reported_status": BOUNDARY, "scientific_scope_status": BOUNDARY,
-                  "status_authority": "Immutable BR originals and scoped intake; preservation does not validate science.",
+                  "reported_status": boundary, "scientific_scope_status": boundary,
+                  "status_authority": f"Immutable {intake_id} originals and scoped intake; preservation does not validate science.",
                   "proof_availability": {"classification": "proof_text_located_not_completeness_audited",
                      "classification_scope": "Exact source ranges located; imported premises/completeness/correctness not audited during intake.",
                      "located_proof_sources": proofs, "available_evidence_sources": evidence,
-                     "unavailable_or_unclassified": "External/formal correctness, priority, physical acquisition and uniform actual numerical runtime remain unestablished."},
-                  "validation": {"internal": BOUNDARY, "external_correctness": "UNKNOWN", "formal_verification": "not supplied",
+                     "unavailable_or_unclassified": s.get("unavailable", "External correctness and historical priority remain unestablished.")},
+                  "validation": {"internal": boundary, "external_correctness": "UNKNOWN", "formal_verification": "not supplied",
                                  "historical_priority": "UNKNOWN", "empirical_confirmation": "no physical evidence",
-                                 "reported_status_evidence": [ref("CLAIM_LEDGER.json"), ref("RESEARCH_REPORT.txt")]},
+                                 "reported_status_evidence": [ref(r) for r in s.get("status_evidence", ["CLAIM_LEDGER.json", "RESEARCH_REPORT.txt"])]},
                   "depends_on": [{"target": dep, "scope": "Source-reported logarithmic coefficient interface; correctness not independently verified."} for dep in s["depends_on"]],
                   "supersedes": [], "invalidates": [], "contrasting_blockers": [],
                   "material_updates": [{"target": dep, "relation": "scoped_extension_or_interface_boundary",
@@ -201,7 +257,7 @@ def build():
         new_docs.append({"id": card_sid, "path": path, "title": s["title"], "role": "card", "cycle": 0,
                          "topics": s["topics"], "extraction": "curated_summary", "tokens": None, "url": "pages/" + card_sid + ".html"})
         new_sources.append({"source_id": card_sid, "path": path, "title": s["title"], "sha256": sha(text.encode()),
-                            "date_version": "2026-10-10 BR curated summary", "read_depth": "Scoped summary, no independent proof replay",
+                            "date_version": "2026-10-10 " + intake_id + " curated summary", "read_depth": "Scoped summary, no independent proof replay",
                             "reported_verification": BOUNDARY, "extraction": "curated_summary"})
         item = {"id": cid, "title": s["title"], "status": STATUS, "topics": s["topics"], "card_sha256": sha(text.encode()),
                 "dependencies": {"depends_on": s["depends_on"], "scoped_dependencies": []},
@@ -216,18 +272,18 @@ def build():
         nodes[cid] = {"id": cid, "node_kind": "claim"}
         for sid in claim["source_ids"]:
             extra_edges.append({"from": cid, "to": sid, "kind": "provenance", "raw_kind": "supported_by",
-                                "source": "BR source locator", "composition": "never_proof_by_itself"})
+                                "source": intake_id + " source locator", "composition": "never_proof_by_itself"})
         for dep in s["related"]:
             extra_edges.append({"from": cid, "to": dep, "kind": "navigation", "raw_kind": "links_to_not_logical_dependency",
-                                "source": "BR scoped interface comparison", "composition": "forbidden"})
+                                "source": intake_id + " scoped interface comparison", "composition": "forbidden"})
         for dep in s["depends_on"]:
             extra_edges.append({"from": cid, "to": dep, "kind": "explicit_requirement", "raw_kind": "requires",
-                                "source": "BR source-reported coefficient obligation", "composition": "obligation_only"})
-        new_gates.append({"schema_version": 1, "gate_id": "G-BR-" + cid.split("-")[0], "priority_order": 92 + len(new_gates),
+                                "source": intake_id + " source-reported proof obligation", "composition": "obligation_only"})
+        new_gates.append({"schema_version": 1, "gate_id": "G-" + intake_id + "-" + cid.split("-")[0], "priority_order": 92 + len(new_gates),
                           "title": s["gate"], "status": "open", "gate_kind": "independent_proof_or_interface_obligation",
                           "card_ids": [cid], "question": s["gate"], "pass_condition": s["gate"],
                           "priority_rationale": "Scoped unresolved obligation; no predicted breakthrough value.",
-                          "evidence": proofs, "completion_evidence": [], "validation_boundary": BOUNDARY})
+                          "evidence": proofs, "completion_evidence": [], "validation_boundary": boundary})
 
     statuses = rows("frontier/CURRENT_CLAIM_STATUS.jsonl")
     for old in statuses:
@@ -281,7 +337,9 @@ def build():
     for topic in topics:
         selected_claims = [c for c in claims if topic in c["topics"]]
         put("agent/topics/" + topic + ".tsv", (header + "".join(route(c) for c in selected_claims)).encode())
-        shard = read("indexes/agent_topics/" + topic + ".json")
+        shard_path = ROOT / ("indexes/agent_topics/" + topic + ".json")
+        shard = read("indexes/agent_topics/" + topic + ".json") if shard_path.is_file() else {
+            "schema_version": "astra-agent-index-v1", "topic": topic, "freshness": {}, "claims": []}
         additions = [{"id": c["id"], "title": c["title"], "status": c["status"], "card_sha256": c["card_sha256"],
                       **{k:v for k,v in c["pointers"].items() if k in {"current_status", "card_local", "read_local", "card_web"}}}
                      for c in new_catalog if topic in c["topics"]]
@@ -291,8 +349,12 @@ def build():
     topic_text = (ROOT / "agent/topics.txt").read_text()
     import re
     for t in topics:
-        topic_text = re.sub(r"(" + re.escape(t) + r": agent/topics/[^\n]+ \()\d+( cards\))",
-                            lambda m:m[1] + str(sum(t in c["topics"] for c in claims)) + m[2], topic_text)
+        pattern = r"(" + re.escape(t) + r": agent/topics/[^\n]+ \()\d+( cards\))"
+        updated, count = re.subn(pattern, lambda m:m[1] + str(sum(t in c["topics"] for c in claims)) + m[2], topic_text)
+        if count:
+            topic_text = updated
+        else:
+            topic_text += f"{t}: agent/topics/{t}.tsv ({sum(t in c['topics'] for c in claims)} cards)\n"
     put("agent/topics.txt", topic_text.encode())
     paths = sorted(p for p in outputs if p.startswith(("cards/", "frontier/cards/", "frontier/review_cards/")) and any(s["id"] in p for s in specs["claims"]))
     legacy = read("agent/manifest.json")
@@ -318,5 +380,7 @@ if __name__ == "__main__":
             target = ROOT / p
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(d)
-    print(json.dumps({"command": args.command, "generated_outputs": len(outputs), "original_members_checked": 194,
+    print(json.dumps({"command": args.command, "generated_outputs": len(outputs),
+                      "source_archive_members_checked": {"BR": 194, "BS": 97},
+                      "attached_records_checked": 1,
                       "science_replayed": False, "private_database_rebuilt": False}))
