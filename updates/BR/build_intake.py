@@ -31,6 +31,11 @@ BV_BOUNDARY = ("Source-reported analytic derivations and synthetic numerical dia
                "physical system identification is established. No historic-scale or 9–10/10 "
                "breakthrough is claimed. This intake checked source/archive integrity and static "
                "repository routes only; it did not rerun scientific analyses.")
+BW_BOUNDARY = ("The source reports a self-contained analytic argument and author-internal finite "
+               "software checks. This intake preserves and routes the source only; no research "
+               "script was executed and no independent proof reconstruction, external review, "
+               "formal certification or historical priority is established. The historic-scale "
+               "objective remains NOT ESTABLISHED.")
 
 
 def sha(data):
@@ -259,8 +264,62 @@ def build():
                                  "depth": "scoped source/result inspection; not independently proof-verified" if reviewed
                                  else "preserved source code or environment record; no research code executed",
                                  "boundary": BV_BOUNDARY})
+    # BW is a separate mixed-family broadcasting proof packet. The user supplied
+    # the expanded folder (not a ZIP); its deterministic archive is only a portable
+    # byte-preserving convenience. Never execute its embedded research scripts.
+    reservoir = read("updates/BW/INTEGRITY.json")
+    archive5_rel = reservoir["archive_path"]
+    archive5 = ROOT / archive5_rel
+    if sha(archive5.read_bytes()) != reservoir["archive_sha256"] or len(archive5.read_bytes()) != reservoir["archive_bytes"]:
+        raise ValueError("BW archive hash/size mismatch")
+    tree5 = "updates/BW/package/astra_mixed_broadcasting_2026-10-10"
+    manifest5_path = ROOT / tree5 / "MANIFEST.sha256"
+    manifest5 = {}
+    for line in manifest5_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            digest, rel = line.split(None, 1)
+            manifest5[rel.strip().lstrip("*")] = digest
+    if len(manifest5) != 23 or sha(manifest5_path.read_bytes()) != reservoir["manifest_sha256"]:
+        raise ValueError("BW source manifest mismatch")
+    with zipfile.ZipFile(archive5) as z:
+        names = z.namelist()
+        expected_names = {"astra_mixed_broadcasting_2026-10-10/" + p for p in manifest5} | {
+            "astra_mixed_broadcasting_2026-10-10/MANIFEST.sha256"}
+        if len(names) != 24 or len(names) != len(set(names)) or set(names) != expected_names or z.testzip() is not None:
+            raise ValueError("BW archive membership/CRC failure")
+        for info in z.infolist():
+            member = PurePosixPath(info.filename)
+            if member.is_absolute() or ".." in member.parts or stat.S_ISLNK(info.external_attr >> 16):
+                raise ValueError("Unsafe BW archive member")
+            rel = str(member.relative_to("astra_mixed_broadcasting_2026-10-10"))
+            data = z.read(info)
+            target = ROOT / tree5 / rel
+            if not target.is_file() or target.read_bytes() != data:
+                raise ValueError("BW expanded source differs from archive: " + rel)
+            expected_hash = manifest5.get(rel)
+            if expected_hash and sha(data) != expected_hash:
+                raise ValueError("BW source hash mismatch: " + rel)
+            if rel == "MANIFEST.sha256":
+                source_items.append({"path": tree5 + "/" + rel, "rel": rel, "title": rel,
+                                     "data": data, "depth": "supplied source manifest; every listed payload hash checked",
+                                     "boundary": BW_BOUNDARY})
+                continue
+            reviewed = rel in {"RESEARCH_PROOF.md", "HANDOFF.md", "CLAIMS.json", "SESSION.json",
+                               "SOURCE_REVISIONS.json", "bridges/entropy_loss_gate.json",
+                               "bridges/mixed_family_scope.json", "bridges/physical_resource.json",
+                               "AUDIT_LOG.md", "exploration/README.md"}
+            if rel in {"verification_receipt.json", "finite_design_receipt.json",
+                       "construction_run_stdout.txt", "design_run_stdout.txt",
+                       "history/verification_receipt_v1_96checks.json", "history/finite_design_receipt_v1_52checks.json"}:
+                depth = "source-reported internal receipt preserved; not replayed or independently validated"
+            elif reviewed:
+                depth = "scoped source inspection; not independent proof verification"
+            else:
+                depth = "preserved code/environment source; no research code executed"
+            source_items.append({"path": tree5 + "/" + rel, "rel": rel, "title": rel,
+                                 "data": data, "depth": depth, "boundary": BW_BOUNDARY})
     secondary_expected = {i["path"] for i in source_items if not i["path"].startswith(PREFIX)}
-    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package", ROOT / tree3, ROOT / tree4]
+    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package", ROOT / tree3, ROOT / tree4, ROOT / tree5]
                         for p in root.rglob("*") if p.is_file()}
     secondary_actual.add(summary_path)
     if secondary_actual != secondary_expected:
@@ -351,7 +410,8 @@ def build():
                   "validation": {"internal": boundary, "external_correctness": "UNKNOWN", "formal_verification": "not supplied",
                                  "historical_priority": "UNKNOWN", "empirical_confirmation": "no physical evidence",
                                  "reported_status_evidence": [ref(r) for r in s.get("status_evidence", ["CLAIM_LEDGER.json", "RESEARCH_REPORT.txt"])]},
-                  "depends_on": [{"target": dep, "scope": "Source-reported logarithmic coefficient interface; correctness not independently verified."} for dep in s["depends_on"]],
+                  "depends_on": [{"target": dep, "scope": s.get("dependency_scopes", {}).get(dep,
+                       "Source-reported logarithmic coefficient interface; correctness not independently verified.")} for dep in s["depends_on"]],
                   "supersedes": [], "invalidates": [], "contrasting_blockers": [],
                   "material_updates": [{"target": dep, "relation": "scoped_extension_or_interface_boundary",
                        "scope": s["related_scope"], "evidence": proofs} for dep in s["related"]],
@@ -495,6 +555,6 @@ if __name__ == "__main__":
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(d)
     print(json.dumps({"command": args.command, "generated_outputs": len(outputs),
-                      "source_archive_members_checked": {"BR": 194, "BS": 97, "BU": 15, "BV": 18},
+                      "source_archive_members_checked": {"BR": 194, "BS": 97, "BU": 15, "BV": 18, "BW": 24},
                       "attached_records_checked": 2,
                       "science_replayed": False, "private_database_rebuilt": False}))
