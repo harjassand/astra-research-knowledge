@@ -331,6 +331,12 @@ def build():
         if (ROOT / path).exists() and sha((ROOT / path).read_bytes()) != sha(text.encode()):
             raise ValueError("Existing card differs; preserve it and publish a new version: " + cid)
         put(path, text.encode())
+        proof_availability = {"classification": s.get("proof_classification", "proof_text_located_not_completeness_audited"),
+            "classification_scope": s.get("proof_availability_scope", "Exact source ranges located; imported premises/completeness/correctness not audited during intake."),
+            "located_proof_sources": proofs, "available_evidence_sources": evidence,
+            "unavailable_or_unclassified": s.get("unavailable", "External correctness and historical priority remain unestablished.")}
+        if s.get("proof_route_label"):
+            proof_availability["route_label"] = s["proof_route_label"]
         claim = {"id": cid, "title": s["title"], "path": path, "topics": s["topics"], "status": STATUS,
                  "source_ids": list(dict.fromkeys(r["source_id"] for r in evidence)),
                  "source_paths": list(dict.fromkeys(r["path"] for r in evidence)),
@@ -341,11 +347,7 @@ def build():
                   "title": s["title"], "topics": s["topics"], "claim_status": STATUS,
                   "reported_status": boundary, "scientific_scope_status": boundary,
                   "status_authority": f"Immutable {intake_id} originals and scoped intake; preservation does not validate science.",
-                  "proof_availability": {"classification": s.get("proof_classification", "proof_text_located_not_completeness_audited"),
-                     "classification_scope": s.get("proof_availability_scope", "Exact source ranges located; imported premises/completeness/correctness not audited during intake."),
-                     "route_label": s.get("proof_route_label", "PROOF RECONSTRUCTION ROUTES"),
-                     "located_proof_sources": proofs, "available_evidence_sources": evidence,
-                     "unavailable_or_unclassified": s.get("unavailable", "External correctness and historical priority remain unestablished.")},
+                  "proof_availability": proof_availability,
                   "validation": {"internal": boundary, "external_correctness": "UNKNOWN", "formal_verification": "not supplied",
                                  "historical_priority": "UNKNOWN", "empirical_confirmation": "no physical evidence",
                                  "reported_status_evidence": [ref(r) for r in s.get("status_evidence", ["CLAIM_LEDGER.json", "RESEARCH_REPORT.txt"])]},
