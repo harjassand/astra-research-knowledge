@@ -1,0 +1,202 @@
+INDEPENDENT ADVERSARIAL AUDIT: DISPLACED COEFFICIENT EVALUATION
+Date: 2026-10-10
+Status: analytic argument internally reconstructed; finite executable checks pass.
+No external expert or formal verification is claimed. No frozen sampler changed.
+
+AUDITED CLAIM AND INTERFACE
+
+Input rational a,c>=0, binary integer n>=0, and p>=1. For nonzero
+H_n=[x^n] exp(a*x^2/2+c*x), return a logarithmic interval of width at most
+2^(-p-1), or a floating enclosure with binary-encoded exponent. Exact zeros
+are reported separately. This interface is essential: an expanded exact
+rational H_n can have exponentially many output bits in bitlength(n).
+
+I found no mathematical counterexample to deterministic bit-polynomial
+evaluation under this interface. Below are independent reconstructions of
+the uniform bounds, an explicit alternative interpolation algorithm that
+removes a Taylor-conditioning gap, and precise software evidence.
+
+1. IDENTITY, PARITY, AND EXTREME PARAMETERS
+
+For a,c>0 put d=c/sqrt(a), sigma=(-1)^n, b(t)=1+sigma*exp(-2dt),
+m=(d+sqrt(d*d+4n))/2, and phi(t)=n*log(t)-(t-d)^2/2.
+The Gaussian moment identity gives
+ H_n=a^(n/2)/(n!*sqrt(2*pi))*integral_0^infinity exp(phi(t))*b(t) dt.
+No additional exp(-d*d/2) factor is missing. Splitting the signed Gaussian
+moment into positive and negative half-lines yields exactly this formula.
+
+Set F(m+s)=exp(phi(m+s)-phi(m))*b(m+s)/b(m). Then
+ log H_n=(n/2)log(a)-logGamma(n+1)-.5log(2*pi)
+          +n log(m)-.5(n/m)^2+log b(m)+log I,
+ I=integral_0^infinity F(t)dt.
+The identity m-d=n/m is crucial; computing m-d by subtraction would be an
+unnecessary numerical vulnerability when d is large.
+
+For odd n, b is increasing, concave, vanishes at zero, and is positive for
+t>0. Hence min(1,t/m)<=b(t)/b(m)<=max(1,t/m). Moreover for z=t+iy,t>0,
+ b(z)=2dz integral_0^1 exp(-2dzv)dv,
+ |b(z)|<=|z|*b(t)/t.
+This cancels the common small displacement analytically. There is no
+inverse-tiny-displacement blowup in the normalized complex integrand.
+For even n, 1/2<=b(t)/b(m)<=2 and |b(z)/b(m)|<=2 when Re(z)>0.
+
+If the rational inputs have total binary length L, nonzero d is at least
+2^(-O(L)); b(m)>=min(d*m,1/2)>=2^(-O(L)), because m>=1. Thus even a direct
+division by a rigorously enclosed odd b(m) costs only O(L) extra bits.
+Use expm1 or cancel d when evaluating that factor.
+
+2. REAL LOWER BOUND AND TAILS
+
+phi'(m)=0 and phi''(t)=-1-n/t^2<=-1, so F's exponential factor is at most
+exp(-s*s/2). For t in [m,m+1], n/t^2<=1, giving the lower bound exp(-s*s).
+The parity factor is at least 1/2 there. Consequently
+ I >= .5 integral_0^1 exp(-s*s)ds >= .5 integral_0^1(1-s*s)ds = 1/3.
+This is stronger than the 1/6 bound in the submitted note and justifies the
+implementation's integral.lower()>1/4 assertion once finite errors are small.
+
+For R>=1, the omitted tails are <=4 exp(-R*R/2): in the even case use two
+Gaussian tails times 2. In the odd case the left factor is <=1 and the right
+factor <=1+s/m, so the tail is <=(2/R+1/m)exp(-R*R/2)<=3 exp(-R*R/2).
+These bounds remain uniform for both tiny and huge displacement.
+
+3. COMPLEX BOUNDS AND SUBMITTED QUADRATURE CONSTANTS
+
+For the submitted algorithm m>=4(R+1). On a radius-one disk around any
+real panel center in [m-R,m+R], write z=t+iy. Then t>=3m/4, |y|<=1 and
+ n/t^2<=16/9. The exponential-factor modulus is bounded by
+ exp(phi(t)-phi(m))*exp((1+n/t^2)*y*y/2) <= exp(25/18).
+For odd n the preceding integral identity gives
+ |b(z)/b(m)|<=|z|/min(t,m)<2;
+the even bound is also 2. Thus |F(z)|<2 exp(25/18)<9<32.
+
+For panels of width 1/2 and Taylor degree K, Cauchy's estimate with M=32
+gives pointwise remainder <=(32/3)*4^(-K). Total interval length is 2R;
+the integral error is <=(64/3)R*4^(-K)<22R*4^(-K). The implementation's
+quadrature and tail bounds, 22R*4^(-K)+6 exp(-R*R/2), are conservative.
+Its R=ceil sqrt(2(p+16)), K=p+R+16 leave ample error margin.
+
+I also checked the coordinator's alternative constants: m>=2R+2 implies
+t>=m/2 on unit disks, so |F(z)|<2 exp(5/2)<25<64. Unit-width panels and
+degree q give error <=128R*2^(-q). On |s|<=1/2, m>=2 implies
+phi''>=-25/9, so F>=.5 exp(-25/72)>.5 exp(-3/8)>1/4. Thus the proposed
+smaller threshold and q=p+ceil(log2 R)+15 also work analytically.
+
+4. EXPLICIT ALTERNATIVE THAT CLOSES THE BIT-COMPLEXITY ARGUMENT
+
+A complex analyticity bound alone does not prove that a chosen floating
+Taylor recurrence has enough guard precision. One can avoid that question
+entirely with an explicit rational interpolation construction.
+
+Retain m>=4(R+1), width-1/2 panels, and M=32 on radius-one disks. On each
+panel use q+1 equally spaced rational nodes u_j=-1/4+j/(2q), j=0,...,q.
+The degree-q interpolation error, by the Cauchy interpolation formula, is
+ <=(4M/3)*(2/3)^(q+1), uniformly on that panel.
+Indeed each numerator product factor |u-u_j|<=1/2, each contour denominator
+factor |z-u_j|>=3/4, and |z-u|>=3/4 on the unit circle.
+Integrated error over all panels is <=(256R/3)*(2/3)^(q+1).
+Choosing q=2*(p+ceil(log2 R)+15) makes this <2^(-p)/512.
+
+Compute the integrated Lagrange weights exactly as rationals. For the j-th
+Lagrange basis, its denominator magnitude is (2q)^(-q)*j!*(q-j)! and its
+numerator magnitude on the panel is at most (1/2)^q. Therefore
+ sum_j integral |ell_j(u)|du <= .5*(2q)^q/q! <= .5*(2e)^q.
+Across all 4R panels, sum of absolute quadrature weights <=2R*(2e)^q.
+Node values accurate to absolute 2^[-p-O(q+log R)] therefore give the
+required integral precision. The exact rational weights have polynomial
+bit length and are constructible by polynomial arithmetic; no derivative
+oracle is assumed. The node count is O(Rq)=O(p^(3/2)).
+
+At a real node |s|<=R, F is between exp(-O(R^2)) and 2, while all log
+expressions have elementary fixed-degree algebraic arguments. Computing
+log1p(s/m), or its stable small-argument series, and multiplying by n costs
+only O(B+L+p+q) guard bits, B=bitlength(n). Odd parity uses expm1 and the
+2^(-O(L)) lower bound above. Huge d requires only binary exponent storage;
+exponentially small terms can instead be discarded under an explicit error
+budget. Thus this is a complete polynomial-bit-work route independently
+of the submitted Taylor recurrence's precise conditioning constants.
+
+The prefactor has magnitude O(n*(B+L)+L). Absolute accuracy in its logarithm
+requires O(B+L+p) significant bits, not precision proportional to n.
+logGamma at an integer can be computed by shifting an argument to O(P),
+if necessary, and using O(P) Stirling terms with the explicit remainder;
+take P polynomial in B+L+p. Bernoulli numbers and the O(P) shift products
+are constructible in polynomial bit work. Large n does not require n!
+as an expanded integer. For n<16(R+1)^2, the direct positive coefficient
+sum has O(p) terms and is already a polynomial-cost alternative.
+
+The audit-only implementation alternative_quadrature.py implements this
+rational interpolation route with certified Arb arithmetic. It handles
+the large-m positive branch; it is not advertised as a complete API.
+
+5. SOFTWARE FINDINGS AND REPAIRS
+
+Two issues were reported to the author and repaired:
+ - 6*arb(-R*R/2).exp() first constructed a Python float. For sufficiently
+   large p this could round the exponent and invalidate the stated tail
+   bound. It is now 6*(-arb(R*R)/2).exp().
+ - The fixed precision result was not checked against its advertised
+   absolute log width. The wrapper now refines precision until
+   result.rad()<=2^(-p-2), giving width <=2^(-p-1).
+The public wrapper also rejects float coefficients and noninteger order or
+precision. These fixes are present at SHA256
+ ee8c3035aaa4e3e9fffb66d98237a1cb9beb8de5e2e90cee264f01675a0a4a09.
+
+audit.py was rerun against that exact source. Fourteen checks passed:
+ - Independent O(n) positive coefficient recurrence, including n=4000,
+   4001, and 12001, with target p up to 200.
+ - Forced integral evaluations at n=1,2,49,50 and large d.
+ - Odd/even c=2^-1000, and d approximately 2^1500 or 2^-1500.
+ - n=2^1000+1 and n=10^100+1 against an independent leading-term bound.
+For odd n=2r+1, the latter uses
+ T=(a/2)^r*c/r!,  T<=H_n<=T*exp(r*c^2/(3a)),
+proved by bounding successive positive term ratios by U/(j+1).
+All output intervals overlapped the independent reference and met the
+stated width target. Timing is recorded, not interpreted as asymptotic proof.
+
+The independent interpolation implementation was compared against the
+submitted Taylor implementation for three cases, including n=2^1000+1
+and c=2^-1000. All enclosures overlapped, all passed their width checks.
+The separate records are results.json and interpolation_results.json.
+
+Remaining software caveats: FLINT/Arb is trusted numerical infrastructure;
+these tests do not formally verify it or every code path. At this initially
+audited revision an inner assertion could raise before precision refinement;
+that issue is repaired in the final revision reconciled in section 7 below.
+The existence theorem does not depend on that particular starting precision:
+the rational interpolation construction supplies an explicit polynomial
+guard bound. Correctness, totality and asymptotic complexity of the exact
+Python/FLINT implementation have not been formally verified.
+
+6. SCOPE AND NOVELTY
+
+The Gaussian moment identity, concavity arguments, Cauchy bounds, and
+rational interpolation are standard mathematical mechanisms. This audit
+does not establish historical novelty. The concrete scoped conclusion is
+that binary-large-n displaced coefficient evaluation has a uniform
+constructive route; tiny odd displacement is not a fatal cancellation
+obstruction. Efficient evaluation alone does not establish the complete
+displaced conditional sampler, physical herald preparation, tomography,
+or a historic-scale breakthrough.
+
+7. FINAL FROZEN-HASH RECONCILIATION
+
+Final audited evaluator SHA256:
+ da80e5f307d8248ee5dee5981390d5a6b6328d16a116beabdb0052b8213177a8.
+I inspected the complete diff against displaced_evaluator_pre_retry.py.txt
+(the preceding ee8c3035...a4a09 revision). The only substantive changes are:
+ - A nonfinite or too-wide integral enclosure raises dedicated
+   _NeedPrecision; the public wrapper catches exactly that exception and
+   increases working precision. This resolves the remaining-assert caveat
+   recorded in the initial audit above.
+ - The forced-integral domain test is now exact rational arithmetic. For
+   M=4(R+1), m>=M holds automatically when n>=M^2. When n<M^2 it is
+   equivalent to d*M>=M^2-n, hence to c^2*M^2>=a*(M^2-n)^2. Both sides
+   of the unsquared inequality are nonnegative, so squaring is valid.
+   This accepts the equality boundary independently of Arb rounding.
+
+The existing fourteen-check audit.py was rerun against this final hash:
+all fourteen independent-reference overlaps and width checks passed.
+results.json now records the final source hash. The prior three independent
+interpolation comparisons concern the preceding successful evaluation path,
+which the final diff does not change; no new interpolation claim is added.
+The final repair does not alter the analytic theorem or novelty limitations.

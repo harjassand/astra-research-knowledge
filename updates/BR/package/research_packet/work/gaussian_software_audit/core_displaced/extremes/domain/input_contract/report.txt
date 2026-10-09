@@ -1,0 +1,14 @@
+Input contract audit (read-only target inspection)
+
+Target: work/gaussian_transfer/displaced_evaluator.py
+Source SHA256: 2347687bc5bce7c87fd74f17487bbe83230025bca601a92c7c522552d461d747
+Cases: 33; output in results.json.
+
+Concrete observations:
+1. n is required to be a built-in int (or non-bool int subclass), nonnegative. bool, float and Fraction integral values are rejected with ValueError. This is internally consistent.
+2. p checks isinstance(p,int) but does not exclude bool. p=True is accepted as precision 1, whereas p=False is rejected. n explicitly excludes bool. This is a low-severity type-validation inconsistency; it does not demonstrate a mathematically incorrect enclosure.
+3. a,c pass through Fraction first, accepting bool, finite floats, strings and Decimal. Bool values behave as exact 0 or 1. Float 0.1 is treated as exact 3602879701896397/36028797018963968, whereas string or Decimal 0.1 means exact 1/10. This is correct Fraction semantics but should be stated in an exact-rational input contract; no distribution/enclosure defect follows.
+4. NaN coefficients raise ValueError; infinite coefficients raise OverflowError; None raises TypeError. Negative coefficients raise ValueError. These are rejected before n==0 returns, so even a constant coefficient request validates all inputs. Mixed exception types are an API choice, not a soundness issue.
+5. force_integral has no Boolean validation. The nonempty string 'False' activates it, and at (n,a,c,p)=(2,1,1,3) raises the branch precondition error. Empty string and None deactivate it; numeric 1 activates it. This can surprise callers passing serialized flags, but is ordinary Python truthiness.
+
+Conclusion: no incorrect enclosure found from input type cases. The p=True acceptance and unvalidated force_integral type are concrete API sharp edges. The declared numerical/rational domain needs documentation, especially exact interpretation of floating inputs. No target edits made.

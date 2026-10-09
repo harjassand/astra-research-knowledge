@@ -1,0 +1,74 @@
+from fractions import Fraction as F
+import json
+import random
+import resource
+import time
+
+start = time.perf_counter()
+checks = 0
+trajectories = 0
+rng = random.Random(20261010)
+
+def check(condition):
+    global checks
+    assert condition
+    checks += 1
+
+def envelope(x, c, L, eta, history):
+    return max([c-L*x] + [y-eta-L*abs(x-p) for p, y in history])
+
+def run(c, L, eta, D, greedy):
+    global trajectories
+    a = max(c-2*eta, F(0))
+    radius = min(D, c/L)
+    history = []
+    for n in range(13):
+        theoretical = min(D, (c+n*a)/L)
+        check(radius <= theoretical)
+        if greedy:
+            check(radius == theoretical)
+        check(envelope(F(0),c,L,eta,history) == c)
+        for p,y in history:
+            check(abs(envelope(p,c,L,eta,history)-y) <= eta)
+            check(envelope(p,c,L,eta,history) >= 0)
+        check(envelope(radius,c,L,eta,history) >= 0)
+        if radius < D:
+            outside = (radius+D)/2
+            check(envelope(outside,c,L,eta,history) < 0)
+        if n == 12:
+            break
+        p = radius if greedy else radius*F(rng.randrange(101),100)
+        check(envelope(p,c,L,eta,history) >= 0)
+        y = c-eta
+        history.append((p,y))
+        radius = min(D, max(radius,p+max(y-eta,F(0))/L))
+    trajectories += 1
+
+for c in [F(1,10),F(1,2),F(1),F(2)]:
+    for L in [F(1,3),F(1),F(7)]:
+        for ratio in [F(0),F(1,10),F(49,100),F(1,2),F(3,4),F(2)]:
+            for D in [F(1,10),F(1),F(10)]:
+                for greedy in [False,True]:
+                    run(c,L,c*ratio,D,greedy)
+
+examples=[]
+for eta in [F(0),F(1,50),F(49,1000),F(1,20)]:
+    c=F(1,10)
+    if c<=2*eta:
+        count=None
+    else:
+        q=(1-c)/(c-2*eta)
+        count=-(-q.numerator//q.denominator)
+    examples.append({'c':str(c),'eta':str(eta),'queries_to_certify_D_1':count})
+
+print(json.dumps({
+    'status':'PASS',
+    'scope':'exact rational finite checks; not a formal proof or physical test',
+    'seed':20261010,
+    'trajectories':trajectories,
+    'assertions':checks,
+    'elapsed_seconds':time.perf_counter()-start,
+    'process_maxrss_bytes_macos':resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+    'external_dependencies':[],
+    'examples':examples,
+},indent=2))

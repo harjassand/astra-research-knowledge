@@ -1,0 +1,79 @@
+INDEPENDENT SOFTWARE AUDIT — CONDITIONAL PHOTON SAMPLER
+Date: 2026-10-10
+Scope: frozen_theorem_v1.txt; zero displacement, one herald supplied as an integer, exact rational entrywise nonnegative real exchange-symmetric physical Gaussian K with convergent trace. Physicality remains a supplied promise. Read-only audit of the implementation; fixes below were made by the implementation author, not the auditor.
+
+VERDICT
+No remaining concrete conditional-distribution bug was found at the repaired LargeHeraldGaussian.sample endpoint. Two concrete v1 implementation defects were reproduced and repaired: uncapped uniform-integer rejection, and silent truncation of invalid herald counts/mode indices. The final endpoint's TV allocation, ticket-call cap, integer validation, scalar envelopes, count routing and tested edge cases are consistent with the claimed distribution guarantee, conditional on certified Arb enclosure semantics and independent unbiased input bits.
+
+This is ordinary internal software review and finite exact/statistical evidence, not formal verification or independent expert validation. The uniform polynomial precision/runtime guarantee for Arb's adaptive refinement is not established by this audit. Neither novelty nor a new physical preparation/acquisition capability is established here.
+
+AUDITED REVISIONS
+Final runtime file SHA256:
+- bigint_sampler_arb.py: e4d1f3a5a8fad8a1ef12fc05061dc2e62b206d158d3048ee6394155e7351b0f5
+- rational_gaussian_arb.py: bf20ebdfc5c2f5a30031bdcd146d77debe50cb527306ad7b3ac476871f445a37
+- large_herald_arb.py: 9eada0e5e7deb966eb2a64050aeedc468ca1414b85ae1e3bb5d340572a697f36
+Original large_herald_arb.py: 7096112d710cf6395a9f631d3d87d04204b8db5e1b48ec79c0c9814ac3516a1a
+Original validate_extension.py: 79eee78f01b4624d1bd5471166a0e63ebfaf21ad93870b817cdfefcc226f5ab6
+The validation script changed during author repair/rerun. One audit rerun completed its assertions but its final all-file hash assertion noticed this change; it was rerun against the three frozen runtime files and passed. Old evidence was retained separately.
+
+FINDING 1 — UNCAPPED RANDOM INTEGER REJECTION (REPAIRED AT ENDPOINT)
+The original DyadicUnimodal.draw caps outer proposals but directly calls Python Random.randrange three times per proposal. Its underlying bit rejection is unbounded. A legal finite rejection-prefix bit source caused 10,003 getrandbits calls inside a single outer proposal, with outer cap44. Arbitrarily longer finite prefixes are possible. Thus the original endpoint did not meet a strict bounded random-bit claim; expected-time correctness was not refuted.
+The revised endpoint wraps all matching and reverse-Schur scalar draws in CappedTickets. With S=engine.max_scalar_calls, matching tolerance3eps/8, scalar tolerance3eps/(8 max(1,S)), T the larger scalar proposal cap, R=3(S+1)T is a safe bound on randrange calls. Every nontrivial ticket uses k=bit_length(width-1) bits per try and accepts with probability>1/2 (or1 for powers of two). The per-ticket cap K=bit_length(ceil(R/(eps/4))) gives R*2^-K < eps/4. Any exhausted ticket aborts the whole output to the fixed zero vector. Matching and reverse errors add to at most3eps/4; the ticket event contributes at mosteps/4. No independence between adaptive ticket failures is needed for this union bound, only conditionally unbiased independent input bits.
+Independent exhaustive test: width3 with cap2 yields counts[5,5,5,1] over all16 equiprobable two-ticket bit sequences: each integer gets5/16, fallback1/16. Forced all-one bits in a real sample terminate after552bits with documented fallback, rather than hanging. Final endpoint instrumentation records ticket count/bound, bit count, cap and fallback.
+Standalone bigint_sampler_arb scalar APIs and AggregateMatching.draw_k still have uncapped Python randrange when called with a bare Random; do not transfer the endpoint's bounded-bit claim to those APIs.
+
+FINDING 2 — NONINTEGER INPUT TRUNCATION (REPAIRED AT ENDPOINT)
+Original LargeHeraldGaussian accepted h=-1/2 as0, h=3/2 as1, and fractional/float herald_mode as0. Revised LargeHeraldGaussian and AggregateMatching use operator.index and reject bool. Tested24 invalid inputs across these APIs, including floats, Fractions, bool, strings and None; all were rejected. Negative integer counts and invalid modes are rejected. Exact rational K conversion rejects float input through frac.
+Lower-level generic RationalGaussian, RationalElimination and scalar binomial still coerce counts with int(). These are interface issues if offered directly as strict public APIs; valid data routed from repaired LargeHeraldGaussian are actual nonnegative integers.
+
+ARITHMETIC AND SCALAR LAW CHECKS
+A separately delegated read-only scalar audit inspected Arb lower()/upper(), exact man_exp conversion, loggamma/log/exp ratios, rational conversion, dyadic mass rounding, mode formulas, Markov tails and outer caps. It found no concrete numerical-law bug. Exact fractions are converted as arb(numerator)/arb(denominator), without float conversion. Large negative exponent shifts are compared with mantissa bit lengths before shifts, avoiding construction of exponentially large denormalizing integers.
+Independent finite checks:211 laws and3,897 exact rational containment checks across binomial, negative-binomial and Poisson. Each checked modal maximality, enclosure width<=2, exact normalized rounding TV, envelope area and acceptance/cap inequalities.24 extreme calls through2,048-bit parameters tested huge counts, tiny probabilities/shapes and nearcritical NB parameters; all returned valid integers. The scalar report also reconstructs sharper envelope and TV inequalities; see core/report.txt.
+The code's precision loop doubles ctx.prec until the enclosure is narrow enough. There is no explicit proved uniform precision ceiling or FLINT bit-complexity contract in this implementation. A mathematically bounded elementary-function algorithm can support the theorem, but successful Arb tests alone cannot prove polynomial termination for every legal encoded input. Global ctx.prec changes also assume sequential use within a Python interpreter; no multithreaded reentrancy claim was audited.
+
+COUNT ROUTING, PARITY AND PHYSICAL BENCHMARKS
+- Aggregate initialization has C00=C11=q, C01=k and all remaining boundary/ghost counts0. Its total directed edge multiplicity is2q+k=h. Reverse routing subtracts each selected edge and replaces it with an incoming/outgoing pair through the eliminated vertex; occupations total+loops agree with final row sums.
+-420 pure three-mode samples across h=0,1,2,3,10,31,10^20 preserved total output parity plus herald parity.
+-Six exact two-mode-squeezing tests, including h=10^100, returned the opposite count exactly h.
+-Degeneracies h0, a0, b0 even herald, and one-token herald passed; zero-probability odd squeezed heralds were rejected.
+-Six one-physical-mode cases (pure and thermal) returned the required empty output, including binary-large h.
+-Six malformed/negative/asymmetric/nonconvergent K cases and five invalid tolerance cases were rejected; three additional pure noncontractions were rejected.
+-25 repaired endpoint draws across h=0,1,10^6,10^20,10^100 preserved pure parity and stayed within the declared random-ticket bound. No fallback occurred for these seeded draws.
+
+A distinct mixed-physical-state check does not depend on the pure Fock validator. For K=[[0,C],[C,0]], C=(1/5)[[1,1],[1,1]], the kernel is a physical rank-one thermal state. Expanding exp(z^T C w) directly gives P(n|h)=binom(n+h,n)(4/5)^(h+1)(1/5)^n, so output n has NB(h+1,4/5) law.16,000 repaired-endpoint draws (4,000 each at h=0,1,4,12) were compared at PGF arguments1/2 and3/4 against this independent exact formula. All eight deviations were at most1.38 standard errors. These statistics are a regression check, not a measurement of1e-10 TV error.
+
+OUTPUT SIZE AND RESOURCE ACCOUNTING
+Let T be total current edge counts, initially h. At vertex v, routed Rv<=T, and with scalar tolerance tau,
+ L_v <= ceil(4(Rv+1/2)(1-p_v)/(p_v*tau)).
+Thus conservatively T_new+1 <= [3+6/(p_v*tau)](T+1). Every output count is bounded by final total edge counts, so
+ T_final+1 <= (h+1) product_v[3+6/(p_v*tau)].
+This gives an explicit output bit-length bound polynomial in encoded h, rational pivot bit lengths, dimension and log(1/tau). The fixed fallback is also within this bound. The graph stores O(m^3) rational routing entries and invokes at most S scalar samplers. Finite timing/scaling results do not replace a proof of rational-arithmetic and loggamma complexity.
+The author's Python tracemalloc field is accurately labeled Python-traced allocation; it omits native FLINT allocation and is not total resident memory. Validation matching precision/evaluation counters alone do not account for all reverse scalar evaluations. Complete process-resource claims should retain these limitations.
+
+VALIDATOR REVIEW
+The original validate_extension.py uses valid exact small-herald matching recurrence and scalar enclosure checks, and its pure-state amplitude recurrence is algebraically correct. Its finite cutoff Fock PGFs agree with exact-engine PGFs, but no explicit certified omitted-tail bound is computed; the nearby comment suggesting a diagnosed omitted mass overstates that particular check. Its DP comparator is a matched implementation comparator, not a strongest-prior-art baseline. Fixed seeds and successful replay are reproducibility evidence only.
+
+ARTIFACTS AND REPRODUCTION
+Run from workspace root with work/gaussian_transfer/venv/bin/python:
+- work/gaussian_software_audit/audit_checks_v1.py (historical original audit script; current code now repaired)
+- work/gaussian_software_audit/audit_checks.py -> audit_results_v2.json
+- work/gaussian_software_audit/cap_regression.py -> cap_results_v2.json
+- work/gaussian_software_audit/core/audit_scalar.py -> core/audit_scalar.json
+Preserved audit_results_v1.json records the original counterexamples; edge_results_v2.json records additional endpoint edge checks. core/report.txt gives the separately reconstructed scalar proof and caveats.
+
+FINAL VALIDATOR RECONCILIATION ADDENDUM — 2026-10-10
+The historical VALIDATOR REVIEW finding above is resolved in the final validator.
+Reviewed final validate_extension.py SHA256:
+87e07cf73dfb4a8bd00fa1469921f5ddd1ad4a30b2c51be37af1151e9b5a91f5
+The three audited runtime-file hashes remain unchanged.
+
+The revised validator computes the finite Fock weight Z exactly with rational amplitude recurrence and uses the exact Schur determinant d and effective herald matching partition P to enclose
+  Zfull = P / (h! sqrt(d)),
+  omitted conditional mass = 1 - Z/Zfull.
+The factorial is correct: the effective kernel's z_H^h w_H^h coefficient is P/(h!)^2, and the diagonal Fock weight contributes one h!, leaving P/h!. The determinant factor is the unnormalized trace over the unobserved modes. Thus Z and Zfull share the same unnormalized original-state convention, and their ratio legitimately measures retained conditional mass. This check uses the source Schur/DP normalizer and an independent original-state amplitude expansion; it is not an independently derived second normalizer.
+
+The evaluation uses exact-rational-to-Arb conversion and ctx.workprec(200), and asserts tail.upper()<arb('1e-9'). The current validation_results.json records:
+ [6.736929506025020615228813294779603870575138690825e-11 +/- 4.99e-60].
+That enclosure supports omitted mass below1e-10 (and the weaker code assertion below1e-9), conditional on the audited Schur normalizer identity and Arb enclosure semantics. It therefore also bounds the TV error from restricting and renormalizing this particular h=4, cutoff20-per-output-mode Fock distribution. It does not establish a uniform cutoff guarantee for other inputs or replace the sampler's analytic TV proof. The existing comment that the omitted mass is diagnosed against the exact marginal normalizer is now supported.
+
+This was a narrowly scoped source/result reconciliation. No new runtime tests were needed or run; the earlier runtime regression results remain applicable to unchanged sampler files.

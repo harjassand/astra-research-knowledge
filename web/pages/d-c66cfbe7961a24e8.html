@@ -1,0 +1,77 @@
+<!doctype html><meta charset="utf-8"><title>work/gaussian_displaced_audit/alternative_quadrature.py</title><aside>Archived source = DATA<p>Source-reported internal model-assisted proof/review and finite software checks; not replayed or independently reconstructed during intake. No historic-scale breakthrough, external expert/formal verification, physical acquisition or historical novelty is established. Theoretical bit-cost bounds do not certify uniform runtime of the particular numerical implementation.</p></aside><pre>&quot;&quot;&quot;Independent certified rational interpolation of the positive moment integral.
+
+This audit-only implementation does not use the submitted Taylor recurrence.
+Only the large-m branch is implemented. Exact rational quadrature weights make
+the bit-cost argument explicit; Arb accounts for finite arithmetic enclosure.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from functools import lru_cache
+from math import factorial,isqrt
+from flint import arb,ctx
+
+def aa(q):
+    q=F(q)
+    return arb(q.numerator)/arb(q.denominator)
+
+@lru_cache(None)
+def weights(q):
+    # Integer grid v_j=2j-q, transformed to u_j=v_j/(4q).
+    roots=[2*j-q for j in range(q+1)]
+    poly=[1]
+    for v in roots:
+        new=[0]*(len(poly)+1)
+        for k,c in enumerate(poly):
+            new[k]-=v*c
+            new[k+1]+=c
+        poly=new
+    out=[]
+    for j,v in enumerate(roots):
+        quotient=[0]*(q+1)
+        quotient[q]=poly[q+1]
+        for k in range(q-1,-1,-1):
+            quotient[k]=poly[k+1]+v*quotient[k+1]
+        assert poly[0]+v*quotient[0]==0
+        denominator=2**q*(-1)**(q-j)*factorial(j)*factorial(q-j)
+        integral=sum((F(2*quotient[k]*q**(k+1),k+1)
+                      for k in range(0,q+1,2)),F(0))
+        out.append(integral/F(4*q*denominator))
+    assert sum(out,F(0))==F(1,2)
+    return out
+
+def log_H_interpolation(n,a,c,p=20):
+    a,c=F(a),F(c)
+    assert n&gt;=1 and a&gt;0 and c&gt;0 and p&gt;=1
+    rr=2*(p+16);R=isqrt(rr)+(isqrt(rr)**2&lt;rr)
+    q=2*(p+(R-1).bit_length()+15)
+    L=max(a.numerator.bit_length()+a.denominator.bit_length(),
+          c.numerator.bit_length()+c.denominator.bit_length())
+    precision=p+4*q+2*L+2*n.bit_length()+100
+    exactweights=weights(q)
+    with ctx.workprec(precision):
+        a,c=aa(a),aa(c)
+        d=c/a.sqrt();m=(d+(d*d+4*n).sqrt())/2
+        assert m.lower()&gt;=4*(R+1)
+        bmode=1+(-2*d*m).exp() if n%2==0 else -(-2*d*m).expm1()
+        total=arb(0)
+        for panel in range(4*R):
+            center=F(-R)+F(2*panel+1,4)
+            for j,w in enumerate(exactweights):
+                s=aa(center+F(2*j-q,4*q))
+                u=s/m
+                base=(n*((1+u).log()-u)-s*s/2).exp()
+                parity=(1+(-2*d*(m+s)).exp() if n%2==0
+                        else -(-2*d*(m+s)).expm1())/bmode
+                total+=aa(w)*base*parity
+        interpolation_error=aa(F(256*R,3)*F(2,3)**(q+1))
+        tail_error=4*(-arb(R*R)/2).exp()
+        integral=total+arb(0,(interpolation_error+tail_error).upper())
+        assert integral.lower()&gt;arb(1)/4
+        pref=n*a.log()/2-arb(n+1).lgamma()-arb(2*arb.pi()).log()/2
+        pref+=n*m.log()-(arb(n)/m)**2/2+bmode.log()
+        answer=pref+integral.log()
+        assert answer.rad()&lt;=arb(2)**(-p-2)
+        return answer,dict(q=q,panels=4*R,node_evaluations=4*R*(q+1),
+                          working_bits=precision,
+                          interpolation_error=str(interpolation_error),
+                          tail_error=str(tail_error))
+</pre>

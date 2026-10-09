@@ -1,0 +1,34 @@
+INDEPENDENT SCALAR CORE AUDIT — 2026-10-10
+Scope: bigint_sampler_arb.py and frozen_theorem_v1.txt; read-only on research targets.
+Audited scalar file SHA256: e4d1f3a5a8fad8a1ef12fc05061dc2e62b206d158d3048ee6394155e7351b0f5
+Reproduction: work/gaussian_transfer/venv/bin/python work/gaussian_software_audit/core/audit_scalar.py
+
+RESULT
+No scalar distributional correctness bug established for valid frozen-theorem inputs, assuming FLINT/Arb enclosures and independent unbiased random bits. The dyadic envelope, binomial/NB/Poisson log ratios, modes, Markov truncations, interval endpoint conversion and outer rejection cap pass the mathematical audit and finite exact tests below. This is internal review, not external/formal verification.
+
+CONCRETE v1 GAP — UNCAPPED INTEGER TICKETS
+bigint_sampler_arb.py:140,143,147 call rng.randrange. Python Random._randbelow_with_getrandbits uses `while r >= n: r = getrandbits(k)` with no bound. Therefore the low-level scalar API is not a worst-case bounded-bit sampler merely because its outer attempts are capped.
+An explicit finite rejection-prefix RNG made a one-point law consume 10,003 getrandbits calls in one outer attempt (outer maximum 44). The prefix length is arbitrarily extendable and every finite such prefix has positive probability under ideal bits. This does not refute its distribution or expected polynomial cost.
+UPDATE: The parent reported a repair, and I read the revised LargeHeraldGaussian.sample: it passes a CappedTickets adapter, bounds total calls, budgets epsilon/4 for ticket exhaustion, and catches exhaustion with a whole-output fallback. This repairs this particular endpoint gap; standalone scalar methods and AggregateMatching.draw_k remain expected-time unless supplied this adapter. The parent independently audits the wrapper's exact cap/count arithmetic.
+
+NUMERICAL/PRECISION STATUS
+1. bounds(k) correctly uses downward floor of a rigorous lower endpoint and upward ceil of an upper endpoint. Clipping the upper endpoint to scale is legitimate because k's mass ratio is at most one for the promised modal/unimodal law. Given valid enclosures and width <=2, the resulting accepted integer mass is below the true mass and within two grid units.
+2. The exponent helpers avoid allocating an integer of magnitude exp(-huge): they compare exponent shifts with mantissa bit length before shifts. Extreme tests exercised large counts, tiny shapes, rare failures, and very small probabilities.
+3. No concrete finite-precision edge failure was found. However, the code's precision refinement is an unbounded `while True` and provides no proved precision ceiling or formal FLINT complexity contract. Finite successful tests do not establish a uniform polynomial runtime or the library's global enclosure correctness. For a theorem, retain the distinction between a constructive, analytically bounded log-gamma enclosure algorithm and this ordinary Arb implementation. The source's Stirling/range-reduction outline is mathematically plausible; this software audit does not complete that proof.
+4. Global ctx.prec mutation assumes sequential calls in one Python interpreter; this audit makes no concurrent-thread guarantee.
+5. Degenerate scalar wrappers return without checking tolerance, n is coerced through int(), and rational_choice accepts floats through Fraction directly. These are interface strictness issues outside valid theorem inputs, not conditional-law counterexamples.
+
+EXACT TEST EVIDENCE
+211 laws, 3,897 exact rational mass-ratio enclosure comparisons:
+- Binomial n=1..30, six rational probabilities from 1/1000 through 999/1000.
+- Negative binomial six rational shapes including 1/32, 1/2, 7/3,5 and four rational probabilities; tested actual Markov cutoffs at tolerance 1/5.
+- Poisson seven rational rates from 1/1000 through 17/3; tested actual Markov cutoffs.
+For every tested law: exact enclosure containment, width<=2, exact normalized dyadic rounding TV<=tau/16, acceptance>1/5, cap estimate, and envelope area bound were asserted. Maximum observed rounding TV was 0.000616456 (tau=0.2), minimum acceptance 0.759066. These observations do not estimate tiny TV guarantees statistically.
+24 extreme execution checks at 128,512,2048-bit parameters: symmetric/sparse/near-one binomial, tiny-shape/nearcritical/huge-shape rare-failure NB, and tiny/huge Poisson. All returned valid nonnegative integer counts. Full output recorded in audit_scalar.json.
+
+MATHEMATICAL BOUNDS (INDEPENDENT SUB-AUDIT)
+Let M be support maximum, normalized mass w_mode=1, W=sum w, S=2^bits and tau=tolerance. The exact dyadic envelope E satisfies E<=2W-1. For one side x_t decreasing, write Delta_t=x_t-x_(t+1)>=0. The total lengths F(t) of blocks whose first index is <=t satisfy F(t)<=2t-1. Hence E_side=sum Delta_t F(t)<=2 sum x_t-x_1, giving the stated bound after adding the modal point and two sides.
+Define beta=2M/S<tau/32, since the code's bit lengths give S>64(M+1)/tau. Downward accepted mass A obeys W-beta<=A<=W; rounded envelope H<=2W-1+beta. Then 2A-H>=1-3beta>0, so acceptance alpha=A/H>1/2. Conditional-on-acceptance distribution is exactly proportional to the downward integer heights. Its TV distance to the finite normalized target is <=(W-A)/W<=beta/W.
+With K=4(bit_length(denominator(tau))+4), outer-cap probability rho<(1/2)^K<tau^4/65536. Thus binomial TV<tau/32+tau^4/65536.
+NB mode follows from f(k)/f(k-1)=q(k-1+r)/k>=1 iff k<=(r-1)q/p, with mode zero if that expression is negative. M=ceil(4mu/tau) contains the mode and Pr(X>M)<=mu/(M+1)<tau/4. Poisson uses the same Markov bound. Truncate/renormalize TV equals the removed tail. Hence NB and Poisson TV<9tau/32+tau^4/65536<tau.
+These bounds leave substantial slack for a separately charged random-ticket cap but do not by themselves certify numerical-library cost.

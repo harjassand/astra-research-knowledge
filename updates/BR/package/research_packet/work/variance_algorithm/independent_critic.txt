@@ -1,0 +1,287 @@
+INDEPENDENT ADVERSARIAL AUDIT: GEOMETRIC-TRIM ENDPOINT DP
+
+Status: the proposed multiplicative guarantee is valid under the explicit
+assumptions below. This is an internal mathematical reconstruction, not external
+expert validation or a novelty claim. No implementation was inspected or edited.
+
+Later source-audit addendum below supersedes the initial no-inspection statement;
+the implementation has still not been edited by this reviewer.
+
+Problem and assumptions
+-----------------------
+There are d >= 1 coordinates; each x_i is chosen from the two supplied rational
+nonnegative endpoints a_i,b_i. Each supplied coefficient c_i is positive rational.
+Define S(x)=sum_i x_i, V(x)=sum_i c_i*x_i^2, and R(x)=V(x)/S(x)^2 only for S(x)>0.
+Let R* be the maximum over feasible endpoint vectors. A feasible endpoint exists
+iff at least one supplied endpoint is strictly positive. Require rational rho>1.
+
+Actual audited trimming variant
+------------------------------
+At each layer expand each retained state by both coordinate choices. A state
+contains its exact rational S,V and a feasible witness. Handle S=0 separately.
+Sort positive candidates by exact S. Starting at the smallest unassigned S=s0,
+make a bucket from all remaining S with S < rho*s0. Retain a candidate of largest
+V from that bucket; breaking V ties by smaller S is valid and weakly preferable.
+Repeat with the smallest still-unassigned S. These are adaptive buckets, rather
+than globally anchored powers of rho; no powers need to be represented.
+
+Proof of the guarantee
+----------------------
+For every exact feasible prefix x_1,...,x_j, there is a retained state (S',V') with
+V' >= V(x_1,...,x_j) and S' <= rho^j*S(x_1,...,x_j). If the target prefix has S=0,
+its retained zero state has S'=V'=0 exactly.
+
+Base j=0 is (0,0). Suppose the assertion holds at j-1 and extend its witness by
+the target endpoint x_j. Before trimming, the candidate satisfies
+
+  V_c >= V_target,
+  S_c <= rho^(j-1)*S_old+x_j <= rho^(j-1)*(S_old+x_j),
+
+where the second inequality uses x_j>=0 and rho^(j-1)>=1. A positive candidate's
+bucket starts at s0<=S_c and its retained representative satisfies
+
+  S_rep < rho*s0 <= rho*S_c,   V_rep >= V_c.
+
+This proves the induction. At j=d apply it to an optimizer x*. Its representative
+is a feasible endpoint vector, has positive S, and has
+
+  R_rep >= rho^(-2d)*R*.
+
+Thus if L is the maximum objective among all positive retained final states,
+
+  L <= R* <= rho^(2d)*L.
+
+The lower bound comes from the stored feasible witness, not numerical rounding.
+The same proof works for globally anchored half-open geometric buckets.
+
+SHARPENED THEOREM FOR THE SAME ALGORITHM
+---------------------------------------
+In fact, without modifying the algorithm,
+
+  L <= R* <= rho^(2(d-1))*L.                         (SHARP AS A SUPREMUM)
+
+Here endpoints are ordered a_i<=b_i, which is without loss of generality for
+two-point sets. A layer is called free along the tracked optimum path if the
+expanded tracked state is itself retained, meaning the exact same (S,V) pair
+survives. A free layer needs no factor rho in the S bound.
+
+First, either some coordinate is fixed (a_i=b_i), or an optimum can be chosen
+with at least one upper endpoint. To see the latter, the only problematic corner
+would be the all-lower vector a. If feasible, homogeneity gives
+
+  sum_i a_i * partial_i R(a) = 0.
+
+At least one i with a_i>0 therefore has partial_i R(a)>=0. With other coordinates
+fixed, the coordinate derivative is 2*(c_i*B*t-A)/(B+t)^3. Its numerator is
+nondecreasing in t, so increasing that coordinate from a_i to b_i cannot lower
+R. Thus if a is optimal, an equally good corner with an upper endpoint exists.
+If a is infeasible it cannot be an optimizer in the first place.
+
+Now start with the singleton empty state and follow a chosen optimal corner
+through expansion and trimming. As long as there has not yet been a free layer,
+the ENTIRE retained list is a singleton containing the all-upper prefix. This
+is an induction: a singleton expands to at most two distinct pairs. For the
+tracked expanded pair to be replaced, both distinct expansions must lie in the
+same positive bucket, so only one pair survives. Since c_i>0 and b_i>a_i>=0,
+the b_i expansion has strictly greater V and is the survivor. If a_i=b_i, the
+sole distinct expansion survives and the layer is already free. Zero and
+positive pairs are retained separately, so they cannot invalidate the induction.
+
+If a fixed coordinate exists, either a free layer has occurred before it or that
+fixed layer is free. Otherwise, choose an optimum with an upper endpoint and
+let j be its first upper coordinate. Either a free layer already occurred, or
+the list entering j is the singleton all-upper prefix. In the latter case the
+tracked b_j expansion has largest V among the only two expansions and must
+survive, so j is free. Consequently at least one layer is free in all cases.
+Repeating the first invariant with rho charged only to non-free layers yields
+at most d-1 charges, proving the sharpened theorem. For d=1 the algorithm is exact.
+
+Sharp rational family for adaptive buckets
+-------------------------------------------
+Fix d>=2, rational rho>1, and rational 1<q<rho. For i=1,...,d-1 use coefficient
+c_i=eta>0. Set (a_1,b_1)=(1,q). For 2<=i<=d-1 set
+
+  a_i=0,  b_i=(q-1)*q^(i-1).
+
+The last coordinate is fixed, a_d=b_d=delta>0, with c_d=delta^(-2). All data are
+rational when eta,delta are rational. At the first d-1 layers the retained list
+is the singleton all-upper prefix with S=q^i. Each pair of expansions has sums
+q^(i-1) and q^i (or 1,q at layer one), is in one adaptive bucket because q<rho,
+and the upper expansion has strictly larger V. The final fixed layer is free.
+
+For sufficiently small eta, the true optimum uses every lower endpoint among
+the first d-1 coordinates: in the limit eta->0 the numerator is 1 at every
+corner and this corner uniquely minimizes the denominator. Finitely many
+corners and their strict denominator gap make the assertion valid for all
+sufficiently small positive eta. Its ratio to the returned value is
+
+  R*/L = ((1+eta)/(1+delta)^2)
+         * ((q^(d-1)+delta)^2/(1+eta*sum_{i<d} b_i^2)).
+
+Let eta->0, then delta->0, and finally q increase to rho through rationals.
+This approaches rho^(2(d-1)). Hence the sharpened exponent is optimal for this
+algorithm in the worst case. The construction also shows why one cannot obtain
+a dimension-independent factor from the local bucket parameter alone.
+
+Endpoint reduction for a continuous nonnegative box
+---------------------------------------------------
+If the original problem permits every x_i in [a_i,b_i], with 0<=a_i<=b_i, the same
+endpoint optimum applies. Fix every coordinate except t=x_i, and write
+
+  f(t)=(A+c_i*t^2)/(B+t)^2,
+  A=sum_{k!=i} c_k*x_k^2 >=0, B=sum_{k!=i}x_k>=0.
+
+For B>0,
+
+  f'(t)=2*(c_i*B*t-A)/(B+t)^3.
+
+The derivative changes sign at most once, from negative to positive, so the
+maximum on any closed coordinate interval is at an endpoint. If B=0 then A=0,
+and f(t)=c_i for t>0; choosing a positive upper endpoint preserves the value.
+Starting from any feasible point, change coordinates one at a time to an
+endpoint without reducing R or losing feasibility. Hence every feasible point
+is dominated by a feasible endpoint vector. The punctured all-zero box causes
+no compactness gap. This reduction fails without nonnegative coordinates or
+without the stated positive diagonal quadratic form.
+
+Finite state count and bit complexity
+-------------------------------------
+Let h be the smallest strictly positive supplied endpoint and U=sum_i max(a_i,b_i).
+Every positive candidate has h<=S<=U. Consecutive adaptive bucket starts grow by
+at least rho. Therefore at most
+
+  K = 1 + floor(log(U/h)/log(rho))
+
+positive states survive any layer, plus the optional zero state. This logarithm
+is only a complexity bound; it need not be computed in floating point by the
+implementation. At most 2*(K+1) candidates need expansion and sorting per layer.
+Arithmetic-operation count is O(d*K*log(K+1)), apart from witness-copy costs.
+
+For rational inputs of total encoding length N, exact S and V have polynomial
+bit length: their denominators divide products of the input denominators (with
+endpoint denominators squared in V), and numerator growth adds O(log d) bits.
+The coefficients c_i=B_i/q_i must themselves be representable rationals, and q_i
+must be strictly positive if this is how they are supplied. Comparing S with
+rho*s0 uses only polynomial-bit integer arithmetic. Also log(U/h)=O(N+log d).
+For rational rho=1+Theta(epsilon/d), 0<epsilon<=1, K=O(d*(N+log d)/epsilon), so
+the algorithm is fully polynomial in N,d,1/epsilon, including exact arithmetic.
+It is not polynomial in log(1/epsilon), and a bare O(d*K*log K) running time is
+only an arithmetic-operation count, not complete bit complexity. Witness tuples
+cost O(d*K) input indices in working memory at the last layer; persistent
+backpointers can use O(d*K) nodes overall. Floating-point logarithms are not
+needed and should not determine rigorous bucket membership.
+
+Simple rigorously tighter certificates / implementations
+-------------------------------------------------------
+1. For every layer let gamma_j be the maximum over its positive buckets of
+   S_representative / s0, or 1 if there are no positive buckets. Then
+   1<=gamma_j<rho and the same proof gives the data-dependent exact certificate
+
+      R* <= (product_j gamma_j)^2 * L.
+
+   This is strictly no worse than the stated rho^(2d) bound; when no bucket
+   discards a distinct S, gamma_j=1. All gamma_j are rational. Their product
+   can be formed with polynomially many bits. Because there is at least one free
+   layer, the stronger bound is actually
+
+      R* <= ((product_j gamma_j)/(min_j gamma_j))^2 * L.
+
+   All gamma_j>=1, so deleting whichever free layer occurs can cost no more than
+   deleting the smallest gamma_j. This certificate can be loose because the
+   worst bucket at each layer need not share a witness path. It never exceeds
+   rho^(2(d-1)).
+
+2. Compute the best ratio over the expanded final-layer candidates BEFORE
+   trimming the final layer, and return that feasible witness. The same proof
+   then has only d-1 trimming stages:
+
+      L_pre <= R* <= rho^(2(d-1))*L_pre.
+
+   No additional candidate generation or asymptotic memory is needed; final
+   trimming can be omitted completely. It can improve the actual returned
+   witness but does not sharpen the new worst-case exponent. For d=1 this is
+   exact. Use the product
+   of gamma_j for j<d for its corresponding tighter data-dependent certificate.
+
+3. Independently, R(x)=sum_i c_i*w_i^2 <= max_{i: b_i>0}c_i, where w_i=x_i/S,
+   sum_i w_i=1, and w_i>=0. This caps any multiplicative upper certificate.
+   If endpoints are unordered use max(a_i,b_i)>0 rather than b_i>0 in that cap.
+
+Approximation-parameter caution
+------------------------------
+To claim R*<= (1+epsilon)*L, rho=1+epsilon/(2d) is NOT justified by the standard
+bound: its 2d-th power exceeds 1+epsilon in general. A simple rational safe
+choice for 0<epsilon<=1 is rho=1+epsilon/(4d), since
+
+  rho^(2d) <= exp(epsilon/2) <= 1+epsilon.
+
+Alternatively keep the exact certified factor rho^(2d). A (1-epsilon) lower
+guarantee and a (1+epsilon) upper factor are different conventions and should
+not be conflated.
+
+Concrete failure cases / required guards
+----------------------------------------
+* All endpoints zero: h is undefined and no feasible S>0 exists. Return an
+  explicit infeasible/undefined result; do not report an objective value 0.
+* Retaining a zero state as a candidate objective computes 0/0; it is only an
+  intermediate state and must be excluded from ratio evaluation.
+* rho<=1 breaks the bucket construction or approximation argument.
+* Signed endpoints invalidate the extension inequality and can permit
+  cancellation near S=0. They are outside this result.
+* Inexact bucket comparisons, V comparisons, or a rounded-down upper bound
+  do not inherit the exact rational proof without explicit error accounting.
+* The guarantee does not establish novelty, practical speed, robustness to
+  uncertain c_i, or a breakthrough. Those are separate empirical/source gates.
+
+No mathematical defect was found in the rho^(2d) theorem for the actual adaptive
+variant under the stated assumptions. It admits the strictly stronger sharp
+rho^(2(d-1)) theorem proved above. Omitting final trimming can additionally
+improve the actual returned witness. The sharpened theorem and sharpness family
+were obtained through an independent delegated mathematical investigation and
+reconstructed here; this remains internal verification.
+
+FROZEN IMPLEMENTATION AUDIT ADDENDUM
+-----------------------------------
+Observed file: work/variance_algorithm/variance_fptas.py
+Observed SHA-256:
+29d02535351620534b06ae606c120b70940555aab495c77d746820f3ac5f579c
+
+Scope: independent source audit of the actual code against the stated invariant,
+input contract, feasible-witness reconstruction, and analytic clipping. No edits
+to the implementation; no fresh benchmark or test claim is made in this addendum.
+
+Finding: no concrete correctness bug found in solve() for its validated input
+domain. Validation enforces exact Fraction coordinate values, q>0, sum q=1,
+B>=1, P>=0, ordered [0,1] local bounds, and 0<epsilon<=1. Float/bool parsed
+inputs are rejected. All-zero attainable mass returns the explicit empty-domain
+status before ratio evaluation. P need not sum to one under the stated abstract
+optimization contract; the code and proof agree on that contract.
+
+The bucket threshold is correctly fixed from the smallest S in each bucket;
+changing the representative does not change the threshold. Zero states are
+kept separately. Candidate V comparisons and S/rho comparisons use exact
+arithmetic. The endpoint choice mask is accumulated one coordinate at a time;
+equal endpoints omit the redundant upper choice without changing feasibility.
+The final positive maximum is feasible, and solve() calls check_witness() to
+reconstruct its exact S,V and ratio. The code's rho choice
+1+epsilon/[2*d*(1+epsilon)] satisfies the original rho^(2d)<=1+epsilon bound.
+
+All four analytic upper bounds are valid under the actual guards. In particular,
+an active coordinate has b_i>0, so b_i+A-a_i>0 and
+x_i/S <= b_i/(b_i+A-a_i); squaring, multiplying by positive c_i, and summing
+is legitimate. The Kantorovich branch requires P_i=q_i, B_i=1, common positive
+lower bound and common upper bound. Validation supplies positive normalized q,
+so that branch is exactly the bounded-positive-variable moment inequality.
+Taking the minimum of these bounds and U_DP preserves the certificate.
+The analytic-bound reasoning was also independently checked by a delegated
+reviewer against the same SHA, with no defect reported.
+
+Scope caveat, already disclosed by code/proof: check_witness() is a witness and
+arithmetic checker, not an independent verifier of the upper guarantee. It
+does not replay the DP or recompute the analytic clipping. For example, a caller
+could replace U by L and still satisfy its arithmetic tests even where L<R*.
+This is not a solver bug, but the helper must not be advertised as standalone
+verification of an untrusted upper-bound certificate. Public low-level helpers
+trim(), reconstruct(), and analytic_upper_bounds() likewise rely on the input
+preconditions enforced by solve()/validate(). No broader interface-hardening
+changes are recommended during this frozen benchmark pass.

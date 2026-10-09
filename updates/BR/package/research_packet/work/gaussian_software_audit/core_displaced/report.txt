@@ -1,0 +1,103 @@
+DISPLACED EVALUATOR SOFTWARE AUDIT — 2026-10-10
+Scope: displaced_evaluator.py; integration check of displaced_sampler.py.
+All target files remained read-only from this auditor. Author repairs occurred
+in parallel and are identified below. This is internal review, not external
+or formal verification.
+
+FINAL EVALUATOR SHA256
+  823cb4ac7c7756e714b3449fdeab5e5cda3e302255bdf5676c9539a86211c1bf
+
+RESULT
+No incorrect returned evaluator enclosure was found. Final evaluator revision
+passes 99 independent exact-coefficient comparisons, including actual integral
+branches, odd tiny displacement, and requested precisions through 200 bits.
+Every nonzero result was finite, contained an independently constructed
+high-precision log of the exact rational coefficient, and had full width
+<=2^(-p-1). Exact zero flags were checked separately.
+
+EXACT ORACLE AND COVERAGE
+check_exact.py constructs integer scaled Gaussian moments. For
+Q=lcm(denominator(a),denominator(c)), A=aQ^2 and C=cQ are integers. Define
+P_0=1, P_1=C and P_n=C P_(n-1)+(n-1) A P_(n-2). Then
+H_n=P_n/(Q^n n!), exactly. This independently exercises the evaluator's
+Taylor coefficients, factorial denominators, and prefactor.
+Coverage includes n=0,1,2,3,4,15,50,101; a/c zero cases and rational scales
+10^+/-30; force_integral with valid large saddles at n=1,2,3,15,100;
+natural integral cases n=2304,2305,2500,2501, including odd c=10^-30;
+and force-integral p=1,10,100,200. Results: check_exact.json.
+
+ADDITIONAL INDEPENDENT NUMERIC SUB-AUDIT
+extremes/report.txt records 87 mixed-parameter finiteness/width tests through
+n=2^4096+1, 16 exact coefficient comparisons, 16 rigorous limiting-bound
+containment checks, and 131 degenerate-path checks through 32769-bit n.
+Those tests targeted the earlier evaluator arithmetic; they are supplemental
+finite evidence, not a replacement for the final-hash exact suite above.
+
+CONCRETE REMAINING NARROW ISSUE
+log_H(1,1,Fraction(1599,40),20,force_integral=True) raises ValueError although
+its exact saddle m=40 equals the stated admissibility threshold 4(R+1).
+The computed m.lower() is slightly below 40. Default dispatch uses finite_sum
+and succeeds, so this is an optional diagnostic-branch false rejection, not
+a counterexample to the default promised evaluator.
+An exact rational test for m>=M, M=4(R+1), is
+  n>=M^2 OR c^2 M^2 >= a(M^2-n)^2.
+This avoids the equality ambiguity. Out-of-range force_integral inputs
+should still be rejected.
+
+AUTHOR REPAIRS VERIFIED IN FINAL EVALUATOR
+- Tail error now uses (-arb(R*R)/2).exp(), eliminating Python float division.
+- log_H rejects binary floats and Boolean order/precision, uses integer-index
+  conversion, and checks actual Arb radius against 2^(-p-2).
+- If numerical roundoff produces a wider interval, the wrapper increases guard
+  precision. Returning a finite ball alone is no longer treated as meeting p.
+- The wrapper remains an ordinary numerical implementation. No finite suite
+  establishes a uniform polynomial runtime for the installed Arb backend.
+
+INTEGRATION FAILURE FOUND AND REPAIRED
+The pre-repair ParityEnvelope extracted v.upper() after leaving its working-
+precision context. Arb endpoint extraction itself rounded at default 53 bits.
+At a=0,b=c=1,h=10^20,tolerance=1/1000, the reference
+exceeded the accurate anchor logweight by 232085.2914. The true normalized
+anchor weight was about 4.35e-100794, its dyadic bounds became (0,1), and
+all 2304 outer proposals failed in the observed draw. This contradicted the
+assumed constant acceptance probability and produced fallback output.
+The coordinating auditor independently found the same endpoint issue. The
+author moved endpoint extraction to high precision, checked extracted width,
+and selected the reference using those endpoints. At h=10^20 the repaired
+reference gap is about 1.36e-93, mass is about 1, bounds are (scale-1,scale),
+and the identical seeded draw succeeds in two proposals.
+Evidence: reference_failure_observed.txt and repro_reference.py/json.
+
+POST-REPAIR REGRESSION
+check_reference_repair.py verifies both parity-anchor scaled intervals against
+independently tightened logweights, at least one anchor mass >exp(-1/8), and
+five successful draws without fallback in each case. All seven cases passed
+against sampler SHA256
+4bbaa0f5717c36edfc9774ac8d3858b95d2cfbf6fef2f20a3a9d4478d473d6be.
+The reference suite loaded evaluator ee8c3035; the later 823cb4ac evaluator
+precision-retry repair then passed the complete 99-case exact suite. The seven cases include
+a=0 and h through 2^1024+1, c=2^+/-128, mixed a=b=c=1 at h=100 and 10^20,
+and odd h=101 with c=10^-30. See its JSON for the source hash captured at
+import and final results. This tests the repaired reference normalization;
+it does not replace the separate proof of the full displaced sampler.
+
+REFINEMENT INTEGRATION CHECK
+ParityEnvelope caches coefficients by both n and requested p. Its refinement
+loops increase p explicitly, and log_H's internal guard refinement enforces
+the requested output width. Thus the suspected cached-fixed-p/outer-context-
+only refinement trap is absent in the inspected implementation. Its reference
+is now stored as an exact dyadic endpoint rather than an uncertain persistent
+ball, avoiding a separate irreducible normalization-width trap.
+
+COORDINATING AUDITOR FINAL RECONCILIATION
+The remaining force_integral equality issue above was repaired after this
+report's99-case suite. The final evaluator SHA256 is
+ da80e5f307d8248ee5dee5981390d5a6b6328d16a116beabdb0052b8213177a8.
+The only change from823cb4ac is the exact rational domain inequality already
+recommended above. Twelve independent final-hash below/equal/above-domain
+checks passed, including offsets10^-80, a=1 or4 and p=1,20,100; every
+accepted case enclosed log(H_1)=log(c) at its requested width. The default
+arithmetic is unchanged. See ../displaced/check_final_domain.py,
+../displaced/final_domain_results.json and ../displaced/report.txt.
+This addendum supersedes the prior final evaluator hash and unresolved-issue
+wording; it does not relabel earlier test evidence as having run on new code.
