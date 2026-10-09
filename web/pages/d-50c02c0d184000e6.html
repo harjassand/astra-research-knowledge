@@ -1,0 +1,31 @@
+<!doctype html><meta charset="utf-8"><title>BQ: werner_projection_research/shadow_lp.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/werner_projection_research/shadow_lp.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;Outer-relaxation diagnostic: feasible LP points need not be quantum states.&quot;&quot;&quot;
+import math, numpy as np
+from scipy.optimize import linprog
+from pathlib import Path
+import json
+
+def comb(n,k):
+    return math.comb(n,k) if 0&lt;=k&lt;=n else 0
+
+def probe(n,d=3,K=2):
+    D=d**n
+    # A_j are the squared error-basis coefficients by operator weight.
+    B=np.array([[K/D*sum((-1)**l*(d*d-1)**(k-l)*comb(j,l)*comb(n-j,k-l)
+                  for l in range(k+1)) for j in range(n+1)] for k in range(n+1)])
+    T=np.array([[d**(-k)*comb(k,j)/comb(n,j) if j&lt;=k else 0
+                  for j in range(n+1)] for k in range(n+1)])
+    S=np.array([[comb(n,k)/2**n*sum((-1)**l*comb(k,l)*comb(n-k,j-l)
+                                 for l in range(j+1))
+                 for j in range(n+1)] for k in range(n+1)])@T
+    c=np.array([(1-d/2)**(n-j)/D for j in range(n+1)])
+    res=linprog(c,A_ub=np.vstack([np.eye(n+1)-B,-S]),b_ub=np.zeros(2*(n+1)),
+                A_eq=np.array([[1]+[0]*n,[1]*(n+1)]),b_eq=[1,D/K],
+                bounds=[(0,None)]*(n+1),method=&#x27;highs&#x27;)
+    return {&#x27;n&#x27;:n,&#x27;d&#x27;:d,&#x27;rank_projector&#x27;:K,&#x27;success&#x27;:res.success,
+            &#x27;relaxed_minimum&#x27;:res.fun,&#x27;A&#x27;:None if not res.success else res.x.tolist(),
+            &#x27;warning&#x27;:&#x27;An outer relaxation only; a negative optimum is NOT a distillation witness.&#x27;}
+if __name__==&#x27;__main__&#x27;:
+    out=[probe(n) for n in range(1,10)]
+    print(json.dumps(out,indent=2))
+    (Path(__file__).parent/&#x27;shadow_lp_receipt.json&#x27;).write_text(json.dumps(out,indent=2))
+</pre></main>

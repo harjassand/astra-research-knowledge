@@ -1,0 +1,31 @@
+# Applied-invention investigation — 9 October 2026
+
+**Outcome: no foundational applied breakthrough established.**
+
+The strongest developed candidate was a coded-noise protocol for snapshot-only identification of linear stochastic networks. Its conditional conditioning theorem and implementation survived testing. A sharp local comparison with recorded mean shifts defeated the proposed information advantage. A separate deferred-Gaussian simulation route was identified as existing Householder Dice prior work.
+
+Start with **REPORT.md** for complete statements, proofs, source boundaries, resource accounting and limitations. The report distinguishes a variance budget from laboratory actuator cost, and a supplied stationary simulator from acquired stationary data.
+
+## Contents
+
+- `research_gate.py` / `results.json`: exact ambiguity, checked code construction, small dense decoder, skew-direction comparison and raw score checks.
+- `quarter_variance_test.py` / `quarter_variance_results.json`: sharp local Fisher identity for every real drift direction, including covariance-score contributions.
+- `raw_snapshot_comparison.py` / `raw_snapshot_results.json`: equal-replica-count synthetic comparison using actual sample moments.
+- `matrix_free_decoder.py` / `matrix_free_results.json`: avoids an explicit fourth-order design array; no physical acquisition oracle is implemented.
+- `SOURCE_MANIFEST.json`: repository revisions, selected paths and reading scope.
+- `requirements.txt`: numerical dependency versions actually used.
+- `MANIFEST_SHA256.json`: package integrity hashes.
+
+## Run
+
+```bash
+python -m pip install -r requirements.txt
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python research_gate.py --output replay_gate.json
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python quarter_variance_test.py --output replay_quarter.json
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python raw_snapshot_comparison.py --output replay_raw.json
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python matrix_free_decoder.py --output replay_matrix_free.json
+```
+
+The original result files are preserved by these replay filenames. No source is uploaded to GitHub or any other external service by these programs. No data download is required.
+
+All reported numerical experiments are synthetic. Historical novelty, independent proof review, formal floating-point certification and real-world superiority are not established.

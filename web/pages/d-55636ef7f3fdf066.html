@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><title>BQ: werner_projection_research/positive_probe.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/werner_projection_research/positive_probe.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;Numerical tests of a stronger positive-rank-two conjecture; not a certificate.&quot;&quot;&quot;
+from werner_probe import transform
+from pathlib import Path
+import torch,json,time,argparse
+
+def run(n=4,d=3,starts=10,iterations=150,seed=811):
+    torch.manual_seed(seed);vals=[];N=d**n;dims=(d,)*n;t=time.monotonic()
+    for k in range(starts):
+        A=torch.randn(N,2,dtype=torch.complex128)
+        if k%2:
+            A*=.02;A[0,0]+=1;A[N-1,1]+=1
+        A.requires_grad_()
+        def objective():
+            C=A@A.mH;norm2=torch.sum(abs(C)**2)
+            q=torch.real(torch.sum(C.conj()*transform(C,dims)))
+            return (2**n*q-2*norm2+torch.real(torch.trace(C))**2)/norm2
+        opt=torch.optim.LBFGS([A],lr=1,max_iter=iterations,
+                       tolerance_grad=1e-10,tolerance_change=1e-12,line_search_fn=&#x27;strong_wolfe&#x27;)
+        def closure():
+            opt.zero_grad();f=objective();f.backward();A.grad=A.grad.resolve_conj().contiguous();return f
+        opt.step(closure);v=objective().item();vals.append(v)
+        print(k,v,flush=True)
+    out={&#x27;n&#x27;:n,&#x27;d&#x27;:d,&#x27;seed&#x27;:seed,&#x27;starts&#x27;:starts,&#x27;iterations&#x27;:iterations,
+         &#x27;normalized_strengthened_deficits&#x27;:vals,&#x27;elapsed_seconds&#x27;:time.monotonic()-t,
+         &#x27;status&#x27;:&#x27;finite floating-point local search, not an all-input statement&#x27;}
+    (Path(__file__).parent/f&#x27;positive_deficit_d{d}_n{n}.json&#x27;).write_text(json.dumps(out,indent=2))
+    return out
+if __name__==&#x27;__main__&#x27;:
+    p=argparse.ArgumentParser();p.add_argument(&#x27;--n&#x27;,type=int,default=4);p.add_argument(&#x27;--d&#x27;,type=int,default=3)
+    p.add_argument(&#x27;--starts&#x27;,type=int,default=10);p.add_argument(&#x27;--iterations&#x27;,type=int,default=150)
+    args=p.parse_args();print(json.dumps(run(**vars(args)),indent=2))
+</pre></main>

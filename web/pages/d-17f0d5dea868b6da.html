@@ -1,0 +1,69 @@
+<!doctype html><meta charset="utf-8"><title>BQ: spectral_pick_boundary_result_2026-10-09/eigenmatrix_baseline.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/spectral_pick_boundary_result_2026-10-09/eigenmatrix_baseline.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;Own implementation of Ying 2025 section 3, not author code.
+Finite Chebyshev dictionary, truncated SVD eigenmatrix, ESPRIT, coarse/local variance search.
+The source leaves several numerical tolerances unspecified: they are explicit here.
+&quot;&quot;&quot;
+import numpy as np
+from scipy.optimize import minimize_scalar
+
+def at_variance(z,g,variance,k,support,nc=32,threshold=1e-10):
+    # Normalize spectral coordinate to [-1,1] on the given support.
+    c=(support[0]+support[1])/2;s=(support[1]-support[0])/2
+    zz=(z-c)/s;gg=g*s;tt=variance/s**2;w=zz-tt*gg
+    cc=np.cos(np.pi*(np.arange(nc)+.5)/nc)
+    B=1/(w[:,None]-cc);B/=np.linalg.norm(B,axis=0)
+    U,d,Vh=np.linalg.svd(B,full_matrices=False)
+    rank=int(np.sum(d&gt;threshold*d[0]))
+    while True:
+        keep=np.arange(len(d))&lt;rank
+        M=(B*cc)@((Vh[keep].conj().T/d[keep])@U[:,keep].conj().T)
+        if np.linalg.norm(M,2)&lt;=3.0 or rank&lt;=k+1:break
+        rank-=1
+    nl=k+1
+    columns=[gg]
+    for _ in range(nl):columns.append(M@columns[-1])
+    T=np.column_stack(columns)
+    _,sv,Vh=np.linalg.svd(T,full_matrices=False)
+    Vr=Vh[:k]
+    E=Vr[:,1:]@np.linalg.pinv(Vr[:,:-1])
+    roots=np.linalg.eigvals(E)
+    aa=np.sort(roots.real)*s+c
+    ww=np.linalg.lstsq(np.vstack([(1/(z[:,None]-variance*g[:,None]-aa)).real,(1/(z[:,None]-variance*g[:,None]-aa)).imag]),np.r_[g.real,g.imag],rcond=None)[0]
+    valid=(np.min(ww)&gt;-1e-6 and np.max(abs(roots.imag))&lt;1e-4)
+    return {&#x27;variance&#x27;:variance,&#x27;atoms&#x27;:aa,&#x27;weights&#x27;:ww,&#x27;objective&#x27;:float(np.log(max(sv[k],1e-300))),&#x27;valid&#x27;:valid,&#x27;root_imag_max&#x27;:float(max(abs(roots.imag))),&#x27;M_norm&#x27;:float(np.linalg.norm(M,2)),&#x27;dictionary_rank&#x27;:int(sum(keep))}
+
+def inverse(z,g,k,support,upper,grid_size=61):
+    calls=0
+    def calc(t):
+        nonlocal calls
+        calls+=1
+        return at_variance(z,g,t,k,support)
+    grid=np.linspace(0,upper,grid_size)
+    rr=[calc(t) for t in grid]
+    valid=[i for i,r in enumerate(rr) if r[&#x27;valid&#x27;]]
+    if not valid: raise RuntimeError(&#x27;No positive real spectral reconstruction on baseline grid&#x27;)
+    local=[]
+    for i in valid:
+        v=rr[i][&#x27;objective&#x27;]
+        if (i==0 or v&lt;=rr[i-1][&#x27;objective&#x27;]) and (i==len(rr)-1 or v&lt;=rr[i+1][&#x27;objective&#x27;]):local.append(i)
+    if not local:local=[min(valid,key=lambda i:rr[i][&#x27;objective&#x27;])]
+    for i in sorted(local,key=lambda i:rr[i][&#x27;objective&#x27;])[:5]:
+        def obj(t):
+            r=calc(t)
+            return r[&#x27;objective&#x27;] if r[&#x27;valid&#x27;] else 1e10
+        fit=minimize_scalar(obj,bounds=(grid[max(0,i-1)],grid[min(len(grid)-1,i+1)]),method=&#x27;bounded&#x27;,options={&#x27;xatol&#x27;:1e-9})
+        rr.append(calc(float(fit.x)))
+    best=min((r for r in rr if r[&#x27;valid&#x27;]),key=lambda r:r[&#x27;objective&#x27;])
+    best[&#x27;calls&#x27;]=calls
+    return best
+
+if __name__==&#x27;__main__&#x27;:
+    from pick_inverse import free_stieltjes
+    for k in [3,5]:
+        a=np.array([-1,.2,1]) if k==3 else np.linspace(-1,1,k)
+        p=np.array([.25,.5,.25]) if k==3 else np.ones(k)/k
+        theta=np.pi*(np.arange(32)+.5)/32
+        z=3.0*np.cos(theta)+1.5j*np.sin(theta);z=np.r_[z,z.conj()]
+        gu=free_stieltjes(z[:32],a,p,.5625);g=np.r_[gu,gu.conj()]
+        r=inverse(z,g,k,(-2.6,2.6),1.5)
+        print(k,r)
+</pre></main>

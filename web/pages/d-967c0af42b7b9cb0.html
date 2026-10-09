@@ -1,0 +1,48 @@
+<!doctype html><meta charset="utf-8"><title>BQ: spectral_pick_boundary_result_2026-10-09/matched_comparison.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/spectral_pick_boundary_result_2026-10-09/matched_comparison.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>import numpy as np,json,time
+from scipy.stats import wasserstein_distance
+from eigenmatrix_baseline import inverse as eigen_inverse
+from pick_inverse import inverse as pick_inverse
+from direct_fit_baseline import fit
+rows=json.load(open(&#x27;finite_matrix_results.json&#x27;));raw=np.load(&#x27;finite_matrix_raw.npz&#x27;);out=[];arrays={}
+def serial(r):
+ return {k:v.tolist() if isinstance(v,np.ndarray) else bool(v) if isinstance(v,np.bool_) else v for k,v in r.items()}
+def errors(r,row):
+ a=np.asarray(row[&#x27;true_atoms&#x27;]);p=np.asarray(row[&#x27;true_weights&#x27;])
+ pp=np.maximum(r[&#x27;weights&#x27;],0);pp=pp/pp.sum()
+ return {&#x27;variance&#x27;:abs(r[&#x27;variance&#x27;]-row[&#x27;true_variance&#x27;]),&#x27;atoms_max&#x27;:float(max(abs(r[&#x27;atoms&#x27;]-a))),&#x27;weights_max&#x27;:float(max(abs(r[&#x27;weights&#x27;]-p))),&#x27;wasserstein1&#x27;:float(wasserstein_distance(a,r[&#x27;atoms&#x27;],p,pp))}
+for row in rows:
+ if row[&#x27;N&#x27;]!=1024:continue
+ key=row[&#x27;key&#x27;];c=raw[key+&#x27;_eigenvalues&#x27;];k=row[&#x27;k&#x27;];support=(float(min(c)),float(max(c)));mid=sum(support)/2;half=(support[1]-support[0])/2;upper=float(np.var(c))
+ z=mid+.8*half*np.linspace(-1,1,k)+.3j*half
+ tic=time.perf_counter();g=np.mean(1/(z[:,None]-c),axis=1);r=pick_inverse(z,g);r[&#x27;total_seconds&#x27;]=time.perf_counter()-tic;r[&#x27;errors&#x27;]=errors(r,row)
+ theta=np.pi*(np.arange(32)+.5)/32
+ ze=mid+1.15*half*np.cos(theta)+.6j*half*np.sin(theta);ze=np.r_[ze,ze.conj()]
+ tic=time.perf_counter();ge=np.mean(1/(ze[:,None]-c),axis=1);e=eigen_inverse(ze,ge,k,support,upper);e[&#x27;total_seconds&#x27;]=time.perf_counter()-tic;e[&#x27;errors&#x27;]=errors(e,row)
+ zf=mid+.8*half*np.linspace(-1,1,32)+.3j*half
+ tic=time.perf_counter();gf=np.mean(1/(zf[:,None]-c),axis=1);prep=time.perf_counter()-tic
+ candidates=[];total_fit=prep
+ cheap_atoms=np.quantile(c,(np.arange(k)+.5)/k)
+ for frac in [.1,.35,.65,.9]:
+  ai=np.mean(c)+np.sqrt(1-frac)*(cheap_atoms-np.mean(c))
+  tic=time.perf_counter();ff=fit(zf,gf,k,ai,np.ones(k)/k,frac*upper,support,upper);ff[&#x27;seconds&#x27;]=time.perf_counter()-tic;ff[&#x27;init&#x27;]=str(frac);ff[&#x27;errors&#x27;]=errors(ff,row);total_fit+=ff[&#x27;seconds&#x27;];candidates.append(ff)
+ tic=time.perf_counter();ff=fit(zf,gf,k,r[&#x27;atoms&#x27;],r[&#x27;weights&#x27;],r[&#x27;variance&#x27;],support,upper);ff[&#x27;seconds&#x27;]=time.perf_counter()-tic;ff[&#x27;init&#x27;]=&#x27;pick&#x27;;ff[&#x27;errors&#x27;]=errors(ff,row);candidates.append(ff)
+ best=min(candidates,key=lambda d:d[&#x27;cost&#x27;]).copy();best[&#x27;total_multistart_seconds&#x27;]=total_fit+candidates[-1][&#x27;seconds&#x27;]+r[&#x27;total_seconds&#x27;];best[&#x27;best_independent_cost&#x27;]=min(d[&#x27;cost&#x27;] for d in candidates[:-1]);best[&#x27;best_independent_seconds&#x27;]=total_fit
+ # Same data as the Pick estimator, with four starts, checks exact-interpolation equality.
+ same=[]
+ for frac in [.1,.35,.65,.9]:
+  ai=np.mean(c)+np.sqrt(1-frac)*(cheap_atoms-np.mean(c))
+  tic=time.perf_counter();ss=fit(z,g,k,ai,np.ones(k)/k,frac*upper,support,upper);ss[&#x27;seconds&#x27;]=time.perf_counter()-tic;ss[&#x27;errors&#x27;]=errors(ss,row);same.append(ss)
+ sb=min(same,key=lambda d:d[&#x27;cost&#x27;]).copy();sb[&#x27;total_seconds&#x27;]=sum(d[&#x27;seconds&#x27;] for d in same)
+ out.append({&#x27;key&#x27;:key,&#x27;N&#x27;:row[&#x27;N&#x27;],&#x27;k&#x27;:k,&#x27;true_variance&#x27;:row[&#x27;true_variance&#x27;],&#x27;node_rule&#x27;:&#x27;observed spectral midpoint/halfspan; Pick m=k x=.8half linspace, eta=.3half; fit m=32 same rule; Ying32 conjugate pairs ellipse1.15half,.6half&#x27;,&#x27;pick&#x27;:serial(r),&#x27;eigenmatrix&#x27;:serial(e),&#x27;full_forward_fit&#x27;:serial(best),&#x27;fit_candidates&#x27;:[serial(x) for x in candidates],&#x27;same_nodes_fit&#x27;:serial(sb)})
+ for name,val in [(&#x27;pick_z&#x27;,z),(&#x27;pick_g&#x27;,g),(&#x27;eigen_z&#x27;,ze),(&#x27;eigen_g&#x27;,ge),(&#x27;fit_z&#x27;,zf),(&#x27;fit_g&#x27;,gf)]:arrays[key+&#x27;_&#x27;+name]=val
+ print(key,&#x27;W1&#x27;,r[&#x27;errors&#x27;][&#x27;wasserstein1&#x27;],e[&#x27;errors&#x27;][&#x27;wasserstein1&#x27;],best[&#x27;errors&#x27;][&#x27;wasserstein1&#x27;],flush=True)
+json.dump(out,open(&#x27;matched_comparison_results.json&#x27;,&#x27;w&#x27;),indent=2)
+np.savez_compressed(&#x27;matched_comparison_raw.npz&#x27;,**arrays)
+print(&#x27;\nSUMMARY&#x27;)
+for k in [3,5]:
+ for v in [.0625,.5625]:
+  rr=[r for r in out if r[&#x27;k&#x27;]==k and r[&#x27;true_variance&#x27;]==v]
+  for method in [&#x27;pick&#x27;,&#x27;eigenmatrix&#x27;,&#x27;full_forward_fit&#x27;,&#x27;same_nodes_fit&#x27;]:
+   ms=[r[method] for r in rr]
+   print(k,v,method,&#x27;mean t/W1 errors&#x27;,[float(np.mean([r[&#x27;errors&#x27;][key] for r in ms])) for key in [&#x27;variance&#x27;,&#x27;wasserstein1&#x27;]],&#x27;median sec&#x27;,float(np.median([r.get(&#x27;total_multistart_seconds&#x27;,r.get(&#x27;total_seconds&#x27;)) for r in ms])))
+</pre></main>

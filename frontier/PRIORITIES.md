@@ -156,3 +156,7 @@ Material corrections: N135 → N160 is a full-proof candidate sharp identical-un
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
 Other historical restarts remain in `state/` and source archives. This dashboard selects 78 concrete gates; it does not exhaustively rank every field or independently reconstruct all 591 cards. Candidate supersession does not externally validate a gate.
+
+## BQ intake: N522–N534
+
+The 2026-10-10 intake adds thirteen source-derived, unreviewed cards spanning local noise models, quantum information, spectral inversion, fragmentation, Boolean analysis, Gaussian reconstruction, finite-state likelihoods, and applied stochastic networks. Cards retain assumptions, costs, source hashes, and failure scope. Source-reported checks remain source-reported; intake certifies no proof, priority, empirical result, or capability claim. The corresponding open gates are the final thirteen records in OPEN_PROOF_GATES.jsonl.

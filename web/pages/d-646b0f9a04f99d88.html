@@ -1,0 +1,98 @@
+<!doctype html><meta charset="utf-8"><title>BQ: applied_invention_2026_10_09/raw_snapshot_comparison.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/applied_invention_2026_10_09/raw_snapshot_comparison.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Illustrative RAW-SAMPLE validation, not an experimental/biological benchmark.
+
+Both protocols use the same number of independently simulated stationary
+snapshots. For the tested skew-symmetric A, the mean protocol has no larger
+expected added stationary second moment, including the noise baseline samples.
+Stationarity and calibrated controls are supplied by this mathematical
+simulator, NOT acquired from data. Timing is not a claimed application speedup.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+from pathlib import Path
+import numpy as np
+from research_gate import (random_binary_code, stationary_covariance,
+                           decode_covariance_differences)
+
+
+def sample_second_moment(cov, count, rng, chunk=8192):
+    chol=np.linalg.cholesky(cov)
+    moment=np.zeros_like(cov)
+    for start in range(0,count,chunk):
+        x=rng.normal(size=(min(chunk,count-start),len(cov)))@chol.T
+        moment += x.T@x
+    # The zero mean is part of the model, not estimated/assumed from these data.
+    return moment/count
+
+
+def mean_regression(a, gamma, count, fraction, rng, chunk=8192):
+    n=len(a)
+    transfer=gamma*np.sqrt(fraction)*np.linalg.inv(gamma*np.eye(n)-a)
+    zz=np.zeros((n,n)); xz=np.zeros((n,n))
+    for start in range(0,count,chunk):
+        size=min(chunk,count-start)
+        z=rng.normal(size=(size,n))
+        # Background stationary covariance is I for a skew-symmetric A.
+        x=z@transfer.T+rng.normal(size=(size,n))
+        zz+=z.T@z; xz+=x.T@z
+    fitted=np.linalg.solve(zz.T,xz.T).T
+    estimate=gamma*np.eye(n)-gamma*np.sqrt(fraction)*np.linalg.inv(fitted)
+    return estimate,float(np.sum(transfer**2))
+
+
+def main(output):
+    rng=np.random.default_rng(2026100923)
+    n=4; gamma=9.
+    raw=rng.normal(size=(n,n))
+    a=(raw-raw.T)/2
+    a/=np.linalg.norm(a,2)
+    code,delta=random_binary_code(n,rng)
+    ds=[np.diag(1+sign*row) for row in code for sign in [-1.,1.]]
+    conditions=len(ds)+1
+    b=a-gamma*np.eye(n)
+    cov0=stationary_covariance(b,2*gamma*np.eye(n))
+    covs=[stationary_covariance(b,2*gamma*(np.eye(n)+d)) for d in ds]
+    fraction=len(ds)/conditions
+    noise_budget=float(sum(np.trace(c-cov0) for c in covs)/conditions)
+    records=[]
+    for per_condition in [2000,20000]:
+        total=conditions*per_condition
+        trials=[]
+        for trial in range(6):
+            base=sample_second_moment(cov0,per_condition,rng)
+            differences=[sample_second_moment(c,per_condition,rng)-base for c in covs]
+            estimate,diagnostics=decode_covariance_differences(differences,ds,gamma)
+            mean_estimate,mean_budget=mean_regression(a,gamma,total,fraction,rng)
+            assert mean_budget &lt;= noise_budget+1e-10
+            trials.append({&#x27;noise_full_frobenius_error&#x27;:float(np.linalg.norm(estimate-a)),
+                &#x27;mean_full_frobenius_error&#x27;:float(np.linalg.norm(mean_estimate-a)),
+                &#x27;noise_skew_projected_error&#x27;:float(np.linalg.norm((estimate-estimate.T)/2-a)),
+                &#x27;mean_skew_projected_error&#x27;:float(np.linalg.norm((mean_estimate-mean_estimate.T)/2-a))})
+        summary={key:float(np.sqrt(np.mean([t[key]**2 for t in trials]))) for key in trials[0]}
+        records.append({&#x27;snapshots_per_noise_condition&#x27;:per_condition,
+                &#x27;total_snapshots_each_protocol&#x27;:total,&#x27;independent_trials&#x27;:6,
+                &#x27;root_mean_squared_frobenius_errors&#x27;:summary,&#x27;trials&#x27;:trials,
+                &#x27;noise_average_added_stationary_second_moment&#x27;:noise_budget,
+                &#x27;mean_average_added_stationary_second_moment&#x27;:mean_budget})
+    result={&#x27;status&#x27;:&#x27;SIMULATED_ACQUISITION_CHECK_ONLY; NOT_A_REAL_WORLD_BENCHMARK&#x27;,
+        &#x27;n&#x27;:n,&#x27;gamma&#x27;:gamma,&#x27;A_spectral_norm&#x27;:float(np.linalg.norm(a,2)),
+        &#x27;A&#x27;:a.tolist(),&#x27;noise_conditions_including_baseline&#x27;:conditions,
+        &#x27;code_relative_distance&#x27;:delta,&#x27;records&#x27;:records,
+        &#x27;limitations&#x27;:[&#x27;Stationary Gaussian samples generated from supplied true drift by the TEST HARNESS only&#x27;,
+          &#x27;Decoders do not receive the true drift or exact covariances&#x27;,
+          &#x27;No temporal independence/settling is acquired from observations&#x27;,
+          &#x27;Known mean labels and fresh controllable inputs required for mean protocol&#x27;,
+          &#x27;Equal replica count and bounded stationary second moment, not equal laboratory switching/calibration/energy cost&#x27;,
+          &#x27;Noise least squares is not asserted statistically optimal; analytic Fisher comparison is separate&#x27;,
+          &#x27;Synthetic small linear model; no molecular/cellular/device data&#x27;]}
+    output.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in result.items() if k!=&#x27;records&#x27;},indent=2))
+    for r in records:
+        print({k:v for k,v in r.items() if k!=&#x27;trials&#x27;})
+
+if __name__==&#x27;__main__&#x27;:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;raw_snapshot_results.json&#x27;))
+    main(parser.parse_args().output)
+</pre></main>

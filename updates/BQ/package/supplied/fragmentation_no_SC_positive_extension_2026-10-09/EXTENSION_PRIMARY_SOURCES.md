@@ -1,0 +1,50 @@
+# Primary-source boundary for the extension
+
+These notes supplement the sources in `FINITE_TIME_FRAGMENTATION_INVERSE.md`.
+Priority is provisional; this is not an exhaustive novelty certification.
+
+## Constant-rate decompounding and recursive clipping are prior art
+
+Boris Buchmann and Rudolf Grübel (2004), *Decompounding Poisson random sums:
+recursively truncated estimates in the discrete case*, Annals of the Institute
+of Statistical Mathematics 56, 743–756, DOI 10.1007/BF02506487.
+Primary journal PDF, read 2026-10-09:
+https://www.ism.ac.jp/editsec/aism/pdf/056_4_0743.pdf
+
+Sections 2.1–2.3 invert the compound-Poisson Panjer recursion and construct
+estimators with intermediate truncation. Their plug-in version clips against
+nonnegativity and the remaining unit mass; they also give a recursive
+likelihood version. Their asymptotic results include coordinate consistency
+and finite-dimensional limiting laws. Thus neither constant-rate recovery
+nor the idea of clipping during recursion is new here. Our density cap and
+post-sweep mass repair differ, but that difference alone is not a substantial
+novelty claim.
+
+The proposed broader capability concerns size-dependent fragmentation rates,
+finite-time full-generation inversion, a continuous bounded-BV binning/noise
+bound uniform in mesh width, and a positive realization avoiding a divergent
+renewal transform. Its priority remains unestablished.
+
+## Established mechanisms already credited in the checked result
+
+The exponential semigroup conjugacy and Bernstein-gamma mechanism are
+established prior work, including Patie–Sarkar. The earlier SC theorem's
+candidate distinction is endpoint-driven two-Volterra recovery, not invention
+of conjugacy. Exact primary references and the focused check are reproduced
+in the checked-result note and check record included as background.
+
+Alomari–Dubovski (2013) already use known initial and terminal distributions.
+A different number of measurement times is not a distinction. The relevant
+comparison is their perturbative/source-recovery variational approach versus
+the displayed constructive nonparametric inverse.
+
+Doumic–Escobedo–Tournus give a short-time reconstruction with noise/initial-data
+stability. The present target is full finite-time inversion at a known pure
+initial size. This does not replace their robustness guarantees for a perturbed
+initial distribution; no such initial-blur theorem is claimed here.
+
+Classical continuous-time Markov-chain uniformization supplies the positive
+forward series. This record claims neither uniformization nor analytic-adjoint
+likelihood fitting as inventions. The construction under consideration is the
+causal separation of the unknown increment coefficient and all-orders diagonal
+inside that positive series, coupled to the stated statistical error budget.

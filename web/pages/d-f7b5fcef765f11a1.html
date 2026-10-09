@@ -1,0 +1,156 @@
+<!doctype html><meta charset="utf-8"><title>BQ: catalyst_marked_pool_release/product_count_extension/README.md</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/catalyst_marked_pool_release/product_count_extension/README.md</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre># Distinct-mark likelihood solver
+
+This extension replaces the earlier candidate-event-count coordinate with an
+exact cap on the number of distinct permanently revealed particles. It is a
+specialized likelihood engine for large finite pools coupled to a fixed
+number of low-copy catalysts. It reduces the state count by one power of the
+truncation parameter K relative to the event-count-layer version. The
+mathematical closure and its general limits are in `GENERAL_CLOSURE.md`.
+
+## What is computed
+
+For N iid substrate molecules with q finite internal states evolving
+independently under a finite-state CTMC, and a fixed number C of identical
+catalysts, `UniqueMarkLikelihood` computes a terminal full or partial
+population-count likelihood, optionally jointly with bound catalyst count.
+Candidates arrive at total rate C lambda. A candidate chooses a catalyst
+uniformly; if it is free, it samples one of N molecule slots uniformly. A
+sampled label is permanently marked, including a failed/no-op binding attempt.
+The implementation tracks the bound-catalyst count b and free marked-state
+counts n, so the number of distinct marks is m=|n|+b. If a candidate would
+create tag K+1, its path is killed. Every killed path requires more than K
+Poisson candidate events, giving the absolute likelihood interval
+
+`L_K &lt;= L &lt;= L_K + Pr(Poisson(C lambda T)&gt;K)`.
+
+For a fixed structurally irreversible product category with zero initial mass,
+the solver can additionally kill histories whose product count exceeds the
+observed count. This is exact only when the relevant generator row and column
+are literal structural zeros and the product is not the bindable state.
+Product pruning removes some paths in addition to tag-cap paths, so retained
+mass is generally less than the Poisson CDF; the endpoint likelihood tail
+bound remains valid.
+
+The finite dimension without product pruning is
+
+`D(K,q,C)=sum_{b=0}^{min(C,K)} binom(K-b+q,q)`.
+
+For product category P capped at count h, the dimension is
+
+`sum_b sum_{s=0}^{min(h,K-b)} binom(K-b-s+q-1,q-1)`.
+
+At fixed K,q,C,h this does not depend on N. It does grow quickly in K and q;
+the construction is relevant only when the candidate budget and observation
+rarity permit moderate K. The general theorem allows at most r new marks per
+proposal and has tail `Pr(Poisson(A_T)&gt;=floor(K/r)+1)`.
+
+## Main test
+
+The executed C=1, q=4, N=20/100/300 test uses T=1, lambda=2.2, koff=0.55,
+kcat=1.3. The substrate&#x27;s non-lumpable first-order switching chain has states
+A, B, C, and absorbing product P. Initially every substrate is in A; A binds;
+only catalytic release creates P; the endpoint observation is P(T)=1 with the
+bound state marginalized. A constructive one-candidate path lower bound is
+0.0733151, so K=12 is selected before the solve to make the Poisson truncation
+tail / that path lower bound &lt; 1e-5. This is only a relative *truncation*
+certificate; floating-point ODE error is not rigorously enclosed.
+
+| N | distinct-mark states | marked seconds | query-specific exact FSP states | FSP seconds | absolute likelihood difference |
+|---:|---:|---:|---:|---:|---:|
+| 20 | 1,469 | 0.0467 | 841 | 0.0087 | 1.9e-13 |
+| 100 | 1,469 | 0.0528 | 20,201 | 0.3818 | 1.5e-13 |
+| 300 | 1,469 | 0.0388 | 180,601 | 4.3900 | 3.3e-13 |
+
+These are single-run timings from `product_count_unique_mark_results.json`,
+with construction and solve included; the N=20 exact FSP is faster and the
+cross-over is between tested sizes. At N=300 the measured speed ratio is
+about 113x against the strongest executed generic exact baseline: forward
+FSP pruned exactly to P&lt;=1. This is not a comparison to every specialized
+method. A separate checker rerun measured the earlier event-count solver at
+0.113 s versus 3.83 s forward / 4.14 s adjoint FSP; those results are retained
+in `../focused_check/c1_product_rerun.json` and are not timings of this new
+distinct-mark solver.
+
+The mean-field fresh-draw approximation gives relative error 2.77e-4 at N=300,
+above the 1e-5 target used for the truncation comparison. The exact likelihood
+for P(T)=1 is zero with no catalyst and changes by a factor of about 2.08
+between lambda=0.8 and 3.0 in the N=300 exact-FSP sensitivity run. These are
+small-model informativeness checks, not posterior mixing or physical
+validation.
+
+The general proof, including the no-j state bound and independent-pool
+endpoint convolution, is in `GENERAL_CLOSURE.md`. The earlier event-count
+solver remains in `marked_pool_partial.py` as a reference. The code is
+mathematically exact for the stated CTMC, but the implemented DOP853/expm
+values have no validated numerical-error interval. The analytic Poisson tail
+does not cover that numerical error.
+
+## Baselines and novelty status
+
+The strongest executed exact baseline is query-specific FSP with the same
+exact irreversible-product cap; its target likelihood matches the marked
+solver to floating-point precision. Balanced-realization output reduction for
+enzyme models is a strong published approximate competitor but was not
+implemented, and its reported output norm is not directly a pointwise relative
+likelihood certificate. More importantly, a *likelihood interval* is not new
+by itself: Fox, Neuert &amp; Munsky (2016) derive monotone lower and upper
+single-cell-data likelihood bounds from FSP, with the upper bound obtained
+from the known FSP loss. The candidate here differs only in the reduced
+positive revealed-state basis used to compute an endpoint contribution and
+its tag-truncation bound.
+
+Reis, Kromer &amp; Klipp (2018) derive exact generating-function solutions for a
+hierarchic class of first-order networks, including catalytic/splitting
+reactions, with deterministic or Poisson initial conditions. This covers
+useful first-order catalytic and burst models, and reinforces that exact
+product-count laws are established in substantial classes. The binding step
+in the current finite-pool model, `E + S -&gt; ES`, is bimolecular and does not
+fall in their first-order hierarchy; the independent substrate switching
+part alone is covered by the established monomolecular multinomial solution.
+
+TOPE / uniformization, first-order multinomial evolution, and graphical
+Poisson constructions are standard mathematical components. The focused
+search found no exact published match for the entire finite revealed-count
+closure, but did not establish that it is absent from the literature. Treat
+the reduced-state capability as specialized and provisional, with no
+established invention, priority, or strongest-method claim.
+
+Primary prior links:
+
+* Fox, Neuert &amp; Munsky (2016), “Finite state projection based bounds to
+  compare chemical master equation models using single-cell data,” *J. Chem.
+  Phys.* 145, 074101, DOI
+  &lt;https://doi.org/10.1063/1.4960505&gt;;
+  &lt;https://pmc.ncbi.nlm.nih.gov/articles/PMC4991991/&gt;.
+* Reis, Kromer &amp; Klipp (2018), “General solution of the chemical master
+  equation and modality of marginal distributions for hierarchic first-order
+  reaction networks,” *J. Math. Biol.* 77, 377–419, DOI
+  &lt;https://doi.org/10.1007/s00285-018-1205-2&gt;;
+  &lt;https://pmc.ncbi.nlm.nih.gov/articles/PMC6061068/&gt;.
+
+## Reproduction and files
+
+From this directory:
+
+```sh
+python test_unique_mark_engine.py
+python test_product_count.py
+python ../test_marked_pool.py
+python run_product_count_unique_mark.py
+python run_numerical_tolerance_check.py
+```
+
+`unique_mark_engine.py` implements the no-j forward solver.
+`marked_pool_partial.py` contains the exact query-specific FSP reference and
+the earlier event-count-layer solver. `test_unique_mark_engine.py` covers
+distinct-mark likelihoods; `test_product_count.py` covers product pruning.
+`product_count_unique_mark_results.json` records the compared likelihoods,
+dimensions, and one-run timings. `numerical_tolerance_unique_mark.json` checks
+solver stability only, not rigorous numerical error.
+
+The corrected C=2/b=2 validation is in the parent folder&#x27;s
+`../c2_repair_validation.json`; the old C=2 observation summing to only 14 of
+16 molecules was a vacuous zero-vs-zero check and is explicitly superseded
+there. The independent labelled-molecule comparison and its source hashes
+are in `../focused_check/`.
+</pre></main>

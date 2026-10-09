@@ -1,0 +1,111 @@
+# Finite revealed-pool likelihood solver
+
+## Main result
+
+This package contains an exact-positive revealed-population reduction for
+terminal likelihoods in a specified class of finite-controller / large-pool
+stochastic systems. A controller interacts with only a bounded-rate number of
+randomly selected particles. Permanently reveal each selected particle, even
+after a rejected/no-op proposal. The remaining iid pool evolves independently
+and can be integrated at observation time by a multinomial law. Truncating the
+number of distinct revealed particles yields an explicit absolute likelihood
+error bound.
+
+This is a specialized computational candidate, not an established new
+invention, priority claim, or strongest-method claim. Its Poisson expansion,
+multinomial pool law, and likelihood intervals have substantial prior art.
+The possible contribution is a positive finite revealed-state basis and its
+endpoint aggregate likelihood marginalization for the stated controller
+class. See `product_count_extension/GENERAL_CLOSURE.md` for exact assumptions,
+proof, and boundaries.
+
+## Baseline and measured capability
+
+The primary executed baseline is query-specific exact finite-state projection
+(FSP) with the same exact irreversible-product cap. On the saved q=4, C=1,
+N=300 product-count case, the distinct-mark solver used 1,469 states and
+0.0388 seconds; the capped FSP used 180,601 states and 4.3900 seconds, a
+single-run ratio of about 113x. At N=20 the FSP was faster. These timings are
+from `product_count_extension/product_count_unique_mark_results.json`; an
+earlier single-run report for the same regime was about 73x under different
+timing conditions. Only the latest 113x case has its raw row in this package,
+so timing variation is explicit and neither ratio is a statistical speed
+claim.
+
+The product-only result has absolute likelihood difference about 3.3e-13
+versus FSP, while the analytic Poisson truncation allowance is 5.96e-7. The
+reported floating-point integration error is not rigorously enclosed. The
+identified likelihood is informative for catalyst rate in this example;
+posterior mixing and physical validation were not established.
+
+## Prior art and honest scope
+
+* Fox, Neuert & Munsky (2016), “Finite state projection based bounds to
+  compare chemical master equation models using single-cell data,” *J. Chem.
+  Phys.* 145, 074101, DOI
+  <https://doi.org/10.1063/1.4960505>,
+  <https://pmc.ncbi.nlm.nih.gov/articles/PMC4991991/>. This already gives
+  monotone lower/upper data-likelihood bounds from FSP truncation. Therefore
+  the likelihood interval is not itself a novelty claim.
+* Mjolsness (2013), “Time-Ordered Product Expansions for Computational
+  Stochastic Systems Biology,” *Physical Biology* 10, 035009, DOI
+  <https://doi.org/10.1088/1478-3975/10/3/035009>; van Dijk et al. (2018),
+  “Uniformization: Basics, extensions and applications,” *Performance
+  Evaluation* 118, 8–32, DOI <https://doi.org/10.1016/j.peva.2017.10.002>.
+  These establish the underlying Poisson event expansions.
+* Jahnke & Huisinga (2007), “Solving the chemical master equation for
+  monomolecular reaction systems analytically,” DOI
+  <https://doi.org/10.1007/s00285-006-0034-x>, establishes exact
+  independent-particle multinomial dynamics.
+* Reis, Kromer & Klipp (2018), “General solution of the chemical master
+  equation and modality of marginal distributions for hierarchic first-order
+  reaction networks,” DOI <https://doi.org/10.1007/s00285-018-1205-2>,
+  <https://pmc.ncbi.nlm.nih.gov/articles/PMC6061068/>. Their exactly solvable
+  hierarchical first-order class includes catalytic/splitting reactions.
+  The binding step `E + S -> ES` in this package is bimolecular and outside
+  that class; the independent first-order pool switching alone is covered by
+  monomolecular results.
+* López-Caamal & Márquez-Lago (2014), balanced realization for CME outputs,
+  including enzyme product-count ranges, DOI
+  <https://doi.org/10.1371/journal.pone.0103521>, is an unbenchmarked strong
+  approximate competitor. Tensor/QTT CME methods are also relevant and
+  unbenchmarked. Neither is claimed to be beaten.
+
+The current search was focused, not exhaustive. The internal source-AI check
+is not external expert review or formal proof verification. Benchmarks are
+numerical comparisons, not validated numerical enclosures.
+
+## Package map
+
+* `product_count_extension/README.md`: no-event-counter engine, experiment,
+  timings, and scope.
+* `product_count_extension/GENERAL_CLOSURE.md`: theorem and proof for the
+  broader finite revealed-pool class.
+* `product_count_extension/unique_mark_engine.py`: current distinct-tag
+  solver, with N-independent state count at fixed K, q, and C.
+* `marked_pool.py`: earlier candidate-event-count solver retained as a
+  baseline/predecessor.
+* `product_count_extension/marked_pool_partial.py`: shared partial-observation
+  and exact query-specific FSP code; copied with attribution from the base
+  implementation, with C>1 fixes recorded in the repair audit.
+* `focused_check/`: independent labelled-molecule CTMC check, result record,
+  and scope note.
+* `c2_repair_validation.json`, `FAILED_ATTEMPTS.md`: repaired multi-catalyst
+  regressions and superseded vacuous test record.
+* `SHA256SUMS.txt`: hashes for the complete package.
+
+## Reproduction
+
+Use Python 3.12 with the pinned dependencies in `requirements.txt`.
+
+```sh
+python test_marked_pool.py
+cd product_count_extension
+python test_unique_mark_engine.py
+python test_product_count.py
+python run_product_count_unique_mark.py
+```
+
+The scripts use direct assertion-based tests, not `unittest.TestCase`; running
+`python -m unittest` discovers zero tests. Benchmark scripts overwrite their
+JSON outputs. The checked-in result JSONs are the recorded one-run evidence.

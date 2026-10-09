@@ -1,0 +1,228 @@
+# Focused check: a counterexample to Han's auxiliary split question
+
+Date: 2026-10-09. Scope: one mathematical check of the proposed balanced
+4-bit construction, exact finite verification, and a focused current
+primary-literature comparison. No independent review loop or public contact.
+
+## Verdict
+
+**The proposed counterexample is valid.** Let `G_d` be the depth-`d`
+complete 4-ary composition of the seed below, with `G_1=h`. Then every
+coordinate is essential and
+
+\[
+\min_i\frac{A_i(G_d)}{I_i(G_d)}=\frac d2
+=\frac14\log_2 n_d,\qquad n_d=4^d.
+\]
+
+Consequently, there is no dimension-independent constant in Han's
+Question 3.1. This is stronger than failure of the aggregate estimate.
+It concerns the sufficient **absolute-Fourier-overlap split criterion**,
+not the FEI conjecture or the weaker entropy-increment criterion.
+Indeed this very family satisfies
+
+\[
+\frac{H(G_d)}{I(G_d)}=6\bigl(1-(2/3)^d\bigr)<6.
+\]
+
+The check found no logical gap in the coordinate composition argument.
+A previous 16-coordinate ordering error is corrected by the block table
+below. Historical novelty is **not certified** by the focused search.
+
+## Definitions and exact seed
+
+Use normalized uniform Fourier coefficients
+`fhat(S)=E[f(x) product_{i in S} x_i]`, and set
+
+\[
+A_i(f)=\sum_{S\subseteq[n]\setminus\{i\}}
+ |\widehat f(S)\widehat f(S\cup\{i\})|,
+\qquad I_i(f)=\sum_{S\ni i}\widehat f(S)^2.
+\]
+
+The seed is positive when at least three inputs are positive, or when the
+positive pair is `12`, `34`, or `13`. Equivalently, in Boolean AND/OR
+notation,
+
+\[
+h=(x_1\wedge x_2)\vee(x_1\wedge x_3)\vee(x_3\wedge x_4).
+\]
+
+It is monotone, and exactly eight of its sixteen inputs are positive, so
+it is balanced. Its nonzero Fourier coefficients are
+
+| S | 1 | 2 | 12 | 3 | 23 | 123 | 4 | 14 | 34 | 134 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| fhat(S) | 1/2 | 1/4 | 1/4 | 1/2 | -1/4 | -1/4 | 1/4 | -1/4 | 1/4 | -1/4 |
+
+Hence
+
+\[
+(I_1,I_2,I_3,I_4)=(1/2,1/4,1/2,1/4),\quad
+(A_1,A_2,A_3,A_4)=(1/4,1/4,1/4,1/4),
+\]
+
+and the four local ratios are `(1/2,1,1/2,1)`.
+Also `I(h)=3/2`, `A(h)=1`, `H(h)=3`, and
+`sum_r |hhat({r})|=3/2`. Here the last sum is the singleton-layer sum,
+not the full spectral L1 norm, which is `3`.
+
+## Coordinate composition lemma and proof
+
+Let `h` be any balanced Boolean gate on `q` variables, `g` any Boolean
+function on `m` variables, and `F=g(h_1,...,h_m)` on disjoint inner blocks.
+For outer coordinate `j` and inner coordinate `r`,
+
+\[
+\boxed{A_{j,r}(F)=I_j(g)A_r(h)+|\widehat h(\{r\})|A_j(g)},
+\qquad
+\boxed{I_{j,r}(F)=I_j(g)I_r(h)}.
+\]
+
+For block-frequency tuple `(S_1,...,S_m)`, balancedness makes its active
+block set `T={ell:S_ell is nonempty}` unique, and
+
+\[
+\widehat F(S_1,\ldots,S_m)
+=\widehat g(T)\prod_{\ell\in T}\widehat h(S_\ell).
+\]
+
+For a Fourier edge toggling `r` in block `j`, there are exactly two cases:
+
+1. Both local frequencies are nonempty. The active set remains `T` and
+   contains `j`. The outer factor is `|ghat(T)|^2`, not `|ghat(T)|`.
+   The other active blocks sum to one by Parseval. The inner edge sum
+   is `A_r(h)` since its omitted empty-to-singleton contribution is zero.
+   Summing over `T` containing `j` gives `I_j(g)A_r(h)`.
+2. The local frequencies are empty and `{r}`. The two outer active sets
+   are `T` and `T+j`. The coefficient product contains
+   `|ghat(T)ghat(T+j)| |hhat({r})|`; all other active blocks again sum
+   to one. These edges contribute `A_j(g)|hhat({r})|`.
+
+The cases are disjoint and exhaustive, proving the first identity.
+For influence, sum squared Fourier coefficients whose block-`j`
+frequency contains `r`; the same factorization gives the second.
+No independence or sign assumption on outer Fourier coefficients is used.
+
+For monotone Boolean `h`, its discrete derivative
+`(h(x_{r=+1})-h(x_{r=-1}))/2` is zero or one. Therefore its expectation
+is both `hhat({r})` and `I_r(h)`. Where both influences are positive,
+
+\[
+\frac{A_{j,r}(F)}{I_{j,r}(F)}
+=\frac{A_j(g)}{I_j(g)}+\frac{A_r(h)}{I_r(h)}.
+\]
+
+## All-depth conclusion
+
+Set `G_1=h` and define `G_{d+1}` by replacing every leaf input of `G_d`
+with a disjoint copy of `h`. Equivalently, these are complete depth-`d+1`
+4-ary trees of seed gates. Balance and monotonicity are preserved.
+For a leaf with successive slots `(r_1,...,r_d)`, the identities give
+
+\[
+I_{r_1,\ldots,r_d}(G_d)=\prod_{t=1}^d I_{r_t}(h)>0,
+\qquad
+\frac{A_{r_1,\ldots,r_d}(G_d)}{I_{r_1,\ldots,r_d}(G_d)}
+=\sum_{t=1}^d\rho_{r_t},
+\quad\rho=(1/2,1,1/2,1).
+\]
+
+The exact minimum is `d/2`, attained by choosing only slots 1 and 3;
+the maximum is `d`. Given any proposed constant `C`, take an integer
+`d>2C`. Then every coordinate violates `A_i<=C I_i`. There are no
+zero-influence coordinates through which the existential quantifier
+could escape. The aggregate ratio is `A(G_d)/I(G_d)=2d/3`.
+
+## Finite verification and ordering
+
+The independent script `fei_split_focused_check.py` does not import the
+candidate implementation. It checks the seed transform also by its direct
+sum definition; it checks balance, monotonicity, Parseval, all coordinate
+influences both combinatorially and spectrally, all overlap sums, and exact
+entropy at 4 and 16 bits. It uses integer transforms and rational arithmetic.
+
+For `G_2=h(h_1,h_2,h_3,h_4)`, the ratios, grouped by outer slot, are
+
+| Outer slot | Inner-coordinate ratios |
+|---|---|
+| 1 | 1, 3/2, 1, 3/2 |
+| 2 | 3/2, 2, 3/2, 2 |
+| 3 | 1, 3/2, 1, 3/2 |
+| 4 | 3/2, 2, 3/2, 2 |
+
+The full exact metrics are `A=3`, `I=9/4`, `H=15/2`.
+Output is saved in `fei_split_focused_check_results.json`.
+The current candidate script also passes. Finite enumeration verifies
+consistency; the coordinate lemma establishes arbitrary depth.
+
+Convention caution: a Walsh butterfly using `a-b` on tables indexed by
+`x_i=2*bit_i-1` produces an additional `(-1)^|S|` sign. This does not
+change any overlap, influence, or entropy here. The independent script
+uses `b-a` so its signed coefficients match the displayed convention.
+
+## FEI-compatible entropy calculation
+
+For balanced inner gates, the spectral distribution can be sampled by first
+choosing the outer active set, then independently sampling an inner spectral
+set in each active block. Thus
+
+\[
+H(g\circ h)=H(g)+I(g)H(h),\qquad I(g\circ h)=I(g)I(h).
+\]
+
+Starting from `H(h)=3`, `I(h)=3/2` yields
+
+\[
+I(G_d)=(3/2)^d,\qquad
+H(G_d)=3\sum_{t=0}^{d-1}(3/2)^t=6((3/2)^d-1).
+\]
+
+These entropy/influence composition facts and recursive amplification
+already occur in O'Donnell and Tan, Proposition 2 and Lemma 3; the
+composition construction itself must not be presented as new.
+[Primary author PDF](https://www.cs.cmu.edu/~odonnell/papers/fei-composition.pdf),
+[arXiv:1304.1347](https://arxiv.org/abs/1304.1347).
+
+## Primary-source comparison and novelty boundary
+
+1. **Exact target confirmed.** Han's Question 3.1, equation (3.18), is
+   precisely the existence of a universal `C` and, for each Boolean
+   function, some coordinate satisfying `A_i<=C I_i`.
+   It is posed separately as a sufficient route to FEI.
+   [arXiv v2, Section 3](https://arxiv.org/html/2312.08271v2),
+   [published Combinatorica article](https://link.springer.com/article/10.1007/s00493-024-00133-z).
+   The [arXiv record](https://arxiv.org/abs/2312.08271) lists v2,
+   2025-12-10, as its latest version at this check.
+
+2. **2026 comparison and normalization.** González–MacManus–Pereyra
+   identify equation (3) with Han's question. Let
+   `N=sum_S |Fhat_+(S)^2-Fhat_-(S)^2|=4A_i` and
+   `D=sum_S (Fhat_+(S)-Fhat_-(S))^2=4I_i`.
+   Their introductory equation (3) is `N<=K D`, so its constant transfers
+   unchanged to `A_i/I_i<=K`. The introduction states `K=38` for a
+   suitable delta-tribes split. The detailed proof of Theorem 5.3 actually
+   ends with `N<=38 I_i`, by adding `4I_i+4I_i+30I_i`; this stronger
+   displayed bound yields `A_i/I_i<=19/2`. Thus both reported bounds are
+   valid; the factor-four distinction is the RHS normalization.
+   Proposition 5.1 concerns a prescribed bad split, while Section 5.2
+   supplies a bounded alternative. The examined sections contain no
+   all-coordinate recursive obstruction.
+   [Introduction and Sections 4–6](https://arxiv.org/html/2606.00246v2).
+   The [arXiv record](https://arxiv.org/abs/2606.00246) lists v2,
+   2026-06-09, as latest. Their weaker entropy criterion and proved
+   stopping-tree results are unaffected.
+
+3. **Focused search outcome.** Searches on 2026-10-09 combined Han,
+   Question 3.1, equation 3.18, the arXiv identifiers, Fourier entropy,
+   split criteria, composition, and counterexample; arXiv-restricted
+   variants were also checked. No matching previously published
+   all-coordinate counterexample was located. This is a bounded negative
+   search result, not proof of historical priority or exhaustive coverage.
+
+**Safe conclusion:** an explicit mathematically verified counterexample to
+the auxiliary assertion in Han's Question 3.1, with no matching prior
+resolution found in this focused check. Do not describe it as a resolution
+of FEI, as refuting the 2026 paper's proved results, or as historically novel
+without qualification. The sharper delta-composition calculus is outside
+this audit's scope and is not needed for the counterexample.

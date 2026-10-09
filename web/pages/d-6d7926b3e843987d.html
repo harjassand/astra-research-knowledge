@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><title>BQ: catalyst_marked_pool_release/product_count_extension/test_product_count.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/catalyst_marked_pool_release/product_count_extension/test_product_count.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>import numpy as np
+from marked_pool_partial import MarkedPoolLikelihood, full_cme_endpoint
+from run_product_count import model
+
+
+def close(a,b,rtol=2e-7,atol=2e-9):
+    assert abs(a-b) &lt;= atol+rtol*abs(b),(a,b,abs(a-b))
+
+
+def main():
+    Q,mu=model()
+    # Product-only observation: exact query-specific cap agrees with the full
+    # finite CME, and the independent candidate-clock lower interval encloses it.
+    N,T,lam,koff,kcat=7,.9,1.6,.6,1.1
+    full,full_dim,_=full_cme_endpoint(N,Q,0,3,lam,koff,kcat,mu,T,{3:1},direction=&#x27;forward&#x27;)
+    cap,cap_dim,_=full_cme_endpoint(N,Q,0,3,lam,koff,kcat,mu,T,{3:1},direction=&#x27;forward&#x27;,monotone_cap=(3,1))
+    assert full_dim &gt; cap_dim
+    close(cap,full,rtol=2e-12,atol=2e-13)
+    marked=MarkedPoolLikelihood(N,Q,0,3,lam,koff,kcat,mu).solve(T,14,{3:1},rtol=2e-11,atol=1e-14)
+    assert marked.lower &lt;= full+1e-10 &lt;= marked.lower+marked.poisson_tail+1e-10
+
+    # General partial-state marginal exercises the multinomial lump of the
+    # untouched pool; it is not special to the absorbing product category.
+    obs={0:3}
+    exact,_d,_m=full_cme_endpoint(N,Q,0,3,lam,koff,kcat,mu,T,obs,direction=&#x27;forward&#x27;)
+    m=MarkedPoolLikelihood(N,Q,0,3,lam,koff,kcat,mu).solve(T,14,obs,rtol=2e-11,atol=1e-14)
+    assert m.lower &lt;= exact+1e-10 &lt;= m.lower+m.poisson_tail+1e-10
+
+    # No catalyst means an absorbing, initially empty product cannot appear.
+    zero,_,_=full_cme_endpoint(N,Q,0,3,0.0,koff,kcat,mu,T,{3:1},direction=&#x27;forward&#x27;,monotone_cap=(3,1))
+    assert zero == 0.0
+    print({&quot;status&quot;:&quot;pass&quot;,&quot;full_vs_cap_product&quot;:abs(full-cap),&quot;full_states&quot;:full_dim,&quot;cap_states&quot;:cap_dim,&quot;product_interval_tail&quot;:marked.poisson_tail,&quot;partial_A_likelihood&quot;:exact,&quot;partial_A_interval_tail&quot;:m.poisson_tail})
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre></main>

@@ -1,0 +1,186 @@
+# Cancellation-avoiding causal inversion by positive uniformization
+
+2026-10-09. New continuation, not part of the earlier checked SC archive.
+This note does not claim external expert review or formal software certification.
+It implements the no-SC causal-clipping estimator without a renewal W.
+
+## 1. Finite lattice and the exact decomposition
+
+Let a=alpha T, k_0=0 and k_1,...,k_m be daughter probability masses. At state
+n the fragmentation rate is alpha D_n, where D_0=1 and 0<=D_n<=1. In the
+power-law model D_n=exp(-gamma nh), but the algorithm below also accepts a
+known arbitrary rate profile satisfying these inequalities. Put z_n=1-D_n.
+
+The generator is alpha(C_k-I)D, and its uniformization matrix is
+
+    P=I-D+C_k D.
+
+P is nonnegative and P_00=0. Define POISSON-WEIGHTED forward coefficients
+
+    u_{r,n}=exp(-a) a^r (P^r e_0)_n/r!.
+
+Then u_{0,0}=exp(-a), u_{r,0}=0 for r>=1, and the endpoint is sum_r u_{r,n}.
+At coordinate n, k_n can enter only through the direct transition 0 -> n.
+Because P_00=0, that transition must be the first uniformization step. The
+remaining steps stay at n. Therefore
+
+    u_{r,n}=c_{r,n} k_n + v_{r,n},
+    c_{r,n}=exp(-a) a^r z_n^(r-1)/r!,  r>=1,                 (U1)
+
+where v is nonnegative and depends only on k_1,...,k_{n-1}. Its recurrence is
+
+    v_{0,n}=0,
+    b_{r,n}=sum_{j=1}^{n-1} k_{n-j} D_j u_{r-1,j},
+    v_{r,n}=(a/r)[z_n v_{r-1,n}+b_{r,n}].                    (U2)
+
+The direct coefficient is summed analytically to ALL orders:
+
+    A_n=sum_{r>=1}c_{r,n}
+       =[exp(-a D_n)-exp(-a)]/(1-D_n),
+    A_n=a exp(-a) if D_n=1.                                  (U3)
+
+Thus the exact endpoint is
+
+    F_h(k)_n=A_n k_n + G_n,
+    G_n=sum_{r>=1}v_{r,n}.                                   (U4)
+
+There is no division by 1-D_n that is numerically singular: use expm1/exprel
+for (U3) and its displayed continuous limit. None of (U1)-(U2) requires a
+spectral gap, the small-chipping assumption, or a near-parent density estimate.
+
+## 2. Algorithm with causal clipping
+
+Sweep n=1,...,m. Retain the table u_{r,j} for 0<=r<=J and j<n. Compute (U2)
+using these already recovered coefficients and form
+
+    G_n^J=sum_{r=1}^J v_{r,n},
+    k_hat_n=clip_[0,Mh]((Y_n-G_n^J)/A_n),
+    u_{r,n}=v_{r,n}+c_{r,n} k_hat_n.                          (U5)
+
+All table operations are additions, multiplications and divisions of
+nonnegative quantities. The only subtraction Y_n-G_n^J is the actual inverse
+problem, immediately followed by clipping. A huge auxiliary W is never formed.
+
+The stored table is weighted, as above. Storing raw P^r and multiplying by a
+tiny Poisson weight later would unnecessarily permit huge intermediate values.
+
+Arithmetic cost is O(J m^2), storage O(J m). Input rates can be formed from
+logq=-gamma h, so q does not first have to be rounded to 1. gamma=0 is a
+regular constant-rate case. The optional prefix mass repair from the no-SC
+note is applied after the sweep and retains its factor-two risk accounting.
+
+## 3. One-sided data perturbation from truncation
+
+For a pre-repair candidate x with S=sum x_n, put R=max(1,S). Since
+||P||_1<=R, truncating the full uniformization series at J has l1 tail at most
+
+    tau_J=exp(a(R-1)) P(Poisson(aR)>J).                       (U6)
+
+The remainder omitted from G is smaller than this full nonnegative tail;
+the direct coefficient A_n was not truncated. A fixed order may be chosen
+before inversion using the cap-based upper bound R_cap=max(1,Mhm).
+
+For J+1>aR_cap, a convenient explicit Chernoff upper bound is
+
+    tau_J <= exp[-a+(J+1)(1+log(aR_cap/(J+1)))].               (U7)
+
+Choose J so that this expression is below a requested tolerance. This avoids
+reliance on a heuristic fixed number of Taylor terms.
+
+In exact arithmetic, the output of (U5) is the EXACT causal clipped estimator
+for data Y+delta with
+
+    delta_n>=0, sum delta_n<=tau_J.                           (U8)
+
+To see this, let e_n=G_n-G_n^J>=0, evaluated at the completed x. If x_n is
+interior, its exact forward residual is e_n. At the lower bound the residual
+already has the permitted nonnegative sign, so no correction is needed. At
+the upper bound, its positive one-sided violation is at most e_n. The clipping
+optimality defect from (N9a) is therefore between 0 and e_n in every case.
+
+Consequently the no-SC statistical bound (N13) remains valid after adding
+tau_J to the endpoint-error budget. This remains true before mass repair even
+if S>1: use R_cap or the valid posterior R, rather than pretending P is then
+stochastic.
+
+## 4. What changes about finite precision
+
+For the exact pre-repair x, each weighted coefficient has the bound
+
+    sum_n u_{r,n} <= exp(-a)(aR)^r/r!,
+    sum_{r,n}u_{r,n} <= exp(a(R-1)).                          (U9)
+
+These bounds are independent of gamma and of the exploding renewal transform.
+They expose the remaining limitation: very large aR can still be difficult.
+
+An a-posteriori forward-defect check remains available, with the same
+one-sided clipping conditions as in the no-SC note. Here a small defect is
+obtained without cancellation of large renewal coefficients. Ordinary-double
+checks are numerical diagnostics, not interval certificates.
+
+### Conditional roundoff accounting
+
+The following is a standard-arithmetic-model bound, not a certification of
+NumPy, a particular BLAS, or transcendental-function implementations. Assume
+no overflow/underflow; elementary arithmetic relative error is at most u;
+the nonnegative rate/coefficient inputs used in table formation have the same
+accuracy; and each A_n is evaluated to relative error at most u_A.
+
+Treat the final computed x values as fixed inputs to the table recurrences.
+Every path contribution is nonnegative. An intentionally conservative upper
+bound on arithmetic depth along a path is B=8(m+1)(J+1), including dot-product
+summation, coefficient updates, and the final remainder sum. Therefore, with
+theta=(1+u)^B-1, the computed G_n^J differs from the exact positive sum by at
+most theta G_n^J. This follows by bounding every multiplicative rounding
+factor on every path; positivity permits summing the bounds without a
+cancellation condition number.
+
+The inverse subtraction and division have a backward data error bounded by
+u_2(|Y_n|+G_computed_n), where u_2 can be taken as 2u+u^2 when the two
+operations obey the stated model. Clipping can only reduce the relevant
+one-sided violation. Put E=exp(a(R-1)). Combining these facts and (U8) gives
+the conservative l1 defect bound
+
+    ||delta_total||_1 <= tau_J
+       +[theta+u_A+u_2(1+theta)]E +u_2||Y||_1.               (U10)
+
+Input-rate errors belong in the separate rate-misspecification budget; they
+are not repaired by this bound. The assumptions exclude subnormal/overflow
+failures and require adequate evaluation of exp/expm1. The experimental code
+has not been formally verified against (U10).
+
+For fixed a,R and numerical error target epsilon, this model suggests working
+precision scaling with log(mJ/epsilon)+a(R-1), rather than with 1/gamma.
+Together with the explicit tail order this is a constructive precision policy.
+It does not claim O(m^2) bit complexity; J, precision, and arithmetic costs
+must all be retained when quoting computational complexity.
+
+## 5. Targeted checks
+
+Implementation: `positive_causal_inverse.py`.
+Reproduction: `positive_inverse_test.py`, fixed seed 708442; outputs are
+`positive_inverse_results.json` and its text log. All comparisons use the
+same observations and cap when comparing the two causal estimators.
+
+- At 101 bins, alpha T=2, gamma=.02, the positive double-precision sweep agreed
+  with a 100-digit renewal sweep to about 2.2e-16 in l1. The renewal W maximum
+  was about 2.7e40. No such large quantity occurred in the positive algorithm.
+- The positive method remained regular at gamma=.001 and gamma=0. The two
+  constant-rate tests agreed with independently formed dense matrix
+  exponentials to below 1e-15.
+- Two non-exponential rate-profile tests also agreed with independent dense
+  exponentials to below 5e-16. This validates the finite-lattice profile
+  generality; it is not yet a newly claimed continuum statistical theorem for
+  arbitrary rate profiles.
+- With 1001 bins and gamma=.02, the same positive method used order J=64,
+  an analytic tail bound 6.2e-13, and an independently evaluated one-sided
+  defect below 2e-15. Runtime on the included CPU was tens of milliseconds.
+
+These checks establish agreement with the high-precision estimator and
+independent forwards. They do not by themselves compare statistical efficiency
+to every regularized full-likelihood method. The matched-fitting comparison is in
+`MATCHED_BASELINE_COMPARISON.md`; no unqualified speed factor should be inferred
+here. Constant-rate decompounding and recursive clipping are established prior
+art, including Buchmann–Grübel (2004); see `EXTENSION_PRIMARY_SOURCES.md`.
+
+The checked SC archive and the immutable no-SC snapshot remain unchanged.

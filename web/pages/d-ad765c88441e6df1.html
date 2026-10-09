@@ -1,0 +1,138 @@
+<!doctype html><meta charset="utf-8"><title>BQ: fragmentation_no_SC_positive_extension_2026-10-09/positive_fit_benchmark.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/fragmentation_no_SC_positive_extension_2026-10-09/positive_fit_benchmark.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;Matched cap-constrained full-likelihood baseline, fixed seeds, CPU only.
+
+One positive forward sweep plus analytic adjoint per objective/gradient call.
+Cheap first-generation initialization and inverse warm start both included.
+No claim of global likelihood optimality or statistical domination.
+&quot;&quot;&quot;
+import json,time,platform,sys
+import numpy as np
+import scipy
+from scipy.optimize import minimize
+from scipy.linalg import expm
+from positive_causal_inverse import positive_inverse,choose_order
+from causal_clipped_inverse import numerical_defect,repair_prefix_mass,clipped_inverse
+from fragment_inverse import generator
+from no_sc_noise_test import true_cell_masses
+
+
+def likelihood_gradient(k,y,rates,a,tolerance=1e-13):
+    &quot;&quot;&quot;Poisson endpoint likelihood and exact truncated-series adjoint.&quot;&quot;&quot;
+    n=len(k);J,_=choose_order(a,max(1.,float(sum(k))),tolerance)
+    z=1-rates;u=np.zeros((J+1,n));u[0,0]=np.exp(-a)
+    for r in range(1,J+1):
+        u[r]=(a/r)*(z*u[r-1]+np.convolve(k,rates*u[r-1])[:n])
+    pred=np.sum(u,axis=0);safe=np.maximum(pred,1e-300)
+    d=1-y/safe;d[0]=0
+    loss=float(sum(safe[1:]-y[1:]*np.log(safe[1:])))
+    g=np.zeros(n);adj=d.copy()
+    for r in range(J,0,-1):
+        g+=(a/r)*np.correlate(adj,rates*u[r-1],mode=&#x27;full&#x27;)[n-1:]
+        adj=d+(a/r)*(z*adj+rates*np.correlate(adj,k,mode=&#x27;full&#x27;)[n-1:])
+    return loss,g,pred,J
+
+
+def measure(k,truth,y,rates,a):
+    loss,grad,pred,J=likelihood_gradient(k,y,rates,a)
+    repaired=repair_prefix_mass(k)
+    rloss,_,rpred,_=likelihood_gradient(repaired,y,rates,a)
+    return {&#x27;kernel_l1_pre&#x27;:float(sum(abs(k-truth))),
+       &#x27;kernel_l1_repaired&#x27;:float(sum(abs(repaired-truth))),
+       &#x27;prefix_mass&#x27;:float(sum(k)),&#x27;poisson_objective_pre&#x27;:loss,
+       &#x27;poisson_objective_repaired&#x27;:rloss,
+       &#x27;endpoint_l1_pre&#x27;:float(sum(abs(pred-y))),
+       &#x27;endpoint_l1_repaired&#x27;:float(sum(abs(rpred-y))),
+       &#x27;evaluation_order&#x27;:J}
+
+
+def fit(y,rates,a,cap,x0,truth,maxiter=500):
+    calls=0;trace=[];st=time.perf_counter()
+    def fun(x):
+        nonlocal calls
+        calls+=1
+        f,g,_,_=likelihood_gradient(np.r_[0.,x],y,rates,a)
+        return f,g[1:]
+    def callback(x):
+        k=np.r_[0.,x]
+        trace.append({&#x27;iteration&#x27;:len(trace)+1,&#x27;seconds&#x27;:time.perf_counter()-st,
+            &#x27;kernel_l1_repaired&#x27;:float(sum(abs(repair_prefix_mass(k)-truth)))})
+    res=minimize(fun,x0[1:],jac=True,bounds=[(0.,cap)]*(len(y)-1),
+        method=&#x27;L-BFGS-B&#x27;,callback=callback,
+        options={&#x27;maxiter&#x27;:maxiter,&#x27;ftol&#x27;:1e-13,&#x27;gtol&#x27;:1e-9,&#x27;maxls&#x27;:30,&#x27;maxcor&#x27;:20})
+    secs=time.perf_counter()-st;k=np.r_[0.,res.x]
+    pg=res.jac.copy()
+    pg[(res.x&lt;=0)&amp;(pg&gt;0)]=0;pg[(res.x&gt;=cap)&amp;(pg&lt;0)]=0
+    return k,{&#x27;optimization_seconds&#x27;:secs,&#x27;objective_gradient_calls&#x27;:calls,
+       &#x27;iterations&#x27;:int(res.nit),&#x27;success&#x27;:bool(res.success),&#x27;message&#x27;:str(res.message),
+       &#x27;projected_gradient_sup&#x27;:float(max(abs(pg))),
+       &#x27;trace&#x27;:trace}
+
+
+def main():
+    seed=941038;rng=np.random.default_rng(seed)
+    out={&#x27;seed&#x27;:seed,&#x27;settings&#x27;:{&#x27;a&#x27;:2.,&#x27;L&#x27;:4.,&#x27;M&#x27;:2.,&#x27;poisson_exposure&#x27;:100000,
+       &#x27;cap&#x27;:&#x27;M*h&#x27;,&#x27;tail_tolerance_inverse&#x27;:1e-12,&#x27;tail_tolerance_fit&#x27;:1e-13,
+       &#x27;mass_constraint&#x27;:&#x27;same post-hoc prefix mass repair for both; no hidden simplex constraint&#x27;,
+       &#x27;fit&#x27;:&#x27;L-BFGS-B analytic adjoint, cap bounds, maxiter 500, ftol 1e-13, gtol 1e-9&#x27;,
+       &#x27;timing&#x27;:&#x27;single-process wall clock; no package import/truth generation; rate setup, initialization, optimization and repair separately recorded&#x27;,
+       &#x27;error_target&#x27;:&#x27;same realization direct repaired L1 error; oracle diagnostic only&#x27;},
+       &#x27;environment&#x27;:{&#x27;python&#x27;:sys.version,&#x27;numpy&#x27;:np.__version__,&#x27;scipy&#x27;:scipy.__version__,
+                      &#x27;platform&#x27;:platform.platform()},&#x27;gradient_check&#x27;:{},&#x27;cases&#x27;:[]}
+    n=19;a=1.4;q=.97;rates=q**np.arange(n)
+    k=np.r_[0.,rng.uniform(.005,.035,n-1)];y=rng.uniform(.005,.025,n);y[0]=np.exp(-a)
+    loss,g,p,J=likelihood_gradient(k,y,rates,a)
+    exact=expm(a*generator(k,q))[:,0]
+    err=[]
+    for j in [1,3,7,18]:
+        kp=k.copy();km=k.copy();kp[j]+=1e-6;km[j]-=1e-6
+        fd=(likelihood_gradient(kp,y,rates,a)[0]-likelihood_gradient(km,y,rates,a)[0])/2e-6
+        err.append(abs(fd-g[j]))
+    out[&#x27;gradient_check&#x27;]={&#x27;max_forward_error&#x27;:float(max(abs(exact-p))),
+                           &#x27;max_central_difference_error&#x27;:float(max(err)),&#x27;order&#x27;:J}
+    raw={}
+    for n in [101,501]:
+      for gamma in [1.3,.02]:
+        h=4/(n-1);a=2.;cap=2*h;logq=-gamma*h
+        st=time.perf_counter();rates=np.exp(logq*np.arange(n));q=np.exp(logq);setup=time.perf_counter()-st
+        truth=true_cell_masses(h,n)
+        _,_,f,_=likelihood_gradient(truth,np.zeros(n),rates,a)
+        y=rng.poisson(f*100000)/100000;y[0]=f[0]
+        st=time.perf_counter();direct,diag=positive_inverse(y,a,cap,rates=rates);direct_s=time.perf_counter()-st
+        st=time.perf_counter();repaired=repair_prefix_mass(direct);repair_s=time.perf_counter()-st
+        md=measure(direct,truth,y,rates,a)
+        st=time.perf_counter();defect,_,_=numerical_defect(direct,y,q,a,cap);check_s=time.perf_counter()-st
+        case={&#x27;n&#x27;:n,&#x27;gamma&#x27;:gamma,&#x27;rate_setup_seconds&#x27;:setup,
+            &#x27;direct&#x27;:dict(md,seconds=direct_s,repair_seconds=repair_s,
+             optional_forward_check_seconds=check_s,defect=defect,
+             uniformization_order=diag[&#x27;order&#x27;],tail_bound=diag[&#x27;tail_l1_bound&#x27;]), &#x27;fits&#x27;:[]}
+        if n==101:
+            st=time.perf_counter();mp,_,wmax=clipped_inverse(y,q,a,cap,dps=100);mp_s=time.perf_counter()-st
+            case[&#x27;high_precision_causal&#x27;]={&#x27;decimal_digits&#x27;:100,&#x27;seconds&#x27;:mp_s,
+                &#x27;difference_to_positive_l1&#x27;:float(sum(abs(mp-direct))),&#x27;W_max&#x27;:wmax}
+        for start in [&#x27;first_generation&#x27;,&#x27;direct_warm_start&#x27;]:
+            st=time.perf_counter()
+            if start==&#x27;first_generation&#x27;:
+                z=-np.expm1(logq*np.arange(1,n));A=np.exp(-a)*np.expm1(a*z)/z
+                x0=np.r_[0.,np.clip(y[1:]/A,0,cap)]
+                init_s=time.perf_counter()-st
+            else:x0=direct.copy();init_s=direct_s
+            fitted,info=fit(y,rates,a,cap,x0,truth)
+            st=time.perf_counter();repair_prefix_mass(fitted);fitrepair_s=time.perf_counter()-st
+            info.update(measure(fitted,truth,y,rates,a))
+            info.update(initializer=start,initialization_seconds=init_s,
+                repair_seconds=fitrepair_s,total_including_initializer_seconds=init_s+info[&#x27;optimization_seconds&#x27;]+fitrepair_s)
+            target=md[&#x27;kernel_l1_repaired&#x27;];initialerr=float(sum(abs(repair_prefix_mass(x0)-truth)))
+            hit=next((v for v in info[&#x27;trace&#x27;] if v[&#x27;kernel_l1_repaired&#x27;]&lt;=target),None)
+            info[&#x27;first_oracle_equal_error_seconds&#x27;]=(init_s if initialerr&lt;=target else
+                (None if hit is None else init_s+hit[&#x27;seconds&#x27;]))
+            case[&#x27;fits&#x27;].append(info)
+            raw[f&#x27;n{n}_g{gamma}_{start}&#x27;]=fitted
+        out[&#x27;cases&#x27;].append(case)
+        raw[f&#x27;n{n}_g{gamma}_truth&#x27;]=truth;raw[f&#x27;n{n}_g{gamma}_observed&#x27;]=y;raw[f&#x27;n{n}_g{gamma}_direct&#x27;]=direct
+        print(json.dumps({key:val for key,val in case.items() if key!=&#x27;fits&#x27;}),flush=True)
+        for info in case[&#x27;fits&#x27;]:print(json.dumps({key:val for key,val in info.items() if key!=&#x27;trace&#x27;}),flush=True)
+    np.savez_compressed(&#x27;positive_fit_raw_arrays.npz&#x27;,**raw)
+    json.dump(out,open(&#x27;positive_fit_results.json&#x27;,&#x27;w&#x27;),indent=2)
+    print(&#x27;Gradient check:&#x27;,out[&#x27;gradient_check&#x27;],flush=True)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></main>

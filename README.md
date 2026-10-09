@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-591 scoped research cards, full supplied A–I research documents, J/K result summaries, and 25,129 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+604 scoped research cards and 25,295 indexed source and claim pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -232,6 +232,10 @@ Added BO: N494–506: delayed division-pulse covariance, positive-response half-
 
 
 Added BP: N507–521: rational10-state/6-letter/rank8 all-word reflection-CP obstruction to stationary hidden equilibrium, exact reversible frames/rigid-support closure, finite7-time rationalwitness and linear path-affinity entropy floor>6e-44. Sufficient acquisition~1.1e93 independentwindows,h1e-12; no practical capability. Other scoped periodic-fault, tensor-response/f(R), source-dependent syndrome decoder/global-reset memory, finite-variance robust phase retrieval, arithmetic transfers and elliptic-import counterexample preserved. Native21-check replay source-reported, initial failures and source omissions retained; historic/external/formal/priority objectives unestablished. [Sources](web/BP-sources.txt);[scopes](web/BP-reports.txt);[archive/availability](web/BP-package.txt).
+
+
+
+Added BQ: N522–N534: three conditional local strange-metal noise identities; a rank-two Werner witness-to-projection theorem that leaves the all-copy endpoint open; an exact known-k atomic semicircle Pick boundary; SC and no-SC finite-time fragmentation inverses; a Boolean coordinate-selection counterexample that does not disprove FEI; compact and strongly log-concave Gaussianity reconstruction moduli with endpoint losses; a finite revealed-pool likelihood interval; a quarter-variance OU Fisher comparison; and two quantum broadcasting stability results. All thirteen cards preserve assumptions, costs, evidence, and unresolved checks. Source-reported checks were not rerun; external, formal, empirical, and priority validation is not claimed. [Sources](web/BQ-sources.txt); [scopes](web/BQ-reports.txt); [archive](web/BQ-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

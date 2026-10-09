@@ -1,0 +1,33 @@
+<!doctype html><meta charset="utf-8"><title>BQ: spectral_pick_boundary_result_2026-10-09/finite_matrix_test.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/spectral_pick_boundary_result_2026-10-09/finite_matrix_test.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;Finite-N GOE smoke tests; not yet a comparative benchmark.&quot;&quot;&quot;
+import numpy as np,json,time
+from pick_inverse import inverse,free_stieltjes
+rng=np.random.default_rng(9102601)
+rows=[]; raw={}
+for N in [256,1024]:
+ for k in [3,5]:
+  atoms=np.array([-1.,.2,1.]) if k==3 else np.linspace(-1,1,5)
+  weights=np.array([.25,.5,.25]) if k==3 else np.ones(k)/k
+  n=np.floor(weights*N).astype(int);n[-1]+=N-n.sum()
+  actual_weights=n/N
+  a=np.repeat(atoms,n)
+  z=np.linspace(-1.4,1.4,k)+.6j
+  for variance in [.0625,.5625]:
+   for rep in range(4):
+    start=time.perf_counter();Z=rng.normal(size=(N,N));W=(Z+Z.T)/np.sqrt(2*N)
+    c=np.linalg.eigvalsh(np.diag(a)+np.sqrt(variance)*W)
+    matrix_seconds=time.perf_counter()-start
+    start=time.perf_counter();g=np.mean(1/(z[:,None]-c),axis=1);transform_seconds=time.perf_counter()-start
+    start=time.perf_counter();r=inverse(z,g);inverse_seconds=time.perf_counter()-start
+    glimit=free_stieltjes(z,atoms,actual_weights,variance)
+    err={&#x27;variance&#x27;:abs(r[&#x27;variance&#x27;]-variance),&#x27;atoms_max&#x27;:float(np.max(abs(r[&#x27;atoms&#x27;]-atoms))),&#x27;weights_max&#x27;:float(np.max(abs(r[&#x27;weights&#x27;]-actual_weights)))}
+    key=f&#x27;N{N}_k{k}_v{variance}_r{rep}&#x27;
+    raw[key+&#x27;_eigenvalues&#x27;]=c;raw[key+&#x27;_z&#x27;]=z;raw[key+&#x27;_g&#x27;]=g
+    rows.append({&#x27;key&#x27;:key,&#x27;N&#x27;:N,&#x27;k&#x27;:k,&#x27;true_variance&#x27;:variance,&#x27;true_atoms&#x27;:atoms.tolist(),&#x27;true_weights&#x27;:actual_weights.tolist(),&#x27;inferred_variance&#x27;:r[&#x27;variance&#x27;],&#x27;inferred_atoms&#x27;:r[&#x27;atoms&#x27;].tolist(),&#x27;inferred_weights&#x27;:r[&#x27;weights&#x27;].tolist(),&#x27;errors&#x27;:err,&#x27;g_limit_max_error&#x27;:float(max(abs(g-glimit))),&#x27;K_condition&#x27;:float(r[&#x27;K_eigenvalues&#x27;][-1]/r[&#x27;K_eigenvalues&#x27;][0]),&#x27;mass&#x27;:r[&#x27;mass&#x27;],&#x27;interpolation_residual&#x27;:r[&#x27;interpolation_residual&#x27;],&#x27;matrix_seconds&#x27;:matrix_seconds,&#x27;transform_seconds&#x27;:transform_seconds,&#x27;inverse_seconds&#x27;:inverse_seconds})
+np.savez_compressed(&#x27;finite_matrix_raw.npz&#x27;,**raw)
+with open(&#x27;finite_matrix_results.json&#x27;,&#x27;w&#x27;) as f:json.dump(rows,f,indent=2)
+for N in [256,1024]:
+ for k in [3,5]:
+  for v in [.0625,.5625]:
+   rr=[r for r in rows if r[&#x27;N&#x27;]==N and r[&#x27;k&#x27;]==k and r[&#x27;true_variance&#x27;]==v]
+   print(N,k,v,&#x27;mean errors&#x27;,[np.mean([r[&#x27;errors&#x27;][key] for r in rr]) for key in [&#x27;variance&#x27;,&#x27;atoms_max&#x27;,&#x27;weights_max&#x27;]],&#x27;median inverse sec&#x27;,np.median([r[&#x27;inverse_seconds&#x27;] for r in rr]))
+</pre></main>

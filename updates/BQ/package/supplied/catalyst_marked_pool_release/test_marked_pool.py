@@ -1,0 +1,95 @@
+import numpy as np
+
+from marked_pool import (MarkedPoolLikelihood, full_cme_endpoint,
+                         candidate_event_edges, build_between_event_generator)
+
+
+def cycle_generator(q):
+    Q = np.zeros((q, q))
+    for i in range(q):
+        Q[i, (i + 1) % q] += 0.4
+        Q[i, (i - 1) % q] += 0.2
+        Q[i, i] -= 0.6
+    return Q
+
+
+def test_marked_likelihood_encloses_full_cme_for_q2_and_q3():
+    for q, N, observed in [
+        (2, 20, (7, 13)),
+        (3, 18, (11, 4, 3)),
+    ]:
+        Q = cycle_generator(q)
+        mu0 = np.zeros(q); mu0[0] = 1.0
+        model = MarkedPoolLikelihood(N, Q, 0, 1, 2.0, 0.8, 1.2, mu0)
+        ans = model.solve(0.8, 12, observed, rtol=2e-11, atol=2e-14)
+        exact, _, mass = full_cme_endpoint(
+            N, Q, 0, 1, 2.0, 0.8, 1.2, mu0, 0.8, observed
+        )
+        assert ans.lower - 2e-10 <= exact <= ans.lower + ans.poisson_tail + 2e-10
+        from scipy.stats import poisson
+        assert abs(ans.mass - poisson.cdf(12, 1.6)) < 2e-9
+        assert abs(mass - 1.0) < 2e-10
+
+
+def test_marked_likelihood_mass_is_poisson_cdf():
+    q, N, K = 4, 100, 10
+    Q = cycle_generator(q)
+    mu0 = np.zeros(q); mu0[0] = 1.0
+    model = MarkedPoolLikelihood(N, Q, 0, 1, 2.0, 0.8, 1.2, mu0)
+    ans = model.solve(0.8, K, (66, 20, 4, 10), observed_bound=0)
+    from scipy.stats import poisson
+    assert abs(ans.mass - poisson.cdf(K, 1.6)) < 2e-8
+    assert ans.lower <= ans.lower + ans.poisson_tail
+
+
+def test_b2_tag_q_transition_preserves_bound_count_and_candidate_edges_normalize():
+    q, N, C = 3, 16, 3
+    Q = cycle_generator(q)
+    mu0 = np.zeros(q); mu0[0] = 1.0
+    model = MarkedPoolLikelihood(N, Q, 0, 1, 1.1, 0.7, 0.9, mu0,
+                                 catalysts=C)
+    states, ix = model._make_states(4)
+    src_state = (3, 2, (0, 1, 0))
+    dst_same_b = (3, 2, (1, 0, 0))
+    R = build_between_event_generator(states, ix, Q, 0, 1, .7, .9)
+    assert abs(R[ix[src_state], ix[dst_same_b]] - Q[1, 0]) < 1e-14
+    # A tracked free molecule switches while two other catalysts remain bound;
+    # this transition must not silently decrement or reset b.
+    assert abs(R[ix[src_state], ix[(3, 1, (1, 0, 0))]]) < 1e-14
+    assert abs(np.asarray(R.sum(axis=1)).max()) < 1e-14
+
+    # For every time-marginal p, candidate edge mass at a nontrivial b=2
+    # state sums to one. This catches omission of the b bound molecule slots
+    # from the untouched-pool count.
+    p = mu0 @ __import__('scipy').linalg.expm(Q * .4)
+    edges = candidate_event_edges(src_state, N, C, bind=0)
+    total = sum(weight * (1.0 if coef < 0 else p[coef])
+                for _dest, coef, weight in edges)
+    assert abs(total - 1.0) < 1e-14
+
+
+def test_two_catalysts_enclose_full_cme_with_valid_b2_observation():
+    q, N, C = 3, 16, 2
+    Q = cycle_generator(q)
+    mu0 = np.zeros(q); mu0[0] = 1.0
+    model = MarkedPoolLikelihood(N, Q, 0, 1, 1.1, 0.7, 0.9, mu0,
+                                catalysts=C)
+    obs = (10, 3, 1)
+    assert sum(obs) + 2 == N
+    ans = model.solve(0.6, 12, obs, observed_bound=2,
+                      rtol=2e-11, atol=2e-14)
+    exact, _, _ = full_cme_endpoint(N, Q, 0, 1, 1.1, 0.7, 0.9,
+                                    mu0, 0.6, obs, 2, catalysts=C)
+    assert exact > 0.0
+    assert ans.lower - 2e-10 <= exact <= ans.lower + ans.poisson_tail + 2e-10
+    from scipy.stats import poisson
+    assert abs(ans.mass - poisson.cdf(12, C * 1.1 * .6)) < 2e-9
+
+
+if __name__ == "__main__":
+    test_marked_likelihood_encloses_full_cme_for_q2_and_q3()
+    test_marked_likelihood_mass_is_poisson_cdf()
+    test_b2_tag_q_transition_preserves_bound_count_and_candidate_edges_normalize()
+    test_two_catalysts_enclose_full_cme_with_valid_b2_observation()
+    print("all marked-pool checks passed")
+

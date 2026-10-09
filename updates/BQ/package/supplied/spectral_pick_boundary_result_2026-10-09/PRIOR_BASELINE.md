@@ -1,0 +1,82 @@
+> Correction, 2026-10-09 13:36 UTC: the earlier wording “without a supplied atom count” was too broad. The tested prototype uses known k and m=k. The variance theorem permits m>=k, but an operational guarantee needs k or an upper bound; rank reduction for m>k is not implemented. The pre-check zip is a preserved historical snapshot and contains the earlier wording.
+
+# Prior-art baseline: finite Pick boundary for unknown semicircular variance
+
+Search date: 2026-10-09. Focused primary-source search, not a correctness audit or exhaustive novelty certification.
+
+## Bottom line
+
+The exact proposed combination was **not located**: finite upper-half-plane samples of `G_C`, candidate nodes `w_i(t)=z_i−t g_i`, the normalized Pick covariance `S(t)=K(t)−g g*`, a one-sided PSD feasibility interval, its endpoint recovering unknown semicircular variance when the number m of nodes is at least the true atom count k (thus requiring k or an upper bound for an operational guarantee), followed by a Hermitian Loewner pencil.
+
+The surrounding ingredients have substantial prior art. Unknown-noise sparse **free** deconvolution is explicitly Ying's 2025 problem. Classical Gaussian deconvolution already estimates noise by the first singularity of a deconvolved moment matrix. Singular Pick interpolation and Loewner rank/pencil recovery are established theory. Any novelty claim must therefore concern the **specific finite normalized-Pick path and its variance-endpoint theorem in the free semicircular model**, not rank-based identification, positivity boundaries, unknown-noise deconvolution, or rational recovery individually.
+
+## 1. Closest same-model computational baseline
+
+**Lexing Ying, “Sparse free deconvolution under unknown noise level via eigenmatrix,” ACHA 79 (2025), 101802.** [Author PDF](https://web.stanford.edu/~lexing/fdc1.pdf); [DOI](https://doi.org/10.1016/j.acha.2025.101802); [arXiv](https://arxiv.org/abs/2501.04599).
+
+- §3.1, printed p.4: exactly the transformation `z'_j=z_j−σ²g_j`, with `G_μA(z'_j)=g_j`; sparse signal recovery is then an unstructured Cauchy-kernel inverse problem.
+- §3.2, pp.4–5: the eigenmatrix-derived `T(σ)` has low numerical rank at the intended variance. The actual estimator minimizes `log s_(n+1)(T(σ))` over positive-weight candidates, with coarse grid search followed by local search. Nonconvexity is explicitly noted.
+- §5, p.11: experiments assume known sparsity; robust joint discovery of sparsity and noise is an open computational issue in that method. Finite matrix size introduces systematic bias.
+
+**Difference to test:** a global, monotone matrix-feasibility endpoint and an exact finite-sample identifiability theorem, for m>=k nodes. The tested positive-realization prototype explicitly uses known k and m=k, equally for all baselines; no atom-count-free algorithm is claimed. Merely using the transformed nodes is not a contribution.
+
+**Related Ying paper:** [“Blind free deconvolution over one-parameter sparse families via eigenmatrix,” arXiv:2501.10660v2](https://arxiv.org/html/2501.10660v2), §§1.2, 4–5; CMS publication DOI supplied by the parent: [10.4310/CMS.260505113408](https://doi.org/10.4310/CMS.260505113408). In §4, each *whole convolution factor* is a known one-parameter law `ρ_xk`, and the method solves `R_C(g)=Σ_k R_ρ_xk(g)` by an eigenmatrix with unit factor weights. Example 4.1 uses the fixed-shape two-atom family `(2/3)δ_(−x/2)+(1/3)δ_x`; §4 also computes inverse Cauchy transforms by Newton iteration. This is not the free convolution of an arbitrary unknown atomic law with an unknown semicircular law. In particular, the atoms of a mixture are not themselves its free convolution factors. Neither the finite normalized-Pick endpoint nor a k-Cauchy-sample exact theorem appears in the inspected preprint. §1.1 distinguishes its predecessor's unknown-noise problem.
+
+## 2. Free subordination and statistical deconvolution
+
+**Arizmendi, Tarrago, Vargas, “Subordination methods for free deconvolution,” AIHP Probab. Stat. 56 (2020), 2565–2590.** [Full preprint](https://arxiv.org/pdf/1711.08871).
+
+- Theorem 1.2 gives an iterative inverse-subordination construction above an explicit imaginary-height threshold depending on the known law being removed.
+- Theorem 1.3 addresses existence after sufficient Cauchy smoothing; §5 combines inverse subordination with regularized classical Cauchy deconvolution.
+- The theorem takes the convolution factor to remove as known. It does not provide the proposed unknown-variance, finite-Pick endpoint.
+
+**Maïda, Nguyen, Pham Ngoc, Rivoirard, Tran, “Statistical deconvolution of the free Fokker–Planck equation at fixed time,” Bernoulli 28(2) (2022), 771–802.** [Full preprint](https://arxiv.org/pdf/2006.11899).
+
+- §2.2, Theorem 2.6: inverse subordination at a given time `t`, via a fixed-point map, on `Im z>2√t`.
+- §2.3, Lemma 2.7, equation (2.10), recovers the initial Cauchy transform from the inverse-subordination function; the remainder builds a regularized nonparametric estimator.
+- This is directly semicircular deconvolution, but time/noise is supplied and the initial law is a density. No finite atomic Pick-boundary noise estimator was identified there.
+
+**Earlier noise-estimation application:** Ryan–Debbah, [EUSIPCO 2007 paper](https://www.eurasip.org/Proceedings/Eusipco/Eusipco2007/Papers/c1l-c01.pdf), §4.2 / Fig.4, estimates noise by comparing four moments over a variance grid **when the true covariance matrix is known**. It does not solve joint arbitrary atomic-signal/variance recovery from Cauchy samples.
+
+## 3. Concrete classical Gaussian boundary-estimator antecedents
+
+**Gautherat–Gayraud, “Parametric estimation in noisy blind deconvolution model: a new estimation procedure,” arXiv:0711.0587 (2007).** [Full original preprint](https://arxiv.org/pdf/0711.0587).
+
+- §2.2, equations (2.3)–(2.5): invert Gaussian moment convolution and form a pseudo-moment determinant `J(σ,s)`.
+- Equations (2.6)–(2.7), p.5: the determinant is positive below the true noise; at the true noise, its zero identifies the inverse filter. Immediately afterward: `σ₀=min{σ>0: ∃s, J(σ,s)=0}`.
+- §3, pp.6–7: the empirical first-root estimator; atoms come from the smallest-eigenvalue eigenvector's polynomial, then weights from a linear system.
+- Theorem 4.1 establishes consistency; Theorem 4.2 gives asymptotics.
+
+This is genuine prior art for **noise identification at a moment-matrix singularity followed by atomic recovery**. It uses classical Gaussian convolution, moments, and a supplied alphabet cardinality; it does not establish the proposed free/Cauchy-sample construction.
+
+**Gassiat–Gautherat, “Speed of convergence for the blind deconvolution of a linear system with discrete random input,” Ann. Statist. 27(5) (1999), 1684–1705.** [DOI](https://doi.org/10.1214/aos/1017939147); [author-hosted original manuscript, PostScript](https://www.imo.universite-paris-saclay.fr/~elisabeth.gassiat/speed.ps).
+
+Original manuscript inspected: §2, equation (5) deconvolves Gaussian moments into a Hankel matrix; equation (6) gives the analogous Toeplitz/Fourier construction. Equation (7), Definition 2.4 use squared determinant plus a penalty favoring smaller noise, and Theorem 2.5 proves consistency. The manuscript explicitly attributes the earlier absolute-determinant-plus-penalty estimator to their 1998 article. This is not merely an inference from a modern abstract.
+
+**Older chain, exact status:** Gassiat–Gautherat, “Identification of noisy linear systems with discrete random input,” IEEE TIT 44(5) (1998), 1941–1952, [DOI](https://doi.org/10.1109/18.705571). Bibliographic identity verified on [Gassiat's publication list](https://www.imo.universite-paris-saclay.fr/~elisabeth.gassiat/liste-publi.html), but its full original text was not obtained. The list also gives Gassiat's 1994 CRAS note, “Déconvolution aveugle de systèmes linéaires discrets bruités,” 319 I, 489–492. Do not claim an exact theorem from that unread note.
+
+**Gamboa June 2023 slides:** [Original talk](https://www.imo.universite-paris-saclay.fr/media/filer_public/c9/52/c952a73a-b13d-4264-90de-d02c2030e91d/gamboa-talk.pdf), slide 13/34, explicitly links finite support to a vanishing Hankel determinant and deconvolution contrast. The slide is a pointer to this established classical sparsity program, not evidence of the proposed free Pick construction.
+
+## 4. Pick boundary and rational reconstruction are prior art
+
+**Yury Grabovsky, “Reconstructing Stieltjes functions from their approximate values: a search for a needle in a haystack,” SIAM J. Appl. Math. 82(4) (2022), 1135–1166.** [Original preprint](https://arxiv.org/pdf/2101.02775); [DOI](https://doi.org/10.1137/21M1392279).
+
+- §2.1, Theorem 2.4: two Pick matrices characterize the Stieltjes interpolation body; boundary/rank deficiency forces a unique rational interpolant.
+- §2.5, equations (2.44)–(2.47): detailed finite-atomic rational description of that boundary.
+- §2.3 constructs interpolants; §§4–5 provide reconstruction and spectral-measure algorithms.
+
+Its Stieltjes convention uses measures on `[0,∞)` and may include a constant term, so its two-matrix criterion is not literally the proposed real-line, probability-normalized `S(t)`. Nevertheless, treating Pick positivity, a singular boundary, and atomic rational recovery as new would be untenable. The proposed unknown parameter moves the sampling nodes; Grabovsky's interpolation body holds nodes fixed.
+
+## 5. Loewner pencil and entrywise positivity ingredients
+
+**Mayo–Antoulas, “A framework for the solution of the generalized realization problem,” LAA 425 (2007), 634–662.** [Original publisher](https://doi.org/10.1016/j.laa.2007.03.008). Loewner and shifted-Loewner matrices reconstruct rational transfer functions from sampled data.
+
+For an explicitly checked factorization statement, **Zhang–Gosea–Antoulas, “Factorization of the Loewner matrix pencil and its consequences,”** [arXiv:2103.09674](https://arxiv.org/pdf/2103.09674), §2, Lemma 2.1, equations (2.6)–(2.9), gives Loewner/shifted-Loewner rational Krylov factorizations, the rank/McMillan-degree relation, and recovery of the transfer function. §3's Cauchy factorizations specialize this to poles and residues. Thus the proposed Hermitian pencil for atoms is an established realization mechanism specialized to positive measures.
+
+**Schur product theorem:** Schur's original 1911 article is [DOI 10.1515/crll.1911.140.1](https://doi.org/10.1515/crll.1911.140.1). Bibliography verified; original full text unavailable in this pass. The geometric-series argument from nonnegative combinations of entrywise powers is a direct application of this classical positivity mechanism, not a new general entrywise-preserver theorem. No source was located applying the exact fractional path `K(t)=K(0)/(1+tK(0))` entrywise to unknown semicircular variance recovery.
+
+## 6. Search coverage and remaining uncertainty
+
+Searched intersections of free/semicircular deconvolution with Pick/Nevanlinna–Pick, Loewner, Hankel, positive semidefinite, semidefinite programming, unknown variance, noise level, Hadamard, and divisibility. Followed the strongest relevant primary-source citation chains above. Also checked the distinct 2025 Ying blind-family paper and the free Fokker–Planck estimator.
+
+No exact earlier finite normalized-Pick endpoint theorem was found. That is a **bounded search result**, not proof of absence. Classical first-root moment methods are the highest-priority conceptual antecedent. For a defensible write-up, state the new candidate theorem and sampling hypotheses explicitly, cite the established components, and compare against Ying's same-model algorithm and the classical first-root construction. Empirical-noise stability and finite-N bias require separate evidence; this note does not audit them.

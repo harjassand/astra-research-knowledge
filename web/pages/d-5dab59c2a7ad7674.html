@@ -1,0 +1,45 @@
+<!doctype html><meta charset="utf-8"><title>BQ: catalyst_marked_pool_release/product_count_extension/run_product_count_unique_mark.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/catalyst_marked_pool_release/product_count_extension/run_product_count_unique_mark.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;Matched product-count comparison for event-count vs distinct-mark solvers.&quot;&quot;&quot;
+import json, os, platform
+from pathlib import Path
+from time import perf_counter
+import numpy as np
+from scipy.integrate import quad
+from scipy.linalg import expm
+from scipy.stats import poisson
+from marked_pool_partial import MarkedPoolLikelihood, full_cme_endpoint
+from unique_mark_engine import UniqueMarkLikelihood
+from run_product_count import model, meanfield_product_prob, one_clock_path_lower, certified_K
+
+
+def main():
+    Q,mu0=model(); T=1.; lam=2.2; koff=.55; kcat=1.3; kobs=1; eps=1e-5
+    path_lower=one_clock_path_lower(Q,mu0,T,lam,koff,kcat)
+    K,tail_selected=certified_K(lam*T,path_lower,eps)
+    prior_path=os.path.join(os.path.dirname(__file__),&quot;product_count_results.json&quot;)
+    prior=json.load(open(prior_path))
+    prior_cases={x[&quot;N&quot;]:x for x in prior[&quot;cases&quot;]}
+    out={&quot;scope&quot;:&quot;Same terminal product-only model as product_count_results.json, now using a permanent distinct-tag cap instead of a candidate-event-count layer. Product P has literal structural-zero Q row/column and mu0[P]=0, so product-count cap is exact. The Poisson tail is an analytic truncation error for exact ODE solution only; ODE/linear algebra error is separate and uncertified.&quot;,
+         &quot;parameters&quot;:prior[&quot;parameters&quot;],
+         &quot;relative_error_selection&quot;:{&quot;requested_relative_truncation_bound_only&quot;:eps,&quot;constructive_one_candidate_path_likelihood_lower_bound&quot;:path_lower,&quot;K_chosen_before_solver&quot;:K,&quot;poisson_tail&quot;:tail_selected,&quot;tail_over_path_lower&quot;:tail_selected/path_lower},
+         &quot;environment&quot;:{&quot;python&quot;:platform.python_version(),&quot;numpy&quot;:np.__version__,&quot;platform&quot;:platform.platform()},
+         &quot;cases&quot;:[]}
+    for N in (20,100,300):
+        unique=UniqueMarkLikelihood(N,Q,0,3,lam,koff,kcat,mu0)
+        u=unique.solve(T,K,{3:kobs},rtol=2e-10,atol=1e-13)
+        tf=perf_counter()
+        fsp,fdim,fmass=full_cme_endpoint(N,Q,0,3,lam,koff,kcat,mu0,T,{3:kobs},
+                                          direction=&#x27;forward&#x27;,monotone_cap=(3,kobs))
+        fsp_seconds=perf_counter()-tf
+        mf=meanfield_product_prob(Q,mu0,T,lam,koff,kcat,kobs)
+        ev=prior_cases[N]
+        row={&quot;N&quot;:N,&quot;distinct_mark_K&quot;:K,&quot;distinct_mark_states&quot;:u.dimension,&quot;distinct_mark_seconds&quot;:u.seconds,&quot;distinct_mark_lower&quot;:u.lower,&quot;distinct_mark_tail&quot;:u.poisson_tail,&quot;distinct_mark_tail_over_lower&quot;:u.poisson_tail/u.lower,&quot;distinct_mark_retained_mass_after_product_and_tag_pruning&quot;:u.retained_mass,&quot;query_specific_exact_FSP_states&quot;:fdim,&quot;query_specific_exact_FSP_seconds&quot;:fsp_seconds,&quot;query_specific_exact_FSP_likelihood&quot;:fsp,&quot;FSP_mass_after_product_cap&quot;:fmass,&quot;distinct_mark_minus_FSP&quot;:u.lower-fsp,&quot;distinct_mark_interval_covers_FSP&quot;:u.lower-5e-10&lt;=fsp&lt;=u.lower+u.poisson_tail+5e-10,&quot;event_count_layer_states&quot;:ev[&quot;marked_states&quot;],&quot;event_count_layer_seconds&quot;:ev[&quot;marked_seconds&quot;],&quot;event_count_layer_likelihood_lower&quot;:ev[&quot;marked_lower&quot;],&quot;meanfield_fresh_draw_likelihood&quot;:mf,&quot;meanfield_relative_error_vs_exact_FSP&quot;:abs(mf-fsp)/fsp}
+        out[&quot;cases&quot;].append(row)
+        print(json.dumps(row))
+    out[&quot;parameter_sensitivity_N300&quot;]=prior[&quot;lambda_sensitivity_N300&quot;]
+    out[&quot;catalyst_free_probability_Pequals1&quot;]=0.0
+    out[&quot;interpretation&quot;]=&quot;At N=300 the exact marked methods exploit finite candidate/unique-tag effects; the unperturbed-reservoir approximation is 2.77e-4 relative off, so it does not meet 1e-5. The query-specific FSP is the strongest executed generic exact baseline; balanced-realisation reduced CME is a relevant published approximation but has a different output/error metric and was not implemented here.&quot;
+    path=os.path.join(os.path.dirname(__file__),&quot;product_count_unique_mark_results.json&quot;)
+    with open(path,&#x27;w&#x27;) as f: json.dump(out,f,indent=2)
+    print(json.dumps(out,indent=2))
+if __name__==&#x27;__main__&#x27;: main()
+</pre></main>

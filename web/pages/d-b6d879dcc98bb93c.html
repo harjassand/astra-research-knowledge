@@ -1,0 +1,287 @@
+<!doctype html><meta charset="utf-8"><title>BQ: applied_invention_2026_10_09/research_gate.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/applied_invention_2026_10_09/research_gate.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Executable investigation of noise-coded, snapshot-only network identification.
+
+This is a candidate-mechanism test suite, not a demonstrated breakthrough.
+It deliberately includes a stronger comparison: known, randomized mean shifts.
+Synthetic Gaussian samples are generated from exact stationary covariances for
+checking the mathematics. This does NOT acquire stationarity in a laboratory.
+
+Run: OPENBLAS_NUM_THREADS=1 python research_gate.py --output results.json
+Dependencies: Python &gt;=3.10, NumPy, SciPy.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import platform
+import time
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import scipy
+from numpy.typing import NDArray
+from scipy.linalg import solve_continuous_lyapunov
+
+Array = NDArray[np.float64]
+
+
+def symmetric(a: Array) -&gt; Array:
+    return (a + a.T) / 2.0
+
+
+def stationary_covariance(drift: Array, diffusion_cov: Array) -&gt; Array:
+    &quot;&quot;&quot;Solve B Sigma + Sigma B.T + Q = 0 for a stable, supplied simulator.&quot;&quot;&quot;
+    if drift.ndim != 2 or drift.shape[0] != drift.shape[1]:
+        raise ValueError(&quot;drift must be square&quot;)
+    if diffusion_cov.shape != drift.shape:
+        raise ValueError(&quot;diffusion covariance and drift shapes differ&quot;)
+    if np.max(np.linalg.eigvals(drift).real) &gt;= 0:
+        raise ValueError(&quot;stationary covariance requires a Hurwitz drift&quot;)
+    sigma = symmetric(solve_continuous_lyapunov(drift, -diffusion_cov))
+    if np.linalg.eigvalsh(sigma).min() &lt; -1e-10 * max(1.0, np.linalg.norm(sigma, 2)):
+        raise ArithmeticError(&quot;computed stationary covariance is not PSD&quot;)
+    return sigma
+
+
+def lyapunov_design(covariances: list[Array]) -&gt; Array:
+    &quot;&quot;&quot;Build a SMALL-SYSTEM dense design, with Frobenius/isometric scaling.
+
+    For n variables and m conditions, stores O(m*n**4) floats and is NOT a
+    scalable implementation. The report specifies the matrix-free alternative.
+    &quot;&quot;&quot;
+    if not covariances:
+        raise ValueError(&quot;at least one covariance matrix is required&quot;)
+    n = covariances[0].shape[0]
+    if n &gt; 24:
+        raise ValueError(&quot;dense research implementation is limited to n &lt;= 24&quot;)
+    out = np.empty((len(covariances) * n * n, n * n))
+    for i in range(n):
+        for j in range(n):
+            e = np.zeros((n, n))
+            e[i, j] = 1
+            out[:, i*n+j] = np.concatenate(
+                [(e @ c + c @ e.T).ravel() for c in covariances]
+            ) / math.sqrt(len(covariances))
+    return out
+
+
+def decode_covariance_differences(covs: list[Array], forcings: list[Array],
+                                  gamma: float) -&gt; tuple[Array, dict[str, float]]:
+    &quot;&quot;&quot;Recover A in drift A-gamma*I from covariance differences and known D.
+
+    covs are measured Sigma_s - Sigma_baseline, and extra diffusion is 2*gamma*D_s.
+    No true A or true background diffusion is passed to this decoder.
+    Its returned singular value is numerical, not an interval certificate.
+    &quot;&quot;&quot;
+    if len(covs) != len(forcings) or not covs or gamma &lt;= 0:
+        raise ValueError(&quot;invalid covariance/forcing lists or gamma&quot;)
+    n = covs[0].shape[0]
+    design = lyapunov_design(covs)
+    target = np.concatenate([2*gamma*(c-d).ravel() for c,d in zip(covs,forcings)])
+    target /= math.sqrt(len(covs))
+    a, _, rank, singular = np.linalg.lstsq(design, target, rcond=None)
+    if rank != n*n:
+        raise ArithmeticError(&quot;the supplied experiments do not identify all drift entries&quot;)
+    return a.reshape(n,n), {
+        &quot;design_sigma_min&quot;: float(singular[-1]),
+        &quot;design_condition&quot;: float(singular[0]/singular[-1]),
+        &quot;rms_equation_residual&quot;: float(np.linalg.norm(design@a-target)),
+    }
+
+
+def random_binary_code(n: int, rng: np.random.Generator,
+                       relative_distance: float = 0.25) -&gt; tuple[Array, float]:
+    &quot;&quot;&quot;Generate and explicitly check a conservative logarithmic-length code.
+
+    m=ceil(8 log(n(n-1)))+1 makes the union bound for a pair closer than m/4
+    less than 1/2. Rejection sampling has finite expected trials. The pairwise
+    check costs O(n**2*m). These conservative constants often erase any saving
+    in condition count at small n; they are not suppressed in the output.
+    &quot;&quot;&quot;
+    if n &lt; 2 or relative_distance != 0.25:
+        raise ValueError(&quot;this checked construction uses n&gt;=2 and distance 1/4&quot;)
+    m = max(8, math.ceil(8*math.log(max(2,n*(n-1))))+1)
+    for _ in range(100):
+        h = rng.choice(np.array([-1.,1.]), size=(m,n))
+        gram = h.T @ h
+        dist = (m - gram)/2
+        np.fill_diagonal(dist, m)
+        delta = float(dist.min()/m)
+        if delta &gt;= relative_distance:
+            return h, delta
+    raise RuntimeError(&quot;code construction failed after 100 checked attempts&quot;)
+
+
+def observational_ambiguity() -&gt; dict[str, Any]:
+    j = np.array([[0.,-1.],[1.,0.]])
+    records=[]
+    for omega in [0.,1.,10.,1000.]:
+        b = -np.eye(2)+omega*j
+        sigma=stationary_covariance(b,2*np.eye(2))
+        records.append({&quot;omega&quot;:omega,&quot;distance_from_identity&quot;:float(np.linalg.norm(sigma-np.eye(2)))})
+    assert max(x[&quot;distance_from_identity&quot;] for x in records) &lt; 1e-11
+    return {&quot;model&quot;:&quot;B=-I+omega*J; diffusion covariance=2I&quot;, &quot;checks&quot;:records}
+
+
+def two_noise_counterexample() -&gt; dict[str, Any]:
+    c0=np.eye(3)
+    c1=np.diag([1.,1.,2.])
+    k=np.array([[0.,0.,1.],[0.,0.,0.],[-1.,0.,0.]])
+    j=np.array([[0.,1.,0.],[-1.,0.,0.],[0.,0.,0.]])
+    b0=-5*np.eye(3)+k
+    q0=-(b0@c0+c0@b0.T)
+    q1=-(b0@c1+c1@b0.T)
+    maximum=0.0
+    for theta in [0.,0.5,2.,20.,200.]:
+        b=b0+theta*j
+        maximum=max(maximum,np.linalg.norm(stationary_covariance(b,q0)-c0),
+                    np.linalg.norm(stationary_covariance(b,q1)-c1))
+    assert maximum &lt; 1e-10
+    eig=np.linalg.eigvalsh(q1)
+    assert np.min(np.diff(eig)) &gt; 0.09
+    return {&quot;B0&quot;:b0.tolist(),&quot;invisible_generator_J&quot;:j.tolist(),&quot;Q0&quot;:q0.tolist(),
+            &quot;Q1&quot;:q1.tolist(),&quot;Sigma0&quot;:c0.tolist(),&quot;Sigma1&quot;:c1.tolist(),
+            &quot;Q1_eigenvalues&quot;:eig.tolist(),&quot;max_covariance_replay_error&quot;:float(maximum)}
+
+
+def coded_recovery(rng: np.random.Generator) -&gt; list[dict[str, Any]]:
+    records=[]
+    for n in [3,5,8,12]:
+        h,delta=random_binary_code(n,rng)
+        # Complement every setting. D_s=I+/-H_s is positive semidefinite.
+        forcings=[np.diag(1+sign*row) for row in h for sign in [-1.,1.]]
+        raw=rng.normal(size=(n,n))
+        a=raw/np.linalg.norm(raw,2)
+        gamma=9.0
+        b=a-gamma*np.eye(n)
+        # Unknown, correlated background diffusion; ignored by the decoder.
+        z=rng.normal(size=(n,n))
+        background=2*gamma*(np.eye(n)+0.05*z@z.T/n)
+        sigma0=stationary_covariance(b,background)
+        covs=[stationary_covariance(b,background+2*gamma*d)-sigma0 for d in forcings]
+        ahat,diag=decode_covariance_differences(covs,forcings,gamma)
+        exact_error=float(np.linalg.norm(ahat-a))
+        a0=2*math.sqrt(delta)
+        r=np.linalg.norm(a,2)/gamma
+        analytic_lower=a0-4*r/(1-r)
+        observed_gap_lower=a0-2*max(np.linalg.norm(c-d,2) for c,d in zip(covs,forcings))
+        assert exact_error &lt; 1e-10
+        assert diag[&quot;design_sigma_min&quot;] &gt;= analytic_lower-1e-10
+        assert diag[&quot;design_sigma_min&quot;] &gt;= observed_gap_lower-1e-10
+        records.append({&quot;n&quot;:n,&quot;code_bits&quot;:len(h),&quot;total_conditions_including_baseline&quot;:len(forcings)+1,
+                        &quot;checked_relative_code_distance&quot;:delta,&quot;gamma_over_A_norm&quot;:float(gamma/np.linalg.norm(a,2)),
+                        &quot;recovery_frobenius_error&quot;:exact_error,&quot;analytic_singular_lower_bound&quot;:float(analytic_lower),
+                        &quot;observed_design_lower_bound&quot;:float(observed_gap_lower),**diag})
+    return records
+
+
+def fisher_information(q: Array, k: Array, gamma: float=1.0) -&gt; tuple[float,float]:
+    &quot;&quot;&quot;Exact local information at B=-gamma*I for a skew-drift direction K.
+
+    Noise experiment: extra diffusion 2*gamma*Q, X~N(0,I+Q).
+    Mean experiment: record Z~N(0,Q), apply constant input gamma*Z;
+                     X|Z~N(Z,I) at the reference point.
+    Equal added stationary second moment tr(Q), not an assertion of equal
+    physical actuator power, bandwidth, calibration cost, or feasibility.
+    &quot;&quot;&quot;
+    if gamma &lt;= 0 or q.shape != k.shape:
+        raise ValueError(&quot;invalid arguments&quot;)
+    if not np.allclose(k,-k.T,atol=1e-10):
+        raise ValueError(&quot;K must be skew-symmetric&quot;)
+    eigen, vectors=np.linalg.eigh(symmetric(q))
+    if eigen.min() &lt; -1e-10:
+        raise ValueError(&quot;Q must be positive semidefinite&quot;)
+    eigen=np.maximum(eigen,0)
+    kt=vectors.T@k@vectors
+    inoise=0.0
+    imean=0.0
+    for i in range(len(eigen)):
+        for j in range(i+1,len(eigen)):
+            weight=kt[i,j]**2
+            qi,qj=eigen[i],eigen[j]
+            inoise+=weight*(qi-qj)**2/(4*gamma**2*(1+qi)*(1+qj))
+            imean+=weight*(qi+qj)/gamma**2
+    return float(inoise),float(imean)
+
+
+def fisher_tests(rng: np.random.Generator) -&gt; dict[str, Any]:
+    ratios=[]
+    max_violation=-math.inf
+    for n in [2,3,5,8,16,32]:
+        for _ in range(30):
+            u,_=np.linalg.qr(rng.normal(size=(n,n)))
+            eigen=np.exp(rng.uniform(-5,5,size=n))
+            q=(u*eigen)@u.T
+            raw=rng.normal(size=(n,n))
+            k=(raw-raw.T)/2
+            noise,mean=fisher_information(q,k)
+            max_violation=max(max_violation,4*noise-mean)
+            if noise&gt;1e-15:
+                ratios.append(mean/noise)
+    assert min(ratios) &gt;= 4-1e-10
+    asymptotic=[]
+    k=np.array([[0.,1.],[-1.,0.]])
+    for scale in [1.,10.,100.,10000.]:
+        noise,mean=fisher_information(np.diag([scale,0.]),k)
+        asymptotic.append({&quot;q&quot;:scale,&quot;mean_to_noise_information_ratio&quot;:mean/noise,
+                           &quot;theory_ratio&quot;:4*(1+1/scale)})
+    assert abs(asymptotic[-1][&quot;mean_to_noise_information_ratio&quot;]-4.0004)&lt;1e-9
+    return {&quot;random_psd_cases&quot;:180,&quot;minimum_mean_to_noise_information_ratio&quot;:min(ratios),
+            &quot;maximum_4I_noise_minus_I_mean&quot;:max_violation,&quot;sharp_factor_four_sequence&quot;:asymptotic,
+            &quot;balanced_binary_noise_code_ratio&quot;:12.0,
+            &quot;comparison_budget&quot;:&quot;Equal added stationary second moment; known mean-intervention label observed.&quot;}
+
+
+def score_monte_carlo(rng: np.random.Generator, total: int=600000) -&gt; dict[str, Any]:
+    &quot;&quot;&quot;Check exact information formulas using raw Gaussian experiments.
+
+    Four equiprobable masks: Q diagonal entries independently 0 or 2.
+    The mean-shift experiment records its randomized applied offset Z.
+    &quot;&quot;&quot;
+    q=2*rng.integers(0,2,size=(total,2))
+    d=1+q
+    x=rng.normal(size=(total,2))*np.sqrt(d)
+    noise_score=(d[:,1]-d[:,0])*x[:,0]*x[:,1]/(2*d[:,0]*d[:,1])
+    z=rng.normal(size=(total,2))*np.sqrt(q)
+    residual=rng.normal(size=(total,2))
+    mean_score=residual[:,0]*z[:,1]-residual[:,1]*z[:,0]
+    measured_noise=float(np.mean(noise_score**2))
+    measured_mean=float(np.mean(mean_score**2))
+    assert abs(measured_noise-1/6)&lt;0.003
+    assert abs(measured_mean-2)&lt;0.03
+    return {&quot;independent_samples_each_protocol&quot;:total,
+            &quot;noise_score_second_moment&quot;:measured_noise,&quot;noise_theory&quot;:1/6,
+            &quot;mean_score_second_moment&quot;:measured_mean,&quot;mean_theory&quot;:2,
+            &quot;measured_information_ratio&quot;:measured_mean/measured_noise,&quot;theory_ratio&quot;:12.0}
+
+
+def main() -&gt; None:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--output&quot;,type=Path,default=Path(&quot;results.json&quot;))
+    parser.add_argument(&quot;--seed&quot;,type=int,default=20261009)
+    args=parser.parse_args()
+    rng=np.random.default_rng(args.seed)
+    started=time.perf_counter()
+    result={&quot;status&quot;:&quot;NO_FOUNDATIONAL_BREAKTHROUGH_ESTABLISHED; candidate comparison gate failed&quot;,
+            &quot;seed&quot;:args.seed,&quot;environment&quot;:{&quot;python&quot;:platform.python_version(),
+                                             &quot;numpy&quot;:np.__version__,&quot;scipy&quot;:scipy.__version__},
+            &quot;observational_ambiguity&quot;:observational_ambiguity(),
+            &quot;two_noise_counterexample&quot;:two_noise_counterexample(),
+            &quot;coded_exact_recovery&quot;:coded_recovery(rng),
+            &quot;fisher_comparison&quot;:fisher_tests(rng),
+            &quot;raw_sample_score_check&quot;:score_monte_carlo(rng),
+            &quot;limits&quot;:[&quot;Synthetic mathematical checks, not a representative application benchmark.&quot;,
+                      &quot;No hardware test, no real biological data, no trained scientific model.&quot;,
+                      &quot;The dense decoder is intentionally limited to small systems.&quot;,
+                      &quot;Floating-point replay is not a formal proof or interval arithmetic certification.&quot;,
+                      &quot;Stationary covariance generation is simulator ground truth, not acquisition by the learner.&quot;,
+                      &quot;Local Fisher information concerns regular local inference and the specified shared budget.&quot;]}
+    result[&quot;elapsed_seconds&quot;]=time.perf_counter()-started
+    args.output.write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+    print(json.dumps(result,indent=2))
+
+if __name__==&quot;__main__&quot;:
+    main()
+</pre></main>

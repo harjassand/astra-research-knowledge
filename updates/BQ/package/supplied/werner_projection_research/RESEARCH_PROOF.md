@@ -1,0 +1,298 @@
+# Rank-two projection completeness for the all-copy Werner test
+
+**Research date:** 9 October 2026.  
+**Outcome:** The requested historic-scale discovery was not established. The result below is an unconditional, constructive reduction with a complete algebraic proof. It does not establish NPT bound entanglement or a negative rank-two Werner witness. Historical novelty and external correctness have not been independently certified. No proof assistant was used.
+
+## 1. The independently important target
+
+Let \(H_n=(\mathbb C^3)^{\otimes n}\), and define
+
+\[
+q_n(C)=\sum_{S\subseteq[n]}(-1/2)^{|S|}\|\operatorname{Tr}_S C\|_F^2.
+\tag{1}
+\]
+
+The empty partial trace is the identity map. All matrix ranks in this record are ordinary matrix ranks, and every assertion applies to complex matrices unless the finite-test scope explicitly says otherwise.
+
+The qutrit Werner state
+
+\[
+\rho_*=(2I_9-F_3)/15
+\]
+
+is positive with trace one. Its partial transpose is
+\((2/15)(I-\Omega\Omega^*/2)\), where \(\Omega=\sum_{j=0}^2e_j\otimes e_j\); its eigenvalue on \(\Omega\) is \(-1/15\). Thus it is NPT. Under the usual regrouping of Alice's and Bob's tensor factors,
+
+\[
+\langle\operatorname{vec}C,(\rho_*^\Gamma)^{\otimes n}\operatorname{vec}C\rangle
+=(2/15)^nq_n(C),\qquad
+\operatorname{SR}(\operatorname{vec}C)=\operatorname{rank}C.
+\tag{2}
+\]
+
+The established distillation criterion therefore identifies all-copy undistillability of this state with
+
+\[
+q_n(C)\geq0\quad\text{for every }n\geq1\text{ and every }C\text{ of rank at most two}.
+\tag{W}
+\]
+
+Equation (W), not the reduction below, is the missing foundational endpoint. A negative witness would disprove undistillability of this particular state, not settle the existential NPT bound-entanglement question negatively.
+
+## 2. Linear-algebra preliminaries
+
+Set \(T(X)=X-\tfrac12\operatorname{Tr}(X)I_3\). For the Hilbert--Schmidt inner product,
+
+\[
+q_n(C)=\langle C,T^{\otimes n}(C)\rangle_{HS}.
+\]
+
+The scalar and traceless subspaces are orthogonal eigenspaces of \(T\), with eigenvalues \(-1/2\) and \(1\). Consequently
+
+\[
+|q_n(C)|\leq\|C\|_F^2.
+\tag{3}
+\]
+
+Also \(q_n(C^*)=q_n(C)\), directly from partial traces and Frobenius norms.
+
+Let \(F_i\) swap the two copies of the \(i\)-th qutrit in \(H_n\otimes H_n\). Direct contraction of indices gives, for arbitrary vectors \(u,v\),
+
+\[
+q_n(uv^*)=\langle u\otimes v,\prod_i(I-F_i/2)(u\otimes v)\rangle.
+\]
+
+The factors commute and are at least \(I/2\). Hence
+
+\[
+q_n(uv^*)\geq2^{-n}\|u\|^2\|v\|^2.
+\tag{4}
+\]
+
+Every negative matrix of rank at most two therefore has rank exactly two.
+
+## 3. The coherent-flag identity
+
+This preliminary construction explains the mechanism. Let \(C=X Y^*\), where \(X,Y:\mathbb C^r\to H_n\) are full-column-rank matrices. Put \(A=XX^*\), \(B=YY^*\). For \(m\geq1\), let
+
+\[
+a=|0\rangle^{\otimes m},\quad b=|1\rangle^{\otimes m},\quad
+W_m=a\otimes X+b\otimes Y,\quad D_m=W_mW_m^*.
+\]
+
+Then \(D_m\succeq0\), its rank is \(r\), and
+
+\[
+\boxed{q_{n+m}(D_m)=2q_n(C)+2^{-m}q_n(A+(-1)^mB).}
+\tag{5}
+\]
+
+**Proof.** For matrix units on the span of the first two qutrit basis vectors,
+
+\[
+b_1(E_{ij},E_{k\ell})
+=\delta_{ik}\delta_{j\ell}-\tfrac12\delta_{ij}\delta_{k\ell},
+\]
+
+where \(b_1\) is the sesquilinear polarization of \(q_1\). This formula multiplies over flag sites. The two off-diagonal units \(|a\rangle\langle b|\) and \(|b\rangle\langle a|\) have squared form-norm one and are form-orthogonal to each other and to diagonal units. Each diagonal unit has squared form-norm \(2^{-m}\); their mutual form-inner-product is \((-1/2)^m\). Expanding the four blocks of \(D_m\), and using \(q(C^*)=q(C)\), proves (5). Full column rank of \(W_m\) follows from that of \(X\), by projecting onto the flag \(a\). QED.
+
+For a singular-value factorization \(X=U\sqrt\Sigma\), \(Y=V\sqrt\Sigma\), one has \(W_m^*W_m=2\Sigma\), so \(\|D_m\|_F^2=4\|C\|_F^2\). For odd \(m\),
+
+\[
+|q_n(A-B)|\leq\|A-B\|_F^2\leq2\|C\|_F^2,
+\]
+
+because \(A,B\succeq0\) and \(\operatorname{Tr}(AB)\geq0\). Thus any strictly negative witness gives a positive-semidefinite witness of the same rank after finite padding. This is not yet the stronger flat-projection construction.
+
+## 4. Main theorem: exact-rank flat projections suffice
+
+**Theorem.** Let \(n\geq1\), let \(C\in\operatorname{End}(H_n)\) have rank two, and suppose \(q_n(C)<0\). Define
+
+\[
+\delta=-q_n(C)/\|C\|_F^2>0.
+\]
+
+For every integer \(k\geq3\) satisfying \(2^{-k}<\delta/2\), there is an explicitly specified rank-two orthogonal projection \(P_k\) on \(H_{n+2k}\) such that \(q_{n+2k}(P_k)<0\).
+
+More precisely, after normalizing \(\|C\|_{op}=1\), the construction satisfies
+
+\[
+\boxed{\left|q_{n+2k}(P_k)-\tfrac12q_n(C)\right|
+\leq2^{-k-1}+4^{1-k}.}
+\tag{6}
+\]
+
+In particular, \(q_{n+2k}(P_k)\to q_n(C)/2<0\). The local physical dimension remains three, and the rank remains exactly two.
+
+### Proof
+
+**Normalization and frames.** Scaling \(C\) by a nonzero scalar does not change its sign or \(\delta\). Normalize its largest singular value to one and write
+
+\[
+C=u_1v_1^*+s u_2v_2^*,\qquad0<s\leq1,
+\]
+
+with orthonormal \(u_1,u_2\) and orthonormal \(v_1,v_2\). Fix any unit vector \(z\in H_n\). No relation between the left and right support planes, or between these planes and \(z\), is assumed.
+
+Set
+
+\[
+\begin{aligned}
+A&=u_1u_1^*+s u_2u_2^*,& B&=v_1v_1^*+s v_2v_2^*,\\
+E&=2(1-s)zz^*,& G&=\sqrt{2s(1-s)}\,u_2z^*,\\
+&&H&=\sqrt{2s(1-s)}\,v_2z^*.
+\end{aligned}
+\]
+
+**Three flag words.** In \((\mathbb C^3)^{\otimes2k}\), choose the mutually orthogonal words
+
+\[
+a=|0\rangle^{\otimes2k},\qquad
+b=|1\rangle^{\otimes2k},\qquad
+c=|0\rangle^{\otimes k}|1\rangle^{\otimes k}.
+\]
+
+Define
+
+\[
+\begin{aligned}
+w_1&=a\otimes u_1+b\otimes v_1,\\
+w_2&=\sqrt{s}(a\otimes u_2+b\otimes v_2)
+       +\sqrt{2(1-s)}\,c\otimes z,\\
+P_k&=\tfrac12(w_1w_1^*+w_2w_2^*).
+\end{aligned}
+\tag{7}
+\]
+
+Orthogonality of the words and of each singular-vector frame gives
+\(\langle w_1,w_2\rangle=0\) and \(\|w_1\|^2=\|w_2\|^2=2\). Thus \(P_k=P_k^*=P_k^2\) and \(\operatorname{Tr}P_k=2\), including the case \(s=1\).
+
+**Exact identity.** The nonzero blocks of \(2P_k\), indexed by \(a,b,c\), are
+
+\[
+2P_k=\begin{pmatrix}A&C&G\\C^*&B&H\\G^*&H^*&E\end{pmatrix}.
+\]
+
+Using the matrix-unit formula in Section 3, the six off-diagonal flag units are mutually form-orthogonal and are orthogonal to the three diagonal units. The \((a,b)\) and \((b,a)\) units have squared form-norm one. The other four off-diagonal units have squared form-norm \(2^{-k}\): their row and column words agree at exactly \(k\) sites.
+
+The form-Gram matrix of the diagonal units, in the order \(a,b,c\), is
+
+\[
+4^{-k}\begin{pmatrix}
+1&1&(-1)^k\\1&1&(-1)^k\\(-1)^k&(-1)^k&1
+\end{pmatrix}.
+\]
+
+Consequently, with every \(q\) on the right taken on the original \(n\) sites,
+
+\[
+\boxed{4q_{n+2k}(P_k)
+=2q_n(C)+2^{1-k}[q_n(G)+q_n(H)]
++4^{-k}q_n(A+B+(-1)^kE).}
+\tag{8}
+\]
+
+This equality is exact for all complex frames and every \(k\geq1\).
+
+**Uniform error estimate.** By (3),
+
+\[
+|q(G)|+|q(H)|\leq\|G\|_F^2+\|H\|_F^2
+=4s(1-s)\leq1.
+\]
+
+Also
+
+\[
+\begin{aligned}
+\|A+B+(-1)^kE\|_F
+&\leq2\sqrt{1+s^2}+2(1-s)\\
+&\leq4,
+\end{aligned}
+\]
+
+where \(\sqrt{1+s^2}\leq1+s\). Applying (3) again and dividing (8) by four proves (6).
+
+For \(k\geq3\), \(2^{-k-1}+4^{1-k}\leq2^{-k}\). Further,
+\(-q_n(C)=\delta(1+s^2)\geq\delta\). Therefore
+
+\[
+q_{n+2k}(P_k)\leq-\delta/2+2^{-k}<0.
+\]
+
+This proves the theorem. QED.
+
+## 5. Consequence: a zero-versus-persistent-gap dichotomy
+
+Let
+
+\[
+g_n=\min\{q_n(P):P=P^*=P^2,\ \operatorname{Tr}P=2\}.
+\]
+
+The minimum exists by compactness of the finite-dimensional Grassmannian. It is at most zero: the projection onto
+\(\operatorname{span}\{|0\cdots0\rangle,|10\cdots0\rangle\}\) has zero \(q_n\).
+
+Exactly one of the following alternatives holds:
+
+1. **All-copy positivity:** (W) holds, and \(g_n=0\) for every \(n\).
+2. **Persistent negative gap:** (W) fails, and \(\limsup_{N\to\infty}g_N<0\).
+
+For the quantitative second alternative, take a negative \(C\), normalize it as above, and put \(\eta=-q_n(C)>0\). The constructed projections give the limit \(-\eta/2\) along \(N=n+2k\). Appending one pure qutrit projector preserves the projection rank and multiplies \(q\) by \(1/2\), giving the limit \(-\eta/4\) along the other parity. These two sequences cover every sufficiently large integer. Hence
+
+\[
+\limsup_{N\to\infty}g_N\leq-\eta/4\leq-\delta/4<0.
+\tag{9}
+\]
+
+Thus even a proved lower bound \(g_{N_j}\geq-\varepsilon_j\) on any unbounded sequence \(N_j\), with \(\varepsilon_j\to0\), would establish (W). **No such lower bound is proved here. The dichotomy does not determine which alternative is realized.**
+
+The gap in (9) is for the unscaled mathematical functional \(q_N\). The physical expectation in (2) retains the exponentially small factor \((2/15)^N\). This result supplies neither a constant experimental signal nor a polynomial-time algorithm for deciding all-copy distillability. Writing a general witness explicitly remains exponentially costly in the copy count; the flag description alone does not remove acquisition costs.
+
+## 6. Challenges and computational evidence
+
+### Exact checks
+
+`exact_flag_audit.py` uses Python's standard-library `Fraction`, independently evaluates the left sides by all partial traces, and compares them with the block identities. It does not evaluate the left sides using the claimed identities. Thirteen fixtures/checks passed: eight coherent-flag identities, three flat-projection identities with exact projection and error-bound checks, and two rank controls. These are real rational fixtures; the proof above, not the fixture coverage, establishes the complex statement. Checks use explicit exceptions and remain active under `python -O`.
+
+The negative control is
+\(P=|\Phi_3\rangle\langle\Phi_3|\otimes I_3\), a rank-three projection. Its full norm-square, sum of one-factor trace norm-squares, sum of two-factor trace norm-squares, and squared trace are \(3,11,9,9\), respectively. Therefore
+
+\[
+q_3(P)=3-\tfrac12(11)+\tfrac14(9)-\tfrac18(9)=-11/8.
+\]
+
+The normalized state \(P/3\) has value \(-11/72\). A blanket positivity claim beyond rank two would therefore already be false. The flag identities themselves are identities, not assertions of positivity for this control.
+
+### Exploratory searches
+
+The actual saved searches used complex matrix factorizations and local numerical optimization. The three-copy search had 12 starts and minimum normalized objective \(q_n(C)/\|C\|_F^2\) approximately \(1.14\times10^{-14}\); the four-copy search had 18 starts and minimum approximately \(1.12\times10^{-13}\). These numbers are consistent with zero-boundary witnesses, not exact lower bounds. Stronger PSD-deficit searches at four and five copies likewise found only nonnegative near-zero minima in their sampled runs. A restricted SO(3)-equivariant, two-level ternary-encoder search represented nine physical copies; five starts gave no negative witness. One run hit its iteration limit.
+
+The `shadow_lp` files are an explicitly specified outer-relaxation diagnostic. Their negative feasible objectives are not physical states, not rank-two witnesses, and not a theorem about all possible shadow methods. None of these numerical results is a premise of Sections 2–5.
+
+### Routes that did not close
+
+The recent two-copy inequalities do not iterate directly because partial trace can increase matrix rank. A naive exponentially improving bound on multipartite antisymmetric projections fails on a tensor product of locally entangled pairs and one antisymmetric pair. The original Astra transverse-lifting identity is valid only on its specified family; its nonnegative quadratic coefficient does not cover arbitrary support planes. The OpenAI zero-key construction's represented class uses CP and completely copositive local maps, and is therefore PPT; its reverse block estimate cannot simply be reused with that hypothesis removed. The structured encoder search did not supply a negative witness or a universal invariant-cone proof.
+
+## 7. Primary sources and provenance
+
+### Repositories actually accessed
+
+- Astra: `a09fe480a5b51aee15af1a963c5d3c1437c0eeb2`. Entry through `00_START_HERE.txt`; selective topic/status retrieval, not a whole-repository proof audit. The N380 original proof was read at `web/pages/d-1b15897d0c845af8.html`, lines 1–170, containing its swap lemma and complete lifting-identity proof. Its logical source path was not directly available through the contents endpoint; the indexed HTML source resolved it. N306's exact co-Choi obstruction and N308's structured broadcasting comparator were read at review-card level, not independently replayed from their original programs.
+- OpenAI math: `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`. Selected `overview.tex` ranges were examined. The original `build/source/main.tex`, introduction, and complete `sections/coherence.tex` of `Entanglement-with-zero-distillable-secret-key-in-local-dimension-ten-September-27-2026` were read. The full geometric/arithmetic construction and operational proof were not audited. The catalogue's claims were not treated as certified premises.
+
+### Selected primary literature examined
+
+- https://arxiv.org/html/2607.21367v2 — *A solution to 2-copy distillability of Werner states*. Version 2 was the proof text read; version 3 was found in the abstract record but its proof was not successfully retrieved.
+- https://arxiv.org/html/2607.24309v1 — *On the two-copy distillability of Werner states and a new partial trace inequality*. Balanced-rank proof sections were examined.
+- https://arxiv.org/html/2607.24479v1 — *Two-copy nondistillability of Werner states: sharp partial-trace inequalities and finite-copy extensions*, including the qubit-marginal hierarchy. This hierarchy does not supply a proved all-copy endpoint.
+- https://arxiv.org/html/2607.23416v1 — Song and Chen, *A partial-trace matrix inequality and Werner-state distillability*, 26 July 2026. Rank-two distillation criterion and two-copy projection proof.
+- https://arxiv.org/html/2608.02647v1 — *Sharp Plücker Geometry for Three-Copy Werner Distillation*. Three-copy PSD/normal-sector results and stated nonnormal boundaries were examined, not imported as an all-copy theorem.
+
+The flag/projection arguments in Sections 3–5 were derived in this session. The inspected sources did not supply these exact constructions; this is not an exhaustive priority search or a claim of historical novelty. The familiar partial-trace reformulation, rank-one swap identity, SVD, and matrix-unit algebra are established ingredients, not claimed inventions.
+
+## 8. Final status
+
+Completed: exact rank-preserving PSD transfer; exact rank-two orthogonal-projection transfer; a quantitative persistent-gap dichotomy; finite reproducible arithmetic checks.
+
+Not completed: deciding the all-copy inequality; proving existence of an NPT bound-entangled state; constructing a negative rank-two witness; establishing historical novelty or a historic-scale discovery.

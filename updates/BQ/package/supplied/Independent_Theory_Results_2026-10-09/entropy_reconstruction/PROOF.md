@@ -1,0 +1,887 @@
+# Marginal-information stability: sharp power threshold up to logarithms
+
+Date: 2026-10-09  
+Status: complete compact-class theorem, full-class exponent-supremum theorem up to logarithms, and matching obstruction exponents. The key upper bound is a synthesis of entropy duality, moment cancellation, Fourier-slice Sobolev control, and Gaussian tail truncation. It is useful mathematical closure of a reconstruction target; no transformative or priority claim is made.
+
+In dimension one the only projection is the full variable, so S_D equals D. The reconstruction statements below concern d ≥ 2.
+
+## Question and definitions
+
+Let \(\gamma_d\) denote standard Gaussian measure on \(\mathbb R^d\). For a density \(p\), let \(p_u\) be the density of \(u\cdot X\) for \(X\sim p\) and \(u\in S^{d-1}\). Use normalized surface measure \(\sigma\), and define
+
+\[
+ D(p\|\gamma_d)=\int p\log(p/\gamma_d),\qquad
+ J(p\|\gamma_d)=\int p\,|\nabla\log(p/\gamma_d)|^2,
+\]
+
+with the analogous one-dimensional definition for \(p_u\) relative to \(\gamma_1\). Set
+
+\[
+ S_D(p)=\int_{S^{d-1}}D(p_u\|\gamma_1)\,d\sigma(u),\qquad
+ S_J(p)=\int_{S^{d-1}}J(p_u\|\gamma_1)\,d\sigma(u).
+\]
+
+These are the actual divergences after marginalization. They are not the “sliced score matching” objective, which projects the *joint* score before squaring.
+
+## Theorem: matching Hölder moduli
+
+Fix \(d\ge2\), support radius \(R<\infty\), and likelihood-ratio bounds \(0<c<C<\infty\). Let
+
+\[
+ p=\gamma_d+\delta=\gamma_d(1+h),\qquad
+ \operatorname{supp}\delta\subset B_R,
+ \qquad c\le 1+h\le C,
+ \qquad \delta\in H^2(\mathbb R^d).
+\]
+
+Put \(M=\|\delta\|_{H^2}\). There is a constant depending only on \(d,R,c,C\) such that
+
+\[
+ D(p\|\gamma_d)
+ \le C_* M^{\,2(d-1)/(d+3)}S_D(p)^{\,4/(d+3)},
+ \tag{1}
+\]
+
+\[
+ J(p\|\gamma_d)
+ \le C_* M^{\,2(d-1)/(d+1)}S_J(p)^{\,2/(d+1)}.
+ \tag{2}
+\]
+
+If \(\delta=0\), both statements are immediate. For nonzero \(\delta\), these are the claimed bounds. In particular, at fixed support, ratio bounds, and an \(H^2\) budget, averaged marginal KL controls joint KL with exponent \(4/(d+3)\); averaged marginal relative Fisher controls joint relative Fisher with exponent \(2/(d+1)\).
+
+The support and ratio assumptions are essential parts of this compact-class theorem. The full uniformly strongly log-concave class is treated separately below; the Fisher-information claim (2) remains restricted to this compact, bounded-ratio setting.
+
+## Proof
+
+### 1. Divergences are equivalent to density norms on this class
+
+Because \(\int\gamma_d h=0\),
+
+\[
+ D(p\|\gamma_d)=\int\gamma_d\big[(1+h)\log(1+h)-h\big].
+\]
+
+On the fixed interval \([c-1,C-1]\), the ratio of \((1+s)\log(1+s)-s\) to \(s^2\) has positive finite bounds (with its value at zero defined by continuity). On the fixed ball, \(\gamma_d\) is bounded above and below by positive constants. Therefore
+
+\[
+ D(p\|\gamma_d)\asymp_{d,R,c,C}\|\delta\|_2^2.
+ \tag{3}
+\]
+
+For Fisher information,
+
+\[
+ J(p\|\gamma_d)=\int\gamma_d\frac{|\nabla h|^2}{1+h}
+ \asymp_{c,C}\int\gamma_d|\nabla h|^2.
+\]
+
+On \(B_R\), multiplication by \(\gamma_d\) and by \(1/\gamma_d\) are bounded maps on \(H^1\), so \(\|\delta\|_{H^1}\asymp_{d,R}\|h\|_{H^1(B_R)}\). Since \(h\) is supported in \(B_R\), Poincaré gives \(\|h\|_2\le C_R\|\nabla h\|_2\). Gaussian and Lebesgue weights are comparable on this support, hence
+
+\[
+ J(p\|\gamma_d)\asymp_{d,R,c,C}\|\delta\|_{H^1}^2.
+ \tag{4}
+\]
+
+For each \(u\), define the projected perturbation
+
+\[
+ \delta_u(t)=\int_{u^\perp}\delta(tu+y)\,dy,
+ \qquad p_u(t)=\phi(t)+\delta_u(t),
+\]
+
+where \(\phi\) is the standard one-dimensional Gaussian density. The support of \(\delta_u\) lies in \([-R,R]\). Moreover,
+
+\[
+ \frac{p_u(t)}{\phi(t)}=\mathbb E_{\gamma_d}[1+h(X)\mid u\cdot X=t],
+\]
+
+so the same \([c,C]\) ratio bound holds for every projected density. Applying the preceding KL argument in one dimension gives
+
+\[
+ D(p_u\|\gamma_1)\asymp_{R,c,C}\|\delta_u\|_2^2.
+ \tag{5}
+\]
+
+For relative Fisher, put \(h_u=\delta_u/\phi\), so \(p_u=\phi(1+h_u)\). Directly,
+
+\[
+ J(p_u\|\gamma_1)=\int\phi\frac{|h_u'|^2}{1+h_u}
+ \asymp_{c,C}\int\phi|h_u'|^2.
+\]
+
+On \([-R,R]\), multiplication by \(\phi\) is an \(H^1\)-isomorphism, and compact support gives the one-dimensional Poincaré inequality for \(h_u\). Thus, uniformly in \(u\),
+
+\[
+ J(p_u\|\gamma_1)\asymp_{R,c,C}\|\delta_u\|_{H^1(\mathbb R)}^2.
+ \tag{6}
+\]
+
+Equations (3)–(6) are the weighted-divergence step. In particular, the Fisher comparison uses relative Fisher information after marginalization and a Poincaré estimate; it does not replace it by an averaged projection of the joint score.
+
+### 2. Fourier-slice identities
+
+Let
+
+\[
+ A_0(\delta)=\int_{S^{d-1}}\|\delta_u\|_2^2\,d\sigma(u),\qquad
+ A_1(\delta)=\int_{S^{d-1}}\|\delta_u\|_{H^1}^2\,d\sigma(u).
+\]
+
+The Fourier-slice theorem says \(\widehat{\delta_u}(r)=\widehat\delta(ru)\). One-dimensional Plancherel and polar coordinates then give, up to Fourier-normalization constants,
+
+\[
+ A_0(\delta)\asymp_d\int_{\mathbb R^d}|\widehat\delta(\xi)|^2|\xi|^{-(d-1)}\,d\xi,
+ \tag{7}
+\]
+
+\[
+ A_1(\delta)\asymp_d\int_{\mathbb R^d}(1+|\xi|^2)|\widehat\delta(\xi)|^2|\xi|^{-(d-1)}\,d\xi.
+ \tag{8}
+\]
+
+The singular weight is locally integrable in these formulas: in polar coordinates its radial factor near zero is \(r^{d-1}r^{-(d-1)}=1\).
+
+### 3. Interpolate the negative-order slice norm with \(H^2\)
+
+Write \(L\ge1\) for a frequency cutoff. From (7),
+
+\[
+ \|\delta\|_2^2
+ \le L^{d-1}A_0(\delta)+L^{-4}\|\delta\|_{H^2}^2.
+ \tag{9}
+\]
+
+Indeed, on \(|\xi|\le L\), the unweighted integrand is at most \(L^{d-1}\) times the integrand in (7); on \(|\xi|>L\), \(1\le L^{-4}(1+|\xi|^2)^2\). If \(A_0\le M^2\), choose \(L=(M^2/A_0)^{1/(d+3)}\); if \(A_0>M^2\), the trivial \(\|\delta\|_2^2\le M^2\) suffices. It follows that
+
+\[
+ \|\delta\|_2^2\le C_d M^{\,2(d-1)/(d+3)}A_0(\delta)^{\,4/(d+3)}.
+ \tag{10}
+\]
+
+Similarly, (8) yields
+
+\[
+ \|\delta\|_{H^1}^2
+ \le L^{d-1}A_1(\delta)+L^{-2}\|\delta\|_{H^2}^2.
+ \tag{11}
+\]
+
+Balancing at \(L=(M^2/A_1)^{1/(d+1)}\) when \(A_1\le M^2\), and using the trivial estimate otherwise, gives
+
+\[
+ \|\delta\|_{H^1}^2\le C_d M^{\,2(d-1)/(d+1)}A_1(\delta)^{\,2/(d+1)}.
+ \tag{12}
+\]
+
+Finally, (5) and (6) imply \(A_0\asymp S_D\) and \(A_1\asymp S_J\). Combining (3) with (10), and (4) with (12), proves (1) and (2).
+
+## Sharpness within isotropic, uniformly strongly log-concave smooth densities
+
+The two exponents cannot be increased, even if we impose exact isotropy, a fixed compact perturbation of the Gaussian, a uniform likelihood-ratio bound, a fixed \(H^2\) budget, and fixed two-sided Hessian bounds on the potential.
+
+### Construction and exact moment correction
+
+Fix a nonzero smooth radial \(\chi\in C_c^\infty(B_R)\). It is even under every coordinate reflection. Let
+
+\[
+ w_\lambda(x)=\chi(x)\cos(\lambda x_1).
+\]
+
+Choose three smooth compactly supported functions \(\psi_0,\psi_\parallel,\psi_\perp\), even under coordinate sign changes and invariant under permutations of coordinates \(2,\ldots,d\), such that the matrix with columns
+
+\[
+ \begin{pmatrix}
+  \mathbb E_\gamma\psi_j\\
+  \mathbb E_\gamma[X_1^2\psi_j]\\
+  \mathbb E_\gamma[X_2^2\psi_j]
+ \end{pmatrix}
+ \quad (j=0,\parallel,\perp)
+ \tag{13}
+\]
+
+is invertible. Such functions are obtained by taking small smooth bumps near the origin, near the pair \(\pm a e_1\), and near the transverse orbit \(\{\pm a e_j:2\le j\le d\}\); their moment vectors approach, up to nonzero scalar factors, \((1,0,0)\), \((1,a^2,0)\), and \((1,0,a^2/(d-1))\). For sufficiently narrow bumps, (13) is invertible.
+
+Solve for \(b_j(\lambda)\) so that
+
+\[
+ g_\lambda=w_\lambda-\sum_j b_j(\lambda)\psi_j
+\]
+
+satisfies
+
+\[
+ \mathbb E_\gamma g_\lambda=0,\qquad
+ \mathbb E_\gamma[X_1^2g_\lambda]=0,\qquad
+ \mathbb E_\gamma[X_2^2g_\lambda]=0.
+ \tag{14}
+\]
+
+Each entry on the right-hand side of the linear system for \(b_j\) is an integral of \(\cos(\lambda x_1)\) against a smooth compactly supported function (a polynomial times \(\gamma_d\chi\)). Repeated integration by parts in \(x_1\) therefore proves
+
+\[
+ |b_j(\lambda)|=O_N(\lambda^{-N})\quad\text{for every }N>0.
+ \tag{15}
+\]
+
+The symmetries and (14) imply \(\mathbb E_\gamma[X_i g_\lambda]=0\) and \(\mathbb E_\gamma[X_iX_jg_\lambda]=0\) for every \(i,j\): off-diagonal terms vanish by reflection symmetry; transverse diagonal moments agree by permutation symmetry and vanish by the third equation of (14).
+
+For a fixed sufficiently small \(\kappa>0\), set
+
+\[
+ \varepsilon_\lambda=\kappa\lambda^{-2},\qquad
+ p_\lambda(x)=\gamma_d(x)\bigl(1+\varepsilon_\lambda g_\lambda(x)\bigr).
+ \tag{16}
+\]
+
+For all large \(\lambda\), this is a positive smooth density, normalized and exactly centered isotropic by (14). Its likelihood ratio lies in \([1/2,3/2]\), after increasing the lower cutoff on \(\lambda\) if necessary. The perturbation \(\delta_\lambda=p_\lambda-\gamma_d\) is supported in the same fixed ball.
+
+### Curvature and Sobolev budget
+
+The potential, up to an additive constant, is
+
+\[
+ V_\lambda(x)=\tfrac12|x|^2-\log(1+\varepsilon_\lambda g_\lambda(x)).
+\]
+
+The fixed bumps and (15) give \(\|g_\lambda\|_\infty=O(1)\), \(\|\nabla g_\lambda\|_\infty=O(\lambda)\), and \(\|\nabla^2g_\lambda\|_\infty=O(\lambda^2)\). Thus
+
+\[
+ \nabla^2V_\lambda
+ =I-\frac{\varepsilon_\lambda\nabla^2g_\lambda}{1+\varepsilon_\lambda g_\lambda}
+ +\frac{\varepsilon_\lambda^2\nabla g_\lambda\otimes\nabla g_\lambda}
+ {(1+\varepsilon_\lambda g_\lambda)^2},
+\]
+
+where the last displayed fraction is the positive rank-one term. Its perturbation from \(I\) is at most \(C_\chi\kappa+O(\kappa^2\lambda^{-2})\) in operator norm. Choose \(\kappa\) fixed and sufficiently small depending on \(\chi\); then for all sufficiently large \(\lambda\),
+
+\[
+ \tfrac12 I\preceq\nabla^2V_\lambda(x)\preceq\tfrac32 I\qquad\text{for every }x.
+ \tag{17}
+\]
+
+Differentiating \(\delta_\lambda=\varepsilon_\lambda\gamma_d g_\lambda\) up to order two shows
+
+\[
+ \sup_\lambda\|\delta_\lambda\|_{H^2}<\infty,
+ \tag{18}
+\]
+
+since the leading second derivative has size \(\varepsilon_\lambda\lambda^2=\kappa\). So this family lies in one fixed theorem class.
+
+### Joint and sliced information rates
+
+The oscillatory average satisfies
+
+\[
+ \|g_\lambda\|_{L^2(\gamma)}^2\longrightarrow\tfrac12\int\chi^2\,d\gamma>0,
+ \qquad
+ \|\nabla g_\lambda\|_{L^2(\gamma)}^2\asymp\lambda^2.
+\]
+
+Using the ratio bounds in (3)–(4),
+
+\[
+ D(p_\lambda\|\gamma_d)\asymp\varepsilon_\lambda^2\asymp\lambda^{-4},
+ \qquad
+ J(p_\lambda\|\gamma_d)\asymp\varepsilon_\lambda^2\lambda^2\asymp\lambda^{-2}.
+ \tag{19}
+\]
+
+For completeness, the sliced rates can be read off directly from the Fourier side, without a cap approximation. Let \(a=\gamma_d\chi\) and \(q_j=\gamma_d\psi_j\), both smooth and compactly supported. With any fixed Fourier convention,
+
+\[
+ \widehat{\delta_\lambda}(\xi)
+ =\frac{\varepsilon_\lambda}{2}
+   \left[\widehat a(\xi-\lambda e_1)+\widehat a(\xi+\lambda e_1)\right]
+   -\varepsilon_\lambda\sum_jb_j(\lambda)\widehat q_j(\xi).
+ \tag{20}
+\]
+
+The transforms \(\widehat a,\widehat q_j\) are Schwartz. The correction term in (20) is superpolynomially small in either weighted integral (7)–(8). Around each shifted packet \(\xi=\pm\lambda e_1+\eta\), with \(\eta\) in a fixed bounded set, \(|\xi|\asymp\lambda\). The two packets separate as \(\lambda\to\infty\), and \(\widehat a\not\equiv0\); their weighted squared norms are therefore comparable to \(\lambda^{-(d-1)}\) for (7) and \(\lambda^{2-(d-1)}\) for (8). The complementary frequency region is negligible by rapid decay; the integrable singularity at \(\xi=0\) causes no contribution of leading order. Consequently
+
+\[
+ A_0(\delta_\lambda)\asymp\varepsilon_\lambda^2\lambda^{-(d-1)},
+ \qquad
+ A_1(\delta_\lambda)\asymp\varepsilon_\lambda^2\lambda^{3-d}.
+ \tag{21}
+\]
+
+The uniform weighted comparisons (5)–(6) transfer these to actual marginal divergences:
+
+\[
+ S_D(p_\lambda)\asymp\lambda^{-(d+3)},
+ \qquad
+ S_J(p_\lambda)\asymp\lambda^{-(d+1)}.
+ \tag{22}
+\]
+
+Combining (19) and (22), the exponents in (1)–(2) are attained exactly. For any \(\alpha>4/(d+3)\), no bound \(D\le C(M)S_D^\alpha\) can hold uniformly on this class: the ratio scales as \(\lambda^{\alpha(d+3)-4}\to\infty\). For any \(\beta>2/(d+1)\), likewise no bound \(J\le C(M)S_J^\beta\) can hold, since the ratio scales as \(\lambda^{\beta(d+1)-2}\to\infty\).
+
+This is the requested matched sharp threshold. It is an exact compactly supported, isotropic, smooth, uniformly strongly log-concave family, rather than a high-frequency perturbation with changed tails or approximate moments.
+
+## Scope and frontier comparison
+
+The analytic mechanism is classical: averaged one-dimensional projections measure a negative-order Sobolev norm through the Fourier-slice identity; a uniform \(H^2\) budget gives the displayed Hölder exponent by low/high frequency splitting. The information-theoretic content is the uniform conversion between KL/Fisher divergences and \(L^2/H^1\) norms under compact support and likelihood-ratio bounds, plus the exact isotropic strongly log-concave saturator. I did not find a direct published theorem with these exact marginal-KL and post-marginal relative-Fisher functionals in the brief comparison below, but the proof is essentially standard Radon interpolation. Accordingly, no novelty/priority claim is made.
+
+Relevant primary literature:
+
+- Natterer, *The Mathematics of Computerized Tomography*, is the classical Fourier-slice and Sobolev-stability framework; see the publisher's [chapter on the Radon transform](https://epubs.siam.org/doi/abs/10.1137/1.9780898719284.ch2).
+- Homan and Zhou, [*Injectivity and Stability for a Generic Class of Generalized Radon Transforms*](https://arxiv.org/abs/1502.06510), give the compact-manifold microlocal normal-operator framework underlying local principal-symbol statements such as (B13). Their result does not supply a global coercive estimate for this noncompact, density-weighted, nonlinear KL problem.
+- Railo, [*Fourier Analysis of Periodic Radon Transforms*](https://arxiv.org/abs/1909.00495), proves reconstruction and stability in weighted Bessel-potential norms for periodic Radon transforms. The Euclidean identities used above are the direct central-slice/Plancherel version.
+- Bobkov and Götze, [*Quantified Cramér–Wold Continuity Theorem for the Kantorovich Transport Distance*](https://arxiv.org/abs/2412.10276), give Hölder stability for \(W_1\) from a supremum of projected \(W_1\) distances plus moment control. That is a different metric and uses a supremum, not averaged marginal KL/Fisher.
+- The recent [stability estimates for the \(k\)-plane transform on measures](https://arxiv.org/abs/2605.00375) compare Fourier/Wasserstein quantities and max-sliced Wasserstein. They provide nearby transform-level context but do not state (1) or (2).
+- Song et al., [*Sliced Score Matching* (UAI 2020)](https://proceedings.mlr.press/v115/song20a.html), project the **joint** score vector and average its square. That is not the same as taking each marginal first and computing its one-dimensional relative Fisher information.
+
+An earlier preliminary note considered a one-coordinate oscillation multiplied by a slightly changed Gaussian base. It already falsified linear inequalities but was less suitable for a matched theorem because its likelihood ratio to the standard Gaussian was not uniformly bounded in the tails. Construction (16) supersedes it for the sharp result.
+
+## Decisive boundary for future work
+
+The proved output is a sharp modulus on a fixed compact perturbation class. To upgrade this to a meaningful general reconstruction theorem would require removing or replacing the uniform compact-support/ratio assumptions while retaining a usable weighted Fisher/KL equivalence and controlling the tails. Uniform strong log-concavity alone is not silently asserted to provide those hypotheses. The separate hostile-tail/anisotropic examples should be tested before any extension to the full uniformly strongly log-concave class is claimed.
+
+## Appendix A. Earlier Gaussian-base oscillator, retained as a full-class obstruction
+
+This is the first explicit family explored. It is not used in the sharp compact-class theorem because its likelihood ratio to \(\gamma_d\) is unbounded in the tails. It remains useful: it is isotropic and uniformly strongly log-concave, and it gives a second direct test of the same candidate exponents in the unrestricted curvature-bounded class.
+
+Fix \(\kappa\in(0,1/4)\), set \(a=\kappa\lambda^{-2}\), and let \(t=t_\lambda>1\) solve
+
+\[
+ t-a t^2\lambda^2e^{-t\lambda^2/2}=1.
+ \tag{A1}
+\]
+
+Write \(c_\lambda=e^{-t\lambda^2/2}\), let \(\phi_t\) be the centered Gaussian density with variance \(t\), and define
+
+\[
+ f_\lambda(x)=\phi_t(x)[1+a(\cos(\lambda x)-c_\lambda)],
+ \qquad p_\lambda=f_\lambda\otimes\gamma_{d-1}.
+ \tag{A2}
+\]
+
+The implicit-function theorem near \(t=1\) gives a solution for all large \(\lambda\), with \(t-1\asymp \kappa e^{-\lambda^2/2}\). The identity \(\mathbb E_{\phi_t}\cos(\lambda X)=c_\lambda\) proves normalization, and
+
+\[
+ \mathbb E_{\phi_t}[X^2\cos(\lambda X)]=(t-t^2\lambda^2)c_\lambda,
+ \qquad
+ \mathbb E_{f_\lambda}X^2=t-a t^2\lambda^2c_\lambda=1.
+\]
+
+Thus \(p_\lambda\) is exactly centered and isotropic. For \(R(x)=1+a(\cos(\lambda x)-c_\lambda)\),
+
+\[
+ V_\lambda''(x)=\frac1t+\frac{a\lambda^2\cos(\lambda x)}{R(x)}
+            +\frac{a^2\lambda^2\sin^2(\lambda x)}{R(x)^2}.
+\]
+
+Because \(a\lambda^2=\kappa\), this lies in a fixed interval \([m,M]\subset(0,\infty)\), uniformly in large \(\lambda\). For example, with \(\kappa=1/5\) and sufficiently large \(\lambda\), one can take a slightly conservative interval such as \([0.7,1.3]\). The other coordinates have potential curvature exactly one.
+
+Direct Gaussian-density comparison gives
+
+\[
+ D(p_\lambda\|\gamma_d)\asymp a^2,
+ \qquad
+ J(p_\lambda\|\gamma_d)\asymp a^2\lambda^2.
+ \tag{A3}
+\]
+
+For the KL lower bound, \(\|f_\lambda-\phi_1\|_1\ge a\mathbb E_{\phi_t}|\cos(\lambda X)-c_\lambda|-O(t-1)\asymp a\), and Pinsker applies. For the upper bound, the Gaussian variance change contributes \(O((t-1)^2)\), while the oscillatory likelihood perturbation contributes \(O(a^2)\) to chi-square divergence. The relative score is
+
+\[
+ \partial_x\log(f_\lambda/\phi_1)
+ =\left(1-\frac1t\right)x-\frac{a\lambda\sin(\lambda x)}{R(x)},
+\]
+
+whose oscillatory term has squared expectation \(\asymp a^2\lambda^2\); the variance-correction term is exponentially smaller.
+
+For \(u\in S^{d-1}\), put \(\rho=u_1\) and \(w=1+(t-1)\rho^2\). The projected density has the exact form
+
+\[
+ p_{\lambda,\rho}(s)=\phi_w(s)
+ \left[1+a\left(D_\rho\cos(k_\rho s)-c_\lambda\right)\right],
+\]
+
+\[
+ D_\rho=\exp\!\left(-\frac{t\lambda^2(1-\rho^2)}{2w}\right),
+ \qquad k_\rho=\frac{t\lambda\rho}{w}.
+ \tag{A4}
+\]
+
+This follows by conditioning the Gaussian base \(X_1\sim\phi_t\) on \(T=\rho X_1+\sqrt{1-\rho^2}Z=s\), whose conditional law is \(N(t\rho s/w,t(1-\rho^2)/w)\). Since \(w-1=O(e^{-\lambda^2/2})\), the Gaussian base mismatch to \(\phi_1\) is negligible at the displayed polynomial scales. The oscillatory multiplier and its derivative are bounded by \(a(D_\rho+c_\lambda)\) and \(a\lambda|\rho|D_\rho\), respectively. Averaging the resulting KL/Fisher upper bounds over the sphere uses
+
+\[
+ \int_{S^{d-1}}e^{-c\lambda^2(1-u_1^2)}d\sigma(u)\asymp_d\lambda^{-(d-1)}.
+\]
+
+For the matching lower bounds, restrict to caps \(1-u_1^2\le\lambda^{-2}\), on which \(D_\rho\asymp1\) and \(k_\rho\asymp\lambda\). Evaluating the characteristic function of (A4) at \(k_\rho\) gives a perturbation of size \(\asymp a\) relative to \(\phi_1\); the Gaussian-variance discrepancy is exponentially small. This yields projected KL \(\gtrsim a^2\). The relative score in (A4) has an oscillatory term of amplitude \(aD_\rho k_\rho\asymp a\lambda\), yielding projected relative Fisher \(\gtrsim a^2\lambda^2\). Thus
+
+\[
+ S_D(p_\lambda)\asymp a^2\lambda^{-(d-1)},
+ \qquad S_J(p_\lambda)\asymp a^2\lambda^{3-d}.
+ \tag{A5}
+\]
+
+With \(a=\kappa\lambda^{-2}\), (A3)–(A5) give the same powers \(D\asymp\lambda^{-4}\), \(S_D\asymp\lambda^{-(d+3)}\), \(J\asymp\lambda^{-2}\), and \(S_J\asymp\lambda^{-(d+1)}\) as the compact saturator. This family therefore tests the sharp exponents against the full fixed-curvature, exactly isotropic class. What it does *not* supply is the full-class upper theorem: its density ratio \(f_\lambda/\phi_1\) grows like \(\exp((1-1/t)x^2/2)\) in the tails, so the compact-class weighted-divergence equivalences do not apply.
+
+## Appendix B. Remote transverse oscillation: a full-class exponent obstruction
+
+This is a separate, sharper falsification model for any attempted full-class upper modulus. It uses a bounded likelihood ratio but moves an oscillatory packet into a Gaussian tail. Its location is along \(e_1\), while its high frequency is along the orthogonal direction \(e_2\). A projection must either resolve the oscillation (direction near \(e_2\)) and pay for the rare transverse location, or resolve the location (direction with a large \(e_1\) component) and average out the oscillation.
+
+Fix a width \(s>0\) and a frequency factor \(c_0>0\) satisfying
+
+\[
+ c_0^2s^2> (1+s^2)^{-1}.
+ \tag{B1}
+\]
+
+For \(R\to\infty\), let \(k_R=c_0R\),
+
+\[
+ q_R(x_1)=\exp\!\left(-\frac{(x_1-R)^2}{2s^2}\right),
+ \qquad
+ g_R(x)=q_R(x_1)\cos(k_Rx_2).
+ \tag{B2}
+\]
+
+Choose a fixed finite family \(\psi_1,\ldots,\psi_N\in C_c^\infty(\mathbb R^d)\) whose Gaussian moment matrix against a basis of polynomials of degree at most two is invertible. Such a family is obtained from sufficiently narrow bumps about points in general quadratic interpolation position. Solve for coefficients \(b_j(R)\) such that
+
+\[
+ \widetilde g_R=g_R+\sum_{j=1}^N b_j(R)\psi_j
+\]
+
+satisfies \(\mathbb E_\gamma[P(X)\widetilde g_R(X)]=0\) for every polynomial \(P\) of degree at most two. The required moment vector of \(g_R\) factors into a Gaussian integral in \(x_1\) and a Fourier transform of a degree-at-most-two polynomial times \(\phi(x_2)\cos(k_Rx_2)\). Hence, for fixed \(s,c_0\),
+
+\[
+ |b_j(R)|\le C(1+R)^K\exp\!\left[-\left(\frac1{2(1+s^2)}+\frac{c_0^2}{2}\right)R^2\right]
+ \tag{B3}
+\]
+
+for some finite \(K\). Put
+
+\[
+ \epsilon_R=\frac{\kappa}{c_0^2R^2},
+ \qquad p_R(x)=\gamma_d(x)\left(1+\epsilon_R\widetilde g_R(x)\right),
+ \tag{B4}
+\]
+
+where \(\kappa>0\) is fixed and small. The moment correction makes \(p_R\) exactly normalized, centered, and isotropic. The likelihood ratio is uniformly bounded, since \(\|g_R\|_\infty\le1\) and (B3) is negligible. The derivatives obey \(\|\nabla g_R\|_\infty=O(R)\), \(\|\nabla^2g_R\|_\infty=O(R^2)\). Therefore
+
+\[
+ V_R=\tfrac12|x|^2-\log(1+\epsilon_R\widetilde g_R)+\text{constant}
+\]
+
+has Hessian in \([\tfrac12I,\tfrac32I]\) for all sufficiently large \(R\), after fixing \(\kappa\) small enough. The correction bumps preserve this bound because their coefficients and derivatives are exponentially small.
+
+Since the likelihood ratio perturbation is uniformly small, KL is comparable to its quadratic expansion:
+
+\[
+ D(p_R\|\gamma_d)\asymp\epsilon_R^2\,\mathbb E_\gamma[g_R^2]
+ \asymp\epsilon_R^2\exp\!\left(-\frac{R^2}{2+s^2}\right).
+ \tag{B5}
+\]
+
+Here \(\mathbb E q_R(X_1)^2=\frac{s}{\sqrt{s^2+2}}e^{-R^2/(s^2+2)}\), and \(\mathbb E\cos^2(k_RX_2)\to1/2\). The correction contribution is smaller by (B3).
+
+Now take \(u\in S^{d-1}\), set \(T=u\cdot X\), \(z=u_1^2\), \(a=1-z\), and \(q=1-u_1^2-u_2^2\). For the complex function \(q_R(X_1)e^{ik_RX_2}\), Gaussian conditioning first on \(T=t\), then on \(X_1\), gives
+
+\[
+ \left|\mathbb E_\gamma[q_R(X_1)e^{ik_RX_2}\mid T=t]\right|
+ =\frac{s}{\sqrt{s^2+a}}
+  \exp\!\left[-\frac{(u_1t-R)^2}{2(s^2+a)}\right]
+  \exp\!\left[-\frac{k_R^2}{2}
+       \left(\frac q a+\frac{u_1^2u_2^2s^2}{a(a+s^2)}\right)\right],
+ \tag{B6}
+\]
+
+with endpoint cases understood by continuity. Squaring and integrating in \(t\sim\gamma_1\) gives
+
+\[
+ \left\|\mathbb E_\gamma[g_R(X)\mid u\cdot X]\right\|_{L^2(\gamma_1)}^2
+ \le C_s\exp[-R^2Q_s(u)],
+ \tag{B7}
+\]
+
+where
+
+\[
+ Q_s(u)=c_0^2\left(\frac q a+
+       \frac{u_1^2u_2^2s^2}{a(a+s^2)}\right)
+       +\frac1{1+s^2+u_1^2}.
+ \tag{B8}
+\]
+
+For fixed \(z=u_1^2\), the bracket in (B8) is minimized by \(q=0\), i.e., directions in the \((e_1,e_2)\)-plane. There it reduces to \(zs^2/(1-z+s^2)\). Condition (B1) makes \(Q_s\) convex and nondecreasing in \(z\), so its minimum is
+
+\[
+ \min_{u\in S^{d-1}}Q_s(u)=Q_s(e_2)=\frac1{1+s^2}.
+ \tag{B9}
+\]
+
+For the real cosine, the upper bound follows from the complex calculation. For a matching lower bound, take directions in caps of angular radius \(c/R\) about \(\pm e_2\). On these caps \(Q_s(u)=Q_s(e_2)+O(R^{-2})\), the conditional oscillation frequency in \(t\) is comparable to \(R\), and integrating its squared cosine against the Gaussian envelope gives one half of the envelope norm up to an exponentially small error. The caps have measure comparable to \(R^{-(d-1)}\). The strict inequality in (B1) makes the two minima \(\pm e_2\) nondegenerate; Laplace's method then yields
+
+More explicitly, with \(A=s^2+a\),
+\[
+ \mathbb E_\gamma[q_R(X_1)e^{ik_RX_2}\mid T=t]
+ =\frac{s}{\sqrt A}
+ \exp\!\left[-\frac{(u_1t-R)^2}{2A}-\frac{k_R^2B(u)}2\right]
+ \exp\!\left(i\left[\omega(u)t-\frac{k_Ru_1u_2R}{a+s^2}\right]\right),
+\]
+where
+\[
+ B(u)=\frac{q(1+s^2)}{a+s^2}+\frac{u_1^2s^2}{a+s^2},
+ \qquad
+ \omega(u)=\frac{k_Ru_2(1+s^2)}{a+s^2}.
+\]
+The Gaussian envelope integral is
+\[
+ I_0(u)=\int\phi(t)e^{-(u_1t-R)^2/A}\,dt
+ =\sqrt{\frac{A}{A+2u_1^2}}\,
+   e^{-R^2/(A+2u_1^2)}.
+\]
+The oscillatory correction in \(\int\phi(t)e^{-(u_1t-R)^2/A}\cos^2(\omega t+\varphi)\,dt\) has relative magnitude at most \(e^{-2\omega^2A/(A+2u_1^2)}\). This is exponentially small on the stated caps, justifying the half-envelope lower bound.
+
+\[
+ \int_{S^{d-1}}\left\|\mathbb E_\gamma[g_R(X)\mid u\cdot X]\right\|_{L^2(\gamma_1)}^2d\sigma(u)
+ \asymp_{s,c_0,d}R^{-(d-1)}e^{-R^2/(1+s^2)}.
+ \tag{B10}
+\]
+
+The correction contribution is negligible even after projection: conditional expectation is an \(L^2\) contraction, so its averaged squared norm is at most \(C\sum_jb_j(R)^2\), whose exponential rate is \(c_0^2+(1+s^2)^{-1}\), strictly faster than the main rate \((1+s^2)^{-1}\). The cross term is negligible by Cauchy--Schwarz. Since \(\|\widetilde g_R\|_\infty=O(1)\) and \(\epsilon_R\to0\), the scalar Taylor comparison
+\[
+ (1+x)\log(1+x)-x\asymp x^2\qquad(|x|\le1/2)
+\]
+is uniform in every direction. Thus the exact projected-KL rate, including the moment correction, is
+
+\[
+ S_D(p_R)\asymp_{s,c_0,d}\epsilon_R^2R^{-(d-1)}
+    \exp\!\left(-\frac{R^2}{1+s^2}\right).
+ \tag{B11}
+\]
+
+For the lower bound on joint KL, the same Taylor comparison gives \(D(p_R\|\gamma_d)\asymp\epsilon_R^2e^{-R^2/(2+s^2)}\); the correction has squared norm exponentially smaller, by (B3). Hence (B5) and (B10) imply that no uniform bound \(D\le C S_D^\alpha\) can hold for any
+
+\[
+ \alpha>\theta_s:=\frac{(2+s^2)^{-1}}{(1+s^2)^{-1}}
+ =\frac{1+s^2}{2+s^2}.
+ \tag{B12}
+\]
+
+Indeed, \(D/S_D^\alpha\) is bounded below by a polynomial factor in \(R\) times \(\exp[(\alpha/(1+s^2)-1/(2+s^2))R^2]\), which diverges when \(\alpha>\theta_s\). The quantifiers matter: for each proposed \(\alpha>1/2\), first choose a fixed \(s>0\) with \(\theta_s<\alpha\), then set, for example, \(c_0^2s^2=2/(1+s^2)\), and finally let \(R\to\infty\). Although constants in the asymptotics can depend on this fixed \(s,c_0\), every member of the sequence has the same curvature bounds \([\tfrac12I,\tfrac32I]\); \(\kappa\) can be chosen once, independently of \(s\), while the threshold \(R_0\) may depend on \(s,c_0\). Thus no uniform KL modulus for the fixed class \(m=1/2,M=3/2\) can have exponent greater than \(1/2\), even though the perturbation ratio is uniformly bounded. The obstruction is loss of *uniform spatial support*, not an unbounded density ratio.
+
+### Two-scale falsification check
+
+The same construction separates frequency from escape radius. Keep \(s>0\) fixed, replace \(k_R=c_0R\) by an independent \(K\to\infty\), take \(K/R\to\infty\), and set \(\epsilon=\kappa/K^2\). The moment corrections now have size
+\[
+ |b_j(R,K)|\le C(1+R+K)^A
+ \exp\!\left[-\frac{R^2}{2(1+s^2)}-\frac{K^2}{2}\right].
+\]
+The Hessian bounds remain \([\tfrac12I,\tfrac32I]\) for fixed small \(\kappa\) and sufficiently large \(K\). The joint and averaged projected KL rates are
+\[
+ D\asymp_{s}\kappa^2K^{-4}e^{-C_sR^2},\qquad
+ S_D\asymp_{s,d}\kappa^2K^{-(d+3)}e^{-Q_sR^2},
+\]
+where \(C_s=(2+s^2)^{-1}\), \(Q_s=(1+s^2)^{-1}\). The extra \(K^{-(d-1)}\) in the projected rate is the angular cap of directions resolving the carrier; the other \(K^{-4}\) is the Hessian-limited squared amplitude. This test yields the two separate obstructions \(4/(d+3)\) (hold \(R\) fixed and send \(K\to\infty\)) and \(C_s/Q_s\) (fix \(s\), send \(R\to\infty\)); it reveals no interaction exponent below their minimum. It is a falsification model only, not evidence of a matching upper bound.
+
+At this stage of the work, a matching full-class upper theorem had not yet been proved. The later entropy-duality theorem closes the power-exponent question, up to logarithms. The present appendices and this intermediate discussion retain the original route diagnostics and exact obstruction models for provenance.
+
+### Research target and completion test
+
+- **Exact target:** determine the supremal uniform power exponent \(\alpha(d,m,M)\), if any, in \(D(p\|\gamma_d)\le C(d,m,M)S_D(p)^\alpha\) over centered isotropic \(C^2\) densities with \(mI\preceq\nabla^2(-\log p)\preceq MI\). The final theorem below proves this supremum for a nontrivial curvature interval, although it does not settle the log-free endpoint.
+- **Potential leverage:** the exact Bregman identity reduces the nonlinear problem to weighted conditional-expectation frames. Their local normal-operator symbol is a conditional-density factor \(q(x)/q_u(u\cdot x)\); for Gaussian reference this yields a transverse Gaussian phase-space penalty. The exact Gaussian-chaos spectrum and two admissible hostile families expose the low-visibility sectors and test candidate exponents.
+- **Established baseline:** compactly supported, bounded-ratio perturbations obey the classical Fourier-slice/Sobolev exponent \(4/(d+3)\), with a matched saturator. In the full curvature class, the remote packet forbids exponents above \(1/2\), while the compact oscillation forbids exponents above \(4/(d+3)\). The final theorem below gives matching exponents as a supremum, up to logarithms.
+- **Completion status:** the power-exponent completion test is met; exact log-free endpoint optimality remains open. The earlier weighted-frame route is not needed for this partial closure.
+- **First falsification tests:** the remote transverse Gaussian packet and the explicit trace-free harmonic family in Appendices B and C; any proposed estimate must survive both, with \(s\) or \(\beta\) fixed before the asymptotic parameter tends to infinity. The mixed tail/high-frequency packet is the next test for an interaction exponent below the minimum of the two separate obstructions.
+
+### Exact nonlinear reduction and the limited scope of the symbol heuristic
+
+For \(\delta=p-\gamma_d\) and \(q_t=(1-t)\gamma_d+tp\), the Bregman remainder formula gives the exact identities
+
+\[
+ D(p\|\gamma_d)=\int_0^1(1-t)\int\frac{\delta(x)^2}{q_t(x)}\,dx\,dt,
+\]
+\[
+ S_D(p)=\int_0^1(1-t)\int_{S^{d-1}}\int
+ \frac{\delta_u(s)^2}{(q_t)_u(s)}\,ds\,d\sigma(u)\,dt.
+\]
+
+Equivalently, with \(f_t=\delta/q_t\), each inner joint term is
+\(\|f_t\|_{L^2(q_t)}^2\), while the inner sliced term is
+\[
+ \int_{S^{d-1}}\|\mathbb E_{q_t}[f_t(X)\mid u\cdot X]\|_{L^2((q_t)_u)}^2\,d\sigma(u).
+\]
+This is an exact reduction to a family of weighted conditional-expectation frames. The mixture \(q_t\) need not be log-concave. Also, the quadratic Bregman representation must not be confused with a uniform equivalence between KL and triangular discrimination: when \(p/\gamma_d\) is unbounded, the log-ratio cost in KL can be strictly larger than a quadratic proxy.
+
+For a fixed smooth positive \(q\), the weighted frame on a compact region is the quadratic form of the weighted Radon normal operator
+\[
+ f\longmapsto \int_{S^{d-1}}\int
+ \frac{(R_u(qf)(s))^2}{q_u(s)}\,ds\,d\sigma(u).
+\]
+Its local high-frequency principal symbol, after measuring the source in \(L^2(q)\), is proportional to
+\[
+ |\xi|^{-(d-1)}\,\frac{q(x)}{q_u(u\cdot x)},\qquad u=\xi/|\xi|.
+ \tag{B13}
+\]
+For \(q=\gamma_d\), this ratio is a constant times
+\(\exp[-|x-(u\cdot x)u|^2/2]\), giving the transverse Gaussian visibility heuristic. This is only a local symbol calculation. It does not provide global coercivity for escaping phase-space packets, control low frequencies, bound pseudodifferential remainders uniformly at infinity, or resolve the nonlinear log-ratio issue above. No full-class upper estimate follows from it.
+
+## Appendix C. Curvature-controlled realization of a trace-free Gaussian chaos
+
+This model directly tests whether the exponentially small eigenvalues of the Gaussian conditional-expectation frame on trace-free chaos sectors can occur for positive, isotropic, uniformly strongly log-concave densities. They can. The resulting exponent obstruction approaches \(1/2\), but does not improve on Appendix B.
+
+For reference, the exact spectrum of the Gaussian frame
+\[
+ \mathcal E_{\gamma_d}(f)=\int_{S^{d-1}}\|\mathbb E_{\gamma_d}[f(X)\mid u\cdot X]\|_{L^2(\gamma_1)}^2\,d\sigma(u)
+\]
+on the degree-\(N\) Hermite chaos is as follows. Write \(N=\ell+2j\) and identify a chaos tensor with its homogeneous polynomial under the Fischer inner product. The orthogonal harmonic decomposition is \(r^{2j}H_\ell\), with \(H_\ell\) harmonic and homogeneous. Conditional expectation sends a Wick tensor \(a\) to \(\langle a,u^{\otimes N}\rangle\,\mathrm{He}_N(u\cdot X)\); spherical averaging gives eigenvalue
+
+\[
+ \lambda_{N,\ell}
+ =\frac{N!}{2^\ell 4^j j!(d/2)_{\ell+j}}
+ =\frac{\Gamma(d/2)}{\sqrt\pi}
+ \frac{\Gamma(j+(\ell+1)/2)\Gamma(j+(\ell+2)/2)}
+ {\Gamma(j+1)\Gamma(\ell+j+d/2)}.
+ \tag{C0}
+\]
+
+In particular, the highest-harmonic sector \(j=0,\ell=N\) has
+\[
+ \lambda_{N,N}=\frac{N!}{2^N(d/2)_N}
+ \asymp_d 2^{-N}N^{1-d/2},
+\]
+while for fixed \(\ell\) and \(j\to\infty\), \(\lambda_{N,\ell}\asymp_{d,\ell}j^{-(d-1)/2}\). Thus the full Gaussian frame has exponentially weak trace-free sectors; the polynomial Radon-order behavior applies only in fixed-low-harmonic sectors.
+This spectrum is an explicit calculation here, not a priority claim; it is a direct consequence of the classical Hermite/Gaussian-Radon representation and Fischer harmonic decomposition.
+
+## A quantitative full-class baseline from truncation
+
+The following is a valid but non-sharp full-class modulus. It makes the loss in the naive truncation argument explicit.
+
+**Proposition.** Fix \(d\ge2\) and \(0<m\le M<\infty\). Suppose \(p=e^{-V}/Z\) is centered and isotropic, \(V\in C^2\), and
+\[
+ mI\preceq\nabla^2V(x)\preceq MI\qquad(x\in\mathbb R^d).
+\]
+There is \(C=C(d,m,M)\) such that, for \(S=S_D(p)\),
+\[
+ D(p\|\gamma_d)\le C\,S^{\,2/(d+3)}
+ \,\left[\log\!\left(e+\frac1S\right)\right]^{d/4+1}
+ \tag{C11}
+\]
+for \(S>0\), and \(S=0\) implies \(p=\gamma_d\). The exponent \(2/(d+3)\) is a truncation baseline only; no sharpness claim is made.
+
+**Proof.** Let \(x_0\) be the unique minimizer of \(V\). Integration by parts and strong convexity give
+\[
+ d=\mathbb E_p[(X-x_0)\cdot\nabla V(X)]
+ \ge m\,\mathbb E_p|X-x_0|^2
+ =m(d+|x_0|^2),
+\]
+so \(|x_0|\le C(d,m)\). The two Hessian bounds imply Gaussian upper and lower envelopes
+\[
+ c\,e^{-M|x-x_0|^2/2}\le p(x)\le C\,e^{-m|x-x_0|^2/2}.
+ \tag{C12}
+\]
+Consequently \(|\log(p/\gamma_d)(x)|\le C(1+|x|^2)\), and the weighted tails of \(p+\gamma_d\) satisfy
+\[
+ \int_{|x|>R}(p+\gamma_d)(1+|x|^2)\,dx\le C e^{-cR^2}.
+ \tag{C13}
+\]
+Also \(\|\gamma_d\|_{H^2}+\|p\|_{H^2}\le C(d,m,M)\): use \(\nabla p=-p\nabla V\), \(\nabla^2p=p(\nabla V\otimes\nabla V-\nabla^2V)\), \(|\nabla V(x)|\le M|x-x_0|\), and (C12). Thus \(\|\delta\|_{H^2}\le C\) for \(\delta=p-\gamma_d\).
+
+Each marginal \(p_u\) is log-concave by Prékopa and has variance one by isotropy. The one-dimensional log-concave density bound therefore gives \(\|p_u\|_\infty\le C\) uniformly in \(u\). One elementary proof is to let \(M_u=\|p_u\|_\infty\): the interval on which \(p_u\ge M_u/2\) has length at most \(2/M_u\), and log-concavity forces exponential tails outside it with rate at least \(M_u\log(2)/2\). Hence \(\operatorname{Var}(p_u)\le C/M_u^2\), so \(M_u\le C\). The scalar inequality
+\[
+ a\log(a/b)-a+b\ge \frac{(a-b)^2}{2(a+b)}
+\]
+then yields
+\[
+ S_D(p)\ge c\int_{S^{d-1}}\|\delta_u\|_2^2\,d\sigma(u)
+=cA_0(\delta).
+\]
+By Fourier-slice and polar coordinates, \(A_0(\delta)\asymp\int|\widehat\delta(\xi)|^2|\xi|^{-(d-1)}d\xi\). Low/high frequency splitting, using the uniform \(H^2\) bound, gives
+\[
+ \|\delta\|_2\le C A_0(\delta)^{2/(d+3)}
+ \le C S_D(p)^{2/(d+3)}.
+ \tag{C14}
+\]
+Finally set \(F(t)=t\log t-t+1\). The elementary bound \(F(t)\le |t-1||\log t|\) gives
+\[
+ D(p\|\gamma_d)\le C\int|\delta(x)|(1+|x|^2)\,dx.
+\]
+For \(R\ge1\), Cauchy–Schwarz on the ball and (C13) outside it imply
+\[
+ D(p\|\gamma_d)\le C R^{d/2+2}\|\delta\|_2+C e^{-cR^2}.
+\]
+Choose \(R^2=K\log(e+1/S_D)\) with \(K\) large enough that the tail term is at most \(CS_D^{2/(d+3)}\). Substitution of (C14) proves (C11). If \(S_D=0\), then \(A_0(\delta)=0\), so the Fourier-slice identity forces \(\delta=0\). \(\square\)
+
+This baseline loses a factor of two in the power because its global KL conversion is linear in \(\|\delta\|_2\); the entropy-duality theorem below avoids that conversion. The logarithmic cutoff cost remains, and the remote-packet sequence rules out powers above \(1/2\) for \(d\le5\).
+
+## Sharpened full-class modulus by entropy duality
+
+The linear KL conversion in (C11) is avoidable. The relevant identity is the symmetrized entropy, paired against the log-likelihood ratio; exact moment matching removes its quadratic Taylor jet. This yields the compact interpolation exponent for d ≥ 5, and the stronger remote-packet-limited exponent for 2 ≤ d ≤ 4, on the full uniformly strongly log-concave class, up to a tail logarithm.
+
+**Theorem.** Under the assumptions of the preceding proposition, with constants depending only on \((d,m,M)\),
+\[
+D(p\|\gamma_d)\le
+\begin{cases}
+C S^{1/2}\,[\log(e+1/S)]^{5/4},&2\le d\le5,\\[2mm]
+C S^{4/(d+3)}\,[\log(e+1/S)]^{d/4},&d\ge6,
+\end{cases}
+\tag{C15}
+\]
+for \(0<S=S_D(p)\le1\); the estimate extends to all \(S>0\) by increasing \(C\), and \(S=0\) implies \(p=\gamma_d\).
+
+**Proof.** Keep the mode and Gaussian-envelope estimates (C12)–(C13), and write \(\delta=p-\gamma_d\), \(\phi=\log(p/\gamma_d)\). The Hessian of \(\phi\) is uniformly bounded. Its value and gradient at zero are also uniformly bounded: the mode is bounded, \(|\nabla V(0)|\le M|x_0|\), and (C12) bounds \(p(0)\) above and below. Let \(P_2\) be the degree-two Taylor polynomial of \(\phi\) at zero and \(\psi=\phi-P_2\). Then
+\[
+|\psi(x)|\le C|x|^2,\quad |\nabla\psi(x)|\le C|x|,\quad |D^2\psi(x)|\le C.
+\tag{C16}
+\]
+Since \(p\) and \(\gamma_d\) have identical moments through degree two, \(\int\delta P_2=0\). Both directed KL divergences are finite by (C12), and
+\[
+D(p\|\gamma_d)\le D(p\|\gamma_d)+D(\gamma_d\|p)
+=\int\delta\phi=\int\delta\psi.
+\tag{C17}
+\]
+
+For each \(u\), log-concavity and unit variance give \(\|p_u\|_\infty\le C\); the scalar KL lower bound used above therefore gives \(S\ge c A_0(\delta)\). The Fourier-slice identity gives, for \(s=(d-1)/2\),
+\[
+\|\delta\|_{\dot H^{-s}}^2\asymp A_0(\delta)\le CS.
+\tag{C18}
+\]
+For this exponent, the polar-coordinate factor \(r^{d-1}\) cancels the Fourier-slice weight \(r^{-(d-1)}\), so the homogeneous norm is finite at the origin since \(\widehat\delta\) is bounded there. Moment cancellation is used separately in (C17). The curvature/tail estimates also give \(\|\delta\|_{\dot H^2}\le C\).
+
+Choose a smooth cutoff \(\chi_R\), equal to one on \(B_R\), supported on \(B_{2R}\), with derivatives of order \(k\) bounded by \(C_kR^{-k}\). By (C16), for \(R\ge1\),
+\[
+\|\chi_R\psi\|_2\le CR^{d/2+2},\qquad
+\|\chi_R\psi\|_{\dot H^2}\le CR^{d/2}.
+\tag{C19}
+\]
+For \(2\le d\le5\), we have \(s\le2\). Homogeneous Sobolev interpolation gives \(\|\chi_R\psi\|_{\dot H^s}\le CR^{d/2+2-s}=CR^{5/2}\), so (C18) yields
+\[
+\left|\int\delta\chi_R\psi\right|\le C S^{1/2}R^{5/2}.
+\tag{C20}
+\]
+For \(d\ge6\), interpolate the source norms instead: with \(\vartheta=4/(s+2)=8/(d+3)\),
+\[
+\|\delta\|_{\dot H^{-2}}
+\le \|\delta\|_{\dot H^{-s}}^{\vartheta}
+\|\delta\|_{\dot H^2}^{1-\vartheta}
+\le C S^{\vartheta/2}=CS^{4/(d+3)}.
+\tag{C21}
+\]
+Pairing with (C19) gives \(|\int\delta\chi_R\psi|\le C S^{4/(d+3)}R^{d/2}\). In either case, the omitted tail in (C17) is bounded by (C12), (C13), and (C16):
+\[
+\left|\int\delta(1-\chi_R)\psi\right|\le Ce^{-cR^2}.
+\tag{C22}
+\]
+Take \(R^2=K\log(e+1/S)\) with fixed sufficiently large \(K=K(d,m,M)\). Equations (C20)–(C22) prove (C15). For \(S\ge1\), the uniform envelope bounds give \(D\le C\), so enlarging the constant covers the remaining bounded range of \(S\). If \(S=0\), then (C18) makes \(\delta=0\). \(\square\)
+
+This removes the power loss in the first full-class truncation argument: its linear \(\|\delta\|_2\) conversion is replaced by duality with the log-likelihood ratio, and moment matching makes the test function only quadratically growing. The resulting powers \(1/2\) for \(2\le d\le5\) and \(4/(d+3)\) for \(d\ge6\) equal the two obstruction exponents already established, but (C15) still carries a logarithmic loss. For every \(\alpha<\alpha_d:=\min(1/2,4/(d+3))\), (C15) implies a log-free bound \(D\le C_\alpha S^\alpha\); the counterfamilies rule out every \(\alpha>\alpha_d\). Hence the supremal uniform power exponent equals \(\alpha_d\) for each fixed nontrivial curvature interval \(m<1<M\), while the log-free endpoint \(\alpha=\alpha_d\) remains undecided. The compact and remote perturbation amplitudes can be chosen below a constant multiple of \(\min(1-m,M-1)\); all exponents are unchanged. Constants depend on fixed \(d,m,M\), and in the remote-packet obstruction one first fixes its width parameter before taking the escape radius to infinity. No novelty or priority claim is made.
+
+### Focused nearest-prior comparison
+
+- **Classical Radon stability:** the Fourier-slice theorem and the normal-operator order \(-(d-1)\) give the Sobolev datum \(\|\delta\|_{\dot H^{-(d-1)/2}}^2\asymp A_0(\delta)\); interpolation with a uniform \(H^2\) source budget yields the compact exponent \(4/(d+3)\). This is standard tomography machinery, not a new mechanism. See Natterer, *The Mathematics of Computerized Tomography* (1986), and the generalized-Radon microlocal analysis of [Homan–Zhou (2015)](https://arxiv.org/abs/1502.06510).
+- **Entropy-jump results:** [Ball–Nguyen (2012)](https://arxiv.org/abs/1206.5098) control the entropy deficit lost under normalized self-convolution using a Poincaré/spectral-gap condition. Their observable is the entropy production of convolution, not the average of the one-dimensional marginal KL divergences used here. [Bizeul (2023)](https://arxiv.org/abs/2111.03130) extends related entropy and Fisher-information jump inequalities.
+- **Conditional-entropy inequalities:** [Marton (2012)](https://arxiv.org/abs/1206.4868) bounds global relative entropy by conditional relative entropies for coordinate-wise local specifications under a logarithmic-Sobolev framework. Those are full conditional laws given the remaining coordinates, rather than unconditional one-dimensional linear projections.
+- **Projection-entropy inequalities:** [Ball–Nayar–Tkocz (2016)](https://arxiv.org/abs/1509.05926) study entropy powers of one-dimensional projections and a reverse entropy-power inequality; they do not estimate the joint Gaussian entropy deficit from the averaged marginal Gaussian deficits. The more recent [Hu (2026)](https://arxiv.org/abs/2608.01081) proves an optimal \(O(1/n)\) average \(W_1\) Gaussian approximation for random one-dimensional marginals of isotropic log-concave vectors, a forward high-dimensional CLT result rather than an inverse KL modulus.
+
+In the focused search, none of these nearest papers states the same inverse stability inequality. That is not a priority conclusion: after reduction, the new upper proof uses a short Sobolev-duality argument and familiar Fourier-slice interpolation, so the result is best classified as a useful quantitative reconstruction theorem whose broader significance is unestablished.
+
+### Reproducibility record
+
+The analytic proofs do not rely on computation. The separate trace-free Gaussian-chaos asymptotic was checked by `python3 independent_programme/theory_physical/check_harmonic_frame.py`, which evaluates its negative-binomial chaos sum in log space. For \(\beta=0.5,1,2,10\) and \(n=100,300,1000\), the observed values of \(n^{-1}\log(\mathcal E_\gamma(h)/\|h\|_2^2)\) converge monotonically from below to \(-\log(2(1+\beta)/(1+2\beta))\); at \(n=1000\) the absolute discrepancy is between \(3.7\cdot10^{-3}\) and \(4.9\cdot10^{-3}\). This is a numerical sanity check of Appendix C, not evidence for the full-class theorem, which is proved directly above.
+
+Work in \(d=2\). Fix \(\beta\ge1\), and for integers \(n\ge3\) define
+
+\[
+ h_{n,\beta}(r,\theta)=A_n r^n e^{-\beta r^2/2}\cos(n\theta),
+ \qquad A_n=(\beta e/n)^{n/2}.
+ \tag{C1}
+\]
+
+Then \(\|h_{n,\beta}\|_\infty=1\). Its angular Fourier order is \(n\), so it is orthogonal under \(\gamma_2\) to every polynomial of degree at most two. Thus
+
+\[
+ p_{n,\beta}=\gamma_2(1+\epsilon_n h_{n,\beta}),
+ \qquad \epsilon_n=\frac{\kappa}{\beta n},
+ \tag{C2}
+\]
+
+is exactly normalized, centered, and isotropic. Elementary polar-coordinate differentiation gives, uniformly for \(\beta\ge1\), \(n\ge4\),
+
+\[
+ \|\nabla h_{n,\beta}\|_\infty\le C\sqrt{\beta n},
+ \qquad \|\nabla^2 h_{n,\beta}\|_\infty\le C\beta n.
+ \tag{C3}
+\]
+
+Indeed the radial envelope is \(a(r)=\exp\{\frac n2[\log t+1-t]\}\), \(t=\beta r^2/n\); factors from angular derivatives are bounded by \(n/r\) and \(n^2/r^2\), and \(t^{-1}a(r)\) is uniformly bounded for \(n\ge4\). Hence \(\|\nabla^2\log(1+\epsilon_n h)\|_\infty\le C\kappa+O(\kappa^2/(\beta n))\). Fix \(\kappa>0\) once, sufficiently small. For all large \(n\), \(\nabla^2(-\log p_{n,\beta})\in[\tfrac12I,\tfrac32I]\), with the same bounds for every fixed \(\beta\ge1\). Since \(|\epsilon_n h|\le\epsilon_n\), Taylor expansion yields
+
+\[
+ D(p_{n,\beta}\|\gamma_2)\asymp \epsilon_n^2\|h_{n,\beta}\|_{L^2(\gamma_2)}^2,
+ \qquad
+ S_D(p_{n,\beta})\asymp \epsilon_n^2\mathcal E_{\gamma_2}(h_{n,\beta}),
+ \tag{C4}
+\]
+
+where \(\mathcal E_\gamma(h)=\int_{S^1}\|\mathbb E_\gamma[h(X)\mid u\cdot X]\|_{L^2(\gamma_1)}^2d\sigma(u)\). The comparisons have absolute constants for \(\epsilon_n\le1/2\).
+
+The joint norm is explicit:
+
+\[
+ \|h_{n,\beta}\|_{L^2(\gamma_2)}^2
+ =A_n^2\frac{2^{n-1}n!}{(1+2\beta)^{n+1}}
+ \asymp_\beta \sqrt n\left(\frac{2\beta}{1+2\beta}\right)^n.
+ \tag{C5}
+\]
+
+To compute the frame ratio, the fixed angular-order-\(n\) Laguerre decomposition has chaos degrees \(n+2j\), \(j\ge0\). With \(y=r^2/2\), use
+
+\[
+ e^{-\beta y}=\sum_{j\ge0}\frac{\beta^j}{(1+\beta)^{n+j+1}}L_j^n(y).
+\]
+
+The fraction of joint \(L^2(\gamma_2)\) energy in degree \(n+2j\) is the negative-binomial weight
+
+\[
+ P_{n,j}=\binom{n+j}{j}x^j(1-x)^{n+1},
+ \qquad x=\frac{\beta^2}{(1+\beta)^2}.
+ \tag{C6}
+\]
+
+On a degree-\(N\) Gaussian chaos, a trace-free angular sector of order \(\ell=N-2j\) has frame eigenvalue
+
+\[
+ \lambda_{N,\ell}=\frac{N!}{2^\ell4^j j!\,\ell!(\ell+1)_j}
+ \quad(d=2),
+ \tag{C7}
+\]
+
+which for \(N=n+2j\), \(\ell=n\), is \((n+2j)!/[2^n4^j j!(n+j)!]\). This follows from conditional expectation of a Wick tensor, followed by spherical averaging; equivalently, the polynomial/tensor Fischer norm and the harmonic decomposition \(r^{2j}H_\ell\) give (C7). Therefore
+
+\[
+ \frac{\mathcal E_{\gamma_2}(h_{n,\beta})}{\|h_{n,\beta}\|_2^2}
+ =\sum_{j\ge0}P_{n,j}\lambda_{n+2j,n}.
+ \tag{C8}
+\]
+
+For \(j/n\to y\), Stirling's formula gives the summand's exponential rate
+
+\[
+ G_\beta(y)=(1+2y)\log(1+2y)-2y\log y+y\log x+\log(1-x)-(1+2y)\log2.
+\]
+
+The unique maximum occurs at \(y=\beta/2\), and
+
+\[
+ \lim_{n\to\infty}\frac1n\log\frac{\mathcal E_{\gamma_2}(h_{n,\beta})}{\|h_{n,\beta}\|_2^2}
+ =-c_\beta,
+ \qquad c_\beta=\log\frac{2(1+\beta)}{1+2\beta}.
+ \tag{C9}
+\]
+
+Writing \(a_\beta=\log\frac{1+2\beta}{2\beta}\), (C4)–(C9) imply
+
+\[
+ \frac1n\log D(p_{n,\beta}\|\gamma_2)\to-a_\beta,
+ \qquad
+ \frac1n\log S_D(p_{n,\beta})\to-(a_\beta+c_\beta).
+ \tag{C10}
+\]
+
+For each fixed \(\beta\), no uniform power modulus on the fixed curvature class \([\tfrac12I,\tfrac32I]\) can have exponent greater than \(a_\beta/(a_\beta+c_\beta)\). As \(\beta\to\infty\), both \(a_\beta\) and \(c_\beta\) are \((2\beta)^{-1}+O(\beta^{-2})\), so this obstruction threshold approaches \(1/2\) from above. To rule out a proposed \(\alpha>1/2\), choose \(\beta\) fixed first so that \(\alpha>a_\beta/(a_\beta+c_\beta)\), then let \(n\to\infty\). The trace-free chaos obstruction is therefore genuinely realizable under positivity, exact isotropy, and fixed Hessian bounds, but this explicit realization does not force an exponent below the remote-packet threshold \(1/2\).

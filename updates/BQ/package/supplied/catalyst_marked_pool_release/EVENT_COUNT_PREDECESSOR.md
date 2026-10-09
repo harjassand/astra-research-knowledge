@@ -1,0 +1,266 @@
+# Event-count-layer predecessor: marked-pool likelihood engine
+
+This file describes the earlier implementation that retains the candidate
+event count as a state coordinate. The current recommended variant removes
+that coordinate and caps distinct revealed particles; see
+`product_count_extension/README.md` and `product_count_extension/GENERAL_CLOSURE.md`.
+
+---
+
+## Capability under test
+
+Compute a terminal count-vector likelihood for a large exchangeable molecular
+pool that undergoes arbitrary first-order switching, coupled to a fixed small
+number of saturating catalysts. The full count-state CME grows like
+`binom(N+q-1,q-1)` for `q` free molecular states and pool size `N`. The proposed
+representation conditions on a state-independent Poisson clock of candidate
+catalytic attempts and tracks only molecules ever selected by that clock.
+Because untouched molecules remain independent, their endpoint contribution
+is an exact multinomial coefficient. Truncating the candidate count gives a
+simple, explicit absolute likelihood-error bound.
+
+This is an exact mathematical representation for the model below. The current
+Python prototype numerically integrates its finite ODE in floating point; it
+does **not** yet provide a validated ODE-solver error bound. The Poisson tail is
+the exact model-truncation error, separate from numerical integration error.
+Novelty is provisional.
+
+## Model
+
+There are `N` substrate molecules, each in one of `q` free internal/chemical
+states. Initially they are iid with distribution `mu0` (a deterministic
+monodisperse pool is the degenerate case `mu0=e_i`). While free, every molecule
+evolves independently as a finite CTMC with row generator `Q`.
+
+There are `C` identical catalysts, with `C` fixed independently of `N`. A
+catalyst is either free or bound to one substrate. Write `b` for the number of
+bound complexes, and let `A` be the bindable substrate state. A candidate clock
+of rate `lambda` runs independently for each catalyst. At an attempt, one
+catalyst is chosen uniformly. If it is bound, the attempt is a no-op. If it is
+free, one of the `N` molecule slots is sampled uniformly (a bound molecule is
+also a slot and gives a no-op). If the sampled molecule is in state `A`, it
+binds. The resulting physical binding propensity is
+
+`lambda * (C-b) * n_A / N`,
+
+where `n_A` is the current free pool count in state `A`. Thus the model is the
+usual volume-scaled mass-action binding reaction at fixed concentration. Each
+bound complex independently unbinds to free state `A` at rate `koff`, or
+catalyzes to the specified free product state at rate `kcat`. Free molecules
+continue their `Q` transitions.
+
+The initial pool is exchangeable; the current implementation computes one
+terminal full count-vector probability, optionally joint with `b`. It
+supports a fixed number `C` of catalysts in the theory and code. Repeated
+partially observed snapshots from the *same* population are out of scope: such
+observations condition the untouched pool and require an additional retained
+filtering representation. Independent destructive snapshots at several times
+can be handled by evaluating the one-terminal likelihood at each time.
+
+## Marking construction and closure
+
+Use a global candidate clock of rate `Lambda=C*lambda`; at each event choose a
+catalyst uniformly, followed by the molecule slot if that catalyst is free.
+Even if the selected free molecule is not bindable, mark it and remove it from
+the untouched pool. Marking changes no physical state. A marked molecule stays
+marked if it later dissociates from a complex. A marked molecule selected again
+is already tracked. A bound molecule cannot be rebound.
+
+Conditional on all candidate times, catalyst choices, and selected labels, the
+unmarked molecules have never been selected. Since selections are independent
+of molecule state and every selected molecule is removed from the untouched
+pool whether or not binding occurs, the remaining untouched molecules are
+still iid with law
+
+`p(t) = mu0 * exp(Q t)`.
+
+The free marked molecules can be compressed to counts `n=(n_1,...,n_q)` and
+the bound-complex count `b`; no identities are needed because all marked
+molecules with the same free state have identical independent `Q` dynamics.
+After `j` candidate events, the number marked is `m=sum(n)+b <= min(j,N)`.
+At a candidate event, a new untouched molecule of state `i` is added to the
+marked counts with probability `(N-m)/N * p_i(t)` conditional on choosing a
+free catalyst; if `i=A`, it enters a complex instead. Existing marked free
+state `i` is sampled with probability `n_i/N`; if `i=A`, it binds. The `b`
+bound substrate molecules occupy slots among the `N` and give another no-op
+probability `b/N` conditional on a free-catalyst selection. Selecting a bound
+catalyst contributes no-op probability `b/C`. These terms sum to one.
+
+Between candidate events, marked free molecules evolve by the count generator
+`n_i Q_ik`; bound complexes release at total rates `b*koff` and `b*kcat`.
+Track `j` as an extra event-count coordinate. The resulting finite,
+time-inhomogeneous forward ODE has states `(j,b,n)` for `0<=j<=K` and
+`sum(n)+b<=min(j,N)`. Candidate transitions move `j` to `j+1`; at `j=K`,
+candidate mass is killed. Since candidate events form an independent
+Poisson process, the total retained mass is exactly
+`Pr(Poisson(Lambda*T) <= K)`.
+
+At terminal time `T`, for a state `(j,b,n)`, the untouched pool size is
+`U=N-sum(n)-b`, and its count vector is multinomial with parameters `(U,p(T))`.
+If the observed free count vector is `y`, its contribution is
+
+`f_T(j,b,n) * MultinomialPMF(y-n; U,p(T))`,
+
+provided all residual counts are nonnegative and sum to `U`. Sum this over
+retained tag states compatible with the catalyst observation. If an occupancy
+`b` is supplied, this is the *joint* probability `P(Y=y,B=b)`. To obtain the
+conditional probability `P(Y=y | B=b)`, divide by the separately computed
+`P(B=b)`. Every term is nonnegative.
+
+Let `L_K` be this sum over histories with at most `K` candidates, and let
+`L` be the exact terminal-observation likelihood. Since the omitted event
+histories have total probability `delta_K=Pr(Poisson(Lambda*T)>K)`,
+
+`L_K <= L <= L_K + delta_K`.
+
+This is an **absolute** likelihood certificate. For a requested relative
+truncation tolerance `epsilon`, increase K until `delta_K <= epsilon*L_K`.
+The smallest such K can be selected from one run with a larger `Kmax` because
+the implementation returns the nonnegative likelihood contribution for each
+candidate-count layer. This adaptive rule is not uniform in observation
+rarity: if `L` is tiny, K may need to grow. The state count is independent of
+N only at fixed K, q, and C.
+
+For `N>=K`, the state dimension is
+
+`D(K,q,C) = sum_{j=0}^K sum_{b=0}^{min(C,j)} binom(j-b+q,q)`,
+
+which is `O(K^(q+1))` for fixed `q,C`; transition sparsity is `O(q^2)` per
+state for dense one-particle `Q`. N enters candidate weights and the terminal
+multinomial coefficient, not the retained ODE dimension. For `N<K`, the code
+also enforces the cap of at most N distinct marked molecules.
+
+## What is new, and what is standard
+
+The ingredients “Poisson thinning/uniformization,” “independent molecules in
+a monomolecular network,” and “single-enzyme CME” are established. The
+candidate here is the particular composition: mark every target of a bounded
+low-copy catalyst's state-independent candidate clock; quotient the marked
+history by exchangeability; propagate only its state counts; integrate the
+untouched `N-m` molecules exactly by multinomial PGFs; and retain a direct
+Poisson-tail likelihood interval. This may be a useful algorithmic capability,
+but it is not being claimed as a priority-checked invention.
+
+Relevant baselines and prior work:
+
+* Munsky & Khammash, finite-state projection (FSP), *J. Chem. Phys.* 124,
+  044104 (2006), DOI [10.1063/1.2145882](https://doi.org/10.1063/1.2145882).
+  FSP supplies the strongest direct exact finite-state baseline for our
+  finite-conservation benchmark; we compare both forward propagation and the
+  adjoint endpoint-indicator query.
+* Jahnke & Huisinga, exact full solution for monomolecular CRNs, *J. Math.
+  Biol.* 54 (2007), DOI
+  [10.1007/s00285-006-0034-x](https://doi.org/10.1007/s00285-006-0034-x).
+  It supplies the untouched-pool propagator `p(t)` and multinomial structure.
+* Arányi & Tóth, exact single-enzyme/single-substrate Michaelis–Menten CME for
+  one or a few enzymes, *Acta Biochim. Biophys. Acad. Sci. Hung.* 12 (1977),
+  PMID [613716](https://pubmed.ncbi.nlm.nih.gov/613716/). This means the
+  one-substrate case alone is not a novelty claim.
+* López-Caamal & Márquez-Lago, balanced realization of CME outputs including
+  catalytic conversion, *PLOS ONE* 9 (2014), DOI
+  [10.1371/journal.pone.0103521](https://doi.org/10.1371/journal.pone.0103521).
+  This is an approximate reduced-order competitor with a priori error
+  estimates, but it is model/parameter/output specific and its reduction
+  starts from a finite CME representation.
+* Kazeev et al., direct CME solution with quantized tensor trains, *PLOS
+  Computational Biology* 10 (2014), DOI
+  [10.1371/journal.pcbi.1003359](https://doi.org/10.1371/journal.pcbi.1003359),
+  and Gelß, Matera & Schütte, tensor-train master-equation solver for catalytic
+  surface chemistry, *J. Comput. Phys.* 314 (2016), DOI
+  [10.1016/j.jcp.2016.03.025](https://doi.org/10.1016/j.jcp.2016.03.025).
+  These are relevant high-dimensional competitors; no tensor implementation
+  was run here, so the measured comparison is against the exact sparse FSP
+  forward and adjoint query.
+* Sunkara, reaction-count CME and path chains, *Entropy* 21 (2019), DOI
+  [10.3390/e21060607](https://doi.org/10.3390/e21060607). This represents
+  reaction histories directly, but the candidate clock here eliminates the
+  independent first-order bulk firings rather than counting them.
+* Nakagawa & Togashi, PGF framework for catalytic networks, *Front. Physiol.*
+  7 (2016), DOI [10.3389/fphys.2016.00089](https://doi.org/10.3389/fphys.2016.00089).
+  It develops parameter-free steady-state PGF theory for two-body catalytic
+  networks; it is a reminder that generic PGF treatment is prior art.
+* López-Caamal & Márquez-Lago, exact marginal probabilities of selected
+  species in monomolecular networks, *Bull. Math. Biol.* 76 (2014), DOI
+  [10.1007/s11538-014-9985-z](https://doi.org/10.1007/s11538-014-9985-z).
+
+The focused search found no paper stating the precise finite tagged-state
+closure above for a multi-state switching pool plus low-copy saturating
+catalyst, but this is not an exhaustive priority search.
+
+## Prototype evidence
+
+The matched benchmark uses four free states in a cycle, one enzyme, an
+initially monodisperse pool, a terminal full count vector near its modal region,
+`T=0.8`, per-enzyme candidate rate `lambda=2`, `koff=0.8`, `kcat=1.2`, and
+`K=10`. The exact missing event mass is `1.02491e-6`. Each timing includes
+construction and solve, with one run per case on Python 3.12.14, NumPy 2.3.5,
+SciPy 1.17.0, Linux x86_64 (9 reported CPUs). `benchmark_results.json` records
+forward FSP, the stronger adjoint-FSP endpoint query, the marked solver,
+dimensions, and likelihoods.
+
+For N=100, the full CME has 348,551 states; adjoint FSP took 7.77 seconds and
+the marked likelihood ODE took 0.098 seconds, a measured 79x speedup in this
+single run. At N=10, FSP was faster; at N=40 the marked solver was 4.3x faster,
+and at N=60 it was 8.9x faster. At N=100, the FSP probability was
+0.0015518145114675 and the K=10 marked lower bound was 0.0015518140886145;
+the absolute difference is below the 1.02491e-6 tail. The marked ODE dimension
+stays 5,005 for these N.
+
+An adaptive relative-error check at N=100 with a Kmax=14 solve gives:
+
+| requested relative tail / lower bound | selected K | lower bound | tail/lower |
+|---:|---:|---:|---:|
+| 1e-3 | 10 | 0.00155181409 | 6.60e-4 |
+| 1e-4 | 11 | 0.00155181446 | 8.71e-5 |
+| 1e-5 | 13 | 0.00155181451 | 1.20e-6 |
+| 1e-6 | 14 | 0.00155181451 | 1.27e-7 |
+
+This establishes a useful relative certificate for this non-rare observation,
+not a uniform guarantee for arbitrarily small likelihoods. Across DOP853
+rtol `1e-7` through `1e-13`, the K=14 computed likelihood varied by less than
+`7.2e-13`; this is a numerical stability check, not a rigorous ODE error
+enclosure. `numerical_tolerance_check.json` records the runs. A fully
+certified computed interval would need an ODE error budget `epsilon_num` and
+would be `[max(0,Lhat-epsilon_num), Lhat+epsilon_num+delta_K]`.
+
+Small exact FSP comparisons passed for q=2,3 and for two catalysts. The larger
+q=4 benchmark is checked against both directions of the same finite CME.
+
+## Limits and falsification
+
+The capability is attractive only when candidate intensity `C*lambda*T` is
+small enough that the required K is moderate and the observed endpoint is not
+too rare. If `K` is large, `D(K,q,C)` grows quickly; if the target likelihood
+is tiny, relative accuracy may require a large K. The method assumes fixed
+first-order rates for the free pool, iid/monodisperse initial pool, a bounded
+fixed number of identical catalysts, and mass-action binding proportional to
+`n_A/N`. It does not yet handle arbitrary multi-catalyst state networks,
+non-exchangeable initial distributions, immigration/death that changes N,
+multiple partial observations from the same trajectory, or a global flux
+parameter inferred jointly with changing volume. No physical validation is
+claimed.
+
+The decisive falsification test is a fair end-to-end comparison on
+multi-state enzyme/metabolite models with partially observed terminal count
+data, varying N, q, candidate intensity, and endpoint rarity: compare this
+tagged solver (including adaptive K and any numerical error budget) against
+adjoint FSP, tensor-train FSP, and balanced output reduction. If the best
+existing query-specific reduction matches the tagged runtime/certification, or
+if realistic parameter/observation regimes drive K high, the claimed leverage
+is not established.
+
+## Reproduction
+
+From this directory, run:
+
+```sh
+python test_marked_pool.py
+python run_benchmark.py
+python run_relative_check.py
+```
+
+`run_benchmark.py` overwrites `benchmark_results.json`; the checked-in result
+is the measured record. `run_relative_check.py` recreates the relative-K
+selection in `relative_tolerance_check.json`. `test_marked_pool.py` checks
+exact FSP enclosure and the Poisson retained-mass identity. SciPy's DOP853 and
+sparse `expm_multiply` are the only numerical backends.

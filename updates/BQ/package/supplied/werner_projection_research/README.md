@@ -1,0 +1,31 @@
+# Research package: rank-two projection completeness
+
+The historic-scale objective was **not achieved**. Start with `RESEARCH_PROOF.md` for the precise theorem, full proof, limitations, source versions, and unresolved endpoint.
+
+## Reproduce exact checks
+
+No external packages are needed (Python 3.10+):
+
+```sh
+python exact_flag_audit.py
+python -O exact_flag_audit.py
+```
+
+The left sides are computed from the partial-trace definition, independently of the claimed block identities. These real rational fixtures are finite checks, not a formal verification of the full complex theorem. The script writes `exact_flag_receipt.json`.
+
+## Reproduce optional numerical diagnostics
+
+NumPy, SciPy, and PyTorch are required. These scripts overwrite their corresponding receipt files. Numerical minima may vary by library version and do not establish lower bounds.
+
+```sh
+python werner_probe.py --d 3 --n 3 --starts 12 --iterations 100
+python werner_probe.py --d 3 --n 4 --starts 18 --iterations 140
+python positive_probe.py --n 4 --starts 14 --iterations 150
+python positive_probe.py --n 5 --starts 8 --iterations 150
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python oo_encoder_probe.py 2 5
+python shadow_lp.py
+```
+
+`positive_probe.py` tests a stronger, unproved PSD deficit, not just the original quadratic form. `oo_encoder_probe.py` covers only a restricted encoder family. The negative points in `shadow_lp_receipt.json` are relaxed coefficient vectors, not physical states or distillation witnesses. None of these searches is a premise of the proof.
+
+`SOURCE_MANIFEST.json` records the accessed repository revisions and source scopes. `SHA256SUMS` covers the files supplied here before zipping. No repository was modified.

@@ -1,0 +1,41 @@
+<!doctype html><meta charset="utf-8"><title>BQ: catalyst_marked_pool_release/run_relative_check.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/catalyst_marked_pool_release/run_relative_check.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;One-solve adaptive-K demonstration for relative tail/lower criteria.&quot;&quot;&quot;
+import json
+import numpy as np
+from scipy.linalg import expm
+from marked_pool import MarkedPoolLikelihood
+
+
+def main():
+    q, N, T, lam, Kmax = 4, 100, 0.8, 2.0, 14
+    Q = np.zeros((q, q))
+    for i in range(q):
+        Q[i, (i + 1) % q] += 0.4
+        Q[i, (i - 1) % q] += 0.2
+        Q[i, i] -= 0.6
+    mu0 = np.array([1.0, 0.0, 0.0, 0.0])
+    pT = mu0 @ expm(Q*T)
+    obs = tuple(map(int, np.floor(N*pT)))
+    obs = (obs[0] + N-sum(obs),) + obs[1:]
+    engine = MarkedPoolLikelihood(N, Q, 0, 1, lam, 0.8, 1.2, mu0)
+    result = engine.solve(T, Kmax, obs, observed_bound=0,
+                          rtol=2e-10, atol=2e-13)
+    tolerances = [1e-3, 1e-4, 1e-5, 1e-6]
+    cuts = [result.relative_cutoff(eps, lam*T) for eps in tolerances]
+    payload = {
+        &quot;scope&quot;:&quot;single terminal full count vector; Poisson truncation only; ODE numerical error is separate&quot;,
+        &quot;parameters&quot;:{&quot;N&quot;:N,&quot;q&quot;:q,&quot;T&quot;:T,&quot;lambda_per_catalyst&quot;:lam,
+                      &quot;Kmax&quot;:Kmax,&quot;observation&quot;:obs,&quot;observed_bound&quot;:0},
+        &quot;dimension_at_Kmax&quot;:result.dimension,
+        &quot;Kmax_lower&quot;:result.lower,
+        &quot;Kmax_tail&quot;:result.poisson_tail,
+        &quot;Kmax_mass&quot;:result.mass,
+        &quot;relative_cutoffs&quot;:[{&quot;requested_relative_tail_over_lower&quot;:eps, **cut}
+                             for eps,cut in zip(tolerances,cuts)],
+    }
+    with open(&quot;relative_tolerance_check.json&quot;,&quot;w&quot;) as f:
+        json.dump(payload,f,indent=2)
+    print(json.dumps(payload,indent=2))
+
+
+if __name__ == &quot;__main__&quot;: main()
+</pre></main>

@@ -1,0 +1,93 @@
+<!doctype html><meta charset="utf-8"><title>BQ: strange_metal_research/check_heat_potential.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/strange_metal_research/check_heat_potential.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent 1D BVP checks of the heat-potential/noise identities.
+
+No experimental data are used. kappa(T)*rho(T)=(1+T)^p in dimensionless units.
+The analytical proof in RESEARCH_NOTE.md also covers the stated continuum
+geometries with aligned electrical/thermal tensors and no bulk heat leak.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from pathlib import Path
+import numpy as np
+from scipy.integrate import quad, simpson, solve_bvp
+import sympy as sp
+
+
+def potential(T, p):
+    return ((1.0 + T)**(p+1.0)-1.0)/(p+1.0)
+
+
+def inverse_potential(W, p):
+    return (1.0+(p+1.0)*W)**(1.0/(p+1.0))-1.0
+
+
+def N_formula(V: float, T: float, p: float) -&gt; float:
+    W0 = potential(T, p)
+    return quad(lambda s: inverse_potential(W0+0.5*V*V*s*(1-s),p),
+                0.0, 1.0, epsabs=1e-12, epsrel=1e-12)[0]
+
+
+def solve_direct(V: float, Tb: float, p: float) -&gt; dict:
+    # rho and kappa are entered separately into the spatial ODE.
+    def rho(T): return 2.0 + 0.7*T
+    def kap(T): return (1.0+T)**p/rho(T)
+    x = np.linspace(0.0,1.0,120)
+    j0 = V/rho(Tb)
+    dT = V*V/(2.0*(1.0+Tb)**p)
+    initial = np.array([Tb+dT*x*(1-x), j0*j0*rho(Tb)*(x-0.5), V*x])
+
+    def ode(x,y,par):
+        T,Q,phi=y; j=par[0]
+        return np.array([-Q/kap(T), j*j*rho(T), j*rho(T)])
+    def bc(ya,yb,par):
+        return np.array([ya[0]-Tb,yb[0]-Tb,ya[2],yb[2]-V])
+    sol=solve_bvp(ode,bc,x,initial,p=[j0],tol=1e-8,max_nodes=10000)
+    if not sol.success:
+        raise RuntimeError(sol.message)
+    xx=np.linspace(0,1,4001); T,Q,phi=sol.sol(xx); j=sol.p[0]
+    # Terminal Johnson temperature calculated from local Joule weights.
+    N=simpson(T*rho(T),x=xx)/simpson(rho(T),x=xx)
+    NN=N_formula(V,Tb,p)
+    invariant=potential(T,p)-potential(Tb,p)-0.5*phi*(V-phi)
+    return {&#x27;p&#x27;:p,&#x27;Tb&#x27;:Tb,&#x27;V&#x27;:V,&#x27;N_from_spatial_BVP&#x27;:float(N),
+            &#x27;N_from_noise_integral&#x27;:NN,&#x27;N_absolute_error&#x27;:abs(N-NN),
+            &#x27;heat_potential_max_residual&#x27;:float(np.max(np.abs(invariant))),
+            &#x27;R_from_BVP&#x27;:float(V/j),&#x27;mesh_nodes&#x27;:int(sol.x.size)}
+
+
+def main():
+    runs=[solve_direct(V,T,p) for p in [-0.5,0.0,1.0,2.3]
+          for T in [0.7,2.0] for V in [0.2,1.5,4.0]]
+    assert max(r[&#x27;N_absolute_error&#x27;] for r in runs)&lt;2e-7
+    pde=[]
+    for p in [-0.5,0.0,1.0,2.3]:
+        for T in [0.7,2.0]:
+            for V in [0.2,1.5,4.0]:
+                hv=1e-4*max(V,1); ht=1e-4*max(T,1)
+                N=N_formula(V,T,p)
+                dV=(N_formula(V+hv,T,p)-N_formula(V-hv,T,p))/(2*hv)
+                dT=(N_formula(V,T+ht,p)-N_formula(V,T-ht,p))/(2*ht)
+                A=1/(12*(1+T)**p)
+                lhs=V*dV+N-T; rhs=3*A*V*V*dT
+                pde.append(abs(lhs-rhs)/(1+abs(lhs)))
+    assert max(pde)&lt;1e-7
+    # Symbolically confirm the first coefficients of the moment hierarchy.
+    T=sp.symbols(&#x27;T&#x27;, positive=True); w=sp.Function(&#x27;w&#x27;)(T)
+    A=1/(12*w)
+    B=sp.simplify(sp.Rational(3,5)*A*sp.diff(A,T))
+    C=sp.simplify(sp.Rational(3,7)*A*sp.diff(B,T))
+    expected_B=-sp.diff(w,T)/(240*w**3)
+    expected_C=(3*sp.diff(w,T)**2-w*sp.diff(w,T,2))/(6720*w**5)
+    assert sp.simplify(B-expected_B)==0 and sp.simplify(C-expected_C)==0
+    out={&#x27;status&#x27;:&#x27;Synthetic BVP and symbolic checks; not empirical evidence.&#x27;,
+         &#x27;BVP_cases&#x27;:len(runs),&#x27;max_noise_absolute_error&#x27;:max(r[&#x27;N_absolute_error&#x27;] for r in runs),
+         &#x27;max_scaled_PDE_finite_difference_residual&#x27;:max(pde),
+         &#x27;coefficients&#x27;:{&#x27;V2&#x27;:&#x27;A(T)=1/[12*w(T)]&#x27;,&#x27;V4&#x27;:str(B),&#x27;V6&#x27;:str(C),
+                         &#x27;recursion&#x27;:&#x27;c_(n+1)=3*A(T)*d(c_n)/dT/(2*n+3), c_0=T&#x27;},
+         &#x27;runs&#x27;:runs}
+    dest=Path(__file__).resolve().parent/&#x27;results&#x27;/&#x27;heat_potential_checks.json&#x27;
+    dest.write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in out.items() if k!=&#x27;runs&#x27;},indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre></main>

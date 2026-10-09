@@ -1,0 +1,74 @@
+<!doctype html><meta charset="utf-8"><title>BQ: werner_projection_research/oo_encoder_probe.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/werner_projection_research/oo_encoder_probe.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;Exploratory SO(3)-equivariant ternary encoders. Not a proof or a distillation protocol receipt.&quot;&quot;&quot;
+from __future__ import annotations
+import numpy as np
+from scipy.optimize import minimize
+from pathlib import Path
+import json
+D=3
+I=np.eye(9)
+F=np.eye(9).reshape(3,3,3,3).transpose(1,0,2,3).reshape(9,9)
+omega=np.eye(3).reshape(9)
+O=np.outer(omega,omega)
+BASIS=np.stack([I,F,O])
+GRAM=np.einsum(&#x27;aij,bij-&gt;ab&#x27;,BASIS,BASIS)
+INVGRAM=np.linalg.inv(GRAM)
+T=np.zeros((3,3,3,3,3)) # channel label, physical i,j,k, logical l
+for i in range(3):
+ for j in range(3):
+  for k in range(3):
+   for l in range(3):
+    T[0,i,j,k,l]=(i==l)*(j==k)
+    T[1,i,j,k,l]=(j==l)*(i==k)
+    T[2,i,j,k,l]=(k==l)*(i==j)
+T=T.reshape(3,27,3)
+
+def encoder(w):
+ W=np.einsum(&#x27;a,aij-&gt;ij&#x27;,w,T)
+ W=W/np.sqrt(np.trace(W.conj().T@W).real/3)
+ return W
+
+def step(coeff, w):
+ R=np.einsum(&#x27;a,aij-&gt;ij&#x27;,coeff,BASIS)
+ W=encoder(w)
+ V=np.kron(W,W).reshape(3,3,3,3,3,3,9).transpose(0,3,1,4,2,5,6).reshape(9,9,9,9)
+ Y=V
+ for ax in range(3):
+  Y=np.tensordot(R,Y,axes=(1,ax))
+  Y=np.moveaxis(Y,0,ax)
+ X=np.einsum(&#x27;abcj,abck-&gt;jk&#x27;,V.conj(),Y)
+ c=INVGRAM@np.einsum(&#x27;aij,ji-&gt;a&#x27;,BASIS,X)
+ if np.max(np.abs(X-np.einsum(&#x27;a,aij-&gt;ij&#x27;,c,BASIS)))&gt;1e-8:
+  raise RuntimeError(&#x27;Covariance residual too large&#x27;)
+ c=c.real
+ c/=np.trace(X).real/9
+ return c
+
+def objective(v,depth):
+ c=np.array([1.,-.5,0.])
+ W=(v[:depth*3]+1j*v[depth*3:]).reshape(depth,3)
+ if np.any(np.linalg.norm(W,axis=1)&lt;1e-10): return 1e4
+ for w in W: c=step(c,w)
+ a,b,g=c
+ # All possible rank-two same-plane tests: real plane if g&lt;0, complex minimal-overlap if g&gt;=0.
+ return a+2*b+(g if g&lt;0 else g/2)
+
+def run(depth=2, starts=12):
+ rng=np.random.default_rng(618)
+ rows=[];best=None
+ for i in range(starts):
+  x=rng.normal(size=6*depth)
+  res=minimize(lambda v:objective(v,depth),x,method=&#x27;BFGS&#x27;,options={&#x27;maxiter&#x27;:65,&#x27;gtol&#x27;:1e-7})
+  row={&#x27;start&#x27;:i,&#x27;value&#x27;:float(res.fun),&#x27;iterations&#x27;:int(res.nit),&#x27;success&#x27;:bool(res.success)}
+  rows.append(row)
+  if best is None or res.fun&lt;best[0]: best=(res.fun,res.x.copy())
+ return {&#x27;depth&#x27;:depth,&#x27;physical_copies&#x27;:3**depth,&#x27;rows&#x27;:rows,&#x27;minimum&#x27;:float(best[0]),&#x27;best_parameters&#x27;:best[1].tolist(),&#x27;status&#x27;:&#x27;floating local searches in a restricted encoder family; not a universal result&#x27;}
+if __name__==&#x27;__main__&#x27;:
+ import sys,time
+ depth=int(sys.argv[1]) if len(sys.argv)&gt;1 else 2
+ starts=int(sys.argv[2]) if len(sys.argv)&gt;2 else 8
+ t=__import__(&#x27;time&#x27;).perf_counter()
+ out=run(depth,starts)
+ out[&#x27;elapsed_seconds&#x27;]=__import__(&#x27;time&#x27;).perf_counter()-t
+ print(json.dumps(out,indent=2))
+ (Path(__file__).parent/f&#x27;oo_encoder_depth{depth}.json&#x27;).write_text(json.dumps(out,indent=2))
+</pre></main>

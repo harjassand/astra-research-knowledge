@@ -1,0 +1,33 @@
+<!doctype html><meta charset="utf-8"><title>BQ: catalyst_marked_pool_release/product_count_extension/test_unique_mark_engine.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/catalyst_marked_pool_release/product_count_extension/test_unique_mark_engine.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>import numpy as np
+from marked_pool_partial import full_cme_endpoint
+from unique_mark_engine import UniqueMarkLikelihood
+from run_product_count import model
+
+
+def main():
+    Q,mu=model(); N,T,lam,koff,kcat=9,.8,1.7,.6,1.1
+    # Product count is a catalyst-only event; compare product-only, a partial
+    # non-product marginal, and a full endpoint vector against exact FSP.
+    for obs,bobs in [({3:1},None),({0:4},None),((5,2,1,1),0)]:
+        if isinstance(obs,tuple): assert sum(obs)+bobs==N
+        exact,_,_=full_cme_endpoint(N,Q,0,3,lam,koff,kcat,mu,T,obs,
+                                     observed_bound=bobs,direction=&#x27;forward&#x27;,
+                                     monotone_cap=(3,1) if obs=={3:1} else None)
+        r=UniqueMarkLikelihood(N,Q,0,3,lam,koff,kcat,mu).solve(
+            T,12,obs,observed_bound=bobs,rtol=2e-11,atol=2e-14)
+        assert r.lower-2e-10&lt;=exact&lt;=r.lower+r.poisson_tail+2e-10,(obs,r.lower,exact,r.poisson_tail)
+
+    # Multi-catalyst valid joint endpoint, including b=2 and a nonvacuous
+    # product output, independently checked by full count CME.
+    q,N,C=3,16,2
+    Q2=np.zeros((q,q))
+    for i in range(q): Q2[i,(i+1)%q]+=.4;Q2[i,(i-1)%q]+=.2;Q2[i,i]-=.6
+    mu2=np.array([1.,0.,0.]); obs2=(10,3,1); T2=.6; lam2=1.1; off2=.7; cat2=.9
+    exact,_,_=full_cme_endpoint(N,Q2,0,1,lam2,off2,cat2,mu2,T2,obs2,2,catalysts=C)
+    r=UniqueMarkLikelihood(N,Q2,0,1,lam2,off2,cat2,mu2,catalysts=C).solve(
+        T2,12,obs2,observed_bound=2,rtol=2e-11,atol=2e-14)
+    assert exact&gt;0 and r.lower-2e-10&lt;=exact&lt;=r.lower+r.poisson_tail+2e-10
+    print({&quot;status&quot;:&quot;pass&quot;,&quot;C2_exact&quot;:exact,&quot;C2_unique_lower&quot;:r.lower,&quot;C2_tail&quot;:r.poisson_tail,&quot;C2_states&quot;:r.dimension})
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre></main>

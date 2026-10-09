@@ -1,0 +1,74 @@
+<!doctype html><meta charset="utf-8"><title>BQ: fragmentation_no_SC_positive_extension_2026-10-09/no_sc_noise_test.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/fragmentation_no_SC_positive_extension_2026-10-09/no_sc_noise_test.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;Small fixed-seed tests, no new large Monte Carlo or external computation.&quot;&quot;&quot;
+import json,time
+import numpy as np
+from scipy.stats import beta
+from scipy.integrate import cumulative_trapezoid
+from scipy.linalg import expm
+from fragment_inverse import uniformized_forward,invert
+from causal_clipped_inverse import clipped_inverse,numerical_defect,recover_with_precision,repair_prefix_mass
+from reference_extension_test import density_forward
+
+
+def true_cell_masses(h,n):
+    edges=np.exp(-h*np.arange(n))
+    z=.5*(edges[:-1]**2-edges[1:]**2)
+    z+=.5*(beta.cdf(edges[:-1],4,3)-beta.cdf(edges[1:],4,3))
+    return np.r_[0,z]
+
+
+def main():
+    rng=np.random.default_rng(105219)
+    out={&#x27;seed&#x27;:105219,&#x27;binning_convention&#x27;:&#x27;positive ceiling bins; intact atom separate&#x27;,
+         &#x27;density_cap&#x27;:2.,&#x27;precision_cases&#x27;:[],&#x27;noisy_continuous_bins&#x27;:[],&#x27;constant_check&#x27;:[]}
+    # Verify the displayed summed path-series constant numerically.
+    from math import factorial
+    for a in [.2,1.,2.]:
+        gamma=1.3;V=5.
+        direct=sum(a**r/factorial(r)*(gamma*(2*r-1)*(r+a)+(r-1)*V) for r in range(1,80))
+        closed=gamma*(4*a*a*np.exp(a)+a)+V*((a-1)*np.exp(a)+1)
+        out[&#x27;constant_check&#x27;].append({&#x27;a&#x27;:a,&#x27;difference&#x27;:float(abs(direct-closed))})
+    h=.04;n=101;t=2.;cap=2*h;k=true_cell_masses(h,n)
+    for gamma in [1.3,.1,.02]:
+        q=np.exp(-gamma*h);f=uniformized_forward(k,q,t)
+        y=rng.poisson(f*100000)/100000;y[0]=f[0]
+        kd,p,w=clipped_inverse(y,q,t,cap)
+        dd,_,_=numerical_defect(kd,y,q,t,cap)
+        st=time.perf_counter();kh,attempts,ok=recover_with_precision(y,q,t,cap);elapsed=time.perf_counter()-st
+        out[&#x27;precision_cases&#x27;].append({&#x27;gamma&#x27;:gamma,&#x27;double_l1_error&#x27;:float(sum(abs(kd-k))),
+             &#x27;double_defect&#x27;:dd,&#x27;success&#x27;:ok,&#x27;seconds&#x27;:elapsed,&#x27;attempts&#x27;:attempts,
+             &#x27;recovered_l1_error&#x27;:float(sum(abs(kh-k))),
+             &#x27;repaired_l1_error&#x27;:float(sum(abs(repair_prefix_mass(kh)-k))),
+             &#x27;prefix_mass_before_repair&#x27;:float(sum(kh))})
+    # Independent continuous-density forward quadrature, then exact edge bins.
+    # The input law has positive density at zero and fails SC.
+    gamma=1.3;hfine=.002;s=np.arange(2001)*hfine
+    density=np.exp(-2*s)+30*np.exp(-4*s)*(1-np.exp(-s))**2
+    f=density_forward(density,s,t,gamma)
+    cdf=np.r_[0.,cumulative_trapezoid(f,s)]
+    for h in [.08,.04,.02]:
+        step=round(h/hfine);n=round(4/h)+1;q=np.exp(-gamma*h);cap=2*h
+        truek=true_cell_masses(h,n)
+        observed=np.r_[np.exp(-t),np.diff(cdf[::step])]
+        flattice=uniformized_forward(truek,q,t)
+        model_bias=float(sum(abs(observed-flattice)))
+        probs=np.r_[observed,max(0,1-sum(observed))];probs/=sum(probs)
+        for samples in [10000,100000]:
+            vals=[]
+            for rep in range(12):
+                y=rng.multinomial(samples,probs)[:-1]/samples
+                y[0]=np.exp(-t) # alpha is known; intact count not used to refit it.
+                kh,p,w=clipped_inverse(y,q,t,cap)
+                defect,_,_=numerical_defect(kh,y,q,t,cap)
+                repaired=repair_prefix_mass(kh)
+                vals.append([sum(abs(repaired-truek)),defect,sum(kh)])
+            vals=np.asarray(vals)
+            out[&#x27;noisy_continuous_bins&#x27;].append({&#x27;h&#x27;:h,&#x27;samples&#x27;:samples,&#x27;replicates&#x27;:12,
+                &#x27;continuous_lattice_bin_bias&#x27;:model_bias,&#x27;mean_l1&#x27;:float(vals[:,0].mean()),
+                &#x27;sd_l1&#x27;:float(vals[:,0].std()),&#x27;max_numerical_defect&#x27;:float(vals[:,1].max()),
+                &#x27;mass_repair_count&#x27;:int(sum(vals[:,2]&gt;1))})
+    print(json.dumps(out,indent=2))
+    json.dump(out,open(&#x27;no_sc_noise_results.json&#x27;,&#x27;w&#x27;),indent=2)
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></main>

@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8"><title>BQ: catalyst_marked_pool_release/product_count_extension/run_numerical_tolerance_check.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/catalyst_marked_pool_release/product_count_extension/run_numerical_tolerance_check.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;ODE tolerance stability evidence; explicitly not a rigorous solver bound.&quot;&quot;&quot;
+import json,os
+import numpy as np
+from run_product_count import model
+from unique_mark_engine import UniqueMarkLikelihood
+from marked_pool_partial import full_cme_endpoint
+
+
+def main():
+    Q,mu=model(); N,T,lam,koff,kcat,K=300,1.0,2.2,.55,1.3,12
+    obs={3:1}
+    exact,dim,_=full_cme_endpoint(N,Q,0,3,lam,koff,kcat,mu,T,obs,direction=&#x27;forward&#x27;,monotone_cap=(3,1))
+    rows=[]
+    for rtol in (1e-7,1e-9,1e-11,1e-13):
+        atol=max(1e-16,rtol*1e-3)
+        obj=UniqueMarkLikelihood(N,Q,0,3,lam,koff,kcat,mu)
+        result=obj.solve(T,K,obs,rtol=rtol,atol=atol)
+        rows.append({&quot;rtol&quot;:rtol,&quot;atol&quot;:atol,&quot;lower&quot;:result.lower,&quot;tail&quot;:result.poisson_tail,&quot;tail_over_lower&quot;:result.poisson_tail/result.lower,&quot;retained_mass&quot;:result.retained_mass,&quot;states&quot;:result.dimension,&quot;seconds&quot;:result.seconds,&quot;difference_vs_query_specific_FSP&quot;:result.lower-exact})
+    baseline=rows[-1][&quot;lower&quot;]
+    for row in rows: row[&quot;difference_vs_tightest_rtol_run&quot;]=row[&quot;lower&quot;]-baseline
+    payload={&quot;scope&quot;:&quot;Numerical stability only. The Poisson tail is the analytic state-pruning error for the exact ODE, not a rigorous enclosure of floating-point integration or expm errors.&quot;,&quot;model&quot;:{&quot;N&quot;:N,&quot;T&quot;:T,&quot;lambda&quot;:lam,&quot;koff&quot;:koff,&quot;kcat&quot;:kcat,&quot;K&quot;:K,&quot;observation&quot;:obs},&quot;query_specific_fsp&quot;:{&quot;states&quot;:dim,&quot;likelihood&quot;:exact},&quot;runs&quot;:rows,&quot;max_variation_across_tolerances&quot;:max(r[&quot;lower&quot;] for r in rows)-min(r[&quot;lower&quot;] for r in rows)}
+    path=os.path.join(os.path.dirname(__file__),&quot;numerical_tolerance_unique_mark.json&quot;)
+    with open(path,&#x27;w&#x27;) as f:json.dump(payload,f,indent=2)
+    print(json.dumps(payload,indent=2))
+if __name__==&#x27;__main__&#x27;:main()
+</pre></main>

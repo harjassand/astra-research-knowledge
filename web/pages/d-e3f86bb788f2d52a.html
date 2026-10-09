@@ -1,0 +1,160 @@
+<!doctype html><meta charset="utf-8"><title>BQ: applied_invention_2026_10_09/quarter_variance_test.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/applied_invention_2026_10_09/quarter_variance_test.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Check a sharp LOCAL Fisher-information identity for two OU experiments.
+
+This is a mathematical comparison, not a new operational capability.
+At B_theta=-gamma*I+theta*E, the same known background diffusion 2*gamma*I
+is present in both experiments. The noise experiment adds diffusion 2*gamma*Q.
+The mean experiment records Z~N(0,Q), applies constant force gamma*Z/2,
+and obtains one independent stationary sample. Its added stationary second
+moment at theta=0 is tr(Q)/4 versus tr(Q) in the noise experiment.
+
+A variance budget is not actuator power. Equilibration, replicate acquisition,
+full-state observation, and intervention calibration are assumptions, not free.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+import math
+from pathlib import Path
+from typing import Any
+import numpy as np
+from scipy.linalg import solve_continuous_lyapunov
+
+
+def covariance_fisher(cov: np.ndarray, derivative: np.ndarray) -&gt; float:
+    &quot;&quot;&quot;Fisher information of N(0,cov(theta)) at a positive definite cov.&quot;&quot;&quot;
+    chol = np.linalg.cholesky(cov)
+    tmp = np.linalg.solve(chol, derivative)
+    whitened = np.linalg.solve(chol, tmp.T).T
+    return float(0.5 * np.sum(whitened * whitened))
+
+
+def compare(q: np.ndarray, e: np.ndarray, gamma: float = 1.0,
+            mean_fraction: float = 0.25) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Use the full covariance derivative, allowing an arbitrary real E.&quot;&quot;&quot;
+    if q.shape != e.shape or q.ndim != 2 or q.shape[0] != q.shape[1]:
+        raise ValueError(&quot;Q and E must be square matrices of the same size&quot;)
+    if gamma &lt;= 0 or mean_fraction &lt; 0 or not np.allclose(q, q.T):
+        raise ValueError(&quot;Invalid gamma, mean fraction, or non-symmetric Q&quot;)
+    if np.linalg.eigvalsh(q).min() &lt; -1e-9 * max(1, np.linalg.norm(q, 2)):
+        raise ValueError(&quot;Q must be positive semidefinite&quot;)
+    n = len(q)
+    c = np.eye(n) + q
+    dc = (e @ c + c @ e.T) / (2 * gamma)
+    db = (e + e.T) / (2 * gamma)
+    inoise = covariance_fisher(c, dc)
+    ibase = covariance_fisher(np.eye(n), db)
+    imean = ibase + mean_fraction * float(np.trace(e @ q @ e.T)) / gamma**2
+    # Exact nonnegative identity, stated specifically for mean_fraction=1/4.
+    eigen, u = np.linalg.eigh(q)
+    eigen = np.maximum(eigen, 0)
+    er = u.T @ e @ u
+    weights = (eigen / (1 + eigen))[:, None] * (1 + eigen)[None, :]
+    gain = float(np.sum(weights * er**2)) / (4 * gamma**2)
+    return {&quot;noise_information&quot;: inoise, &quot;mean_information&quot;: imean,
+            &quot;quarter_variance_predicted_gain&quot;: gain,
+            &quot;quarter_variance_identity_error&quot;: imean - inoise - gain}
+
+
+def stationary(b: np.ndarray, diffusion: np.ndarray) -&gt; np.ndarray:
+    cov = solve_continuous_lyapunov(b, -diffusion)
+    return (cov + cov.T) / 2
+
+
+def finite_difference_check(q: np.ndarray, e: np.ndarray, gamma: float,
+                            step: float = 1e-4) -&gt; dict[str, float]:
+    n = len(q)
+    ident = np.eye(n)
+    plus, minus = -gamma*ident + step*e, -gamma*ident - step*e
+    noise_deriv = (stationary(plus, 2*gamma*(ident+q)) -
+                   stationary(minus, 2*gamma*(ident+q))) / (2*step)
+    base_deriv = (stationary(plus, 2*gamma*ident) -
+                  stationary(minus, 2*gamma*ident)) / (2*step)
+    mean_deriv = (-np.linalg.solve(plus, gamma*ident/2) +
+                  np.linalg.solve(minus, gamma*ident/2)) / (2*step)
+    info_noise = covariance_fisher(ident+q, noise_deriv)
+    info_mean = covariance_fisher(ident, base_deriv) + float(np.trace(mean_deriv @ q @ mean_deriv.T))
+    exact = compare(q, e, gamma)
+    return {&quot;noise_information_relative_error&quot;: abs(info_noise-exact[&#x27;noise_information&#x27;]) / max(1, exact[&#x27;noise_information&#x27;]),
+            &quot;mean_information_relative_error&quot;: abs(info_mean-exact[&#x27;mean_information&#x27;]) / max(1, exact[&#x27;mean_information&#x27;])}
+
+
+def main(output: Path) -&gt; None:
+    rng = np.random.default_rng(2026100917)
+    ncases = 0
+    max_identity_error = 0.0
+    min_gain = math.inf
+    max_fd = 0.0
+    for n in [2, 3, 5, 8, 12]:
+        for case in range(60):
+            rot, _ = np.linalg.qr(rng.normal(size=(n,n)))
+            eigen = np.exp(rng.uniform(-4, 4, size=n))
+            # Include singular interventions, not only positive definite Q.
+            if case % 3 == 0:
+                eigen[:max(1,n//2)] = 0
+            q = (rot*eigen) @ rot.T
+            e = rng.normal(size=(n,n))
+            e /= np.linalg.norm(e, 2)
+            gamma = float(np.exp(rng.uniform(-0.5, 0.5)))
+            result = compare(q,e,gamma)
+            scale = max(1,result[&#x27;noise_information&#x27;],result[&#x27;mean_information&#x27;])
+            err = abs(result[&#x27;quarter_variance_identity_error&#x27;]) / scale
+            max_identity_error = max(max_identity_error,err)
+            min_gain = min(min_gain,result[&#x27;mean_information&#x27;]-result[&#x27;noise_information&#x27;])
+            assert err &lt; 5e-11, result
+            assert result[&#x27;mean_information&#x27;] &gt;= result[&#x27;noise_information&#x27;]-1e-10*scale
+            ncases += 1
+            if case % 10 == 0:
+                fd = finite_difference_check(q,e,gamma)
+                max_fd = max(max_fd,*fd.values())
+    assert max_fd &lt; 1e-6
+    # Sharpness: one feed-forward perturbation gives equality exactly at 1/4.
+    q = np.diag([0.,2.])
+    e = np.array([[0.,1.],[0.,0.]])
+    sharpness = []
+    for fraction in [0.,0.10,0.20,0.249,0.25,1.0]:
+        res = compare(q,e,mean_fraction=fraction)
+        sharpness.append({&quot;mean_added_variance_fraction&quot;:fraction,
+                          &quot;noise_information&quot;:res[&#x27;noise_information&#x27;],
+                          &quot;mean_information&quot;:res[&#x27;mean_information&#x27;]})
+    assert abs(sharpness[-2][&#x27;mean_information&#x27;]-0.75) &lt; 1e-12
+    assert abs(sharpness[-2][&#x27;noise_information&#x27;]-0.75) &lt; 1e-12
+    assert sharpness[-3][&#x27;mean_information&#x27;] &lt; sharpness[-3][&#x27;noise_information&#x27;]
+    # Raw score check: no exact score expectation is substituted into this MC.
+    nsamples = 600_000
+    noise_x = rng.normal(size=(nsamples,2))*np.sqrt([1.,3.])
+    score_noise = noise_x[:,0]*noise_x[:,1]/2
+    z2 = rng.normal(size=nsamples)*math.sqrt(2)
+    residual = rng.normal(size=(nsamples,2))
+    score_mean = residual[:,0]*z2/2 + residual[:,0]*residual[:,1]/2
+    mc_noise, mc_mean = float(np.mean(score_noise**2)),float(np.mean(score_mean**2))
+    assert abs(mc_noise-0.75)&lt;0.015 and abs(mc_mean-0.75)&lt;0.015
+    payload: dict[str,Any] = {
+        &quot;status&quot;:&quot;LOCAL_INFORMATION_IDENTITY_CHECKED; NO_FOUNDATIONAL_CAPABILITY_ESTABLISHED&quot;,
+        &quot;random_matrix_cases&quot;:ncases,
+        &quot;includes_arbitrary_non_skew_E&quot;:True,
+        &quot;includes_rotated_rank_deficient_Q&quot;:True,
+        &quot;maximum_scaled_identity_error&quot;:max_identity_error,
+        &quot;minimum_observed_information_gain&quot;:min_gain,
+        &quot;finite_difference_cases&quot;:30,
+        &quot;maximum_finite_difference_information_error&quot;:max_fd,
+        &quot;sharp_quarter_variance_examples&quot;:sharpness,
+        &quot;raw_score_monte_carlo&quot;: {&quot;independent_samples_per_experiment&quot;:nsamples,
+             &quot;noise_score_second_moment&quot;:mc_noise,&quot;quarter_variance_mean_score_second_moment&quot;:mc_mean,
+             &quot;both_theoretical_information&quot;:0.75},
+        &quot;scope&quot;: [&quot;Local at B=-gamma*I with known isotropic background diffusion 2*gamma*I&quot;,
+                  &quot;Arbitrary real drift tangent E; any PSD noise design Q&quot;,
+                  &quot;The Gaussian shift Z is recorded; one independent stationary snapshot per replica&quot;,
+                  &quot;Stationary variance is the resource metric, not actuator energy or laboratory cost&quot;,
+                  &quot;No claim for general nonlinear models, hidden states, or unknown nuisance diffusion&quot;,
+                  &quot;Analytic proof is in REPORT.md; numerical checks are not formal verification&quot;,
+                  &quot;Historical novelty and independent correctness not established&quot;]}
+    output.parent.mkdir(parents=True,exist_ok=True)
+    output.write_text(json.dumps(payload,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(payload,indent=2))
+
+if __name__ == &#x27;__main__&#x27;:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;quarter_variance_results.json&#x27;))
+    main(parser.parse_args().output)
+</pre></main>

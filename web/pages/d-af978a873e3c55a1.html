@@ -1,0 +1,113 @@
+<!doctype html><meta charset="utf-8"><title>BQ: catalyst_marked_pool_release/product_count_extension/run_product_count.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/catalyst_marked_pool_release/product_count_extension/run_product_count.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>&quot;&quot;&quot;Product-only endpoint inference: marked solver vs query-specific exact FSP.&quot;&quot;&quot;
+from __future__ import annotations
+import json, os, platform, time
+import numpy as np
+from scipy.integrate import solve_ivp
+from scipy.integrate import quad
+from scipy.linalg import expm
+from scipy.stats import poisson
+from marked_pool_partial import MarkedPoolLikelihood, full_cme_endpoint
+
+
+def model():
+    # States A, B, C, P. P has no incoming/outgoing Q edges and starts empty,
+    # so only catalytic release can create observed product.
+    q=4
+    Q=np.zeros((q,q))
+    Q[0,1]=0.70; Q[0,0]=-0.70
+    Q[1,0]=0.15; Q[1,2]=0.40; Q[1,1]=-0.55
+    Q[2,1]=0.25; Q[2,2]=-0.25
+    mu0=np.array([1.,0.,0.,0.])
+    return Q,mu0
+
+
+def meanfield_product_prob(Q,mu0,T,lam,koff,kcat,kobs=1):
+    &quot;&quot;&quot;Unperturbed-reservoir baseline: fresh Bernoulli target at each attempt.
+
+    Solve enzyme/product CTMC with time-dependent bind rate lambda*p_A(t).
+    This is asymptotically correct as N-&gt;infinity at fixed observation time,
+    but ignores finite-N reuse/depletion correlations.
+    &quot;&quot;&quot;
+    q=len(mu0); pA=lambda t: float((mu0@expm(Q*t))[0])
+    states=[(r,b) for r in range(kobs+1) for b in (0,1)]
+    ix={s:i for i,s in enumerate(states)}
+    y0=np.zeros(len(states)); y0[ix[(0,0)]]=1
+    def rhs(t,y):
+        dy=np.zeros_like(y); h=lam*pA(t)
+        for r,b in states:
+            x=y[ix[(r,b)]]
+            if b==0:
+                dy[ix[(r,0)]]-=h*x
+                dy[ix[(r,1)]]+=h*x
+            else:
+                dy[ix[(r,1)]]-=(koff+kcat)*x
+                dy[ix[(r,0)]]+=koff*x
+                if r&lt;kobs: dy[ix[(r+1,0)]]+=kcat*x
+        return dy
+    sol=solve_ivp(rhs,(0,T),y0,method=&#x27;DOP853&#x27;,rtol=1e-12,atol=1e-14)
+    return sum(sol.y[ix[(kobs,b)],-1] for b in (0,1))
+
+
+def one_clock_path_lower(Q,mu0,T,lam,koff,kcat,bind=0):
+    &quot;&quot;&quot;Likelihood lower bound from exactly one candidate, binding then catalysis.
+
+    If the sole candidate event occurs at t, its selected free molecule is in
+    the bind state with marginal probability p_bind(t). The bound complex then
+    catalyzes before T with the two-channel exponential race probability.
+    This path is a subset of the terminal event P(T)=1.
+    &quot;&quot;&quot;
+    rate=koff+kcat
+    def integrand(t):
+        p=float((mu0@expm(Q*t))[bind])
+        cat_before_T=(kcat/rate)*(1-np.exp(-rate*(T-t))) if rate&gt;0 else 0.0
+        return np.exp(-lam*T)*lam*p*cat_before_T
+    return float(quad(integrand,0,T,epsabs=1e-14,epsrel=1e-13)[0])
+
+
+def certified_K(mean_candidates, path_lower, relative_eps):
+    for k in range(10000):
+        tail=float(poisson.sf(k,mean_candidates))
+        if tail &lt;= relative_eps*path_lower:
+            return k,tail
+    raise RuntimeError(&quot;could not select a finite K&quot;)
+
+
+def main():
+    Q,mu0=model(); T=1.0; lam=2.2; koff=.55; kcat=1.3; kobs=1
+    target_eps=1e-5
+    path_lower=one_clock_path_lower(Q,mu0,T,lam,koff,kcat)
+    K, selected_tail=certified_K(lam*T,path_lower,target_eps)
+    output={&quot;scope&quot;:&quot;Terminal product-count observation only; product state has no Q transitions to/from other states, starts empty, and is produced only by catalytic release. States with product count above the observed count are pruned exactly. Exact marker truncation tail is separate from numerical ODE error.&quot;,
+            &quot;parameters&quot;:{&quot;T&quot;:T,&quot;lambda&quot;:lam,&quot;koff&quot;:koff,&quot;kcat&quot;:kcat,&quot;Q&quot;:Q.tolist(),&quot;mu0&quot;:mu0.tolist(),&quot;bind_state&quot;:0,&quot;product_state&quot;:3,&quot;observation&quot;:{&quot;3&quot;:kobs},&quot;catalyst_count&quot;:1},
+            &quot;relative_error_selection&quot;:{&quot;requested_relative_truncation_bound&quot;:target_eps,&quot;constructive_one_candidate_path_likelihood_lower_bound&quot;:path_lower,&quot;K_chosen_before_solver&quot;:K,&quot;poisson_tail_at_K&quot;:selected_tail,&quot;tail_over_constructive_lower&quot;:selected_tail/path_lower},
+            &quot;environment&quot;:{&quot;python&quot;:platform.python_version(),&quot;numpy&quot;:np.__version__,&quot;platform&quot;:platform.platform()},
+            &quot;cases&quot;:[]}
+    for N in (20,100,300):
+        engine=MarkedPoolLikelihood(N,Q,0,3,lam,koff,kcat,mu0)
+        tm=time.perf_counter(); mark=engine.solve(T,K,{3:kobs},observed_bound=None,rtol=2e-10,atol=1e-13); mark_s=time.perf_counter()-tm
+        # Query-specific reduced FSP: keep exact counts of all free states but
+        # prune product counts &gt; kobs, since P is irreversible.
+        tf=time.perf_counter(); fsp,dim,mass=full_cme_endpoint(N,Q,0,3,lam,koff,kcat,mu0,T,{3:kobs},direction=&#x27;forward&#x27;,monotone_cap=(3,kobs)); fsp_s=time.perf_counter()-tf
+        mf=meanfield_product_prob(Q,mu0,T,lam,koff,kcat,kobs)
+        case={&quot;N&quot;:N,&quot;marked_seconds&quot;:mark_s,&quot;marked_states&quot;:mark.dimension,&quot;K&quot;:K,&quot;marked_lower&quot;:mark.lower,&quot;poisson_tail&quot;:mark.poisson_tail,&quot;tail_over_lower&quot;:mark.poisson_tail/mark.lower,&quot;marked_mass&quot;:mark.mass,&quot;query_specific_fsp_seconds&quot;:fsp_s,&quot;query_specific_fsp_states&quot;:dim,&quot;query_specific_fsp_mass_after_kill&quot;:mass,&quot;query_specific_fsp_likelihood&quot;:fsp,&quot;meanfield_unperturbed_reservoir_likelihood&quot;:mf,&quot;meanfield_relative_error_vs_fsp&quot;:abs(mf-fsp)/fsp,&quot;marked_minus_fsp&quot;:mark.lower-fsp,&quot;marked_interval_covers_fsp&quot;:(mark.lower-5e-9 &lt;= fsp &lt;= mark.lower+mark.poisson_tail+5e-9)}
+        output[&quot;cases&quot;].append(case)
+        print(json.dumps(case))
+    # Parameter sensitivity in the catalyst-informative partial observation.
+    sens=[]
+    N=300
+    for l in (0.8,1.4,2.2,3.0):
+        engine=MarkedPoolLikelihood(N,Q,0,3,l,koff,kcat,mu0)
+        m=engine.solve(T,18,{3:kobs},rtol=3e-10,atol=2e-13)
+        fsp,dim,_=full_cme_endpoint(N,Q,0,3,l,koff,kcat,mu0,T,{3:kobs},direction=&#x27;forward&#x27;,monotone_cap=(3,kobs))
+        mf=meanfield_product_prob(Q,mu0,T,l,koff,kcat,kobs)
+        sens.append({&quot;lambda&quot;:l,&quot;marked_lower_K18&quot;:m.lower,&quot;tail&quot;:m.poisson_tail,&quot;tail_over_lower&quot;:m.poisson_tail/m.lower,&quot;fsp&quot;:fsp,&quot;meanfield&quot;:mf,&quot;mf_relerr&quot;:abs(mf-fsp)/fsp,&quot;states_fsp&quot;:dim})
+    output[&quot;lambda_sensitivity_N300&quot;]=sens
+    # For physical catalyst-free model, P=1 is impossible exactly.
+    output[&quot;catalyst_free_likelihood_for_product_one&quot;]=0.0
+    output[&quot;observed_event_is_informative&quot;]=&quot;likelihood of one product is positive under catalysis and identically zero when lambda=0; lambda dependence also reported above&quot;
+    outpath=os.path.join(os.path.dirname(__file__),&quot;product_count_results.json&quot;)
+    with open(outpath,&quot;w&quot;) as f: json.dump(output,f,indent=2)
+    print(json.dumps(output,indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre></main>

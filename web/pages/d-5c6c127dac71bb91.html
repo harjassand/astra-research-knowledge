@@ -1,0 +1,243 @@
+<!doctype html><meta charset="utf-8"><title>BQ: strange_metal_research/check_theorems.py</title><main><p><strong>BQ immutable source snapshot</strong></p><p>Path: <code>updates/BQ/package/supplied/strange_metal_research/check_theorems.py</code></p><p>Source metadata: <a href="../../updates/BQ/package/BQ_SOURCE_MANIFEST.json">BQ_SOURCE_MANIFEST.json</a>. Indexing does not validate source claims.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-network checks of conditional local-thermal noise statements.
+
+These are synthetic numerical checks, NOT experimental validation and NOT a
+formal proof. The accompanying RESEARCH_NOTE.md supplies the proofs and scope.
+Requires Python 3.10+, numpy, scipy. Outputs JSON; no network access required.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+from numpy.typing import NDArray
+from scipy.optimize import root
+
+Array = NDArray[np.float64]
+SEED = 20261009
+
+
+def incidence(n: int, edges: list[tuple[int, int]]) -&gt; Array:
+    &quot;&quot;&quot;Oriented E x N incidence; node n-1 is the grounded terminal.&quot;&quot;&quot;
+    D = np.zeros((len(edges), n))
+    for e, (i, j) in enumerate(edges):
+        D[e, i] = 1.0
+        D[e, j] = -1.0
+    return D
+
+
+def electrical(D: Array, r: Array) -&gt; dict[str, Any]:
+    &quot;&quot;&quot;Solve for unit terminal current, without graph-library dependencies.&quot;&quot;&quot;
+    if np.any(r &lt;= 0):
+        raise ValueError(&quot;All resistances must be positive.&quot;)
+    Dr = D[:, :-1]
+    g = 1.0 / r
+    L = Dr.T @ (g[:, None] * Dr)
+    source = np.zeros(L.shape[0]); source[0] = 1.0
+    potential = np.r_[np.linalg.solve(L, source), 0.0]
+    R = float(potential[0])
+    j = (D @ potential) * g
+    # Electrical current response to an additive edge voltage source.
+    M = ((g[:, None] * Dr) @ np.linalg.solve(L, Dr.T * g[None, :])
+         - np.diag(g))
+    return {&quot;R&quot;: R, &quot;j&quot;: j, &quot;potential&quot;: potential, &quot;M&quot;: M}
+
+
+def random_graph(rng: np.random.Generator, n: int) -&gt; Array:
+    # The chain makes connectivity certain. Extra edges need not be planar.
+    edges = [(i, i + 1) for i in range(n - 1)]
+    edges += [(i, j) for i in range(n) for j in range(i + 2, n)
+              if rng.random() &lt; 0.18]
+    return incidence(n, edges)
+
+
+def static_check(D: Array, geom: Array, a: float, b: float,
+                 T: Array, Tlo: float, Thi: float) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Common local resistance law r_e=geom_e*(a+b*T_e).&quot;&quot;&quot;
+    net = electrical(D, geom * (a + b * T))
+    baseline = electrical(D, geom)
+    R = net[&#x27;R&#x27;]; G = 1.0 / R; K0 = 1.0 / baseline[&#x27;R&#x27;]
+    v = net[&#x27;potential&#x27;] / R
+    v0 = baseline[&#x27;potential&#x27;] / baseline[&#x27;R&#x27;]
+    k = 1.0 / geom
+    drop = D @ v
+    E = float(np.sum(k * (D @ (v - v0))**2))
+    TN = float(np.sum(T * drop**2 / (geom * (a + b * T))) / G)
+    TR = (R * K0 - a) / b
+    residual = R * E / b
+    upper = TR + b * (TR - Tlo) * (Thi - TR) / (a + b * TR)
+    # For b&gt;0, TR is the lower bound. For b&lt;0 the order reverses.
+    low_bound, high_bound = sorted([TR, upper])
+    return {
+        &#x27;R&#x27;: R, &#x27;TN&#x27;: TN, &#x27;TR&#x27;: TR, &#x27;residual&#x27;: residual,
+        &#x27;identity_error&#x27;: abs(TN - TR - residual),
+        &#x27;lower_margin&#x27;: TN - low_bound,
+        &#x27;upper_margin&#x27;: high_bound - TN,
+    }
+
+
+def thermal_matrix(rng: np.random.Generator, m: int) -&gt; tuple[Array, Array, Array]:
+    &quot;&quot;&quot;Reciprocal conductances, positive bath leaks, positive heat capacities.&quot;&quot;&quot;
+    W = rng.uniform(0.0, 0.3, (m, m))
+    W = np.triu(W, 1); W = W + W.T
+    leak = rng.uniform(0.4, 1.5, m)
+    A = np.diag(W.sum(axis=1) + leak) - W
+    C = np.diag(rng.uniform(0.3, 2.0, m))
+    return A, C, W
+
+
+def finite_bias_noise(D: Array, geom: Array, a: float, b: float,
+                      Tb: float, A: Array, C: Array, W: Array,
+                      I: float, omega: float) -&gt; dict[str, Any]:
+    &quot;&quot;&quot;Explicit electrothermal Langevin model; k_B is set to 1.
+
+    Thermal law: A(T-Tb)=local Joule power. Independent thermal-link noise
+    has one-sided PSD 2*g*(T_left**2+T_right**2). Only its equilibrium
+    4*Tb**2*A value is required for the weak-bias theorem.
+    &quot;&quot;&quot;
+    m = len(geom)
+    beta = geom * b
+    baseline = electrical(D, geom * (a + b * Tb))
+    q0 = geom * (a + b * Tb) * baseline[&#x27;j&#x27;]**2
+    guess = Tb + I**2 * np.linalg.solve(A, q0)
+
+    def heat_equation(T: Array) -&gt; Array:
+        r = geom * (a + b * T)
+        if np.any(r &lt;= 0):
+            return 1e12 * (T - guess)
+        e = electrical(D, r)
+        return A @ (T - Tb) - I**2 * r * e[&#x27;j&#x27;]**2
+
+    sol = root(heat_equation, guess, method=&#x27;hybr&#x27;, options={&#x27;xtol&#x27;: 1e-11})
+    if np.linalg.norm(heat_equation(sol.x), ord=np.inf) &gt; 1e-9:
+        raise RuntimeError(f&quot;Steady heat solve did not converge: {sol.message}&quot;)
+    T = sol.x
+    r = geom * (a + b * T)
+    e = electrical(D, r)
+    R = e[&#x27;R&#x27;]; j = e[&#x27;j&#x27;]; i = I * j; M = e[&#x27;M&#x27;]
+    dRdT = beta * j**2
+    K = 2.0 * np.diag(r * i) @ M + np.diag(i)
+    Jp = (np.diag(i**2) + 2.0 * np.diag(r * i) @ M @ np.diag(i)) @ np.diag(beta)
+    H = np.linalg.inv(A - Jp + 1j * omega * C)
+    hQ = I * dRdT @ H
+    he = j + hQ @ K
+    Ce = np.diag(4.0 * T * r)
+    leak = np.diag(A) - W.sum(axis=1)
+    CQ = np.diag(2.0 * leak * (T**2 + Tb**2))
+    for p in range(m):
+        for q in range(p + 1, m):
+            vec = np.zeros(m); vec[p] = 1.0; vec[q] = -1.0
+            CQ += 2.0 * W[p, q] * (T[p]**2 + T[q]**2) * np.outer(vec, vec)
+    S = float(np.real(he @ Ce @ he.conj() + hQ @ CQ @ hQ.conj()))
+    Z = R + 2.0 * I**2 * dRdT @ H @ (r * j**2)
+    return {&#x27;T&#x27;: T, &#x27;R&#x27;: R, &#x27;Z&#x27;: Z, &#x27;S&#x27;: S, &#x27;R0&#x27;: baseline[&#x27;R&#x27;]}
+
+
+def main() -&gt; None:
+    rng = np.random.default_rng(SEED)
+    max_identity = 0.0
+    min_lower = float(&#x27;inf&#x27;); min_upper = float(&#x27;inf&#x27;)
+    static_cases = 1500
+    for _ in range(static_cases):
+        n = int(rng.integers(2, 22)); D = random_graph(rng, n)
+        geom = np.exp(rng.uniform(-2.0, 2.0, D.shape[0]))
+        Tlo = float(rng.uniform(0.2, 4.0)); Thi = Tlo + float(rng.uniform(1.0, 40.0))
+        a = float(rng.uniform(0.1, 10.0)); b = float(rng.uniform(0.2, 3.0))
+        T = rng.uniform(Tlo, Thi, D.shape[0])
+        z = static_check(D, geom, a, b, T, Tlo, Thi)
+        max_identity = max(max_identity, z[&#x27;identity_error&#x27;] / (1 + abs(z[&#x27;TN&#x27;])))
+        min_lower = min(min_lower, z[&#x27;lower_margin&#x27;])
+        min_upper = min(min_upper, z[&#x27;upper_margin&#x27;])
+    assert max_identity &lt; 1e-10 and min_lower &gt; -1e-9 and min_upper &gt; -1e-9
+
+    series = static_check(incidence(3, [(0, 1), (1, 2)]), np.array([0.7, 0.3]),
+                          2.0, 3.0, np.array([1.0, 10.0]), 1.0, 10.0)
+    parallel = static_check(incidence(2, [(0, 1), (0, 1)]), np.array([0.7, 0.3]),
+                            2.0, 3.0, np.array([1.0, 10.0]), 1.0, 10.0)
+    assert abs(series[&#x27;upper_margin&#x27;]) &lt; 1e-12
+    assert abs(parallel[&#x27;lower_margin&#x27;]) &lt; 1e-12
+
+    # Deliberately leave the material-law hypothesis: rho(T)=T^2 in parallel.
+    convex_TN = (1.0 + 0.1) / 1.01
+    convex_TR = np.sqrt(2.0 / 1.01)
+    assert convex_TN &lt; convex_TR
+    # A constant-resistance cold contact invalidates common fractional slope.
+    contact = {&#x27;TR_from_terminal_calibration&#x27;: 10.0,
+               &#x27;actual_TN&#x27;: (10.0 * 1.0 + 10.0 * 10.0) / 20.0}
+
+    # Weak-bias identity using independently assembled finite-bias covariances.
+    mchecks = []
+    for _ in range(20):
+        n = int(rng.integers(3, 7)); D = random_graph(rng, n)
+        geom = np.exp(rng.uniform(-0.4, 0.4, D.shape[0]))
+        a = 2.0; b = 0.7; Tb = 1.3
+        A, C, W = thermal_matrix(rng, len(geom))
+        baseline = electrical(D, geom * (a + b * Tb))
+        R0 = baseline[&#x27;R&#x27;]; c = b / (a + b * Tb)
+        q = geom * (a + b * Tb) * baseline[&#x27;j&#x27;]**2
+        H0 = float(q @ np.linalg.solve(A, q)); R2 = c * H0
+        for omega in [0.0, 0.7, 7.0]:
+            Hw = q @ np.linalg.solve(A + 1j * omega * C, q)
+            phi = float(np.real(Hw) / H0)
+            assert -1e-12 &lt;= phi &lt;= 1.0 + 1e-12
+            predicted_S2 = 4.0 * R2 * (1.0 / c + Tb + (2.0 * Tb + c * Tb**2) * phi)
+            errors = []
+            for I in [0.004, 0.002]:
+                z = finite_bias_noise(D, geom, a, b, Tb, A, C, W, I, omega)
+                measured_S2 = (z[&#x27;S&#x27;] - 4.0 * Tb * R0) / I**2
+                errors.append(abs(measured_S2 - predicted_S2) / max(1.0, abs(predicted_S2)))
+                eliminated = 4.0 * ((Tb + 1.0/c) * (z[&#x27;R&#x27;] - R0)
+                                   + (Tb + 0.5*c*Tb**2) * (np.real(z[&#x27;Z&#x27;]) - z[&#x27;R&#x27;]))
+                assert abs((z[&#x27;S&#x27;] - 4.0*Tb*R0) - eliminated) &lt; 1e-6
+            mchecks.append({&#x27;phi&#x27;: phi, &#x27;relative_error_I_0p004&#x27;: errors[0],
+                            &#x27;relative_error_I_0p002&#x27;: errors[1]})
+    assert max(x[&#x27;relative_error_I_0p002&#x27;] for x in mchecks) &lt; 1e-4
+
+    # Explicit finite-bias failure of applying the frozen theorem at zero frequency.
+    # Two parallel branches: cold r=2,T=1, hot r=18,T=100, same affine material law.
+    Tb = 1.0; Th = 100.0; rc = 2.0; rh = 18.0
+    beta_h = 18.0 / 101.0; V = 1.0; ih = V / rh
+    gh = 1.0/rh; gc = 1.0/rc
+    Gth = ih**2 * rh / (Th - Tb)
+    loop = ih**2 * beta_h / Gth
+    attenuation = 1.0/(1.0 + loop)
+    Y = gc + gh * (1.0-loop)/(1.0+loop)
+    johnson_current = 4.0*(Tb*gc + Th*gh*attenuation**2)
+    heat_current = ((ih*beta_h/rh) / (Gth*(1.0+loop)))**2 * 2.0*Gth*(Th**2+Tb**2)
+    actual_S = (johnson_current + heat_current) / Y**2
+    R = 1.0 / (gc + gh); TN_frozen = (Tb*gc + Th*gh)/(gc+gh)
+    actual_TN = actual_S/(4.0*R)
+    assert actual_TN &lt; TN_frozen
+
+    out = {
+        &#x27;status&#x27;: &#x27;Synthetic numerical checks only; no empirical validation or formal proof.&#x27;,
+        &#x27;seed&#x27;: SEED,
+        &#x27;static&#x27;: {&#x27;cases&#x27;: static_cases, &#x27;maximum_scaled_identity_error&#x27;: max_identity,
+                   &#x27;minimum_lower_margin&#x27;: min_lower, &#x27;minimum_upper_margin&#x27;: min_upper,
+                   &#x27;series_upper_saturation&#x27;: series, &#x27;parallel_lower_saturation&#x27;: parallel},
+        &#x27;scope_counterexamples&#x27;: {
+            &#x27;convex_material_parallel&#x27;: {&#x27;TN&#x27;: convex_TN, &#x27;TR&#x27;: float(convex_TR)},
+            &#x27;cold_different_material_contact&#x27;: contact,
+            &#x27;finite_bias_electrothermal_parallel&#x27;: {
+                &#x27;R&#x27;: R, &#x27;Z_zero_frequency&#x27;: 1.0/Y, &#x27;hot_temperature&#x27;: Th,
+                &#x27;cold_temperature&#x27;: Tb, &#x27;local_loop_gain_hot&#x27;: loop,
+                &#x27;frozen_TN_equals_TR&#x27;: TN_frozen, &#x27;actual_effective_TN&#x27;: actual_TN,
+                &#x27;actual_noise_over_frozen_noise&#x27;: actual_TN / TN_frozen,
+                &#x27;assumed_heat_link_PSD&#x27;: &#x27;2*k_B*G*(T_hot^2+T_bath^2)&#x27;,
+                &#x27;note&#x27;: &#x27;Ordinary specified Langevin countermodel; not a model fitted to YbRh2Si2.&#x27;}},
+        &#x27;weak_bias&#x27;: {&#x27;network_frequency_cases&#x27;: len(mchecks),
+                      &#x27;maximum_relative_S2_error_at_I_0p002&#x27;: max(x[&#x27;relative_error_I_0p002&#x27;] for x in mchecks),
+                      &#x27;median_error_ratio_halving_I&#x27;: float(np.median([x[&#x27;relative_error_I_0p004&#x27;]/max(x[&#x27;relative_error_I_0p002&#x27;],1e-15) for x in mchecks])),
+                      &#x27;checks&#x27;: mchecks}}
+    dest = Path(__file__).resolve().parent / &#x27;results&#x27; / &#x27;synthetic_checks.json&#x27;
+    dest.parent.mkdir(exist_ok=True)
+    dest.write_text(json.dumps(out, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in out.items() if k != &#x27;weak_bias&#x27;}, indent=2))
+    print(json.dumps({k:v for k,v in out[&#x27;weak_bias&#x27;].items() if k != &#x27;checks&#x27;}, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre></main>

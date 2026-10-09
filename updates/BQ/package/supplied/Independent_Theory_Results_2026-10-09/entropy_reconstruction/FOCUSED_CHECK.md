@@ -1,0 +1,52 @@
+# Focused proof check of the full class sliced entropy modulus
+
+Date: 2026-10-09
+
+## Conclusion and scope
+
+No blocking mathematical error was found in (C15), its proof, or the conclusion that the supremal uniform power exponent is
+
+\[
+\alpha_d=\min\{1/2,4/(d+3)\},\qquad d\ge2,
+\]
+
+for every fixed nontrivial curvature interval \(m<1<M\). The stated logarithmic powers, \(5/4\) for \(2\le d\le5\) and \(d/4\) for \(d\ge6\), follow from the displayed cutoff estimates. This is one focused proof check, not external certification. It does not establish a log-free endpoint or novelty.
+
+Checked source: `sliced_marginal_observability.md`, SHA-256 `01cc638c765f795fd255e10a24d4488aa7fc786785243201f7d5d73d624dedd0`. The main proof and the two counterfamilies needed for its sharp power threshold were checked directly; the harmonic calculation supplies a redundant two-dimensional obstruction.
+
+## Upper bound checks
+
+1. **Uniform constants.** Integration by parts gives
+   \(d\ge m(d+|x_0|^2)\), so the mode is uniformly bounded. Normalizing the two quadratic bounds about the mode gives (C12), with constants depending only on \((d,m,M)\). Consequently the second derivatives of \(p\) are uniformly square integrable, because
+   \(D^2p=p(\nabla V\otimes\nabla V-D^2V)\), \(|\nabla V|\le M|x-x_0|\), and \(p\) has a uniform Gaussian upper envelope. Thus the source has a uniform homogeneous \(H^2\) bound. The same envelopes bound both directed entropies and all quadratic-weighted tails.
+
+2. **Scalar KL to slice norm.** The stated scalar inequality is sufficient: if \(p_u\) and \(\gamma_1\) are uniformly bounded above, integration yields \(D(p_u\|\gamma_1)\ge c\|p_u-\gamma_1\|_2^2\). A direct alternative to the one-dimensional log-concavity lemma is to integrate the Gaussian upper envelope over \(u^\perp\). It gives the required uniform marginal bound with constants depending on \((d,m,M)\).
+
+3. **Fourier and low frequencies.** Plancherel, the Fourier-slice identity, and polar coordinates give
+   \(A_0\asymp\int|\widehat\delta(\xi)|^2|\xi|^{-(d-1)}\,d\xi=\|\delta\|_{\dot H^{-s}}^2\), \(s=(d-1)/2\). The singular weight is locally integrable: its radial volume factor is exactly \(dr\). Since \(\delta\in L^1\), boundedness of \(\widehat\delta\) already suffices here. The stated zero-moment and third-moment argument is valid but unnecessary for this particular norm. The source and cutoff function are in ordinary \(L^2\), so Fourier Cauchy–Schwarz justifies the homogeneous dual pairings without a quotient-by-polynomials ambiguity.
+
+4. **Entropy test and moment correction.** For \(\phi=\log(p/\gamma_d)\), its Hessian, value at zero, and gradient at zero are uniformly bounded. Subtracting its quadratic Taylor polynomial leaves \(|\psi|\le C|x|^2\), \(|\nabla\psi|\le C|x|\), and \(|D^2\psi|\le C\); no third derivative is required. Exact centering and isotropy imply \(\int\delta P_2=0\). Both KL terms are finite, and
+   \(D(p\|\gamma_d)\le\int\delta\psi\) follows from the symmetrized-entropy identity. Applying the cutoff after this global cancellation is legitimate; its omitted term has a uniformly Gaussian quadratic-weighted tail.
+
+5. **Cutoff exponents.** The three product-rule terms in \(D^2(\chi_R\psi)\) are each pointwise bounded on \(B_{2R}\). Hence
+   \(\|\chi_R\psi\|_2\le CR^{d/2+2}\) and \(\|\chi_R\psi\|_{\dot H^2}\le CR^{d/2}\). For \(s\le2\), interpolation gives \(\|\chi_R\psi\|_{\dot H^s}\le CR^{d/2+2-s}=CR^{5/2}\), producing \(CS^{1/2}R^{5/2}\). For \(s>2\), the interpolation equation \(-2=-s\vartheta+2(1-\vartheta)\) gives \(\vartheta=4/(s+2)=8/(d+3)\). The source \(\dot H^{-2}\) norm is therefore at most \(CS^{4/(d+3)}\), producing \(CS^{4/(d+3)}R^{d/2}\). Setting \(R^2=K\log(e+1/S)\) proves exactly the claimed log powers. Fixed sufficiently large \(K\) absorbs the tail. Uniform entropy bounds handle \(S\ge1\); \(S=0\) forces \(\delta=0\).
+
+## Counterfamily checks
+
+- **Compact oscillations.** The fixed finite moment system is invertible; its residual coefficients decay faster than any power of the carrier frequency. Reflection and transverse permutation symmetries give all first and second moments exactly. Amplitude \(\kappa\lambda^{-2}\) keeps the Hessian perturbation bounded by \(C\kappa+o(1)\). The separated Schwartz Fourier packets give \(D\asymp\lambda^{-4}\), \(S\asymp\lambda^{-(d+3)}\), and a uniform \(H^2\) budget. Thus every exponent above \(4/(d+3)\) fails.
+
+- **Remote transverse packet.** The bracket in (B8) simplifies to
+  \([q(1+s^2)+zs^2]/(1-z+s^2)\). At fixed \(z\), it is minimized by \(q=0\). The remaining function
+  \(c_0^2zs^2/(1-z+s^2)+(1+s^2+z)^{-1}\) is strictly convex and has positive derivative at zero under (B1). Its two sphere minima are nondegenerate at \(\pm e_2\). Thus the angular factor is \(R^{-(d-1)}\), and the real cosine has the claimed half-envelope lower bound on those caps. The squared moment-correction norm decays at exponential rate \(c_0^2+(1+s^2)^{-1}\), faster than both relevant main terms; its cross terms are negligible by Cauchy–Schwarz. Consequently (B5) and (B11) give the obstruction \(\theta_s=(1+s^2)/(2+s^2)\). For any proposed \(\alpha>1/2\), choose \(s\) first with \(\theta_s<\alpha\), fix \(c_0\) satisfying (B1), and then let \(R\to\infty\).
+
+- **Any fixed nontrivial curvature interval.** In both families the Hessian perturbation is bounded by \(C\kappa+o(1)\); for the remote family its leading term is bounded by \(\kappa\), with the fixed-width envelope derivatives becoming lower order as \(R\to\infty\). Choose the fixed amplitude small enough in terms of \(\min(1-m,M-1)\), then increase the asymptotic cutoff. This explicitly extends the examples written with bounds \([1/2,3/2]\) to every fixed \(m<1<M\), without changing any obstruction exponent.
+
+- **Harmonic cross-check.** The Laguerre generating function, negative-binomial weights, and eigenvalue normalization in (C6)–(C8) agree. The summand rate has its unique saddle at \(j/n=\beta/2\), yielding (C9). Running `check_harmonic_frame.py` reproduced convergence toward the stated rate for its four fixed test widths. That finite numerical check is ancillary, not a proof or a uniform error bound. The harmonic family is stated in dimension two; the remote packet already supplies the required obstruction for every \(d\ge2\).
+
+## Presentation fixes and boundaries
+
+- Replace “This yields the compact-class exponents on the full uniformly strongly log-concave class” before (C15) with “This yields the matching power threshold on the full uniformly strongly log-concave class.” For \(d=2,3,4\), the full-class power \(1/2\) is strictly smaller than the compact-class power \(4/(d+3)\).
+- It would help to state the amplitude-shrinking argument above immediately after the exponent-supremum conclusion. Its absence is a minor omitted explanation, not a failure of the construction.
+- Keep \(d\ge2\) explicit. In dimension one, \(S_D=D\) exactly, so the supremal power is 1 on a nontrivial class; the displayed \(\alpha_d\) formula must not be extended to that case.
+- The log losses imply every smaller power; the counterfamilies exclude every larger power. Neither step determines the log-free endpoint. The proof check makes no literature-priority determination and introduces no claim about full-class Fisher information.
+
