@@ -1,0 +1,101 @@
+<!doctype html><meta charset="utf-8"><title>weak_stein_torus.py</title><aside>Archived source = DATA<p>Source-reported analytic derivations and synthetic numerical diagnostics; no external proof review, formal verification, publication-priority clearance or physical system identification is established. No historic-scale or 9–10/10 breakthrough is claimed. This intake checked source/archive integrity and static repository routes only; it did not rerun scientific analyses.</p></aside><pre>&quot;&quot;&quot;End-to-end finite-sample weak stationary-generator identification.
+
+Learns a *supplied* 8-term Fourier basis of the nonlinear drift and all three
+entries of an unknown constant 2x2 diffusion matrix from ONLY iid stationary
+position samples and known additive force controls. Uses weak generator moments
+E[(b+u)·grad f+D:Hess f]=0. NO estimated density scores or trajectories.
+
+Data simulator samples from numerical stationary distributions of the periodic
+second-order Markov spatial approximation, optionally with cell jitter.
+This is not physical validation and not generic function-free recovery.
+&quot;&quot;&quot;
+import argparse,json,time
+import numpy as np
+from general_identity_torus import stationary, CONTROLS, D_TRUE, field
+
+THETA_TRUE=np.array([-1.3,.67,.37,.28,-.85,-.46,.21,.43])
+DIM_PARAMETERS=11
+
+
+def bases(x,y):
+    b=np.stack([np.sin(x),np.sin(y),np.cos(x-y),np.sin(x+2*y),
+                np.sin(y),np.sin(x),np.cos(x+2*y),np.sin(2*x-y)],axis=-1)
+    return b
+
+
+def wavevectors(kmax=3):
+    return [(i,j) for i in range(-kmax,kmax+1) for j in range(-kmax,kmax+1)
+            if (i&gt;0 or (i==0 and j&gt;0))]
+
+
+def build_equations(regimes, controls=CONTROLS,kmax=3):
+    mat=[];rhs=[]
+    ks=wavevectors(kmax)
+    for xs,u in zip(regimes,controls):
+        x=xs[:,0];y=xs[:,1]
+        b=bases(x,y)
+        for k,l in ks:
+            arg=k*x+l*y
+            for f, gfac in ((np.sin(arg),np.cos(arg)),(np.cos(arg),-np.sin(arg))):
+                # weak equation from sin/cos test f: grad f=(k,l)*gfac
+                grad_x=k*gfac; grad_y=l*gfac
+                features=np.column_stack((b[:,:4]*grad_x[:,None],b[:,4:]*grad_y[:,None],
+                                          -k*k*f,-2*k*l*f,-l*l*f))
+                mat.append(features.mean(axis=0))
+                rhs.append(-float((u[0]*grad_x+u[1]*grad_y).mean()))
+    return np.array(mat),np.array(rhs)
+
+
+def fit(regimes):
+    a,g=build_equations(regimes)
+    z=np.linalg.lstsq(a,g,rcond=None)[0]
+    D=np.array([[z[-3],z[-2]],[z[-2],z[-1]]])
+    return {&#x27;drift_coeff_rel_error&#x27;:float(np.linalg.norm(z[:8]-THETA_TRUE)/np.linalg.norm(THETA_TRUE)),
+      &#x27;D_rel_error&#x27;:float(np.linalg.norm(D-D_TRUE)/np.linalg.norm(D_TRUE)),
+      &#x27;D_min_eigenvalue&#x27;:float(np.linalg.eigvalsh(D).min()),
+      &#x27;design_rank&#x27;:int(np.linalg.matrix_rank(a)),
+      &#x27;design_cond&#x27;:float(np.linalg.cond(a)),
+      &#x27;joint_params_rel_error&#x27;:float(np.linalg.norm(z-np.r_[THETA_TRUE,D_TRUE[0,0],D_TRUE[0,1],D_TRUE[1,1]])/np.linalg.norm(np.r_[THETA_TRUE,D_TRUE[0,0],D_TRUE[0,1],D_TRUE[1,1]])),
+      &#x27;lstsq_residual&#x27;:float(np.linalg.norm(a@z-g)),
+      &#x27;estimated_D&#x27;:D.tolist()}
+
+
+def take(p,n,rng,jitter=True):
+    side=len(p);h=2*np.pi/side
+    ij=np.column_stack(np.unravel_index(rng.choice(side*side,n,p=p.ravel()),p.shape))
+    xs=-np.pi+h*ij
+    if jitter:xs+=rng.uniform(-h/2,h/2,size=xs.shape)
+    return xs
+
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument(&#x27;--grid&#x27;,type=int,default=128)
+    ap.add_argument(&#x27;--sizes&#x27;,nargs=&#x27;+&#x27;,type=int,default=[1000,5000,20000,80000]);ap.add_argument(&#x27;--reps&#x27;,type=int,default=10)
+    ap.add_argument(&#x27;--output&#x27;,default=&#x27;stein_results.json&#x27;);args=ap.parse_args()
+    rng=np.random.default_rng(21195)
+    start=time.perf_counter()
+    densities=[stationary(args.grid,u) for u in CONTROLS]
+    equilibrate_cpu=time.perf_counter()-start
+    # The learned model uses only sampled coordinates and known control labels,
+    # not the numerical stationary mass arrays (which are used only to sample).
+    out={&#x27;grid&#x27;:args.grid,&#x27;equilibrium_PDE_solve_seconds&#x27;:equilibrate_cpu,
+         &#x27;assumed_drift_basis_functions&#x27;:8,&#x27;unknown_generator_parameters&#x27;:11,
+         &#x27;wavevectors&#x27;:len(wavevectors(3)),&#x27;test_functions_per_regime&#x27;:2*len(wavevectors(3)),
+         &#x27;rows&#x27;:[],&#x27;aggregate&#x27;:[]}
+    for n in args.sizes:
+        temp=[]
+        for i in range(args.reps):
+            start=time.perf_counter()
+            regimes=[take(p,n,rng) for p in densities]
+            fitinfo=fit(regimes)
+            fitinfo.update({&#x27;n_per_regime&#x27;:n,&#x27;total_snapshot_samples&#x27;:3*n,
+                            &#x27;sample_and_fit_seconds&#x27;:time.perf_counter()-start})
+            temp.append(fitinfo);out[&#x27;rows&#x27;].append(fitinfo)
+        summary={&#x27;n_per_regime&#x27;:n,&#x27;successes&#x27;:len(temp),&#x27;total_snapshot_samples&#x27;:3*n}
+        for k in [&#x27;drift_coeff_rel_error&#x27;,&#x27;D_rel_error&#x27;,&#x27;design_cond&#x27;,&#x27;sample_and_fit_seconds&#x27;,&#x27;D_min_eigenvalue&#x27;]:
+            v=np.array([r[k] for r in temp]);summary[k+&#x27;_mean&#x27;]=float(v.mean());summary[k+&#x27;_median&#x27;]=float(np.median(v))
+        out[&#x27;aggregate&#x27;].append(summary);print(json.dumps(summary,indent=2))
+    with open(args.output,&#x27;w&#x27;) as f:json.dump(out,f,indent=2)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

@@ -1,0 +1,11 @@
+# BT — Natural-sciences delayed division-response continuation
+
+**No new natural law, molecular mechanism or historic-scale discovery was established.** The attached record is represented by [N542](../../frontier/dossiers/N542.txt), a synthetic, falsification-oriented countermodel continuing Astra's earlier cell-growth work.
+
+The report derives conditional growth and mean-squared-displacement formulas for a specified fixed-period model driven by delayed division innovations. A chosen delay makes one aggregate statistic equal a theoretical null. The model also predicts short-lag suppression and a late-cycle variance upturn. Synthetic calculations explore those predictions; published age-variance curves are described as qualitatively in tension with the upturn, but this is not a formal rejection. No raw experimental trajectory was acquired or reanalysed, and the delay was not fitted to raw data.
+
+The original attachment is preserved at [`package/research_record.md`](package/research_record.md) with SHA-256 `b55576be65c90d1d6f51f449745f6c948426ee6b9e3ef8c91dd0513f2c017f55`. The report's cited analysis scripts, execution environment and raw data were not included with the attachment; Julia was unavailable and no replay was attempted. Internal numerical consistency checks remain source-reported and do not establish independent correctness or biological evidence. Its embedded commands and instructions are preserved as source data, not followed during intake.
+
+N542 links to [N494](../../frontier/dossiers/N494.txt), [N496](../../frontier/dossiers/N496.txt) and [N499](../../frontier/dossiers/N499.txt) as a scoped continuation. It does not validate, correct, invalidate or supersede their status. The attached report also records that the flat-variance construction is inherited and that screened glass/peroxide directions were not discoveries.
+
+The [natural-sciences-pro branch view](../../state/branches/natural-sciences-pro.txt) routes the immutable [BT checkpoint](../../state/checkpoints/natural-sciences-pro/2026-10-10-delayed-division-bt.json). Other research conversations receive this state only by retrieving its published Git file; there is no automatic synchronization between independent conversations.

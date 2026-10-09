@@ -1,0 +1,45 @@
+Adaptive directed-feedback correction: a certified conditional solver, with a known Woodbury core
+
+Verdict: there is a concrete positive theorem for explicit sparse nonsymmetric A when a triangular part is stable and the propagated feedback has small certified spectral norm after a low-rank fit. The construction is adaptive and its original-residual convergence is certifiable. Its central algebra is the standard Woodbury / low-rank Schur-complement mechanism, so this pass does not establish novelty or a uniform advantage for general sparse matrices.
+
+Interface and construction
+
+Take an explicitly supplied sparse matrix A and a fixed permutation. Split it, by one scan of the entries, as A=L+R, where L contains the diagonal and strict lower triangle and R contains the strict upper triangle. Assume L is nonsingular. Define K=L⁻¹R. The proposed setup never materializes K: a product Kz is one sparse R product and one triangular solve with L; Kᵀz is one triangular solve with Lᵀ and one sparse Rᵀ product.
+
+For a trial rank q, draw an independent Gaussian training matrix Ω∈Rⁿˣq, form Y=KΩ, and compute an orthonormal basis Q for its range, discarding numerically dependent columns. Then compute V=KᵀQ and set K₀=QVᵀ, E=K−K₀. Thus K₀=QQᵀK is the orthogonal projection of K onto the acquired range. The rank is increased when the subsequent certificate does not pass. Freeze Q and V before drawing the certificate vectors; if another rank is tried, use a fresh validation batch and allocate its failure probability so the sum across attempts is at most the requested δ.
+
+Let C=Iq+VᵀQ and H=I+QVᵀ. Reject if C is singular. The Woodbury identity gives H⁻¹=I−QC⁻¹Vᵀ. Form the right preconditioner as an operator P=H⁻¹L⁻¹; its action uses a triangular solve, a q-dimensional solve, and two dense n-by-q products. No dense inverse is stored.
+
+The hard step is certifying that the residual E is small enough after it has been acquired. Draw t fresh independent standard Gaussian vectors g₁,…,gₜ and compute s=maxⱼ||Egⱼ||₂, with Eg=L⁻¹Rg−QVᵀg. Then, for fixed E,
+
+  Pr{ ||E||₂ ≤ 4s } ≥ 1−2⁻ᵗ.
+
+Proof: take a unit top right singular vector v of E. For each j, ||Egⱼ||₂≥||E||₂ |vᵀgⱼ|, and vᵀgⱼ is standard normal. Its density is at most 1/√(2π), so Pr{|vᵀgⱼ|<1/4}≤(1/2)/√(2π)<1/2. The probability all t projections are below 1/4 is therefore at most 2⁻ᵗ. On the complementary event, one observed norm is at least ||E||₂/4. Independence after Q,V are frozen is essential; reusing training vectors would not support this certificate.
+
+Let a≥||L||₂ and g≥||L⁻¹||₂ be verified upper bounds. The split itself supplies cheap conservative bounds when useful: writing L=D+N, if q₀=√(||D⁻¹N||₁||D⁻¹N||∞)<1, then g=maxᵢ|dᵢ|⁻¹/(1−q₀); also a=√(||L||₁||L||∞) is valid. These quantities are computable from the explicit entries in O(nnz(A)) work. Let c=||C⁻¹||₂ and use β=1+c||V||F, which bounds ||H⁻¹||₂. Set η=4s and ρ=agβη. Accept only if ρ<1.
+
+Certified solver theorem
+
+Since A=L(I+K) and K=QVᵀ+E, direct multiplication gives
+
+  AP = L(I+K)H⁻¹L⁻¹ = I + L E H⁻¹ L⁻¹.
+
+Hence ||I−AP||₂≤agβ||E||₂≤ρ on the certificate event. Right-preconditioned GMRES solves APy=b and returns x=Py, so its residual is the original residual b−Ax. The GMRES polynomial characterization, with the admissible choice pₖ(z)=(1−z)ᵏ, yields
+
+  ||b−Axₖ||₂ / ||b||₂ ≤ ρᵏ.
+
+Thus k≥log(1/ε)/log(1/ρ) iterations suffice for relative residual ε (with the usual ceiling; ρ=0 is the exact case). This is an original-residual statement and does not require converting a left-preconditioned residual. A forward-error claim additionally needs κ₂(A), since ||xₖ−x*||₂/||x*||₂≤κ₂(A)||b−Axₖ||₂/||b||₂.
+
+Explicit costs and limits
+
+With q training columns and t certificate probes, setup costs O((q+t)nnz(A)+nq²+nqt+q³) arithmetic and O(nnz(A)+nq+q²) storage, apart from the cost of selecting a better permutation. Each K or Kᵀ application costs O(nnz(A)); forming Q, V, and the core uses q such applications plus orthogonalization and an order-q factorization. Each P application costs O(nnz(L)+nq+q²). A right-GMRES iteration additionally costs one A product, O(nnz(A)), and Krylov orthogonalization; with restart length m this is O(nm) work per iteration and O(nm) basis storage. Setup is reusable across right-hand sides. If q,t=O(1), the certified setup is linear in nnz(A), each iteration is linear in nnz(A), and the iteration count is logarithmic in 1/ε. The algorithm can also return “certificate failed”; no fast solve is claimed when the propagated feedback remains high rank or the triangular bounds are poor.
+
+This is an exact-arithmetic theorem plus a probabilistic real-Gaussian certificate. For floating point, triangular solves must be performed at precision with γₙ g a₊<1/4, where γₙ=n u/(1−n u), u is unit roundoff, and a₊≥|| |L| ||₂ is computed from sparse row/column sums. This is a sufficient condition for the computed triangular solve’s backward perturbation to remain small; it forces p-bit precision on the order of log₂(n g a₊) or higher. The validation products and the final b−Ax residual must use outward-rounded error bounds; their errors are added to s and to the reported residual. The current theorem does not give a full finite-precision QR/core analysis, a bound on rank inflation from numerical conditioning, or a guaranteed successful rank cap. Reordering and pivoting are charged; a zero or tiny diagonal may force fill and invalidate the stated sparse setup cost.
+
+Concrete sparse family and collapse to prior art
+
+For any sparse lower-triangular L satisfying the stated stability bound and any sparse rank-r feedback R=UVᵀ, K=L⁻¹UVᵀ has rank at most r. If U is dense but V is supported on r coordinate columns, R still has O(nr) entries. A Gaussian training sketch with q≥r captures range(K) with probability one in exact arithmetic; then E=0 and the preconditioner is exact. Setup costs O(r nnz(A)+nr²+r³), a solve costs O(nnz(L)+nr+r²), and the independent holdout verifies the zero residual up to finite precision. A simple example is a sparse directed chain L closed by one feedback edge R=uvᵀ. This demonstrates that sparse causal propagation plus a small number of global feedback ports can be solved with linear sparse work even when the inverse is dense.
+
+The algebra is Woodbury, and low-rank Schur-complement preconditioners for general sparse, including nonsymmetric, systems are established prior art. Zheng, Xi, and Saad’s “A Power Schur Complement Low-Rank Correction Preconditioner for General Sparse Linear Systems” (SIAM J. Matrix Anal. Appl. 42(2), 2021; https://doi.org/10.1137/20M1316445; full text https://www-users.cse.umn.edu/~saad/PDF/ys-2021-02.pdf) combines a Schur split, power expansion, and low-rank correction, with numerical robustness evidence. Halko, Martinsson, and Tropp’s “Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions” (SIAM Review 53(2), 2011; https://arxiv.org/abs/0909.4061) supplies the randomized range-finding framework. The independent holdout inequality above is a short derived norm certificate, but it does not by itself turn the known Woodbury framework into a new algorithmic result. The potentially useful difference is its direct certification of the full right-preconditioned operator in the original residual norm, without assembling a Schur complement; whether this is practically better remains untested.
+
+Next proof gate: produce a finite-precision version with a verified, nonvacuous norm bound for every triangular solve, QR step, core solve, and holdout product, then test whether adaptive q remains small on a named nonsymmetric sparse family outside the usual domain-decomposition and elliptic setting. Without both gates, this is a conditional synthesis of known algorithms, not a new fast solver.

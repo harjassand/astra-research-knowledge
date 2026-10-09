@@ -1,0 +1,74 @@
+EXACT INDEXED SOURCE RANGE | {"path": "updates/BZ/package/RESEARCH_NOTE.md", "sha256": "7ab8ed125359762facb5008e16819b4e3e1cfab5b0cfbe884c33e7a8484fff0a", "lines": [47, 116], "range_scope": "source-reported argument/evidence; completeness and correctness not independently audited", "read_path": "updates/BZ/package/RESEARCH_NOTE.md", "source_id": "d-25ebc2afa837d5a8", "hash_kind": "original_utf8_bytes"}
+range_sha256=7ae52b3b4b9ad7a2d04f9d8cdf2c82b7703efda7da81ce8e75bea2598b066698; line numbers refer to the source, not this wrapper.
+Scope: located text only; imported premises, completeness, correctness and priority remain unverified.
+--- BEGIN SOURCE BYTES ---
+## 3. Exact support encoding theorem
+
+For each subset `S subseteq [d]`, set `x(S)_i = M` for `i in S` and `0` otherwise, with `M >= k`. Let
+
+    q(S) = lim_{t downarrow 0} Pr_{x(S)}[X_t != x(S)] / t.
+
+Then
+
+    q(S) = sum_{A subseteq S} theta_A,
+
+where
+
+    theta_A = sum_{r: supp(alpha_r)=A}
+                 kappa_r * prod_{i in A} binom(M,alpha_{ri}).
+
+Every present `theta_A > 0`; if every reaction rate is at least `kappa_min`, then `theta_A >= kappa_min`. Every support has `|A| <= k`, and there are at most `R` different supports. The function `q` is therefore a nonnegative, sparse multilinear polynomial in the occupancy bits `b_i=1[i in S]`:
+
+    q(b) = sum_A theta_A prod_{i in A} b_i.
+
+**Proof.** At deterministic `x`, CTMC transition theory gives `Pr_x(X_t != x) = Lambda(x)t + O_x(t^2)` where `Lambda(x)=sum_r lambda_r(x)` over non-null channels; this follows immediately by separating one- and multiple-jump histories. For `x(S)`, `lambda_r(x(S))` vanishes unless all consumed species in `supp(alpha_r)` lie in `S`, since `binom(0,a)=0` for any `a>=1`. Otherwise the factor is exactly `kappa_r prod_i binom(M,alpha_{ri})`, independent of the other members of `S`. Group reactions by reactant support. Strict positivity comes from mass-action positivity and `M>=k>=alpha_{ri}`. QED.
+
+**Why positivity matters.** Mean population drift `E[L X_i]` contains signed increments `nu_{ri}`, so opposing reactions can cancel identically. The exit hazard is a *positive sum*, preserving a nonzero witness for every enabled support. This is an established class of monotone-additive encoding, not proof of a new mathematical primitive.
+
+## 4. Constructive positive-Fourier support peeling
+
+Define, for `B subseteq [d]`, with `b_i` independent unbiased bits:
+
+    C(B) = E_b [ q(b) * prod_{i in B}(2b_i-1) ]
+         = sum_{A superseteq B} theta_A * 2^{-|A|}.
+
+If `H` is disjoint from `B`, let `C_0(B;H)` be the same expectation with `b_i=0` for `i in H` (the other bits independent and unbiased). Then
+
+    C_0(B;H) = sum_{A superseteq B, A intersect H = empty}
+                     theta_A * 2^{-|A|}.
+
+Consequently,
+
+    D(B,H) = C(B)-C_0(B;H)
+           = sum_{A superseteq B, A intersect H != empty}
+                     theta_A * 2^{-|A|}.
+
+This difference is strictly positive **if and only if** there is a still-unrecovered reactant support that contains `B` and at least one element of `H`. Its smallest nonzero value is at least `kappa_min * 2^{-k}`.
+
+**Proof of Fourier identity.** Each monomial indexed by `A` factorizes. If `B` is not a subset of `A`, an independent factor `(2b_i-1)` has zero expectation. If `B subseteq A`, then `E[b_i(2b_i-1)]=1/2` for each `i in B` and `E[b_i]=1/2` for each `i in A\B`, yielding `2^{-|A|}`. Forcing `H` absent kills exactly the monomials meeting `H`. QED.
+
+**Algorithm (`PositivePeel`).**
+
+```
+found = {}
+while residual C(empty) > 0:
+    B = empty
+    while D(B, [d] \ B) > 0:
+        H = [d] \ B
+        binary-search subsets of H with D(B, candidate) > 0
+        add the discovered coordinate to B
+    theta_B = sum_{T subseteq B} (-1)^(|B|-|T|) q(T)
+    found[B] = theta_B
+    subtract theta_B * prod_{i in B} b_i from all future correlations
+return found
+```
+
+Each `D` uses two correlation evaluations; a binary search identifies a new necessary coordinate in `O(log d)` queries. Each support contains at most `k` coordinates. The inclusion-exclusion expression for its weight is precisely Boolean Möbius inversion and costs `2^{|B|} <= 2^k` additional ordinary exit queries.
+
+**Correctness.** A positive `D(B,H)` means an extension support exists; a positive sub-half exists whenever a positive full group exists. Inductively `B` remains contained in at least one true support until no further extension is possible. Then `B` itself is a maximal true support, because otherwise `D(B,[d]\B)>0`. Möbius inversion extracts its exact coefficient even in the presence of nested supports. Removing that monomial preserves nonnegativity of the remaining representation. Each iteration removes a distinct positive support. If the only remaining support is `empty`, the method returns it (the extension condition is immediately false). Thus it terminates after at most `R` iterations and finds every support exactly, in
+
+    O(R [ (k+1) log(d+1) + 2^k ])
+
+exact *correlation/point-query types*. Each correlation is an expectation, not a cost-free primitive: physical sampling cost is analyzed in Section 6.
+
+**Important predecessor.** Additive weighted hypergraph reconstruction is a well-established problem, with Bshouty--Mazzawi (STACS 2010) obtaining `O(m log n / log m)` *exact additive oracle* queries for constant-rank weighted hypergraphs. `PositivePeel` is an elementary constructive decoder, **not** a claim to optimality or priority in hypergraph algorithms.

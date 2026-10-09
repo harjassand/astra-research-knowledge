@@ -1,0 +1,94 @@
+<!doctype html><meta charset="utf-8"><title>entropy_production_experiment.py</title><aside>Archived source = DATA<p>Source-reported analytic derivations and synthetic numerical diagnostics; no external proof review, formal verification, publication-priority clearance or physical system identification is established. No historic-scale or 9–10/10 breakthrough is claimed. This intake checked source/archive integrity and static repository routes only; it did not rerun scientific analyses.</p></aside><pre>&quot;&quot;&quot;Static recovery of irreversible entropy production in a known quartic-potential family.
+
+FULL model acquisition: samples from 4 perturbed stationary densities; logistic
+ratios for B; baseline score matching of all unknown H and quartic coefficient;
+plug-in reconstruction of the stationary current and physical entropy production.
+
+The quartic parametrization is SUPPLIED, not discovered from data.
+This is a synthetic demonstration under restrictive, testable structure.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse,json,time
+import numpy as np
+from stationary_tilt_experiment import (H,QUARTIC,D,K,B,A_TRUE,U,DIM,
+        sample_exact,estimate_ratio)
+
+
+def fit_potential(x):
+    n,d=x.shape
+    # Symmetric H_ij (diagonal d, then i&lt;j), plus isotropic quartic parameter.
+    hs=[];ds=[]
+    for i in range(d):
+        h=np.zeros((d,d));h[i,i]=1
+        hs.append(h);ds.append(-1.)
+    for i in range(d):
+        for j in range(i+1,d):
+            h=np.zeros((d,d));h[i,j]=h[j,i]=1
+            hs.append(h);ds.append(0.)
+    feature=np.stack([-x@h for h in hs]+[-x**3],axis=-1)
+    G=np.einsum(&#x27;ndp,ndq-&gt;pq&#x27;,feature,feature)/n
+    div=np.array(ds +[-3.*np.sum(x*x)/n])
+    params=np.linalg.solve(G,-div)
+    Hhat=np.einsum(&#x27;p,pij-&gt;ij&#x27;,params[:-1],np.array(hs))
+    lam=params[-1]
+    return Hhat,lam
+
+
+def ep_from_samples(x, Bhat,Hhat,lam):
+    Dhat=(Bhat+Bhat.T)*0.5
+    Khat=(Bhat-Bhat.T)*0.5
+    if np.linalg.eigvalsh(Dhat).min()&lt;=0:return float(&#x27;nan&#x27;)
+    s=-x@Hhat-lam*x**3
+    current=s@Khat.T
+    return float(np.einsum(&#x27;ni,ij,nj-&gt;&#x27;,current,np.linalg.inv(Dhat),current)/len(x))
+
+
+def replicate(n, rng, ref):
+    start=time.perf_counter()
+    x0,queries=sample_exact(n,np.zeros(DIM),rng)
+    a_log=np.zeros((DIM,DIM));a_moment=np.zeros_like(a_log)
+    mean=x0.mean(axis=0);cov=np.cov(x0.T)
+    for i in range(DIM):
+        xi,q=sample_exact(n,A_TRUE[:,i],rng);queries+=q
+        a_log[:,i]=estimate_ratio(x0,xi)
+        a_moment[:,i]=np.linalg.solve(cov,xi.mean(axis=0)-mean)
+    Bhat=U@np.linalg.inv(a_log)
+    Bmom=U@np.linalg.inv(a_moment)
+    Hhat,lam=fit_potential(x0)
+    ep_hat=ep_from_samples(x0,Bhat,Hhat,lam)
+    ep_moment=ep_from_samples(x0,Bmom,Hhat,lam)
+    return {&#x27;n_per_regime&#x27;:n,&#x27;total_samples&#x27;:4*n,&#x27;generator_proposals&#x27;:queries,
+            &#x27;generation_and_analysis_seconds&#x27;:time.perf_counter()-start,
+            &#x27;estimated_potential_lambda&#x27;:float(lam),
+            &#x27;potential_H_rel_error&#x27;:float(np.linalg.norm(H-Hhat)/np.linalg.norm(H)),
+            &#x27;entropy_production_estimate&#x27;:ep_hat,
+            &#x27;entropy_production_rel_error&#x27;:abs(ep_hat-ref)/ref,
+            &#x27;moment_based_entropy_prod&#x27;:ep_moment,
+            &#x27;moment_based_entropy_prod_rel_error&#x27;:abs(ep_moment-ref)/ref,
+            &#x27;true_entropy_production&#x27;:ref}
+
+
+def main():
+    p=argparse.ArgumentParser();p.add_argument(&#x27;--n&#x27;,nargs=&#x27;+&#x27;,type=int,default=[2000,8000,32000]);p.add_argument(&#x27;--reps&#x27;,type=int,default=12);p.add_argument(&#x27;--output&#x27;,default=&#x27;entropy_production_results.json&#x27;);args=p.parse_args()
+    rng=np.random.default_rng(726212)
+    # Independently acquired reference with accounted proposals
+    ref_samples,ref_queries=sample_exact(750000,np.zeros(DIM),rng)
+    ref=ep_from_samples(ref_samples,B,H,QUARTIC)
+    out={&#x27;known_potential_family&#x27;:&#x27;symmetric-quadratic + shared quartic&#x27;,
+          &#x27;reference_entropy_production&#x27;:ref,&#x27;reference_samples&#x27;:len(ref_samples),
+          &#x27;reference_proposals&#x27;:ref_queries,&#x27;rows&#x27;:[],&#x27;aggregate&#x27;:[]}
+    del ref_samples
+    print(&#x27;Reference entropy-production:&#x27;,ref,&#x27;reference proposals:&#x27;,ref_queries)
+    for n in args.n:
+        rows=[]
+        for i in range(args.reps):
+            v=replicate(n,rng,ref);rows.append(v);out[&#x27;rows&#x27;].append(v)
+        summary={&#x27;n_per_regime&#x27;:n,&#x27;replications&#x27;:len(rows)}
+        for key in [&#x27;entropy_production_rel_error&#x27;,&#x27;moment_based_entropy_prod_rel_error&#x27;,&#x27;potential_H_rel_error&#x27;,
+                    &#x27;generation_and_analysis_seconds&#x27;,&#x27;generator_proposals&#x27;,&#x27;estimated_potential_lambda&#x27;]:
+            data=np.array([r[key] for r in rows]);summary[key+&#x27;_mean&#x27;]=float(data.mean());summary[key+&#x27;_median&#x27;]=float(np.median(data))
+        out[&#x27;aggregate&#x27;].append(summary);print(json.dumps(summary,indent=2))
+    with open(args.output,&#x27;w&#x27;) as f:json.dump(out,f,indent=2)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

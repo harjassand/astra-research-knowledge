@@ -1,0 +1,36 @@
+DISPLACED REFERENCE PRECISION FAILURE — observed before author repair
+
+The original ParityEnvelope constructor called v.upper() after leaving the
+high-precision context of _logweight_narrow. Python-flint endpoint extraction
+rounds at the current context precision (53 bits by default). A tiny radius on
+a very large log center therefore did not imply an equally narrow extracted
+endpoint. This broke the claimed lower bound on normalized target mass.
+
+Observed command constructed ParityEnvelope(Fraction(0),Fraction(1),Fraction(1),
+10**20,Fraction(1,1000)) at default precision and then independently evaluated
+_logweight_narrow(reference_k,30) under ctx.workprec(512).
+Observed pre-repair values:
+  reference = -4505170185968091136000
+  reference - accurate_logweight(reference_k) = 232085.29142682820668...
+  exp(accurate_logweight-reference) = 4.351133620806839...e-100794
+  grid_bits = 84
+  bounds(reference_k) = (0,1)
+  draw(Random(1)) = 99999999990000000000
+  used_fallback = True
+  last_attempts = 2304
+
+The same run at h=100 had reference gap 2.3190338e-14, and at h=10**10
+gap 2.844050987e-5. Thus small-h tests missed the large-log-center defect.
+The raw run was delivered by exec tool before the source patch; no frozen
+pre-patch source hash was captured, so this note does not invent one.
+
+The parent independently found the endpoint issue and notified the author.
+After the repair, source hash
+1d8d1b1f4ea541469233f3b44f3e54532b4daa274027c666cc058fb7e7d4c589
+extracts both upper/lower endpoints in a high-precision context and checks
+the resulting width. Saved post-repair reproduction is repro_reference.json:
+  h=10**20 reference gap about 1.36e-93,
+  normalized reference mass about 1,
+  bounds(reference_k) = (2**84-1, 2**84),
+  draw(Random(1)) succeeds in 2 outer attempts without fallback.
+See check_reference_repair.py/json for broader checks.

@@ -1,0 +1,50 @@
+Proof search across theorem families: verified decomposition macros
+10 October 2026
+
+Status: I reconstructed a concrete proof-search mechanism from a recent primary source and derived the interface needed to reuse it safely across formula families. The structural theorem is already claimed in an arXiv preprint; I have not independently audited every local proof case, and this work establishes no new theorem or novelty claim. The authors say most results were discovered independently, while the regular-resolution construction in Section 6 involved ChatGPT collaboration; that disclosure does not certify the proof.
+
+Target and positive structural result
+
+Use CNF unsatisfiability as the testbed. The unavailable capability is a proof-search method that can transfer from one family of formulas to a new family member while still returning a checkable refutation and accounting for how it recognized the family. A useful certified family parameter is log-weighted incidence treewidth. For a CNF F, its incidence graph has one vertex for each variable and clause, with an edge for each occurrence. Give each variable weight 1 and each clause C weight max(1, log2 |C|). The weighted treewidth q is the minimum, over tree decompositions, of the maximum total bag weight minus one.
+
+Cai and Li, “Short Resolution Refutations for CNFs with Bounded Weighted Incidence Treewidth” (arXiv:2610.02047, submitted 1 Oct 2026), claim: for every unsatisfiable F with n variables, m clauses and maximum clause width k, a resolution refutation can be constructed from a nice incidence tree decomposition T of weighted width q_T with length k(n+m)2^{O(q_T)} and width at most the unweighted width of T plus k. Minimizing q_T gives the stated bound in terms of weighted treewidth q. They also claim a regular-resolution refutation of length (n+m)2^{O(q_T)}. Thus long clauses are admitted when the decomposition does not keep too much of their logarithmic weight together. The paper explicitly leaves open whether ordinary Resolution has FPT-size refutations for every formula parameterized by unweighted incidence treewidth.
+
+Reconstructed mechanism
+
+At a decomposition node t, let X_t be its variables and C_t its clauses. A dynamic-programming state is (t, alpha, A), where alpha assigns the variables in X_t and A is a subset of C_t. Call it inconsistent if no assignment to variables below t, extending alpha, satisfies the clauses already forgotten below t together with the active clauses A. The proof stores each inconsistent state as the mDNF
+
+  D(t,alpha,A) = C_alpha OR (for c in A, NOT c_t^int),
+
+where C_alpha contains the literal falsified by alpha for each boundary variable, and c_t^int is the part of c whose variables occur below t. The introduce, forget, and join cases of a nice decomposition give local derivations from child states. Induction from leaves to root produces the contradiction at the empty root bag. This is a proof-producing version of the usual SAT dynamic program: the state means “these boundary choices cannot extend,” and each transition is an inference rule rather than only a table update.
+
+The conversion to ordinary Resolution explains the logarithmic clause weight. Expand an mDNF by choosing one literal from each term. For a state, the number of resulting clauses is at most product_{c in A} |c|. Its base-2 logarithm is at most sum_{c in A} log2 |c|, which is charged to the clause weights in the current bag; the variable assignments and active-clause choices are charged to the unit-weight part. Consequently each state expansion has at most 2^{O(q_T)} clauses. There are at most 2^{O(q_T)} states per bag, and the local transitions plus expansion cost at most k times this bound per bag. A nice decomposition can be taken to have O((n+m)(q_T+1)) bags, with the q_T factor absorbed into 2^{O(q_T)}, yielding k(n+m)2^{O(q_T)} resolution steps. The paper's separate regular construction maintains at most one variable-eliminating resolution on each proof path, giving the stated regular bound. This is a source-based reconstruction, not a line-by-line independent proof of all transition lemmas.
+
+This gives a concrete transferable proof macro. Its input is an unsatisfiable CNF F plus a claimed weighted incidence decomposition T. Its output is a Resolution or regular-Resolution refutation over F's original variables, along with T and the measured q_T. A checker can validate T's vertex coverage, edge coverage, and connectedness conditions, recompute q_T, and then check every resolution step. If T is wrong, the family admission fails; if the generated proof is wrong, the proof checker rejects it. The learned object is therefore a proposal for a certificate and a choice of proof macro. The universal local transition argument, not a finite collection of successful examples, supplies generalization.
+
+Training and selection costs
+
+For r candidate theorem-family macros, let L_i be the total encoded size of training proofs for macro i, G_i the time to extract its schema from examples, and V_i the time to verify the schema's local inference cases. Admission cost is sum_i(L_i+G_i+V_i), paid before reuse. For target F_j, charge C_select(F_j) for checking the r family signatures and candidate witnesses; charge C_TD(F_j) to obtain a decomposition (or take T as supplied input); then charge a polynomial scan of F_j and T_j to validate it. Let w_j be the unweighted width of T_j and q_{T_j} its weighted width. The refutation has S_j=O(k_j(n_j+m_j)2^{O(q_{T_j})}) inference steps; emitting and checking its clauses costs O(S_j(w_j+k_j+log(n_j+m_j))) literal operations with standard indexed clause representations. Across M targets, total cost is
+
+  sum_i(L_i+G_i+V_i) + sum_{j=1}^M [C_select(F_j)+C_TD(F_j)+poly(|F_j|,|T_j|)+S_j(w_j+k_j+log(n_j+m_j))].
+
+The theorem gives construction from T, not free acquisition of an optimal T. If training only proposes a heuristic and no certified decomposition is found, there is no structural success guarantee; a complete fallback search must be separately charged. Nor does a finite sample establish a proof schema. A purported learned transition rule must be universally verified, or each target output must be checked and the system allowed to fail to find a proof.
+
+Prior art, falsifier, and significance
+
+Atserias and Müller, “Automating Resolution is NP-Hard” (arXiv:1904.02991), show it is NP-hard to find a Resolution refutation polynomially longer than shortest, unless P=NP; they also give stronger quasi-polynomial and subexponential hardness consequences under corresponding assumptions. The weighted-decomposition compiler does not evade that barrier: it restricts the promise and receives a structural certificate. For bounded width k and unweighted incidence treewidth t, the 2026 preprint derives a resolution length bound (n+m)k^{O(t)}, an XP-type guarantee in t; its FPT ordinary-resolution result instead uses q, which charges log clause width.
+
+Extended Resolution supplies another route. The 2026 paper states that one can introduce y_C for every nonempty subclause C of each input clause and obtain a Resolution proof of length k(n+m)2^{O(t)} over the extended formula. For a clause of width d this adds 2^d-1 extension variables and at most sum_{C nonempty}(|C|+1) = (d+2)2^{d-1}-1 defining clauses. This is exponential acquisition/output overhead in d. Earlier work by Samer–Szeider and Fürer likewise uses low-primal-treewidth transformations or abbreviations. The direct weighted-treewidth result is useful when the desired output must remain a refutation of the original F; extension variables can recover the unweighted-t parameter at an explicit size cost.
+
+A counterexample blocks treating q as a hardness measure rather than a sufficient certificate. Let F_r consist of the one clause (x1 OR ... OR xr) and units NOT xi for i=1,...,r. Its incidence graph is a tree, so t=1. Every bag covering the long clause and one xi has log-weight at least log2 r, so q is at least log2 r. Yet r successive resolution steps derive the empty clause. Thus the weighted parameter can overestimate the needed proof size; a selector should compare its certified candidates, not infer hardness from q alone.
+
+Achieved significance is a verifiable, reusable proof-search recipe for a structurally certified subclass, with training and theorem-selection costs made explicit. No new breakthrough is achieved here. A potential landmark would be a universally verified learner that discovers proof schemas covering substantially more than these certificates; specifically, a plain-Resolution FPT refutation bound for all unbounded-width CNFs parameterized by unweighted incidence treewidth would address the open question identified by the source paper. The present derivation does not approach that claim.
+
+Primary sources
+
+Shaowei Cai and Ziqun Li, “Short Resolution Refutations for CNFs with Bounded Weighted Incidence Treewidth,” arXiv:2610.02047v1 (2026-10-01), https://arxiv.org/html/2610.02047v1
+
+Albert Atserias and Moritz Müller, “Automating Resolution is NP-Hard,” arXiv:1904.02991 (2019), https://arxiv.org/abs/1904.02991
+
+Martin Fürer, “Efficient Arbitrary and Resolution Proofs of Unsatisfiability for Restricted Tree-Width,” LATIN 2012, https://doi.org/10.1007/978-3-642-29344-3_33
+
+Next proof gate: audit the local state transitions and the Res(k)-DNF-to-Resolution expansion in the cited preprint, then formalize the compiler with an interface that records schema training, family-selection checks, decomposition acquisition, proof length, and proof-check time. The mathematical frontier is to remove the log-width charge for plain Resolution or prove a matching obstruction.

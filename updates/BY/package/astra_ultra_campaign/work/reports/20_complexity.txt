@@ -1,0 +1,39 @@
+Random-access representations have an information floor
+2026-10-10
+
+Target and interface
+
+I tested a precise version of the claim that a learner can acquire a compact, reusable representation of arbitrary data and later answer task-specific questions. The task is deliberately explicit: an acquisition stage receives one arbitrary string x in {0,1}^n and emits a persistent state S of at most m bits. After S is frozen, a query index i in [n] is chosen independently and supplied in ceil(log2 n) bits. The system must return x_i. Its fixed program is public and independent of x; every x-dependent file, parameter, cache, or other persistent artifact is part of S. The decoder may use unlimited time and fresh randomness, but cannot reread x or consult an uncharged store correlated with x. Acquisition time and query time are not bounded here; this isolates the information retained across the gap between seeing the data and learning which coordinate will matter.
+
+The target is a lower bound on retained state, robust to every algorithm and computation budget. For randomized systems, require that for every x, the probability of returning the wrong bit, averaged over a uniform future i and all system randomness, is at most delta, with 0 <= delta <= 1/2. A distributional guarantee for uniform x and i suffices for the theorem.
+
+Theorem (proved here; classical rate-distortion/one-way communication content). Every such fixed-length representation has
+
+    m >= n (1 - h2(delta))
+
+bits, where h2(t) = -t log2(t) - (1-t) log2(1-t), with endpoint values by continuity. In particular, exact arbitrary random access requires m >= n, and this is attained by storing x itself. For every fixed delta < 1/2, the lower bound is linear in n, even if preprocessing and decoding have unlimited computation. At delta = 1/3 it gives m >= 0.0817... n; the constant is not claimed optimal for this one-shot finite-block formulation.
+
+Proof
+
+Let X be uniform on {0,1}^n and I uniform on [n], independently. Let S be the emitted state and let P_i be the probability that the decoder errs on coordinate i, over X, encoder randomness, and decoder randomness. The guarantee gives (1/n) sum_i P_i <= delta. Given S, the best deterministic prediction of X_i has a conditional Bayes error q_i no larger than P_i, because a randomized decoder cannot outperform the most likely bit under the posterior law of X_i given S. For a binary variable, the conditional entropy is at most the binary entropy of its Bayes error: H(X_i | S) <= h2(q_i). By conditional subadditivity and concavity of h2,
+
+    H(X | S) <= sum_i H(X_i | S)
+             <= sum_i h2(q_i)
+             <= n h2((sum_i q_i)/n)
+             <= n h2(delta).
+
+Here q_i <= 1/2 and their average is at most delta, so the last monotonicity step is valid on [0,1/2]. Since H(X)=n, mutual information obeys I(X;S) >= n(1-h2(delta)). But I(X;S) <= H(S) <= m because S has at most 2^m possible values. This proves the claim. Randomized acquisition is covered: S is the actual retained message, and its randomness cannot increase H(S) beyond m. Any shared randomness independent of X can be conditioned on throughout. If the program or a side channel stores information dependent on X, it must be included in S for the argument to apply.
+
+Prior art and novelty boundary
+
+This theorem is not a new complexity result. It is the binary-source Hamming rate-distortion converse applied to a random-access decoder, and the interface is the one-way INDEX communication problem: the data holder sends S before learning i, and the query holder must recover x_i. Shannon's primary source is “Coding Theorems for a Discrete Source With a Fidelity Criterion” (1959), https://doi.org/10.1109/9780470544242.ch21. For the communication-complexity formulation and stronger randomized one-way lower bounds for INDEX, see Ilan Kremer, Noam Nisan, and Dana Ron, “On Randomized One-Round Communication Complexity,” https://doi.org/10.1145/225058.225277. Andrew Yao's “Some Complexity Questions Related to Distributive Computing” (STOC 1979) is an early primary source for communication as a measure of information transfer: https://doi.org/10.1145/800135.804414. The derivation above is self-contained and claims no novelty over these areas. The proof gives a clean, resource-accounted interface that can be used as a reduction target, not a new separation between standard complexity classes.
+
+Decisive boundaries and falsifiers
+
+The hypotheses matter. If the future index is known before encoding, the acquisition stage can retain just x_i. If queries are restricted to a fixed set K of k coordinates, storing those k bits suffices. If X comes from a low-entropy structured family, a short seed may permit exact reconstruction. If a decoder can reread x, query an x-correlated external service, or receive uncharged query-time advice, that information path falls outside this theorem. These are genuine counterexamples to any unqualified claim that “all useful representations need n bits.” Unlimited decoder computation is already allowed, so computational cleverness alone is not a counterexample under the stated interface.
+
+The theorem does not imply hardness of SAT, program synthesis, or any structured task; it does not bound acquisition computation, query latency, or the size of a representation for a restricted distribution. Its consequence is narrower but useful: a system cannot compress an arbitrary n-bit input to o(n) persistent bits and still answer an independently selected coordinate with constant advantage over guessing. If an empirical reusable-memory claim beats this floor, then the relevant task family must be structured, the query distribution must be restricted, some information must arrive after query selection, or the accounting omitted an input-dependent resource. A future reduction from a concrete algorithmic domain to INDEX could turn this interface theorem into a lower bound for that domain, but the reduction is currently absent.
+
+Significance and next proof gate
+
+Achieved significance is a fully proved, computation-independent storage lower bound with explicit acquisition/query interfaces and an error tradeoff. Potential significance would come from mapping a consequential task family—such as exact post-hoc queries on learned programs or solver states—to this model while preserving input size, query access, correctness, and all side information. The next proof gate is to supply such an encoding for one named task and prove that every successful solver's retained state answers the induced INDEX query with error below 1/2. Without that reduction, the result remains a known information-theoretic barrier and does not support a landmark complexity claim.

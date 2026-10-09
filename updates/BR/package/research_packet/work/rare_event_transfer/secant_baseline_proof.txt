@@ -1,0 +1,121 @@
+EXACT RATIONAL SECANT BASELINE FOR RECTANGULAR SECOND-MOMENT CERTIFICATES
+Internal derivation / conventional relaxation, 10 October 2026.
+
+Problem. Given rational 0<=L_i<=U_i and c_i>=0, upper-bound
+R*=max [sum_i c_i x_i^2]/[sum_i x_i]^2 over the box and positive sum.
+For Astra's local variance problem use L_i=P_i l_i, U_i=P_i u_i,
+c_i=B_i/q_i. All-zero boxes are handled separately as impossible success.
+
+1. Corner attainment
+
+Holding all but one coordinate x fixed, write R(x)=(A+c*x^2)/(B+x)^2.
+If B>0 then R'(x)=2(c*B*x-A)/(B+x)^3, so a maximum occurs at an endpoint.
+If B=0 then A=0 and R(x)=c wherever the denominator is positive; choose
+a positive upper endpoint. Sequential endpoint replacement proves that a
+nonzero corner attains R*. If sum_i L_i>0 every corner has sum at least
+that value. Otherwise all L_i=0, and every nonzero corner has sum at least
+min_{i:U_i>0} U_i. Define that positive bound as S_min. This justifies the
+restricted sum interval even when some or all lower bounds vanish.
+
+2. Secant upper bound
+
+For each coordinate, (x_i-L_i)(U_i-x_i)>=0 gives
+
+ c_i*x_i^2 <= a_i*x_i-b_i,
+ a_i=c_i(L_i+U_i), b_i=c_i L_i U_i.
+
+For a fixed total S, maximize sum_i a_i*x_i subject to the box and
+sum_i x_i=S. The standard continuous-knapsack exchange argument fills
+coordinates from lower to upper in nonincreasing order of a_i: transferring
+available mass from a lower-slope to a higher-slope coordinate cannot
+reduce the numerator. Ties are harmless.
+
+Starting at all lower endpoints, there are at most d positive-width
+segments. On one such segment the maximal secant numerator has form
+N(S)=A*S+C, with A>=0 and C rational. Thus N(S)/S^2 has derivative
+(-A*S-2C)/S^3. Its maximum on the segment intersected with
+[S_min,sum_i U_i] occurs at an endpoint or at S=-2C/A if A>0,C<0 and
+this point lies in the segment. Every candidate is rational; no floating
+optimization or square root is used. Taking the maximum supplies U_sec.
+
+The additional universally sound bound R<=max_i c_i follows by writing
+r_i=x_i/sum_j x_j and observing sum_i c_i r_i^2<=max_i c_i. The code
+returns min(U_sec,max_i c_i). This cap materially helps boxes with zeros.
+Coordinates with U_i=0 are excluded from the maximum as they are inactive.
+If all lower bounds vanish, this bound is attained exactly by setting only
+one active coordinate with largest c_i to U_i and the others to zero. The
+implementation therefore returns this exact answer in O(d), without a
+secant scan or approximate DP. This is an indispensable trivial baseline.
+
+3. Feasible lower bound and witness
+
+The all-lower point and each sorted-prefix endpoint are actual box corners.
+Evaluate their original ratios, ignoring zero-denominator points. Their
+largest ratio L is a valid lower bound, with a stored rational corner
+witness. Endpoints of each full knapsack segment are included. A cutoff
+at S_min can be a fractional point; it is used only for the upper bound.
+The final implementation additionally evaluates each of the d corners
+formed by changing just one coordinate from lower to upper, in O(d)
+arithmetic using the all-lower sums. This can improve L and cannot weaken
+any guarantee. One index is stored until the final witness reconstruction.
+
+4. Approximation factor for positive lower bounds
+
+For 0<L_i<=x_i<=U_i, one-variable differentiation yields
+
+ [(L_i+U_i)x_i-L_iU_i]/x_i^2
+   <= (L_i+U_i)^2/(4L_iU_i).
+
+Let kappa be the maximum of these factors. The entire secant numerator
+is therefore at most kappa times the original numerator at every point.
+Consequently U_sec<=kappa*R*, as well as R*<=U_sec. In fact the stronger
+computable statement U_sec<=kappa*L holds, where L is the returned lower
+bound: a secant maximizer lies on a sorted-prefix segment; the original
+quadratic ratio on that segment is no larger than its larger endpoint
+ratio by the one-coordinate endpoint lemma. Both endpoints were evaluated
+in L. Applying the pointwise secant factor at the maximizer proves the
+stronger statement. Positive lower bounds ensure no S_min cutoff removes
+an endpoint. When relative
+interval width U_i/L_i=1+delta, its factor is
+
+    1 + delta^2/[4(1+delta)].
+
+This can be a stronger practical baseline than a general Pareto-DP scheme.
+The factor statement is absent if any lower bound is zero, but soundness
+still holds through Sections 1-2. The max-c cap cannot worsen the factor.
+
+5. Costs and status
+
+Sort d rational slopes and scan at most d segments: O(d log d) rational
+comparisons and O(d) rational candidate evaluations, O(d) storage. All
+quantities are sums/products/quotients of polynomially many input rationals,
+so the Turing bit complexity is polynomial in total input encoding length.
+The emitted witness and both rational bounds are independently recomputable.
+
+This is a standard secant relaxation plus continuous knapsack, not a new
+general optimization principle and not a novel rare-event acquisition
+method. Verified continuation intervals are assumed supplied. It neither
+finds hidden event modes nor bypasses exponential state enumeration used
+to obtain those intervals.
+
+Implementation: work/variance_algorithm/secant_baseline.py.
+Functions secant_upper returns Fraction; secant_bounds also returns a
+feasible lower bound and witness. Running the file executes 257 small
+exact-rational exhaustive comparisons, including all-zero boxes, one
+coordinate, fixed coordinates, zero lower bounds, and randomized positive
+boxes. Output saved in work/rare_event_transfer/secant_checks.json.
+These are finite software checks, not proof-assistant verification.
+
+Internal independent model review found a witness edge case for a nonempty
+box whose active coordinates all have zero coefficients: the zero objective
+had retained an all-zero, infeasible witness. The code now stores the first
+positive-sum corner even when its objective is zero, and explicitly tests
+this case. Numeric lower/upper bounds were unaffected. All-zero/empty boxes
+return an explicit all_zero=True convention rather than asserting a maximum
+over an empty positive-denominator domain.
+
+The same critic independently tested 7,350 nonempty grid boxes and the
+stronger U<=kappa*L statement on 340 positive boxes. The source code retains
+only the best prefix index while scanning and constructs its witness once,
+avoiding a hidden quadratic cost from repeatedly copying witness vectors.
+This is internal model review and finite evidence, not external validation.

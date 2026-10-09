@@ -1,0 +1,504 @@
+# Primitive Genesis: action-compatible retention
+
+**Research date:** 10 October 2026 (Australia/Brisbane)  
+**Status:** Internally derived mathematical arguments, with finite computational checks. Historical novelty, external correctness, formal verification and a historic foundational breakthrough are **not established**.  
+**Authoring context:** A single assistant research session for Astra. No independent agent or external referee is represented as having verified this note.
+
+## Abstract
+
+**Later development in this packet:** `QUANTUM_ORBIT_EXTENSION.md` proves the stronger full-unitary law m_*(T)=Theta(T^(D-1)) at fixed Hilbert-space dimension D. The spherical proofs here supply its basic transfer mechanism.
+
+We develop a composition-sensitive way to measure the directional information preserved by a finite-state stochastic realization of controlled rotations. Its one-step contraction coefficient is exactly a familiar spherical quantization quantity. The substantive construction is the operational identification and its composition law, not the invention of spherical quantization or of the Fourier transform.
+
+For fixed dimension d >= 2, consider a direction x in the unit ball, a sequence of supplied rotations g_1,...,g_t in SO(d), and a terminal binary probability
+
+\[
+p_*(+\mid x,g_1,\ldots,g_t,u)=\frac{1+\delta\langle u,g_t\cdots g_1x\rangle}{2}.
+\]
+
+For 0 < delta <= 1/d and a fixed sufficiently small positive uniform error, the minimum number of classical Markov states needed through horizon T is Theta(T^((d-1)/2)). This holds even for time-inhomogeneous stochastic encoders, arbitrary measurable gate dependence, and non-affine preparation maps. The static preparation/readout family has positive factorization size exactly d+1. For d=3 a single qubit realizes every horizon exactly, whereas the classical state count is Theta(T): this is Theta(log T) classical bits, not Theta(T) bits.
+
+The proof exposes a distinction between static positive factorization and positive realization compatible with repeated actions. It also identifies its own limitations: continuous controls, explicit charging of all persistent classical memory, and a state-count rather than a finite-bit arithmetic or running-time model.
+
+## 1. Contract and notation
+
+Let B^d and S^(d-1) denote the Euclidean unit ball and sphere. Let sigma be normalized sphere measure, and let dg be normalized Haar probability on SO(d). Write G_t = g_t ... g_1 and X_t = G_t x.
+
+An m-state classical simulator consists of:
+
+* a preparation distribution p_x on {1,...,m};
+* measurable row-stochastic matrices P_t(g), with arbitrary dependence on time t, current gate g, and the specified deadline T;
+* terminal response functions h_{t,u}(i) in [0,1].
+
+The output probability is p_x P_1(g_1)...P_t(g_t) h_{t,u}. Gates arrive sequentially. The only persistent information about previous gates is the internal state. Fresh independent randomness is allowed. A persistent random seed, correlated external noise, gate history available to the readout, or an external continuous controller storing the accumulated rotation is not free: it must be included in the memory model. The terminal direction u is a query, not a source of past-gate information. The lower bound actually remains valid when its fixed query is announced in advance.
+
+Uniform error <= epsilon means error at most epsilon for every x,u in B^d, every t <= T, and every gate word. No linearity or preparation-noncontextuality assumption is imposed on p_x. There is no stationarity, reversibility or diagonalizability assumption on the simulator.
+
+We count states, not the description length of the functions P_t, the number of their entries, gate acquisition, barycentric compilation time, precision of probabilities, or sampling time. Matrices and controls are mathematically exact. These qualifications are essential.
+
+## 2. The geometric coefficient
+
+Define
+
+\[
+\eta_{m,d}=\max_{v_1,\ldots,v_m\in S^{d-1}}
+\int_{S^{d-1}}\max_j\langle z,v_j\rangle\,d\sigma(z).
+\tag{2.1}
+\]
+
+The maximum exists by compactness and continuity. It is between zero and one, and is strictly less than one for finite m. Indeed the integrand is at most one and equals one only at finitely many points. The maximum is attained, so its value is strictly less than one. It is nondecreasing in m. For m=1 its value is zero.
+
+It is equivalent to constrained spherical squared-error quantization:
+
+\[
+1-\eta_{m,d}=\frac12\min_{v_j\in S^{d-1}}
+\int\min_j\|z-v_j\|^2\,d\sigma(z).
+\tag{2.2}
+\]
+
+This follows immediately by expanding the squared distance. Thus (2.1) is also an averaged support-function extremum for inscribed polytopes. These are established geometric objects, not novel terminology introduced as a priority claim.
+
+Allowing v_j in the closed ball instead of on the sphere does not increase the maximum. To see this, express each ball point as the mean of two antipodal sphere points. The maximum of finitely many linear functions is convex; Jensen's inequality bounds the ball-code value by an average of sphere-code values.
+
+## 3. A transfer operator that preserves action information
+
+On V_m=(R^d)^m with norm ||z||_(infinity,2)=max_i ||z_i||, define
+
+\[
+(\mathcal A_Pz)_i=\int_{SO(d)}g^{-1}
+\left(\sum_j P_g(i,j)z_j\right)\,dg.
+\tag{3.1}
+\]
+
+Averaging P_g alone discards the correlation between the gate and its stochastic update. Equation (3.1) retains precisely a representation-valued component of that correlation. Algebraically it is a matrix-valued Fourier/representation transform, so the transform itself is not claimed as unprecedented.
+
+**Theorem 3.1 (sharp transfer norm).** For every measurable stochastic family P,
+
+\[
+\|\mathcal A_P\|\le\eta_{m,d}.
+\tag{3.2}
+\]
+
+Consequently any independent sequence of gate families satisfies
+
+\[
+\|\mathcal A_{P_1}\cdots\mathcal A_{P_T}\|
+\le\eta_{m,d}^{T}.
+\tag{3.3}
+\]
+
+**Proof.** For a unit vector a and M=max_j ||z_j||,
+
+\[
+\langle a,(\mathcal A_Pz)_i\rangle
+=\int\sum_jP_g(i,j)\langle ga,z_j\rangle dg
+\le M\eta_{m,d}.
+\]
+
+Here ga is uniformly distributed on the sphere, and the ball-code observation following (2.2) applies. Taking the supremum over a and i proves (3.2). Submultiplicativity proves (3.3). Moreover, direct expansion shows that the product in (3.3) equals the integral of G_T^(-1) against the corresponding product P_1(g_1)...P_T(g_T), so the bound concerns the actual sequential process, not unrelated marginal transformations. QED.
+
+The norm is invariant under a relabeling of the classical states. The transform is linear under convex mixing of transition families; its norm is consequently convex. Allowing additional unused states can only enlarge the admissible class. Serial composition is the exact product above. No tensor-product identity is assumed.
+
+The next theorem proves sharpness of the coefficient and of its repeated use in a direct operational form.
+
+## 4. Exact sequential retention law
+
+For independent Haar gates and any simulator define the unnormalized conditional means
+
+\[
+b_i(t)=\mathbb E[X_t\mathbf1_{\{S_t=i\}}],
+\qquad
+R_t=\sum_i\|b_i(t)\|.
+\tag{4.1}
+\]
+
+Equivalently, R_t = sum_i Pr(S_t=i) ||E[X_t | S_t=i]||. It is the best average directional correlation obtainable by attaching one unit-vector estimate to each classical state.
+
+**Theorem 4.1 (sharp retention).** For every such simulator,
+
+\[
+R_t\le\eta_{m,d}R_{t-1},\qquad R_T\le\eta_{m,d}^T
+\tag{4.2}
+\]
+
+when ||x||=1. The bound is attained at every T by a suitable fixed stochastic gate rule and an initial direction, so the exponential rate is exact for this retention problem.
+
+**Proof of the upper bound.** Because the next gate is independent of the previous state and direction, and the update depends only on that gate and state,
+
+\[
+b_j(t)=\sum_i\int g b_i(t-1)P_t(g)(i,j)\,dg.
+\tag{4.3}
+\]
+
+For each fixed i write w=b_i(t-1). Choose unit vectors n_j aligned with the vectors integral g w P_t(g)(i,j) dg; choose arbitrary unit n_j if an integral is zero. Then
+
+\[
+\begin{aligned}
+\sum_j\left\|\int gwP_t(g)(i,j)dg\right\|
+&=\int\sum_jP_t(g)(i,j)\langle n_j,gw\rangle dg\\
+&\le\|w\|\eta_{m,d}.
+\end{aligned}
+\]
+
+Apply the triangle inequality in (4.3), sum over j and then i, and obtain (4.2). Initially b_i(0)=p_x(i)x, hence R_0=1. QED.
+
+**Proof of sharpness.** Choose a maximizing code V=(v_1,...,v_m), with a measurable nearest-direction partition C_j of the sphere. Put
+
+\[
+q_j=\sigma(C_j),\qquad c_j=\int_{C_j}z\,d\sigma(z).
+\]
+
+Optimality forces c_j=a_jv_j with a_j>=0, and sum_j a_j=eta. Indeed
+
+\[
+\eta=\sum_j v_j\cdot c_j\le\sum_j\|c_j\|
+\le\max_{n_1,\ldots,n_m}\int\max_j z\cdot n_j\,d\sigma(z)=\eta.
+\]
+
+Equality in the first inequality gives the asserted alignment. Empty or zero-centroid cells cause no problem.
+
+From state i and gate g, send the machine to the nearest codeword to g v_i. Start with X_0=v_1 and S_0=1. If b_i(t-1)=r_i v_i with r_i>=0, Haar invariance gives
+
+\[
+b_j(t)=\sum_i r_i c_j=R_{t-1}a_jv_j.
+\]
+
+Thus alignment is preserved and R_t=eta R_(t-1). This proves exact attainment for all T, including the trivial zero coefficient for m=1. QED.
+
+This also proves sharpness of the operator norm in Theorem 3.1: the forward map on the b_i is the adjoint of (3.1) for the dual norms sum_i ||b_i|| and max_i ||z_i||.
+
+## 5. Exact low-dimensional constants and the general exponent
+
+### 5.1 Circle
+
+**Theorem 5.1.** For m>=1,
+
+\[
+\eta_{m,2}=\frac{m}{\pi}\sin\frac{\pi}{m}.
+\tag{5.1}
+\]
+
+**Proof.** Sort the code angles cyclically and let Delta_j in [0,2pi] be consecutive gaps, whose sum is 2pi. On the gap between consecutive directions, the closest direction is one of its two endpoints. Integrating its cosine response gives 2 sin(Delta_j/2). Hence
+
+\[
+\int\max_j\cos(\theta-\phi_j)\frac{d\theta}{2\pi}
+=\frac1\pi\sum_j\sin(\Delta_j/2)
+\le\frac m\pi\sin(\pi/m)
+\]
+
+by concavity of sine on [0,pi]. Equal gaps attain equality. The m=1 case has integral zero. QED.
+
+In particular 1-eta_(m,2) = pi^2/(6m^2)+O(m^-4). This asymptotic follows from the ordinary sine power series.
+
+### 5.2 Three-dimensional directions
+
+**Theorem 5.2.** eta_(m,3) <= 1-1/m.
+
+**Proof.** For U uniform on S^2 set D=1-max_j U dot v_j. The spherical cap Pr(1-U dot v_j <= s) equals s/2 for 0<=s<=2. A union bound yields Pr(D>s) >= max(1-ms/2,0). Therefore
+
+\[
+1-\eta_{m,3}\ge\int_0^{2/m}(1-ms/2)ds=1/m.
+\]
+
+QED. Equality is not claimed for arbitrary m.
+
+### 5.3 Every fixed dimension
+
+**Theorem 5.3.** For fixed d>=2 there are positive constants c_d,C_d such that
+
+\[
+c_dm^{-2/(d-1)}\le1-\eta_{m,d}\le C_dm^{-2/(d-1)}.
+\tag{5.2}
+\]
+
+**Proof.** Put s=d-1. A spherical angular cap of radius r has normalized measure
+
+\[
+\frac{|S^{d-2}|}{|S^{d-1}|}\int_0^r\sin^{d-2}\theta\,d\theta.
+\]
+
+For 0<r<=pi/2, the inequalities 2theta/pi <= sin theta <= theta bound this between positive dimension-dependent constants times r^s.
+
+For the lower bound choose r=a_d m^(-1/s) with a_d small enough that m caps of angular radius r cover measure at most 1/2. On the remaining half of the sphere the squared chord distance to the code is at least 4r^2/pi^2. Equation (2.2) gives 1-eta >= r^2/pi^2. Decreasing a_d handles all m.
+
+For the upper bound take a maximal angular r-separated code. Its disjoint r/2 caps imply that it has at most C'_d r^-s points, and maximality implies it is an r-net. Choose r=A_d m^(-1/s) with A_d sufficiently large to keep this number at most m. For sufficiently large m this radius lies below pi/2; finitely many smaller m are absorbed in the constant. Every point then has chord distance at most r to the code, so (2.2) gives 1-eta <= r^2/2. Repeating code points if needed reaches exactly m. QED.
+
+No sharp high-dimensional quantization constant is claimed or needed.
+
+## 6. Turning retention into an observable lower bound
+
+Fix unit x and u, use independent Haar controls, and record the terminal bit Y. The bounded score
+
+\[
+Z=(2Y-1)\langle u,G_Tx\rangle
+\tag{6.1}
+\]
+
+is computable by a test apparatus that knows the gates. That external calculation is not supplied to the simulator.
+
+For the target process, E Z = delta E[(u dot G_Tx)^2]=delta/d. For a classical simulator,
+
+\[
+|\mathbb EZ|
+=\left|\sum_i(2h_{T,u}(i)-1)\langle u,b_i(T)\rangle\right|
+\le R_T\le\eta_{m,d}^T.
+\]
+
+If every word probability is within epsilon of the target, the score expectation changes by at most 2epsilon, since |u dot G_Tx|<=1. Therefore:
+
+**Theorem 6.1.** Every uniform epsilon simulator satisfies
+
+\[
+\boxed{\eta_{m,d}^T\ge\delta/d-2\epsilon.}
+\tag{6.2}
+\]
+
+Equivalently its worst-word error is at least delta/(2d)-eta^T/2.
+
+A sharper terminal step is available. Define
+
+\[
+\mu_d=\int_{S^{d-1}}|u\cdot z|d\sigma(z)
+=\frac{\Gamma(d/2)}{\sqrt\pi\Gamma((d+1)/2)}.
+\]
+
+Conditional on S_(T-1)=i the last step's signed response is some measurable a_i(g) in [-1,1]. Its score is at most integral |u dot g b_i(T-1)| dg = mu_d ||b_i(T-1)||. Also the discrepancy of target and classical scores is at most 2epsilon mu_d, rather than 2epsilon. Thus
+
+\[
+\boxed{\eta_{m,d}^{T-1}\ge\delta/(d\mu_d)-2\epsilon.}
+\tag{6.3}
+\]
+
+The terminal coefficient mu_d is attainable for a fixed query with m>=2: use the optimal retention rule up to the last gate and then send the state to one of two terminal output states according to the sign of u dot g v_i. This sharpness concerns the one fixed score, not simultaneous approximation of every readout.
+
+For d=3, delta=1/3, epsilon=1/72, (6.2) gives
+
+\[
+m\ge T/\log12,
+\]
+
+using eta<=1-1/m<=exp(-1/m). The sharper (6.3) gives
+
+\[
+m\ge (T-1)/\log(36/7).
+\tag{6.4}
+\]
+
+Both are necessary bounds, not exact finite-T optima.
+
+## 7. Matching positive construction and state complexity
+
+Let m_*(T;d,delta,epsilon) be the smallest classical state count meeting the uniform contract in Section 1.
+
+**Theorem 7.1.** Fix d>=2, 0<delta<=1/d and 0<epsilon<delta/(2d). Then
+
+\[
+\boxed{m_*(T;d,\delta,\epsilon)=\Theta_{d,\delta,\epsilon}
+(T^{(d-1)/2}).}
+\tag{7.1}
+\]
+
+**Lower-bound proof.** Put a=delta/d-2epsilon in (0,1). Theorem 5.3 and 1-z<=exp(-z) imply
+
+\[
+a\le\eta_{m,d}^T\le\exp[-c_dT m^{-2/(d-1)}].
+\]
+
+Therefore m >= [c_dT/log(1/a)]^((d-1)/2). QED.
+
+**Constructive upper-bound proof.** Choose an angular r-net V={v_i} on the sphere with N<=C_d r^(-(d-1)), where 0<r<=pi/3. Put alpha=cos r and
+
+\[
+K=\operatorname{conv}V,\qquad P=K/\alpha.
+\]
+
+Every support direction of K has support at least alpha, hence alpha B^d subset K subset B^d. (The first inclusion follows, for example, by separation: a point outside a closed convex K is strictly separated by a support direction.) Thus
+
+\[
+B^d\subset P\subset\alpha^{-1}B^d.
+\]
+
+Write w_i=v_i/alpha for the vertices. For every gate g,
+
+\[
+\alpha g w_i=gv_i\in B^d\subset P.
+\]
+
+Choose convex coefficients P_g(i,j) with sum_j P_g(i,j)w_j = alpha g w_i. They define a row-stochastic update. A fixed triangulation of P yields a measurable choice, with arbitrary consistent choices on boundaries.
+
+Prepare x by any convex representation x=sum_i p_x(i)w_i. After a word of length t, the expected vertex is exactly alpha^t G_t x. Assign response
+
+\[
+h_u(i)=\frac{1+\delta\langle u,w_i\rangle}{2}.
+\]
+
+It lies in [0,1] because delta<=1/d<=1/2<=alpha. The output is
+
+\[
+p_m(+)=\frac{1+\delta\alpha^t\langle u,G_tx\rangle}{2}.
+\]
+
+Its uniform error through T is at most
+
+\[
+\frac\delta2(1-\alpha^T)
+\le\frac{\delta T}{2}(1-\alpha)
+\le\frac{\delta T r^2}{4}.
+\]
+
+Choose r=min(pi/3, 2 sqrt(epsilon/(delta T))). The error is at most epsilon and N=O_(d,delta,epsilon)(T^((d-1)/2)). QED.
+
+The construction is an existence/explicit geometric compilation method. It does not provide a bit-complexity bound for constructing the net, triangulation, barycentric maps, or exact samples.
+
+## 8. Static size exactly d+1
+
+Let e_1,...,e_(d+1) be regular simplex unit vectors, so their sum is zero and sum_i e_i e_i^T=(d+1)I/d. Set
+
+\[
+p_i(x)=\frac{1+e_i\cdot x}{d+1},\qquad
+h_u(i)=\frac{1+\delta d\,e_i\cdot u}{2}.
+\]
+
+These are valid probabilities under delta<=1/d, and direct multiplication yields
+
+\[
+\sum_i p_i(x)h_u(i)=\frac{1+\delta u\cdot x}{2}.
+\tag{8.1}
+\]
+
+No smaller positive factorization exists. Restrict x and u to 0 and the d standard coordinate vectors. The resulting (d+1)-square matrix has determinant delta^d/2^(d+1), as seen by subtracting its first row from every other row. Therefore its ordinary rank is d+1. Every factorization through m classical states has ordinary rank at most m.
+
+Thus the static family has factorization size exactly d+1 while its sequential positive realization requires a state count growing as (7.1). The static representation retains all first-moment information about x; its failure is not that it forgets x statistically. It fails because arbitrary rotations cannot be lifted to positive maps on the whole latent simplex without accumulating loss.
+
+## 9. Quantum and signed-coordinate realizations
+
+### 9.1 A single qubit for d=3
+
+Let sigma_1,sigma_2,sigma_3 be Pauli matrices. Set
+
+\[
+\rho_x=(I+x\cdot\sigma)/2,\qquad
+E_u=(I+\delta u\cdot\sigma)/2.
+\]
+
+The identity (x dot sigma)^2=||x||^2 I proves positivity of rho and 0<=E<=I. Pauli trace orthogonality gives Tr(rho_x E_u)=(1+delta x dot u)/2. An axis-angle rotation g of angle theta about n is implemented by U=cos(theta/2)I-i sin(theta/2)n dot sigma. Multiplication using sigma_i sigma_j=delta_ij I+i epsilon_ijk sigma_k gives U rho_x U^*=rho_(gx). Composing these unitaries therefore realizes every word exactly on one qubit.
+
+For delta=1/3, even the static family is four-state classical; nevertheless its all-word, finite-horizon classical simulation obeys (7.1). This is a restricted memory advantage, not a computational complexity separation or an empirical discovery.
+
+### 9.2 Every fixed d
+
+For d=2q take the 2q Hermitian Clifford matrices
+
+Gamma_(2k-1)=Z^(tensor(k-1)) tensor X tensor I^(tensor(q-k)),
+Gamma_(2k)=Z^(tensor(k-1)) tensor Y tensor I^(tensor(q-k)).
+
+For d=2q+1 add Gamma_(2q+1)=Z^(tensor q). They anticommute, square to identity, are traceless, and satisfy Tr(Gamma_i Gamma_j)=D delta_ij with D=2^q. Therefore
+
+rho_x=(I+sum_i x_i Gamma_i)/D,
+E_u=(I+delta sum_i u_i Gamma_i)/2
+
+have the same probability as above. Exponentials exp(-theta Gamma_i Gamma_j/2) implement coordinate-plane rotations by conjugation. Such rotations generate SO(d), giving an exact realization on floor(d/2) qubits independent of T. All identities follow from the displayed anticommutation relations.
+
+### 9.3 A signed three-coordinate counterexample
+
+For d=2 let e_i be equilateral triangle unit vectors. The static encoding is p_i(x)=(1+e_i dot x)/3. For a rotation R define
+
+\[
+P_R(i,j)=\frac{1+2e_j\cdot R e_i}{3}.
+\tag{9.1}
+\]
+
+It has row sums one and sends p_x to p_(Rx), but it need not be positive. For R=-I its first row is (-1/3,2/3,2/3). In fact P_R P_S=P_(SR), using sum_i e_i=0 and sum_i e_i e_i^T=3I/2.
+
+Thus three signed affine coordinates support exact, lossless composition. Their norm does not have to grow with T: products collapse to another rotation lift. A product of one-step absolute-value costs would overestimate the cost of analytically combining these signed matrices. This is a concrete warning against turning the positive-state lower bound into a blanket lower bound for ordinary deterministic numerical computation.
+
+## 10. A second transfer: finite control alphabets and a block profile
+
+For any probability law nu on SO(d), define
+
+\[
+\eta_m(\nu)=\sup_{\|v\|=1}\sup_{n_1,\ldots,n_m\in S^{d-1}}
+\int\max_j\langle n_j,gv\rangle\,d\nu(g).
+\tag{10.1}
+\]
+
+The proof of Theorem 4.1 gives R_t<=eta_m(nu)R_(t-1). For a block of k independent controls, the product has law nu^(*k). Even when different words have the same product, conditioning the block's stochastic transition matrix on that product yields a stochastic matrix. The same proof therefore gives
+
+\[
+R_T\le\inf_{1\le k\le T}
+\eta_m(\nu^{*k})^{\lfloor T/k\rfloor}.
+\tag{10.2}
+\]
+
+The leftover steps have coefficient at most one. This is a composition-sensitive retention profile for controlled finite-state systems, beyond the Haar example.
+
+A limitation is exact: if nu has at most m atoms, then eta_m(nu)=1. For any v choose the code directions to contain every gv in the support. Thus the single-step coefficient alone says nothing for a fixed finite alphabet once m is large enough. The block profile retains information that the one-step coefficient discards.
+
+For a finite cyclic group of q planar rotations, the exact one-step coefficient is
+
+\[
+\eta_{m,q}=
+\frac{(m-r)\sin(a\pi/q)+r\sin((a+1)\pi/q)}
+{q\sin(\pi/q)},\qquad q=am+r,
+\tag{10.3}
+\]
+
+when 1<=m<=q, and is one when m>=q. Here the orbit is the uniform q-point circle.
+
+To prove (10.3), for any partition take the direction of each cell's vector sum. Reassigning points to their closest resulting direction cannot decrease the objective. Thus an optimal partition can be chosen in cyclic consecutive blocks. A block of k roots has vector-sum length sin(k pi/q)/sin(pi/q). Concavity of sine on [0,pi] implies that the sum is maximized by block counts differing by at most one, giving (10.3). Balanced consecutive blocks attain that value directly. This finite model is used in the computational checks.
+
+For a finite group of rotations H and all preparations in B^d, a uniform-in-T exact weak-readout realization is also possible: take the union of H-translates of the circumscribed static simplex. Its convex hull contains B^d, lies in d B^d, and is invariant under H. Gates permute its finite vertex set, and the same weak responses are valid. Therefore continuous-control conclusions must not be asserted for arbitrary finite alphabets or finite groups.
+
+## 11. What is known mathematics, and what is the candidate contribution?
+
+The geometric coefficient is spherical quantization/averaged polytope support. Quantization rates on Riemannian manifolds are established literature [L2,L3]. Matrix-valued representation transforms are also standard mathematics. Neither is an invention of this session.
+
+Classical simulation of quantum dynamics and finite-memory obstructions are established research subjects. Montina's 2012 paper explicitly constructs a four-state qubit model with time-correlated noise [L1]; that example is outside the charged Markov-memory contract here and demonstrates why that contract is indispensable. The cited paper's exact-Markov obstruction is not used as a premise of our proof.
+
+A recent primary abstract, Wang's October 2026 preprint [L4], concerns sequential response capacity, phase controls, fixed-memory classical comparisons and noisy simulation. Its full text could not be fetched in this session. Consequently no claim of priority over its detailed lemmas, including possible polygon-simulation lemmas, is made. The present note does not represent abstract inspection as full literature review.
+
+The candidate contribution is the precise operational identity between optimal spherical quantization and the maximal directional information retained under sequential stochastic updates, together with the matched uniform finite-horizon positive-realization law, the static-rank contrast and the block profile. These results were derived here, but independent derivation is not proof of historical novelty. A complete priority audit remains necessary.
+
+## 12. Astra integration and comparison scope
+
+Astra was pinned at 8aed7fd74eb14622ed5a0a3635a799374296e32a. Its current entry route was read, rather than assumed from earlier architecture. The N507 review/status card and its exported hidden-realization v2 proof were retrieved selectively. That source separates static positive frames from additional dynamic nonnegative-flow constraints [A1-A3]. It is conceptually relevant, but remains source-derived and unreviewed. None of its claimed counterexamples or closure theorems is a premise of this note.
+
+OpenAI/math was pinned at fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb. Its README and manuscript catalog were accessed for comparative routing. No theorem from that collection was imported or independently audited for this note. The catalog/README access must not be described as reading all manuscripts or as validating the catalog's claims.
+
+Theoretical Pro can reuse the transfer proof and investigate positive realization under restricted gate families. Ultra can implement the circumscribed-polytope simulator and test charged compilation/sample costs. Natural-Sciences Pro can use the bounded score as a model-class witness only after specifying observation access and all correlated memory. No new natural law or experimental validation follows.
+
+## 13. Verification and falsification record
+
+The accompanying verify.py runs 181 checks: exact rational positive lifts and sequential moments; exact symbolic signed lifts, composition, static factorization, rank minors and the qubit Born identity; finite exhaustive encoders on small cyclic groups; and seeded numerical transfer diagnostics. Ordinary and Python -O execution are recorded separately. Finite enumeration uses floating complex roots and is not interval-certified. Exact symbolic checks rely on SymPy, not a proof-assistant kernel. None of these checks substitutes for the general analytical proofs.
+
+The proof architecture was cross-checked through the dual transfer operator and the direct conditional-mean recursion. This is two derivations in one session, not an independent external audit. No repository files were changed. Research and handoff files are local artifacts only.
+
+The following claims are explicitly not made: a new axiomatic foundation; resolution of a major longstanding conjecture; a computational quantum speedup; linear classical bits for a single qubit; impossibility of finite-state models with free correlated noise; optimal finite-bit transition compilation; empirical physics; formal proof certification; historical priority; a 9-10/10 historic breakthrough.
+
+## 14. Single next mathematical obligation
+
+Determine whether the d=3 sharp linear state law survives a single fixed, finitely specified universal gate alphabet, without a growing alphabet or access to arbitrary continuously specified rotations. One explicit target is
+
+A={I,R_x,R_x^(-1),R_z,R_z^(-1)},
+
+where the two nontrivial rotations have cosine 3/5 and sine 4/5 about the named coordinate axes. Prove or refute m_*(T)=Theta(T) at delta=1/3 and epsilon=1/72 for this alphabet under the same charged memory contract.
+
+This question is unresolved in this investigation; it is not asserted to be absent from the literature. Equation (10.2) is a proved interface to the question, not its solution. Even solving this obligation would require an independent assessment of significance rather than automatic promotion to the historic objective.
+
+## Sources and access scopes
+
+[A1] Astra 00_START_HERE.txt, pin 8aed7fd74eb14622ed5a0a3635a799374296e32a. Accessed through GitHub connector.
+
+[A2] Astra frontier/review_cards/N507-all-word-CP-hidden-equilibrium-obstruction.txt and frontier/cards/N507-all-word-CP-hidden-equilibrium-obstruction.json, same pin. Source status: source_derived_unreviewed; full correctness not established.
+
+[A3] Exported source web/pages/d-de5f6553aedc1dd4.html, same pin. Archive-relative title: updates/BP/package/work/sol/hidden_realization/v2.txt. Manifest-reported original text SHA256: be16e62f9886ff14118517ab94c1be9b4990743d43ab1f8da0348d40fc8a91ba. The digest was read from the source manifest; the original bytes were not independently downloaded and rehashed.
+
+[O1] OpenAI/math README.md and CONTENTS.md, pin fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb. Navigation/comparison access only; no manuscript theorem imported.
+
+[L1] Alberto Montina, Dynamics of a qubit as a classical stochastic process with time-correlated noise: minimal measurement invasiveness, Phys. Rev. Lett. 108, 160501 (2012), arXiv:1108.5138v3. Primary abstract and parsed PDF were accessible; PDF screenshot rendering failed. The note uses only the directly available abstract-level facts.
+
+[L2] Mikaela Iacobelli, Asymptotic quantization for probability measures on Riemannian manifolds, ESAIM: COCV 22 (2016), 770-785, DOI 10.1051/cocv/2015025, arXiv:1412.4026. Primary abstract/publication metadata accessed. No theorem from this paper is required for the elementary rate proof above.
+
+[L3] Ata Deniz Aydin and Mikaela Iacobelli, Asymptotic quantization of measures on Riemannian manifolds via covering growth estimates, Advances in Mathematics 474 (2025), 110311, DOI 10.1016/j.aim.2025.110311, arXiv:2402.13164. Primary abstract accessed; related geometry, not an imported proof premise.
+
+[L4] Yibin Wang, Sequential Capacity of Quantum Processes with Finite Memory, arXiv:2610.02068, submitted 1 October 2026. Primary indexed abstract accessed. Full arXiv page/PDF/HTML retrieval attempts, including version 2, failed; detailed priority comparison remains incomplete.

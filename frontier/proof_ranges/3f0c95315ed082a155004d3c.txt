@@ -1,0 +1,129 @@
+EXACT INDEXED SOURCE RANGE | {"path": "updates/BM/package/conservation/README.md", "sha256": "e35b63075c37f2b9cb1a0e26b9ff2441081c9038095bdc9391c647c73629935c", "lines": [1, 125], "range_scope": "identified technical proof text; completeness and correctness not audited here", "read_path": "web/pages/d-9482e8da11c240b2.html", "source_id": "d-9482e8da11c240b2", "hash_kind": "indexed_utf8_text", "original_sha256": "e35b63075c37f2b9cb1a0e26b9ff2441081c9038095bdc9391c647c73629935c"}
+range_sha256=e35b63075c37f2b9cb1a0e26b9ff2441081c9038095bdc9391c647c73629935c; line numbers refer to the source, not this wrapper.
+Scope: located text only; imported premises, completeness, correctness and priority remain unverified.
+--- BEGIN SOURCE BYTES ---
+# Online exact likelihood updates for 1-D superlinear strictly convex conservation laws
+
+Status: promising, narrow computational invention candidate; novelty remains provisional. This is not a claim of a historic breakthrough or a physical experiment.
+
+## Capability and bottleneck
+
+For a scalar 1-D conservation law with known `C1`, strictly convex, superlinear flux (`f(u)/|u| -> infinity` as `|u| -> infinity`), fixed cell boundaries, and an unknown piecewise-constant initial profile, evaluate exact entropy-solution observations repeatedly inside Bayesian inference. Assume `f` and its Legendre transform `f*` can be evaluated, as can `f'`; this ensures the stated characteristic footpoint is finite and evaluable. A single-site MCMC proposal changes one cell state. The full-tree mechanism updates the exact continuum forward likelihood in logarithmic-in-grid work per sensor endpoint, rather than rerunning a space-time PDE discretization or rebuilding the full characteristic envelope. A memory-light block variant trades that logarithmic update for a tunable block scan.
+
+The motivating application is initial density reconstruction in a traffic corridor under the Lighthill–Whitham–Richards (LWR) model. For the quadratic flux `q(rho)=v_f*rho*(1-rho/rho_jam)` with known parameters, the change `u=1-2*rho/rho_jam` and rescaled time `tau=v_f*t` gives `u_tau+(u^2/2)_x=0`; spatial density averages transform affinely from averages of `u`. The implemented observation operator is a spatial density mean over an interval at a fixed observation time. It does not implement temporal averaging or the usual point-location loop-detector observation operator; those require a separate observation model. This idealized capability is useful for studying shock location and density uncertainty while avoiding numerical shock-smearing bias. It only covers initial-state inference with fixed breakpoints and known flux/parameters; it does not solve the harder boundary-history/fundamental-diagram inverse problem in the M25 study.
+
+Existing Bayesian LWR work uses an MCMC loop with a numerical finite-volume forward solver, and explicitly notes that numerical viscosity smooths shocks and can shift the posterior relative to an exact solution. Its real-data analysis used coarse spatial/time resolution. A recent Burgers/Euler Bayesian inverse code also uses Rusanov/HLLC finite-volume models. These are real baselines, though not identical parameterizations. See [Coullon & Pokern (2022)](https://www.cambridge.org/core/journals/data-centric-engineering/article/markov-chain-monte-carlo-for-a-hyperbolic-bayesian-inverse-problem-in-traffic-flow-modeling/53A64484BE55E9DE7A23D5DFF75CC65D), [Mishra et al. (2021)](https://arxiv.org/abs/2107.09701), and the [Wasserstein_BIP code](https://github.com/adrianmruf/Wasserstein_BIP).
+
+## Exact representation and local-update theorem
+
+For `t>0`, let
+
+`u_t + (f(u))_x = 0`, with `f` `C1`, strictly convex, and superlinear,
+
+and let `U_x = u`, so `U` solves `U_t + f(U_x)=0`. The entropy solution is represented by the Hopf–Lax/Lax–Oleinik formula
+
+`G(x,t) = inf_y { U0(y) + t f*((x-y)/t) }`,
+
+where `f*` is the Legendre transform. At differentiability points, `u(x,t)=G_x(x,t)`.
+
+Let the initial states be `u_j` on fixed cells `[a_j,a_{j+1}]`, with cell width `h_j`. The primitive `U0` is affine on each cell. Restricting the Hopf–Lax infimum to a cell produces one exact candidate: its minimizing footpoint is
+
+`y_j = clamp(x - t f'(u_j), a_j, a_{j+1})`.
+
+If the footpoint lies inside the cell, the candidate cost is `C_j + u_j(x-a_j) - t f(u_j)`; at a cell endpoint it is `C + t f*((x-y)/t)`. The global solution is the minimum over all cell and exterior-constant candidates. This formulation includes rarefactions, shocks, shock mergers, and topology changes through ordinary lower-envelope switches; it does not need an event graph or a tie-breaking convention at a shock for interval observations.
+
+A cell edit `u_k -> u_k + delta` changes the initial primitive as follows:
+
+- to the left of cell `k`, it is unchanged;
+- within cell `k`, it changes by `delta*(y-a_k)`;
+- to the right of cell `k`, it changes by the constant `A = delta*h_k`.
+
+Therefore every restricted candidate strictly to the left is unchanged, the candidate for cell `k` is recomputed, and every candidate strictly to the right increases by exactly `A`. This includes the right exterior interval; for the first or last cell the same rule holds with an empty side. A Fenwick tree supplies updated primitive prefixes, while a range-add/range-min tree applies the suffix offset and replaces the changed cell candidate. This proves an exact local update in real arithmetic.
+
+For a spatial interval mean observed at fixed time `t` over `[a,b]`,
+
+`average_u = (G(b,t)-G(a,t))/(b-a)`,
+
+because `G_x=u` almost everywhere and `G` is locally absolutely continuous. This integrates across shocks exactly and avoids observing an ambiguous point value at a jump. This formula is a spatial average at one time, not a temporal average. LWR density is an affine transform of `u`, so its spatial interval averages follow directly.
+
+### Complexity
+
+Let `N` be initial cells, `Q` the number of unique sensor endpoints `(x,t)`, `M` the number of interval observations, and `L` the number of distinct measurement times.
+
+- Full segment-tree preprocessing: `O(QN)` time and `O(QN)` storage. Each single-cell edit costs `O(Q log N)` and all `M` interval means/likelihood terms cost `O(M)` after the edit. Rejection rollback uses a journal of touched tree/Fenwick nodes, restoring stored floating values directly rather than reversing updates and accumulating rollback drift.
+- Memory-light block variant with block size `B`: maintain one range-add/min tree over block minima per endpoint. Later blocks receive the common suffix offset; only the edited block is rescanned. Preprocessing is `O(QN)` time, storage `O(QN/B)`, and edit cost `O(log N + Q[B + log(N/B)])`. This is a tunable space/time tradeoff; it is not claimed to beat the full tree in all regimes.
+- For a proposal changing a global flux parameter or moving cell boundaries, this local update does not apply; rebuild the affected representation. A block/single-site proposal is required for the stated cost.
+
+## Fair exact baseline: grouped static envelopes
+
+The benchmark does not compare only against separate scans. For a fixed time `t`, form the matrix
+
+`A[i,j] = inf_{y in cell j} { U0(y) + (x_i-y)^2/(2t) }`,
+
+with sensor endpoints `x_i` sorted by position and cells ordered left to right. The quadratic kernel has the Monge cross-difference
+
+`c(x1,y1)+c(x2,y2)-c(x1,y2)-c(x2,y1) = (x2-x1)(y1-y2)/t <= 0`
+
+for `x1<x2`, `y1<y2`; minimizing over ordered cell intervals preserves the Monge inequality. Hence row-minimizers are monotone and SMAWK computes all endpoint minima for that time in `O(N+Q_t)` candidate evaluations after one `O(N)` primitive-prefix construction. Rebuilding this exact grouped envelope at each MCMC proposal costs `O(LN+Q)` in the implemented C++ SMAWK baseline. The online update should be expected to win most clearly when `L` is not tiny and the same local chain makes many proposals. For a single shared time and small `N`, the static grouped baseline can win; it does in one test below.
+
+This is the correct regime-specific comparator. The online tree avoids repeated global lower-envelope reconstruction; the grouped SMAWK baseline is a strong static algorithm, not a deliberately weak scan.
+
+## Reproducible benchmark results
+
+C++ `-O3 -march=native`, C++17, GCC 14.2.0, AMD EPYC 9V74 host (9 CPUs online in this container); seed 5. Wall times below include online/block setup and all listed local proposals. Grouped SMAWK rebuilds each state's exact envelope and includes prefix construction; time-group sorting is fixed once. The microbenchmark proposals are randomly generated local edits and are all committed. It measures forward-evaluation throughput, not MCMC ESS/sec; the posterior tests below separately check target correctness and a local Markov prior. Full per-run data, candidate counts, errors, and checksums are in `benchmark_results.json` and `benchmark_results.ndjson`.
+
+| Cells N | Spatial interval observations M | Distinct times L | Proposals | Block B | Grouped SMAWK (ms) | Block total (ms) | SMAWK / block | Full-tree storage | Block storage |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 256 | 32 | 4 | 5,000 | 16 | 67.03 | 36.91 | 1.82× | 1.25 MiB | 0.078 MiB |
+| 1,024 | 64 | 1 | 1,000 | 16 | 16.38 | 17.74 | 0.92× | 10 MiB | 0.625 MiB |
+| 1,024 | 64 | 4 | 1,000 | 16 | 52.73 | 16.76 | 3.15× | 10 MiB | 0.625 MiB |
+| 4,096 | 64 | 1 | 1,000 | 16 | 71.85 | 30.36 | 2.37× | 40 MiB | 2.5 MiB |
+| 4,096 | 64 | 4 | 1,000 | 16 | 279.81 | 24.87 | 11.25× | 40 MiB | 2.5 MiB |
+| 4,096 | 64 | 39 | 1,000 | 16 | 1,838.00 | 30.33 | 60.60× | 40 MiB | 2.5 MiB |
+| 4,096 | 256 | 4 | 500 | 32 | 187.85 | 87.51 | 2.15× | 160 MiB | 5 MiB |
+| 16,384 | 16 | 4 | 500 | 32 | 375.66 | 5.92 | 63.44× | 40 MiB | 1.25 MiB |
+
+Final exact-envelope discrepancies for both full and block trees versus the direct O(QN) scan were below `2.7e-16` in this table; accumulated checksum discrepancies were below `1.9e-12`. Grouped SMAWK matched the scan exactly in the tested double-precision runs. The table shows both the limitation and the useful regime: block update loses slightly to a one-time SMAWK rebuild at `N=1024,L=1`; it wins with more distinct times, grows to 63× at `N=16384,M=16,L=4`, and cuts per-endpoint tree storage by factors set by `B`.
+
+Use `./run_benchmarks.sh` to recompile and reproduce the matrix. Times are local container measurements, not hardware-normalized claims. The plain-Python segment-tree prototype is a correctness reference, not a fast implementation: the optimized vectorized NumPy scan is faster than that Python tree in these tests, and Python tree setup is costly. Its measured negative comparison is preserved in `python_benchmark_results.json`; the positive throughput numbers above are from the compiled C++ implementation against C++ scan and SMAWK baselines.
+
+## Accuracy and posterior checks
+
+`validation_results.json` is generated by `python test_online_entropy.py`.
+
+- 300 randomized cell edits (half committed, half rejected) across 37 cells and 19 endpoints matched a full Hopf–Lax scan; rejected edits restored the tree and Fenwick arrays bit-for-bit.
+- For strictly convex `f(u)=u^4/4`, the mutable candidates matched the independent direct formula after random edits.
+- A 600-step local Metropolis chain using a proper first-order Gaussian Markov random-field prior had the identical accept/reject path under the incremental likelihood and an independent full-scan likelihood. This shows the local prior ratio can be included without changing the target; it does not establish good mixing for dense/correlated or multimodal posteriors.
+- One-cell posterior: exact 50,001-point quadrature mean `0.3700272`, sd `0.0153187`; 100,000+ step exact-likelihood MH mean `0.3704583`, sd `0.0151910`.
+- Two-cell posterior with a first-order Gaussian Markov prior: 58,081-node quadrature and 100,000-step local MH agree in posterior means to < `4.3e-4`; maximum covariance-entry difference was `1.73e-5`.
+- For a synthetic profile containing a shock and rarefaction, first-order Godunov finite-volume sensor-mean max errors at 256, 512, 1024, 2048, and 4096 spatial cells were `0.0255, 0.0198, 0.00856, 0.00682, 0.00311`; one forward solve cost `1.4, 2.7, 5.8, 14.4, 36.0 ms` in the Python reference. This demonstrates expected grid convergence, not an end-to-end timing comparison between Python and the compiled C++ engine.
+
+## Prior art and novelty gate
+
+The exact entropy formula, wave-front tracking, MCMC, SMAWK, Fenwick trees, and range-add/min trees are established tools. In particular, Liard & Zuazua already use Lax–Hopf/front tracking for Burgers initial-data identification; Birolleau et al. study adaptive polynomial-chaos acceleration for discontinuous Bayesian inverse problems with hyperbolic conservation laws; and Bayesian conservation-law posterior stability has already been proved. These sources rule out claims that the PDE representation or Bayesian treatment is itself new.
+
+Targeted searches for an online Bayesian likelihood engine that exploits the exact identity “one changed cell candidate + common suffix offset” did not find a direct match. This is only a provisional novelty check, not an exhaustive literature/patent search. The candidate contribution is the exact repeated-update representation, its fixed-sensor likelihood capability, and the measured advantage against the strong grouped static-envelope baseline—not a new segment tree.
+
+- [Liard & Zuazua, Initial Data Identification for 1-D Burgers (2022)](https://ieeexplore.ieee.org/document/9484713)
+- [Birolleau, Poëtte & Lucor, Adaptive Bayesian Inference for Discontinuous Inverse Problems (2014)](https://www.global-sci.com/cicp/article/view/6199)
+- [Mishra et al., Bayesian inverse problem well-posedness for conservation laws (2021)](https://arxiv.org/abs/2107.09701)
+- [Coullon & Pokern, Bayesian LWR traffic inference (2022)](https://www.cambridge.org/core/journals/data-centric-engineering/article/markov-chain-monte-carlo-for-a-hyperbolic-bayesian-inverse-problem-in-traffic-flow-modeling/53A64484BE55E9DE7A23D5DFF75CC65D)
+- [Lax formula computation for convex conservation laws (JCP 2010)](https://doi.org/10.1016/j.jcp.2010.01.028)
+
+## Scope, caveats, decisive falsification test
+
+- Float code is numerically exact to roundoff in tested cases, not exact arithmetic. Accepted-update roundoff after 100,000 proposals with two endpoints was below `8e-16`; journal rollback restores stored node values exactly.
+- Fixed spatial breakpoints and a known `C1`, strictly convex, superlinear flux with evaluable `f`, `f'`, and `f*` are essential to the construction as stated. Time-dependent boundaries, source terms, system laws, nonconvex fluxes, moving breakpoints, unknown global flux parameters, or viscous smooth transition models require a different representation. LWR maps to the quadratic Burgers flux only with known fundamental-diagram parameters (e.g. known free-flow speed and jam density). Temporal averaging and point-location loop-detector data are not represented by the spatial-interval formula above.
+- Posterior sampling remains a statistical challenge. This reduces the cost of local likelihood calls; it does not guarantee ESS improvements. A prior or proposal with global coupling can erase the local advantage.
+- **Decisive falsification:** On a synthetic LWR corridor with the known quadratic flux specified above, `N=16,384` initial density cells, 16 spatial observation intervals, and four fixed observation times per interval (`M=64` spatial-interval observations), use a first-order Gaussian Markov prior and run the same 100,000 single-site MH proposals against (a) this block engine, (b) per-time SMAWK reconstruction, and (c) grid-converged finite-volume posterior using the same spatial-interval observation operator. Fail the capability claim if exact chains differ beyond `1e-10` likelihood tolerance, if setup/memory-aware ESS per wall second does not beat SMAWK by at least 2× in the `L>=4` regime, or if reported posterior shock-location intervals do not converge to the Hopf–Lax reference as the FV grid is refined. If realistic measurement smoothing or non-initial boundary uncertainty dominates, that also invalidates the practical fit of this restricted capability.
+
+## Files
+
+- `online_entropy.py` — Python exact formula, mutable full segment tree, Fenwick primitive, journaled commits/rejections, direct scan, and Godunov check.
+- `test_online_entropy.py` — randomized invariant tests, general convex flux check, identical MH path with Markov prior, exact small posterior/quadrature comparisons, FV convergence.
+- `benchmark_cpp.cpp` — compiled full-tree and block-tree implementations plus direct scan and grouped SMAWK comparators.
+- `run_benchmarks.sh` — fixed-seed reproducible scaling matrix.
+- `benchmark_results.json`, `benchmark_results.ndjson` — raw final benchmark output.
+- `python_benchmark_results.json` — preserved negative pure-Python performance comparison.
+- `benchmark_fv.py`, `finite_volume_results.json` — FV comparison.
+- `validation_results.json` — posterior and correctness test outputs.

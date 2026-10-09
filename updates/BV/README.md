@@ -1,0 +1,18 @@
+# BV — controlled stationary-generator tomography
+
+**No historic-scale or 9–10/10 breakthrough was established.** This intake preserves one conditional analytic program for identifying stochastic generators from controlled stationary laws, its explicit non-identifiability examples, and source-reported synthetic diagnostics. External proof review, formal verification, physical validation and publication priority remain unresolved.
+
+Start with [N547 — pairwise weighted current cancellation](../../frontier/dossiers/N547.txt). Under a shared smooth drift, constant positive-definite diffusion, known controls, exact positive stationary densities and justified boundary/integrability conditions, the source derives a weighted identity that can identify the diffusion matrix when its symmetric feature system has full rank. The admissible function class for the weight (q) still needs a precise statement.
+
+The remaining result routes are:
+
+- [N548 — conditional generator identifiability and invisible currents](../../frontier/dossiers/N548.txt): full recovery requires both a full-rank diffusion feature system and an almost-everywhere full-rank score-difference matrix. A two-regime torus gauge preserves both stationary laws while changing the drift current.
+- [N549 — exact affine-tilt rigidity](../../frontier/dossiers/N549.txt): for exact full-rank exponential density tilts under known constant forces, (B=UA^{-1}), (D=\operatorname{sym}(B)), (K=\operatorname{skew}(B)), and (b=B\nabla\log p_0). This is a restricted structural result, not a general finite-sample estimator.
+- [N550 — synthetic snapshot diagnostics](../../frontier/dossiers/N550.txt): source-reported 3D synthetic samples, 2D deterministic torus grids, and a quartic-family entropy-production estimate retain their distinct acquisition contracts.
+- [N551 — weak moments and matched comparator](../../frontier/dossiers/N551.txt): the weak-form estimator assumes a supplied Fourier drift basis and is acknowledged prior art. A same-sample comparator using an additional supplied potential family is competitive with the logistic estimator; no general dominance claim survives.
+
+The [full handoff](package/astra_static_generator_tomography/RESEARCH_HANDOFF.md) contains the derivations, result tables, failure modes and partial prior-art review. The [Astra bridge](package/astra_static_generator_tomography/ASTRA_BRIDGE.txt) and [session record](package/astra_static_generator_tomography/ASTRA_SESSION_RECORD.json) are preserved source summaries. The [Natural Sciences checkpoint](../../state/checkpoints/natural-sciences-pro/2026-10-10-static-generator-tomography.json) records the current objective, source pins, exact assumptions, unresolved acquisition barrier, and links to related work in other branches.
+
+The original [18-file source folder](package/astra_static_generator_tomography/) and [18-member ZIP](package/ASTRA_STATIC_GENERATOR_TOMOGRAPHY_2026-10-10.zip) are preserved byte-for-byte; the embedded manifest covers 17 payload files. See [integrity](INTEGRITY.json), [source provenance](SOURCE.json), and [deterministic validation](VALIDATION.json). Reproduction scripts and their commands are archived data: this intake checked hashes, membership, CRC, source routes and checkpoint consistency, but did not execute scientific code.
+
+The central remaining barrier is acquisition-complete identification from finite, noisy, correlated stationary samples in high dimension, without assuming a cheaply supplied density, score, tilt family, potential family or drift basis. All reported numerical evidence is synthetic; no physical intervention or real scientific dataset is included. The exact weighted identity may be known in other forms, and priority is not cleared.

@@ -1,0 +1,113 @@
+"""Supplemental positive-integral coefficient evaluator; frozen sampler unchanged.
+Returns rigorous Arb log H_n bounds, subject to ordinary FLINT correctness.
+Analytic quadrature error is included explicitly; no asymptotic CLT used.
+"""
+from fractions import Fraction as F
+from math import isqrt
+import operator
+from flint import arb,ctx
+
+class _NeedPrecision(ArithmeticError):
+    pass
+
+def asarb(q):
+ q=F(q);return arb(q.numerator)/arb(q.denominator)
+def ceil_sqrt(n):
+ r=isqrt(n);return r+(r*r<n)
+def _log_H_once(n,a,c,p=40,force_integral=False,extra_guard=0):
+ if isinstance(n,bool) or not isinstance(n,int) or n<0:raise ValueError('integer n>=0 required')
+ if not isinstance(p,int) or p<1:raise ValueError('integer precision>=1 required')
+ a,c=F(a),F(c)
+ if a<0 or c<0:raise ValueError('nonnegative coefficients required')
+ if n==0:return arb(0),{'method':'constant','zero':False}
+ if a==0 and c==0:return None,{'method':'zero','zero':True}
+ if c==0 and n%2:return None,{'method':'zero','zero':True}
+ L=max(abs(v.numerator).bit_length()+v.denominator.bit_length() for v in (a,c))
+ R=ceil_sqrt(2*(p+16));K=p+R+16
+ working=p+2*L+2*n.bit_length()+4*K+100+extra_guard
+ with ctx.workprec(working):
+  aa,cc=asarb(a),asarb(c)
+  if a==0:return n*cc.log()-arb(n+1).lgamma(),{'method':'linear','zero':False}
+  if c==0:return (n//2)*(aa/2).log()-arb(n//2+1).lgamma(),{'method':'quadratic','zero':False}
+  if n<16*(R+1)**2 and not force_integral:
+   # Positive finite sum; numerical n is O(p) on this branch.
+   s=arb(0)
+   for q in range(n//2+1):
+    logterm=q*(aa/2).log()+(n-2*q)*cc.log()-arb(q+1).lgamma()-arb(n-2*q+1).lgamma()
+    s+=logterm.exp()
+   return s.log(),{'method':'finite_sum','zero':False,'terms':n//2+1,'working_bits':working}
+  d=cc/aa.sqrt();m=(d+(d*d+4*n).sqrt())/2
+  M=4*(R+1)
+  if n<M*M and c*c*M*M<a*(M*M-n)**2:
+   raise ValueError('Integral branch needs m>=4(R+1)')
+  sign=1 if n%2==0 else -1
+  bmode=1+(-2*d*m).exp() if sign==1 else -(-2*d*m).expm1()
+  total=arb(0)
+  for panel in range(4*R):
+   s=F(-R)+F(2*panel+1,4);ss=asarb(s);t=m+ss
+   log_coeff=[arb(0)]*(K+1)
+   u=ss/m
+   log_coeff[0]=n*((1+u).log()-u)-ss*ss/2
+   log_coeff[1]=-ss*(1+n/(m*t))
+   power=1/(t*t)
+   log_coeff[2]=-n*power/2-arb(1)/2
+   for j in range(3,K+1):
+    power/=t
+    log_coeff[j]=n*power*(1 if j%2 else -1)/j
+   f=[arb(0)]*(K+1);f[0]=log_coeff[0].exp()
+   for j in range(1,K+1):
+    f[j]=sum((i*log_coeff[i]*f[j-i] for i in range(1,j+1)),arb(0))/j
+   exp_at=(-2*d*t).exp()
+   b=[arb(0)]*(K+1)
+   b[0]=1+exp_at if sign==1 else -(-2*d*t).expm1()
+   term=sign*exp_at
+   for j in range(1,K+1):
+    term=term*(-2*d)/j;b[j]=term
+   for j in range(0,K+1,2):
+    gj=sum((f[i]*b[j-i] for i in range(j+1)),arb(0))/bmode
+    total+=gj*arb(2)/(arb(4)**(j+1)*(j+1))
+  # Radius-1 disks have |normalized integrand|<32.
+  quad_err=asarb(F(22*R,4**K))
+  tail_err=6*(-arb(R*R)/2).exp()
+  err=(quad_err+tail_err).upper()
+  integral=total+arb(0,err)
+  if not integral.is_finite() or not integral.lower()>arb(1)/4:
+   raise _NeedPrecision('Integral enclosure needs more working precision')
+  pref=(n*aa.log()/2-arb(n+1).lgamma()-arb(2*arb.pi()).log()/2
+        +n*m.log()-(arb(n)/m)**2/2+bmode.log())
+  answer=pref+integral.log()
+  return answer,{'method':'positive_integral','zero':False,'R':R,'K':K,'panels':4*R,'working_bits':working,'integral':str(integral),'quadrature_error_bound':str(quad_err),'tail_bound':str(tail_err),'target_relative_bits':p}
+
+
+def log_H(n,a,c,p=40,force_integral=False):
+ """Return log coefficient enclosure of width <= 2^(-p-1), or exact zero.
+
+ Uses adaptive working precision for ordinary ball-arithmetic roundoff;
+ analytic tail/Taylor error already lies below this target. The theorem
+ assumes correct rigorous elementary-function enclosures, not a formal
+ verification of this software implementation.
+ """
+ if isinstance(n,bool) or isinstance(p,bool):raise TypeError('Boolean order/precision rejected')
+ try:n,p=operator.index(n),operator.index(p)
+ except TypeError:raise TypeError('Order and precision must be integers') from None
+ if isinstance(a,float) or isinstance(c,float):raise TypeError('Use exact rational coefficients, not floats')
+ a,c=F(a),F(c)
+ extra=0;attempts=0
+ while True:
+  try:
+   result,meta=_log_H_once(n,a,c,p,force_integral,extra)
+  except _NeedPrecision:
+   attempts+=1
+   extra=max(64,2*extra)
+   continue
+  attempts+=1
+  if result is None:
+   meta['precision_attempts']=attempts
+   return result,meta
+  with ctx.workprec(max(p+64,meta.get('working_bits',0))):
+   if not result.is_finite():raise ArithmeticError('Nonfinite coefficient enclosure')
+   if result.rad()<=arb(2)**(-p-2):
+    meta['precision_attempts']=attempts
+    meta['absolute_log_radius']=str(result.rad())
+    return result,meta
+  extra=max(64,2*extra)

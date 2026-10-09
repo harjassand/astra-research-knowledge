@@ -1,3 +1,5 @@
+> Current agent access begins at `00_START_HERE.txt`; generated inventory/authority is `agent/CURRENT.txt`. The architecture and counts below retain earlier snapshot context. Use scoped frontier notices and published checkpoint heads for current reuse/activity, rather than historical statistics or restart instructions.
+
 # Why this structure
 
 This is a workload-dependent design, not a proven universal optimum. It minimizes routine ingestion while keeping exact evidence recoverable. The unit of knowledge is a scoped result with a stable source identifier, a typed information interface, dependencies, costs and failure domain. Topics provide navigation; archived objects preserve byte identity; local search produces bounded evidence packets.

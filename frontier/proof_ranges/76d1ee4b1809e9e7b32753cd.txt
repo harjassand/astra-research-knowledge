@@ -1,0 +1,64 @@
+EXACT INDEXED SOURCE RANGE | {"path": "updates/BV/package/astra_static_generator_tomography/RESEARCH_HANDOFF.md", "sha256": "f22d6b194e3a7ef335639de7bb42ce23be1e8b98bc04ad935ab67dd09dc32575", "lines": [167, 226], "range_scope": "source-reported argument/evidence; completeness and correctness not independently audited", "read_path": "updates/BV/package/astra_static_generator_tomography/RESEARCH_HANDOFF.md", "source_id": "d-822b4cdcf99294bc", "hash_kind": "original_utf8_bytes"}
+range_sha256=c6151fc39624f314f2445737f53a0d70f5779a43932cf3bc445f329b08ce6651; line numbers refer to the source, not this wrapper.
+Scope: located text only; imported premises, completeness, correctness and priority remain unverified.
+--- BEGIN SOURCE BYTES ---
+## 6. Reproducible calculations, failures and comparisons
+
+All scripts are local and runnable. Environment: Python 3.13.5, NumPy 2.3.5, SciPy 1.17.0, scikit-learn 1.8.0; thread-limited BLAS used for tests.
+
+### A. Three-dimensional exact-i.i.d. sampling, 25 repetitions per N
+
+`stationary_tilt_experiment.py` generates four stationary laws with a **non-Gaussian quartic base potential**, \(D\) anisotropic and \(K\ne0\), by exact Gaussian-proposal rejection sampling. The quartic acceptance factor is \(\exp[-(0.35/4)\sum x_j^4]\le1\); all proposals are counted, and each accepted draw is independent. Controls \(u_i=0.9e_i\), log ratios \(a_i=B^{-1}u_i\); both the potential shape (in the ratio-estimation step) and \(B\) are treated as unknown.
+
+| Stationary draws/condition | Total accepted | Relative error \(B\): classifier | Relative error \(D\) | Relative error \(K\) | Relative error \(B\): Gaussian-moment baseline |
+|---:|---:|---:|---:|---:|---:|
+| 500 | 2,000 | 12.53% | 12.72% | 11.70% | 14.51% |
+| 2,000 | 8,000 | 7.23% | 7.63% | 6.26% | 8.99% |
+| 8,000 | 32,000 | 3.80% | 3.84% | 3.47% | 5.31% |
+| 32,000 | 128,000 | **1.70%** | **1.71%** | **1.52%** | 3.93% |
+
+Mean over 25 seeded replications; relative Frobenius errors. At N=32,000, mean proposal count ~201,000 (acceptance fraction 63.6%); generation+fitting averaged **0.221 seconds on this local machine**. This time excludes any physical dynamics/relaxation, instrument costs, generator equilibration or preparation. The comparator is a **finite-force Gaussian-moment linear-response approximation**, not the strongest possible model-aware semiparametric competitor; the classifier estimates the exact log-density ratio family.
+
+`proof_checks.py`: max absolute continuous Fokker–Planck residual at 1000 random points in four regimes was \(4.55\times 10^{-13}\); max pairwise Fisher identity residual \(4.44\times10^{-16}\). These are finite floating-point consistency tests only. For a second \(B'\) hiding from the first two controls, \(\|B-B'\|_F=0.18\) and \(\lambda_{\min}(D')=0.4475>0\).
+
+### B. Two-dimensional periodic nonlinear irreversible model (no affine density ratios)
+
+`general_identity_torus.py` solves the forward equation with a conservative second-order consistent **positive-rate, centered** Markov discretization of an explicitly specified 2D smooth non-gradient drift and \(D=\left[\begin{smallmatrix}.65&.12\\.12&.50\end{smallmatrix}\right]\). It never assumes linear density-ratio slopes. Solved stationary law arrays and central-difference score/Hessian fields are numerically acquired on successively refined periodic grids. The 3-regime \(D\) estimator uses one unweighted Fisher equation per pair; the 2-regime version uses seven level-selective weights of \(\log(p_1/p_0)\).
+
+| Grid side N | Three-regime relative \(D\) error | Two-regime relative \(D\) error | Two-regime condition number | Drift relative RMS error, rank-stable cells |
+|---:|---:|---:|---:|---:|
+| 24 | 1.552% | 153.3% | 104 | 30.05% |
+| 40 | 0.625% | 73.4% | 157 | 12.93% |
+| 64 | 0.254% | 31.75% | 182 | 4.92% |
+| 96 | 0.114% | 14.64% | 192 | 2.08% |
+| 128 | 0.0647% | 8.34% | 195 | 1.18% |
+| 192 | **0.0287%** | **3.74%** | 198 | **0.527%** |
+
+At every grid size, roughly 89.7–89.8% of cells met the **predeclared local rank filter** \(\operatorname{cond}W<20\), \(\sigma_{\min}(W)>0.08\). The two-regime equations were **mathematically full rank but badly conditioned**. Their finite-grid error was large, decreased on refinement, and must be treated as a practical negative finding, not evidence of a useful reduced-intervention algorithm.
+
+**Critical distinction:** These grid calculations used nearly exact deterministic solutions of a discretized stationary equation, not \(O(N^2)\) random observed stationary samples. They do **not** demonstrate that the full nonlinear drift can be learned statistically at the reported accuracy or cost. The grid itself scales exponentially with state dimension, and the calculations incur sparse stationary linear solves plus dense difference operations.
+
+### C. Entropy production with learned potential, 12 repetitions
+
+With the same 3D quartic model, potential coefficients are estimated from baseline samples using Hyvärinen score matching. \(\hat B\) is estimated from four labelled stationary populations. End-to-end static EPR estimates are compared with independent-sample reference \(\sigma_{\mathrm{ref}}\approx2.29734\) (nats per model time unit).
+
+| Accepted draws/condition | Total accepted | Mean \(\sigma\) relative error: classifier + score matching | Mean \(\sigma\) error: finite-force moment comparator |
+|---:|---:|---:|---:|
+| 2,000 | 8,000 | 6.94% | 10.67% |
+| 8,000 | 32,000 | 3.66% | 6.48% |
+| 32,000 | 128,000 | **1.63%** | 6.19% |
+
+Reference acquisition is a separate evaluation cost. The potential *family* is supplied; the coefficients are learned. The result is neither biological experimental proof nor a matched state-of-the-art evaluation.
+
+## 7. Hard failure modes and open gates
+
+1. **Stationarity is costly:** 4 independently prepared steady regimes in 3D, not 4 instantaneous reads. Unknown mixing times, slow metastability, perturbation calibration and instrument time can dominate all CPU work.
+2. **Model misspecification:** If the force is not additive, the drift changes with intervention, the diffusion depends on state or condition, or observations omit latent variables, identifiability claims do not apply as stated.
+3. **High-dimensional density-score acquisition:** A generic smooth \(p_i\) requires estimating \(\nabla p_i\) and \(\nabla^2p_i\); absent structural assumptions, this is statistically and computationally costly. The affine logistic shortcut does not extend to arbitrary \(p_i/p_j\).
+4. **Feature-rank failures:** Pairwise matrices may fail to span \(\mathrm{Sym}_d\), or \(W\) may have zero singular values on physically relevant regions. Tiny singular values amplify observational error.
+5. **Two-regime conditional-Fisher instability:** The numerical experiment found condition numbers 100–198 and poor finite-grid recovery compared with 3 regimes; obtaining theoretical rank is not equivalent to usable experimental inference.
+6. **Invisible solenoidal currents:** One population never determines \(K\); two populations cannot determine arbitrary 2D drift, even if \(D\) is known (explicit gauge above).
+7. **Finite sampling:** No nonasymptotic theorem from raw labelled samples to \(D\) and \(b\) in arbitrary dimension or low regularity has been proved. Logistic \(N^{-1/2}\) behaviour needs overlap and Fisher information assumptions.
+8. **Numerical regularization/robustness:** No documented noise-corruption, partially observed system, force calibration drift or unknown relaxation stress-test; no physical validation.
+9. **Priority:** The broad stationary inverse problem, Fokker–Planck algebra, nonreversible skew perturbations and SDE identification under interventions are already researched. Our exact identity might be well known in a different form, and this investigation did not establish novel priority through a complete primary-paper proof audit.
+

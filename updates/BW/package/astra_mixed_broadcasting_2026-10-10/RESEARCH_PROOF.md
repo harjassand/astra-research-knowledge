@@ -1,0 +1,642 @@
+# Maximal instability of approximate no-broadcasting without resource bounds
+
+**Research session:** 10 October 2026, Australia/Brisbane.  
+**Version:** 1.0.  
+**Mathematical status:** Complete self-contained argument supplied below; author-internal algebraic and finite computational checks. No independent review or proof-assistant certification has occurred. Historical priority is unknown.  
+**Mission status:** This is a complete negative answer to a specified stability question. A historic 9–10/10 foundational breakthrough has not been established or independently assessed.
+
+## 1. The question and the result
+
+Write
+
+\[
+T(\rho,\sigma)=\tfrac12\|\rho-\sigma\|_1.
+\]
+
+All channels below are completely positive, trace preserving (CPTP), and defined on the full indicated matrix algebra. “Entanglement breaking” (EB) means measure-and-prepare:
+
+\[
+E(X)=\sum_z\operatorname{Tr}(M_zX)\tau_z,
+\qquad M_z\succeq0,\quad\sum_zM_z=I,\quad
+\tau_z\succeq0,\quad\operatorname{Tr}\tau_z=1.
+\]
+
+In finite dimensions this is the usual entanglement-breaking channel class; arbitrary finite outcome counts are allowed. No restriction on computation or access to a classical description of the family is imposed on the comparator.
+
+For a finite state family \(\mathcal F=\{\rho_x:x\in X\}\) on \(H\), define
+
+\[
+b_m(\mathcal F)=\inf_{\mathcal B:H\to H^{\otimes m}}
+\max_{x,j}T(\operatorname{Tr}_{\ne j}\mathcal B(\rho_x),\rho_x),
+\]
+\[
+e(\mathcal F)=\inf_{E\in\mathrm{EB}(H,H)}\max_xT(E(\rho_x),\rho_x),
+\]
+\[
+c(\mathcal F)=\inf_{\substack{\sigma_x\text{ states on }H\\
+[\sigma_x,\sigma_y]=0\ \forall x,y}}
+\max_xT(\rho_x,\sigma_x).
+\]
+
+These three quantities are not assumed to be equivalent. In particular, an EB channel may prepare noncommuting states.
+
+### Theorem A: simultaneous maximal separation
+
+For every integer \(m\ge2\) and all \(\varepsilon,\eta>0\), there is a finite-dimensional \(H\), a **finite** family \(\mathcal F\), and a fixed positive prior \((w_x)_{x\in X}\) such that
+
+\[
+b_m(\mathcal F)\le\varepsilon,
+\qquad e(\mathcal F)\ge1-\eta,
+\qquad c(\mathcal F)\ge1-\eta.
+\tag{1}
+\]
+
+The lower bounds hold already for the corresponding prior-average errors, with the same prior fixed before the EB channel or commuting replacement is chosen.
+
+Moreover, the classical–quantum state
+
+\[
+\omega_{XH}=\sum_x w_x|x\rangle\langle x|\otimes\rho_x
+\tag{2}
+\]
+
+admits an \(m\)-output local broadcaster whose every retained \(XH_j\) marginal is within \(\varepsilon\) of \(\omega\), yet
+
+\[
+\inf_{\chi\in\mathrm{Classical}(H)}T(\omega,\chi)\ge1-\eta.
+\tag{3}
+\]
+
+Here \(\mathrm{Classical}(H)\) comprises all states diagonal in some basis of \(H\):
+
+\[
+\chi=\sum_j A_j^X\otimes|e_j\rangle\langle e_j|,
+\quad A_j^X\succeq0,\quad\sum_j\operatorname{Tr}A_j^X=1.
+\]
+
+The \(X\) marginal and the conditional states of \(\chi\) are unrestricted. Copying the classical register \(X\) also gives an \(m\)-output **bilocal** broadcasting construction.
+
+Consequently, for each \(m\ge2\) and each \(b>0\),
+
+\[
+\sup\{e(\mathcal F):\mathcal F\text{ finite},\ b_m(\mathcal F)\le b\}=1.
+\tag{4}
+\]
+
+The analogous supremum for \(c\) is also one. These are supremum statements, not assertions that one finite example attains error exactly one.
+
+This disproves every unrestricted, dimension-independent modulus \(e\le f(b)\to0\), and every such modulus for distance to commuting families or to states classical on the broadcast subsystem. It does **not** disprove the exact no-broadcasting theorem.
+
+## 2. Quantitative construction
+
+Fix \(m\ge2\), \(L\ge1\), and \(d\ge2\). Set
+
+\[
+k_r=m^r\quad(0\le r\le L),\qquad K=m^L,
+\qquad D_s=\binom{d+s-1}{s},
+\]
+\[
+H_r=\operatorname{Sym}^{k_r}(\mathbb C^d),\qquad
+H=\bigoplus_{r=0}^L H_r,
+\qquad \dim H=\sum_{r=0}^L D_{k_r}.
+\tag{5}
+\]
+
+For a unit vector \(\psi\in\mathbb C^d\), write \(p_\psi=|\psi\rangle\langle\psi|\) and define
+
+\[
+\rho_\psi=0_{H_0}\oplus
+\frac1L\bigoplus_{r=1}^L p_\psi^{\otimes k_r}.
+\tag{6}
+\]
+
+Each \(\rho_\psi\) has rank exactly \(L\), all its nonzero eigenvalues equal \(1/L\), and von Neumann entropy \(\log L\).
+
+Let \(\mu\) initially be Haar measure on pure states. It will be replaced by a finite, exact weighted projective \(2K\)-design in Section 7. Define
+
+\[
+a=\frac1L\sum_{r=1}^L\frac{k_r+1}{k_r+d},
+\qquad
+\beta=\min\left\{1,\sqrt{\sum_{r=1}^L\frac{D_{k_r}}{D_{2k_r}}}\right\}.
+\tag{7}
+\]
+
+We prove the following explicit bounds:
+
+\[
+T(\Phi_j(\rho_\psi),\rho_\psi)=\frac1L\quad\text{for every }\psi,j,
+\tag{8}
+\]
+\[
+\int T(E(\rho_\psi),\rho_\psi)\,d\mu(\psi)\ge1-a
+\quad\text{for every EB }E,
+\tag{9}
+\]
+\[
+\int T(\rho_\psi,\sigma_\psi)\,d\mu(\psi)\ge1-\beta
+\quad\text{for every common-basis family }\sigma_\psi,
+\tag{10}
+\]
+\[
+\inf_{\chi\in\mathrm{Classical}(H)}T(\omega,\chi)\ge1-\sqrt\beta.
+\tag{11}
+\]
+
+Equation (8) is the error of the **constructed channel**. The optimized quantity \(b_m\) is only asserted to be at most \(1/L\).
+
+## 3. Exact physical broadcaster
+
+For \(r\ge1\), partition the \(k_r\) tensor factors into \(m\) groups of size \(k_{r-1}\). A totally symmetric tensor is symmetric within every group, so regrouping gives a canonical isometry
+
+\[
+V_r:H_r\longrightarrow H_{r-1}^{\otimes m}.
+\]
+
+In particular,
+
+\[
+V_r\psi^{\otimes k_r}
+=(\psi^{\otimes k_{r-1}})^{\otimes m}.
+\tag{12}
+\]
+
+Let \(\Pi_r\) be the projection onto \(H_r\). Choose any unit vector \(z\in H_0\), and let \(\tau_0=(|z\rangle\langle z|)^{\otimes m}\). Define
+
+\[
+\mathcal B(X)=\sum_{r=1}^L V_r\Pi_rX\Pi_rV_r^*
++\operatorname{Tr}(\Pi_0X)\tau_0,
+\tag{13}
+\]
+
+where each \(V_r\) is embedded into \(H^{\otimes m}\).
+
+Every summand is CP. The first summands have Kraus operators \(V_r\Pi_r\), and the last has Kraus operators \(|z\rangle^{\otimes m}\langle e_{0,j}|\) for an orthonormal basis of \(H_0\). Their adjoint products sum to \(\sum_r\Pi_r=I_H\). Thus \(\mathcal B\) is a full-domain CPTP map, including on inputs with coherences between sectors. Its outputs are invariant under permutation of the \(m\) recipients.
+
+On the family,
+
+\[
+\mathcal B(\rho_\psi)=\frac1L\sum_{r=0}^{L-1}
+(p_\psi^{\otimes k_r})^{\otimes m},
+\tag{14}
+\]
+
+with the \(r\)-th term in \(H_r^{\otimes m}\). Hence every marginal is
+
+\[
+\Phi(\rho_\psi)=\frac1L\bigoplus_{r=0}^{L-1}p_\psi^{\otimes k_r}
+\oplus0_{H_L}.
+\tag{15}
+\]
+
+Only the two boundary blocks differ between (6) and (15). Each boundary difference has trace norm \(1/L\), proving (8).
+
+The mechanism is a translation of a uniform distribution over logarithmic copy-number levels. No additional unknown copy is created: a block containing \(m^r\) physical copies is partitioned into \(m\) blocks containing \(m^{r-1}\) copies each.
+
+### Coordinate specification of the isometry
+
+For an occupation vector \(\alpha=(\alpha_1,\ldots,\alpha_d)\), \(|\alpha|=k\), let \(|\alpha\rangle\) denote its normalized symmetric tensor and \(\binom{k}{\alpha}=k!/\prod_j\alpha_j!\). With \(k=mj\),
+
+\[
+V|\alpha\rangle=
+\sum_{\substack{|\gamma^{(i)}|=j\\
+\gamma^{(1)}+\cdots+\gamma^{(m)}=\alpha}}
+\sqrt{\frac{\prod_{i=1}^m\binom{j}{\gamma^{(i)}}}
+{\binom{k}{\alpha}}}
+|\gamma^{(1)}\rangle\otimes\cdots\otimes|\gamma^{(m)}\rangle.
+\tag{16}
+\]
+
+Different input occupations have disjoint output supports. The multinomial identity
+
+\[
+\sum_{\gamma^{(1)}+\cdots+\gamma^{(m)}=\alpha}
+\prod_i\binom{j}{\gamma^{(i)}}=\binom{mj}{\alpha}
+\]
+
+proves the norm is one. Thus all matrix entries of the channel can be reconstructed from (16), without assuming a cloning oracle.
+
+## 4. Symmetric moments and the EB lower bound
+
+### Lemma 1: pure-state moment identity
+
+For every integer \(s\ge1\),
+
+\[
+\int p_\psi^{\otimes s}\,d\psi=\frac{P_s}{D_s},
+\tag{17}
+\]
+
+where \(P_s\) is the orthogonal projection onto \(\operatorname{Sym}^s(\mathbb C^d)\).
+
+**Proof.** Write \(\psi_j=\sqrt{q_j}e^{i\theta_j}\). Normalizing independent standard complex Gaussian coordinates gives independent uniform phases and \((q_1,\ldots,q_d)\) uniform on the probability simplex. To see the latter, the squared Gaussian radii are independent exponential variables; the change of variables to their sum and their normalized values has Jacobian equal to the sum raised to \(d-1\), leaving constant simplex density \((d-1)!\).
+
+For \(|\alpha|=s\), the elementary simplex integral is
+
+\[
+\mathbb E\prod_jq_j^{\alpha_j}
+=\frac{(d-1)!\prod_j\alpha_j!}{(d+s-1)!}.
+\]
+
+The coefficient of \(|\alpha\rangle\) in \(\psi^{\otimes s}\) is
+\(\sqrt{s!/\alpha!}\,\psi^\alpha\). Phase integration kills all distinct-occupation matrix entries, and each diagonal entry has mean
+\(s!(d-1)!/(d+s-1)!=1/D_s\). The operator vanishes off the symmetric subspace. This proves (17). QED.
+
+### Lemma 2: state-estimation obstruction
+
+For every EB channel \(F:\operatorname{End}(\operatorname{Sym}^k\mathbb C^d)\to\operatorname{End}(\mathbb C^d)\),
+
+\[
+\int\operatorname{Tr}[p_\psi F(p_\psi^{\otimes k})]d\psi
+\le\frac{k+1}{k+d}.
+\tag{18}
+\]
+
+**Proof.** Write \(F(X)=\sum_z\operatorname{Tr}(M_zX)\tau_z\). Lemma 1 gives
+
+\[
+\int\operatorname{Tr}[p_\psi F(p_\psi^{\otimes k})]d\psi
+=\frac1{D_{k+1}}\sum_z\operatorname{Tr}[(M_z\otimes\tau_z)P_{k+1}].
+\]
+
+Since \(P_{k+1}\le I_{\operatorname{Sym}^k}\otimes I_d\), positivity implies the \(z\)-th trace is at most \(\operatorname{Tr}M_z\). Their sum is \(D_k\). Finally \(D_k/D_{k+1}=(k+1)/(k+d)\). QED.
+
+This is the standard optimal pure-state estimation bound, not a new state-estimation theorem; see [R3–R4]. It has been proved here to avoid an unverified imported dependency.
+
+Define one fixed decoder
+
+\[
+\mathcal D(X)=\sum_{r=0}^L
+\operatorname{Tr}_{k_r-1}(\Pi_rX\Pi_r)
+\quad:\operatorname{End}(H)\to\operatorname{End}(\mathbb C^d).
+\tag{19}
+\]
+
+It is CP and trace preserving, and \(\mathcal D(\rho_\psi)=p_\psi\). If \(E:H\to H\) is EB, then \(\mathcal DE\), restricted to the input block \(H_r\), is an EB channel from \(k_r\) copies to one qudit. By Lemma 2 and linearity,
+
+\[
+\int\operatorname{Tr}[p_\psi\mathcal DE(\rho_\psi)]d\psi\le a.
+\tag{20}
+\]
+
+For any state \(\sigma\),
+\(T(p_\psi,\sigma)\ge1-\operatorname{Tr}(p_\psi\sigma)\), by the two-outcome measurement \(\{p_\psi,I-p_\psi\}\). Contractivity under \(\mathcal D\) now proves (9). Equivalently, apply the effect \(\mathcal D^*(p_\psi)\in[0,I]\) directly on \(H\).
+
+The prior is common to all EB comparators. No minimax interchange, assumed optimizer, restricted measurement family, or computational hardness premise is used.
+
+## 5. A basis-independent obstruction to commuting replacement
+
+Define the support projection
+
+\[
+Q_\psi=0_{H_0}\oplus\bigoplus_{r=1}^L p_\psi^{\otimes k_r}
+=L\rho_\psi.
+\tag{21}
+\]
+
+For a unit vector \(v\in H\), decompose \(v=\bigoplus_rv_r\), put \(u_r=v_r/\|v_r\|\) when nonzero, and set \(w_r=\|v_r\|^2\). Then
+
+\[
+g_v(\psi):=\langle v,Q_\psi v\rangle
+=\sum_{r=1}^Lw_r|\langle u_r,\psi^{\otimes k_r}\rangle|^2.
+\]
+
+Weighted convexity of the square, with the unused \(w_0\) assigned value zero, yields
+
+\[
+g_v(\psi)^2\le\sum_{r=1}^Lw_r
+|\langle u_r,\psi^{\otimes k_r}\rangle|^4.
+\]
+
+Using Lemma 1 on \(2k_r\) tensor factors,
+
+\[
+\int |\langle u_r,\psi^{\otimes k_r}\rangle|^4d\psi
+=\frac{\langle u_r\otimes u_r,P_{2k_r}(u_r\otimes u_r)\rangle}{D_{2k_r}}
+\le\frac1{D_{2k_r}}.
+\tag{22}
+\]
+
+Now take any orthonormal basis \(\{e_j\}\) of \(H\). Summing the resulting inequality over \(j\), and using
+\(\sum_j\|\Pi_re_j\|^2=\operatorname{Tr}\Pi_r=D_{k_r}\), gives
+
+\[
+\int\sum_j g_{e_j}(\psi)^2d\psi
+\le\sum_{r=1}^L\frac{D_{k_r}}{D_{2k_r}}.
+\tag{23}
+\]
+
+Consequently, by Cauchy–Schwarz,
+
+\[
+\int\max_j\langle e_j,Q_\psi e_j\rangle d\psi
+\le\sqrt{\int\sum_j g_{e_j}(\psi)^2d\psi}\le\beta.
+\tag{24}
+\]
+
+The extra cap at one in \(\beta\) is valid because every \(g_{e_j}\le1\).
+
+If \(\sigma_\psi\) is diagonal in this common basis, then
+
+\[
+\operatorname{Tr}(Q_\psi\sigma_\psi)
+\le\max_j\langle e_j,Q_\psi e_j\rangle.
+\]
+
+Since \(\operatorname{Tr}(Q_\psi\rho_\psi)=1\), the measurement \(\{Q_\psi,I-Q_\psi\}\) gives
+
+\[
+T(\rho_\psi,\sigma_\psi)
+\ge1-\max_j\langle e_j,Q_\psi e_j\rangle.
+\]
+
+Integrate and use (24), proving (10). Every finite commuting family is simultaneously diagonalizable, so this covers the full comparator class in the definition of \(c\).
+
+**Decisive sharpening.** A first derivation used a high moment and the ambient dimension. Equation (23) is stronger and simpler: summing block masses over an orthonormal basis replaces the ambient dimension by \(\sum_rD_{k_r}/D_{2k_r}\). Only moments through order \(2K\), rather than \(K^2\), are needed. The earlier finite high-moment diagnostic is retained under `history/`; it is not the theorem's final bound.
+
+## 6. The single-state local-broadcasting corollary
+
+Use the finite prior obtained in Section 7 and form \(\omega\) as in (2). Blockwise trace norms and (8) give
+
+\[
+T((\operatorname{id}_X\otimes\Phi_j)(\omega),\omega)
+=\sum_xw_x/L=1/L.
+\tag{25}
+\]
+
+For every EB channel \(E\), the same block identity and (9) give
+
+\[
+T((\operatorname{id}_X\otimes E)(\omega),\omega)\ge1-a.
+\tag{26}
+\]
+
+To prove the stronger statement (11) about **all** states classical on \(H\), take any \(\chi\in\mathrm{Classical}(H)\). Dephase its \(X\) register in the \(|x\rangle\) basis. This leaves \(\omega\) unchanged and cannot increase distance. We may therefore write the dephased comparator as
+
+\[
+\chi'=\sum_x q_x|x\rangle\langle x|\otimes\sigma_x,
+\]
+
+where \(q\) is an arbitrary probability distribution and the \(\sigma_x\)'s are diagonal in one basis \(\{e_j\}\). Zero-weight conditional states can be chosen arbitrarily. Set
+
+\[
+g_x=\max_j\langle e_j,Q_{\psi_x}e_j\rangle,
+\qquad u_x=\operatorname{Tr}(Q_{\psi_x}\sigma_x)\le g_x.
+\]
+
+Measure \(X\), and conditioned on \(x\), measure \(\{Q_{\psi_x},I-Q_{\psi_x}\}\). The first distribution has probabilities \((w_x,0)\); the second has \((q_xu_x,q_x(1-u_x))\). Their total variation distance equals
+
+\[
+1-\sum_x\min\{w_x,q_xu_x\}.
+\]
+
+Using \(\min\{s,t\}\le\sqrt{st}\) and Cauchy–Schwarz,
+
+\[
+\sum_x\min\{w_x,q_xu_x\}
+\le\sum_x\sqrt{w_xq_xg_x}
+\le\sqrt{\sum_xw_xg_x}\sqrt{\sum_xq_x}
+\le\sqrt\beta.
+\]
+
+Data processing proves (11), including unrestricted changes of the classical prior in the comparator. Copying the \(X\) basis by the isometry \(|x\rangle\mapsto|x\rangle^{\otimes m}\) gives the bilocal version. QED.
+
+## 7. Finite and explicitly reconstructible priors
+
+Every moment used above has order at most \(2K\). Let \(t=2K\). The operator \(P_t/D_t\) is in the convex hull of the compact set \(\{p_\psi^{\otimes t}\}\). The trace-one Hermitian affine space on \(\operatorname{Sym}^t\mathbb C^d\) has real dimension \(D_t^2-1\). The elementary convex-hull theorem therefore supplies
+
+\[
+P_t/D_t=\sum_{x=1}^Nw_xp_{\psi_x}^{\otimes t},
+\quad w_x>0,\quad\sum_xw_x=1,\quad N\le D_t^2.
+\tag{27}
+\]
+
+One proof of the finite convex-hull bound removes an affinely dependent point from any convex combination with more than dimension-plus-one points, adjusting the weights until one is zero. Compactness extends the resulting bound to limits of finite convex combinations, including the integral.
+
+Partial tracing (27) gives the exact Haar moment for every order \(s\le t\). Thus **one fixed finite prior** preserves Lemma 2, (22)–(24), and all subsequent bounds, simultaneously for all comparator channels and all bases. Finiteness is not obtained by choosing a different sample after a comparator is selected.
+
+### Optional direct algebraic cubature, avoiding an unspecified convex decomposition
+
+Here is a deterministic finite specification. Put \(q=\lceil(t+1)/2\rceil\) and \(M=t+1\). For each \(j=1,\ldots,d-1\), use the \(q\)-node Gaussian quadrature rule on \([0,1]\) with probability density
+
+\[
+(d-j)(1-u)^{d-j-1}.
+\]
+
+Its nodes are the roots in \((0,1)\) of the corresponding degree-\(q\) Jacobi polynomial, and its positive weights integrate polynomials through degree \(2q-1\). Independently choose a node \(u_j\) and a phase \(\theta_j\in\{2\pi h/M:0\le h<M\}\). Define
+
+\[
+p_j=u_j\prod_{i<j}(1-u_i)\quad(j<d),\qquad
+p_d=\prod_{i<d}(1-u_i),
+\]
+\[
+\psi=(\sqrt{p_1}e^{i\theta_1},\ldots,
+\sqrt{p_{d-1}}e^{i\theta_{d-1}},\sqrt{p_d}).
+\tag{28}
+\]
+
+The weight of a point is the product of the quadrature weights times \(M^{-(d-1)}\). This gives \((qM)^{d-1}\) points, possibly with harmless duplicates, and all coordinates and weights are algebraic.
+
+**Why it is exact.** For matrix entries of \(p_\psi^{\otimes s}\), \(s\le t\), unequal occupations are killed by the phase sums: their integer phase exponents have absolute value at most \(t<M\). Equal occupations give a monomial in the \(p_j\)'s. In the stick variables it is
+\(\prod_{j<d}u_j^{\alpha_j}(1-u_j)^{\sum_{i>j}\alpha_i}\), whose degree in each \(u_j\) is at most \(s\le t\). Product quadrature therefore reproduces the Dirichlet simplex integral from Lemma 1.
+
+For completeness, Gaussian quadrature here requires no oracle. Let \(p_q\) be the monic orthogonal polynomial for the positive weight. It has \(q\) distinct interior roots: otherwise multiplying its factors at sign-changing interior roots gives a lower-degree polynomial with a nonzero fixed-sign inner product with \(p_q\), contradicting orthogonality. If \(\ell_i\) are the root Lagrange polynomials, the weights \(\int\ell_i\) equal \(\int\ell_i^2>0\), since \(\ell_i^2-\ell_i\) is divisible by \(p_q\) with quotient degree at most \(q-2\). Dividing an arbitrary polynomial of degree at most \(2q-1\) by \(p_q\) proves exactness. This specifies a finite algebraic construction, not an efficient large-parameter algorithm.
+
+Finite quadrature in quantum state estimation is a predecessor, not a novelty claim here; see [R4]. The companion script implements (28) in floating point for small cases.
+
+## 8. Parameters proving maximal separation
+
+For fixed \(m,L\), both \(a\) and \(\beta\) tend to zero as \(d\to\infty\). Thus choosing \(L\ge1/\varepsilon\), then sufficiently large \(d\) so that \(a\le\eta\) and \(\beta\le\min\{\eta,\eta^2\}\), proves Theorem A.
+
+An explicit sequence is
+
+\[
+K=m^L,\qquad d=m^2K^2.
+\tag{29}
+\]
+
+First,
+
+\[
+a\le\frac{\sum_{r=1}^L m^r+L}{Ld}
+=\frac{m(K-1)/(m-1)+L}{Ld}\longrightarrow0.
+\tag{30}
+\]
+
+For every \(k\ge1\),
+
+\[
+\frac{D_k}{D_{2k}}
+=\prod_{j=k+1}^{2k}\frac{j}{d+j-1}
+\le(2k/d)^k.
+\tag{31}
+\]
+
+Put \(u=2K/d\le1/4\). The \(k_r\)'s are distinct integers at least \(m\), so
+
+\[
+\sum_{r=1}^L\frac{D_{k_r}}{D_{2k_r}}
+\le\sum_{r=1}^Lu^{k_r}
+\le\frac{u^m}{1-u}.
+\]
+
+Therefore
+
+\[
+\beta\le\frac{u^{m/2}}{\sqrt{1-u}}\le2u
+=\frac{4}{m^2K}\le\frac1K.
+\tag{32}
+\]
+
+For \(m=2\), this gives the convenient exact bounds
+
+\[
+b_2\le1/L,
+\qquad e\ge1-\frac{2^{L+1}-2+L}{4L\,2^{2L}},
+\qquad c\ge1-2^{-L},
+\]
+\[
+\inf_{\chi\in\mathrm{Classical}(H)}T(\omega,\chi)
+\ge1-2^{-L/2}.
+\tag{33}
+\]
+
+For example, \(L=100\) gives a constructed marginal error of \(1/100\), while the displayed classical-state distance bound is \(1-2^{-50}\). This is an analytic parameter example: its enormous matrices and finite ensemble were **not** instantiated experimentally or computationally.
+
+The recipient number \(m\) may itself vary with \(L\). Thus no fixed finite amount of redundancy, and no prescribed sequence of finite recipient counts, repairs a dimension-independent implication.
+
+## 9. Exact scope controls and resource accounting
+
+### 9.1 Not global cloning
+
+Measuring all output block labels shows, in fact exactly,
+
+\[
+T(\mathcal B(\rho_\psi),\rho_\psi^{\otimes m})
+=1-\frac{L-1}{L^m}.
+\tag{34}
+\]
+
+The actual labels are all identical and uniform on \(0,\ldots,L-1\). The target product has independent labels uniform on \(1,\ldots,L\). On their overlapping block tuples the conditional quantum states coincide; the total common probability is \((L-1)/L^m\). Thus global cloning error approaches one even as every marginal error vanishes.
+
+### 9.2 Not globally near-idempotent
+
+For \(L\ge2\), take any family pure power supported solely in \(H_2\). Its images under \(\Phi\) and \(\Phi^2\) occupy \(H_1\) and \(H_0\), respectively, so they have half-trace distance one. Consequently \(\|\Phi-\Phi^2\|_\diamond=2\), using the convention in which channel diamond distance is at most two. No global near-idempotence premise is satisfied.
+
+### 9.3 Input acquisition is not free
+
+A supplied \(\rho_\psi\) contains a classically uncertain number of **genuine** copies of \(\psi\), as many as \(K=m^L\). Preparing it from a single unknown qudit is not part of the construction and is not a permissible assumed service. Preparing it from a classical description of \(\psi\), or from a source supplying the necessary copies, is a different input contract.
+
+For the copy-number observable \(N=\bigoplus_r k_rI_{H_r}\),
+
+\[
+\operatorname{Tr}(N\rho_\psi)=\frac{m(K-1)}{L(m-1)},
+\qquad
+\operatorname{Tr}(N\Phi(\rho_\psi))
+=\frac1m\operatorname{Tr}(N\rho_\psi).
+\tag{35}
+\]
+
+Total copy number over all recipients is conserved. Small trace distance does not keep this unbounded-across-the-sequence resource expectation nearly unchanged. The high-copy boundary has small probability but carries a large resource.
+
+### 9.4 Holevo capacity and loss are explicit—and large
+
+For the exact finite design prior,
+
+\[
+\bar\rho=0\oplus\frac1L\bigoplus_{r=1}^L I_{H_r}/D_{k_r}.
+\]
+
+Since every family state has entropy \(\log L\), the Holevo information is
+
+\[
+C=\frac1L\sum_{r=1}^L\log D_{k_r}.
+\tag{36}
+\]
+
+This is also the **supremum over all finite priors** on the finite family: any prior keeps block probabilities \(1/L\), and each block entropy is at most \(\log D_{k_r}\); the chosen prior attains all these maxima.
+
+The marginal output family has Holevo information
+\(L^{-1}\sum_{r=0}^{L-1}\log D_{k_r}\). Hence the actual-prior Holevo loss is exactly
+
+\[
+\delta=\chi(\mathcal F)-\chi(\Phi\mathcal F)
+=\frac{\log D_K-\log d}{L}.
+\tag{37}
+\]
+
+It diverges along (29). For example, \(D_K\ge d^K/K!\ge(d/K)^K\), and \(d=m^2K^2\), so the numerator is at least
+\(K\log(m^2K)-\log(m^2K^2)\), which grows faster than \(L\).
+
+Thus the construction does **not** refute a stability theorem assuming bounded Holevo capacity or small Holevo loss. It is not a counterexample to Astra N371's entropy-loss question, despite being a counterexample to the unrestricted statewise trace-distance extension.
+
+### 9.5 Why simple reweighting does not remove the reservoir cost
+
+For probabilities \(p_1,\ldots,p_L\) in place of \(1/L\), the same shift broadcaster has error
+
+\[
+\frac12\left(p_1+p_L+\sum_{r=1}^{L-1}|p_{r+1}-p_r|\right)
+\ge\max_rp_r.
+\tag{38}
+\]
+
+The inequality follows because a sequence starting and ending at zero must rise to its maximum and fall back. Therefore achieving shift error at most \(b\) requires \(L\ge1/b\) and Shannon entropy \(H(p)\ge\log(1/b)\). This is a limitation of this shift construction, not a universal lower bound for all approximate broadcasters.
+
+## 10. Relation to Astra and to prior mathematics
+
+The following source revisions were actually accessed:
+
+- Astra: `8aed7fd74eb14622ed5a0a3635a799374296e32a` (main; commit dated 9 October 2026 UTC).
+- OpenAI mathematical collection: `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb` (main; commit dated 8 October 2026 UTC).
+
+At the pinned Astra revision, `00_START_HERE.txt` remains the entry point. Current review wrappers distinguish source-derived claims, located proof text, internal checks, external correctness, and historical priority. The result here imports **no unverified Astra theorem**.
+
+Relevant scope contrasts:
+
+- **N534, pure-family broadcasting:** its reported positive common-EB theorem assumes pure states. Our rank-\(L\) family does not satisfy that premise. This result rules out dropping the purity/resource restrictions to obtain an unrestricted mixed-family modulus.
+- **N368, bounded-capacity classicality:** its reported bound uses Holevo capacity. Equation (36) is unbounded, so there is no contradiction. Our construction is not a matching lower bound for the particular logarithmic capacity rate reported there.
+- **N371, capacity-free entropy-loss gate:** its premise concerns \(\delta=\chi(\mathcal E)-\chi(\Phi\mathcal E)\), not just trace disturbance. Equation (37) is large. That gate remains unresolved here.
+- **N525, Werner projection lifting:** its all-copy rank-two positivity endpoint remains unresolved. Nothing in this manuscript proves or disproves that endpoint.
+- **N529, Boolean coordinate selection:** the source already refutes the specified auxiliary criterion, not FEI. No FEI resolution is claimed.
+
+The OpenAI collection's README and manuscript map were inspected at the pinned revision. A search of that map for `broadcast` found tree reconstruction and a bosonic broadcast-channel application; a search for `entanglement-breaking` found no match. These are navigation-level observations, **not** a full collection audit or evidence of historical priority. No theorem from that collection is used as a premise here.
+
+Exact no-broadcasting and local no-broadcasting are established predecessors [R1–R2]. Optimal state estimation and finite covariant estimators are also predecessors [R3–R4]. Quantitative entropic broadcasting limitations [R5] and finite/asymptotic broadcasting of correlations [R6] concern related but nonidentical quantitative statements. The mechanism has an analogy with embezzlement [R7]: a large resource can change significantly while a normalized state changes little. This is **not** the van Dam–Hayden entangled catalyst construction: here the resource is a classical mixture of unknown-state copy counts, and the theorem requires a separate estimation obstruction and a separate all-basis support-moment bound.
+
+The targeted search did not establish that the present simultaneous finite-family separation has appeared before; it also did not establish that it is historically new. No priority claim or expert validation is made.
+
+## 11. Verification, falsification, and unresolved endpoint
+
+The final scripts are:
+
+- `verify_construction.py`: 112 checks; exact multinomial isometry identities, exact low-order Haar moments and a deliberately insufficient-design negative control, finite full-domain Kraus completeness, complex-state marginal identities, rank/spectrum, decoder, global-cloning failure, global near-idempotence failure, and exact rational parameter bounds.
+- `verify_finite_design.py`: 44 checks; explicit finite quadrature ensembles with 225 points at \((d,t)=(3,4)\) and 45 points at \((d,t)=(2,8)\), all required moments, finite state-estimation POVMs attaining the decoded fidelity bound, and 12 basis fixtures per ensemble.
+
+The final executions used `python -O`; explicit exceptions rather than `assert` enforce the checks. Maximum floating residuals were approximately \(4.45\times10^{-15}\) and \(1.45\times10^{-15}\), respectively. Exact and floating checks are distinguished in the receipts. No optimization over all EB channels, all bases, or all dimensions was executed; those quantifiers are covered by the analytic argument. Earlier diagnostic versions and their receipts are retained, not counted as additional independent validations.
+
+Initial implementation failures and their corrections are recorded in `AUDIT_LOG.md`. They were a resource-exhausting integer comparison and a JSON integer-conversion error, not mathematical counterexamples. No sampled negative objective was used as a theorem.
+
+The single most consequential unresolved extension, continuing the existing Astra programme, is:
+
+> For a self-compatible channel \(\Phi\) and an arbitrary finite quantum ensemble \(\mathcal E=(w_x,\rho_x)\), does small Holevo loss \(\delta=\chi(\mathcal E)-\chi(\Phi\mathcal E)\) force one common EB channel with prior-average trace error at most a dimension-independent \(g(\delta)\to0\)?
+
+The present counterexample resolves the trace-disturbance version negatively but does not answer this stronger information-loss question. Resolving it requires new control beyond the copy-scale reservoir, because that reservoir's Holevo loss is large.
+
+## References and access scope
+
+**[R1]** H. Barnum, C. M. Caves, C. A. Fuchs, R. Jozsa, B. Schumacher, *Noncommuting mixed states cannot be broadcast*, arXiv:quant-ph/9511010; Phys. Rev. Lett. 76 (1996), 2818. https://arxiv.org/abs/quant-ph/9511010 . Abstract and the exact theorem statement as reproduced in [R5] inspected.
+
+**[R2]** M. Piani, P. Horodecki, R. Horodecki, *No-local-broadcasting theorem for quantum correlations*, arXiv:0707.0848; Phys. Rev. Lett. 100 (2008), 090502. https://arxiv.org/abs/0707.0848 . Primary abstract inspected.
+
+**[R3]** D. Bruß, C. Macchiavello, *Optimal state estimation for d-dimensional quantum systems*, arXiv:quant-ph/9812016v1; Phys. Lett. A 253 (1999), 249–251. https://arxiv.org/abs/quant-ph/9812016v1 . Bibliographic record and abstract inspected; the needed bound is independently derived in Section 4 rather than assumed from an unread proof.
+
+**[R4]** A. Hayashi, T. Hashimoto, M. Horibe, *Reexamination of optimal quantum state estimation of pure states*, arXiv:quant-ph/0410207v3 (2005). https://arxiv.org/abs/quant-ph/0410207v3 . Primary search abstract and bibliographic information inspected; attempted HTML retrieval failed. The finite construction used here is fully proved in Section 7.
+
+**[R5]** M. Lemm, M. M. Wilde, *Information-theoretic limitations on approximate quantum cloning and broadcasting*, arXiv:1608.07569v2. https://arxiv.org/html/1608.07569v2 . HTML theorem statements and relevant entropic/partial-trace passages inspected; not an exhaustive line-by-line proof audit.
+
+**[R6]** W. Xie, K. Fang, X. Wang, R. Duan, *Approximate broadcasting of quantum correlations*, arXiv:1705.06071v2; Phys. Rev. A 96 (2017), 022302. https://arxiv.org/html/1705.06071v2 . HTML asymptotic setting, definitions, and dimension-dependent approximation lemma inspected.
+
+**[R7]** W. van Dam, P. Hayden, *Embezzling Entangled Quantum States / Universal entanglement transformations without communication*, arXiv:quant-ph/0201041; Phys. Rev. A 67 (2003), 060302. https://arxiv.org/abs/quant-ph/0201041 . Primary abstract inspected; cited as a mechanism-level predecessor, not as an imported theorem proving this construction.
+
+**[R8]** T. Heinosaari, A. Jenčová, M. Plávala, *Dispensing of quantum information beyond no-broadcasting theorem—is it possible to broadcast anything genuinely quantum?*, J. Phys. A 56 (2023), 135301. https://doi.org/10.1088/1751-8121/acbc5b . Publisher HTML introduction, subset/measurement-restricted framework, and conclusions inspected. Its exact restricted-measurement setting is not the trace-distance statement proved here.
+
+Repository paths, revisions, read depth, claim-scope contrasts, and unknown raw-byte hashes are separately recorded in `SOURCE_REVISIONS.json` and `SESSION.json`. Repository commit pins are real; raw-source SHA-256 values are not invented when source bytes were not downloaded.

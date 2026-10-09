@@ -32,3 +32,7 @@ Regenerate this layer with `python3 frontier/build_frontier.py` from the full lo
 AF intake: new N160–164 statuses and N135 scoped threshold supersession are source-derived curation. INDEPENDENT_VALIDATION.json remains the earlier 229-card restructure receipt; its input hashes delimit its historical scope. Current checks are BUILD_VALIDATION.json and indexes/AGENT_ACCESS_VALIDATION.json. No new independent scientific audit is implied.
 
 BQ public-export note: the 2026-10-10 intake appended thirteen source-derived cards and gates and refreshed available public routers. The complete private SQLite source corpus is absent from the public export, so this incremental update does not claim a full database-backed rebuild or scientific validation; see indexes/BQ_ACCESS_VALIDATION.json and indexes/BQ_UPDATE_VALIDATION.json.
+
+## Public access projections
+
+`frontier/build_access.py` generates/checks the additional public dossiers, concept routes, exact incident connections and bounded proof ranges from this edition's existing records, without SQLite. It does not regenerate scientific curation or replace the full-snapshot builder above. `agent/access_manifest.json` identifies its audited base revision and exact input/output hashes; the Git revision actually fetched identifies the published files. `agent/ACCESS.txt` documents web and local retrieval, and `agent/CURRENT.txt` gives generated counts. Existing per-card JSON and reviewed-card routes remain valid.

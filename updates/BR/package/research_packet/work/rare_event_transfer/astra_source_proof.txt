@@ -1,0 +1,450 @@
+# Continuation-interval certificates for rare-event path sampling
+## A complete finite-state construction and an exact stopping-time variance obstruction
+
+**Research date:** 9 October 2026.  
+**Status:** Written derivations, an executable research prototype, and finite computational checks. Not independently peer reviewed or proof-assistant verified. No historical-priority claim. **The requested transformative applied-science invention was not established.**
+
+## 1. Outcome and decision
+
+This investigation targeted reliable estimation of extremely small transition probabilities without waiting for spontaneous transitions, assuming access to an explicit stochastic model rather than only passive experimental observations.
+
+The completed positive result is a local-to-global relative-second-moment certificate for importance sampling on a finite Markov time expansion. It uses verified continuation-probability intervals, exact rational endpoint inequalities, and an operational dyadic proposal compiler. An exact stopping-time counterexample shows why a uniformly accurate approximate committor and finite expected trajectory length do not, by themselves, guarantee finite variance.
+
+The decisive negative resource finding is that the implemented interval-acquisition routine already solves the probability-estimation problem to useful accuracy. It visits the explicit state-by-time table. Moving that work into preprocessing does not remove the dimensional bottleneck. The rare-event diagnostic therefore cannot support a breakthrough claim.
+
+Three independently considered opportunities were:
+
+1. **General quantum many-body contraction.** Sign-sensitive contraction is a real obstruction; restricting to a positive representation is not a solution unless finding and contracting that representation are also efficient. No general sign-cancellation removal was established here. See Chen et al. [R1].
+2. **Practical high-dimensional log-concave sampling.** The pinned OpenAI family 139 contains a subpolynomial exact-query construction, including a query-preserving Gaussian-noise absorption mechanism and finite recursive mean circuits. Its announced model allows unrestricted computation between queries. This investigation did not derive and implement a practically superior, fully precision-accounted version. The unrestricted-computation convention is not itself evidence that its construction takes exponential time. See [O1–O4].
+3. **Reliable rare-event scientific inference.** Learned committors, state-dependent importance sampling, and adaptive multiple proposals already exist. The attempted additional capability was a finite, checkable relative-error guarantee that could survive long trajectories and inaccessible event probabilities. The finite-state certificate below is complete; efficient high-dimensional certificate acquisition is not. See [R2–R5].
+
+These were selective investigations, not exhaustive surveys of their fields or of either repository.
+
+## 2. Source revisions and proof mechanisms actually inspected
+
+Astra was entered through `00_START_HERE.txt`. The accessed revision was:
+
+```
+harjassand/astra-research-knowledge
+779be19cab568565f4f6891f598c81274aca8529
+```
+
+The chemical-jump source was reached through the N35 review card and its status JSON. The logical source path and the listed evidence-object path did not resolve through the connector. The indexed HTML representation at `web/pages/d-bea4150c129f63b3.html` did resolve. Its displayed derivation and cost discussion were inspected; the returned excerpt was truncated near the end of the scope discussion. The source uses actual factorial molecular propensities, strict inward facet collars, a sum-exponential test function, and stopped Dynkin inequalities to bound finite-horizon exit probabilities. It explicitly charges certificate acquisition and does not prove infinite-time stochastic permanence. The chemical diagnostic below uses its two-reaction model, not the source's universal permanence premises.
+
+OpenAI's accessed revision was:
+
+```
+openai/math
+fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb
+```
+
+The selected source directory was:
+
+```
+preprints/Subpolynomial-query-complexity-for-well-conditioned-log-concave-sampling-September-26-2026/build/
+```
+
+The inspected mechanism is worth recording precisely. Suppose a seeded routine obeys the deterministic identity
+
+\[
+Q(x+\Delta;z+v\otimes\Delta/r)=Q(x;z),\qquad \|v\|\le D.
+\]
+
+Set
+
+\[
+n=r/(2D),\qquad P=(I-vv^T/(4D^2))^{1/2}.
+\]
+
+For independent standard Gaussian arrays \(Z,G\), the source shows that
+
+\[
+Q(x+nZ;PG)\overset{d}=Q(x;G).
+\]
+
+Translation gives effective seeds \(PG-v\otimes Z/(2D)\), whose covariance is exactly the identity. The covariance reduction is essential; adding independent center noise alone would increase the seed variance. The source propagates this invariant through finite recursive circuits. This is an inspected predecessor mechanism, not an invention claimed by this note.
+
+There is also a basic limitation to the attempted transfer: a sampler with fixed additive total-variation error does not automatically give relative accuracy for an event of probability \(p\). The inequality \(|P(A)-Q(A)|\le d_{TV}(P,Q)\) requires additive accuracy on the scale of \(p\) for a worst-case multiplicative guarantee. No contrary transfer is asserted here.
+
+**The theorems below are proved directly and do not assume correctness of an unreviewed Astra or OpenAI research claim.**
+
+## 3. Exact operational problem
+
+Consider a finite Markov process stopped on success or failure, or at an integer horizon \(H\). Unfold it into a directed acyclic graph whose nodes contain state and remaining time. Let \(P_x(i)\) be the known transition probabilities at node \(x\), and let
+
+\[
+h_x=\Pr_P(A\mid x)
+\]
+
+be the probability of eventual success within the remaining horizon. Terminal success has \(h=1\); terminal failure has \(h=0\). Nonterminal values satisfy
+
+\[
+h_x=\sum_i P_x(i)h_i.
+\]
+
+An importance proposal chooses probabilities \(q_x(i)\), retaining every edge that can participate in a successful original path. It may omit edges whose continuations are certified to have zero success probability.
+
+For a sampled path \(\omega\), return
+
+\[
+W(\omega)=\mathbf 1_A(\omega)\prod_{(x,i)\in\omega}\frac{P_x(i)}{q_x(i)}.
+\]
+
+Summation over successful paths gives \(\mathbb E_Q W=h_{x_0}\). This needs support on the success event, not absolute continuity on irrelevant failure-only paths. The simulation is of the supplied mathematical model; it is not a physical preparation protocol for the rare event.
+
+The additional information interface is a family of **verified** bounds
+
+\[
+0\le \ell_i\le h_i\le u_i\le1.
+\]
+
+A neural prediction without a proved enclosure is not such an interface. The acquisition and verification costs of these intervals must be charged.
+
+## 4. Local-to-global relative-second-moment theorem
+
+**Theorem 1.** At every terminal success node take \(B_x=1\). At every success-reachable nonterminal node, choose a legal proposal \(q_x\) and \(B_x\ge1\) such that
+
+\[
+B_x\ge
+\sup_{z\in\prod_i[\ell_i,u_i],\ \sum_i P_x(i)z_i>0}
+\frac{\sum_i P_x(i)^2z_i^2B_i/q_x(i)}{\bigl(\sum_iP_x(i)z_i\bigr)^2}.
+\tag{1}
+\]
+
+Coordinates with zero transition weight or certified-zero continuation can be removed. On the remaining coordinates the proposal must be positive. Then
+
+\[
+\mathbb E_Q W^2\le B_{x_0}h_{x_0}^2,
+\qquad
+\frac{\operatorname{Var}_Q W}{h_{x_0}^2}\le B_{x_0}-1.
+\tag{2}
+\]
+
+**Proof.** Let \(m_x\) be the second moment of the continuation weight starting from \(x\). At a terminal success, \(m_x=h_x^2=1\). At a terminal failure both are zero. Conditioning on the next edge gives
+
+\[
+m_x=\sum_i\frac{P_x(i)^2}{q_x(i)}m_i.
+\]
+
+By backward induction, \(m_i\le B_i h_i^2\). Substitution of \(z_i=h_i\) in (1), which is permitted by the verified intervals, yields \(m_x\le B_xh_x^2\). Unbiasedness gives the variance inequality. \(\square\)
+
+This certificate is local, but its conclusion is about the complete path weight. There is no omitted inverse-event-probability factor in (2). There may instead be a very large certificate \(B_{x_0}\), a long path, or expensive interval acquisition.
+
+The construction is related to established second-moment/Lyapunov analyses of state-dependent importance sampling [R3,R4]. It is not presented as a new general principle of importance sampling.
+
+### 4.1 Finite corner reduction
+
+For fixed proposal \(q\), the supremum in (1) is attained at a nonzero-denominator corner of the interval box. To see this, hold all but one coordinate fixed. The dependence has the form
+
+\[
+f(z)=\frac{az^2+b}{(cz+d)^2},\qquad a,b,c,d\ge0.
+\]
+
+Where the denominator is positive,
+
+\[
+f'(z)=\frac{2(ad z-bc)}{(cz+d)^3}.
+\]
+
+An interior stationary point is a minimum, not a strict maximum. Therefore an endpoint can replace the coordinate without reducing the objective. Degenerate constant cases are harmless; when the other coordinates vanish, choose a positive upper endpoint. Repeat coordinate by coordinate. This produces a corner without lowering the value.
+
+Consequently a node of outdegree \(k\) can be verified by at most \(2^k\) rational endpoint tests. **This is exponential in outdegree.** No polynomial-in-\(k\) general compiler is claimed. Rectangular interval uncertainty may be conservative because physically possible continuation values need not vary independently.
+
+## 5. Exact binary compiler
+
+Suppose a node has two success-reachable children. Let its original upward transition probability be \(p\). The true conditional probability of taking the upward branch given eventual success is
+
+\[
+s=\frac{p h_+}{p h_+ +(1-p)h_-}.
+\]
+
+The continuation intervals imply
+
+\[
+a=\frac{p\ell_+}{p\ell_+ +(1-p)u_-}
+\le s\le
+b=\frac{p u_+}{p u_+ +(1-p)\ell_-}.
+\tag{3}
+\]
+
+Certified-zero children are removed first so that these denominators are positive. Given continuation moment bounds \(C=B_+\), \(D=B_-\), a proposal upward probability \(q\in(0,1)\) has worst local cost
+
+\[
+F(q)=\max\{R(a,q),R(b,q)\},\qquad
+R(s,q)=\frac{s^2C}{q}+\frac{(1-s)^2D}{1-q}.
+\tag{4}
+\]
+
+The endpoint maximum is exact because \(R\) is convex in \(s\). The function \(F\) is convex in \(q\).
+
+### 5.1 Continuous solution
+
+The minimum over \(0<q<1\) lies at one of the endpoint-specific minima
+
+\[
+q_a=\frac{a\sqrt C}{a\sqrt C+(1-a)\sqrt D},\qquad
+q_b=\frac{b\sqrt C}{b\sqrt C+(1-b)\sqrt D},
+\]
+
+or the crossing point
+
+\[
+q_c=\frac{(a+b)C}{(a+b)C+(2-a-b)D}.
+\tag{5}
+\]
+
+To prove this, on an open interval where one endpoint cost strictly dominates, any interior minimum must minimize that smooth cost. A nonsmooth interior minimum must be at equality of the endpoint costs. Subtracting the two expressions in (4) gives (5). Endpoints with certain continuation can instead be handled as forced branches.
+
+For \(C=D=1\) and \(0<a+b<2\), this simplifies to
+
+\[
+q_*=(a+b)/2,\qquad
+F(q_*)=1+\frac{(b-a)^2}{4q_*(1-q_*)}.
+\tag{6}
+\]
+
+Thus small absolute uncertainty in the conditional branching probability produces a quadratic local penalty, except that the denominator makes uncertainty near a nearly deterministic branch more costly. This is a local statement, not a dimension-free global guarantee.
+
+### 5.2 Finite-bit implementation and exact optimality
+
+The prototype restricts \(q\) to the dyadic grid
+
+\[
+q=k/2^r,\qquad k=1,\ldots,2^r-1.
+\]
+
+Floating-point evaluation of (5) provides candidate grid points, but those candidates are not trusted. Exact rational comparisons with their two neighbors verify a global grid minimum because a convex function has nondecreasing discrete slopes. If the heuristic cannot be used or the neighbor checks fail, exact binary search on these slopes finds the grid minimum using \(O(r)\) rational objective evaluations. The returned certificate is always evaluated exactly and rounded upward.
+
+This fallback also handles continuation bounds larger than floating-point range. The independent verifier does not need the optimizer, the true committor, or simulation outcomes.
+
+## 6. Obtaining a finite-sample relative-error guarantee
+
+Let \(v=B_{x_0}-1\), target relative error \(0<\varepsilon<1\), and failure probability \(0<\alpha<1\). For one group of
+
+\[
+n=\max\{1,\lceil4v/\varepsilon^2\rceil\}
+\]
+
+independent weights, Chebyshev's inequality implies that the group mean is outside \([(1-\varepsilon)p,(1+\varepsilon)p]\) with probability at most \(1/4\).
+
+Use an odd number \(K\) of independent groups and return the median of the group means. The failure probability is bounded by
+
+\[
+\sum_{j=(K+1)/2}^{K}\binom Kj(1/4)^j(3/4)^{K-j}.
+\tag{7}
+\]
+
+The implementation chooses \(K\) by exact rational evaluation of (7), avoiding numerical ambiguity in a logarithmic confidence calculation. A simpler sufficient bound is \(K\ge8\log(1/\alpha)\), rounded to an odd integer. The resulting sample count is
+
+\[
+O\left((1+v/\varepsilon^2)\log(1/\alpha)\right).
+\]
+
+The median estimator need not be unbiased; its individual input weights and group means are unbiased. The confidence guarantee is conditional on the specified stochastic model and an independent uniform random-bit stream. A fixed-seed pseudorandom run is a reproducibility diagnostic, not itself a proof of that randomness assumption.
+
+`certified_estimate` uses exact rational weights and verifies the complete table first. It refuses requests exceeding its explicit `max_samples` budget. The faster NumPy experiment uses floating-point log weights and does not claim exact arithmetic for the Monte Carlo values.
+
+## 7. Exact stopping-time obstruction
+
+**Theorem 2.** Fix \(0<s<1\), \(0<\delta<1\), and \(0<p<1/(1+\delta)\). There is a Markov chain with two transient states and two absorbing states for which:
+
+- the true committor on each transient state is \(p\);
+- the approximate committor has uniform relative error exactly \(\delta\);
+- the normalized approximate-Doob sampler succeeds almost surely and has expected path length \(1/s\);
+- its relative second moment is finite **if and only if** \(s>\delta^2\).
+
+When finite, its exact value is
+
+\[
+\frac{\mathbb E_Q W^2}{p^2}
+=\frac{s(1-\delta^2)}{s-\delta^2}.
+\tag{8}
+\]
+
+**Construction and proof.** The transient states are \(x_+,x_-\); the absorbing states are success \(B\) and failure \(A\). From either transient state the original transition probabilities are
+
+\[
+P(x_+)=P(x_-)=(1-s)/2,\quad P(B)=sp,\quad P(A)=s(1-p).
+\]
+
+An absorption occurs almost surely, and its success probability is \(p\), independently of the transient starting state. Define
+
+\[
+\widetilde h(x_\pm)=p(1\pm\delta),\quad
+\widetilde h(B)=1,\quad\widetilde h(A)=0.
+\]
+
+The one-step normalization is \(P\widetilde h=p\) at both transient states. The approximate-Doob proposal therefore has rows
+
+\[
+Q(x_\pm)=(1-s)(1\pm\delta)/2,\quad Q(B)=s,\quad Q(A)=0.
+\]
+
+Let \(N\) be the number of transient transitions before the final jump to \(B\). Under \(Q\),
+
+\[
+\Pr(N=n)=s(1-s)^n,\qquad n=0,1,\ldots.
+\]
+
+Conditional on \(N\), the signs are independent with probabilities \((1\pm\delta)/2\). The complete likelihood weight is
+
+\[
+W=p\prod_{j=1}^{N}\frac{1}{1+\delta S_j}.
+\]
+
+Each factor has mean one under its sign distribution, so \(\mathbb E W=p\). Its second-moment factor is
+
+\[
+\frac{1+\delta}{2(1+\delta)^2}
++\frac{1-\delta}{2(1-\delta)^2}
+=\frac1{1-\delta^2}.
+\]
+
+Hence
+
+\[
+\frac{\mathbb E W^2}{p^2}
+=s\sum_{n=0}^{\infty}
+\left(\frac{1-s}{1-\delta^2}\right)^n.
+\]
+
+The geometric series converges precisely when \(s>\delta^2\), and sums to (8). The proposal's total path length is \(N+1\), whose mean is \(1/s\). \(\square\)
+
+For example, \(\delta=0.01\) and \(s=10^{-5}\) give infinite variance despite a 1% uniform committor error and a finite mean of 100,000 steps. The conclusion holds for arbitrarily small \(p\), including \(10^{-30}\).
+
+This example does not say every good approximate committor fails or that rare-event sampling is impossible. It rules out a universal implication from uniform relative committor accuracy plus finite expected stopping time to finite variance. The relevant accumulation requires control stronger than expected time alone. Existing work already studies importance-sampling fragility and random stopping times [R3]; no priority is claimed for the general phenomenon.
+
+### 7.1 Extension beyond an imposed finite horizon
+
+For a finite absorbing chain and a fixed proposal, define the nonnegative matrix and terminal vector
+
+\[
+G_{ij}=P_{ij}^2/Q_{ij},\qquad b_i=P_{iB}^2/Q_{iB}
+\]
+
+on transient states, removing irrelevant zero-weight terms. Its second moment is the nonnegative series
+
+\[
+m=\sum_{n\ge0}G^n b.
+\]
+
+Any finite nonnegative vector \(U\) satisfying \(U\ge b+GU\) gives \(m\le U\), by induction on partial sums. On an irreducible contributing transient block, finiteness is equivalent to \(\rho(G)<1\), and then \(m=(I-G)^{-1}b\). Unbiasedness and finite expected runtime remain separate conditions. This is the familiar second-moment/Lyapunov structure, not a newly invented spectral method.
+
+Thus the finite-horizon idea extends as a verified supersolution inequality, but solving or bounding the resulting operator over a large state space is another acquisition problem. The two-state example is an exact case where the contributing spectral radius reaches or exceeds one.
+
+## 8. Executed chemical diagnostics
+
+Use the two reactions
+
+\[
+2A\longrightarrow A+B,\qquad 2B\longrightarrow A+B,
+\]
+
+with equal rate constants and conserved total count \(A+B=V\). At \(A=j\), the embedded reaction-event chain has upward probability
+
+\[
+P(j\to j+1)=
+\frac{(V-j)(V-j-1)}{(V-j)(V-j-1)+j(j-1)}.
+\tag{9}
+\]
+
+The factor \(1/V\) in both continuous-time propensities cancels in this embedded-chain probability. The event is to reach \(3V/4\) before returning to \(V/2\), starting at \(V/2+1\), within \(H=2V\) reaction events. This is not a physical-time rate or a full molecular benchmark.
+
+Intervals were acquired by positive backward recursion with outward rounding to 12 binary significant bits. Proposal probabilities used a 30-bit dyadic grid; second-moment bounds were rounded upward to 36 significant bits. Each compiled table was checked independently with exact rational arithmetic. High-precision probability references used 80-decimal-digit arithmetic. Moment references used their exact mathematical recurrences evaluated in double precision; they are not themselves certified decimal enclosures.
+
+| V | States | H | Event probability, rounded | Drift-reversal relative variance | Compiled relative variance | Certified upper bound on compiled relative variance |
+|---:|---:|---:|---:|---:|---:|---:|
+| 40 | 11 | 80 | 5.5600710e-5 | 1.90971 | 1.32609e-7 | 5.87858e-5 |
+| 80 | 21 | 160 | 1.6074253e-9 | 3.02473 | 1.30521e-6 | 1.54354e-3 |
+| 160 | 41 | 320 | 1.3133616e-18 | 4.65095 | 1.22294e-4 | 1.92850e-2 |
+
+Here relative variance is \(\operatorname{Var}(W)/p^2\), not the relative variance of a multi-sample mean. The baseline reverses the local drift and uses a success-reachability mask; it does not use committor values. It is stronger than comparing only against crude Monte Carlo, whose corresponding relative variances are approximately \(1.7984\times10^4\), \(6.2211\times10^8\), and \(7.6140\times10^{17}\).
+
+For each volume, 20,000 diagnostic paths were run for each of the compiled and drift-reversal proposals. The certificates, not the finite sample variances, justify the bounds. The largest compiled run returned approximately \(1.3135992\times10^{-18}\). The scripts save the seeds, event-step counts, standard errors, references, and all reported quantities in `results.json`.
+
+The independent verifier passed 684, 2,869, and 11,739 success-reachable nodes, respectively: **15,292 node checks** over the three tables. The unit suite has **10 passing test groups**, including exact rational small-chain moments, exhaustive small-grid minimax comparisons, deliberately corrupted certificates, exact-weight sampling, and the stopping-time threshold. These are finite checks, not a formal proof of Python correctness or a global theorem audit.
+
+### 8.1 Why this is not a decisive frontier improvement
+
+The root interval before proposal compilation already gives a deterministic midpoint estimate with certified relative-error bounds of
+
+\[
+0.00282334,\qquad0.00901804,\qquad0.02069537
+\]
+
+for the three volumes. The strongest-looking \(10^{-18}\) example was thus already bounded to about **2.07%** before any importance sampling. Its simple drift-reversal baseline also has relative variance below five. It is not an instance where existing methods are demonstrably unable to estimate the probability.
+
+For the largest case, the latest recorded single-run times were about 0.269 seconds for rational bracket acquisition and 2.460 seconds for proposal compilation. Ordinary 80-digit backward dynamic programming was also run. The complete timing record is in the JSON file. These single-process measurements are not controlled state-of-the-art runtime comparisons; precisions, outputs, and workloads differ. The qualitative resource conclusion does not depend on the timings: the same explicit backward state table already supplies the answer.
+
+No neural committor training, high-dimensional molecular experiment, SAIS comparison, weighted-ensemble comparison, or tensor-network simulation was executed. Superiority over those methods has not been established.
+
+## 9. Full resource ledger
+
+For an explicit binary time expansion with \(S\) states per layer:
+
+- Interval acquisition requires \(O(HS)\) scalar arithmetic operations and, as implemented, \(O(HS)\) stored values.
+- The exact dyadic minimax compiler uses at most \(O(HSr)\) rational objective evaluations for \(r\)-bit proposals. Fast candidates often reduce this, but the stated worst-case count includes fallback.
+- The separate verifier uses \(O(HS)\) rational local checks.
+- Each path uses at most \(H\) transitions. A random-bit implementation spends at most \(r\) bits per non-forced transition. Exact likelihood weights require growing integer arithmetic rather than constant-cost real operations.
+- With confidence parameters \((\varepsilon,\alpha)\), the sampling work is at most \(O(H(1+v/\varepsilon^2)\log(1/\alpha))\) transitions, in addition to acquisition, compilation, and verification.
+
+Rational transition inputs, dyadic rounding, and finite path lengths keep the required integer bit lengths finite. In the prototype, `Fraction` stores denominators explicitly: a dyadic number of size \(2^{-M}\) can require \(O(M)\) bits, not merely \(O(\log M)\) storage. Consequently rarity-related precision costs have not been hidden inside a unit-cost exponent representation. The work is polynomial in the explicit graph size, horizon, and the actual arithmetic bit lengths; it is not asserted to be polynomial in an implicit high-dimensional model's compact description.
+
+If a \(d\)-coordinate grid has \(m\) values per coordinate, an explicit state table can have \(S=m^d\). The construction leaves this exponential dependence intact. With only passive Bernoulli event observations and no additional model structure, even distinguishing probabilities \(p\) and \(2p\) with fixed confidence needs order \(1/p\) observations: couple each pair of observations to disagree with probability \(p\), so \(N\) observations have total variation at most \(Np\). This lower bound is about the passive-observation interface, not about algorithms allowed richer transition/model queries.
+
+Physical-time conversion would additionally require holding-time or uniformization accounting, horizon truncation control at a relative-probability scale, and any stationary flux acquisition used in rate formulas. None is supplied by merely conditioning the embedded chain. Experimental model error is also outside the certificates.
+
+## 10. Scientific conclusion
+
+The finite theorem, exact compiler, exact-weight estimator, and counterexample are usable research outputs. They do not establish a new foundational technological capability, and their historical novelty is unresolved against substantial existing importance-sampling theory.
+
+The missing substantive step is **a representation and acquisition theorem that produces sufficiently tight continuation or second-moment certificates on scientifically realistic high-dimensional systems without enumerating their state space, solving the original committor problem, or requiring comparable rare-event data**. No such theorem or validated implementation was obtained in this investigation. Therefore the mission remains unfulfilled; the provided results must not be labeled a 10/10 breakthrough.
+
+## Reproduction
+
+```
+python -m pip install -r requirements.txt
+python -m unittest -v test_certified_paths
+python run_experiments.py --volumes 40 80 160 --samples 20000
+```
+
+Exact-confidence example:
+
+```python
+from fractions import Fraction
+from random import Random
+from certified_paths import chemical_excursion, compile_chain, certified_estimate
+
+compiled = compile_chain(chemical_excursion(40), 80, bracket_bits=12)
+answer = certified_estimate(
+    compiled, epsilon=Fraction(1, 10), alpha=Fraction(1, 20),
+    random_bits=Random(20261009).getrandbits,
+)
+print(float(answer['estimate']), answer['samples'], answer['failure_bound'])
+```
+
+The pseudorandom seed is for reproducibility. The probability guarantee's independent-bit assumption is mathematical, not certified by choosing a seed.
+
+## References and provenance
+
+Public full texts are referenced rather than redistributed. Retrieved source versions and paths are also listed in `SOURCE_MANIFEST.json`. No source-text corpus is included in this packet.
+
+[R1] J. Chen, J. Jiang, D. Hangleiter, N. Schuch. *Sign Problem in Tensor-Network Contraction*. PRX Quantum 6, 010312 (2025). arXiv:2404.19023. https://arxiv.org/abs/2404.19023
+
+[R2] A. R. Mitchell, G. M. Rotskoff. *Committor guided estimates of molecular transition rates*. arXiv:2408.05879, accessed HTML v1. https://arxiv.org/html/2408.05879v1
+
+[R3] C. Hartmann, L. Richter. *Nonasymptotic bounds for suboptimal importance sampling*. arXiv:2102.09606, accessed HTML v1. The arXiv identifier/version is used rather than the inconsistent rendered header date. https://arxiv.org/html/2102.09606v1
+
+[R4] P. Dupuis, H. Wang. *Subsolutions of an Isaacs Equation and Efficient Schemes for Importance Sampling*. Mathematics of Operations Research 32(3), 723–757 (2007). https://doi.org/10.1287/moor.1070.0266
+
+[R5] S. Helal, V. Elvira. *Efficient rare event estimation for multimodal and high-dimensional system reliability via subset adaptive importance sampling*. arXiv:2508.00210, accessed preprint. https://arxiv.org/abs/2508.00210
+
+[A1] Astra Research Knowledge, `00_START_HERE.txt`; N35 review card and status JSON; `web/pages/d-bea4150c129f63b3.html`, all at the pinned revision above. Indexed logical title: *Finite-volume chemical safety from an inward-polytope certificate*. Indexed original-content SHA-256: `0272b6497d2fbc025ef73b17d29e403337a29246abf6f21f771b2400686a96b7`. The repository reports this source's external correctness and priority as unverified.
+
+[O1] OpenAI. *Subpolynomial query complexity for well-conditioned log-concave sampling*, September 26, 2026, `build/main.tex`, at the pinned revision above. Blob: `91786d24bd4075058422c42ff6fd9580d627a725`.
+
+[O2] Same manuscript, `build/sections/implementation.tex`, inspected selected ranges covering Gaussian absorption, circuit expansion, and deterministic query/seed bounds. Blob: `27a4a2ed822eb5d20c33284a3e77f81774bf5cd5`.
+
+[O3] Same manuscript, `build/sections/numerics.tex`, inspected lines 1–230. Blob: `847472604780c58af6005a02f9c94117fc0ec6d9`.
+
+[O4] OpenAI/math `README.md` and selected navigation ranges at the pinned revision. Its verification caveats were retained. No claim of auditing the entire manuscript collection is made.
