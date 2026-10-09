@@ -1,0 +1,195 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BL: lineage/investigate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BL-sources.txt">Source map</a><h1>BL: lineage/investigate.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=0. All43 supplied files,40 native checksums and original divisibility ZIP unchanged; full reports, source compilers/samplers/simulator, finite/synthetic receipts, negative runs and4NPZfixtures preserved. Three supplied proposed derivations; no independent audits supplied or new scientific/analytic/kernel replay at intake. Exact classification has no robust-distance promise; floating sampler lacks rounding certificate; biological dataset absent. No established research capability gain. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Reproducible synthetic checks of a conditional lineage-moment identity.
+
+All generated samples are simulations, not measurements of biological cells.
+Requires Python 3, numpy, scipy, sympy. Run: python investigate.py
+No network access is used. Outputs JSON containing exact-model predictions
+and independent-lineage Monte Carlo estimates with standard errors.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import math
+from pathlib import Path
+from typing import Any
+import numpy as np
+from scipy.special import poch
+
+SEED = 20261009
+N_LINEAGES = 2048
+N_GENERATIONS = 4096
+BURN_IN = 128
+MAX_LAG = 5
+
+
+def model_moments(alpha: float | None, shape: float = 4.0) -&gt; dict[str, Any]:
+    &quot;&quot;&quot;Stationary raw moments for R~Beta(alpha,alpha), Delta~Gamma(shape,1/shape).
+    alpha=None denotes deterministic R=1/2. R and Delta are independent.
+    &quot;&quot;&quot;
+    r = [1.0] + [(0.5 ** k if alpha is None else float(poch(alpha,k)/poch(2*alpha,k))) for k in range(1,4)]
+    d = [float(poch(shape,k)/shape**k) for k in range(4)]
+    raw = [1.0]
+    for k in range(1,4):
+        raw.append(r[k] * sum(math.comb(k,j)*raw[j]*d[k-j] for j in range(k)) / (1-r[k]))
+    mu=raw[1]; var=raw[2]-mu*mu; skew=raw[3]-3*mu*raw[2]+2*mu**3
+    a,q=r[1],r[2]
+    b=mu*(q/a-a) # E[R eta], eta=R(Delta+mu)-mu
+    amplitude=skew-2*b*var/(a-q)
+    J=[amplitude*(a**k-q**k) for k in range(1,MAX_LAG+1)]
+    return dict(mean=mu,variance=var,third_central_moment=skew,a=a,q=q,
+                partition_variance=q-a*a,amplitude=amplitude,
+                C=[var*a**k for k in range(1,MAX_LAG+1)],J=J)
+
+
+def ratio_with_se(u: np.ndarray, v: np.ndarray) -&gt; dict[str,float]:
+    &quot;&quot;&quot;Delta-method SE using independent lineages as sampling units.&quot;&quot;&quot;
+    um=float(u.mean());vm=float(v.mean())
+    if abs(vm) &lt; 1e-15:
+        return dict(value=float(&#x27;nan&#x27;),se=float(&#x27;nan&#x27;))
+    z=um/vm
+    influence=(u-z*v)/vm
+    return dict(value=z,se=float(influence.std(ddof=1)/np.sqrt(len(u))))
+
+
+def summarize(C: np.ndarray,J: np.ndarray) -&gt; dict[str,Any]:
+    # C and J have axes (lag, independent lineage).
+    a=ratio_with_se(C[1],C[0]);s=ratio_with_se(J[1],J[0])
+    jmean=J.mean(axis=1);cmean=C.mean(axis=1)
+    jse=J.std(axis=1,ddof=1)/np.sqrt(C.shape[1])
+    out=dict(C=cmean.tolist(),J=jmean.tolist(),J_se=jse.tolist(),
+             a_hat=a[&#x27;value&#x27;],a_se=a[&#x27;se&#x27;],sum_roots_hat=s[&#x27;value&#x27;],sum_roots_se=s[&#x27;se&#x27;])
+    # q=s-a; Var(R)=s-a-a^2. Do not clip unphysical estimates.
+    out[&#x27;q_hat&#x27;]=s[&#x27;value&#x27;]-a[&#x27;value&#x27;]
+    out[&#x27;partition_variance_hat&#x27;]=s[&#x27;value&#x27;]-a[&#x27;value&#x27;]-a[&#x27;value&#x27;]**2
+    da=(C[1]-a[&#x27;value&#x27;]*C[0])/cmean[0]
+    ds=(J[1]-s[&#x27;value&#x27;]*J[0])/jmean[0]
+    influence=ds-(1+2*a[&#x27;value&#x27;])*da
+    out[&#x27;partition_variance_se&#x27;]=float(influence.std(ddof=1)/np.sqrt(C.shape[1]))
+    # Held-out lag 3 prediction determined from lags 1 and 2.
+    ah=a[&#x27;value&#x27;];qh=out[&#x27;q_hat&#x27;]
+    residual=J[2]-(ah+qh)*J[1]+ah*qh*J[0]
+    out[&#x27;lag3_residual&#x27;]=float(residual.mean())
+    # Not an inferential SE: fitted-parameter effects are not included here.
+    return out
+
+
+def simulate_case(alpha:float|None, inherited:bool=False, noise_kind:str=&#x27;none&#x27;, seed:int=SEED) -&gt; dict[str,Any]:
+    rng=np.random.default_rng(seed)
+    B=np.ones(N_LINEAGES)
+    added=np.ones(N_LINEAGES)
+    C=np.zeros((MAX_LAG,N_LINEAGES));J=np.zeros_like(C)
+    H=np.zeros_like(C);K=np.zeros_like(C);F=np.zeros_like(C)
+    old2sum=np.zeros_like(C); new2sum=np.zeros_like(C)
+    history=np.zeros((MAX_LAG+1,N_LINEAGES))
+    n_pairs=0
+    for t in range(BURN_IN+N_GENERATIONS+MAX_LAG):
+        innovation=rng.gamma(4.0,0.25,N_LINEAGES)
+        if inherited:
+            added=0.65*added+0.35*innovation
+        else:
+            added=innovation
+        R=0.5 if alpha is None else rng.beta(alpha,alpha,N_LINEAGES)
+        B=R*(B+added)
+        if noise_kind==&#x27;gaussian&#x27;:
+            error=rng.normal(0.0,0.2,N_LINEAGES)
+        elif noise_kind==&#x27;skewed&#x27;:
+            error=rng.exponential(0.2,N_LINEAGES)-0.2
+        else:
+            error=0.0
+        # Mean 1 is known in each generating model; no estimated centering bias.
+        y=B+error-1.0
+        slot=t%(MAX_LAG+1)
+        history[slot]=y
+        if t &gt;= BURN_IN+MAX_LAG:
+            for k in range(1,MAX_LAG+1):
+                old=history[(t-k)%(MAX_LAG+1)]
+                C[k-1]+=old*y
+                hh=old*y*y; kk=old*old*y
+                H[k-1]+=hh; K[k-1]+=kk
+                F[k-1]+=old*old*y*y
+                old2sum[k-1]+=old*old; new2sum[k-1]+=y*y
+                J[k-1]+=kk-hh
+            n_pairs+=1
+    C/=n_pairs;J/=n_pairs;H/=n_pairs;K/=n_pairs;F/=n_pairs
+    # Center squares with a global second-moment estimate, not per-lineage
+    # mean subtraction (which introduces an O(1/length) covariance bias).
+    e2=float((old2sum[0]+new2sum[0]).mean()/(2*n_pairs))
+    F=F-e2*(old2sum+new2sum)/n_pairs+e2*e2
+    out=summarize(C,J)
+    # Reconstruct q from the two-observable lag matrix.
+    c,h,kk,ff=[z.mean(axis=1) for z in (C,H,K,F)]
+    den=c[0]*ff[0]-kk[0]*h[0]
+    num=c[0]*ff[1]-kk[0]*h[1]
+    qm=num/den
+    # Delta-method influence, independent lineages. Centering squares&#x27;
+    # nuisance derivative vanishes at the true stationary mean.
+    dden=ff[0]*(C[0]-c[0])+c[0]*(F[0]-ff[0])-h[0]*(K[0]-kk[0])-kk[0]*(H[0]-h[0])
+    dnum=ff[1]*(C[0]-c[0])+c[0]*(F[1]-ff[1])-h[1]*(K[0]-kk[0])-kk[0]*(H[1]-h[1])
+    dq=(dnum-qm*dden)/den
+    ah=c[1]/c[0]
+    da=(C[1]-ah*C[0])/c[0]
+    v=qm-ah*ah
+    dv=dq-2*ah*da
+    out[&#x27;matrix_q_hat&#x27;]=float(qm)
+    out[&#x27;matrix_q_se&#x27;]=float(dq.std(ddof=1)/np.sqrt(N_LINEAGES))
+    out[&#x27;matrix_partition_variance_hat&#x27;]=float(v)
+    out[&#x27;matrix_partition_variance_se&#x27;]=float(dv.std(ddof=1)/np.sqrt(N_LINEAGES))
+    out[&#x27;matrix_denominator&#x27;]=float(den)
+    out[&#x27;H&#x27;]=h.tolist();out[&#x27;K&#x27;]=kk.tolist();out[&#x27;F&#x27;]=ff.tolist()
+    matrices=[np.array([[c[i],h[i]],[kk[i],ff[i]]]) for i in range(MAX_LAG)]
+    pencil=np.linalg.solve(matrices[0],matrices[1])
+    defect=matrices[2]-matrices[1]@pencil
+    out[&#x27;full_matrix_pencil&#x27;]=pencil.tolist()
+    out[&#x27;lag3_matrix_defect_relative&#x27;]=float(np.linalg.norm(defect)/np.linalg.norm(matrices[2]))
+    out[&#x27;C_successive_ratios&#x27;]=(c[1:]/c[:-1]).tolist()
+    out.update(alpha=alpha,inherited=inherited,noise_kind=noise_kind,n_lineages=N_LINEAGES,
+               pairs_per_lineage=n_pairs,seed=seed)
+    out[&#x27;iid_model_prediction&#x27;]=model_moments(alpha) if not inherited else None
+    return out
+
+
+def algebra_checks() -&gt; dict[str,Any]:
+    import sympy as s
+    a,q,b,V,m=s.symbols(&#x27;a q b V m&#x27;,nonzero=True)
+    H=m;K=m;C=V
+    diff=[]
+    amp=m-2*b*V/(a-q)
+    for k in range(1,6):
+        H=s.expand(q*H+2*b*C);K=a*K;C=a*C
+        diff.append(s.simplify((K-H)-amp*(a**k-q**k))==0)
+    assert all(diff)
+    alpha=s.symbols(&#x27;alpha&#x27;,positive=True)
+    # Symmetric beta-gamma reversible example, Gamma(alpha,1/alpha) sizes.
+    qrev=(alpha+1)/(2*(2*alpha+1))
+    brev=2*qrev-s.Rational(1,2)
+    arev=s.simplify(2/alpha**2-2*brev*(1/alpha)/(s.Rational(1,2)-qrev))
+    assert arev==0
+    # Exact lag-penciling check without distribution-specific substitutions.
+    W=s.symbols(&#x27;W&#x27;)
+    Sigma=s.Matrix([[V,m],[m,W]])
+    Tt=s.Matrix([[a,2*b],[0,q]])
+    M1=Sigma*Tt;M2=Sigma*Tt**2
+    assert s.simplify(M1.inv()*M2-Tt)==s.zeros(2)
+    return dict(cubic_identity_lags_1_to_5=diff,beta_gamma_amplitude=str(arev),lag_pencil_identity=True)
+
+
+def main() -&gt; None:
+    results={&#x27;status&#x27;:&#x27;SYNTHETIC_MODEL_CHECKS_ONLY&#x27;,&#x27;seed&#x27;:SEED,&#x27;algebra&#x27;:algebra_checks(),&#x27;cases&#x27;:{}}
+    specs=[(&#x27;fixed_partition&#x27;,None,False,&#x27;none&#x27;),(&#x27;random_partition&#x27;,20.0,False,&#x27;none&#x27;),
+           (&#x27;random_partition_gaussian_noise&#x27;,20.0,False,&#x27;gaussian&#x27;),
+           (&#x27;random_partition_skewed_noise&#x27;,20.0,False,&#x27;skewed&#x27;),
+           (&#x27;reversible_beta_gamma&#x27;,4.0,False,&#x27;none&#x27;),
+           (&#x27;inherited_additions&#x27;,20.0,True,&#x27;none&#x27;)]
+    for i,(name,alpha,inherited,noise) in enumerate(specs):
+        out=simulate_case(alpha,inherited,noise,SEED+i)
+        results[&#x27;cases&#x27;][name]=out
+        print(name,&#x27;a=&#x27;,round(out[&#x27;a_hat&#x27;],6),&#x27;q=&#x27;,round(out[&#x27;q_hat&#x27;],6),
+              &#x27;varR=&#x27;,round(out[&#x27;partition_variance_hat&#x27;],6),
+              &#x27;SE=&#x27;,round(out[&#x27;partition_variance_se&#x27;],6),
+              &#x27;MATRIX_VAR=&#x27;,round(out[&#x27;matrix_partition_variance_hat&#x27;],6),
+              &#x27;MATRIX_SE=&#x27;,round(out[&#x27;matrix_partition_variance_se&#x27;],6),flush=True)
+    path=Path(__file__).with_name(&#x27;validation_results.json&#x27;)
+    path.write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+    print(path)
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/7ab5a8e4008056c5467ebcbfd898dab0702c9d101fc8cbae49990ddac945c15e.py">Exact original</a></p></html>

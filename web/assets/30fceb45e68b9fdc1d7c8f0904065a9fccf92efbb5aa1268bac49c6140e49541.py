@@ -1,0 +1,164 @@
+"""Collision-certified determinantal completion for one-choice-per-group designs.
+
+Target P(S) proportional to prod_{i in S} p_i * det(I + X_S.T @ X_S),
+with exactly one i per group and sum_{i in group} p_i=1.
+
+The ideal-arithmetic algorithm yields independent exact samples. This NumPy/
+Numba implementation is floating point, not an interval-certified sampler.
+It raises on an exhausted proposal budget rather than returning a biased fallback.
+"""
+from __future__ import annotations
+from dataclasses import dataclass
+import math
+import numpy as np
+from numba import njit
+
+@njit(cache=True)
+def _projection_draw(V,groups,ngroups):
+    """Projection DPP draw using orthogonal Householder downdates.
+    Aborts early on a group collision, which cannot be repaired by later draws.
+    """
+    n,k=V.shape; Q=V.copy(); selected=np.full(ngroups,-1,np.int64)
+    for rem in range(k,0,-1):
+        total=0.
+        weights=np.empty(n)
+        for i in range(n):
+            w=0.
+            for j in range(rem): w+=Q[i,j]*Q[i,j]
+            weights[i]=w; total+=w
+        if total<=0 or not np.isfinite(total): return selected,False,-1
+        u=np.random.random()*total; accum=0.; index=n-1
+        for i in range(n):
+            accum+=weights[i]
+            if u<accum: index=i; break
+        group=groups[index]
+        if selected[group]>=0: return selected,False,k-rem+1
+        selected[group]=index
+        if rem==1: break
+        # Map the selected row direction to the first basis vector, then drop it.
+        rownorm=math.sqrt(weights[index]); h=np.empty(rem)
+        for j in range(rem): h[j]=Q[index,j]/rownorm
+        h[0]+=1.0 if h[0]>=0 else -1.0
+        hnorm=math.sqrt(np.dot(h,h)); h/=hnorm
+        for i in range(n):
+            s=0.
+            for j in range(rem): s+=Q[i,j]*h[j]
+            for j in range(1,rem): Q[i,j-1]=Q[i,j]-2*s*h[j]
+        # Exact arithmetic makes the chosen row zero; enforce it against roundoff.
+        for j in range(rem-1): Q[index,j]=0.
+    return selected,True,k
+
+@njit(cache=True)
+def _draw_many(U,eigprob,groups,offsets,ordered_items,prior,nsamples,max_trials,seed):
+    np.random.seed(seed)
+    ngroups=len(offsets)-1; n,r=U.shape
+    output=np.empty((nsamples,ngroups),np.int64)
+    accepted=0; trials=0; informative_total=0; early_total=0
+    while accepted<nsamples and trials<max_trials:
+        trials+=1
+        ids=np.empty(r,np.int64); k=0
+        for j in range(r):
+            if np.random.random()<eigprob[j]: ids[k]=j; k+=1
+        Q=np.empty((n,k))
+        for j in range(k): Q[:,j]=U[:,ids[j]]
+        chosen,ok,used=_projection_draw(Q,groups,ngroups)
+        if used<0: return output[:accepted],trials,informative_total,early_total,False
+        early_total+=used
+        if not ok: continue
+        informative_total+=k
+        for g in range(ngroups):
+            if chosen[g]<0:
+                u=np.random.random(); acc=0.
+                chosen[g]=ordered_items[offsets[g+1]-1]
+                for pos in range(offsets[g],offsets[g+1]):
+                    i=ordered_items[pos]; acc+=prior[i]
+                    if u<acc: chosen[g]=i; break
+        output[accepted]=chosen; accepted+=1
+    return output[:accepted],trials,informative_total,early_total,True
+
+@dataclass
+class CompletionSampler:
+    """Preprocess a feature matrix and categorical group priors.
+
+    X has one item per row. For a Gram target det(I+beta*G_S), provide a
+    factor X with X @ X.T=beta*G. Do not silently truncate its rank.
+    """
+    X: np.ndarray
+    groups: np.ndarray
+    prior: np.ndarray | None = None
+    prior_precision: np.ndarray | None = None
+
+    def __post_init__(self):
+        self.X=np.asarray(self.X,dtype=float)
+        self.groups=np.asarray(self.groups,dtype=np.int64)
+        if self.X.ndim!=2 or self.X.shape[0]!=len(self.groups):
+            raise ValueError('X must be an N-by-d matrix, groups length N')
+        if not np.all(np.isfinite(self.X)): raise ValueError('X must be finite')
+        self.log_prior_determinant=0.
+        if self.prior_precision is not None:
+            A=np.asarray(self.prior_precision,dtype=float)
+            if A.shape!=(self.X.shape[1],self.X.shape[1]) or not np.all(np.isfinite(A)) or not np.allclose(A,A.T,rtol=1e-12,atol=1e-12):
+                raise ValueError('Prior precision must be a finite symmetric d-by-d matrix')
+            C=np.linalg.cholesky(A)
+            self.log_prior_determinant=float(2*np.log(np.diag(C)).sum())
+            self.X=np.ascontiguousarray(np.linalg.solve(C,self.X.T).T)
+        if self.groups.ndim!=1 or len(self.groups)==0 or self.groups.min()!=0:
+            raise ValueError('Groups must be contiguous integers beginning at zero')
+        self.ngroups=int(self.groups.max())+1
+        sizes=np.bincount(self.groups,minlength=self.ngroups)
+        if np.any(sizes==0): raise ValueError('Group labels must be contiguous')
+        if self.prior is None: self.prior=1.0/sizes[self.groups]
+        self.prior=np.asarray(self.prior,dtype=float)
+        if self.prior.shape!=self.groups.shape or np.any(self.prior<=0) or not np.all(np.isfinite(self.prior)):
+            raise ValueError('All prior probabilities must be finite and strictly positive')
+        sums=np.bincount(self.groups,weights=self.prior,minlength=self.ngroups)
+        if not np.allclose(sums,1.,atol=1e-12,rtol=1e-12):
+            raise ValueError('Prior probabilities must sum to one in every group')
+        # Tiny user rounding of prior sums is normalized and explicitly recorded.
+        self.prior_normalization_max=float(np.max(np.abs(sums-1.)))
+        self.prior=self.prior/sums[self.groups]
+        self.order=np.argsort(self.groups,kind='stable').astype(np.int64)
+        self.offsets=np.concatenate(([0],np.cumsum(sizes))).astype(np.int64)
+        Y=self.X*np.sqrt(self.prior)[:,None]
+        self.U,s,_=np.linalg.svd(Y,full_matrices=False)
+        self.U=np.ascontiguousarray(self.U)
+        # No low-rank truncation; zero singular values simply have zero inclusion probability.
+        eig=s*s
+        self.eigprob=eig/(1.+eig)
+        self.log_dpp_normalizer=float(np.log1p(eig).sum())
+        R=self.U*np.sqrt(self.eigprob)[None,:]
+        collision=0.; bygroup=[]
+        for g in range(self.ngroups):
+            block=R[self.groups==g]
+            B=block@block.T
+            # Sum all 2x2 principal minors: expected within-group pair count.
+            c=0.5*(float(np.trace(B))**2-float(np.sum(B*B)))
+            c=max(0.,c) # Only removes cancellation roundoff; not interval certification.
+            collision+=c; bygroup.append(c)
+        self.collision_sum=float(collision)
+        self.acceptance_lower_bound=max(0.,1.-self.collision_sum)
+        self.effective_rank=float(np.sum(self.eigprob))
+        self.group_collision_bounds=np.array(bygroup)
+
+    def sample(self,nsamples:int,seed:int=1,max_trials:int|None=None,failure_probability:float=1e-8):
+        if not isinstance(nsamples,int) or nsamples<1: raise ValueError('nsamples must be a positive integer')
+        if max_trials is None:
+            a=self.acceptance_lower_bound
+            if a<=0:
+                raise ValueError('No positive union-bound certificate; supply an explicit max_trials budget')
+            if not 0<failure_probability<1: raise ValueError('failure_probability must lie in (0,1)')
+            # Per-output geometric cap followed by a union bound. This aggregate
+            # cap is conservative: sum of n per-output caps cannot exceed it.
+            per=1 if a>=1 else math.ceil(math.log(nsamples/failure_probability)/(-math.log1p(-a)))
+            max_trials=nsamples*max(1,per)
+        if max_trials<nsamples: raise ValueError('max_trials must be at least nsamples')
+        out,trials,ki,work,numeric_ok=_draw_many(self.U,self.eigprob,self.groups,self.offsets,
+                   self.order,self.prior,nsamples,int(max_trials),int(seed))
+        diagnostics=dict(samples=len(out),trials=int(trials),empirical_acceptance=len(out)/trials,
+               mean_informative_items=float(ki/max(1,len(out))),selected_items_processed=int(work),
+               collision_sum=self.collision_sum,acceptance_lower_bound=self.acceptance_lower_bound,
+               effective_rank=self.effective_rank,numeric_ok=bool(numeric_ok))
+        if not numeric_ok: raise FloatingPointError('Projection update lost numerical rank')
+        if len(out)!=nsamples:
+            raise RuntimeError(f'Proposal budget exhausted after {trials} trials and {len(out)} samples; no fallback returned')
+        return out,diagnostics

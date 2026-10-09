@@ -1,0 +1,150 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BL: applied/exact_completion.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BL-sources.txt">Source map</a><h1>BL: applied/exact_completion.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=0. All43 supplied files,40 native checksums and original divisibility ZIP unchanged; full reports, source compilers/samplers/simulator, finite/synthetic receipts, negative runs and4NPZfixtures preserved. Three supplied proposed derivations; no independent audits supplied or new scientific/analytic/kernel replay at intake. Exact classification has no robust-distance promise; floating sampler lacks rounding certificate; biological dataset absent. No established research capability gain. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact rational reference for collision-certified determinant completion.
+
+No floating-point sampling probabilities or spectral oracles. Matrix arithmetic
+uses Fraction. Random integer draws use Random.getrandbits with rejection.
+The model treats these pseudorandom bits as independent fair bits; pass a
+SystemRandom instance for OS-provided randomness. Expected random-bit cost is
+charged explicitly in returned diagnostics. No unproved MCMC mixing assumption.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import random
+import math
+import sympy as sp
+
+
+def _dot(a,b): return sum((x*y for x,y in zip(a,b)),F(0))
+def _matvec(A,x): return [_dot(row,x) for row in A]
+
+def _bernoulli(p,rng,counters):
+    if p&lt;0 or p&gt;1: raise ArithmeticError(f&#x27;Invalid exact probability {p}&#x27;)
+    if p==0: return False
+    if p==1: return True
+    b=p.denominator; k=(b-1).bit_length()
+    while True:
+        z=rng.getrandbits(k); counters[&#x27;random_bits&#x27;]+=k; counters[&#x27;integer_trials&#x27;]+=1
+        if z&lt;b: return z&lt;p.numerator
+
+
+class ExactCompletionSampler:
+    &quot;&quot;&quot;Exactly sample prod(p_i)*det(I + sum_{i in S} x_i x_i^T), one per group.&quot;&quot;&quot;
+    def __init__(self,X,groups,prior=None,prior_precision=None):
+        self.X=[[F(x) for x in row] for row in X]
+        self.N=len(X)
+        if not self.N: raise ValueError(&#x27;Empty feature matrix&#x27;)
+        self.d=len(X[0])
+        if not self.d or any(len(row)!=self.d for row in self.X):
+            raise ValueError(&#x27;Feature rows must have equal positive length&#x27;)
+        self.groups=list(map(int,groups))
+        if len(groups)!=self.N or min(groups)!=0:
+            raise ValueError(&#x27;Groups must match rows and begin at zero&#x27;)
+        self.g=max(groups)+1
+        self.members=[[i for i in range(self.N) if groups[i]==g] for g in range(self.g)]
+        if any(not part for part in self.members): raise ValueError(&#x27;Group labels must be contiguous&#x27;)
+        self.p=[F(1,len(self.members[groups[i]])) for i in range(self.N)] if prior is None else list(map(F,prior))
+        if len(self.p)!=self.N or any(x&lt;=0 for x in self.p): raise ValueError(&#x27;Prior must be positive&#x27;)
+        if any(sum(self.p[i] for i in part)!=1 for part in self.members):
+            raise ValueError(&#x27;Each group prior must sum EXACTLY to one&#x27;)
+        A=[[F(int(i==j)) for j in range(self.d)] for i in range(self.d)] if prior_precision is None else [[F(x) for x in row] for row in prior_precision]
+        if len(A)!=self.d or any(len(row)!=self.d for row in A) or any(A[i][j]!=A[j][i] for i in range(self.d) for j in range(self.d)):
+            raise ValueError(&#x27;Prior precision must be a symmetric d-by-d matrix&#x27;)
+        MA=sp.Matrix([[sp.Rational(x.numerator,x.denominator) for x in row] for row in A])
+        if prior_precision is not None and any(MA[:k,:k].det()&lt;=0 for k in range(1,self.d+1)):
+            raise ValueError(&#x27;Prior precision must be strictly positive definite&#x27;)
+        da=MA.det(); self.prior_determinant=F(int(da.p),int(da.q))
+        B=[[A[i][j]+sum(self.p[k]*self.X[k][i]*self.X[k][j] for k in range(self.N))
+               for j in range(self.d)] for i in range(self.d)]
+        M=sp.Matrix([[sp.Rational(x.numerator,x.denominator) for x in row] for row in B])
+        inv=M.inv(); det=M.det()
+        self.R=[[F(int(inv[i,j].p),int(inv[i,j].q)) for j in range(self.d)] for i in range(self.d)]
+        self.dpp_normalizer=F(int(det.p),int(det.q))/self.prior_determinant
+        H=[_matvec(self.R,x) for x in self.X]
+        diag=[_dot(self.X[i],H[i]) for i in range(self.N)]
+        C=F(0)
+        for part in self.members:
+            for pos,i in enumerate(part):
+                for j in part[pos+1:]:
+                    hij=_dot(self.X[i],H[j])
+                    C+=self.p[i]*self.p[j]*(diag[i]*diag[j]-hij*hij)
+        if C&lt;0: raise ArithmeticError(&#x27;Exact collision moment is negative&#x27;)
+        self.collision_sum=C
+        self.acceptance_lower_bound=max(F(0),1-C)
+
+    def proposal(self,rng,counters):
+        &quot;&quot;&quot;Draw an ordinary DPP subset; reject as soon as two choices clash.&quot;&quot;&quot;
+        R=[row[:] for row in self.R]
+        chosen=[-1]*self.g
+        for i in range(self.N):
+            z=_matvec(R,self.X[i]); h=_dot(self.X[i],z); q=self.p[i]*h
+            counters[&#x27;conditional_updates&#x27;]+=1
+            inc=_bernoulli(q,rng,counters)
+            if inc:
+                g=self.groups[i]
+                if chosen[g]&gt;=0: return None
+                chosen[g]=i
+                coeff=-1/h
+            else:
+                coeff=self.p[i]/(1-q) if q!=0 else F(0)
+            if coeff:
+                for a in range(self.d):
+                    for b in range(a,self.d):
+                        R[a][b]+=coeff*z[a]*z[b]; R[b][a]=R[a][b]
+        return chosen
+
+    def _complete(self,chosen,rng,counters):
+        for g,part in enumerate(self.members):
+            if chosen[g]&gt;=0: continue
+            mass=F(1)
+            for i in part[:-1]:
+                if _bernoulli(self.p[i]/mass,rng,counters): chosen[g]=i; break
+                mass-=self.p[i]
+            if chosen[g]&lt;0: chosen[g]=part[-1]
+        return chosen
+
+    def sample(self,count,seed=1,max_trials=None,rng=None):
+        if not isinstance(count,int) or count&lt;1: raise ValueError(&#x27;count must be positive&#x27;)
+        rng=random.Random(seed) if rng is None else rng
+        counters=dict(random_bits=0,integer_trials=0,conditional_updates=0,proposals=0)
+        out=[]
+        while len(out)&lt;count:
+            if max_trials is not None and counters[&#x27;proposals&#x27;]&gt;=max_trials:
+                raise RuntimeError(&#x27;Budget exhausted; no biased fallback was returned&#x27;)
+            counters[&#x27;proposals&#x27;]+=1
+            chosen=self.proposal(rng,counters)
+            if chosen is not None: out.append(self._complete(chosen,rng,counters))
+        return out,counters
+
+    def normalizer_estimate(self,epsilon,delta,seed=1,max_proposals=1000000):
+        &quot;&quot;&quot;Relative-error estimate with a rationally allocated Chernoff budget.
+
+        epsilon and delta are interpreted as exact Fraction inputs. No computed
+        logarithm or floating acceptance bound is used to choose the budget.
+        &quot;&quot;&quot;
+        epsilon,delta=F(epsilon),F(delta)
+        if not 0&lt;epsilon&lt;1 or not 0&lt;delta&lt;1:
+            raise ValueError(&#x27;epsilon and delta must lie strictly between zero and one&#x27;)
+        a=self.acceptance_lower_bound
+        if a&lt;=0: raise ValueError(&#x27;No positive acceptance lower bound is available&#x27;)
+        # b &gt;= log_2(2/delta) &gt;= ln(2/delta), entirely in integer/rational arithmetic.
+        b=0
+        while delta*(1&lt;&lt;b)&lt;2: b+=1
+        required=F(3*b)/(a*epsilon*epsilon)
+        N=(required.numerator+required.denominator-1)//required.denominator
+        if N&gt;max_proposals:
+            raise ValueError(f&#x27;Requested guarantee needs {N} proposals, over budget {max_proposals}&#x27;)
+        estimate,accepted,counters=self.normalizer_estimate_fixed(N,seed)
+        counters.update(relative_error=str(epsilon),failure_probability_upper=str(delta),
+                        acceptance_lower_bound=str(a))
+        return estimate,accepted,counters
+
+    def normalizer_estimate_fixed(self,N,seed=1):
+        &quot;&quot;&quot;N independent Bernoulli trials; estimate = det(B)*accept_count/N.
+        For 0&lt;epsilon&lt;1: failure &lt;= 2 exp(-N*a_lower*epsilon^2/3).
+        N is user-specified to avoid hiding a confidence-parameter rounding.
+        &quot;&quot;&quot;
+        if not isinstance(N,int) or N&lt;1: raise ValueError(&#x27;N must be positive&#x27;)
+        rng=random.Random(seed); counters=dict(random_bits=0,integer_trials=0,conditional_updates=0,proposals=N)
+        accepted=0
+        for _ in range(N):
+            if self.proposal(rng,counters) is not None: accepted+=1
+        return self.prior_determinant*self.dpp_normalizer*F(accepted,N),accepted,counters
+</pre><p><a href="../assets/71cccd99e3c6e03989fc479d687f6a364361980f833ba2ed26804b8115e49be5.py">Exact original</a></p></html>
