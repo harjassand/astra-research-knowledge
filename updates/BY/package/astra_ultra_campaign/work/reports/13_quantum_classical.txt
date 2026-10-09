@@ -1,0 +1,59 @@
+Investigator 13 — Low Pauli-span rank as a full-output simulation certificate
+
+Status: proved here for an ideal circuit promise; finite-checked on one small example; novelty not established; physical-device acquisition guarantee remains open. This is a useful sufficient parameter, not a landmark result.
+
+Correction note (2026-10-10): An earlier draft combined a right-Clifford unitary form with state terms C P(v)|0^n>, which was an ordering mismatch. The convention below moves Clifford gates to the left, so U=C A and the state terms C P(v)|0^n> are consistent. The recurrence and finite-check script already apply rotations before the Clifford; I reran the script after this correction and its numerical results are unchanged.
+
+Capability and exact target
+
+Given an n-qubit circuit in a gate log of Clifford blocks and Pauli rotations
+
+  U = C_m R_{P_m}(theta_m) C_{m-1} ... C_1 R_{P_1}(theta_1) C_0,
+  R_P(theta) = exp(-i theta P/2),
+
+produce independent samples from its full computational-basis output distribution. The proposed certificate is r, the binary rank of the propagated Pauli labels after moving the Clifford gates into one final frame. It is computed from the circuit description, not from output samples or a guessed low-entanglement ansatz. The useful regime is r = O(log n), even when the rotation count m is polynomial and the final state has volume-law entanglement.
+
+This is an idealized capability. A hardware-facing input is a controller's compiled gate log plus local gate calibration records. The theorem applies if every modeled operation is an exact Clifford or Pauli rotation from a fixed algebraic gate set, such as Clifford+T. If the simulator is meant to predict the actual noisy processor, local process tomography must also support the assumption that gate errors are stationary and composable; unmodeled crosstalk or drift can invalidate that prediction.
+
+Derivation of the representation
+
+Move the Clifford blocks to the left. Define the preceding Clifford prefix T_j = C_{j-1} ... C_0 (with T_1=C_0), and set Q_j = T_j^dagger P_j T_j. Clifford conjugation maps Pauli strings to Pauli strings, so each Q_j is a Pauli string and
+
+  U = C R_{Q_m}(theta_m) ... R_{Q_1}(theta_1),
+  C = C_m ... C_0.
+
+Represent a Pauli up to scalar phase by v=(x,z) in F_2^(2n). Let q_j be the label of Q_j and W=span_F2{q_1,...,q_m}; by definition |W|=2^r. For a fixed Hermitian Pauli convention, P(u)P(v)=omega(u,v)P(u+v), where omega is a computable fourth root of unity. Expand the partial product as A= sum_(v in W) a_v P(v). On multiplying on the left by R_Q(theta)=c I - i s P(q), update
+
+  a'_v = c a_v - i s omega(q,v+q) a_(v+q),
+  c=cos(theta/2), s=sin(theta/2).
+
+Thus each rotation costs O(2^r) coefficient updates; no commutativity assumption is needed. The final state is a sum of at most 2^r stabilizer states, C P(v)|0^n>. Preparation of this classical representation costs O(m 2^r poly(n)) arithmetic operations, after polynomial-time Clifford propagation and binary Gaussian elimination to find r. Space is O(2^r poly(n)). Gate precision contributes polynomially for a fixed algebraic gate set. This is not secretly a low-entanglement promise: for even n, choose the two axes Z^tensor-n and X_1, so the pre-C state has support only on wire 1, and let C create n/2 Bell pairs across a balanced cut. The other n/2-1 pairs remain Bell pairs, giving cut entropy at least n/2-1 while r=2.
+
+For a prefix y of the measured output, its probability is
+
+  p(y) = sum_(u,v in W) a_u* a_v <s_u|Pi_y|s_v>,
+  |s_v> = C P(v)|0^n>,
+
+where Pi_y projects the measured output wires onto y and leaves the other wires unmeasured. Projecting a stabilizer state on computational-basis outcomes leaves an unnormalized stabilizer state or zero; stabilizer inner products and zero tests are polynomial-time tableau operations. Hence each matrix entry costs poly(n), and p(y) costs O(4^r poly(n)). At each output bit, compute p(y0) and p(y1), then sample with conditional probability p(y0)/(p(y0)+p(y1)). There are n stages, so one full sample costs O(n 4^r poly(n,m)) time after preprocessing and O(2^r poly(n)) space. For Clifford+T, all entries lie in a fixed algebraic number field with polynomial bit growth; algebraic separation gives a 2^-poly(input-size) lower bound on any nonzero prefix probability. This lets the conditional probabilities be evaluated to the precision needed for total-variation error epsilon in polynomial bit complexity, with exact zero prefixes detected. This is a sampler, not a listing of all 2^n probabilities; printing the full table still costs exponential output size. Estimating k bounded observables from samples adds the usual O(epsilon^-2 log(k/delta)) repetitions.
+
+The derivation is a standard stabilizer expansion with duplicate Pauli-group terms merged. It implies the upper bound stabilizer-rank(|psi>) <= 2^r, so the parameter is not an independent magic resource monotone and no novelty claim is made. Its practical value, if any, is an easily computed certificate that can be smaller than the raw non-Clifford rotation count. The strongest nearby prior art already gives simulation algorithms based on low-rank stabilizer decompositions and reports full-distribution sampling: Bravyi, Browne, Calpin, Campbell, Gosset, and Howard, “Simulation of quantum circuits by low-rank stabilizer decompositions” (2018), https://arxiv.org/abs/1808.00128. Polynomial stabilizer-state updates and overlaps are established by Aaronson and Gottesman, “Improved Simulation of Stabilizer Circuits” (2004), https://arxiv.org/abs/quant-ph/0406196.
+
+Finite decisive check
+
+I wrote and ran work/reports/13_quantum_classical/check_pauli_span.py. It compares the group-coefficient recurrence with direct 8-qubit state-vector evolution for 120 alternating non-Clifford rotations about two independent noncommuting Pauli axes, followed by a random-looking Clifford circuit. The recurrence retained exactly four terms (rank r=2); the normalized state-vector difference was 4.7e-16 and full-output total-variation difference 3.1e-16. The final 4|4 entropy was 3.752 bits out of a maximum of 4. This only checks a finite instance and floating-point implementation; it is not evidence about hardware or asymptotic novelty.
+
+Physical acquisition and total cost
+
+The rank itself is acquired from the compiler/controller log: read each Clifford tableau or gate sequence and each Pauli-rotation axis, propagate the labels, and run binary elimination. For a device application, local one- and two-qubit process tomography has constant-dimensional measurement settings. Let G be the number of physical gate uses and K the number of stationary gate types. Calibrating K types to diamond error eta=epsilon/(2G) takes O(K G^2 epsilon^-2 log(K/delta)) shots up to dimension-dependent constants. If each gate use must be calibrated separately because drift cannot be pooled, this becomes O(G^3 epsilon^-2 log(G/delta)). Telescoping channel error bounds give total output TV error at most one half the sum of the per-gate diamond errors. Readout confusion can be measured locally and sampled as classical postprocessing. These costs can dominate the simulation. Finite tomography cannot certify exact membership in the promised gate family, and this analysis does not cover arbitrary correlated noise; those are real limits on “physically acquired” structure.
+
+Sharp boundary and falsifier
+
+The positive promise r=O(log n) gives a polynomial-time full-output sampler. A counterexample family satisfying that promise yet proving hard approximate sampling would imply BQP is contained in BPP (for the corresponding uniform sampling task), so this is a sharp, falsifiable claim under standard complexity separations. IQP hardness families inhabit the same commuting-circuit architecture and can have linear r: for example, connected two-body Z-string axes span dimension n-1 over F2. Bremner, Jozsa, and Shepherd show that efficient classical sampling of uniform IQP families to 41% multiplicative probability error would collapse PH to its third level (2011 version), https://arxiv.org/abs/1005.1407. For additive total-variation error, the stronger statement relies on stated average-case hardness conjectures; see Bremner, Montanaro, and Shepherd, “Average-case complexity versus approximate simulation of commuting quantum computations” (2016), https://arxiv.org/abs/1504.07999. These results do not prove hardness from r alone, or that every connected interaction family is hard. They rule out a generic polynomial guarantee for the full linear-r regime unless the relevant complexity assumptions fail.
+
+A practical falsifier is equally concrete: compute r from an actual device's logged compiled workload. If it is linear in n, or calibration uncertainty makes the Pauli labels/angles unreliable at the requested epsilon, this proposed route gives no scaling advantage. I have not inspected or benchmarked a device workload, so applicability is unknown.
+
+Potential consequence and next proof gate
+
+If a real workload has low propagated Pauli-span rank but extensive entanglement and many nominal non-Clifford gates, this representation could extend exact full-output classical references beyond low-bond-dimension methods. Achieved significance is the algebraic certificate and finite check above; no new theorem of quantum complexity, device result, or validated simulator has been established.
+
+Next proof gate: prove a robust end-to-end version for a measured hardware family, with explicit local-tomography confidence regions and a bound on hidden inter-gate correlations, such that the learned Pauli-span rank and total-variation error are both certified at polynomial acquisition cost. If such a guarantee fails, exhibit a low-rank fitted model whose unmeasured crosstalk changes the output by more than the claimed error.

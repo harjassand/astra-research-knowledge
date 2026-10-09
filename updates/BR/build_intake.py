@@ -36,6 +36,17 @@ BW_BOUNDARY = ("The source reports a self-contained analytic argument and author
                "script was executed and no independent proof reconstruction, external review, "
                "formal certification or historical priority is established. The historic-scale "
                "objective remains NOT ESTABLISHED.")
+BX_BOUNDARY = ("The attached packet reports complete proof candidates and focused algebra/source-interface "
+               "checks for the stated unitary quotient and finite-group transfer results. This intake "
+               "preserves and routes the originals only; no supplied script was executed and no new "
+               "independent reconstruction, external correctness review, formal verification or "
+               "historical-priority clearance is established. The historic-scale objective remains "
+               "NOT ESTABLISHED.")
+BY_BOUNDARY = ("The source campaign reports a complete internally model-reviewed amplifier EPnI proof "
+               "candidate and source-reported exact counterexamples. This intake preserves and routes "
+               "the originals only; no research or verification script was executed and no independent "
+               "proof reconstruction, external correctness review, formal verification or historical "
+               "priority is established. The primary historic-scale objective remains NOT ESTABLISHED.")
 
 
 def sha(data):
@@ -80,6 +91,11 @@ def ref(rel, start=1, end=None):
     return {"path": path, "sha256": sha(data), "lines": [start, end],
             "source_id": docid(path), "read_path": path, "hash_kind": "original_utf8_bytes",
             "range_scope": "source-reported argument/evidence; completeness and correctness not independently audited"}
+
+
+def ref_any(value):
+    """Accept a source path or the intake's [path, first, last] range form."""
+    return ref(value) if isinstance(value, str) else ref(*value)
 
 
 def page(title, text, cid=None, boundary=BOUNDARY):
@@ -318,10 +334,136 @@ def build():
                 depth = "preserved code/environment source; no research code executed"
             source_items.append({"path": tree5 + "/" + rel, "rel": rel, "title": rel,
                                  "data": data, "depth": depth, "boundary": BW_BOUNDARY})
+
+    # BX is the separate unitary quotient / finite permutation-transfer packet.
+    quotient = read("updates/BX/INTEGRITY.json")
+    archive6 = ROOT / quotient["archive_path"]
+    if sha(archive6.read_bytes()) != quotient["archive_sha256"] or len(archive6.read_bytes()) != quotient["archive_bytes"]:
+        raise ValueError("BX archive hash/size mismatch")
+    tree6 = "updates/BX/package/unitary_quotient_research_bundle"
+    manifest6_path = ROOT / tree6 / "MANIFEST.json"
+    manifest6_bytes = manifest6_path.read_bytes()
+    if sha(manifest6_bytes) != quotient["manifest_sha256"]:
+        raise ValueError("BX source manifest hash mismatch")
+    manifest6 = json.loads(manifest6_bytes)
+    files6 = manifest6["files"]
+    expected6 = {"unitary_quotient_research_bundle/" + item["file"] for item in files6} | {
+        "unitary_quotient_research_bundle/MANIFEST.json", "unitary_quotient_research_bundle/"}
+    if len(files6) != 10:
+        raise ValueError("BX manifest file count mismatch")
+    with zipfile.ZipFile(archive6) as z:
+        names = z.namelist()
+        if len(names) != 12 or len(names) != len(set(names)) or set(names) != expected6 or z.testzip() is not None:
+            raise ValueError("BX archive membership/CRC failure")
+        hashes6 = {item["file"]: item for item in files6}
+        for info in z.infolist():
+            member = PurePosixPath(info.filename)
+            if member.is_absolute() or ".." in member.parts or stat.S_ISLNK(info.external_attr >> 16):
+                raise ValueError("Unsafe BX archive member")
+            if info.is_dir():
+                continue
+            rel = str(member.relative_to("unitary_quotient_research_bundle"))
+            data = z.read(info)
+            target = ROOT / tree6 / rel
+            if not target.is_file() or target.read_bytes() != data:
+                raise ValueError("BX expanded source differs from archive: " + rel)
+            item = hashes6.get(rel)
+            if item and (len(data) != item["bytes"] or sha(data) != item["sha256"]):
+                raise ValueError("BX source hash mismatch: " + rel)
+            if rel == "MANIFEST.json":
+                source_items.append({"path": tree6 + "/" + rel, "rel": rel, "title": rel,
+                                     "data": data, "depth": "embedded source integrity manifest; payload hashes independently checked",
+                                     "boundary": BX_BOUNDARY})
+                continue
+            reviewed = rel in {"README.md", "SOURCE_RECORD.json", "UNITARY_PERMUTATION_QUOTIENT_EMBEDDING.md",
+                               "FINITE_SOURCE_UNITARY_ROUNDING.md", "FINITE_GROUP_CODE_TRANSFER.md",
+                               "VERIFICATION_AND_PRIOR.md"}
+            source_items.append({"path": tree6 + "/" + rel, "rel": rel, "title": rel,
+                                 "data": data,
+                                 "depth": "scoped source inspection; not independently proof-verified" if reviewed
+                                 else "preserved code or numerical receipt; supplied scripts were not executed",
+                                 "boundary": BX_BOUNDARY, "date_version": "2026-10-09 immutable original"})
+    actual6 = {p.relative_to(ROOT / tree6).as_posix() for p in (ROOT / tree6).rglob("*") if p.is_file()}
+    if actual6 != set(hashes6) | {"MANIFEST.json"}:
+        raise ValueError("BX expanded source membership mismatch")
+
+    # BY is the later amplifier campaign. Both the exact archive and its full
+    # expanded source folder are retained; receipts and research code stay DATA.
+    campaign = read("updates/BY/INTEGRITY.json")
+    archive7 = ROOT / campaign["archive_path"]
+    if sha(archive7.read_bytes()) != campaign["archive_sha256"] or len(archive7.read_bytes()) != campaign["archive_bytes"]:
+        raise ValueError("BY archive hash/size mismatch")
+    tree7 = "updates/BY/package/astra_ultra_campaign"
+    manifest7_path = ROOT / tree7 / "MANIFEST.sha256"
+    if sha(manifest7_path.read_bytes()) != campaign["manifest_sha256"]:
+        raise ValueError("BY source manifest hash mismatch")
+    manifest7 = {}
+    for line in manifest7_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            digest, rel = line.split(None, 1)
+            manifest7[rel.strip().lstrip("*")] = digest
+    if len(manifest7) != 174:
+        raise ValueError("BY manifest payload count mismatch")
+    with zipfile.ZipFile(archive7) as z:
+        names = z.namelist()
+        expected7 = {"astra_ultra_campaign/" + rel for rel in manifest7} | {"astra_ultra_campaign/MANIFEST.sha256"}
+        if len(names) != 175 or len(names) != len(set(names)) or set(names) != expected7 or z.testzip() is not None:
+            raise ValueError("BY archive membership/CRC failure")
+        for info in z.infolist():
+            member = PurePosixPath(info.filename)
+            if member.is_absolute() or ".." in member.parts or stat.S_ISLNK(info.external_attr >> 16):
+                raise ValueError("Unsafe BY archive member")
+            rel = str(member.relative_to("astra_ultra_campaign"))
+            data = z.read(info)
+            target = ROOT / tree7 / rel
+            if not target.is_file() or target.read_bytes() != data:
+                raise ValueError("BY expanded source differs from archive: " + rel)
+            digest = manifest7.get(rel)
+            if digest and sha(data) != digest:
+                raise ValueError("BY source hash mismatch: " + rel)
+            if rel == "MANIFEST.sha256":
+                source_items.append({"path": tree7 + "/" + rel, "rel": rel, "title": rel,
+                                     "data": data, "depth": "source manifest; all 174 payload hashes independently checked",
+                                     "boundary": BY_BOUNDARY, "date_version": "2026-10-10 immutable original"})
+                continue
+            reviewed = rel in {"START_HERE.txt", "SOURCE_ATTRIBUTION.txt", "campaign_result.txt",
+                               "amplifier_proof_candidate.tex", "claim_ledger.json", "review_resolutions.json",
+                               "source_manifest.json", "handoffs/theoretical_pro.json",
+                               "work/reports/final_review_sol2.txt", "work/reports/final_review_sol3.txt",
+                               "work/reports/final_review_sol4.txt", "work/reports/final_report_consistency.txt",
+                               "work/reports/sol1_signed/exact_falsifiers.py",
+                               "work/reports/adaptive18_signed_checks.py",
+                               "work/reports/sol2_alternative.txt"}
+            if rel in {"reproduction_receipt.json", "portable_replay_receipt.json", "compilation_receipt.json"}:
+                depth = "source-reported receipt preserved; not replayed during intake"
+            elif reviewed:
+                depth = "scoped source inspection; not independent proof verification"
+            else:
+                depth = "preserved source/code/environment record; supplied code was not executed"
+            source_items.append({"path": tree7 + "/" + rel, "rel": rel, "title": rel,
+                                 "data": data, "depth": depth, "boundary": BY_BOUNDARY,
+                                 "date_version": "2026-10-10 immutable original"})
+    actual7 = {p.relative_to(ROOT / tree7).as_posix() for p in (ROOT / tree7).rglob("*") if p.is_file()}
+    if actual7 != set(manifest7) | {"MANIFEST.sha256"}:
+        raise ValueError("BY expanded source membership mismatch")
+    external_validation = ROOT / "updates/BY/package/PACKAGE_VALIDATION_EXTERNAL.json"
+    external_data = external_validation.read_bytes()
+    external_obj = json.loads(external_data)
+    if (sha(external_data) != campaign["external_package_validation_sha256"] or
+            external_obj.get("archive_sha256") != campaign["archive_sha256"] or
+            external_obj.get("archive_bytes") != campaign["archive_bytes"] or
+            external_obj.get("manifest_file_count") != 174 or external_obj.get("archive_file_count") != 175):
+        raise ValueError("BY external package-validation record mismatch")
+    source_items.append({"path": "updates/BY/package/PACKAGE_VALIDATION_EXTERNAL.json",
+                         "rel": "PACKAGE_VALIDATION_EXTERNAL.json", "title": "External package validation record",
+                         "data": external_data, "depth": "source-supplied package validation receipt; not rerun",
+                         "boundary": BY_BOUNDARY, "date_version": "2026-10-10 immutable original"})
+
     secondary_expected = {i["path"] for i in source_items if not i["path"].startswith(PREFIX)}
-    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package", ROOT / tree3, ROOT / tree4, ROOT / tree5]
+    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package", ROOT / tree3, ROOT / tree4, ROOT / tree5, ROOT / tree6, ROOT / tree7]
                         for p in root.rglob("*") if p.is_file()}
     secondary_actual.add(summary_path)
+    secondary_actual.add("updates/BY/package/PACKAGE_VALIDATION_EXTERNAL.json")
     if secondary_actual != secondary_expected:
         raise ValueError("Supplemental source tree membership mismatch")
     outputs = {}
@@ -341,13 +483,15 @@ def build():
     catalog = read("indexes/agent_catalog.json")
     nodes = {r["id"]: r for r in graph["nodes"]}
     extra_edges = []
-    resolve_source = lambda rel: rel[1:] if rel.startswith("@") else PREFIX + rel
-    selected = {resolve_source(r[0]) for s in specs["claims"] for r in s["proofs"]}
+    source_path = lambda item: item if isinstance(item, str) else item[0]
+    resolve_source = lambda item: (source_path(item)[1:] if source_path(item).startswith("@")
+                                   else PREFIX + source_path(item))
+    selected = {resolve_source(r) for s in specs["claims"] for r in s["proofs"]}
     selected |= {resolve_source(r) for s in specs["claims"] for r in s["evidence"]}
     selected |= {resolve_source(r) for s in specs["claims"] for r in s.get("status_evidence", [])}
     source_topics = {}
     for claim_spec in specs["claims"]:
-        refs = [r[0] for r in claim_spec["proofs"]] + claim_spec["evidence"] + claim_spec.get("status_evidence", [])
+        refs = claim_spec["proofs"] + claim_spec["evidence"] + claim_spec.get("status_evidence", [])
         for source_ref in refs:
             source_topics.setdefault(resolve_source(source_ref), set()).update(claim_spec["topics"])
     for source in sorted(source_items, key=lambda s: s["path"]):
@@ -361,7 +505,7 @@ def build():
             extraction = "binary_preserved"
         title = source["title"]
         new_sources.append({"source_id": sid, "path": path, "title": title, "sha256": sha(data),
-                            "bytes": len(data), "date_version": "2026-10-10 immutable original",
+                            "bytes": len(data), "date_version": source.get("date_version", "2026-10-10 immutable original"),
                             "read_depth": source.get("depth", "Hash and membership only; not reviewed"),
                             "reported_verification": source.get("boundary", BOUNDARY), "extraction": extraction})
         if path in selected:
@@ -409,12 +553,12 @@ def build():
                   "proof_availability": proof_availability,
                   "validation": {"internal": boundary, "external_correctness": "UNKNOWN", "formal_verification": "not supplied",
                                  "historical_priority": "UNKNOWN", "empirical_confirmation": "no physical evidence",
-                                 "reported_status_evidence": [ref(r) for r in s.get("status_evidence", ["CLAIM_LEDGER.json", "RESEARCH_REPORT.txt"])]},
+                                 "reported_status_evidence": [ref_any(r) for r in s.get("status_evidence", ["CLAIM_LEDGER.json", "RESEARCH_REPORT.txt"])]},
                   "depends_on": [{"target": dep, "scope": s.get("dependency_scopes", {}).get(dep,
                        "Source-reported logarithmic coefficient interface; correctness not independently verified.")} for dep in s["depends_on"]],
                   "supersedes": [], "invalidates": [], "contrasting_blockers": [],
                   "material_updates": [{"target": dep, "relation": "scoped_extension_or_interface_boundary",
-                       "scope": s["related_scope"], "evidence": proofs} for dep in s["related"]],
+                       "scope": s.get("related_scopes", {}).get(dep, s["related_scope"]), "evidence": proofs} for dep in s["related"]],
                   "requires_external_validation": [{"target": "external:correctness_and_scope_review", "scope": s["gate"], "evidence": proofs}],
                   "relation_coverage": "Explicit source evidence only; no automatic logical composition or exhaustive relations."}
         new_statuses.append(status)
@@ -451,19 +595,61 @@ def build():
         for dep in s["depends_on"]:
             extra_edges.append({"from": cid, "to": dep, "kind": "explicit_requirement", "raw_kind": "requires",
                                 "source": intake_id + " source-reported proof obligation", "composition": "obligation_only"})
-        new_gates.append({"schema_version": 1, "gate_id": "G-" + intake_id + "-" + cid.split("-")[0],
-                          "priority_order": s.get("gate_priority_order", 92 + len(new_gates)),
-                          "title": s["gate"], "status": "open", "gate_kind": "independent_proof_or_interface_obligation",
-                          "card_ids": [cid], "question": s["gate"], "pass_condition": s["gate"],
-                          "priority_rationale": "Scoped unresolved obligation; no predicted breakthrough value.",
-                          "evidence": proofs, "completion_evidence": [], "validation_boundary": boundary})
+        if not s.get("gate_update_only", False):
+            new_gates.append({"schema_version": 1, "gate_id": "G-" + intake_id + "-" + cid.split("-")[0],
+                              "priority_order": s.get("gate_priority_order", 111 + len(new_gates)),
+                              "title": s["gate"], "status": "open", "gate_kind": "independent_proof_or_interface_obligation",
+                              "card_ids": [cid], "question": s["gate"], "pass_condition": s["gate"],
+                              "priority_rationale": "Scoped unresolved obligation; no predicted breakthrough value.",
+                              "evidence": proofs, "completion_evidence": [], "validation_boundary": boundary})
 
     statuses = rows("frontier/CURRENT_CLAIM_STATUS.jsonl")
+    status_updates = {cid: update for item in specs.get("status_updates", [])
+                      for cid in item.get("card_ids", []) for update in [item]}
     for old in statuses:
+        if old["card_id"] in status_updates:
+            update = status_updates[old["card_id"]]
+            for field in ["reported_status", "scientific_scope_status", "status_authority"]:
+                if field in update:
+                    old[field] = update[field]
+            if "proof_availability_update" in update:
+                avail = old.setdefault("proof_availability", {})
+                avail.update({k:v for k,v in update["proof_availability_update"].items() if k not in {"located_proof_sources", "available_evidence_sources"}})
+                for field in ["located_proof_sources", "available_evidence_sources"]:
+                    if field in update["proof_availability_update"]:
+                        seen = {(r.get("path"), tuple(r.get("lines", []))) for r in avail.get(field, [])}
+                        for source_ref in update["proof_availability_update"][field]:
+                            evidence_ref = ref_any(source_ref)
+                            key = (evidence_ref["path"], tuple(evidence_ref["lines"]))
+                            if key not in seen:
+                                avail.setdefault(field, []).append(evidence_ref)
+                                seen.add(key)
+            if "validation_internal" in update:
+                old.setdefault("validation", {})["internal"] = update["validation_internal"]
+            if "reported_status_evidence" in update:
+                validation = old.setdefault("validation", {})
+                existing = validation.setdefault("reported_status_evidence", [])
+                seen = {(r.get("path"), tuple(r.get("lines", []))) for r in existing}
+                for source_ref in update["reported_status_evidence"]:
+                    evidence_ref = ref_any(source_ref)
+                    key = (evidence_ref["path"], tuple(evidence_ref["lines"]))
+                    if key not in seen:
+                        existing.append(evidence_ref)
+                        seen.add(key)
+            if "external_validation_update" in update:
+                required = old.setdefault("requires_external_validation", [])
+                target = update["external_validation_update"]["target"]
+                item = next((r for r in required if r.get("target") == target), None)
+                if item is None:
+                    item = {"target": target}
+                    required.append(item)
+                item["scope"] = update["external_validation_update"]["scope"]
+                item["evidence"] = [ref_any(r) for r in update["external_validation_update"].get("evidence", [])]
         for s, new in zip(specs["claims"], new_statuses):
             if old["card_id"] in s["related"]:
                 update = {"target": s["id"], "relation": "scoped_followup_not_invalidation",
-                          "scope": s["related_scope"], "evidence": new["proof_availability"]["located_proof_sources"]}
+                          "scope": s.get("related_scopes", {}).get(old["card_id"], s["related_scope"]),
+                          "evidence": new["proof_availability"]["located_proof_sources"]}
                 old["material_updates"] = [u for u in old["material_updates"] if u.get("target") != s["id"]] + [update]
         if old["card_id"] in {c for s in specs["claims"] for c in s["related"]}:
             cid = old["card_id"]
@@ -478,9 +664,26 @@ def build():
                 + "\nORIGINAL CARD (unchanged bytes after this line):\n").encode() + original)
     claims = merge(rows("indexes/claims.jsonl"), new_claims, "id")
     put_rows("indexes/claims.jsonl", claims)
+    external_dependencies = merge(read("indexes/external_dependencies.json"),
+                                 specs.get("external_dependencies", []), "id")
+    put_json("indexes/external_dependencies.json", external_dependencies)
     put_rows("frontier/CURRENT_CLAIM_STATUS.jsonl", merge(statuses, new_statuses, "card_id"))
     put_rows("indexes/source_metadata.jsonl", merge(rows("indexes/source_metadata.jsonl"), new_sources, "source_id"))
-    put_rows("frontier/OPEN_PROOF_GATES.jsonl", merge(rows("frontier/OPEN_PROOF_GATES.jsonl"), new_gates, "gate_id"))
+    gates = merge(rows("frontier/OPEN_PROOF_GATES.jsonl"), new_gates, "gate_id")
+    gates_by_id = {g["gate_id"]: g for g in gates}
+    for update in specs.get("gate_updates", []):
+        gate = gates_by_id.get(update["gate_id"])
+        if gate is None:
+            raise ValueError("Gate update target missing: " + update["gate_id"])
+        for field in ["title", "question", "pass_condition", "priority_rationale", "validation_boundary"]:
+            if field in update:
+                gate[field] = update[field]
+        gate["card_ids"] = list(dict.fromkeys(gate.get("card_ids", []) + update.get("add_card_ids", [])))
+        if "evidence" in update:
+            additions = [ref_any(r) for r in update["evidence"]]
+            seen = {(r.get("path"), tuple(r.get("lines", []))) for r in gate.get("evidence", [])}
+            gate["evidence"] += [r for r in additions if (r["path"], tuple(r["lines"])) not in seen]
+    put_rows("frontier/OPEN_PROOF_GATES.jsonl", gates)
     put_rows("web/documents.jsonl", merge(rows("web/documents.jsonl"), new_docs, "id"))
     web_new = []
     for c, item in zip(new_claims, new_catalog):
@@ -493,10 +696,12 @@ def build():
     freshness = {"schema_version": catalog["schema_version"], "base_commit": specs["base_revision"],
                  "generator": "updates/BR/build_intake.py", "generator_sha256": sha(Path(__file__).read_bytes()),
                  "full_private_database_rebuild": "not performed; incremental public append only",
-                 "inputs": {p: sha(outputs.get(p, (ROOT / p).read_bytes())) for p in ["indexes/claims.jsonl", "frontier/CURRENT_CLAIM_STATUS.jsonl", "web/catalog.json", "web/documents.jsonl", "updates/BR/CLAIMS.json"]},
+                 "inputs": {p: sha(outputs.get(p, (ROOT / p).read_bytes())) for p in ["indexes/claims.jsonl", "indexes/external_dependencies.json", "frontier/CURRENT_CLAIM_STATUS.jsonl", "web/catalog.json", "web/documents.jsonl", "updates/BR/CLAIMS.json"]},
                  "cards_manifest_sha256": sha("\n".join(c["id"] + " " + c["card_sha256"] for c in sorted(catalog["claims"], key=lambda c:c["id"])).encode())}
     catalog["freshness"] = freshness
     graph["freshness"] = freshness
+    for dependency in specs.get("external_dependencies", []):
+        nodes[dependency["id"]] = {"id": dependency["id"], "node_kind": "dependency", "dependency": dependency}
     graph["nodes"] = sorted(nodes.values(), key=lambda n:n["id"])
     key = lambda e:(e["from"], e["to"], e["raw_kind"], e["source"])
     existing_keys = {key(e) for e in graph["edges"]}
@@ -555,6 +760,6 @@ if __name__ == "__main__":
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(d)
     print(json.dumps({"command": args.command, "generated_outputs": len(outputs),
-                      "source_archive_members_checked": {"BR": 194, "BS": 97, "BU": 15, "BV": 18, "BW": 24},
-                      "attached_records_checked": 2,
+                      "source_archive_members_checked": {"BR": 194, "BS": 97, "BU": 15, "BV": 18, "BW": 24, "BX": 12, "BY": 175},
+                      "attached_records_checked": 3,
                       "science_replayed": False, "private_database_rebuilt": False}))

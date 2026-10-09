@@ -1,0 +1,62 @@
+Exact independent-set counting by symplectic-span compression
+Investigator 16 — 2026-10-10
+
+Target and interface
+
+The barrier is exact counting of independent sets (#IS), and its optimization companion, maximum-weight independent set. #IS is #P-complete on general graphs. The proposed restricted capability uses the binary rank r of the graph's full adjacency matrix, not a supplied tree decomposition or a heuristic estimate. Input is an n-vertex simple graph as an adjacency matrix (or edge list from which that matrix is formed), optionally with integer vertex weights. Output can be the independence polynomial, the exact weighted partition function, or a maximum-weight independent set. Rank, a quotient basis, and all subsequent states are computed from that supplied graph in exact arithmetic over F_2; there is no external oracle or hidden structural input.
+
+Construction and proof
+
+Let A be the adjacency matrix over F_2. It is alternating (symmetric with zero diagonal), so its rank is even; write r=2m. The bilinear form b(x,y)=x^T A y has radical K=ker A. It descends to a nondegenerate alternating, hence symplectic, form on Q=F_2^n/K, of dimension 2m. Give vertex i the label x_i=[e_i] in Q. For any vertex set S,
+
+  S is independent  iff  b(x_i,x_j)=0 for every i,j in S
+                      iff  span{x_i : i in S} is totally isotropic.
+
+The diagonal condition is automatic because b is alternating. This is the compression mechanism: exponentially many vertex subsets are grouped by the much smaller isotropic subspace spanned by their labels.
+
+For an isotropic subspace U≤Q, let s(U)=|{i:x_i∈U}| and let F(U;z)=(1+z)^{s(U)}. This counts all subsets supported on labels in U; each is independent. Let G(U;z) count those whose selected labels span exactly U. Then F(U;z)=sum_{T≤U}G(T;z), since every subspace of isotropic U is isotropic. Möbius inversion in the ordinary subspace lattice gives
+
+  G(U;z)=sum_{T≤U} (-1)^d 2^{d(d-1)/2} F(T;z),  d=dim(U)-dim(T).
+
+Summing over isotropic U and exchanging sums yields an exact compressed formula
+
+  I_G(z)=sum_{T isotropic} c_{m-dim(T)} (1+z)^{s(T)},
+  c_t=sum_{j=0}^t N(t,j)(-1)^j 2^{j(j-1)/2},
+  N(t,j)=[t choose j]_2 product_{i=0}^{j-1}(2^{t-i}+1).
+
+Here [t choose j]_2 is the Gaussian binomial coefficient. To see the coefficient, isotropic superspaces U≥T correspond exactly to isotropic subspaces U/T of the symplectic quotient T^perp/T, whose dimension is 2(m-dim T). Thus the sum of Möbius weights depends only on t=m-dim T, and N(t,j) is the number of j-dimensional isotropic subspaces there. Count ordered independent isotropic j-tuples by choosing each next vector from W^perp minus W, then divide by the number of ordered bases of F_2^j; this gives the displayed N formula. This derivation proves the formula without needing a closed form for c_t.
+
+The same formula handles vertex activities a_i: replace (1+z)^{s(T)} by product_{i:x_i∈T}(1+a_i z). Setting z=1 and a_i=1 counts all independent sets exactly. For optimization, every independent set's labels span an isotropic subspace, which extends to a Lagrangian subspace L (dimension m); all vertices labeled in L are mutually nonadjacent. Hence maximum weight is
+
+  max over Lagrangian L of sum_{i:x_i∈L} max(w_i,0).
+
+Taking only positive-weight vertices is optimal, including when weights can be negative. A maximizing L immediately returns a witness set.
+
+Width, arithmetic cost, and adaptivity
+
+The exact number of isotropic subspaces is S_r=sum_{j=0}^m N(m,j). The product formula and [m choose j]_2=2^{j(m-j)+O(1)} give
+
+  S_r = 2^{r^2/6+O(r)}.
+
+They can be enumerated by dimension: start at {0}; from each isotropic U enumerate v in U^perp\U, form U+<v>, reduce to a canonical row basis, and deduplicate children in that dimension. This visits every isotropic subspace; the at most 2^r candidate vectors per parent add only an O(r) term to the exponent. Preprocessing the quotient and symplectic basis costs O(n^3) F_2 bit operations. For each visited U, testing the n labels for membership costs O(n r^2) bit operations with ordinary elimination. Building I_G(z) costs O(n S_r) integer arithmetic operations after enumeration. For one scalar weighted partition-function value, multiplying the vertex factors costs O(n S_r) operations and summing the compressed terms costs O(S_r). With input activity bit length B, all intermediate integers have O(B+n+r^2) bits, so the claim includes exact integer arithmetic rather than unit-cost unbounded integers.
+
+For max-weight independent set, the number of Lagrangians is
+
+  L_m=product_{i=1}^m(2^i+1)=2^{r^2/8+r/4+O(1)}.
+
+They admit a direct enumeration: fix Q=X⊕Y as two complementary Lagrangians. For each k-subspace P≤X, set D=P^perp≤Y. Lagrangians with L∩Y=D and projection P are graphs of symmetric bilinear forms on P, so enumerate the [m choose k]_2 choices of P and the 2^{k(k+1)/2} forms. This covers each L exactly once. The resulting optimization cost is poly(n,r,B)L_m. As an adaptive exact solver, compare these algebraic bounds with exhaustive 2^n subset enumeration and take the cheaper route. For r≤sqrt(n), counting costs 2^{n/6+O(sqrt(n))}poly(n) and max-weight optimization 2^{n/8+O(sqrt(n))}poly(n), versus 2^n enumeration; more generally r≤c sqrt(n) replaces n/6 and n/8 by c²n/6 and c²n/8. For fixed r both are polynomial in n. Rank r near n makes the algebraic route worse, so adaptation is essential.
+
+Verification and limits
+
+I reconstructed the quotient and inversion proof here. Supporting exact-integer code is in work/reports/16_integer_computation/verify_isotropic_count.py. It checked the compressed independence polynomial and max-weight formula against direct subset enumeration on 1,080 random label multisets in symplectic ranks 2, 4, and 6, and on the full 16-label rank-4 instance. It also checked c_t=(-1)^t 2^{t^2} for t≤8 and observed 4, 31, and 514 isotropic spaces in ranks 2, 4, and 6. These are finite implementation checks; they are not needed for the unsimplified c_t formula and do not prove that observed closed form. The latter identity is a clean next simplification target.
+
+The decisive boundary is input rank. For even n, K_n has binary adjacency rank n; for odd n it has rank n-1. Such inputs do not benefit from the subspace enumeration, and the adaptive algorithm must use a general exact method. This construction therefore does not remove the #P barrier for general graphs and makes no claim of a universal speedup. Its potential significance is a decomposition-free, exact single-parameter algorithm for counting and optimizing when the full adjacency rank is low, with explicit finite-field width and bit costs. I found close conceptual prior art but have not established novelty: Bei, Chen, Guan, Qiao, and Sun reduce maximum independent set to an isotropic-space problem for an edge-generated alternating matrix space; Bui-Xuan, Telle, and Vatshelle give rank-width algorithms for maximum independent set and Boolean-width algorithms counting all sizes when a decomposition is supplied. The quotient form and the all-span Möbius count appear to sharpen that direction, but the literature check was not exhaustive.
+
+Primary sources consulted
+
+• Catherine Greenhill, “The complexity of counting colourings and independent sets in sparse graphs and hypergraphs” (2000), https://web.maths.unsw.edu.au/~csg/papers/complexity.pdf — #P-hardness context for exact independent-set counting.
+• Xiaohui Bei, Shiteng Chen, Ji Guan, Youming Qiao, and Xiaoming Sun, “From Independent Sets and Vertex Colorings to Isotropic Spaces and Isotropic Decompositions: Another Bridge Between Graphs and Alternating Matrix Spaces” (ITCS 2020), https://doi.org/10.4230/LIPIcs.ITCS.2020.8 — conceptual isotropic-space correspondence; source claim, distinct input representation.
+• Binh-Minh Bui-Xuan, Jan Arne Telle, and Martin Vatshelle, “H-join decomposable graphs and algorithms with runtime single exponential in rankwidth” (Discrete Applied Mathematics 158, 2010), https://doi.org/10.1016/j.dam.2009.09.009 — maximum independent set given a rank-decomposition.
+• Binh-Minh Bui-Xuan, Jan Arne Telle, and Martin Vatshelle, “Boolean-width of graphs” (Theoretical Computer Science 412, 2011), https://doi.org/10.1016/j.tcs.2011.05.022 — counts independent sets of each size given a decomposition.
+
+Next proof gate: establish or refute c_t=(-1)^t 2^{t^2} from the displayed finite-geometric sum, then perform an exhaustive prior-art search specifically for exact #IS parameterized by the full F_2 adjacency rank and compare constants against rank-width counting algorithms.

@@ -1,0 +1,47 @@
+# Unitary bases, permutation repair, and code-based presentations
+
+Research record, 9 October 2026
+
+## Main result
+
+An explicit map embeds unitary matrices modulo column permutations into a Hilbert space with distortion at most 3, independent of matrix dimension. The metric is normalized Frobenius distance after optimal column matching. This yields a dimension-independent graph Poincare inequality, with factor 9 for squared distances.
+
+The map sends an orthonormal basis to its copying comultiplication. That encoding is established prior art, due to Coecke–Pavlovic–Vicary. The candidate contribution here is the uniform quantitative estimate, proved using a doubly stochastic assignment argument, and its charged permutation-stability consequences. Historical priority of these quantitative statements is not established.
+
+## Concrete consequence
+
+For a binary generating code of relative distance Delta, a flexible unitary repair modulus f in the precise Chapman–Vidick–Yuen sense yields a flexible permutation repair modulus at most
+
+ min{1, 2,000,000 f(2epsilon)/Delta}.
+
+Both altered arrows and added labels are charged. The proof uses the finite-group Becker–Chapman theorem directly; it does not depend on any compact-group/Haar adaptation.
+
+Applied to the formal Reed–Muller theorem of Chapman–Vidick–Yuen, this gives the same parameter dependence for permutation actions, up to a universal factor when the code distance stays bounded below. Their finite-field additive error floor remains in the result. It is absorbed only above an explicitly stated error threshold.
+
+## What this does not establish
+
+- A floor-free polynomial modulus for every positive error
+- The sharper polynomial-size presentation target
+- A polynomial-time repair algorithm
+- A non-sofic group or a resolution of the random-complex stability problem
+- Historical priority or community verification
+
+The geometric proof and finite transfer passed a focused adversarial algebra/source-interface check. Numerical checks are regression tests, not substitutes for the proofs.
+
+## Read in order
+
+1. UNITARY_PERMUTATION_QUOTIENT_EMBEDDING.md: short unconditional proof and both Poincare conventions
+2. FINITE_SOURCE_UNITARY_ROUNDING.md: finite-source rounding, with constants and added-label accounting
+3. FINITE_GROUP_CODE_TRANSFER.md: exact partial-isometry bookkeeping and source-pinned Reed–Muller application
+4. VERIFICATION_AND_PRIOR.md: focused proof check and closest-prior comparison
+
+## Reproduce the numerical checks
+
+Python 3 with NumPy and SciPy is sufficient.
+
+- python verify_copy_tensor.py
+- python verify_common_space.py
+
+The first checks the exact mixed-tensor identity and assignment inequality on 72 random unitaries, including a phase counterexample to the incorrect unmixed tensor. The second checks the common-space block estimate and exact unitarity in 120 random cases. Their saved outputs are included.
+
+SOURCE_RECORD.json records primary URLs, versions, and hashes of the locally inspected source snapshots. Full third-party papers are deliberately not included. MANIFEST.json records the hashes of this bundle's files.

@@ -1,0 +1,45 @@
+03 — Linear solvers: locality obstruction, with a sparse GMRES stress case
+
+Status: a proved obstruction for banded approximate-inverse preconditioners; no general sparse-solver breakthrough. The distinction between matrix-free access and an explicitly stored sparse matrix is decisive.
+
+Target and interface
+
+The candidate capability was an adaptive preprocessor that, from a general nonsymmetric sparse matrix A, learns a cheap sparse approximate inverse B and then certifies a fast solve uniformly, without assuming decay or favorable conditioning in advance. I tested the concrete matrix-representation claim: for every nonsingular A, can a banded B with half-bandwidth at most n/4 make either left or right preconditioned operator uniformly close to identity, say ||I−BA||₂≤δ or ||I−AB||₂≤δ for fixed δ<1/(4e)? The input is explicit sparse entries; the claimed output is an explicit banded B. This is only one candidate mechanism, not a lower bound against all sparse solvers.
+
+Decisive counterexample, proved here
+
+Let n=4m and S be the upper shift, Sᵢ,ᵢ₊₁=1, with all other entries zero. Put α=1−1/n and A=I−αS. A is nonsingular upper bidiagonal, has 2n−1 nonzeros, and is nonnormal. Its inverse is
+
+  A⁻¹ = I + αS + α²S² + ⋯ + αⁿ⁻¹Sⁿ⁻¹,
+
+so (A⁻¹)ᵢⱼ=αʲ⁻ⁱ for j≥i. Also ||A⁻¹||₂≤Σₖ αᵏ≤n and ||A||₂≤2, hence κ₂(A)≤2n.
+
+Take any B whose entries vanish whenever |i−j|>w, where w≤m. Set I={1,…,m} and J={3m+1,…,4m}. For every i∈I and j∈J, j−i≥2m+1>w, so Bᵢⱼ=0. Since αⁿ⁻¹>e⁻¹, every corresponding entry of D=A⁻¹−B is at least e⁻¹. With u and v the unit all-ones vectors supported on I and J,
+
+  ||D||₂ ≥ |uᵀDv| ≥ m/e.
+
+For left preconditioning, I−BA=(A⁻¹−B)A=DA, so D=(I−BA)A⁻¹ and ||I−BA||₂≥||D||₂/||A⁻¹||₂≥1/(4e). For right preconditioning, D=A⁻¹(I−AB), giving the same bound. Thus no matter how B is acquired or optimized, bandwidth at most n/4 cannot make either preconditioned operator closer than 1/(4e) to identity on this family. This is an exact-arithmetic theorem for the stated representation and norm. It does not show that GMRES must be slow whenever this residual norm is large; that implication would be invalid.
+
+There is a separate sparse nonnormal stress case for Krylov iteration counts. For even n, define A eⱼ=wⱼeⱼ₊₁ (indices cyclically), with wⱼ alternating between 1 and 2, and let b=e₁. This matrix has one nonzero per row and column, singular values 1 and 2, and κ₂(A)=2. It is nonnormal because AᵀA and AAᵀ have the alternating diagonal weights in opposite positions. For k<n, Kₖ(A,b)=span{e₁,…,eₖ}, while A Kₖ is contained in span{e₂,…,eₖ₊₁}, orthogonal to b. Therefore the GMRES residual after k steps is exactly ||b||₂: x=0 attains residual 1, and every nonzero image A x adds an orthogonal component. GMRES reaches the exact solution at step n. This refutes any claim that a small singular-value condition number alone certifies a short GMRES run. The example is deliberately not a hard explicit sparse solve: its cycle structure gives an inverse action that can be recovered and applied in O(n) time from the stored entries.
+
+Implications for the proposed mechanism
+
+The first family invalidates a uniform locality-limited approximate-inverse guarantee. For the bidiagonal example, the inverse has long-range entries even though the matrix is sparse; a banded inverse representation loses a constant amount in preconditioned residual. Yet the original matrix admits a direct triangular solve in O(nnz(A)) arithmetic and storage. So inverse sparsity is not the right universal measure of solve cost: a sparse operator representation, such as a triangular solve, can be much cheaper than materializing its inverse. The second family shows that a solver must use the sparse graph or other information beyond κ₂(A); generic Krylov iteration can take n steps even when a graph-aware exact solve is linear-time.
+
+These counterexamples do not rule out adaptively acquired nonlocal sparse patterns, hierarchical operators, sparse elimination, or matrix-free methods with additional assumptions. Nor do they establish an end-to-end solver advantage. Any comparison must charge the cost of reading/ordering the entries, choosing the representation, building and storing it, each preconditioner application, and the final solve. For a normwise forward-error target ε, a standard sufficient residual condition is ||b−Ax||₂/||b||₂≤ε/κ₂(A). Here the bidiagonal family has κ₂(A)≤2n, so certifying that forward error from this bound requires a residual tolerance that scales with n. The exact lower bound above is about operator quality, not rounding behavior or final solution error. A finite-precision result would additionally need to bound construction and application errors at the chosen precision.
+
+Strongest relevant prior art and model boundary
+
+Michele Benzi and Miroslav Tůma, “A Sparse Approximate Inverse Preconditioner for Nonsymmetric Linear Systems,” SIAM Journal on Scientific Computing 19(3), 1998, https://www.cs.emory.edu/~benzi/Web_papers/ainv.pdf. They describe approximate inverse construction, adaptive pattern selection, and factorized sparse inverse methods. Their introduction explicitly notes that choosing a useful sparsity pattern is difficult for general sparse matrices, and that construction can be costly; the method targets favorable matrix classes and empirical performance rather than a uniform guarantee.
+
+Zhongxiao Jia and Wenjie Kang, “A Residual Based Sparse Approximate Inverse Preconditioning Procedure for Large Sparse Linear Systems,” 2015, https://arxiv.org/abs/1503.04500. RSAI adapts patterns using dominant residual information and dropping. It is close prior art for the proposed adaptive acquisition route, but its reported evidence is numerical and does not prove a universal complexity or conditioning bound.
+
+Anne Greenbaum, Vlastimil Pták, and Zdeněk Strakoš, “Any Nonincreasing Convergence Curve is Possible for GMRES,” SIAM Journal on Matrix Analysis and Applications 17(3), 1996, https://doi.org/10.1137/S0895479894275030. For any prescribed nonincreasing residual sequence, they construct a matrix and right-hand side realizing it, with the matrix eigenvalues chosen arbitrarily. This explains why eigenvalues alone are not a sufficient convergence certificate. Their theorem is not a sparse-input lower bound.
+
+Michał Dereziński, Ethan N. Epperly, and Raphael A. Meyer, “The matrix-vector complexity of Ax=b,” COLT 2026, https://proceedings.mlr.press/v336/derezinski26a.html (preprint https://arxiv.org/abs/2602.04842). In a matrix-vector oracle model, their two-sided lower bound is Ω(κ log(1/ε)); their one-sided bound requires Ω(n) queries even for perfectly conditioned systems. This is important evidence against universal black-box preconditioning gains, but the theorem is for general oracle matrices and does not by itself prove a lower bound for explicit low-nnz CSR inputs where preprocessing may inspect entries and exploit the sparsity graph.
+
+Achieved versus potential significance
+
+Proved here: banded approximate inverses fail by a constant in the stated residual norm on an explicit sparse, nonnormal family; sparse nonnormal GMRES can stagnate for n−1 steps at condition number 2. Known: adaptive sparse approximate inverse and incomplete inverse methods already exist, and unrestricted GMRES convergence is not characterized by eigenvalues or κ alone. Not proved: a lower bound for all O(n)- or O(nnz)-storage preconditioners, a faster general sparse solver, or a finite-precision end-to-end guarantee. There is no landmark advance in this result. A potentially consequential direction is to learn nonlocal inverse actions as sparse operator factorizations or graph/path representations and certify their full build-plus-solve cost without materializing a dense inverse.
+
+Next proof gate: determine whether the 1/(4e) obstruction extends from banded B to every B with at most s nonzeros per row for s=o(n), under ||I−BA||₂ or ||I−AB||₂. Prove such a bound, or give an explicit sparse B family that defeats it. This will distinguish a true storage bottleneck from the narrower locality barrier proved here.

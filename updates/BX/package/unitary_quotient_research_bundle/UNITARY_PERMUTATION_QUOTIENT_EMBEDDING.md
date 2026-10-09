@@ -1,0 +1,103 @@
+# Dimension-free Hilbert embedding of unitary bases modulo permutation
+
+2026-10-09. Complete elementary proof candidate developed from the mixed-copy-map calculation. The statement is unconditional; historical priority and its full application interface are undergoing one focused check. No non-soficity or first-stage repair claim follows solely from this theorem.
+
+## Theorem
+
+Equip Q_d=U(d)/Sym(d) (quotient by right multiplication) with the normalized Frobenius quotient metric
+
+ q_d([U],[V])=min_(P in Sym(d)) ||U-VP||_F/sqrt(d).
+
+Let Delta:C^d -> C^d tensor C^d be Delta e_i=e_i tensor e_i, and put
+
+ Phi_d([U])=(U tensor U)Delta U^*/sqrt(d)
+           =sum_i u_i tensor u_i tensor conjugate(u_i)/sqrt(d),
+
+where u_i are the columns of U and the second expression uses the standard identification of Hom with a mixed tensor space. The target is a complex Hilbert space of dimension d^3, equipped with Frobenius norm. Then
+
+ q_d([U],[V]) <= ||Phi_d([U])-Phi_d([V])||_F <= 3 q_d([U],[V]).        (T)
+
+In particular Q_d admits a Hilbert embedding with distortion at most 3, uniformly in d. The analogous quotient-by-left-multiplication statement follows by replacing U by U^*.
+
+## Proof
+
+Every permutation matrix P satisfies (P tensor P)Delta P^*=Delta, so Phi is well-defined on the quotient by right multiplication. The map R(U):A -> (U tensor U)AU^* is a unitary representation. It is therefore enough to prove (T) for V=I.
+
+### Lower bound: unistochastic averaging and assignment
+
+Direct expansion gives
+
+ ||R(U)Delta-Delta||_F^2
+ =2d-2 Re sum_(i,j) |U_ij|^2 U_ij.                         (1)
+
+The matrix p_ij=|U_ij|^2 is doubly stochastic. Express it as a convex combination of permutation matrices. Consequently
+
+ Re sum_(i,j) p_ij U_ij <= max_pi Re sum_j U_(pi(j),j).
+
+The squared distance to the nearest permutation is
+
+ min_P ||U-P||_F^2=2d-2 max_pi Re sum_j U_(pi(j),j).
+
+Combining these equalities proves
+
+ min_P ||U-P||_F^2 <= ||R(U)Delta-Delta||_F^2.              (2)
+
+This is exact and dimension-free. It also proves injectivity of Phi on the quotient. Complex phases are retained: the representation is U tensor U tensor conjugate(U), not U tensor U tensor U.
+
+### Upper bound: three controlled factors
+
+Fix a permutation P. Since R(P)Delta=Delta, expand
+
+ (U tensor U)Delta U^*-(P tensor P)Delta P^*
+ =((U-P) tensor U)Delta U^*
+  +(P tensor (U-P))Delta U^*
+  +(P tensor P)Delta(U^*-P^*).
+
+Each of the three summands has Frobenius norm ||U-P||_F. For the first two use
+
+ ||(A tensor I)Delta||_F=||(I tensor A)Delta||_F=||A||_F;
+
+for the last use Delta^*Delta=I. Thus
+
+ ||R(U)Delta-Delta||_F <=3||U-P||_F.
+
+Minimize over P and divide by sqrt(d). Unitary equivariance reduces arbitrary pairs to V^*U and completes the proof.
+
+## Explicit graph Poincare consequences
+
+Let W be a finite irreducible reversible Markov kernel with stationary measure pi and spectral gap gamma>0. For any assignment v -> [U_v] in Q_d,
+
+ sum_(v,w) pi(v)pi(w) q_d([U_v],[U_w])^2
+ <= (9/gamma) sum_(v,w) pi(v)W(v,w) q_d([U_v],[U_w])^2.       (3)
+
+Indeed apply the ordinary Hilbert-valued spectral Poincare inequality to Phi(U_v), then apply the two sides of (T). No group-representation or property-(T) assumption enters.
+
+There is also an unsquared version. Define conductance
+
+ h=min_(0<pi(A)<=1/2) Q(A,A^c)/pi(A),  Q(v,w)=pi(v)W(v,w).
+
+Then
+
+ sum_(v,w) pi(v)pi(w) q_d([U_v],[U_w])
+ <= (3/h) sum_(v,w) pi(v)W(v,w) q_d([U_v],[U_w]).           (4)
+
+For a real scalar function, the inequality with coefficient 1/h follows by integrating its level sets. Integrating scalar Gaussian projections gives the same inequality for Hilbert distances; combine with (T). Thus neither squared-versus-unsquared conventions nor graph dimension introduce a hidden d-dependent constant.
+
+## Metric and phase checks
+
+- The quotient uses permutation matrices only, not arbitrary monomial unitaries or diagonal phases.
+- For permutation matrices P,Q, ||P-Q||_F^2/d=2d_H(P,Q). Normalized HS distance corresponds to the square root of Hamming distance, not Hamming itself. Formula (3) naturally controls squared HS distances; Formula (4) is provided separately.
+- Right and left quotient metrics are isometric by inversion; they should not be silently mixed in the tensor formula.
+- For U=zI with z a primitive cube root of unity, the plain cubic tensor is unchanged, but Phi(U)=z Phi(I) is different, correctly detecting a non-permutation phase.
+- The map is explicit and polynomial-size (d^3 coordinates). It does not require Haar integration, a nearest-permutation algorithm, or an exact group representation merely to evaluate.
+- The proof uses exact orthonormality of the columns. It does not assert the corresponding result for arbitrary matrices modulo column permutations.
+
+## Source interface and significance boundary
+
+Chapman–Lubotzky, arXiv:2311.06706v3, end of Section 6.4, asks for a Poincare inequality on U(n)/Sym(n) with constants independent of n, distinguishing it from M(n)/Sym(n). The displayed theorem supplies such a bound for the normalized Frobenius quotient metric. A focused check must still identify their precise application metric and whether the result or mechanism appeared subsequently.
+
+Source: https://arxiv.org/html/2311.06706v3#S6 . Their code-testing/finite-presentation application is not proved in this note. The conditional exact-representation transfer, with every sheet charged, is separately developed in FINITE_SOURCE_UNITARY_ROUNDING.md. The difficult first-stage passage from relation-approximate permutation matrices to a genuine dimension-controlled unitary representation remains open in this programme.
+
+## Attribution of the encoding
+
+The copying-comultiplication encoding of an unordered orthonormal basis is established in Coecke–Pavlovic–Vicary, *A new description of orthogonal bases*, https://arxiv.org/pdf/0810.0812 . The candidate contribution here is the uniform quantitative inequality and the charged stability transfer, not invention of that encoding. See VERIFICATION_AND_PRIOR.md for the focused comparison with odeco perturbation theory.

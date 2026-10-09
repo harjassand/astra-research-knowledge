@@ -1,0 +1,55 @@
+Composable exact certificates for low-rank products of local operators
+
+Finding and status
+
+A useful exact certificate can expose and certify a low-rank global map represented only as a long composition of local maps. The certificate is acquired from randomized forward and transpose applications, then verified by randomized local chain traversals. It avoids forming the dense global product and does not assume a supplied factorization witness. I derive the construction and bounds below. It is a direct specialization of known black-box rank algorithms, however, so this is not a novelty or landmark claim. The useful consequence is conditional: repeated use of a genuinely low-rank composed operator can be compressed and checked without materializing it. Floating-point and approximate-rank cases remain open here.
+
+Target and interface
+
+Let A_i in Q^(n_i by n_(i-1)), i=1,...,k, be explicit local operators, with M = A_k ... A_1. Write S = sum_i nnz(A_i), and assume exact application of each A_i and its transpose A_i^T is available. The target is to certify, and if the rank is small to acquire, a factorization M = U V with inner dimension at most r, without constructing M. Random scalars are drawn independently from a finite set D contained in Q, with |D| = L > 2r. Choosing L >= 2r/alpha bounds acquisition failure by alpha. All identities and arithmetic below are exact over Q; rational bit cost is separate from the stated field-operation count.
+
+Acquisition, with no supplied witness
+
+Draw Omega in D^(n_0 by r) and Psi in D^(r by n_k), then evaluate only the composed operators:
+
+  Y = M Omega,  Z = Psi M,  G = Psi Y.
+
+Solve the possibly rank-deficient linear system G X = Z for X in Q^(r by n_0). If it is inconsistent, abort; otherwise output U = Y, V = X. The witness is thus computed from local operator calls; the verifier need not trust the acquisition routine.
+
+Completeness proof. Let t = rank(M) <= r, and write M = P Q with P in Q^(n_k by t) and Q in Q^(t by n_0), both full rank. The event that Q Omega fails to have row rank t is contained in the zero set of a nonzero t-by-t minor polynomial of degree t. Schwartz-Zippel bounds its probability by t/L. Likewise, Psi P has column rank t except with probability at most t/L. Outside these two bad events, Y = M Omega spans im(M), and Psi is injective on that image. Since Y spans the columns of M, some X_0 satisfies M = Y X_0, so G X_0 = Z and the solve is consistent. For any solution X, R = M - YX has columns in im(M) and Psi R = Z - GX = 0; injectivity on im(M) gives R = 0. Thus acquisition succeeds with probability at least 1 - 2t/L, hence at least 1 - 2r/L. Rank zero is the trivial Y = Z = G = 0 case. This derives a factorization from operator access instead of moving a hard search into a witness.
+
+Verification and composition
+
+After the certificate is committed, sample h independent vectors x_j in D^(n_0) and check
+
+  A_k(... A_2(A_1 x_j) ...) = U(V x_j), for every j.
+
+If M != UV, choose a nonzero row of E = M - UV. Its dot product with x is a nonzero degree-one polynomial; by Schwartz-Zippel each challenge misses the error with probability at most 1/L. False acceptance is therefore at most L^(-h). This tests a global equality by passing each challenge through the supplied local operators, with no global product matrix. For target soundness delta, h = ceil(log_L(1/delta)) challenges suffice. The challenge must be chosen after commitment, or drawn from verifier-controlled secret randomness, to prevent an adaptive false certificate from fitting it.
+
+For square dimensions, let C = sum_i nnz(A_i). Acquisition uses r forward and r reverse chain applications plus small dense algebra: O(rC + r^2 n + r^3) field operations, O(nr + r^2) working storage beyond the input, and 2nr output entries. Verification uses O(h(C + nr)) operations and stores the certificate plus one challenge and chain state. Every later application of M costs O(nr) via U(Vx), compared with O(C) for the original chain. When C is much larger than nr, acquisition and verification overhead is repaid after roughly r+h uses; for a one-off application, the method does not help. The rank promise is testable: a false rank-at-most-r candidate is rejected with the stated soundness bound. If rank exceeds r, this acquisition has no completeness guarantee and may abort or produce a candidate the verifier rejects.
+
+Exact finite computation
+
+I checked a 4-by-4 example over Q in SymPy. The three local factors each had rank 3, while their product M = A_3 A_2 A_1 had rank 2. The reproducible inputs are defined as follows. Let
+
+  P1 = P2 = [[1,0,0],[0,1,0],[0,0,1],[1,1,1]],
+  Q1 = [[1,0,0,1],[0,1,0,1],[0,0,1,0]],
+  Q2 = [[1,0,0,0],[0,1,0,0],[0,0,1,-1]],
+  A1 = P1 Q1, A2 = P2 Q2,
+  A3 = [[1,1,0,0],[0,1,1,0],[0,0,1,1],[1,0,0,1]].
+
+With Omega = [[-3,0],[-3,3],[0,-2],[2,-3]] and Psi = [[-2,-3,1,-2],[2,3,-2,-2]], the computed Y = M Omega and G = Psi Y had rank 2, with G = [[5,6],[-3,3]]. Solving GX = Psi M returned
+
+  X = [[0,-1,0,-1],[-1/3,1/3,0,0]],
+
+and exact multiplication gave YX = M (zero residual). Thus the factors were individually too large to reveal the target rank by inspection, while the product certificate recovered it. The exact inputs and calculation are reproducible in work/reports/31_composable_certificates/reproduce_exact_example.py. This is a sanity computation, not evidence about a physical system or a new algorithm.
+
+Prior art and significance boundary
+
+The verifier is the matrix-vector fingerprint behind Freivalds: Rūsiņš Freivalds, “Fast Probabilistic Algorithms,” MFCS 1979: https://doi.org/10.1007/3-540-09526-8_5. More decisively, Saunders, Storjohann, and Villard, “Matrix rank certification,” Electronic Journal of Linear Algebra 11 (2004), already give exact randomized rank algorithms over characteristic-zero fields for black-box matrices using only x -> Mx and row-vector y -> yM: https://doi.org/10.13001/1081-3810.1118. The two-sided probes and exact reconstruction above sit squarely inside that established model. For numerical rather than exact rank, Halko, Martinsson, and Tropp, “Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions,” SIAM Review 53 (2011), is strong prior art on randomized low-rank acquisition from fast operator products: https://doi.org/10.1137/090771806.
+
+The potential scientific use is an exact low-rank representation of a dense global transfer, response, or evolution map built from sparse local steps. If it is queried repeatedly, a certified O(nr) application can replace repeated O(C) sweeps while keeping the proof obligation local to a chain traversal. The achieved result is only a clean composable interface and a rederived exact certificate; the algorithmic core and rank-finding principle are known. No application-specific acceleration or independent novelty has been established. Ordinary floating-point computations do not satisfy the exact identity proof automatically: treating binary floats as exact rationals can cause severe bit growth, while approximate certification needs a robust global residual or norm bound and explicit conditioning assumptions.
+
+Next proof gate
+
+Identify a scientifically important operator family whose local maps are cheaply applicable in both directions, whose global exact rank r is much smaller than n and is not already exposed by a trivial local bottleneck, and whose repeated-use workload amortizes the r+h sweeps. Then compare end-to-end acquisition, bit/roundoff cost, and verification against existing black-box rank algorithms. Without that family-specific gain or a stable approximate analogue, this remains a useful known-method synthesis, not a foundational advance.
