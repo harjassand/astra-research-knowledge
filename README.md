@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-480 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,978 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+486 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,007 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -192,6 +192,10 @@ Added BF: N393–401: planar radial Coulomb computer-assisted Monge nonattainmen
 
 
 Added BG: N402–410: internally checked exact complete/conditional entropy Choi-SDP candidate, rare coherent-reference sharpness/prescribed marginals, harmonic support/product law, classical quantum-reference gaps and exact depolarizing fixture; AI-assisted audited pure-family CB-Schur classicalization, finite block/minimax and normal separable-Hilbert extensions, cube-root global-cloning/estimation bound.44 unchanged supplied originals;3 exact adaptive finite checks replayed. Physical pure theorem does not settle weaker trace-Gram/mixed-family gates. External/formal/priority and discovery gain unestablished. [Sources](web/BG-sources.txt);[scopes](web/BG-reports.txt);[archive/availability](web/BG-package.txt).
+
+
+
+Added BH: N411–416: full strict-subcritical weighted equal-order Riesz integral Liouville candidate for positive continuous everywhere-finite pointwise solutions, low-order simultaneous-source local virial, cap/source-layer energy closure, n1 coincident-line extension, separate n>=2/0<s<2 global weak fractional-PDE representation/nonexistence, singular-a.e./bounded-priority/formal-source boundaries.20 unchanged supplied files include8 pinned source/comparator/license files;19 native SHA256 and8 locally recomputed Git blobs checked. AI-assisted audits retained; no new analytic/scientific/kernel replay or external/formal/priority/discovery certification. [Sources](web/BH-sources.txt);[scopes](web/BH-reports.txt);[archive/availability](web/BH-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
