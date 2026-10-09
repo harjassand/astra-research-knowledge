@@ -22,7 +22,7 @@ Failures and other investigations remain retrievable without promoting them into
 
 Research inherited Astra revision `83acd76e2f876ea68f8ccdf32c1a844d09294343`; this intake was based on architecture commit `0c073b874eed5532d9a2c6b07a1d4ccc83dcda3f`, itself based on main `8aed7fd74eb14622ed5a0a3635a799374296e32a`. The [original source manifest](package/research_packet/SOURCE_MANIFEST.json) also pins the bounded OpenAI/math inspection; no upstream theorem endorsement follows.
 
-Public records for BR, BS, BT and BU derive from [CLAIMS.json](CLAIMS.json) with `python3 updates/BR/build_intake.py build`, then `python3 frontier/build_access.py build`. Check both with their `check` commands and validate checkpoint references with `python3 state/publish_checkpoint.py validate`. The incremental generator preserves older ledger entries and original cards; public SQLite tables are unavailable and were not rebuilt. Current card tokens are explicitly unmeasured. Changes are published together through Git review, never by overwriting main.
+Public records for BR, BS, BT, BU, BV and BW derive from [CLAIMS.json](CLAIMS.json) with `python3 updates/BR/build_intake.py build`, then `python3 frontier/build_access.py build`. Check both with their `check` commands and validate checkpoint references with `python3 state/publish_checkpoint.py validate`. The incremental generator preserves older ledger entries and original cards; public SQLite tables are unavailable and were not rebuilt. Current card tokens are explicitly unmeasured. Changes are published together through Git review, never by overwriting main.
 
 ## Separate follow-up intakes
 
