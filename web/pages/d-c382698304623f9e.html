@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BM: cosmology/explore_bao.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BM-sources.txt">Source map</a><h1>BM: cosmology/explore_bao.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=7. All30 supplied files and28 native checksums unchanged;2 declared DESI Gitblob identities recomputed locally. Fullreports, code, actual13-value/covariance data, optimizerfailure flags, rawtimings, negativebenchmarks andNPZ preserved. Fixedexterior/flux/geometry andspatial-observation restrictions explicit. FV README/JSON andsparsereplay/main timing differences preserved as separate receipts. No intake scientific/analytic/kernel replay or new capability certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Initial primary-data analysis. Predictions use the released Gaussian BAO likelihood.&quot;&quot;&quot;
+from pathlib import Path
+import numpy as np
+from scipy.optimize import minimize
+from scipy.integrate import quad
+from scipy.stats import chi2
+ROOT=Path(__file__).resolve().parent
+raw=np.loadtxt(ROOT/&#x27;data/desi_gaussian_bao_ALL_GCcomb_mean.txt&#x27;,dtype=str)
+z=raw[:,0].astype(float); d=raw[:,1].astype(float); kind=raw[:,2]
+C=np.loadtxt(ROOT/&#x27;data/desi_gaussian_bao_ALL_GCcomb_cov.txt&#x27;); W=np.linalg.inv(C)
+zn=np.unique(z)
+from numpy.polynomial.legendre import leggauss
+xx,ww=leggauss(64)
+zz=(xx[None,:]+1)*zn[:,None]/2
+weights=ww[None,:]*zn[:,None]/2
+
+def pred(p,mode=&#x27;lcdm&#x27;):
+    om,t=p[:2] # t = c/(H0 rd)
+    if mode==&#x27;lcdm&#x27;:
+        eh=lambda x: om*(1+x)**3+1-om
+    else:
+        w0,wa=p[2:]
+        eh=lambda x:om*(1+x)**3+(1-om)*(1+x)**(3*(1+w0+wa))*np.exp(-3*wa*x/(1+x))
+    dh=t/np.sqrt(eh(zn)); dm=t*(weights/np.sqrt(eh(zz))).sum(axis=1)
+    dv=np.cbrt(zn*dm**2*dh)
+    j=np.searchsorted(zn,z)
+    return np.array([dict(DH_over_rs=dh,DM_over_rs=dm,DV_over_rs=dv)[k][i] for k,i in zip(kind,j)])
+def cost(p,mode=&#x27;lcdm&#x27;):
+    r=pred(p,mode)-d
+    return float(r@W@r)
+res=minimize(cost,[.30,30.],method=&#x27;Nelder-Mead&#x27;,options={&#x27;maxiter&#x27;:10000,&#x27;xatol&#x27;:1e-11,&#x27;fatol&#x27;:1e-11})
+print(&#x27;LCDM:&#x27;,res.x,&#x27;chi2&#x27;,res.fun,&#x27;nominal dof 11, p&#x27;,chi2.sf(res.fun,11))
+print(&#x27;A=&#x27;,res.x[0]/res.x[1]**2,&#x27;B=&#x27;,(1-res.x[0])/res.x[1]**2)
+for p0 in [[.30,30,-1,0],[.35,30,-.6,-1.5],[.2,30,-1,.5]]:
+    rr=minimize(lambda x:cost(x,&#x27;cpl&#x27;),p0,bounds=[(.01,.7),(15,50),(-3,1),(-10,5)],method=&#x27;Nelder-Mead&#x27;,options={&#x27;maxiter&#x27;:10000,&#x27;xatol&#x27;:1e-10,&#x27;fatol&#x27;:1e-10})
+    print(&#x27;CPL:&#x27;,rr.x,&#x27;chi2&#x27;,rr.fun)
+print(&#x27;data and baseline predicted residuals in marginal sigma:&#x27;)
+for v,pp,sd,k,rz in zip(d,pred(res.x),np.sqrt(np.diag(C)),kind,z):print(rz,k,v,pp,(v-pp)/sd)
+mask=kind==&#x27;DH_over_rs&#x27;; zs=z[mask];ds=d[mask];ss=np.sqrt(np.diag(C))[mask]
+# secant matter ceilings in h^2 units
+for i in range(len(zs)-1):
+ j=i+1;dx=(1+zs[j])**3-(1+zs[i])**3
+ cap=(1/ds[j]**2-1/ds[i]**2)/dx
+ err=2*np.sqrt((ss[j]/ds[j]**3)**2+(ss[i]/ds[i]**3)**2)/dx
+ print(&#x27;matter cap&#x27;,zs[i],zs[j],cap,err)
+np.savez(ROOT/&#x27;results&#x27;/&#x27;baseline.npz&#x27;,lcdm_parameters=res.x,lcdm_prediction=pred(res.x),lcdm_chi2=res.fun)
+</pre><p><a href="../assets/36d57b89eb24c9d932c76c937974d7c612849794e0c07a800cc1fbe211d4b62b.py">Exact original</a></p></html>

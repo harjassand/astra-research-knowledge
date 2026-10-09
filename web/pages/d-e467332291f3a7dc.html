@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BM: cosmology/validate_results.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BM-sources.txt">Source map</a><h1>BM: cosmology/validate_results.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=0. All30 supplied files and28 native checksums unchanged;2 declared DESI Gitblob identities recomputed locally. Fullreports, code, actual13-value/covariance data, optimizerfailure flags, rawtimings, negativebenchmarks andNPZ preserved. Fixedexterior/flux/geometry andspatial-observation restrictions explicit. FV README/JSON andsparsereplay/main timing differences preserved as separate receipts. No intake scientific/analytic/kernel replay or new capability certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent checks and smooth physical alternatives, using measured DESI DR2 data.
+
+The curves generated here are fitted theoretical predictions, not new observations.
+No joint CMB/SN likelihood or calibration simulation is performed.
+&quot;&quot;&quot;
+from pathlib import Path
+import hashlib
+import json
+import numpy as np
+from scipy.optimize import least_squares, minimize
+from scipy.linalg import solve_triangular
+from numpy.polynomial.legendre import leggauss
+from scipy.stats import chi2
+
+ROOT = Path(__file__).resolve().parent
+raw = np.loadtxt(ROOT / &#x27;data/desi_gaussian_bao_ALL_GCcomb_mean.txt&#x27;, dtype=str)
+z, data, kind = raw[:,0].astype(float), raw[:,1].astype(float), raw[:,2]
+C = np.loadtxt(ROOT / &#x27;data/desi_gaussian_bao_ALL_GCcomb_cov.txt&#x27;)
+L = np.linalg.cholesky(C)
+zs = np.unique(z)
+inds = np.searchsorted(zs,z)
+
+def prediction(p, model=&#x27;lcdm&#x27;, order=128, radiation=0.0):
+    &quot;&quot;&quot;p uses dimensionless coefficients multiplied by 1000, except in CPL.
+
+    Smooth model: 1000 B(z) = b0 + amp*z/(1+z).
+    radiation is the coefficient 1000*Omega_r*(H0*rd/c)^2, not Omega_r.
+    &quot;&quot;&quot;
+    x, w = leggauss(order)
+    nodes = (x[None,:]+1)*zs[:,None]/2
+    weights = w[None,:]*zs[:,None]/2
+    def hsquared(t):
+        if model == &#x27;cpl&#x27;:
+            om, scale, w0, wa = p
+            return (om*(1+t)**3 + (1-om)*(1+t)**(3*(1+w0+wa))*np.exp(-3*wa*t/(1+t)))/scale**2
+        alpha, b0 = p[:2]
+        amp = 0 if model == &#x27;lcdm&#x27; else p[2]
+        return (alpha*(1+t)**3 + radiation*(1+t)**4 + b0 + amp*t/(1+t))/1000
+    dh = 1/np.sqrt(hsquared(zs))
+    dm = np.sum(weights / np.sqrt(hsquared(nodes)),axis=1)
+    dv = np.cbrt(zs*dm**2*dh)
+    arrays = {&#x27;DH_over_rs&#x27;:dh,&#x27;DM_over_rs&#x27;:dm,&#x27;DV_over_rs&#x27;:dv}
+    return np.array([arrays[k][i] for k,i in zip(kind,inds)])
+
+def residual(p,model=&#x27;lcdm&#x27;,order=128,radiation=0.):
+    return solve_triangular(L, prediction(p,model,order,radiation)-data,lower=True)
+
+def main():
+    checks=[]
+    for item in json.loads((ROOT/&#x27;sources/data_manifest.json&#x27;).read_text()):
+        b=(ROOT/item[&#x27;path&#x27;]).read_bytes()
+        git=hashlib.sha1(b&#x27;blob &#x27;+str(len(b)).encode()+b&#x27;\0&#x27;+b).hexdigest()
+        assert git == item[&#x27;git_blob_sha1&#x27;], (git,item[&#x27;git_blob_sha1&#x27;])
+        assert hashlib.sha256(b).hexdigest() == item[&#x27;sha256&#x27;]
+        checks.append({&#x27;file&#x27;:item[&#x27;path&#x27;],&#x27;git_sha1_ok&#x27;:True,&#x27;sha256_ok&#x27;:True})
+    assert C.shape == (13,13) and np.allclose(C,C.T,rtol=0,atol=0)
+    out={&#x27;hash_checks&#x27;:checks,&#x27;covariance_eigenvalues&#x27;:np.linalg.eigvalsh(C).tolist(),
+         &#x27;scope&#x27;:&#x27;DESI DR2 released compressed Gaussian BAO likelihood only. No SN or CMB joint analysis.&#x27;}
+    for rad in [0.,.0001]:
+        fit=least_squares(lambda p:residual(p,radiation=rad),[.34,.81],bounds=([1e-6,1e-6],[1.,10.]),
+            xtol=1e-13,ftol=1e-13,gtol=1e-13,max_nfev=1000)
+        alpha,b0=fit.x
+        val=float(fit.fun@fit.fun)
+        out[&#x27;lcdm_rad_&#x27;+str(rad)]={&#x27;alpha&#x27;:float(alpha),&#x27;b0&#x27;:float(b0),&#x27;chi2&#x27;:val,
+            &#x27;nominal_11df_tail&#x27;:float(chi2.sf(val,11)),
+            &#x27;omega_m&#x27;:float(alpha/(alpha+b0+rad)), &#x27;c_over_H0_rd&#x27;:float(np.sqrt(1000/(alpha+b0+rad))),
+            &#x27;64_vs_128_max_prediction_difference&#x27;:float(np.max(np.abs(prediction(fit.x,radiation=rad,order=64)-prediction(fit.x,radiation=rad,order=128)))),
+            &#x27;prediction&#x27;:prediction(fit.x,radiation=rad).tolist(), &#x27;success&#x27;:bool(fit.success)}
+    smooth=[]
+    objective=lambda p:float(residual(p,&#x27;smooth&#x27;)@residual(p,&#x27;smooth&#x27;))
+    for start in [[.34,.81,0.],[.30,.70,.5],[.32,.75,.25],[.25,.5,2.]]:
+        fit=minimize(objective,start,method=&#x27;SLSQP&#x27;,bounds=[(1e-5,1.),(1e-5,10.),(0.,30.)],
+            constraints=[{&#x27;type&#x27;:&#x27;ineq&#x27;,&#x27;fun&#x27;:lambda p:6*p[1]-p[2]}],
+            options={&#x27;ftol&#x27;:1e-11,&#x27;maxiter&#x27;:1000})
+        smooth.append({&#x27;parameters&#x27;:fit.x.tolist(),&#x27;chi2&#x27;:float(fit.fun),&#x27;success&#x27;:bool(fit.success)})
+    best=min(smooth,key=lambda r:r[&#x27;chi2&#x27;])
+    alpha,b0,amp=best[&#x27;parameters&#x27;]
+    zz=np.linspace(0,2.33,1001)
+    bb=b0+amp*zz/(1+zz)
+    eos=-1+amp/(3*(1+zz)*bb)
+    pot=3*bb-amp/(2*(1+zz))
+    best[&#x27;w_at_0&#x27;]=float(-1+amp/(3*b0))
+    best[&#x27;w_at_2p33&#x27;]=float(eos[-1])
+    best[&#x27;minimum_scaled_potential&#x27;]=float(pot.min())
+    best[&#x27;prediction&#x27;]=prediction(best[&#x27;parameters&#x27;],&#x27;smooth&#x27;).tolist()
+    best[&#x27;64_vs_128_max_prediction_difference&#x27;]=float(np.max(np.abs(prediction(best[&#x27;parameters&#x27;],&#x27;smooth&#x27;,64)-prediction(best[&#x27;parameters&#x27;],&#x27;smooth&#x27;,128))))
+    out[&#x27;smooth_positive_potential_fit&#x27;]=best
+    out[&#x27;smooth_multistart&#x27;]=smooth
+    cpl=[]
+    for start in [[.30,30.,-1.,0.],[.38,33.,-.2,-2.7],[.22,30.,-1.,.5]]:
+        fit=least_squares(lambda p:residual(p,&#x27;cpl&#x27;),start,
+            bounds=([.01,15.,-3.,-10.],[.7,50.,1.,5.]),
+            xtol=1e-12,ftol=1e-12,gtol=1e-12,max_nfev=3000)
+        cpl.append({&#x27;parameters&#x27;:fit.x.tolist(),&#x27;chi2&#x27;:float(fit.fun@fit.fun),&#x27;success&#x27;:bool(fit.success)})
+    out[&#x27;cpl_multistart&#x27;]=cpl
+    bestc=min(cpl,key=lambda r:r[&#x27;chi2&#x27;])
+    out[&#x27;cpl_best&#x27;]=bestc
+    out[&#x27;lcdm_minus_cpl_chi2&#x27;]=out[&#x27;lcdm_rad_0.0&#x27;][&#x27;chi2&#x27;]-bestc[&#x27;chi2&#x27;]
+    out[&#x27;cpl_64_vs_128_max_prediction_difference&#x27;]=float(np.max(np.abs(prediction(bestc[&#x27;parameters&#x27;],&#x27;cpl&#x27;,64)-prediction(bestc[&#x27;parameters&#x27;],&#x27;cpl&#x27;,128))))
+    (ROOT/&#x27;results/validation.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2))
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/3aed8c9d07014d279879ea1ce7357c83f5a14ee7da3ef025e4ae6584b1cacca0.py">Exact original</a></p></html>

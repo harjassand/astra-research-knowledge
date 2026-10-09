@@ -1,0 +1,78 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BM: cosmology/envelope_fit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BM-sources.txt">Source map</a><h1>BM: cosmology/envelope_fit.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=0. All30 supplied files and28 native checksums unchanged;2 declared DESI Gitblob identities recomputed locally. Fullreports, code, actual13-value/covariance data, optimizerfailure flags, rawtimings, negativebenchmarks andNPZ preserved. Fixedexterior/flux/geometry andspatial-observation restrictions explicit. FV README/JSON andsparsereplay/main timing differences preserved as separate receipts. No intake scientific/analytic/kernel replay or new capability certification. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite-data distance-envelope feasibility for nondecreasing DE density.
+
+This computes numerical feasible fits, not certified global minima or p-values.
+It treats the published compressed BAO quantities as point measurements.
+Flat FLRW; conserved dust; positive nondecreasing separately conserved DE;
+radiation is optional and is parametrized in the same scaled h^2 units.
+&quot;&quot;&quot;
+from pathlib import Path
+import json
+import numpy as np
+from numpy.polynomial.legendre import leggauss
+from scipy.optimize import minimize
+ROOT=Path(__file__).resolve().parent
+raw=np.loadtxt(ROOT/&#x27;data/desi_gaussian_bao_ALL_GCcomb_mean.txt&#x27;,dtype=str)
+z=raw[:,0].astype(float);d=raw[:,1].astype(float);kind=raw[:,2]
+C=np.loadtxt(ROOT/&#x27;data/desi_gaussian_bao_ALL_GCcomb_cov.txt&#x27;);W=np.linalg.inv(C)
+zn=np.unique(z);n=len(zn);left=np.r_[0,zn[:-1]]
+ix=np.searchsorted(zn,z)
+xg,wg=leggauss(48)
+xmid=(zn+left)/2;xhalf=(zn-left)/2
+zg=xmid[:,None]+xhalf[:,None]*xg
+wg=xhalf[:,None]*wg
+
+def unpack(p):
+    return p[0],p[1:1+n],p[1+n:1+2*n]
+
+def predict(p,radiation=0.):
+    alpha,b,dm=unpack(p)
+    dh=np.sqrt(1000/(alpha*(1+zn)**3+radiation*(1+zn)**4+b))
+    dv=np.cbrt(zn*dm**2*dh)
+    arr={&#x27;DH_over_rs&#x27;:dh,&#x27;DM_over_rs&#x27;:dm,&#x27;DV_over_rs&#x27;:dv}
+    return np.array([arr[k][j] for k,j in zip(kind,ix)])
+
+def cost(p,radiation=0.):
+    r=predict(p,radiation)-d
+    return float(r@W@r)
+
+def constraint(p,radiation=0.):
+    alpha,b,dm=unpack(p)
+    bb=np.r_[0.,b[:-1]]
+    known=alpha*(1+zg)**3+radiation*(1+zg)**4
+    lo=np.sum(wg*np.sqrt(1000/(known+b[:,None])),axis=1)
+    hi=np.sum(wg*np.sqrt(1000/(known+bb[:,None])),axis=1)
+    diff=np.diff(np.r_[0,dm])
+    return np.r_[np.diff(b), diff-lo,hi-diff]
+
+def fit(alpha=None,radiation=0.,starts=4,seed=328):
+    base=np.load(ROOT/&#x27;results/baseline.npz&#x27;); om,t=base[&#x27;lcdm_parameters&#x27;]
+    alpha0=om/t**2*1000 if alpha is None else alpha
+    b0=np.ones(n)*(1-om)/t**2*1000
+    from scipy.integrate import quad
+    mm=np.array([quad(lambda x:np.sqrt(1000/(alpha0*(1+x)**3+radiation*(1+x)**4+b0[0])),0,zz)[0] for zz in zn])
+    p0=np.r_[alpha0,b0,mm]
+    bounds=[(.0001,.6) if alpha is None else (alpha,alpha)]+[(1e-7,30)]*n+[(.01,80)]*n
+    rng=np.random.default_rng(seed);allres=[]
+    for i in range(starts):
+        pp=p0.copy()
+        if i:
+            pp[1:1+n]=np.sort(b0*rng.uniform(.6,1.4,n))
+        rr=minimize(lambda x:cost(x,radiation),pp,method=&#x27;SLSQP&#x27;,bounds=bounds,
+            constraints=[{&#x27;type&#x27;:&#x27;ineq&#x27;,&#x27;fun&#x27;:lambda x:constraint(x,radiation)}],
+            options={&#x27;maxiter&#x27;:2000,&#x27;ftol&#x27;:1e-10,&#x27;disp&#x27;:False})
+        allres.append(rr)
+    feasible=[r for r in allres if np.min(constraint(r.x,radiation))&gt;=-2e-7]
+    if not feasible: raise RuntimeError([(r.fun,r.message,np.min(constraint(r.x,radiation))) for r in allres])
+    best=min(feasible,key=lambda r:r.fun)
+    return {&#x27;alpha&#x27;:float(best.x[0]),&#x27;chi2&#x27;:float(best.fun),&#x27;parameters&#x27;:best.x.tolist(),
+        &#x27;min_constraint&#x27;:float(np.min(constraint(best.x,radiation))),&#x27;success&#x27;:bool(best.success),
+        &#x27;message&#x27;:str(best.message),&#x27;prediction&#x27;:predict(best.x,radiation).tolist(),
+        &#x27;runs&#x27;:[{&#x27;chi2&#x27;:float(r.fun),&#x27;success&#x27;:bool(r.success),&#x27;min_constraint&#x27;:float(np.min(constraint(r.x,radiation)))} for r in allres]}
+if __name__==&#x27;__main__&#x27;:
+    out=[]
+    for a in [None,.30,.32,.34,.345,.35,.36,.38]:
+        r=fit(alpha=a);out.append(r)
+        print(&#x27;alpha&#x27;,a,&#x27;best&#x27;,r[&#x27;alpha&#x27;], &#x27;chi2&#x27;,r[&#x27;chi2&#x27;],&#x27;feas&#x27;,r[&#x27;min_constraint&#x27;], &#x27;success&#x27;,r[&#x27;success&#x27;],flush=True)
+        print(&#x27;b=&#x27;,r[&#x27;parameters&#x27;][1:1+n],flush=True)
+    (ROOT/&#x27;results/envelope_fits.json&#x27;).write_text(json.dumps(out,indent=2))
+</pre><p><a href="../assets/ad3d615b39f082324bc5b168f3fb6d39d80d17f202ab98b68006bf8f22b735cb.py">Exact original</a></p></html>

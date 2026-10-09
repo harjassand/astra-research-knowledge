@@ -1,0 +1,270 @@
+import math, os, sys, time
+import numpy as np
+from scipy.integrate import trapezoid
+sys.path.insert(0, os.path.dirname(__file__))
+from online_entropy import (BURGERS, ConvexFlux, MutableHopfLax, Query,
+                            direct_potential, finite_volume_godunov,
+                            interval_average_from_grid)
+
+
+def test_random_updates_and_rollback():
+    rng = np.random.default_rng(451)
+    n = 37
+    breaks = np.r_[-3., -3+np.cumsum(rng.uniform(.03,.2,n))]
+    u = rng.uniform(-1.2,1.2,n)
+    qs = [Query(float(rng.uniform(-3.5,3.5)), float(rng.uniform(.02,.7)))
+          for _ in range(19)]
+    eng = MutableHopfLax(breaks,u,qs,left_state=.23,right_state=-.17)
+    # Confirm initialization and every transition against independent full scan.
+    for qi,q in enumerate(qs):
+        assert abs(eng.potential(qi)-direct_potential(breaks,u,q,.23,-.17)) < 2e-12
+    for it in range(300):
+        j = int(rng.integers(n)); proposed = float(rng.uniform(-1.2,1.2))
+        old = eng.states[j]
+        before = [(z.mn.copy(),z.arg.copy(),z.lazy.copy()) for z in eng.trees]
+        fb = eng.areas.tree.copy()
+        tx = eng.update_cell(j,proposed)
+        for qi,q in enumerate(qs):
+            got = eng.potential(qi)
+            want = direct_potential(breaks,eng.states,q,.23,-.17)
+            assert abs(got-want) < 5e-12, (it,qi,got,want)
+        if it % 2:
+            tx.rollback()
+            assert eng.states[j] == old
+            assert np.array_equal(eng.areas.tree,fb)
+            for z,(mn,arg,lazy) in zip(eng.trees,before):
+                assert np.array_equal(z.mn,mn)
+                assert np.array_equal(z.arg,arg)
+                assert np.array_equal(z.lazy,lazy)
+        else:
+            tx.commit()
+    return {'randomized_edits':300,'queries':len(qs),'cells':n,'status':'pass'}
+
+
+def test_general_convex_flux():
+    # f(u)=u^4/4 is strictly convex; f*(z)=3|z|^(4/3)/4.
+    flux=ConvexFlux(lambda u:u**4/4,lambda u:u**3,
+                    lambda z:0.75*abs(z)**(4/3))
+    rng=np.random.default_rng(19)
+    breaks=np.linspace(-2,2,21); states=rng.uniform(-1,1,20)
+    qs=[Query(float(x),float(t)) for x,t in zip(rng.uniform(-2,2,12),rng.uniform(.05,.5,12))]
+    eng=MutableHopfLax(breaks,states,qs,left_state=.2,right_state=-.1,flux=flux)
+    for qi,q in enumerate(qs):
+        assert abs(eng.potential(qi)-direct_potential(breaks,states,q,.2,-.1,flux))<2e-12
+    for j,new in [(0,.8),(19,-.75),(8,.5),(0,-.3)]:
+        tx=eng.update_cell(j,new)
+        for qi,q in enumerate(qs):
+            assert abs(eng.potential(qi)-direct_potential(breaks,eng.states,q,.2,-.1,flux))<5e-12
+        tx.commit()
+    return {'general_flux':'u^4/4','status':'pass'}
+
+
+def loglike(eng, intervals, y, sigma):
+    vals=[]
+    for (li,ri,w) in intervals:
+        vals.append(eng.interval_average(li,ri,w))
+    r=(np.asarray(vals)-y)/sigma
+    return -0.5*float(r@r)
+
+
+def reflect_box(x, lo, hi):
+    width=hi-lo
+    z=(x-lo)%(2*width)
+    return lo+(z if z<=width else 2*width-z)
+
+
+def local_ar1_prior_delta(state,j,new,mass=.1,smooth=2.0):
+    """Change in a proper first-order Gaussian Markov random-field log prior."""
+    old=state[j]
+    d=-.5*mass*(new*new-old*old)
+    if j>0:
+        a=new-state[j-1]; b=old-state[j-1]
+        d-=.5*smooth*(a*a-b*b)
+    if j+1<len(state):
+        a=state[j+1]-new; b=state[j+1]-old
+        d-=.5*smooth*(a*a-b*b)
+    return float(d)
+
+
+def ar1_logprior(state,mass=.1,smooth=2.0):
+    state=np.asarray(state)
+    return -.5*mass*float(state@state)-.5*smooth*float(np.diff(state)@np.diff(state))
+
+
+def test_same_mh_trajectory_as_full_recomputation():
+    rng=np.random.default_rng(991)
+    n=4; breaks=np.linspace(-2,2,n+1)
+    qlist=[Query(x,t) for t in (.25,.4) for x in (-1.4,-.2,1.0,1.7)]
+    intervals=[]
+    # Left/right endpoint indices, 4 intervals at each of two times.
+    for ti in (0,4):
+        for k in range(3):
+            intervals.append((ti+k,ti+k+1,qlist[ti+k+1].x-qlist[ti+k].x))
+    truth=np.array([-.7,.35,-.1,.65])
+    truth_eng=MutableHopfLax(breaks,truth,qlist,left_state=.1,right_state=-.2)
+    y=np.array([truth_eng.interval_average(*z) for z in intervals])
+    y+=rng.normal(0,.025,len(y)); sigma=.08
+    dyn=MutableHopfLax(breaks,truth,qlist,left_state=.1,right_state=-.2)
+    direct_state=truth.copy(); ll=loglike(dyn,intervals,y,sigma)
+    lp=ar1_logprior(dyn.states)
+    for k in range(600):
+        j=int(rng.integers(n)); proposal=float(dyn.states[j]+rng.normal(0,.12))
+        dlp=local_ar1_prior_delta(direct_state,j,proposal)
+        tx=dyn.update_cell(j,proposal)
+        ll_new=loglike(dyn,intervals,y,sigma)
+        # Independent full scan; never uses the mutable minima.
+        vals=[]
+        for a,b,w in intervals:
+            ga=direct_potential(breaks,direct_state,qlist[a],.1,-.2)
+            gb=direct_potential(breaks,direct_state,qlist[b],.1,-.2)
+            vals.append((gb-ga)/w)
+        old_ll=-.5*np.sum(((np.asarray(vals)-y)/sigma)**2)
+        direct_prop=direct_state.copy(); direct_prop[j]=proposal
+        vals2=[]
+        for a,b,w in intervals:
+            ga=direct_potential(breaks,direct_prop,qlist[a],.1,-.2)
+            gb=direct_potential(breaks,direct_prop,qlist[b],.1,-.2)
+            vals2.append((gb-ga)/w)
+        new_ll=-.5*np.sum(((np.asarray(vals2)-y)/sigma)**2)
+        old_lp=ar1_logprior(direct_state)
+        new_lp=ar1_logprior(direct_prop)
+        assert abs(new_ll-ll_new)<2e-10
+        logu=math.log(rng.random())
+        accept_dyn=(logu < min(0.0,ll_new-ll+dlp))
+        accept_ref=(logu < min(0.0,new_ll-old_ll+new_lp-old_lp))
+        assert accept_dyn==accept_ref
+        if accept_dyn:
+            tx.commit(); direct_state=direct_prop; ll=ll_new; lp+=dlp
+        else:
+            tx.rollback()
+        assert np.array_equal(dyn.states,direct_state)
+        assert abs(loglike(dyn,intervals,y,sigma)-ll)<2e-10
+        assert abs(ar1_logprior(dyn.states)-lp)<2e-12
+    return {'mh_steps':600,'prior':'proper first-order Gaussian Markov field',
+            'identical_acceptance_path':True,'status':'pass'}
+
+
+def test_exact_posterior_against_quadrature():
+    # One unknown cell; its posterior is tractable by deterministic 1-D quadrature.
+    breaks=np.array([-2.,2.]); truth=np.array([.37])
+    qlist=[Query(-.55,.45),Query(.35,.45),Query(1.15,.45),
+           Query(-.25,.2),Query(.85,.2)]
+    intervals=[(0,1,.3),(1,2,.4),(2,3,.35),(3,4,.4)]
+    tr=MutableHopfLax(breaks,truth,qlist,left_state=-.25,right_state=.55)
+    y=np.array([tr.interval_average(*z) for z in intervals])
+    sigma=.09
+    grid=np.linspace(-.9,.9,50001)
+    lls=np.empty(len(grid))
+    for i,v in enumerate(grid):
+        e=MutableHopfLax(breaks,[v],qlist,left_state=-.25,right_state=.55)
+        lls[i]=loglike(e,intervals,y,sigma)
+    ww=np.exp(lls-np.max(lls))
+    z=trapezoid(ww,grid)
+    mean=trapezoid(ww*grid,grid)/z
+    var=trapezoid(ww*(grid-mean)**2,grid)/z
+    # Random-walk MH on exactly the same density.
+    rng=np.random.default_rng(4)
+    cur=.0; e=MutableHopfLax(breaks,[cur],qlist,left_state=-.25,right_state=.55)
+    ll=loglike(e,intervals,y,sigma); samples=[]; accepted=0
+    for k in range(115000):
+        prop=float(reflect_box(cur+rng.normal(0,.13),-.9,.9))
+        tx=e.update_cell(0,prop); lp=loglike(e,intervals,y,sigma)
+        if math.log(rng.random()) < min(0.,lp-ll):
+            tx.commit(); cur=prop; ll=lp; accepted+=1
+        else: tx.rollback()
+        if k>=15000 and k%10==0: samples.append(cur)
+    sm=np.asarray(samples)
+    m=float(np.mean(sm)); s=float(np.std(sm,ddof=1))
+    assert abs(m-mean) < .018, (m,mean)
+    assert abs(s-math.sqrt(var)) < .02, (s,math.sqrt(var))
+    return {'quadrature_mean':float(mean),'mh_mean':m,
+            'quadrature_sd':float(math.sqrt(var)),'mh_sd':s,
+            'acceptance':accepted/115000,'status':'pass'}
+
+
+def test_2d_markov_posterior_against_quadrature():
+    """Two-cell posterior checks the nontrivial local Markov-prior case."""
+    breaks=np.array([-2.,0.,2.]); truth=np.array([.35,-.45])
+    qlist=[Query(x,t) for t in (.3,.6) for x in (-1.5,-.5,.5,1.5)]
+    intervals=[]
+    for ti in (0,4):
+        for k in range(3):
+            intervals.append((ti+k,ti+k+1,qlist[ti+k+1].x-qlist[ti+k].x))
+    left,right=-.2,.4; sigma=.08; mass=.4; smooth=3.0
+    rg=np.random.default_rng(227)
+    tr=MutableHopfLax(breaks,truth,qlist,left,right)
+    y=np.array([tr.interval_average(*z) for z in intervals])+rg.normal(0,sigma,len(intervals))
+    grid=np.linspace(-.9,.9,241)
+    logw=np.empty((len(grid),len(grid)))
+    for i,a in enumerate(grid):
+        for j,b in enumerate(grid):
+            u=np.array([a,b]); e=MutableHopfLax(breaks,u,qlist,left,right)
+            logw[i,j]=loglike(e,intervals,y,sigma)+ar1_logprior(u,mass,smooth)
+    weights=np.exp(logw-np.max(logw))
+    z=trapezoid(trapezoid(weights,grid,axis=1),grid,axis=0)
+    means=[]
+    for k in range(2):
+        vals=grid[:,None] if k==0 else grid[None,:]
+        means.append(trapezoid(trapezoid(weights*vals,grid,axis=1),grid,axis=0)/z)
+    means=np.asarray(means)
+    cov=np.empty((2,2))
+    for a in range(2):
+        for b in range(2):
+            va=grid[:,None]-means[a] if a==0 else grid[None,:]-means[a]
+            vb=grid[:,None]-means[b] if b==0 else grid[None,:]-means[b]
+            cov[a,b]=trapezoid(trapezoid(weights*va*vb,grid,axis=1),grid,axis=0)/z
+    # Local-coordinate MH with a reflected proposal, preserving the box prior.
+    rng=np.random.default_rng(109); cur=np.array([0.,0.])
+    e=MutableHopfLax(breaks,cur,qlist,left,right); ll=loglike(e,intervals,y,sigma)
+    lp=ar1_logprior(cur,mass,smooth); samples=[]; accepted=0; steps=100000
+    for k in range(steps):
+        j=int(rng.integers(2)); prop=float(reflect_box(cur[j]+rng.normal(0,.16),-.9,.9))
+        dlp=local_ar1_prior_delta(cur,j,prop,mass,smooth)
+        tx=e.update_cell(j,prop); newll=loglike(e,intervals,y,sigma)
+        if math.log(rng.random())<min(0.,newll-ll+dlp):
+            tx.commit();cur[j]=prop;ll=newll;lp+=dlp;accepted+=1
+        else: tx.rollback()
+        if k>=15000 and k%5==0:samples.append(cur.copy())
+    sm=np.asarray(samples); m=np.mean(sm,axis=0); c=np.cov(sm,rowvar=False)
+    assert np.max(np.abs(m-means))<.025,(m,means)
+    assert np.max(np.abs(c-cov))<.025,(c,cov)
+    return {'grid_nodes':int(len(grid)**2),'mh_steps':steps,'samples_retained':len(sm),
+            'quadrature_mean':means.tolist(),'mh_mean':m.tolist(),
+            'max_abs_covariance_error':float(np.max(np.abs(c-cov))),
+            'acceptance':accepted/steps,'prior':'proper first-order Gaussian Markov field',
+            'status':'pass'}
+
+
+def test_godunov_convergence():
+    # Includes a compressive shock and an expanding rarefaction in one profile.
+    breaks=np.array([-3.,-1.,-.2,.8,2.,3.])
+    states=np.array([0.,.9,-.7,.45,0.])
+    left=right=0.
+    sensors=[(-1.5,-1.1),(-.8,-.4),(-.1,.2),(.4,.7),(1.1,1.5)]
+    q=[]; obs=[]
+    for a,b in sensors:
+        q.extend([Query(a,.35),Query(b,.35)])
+        obs.append((a,b))
+    exact=MutableHopfLax(breaks,states,q,left,right)
+    exact_avg=np.array([exact.interval_average(2*k,2*k+1,b-a) for k,(a,b) in enumerate(obs)])
+    # Refine fixed-grid first-order Godunov, whose shock is smeared over cells.
+    errs=[]
+    for factor in (1,2,4):
+        centers,u=finite_volume_godunov(breaks,states,.35,0,left,right,
+                                         refinement=factor)
+        fv=np.array([interval_average_from_grid(centers,u,a,b) for a,b in obs])
+        errs.append(float(np.max(np.abs(fv-exact_avg))))
+    assert errs[-1] < errs[0] and errs[-1] < .04, errs
+    return {'max_interval_average_errors_by_refinement_1_2_4':errs,'status':'pass'}
+
+
+if __name__=='__main__':
+    results={}
+    results['random_updates']=test_random_updates_and_rollback()
+    results['general_flux']=test_general_convex_flux()
+    results['mh_path']=test_same_mh_trajectory_as_full_recomputation()
+    results['posterior']=test_exact_posterior_against_quadrature()
+    results['2d_markov_posterior']=test_2d_markov_posterior_against_quadrature()
+    results['fv']=test_godunov_convergence()
+    import json
+    print(json.dumps(results,indent=2))

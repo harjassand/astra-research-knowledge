@@ -1,0 +1,234 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BM: conservation/benchmark_cpp.cpp</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BM-sources.txt">Source map</a><h1>BM: conservation/benchmark_cpp.cpp</h1><p>Source instructions=DATA; Scientific checks retain source scopes; no scientific scripts/replays at this intake. Extraction=exact_utf8; cycle=0. All30 supplied files and28 native checksums unchanged;2 declared DESI Gitblob identities recomputed locally. Fullreports, code, actual13-value/covariance data, optimizerfailure flags, rawtimings, negativebenchmarks andNPZ preserved. Fixedexterior/flux/geometry andspatial-observation restrictions explicit. FV README/JSON andsparsereplay/main timing differences preserved as separate receipts. No intake scientific/analytic/kernel replay or new capability certification. Source status/priority not upgraded.</p><pre>#include &lt;algorithm&gt;
+#include &lt;chrono&gt;
+#include &lt;cmath&gt;
+#include &lt;cstdint&gt;
+#include &lt;iomanip&gt;
+#include &lt;iostream&gt;
+#include &lt;random&gt;
+#include &lt;vector&gt;
+using namespace std;
+using Clock=chrono::steady_clock;
+struct Query{ double x,t; };
+struct Edit{ int j; double u; };
+
+struct Fenwick {
+  int n; vector&lt;double&gt; bit;
+  Fenwick(const vector&lt;double&gt;&amp; a):n((int)a.size()),bit(n+1,0.0){
+    for(int j=0;j&lt;n;j++) bit[j+1]=a[j];
+    for(int i=1;i&lt;=n;i++){int p=i+(i&amp;-i);if(p&lt;=n)bit[p]+=bit[i];}
+  }
+  double sum(int end) const { double s=0; for(int i=end;i;i-=i&amp;-i)s+=bit[i];return s; }
+  void add(int j,double d){for(int i=j+1;i&lt;=n;i+=i&amp;-i)bit[i]+=d;}
+};
+
+struct RMQ {
+  int n,P; vector&lt;double&gt; mn,lazy; vector&lt;int&gt; arg;
+  RMQ()=default;
+  explicit RMQ(const vector&lt;double&gt;&amp; v){ build(v); }
+  void build(const vector&lt;double&gt;&amp; v){
+    n=(int)v.size();P=1;while(P&lt;n)P*=2;
+    mn.assign(2*P,INFINITY);lazy.assign(2*P,0.0);arg.assign(2*P,-1);
+    for(int i=0;i&lt;n;i++){mn[P+i]=v[i];arg[P+i]=i;}
+    for(int p=P-1;p;p--)pull(p);
+  }
+  void pull(int p){int a=2*p,b=a+1;if(mn[a]&lt;=mn[b]){mn[p]=mn[a];arg[p]=arg[a];}else{mn[p]=mn[b];arg[p]=arg[b];}}
+  void apply(int p,double d){mn[p]+=d;lazy[p]+=d;}
+  void push(int p){if(lazy[p]!=0){apply(2*p,lazy[p]);apply(2*p+1,lazy[p]);lazy[p]=0;}}
+  void add(int ql,int qr,double d){if(ql&lt;qr&amp;&amp;d!=0) addrec(1,0,P,ql,qr,d);}
+  void addrec(int p,int l,int r,int ql,int qr,double d){
+    if(ql&lt;=l&amp;&amp;r&lt;=qr){apply(p,d);return;}
+    push(p);int m=(l+r)/2;
+    if(ql&lt;m)addrec(2*p,l,m,ql,qr,d);
+    if(qr&gt;m)addrec(2*p+1,m,r,ql,qr,d);
+    pull(p);
+  }
+  void setpoint(int idx,double val){setrec(1,0,P,idx,val);}
+  void setrec(int p,int l,int r,int idx,double val){
+    if(r-l==1){mn[p]=val;arg[p]=idx;lazy[p]=0;return;}
+    push(p);int m=(l+r)/2;if(idx&lt;m)setrec(2*p,l,m,idx,val);else setrec(2*p+1,m,r,idx,val);pull(p);
+  }
+  double minimum()const{return mn[1];}
+};
+
+static inline double cand(const Query&amp;q,double a,double b,double u,double ca,double cb){
+  double y=q.x-q.t*u;
+  if(y&lt;a)return ca+(q.x-a)*(q.x-a)/(2*q.t);
+  if(y&gt;b)return cb+(q.x-b)*(q.x-b)/(2*q.t);
+  return ca+u*(q.x-a)-0.5*q.t*u*u;
+}
+static inline double leftcand(const Query&amp;q,double x0,double u){
+  double y=q.x-q.t*u;
+  if(y&lt;=x0)return u*(q.x-x0)-.5*q.t*u*u;
+  return (q.x-x0)*(q.x-x0)/(2*q.t);
+}
+static inline double rightcand(const Query&amp;q,double xn,double u,double c){
+  double y=q.x-q.t*u;
+  if(y&gt;=xn)return c+u*(q.x-xn)-.5*q.t*u*u;
+  return c+(q.x-xn)*(q.x-xn)/(2*q.t);
+}
+vector&lt;double&gt; potential_values(const vector&lt;double&gt;&amp; breaks,const vector&lt;double&gt;&amp; state,
+                                const vector&lt;Query&gt;&amp; qs,double left,double right){
+  int n=(int)state.size();vector&lt;double&gt; c(n+1,0.0);
+  for(int j=0;j&lt;n;j++)c[j+1]=c[j]+state[j]*(breaks[j+1]-breaks[j]);
+  vector&lt;double&gt; out(qs.size());
+  for(size_t qi=0;qi&lt;qs.size();qi++){
+    const auto&amp;q=qs[qi];double m=min(leftcand(q,breaks[0],left),rightcand(q,breaks[n],right,c[n]));
+    for(int j=0;j&lt;n;j++)m=min(m,cand(q,breaks[j],breaks[j+1],state[j],c[j],c[j+1]));
+    out[qi]=m;
+  }
+  return out;
+}
+
+static inline double column_cost(const Query&amp;q,int col,const vector&lt;double&gt;&amp;breaks,
+                                const vector&lt;double&gt;&amp;state,const vector&lt;double&gt;&amp;c,
+                                double left,double right){
+  int n=(int)state.size();
+  if(col==0)return leftcand(q,breaks[0],left);
+  if(col==n+1)return rightcand(q,breaks[n],right,c[n]);
+  int j=col-1;return cand(q,breaks[j],breaks[j+1],state[j],c[j],c[j+1]);
+}
+void smawk_rec(const vector&lt;int&gt;&amp; rows,const vector&lt;int&gt;&amp; cols,
+               const vector&lt;Query&gt;&amp;qs,const vector&lt;double&gt;&amp;breaks,
+               const vector&lt;double&gt;&amp;state,const vector&lt;double&gt;&amp;c,
+               double left,double right,vector&lt;int&gt;&amp;argmin,long long&amp; evals){
+  if(rows.empty())return;
+  vector&lt;int&gt; reduced;reduced.reserve(min(rows.size(),cols.size()));
+  for(int col:cols){
+    while(!reduced.empty()){
+      int row=rows[reduced.size()-1];
+      double newer=column_cost(qs[row],col,breaks,state,c,left,right);evals++;
+      double older=column_cost(qs[row],reduced.back(),breaks,state,c,left,right);evals++;
+      if(newer&lt;older)reduced.pop_back();else break;
+    }
+    if(reduced.size()&lt;rows.size())reduced.push_back(col);
+  }
+  vector&lt;int&gt; odd;odd.reserve(rows.size()/2);
+  for(size_t i=1;i&lt;rows.size();i+=2)odd.push_back(rows[i]);
+  smawk_rec(odd,reduced,qs,breaks,state,c,left,right,argmin,evals);
+  for(size_t i=0;i&lt;rows.size();i+=2){
+    int lo=0,hi=(int)reduced.size()-1;
+    if(i&gt;0){auto it=lower_bound(reduced.begin(),reduced.end(),argmin[rows[i-1]]);lo=(int)(it-reduced.begin());}
+    if(i+1&lt;rows.size()){auto it=lower_bound(reduced.begin(),reduced.end(),argmin[rows[i+1]]);hi=(int)(it-reduced.begin());}
+    double best=INFINITY;int bestcol=reduced[lo];
+    for(int k=lo;k&lt;=hi;k++){
+      double v=column_cost(qs[rows[i]],reduced[k],breaks,state,c,left,right);evals++;
+      if(v&lt;best){best=v;bestcol=reduced[k];}
+    }
+    argmin[rows[i]]=bestcol;
+  }
+}
+
+vector&lt;double&gt; grouped_smawk_values(const vector&lt;double&gt;&amp;breaks,const vector&lt;double&gt;&amp;state,
+                                    const vector&lt;Query&gt;&amp;qs,const vector&lt;vector&lt;int&gt;&gt;&amp;groups,
+                                    double left,double right,long long&amp;evals){
+  int n=(int)state.size();vector&lt;double&gt; c(n+1,0.0);
+  for(int j=0;j&lt;n;j++)c[j+1]=c[j]+state[j]*(breaks[j+1]-breaks[j]);
+  vector&lt;double&gt; out(qs.size());evals=0;
+  vector&lt;int&gt; cols(n+2);for(int j=0;j&lt;n+2;j++)cols[j]=j;
+  for(const auto&amp;g:groups){
+    vector&lt;int&gt; rows(g.size());for(size_t k=0;k&lt;g.size();k++)rows[k]=(int)k;
+    vector&lt;Query&gt; sortedq;sortedq.reserve(g.size());for(int i:g)sortedq.push_back(qs[i]);
+    vector&lt;int&gt; arg(g.size(),-1);
+    smawk_rec(rows,cols,sortedq,breaks,state,c,left,right,arg,evals);
+    for(size_t k=0;k&lt;g.size();k++)out[g[k]]=column_cost(sortedq[k],arg[k],breaks,state,c,left,right);
+  }
+  return out;
+}
+
+struct BlockEngine {
+  int n,Mleaf,B,K; double left,right;
+  vector&lt;double&gt; breaks,state;
+  vector&lt;Query&gt; qs;
+  Fenwick area;
+  vector&lt;RMQ&gt; trees;
+  BlockEngine(const vector&lt;double&gt;&amp; br,const vector&lt;double&gt;&amp; st,const vector&lt;Query&gt;&amp; q,
+              double l,double r,int block)
+   :n((int)st.size()),Mleaf(n+2),B(block),K((Mleaf+B-1)/B),left(l),right(r),
+    breaks(br),state(st),qs(q),area([&amp;](){vector&lt;double&gt;a(n);for(int j=0;j&lt;n;j++)a[j]=st[j]*(br[j+1]-br[j]);return a;}()){
+    vector&lt;double&gt; pref(n+1,0.0);for(int j=0;j&lt;n;j++)pref[j+1]=pref[j]+state[j]*(breaks[j+1]-breaks[j]);
+    trees.reserve(qs.size());
+    for(const auto&amp;query:qs){vector&lt;double&gt; bm(K,INFINITY);for(int leaf=0;leaf&lt;Mleaf;leaf++){
+      double v;
+      if(leaf==0)v=leftcand(query,breaks[0],left);
+      else if(leaf&lt;=n){int j=leaf-1;v=cand(query,breaks[j],breaks[j+1],state[j],pref[j],pref[j+1]);}
+      else v=rightcand(query,breaks[n],right,pref[n]);
+      bm[leaf/B]=min(bm[leaf/B],v);
+    }trees.emplace_back(bm);}
+  }
+  double blockmin(int b,const Query&amp;q,double c){
+    int lo=b*B,hi=min((b+1)*B,Mleaf);
+    double v=INFINITY;
+    for(int leaf=lo;leaf&lt;hi;leaf++){
+      if(leaf==0)v=min(v,leftcand(q,breaks[0],left));
+      else if(leaf&lt;=n){int j=leaf-1;double c2=c+state[j]*(breaks[j+1]-breaks[j]);v=min(v,cand(q,breaks[j],breaks[j+1],state[j],c,c2));c=c2;}
+      else v=min(v,rightcand(q,breaks[n],right,c));
+    }
+    return v;
+  }
+  void update(int j,double value){double old=state[j],d=(value-old)*(breaks[j+1]-breaks[j]);int b=(j+1)/B;
+    state[j]=value;area.add(j,d);double base=area.sum(max(0,b*B-1));
+    for(size_t qi=0;qi&lt;qs.size();qi++){trees[qi].add(b+1,K,d);trees[qi].setpoint(b,blockmin(b,qs[qi],base));}
+  }
+  vector&lt;double&gt; minima()const{vector&lt;double&gt;x;for(const auto&amp;t:trees)x.push_back(t.minimum());return x;}
+};
+
+int main(int argc,char**argv){
+  int n=argc&gt;1?atoi(argv[1]):1024;
+  int m=argc&gt;2?atoi(argv[2]):64;
+  int reps=argc&gt;3?atoi(argv[3]):1000;
+  uint64_t seed=argc&gt;4?strtoull(argv[4],nullptr,10):5;
+  int B=argc&gt;5?atoi(argv[5]):16;
+  int L=argc&gt;6?atoi(argv[6]):4;
+  mt19937_64 gen(seed);uniform_real_distribution&lt;double&gt; U01(0,1), Ustate(-.8,.8), Ux(-1.8,1.8), Uw(.015,.08);
+  vector&lt;double&gt; breaks(n+1),state(n);for(int j=0;j&lt;=n;j++)breaks[j]=-2.0+4.0*j/n;for(double&amp;v:state)v=Ustate(gen);
+  vector&lt;double&gt; initial=state;
+  vector&lt;Query&gt; q;vector&lt;double&gt; times(L);for(int z=0;z&lt;L;z++)times[z]=.03+.5*z/max(1,L-1);
+  for(int i=0;i&lt;m;i++){double x=Ux(gen),w=Uw(gen),t=times[gen()%times.size()];q.push_back({x-w/2,t});q.push_back({x+w/2,t});}
+  vector&lt;Edit&gt; edits(reps);for(auto&amp;e:edits){e.j=gen()%n;e.u=Ustate(gen);}
+  const double left=.15,right=-.12;
+  vector&lt;double&gt; groupTimes;vector&lt;vector&lt;int&gt;&gt; groups;
+  for(size_t i=0;i&lt;q.size();i++){auto it=find(groupTimes.begin(),groupTimes.end(),q[i].t);if(it==groupTimes.end()){groupTimes.push_back(q[i].t);groups.push_back({(int)i});}else groups[it-groupTimes.begin()].push_back((int)i);}
+  for(auto&amp;g:groups)sort(g.begin(),g.end(),[&amp;](int a,int b){return q[a].x&lt;q[b].x;});
+  auto t0=Clock::now();Fenwick area([&amp;](){vector&lt;double&gt;a(n);for(int j=0;j&lt;n;j++)a[j]=state[j]*(breaks[j+1]-breaks[j]);return a;}());
+  vector&lt;double&gt; initialC(n+1,0.0);for(int j=0;j&lt;n;j++)initialC[j+1]=initialC[j]+state[j]*(breaks[j+1]-breaks[j]);
+  vector&lt;RMQ&gt; trees;trees.reserve(q.size());
+  for(const auto&amp;query:q){vector&lt;double&gt; v(n+2);v[0]=leftcand(query,breaks[0],left);for(int j=0;j&lt;n;j++)v[j+1]=cand(query,breaks[j],breaks[j+1],state[j],initialC[j],initialC[j+1]);v[n+1]=rightcand(query,breaks[n],right,initialC[n]);trees.emplace_back(v);}
+  auto t1=Clock::now();
+  double csum=0;
+  for(auto e:edits){double old=state[e.j],d=(e.u-old)*(breaks[e.j+1]-breaks[e.j]);double cleft=area.sum(e.j);for(size_t qi=0;qi&lt;q.size();qi++){trees[qi].add(e.j+2,n+2,d);trees[qi].setpoint(e.j+1,cand(q[qi],breaks[e.j],breaks[e.j+1],e.u,cleft,cleft+e.u*(breaks[e.j+1]-breaks[e.j])));}area.add(e.j,d);state[e.j]=e.u;for(auto&amp;tr:trees)csum+=tr.minimum();}
+  auto t2=Clock::now();
+  vector&lt;double&gt; scanstate(n);for(int j=0;j&lt;n;j++)scanstate[j]=0; // reset below to exact same initial state
+  // Recover initial field deterministically by replaying the PRNG stream.
+  mt19937_64 gen2(seed);uniform_real_distribution&lt;double&gt; Ustate2(-.8,.8);for(double&amp;v:scanstate)v=Ustate2(gen2);
+  double ssum=0;
+  for(auto e:edits){scanstate[e.j]=e.u;auto v=potential_values(breaks,scanstate,q,left,right);for(double z:v)ssum+=z;}
+  auto t3=Clock::now();
+  vector&lt;double&gt; groupstate=initial;long long gevals=0,totalgevals=0;double gsum=0;
+  for(auto e:edits){groupstate[e.j]=e.u;auto v=grouped_smawk_values(breaks,groupstate,q,groups,left,right,gevals);totalgevals+=gevals;for(double z:v)gsum+=z;}
+  auto t4=Clock::now();
+  auto onlinefinal=vector&lt;double&gt;();onlinefinal.reserve(q.size());for(auto&amp;tr:trees)onlinefinal.push_back(tr.minimum());
+  auto scanfinal=potential_values(breaks,scanstate,q,left,right);
+  long long finaleval=0;auto groupfinal=grouped_smawk_values(breaks,scanstate,q,groups,left,right,finaleval);
+  double err=0,gerr=0;for(size_t i=0;i&lt;q.size();i++){err=max(err,abs(onlinefinal[i]-scanfinal[i]));gerr=max(gerr,abs(groupfinal[i]-scanfinal[i]));}
+  auto sec=[](auto a,auto b){return chrono::duration&lt;double&gt;(b-a).count();};
+  long long p=1;while(p&lt;n+2)p*=2;double mb=(double)q.size()*2*p*(sizeof(double)*2+sizeof(int))/1048576.;
+  auto b0=Clock::now();BlockEngine block(breaks,initial,q,left,right,B);auto b1=Clock::now();
+  double bsum=0;for(auto e:edits){block.update(e.j,e.u);for(double z:block.minima())bsum+=z;}auto b2=Clock::now();
+  auto blockfinal=block.minima();double berr=0;for(size_t i=0;i&lt;q.size();i++)berr=max(berr,abs(blockfinal[i]-scanfinal[i]));
+  if(err&gt;1e-8||gerr&gt;1e-8||berr&gt;1e-8||abs(csum-ssum)&gt;1e-7||abs(bsum-ssum)&gt;1e-7||abs(gsum-ssum)&gt;1e-7)return 2;
+  long long bp=1;while(bp&lt;(n+2+B-1)/B)bp*=2;double bmb=(double)q.size()*2*bp*(sizeof(double)*2+sizeof(int))/1048576.;
+  cout&lt;&lt;setprecision(10)&lt;&lt;&quot;{\&quot;N\&quot;:&quot;&lt;&lt;n&lt;&lt;&quot;,\&quot;M\&quot;:&quot;&lt;&lt;m&lt;&lt;&quot;,\&quot;Q\&quot;:&quot;&lt;&lt;q.size()&lt;&lt;&quot;,\&quot;proposals\&quot;:&quot;&lt;&lt;reps
+      &lt;&lt;&quot;,\&quot;online_setup_s\&quot;:&quot;&lt;&lt;sec(t0,t1)&lt;&lt;&quot;,\&quot;online_updates_s\&quot;:&quot;&lt;&lt;sec(t1,t2)
+      &lt;&lt;&quot;,\&quot;scan_recomputes_s\&quot;:&quot;&lt;&lt;sec(t2,t3)&lt;&lt;&quot;,\&quot;proposal_speedup\&quot;:&quot;&lt;&lt;sec(t2,t3)/sec(t1,t2)
+      &lt;&lt;&quot;,\&quot;online_total_s\&quot;:&quot;&lt;&lt;sec(t0,t2)&lt;&lt;&quot;,\&quot;scan_total_s\&quot;:&quot;&lt;&lt;sec(t2,t3)
+      &lt;&lt;&quot;,\&quot;total_speedup\&quot;:&quot;&lt;&lt;sec(t2,t3)/sec(t0,t2)&lt;&lt;&quot;,\&quot;tree_storage_MiB\&quot;:&quot;&lt;&lt;mb
+      &lt;&lt;&quot;,\&quot;distinct_times\&quot;:&quot;&lt;&lt;groups.size()&lt;&lt;&quot;,\&quot;grouped_smawk_total_s\&quot;:&quot;&lt;&lt;sec(t3,t4)
+      &lt;&lt;&quot;,\&quot;online_tree_vs_grouped_speedup\&quot;:&quot;&lt;&lt;sec(t3,t4)/sec(t0,t2)&lt;&lt;&quot;,\&quot;block_vs_grouped_speedup\&quot;:&quot;&lt;&lt;sec(t3,t4)/sec(b0,b2)&lt;&lt;&quot;,\&quot;grouped_eval_count_per_proposal\&quot;:&quot;&lt;&lt;(double)totalgevals/reps
+      &lt;&lt;&quot;,\&quot;grouped_final_abs_error\&quot;:&quot;&lt;&lt;gerr
+      &lt;&lt;&quot;,\&quot;block_size\&quot;:&quot;&lt;&lt;B&lt;&lt;&quot;,\&quot;block_setup_s\&quot;:&quot;&lt;&lt;sec(b0,b1)&lt;&lt;&quot;,\&quot;block_updates_s\&quot;:&quot;&lt;&lt;sec(b1,b2)
+      &lt;&lt;&quot;,\&quot;block_speedup_vs_scan\&quot;:&quot;&lt;&lt;sec(t2,t3)/sec(b1,b2)&lt;&lt;&quot;,\&quot;block_total_speedup_vs_scan\&quot;:&quot;&lt;&lt;sec(t2,t3)/sec(b0,b2)
+      &lt;&lt;&quot;,\&quot;block_storage_MiB\&quot;:&quot;&lt;&lt;bmb&lt;&lt;&quot;,\&quot;block_final_abs_error\&quot;:&quot;&lt;&lt;berr
+      &lt;&lt;&quot;,\&quot;max_final_abs_error\&quot;:&quot;&lt;&lt;err&lt;&lt;&quot;,\&quot;checksum_abs_delta\&quot;:&quot;&lt;&lt;abs(csum-ssum)&lt;&lt;&quot;,\&quot;block_checksum_abs_delta\&quot;:&quot;&lt;&lt;abs(bsum-ssum)
+      &lt;&lt;&quot;,\&quot;grouped_checksum_abs_delta\&quot;:&quot;&lt;&lt;abs(gsum-ssum)&lt;&lt;&quot;,\&quot;status\&quot;:\&quot;pass\&quot;}\n&quot;;
+}
+</pre><p><a href="../assets/049052fd4dba8e24a6f759ed2fd46b4d9fa57ec2a3b12a0673a12cc7cdf01f23.cpp">Exact original</a></p></html>

@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-544 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,417 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+555 scoped research cards, full supplied A–I research documents, J/K result summaries, and 24,461 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -216,6 +216,10 @@ Added BK: N442–459: final closed programme; internally completed commuting cub
 
 
 Added BL: N460–474: noise-robust population lineage moment pencils and reversible-growth/misspecification controls; proposed fixed finite-generator co-r.e.-complete divisibility with positive sign-hiding compiler, scalar/Gaussian and certificate limits; exact categorical DPP completion with collision-conditioned costs, rational normalizer, exponential failure and scoped diffusion benchmarks. No empirical biological validation, universal sampler efficiency, external/formal correctness or priority certification. [Sources](web/BL-sources.txt);[scopes](web/BL-reports.txt);[archive/availability](web/BL-package.txt).
+
+
+
+Added BM: N475–485: monotone and bounded-slope cosmic-density integral envelopes, smooth nonphantom competitor and actual compressed DESI DR2 BAO-only likelihood fits; exact ideal-real local Hopf–Lax likelihood update, journal/block costs, strong grouped SMAWK benchmark, negative Python/single-time results and scoped posterior/FV checks. No newphysics, joint SN/CMB/significance calibration, external/formal/priority certification or demonstrated compiled-block MCMC ESS gain. [Sources](web/BM-sources.txt);[scopes](web/BM-reports.txt);[archive/availability](web/BM-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
