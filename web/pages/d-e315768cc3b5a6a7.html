@@ -1,0 +1,331 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BC: capacity/verify.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BC-sources.txt">Source map</a><h1>BC: capacity/verify.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Four supplied original ZIPs plus Werner note;60 extracted/supplied files, original archive bytes and3 intake metadata preserved in67-member derived snapshot. Scientific authority is module-specific: continuation contains analytic proofs and independent internal audit documents; alternative capacity/information proofs lack separate auditor; Frankl checker has no supplied receipt, Werner diagnostics have no executable receipt. No scientific replay, new proof reconstruction or status promotion at intake. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite numerical diagnostics for the accompanying analytical research note.
+
+These tests do not prove the universal statements, optimize a broadcaster,
+construct the smoothing minimizer, or certify historical novelty.
+Run: python verify.py [--output diagnostics.json]
+Requires Python 3.10+, NumPy and SciPy. No network access is used.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+import math
+from pathlib import Path
+import numpy as np
+from scipy.linalg import qr
+
+SEED = 20261009
+TOL = 2e-7
+rng = np.random.default_rng(SEED)
+stats: dict[str, float] = {}
+counts: dict[str, int] = {}
+
+
+def herm(a: np.ndarray) -&gt; np.ndarray:
+    return (a + a.conj().T) / 2
+
+
+def power(a: np.ndarray, exponent: float, support: bool = False) -&gt; np.ndarray:
+    w, v = np.linalg.eigh(herm(a))
+    if w.min() &lt; -1e-8:
+        raise ValueError(f&quot;Matrix is not positive: minimum eigenvalue {w.min()}&quot;)
+    w = np.maximum(w, 0)
+    if exponent &lt; 0:
+        threshold = max(float(w.max()), 1.) * 1e-12
+        if not support and np.any(w &lt;= threshold):
+            raise ValueError(&quot;Inverse requested for a singular matrix&quot;)
+        z = np.zeros_like(w)
+        np.power(w, exponent, out=z, where=w &gt; threshold)
+    else:
+        z = w ** exponent
+    return (v * z) @ v.conj().T
+
+
+def trace_norm(a: np.ndarray) -&gt; float:
+    return float(np.linalg.svd(a, compute_uv=False).sum())
+
+
+def hs(a: np.ndarray) -&gt; float:
+    return float(np.linalg.norm(a, &#x27;fro&#x27;))
+
+
+def unitary(d: int) -&gt; np.ndarray:
+    z = rng.normal(size=(d,d)) + 1j*rng.normal(size=(d,d))
+    q, _ = qr(z)
+    return q
+
+
+def state(d: int, spread: float = 5.) -&gt; np.ndarray:
+    u = unitary(d)
+    ev = np.exp(np.linspace(-spread, 0, d))
+    ev /= ev.sum()
+    return herm((u * ev) @ u.conj().T)
+
+
+def root_fidelity(a: np.ndarray, b: np.ndarray) -&gt; float:
+    return trace_norm(power(a,.5) @ power(b,.5))
+
+
+def Q(reference: np.ndarray, x: np.ndarray) -&gt; float:
+    inv = power(reference, -.25, support=True)
+    return hs(inv @ x @ inv) ** 2
+
+
+def record(name: str, residual: float, scale: float = 1.) -&gt; None:
+    value = abs(float(residual)) / max(1., abs(scale))
+    stats[name] = max(stats.get(name, 0.), value)
+    counts[name] = counts.get(name, 0) + 1
+    if not np.isfinite(value) or value &gt; TOL:
+        raise AssertionError(f&quot;{name}: normalized residual {value:.9g} &gt; {TOL}&quot;)
+
+
+def leq(name: str, lhs: float, rhs: float) -&gt; None:
+    record(name, max(0., lhs-rhs), max(abs(lhs),abs(rhs)))
+
+
+def channel(d: int, singular: bool = False):
+    &quot;&quot;&quot;Random CPTP endomorphism, optionally with a proper output support.&quot;&quot;&quot;
+    r = max(1,d-1) if singular else d
+    rank = d + 1
+    g = rng.normal(size=(rank*r,d)) + 1j*rng.normal(size=(rank*r,d))
+    v, _ = qr(g, mode=&#x27;economic&#x27;)
+    ks = []
+    for k in range(rank):
+        a = np.zeros((d,d),complex)
+        a[:r,:] = v[k*r:(k+1)*r,:]
+        ks.append(a)
+    if not singular:
+        mixture = float(rng.uniform(.02,.8))
+        ks = [math.sqrt(mixture)*a for a in ks]
+        ks.append(math.sqrt(1-mixture)*np.eye(d))
+    def forward(x):
+        return herm(sum((k @ x @ k.conj().T for k in ks), np.zeros_like(x)))
+    def adjoint(x):
+        return herm(sum((k.conj().T @ x @ k for k in ks), np.zeros_like(x)))
+    return forward, adjoint
+
+
+def finite_flags(sig: np.ndarray, t: float):
+    &quot;&quot;&quot;Exact interval decomposition of the random shifted logarithmic bins.&quot;&quot;&quot;
+    ev, u = np.linalg.eigh(sig)
+    sv = np.sqrt(ev)
+    lv = np.log(sv)
+    points = np.r_[0., np.mod(lv,t), t]
+    points.sort()
+    intervals = []
+    for lo, hi in zip(points[:-1],points[1:]):
+        if hi-lo &lt;= 1e-13:
+            continue
+        shift = (lo+hi)/2
+        labels = np.floor((lv-shift)/t).astype(int)
+        flat = np.exp(shift+labels*t)
+        flat /= np.linalg.norm(flat)
+        sp = herm((u*(flat**2))@u.conj().T)
+        af = np.exp(-t)*flat/sv
+        a = herm((u*af)@u.conj().T)
+        mask = labels[:,None] == labels[None,:]
+        def pinch(z, mask=mask, u=u):
+            return herm(u @ ((u.conj().T@z@u)*mask) @ u.conj().T)
+        def filt(z, a=a, sp=sp, pinch=pinch):
+            remainder = np.trace((np.eye(len(a))-a@a)@z).real
+            return herm(a@pinch(z)@a + remainder*sp)
+        intervals.append(((hi-lo)/t,sp,a,pinch,filt))
+    return intervals
+
+
+def test_matrix_lemmas(n: int = 180):
+    for iteration in range(n):
+        d = 2 + iteration%6
+        sig = state(d, spread=float(rng.uniform(0,12)))
+        ss = power(sig,.5)
+        h = herm(rng.normal(size=(d,d))+1j*rng.normal(size=(d,d)))
+        h -= np.trace(sig@h).real*np.eye(d)
+        h *= .5 / max(abs(np.linalg.eigvalsh(h)))
+        rho = herm(ss@(np.eye(d)+h)@ss)
+        kappa = math.sqrt(1.5)
+        x = power(sig,-.5) @ power(ss@rho@ss,.5) @ power(sig,-.5)
+        x = herm(x)
+        record(&#x27;canonical_state_identity&#x27;,hs(x@sig@x-rho))
+        leq(&#x27;canonical_likelihood_bound&#x27;,float(np.linalg.eigvalsh(x).max()),kappa)
+        delta = max(0.,root_fidelity(sig,rho)-np.trace(ss@power(rho,.5)).real)
+        xi = hs(x@ss-ss@x)
+        leq(&#x27;canonical_commutator_bound&#x27;,xi,2*math.sqrt(2*kappa*delta))
+        t = float(rng.uniform(.05,1.))
+        flags = finite_flags(sig,t)
+        record(&#x27;flag_probability_sum&#x27;,sum(f[0] for f in flags)-1)
+        averaged_pinching_sq = 0.
+        averaged_error = 0.
+        for prob, sp, a, pinch, filt in flags:
+            output = filt(rho)
+            record(&#x27;filter_trace_preservation&#x27;,np.trace(output).real-1)
+            record(&#x27;filter_exact_reference&#x27;,hs(filt(sig)-sp))
+            leq(&#x27;filter_output_positivity&#x27;,-np.linalg.eigvalsh(output).min(),0)
+            leq(&#x27;filter_lower_sandwich&#x27;,-np.linalg.eigvalsh(output-.5*sp).min(),0)
+            leq(&#x27;filter_upper_sandwich&#x27;,-np.linalg.eigvalsh(1.5*sp-output).min(),0)
+            record(&#x27;filter_reference_centrality&#x27;,hs(output@sp-sp@output))
+            leq(&#x27;filter_modification_cost&#x27;,trace_norm(output-pinch(rho)),8*t)
+            averaged_pinching_sq += prob*hs((x-pinch(x))@ss)**2
+            averaged_error += prob*trace_norm(output-rho)
+        leq(&#x27;random_pinching_bound&#x27;,averaged_pinching_sq,3*kappa*xi/t)
+        leq(&#x27;flagged_decoder_error&#x27;,averaged_error,4*math.sqrt(3*kappa*xi/t)+8*t)
+
+        U, adj = channel(d,singular=(iteration%11==0))
+        nu, urho = U(sig), U(rho)
+        invnu = power(nu,-.5,support=True)
+        corrected = herm(ss@adj(invnu@urho@invnu)@ss)
+        dr, ds = trace_norm(urho-rho), trace_norm(nu-sig)
+        loss = Q(sig,rho)-Q(nu,urho)
+        leq(&#x27;Q_data_processing&#x27;,Q(nu,urho),Q(sig,rho))
+        leq(&#x27;Petz_Q_recovery&#x27;,Q(sig,rho-corrected),loss)
+        leq(&#x27;Petz_trace_recovery&#x27;,trace_norm(rho-corrected)**2,loss)
+        leq(&#x27;sandwich_Q_loss_continuity&#x27;,loss,dr+ds+1.5*math.sqrt(ds))
+        record(&#x27;Petz_reference_recovery&#x27;,hs(ss@adj(invnu@nu@invnu)@ss-sig))
+
+        # Test the transport inequalities used by the strongly convex smoother.
+        # This is NOT a numerical solution of that minimization problem.
+        M = float(rng.uniform(2,60))
+        z = state(d,spread=float(rng.uniform(0,7)))
+        amat = M*z/np.linalg.eigvalsh(z).max()
+        tau = herm(ss@amat@ss)
+        if np.trace(tau).real &gt; 1:
+            amat /= np.trace(tau).real
+            tau = herm(ss@amat@ss)
+        ns = power(nu,.5)
+        tau_prime = herm(ns@amat@ns)
+        clipped = tau_prime/max(1.,np.trace(tau_prime).real)
+        leq(&#x27;smoothing_transport_trace&#x27;,trace_norm(clipped-tau),2*M*math.sqrt(ds)+M*ds)
+        leq(&#x27;smoothing_transport_Q&#x27;,Q(nu,clipped)-Q(sig,tau),2*M*M*math.sqrt(ds))
+        fidloss = root_fidelity(rho,tau)-root_fidelity(urho,clipped)
+        leq(&#x27;smoothing_transport_fidelity&#x27;,fidloss,math.sqrt(dr)+math.sqrt(M*ds)+M*ds/2)
+    return n
+
+
+def traceless_basis(d: int) -&gt; np.ndarray:
+    out=[]
+    for i in range(d):
+        for j in range(i+1,d):
+            a=np.zeros((d,d),complex); a[i,j]=a[j,i]=math.sqrt(d/2)
+            out.append(a)
+            a=np.zeros((d,d),complex); a[i,j]=-1j*math.sqrt(d/2); a[j,i]=1j*math.sqrt(d/2)
+            out.append(a)
+    for k in range(1,d):
+        a=np.zeros((d,d),complex)
+        a[range(k),range(k)]=1
+        a[k,k]=-k
+        out.append(a*math.sqrt(d/(k*(k+1))))
+    return np.array(out)
+
+
+def test_tree(mixed_sign: bool):
+    d=3
+    basis=traceless_basis(d)
+    P=np.array([np.diag(np.eye(d)[i]).astype(complex) for i in range(d)])
+    if mixed_sign:
+        permutation=np.array([[0,1,0],[1,0,0],[0,0,1]],float)
+        trans=.9*permutation+.1*np.ones((d,d))/d
+        inputs=P
+        output_states=np.array([np.diag(trans[:,i]).astype(complex) for i in range(d)])
+        weights=np.ones(d)
+    else:
+        u=unitary(d)
+        P2=np.array([np.outer(u[:,i],u[:,i].conj()) for i in range(d)])
+        inputs=np.concatenate((P,P2))
+        output_states=inputs.copy()
+        weights=np.r_[np.full(d,.96),np.full(d,.04)]
+    def phi(a):
+        coefficients=np.einsum(&#x27;kij,ji-&gt;k&#x27;,inputs,a).real
+        return np.einsum(&#x27;k,k,kij-&gt;ij&#x27;,weights,coefficients,output_states)
+    mat=np.array([[np.trace(a@phi(b)).real/d for b in basis] for a in basis])
+    ev,vec=np.linalg.eigh(mat)
+    select=np.abs(ev)&gt;1/math.sqrt(2)
+    lambdas=ev[select]
+    modes=np.einsum(&#x27;ji,jab-&gt;iab&#x27;,vec[:,select],basis)
+    m=len(modes)
+    E=[]; z=[]
+    for i,a in enumerate(modes):
+        val,v=np.linalg.eigh(a)
+        for j in range(d):
+            E.append(np.outer(v[:,j],v[:,j].conj())/m)
+            row=np.zeros(m);row[i]=m*val[j];z.append(row)
+    E=np.array(E); z=np.array(z)
+    # Joint reference state = sum_k weights_k tau(input_k) out_k tensor out_k.
+    means=np.einsum(&#x27;kab,iba-&gt;ki&#x27;,output_states,modes).real
+    pref=weights*np.trace(inputs,axis1=1,axis2=2).real/d
+    corr=np.einsum(&#x27;k,ki,kj-&gt;ij&#x27;,pref,means,means)
+    leq(&#x27;tree_cross_covariance_upper&#x27;,np.linalg.eigvalsh(corr-np.eye(m)).max(),0)
+    Cprev=None; records=[]
+    for depth in range(3):
+        probs=np.trace(E,axis1=1,axis2=2).real/d
+        C=np.einsum(&#x27;y,yi,yj-&gt;ij&#x27;,probs,z,z)
+        unbiased=np.einsum(&#x27;yi,yab-&gt;iab&#x27;,z,E)
+        record(&#x27;tree_unbiasedness&#x27;,hs((unbiased-modes).reshape(m*d,d)))
+        record(&#x27;tree_POVM_normalization&#x27;,hs(E.sum(axis=0)-np.eye(d)))
+        leq(&#x27;tree_POVM_positivity&#x27;,-np.linalg.eigvalsh(E).min(),0)
+        if Cprev is not None:
+            expected=(Cprev+corr)/(2*lambdas[:,None]*lambdas[None,:])
+            record(&#x27;tree_covariance_recursion&#x27;,hs(C-expected),hs(expected))
+        # Regression as a full-space quadratic form, not only a compression.
+        moment=np.einsum(&#x27;yab,jba-&gt;yj&#x27;,E,basis).real/d
+        matrix=np.einsum(&#x27;yi,yj,y-&gt;ij&#x27;,moment,moment,1/probs)
+        coords=np.array([[np.trace(a@b).real/d for b in modes] for a in basis])
+        lower=coords@np.linalg.inv(C)@coords.T
+        leq(&#x27;tree_full_space_regression&#x27;,-np.linalg.eigvalsh(herm(matrix-lower)).min(),0)
+        records.append({&#x27;depth&#x27;:depth,&#x27;outcomes&#x27;:len(E),&#x27;min_C_eigenvalue&#x27;:float(np.linalg.eigvalsh(C).min())})
+        if depth&lt;2:
+            moments=np.einsum(&#x27;kab,yba-&gt;ky&#x27;,output_states,E).real
+            E=np.einsum(&#x27;k,ky,kz,kab-&gt;yzab&#x27;,weights,moments,moments,inputs).reshape(-1,d,d)
+            z=((z[:,None,:]+z[None,:,:])/(2*lambdas)).reshape(-1,m)
+            Cprev=C
+    commutator_norm = hs(modes[0]@modes[1]-modes[1]@modes[0]) if m &gt;= 2 else 0.
+    if not mixed_sign:
+        assert commutator_norm &gt; 1e-6, &#x27;The designated noncommuting fixture became commuting.&#x27;
+    return {&#x27;mixed_sign&#x27;:mixed_sign,&#x27;selected_eigenvalues&#x27;:lambdas.tolist(),&#x27;selected_mode_commutator_HS_norm&#x27;:commutator_norm,&#x27;depths&#x27;:records}
+
+
+def scalar_checks():
+    vals={
+        &#x27;sandwich_scaling_20_times_5_power&#x27;:20*5**(1/192),
+        &#x27;smoothing_s_coefficient_upper&#x27;:1.5+(1+math.sqrt(2))*2**.25/2+(1+math.sqrt(2))/4+math.sqrt(2)/2,
+        &#x27;logarithmic_coefficient_4sqrt1536_plus1&#x27;:4*math.sqrt(1536)+1,
+        &#x27;exponential_tail_ratio_at_threshold&#x27;:336*math.sqrt(24576)/65536,
+        &#x27;pair_q_coefficient&#x27;:2/(math.e*math.log(2))+1+math.sqrt(math.log(2)/2),
+    }
+    assert vals[&#x27;sandwich_scaling_20_times_5_power&#x27;]&lt;21
+    assert vals[&#x27;smoothing_s_coefficient_upper&#x27;]&lt;5
+    assert vals[&#x27;logarithmic_coefficient_4sqrt1536_plus1&#x27;]&lt;200
+    assert vals[&#x27;exponential_tail_ratio_at_threshold&#x27;]&lt;1
+    assert vals[&#x27;pair_q_coefficient&#x27;]&lt;3
+    return vals
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(__file__).with_name(&#x27;diagnostics.json&#x27;))
+    args=parser.parse_args()
+    fixtures=test_matrix_lemmas()
+    trees=[test_tree(False),test_tree(True)]
+    result={
+        &#x27;status&#x27;:&#x27;PASS&#x27;,
+        &#x27;seed&#x27;:SEED,
+        &#x27;relative_absolute_tolerance&#x27;:TOL,
+        &#x27;matrix_fixtures&#x27;:fixtures,
+        &#x27;dimensions&#x27;:[2,3,4,5,6,7],
+        &#x27;includes_singular_output_reference&#x27;:True,
+        &#x27;max_normalized_residuals&#x27;:stats,
+        &#x27;checks_per_identity&#x27;:counts,
+        &#x27;total_checks&#x27;:sum(counts.values()),
+        &#x27;tree_fixtures&#x27;:trees,
+        &#x27;scalar_constants&#x27;:scalar_checks(),
+        &#x27;limitations&#x27;:[
+            &#x27;Finite floating-point diagnostics, not a universal proof or interval certificate.&#x27;,
+            &#x27;The smoothing minimizer was not numerically optimized.&#x27;,
+            &#x27;No historical-priority certification, external expert review, or proof-assistant run.&#x27;,
+            &#x27;These checks are newly written; inaccessible archived scripts were not replayed.&#x27;
+        ]
+    }
+    args.output.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;matrix_fixtures&#x27;:fixtures,&#x27;total_checks&#x27;:result[&#x27;total_checks&#x27;],&#x27;max_normalized_residual&#x27;:max(stats.values()),&#x27;output&#x27;:str(args.output)},indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/de08cae1b18353fae49f454bb7ab58af02311b1d2a70a60354314dac04b2284c.py">Exact original</a></p></html>

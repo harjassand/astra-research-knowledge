@@ -1,0 +1,130 @@
+# Independent adversarial audit of the linear logarithmic capacity bound
+
+9 October 2026 UTC. Scope: reconstruct the new substate lemma and compatible trace-distance smoother in LINEAR_LOGARITHMIC_TRADEOFF.md, check every numerical reduction to the exact coefficient 20480, and check support, common-channel, and infimum quantifiers. The underlying common-comparator theorem is an imported, separately audited theorem; this audit does not claim formal certification or historical novelty.
+
+## Verdict
+
+**Pass. No mathematical correction is required.** For the finite-dimensional experiment definitions in BOUNDED_CAPACITY_BROADCASTING_THEOREM.md, the proof establishes
+
+    e(E) <= min{1, 20480 (C(E)+1)/ln(1/b₂(E))},  0 < b₂(E) < 1.
+
+At b₂=0 the exact endpoint is e=0. At b₂=1 the trivial bound is e<=1. Natural logarithms and halftrace errors are essential to the displayed constants. The conclusion gives a necessary logarithmic capacity cost for persistent reconstruction error; it is not a matching example, an optimal constant, or a sufficiency threshold.
+
+## 1. Polar identities, including singular states
+
+Let σ be faithful, S=√σ, A=√ρ, X=S⁻¹(SρS)^(1/2)S⁻¹. Then X is positive and XσX=ρ. Positivity of σ shows ker X=ker ρ=ker A. For a unitary extension SA=WP of the polar decomposition,
+
+    SA W*=SXS, hence AW*=XS and WA=SX.
+
+The equality remains valid when SA is singular: multiplying a polar decomposition by any unitary extension agrees on its initial and final supports. Since XX⁺A=A,
+
+    SA=SX X⁺A=WA X⁺A,
+    P=A X⁺A.
+
+Set E=A−XS=A(I−W*). With K=2I−W−W* positive,
+
+    Tr X⁺EE*=Tr AX⁺A K=Tr PK=2[Tr P−Tr SA]=2Δ.
+
+The trace Tr SA is real, so both cross terms have exactly the stated value. Every row of E on ker X is zero. This last fact, rather than an unjustified global inequality Q<=RX⁺, handles the zero eigenspace below.
+
+For Q=1_{X<=R}, P_R=I−Q, define p=Tr ρP_R and q=Tr σP_R. Cyclicity with the spectral projection gives
+
+    p=Tr σX²P_R >= R²q.
+
+No commutation of σ with X or P_R is assumed. Binary measurement data processing gives D(ρ||σ)>=2p ln R−ln2. The zero-probability cases follow by continuity; because σ is faithful, q=0 forces P_R=0.
+
+The matrices B=QA and D₀=QXS have squared Hilbert–Schmidt norm 1−p, and
+
+    ||B−D₀||₂²=Tr QEE* <= R Tr X⁺EE*=2RΔ.
+
+Indeed this inequality holds eigenvalue by eigenvalue on the positive support of X, and the remaining rows of E vanish. Their Gram matrices are B*B=AQA and D₀*D₀=SX²QS. Thus τ=SX²QS is positive, <=R²σ, and has trace 1−p. The standard Gram estimate and ρ−AQA=AP_RA>=0 yield
+
+    ||ρ−τ||₁ <= p+2√(2RΔ)
+              <= (D(ρ||σ)+ln2)/(2lnR)+2√(2RΔ).
+
+This is a direct proof of the new lemma, not an application of a general substate theorem. Importantly, τ is not obtained by simply truncating ρ in X's eigenbasis.
+
+## 2. Optimizer curvature, approximation, and the reference state
+
+Write Qσ(H)=||σ⁻¹/⁴ H σ⁻¹/⁴||₂². For all supported Hermitian H, Schatten Hölder gives ||H||₁²<=Qσ(H), since Tr σ=1. The trace norm term is convex, while the quadratic has exact curvature λQσ. On the compact convex feasible set, the unique minimizer G therefore satisfies
+
+    J(v)−J(G)>=λQσ(v−G)>=λ||v−G||₁².
+
+This holds even at a nonsmooth norm minimizer or the boundary, by applying convexity to (1−s)G+sv and then sending s down to zero.
+
+For positive τ<=Mσ, the bound Qσ(τ)<=M Trτ follows by sandwiching the order inequality by σ⁻¹/⁴ and taking the trace against the positive sandwiched τ. Therefore a feasible δ-approximant gives J(G)<=2δ when λ=δ/M. Consequently ||ρ−G||₁<=2δ and t=TrG>=1−2δ>1/2. Normalizing yields
+
+    G/t <= 2Mσ,
+    T(G/t,ρ) <= ||G−ρ||₁ <=2δ.
+
+At ρ=σ, J(v)>=1−Trv+λ(Trv)². This lower bound is strictly decreasing for 0<=Trv<=1 because λ<1/4, and its minimum λ is attained by v=σ. Hence uniqueness gives G(σ,σ)=σ exactly.
+
+## 3. Reference transport with changing supports
+
+Let ω=Tσ and ρ'=Tρ. A feasible τ can be written √σ A₀√σ with 0<=A₀<=MI. Extend A₀ by zero off supp σ when necessary. Its un-clipped transport is √ω A₀√ω. Powers–Størmer and the product Hölder bound give trace-norm displacement <=2M√dσ. Its excess trace over one is <=M dσ, so downward scaling adds at most M dσ.
+
+The quadratic is Tr(A₀√σ A₀√σ); replacing √σ by √ω changes it by at most 2M²√dσ. Downward trace clipping can only reduce it. Trace-norm contraction and sandwiched Rényi-2 data processing make TG feasible at reference ω with J'(TG)<=J(G). These statements also apply to subnormalized states, by homogeneity.
+
+The same transport works in reverse even if supp ω differs from supp σ: express a feasible matrix using A₀ on supp ω, extend it by zero, and transport to σ. Thus the minima m,m' satisfy |m−m'|<=ξ, with
+
+    ξ=dρ+(2M+2λM²)√dσ+M dσ.
+
+The gap of TG above m' is <=ξ, and the gap of the transported old G above m' is <=2ξ. Applying curvature separately, then triangle inequality and transport displacement, proves precisely
+
+    ||TG−G||₁ <= (1+√2)√(ξ/λ)+2M√dσ+M dσ.
+
+No inverse conditioning, equal-rank hypothesis, unitality, or commutation is used.
+
+For dρ,dσ<=2b, M>=1, λM=δ<1/4, b<=1,
+
+    ξ <= [4+(5/2)√2]M√b <9M√b.
+
+The principal term is <=3(1+√2)Mδ⁻¹/²b¹/⁴. The remaining terms are <=(2√2+2)M b¹/⁴ and are safely absorbed in the displayed coefficient 13. Normalizing multiplies the fulltrace error by 1/t, so the resulting halftrace error divides the displayed fulltrace estimate by 2t>1. Both marginal channels obey the same estimate, and the original broadcaster itself works simultaneously for the whole smoothed family.
+
+## 4. Imported explicit sandwich modulus
+
+I checked the extraction of h(u)<=20u¹/¹⁹² directly from the stitched theorem, rather than relying only on its audit label. Tree depth ceil(2log₂(1/u)) gives Δ<=7u¹/⁴, hence Ξ<=9u¹/⁸. When Ξ<=1, the selected bin width gives c<=34u¹/²⁴ and w<=18u¹/²⁴. When also w<=1, r(w)<=3w¹/⁴ and
+
+    h(u)<=17u¹/²⁴+2·18¹/⁸u¹/¹⁹²<=20u¹/¹⁹²,
+
+since 17+2·18¹/⁸=19.8703777757...<20. The Ξ>1 and w>1 branches make the asserted upper bound exceed one, so the trivial h<=1 covers them. This verifies the particular modulus interface used by the new theorem; the separately proved common comparator remains its underlying import.
+
+## 5. Constants and endpoints
+
+Set A₀=4096, L=ln(1/b), δ=A₀(C+1)/L. For L<=4A₀(C+1), the unclamped target is at least 5/4 and the theorem is trivial. Otherwise δ<1/4 and L>16384.
+
+With R=exp[(C+ln2)/δ], M=R²,
+
+    M<=exp(2L/A₀),
+    p<=δ/2,
+    2√(2RΔ)<=√56 exp[−L/8+L/(2A₀)].
+
+The logarithm of the ratio of this last expression to A₀/(2L) is
+
+    ln(2√56/A₀)+ln L−(1/8−1/(2A₀))L.
+
+It is decreasing for L>=16384, and its value at 16384 is −2041.9078826129..., so the second half of the δ budget is safe.
+
+The approximation contributes 4δ, because each original-to-smoothed distance is <=2δ and there are two channelwise legs. Dilution with a=1/[2(2M−1)] has affine inverse factor (2−a)/a=8M−5<=8M. Consequently
+
+    e(E)<=4δ+160M(13Mδ⁻¹/²)¹/¹⁹² exp(−L/768).
+
+The coefficient 160·13¹/¹⁹²=162.1517988562...<163. Since δ⁻¹<=L, the power of L is 1/384. The exponential rate is exactly
+
+    1/768−2(193/192)/4096=319/393216,
+
+which exceeds 1/2048 by 127/393216. Thus the remainder is bounded by 163L¹/³⁸⁴exp(−L/2048). Its ratio to A₀/L has logarithm
+
+    ln163+(1+1/384)lnL−L/2048−ln4096.
+
+The derivative is negative for L>=16384 and the value at the endpoint is −1.49468444711543. Hence the remainder is <=δ, giving e<=5δ exactly as claimed.
+
+## 6. Quantifiers and physical implementation
+
+Closing the experiment does not change any quantity, so the finite-dimensional capacity center argument applies to arbitrary family cardinality. The center is in the closed convex hull and obeys the same uniform broadcaster bound. Support compression is a genuine CPTP map fixing all promised states. The smoother depends nonlinearly on the label only as a proof device: it is never implemented. Both channelwise approximation legs and affine undilution are valid for one common EB map. The ultimate map is the full-algebra support extension of the common encoded reconstruction composed with encoder and decoder, exactly as in the stitched theorem.
+
+Finite-dimensional channel compactness even permits attainment of the broadcast infimum: the supremum of continuous statewise errors is lower semicontinuous. Alternatively the manuscript's positive-slack limiting argument is sufficient. The b₂=0 endpoint follows from the separately established zero-error limit, and b₂=1 is handled trivially. No hidden finite-label restriction, selected-prior capacity, outcome-count bound, or diamond-norm conclusion is introduced.
+
+## 7. Numerical smoke test (not a proof)
+
+As a check against polar-orientation mistakes, 150 random noncommuting pairs of dimensions 2 through 8, including every rank from one to full rank, were tested independently. The largest numerical weighted-identity discrepancy was 6.23e−8, consistent with square-root errors at zero eigenvalues. Every tested Gram-clipping inequality held; the largest signed excess was −0.0130. These tests support the algebraic check but are not used to justify it.

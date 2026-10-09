@@ -1,0 +1,57 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BC: continuation/broadcast_inequality/iterate_binary_full.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BC-sources.txt">Source map</a><h1>BC: continuation/broadcast_inequality/iterate_binary_full.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Four supplied original ZIPs plus Werner note;60 extracted/supplied files, original archive bytes and3 intake metadata preserved in67-member derived snapshot. Scientific authority is module-specific: continuation contains analytic proofs and independent internal audit documents; alternative capacity/information proofs lack separate auditor; Frankl checker has no supplied receipt, Werner diagnostics have no executable receipt. No scientific replay, new proof reconstruction or status promotion at intake. Source status/priority not upgraded.</p><pre>import numpy as np
+from scipy.special import xlogy
+from scipy.optimize import minimize_scalar
+from scipy.linalg import block_diag
+
+def h(x):
+ x=np.maximum(x,0);return -np.sum(xlogy(x,x))/np.log(2)
+def ent(x):return h(np.linalg.eigvalsh(x))
+def root(x):
+ w,v=np.linalg.eigh(x);return (v*np.sqrt(np.maximum(w,0)))@v.T.conj()
+def cmi(w):
+ d=len(w)//2;a=w[:d,:d];b=w[d:,d:];return 2*(1+(ent(2*a)+ent(2*b))/2)-ent(w)-ent(a+b)
+def sym(w,c):
+ d=len(w)//2
+ v,z=np.linalg.eigh(w);idx=v&gt;1e-13
+ f=z[:,idx]*np.sqrt(v[idx]);m0=f[:d];m1=f[d:]
+ p0=block_diag(root(m0@m0.T.conj()),root(m0.T.conj()@m0))/np.sqrt(2)
+ p1=block_diag(root(m1@m1.T.conj()),root(m1.T.conj()@m1))/np.sqrt(2)
+ # Case 2: add support in the other matrix&#x27;s kernel, optimizing epsilon.
+ def kernel(p):
+  ev,vec=np.linalg.eigh(p);v=vec[:,ev&lt;1e-10];return v@v.T.conj()
+ k0=kernel(p0);k1=kernel(p1);q0=k0@p1@k0;q1=k1@p0@k1
+ def obj(eps,ret=False):
+  a=p0+eps*q0;b=p1+eps*q1
+  a=a/np.sqrt(2*np.trace(a@a).real);b=b/np.sqrt(2*np.trace(b@b).real)
+  cp=2*np.trace(a@b).real
+  val=c/cp*(2*ent(block_diag(a@a,b@b))-2*ent(a@a+b@b)) if cp&gt;=c-1e-10 else 1e6
+  return (a,b) if ret else val
+ grid=np.r_[0,np.geomspace(1e-8,1,35)]
+ vals=[obj(eps) for eps in grid];j=int(np.argmin(vals));eps=grid[j]
+ if 0&lt;j&lt;len(grid)-1:
+  res=minimize_scalar(obj,bounds=(grid[j-1],grid[j+1]),method=&#x27;bounded&#x27;)
+  if res.fun&lt;vals[j]:eps=res.x
+ p0,p1=obj(eps,True)
+ cp=2*np.trace(p0@p1).real; weight=min(1,c/cp)
+ a=block_diag(weight*p0@p0, np.diag([(1-weight)/2,0]))
+ b=block_diag(weight*p1@p1, np.diag([0,(1-weight)/2]))
+ o=block_diag(weight*p0@p1,np.zeros((2,2)))
+ return np.block([[a,o],[o.T.conj(),b]])
+def mix(w,c):
+ d=len(w)//2;tr=np.kron(np.array([[1,c],[c,1]])/2,np.eye(d)/d)
+ grid=np.r_[0,np.geomspace(1e-12,0.1,30),np.linspace(.1,1,30)]
+ vals=[cmi((1-t)*w+t*tr) for t in grid]; j=int(np.argmin(vals));t=grid[j]
+ if 0&lt;j&lt;len(grid)-1:
+  res=minimize_scalar(lambda t:cmi((1-t)*w+t*tr),bounds=(grid[j-1],grid[j+1]),method=&#x27;bounded&#x27;,options={&#x27;xatol&#x27;:1e-13})
+  if res.fun&lt;vals[j]:t=res.x
+ return (1-t)*w+t*tr,t
+if __name__==&#x27;__main__&#x27;:
+ for c in [.01,.05,.1,.2,.4,.6,.8,.95]:
+  a=(1+np.sqrt(1-c*c))/2;b=1-a;ef=h(np.array([a,b]));ed=1-h(np.array([(1+c)/2,(1-c)/2]))
+  p0=np.diag(np.sqrt([a,b])/np.sqrt(2));p1=np.diag(np.sqrt([b,a])/np.sqrt(2));w=np.block([[p0@p0,p0@p1],[p1@p0,p1@p1]])
+  print(&#x27;START&#x27;,c,ef+ed,cmi(w),flush=True)
+  for it in range(5):
+   w,t=mix(w,c);val=cmi(w);print(c,it,len(w)//2,t,val,&#x27;gap&#x27;,val-ef-ed,flush=True)
+   if val&lt;ef+ed-1e-8:np.savez(&#x27;/workspace/shared/broadcast_inequality/binary_witness.npz&#x27;,w=w,c=c)
+   if it&lt;4:w=sym(w,c)
+</pre><p><a href="../assets/7d5d494dd893b5763bdcdec4ed8d0eb9206227b04320f2b9780cb77bbf20b879.py">Exact original</a></p></html>

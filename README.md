@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-437 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,747 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+449 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,826 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -164,6 +164,14 @@ Added BA: N353–362: source-internally closed bounded Holevo CAPACITY plus appr
 
 
 Added BB: N363–367: sharp bipartite KMS correlation via established Lieb concavity supplies a faithful nontracial broadcast-tree C4 proof, arbitrary stationary/nonnormal C8 via legal KMS-adjoint square, one full observable-frame ensemble, weighted reversible/normal pointwise power rates and arbitrary Cesaro4/sqrtN. One complete465-line derivation preserved; independent review explicitly outstanding, no separate audit/script/check receipt supplied. Historical bounded-Holevo-open and diamond-unknown wording retained with later BA exact capacity closure and power-norm obstruction notices; not new proof/priority/capability certification. [Sources](web/BB-sources.txt);[scopes](web/BB-reports.txt);[archive/availability](web/BB-package.txt).
+
+
+
+
+
+Added BC: N368–379: internally audited linear logarithmic capacity upper bound20480, normal separable extension3072, actual-prior double-Markov EB864; exact entropy obstructions, MC/binary spectral reductions and scoped quantum-squashing/deFinetti failures; independently unreviewed alternative capacity200/info256 proofs; Frankl regular-antichain rare-element construction and Werner product-overlap/second-order zero-witness laws. Four exact ZIPs plus Werner note/60payloads preserved, no intake scientific replay. Central capacity-free/MC/Frankl/all-copy NPT gates and external/formal/priority validation remain open. [Sources](web/BC-sources.txt);[scopes](web/BC-reports.txt);[archive/availability](web/BC-package.txt).
+
+
 
 
 
