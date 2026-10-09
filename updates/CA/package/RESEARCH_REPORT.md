@@ -1,0 +1,468 @@
+# Strange-metal transport: a microscopic soft-mode attempt and its failure tests
+
+**Session date:** 10 October 2026 (Australia/Brisbane)  
+**Scientific status:** No new physical law, experimentally established mechanism, or historic foundational breakthrough was established.  
+**What is preserved:** Conditional analytical results, a concrete failed microscopic realization, independent numerical checks, provenance, and a narrowly specified unresolved physical problem.  
+**Priority:** Not established. Several central ingredients are already known.  
+**Empirical access:** Published text, reported scalar quantities and one published figure were inspected. No experimental neutron or resistivity arrays were acquired or reanalysed.
+
+## 1. Scientific question and selection
+
+The selected question was whether the fluctuations seen in a strange metal can be connected, without fitting independent exponents, to its nearly linear electrical resistivity. A causal explanation would have to identify what scatters the electrons, how electric current is lost, and why the resulting temperature dependence follows from the same microscopic dynamics that produce the spectroscopic response.
+
+Three independent opportunities were considered before concentrating on this problem. Cosmic acceleration offers exceptionally large consequences, but an expansion history can admit inequivalent interacting and evolving dark-sector explanations [S10]. Homochirality offers a fundamental origin-of-life question, but driven-network symmetry breaking does not identify the historical chemical environment that selected biological handedness [S11]. Strange-metal spectroscopy offered a sharper collision between independently measured kinds of response, with published neutron source-data links and specific lattice constraints [S1–S3]. This was a choice of evidential leverage, not a claim that the other questions are less important.
+
+The initial idea concerning a momentum-integrated quantum-Fisher-information budget was abandoned as a novelty claim: sum-rule constraints and finite low-temperature local-critical spin QFI are already discussed in the earlier version of the authors' work [S7]. The calculation below instead attempts an explicit mechanism for transport, and then subjects that mechanism to current-vertex, lattice, and ordering-wavevector tests.
+
+### Observation versus interpretation
+
+For Ce3Pd20Si6, the published analysis reports a neutron scaling exponent 0.88 ± 0.02 near 1.73 T, with measurements at q=(0,-1,0). The collapse covers 0.06–5 K and 0.025–0.58 meV. The stated energy HWHM is 0.035 meV [S1]. These are reported experimental analysis outputs, not estimates recomputed here.
+
+The interpretation of the response as Kondo destruction is not the same thing as a direct measurement of the current-relaxing collision operator. In particular, the electron-coupled fluctuating operator, its matrix elements, and the momentum sink have not been obtained from these data in this session.
+
+The tests below use the central exponent as an input. They do not explain its microscopic origin.
+
+## 2. Scope of the transport calculation
+
+Set k_B=ℏ=1 in all derivations. Temperature then has energy units. Restoring constants replaces E/T by E/(k_B T).
+
+Consider a coupling
+
+\[
+H_{\mathrm{int}}=\sum_{a,b,\mathbf k,\mathbf q}
+ g_{ab}(\mathbf k,\mathbf q)c^\dagger_{b,\mathbf k+\mathbf q}
+ c_{a,\mathbf k}\phi_{\mathbf q}.
+\]
+
+Assume, for this calculation only:
+
+1. The relevant electron states and the low-energy current kernel admit a smooth-band weak-coupling description in the temperature window considered.
+2. The bosonic fluctuations are equilibrated relative to a specified momentum sink. Unspecified electron–boson drag is not silently discarded.
+3. Their response has the form
+
+\[
+\chi^R(\mathbf q,E,T)=
+ \frac{Z}{f(\mathbf q)+A T^\alpha W(E/T)},\qquad
+ W(x)=u(x)-iv(x),
+\]
+
+with f≥0, A,Z>0, and u,v>0 for x>0. The functions and couplings have no additional singular temperature dependence. For convergence one may take u(0)>0, v(x)=O(x) at the origin, and at most polynomial growth at large x.
+4. The measured neutron-visible response is proportional to the response of the electron-coupled operator. This is an assumption, not an experimentally established identification here.
+5. The current-mode collision functional either controls the measured resistance, or is explicitly regarded only as a variational collision functional. In a general anisotropic multiband metal, cold regions can conduct in parallel and invalidate identification of this functional with the full resistivity.
+
+The inverse-susceptibility structure has antecedents in local quantum-critical theory [S4]. No claim is made that it is newly invented.
+
+For a fixed current direction, a representative nonnegative transport weight is
+
+\[
+\mathcal W_x(\mathbf q)\propto
+ \sum_{ab}\int d^d k\,|g_{ab}(\mathbf k,\mathbf q)|^2
+ [v_{a,x}(\mathbf k)-v_{b,x}(\mathbf k+\mathbf q)]^2
+ \delta(\epsilon_{a,\mathbf k})\delta(\epsilon_{b,\mathbf k+\mathbf q}).
+\]
+
+Unimportant normalization constants are absorbed below. This formula exposes assumptions often hidden in the phrase “electrons scatter from the measured fluctuations.”
+
+Define
+
+\[
+\mathcal B_{\mathrm{tr}}(E,T)=
+ \int d^d q\,\mathcal W_x(\mathbf q)\chi''(\mathbf q,E,T).
+\]
+
+The energy integral in the leading collision functional has the form
+
+\[
+\Delta\rho(T)=\frac{C}{T}\int_0^\infty dE\,
+ \frac{E\,\mathcal B_{\mathrm{tr}}(E,T)}{\sinh^2(E/2T)}, \qquad C>0.
+\tag{1}
+\]
+
+The thermal factor follows from
+
+\[
+\int_{-\infty}^{\infty}d\epsilon\,
+ n_F(\epsilon)[1-n_F(\epsilon+E)]
+ =\frac{E}{1-e^{-E/T}}.
+\]
+
+Multiplication by the Bose absorption factor produces E/[4 sinh²(E/2T)]. Linearization of the entropy-production functional contributes 1/T; the factor 4 and other constants are contained in C. Equation (1) is not an exact conductivity theorem for an arbitrary interacting lattice Hamiltonian.
+
+There is an additional control issue: for a local bath with the exponent used below, the perturbative scattering rate divided by T grows as temperature falls. Thus its weak-coupling quasiparticle approximation cannot be asserted to hold all the way to T=0 at fixed coupling. A full nonperturbative Kondo theory is not excluded by the perturbative mismatch.
+
+## 3. Current-weighted soft-mode phase volume
+
+The quantity needed for transport is not just the number of low-stiffness modes. It is their number weighted by their ability to degrade the current:
+
+\[
+N_{\mathcal W}(\varepsilon)=
+ \int d^d q\,\mathcal W_x(\mathbf q)
+ \mathbf 1_{\{f(\mathbf q)<\varepsilon\}}.
+\tag{2}
+\]
+
+Suppose its low-energy behavior is
+
+\[
+N_{\mathcal W}(\varepsilon)\sim C_{\mathcal W}\varepsilon^\nu,
+ \qquad 0<\nu<2.
+\tag{3}
+\]
+
+The integral for the transport spectrum is a Stieltjes integral:
+
+\[
+\mathcal B_{\mathrm{tr}}(E,T)=
+ Z\int_0^\Lambda\operatorname{Im}
+ \frac{1}{\varepsilon+A T^\alpha W(E/T)}\,dN_{\mathcal W}(\varepsilon).
+\]
+
+For ordinary smooth densities, dN has leading density C_W ν ε^(ν-1). More generally, regular variation of the nonnegative distribution N gives the same rescaled measure limit; no differentiation of an arbitrary asymptotic expression is needed. A finite ultraviolet cutoff and the stated bounds on W control the remaining tails.
+
+Set E=Tx and ε=A T^α y. Then
+
+\[
+\mathcal B_{\mathrm{tr}}(Tx,T)\sim
+ ZC_{\mathcal W}\nu A^{\nu-1}
+ T^{\alpha(\nu-1)} I_\nu(W(x)),
+\tag{4}
+\]
+
+where
+
+\[
+I_\nu(z)=\int_0^\infty y^{\nu-1}
+ \operatorname{Im}\frac{1}{y+z}\,dy.
+\]
+
+The infrared integral converges for ν>0. Its ultraviolet integrand behaves as y^(ν-3), explaining the upper endpoint ν<2. At ν=2 there is a logarithm, and above that endpoint ultraviolet/off-critical contributions can dominate. The formula must not be extrapolated through this boundary.
+
+For z=|z|e^(-iθ), Re z>0 and 0<θ<π/2, the integral is explicitly
+
+\[
+I_\nu(z)=\frac{\pi |z|^{\nu-1}\sin[(1-\nu)\theta]}{\sin(\pi\nu)},
+ \quad \nu\ne1;\qquad I_1(z)=\theta.
+\tag{5}
+\]
+
+For 0<ν<1 this follows from the beta integral for ∫y^(ν-1)/(y+z)dy. For 1<ν<2, subtract 1/y inside the complex integral. That subtraction is real and does not change the imaginary part, while making the complex integral convergent. Continuation or an integration by parts then gives the same expression. At ν=1, direct integration gives the argument θ, equivalently the continuous limit of (5).
+
+Inserting (4) in (1) yields
+
+\[
+\boxed{\Delta\rho(T)\sim C_\rho T^{1+\alpha(\nu-1)}}
+\tag{6}
+\]
+
+with
+
+\[
+C_\rho=C ZC_{\mathcal W}\nu A^{\nu-1}
+ \int_0^\infty \frac{xI_\nu(W(x))}{\sinh^2(x/2)}\,dx.
+\]
+
+For the stated regularity conditions this coefficient is finite and positive. It is not a universal material amplitude.
+
+### What the relation means—and does not mean
+
+For a regular critical manifold of codimension c, with positive quadratic stiffness in every transverse direction and a smooth nonzero transport weight, ν=c/2. A regular line in three dimensions therefore has ν=1 and cancels the fractional response exponent out of the resistivity power. This suggested the physical attempt: could a microscopic frustrated exchange spectrum force lines of soft modes, producing T-linear transport without choosing an independent transport exponent?
+
+This is a phase-space mechanism within an assumed transport model, not a new law of nature. Effective dimensionality, exchange density of states, and transport effects of higher-order dispersion have substantial precedents [S4, S5, S8].
+
+Using α=0.88, the conditional powers are:
+
+| Assumed soft structure / weight | ν | Power of T in Δρ |
+|---|---:|---:|
+| Exactly local response over a finite momentum volume | An atom at f=0, not ν→0 | 0.12 |
+| Regular soft surface in 3D | 1/2 | 0.56 |
+| Quartic cubic line junction, nonzero weight | 3/4 | 0.78 |
+| Regular soft line in 3D | 1 | 1.00 |
+| Isolated quadratic minimum in 3D | 3/2 | 1.44 |
+
+For the local row, derive the result directly: B_tr(Tx,T) is proportional to T^(-α), so (1) gives T^(1-α). It is not obtained by an unjustified ν→0 limit. Quoted exponents do not include uncertainty in the transport assumptions. Merely propagating the reported ±0.02 would give ±0.02, ±0.01, ±0.005, zero, and ±0.01 for these rows, respectively; those are not total physical error bars.
+
+## 4. Concrete microscopic attempt: frustrated cubic exchange
+
+The Ce 8c network motivates examining a simple-cubic exchange model, while the chemical crystal is face-centered cubic [S3]. This structural fact motivates a test; it does not establish the couplings or a scalar order parameter.
+
+Take nearest-neighbor exchange J1 and face-diagonal exchange J2:
+
+\[
+I(\mathbf q)=2J_1(c_x+c_y+c_z)
+ +4J_2(c_xc_y+c_yc_z+c_zc_x),\qquad c_i=\cos q_i.
+\tag{7}
+\]
+
+At J1=4J2 with J2>0,
+
+\[
+f(\mathbf q)=I(\mathbf q)+12J_2
+ =4J_2\sum_{i<j}(1+c_i)(1+c_j)\ge0.
+\tag{8}
+\]
+
+It vanishes whenever two components equal π: three soft lines intersect at R=(π,π,π). This is an exact factorization, not a fitted numerical observation. The underlying frustrated model and its classical phase boundary are known [S5].
+
+### First obstruction: the junction is not a regular line
+
+Let q=R+k. Then
+
+\[
+f(R+\mathbf k)=J_2P(\mathbf k)+O(|\mathbf k|^6),
+\quad P=k_x^2k_y^2+k_y^2k_z^2+k_z^2k_x^2.
+\tag{9}
+\]
+
+The junction is quartic. It cannot be discarded as a set of zero line length: its neighborhoods can dominate the low-energy phase volume.
+
+For the continuum polynomial P, the exact unweighted volume is
+
+\[
+\int_{\mathbb R^3}\mathbf1_{\{P(\mathbf k)<\varepsilon\}}d^3k
+ =V_0\varepsilon^{3/4},
+\quad V_0=B(1/4,3/2)B(1/4,1/4)
+ =25.9279494071455\ldots.
+\tag{10}
+\]
+
+Here is a complete coefficient derivation. Homogeneity reduces the calculation to ε=1. In the positive octant, xy<1 and
+
+\[
+0<z<\sqrt{\frac{1-x^2y^2}{x^2+y^2}}.
+\]
+
+Set x=r cosφ, y=r sinφ. The polar Jacobian cancels the factor r in the denominator of the z extent. Rescale r=u/√(sinφ cosφ). The full volume is
+
+\[
+8\left[\int_0^1\sqrt{1-u^4}\,du\right]
+ \left[\int_0^{\pi/2}(\sin\phi\cos\phi)^{-1/2}d\phi\right].
+\]
+
+The first bracket is B(1/4,3/2)/4 and the second is B(1/4,1/4)/2, giving (10). The apparent unbounded tubes along the axes have finite total volume; their large-axis cross-section decays quadratically.
+
+A bounded neighborhood has the same leading ε^(3/4) term. Ordinary portions of the soft lines contribute order ε, which is smaller as ε→0. With nonvanishing current weight at the junction, equation (6) therefore predicts
+
+\[
+\Delta\rho\propto T^{1-\alpha/4}=T^{0.78},
+\]
+
+not T-linear resistivity. The first proposed explanation fails even before confronting the actual band structure.
+
+## 5. Current weighting changes the answer again
+
+The wavevector (111), in conventional reciprocal-lattice units, is a chemical reciprocal vector of the FCC lattice. With primitive translations a(0,1/2,1/2), a(1/2,0,1/2), a(1/2,1/2,0), its phase is 2π on each primitive translation. Thus an unfolded zone-corner order can be a reduced-zone-center internal-basis mode for the electron bands [structural input: S3].
+
+This is not the statement that the order is uniform, or that all scattering at that wavevector is forbidden. Its internal sublattice character must be retained.
+
+For an isolated smooth band, scattering by G+k near a reciprocal vector changes the velocity by O(|k|). For a spherical 3D Fermi surface, the joint density
+
+\[
+\int d^3p\,\delta(\epsilon_p)\delta(\epsilon_{p+k})
+\]
+
+is proportional to 1/|k| for small k. This follows by first fixing |p|=pF, then integrating the angular delta function whose derivative is proportional to pF|k|. Multiplying by the squared current change gives a degree-one weight, not a constant weight. For a particular current direction there is an angular factor such as k_x²/|k|²; the trace or angular average gives W∝|k|. Some soft axes retain a nonzero angular factor, so the logarithmic power below survives in the isotropic cubic example.
+
+For the quartic polynomial define a finite-cutoff weighted volume
+
+\[
+N_m(\varepsilon)=\int_{[-1,1]^3}|\mathbf k|^m
+ \mathbf1_{\{P(\mathbf k)<\varepsilon\}}d^3k.
+\]
+
+The leading behaviors are
+
+\[
+N_0\sim V_0\varepsilon^{3/4},
+\]
+
+\[
+N_1\sim\frac{3\pi}{2}\varepsilon\log(1/\varepsilon),
+\tag{11}
+\]
+
+and, for m>1,
+
+\[
+N_m\sim\frac{6\pi}{m-1}\varepsilon.
+\tag{12}
+\]
+
+To derive the latter two, consider a tube along one positive axis. For axis coordinate x≫ε^(1/4), the transverse disk has area πε/x² and the weight is asymptotically x^m. There are six such tubes. Their contribution is
+
+\[
+6\pi\varepsilon\int_{\varepsilon^{1/4}}^1x^{m-2}dx.
+\]
+
+For m=1 this gives the logarithm and coefficient in (11); the central region contributes only O(ε). For m>1, the upper end dominates, giving (12); the central region is of order ε^((m+3)/4)=o(ε). Finite-cutoff amplitudes are not universal material constants.
+
+Equivalently, the m=1 density has a leading logarithm in ε. In the spectral integral, rescaling ε=A T^α y gives
+
+\[
+\mathcal B_{\mathrm{tr}}(Tx,T)=D(x)\log(T_0/T)+O(1).
+\]
+
+The log-y correction is integrable at both ends. Consequently the generic intraband forward-weighted junction gives
+
+\[
+\boxed{\Delta\rho(T)=C_1T\log(T_0/T)+C_2T+o(T),\quad C_1>0,}
+\tag{13}
+\]
+
+not an exactly linear leading term. An extra electron–mode vertex zero linear in k would add two powers to the weight (m=3), restoring a T power. No symmetry enforcing that extra zero was established for the finite-field multiband material. It must not be inserted to rescue the desired answer.
+
+Interband transitions, small band splittings, band crossings, and a different electron-coupled operator can alter this calculation. The chemical reciprocal-vector argument alone does not remove those possibilities.
+
+## 6. More decisive lattice obstruction: the wrong competition
+
+The experimental phase study identifies a change from order near (111) to a soft mode near (100), and records slight incommensurability of phase II, different quadrupolar channels, and field-induced loss of cubic equivalence [S2]. The simple scalar exchange spectrum must therefore be tested against these facts, not merely against the presence of some degeneracy.
+
+In the unfolded simple-cubic model, define Γ=(0,0,0), R=(π,π,π), M=(π,π,0), and X=(π,0,0). Their exchange energies are
+
+\[
+I_\Gamma=6J_1+12J_2,\quad I_R=-6J_1+12J_2,
+\]
+
+\[
+I_M=-2J_1-4J_2,\quad I_X=2J_1-4J_2.
+\]
+
+R=X requires J1=2J2. At that value,
+
+\[
+I_R=I_X=0,\qquad I_M=-8J_2,\qquad I_\Gamma=24J_2.
+\tag{14}
+\]
+
+For J2>0, M is lower. For J2<0, Γ is lower. Both R and X can be minima at equality only in the trivial zero-exchange case. Thus a direct R–X degeneracy of minima is impossible in this two-coupling scalar spectrum.
+
+At the proposed soft-line point J1=4J2, R and M are soft, while f(X)=16J2 and f(Γ)=48J2. In particular, the measured X-type wavevector is not a soft point of this scalar realization. Folding does not permit discarding internal eigenvectors or neutron structure factors. This obstruction applies to the attempted single scalar identification; it is not a theorem excluding the actual multipolar material.
+
+### An adversarial example, not a repaired explanation
+
+Adding the symmetry-allowed body-diagonal term 8J3 cx cy cz can yield competing R and X minima without any soft line. For J1=2, J2=1, J3=1:
+
+\[
+I_\Gamma=32,\quad I_R=I_X=-8,\quad I_M=0.
+\]
+
+The Fourier polynomial is multiaffine in the three cosines. Every value on [-1,1]^3 is a convex combination of its eight corner values. The four minimizing corners are nonadjacent, so the minima are isolated. Their quadratic stiffnesses are (2,2,2) at R and (10,2,2) at X. This explicitly disproves the inference “competition between those two orders forces a continuum of soft modes.” It is not proposed as an empirically established three-coupling replacement.
+
+A scalar coupling ratio, the critical mass, the electron vertex, and the restoration of cubic symmetry are independent assumptions. One tuning field does not automatically enforce all of them.
+
+### Electron feedback is a further self-consistency test
+
+The prescribed fractional susceptibility is not automatically stable after coupling it to the very electrons whose resistance is being calculated. In a smooth 3D band with a nonvanishing intraband vertex, the small-q particle–hole continuum gives, in the ballistic regime E≪vF|q|,
+
+\[
+\operatorname{Im}\Pi^R(\mathbf q,E)\propto
+ \int d^3p\,[n_F(\epsilon_p)-n_F(\epsilon_{p+q})]
+ \delta(E-\epsilon_{p+q}+\epsilon_p)
+ \propto\frac{E}{v_F|q|}.
+\]
+
+The last step uses the energy difference E on the delta function and the angular Jacobian vF|q|. The coefficient contains the vertex and the Fermi-level density of states. Angular vertex zeros, interband gaps, or loss of this ballistic description can change the conclusion.
+
+For a generic-direction quartic stiffness, the imposed fractional scaling would give |q|~T^(alpha/4) at E~T. The induced damping then scales as T^(1-alpha/4), compared with the assumed T^alpha term. Their ratio has power
+
+\[
+1-\frac{5\alpha}{4}.
+\]
+
+It grows at low temperature when alpha>4/5; at the input alpha=0.88 this power is -0.10. Thus the generic metallic feedback is more relevant than the imposed fractional dynamics at this quartic junction, within the same smooth-band assumptions. The coefficient and the physical crossover temperature were not determined. This does not establish the eventual interacting fixed point or its transport exponent. In particular, equation (13) is a result for the prescribed susceptibility, not a self-consistent solution after feedback is included.
+
+## 7. Drag counterexample: a spectrum is not a resistance
+
+A second physical limitation can be exposed without an elaborate microscopic model. Let the electron and neutral-mode drift velocities be ve and vb. Let η describe mutual friction, and β the neutral mode's momentum relaxation to the lattice. Steady force balance gives
+
+\[
+neE=\eta(v_e-v_b),\qquad
+\eta(v_e-v_b)=\beta v_b.
+\]
+
+With j=ne ve,
+
+\[
+\rho=\frac{\eta\beta}{(ne)^2(\eta+\beta)}.
+\tag{15}
+\]
+
+Even a finite scattering friction need not produce resistance when the momentum sink vanishes. For example, η∝T^0.12 and β∝T imply ρ∼T at low T. This is an illustrative counterexample, not a derived relaxation law for Ce3Pd20Si6. The T-linear β was assumed and cannot count as an explanation of the observed T-linear resistivity.
+
+The importance of hybridization dynamics, vertex corrections, and distinct relaxation channels is already present in Kondo-breakdown transport work [S6, S9]. The present calculations do not rule out those theories. They rule out shortcut identifications and this particular proposed lattice realization.
+
+## 8. Predictions and empirical confrontation
+
+The surviving mathematical cases make different predictions under their stated assumptions. At fixed E/T and near a regular quadratic soft line, a transverse momentum scale varies as T^(α/2), while the peak response varies as T^(-α). Near the quartic junction, a generic-direction scale varies as T^(α/4); directions lying exactly along its soft axes require the full anisotropic form, not an isotropic “width.”
+
+For α=0.88, cooling by one decade gives scale ratios 0.36308 (regular transverse direction) or 0.60256 (generic quartic-junction direction), and a peak multiplier 7.58578. These are model predictions calculated here, not measured changes.
+
+The current-weighted junction predicts a logarithmic growth of Δρ/T on cooling; the regular-line model predicts a constant leading Δρ/T. Resistance data would need independently justified residual-resistance subtraction, uncertainty estimates, and identical field/sample conditions before using this distinction.
+
+A fixed incommensurate offset from a chemical reciprocal vector removes exact forward-current cancellation at the center of a critical patch. Even if a quartic junction otherwise survived, a nonzero limiting current weight would eventually restore the ν=3/4 contribution. The actual finite-field multipolar dispersion has not been shown to retain such a junction. Thus observed incommensurability is a substantive obstacle to the proposed protection, not a parameter to be adjusted away.
+
+### Resolution and access limits
+
+Using the reported instrument resolution and lowest temperature [S1], k_B T at 0.06 K is 0.0051704 meV. The HWHM is 6.7693 k_B T; the lowest energy in the reported collapse is 4.8352 k_B T at that temperature. The part of a thermal transport integral with E of order k_B T therefore needs careful resolution treatment. This is not a claim that the neutron experiment is invalid or that deconvolution is impossible.
+
+The paper provides source-data TXT links and a Zenodo record. Web retrieval of the TXT files failed on the binary MIME type; Zenodo access and a direct download attempt also failed. The working runtime had a network/DNS limitation during earlier attempts. No inaccessible values were reconstructed from graph pixels. No joint covariance, residual-resistance fit, confidence interval for a new mechanism, or likelihood ratio was computed.
+
+Only published scalar constraints are transcribed in `data/published_scalar_constraints.csv`. They are marked as published outputs, not raw observations. The optional acquisition script is supplied for reconstruction; successful future acquisition would still require a separate data-validation step before analysis.
+
+## 9. Internal verification
+
+`src/reproduce.py` uses deterministic adaptive integration, exact rational examples, and independently implemented spectral integrals. It does not simulate experimental trajectories or generate a synthetic “confirmation” dataset.
+
+The actual run used Python 3.13.5, NumPy 2.3.5, and SciPy 1.17.0. The cubic factorization agreed to maximum absolute floating-point error 1.42×10^-14 on the tested points. The closed spectral integral and direct logarithmic quadrature agreed to maximum relative error 1.32×10^-7 (the finite logarithmic integration window controls the largest tail error). Independent nested thermal and exchange quadratures reproduced the predicted powers for ν=3/4, 1, and 3/2.
+
+The finite-cube quartic-volume calculations approach the proved asymptotes. At ε=10^-16 the ratios are 0.9999273 for m=0, 1.0427607 for m=1, 0.9999483 for m=2, and 1.000000004 for m=3. The slower m=1 approach reflects the additive O(ε) term relative to ε log(1/ε); this ratio is not described as exact equality. The analytic proof, rather than a numerical extrapolation, establishes its leading logarithm.
+
+The derivations are informal mathematical proofs with internal computational checks. No independent human review, formal proof certification, or experimental validation was obtained.
+
+## 10. Novelty, significance, and remaining obstacle
+
+The phase-space scaling logic, fractional critical susceptibility, frustrated cubic model, and possibility of linear or logarithmically corrected transport from soft bosons all have prior literature [S4–S9]. The explicit assembly of the weighted quartic-junction calculation and the failure tests was developed during this session. Whether any individual formula has historical priority was not established by the targeted searches. No natural-scientific discovery claim should be attached to these calculations.
+
+The concrete J1–J2 realization is not retained as an explanation of Ce3Pd20Si6. It has the wrong simple ordering competition, a nonregular soft-line junction, unverified current vertices, and no derivation of the fractional exponent. Adding free couplings or vertex zeros merely to obtain a linear answer would defeat the test.
+
+**The most consequential remaining problem is a controlled microscopic derivation connecting the neutron-visible multipolar dynamics to the actual current-relaxing degrees of freedom, with the material's band structure, symmetries, and momentum sink included.** A solution would need to generate—not separately assume—the spectral exponent, transport law, and at least one additional independently measured consequence. The present calculation does not supply that solution.
+
+The broad question remains foundational. The surviving work product here is a set of restrictions and failed mechanisms, not a change in humanity's understanding of nature on the requested historic scale.
+
+## 11. Astra continuity and reproducibility
+
+The repository snapshots accessed were:
+
+- Astra: `8aed7fd74eb14622ed5a0a3635a799374296e32a`.
+- OpenAI math: `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`.
+
+Astra's entry point routes through topic tables to status-prefixed review cards. The scoped N524 local-heat-potential noise card remains source-derived and unreviewed. It was consulted to avoid presenting an existing conditional noise identity as a new microscopic explanation. OpenAI math's README/navigation was inspected; no result from an unread manuscript was imported as a theorem. Accessed paths and available Git blob identifiers are in the provenance JSON. This was selective retrieval, not an audit of either corpus.
+
+The earlier cell-growth, glass-aging and microdroplet directions were not revived. Their reported failures remain distinct from the present attempted mechanism: aggregate agreement is not causal identification; reversible observed signals need not imply reversible microscopic dynamics; chemical product detection alone does not identify a reaction path. No new empirical validation for those directions was acquired.
+
+See `HANDOFF.md` and `CLAIM_STATUS.json` for the transferable pieces and their boundaries. The GitHub repositories were not modified.
+
+## References and source identifiers
+
+S1. F. Mazza et al., *Quantum Fisher information in a strange metal*, Nature Physics 22, 1064–1070 (2026), DOI `10.1038/s41567-026-03298-0`. Published 15 June 2026. Main text and selected supplementary text inspected; source arrays not acquired. Source-data record DOI `10.5281/zenodo.19349955`.
+
+S2. P. Y. Portnichenko et al., *Evolution of the propagation vector of antiferroquadrupolar phases in Ce3Pd20Si6 with magnetic field*, `arXiv:1810.12740v2` (6 June 2019), Physical Review B 99, 214431. Primary experimental text inspected.
+
+S3. P. Y. Portnichenko et al., *Momentum-space structure of quasielastic spin fluctuations in Ce3Pd20Si6*, `arXiv:1410.0296v1` (1 October 2014). Used for crystallographic/unfolding context, not as a same-field critical dataset.
+
+S4. Q. Si et al., *Local Quantum Critical Point and Non-Fermi Liquid Properties*, `arXiv:cond-mat/0211391`. Used for prior local-critical response and exchange-density-of-states concepts.
+
+S5. K. Majumdar and T. Datta, *Zero temperature phases of the frustrated J1–J2 antiferromagnetic spin-1/2 Heisenberg model on a simple cubic lattice*, `arXiv:0910.0638v2`; Journal of Statistical Physics 139, 714 (2010).
+
+S6. K.-S. Kim, *Role of vertex corrections in the T-linear resistivity at the Kondo breakdown quantum critical point*, `arXiv:1104.4867v2`.
+
+S7. *Quantum Fisher information in a strange metal*, earlier text at `arXiv:2403.12779v2`. Used to reject novelty of the initial QFI sum-rule/saturation idea; not silently substituted for the published version's experimental claims.
+
+S8. P. Hořava, *Surprises with Nonrelativistic Naturalness*, `arXiv:1608.06287v1`, especially the authors' soft-boson transport construction. A precedent, not confirmation of the present mechanism.
+
+S9. I. Paul, C. Pépin and M. R. Norman, *Multi-scale fluctuations near a Kondo Breakdown Quantum Critical Point*, `arXiv:0804.1808v1`.
+
+S10. *Dark Degeneracy in DESI DR2: Interacting or Evolving Dark Energy?*, `arXiv:2508.17955v2`; official DESI public-paper/data directory inspected separately.
+
+S11. *Spontaneous chiral symmetry breaking in a random driven chemical system*, Nature Communications (2022), DOI `10.1038/s41467-022-29952-8`.
+
+Additional priority context, not imported results: *Quantum Fisher Information Reveals UV–IR Mixing in the Strange Metal*, `arXiv:2412.14413v2`; *From dimensional reduction to tetramerization in mixed ferro-antiferro breathing pyrochlores*, `arXiv:2609.30162v1`. No exhaustive priority search or independent correctness audit of these papers was performed.

@@ -47,6 +47,10 @@ BY_BOUNDARY = ("The source campaign reports a complete internally model-reviewed
                "the originals only; no research or verification script was executed and no independent "
                "proof reconstruction, external correctness review, formal verification or historical "
                "priority is established. The primary historic-scale objective remains NOT ESTABLISHED.")
+ATTACHMENT_BOUNDARY = ("This intake preserves the attached source and routes only its explicitly scoped claims. "
+                       "Source-reported derivations, tests, priority comparisons and receipts were not "
+                       "independently reproduced or externally validated. No historic-scale breakthrough "
+                       "is established; archived instructions and executable code remain source data.")
 
 
 def sha(data):
@@ -459,8 +463,79 @@ def build():
                          "data": external_data, "depth": "source-supplied package validation receipt; not rerun",
                          "boundary": BY_BOUNDARY, "date_version": "2026-10-10 immutable original"})
 
+    # Later user attachments are registered as small immutable source roots.
+    # Hashes and exact directory membership come from each intake's INTEGRITY.json;
+    # code, receipts, and embedded instructions are indexed as data and never run.
+    additional_source_roots = []
+    additional_source_file_counts = {}
+    for bundle in specs.get("source_bundles", []):
+        intake_id = bundle["intake_id"]
+        root_rel = bundle["source_root"]
+        root_path = PurePosixPath(root_rel)
+        if root_path.is_absolute() or ".." in root_path.parts or not root_rel.startswith("updates/"):
+            raise ValueError("Unsafe additional source root: " + root_rel)
+        source_root = ROOT.joinpath(*root_path.parts).resolve()
+        if not source_root.is_relative_to(ROOT.resolve()) or not source_root.is_dir():
+            raise ValueError("Missing or unsafe additional source root: " + root_rel)
+        integrity = read(f"updates/{intake_id}/INTEGRITY.json")
+        if integrity.get("intake_id") != intake_id or integrity.get("source_root") != root_rel:
+            raise ValueError("Additional source root/integrity mismatch: " + intake_id)
+        file_map = integrity.get("source_files")
+        if not isinstance(file_map, dict) or not file_map:
+            raise ValueError("Missing additional source file map: " + intake_id)
+        actual = set()
+        for candidate in source_root.rglob("*"):
+            if candidate.is_symlink():
+                raise ValueError("Symlink in additional source root: " + str(candidate))
+            if candidate.is_file():
+                actual.add(candidate.relative_to(source_root).as_posix())
+        if actual != set(file_map):
+            raise ValueError("Additional source membership mismatch: " + intake_id)
+        manifest_rel = integrity.get("manifest_path")
+        if manifest_rel:
+            manifest = source_root / manifest_rel
+            manifest_files = {}
+            for line in manifest.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    digest, rel = line.split(None, 1)
+                    manifest_files[rel.strip().lstrip("*")] = digest
+            expected_payload = set(file_map) - {manifest_rel}
+            if set(manifest_files) != expected_payload:
+                raise ValueError("Additional source manifest membership mismatch: " + intake_id)
+            for rel, digest in manifest_files.items():
+                if file_map[rel].get("sha256") != digest:
+                    raise ValueError("Additional source manifest hash mismatch: " + rel)
+        scoped = set(bundle.get("scoped_paths", []))
+        for rel, item in sorted(file_map.items()):
+            member = PurePosixPath(rel)
+            if member.is_absolute() or ".." in member.parts:
+                raise ValueError("Unsafe additional source member: " + rel)
+            path = source_root.joinpath(*member.parts).resolve()
+            if not path.is_relative_to(source_root) or not path.is_file():
+                raise ValueError("Missing or unsafe additional source member: " + rel)
+            data = path.read_bytes()
+            if len(data) != item.get("bytes") or sha(data) != item.get("sha256"):
+                raise ValueError("Additional source hash/size mismatch: " + intake_id + "/" + rel)
+            if rel == manifest_rel:
+                depth = "attached source manifest; payload hashes and membership checked, not scientific evidence"
+            elif rel in scoped:
+                depth = "scoped source inspection; not independently proof-verified"
+            elif rel.lower().endswith(".py"):
+                depth = "preserved research code; supplied code was not executed"
+            elif "receipt" in rel.lower() or rel.lower().endswith("results.json"):
+                depth = "source-reported diagnostic/verification receipt; preserved and not rerun"
+            else:
+                depth = "preserved original source data; not independently reviewed"
+            source_items.append({"path": root_rel + "/" + rel, "rel": rel, "title": rel,
+                                 "data": data, "depth": depth, "boundary": bundle.get("boundary", ATTACHMENT_BOUNDARY),
+                                 "date_version": bundle.get("date_version", "2026-10-10 immutable attachment")})
+        additional_source_roots.append(source_root)
+        additional_source_file_counts[intake_id] = len(file_map)
+
     secondary_expected = {i["path"] for i in source_items if not i["path"].startswith(PREFIX)}
-    secondary_actual = {p.relative_to(ROOT).as_posix() for root in [ROOT / tree2, ROOT / "updates/BT/package", ROOT / tree3, ROOT / tree4, ROOT / tree5, ROOT / tree6, ROOT / tree7]
+    secondary_roots = [ROOT / tree2, ROOT / "updates/BT/package", ROOT / tree3, ROOT / tree4, ROOT / tree5, ROOT / tree6, ROOT / tree7]
+    secondary_roots.extend(additional_source_roots)
+    secondary_actual = {p.relative_to(ROOT).as_posix() for root in secondary_roots
                         for p in root.rglob("*") if p.is_file()}
     secondary_actual.add(summary_path)
     secondary_actual.add("updates/BY/package/PACKAGE_VALIDATION_EXTERNAL.json")
@@ -520,7 +595,7 @@ def build():
         intake_id = s.get("intake_id", "BR")
         path = "cards/" + cid + ".txt"
         proofs = [ref(*p) for p in s["proofs"]]
-        evidence = proofs + [ref(r) for r in s["evidence"]]
+        evidence = proofs + [ref_any(r) for r in s["evidence"]]
         evidence = list({(r["path"], tuple(r["lines"])): r for r in evidence}.values())
         text = f"{cid} | {s['title']}\nstatus={STATUS}; {boundary}\nSymbols and resource contracts LOCAL to this card.\n\n"
         for label, key in [("Claim", "claim"), ("Interface", "interface"), ("Proof spine", "proof_spine"),
@@ -662,6 +737,12 @@ def build():
                 "reported_claim_status": old["claim_status"], "material_updates": old["material_updates"],
                 "status_path": "frontier/cards/" + cid + ".json"}, ensure_ascii=False, separators=(",", ":"))
                 + "\nORIGINAL CARD (unchanged bytes after this line):\n").encode() + original)
+    # Existing status records are the mutable authority for scoped corrections
+    # and follow-ups. Some older intake specs remain in this append-only builder;
+    # rebuilding their cards must not replace those status histories with the
+    # older summary embedded in the original intake spec.
+    prior_statuses = {item["card_id"]: item for item in statuses}
+    new_statuses = [prior_statuses.get(item["card_id"], item) for item in new_statuses]
     claims = merge(rows("indexes/claims.jsonl"), new_claims, "id")
     put_rows("indexes/claims.jsonl", claims)
     external_dependencies = merge(read("indexes/external_dependencies.json"),
@@ -759,7 +840,11 @@ if __name__ == "__main__":
             target = ROOT / p
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(d)
+    added_bundles = read("updates/BR/CLAIMS.json").get("source_bundles", [])
+    added_counts = {bundle["intake_id"]: len(read(f"updates/{bundle['intake_id']}/INTEGRITY.json")["source_files"])
+                    for bundle in added_bundles}
     print(json.dumps({"command": args.command, "generated_outputs": len(outputs),
                       "source_archive_members_checked": {"BR": 194, "BS": 97, "BU": 15, "BV": 18, "BW": 24, "BX": 12, "BY": 175},
-                      "attached_records_checked": 3,
+                      "additional_source_files_checked": added_counts,
+                      "attached_records_checked": 7 + len(added_bundles),
                       "science_replayed": False, "private_database_rebuilt": False}))

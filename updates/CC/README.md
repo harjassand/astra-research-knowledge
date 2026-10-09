@@ -1,0 +1,9 @@
+# CC — Primitive Genesis: positive composition and convex order
+
+The packet contains a conditional sharp composition theorem for arbitrary finite-state positive lifts under a sphere L2 spectral gap; a source-reported Theta(T) state-count candidate for one exact five-gate qubit process; a positive interpolation memory–range law; a finite-orbit criterion; and a complete Gaussian-likelihood-probe characterization of convex order. It also records an unproved converse. The five-gate corollary imports the Bourgain–Gamburd spectral-gap theorem.
+
+Cards N564–N570 separate the reusable lemma, conditional general theorem, fixed-gate candidate, numerical-analysis interface, qualitative criterion, convex-order characterization and unresolved converse. N566 is a scoped follow-up to N546: the source now supplies a proof candidate for the specific old gate, but that Astra gate remains open pending independent reconstruction and priority review. The `primitive_genesis_retention.zip` nested in this packet has the same SHA-256 as the already-ingested BU archive; it is preserved as provenance and is not duplicated as a new claim.
+
+The 18 manifest-listed payloads and manifest are preserved unchanged. Verification scripts, optimization variants and receipts remain source data and were not executed. The packet reports 162 check groups and exact comparisons; those are source-reported, not independent verification. No historic-scale breakthrough or historical priority is established.
+
+Start with [N564–N570 dossiers](../../agent/routes.tsv) by searching those IDs, and read the [Primitive Genesis checkpoint](../../state/branches/primitive-genesis.txt). The immutable source folder is [primitive_genesis_convex_order](package/primitive_genesis_convex_order/); intake hashes are in [INTEGRITY.json](INTEGRITY.json). All cards remain `source_derived_unreviewed`.
