@@ -1,0 +1,134 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BG: adaptive/exact_triangle_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BG-sources.txt">Source map</a><h1>BG: adaptive/exact_triangle_certificate.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; selected3 intake reruns have separate receipts. Extraction=exact_utf8; cycle=0. Two supplied research records preserved unchanged. Adaptive RESULTS/README are current authority, older checkpoints historical; no independent review of universal entropy candidate. Pure START_HERE/final proof, extension/corollary and separate AI-assisted audits supersede literature pending language; no external review.3 exact adaptive finite certificates replayed separately; failed random-channel solver trials remain failed. No new analytic reconstruction, kernel certificate, novelty or discovery-gain validation. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact rational-interval certificate for a finite CMI counterexample.
+
+Uses only Python&#x27;s standard library. No floating-point arithmetic is used
+in the mathematical assertions. This checks the stated finite witness,
+not the general theorem and not historical novelty.
+
+Logarithms: range reduction by powers of two, then the atanh series
+  log z = 2 sum_{j=0}^{N-1} t^(2j+1)/(2j+1) + R,
+  t=(z-1)/(z+1), 0&lt;=R&lt;=2t^(2N+1)/((2N+1)(1-t^2)), 1&lt;=z&lt;=2.
+Square roots: integer square root of a rational scaled by 2^(2B).
+&quot;&quot;&quot;
+from __future__ import annotations
+from dataclasses import dataclass
+from fractions import Fraction as F
+from math import isqrt
+import json
+from pathlib import Path
+
+@dataclass(frozen=True)
+class Interval:
+    lo: F
+    hi: F
+    def __post_init__(self) -&gt; None:
+        if self.lo &gt; self.hi: raise ValueError(&#x27;Invalid interval&#x27;)
+    @staticmethod
+    def of(x) -&gt; &#x27;Interval&#x27;:
+        return x if isinstance(x, Interval) else Interval(F(x), F(x))
+    def __add__(self, other):
+        b=self.of(other);return Interval(self.lo+b.lo,self.hi+b.hi)
+    __radd__=__add__
+    def __neg__(self): return Interval(-self.hi,-self.lo)
+    def __sub__(self,other): return self+-self.of(other)
+    def __rsub__(self,other): return self.of(other)+-self
+    def __mul__(self,other):
+        b=self.of(other);v=[self.lo*b.lo,self.lo*b.hi,self.hi*b.lo,self.hi*b.hi]
+        return Interval(min(v),max(v))
+    __rmul__=__mul__
+    def reciprocal(self):
+        if self.lo&lt;=0&lt;=self.hi: raise ZeroDivisionError(&#x27;Interval contains zero&#x27;)
+        return Interval(1/self.hi,1/self.lo)
+    def __truediv__(self,other):return self*self.of(other).reciprocal()
+    def __rtruediv__(self,other):return self.of(other)*self.reciprocal()
+
+NTERMS=24
+ROOT_BITS=100
+
+def unit_log_bounds(z:F)-&gt;Interval:
+    if not 1&lt;=z&lt;=2: raise ValueError(&#x27;Range reduction failed&#x27;)
+    t=(z-1)/(z+1);power=t;total=F(0)
+    for j in range(NTERMS):
+        total+=2*power/(2*j+1)
+        power*=t*t
+    rem=2*power/((2*NTERMS+1)*(1-t*t))
+    return Interval(total,total+rem)
+
+LOG2=unit_log_bounds(F(2))
+
+def log_endpoint(z:F)-&gt;Interval:
+    if z&lt;=0:raise ValueError(&#x27;Logarithm requires positive argument&#x27;)
+    shift=0
+    while z&lt;1:z*=2;shift-=1
+    while z&gt;2:z/=2;shift+=1
+    return unit_log_bounds(z)+shift*LOG2
+
+def log_interval(z:Interval)-&gt;Interval:
+    return Interval(log_endpoint(z.lo).lo,log_endpoint(z.hi).hi)
+
+def sqrt_endpoint(z:F)-&gt;Interval:
+    if z&lt;0:raise ValueError(&#x27;Negative square root&#x27;)
+    scale=1&lt;&lt;ROOT_BITS
+    m=isqrt((z.numerator*scale*scale)//z.denominator)
+    lo=F(m,scale)
+    hi=lo if m*m*z.denominator==z.numerator*scale*scale else F(m+1,scale)
+    assert lo*lo&lt;=z&lt;=hi*hi
+    return Interval(lo,hi)
+
+def xlog(z)-&gt;Interval:
+    z=Interval.of(z)
+    if z.lo==z.hi==0:return Interval.of(0)
+    return z*log_interval(z)
+
+def f_input(p:F,s:F)-&gt;Interval:
+    q=1-p
+    return 2*xlog(q/2)+xlog(p)-xlog(q*(1-s))-xlog(p+q*s)
+
+def f_output(p:F,s:F)-&gt;Interval:
+    q=1-p
+    root=sqrt_endpoint((1+p)**2-8*p*q*(1-s))
+    low=(1+p-root)/8;high=(1+p+root)/8
+    return (2*(xlog(low)+xlog(high))+xlog(q*(1-s)/2)+xlog(q*s/2)
+            -xlog(q*(1-s))-xlog(p+q*s))
+
+def decimal_outer(iv:Interval, digits:int=18)-&gt;dict:
+    scale=10**digits
+    low=(iv.lo.numerator*scale)//iv.lo.denominator
+    high=-((-iv.hi.numerator*scale)//iv.hi.denominator)
+    def show(n):
+        sign=&#x27;-&#x27; if n&lt;0 else &#x27;&#x27;;n=abs(n)
+        return f&#x27;{sign}{n//scale}.{n%scale:0{digits}d}&#x27;
+    return {&#x27;lower&#x27;:show(low),&#x27;upper&#x27;:show(high)}
+
+def certify()-&gt;dict:
+    p,s,h=F(1,10),F(1,100),F(1,100)
+    cmis=[]
+    for fun in (f_input,f_output):
+        cmis.append((fun(p+h,s)+fun(p-h,s))/2-fun(p,s))
+    ix,iy=cmis
+    assert ix.lo&gt;0
+    ratio=iy/ix
+    assert ratio.lo&gt;F(9,10)
+    assert ratio.hi&lt;1
+    # Ordinary classical coefficient is exactly 1/2 (proved in manuscript).
+    assert iy.lo&gt;F(1,2)*ix.hi
+    return {
+      &#x27;status&#x27;:&#x27;PASS&#x27;,
+      &#x27;scope&#x27;:&#x27;Exact finite rational-interval witness only; not formal verification of the general theorem.&#x27;,
+      &#x27;parameters&#x27;:{&#x27;p&#x27;:str(p),&#x27;s&#x27;:str(s),&#x27;h&#x27;:str(h)},
+      &#x27;channel&#x27;:&#x27;W(y|x)=1/2 for y!=x and 0 otherwise, x,y in {0,1,2}&#x27;,
+      &#x27;reference_dimension&#x27;:2,&#x27;auxiliary&#x27;:&#x27;uniform classical bit U&#x27;,
+      &#x27;logarithm&#x27;:&#x27;natural&#x27;,&#x27;log_series_terms&#x27;:NTERMS,&#x27;sqrt_binary_precision&#x27;:ROOT_BITS,
+      &#x27;input_CMI&#x27;:decimal_outer(ix),&#x27;output_CMI&#x27;:decimal_outer(iy),
+      &#x27;ratio&#x27;:decimal_outer(ratio),
+      &#x27;exact_assertions&#x27;:[&#x27;I(U;X|R)&gt;0&#x27;,&#x27;I(U;Y|R) &gt; (9/10) I(U;X|R)&#x27;,
+                          &#x27;I(U;Y|R) &lt; I(U;X|R)&#x27;,
+                          &#x27;I(U;Y|R) &gt; (1/2) I(U;X|R)&#x27;],
+      &#x27;method&#x27;:&#x27;Fraction arithmetic with proved logarithm remainder and integer square-root enclosures; decimal endpoints rounded outward.&#x27;
+    }
+
+if __name__==&#x27;__main__&#x27;:
+    result=certify()
+    target=Path(__file__).with_name(&#x27;exact_triangle_certificate.json&#x27;)
+    target.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+</pre><p><a href="../assets/d853e441befff713a975f6e9d30271ec9d87a2499a842751150b75098e0045ba.py">Exact original</a></p></html>
