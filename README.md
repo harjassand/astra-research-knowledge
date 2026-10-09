@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-422 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,688 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+432 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,738 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -152,6 +152,12 @@ Added AY: N330–341: supplied complete binary-tree/covariance/regression argume
 
 
 Added AZ: N342–352: sharp complete physical KMS J>=pi E and primitive faithful upper witnesses; full finite positive Lp KMS sine/non-KMS tangent profiles and forward pi/2, explicit KMS signed/polar and ordinary hypercontractivity. One raw-broadcaster/sigma-selected classical channel has common-margin bounded-I squared exponent1/3 via full-domain repair and Petz ENERGY bypass; earlier mixed-reference Petz TRACE gate remains unknown. Mandatory physical Hamiltonian factor-four correction, costs, limits and temporal authority retained. User pi update is08; exact linked authored archive/status is later09. All3101 authored members/3098 manifest payloads preserved. Source-reported internal proof/audit, external/formal correctness/priority unverified and10/10 unmet; no new intake scientific replay/capability promotion. [Sources](web/AZ-sources.txt);[scopes](web/AZ-reports.txt);[archive/availability](web/AZ-package.txt).
+
+
+
+
+
+Added BA: N353–362: source-internally closed bounded Holevo CAPACITY plus approximate two-receiver broadcasting gives one uniform full-domain finite-outcome EB reconstruction across growing dimensions/families; compatible optimizer, independently reconstructed pair bridge, finite flagged centralization, physical Petz correction and weighted-tracial C4 explicitly stitched/audited. General nonnormal bistochastic C8 and correct binary2/sqrt(n+1) EB insertion averages, tracial entropy truncation, robust fixed-flow halting bands with rational-endpoint variant, left-c.e. phase volume degree0prime, factorial/busy-beaver finite lifetimes and second-moment obstruction, maximal diamond-versus-tiny-HS cloner boundary. All37 original files/36checksums/34manifest payloads retained; earlier pending wording remains historical. Norm obstruction credited as established amplification corollary. External/formal correctness/priority and scientific capability gain unverified; no new intake scientific replay. [Sources](web/BA-sources.txt);[scopes](web/BA-reports.txt);[archive/availability](web/BA-package.txt).
 
 
 
