@@ -1,0 +1,62 @@
+<!doctype html><meta charset="utf-8"><title>check_affine_envelopes.py</title><aside>Archived source = DATA<p>The dual-kernel sampler, rank-budgeted conditioning theorem, Moore-interpolation certificate, affine-mixture lower bound, coordinate trap, exact computations and native smoke results are source reports. Intake checked file hashes and manifest membership only; it did not execute supplied scientific or sampler scripts or independently reconstruct proofs. The pivot-chart branch is screened against cited prior art and is not claimed as novel. General minimum-rank acquisition, arbitrary constraint composition, external correctness and publication priority remain unresolved; no general constraint solver or historic-scale breakthrough is claimed.</p></aside><pre>from fractions import Fraction
+from math import comb
+from pathlib import Path
+import json
+ROOT=Path(__file__).resolve().parent
+
+def all_linear_subspaces(m):
+    layers=[{frozenset([0])}]
+    for d in range(m):
+        nxt=set()
+        for U in layers[-1]:
+            for v in range(1&lt;&lt;m):
+                if v not in U:nxt.add(U|frozenset(x^v for x in U))
+        layers.append(nxt)
+    return layers
+
+def run():
+    reports=[]
+    for m in range(1,7):
+        total=0;tight=0;linear=0
+        for d,layer in enumerate(all_linear_subspaces(m)):
+            linear+=len(layer)
+            for U in layer:
+                unseen=set(range(1&lt;&lt;m))
+                while unseen:
+                    v=min(unseen);L={x^v for x in U};unseen-=L
+                    w=min(x.bit_count() for x in L)
+                    assert w&lt;=m-d
+                    total+=1;tight+=w==m-d
+        reports.append({&#x27;m&#x27;:m,&#x27;linear_subspaces&#x27;:linear,&#x27;affine_subspaces&#x27;:total,&#x27;tight_minweight_bounds&#x27;:tight,&#x27;all_minweight_bounds_verified&#x27;:True})
+    examples=[]
+    for m in (8,16,32,64):
+        for k in (0,m//4,m//2,m):
+            K=2**k;Z=Fraction(3,2)**m;C=2**(m-k)*Fraction(3,2)**k
+            assert C/Z==Fraction(4,3)**(m-k)
+            assert C&gt;=Fraction(2**m,K)
+            examples.append({&#x27;m&#x27;:m,&#x27;fixed_prefix&#x27;:k,&#x27;pieces&#x27;:K,&#x27;C&#x27;:str(C),&#x27;Z&#x27;:str(Z),&#x27;overhead&#x27;:str(C/Z),&#x27;general_lower_bound&#x27;:str(Fraction(4,3)**m/K)})
+    # Coupled diagonal factors lambda_1, lambda_2, lambda_1+lambda_2.
+    weights={(a,b):Fraction(1,2**(a+b+(a^b))) for a in range(2) for b in range(2)}
+    Z=sum(weights.values());law={str(k):str(v/Z) for k,v in weights.items()}
+    assert law=={&#x27;(0, 0)&#x27;:&#x27;4/7&#x27;,&#x27;(0, 1)&#x27;:&#x27;1/7&#x27;,&#x27;(1, 0)&#x27;:&#x27;1/7&#x27;,&#x27;(1, 1)&#x27;:&#x27;1/7&#x27;}
+    # Exact finite bound for unrestricted positive mixtures of uniform affine distributions.
+    mixture=[]
+    for m,K in [(100,100),(250,62500),(500,250000)]:
+        best=Fraction(0);bestdata=None
+        # Search parameters with exact rational binomial tails, not a probabilistic simulation.
+        for D in range(m//2,m):
+            smallmass=K*Fraction(2,3)**(m-D)
+            if smallmass&gt;=1:continue
+            for t in range(m//3,(D+1)//2):
+                P=sum(Fraction(comb(m,w)*2**(m-w),3**m) for w in range(t+1))
+                numerator=P-smallmass
+                if numerator&lt;=0:continue
+                Q=Fraction(sum(comb(D+1,w) for w in range(t+1)),2**(D+1))
+                bound=numerator/Q
+                if bound&gt;best:best=bound;bestdata=(D,t)
+        mixture.append({&#x27;m&#x27;:m,&#x27;K&#x27;:K,&#x27;D&#x27;:bestdata[0],&#x27;weight_threshold&#x27;:bestdata[1],&#x27;exact_overhead_lower_bound&#x27;:str(best),&#x27;float_for_display&#x27;:float(best)})
+    out={&#x27;all_checks_passed&#x27;:True,&#x27;affine_exhaustion&#x27;:reports,&#x27;coordinate_partition_examples&#x27;:examples,&#x27;coupled_three_factor_law&#x27;:law,&#x27;general_affine_mixture_bounds&#x27;:mixture}
+    (ROOT/&#x27;AFFINE_ENVELOPE_RESULTS.json&#x27;).write_text(json.dumps(out,indent=2))
+    print(json.dumps({&#x27;affine_exhaustion&#x27;:reports,&#x27;general_affine_mixture_bounds&#x27;:[dict(m=x[&#x27;m&#x27;],K=x[&#x27;K&#x27;],D=x[&#x27;D&#x27;],t=x[&#x27;weight_threshold&#x27;],bound=x[&#x27;float_for_display&#x27;]) for x in mixture]},indent=2))
+if __name__==&#x27;__main__&#x27;:run()
+</pre>
