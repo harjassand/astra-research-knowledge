@@ -1,6 +1,7 @@
 # Measured benchmarks
 
-Final run: `results/run-20261010-v4/`. Apple M4, 16 GiB, macOS, Python 3.14.3.
+Final run: archive member `results/run-20261010-v4/` in
+`results/raw-execution-evidence.zip`. Apple M4, 16 GiB, macOS, Python 3.14.3.
 
 Median algorithm milliseconds, including setup plus 16 draws, across three replicates. Module loading is excluded from these timers and included in the per-process receipts. The RSS columns are median process high-water MiB, including the interpreter. Skipped brute force has no algorithm timing.
 
@@ -21,6 +22,10 @@ Final execution: 94 child processes; 26.965 CPU seconds; 32.958 summed child wal
 
 The earlier complete run is also retained: 58.557 CPU seconds and 75.005 summed child wall seconds. Combined complete runs consumed 85.522 measured child CPU seconds and 107.963 child wall seconds. Preliminary checks, failed preflights, preparation, monitoring and interactive work were not fully resource-metered; their usage is unknown, not zero.
 
-Rejection proposal counts and exact input/draw records are in `benchmarks.json`. All requested rejection outputs completed before the one-million-proposal limit. Every method validates outputs with the same independent predicate. FPT and brute force additionally provide exact counts; rejection supplies draws only.
+Rejection proposal counts and exact input/draw records are in the archived
+`results/run-20261010-v4/benchmarks.json`. All requested rejection outputs
+completed before the one-million-proposal limit. Every method validates outputs
+with the same independent predicate. FPT and brute force additionally provide
+exact counts; rejection supplies draws only.
 
 FPT improves substantially over the admitted pair enumeration for large m at fixed w. Rejection is faster on these sampling workloads. Width-sensitive cancellation and duplicate-block expansion remain visible. These are three local replicates on a shared machine, with no system-isolation or universal complexity inference. The brute predicate is deliberately simple Python, so these timings are not comparisons with an optimized exhaustive engine.

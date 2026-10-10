@@ -5,15 +5,20 @@
 
 The development pilot passed its finite verification contract. No mathematical
 counterexample or discrepancy was found in the checked domain. Two harness
-failures were retained and corrected without changing any source assertion.
-The original card remains `source_derived_unreviewed`; `G-CS-N629` remains open.
-Independent code construction is established here. Independent external
-scientific adjudication, universal formal correctness and originality are not.
+failures were retained with their diagnoses and corrected without changing any
+source assertion. The original card remains `source_derived_unreviewed`;
+`G-CS-N629` remains open. The universal arguments below are internal
+reconstructions conditional on an imported classical theorem. Originality is
+unresolved. This pilot contains no independently certified new mathematical
+result.
 
 ## Completed finite evidence
 
-The final run is `results/run-20261010-v4/`; raw commands, stdout, stderr, JSON,
-hashes, interpreter details and resource receipts are committed there.
+The final run is the `results/run-20261010-v4/` member of
+`results/raw-execution-evidence.zip`; its compact machine summary is
+`results/pilot_summary.json`. Raw commands, stdout, stderr, JSON, hashes,
+interpreter details and resource receipts are preserved byte-for-byte in the
+archive and checked by `results/raw-execution-evidence.manifest.json`.
 
 All three original scripts completed unchanged. Their entire generated results
 match the archived JSON except `seconds`:
@@ -52,7 +57,8 @@ it neither proves nor exhaustively checks the proposed sharper `m>w` statement.
 
 See `BENCHMARKS.md` for the final measured table and aggregate resource use.
 All inputs, draws, proposal counts, process CPU/RSS and separate setup/draw
-timers are machine-readable in `benchmarks.json`. Three replicates request 16
+timers are machine-readable in the archived
+`results/run-20261010-v4/benchmarks.json`. Three replicates request 16
 outputs from each method. Setup is included. Module loading is included in
 process receipts and excluded consistently from algorithm timers.
 

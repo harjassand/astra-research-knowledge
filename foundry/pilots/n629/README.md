@@ -17,7 +17,16 @@ From the repository root on macOS or Linux, with Python 3.10 or newer:
 
 ```sh
 python3 -m venv /tmp/n629-venv
+/tmp/n629-venv/bin/python -B foundry/pilots/n629/archive.py verify \
+  foundry/pilots/n629/results/raw-execution-evidence.zip \
+  foundry/pilots/n629/results/raw-execution-evidence.manifest.json
 /tmp/n629-venv/bin/python -B foundry/pilots/n629/run.py --output /tmp/n629-fresh-results
+/tmp/n629-venv/bin/python -B foundry/pilots/n629/archive.py pack /tmp/n629-fresh-results \
+  --prefix foundry/pilots/n629/results \
+  --archive /tmp/n629-fresh-results.zip \
+  --manifest /tmp/n629-fresh-results.manifest.json
+/tmp/n629-venv/bin/python -B foundry/pilots/n629/archive.py verify \
+  /tmp/n629-fresh-results.zip /tmp/n629-fresh-results.manifest.json
 python3 evaluation/research_eval.py validate
 python3 -m unittest discover -s evaluation -p 'test_*.py'
 python3 frontier/build_access.py check
@@ -27,8 +36,21 @@ Use fresh directory names if these paths already exist. No packages need to be
 installed. The recorded execution used a fresh Python 3.14.3 venv; exact paths,
 Python build, platform, commands, seeds, source hashes, and implementation hashes
 are in `results/run-20261010-v4/environment.json` and per-process receipts.
-The runner refuses existing output directories and checks that input bytes match
-the pinned Git revision, even when run from the later PR commit.
+The environment record is an archive member at
+`foundry/pilots/n629/results/run-20261010-v4/environment.json`; per-process
+receipts are stored beside it. The runner refuses existing output directories
+and checks that input bytes match the pinned Git revision, even when run from
+the later PR commit.
+
+The committed run files are consolidated in
+`results/raw-execution-evidence.zip`. Its adjacent SHA-256 manifest verifies the
+archive and every original file. ZIP member names retain their full repository
+paths, so extraction at the repository root restores the original layout. The
+archive writer sorts paths and normalizes ZIP timestamps and modes; packing the
+same bytes with the same Python/zlib runtime produces the same archive. The
+manifest verifier checks byte counts, paths, modes, and every member hash.
+To list or extract members with the Python standard library, use
+`python3 -m zipfile -l` or `python3 -m zipfile -e`.
 
 Original documented commands are `python fpt_sampler.py`, `python verify_gate.py`,
 and `python exact_m5.py`, from their source directory. The runner copies the
@@ -55,13 +77,24 @@ unchanged proposed sampler only as the implementation under test.
 - `proof_gates.json`: local development gates using the existing proof-gate
   template shape. The repository gate `G-CS-N629` stays open.
 - `claim_audit.json`: scoped findings and original-byte evidence pointers.
-- `results/run-20261010-v4/`: final full run, including `checks.json`,
-  `reproductions.json`, `benchmarks.json`, `summary.json`, raw logs, per-process
-  receipts and a SHA-256 artifact manifest.
-- `results/run-20261010/` and `results/run-20261010-v2/`: retained harness failures.
-- `results/run-20261010-v3/`: first complete run, retained before correcting the
-  algorithm timer's treatment of source module loading.
+- `results/pilot_summary.json`: compact final-run machine summary.
+- `results/raw-execution-evidence.zip` and
+  `results/raw-execution-evidence.manifest.json`: every original v3/v4 result,
+  raw stdout/stderr, process receipt, generated JSON and artifact manifest, plus
+  both historical harness failures and their diagnoses. The member names retain
+  the original repository paths, including `results/run-20261010-v4/`.
+- `results/run-20261010-v3/` is the first complete run, retained before
+  correcting the algorithm timer's treatment of source module loading. The
+  failed preflights are `results/run-20261010/` and `results/run-20261010-v2/`;
+  these paths identify archive members, not loose files.
 - `development_history.json`: preliminary execution and setup failures.
+
+The first historical harness failure used a nonexistent long dossier filename
+instead of `frontier/dossiers/N629.txt`; the corrected preflight left all source
+files unchanged. The second attempted Darwin `RLIMIT_AS` setup with an unlimited
+hard limit and failed before execution; the recorded diagnosis switches to CPU
+and wall limits plus a sampled RSS guard. Both failures, their raw records and
+their diagnoses are preserved in the archive.
 
 One process runs at a time. Source scripts have 120 s wall / 100 s CPU limits;
 the finite suite has 180 s / 160 s, and each benchmark 45 s / 40 s. All have a
