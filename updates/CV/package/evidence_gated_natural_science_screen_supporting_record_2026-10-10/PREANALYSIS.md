@@ -1,0 +1,65 @@
+# Prospective evidence gate: three unexplained natural phenomena
+
+Date: 2026-10-10 (UTC)
+
+## Status and separation of evidence
+
+This is a prospective protocol for any new extraction of raw records. The primary papers listed in `SOURCES.md` and the Astra files listed there have already been read; their reported outcomes are exploratory context, not a preregistered confirmation. No raw scientific observations have yet been downloaded or inspected for this task. No mechanism is selected at this stage.
+
+The strongest pivot is short-timescale inner-core seismic change because the public source archive contains primary waveforms. The protocol below is deliberately split into (A) a waveform-localization test and (B) a separate physical viability gate. A positive waveform result cannot by itself identify the force, rheology, or phase-change chemistry.
+
+## Candidate 1 — X-ray quasi-periodic eruptions (QPEs)
+
+**Phenomenon.** Repeating, high-amplitude soft X-ray bursts from galactic nuclei. Candidate causal mechanisms include a compact object repeatedly intersecting an accretion flow and accretion-disk limit cycles.
+
+**Observable.** Barycentric burst arrival times, burst fluences, and quiescent X-ray luminosity over a multi-year baseline.
+
+**Quantitative prediction.** For a compact object on an orbit of semimajor axis `a` about a central mass `M`, `P = 2π sqrt(a^3/(G M))`. Two disk crossings per orbit create a common orbital clock; a relativistic-precession version predicts a smooth, geometry-linked evolution in the interval and relative fluence of the two crossing families. A disk limit-cycle instead ties recurrence to the evolving thermal/viscous state of the accretion flow and need not produce one common orbital phase model.
+
+**Nuisance assumptions.** Central mass, eccentricity, disk orientation and density, burst-to-impact lag, detector gaps, soft-X-ray absorption, and disk drag. These are large enough that a timing fit alone can be non-identifying.
+
+**Falsification rule.** On an untouched monitoring segment, reject the specified orbital-impact model if no one orbital phase/precession trajectory predicts both event families within the measured timing errors while a disk-state model predicts the held-out times better. A timing fit without independent orbital evidence does not establish a new mechanism. The existing primary record already contains orbital and disk hypotheses, so this candidate does not pass the originality gate here.
+
+## Candidate 2 — abrupt cosmogenic-isotope excursions (“Miyake events”)
+
+**Phenomenon.** Abrupt increases in atmospheric radiocarbon recorded in annual tree rings, with other cosmogenic isotopes in ice cores sometimes available.
+
+**Observable.** Joint, annual production histories for `14C`, `10Be`, and `36Cl`, with each proxy's atmospheric, carbon-cycle, and archive response modeled separately.
+
+**Quantitative prediction.** For species `i`, the measured proxy is modeled as `y_i(t) = ∫∫ Y_i(E, λ) Φ(E,t') K_i(t−t') dE dt'`, where `Y_i` is the production yield, `Φ` is incident-particle flux, `λ` is geomagnetic latitude, and `K_i` is the archive/transport response. A solar-proton event and a photon-dominated transient predict different joint isotope ratios and latitude profiles. An isotropic galactic-particle enhancement predicts a different temporal/latitude pattern again.
+
+**Nuisance assumptions.** Tree species and carbon allocation, stratosphere-to-troposphere exchange, ice-core deposition/transport, dating uncertainty, geomagnetic cutoff, and the unknown incident spectrum.
+
+**Falsification rule.** Reject a specified solar-proton spectrum only if no single physically allowed spectrum and transfer model fits all measured isotope profiles within their archived errors. A `14C`-only fit or a fitted duration is not causal identification. The selected 2024 primary study already attributes one event to solar particles and explicitly models carbon-cycle smoothing; no novel source mechanism is established by this screen.
+
+## Candidate 3 — temporal changes in Earth's inner-core seismic waveforms
+
+**Phenomenon.** Repeating earthquakes have produced changing and sometimes recovering PKPdf/PKiKP waveforms. Alternatives include rigid inner-core differential rotation, local boundary change, and changing scatterers below the boundary. The recent published data are exploratory; the test below targets an independent station set.
+
+### A. Prospective waveform test: rigid rotation versus spatially local change
+
+**Observable.** For every preselected repeating-event pair and every preselected station with continuous waveform coverage, compute (i) normalized cross-correlation of the PKPdf main phase and prespecified coda windows, (ii) separate PKiKP reflection-window correlation/amplitude, and (iii) the same measures for a non-inner-core reference phase. Correct source-relative time/location and instrument response using the published event catalogue and metadata; do not select stations after looking at PKPdf outcomes.
+
+**Alternatives.**
+
+1. `H_rot`: stable inner-core heterogeneity sampled by one rigid differential-rotation history `θ(t)`. A single `θ(t)` must predict the recovery times and similarity pattern across all azimuthally separated station groups.
+2. `H_patch`: spatially local, time-varying boundary structure. Stations whose PKPdf/PKiKP sensitivity footprints are disjoint may change or recover asynchronously; a single `θ(t)` will leave structured, station-specific residuals.
+3. `H_scatter`: time-varying scatterers below the boundary. PKPdf coda changes without corresponding PKiKP reflection changes are allowed; this does not imply surface motion.
+
+**Quantitative prediction.** Under `H_rot`, for a stable scatterer at inner-core radius `r`, a rotation-rate history gives a common displacement `Δs(t) = r Δθ(t)` and must yield the same predicted waveform-recovery times across independent stations after ray geometry is accounted for. Under `H_patch`, correlation changes are indexed by the ICB sensitivity footprint and can be asynchronous between nonoverlapping footprints. `PKiKP` is included because it reflects at the ICB whereas `PKPdf` penetrates the inner core; their differential behavior is the direct boundary-versus-interior discriminator.
+
+**Falsification rule.** Freeze station/event inclusion, windows, preprocessing, correlation metric, covariance estimate, and a held-out station split before downloading waveform values. Reject `H_rot` only if its one-history model misses a held-out array by more than the 99% predictive interval on at least two independent event pairs, while a footprint-local model predicts the held-out data without adding post hoc change locations. Reject a boundary-change interpretation if the held-out changes are confined to PKPdf coda and are absent from PKiKP/reflection-sensitive windows at the predeclared detection limit. A failed rigid-rotation model does not prove a specific inner-core mechanism.
+
+**Nuisance assumptions.** Repeating-event relocation, focal-mechanism stability, station clock and instrument response, mantle-path repeatability, array stacking, event selection, and correlation-window multiplicity. Use non-inner-core phases as negative controls. Treat each station/event pair as the independent unit, not each sampled waveform point.
+
+### B. Physical viability gate for the two proposed local-change mechanisms
+
+The paper's waveform simulations identify a *model-compatible* topographic relief scale, not a direct measurement of topography. For a specific phase-boundary model with relief rate `h_dot`, density `ρ`, and latent heat `L`, the minimum latent-heat flux is `q_L = ρ L h_dot`. Using the paper's reported `h_dot = 0.1–1 km/yr` and conservative core values `ρ ≈ 1.2×10^4 kg m^-3`, `L ≈ 0.75 MJ kg^-1`, the prediction is `q_L ≈ 3×10^4–3×10^5 W m^-2`. This mechanism fails a heat-only gate if independently justified local heat-flux limits are below that range; chemical partitioning must then be modeled as a distinct energy/composition source, not silently counted as heat.
+
+For viscous deformation, the paper's reference Maxwell stress is `τ_B = B_0 δB/μ_0` (with `B_0 = δB = 10 mT`, about `80 Pa`). The paper's reported compatible relief/rate is about `h ≥ 1.5 km` and `0.1–1 km/yr` on lateral scales `1–30 km`. A first-principles force balance must include gravitational/phase-boundary restoring stress of order `Δρ g h` and the viscous relaxation of a patch. The prospective calculation will use a PREM-consistent `Δρ` and `g`, propagate uncertainty in `λ`, `η`, and magnetic stress, and require a single parameter set to satisfy both (i) the observed deformation rate and (ii) survival/recovery time. Reject the reference deformation mechanism if the stress needed to support its relief exceeds the independently permitted magnetic traction by more than a factor 100 over all preregistered parameter ranges. This is a model falsifier, not evidence for another mechanism.
+
+**Causal attribution gate.** Even a positive `H_patch` waveform test does not distinguish viscous deformation, melting/freezing, compositional change, or a changing subsurface scatterer. A foundational mechanism claim requires an independent physical signature—e.g., a predicted relation between phase-specific seismic changes and magnetic/thermochemical forcing—with its sign, lag, and spatial scale fixed before the comparison. That signature is not currently identified, so this candidate cannot yet be selected as a discovery.
+
+## Selection rule
+
+Select no candidate unless one physical mechanism (not only a model family) survives its quantitative falsification test, has a consequence beyond a fitted curve or standard-law bound, and is identified by accessible primary evidence against the named alternatives. If the inner-core waveform data only reject rigid rotation while leaving boundary motion, interior scattering, viscosity, melting, and composition degenerate, report that as a useful exclusion and pivot rather than claiming a discovery.

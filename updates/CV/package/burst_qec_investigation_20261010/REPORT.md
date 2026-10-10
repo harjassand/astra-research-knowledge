@@ -1,0 +1,100 @@
+# Correlated burst noise and scalable quantum computation
+
+**Date:** 2026-10-10 UTC  
+**Result:** No original error-correction architecture or physical protocol survived the novelty and resource screen. This is a bounded research result, not an exhaustive patent search or a claim that correlated-noise QEC is solved.
+
+## Decision
+
+The physically relevant obstacle is real. In a 72-qubit gap-engineered superconducting array, rare correlated events limited a repetition-code logical error floor. A 2026 primary experiment then identified a major component: quasiparticle-induced, spatially nonuniform frequency shifts of up to about 3 MHz that persist for about 1 ms, with an initial relaxation burst. The same work already modified the repetition-code schedule with echoing and substantially reduced the phase-induced detection rise. A newer materials experiment also reports a niobium transmon with no resolvable quasiparticle frequency shift under its tested optical illumination range. These are strong research directions, but they are existing primary results and do not establish scalable universal fault tolerance.
+
+I compared four materially different approaches: (1) spacetime codes and placement/interleaving for bounded local bursts; (2) collective-noise-free encodings; (3) circuit-level echo and online phase tracking; and (4) materials, phonon, quasiparticle, and module isolation. None provides a new capability beyond existing mechanisms once the complete hardware and noise contract is charged. No candidate merits escalation as an original invention.
+
+## Native hardware and noise contract used for screening
+
+The representative platform is the measured 72-qubit Willow array: aluminum frequency-tunable transmons on silicon, with nearest-neighbor connectivity, individually controlled, measured, and reset qubits, and CZ entangling gates. The study uses a 60-qubit subset. Its phase-flip repetition-code round is 944 ns; the parity ancilla maps neighboring-data X parity to a measurement, and the interval between the stabilizer Hadamards is 74 ns. Separate coherence monitors run Ramsey, echo, and T1 probes in a 5-µs repeated sequence; the interleaved QEC experiment also places monitor qubits adjacent to the code. The tested echo edit recenters data-qubit dynamical decoupling around data-qubit leakage removal and adds a π pulse between the measure-qubit Hadamards. This is a repetition-code protocol, and the paper explicitly cautions it may not transfer directly to other codes. The circuit-cycle time, CZ and single-qubit layers, pulse duration and error, measurement/reset, leakage removal, couplers, dedicated monitor qubits, decoder latency, calibration, and any added idle time are charged. If the extra pulse does not fit in an existing slot, its added cycle time and resulting idle noise are also charged. No all-to-all gates, perfect burst labels, or free calibration are assumed.
+
+The empirical QP event model used only as motivation is:
+
+- an impact produces a spatially varying QP population and hence qubit frequency shifts;
+- after the initial transient, measured shifts are approximately quasi-static on a QEC round and recover over roughly a millisecond;
+- the initial energy-relaxation burst lasts on the order of 10 µs in the gap-engineered device;
+- usual local gate, readout, reset, leakage, and control errors continue during the event.
+
+The observation that one event affects many qubits is empirical. The following are assumptions, not established scaling laws: event centers form a stationary point process; spatial extent has a finite tail as device size grows; the event-rate density remains bounded; and a future material stack preserves its lab-scale response in a large processor. The currently available experiments do not prove these assumptions for a utility-scale device.
+
+## Mechanisms compared
+
+| Mechanism | What it can address | Native cost or boundary | Screen result |
+|---|---|---|---|
+| Interleave data or use topological/single-shot QEC | Bounded spatial clusters and arbitrary time correlation when the noise remains spatially local stochastic | Larger physical footprint/routing; syndrome and decoder costs remain; a cluster spanning a logical operator can fail | Existing threshold machinery already covers the bounded-local regime; not a new architecture |
+| Decoherence-free subspace/subsystem | Exact collective noise algebra, such as a common dephasing generator | Requires exact symmetry and gates that preserve the encoded sector; gradients and local faults remain | Universal DFS computation with two-body interactions is established prior art |
+| Circuit echo / online phase tracking | Slowly varying frequency shifts and some coherent phase accumulation | Echo pulses and gate-symmetrization faults, finite pulse duration, measurements, and monitor resources must be charged; it cannot undo T1 events already incurred | The 2026 burst paper already tests echo in its repetition code; direct extension to a universal FT code remains unproved |
+| Materials and module isolation | Suppress QP transport or keep impact-induced errors localized to a module | Material stack, die area, thermalization, couplers/interconnects, and residual failure rates; no QEC-scale demonstration yet | Promising hardware evidence, but Nb/QP landscape engineering and modular localization are already published; no distinct architecture acquired |
+
+Relevant primaries include [Bombín’s threshold for spatially local stochastic noise with arbitrary temporal correlations](https://doi.org/10.1103/PhysRevX.6.041034), [Aharonov–Kitaev–Preskill’s threshold under sufficiently weak algebraically decaying spatial correlations](https://doi.org/10.1103/PhysRevLett.96.050504), and the established [universal fault-tolerant DFS construction](https://doi.org/10.1103/PhysRevA.63.042307). These results do not cover an unbounded, constant-probability global destruction event.
+
+### The most concrete protocol candidate: echo-symmetrized stabilizer cycles
+
+For a slowly changing detuning δf(t), an ideal midpoint π echo changes the accumulated phase from (2\pi\int_0^T \delta f(t)dt) to
+
+\[
+2\pi\left(\int_0^{T/2}\delta f(t)dt-\int_{T/2}^{T}\delta f(t)dt\right).
+\]
+
+For the empirically motivated recovery profile \(\delta f(t)=\delta f_0/(1+t/\tau)\), with \(\delta f_0=2\) MHz, \(\tau=1\) ms, and \(T=1\) µs, the dependency-free native calculation gives 12.5601 rad without echo and 0.00313845 rad with an instantaneous, noiseless echo (an ideal phase ratio of about 4,002). This supports echo as a strong *known* mitigation for the slow component. It does not model the onset transient, finite pulse error, CZ-gate distortion, measurement/reset, T1 relaxation, leakage, or universal-gate gadgets.
+
+The published experiment already tested the relevant effect: under a controlled spatially uniform 2-MHz shift, its original repetition-code circuit showed about a 35% detection-probability increase, reduced to about 5% after the DQLR-aware schedule edit and echo pulse. At a controlled −1-MHz shift, the paper reports a rise of 17% above background reduced to 2%. Radiation-induced detection bursts became much shorter and were then dominated by residual T1 errors. The pulse is inserted between measure-qubit Hadamards; the schedule modification explicitly addresses phase acquired during leakage removal. Therefore the direct candidate is prior art. A general echo-transparent surface-code or qLDPC syndrome gadget could be an engineering project, but no new fault-tolerant theorem or resource advantage follows from the ideal integral.
+
+### Materials and modular hardware
+
+Two recent experimental results are important boundary conditions, not inventions of this pass:
+
+- [Modular quantum processor experiment](https://arxiv.org/abs/2505.15919): a motherboard and two 2-qubit daughterboard modules showed over 85% coincidence within a module and about 2% between modules for the measured decay events. This supports physical localization in that device. The sample is four qubits; it is not a demonstration of an outer fault-tolerant code across modules.
+- [Quasiparticle-protected niobium transmon](https://arxiv.org/abs/2610.12227): a Nb/Au island and ground plane with gap-engineered Al junctions withstood more than ten times the near-infrared optical power before excess relaxation appeared, and no QP frequency shift was resolved through the tested range. The same data show increased dephasing and SPAM error under illumination. This is a single-device optical-illumination test, not a cosmic-ray-burst or repeated-QEC test.
+
+Combining either material stack with module-level coding would be a sensible future hardware direction, but combining published QP trapping, gap engineering, modular isolation, and an outer code is not a new error-correction mechanism by itself. A credible advance would need to show a new asymptotic bound or a measured scaling advantage after charging module links, QP recovery, gate/readout faults, and code overhead.
+
+## Exact obstruction: global destructive events
+
+Let an encoder store $k$ logical qubits in any number $n$ of physical qubits. In each cycle, independently, suppose that with probability $q$ the channel applies the global replacer
+
+\[
+\mathcal R_n(\rho)=I/2^n\;\mathrm{tr}(\rho),
+\]
+
+and otherwise acts arbitrarily. The event branch erases all input-reference entanglement. After any recovery, the reference has state $I/2^k$ and the output is independent of it, so the branch entanglement fidelity with the $k$-qubit maximally entangled target is exactly $4^{-k}$. Consequently, for $T$ independent cycles,
+
+\[
+F_e\le (1-q)^T+\bigl(1-(1-q)^T\bigr)4^{-k}.
+\]
+
+This uses a normalized Choi state, not an operator-norm bound standing in for state weight. No code or decoder can suppress this term. If $q>0$ is fixed per cycle, the no-event branch vanishes exponentially with runtime. A scalable guarantee must therefore change the physical event probability, spatial support, or damage channel; it cannot be obtained by a decoder alone.
+
+For a code of distance $d$, an arbitrary unknown burst supported on at most $m\le\lfloor(d-1)/2\rfloor$ data qubits is already within ordinary distance-based correction. If the affected support is known, erasure correction can cover up to $d-1$ erasures. These facts do not cover unknown events with support growing to a logical operator or a global replacer. Requiring a syndrome-derived burst flag and then calling the affected qubits erasures would charge the flag circuit, false positives/negatives, delay, and the residual errors during the flag delay.
+
+The exact boundary is thus:
+
+1. **Bounded spatial support and sufficient event rarity:** existing QEC/threshold techniques can apply, subject to their hypotheses and full circuit noise.
+2. **Unbounded global damage with nonvanishing probability:** information-theoretically uncorrectable by any architecture.
+3. **Intermediate finite but large clusters or long-lived drifts:** physically important, but their scale-dependent event-tail law is not yet established well enough to justify a new universal architecture. Material suppression, echo, local burst sensors, and module isolation each address parts already present in primary work.
+
+The burst evidence itself is stronger than an assumed IID model: 2025 experiments attribute some superconducting-array QP bursts to cosmic-ray muons and gamma rays; the 2026 gap-engineered-array study measures phase as well as relaxation errors; and a five-qubit silicon array reports global magnetic drift alongside short-range, electrically tunable charge-noise correlation. None justifies arbitrary global correctability.
+
+## Pivot: a different computational-capability barrier
+
+Since no original correlated-noise mechanism survived, I pivoted to **closed-loop latency for universal non-Clifford fault-tolerant computation**. This is distinct from physical burst mitigation: the question is whether a universal logical computation can continue when syndrome decoding and controller feedback are slower than QEC rounds.
+
+Contract for that barrier: stabilizer measurements arrive every \(\tau_{QEC}\); an online decoder/controller decision arrives after latency \(L\); Clifford frame updates may be tracked in software, but a non-Clifford injection can require a decoding-dependent correction before the next branch. If computation pauses, charge idle noise and lost throughput; if it continues, charge buffered logical/storage resources, extra code distance, and magic-state/factory capacity. No instantaneous decoder or free feed-forward is assumed.
+
+This pivot also does not yield a new invention here. Slow-diagnostic Pauli/Clifford-frame computation was established by [Chamberland, Iyer, and Poulin (2018)](https://quantum-journal.org/papers/q-2018-01-04-43/); parallel-window decoding is established by [Skoric et al. (2023)](https://doi.org/10.1038/s41467-023-42482-1); and a 2026 primary system study derives controller-decoder requirements in the tens-of-microseconds range ([Kurman et al. (2026)](https://quantum-journal.org/papers/q-2026-07-22-2170/)). The distinct open engineering question is whether a tail-latency-robust, universal non-Clifford schedule can keep the extra *physical* storage and factory overhead sublinear in $L/\tau_{QEC}$ under measured noise. This pass states that pivot and boundary; it does not claim a solution or run a latency benchmark.
+
+## Reproducibility and scope
+
+- Run `python3 analysis.py` from this directory. It uses only the Python standard library and regenerates `results.json`.
+- `results.json` records the global-event fidelity bounds and the ideal echo integral. The tests are exact formula checks and a modest analytic computation; they are not physical-device validation.
+- The Astra repository was pinned at `f20b87499f0a44bfffeb182d6c162a5e4716cb39`. Astra material was not used as evidence or a premise for this invention screen.
+- No device access, physical experiment, external job, purchase, researcher contact, publication, push, merge, or task creation occurred.
+
+## Source and revision records
+
+See [`SOURCES.md`](SOURCES.md) and [`manifest.json`](manifest.json). Current primary sources were checked on 2026-10-10; AI-generated manuscripts and marketing summaries were not used as evidence.

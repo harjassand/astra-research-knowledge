@@ -1,0 +1,43 @@
+# Source pins and provenance
+
+Accessed 2026-10-10 UTC. This is the short list of sources actually consulted for this screen, not a literature survey.
+
+## Astra repository
+
+Repository revision: `f20b87499f0a44bfffeb182d6c162a5e4716cb39`.
+
+- `AGENTS.md` and `00_START_HERE.txt`: retrieval/use protocol and evidence boundaries.
+- `updates/CQ/package/Astra_Independent_Investigations_2026-10-10_0538/science_continuation/fresh_natural_20261010/README.md`: closed screens on neutron lifetime, electrification, and SrTiO3 phonon Hall transport.
+- `updates/CR/package/Astra_Independent_Closures_2026-10-10_0638/science_continuation/independent_causal_20261010/README.md`: closed screens on electrification, ferroptotic waves, and pulsed nickel catalysis.
+- `updates/CP/README.md`: selective pointer to prior isotopic/meteorite work; no underlying dossier was reopened.
+
+These records were used only to avoid repeating closed directions. The Astra repository itself was not edited.
+
+## Primary scientific sources opened
+
+1. R. Arcodia et al. (2021), “X-ray quasi-periodic eruptions from two previously quiescent galaxies,” *Nature* 592, 704–707. DOI: [10.1038/s41586-021-03394-6](https://doi.org/10.1038/s41586-021-03394-6). The paper states that disk-instability models considered then did not match the observed profiles and raises an orbiting compact object; its XMM-Newton and NICER data are public through mission archives. No event files were downloaded.
+2. I. P. Panyushkina et al. (2024), “The timing of the ca-660 BCE Miyake solar-proton event constrained to between 664 and 663 BCE,” *Communications Earth & Environment* 5, 454. DOI: [10.1038/s43247-024-01618-x](https://doi.org/10.1038/s43247-024-01618-x). New larch-ring radiocarbon measurements and a 22-box carbon-cycle model are reported; no raw isotope tables were downloaded.
+3. X. Zhang and L. Wen (2026), “Episodic Change, Quiescence, and Recovery of Earth's Inner Core Surface,” *Journal of Geophysical Research: Solid Earth* 131, e2026JB034595. DOI: [10.1029/2026JB034595](https://doi.org/10.1029/2026JB034595). This is the primary source for the 2026 waveform study and its mechanism proposals. It states that its data use PKPdf/PKiKP records from the ILAR and YKAR arrays, and that temporal subsurface scatterers are not excluded by the available coverage.
+4. X. Zhang and L. Wen (2026), “Data for ‘Episodic change, quiescence and recovery of Earth's inner core surface’” [Zenodo record 19625711](https://doi.org/10.5281/zenodo.19625711). The Zenodo search record identifies public raw seismic data and the JGR article cites it. Direct record/API access timed out or returned a 403 from the execution network during this task, so no payload, file inventory, or hash was acquired. The corresponding raw network sources named by the paper are [EarthScope Data Management Center](https://service.iris.edu/) and the [Canadian National Seismograph Network](https://earthquakescanada.nrcan.gc.ca/stndon/CNSN-RNSC/index-en.php).
+
+## Raw-data status
+
+No primary waveform, X-ray event, or isotope data file was acquired, so there are no raw-data hashes to report. The execution container's direct public-network request for the Zenodo API failed with `CONNECT tunnel failed, response 403`; the web reader timed out on the Zenodo record. Article text and the record's search-indexed metadata were accessible. Do not describe the prospective waveform test as run.
+
+## Preanalysis freeze
+
+`PREANALYSIS.md` SHA-256: `d30ddd134300d51205c6fe4b12bc71515fb4a80176bc5f8ebcb465404a8d1ed6`.
+
+## Additional primary sources opened after the original screen
+
+5. A. K. Sweetman et al. (2024), “Evidence of dark oxygen production at the abyssal seafloor,” *Nature Geoscience* 17, 737–739. DOI: [10.1038/s41561-024-01480-8](https://doi.org/10.1038/s41561-024-01480-8). The publisher paper was read via its PubMed Central full-text copy, [PMC13061637](https://pmc.ncbi.nlm.nih.gov/articles/PMC13061637/). It reports oxygen increases in chamber measurements and ex-situ incubations, a maximum nodule-surface probe potential of 0.95 V, and the authors' proposed seawater-electrolysis hypothesis. The same paper states that water oxidation at the site requires 1.23 V plus an estimated ~0.37 V overpotential, and describes unresolved questions about energy source and mechanism. Its source-data XLSX files and Dryad deposit are linked, but the browser file links returned a PMC anti-bot page and the execution network returned HTTP 403 for Dryad; no raw source-data file was acquired or hashed.
+6. P. Downes et al. (2025), “Extraordinary claims require extraordinary evidence: evaluating nodule-associated dark oxygen production,” *Frontiers in Marine Science* 12, 1721853. DOI: [10.3389/fmars.2025.1721853](https://doi.org/10.3389/fmars.2025.1721853). This peer-reviewed critique was read as an independent argument about the claimed oxygen measurements and electrolysis mechanism. Its author disclosures include employees of The Metals Company and other commercial interests. It is treated as a contested analysis, not as a substitute for raw primary records.
+7. Crossref Crossmark record for the Sweetman paper, [document status](https://crossmark.crossref.org/dialog/?doi=10.1038%2Fs41561-024-01480-8), read 2026-10-10. It records an Editor's Note added 2026-04-08: aspects of the paper are under editorial consideration; no final editorial response is listed in the record.
+8. A. Cao and B. Romanowicz (2004), “Constraints on density and shear velocity contrasts at the inner core boundary,” *Geophysical Journal International* 157, 1146–1151. Primary article PDF: [NCEDC copy](https://ncedc.org/ftp/outgoing/barbara/REPRINTS/cao_gji04.pdf). It reports a 0.6–0.9 g cm−3 range for the ICB density contrast under its stated data selection and cites PREM's 0.60 g cm−3 value. Used only for the conditional inner-core restoring-stress scale noted in `PREANALYSIS.md`.
+9. A. M. Dziewonski and D. L. Anderson (1981), “Preliminary reference Earth model,” *Physics of the Earth and Planetary Interiors* 25, 297–356. [Primary article PDF](https://web-static-aws.seas.harvard.edu/climate/eli/Courses/EPS281r/Sources/Earth-interior-structure-seismology/more/Dziewonski-Anderson-1981.pdf). Consulted for provenance of PREM, not for a new inference.
+10. J. Arkani-Hamed (2017), “Formation of a solid inner core during the accretion of Earth,” *Journal of Geophysical Research: Solid Earth*, DOI: [10.1002/2016JB013601](https://doi.org/10.1002/2016JB013601). The article was found via the primary publisher search result; it uses 500–750 kJ kg−1 as the core latent-heat interval. Used only in the conditional phase-boundary heat-flux scale in `PREANALYSIS.md`.
+11. C. R. Davies (2014), “The strength of gravitational core–mantle coupling,” *Geophysical Research Letters*, DOI: [10.1002/2014GL059836](https://doi.org/10.1002/2014GL059836). The primary-source search snippet stated `g_i ≈ 4.4 m s−2` at the ICB; the article page returned HTTP 403 and was not opened. This value is therefore used only as a rounded conditional scale in `DERIVATIONS.md`, not as an independently checked model output.
+
+## Additional preanalysis freeze
+
+`DARK_OXYGEN_PREANALYSIS.md` SHA-256: `019d9bda6cd04bd5aa49967ee835b3c7c343fdc03c7f9787c456e638cd1cba2c`. The dark-oxygen article, its source-data attachments, and the peer-reviewed critique were opened only after this hash was recorded.
