@@ -1,0 +1,322 @@
+# Amplifier EPnI: route check and reproducible spectrum obstruction
+
+Research date: 2026-10-10. This directory records a narrow investigation of
+the unrestricted independent-input bosonic amplifier entropy photon-number
+inequality (EPnI), with an exact test of a proposed stronger output-spectrum
+route. It is not an external correctness or novelty certification.
+
+## Exact target and current evidence
+
+For a finite number $n\geq1$ of modes, let the two input groups be in the
+independent product state \(\rho_A\otimes\rho_B\). Each group can have
+arbitrary internal multimode correlations/entanglement. The retained output
+of the two-mode squeezer is described by
+\[
+ c_j=\sqrt G\,a_j+\sqrt{G-1}\,b_j^*,\qquad G>1.
+\]
+For \(g(x)=(x+1)\ln(x+1)-x\ln x\), set
+\[
+ \mathcal N(\rho)=g^{-1}(S(\rho)/n).
+\]
+The unrestricted target is
+\[
+ \mathcal N(\gamma_G(\rho_A,\rho_B))
+ \geq G\mathcal N(\rho_A)+(G-1)(\mathcal N(\rho_B)+1),
+\]
+for all finite-mean-energy independent input groups. I.i.d. thermal products
+\(\tau_{N_A}^{\otimes n}\otimes\tau_{N_B}^{\otimes n}\) attain equality.
+This is the squeezing/amplifier branch of the EPnI, not a
+claim that only Gaussian inputs are being varied.
+
+The 2018 primary review states the EPnI for arbitrary $n$-mode inputs and
+the amplifier/squeezing gain $G\geq1$, and records the proven cases in its
+scope as two Gaussian inputs and the one-mode ($n=1$), fixed thermal-
+environment minimum-output-entropy case. A later OpenAI Math result 273
+claims a finite-energy multimode proof for the beam-splitter branch
+($0\leq\eta\leq1$), including within-group mode entanglement. This is a
+source claim, not independent certification. The linked
+`ComparatorChallenges/EntropyPhotonNumber.lean` file states the theorem but
+ends that file's proof with `sorry`; this records the status of that comparator
+file only and does not establish whether a separate completed formalization
+exists. Neither that result's stated scope nor
+the 2018 result covers the active amplifier/squeezing branch $G>1$ studied
+here. A nearby 2026 paper on equality in the bosonic **quantum entropy power
+inequality** concerns the beam-splitter qEPI equality class, not the stronger
+EPnI.
+
+The 2007/2008 primary EPnI papers show that the broad beam-splitter EPnI
+implies the then-stated thermal-channel and broadcast-channel minimum-output-
+entropy conjectures and their capacity formulas. A 2008 paper also derives
+conditional privacy-capacity and lossy-channel quantum-capacity formulas from
+a separate minimum-output-entropy conjecture and links that conjecture to
+EPnI. These are conditional implications in those papers, not a claim that
+all those capacities remain unknown today or that the amplifier-only branch
+alone proves every beam-splitter consequence.
+
+## Repository pin and entry point
+
+The Astra checkout actually read is `/workspace/astra-research-knowledge` at
+Git revision
+`f20b87499f0a44bfffeb182d6c162a5e4716cb39`; `git status --short` was empty.
+Its current entry point was `00_START_HERE.txt`, which instructs task-first
+reading and warns that source manuscripts, finite checks, and generated
+records do not certify correctness or novelty.
+
+The directly relevant source-complete candidate is
+`updates/BY/package/astra_ultra_campaign/amplifier_proof_candidate.tex`,
+SHA-256
+`cfdbb6a0ca85861788d39c8843ce7533a641633c4cabab8070ac09b9d41d170d`.
+It presents the full finite-mode, finite-energy, independent-input target
+above via signed thermal interpolation and a weighted Fock-domain/generator
+bridge. It explicitly labels itself a proof candidate; it is not formally
+checked or externally validated. Its header records an earlier Astra read
+revision, so the controlling source pin for this inspection is the checkout
+revision above, not the embedded historical provenance string. The parent
+agent is independently reconstructing the analytic bridge. No proof of that
+candidate is asserted here.
+
+### Exact open verification gate and proposed weighted bridge
+
+The pinned N557 dossier's pass condition is:
+
+> “Independently reconstruct the corrected multiplier-invariant four-weight interpolation, creation-port orientation, weighted squeezing domains and generator identities, entropy/log pairings, regularized finite-support minima, limit order, thermal recurrence and extension to arbitrary finite-energy inputs for each finite n and G>1.”
+
+The candidate gives the following hypotheses and bridge; this is what needs
+checking, rather than an absent theorem statement. For finite $q$ modes,
+$U$ is a finite composition of passive rotations and finite two-mode
+squeezers, with Bogoliubov coefficients
+$U^*a_iU=\sum_l(\alpha_{il}a_l+\beta_{il}a_l^*)$. It claims for every
+integer $k\geq0$ a graph estimate
+$\|W^{k/2}U\psi\|\leq C_{q,k,L}\|W^{k/2}\psi\|$ on the full domain
+$D(W^{k/2})$, and likewise for $U^*$. For every nonnegative half-integer
+$p$, it then defines
+$\mathcal B_p=\{X:W^pXW^p\text{ is trace class}\}$ and claims
+\[
+ \|\operatorname{Tr}_{\rm env}(UXU^*)\|_p\leq\|K\|^2\|X\|_p,
+ \qquad K=(W_0^p\otimes I)UW_{\rm tot}^{-p}.
+\]
+
+At the regularized variational minima, the candidate assumes/derives finite
+seventh number moments, hence $\delta_s=\mathcal L_{r_s}\rho_s\in\mathcal
+B_2$ and zero trace. Its asserted active-channel covariance identity is
+$\delta_0=(1-\theta)[\Phi_A(\delta_A)+\Phi_B(\delta_B)]$. The proposed
+justification decomposes the thermal generator into its symmetric double-
+commutator part $H$ and antisymmetric part $F$; invariance of the total $F$
+under the finite Bogoliubov map and the signed thermal balances are supposed
+to yield the retained generator $\mathcal L_{r_0}$. It first tests this
+weakly on number cutoffs/finite ladder polynomials or Weyl operators, then
+approximates the actual joint product state in $\mathcal B_3$; the weighted
+channel bound at orders three and two is claimed to give convergence in
+$\mathcal B_2$, and separating Weyl tests identify the trace-class limits.
+The input-side hypotheses in that passage are finite mode count, finite
+fixed gain, independent product across the two groups, and the finite-seventh-
+moment minimizers produced by the $\zeta\operatorname{Tr}\rho W^4$ penalty.
+The candidate's own exact epistemic statement is that the remaining gate is
+“independent end-to-end validation of this reconstruction, including its
+source interpolation theorem and all domain passages.” Its full open-gate
+pass condition is recorded in `frontier/dossiers/N557.txt` in the pinned
+checkout.
+
+### Reconciliation with OpenAI Math result 273
+
+At OpenAI Math `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`, `lean/docs/273.md`
+claims the beam-splitter EPnI for independent finite-energy inputs, every
+finite positive mode count, and arbitrary within-group entanglement. This
+postdates the 2018 literature snapshot; my earlier wording that the whole
+EPnI remained open needed this qualification. Result 273 is specifically the
+passive beam-splitter range $0\leq\eta\leq1$. It does not claim the active
+amplifier/squeezer target $G>1$ in N557. The linked comparator's theorem
+statement matches its documentation scope. In the linked
+`ComparatorChallenges/EntropyPhotonNumber.lean` file, the proof body ends in
+`sorry`; this describes that file only and does not establish whether a
+separate completed formalization exists. The documentation is a source claim,
+not independent certification. The accompanying paper may contain a written
+argument; I did not audit it. The docs themselves say the thermal-
+attenuator MOE and broadcast-capacity consequences are outside the selected
+formalized inequality.
+
+## Exact obstruction to thermal-output majorization
+
+One tempting route is the strong spectral claim that the thermal output
+matched to the input entropy photon numbers majorizes every output spectrum.
+That would immediately imply the von Neumann entropy lower bound by Schur
+concavity. The following exact, finite-energy counterexample rules out this
+universal claim using a **mixed** input state. It does **not** address whether
+the same majorization holds when both inputs are pure product states, and it
+does **not** disprove EPnI.
+
+Let
+\[
+ h(a)=-a\ln a-(1-a)\ln(1-a),
+\]
+and define \(\alpha\) to be the unique solution in \((1/2,3/5)\) of
+\[
+ h(\alpha)+(1-\alpha)\ln5=\ln4.
+\]
+Existence and uniqueness are exact. At $a=1/2$, the left side is
+\(\ln2+\tfrac12\ln5>\ln4\), because \(20>16\). At $a=3/5$, it is
+less than \(\ln4\), because the inequality is equivalent to
+\(5^7<3^3 2^{12}\), i.e. \(78125<110592\). On this interval the derivative
+is \(\ln((1-a)/(5a))<0\). Therefore the root exists uniquely and
+\(\alpha>1/2\).
+
+Take the one-mode state
+\[
+ \rho_A=\operatorname{diag}\left(\alpha,
+      \frac{1-\alpha}{5},\frac{1-\alpha}{5},\frac{1-\alpha}{5},
+      \frac{1-\alpha}{5},\frac{1-\alpha}{5}\right)
+\]
+on Fock levels $0,\ldots,5$, and \(\rho_B=|0\rangle\langle0|\).
+Then \(S(\rho_A)=\ln4=g(1)\), so \(\mathcal N(\rho_A)=1\), while
+\(\mathcal N(\rho_B)=0\). The state has finite support and mean photon
+number \(3(1-\alpha)<3/2\); no energy limiting procedure is used.
+
+For a quantum-limited amplifier, the Fock-state transition law is
+\[
+ |m\rangle\langle m|\longmapsto
+ \sum_{k\geq0}{m+k\choose k}
+ \frac{(G-1)^k}{G^{m+k+1}}|m+k\rangle\langle m+k|.
+\]
+Thus its output vacuum eigenvalue is exactly \(\alpha/G\): only the input
+vacuum term contributes. The entropy-matched thermal comparison output has
+mean
+\[
+ M=G\cdot1+(G-1)(0+1)=2G-1,
+\]
+and largest eigenvalue \(1/(M+1)=1/(2G)\). Since \(\alpha>1/2\),
+\[
+ \lambda_{\max}(\gamma_G)\geq\frac{\alpha}{G}
+ >\frac{1}{2G}=\lambda_{\max}(\tau_{2G-1}).
+\]
+So the proposed universal thermal-majorizes-output claim fails at Ky-Fan
+$k=1$, for every $G>1$. This closes the unrestricted majorization shortcut.
+It does not settle the pure-product-input majorization subquestion: the witness
+has mixed $\rho_A$, and the separate finite pure-Fock scan below found no
+witness within its finite range. It also says nothing against scalar von
+Neumann EPnI, because a larger top eigenvalue alone does not order
+Shannon/von Neumann entropies.
+
+The exact proof uses no cutoff, numerical precision, or empirical premise.
+`spectrum_counterexample.py` only displays a 90-digit decimal approximation
+to the root and gap. The script checks the endpoint integer certificates and
+bisects the strictly monotone scalar function with Python 3.12's standard
+`decimal` module.
+
+## Closest operator/convolution route and what it would prove
+
+The strongest nearby operator principle found is not new: De Palma, Trevisan,
+and Giovannetti's 2018 review formulates Conjecture V.16, the quantum sharp
+Young inequality. In their notation,
+\[
+ C_n(p,q,r,G)=\sup_{X,Y\ne0}
+ \frac{\|\mathcal B_G^{\otimes n}(X\otimes Y)\|_r}
+ {\|X\|_p\|Y\|_q},
+ \qquad C_n(p,q,r,G)=C_1(p,q,r,G)^n,
+\]
+with the supremum attained/restricted to thermal Gaussian inputs. Here
+\(\mathcal B_G\) is the two-port beam-splitter/squeezer map; the review
+conjectures the result for $G\geq0$, including $G>1$. This is a global
+Schatten-norm convolution inequality, stronger than a statement for pure
+inputs or diagonal states.
+
+If proved in the needed neighborhood of \((p,q,r)=(1,1,1)\), its Renyi
+entropy consequence can be parameterized as
+\[
+ S_r(\mathcal B_G^{\otimes n}(\rho_A\otimes\rho_B))
+ \geq \xi S_{p(r,\xi)}(\rho_A)+\zeta S_{q(r,\zeta)}(\rho_B)
+ -\frac{nr}{r-1}\ln C_1(p(r,\xi),q(r,\zeta),r,G),
+\]
+where \(p(r,\xi)=r/(r+\xi-\xi r)\) and $q(r,\zeta)$ is defined analogously.
+Taking \(r\downarrow1\), differentiating the sharp constant, and optimizing
+over \(\xi,\zeta\geq0\) gives the von Neumann lower bound; the review
+states that the Gaussian-saturated limiting bound is conjectured sharp and
+coincides with EPnI. Because the Schatten inequality accepts arbitrary
+positive trace-class (X,Y), its proof controls arbitrary mixed inputs in
+each multimode group and therefore addresses the unrestricted target, not
+just pure inputs. The remaining analytic work is the sharp global norm
+extremizer/multiplicativity theorem and a justified infinite-dimensional
+limit/differentiation under the finite-energy hypotheses.
+
+This route is a precise theorem target but not an original mechanism: it was
+already proposed in the 2018 literature. Existing Gaussian-channel
+extremality is materially narrower. The same review proves output majorization
+and MOE for a fixed Gaussian attenuator/amplifier with vacuum as the varying
+single input, and records one-mode Gaussian amplifier $p\to q$ extremality.
+Those results do not compare two independently varied input ports; the exact
+counterexample above also shows why a naive two-input thermal majorization
+upgrade is false. The thesis/Gaussian-covariance route likewise does not
+provide the unrestricted non-Gaussian theorem.
+
+## Native checks and cost
+
+1. Run `python spectrum_counterexample.py` for the decimal illustration of
+   the exact analytic witness. It uses standard-library decimal arithmetic,
+   90-digit context, and 320 bisection steps; there is no state truncation in
+   the mathematical witness.
+2. `fock_majorization.py` is a separate exact-Fraction diagnostic, retained
+   as history. It checks pure Fock input pairs $m,n\leq10$, six rational
+   gains, output indices through 80 and Ky-Fan prefixes through 24. It
+   examined 726 cases in 2.9 s on this environment and found no witness. This
+   finite search is not proof and is superseded by the analytic counterexample
+   above; its output was:
+
+   ```text
+   NO_WITNESS gains=[Fraction(5, 4), Fraction(6, 5), Fraction(3, 2), Fraction(2, 1), Fraction(3, 1), Fraction(5, 1)] inputs=0..10 each K=80 prefixes=1..24 cases=726
+   This finite search does not establish the majorization claim.
+   ```
+
+The user authorized local research files and modest native computation. No
+software was installed, no paid external compute was launched, and no remote
+repository state was altered. The mathematically decisive witness is exact;
+the unproved EPnI and the Astra proof candidate still require independent
+analytic scrutiny. Agent agreement, numerical screens, and AI-generated
+manuscripts are not external certification.
+
+SHA-256 pins for this evidence bundle at preparation time:
+
+| File | SHA-256 |
+|---|---|
+| `spectrum_counterexample.py` | `948fd65a65bfeb77333cee6cb6e4a8bdf03be8aaf127100d793adc00f6e21778` |
+| `spectrum_counterexample.output.txt` | `5d38f9134e565c436166b6c5ca0c943f53bc93c8dec2f237f07d9bf80dbaa22e` |
+| `fock_majorization.py` | `b1d241492718a47025f6311acf8b8a2521ce781c8dbcd748055efc6959234119` |
+| `fock_majorization.output.txt` | `4416b02b5933ed8e20357e38ac797218e5f3555cae2bf14e6ab7b3a896abe192` |
+
+## Primary source pins
+
+- Guha, Erkmen, Shapiro, *The Entropy Photon-Number Inequality and its
+  Consequences*, arXiv:0710.5666v2 (9 Nov 2007), especially the definitions
+  and EPnI / minimum-output-entropy implications in §§II–III:
+  <https://arxiv.org/html/0710.5666v2>.
+- Guha, Shapiro, Erkmen, *Capacity of the Bosonic Wiretap Channel and the
+  Entropy Photon-Number Inequality*, arXiv:0801.0841v1 (6 Jan 2008), including
+  its conditional private/quantum-capacity argument and EPnI implication:
+  <https://arxiv.org/html/0801.0841v1>.
+- De Palma, Trevisan, Giovannetti, *Gaussian optimizers for entropic
+  inequalities in quantum information*, arXiv:1803.02360v2 (21 Aug 2018),
+  Conjectures V.15/V.16 and equations (70)–(80):
+  <https://arxiv.org/html/1803.02360v2>.
+- De Palma, Mari, Giovannetti, *A generalization of the Entropy Power
+  Inequality to Bosonic Quantum Systems*, arXiv:1402.0404v2, proving the
+  weaker quantum EPI and discussing its gap from EPnI:
+  <https://arxiv.org/html/1402.0404v2>.
+- De Palma, *The entropy power inequality for quantum systems*, doctoral
+  thesis (2016; arXiv:1710.09395), for the status of Gaussian cases and
+  amplifier/beam-splitter qEPI:
+  <https://tesidottorato.depositolegale.it/bitstream/20.500.14242/123664/7/PhD-Thesis-De-Palma.pdf>.
+- Li, *Equality in the Bosonic Quantum Entropy Power Inequality*,
+  arXiv:2609.40061 (30 Sep 2026), a nearby qEPI equality result, not EPnI:
+  <https://arxiv.org/abs/2609.40061>.
+- OpenAI Math result 273, current `main`-branch scope claim for the finite-
+  energy multimode beam-splitter EPnI:
+  repository revision `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`:
+  <https://github.com/openai/math/blob/fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb/lean/docs/273.md>.
+  Its linked comparator declaration is
+  <https://github.com/openai/math/blob/fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb/lean/ComparatorChallenges/EntropyPhotonNumber.lean>;
+  in the linked comparator file, the theorem body ends in `sorry`; this
+  describes that file only and does not establish whether another completed
+  formalization exists. This source-level observation is not a mathematical
+  disproof of the accompanying paper.
+
+These are version-pinned primary sources by arXiv version identifiers. This
+directory records direct source URLs, not downloaded source snapshots or
+external certification.

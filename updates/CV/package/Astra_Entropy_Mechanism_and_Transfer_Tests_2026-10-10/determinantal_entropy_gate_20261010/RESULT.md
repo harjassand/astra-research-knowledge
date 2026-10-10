@@ -1,0 +1,143 @@
+# Determinantal entropy gate: scoped result
+
+Date: 2026-10-10. Scope: two-mode squeezing at gain (G>1), with two independent pure one-mode inputs. No entropy theorem, novelty, or priority claim is made.
+
+## Outcome
+
+The proposed order
+
+\[
+\det_F(I+t\rho)\geq \det_F(I+t\tau)\qquad(t\geq0)
+\]
+
+is **false** when both inputs are allowed to be arbitrary pure states. A finite-energy product-state counterexample is
+
+\[
+G=2,\quad t=1000,\quad
+f=g=\frac{|0\rangle+|3\rangle/50}{\sqrt{1+1/2500}}
+=\frac{50|0\rangle+|3\rangle}{\sqrt{2501}}.
+\]
+
+The two reduced outputs coincide by symmetry. For the output-minus-thermal log-determinant gap, an outward-rounded 60-dps interval evaluation at total output photon cutoff (M=150) gives
+
+\[
+\Delta_M\in[-0.000866127657503245886350866737,
+             -0.000866127657503245886350866736].
+\]
+
+The exact rational tail calculation gives omitted-vector norm at most (7.441844470765232\times10^{-11}); hence \(\|\rho-\rho_M\|_1\leq1.488368894153047\times10^{-10}\), and the log-determinant truncation error is at most (1.48837\times10^{-7}). The omitted thermal product tail is at most (1000\,2^{-151}<3.51\times10^{-43}). Therefore the full infinite-dimensional gap lies strictly below zero, with the interval enclosure
+
+\[
+[-0.000866276494392662,
+ -0.000865978820613830].
+\]
+
+The finite determinant violation is independently stable under cutoffs (M=100,120,150,180,220) in the 80-dps Cholesky evaluation. The cutoff-(M=220) gap is (-0.00086612765750324411796066\ldots), with log-determinant tail error below (1.95\times10^{-12}). The outward-rounded interval + exact rational tail bound is the stronger check; see `verify_counterexample_interval.py` and `counterexample_interval_results.json`.
+
+This counterexample does not establish any violation of a von Neumann entropy lower bound. It only rejects this proposed stronger all-(t) determinant-order route for arbitrary pure signal/idler product inputs.
+
+## Exact output amplitudes and truncation boundary
+
+Use the real-sign convention
+
+\[
+U_r=\exp[r(a^\dagger b^\dagger-ab)],\quad
+\lambda=\tanh r=\sqrt{(G-1)/G},\quad G=\cosh^2r.
+\]
+
+The exact disentangling identity is
+
+\[
+U_r=e^{\lambda a^\dagger b^\dagger}
+G^{-(N_a+N_b+1)/2}e^{-\lambda ab}.
+\]
+
+Consequently, for input \(|m,n\rangle\), output indices satisfy \(p-q=m-n\), and with \(a_0=m-j, b_0=n-j, k=p-m+j=q-n+j\geq0\),
+
+\[
+\langle p,q|U_r|m,n\rangle=
+\sum_{j=0}^{\min(m,n)}\!\mathbf 1_{k\geq0}\,
+(-1)^j\lambda^{j+k}G^{-(m+n-2j+1)/2}
+\frac{\sqrt{m!n!(a_0+k)!(b_0+k)!}}{j!k!a_0!b_0!}.
+\]
+
+For finite Fock inputs \(f=\sum_m f_m|m\rangle\), \(g=\sum_n g_n|n\rangle\), the exact output amplitude is \(\psi_{pq}=\sum_{m,n}f_mg_n\langle p,q|U_r|m,n\rangle\), and \(\rho_{pp'}=\sum_q\psi_{pq}\overline{\psi_{p'q}}\). In the code, only the exact output vector is projected to \(p+q\leq M\); the squeezing unitary itself is never truncated.
+
+For each fixed disentangling summand with \(a_0=m-j,b_0=n-j\), squared consecutive coefficients obey
+
+\[
+|c_{k+1}|^2/|c_k|^2
+=s\frac{(k+a_0+1)(k+b_0+1)}{(k+1)^2},\qquad s=\lambda^2,
+\]
+
+whose ratio decreases with \(k\). If \(K=\lfloor(M-a_0-b_0)/2\rfloor+1\) and the ratio \(R_K<1\), then \(\sum_{k\geq K}|c_k|^2\leq |c_K|^2/(1-R_K)\). Summing the square-root tail bounds by Minkowski over the finitely many input indices and \(j\) gives an omitted vector norm bound \(B\). Partial-trace contraction and the rank-one difference estimate give
+
+\[
+\|\rho-\rho_M\|_1\leq2B.
+\]
+
+Along the positive trace-class segment from \(\rho_M\) to \(\rho\), the derivative of \(\log\det_F(I+tA)\) is bounded by \(t\|\rho-\rho_M\|_1\); hence the log-determinant error is at most \(2tB\). At (G=2), all squared summand coefficients and ratios are rational; `verify_counterexample_interval.py` sums rational upper bounds for each square root and combines them with the interval determinant calculation.
+
+## Exterior coefficient (k=3)
+
+For a trace-one spectrum with \(p_j=\operatorname{Tr}\rho^j\),
+
+\[
+e_3(\rho)=\sum_{i<j<k}\lambda_i\lambda_j\lambda_k
+=\frac{1-3p_2+2p_3}{6}.
+\]
+
+At gain two, \(\tau_n=2^{-n-1}\) and \(e_3(\tau)=1/21\). Thus the exact missing joint-moment condition for \(e_3(\rho)\geq e_3(\tau)\) is
+
+\[
+p_3\geq \frac32p_2-\frac5{14}.
+\]
+
+For the determinant counterexample above, numerical moments at (M=300) are \(p_2\approx0.3329781567086696\), \(p_3\approx0.1425368992031011\), and \(e_3(\rho)-1/21\approx7.0840427651\times10^{-5}>0\). The moment condition holds there with margin about (2.1252\times10^{-4}). Thus the failure occurs at finite \(t\), not in the third exterior coefficient.
+
+The separate gain-two local expansion was checked against finite \(\epsilon\) exact-amplitude outputs for normalized \((|0\rangle+\epsilon a|m\rangle)\otimes(|0\rangle+\epsilon b|m\rangle)\). At (m=2,a=1,b=0), the predicted quadratic \(e_3\)-gap coefficient (88/1323=0.0665154951\) is approached by gap/\(\epsilon^2=0.06591042,0.06636345,0.06647744\) at \(\epsilon=0.1,0.05,0.025\). At (m=3,a=b=1), predicted (0.1771294188) is approached by (0.17633208,0.17694722,0.17708499). For the null directions (m=1) and (m=2,a=b=1), the measured gap/\(\epsilon^2\) shrinks like \(\epsilon^2\), consistent with zero quadratic coefficient. See `finite_epsilon_check.py` and its JSON results.
+
+No general (e_3) inequality for two arbitrary pure inputs is established here. A finite set of probes is only a search, not a proof.
+
+## Numerical search records
+
+- `probe.py` uses deterministic seed `20261010`, 100 normalized complex random input pairs with each input supported on Fock levels 0–3, gains (1.12,1.25,1.5,2,3), total-output cutoff (M=300), and (t\in\{10^{-3},\ldots,10^4\}) on a 15-point logarithmic grid. No random-sample (e_3) or sampled finite-(t) determinant violation occurred. Minimum sampled (e_3) lower bound was (0.0079473761); minimum sampled logdet lower bound was (2.3955\times10^{-8}) (at (G=2,t=10^{-3})).
+- `local_det_probe.py` checks 100 near-vacuum pairs at (G=2,M=300), with (m\in\{1,2,3,4,6\}), \(\epsilon\in\{.02,.05,.1,.2\}), and relative second-mode coefficient (b/a\in\{0,\pm1,\pm i\}). Purities range from (0.2887563) to (1/3), and every tested (e_3)-gap is positive up to controlled output truncation. It discovers the (m=3,b/a=1,\epsilon=.02,t=1000) determinant violation. Some tiny negative (m=1) grid gaps also appear; they are not relied on and were not independently high-precision-certified.
+- The finite determinant (t)-grid is not a proof over all (t); the explicit witness at (t=1000) is sufficient to disprove the universal statement.
+
+## Local analytic counterexample cross-check
+
+A separate root result in `independent_programme/determinantal_entropy_root_20261010/EXPLICIT_COUNTEREXAMPLE.md` gives an analytic small-amplitude witness at \(\epsilon=10^{-11},t=1000,m=3,a=b=1\), based on an exact rational interval sign certificate for the second variation \(H<-2\) and a trace-norm remainder bound. I independently checked the remainder decomposition: with (c=(1+\epsilon^2)^{-2}) and unnormalized rank-one coefficients (A_j),
+
+\[
+R=(c-1+2\epsilon^2)A_0+\epsilon(c-1)A_1+\epsilon^2(c-1)A_2+c\epsilon^3A_3+c\epsilon^4A_4.
+\]
+
+The bounds \(\|A_0\|_1=1,\|A_1\|_1<3,\|A_2\|_1\leq4,\|A_3\|_1<3,\|A_4\|_1=1\), \(|c-1+2\epsilon^2|\leq3\epsilon^4\), and \(|c-1|\leq2\epsilon^2\) give
+
+\[
+\|R\|_1\leq3\epsilon^4+6\epsilon^3+8\epsilon^4+3\epsilon^3+\epsilon^4
+=9\epsilon^3+12\epsilon^4\leq21\epsilon^3.
+\]
+
+The resulting log-series remainder constants and sign convention were checked against the larger finite witness: for \(\epsilon=.0005,.001,.002,.005,.01,.02\), \(\Delta(\epsilon)/\epsilon^2\) approaches the certified (H\approx-3.1689985186) from above. This local cross-check supports, but is not needed for, the finite \(\epsilon=1/50\) interval witness.
+
+## Prior-work scope check
+
+Mari, Giovannetti, and Holevo, “Quantum state majorization at the output of bosonic Gaussian channels,” *Nature Communications* 5, 3826 (2014), Proposition 1, prove that a coherent-input output majorizes the output for any input to a single-mode phase-insensitive bosonic Gaussian channel. This covers the quantum-limited amplifier with vacuum idler and yields its spectral/entropy ordering for arbitrary signal inputs. It does not settle the present two-arbitrary-input setup when the idler is a non-Gaussian pure state. See [Nature Communications](https://www.nature.com/articles/ncomms4826) and [arXiv:1312.3545](https://arxiv.org/abs/1312.3545). The multimode Gaussian-channel extension is Giovannetti, Holevo, and Mari (2015), [arXiv:1405.4066](https://arxiv.org/abs/1405.4066).
+
+No originality or priority claim is made. The determinant route is closed for the stated two-arbitrary-input scope; the entropy question remains separate.
+
+## Reproduction
+
+From the shared workspace root:
+
+```sh
+python independent_programme/determinantal_entropy_gate_20261010/probe.py --seed 20261010 --samples 100 --M 300 --d 3
+python independent_programme/determinantal_entropy_gate_20261010/local_det_probe.py
+python independent_programme/determinantal_entropy_gate_20261010/finite_epsilon_check.py
+python independent_programme/determinantal_entropy_gate_20261010/verify_counterexample_interval.py
+python independent_programme/determinantal_entropy_gate_20261010/verify_counterexample_mp.py
+```
+
+The interval script uses `mpmath.iv` at 60 decimal digits and exact `Fraction` tail accounting; the MP cross-check uses `mpmath` at 80 digits. The finite-dimensional probes use NumPy/SciPy double precision with the analytic trace-norm cutoff error reported for every row. All scripts write their JSON results beside the script.

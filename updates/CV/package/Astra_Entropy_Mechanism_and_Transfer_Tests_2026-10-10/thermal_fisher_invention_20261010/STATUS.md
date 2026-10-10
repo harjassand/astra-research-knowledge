@@ -1,0 +1,13 @@
+# Thermal-sharp Fisher mechanism: closed by exact counterexamples
+
+10 October 2026. No new theorem or foundational breakthrough is established.
+
+The intended landmark is a channel-specific, non-Gaussian entropy principle capable of addressing the bosonic amplifier entropy photon-number inequality. Ordinary reciprocal-Fisher Stam does not attain thermal equality at low occupation, so it cannot directly provide the required boundary comparison in a heat-flow proof.
+
+Normalize entropy production under isotropic displacement heat so a one-mode thermal state with occupation N has J=log(1+1/N). The first candidate was K(J_C)>=G K(J_A)+(G-1)K(J_B), where K(j)=1/2+1/(exp(j)-1). This scalar candidate is FALSE: common squeezing of thermal Gaussian inputs changes isotropic heat Fisher by cosh(2r), destroying the required comparison. This is an analytic counterexample, not a numerical conjecture.
+
+The subsequently tested replacement used the one-mode displacement relative-entropy Fisher matrix, normalized to j I for a thermal state. Define j_star=sqrt(det J_matrix). It is invariant under one-mode symplectic changes, and for Gaussian inputs recovers their symplectic occupation through K. The proposed inequality with j_star is false, as established below. A full-matrix Gibbs inverse is another tentative representation, not an established bound.
+
+The supplied numerical screen tests only mixtures of thermal states, which are Fock diagonal and isotropic. It does not test general squeezed states, coherent superpositions, or the unrestricted theorem. In 2,000 seeded cases no violation was detected beyond floating-point thermal-equality noise. Tail bounds control the omitted positive Fisher sum analytically for thermal mixtures; floating-point arithmetic is not a rigorous certificate.
+
+Update: the corrected symplectic-invariant proposal is also FALSE. EXACT_COUNTEREXAMPLE.md gives a full-rank finite-energy input with certified gap greater than 2/3, using the exact gain-two |1,1> transition and thermal regularization. verify_exact.py checks the rational inequalities and normalization. This closes the thermal-sharp Fisher route. The actual entropy inequality and full-spectrum route remain unresolved; neither is contradicted by these examples.
