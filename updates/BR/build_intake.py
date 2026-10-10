@@ -680,7 +680,7 @@ def build():
                   "status_authority": f"Immutable {intake_id} originals and scoped intake; preservation does not validate science.",
                   "proof_availability": proof_availability,
                   "validation": {"internal": boundary, "external_correctness": "UNKNOWN", "formal_verification": "not supplied",
-                                 "historical_priority": "UNKNOWN", "empirical_confirmation": "no physical evidence",
+                                 "historical_priority": "UNKNOWN", "empirical_confirmation": s.get("empirical_confirmation", "no physical evidence"),
                                  "reported_status_evidence": [ref_any(r) for r in s.get("status_evidence", ["CLAIM_LEDGER.json", "RESEARCH_REPORT.txt"])]},
                   "depends_on": [{"target": dep, "scope": s.get("dependency_scopes", {}).get(dep,
                        "Source-reported logarithmic coefficient interface; correctness not independently verified.")} for dep in s["depends_on"]],

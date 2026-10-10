@@ -1,0 +1,111 @@
+<!doctype html><meta charset="utf-8"><title>stratified_noise_absorption_research_package_2026-10-10/verify_stratified_sampler.py</title><aside>Archived source = DATA<p>CP preserves the supplied exact-sampling package and the full pasted scientific thread. The mathematical proofs, code, reported statistics and physical interpretations are source data; intake checked source integrity and repository routes but did not execute scripts, reconstruct proofs, reproduce analyses, acquire raw observations, or verify citations. External correctness, formal verification and historical priority remain UNKNOWN; no historic-scale breakthrough is established.</p></aside><pre>&quot;&quot;&quot;Independent dense-transition-matrix validation for nonlinear stratified sampler.&quot;&quot;&quot;
+import random,time
+import numpy as np
+from collections import Counter
+from scipy.stats import chi2
+from stratified_entropy_sampler import StratifiedModel,sample_states,sample_coordinates,evolve
+
+M=StratifiedModel(
+ n=2,c=3,q=2,s=&#x27;0.19&#x27;,r=&#x27;0.08&#x27;, parents={0:(0,1,1),1:(0,0,1)},
+ coeffs=lambda i,h:(1,(h+i)%2,1),
+ forcing=lambda i,h,rows: ((i+1)%2 if h==0 else
+       (rows[0][0]*rows[1][0] + rows[2][0])%2 if h==1 else
+       (rows[0][0]*rows[1][1] + rows[1][0]*rows[2][1] + (rows[2][0]&amp;rows[1][0]))%2),
+ residual=(1,0,1))
+M.validate()
+
+
+def to_state(z):
+ return (tuple((z&gt;&gt;k)&amp;1 for k in range(3)),tuple((z&gt;&gt;(3+k))&amp;1 for k in range(3)))
+
+def to_index(states):
+ return sum(int(states[i][k]) &lt;&lt; (3*i+k) for i in range(2) for k in range(3))
+
+def gate(site,old):
+ parents=M.input_sites(site)
+ ans=[]
+ for h in range(M.c):
+  same=sum(x*old[p][h] for x,p in zip(M.layer_coeffs(site,h),parents))
+  low=M.layer_forcing(site,h,[tuple(old[p][:h]) for p in parents])
+  ans.append((same+low)%M.q)
+ return tuple(ans)
+
+
+def exact_transition_matrix():
+ P=np.zeros((64,64))
+ s,r=float(M.s),float(M.r)
+ for j in range(64):
+  old=to_state(j)
+  rows=[]
+  for i in range(2):
+   probs=np.ones(8)*s/8
+   resid=sum(x&lt;&lt;h for h,x in enumerate(M.residual_state(i)))
+   gate_i=sum(x&lt;&lt;h for h,x in enumerate(gate(i,old)))
+   probs[resid]+=r
+   probs[gate_i]+=(1-s-r)
+   rows.append(probs)
+  P[j,:]=np.kron(rows[1],rows[0])
+ assert np.max(abs(P.sum(axis=1)-1))&lt;1e-13
+ return P
+
+def dense_stationary(P):
+ A=P.T-np.eye(64)
+ A[-1,:]=1
+ b=np.zeros(64);b[-1]=1
+ pi=np.linalg.solve(A,b)
+ assert np.all(pi&gt;0) and max(abs(pi@P-pi))&lt;1e-12
+ return pi
+
+
+def chi2_stat(observed,expected):
+ val=sum((c-e)**2/e for c,e in zip(observed,expected) if e&gt;0)
+ return val,float(chi2.sf(val,len(observed)-1))
+
+
+def main():
+ P=exact_transition_matrix();pi=dense_stationary(P)
+ print(&#x27;EXACT reference: stationary residual&#x27;,max(abs(pi@P-pi)),&#x27;min mass&#x27;,min(pi))
+ rng=random.Random(20261010)
+ draws=24000
+ counts=np.zeros(64,dtype=int); all_onsite=[]; times=[]
+ t0=time.monotonic()
+ sum_ev=0;sum_parents=0
+ for j in range(draws):
+  ss,diag=sample_states(M,[(0,0),(1,0)],rng,True)
+  ind=to_index((ss[(0,0)],ss[(1,0)]))
+  counts[ind]+=1
+  sum_ev+=diag[&#x27;fresh_events&#x27;];sum_parents+=diag[&#x27;parent_lookups&#x27;]
+  if j&lt;3000: all_onsite.append((ss[(0,0)],ss[(1,0)]))
+ stat,pval=chi2_stat(counts,draws*pi)
+ print(&#x27;N=2, c=3, q=2 full 64-category: draws&#x27;,draws,&#x27;chi2&#x27;,round(stat,3),&#x27;p&#x27;,pval,&#x27;TV empirical&#x27;,round(sum(abs(counts/draws-pi))/2,5))
+ print(&#x27;resource mean: fresh&#x27;,round(sum_ev/draws,3),&#x27;parents&#x27;,round(sum_parents/draws,3),&#x27;time&#x27;,round(time.monotonic()-t0,2),&#x27;s&#x27;)
+ for k in range(3):
+  exact=sum(pi[j] for j in range(64) if to_state(j)[0][k]==to_state(j)[1][k])
+  observed=sum(to_state(j)[0][k]==to_state(j)[1][k] for j in range(64) for _ in range(counts[j]))/draws
+  print(&#x27;site coordination layer&#x27;,k,&#x27;exact&#x27;,round(exact,6),&#x27;empirical&#x27;,round(observed,6))
+ # Check many-time correlation: P(X_{0,0}^2=1 and X_{1,-1}^1=1)
+ exact=sum(pi[j]*P[j,i] for j in range(64) for i in range(64) if to_state(j)[1][1]==1 and to_state(i)[0][2]==1)
+ n2=7000;seen=0
+ for z in range(n2):
+  x=sample_coordinates(M,[(0,0,2),(1,-1,1)],rng)
+  seen+=int(x==[1,1])
+ print(&#x27;cross-time nonlinear joint: exact&#x27;,round(exact,7),&#x27;observed&#x27;,round(seen/n2,7),&#x27;draws&#x27;,n2)
+ # Large implicit nonlinear network, accesses do not scale in N
+ big=StratifiedModel(n=1_000_000,c=3,q=2,s=&#x27;0.20&#x27;,r=&#x27;0.02&#x27;,
+  parents=lambda i:tuple((i*2654435761+(h+1)*761 + h*h*37)%1_000_000 for h in range(3)),
+  coeffs=lambda i,h:tuple((i//(h+1)+k+h)%2 for k in range(3)),
+  forcing=lambda i,h,rows: (i%2 if h==0 else
+   (rows[0][0]*rows[1][0]+rows[2][0]*rows[0][0])%2 if h==1 else
+   (rows[0][1]*rows[1][0]+rows[1][1]*rows[2][0]*rows[0][0])%2),
+  residual=(0,1,1))
+ big.validate()
+ nb=60
+ t0=time.monotonic();s=0;m=0
+ for _ in range(nb):
+  val,info=sample_states(big,[(123,0),(987654,0)],rng,True)
+  s+=info[&#x27;fresh_events&#x27;];m+=info[&#x27;parent_lookups&#x27;]
+ print(&#x27;N=1e6 nonlinear stratified (2 joint sites): fresh&#x27;,round(s/nb,2),&#x27;parent lookups&#x27;,round(m/nb,2),&#x27;wall&#x27;,round(time.monotonic()-t0,2),&#x27;s&#x27;)
+ print(&#x27;PASS independent exact transition checks&#x27;)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>
