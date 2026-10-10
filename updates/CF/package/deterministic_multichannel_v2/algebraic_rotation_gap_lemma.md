@@ -1,0 +1,169 @@
+# Height-free algebraic projector and gap bounds
+
+Date: 2026-10-09. Status: derived local theorem, with two explicitly cited classical complex-analysis inputs. This does not by itself prove an end-to-end fast-forwarding algorithm.
+
+## Result
+
+Let H(t) be an n by n matrix polynomial of degree at most p, Hermitian for real t. Let q(t,lambda) be the monic squarefree part, in lambda, of det(lambda I-H(t)); write r=deg_lambda q. Its coefficients are polynomials in t, with the coefficient of lambda^(r-j) having degree at most jp. Set
+
+    m = r(r-1)p,
+    kappa = 1 + m + log(n+1).
+
+Let x be real and let d>0 be such that the open complex disk D(x,d) contains no zero of disc_lambda q. An additional distance-to-endpoint restriction can be imposed but is not needed for this projector theorem. On that disk label the r distinct eigenvalues lambda_j analytically. Let P_j be their spectral projectors, including the full eigenspace when an eigenvalue has persistent multiplicity. For any subset S, write P_S=sum_{j in S} P_j.
+
+There are absolute constants C,c>0, independent of all coefficient magnitudes/heights, such that:
+
+1. On D(x,d/2), each P_j has operator norm at most exp(C(1+m)), and each P_S has norm at most n exp(C(1+m)).
+2. On D(x,c d/kappa), every P_S has operator norm at most 2. Consequently, for every integer ell>=0,
+
+       ||P_S^(ell)(x)|| <= 2 ell! (C kappa/d)^ell.
+
+   In particular ||P_S'(x)|| <= C kappa/d, polynomial in n,p.
+3. For i!=j, h_ij=lambda_i-lambda_j and 1/h_ij are analytic, nonvanishing, and, unless constant, at most m-valent in D(x,d). For rho=|z-x|/d,
+
+       ((1-rho)/(1+rho))^(2m)
+       <= |h_ij(z)/h_ij(x)|
+       <= ((1+rho)/(1-rho))^(2m).
+
+   Thus on D(x,d/(8 max(1,m))), every gap and its reciprocal differ in magnitude from their center values by a factor less than 2.
+4. For disjoint index sets S,T and center separation
+
+       g0 = min_{i in S,j in T} |lambda_i(x)-lambda_j(x)|,
+
+   the reduced Sylvester inverse
+
+       L_ST(z)[A] = sum_{i in S,j in T}
+                    P_i(z) A P_j(z)/(lambda_i(z)-lambda_j(z))
+
+   has norm at most 8 n^2/g0 on a disk D(x,c d/kappa). Cauchy gives
+
+       ||L_ST^(ell)(x)|| <= (8 n^2/g0) ell! (C kappa/d)^ell.
+
+The cases r=1 or p=0 have constant projectors and constant gaps and can be treated directly. One can simply replace m by max(1,m) in displayed bounds.
+
+The radius d/kappa, rather than d with a coefficient-independent universal prefactor, is the important usable conclusion. Polynomial complex-norm bounds on a fixed fraction of d are false, already for n=2; an explicit counterexample appears below.
+
+## 1. Squarefree reduction and degree bookkeeping
+
+All roots of det(lambda I-H(t)) obey |lambda|<=C_H(1+|t|)^p for complex t. Monic factors have polynomial coefficients because C[t] is integrally closed. Their coefficient degree bounds follow from this root-growth estimate and elementary symmetric functions. In particular the monic squarefree part q belongs to C[t,lambda], is of weighted degree at most rp when t has weight 1 and lambda weight p, and disc_lambda q has degree at most m.
+
+For real t away from its discriminant, H(t) is diagonalizable, so q(t,H(t))=0. This polynomial identity continues to complex t. Let
+
+    B(t,lambda) = (q(t,H(t))-q(t,lambda)I)/(H(t)-lambda I),
+
+where the expression means the polynomial divided difference, not a matrix inverse. Then
+
+    P_j(t) = B(t,lambda_j(t))/q_lambda(t,lambda_j(t)).
+
+Every entry of B has weighted degree at most (r-1)p. For simple spectrum one may instead use the familiar adjugate formula with q=det(lambda I-H).
+
+For fixed unit vectors u,v, set f_j(t)=u*P_j(t)v and A(t,lambda)=u*B(t,lambda)v. The nonzero polynomial
+
+    F(t,w) = Res_lambda(q(t,lambda), w q_lambda(t,lambda)-A(t,lambda))
+
+annihilates f_j. Its leading coefficient in w is disc_lambda q up to sign; hence it is not the zero polynomial. Furthermore
+
+    deg_w F <= r,
+    deg_t F <= r(r-1)p = m.
+
+For the latter bound, use the monic resultant as the product over all r roots lambda_j(t). Each factor is O((1+|t|)^((r-1)p)); the resulting polynomial has growth at most degree m. Equivalently use weighted-degree homogeneity.
+
+Select an irreducible factor Q(t,w) that annihilates the selected branch. If f_j is nonconstant, Q(t,a) is not identically zero for any a: otherwise irreducibility forces Q=w-a and the branch would be constant. Consequently every equation f_j(t)=a has at most m solutions, counted with multiplicity, in its disk of analyticity. This establishes m-valency, including for arbitrary scalar compressions u*P_jv. There is no splitting-field or n! degree in this argument.
+
+## 2. Fixed-fraction disk bound
+
+The complex-analysis input is the structural Bernstein inequality for algebraic functions in Roytwarf and Yomdin, *Bernstein classes*, Ann. Inst. Fourier 47 (1997), 825-858, Theorem 3.3.1 and Corollary 3.3.2, combined with Proposition 2.1.5. For fixed concentric-disk and real-interval ratios, its explicit constants are exp(O(m)), where m is a valency bound. Coefficient heights do not enter. The paper's displayed C(m) is exponential in m times a polynomial factor, which can be absorbed into exp(O(1+m)).
+
+Source: https://www.numdam.org/article/AIF_1997__47_3_825_0.pdf
+
+Apply it to f_j on D(x,d), comparing D(x,d/2) with [x-d/4,x+d/4]. Since P_j(t) is an orthogonal projector for real t,
+
+    |u*P_j(t)v| <= 1.
+
+Uniformly over unit u,v this proves ||P_j(z)||<=exp(C(1+m)). Sum at most n such bounds to obtain the fixed-fraction complex bound for any cluster P_S. This sum is only an intermediate bound; the next step uses the stronger real-axis identity ||P_S(t)||=1.
+
+## 3. Exponential norm becomes a polynomial analytic scale
+
+Here is a useful independent analytic observation. Suppose f is holomorphic on D(x,d/2), satisfies |f|<=M there, and |f|<=1 on I=[x-d/4,x+d/4]. Then, for an absolute C,
+
+    |f(z)| <= 2 whenever |z-x| <= d/[C(1+log M)].
+
+Proof. Rescale I to [-1,1], so the disk has radius 2. The Bernstein ellipse E_2 lies strictly in that disk. Write the Chebyshev expansion f=sum_{k>=0} c_k T_k. Its coefficients satisfy |c_k|<=2M 2^(-k). Choose an integer
+
+    N >= max(4, ceil(log_2(256M))+4).
+
+The degree-N truncation Q_N has sup norm at most 1+2M 2^(-N) on [-1,1]. Bernstein-Walsh gives
+
+    |Q_N(s)| <= ||Q_N||_[-1,1] exp(N g(s)),
+
+where g(s)=log|s+sqrt(s^2-1)| outside the segment. For |s|<=a, g(s)<=asinh(a)<=a, as follows by containing the disk in the ellipse with semiminor axis a. Hence for |s|<=1/(4N) the polynomial bound is less than 1.3. Also |T_k(s)|<=exp(k/(4N)), and the remaining geometric tail is less than 0.1 by the choice of N. This proves the claimed bound of 2, with room to spare. Returning to t yields radius d/(16N).
+
+Apply this observation to f=u*P_Sv with
+
+    M = n exp(C(1+m)).
+
+The constant and N are uniform in u,v and S, so taking the supremum over unit u,v establishes ||P_S||<=2 on radius c d/kappa. Cauchy's estimate gives all stated derivatives. This argument avoids assuming that the cluster scalar entry itself has polynomial algebraic degree.
+
+## 4. Relative gap distortion from the center
+
+The polynomial
+
+    G(t,y) = y^(-r) Res_lambda(q(t,lambda), q(t,lambda+y))
+
+is well defined in C[t,y] and equals, up to signs,
+
+    product_{i!=j} (y+lambda_i(t)-lambda_j(t)).
+
+It has deg_y G=r(r-1) and deg_t G<=m. Every gap therefore satisfies a polynomial equation of t-degree at most m. Replacing y by 1/w and clearing w gives the same t-degree for a reciprocal gap. Selecting the nonconstant irreducible factor, as above, proves m-valency. The discriminant-free hypothesis guarantees that both a gap and its reciprocal are regular and nonvanishing on the whole disk.
+
+The second complex-analysis input is the distortion theorem for a nonvanishing m-valent holomorphic function h: its normalized modulus on the unit disk lies between ((1-|z|)/(1+|z|))^(2m) and its reciprocal. A verified primary-source statement is Friedland and Yomdin, *(s,p)-Valent Functions*, arXiv:1503.00325, Theorem 3.1, page 6, citing Hayman's *Multivalent Functions*, Theorem 5.1.
+
+Source: https://arxiv.org/pdf/1503.00325
+
+Applying it after rescaling gives the theorem. For rho<=1/(8m), the upper bound is at most exp(4m atanh(1/(8m)))<2. Thus only the center gap g0 is needed; an interval-wide gap assumption or extra dyadic gap-level partition is unnecessary for this local comparison. Absolute-value comparability also holds at complex z; it is not restricted to real t.
+
+As another consequence, logarithmic derivatives have a coefficient-height-free bound. The distortion inequality implies |Re log(h(z)/h(x))|<=4m atanh(|z-x|/d); taking a directional derivative at x gives |h'(x)/h(x)|<=4m/d.
+
+## 5. Reduced inverse
+
+Intersect the projector disk with the gap-distortion disk, adjusting the universal constant c. There ||P_i||,||P_j||<=2 and |lambda_i-lambda_j|>=g0/2 for all designated cross pairs. Each term P_i A P_j/(lambda_i-lambda_j) is at most 8||A||/g0, and there are at most n^2 terms. This proves the reduced inverse bound with no dependence on ||H||/g0. It is deliberately a crude polynomial bound; no sharp Schur-multiplier norm is needed here.
+
+## 6. Exponential growth at fixed radius is genuinely necessary
+
+For an integer k>=1, define real integer-coefficient polynomials a,b by
+
+    a(t)+i b(t) = (t+i)^k,
+
+and put
+
+    H_k(t) = [[a(t)^2-b(t)^2, 2a(t)b(t)],
+              [2a(t)b(t), b(t)^2-a(t)^2]].
+
+This is a real symmetric 2 by 2 polynomial of degree 2k. Set q0(t)=(1+t^2)^k. Then H_k^2=q0^2 I, its eigenvalues are +/-q0, and its discriminant has only the two roots +/-i. At x=0, their distance is d=1. The positive projector is
+
+    P_+(t) = (I+H_k(t)/q0(t))/2.
+
+A constant unitary change of basis puts it in the form
+
+    (1/2) [[1, w(t)^k], [w(t)^(-k),1]],
+    w(t)=(t+i)/(t-i),
+
+up to harmless interchange of the off-diagonal entries. Since this is rank one, its operator norm is its Frobenius norm. At t=i c, 0<c<1, let R=(1+c)/(1-c). Then
+
+    ||P_+(i c)|| = (R^k+R^(-k))/2.
+
+Thus no polynomial in p can bound the projector norm on a fixed disk D(0,c d), even when n=2 and coefficient bit heights are only O(k). On the real line,
+
+    ||P_+'(t)|| = k/(1+t^2),
+
+so a degree-dependent shrinking scale is also genuinely needed for a constant complex norm. This counterfamily is fully consistent with the theorem, and supports the d/poly(n,p) refinement rather than defeating it.
+
+## 7. Algorithmic implications and scope
+
+- A crude use of exp(Cm) as a superadiabatic norm constant can cause exponentially many panels or an exponentially large separation threshold in n,p. That loss is avoidable: shrink the usable local analytic radius to R=c d/kappa and retain norm 2.
+- All relevant original spectral projectors, center-normalized gaps, and reduced Sylvester inverses then have analytic bounds with only polynomial n,p losses and no coefficient-height factor beyond d and the actual center gap.
+- A separation condition phrased using Omega g d must pay the polynomial factor d/R=O(kappa), plus whatever polynomial n and expansion-order factor the chosen superadiabatic construction requires. This is compatible with a threshold polynomial in n,p,log(1/epsilon); it does not establish the entire construction by itself.
+- The theorem uses distance to all roots of the squarefree characteristic discriminant. It does not assert the same polynomial-in-n bound for a cluster whose disk is allowed to contain arbitrary internal discriminant roots. Such a cluster may be regular on a larger disk, but the simple individual-branch proof no longer applies there.
+- At a real discriminant root d=0 this lemma says nothing. A separate crossing-core construction or regular extension argument remains necessary. Persistent multiplicities are handled by squarefree reduction; isolated crossings are not removed by that reduction.
+- No additional coefficient-conditioned rotation scale is needed on a discriminant-free disk. The necessary local data are its radius d, the polynomial degree complexity kappa, and the center inter-cluster gap g0. Root isolation, crossing cores, phase integration, certified arithmetic, and global panel-count/accuracy bookkeeping remain separate algorithmic issues.
+

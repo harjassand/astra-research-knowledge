@@ -152,10 +152,19 @@ Material corrections: N135 → N160 is a full-proof candidate sharp identical-un
 | 76 | `G-SEVEN-TIME-WITNESS-EFFICIENT-ACQUISITION` — Find a useful observed equilibrium witness with acquired dependence and physical interfaces | Executable exact word evaluator and certificate supplied; no acquired empirical data, practical experiment or efficient interface guarantee. Cost astronomical and fully charged. |
 | 77 | `G-CAMPAIGN-PHYSICAL-AND-ALGORITHM-INTERFACES` — Validate source/PDE/action/noise/solver interfaces of the other campaign candidates | Full scoped arguments, final ledgers and reported diagnostics supplied. Primary body omissions, physical acquisition and unimplemented robust-PCA/SDP/source interfaces retained. |
 | 78 | `G-ELLIPTIC-IMPORT-REPAIR-AND-ARITHMETIC-SOURCE` — Repair invalid elliptic norm transfer and reconstruct conditional selected-place arithmetic | Counterexample proof and corrected arithmetic transfer supplied; source construction independently unvalidated, elliptic final theorem not decided and historical priority unestablished. |
+| 79 | `G-CD-N571` — Reconstruct the coherent-return finite-determination proof and rational bit-cost boundary | One focused source-reported check covers the upper candidate; singular/dimension-collapsing induction, exact input encoding and targeted prior-art boundary remain for independent review. |
+| 80 | `G-CD-N572` — Verify the exact quadratic carry delay and small-coefficient map | Source reports an independently reconstructed exact family and finite checks; no intake replay or priority assessment. |
+| 81 | `G-CD-N573` — Audit the cyclotomic clock construction and coefficient-field cost | The tower construction is not covered by the upper-proof check; algebraic coefficient degree is essential and rational-input lower bounds remain unknown. |
+| 82 | `G-CE-N574` — Reconstruct the CP mapping-cone and unrestricted-word theorem | Source reports targeted dependency/algebra checks; the later unrestricted proof is outside earlier focused review scope and priority remains open. |
+| 83 | `G-CE-N575` — Verify the finite invariant-corner criterion for CP cones | Check exact algebraic predicates and ensure cited review reports cover this criterion rather than adjacent power results. |
+| 84 | `G-CE-N576` — Reconstruct the arbitrary algebraic CP-map finite criterion | Source reports a focused continuation on Sections 1–4; the witness margin and literature boundary remain open. |
+| 85 | `G-CE-N577` — Verify the effect-matched EB approximation and trace-relative bound | Explicit rate and bounded checks are source-reported; verify CP/2-copositive branch assumptions and do not infer exact membership or efficient decomposition. |
+| 86 | `G-CF-N578` — Reconstruct deterministic polynomial-Hermitian propagation complexity | One focused internal review is source-reported; a uniformly terminating certified implementation, external validation and useful practical runtime remain absent. |
+| 87 | `G-CF-N579` — Replay and audit four finite endpoint residual certificates | Source reports exact witness passes; intake checked only package integrity. Finite cases do not establish general complexity or solver superiority. |
 
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
-Other historical restarts remain in `state/` and source archives. This dashboard selects 78 concrete gates; it does not exhaustively rank every field or independently reconstruct all 591 cards. Candidate supersession does not externally validate a gate.
+Other historical restarts remain in `state/` and source archives. This dashboard selects 87 concrete gates; it does not exhaustively rank every field or independently reconstruct all 649 cards. Candidate supersession does not externally validate a gate.
 
 ## BQ intake: N522–N534
 

@@ -1,0 +1,168 @@
+# A finite criterion for eventual entanglement breaking of an arbitrary CP map
+
+9 October 2026. Complete proof candidate. A targeted continuation of the existing independent check found no gap in Sections 1–4; its report is preserved separately. Sections 6–7 are explicitly derived scope consequences, not separate priority claims. It covers nonunital, nonfaithful and non-trace-preserving maps. The finite criterion uses a period-clearing iterate and nilpotence of cross-corner transfer. Its exact decidability consequence is separate from computational efficiency. No priority or external-certification claim is made.
+
+## Theorem
+
+Let Phi:M_d(C)->M_d(C) be completely positive. Put
+
+ L=lcm(1,2,...,d),  Psi=Phi^L,  m=d^2.
+
+For every orthogonal projection P, put Q=I-P. Call P invariant for Psi if Q Psi(P) Q=0. Define the linear operator on Hom(QH,PH)
+
+ T_(Psi,P)(X)=P Psi(P X Q) Q.
+
+Then the following are equivalent:
+
+1. Phi^n is entanglement breaking for some finite n.
+2. Phi^n is PPT for some finite n.
+3. For every proper nonzero invariant projection P of Psi, T_(Psi,P) is nilpotent.
+4. For every such P, T_(Psi,P)^m=0.
+
+If these conditions fail, a single invariant P of Psi with T_(Psi,P)^m!=0 certifies that every positive power of Phi is NPT. For real-algebraic input entries this is a finite real-algebraic decision problem, and a negative witness P can be chosen real algebraic.
+
+No filtering-cone assumption is made. No dimension-only upper bound on the EB index of all qualifying CP maps is asserted; noisy identities approaching the identity already exclude such a bound.
+
+## 1. Invariant corners and their cross transfer
+
+In coordinates adapted to an invariant P, each Kraus operator has form
+
+ K_i=[[A_i,B_i],[0,C_i]].
+
+The cross transfer is T(X)=sum_i A_i X C_i*. Inputs in P M Q can also produce a P M P component, but that component can never feed a later cross component. Therefore the cross transfer of the nth power is exactly T^n.
+
+Every PPT map with invariant P has T=0. In a basis adapted to P, the partially transposed Choi matrix has zero diagonal entries indexed by q(output) tensor conjugate(p(input)), q in QH,p in PH. Positivity makes those rows zero. Their entries against a(output) tensor conjugate(j(input)), a in PH,j in QH, are
+
+ sum_i C_i[q,j] conjugate(A_i[a,p]),
+
+so all coefficients of T vanish.
+
+If Phi^n is PPT, then Psi^n=Phi^(Ln) is PPT, since later composition by a CP map preserves complete copositivity. Hence T_(Psi,P)^n=0 for every invariant P. This proves 2=>3. The dimension of the cross space is rank(P)rank(Q)<=d^2, so 3 and 4 are equivalent by Cayley-Hamilton. The implication 1=>2 is immediate.
+
+Conversely, if condition 4 fails, T is not nilpotent and has a nonzero eigenvalue. Its every positive power is nonzero, so Psi^n is NPT for every n. If any Phi^k were PPT, every later power, including Phi^(Lk), would be PPT, a contradiction. This proves the finite negative-witness assertion independently of sufficiency.
+
+## 2. A primitive-or-zero quotient flag after a fixed power
+
+We prove a structural fact for every CP map, with no entanglement assumption:
+
+After the period-clearing power L, the Kraus tuple of Psi has a finite invariant flag whose diagonal quotient CP maps are each primitive or zero.
+
+Start with a composition series of common invariant subspaces of a Kraus tuple for Phi,
+
+ 0=V_0 < V_1 < ... < V_s=H,
+
+whose induced quotient tuples are irreducible. Identify each quotient V_j/V_(j-1) with the orthogonal complement V_j intersect V_(j-1)^perp. The diagonal Kraus blocks define a CP map theta_j on that quotient. They are irreducible because any common invariant subspace would refine the composition series.
+
+A zero irreducible tuple has dimension one. Every other irreducible CP map theta_j has positive spectral radius r_j and faithful left and right Perron eigenmatrices. If Y_j>0 is the left one, then
+
+ Lambda_j=r_j^(-1) Ad_(Y_j^(1/2)) theta_j Ad_(Y_j^(-1/2))
+
+is an irreducible CPTP map with a faithful invariant state. Its period h_j is at most dim(V_j/V_(j-1)), hence divides L. Finite-dimensional cyclic Perron theory gives orthogonal cyclic subspaces for Lambda_j; every h_j-letter Kraus word preserves them, and the restricted CP maps of Lambda_j^h_j are primitive. Their positive powers Lambda_j^L remain primitive.
+
+The exact external dependency is Carbone and Jencova, arXiv:1905.00857v1, Proposition 6, PDF page 11: the cyclic restrictions of the period-th power are irreducible and aperiodic. In finite dimension this means primitive. Proposition 5 and Corollary 2 provide the cyclic resolution. Apply these statements to the unital adjoint, then use the explicit Kraus-support calculation already given in the uniformization proof to return to the TP convention.
+
+Pulling these cyclic subspaces back by Y_j^(-1/2) gives a direct-sum decomposition into invariant subspaces for the length-L quotient Kraus words of theta_j^L. These pulled-back subspaces need not be orthogonal. Order them and take successive sums to form an invariant flag in the quotient. Its inverse images in V_j refine the original flag into a common invariant flag for all length-L Kraus words, hence for Psi.
+
+Finally choose orthogonal coordinates for the successive quotients of the refined flag. The resulting quotient Kraus tuple is obtained from one primitive cyclic block by one simultaneous invertible similarity, and an irrelevant positive scalar. To justify this precisely, an isomorphism from a cyclic invariant subspace to its quotient by earlier direct-sum components intertwines every Kraus word; changing the Hilbert-space coordinates of that quotient therefore conjugates all its Kraus matrices by the same invertible matrix S.
+
+Such a similarity sends a CP map E to Ad_S E Ad_(S^(-1)); powers telescope. Positive definiteness and nonzero positive inputs are preserved by invertible congruence, so primitivity is unchanged. Thus every final diagonal quotient map of Psi is primitive or zero, as claimed. This does not incorrectly identify nonorthogonal Perron subspaces with orthogonal cyclic projections.
+
+## 3. Killing the finite flag's cross transfers
+
+Let 0=W_0<W_1<...<W_r=H be the refined invariant flag from Section 2, with orthogonal projections P_j onto W_j. Under condition 4,
+
+ T_(Psi,P_j)^m=0
+
+for every nontrivial flag cut. Consequently Omega=Psi^m has zero cross transfer at every one of those same cuts. Its diagonal quotient maps are the mth powers of the primitive-or-zero quotient maps of Psi, and remain primitive or zero.
+
+We now use a positive gluing lemma:
+
+A CP map with an invariant finite flag, zero cross transfer at every flag cut, and eventually-EB diagonal quotient maps is itself eventually EB.
+
+Here is a proof retaining complete positivity. At the first cut P=P_1, zero cross transfer says that the Kraus-index coefficient spans of the A_i and C_i blocks are orthogonal. A unitary rotation of Kraus coordinates splits
+
+ Omega=F+G,
+ F output-supported on P,
+ G input-supported on Q,
+ GF=0.
+
+The diagonal corner maps Omega_P and Omega_Q are CP. The quotient Omega_Q has the remaining induced flag and zero cross transfer at each of its cuts: its coefficient equations are a subset of the zero cross-transfer equations for the corresponding larger cuts W_j of H. Thus induction on the flag length applies to Omega_Q. The first corner Omega_P is eventually EB by hypothesis.
+
+If their EB exponents are N_P,N_Q, the exact factor identities are
+
+ F^k=Ad_(V_P) Omega_P^(k-1) Ad_(V_P*) F,
+ G^k=G Ad_(V_Q) Omega_Q^(k-1) Ad_(V_Q*).
+
+Hence F^(N_P+1) and G^(N_Q+1) are EB. Since GF=0,
+
+ Omega^n=sum_(j=0)^n F^(n-j)G^j.
+
+At n=N_P+N_Q+1, every positive CP summand contains an EB factor. This proves the lemma. Nothing asserts that a positive summand of an EB map must be EB.
+
+A primitive CP map is eventually EB: apply faithful Perron similarity and scaling to make it CPTP; its powers converge to X->tr(X)sigma for sigma>0. The latter is in the interior of the EB cone. For example, transport the elementary separable ball around I tensor I by the invertible output filter sigma^(1/2). Undo the telescoping similarity. A zero map is EB immediately.
+
+Applying the positive gluing lemma to Omega proves that some Omega^n is EB. Since Omega^n=Phi^(L m n), condition 4 implies condition 1. The theorem is proved.
+
+## 4. Exact semialgebraicity and decision procedure
+
+For fixed d, L and m are fixed integers. Express the entries of Phi and of a Hermitian P by real variables. The conditions
+
+ P=P*=P^2,  0<trP<d,  (I-P)Psi(P)(I-P)=0
+
+are polynomial equalities and inequalities. The cross operator can be represented on all of M_d by X->P Psi(P X Q) Q; it vanishes on the complementary input subspace, so its mth power is zero exactly when the restriction is nilpotent. Testing it on the d^2 matrix units yields finitely many polynomial equations.
+
+Thus condition 4 is a finite first-order real-algebraic formula. Quantifier elimination shows that the set of eventually EB CP maps in each fixed dimension is semialgebraic. Given a CP map with real-algebraic entries, the formula decides eventual EB exactly. On a negative answer, semialgebraic sampling yields an algebraic projection P satisfying the failure conditions; together with the finite nonnilpotence test, it is a certificate for all powers being NPT.
+
+On a positive answer one can enumerate n and decide separability of J(Phi^n) by quantifier elimination, using the d^4 pure-product-term decomposition bound. This search terminates and returns the least EB index if each previous n is also checked. The initial finite criterion supplies the stopping guarantee, while separability tests supply the eventual numerical index.
+
+No practical complexity bound is asserted. The period-clearing integer L can be large, the polynomial degrees grow accordingly, and real quantifier elimination is expensive. Exact equality also makes this different from a robust experimental certificate.
+
+## 5. Primary comparison and exact limits
+
+Hanson, Rouze and Stilck Franca (2020), arXiv:1902.08173v2, Theorem 3.11 and Remark 11, give a finite structural criterion for faithful quantum channels through a bounded power becoming a direct sum of primitive channels. Their Section 4.4 describes using that structure to test eventual EB. The nonfaithful CP extension here must not be credited to that theorem. Transient corners and nilpotent cross transfer are handled by the explicit positive split above.
+
+Bhat, Dey and Saha, arXiv:2609.24168v1 (21 September 2026), Theorem 6.11, characterize unital quantum channels, defined there to be CP and TP as well. Their test uses commutation of nonzero-eigenvalue eigenvectors with the peripheral space and includes equivalence with eventual PPT and eventual mixed twisted dephasing. Theorem 6.11 does not state the arbitrary non-TP or nonfaithful criterion above. Only this precise interface was inspected, not the whole manuscript.
+
+Lami and Giovannetti, Entanglement-saving channels, Journal of Mathematical Physics 57 (2016), 032201, arXiv:1505.00461, Theorem 21 (PDF pp. 17-18), characterize the general TP case under the condition that the algebraic multiplicity of the zero eigenvalue is less than 2(d-1); nonzero determinant is a sufficient condition. Their Theorem 24 (PDF p. 19) completes the qubit case. Their introduction and discussion explicitly describe the unrestricted general-dimensional characterization as incomplete. Those results do not state the all-CP nilpotent-cross criterion above.
+
+Primary URLs: https://arxiv.org/pdf/1505.00461 ; https://link.springer.com/article/10.1007/s00023-020-00906-4 ; https://arxiv.org/html/2609.24168v1 . Targeted searches for eventual-EB decidability, semialgebraicity and nonfaithful characterizations did not locate a matching primary theorem. This is a narrow comparison, not a priority certificate or exhaustive literature search.
+
+The implication eventual PPT=>eventual EB for arbitrary CP maps is also a consequence of Park (2026), arXiv:2608.13551v2, Theorem 1.1, applied to a PPT iterate. The candidate added capability is the finite algebraic characterization and exact algorithm in the fully general CP scope, not that implication by itself.
+
+This theorem does not solve arbitrary nonstationary composition, prove PPT-square, or give a useful numerical upper bound on an index. It is independent of the semialgebraic mapping-cone uniformization theorem, though the positive corner-splitting mechanism was developed in that investigation.
+
+## 6. A fixed qubit ancilla certificate and eventual 2-copositivity
+
+The negative witness has a stronger operational form. Suppose an invariant P of Psi has a nonnilpotent cross transfer T. Choose a nonzero eigenmatrix X=P X Q with T(X)=lambda X and lambda!=0, and rescale so ||X||_op<=1. The block matrix
+
+ rho=(1/d)[[P,X],[X*,Q]]
+
+is a density matrix on C^2 tensor C^d: positivity follows from the contraction condition, and its trace is one. For every n, the first diagonal output block Psi^n(P) is supported on P, while
+
+ P Psi^n(X) Q=lambda^n X !=0.
+
+After partial transposition on the qubit, a vector |0> tensor q with q in QH has zero diagonal quadratic form but a nonzero matrix entry into |1> tensor PH for a suitable q. A positive matrix cannot have this property. Thus (id_2 tensor Psi^n)(rho) is NPT for every n. If the output under any intermediate power Phi^k were PPT, further local CP evolution would keep it PPT, contradicting a later multiple of L. Therefore the same fixed qubit-ancilla input remains NPT under every positive power of Phi. For non-TP maps the unnormalized outputs are nonzero and the same statement holds after their positive scalar normalization.
+
+Consequently the theorem's equivalent conditions also include:
+
+5. Some power of Phi is 2-copositive.
+
+Here 2-copositive means id_2 tensor (transpose compose Phi) is positive. Eventual EB implies this. Conversely a 2-copositive power cannot admit the fixed qubit NPT witness, so condition 4 must hold.
+
+This general scope should be compared with Bhat-Dey-Saha (2026), Theorem 6.11, whose unital-channel characterization already includes eventual 2-copositivity. The fixed qubit witness and arbitrary CP input are the claims being added here.
+
+## 7. Uniformity for CP and 2-copositive maps
+
+The cone C_(2co) of maps that are CP and 2-copositive is closed, convex, semialgebraic and invariant under arbitrary CP pre/postcomposition. Semialgebraicity follows by universally quantifying finite-dimensional vectors in the positivity condition for id_2 tensor (transpose compose Phi). The mapping-cone property follows because transpose compose A compose transpose is CP whenever A is CP.
+
+Every member is eventually EB by condition 5 above. The separate semialgebraic mapping-cone uniformization theorem therefore gives, for each fixed d, a common finite N_(2co)(d) for all of C_(2co), including non-TP members. This is a consequence of two proved mechanisms; it does not give N=2, an exponent independent of d, or a practical numerical bound.
+
+The cone is strictly larger than the PPT cone when d>=3. For example,
+
+ R(X)=tr(X)I-X^T/2
+
+has J(R)=I tensor I-F/2>=0, with F the swap. Its partially transposed Choi matrix is I tensor I-|Omega><Omega|/2. That matrix is nonnegative on Schmidt-rank-at-most-two vectors because |<Omega,v>|^2<=2||v||^2, but has a negative eigenvalue on Omega when d>2. Thus R is CP and 2-copositive but not completely copositive. Positive scalar normalization makes it TP if desired. This standard transpose-depolarizing family only illustrates strict scope; its construction is not claimed as new.
+
+The numerical qutrit boundary family in NONFAITHFUL_BOUNDARY_EXAMPLE.md separately demonstrates why these exact algebraic conclusions cannot be promoted to a tomography classifier without a structural promise.
+
+All powers in this document mean serial composition Phi composed with itself. They are not tensor powers Phi tensor ... tensor Phi. Neither the fixed qubit-ancilla witness nor the CP-and-2-copositive cone result resolves NPT bound entanglement or tensor-power distillability.

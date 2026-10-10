@@ -1,0 +1,197 @@
+# Deterministic polynomial-Hermitian propagation: native acquisition construction
+
+2026-10-09. **Candidate theorem with a complete proposed construction.** This file assembles the separately derived local lemmas and supplies the global/representation argument. It has not received an independent end-to-end mathematical check. It is not a certified implementation, practical speed demonstration, or historical priority claim. The conservative constants below are unsuitable as performance predictions.
+
+## Candidate theorem
+
+Let H(t) be an explicitly supplied n-by-n Hermitian matrix polynomial with rational complex coefficients, degree p, and coefficient bit length B. Let positive rational Omega and 0<epsilon<1 be supplied in binary. There is a deterministic algorithm returning a dyadic complex matrix V such that
+
+    ||V-U(1)||_op <= epsilon,
+    i U'(t)=Omega H(t)U(t), U(0)=I,
+
+with bit work polynomial in n,p,B, the binary length of Omega, and log(1/epsilon).
+
+The first claim to retain if a growing-dimension detail needs weakening is fixed n,p with polynomial cost in the remaining parameters. Neither version follows merely from saying that phase-function methods or certified ODE solvers exist. The central acquired resource is a polynomially sized collection of local analytic disks on which both spectral rotation and relative gap variation are uniformly controlled, despite tiny gaps and large coefficients.
+
+Degree is charged as an ordinary dense-polynomial input parameter. This is a classical full-matrix output theorem, not a cost bound polynomial in a many-body qubit count. No free eigenbasis, gap, connection-matrix, integrated-phase, or high-precision propagator oracle is supplied.
+
+## 1. Remove persistent multiplicity algebraically, without perturbing H
+
+Let P(t,lambda)=det(lambda I-H(t)). Compute its monic squarefree part q in lambda over Q(i)(t). Because P is monic and Q(i)[t] is integrally closed, q has polynomial coefficients. Let r=deg_lambda q<=n. Its coefficient of lambda^(r-j) has degree at most jp. Monic factor-height bounds give polynomial coefficient heights in the native input; the same fixed-bivariate factor/subresultant methods used in the retained projector construction apply.
+
+For real t outside finitely many exceptional points, H(t) is Hermitian and diagonalizable, so q(t,H(t))=0. This is a polynomial matrix identity and therefore holds for all complex t. Hence q is a valid annihilating polynomial even when eigenvalues have persistent multiplicity. Its discriminant Delta(t)=disc_lambda q is nonzero. If r=1, H is a scalar polynomial times identity, and the answer follows by exact integration plus certified elementary phase evaluation.
+
+The divided-difference formula in algebraic_rotation_gap_lemma.md produces the projector onto each distinct eigenspace from q. Thus no small diagonal perturbation is needed in this version. Removing persistent multiplicity is not the same as overlooking isolated crossings: their discriminant roots remain.
+
+All polynomial heights, degrees, arithmetic, real-root isolation, and complex-root approximation here have polynomial bit complexity. No splitting field containing all roots is constructed.
+
+## 2. Real crossing holes and a globally charged mesh
+
+Acquire M_H>=sup_[0,1]||H(t)|| using a coefficient sum; log M_H is polynomial in B,p,n. Isolate the roots of Delta, squarefree as a univariate polynomial for root-location purposes. Around each real root intersecting [0,1], form a rational dyadic hole, with total hole length at most
+
+    epsilon/[16 max(1,Omega M_H)].
+
+Expand isolating intervals by a known positive dyadic margin and merge overlapping holes. Their endpoints have polynomial bit length. Replace the physical evolution on all holes by identity. Since H is Hermitian on the real line, the total Duhamel error is at most epsilon/16. Exact evaluation of a propagator at a crossing point is not needed.
+
+On a retained real point c, let d(c) be the smaller of 1 and its distance to all complex roots of Delta. The companion algebraic lemma gives an effective absolute constant C and
+
+    kappa = 1+r(r-1)p+log(n+1)
+
+such that a disk of radius d(c)/(C kappa) has both:
+
+- Norm at most 2 for every original individual or cluster spectral projector.
+- Constant-factor, say between 1/2 and 2, comparability of every nonzero eigenvalue difference to its center value.
+
+Use dyadic bisection on the retained intervals until each panel, of center c and half-width ell, has
+
+    R=512 n ell <= d(c)/(C kappa).
+
+All distances are certified from root enclosures; constant-factor tests suffice, so refine a root enclosure rather than assume a numerical root is exact. Panels with a hole endpoint as an initial endpoint are allowed. Their rational lengths also have polynomial bit length.
+
+### Panel count
+
+A nonreal algebraic root and its conjugate have separation at least 2^(-S), where S is polynomial in the degree and height of Delta. Thus its imaginary height has a polynomial logarithmic lower bound. Retained points have a known dyadic distance from real roots because of the expanded holes. The maximal bisection depth is therefore polynomial in n,p,B,log Omega,log(1/epsilon), including the bit lengths of hole endpoints.
+
+At a fixed dyadic depth, a panel that needs further subdivision has its center within O(n kappa) panel widths of the real projection of at least one discriminant root. Each root accounts for at most O(n kappa) such panels at that depth. There are polynomially many roots and initial retained intervals. Summing over depths gives a polynomial panel count Q. A root at exponentially small imaginary height therefore costs logarithmically many geometric layers, not inverse height.
+
+The mesh is acquired before choosing the superadiabatic order. It does not depend on that order.
+
+## 3. Local clustering and precision order
+
+Choose
+
+    N = max(1, ceil(log_2(256 n (Q+1)/epsilon))),
+    T = 2^15 n^4 (N+1).
+
+On each panel let
+
+    b = T/(Omega R).
+
+Compute the ordered distinct eigenvalues of the original H(c) with certified error much less than b. Use a hysteresis rule to split into consecutive clusters: every retained cut has true gap at least b, while every merged adjacent gap is at most 2b. For example, a constant absolute tolerance b/100 and a suitably offset cut threshold accomplish this without testing an exact equality.
+
+At c each cluster has diameter at most 2n b. The algebraic relative-gap lemma makes the diameter at most 4n b throughout D(c,R), and every cross-cluster eigenvalue distance is at least g=b/2 there. These estimates concern complex z as well as real t.
+
+The local condition
+
+    Omega g R >= 4096 n^4(N+1)
+
+is satisfied by the chosen T. If all levels merge, the connection is zero and the full system is simply a small-action block after its scalar phase is removed.
+
+## 4. Construct the superadiabatic normal form
+
+For the acquired partition, use the complete projector families and recurrence
+
+    K_0 = i sum_a P_0a' P_0a,
+    H_j = H - Omega^(-1) K_(j-1),
+    P_ja = the corresponding cluster projector of H_j,
+    K_j = i sum_a P_ja' P_ja.
+
+The strengthened fixed-strip version of local_superadiabatic_contraction.md spends an initial R/4 strip to bound K_0 and spends the remaining R/4 in N equal strips for successive differences. On the final disk D(c,R/2), it gives
+
+    ||K_j|| <= 32 n/R,
+    ||K_N-K_(N-1)|| <= (16n/R) 2^(-N).
+
+All perturbed cluster projectors remain in the same explicitly controlled Riesz neighborhoods and are bounded by 3. The proof uses a union of small circles around the original selected eigenvalues, not a large contour whose length would charge the total spectral width. The projector Lipschitz bound is at most 64 n^3/g; Cauchy loss on successive strips produces the factor O(n^4 N/(Omega g R)). No factor ||H||/g enters the iteration.
+
+For real t, each H_j is Hermitian and each P_ja is an orthogonal projector. Therefore K_j is Hermitian. The generator
+
+    H_ad = H_N + Omega^(-1)K_N
+         = H + Omega^(-1)(K_N-K_(N-1))
+
+exactly transports the final cluster subspaces. On the real panel its propagator differs from the target by at most
+
+    2 ell (16n/R)2^(-N) <= 16n 2^(-N).
+
+The choice of N makes the accumulated decoupling error over all panels less than epsilon/16, with margin. The calculation approximates a full propagator. It makes no assumption that the initial vector belongs to an adiabatic eigenspace and does not discard endpoint basis corrections.
+
+## 5. Bounded complex block generators and original scalar phases
+
+Choose one ORIGINAL eigenvalue branch lambda_ref,a(t) in each cluster. Its algebraicity and defining polynomial remain those of q; H_N need not be algebraic with a conveniently sized global defining polynomial.
+
+Use a union of disks of radius b/8 around the original eigenvalues in a selected cluster. Its length is at most pi n b/4, the unperturbed resolvent has norm at most 16n/b, and a Neumann estimate bounds the H_N resolvent by 32n/b. The perturbation is small enough because
+
+    ||H_N-H|| <= 32n/(Omega R) = (32n/T)b,
+
+and T>=1024n^2. On this contour, |zeta-lambda_ref,a|<=4n b+b/8. The weighted Riesz formula therefore gives the explicit bound
+
+    ||(H_N-lambda_ref,a)P_Na||
+       <= 4n^2(4n b+b/8) = O(n^3 b).       (1)
+
+This contour scale is b, not an arbitrarily large actual external gap. That distinction prevents the supposedly small block from acquiring the large excluded spectral width.
+
+Now solve Kato transport
+
+    W'=-i K_N W, W(c)=I.
+
+The analytic norm bound on K_N and R=512n ell imply ||W||,||W^(-1)||<2 throughout D(c,4ell). Both are unitary on the real interval. Choose an orthonormal basis S for the mutually orthogonal subspaces P_Na(c). The transported Hamiltonian S*W^(-1)H_NWS is block diagonal for every t.
+
+For block a, subtract lambda_ref,a(t) times identity. By (1), the normalized-time block generator on t=c+ell s has norm at most O(n^3 T) throughout a fixed disk |s|<4. Its coefficient magnitude and analytic radius are thus bounded by a polynomial in n and logarithmic precision, independently of Omega and coefficient height. Its complex propagator is bounded by exp(poly(n)T), whose LOGARITHM is polynomial. Standard certified Taylor ODE evaluation therefore uses a polynomial number of terms and precision bits.
+
+Separately acquire
+
+    phi_a(t)=integral_c^t lambda_ref,a(s) ds
+
+to absolute accuracy O(epsilon/[Omega poly(n)(Q+1)]). The retained projector theorem's root-distance Taylor/implicit-series quadrature applies directly, or the same local eigenvalue jets can be integrated. Original eigenvalues are bounded by 2^(poly(native bits)) on their regularity disks, so the required order and precision are polynomial, with only logarithmic dependence on Omega. Certified elementary argument reduction evaluates exp(-i Omega phi_a) without a floating-point large-phase accuracy assumption.
+
+## 6. Polynomial-cost jets for the nonpolynomial recurrence
+
+The following is the required representation. Expanding a global defining polynomial for H_j, or constructing a splitting field, is explicitly excluded.
+
+At the real rational center c, represent every analytic matrix by an interval Taylor jet. Suppose A(t)=sum_k A_k(t-c)^k and its desired separated cluster projector is P(t)=sum_k X_k(t-c)^k. Acquire X_0 by a certified Hermitian spectral calculation of A_0, retaining the already separated groups. For k>=1:
+
+1. Let Q_0=I-X_0 and S_k=sum_(j=1)^(k-1) X_j X_(k-j). Idempotence determines
+
+       X_0 X_k X_0 = -X_0 S_k X_0,
+       Q_0 X_k Q_0 =  Q_0 S_k Q_0.
+
+2. Commutation determines the two off-diagonal blocks through
+
+       [A_0,X_k] = -sum_(j=1)^k [A_j,X_(k-j)].
+
+   Each is a Sylvester solve across the known cluster cut. Its inverse norm is bounded by the reciprocal cut gap on the real center; no within-cluster inverse gap is used.
+
+3. The connection jet K=i sum P'P costs one extra projector order. To obtain final order L at depth N, retain a triangular array of at most L+N+1 orders of the original data. There are polynomially many matrix operations and Sylvester solves.
+
+Zero-order matrices at later stages have computable, generally nonrational entries. Approximate each by a certified rational Hermitian matrix, calculate its grouped projectors, and bound the error using the acquired projector Lipschitz estimate. This does not require exact algebraic arithmetic in a growing tower. Characteristic-polynomial/root isolation and algebraic projector formulas for the rational approximants have polynomial bit complexity in n and requested precision. Accidental tiny gaps WITHIN a group do not affect the conditioning of the summed projector; they may be handled by squarefree algebraic evaluation of the approximant rather than eigenvector tracking.
+
+For bases S at the center, use projected columns and stable pivoted orthonormalization. A residual orthogonal projector of positive rank has a diagonal entry at least 1/n. An interval-certified pivot of size at least 1/(2n) can therefore be found. This charges a native frame construction without an eigenvector gauge oracle.
+
+### Precision accounting
+
+All centers, radii, gaps, and thresholds have polynomial bit length; log(1/g), when positive, is polynomial in the native data and mesh endpoint bits. A normalized Taylor jet of order L+N contains polynomially many entries. Cauchy bounds from the local disks bound their logarithmic magnitudes polynomially in L+N and the input bits. Differentiation, convolutions, and Sylvester inversion lose at most polynomially many bits per operation. Over a polynomial-size triangular computation, the total working-precision requirement remains polynomial. Use ball arithmetic at this precision and allocate each operation a fraction of the local epsilon/Q budget.
+
+The same statement can be made via an arithmetic-circuit bound: every stage has polynomially bounded logarithmic condition numbers, circuit size and depth are polynomial, and hence the logarithm of the total amplification of input/rounding error is polynomial. The analytic tail bounds are supplied independently by Sections 4–5; a small last Taylor coefficient alone is not used as a certificate.
+
+Kato transport jets follow the usual linear-ODE coefficient recurrence. W^(-1) is acquired either by its corresponding ODE or by power-series inversion. Use W^(-1)(z), not a conjugate transpose at complex z, to retain holomorphy. Block jets, original eigenvalue jets, and block propagator jets then follow by polynomially many additions, products and linear solves. The bounded normalized generator in Section 5 implies a polynomial Taylor order, for example a conservative order polynomial in n,T and log(Q/epsilon).
+
+## 7. Endpoint matching and total error
+
+Anchor W and each block propagator at c. Let F(t) be the physical-coordinate fundamental matrix reconstructed from W(t), S, the block solutions and their scalar phases, normalized by F(c)=I. The local transition is
+
+    F(c+ell) F(c-ell)^(-1).
+
+For exact objects the inverse on the real line equals the adjoint. Both endpoint conversion matrices are explicitly computed. Adjacent panels may merge or split clusters differently; multiply these full physical-coordinate transitions directly. There is no assumed cross-panel matching of eigenvalue labels or frames, and no free connection coefficient.
+
+Each exact local approximating evolution is unitary on the real line. Allocate numerical error at most epsilon/[16(Q+1)] per panel and a comparable phase budget. Multiplication error accumulates additively up to a harmless exp(epsilon) factor if approximate factors are used. Holes, decoupling, phase evaluation, local Taylor truncation, arithmetic, and final products fit within epsilon by the displayed conservative budgets. The dyadic output need not itself be exactly unitary.
+
+## 8. Nontrivial three-channel coalescence prerequisite
+
+The script verify_three_channel_scaling.py defines
+
+    H_*(u) = [[u^2-1, 1, 1/3],
+              [1, u/3, 2],
+              [1/3, 2, -u^2-u/3+1]],
+    H_eta(t)=eta^2 H_*((t-1/2)/eta),
+    eta=2^(-B), Omega=eta^(-3).
+
+Exact symbolic arithmetic verifies the rescaled equation i dpsi/du=H_*(u)psi, a degree-12 discriminant with no real roots, and an eight-dimensional skew-Hermitian Lie algebra generated by the polynomial coefficient matrices. Thus this is a genuine su(3) family, not a spin-1 copy of a two-level crossing. Its complex discriminant roots all lie at t=1/2+eta z_j, with fixed z_j; the closest imaginary height in u is approximately 0.429693. The numerical root locations are labeled approximate; absence of real roots and the Lie rank are exact symbolic checks.
+
+This verifies an indispensable adversarial input family and its acquired scales. It is not an implementation of the endpoint algorithm and reports no runtime speedup. The construction predicts only O(B) geometric layers for this fixed-degree family, plus polynomial precision work, rather than eta^(-1) physical steps.
+
+## 9. Established ingredients and remaining significance gate
+
+The complex-analysis inputs are Roytwarf–Yomdin's algebraic Bernstein machinery and Hayman's nonvanishing finite-valency distortion theorem as stated by Friedland–Yomdin. The local iterative normal-form mechanism belongs to established superadiabatic renormalization, including Joye–Pfister. Certified algebraic root calculations, Taylor ODE evaluation and elementary argument reduction are established numerical/algebraic tools. The candidate contribution is the uniformly acquired combination for arbitrary explicitly represented polynomial-Hermitian paths, including coalescing multichannel scales and fully charged endpoint matching.
+
+The retained PRIOR_GATE.md distinguishes the closest phase-function solvers and certified D-finite evaluation contracts. It must not be treated as an exhaustive priority certificate for this stronger deterministic construction. A single focused end-to-end check is appropriate if the parent judges the assembled proof strong enough. No additional opportunity scan or random-kick tuning is warranted while this native representation/complexity claim is unresolved.
+
+No physical experiment, paid/external job, publication, contact, repository push, or deployment was performed. The only new computation was the subsecond exact three-channel prerequisite check.

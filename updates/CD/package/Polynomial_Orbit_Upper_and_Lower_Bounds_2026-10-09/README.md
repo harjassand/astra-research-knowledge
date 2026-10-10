@@ -1,0 +1,61 @@
+# Polynomial-orbit upper and lower bounds
+
+Complete proof candidates, 9 October 2026. Internal mathematical checks and exact examples only; external validation, formal verification, and priority remain unresolved.
+
+## Main findings
+
+1. **Upper bound for one unrestricted polynomial map.** A coefficient-uniform primitive-recursive horizon bounds every finite initial zero block. The proof includes singular points and dimension-collapsing maps.
+2. **Why a geometric tower is necessary.** A separate cubic construction over algebraic/complex coefficients, with four state coordinates per level, linear output, and rational Boolean initial state, has zero-prefix lengths growing as a tower whose height grows with dimension. Thus a coefficient-uniform elementary horizon cannot hold in that unrestricted field setting.
+3. **The rational-input question remains distinct.** The tower construction uses primitive roots of unity of enormous algebraic degree. It gives no non-elementary bit-complexity lower bound for rational-coefficient, rational-initial-state inputs. An elementary algorithm for that rational-input problem remains unresolved in the comparison examined here.
+
+These are complete proposed arguments. The upper proof had one focused internal mathematical check. The later lower construction has exact algebraic tests and direct internal reading; it was not covered by that earlier focused check.
+
+## Upper recurrence
+
+For dimension n, d=max(1, degree F), and e=degree h>=1, set
+
+- Delta_0=e, T_0=1
+- T_(i+1)=(Delta_i+1)T_i
+- Delta_(i+1)=Delta_i^(n+2)d^((n+1)T_i), i=0,...,n-1
+
+If the first nonzero output h(F^t(a)) has finite index L, the upper candidate proves L<=T_n-1. Zero outputs at every index 0,...,T_n-1 therefore certify all-time zeroness. The recurrence is primitive recursive and its tower height grows with n.
+
+## Lower recurrence and exact field boundary
+
+Let P_0=2, P_j=P_(j-1)2^(P_(j-1)), and L_k=1+k+sum_(j=1)^k P_j. The lower construction uses n=4k+1, degree at most 3, and linear output. Its first nonzero index is exactly L_k. The first two examples have (n,L)=(5,10) and (9,2059).
+
+At level j a primitive N_jth root of unity, with N_j=2^(P_(j-1)), appears in the map coefficients. Its algebraic degree is exactly N_j/2=2^(P_(j-1)-1). That arithmetic complexity must be charged in computational claims. Normalization uses only the fixed coefficient 1/2 per step; no large 1/N_j coefficient is hidden in the map.
+
+## Reading order
+
+- proof/COMPLETE_PROOF_CANDIDATE.md: full upper proof and degree budgets
+- lower_bounds/NESTED_CYCLOTOMIC_CLOCK_LOWER_BOUND.md: full cubic tower construction and arithmetic accounting
+- checks/CHECK_SCOPE.md: exactly what was checked for each argument
+- comparison/PRIMARY_COMPARISON.md: scoped primary-literature comparison
+- proof/COMPUTATIONAL_SCOPE.md: exact rational evaluation and bit-cost contract
+- lower_bounds/QUADRATIC_CARRY_OBSTRUCTION.md: a rational, quadratic, linear-output exponential-delay illustration
+- proof/OBSERVABILITY_BOUNDARIES.md: supporting distinctions between equality, realization, and robustness
+
+## Reproduce the exact checks
+
+Python 3.12 was used. Only the original boundary script needs SymPy 1.14.0; the two new lower-bound scripts use Python's standard library.
+
+- Install the pinned dependency if needed: `python -m pip install -r requirements.txt`
+- Run `python checks/verify_boundaries.py`
+- Run `python checks/verify_nested_clock.py`
+- Run `python checks/verify_quadratic_carry.py`
+
+Each script rewrites its associated JSON result and prints the same data. These are finite exact checks, not proofs of the general statements. REPRODUCTION_RECORD.json preserves the original upper-example reproduction; LOWER_REPRODUCTION_RECORD.json records the later lower-example reproductions.
+
+## Important limits
+
+- The problem is all-time zeroness of one fixed polynomial orbit, not whether some arbitrary later zero occurs. No general Skolem procedure is claimed.
+- Arbitrary control words and unrelated transition choices are not covered by the upper proof.
+- General partially defined rational maps are not covered.
+- The exact rational upper algorithm is primitive recursive, with no practical-efficiency claim.
+- The algebraic-coefficient lower construction establishes a proposed obstruction to a coefficient-uniform elementary geometric horizon. It does not settle rational-input elementary bit complexity.
+- Neither argument is accompanied by external validation or an established priority claim.
+
+## Provenance
+
+comparison/SOURCE_MANIFEST.json gives the primary URLs and relevant locations. No original-paper byte snapshots were available for the initial package; their unavailable hashes remain explicitly null. SHA256SUMS.json hashes the actual packaged files, not those external papers.
