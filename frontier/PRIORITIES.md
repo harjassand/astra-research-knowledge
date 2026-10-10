@@ -168,11 +168,17 @@ Material corrections: N135 → N160 is a full-proof candidate sharp identical-un
 | 92 | `G-CH-N584` — Reconstruct the antidegradable-boundary finite-block resource bound | The arbitrary-code inequality and 1,392 example are source-reported; verify its energy convention and do not promote it to a capacity converse. |
 | 93 | `G-CH-N585` — Verify the index-two lattice identity and pursue the integral gate | The ideal-code formula is source-derived; tested lattices fail near the target and finite-energy thermal-channel transfer remains missing. |
 | 94 | `G-CH-N586` — Reconstruct the conditional amplifier counterexample and preserve theorem scope | The source reports outward Gaussian intervals; this refutes only the reference-conditioned strengthening, not N557. |
+| 95 | `G-CI-N587` — Reconstruct finite-state data-processing rigidity and preserve the missing-companion boundary | The source reports a reversible chi-square profile classification and a separate nonreversible zero theorem; Section 8’s regularity-free extension lacks its cited companion proof. |
+| 96 | `G-CI-N588` — Reconstruct complete-monotonicity spectral extraction and global series recovery | The positive entire chi-square series classification is source-reported; audit the generator realization, no-analyticity recovery and augmentation hypotheses. |
 
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
-Other historical restarts remain in `state/` and source archives. This dashboard selects 94 concrete gates; it does not exhaustively rank every field or independently reconstruct all 656 cards. Candidate supersession does not externally validate a gate.
+Other historical restarts remain in `state/` and source archives. This dashboard selects 96 concrete gates; it does not exhaustively rank every field or independently reconstruct all 658 cards. Candidate supersession does not externally validate a gate.
 
 ## BQ intake: N522–N534
 
 The 2026-10-10 intake adds thirteen source-derived, unreviewed cards spanning local noise models, quantum information, spectral inversion, fragmentation, Boolean analysis, Gaussian reconstruction, finite-state likelihoods, and applied stochastic networks. Cards retain assumptions, costs, source hashes, and failure scope. Source-reported checks remain source-reported; intake certifies no proof, priority, empirical result, or capability claim. The corresponding open gates are the final thirteen records in OPEN_PROOF_GATES.jsonl.
+
+## CI intake: N587–N588
+
+The 2026-10-10 intake preserves two finite-state divergence-classification notes as separate source-derived, unreviewed cards. N587 assumes data processing and classifies universal reversible-relaxation convexity, with a separately scoped nonreversible zero theorem. N588 assumes complete monotonicity, local smoothness and independent uninformative augmentation, and derives data processing. Their connection is a scoped profile comparison, not a proof dependency. The referenced regularity-free companion proof and source-reported example checkers were not supplied; no proof replay, external validation, priority clearance or historic-scale breakthrough is claimed.
