@@ -1,0 +1,50 @@
+# Operational interface of the deterministic candidate
+
+2026-10-09. This records the operational interface and narrow primary-source comparison after one focused internal end-to-end check accepted the corrected constructive theorem draft. No certified implementation or practical speedup has been demonstrated.
+
+## The prospective operation
+
+Given an explicit small or medium polynomial-Hermitian channel model, return its entire coherent transition matrix with a deterministic absolute operator-error bound, including interacting/coalescing avoided crossings. Work should track the bit description of narrow scales and requested precision, rather than the number of carrier oscillations or inverse crossing width.
+
+This is a computational primitive for a supplied model. Possible users include multilevel sweep/control calculations and lossless coupled-mode conversion. It does not acquire a physical Hamiltonian, remove model uncertainty, eliminate a many-body Hilbert-space dimension, or automatically approximate arbitrary sampled/black-box coefficient functions by low-degree polynomials.
+
+For a real model H_true approximated by a polynomial H_poly, the missing acquisition budget is explicit:
+
+    ||U_true-U_poly|| <= Omega integral ||H_true-H_poly||.
+
+Thus model error must be charged at the requested final accuracy. A noisy coefficient estimate cannot become an accurate physical prediction merely because the propagator computation is certified. Likewise, requesting a full rapidly oscillating time trace has output cost; the theorem concerns an endpoint matrix or a separately charged finite collection of evaluation times.
+
+## Closest current practical baseline
+
+The author-hosted version of Hu–Bremer's *A frequency-independent solver for systems of linear ordinary differential equations* (published 2025) remains the strongest directly comparable systems interface found in this pass. It reduces a matrix system to a scalar equation using a cyclic vector. Its section 2 still asks the user to choose a vector giving acceptable scalarization conditioning; section 1 reports degraded attainable accuracy as dimension/frequency grows. This is a substantial practical solver, not an ordinary time-stepper. The new candidate would differ by uniformly acquiring a certified representation through native polynomial data and coalescing scales, without that user-supplied conditioning step.
+
+Primary author PDF: https://www.math.toronto.edu/bremer/papers/scalar2.pdf , especially pages 3–7. Published article: https://www.sciencedirect.com/science/article/pii/S0377042725002109 . The comparison does not establish that the proposed construction is faster on any example.
+
+Stojimirovic–Bremer's 2026 *An accelerated frequency-independent solver for oscillatory differential equations* supplies a modern scalar baseline with convergence analysis and a public implementation. Its frequency threshold explicitly contains the minimum scalar coefficient; its systems applications still require suitable scalarization. The code is useful for its supported scalar class and must not be labeled a general complex three-channel solver without providing and charging a valid reduction.
+
+Primary article: https://academic.oup.com/imajna/advance-article/doi/10.1093/imanum/draf128/8472808 . Author code: https://github.com/JamesCBremerJr/FreqInd . No third-party code was downloaded, compiled or executed in this pass.
+
+Joye–Pfister's superadiabatic renormalization is a direct antecedent of the local recurrence, not a competitor to conceal. The prospective addition is native algebraic acquisition, precision-dependent cluster selection, and global bit/endpoint accounting. Primary paper: https://www-fourier.univ-grenoble-alpes.fr/~joye/jpjmp.pdf . Existing certified D-finite evaluation must also remain in the comparison; it already supplies arbitrary precision and certified connection matrices for a specified equation. The unestablished comparison is uniform cost in a binary large coefficient, rather than certification itself.
+
+## Why the present proof is not a ready practical solver
+
+At n=3, even N=30 makes the displayed sufficient threshold T=2^15 n^4(N+1) exceed 82 million. The proof's root-distance shrink and Taylor bounds are also deliberately conservative. A literal implementation with those worst-case constants may be unusable. Replacing epsilon^-2 by polynomial logarithmic dependence is a meaningful change in the theoretical contract, but it is not a measured engineering advantage.
+
+The sensible operational implementation would use tighter local complex norm/gap enclosures and certify the actual computed residual of the normal form. It could increase the cluster threshold, order or subdivision only when the certificate demands it. The conservative construction would establish termination as a fallback. Such a residual-certified implementation has not yet been built here; ordinary heuristic adaptivity would not inherit the theorem automatically.
+
+## One useful eventual comparison, not an arbitrary benchmark collection
+
+Use the saved genuinely three-channel quadratic family, plus a parameter choice that makes one crossing cluster coexist with a far spectator. Vary the binary coalescence scale and requested operator accuracy. Compare full setup and endpoint costs, including:
+
+1. Root/discriminant processing and working precision.
+2. Local cluster changes, jet order and residual certification.
+3. Scalar phases and their argument reduction.
+4. Endpoint basis conversion and all numerical error budgets.
+5. A phase-function systems baseline with a properly conditioned, charged scalarization and enough working precision for the same endpoint error.
+6. A certified Taylor/D-finite reference on sizes where it is affordable, rather than double-precision time stepping as the sole baseline.
+
+The central test is whether certified cost scales with the bits of coalescence and requested accuracy in practice, with a useful absolute runtime. A wall-clock comparison at fixed double precision that lets one method lose digits would be misleading. A root-location or exact rescaling check is not an endpoint propagation benchmark.
+
+## Present result
+
+The old randomized accuracy ceiling has a concrete deterministic replacement candidate, supported by the newly proved local analytic lemmas. The strongest found current numerical methods already possess practical frequency independence. No complete matching native bit-complexity contract was found in this bounded comparison, but no historical-priority claim is justified by that absence. The single focused check found no blocking mathematical gap after its explicit constructive addendum and minor repairs. A modest, fair operational realization is the next gate; no extra audit loop is being launched.

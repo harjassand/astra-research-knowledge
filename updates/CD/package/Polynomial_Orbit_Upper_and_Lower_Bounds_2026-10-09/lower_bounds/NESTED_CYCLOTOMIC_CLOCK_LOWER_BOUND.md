@@ -1,0 +1,146 @@
+# Nested cyclotomic clocks: a tower lower bound
+
+Status, 9 October 2026: complete construction candidate, with exact two-level checks and direct internal mathematical reading. No external validation, formal verification, or priority certification is claimed. The earlier focused mathematical check covered only the upper-bound proof.
+
+## 1. Precise conclusion
+
+Define integers
+
+P_0 = 2,
+N_j = 2^(P_(j-1)),
+P_j = P_(j-1) N_j,                       j >= 1,
+L_j = 1 + j + sum_(i=1)^j P_i.
+
+For every k >= 1, the construction below gives one polynomial map F_k over the algebraic numbers, in 4k+1 coordinates, of maximum coordinate degree at most 3, together with a rational initial point a_k in {0,1}^(4k+1) and a coordinate output h_k of degree 1, such that
+
+h_k(F_k^t(a_k)) = 1 precisely at t = L_k + q P_k, q >= 0,
+and it is 0 at all other nonnegative integer times.
+
+In particular, its finite initial zero block has length exactly L_k. Since P_j >= 2^(P_(j-1)), these lengths have tower height growing linearly with dimension. Therefore no fixed-height elementary bound in (n,d,e), independent of coefficient arithmetic complexity, can bound finite initial zero blocks for all polynomial maps over the complex algebraic numbers, even when d=3, e=1, and the initial point is rational and Boolean.
+
+This is a geometric, coefficient-uniform horizon obstruction. It does not disprove an elementary algorithm for rational-coefficient, rational-initial-state inputs, nor an elementary bit bound that charges the algebraic coefficients' representation.
+
+## 2. A clock-amplification lemma
+
+Suppose a coordinate b of an existing autonomous polynomial system has exact values in {0,1} on its specified orbit and satisfies
+
+b_t = 1 if and only if t = T + q P, q >= 0,
+
+where T >= 0 and P >= 2. Thus there are no pulses before T, and thereafter the interval between pulses is exactly P.
+
+Set N=2^P and choose a primitive Nth root of unity zeta. Add four coordinates x,y,a,z, initially
+
+x_0 = 1, y_0 = 1, a_0 = 0, z_0 = 0.
+
+Their simultaneous update is
+
+x^+ = x [1 + (zeta-1) b],
+y^+ = (1-b) y^2 + b zeta x,
+a^+ = (1-b) a (1+y)/2 + b,
+z^+ = b a (1+y)/2.
+
+Every right-hand side uses the same pre-update state. These are globally defined polynomials, of total degree at most 3. Division is only by the fixed nonzero integer 2; there is no state-dependent denominator and no coefficient 1/N.
+
+Claim: the new z coordinate is Boolean and has its pulses precisely at
+
+T_new + q P_new, q >= 0,
+where P_new = P 2^P = PN and T_new = T + PN + 1.
+
+### Proof: first pulse and reset
+
+Before the first old pulse at time T, a stays zero, because its update with b=0 multiplies a by (1+y)/2. Hence z stays zero, regardless of the values of x and y. At time T, the old state still has a=0, so the output z_(T+1) is zero. The same update sets
+
+x_(T+1) = zeta,
+y_(T+1) = zeta,
+a_(T+1) = 1.
+
+Thus the first old pulse safely starts a complete accumulation block. No partially completed initial block can produce an output.
+
+### Proof: one full block
+
+Write t_q = T + qP for old pulse times. At the pulse time t_q, x equals zeta^q: x starts at 1 and is multiplied by zeta only at old pulse updates. For q >= 1, immediately after the preceding old pulse, x=y=zeta^q and a=1.
+
+During the P-1 following nonpulse updates, x stays fixed, y repeatedly squares, and a multiplies successively by (1+y)/2. The final factor used in the z update at t_q is evaluated on the pre-reset y. Consequently
+
+z_(t_q+1) = 2^(-P) product_(r=0)^(P-1) [1 + (zeta^q)^(2^r)]
+           = (1/N) sum_(s=0)^(N-1) (zeta^q)^s.
+
+The polynomial identity used here is
+
+product_(r=0)^(P-1) (1+X^(2^r)) = sum_(s=0)^(2^P-1) X^s.
+
+Because zeta is primitive of order N, this normalized geometric sum is 1 when N divides q and 0 otherwise. Its first nonzero occurrence with q >= 1 is q=N. At every nonpulse time, b=0 makes the new z zero. Together with z_0=0 and the suppressed first old pulse, this proves the claim, including its endpoint.
+
+The reset is simultaneous with output: at an old pulse the output uses the completed product for the old x, while the new x and y are both zeta times the old x and the new a is 1. Thus there is no mixture of old and new phases.
+
+## 3. Nesting the lemma into one map
+
+Begin with one coordinate b_0, initially 0, updated by
+
+b_0^+ = 1 - b_0.
+
+It pulses at times 1,3,5,..., so T_0=1 and P_0=2.
+
+For j=1,...,k, let b_(j-1) mean b_0 if j=1 and the previous level's output coordinate z_(j-1) if j>1. Apply the clock-amplification update with this coordinate as b, with N_j=2^(P_(j-1)) and a primitive N_jth root zeta_j. Denote the four new coordinates by x_j,y_j,a_j,z_j.
+
+All levels update simultaneously as coordinates of one autonomous polynomial map. The degree stays at most 3: the input pulse is a coordinate, never an expanded formula for the preceding level. There are 1+4k coordinates. Initial values are b_0=0 and (x_j,y_j,a_j,z_j)=(1,1,0,0) at each level.
+
+The lemma gives
+
+P_j = P_(j-1) 2^(P_(j-1)),
+T_j = T_(j-1) + P_j + 1.
+
+Starting from T_0=1, this yields T_j=L_j=1+j+sum_(i=1)^j P_i. Taking h_k=z_k proves the claimed output sequence.
+
+The first values are
+
+- k=1: P_1=8, L_1=10, dimension 5;
+- k=2: P_2=2048, L_2=2059, dimension 9;
+- k=3: P_3=2048*2^2048, L_3=P_3+2060, dimension 13.
+
+## 4. Tower necessity and its exact meaning
+
+Let E_0=2 and E_(j+1)=2^(E_j). Then P_j>=E_j by induction, so L_j>=E_j. Along n=4k+1, the required horizon therefore grows at least as a base-2 power tower of height k+1.
+
+Every elementary function is bounded by a fixed-height exponential tower with an elementary bottom argument, equivalently by a fixed-height tower in a polynomially enlarged input for integer elementary functions. A tower whose height grows linearly with n eventually exceeds every such bound. Hence the candidate construction rules out any elementary coefficient-uniform horizon in n,d,e for the unrestricted algebraic-coefficient setting.
+
+This matches the qualitative need for dimension-dependent tower height in the upper-bound candidate, without matching constants or the precise recurrence. It is not an Ackermann lower bound and does not contradict the proposed primitive-recursive upper bound.
+
+## 5. Arithmetic accounting and rational boundary
+
+All N_j are powers of 2. A primitive N_jth root has exact algebraic degree
+
+phi(N_j) = N_j/2 = 2^(P_(j-1)-1).
+
+The roots may be chosen compatibly inside the single field Q(zeta_(N_k)); its degree is N_k/2. This very large algebraic degree is an essential resource of the construction.
+
+There is no large normalization coefficient 1/N_j in the actual update. The normalization is spread over the P_(j-1) steps, by the fixed rational coefficient 1/2. Apart from roots of unity, the constants in the displayed formulas are 0, 1, -1, and 1/2. A factored coefficient zeta_j-1 has absolute value at most 2. Thus large coefficient magnitude is not the resource; large algebraic degree is.
+
+In a dense minimal-polynomial representation, the root's degree must be charged. Even a sparse description of X^(N_j/2)+1 uses an exponent with binary length P_(j-1), plus a specification of the desired embedding/root. The long horizon is not a non-elementary lower bound in that full bit input size. No rational-coefficient/rational-initial-state version is provided here.
+
+A useful alternative placement of the arithmetic data is to add one coordinate w_j per level with w_j^+=w_j and initial w_j=zeta_j, replacing the root coefficient by w_j. The map then has rational coefficients from a fixed small set, still degree at most 3, in 1+5k coordinates. The initial point is algebraic rather than rational. This again falls outside the rational-coefficient AND rational-initial-state contract.
+
+Conversely, the original construction has rational initial coordinates but algebraic map coefficients. Translating its x_j and y_j coordinates by 1 makes every initial coordinate zero, with the same degrees and horizon; the map coefficients remain algebraic.
+
+## 6. Exact checks and limits
+
+../checks/verify_nested_clock.py checks the first two levels together in Q(zeta_256), represented exactly by the relation zeta_256^128=-1. It uses integer/rational coefficient arithmetic, no floating point. Through time 6144 it finds
+
+- lower-level pulses at 10+8q;
+- upper-level pulses at 2059 and 4107, with period 2048;
+- Boolean output at every checked time.
+
+The saved ../checks/nested_clock_checks.json records the result. These finite checks exercise the simultaneous reset/output convention, initial suppression, geometric product, and normalization. They do not prove the induction for all k; that proof is given above. The new construction has exact checks and direct internal mathematical reading. The earlier focused check of the upper-bound proof does not certify this lower construction. No external review or formal verification has been performed.
+
+## 7. Primary boundary and priority
+
+This is a newly derived construction in this investigation, not a certified novelty claim. The existing primary comparison concerns the unrestricted upper-bound candidate; it did not establish whether a cyclotomic tower lower construction was known.
+
+The elementary open question stated for rational polynomial-recursive sequences in Clemente (2025), Section III-F2, remains a different contract:
+https://arxiv.org/html/2503.21697v2#S3.SS6.SSS2
+
+The rational-recursive sequence paper's specified rational inputs and PSPACE lower bound likewise must not be conflated with this geometric field-uniform lower bound:
+https://drops.dagstuhl.de/storage/00lipics/lipics-vol254-stacs2023/LIPIcs.STACS.2023.24/LIPIcs.STACS.2023.24.pdf
+
+The quantitative upper bound for dimension-preserving maps in Novikov–Yakovenko (1999) does not by itself supply a lower bound or certify this construction's novelty:
+https://www.wisdom.weizmann.ac.il/~dnovikov/Papers/annalif-99.pdf

@@ -1,0 +1,58 @@
+# Certified three-channel implementation supplement
+
+2026-10-09 UTC. Companion to the preserved deterministic propagation proof package v2.
+
+## Useful result
+
+A native implementation now produces and exactly certifies useful-precision endpoint matrices for the genuinely irreducible three-channel coalescence family. Certification uses a saved finite polynomial-phase expression and the original rational generator. Floating spectral calculations merely propose the expression. Exact integer residual bounds, center and endpoint errors, Machin/Taylor scalar-phase enclosures, and rounded global matrix products certify the exact reported dyadic matrix.
+
+The largest completed case in this bounded pass has eta=2^-8, Omega=2^24 and target error 2^-20. It used 125 panels, including 41 genuinely separated normal-form panels, and obtained an operator-error upper bound 2.05622e-9. Its numerical/acquisition/certificate/witness work took 10.415 seconds. A native CF4 baseline did not finish within its 30-second row cap. This is useful bounded evidence for the resource mechanism. It is not superiority over existing frequency-independent systems solvers, whose source was not available here.
+
+## Certified cases
+
+| Coalescence bits B | Accuracy bits s | Certified operator-error upper bound | Panels / separated | Proposal + reconstruction + certificate + witness seconds |
+|---|---:|---:|---:|---:|
+| 4 | 20 | 1.01442408e-9 | 89 / 5 | 2.148 |
+| 6 | 20 | 1.03849231e-9 | 109 / 25 | 6.733 |
+| 8 | 20 | 2.05621662e-9 | 125 / 41 | 10.415 |
+| 3 | 36 | 8.71872714e-15 | 57 / 0 | 0.497 |
+
+Times include original cold coefficient/root acquisition, rejected proposal work, a deliberately redundant expression reconstruction, exact certification, and complete witness writing. Ordinary interpreter/module initialization is accounted for separately in STARTUP_AND_WORKFLOW_ACCOUNTING.json: two measured fresh-process startup probes are allocated to each two-stage workflow. The allocated startup-inclusive workflow estimates are 3.367, 7.953, 11.635 and 1.716 seconds respectively. The table's raw numerical times must not be called complete process wall times. The high-precision B=3 case uses entirely merged blocks, so it is a precision/certificate check, not a separated-channel mechanism demonstration.
+
+These are a handful of bounded native runs, without repeated timing statistics or a broad campaign. The tracked compute ledger, including a conservative 15-second allowance for tiny checks and untracked startup work, totals 139.37 seconds, below the frozen 180-second native computation cap. The individual solver-row cap remained 30 seconds.
+
+## Fair baseline conclusions
+
+The native adaptive two-exponential fourth-order commutator-free Magnus implementation is an independent implementation of the standard CF4 formula, with double-precision Hermitian exponentials and step doubling. Primary formula source: https://personales.upv.es/~serblaza/2006APNUM.pdf . The exploratory sweep uses a standard local error budget; the initially overconservative setting and the overly loose failed setting are preserved rather than selected away.
+
+CF4 is faster on modest instances. At B=4 its raw numerical solver time is 0.092 seconds; at B=6 it is 2.864 seconds. The original order-three normal-form proposal at B=6 took 4.036 seconds, and the later order-six proposal took 2.809 seconds before certification. Neither establishes a robust speed advantage there. At B=3,s=36 CF4 takes 0.321 seconds versus 0.497 seconds of total candidate numerical/certificate work.
+
+The saved CF4 endpoints for those three cases have also been validated by exact rational distance to the certified endpoint plus its error bound. Their bounds are 3.196e-8, 9.995e-9 and 2.555e-12 respectively, all below the corresponding targets. This is a **reference-dependent certificate**, not an independently certified CF4 integrator. Its reference construction cost is recorded separately; these numbers do not create a fair production-cost ranking between certified methods.
+
+At B=8 the CF4 row is censored after 30 seconds, not a lower-bound theorem or a completed failure. The absent Hu–Bremer systems phase solver remains an explicit comparison limit. Direct DOP853 solves are independent numerical diagnostics only and were not treated as the sole operational baseline.
+
+## Independent parameter sweeps and limits
+
+The frozen manifest separated frequency (B=3, s=20, frequency offsets -2,0,2,4), precision (B=3, offset 0, s=12,20,28,36), and coalescence (offset 0, s=20, B=2,4,8,16). The saved exploratory results retain every completed/censored row. B=16 was not run because the double-precision proposal's estimated scalar-phase bit demand exceeded its precision guard. The generic arbitrary-precision proposer and uniform theorem fallback remain unimplemented.
+
+All four exact coefficient-witness replays passed. They check the original rational generator, exact dyadic panel coverage and center identities, zero phase constants, all exact residual bounds, and equality of the replayed output matrix and error bound. Replay needs no eigensystem or root calculation. Full proof details are in FINITE_EXPRESSION_CERTIFICATE.md.
+
+## Reproduction
+
+With Python 3.12, NumPy, SciPy, SymPy and mpmath available:
+
+    python replay_integer_certificate.py
+    python verify_phase_enclosure.py
+    python certify_saved_baselines.py
+
+The first command is the core exact witness replay. The second is an extra high-precision numerical sanity check, clearly separate from the proof. The third regenerates the reference-dependent CF4 certificates.
+
+To reconstruct a finite expression and its witness from a saved panel proposal:
+
+    python run_expression_certificate.py --row B8_f0_s20 --seconds 30
+
+The original exploratory sweep can be regenerated with run_exploratory_manifest.py, subject to its internal budget. It is not necessary to rerun that sweep to verify the certified endpoints.
+
+## Scope of the advance
+
+The uniform construction survived one focused internal mathematical check. This supplement closes a narrower practical gap: actual irreducible three-channel endpoints can be certified without first certifying the numerical eigensystem machinery. It does not yet implement a uniformly terminating all-input algorithm, establish priority, obtain external validation, or validate a physical Hamiltonian. No paid/external jobs, publication, contact, repository push, deployment or physical experiment was performed.
