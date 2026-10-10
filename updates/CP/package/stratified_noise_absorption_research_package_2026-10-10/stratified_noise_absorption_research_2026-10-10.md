@@ -1,0 +1,229 @@
+# Stratified Entropy Absorption for Exact Local Stationary Sampling
+
+**Research date:** 10 October 2026. **Status:** Original working research construction, mathematical proof provided here, computational cross-checks performed. **No third-party correctness or priority verification. No civilization-scale breakthrough claimed.**
+
+## 0. The capability and its boundary
+
+An interacting system with \(N\) sites can have \(q^{Nc}\) global states and very slow, exponentially branching dependence trees. For a **finite-depth triangular class** of nonlinear stochastic systems, the construction below samples the exact *joint* stationary state of any requested finite set of site coordinates by querying a number of update events whose expected value is **independent of \(N\)**. There is no subcritical-branching restriction such as \(k(1-s)<1\); arbitrary nonlinear functions are allowed **only between lower and higher levels**, not as feedback at the same level.
+
+This construction generalizes an earlier investigation of noisy affine networks and upper-unitriangular groups. Neither exact stationary sampling nor group-based decomposition is historically new. Whether the *particular rank-absorbing layered sampler* has been published previously remains unverified. It should not be described as a new general-purpose simulator of arbitrary nonlinear dynamics.
+
+## 1. Exact model
+
+Fix a finite field \(F_q\), a finite graph with \(N\) labelled sites, a number of levels \(c\ge1\), and a maximum \(k\) of parent incidences per site. State at site \(i\), time \(t\) is
+
+\[
+X_{i,t}=(X_{i,t}^{(0)},\ldots,X_{i,t}^{(c-1)})\in F_q^c.
+\]
+
+The parent list \(P_i=(j_1,\ldots,j_{k_i})\) is accessible by a local oracle costing at most \(O(k)\), including any necessary bit complexity for a site address. Each space-time site \(z=(i,t)\) independently chooses one of three update categories:
+
+- **Haar** with probability \(s>0\): all coordinates are sampled independently and uniformly from \(F_q\).
+- **Residual** with probability \(r\ge0\): the site becomes a locally computable fixed state \(\rho_i\in F_q^c\).
+- **Gate** with probability \(1-s-r\): for every \(\ell\),
+
+\[
+\tag{1} X_{i,t}^{(\ell)}
+=\sum_{a=1}^{k_i}A_{i,a}^{(\ell)}X_{j_a,t-1}^{(\ell)}
++F_i^{(\ell)}\!\left(\{X_{j_a,t-1}^{(h)}\}_{a,\;0\le h<\ell}\right).
+\]
+
+Here coefficients \(A_{i,a}^{(\ell)}\in F_q\) are deterministic, known or locally computable; the nonlinear forcing \(F_i^{(\ell)}\) is any deterministic finite circuit for which input acquisition and evaluation are charged. \(F_i^{(0)}\) is a constant. Crucially, no function \(F_i^{(\ell)}\) may depend on an unknown state at level \(\ell\) or higher. The same space-time category applies to all coordinates at that site; this correlation is **retained** by one shared memoized category oracle.
+
+Rational \(s,r\) permit ideal exact category draws using integer random bits. The proof also allows exact real-probability sampling as an ideal oracle, but does **not** claim exact physical computation for arbitrary uncomputable reals. The reference implementation is for prime \(q\), with the finite-field generalization mathematical.
+
+## 2. Theorem — finite-level stationary sampling
+
+**Theorem 1 (stratified entropy absorption).** Under (1), for any fixed collection \(I\) of \(m\) raw coordinates \((i,t,\ell)\) at arbitrary specified integer times, the backward algorithm in Section 3 terminates almost surely and outputs **exactly their joint stationary distribution**. All shared ancestors, resets, nonlinear interactions and cross-time correlations are respected. No construction of the \(q^{Nc}\)-state transition matrix, deterministic stationary-state oracle, inverse sampling probability, simulation burn-in, or global preprocessing is required.
+
+Let \(Q\) be the total number of **distinct previously unseen space-time categories** exposed by the sampler, and let
+
+\[
+ h=kc^2,\qquad B_c(m,k,s)=\frac{m}{s}\sum_{j=0}^{c-1}(1+h/s)^j.
+\]
+
+Then
+
+\[
+\boxed{\mathbb E Q\le B_c(m,k,s).}\tag{2}
+\]
+
+At most \(cQ\) site-layer category visits and \(kcQ\) parent incidences are required (subject to a factor for including the **full** forcing-input descriptions and their coordinate evaluations). For **fixed** \(c\), the expected bit/arithmetic cost is polynomial in \(m,k,1/s,\log q\), the lengths of locally acquired gate descriptions and their execution costs; its exponent and coefficients may increase sharply with \(c\). Formula (2) is a conservative bound, not a prediction of practical throughput.
+
+Moreover, for fixed \(c,m,k,s\), there exist **constructively selectable** \(C<\infty\), \(\gamma>0\) such that the maximum **backward dependency-path depth from any original requested coordinate** obeys
+
+\[
+\boxed{\Pr(D\ge T)\le C e^{-\gamma T}.}\tag{3}
+\]
+
+Consequently, for the stationary law \(\pi\) of the finite system, for any starting global state \(x\) and any fixed joint projection \(I\) to time \(T\),
+
+\[
+\tag{4}\bigl\|\mathcal L((X_T)_I\mid X_0=x)-\pi_I\bigr\|_{\rm TV}
+\le \min\{1,C e^{-\gamma T}\}.
+\]
+
+This is **local / fixed-observable** quantitative mixing for outputs requested at one common terminal time. For multi-time target batches, the exploration-depth statement measures additional ancestry backward from each requested time; any prescribed observation-time separation must be counted separately when comparing with a finite-time initialization. It does **not**, without a separate argument, claim that the total-variation distance of the full \(q^{Nc}\)-state system converges in \(O(\log N)\) steps. Independently mixed single-site marginals do not guarantee a mixed joint distribution.
+
+**Uniqueness for finite \(N\).** Since every one of the \(N\) sites simultaneously chooses Haar with probability \(s^N>0\), every global state can transition to every other in one step with positive probability. The finite global Markov chain is irreducible and aperiodic, hence has a unique stationary law. The sampling construction obtains finite marginals of this law without using the exponentially small value \(s^N\) in its runtime.
+
+## 2.1 Infinite-network ergodicity extension
+
+**Corollary 1 (countably infinite bounded-input networks).** The same algorithm and bounds apply to any **countable** set of sites \(\Lambda\), of any geometric dimension or spatial arrangement, if each site has at most \(k\) accessible parents and the state layers and update rules obey (1) uniformly. The associated probabilistic cellular network possesses a **unique stationary probability measure** on \((F_q^c)^\Lambda\). From every initial configuration, every finite-dimensional local marginal converges to its stationary marginal **uniformly over the initial configuration**, with the exponential-in-time bound (4). A finite list of stationary coordinates is sampled with finite expected oracle work and never requires enumerating the infinite configuration.
+
+*Proof.* The configuration space is a compact countable product of finite discrete spaces. The synchronous product update kernel is Feller because the update distribution of each finite cylinder depends on finitely many input coordinates. Krylov–Bogolyubov averaging supplies an invariant probability measure. For any fixed finite cylinder \(I\), the finite-horizon rank and lower-layer certificates depend only on update categories, not on initial values. On the event that the backward certificate closes before time \(-T\), the conditional law of the output on \(I\) is **identical for every initial configuration**, by the layer-inductive masking lemma. For the remaining event, total variation is bounded by its probability, at most \(Ce^{-\gamma T}\) from (3). Consequently, any two invariant measures have identical finite marginals after taking \(T\to\infty\), hence agree. Finally, finite-batch laws are consistent because they are limits of the genuine finite-horizon transition kernels; Kolmogorov consistency gives the claimed stationary process. \(\square\)
+
+**Qualification:** this is ergodicity/uniqueness for the *stratified* model only. There are established counterexamples to universal uniqueness of invariant laws for more general nonlinear positive-noise cellular automata. It also does not imply efficient sampling of the entire infinite state or a system-size-independent algorithm to compute arbitrary global observables.
+
+## 3. Algorithm and entropy certificate
+
+Maintain, for each time-site at the currently solved level \(\ell\), a coefficient vector \(v\in F_q^{m_\ell}\) recording its contribution to the \(m_\ell\) requested coordinates. Maintain a subspace \(V\) in output space, initially zero, generated by contributions of revealed **independent Haar noises** at level \(\ell\). Keep a compact list of *unevaluated* lower-layer forcing terms \((v,F_{i}^{(\ell)},t)\), not their exponentially expanded symbolic polynomial compositions.
+
+Process outstanding sites in **descending time order**:
+
+1. If \(v\in V\), discard that dependency without revealing its update symbol. Its contribution will be masked by uniform noise on \(V\).
+2. If this site-time is Haar, add \(v\) to the linear span \(V\), without sampling or revealing the corresponding Haar coordinate.
+3. If it is a deterministic residual reset, add \(v\rho_i^{(\ell)}\) to the known affine offset.
+4. If it is a gate, record the single nonlinear forcing expression \(vF_i^{(\ell)}\). Propagate \(vA_{i,a}^{(\ell)}\) to each same-level parent \((j_a,t-1)\).
+5. After all same-level dependencies are absorbed, jointly sample the lower-layer coordinates needed to evaluate all recorded forcing expressions, **using the same category oracle** as all higher layers. This step recursively implements the identical algorithm for level \(\ell-1\).
+6. Evaluate the saved nonlinear offsets and add an independent uniform random vector from \(V\). This is the requested joint level-\(\ell\) output, conditional on the sampled lower-layer values.
+
+**Core identity.** For any unknown vector \(Z\) (even one correlated arbitrarily with already known lower-layer variables), if \(U\) is independent uniform on the subspace \(V\), then
+
+\[
+\tag{5} U+vZ\ \stackrel{d}{=}\ U\quad\text{whenever}\quad vZ\in V.
+\]
+
+Equation (5) is the *distributional* erasure. It is **not** a pathwise equality under a shared random coin. Therefore the algorithm is an exact perfect-distribution sampler rather than ordinary coalescent coupling from the past.
+
+## 4. Proof of correctness
+
+**Lemma 1 (one-layer representation).** Condition on the complete category field and on all lower-level state histories. For any finite output coordinate vector \(Y\) at layer \(\ell\), backward affine substitution followed by the algorithm above returns the correct conditional law
+
+\[
+\tag{6}Y= b(\text{lower-state histories}) + U_V,
+\]
+
+where \(U_V\) is uniform on the revealed-noise span \(V\), independent of all lower-level state histories and the category field, and \(b\) is the sum of known residual constants and resolved forcing terms.
+
+*Proof.* The update equation is affine in all same-level ancestor variables, because the forcing is a function of strictly lower levels. Descending-time substitution is a finite sequence of exact algebraic identities. At a Haar site-time, the same-level state coordinate is uniform and independent of the category field, lower coordinate processes and all earlier same-level site-time variables. Each such contribution is a uniform vector on its line; independent Haar contributions sum to a uniform vector on their linear span. An unresolved coefficient already in that span cannot alter the joint output law by (5), so discarding it is justified. All remaining same-level coefficients are eventually removed by finite termination (proved below). Evaluation of the retained lower forcing sources gives \(b\). \(\square\)
+
+**Lemma 2 (finite rank-driven termination).** For a fixed level and a finite batch of \(a\) raw coordinates, if only finitely many categories have already been exposed, the layer resolver terminates almost surely, and its number \(R\) of **newly exposed** categories is stochastically bounded by a negative-binomial \(\operatorname{NB}(a,s)\) variable (number of Bernoulli trials required for \(a\) successes).
+
+*Proof.* Each query is made only for a current coefficient outside the collected Haar span. If the category is Haar, the rank grows by one; its maximum is \(a\). Any previously exposed categories are finitely many and can each be revisited at most once during this level because all propagation edges move strictly to earlier times. For every previously unseen category, the Haar indicator is an independent Bernoulli(\(s\)) draw even under adaptively selected site-time addresses. Consequently the number of fresh draws before rank can no longer grow is at most the number necessary to see \(a\) Haar indicators; the event search must end by that stage. \(\square\)
+
+**Lemma 3 (simultaneous conditional correctness).** Let the complete lower-level process be constructed consistently using the category field, but not upper-level Haar values. Conditionally on the category field, any upper-layer revealed Haar coordinate is independent of the **entire lower-level process**, including its future. Thus replacing all upper Haar contributions by a fresh uniform sample on their coefficient span, **after** the lower variables are generated, preserves their joint law, even if those upper events share reset categories with lower variables.
+
+*Proof.* Full Haar resets generate independent coordinates at all levels, and every lower-level gate depends only on that level and levels below. Therefore lower-level trajectories depend only on lower-level Haar coordinates, residual values and the category field. No top-layer Haar coordinate enters their generation. At each recursively sampled layer, all event categories are drawn or recovered from the same memoized field, so the lower and upper processes condition on the same events. Independence of Haar coordinates across levels, conditional on those shared events, proves the claim. \(\square\)
+
+*Proof of Theorem 1, exactness.* Begin at level zero, whose forcing is deterministic: Lemmas 1 and 2 give an a.s. terminating exact finite-batch sampler, conditional on category events. Induct on \(\ell\). At level \(\ell\), Lemmas 1 and 2 reduce output distribution to (i) finite recorded lower-layer coordinates, (ii) known constants, and (iii) independent uniform Haar span. By the inductive hypothesis all required lower-layer coordinates are sampled jointly and consistently under the *same* event categories. Lemma 3 gives exactness after adding the Haar span. Finite \(c\) ensures a.s. termination. To identify the stationary law rather than an arbitrary initial law, run the resulting finite exploration against a bi-infinite category field. Because the output law no longer depends on the remote past, it defines a time-translation-invariant process respecting the transition kernel; for finite \(N\), irreducibility above identifies its one-time law with the unique stationary measure. \(\square\)
+
+## 5. Proof of resource and tail bounds
+
+At level \(\ell\), let \(F_\ell\) count *fresh* distinct categories exposed, \(T_\ell\) count visits to all site-layer categories (including old cached ones), and \(M_\ell\) count requested raw coordinates. Since each old category was freshly exposed at a higher level,
+
+\[
+T_\ell\le F_\ell+\sum_{j>\ell}F_j.
+\]
+
+Each explored gate contributes at most \(k\ell\le kc\) lower-coordinate prerequisites. Over the \(c\) layers, with \(m\) original targets,
+
+\[
+\tag{7}M_\ell\le m+kc^2\sum_{j>\ell}F_j.
+\]
+
+Lemma 2 implies, conditional on higher-level category discovery, \(F_\ell\) is stochastically dominated by the number of new Bernoulli(\(s\)) trials needed for \(M_\ell\) successes. Couple these to independent negative-binomial variables
+
+\[
+Z_{c-1}\sim NB(m,s),\qquad
+Z_\ell\mid (Z_j)_{j>\ell}\sim NB\left(m+kc^2\sum_{j>\ell}Z_j,s\right).
+\]
+
+Then \(\sum F_\ell\preceq\sum Z_\ell\). Since \(E[NB(a,s)]=a/s\), setting \(S_\ell=\sum_{j\ge\ell}EZ_j\) gives
+
+\[
+S_\ell\le m/s+(1+kc^2/s)S_{\ell+1},\qquad S_c=0.
+\]
+
+Iteration yields bound (2). Site-layer visits \(\le cQ\), and parent incidences \(\le kcQ\). Standard finite moments of negative-binomial distributions, iterated over **fixed finite** \(c\), establish expected arithmetic costs polynomial in the stated parameters; lower-function evaluation charges apply each visited gate. The quadratic or cubic linear-algebra costs are never called free.
+
+**Exponential tail.** Let \(\psi_s(\theta)=\log\{se^\theta/[1-(1-s)e^\theta]\}\), finite for \(0\le\theta<-\log(1-s)\). This is \(\log E e^{\theta NB(1,s)}\). The recursive bound satisfies, conditional on its higher \(Z\)'s,
+
+\[
+E\left[e^{\theta(Z_\ell+\sum_{j>\ell} Z_j)}\mid\sum_{j>\ell}Z_j\right]
+\le e^{m\psi_s(\theta)}
+ e^{[\theta+kc^2\psi_s(\theta)]\sum_{j>\ell} Z_j}.
+\]
+
+For any **fixed** \(c,k,s>0\), choose \(\theta>0\) sufficiently small so that the \(c\) successive applications of \(\theta\mapsto\theta+kc^2\psi_s(\theta)\) stay below \(-\log(1-s)\). Then \(Ee^{\theta\sum Z_\ell}<\infty\), and Chernoff's bound gives (3) because historical depth \(D\le Q\). The finite-horizon conditional output law agrees with the stationary conditional law whenever the entire certification finishes within the horizon, because unknown pre-horizon values are masked in every layer. Splitting on the certification event yields (4).
+
+The constants \(C,\gamma\) may be unfavorable, and (4) addresses **a specified finite collection of observables**, not the full global configuration.
+
+## 6. Independent computational evidence (actual runs on 10 October 2026)
+
+Reference source: `verify_stratified_sampler.py`. For \(N=2,c=3,q=2\), the full global state space has 64 states. We constructed all 64x64 transition probabilities *independently* using the forward update rule and solved \(\pi P=\pi\) numerically. Both residual and nonlinear forcing were active, and two sites were sampled jointly with shared ancestors.
+
+| Verification | Result |
+| --- | --- |
+| Dense stationary reference | Largest stationarity residual 3.82e-16 |
+| 24,000 joint samples, full 64-category chi-square | \(\chi^2=77.065\), 63 df, \(p=0.1096\) |
+| Total variation between empirical 64-category histogram and reference | 0.02171 (sampling error, **not** algorithmic TV approximation) |
+| Site coordinate equality, layer 0 | analytical 0.560023; sampled 0.568208 |
+| Site coordinate equality, layer 1 | analytical 0.543660; sampled 0.550708 |
+| Site coordinate equality, layer 2 | analytical 0.496298; sampled 0.499875 |
+| Cross-time event involving distinct layers, 7,000 draws | analytical 0.2507462; sampled 0.2477143 |
+| Average distinct events per joint draw on small model | 16.744 |
+| Average parent incidences per joint draw on small model | 81.912 |
+| Implicit nonlinear network of \(N=10^6\), two joint site outputs, \(c=3,k=3,s=.20\), 60 draws | mean 604.38 distinct categories, 1,622.45 parent incidences |
+
+For the 64-state test, independent exact forward transition powers give global worst-case TV distances at time \(t=0,1,2,4,6,8,12\) of approximately 0.9921, 0.7705, 0.5414, 0.2575, 0.1308, 0.0678, 0.01875 respectively. This is **an illustrative finite model**, not numerical evidence for system-size-uniform global mixing.
+
+**Adversarial model battery.** A further independent script, `verify_stratified_random_models.py`, tested 32 randomly generated nonlinear two-layer 2-site networks with arbitrary Boolean lookup tables, repeated parent incidences, changing reset probabilities and independent exact **16-state** transition matrices. It compared 48,000 total sampler outputs across the 32 models. The mean 15-degree-of-freedom chi-square statistic was 12.732, with 0 of 32 p-values below 0.05 (minimum 0.05787). The experiment did not detect a discrepancy; it is still statistical rather than proof validation.
+
+Separate tests in `verify_triangular_sampler.py` and `verify_heisenberg.py` validate unitriangular-polynomial identities, upper-triangular noncommutative joint stationary samples against independently constructed 729-state matrices, and a Heisenberg commutator observable.
+
+**Failure / practicality investigation.** A million-site model with \(c=3,k=5,s=.09\) exhibited prohibitively large exploration and did not finish in the allotted experimental run; no favourable timing was recorded for that setting. After increasing \(s\) and reducing degree, the scalable run above completed. Thus low \(s\) and larger \(c\) remain serious practical limitations despite polynomial expectations for fixed \(c\). The theoretically exact sampler uses ideal independent randomness; the reproduction suite uses pseudorandom PRNGs and numerical dense linear algebra, hence tests are statistical/numerical rather than formal machine-checked proofs.
+
+## 7. Comparisons, priority and limitations
+
+Prior work with overlapping concepts includes:
+
+- J. G. Propp and D. B. Wilson (1996), **Exact sampling with coupled Markov chains and applications to statistical mechanics**. Foundational coupling from the past. https://doi.org/10.1002/(SICI)1098-2418(199608/09)9:1/2%3C223::AID-RSA14%3E3.0.CO;2-O
+- Ana Bušić, Jean Mairesse, Irène Marcovici (2011/2013), **Probabilistic cellular automata, invariant measures, and perfect sampling**. Perfect PCA sampling and ergodicity. https://doi.org/10.4230/LIPIcs.STACS.2011.296
+- Cristopher Moore (1998), **Predicting nonlinear cellular automata quickly by decomposing them into linear ones**. Nonlinear CA reductions to a hierarchy of linear constituents; therefore algebraic stratification itself is not a novelty claim. https://doi.org/10.1016/S0167-2789(97)80003-6
+- Marcus Pivato (2001/2003), **Multiplicative Cellular Automata on Nilpotent Groups: Structure, Entropy, and Asymptotics**. Group-theoretic structure and measure asymptotics. https://arxiv.org/abs/math/0108084
+- Irène Marcovici, Mathieu Sablik, Siamak Taati (2019), **Ergodicity of some classes of cellular automata subject to noise**. Already establishes uniform/exponential ergodicity for several algebraic noisy CA classes, including XOR under broad noise laws. Our ergodicity corollary by itself is thus not automatically novel. https://doi.org/10.1214/19-EJP297
+- Peter Gács (1986), **Reliable computation with cellular automata**. Classical nonergodicity/robust memory under positive noise in certain unrestricted nonlinear systems. https://doi.org/10.1016/0022-0000(86)90002-4
+- Hugo Marsan, Mathieu Sablik, Ilkka Törmä (2025/2026), **A perturbed cellular automaton with two phase transitions for the ergodicity**, illustrating additional positive-noise obstructions. https://arxiv.org/abs/2507.03485
+
+A **new theoretical result has not been independently proven novel** merely because this exact combination of techniques has not been found in these short searches. Full prior-art and expert verification remains necessary. The construction does **not** solve general physical prediction, NP-hard combinatorial optimization, efficient generic Bayesian inference, the general probabilistic cellular automaton ergodicity problem, or universal exact stationarity under positive noise.
+
+Why the fixed-depth restriction is fundamental: allowing nonlinear *same-level* state feedback invalidates the linear mask certificate. A new mechanism capable of handling persistent nonlinear feedback under noisy dynamics would have to address robust memory/phase transitions, including known nonergodic examples. That central barrier is **not solved** here.
+
+**Research significance (provisional):** a coherent and potentially useful restricted simulation theorem, not independently established as new, likely much lower than 8/10 historic foundational significance. It would be misleading to claim any 9–10/10 civilization-scale result from the current evidence.
+
+## 8. Reproducibility and research status
+
+Files in the companion ZIP:
+
+- `stratified_entropy_sampler.py`: theorem algorithm and finite-state forward process;
+- `verify_stratified_sampler.py`: dense Markov chain independent checks, full 64-category statistical test, cross-time test, million-site benchmark;
+- `verify_stratified_random_models.py`: adversarial 32-model full-state reference battery;
+- `triangular_entropy_sampler.py`: separate exact nonlinear unitriangular group implementation;
+- `verify_triangular_sampler.py`: unitriangular 729-state reference tests;
+- `heisenberg_quotient_sampler.py`: two-step nilpotent group observable sampler;
+- `verify_heisenberg.py`: independent Heisenberg algebra and stationary tests;
+- this research note.
+
+To reproduce (installed `numpy`, `scipy`):
+
+```
+python verify_stratified_sampler.py
+python verify_stratified_random_models.py
+python verify_triangular_sampler.py
+python verify_heisenberg.py
+```
+
+**Reference revisions (not premises of this independent proof):** Astra `harjassand/astra-research-knowledge` main at `d3d427e2735b759661dd487ccf1c6cc161cb7338`; OpenAI `openai/math` main at `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`. No repository writes were made. Astra's `00_START_HERE.txt` was read for navigation; no archived theorem was imported as an unverified premise.
+
+**Open research:** determine historical overlap at full-paper level, obtain independent proof review, find a genuinely nontriangular generalization with realistic cost, and understand whether a radically new noise-information representation can achieve efficient exact prediction for substantial recurrent nonlinear classes beyond this structural hierarchy.
