@@ -1,0 +1,125 @@
+<!doctype html><meta charset="utf-8"><title>reports/support/e3_support_dark_vector.py</title><aside>Archived source = DATA<p>The four new analytic/coding records, five replay checks, proof reviews, diagnostics and failures are source reports. Intake checked the supplied manifest, exact archive membership/CRC and expanded byte equality only; no research, verifier or numerical scripts were run and no proof was independently reconstructed. N557 remains frozen and source-derived; the small Lean lemma does not certify it. External correctness, formal proof of the main theorem, historical priority, an exact thermal-channel capacity threshold and a finite-energy physical lattice code remain unresolved. No civilization-scale breakthrough is established.</p></aside><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Floating-point checks of the analytically derived Bargmann dark vector.
+
+This checks finite coefficient identities and convergence of a square norm.
+It does not prove injectivity, noninjectivity beyond the stated analytic domain,
+entropy continuity, or a quantum-capacity claim.
+&quot;&quot;&quot;
+import cmath
+import json
+import math
+
+eta = 0.75
+nu = 1.0
+rho = 0.3
+G = 1.0 + (1.0 - eta) * nu
+a = 1.0 - eta / G
+c = math.sqrt(eta) / G
+d = math.sqrt((G - 1.0) / G)
+t = -math.sqrt(a) * d / c
+alpha = 1.0 - t * t
+lam = c / d + math.sqrt(a) * t
+R = lam * lam / alpha
+C = lam * d
+
+
+def psi(n):
+    return math.sqrt(1.0 - rho) * rho ** (n / 2.0) * cmath.exp(
+        1j * (0.731 * n * n + 0.119 * n * n * n)
+    )
+
+
+def signed_power(z, n):
+    return z ** n
+
+
+def dark_coefficient(l, k):
+    # In normalized Bargmann monomials x^l y^k/sqrt(l! k!).
+    n = k - l + 1
+    if n &lt; 0:
+        return 0.0j
+    fac = math.exp(
+        0.5 * (math.lgamma(l + 1) + math.lgamma(k + 1) - math.lgamma(n + 1))
+    )
+    first = 0.0
+    second = 0.0
+    if l &gt;= 1:
+        first = lam ** n * signed_power(t, l - 1) / math.factorial(l - 1)
+    if n &gt;= 1:
+        second = (
+            -math.sqrt(a)
+            * n
+            * lam ** (n - 1)
+            * signed_power(t, l)
+            / math.factorial(l)
+        )
+    return psi(n) * fac * (first + second)
+
+
+def kraus_amplitude(n, l, k):
+    if l &gt; n or k &lt; 0:
+        return 0.0
+    m = n - l + k
+    log_combinatorial = 0.5 * (
+        math.lgamma(n + 1)
+        - math.lgamma(l + 1)
+        - math.lgamma(n - l + 1)
+        + math.lgamma(m + 1)
+        - math.lgamma(k + 1)
+        - math.lgamma(n - l + 1)
+    )
+    return (
+        math.exp(log_combinatorial)
+        * a ** (l / 2.0)
+        * c ** (n - l)
+        * d ** k
+        / math.sqrt(G)
+    )
+
+
+M = (1.0 - rho) / (1.0 - rho * R)
+Mp = (1.0 - rho) * rho / (1.0 - rho * R) ** 2
+norm_exact = M / alpha ** 2 + 4.0 * a * Mp / alpha
+vacuum_image_norm_exact = (a / G) * (1.0 - rho) * rho / (1.0 - rho * C * C) ** 2
+norm_checks = []
+for cutoff in (8, 16, 32, 64):
+    norm_cut = sum(
+        abs(dark_coefficient(l, k)) ** 2
+        for l in range(cutoff + 1)
+        for k in range(2 * cutoff + 1)
+    )
+    norm_checks.append(
+        {&quot;loss_cutoff&quot;: cutoff, &quot;amp_cutoff&quot;: 2 * cutoff,
+         &quot;norm_squared&quot;: norm_cut, &quot;missing_norm_squared&quot;: norm_exact - norm_cut}
+    )
+
+residuals = []
+for m in range(31):
+    # For each fixed m only n=0,...,m+1 and l=0,...,n contribute:
+    # dark_coefficient(l,k) vanishes when k-l+1&lt;0.
+    z = sum(
+        psi(n)
+        * kraus_amplitude(n, l, m - n + l)
+        * dark_coefficient(l, m - n + l)
+        for n in range(m + 2)
+        for l in range(n + 1)
+        if m - n + l &gt;= 0
+    )
+    residuals.append(abs(z))
+
+result = {
+    &quot;status&quot;: &quot;floating_point_diagnostic_only&quot;,
+    &quot;parameters&quot;: {&quot;eta&quot;: eta, &quot;nu&quot;: nu, &quot;rho&quot;: rho,
+                   &quot;G&quot;: G, &quot;a&quot;: a, &quot;c&quot;: c, &quot;d&quot;: d,
+                   &quot;t&quot;: t, &quot;alpha&quot;: alpha, &quot;lambda&quot;: lam, &quot;R&quot;: R, &quot;C&quot;: C},
+    &quot;exact_formula_evaluated_float&quot;: {
+        &quot;dark_norm_squared&quot;: norm_exact,
+        &quot;vacuum_image_norm_squared&quot;: vacuum_image_norm_exact,
+        &quot;vacuum_leakage_lower_bound&quot;: vacuum_image_norm_exact / norm_exact,
+    },
+    &quot;norm_cutoffs&quot;: norm_checks,
+    &quot;max_fixed_coefficient_kernel_residual_m_0_to_30&quot;: max(residuals),
+    &quot;fixed_coefficient_kernel_residuals&quot;: residuals,
+}
+print(json.dumps(result, indent=2))
+</pre>

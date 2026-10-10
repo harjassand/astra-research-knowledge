@@ -1,0 +1,18 @@
+# CH — Thermal-attenuator capacity continuation
+
+**No civilization-scale breakthrough has been established.** The package preserves a frozen amplifier entropy photon-number proof candidate and four narrower source-derived records. This intake did not independently reconstruct their proofs or run their code.
+
+Start with one dossier:
+
+- [N583 — environmental-kernel obstruction for rare mixtures](../../frontier/dossiers/N583.txt): for a specified exponential-moment class of single-mode pure seeds, an explicit normalizable environmental dark vector and Wronskian leakage bound show that every fixed distinct pure finite-energy competitor gives negative coherent information for all sufficiently rare mixtures. This does not cover sufficiently heavy tails, competitors varying with the mixture weight, or general collective codes.
+- [N584 — finite-block resource lower bound](../../frontier/dossiers/N584.txt): for deterministic qubit codes on the thermal attenuator with bath mean photon number one, a source-derived entanglement-fidelity bound implies at least 1,392 channel uses at transmissivity 0.751 when mean input energy is at most 10 photons per use and the target fidelity is 0.99. This is not a capacity converse.
+- [N585 — index-two lattice code criterion](../../frontier/dossiers/N585.txt): an exact ideal-code identity and integral inequality reduce one constructive route to `rho(v)>beta(v)`. The tested lattices do not meet the criterion near the antidegradable boundary; a finite-energy thermal-channel realization remains open.
+- [N586 — conditional amplifier strengthening counterexample](../../frontier/dossiers/N586.txt): an interval-checked Gaussian example refutes the reference-conditioned photon-number extension only. It is consistent with and does not refute the frozen independent-input amplifier candidate N557.
+
+The [original results and handoffs](package/continuation_03_summary/RESULTS.txt) retain derivations, failures and exact scope. The [source-reported replay receipt](package/continuation_03_summary/replay_receipt.json) lists five scoped PASS checks; intake inspected but did not rerun them. The [small Lean lemma](package/continuation_03_summary/reports/e8_formal/CreationMetricTransfer.lean) covers one scalar transfer only and does not certify the amplifier theorem. The frozen manuscript at `package/continuation_03_summary/frozen/amplifier_proof_candidate.tex` is unchanged and byte-matches the prior BY copy.
+
+For `nu=1`, the external primary source reports antidegradability for `eta<=0.75` and a certified positive coherent-information witness at `eta=0.7841`, leaving the exact positivity threshold unresolved: [Mele et al., arXiv:2607.27449v1](https://arxiv.org/html/2607.27449v1). The continuation did not improve that checked frontier. The prior Parisi route also remains open.
+
+The complete 92-member [original ZIP](package/astra_ultra_continuation_03_2026-10-10.zip) and all 92 expanded files are preserved. The supplied SHA-256 manifest lists 91 payload files plus itself. See [integrity](INTEGRITY.json), [source pins](SOURCE.json), and [intake validation limits](VALIDATION.json). Source-reported diagnostics, proof review, formal work and historical novelty remain at their original evidence level; no physical code or experiment is established.
+
+Branch handoffs publish only when Git changes are actually merged. Theoretical Pro receives the analytic and finite-block records, Primitive Genesis receives the lattice-code representation, and Natural-Sciences Pro receives the explicit physical-realization gap; no result is forced into the Ultra capability branch.

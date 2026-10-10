@@ -1,0 +1,66 @@
+E10 first derivation (frozen before literature/catalogue review)
+2026-10-10
+
+Candidate mechanism: input-law-only importance sampling on a live black-box plant
+
+Core idea
+
+Use controllable, logged exogenous disturbances to force a real physical or hardware-in-the-loop system through inputs that are much more likely to cause a target failure than under ordinary operation. Reweight each observed outcome by the exact likelihood ratio of the ordinary disturbance law to the injected law. This computes a rare-event probability for the actual device without a simulator or a fitted model of its internal dynamics. The plant may be nonlinear, high-dimensional, hybrid, partially observed, and otherwise unknown; only the imposed disturbance distribution and its likelihood ratio need be known.
+
+Target and protocol
+
+Let X be the complete exogenous disturbance record for one run, with known target law P (ordinary operating conditions). Given X=x, let K(dz|x) be the unknown physical plant's conditional law over observed trajectory z. Let F(z,x) in {0,1} be a pre-registered adverse event. The target is
+
+    theta = E_{X~P, Z~K(.|X)}[F(Z,X)].
+
+In a test facility, draw and impose X from a proposal law Q, log the realized record and density ratio p(X)/q(X), run the actual plant, and record F. For independent runs, define
+
+    theta_hat = (1/N) sum_i [p(X_i)/q(X_i)] F_i,   X_i~Q, Z_i~K(.|X_i).
+
+Require P << Q on every disturbance record that can contribute to F. The plant is not reset to a modeled state: every preparation/reset, calibration, input-replay error, and device run is part of cost and validity accounting. If the device has independent intrinsic randomness, it remains under K and need not be modeled for unbiasedness.
+
+Positive capability target
+
+For failure events so rare that direct testing sees no failures, change only the known exogenous input law, not the device's internal law, and estimate the ordinary-operation failure rate from stress-biased physical trials. Aim to reduce trials by concentrating Q near disturbance records that actually trigger failure. A second intended use is to amortize one set of physical runs over a declared family of failure predicates F_j on the same observed trajectory; every estimate gets its own event-conditioned input law and variance audit.
+
+Theorem candidate (exactness and the right metric)
+
+Let m(x)=Pr_K(F=1|X=x), theta=E_P[m(X)]>0, and let R_F be the target-law distribution of disturbance records conditioned on failure, with density r_F(x)=p(x)m(x)/theta. If P<<Q and the likelihood ratio is evaluated exactly, then E_Q[theta_hat]=theta and
+
+    Var(theta_hat)/theta^2 = (1/N) ( integral r_F(x)^2/q(x) dx - 1 )
+                           = (1/N) chi^2(R_F || Q).
+
+Thus the ideal proposal q*(x)=r_F(x), if available, gives zero variance; the practical objective is to physically learn a proposal whose failure-conditioned input mismatch is small. This theorem is model-free with respect to K. It does not say the proposal can be found cheaply, that support can be certified from finite data, or that a rare event has become easy under arbitrary physical constraints.
+
+Proof sketch to complete later
+
+Condition on X and integrate Z under the same K used by the target. E_Q[(p/q)F]=integral q(x)(p/q)m(x)dx=theta. For one run, E_Q[((p/q)F)^2]=integral p(x)^2 m(x)/q(x)dx. Since m^2 in r_F^2 is absent, this expression is not equal to integral r_F^2/q unless F is deterministic conditional on X. The exact general relative variance is
+
+    (1/N) [ integral p(x)^2 m(x)/q(x) dx / theta^2 - 1 ].
+
+If the full run outcome is included in a proposal that changes only X and leaves K invariant, conditional event randomness remains. In the special deterministic-plant case m(x) in {0,1}, this reduces to chi^2(R_F||Q)/N. This correction is part of the frozen derivation; do not silently claim zero variance for stochastic plants. For stochastic K, the unconstrained q minimizing the second moment is proportional to p(x)*sqrt(m(x)), with minimum second moment (integral p sqrt(m))^2; zero variance over full runs would require changing the conditional physical outcome law too, which this mechanism does not do.
+
+Exact proof outline
+
+For one sample Y=(p(X)/q(X))F, integrate q(x)K(dz|x). Its first moment equals theta and its second moment equals integral p^2 m/q. Independent runs give Var(mean)=Var(Y)/N. The minimizing proposal follows Cauchy-Schwarz applied to integral p^2 m/q with integral q=1. All claims require finite second moment. If ratios are clipped, the estimate is generally biased; report clipping only as a diagnostic, never as the certified estimate.
+
+Adaptive variant to investigate after freeze
+
+During a pilot, use observed prefixes and adverse outcomes to learn a proposal. Freeze its update rule and reserve an independent validation phase. Alternatively, allow a predictable proposal q_t(X_t|history) at each time and log the product likelihood ratio. The physical plant's response kernel cancels from the Radon-Nikodym derivative only if the imposed policy does not alter hidden plant dynamics except through the logged input channel. Adaptive use would need a martingale proof, support conditions, bounded weights or an explicit sequential confidence procedure, and drift controls. Do not assume the simple iid variance formula applies to adaptive runs.
+
+Required cost ledger
+
+1. Acquisition: ordinary input law P, generator/actuator interface, exact density evaluation, device access, event instrumentation, baseline runs, event-definition agreement, reset and inter-run stabilization, and input replay verification.
+2. Proposal training: pilot physical runs, failed-run retention, optimizer/compute, proposal versioning, held-out runs, and any human design effort. Charge this separately; do not count pilot failures as validation.
+3. Precision: estimate actual second moment and effective sample size from independent confirmatory trials; confidence intervals must account for weighted Bernoulli outcomes and any sequential stopping. No accuracy claim from effective-sample-size heuristics alone.
+4. Physical preparation: per-run reset, calibration, thermal/charge/aging state, actuator fidelity, sensor latency, wear, and failed reset. The system must be repeatable enough that target and proposal runs share K conditional on X.
+5. Memory/storage: full stimulus paths or cryptographic identifiers plus reconstructible seed, exact target/proposal densities, raw response traces, event labels, timestamps, calibration snapshots, model/proposal hash, and run history. Storing only weights or summary features can make results unauditable.
+6. Validation: calibration of P and q, independent confirmation, matched target-law baseline, sham/actuator controls, a known rare-event bench system, drift/staleness checks, and an adversarial proposal with deliberate support gaps to test whether diagnostics detect failure.
+
+Decisive initial falsifier
+
+Use a small black-box stochastic plant with a known but hidden-to-the-proposal response law: e.g. a programmable RC/thermal bench plus a randomized disturbance waveform and a threshold event. Pre-register P and event F. Train Q only on pilot trials, freeze it, and compare independent weighted-Q estimates with a large direct-P benchmark whose uncertainty is much smaller than the claimed gain. Falsify the capability claim if the weighted estimate misses the direct reference outside the pre-registered interval, if device responses drift between P and Q conditions after conditioning on logged inputs, if the measured second moment predicts no material run reduction, or if rare event modes appear outside Q's support. Include a stochastic plant so that the tempting deterministic chi-square zero-variance claim is explicitly rejected.
+
+Landmark hypothesis and uncertainty
+
+Potential landmark is a no-digital-twin path to tail-risk measurement on costly, nonlinear black-box devices, using the device as the response oracle and randomized external stressors as the only modeled random variable. The likely weak point is novelty: input importance sampling, physical stress testing, hardware-in-the-loop validation, and adaptive rare-event sampling may already contain this combination. The likely feasibility limits are actuator reachability, repeatability, weight degeneracy, support discovery, and unknown/stale operating disturbance laws. Treat as a candidate mechanism, not a validated invention, until primary prior art and a falsifying bench construction are checked.
