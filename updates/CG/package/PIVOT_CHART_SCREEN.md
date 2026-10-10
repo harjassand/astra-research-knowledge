@@ -1,0 +1,60 @@
+# Screened branch: pivot charts and an all-rank binary trap
+
+This was derived before the targeted source check. It is retained as an exact screened mechanism, **not a novelty claim**. The safe triangular perturbation is the same core argument as de Seguins Pazzis, *Local linear dependence seen through duality I*, Proposition 3.6 and its proof. The source explicitly splits a pivot block into lower-triangular and strictly upper-triangular pieces, then uses the invertibility of identity plus the latter.
+
+## A. Acquired all-target chart
+
+For `A_i` of size `p by n`, let `F(x)` have rows `x^T A_i`. If some `x_*` gives row rank `m`, a right inverse `B` of `F(x_*)` gives the exact chart
+
+    (x,y)=(x_*, B b+K t),
+
+where `K` is a basis for `ker F(x_*)`. It simultaneously solves all `m` equations for every target `b`.
+
+### Large-field acquisition
+
+Suppose `M=F(x)` has rank `r<m`, and choose a nonzero `lambda` with `lambda^T M=0`. If `A_lambda` maps `ker M` to zero, its rank is at most `r`, producing an explicit low-rank combination. Otherwise find `v in ker M` and a coordinate direction `e_j` with `e_j^T A_lambda v !=0`. In pivot coordinates an `(r+1)`-minor of `F(x+t e_j)` is a nonzero polynomial in `t` of degree at most `r+1`, with a nonzero linear coefficient. Over a field with more than `m` elements, testing `m+1` scalars finds a rank-increasing update. After at most `m` increases one has a chart, or a verified nonzero combination of rank below `m`.
+
+This is standard LLD/Flanders-Atkinson territory; it does not count as a foundational invention.
+
+### Binary-safe triangular acquisition
+
+Choose column vectors `p_1,...,p_r` and row functionals `u_1,...,u_r` such that `u_i^T M p_j=delta_ij`. For the same left-null `lambda`, restrict a direction `z` by the linear equations
+
+    u_i^T F(z) p_j=0       for i>=j,
+    lambda^T F(z) p_j=0    for all j.
+
+There are at most `c_r=r(r+3)/2` such equations. Call their common kernel `Z`.
+
+If some `z in Z`, `v in ker M` has `lambda^T F(z)v !=0`, the submatrix of `F(x+z)` on rows `(u_1,...,u_r,lambda)` and columns `(p_1,...,p_r,v)` is
+
+    [ I+N   * ]
+    [  0    d ]
+
+with `N` strictly upper triangular and `d!=0`. Its determinant is `d`, over **every** field. The direction and residual can be found by linear algebra.
+
+If no such pair exists, the image of `A_lambda` on `ker M` lies in `Z^perp`. Its image on each `p_j` also lies in `Z^perp` by the defining equations. Since these columns together span the whole column space, `rank A_lambda<=codim Z<=c_r`.
+
+Thus a deterministic polynomial arithmetic procedure yields either a chart or a verified combination of rank at most `m(m+1)/2-1`. This consumes an established argument and is weaker than the known sharp existential rank threshold. No claim of a new separation or derandomization follows.
+
+## B. Coordinate-ascent failure despite arbitrarily high collective rank
+
+For every `d>=2`, take two outputs, `2d+1` input coordinates, and `d` columns. Write `E=e_1 e_1^T` as a `2 by d` matrix, and define the generator matrices of `F` by
+
+    F(e_0)=E,
+    F(e_j)=E+e_2 e_j^T,            j=1,...,d,
+    F(e'_j)=E+(e_1+e_2)e_j^T,     j=1,...,d.
+
+All arithmetic is over `F_2`. Let `A_1,A_2` be the corresponding two `((2d+1) by d)` coefficient matrices.
+
+Their rows are respectively
+
+    A_1: e_1; e_1,...,e_1; e_1+e_1,...,e_1+e_d,
+    A_2: 0;   e_1,...,e_d; e_1,...,e_d.
+
+Each of `A_1`, `A_2`, and `A_1+A_2` has rank exactly `d`.
+
+At the input `x_0=e_0`, however, `F(x_0)=E` has rank 1. Flipping coordinate 0 yields zero. Flipping any other single coordinate yields a rank-one matrix. Therefore **no single binary-coordinate update raises rank**, even though the minimum rank among nonzero constraint combinations is the arbitrarily large value `d`.
+
+A two-coordinate move does escape: `x=e_0+e_1+e_2` gives rows `e_1` and `e_1+e_2`, hence rank 2. The statement is a precise obstruction to the single-coordinate line-search mechanism, not a lower bound against all algorithms or a claim that this input is difficult.
+
+The script verifies `d=2,3,5,8` exactly and retains every matrix and witness in `EXACT_RESULTS.json`.

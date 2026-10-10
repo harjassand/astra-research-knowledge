@@ -1,0 +1,213 @@
+<!doctype html><meta charset="utf-8"><title>verify_dual_kernel.py</title><aside>Archived source = DATA<p>The dual-kernel sampler, rank-budgeted conditioning theorem, Moore-interpolation certificate, affine-mixture lower bound, coordinate trap, exact computations and native smoke results are source reports. Intake checked file hashes and manifest membership only; it did not execute supplied scientific or sampler scripts or independently reconstruct proofs. The pivot-chart branch is screened against cited prior art and is not claimed as novel. General minimum-rank acquisition, arbitrary constraint composition, external correctness and publication priority remain unresolved; no general constraint solver or historic-scale breakthrough is claimed.</p></aside><pre>from fractions import Fraction
+from itertools import product
+import json, random
+from pathlib import Path
+
+ROOT=Path(__file__).resolve().parent
+
+def rank(rows,p=2,ncols=None):
+    if not rows:return 0
+    a=[list(r) for r in rows]; nr=len(a); nc=len(a[0]) if ncols is None else ncols; r=0
+    for c in range(nc):
+        k=next((k for k in range(r,nr) if a[k][c]%p),None)
+        if k is None:continue
+        a[r],a[k]=a[k],a[r]; inv=pow(a[r][c]%p,-1,p); a[r]=[(z*inv)%p for z in a[r]]
+        for k in range(nr):
+            if k!=r and a[k][c]%p:
+                fac=a[k][c]; a[k]=[(u-fac*v)%p for u,v in zip(a[k],a[r])]
+        r+=1
+        if r==nr:break
+    return r
+
+def transpose(A):return list(map(list,zip(*A)))
+def lincomb(A,l,p=2):return [[sum(l[k]*A[k][i][j] for k in range(len(A)))%p for j in range(len(A[0][0]))] for i in range(len(A[0]))]
+def mv(A,v,p=2):return [sum(a*b for a,b in zip(row,v))%p for row in A]
+def F(A,x,p=2):return [mv(transpose(a),x,p) for a in A]
+def vectors(n,p=2):return list(product(range(p),repeat=n))
+def zeros(n):return [0]*n
+
+def gf_mul(a,b,poly,n):
+    out=0
+    while b:
+        if b&amp;1:out^=a
+        b&gt;&gt;=1;a&lt;&lt;=1
+        if a&gt;&gt;n:a^=poly
+    return out
+
+def gf_pow(a,k,poly,n):
+    out=1
+    while k:
+        if k&amp;1:out=gf_mul(out,a,poly,n)
+        a=gf_mul(a,a,poly,n);k&gt;&gt;=1
+    return out
+
+def gf_solve(M,b,poly,n):
+    A=[list(row)+[val] for row,val in zip(M,b)]; N=len(M)
+    for c in range(N):
+        k=next(k for k in range(c,N) if A[k][c]); A[c],A[k]=A[k],A[c]
+        inv=gf_pow(A[c][c],(1&lt;&lt;n)-2,poly,n); A[c]=[gf_mul(z,inv,poly,n) for z in A[c]]
+        for k in range(N):
+            if k!=c and A[k][c]:
+                f=A[k][c]; A[k]=[u^gf_mul(f,v,poly,n) for u,v in zip(A[k],A[c])]
+    return [row[-1] for row in A]
+
+def polynomial_remainder(a,b):
+    while a and a.bit_length()&gt;=b.bit_length():a^=b&lt;&lt;(a.bit_length()-b.bit_length())
+    return a
+
+def pgcd(a,b):
+    while b:a,b=b,polynomial_remainder(a,b)
+    return a
+
+def irreducible(poly,n):
+    v=2
+    for i in range(1,n+1):
+        v=gf_mul(v,v,poly,n)
+        if i&lt;=n//2 and pgcd(v^2,poly)!=1:return False
+    return v==2
+
+def qpoly_matrix(coeffs,poly,n):
+    cols=[]
+    for k in range(n):
+        z=0
+        for j,c in enumerate(coeffs):z^=gf_mul(c,gf_pow(1&lt;&lt;k,1&lt;&lt;j,poly,n),poly,n)
+        cols.append([(z&gt;&gt;i)&amp;1 for i in range(n)])
+    return transpose(cols)
+
+def acquire_qpoly(A,poly,n):
+    assert irreducible(poly,n)
+    M=[[gf_pow(1&lt;&lt;k,1&lt;&lt;j,poly,n) for j in range(n)] for k in range(n)]
+    coeff=[]
+    for mat in A:
+        values=[sum(mat[i][k]&lt;&lt;i for i in range(n)) for k in range(n)]
+        c=gf_solve(M,values,poly,n); assert qpoly_matrix(c,poly,n)==mat;coeff.append(c)
+    independent=rank([sum(a,[]) for a in A])==len(A)
+    s=max(j for c in coeff for j,v in enumerate(c) if v)
+    return {&#x27;independent&#x27;:independent,&#x27;q_degree&#x27;:s,&#x27;certified_min_rank&#x27;:n-s,&#x27;coefficients&#x27;:coeff,&#x27;irreducible&#x27;:True}
+
+def exact_law(A,R,p=2,a=None,c=None,d=None,extra_h=None):
+    m=len(A); nx=len(A[0]); ny=len(A[0][0]); ls=vectors(m,p); xs=vectors(nx,p); ys=vectors(ny,p)
+    if a is None:a=[zeros(nx) for _ in range(m)]
+    if c is None:c=[zeros(ny) for _ in range(m)]
+    if d is None:d=zeros(m)
+    C=Fraction(1)+Fraction(p**m-1,p**R)
+    xmass={x:Fraction() for x in xs}; ranks=[]; consistency_reject=0
+    for l in ls:
+        Al=lincomb(A,l,p); r=rank(Al,p);ranks.append(r)
+        assert not any(l) or r&gt;=R
+        cl=mv(transpose(c),l,p)
+        # Uniform solutions A_lambda^T x=-c_lambda; their size, if nonempty, p^(nx-r).
+        ker=[x for x in xs if mv(transpose(Al),x,p)==[(-z)%p for z in cl]]
+        if not ker:
+            consistency_reject+=1;continue
+        assert len(ker)==p**(nx-r)
+        branch=Fraction(1,C) if not any(l) else Fraction(1,p**r*C)
+        for x in ker:xmass[x]+=branch/len(ker)
+    mass_per_solution=Fraction(p**m,p**(nx+ny))/C
+    counts={b:0 for b in ls}; accepted={b:Fraction() for b in ls}; rankhist={}; distinct_point_masses=set()
+    for x in xs:
+        Fx=[[(z+w)%p for z,w in zip(row,ci)] for row,ci in zip(F(A,x,p),c)]
+        rx=rank(Fx,p);rankhist[rx]=rankhist.get(rx,0)+1
+        assert xmass[x]==Fraction(p**(m-rx),p**nx)/C
+        shift=[(sum(ai[j]*x[j] for j in range(nx))+di)%p for ai,di in zip(a,d)]
+        if extra_h is not None:shift=[(u+v)%p for u,v in zip(shift,extra_h(x))]
+        for y in ys:
+            b=tuple((z+w)%p for z,w in zip(mv(Fx,y,p),shift))
+            pointmass=xmass[x]/p**(ny-rx)
+            assert pointmass==mass_per_solution
+            distinct_point_masses.add(pointmass)
+            counts[b]+=1;accepted[b]+=pointmass
+    assert len(distinct_point_masses)==1
+    return {&#x27;q&#x27;:p,&#x27;m&#x27;:m,&#x27;nx&#x27;:nx,&#x27;ny&#x27;:ny,&#x27;R&#x27;:R,&#x27;envelope_C&#x27;:str(C),
+        &#x27;combination_rank_histogram&#x27;:{str(r):ranks.count(r) for r in sorted(set(ranks))},
+        &#x27;fiber_rank_histogram&#x27;:rankhist,&#x27;counts_by_target&#x27;:{&#x27; &#x27;.join(map(str,k)):v for k,v in counts.items()},
+        &#x27;acceptance_by_target&#x27;:{&#x27; &#x27;.join(map(str,k)):str(v) for k,v in accepted.items()},
+        &#x27;max_expected_trials&#x27;:str(max(Fraction(1,v) for v in accepted.values() if v)),
+        &#x27;exact_uniformity&#x27;:True,&#x27;one_trial_probability_per_solution&#x27;:str(mass_per_solution),
+        &#x27;inconsistent_dual_branches&#x27;:consistency_reject}
+
+def binary_trap(d):
+    # F(e0)=E11; F(ej)=E11+e2 e_j^T; F(e&#x27;_j)=E11+(e1+e2)e_j^T.
+    A=[]; E=[[int(i==0 and j==0) for j in range(d)] for i in range(2)]; gens=[E]
+    for kind in range(2):
+        for j in range(d):
+            B=[row[:] for row in E]
+            B[1][j]^=1
+            if kind:B[0][j]^=1
+            gens.append(B)
+    mats=[[[B[i][j] for j in range(d)] for B in gens] for i in range(2)]
+    x0=(1,)+(0,)*(2*d); base=F(mats,x0);assert rank(base)==1
+    neigh=[]
+    for j in range(len(x0)):
+        x=list(x0);x[j]^=1;neigh.append(rank(F(mats,x)))
+    ranks=[rank(lincomb(mats,l)) for l in vectors(2) if any(l)]
+    assert ranks==[d,d,d];assert max(neigh)==1
+    witness=[0]*len(x0);witness[1]=1;witness[2]=1
+    # two first-kind directions give first row 0, second e1+e2: rank one. Use base + two directions instead.
+    witness[0]=1
+    assert rank(F(mats,witness))==2
+    return {&#x27;d&#x27;:d,&#x27;min_nonzero_combination_rank&#x27;:min(ranks),&#x27;initial_x&#x27;:x0,&#x27;initial_rank&#x27;:1,
+            &#x27;single_flip_ranks&#x27;:neigh,&#x27;escaping_x&#x27;:witness,&#x27;escaping_rank&#x27;:2,&#x27;matrices&#x27;:mats}
+
+def run():
+    rng=random.Random(102610)
+    cases=[]
+    for n,m,s,poly in [(3,2,1,0b1011),(5,3,2,0b100101),(6,3,2,0b1000011)]:
+        assert irreducible(poly,n)
+        if n==3:coeff=[[1,0],[0,1]]
+        else:
+            while True:
+                coeff=[[rng.randrange(1&lt;&lt;n) for _ in range(s+1)] for i in range(m)]
+                A=[qpoly_matrix(c,poly,n) for c in coeff]
+                if rank([sum(a,[]) for a in A])==m:break
+        A=[qpoly_matrix(c,poly,n) for c in coeff]
+        cert=acquire_qpoly(A,poly,n);assert cert[&#x27;q_degree&#x27;]==s and cert[&#x27;independent&#x27;]
+        law=exact_law(A,n-s)
+        law[&#x27;native_certificate&#x27;]=cert;law[&#x27;matrices&#x27;]=A;cases.append(law)
+        if n==6:
+            aa=[[rng.randrange(2) for _ in range(n)] for _ in range(m)]
+            cc=[[rng.randrange(2) for _ in range(n)] for _ in range(m)]
+            dd=[rng.randrange(2) for _ in range(m)]
+            alaw=exact_law(A,n-s,a=aa,c=cc,d=dd);alaw.update({&#x27;a&#x27;:aa,&#x27;c&#x27;:cc,&#x27;d&#x27;:dd,&#x27;type&#x27;:&#x27;biaffine&#x27;});cases.append(alaw)
+            h=lambda x:[int(not any(x)), x[0]*x[1]*x[2], x[3]*x[4]*x[5]]
+            hlaw=exact_law(A,n-s,extra_h=h);hlaw[&#x27;type&#x27;]=&#x27;arbitrary_one_sided_nonlinearity&#x27;;cases.append(hlaw)
+    # q=3 genuinely ternary case, min rank 2 for I and multiplication by alpha in F_9.
+    A3=[[[1,0],[0,1]],[[0,2],[1,0]]]
+    cases.append(exact_law(A3,2,p=3))
+    # Native certificate can fail after an invertible coordinate scrambling, while intrinsic ranks persist.
+    n=6;poly=0b1000011;m=3;s=2
+    coeff=[[rng.randrange(1&lt;&lt;n) for _ in range(s+1)] for _ in range(m)]
+    A=[qpoly_matrix(c,poly,n) for c in coeff]
+    def invertible():
+        while True:
+            P=[[rng.randrange(2) for _ in range(n)] for _ in range(n)]
+            if rank(P)==n:return P
+    def mm(A,B):return [[sum(a*b for a,b in zip(row,col))%2 for col in zip(*B)] for row in A]
+    P=invertible();Q=invertible();scrambled=[mm(mm(transpose(P),a),Q) for a in A]
+    original_cert=acquire_qpoly(A,poly,n);scrambled_cert=acquire_qpoly(scrambled,poly,n)
+    original_ranks=[rank(lincomb(A,l)) for l in vectors(m) if any(l)]
+    scrambled_ranks=[rank(lincomb(scrambled,l)) for l in vectors(m) if any(l)]
+    assert original_ranks==scrambled_ranks
+    assert original_cert[&#x27;certified_min_rank&#x27;]&gt;=m+1
+    assert scrambled_cert[&#x27;certified_min_rank&#x27;]==1
+    basis_failure={&#x27;P&#x27;:P,&#x27;Q&#x27;:Q,&#x27;original_matrices&#x27;:A,&#x27;scrambled_matrices&#x27;:scrambled,
+       &#x27;original_certificate&#x27;:original_cert,&#x27;scrambled_certificate&#x27;:scrambled_cert,
+       &#x27;actual_ranks&#x27;:original_ranks,&#x27;intrinsic_ranks_unchanged&#x27;:True}
+    # A nonlinear graph restriction y_0=x_0*x_1 with one free y coordinate removed.
+    n=7;m=3;s=2;poly=0b10000011;assert irreducible(poly,n)
+    coeff=[[rng.randrange(1&lt;&lt;n) for _ in range(s+1)] for _ in range(m)]
+    A=[qpoly_matrix(c,poly,n) for c in coeff];cert=acquire_qpoly(A,poly,n)
+    assert cert[&#x27;independent&#x27;] and cert[&#x27;certified_min_rank&#x27;]==5
+    Arest=[[row[1:] for row in a] for a in A]
+    h=lambda x:[(sum(x[j]*mat[j][0] for j in range(n))%2)*x[0]*x[1] for mat in A]
+    graphlaw=exact_law(Arest,4,extra_h=h);graphlaw[&#x27;type&#x27;]=&#x27;nonlinear_graph_restriction&#x27;;graphlaw[&#x27;original_certificate&#x27;]=cert
+    cases.append(graphlaw)
+    traps=[binary_trap(d) for d in (2,3,5,8)]
+    result={&#x27;all_exact_checks_passed&#x27;:True,&#x27;cases&#x27;:cases,&#x27;coordinate_traps&#x27;:traps,&#x27;native_certificate_basis_failure&#x27;:basis_failure}
+    (ROOT/&#x27;EXACT_RESULTS.json&#x27;).write_text(json.dumps(result,indent=2))
+    print(json.dumps({&#x27;exact_cases&#x27;:len(cases),&#x27;uniformity_all&#x27;:all(x[&#x27;exact_uniformity&#x27;] for x in cases),
+        &#x27;largest_n&#x27;:7,&#x27;max_expected_trials&#x27;:[x[&#x27;max_expected_trials&#x27;] for x in cases],
+        &#x27;coordinate_trap_minranks&#x27;:[t[&#x27;min_nonzero_combination_rank&#x27;] for t in traps]},indent=2))
+
+if __name__==&#x27;__main__&#x27;:run()
+</pre>

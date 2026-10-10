@@ -161,10 +161,13 @@ Material corrections: N135 → N160 is a full-proof candidate sharp identical-un
 | 85 | `G-CE-N577` — Verify the effect-matched EB approximation and trace-relative bound | Explicit rate and bounded checks are source-reported; verify CP/2-copositive branch assumptions and do not infer exact membership or efficient decomposition. |
 | 86 | `G-CF-N578` — Reconstruct deterministic polynomial-Hermitian propagation complexity | One focused internal review is source-reported; a uniformly terminating certified implementation, external validation and useful practical runtime remain absent. |
 | 87 | `G-CF-N579` — Replay and audit four finite endpoint residual certificates | Source reports exact witness passes; intake checked only package integrity. Finite cases do not establish general complexity or solver superiority. |
+| 88 | `G-CG-N580` — Reconstruct the exact dual-kernel law, expected-trial bound, charged conditioning closure and structured rank acquisition | Source proof and seven exact cases are not independently audited here; the rank promise, Moore-basis sensitivity, costs, empty-set behavior and multi-constraint priority boundary remain open. |
+| 89 | `G-CG-N581` — Verify the affine-mixture domination lower bound and exponential corollary | This is a representation-specific rejection barrier for an exactly product-sampleable target; check the mass bounds and constants without inferring intrinsic hardness. |
+| 90 | `G-CG-N582` — Check the symbolic binary coordinate trap and keep its scope local | Source gives a family with minimum combination rank d, but it refutes only single-coordinate rank ascent; no general acquisition lower bound follows. |
 
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
-Other historical restarts remain in `state/` and source archives. This dashboard selects 87 concrete gates; it does not exhaustively rank every field or independently reconstruct all 649 cards. Candidate supersession does not externally validate a gate.
+Other historical restarts remain in `state/` and source archives. This dashboard selects 90 concrete gates; it does not exhaustively rank every field or independently reconstruct all 652 cards. Candidate supersession does not externally validate a gate.
 
 ## BQ intake: N522–N534
 

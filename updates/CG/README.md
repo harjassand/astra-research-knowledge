@@ -1,0 +1,11 @@
+# CG — Joint compatibility by dual-kernel lifting
+
+This packet contributes three distinct scoped records:
+
+- [N580](../../frontier/dossiers/N580.txt): a source-reported exact uniform sampler for all joint solutions of `F(x)y=g(x)` when every nonzero linear combination of the input matrices has a certified collective-rank lower bound. The source gives fewer than three expected trials for arbitrary efficiently evaluated `g` when `R≥m+1`, and fewer than four for a pure bilinear fixed target when `R≥m`. It also gives a rank-budgeted closure under particular affine and graph restrictions, plus a structured Moore-interpolation certificate for square matrices.
+- [N581](../../frontier/dossiers/N581.txt): an obstruction to using polynomial-size positive mixtures of uniform affine laws as rejection envelopes for a simple product target. The target itself has an exact independent-bit sampler, so this is a representation-specific barrier, not evidence of intrinsic sampling hardness.
+- [N582](../../frontier/dossiers/N582.txt): a binary family where single-coordinate rank ascent stalls despite minimum nonzero-combination rank `d`; a two-coordinate move escapes. This rules out only that local heuristic, not general acquisition methods.
+
+The Moore-interpolation/rank-metric ingredients are established mathematics; the claimed contribution is the exact joint law and its charged conditioning operation. The supplied basis-scramble example shows that this particular certificate can lose strength under an unknown basis change. A targeted primary-source screen identifies the pivot-chart alternative as established LLD machinery; no novelty is claimed for that branch. The literature check is not exhaustive.
+
+The original 13 files (12 manifest-listed payload files plus the manifest) are retained byte-for-byte under `package/`. Source scripts, exact receipts, and the 200-output native smoke record were not executed or independently verified during intake. All three cards remain `source_derived_unreviewed`; exact-law derivations, cost bounds, novelty, and generality require independent review. See [integrity](INTEGRITY.json), [source record](SOURCE.json), and [validation scope](VALIDATION.json).
