@@ -164,10 +164,14 @@ Material corrections: N135 → N160 is a full-proof candidate sharp identical-un
 | 88 | `G-CG-N580` — Reconstruct the exact dual-kernel law, expected-trial bound, charged conditioning closure and structured rank acquisition | Source proof and seven exact cases are not independently audited here; the rank promise, Moore-basis sensitivity, costs, empty-set behavior and multi-constraint priority boundary remain open. |
 | 89 | `G-CG-N581` — Verify the affine-mixture domination lower bound and exponential corollary | This is a representation-specific rejection barrier for an exactly product-sampleable target; check the mass bounds and constants without inferring intrinsic hardness. |
 | 90 | `G-CG-N582` — Check the symbolic binary coordinate trap and keep its scope local | Source gives a family with minimum combination rank d, but it refutes only single-coordinate rank ascent; no general acquisition lower bound follows. |
+| 91 | `G-CH-N583` — Reconstruct the environmental dark-vector and rare-mixture obstruction | Exact weighted-moment domain and Wronskian leak are source-reported; heavy tails, changing competitors, collective codes and external correctness remain open. |
+| 92 | `G-CH-N584` — Reconstruct the antidegradable-boundary finite-block resource bound | The arbitrary-code inequality and 1,392 example are source-reported; verify its energy convention and do not promote it to a capacity converse. |
+| 93 | `G-CH-N585` — Verify the index-two lattice identity and pursue the integral gate | The ideal-code formula is source-derived; tested lattices fail near the target and finite-energy thermal-channel transfer remains missing. |
+| 94 | `G-CH-N586` — Reconstruct the conditional amplifier counterexample and preserve theorem scope | The source reports outward Gaussian intervals; this refutes only the reference-conditioned strengthening, not N557. |
 
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
-Other historical restarts remain in `state/` and source archives. This dashboard selects 90 concrete gates; it does not exhaustively rank every field or independently reconstruct all 652 cards. Candidate supersession does not externally validate a gate.
+Other historical restarts remain in `state/` and source archives. This dashboard selects 94 concrete gates; it does not exhaustively rank every field or independently reconstruct all 656 cards. Candidate supersession does not externally validate a gate.
 
 ## BQ intake: N522–N534
 
