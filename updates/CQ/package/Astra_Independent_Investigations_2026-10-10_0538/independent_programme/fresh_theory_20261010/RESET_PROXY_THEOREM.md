@@ -1,0 +1,96 @@
+# A reset-language-preserving extension defeats pair-distance MST amortization
+
+## Status and significance
+
+This is an exact, independently derived construction. A targeted primary-literature search did not establish whether this particular formulation is new; no priority claim is made. It is a falsification of the proposed pair-distance-MST proof architecture, not a bound or counterexample for the Černý conjecture. It does not supply the historic new capability sought in the research brief.
+
+The proposed mechanism was to compute shortest pair-merging distances, compress their cost into a minimum spanning tree, and pay for a common reset word by decreasing that potential. Pair distances are computable in polynomial time by a reverse BFS on unordered state pairs. The construction below shows that the resulting potential can be linear even when every reset word is quadratically long. No fixed multiplicative rescaling repairs that failure.
+
+## Definitions
+
+A complete deterministic finite automaton consists of a finite state set Q and one map f_a:Q->Q for each alphabet letter a. Words act from left to right. A nonempty word w is a reset word when Qw has one member. The reset threshold rt(A) is the shortest reset-word length.
+
+For distinct states p,q in a synchronizing automaton, d(p,q) is the least length of a word w with pw=qw. Let K(A) be the weight of a minimum spanning tree on Q with edge weights d. Every edge weight is at least one, so K(A)>=|Q|-1.
+
+## Theorem 1: universal extension with a unit-weight pair spanning tree
+
+Let A have m>=2 states q_0,...,q_{m-1} and at least two letters, named a and b. Adjoin m-1 new states p_0,...,p_{m-2}. Keep all original transitions. Define
+
+  p_i a = q_i a,
+  p_i b = q_{i+1} b.
+
+For any further letter c, choose p_i c to equal q_i c, or any other member of Qc. Call the extended automaton B, with n=2m-1 states.
+
+Then:
+
+1. B and A have exactly the same nonempty reset words.
+2. If A is synchronizing, every pair of states of B can be merged, and K(B)=n-1=2m-2.
+3. The result needs no oracle: B is written down from A in O(m|alphabet|) transition operations.
+
+### Proof
+
+For every letter c, all new states map into Qc, while original states still have image Qc. Hence Q_B c=Qc. If w=cv is any nonempty word, then Q_B w=(Q_B c)v=(Qc)v=Qw. This proves equality of all nonempty image sets, hence equality of reset languages and thresholds.
+
+The pair {q_i,p_i} merges under a, while {p_i,q_{i+1}} merges under b. These 2m-2 unit-weight edges form the path
+
+  q_0 -- p_0 -- q_1 -- p_1 -- ... -- p_{m-2} -- q_{m-1}.
+
+It is a spanning tree of B. Therefore K(B)<=2m-2; the universal lower bound K(B)>=|Q_B|-1 gives equality. If A is synchronizing, the language equality shows B is synchronizing, so every pair distance is finite. QED.
+
+## Corollary 2: unbounded reset/MST ratio
+
+Take A to be the standard m-state Černý automaton C_m, on states 0,...,m-1:
+
+  i a = (i+1) mod m;
+  i b = i for i<m-1, and (m-1)b=0.
+
+The classical, established reset threshold is rt(C_m)=(m-1)^2. A reset word attaining it is b(a^(m-1)b)^(m-2); the matching lower bound is the known Černý-family result, cited below rather than claimed as a new proof here.
+
+The explicit extension therefore has
+
+  n = 2m-1,
+  K(B_m) = n-1,
+  rt(B_m) = (m-1)^2 = (n-1)^2/4,
+  rt(B_m)/K(B_m) = (n-1)/4.
+
+Consequently, there is no universal constant C with rt(A)<=C K(A) for all synchronizing complete automata, even over a two-letter alphabet. For every fixed C and additive constant D, the inequality rt(A)<=C K(A)+D also fails on this family for sufficiently large m.
+
+The proxy construction is not strongly connected: the original state set is a closed subautomaton and no transition enters a proxy. This limitation is explicit. It suffices to refute the proposed universal MST architecture. No claim about the same ratio under strong connectivity is made.
+
+## What exactly fails in the amortization claim
+
+Suppose a proposed procedure starts from Q_B, ends at a singleton, and pays every chosen word w by a decrease in C*K(S), where K(S) is the MST on the current state subset with the original automaton's pair distances. Telescoping would give reset length at most C*K(Q_B), since K(singleton)=0. The corollary disproves that conclusion for every fixed C, so such a universal payment rule cannot exist.
+
+Different unit edges in the displayed spanning tree have different merging letters. Applying one common letter removes all proxy states immediately and leaves exactly the hard core image. A static tree of cheap pair-specific controls has not paid for compatibility of those controls.
+
+This is an architecture-specific obstruction. It does not show that all polynomially sized potentials fail, that all pair-based heuristics perform badly, or that a quadratic Černý bound is false.
+
+## Exact computation
+
+Run from the workspace root:
+
+  python independent_programme/fresh_theory_20261010/proxy_extension_verify.py
+
+The standard-library script independently computes pair distances by reverse BFS, MST weights, and exact shortest reset words by subset BFS for core sizes 2 through 12 (extended sizes 3 through 23). It asserts the stated formulas, the unit-weight spanning path, and equality of one-letter image sets. The all-m conclusion comes from the proof above, not extrapolation.
+
+The exact BFS outputs and full transitions are stored in proxy_extension_results.json. Selected tuples (core size, extended size, MST, exact reset threshold):
+
+  (4,7,6,9)
+  (6,11,10,25)
+  (8,15,14,49)
+  (10,19,18,81)
+  (12,23,22,121)
+
+The earlier reset_potential_search.py also shows that unscaled MST fails already on C_3: MST=3, reset threshold=4. A superficially plausible correction 2*MST-(n-1) fails on an independently found four-state example with MST=3 and reset threshold=5; see reset_mst_double_results.json. Neither finite example is used in the all-m theorem.
+
+## Primary sources and prior-art limits
+
+- Ján Černý's 1964 family and its exact quadratic reset threshold are the classical core fact. A current author survey is Marek Szykuła, Synchronizing Automata: Open Problems (August 25, 2026), arXiv:2608.24245: https://arxiv.org/pdf/2608.24245 . It treats the general quadratic reset bound as open. No attempted resolution is inferred from the present construction.
+- Adam Roman, Synchronizing finite automata with short reset words, Applied Mathematics and Computation 209(1), 125–136 (2009), https://doi.org/10.1016/j.amc.2008.06.019 . The primary publisher abstract establishes prior polynomial short-reset heuristics; the available abstract is not a full audit of the details. No claim that all prior pair potentials are covered is made.
+- Andrzej Kisielewicz, Jakub Kowalski, Marek Szykuła, Computing the shortest reset words of synchronizing automata, Journal of Combinatorial Optimization 29, 88–124 (2015), https://link.springer.com/article/10.1007/s10878-013-9682-0 . Provides an exact exponential algorithm and the subset-image search setting; the simple BFS here is independently implemented.
+
+Targeted searches for pair-distance MST bounds and reset-language-preserving proxy extensions did not locate the exact stated theorem. Search non-discovery is not evidence of priority.
+
+## Remaining indispensable obstruction
+
+A useful replacement must explicitly represent and control the interference among the words selected for different pairs, without storing all 2^n current subsets or assuming access to a shortest-reset oracle. No compatibility-sensitive, polynomial-size potential with a proved universal quadratic payment guarantee was obtained. Defining its value as the true reset distance would merely rename the original problem, and was rejected.
