@@ -1,0 +1,84 @@
+# h17_second — exact filtered-join persistence audit
+
+## Target and input/output contract
+
+Target: compute exact persistent homology of metric Rips filtrations without expanding a clique complex whose number of simplices is exponential in the point count. The output considered here is a factored barcode / persistence-module expression (not an explicit list of all repeated bars and not a homotopy-equivalent simplicial model). Coefficients are in a supplied field F. Input may be either (i) a supplied block factorization and scale c, or (ii) a full exact distance matrix with a certificate/recognition promise for the special family below.
+
+The current bottleneck is representation size. Ripser avoids storing the full coboundary matrix through implicit face/coface representation, cohomology, and apparent pairs, but the underlying flag complex can still contain exponentially many simplices. Sheehy's sparse Rips approximation gives linear-size output with constants depending on doubling dimension. McCabe's July 2026 lower bound shows that general finite metrics can require superlinear (and for approximation factors below sqrt(2), exponential) size for finitely presented homotopy-interleaving approximations. The bypass target is therefore narrower: exact persistence-module output on a broad class of metrics whose Rips complexes have a filtered join decomposition. It does not attempt to evade a lower bound for homotopy-type models.
+
+## Frozen constructive theorem (before targeted join-literature search)
+
+Let m≥2, c>0, and let X be a finite set partitioned into nonempty blocks X_1,...,X_m. Give each block X_i a metric d_i with d_i(x,y)≤2c for all x,y∈X_i, and define the cross-block distances by d(x,y)=c whenever x∈X_i, y∈X_j, i≠j. This defines a metric on X.
+
+Write K_i(t)=VR_t(X_i,d_i), with edges at distance ≤t, and K(t)=VR_t(X,d). Then:
+
+1. For t<c, K(t)=⨿_i K_i(t).
+2. For t≥c, K(t)=K_1(t)*...*K_m(t), the simplicial join.
+3. For t≥c, naturally in t and in the filtration maps, reduced homology satisfies
+   \[
+   \widetilde H_k(K(t);F)\cong
+   \bigoplus_{q_1+\cdots+q_m=k-m+1}
+   \widetilde H_{q_1}(K_1(t);F)\otimes_F\cdots\otimes_F\widetilde H_{q_m}(K_m(t);F).
+   \]
+   Consequently, the post-c persistence barcode is represented exactly by the tensor product of the factor reduced barcodes, restricted to [c,∞), with homological degree shifted by m−1. For interval factors [b_i,d_i), a tensor term is [max_i b_i,min_i d_i) when max_i b_i<min_i d_i, and is zero otherwise.
+4. The full barcode is obtained by clipping the pre-c factor barcodes at c, then splicing at c to the post-c tensor formula. Every positive-degree class from the pre-c disjoint-union phase maps to zero in the join. On H_0 all pre-c component generators map to the single connected component at c; thus one essential H_0 interval remains and every other H_0 interval alive just before c dies at c.
+
+This yields a factored exact output of size O(m+Σ_i B_i), where B_i is the size of the factor barcodes. Expanding the tensor expression can require exponentially many intervals; the factored output deliberately avoids that expansion. The theorem computes persistence modules/barcodes, not homotopy type or chain-level generators.
+
+### Proof
+
+The metric assertion follows from the triangle inequality within a block and d_i(x,y)≤2c≤d(x,z)+d(z,y) when z lies outside the block. The other triangle inequalities involving a cross-block side c are immediate since all distances are nonnegative and the third side is at most 2c.
+
+If t<c, no cross-block edge exists, so no simplex can meet two blocks and the Rips complex is their disjoint union. If t≥c, every cross-block pair is an edge. A finite set of vertices is then a simplex exactly when its intersection with each block is a simplex of that block's Rips complex. This is the definition of simplicial join.
+
+For finite simplicial complexes over F, the augmented simplicial chain complex of a join is naturally the suspension of the tensor product of augmented chain complexes. Iterating and applying the Künneth theorem over a field gives the displayed homology isomorphism. Since this chain isomorphism is natural for inclusions K_i(s)→K_i(t), it is an isomorphism of persistence modules for s,t≥c, not just a pointwise Betti-number identity. Tensoring interval modules intersects their supports, giving the max-birth/min-death rule.
+
+At the transition c, each K_i(c) is nonempty. The inclusion of one block K_i(s), s<c, into the join at c is null-homotopic: choose a vertex in a different block; its cone with every simplex of K_i(s) lies in the join. Therefore all reduced homology maps from the disjoint-union phase to the join phase vanish. On H_0, the join is connected and every old component maps to its unique generator. This proves the barcode splice.
+
+## Discriminating family: exponential complex, compact exact persistence
+
+Take m blocks of three points each, with within-block distances 2c and cross-block distances c. For t<c, all 3m vertices are isolated. For c≤t<2c, K(t) is the join of m three-point discrete complexes, equivalently the clique complex of the complete m-partite graph with three vertices per part. It has
+\[
+(1+3)^m-1=4^m-1
+\]
+nonempty simplices. At t≥2c it is the full simplex on 3m vertices.
+
+Each factor has reduced H_0=F^2 on [0,2c), and no other reduced persistence. The join formula gives the exact full barcode:
+
+- H_0: one essential interval [0,∞), plus 3m−1 intervals [0,c).
+- H_{m−1}: 2^m copies of [c,2c).
+- Every other positive-degree barcode is empty.
+
+Thus the simplicial representation at the middle scale has 4^m−1 simplices. A factored barcode expression needs O(m) records: store the repeated three-point factor, the join operation, and c. For this symmetric family, even the canonical barcode fits in O(1) records if interval multiplicity is stored as a binary integer: one [c,2c) interval of multiplicity 2^m, plus the H_0 records. So the separation is from the explicit simplicial model, not from a sensible multiplicity-compressed barcode. It is a representation-size witness, not a claim that every PH implementation necessarily enumerates all simplices on this input.
+
+This example is also the complete multipartite/Turán-graph construction used in McCabe's homotopy-interleaving lower bound, up to a scale normalization. McCabe's result rules out small finitely presented simplicial approximations in its stated range; it does not rule out a compact algebraic barcode expression, whose semantics forget homotopy information beyond persistent homology.
+
+## Resource and certificate accounting
+
+If the block partition, c, and factor distance representations are supplied, the construction of the outer factored expression costs O(m+Σ_i B_i) after factor persistence is computed. For raw distances, reading/verifying all cross-block values costs Θ(n²) in the dense-matrix interface; this theorem does not promise subquadratic geometry acquisition or partition discovery. For the discriminating two-level family, c is the minimum nonzero distance, and the blocks are the connected components of the graph whose edges are pairs at distance >c; one scan of the matrix recovers/checks the partition in Θ(n²). Once the blocks are known, each factor is a three-point metric and its barcode is constant-size. The complete raw-matrix route is therefore Θ(n²) distance reads plus O(m) algebraic output, versus 4^m−1 simplices in the standard complex representation.
+
+If the caller requests a literal occurrence-by-occurrence list of all barcode intervals, the output itself has 2^m entries and costs Ω(2^m) to write. The gain is available only when the caller accepts a factored expression or multiplicity-compressed records and can perform downstream operations on them. In the exact 1-parameter setting over a field, the barcode determines the persistence module up to isomorphism, but not the filtered homotopy type.
+
+## Exact rank-query capability from the representation
+
+The factorization also gives the full rank invariant without expanding tensor bars. For s≤t<c and every k, the ordinary rank invariant is the sum of the factor rank invariants because the complexes are disjoint unions. For c≤s≤t, put
+\[
+P_i^{s,t}(z)=\sum_{q\geq0}\operatorname{rank}\bigl(\widetilde H_q(K_i(s))\to\widetilde H_q(K_i(t))\bigr)z^q.
+\]
+Then the rank of the degree-k map of the whole join is the coefficient of z^{k-m+1} in \(\prod_i P_i^{s,t}(z)\). For s<c≤t, positive-degree ranks are zero and the H_0 map has rank one. This follows because the join Künneth isomorphism is natural, and the rank of a tensor product of linear maps over a field is the product of ranks. The formula answers exact persistent-Betti/rank queries from factor barcode rank queries and polynomial multiplication, without tensor-bar expansion. For the triple family, the only nonzero post-c factor rank is 2 in degree 0, so the degree-(m−1) rank is the scalar product 2^m.
+
+This gives one concrete exact operation supported by the symbolic output: compute the integer rank 2^m using O(m) factor operations and O(m) output bits, although the associated homology vector space has dimension 2^m. It is a narrow class-specific capability. Raw distance acquisition remains quadratic, and the operation does not construct cycle generators or recover homotopy type.
+
+## Current primary algorithm baselines and novelty audit
+
+The strongest general Rips baseline inspected is Ripser (Bauer, 2019/2021): it implicitly represents the coboundary and simplex filtration order, uses apparent pairs, and avoids explicitly constructing/storing the filtration coboundary matrix. This is a major storage and practical advance. Its primary description does not provide a representation-size certificate exploiting the join structure below. I do not claim Ripser necessarily enumerates all 4^m−1 simplices on this witness; no matched runtime or operation-count comparison was made. Sheehy's sparse Rips construction (2012/2013) gives an O(n)-size/O(n log n)-time approximation, with constants depending on doubling dimension and approximation tightness; it does not provide this exact algebraic output for arbitrary finite metrics.
+
+The strongest falsifier is unusually direct: McCabe's July 2026 primary preprint uses the identical complete m-partite graph with parts of size three (the Turán graph T(3m,m)) to prove an exponential lower bound for finitely presented homotopy-interleaving models. His construction is this metric after scaling: cross-part distance 2 and within-part distance 4, so c=2 here. The proof explicitly identifies the clique complex as the join of m discrete triples and computes top reduced Betti number 2^m by the join formula. Neither the discriminating family nor the join/Künneth growth mechanism is new. The theorem here additionally records the exact barcode splice across the pre-c disconnected phase and a compact persistence-only query interface, but that is a direct elementary application of standard chain-level join Künneth. It does not evade McCabe's result: his size measure is for simplicial-complex-valued models retaining homotopy-interleaving information, while this expression retains only persistent homology.
+
+Gakhar and Perea (2019) prove persistent Künneth/barcode formulas for filtered categorical and tensor products and discuss algorithmic applications to Rips complexes of product metric spaces. A join is not their Cartesian product, but the augmented-chain identity for joins gives the displayed formula immediately. The targeted search did not find a primary source stating this exact one-step metric join splice; absence of a hit is not evidence of novelty. The construction is best classified as a correct known-method specialization with a useful exact resource illustration, not a transformative advance.
+
+Sources: Bauer, *Ripser: efficient computation of Vietoris–Rips persistence barcodes*, https://arxiv.org/abs/1908.02518 (journal version 2021); Sheehy, *Linear-Size Approximations to the Vietoris–Rips Filtration*, https://arxiv.org/abs/1203.6786; Gakhar–Perea, *Künneth Formulae in Persistent Homology*, https://arxiv.org/abs/1910.05656; McCabe, *Lower Bounds for Approximating the Vietoris–Rips Filtration*, https://arxiv.org/abs/2607.06524, especially Theorem 3.2 and its proof.
+
+## Status
+
+The constructive theorem and witness are proved internally; the finite mod-2 chain calculation is sanity-checked for m=1,...,5 in `h17_second/sanity_join_family.py`. Source comparison found a direct prior-art collision for the witness and mechanism. No novelty or transformative-capability claim is justified. OPEN: whether a substantially broader, efficiently discoverable class of certified Rips join decompositions yields leverage beyond this standard Künneth specialization; the present construction does not address finding such a decomposition in general.

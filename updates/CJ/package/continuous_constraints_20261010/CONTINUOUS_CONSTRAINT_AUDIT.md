@@ -1,0 +1,336 @@
+# Continuous nonlinear equality conditioning: exact acquisition audit
+
+Date: 2026-10-10. This is a mathematical research audit, not a natural-law discovery or a publication-novelty claim.
+
+## Result first
+
+**Update:** STABLE_RANK_ACQUISITION.md strengthens this initial audit with a raw-input collective-stable-rank envelope, dense non-Wishart examples, a restriction budget, inverse-moment control, and a finite-output Wasserstein theorem for homogeneous zero targets. Its newer result supersedes the minimum-singular-value-only and ideal-real-only limitations below for that stated scope. The general nonlinear and novelty limitations remain.
+
+A positive Gaussian lift **does** give independent exact samples under a quantitative, verifiable spectral envelope; it need not be merely an unevaluated determinant integral or a Gibbs chain. The sampler, normalization, acceptance, affine offsets, and nonlinear-target correction are derived below.
+
+However, this does **not** pass the requested independent-foundational-capability gate. The coarea law, Gaussian conditioning, inverse-determinant auxiliary representation, and the clean Wishart/Student-t examples are established mathematics. The proved acquisition route is ordinary rejection sampling from a Student-t envelope. Its useful generality depends on acquiring a tight collective **singular-value** certificate and controlling a target-energy penalty. Those are substantive restrictions, and neither arbitrary nonlinear composition nor general efficient certificate acquisition has been solved.
+
+A particularly close precedent is Ellam, Strathmann, Girolami and Murray (2017): their Gaussian auxiliary variable cancels a Gaussian likelihood determinant, followed by MCMC. The independent-envelope theorem below adds an explicit sufficient acquisition condition; it does not make the underlying representation new.
+
+## 1. Precisely which measure?
+
+Let independent priors be X ~ N(0,I_p), Y ~ N(0,I_n). Given p-by-n matrices A_i and c_i in R^n, define
+
+    F(x)_{i,:} = x^T A_i + c_i^T,       i=1,...,m,
+    H(x,y) = F(x)y - g(x),
+    S(x) = F(x)F(x)^T.
+
+The target is the Gaussian **residual-disintegration / delta-conditioning law**, not intrinsic surface area. On full-row-rank fibers it has x marginal
+
+    pi_g(dx) = W_g^(-1) phi_p(x) w_g(x) dx,
+    w_g(x) = det S(x)^(-1/2) exp[-E_g(x)/2],
+    E_g(x) = g(x)^T S(x)^(-1) g(x),
+    W_g = E_X w_g(X).                                      (1)
+
+Given x, draw z ~ N(0,I_n) and set
+
+    y = F(x)^T S(x)^(-1) g(x)
+        + [I_n-F(x)^T S(x)^(-1)F(x)] z.                    (2)
+
+This is the ordinary (possibly degenerate) Gaussian conditional law Y | F(x)Y=g(x). Equation (2) satisfies the constraint exactly in ideal arithmetic. In particular the residual is **not** generally repaired by taking an unchanged prior x and projecting y: x must receive weight w_g.
+
+For smooth g and a regular level set M={H=0}, the same law is
+
+    Z_g^(-1) phi_p(x) phi_n(y) / J_H(x,y) dH^{p+n-m}(x,y),
+    J_H = sqrt det(DH DH^T),
+    Z_g = (2*pi)^(-m/2) W_g.                               (3)
+
+The intrinsic Gaussian-weighted surface measure instead has density phi_p phi_n with respect to Hausdorff measure and lacks 1/J_H. The difference matters even for one equation. Replacing H by L(x,y)H with variable invertible L changes the delta-conditioned measure by |det L|^(-1) on M; the geometric set alone does not specify this conditioning law.
+
+### A robust definition at potentially exceptional fibers
+
+Define the epsilon law by multiplying the joint Gaussian prior by
+
+    (2*pi*epsilon^2)^(-m/2) exp[-||H(x,y)||^2/(2 epsilon^2)],
+
+then normalizing. Its x weight is
+
+    det(S+epsilon^2 I)^(-1/2)
+    exp[-g^T(S+epsilon^2 I)^(-1)g/2].
+
+If W_0<infinity and S is positive definite almost everywhere, this weight is bounded above by det S^(-1/2), so dominated convergence gives (1), including its normalizing constant. Conditional Gaussian convergence gives weak convergence of the joint laws to (1)-(2). Thus no singular-fiber mass has silently been discarded in this regime. Ambient total variation convergence is impossible: the epsilon law is full-dimensional and its limit is supported on a manifold.
+
+A regular conditional distribution at an individual zero-probability singular value is not determined simply by the abstract existence of a disintegration. If W_0 is infinite, the preceding definition and argument do not apply; an explicitly specified tube/noise limit can still exist and can have a different dimension.
+
+## 2. Three representations, and where acquisition moves
+
+### A. Coarea / direct fiber integration
+
+Equations (1)-(2) completely identify the target. They reduce the problem to sampling x with an inverse square-root determinant and a nonnegative target-energy factor. They do not themselves provide a sampler for x.
+
+A bounded-domain analogue replaces the Gaussian fiber mass by the actual section volume or weighted section integral. Unless that fiber mass and a sampler for each section are separately acquired, this merely relocates the original problem.
+
+### B. Fourier duality
+
+Formally,
+
+    delta(H) = (2*pi)^(-m) integral exp(i lambda^T H) d lambda.
+
+Integrating y gives exp[-||F(x)^T lambda||^2/2] exp[-i lambda^T g(x)]. For g=0 this is positive; for general g the oscillatory factor returns. With constant g=b and c=0, subsequent Gaussian x integration gives
+
+    det(I_p+A_lambda A_lambda^T)^(-1/2) exp(-i lambda^T b),
+    A_lambda = sum_i lambda_i A_i.
+
+That is useful characteristic-function analysis, not a positive sampling density for nonzero b. Calling it a sampler would hide a sign/phase problem.
+
+### C. Positive inverse-determinant lift
+
+For positive definite S,
+
+    det S^(-1/2)
+      = (2*pi)^(-m/2) integral exp[-lambda^T S lambda/2] d lambda. (4)
+
+Consequently the unnormalized joint density
+
+    phi_p(x) exp[-||A_lambda^T x+c_lambda||^2/2],
+    c_lambda = sum_i lambda_i c_i,
+
+has x marginal proportional to phi_p(x)det S(x)^(-1/2). Completing the square gives
+
+    K_lambda = I_p + A_lambda A_lambda^T,
+    mu_lambda = -K_lambda^(-1) A_lambda c_lambda,
+    X | lambda ~ N(mu_lambda, K_lambda^(-1)),               (5)
+
+and unnormalized lambda marginal
+
+    v(lambda) = det K_lambda^(-1/2)
+                exp[-c_lambda^T(I_n+A_lambda^T A_lambda)^(-1)c_lambda/2]. (6)
+
+The exponent can equivalently be computed using
+
+    I_n - A_lambda^T K_lambda^(-1) A_lambda.
+
+Thus conditional Gaussian draws are easy, but merely alternating (5) with lambda | x ~ N(0,S(x)^(-1)) is a Gibbs chain. It has no exact independent-sampling or dimension-scalable mixing guarantee from these identities alone.
+
+The next section supplies a genuine independent acquisition route for (6).
+
+## 3. Exact independent Student-t-envelope sampler
+
+Assume an explicitly verified integer R>m and s>0 satisfy
+
+    sigma_R(A_lambda) >= s ||lambda||    for every lambda.  (7)
+
+Here sigma_R is the R-th largest singular value. This is quantitative. A statement about ranks alone is insufficient.
+
+Then
+
+    det K_lambda >= (1+s^2||lambda||^2)^R,
+    0 <= v(lambda) <= h(lambda):=(1+s^2||lambda||^2)^(-R/2).
+
+Its integral is explicit:
+
+    B = integral h(lambda) d lambda
+      = pi^(m/2) s^(-m) Gamma((R-m)/2)/Gamma(R/2),
+    C = B/(2*pi)^(m/2)
+      = 2^(-m/2) s^(-m) Gamma((R-m)/2)/Gamma(R/2).          (8)
+
+One independent trial is:
+
+1. Draw z ~ N(0,I_m), V ~ chi-square_(R-m), independently. Set lambda=z/(s sqrt V). This has density h/B; no unknown normalizer is required.
+2. Accept lambda with probability a_1=v(lambda)/h(lambda), using (6). Otherwise restart.
+3. Draw x from (5).
+4. Accept x with probability a_2=exp[-E_g(x)/2]. Otherwise restart.
+5. Draw y from (2), and output (x,y).
+
+All determinants and inverses here are ordinary finite matrices computable by factorization. No determinant integral, partition function, inverse-volume oracle, enumeration of directions, or stationary-limit MCMC is needed.
+
+### Proof of the law and cost identity
+
+After step 2 the unnormalized probability density of reaching lambda is v(lambda)/B. Multiplying by the conditional Gaussian density (5) exactly cancels its completed-square normalizer. Therefore the density of reaching x is
+
+    [phi_p(x)/B] integral exp[-||F(x)^T lambda||^2/2] d lambda
+      = phi_p(x) det S(x)^(-1/2) / C.
+
+Step 4 changes this to phi_p(x)w_g(x)/C. Step 5 supplies the correct Gaussian fiber conditional. Thus
+
+    P(success in one trial) = W_g/C,
+    E[number of trials] = C/W_g.                           (9)
+
+Tonelli and the finite upper integral B establish W_0<=C<infinity, so S is positive definite for Gaussian-almost-every x. If g is finite there, W_g>0 and the sampler terminates almost surely. This does not imply an efficient expected number of trials.
+
+An elliptical variant replaces s^2||lambda||^2 by lambda^T Q lambda, Q positive definite, with B containing det Q^(-1/2) and lambda=Q^(-1/2)z/sqrt V. This removes coordinate scaling when a suitable Q is actually acquired; Q is not an oracle.
+
+## 4. A natively checkable certificate and a scalable bound
+
+### A sufficient raw-input certificate
+
+Choose an explicit orthonormal p-by-R matrix U. Form R-by-R blocks
+
+    B_ij = (U^T A_i A_j^T U + U^T A_j A_i^T U)/2.
+
+If the mR-by-mR block matrix B-s^2 I is positive semidefinite, then for all v and lambda,
+
+    ||A_lambda^T U v||^2
+      = (lambda tensor v)^T B (lambda tensor v)
+      >= s^2 ||lambda||^2 ||v||^2.
+
+The min-max principle gives (7). Rational input permits an exact rational LDL^T certificate or an explicitly certified lower bound. A failed check means only that this sufficient certificate failed. Finding a useful U, finding the best Q, and recognizing all good matrix spaces are not supplied by this procedure. A fixed coordinate subspace U avoids an unspecified search but can miss hidden structure.
+
+There are many simpler directly visible certificates: if A_i=[B_i,C_i] and the first blocks obey B_lambda B_lambda^T=s^2||lambda||^2 I_R, then the added columns can only increase the Gram matrix. Verifying that identity is just checking its quadratic coefficients.
+
+### An explicit sufficient acceptance theorem
+
+Let
+
+    T = E_X S(X),
+    T_ij = tr(A_i A_j^T) + c_i^T c_j.
+
+The function S -> det(S)^(-1/2) is convex on positive definite matrices. Jensen therefore gives
+
+    W_0 >= det T^(-1/2).
+
+If the target has a verified uniform energy bound E_g(x)<=beta, then
+
+    E[trials] <= exp(beta/2) C sqrt(det T).                 (10)
+
+Every quantity in the bound is explicit. One sufficient way to control the target is g(x)=F(x)h(x), ||h(x)||^2<=beta: E_g is the squared norm of the row-space projection of h and is at most ||h||^2.
+
+For an illustrative growing regime, take m even, T <= R(1+delta)s^2 I_m. Then
+
+    C sqrt(det T)
+      <= (1+delta)^(m/2) product_{j=1}^{m/2}(1-2j/R)^(-1)
+      <= exp[m delta/2 + m(m+2)/(4(R-m))].                 (11)
+
+The last inequality uses log(1+delta)<=delta and -log(1-u)<=u/(1-u). Hence R=Omega(m^2), delta=O(1/m), beta=O(1) yield constant expected trials, with polynomial per-trial arithmetic and polynomial certificate verification. This is a real dimension-scalable sufficient result. It is also a strong aggregate near-isotropy/energy condition, not a generic coupled-constraint theorem.
+
+The Jensen estimate is loose in exactly solvable models: their actual success can be one even when (11) is large.
+
+## 5. Decisive examples and falsifications
+
+### 5.1 Scalar product zero: the target measure can fail to normalize
+
+For independent scalar Gaussian X,Y and H=XY,
+
+    W_0 = E |X|^(-1) = infinity.
+
+The two regular axes also have divergent Gaussian-weighted 1/J_H coarea mass near their intersection. No normalized measure of form (3) exists.
+
+Nevertheless the symmetric tube condition |XY|<=epsilon converges weakly to a point mass at (0,0). Indeed its probability is at least a constant times epsilon log(1/epsilon), while its probability outside any fixed square [-a,a]^2 is O_a(epsilon). Their ratio tends to zero. This is a specified limiting interpretation, not the nonexistent normalized regular-stratum delta measure.
+
+For XY=b !=0,
+
+    W_b = E [|X|^(-1) exp(-b^2/(2X^2))] < infinity,
+    density of XY at b = K_0(|b|)/pi.
+
+Writing u=X^2 gives an unnormalized density u^(-1) exp[-(u+b^2/u)/2], a generalized-inverse-Gaussian form. This target is well defined, but the g=0 positive auxiliary base is not normalizable. It is a sharp failure of that proposal architecture, not an impossibility of conditional sampling.
+
+### 5.2 Several constraints with a shared Gaussian matrix: a Wishart antecedent
+
+Let x=vec X for an m-by-n matrix of independent Gaussian entries and impose XY=0, where Y is an independent n-vector. S=XX^T is Wishart W_m(n,I). Multiplying its density by det S^(-1/2) changes its degrees of freedom from n to n-1. The Stiefel orientation conditional on S is unchanged. The tilted law is proper exactly when n>m.
+
+The same model has A_lambda^T A_lambda=||lambda||^2 I_n; the dual density is exactly
+
+    (1+||lambda||^2)^(-n/2),
+
+a Student-t form with n-m degrees of freedom. Step 2 accepts every draw. This is a growing-dimension exact positive example, but it is classical Wishart/Student-t structure. It cannot support a foundational novelty claim.
+
+### 5.3 Shared-x orthogonal blocks, and an exact coupled perturbation
+
+For x in R^p and y=(y_1,...,y_m), y_i in R^p, let F_i(x)y=x^T y_i. Then S=||x||^2 I_m. At zero target the exact x draw is
+
+    x = r u,     r^2 ~ chi-square_(p-m),
+    u uniform on the unit sphere in R^p, independently.
+
+This is proper iff p>m. It also makes clear why the continuous analogue spends an actual integrability budget rather than merely counting finite fibers.
+
+A small nontrivially coupled example uses m=2,p=4,n=9 and
+
+    A_1=[I_4, 0_4, e_1],
+    A_2=[0_4, I_4, e_2].
+
+With r^2=lambda_1^2+lambda_2^2,
+
+    det(I+A_lambda A_lambda^T)=(1+r^2)^3(1+2r^2),
+    a_1=sqrt[(1+r^2)/(1+2r^2)] >= 1/sqrt 2.
+
+Writing v=(x_1,x_2), S=||x||^2 I_2+vv^T. Under the unperturbed x law, ||v||^2/||x||^2 is uniform on [0,1]. Consequently
+
+    W_0 = sqrt 2 - 1,
+    P(success) = 2(sqrt 2-1),
+    E[trials] = (sqrt 2+1)/2.
+
+For a genuinely nonlinear rational target, set
+
+    t(x)=x_1 x_2/[1+(x_1 x_2)^2],
+    g(x)=t(x) v.
+
+Since |t|<=1/2 and v^T S^(-1)v<=1/2, E_g<=1/8. The same sampler has success at least
+
+    2(sqrt 2-1) exp(-1/16) > 0.7782.
+
+The equations, complete matrices, exact identities and an independently labelled numerical quadrature appear in verify_continuous.py and EXACT_AND_NUMERICAL_CHECKS.json. These are checks of the derivation, not evidence of novelty.
+
+This perturbation also has a direct radial-proposal sampler using the matrix determinant lemma. The dual lift does not unlock it uniquely; this is an important negative novelty check.
+
+### 5.4 Rank alone, and even a loose quantitative envelope, do not control acquisition
+
+Scale an exact radial family so A_lambda A_lambda^T=kappa^2||lambda||^2 I_R. Every nonzero combination still has rank R. If one uses the valid but loose s=1 envelope, the success is exactly kappa^(-m). For kappa=2,m=100 it is about 7.89e-31.
+
+This particular example is repairable by using s=kappa, and therefore is **not** a lower bound on all algorithms. It falsifies a theorem that would promise efficient acquisition from an arbitrary valid rank/spectral lower bound alone. Any claim of scalable acceptance must charge envelope tightness.
+
+More generally a fixed number k of added coupled columns with ||C_lambda||_op<=L||lambda|| gives acceptance at least (1+L^2)^(-k/2). It permits strong low-rank coupling but is again a classical determinant-comparability argument. High-rank additions can make that bound exponential.
+
+### 5.5 Nonlinear-target acceptance is a real separate resource
+
+In the shared-x core, choosing g(x)=B||x||e_1 gives E_g=B^2, so step 4 accepts with exp(-B^2/2). This penalty can be removed in this special case because it is a known constant; it is an algorithm-specific failure, not hardness of this particular target.
+
+With an arbitrary measurable target, choose g=0 on a set A and g=B||x||e_1 outside A. The x target is the core tilted law further multiplied by 1_A+exp(-B^2/2)1_{A^c}. Thus allowing unrestricted g includes arbitrarily rare-event conditioning. Smooth versions can create narrow low-energy regions too. No uniform arbitrary-g acceptance theorem follows from collective spectral nondegeneracy. This is an expressiveness/acceptance obstruction; no formal complexity-theoretic impossibility theorem is asserted here.
+
+### 5.6 Surface area and residual conditioning already disagree in one dimension
+
+Take the hyperbola xy=1 with x in [1,2], under a constant ambient density. Delta conditioning gives x density
+
+    1/(x log 2).
+
+Uniform arc length gives density proportional to sqrt(1+x^(-4)). These are different distributions on exactly the same bounded constraint set. A method claiming to handle both must explicitly insert the appropriate Jacobian correction.
+
+## 6. What exactness and finite precision do, and do not, mean
+
+The theorem is exact in an ideal-real arithmetic model with exact Gaussian, chi-square and uniform random variates. Standard factorizations provide the finite-dimensional operations, but ordinary floating point does not make their accept/reject decisions or constraint satisfaction exact.
+
+For computable rational matrices and a computable g, one can in principle use lazy random bits and certified interval arithmetic. Almost surely strict acceptance comparisons eventually resolve; almost-surely full-rank fibers can eventually be certified. A continuous output must then be represented by successively refinable approximations, not by a finite exact decimal. This observation supplies neither a uniform expected bit-complexity bound nor a condition-independent polynomial-time implementation.
+
+A finite machine output lies on a countable set and consequently has total variation distance one from a non-atomic continuous target. Meaningful finite-output guarantees are, for example, total variation after both laws are quantized to the same grid, or a specified coupling/Wasserstein error plus a residual bound. A claim of epsilon-total-variation accuracy to the unquantized continuous manifold law from finitely many output bits would be false.
+
+This audit does **not** claim a general finite-bit epsilon sampler with dimension-polynomial complexity. Such a theorem would need explicit tail, conditioning, representation, arithmetic-error, acceptance-margin and output-metric controls. The symbolic example checks are exact; its scipy quadrature is only a numerical consistency check.
+
+## 7. Precedent audit
+
+The following primary sources were checked. They establish prior ingredients, not absence of further antecedents.
+
+1. J. Hubbard (1959), *Calculation of Partition Functions*, Physical Review Letters 3, 77–78. Gaussian auxiliary-field transformations long precede this proposal. https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.3.77
+2. L. Ellam, H. Strathmann, M. Girolami, I. Murray (2017), *A determinant-free method to simulate the parameters of large Gaussian fields*. Introduces inverse-covariance Gaussian auxiliary variables to remove determinant evaluation; uses MCMC, not the independent rejection theorem above. https://arxiv.org/abs/1709.03312
+3. P. Diaconis, S. Holmes, M. Shahshahani (2012), *Sampling From A Manifold*. Coarea-based conditional distributions and manifold-sampling algorithms are established. https://arxiv.org/abs/1206.6913
+4. E. Zappa, M. Holmes-Cerfon, J. Goodman (2017), *Monte Carlo on manifolds: sampling densities and integrating functions*. Equality/inequality manifold MCMC with tangent-space projection; invariant-law machinery should not be mistaken for generic independent exact acquisition. https://arxiv.org/abs/1702.08446
+5. M. Fixman (1974), *Classical Statistical Mechanics of Constraints: A Theorem and Application to Polymers*, PNAS 71, 3050–3053. Metric-determinant effects of constrained measures are classical. https://pmc.ncbi.nlm.nih.gov/articles/PMC388618/
+6. R. Majumdar and S. Majumdar (2019), *On the conditional distribution of a multivariate Normal given a transformation—the linear case*. Covers the Gaussian linear conditioning step, including singular-normal formulation. https://arxiv.org/abs/1710.09285
+7. S. Sawyer (2007), *Wishart Distributions and Inverse-Wishart Sampling*. Contains the Wishart density and Bartlett construction used to identify the degree-of-freedom shift, rather than treating it as a new capability. https://www.math.wustl.edu/~sawyer/hmhandouts/Wishart.pdf
+8. M. D. Springer and W. E. Thompson (1970), *The Distribution of Products of Beta, Gamma and Gaussian Random Variables*. Product-Gaussian distribution theory is classical. https://epubs.siam.org/doi/10.1137/0118065
+9. L. Negro (2021), *Sample distribution theory using Coarea Formula*. Modern treatment of pushforward densities and rank-aware coarea formulas. https://arxiv.org/abs/2110.01441
+
+No broad historic-novelty conclusion is justified by this targeted search. In particular, the exact Student-t-envelope theorem was derived here, but whether its precise formulation already appears elsewhere has not been established.
+
+## 8. Final capability verdict
+
+What survives:
+
+- A precisely specified nonlinear equality-conditioning measure.
+- An exact independent auxiliary sampler with no hidden normalization oracle.
+- A native sufficient certificate and explicit dimension-scalable acceptance conditions.
+- Exact treatment of affine offsets and bounded-energy nonlinear targets.
+- Concrete exact coupled examples, and explicit singular/non-normalizable and bad-envelope counterexamples.
+
+What does not survive:
+
+- A general continuous analogue of finite-field rank-only acquisition.
+- Generic handling of arbitrary nonlinear target composition at dimension-scalable cost.
+- A new positive Gaussian or determinant-removal representation.
+- A general finite-bit rigorous-accuracy complexity theorem.
+- The requested independent foundational capability or a natural-law discovery.
+
+The next meaningful gate is a broadly acquirable positive envelope (or a genuinely different exact acquisition primitive) that remains economical under nonlinear composition and does not reduce to an exposed Wishart/orthogonal-design core, small determinant distortion, or a favorable inverse-energy bound. No such result is asserted here.

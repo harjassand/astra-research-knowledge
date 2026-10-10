@@ -170,10 +170,20 @@ Material corrections: N135 → N160 is a full-proof candidate sharp identical-un
 | 94 | `G-CH-N586` — Reconstruct the conditional amplifier counterexample and preserve theorem scope | The source reports outward Gaussian intervals; this refutes only the reference-conditioned strengthening, not N557. |
 | 95 | `G-CI-N587` — Reconstruct finite-state data-processing rigidity and preserve the missing-companion boundary | The source reports a reversible chi-square profile classification and a separate nonreversible zero theorem; Section 8’s regularity-free extension lacks its cited companion proof. |
 | 96 | `G-CI-N588` — Reconstruct complete-monotonicity spectral extraction and global series recovery | The positive entire chi-square series classification is source-reported; audit the generator realization, no-analyticity recovery and augmentation hypotheses. |
+| 97 | `G-CJ-N589` — Reconstruct residual-conditioned Gaussian measure and singular-value envelope | Ideal exact sampler and nonlinear-energy correction are source-reported; full-rank fiber, normalizer, coarea, and acquisition costs need independent proof review. |
+| 98 | `G-CJ-N590` — Audit collective-stable-rank envelope and finite-output W1 proof | Rational certificates and fixed-input runs are source-reported only; general W1 proof is distinct from the narrow implementation and has not been independently audited. |
+| 99 | `G-CJ-N591` — Verify Weyl density and sharp real-D integrability threshold | D=2 normalizability does not imply efficient acquisition; check Jacobian, both threshold directions, D=2 L2 obstruction, and physical-model conventions. |
+| 100 | `G-CK-N592` — Reconstruct the finite-bit rarity-uniform hitting-time coupling | Verify the Cox stratification, small-Poisson coupling, finite-precision failure budget and bit complexity; distinguish absolute CDF/finitely binned guarantees from continuous-law TV. |
+| 101 | `G-CK-N593` — Keep the Chebyshev obstruction scoped to one signed particle | Check the exact regular-tree l1 calculation; do not infer a lower bound for all fast-forwarding algorithms or global-state access. |
+| 102 | `G-CL-N594` — Reconstruct exact weighted-cubic closure and canonical minimality | Audit the positive moments, paired K/T closure, exact flatness/Gram stopping and cross-dimensional signed-block classification; no finite-noise consequence follows. |
+| 103 | `G-CL-N595` — Verify the homogeneous irreducible M-matrix physical-node census | Check inverse positivity and both signed-coupling/heterogeneous-alpha counterexamples; establish priority beyond local size estimation. |
+| 104 | `G-CL-N596` — Reconstruct the first-order H1/H3 physical-coordinate contraction | Check modal nondegeneracy, high-frequency cancellation, physical-coordinate eigendecomposition, and the PWH/Volterra prior-art boundary. |
+| 105 | `G-CL-N597` — Resolve the oscillator stability versus kernel-query-count discrepancy | Reconcile s41’s conditional resource proof with h16’s unproved uniform Cauchy conditioning and oracle-query limitation; acquire and cost raw H1/H3 measurements. |
+| 106 | `G-CL-N598` — Reconstruct the weak-coupling noisy acquisition lower bound | Verify the adaptive-control output contrast and KL constants; separate exact identifiability from noisy recovery and the n=8 forecast. |
 
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
-Other historical restarts remain in `state/` and source archives. This dashboard selects 96 concrete gates; it does not exhaustively rank every field or independently reconstruct all 658 cards. Candidate supersession does not externally validate a gate.
+Other historical restarts remain in `state/` and source archives. This is a curated gate set; it does not exhaustively rank every field or independently reconstruct the full claim corpus. Candidate supersession does not externally validate a gate.
 
 ## BQ intake: N522–N534
 
@@ -182,3 +192,17 @@ The 2026-10-10 intake adds thirteen source-derived, unreviewed cards spanning lo
 ## CI intake: N587–N588
 
 The 2026-10-10 intake preserves two finite-state divergence-classification notes as separate source-derived, unreviewed cards. N587 assumes data processing and classifies universal reversible-relaxation convexity, with a separately scoped nonreversible zero theorem. N588 assumes complete monotonicity, local smoothness and independent uninformative augmentation, and derives data processing. Their connection is a scoped profile comparison, not a proof dependency. The referenced regularity-free companion proof and source-reported example checkers were not supplied; no proof replay, external validation, priority clearance or historic-scale breakthrough is claimed.
+
+
+
+## CJ intake: N589–N591
+
+The 2026-10-10 continuous-constraints packet is retained in both expanded-folder and earlier tar editions, with separate original manifests and a new intake checksum over all bytes. N589 records a singular-value-envelope sampler for the residual/delta-conditioned Gaussian law; N590 records the distinct collective-stable-rank exact envelope and homogeneous finite-output W1 theorem, keeping its one-input 128-by-128 prototype separate; N591 records the Weyl-reduced harmonic Gauss-law density and the source-proved real-D normalizability threshold. The source explicitly limits large-rank efficiency, generic nonlinear composition, and the finite-input implementation. Intake ran integrity, JSON and retrieval checks only: no research code or proof was replayed, and external correctness, formal certification, physical acquisition, historical priority, and any historic-scale breakthrough remain unestablished.
+
+## CK intake: N592–N593
+
+The stationary product-chain packet preserves the exact source folder and its manifest. N592 routes a source-reported finite-bit approximation for one joint-state hitting time under a stationary product initial law, with absolute CDF error and finite-binning limits kept explicit. N593 records only the regular-tree signed-mass obstruction to one Chebyshev single-particle representation; it is not a general fast-forwarding lower bound. Source numerical checks and floating-point code were not rerun, and the finite-bit theorem has not been independently reconstructed or formally certified.
+
+## CL intake: N594–N598
+
+The cubic-network campaign preserves the exact ZIP and byte-matching expanded source tree. N594 records the exact weighted-cubic-closure recovery criterion and canonical minimal model; N595 adds the physical node census only under homogeneous cubic coefficients and connected SPD M-matrix couplings. N596 records a generic first-order H1/H3 physical-coordinate contraction. N597 is a distinct second-order oscillator construction: the O(n^3) number is an exact kernel-query count, and the packet's s41 conditional resource proof and h16 stability qualification remain in tension. N598 records a weak-coupling noisy-acquisition lower bound and separates it from source-reported fit results and forecasts. The seven replay passes and internal audits were not rerun; external correctness, priority, physical acquisition and practical advantage remain unresolved. The frozen amplifier candidate is unchanged.

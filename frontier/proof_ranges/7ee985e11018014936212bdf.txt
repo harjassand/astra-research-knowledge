@@ -1,0 +1,79 @@
+EXACT INDEXED SOURCE RANGE | {"path": "updates/CJ/package/continuous_constraints_20261010/CONTINUOUS_CONSTRAINT_AUDIT.md", "sha256": "66f1586ed42c3714216b741912518d505983529e53c77f6a5a4d40e9429ad99b", "lines": [83, 157], "range_scope": "source-reported argument/evidence; completeness and correctness not independently audited", "read_path": "updates/CJ/package/continuous_constraints_20261010/CONTINUOUS_CONSTRAINT_AUDIT.md", "source_id": "d-42f51c87b30cd1c4", "hash_kind": "original_utf8_bytes"}
+range_sha256=426c5ea3ac12e17c47232727e705911074ff0fea275f6c5fe8a85e4ef0b01485; line numbers refer to the source, not this wrapper.
+Scope: located text only; imported premises, completeness, correctness and priority remain unverified.
+--- BEGIN SOURCE BYTES ---
+For positive definite S,
+
+    det S^(-1/2)
+      = (2*pi)^(-m/2) integral exp[-lambda^T S lambda/2] d lambda. (4)
+
+Consequently the unnormalized joint density
+
+    phi_p(x) exp[-||A_lambda^T x+c_lambda||^2/2],
+    c_lambda = sum_i lambda_i c_i,
+
+has x marginal proportional to phi_p(x)det S(x)^(-1/2). Completing the square gives
+
+    K_lambda = I_p + A_lambda A_lambda^T,
+    mu_lambda = -K_lambda^(-1) A_lambda c_lambda,
+    X | lambda ~ N(mu_lambda, K_lambda^(-1)),               (5)
+
+and unnormalized lambda marginal
+
+    v(lambda) = det K_lambda^(-1/2)
+                exp[-c_lambda^T(I_n+A_lambda^T A_lambda)^(-1)c_lambda/2]. (6)
+
+The exponent can equivalently be computed using
+
+    I_n - A_lambda^T K_lambda^(-1) A_lambda.
+
+Thus conditional Gaussian draws are easy, but merely alternating (5) with lambda | x ~ N(0,S(x)^(-1)) is a Gibbs chain. It has no exact independent-sampling or dimension-scalable mixing guarantee from these identities alone.
+
+The next section supplies a genuine independent acquisition route for (6).
+
+## 3. Exact independent Student-t-envelope sampler
+
+Assume an explicitly verified integer R>m and s>0 satisfy
+
+    sigma_R(A_lambda) >= s ||lambda||    for every lambda.  (7)
+
+Here sigma_R is the R-th largest singular value. This is quantitative. A statement about ranks alone is insufficient.
+
+Then
+
+    det K_lambda >= (1+s^2||lambda||^2)^R,
+    0 <= v(lambda) <= h(lambda):=(1+s^2||lambda||^2)^(-R/2).
+
+Its integral is explicit:
+
+    B = integral h(lambda) d lambda
+      = pi^(m/2) s^(-m) Gamma((R-m)/2)/Gamma(R/2),
+    C = B/(2*pi)^(m/2)
+      = 2^(-m/2) s^(-m) Gamma((R-m)/2)/Gamma(R/2).          (8)
+
+One independent trial is:
+
+1. Draw z ~ N(0,I_m), V ~ chi-square_(R-m), independently. Set lambda=z/(s sqrt V). This has density h/B; no unknown normalizer is required.
+2. Accept lambda with probability a_1=v(lambda)/h(lambda), using (6). Otherwise restart.
+3. Draw x from (5).
+4. Accept x with probability a_2=exp[-E_g(x)/2]. Otherwise restart.
+5. Draw y from (2), and output (x,y).
+
+All determinants and inverses here are ordinary finite matrices computable by factorization. No determinant integral, partition function, inverse-volume oracle, enumeration of directions, or stationary-limit MCMC is needed.
+
+### Proof of the law and cost identity
+
+After step 2 the unnormalized probability density of reaching lambda is v(lambda)/B. Multiplying by the conditional Gaussian density (5) exactly cancels its completed-square normalizer. Therefore the density of reaching x is
+
+    [phi_p(x)/B] integral exp[-||F(x)^T lambda||^2/2] d lambda
+      = phi_p(x) det S(x)^(-1/2) / C.
+
+Step 4 changes this to phi_p(x)w_g(x)/C. Step 5 supplies the correct Gaussian fiber conditional. Thus
+
+    P(success in one trial) = W_g/C,
+    E[number of trials] = C/W_g.                           (9)
+
+Tonelli and the finite upper integral B establish W_0<=C<infinity, so S is positive definite for Gaussian-almost-every x. If g is finite there, W_g>0 and the sampler terminates almost surely. This does not imply an efficient expected number of trials.
+
+An elliptical variant replaces s^2||lambda||^2 by lambda^T Q lambda, Q positive definite, with B containing det Q^(-1/2) and lambda=Q^(-1/2)z/sqrt V. This removes coordinate scaling when a suitable Q is actually acquired; Q is not an oracle.
+

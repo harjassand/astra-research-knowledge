@@ -1,0 +1,59 @@
+# h10 second pass: active discovery of omitted catalyst-deactivation paths
+
+## Target and primary constructive baseline
+
+Target one unresolved capability: when a measured carry-over intermediate or byproduct is suspected of deactivating a downstream catalyst, autonomously design a minimal experiment that separates its contribution from other co-varying species. The practical interface is a flow platform with programmable feed streams and online UHPLC/IR concentration measurements.
+
+The strongest directly relevant current baseline located is Wagner, Silber, Doliner, and Kappe (2026), “Automated Dynamic Flow Experimentation for Rapid Kinetic Fitting of Transition Metal Catalysis,” DOI https://doi.org/10.1002/anie.6944441. The platform converts dynamic flow ramps into time-series UHPLC concentration data, automatically fits a finite candidate-model set, and uses the selected model for Bayesian optimization. It tested several transition-metal systems: the Buchwald–Hartwig case had five ramp experiments plus a no-catalyst control and eight candidate models; the Cu-catalyzed case had six ramps plus control and sixteen candidate models. Candidate networks and off-cycle pathways were formulated from plausible literature mechanisms and preliminary reports. The measured thiophene trace showed a mismatch attributed to a more complex decomposition path than modeled. The authors identify model misspecification (including heterogeneous behavior and autocatalytic deactivation) and dependence on the “frugal twin” as limitations.
+
+A complementary multistep baseline is Nambiar et al. (2022), “Bayesian Optimization of Computer-Proposed Multistep Synthetic Routes on an Automated Robotic Flow Platform,” DOI https://doi.org/10.1021/acscentsci.2c00207. Its sonidegib workflow used stage-resolved LC-MS/FTIR, but the authors state that chemical incompatibilities across steps, catalyst deactivation, and order-of-addition strategies still required human interpretation. They identified upstream byproduct/catalyst interactions and changed the process configuration. These examples motivate a targeted extension of model-building, not a replacement for reaction optimization.
+
+## Frozen construction
+
+Assume a standard reporter reaction provides a calibrated activity proxy a(t)>0 for a catalyst exposed to the actual process stream. For p measured candidate carry-over species, suppose activity loss over the diagnostic range follows an additive first-order hazard model
+
+    d log(a)/dt = -k0 - sum_{i=1}^p gamma_i c_i(t),   k0, gamma_i >= 0,
+
+where k0 is ordinary time-on-stream deactivation, c_i is the concentration of candidate i at the downstream reactor inlet, and gamma_i is its independent deactivation coefficient. This is a local model, not a general law of catalyst deactivation.
+
+Passive reaction ramps fail if candidate species co-vary. For example, if c_1(t)=c_2(t)=1 throughout the observed ramp, the data identify only gamma_1+gamma_2. Any split of that sum produces the same activity trace, so a mechanism-selection score cannot identify the culprit from this passive design.
+
+Use a serial pulse design in one flow run. Hold substrate, catalyst, temperature, and total flow fixed. Run one clean-background segment of duration Delta, then expose the catalyst to candidate 1 alone at concentration c_1 for Delta, candidate 2 alone at c_2 for Delta, and so on. Compensate each omitted candidate stream with its solvent/background matrix. Let
+
+    H_r = -log(a_r/a_0)
+
+be the cumulative log activity loss measured after segment r, with H_0=0. Then
+
+    H_1 = k0 Delta,
+    H_{i+1} - H_i = k0 Delta + gamma_i c_i Delta,
+
+so the coefficients are recovered exactly by
+
+    k0 = H_1/Delta,
+    gamma_i = (H_{i+1} - H_i - H_1)/(c_i Delta).
+
+The differenced design matrix is diagonal in the gamma_i columns. It has full column rank whenever every c_i Delta is positive. Thus p species plus baseline are separated with p+1 pulse segments and p+1 endpoint activity measurements, instead of testing each candidate in a separate full catalyst-reactor equilibration. The algorithm can add every gamma_i above a chosen threshold to an expanded kinetic model; it need not enumerate all 2^p subsets of candidate poison paths.
+
+For bounded endpoint error |H_tilde_r-H_r|<=epsilon, the estimates obey |k0_tilde-k0|<=2 epsilon/Delta if the initial reference is also uncertain by epsilon, and |gamma_i_tilde-gamma_i|<=4 epsilon/(c_i Delta) under the same endpoint error bound. If a0 is treated as the exact common normalization, these bounds tighten to epsilon/Delta and 3 epsilon/(c_i Delta), respectively. A coefficient is certified positive only when its lower error bound is above zero; otherwise report it unresolved. Larger pulse doses or longer Delta improve separation but consume more candidate material and increase the chance of leaving the local first-order regime.
+
+## Positive discriminating construction
+
+The script uses two co-varying candidates with k0=0.1, gamma_1=1.2, gamma_2=0.5, c_1=c_2=1, and Delta=1. A passive ramp observes only the sum 1.7 and cannot distinguish (1.2,0.5) from (1.7,0) or (0,1.7). The active sequence yields endpoint losses H=(0,0.1,1.4,2.0), from which the pulse estimator recovers k0=0.1 and both gamma values exactly. This is a positive identifiability construction under the stated model, not a wet-lab validation.
+
+## Resource interface and cost
+
+Inputs are (i) a suspect list of measured species, (ii) calibrated concentrations at the downstream inlet, (iii) a reporter activity assay, (iv) feed valves that can isolate candidates while holding the rest of the recipe fixed, and (v) a local additive-hazard assumption. Output is a vector of nonnegative deactivation coefficients with an explicit error interval and a diagnostic flag when coefficients are unresolved.
+
+The design consumes p+1 exposure segments and p+1 endpoint UHPLC/activity readings in one run, plus candidate standards or separated stream fractions, concentration calibration, and a clean-background reference. Candidate material for species i is c_i Q Delta at flow Q, so total candidate mass is Q Delta sum_i c_i. The same active exposure volume is needed in separate tests; potential savings come from avoiding repeated reactor equilibration and catalyst charge, offset by feed switching and line-flush volume. If the per-run equilibration volume is V_e and each segment switch requires flush volume V_f, serial use saves approximately (p-1)(V_e-V_f) versus p separately equilibrated candidate runs; if V_f>=V_e or catalyst can be reused without re-equilibration, this material advantage disappears. The cited 2026 setup uses up to four reagent feeds and collects about 20 UHPLC points per run on a 3-minute analysis cycle; a p+1-point design fits that stated throughput only for p<=19, and direct candidate delivery may be limited by the feed count. Larger p requires a selector manifold or several runs. Pulse sequencing adds control and calibration work and the design is not cheaper unless that cost is below saved equilibration/catalyst/analysis overhead.
+
+Precision imposes a concrete exposure-time floor. With exact normalization at a_0 and endpoint log-activity error at most epsilon, the coefficient error is at most 3 epsilon/(c_i Delta). To guarantee that a true effect gamma_i >= gamma_min has a strictly positive worst-case lower bound, choose Delta > 6 epsilon/(c_i gamma_min). For a common pulse duration and the weakest concentration c_min, the total exposed run time must exceed 6(p+1)epsilon/(c_min gamma_min), before adding purge and instrument-cycle time. This is the cost of resolving small effects; it cannot be removed by the algebraic design.
+
+## Strongest falsifier and scope boundary
+
+The key falsifier is pairwise or higher interaction: if deactivation occurs only when species i and j coexist, then neither isolated pulse identifies the interaction and the additive model returns zero or biased main effects. A candidate absent from the measured species list is also invisible. Reversible binding, nonlinear dose response, changing catalyst state between pulses, poor mixing, delayed UHPLC response, or degradation in the feed line break the stated estimator. Interaction screening would require explicit pair-mixture segments (p choose 2 additional terms) or a follow-up design; that can exceed the one-run budget. A practical run must include a known clean reporter/control and a pre-specified activity threshold, and positive coefficients still require an add-back/replay confirmation before changing a synthesis route.
+
+The method loses to the current workflow when the true inhibition mechanism is already in the candidate set and ordinary dynamic data have enough independent excitation; then model fitting can already select it. The proposed gain is limited to co-varying candidate carry-over species and an additive deactivation regime, where passive ramps are rank-deficient. No chemical species or route was experimentally tested here.
+
+## Final assessment
+
+**OPEN; mission not achieved.** The pulse construction is an exact, small positive improvement to autonomous model discrimination: it turns collinear passive species traces into a full-rank experiment and replaces subset enumeration by direct coefficient recovery for additive first-order deactivation. It does not solve general chemical-mechanism invention, unknown-species discovery, synergistic poisoning, or catalyst structure prediction. The first gate for a lab study is to test the hazard law on a known poison, compare one serial-pulse run against separately equilibrated controls, and measure line-flush and activity-proxy errors before claiming any resource reduction.

@@ -1,0 +1,178 @@
+MISSION: numerical linear algebra/inverse operators
+STATUS: OPEN; first derivation frozen before literature search
+
+PRE-LITERATURE DERIVATION (2026-10-10)
+
+Target. Find a representation or preconditioner for nonsymmetric, nonnormal,
+indefinite, or high-contrast Ax=b whose discovery cost is counted, and which
+has a guarantee where ordinary GMRES does not. The concrete candidate here is
+an exact graph lift. It is a strong robust baseline and a discriminating
+mechanism; whether it meets the requested foundational novelty is OPEN.
+
+Mechanism. For any square A, form the symmetric dilation
+
+                 K = [ 0   A  ]
+                     [ A*  0  ].
+
+Solve K [u;v] = [b;0] with MINRES. If A is nonsingular, the exact solution is
+[u;v]=[0; A^{-1}b]. The eigenvalues of K are plus/minus the singular values of
+A. Thus the convergence geometry depends on singular values, not the location
+or conditioning of eigenvectors of A. One K product costs one A and one A*
+product, the state has dimension 2n, and there is no setup factorization or
+probe-based discovery. This charges the representation honestly, but does not
+remove high contrast in A.
+
+Exact guarantee. Let alpha=sigma_min(A)>0, beta=sigma_max(A), and kappa=beta/alpha.
+For m>=1, use the degree-2m polynomial
+
+ p_{2m}(t) = T_m((2t^2-(beta^2+alpha^2))/(beta^2-alpha^2)) /
+             T_m(-(beta^2+alpha^2)/(beta^2-alpha^2)),
+
+where T_m is the Chebyshev polynomial. p(0)=1 and, on the spectrum of K,
+|p(t)| <= 1/T_m((beta^2+alpha^2)/(beta^2-alpha^2))
+<= 2 ((kappa-1)/(kappa+1))^m.
+The MINRES residual is no worse than this polynomial residual. For the augmented
+iterate z=[u;v], the original residual satisfies
+||b-Av|| <= ||[b;0]-Kz||. Therefore an epsilon-relative residual is guaranteed
+in at most 2m K-products when 2((kappa-1)/(kappa+1))^m <= epsilon. For kappa=1,
+K has only eigenvalues +/-beta and the degree-2 polynomial 1-t^2/beta^2 solves
+exactly. No eigenvector condition number or pseudospectral constant appears.
+
+Discriminating family. Let P_n be the cyclic shift, P_n e_j=e_{j+1} for
+j<n-1 and P_n e_{n-1}=e_0. Set
+A_{n,gamma}=P_n + gamma e_{n-1}e_{n-1}*, b=e_0, 0<gamma<1.
+For n>=3 and gamma nonzero this A is nonnormal. It is invertible (the added
+last-column component is a multiple of the preceding column), and by Weyl's
+singular-value inequality, 1-gamma <= sigma_min(A) <= sigma_max(A) <= 1+gamma.
+Thus kappa <= (1+gamma)/(1-gamma), independent of n. Yet
+A^j b=e_j for 0<=j<n, and for k<n, A span{e_0,...,e_{k-1}} is contained in
+span{e_1,...,e_k}, orthogonal to b. GMRES's best residual is therefore exactly
+||b|| for every k<n; it first becomes zero at k=n. For gamma=.05 the lift's
+uniform condition bound gives a <=2*0.05^m residual factor after 2m iterations:
+12 K-products suffice for < 1e-8, independent of n. This is a concrete regime
+where a familiar Krylov method has a full n-step blind spot and the lifted
+method has a dimension-independent guarantee.
+
+Strongest falsifier / unresolved obstruction. If sigma_min(A) is tiny, the
+lift has the same condition number kappa(A) and gives O(kappa log(1/epsilon))
+iterations. It does not solve rare, high-contrast directions. A diagonal matrix
+with entries 1,...,1,delta has kappa=1/delta; the generic bound diverges as
+delta->0. Any claim of contrast-independent acceleration must discover and
+charge a preconditioner for that direction. A deterministic q<n matvec-query
+algorithm cannot guarantee an epsilon<1 solution for every unknown unitary
+completion: adaptively answer each new query by an isometric image orthogonal to
+b; after q<n queries, two unitary completions can map an unqueried unit vector
+w to +b or -b. Both matrices give identical transcript and have condition 1,
+while their exact solutions are +w and -w. The same lower bound embeds in a
+bounded-condition nonnormal family C direct-sum U, with fixed nonsymmetric
+2x2 shear C and b supported in the hidden U block. This rules out a generic
+sublinear-query discovery miracle in a black-box product interface; it does
+not rule out useful structure-specific preconditioners when the structure is
+supplied and its acquisition cost is charged.
+
+Input/resource interface. Matrix-free access to A x and A* x; right-hand side b;
+no advice, no factorization, no hidden setup queries. MINRES retains O(n) vectors
+with a constant larger than GMRES, and each step uses both operator directions.
+The theorem uses the true alpha and beta but the MINRES recurrence does not need
+them. If A is explicit, reading the representation and the cost of applying A
+and A* must be charged; the lift itself is algebraic and has O(1) setup. For
+sparse matrices, one iteration is O(nnz(A)); the lift preserves sparse action.
+
+Claim boundary. The graph lift genuinely removes nonnormal eigenvector and
+GMRES stagnation obstructions under a singular-value condition bound. It does
+not remove ill-conditioning/high contrast, and the mechanism is likely known
+as symmetric augmentation / normal-equation Krylov. No foundational novelty,
+external validation, or mission completion is claimed. Next: literature audit
+against primary sources, then execute the frozen discriminating test and decide
+whether any nonstandard preconditioner extension survives.
+
+POST-FREEZE PRIMARY-SOURCE AUDIT AND PIVOT
+
+Literature comparison. The lift is not new. Paige and Saunders, “LSQR: An
+Algorithm for Sparse Linear Equations and Sparse Least Squares,” ACM TOMS 8(1)
+(1982), DOI 10.1145/355984.355989, derive LSQR from Lanczos applied to a
+particular symmetric system; the original article states that the method solves
+unsymmetric equations and least squares and uses A and A^T actions. Nachtigal,
+Reddy, and Trefethen, “How Fast are Nonsymmetric Matrix Iterations?” SIAM J.
+Matrix Anal. Appl. 13 (1992), DOI 10.1137/0613049, distinguish CGN's
+singular-value-controlled convergence from GMRES's eigenvalue/pseudoeigenvalue
+behavior. Greenbaum, Pták, and Strakoš, “Any Nonincreasing Convergence Curve is
+Possible for GMRES,” SIAM J. Matrix Anal. Appl. 17(3) (1996), DOI
+10.1137/S0895479894275030, prove arbitrary nonincreasing GMRES residual curves
+are realizable even with any prescribed eigenvalues. These primary sources
+establish the relevant prior art and the limitation of spectral intuition.
+
+Exact equivalence and cost. Put S=AA*. Then K^2=diag(S,A*A), and, from
+f=[b;0],
+K^(2j)f=[S^j b;0], K^(2j+1)f=[0;A*S^j b].
+At MINRES step 2m the Krylov space splits into u in K_m(S,b) and v in
+A*K_m(S,b). The u component only contributes the second residual block -A*u,
+so its minimizing value is zero. Writing v=A*y leaves exactly the problem
+min_{y in K_m(S,b)} ||b-Sy||. Equivalently x=v belongs to
+K_m(A*A,A*b) and minimizes ||b-Ax||: this is the LSQR residual-minimizing
+iterate (and is analytically equivalent in exact arithmetic to CG on the normal
+equations). The Chebyshev factor above is precisely the CG bound for S, whose
+condition number is kappa(S)=kappa(A)^2, rewritten as
+((sqrt(kappa(S))-1)/(sqrt(kappa(S))+1))^m=((kappa(A)-1)/(kappa(A)+1))^m.
+Odd dilation steps add no better iterate for this right-hand side. Thus the lift
+is a representation of LSQR/CGNE, not a distinct solver or discovery.
+
+A K product costs one A action plus one A* action; 2m K iterations cost 2m of
+each action, the same as m LSQR iterations. The implementation stores a
+2n-vector state but MINRES/LSQR both use O(n) short-recurrence storage. There is
+no setup probe cost in either method. Both require an adjoint action. If only a
+forward matrix-free oracle is supplied, an adjoint implementation must be
+acquired separately; if A is an explicit sparse matrix, transpose indexing or
+transpose storage can cost O(nnz(A)) and must be charged. This cost matters for
+nonlocal operators where an adjoint is not furnished by the forward simulator.
+
+Correction to the frozen numerical illustration. For gamma=.05, the simple
+uniform bound has q=.05, so 14 (not 12) K iterations guarantee a residual below
+1e-8: 2(.05)^7=1.5625e-9. The executable NumPy check in
+reports/h05_linear_algebra/test_lift.py observed 4 lifted residual-minimization
+iterations for n=24,64,128, while original GMRES stayed at residual 1 through
+n-1 and then terminated at n. This check confirms the example only; it does not
+alter the literature verdict.
+
+Pivot: hidden high-contrast modes and preconditioner acquisition. The useful
+remaining question is whether a reusable all-right-hand-sides preconditioner
+can be discovered from fewer than n black-box products without supplied
+structure. Here is an exact deterministic oracle obstruction.
+
+Theorem (transcript-preserving high-contrast obstruction). Let a deterministic
+setup procedure query q<n vectors of an unknown SPD A in exact arithmetic,
+then return an SPD preconditioner P for future arbitrary right-hand sides.
+Run it on A0=I. Its adaptive query vectors span a proper subspace Q. Choose a
+unit vector u orthogonal to Q and let A1=I+(H-1)uu*, H>1. For every query x in
+Q, A1x=x=A0x, so the full transcript and returned P are identical. If the
+procedure promised kappa(P^(-1/2) A_i P^(-1/2))<=C for both inputs, A0 forces
+kappa(P)<=C. For A1, the generalized Rayleigh quotient along u gives
+lambda_max(P^(-1/2)A1P^(-1/2)) >= H/lambda_max(P). A unit vector in u^perp
+with P-Rayleigh quotient at least lambda_min(P) gives
+lambda_min(P^(-1/2)A1P^(-1/2)) <= 1/lambda_min(P). Hence the preconditioned
+condition number is at least H/kappa(P)>=H/C. Taking H>C^2 contradicts the
+claimed same constant C. Therefore no deterministic q<n-product setup can
+uniformly discover a constant-spectral-equivalence SPD preconditioner for this
+black-box class at arbitrary contrast. The hidden projector uu* is generally
+nonlocal in the supplied coordinates; A1 is nevertheless a valid SPD inverse
+operator and differs from identity only in that unresolved direction.
+
+This is a setup/preconditioner theorem, not a lower bound for solving one fixed
+right-hand side. In exact arithmetic a generic random query exposes a rank-one
+u, so the deterministic adversarial proof does not establish a randomized
+minimax bound. A single hidden eigenvalue also has only two-point spectrum, so
+unpreconditioned CG can solve it in two iterations; the theorem is about
+uniform spectral equivalence, not that one CG instance. For larger hidden
+subspaces, q actions expose at most q directions, but a separate randomized
+query-complexity proof for approximate recovery remains OPEN. Known sparse PDE
+structure, local coefficients, graph connectivity, or an available adjoint can
+invalidate the black-box assumptions and may enable useful preconditioners;
+those inputs and their processing costs must be specified before claiming
+contrast robustness.
+
+Verdict. The proposed lift is rejected as a discovery: it exactly repackages
+LSQR/CGNE and does not remove contrast. The new exact result is a deliberately
+narrow information barrier for reusable preconditioner discovery, with
+important deterministic and oracle-model limits. No new high-contrast
+preconditioner was found. The original foundational target remains OPEN; this
+mission is not complete at the requested 8/10 significance threshold.

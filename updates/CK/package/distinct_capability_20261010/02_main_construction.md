@@ -1,0 +1,162 @@
+# Rarity-uniform compressed first-passage clocks
+
+Date: 2026-10-10. Status: mathematical construction with reproducible floating-point tests. Priority is unverified. This is not a claim of a historical breakthrough. Classical ingredients are identified below.
+
+## Capability and input contract
+
+There are n independent two-state continuous-time Markov chains. Component i has rational stationary target probability p_i in (0,1), relaxation rate lambda_i>0, transition target->other at (1-p_i)lambda_i, and other->target at p_i lambda_i. Start in the stationary product distribution. H is the first time all components occupy their designated target states; H=0 when the initial state is already the target.
+
+Input is these 2n rationals in binary, plus accuracy 0<epsilon<1 and failure 0<delta<1. The product-state generator is not supplied or constructed. The construction returns Hhat for which there exists a coupling to the exact H satisfying
+
+    P(|Hhat-H| > epsilon H) <= delta.
+
+For the ideal-real algorithm below, the expected number of elementary Bernoulli/exponential draws is O(n^3 epsilon^-2 log(4n/delta)). The rate ratios and target rarity enter only arithmetic bit lengths, not the number of simulated transitions. An explicit finite-bit algorithm and proof are given in 03_finite_bit_specification.md; the supplied experiment is ordinary floating point and does not implement that specification.
+
+As a distributional consequence,
+
+    sup_t |P(Hhat<=t)-P(H<=t)| <= delta - log(1-epsilon)/e.
+
+This is a tunable absolute CDF guarantee. It is NOT a relative rare-tail probability guarantee, exact path sampler, or total-variation guarantee for the unquantized continuous law.
+
+## 1. Classical stationary hitting-time reduction
+
+Let q=product_i p_i. The target return probability is
+
+    r(t)=product_i [p_i+(1-p_i)exp(-lambda_i t)].
+
+Let independent B_i~Bernoulli(1-p_i) and Lambda=sum_i lambda_i B_i. Then r(t)=E exp(-Lambda t), and P(Lambda=0)=q.
+
+Stationary renewal at the first hit gives, for s>0,
+
+    E exp(-sH) = q/[q+s R(s)],
+    R(s)=E[1/(s+Lambda); Lambda>0].
+
+This identity and its compound-geometric interpretation are classical (Brown, as presented in Fill--Lyzinski, Theorem 4.1). Specifically,
+
+    H =_d sum_{j=1}^K V_j,
+    P(K=k)=q(1-q)^k, k>=0,
+    V | Lambda ~ Exp(Lambda),
+    Lambda drawn conditional on Lambda>0.
+
+Indeed E exp(-sV)=1-sR(s)/(1-q), which gives the displayed transform. Simulating this representation directly costs expected (1-q)/q increments.
+
+## 2. Explicit scale strata and Cox representation
+
+Sort lambda_1<=...<=lambda_n. For a nonempty activated subset, let I be its maximum index. Its unconditioned stratum probability is
+
+    w_i=(1-p_i) product_{j>i} p_j,
+    sum_i w_i=1-q.
+
+Conditional on I=i, B_i=1, B_j=0 for j>i, and B_j for j<i retain their independent Bernoulli(1-p_j) laws. No conditional sampling oracle is needed.
+
+A stratum increment is V_i~Exp(Lambda_i), where
+
+    Lambda_i=lambda_i+sum_{j<i} lambda_j B_j.
+
+Define
+
+    mu_i=E V_i,
+    kappa_i=1+sum_{j<i}(1-p_j)lambda_j/lambda_i <= i <= n.
+
+Jensen gives mu_i lambda_i >= 1/kappa_i, while Lambda_i>=lambda_i.
+
+Draw W~Exp(rate q). Conditional on W, independently draw C_i~Poisson(w_i W) and stratum increments V_ij. Then
+
+    H =_d sum_i sum_{j=1}^{C_i} V_ij.
+
+To check: integrating the conditional multivariate Poisson pgf gives q/[1-sum_i w_i z_i], the required negative-multinomial geometric-count pgf. This is an ordinary Poisson-exponential mixture; it is not itself claimed new.
+
+## 3. Compressed sampler
+
+Set
+
+    h=epsilon/(2+epsilon),
+    M_i=R_i=ceil[6 kappa_i h^-2 log(4n/delta)].
+
+Draw W~Exp(q). For each stratum set r_i=w_i W.
+
+- If r_i<R_i: sample C_i~Poisson(r_i) and the C_i increments exactly; output their sum for this stratum.
+- If r_i>=R_i: draw only M_i fresh stratum increments and output r_i times their sample mean.
+
+Sum the n outputs. Small-intensity Poisson counts can be sampled with exponential arrival times, so no huge-count Poisson or binomial primitive is hidden. The only Poisson means actually simulated are <R_i.
+
+## 4. Concentration and coupling proof
+
+For |theta|<lambda_i,
+
+    E exp(theta V_i)-1-theta mu_i
+      = E theta^2/[Lambda_i(Lambda_i-theta)]
+      <= theta^2 mu_i/(lambda_i-|theta|).
+
+Using log x<=x-1 gives the same upper bound on log E exp(theta(V_i-mu_i)). For a compound-Poisson sum S_i of intensity r_i, its centered log mgf is exactly r_i times the left-hand expression above.
+
+Chernoff with |theta|=h lambda_i/(2+h), and h<=1, therefore gives
+
+    P(|S_i-r_i mu_i|>h r_i mu_i |W)
+      <=2 exp[-h^2 r_i/(6 kappa_i)],
+
+and for an M_i-increment mean Vbar_i,
+
+    P(|Vbar_i-mu_i|>h mu_i)
+      <=2 exp[-h^2 M_i/(6 kappa_i)].
+
+For each large stratum each probability is <=delta/(2n). Couple the small strata identically, and for large strata use an independent fresh sample mean conditional on W. The union bound over both events in all n large strata is <=delta. On its complement,
+
+    |r_i Vbar_i-S_i| <=2h r_i mu_i <=[2h/(1-h)] S_i=epsilon S_i.
+
+Summing gives the stated multiplicative coupling, including the zero atom on the good event.
+
+Expected increment count conditional on W is at most sum_i R_i: each small stratum uses mean r_i<R_i, each large stratum exactly M_i=R_i. This bound is uniform in W and q. Each increment uses at most n Bernoulli draws and one exponential draw. Since sum_i kappa_i<=n(n+1)/2, the stated polynomial cost follows.
+
+## 5. From coupling to a CDF guarantee
+
+For any finite irreducible reversible chain started in stationarity, the positive part of its hitting law has an exponential-mixture survival function. Proof: kill the chain on the target complement, symmetrize the killed generator using the stationary weights, and write stationary survival as v^T exp(-At)v. All spectral coefficients are squares. Thus
+
+    H has atom q at zero, and f_H(t)=sum_j a_j rho_j exp(-rho_j t),
+    a_j>=0, sum_j a_j=1-q.
+
+Consequently t f_H(t)<=1/e for t>0. In log time the CDF is 1/e-Lipschitz. The coupling implies
+
+    F_H(t/(1+epsilon))-delta <=F_Hhat(t)
+       <=F_H(t/(1-epsilon))+delta.
+
+This gives the displayed uniform CDF error. Taking delta=eta/2 and epsilon=eta/2 (eta<=1/2) gives CDF error at most eta, since -log(1-epsilon)<=2epsilon and 1/2+1/e<1. The work is polynomial in n and 1/eta.
+
+For any fixed finite positive bin boundaries b_1,...,b_L, quantizing both variables gives TV distance at most
+
+    delta + (L/e) log[(1+epsilon)/(1-epsilon)].
+
+This follows by bounding the chance that H lies within a multiplicative epsilon neighborhood of any boundary. Choosing epsilon=O(eta/L), delta=eta/2 therefore gives an explicit polynomial-time approximation to any requested finite log-bin law. Do not confuse this with unquantized TV.
+
+## 6. Bit complexity and implementation obligations
+
+If all input numerators and denominators have B bits, q, w_i and all subset-sum rates have polynomial O(nB+log n) bit length. A sampled physical time can be of order 1/q or larger, but its binary exponent has polynomial bit length. No loop runs for that physical duration.
+
+The ideal-real algorithm can be made finite precision with an additional failure budget:
+
+1. Represent W as E/q with E~Exp(1), never by q successive trials.
+2. Use relative approximations to E and to increment exponentials; sums preserve relative error.
+3. Use a threshold with slack. A branch is declared large only once an interval proves r_i>=R_i. Otherwise simulate the small branch only when an interval proves r_i<=2R_i. These overlapping conditions always permit a decision; there is no exact-real equality oracle.
+4. Only small intensities (<=2R_i) require Poisson arrival simulation. Cap their counts at O(R_i+log(4n/delta)); Chernoff bounds put cap failures inside the budget.
+5. Truncate uniforms away from 0 and 1 by a sufficiently small inverse-polynomial amount, accounting for all capped random draws. Midpoint b-bit uniforms then give relative exponential errors with b polynomial in nB, log(n/epsilon/delta), and the bounded draw count.
+6. Small-Poisson comparison instability is controlled by coupling the arrival process: changing its intensity endpoint by a changes its count with probability at most |a|. Allocate sufficient relative precision O(delta/[n max_i R_i]) to W and enough summation precision to keep the total endpoint uncertainty within this budget. Near-threshold slack removes any new instability at the compression boundary.
+
+These observations are made explicit, with conservative constants and a bounded-Poisson probability-table implementation, in 03_finite_bit_specification.md. The provided Python implementation does not implement those finite-precision certificates. No production/certified software implementation is claimed.
+
+## 7. Prior art and limits of novelty
+
+- Fill and Lyzinski, Hitting times and interlacing eigenvalues, Theorem 4.1, attributes the exact geometric-sum representation to Brown. https://www.ams.jhu.edu/~fill/papers/intertwinings.pdf
+- Brown, The First Passage Time Distribution for a Parallel Exponential System with Repair, Stanford report 1974 / publication 1975. This is the same heterogeneous two-state product model. https://statistics.stanford.edu/technical-reports/first-passage-time-distribution-parallel-exponential-system-repair
+- Horvath, Paolieri, Vicario, Approximation of First Passage Time Distributions of Compositions of Independent Markov Chains (2025): avoids the product-state space using an approximate conditional-independence ODE closure, with empirical accuracy. Thus scalable non-enumerative simulation is not itself new. https://qed.usc.edu/paolieri/papers/2025_epew_first_passage_replicated_components.pdf
+- Ridout, Generating random numbers from a distribution specified by its Laplace transform (2009): transform inversion plus inverse-CDF sampling is established. https://www.kent.ac.uk/IMS/personal/msr/webfiles/rlaptrans/SimRandom4.pdf
+- Grabchak and Saba, On approximations of subordinators in Lp and the simulation of tempered stable distributions (2025): scaled mixed-Poisson approximation and deletion of zero marks are established related techniques. https://doi.org/10.1007/s11222-025-10586-x
+
+The potentially distinct result is the explicit max-activated-rate stratification plus large-intensity compression, proving a uniform polynomial-work multiplicative coupling/CDF approximation across arbitrary heterogeneous rate ratios and exponentially small q. No direct source for this combined theorem was found in the targeted search. Absence from that search is not a novelty proof.
+
+## 8. Scope exclusions
+
+- Stationary product initial law is essential to the reduction used here.
+- The target is one joint state, not an arbitrary target subset.
+- No trajectory, reaction ordering, conditional history, or arbitrary initial-state hitting law is produced.
+- Relative error of very small tail probabilities is not controlled by an absolute CDF guarantee.
+- Extension to explicitly supplied reversible finite components appears natural, replacing Bernoulli spectral variables with finite spectral draws, but component eigendecomposition and weight computation would need separate certified bit accounting.

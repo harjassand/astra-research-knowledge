@@ -1,0 +1,205 @@
+# Finite-bit probability and transport contract
+
+2026-10-10. Companion to `STABLE_RANK_ACQUISITION.md`, with a runnable integer/rational implementation. This is a constructive implementation and proof contract, not an independent proof audit, empirical distributional test, general-purpose matrix-input product, or novelty claim.
+
+## Implemented files and scope
+
+- `probability_budget.py`: exact rational parameter selection, finite-event allocation, explicit transport constants, and a fail-closed checker for the older fixed-precision local draw.
+- `certified_normal.py`: configurable finite uniform-cell normal approximation; all accepted intervals are certified with directed integer arithmetic. mpmath only proposes a quantile. An ambiguity-safe, bounded bisection works without trusting that proposal.
+- `finite_bit_sampler.py`: the complementary implementation's capped driver, deterministic dyadic Cholesky, exact rational solves/projection, acceptance-cell comparison, separated cutoff checks, zero fallback, and bounded output.
+- `test_probability_budget.py`: modest exact tests and provenance, saved as `PROBABILITY_BUDGET_TESTS.json`.
+- `check_global_contract.py`: independently recomputes budget and normal-cell inequalities for saved capped runs, checks each reported primitive tolerance, and exposes assumptions plus the finite random-bit cap. It supplements rather than replaces full core tape replay.
+
+The budget builder accepts a rational positive-definite Gram matrix H, p,n,m,r and epsilon. It requires r >= 4(m+1)^2 and a separately verified native Mp certificate. It does not infer a valid certificate merely from a claimed r. The current driver reads a raw NPZ file containing two 128-by-128 int64 numerator matrices and common denominator 4096, then freshly recomputes its exact Gram/Gershgorin native certificate. Its default is the included dense rational input. The loader is restricted to this size/format; arbitrary dimensions, other denominator formats, and transpose-only certificates are not implemented by this driver.
+
+The theorem is conditional on independent uniform random bits. The default driver uses the OS-backed `SystemRandom` interface. An explicit seed selects a deterministic pseudorandom replay, which is useful for reproducibility and is not itself a draw from the mathematical independent-bit model.
+
+## 1. Exactly computed global allocation
+
+Write d=p+n. Select eta=2^-k and T=k, repeatedly increasing k until the two rational inequalities below hold. Let
+
+- Nseed = T(m+r+p+n), an upper bound on all normal coordinates drawn;
+- L0 >= 2, the smallest integer with 2 Nseed 2^-floor(L0^2/2) <= eta;
+- R = 2d L0 + 1;
+- 5d eta <= epsilon^2/16;
+- 5R eta <= epsilon/4.
+
+All choices use exact integer/rational comparisons. T gives ideal no-acceptance probability <=2^-T=eta. The normal tail union is <=2 Nseed exp(-L0^2/2), bounded by the displayed dyadic expression. No sampled tail-frequency estimate is used.
+
+Choose dyadic v0 <= eta^2/(4T^2). The exact chi-square V contains at least one squared standard normal, and P(V<v0) <= sqrt(2/pi)sqrt(v0) <= sqrt(v0). Its union over T trials is <=eta/2, hence safely charged eta. Analyze V>=v0 but implement Vhat>=v0/2.
+
+Let L=p L0, safely above sqrt(p)L0. Choose t=2^-q so that
+
+    4t <= 4/9,        4t <= L^2/r,
+    (5L)^(2m) 8^r (4t)^(r-m) <= eta^4/(4T^4).
+
+The last left-hand side bounds the square of the Gaussian small-singular-value bound in the acquisition theorem, using sqrt(r)>=1 and 9e/4<8. Consequently the Gaussian event probability is <=eta^2/(2T^2), and the target tilted probability is <=eta/T because its squared L2 density is <2. Union over T accepted candidates charges eta. It is legitimate to use the accepted target law here: for any trial, probability(accepted and bad X) <= probability_target(bad X). Only accepted candidates require a fiber projection.
+
+Analyze the ideal whitened Gram Sbar(X)>=4t I, but require the exact rational implementation check S(Xhat)>=2t H. The gap avoids any cutoff-boundary probability assumption.
+
+The remaining eta bucket covers acceptance disagreement or interval-overlap fallback. Thus the total bad-event probability is <=5 eta. Generator tail fallback is inside the normal-tail bucket; it is not an additional independent allowance. A numerical implementation failure on the analyzed good set is not covered by these buckets and must be excluded by the deterministic primitive contracts below.
+
+## 2. Explicit spectral bounds and primitive tolerances
+
+The code computes
+
+    hmax = max absolute row sum of H,
+    hmin = det(H)/hmax^(m-1),
+    B = max(1, tr H),       W = max(1,1/hmin).
+
+Then lambda_min(H)>=hmin, ||H^(-1/2)||<=W, and the aggregate coefficient bound sqrt(sum_i ||Ai||_F^2)<=B. These are deliberately loose rational quantities.
+
+Every primitive error is required to be <=rho, a dyadic number computed below:
+
+1. Each finite normal coordinate differs from its coupled exact normal by <=rho on |Z|<=L0.
+2. The rounded H factor PH=LH LH^T has operator residual <=rho.
+3. The square-root midpoint for sqrt(r/Vhat) has error <=rho; final lambda-vector rounding norm is <=rho. The H solve is exact in the driver.
+4. The rounded precision factor P=LK LK^T has operator residual from K(lambda_hat) <=rho.
+5. The X solve plus rounding has Euclidean error <=rho relative to LK^(-T) applied to the finite normal seed.
+6. The Y projection plus rounding has error <=rho relative to the exact kernel projection at Xhat applied to the finite seed. The implemented driver uses an exact rational projection, so this error is zero.
+7. The acceptance-probability interval has width <=rho, and the acceptance-uniform cell has width <=rho. The driver proves the stronger squared-probability interval width <=rho^2, sufficient by |sqrt(a)-sqrt(b)|<=sqrt(|a-b|).
+
+The code evaluates the following rational constants (the names agree with the JSON output):
+
+    Lambda = r W m L0/v0
+
+    K_lambda = (r/v0)(2Wm + 2W^2 m L0)
+               + 4WmL0(2r^2(2L0+1)/v0^2 + 1) + 1
+
+    K_K_residual = 1 + B^2(2Lambda+1)K_lambda
+    K_x = 2p + 2p L0 K_K_residual + 1
+    K_y = n + 1 + 2n L0 K_x/t
+    K_pair = K_x + K_y
+    K_acceptance = 2B^2(Lambda+1)K_lambda
+
+Set delta_out=min(1,epsilon/2,epsilon/[B(2R+1)]). Choose the largest dyadic rho no greater than every quantity:
+
+    1,
+    hmin/2,
+    v0/[2r(2L0+1)],
+    1/K_lambda,
+    1/[2 K_K_residual],
+    min(1,rt/[2L+1])/K_x,
+    delta_out/K_pair,
+    eta/[4T(K_acceptance+2)],
+    1/K_pair.
+
+No numerical estimate is substituted for these tests. `assert_budget` rechecks every final inequality.
+
+## 3. Why a rounded Cholesky permits the claimed coupling
+
+A matrix-square-root coupling avoids an unsupported coordinatewise Cholesky derivative claim. For any invertible lower factor L with P=LL^T, the polar decomposition gives
+
+    L^(-T) = P^(-1/2) O
+
+for an orthogonal O. Rotate the corresponding ideal fresh standard Gaussian by O. This preserves its law. For H the rotation is fixed by the input. For the X precision factor the rotation depends on earlier proposal seeds but is independent of the fresh X normal vector. Thus the ideal sampler still has exactly the required proposal and conditional Gaussian laws, even though its coupling uses these rotations.
+
+The integral formula for inverse square roots gives, when A,B >= mu I,
+
+    ||A^(-1/2)-B^(-1/2)|| <= ||A-B||/[2 mu^(3/2)].
+
+For the H factor, the residual and rho<=hmin/2 give an inverse-root difference <=2W^2 rho and factor norm <=2W. The chi-square perturbation obeys
+
+    |Vhat-V| <= r(2L0+1)rho <= v0/2.
+
+On V,Vhat>=v0/2, the derivative of sqrt(r/V) is at most 2r/v0^2. Together with ||Zprop||<=mL0, these bounds give
+
+    ||lambda_hat-lambda|| <= K_lambda rho,
+    ||lambda|| <= Lambda.
+
+Since this error is <=1, the precision difference satisfies
+
+    ||K(lambda_hat)-K(lambda)|| <= B^2(2Lambda+1)K_lambda rho.
+
+Adding the rounded factor residual gives total precision error <=K_K_residual rho<=1/2. Both exact ideal K and rounded P then have minimum eigenvalue >=1/2, so their inverse-root difference is at most twice that total error. Fresh normal-coordinate errors and the solve residual give
+
+    ||Xhat-X|| <= K_x rho.
+
+The native certificate gives ||Fbar(x)-Fbar(x')|| <= ||x-x'||/sqrt(r). Therefore
+
+    ||Sbar(Xhat)-Sbar(X)|| <= (2L+e)e/r <= t,
+
+where e=||Xhat-X||<=min(1,rt/(2L+1)). Ideal Sbar>=4t I implies the implemented Sbar(Xhat)>=2t I with a positive margin.
+
+For full-row-rank Fbar and Fbar_hat, the elementary projector identity bounds the kernel-projector gap by
+
+    ||Fbar-Fbar_hat|| (1/sigma_min(Fbar)+1/sigma_min(Fbar_hat))
+      <= 2 ||X-Xhat||/t.
+
+The same fresh Y Gaussian, its finite-coordinate approximation, and the projection-error contract give ||Yhat-Y||<=K_y rho. Hence the pair error is <=K_pair rho<=delta_out.
+
+## 4. Acceptance comparison and global W1 bound
+
+For acceptance a(lambda)<=1,
+
+    log a = (r/2)log(1+lambda^T H lambda/r)
+            -(1/2)log det(I+A_lambda A_lambda^T).
+
+Both gradient terms have norm <=B^2||lambda||. Thus on the relevant segment,
+
+    |a(lambda_hat)-a(lambda)| <= K_acceptance rho.
+
+The certified finite acceptance interval and the dyadic uniform-cell width each add at most rho. A changed decision or overlap fallback requires the ideal uniform to lie within distance (K_acceptance+2)rho of the ideal threshold. The conditional probability is at most twice that radius, and the more conservative code inequality 4T(K_acceptance+2)rho<=eta suffices after the trial union.
+
+On the good coupling set, pair distance <=delta_out<=epsilon/2. The residual is at most B delta_out(2R+1)<=epsilon. In the implemented exact rational fiber projection it is identically zero, independently of the distributional proof. Every fallback outputs zero. Every nonzero output passes the exact norm check ||output||<=R.
+
+The target second moment is E(||X||^2+||Y||^2)<=d. Consequently the expected coupling distance on the bad set is at most
+
+    sqrt(5d eta) + 5R eta <= epsilon/2.
+
+Combining the two sets proves the claimed epsilon-W1 bound under the input-certificate and primitive contracts. The proof uses no density normalizer, mixing time, empirical success frequency, or uncharged cutoff-boundary event.
+
+## 5. A finite normal generator that fulfills the contract
+
+Take domain B0=L0+1 and phi_min=2^(-B0^2-2). This is a lower bound for the standard normal density on [-B0,B0], using sqrt(2pi)<4 and sqrt(e)<2. Set
+
+    normal uniform bits = rho_bits + B0^2 + 8.
+
+An ideal U whose normal quantile lies in [-L0,L0] has its entire finite uniform cell inside [Phi(-B0),Phi(B0)]. The cell's quantile width is <=rho/64. In particular, endpoint cells cannot occur on the analyzed good set.
+
+`certified_normal.py` integrates the alternating Taylor series for exp(-x^2/2) using directed fixed-point integer arithmetic. The first omitted term bounds the tail after the terms decrease. Machin's identity plus alternating arctangent remainders bounds pi; integer square roots bound 1/sqrt(2pi). There is no unchecked decimal constant.
+
+The CDF interval target width is 2^(-rho_bits-B0^2-10), at most rho phi_min/256. Let P be this target bit count. The initial working precision adds 2B0^2+2 bit_length(P+B0^2+1)+32 guard bits. The constructor then verifies the following exact a-priori inequalities, increasing working precision by 16 if necessary; no sampled argument is involved in that refinement.
+
+Put u=2^-working_bits, K=16(working_bits+B0^2+1), a=B0^2/2 and C=3^(ceil(a)+1). Let D_k be the real width of the directed interval for Taylor term k. The recurrence coefficient is at most a/(k+1); quantizing a adds at most u. Initial width is at most 2u. Directed multiplication/division and quantization give
+
+    D_(k+1) <= (a+u)D_k/(k+1) + 2u B0 a^k/(k+1)! + 2u.
+
+Summing the propagated terms and using j!/(j+l)!<=1/l! gives the explicit finite bound
+
+    sum_(k=0)^K D_k <= 2u(B0+K+1) exp(a+1)
+                        <= Eround := 2u(B0+K+1)C.
+
+Let tau=2^(-P-4), the implemented first-omitted-term stopping threshold. Since K!>=(K/e)^K and e<3, K>=6a=3B0^2 implies the exact term at K is at most B0 2^-K. The constructor checks
+
+    K >= 3B0^2,
+    B0 2^-K + Eround <= tau.
+
+Therefore the directed upper term has reached the stopping threshold by the finite loop cap, even after rounding errors. The accumulated integration-interval width is at most Eround+tau, which is also checked to be <=1. The true positive integral is below 2, so its computed upper endpoint is below 3. If c_units is the exactly computed integer width of the 1/sqrt(2pi) interval at the same scale, the final CDF width is bounded by
+
+    Eround + tau + (3 c_units + 2)u.
+
+The constructor checks this quantity <=2^-P and the constant upper endpoint <=1. These are rational inequalities stored in `CertifiedNormal.majorant_proof`, not an appeal to an unspecified polynomial numerical bound. The final evaluated interval width is additionally rechecked. The lower integration endpoint can safely be clipped to zero because the integrand is nonnegative. The optional midpoint proposal does not affect any of these guarantees.
+
+mpmath supplies an optional quick midpoint. Its proposed interval is accepted only when exact CDF inequalities enclose the entire uniform cell. If it fails, bounded bisection on [-B0,B0] is used. If a CDF interval contains the dyadic target, the algorithm immediately uses the CDF width divided by phi_min as a quantile error bound; it does not wait for an impossible exact transcendental comparison. Otherwise bisection runs for a fixed number of iterations. Final dyadic rounding and an expansion by rho/4 leave enough margin for exact cell-enclosure verification.
+
+Endpoint and outer-domain cells return an explicit fallback marker. The separated analyzed cutoff L0 and implementation domain L0+1 show this fallback is contained in the already charged normal-tail event. A successful finite seed has a full-cell certificate, not just a numerical claim at the cell midpoint.
+
+## 6. Evidence, limitations, and reproducibility
+
+For the included certified r=62 dense input:
+
+- epsilon=1/16 gives T=23, L0=9, t=2^-8, rho=2^-280 and 388 normal-uniform bits.
+- epsilon=2^-24 gives T=63, L0=13, t=2^-11, rho=2^-553 and 757 normal-uniform bits.
+
+These are proof-driven conservative choices, not optimized precision or runtime benchmarks. `PROBABILITY_BUDGET.json` deliberately rejects promoting the old U32/fixed48 local draw to either global guarantee. The new capped driver has a separate report.
+
+Run:
+
+    python test_probability_budget.py
+    python probability_budget.py --epsilon 1/16
+    python certified_normal.py --self-test
+    python check_global_contract.py
+    python finite_bit_sampler.py --epsilon 1/16 --seed 17391
+
+Omit --seed for the OS-backed randomness mode. The tests cover exact PSD edge cases, rejected invalid theorem inputs, nine budget configurations, full-cell normal certificates including ambiguous-midpoint bisection, and cells at the analyzed tail boundary through 553 requested error bits. They are not a broad benchmark campaign or a statistical proof of the law. The new global proof and numerical-majorant arguments have not undergone independent formal verification or specialist review; the artifacts disclose that distinction.

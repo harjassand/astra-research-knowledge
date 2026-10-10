@@ -505,6 +505,59 @@ def build():
             for rel, digest in manifest_files.items():
                 if file_map[rel].get("sha256") != digest:
                     raise ValueError("Additional source manifest hash mismatch: " + rel)
+        archive_check = integrity.get("archive_validation")
+        if archive_check:
+            archive_rel = PurePosixPath(archive_check["path"])
+            if archive_rel.is_absolute() or ".." in archive_rel.parts:
+                raise ValueError("Unsafe additional source archive: " + str(archive_rel))
+            archive_path = source_root.joinpath(*archive_rel.parts).resolve()
+            if not archive_path.is_relative_to(source_root) or not archive_path.is_file():
+                raise ValueError("Missing or unsafe additional source archive: " + str(archive_rel))
+            archive_bytes = archive_path.read_bytes()
+            if (len(archive_bytes) != archive_check.get("bytes") or
+                    sha(archive_bytes) != archive_check.get("sha256")):
+                raise ValueError("Additional source archive hash/size mismatch: " + intake_id)
+            prefix = archive_check["member_prefix"]
+            manifest_member = archive_check["manifest_member"]
+            expanded_rel = PurePosixPath(archive_check["expanded_root"])
+            if expanded_rel.is_absolute() or ".." in expanded_rel.parts:
+                raise ValueError("Unsafe expanded archive root: " + str(expanded_rel))
+            expanded_root = source_root.joinpath(*expanded_rel.parts).resolve()
+            if not expanded_root.is_relative_to(source_root) or not expanded_root.is_dir():
+                raise ValueError("Missing or unsafe expanded archive root: " + str(expanded_rel))
+            with zipfile.ZipFile(archive_path) as z:
+                infos = [info for info in z.infolist() if not info.is_dir()]
+                names = [info.filename for info in infos]
+                if (len(names) != len(set(names)) or len(names) != archive_check.get("expected_archive_members") or
+                        len(infos) != len(z.infolist()) or z.testzip() is not None):
+                    raise ValueError("Additional source archive membership/CRC failure: " + intake_id)
+                for info in infos:
+                    member = PurePosixPath(info.filename)
+                    if member.is_absolute() or ".." in member.parts or stat.S_ISLNK(info.external_attr >> 16):
+                        raise ValueError("Unsafe additional source archive member: " + info.filename)
+                    if not info.filename.startswith(prefix):
+                        raise ValueError("Unexpected additional source archive root: " + info.filename)
+                if manifest_member not in names or sha(z.read(manifest_member)) != archive_check.get("manifest_sha256"):
+                    raise ValueError("Additional source embedded manifest hash mismatch: " + intake_id)
+                manifest_files = {}
+                for line in z.read(manifest_member).decode("utf-8").splitlines():
+                    if line.strip():
+                        digest, rel = line.split(None, 1)
+                        manifest_files[rel.strip().lstrip("*")] = digest
+                manifest_rel_in_zip = manifest_member[len(prefix):]
+                expected_names = {prefix + rel for rel in manifest_files} | {manifest_member}
+                if (len(manifest_files) != archive_check.get("expected_manifest_entries") or
+                        set(names) != expected_names):
+                    raise ValueError("Additional source archive/manifest membership mismatch: " + intake_id)
+                expanded_actual = {p.relative_to(expanded_root).as_posix() for p in expanded_root.rglob("*") if p.is_file()}
+                if expanded_actual != set(manifest_files) | {manifest_rel_in_zip}:
+                    raise ValueError("Additional source expanded archive membership mismatch: " + intake_id)
+                for rel, digest in manifest_files.items():
+                    data = z.read(prefix + rel)
+                    if sha(data) != digest or (expanded_root / rel).read_bytes() != data:
+                        raise ValueError("Additional source archive/expanded byte mismatch: " + intake_id + "/" + rel)
+                if (expanded_root / manifest_rel_in_zip).read_bytes() != z.read(manifest_member):
+                    raise ValueError("Additional source expanded manifest differs from archive: " + intake_id)
         scoped = set(bundle.get("scoped_paths", []))
         for rel, item in sorted(file_map.items()):
             member = PurePosixPath(rel)
@@ -843,8 +896,13 @@ if __name__ == "__main__":
     added_bundles = read("updates/BR/CLAIMS.json").get("source_bundles", [])
     added_counts = {bundle["intake_id"]: len(read(f"updates/{bundle['intake_id']}/INTEGRITY.json")["source_files"])
                     for bundle in added_bundles}
+    archive_counts = {"BR": 194, "BS": 97, "BU": 15, "BV": 18, "BW": 24, "BX": 12, "BY": 175}
+    for bundle in added_bundles:
+        archive_check = read(f"updates/{bundle['intake_id']}/INTEGRITY.json").get("archive_validation")
+        if archive_check:
+            archive_counts[bundle["intake_id"]] = archive_check["expected_archive_members"]
     print(json.dumps({"command": args.command, "generated_outputs": len(outputs),
-                      "source_archive_members_checked": {"BR": 194, "BS": 97, "BU": 15, "BV": 18, "BW": 24, "BX": 12, "BY": 175},
+                      "source_archive_members_checked": archive_counts,
                       "additional_source_files_checked": added_counts,
                       "attached_records_checked": 7 + len(added_bundles),
                       "science_replayed": False, "private_database_rebuilt": False}))
