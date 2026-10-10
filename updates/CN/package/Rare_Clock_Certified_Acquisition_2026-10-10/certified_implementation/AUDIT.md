@@ -1,0 +1,127 @@
+# Independent implementation audit
+
+Date: 2026-10-10. Scope: `certified_clock.py`, its concrete four-component
+budget, recorded main/reference acquisition, and regression tests. This is a
+code-and-mathematics review, not a machine-checked proof or external novelty
+certification. The probability and expected-work claims in `CERTIFICATE.md`
+were also reviewed and agree with the implementation under its stated source
+contract.
+
+## Result and source assumption
+
+No unresolved mathematical correctness defect was found in the integer
+exponential enclosures, branch decisions, bounded Poisson counting, mark
+sampling, or multiplicative-error accounting for the stated acquisition.
+The first-W endpoint exception was initially outside the failure handler; it
+has been moved inside and the forced-endpoint test passes.
+
+The probability guarantee requires mutually independent unbiased source bits.
+`BitCallbackBank` now exposes that assumption through an injectable interface,
+checks the type/range of returned bit blocks, and records consumed-block
+fingerprints. These checks cannot certify source independence or unbiasedness.
+The SHA256 counter implementation is correctly labeled a deterministic replay
+fixture. Its successful replay is numerical/coupling evidence, not a proof that
+a randomly selected seed implements information-theoretic independent bits.
+
+The implementation input gate requires positive rational rates and dyadic
+probabilities strictly between zero and one. The Brown/Cox interpretation is
+for independent two-state chains started in the stationary product law.
+
+## Arithmetic and probability checks
+
+- The fixed-point logarithm uses the positive series for twice `atanh(z)`,
+  where `0 <= z <= 1/3`. Integer floors/ceilings preserve outward enclosures.
+  The omitted tail is at most `3 * 3^(-(2N+1))`; the chosen precision makes
+  its scaled ceiling at most one.
+- At a uniform-cell midpoint, range reduction and the radius
+  `ceil(2^P/(2k))` enclose the full logarithm of the cell. A conservative
+  width bound is `2^-b/a + C*2^-P`, with the code's
+  `C=(b+2)(10N+2)+2`. The budget bounds this by `eta*a/8`. Since the true
+  exponential is at least `a` on accepted cells, the lower interval endpoint
+  is positive and the asserted relative-width contract follows.
+- The point threshold `rpoint >= 2R` makes every large branch have true
+  intensity at least `R`; a small branch has true intensity below `3R`.
+  Exact dyadic Bernoulli draws produce the stipulated stratum rate law.
+- A Poisson ambiguity implies an ideal arrival in
+  `[r/(1+eta)^2, (1+eta)^2*r]`. Its width is at most `5*eta*r`, hence the
+  union charge is at most `15*eta*sum(R)`. Counts are never guessed.
+- The cap `K=24R+capell+1` is conservative: for true `r<3R`, the Poisson
+  exponential-moment bound at `log(2)` is smaller than `2^-capell`.
+- Endpoint rejection, count caps, and concentration are charged separately.
+  The exact reported sum is `59429/5242880`, approximately `0.0113352`,
+  below `delta/4=0.0125` and therefore below the requested `delta=0.05`.
+  An initial test assertion requiring this sum below `0.01` was too strong;
+  correcting that assertion did not change the sampler or its budgets.
+- On the concentration event, both intensity and mark approximation add at
+  most a factor `1+eta`. The two exact rational inequalities in `Budget`
+  verify the requested relative error `epsilon=1/4`, including lower error.
+
+## Checks actually performed
+
+- Reviewed the full source and the Brown/Cox construction.
+- Independently checked 1,154 accepted cells, including both acceptance
+  boundaries, dyadic transitions, and fixed-seed random probes, against
+  160-digit Decimal logarithms at both cell endpoints. All enclosed the
+  endpoints; all runtime width checks passed. This numerical probe is
+  supplementary to the analytic enclosure argument.
+- Checked endpoint/index rejection, ambiguity rejection, count-cap failure,
+  exact count boundary behavior, and invalid rational/dyadic input rejection.
+- Inspected the independent exact-Fraction log-bound tests and exact-rational
+  killed-generator resolvent comparison at `s=1/16, 1, 16`.
+- Reran the full recorded main plus reference acquisition. Exact output,
+  counts, intervals, fingerprints, and relative-error certificate all matched.
+  The recorded main acquisition used 15,849 exponential cells and 1,619,385
+  bits; the reference used 55,468 marks. The certified relative discrepancy
+  was approximately `0.001652145`, below `0.25`, for every extension of the
+  recorded accepted uniform cells. All small-stratum shared streams had
+  identical evidence.
+- The recorded seventeen-test regression suite passes, including source injection,
+  zero-atom handling, replay identity, and rejected mismatched replay evidence.
+- Reran the extreme-rarity regression: four probabilities `2^-50`, hence
+  `q=2^-200`, yield four compressed branches and exactly 29,401 exponential
+  cells. The recorded exact rational output matches. No exact Cox reference
+  was attempted for this huge-count case; this verifies representation and
+  bounded execution, not a new empirical probability guarantee.
+- A generic-input review found that display-only binary64 conversion could
+  raise on a valid `q=2^-2000` acquisition. The conversion now returns null
+  when outside binary64 range; its regression passes and exact output is
+  retained.
+- The same review found Python's decimal integer-string guard could reject
+  serialization at `q=2^-20000`. Large rational fields now use an explicit
+  hexadecimal numerator/denominator format, with an exact parser, without
+  disabling the global guard. That acquisition regression passes. Independent
+  signed roundtrips at 9,999, 10,000, 10,001, and 20,000 bits also pass.
+
+## Remaining limits
+
+The same-tape reference mode for a caller-supplied source requires a matching
+replay bank, including all shared small-stratum streams. This is a replay
+contract in addition to the independent-bit probability assumption. The
+implementation now also compares all shared small-stream evidence and rejects
+a mismatch. Such fingerprint comparison is diagnostic, not a replacement for
+the matching-source contract.
+One successful tape is not a statistical failure-rate validation; the bound
+comes from the argument above. Reference-work caps are separate from the main
+sampler's certified budget. No historical priority, broad production readiness,
+or extension beyond the documented model is certified by this audit.
+
+## Focused OS-source and prefix-replay review
+
+Reviewed the added `OSRecordedTape`/`OSRecordedBank` and
+`PrefixReplayTape`/`PrefixReplayBank`, and the block-generation refactor of
+`CounterTape`. The OS adapter preserves every generated 32-byte block. Replay
+checks the recorded block hash, restricts consumption to the recorded bit
+prefix, and rejects corruption or exhaustion. No correctness regression was
+found in these changes.
+
+The saved OS-backed moderate acquisition has 14,769 exponential cells, active
+compression, no failure, and 189,440 bytes of recorded generated blocks. I
+reran its exact-prefix replay test, the corruption/exhaustion rejection tests,
+and the original deterministic replay test; all pass. Output, branches, counts,
+and tape evidence match the saved OS run. No additional random acquisition or
+Cox reference was performed in this audit.
+
+OS-backed randomness is a practical implementation source, not a certificate of
+physical independence or unbiasedness. The independent-bit theorem assumption
+and the distinction between replay evidence and statistical validation remain
+unchanged.

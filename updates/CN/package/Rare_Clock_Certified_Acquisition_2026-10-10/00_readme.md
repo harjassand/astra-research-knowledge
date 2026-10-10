@@ -1,0 +1,36 @@
+# Independent capability investigation, 2026-10-10
+
+## Result
+
+A constructive rarity-uniform approximation algorithm for stationary first hitting times to one joint target state in a product of independent heterogeneous two-state continuous-time Markov chains. It avoids both product-state enumeration and simulation of the potentially exponential waiting horizon. It has a proved multiplicative coupling guarantee, absolute CDF-error corollary, and explicit finite-bit specification. Novelty is unverified; the classical decomposition and nearby algorithms are cited. This does not meet an asserted historical-breakthrough threshold.
+
+Main proof: `02_main_construction.md`.
+Finite-bit proof/specification: `03_finite_bit_specification.md`.
+Numerical implementations are floating-point checks only, not certified implementations.
+
+## Candidate gates
+
+We considered genuinely different capabilities:
+1. Classical fast-forwarding of reversible stochastic dynamics by short Chebyshev paths. A regular-tree signed-mass obstruction kills the proposed generic sampling mechanism; see `01_chebyshev_gate.md`. This is not a general algorithmic lower bound.
+2. Unbiased differentiation of stationary long-horizon stochastic simulators via coupled interventions and Poisson correction. Direct prior collisions make the broad proposed capability established: Wang--Rhee 2026, arXiv:2606.11487, Theorem 4; Arya--Schauer--Seyer 2024, arXiv:2406.14451; GradInf PLDI 2026. Stopped instead of extending a specialist theorem.
+3. Rarity-uniform first-passage clocks. The final selected capability above survived its first constructive and prior-art gates. An intermediate exact Poissonized-clock construction is retained in code but is not the strongest final result.
+
+## Reproduction
+
+Run from this directory:
+
+    python poisson_clock.py
+    python compressed_brown.py
+    python verify_compressed_clock.py
+
+Fixed random seeds are in the scripts. NumPy 2.3.5, SciPy 1.17.0 were used. Modest CPU only. Results are preserved in the corresponding JSON files.
+
+## Actual numerical evidence
+
+- Explicit full-state reference, n=4, target probability 9.45e-6: 5,000 compressed samples; average 3,193.9 marks and 2.02 large/compressed strata per sample. Across seven specified CDF points, maximum observed discrepancy was 0.01139. Sampling noise remains; this is not a certified error measurement.
+- Explicit same-W coupling, n=3, q=1e-4: 1,000 trials, 944 activated compressed strata, 10,058,427 exact reference marks. No observed relative error above the configured 0.5 threshold; largest observed relative error 0.12249. The proof, not this experiment, establishes the failure guarantee.
+- Scale demonstration, n=80, q=2.332e-25: one theoretical-threshold draw required 1,128,967 marks and approximately 0.22 seconds on this workspace. It generated a time around 5.58e22 without walking that horizon. This is one performance observation, not a general benchmark or accuracy validation.
+
+## Scope and uncertainty
+
+Stationary product initial law; one joint target; supplied rational component parameters. Output is a first-hit time approximation. No path, arbitrary-start solver, arbitrary target-set solver, or relative rare-tail guarantee. Continuous-law total variation is not claimed; finite-bin TV follows with separately charged bin-boundary accuracy. Exact continuous sampling is not claimed. Strongest directly relevant prior is Brown's representation (1974/1975, presented accessibly by Fill--Lyzinski) and the 2025 Horvath--Paolieri--Vicario state-space-free ODE approximation.
