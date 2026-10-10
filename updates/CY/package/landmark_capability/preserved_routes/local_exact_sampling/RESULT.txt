@@ -1,0 +1,141 @@
+RESULT: exact one-site sampling on a positive 1D chain; no novel capability
+
+Verdict
+-------
+The requested general mechanism is already present in prior work. Anand and
+Jerrum's 2021/2022 algorithm is explicitly outside CFTP: it recursively guesses
+a spin without reading a surrounding sphere and resolves that sphere only when
+the guess is inconclusive. Under strong spatial mixing (SSM) and subexponential
+neighborhood growth it returns an exact finite window from the unique infinite
+Gibbs measure in expected time linear in the window size, hence constant per
+queried site. Feng, Guo, and Yin give a second non-CFTP approach: a local Bayes
+filter repairs a configuration while preserving the conditional Gibbs law,
+with linear expected time under their SSM hypotheses. These are stronger
+baselines than a new backward-clan construction for the proposed target.
+
+I therefore pivoted once to a distinct, deterministic-refinement mechanism.
+It gives a self-contained exact sampler for one spin in a homogeneous
+one-dimensional finite-state chain with strictly positive rational transfer
+weights. The construction composes classical transfer-matrix contraction
+with classical lazy inverse-CDF sampling. It is narrower than the cited
+samplers, can be exponentially costly in the interaction bit length, and is
+not a landmark or a novelty claim.
+
+Model and inputs
+----------------
+Input is a supplied q-by-q matrix T of positive rational edge weights. Clear
+denominators to make T integer; the common factor cancels from every law. On
+the chain Z, a finite string x[-n..n] has free-boundary weight
+
+    product_{i=-n}^{n-1} T[x_i,x_{i+1}].
+
+Strict positivity makes T primitive and defines a unique infinite-volume Gibbs
+measure. The target observable is X_0 (or any fixed finite-valued function of
+X_0). Let 1 be the all-ones vector,
+
+    L_n = 1^T T^n,       R_n = T^n 1,
+    p_n(a) = L_n[a] R_n[a] / sum_b L_n[b] R_n[b].
+
+This is the exact rational marginal at the center of [-n,n] with free
+boundaries. If u and v are the positive left and right Perron vectors of T,
+the infinite-volume marginal is p(a)=u[a]v[a]/sum_b u[b]v[b].
+
+Certified error bound
+--------------------
+Write m=min(T_ij), M=max(T_ij), kappa=M/m, and rho=(kappa-1)/(kappa+1).
+For kappa=1 the finite-volume marginal is already exact for n>=1. Otherwise,
+Hilbert's projective metric and Birkhoff's positive-matrix contraction give
+projective diameter Delta(T)<=2 log(kappa) and contraction factor at most
+rho=tanh(log(kappa)/2)<1. Since L_1 and the Perron left vector are both in
+the image of the positive cone under T, d_H(L_n,u)<=2 log(kappa)rho^(n-1);
+the same holds for R_n and v. The log-likelihood ratio of the two central
+marginals has oscillation at most the sum of those two distances. The standard
+projective-to-total-variation bound therefore gives
+
+    d_TV(p_n,p) <= log(kappa) rho^(n-1)
+                  <= (kappa-1) rho^(n-1) =: eps_n.
+
+Use eps_n capped at 1. Thus every cumulative probability F_j=sum_{a<=j}p(a)
+lies in the exact rational interval
+
+    [ max(0,F_{j,n}-eps_n), min(1,F_{j,n}+eps_n) ],
+
+where F_{j,n} is computed from p_n.
+
+Exact sampler
+-------------
+Generate a uniform U lazily from iid fair bits. After n bits, its dyadic
+prefix gives an interval [U_n^-,U_n^+) of width 2^-n. Compute p_n and the
+rational enclosures above. Return symbol a as soon as [U_n^-,U_n^+) is wholly
+between the upper enclosure for F_{a-1} and the lower enclosure for F_a
+(omit the left test for a=0 and the right test for a=q-1). Every U is then
+inside the true inverse-CDF interval for a, so the output law is exactly p.
+Since U equals any one of the finitely many CDF thresholds with probability
+zero and eps_n -> 0, the algorithm halts almost surely.
+
+If N is the number of generated bits/iterations, an unresolved prefix at
+stage n must intersect one of q-1 CDF uncertainty intervals. Hence
+
+    Pr[N>n] <= min(1, (q-1)(2 eps_n + 2^(1-n))).
+
+The tail is exponential, so every moment of N is finite. With fixed q and
+integer entries of at most B bits, each stage uses O(q^2) integer operations
+on O(n(B+log q))-bit values; elementary schoolbook arithmetic gives total
+bit work O(q^2 (B+log q)^2 N^3). Its expectation is finite and independent
+of the length of the chain. The bound can be exponential in B: kappa may be
+2^B, making rho close to one. This is an exact system-size-independent local
+query, not a polynomial-in-input-length guarantee.
+
+Acquisition and hidden costs
+----------------------------
+The sampler assumes the full interaction matrix is supplied exactly. Reading
+it costs q^2 B bits (after rational denominator clearing); parameter
+estimation, physical measurement, model selection, or uncertainty in T is
+outside the theorem and must be charged separately. It uses an ideal stream
+of iid fair bits, with expected count E[N] bounded by the tail above, plus
+exact integer/rational arithmetic. No physical preparation or observation of
+an interacting system is demonstrated. Floating-point arithmetic would
+invalidate the exactness claim unless every comparison were replaced by a
+certified interval comparison.
+
+Falsifier / boundary
+--------------------
+Strict positivity and the uniquely specified infinite-volume law matter. If
+they are dropped, even T=identity has multiple Gibbs measures; free-boundary
+finite windows do not identify which target measure is intended. The method
+also does not give useful input-size efficiency when the transfer matrix is
+ill-conditioned (large M/m). For the broader SSM setting, Anand--Jerrum's
+recursive sampler dominates this pivot in scope and practical query cost.
+
+Novelty and primary sources (checked 2026-10-10)
+-------------------------------------------------
+1. Anand & Jerrum, “Perfect Sampling in Infinite Spin Systems via Strong
+   Spatial Mixing,” arXiv:2106.15992 (2021), SIAM J. Comput. 51(4), 2022,
+   DOI 10.1137/21M1437433. The paper explicitly says it departs from CFTP,
+   recursively grows a sample one vertex at a time, and needs no whole-graph
+   configuration for a single-site query. Its abstract states SSM plus
+   subexponential growth and expected runtime linear in the output window.
+   https://arxiv.org/abs/2106.15992
+2. Feng, Guo & Yin, “Perfect Sampling from Spatial Mixing,” arXiv:1907.06033
+   (2019), Random Structures & Algorithms 61(4), 2022. It introduces a
+   Bayes-filter approach for general permissive spin systems; under exponential
+   SSM and subexponential neighborhood growth the expected full-sample time is
+   O(n). https://arxiv.org/abs/1907.06033
+3. Birkhoff, “Extensions of Jentzsch's Theorem,” Trans. AMS 85 (1957),
+   DOI 10.1090/S0002-9947-1957-0087058-6, for positive-operator contraction
+   in Hilbert's projective metric.
+   https://www.ams.org/tran/1957-085-01/S0002-9947-1957-0087058-6/
+4. Devroye & Gravel, “Random variate generation using only finitely many
+   unbiased, independently and identically distributed random bits,”
+   arXiv:1502.02539, for exact discrete simulation in the random-bit model
+   and the classical Knuth--Yao family of methods.
+   https://arxiv.org/abs/1502.02539
+5. Han & Hoshi, “Interval Algorithm for Random Number Generation,” IEEE
+   Transactions on Information Theory 43(2), 1997, DOI 10.1109/18.556116.
+   It develops the unit-interval refinement method underlying the pivot.
+   https://doi.org/10.1109/18.556116
+
+Novelty conclusion: no new perfect-sampling principle is claimed. The pivot
+is a direct composition of a standard exact interval sampler with a standard
+positive-transfer-matrix convergence bound. I found no reason to elevate it
+over the existing SSM perfect samplers.
