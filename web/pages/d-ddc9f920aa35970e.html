@@ -1,0 +1,350 @@
+<!doctype html><meta charset="utf-8"><title>certified_implementation/certified_clock.py</title><aside>Archived source = DATA<p>The source reports an exact-integer/rational implementation, proof certificate, internal code-and-mathematics audit, 17 tests, deterministic same-tape evidence, a q=2^-200 scale fixture, and one OS-backed acquisition/replay. This intake copied all 37 files unchanged, independently checked the three supplied SHA-256 manifests and membership, and updated static retrieval only. No research code, tests, or recorded replays were run here; no independent theorem reconstruction, formal/external verification, random-source certification, or historical-priority clearance is established. The code input gate is dyadic; the general rational-input theorem remains the N592 source-reported candidate. No historic-scale breakthrough is established.</p></aside><pre>&quot;&quot;&quot;Finite-bit Brown/Cox first-hit clock with integer outward log enclosures.
+
+No floating-point value participates in the sampler or certificate. The theorem
+assumes independent unbiased input bits. CounterTape is only a deterministic,
+domain-separated replay fixture, not an assertion of information-theoretic IID.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from dataclasses import dataclass
+from collections import defaultdict
+import hashlib, json, math, time, os
+from pathlib import Path
+
+
+def ceil(x): return -(-x.numerator // x.denominator)
+def ceildiv(a,b): return -(-a//b)
+def pow2ceil_ratio(x):
+    b=0
+    while F(1,1&lt;&lt;b)&gt;x: b+=1
+    return b
+
+def exact_fraction(x):
+    if isinstance(x,float): raise TypeError(&#x27;Floating-point input is not certified input&#x27;)
+    if isinstance(x,str) and &#x27;0x&#x27; in x.lower():
+        pieces=x.split(&#x27;/&#x27;)
+        if len(pieces)==1:return F(int(pieces[0],0))
+        if len(pieces)==2:return F(int(pieces[0],0),int(pieces[1],0))
+        raise ValueError(&#x27;Invalid hexadecimal rational&#x27;)
+    return F(x)
+
+def rational_text(x):
+    # Python&#x27;s decimal-string safety limit must not reject a valid exact time.
+    # Hex integer formatting is linear and has no decimal conversion limit.
+    if max(x.numerator.bit_length(),x.denominator.bit_length())&gt;10000:
+        return f&#x27;{x.numerator:#x}/{x.denominator:#x}&#x27;
+    return str(x)
+
+@dataclass(frozen=True)
+class Budget:
+    p: tuple
+    rates: tuple
+    eps: F = F(1,4)
+    delta: F = F(1,20)
+    def __post_init__(self):
+        p=tuple(map(exact_fraction,self.p)); rates=tuple(map(exact_fraction,self.rates))
+        eps=exact_fraction(self.eps); delta=exact_fraction(self.delta)
+        if not p or len(p)!=len(rates): raise ValueError(&#x27;Nonempty matching dimensions required&#x27;)
+        if any(not 0&lt;x&lt;1 for x in p) or any(x&lt;=0 for x in rates): raise ValueError(&#x27;Invalid CTMC parameters&#x27;)
+        if not 0&lt;eps&lt;F(1,2) or not 0&lt;delta&lt;F(1,2): raise ValueError(&#x27;Require 0 &lt; epsilon, delta &lt; 1/2&#x27;)
+        pairs=sorted(zip(rates,p)); rates=tuple(x[0] for x in pairs);p=tuple(x[1] for x in pairs)
+        # A bounded dyadic input gate makes each Bernoulli draw exact and bounded.
+        if any(x.denominator &amp; (x.denominator-1) for x in p): raise ValueError(&#x27;This implementation gate requires dyadic probabilities&#x27;)
+        n=len(p);q=math.prod(p);w=tuple((1-p[i])*math.prod(p[i+1:]) for i in range(n))
+        kappa=tuple(1+sum(((1-p[j])*rates[j] for j in range(i)),F())/rates[i] for i in range(n))
+        h=eps/(2+2*eps); L=0
+        while 4*n*F(3,8)**L&gt;delta/4:L+=1
+        R=tuple(ceil(6*k*L/h**2) for k in kappa)
+        capell=0
+        while n*F(1,2)**capell&gt;delta/64:capell+=1
+        K=tuple(24*r+capell+1 for r in R)
+        J=1+sum(r+2*k for r,k in zip(R,K))
+        eta=min(eps/100,delta/(512*sum(R)));a=delta/(64*J)
+        b=pow2ceil_ratio(eta*a*a/16)
+        P=b+32
+        while True:
+            N=(P+8)//3+1
+            C=(b+2)*(10*N+2)+2
+            if F(C,1&lt;&lt;P)&lt;=eta*a/16 and 3**(2*N+1)&gt;=3*(1&lt;&lt;P):break
+            P+=8
+        vals=locals()
+        for key in (&#x27;p&#x27;,&#x27;rates&#x27;,&#x27;eps&#x27;,&#x27;delta&#x27;,&#x27;n&#x27;,&#x27;q&#x27;,&#x27;w&#x27;,&#x27;kappa&#x27;,&#x27;h&#x27;,&#x27;L&#x27;,&#x27;R&#x27;,&#x27;K&#x27;,&#x27;J&#x27;,&#x27;eta&#x27;,&#x27;a&#x27;,&#x27;b&#x27;,&#x27;P&#x27;,&#x27;N&#x27;,&#x27;C&#x27;,&#x27;capell&#x27;):
+            object.__setattr__(self,key,vals[key])
+        assert sum(w)+q==1
+        assert eta&lt;=F(1,8)
+        assert (1+h)/(1-h)*(1+eta)**2&lt;=1+eps
+        assert (1-h)/(1+h)/(1+eta)**2&gt;=1-eps
+        assert F(1,1&lt;&lt;b)/a+F(C,1&lt;&lt;P)&lt;=eta*a/8
+    def report(self):
+        return {k: encode(getattr(self,k)) for k in (&#x27;p&#x27;,&#x27;rates&#x27;,&#x27;eps&#x27;,&#x27;delta&#x27;,&#x27;n&#x27;,&#x27;q&#x27;,&#x27;w&#x27;,&#x27;kappa&#x27;,&#x27;h&#x27;,&#x27;L&#x27;,&#x27;R&#x27;,&#x27;K&#x27;,&#x27;J&#x27;,&#x27;eta&#x27;,&#x27;a&#x27;,&#x27;b&#x27;,&#x27;P&#x27;,&#x27;N&#x27;,&#x27;capell&#x27;)} | {
+          &#x27;expected_exponential_call_upper_bound&#x27;:1+sum(5*r+2 for r in self.R),
+          &#x27;max_main_uniform_bits&#x27;:self.J*self.b,
+          &#x27;max_main_bernoulli_bits&#x27;:sum(max(r,k)*sum(p.denominator.bit_length()-1 for p in self.p[:i]) for i,(r,k) in enumerate(zip(self.R,self.K))),
+          &#x27;failure_bounds&#x27;: {
+              &#x27;uniform_cell_endpoint_rejection&#x27;:rational_text(self.delta/16),
+              &#x27;small_branch_interval_ambiguity&#x27;:rational_text(15*self.eta*sum(self.R)),
+              &#x27;poisson_count_caps&#x27;:rational_text(self.n*F(1,2)**self.capell),
+              &#x27;large_branch_concentration&#x27;:rational_text(4*self.n*F(3,8)**self.L),
+              &#x27;total&#x27;:rational_text(self.delta/16+15*self.eta*sum(self.R)+self.n*F(1,2)**self.capell+4*self.n*F(3,8)**self.L)}
+        }
+
+def display_float(x):
+    # Presentation must never turn a successful exact large-scale acquisition
+    # into an exception. None means outside the binary64 display range.
+    try:return float(x)
+    except OverflowError:return None
+
+def encode(x):
+    if isinstance(x,F):return rational_text(x)
+    if isinstance(x,(tuple,list)):return [encode(y) for y in x]
+    if isinstance(x,dict):return {k:encode(v) for k,v in x.items()}
+    return x
+
+class CounterTape:
+    &quot;&quot;&quot;Deterministic SHA256 counter fixture. Uniform-bit interface can be replaced.&quot;&quot;&quot;
+    def __init__(self,seed,label):
+        self.key=(seed+&#x27;\x00&#x27;+label).encode();self.counter=0;self.pool=0;self.available=0;self.bits=0
+        self.hash=hashlib.sha256()
+    def _next_block(self):
+        block=hashlib.sha256(self.key+self.counter.to_bytes(8,&#x27;big&#x27;)).digest()
+        self.counter+=1;self.hash.update(block)
+        return block
+    def getbits(self,k):
+        while self.available&lt;k:
+            block=self._next_block()
+            self.pool=(self.pool&lt;&lt;256)|int.from_bytes(block,&#x27;big&#x27;);self.available+=256
+        self.available-=k
+        ans=self.pool&gt;&gt;self.available
+        self.pool&amp;=(1&lt;&lt;self.available)-1;self.bits+=k
+        return ans
+    def evidence(self):return {&#x27;bits_consumed&#x27;:self.bits,&#x27;blocks_generated&#x27;:self.counter,&#x27;generated_block_sha256&#x27;:self.hash.hexdigest()}
+
+class TapeBank:
+    def __init__(self,seed):self.seed=seed;self.streams={}
+    def stream(self,label):
+        if label not in self.streams:self.streams[label]=CounterTape(self.seed,label)
+        return self.streams[label]
+    def evidence(self):return {k:v.evidence() for k,v in sorted(self.streams.items())}
+
+class OSRecordedTape(CounterTape):
+    &quot;&quot;&quot;OS-backed bits with the exact generated blocks preserved for replay.&quot;&quot;&quot;
+    def __init__(self,label):super().__init__(&#x27;&#x27;,label);self.raw=bytearray()
+    def _next_block(self):
+        block=os.urandom(32);self.raw.extend(block)
+        self.counter+=1;self.hash.update(block)
+        return block
+
+class OSRecordedBank(TapeBank):
+    def __init__(self):super().__init__(&#x27;&#x27;)
+    def stream(self,label):
+        if label not in self.streams:self.streams[label]=OSRecordedTape(label)
+        return self.streams[label]
+    def save(self,directory):
+        directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
+        doc={&#x27;source&#x27;:&#x27;os.urandom&#x27;,&#x27;contract&#x27;:&#x27;The probability theorem assumes independent unbiased bits. OS entropy is a practical source, not a proved physical independence certificate.&#x27;,&#x27;streams&#x27;:{}}
+        for i,(label,tape) in enumerate(sorted(self.streams.items())):
+            name=f&#x27;{i:02d}.bin&#x27;;(directory/name).write_bytes(tape.raw)
+            doc[&#x27;streams&#x27;][label]={&#x27;file&#x27;:name,**tape.evidence()}
+        (directory/&#x27;manifest.json&#x27;).write_text(json.dumps(doc,indent=2)+&#x27;\n&#x27;)
+        return doc
+
+class PrefixReplayTape(CounterTape):
+    def __init__(self,label,data,bit_limit):super().__init__(&#x27;&#x27;,label);self.data=data;self.bit_limit=bit_limit
+    def _next_block(self):
+        block=self.data[32*self.counter:32*(self.counter+1)]
+        if len(block)!=32:raise ValueError(&#x27;Recorded prefix exhausted&#x27;)
+        self.counter+=1;self.hash.update(block);return block
+    def getbits(self,k):
+        if self.bits+k&gt;self.bit_limit:raise ValueError(&#x27;Replay exceeds recorded bit-request prefix&#x27;)
+        return super().getbits(k)
+
+class PrefixReplayBank(TapeBank):
+    def __init__(self,directory):
+        super().__init__(&#x27;&#x27;);self.directory=Path(directory)
+        self.manifest=json.loads((self.directory/&#x27;manifest.json&#x27;).read_text())
+    def stream(self,label):
+        if label not in self.streams:
+            row=self.manifest[&#x27;streams&#x27;][label]
+            data=(self.directory/row[&#x27;file&#x27;]).read_bytes()
+            if hashlib.sha256(data).hexdigest()!=row[&#x27;generated_block_sha256&#x27;]:
+                raise ValueError(&#x27;Recorded prefix hash mismatch&#x27;)
+            self.streams[label]=PrefixReplayTape(label,data,row[&#x27;bits_consumed&#x27;])
+        return self.streams[label]
+
+class BitCallbackTape:
+    &quot;&quot;&quot;Adapter for a caller-supplied getbits(k) source.
+
+    Independent unbiased returned bits are the probability theorem&#x27;s explicit
+    source assumption. A finite test cannot certify that source assumption.
+    &quot;&quot;&quot;
+    def __init__(self,getbits):self.provider=getbits;self.bits=0;self.hash=hashlib.sha256()
+    def getbits(self,k):
+        x=self.provider(k)
+        if type(x) is not int or not 0&lt;=x&lt;(1&lt;&lt;k):raise ValueError(&#x27;Bit source violated range/type contract&#x27;)
+        self.bits+=k;self.hash.update(k.to_bytes(8,&#x27;big&#x27;)+x.to_bytes((k+7)//8,&#x27;big&#x27;))
+        return x
+    def evidence(self):return {&#x27;bits_consumed&#x27;:self.bits,&#x27;encoded_request_sha256&#x27;:self.hash.hexdigest()}
+
+class BitCallbackBank:
+    &quot;&quot;&quot;Factory(label) returns an independent getbits(k) callback per stream.&quot;&quot;&quot;
+    def __init__(self,factory):self.factory=factory;self.streams={}
+    def stream(self,label):
+        if label not in self.streams:self.streams[label]=BitCallbackTape(self.factory(label))
+        return self.streams[label]
+    def evidence(self):return {k:v.evidence() for k,v in sorted(self.streams.items())}
+
+class AcquisitionFailure(Exception): pass
+
+class ExpCells:
+    def __init__(self,budget):
+        self.budget=budget;self.F=1&lt;&lt;budget.P;self.calls=0;self.endpoint_rejections=0
+        self.log2=self._logv(2,1)
+    def _logv(self,num,den):
+        &quot;&quot;&quot;Enclose log(num/den), 1 &lt;= num/den &lt;= 2, in units 2^-P.&quot;&quot;&quot;
+        assert den&lt;=num&lt;=2*den
+        zn=num-den;zd=num+den
+        lo=self.F*zn//zd;hi=ceildiv(self.F*zn,zd)
+        zl=zn*zn;zh=zd*zd;slo=shi=0
+        for j in range(self.budget.N):
+            d=2*j+1;slo+=lo//d;shi+=ceildiv(hi,d)
+            lo=lo*zl//zh;hi=ceildiv(hi*zl,zh)
+        # For z &lt;= 1/3, omitted 2*atanh tail &lt; 3*(1/3)^(2N+1).
+        tail=ceildiv(3*self.F,3**(2*self.budget.N+1))
+        return 2*slo,2*shi+tail
+    def cell_from_integer(self,k):
+        B=self.budget;D=1&lt;&lt;B.b
+        if not 0&lt;=k&lt;D:raise ValueError(&#x27;Uniform cell index out of range&#x27;)
+        if F(k,D)&lt;B.a or F(k+1,D)&gt;1-B.a:
+            self.endpoint_rejections+=1;raise AcquisitionFailure(&#x27;uniform_endpoint&#x27;)
+        odd=2*k+1;e=odd.bit_length()-1;d=B.b+1-e
+        vl,vh=self._logv(odd,1&lt;&lt;e)
+        lo=d*self.log2[0]-vh;hi=d*self.log2[1]-vl
+        radius=ceildiv(self.F,2*k)
+        lo=max(0,lo-radius);hi+=radius
+        # This is a runtime certificate, not a floating-point tolerance.
+        if lo&lt;=0 or (hi-lo)*B.eta.denominator&gt;lo*B.eta.numerator:
+            raise AssertionError(&#x27;Derived exponential-cell width contract failed&#x27;)
+        return (lo+hi)//2,lo,hi
+    def draw(self,tape):
+        self.calls+=1
+        return self.cell_from_integer(tape.getbits(self.budget.b))
+
+
+def poisson_count(cells,tape,rlo,rhi,cap):
+    &quot;&quot;&quot;Exact count for every ideal-uniform extension of these finite cells.
+
+    rlo/rhi are intensities multiplied by 2^P. Inconclusive comparison is a
+    charged acquisition failure, never a guessed branch.
+    &quot;&quot;&quot;
+    alo=ahi=0
+    for count in range(cap):
+        _,lo,hi=cells.draw(tape);alo+=lo;ahi+=hi
+        if ahi&lt;=rlo:continue
+        if alo&gt;rhi:return count
+        raise AcquisitionFailure(&#x27;poisson_interval_ambiguity&#x27;)
+    raise AcquisitionFailure(&#x27;poisson_count_cap&#x27;)
+
+
+def marks(cells,tape,B,i,count):
+    # Only at most 2^i groups are used in this n=4 acquisition. This is NOT
+    # product-generator construction, and no 2^n algorithm claim is made here.
+    # Only observed rate groups are stored; at most min(count,2^i) groups occur.
+    groups=defaultdict(lambda:[0,0,0])
+    for _ in range(count):
+        rate=B.rates[i]
+        for j in range(i):
+            p=B.p[j];k=p.denominator.bit_length()-1
+            if tape.getbits(k)&gt;=p.numerator:rate+=B.rates[j]
+        point,lo,hi=cells.draw(tape)
+        row=groups[rate];row[0]+=point;row[1]+=lo;row[2]+=hi
+    return tuple(sum((F(row[k],cells.F)/rate for rate,row in groups.items()),F()) for k in range(3))
+
+
+def acquire(B,seed=None,reference=False,reference_mark_cap=200000,tape_bank=None,reference_tape_bank=None):
+    if tape_bank is None and seed is None:raise ValueError(&#x27;Provide a bit-source bank or an explicit fixture seed&#x27;)
+    if reference and tape_bank is not None and reference_tape_bank is None:
+        raise ValueError(&#x27;Custom-source reference requires a matching replay bank&#x27;)
+    bank=tape_bank if tape_bank is not None else TapeBank(seed)
+    cells=ExpCells(B);start=time.perf_counter()
+    strata=[];out=F();failure=None
+    try:
+        Wpoint,Wlo,Whi=cells.draw(bank.stream(&#x27;W&#x27;))
+        for i in range(B.n):
+            fac=B.w[i]/B.q
+            rp=fac*Wpoint;rlo=fac*Wlo;rhi=fac*Whi
+            large=rp&gt;=2*B.R[i]*cells.F
+            if large:
+                if rlo&lt;B.R[i]*cells.F:raise AssertionError(&#x27;Compression threshold is not certified&#x27;)
+                count=B.R[i]
+                vals=marks(cells,bank.stream(f&#x27;{i}/compressed_marks&#x27;),B,i,count)
+                val=rp/cells.F*vals[0]/count
+            else:
+                count=poisson_count(cells,bank.stream(f&#x27;{i}/arrivals&#x27;),rlo,rhi,B.K[i])
+                vals=marks(cells,bank.stream(f&#x27;{i}/exact_marks&#x27;),B,i,count)
+                val=vals[0]
+            out+=val
+            strata.append({&#x27;index&#x27;:i,&#x27;branch&#x27;:&#x27;compressed&#x27; if large else &#x27;small&#x27;,&#x27;intensity_interval&#x27;:[rlo/cells.F,rhi/cells.F],
+                            &#x27;marks&#x27;:count,&#x27;output&#x27;:val})
+    except AcquisitionFailure as exc:
+        failure=str(exc);out=F()
+    main_calls=cells.calls;main_evidence=bank.evidence()
+    assert main_calls&lt;=B.J
+    result={&#x27;seed&#x27;:seed,&#x27;execution_source&#x27;:&#x27;caller-supplied bit callbacks&#x27; if tape_bank is not None else &#x27;deterministic SHA256 replay fixture&#x27;,&#x27;output&#x27;:rational_text(out),&#x27;output_float_display_only&#x27;:display_float(out),&#x27;failure&#x27;:failure,&#x27;strata&#x27;:encode(strata),
+            &#x27;main_exponential_cells&#x27;:main_calls,&#x27;main_bits&#x27;:sum(x[&#x27;bits_consumed&#x27;] for x in main_evidence.values()),
+            &#x27;main_tape_evidence&#x27;:main_evidence,&#x27;main_seconds&#x27;:time.perf_counter()-start}
+    if reference and failure is None:
+        # Independent proof-reference arrivals/marks for compressed strata;
+        # small strata use their identical main tapes. W is the same finite cell.
+        refbank=reference_tape_bank if reference_tape_bank is not None else TapeBank(seed);refcells=ExpCells(B)
+        wp,wl,wh=refcells.draw(refbank.stream(&#x27;W&#x27;))
+        assert (wp,wl,wh)==(Wpoint,Wlo,Whi)
+        total_lo=total_hi=F();total_marks=0;rows=[];ref_failure=None
+        try:
+            for i in range(B.n):
+                fac=B.w[i]/B.q
+                available=reference_mark_cap-total_marks
+                if available&lt;=0:raise AcquisitionFailure(&#x27;reference_work_cap&#x27;)
+                cnt=poisson_count(refcells,refbank.stream(f&#x27;{i}/arrivals&#x27;),fac*Wlo,fac*Whi,available)
+                total_marks+=cnt
+                _,lo,hi=marks(refcells,refbank.stream(f&#x27;{i}/exact_marks&#x27;),B,i,cnt)
+                total_lo+=lo;total_hi+=hi
+                rows.append({&#x27;index&#x27;:i,&#x27;marks&#x27;:cnt,&#x27;interval&#x27;:[lo,hi]})
+        except AcquisitionFailure as exc:ref_failure=str(exc)
+        rr={&#x27;failure&#x27;:ref_failure,&#x27;total_marks&#x27;:total_marks,&#x27;exponential_cells&#x27;:refcells.calls,&#x27;strata&#x27;:encode(rows),&#x27;tape_evidence&#x27;:refbank.evidence()}
+        if ref_failure is None:
+            # Enforce the advertised replay contract rather than silently
+            # accepting an independently resampled small branch.
+            ref_evidence=refbank.evidence()
+            for row in strata:
+                if row[&#x27;branch&#x27;]==&#x27;small&#x27;:
+                    for role in (&#x27;arrivals&#x27;,&#x27;exact_marks&#x27;):
+                        label=f&quot;{row[&#x27;index&#x27;]}/{role}&quot;
+                        if main_evidence[label]!=ref_evidence[label]:
+                            raise ValueError(&#x27;Reference small-stream replay evidence mismatch: &#x27;+label)
+            rr[&#x27;shared_small_stream_evidence_matches&#x27;]=True
+            if total_lo==0:rel=F() if out==0 else None
+            else:rel=max(abs(out/total_lo-1),abs(out/total_hi-1))
+            rr|={&#x27;exact_H_interval&#x27;:encode([total_lo,total_hi]),&#x27;relative_error_upper_bound&#x27;:encode(rel),
+                  &#x27;within_requested_epsilon_for_every_tape_extension&#x27;:rel is not None and rel&lt;=B.eps,
+                  &#x27;relative_error_float_display_only&#x27;:display_float(rel) if rel is not None else None}
+        result[&#x27;same_tape_reference&#x27;]=rr
+    result[&#x27;total_seconds&#x27;]=time.perf_counter()-start
+    return result
+
+
+def default_budget():return Budget((&#x27;1/8&#x27;,&#x27;1/16&#x27;,&#x27;1/32&#x27;,&#x27;1/16&#x27;),(&#x27;1&#x27;,&#x27;2&#x27;,&#x27;4&#x27;,&#x27;8&#x27;))
+
+if __name__==&#x27;__main__&#x27;:
+    import argparse
+    parser=argparse.ArgumentParser();parser.add_argument(&#x27;--budget-only&#x27;,action=&#x27;store_true&#x27;);parser.add_argument(&#x27;--reference&#x27;,action=&#x27;store_true&#x27;);parser.add_argument(&#x27;--seed&#x27;,default=&#x27;rare-clock-certified-20261010-v1&#x27;)
+    sources=parser.add_mutually_exclusive_group();sources.add_argument(&#x27;--os-recorded&#x27;);sources.add_argument(&#x27;--replay-recorded&#x27;)
+    args=parser.parse_args();B=default_budget()
+    report={&#x27;budget&#x27;:B.report()}
+    if not args.budget_only:
+        if args.os_recorded:
+            bank=OSRecordedBank();report[&#x27;run&#x27;]=acquire(B,tape_bank=bank,reference=args.reference)
+            report[&#x27;source_manifest&#x27;]=bank.save(args.os_recorded)
+        elif args.replay_recorded:
+            report[&#x27;run&#x27;]=acquire(B,tape_bank=PrefixReplayBank(args.replay_recorded),reference=args.reference)
+        else:report[&#x27;run&#x27;]=acquire(B,args.seed,reference=args.reference)
+    print(json.dumps(report,indent=2))
+</pre>

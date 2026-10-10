@@ -1,0 +1,162 @@
+<!doctype html><meta charset="utf-8"><title>certified_implementation/test_certified_clock.py</title><aside>Archived source = DATA<p>The source reports an exact-integer/rational implementation, proof certificate, internal code-and-mathematics audit, 17 tests, deterministic same-tape evidence, a q=2^-200 scale fixture, and one OS-backed acquisition/replay. This intake copied all 37 files unchanged, independently checked the three supplied SHA-256 manifests and membership, and updated static retrieval only. No research code, tests, or recorded replays were run here; no independent theorem reconstruction, formal/external verification, random-source certification, or historical-priority clearance is established. The code input gate is dyadic; the general rational-input theorem remains the N592 source-reported candidate. No historic-scale breakthrough is established.</p></aside><pre>import unittest, json, math
+from fractions import Fraction as F
+from unittest.mock import patch
+from pathlib import Path
+from certified_clock import *
+
+ROOT=Path(__file__).resolve().parent
+
+def independent_log_bounds(num,den,terms=95):
+    # Independent exact-Fraction series; no fixed-point helper is reused.
+    assert 1&lt;=F(num,den)&lt;=2
+    z=F(num-den,num+den)
+    ans=2*sum((z**(2*j+1)/F(2*j+1) for j in range(terms)),F())
+    tail=2*z**(2*terms+1)/F(2*terms+1)/(1-z*z)
+    return ans,ans+tail
+
+def negative_log_bounds(num,den):
+    e=den.bit_length()-num.bit_length()
+    if num*(1&lt;&lt;e)&lt;den:e+=1
+    lo,hi=independent_log_bounds(num*(1&lt;&lt;e),den)
+    l2,h2=independent_log_bounds(2,1)
+    return e*l2-hi,e*h2-lo
+
+def solve(A,b):
+    A=[list(row)+[y] for row,y in zip(A,b)];n=len(b)
+    for i in range(n):
+        k=next(k for k in range(i,n) if A[k][i]);A[i],A[k]=A[k],A[i]
+        z=A[i][i];A[i]=[x/z for x in A[i]]
+        for j in range(n):
+            if j!=i:
+                z=A[j][i];A[j]=[x-z*y for x,y in zip(A[j],A[i])]
+    return [r[-1] for r in A]
+
+class CertifiedClockTests(unittest.TestCase):
+    def setUp(self):self.B=default_budget()
+    def test_exact_budget(self):
+        B=self.B;r=B.report()
+        self.assertEqual(B.q,F(1,65536));self.assertEqual(B.R,(4800,6900,8100,8775))
+        self.assertEqual(B.b,94);self.assertEqual(B.P,126)
+        self.assertLess(F(r[&#x27;failure_bounds&#x27;][&#x27;total&#x27;]),B.delta)
+        self.assertLess(F(r[&#x27;failure_bounds&#x27;][&#x27;total&#x27;]),self.B.delta/4)
+    def test_independent_exact_log_enclosures(self):
+        B=self.B;c=ExpCells(B);D=1&lt;&lt;B.b
+        first=ceil(B.a*D);last=((1-B.a)*D).numerator//((1-B.a)*D).denominator-1
+        ks=[first,first+1,D//8,D//4,D//3,D//2,D//2+1,3*D//4,last-1,last]
+        for k in ks:
+            point,lo,hi=c.cell_from_integer(k)
+            # All ideal U in [k/D,(k+1)/D] are covered.
+            elo,_=negative_log_bounds(k+1,D);_,ehi=negative_log_bounds(k,D)
+            self.assertLessEqual(F(lo,c.F),elo)
+            self.assertGreaterEqual(F(hi,c.F),ehi)
+            self.assertLessEqual(lo,point);self.assertLessEqual(point,hi)
+    def test_invalid_inputs_rejected(self):
+        bad=[((.125,&#x27;1/16&#x27;),(1,2)),((&#x27;0&#x27;,&#x27;1/2&#x27;),(1,2)),((&#x27;1&#x27;,&#x27;1/2&#x27;),(1,2)),((&#x27;1/2&#x27;,&#x27;1/2&#x27;),(0,2)),((&#x27;1/3&#x27;,&#x27;1/2&#x27;),(1,2)),((&#x27;1/2&#x27;,),(1,2))]
+        for p,r in bad:
+            with self.assertRaises((TypeError,ValueError)):Budget(p,r)
+    def test_injected_bit_source_and_contract(self):
+        bank=BitCallbackBank(lambda label: lambda k: 0)
+        r=acquire(self.B,tape_bank=bank)
+        self.assertEqual(r[&#x27;failure&#x27;],&#x27;uniform_endpoint&#x27;)
+        self.assertEqual(r[&#x27;execution_source&#x27;],&#x27;caller-supplied bit callbacks&#x27;)
+        with self.assertRaises(ValueError):BitCallbackTape(lambda k:1&lt;&lt;k).getbits(3)
+        with self.assertRaises(ValueError):acquire(self.B)
+        with self.assertRaises(ValueError):acquire(self.B,tape_bank=bank,reference=True)
+    def test_sort_keeps_pairs(self):
+        B=Budget((&#x27;1/16&#x27;,&#x27;1/8&#x27;),(&#x27;2&#x27;,&#x27;1&#x27;))
+        self.assertEqual(B.p,(F(1,8),F(1,16)))
+    def test_endpoint_cells_fail_closed(self):
+        c=ExpCells(self.B)
+        for k in [0,(1&lt;&lt;self.B.b)-1]:
+            with self.assertRaisesRegex(AcquisitionFailure,&#x27;uniform_endpoint&#x27;):c.cell_from_integer(k)
+        with patch.object(CounterTape,&#x27;getbits&#x27;,return_value=0):
+            r=acquire(self.B,&#x27;forced-endpoint&#x27;)
+        self.assertEqual(r[&#x27;output&#x27;],&#x27;0&#x27;);self.assertEqual(r[&#x27;failure&#x27;],&#x27;uniform_endpoint&#x27;)
+    def test_ambiguous_poisson_not_guessed(self):
+        class Stub:
+            def draw(self,tape):return 15,10,20
+        with self.assertRaisesRegex(AcquisitionFailure,&#x27;ambiguity&#x27;):poisson_count(Stub(),None,F(15),F(16),5)
+    def test_count_cap_not_ignored(self):
+        class Stub:
+            def draw(self,tape):return 1,1,1
+        with self.assertRaisesRegex(AcquisitionFailure,&#x27;cap&#x27;):poisson_count(Stub(),None,F(100),F(100),5)
+    def test_zero_atom_preserved_on_certified_tape(self):
+        B=self.B;D=1&lt;&lt;B.b;k=D-ceil(B.a*D)-2
+        def bits(tape,count):return k if tape.key.endswith(b&#x27;\x00W&#x27;) else D//2
+        with patch.object(CounterTape,&#x27;getbits&#x27;,bits):r=acquire(B,&#x27;forced-zero&#x27;,reference=True)
+        self.assertIsNone(r[&#x27;failure&#x27;]);self.assertEqual(r[&#x27;output&#x27;],&#x27;0&#x27;)
+        self.assertEqual(r[&#x27;same_tape_reference&#x27;][&#x27;exact_H_interval&#x27;],[&#x27;0&#x27;,&#x27;0&#x27;])
+        self.assertTrue(r[&#x27;same_tape_reference&#x27;][&#x27;within_requested_epsilon_for_every_tape_extension&#x27;])
+    def test_mismatched_reference_evidence_rejected(self):
+        B=self.B;D=1&lt;&lt;B.b;k=D-ceil(B.a*D)-2
+        def bits(tape,count):return k if tape.key.endswith(b&#x27;\x00W&#x27;) else D//2
+        class BadBank(TapeBank):
+            def evidence(self):
+                x=super().evidence()
+                if &#x27;0/exact_marks&#x27; in x:x[&#x27;0/exact_marks&#x27;][&#x27;generated_block_sha256&#x27;]=&#x27;deliberate mismatch&#x27;
+                return x
+        with patch.object(CounterTape,&#x27;getbits&#x27;,bits):
+            with self.assertRaisesRegex(ValueError,&#x27;replay evidence mismatch&#x27;):
+                acquire(B,tape_bank=TapeBank(&#x27;same&#x27;),reference=True,reference_tape_bank=BadBank(&#x27;same&#x27;))
+    def test_recorded_replay_and_small_stream_identity(self):
+        old=json.loads((ROOT/&#x27;REPLAY_RESULTS.json&#x27;).read_text())[&#x27;run&#x27;];r=acquire(self.B,old[&#x27;seed&#x27;])
+        for k in (&#x27;output&#x27;,&#x27;failure&#x27;,&#x27;strata&#x27;,&#x27;main_exponential_cells&#x27;,&#x27;main_bits&#x27;,&#x27;main_tape_evidence&#x27;):self.assertEqual(r[k],old[k])
+        self.assertTrue(any(s[&#x27;branch&#x27;]==&#x27;compressed&#x27; for s in old[&#x27;strata&#x27;]))
+        ref=old[&#x27;same_tape_reference&#x27;];self.assertTrue(ref[&#x27;within_requested_epsilon_for_every_tape_extension&#x27;])
+        for s in old[&#x27;strata&#x27;]:
+            if s[&#x27;branch&#x27;]==&#x27;small&#x27;:
+                for role in (&#x27;arrivals&#x27;,&#x27;exact_marks&#x27;):
+                    label=f&quot;{s[&#x27;index&#x27;]}/{role}&quot;
+                    self.assertEqual(old[&#x27;main_tape_evidence&#x27;][label],ref[&#x27;tape_evidence&#x27;][label])
+    def test_extreme_rarity_replay_stays_bounded(self):
+        doc=json.loads((ROOT/&#x27;EXTREME_RARITY_RESULTS.json&#x27;).read_text());old=doc[&#x27;run&#x27;]
+        B=Budget((F(1,1&lt;&lt;50),)*4,(1,2,4,8));r=acquire(B,old[&#x27;seed&#x27;])
+        self.assertEqual(B.q,F(1,1&lt;&lt;200));self.assertEqual(r[&#x27;output&#x27;],old[&#x27;output&#x27;])
+        self.assertEqual(r[&#x27;main_exponential_cells&#x27;],29401)
+        self.assertTrue(all(s[&#x27;branch&#x27;]==&#x27;compressed&#x27; for s in r[&#x27;strata&#x27;]))
+        self.assertNotIn(&#x27;same_tape_reference&#x27;,r)
+    def test_display_overflow_does_not_break_exact_output(self):
+        B=Budget((F(1,1&lt;&lt;2000),),(1,));r=acquire(B,&#x27;audit-overflow-display&#x27;)
+        self.assertIsNone(r[&#x27;failure&#x27;]);self.assertIsNone(r[&#x27;output_float_display_only&#x27;])
+        self.assertGreater(F(r[&#x27;output&#x27;]),F(1&lt;&lt;1024))
+    def test_decimal_conversion_limit_uses_exact_hex(self):
+        B=Budget((F(1,1&lt;&lt;20000),),(1,));r=acquire(B,&#x27;audit-hex-output&#x27;)
+        self.assertIsNone(r[&#x27;failure&#x27;]);self.assertTrue(r[&#x27;output&#x27;].startswith(&#x27;0x&#x27;))
+        self.assertGreater(exact_fraction(r[&#x27;output&#x27;]),F(1&lt;&lt;19000))
+        self.assertEqual(exact_fraction(rational_text(B.q)),B.q)
+    def test_os_prefix_exact_replay(self):
+        old=json.loads((ROOT/&#x27;OS_ACQUISITION_RESULTS.json&#x27;).read_text())[&#x27;run&#x27;]
+        r=acquire(self.B,tape_bank=PrefixReplayBank(ROOT/&#x27;OS_PREFIX&#x27;))
+        for k in (&#x27;output&#x27;,&#x27;failure&#x27;,&#x27;strata&#x27;,&#x27;main_exponential_cells&#x27;,&#x27;main_bits&#x27;,&#x27;main_tape_evidence&#x27;):
+            self.assertEqual(r[k],old[k])
+        self.assertEqual(r[&#x27;main_exponential_cells&#x27;],14769)
+    def test_os_prefix_tamper_and_exhaustion_rejected(self):
+        import tempfile
+        manifest=json.loads((ROOT/&#x27;OS_PREFIX&#x27;/&#x27;manifest.json&#x27;).read_text())
+        row=manifest[&#x27;streams&#x27;][&#x27;W&#x27;];data=bytearray((ROOT/&#x27;OS_PREFIX&#x27;/row[&#x27;file&#x27;]).read_bytes());data[0]^=1
+        with tempfile.TemporaryDirectory() as d:
+            directory=Path(d);(directory/&#x27;manifest.json&#x27;).write_text(json.dumps(manifest))
+            (directory/row[&#x27;file&#x27;]).write_bytes(data)
+            with self.assertRaisesRegex(ValueError,&#x27;hash mismatch&#x27;):PrefixReplayBank(directory).stream(&#x27;W&#x27;)
+        with self.assertRaisesRegex(ValueError,&#x27;exceeds recorded&#x27;):
+            PrefixReplayTape(&#x27;x&#x27;,b&#x27;0&#x27;*32,1).getbits(2)
+    def test_brown_laplace_matches_exact_killed_generator(self):
+        B=self.B;n=B.n;N=1&lt;&lt;n;Q=[[F() for _ in range(N)] for _ in range(N)]
+        pi=[]
+        for x in range(N):
+            pi.append(math.prod(1-B.p[i] if (x&gt;&gt;i)&amp;1 else B.p[i] for i in range(n)))
+            for i in range(n):
+                rate=B.rates[i]*(B.p[i] if (x&gt;&gt;i)&amp;1 else 1-B.p[i]);Q[x][x^(1&lt;&lt;i)]+=rate;Q[x][x]-=rate
+        for s in [F(1,16),F(1),F(16)]:
+            A=[[(s if x==y else 0)-Q[x][y] for y in range(1,N)] for x in range(1,N)]
+            f=solve(A,[Q[x][0] for x in range(1,N)])
+            chain=pi[0]+sum((pi[x]*f[x-1] for x in range(1,N)),F())
+            R=F()
+            for mask in range(1,N):
+                prob=math.prod(1-B.p[i] if (mask&gt;&gt;i)&amp;1 else B.p[i] for i in range(n))
+                rate=sum((B.rates[i] for i in range(n) if (mask&gt;&gt;i)&amp;1),F())
+                R+=prob/(s+rate)
+            self.assertEqual(chain,B.q/(B.q+s*R))
+
+if __name__==&#x27;__main__&#x27;:unittest.main(verbosity=2)
+</pre>
