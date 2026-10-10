@@ -58,3 +58,6 @@ Each intake has its own immutable source path and branch checkpoint or explicit 
 
 
 - [CQ — independent investigations and closed routes](../CQ/README.md): 118 manifest-listed source files and their original manifest are preserved; N617–N623 index the reset-MST theorem, exact stationary counterexamples, conditional generator/sensing constructions, and two natural-science evidence boundaries. Several attempted routes are closed or attributed to prior work; no historic-scale breakthrough is established.
+
+- [CR — independent closures and bounded constructions](../CR/README.md): the exact 93-file payload and manifest are preserved; N624–N628 route a restricted exact event compiler, a scoped quantum thermal-hardness reduction, an exact outage-relaxation failure, a sunflower pruning obstruction, and a narrow held-out catalyst-model comparison. No foundational breakthrough or new natural-scientific mechanism is established.
+- [CS — additive sunflower gates and global coupling limits](../CS/README.md): the exact 36-file payload and manifest are preserved; N629–N632 route an additive good-pair sampler, full-product and mixed-alphabet couplings, and a sharp local coupling primitive. The unrestricted sunflower problem and general representation acquisition remain unresolved; the dimension bound's overlap with N55 is explicit.

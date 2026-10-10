@@ -1,0 +1,15 @@
+# Narrow primary-source check, 10 October 2026
+
+1. A. E. Brouwer, *An inequality in binary vector spaces*, Discrete Mathematics 59 (1986), 315–317. Primary original PDF: https://ir.cwi.nl/pub/2507/2507D.pdf . The theorem on p.315 explicitly covers irredundant affine-subspace covers and bounds intersection codimension by k−1. It is the sole external mathematical theorem needed. The publisher's machine-rendered abstract reverses an inequality; the original PDF confirms the correct direction.
+
+2. Nagy–Pach–Tomon, *Irredundant hyperplane covers*, https://arxiv.org/abs/2205.03389 . **Withdrawn**, last revised 31 October 2022. The record reports an error in Claim 4.5, Section 4.2, invalidating most of the paper. Search snippets still advertise an exponential general-abelian coset-cover bound. That claim is not used. The binary theorem in item 1 is independent and much older.
+
+3. Alon–Shpilka–Umans, *On Sunflowers and Matrix Multiplication*, primary conference paper: https://theory.stanford.edu/~virgi/cs367/papers/sunflowersmult.pdf . It develops coordinate-alphabet sunflower variants and their relations to matrix multiplication. This is useful context for the transversal-code interpretation. The checked text did not supply the precise binary-additive block dimension bound established here.
+
+4. Haviv–Xie, *Sunflowers and Testing Triangle-Freeness of Functions*, primary author version: https://users.cis.fiu.edu/~nxie/papers/HX16.pdf . Its sunflower-related constructions and finite-field encoding concern property-testing lower bounds. A linear finite-field encoding appears, but that does not identify its arbitrary input families as the full image of binary-linear maps required here.
+
+5. Alon–Holzman, *Near-sunflowers and focal families*, Israel Journal of Mathematics 256 (2023), primary author PDF: https://holzman.technion.ac.il/files/2023/12/IJMsunflowers.pdf . Section 4 gives an improved bound for binary linear codes avoiding a focal family of size four. This has a different forbidden configuration and counts binary coordinate length, whereas our block alphabets can have unbounded binary rank. It is not being cited as the present theorem.
+
+6. Wu–Lu, *Minimal Linear Codes Constructed from Sunflowers* (2023), https://www.mdpi.com/1099-4300/25/12/1669 . Its sunflowers are collections of subspaces used to construct minimal codes, rather than three words with blockwise all-equal/all-distinct symbols. The title alone is not evidence that it contains this result.
+
+Targeted queries included combinations of “binary,” “additive,” “linear code,” “sunflower-free,” “subgroup,” “exactly two,” and Brouwer's title. No verified exact antecedent of the additive-block exponential consequence was located in this limited check. This is explicitly not a novelty certification or a systematic literature review. The present result should be described as a checked restricted corollary using a classical cover theorem.

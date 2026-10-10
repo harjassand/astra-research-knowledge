@@ -1,0 +1,12 @@
+# Pre-data audit and test commitments
+Written 2026-10-10 before numeric archive contents were opened. Main-paper qualitative results and rounded illustrative charges were already read, so they are discovery information, not a holdout.
+
+## Candidate mechanism test
+A charged body passing a grounded sensing electrode without leaving charge behind causes equal-and-opposite induction-current integrals in a full passage, provided it begins and ends outside the electrode weighting field and the acquisition settles. A net integrated current can instead arise from residual surface charge deposited in the electrode's weighting field. With weighting potential w(r), the integrated induced signal is proportional to the endpoint change of sum_i q_i w(r_i). Thus the full-waveform integral divided by the first lobe integral is an operational deposition observable only after offset correction, full-tail capture, initial/final field geometry accounting, and accounting for any charge current through external connections. It does not identify electrons versus ions.
+
+If raw traces are available for all interventions: preregister the absolute full-passage integral divided by half the sum of absolute positive and negative areas, with baseline estimated from first/last 10% outside transients and sensitivity to linear baseline correction. Predict zero for the transport-only alternative. Test condition-level departure relative to blank controls and baseline uncertainty. Do not infer transfer carriers from this statistic. Discovery: water OTS at 20 C and 5 C. Validation: all other surfaces and phases, if full replicate traces and appropriate blanks exist.
+
+If only a representative trace or summarized charges are supplied, this test is not identified and no mechanistic discovery claim will follow from it. Do not quietly replace raw validation with figure digitization.
+
+## Independent-additive hybrid model constraint
+For a same-sign ionic contribution bounded by observed liquid-endpoint charging I and electronic contribution bounded by frozen-endpoint charging E, Q(T) <= I+E. For opposite signs, Q(T) must remain in [-|E|, |I|] with signs adjusted. This is a falsifiable *bounded independent mechanism* model, not every two-carrier model. A violation would require temperature-enhanced carrier transfer, changing contact area/capacitance, or coupling; it does not uniquely imply any one of these. Qualitative overshoot was already seen in the paper, so a numerical calculation on that dataset is an audit, not blinded discovery.

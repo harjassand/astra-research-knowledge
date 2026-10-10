@@ -1,0 +1,120 @@
+# Simultaneous electrical-outage certification: constructed, tested, and closed
+
+## Result
+
+No new high-consequence capability or historic breakthrough was established. A concrete polynomial-size sufficient certificate was derived and implemented, then its central mathematical steps were recognized as established methods. An exact counterexample proves an intrinsic limitation of its chosen relaxation. This pass is closed; adding more interval layers is not proposed as an advance.
+
+The useful deliverables are a sound derivation, runnable prototype and exact verification, a corrected near-islanding diagnosis, and a small rational obstruction that any future replacement must overcome.
+
+## Native operation and scope
+
+Inputs are an undirected graph with positive branch conductances or DC susceptances, balanced fixed bus injections p, branch-flow limits c, and an integer simultaneous-outage budget k. The intended output is SAFE plus a checkable certificate for every set of at most k deleted branches, or UNKNOWN. The prototype constructs candidate enclosures; its floating-point output is not itself a production safety certificate.
+
+The targeted bottleneck is enumerating all outage sets and checking every surviving edge after each solve. A sufficient joint certificate can remove that enumeration on instances where it succeeds. It does not solve arbitrary network interdiction, return all dangerous contingencies, or certify nonlinear AC voltage stability, transient response, protection, frequency stability, or unrestricted physical grid safety. Positive weights and the linear steady-state model are essential.
+
+## Construction
+
+Ground one bus. Let A have oriented incidence columns a_i, W=diag(w), K=AWA^T, and
+
+T = W A^T K^-1 A,     f = W A^T K^-1 p.
+
+For a failed-edge set S, the hypothetical currents through the deleted branches satisfy
+
+(I-T_SS) x_S = f_S.
+
+Every surviving current is f'_e = f_e + T_eS x_S. This algebra is exact, but is only a starting point; performing it separately for every S leaves the combinatorial bottleneck untouched.
+
+Write d_i=1-T_ii. We sought one interval [L_i,U_i] for each edge's compensation whenever that edge fails. Define Top_r as the sum of the r largest nonnegative entries. The checkable inequalities are
+
+ d_i U_i >= f_i + Top_(k-1)(max(T_ij L_j,T_ij U_j,0): j != i),
+ d_i L_i <= f_i - Top_(k-1)(max(-T_ij L_j,-T_ij U_j,0): j != i).
+
+They enforce interval invariance for every permissible fixed outage set. After proving all those damaged graphs connected, each affine update has a unique fixed point. Its invariant compact box contains a fixed point by Brouwer, so it contains the actual compensation. Alternatively, a weighted contraction proves both connectivity and containment directly. The final surviving-flow bound uses Top_k instead of Top_(k-1) and excludes the surviving edge.
+
+A sufficient weighted contraction is
+
+ Top_(k-1)(|T_ij| v_j: j != i) <= rho d_i v_i,  v_i>0, rho<1.
+
+This is verifiable, not a supplied margin oracle. On unit K_n, taking v=1 gives rho=(k-1)/(n-2), certifying connectivity through k=n-2, exactly the graph's non-islanding threshold. This pleasant exactness is a special-case property of a known matrix bound, not evidence of a new computational principle.
+
+## LP repair and honest costs
+
+Interval fixed-point iteration can be slow. An explicit LP avoids that iteration: use V=-L, nonnegative row thresholds t, and nonnegative excess variables z. Replace each Top_r term by r*t+sum(z), with z_ij >= T_ij U_j-t and z_ij >= -T_ij V_j-t (and the sign-reversed counterparts). Minimize sum(U_i+V_i), subject also to U_i+V_i>=0. There are 2m^2+2m variables and 4m^2-m inequalities in the implementation. This is a sufficient enclosure LP, not an exact reformulation of the original outage problem.
+
+Preprocessing is charged: constructing and factoring K, m incidence solves, and forming the full dense m-by-m T. Dense upper bounds are O(n^3+n^2 m+n m^2) arithmetic and O(n^2+m^2) memory. Every interval pass is O(m^2) using selection. The LP is a separate O(m^2)-size optimization problem with its full solver and bit-complexity costs. Polynomial solvability is not a practical near-quadratic time guarantee. Graph connectivity for every <=k edge deletion can also be tested by cardinality global min-cut, with its computation charged; the prototype's small examples use structural connectivity or exhaustive validation rather than an implemented min-cut module.
+
+Verification must check the network linear algebra and all certificate inequalities. For rational native data, checking K C=A and forming T from C avoids trusting an inverse oracle. Exact rational bit growth or outward-rounding costs remain. Floating-point tolerances alone are not certificates. Tiny d_i, rho close to one, near-singular K, and tight flow slack all matter.
+
+## Baseline that must not be overlooked
+
+Every passive positive-conductance network with balanced fixed injections satisfies
+
+ |f_e| <= P_plus = sum_v max(p_v,0).
+
+Take a potential threshold strictly between the two endpoint potentials of e. All flows crossing that cut have the same sign, their sum equals the cut's net injection, and one edge cannot exceed the total positive injection. This applies to each connected post-outage graph, independent of its conditioning. A bound exceeding P_plus should be clipped immediately. Meaningful performance must improve on P_plus for capacities below that value.
+
+## Tests and corrected diagnosis
+
+The floating test suite covers 27 graph/budget cases and compares the low-rank flow formula and candidate intervals against exhaustive damaged-network solves. Floating enclosure discrepancies are at rounding scale when the certificate is tight; these tests are checks of the derivation, not numerical certification.
+
+- Unit K6, k=2, p=(1,-1,-1,-1,1,1): all 121 sets including empty were checked with exact fractions. Both the true largest flow and certified bound equal 5/9, below P_plus=3.
+- Unit K6, k=3, p=(3,-2,0,1,-1,-1): exact fraction checks cover all 576 sets. True largest flow is 7/4; the eight-step certificate is 724429/393216, about 1.842.
+- Unit K8, random balanced injections, k=3: 3,682 nonempty outage sets yield largest true flow about 0.79047 and a uniform candidate bound about 0.82721. This is a synthetic illustration, not a comparison with state-of-the-art screening.
+- Two unit K4 cliques with four corresponding links of weight 0.001, injections +1 on one clique and -1 on the other, k=3: a 160-step run gives about 1848 while the true maximum is 4. That number is a slow-convergence artifact of its overly large starting enclosure. The explicit LP returns about 4, and an exact fraction-checked interval construction gives 4. But P_plus is already 4. Neither the LP result nor correcting the iteration artifact establishes an advance.
+
+Timings in the JSON files are local microbenchmarks of small synthetic examples, not speedup claims against prior algorithms.
+
+## Exact intrinsic obstruction
+
+Take K5, with edges in lexicographic order
+
+ (01,02,03,04,12,13,14,23,24,34),
+
+weights
+
+ (5,1,10,1,10,50,2,50,5,50),
+
+injections p=(3,3,3,0,-9), k=3, and flow limits
+
+ (31/10,31/10,6,91/10,9/2,8,91/10,7,91/10,91/10).
+
+All 176 subsets of at most three failed edges, including the empty set, leave the graph connected and satisfy these limits. Exact exhaustive rational solves give maximum absolute flows
+
+ (3,3,1825/314,9,2136/493,16200/2117,9,17700/2567,9,9).
+
+The minimum exact capacity slack is 1/10. Several capacities are well below the universal P_plus=9.
+
+Nevertheless, no finite common signed-interval supersolution of the constructed update exists. Let h_i=U_i-L_i>=0. Adding the two endpoint inequalities implies, for the triangle of edge indices S=(4,5,7),
+
+ d_i h_i >= sum_(j in S, j != i) |T_ij| h_j.
+
+For v=(1,3,3), direct rational computation gives the strictly positive expansion slacks
+
+ sum_(j != i) |T_ij| v_j - d_i v_i
+ = (3643,26614,26414)/68557.
+
+All pairwise comparison coefficients are positive. If any h_i is zero, the inequalities force all three widths to zero. If every h_i is positive, choose i minimizing h_i/v_i; the strict expansion inequality contradicts d_i h_i >= sum_j |T_ij|h_j. Thus all widths are zero. But edge 12 requires compensation 600/2971 when it alone fails and 179700/29707 when edges 12 and 13 fail. These differ by 516064500/88259497. One degenerate interval cannot contain both.
+
+This is exact failure of the common invariant-box relaxation, caused by losing signed/coupled interactions. It is not a floating-point failure, a slow optimizer, or proof that actual compensation vectors lack a finite bounding box. Such a box always exists for a finite connected outage family; it simply need not satisfy these stronger invariant inequalities.
+
+## A stronger shortcut also failed
+
+On unit K5 with p=(0,0,3,-1,-2), monitor edge 01 and permit two failures. Restricting all failures to edges touching monitor endpoints gives maximum signed flow 1/3. Deleting edges 12 and 24 instead gives 7/20, a strict 1/60 improvement. Exact enumeration verifies both maxima. Thus an attractive reduction to endpoint-star failures is already false on five vertices; it cannot justify a fast exact complete-graph optimizer.
+
+## Originality comparison, after construction
+
+1. Turitsyn and Kaplunovich's primary papers already give the generalized outage response and rigorous iterative thermal-contingency pruning. The 2013 method eliminates most candidate pairs with two-index bounds; the 2016 paper studies zero-missing-rate DC N-2 screening and reports substantial gains against brute force. Our prototype has no demonstrated advantage over that work and does not inherit its performance claims. Sources: https://www.mit.edu/~turitsyn/assets/pubs/Turitsyn2013ci.pdf and https://www.mit.edu/~turitsyn/assets/pubs/Kaplunovich2016bf.pdf
+
+2. The top-(k-1) invertibility bound is a weighted Gershgorin/cumulative-coherence bound. Normalize the columns whose Gram matrix is I-Q, where Q=W^(1/2) A^T K^-1 A W^(1/2). Tropp's Lemma 2.3 applies the same cumulative off-diagonal control to all small Gram submatrices. The complete-graph threshold does not make this step original. Source: https://tropp.caltech.edu/papers/Tro04-Greed-Good-preprint.pdf
+
+3. The LP threshold/excess transformation is the standard support-function dualization for cardinality-budget uncertainty. Bertsimas and Sim's Proposition 1 and Theorem 1 explicitly reformulate the corresponding subset protection function as an LP. Our signed self-consistency wrapper is an application, not evidence of a foundational new operation. Source: https://www.mit.edu/~dbertsim/papers/melvyn/The-Price-Of-Robustness-OR52.pdf
+
+4. Algebraically, the full compensation equation is z=f+T Delta z for a binary diagonal Delta with a support budget. This makes contact with structured-feedback uncertainty. Common scaling and invariant-set bounds are established approaches in that broader area; the source does not assert this exact cardinality-budget application. We found no basis for claiming that a new presentation of these ingredients solves the missing native problem. Primary context: https://authors.library.caltech.edu/records/hemb5-09735 and https://stanford.edu/~boyd/papers/robustlp.html
+
+The source check is not an exhaustive patent or novelty search. It is enough to reject a broad originality claim for the derived ingredients.
+
+## Verdict and files
+
+Preserve this as a tested known-method implementation and exact falsification package. Do not market the special-case theorem, the near-island repair, or the LP as a major invention. The selected mechanism fails its intended universal low-cost capability test, and no performance superiority over strong prior screening was established.
+
+`CONSTRUCTION.md` preserves the pre-search mechanism development and the two alternative mechanisms rejected before implementation. `experiment.py` and `results.json` record floating exploration. `exact_verify.py`, `exact_failure.py`, and `exact_weak_cut.py` contain exact arithmetic assertions. `lp_enclosure.py` implements the explicitly charged LP. `REPLAY.sh` runs the principal checks.

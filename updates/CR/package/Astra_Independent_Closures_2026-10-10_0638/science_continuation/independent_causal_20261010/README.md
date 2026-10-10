@@ -1,0 +1,16 @@
+# Independent causal-science pass, 2026-10-10
+
+## Bottom line
+No genuinely new natural-scientific mechanism was identified. The pass made one preregistered numerical, cross-intervention prediction test, which did not favor the proposed mechanism, and preserved untouched validation material where data access could not support identification.
+
+1. Liquid/frozen drop electrification: a proposed complete-cycle charge-conservation/current test could not be validated because the public deposit contains integrated charge values but only one representative induction waveform. See access_gap.md and preanalysis.md. Main paper 10.1038/s41567-026-03449-3; public data 10.6084/m9.figshare.32125120. No carrier identity was inferred.
+2. Ferroptotic trigger waves: tested the feasibility of identifying extracellular carrier loss versus finite source emission. Four seven-frame cropped gap sequences and derived profiles do not supply direct carrier flux or full source history. Reserved 118/224 micrometre sequences remain numerically untouched. See ferroptosis/access_identifiability.md and preanalysis.md. A pre-rupture-transmission claim was rejected as already known prior art.
+3. Pulsed homogeneous Ni-cyclam electrocatalysis: derived a parameter-free finite-pulse diffusion-memory shape prediction; trained a competing ordinary reset model only at 0.2 s and compared held-out 0.04/1 s pulse durations. The ordinary fixed-timescale model had smaller errors on all three usable holdout traces. See pulsed_nickel/RESULT.md, derivation.md, preanalysis.md, and reproducible code/results. No new elementary mechanism follows.
+
+## Additional quick screens
+- Adventitious-carbon oxide electrification, Nature 2026, 10.1038/s41586-025-10088-w: raw CE trajectories are request-only; published spectral/figure source data do not create a new molecular identification.
+- Condensin step mechanics, NAR 2022, 10.1093/nar/gkab1268: full single-molecule traces are explicitly available on request. No contact attempted. Saved primary article HTML/XML under condensin/.
+- SMC twist, Science Advances 2024, 10.1126/sciadv.adt1832: supplementary material is a methods/figures PDF, not a full trace archive.
+- SMC direction switching, Cell 2025, 10.1016/j.cell.2024.12.020: a selected public raw subset exists (Zenodo 13744695), but the complete intervention data are request-only. No subset was consumed to make a mechanistic claim.
+
+No prohibited topic was reopened; no external contacts, paid jobs, publication, or new physical experiments were performed. All numeric analyses are modest local CPU calculations. source_manifest.json hashes downloaded provenance and analysis files.

@@ -1,0 +1,130 @@
+<!doctype html><meta charset="utf-8"><title>independent_programme/additive_projection_gate_20261010/verify_gate.py</title><aside>Archived source = DATA<p>The source reports internal mathematical arguments, source checks and finite diagnostics; this intake checked source integrity and static routes only. No proof was independently reconstructed, code or replay was run, or historical priority/external/formal correctness established. No general sunflower theorem, representation-acquisition algorithm, or historic-scale breakthrough is claimed.</p></aside><pre>&quot;&quot;&quot;Exact integer verification of the cover reduction and restricted coupling.
+No floating-point optimizer is used by this verifier. Python standard library only.
+&quot;&quot;&quot;
+from itertools import combinations
+from random import Random
+from pathlib import Path
+import json,time
+
+def span(basis):
+    s={0}
+    for x in basis:s|={x^y for y in tuple(s)}
+    return frozenset(s)
+
+def dimension(s):
+    assert len(s)&gt;0 and len(s)&amp;(len(s)-1)==0
+    return len(s).bit_length()-1
+
+def all_subspaces(m):
+    seen={frozenset({0})};todo=list(seen)
+    while todo:
+        s=todo.pop()
+        for x in range(1,1&lt;&lt;m):
+            if x not in s:
+                t=s|frozenset(x^y for y in s)
+                if t not in seen:seen.add(t);todo.append(t)
+    return sorted(seen,key=lambda s:(len(s),tuple(sorted(s))))
+
+def intersection(family,ambient):
+    out=set(ambient)
+    for s in family:out.intersection_update(s)
+    return frozenset(out)
+
+def irredundant_cover(family,ambient):
+    inds=list(range(len(family)))
+    assert set().union(*family)==set(ambient)
+    for i in tuple(inds):
+        remaining=[j for j in inds if j!=i]
+        if set().union(*(family[j]for j in remaining))==set(ambient):inds.remove(i)
+    W=intersection([family[i]for i in inds],ambient)
+    assert dimension(ambient)-dimension(W)&lt;=len(inds)-1, &#x27;Brouwer inequality&#x27;
+    return inds
+
+def find_plane(kernels,ambient):
+    &quot;&quot;&quot;Construct a witness if dimension(ambient)&gt;=2*len(kernels), joint kernel0.
+    Returns None if below sufficient threshold; this is not a nonexistence test.
+    &quot;&quot;&quot;
+    assert intersection(kernels,ambient)=={0}
+    if not kernels:return None,[]
+    if dimension(ambient)&lt;2*len(kernels):return None,[]
+    active=list(kernels);H=frozenset(ambient);trace=[]
+    while active:
+        n=dimension(H);w=len(active)
+        assert n&gt;=2*w
+        outside=sorted(H-set().union(*active))
+        if not outside:
+            selected=irredundant_cover(active,H);case=&#x27;original cover&#x27;;bound=len(selected)-1
+        else:
+            x=outside[0]
+            extended=[K|frozenset(x^z for z in K)for K in active]
+            outside_extended=sorted(H-set().union(*extended))
+            if outside_extended:
+                y=outside_extended[0]
+                assert x and y and x!=y
+                U=span([x,y])
+                assert all(len(U&amp;K)in(1,4)for K in kernels)
+                trace.append({&#x27;case&#x27;:&#x27;witness&#x27;,&#x27;dimension&#x27;:n,&#x27;blocks&#x27;:w,&#x27;basis&#x27;:[x,y]})
+                return (x,y),trace
+            selected=irredundant_cover(extended,H);case=&#x27;extended cover&#x27;;bound=2*len(selected)-1
+        newH=intersection([active[i]for i in selected],H)
+        drop=n-dimension(newH)
+        assert drop&lt;=bound
+        trace.append({&#x27;case&#x27;:case,&#x27;dimension&#x27;:n,&#x27;blocks&#x27;:w,&#x27;removed&#x27;:len(selected),&#x27;dimension_drop&#x27;:drop,&#x27;drop_bound&#x27;:bound})
+        active=[K&amp;newH for i,K in enumerate(active)if i not in selected];H=newH
+        assert intersection(active,H)=={0}
+    assert not H or H=={0}
+    raise AssertionError(&#x27;Dimension potential should prohibit reaching empty active list&#x27;)
+
+def valid_pairs(kernels,m):
+    zero_masks=[sum((1&lt;&lt;i)for i,K in enumerate(kernels)if x in K)for x in range(1&lt;&lt;m)]
+    return [(x,y)for x in range(1&lt;&lt;m)for y in range(1&lt;&lt;m)if zero_masks[x]==zero_masks[y]==zero_masks[x^y]]
+
+def random_kernel(rng,m,rank):
+    forms=[]
+    while len(forms)&lt;rank:
+        x=rng.randrange(1,1&lt;&lt;m)
+        if x not in span(forms):forms.append(x)
+    return frozenset(x for x in range(1&lt;&lt;m)if all((x&amp;a).bit_count()%2==0 for a in forms))
+
+def replay():
+    rng=Random(20261010);cases=[];witnesses=0;triples=0;cover_steps=0
+    for m in range(2,8):
+        for w in range(1,5):
+            for rep in range(6):
+                ks=[random_kernel(rng,m,rng.randrange(1,m+1))for _ in range(w)]
+                if intersection(ks,range(1&lt;&lt;m))!={0}:continue
+                C=valid_pairs(ks,m)
+                assert len(C)*4**(2*w)&gt;=4**m
+                assert (len(C)-1)%6==0
+                if m&gt;=2*w:
+                    xy,trace=find_plane(ks,frozenset(range(1&lt;&lt;m)))
+                    assert xy is not None;witnesses+=1
+                    cover_steps+=sum(t[&#x27;case&#x27;]!=&#x27;witness&#x27;for t in trace)
+                # Exact marginal counts, restricted to moderate dimensions.
+                if m&lt;=5:
+                    marg=[[0]*(1&lt;&lt;m)for _ in range(3)]
+                    for x,y in C:
+                        for a in range(1&lt;&lt;m):
+                            for j,z in enumerate((a,a^x,a^y)):marg[j][z]+=1
+                            triples+=1
+                    assert all(all(t==len(C)for t in row)for row in marg)
+                cases.append({&#x27;m&#x27;:m,&#x27;w&#x27;:w,&#x27;valid_pairs&#x27;:len(C),&#x27;good_planes&#x27;:(len(C)-1)//6})
+    # Cases exercising each reduction branch, separately from threshold search.
+    reductions=[]
+    for m in range(2,6):
+        ambient=frozenset(range(1&lt;&lt;m))
+        # All coordinate kernels: no good plane, jointly injective.
+        ks=[frozenset(x for x in ambient if not(x&gt;&gt;i&amp;1))for i in range(m)]
+        assert intersection(ks,ambient)=={0} and len(valid_pairs(ks,m))==1
+        x=(1&lt;&lt;m)-1;js=[K|frozenset(x^z for z in K)for K in ks]
+        inds=irredundant_cover(js,ambient)
+        H=intersection([ks[i]for i in inds],ambient)
+        assert m-dimension(H)&lt;=2*len(inds)-1
+        reductions.append({&#x27;m&#x27;:m,&#x27;selected&#x27;:len(inds),&#x27;drop&#x27;:m-dimension(H)})
+    return {&#x27;seed&#x27;:20261010,&#x27;jointly_injective_cases&#x27;:len(cases),&#x27;witnesses_constructed&#x27;:witnesses,&#x27;witness_reduction_steps&#x27;:cover_steps,&#x27;exact_coupling_triples_checked&#x27;:triples,&#x27;count_bound&#x27;:&#x27;|C| &gt;= 4^(m-2w)&#x27;,&#x27;cases&#x27;:cases,&#x27;reduction_examples&#x27;:reductions,&#x27;scope&#x27;:&#x27;Exact arithmetic checks; theorem is established by the proof using Brouwer 1986, not by tests.&#x27;}
+
+if __name__==&#x27;__main__&#x27;:
+    t=time.time();ans=replay();ans[&#x27;seconds&#x27;]=time.time()-t
+    Path(__file__).with_name(&#x27;verification_results.json&#x27;).write_text(json.dumps(ans,indent=2))
+    print(json.dumps({k:v for k,v in ans.items()if k not in (&#x27;cases&#x27;,&#x27;reduction_examples&#x27;)},indent=2))
+</pre>

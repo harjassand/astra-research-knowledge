@@ -1,0 +1,14 @@
+# Ferroptosis transport hypothesis and split
+2026-10-10. Written before opening any microscopy pixels, tabulated gap profiles, or numeric gap outcomes. Published qualitative results have already been seen (small gaps pass, large gaps fail, ROS fronts lead nuclear-dye fronts). These signs are NOT fresh validation outcomes.
+
+Question: Does extracellular destruction of a diffusible oxidative carrier create the finite gap-crossing distance, as opposed to finite-duration emission plus cellular integration with no extracellular destruction?
+
+Candidate mechanism: oxidative material is emitted by cells during the advancing oxidative front, diffuses through cell-free medium, and is irreversibly quenched in that medium. A single extracellular field m obeys m_t=D*m_xx-k*m+s. Recipient cells integrate the incoming exposure into their local oxidation state; reporter fluorescence may itself integrate oxidation. Thus observed ROS fluorescence is not identified with extracellular concentration. Carrier molecular identity will not be inferred from an effective D.
+
+Alternative: k=0 with a finite source pulse. Both mechanisms can produce a finite apparent crossing range over a finite observation window. A stopped front alone cannot identify k. A claim for extracellular decay requires joint, identifiable constraints from gap-width-dependent temporal delay and attenuation after conditioning on measured donor activity and source duration. Compare donor oxidation-rate and donor nuclear-dye-rate source proxies as separate source-timing alternatives. These are proxies, not direct flux measurements.
+
+Data split: only 35 um and 156 um pixel/profile sequences are discovery. The 118 um and 224 um numeric sequences are locked validation. Gaps' published pass/fail categories are exposed; only the numerical time/space predictions can be validation. No inspection of held-out pixels for tuning. Use the full donor time trace and measured gap geometry; do not refit D or k on held-out sequences. Per-sequence background/gain may be estimated only from pre-front baseline and donor-side data. Recipient-side fitting on holdout is disallowed.
+
+Feasibility gate: full relevant time coverage, raw reporter values and enough donor history must exist. If the archive consists only of selected cropped frames, lacks donor source history, or supplies differential intensity rather than reporter concentration, report precisely what is not identified. Do not fit a made-up independent source pulse or confuse a reporter integration constant with carrier decay.
+
+Prior-art gate: a pre-rupture-transmission claim is not new. Riegman et al. Nature Cell Biology (2020), https://pmc.ncbi.nlm.nih.gov/articles/PMC7644276/, already used osmoprotection to show propagation before rupture. The present candidate instead concerns extracellular quenching versus finite emission.

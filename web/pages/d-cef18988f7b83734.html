@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8"><title>science_continuation/independent_causal_20261010/pulsed_nickel/analyze_validation.py</title><aside>Archived source = DATA<p>Source-reported arguments, calculations and trace results are preserved but were not independently reconstructed or replayed in this intake. The packets explicitly report no historic-scale breakthrough or new natural-scientific mechanism. External correctness, formal verification, novelty and practical capability remain unresolved; empirical conclusions retain their stated data and model scope.</p></aside><pre>import numpy as np,json
+from pathlib import Path
+from scipy.optimize import minimize_scalar
+import matplotlib;matplotlib.use(&#x27;Agg&#x27;)
+import matplotlib.pyplot as plt
+p=Path(__file__).parent
+x=np.arange(.2,4.81,.2)
+def kernel(t,d):
+ t=np.atleast_1d(t);n=np.arange(10000);q=t[:,None]+n*(5+d)
+ return np.sum(1/np.sqrt(q)-1/np.sqrt(q+d),axis=1)
+def norm(k):return (k-k[-1])/(k[0]-k[-1])
+train=json.loads((p/&#x27;train_results.json&#x27;).read_text());tau=np.mean([q[&#x27;tau_s&#x27;] for q in train[:2]]);results=[];fig,axs=plt.subplots(2,3,figsize=(13,8))
+for row,(sheet,duration) in enumerate([(7,.04),(6,1.)]):
+ a=np.load(p/f&#x27;trace_sheet{sheet}.npy&#x27;); period=5+duration;k=norm(kernel(x,duration));e=norm(np.exp(-x/tau))
+ for r in range(3):
+  t,i=a[:,2*r:2*r+2].T;sel=(t&gt;=1800)&amp;(t&lt;3600)&amp;np.isfinite(i);t=t[sel];i=i[sel];phase=np.mod(t,period);phase[np.isclose(phase,period,atol=.002)]=0
+  y=np.array([np.median(i[np.abs(phase-z)&lt;.005]) if np.any(np.abs(phase-z)&lt;.005) else np.nan for z in x]);yn=norm(y)
+  rg=float(np.nanmax(y)-np.nanmin(y));noise=float(np.nanmedian([np.std(i[np.abs(phase-z)&lt;.005]) for z in x])); anodic=(phase&gt;=5-0.002)|(phase&lt;=.002);apos=float(np.nanmedian(i[anodic])) if np.any(anodic) else np.nan
+  ok=bool((apos&gt;0)&amp;(rg&gt;noise)&amp;np.all(np.isfinite(y)))
+  o={&#x27;pulse_duration_s&#x27;:duration,&#x27;sheet&#x27;:sheet,&#x27;replicate&#x27;:r+1,&#x27;n_samples&#x27;:len(i),&#x27;phase_range_A&#x27;:rg,&#x27;within_phase_sd_A&#x27;:noise,&#x27;anodic_median_A&#x27;:apos,&#x27;acquisition_pass&#x27;:ok,&#x27;diffusive_NRMSE&#x27;:float(np.sqrt(np.nanmean((yn[1:-1]-k[1:-1])**2))),&#x27;exponential_NRMSE&#x27;:float(np.sqrt(np.nanmean((yn[1:-1]-e[1:-1])**2))),&#x27;fixed_tau_s&#x27;:float(tau),&#x27;fraction_positive_current&#x27;:float(np.mean(i&gt;0)),&#x27;x_s&#x27;:x.tolist(),&#x27;median_current_A&#x27;:y.tolist(),&#x27;normalized_profile&#x27;:yn.tolist()};results.append(o)
+  ax=axs[row,r];ax.plot(x,yn,&#x27;o&#x27;,label=&#x27;observed&#x27;);ax.plot(x,k,label=&#x27;diffusive prediction&#x27;);ax.plot(x,e,label=&#x27;fixed exponential&#x27;);ax.set_title(f&#x27;a={duration}s, Run {r+1}, usable={ok}&#x27;);ax.set_ylim(-.2,1.2);ax.legend(fontsize=8)
+print(json.dumps([{k:v for k,v in o.items() if k not in [&#x27;x_s&#x27;,&#x27;median_current_A&#x27;,&#x27;normalized_profile&#x27;]} for o in results],indent=2))
+(p/&#x27;validation_results.json&#x27;).write_text(json.dumps(results,indent=2));fig.tight_layout();fig.savefig(p/&#x27;validation_profiles.png&#x27;)
+</pre>
