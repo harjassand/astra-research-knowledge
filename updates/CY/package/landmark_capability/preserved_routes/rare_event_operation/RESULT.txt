@@ -1,0 +1,82 @@
+RARE EVENT OPERATION: REGENERATIVE INTERVAL POWERING
+Date: 2026-10-10
+Status: a correct, executable, rarity-uniform finite-state computation was reconstructed and run. The novelty gate failed: this is ordinary finite-state probabilistic model checking with fixed-point interval arithmetic, and the renewal/coupling variants reduce to standard recurrence or splitting. No new rare-event method or historic-scale result is claimed.
+
+1. Question and interface
+
+Can an explicit finite generator yield a relative approximation to a very small reachability probability without a number of random trajectories proportional to the inverse probability, while charging the representation needed to see its structure?
+
+The candidate interface is an explicitly acquired finite DTMC transition matrix P with rational nonnegative entries, an initial state i, a target set A made absorbing, and a horizon T written in binary. The desired output is a rational interval containing p = e_i P^T 1_A, with interval width at most epsilon times its lower endpoint. The routine is deterministic; no stochastic samples are acquired. It requires p>0, or a separate support-reachability check to return zero.
+
+For a compact generative program, extracting the state machine and product with the property automaton is charged. The theorem's cost is in the resulting state count s and explicit matrix input length. It does not say that arbitrary source code can be compiled into a small state space. That compilation can be exponential, and then this method inherits the cost.
+
+2. Finite-bit interval theorem
+
+Let P be an explicit s by s rational row-stochastic matrix, and make every target state absorbing. For a chosen dyadic scale D=2^b, enclose each entry by L_1/D <= P <= U_1/D, with L_1=floor(DP) and U_1=ceil(DP), entrywise. For any two enclosed nonnegative matrices, define
+
+  L_(a+b) = floor(L_a L_b / D),
+  U_(a+b) = ceil(U_a U_b / D),
+
+where floor and ceiling are entrywise. Monotonicity of multiplication on nonnegative matrices gives L_t/D <= P^t <= U_t/D. Binary exponentiation therefore returns a certified interval [lo,hi] for p. Increase b until hi-lo <= epsilon*lo. If p>0, this stopping rule terminates because every rounding error tends to zero as b grows.
+
+For the arithmetic bound, use the induced maximum-row-sum norm. One input enclosure has endpoint error at most s/D. Each rounded matrix product adds at most s/D to that norm. If eta_t bounds the error of an endpoint for P^t, a product of powers a and b obeys
+
+  1 + eta_(a+b) <= (1+eta_a)(1+eta_b)(1+s/D).
+
+Induction on the multiplication tree gives eta_T <= (1+s/D)^(2T-1)-1. Thus, when 2Ts/D <= 1, the interval width for any target entry is at most 8Ts/D. A sufficient precision is
+
+  b >= ceil(log2(16*s*T/(epsilon*p)))
+
+for 0<epsilon<=1. This makes the interval width at most epsilon*p/2 and its lower endpoint at least p/2, so the stopping condition is met. In particular, b is O(log s + log T + log(1/p) + log(1/epsilon)); it does not scale as 1/p.
+
+There are O(log T) matrix multiplications. With M(b) denoting the cost of multiplying b-bit integers, the computation costs O(s^3 log(T) M(b)) bit operations after acquiring the matrix. Reading and parsing the rational matrix costs at least its explicit input length (up to O(s^2) entries and their numerator/denominator bits). The probability-sensitive precision is charged, as is property-to-state compilation. This is a standard algorithmic consequence of finite-state model checking; the theorem is included to make the rare-probability and representation costs explicit, not as a priority claim.
+
+3. Regenerative toy and run
+
+Generator: emit T fair bits. The target is that k consecutive heads occur by time T. A state records the current trailing-head count 0,...,k-1, with one extra absorbing hit state. This compiles from the supplied run predicate in O(k) states and 2k+1 nonzero transitions. At each tail the process regenerates in state zero.
+
+The regenerative first-hit CDF F_t has the renewal equation
+
+  F_t = 2^(-k) 1{t>=k} + sum_(ell=1)^min(k,t) 2^(-ell) F_(t-ell),  F_0=0.
+
+The first term is the event that the first k bits are heads. Each term in the sum is the disjoint case that the first tail is on bit ell, after which the process restarts with t-ell bits. For the executable, this recurrence is checked against an independently written trailing-run count recurrence on an exact rational fixture; the main calculation uses the equivalent absorbing automaton and interval matrix powering.
+
+Run from the task root:
+
+  python3 work/rare_event_operation/rare_renewal.py
+
+Main fixture: k=48, T=2^20, 49 states including absorption, 97 acquired nonzero transition entries, 128 fixed-point bits, 21 interval matrix multiplications, and at most 2,470,629 dense scalar products. The execution took 0.28 seconds in the recorded run. It returned
+
+  p in [1.8625634350819338050140799245757412e-9,
+        1.8625634350819338050140799726799088e-9]
+
+with relative interval width 16369/633797494230074147032994778053 (about 2.58e-26). A small fixture at k=9, T=257 was enclosed and matched exactly by both the renewal recurrence and the direct run-state recurrence. These are implementation checks, not external proof certification.
+
+For iid full-trajectory Monte Carlo, relative standard error 0.1 requires about 100/p trajectories, roughly 5.37e10 trajectories here; each trajectory consumes 2^20 fair bits, about 5.63e16 bit draws. This is the naive estimator only. It is not the strongest matched method: the event has a clear progress score, so splitting is an obvious comparator and can avoid naive sampling's inverse-p cost under suitable conditional mutation. No splitting implementation or numerical advantage over splitting is claimed.
+
+4. Coupled-difference and conditional-regeneration audit
+
+Coupled adjacent horizons: with the same random tape, D_t = 1{hit by t} - 1{hit by t-1} equals 1{first hit is at t}. Summing D_t over t recovers the original hit indicator exactly. Estimating individual increments does not remove rarity; a rare increment remains a Bernoulli event with relative sampling cost on the order of its inverse probability. This rejected variant is only a variance identity, not a new estimator.
+
+Conditional regeneration: at a tail, the run process restarts and a cycle succeeds with probability 2^(-k). If the program's fair-bit rule is supplied, that local probability follows from inspecting k branches; the renewal equation then evaluates the horizon probability. If only cycle outcomes are observable, estimating the cycle success probability by hit counting again costs order 2^k. The apparent gain therefore comes from acquired transition semantics, and after acquisition is just a standard renewal/model-checking computation.
+
+The black-box cost is formal. Let one acquired cycle be observable only through an iid Bernoulli success bit with unknown success probability q. For 0<epsilon<=1/4 and 0<q<=1/2, compare q_0=q and q_1=q(1+4epsilon). Their relative-epsilon target intervals are disjoint. An estimator that succeeds with probability at least 3/4 under each law therefore gives a test with both errors at most 1/4. But
+
+  D(Bern(q_1) || Bern(q_0)) <= chi^2(Bern(q_1)||Bern(q_0))
+    = 16 epsilon^2 q/(1-q) <= 32 epsilon^2 q.
+
+Binary KL data processing then forces n >= (log(3)/2)/(32 epsilon^2 q) iid cycle observations. This is only an order lower bound for the stated Bernoulli-oracle interface. A conditional-success sampler would be a stronger oracle and its acquisition/preparation cost must be charged separately.
+
+5. Prior art and matched baseline
+
+The strongest matched baseline is finite-state probabilistic model checking. PRISM's documented DTMC procedure uses matrix-vector multiplication for bounded next/until properties and transient probability propagation; the present implementation uses the same transition/property product state and changes the arithmetic to outward-rounded matrix powers. See the [PRISM probabilistic model-checking documentation](https://www.prismmodelchecker.org/doc/whatsinprism.php), especially its DTMC algorithm discussion, and [Kwiatkowska, Norman and Parker, PRISM 4.0](https://prismmodelchecker.org/papers/cav11.pdf). Repeated squaring is a familiar way to compress the repeated homogeneous transition; it is not a new stochastic primitive.
+
+The target also has a direct weighted-DNF encoding: OR over all T-k+1 windows of the conjunction that the window bits are all heads. Karp, Luby and Madras give a relative approximation algorithm for DNF probability whose work is polynomial in the supplied formula length and epsilon^-2 log(1/delta), rather than inverse event probability. Their input formula here has O(Tk) literals, so the compact automaton wins on binary-horizon representation size, but this advantage is a routine regular-language/state-space compression. See their [original 1989 paper](https://www.math.cmu.edu/users/af1p/Teaching/MCC17/Papers/KLM.pdf), Sections 3-6.
+
+Adaptive multilevel splitting is a second established comparator for rare path events. It estimates event probabilities through nested levels and has consistency and asymptotic-normality results under stated process regularity and positive conditional-success assumptions. The run length is an available score in this toy. Its conditional path-generation, particle count, and mixing costs would need to be charged for a fair quantitative comparison; this artifact does not supply those numbers. See [Cérou, Delyon, Guyader and Rousset (2019)](https://arxiv.org/abs/1804.08494).
+
+6. Decision
+
+The toy proves a limited capability: when the finite transition system and rare-event property are explicitly available and small, the probability can be enclosed to relative error with work polynomial in the explicit state size and logarithmic in 1/p. The same claim is already covered by probabilistic model checking and standard matrix arithmetic. The compact source-to-state discovery step is supplied for this toy and is not a general compiler result. The strongest baseline solves the same input with the same semantic information, so the required novelty advantage did not survive.
+
+Stop this variant as a useful correctness and cost demonstration, not a new rare-event capability. The unresolved general barrier remains acquiring a compact, correct tail-relevant representation from an opaque or succinct generator without spending rare-event-scale observations or hiding a conditional sampler in the interface.

@@ -1,0 +1,127 @@
+Finite-field coefficient extraction from a huge polynomial power
+==================================================================
+
+Status
+------
+
+This is a correct, useful exact algorithm for a broad explicit-input class.
+The characteristic-p digit method and automatic-series viewpoint have direct
+prior art, so this branch is not a novelty or landmark claim. It is retained
+as a fully specified positive operation with executable evidence.
+
+Operation
+---------
+
+Input: a prime p; an explicitly listed sparse polynomial
+
+    P(x) = sum_e c_e x^e in F_p[x];
+
+and nonnegative integers K,N in binary. Output [x^N]P(x)^K in F_p. Duplicate
+input exponents are combined modulo p, so input cancellation is handled too.
+No expansion of P^K or certificate is supplied. The code constructs and uses
+only local powers P^r for 0 <= r < p and a carry-state table.
+
+Theorem
+-------
+
+Let D=deg(P), with the zero and constant cases handled directly. For D,K>=1,
+write K=sum_j k_j p^j and set Q_r=P^r for 0<=r<p. The identity
+
+    P(x)^K = product_j Q_{k_j}(x^(p^j))
+
+holds over F_p. Let n_j be digit j of N. Define C_0(0)=1 and all other
+C_0(c)=0. For each digit position j, update
+
+    C_{j+1}(c') += C_j(c) [x^e]Q_{k_j}(x)
+
+whenever c+e = n_j + p c'. Return C_T(0), where
+T = digits_p(DK), the number of base-p digits of DK.
+
+Proof. Expanding the product chooses one exponent e_j from each Q_{k_j}, with
+weight equal to the product of its coefficients. Those choices contribute
+exponent sum sum_j e_j p^j. The transition equation is exactly the
+base-p addition rule for this sum, with c_j as the incoming carry. Induction
+on j shows C_j(c) is the total weight of all choices matching the first j
+digits of N and leaving carry c. Since every chosen sum is at most DK<p^T,
+the desired exponent equals N exactly iff the final carry is zero. All
+weights are added in F_p, so cancellations are exact and zero states can be
+discarded safely.
+
+The carry invariant is 0<=c<=D: each local exponent is at most
+D(p-1), and (c+e-n_j)/p<=D whenever c<=D. Thus at most D+1 carry values
+occur. The proof is constructive and exposes every coefficient operation.
+
+Cost
+----
+
+Let S_r=supp(P^r), and let C_j be the set of nonzero-weight carries after j
+digits. With dictionary representations, local-power preparation uses at
+most sum_{r=0}^{p-2} |S_r| |supp(P)| pair updates. The digit DP visits exactly
+sum_{j<T} |C_j| |S_{k_j}| carry/exponent pairs (the executable reports this
+count). Memory is O(sum_r |S_r| + max_j |C_j|) field elements, plus
+O(log(DK+N)) bits per exponent/carry key.
+
+Worst case, |S_r|<=rD+1 and |C_j|<=D+1, giving
+O(p^2 D s + p D^2 log_p(DK+1)) field operations for s=|supp(P)|, with p
+fixed. If p is a variable input in binary, this p-dependence is not
+polynomial in log p. The input exponents and K,N are binary; for fixed p the
+algorithm is polynomial in D and the index bit lengths, but can be
+pseudo-polynomial in a sparse encoding whose maximum exponent D is itself
+huge. The dictionary implementation can be much cheaper when the local
+powers or reachable carry sets stay sparse; that data-dependent bound is
+explicit above. No claim of polynomial time in log D alone is made.
+
+Cancellation example
+--------------------
+
+Over F_2, P=1+x+x^2 and K=2^100. Frobenius gives
+
+    P(x)^K = 1 + x^K + x^(2K).
+
+The executable returns coefficients 1,0,1,1,0 at exponents
+0, K/2, K, 2K, 3K respectively. It reaches at most two carry states and
+processes 102 binary digits; the expanded power is never materialized.
+
+Executable evidence
+------------------
+
+Run from the task directory:
+
+    python3 work/sparse_algebra/power_coefficient_checks.py
+
+Captured output is in power_coefficient_checks_output.json. It reports PASS
+for 2,673 exhaustive cases over all degree-at-most-two polynomials in F_3,
+600 random sparse-polynomial cases over F_2,F_3,F_5,F_7, 500 250/260-bit
+binomial cases checked independently by Lucas' digit formula, 200 huge-K
+non-binomial cases checked by an independent multinomial/Lucas expansion,
+and 12 Frobenius cancellation checks. These are finite implementation
+checks, not a literature or novelty certification.
+
+Primary-source baseline
+-----------------------
+
+* Christol, Kamae, Mendès France, and Rauzy, “Suites algébriques, automates
+  et substitutions,” Bull. Soc. Math. France 108 (1980), 401–419. Theorem 1
+  identifies algebraic power series over a finite field with automatic
+  coefficient sequences. Primary scan:
+  https://www.numdam.org/item/10.24033/bsmf.1926.pdf
+* Allouche, Deshouillers, Kamae, and Koyanagi, “Automata, algebraicity and
+  distribution of sequences of powers,” Ann. Inst. Fourier 51 (2001),
+  687–705. Theorem 2 gives the multidimensional automaticity result; Section
+  5 constructs an automaton for coefficients across powers of a rational
+  series. This is a direct conceptual baseline for the (K,N) coefficient
+  query here:
+  https://doi.org/10.5802/aif.1833
+
+The new work in this branch is a simple explicit sparse carry-DP statement
+and implementation with a precise state and cost ledger. The Frobenius split,
+automaticity, and huge-index objective are established themes. No priority
+claim is made.
+
+Linear candidate parked
+-----------------------
+
+The earlier sparse-matrix operation u^T A^n v was exact and tested, but its
+core is already covered by Wiedemann's scalar Krylov sequence and standard
+fast linear-recurrence evaluation. See LINEAR_CANDIDATE.txt for the short
+scope note and sources; it is not the selected candidate.

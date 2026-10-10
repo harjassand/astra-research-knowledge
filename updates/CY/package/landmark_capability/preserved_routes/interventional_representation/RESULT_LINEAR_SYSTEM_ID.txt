@@ -1,0 +1,211 @@
+Paired pulse/sham Hankel realization: a narrow active acquisition mechanism
+Date: 2026-10-10
+Status: mathematically standard realization machinery plus a useful, sharply
+scoped acquisition protocol. No novelty or frontier-level capability claim.
+
+Question and proposed mechanism
+--------------------------------
+Can one acquire a predictive representation of an unknown controlled system
+using a small, explicit intervention rather than receiving its hidden model?
+
+Candidate: run one unit-pulse trial and one all-zero sham trial from the same
+repeatable hidden initial condition. Subtract their scalar output traces. The
+differences are the system's Markov parameters, so a finite Hankel matrix gives
+a minimal linear realization. The sham trace also identifies the initial
+state in the learned coordinates. This produces a simulator for every future
+input sequence from that initial condition, and an observable model can be
+initialized after any later history by ordinary state estimation.
+
+The sharply bounded class is deterministic, discrete-time, scalar-input,
+scalar-output LTI systems
+
+    x[t+1] = A x[t] + B u[t]
+    y[t]   = C x[t] + D u[t]
+
+with unknown A,B,C,D and unknown hidden state, finite minimal order n, exact
+linear dynamics over the evaluated horizon, and a repeatable initial state
+x* for both trials. We need a known order upper bound r >= n; n itself can be
+read as the Hankel rank in noiseless data. Minimal means controllable and
+observable. The user supplies only action access and scalar observations; the
+matrices and state are not supplied.
+
+Theorem (finite paired-response realization)
+--------------------------------------------
+Let the pulse trial use u[0]=1 and u[t]=0 for t>0, and let the sham use u[t]=0
+throughout. Both start at the same x*. With d[t] = y_pulse[t]-y_sham[t],
+
+    d[0] = D,
+    d[k+1] = C A^k B,  k >= 0.
+
+Write m_k = C A^k B. From outputs t=0,...,2r construct r-by-r matrices
+
+    H0[i,j] = m_(i+j),   H1[i,j] = m_(i+j+1),  0 <= i,j < r.
+
+Then H0 has rank n and factors as O_r R_r, where O_r stacks
+C, CA, ..., CA^(r-1), and R_r stacks B, AB, ..., A^(r-1) by columns.
+Take a rank-n SVD H0 = U S V^T and set
+
+    Ohat = U S^(1/2),       Rhat = S^(1/2) V^T,
+    Ahat = pinv(Ohat) H1 pinv(Rhat),
+    Bhat = first column of Rhat,
+    Chat = first row of Ohat,     Dhat = d[0].
+
+Because H1 = O_r A R_r and both finite controllability/observability factors
+have rank n for r >= n, this realization is similar to (A,B,C,D). It therefore
+has exactly the same input/output map, not merely a fitted finite trace. The
+first n sham outputs equal the first n rows of Ohat times the learned initial
+state xhat*, so observability determines xhat*. Thus the protocol identifies
+the simulator from that initial condition as well as its input/output
+response. All statements here are exact-data statements.
+
+Algorithm and cost ledger
+-------------------------
+1. Replay the same hidden initial condition for the pulse and sham trials.
+2. Read 2r+1 outputs in each trial, through time 2r. Subtract traces and
+   divide by the calibrated pulse amplitude if it is not one.
+3. Form H0,H1; take a rank-n SVD; construct Ahat,Bhat,Chat,Dhat.
+4. Solve for xhat* from the first n sham readings. Validate on withheld inputs.
+
+For SISO and an order bound r, the physical interface cost is two reset
+operations to the same state, one nonzero input pulse, zero-input commands for
+the rest of each trace, 4r+2 scalar readings, and 2r+1 time steps per trial.
+The pulse amplitude and zero level must be calibrated. Data storage is O(r)
+for the traces (O(r^2) if H0/H1 are kept); dense SVD and realization cost are
+O(r^3) time and O(r^2) memory. Forecasting costs O(n^2) per step. These costs
+exclude sensor construction, state reset, calibration time, actuator wear,
+and any cost of ensuring repeatable initialization; those are real costs and
+must be measured for the target system. For m inputs, repeat one pulse/sham
+pair per input direction, costing about (m+1)(2r+1) outputs if one sham trace
+can serve all matched starts, plus m actuations.
+
+Finite-precision accounting
+---------------------------
+If each output has absolute error at most eps_y, a pulse of amplitude a gives
+at most 2 eps_y/|a| observation error in each differenced Markov parameter.
+If paired reset states differ by at most eps_x, the kth Markov estimate also
+contains C A^k (x_pulse-x_sham)/a; its magnitude is bounded by
+||C|| ||A^k|| eps_x/|a|. Pulse calibration relative error eps_a gives a
+relative Markov-parameter error of that order. Residual nonzero input during
+the nominal zero portion adds the convolution of that input error with the
+impulse response. Independent zero-mean measurement noise can be reduced by
+averaging R matched pairs, with the usual R^(-1/2) scale; systematic reset and
+calibration errors do not average away.
+
+If the resulting Hankel perturbation has spectral norm eta and
+eta < sigma_n(H0)/2, Weyl's inequality preserves separation of the n signal
+singular values from zero. Parameter error can still be large when H0 is
+ill-conditioned; there is no uniform finite-noise guarantee over all minimal
+systems. Stable dynamics can make late impulse samples small, which worsens
+the effective signal-to-noise ratio. The intervention must be counted with
+its amplitude, timing precision, repeatability, and any safety limits.
+
+Prior-art comparison and honest scope
+------------------------------------
+The realization step is classical. Ho and Kalman construct a minimal state
+realization from Markov parameters, and Tether gives finite input/output
+partial-realization procedures. This candidate is not a new spectral theorem.
+The operational difference is that a pulse/sham intervention directly
+measures the Markov sequence while cancelling the common unknown initial-state
+transient. Ordinary active system identification can instead use persistently
+exciting input sequences and least-squares or subspace methods; those are
+stronger general-purpose comparators and can use many measurements to improve
+noise robustness. On clean SISO systems with cheap resets, the pulse protocol
+uses only one nonzero action and O(r) observations. It has no established
+sample-efficiency or accuracy advantage over well-designed subspace ID.
+
+Spectral HMM and predictive-state methods also construct low-rank
+representations from empirical Hankel/moment matrices. The HMM analysis
+requires a rank/separation condition on observable statistics; PSR theory
+requires sufficient selected histories and future tests for exact recovery.
+Here, controlled pulses make the needed response entries directly observable,
+so the protocol avoids waiting for rare histories or assuming they appear in
+the passive sample distribution. Its price is the stronger action interface
+and matched-reset requirement. These are complementary assumptions, not a
+general dominance claim.
+
+Primary sources:
+- B. L. Ho and R. E. Kalman, “Effective construction of linear state-variable
+  models from input/output functions” (1966), NASA record describing minimal
+  realization from Markov parameters:
+  https://ntrs.nasa.gov/citations/19670049337
+- A. J. Tether, “Construction of Minimal Linear State-Variable Models from
+  Finite Input-Output Data,” IEEE TAC 15(4), 427–436 (1970):
+  https://people.duke.edu/~hpgavin/SystemID/References/Tether-IEEE-TAC-1970.pdf
+- A. Kulesza, N. Jiang, and S. Singh, “Spectral Learning of Predictive State
+  Representations with Insufficient Statistics,” AAAI (2015):
+  https://web.eecs.umich.edu/~baveja/Papers/KuleszaJiangSinghAAAI2015.pdf
+- D. Hsu, S. M. Kakade, and T. Zhang, “A Spectral Algorithm for Learning
+  Hidden Markov Models” (2009): https://arxiv.org/abs/0811.4413
+
+Decisive test and falsifiers
+---------------------------
+Use a hidden, stable, coupled SISO physical system with order at most a
+pre-registered r (for example, a small damped mechanical or electrical
+network). Allow only repeatable reset, calibrated pulse/zero input, and scalar
+output readings. Hide all system equations. Acquire one matched pulse/sham
+pair and freeze the model before evaluating it on held-out random, multisine,
+and PRBS input sequences from the same reset condition. Compare at equal
+observation budget against (i) a no-intervention learner and (ii) a standard
+persistently exciting/subspace identification baseline. Count resets, input
+commands, nonzero actuation, readings, calibration, and wall-clock time.
+
+Preregister a prediction threshold tied to sensor noise, e.g. normalized
+one-step RMSE <= 3 sensor standard deviations across the held-out sequences,
+with no refitting. The mechanism passes its narrow capability test only if it
+meets that threshold from the pulse/sham data and the no-intervention control
+fails on two systems that share the passive zero-input record but differ under
+input. It must also report rank and sigma_n(H0), and repeat under increasing
+reset mismatch and sensor noise. The subspace baseline determines whether
+there is an actual practical advantage; equal prediction at higher cost is
+not a win. This is a proposed experiment, not one performed here.
+
+Counterexample and hard boundary
+--------------------------------
+For passive zero-input trajectories from x0=0, every A,B,C,D system produces
+the same zero trace. No passive estimator can distinguish their input/output
+maps. A pulse separates them, which is the exact source of this protocol's
+positive value.
+
+The method fails if paired resets are not repeatable: a reset mismatch adds
+CA^k delta_x to each measured response and can mimic a different input
+coupling B. It also cannot recover hidden directions outside the controllable
+and observable subspace; those directions are irrelevant to input/output
+prediction but rule out claims about the true internal state. Near-cancelling
+modes give a quantitative conditioning barrier. For
+A=diag(1/2,1/2+delta), B=(1,1)^T, C=(1,-1), the first Markov parameters have
+size O(delta). At delta=0 the two modes cancel exactly and the transfer is
+zero. At fixed sensor noise, resolving small positive delta requires sample
+count growing on the order of noise_variance/delta^2 before accounting for
+matrix conditioning. Thus exact minimality alone does not make acquisition
+affordable.
+
+Executable fixture
+------------------
+Run from the task root:
+
+    python3 work/interventional_representation/paired_pulse_hankel.py
+
+It constructs a stable third-order hidden system, learns from one paired
+response, then checks a frozen simulator on 250 held-out inputs. Observed
+output on this NumPy 2.5.3 environment:
+
+    true order: 3; recovered Hankel rank: 3
+    Hankel singular values: [1.034329e+00 1.772841e-02 3.673524e-04]
+    held-out 250-step max absolute output error: 1.010e-14
+    acquisition: 2 resets, 1 unit pulse, 14 scalar readings
+    passive zero-input records distinguish alternatives: False
+    pulse records distinguish alternatives: True
+
+This is an exact synthetic fixture and a code-path check only. It does not
+validate noisy performance, physical reset quality, general nonlinear
+systems, novelty, or superiority to classical system identification.
+
+Decision
+--------
+Keep as a positive narrow mechanism if the target provides cheap matched
+resets and low-order approximately linear dynamics. Do not present it as new
+theory or a general hidden-model acquisition breakthrough. If the research
+gate requires beating state-of-the-art system identification under matched
+cost, this version is a conventional pivot unless the proposed physical test
+shows a specific win (for example, dramatically fewer costly interventions
+at the same held-out predictive error).
