@@ -24,6 +24,8 @@ Research inherited Astra revision `83acd76e2f876ea68f8ccdf32c1a844d09294343`; th
 
 Public records for BR, BS, BT, BU, BV, BW, BX, BY, BZ, CA, CB, CC, CG, CH, CI, CJ, CK, CL, CM, CN, CO and CP derive from [CLAIMS.json](CLAIMS.json) with `python3 updates/BR/build_intake.py build`, then `python3 frontier/build_access.py build`. Check both with their `check` commands and validate checkpoint references with `python3 state/publish_checkpoint.py validate`. The incremental generator preserves older ledger entries and original cards; public SQLite tables are unavailable and were not rebuilt. Current card tokens are explicitly unmeasured. Changes are published together through Git review, never by overwriting main.
 
+- [CT — retained Ultra derivations and global proof obstructions](../CT/README.md): seven scoped cards N633–N639 preserve the same-reference energy bound, exact Gaussian norm/permanent reduction, two EPR-specific obstructions, Kraus-history rank test/compression, complex Lee–Yang bounds, and fixed-n local NPT minimum. The all-copy NPT and general EPR counting gates remain open; source receipts were not replayed or independently validated.
+
 ## Separate follow-up intakes
 
 - [BS — spectral, rare-event, Gaussian-equivalence and equilibrium packet](../BS/README.md): a separate 97-member archive with four new scoped cards, N538–N541. Its source-reported portable replay receipt is preserved but was not rerun during intake.
