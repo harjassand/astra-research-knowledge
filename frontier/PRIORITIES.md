@@ -170,6 +170,9 @@ Material corrections: N135 → N160 is a full-proof candidate sharp identical-un
 | 94 | `G-CH-N586` — Reconstruct the conditional amplifier counterexample and preserve theorem scope | The source reports outward Gaussian intervals; this refutes only the reference-conditioned strengthening, not N557. |
 | 95 | `G-CI-N587` — Reconstruct finite-state data-processing rigidity and preserve the missing-companion boundary | The source reports a reversible chi-square profile classification and a separate nonreversible zero theorem; Section 8’s regularity-free extension lacks its cited companion proof. |
 | 96 | `G-CI-N588` — Reconstruct complete-monotonicity spectral extraction and global series recovery | The positive entire chi-square series classification is source-reported; audit the generator realization, no-analyticity recovery and augmentation hypotheses. |
+| 97 | `G-CJ-N589` — Reconstruct residual-conditioned Gaussian measure and singular-value envelope | Ideal exact sampler and nonlinear-energy correction are source-reported; full-rank fiber, normalizer, coarea, and acquisition costs need independent proof review. |
+| 98 | `G-CJ-N590` — Audit collective-stable-rank envelope and finite-output W1 proof | Rational certificates and fixed-input runs are source-reported only; general W1 proof is distinct from the narrow implementation and has not been independently audited. |
+| 99 | `G-CJ-N591` — Verify Weyl density and sharp real-D integrability threshold | D=2 normalizability does not imply efficient acquisition; check Jacobian, both threshold directions, D=2 L2 obstruction, and physical-model conventions. |
 
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
@@ -182,3 +185,9 @@ The 2026-10-10 intake adds thirteen source-derived, unreviewed cards spanning lo
 ## CI intake: N587–N588
 
 The 2026-10-10 intake preserves two finite-state divergence-classification notes as separate source-derived, unreviewed cards. N587 assumes data processing and classifies universal reversible-relaxation convexity, with a separately scoped nonreversible zero theorem. N588 assumes complete monotonicity, local smoothness and independent uninformative augmentation, and derives data processing. Their connection is a scoped profile comparison, not a proof dependency. The referenced regularity-free companion proof and source-reported example checkers were not supplied; no proof replay, external validation, priority clearance or historic-scale breakthrough is claimed.
+
+
+
+## CJ intake: N589–N591
+
+The 2026-10-10 continuous-constraints packet is retained in both expanded-folder and earlier tar editions, with separate original manifests and a new intake checksum over all bytes. N589 records a singular-value-envelope sampler for the residual/delta-conditioned Gaussian law; N590 records the distinct collective-stable-rank exact envelope and homogeneous finite-output W1 theorem, keeping its one-input 128-by-128 prototype separate; N591 records the Weyl-reduced harmonic Gauss-law density and the source-proved real-D normalizability threshold. The source explicitly limits large-rank efficiency, generic nonlinear composition, and the finite-input implementation. Intake ran integrity, JSON and retrieval checks only: no research code or proof was replayed, and external correctness, formal certification, physical acquisition, historical priority, and any historic-scale breakthrough remain unestablished.

@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8"><title>continuous_constraints_20261010/finite_draw_20261010/verify_finite_bit_sampler.py</title><aside>Archived source = DATA<p>The 2026-10-10 packet reports internally derived sampler theorems, exact arithmetic checks, and a fixed-input finite-bit prototype. This intake checked source/archive hashes, JSON syntax, and repository routing only; it did not execute scientific scripts, replay numerical draws, independently reconstruct the proofs, or obtain external/formal verification. Physical acquisition and historical priority remain unresolved. No historic-scale breakthrough is established.</p></aside><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Replay the finite tape and exercise a small number of fallback branches.
+
+All core integer operations and all interval checks rerun. This verifies saved
+runs, not their distribution, and reuses the same implementation components.
+&quot;&quot;&quot;
+import argparse,json,time
+from fractions import Fraction as Q
+from pathlib import Path
+from finite_bit_sampler import run_sampler, rounded_cholesky, exact_fiber, make_raw_input, acceptance_decision
+from probability_budget import asq,enc
+HERE=Path(__file__).resolve().parent
+
+class Tape:
+    def __init__(self,report):
+        self.cells=[]
+        nb=report[&#x27;budget&#x27;][&#x27;normal_uniform_bits&#x27;]
+        for t in report[&#x27;trials&#x27;]:
+            self.cells.extend((c.get(&#x27;uniform_bits&#x27;,nb),int(c[&#x27;uniform_cell_index&#x27;])) for c in t[&#x27;normal_certificates&#x27;])
+            if &#x27;acceptance&#x27; in t:
+                a=t[&#x27;acceptance&#x27;];self.cells.append((a[&#x27;uniform_bits&#x27;],int(a[&#x27;uniform_cell_index&#x27;])))
+        self.i=0
+    def getrandbits(self,b):
+        eb,k=self.cells[self.i];self.i+=1
+        assert eb==b
+        return k
+
+class EndpointBits:
+    def getrandbits(self,b):return 0
+class MidpointBits:
+    def getrandbits(self,b):return 1&lt;&lt;(b-1)
+
+def verify(path):
+    report=json.loads(path.read_text());tape=Tape(report)
+    rerun=enc(run_sampler(asq(report[&#x27;budget&#x27;][&#x27;epsilon&#x27;]),bit_source=tape))
+    assert tape.i==len(tape.cells)
+    for key in [&#x27;raw_input&#x27;,&#x27;dimensions&#x27;,&#x27;native_certificate&#x27;,&#x27;budget&#x27;,&#x27;H_factor&#x27;,&#x27;trials&#x27;,&#x27;terminal_reason&#x27;,&#x27;output&#x27;]:
+        assert rerun[key]==report[key], &#x27;Replay changed &#x27;+key
+    return {&#x27;file&#x27;:path.name,&#x27;replayed_uniform_cells&#x27;:tape.i,&#x27;terminal_reason&#x27;:report[&#x27;terminal_reason&#x27;],
+            &#x27;exact_replay_matches&#x27;:True}
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument(&#x27;reports&#x27;,type=Path,nargs=&#x27;*&#x27;);args=ap.parse_args()
+    reports=args.reports or [HERE/&#x27;FINITE_BIT_DRAW.json&#x27;]
+    start=time.perf_counter();checks=[verify(p) for p in reports]
+    endpoint=run_sampler(Q(1,16),bit_source=EndpointBits())
+    assert endpoint[&#x27;terminal_reason&#x27;]==&#x27;normal_tail_cell_fallback&#x27;
+    assert endpoint[&#x27;output&#x27;][&#x27;norm_squared&#x27;]==0
+    midpoint=run_sampler(Q(1,16),bit_source=MidpointBits())
+    assert midpoint[&#x27;terminal_reason&#x27;]==&#x27;small_V_fallback&#x27;
+    assert midpoint[&#x27;output&#x27;][&#x27;norm_squared&#x27;]==0
+    # The final zero output is feasible even when the fiber Gram is singular.
+    y,s,proof=exact_fiber(make_raw_input(),[Q(0)]*128,[Q(0)]*128)
+    assert y is None and s==[[Q(0),Q(0)],[Q(0),Q(0)]]
+    assert acceptance_decision(Q(1,4),Q(1,4),0,2)==&#x27;accept&#x27;
+    assert acceptance_decision(Q(1,4),Q(1,4),3,2)==&#x27;reject&#x27;
+    assert acceptance_decision(Q(1,4),Q(1,4),1,2)==&#x27;interval_overlap_fallback&#x27;
+    # Deterministic factor enclosure on a tiny non-diagonal rational SPD input.
+    import numpy as np
+    l,b,d,p=rounded_cholesky(np.array([[5,2],[2,3]],dtype=object),2,Q(5,2),Q(1,1&lt;&lt;100),Q(1,2))
+    assert d&lt;=Q(1,1&lt;&lt;100)
+    results={&#x27;saved_tape_replays&#x27;:checks,
+        &#x27;additional_checks&#x27;:[&#x27;endpoint normal-cell zero fallback&#x27;,&#x27;tiny V zero fallback&#x27;,&#x27;singular fiber detected&#x27;,&#x27;100-bit deterministic rational Cholesky&#x27;,&#x27;exact accept/reject/overlap branch tests&#x27;],
+        &#x27;wall_seconds&#x27;:time.perf_counter()-start,
+        &#x27;scope&#x27;:&#x27;Modest deterministic implementation checks; no empirical distribution or performance claim. Replay shares code with producer.&#x27;}
+    (HERE/&#x27;FINITE_BIT_VERIFICATION.json&#x27;).write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(results,indent=2))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

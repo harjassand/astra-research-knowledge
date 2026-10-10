@@ -1,0 +1,180 @@
+# Harmonic Gauss-law ensemble: targeted capability test
+
+Date: 2026-10-10. This is a mathematical and primary-literature assessment, not a claim of a new physical law, historical algorithmic novelty, or a solution of interacting BFSS/Yang–Mills dynamics.
+
+## Bottom line
+
+There is an exact, independently motivated physics target: the classical high-temperature, zero-coupling Spin Matrix Theory phase-space ensemble of Harmark–Orselli (2014). Its Gauss constraint and harmonic Hamiltonian are precisely the homogeneous bilinear Gaussian target. The commutator representation supplies an explicit native structural stable-rank certificate `r=Dk`, better than the generic Casimir certificate `r=D`. At `D=9`, gauge `SU(3)` is nonradial and has ideal rejection acceptance at least `0.4317036134`, plus a finite explicit inverse-determinant second-moment constant. `SU(4)` also has finite constants, although much worse. The original large-r finite-output statement does not apply literally at these parameters; its proof extends with the explicit fixed constants and the verified structural certificate.
+
+This is a valid nonradial physical reference ensemble and a useful potential correctness benchmark. The searches did **not** establish a consequential unresolved simulation bottleneck at these small ranks, superiority over specialized spectral samplers, or a new sampler absent from the literature. Ordinary 3D angular-momentum conditioning and gauge `SU(2)` are the same radial Student case. Physically prominent fixed-D large-gauge-rank regimes are not covered efficiently by these bounds. Interacting BFSS/BMN sampling remains a different task.
+
+## 1. Exact matrix conventions and target
+
+Let `H_k^0` denote traceless Hermitian k-by-k matrices with real inner product `<U,V>=Tr(UV)`, and choose a real orthonormal Hermitian basis `T_i`, `i=1,...,m`, where `m=k²−1`. Write
+
+    [T_b,T_c] = i sum_i f_bci T_i,
+    X_a = sum_b x_ab T_b,  P_a = sum_c y_ac T_c,  a=1,...,D.
+
+The coefficients `f_bci` are real and fully antisymmetric. The normalized harmonic prior is standard Gaussian on `x,y in R^q`, `q=Dm`, with Hamiltonian
+
+    H_harm = (||x||²+||y||²)/2 = (1/2) sum_a Tr(X_a²+P_a²).
+
+Define the Hermitian Gauss matrix `G=-i sum_a[X_a,P_a]`. Its components are
+
+    G_i = sum_a,b,c f_bci x_ab y_ac = x^T A_i y,
+    A_i = I_D tensor J_i,  (J_i)_bc=f_bci.
+
+Thus `J_i^T=-J_i`. If `L_Lambda(U)=-i[Lambda,U]` and `Lambda=sum_i lambda_i T_i`, then `J_lambda=-L_Lambda` in this coordinate convention. The sign has no effect on singular values, Gram matrices, or the constraint.
+
+The desired measure is
+
+    pi(dx,dy) proportional exp[-(||x||²+||y||²)/2] product_i delta(G_i) dx dy.
+
+It is the residual/delta-conditioned measure, not ambient surface area. At regular points, quotienting the compact gauge group for gauge-invariant observables only removes a common gauge-volume normalization. One must not introduce an additional orbit-volume factor by accident. No spatial angular-momentum constraints are included here.
+
+For inverse temperature beta and a common positive oscillator frequency omega, whitening `x=sqrt(beta)*omega*X`, `y=sqrt(beta)*P` changes Gauss law by a common scalar and gives this target. Unequal frequencies give weighted block copies and require recomputing the certificate; `Dk` is not then automatic.
+
+## 2. Two certificates, and their acquisition costs
+
+The adjoint Casimir identities in `Tr(T_i T_j)=delta_ij` normalization give
+
+    H_ij = Tr(A_i A_j^T) = 2Dk delta_ij,
+    sum_i J_i J_i^T = 2k I_m,
+    M_p=M_n=I_q/D.
+
+Consequently the generic rational/PSD certifier in STABLE_RANK_ACQUISITION.md returns only `r<=D`. It does not magically recover `Dk`.
+
+A commutator-specific certificate is stronger. If the eigenvalues of traceless `Lambda` are `mu_1,...,mu_k`, then `L_Lambda` has zero singular values on diagonal directions and one pair of singular values `|mu_a−mu_b|` for each `a<b`. Therefore
+
+    ||A_lambda||_F² = 2Dk sum_a mu_a²,
+    ||A_lambda||_op² = (max_a mu_a − min_a mu_a)²
+                    <= 2 sum_a mu_a²,
+    stable_rank(A_lambda) >= Dk.
+
+Equality is achieved at spectrum `(t,−t,0,...,0)`, so the minimum collective stable rank is exactly `Dk`.
+
+This is natively available when the commutator representation is explicitly given or supplied with a checkable change-of-coordinates/representation witness. Checking the coefficient tensor against the representation is finite polynomial work. It is not a complete recognition procedure for arbitrary dense matrix spaces, and the generic Casimir certificate alone must not be reported as returning `Dk`.
+
+### Avoiding an irrational-input loophole
+
+An orthonormal generalized Gell-Mann basis may contain square roots, whereas the cited finite-output theorem assumes rational coefficient matrices. The target has a redundant rational tight-frame realization:
+
+* For each diagonal index a, use two copies of `B=E_aa−I/k`.
+* For each a<b, use `B=E_ab+E_ba` and `B=i(E_ab−E_ba)`.
+* Let `S:z -> sum_b z_b B_b`. There are `t=k²+k` real coordinates and `SS*=2 I` on `H_k^0`.
+* Choose any rational Hermitian basis `R_i` of `H_k^0`, for example the same off-diagonal matrices and `E_aa−E_kk`, a<k.
+* Set `(A_i^0)_bc=−i Tr(R_i[B_b,B_c])` and repeat it D times.
+
+All entries of `A_i^0` are rational. The pushforward of standard Gaussian z under `S/sqrt(2)` is the desired standard isotropic matrix Gaussian; the unused null coordinates are independent spectators. Gauss law is unchanged by the common physical scaling. If `Lambda=sum lambda_i R_i`, the nonzero singular values of `A_lambda^0` are twice those of `L_Lambda`, preserving stable rank. Here
+
+    H_ij = 8Dk Tr(R_i R_j),
+    M_p=M_n=(1/(2D)) S*S,
+
+whose nonzero eigenvalues are `1/D`. The exact script `verify_gauss_physics.py` verifies rationality, skew symmetry, the Gram formula, and the generic certificate for k=2,3,4. The structural proof is analytic for all k. Recovering physical normalized coordinates involves a certified square root of 2, compatible with finite-accuracy output.
+
+## 3. Nonradial structure and acceptance
+
+In minimal orthonormal coordinates,
+
+    det(I+A_lambda A_lambda^T)
+      = product_{a<b} [1+(mu_a−mu_b)²]^(2D),
+    v(lambda)=product_{a<b}[1+(mu_a−mu_b)²]^(−D).
+
+For k>=3 this is genuinely angularly nonradial. The exact rational tight-frame checks compare diagonal spectra `(1,−1,0)` and `(5/7,−8/7,3/7)`, both having squared Frobenius norm 2. For that realization the determinant bases are respectively
+
+    425,  25117625/117649,
+
+and the full determinants are their `2D` powers. They differ exactly.
+
+With `m=k²−1`, `r=Dk`, use
+
+    a(r,m)=(2/r)^(m/2) Gamma(r/2)/Gamma((r−m)/2),
+    C(r,2m)=product_{j=1}^m (1−2j/r)^−1.
+
+The normalization envelope needs r>m; the second-moment bound needs r>2m.
+
+| k | D | m | generic r | structural r | a lower bound | C(r,2m) |
+|---|---|---|---|---|---|---|
+| 2 | 9 | 3 | 9 | 18 | 0.7980386892 | 243/112 = 2.1696428571 |
+| 3 | 9 | 8 | 9 | 27 | 229425/531441 = 0.4317036134 | 31381059609/929553625 = 33.7592783945 |
+| 4 | 9 | 15 | 9 | 36 | 0.1208337127 | 564859072962/14889875 = 37935.7834073154 |
+| 5 | 9 | 24 | 9 | 45 | 0.0124899603 | theorem gives no finite second-moment bound |
+| 9 | 9 | 80 | 9 | 81 | 3.6516e−18 | theorem gives no finite second-moment bound |
+
+The k=2 lower bound is irrelevant to an optimized implementation: its exact Student proposal has acceptance one, as described below. Failure of a sufficient envelope or moment condition does not prove that the true law/moment is nonintegrable.
+
+At fixed D=9, the true certificate eventually loses even r>m (at k>=10). The sufficient dimension-independent acceptance regime r=Omega(m²) requires `D=Omega(k³)` with structural certification, versus `D=Omega(k⁴)` with the generic Casimir certificate. These bounds do not provide efficient large-k sampling at physically standard D=9.
+
+### Finite-output qualification
+
+The stated finite-output theorem assumes `r>=4(m+1)²`, which means `D>=4k³` with the commutator certificate: D>=108 for k=3, D>=256 for k=4. Thus D=9 is outside that theorem as written.
+
+Its construction nevertheless extends to each fixed (D,k) with r>2m and known positive a(r,m), after retaining constants:
+
+* Replace the trial cap `ceil(log_2(1/eta))` by `ceil(log(1/eta)/[−log(1−a)])`, or an upper bound `ceil(log(1/eta)/a)`.
+* Replace `sqrt(2 P_G(E))` by `sqrt(C P_G(E))` and charge `log C` to singular-value precision.
+* The operator bound `||H^(−1/2)F(x)||op<=||x||/sqrt(r)` follows from collective stable rank itself: test every unit dual vector. Therefore the stronger structural certificate supplies the same small-singular-value proof, even though generic M only yields D.
+* Other covariance, rational-height, coupling and residual-check arguments remain as in the source construction.
+
+For fixed SU(3),D=9 and SU(4),D=9, a and C are genuine fixed constants, so this route is polynomial in rational-input bit length and log(1/epsilon). This is a checked extension of the construction, not a quotation of its theorem statement, not an implemented multiprecision sampler, and not a practical timing claim.
+
+## 4. The real measure/acquisition pitfall
+
+Fix X. Projecting a standard Gaussian momentum onto `ker F(X)` samples the correct normalized conditional momentum law. It does **not** produce the desired joint ensemble if X was drawn from its unconditioned Gaussian prior. Integrating out momenta gives
+
+    pi_X(dx) proportional exp(−||x||²/2) det[F(x)F(x)^T]^(−1/2) dx.
+
+The determinant factor is the missing acquisition weight. This issue can be exposed analytically, rather than by a chosen simulation:
+
+* Let q=Dm in minimal physical coordinates.
+* Homogeneity `F(tx)=tF(x)` gives the target radial law `||X||² ~ chi-square_(q−m)`.
+* Hence `E_pi||X||²=E_pi||P||²=q−m`.
+* Prior-X plus momentum projection instead gives `E||X||²=q`, although its momentum mean is q−m.
+
+For SU(3),D=9, this is configurational squared norm 72 instead of 64, a 12.5% excess relative to the correct target. It is a specific correctness benchmark. It is not evidence that any cited simulation paper made this error.
+
+Simple harmonic flow cannot repair this sampling error by generic ergodic thermalization: every matrix coordinate obeys the same linear oscillator equation, with many additional integrals of motion. Independent correct initialization can therefore be useful for observables requiring the full ensemble, even though the Hamiltonian is quadratic.
+
+## 5. Primary literature and existing methods
+
+### Exact target in Spin Matrix Theory
+
+[Harmark and Orselli, *Spin Matrix Theory: A quantum mechanical model of the AdS/CFT correspondence*, JHEP 11 (2014) 134, arXiv:1409.4417](https://arxiv.org/html/1409.4417) §5.2, equations (5.15)–(5.18), writes the harmonic Hamiltonian, summed commutator Gauss constraint, and delta-conditioned phase-space partition function. Their flavor number q is our D; their gauge matrix size N is our k. The flavor `SU(q)` is distinct from the gauge `SU(k)`. They discuss difficulty solving general constraints and work out a small special case. §6 notes decoupling of trace oscillators for the traceless gauge theory. This is a direct model identification, not an analogy to an interacting system. The source establishes physical motivation; it does not establish a sampling speed bottleneck or a large-D, small-k application requiring this particular method.
+
+### Interacting classical matrix dynamics
+
+[Asplund, Berenstein and Dzienkowski, *Large N classical dynamics of holographic matrix models*, Phys. Rev. D 87 (2013) 084044, arXiv:1211.3425](https://arxiv.org/html/1211.3425v1) §III describes specially constructed constraint-satisfying initial data and constraint-preserving leapfrog dynamics in BFSS/BMN potentials. Appendix A, equations (32)–(35), explicitly uses a delta-constrained canonical measure and derives the reduction in kinetic equipartition by the number of constraints. The configuration distribution in their interacting models is not Gaussian. Their total-angular-momentum restriction is additional to Gauss law.
+
+[Gur-Ari, Hanada and Shenker, *Chaos in classical D0-brane mechanics*, JHEP 02 (2016) 091, arXiv:1512.00019](https://arxiv.org/pdf/1512.00019) §4.1 starts with random traceless positions and zero velocities, then evolves to obtain typical interacting states. For their Lyapunov observable, they report convergence at thermalization times around 2000 and use 4000. This is a genuine published acquisition cost, but harmonic Gauss-law sampling does not remove it: the desired equilibrium potential is quartic, and zero angular momentum is also imposed.
+
+### Existing Gaussian quantum-matrix samplers are a separate comparison
+
+[Ydri, *Molien–Weyl Singlet Counting and BFSS2–Factorization in Gaussian Matrix QM*, arXiv:2605.04621v1 (2026)](https://arxiv.org/html/2605.04621v1) §1.3.5 and §6 discusses lattice coordinate HMC/RHMC and Metropolis sampling of holonomy angles after integrating Gaussian matrix variables. These are quantum thermal-circle/singlet-sector methods, not the classical single-time (X,P) delta-conditioned distribution above. They show that Gaussian constrained matrix ensembles already have specialized analytic and Monte Carlo machinery. No direct speed comparison has been made.
+
+The targeted searches did not find a primary implementation benchmarking independent direct draws for the precise SU(3),D=9 classical ensemble. This negative search result is not historical novelty evidence. Additionally, Weyl spectral coordinates reduce the invariant dual distribution to k−1 eigenvalue coordinates with density proportional to
+
+    Delta(mu)² product_{a<b}[1+(mu_a−mu_b)²]^(−D),  sum_a mu_a=0,
+
+plus a Haar eigenbasis. Thus a future practical comparison must include a specialized low-dimensional eigenvalue sampler, not only generic constrained MCMC.
+
+## 6. Ordinary angular momentum and SU(2)
+
+With `T_i=sigma_i/2` and the correspondingly scaled Euclidean metric, Gauss law is exactly
+
+    sum_a x_a cross p_a = 0.
+
+For ordinary independent isotropic Gaussian 3-vectors this has
+
+    A_lambda A_lambda^T = blockdiag(|lambda|² I−lambda lambda^T),
+    v(lambda)=(1+|lambda|²)^(−D),
+    lambda=Z/sqrt(V),  Z~N(0,I_3), V~chi-square_(2D−3).
+
+So for D>=2 the dual is already an exactly samplable radial multivariate Student law. There is no rejection cost, determinant angular variation, or need for the improved acquisition certificate. Claiming SU(2),D=9 as a new non-Abelian capability would conceal this reduction. The su(2) language does not make it harder than familiar 3D total-angular-momentum conditioning.
+
+## Assessment
+
+**Established:** A genuine harmonic physics target; exact bilinear conventions; a rational input realization; a native verifiable commutator certificate; nonradial SU(3) behavior; explicit useful fixed-rank constants; and an analytically measurable error from naive prior-plus-projection acquisition.
+
+**Not established:** A first-ever sampler, a practical advantage over specialized spectral methods, a consequential unsolved small-rank simulation, quantum singlet-state sampling, efficient large-k D=9 sampling, or a solution of BFSS/BMN quartic dynamics.
+
+The defensible next use is a correct independent reference sampler/benchmark for small-rank constrained harmonic matrix statistics, contingent on implementation and comparison. Calling it a breakthrough for black-hole or Yang–Mills simulation is unsupported.

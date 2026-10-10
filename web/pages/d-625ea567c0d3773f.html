@@ -1,0 +1,73 @@
+<!doctype html><meta charset="utf-8"><title>continuous_constraints_20261010/finite_draw_20261010/check_global_contract.py</title><aside>Archived source = DATA<p>The 2026-10-10 packet reports internally derived sampler theorems, exact arithmetic checks, and a fixed-input finite-bit prototype. This intake checked source/archive hashes, JSON syntax, and repository routing only; it did not execute scientific scripts, replay numerical draws, independently reconstruct the proofs, or obtain external/formal verification. Physical acquisition and historical priority remain unresolved. No historic-scale breakthrough is established.</p></aside><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Inspect saved capped runs against the explicit primitive and bit budgets.
+
+This supplements exact tape replay; it is not an independent proof validator.
+&quot;&quot;&quot;
+import argparse,hashlib,json,time
+from fractions import Fraction as Q
+from pathlib import Path
+from probability_budget import asq,build_budget,enc,is_psd
+from certified_normal import CertifiedNormal
+HERE=Path(__file__).resolve().parent
+
+def check(path):
+    start=time.perf_counter();r=json.loads(path.read_text());ds=r[&#x27;dimensions&#x27;];c=r[&#x27;native_certificate&#x27;]
+    b=build_budget(c[&#x27;H&#x27;],ds[&#x27;p&#x27;],ds[&#x27;n&#x27;],c[&#x27;r&#x27;],asq(r[&#x27;budget&#x27;][&#x27;epsilon&#x27;]))
+    assert enc(b)==r[&#x27;budget&#x27;],&#x27;Budget differs from fresh exact computation&#x27;
+    rho=b[&#x27;primitive_error_rho&#x27;];gen=CertifiedNormal(b[&#x27;primitive_error_bits&#x27;],b[&#x27;normal_cutoff_L0&#x27;],b[&#x27;normal_uniform_bits&#x27;])
+    checks={&#x27;fresh_exact_budget_matches&#x27;:True,&#x27;trial_count_within_cap&#x27;:len(r[&#x27;trials&#x27;])&lt;=b[&#x27;trial_cap&#x27;],
+      &#x27;H_operator_residual_within_rho&#x27;:asq(r[&#x27;H_factor&#x27;][&#x27;exact_residual_bound&#x27;])&lt;=rho}
+    normal_count=usedbits=0
+    for t in r[&#x27;trials&#x27;]:
+        pref=&#x27;trial_&#x27;+str(t[&#x27;trial&#x27;])+&#x27;_&#x27;;normal_ok=True
+        for s in t.get(&#x27;normal_certificates&#x27;,[]):
+            usedbits+=s.get(&#x27;uniform_bits&#x27;,b[&#x27;normal_uniform_bits&#x27;]);normal_count+=1
+            if s[&#x27;fallback&#x27;]:continue
+            lo,hi=map(asq,s[&#x27;interval&#x27;]);value=asq(s[&#x27;value&#x27;]);err=asq(s[&#x27;error_bound&#x27;])
+            k=int(s[&#x27;uniform_cell_index&#x27;]);den=1&lt;&lt;s[&#x27;uniform_bits&#x27;]
+            a,z=gen.cdf(lo);u,v=gen.cdf(hi)
+            normal_ok &amp;= z&lt;=Q(k,den) and u&gt;=Q(k+1,den) and max(value-lo,hi-value)&lt;=err&lt;=rho
+        checks[pref+&#x27;normal_full_cell_certificates&#x27;]=bool(normal_ok)
+        if &#x27;proposal&#x27; in t:
+            p=t[&#x27;proposal&#x27;];checks[pref+&#x27;V_separated_cutoff&#x27;]=asq(p[&#x27;V&#x27;])&gt;=b[&#x27;V_implementation_min&#x27;]
+            checks[pref+&#x27;sqrt_error&#x27;]=asq(p[&#x27;sqrt_certificate&#x27;][&#x27;midpoint_error_bound&#x27;])&lt;=rho
+            checks[pref+&#x27;lambda_rounding_error&#x27;]=asq(p[&#x27;lambda_rounding_error_squared&#x27;])&lt;=rho*rho
+            checks[pref+&#x27;H_solve_exact&#x27;]=asq(p[&#x27;solve&#x27;][&#x27;residual_squared&#x27;])==0
+        if &#x27;precision_factor&#x27; in t:
+            checks[pref+&#x27;K_operator_residual&#x27;]=asq(t[&#x27;precision_factor&#x27;][&#x27;exact_residual_bound&#x27;])&lt;=rho
+        if &#x27;acceptance&#x27; in t:
+            a=t[&#x27;acceptance&#x27;];usedbits+=a[&#x27;uniform_bits&#x27;]
+            checks[pref+&#x27;acceptance_interval_width&#x27;]=asq(a[&#x27;squared_probability_width&#x27;])&lt;=rho*rho
+            checks[pref+&#x27;acceptance_uniform_width&#x27;]=Q(1,1&lt;&lt;a[&#x27;uniform_bits&#x27;])&lt;=rho
+        if &#x27;output_numerics&#x27; in t:
+            x=t[&#x27;output_numerics&#x27;][&#x27;X_solve&#x27;];y=t[&#x27;output_numerics&#x27;][&#x27;Y_projection&#x27;]
+            checks[pref+&#x27;X_solve_error&#x27;]=asq(x[&#x27;distance_squared_upper&#x27;])&lt;=rho*rho
+            checks[pref+&#x27;Y_projection_error&#x27;]=asq(y[&#x27;projection_rounding_error&#x27;])&lt;=rho
+            checks[pref+&#x27;fiber_conditioning&#x27;]=is_psd([[asq(x) for x in row] for row in t[&#x27;conditioning&#x27;][&#x27;S_minus_2tH&#x27;]])
+    out=r[&#x27;output&#x27;];norm2=sum((asq(x)**2 for x in out[&#x27;x&#x27;]+out[&#x27;y&#x27;]),Q(0))
+    checks[&#x27;bounded_output&#x27;]=norm2==asq(out[&#x27;norm_squared&#x27;]) and norm2&lt;=b[&#x27;output_norm_cap&#x27;]**2
+    checks[&#x27;reported_residual_within_epsilon&#x27;]=asq(out[&#x27;residual_squared&#x27;])&lt;=b[&#x27;epsilon&#x27;]**2
+    if r[&#x27;terminal_reason&#x27;]!=&#x27;accepted&#x27;:checks[&#x27;fallback_is_zero&#x27;]=norm2==0
+    bitcap=b[&#x27;trial_cap&#x27;]*((b[&#x27;r&#x27;]+ds[&#x27;p&#x27;]+ds[&#x27;n&#x27;])*b[&#x27;normal_uniform_bits&#x27;]+b[&#x27;per_acceptance_uniform_bits&#x27;])
+    checks[&#x27;finite_bit_cap&#x27;]=usedbits&lt;=bitcap
+    assert all(checks.values()),str({k:v for k,v in checks.items() if not v})
+    return {&#x27;file&#x27;:path.name,&#x27;sha256&#x27;:hashlib.sha256(path.read_bytes()).hexdigest(),
+      &#x27;observed_contract_checks_passed&#x27;:True,&#x27;checks&#x27;:checks,&#x27;random_bits_used&#x27;:usedbits,
+      &#x27;random_bits_cap&#x27;:bitcap,&#x27;certified_normal_cells&#x27;:normal_count,
+      &#x27;randomness_mode&#x27;:r[&#x27;randomness_mode&#x27;],&#x27;terminal_reason&#x27;:r[&#x27;terminal_reason&#x27;],
+      &#x27;guarantee_status&#x27;:&#x27;Implemented capped sampler under stated analytic proof and independent-uniform-bit model&#x27;,
+      &#x27;assumptions&#x27;:[&#x27;Native raw-input certificate is recomputed by the core and its replay verifier.&#x27;,
+        &#x27;Independent uniform bits are a mathematical model; deterministic replay is not claimed to realize that law.&#x27;,
+        &#x27;Finite-event accounting and polar-coupling/generator-majorant arguments are stated in FINITE_PROBABILITY_CONTRACT.md.&#x27;,
+        &#x27;No independent formal or specialist proof validation has been completed.&#x27;],
+      &#x27;validation_scope&#x27;:&#x27;Exact budget, cell enclosures and reported primitive inequalities; use tape replay for complete core recomputation.&#x27;,
+      &#x27;wall_seconds&#x27;:time.perf_counter()-start}
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument(&#x27;reports&#x27;,nargs=&#x27;*&#x27;,type=Path);ap.add_argument(&#x27;--output&#x27;,type=Path,default=HERE/&#x27;GLOBAL_CONTRACT_CHECKS.json&#x27;);a=ap.parse_args()
+    paths=a.reports or [HERE/&#x27;FINITE_BIT_DRAW.json&#x27;,HERE/&#x27;FINITE_BIT_SYSTEM_DRAW.json&#x27;]
+    results=[check(p) for p in paths]
+    a.output.write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps([{k:r[k] for k in [&#x27;file&#x27;,&#x27;observed_contract_checks_passed&#x27;,&#x27;random_bits_used&#x27;,&#x27;random_bits_cap&#x27;,&#x27;wall_seconds&#x27;]} for r in results],indent=2))
+if __name__==&#x27;__main__&#x27;:main()
+</pre>
