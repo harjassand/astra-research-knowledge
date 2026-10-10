@@ -86,6 +86,44 @@ def evidence_refs(value):
             yield from evidence_refs(child)
 
 
+def stable_projection(path, data):
+    """Drop only the repository-wide snapshot marker from a per-card view."""
+    if path.startswith("frontier/dossiers/"):
+        lines = data.splitlines(keepends=True)
+        if len(lines) > 1 and lines[1].startswith(b"snapshot_input_sha256="):
+            lines[1] = b"snapshot_input_sha256=<global>; base_revision=<global>\n"
+            return b"".join(lines)
+    elif path.startswith("frontier/connections/"):
+        value = json.loads(data)
+        value.pop("snapshot", None)
+        return encoded(value)
+    return data
+
+
+def preserve_unchanged_card_views(root, outputs):
+    """Keep checkpointed per-card routes byte-stable when only global inputs move."""
+    manifest_path = root / "agent/access_manifest.json"
+    if not manifest_path.is_file():
+        return
+    prior = json.loads(manifest_path.read_text(encoding="utf-8"))
+    prior_outputs = prior.get("outputs", {})
+    for path, generated in list(outputs.items()):
+        if not path.startswith(("frontier/dossiers/", "frontier/connections/", "frontier/proof_ranges/")):
+            continue
+        existing_path = root / path
+        prior_hash = prior_outputs.get(path)
+        if not prior_hash or not existing_path.is_file():
+            continue
+        existing = existing_path.read_bytes()
+        if digest(existing) != prior_hash:
+            continue
+        try:
+            if stable_projection(path, existing) == stable_projection(path, generated):
+                outputs[path] = existing
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            continue
+
+
 def compact_ref(ref):
     return {k: ref[k] for k in ("path", "sha256", "lines", "range_scope", "read_path", "source_id", "hash_kind", "original_sha256") if k in ref}
 
@@ -314,6 +352,10 @@ def build(root=ROOT, base_revision=None):
     outputs["agent/RECENT.tsv"] = ("# Last 40 claim-ledger entries in recorded order; intake sequence is not scientific authority.\nroute_id\tcard_id\ttitle\tstatus\tdossier\n" + "\n".join(f"{route_id(c['id'])}\t{c['id']}\t{c['title']}\t{c['status']}\tfrontier/dossiers/{route_id(c['id'])}.txt" for c in claims_list[-40:]) + "\n").encode()
     counts = {"cards": len(claims), "gates": len(gates), "lemmas": len(lemmas), "graph_nodes": len(nodes), "graph_edges": len(graph["edges"]), "proof_ranges": len(windows), "source_access_issues": len(issues)}
     outputs["agent/CURRENT.txt"] = ("CURRENT PUBLIC RECORD INVENTORY | generated, not a research assessment\n" + json.dumps(counts, sort_keys=True) + "\nbase_revision=" + str(base_revision) + "; input_sha256=" + fingerprint + "\nPin the Git revision actually fetched. base_revision is the audited input ancestor, not a claim that all generated files existed there.\nAuthority: exact source bytes for mathematics; claim ledger + scoped frontier notices for status; checkpoint heads for published activity; generated views for access. Old reports/receipts apply only to their recorded scope.\nFreshness: frontier/build_access.py check checks current input/output hashes and regeneration.\n").encode()
+    # A new unrelated card changes the global snapshot marker, not every existing
+    # result. Preserve a prior per-card view only when its previous manifest hash
+    # matches and its complete non-global projection is byte-identical.
+    preserve_unchanged_card_views(root, outputs)
     # Retain the legacy manifest interface/coverage, refreshing its existing hash
     # entries. New coverage is separately pinned below; avoid recursive manifests.
     legacy = json.loads((root / "agent/manifest.json").read_text())
