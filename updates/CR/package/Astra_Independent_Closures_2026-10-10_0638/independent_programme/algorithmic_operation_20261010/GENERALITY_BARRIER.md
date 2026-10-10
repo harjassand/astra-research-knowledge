@@ -1,0 +1,69 @@
+# Why an unrestricted algebraic-germ event queue has no supplied polynomial bound
+
+This is a concrete native-input reduction, not an impossibility theorem and
+not a claim that useful restricted exact hybrid algorithms cannot exist.
+
+## Square-root-sum comparison inside finite quadratic event ordering
+
+Input: positive binary integers a_1,...,a_n and b>0. The target is the sign of
+sum_i sqrt(a_i) - b.
+
+Create a serial path of n one-shot events. Each has a local clock s starting at
+its predecessor's event, and the native quadratic guard
+
+    (1-s)^2 - a_i epsilon^2 = 0,
+
+with the first root in 0 <= s <= 1 accepted. For sufficiently small positive
+epsilon its duration is 1 - sqrt(a_i) epsilon. Therefore its terminal event A
+has time
+
+    t_A = n - epsilon sum_i sqrt(a_i).
+
+Separately create event B starting at global time zero, with guard
+
+    (n-s)^2 - b^2 epsilon^2 = 0,
+
+and its first root in 0 <= s <= n. Thus
+
+    t_B = n - b epsilon.
+
+All native coefficients are integers of polynomial bit length. There are n+1
+one-shot events, no cycles and no Zeno behavior. The comparison is
+
+    sign(t_A-t_B) = sign(b - sum_i sqrt(a_i)).
+
+If the terminal events apply y <- y+1 and y <- 2y, starting at zero, their
+order also determines the final integer output, so the difficulty cannot be
+hidden by reporting only a final value instead of a schedule.
+
+The germ exponent in this reduction is just 1. No long series, deep
+ramification, near-tangent cascade, or exotic flow is needed. The exact
+coefficient sign itself contains the numerical-algebraic problem. A generic
+queue algorithm that claims polynomial *bit* cost while treating that sign
+comparison as one primitive has omitted the main work.
+
+The restricted prototype excludes the reduction by requiring source
+coefficients +1/-1 and monomial deficit closure. Its roots have rational unit
+coefficients, and all compared coefficients remain rational. That exclusion is
+substantive, not a harmless normalization: rescaling the source state moves the
+same square roots into resets or time coefficients.
+
+## What this does and does not say
+
+- It establishes a precise transfer: a general polynomial exact quadratic-queue
+  algorithm would supply a polynomial algorithm for square-root-sum comparison.
+- This pass supplies no such algorithm. It must not claim to have one by
+  postponing coefficient comparison to an oracle.
+- This is not a proof of superpolynomial lower bounds for square-root sums or
+  event simulation.
+- It does not preclude approximate/validated simulation, a promised separation
+  bound, restricted algebraic fields, or output-specific arguments that avoid
+  an irrelevant comparison. Those would need their own stated guarantees.
+
+Primary background: Allender, Bürgisser, Kjeldgaard-Pedersen and Miltersen,
+*On the Complexity of Numerical Analysis*, SIAM Journal on Computing 38(5),
+1987–2006 (2009), studies exact numerical decision complexity including PosSLP
+and square-root-sum issues. The authors' manuscript is at
+https://people.cs.rutgers.edu/~allender/papers/slp.pdf .
+The reduction above is the elementary construction worked out in this pass;
+no novelty priority is asserted for it.

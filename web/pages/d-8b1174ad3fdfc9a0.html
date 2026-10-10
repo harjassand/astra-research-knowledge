@@ -1,0 +1,150 @@
+<!doctype html><meta charset="utf-8"><title>independent_programme/algorithmic_operation_20261010/asymptotic_events/test_event_germs.py</title><aside>Archived source = DATA<p>Source-reported arguments, calculations and trace results are preserved but were not independently reconstructed or replayed in this intake. The packets explicitly report no historic-scale breakthrough or new natural-scientific mechanism. External correctness, formal verification, novelty and practical capability remain unresolved; empirical conclusions retain their stated data and model scope.</p></aside><pre>from event_germs import *
+import math, random, time, pathlib, hashlib, platform
+
+HERE = pathlib.Path(__file__).resolve().parent
+
+
+def lcm_denoms(result):
+    d = 1
+    for st in result[&#x27;states&#x27;].values():
+        if st[&#x27;status&#x27;] == &#x27;fires&#x27;:
+            for e, c in st[&#x27;time&#x27;].terms:
+                d = math.lcm(d, e.denominator)
+    return d
+
+
+def finite_checks(nodes, r, extra=(0, 1, 3)):
+    d = lcm_denoms(r)
+    L = max(d, ((r[&#x27;L&#x27;]+d-1)//d)*d)
+    return [verify_at_dyadic(nodes, r, L+k*d) for k in extra]
+
+
+def cancellation_case():
+    # A&#x27;s time = 1-sqrt(eps); B&#x27;s time=1-sqrt(eps)-eps**3.
+    return [node(&#x27;A&#x27;, 1, affine_reset=(F(2), F(0)), priority=0),
+            node(&#x27;prepare_B&#x27;, F(1,2), eps_power=6, priority=1),
+            node(&#x27;B&#x27;, F(1,2), activation=(&#x27;prepare_B&#x27;,), eps_power=1,
+                 affine_reset=(F(1), F(1)), priority=2)]
+
+
+def cascade(K):
+    return [node(f&#x27;C{i}&#x27;, priority=i, eps_power=1 if i==0 else 0,
+                 activation=() if i==0 else (f&#x27;C{i-1}&#x27;,),
+                 gap_powers={} if i==0 else {f&#x27;C{i-1}&#x27;: 1}) for i in range(K)]
+
+
+def mixed_case(rng, layers=4, width=3):
+    nodes=[]
+    for layer in range(layers):
+        for j in range(width):
+            name=f&#x27;L{layer}N{j}&#x27;
+            parents=() if layer==0 else tuple(f&#x27;L{layer-1}N{x}&#x27; for x in rng.sample(range(width), 2))
+            weights={p: rng.choice([0,1,2]) for p in parents}
+            ep=rng.randint(1,3) if not any(weights.values()) else rng.randint(0,2)
+            nodes.append(node(name, rng.choice([F(1), F(1), F(2)]), activation=parents,
+                              eps_power=ep, gap_powers=weights, priority=len(nodes),
+                              affine_reset=(F(rng.randint(-2,2)), F(rng.randint(-3,3)))))
+    return nodes
+
+
+def run():
+    results={&#x27;runtime&#x27;: {&#x27;python&#x27;: platform.python_version(), &#x27;platform&#x27;: platform.platform()},
+             &#x27;status&#x27;: &#x27;Restricted exact prototype, not a novel general computational operation&#x27;}
+    n=cancellation_case(); r=compile(n); base=nominal(n)
+    assert r[&#x27;order&#x27;]==[&#x27;prepare_B&#x27;,&#x27;B&#x27;,&#x27;A&#x27;]
+    assert r[&#x27;output&#x27;]==2 and base[&#x27;output&#x27;]==1
+    gap=r[&#x27;states&#x27;][&#x27;A&#x27;][&#x27;time&#x27;]-r[&#x27;states&#x27;][&#x27;B&#x27;][&#x27;time&#x27;]
+    assert gap==GP.monomial(3)
+    checks=finite_checks(n,r)
+    eps=1e-6
+    ta=1-math.sqrt(eps)
+    tb=(0.5-math.sqrt(eps**6))+(0.5-math.sqrt(eps))
+    float_order=sorted([(&#x27;A&#x27;,ta,0),(&#x27;B&#x27;,tb,2)],key=lambda v:(v[1],v[2]))
+    assert ta==tb and [x[0] for x in float_order]==[&#x27;A&#x27;,&#x27;B&#x27;]
+    float_y=0
+    for name,_,_ in float_order:
+        float_y = 2*float_y if name==&#x27;A&#x27; else float_y+1
+    assert float_y==1
+    results[&#x27;cancellation&#x27;]={&#x27;exact_order&#x27;:r[&#x27;order&#x27;],&#x27;exact_output&#x27;:str(r[&#x27;output&#x27;]),
+                             &#x27;nominal_output&#x27;:str(base[&#x27;output&#x27;]), &#x27;L&#x27;:r[&#x27;L&#x27;],
+                             &#x27;difference_A_minus_B&#x27;:gap.serial(),
+                             &#x27;binary64_epsilon&#x27;:eps,&#x27;binary64_A_time&#x27;:ta,&#x27;binary64_B_time&#x27;:tb,
+                             &#x27;binary64_wrong_order&#x27;:[x[0] for x in float_order], &#x27;binary64_wrong_output&#x27;:float_y,
+                             &#x27;finite_rational_checks&#x27;: checks}
+    (HERE/&#x27;cancellation_input.json&#x27;).write_text(json.dumps([x.serial() for x in n],indent=2)+&#x27;\n&#x27;)
+    (HERE/&#x27;cancellation_certificate.json&#x27;).write_text(serialize_result(r)+&#x27;\n&#x27;)
+    reloaded=compile(load_native_file(HERE/&#x27;cancellation_input.json&#x27;))
+    assert serialize_result(reloaded)==serialize_result(r)
+
+    n=[node(&#x27;vanishes&#x27;,source_sign=-1,affine_reset=(F(1),F(1)),priority=0),
+       node(&#x27;blocked&#x27;,activation=(&#x27;vanishes&#x27;,),eps_power=0,gap_powers={&#x27;vanishes&#x27;:1},
+            affine_reset=(F(1),F(2)),priority=1)]
+    r=compile(n)
+    assert r[&#x27;order&#x27;]==[] and r[&#x27;output&#x27;]==0 and nominal(n)[&#x27;output&#x27;]==3
+    finite_checks(n,r)
+    results[&#x27;event_disappearance&#x27;]={&#x27;one_sided_output&#x27;:str(r[&#x27;output&#x27;]),
+                                   &#x27;nominal_output&#x27;:str(nominal(n)[&#x27;output&#x27;]),
+                                   &#x27;statuses&#x27;:{k:v[&#x27;status&#x27;] for k,v in r[&#x27;states&#x27;].items()}}
+
+    rng=random.Random(20261010)
+    count,events,comparisons,order_changes=0,0,0,0
+    worst_L=0
+    for test in range(100):
+        n=mixed_case(rng)
+        r=compile(n)
+        for check in finite_checks(n,r):
+            count+=1;events+=check[&#x27;events&#x27;];comparisons+=check[&#x27;comparisons&#x27;]
+        order_changes+=r[&#x27;order&#x27;]!=nominal(n)[&#x27;order&#x27;]
+        worst_L=max(worst_L,r[&#x27;L&#x27;])
+    results[&#x27;random_native_dags&#x27;]={&#x27;models&#x27;:100,&#x27;rational_epsilon_checks&#x27;:count,
+                                  &#x27;native_guard_checks&#x27;:events,&#x27;sign_checks&#x27;:comparisons,
+                                  &#x27;models_with_order_change_from_nominal&#x27;:order_changes,
+                                  &#x27;largest_certificate_exponent_L&#x27;:worst_L,&#x27;seed&#x27;:20261010}
+
+    benchmarks=[]
+    for K in (8,16,32,64,128,256):
+        t=time.perf_counter(); n=cascade(K);r=compile(n); dt=time.perf_counter()-t
+        last=r[&#x27;states&#x27;][f&#x27;C{K-1}&#x27;]
+        assert last[&#x27;exponent&#x27;]==F(1,2**K)
+        assert len(last[&#x27;time&#x27;].terms)==K+1
+        # An independent native guard-identity check using exponents, no numerics.
+        for i in range(K):
+            a=r[&#x27;states&#x27;][f&#x27;C{i}&#x27;][&#x27;exponent&#x27;]
+            source=F(1) if i==0 else r[&#x27;states&#x27;][f&#x27;C{i-1}&#x27;][&#x27;exponent&#x27;]
+            assert 2*a==source
+        if K==8: finite_checks(n,r)
+        benchmarks.append({&#x27;events&#x27;:K,&#x27;elapsed_seconds&#x27;:dt,
+                           &#x27;last_exponent&#x27;:str(last[&#x27;exponent&#x27;]),
+                           &#x27;last_exponent_denominator_bits&#x27;:last[&#x27;exponent&#x27;].denominator.bit_length(),
+                           &#x27;last_time_terms&#x27;:len(last[&#x27;time&#x27;].terms),
+                           &#x27;all_state_time_terms&#x27;:sum(len(s[&#x27;time&#x27;].terms) for s in r[&#x27;states&#x27;].values()),
+                           &#x27;L_bits&#x27;:r[&#x27;L&#x27;].bit_length(), &#x27;L&#x27;:str(r[&#x27;L&#x27;]),
+                           &#x27;queue_and_activation_sign_checks&#x27;:len(r[&#x27;comparisons&#x27;])})
+    results[&#x27;growing_cascades&#x27;]=benchmarks
+
+    # A finite-epsilon ordering reversal: germ order is not globally valid.
+    p=GP.make([(F(1,2), 1),(1,-2)])
+    cert=p.sign_certificate()
+    assert cert[&#x27;sign&#x27;]==1
+    assert p.at_power_of_two(2)==0
+    assert p.at_power_of_two(0)&lt;0
+    assert p.at_power_of_two(4)&gt;0
+    results[&#x27;finite_radius_matters&#x27;]={&#x27;difference&#x27;:p.serial(),&#x27;certificate&#x27;:cert,
+                                      &#x27;at_epsilon_1&#x27;:&#x27;negative&#x27;,
+                                      &#x27;at_epsilon_1_over_4&#x27;:&#x27;zero&#x27;,
+                                      &#x27;at_epsilon_1_over_16&#x27;:&#x27;positive&#x27;}
+
+    # Native-input boundary checks must reject, not silently accept.
+    rejects=[]
+    bad=[Node(&#x27;bad_guard&#x27;,(F(2),F(-2),F(1)),priority=0),
+         node(&#x27;bad_constant_source&#x27;,eps_power=0,priority=0)]
+    for item in bad:
+        try: compile([item])
+        except ValueError as e: rejects.append(str(e))
+        else: raise AssertionError(&#x27;Out-of-class guard silently accepted&#x27;)
+    results[&#x27;rejected_out_of_class_inputs&#x27;]=rejects
+    (HERE/&#x27;results.json&#x27;).write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(results,indent=2))
+
+if __name__==&#x27;__main__&#x27;: run()
+</pre>

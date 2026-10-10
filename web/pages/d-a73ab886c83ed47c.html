@@ -1,0 +1,58 @@
+<!doctype html><meta charset="utf-8"><title>independent_programme/new_capability_20261010/exact_verify.py</title><aside>Archived source = DATA<p>Source-reported arguments, calculations and trace results are preserved but were not independently reconstructed or replayed in this intake. The packets explicitly report no historic-scale breakthrough or new natural-scientific mechanism. External correctness, formal verification, novelty and practical capability remain unresolved; empirical conclusions retain their stated data and model scope.</p></aside><pre>#!/usr/bin/env python3
+from fractions import Fraction as F
+from itertools import combinations
+from pathlib import Path
+import json
+ROOT=Path(__file__).resolve().parent
+
+def inv(a):
+ n=len(a); b=[[F(x) for x in row]+[F(i==j) for j in range(n)] for i,row in enumerate(a)]
+ for i in range(n):
+  s=next(j for j in range(i,n) if b[j][i]);b[i],b[s]=b[s],b[i]; t=b[i][i];b[i]=[x/t for x in b[i]]
+  for j in range(n):
+   if j!=i:
+    t=b[j][i];b[j]=[x-t*y for x,y in zip(b[j],b[i])]
+ return [row[n:] for row in b]
+def mm(a,b):return [[sum(x*y for x,y in zip(row,col)) for col in zip(*b)] for row in a]
+def tr(a):return list(map(list,zip(*a)))
+def mv(a,b):return [sum(x*y for x,y in zip(row,b)) for row in a]
+def top(a,k):return sum(sorted(a,reverse=True)[:k],F(0))
+def native(n,es,p):
+ A=[[F((i==a)-(i==b)) for a,b in es] for i in range(n-1)];K=mm(A,tr(A));Z=inv(K);C=mm(Z,A);T=mm(tr(A),C);f=mv(tr(A),mv(Z,p[:-1]));return A,K,T,f,Z
+
+def cert(n,k,p,iterations=8):
+ es=list(combinations(range(n),2));A,K,T,f,Z=native(n,es,list(map(F,p)));m=len(es);d=[1-T[i][i] for i in range(m)]
+ rho=max(top([abs(T[i][j]) for j in range(m) if i!=j],k-1)/d[i] for i in range(m));assert rho&lt;1
+ a=max(abs(f[i])/d[i] for i in range(m));u=[a/(1-rho)]*m;L=[-x for x in u];U=u[:]
+ for _ in range(iterations):
+  Un=[(f[i]+top([max(T[i][j]*L[j],T[i][j]*U[j],F(0)) for j in range(m) if i!=j],k-1))/d[i] for i in range(m)]
+  Ln=[(f[i]-top([max(-T[i][j]*L[j],-T[i][j]*U[j],F(0)) for j in range(m) if i!=j],k-1))/d[i] for i in range(m)]
+  assert all(L[i]&lt;=Ln[i]&lt;=Un[i]&lt;=U[i] for i in range(m));L,U=Ln,Un
+ assert all(d[i]*U[i]&gt;=f[i]+top([max(T[i][j]*L[j],T[i][j]*U[j],F(0)) for j in range(m) if i!=j],k-1) for i in range(m))
+ assert all(d[i]*L[i]&lt;=f[i]-top([max(-T[i][j]*L[j],-T[i][j]*U[j],F(0)) for j in range(m) if i!=j],k-1) for i in range(m))
+ hi=[f[i]+top([max(T[i][j]*L[j],T[i][j]*U[j],F(0)) for j in range(m) if i!=j],k) for i in range(m)]
+ lo=[f[i]-top([max(-T[i][j]*L[j],-T[i][j]*U[j],F(0)) for j in range(m) if i!=j],k) for i in range(m)]
+ count=0;maxflow=F(0)
+ for kk in range(k+1):
+  for S in combinations(range(m),kk):
+   KS=[[K[i][j]-sum(A[i][s]*A[j][s] for s in S) for j in range(n-1)] for i in range(n-1)]
+   ff=mv(tr(A),mv(inv(KS),p[:-1]));count+=1
+   for e in range(m):
+    if e not in S:assert lo[e]&lt;=ff[e]&lt;=hi[e];maxflow=max(maxflow,abs(ff[e]))
+ out={&#x27;n&#x27;:n,&#x27;m&#x27;:m,&#x27;k&#x27;:k,&#x27;p&#x27;:list(map(str,p)),&#x27;rho&#x27;:str(rho),&#x27;iterations&#x27;:iterations,&#x27;exact_cases_checked&#x27;:count,&#x27;all_supersolution_and_direct_flow_checks_passed&#x27;:True,&#x27;max_actual_abs_flow&#x27;:str(maxflow),&#x27;max_enclosure_abs_flow&#x27;:str(max(map(abs,lo+hi))),&#x27;inverse&#x27;:[[str(x) for x in row]for row in Z],&#x27;L&#x27;:list(map(str,L)),&#x27;U&#x27;:list(map(str,U)),&#x27;lo&#x27;:list(map(str,lo)),&#x27;hi&#x27;:list(map(str,hi))}
+ return out
+
+def counterexample():
+ n=5;p=list(map(F,[0,0,3,-1,-2]));es=list(combinations(range(n),2));A,K,T,f,Z=native(n,es,p);best=(-F(10),None);star=(-F(10),None)
+ for kk in range(3):
+  for S in combinations(range(1,len(es)),kk):
+   KS=[[K[i][j]-sum(A[i][s]*A[j][s]for s in S)for j in range(n-1)]for i in range(n-1)];theta=mv(inv(KS),p[:-1]);val=theta[0]-theta[1]
+   if val&gt;best[0]:best=(val,S)
+   if all(0 in es[s] or 1 in es[s] for s in S) and val&gt;star[0]:star=(val,S)
+ assert best[0]==F(7,20) and star[0]==F(1,3)
+ return {&#x27;graph&#x27;:&#x27;unit K5&#x27;,&#x27;p&#x27;:list(map(str,p)),&#x27;monitored_edge&#x27;:[0,1],&#x27;budget&#x27;:2,&#x27;unrestricted_maximum&#x27;:str(best[0]),&#x27;unrestricted_outage_edges&#x27;:[es[i] for i in best[1]],&#x27;endpoint_incident_only_maximum&#x27;:str(star[0]),&#x27;endpoint_incident_outage_edges&#x27;:[es[i] for i in star[1]],&#x27;exact_gap&#x27;:str(best[0]-star[0])}
+
+if __name__==&#x27;__main__&#x27;:
+ out={&#x27;certificates&#x27;:[cert(6,2,[1,-1,-1,-1,1,1]),cert(6,3,[3,-2,0,1,-1,-1])],&#x27;false_double_star_shortcut&#x27;:counterexample()}
+ (ROOT/&#x27;exact_results.json&#x27;).write_text(json.dumps(out,indent=2));print(json.dumps({**out,&#x27;certificates&#x27;:[{k:v for k,v in c.items() if k not in [&#x27;inverse&#x27;,&#x27;L&#x27;,&#x27;U&#x27;,&#x27;lo&#x27;,&#x27;hi&#x27;]}for c in out[&#x27;certificates&#x27;]]},indent=2))
+</pre>

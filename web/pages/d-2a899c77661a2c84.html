@@ -1,0 +1,284 @@
+<!doctype html><meta charset="utf-8"><title>independent_programme/algorithmic_operation_20261010/asymptotic_events/event_germs.py</title><aside>Archived source = DATA<p>Source-reported arguments, calculations and trace results are preserved but were not independently reconstructed or replayed in this intake. The packets explicitly report no historic-scale breakthrough or new natural-scientific mechanism. External correctness, formal verification, novelty and practical capability remain unresolved; empirical conclusions retain their stated data and model scope.</p></aside><pre>&quot;&quot;&quot;Exact one-sided execution for a restricted native quadratic-guard DAG.
+
+This is a research reproduction, NOT a general hybrid-system or Puiseux solver.
+Only Python&#x27;s standard library is used. Input guard coefficients are native
+rational coefficients in local time; no event roots are supplied to compile().
+&quot;&quot;&quot;
+from __future__ import annotations
+from dataclasses import dataclass, field
+from fractions import Fraction as F
+from functools import cmp_to_key
+import json
+
+
+def frac(x):
+    return x if isinstance(x, F) else F(str(x))
+
+
+@dataclass(frozen=True)
+class GP:
+    &quot;&quot;&quot;A finite generalized polynomial, exact for all epsilon &gt; 0.&quot;&quot;&quot;
+    terms: tuple[tuple[F, F], ...] = ()
+
+    @staticmethod
+    def make(terms):
+        d = {}
+        for e, c in terms:
+            e, c = frac(e), frac(c)
+            d[e] = d.get(e, F(0)) + c
+        return GP(tuple(sorted((e, c) for e, c in d.items() if c)))
+
+    @staticmethod
+    def const(c):
+        return GP.make([(0, c)])
+
+    @staticmethod
+    def monomial(e, c=1):
+        return GP.make([(e, c)])
+
+    def __add__(self, other):
+        if not isinstance(other, GP):
+            other = GP.const(other)
+        return GP.make(self.terms + other.terms)
+
+    def __neg__(self):
+        return GP(tuple((e, -c) for e, c in self.terms))
+
+    def __sub__(self, other):
+        if not isinstance(other, GP):
+            other = GP.const(other)
+        return self + (-other)
+
+    def sign(self):
+        return 0 if not self.terms else (1 if self.terms[0][1] &gt; 0 else -1)
+
+    def sign_certificate(self):
+        &quot;&quot;&quot;For 0 &lt; eps &lt;= 2**(-L), first coefficient fixes the sign.
+
+        The bound is intentionally conservative and computed with integer/rational
+        arithmetic, including when L is exponentially large as a number.
+        &quot;&quot;&quot;
+        if not self.terms:
+            return {&quot;sign&quot;: 0, &quot;identically_zero&quot;: True, &quot;L&quot;: 0}
+        e0, c0 = self.terms[0]
+        if len(self.terms) == 1:
+            L = 0
+        else:
+            delta = self.terms[1][0] - e0
+            C = sum(abs(c) for _, c in self.terms[1:])
+            ratio = 2 * C / abs(c0)
+            m = 0
+            if ratio &gt; 1:
+                # Find the exact smallest m with 2**m &gt;= ratio.
+                m = max(0, ratio.numerator.bit_length() - ratio.denominator.bit_length())
+                if F(1 &lt;&lt; m) &lt; ratio:
+                    m += 1
+            x = F(m) / delta
+            L = (x.numerator + x.denominator - 1) // x.denominator
+        return {&quot;sign&quot;: self.sign(), &quot;identically_zero&quot;: False,
+                &quot;leading_exponent&quot;: str(e0), &quot;leading_coefficient&quot;: str(c0), &quot;L&quot;: L}
+
+    def at_power_of_two(self, L):
+        &quot;&quot;&quot;Exact evaluation at eps=2**(-L), provided all L*e are integers.
+
+        This verifier is deliberately separate from germ comparison and should
+        be used only for small instances: numeric bit sizes can be enormous.
+        &quot;&quot;&quot;
+        value = F(0)
+        for e, c in self.terms:
+            p = e * L
+            if p.denominator != 1:
+                raise ValueError(&quot;Evaluation is irrational at the requested epsilon&quot;)
+            k = p.numerator
+            value += c * (F(1, 1 &lt;&lt; k) if k &gt;= 0 else F(1 &lt;&lt; (-k)))
+        return value
+
+    def serial(self):
+        return [[str(e), str(c)] for e, c in self.terms]
+
+
+@dataclass
+class Node:
+    name: str
+    guard_coeff: tuple[F, F, F]  # c0 + c1*s + c2*s*s - source(eps, gaps)
+    activation: tuple[str, ...] = ()
+    eps_power: int = 1
+    gap_powers: dict[str, int] = field(default_factory=dict)
+    source_sign: int = 1
+    affine_reset: tuple[F, F] = (F(1), F(0))
+    priority: int = 0
+
+    def center(self):
+        c0, c1, c2 = map(frac, self.guard_coeff)
+        if c2 != 1:
+            raise ValueError(&quot;Only monic quadratic guards are admitted&quot;)
+        c = -c1 / 2
+        if c &lt;= 0 or c0 != c*c:
+            raise ValueError(&quot;Guard must be (c-s)^2 - source with c &gt; 0&quot;)
+        return c
+
+    def serial(self):
+        return {&quot;name&quot;: self.name, &quot;guard_coeff&quot;: [str(x) for x in self.guard_coeff],
+                &quot;activation&quot;: list(self.activation), &quot;eps_power&quot;: self.eps_power,
+                &quot;gap_powers&quot;: self.gap_powers, &quot;source_sign&quot;: self.source_sign,
+                &quot;affine_reset&quot;: [str(x) for x in self.affine_reset],
+                &quot;priority&quot;: self.priority}
+
+
+def node(name, center=1, **kwargs):
+    c = frac(center)
+    return Node(name, (c*c, -2*c, F(1)), **kwargs)
+
+
+def compile(nodes):
+    &quot;&quot;&quot;Return exact event germs, ordering, and a shared valid dyadic radius.
+
+    Native input includes a topological listing of a finite DAG. Every node is
+    one-shot; source monomials may depend only on completed activation parents.
+    Source coefficients are +1 or -1. No arbitrary algebraic-sign oracle occurs.
+    &quot;&quot;&quot;
+    if len({n.name for n in nodes}) != len(nodes):
+        raise ValueError(&quot;Duplicate node name&quot;)
+    if len({n.priority for n in nodes}) != len(nodes):
+        raise ValueError(&quot;Explicit priorities must be distinct&quot;)
+    states = {}
+    certificates = []
+    L = 0
+
+    def compare(a, b, reason):
+        nonlocal L
+        diff = a-b
+        cert = diff.sign_certificate()
+        L = max(L, cert[&quot;L&quot;])
+        certificates.append({&quot;reason&quot;: reason, &quot;difference&quot;: diff.serial(), **cert})
+        return cert[&quot;sign&quot;]
+
+    for n in nodes:
+        c = n.center()
+        if n.source_sign not in (-1, 1) or not isinstance(n.eps_power, int) or n.eps_power &lt; 0:
+            raise ValueError(&quot;Invalid source sign/exponent&quot;)
+        if any(not isinstance(w, int) or w &lt; 0 for w in n.gap_powers.values()):
+            raise ValueError(&quot;Source powers must be nonnegative integers&quot;)
+        if any(p not in states for p in n.activation):
+            raise ValueError(&quot;Native input must be topologically ordered&quot;)
+        if any(p not in n.activation for p in n.gap_powers):
+            raise ValueError(&quot;Gap source must already have completed at activation&quot;)
+        if any(states[p][&quot;status&quot;] != &quot;fires&quot; for p in n.activation):
+            states[n.name] = {&quot;status&quot;: &quot;blocked_by_absent_parent&quot;}
+            continue
+        a = F(n.eps_power)
+        for p, w in n.gap_powers.items():
+            a += w * states[p][&quot;exponent&quot;]
+        if a &lt;= 0:
+            raise ValueError(&quot;Source must vanish with positive exponent at epsilon=0&quot;)
+        if n.source_sign &lt; 0:
+            states[n.name] = {&quot;status&quot;: &quot;no_real_guard_root&quot;, &quot;source_exponent&quot;: a}
+            continue
+        exponent = a/2
+        A = GP.const(0)
+        chosen_parent = None
+        for p in n.activation:
+            tp = states[p][&quot;time&quot;]
+            if compare(tp, A, f&quot;activate {n.name}: {p} versus current maximum&quot;) &gt; 0:
+                A, chosen_parent = tp, p
+        duration = GP.const(c)-GP.monomial(exponent)
+        assert compare(duration, GP.const(0), f&quot;positive duration {n.name}&quot;) &gt; 0
+        states[n.name] = {&quot;status&quot;: &quot;fires&quot;, &quot;exponent&quot;: exponent,
+                          &quot;activation_time&quot;: A, &quot;chosen_parent&quot;: chosen_parent,
+                          &quot;duration&quot;: duration, &quot;time&quot;: A+duration}
+
+    alive = [n for n in nodes if states[n.name][&quot;status&quot;] == &quot;fires&quot;]
+
+    def cmp(a, b):
+        result = compare(states[a.name][&quot;time&quot;], states[b.name][&quot;time&quot;],
+                         f&quot;queue: {a.name} versus {b.name}&quot;)
+        return result if result else (a.priority &gt; b.priority)-(a.priority &lt; b.priority)
+
+    ordered = sorted(alive, key=cmp_to_key(cmp))
+    y = F(0)
+    for n in ordered:
+        scale, shift = map(frac, n.affine_reset)
+        y = scale*y + shift
+    return {&quot;states&quot;: states, &quot;order&quot;: [n.name for n in ordered], &quot;output&quot;: y,
+            &quot;L&quot;: L, &quot;comparisons&quot;: certificates}
+
+
+def nominal(nodes):
+    &quot;&quot;&quot;The epsilon=0 model accepts the first touching root at local s=c.&quot;&quot;&quot;
+    times = {}
+    for n in nodes:
+        times[n.name] = max((times[p] for p in n.activation), default=F(0))+n.center()
+    ordered = sorted(nodes, key=lambda n: (times[n.name], n.priority))
+    y = F(0)
+    for n in ordered:
+        u, v = map(frac, n.affine_reset)
+        y = u*y+v
+    return {&quot;times&quot;: times, &quot;order&quot;: [n.name for n in ordered], &quot;output&quot;: y}
+
+
+def verify_at_dyadic(nodes, result, L):
+    &quot;&quot;&quot;Independent finite-epsilon rational check of every native guard and reset.&quot;&quot;&quot;
+    if L &lt; result[&quot;L&quot;]:
+        raise ValueError(&quot;Outside the compiled common radius&quot;)
+    values = {}
+    for n in nodes:
+        state = result[&quot;states&quot;][n.name]
+        if state[&quot;status&quot;] == &quot;blocked_by_absent_parent&quot;:
+            assert any(p not in values for p in n.activation)
+            continue
+        A = max((values[p][&quot;time&quot;] for p in n.activation), default=F(0))
+        source = F(1, 1 &lt;&lt; (L*n.eps_power))
+        for p, w in n.gap_powers.items():
+            source *= values[p][&quot;gap&quot;]**w
+        source *= n.source_sign
+        if state[&quot;status&quot;] == &quot;no_real_guard_root&quot;:
+            assert source &lt; 0
+            continue
+        t = state[&quot;time&quot;].at_power_of_two(L)
+        duration = t-A
+        c0, c1, c2 = n.guard_coeff
+        assert c0+c1*duration+c2*duration*duration-source == 0
+        assert 0 &lt; duration &lt; n.center()
+        gap = n.center()-duration
+        assert gap == GP.monomial(state[&quot;exponent&quot;]).at_power_of_two(L)
+        values[n.name] = {&quot;time&quot;: t, &quot;gap&quot;: gap}
+    alive = [n for n in nodes if n.name in values]
+    ordered = sorted(alive, key=lambda n: (values[n.name][&quot;time&quot;], n.priority))
+    assert [n.name for n in ordered] == result[&quot;order&quot;]
+    y = F(0)
+    for n in ordered:
+        u, v = n.affine_reset
+        y = u*y+v
+    assert y == result[&quot;output&quot;]
+    for cert in result[&quot;comparisons&quot;]:
+        d = GP.make(cert[&quot;difference&quot;]).at_power_of_two(L)
+        assert ((d&gt;0)-(d&lt;0)) == cert[&quot;sign&quot;]
+    return {&quot;events&quot;: len(alive), &quot;comparisons&quot;: len(result[&quot;comparisons&quot;]), &quot;L&quot;: L}
+
+
+def serialize_result(r):
+    def enc(x):
+        if isinstance(x, F): return str(x)
+        if isinstance(x, GP): return x.serial()
+        raise TypeError(type(x).__name__)
+    return json.dumps(r, default=enc, indent=2)
+
+
+def load_native_file(path):
+    &quot;&quot;&quot;Load the documented native rational-guard JSON, without solved roots.&quot;&quot;&quot;
+    with open(path) as f:
+        data = json.load(f)
+    return [Node(name=n[&quot;name&quot;], guard_coeff=tuple(map(frac,n[&quot;guard_coeff&quot;])),
+                 activation=tuple(n.get(&quot;activation&quot;, [])),
+                 eps_power=n.get(&quot;eps_power&quot;,1), gap_powers=n.get(&quot;gap_powers&quot;,{}),
+                 source_sign=n.get(&quot;source_sign&quot;,1),
+                 affine_reset=tuple(map(frac,n.get(&quot;affine_reset&quot;,[1,0]))),
+                 priority=n[&quot;priority&quot;]) for n in data]
+
+
+if __name__ == &quot;__main__&quot;:
+    import sys
+    if len(sys.argv) != 2:
+        raise SystemExit(&quot;Usage: python event_germs.py native_input.json&quot;)
+    print(serialize_result(compile(load_native_file(sys.argv[1]))))
+</pre>

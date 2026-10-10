@@ -1,0 +1,54 @@
+# Supplied mixtures: exact entropy charge and its acquisition limit
+
+Date: 2026-10-10. Natural logarithms throughout.
+
+## 1. A valid extension of any supplied coupling primitive
+
+Suppose P is represented as a finite mixture sum_s lambda_s P_s. Suppose each component comes with a sunflower-supported coupling Q_s whose three marginals are P_s. Sample a common component S with law lambda and then sample the three replicas from Q_S. The mixture Q has all marginals P and is sunflower-supported.
+
+Let X denote any one replica, and let (X_1,X_2,X_3) denote the triple. Direct entropy expansion gives the exact identity
+
+    D(Q || P^3)
+      = sum_s lambda_s D(Q_s || P_s^3)
+        + 3 I(S;X) - I(S;X_1,X_2,X_3).             (1)
+
+Since the last mutual information is at least I(S;X),
+
+    D(Q || P^3)
+      <= sum_s lambda_s D(Q_s || P_s^3) + 2 I(S;X). (2)
+
+Thus a supplied decomposition into the uniform full-product latent-subtuple models of KERNEL_SECTOR_PRIMITIVE.md gives cost at most
+
+    w log(9/2) + 2 I(S;X).
+
+This improves the cruder 2H(S) acquisition charge when the component label contains redundant information. It is just the entropy chain rule; no novelty is claimed.
+
+Operationally, this requires an actual sampler for lambda, the native representation and sampler for the selected component, and the evaluations of its recodings. The full mixture need not be enumerated if these samplers are explicitly supplied. No procedure for finding the representation from arbitrary rows is being assumed.
+
+## 2. Width-two obstruction to acquiring low information by these components
+
+The projective-plane example also rejects universal acquisition of this particular mixture representation with I(S;X)=O(w).
+
+Take uniform P on the point-line incidence edges of a projective plane of order q. Write v=q^2+q+1, so the number of rows is v(q+1). Every full-product latent-subtuple component supported inside this edge set is a vertex-disjoint union of complete bipartite graphs. As the incidence graph has no C4, every such biclique is a star; consequently each component has at most 2v edges.
+
+For any mixture of distributions P_s whose supports have this representation, whether or not components overlap and whether or not P_s are uniform,
+
+    H(X|S=s) <= log(2v).
+
+Therefore
+
+    I(S;X) = H(X)-H(X|S) >= log((q+1)/2).          (3)
+
+This is unbounded at fixed observed width two. Accordingly (2) cannot become a universal constant-per-coordinate theorem merely by acquiring low-information mixtures of the supplied class.
+
+## 3. Important boundary: cancellation may still rescue a different mixture argument
+
+Equation (3) does **not** prove that every mixture coupling has a large actual cost. In the exact identity (1), observing three replicas can reveal substantially more of S than observing one. That additional information is subtracted. A successful mixture construction could exploit this cancellation rather than charging it away in (2). In particular, the projective-plane family itself has many sunflower triples and is not a counterexample to the global coupling goal.
+
+The unresolved operation can now be stated concretely: acquire component couplings for which
+
+    sum_s lambda_s D(Q_s||P_s^3)
+      + 3 I(S;X) - I(S;X_1,X_2,X_3) = O(w),
+
+with a structural proof that does not use sunflower-freeness or maximum independent set as an oracle. Merely naming this objective does not provide such a proof. No general acquisition or cancellation theorem is established here.
+

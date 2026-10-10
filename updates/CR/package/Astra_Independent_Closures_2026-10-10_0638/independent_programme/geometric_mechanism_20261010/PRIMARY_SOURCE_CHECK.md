@@ -1,0 +1,13 @@
+# Targeted primary-source check
+
+Accessed 2026-10-10, after specifying the candidate operations. This is a novelty/scope check, not a broad bibliography or a proof audit.
+
+1. **Pierre Bizeul, Boaz Klartag, Joseph Lehec, “Presenting a proof of the Kannan–Lovasz–Simonovits conjecture.”** https://arxiv.org/abs/2610.05474 . Version 1 submitted 2026-10-04 at 19:30:34 UTC; primary abstract and version history checked. The abstract claims a full KLS proof and identifies a recent Song–Zhang criterion involving high-order tilt-average derivatives as crucial. Only target status is used here. The 32-page proof has not been independently checked by this investigation.
+
+2. **Zhao Song, Xinzhi Zhang, “An O(1) Bound for the KLS Constant.”** https://arxiv.org/abs/2610.01447 . Version 1 submitted 2026-10-01 at 10:43:04 UTC; version 2 submitted 2026-10-04 at 21:21:03 UTC. The current primary abstract claims universal bounds on the KLS and isotropic Poincare constants. The initial version had a different, dimension-dependent bound. The current 140-page proof has not been audited or used as a lemma in this investigation.
+
+3. **Yunbum Kook, Santosh S. Vempala, “Spectral Gaps of Hit-and-Run and Coordinate Hit-and-Run.”** https://arxiv.org/abs/2608.16878 and https://arxiv.org/html/2608.16878v1 . Version 1 submitted 2026-08-17 at 17:57:11 UTC. The abstract and introduction/technical overview were inspected. The paper gives an ordinary hit-and-run gap lower bound in terms of the Poincare constant, via conditional-expectation Dirichlet forms, dual divergence certificates, the Babuska–Aziz constant and an improved Poincare inequality. Consequently the broad idea of proving a chord-refresh gap through a divergence lifting is established prior art, not a new mechanism from this pass. The inverse-conditional-variance weighting considered here was not established as new by this limited check.
+
+4. **Max Fathi, “Stein kernels and moment maps.”** https://arxiv.org/abs/1804.04699 . Initially submitted 2018-04-12 at 19:24:30 UTC; version 3 dated 2023-06-07 at 10:38:28 UTC; published in Annals of Probability 47 (2019), 2172–2185. The primary abstract/version record and the author's revised-paper excerpt on weighted Poincare inequalities were consulted. Moment-map construction of Stein kernels and use of their regularity in quantitative limit theorems are established machinery. The elementary product-exponential and tangential-Gaussian calculations in this record are safeguards against incorrectly replacing matrix-valued control or special moment-map structure by generic Stein identities.
+
+Search snippets from secondary sites were used only to locate these primary sources. No secondary claim of validation, priority, or proof correctness is adopted.
