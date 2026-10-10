@@ -1,0 +1,45 @@
+# h18 second pass — exact ABC grid compression by pathwise threshold inversion
+
+## Frozen initial construction (before the literature comparison)
+
+**Target.** Given a stochastic simulator that can replay a fixed random tape and a scalar parameter grid, reduce the simulator acquisition needed to obtain the same finite-sample ABC likelihood vector on every grid point. This is an estimator-preserving compute target, not a claim to learn more than the tapes contain.
+
+**Representation.** Let the grid be \(\theta_0<\cdots<\theta_{K-1}\), let \(\omega_i\) be iid simulator tapes, and let \(S_j(\omega)=S(\theta_j,\omega)\). Assume, for every tape, \(S_0(\omega)\le\cdots\le S_{K-1}(\omega)\). For ABC acceptance band \([a,b]\), the accepted indices form the contiguous half-open interval \([L(\omega),U(\omega))\), where
+
+\[
+L=\min\{j:S_j\ge a\},\qquad U=\min\{j:S_j>b\},
+\]
+
+and either minimum is set to \(K\) if the set is empty. Find each boundary by lower-bound binary search, simulate only the queried grid points, and add one to the empirical likelihood count for all indices in that interval. This emits the exact dense-grid statistic from logarithmically many calls per tape.
+
+**Exact claim.** For each grid point, the dense Monte Carlo ABC likelihood is \(\widehat L_j=N^{-1}\sum_i 1\{a\le S_j(\omega_i)\le b\}\). The interval representation implies \(1\{a\le S_j(\omega_i)\le b\}=1\{L_i\le j<U_i\}\) for every \(i,j\), hence all \(K\) counts and any grid-prior posterior computed from them are identical. Each boundary has at most \(\lceil\log_2(K+1)\rceil\) queries with a known-true sentinel at index K, so the total is at most \(2N\lceil\log_2(K+1)\rceil\) calls rather than NK. This is an exact identity conditional on the sampled tapes; it does not remove ABC tolerance error or Monte Carlo error.
+
+## Concrete interface and experiment
+
+The simulator is a finite-graph SIR/percolation model. Each edge \(e\) gets one tape value \(U_e\sim\mathrm{Unif}[0,1]\); transmission occurs exactly when \(U_e\le\beta\). The observed summary is final outbreak size from a fixed index case. For each fixed tape, increasing \(\beta\) only adds active edges, so the connected-component size is pathwise nondecreasing. The simulator interface must accept/replay the same edge-indexed tape at every queried beta. Parameter-dependent RNG consumption or a different tape at different beta violates the contract.
+
+The script runs a fixed ER graph with 100 nodes / 282 edges, a 513-point grid on \([0,0.8]\), 128 shared tapes, an observed outbreak of 53, and ABC size band [50, 56]. Dense paired-grid Monte Carlo evaluates every grid point on every tape. Threshold inversion uses cached binary-search queries. Both produce exactly the same 513 integer counts and normalized grid posterior. Dense cost is 65,664 simulator calls and 18,517,248 edge checks; inversion costs 1,498 calls and 422,436 edge checks, a 43.8344x reduction. The analytic call ceiling is 2,560. Tape generation requires 36,096 uniforms for this N-tape dataset, and the observed-data simulation adds 282 edge checks; these common costs are accounted separately rather than hidden in the ratio. The comparison script keeps the tapes in memory so both methods replay the identical finite dataset (O(Nm) storage in this experiment). A streaming implementation can retain one tape at a time and O(K) counts, for O(m+K) working storage, if the experiment runner supplies each tape as a replayable seed or stream. Wall time was 1.84s dense and 0.0345s inverted in this small Python run, but call/edge counts are the portable metric.
+
+Reproduce with:
+
+```sh
+python3 work/high_conviction_04/reports/h18_second/threshold_sbi.py
+```
+
+Full output is saved at `work/high_conviction_04/reports/h18_second/experiment.json`.
+
+## Strongest falsifier and interface boundary
+
+The script's adversarial path has 101 grid points, output 1 only on indices 20–30, and output 0 elsewhere. Dense evaluation sees all 11 accepted points. Monotone bisection returns an empty interval and misses every one (first mismatch at 20 after 12 queries). The method therefore needs a genuine pathwise-monotonicity guarantee, not just a monotone mean, a trend in a few canaries, or an empirical check. There is no general finite black-box test that certifies monotonicity between/at unqueried inputs. If the implementation cannot establish it structurally, this mechanism should fail closed or be treated as heuristic; it must not report exact inference.
+
+The graph SIR instance satisfies the contract by construction. It is a controlled reproducibility experiment, not evidence that a complex scientific simulator exposes replayable, parameter-independent random tapes or monotone summaries. It also preserves the grid estimator; it neither discovers posterior mass between grid points nor changes identifiability.
+
+## Primary-source comparison and novelty audit
+
+The closest antecedent is L’Ecuyer and Vázquez-Abad, “Functional Estimation with Respect to a Threshold Parameter via Dynamic Split-and-Merge” (GERAD G-95-34, 1995; later journal publication). It explicitly constructs functional estimators over a continuous threshold parameter from one simulation with common random numbers and binary threshold decisions; the authors describe it as parallel simulation at infinitely many parameter values. That is stronger scope than this report’s black-box grid bisection and directly covers the core shared-randomness/threshold path idea. The present construction may be a useful drop-in black-box adaptation when only deterministic tape replay and scalar monotonicity are exposed, but **the core mechanism is not a defensible foundational novelty claim**. See the [GERAD report and abstract](https://www.gerad.ca/en/papers/G-95-34) and [full PDF](https://www.gerad.ca/fr/papers/G-95-34.pdf).
+
+Contemporary SBI alternatives optimize the number and placement of parameter simulations by different routes. ASNPE (NeurIPS 2024) actively selects informative parameter candidates for neural posterior estimation ([official proceedings](https://proceedings.neurips.cc/paper_files/paper/2024/hash/e6da278cdd692077b7e4a99d55573d9c-Abstract-Conference.html)). Cost-aware SBI (AISTATS 2025) combines rejection and self-normalized importance sampling to reduce expensive simulation, including ABC ([PMLR](https://proceedings.mlr.press/v258/bharti25a.html)). Compositional SBI for time series (ICLR 2025) estimates local transition-consistent parameters and composes them into a global posterior ([official proceedings](https://proceedings.iclr.cc/paper_files/paper/2025/hash/aa539a128dc8653408dab242f6042c84-Abstract-Conference.html)). These methods change which parameter/output pairs are simulated and approximate the target posterior; they do not establish exact preservation of a finite ABC grid statistic under pathwise threshold coupling. Dense paired-grid Monte Carlo is the strongest directly matched control for the exact statistic claimed here.
+
+## Status
+
+**OPEN / not a foundational result.** The exact finite-grid reduction is proved and locally reproduced. It could be useful if a real simulator provides fixed-tape replay and a structural pathwise-monotonicity proof. The closest pre-existing split-and-merge method substantially overlaps and may be more efficient when simulator internals are exposed. The result does not change what can be inferred from finite observations; it changes the number of simulator replays needed to reproduce one already-defined empirical ABC curve. The next legitimate novelty gate is an SBI-relevant simulator interface or acquisition structure that strictly exceeds the known split-and-merge representation, followed by a matched comparison against that implementation and tests for whether its guarantees survive realistic simulator branching. No such advance is established here.

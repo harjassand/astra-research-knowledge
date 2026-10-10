@@ -1,0 +1,77 @@
+H11 — Sparse epistasis from whole-genotype assays
+Date: 2026-10-10
+
+Frozen first derivation (written before literature comparison)
+
+Target capability. Infer a genotype-to-phenotype map well enough to predict unassayed genotypes from a deliberately designed assay panel, when the map has a sparse set of interactions of bounded order. The candidate missing primitive is an assay-design guarantee that distinguishes unknown epistatic terms without enumerating every combination of the participating loci.
+
+Exact model. Fix n binary loci and one fixed assay environment. Encode a genotype as z in {−1,+1}^n. Assume a scalar phenotype is exactly
+
+    f(z) = sum_{S in Ω} β_S χ_S(z),   χ_S(z)=prod_{i in S} z_i,
+    Ω={S⊆[n]: |S|≤d},   ||β||_0≤s.
+
+The constant term S=∅ is included. The candidate loci, d, and assay environment are supplied. The coefficients and active supports are not. Every phenotype observation is an actual assay; no training landscape is supplied. Genotypes must be constructible and viable. Assay error and unmodeled terms are excluded from the theorem and charged as limitations below.
+
+Random panel. Independently draw m genotypes z^(j) uniformly from {−1,+1}^n and assay each once. Set A_{j,S}=χ_S(z^(j))/sqrt(m), and y_j=f(z^(j))/sqrt(m). Then y=Aβ and every column of A has norm one. Let M=|Ω|. For distinct S,T, the row-wise product χ_S(z^(j))χ_T(z^(j))=χ_{S△T}(z^(j)) is an independent Rademacher sequence, so Hoeffding gives
+
+    P(|<A_S,A_T>|≥τ) ≤ 2 exp(−m τ²/2).
+
+A union bound over M(M−1)/2 pairs gives
+
+    P(μ(A)≥τ) ≤ M(M−1) exp(−m τ²/2),
+
+where μ(A)=max_{S≠T}|<A_S,A_T>|. Thus for any τ∈(0,1), m≥2τ^(−2) log(M(M−1)/δ) implies μ(A)<τ with probability at least 1−δ (using a non-strict threshold with the usual harmless boundary adjustment).
+
+Take τ=1/(2s). On this event μ(A)≤1/(2s)<1/(2s−1), so the mutual-coherence exact-recovery criterion applies: basis pursuit, min ||γ||_1 subject to Aγ=y, uniquely returns β for every s-sparse coefficient vector. A greedy OMP decoder also has the standard coherence guarantee under this strict bound. The sufficient panel size is
+
+    m ≥ 8 s² log(M(M−1)/δ).
+
+This is a uniform guarantee over supports and coefficient values, conditional on the stated exact model. It is not a guarantee for one fixed coefficient vector only.
+
+Scaling and exact toy. For d=2, M=1+n+binom(n,2)=Θ(n²). For fixed s, the coherence panel is O(s² log n), versus Θ(n²) distinct coefficient candidates in an exhaustive feature panel. Example parameters n=100, d=2, s=2, δ=0.05 give M=5051 and a sufficient m of 8·4·log(5051·5050/0.05), rounded up (about 643 single-genotype assays). The theorem therefore predicts a sub-feature-count panel at this size. The first executable check will construct this random panel, measure its realized coherence, and recover a chosen two-term model with OMP; it is a finite implementation check, not external validation.
+
+When M>m, uniform recovery of arbitrary real s-sparse coefficients requires m≥2s: otherwise spark(A)≤m+1≤2s, and a nonzero null vector supported on at most 2s can be split into two vectors each supported on at most s, giving two distinct admissible coefficient vectors with identical assays. This lower bound does not apply when M≤m and the full feature matrix has full column rank; it is not a claim that our sufficient O(s² log M) bound is optimal.
+
+Resource interface. Supplied: n candidate binary loci, the allowed interaction order d, a stable common environment, and the ability to assay any sampled genotype. Acquired: m phenotype observations from m independently constructed genotypes, plus identity/sequence and viability checks. Worst-case genotype construction entails Θ(mn) locus states/edits and Θ(m) phenotype assays; pooling, synthesis cost, failures, replicates, and QC are not free and are not modeled. The feature table costs Θ(mM) storage and O(mdM) arithmetic to build naively; the LP has polynomial cost in m,M. Uniform random draws can repeat, and repeats count as assays. If only a restricted genotype set is viable, the uniform-cube orthogonality argument no longer applies.
+
+Strongest exact falsifier / boundary. If unrestricted high-order effects are allowed, every unassayed genotype z* can carry an invisible point effect
+
+    h(z)=c·2^(−n) prod_i(1+z_i z*_i).
+
+It is c at z* and zero at every other genotype. Its Walsh expansion has all 2^n coefficients nonzero. Therefore any panel that misses z* cannot distinguish f from f+h, even with noiseless assays. The sparse bounded-degree assumption is doing the decisive work; the theorem cannot provide general extrapolation beyond it. A small concrete alias also shows why single-mutant scans alone do not suffice: on n=3, the triple interaction f=z1z2z3 and the additive map g=−2+z1+z2+z3 agree at wild type and all three single mutants, but disagree at multi-mutants.
+
+Open questions before comparison. Can the sparse-recovery mechanism tolerate a restricted viable-genotype design and assay noise without losing its sub-feature-count scaling? Can it distinguish truly sparse biology from a dense but weak interaction tail? Until answered, this is a bounded model capability, not a general biological system-identification result. The foundational objective remains OPEN.
+
+Literature comparison (to be completed only after the frozen derivation above).
+
+Post-derivation literature check and revised assessment
+
+The central sparse-recovery step is established compressed-sensing mathematics, not a new primitive. Tropp’s primary 2004 paper gives the exact-recovery condition and mutual-coherence guarantees for both basis pursuit and OMP; our threshold μ<1/(2s−1) is a standard sufficient condition. This removes any claim of a new sparse-recovery theorem here.
+
+More decisively, Poelwijk, Socolich, and Ranganathan already applied this strategy directly to genotype–phenotype inference in “Learning the pattern of epistasis linking genotype and phenotype in a protein” (Nature Communications 10, 4213 (2019), DOI 10.1038/s41467-019-12130-8). They exhaustively measured the 2^13=8192 combinations between two fluorescent-protein variants, found 260 statistically significant background-averaged epistatic terms, and reported that random assays of about 6–11% of variants sufficed to estimate major terms and reconstruct the full map. Their paper explicitly leaves scaling with protein size open. This is a direct biological precedent for the proposed sparse-Walsh mechanism, even though it is an empirical finite-map result rather than our coherence theorem.
+
+The biological assumption is not universal. Sailer et al., “Inferring a complete genotype-phenotype map from a small number of measured phenotypes” (PLOS Computational Biology 16, e1008243 (2020), DOI 10.1371/journal.pcbi.1008243), fit an eight-mutation PfCRT map from 52 measured genotypes and tested 24 new genotypes. Their additive-plus-classifier-plus-nonlinear model reached test R²=0.90; adding pairwise epistasis reduced test R² to 0.30. This is a system- and protocol-specific result, not a universal rejection of epistasis, but it is a direct falsifier of the presumption that a larger sparse epistasis model is automatically more predictive. Phenotype scale, assay process, selection, and sample design matter.
+
+Exact accessible-domain criterion. Let V be the set of genotypes the experiment can produce and assay, let φ(z)=(χ_S(z))_{S∈Ω}, and let Φ_V have rows φ(z)^T for z∈V. For the exact sparse class B_s={β: ||β||_0≤s}, coefficient recovery from all possible assays on V is uniform if and only if spark(Φ_V)>2s. Here spark is the least number of columns that are linearly dependent. If two s-sparse vectors give the same observations, their difference is a null vector supported on at most 2s; conversely any such null vector can be split into two vectors supported on at most s. Repeating genotypes cannot repair a rank defect.
+
+Even when coefficients are not identifiable, prediction at a target genotype z* is determined across every coefficient vector consistent with the observations exactly when φ(z*) is in the row span of Φ_V: the ambiguity vectors are ker Φ_V, and their effect at z* vanishes exactly when φ(z*) is orthogonal to that kernel. This is a quotient view of the model: assays identify β modulo ker Φ_V, while only feature rows in the measured row span have a determined prediction. It does not recover inaccessible biology; it states precisely what the data do identify.
+
+Exact viability falsifier. Take n=3, Ω={S: |S|≤2}, and suppose V consists of wild type (1,1,1) and the three single mutants (−1,1,1),(1,−1,1),(1,1,−1). Define
+
+    f(z)=1+z_1 z_2,       g(z)=z_1+z_2.
+
+Each is 2-sparse in Ω. On all four assayable genotypes, both give (2,0,0,2), so Φ_V has a four-column dependence and spark(Φ_V)≤4=2s. At z*=(-1,-1,1), they give f(z*)=2 and g(z*)=−2. Thus even exhaustive and noiseless measurement of every viable genotype cannot identify the degree-two interaction model or predict this unavailable double mutant. If the scientific goal is only to predict phenotypes on V, the two models are equivalent there; the impossibility is specifically about coefficient attribution and extrapolation outside the accessible domain. The included script checks this exact identity.
+
+A separate full-cube no-free-extrapolation result is the point-effect construction already given in the frozen derivation. For any finite panel missing z*, h(z)=c·2^(−n)∏_i(1+z_i z*_i) vanishes on every assay and is c at z*. It has 2^n nonzero Walsh coefficients. Thus some structural restriction is necessary, and the sparse bounded-degree family is a genuine premise rather than a consequence of finite data.
+
+Executable check and result. `h11_biology/run_toy.py` instantiates n=100, d=2, s=2, δ=0.05 with a reproducible uniform-cube panel of 642 genotypes for 5,051 candidate features. The realized maximum coherence is 0.19315 < 0.25; OMP recovers the exact two selected supports and coefficients to floating-point precision. The same script verifies the restricted-viability alias above. Output is recorded in `h11_biology/toy_result.json`. This confirms arithmetic and code behavior for one seeded panel; it is not an independent biological validation or a guarantee beyond the theorem’s exact assumptions.
+
+Strongest baseline and actual status. Baseline: existing mutual-coherence sparse recovery plus Poelwijk et al.’s direct fluorescent-protein demonstration. The executed result is a finite sanity check of a standard lemma. The actual additional mathematical result here is the exact spark/row-span characterization applied to a viability-restricted assay domain, with a two-sparse counterexample to coefficient identification and off-domain prediction. It is a diagnostic boundary, not a capability breakthrough. The central sparse recovery mechanism does not remove the decisive obstacle when viable genotypes induce a null direction or when the map is not sparse in the chosen response scale.
+
+Open work that would be required to claim a scalable capability: establish the assayable genotype distribution for a target organism; prove a restricted sparse eigenvalue or robust null-space bound for its viable design; include replicates, measurement noise, missing constructs, and phenotype transformation; bound approximation error from a dense interaction tail; and validate predictions on a genuinely held-out biological panel. Input costs must include genotype construction, viability screening, sequencing/identity checks, assay repetitions, and the cost of discovering the candidate loci. No such evidence was obtained here. The foundational target remains OPEN.
+
+Primary sources consulted after freezing the derivation
+
+1. Joel A. Tropp, “Greed is Good: Algorithmic Results for Sparse Approximation,” IEEE Transactions on Information Theory 50(10), 2231–2242 (2004). https://doi.org/10.1109/TIT.2004.834793
+2. Frank J. Poelwijk, Michael Socolich, and Rama Ranganathan, “Learning the pattern of epistasis linking genotype and phenotype in a protein,” Nature Communications 10, 4213 (2019). https://doi.org/10.1038/s41467-019-12130-8
+3. Zachary R. Sailer et al., “Inferring a complete genotype-phenotype map from a small number of measured phenotypes,” PLOS Computational Biology 16(9), e1008243 (2020). https://doi.org/10.1371/journal.pcbi.1008243

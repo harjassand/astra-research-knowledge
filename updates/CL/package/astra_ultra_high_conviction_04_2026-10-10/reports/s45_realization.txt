@@ -1,0 +1,372 @@
+S45 OPERATIONAL REALIZATION — actual one-port acquisition and its costs
+2026-10-10. Status: FOUNDATIONAL TARGET OPEN / NOT ACHIEVED.
+
+The actual scalar-input/noisy-scalar-output pipeline recovers a three-node
+matrix accurately with ordinary full nonlinear system identification. The
+cubic-information competitor gives no measured advantage. A weak-coupling
+family proves that robust recovery over all generic SPD matrices necessarily
+has an arbitrarily large acquisition cost. The new low-order high-opposite
+formula avoids jets algebraically but its forward measurement suppresses
+the relevant signal severely; weakly damped oscillator resonances do not
+automatically remove that suppression. These are model calculations and
+synthetic diagnostics, not externally validated physical measurements.
+
+1. Target, interface and strongest feasible baseline
+
+Target: recover a generic unknown dense real symmetric SPD K from
+ xdot=-Kx-alpha*x^{componentwise 3}+e1*u, y=x1, x(0)=0,
+known n and alpha=.3, quotienting hidden signed permutations. Topology,
+hidden trajectories, eigenvectors and internal tensors are not supplied.
+
+The implemented estimator receives only the recorded scalar controls,
+1200 noisy scalar outputs, n, alpha, the sampling interval, and common
+data-independent initial matrices. It minimizes output squared error using
+the FULL nonlinear ODE, analytic parameter sensitivities, symmetric matrix
+coordinates normalized for Frobenius norm, Levenberg-Marquardt damping,
+SPD feasibility, and six (n=3) or eight (n=5) independent initial matrices.
+The common broad numerical search box has eigenvalues in [.05,12]. It is
+an implementation bound, not an acquired physical prior or global theorem.
+Every start and failed iteration is retained in results_all.json.
+
+The matched cubic-information competitor uses exactly the same observations,
+starts, objective and optimizer, but evaluates the linear+cubic Volterra
+approximation through xLdot=-K*xL+e1*u and
+ xCdot=-K*xC-alpha*xL^3, yhat=xL1+xC1.
+This is a structural H3-fitting route with only n(n+1)/2 unknowns; it is
+stronger than fitting a free quartic tensor. It still neglects fifth and
+higher orders. It is not claimed to implement every possible H3 estimator.
+The linear response is used only as an evaluator diagnostic, never as the
+comparison baseline. No all-order derivative algorithm is implemented.
+
+Full nonlinear grey-box output/prediction-error estimation is a mature
+baseline, including nonlinear ODE structures and parameter constraints:
+https://www.mathworks.com/help/ident/grey-box-model-estimation.html
+Regularized Volterra identification is likewise established:
+https://arxiv.org/abs/1804.10435
+No novelty is asserted for the implemented fits.
+
+2. Matched measured recovery results
+
+Each case uses five independent zero-state trials of 12 time units, dt=.05,
+piecewise random plateaus and multisine controls, independent Gaussian
+measurement noise sigma=1e-5. Two fresh 12-unit trials evaluate prediction
+but are not used to choose the model. Error in K is minimized over all hidden
+signed permutations and divided by ||K||_F. Truth is used only in evaluation.
+
+ n  input max   full ODE K error   H3-fit K error   full/H3 CPU seconds
+ 3     .35          .05013            .34961              8.62 / 10.75
+ 3     .90          .01864            .57437              3.98 /  5.94
+ 3    2.50          .00744            .18677              2.88 / 11.00
+ 5    2.50         2.41714            .77368              5.55 / 18.56
+
+At n=3,input max2.5, full/H3 held-out physical-output RMSE is
+4.49e-7 / .0243155. Full ODE fitting used 369 model simulations across six
+starts; H3 fitting used 1210. Full training residual sum of squares is
+1.10469e-7, consistent with the 1200 observations' noise scale. The H3
+approximation's output error at the true matrix is .10162, much larger than
+noise. At lower amplitude .35 its truncation error is 1.19e-5, comparable
+with noise, and nonlinear orientation information is itself much weaker.
+
+The n=5 full fit failed at matrix recovery although its held-out prediction
+RMSE is only3.31e-5. H3 also failed, with prediction RMSE .15545. This is
+not evidence of structural nonidentifiability or a global optimization
+lower bound. The local exact-model sensitivity at truth has smallest singular
+value3.54e-7 and condition3.92e7. For orthonormal Frobenius parameter
+coordinates, sigma/smin=28.25 is the local worst-direction one-standard-
+deviation scale; this is a local information diagnostic, not a universal
+finite-sample confidence bound. The corresponding n=3 scales are .270,
+.113 and .0462 as excitation grows, with condition numbers5.0e4--7.0e4.
+
+The n=5 eigenvalues are .65,1.1625,1.675,2.1875,2.7 and every port modal
+overlap is nonzero (minimum .132). This failure is not a disconnected-node
+example. One direct physical coupling is small (.0161); this is permitted
+by generic SPD and matters operationally.
+
+Numerical validation: analytic sensitivity relative errors against centered
+finite differences are6.08e-11(full),6.47e-11(cubic). Truth generation uses
+two RK4 substeps per observed interval; fit-generation discretization bias
+is4.22e-8--3.56e-7, below the declared noise. Computation uses float64 and
+numpy 2.5.3 on the local Darwin host. Total main diagnostic runtime 68.62s,
+including all starts, weak-coupling tests and validation. Timings are one
+local run, not hardware-independent complexity measurements.
+
+3. An acquisition obstruction independent of the reconstruction algorithm
+
+Take n>=3 and
+ K_epsilon=[a,epsilon*b^T;epsilon*b,B], B>=beta*I,
+ K_epsilon>=mu*I, c=||b||, |u(t)|<=U.
+Let Q be a fixed hidden orthogonal transformation and
+K'_epsilon=diag(1,Q)^T K_epsilon diag(1,Q). Both have exactly the same
+linear one-port transfer. Generic choices are not hidden signed permutations,
+remain O(1) apart in the hidden block, and have all nonzero first-column
+entries with distinct squares. Port cyclicity can also be generic.
+
+Set X=U/mu. Dissipativity and hidden contraction imply
+ ||x||,||x'||<=X and ||x_h||,||Q*x'_h||<=epsilon*c*X/beta.
+In common hidden coordinates the two cubic maps are G(z)=z^3 and
+G_Q(z)=Q*(Q^T*z)^3; ||G(z)-G_Q(z)||<=2||z||^3.
+Let D_y=sup|y-y'| and D_h=sup||x_h-Q*x'_h|| on any finite horizon.
+Monotonicity of coordinatewise cubes yields
+ D_y <= epsilon*c*D_h/a,
+ D_h <= epsilon*c*D_y/beta + 2*alpha*epsilon^3*c^3*X^3/beta^4.
+For rho=epsilon^2*c^2/(a*beta)<1,
+ D_y <= [2*alpha*c^4*X^3/(a*beta^4*(1-rho))]*epsilon^4.
+Fixing epsilon<=epsilon0 with rho0<1 makes the bracket uniformly bounded.
+The bound holds for every time horizon and every bounded input, including
+adaptively chosen controls along the same recorded history. Zero initial
+states and independent additive scalar measurement noise are explicit.
+
+For N independent Gaussian measurements, the KL chain rule gives
+ KL(P_K,P_K') <= N*C^2*epsilon^8/(2*sigma^2).
+Pinsker and two-point testing imply N=Omega(sigma^2*epsilon^-8/C^2) to
+distinguish these O(1)-different hidden matrices with fixed success
+probability. This proves there is no uniform robust finite-resource bound
+depending only on n,alpha,U,sigma and a stability floor mu over generic
+SPD matrices. It does not rule out conditioned subclasses or instance-
+dependent acquisition, and it does not refute the exact structural theorem.
+For continuous-time white observation noise dY=y*dt+sigma*dW, the same
+argument charges total observation time T in place of independent N;
+oversampling cannot be treated as free independent physical information.
+
+The epsilon^4 exponent is generically attained. Under constant input, put
+w=B^-1*b and let y0 solve a*y0+alpha*y0^3=u. The equilibrium port equation
+contains alpha*epsilon^4*||w||_4^4*y^3. Hidden rotation replaces this by
+alpha*epsilon^4*||Q^T*w||_4^4*y^3. Therefore the output difference at leading
+order is
+ -alpha*epsilon^4*(||w||_4^4-||Q^T*w||_4^4)*y0^3/(a+3*alpha*y0^2),
+nonzero for generic Q,w. This is an acquisition bottleneck, not simply a
+bad Vandermonde implementation.
+
+The actual n=3/n=5 forward sweeps measured log slopes4.0044/4.0041 for
+epsilon<=.2. Quotient K separation tends to27.1%/31.3%. For n=5,
+epsilon=.1,Umax2.5, output RMS contrast is2.035e-8. At sigma1e-4,
+about2.41e7 scalar samples have KL~.5 for this particular input ensemble.
+At epsilon=.025, contrast7.93e-11 gives1.59e12 samples by the same
+ensemble calculation. These numerical counts are not optimal-design lower
+bounds; the preceding uniform proof supplies the algorithm-independent claim.
+
+4. Low-order balanced high-opposite extraction: actual forward-data test
+
+Following s41's exact formula, use q(z)=(zI+K)^-1*e1,
+s=i*2,t=i,c=(s-t)/2,R=i*Omega, and
+ F=-H3=sum_r alpha*q_r(s)*q_r(t)*q_r(R+c)*q_r(-R+c).
+Subtract the port term P (r=1); then Omega^4*(F-P) approaches
+ B=sum_{r>1}alpha*K_r1^2*q_r(s)*q_r(t).
+Balanced frequencies remove the first inverse-frequency bias, leaving
+O(Omega^-2). Algebraic matrix recovery after B acquisition is not the same
+as acquiring B.
+
+high_pair.py integrates the actual full nonlinear n=3 ODE under three
+real tones Omega+.5,Omega-.5,1. Eight sign patterns isolate the mixed cubic
+term. A second amplitude (.1 versus .2 per tone) and Richardson combination
+cancel the leading fifth-order contamination. Each frequency uses16 zero-
+state trials,131072 measured scalar samples,262144 discarded settling
+samples,1206.37 total time units excluding resets,Umax=.6, and input energy
+45.24. Noise is independent N(0,1e-10) per observed scalar. The exact H1
+port term is deliberately supplied ONLY as a favorable oracle subtraction
+diagnostic. It is not acquired, and these data are not called K recovery.
+
+ Omega  finite-limit bias   actual noiseless error   RMS noise/|B|
+   3          .4163               .4193                  1.67
+   5          .1958               .2009                 12.87
+   9          .0684               .0812                135.09
+  17          .0200               .0614               1719.74
+
+True |B|=.00337428. At Omega9, the hidden H3 magnitude is4.84e-7 while
+the subtracted port term is6.44e-4. Expected complex RMS noise in B is
+.45585 even with exact port subtraction. Independent repetition of this
+protocol to10% stochastic precision requires approximately2.39e11 scalar
+measurements at Omega9 and3.88e13 at Omega17. These are protocol-specific
+variance forecasts, not lower bounds for every conceivable estimator.
+The residual noiseless error includes finite frequency, uncancelled higher
+orders, settling and integration. Estimating H1 rather than supplying it
+can only introduce additional subtraction uncertainty in this calculation.
+
+For the suggested oscillator qddot+gamma*qdot+Kq+alpha*q^3=e1*u, the
+corresponding normalization is Omega^8. A spectral-only forecast at gamma=.08,
+low frequencies1 and1.5,Omega9 has7.88% finite-frequency bias and hidden
+H3 magnitude1.32e-8. Three tones of amplitude .03 produce hidden mixed
+output Fourier amplitude2.67e-13. At Omega17 it is1.56e-15 with2.13%
+bias. These are evaluator calculations, not acquired oscillator trajectories.
+Low-frequency resonances can improve the resolvent basis, but the high-pair
+suppression, required small amplitudes, settling time ~1/gamma, and port
+calibration remain to be paid. No oscillator advantage is demonstrated.
+
+5. Resource accounting, strongest falsifier and remaining gate
+
+Main acquisition:1200 training scalars,480 held-out scalars,5+2 ideal resets,
+60+24 physical time units, input maximum .35/.9/2.5. At max2.5, training
+energy185.53 and held-out energy27.51. Optimizer simulator calls are local
+computation, not extra physical trials. Model-known alpha and exact rest
+preparation are supplied assumptions of the problem; no calibration or
+physical reset apparatus was tested. A real reset by passive relaxation
+would require a certified stability rate and time at least
+mu^-1*log(X/delta_reset) per trial to achieve a declared residual tolerance.
+Sampling rates20 and326 samples/time-unit, noise independence, time units
+and energy units are model choices, not device specifications.
+
+Stored raw input/output arrays are O(N); the analytic sensitivity array is
+O(N*n^2), about57.6KB(n=3) or144KB(n=5) for the main datasets. This is array
+accounting, not measured peak RSS. All computations use ordinary float64.
+No paid compute, additional agents, external messages, commits or publication.
+
+Stronger excitation is not free. On the n=5 truth, Umax2.5→40 reduces
+the local sensitivity condition3.92e7→1.19e6 and sigma/smin28.25→1.24,
+while input energy185.53→47495.02 (256 times). This sweep evaluates local
+information and does not claim fitted recovery at high drive. At Umax40,
+four-versus-eight-substep integration discrepancy is5.65e-6, so numerical
+precision also becomes a resource. See excitation_sweep.json.
+
+Strongest falsifier of a general economical capability: the generic weak-
+coupling rotation family. Strongest falsifier of this tested H3 advantage:
+correct nonlinear grey-box fitting already acquires the n=3 matrix more
+accurately and faster on exactly matched data. A computational advantage
+for another H3 method is not logically excluded; none is demonstrated.
+
+Current primary predecessor update: Vanelli-Hendrickx arXiv2412.08472v4,
+31 Aug2026, already covers recurrent as well as feed-forward networks,
+known topology and generic analytic activations. Its exact discrete-time
+model y_i^t=f_i(sum_j w_ij*y_j^{t-1})+b_i*u_i^{t-1} differs from this
+continuous-time additive local cubic ODE; therefore it is not asserted to
+subsume the candidate theorem. It makes single-port nonlinear identifiability
+alone insufficient as a novelty or landmark claim.
+https://arxiv.org/html/2412.08472v4
+
+Remaining positive gate: a quantitatively conditioned physical class with
+acquired modal data, a usable finite-amplitude nonlinear inversion, and a
+measured advantage over matched full nonlinear identification, including
+all calibration, trial, duration, amplitude, energy and precision costs.
+The present output does not establish that gate. OPEN.
+
+Reproduce from repository root:
+ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 \
+ work/high_conviction_04/reports/s45_realization/diagnostic.py --mode all
+ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 \
+ work/high_conviction_04/reports/s45_realization/high_pair.py
+ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 \
+ work/high_conviction_04/reports/s45_realization/excitation_sweep.py
+
+All support files remain under reports/s45_realization. first_derivation.txt
+is the unchanged pre-literature derivation (one harmless literal '+' joins
+the reset/sample-rate sentence). results_all.json and data_*.npz retain the
+full matched acquisition experiment; high_pair_results.json retains the
+forward extraction and exact noise accounting. No supplied tensors or H1
+oracle values have been presented as acquired structure.
+
+6. New moderate-frequency dual: charged physical noise forecast
+
+Root's dual_frequency.py avoids the high-opposite asymptotic experiment by
+constructing a target-functional dual from many moderate oscillator frequency
+triples. Its small norm under supplied independent H3 noise is a different
+mechanism and is NOT falsified by Section 4. I evaluated it separately in
+dual_noise_forecast.py, using the same flat modal overlaps and separated
+lambda in [1,4], known alpha=.3, and unknown physical hidden rotation.
+All H1 modal data remain supplied here; neither this forecast nor root's
+prototype acquires them.
+
+The physical covariance includes eight sign patterns per frequency triple,
+two amplitudes and fifth-order Richardson cancellation, independent scalar
+noise sigma=1e-5, dt=.05, settling 12/gamma per trial, and measurement
+20/gamma per trial. Four real cubic mixing frequencies are jointly regressed;
+their exact finite-sample sine/cosine Gram matrix accounts for near-coincident
+frequencies. Per-tone amplitudes are adjusted by the known modal resolvent
+norm so the conservative linear-state proxy satisfies
+ alpha*||q_linear||^2/(gamma*sqrt(lambda_min)) <= .05.
+This is a perturbative protocol choice, not a certificate of all remaining
+nonlinear bias. H3 extraction divides by the product of three input amplitudes;
+resonance-safe amplitudes scale approximately as gamma^(3/2). Thus small
+abstract H3-noise gain does not imply small scalar-observation noise gain.
+
+I recomputed the optimal dual AFTER whitening this physical covariance.
+This favors the proposed method over using root's unweighted dual. I retain
+two distinct estimator families. The original weighted-quartic prototype
+treats node alpha values as unknown and has no fixed partial-trace constraint.
+The matched known-common-alpha branch additionally subtracts the known port
+coefficient and imposes sum_k T_ijkk=alpha*delta_ij. Both use the same actual
+physical test tensor with alpha=.3, but their information rights differ.
+The constraints are checked to numerical precision and are never supplied
+as measured quantities. All target row-span residuals are below 1e-13.
+Gaussian target noise is propagated through matrix eigenvector recovery;
+K error uses the physical gauge selected by maximum overlap with truth,
+a valid alignment but not an exhaustive minimum over every signed permutation.
+Sixty noise draws are forecast draws, not additional physical experiments.
+
+Original unconstrained weighted-tensor branch, unknown node alpha:
+
+ n gamma  measured scalars   physical time   relative B noise  median K error
+ 3  .10       4.352e6          3.482e5              .0180           .00290
+ 3  .03       1.451e7          1.161e6              .0339           .00347
+ 3  .01       4.352e7          3.482e6              .0903           .00878
+ 5  .03       3.371e7          2.697e6              .4751           .2621
+ 8  .03       1.457e8          1.166e7             1.0135           .3376
+ 8  .01       4.371e8          3.497e7             3.5683           .3792
+
+Time includes settling and measurement, excludes resets and H1 acquisition.
+At n=8,gamma=.03 there are 683 triples and 10928 physical trials. Input
+maximum is bounded by .01241 and total input energy forecast is 114.47.
+The target matrix norm is .17193 and minimum hidden eigenvalue gap .0016315.
+The original branch's target Frobenius noise is .17426, about 107 times that
+gap. These counts are protocol-specific, not optimal physical lower bounds.
+At n=3 the large target eigengap .410 makes the small example favorable,
+still at millions of scalar samples.
+
+Known common alpha, with port and partial-trace identities imposed:
+
+ n gamma  relative B noise   dual K RMS forecast   local likelihood K RMS
+ 3  .10        .00963               .002712                 .002736
+ 3  .03        .00976               .002723                 .002819
+ 3  .01        .00980               .002733                 .002839
+ 5  .03        .29486               .24411                  .01835
+ 8  .03        .86155               .32901                  .02587
+ 8  .01       3.11329               .37566                  .03462
+
+Costs are identical to the first table. The n=8,gamma=.03 constrained
+target Frobenius noise is .14813, about 90.8 times the minimum eigenvalue
+gap. The n=3 known-alpha dual is statistically comparable to the local
+physical likelihood benchmark; small Monte Carlo differences are not a
+claimed efficiency improvement. At n=5 and n=8 there is a large gap.
+Decreasing gamma does not improve the charged known-alpha noise forecast
+at these fixed perturbative settings, while physical duration increases.
+
+Matched competent benchmark for this forecast: local likelihood estimation
+of the actual physical hidden rotation and the same supplied H1, using
+exactly the same phase-cycled H3 observations and covariance. The derivative
+is taken along orthogonal rotations and includes physical quartic constraints.
+For the known-alpha branch the n=8,gamma=.03 information condition number is
+14.0. For the original unknown-alpha family, I also include the n node alpha
+parameters as nuisance directions; local K RMS uncertainties for the six
+rows are .003058,.003672,.003838,.01996,.02786,.03855. Its corresponding
+unconstrained dual K RMS forecasts are .004377,.005646,.01233,.26287,.34417,
+.37735. Thus neither family is credited with information it was not given.
+
+These are LOCAL ORACLE FISHER BENCHMARKS at the actual physical parameters,
+NOT executed estimators, guaranteed algorithms, global optimization results,
+or successful physical acquisitions. The covariance model is conditional on
+the cubic-regime approximation. Full nonlinear ODE likelihood can additionally
+use all orders and raw trajectories. The forecasts establish no advantage
+over a competent matched physical likelihood method, but they do not prove
+that its local uncertainty can be attained by a feasible global algorithm.
+
+Modal calibration matters even with noiseless H3: in the n=8,gamma=.03
+instance, one tested eigenvalue perturbation with L2 size 3e-5 (one thousandth
+of gamma) induces about .00296 relative aligned K error in the trace-constrained
+branch; size 3e-4 induces .0274. This is one direction, not a worst-case
+bound. Residue errors, alpha
+calibration, drift, modal estimation cost and nonlinear residual bias are
+still missing. They cannot be labelled free preparation.
+
+This forecast fills in scalar-noise accounting for the supplied-kernel
+diagnostic, conditionally on a cubic-regime acquisition protocol. All 10928
+n=8 trials still assume ideal zero-state resets. Passive relaxation to a
+declared tolerance would cost time of order gamma^-1*log(1/delta_reset)
+per reset, in addition to the explicit settling interval. H1 calibration
+trials and their sampling time are absent. The remaining nonlinear bias,
+frequency drift and modal estimation error have not been propagated through
+actual oscillator trajectories. The forecast does not demonstrate end-to-end
+oscillator recovery or historical significance. Its large dimensionless time
+counts alone do not establish device-level impracticality; a physical device
+must supply the time, force and detector-noise units. The matched statistical
+comparison and explicit missing costs are the operational conclusions.
+The main positive gate remains OPEN. Reproduce with:
+ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 \
+ work/high_conviction_04/reports/s45_realization/dual_noise_forecast.py

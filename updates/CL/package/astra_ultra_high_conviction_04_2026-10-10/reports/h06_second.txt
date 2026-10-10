@@ -1,0 +1,88 @@
+H06 SECOND PASS — circuit-size potential certificates for polynomial-loop invariants
+Date: 2026-10-10 (Australia/Brisbane)
+Status: OPEN; exact lemma obtained, mechanism and advantage remain unvalidated.
+
+FIRST DERIVATION (frozen before catalogue/literature comparison)
+
+Target capability: given a loop update as an arithmetic DAG, synthesize a compact, kernel-checkable equality invariant even when its polynomial degree is exponential in the DAG size. The desired missing operation is circuit-size invariant discovery, rather than invariant search at a fixed expanded degree.
+
+Candidate mechanism: for a state update x' = F(x) and accumulator update y' = y + G(x), discover an arithmetic-circuit potential H satisfying the discrete-coboundary equation
+
+    G(x) = H(F(x)) - H(x).
+
+Then certify I(x,y) := y - H(x) as invariant. The proof object consists of the circuit H plus a proof of the coboundary identity. Its checker composes H with F, checks the one identity, then reduces I(F(x),y+G(x)) - I(x,y) to zero by substitution. This derives an invariant without enumerating coefficients up to deg(H). Candidate generation is a targeted search over shared arithmetic-DAG subexpressions and their compositions, with an explicit UNKNOWN outcome if no witness is found; this is not complete for arbitrary polynomial invariants.
+
+Hard parametric family: for input parameter k, let the old-state repeated-squaring DAG be t_0=x and t_{j+1}=t_j*t_j for j=0,...,k. Set
+
+    x' = t_1,
+    y' = y + t_k*t_k - t_k.
+
+All t_j are temporaries computed from the old x. The input has O(k) arithmetic gates. Take H_k(x)=x^(2^k), represented by t_k. Then H_k(x')=x^(2^(k+1))=t_k*t_k, so G_k=H_k(x')-H_k(x), and
+
+    y' - H_k(x') = y + t_k^2 - t_k - t_k^2 = y - t_k.
+
+Thus y-x^(2^k) is an exact invariant of degree 2^k with an O(k)-gate certificate and O(k) local verification, assuming the arithmetic DAG and coefficient semantics are supplied. This family separates circuit size from degree: a coefficient-template method whose unknowns enumerate all monomials through d=2^k has at least 2^k+1 coefficients even in one variable, while the proposed witness is linear in k. A direct verifier can replay the DAG and the cancellation; no expansion or numerical sampling is needed.
+
+Frozen falsifiable prediction: the special potential equation may be standard or reconstructible by current symbolic rewriting, and this example may be too syntactic to demonstrate discovery. The approach earns leverage only if its witness can be found at cost polynomial in the input/certificate DAG size on a discriminating family where strongest invariant synthesis, SMT, and rewriting either require degree-sized resources or do not find it. If the potential is supplied as an input, this is a certificate-compression result only; the material claim requires charging and measuring discovery. No claim of general invariant completeness is intended.
+
+[End frozen first derivation]
+
+Frozen-section SHA-256 at freeze time: 41e70a16d18fa99720a40193c4375dfad9cd159bf291c8fae16cd8604fb45d29
+
+Interpretation note: I=y−H(x) is a preserved quantity. For a fixed initial state, the polynomial invariant assertion is y−H(x)=y_0−H(x_0); when initialization enforces y_0=H(x_0), this is y−H(x)=0.
+
+POST-FREEZE STRESS REFINEMENT AND PRIMARY-SOURCE COMPARISON
+
+The monomial witness x^(2^k) was too easy to encode sparsely, so the hard family is strengthened. It uses a degree-2^k−1 polynomial with 2^k nonzero monomials but an O(k)-node arithmetic DAG:
+
+    q_0=x;                         q_{i+1}=q_i^2
+    H_0=1;                         H_{i+1}=H_i(q_i+1)
+    G_0=0;                         G_{i+1}=G_i(q_{i+1}+1)+H_i q_i(q_i−1).
+
+The loop body is x'=q_1 and y'=y+G_k. By induction, G_i=H_i(x^2)−H_i(x). The base case is zero. For the inductive step, write q_i=x^(2^i):
+
+    H_{i+1}(x^2)−H_{i+1}(x)
+      = H_i(x^2)(q_i^2+1)−H_i(x)(q_i+1)
+      = (H_i(x^2)−H_i(x))(q_i^2+1)+H_i(x)q_i(q_i−1)
+      = G_i(q_{i+1}+1)+H_iq_i(q_i−1)=G_{i+1}.
+
+Also H_k=∏_{j<k}(x^(2^j)+1)=1+x+⋯+x^(2^k−1), by the binary subset-sum/product identity. Therefore
+
+    y'−H_k(x') = y+G_k−H_k(x^2) = y−H_k(x).
+
+So I_k := y−H_k(x) is inductive. The degree is 2^k−1 and H_k has exactly 2^k distinct terms; both the loop update and certificate remain arithmetic DAGs of size O(k). A generic degree-D bivariate template has binom(D+2,2) coefficients. Even the narrower shape a*y+Σ_{j≤D}b_j*x^j has D+2 unknowns, exponential in k. A bounded-degree monomial-space algorithm with D≥2^k−1 can in principle discover this invariant, but its explicit candidate space is exponentially larger than the DAG input. If a user supplies a one-dimensional space already spanned by y−H_k, finite-dimensional algebraic methods can directly handle it; that bypasses the discovery task and must be counted as supplied information.
+
+The recognizer in `h06_second/potential_probe.py` works backwards over the supplied G_k DAG, checks the recurrence grammar, reconstructs H_k, and returns UNKNOWN if the shape does not match. Its certificate is the q/h/g node-reference sequence plus the final product node. The soundness argument is the induction above; the independent checker validates the local DAG recurrences, q_0=x, x'=q_1, y'=y+G_k, and the final H_k node, then applies the fixed algebraic lemma. It uses no sampling, model, training, or external oracle. On this explicit grammar, discovery and checking take O(k) time and references. In the local Python prototype, at k=64 the loop-update DAG had 517 nodes, the certificate had 194 DAG references and 64 induction stages, and discovery/checking took about 0.00016/0.00012 seconds; these timings are implementation diagnostics, not trusted-kernel or end-to-end measurements. Degree and term count were each 2^64 scale. Adding 1 to G_k made the recognizer return UNKNOWN for every tested k=1,…,64. SymPy expansion separately checked the recurrence identity for k≤8.
+
+SMT comparison is deliberately limited to candidate verification, not synthesis. Z3 QF_NRA proved the negated inductiveness obligation UNSAT for k=1,…,13 (degree through 8191); final probe solve times were approximately 0.00078–0.0194 seconds. This shows that the family does not beat SMT once I_k is supplied. A separate k=16 attempt with a 1-second solver timeout had not returned after 30 seconds and was interrupted; this is an unreliable timeout/preprocessing observation, not a solver-failure claim. An ordinary recurrence-aware term rewriter can also prove the k-stage identity in O(k) once the recurrence is exposed. Neither solver verification nor term rewriting needs the new certificate for this visible grammar.
+
+PRIMARY CONSTRUCTIVE BASELINES (checked after freezing)
+
+1. Bayarmagnai, Mohammadi, and Prébet, “Algebraic Tools for Computing Polynomial Loop Invariants,” arXiv:2412.14043 (extended version updated 2026). Their algorithms handle polynomial maps of arbitrary degree and compute all invariants inside a supplied finite-dimensional vector space E; a classic E is the bounded-degree space. They also give an efficient algorithm for invariants of a specified form f(x)−f(a) within a prescribed space. This is a stronger contemporary algebraic baseline than degree-template heuristics alone. It makes the missing interface precise: discovering a succinct circuit basis without receiving E/template remains the candidate gap. Source: https://arxiv.org/abs/2412.14043 .
+
+2. Amrollahi et al., “(Un)Solvable loop analysis,” Formal Methods in System Design (2024/25), DOI 10.1007/s10703-024-00455-0. Their method extends recurrence-based invariant synthesis to unsolvable recurrence operators by searching linear combinations of defective monomials up to an arbitrary chosen degree d and then extracting well-behaved recurrences/closed forms. This directly overlaps the mathematical invariant class here: with degree bound d=2^k−1, the H_k relation is among the polynomial combinations that such a method can target. The distinction claimed here is solely a succinct DAG-shaped discovery/certificate interface; no new invariant theorem or completeness claim follows. Source: https://link.springer.com/article/10.1007/s10703-024-00455-0 .
+
+3. Wu et al., “Synthesizing Invariants for Polynomial Programs by Semidefinite Programming,” TOPLAS 47(1), 2025. Cluster/Mask methods synthesize from parameterized polynomial templates and SOS/SDP relaxations, with stated robustness and template restrictions; this is a strong alternative for polynomial inequality templates but does not remove the need to choose an invariant template. Source: https://lcs.ios.ac.cn/~znj/papers/24TOPLAS___Synthesizing_Program_Invariants_Using_SDP.pdf .
+
+4. Kojima, Kinoshita, and Suenaga, “Generalized homogeneous polynomials for efficient template-based nonlinear invariant synthesis,” Theoretical Computer Science 747 (2018), DOI 10.1016/j.tcs.2018.06.005, restricts the search space to smaller generalized-homogeneous templates and proves soundness/completeness of that reduction. This is an important warning against treating the raw monomial count as the best possible template baseline. I did not run their implementation on this family; whether its restricted templates compress H_k is unresolved here. Source: https://doi.org/10.1016/j.tcs.2018.06.005 .
+
+These sources make the standard equation G=H∘F−H a coboundary/telescoping identity, not a new mathematical principle. Searches found no direct primary-source treatment of this exact DAG-recognition rule, but absence in this limited search is not a priority result. I make no novelty claim. The proposed primitive is specifically a grammar-directed inverse-coboundary recognizer that emits a compact compositional certificate; it is not complete outside its declared grammar.
+
+RESOURCE AND COMPARISON AUDIT
+
+- Supplied: exact polynomial-arithmetic update DAG, state-variable map, and an exact commutative coefficient ring (the tested family uses integer coefficients, so the identity is valid over Z and Q). No floating-point or bit-vector semantics are covered.
+- Discovery: parse the increment DAG against the declared recurrence grammar and reconstruct the q/h/g sequence. The family input has 8k+5 hash-consed nodes for k≥2 (12 at k=1) in the probe; discovery is O(k) on this restricted family and returns UNKNOWN on unsupported shapes. Searching over possible grammars is not included and may dominate.
+- Certificate: q/h/g node references (3k+2 in the measured family) and k local recurrence stages; an additional final product node represents H_k. No coefficient table of length 2^k is emitted.
+- Checker: validate the DAG references/recurrences, then apply the two-line induction and substitution lemma. Prototype checker cost was O(k); a proof assistant kernel port and coefficient-bit/memory measurements remain unperformed.
+- Strong alternatives: a candidate supplied to Z3 is checked quickly on k≤13; rewriting proves the exposed recurrence in O(k); current arbitrary-polynomial loop algorithms can search bounded degree or a user-specified finite-dimensional E; specialized generalized-homogeneous templates may be smaller than the full monomial basis. No direct comparison with the actual Polar, SDP, or algebraic-loop software was run.
+- Proof complexity: the invariant and its proof are already O(k) in a recurrence-aware representation. Thus this is not demonstrated proof compression against strongest rewriting. Its only measured advantage is automatic extraction of a succinct high-degree invariant from a matching syntactic recurrence while avoiding an explicit coefficient basis.
+
+STRONGEST FALSIFIER AND DISPOSITION
+
+The hard family bakes the needed telescoping structure into the update grammar. A recurrence-aware rewrite engine or the cited invariant methods with the right degree/template can solve the same instance; Z3 verifies all candidates tested. The extraction algorithm is correspondingly narrow and effectively recognizes a programmer/compiler-encoded proof hint. If an adversarially re-encoded but equivalent DAG breaks the recognizer, while SMT/rewrite/equational matching still finds the invariant at similar cost, the proposed discovery advantage disappears. The decisive next test would freeze a broader grammar and compare blind circuit-shaped invariant discovery on independently authored accumulator loops against (i) bounded-degree/monomial methods, (ii) the best finite-dimensional algebraic method, (iii) Z3 QF_NRA CEGIS, and (iv) recurrence-aware rewriting, charging templates, basis, and supplied hints equally.
+
+RESULT: a correct, compact certificate family and prototype recognizer were obtained. They establish a real degree-versus-DAG representation gap on this restricted family, not material general-purpose proof-discovery leverage. The main foundational objective remains OPEN; novelty and advantage over the best grammar-aware alternatives remain UNKNOWN.
+
+Reproduce local probe: `python3 work/high_conviction_04/reports/h06_second/potential_probe.py 64`.
+Results: `work/high_conviction_04/reports/h06_second/potential_probe_results.csv`.
+

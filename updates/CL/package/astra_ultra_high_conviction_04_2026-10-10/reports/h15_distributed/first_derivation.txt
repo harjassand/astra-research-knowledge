@@ -1,0 +1,66 @@
+H15 DISTRIBUTED — EXACT CANCELLATION-FIRST SPARSE RECONCILIATION
+Investigator: h15_distributed
+Date: 2026-10-10
+Status: OPEN; first derivation frozen before primary-source comparison below.
+
+FROZEN FIRST DERIVATION (pre-search)
+
+Candidate mechanism and target
+
+Can a distributed system exactly reconcile a huge signed update log with state and communication controlled only by the sparsity of the *final aggregate*, even when every worker's local vector is dense? The mechanism is a composable moment sketch over a public finite field. It deliberately does not attempt to summarize each shard's own support. It summarizes an additive image of the shard so that cancellation can happen before the sparsity promise is used.
+
+Formal interface
+
+There are n workers, a universe [U]={1,...,U}, a known sparsity cap k, and an integer coefficient bound B≥1. Worker i reads an arbitrary one-pass stream of updates (x,δ) with x∈[U], δ∈Z. Its net vector is f_i∈Z^U. The target is f=Σ_i f_i. Assume only that |supp(f)|≤k and |f_x|≤B for every x. There is no sparsity or magnitude restriction on intermediate prefixes or on any f_i. In particular, each f_i may have support U and large cancellations may occur only between workers.
+
+Fix a public prime p>max(U,2B), and identify x with its distinct field element x mod p. Worker i maintains 2k field elements
+
+    M_{i,j} = Σ_{x=1}^U f_{i,x} x^j  (mod p),    j=0,...,2k-1.
+
+For each input update (x,δ), it adds δx^j to coordinate j. The coordinator adds workers' arrays coordinatewise and obtains S_j=Σ_x f_x x^j mod p. Thus arbitrary dense shard vectors combine before the support promise is invoked.
+
+Claim (exact sparse aggregate recovery)
+
+Under the interface above, the 2k moments determine f uniquely. The statement is adversarial and deterministic: the streams may be chosen with knowledge of p, and there is no hash collision or sketch failure probability.
+
+Proof. Suppose g and f are two vectors satisfying the promise and having equal 2k moments. Their difference h=f-g has support at most 2k and distinct support points y_1,...,y_r, with r≤2k. The first r equalities give
+
+    Σ_{ℓ=1}^r h_{y_ℓ} y_ℓ^j = 0,  j=0,...,r-1.
+
+The r×r Vandermonde matrix on distinct y_ℓ is invertible over F_p, so each h_{y_ℓ}=0 mod p. Also |h_x|≤2B<p, hence h_x=0 as an integer. Therefore f=g.
+
+Recovery. Let r=|supp(f)|≤k, with support points a_1,...,a_r and nonzero field amplitudes b_ℓ=f_{a_ℓ} mod p. The k×k Hankel matrix H=(S_{u+v})_{0≤u,v<k} factors as V diag(b) Vᵀ, where V_{u,ℓ}=a_ℓ^u. V has full column rank, so rank(H)=r. For r>0, the leading r×r Hankel block is invertible. Solve the recurrence coefficients c_0,...,c_{r-1} from
+
+    Σ_{t=0}^{r-1} c_t S_{j+t} = -S_{j+r},  j=0,...,r-1.
+
+Then Q(z)=z^r+Σ_{t=0}^{r-1}c_tz^t=Π_ℓ(z-a_ℓ). Factor Q over F_p, map each root a_ℓ back to its unique integer x∈[U], and solve the r×r Vandermonde system for b_ℓ. Since p>2B, centered representatives recover the unique integer coefficients f_x. Check the recovered support, coefficient bounds, and all 2k input moments. The zero vector is the r=0 case. Factoring can use a Las Vegas finite-field algorithm (always correct, expected polynomial time); a deterministic fallback scans all U universe points and evaluates Q, costing O(Uk) field operations. This computational distinction is part of the resource claim, not hidden.
+
+Compositional and adversarial-stream consequence
+
+Moment arrays form an additive monoid homomorphism from integer update vectors to F_p^{2k}. Any merge tree, any message order, and any partition of the update stream produces the same aggregate array. Local support may be U, each local prefix may be arbitrarily dense, and the union of local nonzeros may be U; only the final integer vector must be k-sparse with coefficients bounded by B. The guarantee is deterministic even if the stream is adaptive to prior outputs, because there are no random projections; workers reveal no intermediate query outputs in this one-shot interface.
+
+Resource accounting
+
+Let L be the total number of updates and let n be the number of workers. Each worker stores 2k residues, O(k log p) bits, plus its current record and fixed arithmetic workspace. It must read all of its L_i records; each record takes O(k) field multiply-adds using O(log p)-bit operands, or O(k log²p) bit operations with elementary arithmetic No prefix sparsity data structure is required. Public setup includes choosing and agreeing on p; a prime with O(log(U+B)) bits exists by Bertrand's postulate, but finding/certifying it and distributing it are setup costs and must be charged or amortized across jobs.
+
+A worker sends 2k residues: O(k log p) bits, plus worker identity/version/completion metadata. A tree reduction uses O((n-1)k log p) field-payload bits total and O(D) latency for tree depth D; each relay needs O(k log p) temporary state. The coordinator's sketch state is O(k log p). Recovery uses O(k³) elementary field operations for naive rank/linear solves plus polynomial factorization; the deterministic root-scan fallback costs O(Uk), while Las Vegas factorization has expected polynomial cost in k and log p. Output itself costs O(k(log U+log B)) bits. The system cannot declare a final result until it knows all n shard messages are complete; this completion/watermark condition is a synchronization cost, even though the numerical merge is order-independent.
+
+Failure boundary: this is not Byzantine robust and does not recover an update from a worker that failed before its summary was durably emitted. A lost message is handled only by retransmitting the same versioned summary or replicating it; the bytes/paths and deduplication state must be charged. If up to q independent message erasures are to be tolerated without retransmission, redundancy or an erasure code is needed; no such redundancy is claimed here. Crash recovery of an emitted summary requires durable storage or replaying the worker's source log and is also outside the free interface.
+
+Communication lower bound for this one-round exact interface
+
+Even with two workers and the second worker empty, the first worker's message must distinguish every k-subset of [U] (take coefficients +1 and B≥1). Thus its worst-case message length is at least log₂ binom(U,k)=Ω(k log(U/k)) bits for k≤U/2. For n workers sending independently in a simultaneous one-round protocol, the same argument applies to each worker with all other workers empty, yielding Ω(n log binom(U,k)) total worst-case bits (up to variable-length coding conventions). The moment sketch costs O(nk(log U+log B)) bits. It is within an O(log k + log B) factor of this simple support-only lower bound when B is constant; this is not a tight lower bound for all coefficient ranges or interactive protocols.
+
+Why this may remove a real state/communication bottleneck
+
+Conventional exact local retention of every update or every local nonzero costs Θ(U) state/communication per dense shard. Here the aggregator sees the same exact final vector with O(k log(U+B)) numerical state and O(k log(U+B)) payload per shard, independent of local support and stream length. The nontrivial promise is global sparsity after cross-shard cancellation, rather than local sparsity. This gives a sharply stated capability for reconciling dense append/delete logs, replicated counters, and sparse corrections. It does not itself accelerate reading the input, and it may move work to recovery/root finding. It is a restricted theorem and not evidence of a major foundational breakthrough.
+
+Strongest immediate falsifiers to pursue
+
+1. An existing exact mergeable sparse-recovery/set-reconciliation result may already give precisely this dense-local / sparse-global guarantee, making the mechanism known rather than new.
+2. The fast recovery claim may conceal a root-finding cost, and deterministic poly(k,log U) recovery may be unavailable under the chosen field representation. The O(Uk) exact fallback is explicit.
+3. The guarantee assumes a global sparsity promise and a public completion boundary. If the system must answer continually before all shards arrive, or recover from pre-emission worker failure without source replay/replication, the state bound does not solve that task.
+4. The coefficient bound and p>2B are essential. If a residual coefficient wraps modulo p, a nonzero integer coordinate can disappear.
+
+Primary-source prior-art search and post-search assessment
+[Not yet performed at the time of this freeze.]

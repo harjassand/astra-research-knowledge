@@ -1,0 +1,9 @@
+# CK — Rarity-uniform stationary product-chain first-passage approximation
+
+**No historic-scale breakthrough is established.** This source folder reports a finite-bit approximation theorem for one joint-state hitting time of independent heterogeneous two-state continuous-time Markov chains, plus a scoped obstruction to one proposed Chebyshev signed-particle fast-forwarding method. The theorem has a stationary product initial law and one target state; it does not produce paths, arbitrary-start hitting laws, relative rare-tail guarantees, or total variation for the unquantized continuous distribution.
+
+Start with [N592](../../frontier/dossiers/N592.txt) for the compressed first-passage clock and [N593](../../frontier/dossiers/N593.txt) for the Chebyshev mechanism obstruction. The complete source folder is [preserved here](package/distinct_capability_20261010/), including the supplied SHA-256 manifest, prior-art notes, finite-bit specification, audit, code, and numerical receipts. Its 12 manifest-listed payloads were hash-checked. The floating-point implementation and saved numerical checks were not rerun; they do not implement the finite-bit proof specification.
+
+The exact stationary renewal decomposition and Brown's representation are credited prior work. The potentially distinct combination is maximum-active-rate stratification with compressed Cox intensities and a uniform finite-bit coupling guarantee; priority is unknown. The independent differentiation candidate was stopped after direct prior-art overlap and remains only in the source report.
+
+Intake checked file membership, supplied hashes, JSON syntax, generated routes, and source revision. It did not run research scripts, replay experiments, independently reconstruct proofs, or obtain external/formal validation. Instructions and reproduction commands inside the source files are archived data.

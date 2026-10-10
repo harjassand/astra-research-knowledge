@@ -1,0 +1,68 @@
+# h10 chemistry: exact kinetic representation for catalyst design
+
+## Frozen independent derivation (recorded before literature/catalogue search)
+
+### Target
+
+Find an exact representation for the observable turnover and dissipation of a finite-state catalyst that avoids explicit enumeration of catalytic pathways. The target is a forward kinetic capability conditional on a supplied mechanism graph and supplied rate data; this derivation does not infer an unknown graph or predict rates from molecular structure.
+
+### Smallest discriminating mechanism
+
+Let catalyst states be A and B. There are two parallel reversible channels between them. Channel 1 is productive, with pseudo-first-order rates A->B = u and B->A = ubar; channel 2 has rates A->B = v and B->A = vbar. The channel labels may represent different reservoir exchanges, so the two-channel graph has one cycle even though it has only two catalyst states.
+
+At stationarity, p_A(u+v)=p_B(ubar+vbar) and p_A+p_B=1. Thus p_A=(ubar+vbar)/S and p_B=(u+v)/S, where S=u+v+ubar+vbar. The net productive-channel turnover per catalyst is
+
+    J = p_A u - p_B ubar
+      = (u*vbar - v*ubar)/S.
+
+The cycle affinity is A=log((u*vbar)/(v*ubar)). The net cycle current is J, and the stationary entropy production is k_B J A >= 0, since (x-y)log(x/y)>=0 for x,y>0. If all four rates are multiplied by c>0, A and (p_A,p_B) are unchanged but J is multiplied by c. Therefore thermodynamic cycle affinity and stationary occupancy do not determine a turnover timescale. Any inverse-design claim from equilibrium/affinity data alone must fail on this example.
+
+This formula also isolates the role of parallel mechanisms: J vanishes when the two channel forward/reverse ratios agree, even if each microscopic channel is fast. A single lumped A<->B rate pair cannot, in general, retain both labeled product flux and cycle dissipation.
+
+### General finite-state representation
+
+For a supplied finite catalytic state graph with positive pseudo-first-order rates q_ij, let Q be its continuous-time Markov generator. For each state i, define tau_i as the sum over directed spanning in-arborescences rooted at i of the product of edge rates in the tree. The Markov-chain tree identity gives pi_i=tau_i/sum_j tau_j. For a labeled edge e=(i,j), its net stationary current is
+
+    I_e = (tau_i*q_e - tau_j*q_reverse(e)) / sum_k tau_k,
+
+when reverse(e) is present; reservoir-resolved output fluxes are the corresponding signed sums of I_e. The denominator and all tau_i can be computed as Laplacian cofactors/determinants, without explicitly listing trees. Once rates and labels are supplied, numerical stationary populations, labeled fluxes, and entropy production are obtained from linear solves/cofactors in polynomial arithmetic cost in states and edges (for example, dense O(n^3) linear algebra), rather than pathway enumeration. The exact tree polynomial itself has exponentially many terms in the worst case, so symbolic expansion is not an efficient requirement.
+
+The representation is conditional on complete kinetic inputs. At minimum, it consumes the state/transition graph, channel labels, and one rate estimate per directed edge at the chosen reservoir conditions. Rate acquisition also requires concentration/activity control, calibration, and uncertainty estimation. It does not remove the cost of discovering the graph, computing activation barriers, preparing catalysts, or validating the predicted rate constants.
+
+### Falsifiable scope
+
+A discriminating computational check is to compare the two-state formula above with direct stationary solution of the 2x2 generator across positive random rates, and verify (i) equality of the computed J, (ii) nonnegative J*A, and (iii) invariance of occupancy/affinity and linear scaling of J under common rate scaling. The check can falsify an algebra or implementation error, but cannot establish novelty or molecular predictive power.
+
+## Literature comparison and strongest challenge
+
+The proposed tree/determinant representation is not a new capability. King and Altman's 1956 schematic method derives steady-state enzyme rate laws from state diagrams. Schnakenberg's 1976 network theory gives graph-theoretic steady-state solutions for master equations and treats macroscopic forces, fluxes, and entropy production. Terrell Hill's diagram method also explicitly covers state probabilities and cycle fluxes in biochemical systems. These are the direct prior-art baselines for the core mechanism above; a Laplacian cofactor implementation is a computational form of their established result, not a new representation.
+
+The strongest obstacle is upstream identifiability. Craciun and Pantea (2008) show that mass-action rate parameters need not be uniquely identifiable even from complete concentration dynamics, and distinct networks can induce identical dynamics under suitable parameters. Thus no exact forward representation over a supplied graph removes uncertainty about the graph or its microscopic rate constants. Our two-state example makes a narrower catalyst-specific ambiguity fully explicit: if the data are aggregate state transitions and one mean productive flux at one condition, they do not identify channel rates, cycle affinity, dissipation, or response to a substrate intervention.
+
+Primary-source pointers:
+
+- E. L. King and C. Altman, “A Schematic Method of Deriving the Rate Laws for Enzyme-Catalyzed Reactions,” *J. Phys. Chem.* 60 (1956), 1375–1378, DOI: https://doi.org/10.1021/j150544a010.
+- J. Schnakenberg, “Network theory of microscopic and macroscopic behavior of master equation systems,” *Rev. Mod. Phys.* 48 (1976), 571–585, DOI: https://doi.org/10.1103/RevModPhys.48.571.
+- G. Craciun and C. Pantea, “Identifiability of chemical reaction networks,” *J. Math. Chem.* 44 (2008), 244–259, DOI: https://doi.org/10.1007/s10910-007-9307-x. The paper's abstract states both parameter non-identifiability from complete concentration dynamics and existence of distinct networks with identical dynamics under rate choices.
+- T. L. Hill, *Free Energy Transduction and Biochemical Cycle Kinetics* (1989), DOI: https://doi.org/10.1007/978-1-4612-3558-3; the treatment includes state probabilities and cycle fluxes in terms of diagram rate constants.
+
+## Exact counterexample and executable check
+
+Two parameter sets at [S]=[P]=1 are
+
+| Set | u | ubar | v | vbar | aggregate A->B | aggregate B->A |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 | 1 | 1/2 | 1 | 3/2 | 2 | 2 |
+| 2 | 6/5 | 7/10 | 4/5 | 13/10 | 2 | 2 |
+
+Both have p_A=p_B=1/2 and productive net flux J=1/4. But their cycle affinities are log(3) and log(39/14), and their entropy production rates divided by k_B are (1/4)log(3) and (1/4)log(39/14), respectively. If channel 1 is first order in substrate and channel 2 is substrate-independent, replacing [S] by 4[S] gives J=11/14 for set 1 and J=71/95 for set 2, a gap of 51/1330. Thus exact agreement on the aggregate generator and baseline mean output does not determine even this elementary dose response.
+
+`check.py` verifies all of these equalities using rational arithmetic and checks positive, unequal entropy production. It passed under Python 3. The test is a mathematical certificate for the stated finite example only.
+
+For a known channel feature model, the measurement boundary has a simple exact rank form. If aggregate directional rates at experimental settings x^(r) satisfy q(x^(r))=sum_a k_a phi_a(x^(r)), then the channel constants k are identifiable from those aggregate rates exactly when the feature matrix X_{ra}=phi_a(x^(r)) has full column rank. Repeated measurement of indistinguishable channel features cannot separate their constants; one must use a discriminating intervention or a channel-resolved observable. This is ordinary linear identifiability, not a new general solution to reaction-network inference. The experiment needs at least rank(X) condition settings per aggregate transition pair, each with directional-rate observation and concentration/activity measurement. With noisy rates, full rank alone is insufficient: practical precision deteriorates with the smallest singular value of X. Unknown feature laws or unknown topology invalidate this criterion.
+
+## Final assessment
+
+**OPEN; mission not achieved.** The exact determinant/tree calculation is a direct rediscovery of established enzyme-kinetics and master-equation network methods. It provides a clean forward computation once the catalyst state graph, channel labels, and directional rates are supplied, but it does not resolve the dominant inverse-design gap: obtaining a correct microscopic graph and distinguishing rate allocations from accessible observables. The small exact example falsifies any stronger claim based only on equilibrium affinities, aggregate state kinetics, and a single baseline turnover measurement. No molecular design or experimentally validated capability was produced.
+
+The relevant resource interface is explicit: O(n^3) dense linear algebra is sufficient for a stationary solve (or Laplacian cofactors), storage is O(n^2) dense or O(n+m) sparse, and the chemical input cost remains rate acquisition/estimation for each relevant directional edge and reservoir condition. Path enumeration is avoidable; mechanism discovery, precision, catalyst preparation, and validation are not free and were not performed.

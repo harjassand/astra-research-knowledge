@@ -1,0 +1,62 @@
+H06 FORMAL DISCOVERY — first derivation, frozen before catalogue/literature
+Date: 2026-10-10 (Australia/Brisbane)
+Status: OPEN; candidate mechanism only; no novelty or speedup claim.
+
+MISSION
+Find a compositional certificate for discovering/compressing formal proofs, beyond checking a proof or issuing generic search. Exact target: shorten proofs of polynomial-circuit identities by exploiting an integrability invariant. Strongest expected alternatives: proof-assistant ring normalization, SMT nonlinear arithmetic, and polynomial identity / ideal-membership certificates.
+
+FIRST DERIVATION (frozen before literature inspection)
+Let R be a commutative Q-algebra and let P,Q in R[x_1,...,x_n]. Define D=P-Q. In characteristic zero, the following certificate is sound:
+  (i) D(0,...,0)=0;
+  (ii) for every i, partial_i D = 0 as a polynomial.
+Then D=0. Proof: a polynomial all of whose partial derivatives vanish has only its degree-zero monomial in characteristic zero, hence is constant; (i) fixes that constant to zero.
+
+The proposed proof object is a tuple consisting of the two input arithmetic circuits, one anchor evaluation, and n lower-level equality derivations for the formal derivative circuits. A small trusted checker computes circuit derivatives by the product/sum/constant rules and checks the lower-level derivations. Discovery would search for a common derivative representation and an anchor, so the intended advantage is that derivatives may factor or share subcircuits even when P,Q themselves do not normalize cheaply. The certificate does not use random evaluation and is exact.
+
+Exact boundary: characteristic zero is essential. Over F_p, D=x^p has every formal partial derivative zero and D(0)=0 but D != 0. The verifier must reject non-Q-algebra coefficient domains or use a different certificate. For circuits with n variables and s gates, forward-mode derivative circuits can be emitted in O(ns) gates (or reverse mode in O(s) gates per selected output, with its own n-output accounting); this is only certificate construction cost, not proof discovery cost. The n derivative proofs and anchor still have to be paid for.
+
+Discriminating stress family to evaluate: two compact circuits for the same high-degree polynomial presented by different composition/addition schedules, where ordinary expanded normal forms have size near the number of monomials, while derivative circuits might have a shared factored representation. The candidate passes only if the derivative obligations are materially smaller after charging derivative construction, obligation search, proof terms, and checking. A fair baseline must preserve DAG sharing and compare best available ring normalization, SMT, and polynomial-certificate paths; comparing only to naive expansion would be misleading.
+
+Initial falsifiable prediction: the lemma is mathematically valid but is unlikely to be a general proof-compression breakthrough. Each derivative identity is itself a polynomial identity and may retain the original hardness; a symbolic derivative can even enlarge the circuit by a factor n. The mechanism has leverage only on a family where a compact proof of all derivative identities exists and is hard to obtain via standard ring normalization/SMT. If such a family cannot be exhibited and measured, report no demonstrated leverage.
+
+[End frozen first derivation]
+Frozen first-derivation report SHA-256 before literature review: 7cdeee3708ed19dbe6548ec5b6daf7ad7aaf3f53880d1e3a17679de4763e5fa6
+
+POST-FREEZE PRIOR-ART AND STRESS REVIEW
+
+The proposed inference rule is not a new algebraic theorem. It is the standard fact that a characteristic-zero polynomial with zero formal derivatives is constant, plus coefficient evaluation. Current Mathlib exposes `Polynomial.eq_C_of_derivative_eq_zero` and `Polynomial.derivative_eq_zero`, so this fact is already available to Lean formalizers. Baur–Strassen (1983) show that all first partial derivatives can be computed together with only a constant-factor circuit-size increase (their nonscalar bound is at most 3L); therefore derivative circuit construction is not the bottleneck. Chen–Kayal–Wigderson (2011) explicitly use partial derivatives in deterministic identity testing for restricted circuit families and state that general deterministic polynomial identity testing remains open in their surveyed setting. A recent Lean polynomial-tactics preprint uses externally computed Gröbner-basis and ideal-membership certificates checked inside Lean. These are strong alternatives/overlaps. I found no evidence that packaging the standard “zero gradient + anchor” implication itself is a novel proof-discovery method; priority remains UNKNOWN.
+
+PRIMARY REFERENCES (online retrieval, 2026-10-10)
+- W. Baur and V. Strassen, “The Complexity of Partial Derivatives,” Theoretical Computer Science 22 (1983), 317–330. Original article scan: https://core.ac.uk/download/pdf/82480031.pdf . It states the simultaneous first-derivative circuit bound in the abstract.
+- X. Chen, N. Kayal, and A. Wigderson, “Partial Derivatives in Arithmetic Complexity and Beyond,” Foundations and Trends in Theoretical Computer Science 6 (2010/2011), 1–138. https://www.math.ias.edu/~avi/PUBLICATIONS/ChenKaWi2011.pdf . In §14, pp. 106–110, it defines circuit identity testing, reports randomized efficient testing and no known deterministic polynomial-time general algorithm in its surveyed setting, then derives deterministic results for restricted families using derivatives.
+- Mathlib, `Mathlib.Algebra.Polynomial.Derivative`, current docs: https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Polynomial/Derivative.html . The API includes `derivative_eq_zero` and `eq_C_of_derivative_eq_zero`.
+- “Automated Tactics for Polynomial Reasoning in Lean 4,” arXiv:2604.13514 (2026): https://arxiv.org/abs/2604.13514 . The authors describe external Sage/SymPy polynomial computation with Lean-checked certificates for Gröbner bases, ideal equality, and ideal/radical membership.
+- Mathlib `ring_nf` documentation: https://leanprover-community.github.io/mathlib4_docs/Mathlib/Tactic/Ring/RingNF.html . It normalizes ring expressions to polynomial representations and generates proofs. The companion polynomial tactic documentation states that it expands brackets: https://leanprover-community.github.io/mathlib4_docs/Mathlib/Tactic/Polynomial/Basic.html .
+
+EXACT DISCRIMINATING FAMILY
+For k≥0, over Q[x], let
+  A_k = product_{j=0}^{k-1} (x^(2^j)+1).
+Then (x-1)A_k = x^(2^k)-1. The proof is the one-line recurrence
+  A_0=1;
+  A_{k+1}=A_k(x^(2^k)+1);
+  (x-1)A_{k+1}=(x^(2^k)-1)(x^(2^k)+1)=x^(2^(k+1))-1.
+It has O(k) arithmetic-circuit and proof steps when the repeated-squaring powers and induction states are shared. Yet A_k alone expands to exactly 2^k distinct monomials, so a dense normalizer that expands before cancellation pays exponential-in-k intermediate size. This is deliberately a case that distinguishes naive expansion from circuit-aware proof methods.
+
+The derivative certificate does not improve the best route here. Differentiating the O(k)-step recurrence produces an O(k)-step derivative proof by the product rule, then the proposed outer theorem adds the anchor and constant-derivative argument. Thus it has O(k) asymptotic size and greater overhead than the direct induction. Z3's QF_NRA solver also proves the negated fixed-k identity UNSAT quickly in the tested range, which removes any solver advantage on this family. Exact script: `work/high_conviction_04/reports/h06_formal_discovery/stress_probe.py`. Run: `python3 work/high_conviction_04/reports/h06_formal_discovery/stress_probe.py`. For k=1..12 (degrees 2..4096), SymPy exact expansion confirmed equality; the factored product had 2^k terms before multiplication by (x-1), while the reduced result had two terms. Z3 QF_NRA returned UNSAT at every k; measured solver time ranged from 0.0006s to 0.0045s on this machine. These are one local diagnostic, not a general benchmark or external validation.
+
+RESOURCE AND COMPLEXITY AUDIT
+- Supplied: two arithmetic-circuit descriptions, coefficient domain with characteristic-zero/Q-algebra evidence, and variable basis. If these are not supplied, parsing, type reconstruction, and domain inference are extra costs.
+- Certificate generation: derivative-circuit construction costs O(s) arithmetic gates for a size-s circuit under Baur–Strassen-style reverse accumulation; anchor evaluation costs O(s) operations at exact constants.
+- Certificate: n derivative-equality proof terms plus one anchor-equality proof, and a fixed theorem application. The number of proof steps, coefficient bit growth, and search cost for those derivative proofs remain instance-dependent and UNKNOWN.
+- Verification: recompute/validate the circuit derivatives, check each derivative proof in the trusted kernel, and check the anchor. There is no probabilistic error. Coefficient bit complexity and proof-term memory must be measured separately from gate count.
+- The rule is not a general polynomial identity algorithm: to construct a certificate one must solve all derivative equalities. Recursively doing so can create many mixed derivatives; in the worst case it does not remove the underlying identity-testing obligation. Under characteristic p, or any coefficient domain where positive integers are not units, the stated constant-kernel theorem can fail (e.g. x^p in F_p[x]).
+
+There is an exact count for the naive recursive version. If deg(D)≤d, then the coefficient of x^α is (∂^αD)(0)/α! over Q. Checking all these anchors is sufficient and requires binomial(n+d,d) multiindices |α|≤d. For d=2^k this is exponential in the compact exponent description k (already d+1 checks in one variable). Thus recursive differentiation can collapse to coefficient extraction/dense expansion. Any useful implementation must compress the derivative proof DAG beyond this naive closure, and that compression is precisely the missing mechanism rather than a consequence of the theorem.
+
+COMPARISON AND DISPOSITION
+- Dense ring normalization can incur Θ(2^k) intermediate terms on the stress family. A direct induction or rewriting strategy that keeps the product factored proves it in O(k), and Z3 handled the fixed instances in milliseconds. The candidate does not beat these stronger comparisons.
+- General ring tactics offer a polynomial normal form; sparse/dense performance depends on representation. Gröbner/ideal-membership certificates address broader polynomial constraints and can be searched externally then checked in Lean. SMT has stronger general-purpose arithmetic integration; the exact stress run is favorable to Z3 and makes no universal solver claim.
+- The only plausible niche is a discovered family where a low-cost proof of the gradient identities is already available and is substantially shorter than a direct proof of the target. No such family was found or executed here. The most plausible reason is structural: the derivative obligations remain polynomial identities, so this is a proof-rule transformation rather than an independent search mechanism.
+
+CONCLUSION
+The exact theorem is sound over Q-algebras and gives a compact compositional certificate shape, but the useful mathematical step is already standard, derivative construction is already linear-overhead, and the hard family is solved more directly by induction and current algebra tooling. I found no evidence of a material proof-discovery or proof-compression gain. Foundational objective OPEN; no candidate breakthrough.
