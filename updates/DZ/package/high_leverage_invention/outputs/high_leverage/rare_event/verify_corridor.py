@@ -1,0 +1,94 @@
+"""Exact finite checks of an independently derived route-acquisition obstruction.
+
+The rational solver does not use the proposed closed-form hitting-time formula.
+No sampled trajectories, atomistic force field, or physical validation are used.
+"""
+
+from fractions import Fraction as F
+import json
+
+
+def solve(a, b):
+    a = [list(row) + [value] for row, value in zip(a, b)]
+    n = len(b)
+    for k in range(n):
+        pivot = next(i for i in range(k, n) if a[i][k])
+        a[k], a[pivot] = a[pivot], a[k]
+        scale = a[k][k]
+        a[k] = [x / scale for x in a[k]]
+        for i in range(n):
+            if i != k and a[i][k]:
+                scale = a[i][k]
+                a[i] = [x - scale * y for x, y in zip(a[i], a[k])]
+    return [row[-1] for row in a]
+
+
+def generator(theta):
+    m = len(theta)
+    n = 2 * m + 2
+    q = [[F(0) for _ in range(n)] for _ in range(n)]
+    for j, t in enumerate(theta):
+        u, v = 2 + 2 * j, 3 + 2 * j
+        q[0][u] = q[1][v] = F(1, m)
+        q[u][0] = q[v][1] = F(1)
+        q[u][v] = q[v][u] = t
+    for i in range(n):
+        q[i][i] = -sum(q[i])
+    return q
+
+
+def verify(theta):
+    m = len(theta)
+    q = generator(theta)
+    n = len(q)
+    pi = [F(1, 4), F(1, 4)] + [F(1, 4 * m)] * (2 * m)
+    assert sum(pi) == 1
+    for i in range(n):
+        assert sum(q[i]) == 0
+        for j in range(n):
+            assert pi[i] * q[i][j] == pi[j] * q[j][i]
+
+    transient = [i for i in range(n) if i != 1]
+    a = [[-q[i][j] for j in transient] for i in transient]
+    h = solve(a, [F(1)] * len(transient))
+    s = sum(t / (1 + 2 * t) for t in theta)
+    expected = 2 * m / s
+    assert h[0] == expected
+
+    # The committor is checked using the independent harmonic linear system.
+    interior = list(range(2, n))
+    cq = solve([[-q[i][j] for j in interior] for i in interior],
+               [q[i][1] for i in interior])
+    for j, t in enumerate(theta):
+        assert cq[2 * j] == t / (1 + 2 * t)
+        assert cq[2 * j + 1] == (1 + t) / (1 + 2 * t)
+    capacity = sum(pi[0] * q[0][i] * cq[i - 2] for i in interior)
+    assert capacity == s / (4 * m)
+    assert expected * capacity == F(1, 2)
+
+    # Laplace transforms of the full first-passage law are independent checks.
+    for z in (F(1, m), F(1), F(3, 2)):
+        l = [[(z if i == j else F(0)) - q[i][j]
+              for j in transient] for i in transient]
+        f = solve(l, [q[i][1] for i in transient])[0]
+        b = sum(t / (z + 1 + 2 * t) for t in theta) / m
+        assert f == b / (z * (z + 2) + b)
+    return expected, capacity
+
+
+rows = []
+for m in (2, 3, 4, 8, 16, 32):
+    epsilon = F(1, m * m)
+    base = [epsilon] * m
+    hidden = base.copy()
+    hidden[-1] = F(1)
+    t0, c0 = verify(base)
+    t1, c1 = verify(hidden)
+    weight = F(1, 3) / (F(1, 3) + (m - 1) * epsilon / (1 + 2 * epsilon))
+    ratio = F(m * m + 3 * m - 1, 3 * m)
+    assert t0 / t1 == ratio
+    assert weight >= 1 - F(3, m)
+    rows.append({"M": m, "MFPT_baseline": str(t0),
+                 "MFPT_hidden": str(t1), "speed_ratio": str(ratio),
+                 "hidden_route_weight": str(weight)})
+print(json.dumps({"status": "EXACT_FINITE_CHECKS_PASS", "rows": rows}, indent=2))
