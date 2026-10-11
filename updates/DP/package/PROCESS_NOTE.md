@@ -1,0 +1,3 @@
+# Cross-branch process observation (not an evaluation)
+
+Across the retained sampler and quantum-encoder continuations, compact representations repeatedly preserve a scalar or marginal shadow while losing the information needed by the target task: covariance does not specify the full Gaussian law; an unbiased expected matrix action does not provide one realized symmetric matrix or its square root; and a small unnormalized word weight does not bound the normalized source/range state. Each proposed continuation identifies a missing restoration interface and its cost or proof obligation. This is an observation about these research records only; it does not establish a general model-behavior pattern or a prompting-performance effect.
