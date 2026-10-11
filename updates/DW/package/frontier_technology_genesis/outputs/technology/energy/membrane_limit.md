@@ -1,0 +1,42 @@
+# Ionocaloric membrane power limit: rejected energy lead
+
+Status: own optimistic bound, not a claim of a new cooling cycle. No prototype is proposed from this route.
+
+The 2022 primary experiment reports a 25.76 K span, 29.5% of Carnot COP, and 5.75 W/L cooling. Its highest efficiency operation uses approximately 0.5 mA/cm² = 5 A/m²; the authors identify organic membrane resistance, approximately 100 times their typical aqueous value, as the power bottleneck. The paper also reports approximately 0.22 V, but the accessible record does not establish that this voltage, current density, and peak performance are all the same operating point. Therefore 0.22 V / 5 A/m² is **not** used as a measured isolated membrane area resistance. Source: Lilley and Prasher, [Science 378, 1344–1348 (2022)](https://doi.org/10.1126/science.ade1696).
+
+## Optimistic bound
+
+Let A be total conducting membrane area, j the area current density, R_A the effective area-specific membrane resistance in ohm m², Q the useful cold heat per completed cycle, q = Q/(A tau) the time-averaged cold heat flux, and alpha = Q/(I tau) the cold heat per transported charge, in joules/coulomb = volts. Alpha must be measured for the same complete cycle, with transport during both extraction and remixing counted. A duty factor or opposing ionic strokes can only tighten the following favorable model.
+
+With membrane heat rejected perfectly at the hot side, zero electrode overpotential, zero mixing entropy production, and no auxiliary work,
+
+    W/Q >= (T_h-T_c)/T_c + R_A q/alpha².
+
+The first term is the reversible heat pump work; the second is membrane Joule work I² R tau / Q with I = q A / alpha and R = R_A/A. Consequently, at required COP C,
+
+    q <= alpha²/R_A * [1/C - (T_h-T_c)/T_c],
+    Qdot/V <= (A/V) alpha²/R_A * [1/C - (T_h-T_c)/T_c].
+
+The bracket must be positive. If a fraction of the Joule heat returns to the cold side, electrodes have an overpotential eta, or auxiliaries consume P_aux, then the useful flux falls and W/Q gains at least eta/alpha + P_aux/Qdot; it cannot improve this bound. The treatment is deliberately favorable to the candidate and does not assert that reversible work and electrical Joule work are independent measured quantities in the 2022 cycle.
+
+The entropy accounting behind the additive bound is Q_h/T_h - Q_c/T_c = S_gen and W = Q_h - Q_c, hence W = Q_c (T_h-T_c)/T_c + T_h S_gen. Joule dissipation E_J at membrane temperature T_m adds T_h E_J/T_m to the needed work. Taking T_m = T_h is the favorable case above; a colder membrane tightens the bound.
+
+## Nonuniform geometry and pulse scheduling
+
+For independent parallel patches i, write Qdot = sum_i alpha_i I_i and P_J = sum_i R_A,i I_i²/A_i. Cauchy–Schwarz gives
+
+    Qdot² <= P_J G_Q,
+    G_Q = sum_i A_i alpha_i²/R_A,i,
+    Qdot <= G_Q * [1/C - (T_h-T_c)/T_c].
+
+Thus an optimized, nonuniform current distribution is already included. For time-varying patches, apply Cauchy–Schwarz on space × time with the same fully accounted transported charge: replace G_Q by its cycle time average. A duty fraction d with identical active patches gives G_Q,average = d G_Q,active. Pulsing cannot improve the Joule bound at fixed average flux. Serial membranes must enter the same circuit's effective R_A; they are not independent parallel heat-producing patches. This result applies to the stipulated heat-per-charge and ohmic model, not every conceivable ion-controlled heat pump. An independently demonstrated material mechanism that raises alpha or lowers R_A can escape its numerical restriction, but a changed macroscopic topology alone cannot.
+
+A proposed crystal scaffold can preserve ionic conductivity and reduce distance in bulk solution, but cannot reduce R_A of a fixed membrane material or the membrane area needed at a chosen efficiency. Geometry raises A/V by buying and packaging more area; it does not eliminate the area requirement.
+
+For an **illustrative** alpha = 1 V (not measured from a matched 2022 operating point), 5 A/m² gives only 5 W/m² before adverse duty factors. The area is at least 200 m²/kW under that illustration. Alpha uncertainty must be carried linearly in the current-flux estimate and quadratically in the resistance-COP bound.
+
+## Why the initial liquid-wire scaffold is rejected
+
+An initial idea put crystallizing ethylene carbonate–NaI in macropores and nanoconfined liquid conduction ribs. Gibbs–Thomson melting-point depression, approximately 2 gamma_sl T_m/(L_v r), could in principle preserve a liquid pathway while bulk solvent freezes. This targets freeze-induced loss of bulk ionic conductance. The 2022 demonstrated bottleneck is instead the membrane. Even a perfect rib network leaves the foregoing membrane bound intact and adds confined solvent volume, scaffolding cost, and thermal short circuits. It is not the selected invention.
+
+The source's projected high-current cooling-density number and a dissertation's indexed version have inconsistent area/volume units. Neither is used to calibrate alpha or geometry. A matched measurement of Q, total transported charge, membrane I–V, duty, and auxiliaries would be needed to close the numeric design bound.

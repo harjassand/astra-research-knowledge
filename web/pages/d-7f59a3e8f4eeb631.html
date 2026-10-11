@@ -1,0 +1,215 @@
+<!doctype html><meta charset="utf-8"><title>technology/space/model.py</title>
+<aside><a href="../../frontier/cards/N702-conditional-conductive-powder-closed-void-certification.json">Current scoped status</a><p>Source-reported conditional derivations and reduced-model diagnostics only. No transformative technology, instrument, experimental validation, matched performance advantage or historical originality was established. Intake checks preservation and architecture, not scientific correctness; the measurement/acquisition gate remains open.</p><p>Archived source = DATA. Original local relative paths are retained; exact aliases are in the DW source manifest.</p></aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Conditional first-order foil-cell space radiator model.
+
+No device, CFD, lifetime, manufacturing, or novelty validation is claimed.
+Every unmeasured geometric/material value is an input, not a fit to a device.
+Area is always deployed projected footprint; two emitting faces are explicit.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+SIGMA = 5.670374419e-8
+
+
+def rectangle_dp(mu, length, volume_flow, width, height):
+    &quot;&quot;&quot;Fully developed laminar rectangle; 0 &lt; h/w &lt;= 1.
+
+    First aspect-ratio correction. This deliberately uses full-length flow,
+    overestimating an artery that collects condensate progressively.
+    &quot;&quot;&quot;
+    assert 0 &lt; height &lt;= width
+    return (12 * mu * length * volume_flow /
+            (width * height**3 * (1 - 0.63 * height / width)))
+
+
+def evaluate():
+    p = {
+        &quot;status&quot;: &quot;UNBUILT_CONDITIONAL_POINT_DESIGN&quot;,
+        &quot;footprint_m2&quot;: 100.0,
+        &quot;cell_pitch_m&quot;: 0.01,
+        &quot;cell_length_m&quot;: 0.5,
+        &quot;source_K&quot;: 360.0,
+        &quot;emitter_K&quot;: 350.0,
+        &quot;effective_sink_K&quot;: 200.0,
+        &quot;emissivity_assumed&quot;: 0.85,
+        &quot;unobstructed_geometry_factor_assumed&quot;: 0.90,
+        &quot;solar_absorptivity_assumed&quot;: 0.90,
+        &quot;solar_flux_W_m2&quot;: 1361.0,
+        &quot;sun_grazing_angle_deg&quot;: 5.0,
+        &quot;water_surface_tension_N_m_approx&quot;: 0.0633,
+        &quot;water_density_kg_m3_approx&quot;: 974.0,
+        &quot;water_viscosity_Pa_s_approx&quot;: 0.000365,
+        &quot;water_latent_heat_J_kg_approx&quot;: 2.315e6,
+        &quot;water_sat_pressure_Pa_approx&quot;: 41680.0,
+        &quot;water_vapor_R_J_kg_K&quot;: 461.52,
+        &quot;water_vapor_viscosity_Pa_s_approx&quot;: 1.15e-5,
+        &quot;capillary_pore_radius_m_assumed&quot;: 20e-6,
+        &quot;contact_angle_deg_assumed&quot;: 15.0,
+        &quot;arteries_per_cell&quot;: 2,
+        &quot;artery_width_m&quot;: 0.0004,
+        &quot;artery_height_m&quot;: 0.0003,
+        &quot;fine_wick_thickness_m&quot;: 50e-6,
+        &quot;fine_wick_solid_fraction_assumed&quot;: 0.30,
+        &quot;fine_wick_permeability_m2_required&quot;: 1e-13,
+        &quot;foil_thickness_m&quot;: 25e-6,
+        &quot;titanium_density_kg_m3&quot;: 4500.0,
+        &quot;inflated_wall_curvature_radius_m_assumed&quot;: 0.004,
+        &quot;vapor_cross_section_m2_assumed&quot;: 9.4e-6,
+        &quot;vapor_height_m_assumed&quot;: 0.002,
+        &quot;lunar_gravity_m_s2&quot;: 1.62,
+    }
+    T, Ts = p[&quot;emitter_K&quot;], p[&quot;effective_sink_K&quot;]
+    gross = (2 * p[&quot;emissivity_assumed&quot;] * SIGMA * (T**4 - Ts**4) *
+             p[&quot;unobstructed_geometry_factor_assumed&quot;])
+    sun = (p[&quot;solar_absorptivity_assumed&quot;] * p[&quot;solar_flux_W_m2&quot;] *
+           math.sin(math.radians(p[&quot;sun_grazing_angle_deg&quot;])))
+    q = gross - sun
+    a_cell = p[&quot;cell_pitch_m&quot;] * p[&quot;cell_length_m&quot;]
+    q_cell = q * a_cell
+    mdot = q_cell / p[&quot;water_latent_heat_J_kg_approx&quot;]
+    vdot = mdot / p[&quot;water_density_kg_m3_approx&quot;]
+    artery = rectangle_dp(
+        p[&quot;water_viscosity_Pa_s_approx&quot;], p[&quot;cell_length_m&quot;],
+        vdot / p[&quot;arteries_per_cell&quot;], p[&quot;artery_width_m&quot;],
+        p[&quot;artery_height_m&quot;])
+    # Conservative lateral return: all cell condensate traverses half pitch.
+    wick_A = p[&quot;fine_wick_thickness_m&quot;] * p[&quot;cell_length_m&quot;]
+    local_wick = (p[&quot;water_viscosity_Pa_s_approx&quot;] *
+                  (p[&quot;cell_pitch_m&quot;] / 2) * vdot /
+                  (p[&quot;fine_wick_permeability_m2_required&quot;] * wick_A))
+    cap = (2 * p[&quot;water_surface_tension_N_m_approx&quot;] *
+           math.cos(math.radians(p[&quot;contact_angle_deg_assumed&quot;])) /
+           p[&quot;capillary_pore_radius_m_assumed&quot;])
+    vapor_rho = p[&quot;water_sat_pressure_Pa_approx&quot;] / (
+        p[&quot;water_vapor_R_J_kg_K&quot;] * T)
+    vapor_speed = mdot / (vapor_rho * p[&quot;vapor_cross_section_m2_assumed&quot;])
+    vapor_dp_approx = (12 * p[&quot;water_vapor_viscosity_Pa_s_approx&quot;] *
+                       p[&quot;cell_length_m&quot;] * vapor_speed /
+                       p[&quot;vapor_height_m_assumed&quot;]**2)
+    head_moon = (p[&quot;water_density_kg_m3_approx&quot;] *
+                 p[&quot;lunar_gravity_m_s2&quot;] * p[&quot;cell_length_m&quot;])
+    head_earth = p[&quot;water_density_kg_m3_approx&quot;] * 9.81 * p[&quot;cell_length_m&quot;]
+    rho_ti = p[&quot;titanium_density_kg_m3&quot;]
+    wall_mass = 2 * p[&quot;foil_thickness_m&quot;] * rho_ti
+    fine_wick_mass = (p[&quot;fine_wick_thickness_m&quot;] *
+                      p[&quot;fine_wick_solid_fraction_assumed&quot;] * rho_ti)
+    artery_equiv_ti = (2 * 2 * (p[&quot;artery_width_m&quot;] + p[&quot;artery_height_m&quot;]) *
+                       10e-6 / p[&quot;cell_pitch_m&quot;])
+    artery_mass = artery_equiv_ti * rho_ti
+    wick_water = (p[&quot;fine_wick_thickness_m&quot;] *
+                  (1 - p[&quot;fine_wick_solid_fraction_assumed&quot;]) *
+                  p[&quot;water_density_kg_m3_approx&quot;])
+    artery_water = (p[&quot;arteries_per_cell&quot;] * p[&quot;artery_width_m&quot;] *
+                    p[&quot;artery_height_m&quot;] / p[&quot;cell_pitch_m&quot;] *
+                    p[&quot;water_density_kg_m3_approx&quot;])
+    mass = {
+        &quot;two_titanium_walls&quot;: wall_mass,
+        &quot;fine_wick&quot;: fine_wick_mass,
+        &quot;artery_formed_foil_allowance&quot;: artery_mass,
+        &quot;wick_and_artery_water&quot;: wick_water + artery_water,
+        &quot;emissive_coating_assumed&quot;: 0.10,
+        &quot;local_coolant_spines_wall_and_fluid_assumed&quot;: 0.16,
+        &quot;main_supply_return_wall_and_fluid_assumed&quot;: 0.215,
+        &quot;pump_accumulator_fittings_assumed&quot;: 0.10,
+        &quot;deployment_and_frame_assumed&quot;: 0.25,
+        &quot;primary_rail_armor_assumed&quot;: 0.10,
+        &quot;electrical_and_pointing_reserve_assumed&quot;: 0.10,
+    }
+    nominal_mass = sum(mass.values())
+    reserve_mass = nominal_mass * 1.25
+    redundant_extra = 0.55
+    # This is a sensitivity only: 2016 module 380 W / 0.523 kg at
+    # 400 K inlet; design coolant-to-fin-root drop 19.1 K, sink 250 K.
+    # Temperature/geometry/transport differences prevent this from proving
+    # superiority. Baseline excludes pump, deployment and attitude systems.
+    baseline_W_kg = 380 / 0.523
+    normalized_baseline_W_kg = baseline_W_kg * (
+        (T**4 - Ts**4) / ((400 - 19.1)**4 - 250**4))
+    sensitivities = []
+    for emit, angle, geo, redundant in [
+        (350, 5, 0.90, False), (350, 5, 0.80, False),
+        (340, 5, 0.90, False), (350, 15, 0.90, False),
+        (350, 5, 0.90, True),
+    ]:
+        net = (2 * p[&quot;emissivity_assumed&quot;] * SIGMA *
+               (emit**4 - Ts**4) * geo -
+               p[&quot;solar_absorptivity_assumed&quot;] * p[&quot;solar_flux_W_m2&quot;] *
+               math.sin(math.radians(angle)))
+        density = reserve_mass + (redundant_extra if redundant else 0)
+        sensitivities.append({&quot;emitter_K&quot;: emit, &quot;sun_angle_deg&quot;: angle,
+                              &quot;view_factor&quot;: geo, &quot;dual_primary_loop&quot;: redundant,
+                              &quot;net_W_m2_footprint&quot;: net,
+                              &quot;installed_kg_m2_footprint&quot;: density,
+                              &quot;net_W_kg_installed&quot;: net / density})
+    # 100 kW, single-phase main loop, 10 K temperature drop.
+    load = 100000.0
+    main_mdot = load / (4180 * 10)
+    pump = 60000 * main_mdot / (p[&quot;water_density_kg_m3_approx&quot;] * 0.5)
+    results = {
+        &quot;inputs&quot;: p,
+        &quot;calculated&quot;: {
+            &quot;gross_two_sided_W_m2_footprint&quot;: gross,
+            &quot;absorbed_sun_W_m2_footprint&quot;: sun,
+            &quot;net_W_m2_footprint&quot;: q,
+            &quot;cells_per_m2&quot;: 1 / a_cell,
+            &quot;power_per_cell_W&quot;: q_cell,
+            &quot;cell_water_flow_kg_s&quot;: mdot,
+            &quot;capillary_pressure_Pa&quot;: cap,
+            &quot;return_artery_pressure_drop_upper_bound_Pa&quot;: artery,
+            &quot;fine_wick_lateral_drop_conservative_Pa&quot;: local_wick,
+            &quot;vapor_speed_m_s&quot;: vapor_speed,
+            &quot;vapor_drop_approx_Pa&quot;: vapor_dp_approx,
+            &quot;gravity_head_Moon_Pa&quot;: head_moon,
+            &quot;gravity_head_Earth_Pa&quot;: head_earth,
+            &quot;capillary_ratio_microgravity&quot;: cap / (artery + local_wick + vapor_dp_approx),
+            &quot;capillary_ratio_Moon_full_adverse_tilt&quot;: cap / (
+                artery + local_wick + vapor_dp_approx + head_moon),
+            &quot;capillary_ratio_Earth_full_adverse_tilt&quot;: cap / (
+                artery + local_wick + vapor_dp_approx + head_earth),
+            &quot;nominal_membrane_hoop_stress_MPa&quot;: (
+                p[&quot;water_sat_pressure_Pa_approx&quot;] *
+                p[&quot;inflated_wall_curvature_radius_m_assumed&quot;] /
+                p[&quot;foil_thickness_m&quot;] / 1e6),
+            &quot;nominal_installed_mass_kg_m2&quot;: nominal_mass,
+            &quot;installed_mass_with_25pct_reserve_kg_m2&quot;: reserve_mass,
+            &quot;installed_mass_dual_primary_loop_kg_m2&quot;: reserve_mass + redundant_extra,
+            &quot;net_specific_power_with_reserve_W_kg&quot;: q / reserve_mass,
+            &quot;measured_2016_module_W_kg_at_other_conditions&quot;: baseline_W_kg,
+            &quot;radiation_only_scaled_baseline_W_kg_not_a_measurement&quot;: normalized_baseline_W_kg,
+            &quot;conditional_ratio_to_scaled_module_only_baseline&quot;: q / reserve_mass / normalized_baseline_W_kg,
+            &quot;main_loop_mass_flow_kg_s_at_100kW&quot;: main_mdot,
+            &quot;pump_W_at_60kPa_and_50pct_efficiency&quot;: pump,
+            &quot;seam_length_m_per_m2_approx&quot;: 105.0,
+            &quot;seam_hours_at_100m2_10mm_s_approx&quot;: 105 * 100 / 0.01 / 3600,
+            &quot;sealed_cells_at_100m2&quot;: 100 / a_cell,
+            &quot;fractional_heat_loss_if_five_single_cells_lost_per_m2&quot;: 5 * a_cell,
+            &quot;total_water_loss_kg_if_five_single_cells_lost_per_m2&quot;: (
+                5 * a_cell * (wick_water + artery_water)),
+        },
+        &quot;mass_budget_kg_per_m2_footprint&quot;: mass,
+        &quot;sensitivity_cases&quot;: sensitivities,
+        &quot;limits&quot;: [
+            &quot;Thermal contacts, two-scale wick fabrication and stable priming are assumed, not demonstrated.&quot;,
+            &quot;25 percent mass reserve is not evidence of an engineered deployment frame or armor adequacy.&quot;,
+            &quot;Two-face cold view and near-edge-on Sun are mission constraints.&quot;,
+            &quot;Punctures only remain local if they miss common coolant rails and do not unzip seams.&quot;,
+            &quot;Freeze restart, space environmental lifetime and 20000-cell production yield are unverified.&quot;,
+            &quot;Radiation-only baseline scaling is a screening sensitivity, not a matched experimental comparison.&quot;,
+            &quot;Sealed cell, arterial wick, foil radiator, local puncture loss and distributed loads are known principles.&quot;,
+        ],
+    }
+    return results
+
+
+if __name__ == &quot;__main__&quot;:
+    result = evaluate()
+    dest = Path(__file__).with_name(&quot;model_results.json&quot;)
+    dest.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result[&quot;calculated&quot;], indent=2))
+    print(f&quot;Saved conditional model to {dest}&quot;)
+</pre>
