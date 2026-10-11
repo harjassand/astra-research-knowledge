@@ -1,0 +1,372 @@
+# A finite-precision consequence of the Gaussian-center compiler
+
+Status, 11 October 2026: new written compiler argument, pending independent reconstruction. The analytic sampling guarantee of OpenAI family 139 is an **imported premise**, not independently reconstructed here. This note proves a stronger pathwise stability estimate for that circuit and explains the finite-bit simulation, including scalar preprocessing and random-bit generation. The resulting complexity claim is conditional on the supplied paper's analytic correctness. No priority or external-validation claim is made.
+
+Pinned source: `work/repos/openai-math` at `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`; preprint directory `preprints/Subpolynomial-query-complexity-for-well-conditioned-log-concave-sampling-September-26-2026/build/sections/`. The original paper explicitly bounds exact-oracle queries and states that no arithmetic or bit-complexity bound is deduced (`introduction.tex:11-15,73-74`).
+
+## 1. Target interface and conclusion
+
+For fixed `epsilon>0`, the intended computational conclusion is this. Let `d>=2`, `B>=0` be integers. The input potential is promised to satisfy
+
+\[
+ V\in C^2(\mathbb R^d),\qquad V(0)=0,\quad\nabla V(0)=0,
+ \quad I\preceq\nabla^2V\preceq2I.
+\tag{1}
+\]
+
+The minimizer is supplied as part of the promise. It is not found at no cost. Write `pi_V proportional to exp(-V)`. Define coordinatewise rounding
+
+\[
+ R_B(x)_j=2^{-B}\lfloor2^B x_j+1/2\rfloor.
+\]
+
+A finite oracle, on a rational query `x`, returns each coordinate of `grad V(x)` within absolute error `2^{-P}`. Its cost is charged separately. In the finitely many bounded dimensions in the fallback, a value oracle with the same accuracy may also be used; alternatively values can be obtained by integrating the gradient on a segment, at a constant cost depending on `epsilon` only. All oracle answers may be adversarial within the stated error bounds, and no independence is needed.
+
+Conditional on the source paper's uniform analytic TV guarantee, there are constants `C_epsilon,c_epsilon` and an algorithm with
+
+\[
+ P=B+\lceil C_\varepsilon\log_2(d+1)\rceil+C_\varepsilon
+\tag{2}
+\]
+
+fractional bits, at most `C_epsilon d^epsilon` vector first-order calls on every execution, and output `Z` on the dyadic grid such that
+
+\[
+ \|\mathcal L(Z)-(R_B)_\#\pi_V\|_{\rm TV}\le1/10.
+\tag{3}
+\]
+
+Its non-oracle bit cost, random-bit usage and memory are each bounded above by
+
+\[
+ C_\varepsilon d^{1+\varepsilon}
+ (B+\log(d+1))^{c_\varepsilon}.
+\tag{4}
+\]
+
+The query norm and every stored integer part can be capped at `d^{C_epsilon}` and `C_epsilon log(d+1)` bits, respectively. The total cost is (4) **plus** the sum of the actual costs of supplying the approximate vector oracle answers at that precision and query radius. Reading a vector answer costs `Omega(dP)` bits and is included in (4). No normalizer, exact Gaussian random real, conditional-mean oracle, high derivative, or dense matrix square-root primitive is supplied.
+
+For `B=O(polylog d)`, this is nearly linear non-oracle work in dimension, with an arbitrarily small excess exponent. It is not a practical bound uniform in `epsilon`: interpolation order, recursion height and constants can grow very rapidly as `epsilon` decreases. It is also not continuous-TV sampling with a finite-bit output, which would be impossible for an absolutely continuous target. The comparison in (3) deliberately uses the rounded target.
+
+## 2. Exact source inputs that remain imported
+
+Choose fixed rational `e,t,w>0` and fixed integer approximation orders as in the source, with `delta=d^{-e}`, `h=delta/2`, `R=delta^t`, and `40(K_0+2)t<1/4`. The order of choices is important: fix Picard counts and routine height before choosing `w` and interpolation order. The source provides:
+
+1. A primitive `S(x,r,eta)` using at most `polylog(d) delta^{-t}` gradient calls and Gaussian vector slots on every execution. Its top input is `(b,p)=(1,K_0)`. Only terminal routines query `g=grad F`, once each, where `Lip(g)<=delta`. All shapes, scales, scalar coefficients and seed transformations are independent of center and oracle responses.
+2. A finite routine height `H=H(K_0,t)` and finite mean-expression dependency depth `D_0=3N^2+1`, independent of mesh size and interpolation order. Expression dependencies are expanded without caching; every mean occurrence has its own center subtree and its own seed blocks. See `implementation.tex:125-210,360-407` and `numerics.tex:589-650,728-754`.
+3. Every center expression has the form
+
+   \[
+    E_i=x+r(\ell_i y+m_iG)+\sum_{j<i}a_{ij}M_j,
+    \quad |\ell_i|,|m_i|\le1,
+   \]
+
+   with `sum_j |a_ij|<=A`. The final expression has **no direct x dependence with anchors fixed**, and its coefficient sums are
+
+   \[
+    A_{f,M}=C_1,\qquad A_{f,S}=C_1r.
+   \tag{5}
+   \]
+
+   The center bounds are
+
+   \[
+   A_M=C_1(1+\log d)^{C_1}
+     [(r/\sigma)\delta^{-4t-10w}+r^2],\qquad A_S=C_1r^2.
+   \]
+
+   At every reachable nonterminal call,
+
+   \[
+     \delta A\le B_d\delta^{1/3}\longrightarrow0,
+     \qquad B_d=C(1+\log d)^C.
+   \tag{6}
+   \]
+
+   These are `numerics.tex:600-646` and `implementation.tex:469-521`. Their constants are uniform over all reachable scales and centers.
+4. The seed-transform matrix is
+
+   \[
+    P_v=(I-vv^T/(4D_s^2))^{1/2},\qquad D_s=\delta^{-t},
+    \quad\|v\|\le D_s.
+   \tag{7}
+   \]
+
+   It acts on Gaussian **slot space**, tensored with `I_d`. Its eigenvalues lie in `[sqrt(3)/2,1]`. The residual variance in an expression with requested noise `n` is at least `3n^2/4`. See `implementation.tex:38-65,239-281`.
+5. The outer chain has
+
+   \[
+    T=\lceil C h^{-1}\log d\rceil+1
+   \]
+
+   steps. After conditional variance halving through `J=ceil(C_1 log d)` levels and `m_0=ceil(C_2 log d)` terminal mode iterations, its exact-real output has uniform TV error `o(1)` from `pi_V`. The final base rule adds a fresh independent Gaussian, and the output has exactly the form
+
+   \[
+     X=A+\sigma_d G,\qquad
+     \sigma_d=\sqrt h\,2^{-J/2}\ge d^{-C},
+   \tag{8}
+   \]
+
+   where `G` is unused in all preceding oracle calls. See `sampling.tex:99-163,174-200,280-350`.
+
+Items 1-5 use the paper's high-order smoothed-tensor estimates and law-error induction. Those difficult analytic arguments have not been checked independently in this consequence note. The following pathwise sharpening and bit simulation use the listed deterministic properties and the global Lipschitz promise only.
+
+## 3. Sharpened fixed-seed stability: no polylogarithmic loss
+
+**Lemma.** For all sufficiently large `d`, there is a fixed `K`, depending only on the chosen finite parameters, such that every reachable routine, for every fixed seed array (including correlated or transformed arrays), obeys
+
+\[
+ \operatorname{Lip}_x M\le K\delta,
+ \qquad\operatorname{Lip}_x S\le Kr\delta.
+\tag{9}
+\]
+
+With the position and momentum anchors held as independent inputs, the mean routine's position-anchor sensitivity is at most `Kr delta`. There is no factor growing with dimension in `K`.
+
+*Proof.* Induct on routine height. A terminal routine is
+
+\[
+ M=g(x+rZ)+\sigma G,
+\]
+\[
+ S=Z-rg(x+rZ)+(\sqrt3\eta/2)G_1+(\eta/2)G_2.
+\]
+
+Thus the bounds are `delta` and `r delta`, for every seed array.
+
+Suppose all proper child routines satisfy (9) with a fixed constant `K_-`. First hold the parent's anchors fixed. Let `a_i` be the center-Lipschitz constant of a center-supplying expression `E_i`, including all its recursively supplied mean centers, and let `a=max_i a_i`. This maximum is finite: the expression graph is finite and acyclic. Seed transformations and residual coefficients depend only on prescribed scalars, so their derivatives in `x` are zero. Each direct center term has sensitivity one. Every child mean contributes at most `K_- delta` times the sensitivity of its supplied center. Therefore
+
+\[
+ a\le1+K_-\delta A a.
+\]
+
+Choose `d` large enough that `K_- delta A<=1/2`, uniformly over reachable calls, using (6). Then `a<=2`. This argument is equally valid for the expanded tree: its duplicated occurrences satisfy the same maximum inequality.
+
+For variation of a position anchor with `x` held fixed, replace the direct sensitivity one by `r`, because `|ell_i|<=1`. The corresponding maximum is at most `2r`. At the final expression there is no direct `x` term, and no direct position-anchor term for a mean parent. Equation (5) consequently yields
+
+\[
+ \operatorname{Lip}_x M\bigm|_{\rm anchors}\le2C_1K_-\delta,
+ \quad
+ \operatorname{Lip}_{y}M\le2C_1K_-r\delta,
+\]
+
+\[
+ \operatorname{Lip}_x S\le2C_1K_-r\delta.
+\]
+
+The sampling parent's Gaussian anchor is independent of `x`. The mean parent's position anchor is `b_*` times a child sampling call at the same center and scale, with `b_*<=1`; its sensitivity is at most `K_-r delta`. Restoring this dependence adds at most
+
+\[
+ (2C_1K_-r\delta)(K_-r\delta)
+ \le2C_1K_-^2\delta^2
+\]
+
+to the mean sensitivity. For `K_-delta<=1`, the mean bound is at most `4C_1K_-delta`. Take the next height constant at least `max(1,4C_1)K_-`. The height `H` is fixed, so one fixed `K` works for all heights after increasing the dimension threshold finitely many times. This proves (9). No Gaussian independence or probability estimate entered the proof. ∎
+
+This sharpening is stronger than the source's stated `polylog(d)delta` estimate in `implementation.tex:523-564`; it uses the same circuit, not a different sampler. The fact that the final coefficient bounds in (5) have fixed constants is essential.
+
+## 4. Polynomial conditioning across the complete chain
+
+Use a single fixed global scaled oracle
+
+\[
+ g(z)=\sqrt h\,\nabla V(\sqrt h z),\qquad
+ \operatorname{Lip}(g)\le2h=\delta,\quad g(0)=0.
+\]
+
+The source's call at center zero with shifted potential `F_y(z)=V(y+sqrt(h)z)` is pathwise identical to the same normalized routine for this global `g` at center `x=y/sqrt(h)`. Its scalar data and seeds agree, because circuit shapes are independent of the center and oracle. An outer step is therefore
+
+\[
+ y\longmapsto y+\sqrt h\,S(y/\sqrt h,1,1).
+\]
+
+For every fixed seed array, (9) bounds its Lipschitz constant by `1+K delta`. Consequently the amplification across `T` steps is
+
+\[
+ (1+K\delta)^T
+ \le\exp(K\delta T)\le d^{C}.
+\tag{10}
+\]
+
+This is where the loss in Section 3 matters: retaining only the paper's coarse polylogarithmic bound would instead give `exp(polylog d)` and extra polylogarithmic precision.
+
+During conditional descent write the global center as `c_j=y/sqrt(h)+x_j`. Then its update is
+
+\[
+ c_{j+1}=c_j+(r_j/2)S(c_j,r_j,1),\qquad r_j=2^{-j/2}.
+\]
+
+Its sensitivity is at most `1+(K/2)r_j^2 delta`. Since `sum_j r_j^2<=2`, the product of these sensitivities is at most `exp(K delta)`, a fixed constant. The terminal mode iteration is
+
+\[
+ z_{k+1}=-r_Jg(c_J+r_Jz_k),\qquad z_0=0.
+\]
+
+Its sensitivity in `c_J` is bounded by
+
+\[
+ r_J\delta\sum_{i\ge0}(r_J^2\delta)^i
+ \le2r_J\delta
+\]
+
+for large `d`. The final physical output is `sqrt(h)(c_J+r_Jz_{m_0})+sigma_d G`; its additional input amplification is bounded. Thus the entire exact-real sampler is polynomially conditioned in all local errors, provided the per-primitive local conditioning is polynomial. The next section establishes that property.
+
+## 5. Local arithmetic, scalar data and rank-one transformations
+
+All fixed parameters can be rational, and declared constants such as `C_1` can be increased to fixed integers. Only existence of an algorithm for each fixed `epsilon` is asserted; this note does not compute useful numerical constants.
+
+### 5.1 Scales and gaps
+
+For each reachable call, `r,eta,sigma,A,A_f` and their nonzero reciprocals lie between `d^{-C}` and `d^C`, after enlarging fixed constants. At the top, this holds because `r>=r_J=d^{-C}`, `eta=1`, `delta=d^{-e}`. At a descendant it follows inductively from fixed height: `r_i=r tau_i` with `tau_i>=R/sqrt(5)`; final child noises are fixed multiples of `sigma` or `eta/r`; other child noises are `r tau_prev/(4 D_s A)`; and the positive explicit bounds for `A,A_f` have only products, ratios and fixed powers of these quantities and `(1+log d)`. See `implementation.tex:249-257,469-521`. Only a fixed number of such scale changes occurs along any branch.
+
+The square-root gaps are quantitative: `1-||v/(2D_s)||^2>=3/4`, and expression residual variance is at least `3n^2/4`. Approximation with `O(log d)` guard bits preserves positive gaps of at least half these values. All divisions and square roots used in the compiler therefore have polynomial condition numbers. A numerical implementation can return zero on a detected range violation; on the good event used below none occurs.
+
+### 5.2 Rank-one formula, rather than a dense square root
+
+Put `u=v/(2D_s)`, `a=||u||^2<=1/4`, and `s=sqrt(1-a)`. The exact matrices in (7) have the explicit formulas
+
+\[
+ P_v=I-\frac{uu^T}{1+s},\qquad
+ P_v^{-1}=I+\frac{uu^T}{s(1+s)}.
+\tag{11}
+\]
+
+They are valid also at `u=0`; no division by `a` occurs. Apply `P_v tensor I_d` to an `m`-slot seed array by first forming the single `d`-vector `W=sum_j u_jG_j`, then replacing `G_i` by `G_i-u_iW/(1+s)`. This costs `O(dm)` scalar operations. The same observation computes the inverse action on shift vectors in `O(m)` operations.
+
+Every seed slot is processed once per routine ancestor and a bounded number of times per expression ancestor. Both depths are fixed. Thus the sum of these `m` costs over the expanded tree is at most a fixed multiple of the total slot count. A generic dense-matrix operation would invalidate the near-linear bookkeeping conclusion; formula (11) is the relevant representation.
+
+### 5.3 Scalar preprocessing is charged
+
+The deterministic scalar constructor in `numerics.tex:47-74,264-340,589-754` uses:
+
+* equal-step meshes in `-log(1-rho)`, with `O(polylog(d)delta^{-w})` cells;
+* interpolation at a fixed number `m` of equally spaced nodes per cell;
+* partial integrals of fixed-degree Lagrange polynomials;
+* fixed short-angle stencils and polynomial integrals against sine;
+* derivative quadrature against `1/rho`, with an exact zero-derivative Hermite constraint on the first cell.
+
+These data can be computed to absolute error `2^{-P}` with a polynomial in `P+log d` bit cost per scalar occurrence, including their conditioning guard bits. Here are the details preventing hidden real constants or precision oracles.
+
+Compute `d^{-e}`, `R`, mesh endpoints and fixed-angle trigonometric values using `exp`, `log`, square root, sine and cosine at arguments of magnitude `O(log d)`, or after elementary range reduction. These functions are computable to `P` bits in `poly(P+log d)` bit operations by Taylor series and bisection with rational bounds. Fixed-order basis coefficients on the unit interval are fixed rationals and can be precomputed exactly. Scaling to a cell produces only fixed powers of its length.
+
+Use a certified rational upper bound for transformed interval length divided by `h_0`, with width at most `1/4`, and choose an integer number of cells between this ratio and this ratio plus two. This avoids deciding equality of a transcendental number with an integer. It only refines the permitted mesh by at most two cells. The source's proof uses the maximum mesh size and its stated cell-count bound, so this refinement preserves its estimates. Analytically zero intervals have zero weights and may be omitted or represented by such weights.
+
+Nonzero cell lengths that require inverse scaling are polynomially bounded below. The initial derivative mesh has endpoint `b_*=sqrt(1-R^2)` bounded away from zero and `1-b_*>=cR^2`; its cell count is polynomial in `d`. Its nodes are fixed-order subdivisions of its cells. Backward and forward probability intervals have endpoints among those nodes and `b_*`, so nonzero lengths are at least a fixed inverse polynomial. The sampling endpoint is `rho_e=(1+eta^2/4)^(-1/2)`, with `eta=1` at a top call or `eta=R/b_*` in a position-anchor call. These endpoints likewise have inverse-polynomial gaps from one and from zero. Subdividing any such interval into polynomially many cells preserves inverse-polynomial nonzero lengths. Fixed-order angle-node separations are fixed multiples of `psi=delta^{4t}`.
+
+For an ordinary cell `[a,a+ell]` with `a>0`, substitute `rho=a+ell z`; integrals of a fixed polynomial divided by `rho` reduce by polynomial division to fixed-degree polynomial terms and `log((a+ell)/a)`. All arguments, denominators and intermediate values have inverse-polynomial gaps or polynomial magnitudes. On the first cell the Hermite condition makes the polynomial derivative vanish exactly at zero, so the numerator has a symbolic factor `rho`; cancel that factor before integration. There is no numerical `log(0)` or approximate endpoint cancellation. Polynomial-sine integrals can be computed by a fixed number of integrations by parts or convergent power series. Their fixed powers of cell or angle lengths cost only `O(log d)` guard bits.
+
+Only scalar occurrences actually used in the expanded expression tree need to be formed. Full-cell and partial-cell weights use a fixed-degree antiderivative, so a scalar occurrence does not require a fresh scan of all earlier mesh cells. Forming all scalar coefficients, shift vectors and their rank-one transforms costs a fixed multiple of the tree size times `poly(P+log d)` bit operations. No table of dimension-`d` derivatives is formed.
+
+### 5.4 Local perturbation bound
+
+After expanding dependencies, a primitive has a fixed number of sequential nonlinear stages on any vector-dependency path. All affine sums have polynomially many terms and polynomially bounded coefficients. The only oracle nonlinearity is the globally `delta`-Lipschitz function `g`; other nonlinearities are scalar operations with the quantitative gaps above. A sum of `M` rounded terms incurs at most `M` times the rounding scale; it is not an iterated nonlinear amplification of length `M`.
+
+It follows by induction over the fixed routine/expression depths that, on inputs and seeds of norm at most `d^C`, each local output and every intermediate/query point is bounded by `d^{C'}`, and a simulation using fractional precision `P`, coefficient precision `P`, seed errors at most `d^C2^{-P}`, and coordinate oracle errors at most `2^{-P}` has local Euclidean defect at most
+
+\[
+ d^{C'}2^{-P}.
+\tag{12}
+\]
+
+The finite sum counts, coordinate dimension and scalar square-root derivatives are absorbed in `C'`. This conclusion holds for adversarial oracle errors and transformed/correlated seed arrays. No derivative of `g` above its Lipschitz bound is used.
+
+## 6. Random bits, range control and propagation
+
+Let `Q` bound the total number of scalar Gaussian coordinates in the full sampler; the source count gives `Q<=d^{1+alpha}` times a fixed constant for a sufficiently small chosen `alpha>0`, after absorbing logarithms. Generate them in pairs using Box-Muller from independent uniform variables. For a fixed small failure budget `eta_0`, couple the exact uniforms with their `P`-bit midpoint roundings and restrict attention to
+
+\[
+ \eta_0/(10Q)\le U\le1-\eta_0/(10Q)
+\]
+
+for every radial uniform. The complement has probability at most a fixed multiple of `eta_0`. On this event all Gaussian coordinates are `O(sqrt(log Q))`, and the derivative of the Box-Muller map in each uniform argument is bounded by a polynomial in `Q`. Excluding both endpoints handles the square-root derivative near `U=1`. Computing `log`, square root, sine, cosine and `pi` to precision `P` consequently gives seed errors at most `d^C2^{-P}`. The random-bit cost is `O(QP)`, with a fixed number of extra guard bits absorbed into (2). There is no exact-real random generator.
+
+At center zero, each exact primitive and all its intermediate values are polynomially bounded on this seed event, by Section 5. The outer step has fixed-seed center sensitivity `1+Kdelta`. Hence its center magnitudes satisfy
+
+\[
+ |y_{k+1}|\le(1+K\delta)|y_k|+d^C.
+\]
+
+Together with (10) and `T<=d^C`, this bounds all outer centers by another fixed power of `d`. Conditional descent has bounded product sensitivity and polynomially many affine/oracle gates, so all later values are polynomially bounded as well. Predeclare a larger polynomial range cap, returning zero if it is exceeded. The exact computation never triggers this cap on the good seed event.
+
+Compare a numerical step at its actual rational input with the exact step at that same input, using coupled seeds, then compare exact steps at the two inputs using (9). Equation (12), (10), and a sum over `T+J+m_0<=d^C` local defects give
+
+\[
+ \|\widehat X-X\|_\infty\le d^{C''}2^{-P}
+\tag{13}
+\]
+
+on the good event. Choose `P` as in (2) with a sufficiently large constant. All numerical intermediates then remain within the predeclared cap, with positive scalar gaps. A bootstrapping induction justifies using the local estimates at numerical inputs: before each gate the error is less than one, and the cap has a margin of at least one. Thus the only discarded event is the already charged seed event.
+
+The source query count is deterministic and the range fallback only stops a computation early, so the cap remains valid on every random execution and every allowed oracle-answer sequence.
+
+## 7. Why small numerical error controls TV after rounding
+
+**Gaussian grid-boundary lemma.** If `Y=A+sigma G` in one dimension, with `G` independent of `A`, grid spacing `s>0`, and `0<zeta<=s/2`, then, uniformly over the law of `A` and the grid offset,
+
+\[
+ \Pr\{\operatorname{dist}(Y,s\mathbb Z+q)\le\zeta\}
+ \le2\zeta\{s^{-1}+\sqrt{2/\pi}\,\sigma^{-1}\}.
+\tag{14}
+\]
+
+*Proof.* Conditional on `A=a`, let `f` be the shifted Gaussian density. Partition the line into length-`s` cells centered at the grid points. On any cell,
+
+\[
+ \sup f\le s^{-1}\int_{\rm cell}f+\int_{\rm cell}|f'|.
+\]
+
+Sum over cells, multiply by `2zeta`, and use `int|f'|=sqrt(2/pi)/sigma`. Integrate over `A`. ∎
+
+Apply (14) coordinatewise to the independent final reserve (8), with `s=2^{-B}`. If `||widehat X-X||_infty<=zeta`, their rounded outputs can disagree only if an exact coordinate lies within `zeta` of a rounding boundary. The error need not be independent of `X`. Thus
+
+\[
+ \|\mathcal L(R_B\widehat X)-\mathcal L(R_BX)\|_{\rm TV}
+ \le\Pr(\text{bad seed event})
+ +2d\zeta\{2^B+\sqrt{2/\pi}/\sigma_d\}.
+\tag{15}
+\]
+
+Equations (8), (13) and `P=B+C log(d+1)+C` make the right side less than any fixed small simulation budget, for example `1/40`. The source analytic error is uniformly `o(1)` and can be made at most `1/40` beyond a fixed dimension threshold. TV data processing under `R_B` and the triangle inequality then give (3), with slack.
+
+This anti-concentration step is essential: a Euclidean coupling error alone cannot control TV of arbitrary rounded distributions at a fixed grid. The final unused Gaussian provides exactly the regularity needed, at a quantitatively polynomial scale.
+
+## 8. Full cost and bounded dimensions
+
+The number of primitive calls is `T+J`, and each uses at most `polylog(d)delta^{-t}` terminal queries and seed slots. With the `O(log d)` base iterations included,
+
+\[
+ q\le\operatorname{polylog}(d)\delta^{-(1+t)}
+     =d^{e(1+t)+o(1)}.
+\]
+
+For a specified `epsilon`, choose fixed rational `e` and other parameters with sufficient slack, for example `e(1+t)<epsilon/4`. Scalar preprocessing, rank-one slot operations, all affine vector arithmetic and all Gaussian-coordinate generation have cost at most a fixed multiple of `dq` times a polynomial in `P+log d`, after absorbing logarithms and fixed-order constants. This yields (4), and the same bound covers finite storage and random bits. No oracle cost is hidden in it.
+
+For dimensions below the fixed threshold, use capped Gaussian rejection sampling. Under (1), a standard normal proposal `X` has acceptance probability
+
+\[
+ a(X)=\exp\{-V(X)+|X|^2/2\}\in[0,1],\qquad
+ \mathbb E a(X)\ge2^{-d/2}.
+\]
+
+Cap at `ceil(4*2^{d/2})` trials and return zero if none is accepted. Its exact law has TV error at most `e^{-4}` from `pi_V`. There are only finitely many such dimensions, so this is a constant cost depending on `epsilon`. Approximate Gaussian proposals and acceptance uniforms are coupled by finite bits. On a fixed large proposal-range event, acceptance is Lipschitz in the potential value and proposal, with a fixed constant; a union bound over the capped trials charges numerical acceptance mismatches. Gaussian grid anti-concentration on each proposed coordinate charges rounding mismatches. The failure event and numerical error can each be made smaller than a fixed slack budget using `P=B+C_epsilon` bits. Thus the fallback is covered by (2)-(4).
+
+If only a gradient oracle is supplied, approximate `V(x)=int_0^1 grad V(tx) dot x dt` on the capped proposal range. Its integrand is `2|x|^2`-Lipschitz, so a fixed sufficiently fine quadrature, with fixed sufficiently accurate gradient answers, gives the required fixed acceptance precision. Its cost is constant for these finitely many dimensions. The fallback therefore does not require a free value oracle, although a first-order value-and-gradient oracle matches the original interface.
+
+The threshold and constants are existential fixed constants inherited from the source proofs, as in its main theorem. This establishes existence of finite programs for each fixed exponent if those premises are valid; it does **not** produce a practical numerical parameter selection, a uniform algorithm with `epsilon` supplied as input, or a runnable implementation with useful constants.
+
+## 9. Imported versus newly proved; novelty gate
+
+Newly proved in this note:
+
+* fixed-constant pathwise center bounds (9), strengthening the source's stated polylogarithmic estimate;
+* polynomial full-chain conditioning (10), including descent and base iterations;
+* the linear-work rank-one representation (11) as used in this compiler, and explicit bit-cost accounting;
+* a finite-bit Gaussian simulation and range cap, robust to arbitrary allowed oracle errors;
+* the grid-boundary argument (14)-(15) giving a rounded-target TV interface;
+* the conditional consequence (2)-(4).
+
+Imported and not independently reconstructed here: the source's high-order tensor estimates, exact-real law-error analysis and uniform final sampling TV guarantee, as well as its already proved finite circuit construction/count and scale inequalities. The latter structural assertions were inspected against the indicated source ranges, but inspection is not an independent proof of the analytic sampler.
+
+The closest primary comparator located is [Chen–Chewi–Lu–Zhang, *Smoothed Picard Hamiltonian Monte Carlo*, arXiv:2609.06906](https://arxiv.org/abs/2609.06906): the abstract gives `tilde O(d^{1/6})` gradient queries at fixed conditioning and Wasserstein accuracy, with a separate high-accuracy composition. [Chen–Chewi–Rakhlin–Zhang, arXiv:2608.05022](https://arxiv.org/abs/2608.05022) gives `tilde O(d^{1/3})` high-accuracy queries, or a `d^{1/5}` improvement under a third-derivative bound. These establish context, not priority for this bit-compiler argument. Earlier finite-precision discretization techniques exist, e.g. [Ganesh–Talwar, NeurIPS 2020](https://proceedings.neurips.cc/paper/2020/file/50cf0fe63e0ff857e1c9d01d827267ca-Paper.pdf), which explicitly discusses translating its sampler to finite precision. Consequently the rounding and guard-bit principles are not individually claimed original.
+
+The substantive possible upgrade is the combination: source family 139's particular subpolynomial-query circuit, strengthened constant center sensitivity, low-rank seed transformations, charged scalar construction, and `B+O_epsilon(log d)` precision yield `d^{1+epsilon}`-scale bit bookkeeping. Exact priority and specialist review remain open. The original subpolynomial sampler's correctness is the main imported theorem, not a new independent breakthrough established by this note.

@@ -1,0 +1,97 @@
+# Finite supplied-data compiler for the linear cloning–estimation theorem
+
+Date: 11 October 2026. This note proves the finite algebraic and SDP interface and the accuracy needed from its optimization subroutine. It does not claim a dimension-independent acquisition algorithm, a continuum compiler, an implemented certified SDP solver, or a physical implementation cost independent of dimension.
+
+## Supplied input and output
+
+Supply a finite list of normalized complex vectors `psi_i in C^d`, rational priors `p_i>=0`, and a valid CPTP map `B:C^d->C^d tensor C^d` given by its full Choi matrix. The existence theorem accepts exact real/complex data. For the exact arithmetic remarks below, require rational real and imaginary parts for vectors, priors, and Choi entries, and assume their stated normalization, positivity, and trace-preservation promises hold.
+
+Output: a finite POVM with at most `n` outcomes and a supplied input representative to prepare on each outcome. This explicitly describes an EB channel. Its original ensemble-average infidelity is at most `2800 sum_i p_i e_i`, where `e_i=1-Tr[(P_i tensor P_i)B(P_i)]`.
+
+All representations and the full channel are supplied. Acquiring, calibrating, checking, or implementing them has separate costs; none is inferred to be small from the theorem's dimension-free error constant.
+
+## Recovering the partition from the channel without environment access
+
+Set `t_i=psi_i tensor psi_i` and `q_i=1-e_i`. Retain `I={i:e_i<=1/2800}`. For good labels, `q_i>0`. A Stinespring dilation yields normalized environment vectors `f_i`, but their Gram matrix is computed directly from the supplied channel:
+
+`F_ij=<psi_i|B^*(|t_i><t_j|)|psi_j>/sqrt(q_i q_j)`.
+
+To verify this identity, choose Kraus operators `K_alpha` and write
+
+`f_i=sum_alpha <t_i|K_alpha|psi_i>|alpha>/sqrt(q_i)`.
+
+Taking the inner product gives precisely the displayed formula, independently of the Kraus representation. No measurement or reconstruction of the physical environment is used.
+
+With `C_ij=<psi_i,psi_j>` and `L=C circ F`, the main proof constructs a zero/one partition mask `Q` obeying `|L_ij-Q_ij|<=eta<1/5`. It follows that
+
+`Q_ij=1 if and only if Re(L_ij)>1/2`.
+
+Thus the binomial series and the cb norm are proof devices, not computational inputs or required numerical norm estimates. Thresholding `L` gives the exact partition, and connected components recover its classes. The promise already proves transitivity.
+
+For rational supplied data, put
+
+`z_ij=Re[C_ij <psi_i|B^*(|t_i><t_j|)|psi_j>]`.
+
+It is rational. The threshold is evaluated exactly by the rational tests
+
+`z_ij>0 and 4 z_ij^2>q_i q_j`.
+
+There is a constant separation margin from the threshold on promised inputs. Computing `e_i`, all required channel contractions, and the partition takes `O(n^2 d^6)` rational arithmetic operations with naive dense contractions. This is a deliberately loose bound; it already charges reading a Choi matrix with `d^6` scalar entries. The intermediate bit lengths are polynomial in the explicit input bit length, since there is no recursion of growing algebraic degree and no square root is needed for the threshold.
+
+Choose one minimum-`e_i` good representative in every class. This uses only comparisons of the computed rational defects.
+
+## One finite constrained SDP
+
+If good labels have positive total prior mass, let `w_i` be their conditional prior and let
+
+`E=sum_(i in I) w_i e_i`.
+
+For each of the `k<=|I|` classes introduce one Hermitian `d by d` variable `M_c`. Solve
+
+`minimize R=sum_(i in I) w_i [1-Tr(M_(c(i))P_i)]`,
+
+`subject to M_c>=0, sum_c M_c=I_d,`,
+
+`           1-Tr(M_(c(i))P_i)<=1/4 for every i in I`.
+
+There are `k d^2` real scalar variables, `d^2` affine normalization equalities, `|I|` scalar error inequalities, and `k` positive-semidefinite blocks of order `d`. The strict bound reconstructed by the independent worker is
+
+`a=delta+eta<69/280<1/4`.
+
+Consequently a uniformly weak class POVM `M^weak` exists with every error less than `69/280`. Mix it with the uniform POVM using `lambda=1/560`:
+
+`M^strict_c=(1-lambda) M^weak_c+lambda I_d/k`.
+
+Each block has smallest eigenvalue at least `1/(560k)`, and each error is at most
+
+`69/280+1/560=139/560<1/4`.
+
+Thus the instance has explicit Slater margins. Within the affine normalization space, a Frobenius perturbation of size at most `1/(1120k)` preserves positivity and all scalar constraints. The SDP is bounded because each effect lies between zero and the identity.
+
+These size and conditioning statements are proved here. This note does not implement or certify a particular rational weak-optimization algorithm; any total runtime claim should specify that algorithm and its arithmetic model. In particular, the existence of a strict interior does not by itself certify a floating-point solver output.
+
+## An additive `E` optimization tolerance keeps the constant 2800
+
+Exact optimization is unnecessary when `E>0`. Suppose the returned POVM is feasible and its objective is at most `xi` above the constrained optimum, with `xi<=E`. The same majority pullback remains feasible. Comparing against it gives
+
+`R<=(sqrt(3R/4)+sqrt(8E))^2+xi`.
+
+Since `sqrt(x^2+xi)<=x+sqrt(xi)` for nonnegative `x`,
+
+`sqrt(R)<=sqrt(3) sqrt(R)/2+(sqrt(8)+1)sqrt(E)`.
+
+Therefore
+
+`R<=[(sqrt(8)+1)/(1-sqrt(3)/2)]^2 E<1024E`.
+
+The last bound uses `sqrt(8)+1<4` and `1-sqrt(3)/2>1/8`. The pointwise representative loss adds at most `50E`, so the conditional good-family reconstruction loss is less than `1074E`, still below `2800E`. The same bad-label accounting as in the theorem therefore retains the original overall constant **2800**, even with this additive optimization tolerance.
+
+For rational input with `E>0`, `E` is a positive rational of polynomial bit length. Thus requesting this accuracy costs polynomially many precision bits relative to the explicit supplied representation; no inverse polynomial lower bound in `n` or `d` alone is asserted. A feasible near-optimal rational POVM exists with polynomially many such bits, as follows. Mix an optimum with `M^strict` by weight `nu=E/8`; this raises its objective by at most `E/8`, leaves each block's smallest eigenvalue at least `E/(4480k)`, and leaves each scalar error slack at least `E/4480`. For blocks `c<k`, round each independent real and imaginary Hermitian entry to absolute accuracy `h=E/(40000 k^2 d)`, and define the last block by `M_k=I-sum_(c<k) M_c`. Each block perturbation has Frobenius norm at most `2kdh=E/(20000k)`. This preserves positive semidefiniteness, all scalar constraints, and exact normalization; it changes the average objective by at most `E/(20000k)`. The resulting rational feasible objective is less than `E` above the optimum. Entries need only `O(log(k^2 d/E))` additional precision bits. This is a representability observation, not a solver-output certificate.
+
+If `E=0`, all good labels of positive conditional prior are exactly cloned. Overlap preservation then gives `r<=r^2` for each pair, so every pair of distinct rays is orthogonal. The partition identifies identical rays. Orthogonal representative projections, with the unused input complement assigned to one outcome, give an exact rational EB reconstruction of those labels by direct linear algebra; no small positive accuracy request is needed. Zero-prior good labels can be deleted before this step.
+
+If there are no positive-prior good labels, any EB output suffices because every positive-prior label has `e_i>1/2800` and the asserted upper bound is already at least one.
+
+## Quantifier limitation
+
+The finite supplied ensemble compiler above is distinct from the compactness proof of one EB surrogate simultaneously dominating a fixed cloner on all pure inputs. The latter's finite computational cost is **UNKNOWN**. The theorem neither supplies an unknown ensemble from laboratory samples nor compresses an arbitrary Choi matrix, state list, or POVM into a small physical circuit.

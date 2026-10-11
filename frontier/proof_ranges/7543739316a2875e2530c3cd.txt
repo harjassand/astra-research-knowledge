@@ -1,0 +1,75 @@
+EXACT INDEXED SOURCE RANGE | {"path": "updates/DU/package/finite_population_continuation/source_outputs/outputs/diagnostics/population/README.txt", "sha256": "0394f18f9eb809056abded11a6e1b236f828e28fa07456d5152bbd8518b366f5", "lines": [1, 71], "range_scope": "Population diagnostic guide and replay instructions.", "read_path": "updates/DU/package/finite_population_continuation/source_outputs/outputs/diagnostics/population/README.txt", "source_id": "src-DU-population-diagnostics", "hash_kind": "original_utf8_bytes"}
+range_sha256=0394f18f9eb809056abded11a6e1b236f828e28fa07456d5152bbd8518b366f5; line numbers refer to the source, not this wrapper.
+Scope: located text only; imported premises, completeness, correctness and priority remain unverified.
+--- BEGIN SOURCE BYTES ---
+FINITE-POPULATION DFA COMPILER — exact rational implementation
+
+The proof is ../../proofs/finite_population_compiler.txt and the main report.
+FINITE_POPULATION_COMPILER.md gives an independently derived algorithm/cost note.
+dfa_solver.py uses only the Python standard library, integers and Fraction.
+The model JSON supplies the COMPLETE deterministic table, rational marginal and
+target, and a positive integer population P. JSON floats are rejected.
+
+From the mission workspace, reproduce a trillion-step coupling without printing
+its trillion symbols:
+
+  python3 outputs/diagnostics/population/dfa_solver.py solve \
+    outputs/diagnostics/population/dfa_noncommutative.json \
+    work/replayed_trillion_certificate.json --horizon 1000000000000
+
+  python3 outputs/diagnostics/population/dfa_solver.py verify \
+    outputs/diagnostics/population/dfa_noncommutative.json \
+    work/replayed_trillion_certificate.json
+
+Omit --horizon to optimize over all POSITIVE finite horizons. A nonempty return
+to the initial vertex is distinguished from an inadmissible empty word.
+
+The generic optimum interval follows the proved whole-path rounding bound and
+one global marginal correction. The implementation tightens its feasible upper
+bound using the ACTUAL repaired terminal distribution, evaluated exactly via
+shared-quantile intervals. It never infers a universal theorem from these runs.
+
+For a requested additive optimum/coupling error epsilon, choose
+  P=ceil(2*d/(alpha*epsilon)), alpha=min positive input probability.
+The small demonstration populations intentionally give modest error intervals;
+they demonstrate the operational interface, not favorable dimension scaling.
+The graph has H=binom(P+d-1,d-1) vertices and considers
+binom(P+d*r-1,d*r-1) allocation candidates. Binary horizon compilation has
+O(H^3 log(n+1)) Boolean-operation dependence after graph acquisition.
+
+Implementation guards
+- At most 2,000,000 allocation candidates by default. --max-allocations 0
+  disables that guard; it does not remove the mathematical acquisition cost.
+- Horizon bit length at most 500 in this implementation, an explicit recursion
+  guard. The mathematical theorem admits arbitrary finite binary horizons.
+- Verification recomputes the graph optimum by default. Checking only a witness
+  proves feasibility/exact marginal equations and terminal evaluation; it does
+  not certify graph optimality or the universal approximation bound by itself.
+
+Public sampler interface (Python)
+  certificate, witness = solve(spec, horizon)
+  sample = witness.sample(getrandbits)
+  witness.query(t, sample['branch'], sample['seed'])
+The integer t is zero based. sample includes its exact terminal state. One
+uniform seed on M*(P*u_min+d*M) specifies the whole joint word, so adaptive and
+repeated queries agree. The caller's getrandbits(k) must supply fresh independent
+uniform k-bit integers. The default is secrets.randbits. Exact integer rejection
+has expected finite random-bit use and unbounded worst-case duration. PRNG seeds
+in saved receipts are deterministic demonstrations, not a randomness test.
+Printing the full word still costs at least n symbol emissions.
+
+Saved cases
+- noncommutative_binary_trillion: 3 states, non-point target, zero-support letter,
+  P=12, H=91, 6,188 allocation candidates, 111 DAG nodes, <=14 word atoms;
+  exact repaired terminal=(1/2,1/3,1/6), TV=1/4, optimum interval=[0,1/4].
+- noncommutative_unbounded: positive horizon 2 and exact marginal correction.
+- positive_gap_binary_trillion: P=32, H=33, certified interval=[61/96,2/3].
+- positive_return_unbounded: horizon 2, explicitly excluding the empty word.
+- layered_flow_rounding: actual cycle-adjustment rounding, preserving all node
+  balances and original edge floor/ceiling intervals.
+
+dfa_checks.json records scoped exact checks. dfa_checks.py regenerates neighboring
+certificates/receipts; preserve them before rerunning if byte history matters.
+The fixed-k overlapping-block extension is proved separately; this script does
+not implement that larger interface. Historical originality, external proof
+validation and general stochastic-MDP reachability are not certified here.
