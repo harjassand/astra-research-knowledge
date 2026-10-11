@@ -178,6 +178,7 @@ def main():
         s = sub.add_parser(name); s.add_argument('id')
     s = sub.add_parser('packet'); s.add_argument('ids', nargs='+'); s.add_argument('--max-bytes', type=int, default=32768)
     s = sub.add_parser('changes'); s.add_argument('--since', required=True)
+    s = sub.add_parser('technology'); s.add_argument('id'); s.add_argument('--limit', type=int, default=5)
     args = parser.parse_args()
     if args.command == 'status':
         result = resolve(args.id)
@@ -187,6 +188,13 @@ def main():
         result = task_routes(args.query, args.limit)
     elif args.command == 'changes':
         result = changes(args.since)
+    elif args.command == 'technology':
+        # Optional import: ordinary mathematical retrieval loads no technology contract.
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from technology.validate import route
+        current = notice(args.id)
+        result = {'source_notice': current, 'technology': route(ROOT, card=current['card_id'], limit=args.limit)}
     elif args.command in ['dossier', 'connections']:
         data = view(args.id, 'dossiers' if args.command == 'dossier' else 'connections')
         print(data.decode(), end='')
