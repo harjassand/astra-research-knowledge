@@ -1,0 +1,555 @@
+## Outcome
+
+The decisive target I pursued was **a polynomial-time relative-approximation algorithm for weighted perfect matchings in general graphs**.
+
+**I did not establish that algorithm, or another breakthrough meeting your completion standard.** The investigation produced an exact positive representation with implementable conditional operations, then exposed why those operations do not combine into an efficient global algorithm. I also pursued global alternating-cycle updates rather than stopping at the first obstruction.
+
+The surviving mathematics is below. I have not established external priority for these identities and obstructions, so I am not presenting them as new discoveries merely because I derived them here.
+
+## 1. Target selection and the actual computational task
+
+I initially considered sparse linear-system solving, deterministic parallel matching, and approximate counting. The numerical route did not produce a mechanism that removed the cost of constructing a suitable preconditioner. The literature check also mattered: the bipartite matching problem already has a deterministic NC result reported in 2026, so treating that special case as an untouched target would have been mistaken. [ECCC](https://eccc.weizmann.ac.il/report/2026/119/)
+
+My first concrete counting mechanism concerned intersecting two matroids. That target also had to change: Chen and Liu’s preprint, submitted **5 October 2026**, already states an FPRAS for counting common bases from independence oracles, using softened intersection, a Poincaré inequality, and external-field optimisation. That is prior work, not an outcome of this investigation. [arXiv](https://arxiv.org/abs/2610.06724)
+
+The remaining target was the following.
+
+Given an explicitly represented graph \(G=(V,E)\), with \(|V|=2n\) and nonnegative rational edge weights \(w_e\), compute
+
+\[
+Z_G=\sum_{M\in\mathcal M(G)}w(M),
+\qquad
+w(M)=\prod_{e\in M}w_e,
+\]
+
+where \(\mathcal M(G)\) is its set of perfect matchings.
+
+The desired output is \(\widehat Z\) satisfying
+
+\[
+\Pr\!\left[(1-\varepsilon)Z_G
+\le \widehat Z\le
+(1+\varepsilon)Z_G\right]\ge 1-\delta
+\]
+
+in time polynomial in the explicit input length, \(\varepsilon^{-1}\), and \(\log \delta^{-1}\).
+
+A corresponding sampler should output an actual perfect matching, with distribution close in total variation to
+
+\[
+\pi_G(M)=\frac{w(M)}{Z_G}.
+\]
+
+The bipartite version has an established FPRAS. That supplies a genuine computational component—not an assumed counting oracle for the original general-graph problem. [ACM Digital Library](https://dl.acm.org/doi/pdf/10.1145/1008731.1008738)
+
+---
+
+## 2. An exact positive lift into bipartite problems
+
+The first mechanism was to represent a general perfect matching through a compatible vertex bipartition.
+
+For \(S\subseteq V\), let \(G_S\) contain exactly the edges of \(G\) crossing between \(S\) and \(V\setminus S\), retaining their weights. Define
+
+\[
+Z_S=\sum_{M\in\mathcal M(G_S)}w(M).
+\]
+
+A fixed perfect matching has exactly \(2^n\) compatible choices of \(S\): independently choose one endpoint of each matching edge.
+
+Consequently,
+
+\[
+\boxed{\sum_{S\subseteq V}Z_S=2^n Z_G.}
+\tag{1}
+\]
+
+This is positive throughout. There is no cancellation, exponentially precise subtraction, or inaccessible input representation.
+
+An equivalent polynomial is
+
+\[
+P_G(x)=
+\sum_{M\in\mathcal M(G)}
+w(M)\prod_{\{u,v\}\in M}(x_u+x_v).
+\tag{2}
+\]
+
+Its coefficient at a squarefree monomial is a bipartite matching partition function:
+
+\[
+[x^S]P_G(x)=Z_S.
+\]
+
+Also,
+
+\[
+P_G(\mathbf 1)=2^n Z_G.
+\]
+
+**Equation (2) is not an efficient evaluation oracle.** Evaluating it at \(\mathbf 1\) is precisely the original counting problem, up to the known factor \(2^n\). What is tractable is an individual coefficient through a bipartite instance.
+
+### Both conditional distributions are accessible
+
+Define a joint distribution
+
+\[
+\Pi(M,S)=
+\frac{w(M)}{2^n Z_G}
+\mathbf 1\{M\subseteq E(G_S)\}.
+\tag{3}
+\]
+
+Its matching marginal is exactly \(\pi_G\).
+
+Its conditional operations are:
+
+\[
+S\mid M:
+\quad
+\text{independently choose one endpoint of every edge of }M;
+\]
+
+\[
+M\mid S:
+\quad
+\text{sample a weighted perfect matching of the bipartite graph }G_S.
+\]
+
+The first requires \(n\) fair bits. The second has polynomial-time approximate implementations using existing bipartite counting and sampling machinery. Neither conditional requires \(Z_G\). [ACM Digital Library](https://dl.acm.org/doi/pdf/10.1145/1008731.1008738)
+
+This gives an explicit alternating sampler:
+
+\[
+M
+\longrightarrow
+\text{random compatible }S
+\longrightarrow
+\text{new matching }M'\text{ in }G_S.
+\tag{4}
+\]
+
+The decisive question is whether this sampler moves efficiently between different parts of the matching space.
+
+### Why independent bipartitions do not already solve counting
+
+Let \(S\) be uniformly random among all subsets of \(V\), and consider the idealised estimator
+
+\[
+Y=2^n Z_S.
+\]
+
+Equation (1) gives \(\mathbb E Y=Z_G\).
+
+For matchings \(M,N\), let \(c(M,N)\) be the number of components of their union, counting a shared edge as a doubled-edge component. Every other component is an even alternating cycle.
+
+There are exactly \(2^{c(M,N)}\) bipartitions compatible with both. Therefore,
+
+\[
+\boxed{
+\frac{\mathbb E Y^2}{Z_G^2}
+=
+\mathbb E_{M,N\sim\pi_G}
+2^{c(M,N)}.
+}
+\tag{5}
+\]
+
+This calculation reveals an exponential cost immediately. When \(G\) has a unique perfect matching, \(c(M,M)=n\), so the relative second moment is \(2^n\).
+
+More directly, a random bipartition is compatible with that matching with probability \(2^{-n}\). Polynomially many trials will usually return only zeros—even with an exact oracle for every bipartite count.
+
+Thus the positive identity does not, by itself, produce an efficient estimator.
+
+---
+
+## 3. Why the geometry looked promising—and where it fails
+
+The lift has a strong covariance property at the unweighted external field.
+
+Let \(X_i=\mathbf 1\{i\in S\}\) under (3). Every vertex has
+
+\[
+\mathbb E X_i=\frac12.
+\]
+
+Define
+
+\[
+R_{ij}=
+\Pr_{M\sim\pi_G}(\{i,j\}\in M),
+\qquad R_{ii}=0.
+\]
+
+Then
+
+\[
+\boxed{\operatorname{Cov}(X)=\frac14(I-R).}
+\tag{6}
+\]
+
+Indeed, two vertices on the same matching edge cannot both be selected. Conditional on their belonging to different matching edges, their selections are independent.
+
+Because \(R\) is symmetric, nonnegative, and has every row sum equal to one, its eigenvalues lie in \([-1,1]\). Hence
+
+\[
+\operatorname{Cov}(X)\preceq \frac12 I.
+\]
+
+For the generating polynomial, this implies
+
+\[
+\nabla^2\log P_G(\mathbf 1)
+=
+\operatorname{Cov}(X)-\operatorname{diag}(\mathbb E X)
+=
+-\frac14(I+R)
+\preceq 0.
+\tag{7}
+\]
+
+So **every graph passes this local log-concavity test**.
+
+The relevance is concrete: strong log-concavity and the spectra of localised walks underpin the established matroid sampling framework. [arXiv](https://arxiv.org/abs/1811.01816?utm_source=chatgpt.com)
+
+However, \(R\) is only a theoretical quantity here. Its entries are target matching marginals; I have not supplied an efficient procedure for computing them.
+
+### A six-cycle destroys the stronger property
+
+For the unweighted cycle \(C_6\),
+
+\[
+P(x)=
+(x_1+x_2)(x_3+x_4)(x_5+x_6)
++
+(x_2+x_3)(x_4+x_5)(x_6+x_1).
+\]
+
+Differentiate with respect to \(x_1\):
+
+\[
+Q=
+x_2x_4+x_2x_5+x_3x_4+2x_3x_5+x_3x_6+x_4x_5+x_4x_6.
+\]
+
+In variables \(x_2,\ldots,x_6\), its Hessian is
+
+\[
+H=
+\begin{pmatrix}
+0&0&1&1&0\\
+0&0&1&2&1\\
+1&1&0&1&1\\
+1&2&1&0&0\\
+0&1&1&0&0
+\end{pmatrix}.
+\]
+
+Its characteristic polynomial is
+
+\[
+\det(\lambda I-H)
+=
+\lambda(\lambda^2-2\lambda-5)(\lambda^2+2\lambda-1).
+\]
+
+Thus \(H\) has two positive eigenvalues,
+
+\[
+1+\sqrt6,
+\qquad
+\sqrt2-1.
+\]
+
+This rules out log-concavity of \(Q\). To see the obstruction directly, choose a nonzero vector \(v\) in the two-dimensional positive eigenspace satisfying \(v^\top Hx=0\). Then
+
+\[
+v^\top\nabla^2\log Q(x)v
+=
+\frac{v^\top Hv}{Q(x)}>0.
+\]
+
+It also rules out global log-concavity of \(P\): since \(P\) is affine in \(x_1\),
+
+\[
+\frac{P(t,x_2,\ldots,x_6)}{t}\longrightarrow Q
+\]
+
+as \(t\to\infty\). Global log-concavity would pass to this positive limit.
+
+**The local covariance bound survives, but the conditioning needed to turn it into an algorithm does not.**
+
+---
+
+## 4. An exact exponential mixing obstruction
+
+The sampler in (4) can be analysed completely on an even cycle.
+
+Let \(G=C_{2n}\), with unit weights. It has exactly two perfect matchings, \(M_0\) and \(M_1\).
+
+Starting from \(M_0\), there are \(2^n\) equally likely compatible bipartitions. Only two are also compatible with \(M_1\): the two proper two-colourings of the entire cycle.
+
+On either shared bipartition, the exact conditional matching distribution chooses \(M_1\) with probability \(1/2\). Therefore,
+
+\[
+K(M_0,M_1)=2^{-n}.
+\]
+
+By symmetry,
+
+\[
+\boxed{
+K=
+\begin{pmatrix}
+1-2^{-n}&2^{-n}\\
+2^{-n}&1-2^{-n}
+\end{pmatrix}.
+}
+\tag{8}
+\]
+
+The spectral gap is
+
+\[
+\boxed{\operatorname{gap}(K)=2^{1-n}.}
+\tag{9}
+\]
+
+Starting at \(M_0\), the total variation distance after \(t\) steps is exactly
+
+\[
+\left\|K^t(M_0,\cdot)-\pi_G\right\|_{\mathrm{TV}}
+=
+\frac12(1-2^{1-n})^t.
+\]
+
+Thus constant-accuracy sampling takes \(\Theta(2^n)\) steps.
+
+This obstruction does not depend on numerical precision. Even an arbitrary conditional procedure that always returns a matching of \(G_S\) cannot switch phases unless the shared bipartition was drawn, an event of probability \(2^{1-n}\).
+
+Nor does repeating the same conditional operation polynomially many times remove that exponential event.
+
+This is a failure of the proposed mechanism, not evidence that counting this family is difficult: an even cycle is trivial to count directly.
+
+---
+
+## 5. Pursuing the global-move repair
+
+The immediate repair is to flip a whole alternating cycle:
+
+\[
+M' = M\triangle C.
+\]
+
+The even-cycle example is then solved in one move. I therefore investigated whether an implementable global-cycle proposal could replace the problematic bipartition overlap.
+
+### Simple alternating walks still encounter exponential barriers
+
+Consider the following family \(H_r\).
+
+Start with a cycle on \(2r\) base vertices. For each base edge \(uv\), retain \(uv\) and add a parallel length-three path
+
+\[
+u-a-b-v.
+\]
+
+The resulting graph has \(6r\) vertices. All its edges belong to some perfect matching.
+
+Each four-cycle gadget has two relevant states:
+
+- Neither terminal is matched inside it: use \(ab\), giving one configuration.
+- Both terminals are matched inside it: use either \(\{uv,ab\}\) or \(\{ua,bv\}\), giving two configurations.
+
+Exactly one incident gadget must cover each base vertex. Consequently, the active gadgets form one of the two perfect matchings of the base cycle.
+
+The graph therefore has two equally weighted phases, each containing \(2^r\) perfect matchings:
+
+\[
+Z_{H_r}=2^{r+1}.
+\]
+
+Now consider an alternating-walk proposal that chooses a nonmatching edge uniformly, follows the forced matching edge, and stops or rejects on its first repeated matching pair.
+
+To change phases, it must traverse the entire base cycle. At each newly traversed active gadget—apart from a possible initial gadget—there is a choice among three nonmatching edges. One choice closes a local alternating loop before the global traversal finishes.
+
+Thus a phase-changing proposal has probability at most
+
+\[
+\left(\frac23\right)^{r-1}.
+\tag{10}
+\]
+
+A rejection filter cannot increase that probability.
+
+The bipartition proposal also remains exponentially suppressed. Compatibility with the other phase imposes opposite-colour constraints across its \(r\) active base edges. Under a random orientation of the current matching, these constraints have rank at least \(r-1\), giving
+
+\[
+\Pr(\text{bipartition permits the other phase})
+\le 2^{1-r}.
+\tag{11}
+\]
+
+Therefore a combination of these two proposal mechanisms, making only polynomially many attempts per step, still has exponentially small phase-crossing probability. Any such chain preserving the uniform target has an exponential worst-case mixing time.
+
+This is a stronger failure than the original long-cycle example: allowing long moves is not enough when generating those moves repeatedly chooses local detours.
+
+### But this family can be compressed exactly
+
+The next representation change does remove this obstruction.
+
+For a gadget with weights
+
+\[
+w_{uv}=d,\quad
+w_{ua}=p,\quad
+w_{ab}=q,\quad
+w_{bv}=s,
+\qquad q>0,
+\]
+
+its inactive weight is \(q\), and its active weight is \(dq+ps\).
+
+Removing \(a,b\), replacing the edge \(uv\) by weight
+
+\[
+d+\frac{ps}{q},
+\]
+
+and multiplying the partition function by \(q\) is exact.
+
+For \(H_r\), every gadget becomes an edge of weight \(2\). The entire graph reduces to a weighted cycle, whose count is \(2^{r+1}\).
+
+This is a real constructive elimination operation with explicit rational arithmetic. It also means the preceding obstruction **cannot** justify rejecting algorithms that first integrate small separable regions.
+
+What remains unproved is a general replacement for this elimination when the interacting region has many boundary vertices. Explicitly storing all boundary matching states introduces exponentially many entries. I did not obtain a representation closed under the necessary operations with polynomial construction and update cost.
+
+There is relevant prior warning here: the failure of perfect/near-perfect matching chains in general graphs is not merely a missing analysis of the bipartite proof. Štefankovič, Vigoda, and Wilmes established torpid mixing for all hole-pattern weighting schemes within the JSV-type chain they study. [arXiv](https://arxiv.org/html/1712.07504v1)
+
+---
+
+## 6. Why “sample a global alternating cycle uniformly” hides a hard subroutine
+
+A stronger proposal would avoid walk-generation bias by sampling uniformly from all alternating cycles relative to the current matching.
+
+That cannot be assumed cheap.
+
+### Proposition
+
+A polynomial-time sampler within total variation distance \(1/8\) of the uniform distribution over alternating simple cycles, given a bipartite graph and a specified perfect matching and promised a nonempty cycle set, would imply
+
+\[
+\mathrm{NP}=\mathrm{RP}.
+\]
+
+The proof is a polynomial-size reduction from directed Hamiltonian cycle, an NP-complete problem. [Springer](https://link.springer.com/content/pdf/10.1007/978-1-4684-2001-2_9?utm_source=chatgpt.com)
+
+### Proof
+
+**First, directed cycles become alternating cycles.**
+
+Given a loopless directed graph \(D\), create vertices \(v_L,v_R\) for each vertex \(v\), with specified perfect matching
+
+\[
+M_*=\{\{v_L,v_R\}:v\in V(D)\}.
+\]
+
+For every directed arc \(u\to v\), add the nonmatching edge
+
+\[
+\{u_R,v_L\}.
+\]
+
+Directed simple cycles of \(D\) correspond bijectively to \(M_*\)-alternating simple cycles: traverse a directed-arc edge from a right vertex to a left vertex, then the matching edge back to the corresponding right vertex.
+
+**Second, favour longer cycles using only a polynomial-size unweighted construction.**
+
+Let the original directed Hamiltonian-cycle instance have \(N\ge3\) vertices. Add a disjoint directed two-cycle so the cycle set is guaranteed nonempty.
+
+Replace every directed arc by a sequence of \(L\) directed diamonds. Each diamond has two internally disjoint length-two routes between its endpoints. The replacement therefore has \(2^L\) possible directed paths.
+
+An original simple cycle of length \(k\) has exactly
+
+\[
+2^{Lk}
+\]
+
+expanded versions. There are no cycles internal to an arc replacement because each replacement is directed acyclic.
+
+The original graph has fewer than \(N^{N+1}\) simple cycles. Choose
+
+\[
+2^L\ge 16(N^{N+1}+1).
+\]
+
+Then \(L=O(N\log N)\), so the expanded graph has polynomial size.
+
+If an original Hamiltonian cycle exists, its expanded versions contribute at least \(2^{LN}\) cycles. All non-Hamiltonian cycles together contribute at most
+
+\[
+(N^{N+1}+1)2^{L(N-1)}
+\le \frac1{16}2^{LN}.
+\]
+
+Thus a uniform expanded cycle projects to an original Hamiltonian cycle with probability at least \(16/17\).
+
+A sampler with total variation error \(1/8\) retains success probability greater than \(1/2\). Project its output and verify whether it is Hamiltonian. Verification prevents false positives when no Hamiltonian cycle exists.
+
+This gives a one-sided-error polynomial-time algorithm for directed Hamiltonian cycle. ∎
+
+### Scope of this obstruction
+
+This does **not** establish hardness of approximately counting perfect matchings.
+
+It establishes that one tempting global-update primitive is computationally too strong to use as an uncharged component. A successful matching sampler could use a very nonuniform distribution on alternating cycles.
+
+The unresolved requirement is therefore not “make the moves global.” It is:
+
+> Generate global moves with computable probabilities, correct balance, and sufficient transport between substantial parts of the matching space—without solving the uniform alternating-cycle sampling problem.
+
+---
+
+## 7. Resource accounting and the exact remaining gap
+
+The distinction between established operations and missing capabilities is sharp.
+
+| Component | What is actually available |
+|---|---|
+| Input | Explicit graph and binary-encoded rational edge weights |
+| Matching verification | Check edge membership and that every vertex is covered exactly once |
+| Positive lift | Exact identity (1), requiring no preprocessing |
+| Compatible bipartition | Exactly \(n\) fair bits from a supplied matching |
+| Conditional matching sample | Polynomial-time approximate sampling on an explicitly constructed bipartite graph |
+| Ideal conditional chain | Exact stationary target, but exponential mixing already on cycles |
+| Independent-cut estimator | Exact expectation identity, but exponential relative second moment |
+| Small-gadget elimination | Exact rational operation; no exponentially precise cancellation |
+| Uniform global-cycle proposal | Would imply \(\mathrm{NP}=\mathrm{RP}\) under the stated interface |
+| General compressed elimination or balanced global transport | Not established |
+
+The bipartite conditionals do not conceal an oracle for general matching counts. Conversely, neither the polynomial \(P_G\) nor the marginal matrix \(R\) has been promoted into a fictitious efficient oracle.
+
+The proof gap is also **not** merely a conjectured polynomial mixing time for the original sampler. That conjecture is false by (8)–(9). The simple global-walk repair also fails on the gadget family above. A further change in the mechanism is necessary.
+
+The strongest surviving mathematical conclusions are:
+
+\[
+\sum_S Z_S=2^n Z_G,
+\]
+
+\[
+\frac{\mathbb E Y^2}{Z_G^2}
+=
+\mathbb E_{M,N\sim\pi_G}2^{c(M,N)},
+\]
+
+\[
+\operatorname{Cov}(X)=\frac14(I-R),
+\]
+
+and
+
+\[
+\operatorname{gap}(K_{C_{2n}})=2^{1-n}.
+\]
+
+Together they exhibit an explicit setting where positive representations, efficient conditional sampling, and favourable local covariance all coexist with exponential global sampling cost.
+
+**No new polynomial-time capability for general perfect matching counting has been established here.** The exact positive lift and its obstructions are the retained results; they are not substitutes for the requested breakthrough. The selective prior-art search found the recent two-matroid algorithm, existing bipartite algorithms, and established general-graph chain barriers, but did not establish novelty for the retained calculations or supply the missing general transport mechanism.
