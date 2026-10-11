@@ -1,0 +1,485 @@
+## Result: easy optimisation can conceal uncomputable convergence rates
+
+I derived an explicit construction that embeds arbitrary computation into **ordinary gradient descent on one fixed, strongly convex loss whose condition number can be made arbitrarily close to one**.
+
+The stronger consequence is not merely that a shrinking coordinate can encode a computation:
+
+> **Approximating the actual asymptotic loss-decay exponent to fixed additive accuracy is undecidable—even when the limit exists, takes one of two fixed integer values, and the objective has a known minimizer and a globally contracting gradient-descent map.**
+
+There is also a finite-time consequence: **predicting logarithmic loss progress to constant accuracy is EXPTIME-hard when the iteration horizon is supplied in binary.** A corresponding fixed-threshold decision problem is EXPTIME-complete.
+
+These are impossibility results for **rate prediction**, not hardness of minimising the objective. The minimizer is simply zero. The construction and reductions are supplied below and in the proof note; independent proof review and historical novelty remain unresolved.
+
+Convex_Gradient_Rate_Unpredictability.pdf[Read the 10-page proof](sandbox:/mnt/data/Convex_Gradient_Rate_Unpredictability.pdf) · Convex_Gradient_Rate_Unpredictability_Bundle.zip[Editable source, executable checks and results](sandbox:/mnt/data/Convex_Gradient_Rate_Unpredictability_Bundle.zip)
+
+---
+
+## 1. The precise theorem
+
+Fix any rational \(0<\varepsilon<1\). The construction produces one fixed objective
+\[
+f(z)=\frac{\mu}{2}\|z\|^{2}
++\sum_{j=1}^{N}a_j\max\{0,b_j^\top z\}^{2},
+\]
+where \(\mu>0\), \(a_j\ge0\), and all coefficients are rational.
+
+This is positive quadratic regularisation plus a finite nonnegative sum of squared ReLU terms—not an arbitrary computational oracle disguised as a loss.
+
+The objective is globally continuously differentiable with Lipschitz gradient. It is \((1-\varepsilon)\)-strongly convex and \((1+\varepsilon)\)-smooth, giving the condition-number bound
+\[
+\kappa(f)\le \frac{1+\varepsilon}{1-\varepsilon}.
+\]
+Thus the bound approaches one as \(\varepsilon\) approaches zero.
+
+Its unique minimizer and minimum are
+\[
+z_*=0,\qquad f(z_*)=0.
+\]
+
+Ordinary full-batch gradient descent, with the fixed learning rate \(1\), has update
+\[
+G(z)=z-\nabla f(z)
+\]
+and satisfies
+\[
+\|G(x)-G(y)\|\le\varepsilon\|x-y\|.
+\]
+Every trajectory therefore converges rapidly to the known minimizer.
+
+Nevertheless, there is a polynomial-time encoding \(E\) of finite programs and inputs into rational starting points such that
+\[
+\Lambda(E(w))
+:=
+\lim_{t\to\infty}
+-\frac1t\log_2
+\frac{f(G^tE(w))}{f(E(w))}
+\]
+exists and equals
+\[
+\boxed{
+\Lambda(E(w))
+=
+\begin{cases}
+2k-2,&\text{the encoded computation accepts},\\[2mm]
+2k,&\text{it never accepts},
+\end{cases}}
+\]
+for one fixed integer \(k\).
+
+The objective, dimension, coefficients, learning rate and two possible answers are all fixed. **Only the rational initial point varies.**
+
+An algorithm approximating \(\Lambda\) within \(1/3\) would distinguish the two cases. A program that accepts precisely when another program halts then turns that algorithm into a halting decider, contradicting the classical undecidability result. [University of Virginia Computer Science](https://www.cs.virginia.edu/~robins/Turing_Paper_1936.pdf)
+
+The central separation is therefore
+\[
+\boxed{
+\begin{gathered}
+\text{Known minimizer, near-unit conditioning,}\\
+\text{and globally contractive gradient descent}
+\end{gathered}
+\quad\not\Longrightarrow\quad
+\text{computable instance-specific asymptotic rate}.}
+\]
+
+Here “rate” means the asymptotic average logarithmic decay above. It does not mean that the one-step ratio \(f(z_{t+1})/f(z_t)\) necessarily has a limit.
+
+## 2. The mechanism: an exact gradient-exchange construction
+
+The main mathematical obstacle is that an arbitrary computational update is not generally a gradient. Its derivatives need not satisfy the symmetry constraints imposed by a scalar potential.
+
+The construction resolves that obstacle explicitly.
+
+### A scalar potential that computes in one direction and copies in the other
+
+Write \(\sigma(a)=\max\{0,a\}\), and define
+\[
+p(a,b)=\frac14\left[
+\sigma(a+b)^2-\sigma(a-b)^2
+-\sigma(b)^2+\sigma(-b)^2
+\right].
+\]
+
+Direct differentiation gives the exact identities
+\[
+\nabla p(a,0)=(0,\sigma(a)),
+\qquad
+\nabla p(0,b)=(b/2,0).
+\]
+
+Also,
+\[
+p(a,0)=p(0,b)=0.
+\]
+
+Thus the same scalar function supplies a nonlinear forward transfer and a linear reverse transfer. There is no stop-gradient operation or independently prescribed “gradient” vector field.
+
+### Completing the reverse transfer without changing the computation
+
+Start with any rational recurrent ReLU system
+\[
+u_{t+1}=R(u_t):=\sigma(Wu_t),
+\qquad u_0\ge0,
+\]
+where \(W\in\mathbb Q^{m\times m}\).
+
+Define
+\[
+D=
+\begin{bmatrix}
+W\\-I
+\end{bmatrix},
+\qquad
+C=
+\begin{bmatrix}
+I&W-2I
+\end{bmatrix}.
+\]
+Then
+\[
+CD=2I.
+\]
+
+The extended map
+\[
+A(u)=C\sigma(Du)
+=\sigma(Wu)+(W-2I)\sigma(-u)
+\]
+agrees with the desired computation whenever \(u\ge0\), because the extra term vanishes there.
+
+But the extension satisfies
+\[
+A(u)-A(-u)=2u.
+\]
+
+That is the useful operation: **modify the map outside the valid computational region to supply the reciprocal structure required by an actual gradient, while leaving the intended computation unchanged.**
+
+Let \(d_j^\top\) denote row \(j\) of \(D\), and set
+\[
+H(u,v)=
+\sum_{i=1}^{m}\sum_{j=1}^{2m}
+C_{ij}\,p(d_j^\top u,v_i).
+\]
+The scalar identities now give
+\[
+\boxed{
+\nabla H(u,0)=(0,A(u)),
+\qquad
+\nabla H(0,v)=(v,0).}
+\]
+
+The first transfer performs the computation. The second copies its output back into the original register.
+
+### Making the objective strongly convex
+
+An explicit global bound is
+\[
+\operatorname{Lip}(\nabla H)\le K,
+\]
+where one may take
+\[
+K=
+\max\left\{
+1,\,
+\sum_{i,j}|C_{ij}|
+\bigl(\|d_j\|^2+2\bigr)
+\right\}.
+\]
+
+Choose a dyadic rational
+\[
+\rho=2^{-k},
+\qquad
+\rho K\le\varepsilon,
+\]
+and define
+\[
+f(z)=\frac12\|z\|^2-\rho H(z).
+\]
+
+The Lipschitz bound immediately supplies the strong-convexity and smoothness bounds:
+\[
+f\text{ is }(1-\varepsilon)\text{-strongly convex},
+\qquad
+\operatorname{Lip}(\nabla f)\le1+\varepsilon.
+\]
+
+Ordinary gradient descent performs the exact cancellation
+\[
+z-\nabla f(z)=\rho\nabla H(z).
+\]
+
+Consequently, starting from \(z_0=(u_0,0)\),
+\[
+\boxed{
+\begin{aligned}
+z_{2t}&=\bigl(\rho^{2t}R^t(u_0),\,0\bigr),\\
+z_{2t+1}&=\bigl(0,\,\rho^{2t+1}R^{t+1}(u_0)\bigr).
+\end{aligned}}
+\]
+
+**Two genuine gradient-descent updates simulate one recurrent-network update**, with a fully specified geometric rescaling.
+
+Moreover, every constructed iterate lies on one of the two coordinate subspaces, where \(H\) vanishes. Hence
+\[
+\boxed{f(z_t)=\frac12\|z_t\|^2}
+\]
+throughout the simulated trajectory.
+
+The loss values on the trajectory are exactly quadratic, while its transverse gradients perform the computation.
+
+### The signed terms can be removed
+
+The intermediate expression contains negative squared ReLU terms. They are not necessary in the final loss.
+
+For \(a>0\),
+\[
+-a\sigma(\ell)^2=a\sigma(-\ell)^2-a\ell^2.
+\]
+
+Apply this identity to every negative term. The negative contributions become a quadratic correction. The explicit bound above ensures that the remaining quadratic matrix is still positive definite.
+
+A rational \(LDL^\top\) decomposition then expresses that quadratic as positive rational multiples of squares of rational linear forms. Finally,
+\[
+\ell^2=\sigma(\ell)^2+\sigma(-\ell)^2.
+\]
+
+This yields the nonnegative squared-ReLU representation stated in the theorem. The whole matrix-to-objective construction has polynomial description and rational bit complexity.
+
+## 3. Pushing beyond a shrinking-coordinate encoding
+
+A construction that merely asks whether an exponentially small coordinate is positive would leave the operational meaning of the output questionable. I therefore made the computation change **the actual exponential decay of the loss**.
+
+The bridge has three parts.
+
+### Encode finite programs without hiding exponential input costs
+
+A Turing-machine tape can be represented by two finite stacks. For an alphabet of size \(a\), assign odd digits \(d_j=2j-1\) and choose \(B=4a\). Encode a stack as
+\[
+x=\sum_{r=1}^{\ell}d_{w_r}B^{-r}.
+\]
+
+A stack of \(\ell\) symbols requires \(O(\ell)\) bits—not an exponentially long initial number.
+
+The possible top symbols occupy separated rational intervals. Push and pop are affine on their respective branches:
+\[
+\operatorname{push}_d(x)=\frac{d+x}{B},
+\qquad
+\operatorname{pop}_d(x)=Bx-d.
+\]
+
+Continuous piecewise-linear plateau functions select the appropriate symbol interval. These functions have finite ReLU representations. Adding a scale coordinate homogenises the affine operations without computing a division by that scale.
+
+The proof note gives the branch-selection formulas and both-stack transition rules explicitly.
+
+### Convert acceptance into persistent geometric growth
+
+Construct a fixed finite-depth homogeneous ReLU network \(F\) implementing one transition of a fixed universal interpreter.
+
+Before acceptance, its scale coordinate remains one, and its encoded configurations stay in a fixed bounded set.
+
+Upon acceptance, it resets to a canonical accepting vector \(q_*\) and thereafter obeys
+\[
+F(sq_*)=\Gamma s q_*.
+\]
+
+Let the feedforward depth be \(\ell\). Choose
+\[
+\Gamma=4^\ell.
+\]
+
+There is no circular choice here: the circuit architecture is fixed first, with \(\Gamma\) treated as a coefficient parameter. Changing its numerical value does not change the depth.
+
+A block-cyclic pipeline converts the successive layers into one fixed recurrent matrix \(W\). With a suitable finite encoding \(P\),
+\[
+R^\ell P(q)=P(Fq),
+\qquad R(u)=\sigma(Wu).
+\]
+
+Therefore
+\[
+\lim_{t\to\infty}\|R^tP(q_0)\|^{1/t}
+=
+\begin{cases}
+4,&\text{acceptance occurs},\\
+1,&\text{acceptance never occurs}.
+\end{cases}
+\]
+
+### Transfer the growth distinction into loss decay
+
+The gradient-exchange construction inserts one recurrent update every two gradient steps. Consequently,
+\[
+\lim_{t\to\infty}\|z_t\|^{1/t}
+=
+\begin{cases}
+2\rho,&\text{acceptance occurs},\\
+\rho,&\text{acceptance never occurs}.
+\end{cases}
+\]
+
+Both cases still contract rapidly toward zero.
+
+Since \(f(z_t)=\|z_t\|^2/2\) and \(\rho=2^{-k}\), the two loss exponents are exactly
+\[
+2k-2
+\quad\text{and}\quad
+2k.
+\]
+
+This produces a **fixed gap in the requested numerical output**, rather than requiring an increasingly accurate sign measurement of a vanishing coordinate.
+
+It does not eliminate the growing precision needed to follow the computation internally. That cost is accounted for below.
+
+## 4. A finite-horizon impossibility, not only an infinite-time one
+
+Define
+\[
+\Lambda_T(z_0)
+=
+-\frac1T\log_2
+\frac{f(G^Tz_0)}{f(z_0)}.
+\]
+
+For the same fixed objective, consider the decision problem
+\[
+\boxed{
+f(G^TE(w))
+\ge
+2^{-(2k-1)T}f(E(w)),
+}
+\]
+where \(w\) and the binary representation of \(T\) are the inputs.
+
+The supplied reduction shows that this problem is **EXPTIME-complete**. Approximating \(\Lambda_T(E(w))\) within \(1/4\) is EXPTIME-hard.
+
+The argument preserves a constant numerical gap.
+
+At an aligned horizon \(T=2\ell n\), a computation that never accepts satisfies
+\[
+\Lambda_T=2k+O(1/T).
+\]
+
+If acceptance occurs at machine time \(h\), then
+\[
+\Lambda_T
+=
+2k-2(1-h/n)+O(1/T).
+\]
+
+Take any exponential-time decision procedure with an exponential running-time bound \(H\), and choose \(n\ge4(H+1)\). Its horizon still has only polynomially many binary digits.
+
+After fixed additional padding, rejecting inputs give
+\[
+\Lambda_T\ge2k-\frac18,
+\]
+while accepting inputs give
+\[
+\Lambda_T\le2k-\frac{11}{8}.
+\]
+
+An approximation with error \(1/4\) distinguishes them.
+
+Membership in EXPTIME follows by exact simulation: at step \(t\), each coordinate requires only \(O(|w|+t)\) bits for this fixed instance. Simulating through \(T\) therefore takes
+\[
+T\,\operatorname{poly}(|w|+T)
+\]
+bit operations, which is exponential in the actual input length \(|w|+\log T\).
+
+The exclusion of a polynomial-time predictor is unconditional. It uses \(\mathrm P\ne\mathrm{EXPTIME}\), for which the note includes a short diagonal proof—not an assumption such as \(P\ne NP\).
+
+Importantly, the decision formulation requires **only rational arithmetic**. No logarithm oracle is needed.
+
+## 5. Resource accounting and the decisive boundaries
+
+The result depends on the computational interface being stated accurately.
+
+| Resource or operation | What the construction requires |
+|---|---|
+| Input acquisition | An ordinary finite program and input, encoded into \(O(n)\) rational bits |
+| Objective preprocessing | One fixed finite compilation, independent of the subsequently supplied program |
+| Update rule | Ordinary full-batch \(z-\nabla f(z)\), with no changing objective or gradient override |
+| Bit memory at step \(t\) | \(O(n+t)\) per coordinate for the fixed instance |
+| Exact simulation through \(T\) | \(T\,\operatorname{poly}(n+T)\) bit operations |
+| Prediction output | A fixed-threshold decision or fixed additive accuracy for logarithmic loss decay |
+| Verification supplied | General mathematical derivation plus executable exact checks of the compiler and a small example |
+
+Several limitations are essential, not incidental.
+
+### Absolute-error state prediction is easy
+
+Global contraction gives
+\[
+\|G^Tz_0\|\le\varepsilon^T\|z_0\|.
+\]
+
+For any requested absolute tolerance \(\delta\), sufficiently late iterates can therefore be replaced by zero. Earlier iterates require only a number of simulation steps polynomial in the input size and \(\log(1/\delta)\).
+
+Thus:
+
+> **The theorem does not establish hardness of predicting the parameters or loss to fixed absolute error. It establishes hardness of predicting logarithmic decay.**
+
+The distinction is part of the result. The same objective permits easy absolute-error prediction and hard rate prediction.
+
+### Finding the minimizer is trivial
+
+The exact answer is zero. The theorem supplies no new optimisation lower bound for obtaining a low-loss point.
+
+What fails is inferring the **true input-specific convergence rate** from an objective whose minimizer, conditioning and global convergence bound are all already known.
+
+### Fixed-dimensional state is not fixed memory
+
+The number of coordinates is fixed, but their exact rational descriptions grow with computation time.
+
+There is no claim that constant-precision floating-point hardware can simulate indefinitely, nor that an infinite computation is being performed with finite bit resources.
+
+### The regularity and learning rate are specific
+
+The objective is \(C^{1,1}\): continuously differentiable with globally Lipschitz gradient. It is not asserted to be \(C^2\), analytic or polynomial.
+
+The unit learning rate is stable because
+\[
+1<\frac{2}{1+\varepsilon}.
+\]
+It need not satisfy the more conservative restriction \(1\le1/L\). The result does not automatically extend to every smaller learning rate, continuous gradient flow, or persistent numerical noise.
+
+These restrictions prevent an unjustified escalation from the proved construction to all well-conditioned optimisation.
+
+## 6. What was executed
+
+The attached Python implementation uses exact rational arithmetic for the gradient identities, ordinary updates and convex-loss rewrite.
+
+It passed **777 counted finite algebra and trajectory assertions**, including the two exchange identities, repeated two-step simulation, the exact on-orbit loss formula, and rational positive-definiteness checks for the rewritten quadratic.
+
+A fully instantiated ten-dimensional example tests the rate-switch mechanism. It has
+\[
+K=584,\qquad \rho=\frac1{4096},\qquad k=12,
+\]
+so its two predicted asymptotic loss exponents are \(24\) and \(22\).
+
+| Gradient steps | No switch: \(\Lambda_T\) | Delayed switch: \(\Lambda_T\) |
+|---:|---:|---:|
+| 100 | 24.000000 | 22.386795 |
+| 200 | 24.000000 | 22.193397 |
+| 400 | 24.000000 | 22.096699 |
+
+At step 400, the largest coordinate numerator-or-denominator bit length was 4,801 bits in the nonswitching example. This illustrates the precision cost rather than concealing it.
+
+The updates and equality checks were exact; only the displayed logarithms were converted to floating point.
+
+**The executable package does not instantiate the entire universal interpreter numerically.** It implements the general matrix-to-gradient compiler and the small rate-switch example. The universal interpreter is specified by the finite constructive proof. These finite tests support the algebra; they are not a substitute for independent review of the general argument.
+
+## 7. Prior work and the significance that is justified
+
+Computational complexity of gradient-descent trajectories is not itself a new subject. Chatziafratis, Roughgarden and Wang established that **online gradient descent can encode arbitrary polynomial-space computations**, including simple learning settings. A claim that this investigation discovered computational universality of gradient descent in general would therefore be wrong. [arXiv](https://arxiv.org/abs/1807.01280)
+
+Welper’s examined neural-training universality construction explicitly uses **stop-gradient operations** and a **conditional-gradient update on a simplex**. Those differ materially from differentiating one actual scalar objective and applying ordinary full-batch Euclidean gradient descent, as done here. They do not, by themselves, establish priority for the present theorem. [arXiv](https://arxiv.org/html/2007.13664v1)
+
+The specific combination derived here is:
+
+**an explicit gradient-exchange construction; a single rational strongly convex squared-ReLU loss; conditioning arbitrarily close to one; globally contractive ordinary gradient descent; fixed-gap undecidability of its actual loss-decay exponent; and an unconditional finite-horizon prediction barrier.**
+
+The reusable mathematical mechanism is the extension outside the valid computational region that restores the reciprocal structure required by a scalar potential. The consequential result is the separation between **easy optimisation** and **hard prediction of its actual convergence rate**.
+
+This goes beyond a representation counterexample: it supplies explicit reductions for numerical prediction tasks with fixed output accuracy. It does not supply a faster general-purpose solver, establish robustness at fixed physical precision, or demonstrate a practical advantage for learning systems.
+
+**The construction and reductions are the research result reached here. Historical novelty, independent correctness and the mission’s transformative significance have not yet been established; I am not presenting this as completion of the broader mission.**
