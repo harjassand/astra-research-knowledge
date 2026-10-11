@@ -1,0 +1,491 @@
+## Outcome
+
+**The existential limitation can be removed under a precise additional access model: independent copies of the source state and access to the original quantum operation through identified input and output ports.**
+
+I derived a circuit that implements a class of purification-assisted operations **without learning the source state, accessing its purifier, or obtaining a controlled version of the original operation**. Its error is bounded in diamond norm, so the resulting operation can be inserted into an existing computation while preserving arbitrary surrounding quantum information.
+
+The principal result is an exact identity:
+\[
+\boxed{
+\text{implemented operation}
+=
+\text{desired operation}
++\frac1n\,\text{positive error operation}.
+}
+\]
+
+It uses \(n\) source copies and **one invocation of the original channel**. The worst-case sample requirement is \(\Theta(1/\varepsilon)\), already for qubits.
+
+This is an implementation result, not another undecidability transfer. **It is not yet a justified claim of new foundational mathematics.** Selective comparison found substantial prior machinery behind the construction, and the stronger claims about unrestricted purification and live composition do not follow. The distinction matters; I give the actual operation, proof, resource boundary, and remaining novelty obligation below.
+
+---
+
+## 1. The change in representation
+
+The previous replacement involved an effect
+\[
+E_x=\operatorname{Tr}_A[(\sigma_A\otimes I)P_x].
+\]
+Knowing that such an operator exists does not provide its matrix, and the observed probability table does not supply \(\sigma_A\) or the internal projectors. That limitation was explicit in the retained proof. RESEARCH_NOTE
+
+I therefore abandoned the requirement to reconstruct those matrices.
+
+Instead, consider the following input resources:
+
+An unknown state \(\sigma\) on a finite-dimensional register \(A\) is available through independent copies. A quantum channel
+\[
+\mathcal C:\mathcal L(A\otimes B)\longrightarrow
+\mathcal L(A\otimes C)
+\]
+is available as a physical operation. Its returned \(A\)-register has the same dimension and interpretation as its input \(A\)-register. Register \(B\) contains the existing information to be processed and may be entangled with an arbitrary external reference.
+
+The source copies must be independent of that information and of the device’s initial environment. Clean ancillary controls and controlled register swaps are additional resources.
+
+**This is not access through probabilities alone.** It is access to quantum samples and a routable device. Using unknown quantum states as computational resources is established mathematics; density-matrix exponentiation is an important earlier example. The possible contribution here must therefore lie in the particular operation and its resource guarantee, not in the general idea of computing with samples. [arXiv](https://arxiv.org/abs/1307.0401)
+
+## 2. The operation: returning a source to its original purification
+
+Let \(K_\alpha\) be any Kraus representation of \(\mathcal C\). Define
+\[
+M_\alpha
+=
+\operatorname{Tr}_A[(\sigma\otimes I)K_\alpha],
+\]
+and
+\[
+\mathcal F_\sigma(\rho)
+=
+\sum_\alpha M_\alpha\rho M_\alpha^\dagger.
+\tag{1}
+\]
+
+The input and output \(A\)-ports are identified in this contraction. Changing the Kraus representation merely mixes the \(M_\alpha\) isometrically, so \(\mathcal F_\sigma\) depends on the channel, not on an arbitrary Kraus basis.
+
+There is a useful physical interpretation of this map.
+
+Imagine preparing a purification \(|\psi_\sigma\rangle_{AR}\), applying \(\mathcal C\) to \(AB\), and then testing whether \(AR\) has returned to the same \(|\psi_\sigma\rangle\). The successful operation on \(B\) is exactly \(\mathcal F_\sigma\).
+
+That experiment defines the target. **The implementation below is not given the purifier or the return test.**
+
+For comparison, ordinary substitution of a source sample gives the trace-preserving channel
+\[
+\mathcal G_\sigma(\rho)
+=
+\operatorname{Tr}_A\mathcal C(\sigma\otimes\rho).
+\tag{2}
+\]
+
+Splitting the hypothetical purification-return experiment into its successful and unsuccessful outcomes proves
+\[
+\boxed{
+\mathcal R_\sigma:=\mathcal G_\sigma-\mathcal F_\sigma
+\quad\text{is completely positive}.
+}
+\tag{3}
+\]
+In particular,
+\[
+0\le \mathcal F_\sigma^\dagger(I)\le I,
+\qquad
+\mathcal R_\sigma^\dagger(I)
+=
+I-\mathcal F_\sigma^\dagger(I).
+\]
+
+Thus \(\mathcal F_\sigma\) is a legitimate trace-nonincreasing operation. Its trace is its success probability.
+
+The operation is independent of the choice of purification: changing the purifier by a unitary cancels between the preparation and return test.
+
+---
+
+## 3. Exact implementation from independent replicas
+
+### Theorem — One-query implementation
+
+For every finite-dimensional \(\sigma\), every channel \(\mathcal C\) with the stated ports, and every integer \(n\ge1\), there is a circuit using \(n\) independent copies of \(\sigma\) and one unconditional invocation of \(\mathcal C\) whose successful operation is
+\[
+\boxed{
+\mathcal F_{\sigma,n}
+=
+\left(1-\frac1n\right)\mathcal F_\sigma
++\frac1n\mathcal G_\sigma
+=
+\mathcal F_\sigma+\frac1n\mathcal R_\sigma.
+}
+\tag{4}
+\]
+
+No faithfulness, eigenvalue lower bound, or dimension-dependent constant is required.
+
+### Construction
+
+Place the samples in registers \(A_1,\ldots,A_n\), and prepare a routing register in
+\[
+|+_n\rangle=\frac1{\sqrt n}\sum_{i=1}^n|i\rangle.
+\]
+
+Conditioned on \(i\), swap \(A_1\) with \(A_i\). Invoke \(\mathcal C\) once on \(A_1B\). Undo the controlled swap on the returned \(A\)-port. Test the routing register for \(|+_n\rangle\).
+
+On success, retain the output information in \(C\). On failure, erase it and output a distinguished failure symbol. Discard the source replicas.
+
+Crucially, **the channel itself is not coherently controlled**. Only the routing around a single ordinary invocation is controlled.
+
+### Proof
+
+Write \(K_\alpha^{(i)}\) for \(K_\alpha\) acting on replica \(i\) and the information register. The successful Kraus operator before discarding the replicas is
+\[
+L_\alpha=\frac1n\sum_{i=1}^nK_\alpha^{(i)}.
+\]
+
+Expand
+\[
+L_\alpha(\sigma^{\otimes n}\otimes\rho)L_\alpha^\dagger
+\]
+and trace the source registers.
+
+There are \(n\) diagonal terms \(i=j\). Their sum contributes
+\[
+\frac1n\mathcal G_\sigma(\rho).
+\]
+
+There are \(n(n-1)\) off-diagonal terms. For \(i\ne j\), source independence makes the ket contraction equal to \(M_\alpha\) and the bra contraction equal to \(M_\alpha^\dagger\). Each such term contributes
+\[
+M_\alpha\rho M_\alpha^\dagger.
+\]
+Their sum contributes
+\[
+\left(1-\frac1n\right)\mathcal F_\sigma(\rho).
+\]
+
+This proves (4). The same calculation holds with an untouched identity operation on any reference entangled with \(\rho\).
+
+The \(1/n\) term is therefore not a concentration approximation or a numerical estimate. It is the **exact contribution of the diagonal terms**.
+
+### Why this is more than estimating an expectation
+
+The output is a quantum operation on the existing information register. It is not an estimate of
+\(\operatorname{Tr}\sigma K_\alpha\), nor a classical reconstruction of \(\sigma\).
+
+The construction needs neither the matrices \(M_\alpha\) nor an eigenbasis of \(\sigma\). It realizes the operation directly.
+
+However, coherent pre/post-processing of channels, Kraus filtering, and related linear-combination constructions are already present in quantum-filter literature. The circuit architecture itself should not be advertised as a newly invented form of quantum control. [arXiv](https://arxiv.org/html/2407.20173v2)
+
+## 4. A guarantee that survives arbitrary surrounding computations
+
+The failure flag is essential to the statement.
+
+For a trace-nonincreasing operation \(\mathcal F\), define its complete erasure-flagged channel by
+\[
+\widehat{\mathcal F}(\rho)
+=
+\mathcal F(\rho)
+\oplus
+\operatorname{Tr}\!\left[(I-\mathcal F^\dagger(I))\rho\right]
+|\mathrm{fail}\rangle\langle\mathrm{fail}|.
+\tag{5}
+\]
+
+This is a linear trace-preserving channel. When a reference is present, the formula denotes the corresponding channel tensored with the identity; it does not discard the reference’s conditional information.
+
+Equation (4) gives
+\[
+\boxed{
+\frac12
+\left\|
+\widehat{\mathcal F}_{\sigma,n}
+-
+\widehat{\mathcal F}_\sigma
+\right\|_\diamond
+=
+\frac1n
+\left\|\mathcal R_\sigma^\dagger(I)\right\|_\infty
+\le\frac1n.
+}
+\tag{6}
+\]
+
+### Proof of the norm identity
+
+A completely positive map \(\mathcal R\) has diamond norm
+\[
+\|\mathcal R\|_\diamond
+=
+\|\mathcal R^\dagger(I)\|_\infty.
+\]
+
+The successful block of the flagged-channel difference is \(+\mathcal R_\sigma/n\). The failure block is minus the erasure map with the same effect.
+
+Their norms give the upper bound in (6). An eigenvector maximizing \(\mathcal R_\sigma^\dagger(I)\) attains it: the positive successful block and negative failure block have equal trace norm and orthogonal flags.
+
+### Composition consequence
+
+Suppose a finite computation uses \(L\) such operations, possibly with adaptive choices based on previous outputs. Replace operation \(j\) using \(n_j\) fresh replicas. Then
+\[
+\boxed{
+\frac12\|\text{implemented computation}
+-\text{ideal computation}\|_\diamond
+\le
+\sum_{j=1}^L\frac1{n_j}.
+}
+\tag{7}
+\]
+
+This follows by telescoping the complete channels, including the history registers.
+
+Unlike a state-specific vector estimate, this guarantee remains valid after the register has become correlated with earlier outputs. It is precisely the form of control missing from a procedure that only matches standalone moments.
+
+Choosing \(n_j=\lceil L/\varepsilon\rceil\) gives total error at most \(\varepsilon\) with \(O(L^2/\varepsilon)\) samples. That is an upper bound, not a claim of optimal multi-operation complexity. Reusing disturbed replicas is not justified.
+
+### Connection to the retained theorem
+
+For the retained coherent measurement
+\[
+K=\sum_x|x\rangle\otimes P_x,
+\]
+the new contraction is
+\[
+M=\sum_x|x\rangle\otimes E_x.
+\]
+Its failure probability on the previously certified input \(\eta\) is
+\[
+1-\operatorname{Tr}\mathcal F_\sigma(\eta)
+=
+\sum_x\operatorname{Tr}\eta(E_x-E_x^2)
+=
+v
+\le2\delta.
+\tag{8}
+\]
+
+The retained source-isolation proof supplies the last inequality. RESEARCH_NOTE
+
+There is an important distinction: **this compiles the \(E_x\) contraction with a failure flag, not the earlier trace-preserving square-root isometry involving \(\sqrt{E_x}\).** The original arguments are preserved rather than silently changing their target.
+
+There is also a direct one-replica replacement. Feed a disposable independent \(\sigma\) sample into the original device instead of the live source. If
+\[
+p=\operatorname{Tr}\mathcal F_\sigma(\rho),
+\]
+the full original-source-and-information outputs differ by at most
+\[
+\sqrt{1-p^2}\le\sqrt{2(1-p)}
+\tag{9}
+\]
+in trace distance.
+
+To see this, purify both source copies and the device. The two output vectors—device acting on the live or disposable source—have inner product \(p\). Equation (9) follows from pure-state trace distance and discarding inaccessible systems.
+
+This produces an operational replacement under the old certificate. It still requires the specified coherent instrument or another source-return certificate: identical outcome probabilities alone do not exclude an additional unitary that damages the source.
+
+---
+
+## 5. The sample cost cannot be substantially improved
+
+### Theorem — Universal lower bound
+
+Any universal processor using \(n\) source samples and approximating every flagged target above to half-diamond error \(\varepsilon\) must satisfy
+\[
+\boxed{\varepsilon\ge\frac1{n+2}.}
+\tag{10}
+\]
+
+Combined with (6), this establishes worst-case sample complexity
+\[
+\boxed{\Theta(1/\varepsilon)}
+\]
+independently of dimension.
+
+### Proof
+
+It suffices to choose a known, fixed channel: **SWAP on two qubits**.
+
+Then
+\[
+M=\sigma,
+\qquad
+\mathcal F_\sigma(\rho)=\sigma\rho\sigma.
+\tag{11}
+\]
+
+For a pure program \(\sigma=|\psi\rangle\langle\psi|\), the ideal success probability on \(|\phi\rangle\) is
+\[
+|\langle\psi|\phi\rangle|^2.
+\]
+
+Any processor’s success probability is described by an effect
+\[
+0\le T\le I
+\]
+on the \(n\) program qubits and one information qubit. Twirling this effect by simultaneous qubit rotations cannot worsen its uniform error.
+
+On
+\[
+\operatorname{Sym}^n(\mathbb C^2)\otimes\mathbb C^2,
+\]
+the rotation representation has two inequivalent irreducible components, each occurring once. Thus the twirled effect has the form
+\[
+T=a\Pi_++b\Pi_-,
+\qquad 0\le a,b\le1,
+\]
+where \(\Pi_+\) projects onto the fully symmetric component.
+
+For input
+\[
+|\psi\rangle^{\otimes n}\otimes|\psi\rangle,
+\]
+success probability is \(a\), so
+\[
+a\ge1-\varepsilon.
+\]
+
+For input
+\[
+|\psi\rangle^{\otimes n}\otimes|\psi^\perp\rangle,
+\]
+the squared projection onto the fully symmetric component is \(1/(n+1)\). Its success probability is therefore at least
+\[
+\frac{a}{n+1},
+\]
+although its ideal success probability is zero. Hence
+\[
+\varepsilon
+\ge\frac{1-\varepsilon}{n+1},
+\]
+which proves (10).
+
+This is a programmable-measurement argument. Generalized swap tests and programmable projective measurements are established prior machinery; neither that interpretation nor the lower-bound technique is claimed new here. [arXiv](https://arxiv.org/abs/1805.02546)
+
+## 6. What the operation does not allow
+
+### Rare successful outputs remain expensive
+
+For an input with ideal success probability \(p>0\), write
+\[
+r=\operatorname{Tr}\mathcal R_\sigma(\rho).
+\]
+The normalized successful output is exactly
+\[
+\frac{\mathcal F_{\sigma,n}(\rho)}{p+r/n}
+=
+\frac{p}{p+r/n}\frac{\mathcal F_\sigma(\rho)}p
++
+\frac{r/n}{p+r/n}\frac{\mathcal R_\sigma(\rho)}r.
+\tag{12}
+\]
+
+Thus its conditional error can scale as \(1/(np)\), notwithstanding the unconditional \(1/n\) guarantee.
+
+For example, with SWAP and \(\sigma=I/d\),
+\[
+\mathcal F_\sigma(\rho)=\frac{\rho}{d^2},
+\]
+whereas
+\[
+\mathcal F_{\sigma,n}(\rho)
+=
+\left(1-\frac1n\right)\frac{\rho}{d^2}
++\frac{I}{nd}.
+\tag{13}
+\]
+
+When \(n\ll d^2\), the normalized successful output can be predominantly mixed. This is a limitation of this protocol, not a universal lower bound for the known maximally mixed state.
+
+The method also supplies no inverse operation, no reversible block encoding, and no ability to retry on an unknown input after destroying it.
+
+### Computing the operation can be cheaper than building a canonical representation
+
+There is a precise separation under the same sample-only access model.
+
+Fix a basis and consider the canonical purification
+\[
+|\sqrt{\sigma}\rangle\rangle
+=
+\sum_{ij}(\sqrt{\sigma})_{ij}|i\rangle|j\rangle.
+\]
+For pure \(\sigma=|\psi\rangle\langle\psi|\), this is
+\[
+|\psi\rangle|\overline\psi\rangle.
+\]
+
+A deterministic processor preparing this state to trace distance \(\varepsilon\) must, in particular, produce \(|\overline\psi\rangle\) with fidelity at least \(1-\varepsilon\).
+
+Let
+\[
+D_n=\binom{n+d-1}{n}.
+\]
+For any channel \(Q:\operatorname{Sym}^n(\mathbb C^d)\to\mathbb C^d\), its unnormalized Choi operator \(J_Q\) has trace \(D_n\). The Haar identity gives
+\[
+\begin{aligned}
+\int
+\langle\overline\psi|
+Q(\psi^{\otimes n})
+|\overline\psi\rangle\,d\psi
+&=
+\frac{\operatorname{Tr}[J_Q\Pi_{\mathrm{sym}}^{n+1}]}{D_{n+1}}\\
+&\le
+\frac{D_n}{D_{n+1}}
+=
+\frac{n+1}{n+d}.
+\end{aligned}
+\]
+Consequently,
+\[
+\boxed{
+n\ge
+\frac{(1-\varepsilon)d-1}{\varepsilon}.
+}
+\tag{14}
+\]
+
+By contrast, the flagged operation \(\rho\mapsto\sigma\rho\sigma\) needs only \(O(1/\varepsilon)\) copies.
+
+At fixed error, this is a dimension-linear—hence qubit-exponential—separation between **constructing that canonical representation** and **performing that operation**.
+
+The qualifier is essential. Equation (14) is not a lower bound for every possible purification, and the underlying state-conjugation argument is not a new foundational result. Random-purification channels already provide a different representation: correlated mixtures with the statistics of several copies of one randomly chosen purification. [arXiv](https://arxiv.org/abs/2511.23451)
+
+### The stronger live-purification proposal fails
+
+I also tested whether the construction could support a universal purification representation that emits its first output before receiving the next source copy.
+
+Under the exact contract, the first emitted source register must retain \(\sigma\) for every \(\sigma\). Any extension of the identity channel is the identity tensored with a fixed ancillary state. Once that register is released, later processing cannot create the correlations required by a common random purification.
+
+The proof note makes this robust: for qubits, a processor that must release its first source register before receiving the second copy cannot uniformly approximate the two-copy random-purification target with trace error below
+\[
+1-\frac{\sqrt{15}}4>0.0317.
+\tag{15}
+\]
+
+This is specifically a **no-prefetch, one-copy-latency** obstruction. It does not forbid preparing a bank of copies first.
+
+I am not counting the general parallel/sequential distinction as a discovery: existing random-dilation work already gives substantial positive results and impossibility results for different sequential access contracts. [arXiv](https://arxiv.org/html/2512.21260v2)
+
+---
+
+## 7. What survives the priority comparison
+
+The constructive result is broader than the original triangle setting. It applies to arbitrary channels with a returned source port, outputs an actual quantum operation, and has a reference-preserving error guarantee with an optimal sample order. **None of its proofs uses Fritz’s embedding or MIP\(^*=\)RE.**
+
+But the comparison materially limits the novelty claim.
+
+Coherent channel filtering and one-query pre/post-processing are already developed in the quantum-filter literature. Programmable measurements already supply close relatives of the pure-state special case. Random-purification and random-Stinespring constructions already establish major ways of replacing inaccessible descriptions by operationally useful quantum representations. [arXiv](https://arxiv.org/html/2407.20173v2)
+
+The possible contribution remaining here is therefore narrower:
+
+> **The explicit arbitrary-mixed-state, arbitrary-channel, one-query formula (4), with its completely positive error decomposition, flagged diamond-norm guarantee, and sample-access resource accounting.**
+
+I have not established whether that exact combined statement is already explicit—or an immediate specialization—in the prior literature. More importantly, I have not established a consequential application that improves the best end-to-end complexity of an independently major problem.
+
+Those are substantive unresolved obligations, not merely presentation work. They prevent treating the result as completion of Genesis.
+
+The investigation does establish a useful answer to the original implementation question:
+
+**A state-specific existential replacement need not be implemented by reconstructing its hidden matrices. Independent quantum replicas can implement a related, context-composable operation directly. But that does not provide unrestricted purification access, preserve every desired residual instrument, or make rare conditioning inexpensive.**
+
+## Research packet
+
+The packet contains the complete derivations, circuit specification, resource contracts, rejected stronger interfaces, and actual verification results.
+
+The executed checks include 72 arbitrary-channel trials, 24 SWAP specializations, 12 weighted-routing trials, 30 full-purification overlap trials, and 80 exact rational scalar fixtures. The largest direct-routing discrepancy was approximately \(1.14\times10^{-15}\) in trace norm. These are finite diagnostics, not formal verification or independent review; no quantum hardware was used.
+
+RESEARCH_NOTE.md[Read the complete proof note](sandbox:/mnt/data/astra_replica_contraction/RESEARCH_NOTE.md) · astra_replica_contraction.zip[Download the research and verification packet](sandbox:/mnt/data/astra_replica_contraction.zip)
+
+**Status: a concrete, composable candidate operation with a complete written resource analysis; historical originality and foundational significance remain unestablished.**
