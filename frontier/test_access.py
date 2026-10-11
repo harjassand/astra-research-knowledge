@@ -7,6 +7,8 @@ import io
 import json
 from pathlib import Path
 import sys
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -41,6 +43,30 @@ class PublicAccessTests(unittest.TestCase):
         self.assertEqual(build.route_id('L01-title'), 'L01')
         self.assertEqual(build.route_id('P-q-d'), 'P-q-d')
         self.assertEqual(build.route_id('W-frontier-check-lsi'), 'W-frontier-check-lsi')
+
+    def test_optional_technology_route_keeps_current_source_notice(self):
+        with patch.object(sys, 'argv', ['retrieve', 'technology', 'N654', '--limit', '2']):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                retrieve.main()
+            result = json.loads(output.getvalue())
+        self.assertTrue(result['source_notice']['card_id'].startswith('N654-'))
+        self.assertLessEqual(len(result['technology']['routes']), 2)
+        self.assertTrue(all(not r['fixture'] for r in result['technology']['routes']))
+        self.assertTrue(result['technology']['navigation_is_not_applicability'])
+
+    def test_mathematical_notice_works_without_technology_files(self):
+        source = retrieve.ROOT
+        card = retrieve.resolve('N654')['card_path']
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ['frontier/retrieve.py', 'frontier/CURRENT_CLAIM_STATUS.jsonl', card]:
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source / name, root / name)
+            result = subprocess.run([sys.executable, str(root / 'frontier/retrieve.py'), 'notice', 'N654'],
+                                    capture_output=True, text=True, check=True)
+            self.assertTrue(json.loads(result.stdout)['card_id'].startswith('N654-'))
+            self.assertFalse((root / 'technology').exists())
 
     def test_packet_budget_fails_without_partial_output(self):
         content = 'forall ε>0: κόστος\n'.encode()
