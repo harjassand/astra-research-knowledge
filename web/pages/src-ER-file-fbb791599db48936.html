@@ -1,0 +1,175 @@
+<!doctype html><meta charset="utf-8"><title>Research bundle original — controlled_noise/compressed_linear_control_poisson_noise_compiler.md</title>
+<aside>Original producer evidence; preservation/CRC/member hashes and AST syntax checks only. No scientific program execution, independent proof reconstruction, literature/priority audit, practical benchmark or physical validation at intake.</aside>
+<pre># Compressed linear control with compound-Poisson polynomial noise
+
+**Status:** proof candidate, 12 October 2026. This is a mathematical construction, not formal verification, an implementation benchmark, or a priority claim.
+
+## Result and input contract
+
+Let the state space be V = F_2^D. A deterministic straight-line program specifies a potentially exponentially long sequence of two kinds of operation:
+
+1. A supplied linear map C: V -&gt; V.
+2. Independent compound-Poisson additive noise: N ~ Poisson(lambda), followed by the XOR of N independent copies of F(U), where U is uniform on b supplied bits and F is a supplied explicit multilinear vector polynomial of degree at most d.
+
+The program is an acyclic concatenation grammar. Binary-encoded repetitions are allowed: compile a repetition into repeated squaring and concatenation, adding only O(log N) grammar nodes. Every occurrence of a noise leaf uses fresh Poisson and latent randomness, even when a grammar node is reused. Rates/means lambda are nonnegative binary rationals. Matrix dimensions, the explicit monomial lists, and all integer bit lengths are charged to the input.
+
+For epsilon in (0,1), the construction below samples the full final state within epsilon total variation in time polynomial in the input length, D, 2^d, and epsilon^{-1}. In particular, for fixed d, its cost is independent of the expanded control length and of the numerical magnitudes of the Poisson means, apart from their bit lengths. The clean deterministic output is computed by matrix composition and added to the sampled error frame.
+
+Invertibility is not needed for the mathematics. Clifford circuits form a physical application when the supplied matrices are their binary symplectic actions on Pauli frames. The theorem does not cover coherent quantum noise, state-dependent fault rates, adaptive measurement feedback, or the expanded measurement trajectory. It does not give relative accuracy for exponentially rare decoder failures. The explicit polynomial noise interface is an input assumption, not a tomography conclusion.
+
+The central operation is a reusable approximate count of noise marks outside **any** subspace, under **any** linear suffix context. A sparsifier supplies this count; it is never substituted for the physical jump distribution.
+
+## 1. Final-frame intensity measures
+
+For every grammar node A, let C_A be its clean linear map, and let nu_A be its compound-Poisson mark intensity measure in the output coordinates of A. For a noise leaf, nu_A = lambda Law(F(U)); for a control-only leaf, nu_A = 0.
+
+If A is followed by B, then
+
+    C_AB = C_B C_A,
+    nu_AB = (C_B)_* nu_A + nu_B.
+
+This follows because independent additive noises convolve and a deterministic linear map pushes each earlier mark forward. Thus the final error law is the compound-Poisson law with intensity nu_root. Zero marks can be discarded everywhere.
+
+For a finite positive measure nu and a linear functional ell, write
+
+    c_nu(ell) = nu{v : ell(v)=1}.
+
+A positive finite weighted-vector summary nu_tilde is a rho-accurate cut summary if
+
+    exp(-rho) c_nu(ell) &lt;= c_nu_tilde(ell) &lt;= exp(rho) c_nu(ell)
+
+for every ell in V*. Pushforward by any linear map and addition of measures preserve the same simultaneous bound.
+
+## 2. Elementary explicit-list cut sparsification
+
+This deliberately loose polynomial construction avoids a minimum-distance or minimum-cut oracle for binary linear codes.
+
+Suppose an explicit list consists of nonzero vectors v_i with positive rational weights w_i, i=1,...,N. Repeatedly extract a maximum-weight greedy linear basis of the remaining vectors, remove it, and continue. Let k_i be the extraction round of vector i. Each round contains at most D vectors.
+
+### Sensitivity bound
+
+For every linear functional ell with ell(v_i)=1, let C_ell = sum_{j:ell(v_j)=1} w_j. Then
+
+    C_ell &gt;= k_i w_i.
+
+Indeed, in each earlier extraction round, the descending-weight greedy basis spans v_i using selected vectors of weight at least w_i. At least one of those vectors has ell-value one. The k_i-1 earlier rounds and vector i itself give disjoint contributions of weight at least w_i.
+
+Choose alpha &gt;= 1. Retain vector i independently with probability
+
+    p_i = min(1, alpha/k_i),
+
+and give a retained vector weight w_i/p_i. For a fixed nonzero cut, every random summand is at most C_ell/alpha, and its total variance is at most C_ell^2/alpha. Bernstein&#x27;s inequality therefore gives, for 0 &lt; eta &lt;= 1,
+
+    Pr[absolute cut error &gt; eta C_ell] &lt;= 2 exp(-eta^2 alpha/3).
+
+All zero cuts stay zero exactly. A union bound over at most 2^D functionals proves simultaneous relative 1 +/- eta accuracy with failure probability at most delta when
+
+    alpha &gt;= 3 (D log 2 + log(2/delta))/eta^2.
+
+The expected retained size is at most
+
+    D alpha (1 + log N).
+
+All operations use rational arithmetic and Gaussian elimination over F_2. No bound on the ratio of input weights occurs.
+
+### Fixed polynomial output size
+
+For merge-reduce, fix a loose B polynomial in D and alpha, for example B = 64(D alpha + 1)^2, enlarged to contain the leaf summaries. A binary merge has at most 2B input vectors. If necessary repeat the independent retention mask until the output has at most B vectors. The expected output bound implies success probability at least one half for this choice. Conditioning on success increases the cut-failure bound by at most a factor two. A logarithmic cap on retries makes the running time strictly polynomial, with an additional chosen small failure probability. On a capped failure, output any fixed vector; this event is charged to total variation.
+
+The standard code-sparsification literature gives stronger sparsity bounds. The elementary proof above is sufficient here. See Khanna, Putterman and Sudan, *Code Sparsification and its Applications*, https://arxiv.org/abs/2311.00788 . Their result concerns code weights and Cayley spectral sparsifiers; the endpoint-sampling use below requires an additional conditional-acquisition operation.
+
+## 3. Leaf summaries and merge-reduce
+
+A nonzero scalar multilinear polynomial of degree at most d on uniform Boolean inputs equals one with probability at least 2^{-d}. One elementary proof chooses a monomial of maximum degree r: after every assignment of the other variables the restricted polynomial still has that top monomial, so it is nonzero on at least one of the 2^r assignments.
+
+Consequently, for every ell, either ell(F(U)) is identically zero or its probability of one is at least 2^{-d}. With
+
+    M = O(2^d (D + log(1/delta))/eta^2)
+
+fresh uniform latent samples, the empirical leaf measure, assigning weight lambda/M to each image, preserves every cut to relative 1 +/- eta with failure at most delta. This follows from multiplicative Chernoff and a union bound over 2^D functionals. The exact coefficient span can be computed separately for zero tests.
+
+Build all node summaries bottom-up. At a concatenation, push the left summary through the clean right matrix, unite it with the right summary, and apply the explicit-list sparsifier. At a reused node, retain one summary; do not expand its occurrences.
+
+Let G be the compiled grammar size and H its maximum depth, with H &gt;= 1. Give every leaf and compression a small failure budget and local relative accuracy eta. Conditional on success of all summaries, every node has simultaneous cut error bounded by
+
+    rho = 2 H eta
+
+provided eta &lt;= 1/2. This is because each root-to-leaf path multiplies at most H factors 1 +/- eta, while addition and linear pushforward do not worsen the current relative factor. Fresh sparsifier randomness at each node makes the conditional failure bounds valid; a union bound over G nodes suffices.
+
+The number of possible suffix contexts need not be bounded: the summaries already cover every linear functional in the D-dimensional space.
+
+## 4. From cut counts to active-mass queries
+
+For every subspace W &lt;= V,
+
+    nu(V minus W) = 2 E_{ell uniform on W-perp} c_nu(ell).
+
+If v is in W, every such ell vanishes on v. If v is outside W, exactly half have ell(v)=1. Therefore simultaneous relative cut accuracy implies the identical relative accuracy for mass outside every subspace.
+
+More generally, for any supplied linear context M,
+
+    nu{v : Mv is outside W}
+
+is approximated to the same factor by its summary. This follows either by the same character average with ell composed with M, or by taking the preimage of W. Compute the summary query simply by summing its weights whose transformed vectors are outside W.
+
+This is an adaptive-query guarantee. The current W and the context M may depend on all previously sampled marks and on the summaries. No new union bound over subspaces or contexts is needed.
+
+## 5. Acquiring a true mark conditioned on being active
+
+At the root, suppose a true mark is required conditional on being outside W. Descend the actual grammar, maintaining a context matrix M from the current node&#x27;s output to the root output.
+
+At a concatenation A followed by B, the two true active masses are
+
+    a_A = nu_A{v : M C_B v is outside W},
+    a_B = nu_B{v : M v is outside W}.
+
+Query the two summaries and choose a branch in proportion to their estimated active masses. On the left update M to M C_B; on the right retain M. Zero true masses are zero in every successful summary. A deterministic exact span test can guard zero cases.
+
+If each estimate has multiplicative error exp(+/-rho), the normalized branch probabilities change by at most O(rho) in total variation. There are at most H branches. Hence the resulting leaf/context selection differs from the true active conditional selection by O(H rho).
+
+At a polynomial noise leaf, draw **fresh** uniform latent inputs until M F(U) is outside W. This is the exact conditional mark distribution at that leaf, independent of preprocessing samples. If it is possible, some scalar linear functional annihilating W gives a nonzero degree-at-most-d polynomial, so acceptance probability is at least 2^{-d}. Expected work is at most 2^d proposals. A cap of O(2^d log(D/epsilon)) proposals adds only a chosen small total failure probability.
+
+The original mark distribution survives this procedure. In particular, the sparse summary is not used as the distribution from which physical marks are sampled.
+
+## 6. At most D active stochastic transitions
+
+For a compound-Poisson jump of mark v at intensity nu(v), replace it by a rate-2nu(v) update that adds either zero or v with equal probability. The generator is unchanged.
+
+Conditional on all proposed marks, the accumulated error is uniform on their linear span W. A proposed mark inside W leaves this conditional law unchanged and can be discarded. A proposed mark outside W enlarges W by one dimension.
+
+Thus an exact auxiliary sampler for the final noise law at time one is:
+
+1. Start W = {0} and elapsed time zero.
+2. Let a = 2 nu_root(V minus W). If a = 0, stop.
+3. Draw an exponential waiting time of rate a. If it exceeds the remaining time, stop.
+4. Draw a true mark conditional on being outside W and enlarge W by that mark.
+5. Repeat. Finally output a uniform vector of W.
+
+There are at most D accepted transitions. This is a law-level representation; it does not enumerate or reconstruct the original fault history.
+
+Use the root summary for the rate in step 2 and the conditional grammar procedure for step 4. Two exponential distributions whose rates differ by exp(+/-rho) have O(rho) total variation distance, uniformly in the rate; censoring at the remaining horizon cannot increase distance. Each accepted mark costs O(H rho) total variation. Sequential coupling over at most D transitions gives total error
+
+    O(D H rho) + preprocessing failure + finite-bit/truncation errors.
+
+Choose, for example, local eta = epsilon/(100 D H^2), with a harmless further constant reduction if needed, and distribute the remaining error among preprocessing, rejection caps and arithmetic. Since rho &lt;= 2H eta, the total is at most epsilon.
+
+No spectral-to-endpoint-TV inference is present. Such an inference would be false: a small generator sparsifier can preserve every Fourier exponent while destroying finite-time full-distribution variation distance. Here it only estimates branch masses and clock rates, and every acquired mark comes from the actual input model.
+
+## 7. Bit complexity and finite-clock implementation
+
+All summaries have polynomially many vectors. Basis peeling introduces rational factors k/alpha of polynomial bit length. Along at most H levels their numerator/denominator bit lengths grow only polynomially. The number of expanded occurrences may be exponential, but its logarithm is polynomial in the grammar and repetition bit lengths; no expanded count is stored in unary.
+
+Matrices, spans, outside-subspace tests, branch probabilities and coefficient evaluations are exact finite-field/rational operations. Rational categorical sampling can use integer rejection sampling with polynomial expected bit cost, or a bounded approximation with its error explicitly allocated.
+
+Exponential times need not be ideal real-number primitives. Let A be twice the total positive weight in the root summary. Every approximate active rate is at most A; every nonzero such rate is at least twice its smallest positive stored weight, so both extrema have polynomial bit descriptions. Generate each clock to absolute error Delta, with overflow beyond two treated as a stop. With at most D clocks, rounding can change the stopping index only if some cumulative arrival lies within D Delta of time one. Each arrival has density at most A (condition on its preceding history), so the total probability is at most O(D^2 A Delta). Choose Delta = O(epsilon/(D^2 max(1,A))).
+
+Uniform-bit truncation and evaluation of -log(U)/a to this accuracy require polynomially many bits: exclude a probability-O(epsilon/D) tiny-U event, and use the known rational lower rate bound to choose the remaining precision. The required precision depends on log A, the logarithm of the smallest positive stored rate, and log(1/epsilon), never on A itself. This closes the binary-huge-rate cost rather than assuming a real-clock oracle.
+
+## 8. Capability and limitations
+
+The concrete output is one full joint endpoint error frame for a compressed deterministic linear/Clifford schedule with supplied correlated burst maps. It can be passed to a supplied polynomial-time syndrome or decoder computation, with additive distributional guarantees. Nested repetitions and heterogeneous tiny or huge noise means are included. Directions appearing at only one exponentially rare grammar occurrence are included without enumerating all contexts.
+
+The noise model and control grammar must actually be supplied or acquired separately. Unknown latent maps, unknown rate calibration, coherent noise, measurement-conditioned controls, and physical validation are separate obligations. The algorithm can have large polynomial exponents; no practical-speed claim follows from this proof.
+
+The central operation in this construction is using all-parity summaries as uniformly reusable **active-mass counting oracles**, followed by conditional descent through the original compressed program. It separates compressed counting from distribution preservation and combines it with finite-rank heatbath innovations.
+</pre>

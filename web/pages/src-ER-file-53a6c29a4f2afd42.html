@@ -1,0 +1,181 @@
+<!doctype html><meta charset="utf-8"><title>N752 original — exact_audit.py</title>
+<aside>Original producer evidence; preservation/CRC/member hashes and AST syntax checks only. No scientific program execution, independent proof reconstruction, literature/priority audit, practical benchmark or physical validation at intake.</aside>
+<pre>&quot;&quot;&quot;Exact rational diagnostics; NOT the full spectral algorithm or its runtime test.&quot;&quot;&quot;
+from __future__ import annotations
+from dataclasses import asdict
+import json, math, random
+from pathlib import Path
+import sympy as sp
+from cell_repair import enclosing_cell_repair, dot
+
+HERE = Path(__file__).resolve().parent
+checks = []
+def record(name, condition=True, **data):
+    if not condition:
+        raise AssertionError(name)
+    checks.append(dict(name=name, passed=True, **data))
+
+def cube(n):
+    A=[]; b=[]
+    for j in range(n):
+        row=[0]*n; row[j]=1; A.append(row); b.append(1)
+        row=[0]*n; row[j]=-1; A.append(row); b.append(0)
+    return A,b
+
+def report_repair(name, r):
+    data=asdict(r)
+    data[&#x27;point&#x27;]=[str(t) for t in r.point]
+    record(name, **data)
+
+# A singleton fractional cost slice: exact output is not dyadic.
+A,b=cube(2)
+r=enclosing_cell_repair([sp.Rational(1,3),sp.Rational(2,3)], A,b,
+        [[1,1]],[1], [[1,0]],[sp.Rational(1,3)], mesh_bits=14)
+record(&#x27;nondyadic_exact_cost_slice&#x27;, r.point==[sp.Rational(1,3),sp.Rational(2,3)])
+report_repair(&#x27;nondyadic_repair_details&#x27;,r)
+
+# Arbitrarily long candidate denominator, with fixed original cost target.
+for bits in [64,256,1024,2048]:
+    e=sp.Rational(1,2**bits+1)
+    x=[sp.Rational(1,2)+e,sp.Rational(1,2)-e,
+       sp.Rational(1,2)+2*e,sp.Rational(1,2)-2*e]
+    A,b=cube(4)
+    r=enclosing_cell_repair(x,A,b,[[1]*4],[2],[[1,1,0,0]],[1],mesh_bits=18)
+    record(f&#x27;denominator_reset_{bits}&#x27;,r.output_bits&lt;=32)
+    report_repair(f&#x27;denominator_reset_details_{bits}&#x27;,r)
+
+# Rank face event with every coordinate fractional.
+A,b=cube(5); A.append([1,1,0,0,0]); b.append(1)
+x=[sp.Rational(3,10)]*2+[sp.Rational(7,15)]*3
+h=[3,3,-2,-2,-2]; t=sp.Rational(1,15)
+y=[a+t*v for a,v in zip(x,h)]
+record(&#x27;rank_face_event_fractional&#x27;,all(0&lt;q&lt;1 for q in y) and dot(A[-1],y)==1)
+r=enclosing_cell_repair(y,A,b,[[1]*5],[2],[[0,0,1,2,-3]],[0],mesh_bits=14)
+record(&#x27;rank_face_not_released&#x27;,dot([1,1,0,0,0],r.point)==1)
+report_repair(&#x27;rank_face_repair_details&#x27;,r)
+
+# Repair may descend to a smaller original face, but never releases one.
+A,b=cube(2); tiny=sp.Rational(1,2**1024+1)
+r=enclosing_cell_repair([1-tiny,sp.Rational(1,3)],A,b,
+                       fixed_equations=[[0,1]],fixed_targets=[sp.Rational(1,3)],mesh_bits=16)
+record(&#x27;repair_can_descend&#x27;,r.face_dimension_before==2 and r.face_dimension_after==1)
+report_repair(&#x27;repair_face_descent_details&#x27;,r)
+
+# A vertex of the clipped LP must not be mistaken for an original vertex.
+A,b=cube(3)
+r=enclosing_cell_repair([sp.Rational(1,3)]*3,A,b,[[1]*3],[1],mesh_bits=12)
+record(&#x27;artificial_cell_vertex_not_original&#x27;,r.face_dimension_after==2 and all(0&lt;t&lt;1 for t in r.point))
+report_repair(&#x27;artificial_cell_vertex_details&#x27;,r)
+
+rng=random.Random(1302026)
+for test in range(16):
+    n=3+test%4
+    A,b=cube(n)
+    rank=1+(test%(n-1)); anchor=[sp.Rational(rank,n)]*n
+    cost=[rng.randint(-4,4) for _ in range(n)]
+    cost[0],cost[1]=0,1
+    E=sp.Matrix([[1]*n,cost]); null=E.nullspace()
+    v=null[test%len(null)]
+    denom=sp.ilcm(*[t.q for t in v]); v=[t*denom for t in v]
+    tiny=sp.Rational(1,2**(80+37*test)+1)
+    x=[a+tiny*d for a,d in zip(anchor,v)]
+    r=enclosing_cell_repair(x,A,b,[[1]*n],[rank],[cost],[dot(cost,anchor)],mesh_bits=10+test%8)
+    record(f&#x27;random_exact_slice_{test}&#x27;,dot(cost,r.point)==dot(cost,anchor) and r.output_bits&lt;256,
+           input_bits=r.input_bits,output_bits=r.output_bits,n=n)
+
+# Exact count of the hidden-pairing Boolean-membership obstruction.
+def pairings(items):
+    if not items:
+        yield []
+    else:
+        a=items[0]
+        for j in range(1,len(items)):
+            b=items[j]
+            rest=items[1:j]+items[j+1:]
+            for tail in pairings(rest):
+                yield [(a,b)]+tail
+for rank in range(1,7):
+    total=accepted=0
+    for pairing in pairings(list(range(2*rank))):
+        total+=1
+        accepted+=int(all((a&lt;rank)!=(b&lt;rank) for a,b in pairing))
+    expected=sp.Rational(2**rank,math.comb(2*rank,rank))
+    record(f&#x27;hidden_pairing_count_{rank}&#x27;,sp.Rational(accepted,total)==expected,
+           total_pairings=total,accepted=accepted,probability=str(expected))
+
+# Weighted replication reduction: exact operator and edge-budget identities.
+for test in range(30):
+    n=3+test%8
+    blocks=[]; cursor=0
+    while cursor&lt;n:
+        size=min(n-cursor,rng.randint(1,4)); blocks.append(list(range(cursor,cursor+size)));cursor+=size
+    mu=[sp.Rational(rng.randint(0,12),rng.randint(1,13)) for _ in range(n)]
+    if all(t==0 for t in mu):mu[0]=sp.Rational(1)
+    budget=max(sum(mu[j] for j in block) for block in blocks)
+    clones=[max(1,int(sp.ceiling(n*w/budget))) for w in mu]
+    record(f&#x27;weighted_size_{test}&#x27;,sum(clones)&lt;=n*n)
+    record(f&#x27;weighted_edges_{test}&#x27;,all(sum(clones[j] for j in block)&lt;=2*n for block in blocks))
+    # Pythagorean vector columns have exact prescribed Euclidean norms.
+    for j in range(n):
+        a=sp.Matrix([sp.Rational(3,5)*mu[j],sp.Rational(4,5)*mu[j]])
+        new=(sp.Rational(n,1)/budget/clones[j])*a
+        assert (new.T*new)[0]&lt;=1
+        assert clones[j]*new==(sp.Rational(n,1)/budget)*a
+    record(f&#x27;weighted_norm_and_map_{test}&#x27;,budget=str(budget),clone_count=sum(clones))
+
+# Nearest-integer cells of integral base polyhedra: exact residual ranks.
+# Exhaustive tests use small coverage-plus-modular functions. Modular terms
+# may be negative; neither coordinate positivity nor small capacity is assumed.
+for test in range(24):
+    n=3+test%5
+    masks=list(range(1&lt;&lt;n)); full=(1&lt;&lt;n)-1
+    cover=[(rng.randrange(1,1&lt;&lt;n),rng.randint(1,7)) for _ in range(n+2)]
+    modular=[rng.randint(-1000000,1000000) for _ in range(n)]
+    fv=[sum(w for edge,w in cover if edge &amp; S)+
+        sum(modular[j] for j in range(n) if S&gt;&gt;j&amp;1) for S in masks]
+    vertices=[]
+    for _ in range(3):
+        order=list(range(n));rng.shuffle(order);S=0;v=[0]*n
+        for j in order:
+            v[j]=fv[S|(1&lt;&lt;j)]-fv[S];S|=1&lt;&lt;j
+        vertices.append(v)
+    x=[sp.Rational(sum(a*v[j] for a,v in zip([5,7,11],vertices)),23) for j in range(n)]
+    a=[int(sp.floor(t)) for t in x]; residue=[t-floor for t,floor in zip(x,a)]
+    hs=[fv[S]-sum(a[j] for j in range(n) if S&gt;&gt;j&amp;1) for S in masks]
+    assert min(hs)&gt;=0
+    rank=[min(hs[T]+(U &amp; (full^T)).bit_count() for T in masks) for U in masks]
+    assert rank[0]==0 and rank[full]==hs[full]
+    for U in masks:
+        assert 0&lt;=rank[U]&lt;=U.bit_count()
+        for j in range(n):
+            if not U&gt;&gt;j&amp;1: assert 0&lt;=rank[U|(1&lt;&lt;j)]-rank[U]&lt;=1
+        for V in masks:
+            assert rank[U]+rank[V]&gt;=rank[U|V]+rank[U&amp;V]
+    accepted=0
+    for B in masks:
+        values=[int(B&gt;&gt;j&amp;1) for j in range(n)]
+        original=(sum(a[j]+values[j] for j in range(n))==fv[full] and
+                  all(sum(a[j]+values[j] for j in range(n) if S&gt;&gt;j&amp;1)&lt;=fv[S] for S in masks))
+        residual=(B.bit_count()==rank[full] and
+                  all((B&amp;S).bit_count()&lt;=rank[S] for S in masks))
+        assert original==residual
+        if original and all(values[j]==0 for j in range(n) if residue[j]==0):accepted+=1
+    assert accepted&gt;0
+    record(f&#x27;integral_base_cell_{test}&#x27;,n=n,integer_cell_base_count=accepted,
+           maximum_integer_coordinate=max(abs(t) for t in a))
+
+# The final bound and strict dimension reserve, using rational inequalities.
+for k in range(1,1001):
+    K=64*k; R=math.isqrt(K)
+    assert R*R&gt;=K/2
+    assert 16*R*R+2*K+8*k+1&lt;=1161*k
+    N=8*k+1
+    assert sp.Rational(N,k)-sp.Rational(35*N,K)-2&gt;0
+record(&#x27;parameter_and_dimension_range&#x27;,k_values=1000)
+
+summary={&#x27;status&#x27;:&#x27;Exact local/repair diagnostics, not an implementation of the complete spectral rounding algorithm&#x27;,
+         &#x27;number_of_checks&#x27;:len(checks),&#x27;all_passed&#x27;:True,&#x27;checks&#x27;:checks}
+(HERE/&#x27;exact_audit_results.json&#x27;).write_text(json.dumps(summary,indent=2))
+print(json.dumps({&#x27;checks&#x27;:len(checks),&#x27;all_passed&#x27;:True,
+                 &#x27;denominator_cases&#x27;:[c for c in checks if c[&#x27;name&#x27;].startswith(&#x27;denominator_reset_details&#x27;)]},indent=2))
+</pre>
