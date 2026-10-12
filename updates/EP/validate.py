@@ -200,7 +200,10 @@ def check_projection(old_text,new_text,old_connection,new_connection,notice):
     projected = dict(new_connection)
     projected['edges'] = [e for e in new_connection['edges'] if e != wanted[0]]
     projected['nodes'] = [n for n in new_connection['nodes'] if n['id'] != later]
-    need(new_connection['snapshot'] == load('agent/access_manifest.json')['snapshot'], 'unexpected generated snapshot metadata')
+    manifest = load('agent/access_manifest.json')
+    path = 'frontier/connections/'+earlier.split('-',1)[0]+'.json'
+    need(sha((ROOT/path).read_bytes()) == manifest['outputs'].get(path) and
+         new_connection['snapshot'] == load(path)['snapshot'], 'unexpected generated snapshot metadata')
     projected['snapshot'] = old_connection['snapshot']
     need(projected == old_connection, 'historical connection content altered beyond notice')
 
