@@ -1,0 +1,400 @@
+# Active imaginary-time experiments can certify an entire real-time trajectory
+
+ASTRA THEORETICAL — 12 October 2026
+
+## Status
+
+This is a self-contained research derivation, not an independently validated discovery. Historical priority for the combined result is unresolved. The logarithm's resolvent representation, Duhamel's formula, pure-state projection tests, and statistical two-point lower bounds are established mathematics. The candidate contribution is their combination into a dimension-independent, state-specific predictive certificate using one short, programmable, heralded imaginary-time filter; an exact characterization of the certificate's null space; and matching trial and filter-duration lower bounds.
+
+The result is not an algorithm for discovering a candidate Hamiltonian, a theorem about arbitrary local-only laboratory probes, or a claim that imaginary-time filtering is automatically available in a physical experiment. Candidate-state preparation and verification circuits are explicit resources. No conjectural result from Astra or OpenAI/math is a mathematical premise.
+
+## 1. Experimental contract
+
+Let H and K be Hermitian matrices on a finite-dimensional Hilbert space, with a supplied common bound
+
+    0 <= H,K <= M I,     M>0.
+
+H is unknown; K is a proposed model fixed before the validation data. A known pure initial state psi can be prepared. The target discrepancy is
+
+    E_T(H,K;psi) = sup_(0<=t<=T) D(U_H(t)|psi><psi|U_H(t)^*,
+                                   U_K(t)|psi><psi|U_K(t)^*),
+    U_H(t)=exp(-itH),  D(rho,sigma)=||rho-sigma||_1/2.
+
+The experiment supplies a heralded filter with success Kraus operator
+
+    B_h = exp(-hH).
+
+It acts on the system of a submitted, freshly prepared system–ancilla state and acts as the identity on ancillary registers. A success outputs the corresponding normalized state. A failure can return only a flag and an erased state; all failures count. The system's real-time evolution, matrix entries, controlled unitary dilation on arbitrary flag inputs, and the adjoint of a filter dilation are NOT supplied. Fresh calls are memoryless. This is a linear quantum instrument before conditioning, not a claim that normalized imaginary-time evolution is a deterministic channel.
+
+For the upper bound it suffices to use the single duration
+
+    h=1/(4M).
+
+Arbitrary coherent preparation and the prescribed known projective tests are allowed. The required inputs are specified below and depend only on K, psi, and classical random numbers. One auxiliary qubit suffices for the comparison construction; implementing the known functions of K can require additional computational workspace.
+
+Counts distinguish (i) successful validation shots, (ii) raw filter attempts, (iii) total duration sum h_i of UNKNOWN filters, and (iv) preparation/computation/gate costs. The last category is not silently included in a sample count.
+
+## 2. Main theorem
+
+Put
+
+    a=exp(-1/4),   b=a^2,
+    Cstar = 4 sqrt(2) exp(3/4) [1+exp(1/4)] < 27.36.
+
+**Theorem 1 (active predictive certificate).** There is an explicit random experiment with rejection probability pbar such that
+
+    E_T(H,K;psi) <= min{1, Cstar M T sqrt(pbar)}.                  (1)
+
+It uses one successful short filter on a known, candidate-dependent input, followed by a two-outcome projection test. Neither the spectrum nor eigenvectors of H are acquired. No commutation, locality, spectral-gap, or entanglement hypothesis is imposed.
+
+For a fixed K, N independent successful experiments with zero rejections give the frequentist confidence statement
+
+    E_T <= Cstar M T sqrt(log(1/alpha)/N)                         (2)
+
+except on an event of probability at most alpha. More precisely, the probability that a model with larger actual error passes this zero-rejection test is at most alpha. This is not a posterior probability that H is correct.
+
+Thus O((MT/epsilon)^2 log(1/alpha)) successful shots certify the whole trajectory to trace distance epsilon, with soundness alpha. All norm-one observables are then predicted to additive error at most 2 epsilon, simultaneously, on this initial state and time interval.
+
+The test has perfect ideal completeness whenever H and K generate exactly the same trajectory of rays from psi. It is a one-sided certificate: it need not accept every approximately correct trajectory.
+
+The probability of each UNKNOWN filter succeeding is at least a^2=exp(-1/2)>0.60. Retrying the same chosen input until success costs at most exp(1/2) raw attempts per shot in expectation. A fixed raw cap also gives the same asymptotic bound with arbitrarily high confidence.
+
+**Theorem 2 (sharp resource orders).** Fix confidence 2/3, 0<epsilon<=1/4, and MT>=2. In the stated worst-case spectral class, the optimal raw trial count and optimal total unknown-filter duration have respective orders
+
+    Q(M,T,epsilon) = Theta(M^2 T^2 / epsilon^2),                (3)
+    S(M,T,epsilon) = Theta(M T^2 / epsilon^2).                  (4)
+
+These are minimax orders, not optimal constants. The lower bounds already use a single two-level system. They allow arbitrary filter durations, adaptive experiment design, and quantum memory. In fact, the proof grants the canonical forward filter isometry and its coherent failure output, a stronger interface than a heralded filter with erased failures. It does not grant the inverse isometry or a full unitary completion queried on arbitrary flag inputs. Only constant-confidence optimality is claimed; the upper bound's log(1/alpha) factor is not proved optimal for every strengthened coherent-access variant.
+
+## 3. The candidate-dependent input
+
+Write
+
+    B=exp(-hH),    C=exp(-hK),     a I <= B,C <= I.
+
+For r in [0,1], define the known positive matrix
+
+    G_r = [(1-r)I + (r/b) C]^{-1}.                              (5)
+
+Its eigenvalues lie in [b,1]. In particular, no exponentially conditioned inverse is hidden here.
+
+Choose s uniformly in [0,T] and r uniformly in [0,1], independently. Set
+
+    phi_s = U_K(s) psi,
+    v_(s,r) = G_r phi_s / ||G_r phi_s||.                        (6)
+
+Prepare the normalized system–ancilla input
+
+    xi_(s,r) = (|0> v_(s,r) + |1> psi)/sqrt(2).                 (7)
+
+Both branches are filtered by the SAME unknown B. The auxiliary qubit is merely a coherent branch label: it is not an inert energy reference or a controlled bypass of H. On success, the output is
+
+    Xi_H(v) = (|0> Bv + |1> Bpsi)
+              / sqrt(||Bv||^2+||Bpsi||^2).                    (8)
+
+Compare it with the known candidate vector
+
+    Xi_K(v) = (|0> Cv + |1> Cpsi)
+              / sqrt(||Cv||^2+||Cpsi||^2),                    (9)
+
+using the projection { |Xi_K(v)><Xi_K(v)|, I-|Xi_K(v)><Xi_K(v)| }.
+Let p(s,r) be its rejection probability and pbar its uniform mean.
+
+The sampling order matters. Sample s,r, and retry THAT setting until success. Sampling a new setting after every failure would reweight the successful settings by their unknown success probabilities; the proof as written uses the first procedure.
+
+## 4. From projective comparison to a common operator scale
+
+The filter's overall scalar normalization is invisible in (8). That is appropriate: a common shift of the Hamiltonian changes only an unobservable global phase. The two coherent branches force the same scalar across all probe states.
+
+Define the positive, unknown scalar
+
+    c = <psi,Bpsi>/<psi,Cpsi>,     a <= c <= 1/a.               (10)
+
+It is used in the proof, not estimated by the experiment.
+
+**Lemma 3.** For every unit vector v,
+
+    ||(B/c-C)v|| <= L sqrt(p(v)),
+    L = sqrt(2)(1+1/a)/a.                                    (11)
+
+*Proof.* Let X=(Bv,Bpsi), Y=(Cv,Cpsi), and let z=<Y,X>/||Y||^2 be the least-squares scalar. The pure-state projection formula gives
+
+    ||X-zY||^2 = ||X||^2 p(v) <= 2p(v).
+
+Hence each component residual has norm at most sqrt(2p). Positivity gives
+
+    |z-c| <psi,Cpsi> = |<psi,zCpsi-Bpsi>| <= sqrt(2p),
+
+so |z-c|<=sqrt(2p)/a. Consequently
+
+    ||Bv-cCv|| <= sqrt(2p)(1+1/a).
+
+Divide by c>=a. QED.
+
+This step does not assume that B and C commute, and does not infer vector closeness merely from agreement of one scalar correlation function.
+
+## 5. The noncommutative logarithm bridge
+
+For positive definite P,Q, scalar integration followed by the spectral theorem gives
+
+    log P-log Q
+      = integral_0^infty [(Q+uI)^-1-(P+uI)^-1] du
+      = integral_0^infty (P+uI)^-1 (P-Q) (Q+uI)^-1 du.         (12)
+
+The integrals converge in operator norm in finite dimension. The second equality is the resolvent identity with the displayed order; no commutation is assumed.
+
+Set P=B/c and Q=C. Both are at least bI. With u=b(1-r)/r, (12) becomes
+
+    log(B/c)-log C
+      = (1/b) integral_0^1 F_r (B/c-C) G_r dr,                (13)
+
+where
+
+    F_r = [(1-r)I + (r/b)(B/c)]^-1,    ||F_r||<=1.             (14)
+
+The unknown F_r is only bounded; it is never implemented.
+
+Let
+
+    Htilde = H + (log c)/h I.
+
+Then log(B/c)-log C = -h(Htilde-K). For any unit phi,
+
+    ||(Htilde-K)phi||
+      <= (1/(hb)) integral_0^1 ||(B/c-C) G_r phi|| dr.
+
+Since ||G_r phi||<=1, Lemma 3 yields, for phi=phi_s,
+
+    ||(Htilde-K)phi_s||
+      <= L/(hb) integral_0^1 sqrt(p(s,r)) dr.                 (15)
+
+Equation (15) is the operative bridge: an exactly defined family of positive short-time experiments bounds the real-time generator residual on the candidate trajectory. It never numerically differentiates imaginary-time data and never extrapolates a noisy scalar Laplace transform.
+
+## 6. Uniform-in-time proof
+
+Duhamel's identity gives, for 0<=t<=T,
+
+    (U_Htilde(t)-U_K(t))psi
+      = -i integral_0^t U_Htilde(t-s)(Htilde-K)U_K(s)psi ds.
+
+Thus, using (15), extending a nonnegative integral to T, and applying Cauchy–Schwarz on the rectangle [0,T] x [0,1],
+
+    ||(U_Htilde(t)-U_K(t))psi||
+      <= L/(hb) integral_0^T integral_0^1 sqrt(p(s,r)) dr ds
+      <= LT/(hb) sqrt(pbar)
+      = Cstar MT sqrt(pbar).                                (16)
+
+Htilde differs from H only by a scalar, so its pure-state density trajectory is identical to H's. Pure-state trace distance is at most the vector distance in (16). This proves Theorem 1, including simultaneity for all t in [0,T].
+
+For a fixed candidate, the N rejection indicators are iid Bernoulli(pbar). If pbar>log(1/alpha)/N, the chance of seeing no rejection is at most (1-pbar)^N<=alpha. This proves (2).
+
+For the fixed raw-attempt cap, successes have conditional probability at least a^2, even while a setting is being retried. They stochastically dominate iid Bernoulli(a^2). With
+
+    R = ceil((2N+8 log(1/alpha))/a^2),
+
+the probability of fewer than N successes is at most alpha by the usual binomial Chernoff bound. On this event report no certificate. The raw cost is O(N+log(1/alpha)); the unknown-filter duration is hR. The count-optimal and duration-optimal upper orders (3)-(4) follow at constant confidence.
+
+## 7. Exact meaning of a zero witness
+
+Let
+
+    C_K(psi)=span{psi,Kpsi,K^2psi,...}.
+
+**Theorem 4 (predictive equivalence).** For T>0, the following are equivalent:
+
+1. pbar=0.
+2. H and K generate the same trajectory of pure-state density matrices from psi for every t in [0,T].
+3. There is a real kappa such that
+
+       (H-K)x=kappa x  for every x in C_K(psi).
+
+4. The density trajectories agree for every real t.
+
+*Proof.* (1) implies (2) by (16). If (2) holds, choose the differentiable phase relating the two vector trajectories. Differentiation shows that each phi_s=U_K(s)psi is an eigenvector of the fixed Hermitian H-K, with a continuous eigenvalue kappa(s). In finite dimension, a continuous map into the finite eigenvalue set is constant. The span of phi_s on any nonempty time interval is C_K(psi): in an eigenbasis of K this follows from linear independence of the finitely many distinct exponential functions, or from derivatives at zero. This proves (3). The cyclic subspace is K-invariant; (3) makes it H-invariant as well. Restrictions of the two generators differ by kappa I, proving (4). Finally, (3) implies B=e^(-h kappa)C on that subspace; every G_r phi_s and psi lies there. Both branches in (8) therefore have the same scalar multiplier, so (1) holds. QED.
+
+The theorem deliberately does not identify H outside the predictive cyclic subspace. Its exact-null class is larger than the single model H=K.
+
+No uniform tolerant converse of the form 'small trajectory error necessarily gives proportionally small pbar' is proved. In particular, a failed test is not by itself a proof that the requested observable is inaccurate. It only means the sufficient certificate did not pass.
+
+There is a concrete warning example. Let H=0, K=M|1><1|, and psi=sqrt(1-z^2)|0>+z|1>, with small z>0. The entire density trajectory differs by at most 2z at every time. Nevertheless, the rejection probability for every paired probe is at least p_w/2, where
+
+    p_w=z^2(1-z^2)(1-a)^2/(1-z^2+a^2 z^2)>0.
+
+Indeed, the squared residual of the two-component unnormalized comparison is at least its second-component best-scalar residual, p_w, while its H-side norm squared is two. Thus for long T, the displayed zero-rejection procedure can reject an already epsilon/2-accurate trajectory (take z=epsilon/4). This is an explicit limitation of the sufficient certificate, not a lower bound against all possible tolerant certifiers.
+
+
+## 8. Lower bound, including postselection and variable durations
+
+Let the known candidate and unknown alternative be
+
+    K=(M/2)I,
+    H_theta=(M/2)I+theta Z,
+    psi=|+>,   theta=2 epsilon/T.
+
+For MT>=2 and epsilon<=1/4, |theta|<=M/4. Both spectra lie in [0,M]. At time T the pure-state trace distance is
+
+    |sin(theta T)|=sin(2epsilon)>=epsilon.                    (17)
+
+A forward filter at ANY u>=0 can be dilated as
+
+    W_theta,u x = exp(-uH_theta)x |success>
+                  + sqrt(I-exp(-2uH_theta))x |failure>.       (18)
+
+This exposes more information than erasing the failure state and dephasing the flag. The flag is fresh; an inverse or an arbitrary-input unitary completion is not an allowed query.
+
+On an energy E, (18) prepares the real unit vector
+
+    f_u(E)=(exp(-uE), sqrt(1-exp(-2uE))).
+
+Write its angle as alpha_u(E). Then
+
+    |alpha'_u(E)|^2 = u^2/(exp(2uE)-1).
+
+For E>=M/4, using exp(x)-1>=x and exp(x)-1>=x^2 for x>=0,
+
+    |alpha'_u(E)|^2 <= min{4/M^2, 2u/M}.                     (19)
+
+The second scalar inequality follows because exp(x)-1-x^2 starts at zero and has positive derivative exp(x)-2x.
+
+Since 1-cos z<=z^2/2, in the common Z eigenbasis
+
+    ||I-W_0,u^* W_theta,u||
+       <= min{2theta^2/M^2, theta^2 u/M}.                    (20)
+
+Purify an arbitrary adaptive protocol, retaining measurement histories. Parameter-independent processing preserves the overlap of its two purifications. Each forward query changes that overlap by at most 2theta^2/M^2. After at most R raw queries, the final trace distance therefore satisfies
+
+    D_final <= min{1, 2|theta| sqrt(R)/M}.                    (21)
+
+This follows from |overlap|>=1-2Rtheta^2/M^2 whenever this is useful, and D^2<=1-|overlap|^2; when the displayed right side exceeds one, the trivial bound applies. Classical or coherent control over a specified duration register preserves the uniform first bound in (20).
+
+For the duration bound with classically adaptive durations, decompose each query input into orthogonal history blocks. The contribution to overlap change in a block of duration u is at most
+
+    (theta^2 u/M) ||x_0|| ||x_theta||
+      <= (theta^2 u/(2M)) (||x_0||^2+||x_theta||^2).
+
+Summing over blocks and queries gives total overlap loss at most theta^2 Sbar/M, where Sbar is the average, under the two hypotheses, of the expected total filter duration. Therefore
+
+    D_final <= min{1, |theta| sqrt(2 Sbar/M)}.                 (22)
+
+If a certifier accepts the correct candidate with probability >=2/3 and rejects the bad alternative with probability >=2/3, its outputs distinguish these equally likely hypotheses with success >=2/3. Hence D_final>=1/3. Equations (21)-(22) imply
+
+    R >= M^2/(36theta^2) = M^2 T^2/(144epsilon^2),
+    Sbar >= M/(18theta^2) = M T^2/(72epsilon^2).               (23)
+
+This proves the lower orders in Theorem 2. Failed filters and discarded outputs cannot be free: replacing (18) with an oracle that supplies normalized successful long-time states without charging their success probability is a different and stronger model, not covered by (23).
+
+## 9. Preparation, numerical precision, and physical limits
+
+### 9.1 What must actually be implemented
+
+The source is not asked to evolve under H in real time, implement H's eigenvectors, or process inverse spectral data. However, the experimenter must prepare (7) and measure (9). These are generally coherent, nonlocal many-body operations, not merely extra single-site measurements.
+
+All functions used to prepare the inputs depend on K alone. G_r has eigenvalues in [b,1], so applying it by a known probabilistic circuit succeeds with probability at least b^2=exp(-1), before constant-error accounting. The known candidate filter has eigenvalues in [a,1]. The unknown filter's success probability is at least a^2. Thus this construction does not hide an exponentially rare state-normalization event.
+
+A supplied efficient quantum implementation of K and a supplied preparation circuit for psi can be used for these known functions, using standard quantum matrix-function methods. For example, phase estimation of K/M, a controlled rotation computing the smooth bounded scalar function in (5), and uncomputation give an elementary polynomial-precision implementation; QSVT gives more efficient standard implementations under suitable known block access. These are imported compilation tools, not new theorems of this note. No circuit compiler has been run for this package.
+
+For a known local candidate, trusted quantum Hamiltonian simulation gives polynomial implementations, but not necessarily efficient classical implementations. The dominant candidate evolution in a shot is to a time s<=T. Therefore the generic validation procedure need not save the cost of simulating K; it saves the need to identify H or wait for the unknown system's long real-time evolution. Its total gate cost is NOT just its sample count.
+
+For an n-site bounded-local-term family, an available common bound M=O(nJ) yields the sufficient sample cost O(n^2 J^2 T^2 epsilon^-2 log(1/alpha)). This is only an upper bound for that local subclass, not a claimed optimal n-dependence. A gap and low entanglement are unnecessary for the mathematical theorem.
+
+### 9.2 Calibration and systematic error
+
+Suppose the total implementation error changes each intended rejection probability by at most eta. Then an upper confidence bound p_U on the observed mean gives the conservative certificate
+
+    E_T <= Cstar MT sqrt(p_U+eta).
+
+To certify error epsilon requires eta=O(epsilon^2/(M^2T^2)); constant uncontrolled bias does not allow arbitrarily long certified prediction. A threshold test, rather than strict zero rejection, permits nonzero preparation/measurement noise when eta is below a fixed fraction of the target rejection threshold.
+
+The dependence of the probes on s,r is smooth on a compact rectangle, with dimension-independent bounds after rescaling time by M. A finite mesh and known-circuit errors at inverse-polynomial accuracy therefore suffice; no exponentially precise knob setting is demanded by this construction. The actual precision bits are logarithmic in the requested inverse-polynomial tolerance. Real hardware errors and implementation time remain separate requirements.
+
+### 9.3 What this does not show
+
+- It verifies a fixed candidate on a specified prepared initial state; it does not invent the candidate or learn arbitrary H.
+- It does not certify all initial states simultaneously, nor operator-norm closeness on an unprobed subspace.
+- Ordinary Gibbs-state samples are not a programmable filter on a submitted coherent input. No free conversion is assumed.
+- Imaginary time is not ordinary physical waiting. A calibrated heralded filter with the stated success operator is a genuine experimental-resource assumption.
+- Complete quantum readout and candidate-dependent coherent preparation are stronger than local-only perturbations and local observations.
+- The bound is for finite-dimensional Hermitian generators with a known spectral bound. Continuum limits, unknown bandwidth, open-system generators, and hardware decoherence need separate theorems.
+- An adversarial device that changes its generator between trials is outside the memoryless fixed-H contract.
+- Candidate selection must precede the validation data; reuse of the same data to choose K needs fresh validation or a proved selection correction.
+
+## 10. A proved bridge to the Genesis isospectral result
+
+The prior Genesis result concerns noisy scalar imaginary-time correlations; the previous Theoretical result concerns complete quantum snapshots. Neither implies the other merely because their minimax exponents agree. The following vector lemma supplies the specific missing bridge for Genesis's Jacobi realization.
+
+**Lemma 5 (common vector jets imply full-snapshot closeness).** Suppose A_+,A_- are Hermitian, both with spectrum in [3/8,5/8], and
+
+    A_+^j v = A_-^j v  for 0<=j<d,       ||v||=1.
+
+Then
+
+    ||exp(-sA_+)v-exp(-sA_-)v||
+      <= 2 exp(-3s/8)(s/8)^d/d!,
+
+and in particular, for 0<=s<=B/2,
+
+    ||exp(-sA_+)v-exp(-sA_-)v||
+      <= 2 min{(B/16)^d/d!, 3^-d}.                           (24)
+
+*Proof.* Taylor-expand exp[-s(A-1/2 I)] through degree d-1. The polynomial terms agree on v. Each tail is bounded by exp(s/8)(s/8)^d/d! because ||A-1/2 I||<=1/8. Multiply by exp(-s/2) and sum the two tails. The all-s supremum of exp(-3s/8)(s/8)^d/d! occurs at s=8d/3 and is at most 3^-d by d!>=(d/e)^d. QED.
+
+For clarity, reconstruct the relevant Genesis family. Let m be positive odd, n=m+1, x_j=3/8+j/(4m). On this grid take u uniform on all nodes, u_even uniform on even nodes, and b_+,b_- the binomial(m,1/2) law conditioned on even/odd index. Define
+
+    nu_+ = (1/4)u+(1/4)u_even+(1/2)b_+,
+    nu_- = (1/4)u+(1/4)u_even+(1/2)b_-.
+
+All weights are at least 1/(4n), and the measures have the SAME support. Their moment differences through degree m-1 vanish by the m-th finite-difference identity. Orthogonalizing 1,x,... in each measure produces Jacobi matrices A_+,A_- with v=e_0.
+
+Let d=(m+1)/2. For j<d, the coefficients of x^j in the orthonormal polynomial basis depend only on moments up to degree 2j<=m-1. Thus the vector identities A_+^j e_0=A_-^j e_0 hold in the shared coordinate basis. This is stronger than scalar moment equality and is the required interface argument.
+
+Add the known isolated reference Omega and prepare
+
+    psi=(Omega+sqrt(3)e_0)/2.
+
+The complete normalized snapshot at imaginary parameter tau is
+
+    Psi_+(tau) = (Omega+sqrt(3)exp(-tau A_+/2)e_0)
+                 /sqrt(1+3<e_0,exp(-tau A_+)e_0>),
+
+and similarly for minus. For any x,y, the pure-state trace distance of normalized (1,x) and (1,y) is at most ||x-y||. To see this, write the squared distance numerator as
+
+    ||x-y||^2 + ||x||^2||y||^2-|<x,y>|^2
+      <= (1+||y||^2)||x-y||^2,
+
+and divide by (1+||x||^2)(1+||y||^2). Therefore (24) gives
+
+    sup_(0<=tau<=B) D(Psi_+(tau),Psi_-(tau))
+      <= 2sqrt(3) min{(B/16)^d/d!,3^-d}.                      (25)
+
+For fresh pure snapshots, an adaptive classical-query protocol with arbitrary collective quantum processing has final trace distance at most sqrt(N) times the uniform per-copy distance. One proof retains classical query histories and uses root fidelity: each appended pair has root fidelity at least sqrt(1-delta^2), while intervening channels cannot decrease it. Iterating gives final D^2<=1-(1-delta^2)^N<=Ndelta^2.
+
+The two real-time return probabilities at t_m=4pi m are 97/256 and 25/256, separated by 9/32. This follows directly by substituting the parity phases exp(-it_m x_j)=xi(-1)^j with xi=+i or -i. Hence estimating that return probability to error 1/16 distinguishes the alternatives. Equations (25) and the fidelity bound give
+
+    N >= (1/108) max{9^d, [16d/(eB)]^(2d)}.                  (26)
+
+Thus Genesis's nominal isospectral family DOES support a complete-quantum-snapshot lower bound of the same exponential order, now with an explicit proved vector bridge. The old scalar Gaussian-noise constants and exponents are not silently reused. The nominal exact isospectrality, fixed reference gap, and inverse-polynomial endpoint weights are retained. The claim of free complete-spectrum information is not extended to arbitrary perturbed families.
+
+This bridge is a subsidiary result. The active certification theorem in Sections 1–8 does not depend on it.
+
+## 11. Prior work and scope of the possible contribution
+
+The closest checked primary sources include:
+
+1. Gao, Ji, Wang, Yu, Zhao, *Quantum Hamiltonian Certification*, arXiv:2505.13217 (2025; SODA 2026). This studies certification from real-time evolution access, including several Hamiltonian norms. It already establishes that certification can be cheaper than learning. The present note does NOT claim to originate that principle.
+2. Bluhm et al., *Certifying and learning local quantum Hamiltonians*, arXiv:2603.29809v1. Its real-time-access Hamiltonian testing and separate Gibbs-state tasks are not the programmable short-filter, initial-state-specific task here.
+3. Haah, Kothari, Tang, *Optimal learning of quantum Hamiltonians from high-temperature Gibbs states*, arXiv:2108.04842. Efficient local Hamiltonian identification from sufficiently informative thermal observations is existing mathematics.
+4. Chen, Anshu, Nguyen, *Learning quantum Gibbs states locally and efficiently*, arXiv:2504.02706. This further prevents claiming a generic fixed-temperature local-learning escape as new.
+5. Gilyen, Su, Low, Wiebe, *Quantum singular value transformation and beyond*, arXiv:1806.01838. Known candidate matrix-function compilation, where invoked, is an imported capability.
+6. Christandl et al., *Perfect state transfer in quantum spin networks*, arXiv:quant-ph/0309131. The engineered transport ancestry of the earlier chain is prior art.
+
+The logarithm integral and variation-of-constants estimate are derived above, not claimed as invented. The possible novelty is the two-branch normalization-safe residual experiment, its exact task-specific null space, and the matched trial/exposure laws in the particular forward-filter access model. Selective searches did not establish historical priority. No claim of a civilisation-level breakthrough or independent validation is warranted.
+
+Research capital inspected: Astra at commit 01eda4be0686e9fe4dc650af7137efc3c88ba0fb (task-first entry, selective relevant search); OpenAI/math at fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb (selective search and the available prior-turn collection context). The original Theoretical note is research_note.md in the prior astra_euclidean packet. The complete Genesis note read was RESULT(20261012-061133).md, 180 source lines. No repository was modified.
+
+## 12. Reproducibility evidence
+
+`verify.py` performs 5,721 floating-point/quadrature assertions: noncommuting logarithm identities, scalar bounds, paired-state action estimates, integrated residual and sampled-time trajectory bounds, exact-null examples differing off the cyclic subspace, all-duration lower-bound overlaps, and the scalar exponential inequality. The largest observed logarithm-identity operator error was about 3.0e-15.
+
+`verify_genesis_bridge.py` performs 159 assertions. Of these, 78 use exact Fraction arithmetic for probability sums, weight floors, moment matching and Jacobi-prefix data; 81 use floating-point matrix/vector checks. The largest spectral error observed was about 3.3e-16.
+
+These checks are diagnostics, NOT independent proof review, formal verification, a compiled quantum experiment, or a laboratory implementation. General proofs are the analytic arguments above. Instructions: run both Python scripts with NumPy and SciPy installed; JSON outputs record counts, scope and seeds.

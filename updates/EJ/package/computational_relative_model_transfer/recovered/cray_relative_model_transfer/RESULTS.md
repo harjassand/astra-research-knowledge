@@ -1,0 +1,359 @@
+# Relative model transfer for rare continuous-time crossings
+
+Status: self-contained transfer and information-lower-bound arguments derived in
+this investigation. Neither historical priority nor independent proof validation
+is established. The infinite-spectrum algorithmic corollary imports the prior
+CRAY finite-Fourier crossing/conditioning compiler as a proof candidate; its
+full convex integration and sampling engine was not implemented or independently
+reverified here. The accompanying code implements a cutoff certificate, exact
+algebraic checks, a rational filter realization, and labelled floating diagnostics.
+It is not a complete crossing-probability estimator.
+
+## 1. Exact Gaussian contraction
+
+Let gamma_n be standard Gaussian measure. For 0<theta<1, c=1-theta,
+T(z)=cz+theta h and any measurable A subset R^n,
+
+ gamma_n(T(A)) >= exp(-beta) gamma_n(A),
+ beta = -n log(1-theta) + theta ||h||^2/[2(2-theta)].
+
+Indeed, the log density Jacobian relative to the original Gaussian is
+
+ n log c + theta(2-theta)/2 ||z-c h/(2-theta)||^2
+           -theta||h||^2/[2(2-theta)].
+
+Integrate its pointwise lower bound over A. Small balls centered at
+c h/(2-theta) establish sharpness of the constant among all measurable A.
+The set A need not be convex. For theta<=1/2,
+
+ beta <= 2n theta + theta ||h||^2/2.
+
+## 2. Rare-event-relative model-error transfer
+
+Let X(t)=mu+B(t)Z, Z standard Gaussian in R^n, on a compact time interval.
+Let K={x:a_i'x>b_i} be nonempty, open, full-dimensional, with nonzero facet
+normals. Suppose an explicitly available coefficient vector h produces a path
+x_h(t)=mu+B(t)h satisfying
+
+ a_i'x_h(t)-b_i >= r ||a_i||_1 > 0 for all i,t.
+
+This includes a constant path x_star if a nondegenerate Gaussian constant mode
+is available. Put H0=||h||^2. Define K^+_eta and K^-_eta by replacing b_i with
+b_i-eta||a_i||_1 and b_i+eta||a_i||_1, respectively. Set theta=eta/r<1.
+Contraction z -> (1-theta)z+theta h maps the coefficient hitting event for
+K^+_eta into that for K, and the event for K into that for K^-_eta. Therefore,
+writing p,p_plus,p_minus for the three probabilities,
+
+ p_minus >= exp(-beta)p,    p_plus <= exp(beta)p.
+
+Let Y be ANY continuous random process coupled with X, not necessarily Gaussian,
+and suppose P(||Y-X||_{sup,infinity}>eta)<=q. Pathwise event sandwiching gives
+
+ exp(-beta)p-q <= P(Y hits K) <= exp(beta)p+q.             (2.1)
+
+Also the symmetric-difference probability of the two hitting events is at most
+
+ [exp(beta)-exp(-beta)]p+q.                              (2.2)
+
+These statements do not require transverse crossings, a bound on crossing count,
+a Gaussian boundary-density oracle, or path-law absolute continuity. In particular
+a finite-dimensional approximation may be singular with respect to the target's
+full path law. The certificate q is an assumption to be proved from the physical
+or mathematical model, not an empirically free input.
+
+For events A,B in the same probability space, their conditional joint laws obey
+TV(P(.|A),P(.|B)) <= P(A triangle B)/min(P(A),P(B)). This transfers conditional
+trajectories whenever the conditional approximate model and its residual can be
+sampled, with finite-output coupling rather than a false discrete/continuous-TV
+claim.
+
+## 3. Certified infinite spectral source
+
+On one period [0,2pi), suppose
+
+ X(t)=mu+Z0+sum_{j>=1}(A_j cos jt+B_j sin jt).
+
+The independent centered Gaussian blocks have the stationary covariance form
+C_j=[[S_j,T_j],[-T_j,S_j]], with S_j symmetric and T_j skew. All blocks and S0
+are positive definite. The exact rational blocks up to index D can be computed
+in polynomial time and polynomial bit length in the source description and D.
+A certified global envelope is supplied:
+
+ C_j <= a^2 4^{-j} I, j>=1,                             (3.1)
+
+with rational a>0. An explicitly proved upper/lower covariance bound satisfies
+lambda_minus I <= S0 and Cov(X_D(0))<=lambda_plus I for every D. One can take
+lambda_plus >= ||S0||op+a^2/3 and an inverse-matrix lower bound for S0.
+
+The envelope, not just the coefficient evaluator, is load-bearing. It is not
+claimed decidable for arbitrary input programs. A concrete algebraically checkable
+source family is given in Section 5. This is not a theorem for every smooth or
+Hölder field, for general Matérn/Brownian forcing, or for unrestricted unknown
+physical tails.
+
+Let x_star be rational and r>0 rational with
+ a_i'x_star-b_i >= r||a_i||_1.
+A rational strict-interior LP supplies such data. Put
+
+ H0=(x_star-mu)'S0^{-1}(x_star-mu),
+ M0=||x_star-mu||_1+d r,
+ F0=1+M0^2/(2 lambda_minus)+d(2+lambda_plus+1/r).
+
+Integrating the density of X_D(0) over the cube centered at x_star of half-side
+r/2 proves p_D>=exp(-F0), uniformly in D. In detail, that cube has volume r^d,
+all points have distance at most M0 from mu, the Gaussian determinant is at most
+lambda_plus^d and inverse covariance is at most lambda_minus^{-1}I. The elementary
+bounds (1/2)log(2pi lambda_plus)<=2+lambda_plus and -log r<=1/r finish the estimate.
+This bound is conservative but F0 has polynomial BIT length even when numerically
+very large. The algorithm never writes exp(-F0).
+
+### Tail bound with proof
+
+For any q in (0,1), a union bound over all 2d coefficients at each frequency j=D+k,
+using normal tails, bounds them simultaneously by
+
+ a 2^{-(D+k)} sqrt(2 log(2^{k+2}d/q)), k>=1,
+
+except with probability q. Summing cos/sin contributions and using
+sum 2^{-k}=1 and sum 2^{-k}sqrt(k)<=sqrt(2), gives
+
+ P(||X-X_D||_{sup,infinity} > 6a 2^{-D}sqrt(log(4d/q))) <= q.       (3.2)
+
+This also proves almost sure uniform convergence. No time grid is used in this
+tail certificate.
+
+### Explicit exact-rational cutoff
+
+For 0<epsilon<=1/4 put q=epsilon exp(-F0)/64 and
+
+ n_D=d(2D+1),
+ theta_D=epsilon/[64(1+n_D+H0)], eta_D=r theta_D.
+
+Choose D>=1 with
+
+ 36 a^2 4^{-D} [F0+ceil(log2(256d/epsilon))+1] <= eta_D^2.         (3.3)
+
+Every operation used to check (3.3) is rational. The implementation obtains the
+ceiling by integer bit comparisons. Then beta_D<=epsilon/32, q/p_D<=epsilon/64,
+and (2.1) implies
+
+ |p_infinity/p_D-1| <= 5 epsilon/64 < epsilon/8.                  (3.4)
+
+Equation (2.2) gives a bound 7epsilon/(64-3epsilon)<epsilon/8 on the TV distance
+between the full underlying coefficient laws conditioned on the two hitting
+events. This is a comparison of continuous conditional laws before rounding.
+
+Exponential decay in D beats the quadratic polynomial factor in D on the right
+of (3.3). Thus D is polynomial in the source/geometry BIT length and
+log(epsilon^{-1}), provided the stated evaluator has polynomial complexity.
+It does not scale like 1/p or like the numerical value of F0.
+
+## 4. Conditional computational consequence and output costs
+
+Invoke the earlier finite-Fourier CRAY compiler on X_D, at relative accuracy
+say epsilon/4 and confidence 1-delta. Combine (3.4) with its numerical error.
+This gives a relative-epsilon/logarithmic-error estimate for the infinite source.
+The core cost is polynomial in source bit length, epsilon^{-1}, log(delta^{-1}),
+conditional on that imported compiler. Source evaluation and rational linear
+algebra up to D are charged. Preprocessing memory has the old compiler's dense
+polynomial dependence on d(2D+1). No all-frequency list or time grid is stored.
+
+For conditional trajectories, first choose D using a separate probability-law
+budget alpha. Sample the prefix conditioned on its hitting event. All subsequent
+spectral blocks retain their independent unconditional Gaussian laws under that
+prefix event. Generate them only through D_out sufficient for a prescribed
+uniform waveform error zeta with remaining failure alpha. Applying (3.2) now
+uses q=alpha (not alpha*p). Couple the resulting full process with the process
+conditioned on the true event using (2.2). Add the earlier finite sampler's coupling
+error and finite arithmetic error. D_out is polynomial in the input bits,
+log(zeta^{-1}), and log(alpha^{-1}); D is polynomial in log(alpha^{-1}) while the
+imported finite sampler may have polynomial reciprocal-alpha cost. Output size
+is O(d(2D_out+1)) finite coefficients. No literal TV approximation of continuous
+paths by a finitely supported distribution is asserted.
+
+A general non-Gaussian physical model Y can use (2.1) if a corresponding coupled
+trajectory-error certificate is proved. No universal procedure for obtaining that
+certificate for nonlinear PDEs or real devices is supplied.
+
+## 5. A finite, checkable differential-equation source
+
+Consider the unique periodic response of
+
+ x'(t)=-C x(t)+f(t),
+
+where C is rational and (C+C')/2 >= kappa I for rational kappa>0. The periodic
+Gaussian forcing has independent constant covariance U0>0 and harmonic blocks
+4^{-j}diag(U,U), U>0 rational. Its covariance law, rather than finite observed
+samples, is part of the input specification. Put
+
+ R_j=[[C,jI],[-jI,C]].
+
+Output covariance blocks are exactly
+
+ C_j=4^{-j}R_j^{-1}diag(U,U)R_j^{-T}.
+
+The symmetric part of R_j is at least kappa I, so ||R_j^{-1}||<=1/kappa.
+Thus (3.1) holds with a^2>=||U||/kappa^2. Phase-rotation invariance is preserved
+because R_j commutes with phase rotations. S0=C^{-1}U0 C^{-T}>0. All matrices
+and the envelope are acquired by rational linear algebra and PSD checking.
+This is an infinite-dimensional driven linear-model class, not a claim about
+arbitrary stochastic differential equations or spatial continuum discretization.
+
+## 6. Adverse scaling: small model error alone does not transfer relative risk
+
+Let X0(t)=Z and X_sigma(t)=Z+sigma(A cos t+B sin t), with independent standard
+normal Z,A,B. On the complete period,
+
+ sup_t X_sigma(t)=Z+sigma R, R=sqrt(A^2+B^2).
+
+With threshold u and sigma=2/u, uniform covariance error is 4/u^2 and the
+coupled uniform path error goes to zero in probability. But
+
+ P(sup X_sigma>u)/barPhi(u)
+ >= exp(-1/2) barPhi(u-sigma)/barPhi(u)
+ >= exp(3/2-2/u^2).
+
+The last inequality integrates the normal hazard lower bound phi(x)/barPhi(x)>=x
+for u-sigma>=0. For u>=2 this is uniformly far from one. The exact scalar
+probability is
+
+ barPhi(u)+sigma/sqrt(1+sigma^2) * exp[-u^2/(2(1+sigma^2))]
+                    * Phi[u sigma/sqrt(1+sigma^2)].
+
+Floating evaluation gives a ratio tending to about 37.2, despite vanishing
+omitted variance. This example is not claimed novel; it falsifies an unqualified
+mean-square or covariance-error transfer.
+
+## 7. Statistical acquisition costs cannot be compiled away
+
+These information bounds concern ordinary independent calibration data, not exact
+parameters supplied as binary inputs or arbitrary information-rich interventions.
+
+### Unknown Gaussian variance: matching order
+
+Observe N independent N(0,v) values with v in [1,2]. The target is
+log p_v(u)=log barPhi(u/sqrt(v)), u>=2. Require additive epsilon error,
+0<epsilon<=1/8, with probability at least 2/3 for every v.
+
+Set v0=1, v1=1+delta, delta=16epsilon/u^2. Normal Mills bounds give
+
+ d/dv log p_v(u) >= u^2/(2v^2).
+
+Hence the two targets differ by at least u^2 delta/[2(1+delta)]>2epsilon.
+One-sample KL in direction v0 to v1 is
+
+ (log(1+delta)-delta/(1+delta))/2 <= delta^2/4.
+
+Adaptive computation does not increase data information. Pinsker and optimal
+binary testing give
+
+ N >= u^4/(288 epsilon^2).                              (7.1)
+
+Conversely, the sample second moment, clipped to [1,2], and the exact normal-tail
+formula achieve the target using O(u^4 epsilon^{-2}log(1/zeta)) observations.
+Use chi-square concentration and
+
+ d/dv log p_v(u) <= (u^2+2)/2 on [1,2].
+
+Since log(1/p_v(u))=Theta(u^2), the cost is Theta(log^2(1/p)/epsilon^2) at fixed
+confidence. At u=2^b it is Omega(2^{4b}/epsilon^2), exponential in threshold bit
+length even though exact-model evaluation is easy. Known variance/unknown mean
+is a different statistical experiment and need not have this squared scale.
+Finite quantization needs polynomially many bits in log u, log epsilon^{-1} and
+log N after a Gaussian tail cap; no exact-real measurement assumption can improve
+the lower bound, which already grants exact draws.
+
+### Dots one-activity lower bound
+
+For independent Exp(lambda) data, lambda in [1,2], the one-activity deadline
+probability is exp(-lambda T). Choosing lambda1-lambda0=4epsilon/T gives
+one-sample KL <=(lambda1-lambda0)^2/2 and target gap 4epsilon. Consequently
+
+ N >= T^2/(36 epsilon^2), T>=1.                          (7.2)
+
+Sample-mean rate estimation gives the matching O(T^2 epsilon^{-2}) fixed-confidence
+order. This says nothing adverse about Dots' exact-input compiler: the compiler
+and the calibration problem have different input contracts.
+
+### Unrestricted misspecification restores inverse-probability cost
+
+Fix any event E with P(E)=p<=1/8. Put q=(1+4epsilon)p and define Q by multiplying
+P's density by q/p on E and (1-q)/(1-p) on its complement. Then the risk logs
+are separated by more than 2epsilon, TV(P,Q)=4epsilon p, and
+
+ KL(P||Q)=kl(p||q) <=32epsilon^2 p.
+
+Thus even complete independent trajectory observations require
+
+ N >=1/(144 epsilon^2 p)
+
+to estimate log risk with error epsilon and success 2/3 uniformly over the pair.
+Direct indicator Monte Carlo matches this order up to confidence constants. A
+claim that an arbitrarily accurate empirical Gaussian fit certifies an unseen
+physical tail would contradict this bound unless additional structural assumptions
+exclude the perturbed law.
+
+## 8. Comparator and dependency boundary
+
+CRAY source: Library file `Pasted markdown (3)(20261012-063606).md`, exact text read
+in full. It proves a candidate finite stationary Fourier/polyhedral compiler via
+convex boundary-flux acquisition, Rice weighting, bounded multiplicity md+1 and
+algebraic root isolation. It explicitly excludes free physical-model acquisition.
+Its general convex sampler was not implemented in this run.
+
+Dots source: Library file `polynomial_bit_rare_deadline_probability_draft.docx`,
+12 October 2026, all six pages read. It is a proof candidate for independent
+exponential activities on explicit DAGs, using minimum-rate anchoring, decreasing
+product densities, a two-resource downward event, and distinct accepted-word
+#NFA counting. It is not a Gaussian-flux method. It expressly excludes correlated
+durations and several offset/repeated-activity generalizations.
+
+The exact common comparison is a change-of-variables lower bound: Dots' downward
+coordinate contraction yields a^m because its transformed densities decrease;
+Section 1 has an additional Gaussian translation-energy cost. This does NOT
+transfer Dots' automaton acquisition to Fourier crossings or vice versa. #NFA
+counts accepted words rather than accepting runs.
+
+Relevant primary prior art consulted:
+- Li and Liu, Rare-event Simulation and Efficient Discretization for the Supremum
+  of Gaussian Random Fields, arXiv:1309.7365; Advances in Applied Probability 47
+  (2015). Scalar Hölder-field excursion/conditional quantities already admit
+  threshold-efficient algorithms. Infinite bandwidth alone is not a novelty claim.
+  https://arxiv.org/abs/1309.7365
+- Li and Xu, Uniformly Efficient Simulation for Extremes of Gaussian Random Fields,
+  arXiv:1708.09030; Journal of Applied Probability 55 (2018).
+  https://arxiv.org/abs/1708.09030
+- Botev, The Normal Law Under Linear Restrictions: Simulation and Estimation via
+  Minimax Tilting, arXiv:1603.04166; JRSS B 79 (2017). A strong specialized
+  estimator/sampler for static Gaussian linear restrictions, with rare-event
+  asymptotic efficiency. No performance win over it is established here.
+  https://arxiv.org/abs/1603.04166
+- Glasserman and Xu, Robust Risk Measurement and Model Risk, Quantitative Finance
+  14 (2014), DOI 10.1080/14697688.2013.822989. Model-error risk quantification and
+  relative-entropy robust risk are established topics, not claimed inventions.
+  https://www.tandfonline.com/doi/full/10.1080/14697688.2013.822989
+- Arenas, Croquevielle, Jayaram and Riveros, #NFA Admits an FPRAS, JACM 68(6), 2021,
+  DOI 10.1145/3477045. Imported by Dots, not needed in this transfer proof.
+  https://doi.org/10.1145/3477045
+
+Repository heads checked during the investigation:
+Astra 089de4fe7d7efe04df7f189194be8527dbd6417d;
+OpenAI/math fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb.
+The initial entries were read at main; these heads were resolved afterward, so no
+atomic retrieval snapshot is asserted. No OpenAI/math manuscript theorem is a
+premise of the new transfer or information bounds. Failed lexical searches are
+not novelty evidence.
+
+## 9. Execution and unresolved implementation work
+
+The exact certificate planner and checks are in verify_and_plan.py. Its JSON output
+labels exact rational assertions separately from floating diagnostics. The finite
+checks do not replace the general proof, an independent review, interval-certified
+numerical evaluation, or an end-to-end convex sampler benchmark.
+
+Outstanding: historical priority; independent proof review; production finite
+crossing sampler/integrator; optimal constants; polynomial guarantees beyond a
+certified exponential spectral tail; and experimentally justified tail/model-error
+certificates. An arbitrary slowly decaying spectral envelope, vanishing temporal
+analyticity width, unknown non-Gaussian contamination, or unspecified parameter
+learning cost is not covered by the polynomial-bit corollary.
