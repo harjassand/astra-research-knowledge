@@ -1,0 +1,271 @@
+<!doctype html><meta charset="utf-8"><title>N761 recovered original — astra_sign_divisor/verify.py</title>
+<aside>Original-byte/member hashes, ZIP CRC and AST syntax establish preservation only. No scientific program executed, independent proof reconstructed, priority/literature audit performed or physical experiment conducted at intake. Producer exact and floating diagnostics remain source-reported; they do not certify arbitrary-dimensional proofs or PSD.</aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostics for ASTRA sign-divisor research, 2026-10-13.
+
+These checks do not establish the general theorems or historical novelty.
+Exact finite checks use integer bit masks, fractions and symbolic polynomials.
+Floating-point spectral checks are explicitly reported as diagnostics.
+Dependencies: Python 3.10+, numpy, sympy.
+Run: python verify.py --output checks.json
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import itertools
+import json
+import math
+from fractions import Fraction
+from pathlib import Path
+from typing import Iterable
+
+import numpy as np
+import sympy as sp
+
+
+def rank_gf2(vectors: Iterable[int]) -&gt; int:
+    pivots: dict[int, int] = {}
+    for value in vectors:
+        if value &lt; 0:
+            raise ValueError(&quot;Binary vectors must be nonnegative masks&quot;)
+        x = value
+        while x:
+            bit = x.bit_length() - 1
+            if bit in pivots:
+                x ^= pivots[bit]
+            else:
+                pivots[bit] = x
+                break
+    return len(pivots)
+
+
+def span(vectors: Iterable[int]) -&gt; frozenset[int]:
+    values = {0}
+    for v in vectors:
+        values |= {x ^ v for x in tuple(values)}
+    return frozenset(values)
+
+
+def all_subspaces(n: int) -&gt; list[frozenset[int]]:
+    known = {frozenset({0})}
+    frontier = list(known)
+    while frontier:
+        space = frontier.pop()
+        for v in range(1, 1 &lt;&lt; n):
+            if v in space:
+                continue
+            enlarged = frozenset(set(space) | {x ^ v for x in space})
+            if enlarged not in known:
+                known.add(enlarged)
+                frontier.append(enlarged)
+    return sorted(known, key=lambda c: (len(c), sorted(c)))
+
+
+def bases(code: frozenset[int]) -&gt; list[tuple[int, ...]]:
+    k = (len(code)).bit_length() - 1
+    return [b for b in itertools.combinations(sorted(code - {0}), k)
+            if rank_gf2(b) == k]
+
+
+def loads(vectors: Iterable[int], n: int) -&gt; tuple[int, ...]:
+    vs = tuple(vectors)
+    return tuple(sum((v &gt;&gt; i) &amp; 1 for v in vs) for i in range(n))
+
+
+def pareto_minimal(vectors: Iterable[tuple[int, ...]]) -&gt; set[tuple[int, ...]]:
+    unique = set(vectors)
+    return {a for a in unique if not any(
+        b != a and all(x &lt;= y for x, y in zip(b, a)) for b in unique)}
+
+
+def exact_small_code_checks() -&gt; dict:
+    code_count = family_count = 0
+    for n in range(1, 5):
+        for code in all_subspaces(n):
+            code_count += 1
+            bs = bases(code)
+            k = int(math.log2(len(code)))
+            basis_loads = [loads(b, n) for b in bs]
+            if k:
+                distance = min(v.bit_count() for v in code if v)
+                assert min(map(sum, basis_loads)) &gt;= distance * k
+            else:
+                distance = 0
+            # Exhaust all possible sets of active factor masks for n &lt;= 4.
+            nonzero = sorted(code - {0})
+            family_pareto = []
+            for r in range(len(nonzero) + 1):
+                for family in itertools.combinations(nonzero, r):
+                    if rank_gf2(family) != k:
+                        continue
+                    family_count += 1
+                    budget = loads(family, n)
+                    # A basis can be extracted coordinatewise below the budget.
+                    assert any(all(a &lt;= b for a, b in zip(bl, budget))
+                               for bl in basis_loads)
+                    family_pareto.append(budget)
+            assert pareto_minimal(family_pareto) == pareto_minimal(basis_loads)
+    return {&quot;status&quot;: &quot;PASS&quot;, &quot;binary_codes_checked&quot;: code_count,
+            &quot;spanning_factor_mask_families_checked&quot;: family_count,
+            &quot;scope&quot;: &quot;All subspaces of F_2^n for 1 &lt;= n &lt;= 4; finite algebraic consequence only&quot;}
+
+
+def named_codes() -&gt; dict:
+    examples = {
+        &quot;even_parity_3&quot;: (3, [0b011, 0b101]),
+        &quot;simplex_7_3_4&quot;: (7, [0b1010101, 0b1100110, 0b1111000]),
+        &quot;hamming_7_4_3&quot;: (7, [0b0001111, 0b0110011, 0b1010101, 0b1111111]),
+        &quot;extended_hamming_8_4_4&quot;: (8, [0b00001111, 0b00110011, 0b01010101, 0b11111111]),
+    }
+    output = {}
+    for name, (n, generator) in examples.items():
+        code = span(generator)
+        bs = bases(code)
+        degree_vectors = [loads(b, n) for b in bs]
+        best_total = min(map(sum, degree_vectors))
+        best_max = min(map(max, degree_vectors))
+        min_distance = min(x.bit_count() for x in code if x)
+        assert len(code) == 1 &lt;&lt; len(generator)
+        # Monomial output signs are exactly the ordinary binary encoder.
+        counts: dict[int, int] = {}
+        for bits in itertools.product((0, 1), repeat=len(generator)):
+            word = 0
+            for u, row in zip(bits, generator):
+                if u:
+                    word ^= row
+            counts[word] = counts.get(word, 0) + 1
+        assert set(counts) == set(code) and set(counts.values()) == {1}
+        output[name] = {&quot;n&quot;: n, &quot;k&quot;: len(generator), &quot;minimum_distance&quot;: min_distance,
+                        &quot;minimum_total_degree&quot;: best_total,
+                        &quot;minimum_maximum_coordinate_degree&quot;: best_max,
+                        &quot;bases_enumerated&quot;: len(bs), &quot;exact_uniform_encoding&quot;: &quot;PASS&quot;}
+    return output
+
+
+def symbolic_examples() -&gt; dict:
+    x, y = sp.symbols(&quot;x y&quot;)
+    polynomials = [x * (x + y) * (1 + x*x + y*y),
+                   y * (x + y), x*y]
+    masks = [0b101, 0b110, 0b011]  # x, y, x+y; bit i is output i.
+    # The first mask is x: outputs 0 and 2 = 101;
+    # y: outputs 1 and 2 = 110; x+y: outputs 0 and 1 = 011.
+    observed = set()
+    for a, b in itertools.product(range(-5, 6), repeat=2):
+        values = [p.subs({x: a, y: b}) for p in polynomials]
+        if any(v == 0 for v in values):
+            continue
+        word = sum((int(bool(v &lt; 0)) &lt;&lt; i) for i, v in enumerate(values))
+        observed.add(word)
+    hull = span([w ^ next(iter(observed)) for w in observed])
+    assert hull == span(masks)
+    assert len(hull) == 4 and len(observed) == 3
+    assert all(w.bit_count() % 2 == 0 for w in observed)
+    # The parity product is globally nonnegative, not merely a formal square.
+    parity_product = sp.factor(sp.prod(polynomials))
+    expected = x*x*y*y*(x+y)**2*(1+x*x+y*y)
+    assert sp.expand(parity_product - expected) == 0
+    # A sign-definite irreducible factor must not create an independent sign bit.
+    assert all((1 + a*a + b*b) &gt; 0 for a, b in itertools.product(range(-5, 6), repeat=2))
+    return {&quot;status&quot;: &quot;PASS&quot;, &quot;polynomials&quot;: [str(p) for p in polynomials],
+            &quot;factor_masks&quot;: masks, &quot;factor_mask_rank&quot;: rank_gf2(masks),
+            &quot;observed_support&quot;: sorted(observed), &quot;affine_hull_size&quot;: len(hull),
+            &quot;warning&quot;: &quot;Affine hull extraction does not recover full support or atom probabilities&quot;,
+            &quot;parity_product&quot;: str(parity_product)}
+
+
+def balanced_slice_check() -&gt; dict:
+    n = 4
+    vectors = [s for s in itertools.product((-1, 1), repeat=n) if sum(s) == 0]
+    cov = [[Fraction(sum(s[i] * s[j] for s in vectors), len(vectors))
+            for j in range(n)] for i in range(n)]
+    assert all(cov[i][j] == Fraction(-1, 3) for i in range(n) for j in range(n) if i != j)
+    K = sp.Matrix(n, n, lambda i, j: 1 if i == j else sp.Rational(-1, 2))
+    eigen = K.eigenvals()
+    assert eigen == {sp.Rational(-1, 2): 1, sp.Rational(3, 2): 3}
+    # The pair moments alone have a three-component antithetic Gaussian mixture.
+    matchings = [((0, 1), (2, 3)), ((0, 2), (1, 3)), ((0, 3), (1, 2))]
+    pair_counts = np.zeros((n, n), dtype=int)
+    for matching in matchings:
+        for a, b in matching:
+            pair_counts[a, b] += 1
+            pair_counts[b, a] += 1
+    assert np.all(pair_counts + np.eye(n, dtype=int) == 1)
+    return {&quot;status&quot;: &quot;PASS&quot;, &quot;balanced_slice_size&quot;: len(vectors),
+            &quot;off_diagonal_sign_correlation&quot;: &quot;-1/3&quot;, &quot;inverse_sine_minimum_eigenvalue&quot;: &quot;-1/2&quot;,
+            &quot;pair_marginals_antithetic_components&quot;: len(matchings),
+            &quot;scope&quot;: &quot;Full-law mixture lower bounds must not be asserted for pair marginals alone&quot;}
+
+
+def hadamard(n: int) -&gt; np.ndarray:
+    if n &lt; 1 or n &amp; (n-1):
+        raise ValueError(&quot;n must be a positive power of two&quot;)
+    H = np.ones((1, 1), dtype=float)
+    while len(H) &lt; n:
+        H = np.block([[H, H], [H, -H]])
+    return H
+
+
+def quantum_gluing_diagnostics() -&gt; dict:
+    r0 = 2 * math.asinh(1) / (3 * math.pi)
+    r = 0.18
+    rows = []
+    for n in (4, 8, 16, 32):
+        H = hadamard(n)
+        S = H - np.diag(np.diag(H))
+        t = r / (math.sqrt(n) + 1)
+        T = np.kron(t*S, np.eye(3))
+        K = np.eye(3*n) + np.sin((3*math.pi/2)*T)
+        spectrum = np.linalg.eigvalsh(K)
+        recovered = (2/(3*math.pi))*np.arcsin(np.clip(K, -1, 1))
+        error = float(np.max(np.abs((recovered-T)[~np.eye(3*n, dtype=bool)])))
+        assert float(np.linalg.norm(T, 2)) &lt; r0
+        assert spectrum[0] &gt; 0 and error &lt; 1e-14
+        rows.append({&quot;n_qubits&quot;: n, &quot;correlation_operator_norm&quot;: float(np.linalg.norm(T, 2)),
+                     &quot;latent_minimum_eigenvalue&quot;: float(spectrum[0]),
+                     &quot;pair_correlation_recovery_error&quot;: error,
+                     &quot;absolute_edge_sum_per_axis&quot;: float((n-1)*t)})
+    return {&quot;status&quot;: &quot;PASS_FLOATING_DIAGNOSTIC&quot;, &quot;sufficient_radius&quot;: r0,
+            &quot;examples&quot;: rows, &quot;warning&quot;: &quot;Floating-point calculations are not PSD certificates&quot;}
+
+
+def robust_constants() -&gt; dict:
+    rows = []
+    for delta in (0.1, 0.25, 0.5):
+        for D in (1, 2, 4):
+            for eta in (0.25, 0.5, 0.75):
+                theta = math.pi * delta * eta*eta / (2*D)
+                alpha_minus_one = math.tan(theta/2)**2
+                log2_K = math.log2(2/eta) / alpha_minus_one
+                upper = 16*D*D*math.log2(2/eta)/(math.pi**2*delta*delta*eta**4)
+                assert log2_K &lt;= upper * (1 + 1e-12)
+                sigma = D*theta/(math.pi*delta)
+                assert abs(sigma-eta*eta/2) &lt; 1e-14
+                # q^2 &lt;= (eta/2)q + eta^2/2 has positive root eta.
+                root = (eta/2 + math.sqrt(eta*eta/4 + 2*eta*eta))/2
+                assert abs(root-eta) &lt; 1e-14
+                rows.append({&quot;delta&quot;: delta, &quot;degree&quot;: D, &quot;eta&quot;: eta, &quot;log2_K&quot;: log2_K})
+    return {&quot;status&quot;: &quot;PASS&quot;, &quot;parameter_checks&quot;: len(rows), &quot;values&quot;: rows,
+            &quot;warning&quot;: &quot;Bounds can be quantitatively vacuous at small n; no Monte Carlo theorem validation&quot;}
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--output&quot;, type=Path, default=Path(&quot;checks.json&quot;))
+    args = parser.parse_args()
+    results = {&quot;date&quot;: &quot;2026-10-13&quot;, &quot;general_proof_status&quot;: &quot;Human-readable derivations; no independent validation&quot;,
+               &quot;novelty_status&quot;: &quot;Not established&quot;,
+               &quot;small_code_checks&quot;: exact_small_code_checks(),
+               &quot;named_codes&quot;: named_codes(), &quot;symbolic_examples&quot;: symbolic_examples(),
+               &quot;balanced_slice&quot;: balanced_slice_check(),
+               &quot;quantum_gluing&quot;: quantum_gluing_diagnostics(),
+               &quot;robust_bound_constants&quot;: robust_constants()}
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(results, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps({&quot;output&quot;: str(args.output), &quot;small_codes&quot;: results[&quot;small_code_checks&quot;],
+                      &quot;named_codes&quot;: results[&quot;named_codes&quot;],
+                      &quot;overall&quot;: &quot;All diagnostic assertions passed&quot;}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>
