@@ -42,3 +42,5 @@ For exact local checkpoint validation from the Astra repository root, the draft'
 ## Resume
 
 Use the final claims and cross-audits, then choose one of the three programmes in the report. The immediate gates are external reconstruction and focused prior-art comparison, followed by a matched algorithm or certified sensing implementation where relevant. Do not infer external verification from collaborating agents' agreement, exact finite checks, repository inclusion or these hashes.
+
+The final branch refresh occurred after the frozen checkpoint attempt. See [PUBLICATION.md](PUBLICATION.md) for the exact later main revision and historical-draft distinction.
