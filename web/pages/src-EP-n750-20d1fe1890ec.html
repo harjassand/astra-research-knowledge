@@ -1,0 +1,59 @@
+<!doctype html><meta charset="utf-8"><title>N750 recovered original — cray_resonance_excision_2026-10-12/run_benchmarks.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not mathematical correctness, priority, general implementation or technology validation. Scientific code syntax parsed only, never executed at intake.</aside>
+<pre>import json, math, time, sys
+from pathlib import Path
+import numpy as np
+from numpy.polynomial.legendre import leggauss
+from scipy.linalg import inv
+from resonance_compiler import make_grid, Compiler, wick_two_orders, Model
+ROOT=Path(__file__).parent
+
+def transfer(model,q,radius=5.):
+    n=model.n
+    x,w=leggauss(q); x*=radius; w*=radius
+    onsite=np.exp(-.5*np.diag(model.A)[:,None]*x*x-model.g*x**4/4
+                  +.5j*np.diag(model.C)[:,None]*x*x)
+    v=w*onsite[0]; logscale=0.
+    for k in range(n-1):
+        E=np.exp((-model.A[k,k+1]+1j*model.C[k,k+1])*np.outer(x,x))
+        v=(v@E)*(w*onsite[k+1])
+        scale=np.max(np.abs(v)); v/=scale; logscale+=np.log(scale)
+    logZ=np.log(np.sum(v))+logscale
+    c=Compiler(model); logG=.5*n*np.log(2*np.pi)+c.F0
+    return np.log(np.exp(logZ-logG))
+
+def main():
+    results={&#x27;status&#x27;:&#x27;floating research prototype; ideal-arithmetic certificate not interval-implemented&#x27;,
+      &#x27;seed_policy&#x27;:&#x27;explicit rational independent seeded grid inputs; same inputs and output log(Z/Z_G) for all methods&#x27;,
+      &#x27;numpy&#x27;:np.__version__,&#x27;benchmarks&#x27;:[]}
+    for L,k,N in [(4,35,25000),(8,50,25000),(16,70,4000)]:
+        m=make_grid(L,k,seed=20261012+L)
+        np.savez(ROOT/f&#x27;grid_{L}_{int(k)}.npz&#x27;,A=m.A,C=m.C,g=m.g,kappa=m.kappa,
+                 amin=m.amin,amax=m.amax,cmax=m.cmax)
+        c=Compiler(m)
+        out=c.iid(N,seed=603001+L)
+        wick=wick_two_orders(m)
+        direct=c.iid(2000,seed=604001+L,center=False,clipped=False)
+        out[&#x27;ideal_relative_error_at_95pct&#x27;]=math.sqrt(out[&#x27;certificate&#x27;][&#x27;relative_variance_bound&#x27;]/(.05*N))
+        diff=np.array(out[&#x27;log_ratio&#x27;])-np.array(wick[&#x27;two_order_log_ratio&#x27;])
+        results[&#x27;benchmarks&#x27;].append(dict(grid_side=L,kappa=k,compiler=out,wick=wick,
+                                         plain_intermediate_field=direct,
+                                         stochastic_minus_wick_log_difference=diff.tolist()))
+        print(&#x27;grid&#x27;,L,&#x27;completed&#x27;,out[&#x27;sample_seconds&#x27;],flush=True)
+    chain=make_grid(16,35,seed=71236,chain=True); c=Compiler(chain)
+    tr=[]
+    for q in (192,320,512):
+        tic=time.perf_counter(); value=transfer(chain,q); elapsed=time.perf_counter()-tic
+        tr.append(dict(nodes=q,log_ratio=[value.real,value.imag],seconds=elapsed))
+    results[&#x27;chain_matched_comparison&#x27;]={&#x27;input&#x27;:&#x27;heterogeneous 16-site chain, same coefficient generator&#x27;,
+        &#x27;transfer&#x27;:tr,&#x27;compiler&#x27;:c.iid(25000,seed=651),&#x27;wick&#x27;:wick_two_orders(chain)}
+    gates=[]
+    for k in [4,6,8,12,16,20,25,30,35,50]:
+        m=make_grid(4,k); c=Compiler(m)
+        gates.append(c.certificate())
+    results[&#x27;fixed_size_gate_sweep&#x27;]=gates
+    with open(ROOT/&#x27;benchmark_results.json&#x27;,&#x27;w&#x27;) as f: json.dump(results,f,indent=2)
+    print(json.dumps(results[&#x27;chain_matched_comparison&#x27;],indent=2),flush=True)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

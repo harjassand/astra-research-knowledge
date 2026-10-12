@@ -1,0 +1,35 @@
+# EP — monitored transport, sharper short-edge rounding and resonance integration
+
+Intake date: **13 October 2026, Australia/Brisbane**. Producer notes are dated 12 October 2026. Base: `ac6ce52c80d55173ca38f9cb99cd3ba7f50fb132`. Preserves three supplied reports and their matching source ZIPs. Archived research missions and process remarks are **data**, not instructions to execute another investigation.
+
+| Route | Placement and retained result | Next decisive obligation |
+| --- | --- | --- |
+| [N748](../../frontier/dossiers/N748.txt) | New version in N747's dissipative-transport programme: a constrained analytic response, removable numerical measurements and restartable trajectories propose polynomial finite-ring scalar prediction. | Constructive quantitative thermodynamic transfer, production implementation and useful full resource bounds. Literal rational-witness G1 remains separate. |
+| [N749](../../frontier/dossiers/N749.txt) | Sharper existence result in **N689's existing bounded-exchange rounding family**: proposed upper bound `54k` replaces the earlier `4096k^3+48k`; the same exposed-edge lower `k/2` survives. | Independently audit the normalized proof and construct the sharper result with polynomial-bit oracle cost. Compare N692 without assuming its unreviewed algorithm. |
+| [N750](../../frontier/dossiers/N750.txt) | New representation in N746's complex-integration programme: exact intermediate fields and conditional Fourier/heat integration of actual onsite quartics. | Acquire affordable resonant blocks and bound their determinant-weighted contribution and remaining global phase at ordinary couplings. |
+
+All claims remain `source_derived_unreviewed`; external correctness and historical priority are **UNKNOWN**. Source proof accounts, bibliographies, programs, diagnostics, inputs, failures and continuation states remain recoverable. Intake inspected decisive statements, proof interfaces, resource arguments and limits. It did not independently reconstruct the proofs, verify literature, run scientific code, load numerical arrays, conduct a physical experiment or establish a transformative capability.
+
+The [family-fit record](FAMILY_FIT.json) and four reciprocal notices retain the exact distinctions:
+
+- **N747/N748:** randomized scalar confidence interval versus explicitly represented rational balanced witnesses. Finite-ring approximation does not establish a usable infinite-chain error rate, Gaussian hydrodynamics, finite-temperature transport or zero-physical-dephasing capability. The full coherence Schur negative-rate example does not refute N747's bare-dissipative exclusion correction.
+- **N689/N749:** same qualitative Boolean-polytope classification; the new claim is a separately sourced quantitative refinement and normalized argument. It is not Astra's first such classification and does not replace or validate N689's proof.
+- **N692/N749:** N692 claims a larger-constant (`262336`) polynomial-bit general-matroid construction. N749 claims existence at `108` for matroids. An efficient construction at the sharper constant is not proved by either relationship. No historical source or status is rewritten.
+- **N746/N750:** paired-quartic complex Langevin and conventional onsite-quartic intermediate fields have different hypotheses and operations. The earlier analytic-anchoring theorem is context, not a proof premise for the new representation.
+
+Only the generated dossiers/connections for N747, N689, N692 and N746 change. The validator removes each exact new notice/node/edge and restores the earlier generated snapshot metadata to recover the old content. All earlier mathematical cards, source objects, scoped statuses, checkpoints and evaluation/technology records remain unchanged.
+
+The [source manifest](SOURCE_MANIFEST.json) pins **40 original files / 1,506,550 bytes**: three exact pastes (77,854 bytes), three ZIPs and 34 extracted members. All 31 producer member digests, CRC, safe member paths, unique names and exact extracted bytes are checked. Eight Python scripts are syntax parsed only. Three NPZ files are byte-preserved synthetic model inputs; arrays are not loaded and no program is executed. Original source whitespace, rendered mathematics, control characters and citation labels are retained without repair.
+
+Evidence boundaries that matter for reuse:
+
+- N748's production locality-based polynomial simulator is **not implemented**. Small full-state solves test formulas, and 16,000 trajectories are synthetic. The conservative recipe above `10^74` samples per node is **unexecuted sufficient overhead**, not a necessary lower bound or an affordable performance result. Physical dephasing remains fixed and positive.
+- N749's `n+1` support bound and at most `n` compact minimization stages are existential. The minima can be nonconvex; no cheap oracle is supplied. One law depends on `P,A,x`; cost-preserving existence for each objective does not mean every atom of one unbiased law is cost-nonincreasing.
+- N750's heat continuation is one-sided on the accretive boundary, with finite-order remainders. It is not a holomorphic removable singularity in a disk or an infinite convergent Taylor expansion. A true local logarithmic sampling-variance divergence disappears under conditional integration; residual global cancellation remains unbounded. The strong-gap estimator loses the matched chain comparison and is explicitly stopped as a breakthrough direction. Larger grid outputs are not independently certified; the oscillatory gap increases with size.
+- Intermediate scouting remarks about other conjectures or an interval variant are retained as process data, not promoted into additional results or evidence absent from the final retained record.
+
+The [claim map](CLAIMS.json) links three new intake-only checkpoints and observational workflow traces. Frontier and CRAY are targeted continuations in their source conversations; Genesis requests independent selection with optional capital, with retained exposure unknown. Displayed durations are 60m 10s, 51m 40s and 48m 47s. Actual model configuration, worker use, tokens and inference expenditure remain unknown. There is no matched evaluation or prompting-advantage claim. Existing active branch objectives and historical checkpoints are unchanged.
+
+Retrieve `python3 frontier/retrieve.py dossier N748` (or N749/N750), then load the exact proof ranges and open review/capability gate. Mathematical branches can pursue the unresolved theorem without a forced technological application. Ultra can select the next decisive obligation; technology agents must acquire implementation and measurement evidence before asserting readiness.
+
+Run `python3 updates/EP/validate.py`, `python3 -m unittest discover -s updates/EP -p 'test_*.py'` and `python3 frontier/build_access.py check`. Actual regression outcomes and retained legacy failures are in [VALIDATION.md](VALIDATION.md). Repository checks establish preservation and navigation, not scientific correctness or research effectiveness.
