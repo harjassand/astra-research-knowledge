@@ -1,0 +1,54 @@
+# Local Readout of Global Thermal Information
+
+Research derivation dated 12 October 2026. No repository write or publication was performed.
+
+## Main mathematical result
+
+For an unrestricted Gibbs family H(h)=H_bg+sum_a h_a P_a, with distinct nonidentity canonical Pauli parameter directions of support at most k and candidate incidence at most Delta, and a full Hamiltonian decomposition of support at most ell and per-site weighted strength at most g, one fixed random single-qubit Pauli measurement obeys
+
+    0 <= beta^2 C - F_M <= beta^2 nu I,
+    0 <= F_Q - F_M <= beta^2 nu I,
+
+in positive-semidefinite order. Here C is the BKM covariance, F_M is the classical Fisher matrix of the complete measurement record, and F_Q is SLD quantum Fisher information for parameters in the equilibrium Gibbs family (NOT unitary-encoding QFI). The detector model allows calibrated independent sign errors with site visibility at least eta>0, and
+
+    nu = [1+k(Delta-1)] [(3/eta^2)^k - 1]
+         + (beta*g/3) k(k+ell) Delta.
+
+The proof has no premise asserting the earlier ASTRA global covariance lower bound. It combines explicit measured covariance cancellation on disjoint supports, the established Brooks-Harris thermal inequality, a local double-commutator Schur bound, and a moment-score information inequality.
+
+The paper also proves a variance-only sensing certificate, an explicit finite-copy confidence bound, a conditional all-directions upgrade if the prior covariance candidate is eventually established, and exact counterexamples to stronger readout/noise/optimization claims.
+
+## Status
+
+This is a complete finite-dimensional derivation, not independent validation or a formal proof-assistant certificate. Historical priority of the assembled theorem is unestablished. Classical shadows, thermal covariance inequalities, quantum variance, and information inequalities are credited to their established sources. No end-to-end learning superiority, inexpensive Gibbs preparation, uniform global parameter-estimation algorithm, or new empirical physical law is claimed.
+
+## Contents
+
+- `local_readout_information.pdf`: 12-page proof manuscript, including physical/algorithmic interfaces and references.
+- `local_readout_information.tex`: editable LaTeX source.
+- `finite_checks.py`: independently written finite-dimensional falsification checks (Python 3.10+, NumPy).
+- `finite_checks.json`: recorded floating-point output, seed 20261012.
+- `PROVENANCE.json`: exact assumptions, source revisions, input hash, and status boundaries.
+
+## Reproduce finite checks
+
+From this directory, with NumPy installed:
+
+```sh
+OPENBLAS_NUM_THREADS=1 python finite_checks.py --output rerun_checks.json
+```
+
+The script enumerates all 6^n measurement outcomes; it is intentionally restricted to small systems and is not an implementation of a scalable Hamiltonian-learning algorithm. It checks 38 finite instances and the displayed nonconvex single-qubit likelihood Hessian. Tolerances and numerical outcomes are preserved in JSON. Passing numerical checks is not a universal proof.
+
+## Rebuild the PDF
+
+A standard TeX Live installation with the packages named in the source suffices:
+
+```sh
+pdflatex -interaction=nonstopmode -halt-on-error local_readout_information.tex
+pdflatex -interaction=nonstopmode -halt-on-error local_readout_information.tex
+```
+
+## Essential scope
+
+The parameter dictionary includes zero coefficients. The Gibbs state is full rank and unrestricted. Temperature is known and fixed for the specified derivatives. Background terms do not vary with the fitted parameters. Measurement bases and detector errors are parameter-independent. Independent errors are NOT inferred from per-site marginal visibility; the paper supplies a correlated-error counterexample. Statistical shot counts require independent Gibbs copies and do not pay their preparation cost. Local-estimation formulas require separately acquired reference calibration and do not imply global convexity of the observed-data likelihood.

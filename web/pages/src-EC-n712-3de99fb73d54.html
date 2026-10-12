@@ -1,0 +1,177 @@
+<!doctype html><meta charset="utf-8"><title>N712 recovered original — astra_local_readout/finite_checks.py</title>
+<aside>Original producer artifact; CRC and hashes establish preservation, not independent mathematics, priority or technology validation. No archived scientific code was executed at intake.</aside>
+<pre>&quot;&quot;&quot;Finite numerical falsification checks; not a proof of the uniform theorem.
+Run: python finite_checks.py --output finite_checks.json
+Requires Python 3.10+, numpy.  Independent of the previous Astra check script.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import itertools
+import json
+from functools import lru_cache
+from pathlib import Path
+import numpy as np
+
+PAULI = {
+    &#x27;I&#x27;: np.eye(2, dtype=complex),
+    &#x27;X&#x27;: np.array([[0, 1], [1, 0]], dtype=complex),
+    &#x27;Y&#x27;: np.array([[0, -1j], [1j, 0]], dtype=complex),
+    &#x27;Z&#x27;: np.diag([1., -1.]).astype(complex),
+}
+
+def kron_all(matrices: list[np.ndarray]) -&gt; np.ndarray:
+    out = np.ones((1, 1), dtype=complex)
+    for matrix in matrices:
+        out = np.kron(out, matrix)
+    return out
+
+@lru_cache(maxsize=512)
+def pauli(label: str) -&gt; np.ndarray:
+    return kron_all([PAULI[c] for c in label])
+
+def supported(n: int, data: dict[int, str]) -&gt; str:
+    return &#x27;&#x27;.join(data.get(i, &#x27;I&#x27;) for i in range(n))
+
+@lru_cache(maxsize=20)
+def measurement(n: int, visibility: float):
+    if not 0 &lt; visibility &lt;= 1:
+        raise ValueError(&#x27;Visibility must lie in (0,1].&#x27;)
+    options = list(itertools.product(&#x27;XYZ&#x27;, (-1, 1)))
+    records = list(itertools.product(options, repeat=n))
+    effects = np.array([kron_all([(PAULI[&#x27;I&#x27;]+visibility*s*PAULI[b])/6
+                                 for b, s in row]) for row in records])
+    assert np.allclose(effects.sum(axis=0), np.eye(2**n), atol=1e-12)
+    return records, effects
+
+def gram(operators: np.ndarray, weight: np.ndarray) -&gt; np.ndarray:
+    value = np.einsum(&#x27;aij,bij,ij-&gt;ab&#x27;, operators.conj(), operators, weight).real
+    return (value+value.T)/2
+
+def minimum(matrix: np.ndarray) -&gt; float:
+    return float(np.linalg.eigvalsh((matrix+matrix.T)/2).min())
+
+def check_instance(n: int, labels: list[str], hterms: dict[str, float],
+                   beta: float, visibility: float, case: str) -&gt; dict:
+    P = np.array([pauli(a) for a in labels])
+    m, d = len(labels), 2**n
+    H = sum((v*pauli(a) for a, v in hterms.items()), np.zeros((d,d), complex))
+    E, U = np.linalg.eigh(H)
+    logs = -beta*(E-E.min())
+    logs -= np.log(np.exp(logs).sum())
+    p = np.exp(logs)
+    rho = (U*p) @ U.conj().T
+    mu = np.einsum(&#x27;ij,aji-&gt;a&#x27;, rho, P).real
+    Pc = P-mu[:,None,None]*np.eye(d)[None,:,:]
+    Pe = np.array([U.conj().T @ a @ U for a in Pc])
+    delta = logs[:,None]-logs[None,:]
+    close = np.abs(delta) &lt; 1e-6
+    L = np.empty((d,d))
+    np.divide(p[:,None]-p[None,:], delta, out=L, where=~close)
+    L[close] = (np.exp((logs[:,None]+logs[None,:])/2)
+                  *(1+delta**2/24+delta**4/1920))[close]
+    arith = (p[:,None]+p[None,:])/2
+    C = gram(Pe,L)
+    Vq = gram(Pe,arith)
+    Q = beta**2*gram(Pe,L**2/arith)
+    W = gram(Pe,(p[:,None]-p[None,:])*(E[None,:]-E[:,None]))
+    derivatives = np.array([U @ (-beta*L*a) @ U.conj().T for a in Pe])
+    records, effects = measurement(n,visibility)
+    probabilities = np.einsum(&#x27;oij,ji-&gt;o&#x27;, effects, rho).real
+    if probabilities.min() &lt;= 0:
+        raise ArithmeticError(&#x27;Numerical loss of positive outcome probabilities.&#x27;)
+    dq = np.einsum(&#x27;oij,aji-&gt;oa&#x27;, effects, derivatives).real
+    Fisher = (dq.T/probabilities) @ dq
+    Y = np.zeros((len(records),m))
+    for o,row in enumerate(records):
+        for a,label in enumerate(labels):
+            value=1.
+            for i,c in enumerate(label):
+                if c==&#x27;I&#x27;:
+                    continue
+                basis, sign=row[i]
+                if basis!=c:
+                    value=0.
+                    break
+                value *= 3*sign/visibility
+            Y[o,a]=value
+    means = probabilities @ Y
+    V = (Y.T*probabilities) @ Y-np.outer(means,means)
+    R = (V-C+V.T-C.T)/2
+    N = (V-Vq+V.T-Vq.T)/2
+    response_error = float(np.max(np.abs(Y.T @ dq+beta*C)))
+    exact_lower = beta**2*C @ np.linalg.solve(V,C)
+    k = max(sum(c!=&#x27;I&#x27; for c in a) for a in labels)
+    incidence=max(sum(a[i]!=&#x27;I&#x27; for a in labels) for i in range(n))
+    ell=max((sum(c!=&#x27;I&#x27; for c in a) for a in hterms), default=1)
+    g=max(sum(abs(v) for a,v in hterms.items() if a[i]!=&#x27;I&#x27;) for i in range(n))
+    noise_bound=(1+k*(incidence-1))*((3/visibility**2)**k-1)
+    commutator_bound=4*g*k*(k+ell)*incidence
+    nu=noise_bound+beta*commutator_bound/12
+    eye=np.eye(m)
+    gaps={
+      &#x27;C_positive&#x27;: minimum(C),
+      &#x27;readout_noise_positive&#x27;: minimum(N),
+      &#x27;readout_noise_upper&#x27;: minimum(noise_bound*eye-N),
+      &#x27;quantum_variance_positive&#x27;: minimum(Vq-C),
+      &#x27;harris_upper&#x27;: minimum(beta*W/12-(Vq-C)),
+      &#x27;double_commutator_positive&#x27;: minimum(W),
+      &#x27;double_commutator_upper&#x27;: minimum(commutator_bound*eye-W),
+      &#x27;moment_information_bound&#x27;: minimum(Fisher-exact_lower),
+      &#x27;measurement_below_SLD&#x27;: minimum(Q-Fisher),
+      &#x27;SLD_below_BKM&#x27;: minimum(beta**2*C-Q),
+      &#x27;state_dependent_additive_loss&#x27;: minimum(beta**2*R-(beta**2*C-Fisher)),
+      &#x27;uniform_additive_loss&#x27;: minimum(beta**2*nu*eye-(Q-Fisher)),
+    }
+    scale=max(1.,float(np.linalg.norm(V,2)),float(np.linalg.norm(beta**2*C,2)))
+    tolerance=2e-9*scale
+    passed = min(gaps.values()) &gt;= -tolerance and response_error&lt;=tolerance
+    return {&#x27;case&#x27;:case,&#x27;n&#x27;:n,&#x27;m&#x27;:m,&#x27;beta&#x27;:beta,&#x27;visibility&#x27;:visibility,
+            &#x27;k&#x27;:k,&#x27;ell&#x27;:ell,&#x27;Delta&#x27;:incidence,&#x27;g&#x27;:g,&#x27;nu&#x27;:nu,
+            &#x27;minimum_LMI_eigenvalues&#x27;:gaps,&#x27;response_identity_error&#x27;:response_error,
+            &#x27;minimum_probability&#x27;:float(probabilities.min()),
+            &#x27;tolerance&#x27;:tolerance,&#x27;passed&#x27;:bool(passed)}
+
+def main(output: Path) -&gt; None:
+    rng=np.random.default_rng(20261012)
+    rows=[]
+    for n in (2,3,4):
+        labels=[supported(n,{i:c}) for i in range(n) for c in &#x27;XYZ&#x27;]
+        labels += [supported(n,{i:&#x27;Z&#x27;,i+1:&#x27;Z&#x27;}) for i in range(n-1)]
+        for trial in range(2):
+            hterms={a:float(rng.uniform(-.5,.5)) for a in labels}
+            # Add background terms absent from the parameter dictionary.
+            for i in range(n):
+                for j in range(i+1,n):
+                    hterms[supported(n,{i:&#x27;X&#x27;,j:&#x27;Y&#x27;})]=float(rng.uniform(-.3,.3)/n)
+            raw_g=max(sum(abs(v) for a,v in hterms.items() if a[i]!=&#x27;I&#x27;) for i in range(n))
+            hterms={a:v/raw_g for a,v in hterms.items()}
+            for beta in (.2,1.,4.):
+                for visibility in (1.,.6):
+                    rows.append(check_instance(n,labels,hterms,beta,visibility,
+                                               f&#x27;random-background-{n}-{trial}&#x27;))
+    # Analytic sharpness check at the maximally mixed state.
+    for visibility in (1.,.6):
+        labels=[supported(3,{i:&#x27;Z&#x27;}) for i in range(3)]
+        rows.append(check_instance(3,labels,{},1.,visibility,&#x27;maximally-mixed&#x27;))
+    x=1.; beta=1.
+    f=np.tanh(beta*x)/x
+    fp=(beta*x/(np.cosh(beta*x)**2)-np.tanh(beta*x))/x**2
+    nonconvex={&#x27;x&#x27;:x,&#x27;beta&#x27;:beta,&#x27;single_Z_plus_NLL_hessian&#x27;:[[0.,float(fp)],[float(fp),float(f*f)]],
+               &#x27;determinant&#x27;:float(-fp*fp)}
+    result={&#x27;status&#x27;:&#x27;Finite floating-point falsification checks, not theorem validation&#x27;,
+            &#x27;seed&#x27;:20261012,&#x27;number_of_instances&#x27;:len(rows),
+            &#x27;all_declared_checks_passed&#x27;:all(row[&#x27;passed&#x27;] for row in rows),
+            &#x27;minimum_recorded_LMI_eigenvalue&#x27;:min(min(row[&#x27;minimum_LMI_eigenvalues&#x27;].values()) for row in rows),
+            &#x27;maximum_response_identity_error&#x27;:max(row[&#x27;response_identity_error&#x27;] for row in rows),
+            &#x27;nonconvex_likelihood_example&#x27;:nonconvex,&#x27;instances&#x27;:rows}
+    output.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;,encoding=&#x27;utf-8&#x27;)
+    print(json.dumps({k:v for k,v in result.items() if k!=&#x27;instances&#x27;},indent=2))
+    if not result[&#x27;all_declared_checks_passed&#x27;]:
+        raise SystemExit(&#x27;At least one declared numerical check failed.&#x27;)
+
+if __name__==&#x27;__main__&#x27;:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;finite_checks.json&#x27;))
+    args=parser.parse_args()
+    main(args.output)
+</pre>

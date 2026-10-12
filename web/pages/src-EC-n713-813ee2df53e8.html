@@ -1,0 +1,133 @@
+<!doctype html><meta charset="utf-8"><title>N713 recovered original — astra_active_closure/protocol.py</title>
+<aside>Original producer artifact; CRC and hashes establish preservation, not independent mathematics, priority or technology validation. No archived scientific code was executed at intake.</aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-field protocol design and reconstruction.
+
+All quantities use time units with maximum microscopic exit rate &lt;=1.
+The design is deliberately conservative. It gives a sample budget, not a
+claim that the experiment has been performed or is practically optimal.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction
+import argparse
+import json
+import numpy as np
+
+FIELD_WEIGHTS = {Fraction(2): Fraction(-1,6),
+                 Fraction(1,2): Fraction(1,6),
+                 Fraction(3,2): Fraction(9,10),
+                 Fraction(2,3): Fraction(-9,10)}
+
+
+def ceil_frac(x: Fraction) -&gt; int:
+    return -((-x.numerator)//x.denominator)
+
+
+def log_upper(x: Fraction) -&gt; int:
+    &quot;&quot;&quot;Integer upper bound on ln(x) for x&gt;1, via ceil(log2(x)).&quot;&quot;&quot;
+    n = max(1, x.numerator.bit_length()-x.denominator.bit_length())
+    while Fraction(2)**n &lt; x:
+        n += 1
+    return n
+
+
+def design(k: int, rho: Fraction, eta: Fraction, failure: Fraction,
+           noise_bound: Fraction = Fraction(1)) -&gt; dict:
+    if k &lt; 2 or not (0 &lt; rho &lt;= Fraction(1,k)):
+        raise ValueError(&#x27;Need k&gt;=2 and 0&lt;rho&lt;=1/k.&#x27;)
+    if not (0 &lt; eta &lt;= 1 and 0 &lt; failure &lt; 1 and noise_bound &gt;= 1):
+        raise ValueError(&#x27;Invalid accuracy, confidence or noise bound.&#x27;)
+    u = eta*rho*rho/Fraction(100*k*k)
+    s = u/Fraction(1000)
+    beta = u*s*s/Fraction(100)
+    scalar_statistics = 16*k*k
+    # Target stochastic error beta/2. Sensor-calibration and setting bias
+    # must together be &lt;= beta/2 per raw scalar mean.
+    batch = ceil_frac(8*noise_bound**4/beta**2 *
+                      log_upper(Fraction(8*scalar_statistics)/failure))
+    total = scalar_statistics * batch
+    return {&#x27;time_units&#x27;:&#x27;generator divided by supplied exit-rate upper bound&#x27;,
+            &#x27;k&#x27;:k,&#x27;rho&#x27;:str(rho),&#x27;operator_accuracy&#x27;:str(eta),
+            &#x27;failure&#x27;:str(failure),&#x27;noise_inverse_bound&#x27;:str(noise_bound),
+            &#x27;raw_jet_tolerance_u&#x27;:str(u),&#x27;time_step_s&#x27;:str(s),
+            &#x27;raw_mean_tolerance_beta&#x27;:str(beta),
+            &#x27;field_multiplier_z&#x27;:[str(z) for z in FIELD_WEIGHTS],
+            &#x27;field_energy_h&#x27;:&#x27;2*log(z), applied to one true observed label&#x27;,
+            &#x27;scalar_statistics_upper_bound&#x27;:scalar_statistics,
+            &#x27;samples_per_scalar_upper_bound&#x27;:str(batch),
+            &#x27;total_trials_upper_bound&#x27;:str(total),
+            &#x27;mixing_wait&#x27;:&#x27;gamma^-1 * log(4*M0*total_trials/failure)&#x27;,
+            &#x27;status&#x27;:&#x27;Budget only. No laboratory samples generated.&#x27;}
+
+
+def reconstruct(mu: np.ndarray, C_s: np.ndarray, C_2s: np.ndarray,
+                means_s: dict[str,np.ndarray], means_2s: dict[str,np.ndarray],
+                s: float) -&gt; tuple[np.ndarray,np.ndarray]:
+    &quot;&quot;&quot;Return raw L and symmetric Gamma estimates from corrected means.
+
+    means arrays have shape (k,k): row a is the applied label potential,
+    column b is the terminal label being counted. Values may already be
+    corrected for an independently known sensor confusion channel.
+    Enforce confidence intervals and generator constraints separately;
+    this function does NOT convert small estimated Gamma into exact zero.
+    &quot;&quot;&quot;
+    mu=np.asarray(mu,float)
+    k=mu.size
+    if s&lt;=0 or np.any(mu&lt;=0): raise ValueError(&#x27;Positive s and label masses required.&#x27;)
+    if C_s.shape!=(k,k) or C_2s.shape!=(k,k): raise ValueError(&#x27;Incorrect matrix shapes.&#x27;)
+    C0=np.diag(mu)
+    A=(C_s-C0)/s
+    C2=(C_2s-2*C_s+C0)/s**2
+    X2=np.zeros((k,k))
+    for z,w in FIELD_WEIGHTS.items():
+        key=str(z)
+        X2 += float(w)*(means_2s[key]-2*means_s[key])/s**2
+    L=A/mu[:,None]
+    G=-2*X2-C2-A.T@np.diag(1/mu)@A
+    return L,(G+G.T)/2
+
+
+if __name__==&#x27;__main__&#x27;:
+    parser=argparse.ArgumentParser()
+    parser.add_argument(&#x27;--labels&#x27;,type=int,default=2)
+    parser.add_argument(&#x27;--rho&#x27;,default=&#x27;1/2&#x27;)
+    parser.add_argument(&#x27;--accuracy&#x27;,default=&#x27;1/10&#x27;)
+    parser.add_argument(&#x27;--failure&#x27;,default=&#x27;1/20&#x27;)
+    parser.add_argument(&#x27;--noise-bound&#x27;,default=&#x27;1&#x27;)
+    args=parser.parse_args()
+    print(json.dumps(design(args.labels,Fraction(args.rho),Fraction(args.accuracy),
+                            Fraction(args.failure),Fraction(args.noise_bound)),indent=2))
+
+
+def reconstruct_exact(mu, C_s, C_2s, means_s, means_2s, s):
+    &quot;&quot;&quot;Exact rational reconstruction using SymPy matrices.
+
+    Use this version, rather than floating reconstruct(), for the very small
+    time steps in a certified schedule. Inputs may be rational empirical
+    means after correction by a rational sensor confusion matrix. Confidence
+    still requires the sampling/access assumptions in proof_note.md.
+    &quot;&quot;&quot;
+    import sympy as sp
+    mu=sp.Matrix(mu)
+    k=mu.rows
+    s=sp.Rational(s)
+    if s&lt;=0 or any(p&lt;=0 for p in mu):
+        raise ValueError(&#x27;Positive time and estimated label masses required.&#x27;)
+    M=sp.diag(*mu)
+    A=(sp.Matrix(C_s)-M)/s
+    C2=(sp.Matrix(C_2s)-2*sp.Matrix(C_s)+M)/s**2
+    X2=sp.zeros(k)
+    for z,w in FIELD_WEIGHTS.items():
+        weight=sp.Rational(w.numerator,w.denominator)
+        key=str(z)
+        X2 += weight*(sp.Matrix(means_2s[key])-2*sp.Matrix(means_s[key]))/s**2
+    rawGamma=-2*X2-C2-A.T*M.inv()*A
+    Gamma=(rawGamma+rawGamma.T)/2
+    rawL=M.inv()*A
+    L=sp.zeros(k)
+    for a in range(k):
+        for b in range(k):
+            if a!=b: L[a,b]=max(sp.Rational(0),rawL[a,b])
+        L[a,a]=-sum(L[a,b] for b in range(k) if a!=b)
+    return L,Gamma
+</pre>
