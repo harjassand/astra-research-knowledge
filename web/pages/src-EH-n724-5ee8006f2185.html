@@ -1,0 +1,227 @@
+<!doctype html><meta charset="utf-8"><title>N724 recovered original — astra_spectral_horizon/verify.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not independent mathematics, priority, general implementation or technology validation. No archived scientific code executed at intake.</aside>
+<pre>&quot;&quot;&quot;Exact tests and labelled floating diagnostics for spectral extrapolation.
+
+Run: python verify.py
+The assertions check finite instances; they do not validate general proofs or novelty.
+No Hamiltonian learning samples are simulated or claimed to have been acquired.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from math import comb, factorial, ceil, log2
+from pathlib import Path
+import json
+import numpy as np
+import mpmath as mp
+
+OUT = Path(__file__).resolve().parent
+exact_count = 0
+
+def check(statement: bool, message: str) -&gt; None:
+    global exact_count
+    if not statement:
+        raise AssertionError(message)
+    exact_count += 1
+
+
+def spectral_pair(m: int):
+    if m &lt; 1 or m % 2 != 1:
+        raise ValueError(&#x27;m must be a positive odd integer&#x27;)
+    n = m + 1
+    x = [F(3, 8) + F(k, 4*m) for k in range(n)]
+    # 1/4 uniform spectrum + 1/4 uniform even spectrum + 1/2 binomial parity.
+    wplus, wminus = [], []
+    for k in range(n):
+        base = F(1, 4*n) + (F(1, 2*n) if k % 2 == 0 else F(0))
+        extra = F(comb(m,k), 2**m)
+        wplus.append(base + (extra if k % 2 == 0 else 0))
+        wminus.append(base + (extra if k % 2 == 1 else 0))
+    return x, wplus, wminus
+
+
+def jacobi(x, w):
+    &quot;&quot;&quot;Exact diagonals and squared positive couplings via monic polynomials.&quot;&quot;&quot;
+    n = len(x)
+    prev = [F(0)]*n
+    cur = [F(1)]*n
+    prev_norm = None
+    a, b2 = [], []
+    for j in range(n):
+        norm = sum((wi*pi*pi for wi,pi in zip(w,cur)), F(0))
+        check(norm &gt; 0, &#x27;positive polynomial norm&#x27;)
+        aj = sum((wi*xi*pi*pi for wi,xi,pi in zip(w,x,cur)), F(0))/norm
+        bj2 = F(0) if j == 0 else norm/prev_norm
+        a.append(aj)
+        if j:
+            b2.append(bj2)
+        nxt = [(xi-aj)*pi-bj2*pp for xi,pi,pp in zip(x,cur,prev)]
+        prev, cur, prev_norm = cur, nxt, norm
+    check(all(v == 0 for v in cur), &#x27;degree n polynomial vanishes at all eigenvalues&#x27;)
+    return a, b2
+
+
+def matvec(a, b2, v):
+    # Diagonal similarity of the symmetric Jacobi matrix: upper 1, lower b^2.
+    n=len(a)
+    out=[]
+    for j in range(n):
+        z=a[j]*v[j]
+        if j: z+=b2[j-1]*v[j-1]
+        if j+1&lt;n: z+=v[j+1]
+        out.append(z)
+    return out
+
+
+def exact_moments(a, b2, x, w, max_order):
+    v=[F(1)]+[F(0)]*(len(a)-1)
+    powers=[F(1)]*len(x)
+    for degree in range(max_order+1):
+        target=sum((wi*zi for wi,zi in zip(w,powers)), F(0))
+        check(v[0] == target, f&#x27;Jacobi moment {degree}&#x27;)
+        v=matvec(a,b2,v)
+        powers=[zi*xi for zi,xi in zip(powers,x)]
+
+
+def ff(q):
+    return mp.mpf(q.numerator)/q.denominator
+
+
+def as_symmetric(a, b2):
+    return np.diag([float(v) for v in a])-np.diag(np.sqrt([float(v) for v in b2]),1)-np.diag(np.sqrt([float(v) for v in b2]),-1)
+
+
+def amplitude(H, t):
+    ev, U=np.linalg.eigh(H)
+    return np.sum(U[0,:]**2*np.exp(-1j*t*ev))
+
+
+def main():
+    global exact_count
+    mp.mp.dps=180
+    rows=[]
+    models={}
+    for m in [1,3,5,7,9,13,17,21]:
+        x,wp,wm=spectral_pair(m)
+        n=m+1
+        check(sum(wp)==1 and sum(wm)==1, &#x27;normalization&#x27;)
+        check(F(1,4)+F(3,4)*sum(wp)==1, &#x27;ground-reference normalization&#x27;)
+        check(F(1,4)**2+(F(3,4)*F(3,4))**2==F(97,256), &#x27;reference positive return&#x27;)
+        check(F(1,4)**2+(F(3,4)*F(1,4))**2==F(25,256), &#x27;reference negative return&#x27;)
+        for k in range(n):
+            check(wp[k]&gt;=F(1,4*n) and wm[k]&gt;=F(1,4*n), &#x27;spectral weight floor&#x27;)
+            check(F(3,4)*min(wp[k],wm[k])&gt;=F(3,16*n), &#x27;reference spectral weight floor&#x27;)
+            check(wp[k]-wm[k]==F((-1)**k*comb(m,k),2**m), &#x27;finite-difference coefficient&#x27;)
+        for degree in range(m):
+            check(sum((wp[k]-wm[k])*x[k]**degree for k in range(n))==0, &#x27;matching low-order moment&#x27;)
+        first=sum((wp[k]-wm[k])*x[k]**m for k in range(n))
+        check(first==F(-factorial(m),(8*m)**m), &#x27;first different moment&#x27;)
+        check(sum(wp[k]*(-1)**k for k in range(n))==F(3,4), &#x27;positive real-time amplitude&#x27;)
+        check(sum(wm[k]*(-1)**k for k in range(n))==F(-1,4), &#x27;negative real-time amplitude&#x27;)
+        ap,bp=jacobi(x,wp); am,bm=jacobi(x,wm)
+        exact_moments(ap,bp,x,wp,2*n+1)
+        exact_moments(am,bm,x,wm,2*n+1)
+        r=(m+1)//2
+        check(ap[:r-1]==am[:r-1], &#x27;common near-end diagonal&#x27;)
+        check(bp[:r-1]==bm[:r-1], &#x27;common near-end couplings&#x27;)
+        for a in ap+am:
+            check(F(3,8)&lt;=a&lt;=F(5,8), &#x27;diagonal spectral interval&#x27;)
+        lower=F(1,4*m)**2/F(36*n)
+        for b in bp+bm:
+            check(lower&lt;=b&lt;=1, &#x27;polynomial lower coupling bound&#x27;)
+        Hplus=as_symmetric(ap,bp); Hminus=as_symmetric(am,bm)
+        t=4*np.pi*m
+        vp=amplitude(Hplus,t); vm=amplitude(Hminus,t)
+        assert abs(abs(vp)**2-9/16)&lt;2e-11
+        assert abs(abs(vm)**2-1/16)&lt;2e-11
+        totalp=0.25+0.75*vp; totalm=0.25+0.75*vm
+        assert abs(abs(totalp)**2-97/256)&lt;2e-11
+        assert abs(abs(totalm)**2-25/256)&lt;2e-11
+        lap=[]
+        for beta in [mp.mpf(&#x27;0.25&#x27;),mp.mpf(&#x27;1&#x27;),mp.mpf(m),mp.mpf(10*m)]:
+            actual=sum((ff(wp[k])-ff(wm[k]))*mp.exp(-beta*ff(x[k])) for k in range(n))
+            formula=mp.exp(-3*beta/8)*((1-mp.exp(-beta/(4*m)))/2)**m
+            assert abs(actual-formula)&lt;mp.mpf(&#x27;1e-150&#x27;)
+            lap.append({&#x27;beta&#x27;:str(beta),&#x27;difference&#x27;:mp.nstr(formula,12)})
+        maxbits=max(max(z.numerator.bit_length(),z.denominator.bit_length()) for z in ap+am+bp+bm)
+        rows.append({&#x27;m&#x27;:m,&#x27;sites&#x27;:n,&#x27;time_over_pi&#x27;:4*m,&#x27;max_exact_coefficient_bits&#x27;:maxbits,
+                     &#x27;minimum_hopping_squared&#x27;:str(min(bp+bm)) if bp else None,
+                     &#x27;bulk_return_probabilities&#x27;:[float(abs(vp)**2),float(abs(vm)**2)],
+                     &#x27;reference_return_probabilities&#x27;:[float(abs(totalp)**2),float(abs(totalm)**2)],
+                     &#x27;high_precision_laplace_checks&#x27;:lap})
+        if m in [3,7]:
+            models[str(m)]={&#x27;nodes&#x27;:list(map(str,x)), &#x27;wplus&#x27;:list(map(str,wp)), &#x27;wminus&#x27;:list(map(str,wm)),
+                           &#x27;plus_diagonal&#x27;:list(map(str,ap)), &#x27;plus_hopping_squared&#x27;:list(map(str,bp)),
+                           &#x27;minus_diagonal&#x27;:list(map(str,am)), &#x27;minus_hopping_squared&#x27;:list(map(str,bm))}
+    # Exact preservation of moment matching by shared tridiagonal perturbations,
+    # using a diagonal perturbation to keep squared-coupling encoding rational.
+    perturb=[]
+    for m in [3,5,7,9,13]:
+        x,wp,wm=spectral_pair(m)
+        ap,bp=jacobi(x,wp); am,bm=jacobi(x,wm)
+        eps=F(1,1024*m)  # &lt; 1/(64 * (4*pi*m))
+        ed=[eps*F((-1)**j*(j+1),m+1) for j in range(m+1)]
+        ap2=[a+e for a,e in zip(ap,ed)]; am2=[a+e for a,e in zip(am,ed)]
+        vp=[F(1)]+[F(0)]*m; vm=vp.copy()
+        for j in range(m):
+            check(vp[0]==vm[0], &#x27;perturbed matching moment&#x27;)
+            vp=matvec(ap2,bp,vp); vm=matvec(am2,bm,vm)
+        Hp=as_symmetric(ap2,bp); Hm=as_symmetric(am2,bm)
+        assert np.linalg.eigvalsh(Hp).min()&gt;1/3 and np.linalg.eigvalsh(Hm).min()&gt;1/3
+        assert np.linalg.eigvalsh(Hp).max()&lt;2/3 and np.linalg.eigvalsh(Hm).max()&lt;2/3
+        t=4*np.pi*m
+        gap=abs(amplitude(Hp,t))**2-abs(amplitude(Hm,t))**2
+        assert gap&gt;3/8
+        totalgap=abs(0.25+0.75*amplitude(Hp,t))**2-abs(0.25+0.75*amplitude(Hm,t))**2
+        assert totalgap&gt;7/32
+        perturb.append({&#x27;m&#x27;:m,&#x27;perturbation_norm&#x27;:float(max(map(abs,ed))), &#x27;bulk_return_probability_gap&#x27;:float(gap), &#x27;reference_return_probability_gap&#x27;:float(totalgap)})
+    # General reconstruction: high-precision diagnostics, not exact assertions.
+    recon=[]
+    mp.mp.dps=300
+    for T,B in [(1,F(1,8)),(2,F(1)),(4,F(100)),(8,F(1))]:
+        M=ceil(16*T)
+        a=min(B/F(M),F(1,16))
+        # Working precision is charged to the proven coefficient amplification.
+        mp.mp.dps=60
+        logS=mp.log10(2)+M*mp.log10(2*mp.e*(1+mp.mpf(T)/(ff(a)*M)))
+        work_digits=int(mp.ceil(logS))+200
+        mp.mp.dps=work_digits
+        aa=ff(a)
+        R=mp.mpf(T)/aa
+        c=[mp.mpc(1)]
+        for j in range(M): c.append(c[-1]*(j-1j*R)/(j+1))
+        weights=[sum(c[j]*comb(j,l) for j in range(l,M+1))*(-1)**l for l in range(M+1)]
+        S=sum(abs(v) for v in weights)
+        Sbound=2*(2*mp.e*(1+mp.mpf(T)/(aa*M)))**M
+        assert S&lt;=Sbound
+        error=mp.mpf(0)
+        coeff_error=mp.mpf(0)
+        for j in range(65):
+            x=mp.mpf(j)/64
+            z=1-mp.exp(-aa*x)
+            direct=sum(c[k]*z**k for k in range(M+1))
+            synth=sum(weights[k]*mp.exp(-aa*k*x) for k in range(M+1))
+            error=max(error,abs(direct-mp.exp(-1j*T*x)))
+            coeff_error=max(coeff_error,abs(synth-direct))
+        assert error&lt;=mp.mpf(2)**(-M)
+        assert coeff_error&lt;mp.mpf(&#x27;1e-140&#x27;)
+        recon.append({&#x27;T&#x27;:T,&#x27;B&#x27;:str(B),&#x27;degree&#x27;:M,&#x27;spacing&#x27;:str(a),&#x27;working_decimal_digits&#x27;:work_digits,
+                      &#x27;log10_actual_l1&#x27;:mp.nstr(mp.log10(S),12),
+                      &#x27;log10_upper_l1&#x27;:mp.nstr(mp.log10(Sbound),12),
+                      &#x27;max_grid_bias&#x27;:mp.nstr(error,12),
+                      &#x27;proven_bias_bound&#x27;:mp.nstr(mp.mpf(2)**(-M),12),
+                      &#x27;algebra_consistency&#x27;:mp.nstr(coeff_error,6)})
+    result={&#x27;status&#x27;:&#x27;Finite checks only; not independent review, formal verification, or novelty clearance.&#x27;,
+            &#x27;exact_assertions_passed&#x27;:exact_count,
+            &#x27;exact_pair_instances&#x27;:rows,
+            &#x27;perturbation_diagnostics&#x27;:perturb,
+            &#x27;reconstruction_diagnostics&#x27;:recon}
+    (OUT/&#x27;results.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    (OUT/&#x27;exact_models.json&#x27;).write_text(json.dumps(models,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;exact_assertions_passed&#x27;:exact_count,
+                      &#x27;spectral_pair_instances&#x27;:len(rows),
+                      &#x27;perturbation_instances&#x27;:len(perturb),
+                      &#x27;reconstruction_instances&#x27;:len(recon)},indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>
