@@ -1,0 +1,30 @@
+# Active closure research package
+
+Read `proof_note.md` for the actual theorems, assumptions, proofs, limitations,
+and prior-art boundary. This is an unreviewed research candidate, not a
+formally verified publication or laboratory result.
+
+`verify.py` runs exact rational checks using SymPy and separately labelled
+floating diagnostics using NumPy/SciPy. Run:
+
+```bash
+python verify.py
+```
+
+`verification_results.json` is the executed output. It records 838 exact
+checks and 14 floating diagnostics. Counts do not establish general validity.
+
+`protocol.py` computes a conservative finite-experiment budget and contains
+both floating and exact-rational reconstruction helpers. Run:
+
+```bash
+python protocol.py --labels 2 --rho 1/2 --accuracy 1/10 --failure 1/20
+```
+
+`example_budget.json` is the output of that command. Its potentially very
+large sample count is a sufficient worst-case budget, NOT acquired data.
+Use `reconstruct_exact`, not ordinary floating subtraction, for the tiny
+time steps in such certified schedules. Physical kinetic calibration,
+stationary starts or mixing waits, and sensor correction remain required.
+
+The package does not publish anything to the user's repository.
