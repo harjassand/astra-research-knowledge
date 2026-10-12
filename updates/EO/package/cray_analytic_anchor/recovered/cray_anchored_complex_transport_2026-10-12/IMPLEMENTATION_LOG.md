@@ -1,0 +1,11 @@
+# Implementation and failure ledger
+
+All result JSON files are from executed runs, except the conservative budget which is a calculated prescription and was not simulated.
+
+An initial Numba compilation failed because it required the same dtype for C@z (real C, complex z). The corrected implementation casts C to complex before that product. No numerical result is attributed to the failed compilation. The first successful run included about seven seconds of compilation and quadrature setup; reported trajectory times exclude that setup.
+
+The h=.02 run uses 600 measurement time units per node; h=.01 and h=.005 use 2400 each. Different seeded paths were used; the results do not demonstrate monotone convergence. Newton line search checks residual reduction and imaginary-box membership at each accepted step. It is not an interval proof of arithmetic error.
+
+The connected benchmark is not a ten-dimensional tensor-product enumeration: its independent comparator is a transfer integral kernel using O(n p^2) arithmetic and it is much faster. Both methods see the same generated explicit coefficients. The stochastic method is not promoted over that stronger matched comparator.
+
+No laboratory experiment, learned physical coefficients, nonlocal quantum hardware, hidden-state oracle, or background task was performed.

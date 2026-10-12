@@ -1,0 +1,83 @@
+"""Exact rational finite algebra checks and conservative resource accounting.
+These finite checks do not constitute proof of the general theorems.
+"""
+import json, random, math
+from fractions import Fraction as F
+from experiment import ROOT, certificate,fixture,acquire_radius
+
+def sqrt_ceil(q):
+    q=F(q);k=math.isqrt(q.numerator//q.denominator)
+    return k if k*k>=q else k+1
+
+def log2_ceil(q):
+    q=F(q);k=0
+    while F(2)**k<q:k+=1
+    return k
+
+def budget(eps=F(1,100),delta=F(1,100)):
+    A,C,E,a,c,r=fixture(); cert=certificate(A,C,E,a,c,r);n=2
+    v={k:F(s) for k,s in cert['exact'].items()};lam=v['lambda_'];r=F(9,20)
+    c1=v['c1'];a0=F(14,5)+F(6,5)*c1;q=3;g=F(1,2);s=2
+    K=lambda p:2*sqrt_ceil(F(p)/lam)+r
+    FP=lambda p:a0*K(p)+q*g*s**3*K(3*p)**3
+    Hloc=a0+3*q*g*s**3*K(4)**2
+    Gloc=a0*FP(2)+3*q*g*s**3*K(8)**2*FP(4)+6*q*g*s*s*K(2)
+    Dloc=Gloc**2/(4*lam)+Gloc**2/2+4*Hloc**2/3
+    Cstep=F(sqrt_ceil(Dloc/lam));v2=1/lam+r*r
+    bias_coefficient=n*c1*sqrt_ceil(v2)*Cstep
+    h=min(F(1),1/lam,eps/(8*bias_coefficient))
+    J=math.ceil(2*log2_ceil(8*c1*n*v2/eps)/(h*lam))
+    R=F(6,5);bound=n*c1*v2/2;M=1
+    while 4*bound*R**(-(2*M-1))/(R-1)>eps/8:M+=1
+    variance=n*c1*c1*v2/lam;tau=eps/16
+    group_size=math.ceil(8*variance/(tau*tau));groups=8*log2_ceil(8*M/delta)+1
+    endpoints=M*group_size*groups;resolvents=endpoints*J
+    return dict(status='explicit conservative recipe, NOT a lower bound on any algorithm; inner root work and finite-bit overhead additional',epsilon=str(eps),delta=str(delta),dimension=n,
+                local_Cstep_upper=int(Cstep),h_exact=str(h),h_float=float(h),steps_per_endpoint=str(J),quadrature_nodes=M,group_size=group_size,groups=groups,
+                endpoints=str(endpoints),ideal_resolvent_calls=str(resolvents),log10_resolvent_calls=math.log10(resolvents),
+                constants={k:str(v) for k,v in dict(a0=a0,Hloc=Hloc,Gloc=Gloc,Dloc=Dloc,v2=v2,variance=variance).items()})
+
+def exact_checks():
+    rng=random.Random(901781);checks=0;graphs=20;min_face=None;min_hess=None
+    for rep in range(graphs):
+        n=rng.randrange(3,9);edges=[(i,i+1) for i in range(n-1)]
+        if n>3:edges.append((0,n-1))
+        A=[[F(0) for j in range(n)] for i in range(n)];C=[[F(0) for j in range(n)] for i in range(n)]
+        for i,j in edges:A[i][j]=A[j][i]=-F(rng.randrange(1,5),10);C[i][j]=C[j][i]=F(rng.randrange(-1,2),10)
+        for i in range(n):A[i][i]=5+sum(abs(A[i][j]) for j in range(n) if j!=i);C[i][i]=rng.choice([-1,1])*F(3,10)
+        a=F(1,2);c=F(1,5);r=F(2,5);u0=F(1,10);v0=F(11,10)
+        cc=certificate(A,C,edges,a,c,r,u0,v0);assert cc['passed'];checks+=1
+        acquired=acquire_radius(A,C,edges,a,c,u0,v0);assert acquired is not None and acquired[1]['passed'];checks+=1
+        lam=F(cc['exact']['lambda_']);eta=F(cc['exact']['inward'])
+        for trial in range(20):
+            x=[F(rng.randrange(-30,31),7) for _ in range(n)]
+            y=[r*F(rng.randrange(-10,11),10) for _ in range(n)]
+            u=u0*F(rng.randrange(-10,11),10);v=v0*F(rng.randrange(-10,11),10)
+            H=[[A[i][j]-u*C[i][j] for j in range(n)] for i in range(n)]
+            for i in range(n):H[i][i]+=3*a*(x[i]**2-y[i]**2)
+            for i,j in edges:
+                hp=3*c*((x[i]+x[j])**2-(y[i]+y[j])**2);hm=3*c*((x[i]-x[j])**2-(y[i]-y[j])**2)
+                H[i][i]+=hp+hm;H[j][j]+=hp+hm;H[i][j]+=hp-hm;H[j][i]+=hp-hm
+            vr=[F(rng.randrange(-7,8),3) for _ in range(n)]
+            value=sum(vr[i]*H[i][j]*vr[j] for i in range(n) for j in range(n))-lam*sum(z*z for z in vr)
+            assert value>=0;checks+=1
+            min_hess=value if min_hess is None else min(min_hess,value)
+            index=rng.randrange(n);sgn=rng.choice([-1,1]);y[index]=sgn*r
+            imgrad=sum((A[index][j]-u*C[index][j])*y[j]-v*C[index][j]*x[j] for j in range(n))
+            imgrad+=a*(3*x[index]**2*y[index]-y[index]**3)
+            for i,j in edges:
+                if index==j:i,j=j,i
+                if index!=i:continue
+                xp=x[i]+x[j];yp=y[i]+y[j];xm=x[i]-x[j];ym=y[i]-y[j]
+                imgrad+=c*(3*xp*xp*yp-yp**3+3*xm*xm*ym-ym**3)
+            margin=sgn*imgrad-eta;assert margin>=0;checks+=1
+            min_face=margin if min_face is None else min(min_face,margin)
+    # Unshielded off-diagonal witness: at y_1=r, x_1=0, the term -C_12 x_2 escapes every finite box.
+    r=F(1,4);m=F(2);a=F(1);C12=F(1);x2=F(100)
+    drift=m*r-a*r**3-C12*x2;assert drift<0;checks+=1
+    return dict(seed=901781,graphs=graphs,assertions=checks,min_sampled_face_slack=str(min_face),min_sampled_hessian_slack=str(min_hess),unshielded_outward_imag_gradient=str(drift),status='all finite exact checks passed; general proofs remain separately stated')
+
+if __name__=='__main__':
+    obj={'exact_checks':exact_checks(),'conservative_budget':budget()}
+    (ROOT/'audit_results.json').write_text(json.dumps(obj,indent=2)+'\n')
+    print(json.dumps(obj,indent=2))

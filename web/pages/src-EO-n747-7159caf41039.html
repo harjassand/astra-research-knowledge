@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><title>N747 recovered original — astra_frontier_balanced_transport/noise_response.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not mathematical correctness, priority, general implementation or technology validation. Scientific code syntax parsed only, never executed at intake.</aside>
+<pre>&quot;&quot;&quot;Exact positive spectral moments of the whole dephasing-response curve.
+W = S at gamma=1/4. The balance projection is implemented, not assumed.
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+from pauli_core import *
+
+def balance_projection(H,y,n,edges):
+    b=P(A(H,y))
+    phi,report=pressure_exact(b,n,edges,Q(1,4))
+    q=add(y,scale(Sinv(A(H,phi),Q(1,4)),-1))
+    assert not P(A(H,q))
+    return q,report
+
+def effective_T(H,f,n,edges):
+    assert not P(A(H,f))
+    y=scale(Sinv(A(H,Sinv(A(H,f),Q(1,4))),Q(1,4)),-1)
+    return balance_projection(H,y,n,edges)
+
+def main():
+    out=[]
+    for n in (7,8,12):
+        H,J,_,edges=model(n)
+        TJ,report=effective_T(H,J,n,edges)
+        m0=norm2(J)/n
+        m1=inner(J,TJ)/n
+        m2=inner(TJ,S(TJ,Q(1,4)))/n
+        assert m0==Q(1,2) and m1==Q(5,2)
+        assert m2*m0&gt;=m1*m1
+        row={&#x27;n&#x27;:n,&#x27;moments&#x27;:[str(q) for q in (m0,m1,m2)],&#x27;pressure&#x27;:report,&#x27;curves&#x27;:[]}
+        for d in (Q(1,2),Q(1),Q(2),Q(4),Q(16)):
+            low=m0*m0*d/(d*d*m0+m1)
+            up=m0/d-m1*m1/(d*(d*d*m1+m2))
+            assert up&gt;=low
+            row[&#x27;curves&#x27;].append({&#x27;d&#x27;:str(d),&#x27;D_lower&#x27;:str(4*low),&#x27;D_upper&#x27;:str(4*up)})
+        out.append(row)
+    Path(__file__).with_name(&#x27;noise_response_checks.json&#x27;).write_text(json.dumps(out,indent=2))
+    print(json.dumps(out,indent=2))
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

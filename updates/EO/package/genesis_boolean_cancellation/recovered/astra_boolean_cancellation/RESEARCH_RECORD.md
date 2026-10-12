@@ -1,0 +1,471 @@
+# ASTRA Primitive Genesis: cancellation without destroying separability
+
+**Research checkpoint: 12 October 2026.**  
+**Status:** Explicit constructions and proofs, with exact finite diagnostics. No proof of the log-rank conjecture; no independently established historical novelty; no formal proof-assistant verification. The approximate-rank result uses a published theorem as identified below.
+
+## 1. Consequential target and provenance
+
+For a finite Boolean matrix M on X × Y, write r(M) for its real rank and π(M) for the minimum number of pairwise disjoint all-one rectangles partitioning its one-entries. A rectangle means A × B with arbitrary A ⊆ X and B ⊆ Y, not a geometrically axis-aligned subset of a Euclidean grid.
+
+The target is the log-rank conjecture in its partition formulation:
+
+\[
+\log_2\pi(M)\le C(\log_2(r(M)+2))^c
+\]
+
+for universal constants C,c. The communication formulation asks for a deterministic two-party protocol using polynomially many bits in log rank. These equivalent formulations and their quantitative relationships are established prior work, not inventions of this investigation [HLS].
+
+An independently proposed route was to preserve cancellation structure instead of first taking absolute values of a low-rank factorization. The literature check identified the exact signed-rectangle formulation already established by Hambardzumyan, Lovett and Shirley. Their theorem supplies a signed presentation
+
+\[
+M=\sum_{i=1}^p\mathbf 1_{A_i\times B_i}
+ -\sum_{j=1}^q\mathbf 1_{C_j\times D_j},\qquad
+s=p+q=O(r\log(r+2)).
+\]
+
+The signed-to-positive reformulation belongs to those authors. The present work investigates a particular missing operation inside that reformulation: how to cancel contributions without making the surviving contributions difficult to represent as sums of separated functions of x and y.
+
+The principal established result is a separation between a natural equal-sharing cancellation rule and geometry-aware cancellation. It remains valid for signed presentations obtained from a linearly independent, maximal dissociated family of actual Boolean columns. Thus it is not merely an artifact of padding the all-one matrix with redundant positive-negative pairs.
+
+### Existing proof operation inspected
+
+A family of columns is dissociated when its subset sums are all distinct. Choose an inclusion-maximal dissociated family of actual columns, of cardinality k. Its 2^k subset sums lie in the r-dimensional column space. Projection to r suitably chosen row coordinates is injective on that space, and each projected subset sum belongs to {0,…,k}^r. Consequently 2^k ≤ (k+1)^r, giving k = O(r log(r+2)). Maximality expresses every other column as a difference of two disjoint subsets of the selected columns. Separating positive and negative coefficients produces at most 2k signed rectangles [HLS, main proof].
+
+This is a complete algebraic interface to the present construction. It does not control how complicated a pointwise cancellation of those rectangles becomes.
+
+## 2. What equal-sharing cancellation means
+
+At a cell (x,y), let P(x,y) and N(x,y) denote the counts of active positive and negative terms. The input promise is
+
+\[
+P(x,y)-N(x,y)=M(x,y)\in\{0,1\}.
+\]
+
+A residual allocation assigns a nonnegative value u_i(x,y) to each positive label i, zero outside its rectangle, with sum_i u_i = M.
+
+Consider rules that use only the active signed labels at that cell and are equivariant under arbitrary permutations of positive labels. In particular, they cannot inspect the global geometry of a rectangle to distinguish two active labels. A permutation exchanging two active positive labels leaves the local incidence pattern unchanged. Equivariance therefore forces their residual values to agree. Conservation then forces
+
+\[
+u_i(x,y)=\mathbf 1_{A_i\times B_i}(x,y)\frac{M(x,y)}{P(x,y)},
+\]
+
+with value zero when P=0. This is also the residual obtained by choosing the surviving active positive label uniformly at a one-cell.
+
+**Scope:** This is a restriction on cell-local label-exchangeable allocation, not on every globally permutation-equivariant algorithm. A global algorithm may distinguish rectangles through their supports, or may bypass separate residual factorizations entirely. The lower bounds below apply when the rule's residuals must be represented or approximated individually by separated sums. They do not prohibit a compact symbolic formula such as an inverse inner product, or an algorithm that bypasses separate residuals. The measure is representation width in terms of signed certificate length; the matrix table itself can be exponentially large in that length. No exponential running-time lower bound in the size of an explicitly tabulated matrix is asserted.
+
+## 3. A nonredundant canonical-basis separation
+
+### Theorem 1
+
+For every n ≥ 1 and integer L ≥ 1, there exists a Boolean matrix M = M(n,L) such that:
+
+\[
+r(M)=1+2Ln,\qquad s=1+3Ln,\qquad \pi(M)\le1+2Ln+n.
+\]
+
+The signed presentation of length s comes from a linearly independent, inclusion-maximal dissociated family of actual columns, with coefficients in {-1,0,1}. All signed rectangles are nonempty and there are no duplicate rectangles of opposite sign.
+
+Nevertheless, the equal-sharing residual U_0 of one positive rectangle has real rank 2^n. For L=8 there is a universal c>0 such that, for all sufficiently large n, any real A satisfying
+
+\[
+\|A-U_0\|_{\max}\le1/9
+\]
+
+has rank at least 2^{c√n}. The approximate statement invokes the published pattern-matrix lower bound [Sherstov].
+
+Thus the obstruction is exponential for exact representation and superpolynomial even at fixed entrywise error, while the input and a valid positive output each use only O(n) rectangles for fixed L.
+
+### Construction
+
+Use three types of rows:
+
+- c_S for every S ⊆ [n];
+- d_{ia} for i ∈ [n], a ∈ [L];
+- e_{ia} for i ∈ [n], a ∈ [L].
+
+Define Boolean column vectors v_0, v^+_{ia}, v^-_{ia} by
+
+| Row | v_0 | v^+_{ia} | v^-_{ia} |
+|---|---:|---:|---:|
+| c_S | 1 | 1_{i∈S} | 1_{i∈S} |
+| d_{jb} | 0 | 1_{(i,a)=(j,b)} | 0 |
+| e_{jb} | 0 | 1_{(i,a)=(j,b)} | 1_{(i,a)=(j,b)} |
+
+For each T ⊆ [n], include a further column
+
+\[
+w_T=v_0+\sum_{i\in T}\sum_{a=1}^{L}(v^+_{ia}-v^-_{ia}).
+\]
+
+The difference v^+_{ia}−v^-_{ia} is exactly the indicator of the single row d_{ia}. Its support is disjoint from that of v_0 and from the corresponding differences for all other pairs. Therefore every w_T is Boolean. The columns of M consist of the named basis columns and the w_T columns. Repeated numerical columns, such as w_∅ = v_0, may be given separate indices; deleting that duplicate changes none of the conclusions.
+
+### Rank and actual-column maximality
+
+A linear relation among the proposed basis columns first evaluated at d_{ia} forces every coefficient of v^+_{ia} to vanish. Evaluation at e_{ia} then forces every coefficient of v^-_{ia} to vanish. Evaluation at c_∅ forces the coefficient of v_0 to vanish. Hence the 1+2Ln columns are linearly independent. Every w_T belongs to their span, proving the rank formula.
+
+Linear independence implies dissociation. Adding any other w_T to this family creates the explicit signed subset-sum relation displayed in its definition. The family is therefore inclusion-maximal dissociated among the actual columns. The representation is compatible with the precise input interface in the HLS proof, not merely with the bound on signed length.
+
+### Signed rectangles
+
+Let b_0, b^+_{ia}, b^-_{ia} name the basis-column indices; let t_T name the other column indices. Put Y_i={t_T:i∈T}.
+
+The positive rectangles are:
+
+\[
+\operatorname{supp}(v_0)\times(\{b_0\}\cup\{t_T:T\subseteq[n]\}),
+\]
+\[
+\operatorname{supp}(v^+_{ia})\times(\{b^+_{ia}\}\cup Y_i),
+\qquad
+\operatorname{supp}(v^-_{ia})\times\{b^-_{ia}\}.
+\]
+
+The negative rectangles are
+
+\[
+\operatorname{supp}(v^-_{ia})\times Y_i.
+\]
+
+There are 1+2Ln positive and Ln negative rectangles. The strict inclusion supp(v^-_{ia}) ⊊ supp(v^+_{ia}), witnessed by d_{ia}, prevents identical positive-negative terms.
+
+At (c_S,t_T), the active positive and negative counts are
+
+\[
+P=1+L|S\cap T|,\qquad N=L|S\cap T|,
+\]
+
+and M=1. The distinguished residual therefore restricts to
+
+\[
+K_{n,L}(S,T)=\frac{1}{1+L|S\cap T|}.
+\]
+
+Outside the core rows, U_0 is zero. Its additional nonzero basis column is the all-one column already present as K(·,∅). Thus rank U_0 = rank K exactly.
+
+## 4. Exact rank of the reciprocal-intersection kernel
+
+### Lemma 2
+
+For n ≥ 1 and every positive real L,
+
+\[
+\operatorname{rank}\left[\frac1{1+L|S\cap T|}\right]_{S,T\subseteq[n]}=2^n.
+\]
+
+### Proof
+
+Let Z_{S,U}=1_{U⊆S}. Ordering subsets by size makes Z triangular with diagonal entries one, so Z is invertible.
+
+For f(k)=1/(1+Lk), set
+
+\[
+d_k=\Delta^kf(0)=\sum_{j=0}^k(-1)^{k-j}\binom{k}{j}\frac1{1+Lj}.
+\]
+
+Using 1/(1+Lj)=∫_0^1 t^{Lj}dt gives
+
+\[
+d_k=\int_0^1(t^L-1)^kdt
+=(-1)^k\int_0^1(1-t^L)^kdt
+=(-1)^k\frac{k!L^k}{\prod_{j=0}^k(1+Lj)}\ne0.
+\]
+
+The last identity follows by a beta-integral substitution or elementary induction in k. Newton's expansion gives
+
+\[
+f(|S\cap T|)=\sum_{U\subseteq S\cap T}d_{|U|}.
+\]
+
+Consequently
+
+\[
+K_{n,L}=Z\,\operatorname{diag}(d_{|U|}:U\subseteq[n])\,Z^{\mathsf T},
+\]
+
+and
+
+\[
+\det K_{n,L}=\prod_{k=0}^{n}d_k^{\binom nk}\ne0.
+\]
+
+For L=1, d_k=(-1)^k/(k+1). This proves the lemma and the exact-rank part of Theorem 1. □
+
+The matrix is not claimed to be positive semidefinite: the diagonal factors have alternating signs. The incidence factorization is a standard meet-matrix/Möbius-inversion technique [Meet]. No historical novelty is claimed for that algebraic identity.
+
+A sum of t separated functions a_ℓ(S)b_ℓ(T) has rank at most t. Thus the lower bound applies even to signed real separated representations, not just positive rectangle representations.
+
+## 5. Constant-error robustness
+
+Let D_n(S,T)=1_{S∩T=∅}. For L=8,
+
+\[
+\|K_{n,8}-D_n\|_{\max}\le1/9.
+\]
+
+If A approximates K_{n,8} to entrywise error 1/9, it approximates D_n to error 2/9. We now give the exact reduction establishing the required approximate-rank lower bound; a quantum communication lower bound alone would not suffice for this step.
+
+First assume n=4m. Index the ground set by pairs (ℓ,b) with ℓ∈[2m], b∈{0,1}. For x∈{0,1}^{2m}, take
+
+\[
+S_x=\{(\ell,x_\ell):\ell\in[2m]\}.
+\]
+
+Partition [2m] into m pairs. A column chooses one position v_j from each pair, and a vector w∈{0,1}^m. Set
+
+\[
+T_{V,w}=\{(v_j,1-w_j):j\in[m]\}.
+\]
+
+Then
+
+\[
+D_n(S_x,T_{V,w})=\operatorname{NOR}_m(x|_V\oplus w).
+\]
+
+After replacing a Boolean matrix B by the sign matrix 2B−J, this is the (2m,m,2NOR_m−1) pattern matrix F. A Boolean entrywise approximation with error 2/9 induces a sign approximation with error 4/9 and increases rank by at most one.
+
+Sherstov's Theorem 1.4 / 8.1 states that for an (N,t,f) sign pattern matrix,
+
+\[
+\operatorname{rk}_{\delta}(F)
+\ge\left(\frac{\varepsilon-\delta}{1+\delta}\right)^2
+ (N/t)^{\deg_\varepsilon(f)}
+\]
+
+for 0≤δ≤ε<1 [Sherstov]. Take ε=2/3, δ=4/9, N/t=2. The prefactor is 4/169. The approximate degree of NOR, at any fixed error strictly below one in the sign convention, is Ω(√m). This follows from the usual Ω(√m) constant-error bound and constant-degree error reduction; Paturi's theorem is stated in [Sherstov, Theorem 2.6]. Therefore
+
+\[
+\operatorname{rank}(A)+1\ge (4/169)2^{\Omega(\sqrt m)}.
+\]
+
+For arbitrary n, restrict to the first 4⌊n/4⌋ coordinates. This proves the robust statement for sufficiently large n. □
+
+**External dependency:** The pattern-matrix approximate-rank theorem and the approximate-degree lower bound are published inputs, not newly proved results here. The embedding, error bookkeeping, and application to the cancellation residual are explicit above. The finite code does not certify these asymptotic external theorems.
+
+## 6. The same instance admits inexpensive exact cancellation
+
+The large intermediate is not intrinsic to M. Since
+
+\[
+v^+_{ia}-v^-_{ia}=\mathbf1_{\{d_{ia}\}},
+\]
+
+cancel the negative rectangle supported on v^-_{ia}×Y_i against the matching portion of the positive rectangle supported on v^+_{ia}×Y_i. This leaves {d_{ia}}×Y_i. Group the L such rows for each i into one rectangle.
+
+A disjoint positive partition is then:
+
+\[
+\{c_S:S\subseteq[n]\}\times(\{b_0\}\cup\{t_T:T\subseteq[n]\}),
+\]
+
+one rectangle for each nonzero basis column other than b_0, using that single column as its column set, and
+
+\[
+\{d_{ia}:a\in[L]\}\times Y_i\qquad(i\in[n]).
+\]
+
+Different basis-column rectangles have disjoint column sets. Within target columns, the core and the different diagnostic row groups are disjoint. These rectangles therefore form a partition, of size 1+2Ln+n.
+
+This gives an exact separation:
+
+\[
+\text{geometry-aware output width }O(n)
+\quad\text{versus}\quad
+\text{equal-sharing residual rank }2^n.
+\]
+
+The repair uses differences of nested Boolean row predicates. Those differences need not have belonged to the original set of basis vectors.
+
+### Blind random priorities do not generally fix the problem
+
+For L=1, order the positive labels uniformly at random and retain the first active positive at each one-cell. Consider the distinguished label 0. Let I⊆[n] be the indices of v_i^+ preceding it in the relative order among 0,v_1^+,…,v_n^+.
+
+Its surviving core indicator is
+
+\[
+W_0(S,T)=\mathbf1_{S\cap T\cap I=\varnothing}.
+\]
+
+For k=|I|, this has rank 2^k: after restriction to I it is the k-fold Kronecker product of the invertible matrix [[1,1],[1,0]], and all remaining rows/columns are duplicates of these restricted patterns. Since k is uniform on {0,…,n},
+
+\[
+\mathbb E\,\operatorname{rank}(W_0)
+=\frac{2^{n+1}-1}{n+1}.
+\]
+
+A label priority chosen using the global geometry can avoid this failure. The calculation refutes the specified blind-priority scheme, not every symmetry-breaking rule.
+
+## 7. Why predicate synthesis, not just refinement, is necessary
+
+### Proposition 3
+
+There are rank-one Boolean matrices with O(m) signed rectangles whose one-entries require 2^{Ω(m)} rectangles if output row sets must be conjunctions of the original row-membership literals.
+
+### Proof
+
+Let
+
+\[
+X=\{S\subseteq[2m]: |S|=m\text{ or }m+1\},\qquad Y=\{*\},
+\]
+
+and M(S,*)=|S|−m. This is a nonzero Boolean column. It has rank and unrestricted partition number one. Its signed presentation consists of the 2m membership predicates 1_{i∈S}, minus m copies of the all-one column.
+
+A row atom formed by literal refinement is
+
+\[
+C(A,B)=\{S\in X:A\subseteq S,\ S\cap B=\varnothing\},\qquad A\cap B=\varnothing.
+\]
+
+Suppose it is nonempty and contains only one-rows, and choose S_0∈C(A,B). Then |S_0|=m+1. If |A|≤m, an m-subset S′⊆S_0 containing A would also avoid B and belong to the same atom, contradicting purity. Hence |A|=m+1 and A=S_0. The atom contains only that one one-row.
+
+Every such cover therefore requires at least binom(2m,m+1)=2^{Ω(m)} atoms. In contrast, the synthesized local predicate |S|=m+1 describes the entire one-set as a single rectangle. □
+
+This is not a communication lower bound: Y is a singleton. It specifically refutes a restriction on the output language. Arbitrary unions, threshold gates, or other synthesized one-party predicates are not covered by the lower bound.
+
+## 8. A constructive small-negative-budget compiler
+
+The following is an elementary positive result. It is not claimed to be a novel general theorem, and it is not the reason for selecting the research direction.
+
+### Proposition 4
+
+A Boolean signed rectangle presentation with p≥1 positive and q negative terms admits a disjoint positive partition with
+
+\[
+\pi(M)\le 2^q\sum_{k=1}^{\min(q+1,p)}\binom pk
+\le2^q(q+1)p^{q+1}.
+\]
+
+The number q refers to the supplied presentation; it is not assumed obtainable cheaply from rank. If p=0, the Boolean promise forces M=0.
+
+### Proof and actual construction
+
+For S⊆[q], define a row predicate
+
+\[
+X_S=\{x:\{j:x\in C_j\}=S\}.
+\]
+
+For t∈{0,…,|S|}, define a column predicate
+
+\[
+Y_{S,t}=\left\{y:\sum_{j\in S}\mathbf1_{D_j}(y)=t\right\}.
+\]
+
+For I⊆[p] with |I|=t+1, output the nonempty rectangle
+
+\[
+R_{S,t,I}=
+\left(X_S\cap\bigcap_{i\in I}A_i\right)
+\times
+\left(Y_{S,t}\cap\bigcap_{i\in I}B_i\right).
+\]
+
+At any cell of this rectangle, N=t and P≥t+1. The Boolean promise P−N∈{0,1} forces P=t+1 and M=1. Conversely, at a one-cell S is uniquely determined by x, t=N is determined by (S,y), and I is exactly the set of all active positive labels, of cardinality t+1. Thus every one-cell belongs to exactly one output rectangle.
+
+The exact enumerative upper bound is
+
+\[
+\sum_{S\subseteq[q]}\sum_{t=0}^{\min(|S|,p-1)}\binom p{t+1},
+\]
+
+which is at most the bound stated. □
+
+For constant q the bound is polynomial in p. For q=O(log s), it is exp(O(log²s)). These consequences are independently checkable from a supplied presentation. They do not resolve the general case q=Θ(s), and no reduction from arbitrary rank-r matrices to a representation with q=O(log r) was proved.
+
+**Cost contract:** This is an output-size and finite-construction bound. A description of each output predicate uses original membership tests and a local integer count. Enumeration can be exponential in q. For explicit finite X,Y, the predicates can be evaluated directly. There is no claimed polynomial-time emptiness oracle for arbitrary succinct set descriptions, and no general polynomial-time compiler in s alone.
+
+## 9. Further attempted repair: monotone rank descent fails
+
+A possible next operation was to cancel geometrically, synthesize new predicates, and require every extracted positive rectangle to strictly reduce the residual real rank. That last requirement is false already for
+
+\[
+M=\begin{pmatrix}
+1&1&0&0\\
+0&1&1&0\\
+0&0&1&1\\
+1&0&0&1
+\end{pmatrix}.
+\]
+
+It has rank three. Its one-set contains no 2×2 all-one submatrix, so a nonempty all-one rectangle is a singleton or a two-cell row/column star. Removing a full two-cell star leaves rank three because any three original rows (or columns) are independent. Removing a singleton gives rank four: the rank-three matrix has left and right null vectors (1,−1,1,−1), so every entry of its adjugate is nonzero, and the corresponding rank-one determinant perturbation is nonzero.
+
+Thus no nonempty all-one rectangle has a Boolean residual of strictly smaller rank. The same example has an immediate four-rectangle positive partition. Also, its column supports are pairwise incomparable, so nested-column subtraction alone cannot initiate a basis repair.
+
+This excludes the specified monotone potential, not nonmonotone or amortized rank methods. The correct remaining analysis would have to permit temporary rank growth or use a different controlled quantity.
+
+## 10. Archive comparison and exact non-transfers
+
+The Astra snapshot inspected was
+
+`a33fc7e1db8f42873025fa29882f85f2d4503695`.
+
+The OpenAI/math snapshot inspected was
+
+`fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`.
+
+The initial candidate scan considered coordinated discrepancy rounding, adaptive covariance conditioning, and stable algebraic degeneration. Earlier Astra work already lay close to those routes; no newly established decisive mechanism emerged there. The present investigation did not use those programs as assumed dependencies.
+
+Astra N642's full indexed original proof was examined. It distinguishes a bad prescribed-coordinate entropy decrement from the existence of some good coordinate. That is a useful quantifier comparison: the present failure of equal sharing is likewise not a failure of all possible cancellation choices. No Boolean Fourier-entropy inequality was transferred into the rectangle argument [Astra-N642].
+
+In OpenAI/math, the original sparse-cochain and small-orbit support arguments in the witnessed-symmetric-choice manuscript were examined. The sparse-cochain proof eliminates coordinate directions by gradient subtraction, chooses a slice with few nonzero curls, and bounds the remaining support. Its support theorem then uses a particular group action, a central subgroup, and commutator-induced alternating forms. Those are specific hypotheses. No map from a general signed Boolean rectangle presentation to that bounded-curl, bounded-support setting was established. Accordingly, that manuscript is not a dependency of any theorem in this record, and its main separation theorem is not independently certified here [OpenAI-Support]. The shared word “symmetry” does not supply an interface.
+
+The actual successful external interface is different: the reciprocal-intersection residual contains a NOR pattern matrix after an explicit restriction. All norms, error constants, rank conventions, and size parameters are recorded in Section 5.
+
+## 11. Exact remaining obligation and significance
+
+The unrestricted target is still to turn an arbitrary signed Boolean presentation of length s into a disjoint positive rectangle partition of size
+
+\[
+\exp\bigl((\log(s+2))^{O(1)}\bigr).
+\]
+
+Combined with [HLS], that would prove the log-rank conjecture. It is not a new conjecture supplied by this investigation; it is the pre-existing decisive theorem.
+
+The tested candidate operations leave a sharper set of constraints on further work:
+
+- Pure cell-local equal sharing is incompatible with low-width separated residuals, even on actual independent-column certificates.
+- Blind label priorities can retain exponentially complicated residuals as well.
+- Merely refining the original row/column literals can be exponentially worse than synthesizing new local predicates.
+- Geometry-aware nested subtraction can avoid these failures on the explicit family, but it does not resolve the general case.
+- Strict one-step decrease of real rank is not a valid universal progress condition.
+
+An unresolved next task is to prove an amortized complexity bound for geometry-aware cancellation that permits synthesized predicates and temporary expansion. No such potential or bound is established here. Calling its existence an “invariant,” “compatibility condition,” or “new primitive” would not constitute progress.
+
+**What changed mathematically:** there is now an explicit nonredundant family separating low input/output width from exact and approximate width of a natural cancellation intermediate, with an exact alternative cancellation and a reproducible test set. This is a substantive falsification of a candidate operation. It is not a historic-scale theorem about general Boolean matrices, nor a demonstrated universal new mathematical capability.
+
+**Priority:** The signed reformulation, Möbius/meet factorization, pattern-matrix machinery, and elementary certificate-counting ingredients are established mathematics. A scoped search did not establish whether the precise canonical-basis separation has appeared before. Its novelty remains unresolved; this record makes no priority claim.
+
+## 12. Verification and preservation
+
+The accompanying standard-library script uses exact integers and rational numbers, not floating-point rank tolerances. The saved execution checked:
+
+- K(n,L) for 1≤n≤5 and L∈{1,2,8}, including exact rank and all entries of the Möbius factorization;
+- six actual-column-basis constructions, including L=8, with exact matrix ranks, signed identities, rectangle distinctness, and positive partitions;
+- all 12,100 multisets of 2×2 nonempty rectangles with 0≤p≤3 and 0≤q≤2; 1,824 satisfied the Boolean promise, and every corresponding compiler output was a valid disjoint partition;
+- all ternary literal patterns for the adjacent-layer example through m=4;
+- every priority subset through n=5;
+- all 16 nonempty all-one rectangles in the 4×4 cycle example.
+
+These are finite diagnostics supporting the constructions, not substitutes for the general proofs or independent validation. See `VERIFICATION.json` for the actual execution results.
+
+No GitHub write, publication, external review, or proof-assistant formalization was performed. This package preserves the result locally for review and continuation.
+
+## References and exact source routes
+
+**[HLS]** Lianna Hambardzumyan, Shachar Lovett, Morgan Shirley, *The Log-Rank Conjecture: New Equivalent Formulations*, arXiv:2510.02583, version 2; CCC 2026. Main signed-rank proof and its prerequisites inspected.  
+https://arxiv.org/abs/2510.02583  
+https://arxiv.org/pdf/2510.02583  
+https://doi.org/10.4230/LIPIcs.CCC.2026.7
+
+**[Sherstov]** Alexander A. Sherstov, *The Pattern Matrix Method*, arXiv:0906.4291. Theorems 1.4 and 8.1, the dual-witness/spectral proof interface, and Theorem 2.6 (Paturi's approximate-degree theorem). These are external mathematical inputs, not re-established wholesale in this record.  
+https://arxiv.org/pdf/0906.4291
+
+**[Meet]** Ercan Altinisik, Naim Tuglu, Pentti Haukkanen, *Determinant and Inverse of Meet and Join Matrices*, International Journal of Mathematics and Mathematical Sciences, 2007, Article 37580. Background comparator for incidence factorizations; the needed special case is fully proved above.  
+https://doi.org/10.1155/2007/37580
+
+**[Astra-N642]** Exact indexed original source range, source lines 84–505 of `updates/CU/package/pasted/gpt6_pro_independent_landmark_mathematical_discovery.txt`. Source-derived archive material; no imported theorem in this record.  
+https://github.com/harjassand/astra-research-knowledge/blob/a33fc7e1db8f42873025fa29882f85f2d4503695/frontier/proof_ranges/856627d68472103c0bc3915b.txt
+
+**[OpenAI-Support]** *Witnessed symmetric choice is strictly stronger than choiceless polynomial time with counting*, original source, Section “Small orbits give supports at every rank.” The local proofs were examined for a possible interface; the main manuscript theorem was not independently audited and is not assumed here.  
+https://github.com/openai/math/blob/fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb/preprints/Witnessed-symmetric-choice-is-strictly-stronger-than-choiceless-polynomial-time-with-counting-September-24-2026/build/sections/05-support.tex
