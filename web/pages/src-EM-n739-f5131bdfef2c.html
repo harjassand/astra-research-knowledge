@@ -1,0 +1,96 @@
+<!doctype html><meta charset="utf-8"><title>N739 recovered original — astra_local_tolerance/check_interfaces.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not mathematical correctness, priority, general implementation or technology validation. Scientific code syntax parsed only, never executed at intake.</aside>
+<pre>&quot;&quot;&quot;Finite diagnostics for the local exact-null certificate and far-end escape.
+Not a general proof, interval certification, or a laboratory experiment.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json, math
+from pathlib import Path
+import numpy as np
+from scipy.linalg import eigh
+from check_core import construct, oneparticle
+
+OUT=Path(__file__).parent
+
+def run() -&gt; None:
+    rng=np.random.default_rng(583019)
+    count=0
+    def check(condition: bool, label: str) -&gt; None:
+        nonlocal count
+        if not bool(condition):
+            raise AssertionError(label)
+        count += 1
+    max_ratio=0.0
+    for dim in [2,3,5,9]:
+      for scale in [1.8,0.12,0.003]:
+       for trial in range(6):
+        Z=rng.normal(size=(dim,dim))+1j*rng.normal(size=(dim,dim))
+        C=(Z+Z.conj().T)/2
+        C*=scale/np.linalg.norm(C,2)
+        es,Q=eigh(C); weights=abs(Q[0,:])**2
+        mu2=np.dot(weights,es**2)
+        for h in [.1,.5]:
+            p=np.dot(weights,1-np.cos(h*es))/2
+            check(p+2e-15&gt;=h*h*mu2/8,&#x27;short-time second-moment bound&#x27;)
+            for T in [1.,7.,23.]:
+                ts=np.linspace(0,T,81)
+                Fs=np.exp(-1j*ts[:,None]*es[None,:])@weights
+                Dloc=.5*np.sqrt((1-abs(Fs)**2)**2+abs(1-Fs)**2)
+                Dvecsq=1-Fs.real
+                bound=4*T*T*p/(h*h)
+                check(np.max(Dloc**2)&lt;=bound+2e-12,&#x27;local trajectory certificate&#x27;)
+                check(np.max(Dvecsq)&lt;=T*T*mu2/2+2e-12,&#x27;vector residual bound&#x27;)
+                if bound&gt;1e-14:
+                    max_ratio=max(max_ratio,float(np.max(Dloc**2)/bound))
+    # Nontrivial exactly agreeing generator outside the predictive subspace.
+    for dim in [3,5,9]:
+        C=np.zeros((dim,dim))
+        block=rng.normal(size=(dim-1,dim-1))
+        block=(block+block.T)/2
+        block*=1.7/np.linalg.norm(block,2)
+        C[1:,1:]=block
+        es,Q=eigh(C); weights=Q[0,:]**2
+        for t in [.1,.5,13,107]:
+            F=np.dot(weights,np.exp(-1j*t*es))
+            check(abs(F-1)&lt;1e-12,&#x27;exact-null outside-subspace freedom&#x27;)
+    endpoint=[]
+    for d in [1,2,4,8,16]:
+      for eta in [&#x27;0.125&#x27;,&#x27;0.04&#x27;]:
+        c=construct(d,eta)
+        for rounded in [False,True]:
+            C0,C1,_,q=oneparticle(c,rounded)
+            ev0,Q0=eigh(C0); ev1,Q1=eigh(C1)
+            w0=Q0[d,:]**2; w1=Q1[d,:]**2
+            for t in [.01,1/32]:
+                F0=np.dot(w0,np.exp(-1j*t*ev0)); F1=np.dot(w1,np.exp(-1j*t*ev1))
+                diff=abs(F0.imag-F1.imag)
+                check(diff&gt;=t/4-1e-12,&#x27;far-end one-qubit signal&#x27;)
+                endpoint.append({&#x27;d&#x27;:d,&#x27;eta&#x27;:eta,&#x27;rounded&#x27;:rounded,&#x27;t&#x27;:t,&#x27;signal&#x27;:float(diff)})
+    # A finite, explicitly encoded instance. Floating rounding is diagnostic only.
+    c=construct(4,&#x27;0.125&#x27;); C0,C1,perm,q=oneparticle(c,True)
+    b=int(round(-math.log2(q)))
+    ints0=np.rint(C0/q).astype(np.int64)
+    check(np.max(abs(C0-ints0*q))==0,&#x27;exact binary encoding of example&#x27;)
+    example={
+      &#x27;status&#x27;:&#x27;finite dyadic example from numerical construction, not an interval-certified compiler&#x27;,
+      &#x27;d&#x27;:4,&#x27;eta&#x27;:&#x27;1/8&#x27;,&#x27;T&#x27;:int(c[&#x27;T&#x27;]),&#x27;qubits&#x27;:10,
+      &#x27;labels&#x27;:[&#x27;L0&#x27;,&#x27;L1&#x27;,&#x27;L2&#x27;,&#x27;L3&#x27;,&#x27;L4&#x27;,&#x27;R0&#x27;,&#x27;R1&#x27;,&#x27;R2&#x27;,&#x27;R3&#x27;,&#x27;R4&#x27;],
+      &#x27;denominator_power_of_two&#x27;:b,
+      &#x27;C_good_integer_numerators&#x27;:ints0.tolist(),
+      &#x27;reflection_permutation&#x27;:perm.tolist(),
+      &#x27;C_bad_definition&#x27;:&#x27;P C_good P^T using the displayed permutation&#x27;,
+      &#x27;H_definition&#x27;:&#x27;onsite (1+C_xx)*n_x; edge C_xy*(sigma+_x sigma-_y+h.c.); plus n_x*n_y on each nonzero edge&#x27;,
+      &#x27;candidate&#x27;:&#x27;K=sum_x n_x&#x27;,
+      &#x27;initial_state&#x27;:&#x27;|+&gt; on L0, |0&gt; everywhere else&#x27;,
+      &#x27;prediction&#x27;:&#x27;reduced L0 density trajectory on [0,T]&#x27;
+    }
+    (OUT/&#x27;example_d4.json&#x27;).write_text(json.dumps(example,indent=2))
+    report={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;scope&#x27;:&#x27;finite floating-point diagnostics only&#x27;,&#x27;seed&#x27;:583019,
+            &#x27;assertions&#x27;:count,&#x27;maximum_certificate_ratio&#x27;:max_ratio,
+            &#x27;endpoint_checks&#x27;:endpoint}
+    (OUT/&#x27;interface_diagnostics.json&#x27;).write_text(json.dumps(report,indent=2))
+    print(json.dumps({k:v for k,v in report.items() if k!=&#x27;endpoint_checks&#x27;},indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    run()
+</pre>

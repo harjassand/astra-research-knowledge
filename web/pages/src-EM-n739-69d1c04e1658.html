@@ -1,0 +1,215 @@
+<!doctype html><meta charset="utf-8"><title>N739 recovered original — astra_local_tolerance/check_core.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not mathematical correctness, priority, general implementation or technology validation. Scientific code syntax parsed only, never executed at intake.</aside>
+<pre>&quot;&quot;&quot;Finite diagnostics for the local-port tolerant predictive certification theorem.
+These numerical tests do not replace the analytic proofs in research_note.md.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json, math
+from pathlib import Path
+import numpy as np
+import mpmath as mp
+from scipy.linalg import eigh
+
+mp.mp.dps = 110
+OUT = Path(__file__).parent
+counts = {&#x27;multiprecision&#x27;: 0, &#x27;floating_point&#x27;: 0}
+maxima = {&#x27;moment_error&#x27;: mp.mpf(0), &#x27;jacobi_prefix_error&#x27;: mp.mpf(0),
+          &#x27;boundary_error&#x27;: mp.mpf(0), &#x27;control_gram_ratio&#x27;: 0.0,
+          &#x27;controlled_occupation_ratio&#x27;: 0.0, &#x27;reflection_error&#x27;: 0.0}
+
+def check_mp(ok: bool, message: str) -&gt; None:
+    if not bool(ok):
+        raise AssertionError(message)
+    counts[&#x27;multiprecision&#x27;] += 1
+
+def check_fp(ok: bool, message: str) -&gt; None:
+    if not bool(ok):
+        raise AssertionError(message)
+    counts[&#x27;floating_point&#x27;] += 1
+
+def jacobi(xs, weights):
+    p0 = [mp.mpf(0)] * len(xs)
+    p1 = [mp.mpf(1)] * len(xs)
+    bprev = mp.mpf(0)
+    diag, bonds = [], []
+    for j in range(len(xs)):
+        a = sum(w*x*p*p for x,w,p in zip(xs,weights,p1))
+        diag.append(a)
+        if j+1 == len(xs):
+            break
+        rem = [(x-a)*p-bprev*old for x,p,old in zip(xs,p1,p0)]
+        bn = mp.sqrt(sum(w*r*r for w,r in zip(weights,rem)))
+        bonds.append(bn)
+        p0,p1 = p1,[r/bn for r in rem]
+        bprev=bn
+    return diag,bonds
+
+def construct(d: int, eta: str = &#x27;0.125&#x27;):
+    e=mp.mpf(eta); delta=e*e/(64*d*d); m=2*d
+    xs=[delta+(1-delta)*(1-mp.cos(mp.pi*j/m))/2 for j in range(m+1)]
+    ws=[]
+    for j in range(m+1):
+        w=mp.mpf(1)
+        for k in range(m+1):
+            if k!=j: w*= -xs[k]/(xs[j]-xs[k])
+        ws.append(w)
+    L=mp.cosh(m*mp.acosh((1+delta)/(1-delta)))
+    A=(1+L)/2
+    xg=[mp.mpf(0)]+[xs[j] for j in range(1,m,2)]
+    wg=[1/A]+[-ws[j]/A for j in range(1,m,2)]
+    xb=[xs[j] for j in range(0,m+1,2)]
+    wb=[ws[j]/A for j in range(0,m+1,2)]
+    ag,bg=jacobi(xg,wg); ab,bb=jacobi(xb,wb)
+    return dict(d=d,eta=e,delta=delta,xs=xs,ws=ws,L=L,A=A,
+                xg=xg,wg=wg,xb=xb,wb=wb,ag=ag,bg=bg,ab=ab,bb=bb,
+                T=4/delta,gamma=e/(16*(4/delta)))
+
+def array_jacobi(a,b):
+    return np.diag([float(v) for v in a])+np.diag([-float(v) for v in b],1)+np.diag([-float(v) for v in b],-1)
+
+def oneparticle(c, rounded=False):
+    d=c[&#x27;d&#x27;]; l=d+1
+    ag=np.array([float(v) for v in c[&#x27;ag&#x27;]]); ab=ag.copy(); ab[-1]=float(c[&#x27;ab&#x27;][-1])
+    bonds=np.array([float(v) for v in c[&#x27;bg&#x27;]]); gamma=float(c[&#x27;gamma&#x27;])
+    if rounded:
+        qmax=min(float(c[&#x27;eta&#x27;]/(96*c[&#x27;T&#x27;])),float(c[&#x27;eta&#x27;]/(1200*d**3)))
+        q=2.0**(-math.ceil(math.log2(1/qmax)))
+        ag=np.rint(ag/q)*q; ab=np.rint(ab/q)*q
+        bonds=np.floor(bonds/q)*q; gamma=math.floor(gamma/q)*q
+    else: q=0.0
+    A0=np.diag(ag)+np.diag(-bonds,1)+np.diag(-bonds,-1)
+    A1=np.diag(ab)+np.diag(-bonds,1)+np.diag(-bonds,-1)
+    C0=np.zeros((2*l,2*l)); C0[:l,:l]=A0; C0[l:,l:]=A1
+    C0[0,l]=C0[l,0]=-gamma
+    perm=np.r_[np.arange(l,2*l),np.arange(l)]
+    C1=C0[np.ix_(perm,perm)]
+    return C0,C1,perm,q
+
+def manybody(C):
+    n=C.shape[0]; dim=1&lt;&lt;n
+    H=np.zeros((dim,dim),complex)
+    edges=[(i,j,-C[i,j]) for i in range(n) for j in range(i+1,n) if C[i,j]!=0]
+    for s in range(dim):
+        occ=[(s&gt;&gt;i)&amp;1 for i in range(n)]
+        H[s,s]=sum((1+C[i,i])*occ[i] for i in range(n))+sum(occ[i]*occ[j] for i,j,_ in edges)
+        for i,j,b in edges:
+            if occ[i]!=occ[j]: H[s^(1&lt;&lt;i)^(1&lt;&lt;j),s]=-b
+    return H,edges
+
+def local_gate(V,G,S,n):
+    # Work directly with computational bit-index blocks; column count is unchanged.
+    out=np.empty_like(V)
+    env=[i for i in range(n) if i not in S]
+    for z in range(1&lt;&lt;len(env)):
+        base=sum(((z&gt;&gt;k)&amp;1)&lt;&lt;site for k,site in enumerate(env))
+        inds=[base+sum(((a&gt;&gt;k)&amp;1)&lt;&lt;site for k,site in enumerate(S)) for a in range(1&lt;&lt;len(S))]
+        out[inds,:]=G@V[inds,:]
+    return out
+
+def evolve(V,evals,evecs,t):
+    return evecs@(np.exp(-1j*t*evals)[:,None]*(evecs.conj().T@V))
+
+def run():
+    cases=[]
+    for d in [1,2,3,4,6,8,12,18,24]:
+      for eta in [&#x27;0.125&#x27;,&#x27;0.04&#x27;]:
+        c=construct(d,eta); delta=c[&#x27;delta&#x27;]; A=c[&#x27;A&#x27;]; rho=1-1/A
+        check_mp(abs(sum(c[&#x27;ws&#x27;])-1)&lt;mp.mpf(&#x27;1e-85&#x27;),&#x27;weight sum&#x27;)
+        check_mp(abs(sum(abs(w) for w in c[&#x27;ws&#x27;])-c[&#x27;L&#x27;])&lt;mp.mpf(&#x27;1e-85&#x27;),&#x27;Chebyshev total variation&#x27;)
+        check_mp(all(((-1)**j)*w&gt;0 for j,w in enumerate(c[&#x27;ws&#x27;])),&#x27;weight signs&#x27;)
+        check_mp(c[&#x27;ws&#x27;][0]&gt;=1,&#x27;endpoint interpolation weight&#x27;)
+        check_mp(abs(sum(c[&#x27;wg&#x27;])-1)&lt;mp.mpf(&#x27;1e-85&#x27;),&#x27;good probability sum&#x27;)
+        check_mp(abs(sum(c[&#x27;wb&#x27;])-1)&lt;mp.mpf(&#x27;1e-85&#x27;),&#x27;bad probability sum&#x27;)
+        check_mp(rho &lt;= c[&#x27;eta&#x27;]**2/9,&#x27;good leakage bound&#x27;)
+        check_mp(c[&#x27;wb&#x27;][0]&gt;=1-rho-mp.mpf(&#x27;1e-90&#x27;),&#x27;bad low-level concentration&#x27;)
+        check_mp(min(c[&#x27;wg&#x27;]+c[&#x27;wb&#x27;])&gt;=delta/2,&#x27;polynomial weight floor&#x27;)
+        for k in range(2*d+1):
+            diff=abs(sum(w*x**k for x,w in zip(c[&#x27;xg&#x27;],c[&#x27;wg&#x27;]))-sum(w*x**k for x,w in zip(c[&#x27;xb&#x27;],c[&#x27;wb&#x27;])))
+            maxima[&#x27;moment_error&#x27;]=max(maxima[&#x27;moment_error&#x27;],diff)
+            check_mp(diff&lt;mp.mpf(&#x27;1e-85&#x27;),&#x27;matched moment&#x27;)
+        err=max([abs(c[&#x27;ag&#x27;][i]-c[&#x27;ab&#x27;][i]) for i in range(d)]+[abs(x-y) for x,y in zip(c[&#x27;bg&#x27;],c[&#x27;bb&#x27;])])
+        maxima[&#x27;jacobi_prefix_error&#x27;]=max(maxima[&#x27;jacobi_prefix_error&#x27;],err)
+        check_mp(err&lt;mp.mpf(&#x27;1e-75&#x27;),&#x27;Jacobi shared prefix&#x27;)
+        err=abs(c[&#x27;ab&#x27;][-1]-c[&#x27;ag&#x27;][-1]-(1+delta)/2)
+        maxima[&#x27;boundary_error&#x27;]=max(maxima[&#x27;boundary_error&#x27;],err)
+        check_mp(err&lt;mp.mpf(&#x27;1e-75&#x27;),&#x27;last diagonal difference&#x27;)
+        check_mp(min(c[&#x27;bg&#x27;])&gt;=c[&#x27;eta&#x27;]/(300*d**3),&#x27;hopping lower bound&#x27;)
+        check_mp(max(c[&#x27;bg&#x27;])&lt;=mp.mpf(&#x27;.5&#x27;)+mp.mpf(&#x27;1e-85&#x27;),&#x27;hopping upper bound&#x27;)
+        # Uniform-in-time conclusions have analytic proofs; these are selected-time diagnostics.
+        tstar=mp.pi/delta
+        Fb=sum(w*mp.exp(-1j*tstar*x) for x,w in zip(c[&#x27;xb&#x27;],c[&#x27;wb&#x27;]))
+        check_mp((1-mp.re(Fb))/2&gt;=1-rho-mp.mpf(&#x27;1e-80&#x27;),&#x27;explicit bad local signal&#x27;)
+        for frac in [&#x27;0&#x27;,&#x27;0.001&#x27;,&#x27;0.1&#x27;,&#x27;0.25&#x27;,&#x27;0.6&#x27;,&#x27;1&#x27;]:
+            t=mp.mpf(frac)*c[&#x27;T&#x27;]
+            F=sum(w*mp.exp(-1j*t*x) for x,w in zip(c[&#x27;xg&#x27;],c[&#x27;wg&#x27;]))
+            vecsq=1-mp.re(F)
+            check_mp(vecsq&lt;=2*rho+mp.mpf(&#x27;1e-85&#x27;),&#x27;uniform good vector bound&#x27;)
+        C0,C1,perm,_=oneparticle(c)
+        R0,R1,_,q=oneparticle(c,True)
+        check_fp(np.linalg.norm(C1-C0[np.ix_(perm,perm)],2)&lt;1e-13,&#x27;one-particle reflection&#x27;)
+        check_fp(np.linalg.norm(R0-C0,2)&lt;=3*q+1e-14,&#x27;dyadic rounding norm&#x27;)
+        check_fp(np.max(np.sum(np.abs(R0-np.diag(np.diag(R0))),axis=1))&lt;=1+1e-13,&#x27;hopping row sum&#x27;)
+        for B in [C0,C1,R0,R1]:
+            check_fp(np.linalg.eigvalsh(B)[0]&gt;=-float(c[&#x27;gamma&#x27;])-3*q-1e-13,&#x27;active-band lower bound&#x27;)
+        # Long-time candidate fidelity and local trace distance for connected, rounded cases.
+        metrics=[]
+        for B in [C0,C1,R0,R1]:
+            ev,Q=eigh(B); seed=Q[0,:]
+            F=np.dot(seed**2,np.exp(-1j*float(tstar)*ev))
+            Dloc=.5*np.sqrt((1-abs(F)**2)**2+abs(1-F)**2)
+            Dglob=np.sqrt(max(0,1-abs((1+F)/2)**2))
+            metrics.append((Dloc,Dglob))
+        check_fp(metrics[0][1]&lt;float(c[&#x27;eta&#x27;]),&#x27;connected good trajectory at tstar&#x27;)
+        check_fp(metrics[1][0]&gt;.75,&#x27;connected bad local trajectory at tstar&#x27;)
+        check_fp(metrics[2][1]&lt;float(c[&#x27;eta&#x27;]),&#x27;rounded good trajectory at tstar&#x27;)
+        check_fp(metrics[3][0]&gt;.75,&#x27;rounded bad local trajectory at tstar&#x27;)
+        cases.append({&#x27;d&#x27;:d,&#x27;eta&#x27;:eta,&#x27;T&#x27;:float(c[&#x27;T&#x27;]),&#x27;dyadic_step&#x27;:q,
+                      &#x27;tstar_good_global&#x27;:metrics[2][1],&#x27;tstar_bad_local&#x27;:metrics[3][0]})
+    # Small interacting many-body examples with arbitrary joint port-control pulses.
+    rng=np.random.default_rng(184729)
+    control_records=[]
+    for d in [1,2,3]:
+        c=construct(d); C0,C1,perm,_=oneparticle(c)
+        H0,edges=manybody(C0); H1,_=manybody(C1); n=C0.shape[0]; l=d+1
+        bitperm=np.array([sum(((s&gt;&gt;i)&amp;1)&lt;&lt;int(perm[i]) for i in range(n)) for s in range(1&lt;&lt;n)])
+        er=np.linalg.norm(H1-H0[np.ix_(bitperm,bitperm)],2)
+        maxima[&#x27;reflection_error&#x27;]=max(maxima[&#x27;reflection_error&#x27;],float(er))
+        check_fp(er&lt;1e-11,&#x27;full interacting isospectral reflection&#x27;)
+        ev0,Q0=eigh(H0); ev1,Q1=eigh(H1)
+        check_fp(np.max(abs(ev0-ev1))&lt;1e-10,&#x27;many-body spectra&#x27;)
+        check_fp(abs(ev0[0])&lt;1e-10 and ev0[1]&gt;.9,&#x27;unique vacuum and constant gap&#x27;)
+        # Embedded arbitrary input on the two central port sites.
+        S=[0,l]; E=np.zeros((1&lt;&lt;n,4),complex)
+        for a in range(4): E[((a&amp;1)&lt;&lt;S[0])+(((a&gt;&gt;1)&amp;1)&lt;&lt;S[1]),a]=1
+        endpoints=[d,2*l-1]; R=d
+        for tau in [.1,.3,.6]:
+            if tau&gt;R/2: continue
+            for trial in range(4):
+                V0=E.copy(); V1=E.copy(); elapsed=0.0
+                for seg in range(4):
+                    Z=rng.normal(size=(4,4))+1j*rng.normal(size=(4,4))
+                    G,_=np.linalg.qr(Z)
+                    V0=local_gate(V0,G,S,n); V1=local_gate(V1,G,S,n)
+                    dt=tau/4; elapsed+=dt
+                    V0=evolve(V0,ev0,Q0,dt); V1=evolve(V1,ev1,Q1,dt)
+                    qbound=sum(elapsed**j/math.factorial(j) for j in range(R,80))
+                    for V in [V0,V1]:
+                        for x in endpoints:
+                            inds=np.array([s for s in range(1&lt;&lt;n) if (s&gt;&gt;x)&amp;1])
+                            amp=np.linalg.norm(V[inds,:],2)
+                            maxima[&#x27;controlled_occupation_ratio&#x27;]=max(maxima[&#x27;controlled_occupation_ratio&#x27;],float(amp/max(qbound,1e-100)))
+                            check_fp(amp&lt;=qbound+2e-12,&#x27;controlled occupation cone&#x27;)
+                err=np.linalg.norm(np.eye(4)-V0.conj().T@V1,2)
+                bound=8*tau**(2*R+1)/((2*R+1)*math.factorial(R)**2)
+                maxima[&#x27;control_gram_ratio&#x27;]=max(maxima[&#x27;control_gram_ratio&#x27;],float(err/bound))
+                check_fp(err&lt;=bound+2e-12,&#x27;forward-channel Gram bound&#x27;)
+                control_records.append({&#x27;d&#x27;:d,&#x27;tau&#x27;:tau,&#x27;trial&#x27;:trial,&#x27;gram_norm&#x27;:float(err),&#x27;proved_bound&#x27;:bound})
+    report={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;scope&#x27;:&#x27;finite numerical diagnostics, not independent proof validation&#x27;,
+            &#x27;seed&#x27;:184729,&#x27;precision_decimal_digits&#x27;:mp.mp.dps,&#x27;counts&#x27;:counts,
+            &#x27;maxima&#x27;:{k:str(v) if isinstance(v,mp.mpf) else v for k,v in maxima.items()},
+            &#x27;constructed_cases&#x27;:cases,&#x27;controlled_manybody_cases&#x27;:control_records}
+    (OUT/&#x27;diagnostics.json&#x27;).write_text(json.dumps(report,indent=2))
+    print(json.dumps({k:v for k,v in report.items() if k not in [&#x27;constructed_cases&#x27;,&#x27;controlled_manybody_cases&#x27;]},indent=2))
+
+if __name__==&#x27;__main__&#x27;: run()
+</pre>

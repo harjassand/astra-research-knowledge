@@ -1,0 +1,57 @@
+<!doctype html><meta charset="utf-8"><title>N741 recovered original — cray_bounded_field_compiler/verify_integral_layers.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not mathematical correctness, priority, general implementation or technology validation. Scientific code syntax parsed only, never executed at intake.</aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite rank-one diagnostic of the positive convex-volume sum.
+
+No convex-volume algorithm is implemented: in one dimension the sublevel
+body is an interval and its volume is computed explicitly. Arithmetic is
+high precision but not interval-certified.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+import math
+from pathlib import Path
+import mpmath as mp
+from verify_compiler import log_normal_interval
+
+
+def check_case(name, left, right, mu, variance, eta):
+    k=mp.mpf(variance); mu=mp.mpf(mu)
+    l=mp.mpf(left); u=mp.mpf(right)
+    mode=max(l,min(u,mu)); dist=abs(mode-mu)
+    qmin=dist*dist/(2*k)
+    true_log_i=qmin+mp.log(2*mp.pi*k)/2+log_normal_interval((l-mu)/mp.sqrt(k),(u-mu)/mp.sqrt(k))
+    s=eta/16
+    T=16+4*math.ceil(math.log2(32/float(eta)))
+    N=int(mp.ceil(T/s))
+    accum=mp.mpf(0)
+    geometric=mp.exp(-s)
+    weight=1-geometric
+    for j in range(1,N+1):
+        rad=mp.sqrt(dist*dist+2*k*j*s)
+        volume=max(mp.mpf(0),min(u,mu+rad)-max(l,mu-rad))
+        accum+=weight*volume
+        weight*=geometric
+    log_error=mp.log(accum)-true_log_i
+    assert abs(log_error)&lt;eta
+    return {&#x27;case&#x27;:name,&#x27;levels&#x27;:N,&#x27;eta&#x27;:str(eta),&#x27;mode&#x27;:mp.nstr(mode,20),
+            &#x27;true_log_normalized_integral&#x27;:mp.nstr(true_log_i,26),
+            &#x27;signed_log_error&#x27;:mp.nstr(log_error,24)}
+
+
+def main():
+    p=argparse.ArgumentParser(); p.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;integral_results.json&#x27;))
+    args=p.parse_args(); mp.mp.dps=90; eta=mp.mpf(1)/8
+    cases=[check_case(&#x27;central&#x27;,-1,2,0,1,eta),
+           check_case(&#x27;far_shifted&#x27;,0,1,mp.mpf(2)**40,1,eta),
+           check_case(&#x27;thin_interval&#x27;,0,mp.mpf(2)**-40,1,1,eta),
+           check_case(&#x27;narrow_gaussian&#x27;,-1,2,0,mp.mpf(2)**-40,eta)]
+    data={&#x27;status&#x27;:&#x27;positive_sum_finite_checks_passed_not_general_volume_engine&#x27;,
+          &#x27;precision_decimal_digits&#x27;:90,&#x27;cases&#x27;:cases,
+          &#x27;limitations&#x27;:[&#x27;Explicit one-dimensional sublevel volumes only.&#x27;,
+                         &#x27;No interval certification and no generic volume FPRAS.&#x27;]}
+    args.output.write_text(json.dumps(data,indent=2)+&#x27;\n&#x27;); print(json.dumps(data,indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre>
