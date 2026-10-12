@@ -1,0 +1,102 @@
+# S5 final adversarial audit of S2
+
+Date: 2026-10-12. Scope: S2 Theorem 5.1, the direct estimator's stated bit costs, and the #NFA comparator. This is an internal proof reconstruction. It is not external mathematical verification, a novelty assessment, or a new research branch. S2 and all earlier S5 artifacts were preserved.
+
+## Verdict
+
+The load-bearing inequality, conditioning argument, witness estimator, and stronger low-width #NFA conclusion are sound. I found no counterexample or missing mathematical bridge in those main results. There are several small corrections to make the literal input/output and bit-cost claims exact, and one omitted second-moment calculation needed to justify the assertion about actual exponential variance.
+
+## 1. Independent reconstruction of Theorem 5.1
+
+Use S2's definitions of U, Q, contradiction witnesses, and N(S). Assume first U>0. Let C be an inclusion-minimal inconsistent retained support.
+
+There is a contradiction witness supported on C. Minimality makes its support exactly C; over F2 this witness is the all-one vector 1_C. If a nonzero even-right-side dependency d were supported on C, then 1_C+d would be a contradiction witness on a proper subset, a contradiction. Thus the even subspace in ker(A_C^T) is zero. Since its right-side functional has a nonzero value on 1_C, the whole kernel has dimension one and
+
+    rank(A_C)=|C|-1.
+
+For every inconsistent S containing C, S2's multiplicity formula therefore gives the alternative verification
+
+    N(S)=2^(|S|-rank(A_S)-1)
+        <=2^(|S|-rank(A_C)-1)
+        =2^|S\C|.
+
+This independently verifies S2's injective-restriction bound. Its stated injection is also valid: the difference of two witnesses with identical outside restriction would be precisely a forbidden even dependency supported on C. The minimality-to-1_C step is implicit in S2 and could be added as one explanatory sentence.
+
+Order the minimal inconsistent supports and partition the inconsistent event by the first contained C. Conditional on all coordinates in C being retained, the outside coordinates still have their original product law. Every earlier minimal support C' has C'\C nonempty. Avoiding all such C' is a decreasing event D in the outside bits. The function 2^|S\C| is increasing. Harris, applied to this function and -1_D, gives
+
+    E[2^|S\C| | D,C retained]
+      <=E[2^|S\C| | C retained]
+      =product_(e outside C)(1+p_e).
+
+The correlation sign is correct: decreasing conditioning lowers the expectation. Average over the first-C partition to obtain
+
+    Q/U=E[N(S) | inconsistency]<=product_e(1+p_e).
+
+No enumeration of the minimal supports is used by the algorithm; the ordering is only a proof device. No inverse-rarity floor or conditional-sampling oracle is hidden here.
+
+Only positive-mass partition cells need to be conditioned upon. With S2's preprocessed 0<p_e<1, the outside-empty configuration indeed proves that each avoidance event has positive mass. With endpoint probabilities retained in the formulation, outside-empty may have zero mass, but restricting to positive-mass cells still proves the result.
+
+**Small statement correction:** the universal statement should be Q<=U product_e(1+p_e), with Q/U asserted only when U>0. When U=0, Q=0 and the quotient is undefined. The surrounding text already preprocesses this case, so this does not affect the algorithm.
+
+## 2. Mixture, concentration, and random-bit caps
+
+The witness mixture has marginal pi(S)=mu(S)N(S)/Q, and Y=1/N(S) satisfies E_pi Y=U/Q. Since 0<Y<=1,
+
+    Var(Y)/(E Y)^2<=Q/U-1<=min(K,P)-1.
+
+The sample count in S2 Theorem 6.1 is conservative: bounded-variable multiplicative Chernoff gives failure at most 2 exp(-n epsilon^2/(3R)), and its chosen n makes this <=delta/2. Clipping the final probability estimate to [0,1] cannot spoil a successful relative estimate.
+
+At most 2mn rational coin calls are needed. Each rejection proposal fails with conditional probability at most 1/2. Aborting only if **all T proposals are rejected** has probability at most 2^(-T) per call, even though later coin probabilities depend on earlier samples. Coupling to the ideal unbounded exact sampler gives total failure <=delta/2+delta/2. One need not, and should not, claim that the sample sequence conditioned on no abort is still independent with the ideal law. S2's argument is valid under this coupling interpretation. The inspected `sample_fraction` implementation accepts a successful T-th proposal and aborts only after T rejections, as required.
+
+**Small input/output correction:** S2 says the output is zero exactly in its preprocessed zero case, but later allows an arbitrary fallback on a cap failure. Choose a positive fallback, for example 1, if the literal zero-if-and-only-if promise is intended. Allowing fallback zero would preserve the FPRAS success guarantee but violate that stronger literal promise on a failure run.
+
+## 3. Bit-cost audit
+
+The feasible trellis state set P_j intersect (t+F_j) and its size 2^w_j are correct. State offsets and bases can be found by explicit elimination. The claimed supplied-order construction does not require finding an optimal order.
+
+The integer recurrence G_j=d_j G_(j-1)+a_j G_(j-1)(shifted state) is correct because absent witness coordinates have weight one, while present coordinates have weight p_j. The backward inclusion probability has exactly the corresponding numerator. All table and coin numerators/denominators have O(B+m) bits, and the reciprocal-power-of-two representation of Y gives the claimed O(B+m+log n) output size.
+
+**Specific correction to (6.2):** as a literal complete bit bound, its arithmetic-size parameter omits the encoding lengths of the rational accuracy and confidence inputs. Let E_epsilon and E_delta be those lengths. Add an additive parameter-setup term polynomial in B+m+d+E_epsilon+E_delta, or include E_epsilon+E_delta in the arithmetic-size parameter. Schoolbook arithmetic gives a conservative quadratic term for the rational operations needed to determine R, n, and T, in addition to the displayed main work.
+
+This omission can matter even when n stays bounded: a reduced rational epsilon arbitrarily close to 1/2 can have an arbitrarily long numerator and denominator. The displayed (6.2), with fixed matrix/probability input and constant-valued n,T, would not even charge reading that epsilon. Adding the term repairs the full bit-cost claim and leaves the promised-family FPRAS conclusion unchanged.
+
+The rank work and main probability arithmetic in (6.2) are otherwise conservatively bounded. The direct algorithm is polynomial on the stated supplied-order low-width/low-overlap families; the rarity of U does not enter the complexity except through the explicitly encoded input probabilities.
+
+## 4. Actual variance: one missing calculation, with the claimed conclusion recovered
+
+S2 gives a rank-one example with exponential Q/U and concludes that this estimator can have exponential relative variance. A large upper bound Q/U-1 alone does not logically prove large actual variance. The conclusion is nevertheless true for exactly that example, with the following short calculation.
+
+Let m_0 and m_1 count the two right-side types, all retained with p in (0,1). Define
+
+    A_i=(1+p)^(m_i)-(1-p)^(m_i),
+    B_i=(1-p/2)^(m_i)-(1-p)^(m_i),       i=0,1.
+
+S2 correctly has Q=A_0 A_1/4 and U=[1-(1-p)^(m_0)][1-(1-p)^(m_1)]. When both types are present, N(S)=2^(|S|-2). Consequently
+
+    E_pi[Y^2]=(1/Q) E_mu[1/N(S); inconsistency]
+              =4 B_0 B_1/Q,
+    Var_pi(Y)/(E_pi Y)^2=4Q B_0 B_1/U^2-1.
+
+For m_0=m_1 tending to infinity, with m=m_0+m_1, this is asymptotic to
+
+    [(1+p)(1-p/2)]^m-1.
+
+The base is 1+p(1-p)/2>1. Thus the assertion that this particular all-witness estimator has no universal polynomial variance bound is established after adding this actual second-moment computation. The event's easy closed-form U still makes the example an estimator limitation, not an instance-hardness argument.
+
+## 5. NFA comparator: verified scope and reduction
+
+I checked the primary [Arenas–Croquevielle–Jayaram–Riveros paper, arXiv:1906.09226v4](https://arxiv.org/html/1906.09226v4), especially its definition of MEM-NFA and Theorem 6.2. Its theorem counts **accepted binary words**, with the word length given in unary, for NFAs without epsilon transitions. This is exactly the predicate and interface needed here; it counts a retained set once despite multiple contradictory witnesses.
+
+For fair probabilities, label a trellis layer transition by S_e, with the nondeterministic witness choice constrained by c_e<=S_e. The resulting layered NFA has O(m2^w) states and transitions and recognizes precisely the inconsistent retention words. The nondeterminism is essential; counting accepting paths would reproduce witness multiplicities and is not a substitute for #NFA.
+
+For a general rational p_e>0, choose ell_e large enough that 2^(-ell_e)<=alpha p_e and set q_e=floor(2^ell_e p_e)/2^ell_e. Then (1-alpha)p_e<=q_e<=p_e with ell_e=O(B_e+log(m/epsilon)). Couple by thinning each retained coordinate with probability q_e/p_e. Conditional on an inconsistent set and any fixed contained contradictory witness, its survival probability is at least (1-alpha)^m. This proves the claimed multiplicative comparison without dividing by U.
+
+A deterministic three-state less/equal/greater comparator realizes each dyadic q_e from its own uniform binary block. Carry the current syndrome through that block and fold c_e selection into its last input-bit transition. This uses no epsilon transitions. It has polynomial size in 2^w and the total block length N=O(B+m log(m/epsilon)), which can be supplied in unary at polynomial cost. Dividing the accepted-word count by 2^N gives U(q) with a denominator of only N+1 bits. Constant-fraction error allocation and median amplification yield the stated FPRAS.
+
+Therefore S2 correctly concludes that supplied-order w=O(log L) already suffices, **without a retention-mass promise**, using this imported theorem. Its elementary overlap bound/direct estimator should not be advertised as a new low-width existence boundary. No runtime advantage against a modern #NFA implementation follows without a matched implementation comparison. [Meel–Chakraborty–Mathur, arXiv:2312.13320v2](https://arxiv.org/abs/2312.13320) is a valid further primary comparator, but is unnecessary for the existence implication.
+
+**Terminology correction:** replace S2's phrase “exact Gaussian overlap correction” with “exact rank-based reciprocal-multiplicity correction.” The present probability model is binary retention; Gaussian elimination computes the rank, but there is no Gaussian noise distribution in this estimator.
+
+## 6. Scope of this reconstruction
+
+The overlap theorem, bounded-width trellis, direct estimator, and #NFA reduction were reconstructed mathematically in this audit. I inspected the rational-coin primitive but did not rerun or independently certify S2's full experimental suite. No new performance experiment, priority search, or external referee validation was performed. The stated corrections preserve the main mathematical conclusions and make their literal bit-cost and estimator-limitation claims precise.

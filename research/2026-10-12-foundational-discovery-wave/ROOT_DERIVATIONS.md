@@ -1,0 +1,60 @@
+# Principal-investigator derivations
+
+These are internally derived finite-model arguments. Correctness is open to reconstruction; novelty is UNKNOWN. They are not claims of a new physical law or an asymptotic improvement over the full amplitude model.
+
+## R1. A task-specific closure for a star of resonant triads
+
+C3's five-mode boundary counterexample motivates retaining the quantities needed by the controlled vector field, rather than generating the full orbit-invariant ring. Consider r pairs of complex amplitudes x_i,y_i sharing one complex mode c, with real controls k_i(t):
+
+    i x'_i = k_i conjugate(y_i) c
+    i y'_i = k_i conjugate(x_i) c
+    i c'   = sum_i k_i x_i y_i.
+
+Put b_i=x_i y_i, s_i=|x_i|²+|y_i|², n_c=|c|² and z_i=b_i conjugate(c). Then b'_i=-i k_i s_i c. The full pairwise coherence matrix G_ij=b_i conjugate(b_j) gives a regular polynomial closure with r² complex entries (many redundant).
+
+Suppose all permitted coupling vectors lie in the supplied real d-dimensional span of a matrix K: k_i(t)=sum_alpha K_i,alpha v_alpha(t). Define B_alpha=sum_i K_i,alpha b_i and Q_i,alpha=b_i conjugate(B_alpha). Define Z_alpha=sum_i K_i,alpha z_i and L_alpha=sum_i K_i,alpha k_i s_i. Direct differentiation yields
+
+    (|x_i|²)'=(|y_i|²)' = -2 k_i Im(z_i)
+    n_c' = 2 sum_i k_i Im(z_i)
+    z'_i = i sum_alpha v_alpha Q_i,alpha - i k_i s_i n_c
+    Q'_i,alpha = -i k_i s_i conjugate(Z_alpha) + i L_alpha z_i.
+
+Thus actions, r triad products and rd collective products form an exact, globally polynomial controlled state for every prescribed admissible control history, including c=0 and all other vanishing-amplitude strata. If feedback is a well-posed function of this state, the same factorization supplies that feedback trajectory. The dimension is O(r(d+1)), and each derivative can be evaluated in O(rd) arithmetic when K is dense. This avoids the O(r²) full-coherence representation when d is small, but the original amplitude ODE already has O(r) complex variables and O(r) evaluation with given k. No speedup relative to acquired complex amplitudes follows.
+
+For fixed k, take d=1 and K=k. At c=0, every z_i vanishes, but Q_i=b_i conjugate(sum_j k_j b_j) can retain the phase information that changes c''-related action transfer. For C3's r=2 equal-coupling pair b=(1,1) versus b=(1,-1), Q=(2,2) versus (0,0), respectively. Their central actions have second derivatives 8 and 0. This is the concrete capability demonstrated by the additional state.
+
+The construction does not separate all phase-symmetry orbits. States invisible to every admitted control can be deliberately merged if all requested action trajectories agree. Arbitrary newly added coupling vectors need new collective products. Reading off Q from action measurements is not free: a coherent complex-mode sensor supplies it immediately but already supplies the stronger amplitude representation. Whether a weaker physically attainable sensor can acquire Q at an advantage is a separate, currently unresolved question.
+
+The positive mechanism is vector-field closure on a task-specific subalgebra/module. C3 identified the full-invariant alternative; this derivation chooses the control span first and tests derivative closure. It must be compared against classical butterfly/star-cluster reductions, invariant theory, observability algebras and minimal nonlinear realization before any originality claim.
+
+## R2. Exact-sign errors do not imply finite-horizon forecast errors
+
+A5 constructs two high-frequency initial Navier–Stokes fields with identical resolved snapshot and opposite O(1) derivative in one fixed low mode, uniformly in cutoff K under an energy bound. This does not alone lower-bound forecast error uniformly in K: the high inputs decay on the viscous time O((nu K²)^-1). A derivative difference supported on that time can generate only O((nu K²)^-1) low-mode separation. Any claimed practical forecast obstruction must prove a nonzero-time lower bound under the exact viscosity, regularity, observation and output-norm contract. This logical failure invalidates the inference from derivative nonclosure to a cutoff-independent trajectory barrier; it does not refute A5's derivative calculation.
+
+## R3. Lean comparison requires the solution, not the challenge stub
+
+At OpenAI/math fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb, ComparatorChallenges/LogspaceEquality.lean contains an admitted challenge statement. ComparatorChallenges/LogspaceEquality.json identifies solution_module OAI.Computability.Logspace.Equality and an explicit permitted-axiom set. The challenge admission is not evidence of a solution admission. B1's initial interpretation was corrected before selection. No local comparator compilation or exported axiom verification has yet occurred in this wave.
+
+## R4. A proposed arity barrier for random affine inconsistency
+
+N715 proposes (unreviewed) an FPRAS for an odd-sign cycle in a random signed graph. Generalizing its saturated entailment sectors to arbitrary binary affine equations encounters a precise potential barrier.
+
+Given a graph H with terminals s,t, add distinguished edge e0=st and consider the binary cographic matroid M*(H+e0). For a random subset S of the other edges, e0 is spanned by S exactly when S contains the remaining edges of a bond containing e0, equivalently H\S disconnects s and t. A polynomial-time binary representation of the cographic matroid therefore converts two-terminal unreliability into random target-span probability. Feng–Fu–Guo (arXiv:2608.02523, Theorem 3) establish #BIS-hardness for undirected two-terminal unreliability; this is a primary-source premise, not proved here.
+
+Choose invertible row coordinates putting the nonzero distinguished column at t=(0,...,0,1). Write each other column as (a_e,b_e). Then t belongs to span{(a_e,b_e): e in S} exactly when the selected affine equations a_e dot x=b_e are inconsistent: a selected linear combination has zero left-hand side and right-hand side one. This is elementary Gaussian elimination/linear duality over F2.
+
+Finally split every long affine equation into a deterministic chain of equations of arity at most three using private prefix variables, with only its final unary equation retained randomly. For example, impose y_0=0 and y_j+y_(j-1)+x_j=0 deterministically for the nonzero coordinates of a_e, then retain y_L=b_e with the original edge probability. Each retained equation has its original independent Bernoulli bit; the deterministic auxiliaries introduce no random correlations. The new selected system is consistent exactly when the old one is. The construction is polynomial in the explicit matrix size.
+
+If these steps survive independent reconstruction, relative approximation of inconsistency probability for ternary XOR systems with supplied independent rational retention probabilities, including deterministic equations, is #BIS-hard. It does not prove no FPRAS unconditionally. The width-two positive side remains conditional on N715's unreviewed proof, and the reduction says nothing against that signed-graph result. Strictly interior probabilities require a further finite-bit replacement of deterministic constraints with an error budget relative to an explicit lower bound on the target event.
+
+This is an original-to-wave derivation of a possible transfer boundary, with novelty UNKNOWN. A Sol worker should reconstruct the matroid duality, retention/complement convention, arithmetic size, zero-probability cases and deterministic-chain equivalence, then seek a real tractable extension instead of declaring all logical saturation rapidly mixing.
+
+S2 subsequently removed the presumed rare-event cost of approximating deterministic helpers: deleting helpers can only remove inconsistency, while the event that all helpers are present is independent of the original retained rows. Consequently (1-D eta) U <= U' <= U. This is multiplicative without needing a lower bound on U. S2 further constructed two-row private-variable copies to make all rows distinct and retained with probability 1/2. These refinements are S2's work; see its proof artifact. A fifth Sol investigator was dispatched with the target theorem and hardness premise, without the root/S2 construction, for an alternative reconstruction.
+
+## R5. Adaptive finite-probe exact nonidentifiability without a continuous policy
+
+Let M_0 be a connected open D-dimensional smooth parameter manifold, D>m, of admissible physical models. Suppose each fixed scalar probe has a C^1 response on every local parameter submanifold. An adaptive deterministic policy may choose the next probe by an arbitrarily discontinuous function of its previous exact responses.
+
+There is still a positive-dimensional constant-transcript local submanifold after m probes. Inductively take a connected local submanifold M_j on which the first j responses equal a fixed transcript. The next probe is fixed on this transcript. If its response is constant on M_j, retain a connected open patch. Otherwise its derivative is nonzero at some point (a C^1 function with zero derivative everywhere on a connected manifold is constant); the implicit function theorem supplies a connected local level submanifold of dimension dim M_j-1. Repeat. At the end dim M_m >= D-m>0, so two distinct models have the same full adaptive transcript.
+
+This exact existence theorem requires neither continuity of the policy nor a quantitative bound on separation. It is distinct from B4's Borsuk–Ulam construction, which gives an explicit separation rate for a continuous transcript. It does not by itself settle randomized policies, noisy statistical risk, variable stopping time, infinitely many outputs per probe, or the physical relevance of the parameter manifold. S3 independently reconstructed the induction and is pursuing the sharper noisy-data question.

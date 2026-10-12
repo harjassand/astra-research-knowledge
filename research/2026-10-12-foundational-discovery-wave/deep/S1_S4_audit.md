@@ -1,0 +1,149 @@
+# S1 independent adversarial audit of S4
+
+Date: 12 October 2026. Scope: the arbitrary-snapshot, unforced 2D minimax theorem in `deep/S4.md`, especially its heat-flow upper and coherent-packet remainder. Read-only review of S4 and `exploration/A5.md`; no other files modified. This is **internal reconstruction only**, not external certification or a novelty audit.
+
+## Verdict
+
+**No fatal gap found in equation (1) on S4's stated class:** smooth, real, mean-zero, divergence-free periodic initial velocities, normalized area measure, `||u0||₂≤E`, zero forcing, exact square-cutoff snapshot, and trajectory error with the supremum over `0≤t≤T`. The coherent packets satisfy the observation constraint; the PDE remainder includes every generated unresolved mode; the lower genuinely bounds the full arbitrary-snapshot minimax. The heat predictor uses no hidden initial coefficients.
+
+Two minor scope clarifications remain:
+
+1. Explicitly declare `K∈N`. The text uses the integer-cutoff facts “initial frequency at least `K+1`” and `K≤16L+15`. For real cutoffs the appropriate quantity in the negative-norm estimates is `floor K+1`; the main scaling theorem can still be adjusted without difficulty.
+2. A5's displayed supremum does not explicitly require mean zero. S4's theorem covers **every snapshot in its stated mean-zero class**, which is sufficient for the internal theorem. To identify it literally with A5's broader initial-state class, either state this restriction or include the elementary Galilean extension below. Zero forcing is likewise an explicit specialization of A5's supplied-forcing contract.
+
+These points do not undermine the stated minimax scaling. No fixed-terminal-time, persistent macroscopic-error, arbitrary-forcing, or continuing-observation theorem follows.
+
+## 1. Arbitrary-snapshot upper reconstructed
+
+Let `v=e^{νtΔ}u0` and `w=u-v`. Although the proof introduces the full heat flow, the predictor computes only
+
+\[
+P_Kv=e^{\nu t\Delta}P_Ku_0,
+\]
+
+which is exactly determined by the supplied snapshot. For mean-zero `u`, the stated periodic Ladyzhenskaya constant is valid: applying the fundamental theorem to `|u|²` in each direction gives
+
+\[
+\|u\|_4^2\le\|u\|_2^2+2\sqrt2\pi\|u\|_2\|\nabla u\|_2
+\le10\|u\|_2\|\nabla u\|_2.
+\]
+
+The normalized-area convention and mean-zero Poincaré constant one are consistent here.
+
+Testing `w_t-νΔw=-B(u,u)` against `w` yields
+
+\[
+(\|w\|_2^2)'\le(100/\nu)X Z,
+\qquad X=\|u\|_2^2,\quad Z=\|\nabla u\|_2^2.
+\]
+
+The exact energy identity `X'=-2νZ` gives
+
+\[
+\int_0^t XZ\,ds=(X(0)^2-X(t)^2)/(4\nu),
+\quad \|w(t)\|_2\le5E^2/\nu.
+\]
+
+Both `u` and `v` have norm at most `E`, so the error is also at most `2E`. Fourier convolution gives `|B_j(u,u)|≤|j|E²`; the mild formula and `S_K≤4K²` give the short-time bound `4K²E²T`. Thus the complete arbitrary-snapshot upper is
+
+\[
+\min\{2E,5E^2/\nu,4K^2E^2T\}
+\le10E^2\min\{K^2T,(\nu+E)^{-1}\}.
+\]
+
+The last step correctly splits `E≤ν` and `E≥ν`. No uniform initial enstrophy bound is used, and there is no snapshot-zero assumption in this argument.
+
+**Mean extension.** If the mean `m=(u0)_0` is allowed, it is known from the snapshot. Set
+
+\[
+\widetilde u(t,x)=u(t,x+mt)-m.
+\]
+
+This is a mean-zero unforced solution with initial norm at most `E`. Apply the preceding upper to it and use the computable predictor
+
+\[
+z(t,x)=m+
+ [e^{\nu t\Delta}(P_Ku_0-m)](x-mt).
+\]
+
+Translation commutes with `P_K` and preserves its L² norm, so the same constants apply. The packet lower already lies in the mean-zero subclass. This repairs the broader A5 interpretation without another PDE estimate.
+
+## 2. Packet geometry, signs, and normalization reconstructed
+
+For `L=floor(K/16)≥1`, the corrected `B_L` rectangle has `|q_x|≥32L>K`; the `A_L` rectangle is farther out. In particular the `K=31,L=1` edge case is fixed. All four support rectangles are disjoint. With vorticity amplitude `a=8E`,
+
+\[
+\|u_0\|_2^2\le4(L+1)^2a^2/(32L)^2\le a^2/64=E^2.
+\]
+
+Every target in `D_L^+` has at least `L²/4` choices `p∈A_L,q∈B_L`, and no other support-pair types reach that set. The coefficient
+
+\[
+C(p,q)=(p\times q)(|q|^{-2}-|p|^{-2})
+\]
+
+already combines both convolution orderings. Its lower bound is
+
+\[
+320(1/1170-1/1600)=43/585>1/16.
+\]
+
+The positive sign is consistent with `u_j=-ij^⊥ω_j/|j|²` and the vorticity equation. The factor `σ` is common to every target contribution, so the two second Picard targets are negatives. Dividing each vorticity coefficient by `|k|≤15L` and summing at least `L²` positive target coefficients gives exactly the conservative lower
+
+\[
+\|V_D^\sigma(t)\|_2\ge a^2L^2t\,e^{-2852\nu L^2t}/960.
+\]
+
+Ignoring the negative target copies weakens the bound and introduces no normalization error.
+
+## 3. The nonlinear remainder is a genuine PDE bound
+
+The error equation for `w=u-v` contains `B(v,v)`, `B(v,w)`, `B(w,v)`, and `B(w,w)`. When tested against `w`, the `B(v,w)` and `B(w,w)` terms vanish by incompressibility, leaving
+
+\[
+\|w(t)\|_2\le Rt e^{Gt},
+\quad G=16aL^2,\quad R=4a^2L^2.
+\]
+
+The stronger estimate `R≤2a²L²` is already available, so the chosen constant has slack. For every Fourier mode, the difference of the quadratic tensors satisfies
+
+\[
+|[B(u,u)-B(v,v)]_k|
+\le|k|(\|u\|_2+\|v\|_2)\|w\|_2.
+\]
+
+Both norms are at most `a/8`. Since `|D_L|≤8L²` and `|k|≤15L`, the coefficient-to-projected-norm factor is at most
+
+\[
+(15\sqrt8/4)aL^2<12aL^2.
+\]
+
+Integrating the mild remainder with the heat semigroup's L² contraction therefore gives
+
+\[
+\|P_Du^\sigma-V_D^\sigma\|_2
+\le24a^3L^4t^2e^{16aL^2t}.
+\]
+
+This estimate uses the full PDE energy of `u`; it does not assume that its Fourier support stays in the initial rectangles. No Galerkin closure or numerical trajectory is smuggled into the lower bound.
+
+At the stated `τ_P`, the exponent cap is `17831/37500<1/2` and the remainder/leading ratio is less than `288/625<1/2`. Consequently the half-separation is at least `a²L²τ_P/3840`. Substitution `a=8E` yields the coefficient `E²/60` in (26). Using `L≥K/32`, every minimum entry exceeds `1/800000` times `min{K²T,(ν+E)^{-1}}`; hence `1/48000000>10^-8` is valid.
+
+## 4. Why the lower covers the full snapshot minimax
+
+For any arbitrary-snapshot algorithm `A`, both packet inputs have the same initial observation `P_Ku0=0`. Its two predicted paths must therefore agree. At their common time `τ_P≤T`, the triangle inequality gives
+
+\[
+\max_{\sigma=\pm1}\|P_Ku^\sigma(\tau_P)-A(0)(\tau_P)\|_2
+\ge\tfrac12\|P_Du^+(\tau_P)-P_Du^-(\tau_P)\|_2.
+\]
+
+Both witnesses belong to the full admissible class, so taking the full supremum and then the algorithm infimum preserves this lower. One does not need lower witnesses at every possible coarse snapshot. Conversely, the heat upper works at every coarse snapshot. Thus the lower and upper genuinely match the full worst-case minimax scaling on the stated class, although they do not establish a lower on each individual snapshot fiber.
+
+## 5. Independent finite checks and limits of this audit
+
+I independently enumerated the **unsymmetrized** Fourier convolution for `L=1,...,6`, rather than running or rewriting S4's checker. Exact rational arithmetic verified: no extraneous support-pair contributions, positive target signs, the pair-count lower, the coefficient lower, input/output cutoff membership at each block's worst cutoff, and `|k|²≤225L²`. The universal rational constants above were also checked. No files were generated by that check.
+
+The negative-Sobolev integrating factor also reconstructs: `Y'+νX≤(100/ν)ZY` and `∫Z≤E²/(2ν)` imply (5), including its exponential constant. Monotonicity of `X` then gives the fixed-terminal-time decay (10). This supports, rather than weakens, the stated distinction between an initial-layer trajectory obstruction and a terminal forecast.
+
+Remaining limits: the PDE argument is not formally verified; this review does not certify external novelty, physical sensing feasibility, or bounds for nonzero forcing. Within those limits, the requested theorem survives independent internal reconstruction.
