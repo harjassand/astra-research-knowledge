@@ -1,0 +1,781 @@
+# Constructive short-edge geometry by exact face descent
+
+**Research checkpoint: 13 October 2026.**
+
+**Status.** Complete candidate constructive argument, reconstructed and extended in this investigation; not independently refereed or formally verified. The complete spectral rounding algorithm has not been implemented. The enclosed executable code implements the enclosing-cell precision repair for explicit rational inequalities and tests separate local identities. A polynomial upper bound in this note is not a practical running-time claim.
+
+**Provenance correction.** The previous conversation's 54k theorem was explicitly existential. A search of the user's earlier research capital recovered a manuscript, `Pasted text(20261006-162929).txt`, internally dated 7 October 2026, already proposing a 1161k constructive theorem. Its favorable-cost construction, uniform spectral gap, shifted-Hessian witness, face-drop accounting, and exact hull extraction are prior Astra capital, not discoveries first made here. This note reconstructs those arguments, replaces its more complicated affine-anchor precision repair by an enclosing-cell LP operation, and derives weighted-edge and integral-base-polyhedron consequences. The spectral framework descends from recent Komlós work [1–3]. No priority claim is made for the theorem or for the elementary LP ingredients of the replacement repair.
+
+## 1. Constructive theorem and exact input interface
+
+Let P be a nonempty polytope with vertices in {0,1}^n. Let k be a supplied positive integer upper bound on the number of coordinates changed by any **actual edge** of P. We may cap k at n. Let x in P and A in Q^(m by n) be rational, with
+
+\[
+\max_j\|A_{\cdot j}\|_2\le1.
+\]
+
+An **exact strong linear-optimization oracle for P** accepts any rational objective and returns an exactly optimizing Boolean vertex. Calls, objective bit lengths, and all non-oracle computation are charged. This is an oracle for the original linear problem, not for the nonconvex potential or the unknown good-vertex set.
+
+Set
+
+\[
+K=64k,\quad R=\lfloor\sqrt K\rfloor,\quad
+B(k)=16R^2+2K+8k+1\le1161k.
+\]
+
+### Theorem 1: constructive hard-supported exact marginals
+
+In this oracle model there is a deterministic algorithm with polynomial bit complexity in n, m and the total rational input encoding, and polynomially many original optimization-oracle calls, returning Boolean vertices v^1,...,v^r and rational probabilities lambda_1,...,lambda_r such that
+
+\[
+r\le\dim F(x)+1\le n+1,
+\qquad \sum_\ell\lambda_\ell=1,
+\qquad \sum_\ell\lambda_\ell v^\ell=x,
+\]
+
+\[
+\|A(v^\ell-x)\|_\infty<B(k)
+\quad\text{for every supported vertex.}
+\]
+
+All outputs belong to the minimal original face F(x). For an arbitrary rational cost c, a good vertex with c^T v <= c^T x can instead be constructed directly.
+
+For a matroid base polytope, an independence oracle suffices: k=2, R=11, and B(2)=2209. No representation or strong base-orderability is assumed. Exact strong separation, rational LP, and submodular minimization are implemented using polynomially many underlying oracle calls; they are not free additional inputs.
+
+A singleton, or an already Boolean x, has the immediate one-atom answer. The theorem does not claim to construct the earlier existential constant 54k.
+
+## 2. Mechanisms considered and their boundaries
+
+### 2.1 Constrained probability laws
+
+A Gibbs law on discrepancy-feasible vertices does not by itself give a partition function, a marginal-fitting routine, or a mixing bound. Conditioning a convenient base distribution can destroy the moves used by its sampler. Even an efficiently sampled exact-mean law need not have a dimension-independent hard bound on all its supported outcomes. The present algorithm therefore does not condition a pre-existing sampler or assume access to a law on good bases.
+
+### 2.2 Simultaneous exchanges
+
+Replacing a pair of vertices by an independently signed family of exchanges is powerful when every subset of those exchanges is feasible. It is not implied by short edges. In the graphic matroid of K4, take bases {12,23,34} and {13,14,24}. Both 12 and 34 have only 14 as a complementary symmetric-exchange partner. Thus no exchange bijection exists, although every actual base-polytope edge changes two coordinates. The relevant positive object is the actual face tangent, not an independently signable exchange cube. Related simultaneous-exchange results are explicitly restricted in [5, Section 5.1].
+
+### 2.3 A direct unbiased walk
+
+A mean-preserving stochastic increment and a favorable expected potential change would not establish a hard support bound, pathwise termination, or bounded persistent encodings. Those implications need separate arguments. Here exact marginals are extracted after deterministic favorable-cost rounding, avoiding a claim that a stochastic spectral trajectory itself is unbiased and always good.
+
+### 2.4 Selected construction
+
+The selected mechanism combines: a strictly negative feasible curvature direction; full-step descent or an exact drop of an original face; bounded-bit enclosing-cell repair; and finite convex-hull extraction from favorable-cost responses. No global minimizer of the nonconvex potential is requested.
+
+## 3. Enclosing-cell repair: the replacement precision operation
+
+Let Q be a bounded rational polytope with a known polynomial bound on the encoding of its facets. Let z be rational and belong to its actual minimal face F. Let Cy=d be a fixed rational affine slice containing z, whose coefficients and right-hand side have bounded original-input encoding. Choose p and h=2^(-p), and put
+
+\[
+\ell_j=h\lfloor z_j/h\rfloor,
+\qquad I_j=[\ell_j,\ell_j+h].
+\]
+
+Return any vertex of the **ordinary rational LP polytope**
+
+\[
+\boxed{F\cap\{y:Cy=d\}\cap\prod_j I_j.} \tag{3.1}
+\]
+
+### Lemma 2: enclosing-cell repair
+
+The operation is feasible, preserves the original face by containment and the affine slice exactly, and returns a point zhat satisfying
+
+\[
+\|\widehat z-z\|_\infty\le h,
+\qquad \|\widehat z-z\|_2\le\sqrt n h.
+\]
+
+Its output encoding is bounded polynomially in the original facet/slice encoding and p, independently of the denominator length of z. It is computable by exact rational LP with strong separation. With explicit inequalities, at most n exact rational boundary pushes suffice after computing the active equations.
+
+**Proof.** The old z belongs to (3.1), so it is nonempty and bounded. A vertex is determined by a full-rank collection of at most n affine/facet/cell equations, after including an affine hull. The original facet and slice encodings are bounded, and the cell endpoints have O(p) bits for bounded z. Cramer's rule bounds the output bit length without using z's denominator. The movement bound follows coordinatewise from the common cell. For explicit inequalities, start at z, find a nonzero rational direction annihilating the current active equations, and move to the first boundary in one sign. Boundedness guarantees a finite endpoint, and a new independent normal becomes active. At most n such drops produce a vertex. All statements are exact. □
+
+**Critical distinction.** The cell is then discarded. Recompute the minimal face of the **original Q**, not the clipped LP. The repaired point may lie in a smaller original face, which is allowed and contributes to a nested face chain. Artificial cell facets do not enter any subsequent short-edge dimension count.
+
+This operation does not promise that the output coordinates themselves are dyadic. A slice such as y_1=1/3 may prohibit that. The *enclosing cell* is dyadic; the returned slice vertex is rational.
+
+For signed Boolean Q, integer affine-hull and relative-facet coefficients can be bounded by C=(2n)^n. To see this, project injectively onto a coordinate system for its affine tangent, choose affine-independent Boolean vertices spanning a facet, and use cofactors of their augmented coordinate matrix. Lift the inequality back and similarly recover affine-hull equations. Determinant bounds have O(n log n) coefficient bits, regardless of the number of facets. Faces inherit this bound.
+
+In the main algorithm, the only fixed additional slice is c^T y=c^T x_0. Its right-hand side is never replaced by an accumulated numerical approximation. Consequently (3.1) resets the point's encoding to an original-input polynomial bound after every move.
+
+## 4. Local edge geometry supplies a direction reserve
+
+Work in signed coordinates Q=2P-1 and x_0=2x-1. Use y for the current signed point, F for its minimal original face, U for its varying coordinates, and N=|U|. Maintain c^T y=c^T x_0. A varying coordinate is exactly a coordinate strictly between -1 and 1.
+
+Every face of Q has
+
+\[
+\boxed{\dim F\ge N/k.} \tag{4.1}
+\]
+
+Indeed, edge directions of F span its tangent. A basis of dim F such directions covers every varying coordinate; otherwise that coordinate would vanish on the whole tangent. Each basis direction is supported on at most k coordinates. The same reasoning applies after every original-face drop. Additional exact equations will be charged by their codimension rather than assumed to align favorably with the tangent.
+
+## 5. The rational maintained state and spectral barrier
+
+The constants used below are
+
+\[
+K=64k,\ R=\lfloor\sqrt K\rfloor,\ H=32R^2,
+\quad\eta=1/(Kn),\quad\beta=1/(2R).
+\]
+
+For row i retain coefficients b_ij, each either A_ij or zero, and let
+
+\[
+p_{ij}=b_{ij}^2,\quad q_i=\sum_jp_{ij},\quad
+G_i=\sum_jp_{ij}(1-y_j^2).
+\]
+
+A rational tracked value d_i initially equals zero. During an ordinary move, d_i(y+th)=d_i(y)+t b_i^T h. Deleting a coefficient leaves the current d_i unchanged; a conceptual affine offset absorbs its old contribution. No growing offset has to be stored.
+
+Repeatedly delete a coefficient whenever p_ij>q_i/K, until
+
+\[
+\max_j p_{ij}\le q_i/K. \tag{5.1}
+\]
+
+The column condition gives
+
+\[
+0\le G_i\le q_i,\qquad \sum_iq_i\le N,
+\qquad\sum_i p_{ij}\le1. \tag{5.2}
+\]
+
+A large row has q_i>R^2 and tracked value zero; impose b_i^T h=0. A medium row has 0<q_i<=R^2. It has a dyadic scale r_i obtained by halving R until
+
+\[
+q_i\le r_i^2<4q_i,\qquad r_i\le R. \tag{5.3}
+\]
+
+Only downward scale changes occur. The smallest nonzero original coefficient bounds the bit lengths of these scales. A completed row has q_i=0.
+
+Let e>=0 be a monotone numerical allowance, initially zero. For each medium row and sigma in {-1,1}, define
+
+\[
+u_{i\sigma}=(\sigma d_i-H)/r_i+RG_i/(2r_i^2)+12R-e,
+\]
+
+\[
+g_{i\sigma}=\sigma b_i/r_i-R(p_i\circ y)/r_i^2,
+\qquad \nabla^2u_{i\sigma}=-R\operatorname{diag}(p_i)/r_i^2. \tag{5.4}
+\]
+
+The invariant is u_i,sigma<=0. Protect every pair with u_i,sigma>=-1 using the **exact rational** equation g_i,sigma^T h=0. Diffuseness and (5.3) imply
+
+\[
+\|g_{i\sigma}\|_2\le2,\qquad
+(g_{i\sigma})_j^2\le4p_{ij}/r_i^2,
+\qquad\|\nabla^2u_{i\sigma}\|\le R/K\le1/R. \tag{5.5}
+\]
+
+For a protected pair, along either sign of a tangent direction,
+
+\[
+u(y+th)=u(y)-\frac{Rt^2}{2r_i^2}\sum_jp_{ij}h_j^2\le u(y).
+\]
+
+An unprotected pair starts below -1 and increases by at most 2|t| for a unit direction on a cube segment. Thus every barrier remains valid for either sign of any feasible step of length at most 1/4.
+
+Define the active-coordinate matrices
+
+\[
+w_{i\sigma}=32K r_i^{-4}e^{\beta u_{i\sigma}},\qquad
+W=\sum_{i,\sigma}w_{i\sigma}p_ip_i^T,
+\]
+
+\[
+B=\sum_{i\text{ large}}\operatorname{diag}(p_i),\qquad
+M=W+B+\eta\mathbf1\mathbf1^T,
+\quad L=\lambda_{\max}(M),
+\]
+
+\[
+\boxed{\Phi(y)=(L-8)_+^3-\eta\|y\|_2^2.} \tag{5.6}
+\]
+
+The norm includes all n signed coordinates, including frozen coordinates. The spectral matrix acts on the active coordinates. Face equations constrain directions; they do not replace M by a projection onto the face.
+
+### Uniform spectral gap
+
+Write M=M_0+eta 11^T. The positive semidefinite M_0 is entrywise nonnegative. It has a nonnegative unit maximizing Rayleigh vector v_0, for which (1^T v_0)^2>=1. Therefore lambda_1(M)>=lambda_1(M_0)+eta. Rank-one interlacing gives lambda_2(M)<=lambda_1(M_0). Hence the top gap is at least eta. The matrix is entrywise positive, so its top unit eigenvector is positive and the eigenvalue is simple. This is a proved inverse-polynomial gap, not a spectral oracle assumption.
+
+## 6. Initialization and all cleanup operations
+
+A newly medium row has d_i=0, G_i<=r_i^2 and r_i<=R. Its two Gram summands are bounded by diag(p_i), because
+
+\[
+\frac{64K}{r_i^2}
+\exp\left(-\frac{H}{2Rr_i}+\frac{25}{4}\right)
+\le \frac{64K}{R^2}e^{-39/4}
+\le128e^{-39/4}<1,
+\]
+
+and p_i p_i^T <= q_i diag(p_i) <= r_i^2 diag(p_i) in semidefinite order. Its initial barrier is at most -39R/2. The scalar bound follows by differentiation in r_i; its right side increases on (0,R].
+
+At initialization M_0<=I, hence L<=1+1/K<2 and Phi<=0. A large-to-medium transition replaces the row's old diagonal contribution by a dominated Gram contribution.
+
+At fixed scale a deletion preserves current d_i and reduces G_i and the nonnegative vector p_i. Hence its barriers, weights, and Gram entries decrease. During a scale decrease,
+
+\[
+r\partial_r u=12R-u-e-RG/(2r^2)>0,
+\]
+
+\[
+r\partial_r\log w=2-(u+e+RG/(2r^2))/(2R)>0,
+\]
+
+as long as u<=0, e<=1/4 and G<=r^2. Thus downward scale changes cannot increase barriers or Gram entries. Entrywise decrease of a nonnegative symmetric matrix cannot increase its top eigenvalue; it need not be a semidefinite decrease. Freezing coordinates takes a principal submatrix and leaves the ambient regularizer unchanged. These comparisons prove that cleanup never increases Phi.
+
+## 7. Strict curvature on an actually feasible subspace
+
+Assume a cleaned state has L<=9. There are fewer than 2N/K large-row equations. Every protected pair contributes more than 2K exp(-1/(2R)) to 1^T W1<=LN. Hence fewer than 5N/K pairs are protected.
+
+Diffuseness gives tr W<=LN/K. Also ||B+eta 11^T||<=1+1/K<2. When L>8, let E_sp be the span of eigenvectors of M with eigenvalues at least L/2. Every such eigenvector consumes more than L/4 in the W quadratic form, so
+
+\[
+\dim E_{\rm sp}<4N/K. \tag{7.1}
+\]
+
+It is the background's **operator norm**, not its possibly large trace, that is used here.
+
+Let v>0 be the unit top eigenvector and define
+
+\[
+\mathcal U=\sum_{i,\sigma}w_{i\sigma}\beta^2(p_i^Tv)^2g_{i\sigma}g_{i\sigma}^T,
+\]
+
+\[
+\mathcal D=\sum_{i,\sigma}\frac{w_{i\sigma}\beta R}{r_i^2}(p_i^Tv)^2\operatorname{diag}(p_i).
+\]
+
+The coordinatewise bound (5.5) gives
+
+\[
+\mathcal U_{jj}\le(2/R^2)\mathcal D_{jj}. \tag{7.2}
+\]
+
+Direct eigenvalue differentiation yields
+
+\[
+L''[h,h]=h^T(\mathcal U-\mathcal D)h+
+2\sum_{\ell\ge2}\frac{|v_\ell^T W'[h]v|^2}{L-\lambda_\ell(M)}. \tag{7.3}
+\]
+
+Factoring W=CC^T shows ||W'[h]v||^2<=L h^T U h. Impose, for the existence argument only,
+
+\[
+\operatorname{Proj}_{E_{\rm sp}}W'[h]v=0.
+\]
+
+Then L'[h]=0, the remaining denominators are at least L/2, and
+
+\[
+L''[h,h]\le h^T(5\mathcal U-\mathcal D)h. \tag{7.4}
+\]
+
+If U>=0 and D>=0 is diagonal with U_jj<=rho D_jj, the positive index of U-D is at most rho N. On ker D both forms vanish; on its complement, D^(-1/2)UD^(-1/2) has trace at most rho N, so it has at most rho N eigenvalues greater than one. This handles singular diagonals rather than assuming invertibility.
+
+Apply this to 6U-D. Its positive index is at most 12N/R^2<=24N/K. Taking an additional arbitrary linear equation g_*^T h=0 and the fixed cost equation, the total codimension consumed, beyond the original face, is strictly below
+
+\[
+2N/K+5N/K+4N/K+24N/K+2=35N/K+2.
+\]
+
+For N>8k,
+
+\[
+N/k-(35N/K+2)>13/8>0. \tag{7.5}
+\]
+
+There remains a nonzero direction satisfying all rational feasibility equations and 6h^T U h<=h^T D h. Therefore L''<=-h^T D h/6 and
+
+\[
+h^T\nabla^2\Phi h\le-2\eta\|h\|_2^2. \tag{7.6}
+\]
+
+If L<=8, the cubic positive part has zero Hessian, including at L=8, and the weaker rational constraint count directly gives (7.6). The extra vector g_* is arbitrary: it can later be an approximation to the gradient.
+
+This lemma does not ask an algorithm to find an exact irrational spectral nullspace. The next section removes that numerical obstruction.
+
+## 8. Certified rational directions, not irrational constraints
+
+Compute rational approximations gtilde and Htilde satisfying
+
+\[
+\|\widetilde g-\nabla\Phi\|_2\le\epsilon_g,
+\quad \|\widetilde H-\nabla^2\Phi\|\le\eta/4.
+\]
+
+Intersect only the **exact rational** face, cost, large-row and protected-barrier equations with gtilde^T h=0, and let Z be a rational kernel basis. By (7.6),
+
+\[
+Z^T(\widetilde H+\eta I)Z
+\]
+
+has a negative direction. Exact rational symmetric elimination supplies a witness. Normalize it using its largest coordinate and powers of two, obtaining
+
+\[
+1/2\le\|h\|_2\le1,\quad
+|\nabla\Phi^Th|\le\epsilon_g,\quad
+h^T\nabla^2\Phi h\le-3\eta/16. \tag{8.1}
+\]
+
+The identity shift occurs in the physical coordinates *before* restriction by Z. Thus an ill-conditioned basis or a very small negative pivot does not remove the guaranteed Rayleigh gap. An unshifted search for any negative value would not suffice.
+
+### Why derivative evaluation is polynomial-bit
+
+Normalize each row by z_i=p_i/r_i^2. Its Gram contribution is
+
+\[
+32K e^{\beta u_{i\sigma}}z_i z_i^T,
+\qquad \sum_jz_{ij}\le1,\quad\max_jz_{ij}\le1/K.
+\]
+
+The vectors b_i/r_i and Rp_i/r_i^2 in derivatives have uniformly bounded norms. Consequently a tiny original coefficient does not create an inverse-small-scale norm blowup. Its encoding length is still charged.
+
+For a nonpositive exponential argument, discard it below -J and use a rational Taylor polynomial above -J, with J=O(log(1/epsilon)). Degree 32(J+1) suffices, and negative numerical values can be clipped to zero. Use the same nonnegative approximate weights in M and its first two derivatives, preserving the positive ridge and its gap.
+
+A fully explicit precision choice from the reconstructed derivation is
+
+\[
+\epsilon=\min(1,\epsilon_g,\eta/4),\quad
+\kappa=\frac{\epsilon\eta^3}{2^{40}(n+1)^6(K+1)^4},
+\quad\rho=\frac{\kappa}{4K^2(m+1)}.
+\]
+
+Approximate each exponential within rho. The resulting rational Mhat and derivative matrices have operator errors at most kappa. Clear a common denominator, compute an integer matrix power on the all-ones vector for O(eta^(-1) log(n/kappa)) iterations, and form its rational Rayleigh quotient ell and projector S=zz^T/(z^Tz). No exact normalized irrational eigenvector is used. The gap gives
+
+\[
+\|S-vv^T\|\le3\kappa/\eta,\qquad |\ell-L|\le4\kappa.
+\]
+
+Approximate the reduced resolvent by exact rational inversion:
+
+\[
+\widehat{\mathcal R}=(\ell I-\widehat M+S)^{-1}-S.
+\]
+
+It differs from (LI-M+vv^T)^(-1)-vv^T by at most 19kappa/eta^3. This follows from the inverse perturbation identity; the gap ensures both inverses are conditioned by an inverse polynomial. Integer matrix powers and rational elimination have polynomial intermediate bit lengths with the displayed iteration counts.
+
+The formulas used are
+
+\[
+L_j=\operatorname{tr}(vv^T M_j),
+\]
+
+\[
+L_{j\ell}=\operatorname{tr}(vv^T M_{j\ell})+
+\operatorname{tr}(vv^T M_j\mathcal R M_\ell)+
+\operatorname{tr}(vv^T M_\ell\mathcal R M_j),
+\]
+
+followed by the chain rule for f(L)=(L-8)_+^3 and the exact quadratic regularizer. Bounds ||M_j||,||M_jl||<4 and the displayed precision give potential-gradient norm error at most 444 sqrt(n) kappa/eta and Hessian operator error at most 30000 n kappa/eta^3. Both are below epsilon. The positive part is evaluated at rational ell, so no undecidable exact comparison against an approximate eigenvalue is required.
+
+## 9. Finite progress without a minimum face width
+
+For fixed row data on a cube segment, ||h||<=1 and |t|<=1/4, the potential has a Hessian-Lipschitz bound
+
+\[
+B_3=2^{40}K^2n^2,
+\]
+
+and Taylor remainder at most B_3|t|^3/6. A verification is as follows. The weight derivative ratios are bounded by 1/R, 3/(2R^2), and 5/(2R^3). Starting at L<=9, weights increase by less than two, so L(t)<=18. Hence
+
+\[
+\|M'\|\le18/R,\quad\|M''\|\le27/R^2,\quad\|M'''\|\le45/R^3.
+\]
+
+Resolvent differentiation with gap eta gives
+
+\[
+|L'|\le18/R,
+\quad |L''|\le(27+648Kn)/R^2,
+\]
+
+\[
+|L'''|\le(45+2916Kn+69984K^2n^2)/R^3.
+\]
+
+The chain rule bounds the almost-everywhere third derivative of Phi by
+
+\[
+(135972+2974320Kn+20995200K^2n^2)/R^3<B_3.
+\]
+
+The cubic positive part is C^(2,1), so integrating this bound is valid across L=8.
+
+Choose in advance
+
+\[
+\tau=\min\{1/4,\eta/(8B_3)\},\quad D=\eta\tau^2/64,
+\quad\epsilon_g=\eta\tau/(128n),
+\]
+
+\[
+S=\lceil2\eta n/D\rceil+2n+4,
+\quad
+\delta=\min\{D/(2^{12}\eta n^2),\ [2^{12}S(n+R+1)]^{-1}\}. \tag{9.1}
+\]
+
+Their inverses are polynomially bounded in n,k; their values are extremely conservative.
+
+### One iteration
+
+At a cleaned state with N>8k, compute the rational direction in (8.1). Compute the exact positive and negative line endpoints t_+,t_- in the **current original face**. Put t=min(tau,t_+,t_-). If t<tau, choose a sign hitting that boundary. Otherwise either sign is legal. Move, update tracked values, recover the new original face, and clean up.
+
+Now apply Lemma 2 inside that face and the original cost slice, with mesh h<=delta/n. Update a medium tracked value by b_i^T(zhat-z), then round it to a grid of spacing r_i delta. Restore large tracked values to zero and increase e by 4delta. Recompute the original face and clean up any newly frozen coordinates. The temporary grid facets are discarded.
+
+During the point repair, the normalized tracked and energy contributions change each medium barrier by at most 2delta. Rounding d_i adds at most delta. The increase of e therefore makes all old medium barriers and weights nonincreasing. Large B is unchanged. The only possible potential increase before cleanup is
+
+\[
+3\eta\sqrt n\,\delta.
+\]
+
+The introduced per-row tracking error is at most (sqrt(n)+R+1)delta. A repair may cause an extra original-face drop; it never releases one.
+
+### Full moves versus short moves
+
+For either sign of an ordinary move, Taylor's estimate gives
+
+\[
+\Delta\Phi\le\epsilon_g t-\eta t^2/16. \tag{9.2}
+\]
+
+A full move t=tau decreases Phi by at least 2D before repair and at least D after repair. An arbitrarily short move can increase Phi by less than D/n after repair, but reaches a **proper original face**. If its endpoint were still in the relative interior of the old face, the line could continue, contradicting maximality. This includes rank-facet events where no coordinate becomes integral.
+
+A strictly nested original-face chain has at most n drops, including any repair-induced drops. Starting at Phi<=0, every finite prefix satisfies
+
+\[
+-\eta n\le\Phi\le-N_{\rm full}D+D. \tag{9.3}
+\]
+
+Thus there are at most eta n/D+1 full moves and fewer than S total moves. Also
+
+\[
+(L-8)_+^3\le\eta n+D<2/K<1,
+\]
+
+which closes the induction L<9. Numerical allowances satisfy
+
+\[
+e\le4S\delta\le1/1024<1/4,
+\qquad \text{total row tracking error}<1/4096.
+\]
+
+This is the width-independent progress mechanism: short distances are paid for by exact face descent, not by assuming an inverse-polynomial interior radius.
+
+### Persistent encoding
+
+After each move the cell operation resets the point using original bounded-coefficient facets, the fixed cost slice, and a bounded-bit dyadic cell. Tracked medium values are reset to the r_i delta grid; large values are zero; completed values stop changing. Scales and the monotonically increasing e have bounded original-input encodings. Therefore every subsequent LP, derivative computation, rational elimination and endpoint operation has polynomial-length input. It is not enough that a single operation be polynomial in a recursively growing current encoding; the reset is what establishes a uniform bound.
+
+For scale perspective, tau=2^(-43)K^(-3)n^(-3) with these parameters. The resulting crude full-move bound is 2^92 K^6 n^7+1. This is polynomial, but no claim of practical efficiency follows from it.
+
+## 10. Terminal discrepancy and favorable cost
+
+At the first deliberate deletion in a row, a^2>q/K and |a|<=1 imply q<K. Every such deletion has
+
+\[
+\sqrt q-\sqrt{q-a^2}
+=\frac{a^2}{\sqrt q+\sqrt{q-a^2}}
+>\frac{|a|}{2\sqrt K}.
+\]
+
+Since q never increases, telescoping proves that the total deliberately deleted coefficient magnitude is at most 2K. A deleted signed coordinate can subsequently move by at most two, including all repairs and terminal rounding, so the complete deletion error is at most 4K. Frozen deletions create no subsequent error.
+
+When N<=8k, optimize c over the current original face and choose a Boolean vertex v (signed endpoint 2v-1). Its cost is at most the maintained c^T x_0. Only N signed coordinates can change, each by at most two, so the terminal retained-row change is at most 16k.
+
+The two medium barriers imply
+
+\[
+|d_i|\le H-r_i\{12R-e+RG_i/(2r_i^2)\}<H.
+\]
+
+Completed rows inherit this bound; a row completed from the large class has value zero. At termination no row can remain large, since q_i<=N<=8k<R^2. Combining retained, deletion, terminal and numerical charges gives
+
+\[
+\|A[(2v-1)-x_0]\|_\infty<H+4K+16k+1.
+\]
+
+Dividing by two gives
+
+\[
+\|A(v-x)\|_\infty<16R^2+2K+8k+1=B(k),
+\qquad c^Tv\le c^Tx.
+\]
+
+The chain of original faces stays inside F(x), proving the favorable-cost subroutine required by Theorem 1.
+
+## 11. Paying for the geometric oracles
+
+### 11.1 General Boolean polytopes
+
+The coefficient bound C=(2n)^n makes P a well-described rational polytope, even when it has exponentially many facets. Standard exact rational optimization/separation equivalence and rational LP apply with the stated encoding bound [6]. A face or affine slice is handled by adding its rational equations to the separation oracle. This is not optimization over good vertices.
+
+Minimal-face recovery can be made explicit. For z=X/Q in P, use
+
+\[
+\varepsilon=(2QnC)^{-1},
+\qquad D_z=\{h\in[-1,1]^n:z\pm\varepsilon h\in P\}.
+\]
+
+Every inactive integer facet has slack at least 1/Q and changes by at most 1/(2Q) over this box. Active inequalities force equality in both signs. Consequently
+
+\[
+D_z=\operatorname{lin}(F(z)-z)\cap[-1,1]^n. \tag{11.1}
+\]
+
+To find its span, collect independent rational vectors in D_z. Optimize basis vectors of the orthogonal complement of the current span over the centrally symmetric D_z. A positive optimum supplies a new independent vector; all zero optima certify completion. At most n^2 rational LP calls suffice. The geometry in (11.1) has bounded face coefficients even though the oracle representation contains Q, so vertex-output basis vectors admit a uniform polynomial encoding bound. These vectors give affine equations for F(z).
+
+For a rational line direction h=H/R_h, a facet endpoint has denominator at most Q n C max_j |H_j|. Coordinate constraints provide a bounded initial interval. Exact one-dimensional rational LP, or membership bisection to this denominator bound followed by continued-fraction reconstruction, computes the endpoint. Its value may be exponentially small; its bit encoding and query count remain polynomial.
+
+The cell repair uses one bounded rational LP vertex operation over a face and an affine slice; lexicographic linear optimization is an alternative way to force vertex output. Terminal original-face optimization returns a Boolean vertex. All these subroutines reduce to the originally supplied strong optimization oracle through polynomial-size rational LP instances.
+
+### 11.2 Independence-oracle matroids
+
+Weighted greedy optimization over a matroid base uses at most n independence queries, so already supplies the general theorem's strong optimization interface. A direct implementation can instead expose the needed geometry by rank and submodular minimization. Each rank query uses at most n independence tests. Strong separation minimizes
+
+\[
+r(S)-z(S)
+\]
+
+after separately checking nonnegativity and total rank. Clearing denominators gives an integer submodular objective of polynomial bit length. Polynomial-time exact submodular minimization uses polynomially many value calls, each charged to rank and therefore independence queries [7].
+
+Here is an explicit minimal-face construction. Fix zero and one coordinates, contract the ones and delete the zeros, and work on the remaining fractional coordinates U. Write z_U=X/Q and r' for the minor's rank. For each i in U, minimize over R subset U\{i}
+
+\[
+(N+1)\{Qr'(R\cup\{i\})-X(R\cup\{i\})\}+|R|. \tag{11.2}
+\]
+
+Slack is nonnegative and integer after multiplication by Q. Since U is tight, the minimum first makes the slack zero and then finds a smallest tight set containing i. Tight sets are closed under union and intersection, so this smallest set T_i is unique.
+
+Group i,j when T_i=T_j. The tight-set incidence vectors span exactly the incidence vectors of these groups: membership j in T_i is equivalent to T_j subset T_i, and ordering by inclusion gives a triangular change of basis. Thus the face tangent is fixed-coordinate zeros together with h(C)=0 for each group C. A basis consists of e_i-e_root(C). Each group has at least two strictly fractional coordinates because its total is integral, so the tangent dimension is at least N/2.
+
+Prefixes of the inclusion-ordered groups are tight. The face is a direct sum of restriction/contraction minors on these successive differences. Rank calls implement its independence oracle and greedy optimization. Equation (11.2) requires at most n submodular minimizations per face recovery.
+
+For line endpoints, a rank facet has rational parameter
+
+\[
+t_* = \frac{R_h[Qr(S)-X(S)]}{QH(S)},\qquad H(S)>0,
+\]
+
+whose reduced denominator is at most Qn max |H_j|. Membership bisection and rational reconstruction therefore charge exact endpoints polynomially. Ordinary coordinate endpoints do not suffice: a rank facet can bind while every coordinate stays fractional.
+
+For example, in the rank-two matroid on five elements with a parallel pair {1,2},
+
+\[
+z=(3/10,3/10,7/15,7/15,7/15),\quad h=(3,3,-2,-2,-2)
+\]
+
+first hits z_1+z_2=1 at t=1/15, yielding (1/2,1/2,1/3,1/3,1/3). This is a genuine face drop and is counted even though no coordinate freezes.
+
+## 12. Exact marginals from a finite favorable-response transcript
+
+Fix A,x,B(k) once and for all. Let G be the set of vertices in F(x) meeting the common discrepancy bound. The preceding subroutine returns some v in G with
+
+\[
+c^T(v-x)\le0 \quad\text{for every rational }c. \tag{12.1}
+\]
+
+It need not optimize over G.
+
+Write x=a/Q with common integer denominator Q, and w_v=Qv-a. Consider the separator system
+
+\[
+c^T(v-x)\ge1\quad(v\in G). \tag{12.2}
+\]
+
+At any queried rational c, (12.1) supplies an explicitly violated inequality. To conclude from a finite transcript, one must establish a uniform thickness bound for every possible finite collected subsystem J.
+
+If such a subsystem is feasible, minimize t subject to
+
+\[
+w_v^T c\ge Q\quad(v\in J),\qquad -t\le c_j\le t,\quad t\ge0.
+\]
+
+A bounded optimal vertex exists: bounded-t sections are compact and there are no lines. At a vertex, n+1 independent integer equations, with coefficients bounded by Q, determine (c,t). Cramer's rule gives a feasible separator with coordinates at most
+
+\[
+R_0=(n+1)!Q^{n+1}.
+\]
+
+Double this separator. In the box [-4R_0,4R_0]^n it has a Euclidean ball of radius rho=1/(2n) satisfying the original margin-one inequalities, because ||v-x||<=sqrt(n). Therefore any boxed finite subsystem is either empty or contains such a ball. This removes a lower-dimensional feasibility loophole.
+
+Run a polynomial-bit rational ellipsoid feasibility procedure [6]. Use box cuts when necessary; otherwise invoke (12.1), collect the returned vertex, and cut by its violated inequality. No feasible center can be accepted. After
+
+\[
+O(n^3(\log Q+\log n))
+\]
+
+iterations, the enclosing ellipsoid is too small to contain a rho-ball. Every cut contains the feasible region of the final collected subsystem. That subsystem must therefore be infeasible. By finite-dimensional separation,
+
+\[
+x\in\operatorname{conv}J.
+\]
+
+Now solve the explicit rational LP
+
+\[
+\sum_{v\in J}\lambda_vv=x,\quad \sum_{v\in J}\lambda_v=1,
+\quad\lambda_v\ge0.
+\]
+
+A basic solution has at most dim F(x)+1 supported vertices. Each nonzero weight can be taken with denominator at most
+
+\[
+Q(n+1)^{(n+1)/2},
+\]
+
+by the determinant bound for its 0/1 augmented vertex matrix. Verify the exact mean and rational discrepancy of each output. This completes Theorem 1 without a compactness limit or an oracle optimizing over G.
+
+For clarity about this interface: in U_(2,4) at x=(1/2,1/2,1/2,1/2), an oracle can always choose the cheaper of 1100 and 0011. It is favorable for every c because those two vertices average to x, yet it can hide all other vertices and need not minimize c over G. The transcript argument needs only favorability at this one fixed mean.
+
+Once the rational distribution is constructed, exact sampling is elementary. Clear denominators, sample a uniform integer using rejection from fair bits, and select the corresponding cumulative weight interval. Expected random-bit and time costs are polynomial in the weight encodings. There is no bounded worst-case fair-bit claim for non-dyadic probabilities such as 1/3, and the output is not a uniform distribution over all good bases.
+
+## 13. Consequences beyond the first matroid test
+
+### 13.1 Arbitrary bases with hard sparse-feature bounds
+
+For any independence-oracle matroid, rational fractional base x, and normalized A, construct a compact exact-mean law on bases with hard error below 2209. If each column has at most t entries of magnitude at most w, scaling gives an O(w sqrt(t)) hard bound (2209 w sqrt(t) as a real-valued consequence; use a rational upper normalization for a rational implementation). A cost-favorable good basis is constructed directly.
+
+The guarantee combines exact feasibility, exact marginals, and an outcome-wise dimension-independent feature bound. It is not a Gaussian convex-order guarantee, nor a simultaneous statement for feature matrices chosen after the law.
+
+### 13.2 Integral base polyhedra: capacity-independent hard rounding
+
+Let f:2^E -> Z be submodular, f(empty)=0, presented by a value oracle with charged value-bit lengths. It need not be monotone. Let
+
+\[
+B(f)=\{z:z(S)\le f(S)\ (S\subseteq E),\ z(E)=f(E)\},
+\qquad x\in B(f)\cap\mathbb Q^n.
+\]
+
+Put a=floor(x), p=x-a, and h(S)=f(S)-a(S). Feasibility and a<=x imply h(S)>=0. Define
+
+\[
+\rho(U)=\min_{T\subseteq E}\{h(T)+|U\setminus T|\}. \tag{13.1}
+\]
+
+This is the standard residual rank construction explicitly used in [5, Lemma 5.6]. Its proof is short. It is normalized, monotone, nonnegative and at most |U|; adding one element changes it by at most one. Applying submodularity to minimizing T_1,T_2, and the corresponding cardinality union/intersection inequality, proves submodularity. Thus rho is a matroid rank function.
+
+For any z in [0,1]^n satisfying z(S)<=h(S),
+
+\[
+z(U)\le z(T)+|U\setminus T|\le h(T)+|U\setminus T|,
+\]
+
+hence z(U)<=rho(U). Conversely rho(S)<=h(S) and rho({i})<=1 recover the original constraints. The feasible p has total h(E), so rho(E)=h(E). Consequently
+
+\[
+B(f)\cap[a,a+\mathbf1]=a+B(\rho). \tag{13.2}
+\]
+
+Initially integral coordinates are fixed at their zero residual by taking the corresponding face. Applying Theorem 1 with k=2 gives a deterministic polynomial-bit construction of a law on at most n+1 integer points Z with
+
+\[
+\boxed{\mathbb EZ=x,\quad Z\in B(f),\quad
+Z_j\in\{\lfloor x_j\rfloor,\lceil x_j\rceil\},
+\quad\|A(Z-x)\|_\infty<2209.} \tag{13.3}
+\]
+
+The complexity is polynomial in dimensions and input/value encodings, not in the numerical magnitudes of capacities. All inequalities originally tight at x remain equalities in every supported output. Ordinary exact separation of B(f) uses submodular minimization of f(S)-z(S), followed by box checks, so the general strong optimization interface is supplied using polynomially many value calls. Alternatively (13.1) gives rank calls through charged submodular minimization. No rank or sampling oracle is assumed for free.
+
+The new conclusion relative to the Gaussian-only general-base-polyhedron result in [5] is the hard feature bound on every supported output, together with an explicitly constructed compact law. The residual-rank reduction itself is not claimed as new.
+
+### 13.3 Weighted edge budgets through polynomial-size coordinate replication
+
+Let mu_j be rational nonnegative upper bounds on ||A_.j||_2, without normalizing them all by their largest value. Work on the varying coordinates of F(x), and let Gamma>0 be a supplied upper bound on
+
+\[
+\max_{[u,v]\text{ edge of }F(x)}\sum_j\mu_j|u_j-v_j|. \tag{13.4}
+\]
+
+Every varying coordinate appears on some edge, so mu_j<=Gamma. Let d be the number of varying coordinates and choose
+
+\[
+r_j=\max\{1,\lceil d\mu_j/\Gamma\rceil\}\le d.
+\]
+
+Replace coordinate j by r_j tied Boolean copies. The injective linear lift has at most d^2 coordinates, and strong linear optimization is implemented by adding the objective coefficients on each group of copies and calling the original oracle once. Edges are preserved by this affine isomorphism. Every lifted edge has support at most
+
+\[
+\sum_{j\in e}r_j\le(d/\Gamma)\sum_{j\in e}\mu_j+|e|\le2d.
+\]
+
+Give each copy column
+
+\[
+A'_{\cdot(j,l)}=\frac{d}{\Gamma r_j}A_{\cdot j}.
+\]
+
+Its norm is at most one, and A'J=(d/Gamma)A on varying coordinates. Apply Theorem 1 with supplied edge bound 2d (capped by the lifted dimension if necessary). Project the vertices back and compress their exact affine dependence. The result has at most d+1 atoms and
+
+\[
+\boxed{\|A(Z-x)\|_\infty<2322\Gamma,\qquad\mathbb EZ=x.} \tag{13.5}
+\]
+
+The lift is polynomial-sized even when some positive mu_j are exponentially smaller than others; there is no replication proportional to an inverse minimum weight. Gamma=0 means A is constant on the starting face, so ordinary exact convex decomposition suffices.
+
+Define the universal weighted rounding radius by taking the supremum over A with column bounds mu and over x in P. If Gamma is the actual maximum weighted edge length of P, it is between Gamma/2 and 2322Gamma. For the lower bound, expose a maximizing edge [u,v], take its midpoint, and take the one-row coefficients mu_j sign(u_j-v_j). Any exact-mean vertex law is supported on the two endpoints with equal mass and has discrepancy Gamma/2.
+
+Computing the maximum weighted edge length from an arbitrary optimization oracle is **not** claimed. An upper bound is an input promise. The characterization is geometric; the constructive reduction uses that promise explicitly.
+
+## 14. A necessary access-model boundary
+
+Bounded edges do not provide efficient discovery of a feasible vertex from **Boolean feasible-vertex membership alone**.
+
+Take a uniformly hidden perfect matching on 2r labeled elements, with a partition matroid selecting one element from each pair. Its base polytope has k=2 and contains x=(1/2,...,1/2). Give only an oracle testing whether a queried subset is a complete base, and set A=0.
+
+For any fixed r-subset, exactly r! of the (2r)!/(2^r r!) matchings cross its partition. Therefore its probability of being a base is
+
+\[
+p_r=\frac{2^r}{\binom{2r}{r}}=\Theta(\sqrt r\,2^{-r}).
+\]
+
+For a deterministic adaptive algorithm, every query on its all-NO transcript is fixed. The first successful query must be one of those fixed sets. A union bound, including a final unqueried output, gives success probability at most (q+1)p_r after q queries. Averaging over internal randomness gives the same randomized bound. Constant success thus requires Omega(2^r/sqrt(r)) such membership tests for some hidden matching.
+
+This does not apply to an independence oracle, which can identify pairs by testing two-element sets, nor to a strong convex-body oracle. It is a boundary on an intentionally weaker interface, not an obstruction to Theorem 1.
+
+## 15. Current literature and significance boundary
+
+The recent ordinary-signing literature has already closed the unconstrained Komlós existence-to-polynomial-time gap. Li [2] states a deterministic discrepancy-below-99 construction with polynomial bit complexity. Akbas–Sra [3, v2] state a below-37.54 deterministic signing construction with approximately quartic arithmetic complexity, while explicitly leaving a polynomial bound on rational-state bit length open. Neither ordinary-signing assertion supplies the exact original-face and fixed-cost geometry used here.
+
+Bérczi–Liu–Reis–Tarnawski [4] prove cost-preserving matroid rounding with error at most 2Delta times the largest entry for nonnegative column-sparse matrices. The reconstructed result's different claim is an O(sqrt(Delta)) hard bound for bounded entries, arbitrary real signs, and exact-marginal compact construction. Its conservative constants and running-time estimate are far worse numerically.
+
+Ercan [5, Sections 5.1–5.2 and Table 4] distinguishes hard-feature simultaneous-exchange laws for strongly base-orderable and totally unimodular systems from Gaussian convex-order rounding for arbitrary integral base polyhedra. The latter has an expected polynomial-bit oracle sampler with variance slack, but does not impose an extra almost-sure bound for an arbitrary map A. The hard signing law's general polynomial-time kernel is not asserted there. This note does not claim that its own output law inherits Ercan's covariance or convex-order conclusions.
+
+The original current-conversation 54k proof and the earlier constructive Astra manuscript are internal, unreviewed capital. The present contribution is the reconstructed constructive chain with a simpler precision operation and its further reductions, not an independent external validation of either manuscript. A targeted search did not establish priority for the general constructive theorem; absence of a located equivalent statement is not evidence of originality.
+
+This result, if the proof and novelty survive review, would be a broad oracle reduction from local combinatorial geometry to hard-supported exact-mean rounding. It is not a historic-breakthrough claim, a strongly polynomial algorithm, a uniform sampler over all good vertices, an algorithm for arbitrary intersections with long edges, or a practical materials/optimization benchmark.
+
+## 16. Executed audits, failures retained, and remaining obligations
+
+`cell_repair.py` implements the new repair operation with explicit rational inequalities. It performs exact rational boundary pushes inside the temporary cell and affine slice; it does not implement the entire spectral rounding method or the general strong-oracle LP backend.
+
+`exact_audit.py` completed 154 reported exact checks. They include preserved non-dyadic slices, denominator reset with up to 2,050-bit candidate coordinates, original rank-face retention with all coordinates fractional, distinction between artificial-cell and original vertices, randomized rational affine slices, exhaustive hidden-pairing counts, weighted replication identities, and 24 exhaustive residual-rank/base-cell fixtures for small integral coverage-plus-modular submodular functions. The parameter check covers k=1,...,1000. The reported count includes separately recorded invariants and case details; it is not 154 complete rounding runs.
+
+`spectral_audit.py` completed four floating-point artificial-state tests with L=8.5, an actual large-row diagonal background, and one protected barrier. They check the ridge gap, diagonal curvature comparison, feasible negative curvature, and a fourth-order finite-difference Hessian calculation. The maximum discrepancy between the tested curvature formulas and the finite differences was below 1.90e-9. These are local synthetic states, not certified reachable trajectories, interval proofs, or independent review.
+
+The first code version tried SymPy's simplex for exact clipping and timed out twice. It was replaced by explicit-inequality rational boundary pushes. One subsequent fixture expected a particular direction to hit an original facet near zero, but the chosen positive direction hit the temporary cell instead; that expectation was not guaranteed by the algorithm. The fixture was moved near the upper original facet to test the actual possibility of face descent, without changing the theorem or its allowed outcomes. The failure history is retained in `audit_history.md`.
+
+**What is proved within this reconstruction:** explicit rational direction selection; polynomially many full moves plus original-face drops; bounded persistent encoding through the cell repair; charged original-oracle access; finite exact-marginal extraction; weighted and integral-base extensions.
+
+**What remains uncompleted:** independent proof review/formalization; a full rational implementation and matched end-to-end benchmark; a practical step-size/progress theorem; a comprehensive priority audit. None of these is silently replaced by local numerical checks. The proof no longer asks for efficient access to a nonconvex global minimizer, a partition function, or a sampler over good vertices.
+
+## References and provenance
+
+[1] S. Guo, E. X. Fang and J. Lu, *Vector Balancing in Polynomial Time*, arXiv:2609.23540. Source framework; current-source comparisons were checked through [2–3]. https://arxiv.org/abs/2609.23540
+
+[2] Xiaoyu Li, *Fast Spectral Signing for Vector Balancing*, arXiv:2609.30044v1. Main theorem and polynomial-bit implementation sections inspected. https://arxiv.org/html/2609.30044v1
+
+[3] Emrullah Akbas and Suvrit Sra, *Tighter bounds on Komlós discrepancy: existence and algorithmic results*, arXiv:2609.27172v2, 29 September 2026. Spectral construction and computational limitations inspected. https://arxiv.org/html/2609.27172v2
+
+[4] Kristóf Bérczi, Siyue Liu, Victor Reis and Jakub Tarnawski, *Weighted Equitability and Matroid-Constrained Discrepancy*, arXiv:2608.13983. https://arxiv.org/abs/2608.13983
+
+[5] Eren Ercan, *Vector balancing in convex order*, arXiv:2609.38228v1, 28 September 2026. Selected relevant Sections 5.1–5.2, residual-rank proof and Table 4 inspected; the entire 312-page manuscript was not reviewed. https://arxiv.org/pdf/2609.38228
+
+[6] Martin Grötschel, László Lovász and Alexander Schrijver, *Geometric Algorithms and Combinatorial Optimization*, Springer, 1988, especially exact rational strong-oracle equivalences and LP. https://doi.org/10.1007/978-3-642-97881-4
+
+[7] Satoru Iwata, Lisa Fleischer and Satoru Fujishige, *A Combinatorial, Strongly Polynomial-Time Algorithm for Minimizing Submodular Functions*, arXiv:math/0004089. https://arxiv.org/abs/math/0004089
+
+[8] Prior Astra manuscript recovered from the user's Library: `Pasted text(20261006-162929).txt`, internally titled *Exact-marginal discrepancy rounding on Boolean polytopes: A constructive constrained spectral derivation*, dated 7 October 2026. Included as historical source capital, not an independently validated paper.
+
+[9] Current-conversation prior artifact: `short_edge_rounding.md`, *ASTRA Primitive Genesis: short edges and unbiased discrepancy rounding*, 12 October 2026. The 54k proof there was existential. The statement of a constructive algorithm in this note uses a different, more conservative parameter set.

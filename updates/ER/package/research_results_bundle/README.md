@@ -1,0 +1,80 @@
+# Research results and reproduction bundle
+
+Research round closed on 12 October 2026.
+
+## Bottom line
+
+No candidate met the requested historic-scale breakthrough bar. The retained controlled-noise result is a mathematical proof candidate under explicit input assumptions. The transport work contains useful analytic improvements and bounded feasibility rejections. The manufacturing and final recombination tests did not establish new practical capabilities.
+
+No result in this archive has external validation, an independently audited correctness guarantee, demonstrated practical advantage, or an established novelty claim. “Complete proof candidate” describes the proposed argument, not an independently verified theorem. Finite checks have the narrower scope described below.
+
+## Contents and evidence status
+
+### controlled_noise
+
+- `compressed_discrete_noise_affine_span_sampler.md`: full proof candidate for exact expected-polynomial sampling of discrete bounded-degree polynomial faults in a compressed deterministic linear-control schedule; capped approximation and categorical extension.
+- `compressed_linear_control_poisson_noise_compiler.md`: full compound-Poisson proof candidate, including all-parity summaries, adaptive active-mass counting, true conditional mark acquisition, rank-limited sampling and finite-clock bit accounting.
+- `sparse_polynomial_leaf_importance.md`: arbitrary-degree explicit sparse-polynomial extension using established Karpinski-Luby counting structure. Includes both Poisson and discrete slots.
+- `categorical_rank_budget_lemmas.md`: affine-pair representation and rank-budget Poissonization details for finite categorical laws.
+- `boolean_polynomial_xor_sampler.md` and `repeated_linear_control_sampler.md`: supporting specializations and finite-check descriptions.
+- Three Python scripts test basis-peeling sensitivity, small-state generator intertwining, and repeated-control identities. They are **not implementations of the full general compiler**.
+
+The main limitations are deterministic linear controls, independent noise occurrences, supplied explicit noise descriptions, and endpoint rather than trajectory output. Coherent noise, calibration, adaptive feedback and relative rare-event accuracy are not supplied. Polynomial bounds alone establish no practical-speed claim.
+
+### transport_continuation_cost
+
+`PAID_CONTINUATION_CERTIFICATE.md` gives the positive-measure one-node certificate and the separately justified time-estimator change. In the supplied example, response error 0.01 permits node error 1/425, versus approximately 1.49e-10 in the compared prescription. The improved conservative sufficient sample budget is about 1.76e28, with trajectory times around 3e9 model units. These are upper-bound prescriptions, **not runtime measurements or complexity lower bounds**. No production transport computation was performed.
+
+`check_paid_bounds.py` reproduces exact elementary certificates and the budget arithmetic. `check_restart_response.py` computes an interacting four-site response showing that the original restart variable need not be Stieltjes. Neither script validates the whole reviewed manuscript.
+
+### transport_projection_locality
+
+`PROJECTION_LOCALITY_OBSTRUCTION.md` gives the harmonic-moment obstruction to exponential support locality for the tested balance projection and current action. The script checks finite symbolic harmonic and Pauli identities. It does not numerically prove an infinite-volume theorem or rule out all certified transport algorithms.
+
+### nonlocal_transport_compression
+
+`NONLOCAL_COMPRESSION_FEASIBILITY.md` identifies surviving degree-changing interactions and unpaid cross-degree contractions. Scripts check the algebraic coupling and finite exact projection examples. No economical evaluated closure or general complexity lower bound is claimed.
+
+### transport_excursion_resummation
+
+`EXCURSION_RESUMMATION_ADMISSION.md` rejects the tested positive-excursion/reset shortcut. The script includes an exact rational remainder certificate for a negative full four-site kernel entry and a conditional-negative-definiteness reset obstruction. This is a restricted mechanism test, not a no-go theorem for every quantum renewal or transport method.
+
+### front_scaling
+
+`admission.md`, `calculate.py` and `results.json` give a conditional screening calculation for a globally preheated optically inhibited polymer-front architecture. The inhibition factor is an unmeasured hypothesis. Rate, diffusion, thermal, optical and input-size requirements do not establish a working chemical gate or universal impossibility theorem.
+
+### replica_recombination
+
+`REPORT.md`, `check_recombination.py` and `results.json` give the final constructive test. Three-replica conditional reassignment is exactly a signed three-state Potts model, with K_ij = 4 J_ij s_i s_j on mixed vertices. A forest permits known linear-work dynamic programming; the unrestricted zero-temperature problem retains graph three-coloring. The test checked 243 recombinations with exact integer energies and double-precision Gibbs probabilities. Useful mixing improvement on large frustrated systems remains unestablished.
+
+## Reproduction
+
+Requirements: Python 3 with NumPy, SciPy and SymPy. The final recombination check and weighted-basis check use only the standard library. No network access, external datasets, credentials or paid services are used by these scripts.
+
+From the extracted archive root:
+
+```sh
+python run_checks.py
+```
+
+This runs the finite checks sequentially and stores stdout and stderr under `check_outputs/`. The manufacturing script regenerates `front_scaling/results.json`. These small tests do not benchmark or implement the claimed full research capabilities.
+
+For the final recombination output alone:
+
+```sh
+python replica_recombination/check_recombination.py replica_recombination/results.json
+```
+
+Individual scripts may also be run directly. Their source code is included for inspection. Runtime depends on the Python and numerical-library environment; the included scripts do not install dependencies automatically.
+
+## What was rerun for this delivery
+
+The ten pre-existing checks listed in `check_outputs/packaging_check_run.txt` were rerun successfully while packaging, taking approximately eleven seconds in total. Their individual output logs are included. This is a reproduction check, not an independent audit. Numerical calculations retain their original floating-point or exact-arithmetic status.
+
+The final recombination script and generated `results.json` were included from the completed research test and were not rerun during packaging. That report documents the exact integer and double-precision checks. All included Python files were syntax checked after portable-path cleanup.
+
+`requirements_snapshot.txt` records the numerical-library versions used for the packaging reruns. `SHA256SUMS.txt` records checksums for the bundled files.
+
+## Sources and exclusions
+
+Primary research links appear in each relevant proof note. The transport analyses identify the user-supplied manuscripts they examine; those source manuscripts are not reproduced. Only the resulting derivations, finite-check code and outputs are included. No external source's full paper is bundled. The archive does not claim that the selective source checks establish novelty.

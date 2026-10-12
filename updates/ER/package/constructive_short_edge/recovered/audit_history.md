@@ -1,0 +1,9 @@
+# Audit history
+
+The executable files are research diagnostics, not a full implementation or independent verification of the spectral rounding theorem.
+
+1. An initial `cell_repair.py` used SymPy exact simplex plus lexicographic optimization. The combined audit timed out in two runs (approximately 20 and 35 seconds). No completed result was reported from those runs. The implementation was replaced by exact boundary pushes using explicit inequalities and exact nullspaces. This implementation cannot be substituted directly for a strong optimization oracle; the proof uses rational LP in that general model.
+2. The first boundary-push run failed a test expecting the point `(tiny, 1/3)` to descend to the original facet `x_1=0`. The selected positive direction instead reached the temporary upper cell boundary. Face descent on every repair is not a promised invariant. The example was changed to `(1-tiny, 1/3)`, for which the actual positive direction reaches `x_1=1`. This tests that a repair may descend, rather than requiring all repairs to descend.
+3. The exact audit then passed 130 recorded checks. The audit was extended with 24 integral-base-polyhedron residual-rank cases and rerun: all 154 recorded checks passed. Some recorded checks are detailed records of another case; this count does not mean 154 independent algorithms or full trajectories.
+4. Four synthetic spectral states with a large-row diagonal background and one protected barrier passed local floating-point checks. Their reachability is not asserted. Maximum curvature finite-difference error was approximately 1.90e-9.
+5. The full rational spectral rounding algorithm, general oracle reductions as software, and ellipsoid exact-marginal construction were NOT run. Their claims are mathematical arguments, not benchmark measurements.

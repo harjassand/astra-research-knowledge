@@ -1,0 +1,183 @@
+# Bounded feasibility test: exclusion Green functions under interacting balance
+
+## Result
+
+**The direct fixed-degree exclusion-duality / global-Green-function shortcut does not supply an affordable high-accuracy transport operation.** It is an exact representation of each pressure solve, but does not close the degree-changing operation that must be repeated. The decisive unpaid step is evaluating a hierarchy of degree-changing Green-function contractions with a certified error bound.
+
+Two exact checks isolate the issue:
+
+1. On the infinite translation-covariance graph, every odd degree k >= 3 has compact balanced test fluxes showing that the interaction couples degree k to degree k+2 even after exact balance. The normalized coupling has operator norm at least 1/4, uniformly in k. Thus no space consisting of all balanced one-hop fluxes up to a fixed degree is invariant.
+2. Starting from the actual uniform current, exact rational computations on prime finite rings give nonzero highest-interaction-power components at degrees 3, 5 and 7. These are small falsifications of degree-3 and degree-5 exact closure, not an infinite-degree reachability theorem.
+
+No lower bound against all compressed representations is claimed. In particular the test does not prove that high degree carries appreciable weight in the transport corrector, or that tensor, determinant, stochastic or other resummations cannot work. It identifies what such a new construction would have to pay for. Stop this branch at that gate.
+
+## 1. Exact operator and scope
+
+Source: Section 5 of `research_note(20261012-124559).md`, reviewed directly, and the established projection-locality obstruction in `../transport_projection_locality/PROJECTION_LOCALITY_OBSTRUCTION.md`.
+
+Use
+
+- H_hop = -(t/2) sum_i (X_i X_(i+1) + Y_i Y_(i+1));
+- H_diag = U sum_i Z_i Z_(i+1);
+- A = -i[H, .], S = d W, d = 4 gamma;
+- K = ker(PA) in the odd operator space;
+- Omega = W_odd^(1/2) K, with orthogonal projection Pi.
+
+The effective operator on Omega is
+
+T = Pi W_odd^(-1/2) (-A) W^+ A W_odd^(-1/2) Pi.
+
+Its current response is kappa_n(d) = (d/n) <j, (d^2 + T)^(-1) j>, where j = Pi W_odd^(-1/2) J. This test does not re-audit the source's infinite-volume transport theorem.
+
+For one-hop current words E_(i,S) = j_i product_(s in S) Z_s, with S disjoint from {i,i+1}, all dephasing factors W are one. Direct diagonal-commutator algebra gives
+
+-A_diag^2 E_(i,S) = 8 U^2 [E_(i,S) - E_(i,S triangle {i-1,i+2})].
+
+Here triangle denotes symmetric difference. Let R be the spectator-toggle involution in the second term. It is an isometry, R^2 = I, on the direct sum of one-hop edge spaces. The exact U^2 coefficient of T on those spaces is
+
+T_2 = 8 Pi (I-R) Pi, with T = U^2 T_2 + U T_1 + T_0.
+
+Pi and the other T coefficients do not depend on U. The highest-U^(2m) coefficient of T^m J is therefore T_2^m J. Since R changes spectator degree by at most two, its highest-degree component is obtained by using the raising part R_+ at every step. Other terms cannot identically cancel that coefficient as a polynomial in U. Accidental cancellations at a particular U are not excluded by this statement.
+
+The degree k of an edge means it has k-1 Z spectators; its divergence is a diagonal Walsh monomial of degree k. Pauli degree and physical particle number are different notions here.
+
+## 2. Infinite-graph invariant-subspace falsification
+
+Normalize translation sums of one-hop words to the unweighted edge metric. Write E(S) = sum_i j_i product_(s in S) Z_(i+s), omitting the common normalization factor. Its oriented divergence is the difference of the translation classes of S union {1} and S union {0}. The balance projection in degree k is
+
+Pi_k = I - B_k^* (B_k B_k^*)^dagger B_k,
+
+where B_k is this oriented incidence map. Each edge below is oriented as a rightward particle hop. A four-edge square consisting of two independent hops is exactly balanced, also after passing to translation classes.
+
+### Explicit degree 3 to degree 5 witness
+
+Start at the diagonal configuration {0,3,6}. Traverse the square:
+
+{0,3,6} -> {1,3,6} -> {1,4,6} -> {0,4,6} -> {0,3,6}.
+
+The corresponding degree-3 cycle is
+
+q = E({3,6}) + E({-2,3}) - E({4,6}) - E({-3,3}).
+
+Its divergence is zero. The degree-raising toggle gives
+
+R_+ q = E({-1,2,3,6}) + E({-2,-1,2,3})
+        - E({-1,2,4,6}) - E({-3,-1,2,3}).
+
+Now start at {-1,0,2,3,6} and traverse the square for independent hops 0 -> 1 and 6 -> 7. Its cycle is
+
+w = E({-1,2,3,6}) + E({-7,-5,-4,-3})
+    - E({-1,2,3,7}) - E({-7,-6,-4,-3}).
+
+Again B_5 w = 0. Exactly one oriented edge in w matches an edge in R_+ q, with positive signs. Therefore
+
+<w, R_+ q> = 1,
+<w, Pi_5 R_+ Pi_3 q> = 1,
+||q||^2 = ||w||^2 = 4.
+
+Consequently ||Pi_5 R_+ Pi_3|| >= 1/4. This proof uses compact cycles and no inverse, tail extrapolation, or finite-size assumption.
+
+### Every higher odd degree
+
+For any k >= 3 let C_k = {6,9,...,3k-3}, a set of k-2 spectators. Define q_k as the oriented square based at {0,3} union C_k, with hops 0 -> 1 and 3 -> 4. Define w_(k+2) as the square based at {-1,0,2,3} union C_k, with hops 0 -> 1 and 6 -> 7. The spectator sites are unchanged during the other hop.
+
+Both cycles have four distinct translation-edge classes. In the w square, the two edges based at bond 6 have all spectators at most -3 or at least +3 relative to that bond; hence they contain neither required added neighbor -1 nor +2 and cannot equal any R_+ edge. Of its two bond-0 edges, exactly the first agrees with R_+ q_k; moving the particle 6 to 7 makes the other distinct. This verifies
+
+B_k q_k = B_(k+2) w_(k+2) = 0,
+<w_(k+2), R_+ q_k> = 1,
+||q_k||^2 = ||w_(k+2)||^2 = 4.
+
+Thus ||Pi_(k+2) R_+ Pi_k|| >= 1/4 for every odd k >= 3. The same construction also works for even k, although the physical current hierarchy at issue is odd.
+
+**Scope:** these are different input witnesses at different k. This is an entire-sector nonclosure result, not a proof that a single seed J reaches every k or that its high-degree components resist approximation.
+
+## 3. Physical-current seed: exact finite tests
+
+For a prime ring length n, every nontrivial diagonal translation orbit has size n. The translation-sum vertices are therefore equally normalized. The edge basis is indexed by S subset {2,...,n-1} of size k-1, anchored at bond (0,1), and has dimension binomial(n-2,k-1). The vertex quotient has binomial(n,k)/n rows.
+
+Construct B_k exactly. Solve its connected quotient Laplacian with one gauge row removed, in rational arithmetic. Start f_1 = J represented by coefficient 1. Recursively compute only the highest-degree branch
+
+f_(k+2) = Pi_(k+2) R_+ f_k.
+
+This branch, times (-8)^m U^(2m), is the degree 2m+1 component of the leading interaction-power coefficient of T^m J.
+
+The verified squared coefficient norms are:
+
+- n=7, k=3: 3/5;
+- n=7, k=5: 2/25;
+- n=11, k=3: 1663/2889;
+- n=11, k=5: 16047521953401448 / 460232440179718185;
+- n=11, k=7: 1560045046393590256187585807654 / 1435391292746573671667294306552445.
+
+At every step the code checks B_k f_k = 0 exactly. These results show that the degree growth is present in the physical-current iteration on these rings, rather than solely in arbitrary input cycles. They do not establish thermodynamic convergence of these numbers or infinite-seed reachability.
+
+## 4. What exclusion duality and a Green representation actually buy
+
+### Fixed-degree duality is exact but preserves the offending parameter
+
+An exclusion swap permutes the factors of a Walsh monomial, so degree k is preserved by its Laplacian L_k. At density 1/2 this is also the elementary orthogonal-polynomial self-duality picture: degree k corresponds to a dual exclusion process with k particles. Orthogonal duality is established machinery, not a removal of k. See Franceschini and Giardina, [Stochastic Duality and Orthogonal Polynomials](https://arxiv.org/abs/1701.09115).
+
+The toggle R_+ inserts two additional dual particles relative to the hopping edge. Section 2 proves that Pi cannot erase this insertion identically. Applying a solved k-particle dual semigroup followed by R therefore does not return to a fixed k-particle family.
+
+### The exact semigroup representation
+
+On a finite graph, on the zero-mean vertex subspace,
+
+Pi_k = I - B_k^* integral_0^infinity exp(-s L_k) ds B_k,
+L_k = B_k B_k^*.
+
+In infinite volume the same formula is interpreted through spectral calculus on finite-energy gradients, not by assuming a bounded inverse L_k^(-1). This is a useful exact operation if its applications and their errors can be evaluated economically. Merely storing the formula is not an algorithm for its contractions after repeated R insertions.
+
+### One precise integrability comparison
+
+The general transition kernel given by Tracy and Widom, [Integral Formulas for the Asymmetric Simple Exclusion Process](https://arxiv.org/abs/0704.2633), Theorem 2.1, is a sum of k! k-dimensional contour integrals. Setting p=q=1/2 gives the symmetric model, after a time rescaling to the chosen edge rate. The two-body scattering factor is
+
+S(a,b) = -(1 + ab - 2a)/(1 + ab - 2b).
+
+It is not a separable free-particle factor. For example S(2,3)=-3, S(3,4)=-7/5, and S(2,4)=-5, so S(2,3)S(3,4) != -S(2,4). This rules out the elementary one-variable gauge reduction S(a,b)=-f(a)/f(b); it does not rule out every determinant identity.
+
+The paper's TASEP determinant simplification cannot simply be substituted for the symmetric process. At the most elementary generator level, two adjacent SSEP particles have only two outward allowed jumps at unit bond rates. Two independent walkers have four attempted jumps, and a killed/free-fermion construction has the wrong diagonal loss at contact unless an interacting boundary correction is retained.
+
+For the representation tested here, direct q-node-per-variable tensor quadrature has k! q^k terms before any special cancellation. This is an evaluation count for that explicit implementation, **not a complexity lower bound**. Translation reduction can remove a center coordinate, but leaves k-1 relative coordinates.
+
+After an R_+ insertion, one needs new matrix elements between k- and (k+2)-particle Green/scattering states. Those insertions are not covered by a fixed-k transition formula. In a coordinate implementation the new coefficient array has binomial(n-2,k+1) edge entries; in a spectral implementation the same work appears as degree-changing form factors and their contracted sums/integrals. A compact nested integral expression can have a short description while retaining this unevaluated contraction. No closure identity or certified low-rank bound for these insertions was established.
+
+**This is the decisive unpaid cost:** a family of affordable, accuracy-controlled degree-changing contractions, or a theorem that only bounded/sufficiently slowly growing k is needed. Fixed-k polynomial solvability alone supplies neither.
+
+## 5. Accuracy and acquisition are still charged
+
+### Heat cutoff is not a uniform infinite-volume oracle
+
+Let Pi_(k,tau) = I - B_k^* integral_0^tau exp(-s L_k) ds B_k. On the gradient subspace its error relative to Pi_k is unitarily equivalent to exp(-tau L_k). Since the infinite exclusion gap graphs have spectrum accumulating at zero,
+
+||Pi_(k,tau) - Pi_k|| = 1
+
+for every finite tau on the full edge Hilbert space. Therefore one cannot assign a finite universal time cutoff that makes each Green call a small operator-norm error. Source-specific low-frequency estimates may give convergence, but must be proved and propagated for the sources generated after the interactions.
+
+On an n-site finite ring, a positive gap permits the bound exp(-lambda_gap tau). The ordinary exclusion gap is the single-walker ring gap, 2-2 cos(2 pi/n), by the exclusion consequence of [Caputo, Liggett and Richthammer](https://arxiv.org/abs/0906.1238). Restricting to translation-invariant states cannot worsen this bound. Thus a sufficient cutoff is O(n^2 log(1/eta)) for operator error eta. This is a finite-volume cost, not a dimension-free thermodynamic accuracy theorem. Sampling that semigroup still requires a variance/error bound for the signed differentiated and repeatedly inserted integrand.
+
+### Iteration and response precision
+
+Both Pi and R are contractions. If every approximate Pi is a contraction with operator error at most eta, a product of m Pi/R steps can incur up to m eta error by telescoping. For the positive normalized interaction block Pi(I-R)Pi/2 the same type of accounting applies. This does not control the full hopping-containing T without its additional norm/domain bounds.
+
+For positive finite-volume T and a positive approximation T_tilde with ||T-T_tilde|| <= eta_T, the resolvent identity gives
+
+|kappa_n - kappa_tilde_n| <= a eta_T / d^3,
+where a = ||j||^2/n = t^2/2.
+
+Thus an absolute response budget epsilon would, under this sufficient operator-norm approach, require eta_T <= epsilon d^3/a. A small computational or primal-dual residual must likewise be evaluated with rigorous error margins; a symbolic Green call cannot be counted as exact at zero cost. None of the tested representations establishes how many degrees or iterations suffice for that budget at general fixed interacting parameters.
+
+### Inputs
+
+This test uses the model-supplied interface: t, U and d are exact symbols or would be certified input intervals. All displayed checks are classical algebra and exact rational solves. No experimental data, empirical spectrum, or Green-function samples were acquired. If parameters are to be learned rather than supplied, preparation, calibration samples and interval propagation remain part of the cost; this calculation does not replace them. For the source's broader class of diagonal interactions, knowing only the coarse local detuning second moment does not hand over all higher effective-operator matrix elements.
+
+## 6. Reproduction and stopping decision
+
+Run:
+
+python check_infinite_degree_coupling.py
+python test_degree_ladder.py
+
+The first uses integer edge bookkeeping and verifies the compact cycle identities for several k; the displayed symbolic construction proves them for all k. The second uses SymPy exact rational arithmetic for prime n=7 and n=11. These are mathematical/computational checks, not physical experiments or formal proof-assistant verification.
+
+The candidate has not produced a compact evaluated closure with a paid accuracy theorem. The identified gap is specific: interaction-induced changes in the number of dual particles survive balance, and their Green-function contractions have no supplied economical evaluation rule. This bounded feasibility test is closed. Reopen only for a concrete cross-degree compression or an accuracy theorem for the actual current corrector, not for improved fixed-degree tail constants or an unevaluated spectral oracle.

@@ -1,0 +1,70 @@
+# Admission decision: no candidate established
+
+## Capability and the single proposed operation
+
+Capability: produce a 10 cm, one-liter high-performance polymer part with independently specified 10 μm internal features on a roughly 100 s cycle, using chemical-front curing rather than voxel-by-voxel energy deposition. Arbitrary masks are the target here; compact or periodic geometry would be a different, easier target.
+
+Proposed operation tested: recover heat from a previous curing batch into the next patterned vat, preheat the whole vat toward the reaction temperature so that fine selected features no longer quench, and preserve uncured voids using an optically generated inhibitor map. This is a specific globally preheated, mask-retaining architecture, not a statement about every conceivable local recuperator.
+
+The missing joint physical operation is a high-temperature, spatially immobile inhibition gate at low volumetric writing cost. No demonstrated mechanism meeting that joint envelope was identified. Adding ordinary recuperation to existing frontal polymerization is not a new throughput-scaling operation.
+
+## Strong baselines and prior-art check
+
+1. Frontal DCPD polymerization already uses the reaction exotherm to make thermosets and printed structures with much less external curing energy than ovens. https://doi.org/10.1038/s41586-018-0054-x
+2. UV-released TMG already inhibits DCPD frontal polymerization, while a second wavelength can accelerate it. In the reported 1.3 mm specimen, patterned pre-exposure used 30 mW/cm² for 180 s. Channels narrower than 10 mm failed to sustain propagation in that geometry; this is NOT a universal resolution limit. The paper explicitly identifies TMG diffusion as a pattern-fidelity issue. https://doi.org/10.1038/s41467-025-61484-9
+3. Swiss-roll/counterflow microcombustors already recuperate product heat to prevent extinction. Their thermal scaling must be included rather than comparing only with ovens. https://doi.org/10.1088/1364-7830/8/4/003 ; https://doi.org/10.1080/13647830.2013.812807
+4. Xolography already supplies two-color local chemical gating for volumetric printing. It is a relevant spatial-control baseline under the same requirement to physically deliver a pattern. https://doi.org/10.1038/s41586-020-3029-7
+
+## Exact reduction and reproducible calculation
+
+The published DCPD model is
+
+ρ c_p ∂T/∂t = κ ∇²T + ρ H ∂α/∂t,
+
+∂α/∂t = A exp[-E/(RT)] f(α)/s,
+
+f(α) = (1-α)^1.72 α^0.77 / {1+exp[14.48(α-0.41)]}.
+
+Here s≥1 is an explicitly UNKNOWN effective inhibition factor. The existing fitted model concerns unmodified DCPD kinetics; introducing multiplicative s is the falsifiable hypothesis, not a measured property of the photoinhibited resin.
+
+Primary-source model parameters: κ=0.15 W/(m K), ρ=980 kg/m³, c_p=1600 J/(kg K), H=350 kJ/kg, A=8.55×10^15 s^-1, E=110.75 kJ/mol. Table 1: https://par.nsf.gov/servlets/purl/10435013
+
+Define F(α)=∫dα/f(α). Then dF/dt=A exp[-E/(RT)]/s exactly. This removes autocatalytic nonlinearity without discarding its measured cure dependence. At fixed temperature, all cure thresholds are scalar exposure integrals.
+
+Using α_initial=0.05, desired α_on=0.90 and allowable α_off=0.06:
+
+- F_on=2594.27238; F_off=0.10362085.
+- At 200 °C, the model reaches α_on in 0.5109 s.
+- Holding unselected material at 100 °C for 100 s requires s≥2592 to stay below α_off.
+- At 150 °C the same requirement is s≥176,012.
+- At 200 °C it is s≥4,900,268.
+
+As an optimistic sensitivity check, if selected and unselected material share 200 °C for only the 0.5109 s on-cure interval, the suppression requirement falls to F_on/F_off≈25,036 and the 10 μm diffusion limit rises to about 2.09×10^-12 m²/s. Thus shortening residence materially helps; the 100 s numbers are not architecture-independent bounds.
+
+These are required suppression factors for this chosen hold history. They do not prove that a chemical inhibitor cannot meet them. A just-in-time hot sheet would reduce the hold time and must be analyzed as a different construction, including its heat-exchanger geometry and pattern access.
+
+Spatial gate memory gives an independent exact constraint. A periodic inhibitor pattern of feature width a has a Fourier component with wavenumber π/a. Under ordinary diffusion its amplitude is multiplied by exp[-π²∫D(t)dt/a²]. Retaining 90% of that amplitude requires
+
+∫D(t)dt ≤ -ln(0.9) a²/π².
+
+For a=10 μm and a 100 s hold, constant effective D must be ≤1.07×10^-14 m²/s; at 1 μm it must be ≤1.07×10^-16 m²/s. These are design requirements; no TMG diffusivity is assumed. Immobilizing TMG alone might still leave catalyst or other active species mobile. Any proposed immobilization must preserve actual inhibition chemistry and optical access.
+
+DCPD's model thermal diffusivity is 9.57×10^-8 m²/s, so thermal equalization across a 10 μm feature takes about 1.05 ms. Thus a hot-vat design cannot rely on temperature contrast for an approximately 0.51 s cure; the chemistry really must preserve the mask. The diffusion result shows why thermal recuperation alone does not remove the resolution scaling.
+
+## Charged costs
+
+- One liter contains about 0.98 kg of resin and releases about 343 kJ of polymerization heat. The feedstock/catalyst and chemical enthalpy are real inputs shared with the existing frontal-cure baseline.
+- Heating a one-liter vat from 25 to 200 °C requires about 274 kJ of sensible heat before losses. Recuperation can recover some of it over repeated cycles; startup, finite exchanger effectiveness, and steady losses still must be counted. The calculation does not pretend every cycle must pay the entire startup cost.
+- The published inhibition exposure is 5.4 J/cm². Applied at the demonstrated 1.3 mm thickness, full-volume inhibition corresponds to 41.5 kJ/L of incident optical energy. A naive 10 μm slice-by-slice transfer at that same areal dose and 50% inhibited occupancy costs 2.7 MJ/L, about 7.9 times the resin reaction heat, before wall-plug loss. At fixed dose, the crossover thickness is about 79 μm. This is an architecture/known-dose comparison, NOT an optical lower bound: more efficient chemistry or photon recycling might change it, but must be supplied rather than assumed.
+- A fully arbitrary 10 cm cube on a 10 μm binary grid contains 10^12 voxel bits, at least 125 GB before calibration/control overhead. Pattern acquisition/ingestion is Ω(N), and delivery through P independent binary pixels at rate f has T≥N/(Pf). At 1 μm the input is 125 TB. Structured CAD can compress only restricted shape families; no compact witness is assumed for arbitrary masks.
+- Scalar quadrature used here is inexpensive. Full manufacturing performance additionally needs measured inhibited kinetics, spatial transport, optical-dose/attenuation calibration, front stability and thermal recovery. None is hidden behind an assumed optimized simulator.
+
+## Exact unresolved obligation and stopping decision
+
+A plausible category to investigate, if independently justified, is a caged pendant inhibitor co-immobilized with a Ru catalyst through a non-dissociating ligand. However, neither arbitrary tethering nor immobilizing only the released base establishes retained ROMP activity, sufficient off suppression, or sufficiently low optical dose. Supported metathesis catalysts already exist, so immobilization by itself is not a novelty claim.
+
+To reopen this specific candidate, supply a chemically explicit gate plus measured or defensibly derived rate/transport/optical parameters satisfying the joint heat-history, cure-contrast, diffusion and dose constraints, while retaining useful mechanical properties. Also supply a recovery geometry that preserves the target part/void geometry and materially outperforms the matched existing frontal-cure plus recuperation and optical-gating baselines.
+
+We have an auditable screening calculation, not a new manufacturing capability or an impossibility theorem. The selected architecture is not admitted; no further work is justified here without a real gate mechanism or evidence that changes this envelope.
+
+Reproduction: python calculate.py. It writes results.json; scipy is the only nonstandard dependency. No physical experiments were performed.

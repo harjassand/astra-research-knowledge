@@ -157,6 +157,20 @@ class EvidenceGuards(unittest.TestCase):
             new = (intake.ROOT/dp).read_text()
             old_connection = __import__('json').loads(intake.git('show',intake.BASE+':'+cp))
             connection = intake.load(cp)
+            # ER adds a separately guarded reciprocal continuation to N747.
+            # Remove only that exact navigation projection before checking EP.
+            for later in intake.rows('agent/SEMANTIC_NOTICES.jsonl'):
+                if later['notice_id'] != 'SN-ER-N747-N754-SCOPED-CONTINUATION' or notice['card_ids'][0] != later['card_ids'][0]:
+                    continue
+                block = 'SEMANTIC NOTICE '+later['notice_id']+'\n'+later['status']+': '+later['clarification']+'\n\n'
+                self.assertEqual(new.count(block),1)
+                new = new.replace(block,'')
+                earlier_id,later_id = later['card_ids']
+                added = [e for e in connection['edges'] if e['from']==later_id and e['to']==earlier_id and e['kind']=='material_update']
+                self.assertEqual(len(added),1)
+                self.assertEqual(added[0]['composition'],later['clarification'])
+                connection['edges'] = [e for e in connection['edges'] if e != added[0]]
+                connection['nodes'] = [n for n in connection['nodes'] if n['id'] != later_id]
             intake.check_projection(old,new,old_connection,connection,notice)
             with self.assertRaisesRegex(ValueError,'historical dossier'):
                 intake.check_projection(old,new+'Invented proof claim\n',old_connection,connection,notice)
