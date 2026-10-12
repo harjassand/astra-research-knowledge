@@ -1,0 +1,234 @@
+# Root derivations: physical interfaces and geometric phase control
+
+12 October 2026. Internally derived arguments; no priority, experiment or
+transformative technological claim. All rates below are conditional on the
+stated reduced models. The root developed the transit-compensated construction
+before learning of the stronger existing spherical-design-curve literature.
+
+## 1. What a scalar Stark waveform can and cannot do
+
+For a prepared target and one weak accepting channel, let J be the coupling,
+kappa>0 the exponential memory decay, Delta the initial detuning, and
+u(t)=exp[-i theta(t)], theta'=q. Assume a stationary or long-time averaged
+autocorrelation C(s), C(0)=1, and mean-square derivative energy
+mean |u'|^2=mean q^2<=A^2. Its positive spectral measure mu obeys
+integral mu=1 and integral omega^2 dmu<=A^2. Second-order weak-transfer theory
+then gives
+
+  Gamma=2J^2 integral kappa/[kappa^2+(Delta-omega)^2] dmu.
+
+For Delta=0, convexity of x -> kappa/(kappa^2+x) gives
+Gamma >= 2J^2 kappa/(kappa^2+A^2). A constant detuning q=A attains equality.
+This is a precise model obstruction to adding value through scalar noise or
+waveform complexity, not a universal prohibition on laser control.
+
+Spectral weight is redistributed, rather than removed. In particular, for a
+flat coupling density across all detunings, integration over Delta gives the
+same total rate 2 pi J^2, since the Lorentzian integrates to pi and mu has mass
+one. A broad bath cannot silently be replaced by a single resonant line.
+
+For Gaussian OU level noise of variance sigma^2 and correlation time tau,
+the exact phase correlation is
+
+  C(s)=exp[-sigma^2(tau |s|-tau^2(1-exp(-|s|/tau)))].
+
+This follows by integrating the covariance twice and applying the Gaussian
+characteristic function. The white-frequency-noise limit has infinite
+instantaneous RMS and is not an admissible finite-A control above. For the
+ideal limit C(s)=exp(-D|s|) and a flat finite bath [-W,W], the rate ratio is
+(2/pi)atan(W/D). A tenfold reduction requires D/W>=6.31375. This example is a
+model diagnostic, not a laser specification.
+
+## 2. A vector-control mutation that escapes the static-orientation average
+
+Consider ONE resonant accepting transition of a fixed molecular species. Its
+differential linear-Stark vector is d=d0 n, with d0>0 fixed and n ANY unit
+vector. Molecular orientation is fixed during the control cycle. Electric
+control E(t) produces phase u_n(t)=exp[-i d0 n dot Theta(t)], Theta'=E.
+There is no assumption that one pump can track all orientations. The target
+population is prepared before the protection interval; generation of that
+population and any chemical use remain separate physical services.
+
+For a static field of RMS magnitude E0, an isotropic orientation ensemble has
+
+  Gamma_static/Gamma_0 = atan(a)/a, a=d0 E0/kappa,
+  Gamma_0=2J^2/kappa.
+
+This averaged rate is an initial ensemble decay slope, not an exact single
+exponential ensemble lifetime. For frozen orientations, S(s)=integral exp(-Gamma_n s)
+dsigma(n). The static mean lifetime is already (1+a^2/3)/Gamma_0, while its
+worst-orientation rate is Gamma_0. Jensen over orientation and spectrum gives
+the vector ensemble lower bound Gamma_avg/Gamma_0 >=1/(1+a^2/3).
+
+This is the best scalar fixed-direction comparator, NOT the strongest known
+general coherent-control technology. Its O(1/a) tail comes from orientations
+with n dot E near zero. The scalar single-channel lower bound does not imply
+this ensemble tail is optimal under vector time dependence.
+
+### Explicit transit-compensated positive cubature
+
+Let sigma be normalized area measure on S^2. Choose a positive cubature
+{x_k,w_k} exact for all restricted polynomials of degree <=2t. One explicit
+choice uses t+1 Gauss--Legendre latitudes and 2t+1 equally spaced azimuths,
+with the product weights. Odd azimuthal harmonics vanish; the remaining
+axisymmetric polynomial is integrated exactly by the latitude rule.
+
+Choose a continuous closed path on the phase sphere of radius R=pi/d0 that
+visits these nodes: traverse every complete latitude ring and join the rings
+along one meridian, returning on that meridian. Its length L satisfies
+
+  L <= 2 pi R (t+2).
+
+Let nu be normalized arclength measure on the corresponding unit-sphere path.
+Define the real reproducing kernel and its projection of the transit measure:
+
+  K_t(x,y)=sum_{l=0}^t (2l+1) P_l(x dot y),
+  h_t(x)=integral K_t(x,y) dnu(y).
+
+For every polynomial p of degree <=t,
+integral h_t p dsigma=integral p dnu. Also |h_t|<=(t+1)^2, since |P_l|<=1.
+Choose 0<delta<=1/[2(t+1)^2] and assign dwell fractions
+
+  a_k=w_k[1-delta h_t(x_k)] >= w_k/2.
+
+The total dwell fraction is 1-delta. Exact degree-2t cubature applied to
+h_t p proves
+
+  sum_k a_k p(x_k)+delta integral p dnu = integral p dsigma.     (G1)
+
+Thus travel time is explicitly included and compensated with positive dwell
+times. No instantaneous free jumps between an ideal quadrature are assumed.
+The control field has constant magnitude L/(delta T) during transit and is
+zero during dwells. Therefore mean |E|^2=L^2/(delta T^2). Set
+
+  T=L/(E0 sqrt(delta)), Omega=2pi/T.
+
+This is a bounded, piecewise smooth finite-RMS waveform, although abrupt
+start/stop and direction changes are NOT finite-bandwidth hardware.
+
+For every orientation n, the degree-t Taylor polynomial of exp(-i pi n dot x)
+has uniform remainder epsilon_t=pi^(t+1)/(t+1)!, by the real integral
+remainder formula. Its sphere average is sinc(pi)=0. Equation (G1) gives the
+zero Fourier coefficient of u_n the uniform bound
+
+  |c_0(n)| <= min(1,2 epsilon_t).
+
+All other Fourier lines occur at integer multiples of Omega. Parseval and the
+same Lorentzian transfer model then prove, uniformly in n,
+
+  Gamma_n/Gamma_0 <= 4 epsilon_t^2 + kappa^2/(kappa^2+Omega^2). (G2)
+
+The right side may be replaced by its minimum with one when used as a trivial
+upper bound. Using the explicit L and delta yields the conservative bound
+
+  Gamma_n/Gamma_0 <= 4 epsilon_t^2 +
+    1/[1+(a/(pi sqrt(2)(t+1)(t+2)))^2].                      (G3)
+
+Taking t of order log(a)/loglog(a) makes this asymptotically
+O(t^4/a^2), which eventually beats atan(a)/a. Thus the scalar no-advantage
+theorem MUST NOT be silently upgraded to vector ensemble control.
+
+The exact coefficient h_t can permit a much larger delta than the universal
+bound; numerical examples use delta=min(1/4,1/(2 max h_t)) with a safety
+margin. Those floating calculations do not themselves certify exact moments.
+The all-orientation theorem is (G1)--(G3), not a finite orientation grid.
+
+### Existing stronger mathematics and exact remaining gates
+
+Ehler--Groechenig (2023), arXiv:2306.13152, construct spherical t-design curves
+on S^2 of length O(t). Importing that existence theorem and traversing at
+constant speed improves the existence version of (G2) to O(t^2/a^2).
+Their construction/unknown effective constant is not an acquired laboratory
+waveform. Continuous unitary designs for robust quantum control also exist
+(arXiv:2601.01988). Neither a new design definition nor historical priority is
+claimed here. The diagonal Stark interface differs from arbitrary SU(2)
+control; this distinction does not by itself establish a novel application.
+
+If the implemented path differs by at most eta in differential phase from the
+ideal trajectory, |u_actual-u_ideal|<=eta. Its carrier is bounded by
+2epsilon_t+eta, and the carrier contribution becomes
+(2epsilon_t+eta)^2 Gamma_0. Smoothing and calibration must charge this term.
+The peak field is E0/sqrt(delta), substantially above its RMS value. The
+number of ring visits/stop events is O(t^2) per cycle; adequate time resolution,
+slew and finite-bandwidth synthesis are additional resources, not free.
+
+There is an explicit finite-bandwidth approximation. Fejer-convolve the
+periodic phase vector Theta with harmonic cutoff K. Its multiplier is
+(1-|n|/(K+1))_+, so Parseval gives
+||Theta-Theta_K||_L2 <= E0/[Omega(K+1)]. The positive normalized Fejer kernel
+contracts both the RMS and peak norm of E=Theta', and E_K is bandlimited to
+B=K Omega. Cauchy--Schwarz and |exp(ix)-exp(iy)|<=|x-y| give the carrier bound
+|c0_actual|<=2epsilon_t+d0 E0/[Omega(K+1)]<=2epsilon_t+A/B, A=d0 E0. Thus
+
+  Gamma_actual/Gamma_0 <= (2epsilon_t+A/B)^2 +
+                          kappa^2/(kappa^2+Omega^2).       (G4)
+
+For 2epsilon_t<=kappa/Omega and B>=A Omega/kappa, this is at most
+5(kappa/Omega)^2. Finite bandwidth is therefore mathematically available but
+can be a severe physical resource, scaling approximately A^2/kappa up to
+design-length factors. This construction was proposed independently by the
+vector-control worker after the root's transit-compensation proof.
+
+For |d|=d0(1+z), the spherical average becomes sinc(pi(1+z)), approximately
+-z for small z. Nonzero width of transition-slope norms produces a carrier
+floor. Other accepting transitions, especially d=0 multiphonon channels, need
+their own treatment. Off-resonant channels may meet a control sideband;
+anharmonic reaction dynamics, target preparation, field heating/damage, and
+rotational diffusion are outside this theorem. No bond-cleavage yield,
+measured lifetime gain, or advantage over the strongest physical control has
+been established. The construction remains a conditional control principle,
+not a transformative technology.
+
+## 3. Atom/electron accounting for the iron-export lead
+
+For radius r, open fraction f, path length L, active surface atom density c_s,
+diffusivity Ds, atomic chemical potential mu, and temperature T, the stipulated
+connected-path atom flux per projected area is
+
+  J_N=(2f/r) Ds c_s/(kB T) [Z* e E - dmu/dx].
+
+For a Fe shell of thickness b, its exact conducting fraction is
+g=f[(1+b/r)^2-1], projected current j=sigma g E, and local ohmic power/area
+p=j E L. At zero opposing chemical-potential gradient, the atom/current ratio
+is
+
+  J_N/j=(2f/r) Ds c_s Z*e/(kB T sigma g).
+
+No parallel/series repartition changes this local ratio. Series connection
+can lower terminal current only while retaining separate product/feed cells.
+Contacts of effective areal resistance R_A dissipate j^2 R_A per projected
+area, independently of ideal electrical grouping.
+
+Root scenario: T=1163K, Ds=10exp[-228000/(RT)]=5.75274e-10 m^2/s from the
+clean-alpha-Fe law, r=L=30nm, f=.2, b=3nm, c_s=2.5e19/m^2, sigma=1e6 S/m,
+Z*=10. These last material/interface parameters are assumed, not measured
+for ore or CNTs. For 10kg Fe/m^2/h: E=1565.54V/m, V=46.966microV,
+j=65.7525MA/m^2, p=3088.14W/m^2, local electricity=.308814MWh/t.
+The mass/charge ratio is 4.22460e-11kg/C (2.36709e10 C/kg), versus the purely
+stoichiometric 3F/M_Fe=5.1832e6 C/kg for Fe(III) electrowinning. This comparison
+does not compare process energies: the voltages and other boundaries differ.
+For a .6MWh/t total export-electricity allowance, remaining effective contact
+resistance is at most about 6.74e-13 ohm m^2. Neither hot contact feasibility
+nor a complete series collection scheme is supplied by these equations.
+
+The path inventory obeys dN/dt=S_feed-J_export-Q_loss, hence
+integral J_export dt<=N(0)+integral S_feed dt. A millisecond burst cannot prove
+ore extraction. Isotopic feed tracing beyond all seed inventory is necessary.
+Similarly recovery cannot exceed the source-connected Fe fraction under the
+stated path transport model. Neither ore grade nor metallization establishes
+that connectivity.
+
+In a reciprocal local two-flux linear-response model, atom mobility per
+conducting volume is ell=Ds c_s/(b kB T), with coupling ell Z*e to electric
+field. Positive entropy production requires sigma>=ell(Z*e)^2. This follows
+from the determinant of the symmetric Onsager matrix; its application assumes
+the same bulk coefficients and reciprocal, near-equilibrium interface. It is
+not an experimental restriction on a separately conducting ballistic CNT.
+The scenario gives ell(Z*e)^2/sigma about7.66e-4. Arbitrarily increasing the
+assumed Z* while keeping mobility/conductivity fixed is not a free remedy.
+
+The more credible confined moving-plug representation already has nanoscale
+experimental antecedents, including external prepared-Fe admission. It does
+not supply source contact from gangue, impurity exclusion, wet-H2 durability,
+or inexpensive macroscopic harvesting. No major energy or throughput
+advantage is established.

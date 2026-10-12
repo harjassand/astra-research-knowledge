@@ -1,0 +1,185 @@
+<!doctype html><meta charset="utf-8"><title>N703 recovered original — astra_energy_clock/verify.py</title>
+<aside>Recovered original artifact; producer-reported research only. Archive integrity is not independent mathematical or scientific verification. No archived script was executed.</aside>
+<pre>&quot;&quot;&quot;Focused exact checks and one all-future certificate; no general QP solver.
+Run: python verify.py
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as Q
+from pathlib import Path
+import gzip
+import json
+import math
+import sys
+from energy_clock import (EnergyQP, Certificate, certificate_action,
+                         compile_action_qp, certificate_vector, norm2,
+                         geometric_mesh, is_psd)
+
+# Integers arise from an explicitly bounded rational experiment, not user input.
+if hasattr(sys, &#x27;set_int_max_str_digits&#x27;):
+    sys.set_int_max_str_digits(0)
+ROOT = Path(__file__).resolve().parent
+
+def F(a):
+    return [[Q(x) for x in row] for row in a]
+
+
+def floor_dyadic(x: Q, bits: int) -&gt; Q:
+    scale = 1 &lt;&lt; bits
+    return Q((x.numerator*scale)//x.denominator, scale)
+
+
+def hinge_prox(X: Q, Y: Q, h: Q) -&gt; tuple[Q,Q]:
+    &quot;&quot;&quot;Prox of .5*x^2 + max(0,x-y), valid on all rational inputs.&quot;&quot;&quot;
+    x = X/(1+h)
+    if x &lt;= Y:
+        return x,Y
+    x = (X-h)/(1+h)
+    y = Y+h
+    if x &gt;= y:
+        return x,y
+    v = (X+Y)/(h+2)
+    return v,v
+
+
+def hinge_certificate() -&gt; tuple[EnergyQP,Certificate]:
+    model = EnergyQP(F([[1,0,0],[0,0,0],[0,0,0]]),
+                     [Q(0),Q(0),Q(1)],
+                     F([[0,0,-1],[1,-1,-1]]),[Q(0),Q(0)],2)
+    eta, a = Q(1,128),Q(1,3)
+    c = Certificate([Q(0)],[[Q(1),Q(0),Q(1)]],[],[])
+    for _ in range(5000):
+        old = c.primal[-1]
+        t = c.times[-1]
+        h = eta*(a+t)
+        X,Y = hinge_prox(old[0],old[1],h)
+        x,y = floor_dyadic(X,32),floor_dyadic(Y,32)
+        # Monotone dyadic rounding preserves 0 &lt;= y-new minus y-old &lt;= h.
+        lam2 = (y-old[1])/h
+        assert 0 &lt;= lam2 &lt;= 1
+        vx = (old[0]-x)/h
+        c.primal.append([x,y,max(Q(0),x-y)])
+        c.dual_w.append([vx-lam2,Q(0),Q(0)])
+        c.dual_lambda.append([1-lam2,lam2])
+        c.times.append(t+h)
+        if x == 0:
+            break
+    else:
+        raise RuntimeError(&#x27;Stop cap reached&#x27;)
+    return model,c
+
+
+def exp_bounds(t: Q, n: int = 40) -&gt; tuple[Q,Q]:
+    if not 0 &lt;= t &lt;= 1:
+        raise ValueError(&#x27;This elementary bound is implemented on [0,1]&#x27;)
+    term = Q(1)
+    s = term
+    for j in range(1,n+1):
+        term *= t/j
+        s += term
+    first = term*t/(n+1)
+    return s,s+first/(1-t/(n+2))
+
+
+def selected_limit_bracket(bits: int = 48) -&gt; tuple[Q,Q]:
+    lo,hi = Q(0),Q(1)
+    for _ in range(bits):
+        mid = (lo+hi)/2
+        e0,e1 = exp_bounds(mid)
+        if (1+mid)*e1 &lt; 2:
+            lo = mid
+        elif (1+mid)*e0 &gt; 2:
+            hi = mid
+        else:
+            raise ArithmeticError(&#x27;Taylor bound needs refinement&#x27;)
+    return lo,hi
+
+
+def serialize(c: Certificate) -&gt; dict:
+    def vec(v): return [str(x) for x in v]
+    return {
+        &#x27;times&#x27;:[str(t) for t in c.times],
+        &#x27;primal&#x27;:[vec(y) for y in c.primal],
+        &#x27;dual_w&#x27;:[vec(w) for w in c.dual_w],
+        &#x27;dual_lambda&#x27;:[vec(l) for l in c.dual_lambda],
+    }
+
+
+def main() -&gt; None:
+    assert is_psd(F([[1,-1],[-1,1]]))
+    assert is_psd(F([[0,0],[0,3]]))
+    assert not is_psd(F([[0,1],[1,0]]))
+    model,c = hinge_certificate()
+    action = certificate_action(model,c)
+    assert 2*action &lt;= Q(1,40000)  # Uniform error &lt;= 0.005, for ALL future time.
+    terminal = c.primal[-1]
+    assert model.verify_minimizer(terminal,[Q(1),Q(0)])
+    assert model.verify_minimizer([Q(0)]*3,[Q(1),Q(0)])
+    C2 = model.tail_growth_constant([Q(0)]*3,[Q(1),Q(0)],Q(3,2))
+    lo,hi = selected_limit_bracket()
+    endpoint_error_upper = max(abs(terminal[1]-lo),abs(terminal[1]-hi))
+    assert endpoint_error_upper**2 &lt;= 2*action
+    # Test independent sparse QP assembly on a prefix, not merely action arithmetic.
+    n = 8
+    prefix = Certificate(c.times[:n+1],c.primal[:n+1],c.dual_w[:n],c.dual_lambda[:n])
+    qp = compile_action_qp(model,prefix.times,prefix.primal[0])
+    qp_value = qp.evaluate_feasible(certificate_vector(prefix))
+    assert qp_value == certificate_action(model,prefix)
+    # An eliminated latent quadratic: F(x)=x^2/4, not joint gradient dynamics.
+    latent = EnergyQP(F([[1,-1],[-1,2]]),[Q(0),Q(0)],[],[],1)
+    mesh = geometric_mesh(Q(1,4),Q(1),Q(1,4),Q(4))
+    lc = Certificate(mesh,[[Q(1),Q(1,2)]],[],[])
+    for i in range(1,len(mesh)):
+        h = mesh[i]-mesh[i-1]
+        x = lc.primal[-1][0]/(1+h/2)
+        y = [x,x/2]
+        lc.primal.append(y)
+        lc.dual_w.append(y.copy())
+        lc.dual_lambda.append([])
+    lv = certificate_action(latent,lc)
+    lqp = compile_action_qp(latent,mesh,lc.primal[0])
+    assert lqp.evaluate_feasible(certificate_vector(lc)) == lv
+    assert 2*lv &lt;= Q(1,4)
+    # Exact fixed-large-step failure on the hinge energy.
+    h = Q(10**6)
+    xy = hinge_prox(Q(1),Q(0),h)
+    assert xy == (1/(h+2),1/(h+2))
+    xy2 = hinge_prox(*xy,h)
+    assert xy2[1] == xy[1]
+    assert lo - xy2[1] &gt; Q(3,10)
+    # Persist enough data to replay every all-future certificate equality.
+    with gzip.open(ROOT/&#x27;hinge_certificate.json.gz&#x27;,&#x27;wt&#x27;,encoding=&#x27;utf-8&#x27;) as fh:
+        json.dump(serialize(c),fh,separators=(&#x27;,&#x27;,&#x27;:&#x27;))
+    (ROOT/&#x27;action_exact.txt&#x27;).write_text(str(action)+&#x27;\n&#x27;,encoding=&#x27;utf-8&#x27;)
+    results = {
+        &#x27;status&#x27;:&#x27;exact rational assertions passed; no general QP optimizer implemented&#x27;,
+        &#x27;prototype&#x27;:&#x27;F(x,y)=x^2/2+max(0,x-y), initial (1,0)&#x27;,
+        &#x27;certificate_cells&#x27;:len(c.times)-1,
+        &#x27;certificate_terminal_time_approx&#x27;:float(c.times[-1]),
+        &#x27;certificate_action_approx&#x27;:float(action),
+        &#x27;all_future_error_bound_approx&#x27;:math.sqrt(float(2*action)),
+        &#x27;all_future_error_squared_le_1_over_40000&#x27;:True,
+        &#x27;terminal_is_exact_minimizer&#x27;:True,
+        &#x27;terminal_y_exact&#x27;:str(terminal[1]),
+        &#x27;terminal_y_approx&#x27;:float(terminal[1]),
+        &#x27;true_selected_limit_interval&#x27;:[str(lo),str(hi)],
+        &#x27;true_selected_limit_approx&#x27;:float((lo+hi)/2),
+        &#x27;endpoint_error_upper_approx&#x27;:float(endpoint_error_upper),
+        &#x27;hoffman_growth_C_squared&#x27;:str(C2),
+        &#x27;sparse_QP_prefix_variables&#x27;:qp.n,
+        &#x27;sparse_QP_prefix_equalities&#x27;:len(qp.equalities),
+        &#x27;sparse_QP_prefix_inequalities&#x27;:len(qp.inequalities),
+        &#x27;sparse_QP_prefix_exact_objective_match&#x27;:True,
+        &#x27;latent_quadratic_exact_objective_match&#x27;:True,
+        &#x27;fixed_large_step_error_greater_than_0_3&#x27;:True,
+        &#x27;general_theorem_independently_reviewed&#x27;:False,
+        &#x27;historical_novelty_established&#x27;:False,
+        &#x27;limitations&#x27;:[&#x27;Exact verification is for supplied rational candidates.&#x27;,
+                       &#x27;The general polynomial-time convex-QP optimization backend is an imported theorem, not implemented here.&#x27;,
+                       &#x27;No PDE discretization or physical experiment is validated.&#x27;]
+    }
+    (ROOT/&#x27;verification_results.json&#x27;).write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;,encoding=&#x27;utf-8&#x27;)
+    print(json.dumps(results,indent=2))
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

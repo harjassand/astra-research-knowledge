@@ -1,0 +1,220 @@
+<!doctype html><meta charset="utf-8"><title>high_leverage/control/vector_design_probe.py</title>
+<aside><a href="../../updates/DZ/README.md">Intake and alias map</a><p>Source-reported conditional models, circuit constructions, oracle proofs and producer diagnostics only. No transformative technological capability, physical experiment, atomistic simulation or net device advantage established. Intake validates source preservation and repository structure; it does not independently validate mathematics, citations, novelty or implementation.</p><p>Archived source = DATA. Source-relative commands and citations are preserved; consult SOURCE_MANIFEST.json to resolve aliases.</p></aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Explicit transit-compensated phase-sphere control; numerical model checks.
+
+Construction was proposed by root; this independently reconstructs its
+quadrature, positivity, waveform and finite-bandwidth spectrum. NumPy is used
+for polynomial cubature and FFTs. No molecular parameters or experiments.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import math
+from pathlib import Path
+import numpy as np
+from numpy.polynomial.legendre import leggauss, legval
+
+
+def polynomial_kernel(dot, degree):
+    coefficients = np.arange(degree + 1, dtype=float) * 2 + 1
+    return legval(dot, coefficients)
+
+
+def construction(degree, samples=32768):
+    zs, zws = leggauss(degree + 1)
+    zs, zws = zs[::-1], zws[::-1]
+    theta = np.arccos(zs)
+    azimuth = np.arange(2 * degree + 1) * 2 * np.pi / (2 * degree + 1)
+    nodes = np.array([
+        [np.sin(th) * np.cos(ph), np.sin(th) * np.sin(ph), np.cos(th)]
+        for th in theta for ph in azimuth
+    ])
+    weights = np.repeat(zws / (2 * (2 * degree + 1)), 2 * degree + 1)
+    ring_lengths = 2 * np.pi * np.sin(theta)
+    meridian_range = theta[-1] - theta[0]
+    length = float(sum(ring_lengths) + 2 * meridian_range)
+    delta = 1 / (2 * (degree + 1) ** 2)
+
+    # Exact for polynomial ring integrands, high-order quadrature on meridians.
+    qp, qw = [], []
+    qphi = np.arange(max(64, 2 * degree + 3)) * 2 * np.pi / max(64, 2 * degree + 3)
+    for th, circumference in zip(theta, ring_lengths):
+        for ph in qphi:
+            qp.append([np.sin(th) * np.cos(ph), np.sin(th) * np.sin(ph), np.cos(th)])
+            qw.append(circumference / (length * len(qphi)))
+    g, gw = leggauss(64)
+    for th, w in zip(theta[0] + (g + 1) * meridian_range / 2, gw):
+        qp.append([np.sin(th), 0, np.cos(th)])
+        qw.append(w * meridian_range / length)
+    qp, qw = np.array(qp), np.array(qw)
+    assert abs(sum(qw) - 1) &lt; 1e-13
+    h = polynomial_kernel(nodes @ qp.T, degree) @ qw
+    dwell = weights * (1 - delta * h)
+    assert min(dwell / weights) &gt;= 0.5 - 1e-12
+    assert abs(sum(dwell) - (1 - delta)) &lt; 1e-12
+
+    moment_errors = []
+    for a in range(degree + 1):
+        for b in range(degree + 1 - a):
+            for c in range(degree + 1 - a - b):
+                pnodes = nodes[:, 0] ** a * nodes[:, 1] ** b * nodes[:, 2] ** c
+                ppath = qp[:, 0] ** a * qp[:, 1] ** b * qp[:, 2] ** c
+                obtained = float(dwell @ pnodes + delta * (qw @ ppath))
+                if any(power % 2 for power in (a, b, c)):
+                    expected = 0.0
+                else:
+                    expected = math.exp(
+                        sum(math.lgamma((power + 1) / 2) for power in (a, b, c))
+                        - math.lgamma((a + b + c + 3) / 2) - math.log(2 * np.pi)
+                    )
+                moment_errors.append(abs(obtained - expected))
+    assert max(moment_errors) &lt; 2e-12
+
+    # Every segment is (duration, type, starting theta, starting phi, amount).
+    segments = []
+    mphi = len(azimuth)
+    for row, th in enumerate(theta):
+        for col, ph in enumerate(azimuth):
+            segments.append((float(dwell[row * mphi + col]), &quot;hold&quot;, th, ph, 0.0))
+            amount = 2 * np.pi / mphi
+            segments.append((delta * np.sin(th) * amount / length, &quot;phi&quot;, th, ph, amount))
+        if row &lt; len(theta) - 1:
+            amount = theta[row + 1] - th
+            segments.append((delta * amount / length, &quot;theta&quot;, th, 0.0, amount))
+    segments.append((delta * meridian_range / length, &quot;theta&quot;, theta[-1], 0.0, -meridian_range))
+    durations = np.array([seg[0] for seg in segments])
+    assert abs(sum(durations) - 1) &lt; 1e-12
+    ends = np.cumsum(durations)
+    starts = np.r_[0.0, ends[:-1]]
+    times = np.arange(samples) / samples
+    indices = np.searchsorted(ends, times, side=&quot;right&quot;)
+    path = np.empty((samples, 3))
+    for i, (duration, kind, th, ph, amount) in enumerate(segments):
+        selected = indices == i
+        frac = (times[selected] - starts[i]) / duration
+        this_th = th + amount * frac if kind == &quot;theta&quot; else np.full(len(frac), th)
+        this_ph = ph + amount * frac if kind == &quot;phi&quot; else np.full(len(frac), ph)
+        path[selected] = np.column_stack((
+            np.sin(this_th) * np.cos(this_ph),
+            np.sin(this_th) * np.sin(this_ph), np.cos(this_th)))
+    # Physical phase is pi * path, with |d|=1. Total period normalized to1.
+    phase = np.pi * path
+    a_norm = np.pi * length / np.sqrt(delta)
+    summary = {
+        &quot;degree&quot;: degree,
+        &quot;nodes&quot;: len(nodes),
+        &quot;unit_sphere_path_length&quot;: length,
+        &quot;transit_fraction&quot;: delta,
+        &quot;minimum_dwell_over_cubature_weight&quot;: float(min(dwell / weights)),
+        &quot;maximum_monomial_error&quot;: float(max(moment_errors)),
+        &quot;normalized_RMS_phase_velocity&quot;: float(a_norm),
+        &quot;Omega_over_A&quot;: float(2 * np.pi / a_norm),
+        &quot;peak_field_over_RMS&quot;: float(1 / np.sqrt(delta)),
+    }
+    return phase, a_norm, summary
+
+
+def orientation_nodes(m=10):
+    z, w = leggauss(m)
+    phi = np.arange(2 * m) * np.pi / m
+    nodes = np.array([[np.sqrt(1 - a * a) * np.cos(p),
+                       np.sqrt(1 - a * a) * np.sin(p), a] for a in z for p in phi])
+    weights = np.repeat(w / (4 * m), 2 * m)
+    return nodes, weights
+
+
+def spectral_probe(phase, a_norm, cutoff):
+    count = len(phase)
+    harmonics = np.fft.fftfreq(count, 1 / count)
+    if cutoff is not None:
+        coeff = np.fft.fft(phase, axis=0) / count
+        fejer = np.maximum(1 - abs(harmonics) / (cutoff + 1), 0)
+        phase_filtered = np.fft.ifft(coeff * fejer[:, None], axis=0).real * count
+        field_rms = float(np.sqrt(np.sum((2 * np.pi * harmonics[:, None]) ** 2 * abs(coeff * fejer[:, None]) ** 2)))
+        field = np.fft.ifft(2j * np.pi * harmonics[:, None] * coeff * fejer[:, None], axis=0).real * count
+        field_peak = float(np.max(np.linalg.norm(field, axis=1)))
+        assert field_rms &lt;= a_norm * 1.001
+    else:
+        phase_filtered = phase
+        field_rms = a_norm
+        field_peak = None
+    directions, direction_weights = orientation_nodes()
+    average_spectrum = np.zeros(count)
+    maximum_carrier_amplitude = 0.0
+    for start in range(0, len(directions), 8):
+        ds = directions[start:start + 8]
+        ws = direction_weights[start:start + 8]
+        u = np.exp(-1j * (phase_filtered @ ds.T))
+        coeffs = np.fft.fft(u, axis=0) / count
+        average_spectrum += abs(coeffs) ** 2 @ ws
+        maximum_carrier_amplitude = max(maximum_carrier_amplitude, float(max(abs(coeffs[0]))))
+    assert abs(sum(average_spectrum) - 1) &lt; 1e-11
+    def relative_rate(x):
+        return float(sum(average_spectrum / (1 + (harmonics * 2 * np.pi * x / field_rms) ** 2)))
+
+    thresholds = []
+    for gain in (10, 100):
+        target = 1 / gain
+        if average_spectrum[0] &gt;= target:
+            thresholds.append({&quot;ensemble_initial_rate_reduction&quot;: gain, &quot;reachable&quot;: False,
+                               &quot;reason&quot;: &quot;carrier floor exceeds target rate&quot;})
+            continue
+        lo, hi = 0.0, 1.0
+        while relative_rate(hi) &gt; target:
+            hi *= 2
+        for _ in range(55):
+            mid = (lo + hi) / 2
+            if relative_rate(mid) &gt; target:
+                lo = mid
+            else:
+                hi = mid
+        thresholds.append({&quot;ensemble_initial_rate_reduction&quot;: gain, &quot;reachable&quot;: True,
+                           &quot;A_over_kappa&quot;: hi,
+                           &quot;Omega_over_kappa&quot;: 2 * np.pi * hi / field_rms,
+                           &quot;bandwidth_over_kappa&quot;: None if cutoff is None else cutoff * 2 * np.pi * hi / field_rms,
+                           &quot;peak_A_over_kappa&quot;: None if field_peak is None else hi * field_peak / field_rms})
+    xs = (10, 15.0442331186, 30, 50, 100, 156.4401, 300, 1000, 3000)
+    rates = []
+    for x in xs:
+        frequencies_over_kappa = harmonics * 2 * np.pi * x / field_rms
+        relative = relative_rate(x)
+        rates.append({
+            &quot;A_over_kappa&quot;: x,
+            &quot;ensemble_rate_relative_to_no_control&quot;: relative,
+            &quot;static_ensemble_rate&quot;: math.atan(x) / x,
+            &quot;bandwidth_over_kappa&quot;: None if cutoff is None else cutoff * 2 * np.pi * x / field_rms,
+        })
+    return {
+        &quot;fejer_cutoff&quot;: cutoff,
+        &quot;RMS_phase_velocity_after_filter&quot;: field_rms,
+        &quot;peak_field_over_RMS_on_time_grid&quot;: None if field_peak is None else field_peak / field_rms,
+        &quot;maximum_carrier_amplitude_on_orientation_grid&quot;: maximum_carrier_amplitude,
+        &quot;ensemble_carrier_weight&quot;: float(average_spectrum[0]),
+        &quot;gain_thresholds&quot;: thresholds,
+        &quot;rate_grid&quot;: rates,
+    }
+
+
+def main():
+    out = []
+    for degree in (2, 3, 4, 6):
+        phase, a_norm, summary = construction(degree)
+        summary[&quot;spectral_probes&quot;] = [spectral_probe(phase, a_norm, k) for k in (None, 64, 256)]
+        out.append(summary)
+        print(json.dumps({&quot;degree&quot;: degree,
+                          &quot;moment_error&quot;: summary[&quot;maximum_monomial_error&quot;],
+                          &quot;Omega_over_A&quot;: summary[&quot;Omega_over_A&quot;],
+                          &quot;carrier&quot;: summary[&quot;spectral_probes&quot;][0][&quot;ensemble_carrier_weight&quot;]}))
+    dest = Path(__file__).with_name(&quot;vector_design_results.json&quot;)
+    dest.write_text(json.dumps({
+        &quot;scope&quot;: &quot;Model-only numerical cubature and Fourier checks; not physical validation or uniform proof.&quot;,
+        &quot;orientation_grid_size&quot;: 200,
+        &quot;time_samples&quot;: 32768,
+        &quot;constructions&quot;: out,
+    }, indent=2) + &quot;\n&quot;)
+    print(str(dest))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

@@ -1,0 +1,38 @@
+ASTRA ULTRA — High-Leverage Technological Invention,12 October2026
+
+MISSION NOT ACHIEVED. No transformative new physical or computational capability
+has been established. No physical experiment or atomistic simulation was run.
+
+The current research_account.tex contains this fresh investigation only. The
+preceding full account and metadata are preserved in history/phase3/. Earlier
+history/phase1 and phase2, proofs/, open_routes/, diagnostics/ and technology/
+remain intact. Previous theorem/powder statuses have not been upgraded.
+
+Strongest scoped control principle: explicit transit-compensated geometric phase
+control for fixed-norm, orientation-unknown Stark transitions in a weak Lorentzian
+model. Finite-bandwidth construction and costs are explicit. Existing spherical
+design curves already supply stronger existence scaling. No useful molecular
+device regime or advantage over strongest coherent controls is established.
+
+Physical candidate: confined solid-Fe export across a gangue-retaining boundary.
+Prepared nanoscale atom admission/transport has prior experimental antecedents.
+Ore admission, purity, scaffold stability, harvesting and full costs remain open.
+Optimistic active electricity already matches the illustrative avoided gangue
+thermal duty. Series wiring does not remove internal contact/collection costs.
+
+Completed negative: reversible hidden-corridor model with known equilibrium but
+linear-in-number-of-routes exact-query acquisition cost for kinetics. This is
+not an atomistic universal lower bound. Retention and scalar-control obstructions
+are separately preserved in high_leverage/control/.
+
+New full derivations, scripts and results: high_leverage/. Python scripts write
+neighboring JSON files; root/matter/retention/corridor scripts are standard
+library, and the vector-design probe requires NumPy. See each script.
+Finite numerical checks, compiled typesetting and hashes are scoped evidence.
+Neither priority nor external mathematical/experimental validation is claimed.
+
+All former claim objects remain unchanged in claim_ledger.json. Their old
+research_account.tex references resolve to history/phase3/research_account.tex.
+The current ledgers identify new HL claims and exact next validation gates.
+SHA256SUMS.txt covers current package bytes, not scientific correctness.
+No source checkout edits, commits, publication or physical experiments occurred.

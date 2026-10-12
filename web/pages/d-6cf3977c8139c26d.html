@@ -1,0 +1,119 @@
+<!doctype html><meta charset="utf-8"><title>technology/energy/envelope.py</title>
+<aside><a href="../../frontier/cards/N702-conditional-conductive-powder-closed-void-certification.json">Current scoped status</a><p>Source-reported conditional derivations and reduced-model diagnostics only. No transformative technology, instrument, experimental validation, matched performance advantage or historical originality was established. Intake checks preservation and architecture, not scientific correctness; the measurement/acquisition gate remains open.</p><p>Archived source = DATA. Original local relative paths are retained; exact aliases are in the DW source manifest.</p></aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproducible optimistic physical envelopes; no device-performance prediction.
+
+The water model uses constant heat capacities, ideal vapor, incompressible liquid,
+and an exactly consistent integrated Clausius-Clapeyron saturation curve. It is
+an approximate research model, NOT an IAPWS implementation or measurement.
+Membrane R_A and alpha values below are hypotheses, NOT measured 2022 values.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+R = 461.5       # J/(kg K), rounded water-specific gas constant
+CPV = 1860.0   # J/(kg K), stipulated constant vapor heat capacity
+CPL = 4180.0   # J/(kg K), stipulated constant liquid heat capacity
+T0 = 273.15    # K, reference
+P0 = 611.657   # Pa, rounded reference near the triple point
+L0 = 2_500_900.0  # J/kg, stipulated latent heat at reference
+RHO_L = 1000.0   # kg/m^3, rounded liquid density
+
+
+def latent(t: float) -&gt; float:
+    return L0 + (CPV - CPL) * (t - T0)
+
+
+def saturation(t: float) -&gt; float:
+    dc = CPV - CPL
+    ln_ratio = ((L0 - dc*T0) * (1/T0 - 1/t) + dc*math.log(t/T0)) / R
+    return P0 * math.exp(ln_ratio)
+
+
+def water_envelope(tc: float = 283.15, th: float = 308.15,
+                   cooling_w: float = 1000.0, frequency_hz: float = 5.0,
+                   stroke_m: float = 0.01, target_cop: float = 6.0) -&gt; dict:
+    pc, ph = saturation(tc), saturation(th)
+    ratio = ph / pc
+    cold_heat = latent(tc) - CPL*(th-tc)  # saturated vapor minus throttled liquid
+    iso_work = R*th*math.log(ratio)      # preheated vapor, isothermal at hot sink
+    adiabatic_work = CPV*tc*(ratio**(R/CPV)-1)
+    rev_work = cold_heat*(th-tc)/tc
+    entropy_preheat = CPV*(math.log(th/tc)-(th-tc)/th)
+    entropy_throttle = CPL*(math.log(tc/th)+(th-tc)/tc)
+    assert entropy_preheat &gt;= 0 and entropy_throttle &gt;= 0
+    assert math.isclose(iso_work-rev_work,
+                        th*(entropy_preheat+entropy_throttle), rel_tol=1e-10)
+    assert cold_heat/iso_work &lt;= tc/(th-tc)
+    rho_v_hot_suction = pc/(R*th)
+    cold_j_per_m3 = rho_v_hot_suction*cold_heat
+    suction_m3s = cooling_w/cold_j_per_m3
+    swept_m3 = suction_m3s/frequency_hz
+    area_m2 = swept_m3/stroke_m
+    ideal_input = cooling_w*iso_work/cold_heat
+    parasitic_budget = cooling_w/target_cop-ideal_input
+    # Retained hot liquid releases sensible heat by flash evaporation on refill.
+    # This is a conservative budget proxy, not a transient two-phase CFD model.
+    film_limit_5pct_m = (0.05*rho_v_hot_suction*stroke_m*cold_heat /
+                        (RHO_L*CPL*(th-tc)))
+    film_1um_loss_ratio = 0.05*1e-6/film_limit_5pct_m
+    return {
+        &quot;model_status&quot;: &quot;APPROXIMATE_OPTIMISTIC_NOT_DEVICE_DATA&quot;,
+        &quot;cold_K&quot;: tc, &quot;hot_K&quot;: th,
+        &quot;suction_pressure_Pa&quot;: pc, &quot;discharge_pressure_Pa&quot;: ph,
+        &quot;pressure_ratio&quot;: ratio, &quot;cold_heat_J_per_kg&quot;: cold_heat,
+        &quot;hot_isothermal_work_J_per_kg&quot;: iso_work,
+        &quot;cold_inlet_adiabatic_work_J_per_kg&quot;: adiabatic_work,
+        &quot;Carnot_COP&quot;: tc/(th-tc), &quot;ideal_hot_isothermal_COP&quot;: cold_heat/iso_work,
+        &quot;ideal_adiabatic_COP&quot;: cold_heat/adiabatic_work,
+        &quot;heat_pump_work_identity_relative_error&quot;: abs(
+            (iso_work-rev_work-th*(entropy_preheat+entropy_throttle))/iso_work),
+        &quot;cooling_W&quot;: cooling_w, &quot;hot_suction_volume_L_per_s&quot;: suction_m3s*1000,
+        &quot;frequency_Hz&quot;: frequency_hz, &quot;stroke_mm&quot;: stroke_m*1000,
+        &quot;ideal_swept_volume_L&quot;: swept_m3*1000, &quot;ideal_active_area_m2&quot;: area_m2,
+        &quot;target_COP&quot;: target_cop, &quot;ideal_input_W&quot;: ideal_input,
+        &quot;all_other_loss_budget_W&quot;: parasitic_budget,
+        &quot;continuous_cycles_per_year&quot;: frequency_hz*365.25*24*3600,
+        &quot;hot_retained_film_limit_for_5pct_heat_penalty_nm&quot;: film_limit_5pct_m*1e9,
+        &quot;illustrative_1um_hot_film_heat_penalty_ratio&quot;: film_1um_loss_ratio,
+        &quot;warnings&quot;: [&quot;No clearance, manifold, valve, actuator, vacuum-purge, or heat-leak losses.&quot;,
+                     &quot;Hot isothermal compression includes sink-supplied suction preheat.&quot;,
+                     &quot;Hot film estimate applies only to an in-place condensing chamber.&quot;,
+                     &quot;No new or validated compressor mechanism is claimed.&quot;]
+    }
+
+
+def membrane_envelope() -&gt; dict:
+    tc, th = 283.15, 308.91
+    result = []
+    for alpha in (0.5, 1.0, 2.0):
+        for ra in (0.001, 0.01, 0.04):
+            for cop in (3.0, 6.0):
+                budget = 1/cop-(th-tc)/tc
+                q = alpha*alpha/ra*budget
+                result.append({&quot;alpha_V_hypothesis&quot;: alpha,
+                               &quot;R_A_ohm_m2_hypothesis&quot;: ra, &quot;required_COP&quot;: cop,
+                               &quot;optimistic_flux_W_per_m2&quot;: q,
+                               &quot;area_m2_per_kW_lower_bound&quot;: 1000/q})
+    return {
+        &quot;status&quot;: &quot;SYMBOLIC_BOUND_AND_EXPLICIT_HYPOTHESES&quot;,
+        &quot;equation&quot;: &quot;Qdot &lt;= integral_A(alpha^2/R_A) * (1/COP - (Th-Tc)/Tc)&quot;,
+        &quot;reported_high_efficiency_current_A_per_m2&quot;: 5.0,
+        &quot;reported_voltage_V_not_matched_to_same_point&quot;: 0.22,
+        &quot;measured_isolated_R_A&quot;: None,
+        &quot;illustrative_alpha_V&quot;: 1.0,
+        &quot;illustrative_flux_at_reported_j_W_per_m2&quot;: 5.0,
+        &quot;illustrative_area_m2_per_kW&quot;: 200.0,
+        &quot;sensitivity_cases&quot;: result,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    result = {&quot;membrane&quot;: membrane_envelope(), &quot;water&quot;: water_envelope()}
+    destination = Path(__file__).with_name(&quot;envelope_results.json&quot;)
+    destination.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+</pre>

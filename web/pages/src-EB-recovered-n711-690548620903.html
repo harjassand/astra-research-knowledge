@@ -1,0 +1,177 @@
+<!doctype html><meta charset="utf-8"><title>N711 recovered original — finite_checks.py</title>
+<aside>Recovered source artifact; producer-reported research only. Preservation, CRC and hashes do not independently verify mathematics or technology. No archived scientific script was executed.</aside>
+<pre>&quot;&quot;&quot;Finite falsification checks for the global thermal-conditioning proof.
+
+These computations check exact algebraic identities up to floating-point and
+quadrature error. They are not a proof of any uniform-in-system-size bound.
+Run: python finite_checks.py --output finite_checks.json
+Requires Python &gt;=3.10, NumPy, SciPy.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+import math
+from pathlib import Path
+import numpy as np
+from numpy.typing import NDArray
+from scipy.integrate import quad_vec
+
+CArray = NDArray[np.complex128]
+PAULI = [np.eye(2, dtype=complex), np.array([[0, 1], [1, 0]], complex),
+         np.array([[0, -1j], [1j, 0]], complex), np.diag([1, -1]).astype(complex)]
+
+def pauli(word: tuple[int, ...]) -&gt; CArray:
+    out = np.ones((1, 1), complex)
+    for a in word:
+        out = np.kron(out, PAULI[a])
+    return out
+
+def word(n: int, assignments: dict[int, int]) -&gt; tuple[int, ...]:
+    return tuple(assignments.get(i, 0) for i in range(n))
+
+def thermal_data(H: CArray, beta: float):
+    e, U = np.linalg.eigh(H)
+    logs = -beta * (e - e.min())
+    p = np.exp(logs)
+    p /= p.sum()
+    return e, U, p
+
+def covariance_matrices(H: CArray, basis: list[CArray], beta: float):
+    e, U, p = thermal_data(H, beta)
+    mats = np.array([U.conj().T @ P @ U for P in basis])
+    means = np.real(np.einsum(&#x27;i,aii-&gt;a&#x27;, p, mats))
+    for a, m in enumerate(means):
+        mats[a] -= m * np.eye(H.shape[0])
+    kms = np.sqrt(p[:, None] * p[None, :])
+    # Stable logarithmic mean via sinh(x)/x near zero.
+    halfdiff = 0.5 * (np.log(p)[:, None] - np.log(p)[None, :])
+    ratio = np.ones_like(halfdiff)
+    mask = np.abs(halfdiff) &gt; 1e-8
+    ratio[mask] = np.sinh(halfdiff[mask]) / halfdiff[mask]
+    bkm = kms * ratio
+    flat = mats.reshape(len(basis), -1)
+    K = np.real((flat.conj() * kms.ravel()) @ flat.T)
+    C = np.real((flat.conj() * bkm.ravel()) @ flat.T)
+    return K, C
+
+def identity_check(rng: np.random.Generator, n: int, beta: float):
+    words = [word(n, {i: a}) for i in range(n) for a in (1, 2, 3)]
+    words += [word(n, {i: 1, i + 1: 3}) for i in range(n - 1)]
+    basis = [pauli(w) for w in words]
+    h = rng.uniform(-0.7, 0.7, len(words))
+    strength = max(sum(abs(h[a]) for a, w in enumerate(words) if w[i]) for i in range(n))
+    h /= strength
+    H = sum(c * P for c, P in zip(h, basis))
+    e, U, p = thermal_data(H, beta)
+    de = e[:, None] - e[None, :]
+    Q = U.conj().T @ pauli(word(n, {0: 2})) @ U
+    X = rng.normal(size=H.shape) + 1j * rng.normal(size=H.shape)
+    Y = rng.normal(size=H.shape) + 1j * rng.normal(size=H.shape)
+    W = np.sqrt(p[:, None] * p[None, :])
+    inner = lambda A, B: np.sum(A.conj() * B * W)
+    filt = lambda w: Q * np.exp(-0.5 * (w - de) ** 2)
+    max_adjoint = 0.0
+    max_modular = 0.0
+    for w in (-2.1, -0.3, 0.0, 0.8, 2.0):
+        B = filt(w)
+        dX = B @ X - X @ B
+        C = np.exp(-beta * w / 2 + beta ** 2 / 8) * filt(-w + beta / 2)
+        D = np.exp(beta * w / 2 + beta ** 2 / 8) * filt(-w - beta / 2)
+        dsharpY = C @ Y - Y @ D
+        lhs, rhs = inner(dX, Y), inner(X, dsharpY)
+        max_adjoint = max(max_adjoint, float(abs(lhs - rhs) / max(1.0, abs(lhs), abs(rhs))))
+        z = beta / 2
+        left = np.exp(z * de) * B
+        right = np.exp(z * w + z * z / 2) * filt(w + z)
+        max_modular = max(max_modular, float(np.linalg.norm(left - right) / max(1.0, np.linalg.norm(left))))
+    # Integration tests on one local G_j; split at |omega|&#x27;s cusp.
+    def applyG(A: CArray):
+        def integrand(w: float):
+            B = filt(w)
+            dA = B @ A - A @ B
+            C = np.exp(-beta * w / 2 + beta ** 2 / 8) * filt(-w + beta / 2)
+            D = np.exp(beta * w / 2 + beta ** 2 / 8) * filt(-w - beta / 2)
+            return np.exp(-(1 + beta) * abs(w)) * (C @ dA - dA @ D)
+        R = float(np.ptp(e) + beta / 2 + 10)
+        a, ea = quad_vec(integrand, -R, 0, epsabs=2e-11, epsrel=2e-11)
+        b, eb = quad_vec(integrand, 0, R, epsabs=2e-11, epsrel=2e-11)
+        return a + b, float(ea + eb)
+    GX, errx = applyG(X)
+    GY, erry = applyG(Y)
+    GI, _ = applyG(np.eye(H.shape[0], dtype=complex))
+    lhs, rhs = inner(X, GY), inner(GX, Y)
+    pos = inner(X, GX)
+    return {&quot;n&quot;: n, &quot;beta&quot;: beta,
+            &quot;max_pointwise_adjoint_relative_error&quot;: max_adjoint,
+            &quot;max_gaussian_modular_relative_error&quot;: max_modular,
+            &quot;integrated_self_adjoint_relative_error&quot;: float(abs(lhs-rhs)/max(1.0,abs(lhs),abs(rhs))),
+            &quot;integrated_identity_image_norm&quot;: float(np.linalg.norm(GI)),
+            &quot;positive_quadratic_form_real&quot;: float(pos.real),
+            &quot;positive_quadratic_form_imaginary&quot;: float(abs(pos.imag)),
+            &quot;quadrature_reported_error&quot;: max(errx, erry)}
+
+def covariance_checks(rng: np.random.Generator):
+    output = []
+    for n in (3, 4, 5):
+        for model in (&quot;random_noncommuting_chain&quot;, &quot;antiferromagnetic_heisenberg_cycle&quot;):
+            words = [word(n, {i: a}) for i in range(n) for a in (1, 2, 3)]
+            edges = [(i, i+1) for i in range(n-1)]
+            if model.startswith(&quot;antiferromagnetic&quot;):
+                edges.append((n-1, 0))
+            words += [word(n, {i: a, j: a}) for i,j in edges for a in (1,2,3)]
+            words = list(dict.fromkeys(words))
+            basis = [pauli(w) for w in words]
+            if model.startswith(&quot;random&quot;):
+                h = rng.uniform(-1, 1, len(words))
+            else:
+                h = np.array([0.12 * rng.uniform(-1, 1) if sum(a != 0 for a in w) == 1 else 1.0 for w in words])
+            g = max(sum(abs(h[a]) for a,w in enumerate(words) if w[i]) for i in range(n))
+            h /= g
+            H = sum(c*P for c,P in zip(h,basis))
+            for beta in (0.2, 1.0, 4.0, 10.0):
+                K, C = covariance_matrices(H,basis,beta)
+                output.append({&quot;n&quot;: n, &quot;model&quot;: model, &quot;beta_g&quot;: beta,
+                    &quot;terms&quot;: len(words), &quot;kms_min_eigenvalue&quot;: float(np.linalg.eigvalsh(K)[0]),
+                    &quot;bkm_min_eigenvalue&quot;: float(np.linalg.eigvalsh(C)[0]),
+                    &quot;bkm_minus_kms_min_eigenvalue&quot;: float(np.linalg.eigvalsh(C-K)[0])})
+    return output
+
+def star_checks():
+    beta,h,lam = 1.3,0.7,0.4
+    t = math.tanh(beta*h)
+    out=[]
+    for N in (2,4,8,32,128,1024,100000):
+        ts=np.tanh(beta*(h+lam*np.array([-1.,1.])/N))
+        logs=beta*h*np.array([-1.,1.])+N*np.log(2*np.cosh(beta*(h+lam*np.array([-1.,1.])/N)))
+        ps=np.exp(logs-logs.max()); ps/=ps.sum()
+        mean=float(np.dot(ps,np.array([-1.,1.])*(ts-t)))
+        second=float(np.dot(ps,(1-ts*ts)/N+(ts-t)**2))
+        var=second-mean*mean
+        out.append({&quot;N&quot;:N,&quot;variance&quot;:var,&quot;coefficient_norm_squared&quot;:t*t+1/N,
+            &quot;variance_ratio&quot;:var/(t*t+1/N),&quot;proven_variance_upper_bound&quot;:1/N+(beta*lam)**2/N**2})
+    return {&quot;beta&quot;:beta,&quot;h&quot;:h,&quot;lambda&quot;:lam,&quot;values&quot;:out}
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;finite_checks.json&#x27;))
+    args=parser.parse_args()
+    rng=np.random.default_rng(261012)
+    ids=[identity_check(rng,n,b) for n in (2,3) for b in (0.2,1.0,3.0)]
+    cov=covariance_checks(rng)
+    out={&quot;status&quot;:&quot;finite floating-point falsification checks, not proof or independent validation&quot;,
+         &quot;seed&quot;:261012,&quot;identity_checks&quot;:ids,&quot;covariance_checks&quot;:cov,&quot;star_counterexample&quot;:star_checks()}
+    # Loose numerical tolerances, explicitly reported rather than treated as certification.
+    out[&#x27;all_declared_checks_passed&#x27;]=bool(
+        all(x[&#x27;max_pointwise_adjoint_relative_error&#x27;]&lt;1e-9 and x[&#x27;max_gaussian_modular_relative_error&#x27;]&lt;1e-9
+            and x[&#x27;integrated_self_adjoint_relative_error&#x27;]&lt;1e-9 and x[&#x27;integrated_identity_image_norm&#x27;]&lt;1e-10
+            and x[&#x27;positive_quadratic_form_real&#x27;]&gt;-1e-9 for x in ids)
+        and all(x[&#x27;kms_min_eigenvalue&#x27;]&gt;-1e-9 and x[&#x27;bkm_minus_kms_min_eigenvalue&#x27;]&gt;-1e-9 for x in cov)
+        and all(x[&#x27;variance&#x27;]&lt;=x[&#x27;proven_variance_upper_bound&#x27;]+1e-12 for x in out[&#x27;star_counterexample&#x27;][&#x27;values&#x27;]))
+    args.output.write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;passed&#x27;:out[&#x27;all_declared_checks_passed&#x27;],&#x27;identity_instances&#x27;:len(ids),
+        &#x27;covariance_instances&#x27;:len(cov),&#x27;max_adjoint_error&#x27;:max(x[&#x27;max_pointwise_adjoint_relative_error&#x27;] for x in ids),
+        &#x27;min_kms_eigenvalue&#x27;:min(x[&#x27;kms_min_eigenvalue&#x27;] for x in cov)},indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>

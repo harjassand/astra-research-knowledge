@@ -1,0 +1,148 @@
+<!doctype html><meta charset="utf-8"><title>high_leverage/control/replay.py</title>
+<aside><a href="../../updates/DZ/README.md">Intake and alias map</a><p>Source-reported conditional models, circuit constructions, oracle proofs and producer diagnostics only. No transformative technological capability, physical experiment, atomistic simulation or net device advantage established. Intake validates source preservation and repository structure; it does not independently validate mathematics, citations, novelty or implementation.</p><p>Archived source = DATA. Source-relative commands and citations are preserved; consult SOURCE_MANIFEST.json to resolve aliases.</p></aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce retained-candidate and finite-RMS Stark-control obstructions.
+
+Only standard-library arithmetic is used. No experiments or fitted molecular
+parameters are represented. Output numbers are illustrative model values.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+
+def acceptance(u: float, d: float, escape: float, n: int) -&gt; float:
+    discr = math.sqrt((u + d + escape) ** 2 - 4 * u * d)
+    rp = (u + d + escape + discr) / (2 * u)
+    rm = (u + d + escape - discr) / (2 * u)
+    # Stable form of (rp-rm)/(rp**(n+1)-rm**(n+1)).
+    return (1 - rm / rp) * math.exp(-n * math.log(rp)) / (
+        1 - math.exp((n + 1) * math.log(rm / rp))
+    )
+
+
+def absorption_acceptance(u: float, d: float, escape: float, n: int) -&gt; float:
+    # Independent tridiagonal Dirichlet solve for h(i), i=0,...,n-1.
+    diag = [u + d + escape] * n
+    upper = [-u] * (n - 1)
+    lower = [-d] * (n - 1)
+    rhs = [0.0] * (n - 1) + [u]
+    for i in range(1, n):
+        factor = lower[i - 1] / diag[i - 1]
+        diag[i] -= factor * upper[i - 1]
+        rhs[i] -= factor * rhs[i - 1]
+    sol = [0.0] * n
+    sol[-1] = rhs[-1] / diag[-1]
+    for i in range(n - 2, -1, -1):
+        sol[i] = (rhs[i] - upper[i] * sol[i + 1]) / diag[i]
+    return sol[0]
+
+
+def bessel_j(n: int, z: float) -&gt; float:
+    # Convergent series for nonnegative integer n, adequate for tested z&lt;=4.
+    term = (z / 2) ** n / math.factorial(n)
+    total = term
+    for k in range(1, 160):
+        term *= -(z * z / 4) / (k * (n + k))
+        total += term
+        if abs(term) &lt; 2e-17:
+            break
+    return total
+
+
+def sinusoid_rate(kappa: float, a_rms: float, omega: float) -&gt; dict[str, float]:
+    # q(t)=sqrt(2)*a_rms*cos(omega*t), u=exp[-iz*sin(omega*t)].
+    # Floquet spectrum weight J_n(z)^2 at n*omega, z=sqrt(2)*a_rms/omega.
+    z = math.sqrt(2) * a_rms / omega
+    weights = [(0, bessel_j(0, z) ** 2)]
+    for n in range(1, 80):
+        w = bessel_j(n, z) ** 2
+        weights.extend([(n, w), (-n, w)])
+    mass = sum(w for _, w in weights)
+    moment = sum(w * (n * omega) ** 2 for n, w in weights)
+    normalized_rate = sum(
+        w * kappa * kappa / (kappa * kappa + (n * omega) ** 2)
+        for n, w in weights
+    )
+    lower = kappa * kappa / (kappa * kappa + a_rms * a_rms)
+    assert abs(mass - 1) &lt; 1e-12, (z, mass)
+    assert abs(moment - a_rms * a_rms) &lt; 1e-10, (z, moment)
+    assert normalized_rate &gt;= lower - 1e-12
+    return {
+        &quot;omega&quot;: omega,
+        &quot;a_rms&quot;: a_rms,
+        &quot;spectrum_mass&quot;: mass,
+        &quot;spectrum_second_moment&quot;: moment,
+        &quot;sinusoidal_leakage_relative_to_no_control&quot;: normalized_rate,
+        &quot;static_optimum_and_proved_lower_bound&quot;: lower,
+    }
+
+
+def slope_field_for_suppression(suppression: float) -&gt; float:
+    lo, hi = 0.0, 2 * suppression
+    for _ in range(100):
+        mid = (lo + hi) / 2
+        ratio = math.atan(mid) / mid
+        if ratio &gt; 1 / suppression:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def main() -&gt; None:
+    retention = []
+    for escape in (0.0, 0.01, 0.1, 1.0):
+        for n in (4, 16, 64, 256):
+            right = acceptance(2, 1, escape, n)
+            wrong = acceptance(1, 2, escape, n)
+            assert math.isclose(wrong / right, 2.0 ** -n, rel_tol=5e-13)
+            if n &lt;= 64:
+                independent = absorption_acceptance(2, 1, escape, n)
+                assert math.isclose(right, independent, rel_tol=1e-12)
+            retention.append({
+                &quot;N&quot;: n,
+                &quot;escape_rate&quot;: escape,
+                &quot;right_acceptance_probability&quot;: right,
+                &quot;wrong_acceptance_probability&quot;: wrong,
+                &quot;equal_prior_product_error&quot;: wrong / (right + wrong),
+            })
+    moving_barrier = []
+    for n in (16, 64, 256, 1024, 4096, 16384):
+        moving_barrier.append({
+            &quot;N&quot;: n,
+            &quot;escape_rate&quot;: 1 / n,
+            &quot;right_yield&quot;: acceptance(2, 1, 1 / n, n),
+            &quot;limit&quot;: 0.5 * math.exp(-1),
+        })
+    stark = []
+    for a in (0.2, 1, 2):
+        for omega in (1, 2, 4, 16):
+            stark.append(sinusoid_rate(1, a, omega))
+    slopes = [
+        {&quot;suppression&quot;: s, &quot;x_required_uniform_slopes&quot;: slope_field_for_suppression(s)}
+        for s in (2, 10, 100, 1000)
+    ]
+    result = {
+        &quot;scope&quot;: &quot;Exact model formulas plus independent linear solve/Floquet checks; no experiment or novelty certification.&quot;,
+        &quot;retention_obstruction&quot;: retention,
+        &quot;retention_mu_equal_one_over_N&quot;: moving_barrier,
+        &quot;finite_RMS_stark_control&quot;: stark,
+        &quot;near_immune_uniform_slope_continuum&quot;: slopes,
+    }
+    dest = Path(__file__).with_name(&quot;replay_results.json&quot;)
+    dest.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;output&quot;: str(dest),
+        &quot;retention_cases&quot;: len(retention),
+        &quot;stark_cases&quot;: len(stark),
+        &quot;all_checks&quot;: &quot;passed&quot;,
+        &quot;slope_field_for_10x&quot;: slopes[1][&quot;x_required_uniform_slopes&quot;],
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>
