@@ -1,0 +1,83 @@
+EXACT INDEXED SOURCE RANGE | {"path": "updates/EL/package/primitive_genesis/reaction_clock_integration/INTEGRATION_PROOF.md", "sha256": "14245df5727312fa38d59a9ab57b0a140f4684cc3a3cc51942b9cf8a8fe38a4b", "lines": [213, 291], "range_scope": "One-binomial sparse cutoff, beta-tree and integer-prefix alternatives; joint-cut/random-length scope.", "read_path": "updates/EL/package/primitive_genesis/reaction_clock_integration/INTEGRATION_PROOF.md", "source_id": "src-EL-6642622863125ea4", "hash_kind": "original_utf8_bytes"}
+range_sha256=9c2590b08147e34673a41afd05bb3a0bdd3f4fbe2f5328eb72cfa3ab4d46e716; line numbers refer to the source, not this wrapper.
+Scope: located text only; imported premises, completeness, correctness and priority remain unverified.
+--- BEGIN SOURCE BYTES ---
+## 7. Exact fixed-time cutoff from sparse gamma stages
+
+A root duration alone is insufficient to determine the configuration at an interior physical time. Independent resampling of a shorter clock after observing that the root crosses the horizon can give the wrong conditional law. Retain the sparse latent `G_i` from Section 5 instead.
+
+Put `a_i=1+G_i` and `A=sum_i a_i=k+N`. Conditional on the `G_i`, the required stage durations are independent `Gamma(a_i,b)`. Their sum is `Gamma(A,b)`, and their normalized proportions are a `Dirichlet(a_0,...,a_(k-1))` vector, independent of that sum. This follows directly by changing variables from positive stage durations to their total and simplex proportions: the joint gamma density factors into the gamma density of the total and the Dirichlet density of the proportions.
+
+Therefore, first drawing the root total `H` and then allocating it with this Dirichlet law reproduces the full joint vector of independent exponential clocks after the `G_i` are marginalized. In particular, it preserves correlations between the endpoint timestamp and all prefix counts.
+
+### 7.1 One binomial and a sparse scan
+
+Because the shapes `a_i` are integers, represent stage `i` as the sum of `a_i` independent exponential microphases at rate `b`. There are `A=k+N` microphases. Conditional on their total `H=h`, their `A-1` interior arrival times are the order statistics of `A-1` independent uniform points on `(0,h)`. This follows either from the constant density of their normalized `Dirichlet(1,...,1)` spacings or by conditioning the product exponential density on its sum.
+
+For `0<=u<h`, draw
+
+\[
+ W\mid(G_i)_i,H=h\sim\operatorname{Binomial}(A-1,u/h).
+\]
+
+This is exactly the number of interior microphase arrivals by `u`. The `j`th original stage finishes at microphase index
+
+\[
+ C_j=j+\sum_{i<j}G_i,\qquad 0\le j\le k.
+\]
+
+Consequently the desired original-stage prefix count is
+
+\[
+ J=\max\{j:C_j\le W\}.
+\]
+
+This samples the exact joint distribution of `(G,H,J)`, not just a marginal approximation for `J`. If `u>=H`, return `J=k`; if `u=0`, return `J=0`.
+
+The inverse can be computed without inspecting all `k` stages. Initialize `J=W`. Scan sorted nonzero marks `(i,g_i)`. If `i>=J`, stop. Otherwise replace `J` by `max(i,J-g_i)` and continue. To prove the update, suppose earlier extras have already been removed from the microphase index. The next marked stage starts after original-stage index `i`; an index after its completion shifts down by `g_i`, an index inside that stage maps to `i`, and an index before the stage is unaffected. Those are exactly the three cases in the update. Induction over the sorted marks proves the inverse formula. At completion `0<=J<k` because `W<A`.
+
+There is one binomial call and `O(1+M)` arithmetic work, where `M` is the number of retained nonzero stages. Thus the terminal cutoff costs expected `O(1)` per attempted block under the stated binomial primitive, with expected `O(1)` extra words. This is an unconditional per-attempt bound; conditioning on an exceptional overshoot can bias `M` upward. For several cut times inside the same retained root, sample microphase counts jointly by a multinomial law or compatible conditional binomial splits. Independent fresh binomials at different cuts would lose the joint law.
+
+### 7.2 Beta-tree alternative without a binomial primitive
+
+To locate `J=max{j<=k:sum_(i<j) T_i<=u}`:
+
+* If `u>=H`, return `J=k`.
+* Otherwise keep an interval `[l,r)` with its total duration `V` and remaining target `w` satisfying `0<=w<V`. Split at `m=floor((l+r)/2)`. Let `A_L=m-l+sum_(l<=i<m)G_i` and `A_R=r-m+sum_(m<=i<r)G_i`.
+* Draw `B~Beta(A_L,A_R)`, set `V_L=B V`. If `w<V_L`, descend to `[l,m)` with `(V_L,w)`. Otherwise descend to `[m,r)` with `(V-V_L,w-V_L)`.
+* At a singleton interval `[j,j+1)`, return `J=j`.
+
+Both beta shapes are positive integers. The beta-split identity for independent same-rate gammas proves the correctness at each split. More formally, one can pre-sample all independent beta variables of the full binary allocation tree; the algorithm reveals only the path selected by the target. Adaptive revelation of this pre-existing tree does not change its law. Thus the terminal `J` has exactly the same joint distribution with `H` and the latent counts as sequential exponential simulation.
+
+There are at most `ceil(log2 k)` splits. If `M` sparse nonzero indices are stored, a direct scan of the marks computes the shapes in `O(1+M)` work per level. The work is `O((1+M)log(k+1))` and memory is `O(1+M)` for an iterative single-query descent. Under Section 6, expected cutoff work per **attempted block** is `O(log(k+1))`. Do not assert a uniform bound conditioned on a rare crossing event: conditioning on an extremely large `H` can bias latent counts upward. The unconditional per-attempt bound suffices for the simulation theorem and is valid at every predictable block start. For multiple queries in one retained clock, store previously revealed tree nodes rather than redraw them.
+
+### 7.3 Poisson microphase alternative for an integer prefix interface
+
+A related uniformization route avoids generating a continuous root when only a single finite-block prefix count is needed. Given the latent marks, extend the independent rate-`b` microphases to a homogeneous Poisson process. At a supplied horizon `u`, draw
+
+\[
+ W\sim\operatorname{Poisson}(bu)
+\]
+
+independently of the marks. Return `J=k` if `W>=A`; otherwise apply the same sparse inverse `J=max{j:C_j<=W}`. This is exactly the number of original stages completed by `u`, capped at the finite block length. It is an integer-output interface with no root-duration comparison. With rational `bu` and an exact rational-parameter Poisson sampler it could be implemented without a continuous output, but no such bit-complexity implementation is established here.
+
+If the endpoint duration is also required, its correct conditional law is explicit. When `W>=A`, the `A`th arrival among the `W` points in `(0,u)` has law
+
+\[
+ H\mid G,W\ overset d=\ u\operatorname{Beta}(A,W-A+1).
+\]
+
+When `W<A`, independent increments after `u` instead give
+
+\[
+ H\mid G,W\ overset d=\ u+\operatorname{Gamma}(A-W,b).
+\]
+
+Together these laws recover the same exact joint `(G,H,J)` distribution. In a full simulator a completed block still needs its duration to update the remaining horizon, so this alternative alone does not resolve continuous-time random-bit costs between blocks. A bounded expected-cost Poisson primitive at arbitrary mean `bu` is an additional assumption for constant real-model work; the compound-Poisson clock compiler in Section 5 only needed Poisson means bounded by a constant. Large Poisson counts also have an explicit integer-size cost. This is another use of classical phase-type uniformization, not a new distributional identity.
+
+### Random collision length caveat at the cutoff
+
+If a random length `K=L+1` was chosen from the scheduler, `J<K` lies inside a collision-free prefix. One must preserve this scheduler conditioning. It is generally wrong to discard `K` and sample an unconditional `J`-event embedded path, which would allow collisions. One can sample the first `J` disjoint original-molecule interactions under the conditional collision-batch law, because the future red/green collision probabilities depend only on their deterministic counts. If already materialized endpoint contents have been exposed, their conditional prefix must also be preserved.
+
+Using Algorithm 5's deterministic transformed-event block avoids this issue entirely: `J` is independent of all embedded scheduler randomness. An ordinary exact `J`-event discrete simulation then has precisely the right law, including collisions.
+

@@ -1,0 +1,178 @@
+"""Floating diagnostic of the proved sparse-geometric clock (not exact-bit output)."""
+from __future__ import annotations
+import argparse
+from fractions import Fraction
+import json
+import math
+from pathlib import Path
+import random
+import time
+
+
+def geometric_failures(rng: random.Random, failure_probability: float) -> int:
+    if failure_probability == 0:
+        return 0
+    return int(math.log1p(-rng.random()) / math.log(failure_probability))
+
+
+def gamma_uniform_envelope(rng: random.Random, shape: int) -> float:
+    """Independent implementation of adversary's log-gamma envelope proof."""
+    root = math.sqrt(shape)
+    while True:
+        u = rng.random()
+        if u < 0.4:
+            z = -1 - 2 * rng.expovariate(1)
+            log_envelope = (z + 1) / 2
+        elif u < 0.8:
+            z = rng.uniform(-1, 1)
+            log_envelope = 0.0
+        else:
+            z = 1 + rng.expovariate(1)
+            log_envelope = -(z - 1)
+        log_target = root * z - shape * math.expm1(z / root)
+        if math.log1p(-rng.random()) <= log_target - log_envelope:
+            return shape * math.exp(z / root)
+
+
+def sparse_clock(rng, k, rate, lower, upper, max_queries=None):
+    if k == 0:
+        return 0.0, [], 0, False
+    qmax = float(Fraction(upper - lower, upper))
+    if qmax == 0:
+        return gamma_uniform_envelope(rng, k) / upper, [], 0, False
+    markers = []
+    queries = 0
+    i = -1
+    while True:
+        i += 1 + geometric_failures(rng, 1 - qmax)
+        if i >= k:
+            break
+        if max_queries is not None and queries == max_queries:
+            return gamma_uniform_envelope(rng, k) / upper, [], queries, True
+        lam = rate(i)
+        queries += 1
+        # Stable exact-integer difference before floating conversion.
+        qi = float(Fraction(upper - lam, upper))
+        if rng.random() < qi / qmax:
+            markers.append((i, 1 + geometric_failures(rng, qi)))
+    shape = k + sum(value for _, value in markers)
+    return gamma_uniform_envelope(rng, shape) / upper, markers, queries, False
+
+
+def prefix_cutoff(rng, total, k, markers, remaining):
+    """Gamma--Dirichlet bridge for completed stages, retaining sparse counts."""
+    if remaining >= total:
+        return k
+    left, right = 0, k
+    while right - left > 1:
+        middle = (left + right) // 2
+        left_shape = middle - left + sum(v for i, v in markers if left <= i < middle)
+        right_shape = right - middle + sum(v for i, v in markers if middle <= i < right)
+        a = gamma_uniform_envelope(rng, left_shape)
+        b = gamma_uniform_envelope(rng, right_shape)
+        left_time = total * a / (a + b)
+        if remaining < left_time:
+            right, total = middle, left_time
+        else:
+            left, total, remaining = middle, total - left_time, remaining - left_time
+    return left
+
+
+def exact_checks():
+    checks = 0
+    for k in [1, 2, 5, 17]:
+        for base in [4, 9, 21]:
+            rates = [base + i for i in range(k)]
+            b = max(rates)
+            for s in [Fraction(1, 3), Fraction(2), Fraction(11, 7)]:
+                product = Fraction(1)
+                reference = Fraction(1)
+                for lam in rates:
+                    q = 1 - Fraction(lam, b)
+                    z = Fraction(b) / (b + s)
+                    product *= (1 - q) * z / (1 - q * z)
+                    reference *= lam / (lam + s)
+                assert product == reference
+                checks += 1
+    # Exact Schur/Dirichlet capacity identities from the root's four-state model.
+    for r in [Fraction(1, 1000), Fraction(1, 7), Fraction(2)]:
+        for g in [Fraction(1, 3), Fraction(3)]:
+            for h in [Fraction(0), Fraction(1, 4), Fraction(3, 4)]:
+                xp = Fraction(1, 2) + r * h / (2 * (r + g))
+                xm = 1 - xp
+                energy = (r * (1 + h) * ((1 - xp)**2 + xm**2)
+                          + r * (1 - h) * ((1 - xm)**2 + xp**2)
+                          + g * (xp - xm)**2)
+                assert energy == r - r*r*h*h/(r+g)
+                assert energy >= r - r*r*h*h/g
+                checks += 1
+    return checks
+
+
+def diagnostics(samples, seed):
+    rng = random.Random(seed)
+    rows = []
+    for n, k, order, growth in [(64, 8, 2, 1), (10000, 100, 2, 1),
+                                 (1000000, 1000, 3, 2), (10**10, 100000, 2, 1),
+                                 (300, 40, 2, 0)]:
+        rate = lambda i: math.comb(n + growth*i, order)
+        lower, upper = rate(0), rate(k-1)
+        normalized = []
+        queries = []
+        markers_seen = []
+        started = time.perf_counter()
+        for _ in range(samples):
+            value, markers, work, _ = sparse_clock(rng, k, rate, lower, upper)
+            normalized.append(value * upper / k)
+            queries.append(work)
+            markers_seen.append(len(markers))
+        elapsed = time.perf_counter() - started
+        qmax = float(Fraction(upper-lower, upper))
+        expected_mean = sum(upper / rate(i) for i in range(k)) / k
+        expected_var = sum((upper / rate(i))**2 for i in range(k)) / k**2
+        sample_mean = sum(normalized) / samples
+        sample_var = sum((v-sample_mean)**2 for v in normalized) / (samples-1)
+        rows.append(dict(n=n,k=k,o=order,g=growth,samples=samples,
+                         expected_candidate_queries=k*qmax,
+                         observed_candidate_queries=sum(queries)/samples,
+                         observed_markers=sum(markers_seen)/samples,
+                         expected_normalized_mean=expected_mean,
+                         observed_normalized_mean=sample_mean,
+                         expected_normalized_variance=expected_var,
+                         observed_normalized_variance=sample_var,
+                         mean_standard_errors=(sample_mean-expected_mean)/math.sqrt(expected_var/samples),
+                         elapsed_seconds=elapsed))
+    # Fixed-horizon count from bridge vs direct sequential clocks: full joint law
+    # is proved in the note; this is only a distributional implementation check.
+    k, n, horizon = 20, 70, 0.003
+    rate = lambda i: math.comb(n+i, 2)
+    lower, upper = rate(0), rate(k-1)
+    bridge_counts, direct_counts = [0]*(k+1), [0]*(k+1)
+    for _ in range(samples):
+        total, marks, _, _ = sparse_clock(rng,k,rate,lower,upper)
+        bridge_counts[prefix_cutoff(rng,total,k,marks,horizon)] += 1
+        total, count = 0., 0
+        for i in range(k):
+            total += rng.expovariate(rate(i))
+            if total > horizon:
+                break
+            count += 1
+        direct_counts[count] += 1
+    # No arbitrary empirical threshold is used as a theorem test.
+    empirical_tv = sum(abs(a-b) for a,b in zip(bridge_counts,direct_counts))/(2*samples)
+    return dict(status="FLOAT_DIAGNOSTICS_NOT_EXACT_BIT_CERTIFICATE",seed=seed,
+                exact_rational_identities=exact_checks(),clock_cases=rows,
+                prefix_bridge=dict(k=k,n=n,horizon=horizon,samples_per_method=samples,
+                                   bridge_counts=bridge_counts,direct_counts=direct_counts,
+                                   empirical_tv=empirical_tv))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--samples',type=int,default=5000)
+    parser.add_argument('--seed',type=int,default=12102026)
+    args=parser.parse_args()
+    result=diagnostics(args.samples,args.seed)
+    target=Path(__file__).with_name('clock_diagnostics.json')
+    target.write_text(json.dumps(result,indent=2)+'\n')
+    print(json.dumps(result,indent=2))

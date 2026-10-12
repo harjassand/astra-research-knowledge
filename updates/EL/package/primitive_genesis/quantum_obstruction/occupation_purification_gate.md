@@ -1,0 +1,124 @@
+# Occupation-purified kernel preparation: a conditional route and its hard gates
+
+Status: independent mathematical audit and conditional construction. This does not establish a polynomial encoder for arbitrary quantum-LLL instances. It identifies a state-choice route that removes a global polar normalization, improves the history-erasure threshold when decoded occupations are orthogonal, and states the exact acquisition obligations that remain.
+
+## Candidate operation
+
+Let the physical Hilbert space split as `H = T ⊕ T^⊥`, where `T` is an explicitly prepared product logical space with projector `Q_T`. Suppose an acquired linear map
+
+`M : T → H`
+
+obeys the full-chart identities
+
+`P_a M = 0` for every input clause `a`, and `Q_T M = I_T`.
+
+Then every vector in `Ran M` is an exact common-kernel vector, and the logical component of `Mx` is exactly `x`. In particular,
+
+`M* M ≥ I_T`.
+
+For a normalized maximally entangled state `|Φ_T⟩ = D^(-1/2) Σ_j |j⟩|j⟩`, the purification
+
+`|Ω_M⟩ = (M ⊗ I)|Φ_T⟩ / sqrt(Tr(M*M)/D)`
+
+has its physical register supported exactly in the common kernel. Its physical marginal is `M M* / Tr(M*M)`. This is a valid mixed output for a state-choice objective. It does not require preparing the uniform state on `Ran M`, computing `M(M*M)^(-1/2)`, or preparing a logical consistency subcode.
+
+If a circuit implements a block encoding of `M` with known normalization `Λ`, postselection on the signal register succeeds with probability
+
+`Tr(M*M) / (D Λ^2) ≥ 1/Λ^2`.
+
+Thus polynomial `Λ` gives polynomial preparation cost, and constant `Λ` gives constant expected postselection cost. An operator approximation `||M̃-M||≤δ<1` changes the normalized output by at most `2δ/(1-δ)` in trace distance, so the final circuit need only approximate an exact kernel-valued witness to the requested accuracy. The full-chart identity supplies the lower signal; it does not bound `Λ` or acquire the circuit for `M`.
+
+This avoids polar normalization of `M`. It does not avoid the need to construct and implement a full exact chart. The selected map `M|D` from the prior campaign is not a substitute: its logical domain `D` is constrained and unprepared.
+
+## Occupation-orthogonal history erasure
+
+Here is a conditional interface that converts a guarded recurrence into a circuit without an inverse of an unknown physical angle. Let a rooted history tree have depth at most `m` and at most `b` children per node. Each node `h` has a history sector `E_h`; each edge has an acquired contraction `T_hc : E_h → E_hc`; `A_h` is the chronological product along the path, with `A_empty=I`. Let `J_h : E_h → H` be acquired isometries, and define
+
+`M_m = Σ_{|h|≤m} J_h A_h`.
+
+Assume:
+
+1. `Ran(J_h) ⟂ Ran(J_g)` for distinct occupation labels `h≠g`, and a polynomial-cost circuit can compute, attach, and erase those occupation labels.
+2. Every edge has a charged controlled Stinespring/block-encoding implementation and `||T_hc||≤sqrt(α)`.
+3. The decoded map is an exact full chart: `Ran(M_∞) ⊆ ⋂_a ker(P_a)` and `Q_T M_∞=I_T`; for a finite tree, use the corresponding exact finite recurrence.
+4. The depth tail and circuit precision are certified to the requested error.
+
+The shift `L = Σ_{h→hc} |hc⟩⟨h| ⊗ T_hc` obeys `||L||≤sqrt(bα)`. If `bα<1`, choose `t` with `sqrt(bα)<t<1` and set
+
+`N_t = (I-L/t)^(-1) J_empty = Σ_h t^(-|h|)|h⟩A_h`,
+
+`F_t = Σ_h t^|h| J_h⟨h|`.
+
+The inverse is now genuinely conditioned: its singular values lie in `[1-sqrt(bα)/t, 1+sqrt(bα)/t]`. A charged QSVT implementation therefore costs polynomially in the edge circuit cost, the reciprocal of `1-sqrt(bα)/t`, and `log(1/δ)`; it does not invert the original clause overlap or an unprovided inverse gap.
+
+Because the decoded occupation ranges are orthogonal,
+
+`||F_t|| = max_h t^|h| ≤ 1`.
+
+This removes the generic eraser factor `sqrt(Σ_l b^l t^(2l))`. The interval `sqrt(bα)<t<1` exists at the QLLL-scale condition `α<1/b`, whereas the generic overlapping-range eraser needs `α<1/b^2` for constant overhead. Also `F_t N_t=M_∞` exactly. For the depth-`m` truncation, orthogonality gives `||F_{>m}||≤t^(m+1)`, while `||N_{>m}||≤(sqrt(bα)/t)^(m+1)/(1-sqrt(bα)/t)`. Hence
+
+`||M_∞-M_m|| ≤ (sqrt(bα))^(m+1) / (1-sqrt(bα)/t)`.
+
+Only `m=O(log(1/ε))` is needed when `bα` is bounded below one by a fixed margin. A normalized maximally entangled logical input has signal norm at least one by the full-chart identity, so sequentially applying the acquired lift and occupation decoder has success probability at least
+
+`(1-sqrt(bα)/t)^2`
+
+up to the stated block-encoding normalizations and truncation error. Amplitude amplification and all gate synthesis costs must be charged. The history register uses `O(m log b)` qubits; the controlled edge and occupation-decoder circuits must be succinct in `h` for cost polynomial in `m`, rather than a table of all `b^m` nodes.
+
+This is a representation theorem under explicit hypotheses, not a full algorithm. In particular, orthogonality of physical tag strata alone does not prove that an acquired recurrence has one history per occupation, that histories with the same occupation can be merged with bounded cost, or that each transition is guarded by a genuinely fresh source. The free-transport example below shows why output occupation and logical source support must be tracked separately.
+
+## Exact counterexample: lift contraction does not certify output signal
+
+The lower signal condition is necessary. A binary depth-two history tree gives a rational counterexample even when the history resolvent exists.
+
+Take every sector and decoded space to be one-dimensional, every `J_h=1`, and both first-level edge maps equal `-49/100`. Set all four second-level edge maps equal `1/98`. Then every edge has norm at most `49/100`, so with `b=2`,
+
+`α = (49/100)^2 = 2401/10000 < 1/4 = 1/b^2`.
+
+The path amplitudes are `A_empty=1`, two first-level amplitudes `-49/100`, and four leaf amplitudes
+
+`(-49/100)(1/98) = -1/200`.
+
+Hence the coherently decoded map is exactly
+
+`M = Σ_h J_h A_h = 1 - 98/100 - 4/200 = 0`.
+
+Yet `||L||≤sqrt(2α)<0.7<1/sqrt(2)`, so `t=0.7` satisfies `||L||<t<1/sqrt(b)` and `(I-L/t)^(-1)` is bounded. The weighted eraser identity still gives `F_t N_t=M`, which is the zero map. No polar routine, postselection, or bath register can recover a signal from it. This does not contradict the conditional history theorem: this example has no orthogonal empty-chart block and no small-sum lower certificate. It proves that bounded branch maps and an invertible history lift alone do not imply a nonzero decoded encoder.
+
+A simple sufficient signal certificate is either an acquired orthogonal root coordinate `Q_T J_empty=J_empty` with `Q_T J_hA_h=0` for nonempty histories, giving `M*M≥I`, or a small-sum bound. For example, if `b sqrt(α)≤1/4`, then
+
+`||M-J_empty|| ≤ Σ_(l≥1)(b sqrt(α))^l ≤ 1/3`,
+
+so `s_min(M)≥2/3`. These are explicit certificates; they are not consequences of edge contraction alone.
+
+## Exact counterexample: retaining bath/history labels breaks row cancellation
+
+A local rational projector shows why an orthogonal history label must be coherently erased before the physical output. Let `A,B` each have dimension three, with orthonormal bases `q1,q2,a` and `qB,b1,b2`. Set `u=q1+q2`, `v=q1-q2`, and
+
+`r = u⊗qB + v⊗b1 + a⊗b2`,  `P=|r⟩⟨r|/5`.
+
+Since `||u||^2=||v||^2=2`, `||r||^2=5`, and `P` is an explicit rational rank-one orthoprojector. The vector
+
+`ψ = a⊗b2 - (1/2)v⊗b1`
+
+is in `ker(P)`, because `⟨r|ψ⟩=1-(1/2)·2=0`. Attach orthogonal bath/history flags to its two cancelling terms:
+
+`ψ̃ = a⊗b2⊗|0⟩ - (1/2)v⊗b1⊗|1⟩`.
+
+Then
+
+`(P⊗I)ψ̃ = (r/5)⊗(|0⟩-|1⟩)`.
+
+The normalized state has bad-projector probability `4/15`. The original cancellation requires the two histories to arrive with the same bath state and relative phase. An explicit coherent eraser may restore that relation, but its circuit and success probability are part of the interface. Tracing or retaining an orthogonal record does not perform the cancellation for free.
+
+## The decisive surviving question
+
+Can one acquire, from explicit guarded local projectors, a full-chart map `M` with an exact row-annihilation recurrence whose histories are grouped by orthogonal output occupations, while the source-side edge effects satisfy a subcritical guard and the history decoder has polynomial cost? A successful construction would give a state by purified source application, with no polar normalization and no inverse of the original spectral gap.
+
+The source record already supplies local port-injection and row-rank mechanisms, angle-free selected-range truncation, and conditional history erasure. The remaining theorem must bridge all of them: it has to aggregate duplicate histories in one occupation sector, account for free logical transport, certify source-side contraction under history conditioning, and implement the result with polynomial local-matrix and bit cost. R24's example with tag only on `A` but a correction acting on logical `A B` rules out equating source support with physical occupation. No general construction or impossibility theorem for this bridge is established here.
+
+## Evidence and scope
+
+The pinned Astra source is revision `5fc72a144d77c31b400efc0768afd7833c702362`. Relevant records are `updates/DP/package/foundational_campaign/FINAL_ROUND/r24_quantum_entangling_encoder.txt`, especially sections 5, 6, and 8–10, and `r23_quantum_guard_acquisition.txt`, especially sections 13–14. Those records explicitly leave the arbitrary gap-free encoder unresolved. The present scalar and flag calculations are exact hand derivations; they are not priority claims or a lower bound for the full target.
+
+Prior literature provides the boundary: an efficient constructive QLLL algorithm is known for commuting projector terms ([Schwarz–Cubitt–Verstraete, arXiv:1311.6474](https://arxiv.org/abs/1311.6474)); the cited noncommuting construction assumes inverse-polynomial gaps for the system and its subsystems ([Gilyén–Sattath, arXiv:1611.08571](https://arxiv.org/abs/1611.08571)). The full-chart occupation-purification interface above is a candidate route inside that gap, not a result from those papers.

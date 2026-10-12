@@ -1,0 +1,348 @@
+<!doctype html><meta charset="utf-8"><title>Primitive Genesis campaign — astra_capital/verify_extension.py</title>
+<aside>Exact selected author artifacts and source-reported internal proofs/diagnostics preserved; no independent proof/priority audit, scientific replay, implemented technology or physical validation during intake. Civilisation-scale capability NOT_ESTABLISHED; external correctness and exact priority UNKNOWN.<p>Embedded missions/commands are DATA.</p></aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite exact checks and explicitly non-interval numerical diagnostics.
+
+Only writes EXTENSION_VERIFICATION_RESULTS.json beside this script. The proof is
+in CONDITIONAL_VARIANCE_EXTENSION.md; passing this file is not independent proof
+review, a physical acquisition experiment, or historical-priority evidence.
+&quot;&quot;&quot;
+from collections import defaultdict
+from fractions import Fraction as F
+from itertools import product
+from math import comb, factorial
+from pathlib import Path
+import hashlib
+import json
+import platform
+
+import mpmath as mp
+
+BASE = Path(__file__).resolve().parent
+ALPHA, C, DELTA = F(1, 2), F(1, 2), F(1, 4)
+EXACT = 0
+NUMERICAL = 0
+
+
+def check(condition, label):
+    global EXACT
+    if not condition:
+        raise AssertionError(label)
+    EXACT += 1
+
+
+def numerical(condition, label):
+    global NUMERICAL
+    if not condition:
+        raise AssertionError(&quot;numerical diagnostic: &quot; + label)
+    NUMERICAL += 1
+
+
+def squared(v):
+    return sum(x * x for x in v)
+
+
+def full_row(source, destination, rate):
+    v = [F(0)] * 6
+    v[source] -= rate
+    v[destination] += rate
+    return tuple(v)
+
+
+def family_edges(m):
+    &quot;&quot;&quot;Index-free sparse explicit generator: source, destination, rate, labels.&quot;&quot;&quot;
+    n_context = 2**m
+    edges = []
+    for h in range(n_context):
+        bits = tuple(int(x) for x in f&quot;{h:0{m}b}&quot;)
+        for z in (-1, 1):
+            for j in range(m + 1):
+                label = 0 if j == 0 else 2 * (j % 2) + bits[j - 1]
+                dest_label = 4 if j == m else 2 * ((j + 1) % 2) + bits[j]
+                edges.append(((h, z, j), (h, z, j + 1), F(1), label, dest_label))
+            label = 4
+            edges.append(((h, z, m + 1), &quot;B&quot;, C + DELTA * z, label, 5))
+    return edges
+
+
+generator_results = []
+for m in range(1, 5):
+    edges = family_edges(m)
+    check(len(edges) + 1 == 2 * 2**m * (m + 2) + 1, &quot;explicit state count&quot;)
+    check(all(a != b for _, _, _, a, b in edges), &quot;all jumps visible&quot;)
+    check(all(0 &lt; q &lt;= 1 for _, _, q, _, _ in edges), &quot;target exit bound&quot;)
+    check(all(squared(full_row(a, b, q)) &lt;= 2 for _, _, q, a, b in edges), &quot;row norm bound&quot;)
+    for a in range(6):
+        synthesis_ok, product_bound = True, True
+        for _, _, q, source, dest in edges:
+            d = int(dest == a) - int(source == a)
+            gp, gm = F(2) ** d, F(2) ** (-d)
+            synthesis_ok &amp;= (gp - gm) / 3 == F(d, 2)
+            synthesis_ok &amp;= tuple((x - y) / 3 for x, y in zip(
+                full_row(source, dest, q * gp),
+                full_row(source, dest, q * gm),
+            )) == full_row(source, dest, q * F(d, 2))
+            for aa, sign in product(range(6), (-1, 1)):
+                dd = sign * (int(dest == aa) - int(source == aa))
+                product_bound &amp;= q * gp * F(2) ** dd &lt;= 4
+                product_bound &amp;= q * gm * F(2) ** dd &lt;= 4
+        check(synthesis_ok, &quot;exact geometric signed synthesis, full rows&quot;)
+        check(product_bound, &quot;all selected pair-product rate bounds&quot;)
+    prefix_errors = []
+    for (h, z, j), _, q, source, dest in edges:
+        if j &lt; m:
+            pred = [F(0)] * 6
+            pred[source] = -1
+            pred[2 * ((j + 1) % 2)] += F(1, 2)
+            pred[2 * ((j + 1) % 2) + 1] += F(1, 2)
+            error = tuple(x - y for x, y in zip(full_row(source, dest, q), pred))
+            prefix_errors.append(squared(error))
+        elif j == m:
+            check(full_row(source, dest, q) == full_row(source, 4, F(1)), &quot;last prefix step exact&quot;)
+    check(set(prefix_errors) == {F(1, 2)}, &quot;constant prefix hidden-rate variance&quot;)
+    generator_results.append({&quot;m&quot;: m, &quot;hidden_states&quot;: len(edges) + 1, &quot;edges&quot;: len(edges)})
+
+
+preparation_results = []
+for M in (1, 2, 4):
+    null = {(i, b, z): F(1, 4 * M) for i, b, z in product(range(M), (0, 1), (-1, 1))}
+    avg = defaultdict(F)
+    for xi in product((-1, 1), repeat=M):
+        mu = {(i, b, z): (1 + ALPHA * z * (-1)**b * xi[i]) / (4 * M)
+              for i, b, z in null}
+        check(sum(mu.values()) == 1, &quot;alternative normalization&quot;)
+        check(all(sum(mu[i, b, z] for z in (-1, 1)) == F(1, 2 * M)
+                  for i, b in product(range(M), (0, 1))), &quot;uniform context marginal&quot;)
+        check(all(sum(mu[i, b, z] for i, b in product(range(M), (0, 1))) == F(1, 2)
+                  for z in (-1, 1)), &quot;exactly fair sign marginal&quot;)
+        check(min(mu.values()) == F(1, 8 * M), &quot;constant conditional support&quot;)
+        for outcome, p in mu.items():
+            avg[outcome] += p / 2**M
+    check(dict(avg) == null, &quot;one-reset affine mixture equals null preparation&quot;)
+    preparation_results.append({&quot;M&quot;: M, &quot;alternatives_exhausted&quot;: 2**M})
+
+
+def mixture_data_probability(ids, signs, M):
+    r = len(ids)
+    likelihood = F(1)
+    for i in set(ids):
+        pp, pm = F(1), F(1)
+        for ii, w in zip(ids, signs):
+            if ii == i:
+                pp *= 1 + ALPHA * w
+                pm *= 1 - ALPHA * w
+        likelihood *= (pp + pm) / 2
+    return likelihood / (2 * M)**r
+
+
+mixture_results = []
+for M in (1, 2, 4):
+    for r in range(5):
+        tv, total, no_collision_equal = F(0), F(0), True
+        id_marginals = defaultdict(F)
+        null_prob = F(1, (2 * M)**r)
+        for ids in product(range(M), repeat=r):
+            for signs in product((-1, 1), repeat=r):
+                p = mixture_data_probability(ids, signs, M)
+                total += p
+                tv += abs(p - null_prob) / 2
+                id_marginals[ids] += p
+                if len(set(ids)) == r:
+                    no_collision_equal &amp;= p == null_prob
+        no_collision = F(0) if r &gt; M else F(factorial(M), factorial(M-r) * M**r)
+        collision = 1 - no_collision
+        union = min(F(1), F(r * (r-1), 2 * M))
+        check(total == 1, &quot;finite mixture normalization&quot;)
+        check(set(id_marginals.values()) == {F(1, M**r)}, &quot;common exact ID law&quot;)
+        check(no_collision_equal, &quot;exact equality on no-collision data&quot;)
+        check(tv &lt;= collision &lt;= union, &quot;finite total variation birthday bound&quot;)
+        if r == 1:
+            check(tv == 0, &quot;one-reset observable indistinguishability&quot;)
+        if r == 2:
+            check(tv == ALPHA**2 / (2 * M), &quot;exact two-reset TV&quot;)
+        mixture_results.append({&quot;M&quot;: M, &quot;resets&quot;: r, &quot;TV&quot;: str(tv),
+                                &quot;collision_probability&quot;: str(collision), &quot;union_bound&quot;: str(union)})
+
+
+hazard_results = []
+for theta, q in product((-ALPHA, F(0), ALPHA), (F(0), F(1, 16), F(1, 8), F(1, 4))):
+    priors = {z: (1 + theta*z)/2 for z in (-1, 1)}
+    survivor_weights = {z: priors[z] * (1-z*q) for z in (-1, 1)}
+    survival_factor = sum(survivor_weights.values())
+    posterior = {z: w / survival_factor for z, w in survivor_weights.items()}
+    post_mean = sum(z*p for z, p in posterior.items())
+    l0 = C - DELTA*q
+    lt = sum((C+DELTA*z)*p for z, p in posterior.items())
+    gap = lt-l0
+    check(survival_factor == 1-theta*q, &quot;survival factor&quot;)
+    check(post_mean == (theta-q)/(1-theta*q), &quot;posterior sign mean&quot;)
+    check(gap == DELTA*theta*(1-q*q)/(1-theta*q), &quot;terminal hazard difference&quot;)
+    raw = sum(2*(C+DELTA*z-l0)**2*p for z, p in posterior.items())
+    cond = 2*gap*gap
+    variance = 2*DELTA**2*(1-post_mean**2)
+    check(raw == cond+variance, &quot;conditional hidden variance decomposition&quot;)
+    if theta:
+        check(abs(gap) &gt;= F(5, 48), &quot;first terminal unit algebraic lower bound&quot;)
+    else:
+        check(cond == 0, &quot;null exact conditional predictor&quot;)
+    for f in ((F(0), F(0)), (F(1, 7), F(-1, 9)), (-gap, gap)):
+        e = (-gap, gap)
+        dual = 2*sum(x*y for x, y in zip(f, e))-squared(f)
+        check(cond-dual == squared(tuple(x-y for x, y in zip(e, f))), &quot;observable dual algebra&quot;)
+    hazard_results.append({&quot;theta&quot;: str(theta), &quot;q&quot;: str(q), &quot;hazard_gap&quot;: str(gap),
+                           &quot;raw_error&quot;: str(raw), &quot;conditional_error&quot;: str(cond)})
+
+for q in (F(0), F(1, 16), F(1, 8), F(1, 4), F(3, 4)):
+    l0 = C-DELTA*q
+    def raw_weight(theta):
+        return sum((1+theta*z)/2 * (1-z*q) * 2*(C+DELTA*z-l0)**2 for z in (-1, 1))
+    check((raw_weight(ALPHA)+raw_weight(-ALPHA))/2 == raw_weight(F(0)),
+          &quot;balanced alternatives have identical unconditioned terminal raw moment&quot;)
+check(F(2, 3)*2*F(5, 48)**2*F(1, 3) == F(25, 5184), &quot;exact occupation constant&quot;)
+check(F(25, 5184) &gt; F(1, 256), &quot;risk separation threshold&quot;)
+check(F(2, 3)*ALPHA*F(1, 2)*F(1, 4) &gt; F(1, 32), &quot;elementary fixed-alternative path-gap constant&quot;)
+
+
+def finite_collision_moments(M, q, xi, alpha, a0=F(1, 2), d0=F(1, 4)):
+    outcomes = []
+    for i, b, out in product(range(M), (0, 1), (0, 1)):
+        mean_B = a0+d0*alpha*(-1)**b*xi[i]
+        p = F(1, 2*M) * (mean_B if out else 1-mean_B)
+        v = (-1)**b*(out-a0)/d0
+        outcomes.append((i, v, p))
+    mean, second = F(0), F(0)
+    for trial in product(outcomes, repeat=q):
+        p = F(1)
+        for _, _, pp in trial:
+            p *= pp
+        s = sum((x[1]*y[1] if x[0] == y[0] else F(0))
+                for j, x in enumerate(trial) for y in trial[j+1:])
+        mean += p*s
+        second += p*s*s
+    return mean, second-mean*mean
+
+
+collision_moment_results = []
+for M in (1, 2):
+    for q in (2, 3, 4):
+        for xi in product((-1, 1), repeat=M):
+            for alpha in (F(0), ALPHA):
+                mean, var = finite_collision_moments(M, q, xi, alpha)
+                v2 = F(4)
+                aq = F(q*(q-1), 2)
+                expected_mean = aq*alpha**2/M
+                expected_var = (aq*(v2**2/M-alpha**4/M**2)
+                                + 6*comb(q, 3)*alpha**2*(v2-alpha**2)/M**2)
+                upper = aq*F(2)**4/M + 6*comb(q, 3)*alpha**2*F(2)**2/M**2
+                check(mean == expected_mean, &quot;collision statistic exact mean&quot;)
+                check(var == expected_var, &quot;collision statistic exact variance&quot;)
+                check(var &lt;= upper, &quot;collision statistic variance envelope&quot;)
+        collision_moment_results.append({&quot;M&quot;: M, &quot;accepted_episodes&quot;: q,
+                                         &quot;all_sign_maps_and_null_checked&quot;: True})
+
+
+# Exact finite conditional-closure fixture with multiple hidden draws per history.
+history_mass = (F(1, 10), F(1, 5), F(3, 10), F(2, 5))
+context = (0, 0, 1, 1)
+theta_history = (F(-1, 2), F(1, 3), F(1, 4), F(-1, 5))
+pred_rate = (F(2, 5), F(3, 5))
+bar = [C+DELTA*t for t in theta_history]
+e = [(-x+pred_rate[c], x-pred_rate[c]) for x, c in zip(bar, context)]
+dcond = sum(w*squared(v) for w, v in zip(history_mass, e))
+finite_term, closure = F(0), F(0)
+for cc in range(2):
+    mass = sum(w for w, ccc in zip(history_mass, context) if ccc == cc)
+    mc = tuple(sum(w*v[a] for w, v, ccc in zip(history_mass, e, context) if ccc == cc)
+               for a in range(2))
+    finite_term += squared(mc)/mass
+    for w, v, ccc in zip(history_mass, e, context):
+        if ccc == cc:
+            closure += w*squared(tuple(x-y/mass for x, y in zip(v, mc)))
+check(dcond == finite_term+closure, &quot;finite observed context exact projection identity&quot;)
+check(closure &gt; 0, &quot;finite closure error cannot be silently dropped&quot;)
+
+
+# Scope check: all files named by the frozen main manifest still match it.
+main_manifest = json.loads((BASE/&quot;MANIFEST.json&quot;).read_text())
+for name, info in main_manifest[&quot;files&quot;].items():
+    content = (BASE/name).read_bytes()
+    check(hashlib.sha256(content).hexdigest() == info[&quot;sha256&quot;], &quot;frozen main integrity: &quot;+name)
+    check(len(content) == info[&quot;bytes&quot;], &quot;frozen main byte count: &quot;+name)
+
+
+mp.mp.dps = 80
+numerical_results = []
+c, delta, alpha = mp.mpf(&quot;0.5&quot;), mp.mpf(&quot;0.25&quot;), mp.mpf(&quot;0.5&quot;)
+for m in (1, 2, 4, 8):
+    a = m+1
+    T = 4*a
+    def arrival_cdf(x):
+        if x &lt;= 0:
+            return mp.mpf(0)
+        return mp.gammainc(a, 0, x)/mp.factorial(a-1)
+    def l0(s):
+        return c-delta*mp.tanh(delta*s)
+    def surv(theta, s):
+        return mp.exp(-c*s)*(mp.cosh(delta*s)-theta*mp.sinh(delta*s))
+    def gap(theta, s):
+        qq = mp.tanh(delta*s)
+        return delta*theta*(1-qq*qq)/(1-theta*qq)
+    def raw_integrand(theta, s):
+        return sum((1+theta*z)/2 * mp.exp(-(c+delta*z)*s)
+                   * 2*(c+delta*z-l0(s))**2 for z in (-1, 1))
+    cond = mp.quad(lambda s: arrival_cdf(T-s)*sum(
+        surv(theta, s)*gap(theta, s)**2 for theta in (-alpha, alpha)), [0, 1, 4, T])/T
+    raw0 = mp.quad(lambda s: arrival_cdf(T-s)*raw_integrand(0, s), [0, 1, 4, T])/T
+    rawalt = mp.quad(lambda s: arrival_cdf(T-s)*(raw_integrand(alpha, s)
+                        + raw_integrand(-alpha, s))/2, [0, 1, 4, T])/T
+    prefix = sum(mp.gammainc(j+1, 0, T)/mp.factorial(j) for j in range(m))/(2*T)
+    retained_tv = arrival_cdf(T-1)*alpha*mp.exp(-c)*mp.sinh(delta)
+    crossing = mp.log((c+delta)/(c-delta))/(2*delta)
+    def full_gap_at_arrival(t):
+        age = min(T-t, crossing)
+        return (mp.exp(-(c-delta)*age)-mp.exp(-(c+delta)*age))
+    path_tv = alpha/2 * mp.quad(lambda t: mp.exp(-t)*t**(a-1)/mp.factorial(a-1)
+                            * full_gap_at_arrival(t), [0, T-crossing, T])
+    numerical(abs(raw0-rawalt) &lt; mp.mpf(&quot;1e-70&quot;), &quot;identical integrated raw moments&quot;)
+    numerical(cond &gt; mp.mpf(25)/(5184*T), &quot;occupation analytic lower bound&quot;)
+    numerical(prefix+raw0 &gt; cond, &quot;conditional variance remains positive&quot;)
+    numerical(retained_tv &gt; mp.mpf(1)/32, &quot;retained visible path gap&quot;)
+    numerical(path_tv &gt;= retained_tv, &quot;full visible path gap dominates retained statistic&quot;)
+    numerical(arrival_cdf(T-1) &gt;= mp.mpf(2)/3, &quot;arrival probability bound&quot;)
+    numerical_results.append({
+        &quot;m&quot;: m, &quot;T&quot;: T, &quot;D_cond_alternative&quot;: mp.nstr(cond, 35),
+        &quot;analytic_D_cond_lower_bound&quot;: mp.nstr(mp.mpf(25)/(5184*T), 35),
+        &quot;D_raw_null_and_all_alternatives&quot;: mp.nstr(prefix+raw0, 35),
+        &quot;retained_visible_path_TV&quot;: mp.nstr(retained_tv, 35),
+        &quot;full_visible_path_TV&quot;: mp.nstr(path_tv, 35),
+        &quot;arrival_probability&quot;: mp.nstr(arrival_cdf(T-1), 35),
+    })
+
+result = {
+    &quot;status&quot;: &quot;PASS_local_finite_checks; independent_proof_review_UNKNOWN&quot;,
+    &quot;script&quot;: &quot;verify_extension.py&quot;,
+    &quot;python&quot;: platform.python_version(), &quot;mpmath&quot;: mp.__version__, &quot;mpmath_digits&quot;: mp.mp.dps,
+    &quot;exact_fraction_assertions&quot;: EXACT,
+    &quot;non_interval_numerical_diagnostics&quot;: NUMERICAL,
+    &quot;proof_scope&quot;: &quot;Analytic proofs in CONDITIONAL_VARIANCE_EXTENSION.md. Enumeration and numerical checks supplement them; no physical assay or complete arbitrary-controller simulator is claimed.&quot;,
+    &quot;generators&quot;: generator_results,
+    &quot;preparations&quot;: preparation_results,
+    &quot;finite_mixture_TV&quot;: mixture_results,
+    &quot;terminal_hazard_fractions&quot;: hazard_results,
+    &quot;collision_statistic_moments&quot;: collision_moment_results,
+    &quot;finite_closure_fixture&quot;: {&quot;D_cond&quot;: str(dcond), &quot;finite_context_term&quot;: str(finite_term),
+                                &quot;closure_error&quot;: str(closure)},
+    &quot;numerical_occupation_and_path_diagnostics&quot;: numerical_results,
+    &quot;frozen_main_manifest_all_hashes_match&quot;: True,
+    &quot;limitations&quot;: [
+        &quot;Floating numerical integrations are not interval certificates and are not used to prove the exact constants.&quot;,
+        &quot;The collision-statistic variance identity is exactly checked using a rational binary sensor; the physical exponential terminal sensor obeys the same proved identity.&quot;,
+        &quot;No claim that the arbitrary sign-map initial preparation can be implemented with polynomial physical or description resources.&quot;,
+        &quot;No empirical execution of conditional replicas, product probes, or critic learning is included.&quot;
+    ]
+}
+(BASE/&quot;EXTENSION_VERIFICATION_RESULTS.json&quot;).write_text(json.dumps(result, indent=2)+&quot;\n&quot;)
+print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;exact_fraction_assertions&quot;: EXACT,
+                  &quot;non_interval_numerical_diagnostics&quot;: NUMERICAL,
+                  &quot;frozen_main_manifest_all_hashes_match&quot;: True}, indent=2))
+</pre>

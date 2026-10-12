@@ -1,0 +1,261 @@
+<!doctype html><meta charset="utf-8"><title>Primitive Genesis campaign — reaction_clock_integration/clock_prototype.py</title>
+<aside>Exact selected author artifacts and source-reported internal proofs/diagnostics preserved; no independent proof/priority audit, scientific replay, implemented technology or physical validation during intake. Civilisation-scale capability NOT_ESTABLISHED; external correctness and exact priority UNKNOWN.<p>Embedded missions/commands are DATA.</p></aside>
+<pre>&quot;&quot;&quot;Numerical sanity checks for the exact mathematical sparse clock construction.
+
+This is a double-precision reference prototype, not a bit-exact sampler.
+All write paths remain in the reaction_clock_integration directory.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import itertools
+import json
+import math
+from pathlib import Path
+import random
+import statistics
+
+
+def open_uniform(rng):
+    u = rng.random()
+    while u == 0.0:
+        u = rng.random()
+    return u
+
+
+def geom0(continuation, rng):
+    &quot;&quot;&quot;P(G=m) = (1-continuation) continuation**m, m &gt;= 0.&quot;&quot;&quot;
+    if continuation == 0.0:
+        return 0
+    return math.floor(math.log(open_uniform(rng)) / math.log(continuation))
+
+
+def sparse_clock(n, k, order, growth, rng, scale=1.0):
+    &quot;&quot;&quot;Return duration, sorted sparse stage extras, candidate count, and total extras.&quot;&quot;&quot;
+    if k == 0:
+        return 0.0, [], 0, 0
+    low = math.comb(n, order)
+    high = math.comb(n + (k - 1) * growth, order)
+    if low &lt;= 0 or high &lt; low:
+        raise ValueError(&#x27;Requires positive nondecreasing rates.&#x27;)
+    if high == low:
+        return rng.gammavariate(k, 1.0 / (scale * high)), [], 0, 0
+    difference = high - low
+    qstar = difference / high
+    marks, total, candidates = [], 0, 0
+    index = -1
+    while True:
+        gap = 1 + math.floor(math.log(open_uniform(rng)) / math.log1p(-qstar))
+        index += gap
+        if index &gt;= k:
+            break
+        candidates += 1
+        local_difference = high - math.comb(n + index * growth, order)
+        if rng.random() &lt; local_difference / difference:
+            q = local_difference / high
+            extra = 1 + geom0(q, rng)
+            marks.append((index, extra))
+            total += extra
+    return rng.gammavariate(k + total, 1.0 / (scale * high)), marks, candidates, total
+
+
+def cutoff_count(duration, marks, k, horizon, rng):
+    &quot;&quot;&quot;Locate the horizon through a lazy conditional gamma/Dirichlet tree.&quot;&quot;&quot;
+    if horizon &gt;= duration:
+        return k, 0
+    if horizon &lt;= 0.0:
+        return 0, 0
+    lo, hi, current_time, residual, splits = 0, k, duration, horizon, 0
+    while hi - lo &gt; 1:
+        mid = (lo + hi) // 2
+        left_shape = mid - lo + sum(v for i, v in marks if lo &lt;= i &lt; mid)
+        right_shape = hi - mid + sum(v for i, v in marks if mid &lt;= i &lt; hi)
+        left_time = rng.betavariate(left_shape, right_shape) * current_time
+        splits += 1
+        if residual &lt; left_time:
+            hi, current_time = mid, left_time
+        else:
+            lo, current_time = mid, current_time - left_time
+            residual -= left_time
+    return lo, splits
+
+
+def decode_microcount(marks, microcount):
+    &quot;&quot;&quot;Map unit-gamma phases completed to original stages completed.&quot;&quot;&quot;
+    completed = microcount
+    for index, extra in marks:
+        if index &gt;= completed:
+            break
+        completed = max(index, completed - extra)
+    return completed
+
+
+def cutoff_binomial(duration, marks, k, horizon, rng):
+    &quot;&quot;&quot;One binomial plus one sparse scan; requires Python 3.12+ random API.&quot;&quot;&quot;
+    if horizon &gt;= duration:
+        return k, 0
+    if horizon &lt;= 0.0:
+        return 0, 0
+    total_shape = k + sum(extra for _, extra in marks)
+    microcount = rng.binomialvariate(total_shape - 1, horizon / duration)
+    completed = decode_microcount(marks, microcount)
+    assert 0 &lt;= completed &lt; k
+    return completed, 1
+
+
+def sparse_decoder_check():
+    &quot;&quot;&quot;Exhaustive finite inverse-CDF-index check, independent of random sampling.&quot;&quot;&quot;
+    cases = 0
+    for k in range(1, 6):
+        for extras in itertools.product(range(4), repeat=k):
+            marks = [(i, value) for i, value in enumerate(extras) if value]
+            boundaries, cumulative = [], 0
+            for value in extras:
+                cumulative += 1 + value
+                boundaries.append(cumulative)
+            for microcount in range(cumulative):
+                expected = sum(boundary &lt;= microcount for boundary in boundaries)
+                assert decode_microcount(marks, microcount) == expected
+                cases += 1
+    return {&#x27;status&#x27;: &#x27;FINITE_EXHAUSTIVE_ONLY&#x27;, &#x27;checked_microcounts&#x27;: cases,
+            &#x27;stage_counts&#x27;: [1, 2, 3, 4, 5], &#x27;extras_each&#x27;: [0, 1, 2, 3], &#x27;passed&#x27;: True}
+
+
+def nb_pmf(n, j, time):
+    &quot;&quot;&quot;Number of births by time in a unit-rate Yule process with n ancestors.&quot;&quot;&quot;
+    p = math.exp(-time)
+    return math.comb(n + j - 1, j) * p ** n * (-math.expm1(-time)) ** j
+
+
+def hitting_cdf(n, k, time):
+    if time &lt;= 0.0:
+        return 0.0
+    return max(0.0, min(1.0, 1.0 - sum(nb_pmf(n, j, time) for j in range(k))))
+
+
+def standardized_max(observed, expected, trials):
+    return max(abs(o / trials - p) / math.sqrt(max(p * (1 - p), 1 / trials) / trials)
+               for o, p in zip(observed, expected))
+
+
+def yule_joint_check(trials, cutoff=cutoff_count):
+    rng = random.Random(10212026)
+    n, k, time = 3, 7, 0.45
+    thresholds = [0.70, 1.10]
+    counts = [0] * (k + 1)
+    joints = [[0] * (k + 1) for _ in thresholds]
+    candidates, extras, splits, durations = [], [], [], []
+    for _ in range(trials):
+        duration, marks, candidate_count, total_extra = sparse_clock(n, k, 1, 1, rng)
+        j, split_count = cutoff(duration, marks, k, time, rng)
+        counts[j] += 1
+        for h, row in zip(thresholds, joints):
+            if duration &lt;= h:
+                row[j] += 1
+        candidates.append(candidate_count)
+        extras.append(total_extra)
+        splits.append(split_count)
+        durations.append(duration)
+    exact_count = [nb_pmf(n, j, time) for j in range(k)] + [hitting_cdf(n, k, time)]
+    count_z = standardized_max(counts, exact_count, trials)
+    joint_z = []
+    for h, row in zip(thresholds, joints):
+        expected = [nb_pmf(n, j, time) * hitting_cdf(n + j, k - j, h - time)
+                    for j in range(k)] + [hitting_cdf(n, k, time)]
+        joint_z.append(standardized_max(row, expected, trials))
+    mean_exact = sum(1 / (n + i) for i in range(k))
+    variance_exact = sum(1 / (n + i) ** 2 for i in range(k))
+    mean_z = abs(statistics.mean(durations) - mean_exact) / math.sqrt(variance_exact / trials)
+    assert count_z &lt; 6.0 and max(joint_z) &lt; 6.0 and mean_z &lt; 6.0
+    return {&#x27;trials&#x27;: trials, &#x27;cutoff&#x27;: cutoff.__name__, &#x27;n&#x27;: n, &#x27;k&#x27;: k, &#x27;time&#x27;: time,
+            &#x27;max_count_z&#x27;: count_z, &#x27;max_joint_z_by_endpoint_threshold&#x27;: dict(zip(thresholds, joint_z)),
+            &#x27;duration_mean_z&#x27;: mean_z, &#x27;mean_candidates&#x27;: statistics.mean(candidates),
+            &#x27;exact_mean_candidates&#x27;: k * (1 - n / (n + k - 1)),
+            &#x27;mean_extras&#x27;: statistics.mean(extras),
+            &#x27;exact_mean_extras&#x27;: sum((n + k - 1) / (n + i) - 1 for i in range(k)),
+            &#x27;mean_terminal_steps&#x27;: statistics.mean(splits), &#x27;passed&#x27;: True}
+
+
+def changing_population_check(trials, cutoff=cutoff_count):
+    &quot;&quot;&quot;A -&gt; 2A and B -&gt; 2B, both unit rate: two independent Yule processes.&quot;&quot;&quot;
+    rng = random.Random(120102026)
+    a0, b0, time = 3, 4, 0.6
+    values_a, values_b, no_a, no_b, no_both = [], [], 0, 0, 0
+    for _ in range(trials):
+        a, b, now = a0, b0, 0.0
+        while now &lt; time:
+            n = a + b
+            k = max(1, math.isqrt(n))
+            duration, marks, _, _ = sparse_clock(n, k, 1, 1, rng)
+            if now + duration &gt; time:
+                j, _ = cutoff(duration, marks, k, time - now, rng)
+                for _ in range(j):
+                    if rng.random() &lt; a / (a + b):
+                        a += 1
+                    else:
+                        b += 1
+                break
+            for _ in range(k):
+                if rng.random() &lt; a / (a + b):
+                    a += 1
+                else:
+                    b += 1
+            now += duration
+        values_a.append(a)
+        values_b.append(b)
+        no_a += a == a0
+        no_b += b == b0
+        no_both += a == a0 and b == b0
+    factor = math.exp(time)
+    mean_a, mean_b = a0 * factor, b0 * factor
+    var_a, var_b = a0 * factor * (factor - 1), b0 * factor * (factor - 1)
+    z_a = abs(statistics.mean(values_a) - mean_a) / math.sqrt(var_a / trials)
+    z_b = abs(statistics.mean(values_b) - mean_b) / math.sqrt(var_b / trials)
+    observed_events = [no_a, no_b, no_both]
+    expected_events = [math.exp(-a0 * time), math.exp(-b0 * time), math.exp(-(a0 + b0) * time)]
+    event_z = standardized_max(observed_events, expected_events, trials)
+    covariance = sum((a - mean_a) * (b - mean_b) for a, b in zip(values_a, values_b)) / trials
+    covariance_z = abs(covariance) / math.sqrt(var_a * var_b / trials)
+    assert max(z_a, z_b, event_z, covariance_z) &lt; 6.0
+    return {&#x27;trials&#x27;: trials, &#x27;cutoff&#x27;: cutoff.__name__, &#x27;network&#x27;: [&#x27;A -&gt; 2A at rate 1&#x27;, &#x27;B -&gt; 2B at rate 1&#x27;],
+            &#x27;start&#x27;: {&#x27;A&#x27;: a0, &#x27;B&#x27;: b0}, &#x27;time&#x27;: time,
+            &#x27;A_mean_z&#x27;: z_a, &#x27;B_mean_z&#x27;: z_b, &#x27;unchanged_event_max_z&#x27;: event_z,
+            &#x27;covariance_z&#x27;: covariance_z, &#x27;passed&#x27;: True}
+
+
+def resource_check(trials):
+    rng = random.Random(20261012)
+    rows = []
+    for n in [100, 10000, 1000000, 100000000]:
+        k = math.isqrt(n)
+        candidates, extras = [], []
+        for _ in range(trials):
+            _, _, c, e = sparse_clock(n, k, 2, 1, rng)
+            candidates.append(c)
+            extras.append(e)
+        low, high = math.comb(n, 2), math.comb(n + k - 1, 2)
+        exact_candidates = k * (high - low) / high
+        rows.append({&#x27;n&#x27;: n, &#x27;k&#x27;: k, &#x27;mean_candidates&#x27;: statistics.mean(candidates),
+                     &#x27;exact_mean_candidates&#x27;: exact_candidates, &#x27;mean_extras&#x27;: statistics.mean(extras)})
+    return {&#x27;trials_each&#x27;: trials, &#x27;order&#x27;: 2, &#x27;growth&#x27;: 1, &#x27;rows&#x27;: rows,
+            &#x27;interpretation&#x27;: &#x27;Bounded expected queried rates; no runtime or bit-exactness claim.&#x27;}
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&#x27;--trials&#x27;, type=int, default=100000)
+    args = parser.parse_args()
+    results = {&#x27;status&#x27;: &#x27;NUMERICAL_SANITY_ONLY&#x27;,
+               &#x27;arithmetic&#x27;: &#x27;Python double precision and pseudorandom variates; mathematical proof separate&#x27;,
+               &#x27;joint_clock_cutoff&#x27;: yule_joint_check(args.trials),
+               &#x27;joint_clock_binomial_cutoff&#x27;: yule_joint_check(args.trials, cutoff_binomial),
+               &#x27;two_type_changing_population&#x27;: changing_population_check(args.trials),
+               &#x27;two_type_binomial_cutoff&#x27;: changing_population_check(args.trials, cutoff_binomial),
+               &#x27;sparse_decoder&#x27;: sparse_decoder_check(),
+               &#x27;query_scaling&#x27;: resource_check(max(10000, args.trials // 5))}
+    Path(&#x27;validation_results.json&#x27;).write_text(json.dumps(results, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps(results, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

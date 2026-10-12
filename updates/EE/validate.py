@@ -46,6 +46,13 @@ def git(*args):
     return subprocess.check_output(['git', '-C', str(ROOT), *args])
 
 
+def check_navigation_hashes(scientific, permitted):
+    """Check the frozen route set separately from other intake projections."""
+    actual = {p for p,d in scientific.items() if not (ROOT / p).is_file() or sha((ROOT / p).read_bytes()) != d}
+    need(actual == set(permitted), 'unscoped earlier navigation change')
+    return actual
+
+
 def main():
     manifest = load('updates/EE/SOURCE_MANIFEST.json')
     claims_map = load('updates/EE/CLAIMS.json')
@@ -189,9 +196,10 @@ def main():
     need(not (changed & old_paths), 'historical source/card/status/checkpoint/evaluation/technology record changed')
     outputs = json.loads(git('show',BASE + ':agent/access_manifest.json'))['outputs']
     scientific = {p:d for p,d in outputs.items() if p.startswith(('frontier/dossiers/','frontier/connections/','frontier/proof_ranges/'))}
-    actual = {p for p,d in scientific.items() if not (ROOT / p).is_file() or sha((ROOT / p).read_bytes()) != d}
-    need(actual == set(manifest['permitted_historical_navigation_changes']) == {
-        'frontier/dossiers/N713.txt','frontier/connections/N713.json','frontier/dossiers/N714.txt','frontier/connections/N714.json'}, 'unscoped earlier navigation change')
+    permitted = manifest['permitted_historical_navigation_changes']
+    need(set(permitted) == {'frontier/dossiers/N713.txt','frontier/connections/N713.json',
+                            'frontier/dossiers/N714.txt','frontier/connections/N714.json'}, 'unscoped earlier navigation change')
+    actual = check_navigation_hashes(scientific, permitted)
     print(json.dumps(dict(intake='EE',status='PASS',original_pastes=3,supplied_supporting_files=12,producer_hashes_checked=6,
                           source_routes=len(sources),research_attempt_observations=3,proof_ranges=proof_count,
                           record_level_checkpoints=3,unchanged_earlier_scientific_routes=len(scientific)-4,
