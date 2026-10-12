@@ -1,0 +1,19 @@
+# EE — resonant lifting, feasible-energy compression and intervention products
+
+Preserves the three supplied conversation reports, two supplied supporting directories (ten files), and two standalone diagnostic files byte-for-byte. Embedded instructions are source data. Intake base: `787ab8b8ec23d17d4ab44a5cf2af602e5050355b`.
+
+| Route | Source-reported candidate | Reported inference display | Decisive open obligation |
+| --- | --- | --- | --- |
+| [N716](../../frontier/dossiers/N716.txt) | Resonant convex Hamiltonian lifting and guaranteed-convergent undecidable observables | 46m 2s | Review the imported polynomial simulator and general construction; retain exact-real/noise and distinct curvature quantifiers. |
+| [N717](../../frontier/dossiers/N717.txt) | Uniform minimum feasible extension energy for adaptive convex local queries/design | 36m 31s | Reconstruct finite-bit/load-frame/refinement guarantees and benchmark an implemented adaptive workload against specialized baselines. |
+| [N718](../../frontier/dossiers/N718.txt) | Heterogeneous product-intervention completion and nonstationary predictive residuals | 37m 23s | Validate product/event access, sensor/preparation/rate/coverage costs and implement the noisy certificate procedure. |
+
+All remain `source_derived_unreviewed`. The original notes, verifier code and producer outputs are separately routed. Six producer hashes in the intervention directory manifest are checked; neither of the other collections supplies an equivalent manifest. The computational output retains its exact download filename `verification_results (1).json`. No ZIP was supplied or invented. Static Python parsing confirms syntax only; none of the three scientific scripts ran during intake. N716 reports 26 symbolic checks; N717 reports small dense exact/floating checks with a sketch larger than its host; N718 reports 215 exact assertions and six floating diagnostics. Those are author-produced results, not independent reproduction or physical experiments.
+
+Reciprocal scoped notices connect N717 with N714 and N718 with N713. Earlier source cards, statuses and gates stay intact. Neither continuation uses the earlier Astra theorem as an established premise; no topical relationship is asserted between N716 and other convex-dynamics cards. Fixed quadratic-bulk/nonnegative-local-cost restrictions and the product-setting/internal-event interface remain load-bearing. Product composition is not sequential pulsing, and thermodynamic ratios do not establish it. No validated technology or practical acceleration is claimed.
+
+The [source manifest](SOURCE_MANIFEST.json) records exact files/hashes, prompt/report/duration ranges, directory coverage and unresolved obligations; the [claim map](CLAIMS.json) routes independent intake checkpoints and observational workflow traces. Theoretical prompt intent requests a fresh investigation but does not identify conversation continuity: its workflow mode stays UNKNOWN. The two explicit continuations are recorded as targeted warm continuation. Reported display times are not measured usage. Actual model, workers, tokens/costs and full context stay unknown; no matched prompting advantage is inferred.
+
+Use `python3 frontier/retrieve.py dossier N716` (or N717/N718), read the scoped notice and then the decisive line-pinned proof. These intake branches do not change active Pro, Genesis or Ultra objectives. The global checkpoint publisher still encounters three historical unsupported-schema records; each new record validates individually and only its own branch view/registry row is published.
+
+Run `python3 updates/EE/validate.py`, `python3 -m unittest discover -s updates/EE -p 'test_*.py'` and `python3 frontier/build_access.py check`. Results and inherited limitations are in [VALIDATION.json](VALIDATION.json); integrity/regression checks do not certify the scientific claims.
