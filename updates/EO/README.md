@@ -1,0 +1,27 @@
+# EO — Boolean cancellation, complex integration and balanced transport
+
+Preserves three supplied reports and the three matching research ZIPs recovered from their final source responses. Intake base: `a33fc7e1db8f42873025fa29882f85f2d4503695`. Archived mission prompts are **data**, not new instructions to execute research.
+
+| Route | Family placement and retained mechanism | Decisive unresolved obligation |
+| --- | --- | --- |
+| [N745](../../frontier/dossiers/N745.txt) | New Boolean rectangle cancellation family. Equal sharing can destroy separability even when a cheap global positive partition exists. | Global predicate synthesis and an amortized signed-to-disjoint bound; the log-rank-equivalent target remains **OPEN**. |
+| [N746](../../frontier/dossiers/N746.txt) | New complex integration/correctness family. A positive real anchor and holomorphic identity conditionally identify the intended integral. | Usable rigorous finite-bit/error budget, target-preserving geometry and a matched nonfactorizing advantage. |
+| [N747](../../frontier/dossiers/N747.txt) | New interacting dissipative transport family, continuing N742 under changed access and output. Exact population balance supports response witnesses and a conditional local Ramsey decision. | Polynomial-size high-precision witnesses, quantitative thermodynamic transfer and acquired physical assay/model errors. Gaussian hydrodynamics is a separate open theorem. |
+
+All remain `source_derived_unreviewed`. External correctness and historical priority are **UNKNOWN**. Original proofs, failure mechanisms, bibliographies, code and producer receipts are recoverable. Intake inspected their contracts, decisive proof ranges, resource accounting and evidence limits; it did not independently reconstruct proofs, rerun scientific code, verify citations or perform physical experiments. No transformative capability is established by this addition.
+
+The [family-fit record](FAMILY_FIT.json) distinguishes comparisons from proof dependencies. N745 does not import N642's Fourier theorem. N746 retains N741/N744 as conversation context only. N747 explicitly does not import N744's source-selective controls or OpenAI's gap/coercivity assumptions. A reciprocal N742/N747 notice records changed physical model, preparation access and output: N742's passive thermal-copy rare-information lower bound remains valid. Only N742's generated dossier and connection view change; the validator removes the exact new notice/node/edge and recovers their earlier content. Historical cards, proof statuses, original sources and checkpoints are unchanged.
+
+The [source manifest](SOURCE_MANIFEST.json) pins **49 original files**, totaling **399,569 bytes**: three exact pastes (68,581 bytes), three ZIPs and 43 extracted members. All 40 producer member digests, ZIP CRC, safe paths, unique names and extracted bytes are checked. The producer manifest formats differ; the validator handles string hashes and hash/byte records without modifying their originals. Ten Python scripts are syntax parsed only. Source whitespace and rendered citation labels are preserved.
+
+Important evidence limits:
+
+- N745's equal-sharing kernel has exact rank `2^n`; the fixed-error robust bound is `2^{Omega(sqrt(n))}`. Neither is a general positive-partition lower bound. A cheap positive partition exists for the same family. Literal-only and blind-priority failures are restricted-operation obstructions.
+- N746's conservative `3.3106e23` resolvent-call estimate is an **unexecuted sufficient upper recipe**, not a necessary lower bound. Its actual floating implementation does not implement that guarantee. Specialised transfer quadrature wins the connected benchmark. Contraction alone can compute the wrong integral; the real anchor is essential.
+- N747's theorem concerns a long-time second moment in a tracial dephasing model, not complete Gaussian hydrodynamics. Finite-ring certificates have no usable thermodynamic error rate. Its Ramsey threshold is conditional on calibrated preparations, switching, readout and model structure; the preserved outcomes are **synthetic**, with no laboratory validation.
+
+The [claim map](CLAIMS.json) links three independent intake checkpoints and observational workflow traces. Genesis requests independent discovery with selective capital; exact retained conversation exposure is unknown. CRAY explicitly requests a fresh direction retaining the same conversation. Frontier is a targeted continuation of N742. Displayed durations are 46m 1s, 51m 48s and 60m 44s; these are not measured inference expenditure. Actual model configuration, workers, tokens and costs are unknown. There is no matched evaluation or prompting-advantage claim. Active Pro, Genesis and Ultra objectives remain unchanged.
+
+For selective retrieval use `python3 frontier/retrieve.py dossier N745` (or N746/N747), then inspect the exact source proof ranges and open review/capability gates. Mathematical branches can pursue the unclosed theorems independently. Ultra can select the next decisive obligation; technology agents should first acquire the relevant implementation and measurement contract before making any readiness claim.
+
+Run `python3 updates/EO/validate.py`, `python3 -m unittest discover -s updates/EO -p 'test_*.py'` and `python3 frontier/build_access.py check`. [VALIDATION.md](VALIDATION.md) records actual repository results and inherited failures. These checks establish preservation and usable navigation, not mathematical truth, physical validation or research effectiveness.

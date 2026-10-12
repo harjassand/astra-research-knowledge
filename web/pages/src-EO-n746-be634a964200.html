@@ -1,0 +1,175 @@
+<!doctype html><meta charset="utf-8"><title>N746 recovered original — cray_anchored_complex_transport_2026-10-12/experiment.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not mathematical correctness, priority, general implementation or technology validation. Scientific code syntax parsed only, never executed at intake.</aside>
+<pre>&quot;&quot;&quot;Reproducible floating-point tests, NOT an interval-certified implementation.
+Run: python experiment.py --h 0.01 --duration 1200
+NumPy/SciPy quadrature is independent of the stochastic implementation.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse, json, math, time
+from fractions import Fraction as F
+from pathlib import Path
+import numpy as np
+from numpy.polynomial.legendre import leggauss
+from numpy.polynomial.hermite import hermgauss
+from scipy.integrate import quad
+from numba import njit
+ROOT=Path(__file__).resolve().parent
+
+def certificate(A,C,edges,a,c,r,u0=F(1,10),v0=F(11,10)):
+    &quot;&quot;&quot;Exact rational sufficient test for the specific paired-quartic family.&quot;&quot;&quot;
+    n=len(A); cv=lambda x: x if isinstance(x,F) else F(str(x))
+    A=[[cv(x) for x in row] for row in A]; C=[[cv(x) for x in row] for row in C]
+    a,c,r,u0,v0=map(cv,(a,c,r,u0,v0)); degree=[0]*n
+    for i,j in edges: degree[i]+=1; degree[j]+=1
+    D=max(degree)
+    if min(a,c,r,u0)&lt;=0 or v0&lt;=1 or D&lt;1: raise ValueError(&#x27;Invalid certificate inputs&#x27;)
+    if any(A[i][j]!=A[j][i] or C[i][j]!=C[j][i] for i in range(n) for j in range(n)):
+        raise ValueError(&#x27;A and C must be symmetric&#x27;)
+    eset={tuple(sorted((int(i),int(j)))) for i,j in edges}
+    if any(C[i][j] and tuple(sorted((i,j))) not in eset for i in range(n) for j in range(i)):
+        raise ValueError(&#x27;C has an unsupported off-diagonal entry&#x27;)
+    m=min(A[i][i]-sum(abs(A[i][j]) for j in range(n) if j!=i) for i in range(n))
+    c1=max(sum(abs(v) for v in row) for row in C)
+    c2=max(sum(v*v for v in row) for row in C)
+    ms=m-u0*c1; th=min(3*a/F(1+2*D),3*c)
+    lam=ms-(3*a+24*c*D)*r*r
+    inward=ms*r-(a+8*c*D)*r**3-v0*v0*c2/(4*r*th)
+    values=dict(m=m,c1=c1,c2_squared=c2,m_star=ms,theta=th,lambda_=lam,inward=inward)
+    return {&#x27;passed&#x27;:lam&gt;0 and inward&gt;0,&#x27;dimension&#x27;:n,&#x27;degree&#x27;:D,
+            &#x27;exact&#x27;:{k:str(v) for k,v in values.items()},
+            &#x27;float&#x27;:{k:float(v) for k,v in values.items()},
+            &#x27;r&#x27;:float(r),&#x27;u0&#x27;:float(u0),&#x27;v0&#x27;:float(v0)}
+
+def acquire_radius(A,C,edges,a,c,u0=F(1,10),v0=F(11,10)):
+    &quot;&quot;&quot;Acquire a rational radius or prove no radius passes this sufficient test.
+    Reduces feasibility to a concave quadratic in s=r^2; no hidden oracle.
+    Runtime can depend on the bit size of small strict margins.
+    &quot;&quot;&quot;
+    cv=lambda x: x if isinstance(x,F) else F(str(x))
+    n=len(A); AF=[[cv(x) for x in row] for row in A];CF=[[cv(x) for x in row] for row in C]
+    a,c,u0,v0=map(cv,(a,c,u0,v0));degree=[0]*n
+    for i,j in edges:degree[i]+=1;degree[j]+=1
+    D=max(degree)
+    if min(a,c,u0)&lt;=0 or v0&lt;=1 or D&lt;1:raise ValueError(&#x27;Invalid inputs&#x27;)
+    m=min(AF[i][i]-sum(abs(AF[i][j]) for j in range(n) if j!=i) for i in range(n))
+    c1=max(sum(abs(x) for x in row) for row in CF)
+    c2=max(sum(x*x for x in row) for row in CF)
+    ms=m-u0*c1
+    if ms&lt;=0:return None
+    th=min(3*a/F(1+2*D),3*c); alpha=a+8*c*D
+    cap=ms/(3*a+24*c*D); kappa=v0*v0*c2/(4*th)
+    f=lambda s:ms*s-alpha*s*s-kappa
+    center=min(ms/(2*alpha),cap)
+    if f(center)&lt;=0:return None
+    chosen=center
+    if center==cap:
+        k=1
+        while True:
+            chosen=cap*(1-F(1,2**k))
+            if f(chosen)&gt;0:break
+            k+=1
+    bits=1
+    while True:
+        den=2**bits; num=math.isqrt((chosen.numerator*den*den)//chosen.denominator)
+        radius=F(num,den)
+        if radius&gt;0 and radius*radius&lt;cap and f(radius*radius)&gt;0:
+            cert=certificate(AF,CF,edges,a,c,radius,u0,v0)
+            assert cert[&#x27;passed&#x27;]
+            return radius,cert
+        bits+=1
+
+@njit(cache=True)
+def gh(z,A,C,edges,a,c,t):
+    n=len(z); H=A.astype(np.complex128)-1j*t*C
+    g=H@z
+    for i in range(n):
+        g[i]+=a*z[i]**3; H[i,i]+=3*a*z[i]**2
+    for ij in edges:
+        i,j=ij[0],ij[1]; p=z[i]+z[j]; q=z[i]-z[j]
+        g[i]+=c*(p**3+q**3); g[j]+=c*(p**3-q**3)
+        d=3*c*(p*p+q*q); off=3*c*(p*p-q*q)
+        H[i,i]+=d; H[j,j]+=d; H[i,j]+=off; H[j,i]+=off
+    return g,H
+
+@njit(cache=True)
+def implicit_step(z,noise,h,A,C,edges,a,c,t,r,tol):
+    w=z+noise; v=z.copy(); n=len(z)
+    for it in range(30):
+        g,H=gh(v,A,C,edges,a,c,t); res=v+h*g-w; rn=np.sqrt(np.sum(np.abs(res)**2))
+        if rn&lt;=tol: return v,rn,it,0
+        for i in range(n): H[i,i]+=1/h
+        step=np.linalg.solve(H,res/h); fac=1.; ok=False
+        for back in range(40):
+            trial=v-fac*step
+            if np.max(np.abs(trial.imag))&lt;r:
+                gt,_=gh(trial,A,C,edges,a,c,t)
+                nr=np.sqrt(np.sum(np.abs(trial+h*gt-w)**2))
+                if nr&lt;=(1-1.e-4*fac)*rn:
+                    v=trial; ok=True; break
+            fac*=.5
+        if not ok: return v,rn,it,-1
+    g,_=gh(v,A,C,edges,a,c,t)
+    return v,np.sqrt(np.sum(np.abs(v+h*g-w)**2)),30,-2
+
+@njit(cache=True)
+def run_chain(seed,nsteps,burn,h,A,C,edges,a,c,t,r,batchsteps):
+    np.random.seed(seed); n=len(A); z=np.zeros(n,dtype=np.complex128)
+    nb=(nsteps-burn)//batchsteps; means=np.zeros(nb,dtype=np.complex128)
+    maximag=0.; maxres=0.; maxit=0; failures=0; total=0j; b=0; count=0
+    for step in range(nsteps):
+        noise=np.sqrt(2*h)*np.random.normal(0.,1.,n)
+        z,res,it,fail=implicit_step(z,noise,h,A,C,edges,a,c,t,r,1.e-11)
+        maximag=max(maximag,np.max(np.abs(z.imag))); maxres=max(maxres,res); maxit=max(maxit,it)
+        if fail: failures+=1; break
+        if step&gt;=burn and b&lt;nb:
+            total+=.5j*np.dot(z,C.astype(np.complex128)@z); count+=1
+            if count==batchsteps:
+                means[b]=total/batchsteps; b+=1; total=0j; count=0
+    return means[:b],maximag,maxres,maxit,failures
+
+def target_2d(A,C,a,c,t,order):
+    q,w=hermgauss(order); scale=math.sqrt(float(np.min(np.diag(A)))/2)
+    x=q[:,None]/scale; y=q[None,:]/scale
+    V=.5*(A[0,0]*x*x+2*A[0,1]*x*y+A[1,1]*y*y)+a/4*(x**4+y**4)+c/4*((x+y)**4+(x-y)**4)
+    W=.5*(C[0,0]*x*x+2*C[0,1]*x*y+C[1,1]*y*y)
+    terms=(w[:,None]*w[None,:])*np.exp(-V+scale**2*(x*x+y*y)+1j*t*W)/(scale*scale)
+    Z=terms.sum(); return complex(Z),complex((terms*1j*W).sum()/Z)
+
+def pair(z): return [float(z.real),float(z.imag)]
+def fixture():
+    return np.array([[2.4,-.4],[-.4,2.4]]),np.array([[.4,.2],[.2,.4]]),np.array([[0,1]],dtype=np.int64),.5,.2,.45
+
+def main():
+    ap=argparse.ArgumentParser(); ap.add_argument(&#x27;--h&#x27;,type=float,default=.01); ap.add_argument(&#x27;--duration&#x27;,type=float,default=1200); ap.add_argument(&#x27;--nodes&#x27;,type=int,default=6)
+    args=ap.parse_args(); A,C,edges,a,c,r=fixture(); cert=certificate(A,C,edges,a,c,r)
+    assert cert[&#x27;passed&#x27;]; start=time.perf_counter()
+    truth=[]
+    for order in (64,100,160):
+        Z0,_=target_2d(A,C,a,c,0.,order); Z1,_=target_2d(A,C,a,c,1.,order)
+        truth.append({&#x27;order&#x27;:order,&#x27;log_ratio&#x27;:pair(np.log(Z1/Z0))})
+    nodes,weights=leggauss(args.nodes); nodes=(nodes+1)/2; weights=weights/2
+    gltruth=sum(w*target_2d(A,C,a,c,float(t),160)[1] for t,w in zip(nodes,weights))
+    run_chain(1,20,0,.01,A,C,edges,a,c,.5,r,5) # compilation excluded from recorded trajectory time
+    jit_done=time.perf_counter(); records=[]; final=0j; varre=0.; varim=0.
+    h=args.h; burn=int(math.ceil(20/h)); batchsteps=int(round(10/h)); nb=int(args.duration/10)
+    for j,(t,w) in enumerate(zip(nodes,weights)):
+        means,mi,mr,it,fail=run_chain(190700+1000*j+int(round(1/h)),burn+nb*batchsteps,burn,h,A,C,edges,a,c,float(t),r,batchsteps)
+        if fail or len(means)&lt;2: raise RuntimeError(f&#x27;Implicit solve failed: {fail}&#x27;)
+        avg=means.mean(); sr=means.real.std(ddof=1)/math.sqrt(len(means)); si=means.imag.std(ddof=1)/math.sqrt(len(means))
+        final+=w*avg; varre+=(w*sr)**2; varim+=(w*si)**2
+        records.append({&#x27;t&#x27;:float(t),&#x27;mean_iW&#x27;:pair(avg),&#x27;empirical_batch_se&#x27;:[float(sr),float(si)],&#x27;batches&#x27;:len(means),&#x27;max_abs_imag&#x27;:float(mi),&#x27;max_solver_residual&#x27;:float(mr),&#x27;max_Newton_iterations&#x27;:int(it),&#x27;failures&#x27;:int(fail)})
+    tm=time.perf_counter()
+    def moment(sign):
+        f=lambda x: math.exp(-x**4/4+sign*x*x/2)
+        den=quad(f,-np.inf,np.inf,epsabs=1.e-12,epsrel=1.e-12)[0]
+        return quad(lambda x:x*x*f(x),-np.inf,np.inf,epsabs=1.e-12,epsrel=1.e-12)[0]/den
+    base=complex(*truth[-1][&#x27;log_ratio&#x27;]); replication=[]
+    for B in (1,100,1000,10000):
+        lm=B*base.real; x=-2*lm
+        logvar=x if x&gt;50 else math.log(math.expm1(x))
+        replication.append({&#x27;blocks&#x27;:B,&#x27;log_mean_phase_modulus&#x27;:lm,&#x27;log_relative_variance_times_samples&#x27;:logvar})
+    output={&#x27;status&#x27;:&#x27;floating-point diagnostic; empirical batch errors are not rigorous confidence intervals&#x27;,&#x27;fixture&#x27;:{&#x27;A&#x27;:A.tolist(),&#x27;C&#x27;:C.tolist(),&#x27;edges&#x27;:edges.tolist(),&#x27;a&#x27;:a,&#x27;c&#x27;:c,&#x27;r&#x27;:r},&#x27;certificate&#x27;:cert,&#x27;quadrature_truth&#x27;:truth,&#x27;GL_truth&#x27;:pair(gltruth),&#x27;h&#x27;:h,&#x27;burn_time&#x27;:20,&#x27;measurement_time_per_node&#x27;:nb*10,&#x27;nodes&#x27;:args.nodes,&#x27;log_ratio_estimate&#x27;:pair(final),&#x27;empirical_batch_se&#x27;:[math.sqrt(varre),math.sqrt(varim)],&#x27;error_vs_quadrature&#x27;:pair(final-base),&#x27;node_records&#x27;:records,&#x27;replicated_phase_example&#x27;:replication,&#x27;wrong_cycle&#x27;:{&#x27;real_cycle_second_moment&#x27;:moment(1),&#x27;imaginary_cycle_second_moment&#x27;:-moment(-1)},&#x27;timing_seconds&#x27;:{&#x27;JIT_and_quadrature&#x27;:jit_done-start,&#x27;trajectories&#x27;:tm-jit_done,&#x27;total&#x27;:time.perf_counter()-start}}
+    out=ROOT/f&#x27;results_h_{h:g}.json&#x27;;out.write_text(json.dumps(output,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:output[k] for k in (&#x27;h&#x27;,&#x27;log_ratio_estimate&#x27;,&#x27;empirical_batch_se&#x27;,&#x27;error_vs_quadrature&#x27;,&#x27;timing_seconds&#x27;)},indent=2),flush=True)
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

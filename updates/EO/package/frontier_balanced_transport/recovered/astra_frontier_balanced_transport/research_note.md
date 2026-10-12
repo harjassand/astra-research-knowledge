@@ -1,0 +1,705 @@
+# ASTRA FRONTIER — Balanced transport beyond passive rare-information access
+
+Research continuation, 12 October 2026. Units: lattice spacing and hbar are one. All noise rates below are rates in the generator, not informal inverse coherence times.
+
+## 0. Result and evidence status
+
+This investigation changes the task, rather than claiming to defeat the earlier passive-equilibrium-copy lower bound. It derives a certificate for the long-time **second-moment particle-transport coefficient** of a translation-invariant, interacting spin chain with specified on-site dephasing. The certificate can use a local energy-detuning statistic acquired by controlled product preparations and a two-spin Ramsey experiment. No Gibbs preparation, partition function, microscopic state reconstruction, global spectral-gap promise, or large-dephasing approximation is used.
+
+The mathematical mechanisms are: (i) a balanced primal–dual response certificate; (ii) an exact classical exclusion-process Poisson equation that removes undamped population constraints; (iii) a positive spectral representation of finite-volume response as a function of the dephasing strength; and (iv) an Abelian-to-long-time argument for the infinite-chain second moment. The last step is necessary: a finite-volume resolvent bound alone would not establish macroscopic transport.
+
+The complete derivations are supplied below. Rational finite examples and independent-coordinate floating diagnostics were executed. These are not formal verification, external peer review, or physical experiments. Historical priority of the combined result is **not established**. Nonreversible Dirichlet principles, Schur complements, hypocoercivity, spectral measures and Tauberian reasoning are established mathematics and are credited, not renamed as inventions.
+
+The proven capability is a coarse but operationally meaningful macroscopic design certificate in an explicit noisy, tracial-state model. It is not a general efficient solver for interacting matter, low-temperature chemistry, superconductivity, or closed quantum dynamics. A polynomial-cost high-precision certificate theorem remains open; an exact formulation is in Section 13.
+
+## 1. Preserved obstruction and independent alternatives
+
+The previous local thermal-transport investigation established a lower bound for predictions from passive reference Gibbs copies with an unknown exterior. Its two alternatives also imply a binary-decision lower bound: place the decision threshold halfway between the two target expectations. A decision output does not distinguish reference states more efficiently than an estimator can.
+
+That result is not contradicted here. The new interface permits controlled local preparation, and the new target is transport in a physically specified dephasing model. These are genuine changes to the scientific task and its inputs.
+
+Three routes were examined before choosing this one:
+
+* Equilibrium decision certificates through local marginal/energy–entropy constraints. Certified hierarchies already exist [R1]. A generally affordable closure rule outside their controlled regimes was not obtained.
+* Steady-state/Poisson residual witnesses. A residual divided by an unknown global inverse relaxation rate just hides the obstruction. Open-system observable certification already has strong SDP comparators [R2].
+* Transport certificates that distinguish undamped populations from damped coherences. This route admits the exact balance operation below, instead of inserting a mixing assumption.
+
+Repeated equilibration after small thermal updates was not accepted as free. Nor was a small residual accepted as an all-future dynamical certificate. The alternative source-selective flux-design construction in Astra N744 requires fixed microscopic actuator destinations and an acquired stationary-response interface; it is not a premise for this result.
+
+## 2. Exact physical and computational contract
+
+### 2.1 Infinite-chain physical model
+
+Let n_i=(I-Z_i)/2. The model is
+
+\[
+H=-\frac{t}{2}\sum_i(X_iX_{i+1}+Y_iY_{i+1})+H_{\mathrm{diag}},\qquad t\ne0,
+\]
+
+where H_diag is a real, translation-invariant, bounded, finite-range interaction diagonal in the joint Z basis. It may include arbitrary bounded finite-range density polynomials and need not be weak. For finite periodic volumes, all supports are interpreted periodically, and the volume is taken larger than the interaction footprint before thermodynamic statements.
+
+The Heisenberg generator is
+
+\[
+\mathcal L O=i[H,O]+\gamma\sum_i(Z_iOZ_i-O),\quad\gamma>0,
+\qquad d=4\gamma.
+\]
+
+The stationary reference for the response definition is the infinite-temperature product trace, at mean particle density 1/2. This is not the Gibbs state of H at an arbitrary temperature. Number is conserved; energy generally is not. Dephasing is part of the target physical model, not a regularizer to be removed for free.
+
+The bond current and total current are
+
+\[
+j_i=\frac{t}{2}(X_iY_{i+1}-Y_iX_{i+1}),\quad J_n=\sum_i j_i,
+\quad\mathcal L n_i=j_{i-1}-j_i.
+\]
+
+Let chi=1/4. Define the linear-response second moment
+
+\[
+\mathcal M(t)=\chi^{-1}\sum_{x\in\mathbb Z}x^2
+\langle e^{t\mathcal L}(n_x-1/2),n_0-1/2\rangle.
+\]
+
+The central target is
+
+\[
+D=\lim_{T\to\infty}\frac{\mathcal M(T)}{2T}.
+\]
+
+This definition concerns the spreading second moment of a density response, not a claim that every response profile is nonnegative. A Gaussian hydrodynamic scaling limit is a stronger statement, not proved here.
+
+### 2.2 Available inputs
+
+There are two alternative interfaces.
+
+**Model-supplied interface:** the local Hamiltonian and dephasing terms are supplied with exact rational coefficients or certified parameter intervals. Sparse Pauli algebra evaluates the certificate. The cost of learning those coefficients is not included unless the acquisition procedure below is used.
+
+**Local-intervention interface:** the Hamiltonian/noise *structure*, the uniform hopping t, the dephasing rate d, and a bound Lambda on a single-hop energy detuning are calibrated. Hopping incident on a constant-size calibration region can be disabled without changing the diagonal interactions beyond a charged error budget. The spins relevant to that detuning can be prepared in chosen Z states; the hopping pair can be prepared in a one-particle superposition and measured in a logical Ramsey basis. Section 10 derives the information actually needed and its sample cost.
+
+No finite experiment can prove exact locality, exact translation invariance and Markovianity for all future times against arbitrary alternatives. These are explicit physical-model assumptions to be justified by the device construction and tested. Inhomogeneous devices require additional spatial calibration or an appropriate uniform error theorem; one patch does not certify unknown distant defects.
+
+## 3. Balanced primal–dual response theorem
+
+This finite-dimensional theorem is useful more generally than the homogeneous chain.
+
+Use the real Hilbert space of Hermitian number-conserving operators, with
+
+\[
+\langle F,G\rangle=2^{-n}\operatorname{Tr}(FG).
+\]
+
+Write
+
+\[
+B=-\mathcal L=S+A,\qquad A=-i[H,\cdot],\quad
+S=\gamma\sum_i(I-Z_i\,\cdot\,Z_i).
+\]
+
+S is self-adjoint and nonnegative; A is skew-adjoint. Complex conjugation decomposes Hermitian operators into real-symmetric (even) and imaginary-antisymmetric (odd) subspaces. Real H makes A exchange the two subspaces. S preserves them. The current is odd.
+
+P denotes projection onto diagonal operators, the kernel of S. For a Pauli string with q factors equal to X or Y,
+
+\[
+S P_\alpha=2\gamma q P_\alpha.
+\]
+
+On number-conserving off-diagonal operators q is at least two; in particular S_odd >= d I. S^+ denotes the pseudoinverse that is zero on diagonal strings and divides all other strings by their displayed dephasing rate.
+
+For connected nonzero hopping, the kernel of B consists of functions of total particle number. Indeed, the real part of <F,BF> forces a zero mode to be diagonal, and commuting with every allowed swap then makes it constant on each connected fixed-number configuration graph. There are no other purely imaginary eigenvalues: a putative undamped eigenvector is again diagonal, while its commutator is off-diagonal. Contractivity excludes a Jordan block at zero. Therefore the current has a well-defined finite-volume zero-frequency response
+
+\[
+\kappa_n=\frac1n\langle J_n,B^{-1}J_n\rangle
+=\frac1n\int_0^\infty\langle J_n,e^{t\mathcal L}J_n\rangle\,dt,
+\]
+
+where the inverse is on the fixed-point complement. No lower bound on its global spectral gap is used.
+
+### Theorem 1 — balanced two-sided certificate
+
+For any odd f satisfying the **exact** balance condition
+
+\[
+PAf=0,
+\]
+
+and any even g, define
+
+\[
+\begin{aligned}
+L(f)&=2\langle J,f\rangle-\langle f,Sf\rangle-\langle Af,S^+Af\rangle,\\
+U(g)&=\langle J-Ag,S_{\rm odd}^{-1}(J-Ag)\rangle+\langle g,Sg\rangle.
+\end{aligned}
+\]
+
+Then
+
+\[
+L(f)/n\le\kappa_n\le U(g)/n.
+\]
+
+Moreover, with r_1=Sf-(J-Ag) and r_2=Sg+Af,
+
+\[
+\boxed{U(g)-L(f)=\langle r_1,S^+r_1\rangle+\langle r_2,S^+r_2\rangle.}
+\]
+
+The residuals are orthogonal to ker S because f is balanced. Both terms are directly computable nonnegative quadratic forms.
+
+**Proof.** Write B^{-1}J=f_*+g_* in the two parity subspaces. Then
+
+\[
+Sf_*+Ag_*=J,\qquad Sg_*+Af_*=0.
+\]
+
+Consequently PAf_*=0 and g_*=-S^+Af_*+g_{*,\rm diag}. Taking the inner product of the first equation with f_* gives
+
+\[
+\langle J,f_*\rangle=\langle f_*,Sf_*\rangle+\langle Af_*,S^+Af_*\rangle.
+\]
+
+For any balanced delta, the same equations give
+
+\[
+\langle J,\delta\rangle=\langle f_*,S\delta\rangle+\langle Af_*,S^+A\delta\rangle;
+\]
+
+the diagonal term vanishes by PA delta=0. Completing the square proves
+
+\[
+L(f_*)-L(f)=\langle f-f_*,S(f-f_*)\rangle+
+\langle A(f-f_*),S^+A(f-f_*)\rangle\ge0.
+\]
+
+Here L(f_*)=<J,f_*>=n kappa_n. Similarly, completing the square about g_* in U gives
+
+\[
+U(g)-U(g_*)=\langle A(g-g_*),S_{\rm odd}^{-1}A(g-g_*)\rangle+
+\langle g-g_*,S(g-g_*)\rangle\ge0,
+\]
+
+and U(g_*)=n kappa_n. Expanding the two residual norms proves the gap identity, since <f,Ag>+<Af,g>=0. QED.
+
+### Why exact balance is indispensable
+
+Take the two-block example
+
+\[
+S=\begin{pmatrix}1&0\\0&0\end{pmatrix},\quad
+A=\begin{pmatrix}0&1\\-1&0\end{pmatrix},\quad J=(1,0).
+\]
+
+The true response is <J,(S+A)^{-1}J>=0. The inadmissible trial f=(1,0), if its population residual is simply discarded by S^+, gives the false lower bound 1. With regularization S+lambda I, the omitted penalty is proportional to 1/lambda.
+
+This is the same physical issue as an isolated finite dimer: its current is a derivative of a bounded population displacement, and a naive positive direct-current lower bound would be wrong. Periodic winding current and infinite-volume density spreading must not be replaced by an arbitrary open-cluster current.
+
+## 4. Exact removal of the undamped population constraint
+
+Allow a connected hopping graph with real amplitudes t_e, and arbitrary diagonal interactions. Given an even off-diagonal trial g_0, let
+
+\[
+b=PA S_{\rm odd}^{-1}(J-Ag_0),\qquad
+M=-PA S_{\rm odd}^{-1}AP.
+\]
+
+Solve the diagonal equation
+
+\[
+M\phi=-b,
+\]
+
+and set
+
+\[
+g=g_0+\phi,\qquad f=S_{\rm odd}^{-1}(J-Ag).
+\]
+
+Then PAf=0 exactly. The first gap residual vanishes, leaving
+
+\[
+U(g)-L(f)=\langle Sg_0+Af,S^+(Sg_0+Af)\rangle.
+\]
+
+### Theorem 2 — the population operator is classical exclusion
+
+For a diagonal function phi on configurations eta,
+
+\[
+\boxed{(M\phi)(\eta)=\frac{2}{d}\sum_{e=\{i,j\}}t_e^2
+[\phi(\eta)-\phi(\eta^{ij})].}
+\]
+
+Here eta^{ij} exchanges the occupancies at i,j. If they are equal the contribution is zero.
+
+**Proof.** The diagonal Hamiltonian commutes with phi. Aphi has matrix elements only between configurations differing by one hopping exchange; these coherences have dephasing rate d. Therefore
+
+\[
+M\phi=d^{-1}P[H,[H,\phi]].
+\]
+
+Its diagonal entry is 2/d sum_xi |H_{eta,xi}|^2 (phi(eta)-phi(xi)), giving the formula. The source b is orthogonal to every fixed-number function because those functions commute with H. Thus the equation is solvable, uniquely after choosing a gauge in each connected sector. QED.
+
+This is an exact **static constraint operator**. It does not assert that the full quantum dynamics is a classical exclusion process. In particular it does not approximate away H_diag or assume d is large compared with any interaction.
+
+### A finite polynomial-degree compiler
+
+Expand a diagonal source in Walsh monomials Z_C=product_{i in C} Z_i. A swap preserves |C|. Hence M preserves each degree, and if b has degree at most p then phi can be found in
+
+\[
+\operatorname{span}\{Z_C: |C|\le p\},\qquad
+N_p=\sum_{k=0}^p {n\choose k}.
+\]
+
+The degree-k coefficient matrix is itself a weighted exclusion Laplacian on k-subsets of the physical graph. For fixed p it has polynomial dimension in n. Rational input gives an exact rational linear system with an explicit gauge. Standard exact elimination has polynomial bit complexity in N_p and input bit length; tiny hopping coefficients are not treated as unit-cost numbers. Translation symmetry can reduce it further to subset orbits, as in the executed code.
+
+The degree is obtained from an explicitly computed source; it is not a hidden promise. **What is not proved is that a useful high-accuracy certificate always has a small degree or a small off-diagonal representation.**
+
+## 5. An entire noise-response curve from one positive spectral measure
+
+For this section n is finite. Keep H fixed and write S=dW. The constraint space K={f odd: PAf=0} is independent of d. Let Omega=W_odd^{1/2}K and let Pi project onto Omega. Define j=Pi W_odd^{-1/2}J. On Omega define the positive operator T by the quadratic form
+
+\[
+\langle x,Tx\rangle=
+\langle A W_{\rm odd}^{-1/2}x,W^+ A W_{\rm odd}^{-1/2}x\rangle.
+\]
+
+Theorem 1, maximized over f, and the spectral theorem give
+
+\[
+\boxed{\kappa_n(d)=d\int_{[0,\infty)}\frac{d\mu_n(\xi)}{d^2+\xi},\qquad
+\mu_n(E)=n^{-1}\langle j,1_E(T)j\rangle.}
+\]
+
+The notation d mu_n denotes integration against the measure, not multiplication by the dephasing rate. The measure is independent of d. It is **not supplied as an oracle**: its moments can be computed by applying the effective operator with the exact balance projection, whose diagonal solve is Section 4.
+
+Consequently kappa_n(sqrt(z))/sqrt(z) is a Stieltjes function of z. Its derivatives alternate in sign. Also, for any positive d_1,d_2,
+
+\[
+\min(d_2/d_1,d_1/d_2)\le
+\kappa_n(d_2)/\kappa_n(d_1)\le
+\max(d_2/d_1,d_1/d_2),
+\]
+
+when the response is nonzero. This provides a global relative sensitivity bound for uniform dephasing changes, without differentiating an unknown stationary state.
+
+If m_k=integral xi^k d mu_n, positivity gives
+
+\[
+\frac{m_0^2d}{m_0d^2+m_1}\le\kappa_n(d)\le
+\frac{m_0}{d}-\frac{m_1^2}{d(d^2m_1+m_2)}\le\frac{m_0}{d}.
+\]
+
+The first inequality is Jensen/Cauchy–Schwarz. For the second use
+
+\[
+\int\frac{d\mu}{z+\xi}=\frac{m_0}{z}-\frac1z\int\frac{\xi\,d\mu}{z+\xi}
+\]
+
+and apply Jensen to the positive measure xi dmu, whose mass is m_1 and mean xi is m_2/m_1. If m_1=0, the measure is supported at zero and the response is exactly m_0/d.
+
+No convergence rate for higher moment certificates is assumed. A small spectral mass near xi=0 can become important when d is made small. For example, replacing delta_1 by (1-epsilon)delta_1+epsilon delta_0 changes strong-noise response by O(epsilon), while at d=epsilon it changes response by order one. This is a spectral-measure warning, not a claimed realization/lower bound for every physical chain. It rules out unqualified weak-noise extrapolation from a few strong-noise measurements.
+
+## 6. A size-independent, nonperturbative transport sandwich
+
+For uniform periodic nearest-neighbor hopping,
+
+\[
+[H_{\rm hop},J_n]=0,\quad PAJ_n=0,\quad SJ_n=dJ_n.
+\]
+
+The first identity follows either from the quadratic hopping/current commutator in each Jordan–Wigner parity sector or directly from Pauli cancellation on adjacent bonds. The commutator with any diagonal interaction has only two-flip coherences, so S(AJ_n)=d AJ_n as well.
+
+Set
+
+\[
+a=\langle J_n,J_n\rangle/n=t^2/2,\qquad
+\Xi=\langle AJ_n,AJ_n\rangle/\langle J_n,J_n\rangle.
+\]
+
+For volumes exceeding the local footprint, Xi is independent of n. It has the elementary local meaning
+
+\[
+\boxed{\Xi=\mathbb E_{\rm uniform}\!\left[
+\big(H_{\rm diag}(\eta^{i,i+1})-H_{\rm diag}(\eta)\big)^2
+\mid \eta_i\ne\eta_{i+1}\right].}
+\]
+
+Indeed, different hopping bonds flip different site pairs and are Hilbert–Schmidt orthogonal. On a fixed bond the squared commutator multiplies each current matrix element by the squared classical energy detuning. The trace conditional on an allowed hop is uniform over the neighboring bits. This is a finite local expectation, not a Boltzmann rare-event expectation.
+
+Using f=alpha J_n in Theorem 1 and optimizing the scalar alpha, while taking g=0 for the upper bound, yields
+
+\[
+\frac{ad}{d^2+\Xi}\le\kappa_n\le\frac{a}{d}.
+\]
+
+This does not require an integrable interacting Hamiltonian or weak interactions. It can be broad at small d. The next section proves why it also bounds the defined macroscopic second-moment coefficient, rather than only a finite ring resolvent.
+
+## 7. Infinite volume and the actual long-time second moment
+
+### 7.1 Fixed-time thermodynamic limit
+
+Let
+
+\[
+C_n(t)=n^{-1}\langle J_n,e^{t\mathcal L_n}J_n\rangle.
+\]
+
+Finite-range locality for Markovian quantum evolution implies the fixed-time limit C(t)=lim_n C_n(t), equal to sum_x <e^{tL}j_x,j_0>. One can obtain it by approximating the evolved local current in a ball and using the product trace: correlations with a disjoint current are zero for the truncated operator, while the error has an exponentially decaying spatial tail. The finite-range Lieb–Robinson/Duhamel estimates used here are established locality results; see [R3], not a new premise about equilibration.
+
+Hilbert–Schmidt contractivity gives |C_n(t)|<=a and hence |C(t)|<=a. Thus for every lambda>0,
+
+\[
+\kappa(\lambda)=\int_0^\infty e^{-\lambda t}C(t)dt
+=\lim_{n\to\infty}\frac1n\langle J_n,(B_n+\lambda I)^{-1}J_n\rangle.
+\]
+
+Dominated convergence justifies this step. No exchange of the unregularized n and t limits has been made.
+
+### 7.2 Existence of the zero-frequency limit without a mixing-rate input
+
+Let C_eo=A restricted from odd to even, so the opposite parity block is -C_eo^*. Schur elimination gives the positive odd operator
+
+\[
+T_{n,\lambda}=S_o+\lambda I+C_{eo}^*(S_e+\lambda I)^{-1}C_{eo},
+\]
+
+and the regularized response is <J,T_{n,lambda}^{-1}J>/n.
+
+Let T^0_{n,lambda}=T_{n,lambda}-lambda I. It is at least dI. As lambda decreases, T^0 increases in operator order. Also
+
+\[
+0\le\frac1n\langle J,[(T^0_{n,\lambda})^{-1}-T_{n,\lambda}^{-1}]J\rangle
+\le\lambda a/d^2.
+\]
+
+For 0<lambda_1<lambda_2 this yields, uniformly in n,
+
+\[
+0\le\kappa_n(\lambda_1)\le\kappa_n(\lambda_2)+\lambda_2a/d^2,
+\qquad\kappa_n(\lambda)\le a/d.
+\]
+
+Take n to infinity. Choose lambda_2 tending to zero along a sequence attaining the liminf. The inequality forces the limsup to be no larger. Therefore
+
+\[
+\kappa_0=\lim_{\lambda\downarrow0}\kappa(\lambda)
+\]
+
+exists and is finite. The scalar current trial, applied with S+lambda I, gives
+
+\[
+\frac{a(d+\lambda)}{(d+\lambda)^2+\Xi}
+\le\kappa_n(\lambda)\le\frac{a}{d+\lambda}.
+\]
+
+Hence a d/(d^2+Xi)<=kappa_0<=a/d. This proof avoids both a quantitative global spectral gap and a claim that finite-volume direct-current values converge to the infinite answer.
+
+The relative dephasing sensitivity bound from Section 5 also passes to kappa_0. For d_2=r d_1, r>=1, the regularized Schur operators satisfy r^{-1}T(d_1,lambda)<=T(d_2,lambda)<=r T(d_1,lambda). Taking inverses and then the two limits proves the claimed ratio bound for the macroscopic coefficient as well. A full infinite-volume Stieltjes representation is not needed for this inference and is not silently assumed.
+
+### 7.3 Why an Abelian limit suffices here
+
+An Abelian limit does not imply an arbitrary function's ordinary long-time limit. The additional property needed here is positivity of the stationary current's spectral measure.
+
+For each finite n, extend C_n(t) evenly to negative t. It is positive definite. An elementary check uses the Fourier density
+
+\[
+\frac1{\pi n}\operatorname{Re}\langle J_n,(B_n-i\omega)^{-1}J_n\rangle\ge0,
+\]
+
+The inverse is taken on the fixed-point complement. For u=(B_n-i omega)^{-1}J_n,
+Re <J_n,u>=<u,S u>; the displayed density is therefore <u,S u>/(pi n). There are no undamped current modes in finite volume. Fourier inversion gives the even correlation. Equivalently this follows from a unitary dilation of a contraction semigroup. Pointwise thermodynamic limits preserve positive definiteness. Thus there is a finite even positive measure nu, with total mass a, such that
+
+\[
+C(t)=\int\cos(\omega t)d\nu(\omega),\quad
+\kappa(\lambda)=\int\frac{\lambda}{\lambda^2+\omega^2}d\nu(\omega).
+\]
+
+Here is the required Tauberian argument, including its tail control. Set nu_r(E)=nu(rE)/r. For every s>0,
+
+\[
+\int\frac{s}{s^2+y^2}d\nu_r(y)=\kappa(sr)\longrightarrow\kappa_0.
+\]
+
+These positive measures are locally bounded, since nu_r([-R,R])<=(1+R^2)kappa(r). For R>=s their relevant tails satisfy
+
+\[
+\int_{|y|>R}\frac{1}{y^2}d\nu_r(y)\le\frac{2}{R}\kappa(Rr).
+\]
+
+Every vague subsequential limit therefore has all the displayed Poisson transforms equal to kappa_0. Uniqueness of the Stieltjes transform (substitute y^2, or apply uniqueness of the Laplace transform twice) identifies it as (kappa_0/pi)dy. This identifies every subsequence, so nu_r converges vaguely to that measure. The same tail bound permits integration of the bounded-at-zero kernel 2(1-cos y)/y^2. Therefore
+
+\[
+\lim_{T\to\infty}\frac1T\int\frac{2(1-\cos(\omega T))}{\omega^2}d\nu(\omega)
+=2\kappa_0.
+\]
+
+This step uses positivity of nu, not an unproved absolute-integrability assertion for C(t).
+
+### 7.4 Continuity equation and the transport coefficient
+
+Let F(t)=sum_x x^2 <e^{tL}(n_x-1/2),n_0-1/2>. At fixed time all sums and derivatives are justified by locality. The dissipator annihilates each n_i, so L^* n_i=-L n_i. Twice differentiating and shifting the summation index gives
+
+\[
+F''(t)=2\sum_x\langle e^{t\mathcal L}j_x,j_0\rangle=2C(t),
+\quad F(0)=F'(0)=0.
+\]
+
+Thus
+
+\[
+F(T)=2\int_0^T(T-t)C(t)dt
+=\int\frac{2(1-\cos(\omega T))}{\omega^2}d\nu(\omega).
+\]
+
+Combining the preceding limit with M=F/chi proves the main macroscopic statement:
+
+### Theorem 3 — nonperturbative mean-square transport certificate
+
+For the infinite-chain model of Section 2,
+
+\[
+\boxed{D=\lim_{T\to\infty}\frac{\mathcal M(T)}{2T}=4\kappa_0,
+\qquad \frac{2t^2d}{d^2+\Xi}\le D\le\frac{2t^2}{d}.}
+\]
+
+In particular D exists, is finite, and is strictly positive for t nonzero, d positive and finite local interactions. The proof does not establish a convergence *rate*, a Gaussian density profile, arbitrary finite-temperature transport, or a zero-dephasing limit. These are distinct claims.
+
+## 8. An interacting extensive-design example
+
+Take
+
+\[
+H_{\rm diag}=U\sum_i(n_i-1/2)(n_{i+1}-1/2)+
+V\sum_i(n_i-1/2)(n_{i+2}-1/2).
+\]
+
+Up to an overall sign, the single-hop detuning is
+
+\[
+\Delta=(U-V)(n_{i-1}-n_{i+2})+V(n_{i-2}-n_{i+3}).
+\]
+
+Uniform independent neighboring bits give
+
+\[
+\Xi=\frac12[(U-V)^2+V^2].
+\]
+
+For t=1,U=4,V=1, Xi=5 and |Delta|<=4. At d=2,
+
+\[
+4/9\le D\le1.
+\]
+
+For the *same Hamiltonian* at d=16, D<=1/8. Thus choosing the physically different dephasing setting d=2 certifies an improvement factor at least 32/9. The interaction is not being set to zero; U is four times the hopping amplitude and V is also nonzero. This is a mathematical comparison between model transport coefficients, not a fabricated experimental result.
+
+Optimizing the analytic lower bound gives d=sqrt(Xi), but that need not optimize the actual D. Existing noise-enhanced-transport and Zeno effects [R10] must not be described as discovered here. The potential contribution is the certificate and its assumption/cost accounting, not the qualitative phenomenon.
+
+## 9. Executed computational checks
+
+The scripts use exact rational sparse Pauli algebra for all values labeled exact. Ordinary floating sparse Liouvillian solves are used only as independent-coordinate finite diagnostics.
+
+* Four sizes n=7,8,11,17 verify exact hopping/current cancellation, current norm, Xi=5 and the analytic bounds. Sixteen diagonal sources verify the exclusion identity. Nine exact continuity equations were checked separately.
+* A nonuniform-field seven-spin source required degree-1, degree-2 and degree-3 pressure blocks, with 40 nonzero diagonal correction terms. Exact balance and the exact nonnegative gap identity held. An unoptimized trial had a negative lower bound: the method does not manufacture precision from a poor witness.
+* Twenty-four random real block models gave 96 direct-versus-spectral response comparisons and primal–dual checks. These are floating diagnostics, not proofs of the operator theorem or thermodynamic limit.
+* Exact finite-ring intervals at d=2, t=1,U=4,V=1 included:
+
+| n | Off-diagonal trial directions | Certified D_n interval | Floating direct D_n |
+|---:|---:|---:|---:|
+| 7 | 2 | [0.5367329847, 0.6376372459] | 0.6107192865 |
+| 8 | 2 | [0.4618808693, 0.6216235739] | 0.5829078140 |
+| 12 | 2 | [4/9, 0.6099516487] | not computed |
+| 16 | 1 | [4/9, 0.6380812944] | not computed |
+
+The displayed decimal endpoints summarize the exact fractions in the JSON files; for rigorous use take the fractions, not inward-rounded decimals. For example the exact n=8 two-direction interval is
+
+\[
+\left[\frac{2081439880834398943}{4506443152729233156},
+\frac{659803217}{1061419233}\right].
+\]
+
+These intervals concern D_n=4 kappa_n on finite periodic rings, not independently certified finite-size approximations to D. The analytic interval of Section 8, in contrast, is justified in infinite volume by Section 7.
+
+At n=12 the two-direction witness used 12,192 Pauli terms in f and 2,568 in g. This growth is evidence that high-precision closure remains a real computational obligation. The tests do not establish a speedup over optimized tensor-network or SDP methods. Full-state solves on n=7 and n=8 are checks, not a sufficiently strong benchmark for a technological advantage.
+
+`noise_response_checks.json` contains exact first three spectral moments and resulting bounds for several dephasing strengths from the same calculation. All test outputs and reproduction scripts are included.
+
+## 10. Acquisition of the sufficient local information
+
+Theorem 3 only needs an upper bound on Xi, not a complete microscopic Hamiltonian fit or a measured long-time transport coefficient.
+
+Prepare the hopping pair in (|10>+|01>)/sqrt(2). Prepare all neighboring spins that enter Delta independently and uniformly in their Z basis. Disable hopping on bonds incident on this finite region while keeping the relevant diagonal interactions unchanged. Outside spins need not be reconstructed; locality and the frozen neighboring Z values isolate the relative phase of the pair. In the example the region has six spins.
+
+After duration tau, a logical X measurement of the pair gives an outcome X in {-1,+1}, with
+
+\[
+\mu=\mathbb E X=e^{-d\tau}\mathbb E_{\rm uniform}\cos(\Delta\tau).
+\]
+
+One may use product-X measurements for the logical coherence in the one-particle subspace. Preparation of the pair, setting neighboring bits, switching/cross-talk, resets, measurement contrast and timing are all physical resources and error sources.
+
+Assume |Delta|<=Lambda and Lambda tau<=1. The elementary inequalities
+
+\[
+\frac{x^2}{2}-\frac{x^4}{24}\le1-\cos x\le\frac{x^2}{2}
+\]
+
+give, with c=1-Lambda^2 tau^2/12,
+
+\[
+\frac{2(1-e^{d\tau}\mu)}{\tau^2}\le\Xi\le
+\frac{2(1-e^{d\tau}\mu)}{c\tau^2}.
+\]
+
+The lower bound is clipped at zero and the upper at Lambda^2 where appropriate. This estimates a squared detuning by ordinary interference statistics, not by waiting for thermal occurrences of the configurations.
+
+With N independent preparations and sample mean Xbar, Hoeffding gives
+
+\[
+|\bar X-\mu|\le h=\sqrt{2\log(2/\alpha)/N}
+\]
+
+with probability at least 1-alpha. Therefore a valid upper bound is
+
+\[
+\boxed{\Xi_U=\frac{2[1-e^{d\tau}(\bar X-h)]}{c\tau^2}.}
+\]
+
+The formula assumes calibrated d and unbiased ideal preparation/readout. A known expectation bias eta is charged by replacing h with h+eta. With d in a confidence interval, bound the product e^{d tau}(Xbar-h) over that interval; when Xbar-h is positive, its minimum uses the smallest d. For target-rate uncertainty use the minimum of d/(d^2+Xi_U) over the rate interval, attained at an endpoint. Hopping-amplitude uncertainty is similarly charged through its lower/upper squared amplitudes.
+
+For a desired narrow additive Xi interval, take tau small enough to bound the Taylor width. One conservative scaling is
+
+\[
+\tau=O\!\left(\min\{(\Lambda+d)^{-1},\sqrt{\delta}/\Lambda^2\}\right),
+\quad N=O\!\left(\tau^{-4}\delta^{-2}\log(1/\alpha)\right).
+\]
+
+Thus the acquisition cost is polynomial, though potentially large, in local interaction/rate scales and inverse error. It has no Boltzmann factor or system-volume exponential. Higher precision is not declared practical merely because the bound is polynomial.
+
+### A fully specified decision rule, not a precise-parameter estimator
+
+For t=1, d_target=2, d_baseline=16, Lambda=4, choose
+
+\[
+\tau=1/4,\quad N=100000,\quad h=1/90.
+\]
+
+If the observed mean satisfies Xbar>=51/100, then with confidence above 99%, under the stated model and calibration assumptions,
+
+\[
+\Xi\le\frac{15458}{2475},\qquad
+D_{\rm target}\ge\frac{4950}{12679},\qquad
+\frac{D_{\rm target}}{D_{\rm baseline}}\ge\frac{39600}{12679}>3.12.
+\]
+
+All numerical constants can be checked with rational arithmetic: c=11/12; e^{1/2}>=79/48; and a finite positive Taylor sum proves e^{500/81}>200, implying 2 exp(-N h^2/2)<1/100. There is no fit to a microscopic spectrum.
+
+The native evolution cost is N tau=25,000 time units, **plus** every preparation, switch, reset, readout and calibration. This is not a hardware runtime estimate. At t=1,U=4,V=1 the ideal mean is e^{-1/2}cos^2(3/8)cos^2(1/8), approximately 0.517. A labeled synthetic Bernoulli fixture passed the threshold. No real Ramsey experiment was performed, and its artificial outcomes are not physical evidence.
+
+This is a positive certificate with an inconclusive outcome permitted. Failing the threshold does not prove poor transport.
+
+## 11. Cost and model-risk accounting
+
+**Analytic model certificate.** A local diagonal interaction of footprint k can be used to compute Xi by a 2^{O(k)} enumeration or sparse Pauli algebra. For fixed finite range this cost is independent of n after reading/justifying the repeated local model. For an arbitrary inhomogeneous input one must at least read and validate all relevant terms; the constant-volume claim does not apply.
+
+**Refined classical certificates.** If the sparse witness has M terms and the pressure degree is p, commutator construction, exact pressure solution, memory, rational bit growth, and the output certificate are charged. The generic pressure dimension is N_p=sum_{k<=p}binomial(n,k); dense elimination uses polynomially many operations in N_p, not in log N_p. The practical script is not an optimized polynomial-bit solver benchmark. Both p and M may grow badly with the desired precision.
+
+**Quantum operations.** The classical model-supplied route needs none. The optional local-acquisition route needs a constant-size coherent pair preparation and local Ramsey readout, not a global wavefunction, state reflection, amplitude amplification, inverse unknown time evolution or a coherent many-body Gibbs preparation.
+
+**Equilibrium preparation.** No equilibrium specimens are used by the mathematical certificate or its local acquisition. The response is defined in the exactly known product trace. Testing a real transport curve still requires the corresponding physical initial ensemble and sufficiently long evolution; the local certificate is valuable precisely because it does not estimate D that way.
+
+**Energy and control.** Preparing locally excited Z configurations against a strong diagonal interaction, suppressing hopping, implementing dephasing, and resetting states all require work and calibrated control. For a bounded-size region their counts scale with the number of trials and local energy bounds, not an inverse Boltzmann occurrence probability. No numerical laboratory energy estimate is supplied because no device parameters are given.
+
+**Physical-model transfer.** The proof concerns the stated Lindbladian. General coherent calibration errors can spoil the parity/number/balance assumptions. Unknown additional dissipation, memory, long-range terms, actuator cross-talk or distant defects cannot be dismissed with a nominal local error bar. For parameter errors staying in the displayed model class, the analytic inequalities permit explicit interval propagation. A general device-level transfer theorem outside that class is not proved.
+
+**Complexity.** A coarse coefficient bound for a noisy tracial-state model is not a polynomial solution of general ground-state or thermal-observable problems. No QMA/NP hardness consequence is bypassed. The known obstacles to universal certified many-body algorithms remain [R1].
+
+## 12. Matched prior-art comparison and research capital
+
+The following distinctions are about assumptions and outputs, not proof of historical novelty.
+
+[R1] H. Fawzi, O. Fawzi, S. O. Scalet, *Certified algorithms for equilibrium states of local quantum Hamiltonians*, arXiv:2311.18706v3 (version dated 14 August 2025). Provides convergent rigorous observable intervals for equilibrium, with efficient regimes under further structure. It already implements the philosophy of predicting only required observables. The current target is a time-integrated transport response, not a Gibbs-state interval.
+
+[R2] L. Mortimer et al., *Certifying steady-state properties of open quantum systems*, arXiv:2410.13646; Phys. Rev. Research 7 (2025), DOI 10.1103/hbrt-cn8q. Provides SDP-certified steady-state observable intervals and tensor-network comparisons. Arbitrary-output stationarity certificates are not claimed as new here. Our explicit zero-frequency balancing and local-to-macroscopic detuning bound are different outputs; no overall runtime superiority has been benchmarked.
+
+[R3] X. Han, S. A. Hartnoll, *Locality Bound for Dissipative Quantum Transport*, arXiv:1806.01859v2; Phys. Rev. Lett. 121, 170601 (2018). A particularly close comparator: includes the XXZ chain with on-site dephasing and bounds diffusivity using local propagation/current quantities together with a precisely specified decoherence interface. Its assumptions and hydrodynamic-mode definition must not be replaced by gamma alone. The present proof obtains a two-sided second-moment coefficient bound through parity, exact balance and a spectral-measure argument. The mean-square theorem is not a replacement for their full operator-mode formulation.
+
+[R4] A. Gaudilliere, C. Landim, *A Dirichlet principle for non reversible Markov chains and some recurrence theorems*, arXiv:1111.2445v1; Probab. Theory Relat. Fields 158 (2014). The symmetric/skew decomposition and variational Poisson principles have substantial precedent. The elementary square completion in Theorem 1 is not by itself a new primitive.
+
+[R5] D. Fang, J. Lu, Y. Tong, *Mixing Time of Open Quantum Systems via Hypocoercivity*, arXiv:2404.11503v2; Phys. Rev. Lett. 134, 140405 (2025). Explicitly separates degenerate dissipative kernels from Hamiltonian stirring and includes dephasing examples. Thus treating the kernel separately is not new. Our calculation targets an observable's response and repairs a specified constraint by an exclusion Poisson solve rather than importing a global mixing estimate.
+
+[R6] D. Ampelogiannis, B. Doyon, *Rigorous bound on hydrodynamic diffusion for chaotic open spin chains*, arXiv:2501.07749v3 (28 February 2025). Its displayed strict-positivity mechanism requires spin-transporting local jumps and uses a specified irreversible/normal diffusion-strength construction. Pure on-site dephasing does not meet that positivity mechanism. The present current is transported coherently. The two results have different definitions and assumptions; neither is described as a universal domination of the other.
+
+[R7] Z.-L. Zhou, J. Noronha, *Diffusivity in Dissipative Quantum Transport from an Exactly Solvable Krylov Chain*, arXiv:2609.16559v1 (15 September 2026). Exactly computes a leading density-dependent correction in a strong-dissipation noisy-XXZ setting using a solvable Krylov chain. The present elementary bound does not reproduce that precision; conversely it does not impose a strong-dissipation expansion. This comparator prevents treating a Krylov representation alone as new scientific power.
+
+[R8] M. Znidaric, *Exact solution for a diffusive nonequilibrium steady state of an open quantum chain*, arXiv:1005.1271, J. Stat. Mech. L05002 (2010). The dephased, boundary-driven noninteracting XX case already has exact specialised solutions. The free-chain check in our code is normalization, not an achievement over that literature.
+
+[R9] C. Kokail et al., *Inverse Quantum Simulation for Quantum Material Design*, arXiv:2601.12239 (18 January 2026). Optimizes a desired many-body state on quantum hardware and uses Hamiltonian learning. Its state preparation/optimization interface is different and must be charged. We do not solve its low-temperature materials-design targets.
+
+[R10] M. Znidaric, J. J. Mendoza-Arenas, S. R. Clark, J. Goold, *Dephasing enhanced spin transport in the ergodic phase of a many-body localizable system*, arXiv:1609.09367 (2016). Examines high-temperature transport in a disordered Heisenberg chain with bulk dephasing. Qualitative enhancement by noise is prior work; it is not the discovery claimed here.
+
+**Astra source audit.** Pinned revision a33fc7e1db8f42873025fa29882f85f2d4503695 was fetched. The previous investigation is preserved as N742. N744's actual recovered note, `updates/EN/package/cray_flux_design/recovered/cray_flux_design/RESEARCH_NOTE.md`, lines 32–126, was read for its exact microscopic source-selective control and reset contract. Those hypotheses are not assumed here.
+
+**OpenAI math source audit.** At revision fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb, the actual source `preprints/Uniform-Stability-of-the-Spherical-Laughlin-Gap-October-5-2026/build/sections/08-stability.tex` was read. Its loss-evolution relative bound and spectral transport rely on prior coercivity/gap and ground-state prerequisites not established for this current model. No theorem from that manuscript is imported. The repository is research capital, not external validation of this proof.
+
+Searches and source reads did not establish priority of the combined local Ramsey/macroscopic transport certificate. A comprehensive specialist review and comparison to classical non-gradient transport methods, hypocoercivity, dephasing transport and variational asymptotic-variance work remain required.
+
+## 13. Exact remaining theorem and the strongest next obstruction
+
+The local statistic Xi is sufficient for some macroscopic decisions, but not for high-precision D or a global optimum over interacting designs. Exact balance removes one obstruction; it does not bound the complexity of the remaining coherence corrector.
+
+### Open theorem G1 — polynomial-size balanced response certificates
+
+Fix finite interaction range R, local coefficient bounds G, hopping t in [t_min,t_max] with t_min>0, and dephasing d in [d_min,d_max] with d_min>0. Do **not** assume d_min is large relative to G. Include, in particular, the range-two model near t=1,U=4,V=1,d=2.
+
+For every rational local input with b-bit coefficients, every periodic size n and every epsilon>0, construct rational, explicitly represented witnesses f,g satisfying
+
+\[
+PAf=0,\qquad
+\frac{\langle Sf-(J-Ag),S^+[Sf-(J-Ag)]\rangle+
+\langle Sg+Af,S^+(Sg+Af)\rangle}{n}\le\epsilon,
+\]
+
+with **total** construction, pressure solving, arithmetic precision, memory and certificate-verification cost polynomial in n, b and epsilon^{-1}, at the fixed displayed physical bounds.
+
+A proof would give a certifiable polynomial-time classical approximation scheme for the finite periodic transport response of this nonperturbative interacting class. It is not established by the current fixed-degree compiler: that compiler is polynomial only after the degree and representation size are charged. The finite checks do not justify extrapolating their narrowness or runtime to arbitrary size/precision. A counterexample to sparse-Pauli closure would rule out that representation, not the scientific task; a different representation might still satisfy the theorem.
+
+For thermodynamic high-precision prediction, an additional *quantitative*, constructively evaluable transfer is required. One possible stronger statement is a family of uniformly controlled translation-covariant witnesses whose lower/upper limits coincide at a known rate. Finite n direct-current values have not been proved to approximate the infinite result at a usable rate.
+
+### Open theorem G2 — Gaussian hydrodynamics
+
+For the same interacting model, establish a quantitative scaling limit of the density response with Gaussian Fourier profile exp(-D k^2), not merely convergence of its second moment. The current derivation supplies a positive finite coefficient and exact conservation identities, but does not control higher spatial moments or exclude non-Gaussian profiles with the same second moment. No claim of a complete hydrodynamic limit is made.
+
+### Why these are the consequential gates
+
+G1 would turn an occasionally decisive certificate into a general reliable prediction engine for a substantive interacting family. G2 would connect the certified scalar to complete macroscopic spreading profiles and associated design objectives. Extending either mechanism to physically thermal, nonunital dynamics without an expensive reference-state or modular-information input is another major boundary; the tracial calculation does not settle it.
+
+The retained advance is not an alleged universal rare-information escape. It is an explicit example in which a physically acquired local statistic can certify a macroscopic interacting-matter design decision, together with an exact operation that removes the undamped-population part of a refined certificate. Whether this can be expanded into civilisation-scale predictive power remains unproved.
+
+## 14. Reproduction and status ledger
+
+Run, with Python, NumPy, SciPy and SymPy available:
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python experiments.py
+OPENBLAS_NUM_THREADS=1 python noise_response.py
+OPENBLAS_NUM_THREADS=1 python block_checks.py
+python ramsey_certificate.py
+OPENBLAS_NUM_THREADS=1 python larger_checks.py
+```
+
+`larger_checks.json` records the additional n=12 and n=16 sparse-certificate runs. A separate script `larger_checks.py` reproduces them.
+
+| Claim | Status |
+|---|---|
+| Balanced finite-volume inequalities and gap identity | Complete derivation in Section 3; exact and floating finite diagnostics |
+| Exact exclusion pressure operator and degree preservation | Complete derivation; rational fixtures executed |
+| Positive finite-volume noise-response spectral measure | Complete finite-dimensional derivation; random-coordinate diagnostics |
+| Infinite-chain second-moment D exists and obeys the sandwich | Derivation in Section 7; not formally or externally verified |
+| Local Ramsey threshold certifies the stated model decision | Statistical/algebraic derivation; rational constants checked; synthetic fixture only |
+| Polynomial high-precision closure | Open G1 |
+| Gaussian hydrodynamic limit / convergence rate | Open G2 |
+| Superiority over strongest specialised computation | Not demonstrated |
+| Laboratory implementation and model validation | Not performed |
+| Historical novelty / independent proof validation | Not established |
+| General low-temperature or closed-matter capability | Not established |
