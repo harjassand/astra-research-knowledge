@@ -1,0 +1,288 @@
+# Signed block transport: an exact operation and the remaining LP gate
+
+Status: **partial mathematical result; no strongly polynomial arbitrary-LP algorithm**.
+All computations below use exact rational arithmetic. The inverse-positive,
+right-inverse, complementarity, and duality facts are established mathematics.
+The contribution of this cell is the explicit candidate operation, its exact
+stress tests, and the acquisition-preserving reduction identifying what it
+does not solve. No claim of priority is made.
+
+## 1. Interface and genuine signed closure
+
+Let `x >= 0` be the current protected resource vector. An action-rate vector
+`u >= 0` changes these resources to `x - Q u`, where `Q` is rational and may
+have many positive entries in each column. Positive entries of `Q` consume
+resources; negative entries produce resources. Exact full closure means
+
+    Q u = x,  u >= 0.
+
+If `Q` is square and `Q^{-1} >= 0`, the exact operation is `u=Q^{-1}x`.
+This is a monotone or inverse-positive matrix, a classical class larger than
+the nonsingular M-matrices. For example,
+
+    Q = [ 1  1 -1 ]       Q^{-1} = [ 1 0 1 ]
+        [-1  1  0 ]                  [ 1 1 1 ]
+        [ 0 -1  1 ]                  [ 1 1 2 ].
+
+The second action consumes two resources. Nevertheless all protected
+resources close in one exact solve for every `x >= 0`.
+
+For additional guarded resources `y`, write their endpoint as `y+H u`.
+The operation is globally feasible exactly when this endpoint is nonnegative.
+If it is not, use
+
+    theta = min(1, min_{i:(Hu)_i<0} y_i/(-(Hu)_i))
+
+and execute `theta u`. Convexity makes the whole straight segment feasible.
+This guard test is explicit; no bound on the number of repeated guarded
+operations is claimed.
+
+Classical source: Berman and Plemmons, *Nonnegative Matrices in the
+Mathematical Sciences*, Chapter 5, [Generalized Inverse-Positivity](https://epubs.siam.org/doi/10.1137/1.9781611971262.ch5).
+That chapter directly states the equivalence between cone monotonicity and
+inverse positivity. Its familiar M-matrix subclass is also explicitly
+identified there.
+
+## 2. Two exact failures of acquiring blocks by monotone basis growth
+
+### 2.1 A good full block with no good two-by-two subblock
+
+Set
+
+    Q = (1/2) [ 1 -1  1 ]       Q^{-1} = [1 1 0]
+                [ 1  1 -1 ]                  [0 1 1]
+                [-1  1  1 ]                  [1 0 1].
+
+Every `2 x 2` submatrix is either singular or has a negative inverse entry.
+This includes independently selected rows and columns; permutations merely
+permute inverse entries. The full block is inverse-positive. Hence any
+acquisition rule that must keep an inverse-positive square block while
+growing it one row and column at a time cannot acquire this closure from
+singletons. Exact enumeration checks all nine subblocks.
+
+### 2.2 A right-inverse closure with no monotone square basis
+
+The rectangular matrix
+
+    Q = [ 5  5 -3 -3 ]
+        [ 2 -4  6  0 ]
+        [-4  2  0  6 ]
+
+has the nonnegative right inverse
+
+    R = [1/8   3/32  1/32]
+        [1/8   1/32  3/32]
+        [1/24  5/32  5/96]
+        [1/24  5/96  5/32],       Q R = I.
+
+Every one of its four square `3 x 3` bases is invertible and has a negative
+inverse entry. Thus selecting a monotone square basis is unnecessarily
+restrictive: a signed closure may require mixing more actions than resources
+when one wants a single linear map valid for every protected stock vector.
+
+A geometric reconstruction is available without numerical search. Intersect
+the four column rays with `sum coordinates=1`. They form a square under the
+affine coordinates
+
+    p_x=(3/4)x_1-1/4,   p_y=(x_2-x_3)/2.
+
+The positive coordinate rays map to `(1/2,0),(-1/4,1/2),(-1/4,-1/2)`.
+The square contains this triangle, but none of the triangles formed from
+three square vertices contains it. This is exactly the nonnegative
+right-inverse / no monotone-basis distinction above.
+
+## 3. Explicit acquisition with a known positive circulation
+
+Here is an operation that genuinely avoids another LP in its stated class.
+
+**Positive-circulation repair lemma.** Suppose `Q` has full row rank and an
+explicitly acquired vector `v>0` satisfies `Qv=0`. Compute any algebraic right
+inverse `R0`, for example by selecting a nonsingular column basis using
+Gaussian elimination and padding its inverse by zero rows. For each resource
+column `i`, let
+
+    lambda_i = max(0, max_j(-R0[j,i]/v_j)),
+    R[:,i]   = R0[:,i] + lambda_i v.
+
+Then `R >= 0` and `QR=I`. Consequently `u=Rx` exactly closes every `x>=0`.
+
+Proof: the maximum makes each entry nonnegative, and adding a nullvector
+does not change `QR0=I`. This is all that is used.
+
+The operation uses `O(r^2 n+r^3)` arithmetic operations for an `r x n`
+matrix, followed by `O(rn)` comparisons and repairs. It has no convergence
+tolerance, spectral-gap dependence, or coefficient-dependent iteration.
+The numerator and denominator sizes of the Gaussian basis inverse and the
+repair ratios are polynomial in the rational input size. When `Q 1=0`, the
+circulation is acquired by a direct row-sum check; it is not an oracle.
+
+Example:
+
+    Q = [ 1 -2 1 ]        v=(1,1,1).
+        [-2  1 1 ]
+
+Using the first two columns gives
+
+    R0 = [-1/3 -2/3]
+         [-2/3 -1/3]
+         [ 0    0  ].
+
+The repair adds `(2/3)v` to each column, producing
+
+    R = [1/3 0  ]
+        [0   1/3]
+        [2/3 2/3],       QR=I,  R>=0.
+
+The requirement that `v` be acquired is material. Finding a positive null
+vector of an arbitrary supplied matrix is itself a linear feasibility
+problem. The lemma does not hide that task.
+
+## 4. Cost failure, even with the repair certificate already supplied
+
+A feasible repair need not choose an effective or optimal closure. Take
+
+    Q=[1,1,-1],  x=1,  v=(1,1,2),  p=(1,2,-3).
+
+The right inverse `R0=(1,0,0)^T` is already nonnegative, so the repair returns
+profit `1`. The closure `(0,1,0)` has profit `2` and is optimal. Indeed
+`u1+u2-u3=1` gives
+
+    p^T u = 1+u2-2u3 <= 2-u3 <= 2.
+
+The issue is not just this basis choice. The following exact reduction shows
+that cost-aware selection remains an arbitrary-LP task even when the all-ones
+circulation and a nonnegative right inverse are both acquired cheaply.
+
+**Reduction theorem.** Consider a feasible bounded rational LP
+
+    maximize c^T z  subject to A z=b, z>=0,
+
+with `A` full row rank `r`. Row sign flips can make `b>=0`. Set
+
+    Q = [A, -A 1],   p=(c,-M).
+
+Then `Q 1=0`, `Q` has full row rank, and Section 3 constructs a nonnegative
+right inverse in a strongly polynomial number of arithmetic operations.
+An explicit `M` makes
+
+    maximize p^T u  subject to Q u=b, u>=0
+
+have exactly the original optimum, with the appended coordinate equal to
+zero at every optimum.
+
+To acquire `M` without a coefficient-dependent search, form `D` as the
+product of the positive denominators of entries of `A` and `c`. Thus
+`A'=DA` and `c'=Dc` are integral. Let
+
+    H=max(1, max|A'ij|, max|c'j|),
+    K=r! H^r,
+    M=1+sum_j |c_j|+K sum_{i,j}|A_ij|.
+
+The original dual is `min b^T y` subject to `A^T y>=c`. It has an optimal
+vertex: full row rank makes its feasible polyhedron pointed, and an optimal
+face of a nonempty pointed polyhedron contains a vertex. At such a vertex,
+`r` independent inequalities are tight. Cramer's rule on the corresponding
+integer `r x r` system gives `|y_i|<=K`: its nonzero determinant has absolute
+value at least one, and each replaced determinant has absolute value at most
+`r!H^r` by the determinant expansion. Therefore
+
+    1^T A^T y <= K sum_{i,j}|A_ij| < M.
+
+This same `y` is an optimal dual certificate for the extended LP, with
+strict dual slack on the appended column. Original primal optima extend
+with appended rate zero. Duality proves equality of the optimum values;
+strict slack forces the appended rate to be zero in every extended optimum.
+
+`D`, `H`, `K`, and `M` require polynomially many arithmetic operations in
+`r,n`; no loop length depends on coefficient magnitudes. Their rational
+encoding lengths are polynomial in the original input length. Product
+denominators are used deliberately, so no coefficient-dependent Euclidean
+iteration is being counted as free preprocessing.
+
+This reduction is scoped to feasible bounded LPs, already enough to expose
+the arbitrary-LP optimization gate. It is not a theorem that such a gate is
+impossible to solve strongly polynomially. It is a theorem that solving it
+would solve the original research target, rather than bypass it.
+
+## 5. Actual next attempt: protect the objective as another resource
+
+The next mutation was to append an objective row and run the same repair on
+`[Q; p^T]`, so that both resource exhaustion and a selected profit are fixed
+by linear algebra. The following obstruction is exact.
+
+**Cost-neutral circulation obstruction.** Suppose `Qu=x,u>=0` is nonempty,
+its maximum profit is finite, and there exists `w>0` with `Qw=0` and
+`p^T w=0`. Then `p` annihilates the entire nullspace of `Q`; equivalently,
+`p=Q^T pi` for some `pi`, and all feasible closures have the same profit.
+
+Proof: for any `d in ker Q`, both `d+t w` and `-d+t w` are nonnegative for
+sufficiently large `t`. They are nonnegative recession directions. Finite
+profit implies `p^T d<=0` and `-p^T d<=0`, hence `p^T d=0`. Thus `p` is in
+the row space of `Q`.
+
+Consequently, for every bounded nonconstant objective, augmenting the block
+with an objective row removes the strictly positive circulation required by
+the repair lemma. There is no recursive application of the same inexpensive
+repair to the objective coordinate. A positive cost-neutral circulation
+would certify that the objective was constant already.
+
+Two further exact distinctions prevent weaker substitutes:
+
+* `p^T v<0` for one supplied positive circulation does not certify bounded
+  profit. For `Q=[1,1,-1]`, `v=(1,1,2)`, `p=(4,0,-3)`, one has `p^T v=-2`,
+  but the nonnegative null direction `(1,0,1)` has positive profit `1`.
+* A finite nonconstant objective does imply that every strictly positive
+  nullvector has strictly negative profit. Subtracting such a circulation
+  improves profit until some coordinate is zero. This proves that an optimum
+  is on one of the `n` coordinate facets, but does not identify the facet.
+  Choosing the coordinate with the most negative cost is unsound: for
+  `Q=[100,1,-101]`, `x=1`, `v=1`, and `p=(-10,-1,1)`, the unique optimum is
+  `(1/100,0,0)` with profit `-1/10`; the most negative-cost coordinate is
+  indispensable. Eliminating `u1` gives
+  `p^T u=-1/10-(9/10)u2-(91/10)u3`, proving the claim exactly.
+
+There is one closed restricted case. If `dim ker Q=1` and its generator
+`v>0` is known, every closure is `u0+t v`, with
+
+    t >= max_j(-u0_j/v_j).
+
+The sign of `p^T v` determines unboundedness, constant profit, or the unique
+best value of `t`. Thus arbitrary signed multi-negative blocks of corank one
+are solved exactly in a strongly polynomial number of operations. For
+larger nullity, the remaining facet/circulation selection is the original LP
+gate exposed above.
+
+## 6. Relation to complementary block closure
+
+The acquisition gate can also be written without transport terminology. For
+`max c^T z` subject to `A z<=b,z>=0`, put
+
+    K = [ 0   A^T ] ,  q=(-c,b),  v=(z,y),  w=Kv+q.
+        [-A    0  ]
+
+Then `v>=0,w>=0,v^T w=0` is exactly primal feasibility, dual feasibility,
+and zero duality gap. `K` is skew-symmetric. Selecting the complementary
+active block is therefore already general LP. Inverting a selected block
+does not provide its selection rule.
+
+Classical primary reference for the LP/skew complementarity connection:
+Nimrod Megiddo, [Pathways to the Optimal Set in Linear Programming](https://theory.stanford.edu/~megiddo/pdf/pathways.pdf),
+especially its discussion of the LCP extension. The explicit displayed
+reduction above is independently reconstructible and is not inferred merely
+from that citation.
+
+## 7. Evidence and unresolved gate
+
+Run `python3 verify.py` in this directory. `verify.py` uses only Python's
+standard library and exact `Fraction` arithmetic; it writes `checks.json`.
+It verifies inverse-positive signed closure, all failed two-by-two
+subblocks, all failed square bases of the rectangular example, positive
+circulation repair, and the finite-profit counterexample.
+
+The general acquisition gate is precise: acquire a cost-effective globally
+guard-feasible combination of signed actions, or prove none exists, with a
+polynomial count in dimensions and without a general LP/circuit/basis oracle.
+The supplied positive circulation and right-inverse operation solve the
+protected feasibility part but do not close this gate. The objective-row
+mutation fails for an algebraically characterized reason, not because of
+finite numerical experiments.

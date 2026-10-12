@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+"""Recognize density-phase-dressed quadratic chains; predict local occupations.
+
+The production path takes explicit four-site hopping tables, onsite potentials,
+and product one-site density matrices. It is polynomial; it does not take the
+dressing W, a tensor-network state, or a quantum sample. Dense matrices occur
+only in the independent small-system checks in this file.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+
+from derive_and_test import evolve_hermitian, pauli_product
+
+
+OUT = Path(__file__).resolve().parent
+
+
+def make_tables(hoppings, theta):
+    n = len(hoppings) + 1
+    signs = (1, -1)
+    tables = []
+    for j, hopping in enumerate(hoppings):
+        left = theta[j - 1] if j >= 1 else 0.0
+        right = theta[j + 1] if j + 1 < n - 1 else 0.0
+        tables.append(np.array([[hopping * np.exp(2j * left * zl - 2j * right * zr) for zr in signs] for zl in signs]))
+    return tables
+
+
+def recognize_tables(tables, n=None, tolerance=1e-10, drop_threshold=0.0):
+    """Acquire u_j=exp(2i theta_j) without a small-angle or nonzero-bond promise.
+
+    Complex free hoppings absorb square-root sign aliases. A zero hopping
+    constrains no neighboring u. An unconstrained u is chosen as one.
+    Small dropped bonds and all reconstruction residuals are charged by the
+    sum of local hopping-operator norms; error in norm-one readout at time T
+    is at most 2*T*hamiltonian_residual_bound.
+    """
+    n = len(tables) + 1 if n is None else n
+    if len(tables) != max(0, n - 1):
+        raise ValueError("Wrong number of hopping tables")
+    proposed_squares = [[] for _ in range(max(0, n - 1))]
+    active = []
+    for j, raw in enumerate(tables):
+        table = np.asarray(raw, dtype=complex)
+        if table.shape != (2, 2):
+            raise ValueError("A hopping table must have shape 2 by 2")
+        maximum = float(np.max(np.abs(table)))
+        if maximum <= drop_threshold:
+            active.append(False)
+            continue
+        minimum = float(np.min(np.abs(table)))
+        if minimum == 0 or maximum - minimum > tolerance:
+            raise ValueError("Density-dependent hopping magnitudes are not pure phases")
+        active.append(True)
+        left_square = table[0, 0] / table[1, 0]
+        right_square = table[0, 1] / table[0, 0]
+        if j == 0:
+            if abs(left_square - 1) > tolerance:
+                raise ValueError("A nonexistent left boundary spin affects the hopping")
+        else:
+            proposed_squares[j - 1].append(left_square)
+        if j + 1 == n - 1:
+            if abs(right_square - 1) > tolerance:
+                raise ValueError("A nonexistent right boundary spin affects the hopping")
+        else:
+            proposed_squares[j + 1].append(right_square)
+    u = np.ones(max(0, n - 1), dtype=complex)
+    unconstrained = []
+    for edge, proposals in enumerate(proposed_squares):
+        if not proposals:
+            unconstrained.append(edge)
+            continue
+        first = proposals[0]
+        if abs(abs(first) - 1) > tolerance or any(abs(v - first) > tolerance for v in proposals):
+            raise ValueError("Neighboring hopping terms require inconsistent gauge phases")
+        u[edge] = np.sqrt(first / abs(first))
+    recovered = np.zeros(max(0, n - 1), dtype=complex)
+    residuals = []
+    signs = (1, -1)
+    for j, raw in enumerate(tables):
+        table = np.asarray(raw, dtype=complex)
+        left = u[j - 1] if j >= 1 else 1.0
+        right = u[j + 1] if j + 1 < n - 1 else 1.0
+        if active[j]:
+            recovered[j] = table[0, 0] * right / left
+        prediction = np.array([[recovered[j] * left**zl * right**(-zr) for zr in signs] for zl in signs])
+        residual = float(np.max(np.abs(table - prediction)))
+        if active[j] and residual > tolerance:
+            raise ValueError("The full local hopping table fails the phase reconstruction")
+        residuals.append(residual)
+    return {
+        "u": u,
+        "hoppings": recovered,
+        "unconstrained_edges": unconstrained,
+        "dropped_bonds": [j for j, yes in enumerate(active) if not yes],
+        "local_residuals": residuals,
+        "hamiltonian_residual_bound": float(sum(residuals)),
+    }
+
+
+def dressed_pauli_mean(p, rhos, u):
+    """Tr(product rho W P W^dagger), using an exact two-state transfer chain."""
+    x, z = p
+    n = len(rhos)
+    local = []
+    for j, rho in enumerate(rhos):
+        flip = (x >> j) & 1
+        has_z = (z >> j) & 1
+        local.append(np.array([rho[b, b ^ flip] * (-1)**(has_z * b) for b in (0, 1)], dtype=complex))
+    v = local[0]
+    for j in range(n - 1):
+        flip_parity = ((x >> j) ^ (x >> (j + 1))) & 1
+        bond = np.ones((2, 2), dtype=complex)
+        if flip_parity:
+            for b in (0, 1):
+                for c in (0, 1):
+                    bond[b, c] = u[j]**(-((-1)**b) * ((-1)**c))
+        v = (v @ bond) * local[j + 1]
+    return 1j**((x & z).bit_count() % 4) * v.sum()
+
+
+def majorana(j, kind):
+    return (1 << j, (1 << j) - 1 + ((1 << j) if kind else 0))
+
+
+def majorana_pair_mean(j, kind_j, k, kind_k, rhos, u):
+    p, phase = pauli_product(majorana(j, kind_j), majorana(k, kind_k))
+    return phase * dressed_pauli_mean(p, rhos, u)
+
+
+def creation_annihilation_mean(j, k, rhos, u):
+    # c=(gamma_x+i gamma_y)/2, c^dagger=(gamma_x-i gamma_y)/2.
+    return (
+        majorana_pair_mean(j, 0, k, 0, rhos, u)
+        + 1j * majorana_pair_mean(j, 0, k, 1, rhos, u)
+        - 1j * majorana_pair_mean(j, 1, k, 0, rhos, u)
+        + majorana_pair_mean(j, 1, k, 1, rhos, u)
+    ) / 4
+
+
+def acquire_covariance(rhos, u):
+    n = len(rhos)
+    gamma = np.array([[creation_annihilation_mean(k, j, rhos, u) for k in range(n)] for j in range(n)])
+    if np.linalg.norm(gamma - gamma.conj().T) > 1e-10:
+        raise AssertionError("Acquired covariance is not Hermitian")
+    return gamma
+
+
+def one_particle_hamiltonian(hoppings, chemical_potentials):
+    n = len(chemical_potentials)
+    h = np.diag(chemical_potentials).astype(complex)
+    for j, hopping in enumerate(hoppings):
+        h[j + 1, j] = hopping
+        h[j, j + 1] = hopping.conjugate()
+    return h
+
+
+def predict_occupations(tables, chemical_potentials, rhos, times, selected_sites=None):
+    recognition = recognize_tables(tables, n=len(rhos))
+    gamma = acquire_covariance(rhos, recognition["u"])
+    h = one_particle_hamiltonian(recognition["hoppings"], chemical_potentials)
+    eigenvalues, eigenvectors = np.linalg.eigh(h)
+    energy_covariance = eigenvectors.conj().T @ gamma @ eigenvectors
+    selected_sites = list(range(len(rhos))) if selected_sites is None else list(selected_sites)
+    values = []
+    for t in times:
+        phase = np.exp(-1j * t * eigenvalues)
+        at_t = []
+        for site in selected_sites:
+            row = eigenvectors[site, :] * phase
+            at_t.append(float((row @ energy_covariance @ row.conj()).real))
+        values.append(at_t)
+    return values, recognition
+
+
+# Everything below is finite verification, not the production simulator.
+
+PAULIS = [np.eye(2), np.array([[0, 1], [1, 0]]), np.array([[1, 0], [0, -1]]), np.array([[0, -1j], [1j, 0]])]
+
+
+def dense_pauli(p, n):
+    out = np.array([[1.0 + 0j]])
+    for j in range(n):
+        x = (p[0] >> j) & 1
+        z = (p[1] >> j) & 1
+        index = 1 if x and not z else 2 if z and not x else 3 if x and z else 0
+        out = np.kron(out, PAULIS[index])
+    return out
+
+
+def dense_hamiltonian_from_tables(tables, mu):
+    n = len(mu)
+    out = np.zeros((2**n, 2**n), complex)
+    for b in range(2**n):
+        bits = [(b >> (n - 1 - j)) & 1 for j in range(n)]
+        out[b, b] = sum(mu[j] * bits[j] for j in range(n))
+        for j, table in enumerate(tables):
+            if bits[j] == bits[j + 1]:
+                continue
+            left = bits[j - 1] if j >= 1 else 0
+            right = bits[j + 2] if j + 2 < n else 0
+            a = table[left, right]
+            after = b ^ (1 << (n - 1 - j)) ^ (1 << (n - 2 - j))
+            out[after, b] += a if bits[j] == 1 else a.conjugate()
+    assert np.linalg.norm(out - out.conj().T) < 1e-10
+    return out
+
+
+def dense_product_state(rhos):
+    rho = np.array([[1.0 + 0j]])
+    for one_site in rhos:
+        rho = np.kron(rho, one_site)
+    return rho
+
+
+def random_product_density_matrices(n, rng):
+    rhos = []
+    for _ in range(n):
+        a = rng.normal(size=3)
+        a = a / np.linalg.norm(a) * rng.uniform(0.25, 1.0)
+        rhos.append((PAULIS[0] + a[0] * PAULIS[1] + a[1] * PAULIS[3] + a[2] * PAULIS[2]) / 2)
+    return rhos
+
+
+def dense_case(n, zero_bonds=(), seed=20261015):
+    rng = np.random.default_rng(seed)
+    hoppings = rng.uniform(0.3, 1.0, max(0, n - 1)) * np.exp(1j * rng.uniform(-1, 1, max(0, n - 1)))
+    for j in zero_bonds:
+        hoppings[j] = 0
+    theta = rng.uniform(-1.4, 1.4, max(0, n - 1))
+    tables = make_tables(hoppings, theta)
+    mu = rng.uniform(-0.5, 0.5, n)
+    rhos = random_product_density_matrices(n, rng)
+    times = [0, 0.4, 1.7, 4.2, 17.0]
+    prediction, recognition = predict_occupations(tables, mu, rhos, times)
+    h = dense_hamiltonian_from_tables(tables, mu)
+    rho = dense_product_state(rhos)
+    exact = []
+    for t in times:
+        ut = evolve_hermitian(h, t)
+        evolved = ut @ rho @ ut.conj().T
+        exact.append([float(np.trace(evolved @ ((np.eye(2**n) - dense_pauli((0, 1 << j), n)) / 2)).real) for j in range(n)])
+    error = float(np.max(np.abs(np.array(prediction) - exact)))
+    assert error < 2e-12
+    phase_differences = np.abs(recognition["u"] - np.exp(2j * theta))
+    alias_count = int(np.sum(phase_differences > 1))
+    return {
+        "n": n,
+        "seed": seed,
+        "zero_input_bonds": list(zero_bonds),
+        "unconstrained_gauge_edges": recognition["unconstrained_edges"],
+        "square_root_aliases_relative_to_generator": alias_count,
+        "hamiltonian_residual_bound": recognition["hamiltonian_residual_bound"],
+        "max_occupation_error_against_dense_many_body_evolution": error,
+        "times": times,
+        "polynomial_prediction": prediction,
+        "dense_comparison": exact,
+    }
+
+
+def recognition_rejection_tests():
+    tables = make_tables(np.array([0.7, 0.8, 0.9, 0.6], complex), np.array([0.2, -0.6, 0.8, 0.5]))
+    cases = {}
+    for name, modify in (
+        ("one_inconsistent_local_phase", lambda t: t[1].__setitem__((1, 1), t[1][1, 1] * np.exp(0.1j))),
+        ("one_density_dependent_magnitude", lambda t: t[1].__setitem__((1, 1), t[1][1, 1] * 1.1)),
+        ("one_spurious_boundary_dependence", lambda t: t[0].__setitem__((1, 0), t[0][1, 0] * np.exp(0.1j))),
+    ):
+        changed = [t.copy() for t in tables]
+        modify(changed)
+        try:
+            recognize_tables(changed)
+        except ValueError as e:
+            cases[name] = {"rejected": True, "reason": str(e)}
+        else:
+            raise AssertionError("A deliberately non-family input was accepted")
+    return cases
+
+
+def interacting_volume_law_test(n=8):
+    j = np.arange(1, n, dtype=float)
+    hopping = 2 * np.sqrt(j * (n - j)) / n
+    theta = np.linspace(-0.9, 1.1, n - 1)
+    tables = make_tables(hopping, theta)
+    h = dense_hamiltonian_from_tables(tables, np.zeros(n))
+    bits = [int(j % 2 == 0) for j in range(n)]
+    index = sum(bit << (n - 1 - j) for j, bit in enumerate(bits))
+    state = evolve_hermitian(h, np.pi * n / 8)[:, index]
+    singular = np.linalg.svd(state.reshape(2**(n // 2), -1), compute_uv=False)
+    probabilities = singular**2
+    positive = probabilities[probabilities > 1e-14]
+    entropy = float(-np.sum(positive * np.log2(positive)))
+    assert entropy >= n / 2 - 2 - 1e-12
+    return {"n": n, "half_chain_entropy_bits": entropy, "rigorous_lower_bound_bits": n / 2 - 2, "time": float(np.pi * n / 8), "interpretation": "The recognized interacting Hamiltonian inherits volume-law growth from its acquired quadratic representative; this does not require a low-entanglement evolving state."}
+
+
+def main():
+    cases = [dense_case(6), dense_case(6, (1, 2, 4), 20261016), dense_case(2, (), 20261017), dense_case(1, (), 20261018)]
+    results = {
+        "scope": "Restricted recognized phase-conjugate quadratic chain; not arbitrary interacting dynamics",
+        "dense_checks": cases,
+        "recognition_rejection_checks": recognition_rejection_tests(),
+        "interacting_volume_law_check": interacting_volume_law_test(),
+        "complexity": "O(N) local gauge recognition; O(N^3) initial covariance acquisition by two-state transfer contractions; O(N^3) one-particle diagonalization; O(N^2) per time for one selected occupation after preprocessing.",
+        "novelty": "Unestablished; compare gauge-solvable correlated hopping and fixed-depth tensor contraction.",
+    }
+    (OUT / "GAUGE_RESULTS.json").write_text(json.dumps(results, indent=2) + "\n")
+    print(json.dumps({"max_error": max(c["max_occupation_error_against_dense_many_body_evolution"] for c in cases), "aliases_tested": sum(c["square_root_aliases_relative_to_generator"] for c in cases), "zero_and_boundary_cases": [c["n"] for c in cases], "written": str(OUT / "GAUGE_RESULTS.json")}, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,97 @@
+<!doctype html><meta charset="utf-8"><title>Adaptive invention original — kinetic_energy_bridge/verify.py</title>
+<aside>Byte/hash preservation and AST syntax only. Producer analytic/exact/numerical checks are source-reported internal evidence. No scientific script execution, independent proof reconstruction, literature/priority audit, physical experiment or practical advantage established at intake.</aside>
+<pre>&quot;&quot;&quot;Independent finite checks of the exact formulas in WORKING_MATHEMATICS.md.
+
+These checks are for a two-body scattering law and a prescribed-field
+transport-diffusion diagnostic, not for an N-body kinetic limit.
+&quot;&quot;&quot;
+
+import json
+import math
+from pathlib import Path
+
+
+def simpson(f, a, b, n=20000):
+    assert n % 2 == 0
+    h = (b - a) / n
+    total = f(a) + f(b)
+    for j in range(1, n):
+        total += (4 if j % 2 else 2) * f(a + j * h)
+    return h * total / 3
+
+
+def rutherford_check():
+    # Set a=1 and change variable x=b/a. The transverse integral is J(z).
+    rows = []
+    for z in (0.1, 1.0, 10.0, 100.0):
+        exact = 0.5 * (math.log1p(z*z) + 1/(1+z*z) - 1)
+        numeric = simpson(lambda x: x**3/(1+x*x)**2, 0, z)
+        assert abs(exact - numeric) &lt; 1e-8
+        rows.append({&quot;B_over_a&quot;: z, &quot;J_exact&quot;: exact,
+                     &quot;J_numerical&quot;: numeric, &quot;error&quot;: abs(exact-numeric)})
+    return rows
+
+
+def echo_check(r, k=1.0, sigma=1.0):
+    assert r % 2 == 0
+    nu = 1 / r
+    T = 1 / nu
+    delta = T / (r + 0.5)
+    starts = []
+    eta = k * delta / 2
+    damping_quadrature = 0.0
+    for j in range(r):
+        mode = k if j % 2 == 0 else -k
+        starts.append(eta)
+        eta_next = eta - mode * delta
+        damping_quadrature += simpson(
+            lambda u: (eta - mode*u)**2, 0, delta, n=100
+        )
+        assert abs(eta_next - (-1)**(j+1)*k*delta/2) &lt; 1e-12
+        eta = eta_next
+    assert abs(eta - k*delta/2) &lt; 1e-12
+    damping_quadrature += simpson(lambda u: (eta-k*u)**2,
+                                  0, delta/2, n=100)
+    eta_final = eta-k*delta/2
+    assert abs(eta_final) &lt; 1e-12
+    D = nu * k*k*delta**3*(r/12 + 1/24)
+    assert abs(nu*damping_quadrature-D) &lt; 1e-10
+    vertex_magnitude = k*delta/2
+    assert all(abs(abs(v)-vertex_magnitude) &lt; 1e-12 for v in starts)
+
+    # For r equal alternating legs without the final half leg, terminal
+    # frequency zero gives every second vertex exactly zero.
+    naive_nodes = []
+    naive_eta = 0.0
+    for j in range(r):
+        mode = k if j % 2 == 0 else -k
+        naive_eta -= mode*delta
+        naive_nodes.append(naive_eta)
+    assert all(abs(naive_nodes[j]) &lt; 1e-12 for j in range(1, r, 2))
+
+    return {
+        &quot;nu&quot;: nu, &quot;r_main_legs&quot;: r, &quot;T&quot;: T, &quot;delta&quot;: delta,
+        &quot;vertex_magnitude&quot;: vertex_magnitude,
+        &quot;damping_exponent&quot;: D, &quot;damping_quadrature&quot;: nu*damping_quadrature,
+        &quot;unit_impulse_log_word_magnitude&quot;:
+            -sigma*sigma*k*k*delta*delta/8-D+r*math.log(vertex_magnitude),
+        &quot;naive_equal_leg_zero_vertex_count&quot;: r//2,
+    }
+
+
+def main():
+    result = {
+        &quot;scope&quot;: &quot;finite arithmetic checks only; no microscopic limit&quot;,
+        &quot;rutherford_J_checks&quot;: rutherford_check(),
+        &quot;echo_rows&quot;: [echo_check(r) for r in (32, 64, 128, 256, 512)],
+    }
+    out = Path(__file__).with_name(&quot;checks.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;written&quot;: str(out),
+                      &quot;max_J_error&quot;: max(row[&quot;error&quot;] for row in result[&quot;rutherford_J_checks&quot;]),
+                      &quot;last_damping_exponent&quot;: result[&quot;echo_rows&quot;][-1][&quot;damping_exponent&quot;]}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>
