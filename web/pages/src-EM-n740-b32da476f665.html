@@ -1,0 +1,152 @@
+<!doctype html><meta charset="utf-8"><title>N740 recovered original — astra_genesis_compatibility/verify_exact.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not mathematical correctness, priority, general implementation or technology validation. Scientific code syntax parsed only, never executed at intake.</aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact algebra checks for the ASTRA planar-compatibility research note.
+
+Requires Python 3 and SymPy. These checks verify finite symbolic identities;
+they are not a formal verification of the analytic arguments or open gate.
+Run: python verify_exact.py
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from pathlib import Path
+import sympy as S
+
+ROOT = Path(__file__).resolve().parent
+checks: dict[str, bool] = {}
+
+def zero_check(name: str, expression: S.Expr) -&gt; None:
+    ok = S.factor(expression) == 0
+    checks[name] = bool(ok)
+    if not ok:
+        raise AssertionError(f&quot;{name}: {S.factor(expression)}&quot;)
+
+r, s, p = S.symbols(&#x27;r s p&#x27;, positive=True)
+a, b, c, d, e, f = S.symbols(&#x27;a b c d e f&#x27;, real=True)
+jets = [a, b, c, d, e, f]
+R = r + s
+# Work in units p*(r+s)**(p-3). Each complex derivative below is twice
+# its actual value, so all quadratic expressions require the factor 1/4.
+zxr, zxi, zyr, zyi = a+e, d-b, b+f, e-c
+wxr, wxi, wyr, wyi = a-e, d+b, b-f, e+c
+hrr = (p-1)*(-r+(p-3)*s)
+hrs = (p-1)*(p-2)*s
+hss = (p-1)*(r+(p-1)*s)
+hr = R*((p-2)*s-r)/r
+hs = (p-1)*R
+E = (hrr*(zxr**2+zyr**2) + hr*(zxi**2+zyi**2)
+     + hss*(wxr**2+wyr**2) + hs*(wxi**2+wyi**2)
+     + 2*hrs*(zxr*wxr+zyr*wyr))/4
+K = 2*(p-1)*R  # normalized value
+omega0 = K*(zxr*zyi-zyr*zxi+wxr*wyi-wyr*wxi)/4
+squares = (p-2)*((p-1)*s*(a*a+b*b) + R*R/(4*r)*((c-e)**2+(b-d)**2))
+zero_check(&#x27;Burkholder_square_identity_all_real_p&#x27;, E+omega0-squares)
+
+# Independent differentiation of F_p checks the radial Hessian formulas.
+Fp = ((p-1)*s-r)*R**(p-1)
+scale = p*R**(p-3)
+for name, expr, expected in [
+    (&#x27;radial_rr&#x27;, S.diff(Fp,r,2), hrr),
+    (&#x27;radial_rs&#x27;, S.diff(Fp,r,s), hrs),
+    (&#x27;radial_ss&#x27;, S.diff(Fp,s,2), hss),
+    (&#x27;angular_z&#x27;, S.diff(Fp,r)/r, hr),
+    (&#x27;angular_w&#x27;, S.diff(Fp,s)/s, hs),
+]:
+    zero_check(name, S.simplify(expr/scale)-expected)
+
+U,V,W,Z = S.symbols(&#x27;U V W Z&#x27;, real=True)
+omega = (U*(zxr*zyi-zyr*zxi) + V*(wxr*zyi-wyr*zxi)
+         + W*(zxr*wyi-zyr*wxi) + Z*(wxr*wyi-wyr*wxi))/4
+M = S.hessian(E+omega,jets)/2
+zero_check(&#x27;first_null_diagonal&#x27;, M[5,5])
+# PSD plus zero f diagonal forces f row to vanish.
+first = {U:V+K,W:Z-K}
+for j in range(6):
+    zero_check(f&#x27;first_null_row_after_constraints_{j}&#x27;, M[5,j].subs(first))
+null2 = S.Matrix([0,0,1,0,1,0])
+M1 = M.subs(first)
+zero_check(&#x27;second_null_diagonal&#x27;, (null2.T*M1*null2)[0])
+zero_check(&#x27;second_null_cross&#x27;, (M1*null2)[0]-(Z-K)/2)
+# Thus Z=K and W=0, before restoring the positive scale.
+full_K = 2*p*(p-1)*R**(p-2)
+curvature = 2*p*(p-1)*(p-2)*s*R**(p-3)
+zero_check(&#x27;forced_nonzero_curvature_formula&#x27;,
+           S.simplify(S.diff(s*full_K,r)-curvature))
+
+# Rank-one pure Hessian jets: kernel dimension and six independent minors.
+u,v,x,y = S.symbols(&#x27;u v x y&#x27;,real=True)
+pure = {a:u*x*x,b:u*x*y,c:u*y*y,d:v*x*x,e:v*x*y,f:v*y*y}
+qmons = [jets[i]*jets[j] for i in range(6) for j in range(i,6)]
+outmons = [u**i*v**(2-i)*x**j*y**(4-j) for i in range(3) for j in range(5)]
+restriction = S.Matrix([[S.Poly(q.subs(pure),u,v,x,y).coeff_monomial(m)
+                        for q in qmons] for m in outmons])
+checks[&#x27;pure_jet_restriction_rank_15&#x27;] = restriction.rank() == 15
+minors = [a*c-b*b,a*e-b*d,a*f-b*e,b*e-c*d,b*f-c*e,d*f-e*e]
+for i,m in enumerate(minors):
+    zero_check(f&#x27;compatible_minor_vanishes_{i}&#x27;,m.subs(pure))
+minor_mat = S.Matrix([[S.Poly(m,*jets).coeff_monomial(q) for q in qmons] for m in minors])
+checks[&#x27;six_independent_minor_relations&#x27;] = minor_mat.rank() == 6
+
+# Reciprocity for every degree-four monomial is equivalent to the full
+# arbitrary quartic identity, by linearity.
+A = S.symbols(&#x27;A0:4&#x27;,real=True)
+H = S.symbols(&#x27;H0:4&#x27;,real=True)
+quartic_exponents = [(i,j,k,4-i-j-k) for i in range(5)
+                    for j in range(5-i) for k in range(5-i-j)]
+for n,exponents in enumerate(quartic_exponents):
+    mon = S.prod(A[i]**exponents[i] for i in range(4))
+    hess = S.hessian(mon,A)
+    lhs = (S.Matrix(H).T*hess*S.Matrix(H))[0]
+    rhs = (S.Matrix(A).T*hess.subs(dict(zip(A,H)),simultaneous=True)*S.Matrix(A))[0]
+    zero_check(f&#x27;quartic_hessian_reciprocity_monomial_{n}&#x27;,lhs-rhs)
+
+# Exact periodic heat-flow counterexample for (det Dv)^2.
+t = S.symbols(&#x27;t&#x27;,positive=True)
+x,y = S.symbols(&#x27;x y&#x27;,real=True)
+h = S.sin(x)+S.sin(y)
+vt1 = S.exp(-t)*h
+vt2 = 1-S.exp(-4*t)*(S.cos(2*x)+S.cos(2*y))/2+2*S.exp(-2*t)*S.sin(x)*S.sin(y)
+J = S.diff(vt1,x)*S.diff(vt2,y)-S.diff(vt1,y)*S.diff(vt2,x)
+J_expected = 2*S.exp(-t)*(S.exp(-2*t)-S.exp(-4*t))*S.cos(x)*S.cos(y)*(S.sin(x)-S.sin(y))
+zero_check(&#x27;heat_example_initial_first_component&#x27;,vt1.subs(t,0)-h)
+zero_check(&#x27;heat_example_initial_second_component&#x27;,S.trigsimp(vt2.subs(t,0)-h*h))
+zero_check(&#x27;heat_example_equation_first&#x27;,S.diff(vt1,t)-S.diff(vt1,x,2)-S.diff(vt1,y,2))
+zero_check(&#x27;heat_example_equation_second&#x27;,S.diff(vt2,t)-S.diff(vt2,x,2)-S.diff(vt2,y,2))
+zero_check(&#x27;heat_example_jacobian&#x27;,S.trigsimp(J-J_expected))
+# The independent one-dimensional moments factor the two-dimensional mean.
+m0 = S.integrate(S.cos(x)**2,(x,0,2*S.pi))/(2*S.pi)
+m1 = S.integrate(S.cos(x)**2*S.sin(x),(x,0,2*S.pi))/(2*S.pi)
+m2 = S.integrate(S.cos(x)**2*S.sin(x)**2,(x,0,2*S.pi))/(2*S.pi)
+zero_check(&#x27;heat_example_spatial_moment&#x27;,2*m0*m2-2*m1*m1-S.Rational(1,8))
+
+# Dimension of quadratic-coefficient closed two-forms on R^4.
+xv=S.symbols(&#x27;x0:4&#x27;)
+mons2=[xv[i]*xv[j] for i in range(4) for j in range(i,4)]
+pairs=[(i,j) for i in range(4) for j in range(i+1,4)]
+triples=[(i,j,k) for i in range(4) for j in range(i+1,4) for k in range(j+1,4)]
+columns=[]
+for pair in pairs:
+ for mon in mons2:
+  w={ij:(mon if ij==pair else S.Integer(0)) for ij in pairs}
+  dvals=[S.diff(w[j,k],xv[i])-S.diff(w[i,k],xv[j])+S.diff(w[i,j],xv[k])
+         for i,j,k in triples]
+  columns.append(S.Matrix([S.expand(q).coeff(z) for q in dvals for z in xv]))
+closure=S.Matrix.hstack(*columns)
+checks[&#x27;closed_form_constraint_rank_15&#x27;] = closure.rank()==15
+checks[&#x27;closed_quadratic_two_form_dimension_45&#x27;] = len(columns)-closure.rank()==45
+
+if not all(checks.values()):
+    raise AssertionError([k for k,v in checks.items() if not v])
+report={
+ &#x27;status&#x27;:&#x27;ALL_FINITE_SYMBOLIC_CHECKS_PASS&#x27;,
+ &#x27;number_of_checks&#x27;:len(checks),
+ &#x27;sympy_version&#x27;:S.__version__,
+ &#x27;not_verified&#x27;:[&#x27;analytic heat-flow limit arguments&#x27;,
+                 &#x27;external priority or independent proof review&#x27;,
+                 &#x27;the all-quartic closed-selection gate&#x27;,
+                 &#x27;the numerical Burkholder heat-search quadrature&#x27;],
+ &#x27;checks&#x27;:checks,
+}
+(ROOT/&#x27;verification.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({k:v for k,v in report.items() if k!=&#x27;checks&#x27;},indent=2))
+</pre>
