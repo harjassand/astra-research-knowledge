@@ -1,0 +1,140 @@
+<!doctype html><meta charset="utf-8"><title>N751 recovered original — cray_genesis/verify.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not mathematical correctness, priority, general implementation or technology validation. Scientific code syntax parsed only, never executed at intake.</aside>
+<pre>&quot;&quot;&quot;Independent exact-arithmetic verifier for the supplied transport certificates.
+Uses only the Python standard library. No optimizer, spectral gap, or simulation.
+The variational theorem and orbit-cancellation proof are stated in README.md.
+&quot;&quot;&quot;
+from __future__ import annotations
+from collections import defaultdict
+from fractions import Fraction
+import json
+from pathlib import Path
+import sys
+import time
+
+def add_term(poly: dict, shape: frozenset, coefficient: int) -&gt; None:
+    poly[shape] = poly.get(shape, 0) + coefficient
+    if poly[shape] == 0:
+        del poly[shape]
+
+def canonical(shape: frozenset[int]) -&gt; tuple[int, ...]:
+    if not shape:
+        return ()
+    first = min(shape)
+    return tuple(sorted(x - first for x in shape))
+
+def swap_gradient_sum(shape: frozenset[int]) -&gt; dict[frozenset[int], int]:
+    result = {}
+    for shift in {-x for x in shape} | {1-x for x in shape}:
+        translated = frozenset(x+shift for x in shape)
+        if (0 in translated) == (1 in translated):
+            continue
+        exchanged = ((translated - {0}) | {1}) if 0 in translated else ((translated - {1}) | {0})
+        add_term(result, exchanged, 1)
+        add_term(result, translated, -1)
+    return result
+
+def verify_lower(data: dict) -&gt; Fraction:
+    &quot;&quot;&quot;Certify q=(eta_0-eta_1)(1-eta_-1 eta_2)*g and evaluate its dual value.&quot;&quot;&quot;
+    density = Fraction(data[&#x27;density&#x27;])
+    P, B = density.numerator, density.denominator
+    scale = int(data[&#x27;scale&#x27;])
+    outer = tuple(data[&#x27;dual&#x27;][&#x27;outer&#x27;])
+    index = {x:j for j,x in enumerate(outer)}
+    if 0 in index or 1 in index or -1 not in index or 2 not in index:
+        raise ValueError(&#x27;Invalid bond environment.&#x27;)
+    terms = [(frozenset(item[&#x27;shape&#x27;]), int(item[&#x27;numerator&#x27;])) for item in data[&#x27;dual&#x27;][&#x27;terms&#x27;]]
+    # Reconstruct q in raw, squarefree occupation monomials and check every orbit.
+    qpoly = {}
+    for shape, coefficient in terms:
+        if not shape &lt;= set(outer):
+            raise ValueError(&#x27;Dual monomial outside its declared environment.&#x27;)
+        for site, sign in [(0,1),(1,-1)]:
+            add_term(qpoly, shape | {site}, sign*coefficient)
+            add_term(qpoly, shape | {site,-1,2}, -sign*coefficient)
+    orbit = defaultdict(int)
+    for shape, coefficient in qpoly.items():
+        orbit[canonical(shape)] += coefficient
+    if any(orbit.values()):
+        raise AssertionError(&#x27;Dual current does not annihilate translation orbits.&#x27;)
+    # Boolean zeta transform, using unbounded Python integers.
+    values = [0]*(1 &lt;&lt; len(outer))
+    for shape, coefficient in terms:
+        values[sum(1 &lt;&lt; index[x] for x in shape)] += coefficient
+    for bit in range(len(outer)):
+        step = 1 &lt;&lt; bit
+        for start in range(0, len(values), 2*step):
+            for offset in range(step):
+                values[start+step+offset] += values[start+offset]
+    forbidden = (1 &lt;&lt; index[-1]) | (1 &lt;&lt; index[2])
+    numerator = 0
+    for state, value in enumerate(values):
+        if state &amp; forbidden == forbidden:
+            continue # c=0 =&gt; current exactly zero.
+        occupied = state.bit_count()
+        weight = P**occupied*(B-P)**(len(outer)-occupied)
+        numerator += weight*(2*value*scale-value*value)
+    return Fraction(numerator, B**len(outer)*scale**2)
+
+def verify_upper(data: dict) -&gt; Fraction:
+    &quot;&quot;&quot;Evaluate the Dirichlet trial functional by exact local orthogonality.&quot;&quot;&quot;
+    density=Fraction(data[&#x27;density&#x27;]); P,B=density.numerator,density.denominator
+    scale=int(data[&#x27;scale&#x27;])
+    # Centered monomials h_A=product(eta_i-p), with rational trial coefficients.
+    gradient={}
+    for item in data[&#x27;primal&#x27;][&#x27;terms&#x27;]:
+        shape=frozenset(item[&#x27;shape&#x27;]); coefficient=int(item[&#x27;numerator&#x27;])
+        for a,v in swap_gradient_sum(shape).items():
+            add_term(gradient,a,coefficient*v)
+    grouped={}
+    for shape,coefficient in gradient.items():
+        outside=shape-{-1,2}
+        if not outside:
+            raise AssertionError(&#x27;Unexpected zero-degree outside factor.&#x27;)
+        mask=int(-1 in shape)+2*int(2 in shape)
+        grouped.setdefault(outside,[0,0,0,0])[mask]+=coefficient
+    grouped.setdefault(frozenset({0}),[0,0,0,0])
+    grouped.setdefault(frozenset({1}),[0,0,0,0])
+    degree=max(map(len,grouped))
+    numerator=0
+    for outside, coefficients in grouped.items():
+        s=len(outside)
+        current=int(outside==frozenset({0}))-int(outside==frozenset({1}))
+        for u,v in [(0,0),(0,1),(1,0)]: # Exactly the allowed rate contexts.
+            h1,h2=u*B-P,v*B-P
+            factors=[B*B,h1*B,h2*B,h1*h2]
+            value=current*scale*B*B+sum(a*b for a,b in zip(coefficients,factors))
+            weight=(P*(B-P))**(s-1)*P**(u+v)*(B-P)**(2-u-v)
+            numerator+=weight*value*value*B**(2*(degree-s))
+    return Fraction(numerator,2*scale**2*B**(2*degree+4))
+
+def outward_decimal(value: Fraction, places: int, upper: bool = False) -&gt; str:
+    factor=10**places
+    n,d=value.numerator*factor,value.denominator
+    scaled=(n+d-1)//d if upper else n//d
+    whole,frac=divmod(scaled,factor)
+    return f&#x27;{whole}.{frac:0{places}d}&#x27;
+
+def verify_file(path: Path) -&gt; dict:
+    started=time.perf_counter()
+    data=json.loads(path.read_text())
+    lo=verify_lower(data);hi=verify_upper(data)
+    if not lo&lt;=hi:
+        raise AssertionError(&#x27;Inconsistent variational interval.&#x27;)
+    if data.get(&#x27;lower_fraction&#x27;) and lo != Fraction(data[&#x27;lower_fraction&#x27;]):
+        raise AssertionError(&#x27;Stored lower endpoint mismatch.&#x27;)
+    if data.get(&#x27;upper_fraction&#x27;) and hi != Fraction(data[&#x27;upper_fraction&#x27;]):
+        raise AssertionError(&#x27;Stored upper endpoint mismatch.&#x27;)
+    return {&#x27;density&#x27;:data[&#x27;density&#x27;],&#x27;lower&#x27;:outward_decimal(lo,12),
+            &#x27;upper&#x27;:outward_decimal(hi,12,True),&#x27;width&#x27;:float(hi-lo),
+            &#x27;lower_fraction&#x27;:str(lo),&#x27;upper_fraction&#x27;:str(hi),
+            &#x27;verification_seconds&#x27;:time.perf_counter()-started}
+
+if __name__==&#x27;__main__&#x27;:
+    paths=[Path(p) for p in sys.argv[1:]] or sorted(Path(__file__).parent.glob(&#x27;certificate_*.json&#x27;))
+    if not paths:raise SystemExit(&#x27;No certificates found.&#x27;)
+    for path in paths:
+        result=verify_file(path)
+        print(f&quot;{path.name}: p={result[&#x27;density&#x27;]}  [{result[&#x27;lower&#x27;]}, {result[&#x27;upper&#x27;]}]  &quot;
+              f&quot;width={result[&#x27;width&#x27;]:.4g}  verified in {result[&#x27;verification_seconds&#x27;]:.3f} s&quot;)
+</pre>
