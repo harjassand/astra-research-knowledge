@@ -1,0 +1,44 @@
+# Foundational discovery wave, 12 October 2026
+
+Start with [RESEARCH_REPORT.md](RESEARCH_REPORT.md). It gives the scientific verdict, eight retained questions, the actual derivations, failed escalations, priorities and unresolved gates. The outcome is internally derived candidate mathematics and sharper questions; no independently established breakthrough or general technology advantage is claimed.
+
+## Contents
+
+- [SELECTION.md](SELECTION.md): separate selection dimensions and rejected directions.
+- [ROOT_DERIVATIONS.md](ROOT_DERIVATIONS.md): principal-investigator constructions and corrections, retaining the initial weaker helper argument.
+- `exploration/A1.md` through `C5.md`: all fifteen initial reports, including source ranges and primary references.
+- `deep/S1.md` through `S5.md`, plus `S5_inverse_challenge.md`: complete mathematical investigations. Earlier saved versions and final cross-audits are retained beside them.
+- [CLAIMS.json](CLAIMS.json): scientific, novelty, comparator and acquisition statuses.
+- [EXECUTION.json](EXECUTION.json) and [SPAWN_RECEIPTS.json](SPAWN_RECEIPTS.json): actual worker configuration and execution limits.
+- [SOURCE_PINS.json](SOURCE_PINS.json) and [SOURCE_LINKS.md](SOURCE_LINKS.md): exact source revisions, hashes, decisive paths and original-path interpretation.
+- [SESSION.json](SESSION.json), [BRIDGES.json](BRIDGES.json), `primitives/`: resumable contracts and candidate definitions following Astra's session/bridge/primitive conventions.
+- [CHECKPOINT_DRAFT.json](CHECKPOINT_DRAFT.json): complete draft outside the immutable checkpoint tree; [publication receipt](evidence/checkpoint_publication.json) records why registration was blocked.
+- [MANIFEST.json](MANIFEST.json): SHA-256 inventory; [verify_package.py](verify_package.py) checks hashes, JSON and evidence references.
+
+Original investigator reports are retained byte for byte as frozen after the explicit corrections described in the report. Some contain original absolute workspace links or relative source-checkout links. Those paths document provenance; use SOURCE_LINKS.md and the pinned repository URLs when reading on another computer. The root report uses portable links. Original versions of corrected S2, S3 and S4 reports are retained, with no claim that they contain the final statements.
+
+## Replaying finite diagnostics
+
+From this package directory, first check its frozen bytes:
+
+```sh
+python3 verify_package.py
+```
+
+Run diagnostics in a disposable copy if you want to retain the manifest unchanged: most scripts rewrite their adjacent JSON evidence, and the timed S1/S2 outputs vary between runs.
+
+```sh
+python3 evidence/root_checks.py
+python3 deep/S1_checks.py
+python3 deep/S2_verify.py
+python3 deep/S4_check.py
+python3 deep/S5_verify.py
+```
+
+S2, S4 and S5 use Python's standard library. Root and S1 additionally need SymPy; S1 also needs NumPy. The recorded runtime was Python 3.14.3, NumPy 2.5.3 and SymPy 1.14.0. No new dependency installation is required to inspect the proofs or check the manifest. S4's script checks Fourier algebra and constants, not a numerical PDE solution. S3/S5's inverse result is analytic and has no claimed numerical inversion implementation. No script certifies universal mathematical correctness, novelty or physical readiness.
+
+For exact local checkpoint validation from the Astra repository root, the draft's path is `research/2026-10-12-foundational-discovery-wave/CHECKPOINT_DRAFT.json`. Its evidence hashes were checked through `state/publish_checkpoint.py`'s `validate_record` function. The publisher and global validator fail on the inherited `updates/CR/README.md` source-reference error. No immutable checkpoint or generated branch registry was changed. Repairing that historical reference requires a separately scoped provenance decision; this package does not perform it.
+
+## Resume
+
+Use the final claims and cross-audits, then choose one of the three programmes in the report. The immediate gates are external reconstruction and focused prior-art comparison, followed by a matched algorithm or certified sensing implementation where relevant. Do not infer external verification from collaborating agents' agreement, exact finite checks, repository inclusion or these hashes.

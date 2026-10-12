@@ -1,0 +1,290 @@
+"""Reproduce S1's algebra, singular-state examples, and matched ODE comparison.
+
+Run: python3 research_wave_2026-10-12/deep/S1_checks.py
+Requires NumPy and SymPy. Writes only S1_evidence.json beside this file.
+Finite checks supplement, and do not replace, the proofs in S1.md.
+"""
+from pathlib import Path
+import json
+import time
+
+import numpy as np
+import sympy as sp
+
+
+def symbolic_star():
+    br = sp.symbols("b0r b1r", real=True)
+    bi = sp.symbols("b0i b1i", real=True)
+    cr, ci = sp.symbols("cr ci", real=True)
+    s = sp.symbols("s0 s1", real=True)
+    kvals = sp.symbols("K00 K01 K10 K11", real=True)
+    K = sp.Matrix(2, 2, kvals)
+    v = sp.Matrix(sp.symbols("v0 v1", real=True))
+    k = K * v
+    b = sp.Matrix([br[j] + sp.I * bi[j] for j in range(2)])
+    c = cr + sp.I * ci
+    bd = sp.Matrix([-sp.I * k[j] * s[j] * c for j in range(2)])
+    cd = -sp.I * sum(k[j] * b[j] for j in range(2))
+    variables = list(br) + list(bi) + [cr, ci]
+    rates = [sp.re(t) for t in bd] + [sp.im(t) for t in bd] + [sp.re(cd), sp.im(cd)]
+
+    def deriv(f):
+        return sp.expand(sum(sp.diff(f, q) * dq for q, dq in zip(variables, rates)))
+
+    z = b * sp.conjugate(c)
+    B = K.T * b
+    Q = b * sp.conjugate(B).T
+    p = sp.im(z)
+    R = sp.re(Q)
+    P = K.T * p
+    L = K.T * sp.Matrix([k[j] * s[j] for j in range(2)])
+    identities = []
+    for i in range(2):
+        identities.append(deriv(p[i]) - sum(v[a] * R[i, a] for a in range(2))
+                          + k[i] * s[i] * (cr**2 + ci**2))
+        for a in range(2):
+            identities.append(deriv(R[i, a]) + k[i] * s[i] * P[a] + L[a] * p[i])
+            identities.append(deriv(Q[i, a]) + sp.I * k[i] * s[i] * sp.conjugate((K.T * z)[a])
+                              - sp.I * L[a] * z[i])
+    assert all(sp.expand(e) == 0 for e in identities)
+    return {"identities": len(identities), "all_zero": True}
+
+
+def amp_rhs(t, a, K, control):
+    r = K.shape[0]
+    x, y, c = a[:r], a[r:2*r], a[-1]
+    k = K @ control(t)
+    return np.r_[-1j*k*y.conj()*c, -1j*k*x.conj()*c, -1j*np.dot(k, x*y)]
+
+
+def reduced(a, K):
+    r = K.shape[0]
+    x, y, c = a[:r], a[r:2*r], a[-1]
+    b = x*y
+    return np.r_[abs(x)**2, abs(y)**2, abs(c)**2, (b*c.conjugate()).imag,
+                 (b[:, None]*(K.T@b).conj()[None, :]).real.ravel()]
+
+
+def red_rhs(t, q, K, control):
+    r, d = K.shape
+    nx, ny = q[:r], q[r:2*r]
+    nc, p = q[2*r], q[2*r+1:3*r+1]
+    R = q[3*r+1:].reshape(r, d)
+    v = control(t)
+    k = K @ v
+    s = nx + ny
+    P, L = K.T@p, K.T@(k*s)
+    flux = -2*k*p
+    return np.r_[flux, flux, -sum(flux), R@v-k*s*nc,
+                 (-k[:, None]*s[:, None]*P[None, :]-p[:, None]*L[None, :]).ravel()]
+
+
+def rk4(rhs, t, y, h):
+    k1 = rhs(t, y)
+    k2 = rhs(t+h/2, y+h*k1/2)
+    k3 = rhs(t+h/2, y+h*k2/2)
+    k4 = rhs(t+h, y+h*k3)
+    return y+h*(k1+2*k2+2*k3+k4)/6
+
+
+def trajectory_check(rng):
+    r, d = 7, 2
+    K = rng.normal(size=(r, d))
+    a = rng.normal(size=2*r+1)+1j*rng.normal(size=2*r+1)
+    a[0] = 0
+    a[-1] = 0  # Start exactly on the shared-zero stratum.
+    a /= np.linalg.norm(a)
+    q = reduced(a, K)
+    control = lambda t: np.array([0.8+0.2*np.sin(3*t), -0.4+0.1*np.cos(2*t)])
+    h, steps = 0.0002, 2500
+    maxerr, max_energy_error = 0.0, 0.0
+    E0 = sum(q[:2*r])+2*q[2*r]
+    for j in range(steps):
+        t = j*h
+        a = rk4(lambda t0, aa: amp_rhs(t0, aa, K, control), t, a, h)
+        q = rk4(lambda t0, qq: red_rhs(t0, qq, K, control), t, q, h)
+        maxerr = max(maxerr, float(np.max(abs(q-reduced(a, K)))))
+        max_energy_error = max(max_energy_error, abs(float(sum(q[:2*r])+2*q[2*r])-E0))
+    assert maxerr < 1e-9
+    return {"r": r, "d": d, "time": h*steps, "steps": steps,
+            "starts_c_zero_and_x0_zero": True, "maximum_state_error": maxerr,
+            "maximum_energy_drift": max_energy_error}
+
+
+def derivative_checks(rng):
+    errs = []
+    for r, d in [(1, 1), (2, 1), (4, 1), (6, 3)]:
+        K = rng.normal(size=(r, d))
+        v = rng.normal(size=d)
+        for j in range(12):
+            a = rng.normal(size=2*r+1)+1j*rng.normal(size=2*r+1)
+            if j % 3 == 0:
+                a[-1] = 0
+            if j % 4 == 0:
+                a[0] = 0
+            x, y, c = a[:r], a[r:2*r], a[-1]
+            da = amp_rhs(0, a, K, lambda _: v)
+            dx, dy, dc = da[:r], da[r:2*r], da[-1]
+            b, db = x*y, dx*y+x*dy
+            B, dB = K.T@b, K.T@db
+            exact = np.r_[2*(x.conj()*dx).real, 2*(y.conj()*dy).real,
+                          2*(c.conjugate()*dc).real, (db*c.conjugate()+b*dc.conjugate()).imag,
+                          (db[:, None]*B.conj()[None, :]+b[:, None]*dB.conj()[None, :]).real.ravel()]
+            errs.append(float(np.max(abs(exact-red_rhs(0, reduced(a, K), K, lambda _: v)))))
+    assert max(errs) < 1e-10
+    return {"cases": len(errs), "maximum_derivative_error": max(errs)}
+
+
+def multi_center_check(rng):
+    r, m, d = 5, 3, 2
+    A = rng.normal(size=(d, r, m))
+    v = rng.normal(size=d)
+    k = np.einsum("a,aij->ij", v, A)
+    b = rng.normal(size=r)+1j*rng.normal(size=r)
+    h = rng.normal(size=m)+1j*rng.normal(size=m)
+    s = 1+abs(rng.normal(size=r))
+    db, dh = s*(k@h), -k.T@b
+    B = np.einsum("aij,i->aj", A, b)
+    dB = np.einsum("aij,i->aj", A, db)
+    P = (b[:, None]*h.conj()[None, :]).real
+    R = (b[:, None, None]*B.conj()[None, :, :]).real
+    T = (h[:, None]*h.conj()[None, :]).real
+    dP = (db[:, None]*h.conj()[None, :]+b[:, None]*dh.conj()[None, :]).real
+    dR = (db[:, None, None]*B.conj()[None, :, :]+b[:, None, None]*dB.conj()[None, :, :]).real
+    dT = (dh[:, None]*h.conj()[None, :]+h[:, None]*dh.conj()[None, :]).real
+    predP = s[:, None]*(k@T)-np.einsum("a,iaj->ij", v, R)
+    predR = np.zeros_like(R)
+    for a in range(d):
+        U = A[a].T@P
+        L = A[a].T@(s[:, None]*k)
+        predR[:, a, :] = s[:, None]*(k@U.T)+P@L.T
+    predT = -k.T@P-P.T@k
+    error = max(float(np.max(abs(dP-predP))), float(np.max(abs(dR-predR))), float(np.max(abs(dT-predT))))
+    assert error < 1e-10
+    return {"r": r, "centers": m, "control_channels": d, "maximum_derivative_error": error}
+
+
+def detuned_hull_check(rng):
+    r, d = 4, 2
+    K = rng.normal(size=(r, d))
+    k = K@rng.normal(size=d)
+    x = rng.normal(size=r)+1j*rng.normal(size=r)
+    y = rng.normal(size=r)+1j*rng.normal(size=r)
+    c = complex(*rng.normal(size=2))
+    gx, gy = abs(rng.normal(size=r)), abs(rng.normal(size=r))
+    wx, wy = rng.normal(size=r), rng.normal(size=r)
+    Ac = 0.3+0.7j
+    A = gx+gy+1j*(wx+wy)
+    dx = -(gx+1j*wx)*x-1j*k*y.conj()*c
+    dy = -(gy+1j*wy)*y-1j*k*x.conj()*c
+    dc = -Ac*c-1j*np.dot(k, x*y)
+    b, db, s = x*y, dx*y+x*dy, abs(x)**2+abs(y)**2
+    W = rng.normal(size=(r, r))+1j*rng.normal(size=(r, r))
+    M = np.linalg.solve(W, A[:, None]*W)
+    B, dB = W.T@b, W.T@db
+    Q = b[:, None]*B.conj()[None, :]
+    z, Z, L = b*c.conjugate(), W.T@(b*c.conjugate()), W.T@(k*s)
+    dQ = db[:, None]*B.conj()[None, :]+b[:, None]*dB.conj()[None, :]
+    predicted = -A[:, None]*Q-Q@M.conj()-1j*(k*s)[:, None]*Z.conj()[None, :]+1j*z[:, None]*L.conj()[None, :]
+    dz = db*c.conjugate()+b*dc.conjugate()
+    predz = -(A+Ac.conjugate())*z+1j*b*np.dot(k, b).conjugate()-1j*k*s*abs(c)**2
+    # A dynamically transported basis satisfies dot W-DW=W C.
+    C = rng.normal(size=(r, r))+1j*rng.normal(size=(r, r))
+    dW = A[:, None]*W+W@C
+    moving_dB = dW.T@b+W.T@db
+    moving_dQ = db[:, None]*B.conj()[None, :]+b[:, None]*moving_dB.conj()[None, :]
+    moving_pred = -A[:, None]*Q+Q@C.conj()-1j*(k*s)[:, None]*Z.conj()[None, :]+1j*z[:, None]*L.conj()[None, :]
+    delta = abs(x)**2-abs(y)**2
+    exact_delta = 2*(x.conj()*dx-y.conj()*dy).real
+    pred_delta = -(gx-gy)*np.sqrt(delta**2+4*abs(b)**2)-(gx+gy)*delta
+    errs = [float(np.max(abs(dQ-predicted))), float(np.max(abs(dz-predz))),
+            float(np.max(abs(moving_dQ-moving_pred))), float(np.max(abs(exact_delta-pred_delta)))]
+    assert max(errs) < 1e-10
+    return {"static_hull_derivative_error": errs[0], "z_derivative_error": errs[1],
+            "moving_hull_derivative_error": errs[2], "Lipschitz_product_realization_error": errs[3]}
+
+
+def ambient_blowup_check():
+    t = sp.symbols("t", real=True)
+    a = e = -(1-t)**-2
+    n, p, R = (1-t)**-2, (1-t)**-3, (1-t)**-4
+    differences = [sp.diff(a, t)+2*p, sp.diff(e, t)+2*p, sp.diff(n, t)-2*p,
+                   sp.diff(p, t)-R+(a+e)*n, sp.diff(R, t)+2*(a+e)*p]
+    assert all(sp.simplify(f) == 0 for f in differences)
+    return {"symbolic_identities": len(differences), "blows_up_at": 1,
+            "physical_initial_state": False}
+
+
+def examples():
+    K = np.ones((4, 1))
+    b1 = np.array([1, 1, -1, -1], dtype=complex)
+    b2 = np.array([1, -1, 1, -1], dtype=complex)
+    a1, a2 = np.r_[np.ones(4), b1, 0j], np.r_[np.ones(4), b2, 0j]
+    assert np.array_equal(reduced(a1, K), reduced(a2, K))
+    ell = np.array([1, 1, 0, 0])
+    curvature = [float(2*abs(ell@b)**2) for b in [b1, b2]]
+    D = (b1[:, None]*b1.conj()[None, :]-b2[:, None]*b2.conj()[None, :]).real
+    assert np.max(abs(D@K)) == 0 and np.max(abs(np.diag(D))) == 0
+    assert curvature == [8, 0]
+    # Real closure merges Re z=+1 and -1. Pair-center detuning delta=1 separates them.
+    detuned_p_rates = [-1-1, -1+1]  # k=1,s=2,nc=1,R=1,p=0.
+    return {"new_control_counterexample": {"old_K": K.tolist(), "b1": b1.real.tolist(),
+             "b2": b2.real.tolist(), "new_coupling": ell.tolist(), "central_action_curvatures": curvature,
+             "D_eigenvalues": np.linalg.eigvalsh(D).tolist()},
+            "uniform_detuning_counterexample": {"same_actions_p_R": True,
+             "z_values": [1, -1], "detuning": 1, "p_derivatives": detuned_p_rates}}
+
+
+def gram_reconstruction(rng):
+    result = {}
+    for r in [2, 3, 4]:
+        # Unknown off-diagonals -> row sums of S after subtracting known diagonal.
+        pairs = [(i, j) for i in range(r) for j in range(i+1, r)]
+        M = np.zeros((r, len(pairs)))
+        for a, (i, j) in enumerate(pairs):
+            M[i, a] = M[j, a] = 1
+        rank = int(np.linalg.matrix_rank(M))
+        result[str(r)] = {"off_diagonal_unknowns": len(pairs), "row_sum_map_rank": rank,
+                          "full_Gram_reconstructible": rank == len(pairs)}
+    return result
+
+
+def benchmark(rng):
+    rows = []
+    for r, d in [(16, 1), (64, 1), (256, 1), (256, 4)]:
+        K = rng.normal(size=(r, d))
+        a = rng.normal(size=2*r+1)+1j*rng.normal(size=2*r+1)
+        a /= np.linalg.norm(a)
+        q = reduced(a, K)
+        v = rng.normal(size=d)
+        control = lambda _: v
+        times = []
+        for rhs, state in [(amp_rhs, a), (red_rhs, q)]:
+            batches = []
+            for _ in range(5):
+                start = time.perf_counter()
+                for _ in range(250):
+                    rhs(0, state, K, control)
+                batches.append((time.perf_counter()-start)/250)
+            times.append(float(np.median(batches)))
+        rows.append({"r": r, "d": d, "amplitude_real_variables": 4*r+2,
+                     "real_closure_coordinates": 3*r+1+r*d,
+                     "amplitude_rhs_seconds": times[0], "closure_rhs_seconds": times[1],
+                     "closure_over_amplitude_rhs_time": times[1]/times[0]})
+    return {"warning": "NumPy microbenchmark, one process; no physical or asymptotic speed claim", "rows": rows}
+
+
+def main():
+    rng = np.random.default_rng(20261012)
+    evidence = {"symbolic_star": symbolic_star(), "star_derivatives": derivative_checks(rng),
+                "trajectory": trajectory_check(rng), "multi_center": multi_center_check(rng),
+                "detuned_hull": detuned_hull_check(rng), "ambient_blowup": ambient_blowup_check(),
+                "examples": examples(), "Gram_reconstruction": gram_reconstruction(rng),
+                "matched_rhs_benchmark": benchmark(rng)}
+    destination = Path(__file__).with_name("S1_evidence.json")
+    destination.write_text(json.dumps(evidence, indent=2)+"\n")
+    print(json.dumps(evidence, indent=2))
+
+
+if __name__ == "__main__":
+    main()
