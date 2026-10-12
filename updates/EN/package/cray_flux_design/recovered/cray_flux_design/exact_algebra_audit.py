@@ -1,0 +1,55 @@
+"""Exact rational finite fixtures for the stationary-response identity.
+
+This verifies finite examples, not the general theorem. Optimisation truth in each
+2-control fixture is the largest of four rational corner values; the numerical LP
+proposal is checked after explicit corner snapping, not called an exact solver.
+"""
+from itertools import product
+from pathlib import Path
+import json
+import numpy as np
+import sympy as sp
+from flux_design import build_outer_lp,solve_outer
+
+root=Path(__file__).resolve().parent
+rng=np.random.default_rng(450901)
+checks=0;cases=[]
+for case in range(12):
+    N=5;k=2
+    W=sp.Matrix(rng.integers(1,5,size=(N,N)).tolist())
+    for j in range(N):W[j,j]=0
+    for j in range(N):W[j,j]=-sum(W[i,j] for i in range(N) if i!=j)
+    nu=sp.Matrix([sp.Rational(1,2),sp.Rational(1,2),0,0,0]);rho=sp.Rational(2,3)
+    Q0=W+rho*(nu*sp.ones(1,N)-sp.eye(N))
+    B=sp.zeros(N,k);B[0,0]=-1;B[3,0]=1;B[1,1]=-1;B[4,1]=1
+    reward=sp.Matrix([0,1,0,1,0]);U=[sp.Rational(7,3),sp.Rational(11,5)]
+    def stat(u):
+        Q=Q0.copy()
+        for j in range(k):Q[:,j]+=B[:,j]*u[j]
+        A=Q.copy();A[N-1,:]=sp.ones(1,N);rhs=sp.zeros(N,1);rhs[N-1]=1
+        p=A.inv()*rhs
+        assert sum(p)==1 and min(p)>0 and Q*p==sp.zeros(N,1)
+        return p
+    p0=stat([0,0]);probes=[stat([U[0],0]),stat([0,U[1]])]
+    r=sp.Matrix([U[j]*probes[j][j] for j in range(k)])
+    F=sp.Matrix([[probes[j][i]-p0[i] for j in range(k)] for i in range(k)])
+    d=sp.Matrix([(reward.T*(p-p0))[0] for p in probes])
+    for u in [[sp.Rational(1,2),sp.Rational(4,7)],[U[0],U[1]],[0,sp.Rational(2,5)]]:
+        p=stat(u);alpha=sp.Matrix([u[j]*p[j]/r[j] for j in range(k)])
+        assert p==p0+sum((alpha[j]*(probes[j]-p0) for j in range(k)),sp.zeros(N,1))
+        assert sp.Matrix(p[:k])==sp.Matrix(p0[:k])+F*alpha
+        assert (reward.T*p)[0]==(reward.T*p0)[0]+(d.T*alpha)[0]
+        checks+=3
+    values=np.array([[float(p[i]) for i in range(k)]+[float((reward.T*p)[0])] for p in [p0]+probes])
+    # A background bound of 20 dominates this finite fixture's exit rates.
+    model=build_outer_lp(values,np.array(list(map(float,r))),np.array(list(map(float,U))),0,0,20+float(rho))
+    fit=solve_outer(model)
+    snapped=[0 if abs(v)<1e-7 else U[j] for j,v in enumerate(fit['rates'])]
+    assert all(min(abs(v),abs(v-float(U[j])))<1e-7 for j,v in enumerate(fit['rates']))
+    actual=(reward.T*stat(snapped))[0]
+    corners=[(reward.T*stat([U[j]*v[j] for j in range(k)]))[0] for v in product([0,1],repeat=k)]
+    assert actual==max(corners);checks+=1
+    cases.append(dict(index=case,optimal_value_exact=str(actual),policy=list(map(str,snapped))))
+result=dict(cases=12,exact_equalities_and_optimum_checks=checks,status='All finite rational assertions passed; not a general proof or novelty check.',fixtures=cases)
+(root/'exact_algebra_results.json').write_text(json.dumps(result,indent=2))
+print(json.dumps({k:v for k,v in result.items() if k!='fixtures'},indent=2))

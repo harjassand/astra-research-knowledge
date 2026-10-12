@@ -1,0 +1,50 @@
+# Restart state: CRAY flux-design candidate
+
+## Preserve
+
+The exact single- and mixed-probe response/flux polytope; regenerative endpoint and
+count acquisition; ejection-based geometric event work; cap error
+Lambda(1+Lambda/rho)/K; rationally checked outer-LP certificate; all failures.
+
+The main integer experiment reports 4.4 million episodes, rates (600,0,600,0), and
+a nominal 99% global-regret upper bound 0.036812371465382424 under the stated model.
+Its target contains reset rate 1. It did not infer the unreset steady state.
+
+## Do not assume
+
+Do not claim the finite response identity, occupation-measure LP, reset identity,
+or the idea of control from data is new. Do not equate a rank-one mathematical
+source with an observed chemical or biological macrostate. Do not omit preparation,
+clock/actuator calibration, counting bandwidth, rare-exposure cost, or physical time.
+Do not use the mixed example as a successful confidence certificate: its upper
+bound was 1, even though the mean flux basis became well conditioned.
+
+## Strongest next attack
+
+Target an *acquired intervention image*, not another algebraic re-expression:
+
+1. Prove a sequential mixed-probe design rule with a measured confidence guarantee
+   for obtaining an informative flux basis. All attempted probes must be charged.
+   The positive example changes a second-channel flux from 9.22e-10 to 0.490148
+   without a source-preparation oracle. No uniform basis-discovery theorem exists
+   in this packet.
+2. Determine whether an observable, testable condition bounds the mismatch between
+   a real pooled actuator and a small microscopic-source image. Two affine-control
+   five-state models agree on all isolated path data but differ in joint output by
+   0.985173 at rate 100. A single-probe fit cannot supply that condition.
+3. If source re-preparation or richer event-path access is introduced, specify how
+   it is acquired and compare semi-Markov/options and existing event-based control
+   under exactly that access. Do not claim a gain by silently strengthening the oracle.
+4. Verify priority against finite Markov perturbation, stationary/event-based control,
+   structured MDP, and behavioural/data-driven control literature before promoting
+   the integrated compiler as an original capability.
+
+## Promotion test
+
+An advance should demonstrate a scientifically relevant task that becomes solvable
+with a nonvacuous certificate at a measured end-to-end resource budget, with its
+intervention structure verified rather than assumed from a simulator. Better toy
+LP timings or more small instances alone do not close this gate.
+
+No repository mutation has been made. Prior bounded-field Ising and Gaussian
+families remain separate research capital, not dependencies of this construction.

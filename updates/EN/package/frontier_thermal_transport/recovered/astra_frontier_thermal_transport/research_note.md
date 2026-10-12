@@ -1,0 +1,580 @@
+# ASTRA FRONTIER — Boundary-certified thermal counterfactuals
+
+**Investigation date:** 12 October 2026.  
+**Status:** Complete finite-dimensional derivations supplied below; small-system floating-point falsification checks executed; one exact rational localization certificate executed. No independent proof review, formal verification of these theorems, experimental validation, or priority clearance. This is not completion of the civilisation-level North Star.
+
+## 1. Capability selection and comparison
+
+The selected task is to predict equilibrium observables and free-energy changes caused by a specified **local Hamiltonian modification**, using fresh independent specimens of **one reference equilibrium state**, without learning or solving the unchanged bulk. A physically implemented local quantum filter is one interface. Product-Pauli measurements and a classical ratio estimator are a weaker, more expensive interface.
+
+Three consequential possibilities were considered:
+
+| Capability | Relevant strong specialised approaches | Decisive obstruction for this investigation |
+|---|---|---|
+| Certified ground-state energies, phases, and chemical energy differences | Variational/tensor-network calculations, lower-bound relaxations, quantum energy estimation | Worst-case electronic-structure hardness; a useful upper bound does not automatically give a tight lower bound; state preparation and model accuracy remain costs. |
+| Certified long-time transport and response | Real-time quantum simulation and tensor-network influence-function methods | Long-time operator/temporal complexity and certification of slow processes; finite local data do not automatically determine a long-time forecast. |
+| Finite-temperature local counterfactual design | Quantum belief propagation (QBP), equilibrium convex hierarchies, Markov-entropy methods, learning within phases | Access to the reference Gibbs state, localization of the actual update, and normalization/rare-reference-event costs. This admits an explicit, locally computable certificate. |
+
+These are distinct obstructions, not one assertion that exponential Hilbert-space dimension makes every physical question hard. The selected interface deliberately supplies actual reference specimens. It does **not** solve generic Gibbs-state preparation from a Hamiltonian description.
+
+### Mechanisms examined
+
+1. **Local marginal / entropy certificates.** Already powerful prior art. Their existence is not new; useful finite-level convergence outside controlled regimes is the missing part.
+2. **Dissipative or Poisson-equation witnesses.** Attractive for observable-specific steady-state prediction, but a small stationarity residual by itself does not certify equilibrium or control a hidden slow mode. A mixing/inverse-generator bound cannot be assumed free.
+3. **Local thermal transport from one reference.** Developed below. It removes an unknown-bulk reconstruction requirement, but exposes a genuine overlap cost.
+4. **Removing unitary motion before charging reweighting.** Developed in Section 10. It can lower the charged cost on appropriate paths, but does not by itself solve useful extensive non-isospectral design.
+
+## 2. Exact contract and conventions
+
+All spaces are finite dimensional. Units have hbar=k_B=1. The trace norm is ||A||_1, **without** a factor 1/2. Operator norm is ||A||. Temperature is specified by beta>0.
+
+Split the degrees of freedom into a controlled patch R and an exterior E:
+
+\[
+H=H_R+H_E+\sum_{a\in\partial R}B_a.
+\]
+
+H_R and a list of small crossing terms B_a are supplied, with certified coefficients or uncertainty bounds. H_E acts only on E and need not be known. The interface supplies iid copies of rho_H=exp(-beta H)/Z(H). This is a physical input, not a free computational oracle. Preparation time, true equilibration, independence, and temperature/model accuracy must be charged or justified separately.
+
+The requested change is a Hermitian V_0 supported on R. Let
+
+\[
+m=\lambda_{\min}(V_0),\quad M=\lambda_{\max}(V_0),\quad
+c=(M+m)/2,\quad V=V_0-cI,\quad v=\|V\|=(M-m)/2,\quad w=M-m.
+\]
+
+Shifting by cI does not change the normalized target Gibbs state. Certified spectral enclosures can replace exact extrema with a conservatively larger v. Define H_s=H+sV and h_s=H_R+sV for 0<=s<=1.
+
+An output observable O has ||O||<=1 and a specified measurement implementation. For a local readout, the relevant reference marginal is on R union supp(O), not on the whole bulk.
+
+## 3. Known thermal identity, explicitly credited
+
+The input identity is **quantum belief propagation**, not a new invention of this run [1,2]. Define
+
+\[
+\Phi_{h,\beta}(A)=\int_{\mathbb R} f_\beta(t)e^{ith}Ae^{-ith}\,dt,
+\qquad
+\widehat f_\beta(\omega)=\frac{\tanh(\beta\omega/2)}{\beta\omega/2},
+\]
+
+where the quotient at zero is 1 and
+
+\[
+f_\beta(t)=\frac{2}{\pi\beta}
+\log\coth\!\left(\frac{\pi|t|}{2\beta}\right).
+\]
+
+This is a nonnegative probability density with an integrable singularity at zero. Expanding log((1+x)/(1-x)) gives the useful exact tail
+
+\[
+q_\beta(u)=2\int_u^\infty f_\beta(t)dt
+=\frac8{\pi^2}\sum_{j\ge1,\ j\text{ odd}}\frac{e^{-j\pi u/\beta}}{j^2}
+\le e^{-\pi u/\beta}.
+\tag{1}
+\]
+
+Its first moment is 7 zeta(3) beta/pi^3, and
+
+\[
+\int_0^\infty t q_\beta(t)dt=\beta^2/12.
+\tag{2}
+\]
+
+For completeness, the exact differentiation identity is
+
+\[
+\frac{d}{ds}e^{-\beta H_s}
+=-\frac\beta2\{\Phi_{H_s,\beta}(V),e^{-\beta H_s}\}.
+\tag{3}
+\]
+
+**Proof.** In an eigenbasis of H_s, the Fréchet derivative of the exponential has entry
+V_ab (exp(-beta E_a)-exp(-beta E_b))/(E_a-E_b), with the continuous limit for equal eigenvalues. The right side of (3) has entry
+-beta/2 (exp(-beta E_a)+exp(-beta E_b)) times tanh(beta(E_a-E_b)/2)/(beta(E_a-E_b)/2) V_ab. These expressions coincide. Degeneracies create no division-by-gap requirement.
+
+Let W_s solve
+
+\[
+W_s'=-\frac\beta2\Phi_{H_s,\beta}(V)W_s,\qquad W_0=I.
+\]
+
+Differentiating W_s exp(-beta H) W_s^dagger and using uniqueness of the linear matrix equation proves
+
+\[
+e^{-\beta H_s}=W_s e^{-\beta H}W_s^\dagger.
+\tag{4}
+\]
+
+Because Phi is an average of unitary conjugations, ||Phi(V)||<=v. Both W_s and its inverse therefore have norm at most exp(beta v s/2). Exactly the same statements about norm and invertibility hold for the patch propagator W_R,s obtained by replacing H_s by h_s.
+
+## 4. Boundary certificate: theorem and full proof
+
+For t>=0 define the **two-sided** boundary commutator envelope
+
+\[
+b_R(s,t)=\frac12\sum_{a\in\partial R}\left(
+\|[B_a,e^{ith_s}Ve^{-ith_s}]\|
++\|[B_a,e^{-ith_s}Ve^{ith_s}]\|\right).
+\tag{5}
+\]
+
+Both signs are needed: their operator norms are not assumed equal. Each norm is computable on R union supp(B_a); H_E is absent.
+
+Set
+
+\[
+L_R=\int_0^1ds\int_0^\infty q_\beta(t)b_R(s,t)dt,
+\qquad \eta_R=\frac\beta2 L_R.
+\tag{6}
+\]
+
+A rigorous upper envelope can replace b_R throughout. Let
+
+\[
+K=e^{-\beta v/2}W_1,\qquad K_R=e^{-\beta v/2}W_{R,1}\otimes I_E.
+\]
+
+### Theorem 1 — Locally certifiable thermal transport
+
+K and K_R are contractions. For any finite exterior H_E,
+
+\[
+\boxed{\|K-K_R\|\le\eta_R.}
+\tag{7}
+\]
+
+For every input density operator rho, not only Gibbs inputs,
+
+\[
+\boxed{\operatorname{Tr}(K_R\rho K_R^\dagger)\ge e^{-2\beta v}=e^{-\beta w}.}
+\tag{8}
+\]
+
+For the exact reference rho_H, the normalized K output is the exact target rho_(H+V_0). Therefore, writing p_R=Tr(K_R rho_H K_R^dagger),
+
+\[
+\boxed{
+\left\|\frac{K_R\rho_H K_R^\dagger}{p_R}-\rho_{H+V_0}\right\|_1
+\le\min\{2,2\eta_R/\sqrt{p_R}\}.}
+\tag{9}
+\]
+
+No global gap, global mixing rate, correlation decay, or knowledge of the exterior Hamiltonian is a hypothesis. Small L_R is a **certificate to compute**, not a property assumed to hold cheaply for every system.
+
+**Proof of (7).** For fixed s compare time evolution under H_s with that under h_s+H_E. Duhamel's identity and unitary invariance give, separately for either sign,
+
+\[
+\|e^{\pm itH_s}Ve^{\mp itH_s}-e^{\pm ith_s}Ve^{\mp ith_s}\|
+\le\int_0^t\sum_a\|[B_a,e^{\pm iuh_s}Ve^{\mp iuh_s}]\|du.
+\]
+
+H_E commutes with the patch evolution, so it does not enter the integrand. Integrating with the positive even density f_beta and interchanging nonnegative integrals yields
+
+\[
+\|\Phi_{H_s,\beta}(V)-\Phi_{h_s,\beta}(V)\|
+\le\int_0^\infty q_\beta(t)b_R(s,t)dt.
+\]
+
+Variation of constants for W_1-W_R,1 gives an integral of the generator difference between a full propagator from s to 1 and a patch propagator from 0 to s. Their norm product is at most exp(beta v/2), independent of s. Multiplication by exp(-beta v/2) cancels this factor, proving (7).
+
+**Proof of (8).** The inverse norm bound implies sigma_min(W_R,1)>=exp(-beta v/2), so sigma_min(K_R)>=exp(-beta v). Squaring and averaging against any rho proves (8).
+
+**Postselection lemma proving (9).** More generally, for contractions A,C with ||A-C||<=delta and p_C=Tr(C rho C^dagger)>0, assuming p_A>0,
+
+\[
+\left\|\frac{A\rho A^\dagger}{p_A}-\frac{C\rho C^\dagger}{p_C}\right\|_1
+\le\min\{2,2\delta/\sqrt{p_C}\},
+\quad |\sqrt{p_A}-\sqrt{p_C}|\le\delta.
+\tag{10}
+\]
+
+Purify rho as psi and write u=(A tensor I)psi, z=(C tensor I)psi. Then ||u-z||<=delta. The component of z perpendicular to u has norm at most delta. The trace distance of the normalized pure states is twice the sine of their angle, at most 2delta/||z||. Partial trace is contractive. The probability statement is the reverse triangle inequality. Equation (9) follows from (4), (7), and (10).
+
+### Finite-horizon certificate
+
+For every T>0, define the alternative certificate
+
+\[
+L_R^{(T)}:=\int_0^1ds\int_0^Tq_\beta(t)b_R(s,t)dt+2v q_\beta(T)
+\le\int_0^1ds\int_0^Tq_\beta(t)b_R(s,t)dt+2v e^{-\pi T/\beta}.
+\tag{11}
+\]
+
+Equations (7)-(9) remain valid with eta_R replaced by beta L_R^(T)/2. This bounds the actual generator/transport error; it is **not** asserted that the integral L_R in (6) is at most L_R^(T).
+
+To justify the tail, split the original f_beta integral at |t|=T and bound the difference of two unitary conjugations of V by 2v on the omitted part. On the retained part, Fubini gives q_beta(t)-q_beta(T); replacing this by the larger q_beta(t) yields (11). One must not incorrectly infer (11) by bounding the omitted b_R integral directly by 2v q_beta(T).
+
+### Boundary uncertainty
+
+If an uncertain boundary term B has support meeting R in S and ||B||<=J, then
+
+\[
+\|[B,A]\|\le 2J\|A-\mathcal E_S(A)\|,
+\]
+
+where E_S replaces the R degrees of freedom in S by identity times normalized partial trace. E_S(A) commutes with every such B. This gives a computable robust envelope; adding known central terms and uncertainty radii is also possible. A term with unknown support or no norm bound is not covered.
+
+## 5. A noncommuting exact rational certificate
+
+The numerical example uses a five-spin chain. Its three-spin central patch, relabeled 1,2,3, has
+
+\[
+H_R=.47X_1+.17Z_1+.50X_2+.15Z_2+.53X_3+.13Z_3
++\sum_{j=1}^{2}(.35X_jX_{j+1}+.21Y_jY_{j+1}+.28Z_jZ_{j+1}),
+\]
+
+and V=.25X_2+.40Z_2. The two exterior crossing edges have the same XX, YY, ZZ coefficients. They do not commute with H_R in general, but they commute with V at t=0. Their summed term norms are exactly J_boundary=42/25.
+
+The exact Pauli expansion gives
+
+\[
+\|[H_R,V]\|\le C_1=1711/1000.
+\]
+
+Since [h_s,V]=[H_R,V], unitary differentiation gives
+||exp(ith_s)V exp(-ith_s)-V||<=|t| C_1. Consequently
+
+\[
+b_R(s,t)\le 2J_{\partial}C_1 t.
+\]
+
+Using (2),
+
+\[
+\eta_R\le\frac{\beta^3 J_{\partial}C_1}{12}.
+\]
+
+At beta=1/2 this is exactly 11977/400000. Here v=sqrt(89)/20<1/2, so exp(beta v)<=exp(1/4)<=4/3. Equations (8)-(9) give the **rigorous rational bound**
+
+\[
+\boxed{\|\rho_{\mathrm{patch\ filter}}-\rho_{H+V}\|_1
+\le11977/150000<0.080.}
+\tag{12}
+\]
+
+The derivation uses no exterior Hamiltonian and is valid for any finite exterior with the specified crossing terms. The rational Pauli arithmetic in checks.py was executed. This certifies the ideal patch filter's localization error; it does **not** certify the floating-point ODE solver or a noisy physical implementation.
+
+## 6. From a theorem to prediction and acquisition costs
+
+### Compiled filter, observed acceptance, and uncertainty
+
+Suppose the actually implemented single successful Kraus operator K_hat is a contraction with ||K_hat-K_R||<=eta_comp. Set delta=eta_R+eta_comp. With exact reference states, its normalized accepted output has trace-norm error at most 2delta/sqrt(p_hat). A binomial lower confidence bound p_L>0 may replace p_hat. For ||O||<=1,
+
+\[
+|\widehat m-\operatorname{Tr}(O\rho_{H+V_0})|
+\le\epsilon_{\rm stat}+2\delta/\sqrt{p_L}.
+\tag{13}
+\]
+
+The confidence for p_L and the accepted-sample estimate must be combined, not counted twice as the same guarantee. Use a fixed pilot sample or an anytime-valid confidence method when adapting the stopping rule.
+
+If the actual reference marginal on R union supp(O) is within trace norm d_ref of the ideal one, and p_L>d_ref, a conservative observable bound is
+
+\[
+\epsilon_{\rm stat}+\frac{2d_{\rm ref}}{p_L}
++\frac{2\delta}{\sqrt{p_L-d_{\rm ref}}}.
+\tag{14}
+\]
+
+This follows from contractivity of the successful trace-nonincreasing map, a normalized-output triangle inequality, and the fact that its ideal success probability is at least p_L-d_ref. A local reference bound is enough for a local readout; a claim about global output states would require a global reference bound.
+
+General decoherence does not necessarily correspond to a nearby single Kraus operator. A diamond-norm bound d_inst on the successful instrument contributes a conservative normalized error of order 2d_inst/p_L; it cannot silently be absorbed into the more favorable square-root operator bound. Calibration, unknown boundary coefficients, and temperature error require their own bounds. Merely observing apparent stationarity is not a certificate that d_ref is small.
+
+### Physical filter interface
+
+A k-qubit contraction can be embedded in a unitary on k qubits plus an ancilla, for example
+
+\[
+U_K=\begin{pmatrix}K&\sqrt{I-KK^\dagger}\\
+\sqrt{I-K^\dagger K}&-K^\dagger\end{pmatrix}.
+\]
+
+This is an explicit local operation, not an unknown-system imaginary-time oracle. It still requires local coherent control and calibration. Generic dense synthesis has exponentially many elementary parameters/gates in k; no claim is made that this is easy on an ordinary chemical specimen.
+
+With ideal filters, estimating one bounded observable to statistical error epsilon and constant confidence costs expected
+
+\[
+O\left(\frac{1}{p_R\epsilon^2}\right)
+\le O\left(\frac{e^{\beta w}}{\epsilon^2}\right)
+\tag{15}
+\]
+
+reference copies. Logarithmic confidence factors and a negative-binomial/Chernoff budget give a high-probability version. Failed attempts, preparation of each copy, local gate time, ancilla reset, and measurement are included. If eta_comp<=exp(-beta v)/2 then p_hat>=e^(-beta w)/4, preserving this order. There is no free amplitude amplification: the input does not include coherent reference preparation and reflections.
+
+### Product-measurement alternative
+
+Coherent filtering is unnecessary for a numerical prediction. Define A=K_R^dagger O K_R and Q=K_R^dagger K_R. Then the patch-filter prediction is
+
+\[
+\frac{\operatorname{Tr}(\rho_H A)}{\operatorname{Tr}(\rho_H Q)}.
+\tag{16}
+\]
+
+Expand the two known local operators in Pauli strings, A=sum a_P P and Q=sum q_P P. To estimate a Pauli expansion, sample P proportional to |a_P|, measure that product Pauli, and return sign(a_P) times its outcome times L_A=sum|a_P|. This is an unbiased estimator with magnitude at most L_A. Apply the same construction to Q.
+
+A standard ratio error budget gives
+
+\[
+O\left(\frac{L_A^2+L_Q^2}{p_R^2\epsilon^2}\log\frac1\alpha\right)
+\tag{17}
+\]
+
+copies. On an ell-qubit support, L_A<=2^ell ||A|| and similarly for Q. Thus an elementary worst-case bound is O(4^ell e^(2 beta w) epsilon^(-2) log(1/alpha)). This alternative uses only product-Pauli measurement settings, but pays a worse generic overlap and patch-size cost. It is not claimed optimal. Computing the coefficient lists is also charged.
+
+The two interfaces must not be conflated: (15)'s favorable acceptance dependence is not a free guarantee for product measurements.
+
+### Classical computation and a constructive approximation bound
+
+Let g=beta v/2. The patch generator G_s=-beta Phi_(h_s)(V)/2 has norm <=g. Real-time Duhamel gives the Lipschitz constant
+
+\[
+\|G_s-G_u\|\le\kappa |s-u|,\qquad
+\kappa=\frac{7\zeta(3)}{\pi^3}\beta^2v^2.
+\]
+
+Approximate G_s by Hermitian matrices Ghat_j on N equal s-intervals, with ||Ghat_j||<=g and pointwise generator error <=nu at the left endpoint. Define
+
+\[
+K_{\rm pc}=\prod_{j=N-1}^{0}\left[e^{-g/N}e^{\widehat G_j/N}\right].
+\]
+
+Every bracket is a contraction with minimum singular value at least exp(-2g/N). The same variation-of-constants argument gives
+
+\[
+\|K_{\rm pc}-K_R\|\le\kappa/(2N)+\nu.
+\tag{18}
+\]
+
+The order of the matrix product follows increasing time from right to left. Matrix-exponential/synthesis error is an additional budget. This supplies a constructive path discretization with N=O(kappa/eta_comp), not an exact ODE oracle.
+
+To approximate Phi, truncate time with the explicit kernel tail, partition the finite interval, integrate the scalar nonnegative kernel weights, and approximate unitary conjugations on each cell. ||d/dt(exp(ith)V exp(-ith))||<=2||h||v bounds the cell error, including the cell at zero where the kernel itself is singular. Taylor remainders for matrix exponentials and interval bounds on scalar weights provide finite-bit enclosures. Small spectral gaps need not be resolved. Hermitian norm clipping with certified margins can enforce the generator bound.
+
+Dense storage is O(4^k) numbers. Dense matrix operations on R union supp(B_a) cost order 8^(k+r) arithmetic operations for a crossing term adding at most r sites, multiplied by the actual number of quadrature cells, path steps, and norm/synthesis calculations. Bit precision, numerical magnitudes beta||h_s||, and input coefficient precision remain parameters. No polylog(1/epsilon) total algorithm is claimed, and no practical large-k compiler was implemented in this run. The generic constructive procedure is exponential in patch size, not in the unspecified exterior size.
+
+## 7. Free-energy certificates and a restricted inverse-design objective
+
+For the **exact** K,
+
+\[
+p_K=e^{-\beta v}Z(H+V)/Z(H),\qquad
+\boxed{F(H+V_0)-F(H)=m-\beta^{-1}\log p_K.}
+\tag{19}
+\]
+
+Given a confidence interval [p_L,p_U] for the compiled filter's success and ||K-K_hat||<=delta, (10) gives
+
+\[
+p_K\in\left[(\max\{0,\sqrt{p_L}-\delta\})^2,
+\min\{1,(\sqrt{p_U}+\delta)^2\}\right].
+\tag{20}
+\]
+
+Intersect with [exp(-beta w),1] and apply the decreasing logarithmic function in (19). With reference uncertainty, first enlarge the probability interval appropriately. If the measured interval is inconsistent with every admissible ideal probability, the assumptions or calibration fail; an empty interval is not a successful certificate.
+
+For affine controls V_theta=sum_(j=1)^p theta_j O_j on R, ||O_j||<=1, and target moments m*, define
+
+\[
+G(\theta)=\log\frac{Z(H+V_\theta)}{Z(H)}+\beta\theta\cdot m^*.
+\]
+
+Then
+
+\[
+\nabla G=\beta(m^*-m_\theta),\qquad
+0\preceq\nabla^2G\preceq\beta^2p I.
+\tag{21}
+\]
+
+The Hessian is the positive Bogoliubov-Kubo-Mori covariance. Its quadratic form is bounded above by beta^2||sum u_j O_j||^2<=beta^2p||u||_2^2. Every gradient query can be estimated by a filter or ratio measurement using fresh copies of the same reference, rather than assuming an oracle that prepares a new Gibbs state at each iterate.
+
+On a compact convex control set, ordinary inexact convex optimization is therefore possible with explicitly charged gradient calls, assuming the patch certificates and beta osc(V_theta) remain affordable. A computable first-order gap, enlarged by gradient error times domain diameter, certifies objective suboptimality. No unreviewed strong-convexity theorem is needed.
+
+This is not arbitrary inverse materials design: unattainable target moments need not be achieved, a boundary minimizer need not have zero moment residual, and nonconvex chemical synthesis/phase-selection landscapes do not become convex merely by this reformulation. Report the measured moment residual separately. For M individually evaluated candidates there is at least O(M) classical/output work; the physical-query accounting depends on the chosen interface and any explicitly justified data reuse.
+
+## 8. Matching information obstruction, even for a local observable
+
+### Theorem 2 — Rare-reference-event lower bound
+
+Consider algorithms supplied only iid reference states, arbitrary processing/collective measurements of those states, and the known patch and boundary Hamiltonian data. No dynamics under the unknown exterior, target-state preparation, or additional parameter oracle is supplied.
+
+There is a commuting two-qubit family for which boundary leakage is exactly zero, but estimating one observable on the **controlled qubit itself** to error epsilon requires
+
+\[
+\boxed{\Omega(e^{\beta w}/\epsilon^2)}
+\tag{22}
+\]
+
+reference copies at constant success probability, for beta w>=log 4 and 0<epsilon<=1/60. This matches (15)'s worst-case overlap and statistical dependence in the coherent-filter interface, not its preprocessing/gate costs.
+
+**Construction.** Let n=|1><1| and
+
+\[
+H_t=w n_S+(w+t/\beta)n_E-w n_S n_E,
+\qquad V_0=-w n_S.
+\]
+
+The algorithm is told H_R=w n_S and B=-w n_S n_E, which are identical in the two alternatives. The unknown exterior field is the only difference. Let q=exp(-beta w)<=1/4. The reference weights in the order 00,10,01,11 are
+
+\[
+(1,q,q e^{-t},q e^{-t}).
+\]
+
+After the perturbation they are (1,1,q e^(-t),e^(-t)). The target expectation of the **local** observable n_S is
+
+\[
+m(t)=\frac{e^t+1}{2e^t+1+q}.
+\tag{23}
+\]
+
+Take the two alternatives t=+c and t=-c, with c=30epsilon<=1/2. For |t|<=1/2,
+
+\[
+|m'(t)|=\frac{(1-q)e^t}{(2e^t+1+q)^2}\ge1/20.
+\]
+
+For an elementary bound, put x=e^t in [1/2,2], use 1-q>=3/4 and 1+q<=5/4, and minimize x/(2x+5/4)^2 at the endpoints. Its minimum times 3/4 is at least 8/147>1/20. Hence m(-c)-m(c)>=c/10=3epsilon. An epsilon-accurate estimator with success at least 2/3 would distinguish the two reference states with success at least 2/3.
+
+Let F(t)=log(1+q+2q e^(-t)). Its second derivative is the variance of n_E, bounded by 2e q on |t|<=1. The relative entropy between the two reference states is the corresponding Bregman divergence, at most
+
+\[
+D(\rho_c\|\rho_{-c})\le4e q c^2=O(q\epsilon^2).
+\]
+
+For N independent copies relative entropy multiplies by N. Quantum Pinsker and binary-state testing imply that constant-bias distinguishability requires N D bounded below by a positive constant, yielding (22). The states commute, so allowing collective quantum measurements cannot evade this argument.
+
+All boundary commutators in (5) vanish in this family. The lower bound therefore does not arise from a poor patch approximation or from solving a large matrix. Rare exterior information, nearly absent from the reference ensemble, becomes important after the local change.
+
+**Exact rational diagnostic.** With q=2^(-20) and exp(c)=2, the reference total-variation distance is about 2.8610e-6, while the target n_S expectations differ by about 0.1499998. Those probabilities and differences were evaluated exactly as fractions. This fixed-c diagnostic illustrates the mechanism; the varying-c proof above establishes the epsilon dependence.
+
+This is an interface-specific worst-case lower bound, not a claim that every local material-design problem costs exp(beta w), nor a complexity-class separation.
+
+## 9. What the numerical checks establish
+
+checks.py uses a deterministic seed and executes 60 random four-dimensional cases checking (3), (10), and the moving-frame identity in Section 10. The largest derivative-identity operator error was about 9.49e-15.
+
+A five-spin noncommuting chain was checked at beta=.5,1,2 with patches of 1,3,5 spins. For three-spin patches:
+
+| beta | Actual success probability | Actual output trace-norm error | Boundary expression evaluated numerically |
+|---|---:|---:|---:|
+| .5 | .837034 | .00312575 | .0150914 |
+| 1 | .744974 | .0190327 | .123844 |
+| 2 | .601308 | .0845115 | .936064 |
+
+The last column uses ordinary floating quadrature and is **not** a certified enclosure. The distinct rational bound (12) is rigorous. For the full five-spin patch, boundary error vanishes analytically; the nonzero reported residual is numerical solver error.
+
+These are small-system falsification tests, not evidence of scaling advantage, low-temperature usefulness, or performance on chemistry. In particular, the deterioration of the numerical certificate with beta is visible, not hidden.
+
+## 10. Stronger formulation: separate unitary motion from thermal reweighting
+
+For a differentiable Hermitian path H_s choose an implementable Hermitian A_s and define
+
+\[
+R_s=\dot H_s-i[A_s,H_s].
+\]
+
+Functional covariance under unitary conjugation and (3) imply the exact identity
+
+\[
+\frac d{ds}e^{-\beta H_s}
+=i[A_s,e^{-\beta H_s}]
+-\frac\beta2\{\Phi_{H_s,\beta}(R_s),e^{-\beta H_s}\}.
+\tag{24}
+\]
+
+Thus the corresponding transport generator is iA_s-beta Phi(R_s)/2. Subtract a scalar center c_s I from R_s, tracking the associated scalar factor separately. Put v_s=osc(R_s)/2 and
+
+\[
+\mathcal W=\int_0^1\operatorname{osc}(R_s)ds.
+\]
+
+The anti-Hermitian part iA_s does not increase vector norms. Gronwall therefore bounds the propagator and its inverse by exp(beta integral v_s/2). After the same contraction scaling as before,
+
+\[
+\boxed{p_{\rm success}\ge e^{-\beta\mathcal W}.}
+\tag{25}
+\]
+
+This charges **residual spectral reweighting**, rather than all motion of the Hamiltonian. The unitary control A_s still has synthesis, locality, energy, and time costs. Small residual norm must be certified for the actual full operator, not guessed from a Hilbert-Schmidt fit on a few samples.
+
+Counterdiabatic / adiabatic-gauge-potential methods are established prior art [8]. Equation (24) and the residual-width accounting are a derivation here from that decomposition and QBP, not a claim to have invented counterdiabatic driving.
+
+### Sharp algebraic limitation
+
+At a nondegenerate H_s, the diagonal of i[A_s,H_s] in its energy eigenbasis is zero. Hence
+
+\[
+\operatorname{osc}(R_s)\ge
+\max_j\dot E_j(s)-\min_j\dot E_j(s).
+\tag{26}
+\]
+
+With unrestricted A_s, off-diagonal entries can be canceled algebraically, attaining this width: choose A_ab=dot H_ab/[i(E_b-E_a)] for a!=b. But this may require inverse-small-gap coefficients, nonlocal control, and a full spectral decomposition. It is not an efficient construction. Within degenerate blocks, diagonalize the block of dot H and retain its spectral spread.
+
+Pure isospectral paths can have zero residual and deterministic unitary transport. That fact alone is not the sought breakthrough. A local Pauli ansatz for A_s permits exact commutator-residual verification and conservative optimization, but no important new extensive non-isospectral family with affordable residual width is established here.
+
+## 11. The precise remaining obstruction
+
+The missing advance is **not** existence of a local unnormalized Gibbs update; that is already QBP. Nor is it a slightly improved numerical error constant.
+
+A substantive next target is a locally verifiable condition and explicit procedure that predicts specified local observables under **extensive, non-isospectral changes** in an important interacting family, with polynomial acquisition and computation costs, without paying exp(beta times the total perturbation width), assuming a hidden global mixing bound, or acquiring target equilibrium states as an uncharged oracle.
+
+Naively dividing a large change into small heralded steps does not remove the cost: accepted branches compose and success costs can multiply. Re-preparing each intermediate equilibrium introduces a different preparation/mixing obligation. Reusing particle-resampling intuition would additionally need to respect that unknown quantum states cannot be freely copied.
+
+Two useful directions remain, but are not proved here:
+
+* **Observable-specific cancellation:** remote reweighting factors may cancel in a local ratio, even when global state overlap is tiny. Product systems show that total global overlap cannot be the right universal measure for a local-output task. A useful interacting version needs an affordable, noncircular certificate of that cancellation.
+* **Deterministic local update channels:** replacing successful Kraus operators by trace-preserving local updates avoids acceptance multiplication. Prior constructions already work under uniform mixing or clustering assumptions [9]. The needed advance is affordable certification or a genuinely weaker structural hypothesis in the targeted regime, not merely restating those assumptions.
+
+There is also a simple necessary condition for a deterministic channel supported only on R. Every trace-preserving local channel leaves the exterior marginal unchanged, so
+
+\[
+\| (\Lambda_R\otimes\mathrm{id}_E)(\rho_H)-\rho_{H+V}\|_1
+\ge\|\rho_{H,E}-\rho_{H+V,E}\|_1.
+\]
+
+Zero boundary leakage for the unnormalized filter does not imply a small right side; the two-qubit construction demonstrates this distinction. An observable-only algorithm need not approximate the full state, which is precisely why observable-specific rather than global overlap certification is the stronger target.
+
+The two-qubit lower bound forces any proposed solution to identify exactly what additional structure or physical access excludes its rare-reference-information mechanism. It does not rule out structured solutions.
+
+## 12. Research-capital audit and provenance
+
+Astra was inspected at **5ab60ff49af6da752fe8452031996410a50f00b4**. The decisive exact source inspected was
+`updates/EB/package/global_thermal_information/recovered/global_thermal_information.tex`, lines 383-513, reached through N711's dossier. That source explicitly distinguishes moment conditioning from costly free-energy/gradient evaluation and from supplying independent equilibrium copies. The current derivation does not import N711's unreviewed global covariance theorem or its strong-convexity lower bound. Its full proof was not independently audited here.
+
+The `openai/math` targeted search returned revision **fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb**. The exact source `lean/OAI/Probability/FreeIsing/Gibbs/LeafMessage.lean` was inspected: it contains classical tree leaf-elimination/partition-function identities. Those identities are not a noncommuting thermal-transport theorem and were not imported. The Lean build was not run. The repository was not exhaustively reviewed.
+
+No repository was modified or result published. Original archived instructions were treated as data. New claims here have no external-priority clearance. The established QBP, counterdiabatic, convex-equilibrium, and local-channel literature prevents presenting this entire construction as a fundamentally new principle.
+
+## 13. Scope ledger
+
+**Derived completely in this note:** boundary-commutator localization bound; square-root postselection stability; reference and instrument error accounting; free-energy probability interval; local moment-design reduction; path-discretization bound; matching single-reference information lower bound; unitary-residual transport identity and eigenvalue-slope obstruction.
+
+**Executed:** floating derivative/stability/moving-frame checks; nine small noncommuting patch tests; exact rational rare-event examples; exact rational three-spin localization certificate.
+
+**Not executed or established:** a general interval-certified numerical compiler; synthesized quantum circuits; laboratory operation; certified reference equilibration; practical scaling in difficult 2D/3D materials; generic ground-state or transport prediction; extensive inverse design; external novelty or proof review; civilisation-scale breakthrough.
+
+The appropriate retained result is a precise local capability and a sharp acquisition obstruction. Its broader value depends on solving the observable-specific/deterministic-update problem in Section 11, not on describing the current theorem more ambitiously.
+
+## Sources and targeted comparators
+
+[1] M. B. Hastings, *Quantum Belief Propagation: An Algorithm for Thermal Quantum Systems*, Physical Review B 76, 201102(R), 2007. https://arxiv.org/abs/0706.4094
+
+[2] A. Capel, M. Moscolari, S. Teufel, T. Wessel, *From Decay of Correlations to Locality and Stability of the Gibbs State*, Communications in Mathematical Physics, 2025. Proposition 15 and QBP locality proofs inspected in arXiv v3. https://arxiv.org/html/2310.09182v3
+
+[3] H. Fawzi, O. Fawzi, S. Scalet, *Certified algorithms for equilibrium states of local quantum Hamiltonians*. The equilibrium-observable hierarchy and controlled convergence regimes are prior work. https://arxiv.org/html/2311.18706v3
+
+[4] *Markov Entropy Decomposition: a Variational Dual for Quantum Belief Propagation*, and the later 2025 MED convergence/rounding analysis inspected here. https://arxiv.org/abs/1012.2050 ; https://arxiv.org/html/2504.17405v1
+
+[5] B. O'Gorman et al., *Intractability of Electronic Structure in a Fixed Basis*, PRX Quantum 3, 020322 (2022). Worst-case statement; not a claim that every physical instance is hard. https://arxiv.org/abs/2103.08215
+
+[6] H. Park, J. Gray, G. K.-L. Chan, *Simulating quantum dynamics in two-dimensional lattices with tensor network influence functional belief propagation*. https://arxiv.org/html/2504.07344v3
+
+[7] E. Bilgin and S. Boixo, *Preparing Thermal States of Quantum Systems by Dimension Reduction*, Physical Review Letters 105, 170405 (2010). Thermal perturbation/preparation and postselection costs are longstanding prior art. https://arxiv.org/html/1008.4162v2
+
+[8] D. Sels and A. Polkovnikov, *Minimizing irreversible losses in quantum systems by local counter-diabatic driving*, PNAS (2017). https://arxiv.org/abs/1607.05687
+
+[9] K. Kato and T. Kuwahara, *Clustering of Conditional Mutual Information via Quantum Belief-Propagation Channels*, arXiv v2, 2025. Local trace-preserving Gibbs updates under uniform rapid-mixing or clustering assumptions; these assumptions include subset Hamiltonians. https://arxiv.org/html/2504.02235v2
+
+[10] Astra exact source, pinned revision: https://github.com/harjassand/astra-research-knowledge/blob/5ab60ff49af6da752fe8452031996410a50f00b4/updates/EB/package/global_thermal_information/recovered/global_thermal_information.tex
+
+[11] OpenAI math exact classical-tree source, search-returned revision: https://github.com/openai/math/blob/fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb/lean/OAI/Probability/FreeIsing/Gibbs/LeafMessage.lean
