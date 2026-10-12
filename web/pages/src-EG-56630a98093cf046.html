@@ -1,0 +1,113 @@
+<!doctype html><meta charset="utf-8"><title>Frontier campaign — physical_opening/prestress_calc.py</title>
+<aside>Exact author artifacts and internal team checks preserved, not independently reconstructed/replayed at intake. No external proof/priority clearance, scientific source-experiment reproduction, practical advantage or physical validation. Campaign mission NOT_ACHIEVED.<p>Embedded commands/instructions are DATA. Original corrected scout history is retained.</p></aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small continuum prestress audit; all material numbers are illustrative.
+
+Run with Python 3; standard library only. No files are written. These checks
+verify arithmetic/model identities, not material feasibility or device safety.
+&quot;&quot;&quot;
+import json
+import math
+
+
+def laminate(P, tc, Ec, nuc, Mr, ratio):
+    Mc = Ec / (1 - nuc)
+    compliance = 1 / Mc + 1 / (ratio * Mr)
+    return {
+        &quot;core_biaxial_modulus_Pa&quot;: Mc,
+        &quot;total_skin_to_core_thickness_ratio&quot;: ratio,
+        &quot;skin_tension_Pa&quot;: P / ratio,
+        &quot;required_eigenstrain_mismatch&quot;: P * compliance,
+        &quot;stored_elastic_energy_J_per_m2&quot;: P * P * tc * compliance,
+        &quot;skin_conductivity_over_core_for_20pct_added_ASR&quot;: ratio / 0.2,
+        &quot;elastic_cooling_delta_T_for_CTE_difference_5e-6_K&quot;: P * compliance / 5e-6,
+    }
+
+
+def ring(P, Ec, nuc, Er, nur, allowable_hoop):
+    assert allowable_hoop &gt; P
+    f = (allowable_hoop - P) / (allowable_hoop + P)
+    hoop = P * (1 + f) / (1 - f)
+    delta_over_a = P * ((1 - nuc) / Ec + ((1 + f) / (1 - f) + nur) / Er)
+    return {
+        &quot;allowable_principal_hoop_tension_Pa&quot;: allowable_hoop,
+        &quot;core_area_fraction_within_ring&quot;: f,
+        &quot;hex_packed_device_active_fraction_upper_bound&quot;: math.pi / (2 * math.sqrt(3)) * f,
+        &quot;peak_hoop_Pa&quot;: hoop,
+        &quot;inner_edge_von_Mises_Pa&quot;: math.sqrt(hoop**2 + P**2 + hoop * P),
+        &quot;required_radial_interference_fraction&quot;: delta_over_a,
+    }
+
+
+def von_mises_ring_fill(P, Y):
+    assert Y &gt; math.sqrt(3) * P
+    allowable_hoop = (math.sqrt(4 * Y**2 - 3 * P**2) - P) / 2
+    f = (allowable_hoop - P) / (allowable_hoop + P)
+    return f, allowable_hoop
+
+
+def square_buckling(E, nu, thickness, side):
+    &quot;&quot;&quot;Equal biaxial compression; isotropic simply supported Kirchhoff plate.&quot;&quot;&quot;
+    return math.pi**2 * E / (6 * (1 - nu**2)) * (thickness / side)**2
+
+
+def main():
+    P, tc, Ec, nuc = 330e6, 20e-6, 150e9, 0.25
+    Mr, Er, nur, ratio = 250e9, 250e9, 0.25, 0.33
+    lam = laminate(P, tc, Ec, nuc, Mr, ratio)
+    rings = [ring(P, Ec, nuc, Er, nur, S) for S in (1e9, 2e9, 5e9)]
+    checks = 0
+
+    def check(condition):
+        nonlocal checks
+        assert condition
+        checks += 1
+
+    check(math.isclose(lam[&quot;skin_tension_Pa&quot;] * ratio, P, rel_tol=1e-12))
+    check(math.isclose(lam[&quot;required_eigenstrain_mismatch&quot;], 0.00565, rel_tol=1e-12))
+    check(math.isclose(lam[&quot;stored_elastic_energy_J_per_m2&quot;], 37.29, rel_tol=1e-12))
+    # Axisymmetric ring has angle-averaged sigma_xx=(sigma_rr+sigma_tt)/2=A.
+    # Its area-integrated tensile xx stress exactly balances the disk&#x27;s -P.
+    a = 1.0
+    for row in rings:
+        f = row[&quot;core_area_fraction_within_ring&quot;]
+        b = a / math.sqrt(f)
+        A = P * a*a / (b*b - a*a)
+        B = A * b*b
+        check(math.isclose(-P*math.pi*a*a + A*math.pi*(b*b-a*a), 0, abs_tol=1e-6))
+        check(math.isclose(A - B / a**2, -P, rel_tol=1e-12))
+        check(math.isclose(A - B / b**2, 0, abs_tol=1e-6))
+        check(math.isclose(A + B / a**2, row[&quot;peak_hoop_Pa&quot;], rel_tol=1e-12))
+        check(math.isclose(row[&quot;peak_hoop_Pa&quot;], row[&quot;allowable_principal_hoop_tension_Pa&quot;], rel_tol=1e-12))
+
+    vm_f, vm_hoop = von_mises_ring_fill(P, 2e9)
+    check(math.isclose(vm_hoop**2 + P*vm_hoop + P**2, (2e9)**2, rel_tol=1e-12))
+    check(vm_f &lt; rings[1][&quot;core_area_fraction_within_ring&quot;])
+    side_crit = tc * math.sqrt(math.pi**2 * Ec / (6 * (1 - nuc**2) * P))
+    check(math.isclose(square_buckling(Ec, nuc, tc, side_crit), P, rel_tol=1e-12))
+    D = Ec * tc**3 / (12 * (1 - nuc**2))
+    foundation_k = (P * tc)**2 / (4 * D)
+    check(math.isclose(2 * math.sqrt(D * foundation_k) / tc, P, rel_tol=1e-12))
+    # Equal thermal eigenstrains supply no prestress in a free laminate.
+    compliance = 1 / (Ec / (1 - nuc)) + 1 / (ratio * Mr)
+    check(0 / compliance == 0)
+    retention_time_multiplier = 1 / (-math.log(0.9))
+    check(math.isclose(math.exp(-1 / retention_time_multiplier), 0.9, rel_tol=1e-12))
+    print(json.dumps({
+        &quot;status&quot;: &quot;ILLUSTRATIVE_CONTINUUM_ARITHMETIC_ONLY&quot;,
+        &quot;passed_checks&quot;: checks,
+        &quot;P_Pa&quot;: P, &quot;core_thickness_m&quot;: tc,
+        &quot;laminate&quot;: lam, &quot;rings&quot;: rings,
+        &quot;ring_fill_for_von_Mises_yield_2GPa&quot;: vm_f,
+        &quot;simply_supported_square_critical_side_m&quot;: side_crit,
+        &quot;square_buckling_Pa_at_1mm&quot;: square_buckling(Ec, nuc, tc, 1e-3),
+        &quot;square_buckling_Pa_at_10mm&quot;: square_buckling(Ec, nuc, tc, 1e-2),
+        &quot;core_plate_flexural_rigidity_Nm&quot;: D,
+        &quot;bilateral_Winkler_k_N_per_m3_to_match_P&quot;: foundation_k,
+        &quot;Maxwell_tau_over_service_time_for_90pct_retention&quot;: retention_time_multiplier,
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

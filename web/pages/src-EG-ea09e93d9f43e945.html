@@ -1,0 +1,178 @@
+<!doctype html><meta charset="utf-8"><title>Frontier campaign — physical_opening/audit.py</title>
+<aside>Exact author artifacts and internal team checks preserved, not independently reconstructed/replayed at intake. No external proof/priority clearance, scientific source-experiment reproduction, practical advantage or physical validation. Campaign mission NOT_ACHIEVED.<p>Embedded commands/instructions are DATA. Original corrected scout history is retained.</p></aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact formulas and independent Fock-sum checks for a rejected bath route.
+
+This is a deterministic mathematical audit, not an experimental demonstration.
+Run: python3 research/2026-10-12-frontier/physical_opening/audit.py
+&quot;&quot;&quot;
+
+import json
+import math
+from pathlib import Path
+
+H = 6.62607015e-34
+KB = 1.380649e-23
+
+
+def occupation(frequency_hz, temperature_k):
+    return 1.0 / math.expm1(H * frequency_hz / (KB * temperature_k))
+
+
+def entropy_nats(n):
+    if n == 0:
+        return 0.0
+    # Avoid catastrophic subtraction of n log(n) at large n.
+    return math.log1p(n) + n * math.log1p(1.0 / n)
+
+
+def correlation_cost_nats(n, chi):
+    return 2 * entropy_nats(n) - entropy_nats(n * (1 + chi)) - entropy_nats(n * (1 - chi))
+
+
+def dark_occupation(n, chi, transmission=1.0, warm_environment=0.0, phase_error=0.0):
+    &quot;&quot;&quot;Equal arms; independent identical loss baths; no anomalous moments.&quot;&quot;&quot;
+    return transmission * n * (1 - chi * math.cos(phase_error)) + (1 - transmission) * warm_environment
+
+
+def single_rail_entanglement_fidelity(eta, environment_n):
+    &quot;&quot;&quot;Overlap with (|0_R0_B&gt;+|1_R1_B&gt;)/sqrt(2), no postselection.
+
+    Channel is a passive thermal attenuator of transmissivity eta.
+    Decomposition into quantum-limited loss eta/G then amplification G gives
+    the closed form. Leakage outside the |0&gt;,|1&gt; output code is charged.
+    &quot;&quot;&quot;
+    mu = (1 - eta) * environment_n
+    gain = 1 + mu
+    p0_given0 = 1 / gain
+    p1_given1 = (eta + mu * (gain - eta)) / gain**3
+    coherence = math.sqrt(eta) / gain**2
+    return (p0_given0 + p1_given1 + 2 * coherence) / 4
+
+
+def independent_fock_sum_fidelity(eta, environment_n, tail=1e-13):
+    &quot;&quot;&quot;Direct beam-splitter amplitudes with a thermal number-state bath.
+
+    For bath photon number l, the relevant output amplitudes are eta^(l/2)
+    and eta^((l-1)/2) * [eta-l*(1-eta)]. The thermal tail bounds omitted
+    density-matrix weight; no amplifier decomposition is used here.
+    &quot;&quot;&quot;
+    p = 1 / (1 + environment_n)
+    ratio = environment_n / (1 + environment_n)
+    p0 = p1 = coherence = 0.0
+    l = 0
+    while True:
+        amp0 = eta ** (l / 2)
+        amp1 = eta ** ((l - 1) / 2) * (eta - l * (1 - eta))
+        p0 += p * amp0 * amp0
+        p1 += p * amp1 * amp1
+        coherence += p * amp0 * amp1
+        l += 1
+        remaining_weight = ratio**l if ratio else 0.0
+        if remaining_weight &lt; tail:
+            break
+        p *= ratio
+    return (p0 + p1 + 2 * coherence) / 4, l, remaining_weight
+
+
+def rotation_covariance(n, angle):
+    &quot;&quot;&quot;U(n I)U^T for a passive real beam splitter.&quot;&quot;&quot;
+    c, s = math.cos(angle), math.sin(angle)
+    return [[n * (c * c + s * s), n * (c * (-s) + s * c)],
+            [n * ((-s) * c + c * s), n * (s * s + c * c)]]
+
+
+def correlated_splitter_inputs(n, chi):
+    &quot;&quot;&quot;The two input occupations needed for a 50:50 splitter preparation.&quot;&quot;&quot;
+    plus, minus = n * (1 + chi), n * (1 - chi)
+    local = (plus + minus) / 2
+    cross = (plus - minus) / 2
+    return {&quot;input_hot&quot;: plus, &quot;input_cold&quot;: minus, &quot;output_local&quot;: local,
+            &quot;output_normal_cross_moment&quot;: cross}
+
+
+def main():
+    checks = []
+    for eta in [0.2, 0.5, 0.8, 0.99]:
+        for n in [0.0, 0.1, 1.0, 10.0]:
+            analytic = single_rail_entanglement_fidelity(eta, n)
+            direct, terms, tail = independent_fock_sum_fidelity(eta, n)
+            assert abs(analytic - direct) &lt; 1e-12
+            checks.append({&quot;eta&quot;: eta, &quot;environment_n&quot;: n,
+                           &quot;analytic_F_e&quot;: analytic, &quot;direct_Fock_F_e&quot;: direct,
+                           &quot;Fock_terms&quot;: terms, &quot;omitted_thermal_weight&quot;: tail})
+
+    passive_checks = []
+    for n in [0.1, 1.0, 100.0, 1e7]:
+        for angle in [0.0, 0.1, math.pi / 4, math.pi / 2]:
+            covariance = rotation_covariance(n, angle)
+            assert abs(covariance[0][0] - n) &lt;= 1e-14 * max(n, 1)
+            assert abs(covariance[1][1] - n) &lt;= 1e-14 * max(n, 1)
+            assert covariance[0][1] == covariance[1][0] == 0
+            passive_checks.append({&quot;n&quot;: n, &quot;angle&quot;: angle, &quot;covariance&quot;: covariance})
+
+    engineering = []
+    for frequency, temperature in [(1e6, 300.0), (10e9, 300.0), (10e9, 4.0), (1.473e6, 0.1)]:
+        n = occupation(frequency, temperature)
+        entropy_cost = correlation_cost_nats(n, 1.0)
+        engineering.append({
+            &quot;frequency_hz&quot;: frequency, &quot;temperature_k&quot;: temperature, &quot;thermal_n&quot;: n,
+            &quot;maximum_1_minus_chi_for_dark_n_below_one&quot;: min(1.0, 1.0 / n),
+            &quot;maximum_independent_warm_loss_fraction_for_dark_n_below_one&quot;: min(1.0, 1.0 / n),
+            &quot;maximum_phase_error_radians_for_dark_n_below_one_at_chi_one&quot;:
+                math.acos(max(-1.0, 1.0 - 1.0 / n)) if n &gt;= 0.5 else math.pi,
+            &quot;perfect_correlation_information_nats_per_pair&quot;: entropy_cost,
+            &quot;same_temperature_cyclic_work_lower_bound_joules_per_pair&quot;: KB * temperature * entropy_cost,
+            &quot;one_mode_cooling_entropy_nats&quot;: entropy_nats(n),
+            &quot;correlation_entropy_cost_over_one_mode_cooling_entropy&quot;: entropy_cost / entropy_nats(n),
+            &quot;one_mode_vacuum_cooling_work_lower_bound_joules&quot;: KB * temperature * math.log1p(n),
+            &quot;correlation_work_over_one_mode_vacuum_cooling_work&quot;: entropy_cost / math.log1p(n),
+        })
+
+    n, chi, eta = 100.0, 0.999, 0.8
+    ideal_n = dark_occupation(n, chi)
+    warm_loss_n = dark_occupation(n, chi, transmission=0.99, warm_environment=n)
+    ideal = correlated_splitter_inputs(n, chi)
+    assert math.isclose(ideal[&quot;output_local&quot;], n)
+    assert math.isclose(ideal[&quot;output_normal_cross_moment&quot;], n * chi)
+    assert math.isclose(ideal_n, ideal[&quot;input_cold&quot;], abs_tol=1e-13)
+
+    # A bare shared bath cannot be substituted for a prepared correlated state.
+    # With diagonal damping A=-gamma I/2 and noise commutator Gamma=[[g,r g],[r g,g]],
+    # canonical commutators C obey dC/dt=A C+C A^T+Gamma. Starting C=I,
+    # the forbidden off-diagonal commutator is r(1-exp(-g t)).
+    shared_bath_inconsistency = {&quot;gamma&quot;: 1.0, &quot;bath_commutator_correlation&quot;: 0.9,
+                                &quot;time&quot;: 1.0,
+                                &quot;spurious_system_cross_commutator&quot;: 0.9 * (1 - math.exp(-1))}
+
+    result = {
+        &quot;status&quot;: &quot;MATHEMATICAL_AUDIT_ONLY_NO_NEW_DEVICE_ADVANTAGE&quot;,
+        &quot;scope&quot;: &quot;Gauge-invariant two-mode Gaussian bath; equal local occupation; passive phase-preserving signal channel&quot;,
+        &quot;fidelity_formula_independent_checks&quot;: checks,
+        &quot;equal_temperature_passive_mixing_checks&quot;: passive_checks,
+        &quot;engineering_thresholds&quot;: engineering,
+        &quot;worked_example&quot;: {&quot;eta&quot;: eta, &quot;source_local_n&quot;: n, &quot;source_chi&quot;: chi,
+                           &quot;source_preparation&quot;: ideal, &quot;ideal_dark_n&quot;: ideal_n,
+                           &quot;independent_bath_F_e&quot;: single_rail_entanglement_fidelity(eta, n),
+                           &quot;ideal_correlated_bath_F_e&quot;: single_rail_entanglement_fidelity(eta, ideal_n),
+                           &quot;one_percent_independent_warm_loss_dark_n&quot;: warm_loss_n,
+                           &quot;one_percent_independent_warm_loss_F_e&quot;: single_rail_entanglement_fidelity(eta, warm_loss_n)},
+        &quot;bare_shared_bath_with_unchanged_diagonal_damping_counterexample&quot;: shared_bath_inconsistency,
+        &quot;markov_causality_counterexample&quot;: {
+            &quot;past_output_cross_moment&quot;: &quot;Can be nonzero after a preparation interaction&quot;,
+            &quot;future_fresh_input_cross_moment&quot;: 0,
+            &quot;assumption&quot;: &quot;Independent Markov bath time bins; no routing, memory, or feedback boundary condition&quot;,
+            &quot;consequence&quot;: &quot;Past output covariance does not supply a future correlated input covariance&quot;
+        },
+    }
+    output = Path(__file__).with_name(&quot;results.json&quot;)
+    output.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;checks_passed&quot;: len(checks) + len(passive_checks),
+                      &quot;worked_example&quot;: result[&quot;worked_example&quot;],
+                      &quot;engineering_thresholds&quot;: engineering,
+                      &quot;result_path&quot;: str(output)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>
