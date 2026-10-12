@@ -1,0 +1,261 @@
+<!doctype html><meta charset="utf-8"><title>Frontier campaign — computation_opening/gaussian_factory.py</title>
+<aside>Exact author artifacts and internal team checks preserved, not independently reconstructed/replayed at intake. No external proof/priority clearance, scientific source-experiment reproduction, practical advantage or physical validation. Campaign mission NOT_ACHIEVED.<p>Embedded commands/instructions are DATA. Original corrected scout history is retained.</p></aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded-vector mean -&gt; approximately Gaussian sample.
+
+This is a floating-point diagnostic implementation of a real-arithmetic
+theorem, reconstructed as a specialization of first-order rejection
+sampling (FORS). It does not certify continuous-law TV for machine floats.
+
+The oracle returns independent vectors X with ||X||_2 &lt;= radius. Its mean
+is never evaluated or supplied to the sampler. The returned sample law in
+the ideal real-arithmetic model is within epsilon TV of N(E[X], I_d).
+
+Run the small diagnostics with:
+    python3 gaussian_factory.py --diagnostics --samples 1000
+
+NumPy is only needed for quadrature diagnostics; the sampler uses stdlib.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+from dataclasses import asdict, dataclass
+import json
+import math
+import random
+import time
+from typing import Callable, Sequence
+
+
+@dataclass
+class Cost:
+    oracle_calls: int = 0
+    proposals: int = 0
+    factors: int = 0
+
+
+def factor_count(radius: float, epsilon: float) -&gt; int:
+    &quot;&quot;&quot;Choose m with m &gt;= R^2 and 10*m*exp(-m/(8*R^2)) &lt;= epsilon.
+
+    Search is on the decreasing branch m &gt;= 8 R^2. It does not query X.
+    &quot;&quot;&quot;
+    if not (math.isfinite(radius) and radius &gt;= 0):
+        raise ValueError(&quot;radius must be finite and nonnegative&quot;)
+    if not (0 &lt; epsilon &lt; 1):
+        raise ValueError(&quot;epsilon must lie in (0, 1)&quot;)
+    if radius == 0:
+        return 0
+    r2 = radius * radius
+    if not math.isfinite(r2):
+        raise ValueError(&quot;radius squared is outside floating-point range&quot;)
+    log_epsilon = math.log(epsilon)
+
+    def valid(m: int) -&gt; bool:
+        return math.log(10) + math.log(m) - m / (8 * r2) &lt;= log_epsilon
+
+    lower = max(1, math.ceil(8 * r2))
+    if valid(lower):
+        return lower
+    upper = lower
+    while not valid(upper):
+        upper *= 2
+    while upper - lower &gt; 1:
+        middle = (upper + lower) // 2
+        if valid(middle):
+            upper = middle
+        else:
+            lower = middle
+    return upper
+
+
+def poisson_two(rng: random.Random) -&gt; int:
+    threshold = math.exp(-2.0)
+    product = 1.0
+    count = 0
+    while product &gt; threshold:
+        product *= rng.random()
+        count += 1
+    return count - 1
+
+
+def gaussian_from_mean(
+    oracle: Callable[[], Sequence[float]],
+    dimension: int,
+    radius: float,
+    epsilon: float,
+    *,
+    rng: random.Random | None = None,
+    cost: Cost | None = None,
+) -&gt; list[float]:
+    &quot;&quot;&quot;Generate a diagnostic sample without evaluating the oracle mean.
+
+    Oracle independence and the radius bound are interface promises.
+    Dimension and the observed norm are checked on each acquisition.
+    &quot;&quot;&quot;
+    if dimension &lt; 1:
+        raise ValueError(&quot;dimension must be positive&quot;)
+    rng = random.Random() if rng is None else rng
+    cost = Cost() if cost is None else cost
+    m = factor_count(radius, epsilon)
+    if m == 0:
+        return [rng.gauss(0.0, 1.0) for _ in range(dimension)]
+    scale = 1.0 / math.sqrt(m)
+    output = [0.0] * dimension
+    for _ in range(m):
+        while True:
+            cost.proposals += 1
+            y = [rng.gauss(0.0, scale) for _ in range(dimension)]
+            j = poisson_two(rng)
+            acceptance = 1.0
+            for _ in range(j):
+                x = tuple(oracle())
+                cost.oracle_calls += 1
+                if len(x) != dimension:
+                    raise ValueError(&quot;oracle returned the wrong dimension&quot;)
+                if math.hypot(*x) &gt; radius * (1 + 1e-12):
+                    raise ValueError(&quot;observed oracle sample exceeds radius&quot;)
+                w = math.fsum(a * b for a, b in zip(y, x))
+                clipped = max(-1.0, min(1.0, w))
+                acceptance *= (1.0 + clipped) / 2.0
+            if rng.random() &lt; acceptance:
+                for k in range(dimension):
+                    output[k] += y[k]
+                cost.factors += 1
+                break
+    return output
+
+
+def normal_cdf(z: float) -&gt; float:
+    return 0.5 * math.erfc(-z / math.sqrt(2.0))
+
+
+def empirical_ks(samples: list[float], mean: float) -&gt; float:
+    ordered = sorted(samples)
+    n = len(ordered)
+    return max(
+        max(abs(normal_cdf(x - mean) - i / n),
+            abs((i + 1) / n - normal_cdf(x - mean)))
+        for i, x in enumerate(ordered)
+    )
+
+
+def quadrature(points: list[float], probs: list[float], m: int) -&gt; dict:
+    &quot;&quot;&quot;Approximate one-factor TV on a standardized [-12-|a|,12+|a|] grid.
+
+    This independently evaluates the factory&#x27;s exact ideal density. It is
+    a numerical diagnostic, not a rigorous quadrature enclosure.
+    &quot;&quot;&quot;
+    import numpy as np
+
+    mean = math.fsum(x * p for x, p in zip(points, probs))
+    a = mean / math.sqrt(m)
+    limit = 12.0 + abs(a)
+    s = np.linspace(-limit, limit, 200_001)
+    base = np.exp(-s * s / 2) / math.sqrt(2 * math.pi)
+    clipped_tilt = sum(
+        p * np.clip(s * x / math.sqrt(m), -1, 1)
+        for x, p in zip(points, probs)
+    )
+    unnormalized = base * np.exp(clipped_tilt)
+    zhat = float(np.trapezoid(unnormalized, s))
+    factory_density = unnormalized / zhat
+    target_density = np.exp(-((s - a) ** 2) / 2) / math.sqrt(2 * math.pi)
+    tv = float(np.trapezoid(abs(factory_density - target_density), s) / 2)
+    return {
+        &quot;factor_tv_quadrature&quot;: tv,
+        &quot;m_times_factor_tv_quadrature&quot;: m * tv,
+        &quot;factor_acceptance_quadrature&quot;: zhat / math.e,
+        &quot;expected_calls_per_factor_quadrature&quot;: 2 * math.e / zhat,
+        &quot;quadrature_grid_points&quot;: len(s),
+        &quot;quadrature_standardized_limit&quot;: limit,
+    }
+
+
+def diagnostics(n: int, epsilon: float, seed: int) -&gt; dict:
+    cases = [
+        (&quot;symmetric_boundary&quot;, [-1.0, 1.0], [0.5, 0.5]),
+        (&quot;skew_boundary&quot;, [-1.0, 1.0], [0.1, 0.9]),
+        (&quot;rare_positive_spike&quot;, [0.0, 1.0], [0.999, 0.001]),
+        (&quot;deterministic_boundary&quot;, [1.0], [1.0]),
+    ]
+    rows = []
+    for index, (name, points, probs) in enumerate(cases):
+        radius = max(abs(x) for x in points)
+        mean = math.fsum(x * p for x, p in zip(points, probs))
+        m = factor_count(radius, epsilon)
+        acquisition_rng = random.Random(seed + 2 * index)
+        sampler_rng = random.Random(seed + 2 * index + 1)
+
+        def oracle() -&gt; tuple[float]:
+            u = acquisition_rng.random()
+            cumulative = 0.0
+            for x, p in zip(points, probs):
+                cumulative += p
+                if u &lt; cumulative:
+                    return (x,)
+            return (points[-1],)
+
+        cost = Cost()
+        start = time.perf_counter()
+        samples = [gaussian_from_mean(
+            oracle, 1, radius, epsilon, rng=sampler_rng, cost=cost,
+        )[0] for _ in range(n)]
+        elapsed = time.perf_counter() - start
+        sample_mean = math.fsum(samples) / n
+        sample_variance = math.fsum((x - sample_mean) ** 2 for x in samples) / (n - 1)
+        row = {
+            &quot;case&quot;: name,
+            &quot;oracle_points&quot;: points,
+            &quot;oracle_probabilities&quot;: probs,
+            &quot;target_mean_for_diagnostic_only&quot;: mean,
+            &quot;target_variance&quot;: 1,
+            &quot;epsilon&quot;: epsilon,
+            &quot;factors_m&quot;: m,
+            &quot;analytic_total_tv_bound&quot;: 10 * m * math.exp(-m / (8 * radius * radius)),
+            &quot;samples&quot;: n,
+            &quot;sample_mean&quot;: sample_mean,
+            &quot;sample_variance&quot;: sample_variance,
+            &quot;empirical_ks_to_target&quot;: empirical_ks(samples, mean),
+            &quot;cost&quot;: asdict(cost),
+            &quot;calls_per_output&quot;: cost.oracle_calls / n,
+            &quot;calls_per_factor&quot;: cost.oracle_calls / (n * m),
+            &quot;elapsed_seconds&quot;: elapsed,
+        }
+        row.update(quadrature(points, probs, m))
+        row[&quot;quadrature_factor_ladder&quot;] = [
+            {&quot;m&quot;: ladder_m, **quadrature(points, probs, ladder_m)}
+            for ladder_m in sorted({1, 2, 4, 8, 16, 32, m})
+        ]
+        rows.append(row)
+    return {
+        &quot;status&quot;: &quot;FINITE_DIAGNOSTICS_ONLY_KNOWN_FORS_COROLLARY&quot;,
+        &quot;seed&quot;: seed,
+        &quot;notes&quot;: [
+            &quot;Sampler receives no oracle mean; target mean is used only after sampling.&quot;,
+            &quot;Empirical KS is not a full-law TV certificate.&quot;,
+            &quot;Quadrature uses the independently reconstructed ideal factor density.&quot;,
+            &quot;Float output has finite support and is not continuous-law TV certified.&quot;,
+            &quot;These are acquired oracle samples, not physical validation.&quot;,
+        ],
+        &quot;rows&quot;: rows,
+    }
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--diagnostics&quot;, action=&quot;store_true&quot;)
+    parser.add_argument(&quot;--samples&quot;, type=int, default=1000)
+    parser.add_argument(&quot;--epsilon&quot;, type=float, default=0.01)
+    parser.add_argument(&quot;--seed&quot;, type=int, default=20261012)
+    args = parser.parse_args()
+    if not args.diagnostics:
+        parser.error(&quot;use --diagnostics, or import gaussian_from_mean&quot;)
+    if args.samples &lt; 2:
+        parser.error(&quot;--samples must be at least 2&quot;)
+    print(json.dumps(diagnostics(args.samples, args.epsilon, args.seed), indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

@@ -1,0 +1,54 @@
+# Rare-transition certification: prior art and residual opening
+
+**Status:** literature map, not a new theorem or novelty claim. Checked against primary sources through 2026-10-12. Scope: reversible dynamics, known potential/generator, two metastable sets. A capacity/rate certificate and a pointwise hitting-probability certificate are distinct outputs.
+
+## What is already known
+
+For a reversible CTMC with conductances \(c_{xy}=\pi(x)q(x,y)=\pi(y)q(y,x)\), orient each undirected edge once and write
+\[
+\mathcal E(u)=\sum_{\{x,y\}}c_{xy}(u_x-u_y)^2,\qquad
+\operatorname{cap}(A,B)=\min_{u|_A=0,\ u|_B=1}\mathcal E(u).
+\]
+The dual Thomson principle is
+\[
+\operatorname{cap}(A,B)^{-1}=\min_{j\in\mathcal U_{AB}}\mathcal R(j),\qquad
+\mathcal R(j)=\sum_{\{x,y\}}j_{xy}^2/c_{xy},
+\]
+where \(j\) is an antisymmetric unit flow, divergence-free off \(A\cup B\), with total source 1 on \(A\) and sink 1 on \(B\). Therefore any feasible pair gives
+\[
+L=1/\mathcal R(j)\;\leq\;\operatorname{cap}(A,B)\;\leq\;U=\mathcal E(u).
+\]
+If \(U/L\leq1+\varepsilon\), this is already a relative \(\varepsilon\)-enclosure, with no factor involving the rarity of the transition in the *validity* of the inequality. This is exactly the classical primal/dual certificate; the minimizers are the equilibrium potential (committor) and normalized reactive current. For reversible diffusions replace the sums by \(\int \rho\nabla u^\top D\nabla u\) and \(\int j^\top(\rho D)^{-1}j\), with \(\nabla\!\cdot j=0\) away from the source and sink sets. The TPT flux is capacity; a common rate convention is \(k_{AB}=\operatorname{cap}(A,B)/\pi(A)\). A rate interval also needs a certified interval for \(\pi(A)\). An arbitrary pointwise value \(q(x)=P_x(\tau_B<\tau_A)\) is not certified just by bracketing capacity.
+
+Primary capacity sources: den Hollander–Jansen, [Berman–Konsowa principle for reversible Markov jump processes](https://arxiv.org/abs/1309.1305), especially their discussion of Dirichlet upper bounds and Thomson lower bounds; for non-reversible elliptic generators see Landim–Mariani–Seo, [Dirichlet’s and Thomson’s Principles for Non-selfadjoint Elliptic Operators](https://doi.org/10.1007/s00205-018-1291-8). Transition-path quantities and rate/current relationships are reviewed by [E and Vanden-Eijnden (2010)](https://doi.org/10.1146/annurev.physchem.040808.090412).
+
+This pair is also standard in verified PDE numerics: conforming potential approximations give Dirichlet upper bounds, while equilibrated \(H(\mathrm{div})\) fluxes give complementary-energy lower bounds. Prager–Synge / equilibrated-flux a posteriori estimates make the enclosure computable in finite-element settings; see [Smears–Vohralík (2020)](https://doi.org/10.1051/m2an/2020034) and [Cochez-Dhondt–Nicaise–Repin (2009)](https://doi.org/10.1051/mmnp/20094105). Thus “learn a committor and a reactive flow, then use their duality gap” is not itself a new principle.
+
+## Closest current rare-event and learning work
+
+- Lorpaiboon–Weare–Dinner derive an exact finite-lag variational expression for the committor and transition rate and a two-lag committor-MSE estimator: [J. Phys. Chem. B 130 (2025/26), 155–170](https://doi.org/10.1021/acs.jpcb.5c06047). It improves trajectory-based estimation and lag-time behavior; it does not give a finite-sample, two-sided relative interval for capacity/rate.
+- Petersen–Lichtinger–Covino (arXiv v1, 3 Aug 2026) give an exact reversible-diffusion flux–fidelity identity and the one-sided bound
+  \[
+  \nu_{AB}\leq \mathcal E[u]/\mathcal F[u]^2,
+  \quad \mathcal F[u]=\langle u\rangle^{\rm flux}_{\partial B}-\langle u\rangle^{\rm flux}_{\partial A}.
+  \]
+  Source: [arXiv:2608.02536](https://arxiv.org/abs/2608.02536), §§ flux–fidelity identity / variational principle / certified flux bound. Their molecular implementation substitutes basin-sample averages for the true flux-weighted boundary fidelity; the paper states that the bound is exact in the true fidelity and approximate in its empirical substitute. Its rate read-off from a current plateau is an estimate, not a matching lower certificate. The paper also uses pre-existing equilibrium or reweighted data and excludes upstream trajectory reading, feature construction, TICA/MBAR, and reference-committor work from the quoted cost. This is a close and important prior-art boundary.
+- Umbrella sampling and MBAR/EMUS have asymptotic error analysis, including Markov-chain autocorrelation and window-wise contributions, rather than generic finite-sample guaranteed capacity intervals: Li et al., [MBAR asymptotic error analysis](https://doi.org/10.1063/5.0147243); Thiede et al., [EMUS error analysis](https://doi.org/10.1063/1.4960649). Poor overlap or unsampled orthogonal channels remain acquisition failures; an asymptotic standard error does not certify that such a channel was found.
+- There are non-asymptotic confidence bounds for the mean first-passage time from independent, directly observed first-passage trajectories: Bebon–Godec, [Phys. Rev. Lett. 131, 237101 (2023)](https://doi.org/10.1103/PhysRevLett.131.237101). This is useful finite-sample prior art for kinetic inference, but it does not give a capacity/flow certificate or remove the cost of acquiring the trajectories.
+- Hartmann et al. (v2, 4 Sep 2026), [Importance sampling with unbounded random stopping times](https://arxiv.org/abs/2601.01489), derive stochastic-control formulations for committors and exit times and prove convergence of approximate policy iteration. The control/value-function route avoids reweighting long paths, but the authors explicitly note practical value-function estimators can be biased; their result is not a two-sided finite-sample rate interval. They also expose a real cost pitfall: a zero-variance change of measure can produce trajectories with infinite length almost surely.
+- Importance sampling has a standard bounded-relative-error criterion, and the exact conditional/Doob transform based on the committor is the zero-variance ideal. The ideal proposal is generally as hard as the target probability; an approximate proposal’s empirical low variance is not a certificate without a second-moment bound. See [L’Ecuyer, Demers, and Tuffin (2006)](https://www.informs-sim.org/wsc06papers/014.pdf) for the rare-limit relative-error and work accounting, and [Awad, Glynn, and Rubinstein (2013)](https://doi.org/10.1287/moor.1120.0569) for zero-variance Markov-process estimators and approximate-estimator bounds.
+
+## One residual opening (candidate; no novelty claim)
+
+Build a **proof-carrying, finite-sample primal–dual rate enclosure from a declared high-dimensional acquisition interface**. For a reversible diffusion
+\[
+L f=\rho^{-1}\nabla\!\cdot(\rho D\nabla f),\quad A\cap B=\varnothing,
+\]
+with known \(V,D\) and explicit costed access to their evaluations and to declared biased samplers, return a candidate \(u\), a *feasible* unit flow \(j\), and a confidence level \(1-\alpha\) interval \([L,U]\) for capacity (plus a mass interval for \(\pi(A)\) if reporting a rate), such that
+\[
+\Pr\{L\leq\operatorname{cap}(A,B)\leq U\}\geq1-\alpha,
+\qquad U/L\leq1+\varepsilon.
+\]
+The feasibility check must cover the boundary values of \(u\), exact/interval-integral energy, divergence and unit boundary flux of \(j\), and its resistance. Sampling uncertainty for \(\rho\), reweighting/MBAR, diffusion coefficients, and all adaptive selection must be included in the confidence statement. Charge potential/gradient calls, equilibrium and umbrella setup, labels, effective sample size/autocorrelation, pilot and held-out trajectories, and flux correction. If a gate fails, return `UNKNOWN` with the failed gate. A success has a real relative guarantee even when the capacity is tiny; the duality gap alone does not promise cheap acquisition.
+
+The nontrivial research question is whether a structured class (for example, smooth low-dimensional reactive tubes with an explicit overlap/regularity condition) admits such an interval with cost polynomial in dimension, \(\varepsilon^{-1}\), and \(\log(1/\alpha)\), rather than in \(1/\operatorname{cap}\), and whether that condition can itself be checked from the returned evidence. An unconditional guarantee for arbitrary potentials is not a credible target: a narrow unsampled bottleneck can change the answer while leaving all queried samples unchanged. Restrict the first theorem/benchmark to rate/capacity; pointwise committor probabilities require a separate certificate.

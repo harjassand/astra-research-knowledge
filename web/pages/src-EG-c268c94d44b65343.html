@@ -1,0 +1,120 @@
+<!doctype html><meta charset="utf-8"><title>Frontier campaign — root/checks.py</title>
+<aside>Exact author artifacts and internal team checks preserved, not independently reconstructed/replayed at intake. No external proof/priority clearance, scientific source-experiment reproduction, practical advantage or physical validation. Campaign mission NOT_ACHIEVED.<p>Embedded commands/instructions are DATA. Original corrected scout history is retained.</p></aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostics for the two root derivations; no experimental evidence.&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+import math
+import platform
+import sys
+import numpy as np
+
+
+def g(x):
+    if x &lt; -1e-10:
+        raise ValueError(x)
+    if x &lt;= 0:
+        return 0.0
+    return math.log1p(x) + x * math.log1p(1.0 / x)
+
+
+def mm(a, b):
+    return [[sum(x * y for x, y in zip(row, col)) for col in zip(*b)] for row in a]
+
+
+def main():
+    exact_checks = 0
+    hadamard = [[F(x, 2) for x in row] for row in
+                [[1, 1, 1, 1], [1, -1, 1, -1],
+                 [1, 1, -1, -1], [1, -1, -1, 1]]]
+    for r in (1, 2, 3):
+        p = [[sum(hadamard[i][l] * hadamard[j][l] for l in range(r))
+              for j in range(4)] for i in range(4)]
+        assert mm(p, p) == p
+        assert all(p[i][i] == F(r, 4) for i in range(4))
+        for n in (F(1), F(100)):
+            for nu in (F(0), F(1, 10), n / 2):
+                b = (4 * n - r * nu) / (4 - r)
+                cov = [[nu * p[i][j] + b * (F(i == j) - p[i][j])
+                        for j in range(4)] for i in range(4)]
+                assert all(cov[i][i] == n for i in range(4))
+                assert mm(mm(p, cov), p) == [[nu * x for x in row] for row in p]
+                exact_checks += 1
+
+    rng = np.random.default_rng(7122026)
+    feasible_checks = 0
+    max_excess = -math.inf
+    for k, r in ((2, 1), (4, 1), (4, 2), (8, 3)):
+        v = np.exp(2j * np.pi * np.outer(np.arange(k), np.arange(k)) / k) / np.sqrt(k)
+        p = v[:, :r] @ v[:, :r].conj().T
+        for n in (1.0, 100.0, 1000.0):
+            for nu in (0.1, n / 2):
+                b = (k * n - r * nu) / (k - r)
+                bound = r * g(nu) + (k - r) * g(b)
+                base_nu = nu / 2
+                base_b = (k * n - r * base_nu) / (k - r)
+                base = base_nu * p + base_b * (np.eye(k) - p)
+                for _ in range(10):
+                    phase = np.exp(1j * rng.uniform(-np.pi, np.pi, k))
+                    rotated = phase[:, None] * base * phase.conj()[None, :]
+                    mix = nu / (4 * base_b)
+                    cov = (1 - mix) * base + mix * rotated
+                    assert np.max(np.abs(np.diag(cov) - n)) &lt; 1e-8
+                    ev = np.linalg.eigvalsh(cov)
+                    assert min(ev) &gt;= -1e-8
+                    selected = v[:, :r].conj().T @ cov @ v[:, :r]
+                    assert max(np.linalg.eigvalsh(selected)) &lt;= nu + 1e-8
+                    excess = sum(g(float(x)) for x in ev) - bound
+                    assert excess &lt; 1e-8
+                    max_excess = max(max_excess, excess)
+                    feasible_checks += 1
+
+    hidden_checks = 0
+    for m in (1, 2, 3, 7, 32, 127):
+        for gamma in (F(1), F(1, 1000000)):
+            for eps in (F(1, 100), F(1, 5)):
+                for hidden in (None, 0, m - 1):
+                    w = [gamma / m] * m
+                    if hidden is not None:
+                        w[hidden] += 2 * eps * gamma
+                    capacity = sum(w) / 2
+                    expected = gamma / 2 if hidden is None else (1 + 2 * eps) * gamma / 2
+                    assert capacity == expected
+                    for i, wi in enumerate(w):
+                        ui = F(i % 3, 2)
+                        energy = wi * (ui * ui + (1 - ui) ** 2)
+                        assert energy - wi / 2 == 2 * wi * (ui - F(1, 2)) ** 2
+                    hidden_checks += 1
+
+    examples = []
+    for k in (2, 4, 8, 64):
+        n, r, nu = 100.0, 1, 0.1
+        b = (k * n - r * nu) / (k - r)
+        w_bal = k * g(n) - r * g(nu) - (k-r) * g(b)
+        w_cold = r * (g(n)-g(nu)+(nu-n)*math.log1p(1/n))
+        excess_work = (k-r)*((b-n)*math.log1p(1/n)+g(n)-g(b))
+        assert excess_work &gt;= 0
+        assert abs(w_bal-w_cold-excess_work) &lt; 1e-10
+        examples.append({&quot;ports&quot;: k, &quot;protected_modes&quot;: r, &quot;local_occupation&quot;: n,
+                         &quot;selected_occupation&quot;: nu,
+                         &quot;free_energy_over_kBT&quot;: w_bal,
+                         &quot;direct_cooling_work_over_kBT&quot;: w_cold,
+                         &quot;balanced_extra_work_over_kBT&quot;: excess_work,
+                         &quot;with_one_percent_warm_loss&quot;: .99 * nu + .01 * n})
+    result = {&quot;status&quot;: &quot;FINITE_DIAGNOSTICS_PASS&quot;, &quot;python&quot;: sys.version,
+              &quot;numpy&quot;: np.__version__, &quot;platform&quot;: platform.platform(),
+              &quot;exact_thermal_cases&quot;: exact_checks,
+              &quot;feasible_entropy_cases&quot;: feasible_checks,
+              &quot;maximum_entropy_excess&quot;: max_excess,
+              &quot;exact_hidden_channel_cases&quot;: hidden_checks,
+              &quot;examples&quot;: examples,
+              &quot;scope&quot;: &quot;Exact rational identities plus floating finite covariance cases; no novelty or physical validation.&quot;}
+    dest = Path(__file__).with_name(&quot;results.json&quot;)
+    dest.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

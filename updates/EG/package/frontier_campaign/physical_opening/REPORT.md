@@ -1,0 +1,115 @@
+# Correlated thermal reservoirs: a priced construction and a failed free-resource route
+
+Research date: 2026-10-12. Astra revision supplied by the director: `787ab8b8ec23d17d4ab44a5cf2af602e5050355b`. This branch did not import internal scientific claims. Status: **NO CREDIBLE NEW TRANSFORMATIVE MECHANISM IDENTIFIED**. The construction below is physically admissible under its stated interfaces, and can suppress a large thermal contribution. Its required cold collective mode, routing, and independent-loss budget are load-bearing resources. Its useful effect is already covered by correlated-noise transduction and feedforward literature.
+
+## Candidate and consequence
+
+The candidate was a microwave-to-optical converter whose two thermal inputs are correlated, so their thermal contributions cancel at the converted output without cooling either local marginal. A successful device could make a warm mechanical intermediary compatible with transfer of an unknown quantum state. The consequential barrier is laser-pump heating plus thermal injection in transducers that connect superconducting processors to optical fiber.
+
+The current nearest model is [Hou et al., arXiv:2608.06683v1](https://arxiv.org/html/2608.06683v1), especially Eqs. (3), (6), (7), (17), (26), and (34). It supplies a phase-insensitive cross moment between mechanical and microwave input noises, then tunes scattering phases for cancellation. [Hou et al., Phys. Rev. Research 7, L032042 (2025)](https://arxiv.org/abs/2505.13790) already establishes the corresponding direct-transduction proposal. No novelty is claimed for this effect.
+
+## Exact task contract
+
+Input: an unknown single-rail qubit in the span of vacuum and one microwave photon. The validation input is one half of `( |0_R 0_A> + |1_R 1_A> ) / sqrt(2)`, so successful classical coherent-signal subtraction does not suffice. All trials count; no postselection is used.
+
+For a transparent favorable model, let the useful channel be
+
+`a_out = sqrt(eta) a_in + sqrt(1-eta) d`,
+
+where `d` is a canonical bath mode, independent of the input qubit, with a thermal state of occupation `n_d`. At `eta = 0.8`, the route should achieve entanglement fidelity at least 0.85. This is a stated target, not a measured device parameter. Bandwidth, duty cycle, source preparation, qubit encoding, decoder, and absorbed pump energy must be reported separately. A claim of positive capacity additionally requires an appropriate energy-constrained coding analysis; low added noise alone is insufficient.
+
+The supplied/calibrated plant includes the full scattering matrix versus frequency, independent loss rates and temperatures, accessible bath-port couplings, correlation spectrum, and delay/phase fluctuations. These must be acquired experimentally, including both quadratures and any anomalous moments. An exact covariance or exact bath routing is not a free input to an end-to-end technology claim.
+
+## A minimal causal construction
+
+Take two **independent canonical** traveling wavepacket modes, a hot source `h` of occupation `n_plus` and a cold source `v` of occupation `n_minus`. A balanced passive splitter produces
+
+`b = (h+v)/sqrt(2)`, `c = (h-v)/sqrt(2)`.
+
+Choose `n_plus = n(1+chi)` and `n_minus = n(1-chi)` for `0 <= chi <= 1`. Both outputs have local occupation `n`, their normal cross moment is `m = <b† c> = n chi`, and their cross commutator vanishes. The bath combination `d = (b-c)/sqrt(2)` is exactly the original cold mode `v`.
+
+This is an explicit constructive mechanism. It supplies the desired noise state without a causality or commutator violation. A physical implementation must route both outputs into two **accessible engineered ports**, synchronize their wavepackets, and match the phase and amplitude weights seen at the converted output. At unequal carrier frequencies, passive frequency-preserving splitting is insufficient: a pumped frequency converter and its added noise, energy, and heating must be included. Equal carrier frequencies avoid that extra conversion requirement.
+
+The construction does not turn a bulk intrinsic phonon loss channel into an accessible input. If the dominant loss remains unmonitored or unaddressable, its independent contribution remains. Preparing a correlated pulse in an auxiliary cavity does not, by itself, prepare the future microscopic substrate bath.
+
+## What the covariance actually buys
+
+For a zero-mean, gauge-invariant two-mode Gaussian state with local occupations `n` and real normal cross moment `n chi`, the occupation matrix is
+
+`N = [[n, n chi], [n chi, n]]`.
+
+Its independent normal modes have occupations `n(1+chi)` and `n(1-chi)`. Thus the entire cancellation advantage is the accessibility of a cold collective mode. The two local marginals being hot does not mean the global bath is an equilibrium thermal resource.
+
+For general output weights `w_b`, `w_c`, thermal noise is
+
+`N_out = |w_b|^2 n_b + |w_c|^2 n_c + 2 Re(w_b* w_c m)`.
+
+Positivity gives `|m| <= sqrt(n_b n_c)`. Even at maximal correlation, its favorable lower limit is
+
+`N_out >= ( |w_b| sqrt(n_b) - |w_c| sqrt(n_c) )^2`.
+
+For the normalized balanced difference, `n_d = n(1-chi)`. Reducing this occupation below one quantum requires `1-chi < 1/n`. This is a favorable matched-case condition, not a universal engineering threshold for every transducer.
+
+The analytical entanglement fidelity for the specified single-rail input is
+
+`F_e = ( 1/G + [eta + mu(G-eta)]/G^3 + 2 sqrt(eta)/G^2 )/4`,
+
+with `mu=(1-eta)n_d` and `G=1+mu`. Leakage outside the output qubit subspace counts as error. The formula follows from decomposing thermal attenuation into vacuum attenuation of transmissivity `eta/G` followed by a quantum-limited amplifier of gain `G`. The accompanying script independently checks it using beam-splitter Fock amplitudes and a geometric thermal distribution.
+
+Worked favorable example: `eta=0.8`, local bath occupation `n=100`, `chi=0.999`. The hidden normal-mode occupations are `199.9` and `0.1`. The channel's entanglement fidelity improves from `0.02385` with independent hot inputs to `0.86445` with the supplied correlated inputs. This is a real conditional advantage. It is not proof that making or delivering that bath is advantageous.
+
+## Entropy and work accounting
+
+Let `g(x)=(x+1)ln(x+1)-x ln(x)` in nats. The correlated Gaussian bath has mutual information
+
+`I = 2g(n)-g(n_plus)-g(n_minus)`.
+
+Its local energies equal those of two independent thermal modes at temperature `T`, but its global entropy is lower. For an asymptotic cyclic preparation with a single temperature-`T` thermal reservoir and a work source, the average work satisfies
+
+`W >= Delta F = k_B T I`.
+
+This follows directly from the nonequilibrium free-energy difference; see [Bruschi et al., Phys. Rev. E 91, 032118 (2015)](https://arxiv.org/abs/1409.4647) and [Sapienza et al., Nature Communications 10, 2492 (2019), Eq. (5)](https://www.nature.com/articles/s41467-019-10572-8). Supplying an optical vacuum or a cold refrigerator changes which resource pays this cost, and must be charged as such.
+
+At `chi=1` and `n >> 1`, the cost is approximately `k_B T [ln(n)+1-ln(2)]` per pair of temporal modes. Cooling just one original thermal mode to vacuum has free-energy cost `k_B T ln(1+n)`, because cooling also releases energy. The ideal perfectly correlated target costs slightly more, approaching an excess `(1-ln(2)) k_B T` per pair. Exactly, it is preparation of the cold and hot normal modes followed by a reversible splitter. At an exactly zero target occupation, finite free energy describes an ideal infimum; it does not imply finite-time attainability with bounded control gaps or a finite refrigerator.
+
+These fundamental work minima are small. For 10 GHz at 300 K, the perfect-correlation lower bound is about `2.79e-20 J` per mode pair. This does **not** establish an engineering impossibility: actual pump absorption, cold-stage heat lift, conversion efficiency, bandwidth, and routing may dominate by many orders of magnitude. The result identifies the resource, not the best implementation.
+
+## Loss, drift, and acquisition
+
+If both prepared arms have equal transmissivity `tau`, their losses inject independent thermal modes of occupation `n_warm`, and the difference has phase error `delta`, then
+
+`n_d,delivered = tau n [1-chi cos(delta)] + (1-tau)n_warm`.
+
+At perfect source correlation, independent warm-path loss must be below roughly `1/n_warm` to deliver sub-quantum occupation. The corresponding small phase error budget is `|delta| < sqrt(2/n)`. For 1 MHz at 300 K, `n=6.251e6`, requiring warm loss below `1.60e-7` and phase error below `5.66e-4 rad`. For 10 GHz at 300 K, `n=624.6`, the corresponding numbers are `0.00160` and `0.0566 rad`. These are separate illustrative favorable bounds, not simultaneous sufficient conditions.
+
+In the worked `n=100`, `chi=0.999` example, just 1% independent loss at the original bath temperature raises delivered occupation from 0.1 to 1.099 and lowers fidelity from 0.86445 to 0.62842. Uncontrolled intrinsic loss has the same qualitative problem.
+
+Calibration must resolve the small difference-mode spectrum directly and bound drift over the actual use interval. Inferring it by subtracting two large auto spectra and a cross spectrum can be statistically ill-conditioned. The acquisition cost depends on bandwidth, correlation time, detector imprecision, allowed false-positive rate, and stationarity; no sample-complexity guarantee is supplied here.
+
+## Counterexamples to tempting implementations
+
+**Equilibrium passive preparation.** Two independent equal-frequency thermal modes at the same temperature have covariance `n I` and state proportional to `exp[-beta hbar omega(N_1+N_2)]`. Every passive number-preserving mixer leaves this state invariant. It cannot create the required normal correlation. A cold ancillary mode, active work, nonequilibrium source, or preexisting collective protection must enter.
+
+**Common-bath substitution with unchanged dynamics.** If one instead makes both system modes couple to the same equilibrium bath, the noise commutator matrix acquires off-diagonal terms. The damping matrix must acquire the corresponding cross damping. For `dx=A x dt+dB` the canonical commutator matrix obeys `dot C=A C+C A†+Gamma`, where `Gamma dt=[dB,dB†]`. Keeping `A=-gamma I/2` while setting `Gamma=gamma [[1,r],[r,1]]` gives the impossible system cross commutator `C_12(t)=r(1-exp[-gamma t])`. One cannot insert a common equilibrium bath correlation while retaining a scattering model that assumed independent damping. A consistent collective dark mode can protect information, but then its actual signal transfer and preparation must be analyzed.
+
+**Past outputs are not fresh Markov inputs.** Independent bath time bins remain independent inputs at the next step even if a preparation interaction correlated the previous emitted outputs. An output covariance becomes a future input covariance only through a routing, storage, or non-Markov boundary condition. [Gardiner and Collett, Phys. Rev. A 31, 3761 (1985)](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.31.3761) supplies the governing causal input-output framework.
+
+The 2026 paper's Section V computes correlations in emitted intrinsic-port fields and then uses them for subsequent intrinsic input noise, appealing to a memory interval. This is a specific unresolved implementation interface in that model, not a refutation of its supplied-correlated-field calculations. A physical return path, loss, delay, and stability model would close or falsify that interface.
+
+## Does measured or squeezed feedback escape?
+
+It changes the contract. [Higginbotham et al., arXiv:1712.06535v2 / Nature Physics (2018)](https://arxiv.org/html/1712.06535v2) already studies shared-output noise subtraction. A vacuum ancilla feeds quantum noise into the result; a squeezed ancilla and homodyne measurement can protect one quadrature. Its Supplement VII gives the relevant finite-efficiency formulas and an idealized qubit encoding, explicitly leaving practical feasibility open. [Zhang, Zou, and Jiang, PRL 120, 020502 (2018)](https://arxiv.org/abs/1706.06075) is the accompanying adaptive-transduction comparator.
+
+Such feedback is not subject to the restricted isotropic prepared-bath formula above. It uses a measurement record, often a squeezed ancillary state, and possibly an encoding robust to noise in the other quadrature. A fair comparison must charge ancillary mean photons `sinh^2(r)`, detector noise and efficiency, displacement work, delay, record/reset resources, finite-energy code preparation, and decoding. Squeezing redistributes noise under a Gaussian unitary; it does not reduce symplectic entropy for free. No all-resource dominance of prepared-bath correlation or feedback is established here.
+
+## Experimental decision gate and comparator
+
+Prepare the hot/cold splitter source in accessible electromagnetic or phononic waveguide ports, first at a frequency where carrier matching is possible. Reconstruct the delivered two-mode covariance, then send the entangled single-rail validation input through the physical converter. Measure fidelity without postselection while varying independent warm-path loss and phase error. Compare with (i) direct cooling using the same cold port and total absorbed pump energy and (ii) the existing squeezed-ancilla feedback protocol. Match bandwidth, duty cycle, signal energy, preparation time, and classical calibration resources.
+
+Current hardware references set a demanding baseline: [Zhao et al., Nature Nanotechnology 20, 602–608 (2025)](https://pubmed.ncbi.nlm.nih.gov/40082700/) reports continuous operation with 0.58 input-referred added photons and 0.47–1.9 kHz upconversion rate; [Urmey et al., arXiv:2507.09873v4, revised October 9, 2026](https://arxiv.org/abs/2507.09873v4) reports 7 kHz throughput with three input-referred added photons bidirectionally. These values were checked from primary article abstracts; this branch has not reconstructed their full apparatus energy ledgers. They are concrete comparators, not a verified global ranking or a matched-resource comparison.
+
+The proposal fails the present campaign gate unless the routed source and device demonstrate better quantum-state transfer per total cost than these known mechanisms. The positive physical effect and its major potential consequence are established conditionally; a new practical advantage, scalable preparation of the actual intrinsic bath, and priority are **UNKNOWN**.
+
+## Reproducibility and status
+
+Run `python3 research/2026-10-12-frontier/physical_opening/audit.py`. The standard-library script produces `results.json` and checks 16 direct Fock-sum fidelity cases plus 16 passive-mixing cases. These finite checks validate the calculations and chosen examples only. No hardware experiment, paid computation, external publication, or claim of discovery was performed.
