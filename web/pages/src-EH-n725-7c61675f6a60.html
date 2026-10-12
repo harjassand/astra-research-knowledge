@@ -1,0 +1,191 @@
+<!doctype html><meta charset="utf-8"><title>N725 recovered original — astra_euclidean/check_construction.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not independent mathematics, priority, general implementation or technology validation. No archived scientific code executed at intake.</aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Diagnostics for the ASTRA Euclidean-snapshot construction.
+
+The checks supplement, but do not certify, the accompanying general proofs.
+No symbolic claim is inferred from the floating-point checks.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from math import comb, pi, sqrt
+from pathlib import Path
+
+import mpmath as mp
+import numpy as np
+import sympy as sp
+from scipy.linalg import expm, eigvalsh
+
+
+def chain(m: int, sign: int, a: float = 1.0, width: float = 1.0) -&gt; np.ndarray:
+    if m &lt; 1 or sign not in (-1, 1) or a &lt;= 0 or width &lt;= 0:
+        raise ValueError(&quot;Require m &gt;= 1, sign in {-1,+1}, and positive a,width.&quot;)
+    n = 2 * m - 1
+    diagonal = np.full(m, a + width / 2.0)
+    diagonal[-1] -= sign * width * m / (2.0 * n)
+    matrix = np.diag(diagonal)
+    for j in range(m - 1):
+        coupling = -width * sqrt((j + 1) * (n - j)) / (2.0 * n)
+        matrix[j, j + 1] = matrix[j + 1, j] = coupling
+    return matrix
+
+
+def snapshot(matrix: np.ndarray, tau: float) -&gt; np.ndarray:
+    v = expm(-tau * matrix / 2.0)[:, 0]
+    state = np.r_[1.0, v]
+    return state / np.linalg.norm(state)
+
+
+def symbolic_charpoly(m: int, sign: int) -&gt; sp.Expr:
+    x = sp.Symbol(&quot;x&quot;)
+    n = 2 * m - 1
+    previous, current = sp.Integer(1), None
+    for j in range(m):
+        diagonal = sp.Rational(3, 2)
+        if j == m - 1:
+            diagonal -= sign * sp.Rational(m, 2 * n)
+        if j == 0:
+            current = x - diagonal
+        else:
+            coupling_squared = sp.Rational(j * (n - j + 1), 4 * n * n)
+            previous, current = current, sp.expand((x - diagonal) * current - coupling_squared * previous)
+    assert current is not None
+    return sp.expand(current)
+
+
+def exact_moments(m: int, sign: int, highest: int) -&gt; list[sp.Rational]:
+    # A diagonal similarity removes square roots without changing (A^k)_{00}.
+    n = 2 * m - 1
+    matrix = sp.zeros(m)
+    for j in range(m):
+        matrix[j, j] = sp.Rational(3, 2)
+    matrix[-1, -1] -= sign * sp.Rational(m, 2 * n)
+    for j in range(m - 1):
+        matrix[j, j + 1] = -sp.Rational((j + 1) * (n - j), 4 * n * n)
+        matrix[j + 1, j] = -1
+    vector = sp.zeros(m, 1)
+    vector[0] = 1
+    result = []
+    for _ in range(highest + 1):
+        result.append(vector[0])
+        vector = matrix * vector
+    return result
+
+
+def run() -&gt; dict:
+    exact_checks = 0
+    x = sp.Symbol(&quot;x&quot;)
+    for m in range(1, 10):
+        n = 2 * m - 1
+        moments_by_sign = {}
+        for sign in (+1, -1):
+            parity = 0 if sign == +1 else 1
+            expected = sp.prod(x - (1 + sp.Rational(k, n)) for k in range(parity, n + 1, 2))
+            assert sp.expand(symbolic_charpoly(m, sign) - expected) == 0
+            exact_checks += 1
+            moments = exact_moments(m, sign, n + 2)
+            moments_by_sign[sign] = moments
+            for order, actual in enumerate(moments):
+                expected_moment = sum(sp.Rational(comb(n, k), 2 ** (n - 1)) * (1 + sp.Rational(k, n)) ** order
+                                      for k in range(parity, n + 1, 2))
+                assert actual == expected_moment
+                exact_checks += 1
+        assert moments_by_sign[+1][:n] == moments_by_sign[-1][:n]
+        assert moments_by_sign[+1][n] != moments_by_sign[-1][n]
+        exact_checks += 2
+
+    max_spectrum_error = 0.0
+    max_realtime_error = 0.0
+    max_snapshot_identity_error = 0.0
+    float_checks = 0
+    for m in (1, 2, 3, 5, 8, 16, 32):
+        n = 2 * m - 1
+        matrices = {s: chain(m, s) for s in (+1, -1)}
+        for sign, matrix in matrices.items():
+            parity = 0 if sign == +1 else 1
+            expected_spectrum = 1 + np.arange(parity, n + 1, 2) / n
+            err = float(np.max(np.abs(eigvalsh(matrix) - expected_spectrum)))
+            max_spectrum_error = max(max_spectrum_error, err)
+            assert err &lt; 1e-12
+            target = sign * np.exp(-1j * pi * n)
+            actual = expm(-1j * pi * n * matrix)[0, 0]
+            err = float(abs(actual - target))
+            max_realtime_error = max(max_realtime_error, err)
+            assert err &lt; 1e-11
+            float_checks += 2
+        for tau in (0.1, 1.0, n * np.log(2.0)):
+            states = {s: snapshot(matrix, tau) for s, matrix in matrices.items()}
+            # Stable pure-state distance; overlap subtraction loses tiny signals.
+            chord_squared = float(np.sum((states[+1] - states[-1]) ** 2))
+            distance_squared = chord_squared * (1 - chord_squared / 4)
+            y = np.exp(-tau / (2 * n))
+            a0, b0 = (1 + y) / 2, (1 - y) / 2
+            f = np.array([np.exp(-tau / 2) * sqrt(comb(n, k)) * a0 ** (n - k) * b0 ** k for k in range(n + 1)])
+            S = float(np.sum(f[:m] ** 2))
+            T = float(np.sum(f[m:] ** 2))
+            U = float(np.dot(f[:m], f[m:][::-1]))
+            predicted = 4 * (T * (1 + S) - U * U) / ((1 + S + T) ** 2 - 4 * U * U)
+            max_snapshot_identity_error = max(max_snapshot_identity_error, abs(distance_squared - predicted))
+            assert abs(distance_squared - predicted) &lt; 2e-13
+            # Tiny results are compared by high-precision identities below.
+            if T &gt; 1e-20:
+                assert T * (1 - 1e-8) &lt;= distance_squared &lt;= 4 * T * (1 + 1e-8)
+            float_checks += 1
+
+    mp.mp.dps = 100
+    high_precision_checks = 0
+    tail_scaling = []
+    for m in (2, 4, 8, 16, 32, 64):
+        n = 2 * m - 1
+        for tau in (mp.mpf(1), n * mp.log(2)):
+            y = mp.exp(-tau / (2 * n))
+            a0, b0 = (1 + y) / 2, (1 - y) / 2
+            tail = mp.exp(-tau) * sum(mp.binomial(n, k) * a0 ** (2 * (n - k)) * b0 ** (2 * k)
+                                          for k in range(m, n + 1))
+            central = mp.exp(-tau) * mp.binomial(n, m) * a0 ** (n - 1) * b0 ** (n + 1)
+            ratio = b0 / a0
+            delta = 2 * mp.exp(-tau) * ((1 - mp.exp(-tau / n)) / 2) ** n
+            assert central &lt;= tail * (1 + mp.mpf(&#x27;1e-90&#x27;))
+            assert tail &lt;= central / (1 - ratio ** 2) * (1 + mp.mpf(&#x27;1e-90&#x27;))
+            assert 4 * tail &lt;= delta * (1 + mp.mpf(&#x27;1e-90&#x27;))
+            high_precision_checks += 3
+            if tau &gt; 1:
+                scaled = tail * mp.sqrt(n) * mp.power(8, n)
+                tail_scaling.append({&#x27;n&#x27;: n, &#x27;sqrt_n_times_8_pow_n_times_T&#x27;: float(scaled)})
+
+    # Rational-grid, matched-bulk perturbations: finite precision is polynomial.
+    rounded_checks = []
+    for m in (4, 8, 16, 32):
+        n = 2 * m - 1
+        nominal = {s: chain(m, s, a=1.25, width=0.5) for s in (+1, -1)}
+        denominator = 2 ** int(np.ceil(np.log2(1000 * n)))
+        rounded = {s: np.round(matrix * denominator) / denominator for s, matrix in nominal.items()}
+        difference = rounded[+1] - rounded[-1]
+        mask = np.ones((m, m), dtype=bool)
+        mask[-1, -1] = False
+        assert np.max(np.abs(difference[mask])) == 0
+        t = 2 * pi * n
+        contrast = abs(expm(-1j * t * rounded[+1])[0, 0] - expm(-1j * t * rounded[-1])[0, 0])
+        assert contrast &gt; 1.9
+        assert min(eigvalsh(rounded[+1])[0], eigvalsh(rounded[-1])[0]) &gt;= 1
+        assert max(eigvalsh(rounded[+1])[-1], eigvalsh(rounded[-1])[-1]) &lt;= 2
+        rounded_checks.append({&#x27;m&#x27;: m, &#x27;denominator&#x27;: denominator, &#x27;real_time_contrast&#x27;: float(contrast)})
+
+    return {&#x27;status&#x27;: &#x27;PASS (diagnostics, not an independent proof)&#x27;,
+            &#x27;exact_rational_assertions&#x27;: exact_checks,
+            &#x27;floating_point_checks&#x27;: float_checks,
+            &#x27;high_precision_tail_assertions&#x27;: high_precision_checks,
+            &#x27;max_spectrum_error&#x27;: max_spectrum_error,
+            &#x27;max_real_time_error&#x27;: max_realtime_error,
+            &#x27;max_snapshot_identity_error&#x27;: max_snapshot_identity_error,
+            &#x27;tail_scaling&#x27;: tail_scaling,
+            &#x27;rational_rounding&#x27;: rounded_checks}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    result = run()
+    destination = Path(__file__).with_name(&#x27;check_results.json&#x27;)
+    destination.write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;, encoding=&#x27;utf-8&#x27;)
+    print(json.dumps(result, indent=2))
+</pre>
