@@ -1,0 +1,195 @@
+<!doctype html><meta charset="utf-8"><title>Adaptive invention original — signed_block_transport/verify.py</title>
+<aside>Byte/hash preservation and AST syntax only. Producer analytic/exact/numerical checks are source-reported internal evidence. No scientific script execution, independent proof reconstruction, literature/priority audit, physical experiment or practical advantage established at intake.</aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact checks for signed transport; no LP oracle or floating arithmetic.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations
+import json
+from pathlib import Path
+
+
+def mat(a):
+    return [[F(v) for v in row] for row in a]
+
+
+def eye(n):
+    return [[F(i == j) for j in range(n)] for i in range(n)]
+
+
+def mul(a, b):
+    return [[sum(x*y for x, y in zip(row, col)) for col in zip(*b)] for row in a]
+
+
+def inv(a):
+    n = len(a)
+    aug = [list(row) + ident for row, ident in zip(a, eye(n))]
+    for j in range(n):
+        pivot = next((i for i in range(j, n) if aug[i][j]), None)
+        if pivot is None:
+            return None
+        aug[j], aug[pivot] = aug[pivot], aug[j]
+        d = aug[j][j]
+        aug[j] = [v/d for v in aug[j]]
+        for i in range(n):
+            if i != j:
+                d = aug[i][j]
+                aug[i] = [v-d*w for v, w in zip(aug[i], aug[j])]
+    return [row[n:] for row in aug]
+
+
+def nonnegative(a):
+    return all(v &gt;= 0 for row in a for v in row)
+
+
+def sub(a, rows, cols):
+    return [[a[i][j] for j in cols] for i in rows]
+
+
+def serial(a):
+    return [[str(v) for v in row] for row in a]
+
+
+def repair(q, r0, v):
+    assert mul(q, [[w] for w in v]) == [[F(0)] for _ in q]
+    assert all(w &gt; 0 for w in v)
+    assert mul(q, r0) == eye(len(q))
+    shifts = [max([F(0)] + [-r0[j][i]/v[j] for j in range(len(v))])
+              for i in range(len(q))]
+    result = [[r0[j][i] + v[j]*shifts[i] for i in range(len(q))]
+              for j in range(len(v))]
+    assert nonnegative(result)
+    assert mul(q, result) == eye(len(q))
+    return result, shifts
+
+
+def main():
+    checks = {}
+    q = mat([[1, 1, -1], [-1, 1, 0], [0, -1, 1]])
+    qi = inv(q)
+    assert qi == mat([[1, 0, 1], [1, 1, 1], [1, 1, 2]])
+    checks[&#x27;signed_inverse_positive_example&#x27;] = {&#x27;Q&#x27;: serial(q), &#x27;inverse&#x27;: serial(qi)}
+
+    # Row/column permutations only permute inverse entries and cannot repair signs.
+    q = [[F(v, 2) for v in row]
+         for row in [[1, -1, 1], [1, 1, -1], [-1, 1, 1]]]
+    qi = inv(q)
+    assert qi == mat([[1, 1, 0], [0, 1, 1], [1, 0, 1]])
+    bad = []
+    for rr in combinations(range(3), 2):
+        for cc in combinations(range(3), 2):
+            h = inv(sub(q, rr, cc))
+            assert h is None or not nonnegative(h)
+            bad.append({&#x27;rows&#x27;: rr, &#x27;cols&#x27;: cc, &#x27;inverse&#x27;: None if h is None else serial(h)})
+    checks[&#x27;no_two_by_two_acquisition&#x27;] = {&#x27;Q&#x27;: serial(q), &#x27;inverse&#x27;: serial(qi), &#x27;subblocks&#x27;: bad}
+
+    # A rectangular block has an explicit nonnegative right inverse but no
+    # square inverse-positive basis, even though every triple is invertible.
+    q = mat([[5, 5, -3, -3], [2, -4, 6, 0], [-4, 2, 0, 6]])
+    r = mat([[F(1, 8), F(3, 32), F(1, 32)],
+             [F(1, 8), F(1, 32), F(3, 32)],
+             [F(1, 24), F(5, 32), F(5, 96)],
+             [F(1, 24), F(5, 96), F(5, 32)]])
+    assert mul(q, r) == eye(3) and nonnegative(r)
+    bases = []
+    for cc in combinations(range(4), 3):
+        h = inv(sub(q, range(3), cc))
+        assert h is not None and not nonnegative(h)
+        bases.append({&#x27;cols&#x27;: cc, &#x27;inverse&#x27;: serial(h)})
+    checks[&#x27;right_inverse_without_monotone_basis&#x27;] = {&#x27;Q&#x27;: serial(q), &#x27;R&#x27;: serial(r), &#x27;bases&#x27;: bases}
+
+    q = mat([[1, -2, 1], [-2, 1, 1]])
+    h = inv(sub(q, range(2), range(2)))
+    r0 = h + [[F(0), F(0)]]
+    r, shifts = repair(q, r0, [F(1)]*3)
+    checks[&#x27;positive_circulation_repair&#x27;] = {&#x27;Q&#x27;: serial(q), &#x27;R0&#x27;: serial(r0),
+                                             &#x27;R&#x27;: serial(r), &#x27;shifts&#x27;: [str(v) for v in shifts]}
+
+    # The repair operation is feasible but need not maximize profit, even with
+    # a supplied positive circulation and a finite optimum.
+    q = mat([[1, 1, -1]])
+    r0 = mat([[1], [0], [0]])
+    r, shifts = repair(q, r0, [F(1), F(1), F(2)])
+    p = mat([[1, 2, -3]])
+    x = mat([[1]])
+    u = mul(r, x)
+    alternative = mat([[0], [1], [0]])
+    assert mul(q, alternative) == x
+    assert mul(p, u) == [[F(1)]] and mul(p, alternative) == [[F(2)]]
+    # Eliminating u1 = 1-u2+u3 gives profit 1+u2-2u3 &lt;= 2-u3 &lt;=2.
+    checks[&#x27;repair_misses_finite_optimum&#x27;] = {&#x27;Q&#x27;: serial(q), &#x27;p&#x27;: serial(p),
+                                            &#x27;repair&#x27;: serial(u), &#x27;better&#x27;: serial(alternative),
+                                            &#x27;optimum&#x27;: &#x27;2&#x27;}
+
+    # A literal instance of the all-ones-circulation LP embedding.
+    a = mat([[1, 1]])
+    c = mat([[1, 2]])
+    q = mat([[1, 1, -2]])
+    p = mat([[1, 2, -4]])
+    assert mul(q, mat([[1], [1], [1]])) == [[F(0)]]
+    assert mul(p, mat([[0], [1], [0]])) == [[F(2)]]
+    # Q u=1 gives u1+u2=1+2t; p u=1+u2-2t&lt;=2, equality forces u1=0,
+    # but t remains neutral for this M. Choose M=5 for strict forced t=0.
+    p = mat([[1, 2, -5]])
+    assert mul(p, mat([[0], [1], [0]])) == [[F(2)]]
+    checks[&#x27;all_ones_circulation_embedding_example&#x27;] = {&#x27;Q&#x27;: serial(q), &#x27;p&#x27;: serial(p),
+                                                       &#x27;unique_optimal_appended_rate&#x27;: &#x27;0&#x27;}
+
+    # A negative-profit supplied circulation does not rule out another
+    # positive-profit recession direction.
+    q = mat([[1, 1, -1]])
+    p = mat([[4, 0, -3]])
+    v = mat([[1], [1], [2]])
+    d = mat([[1], [0], [1]])
+    assert mul(q, v) == [[F(0)]] and mul(q, d) == [[F(0)]]
+    assert mul(p, v) == [[F(-2)]] and mul(p, d) == [[F(1)]]
+    checks[&#x27;negative_anchor_does_not_certify_boundedness&#x27;] = {
+        &#x27;Q&#x27;: serial(q), &#x27;p&#x27;: serial(p), &#x27;negative_anchor&#x27;: serial(v),
+        &#x27;profitable_recession&#x27;: serial(d)}
+
+    # The augmented objective-resource block loses the positive circulation.
+    q_aug = mat([[1, 1, -1], [1, 2, -3]])
+    null = mat([[1], [-2], [-1]])
+    assert mul(q_aug, null) == mat([[0], [0]])
+    assert inv(sub(q_aug, range(2), range(2))) is not None
+    assert any(row[0] &lt; 0 for row in null) and any(row[0] &gt; 0 for row in null)
+    checks[&#x27;objective_augmentation_mixed_nullspace&#x27;] = {
+        &#x27;augmented_Q&#x27;: serial(q_aug), &#x27;nullspace_generator&#x27;: serial(null)}
+
+    # Discarding the most negative cost coordinate discards the unique optimum.
+    q = mat([[100, 1, -101]])
+    p = mat([[-10, -1, 1]])
+    best = mat([[F(1, 100)], [0], [0]])
+    assert mul(q, mat([[1], [1], [1]])) == [[F(0)]]
+    assert mul(q, best) == [[F(1)]] and mul(p, best) == [[F(-1, 10)]]
+    assert p[0].index(min(p[0])) == 0
+    # Substitution into the objective gives -1/10 -(9/10)u2 -(91/10)u3.
+    residual = [F(0), -F(9, 10), -F(91, 10)]
+    assert p[0] == [-F(1, 10)*q[0][j] + residual[j] for j in range(3)]
+    checks[&#x27;cheapest_coordinate_is_indispensable&#x27;] = {
+        &#x27;Q&#x27;: serial(q), &#x27;p&#x27;: serial(p), &#x27;unique_optimum&#x27;: serial(best),
+        &#x27;optimal_profit&#x27;: &#x27;-1/10&#x27;}
+
+    # In corank one the minimal scalar repair is globally optimal for negative
+    # circulation profit. Here all solutions are (-1,-1,0)+t*(1,1,1), t&gt;=1.
+    q = mat([[1, -2, 1], [-2, 1, 1]])
+    p = mat([[1, 0, -2]])
+    u0 = mat([[-1], [-1], [0]])
+    v = mat([[1], [1], [1]])
+    assert mul(q, u0) == mat([[1], [1]])
+    assert mul(q, v) == mat([[0], [0]]) and mul(p, v) == [[F(-1)]]
+    t = max(-row[0] for row in u0)
+    best = [[u0[j][0] + t*v[j][0]] for j in range(3)]
+    assert t == 1 and best == mat([[0], [0], [1]])
+    assert mul(p, best) == [[F(-2)]]
+    checks[&#x27;corank_one_exact_optimal_repair&#x27;] = {
+        &#x27;Q&#x27;: serial(q), &#x27;p&#x27;: serial(p), &#x27;particular_solution&#x27;: serial(u0),
+        &#x27;circulation&#x27;: serial(v), &#x27;optimal_scalar&#x27;: str(t), &#x27;optimum&#x27;: serial(best)}
+
+    dest = Path(__file__).with_name(&#x27;checks.json&#x27;)
+    dest.write_text(json.dumps(checks, indent=2) + &#x27;\n&#x27;)
+    print(f&#x27;PASS: {len(checks)} exact check groups; wrote {dest}&#x27;)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

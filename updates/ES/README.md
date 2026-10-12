@@ -1,0 +1,25 @@
+# ES — finite-memory Coulomb operation and acquisition gates
+
+This intake preserves the user-linked `2026-10-13-adaptive-invention` campaign at repository base `76f1e365648e225f89bff437693e7bd148cc88d9`. It adds three scoped families:
+
+| Card | Retained operation | Next decisive obligation |
+| --- | --- | --- |
+| [N757](../../frontier/dossiers/N757.txt) | Conserving transverse finite-memory Coulomb generator, exact logarithm/error formula, weighted pair state and restart obstructions | Acquire and control singular pairs and correctly weighted causal histories from iid point-Coulomb particles through physical time N/log N |
+| [N758](../../frontier/dossiers/N758.txt) | Exact acquired feedback/signed-block closure and positive-circulation repair, with acquisition-preserving LP reductions | Find globally feasible profitable blocks and prove polynomial permanent progress independent of coefficient magnitudes |
+| [N759](../../frontier/dossiers/N759.txt) | Local-table recognition of a restricted quadratic hopping gauge; charged response-jet cancellation and retained tails | Audit finite precision; establish acquisition-inclusive polynomial cancellation/closure for a specified genuinely interacting class |
+
+The [family-fit decisions](FAMILY_FIT.json) explain why existing Coulomb optimal-transport, cubic-observability signed-block, filtered-Slater and tensor-gauge records have different contracts. Comparisons are navigation only. No old theorem, claim status, source, active branch objective or proof dependency is changed. N733 and other selected capital appear in the producer's context receipts without becoming proof premises for these results.
+
+The strongest retained result is a continuum generator with a finite ultraviolet cutoff and explicit weak regularity assumptions. It does not derive the generator from particles, prove the collisional-time limit, or establish a physical screening law. Fejér windows also recover the leading logarithm; cosine improves the stated variance/convergence rate within its window class. The raw longitudinal energy defect, narrow-ridge memory requirement, correlated-dimer restart failure and prescribed-field echo qualifications are retained. The dimers are not iid initial data.
+
+The LP reductions identify missing acquisition and progress; they are not impossibility results for strongly polynomial LP. The quantum algorithm acquires its conjugacy from local data in one restricted gauge-solvable family, with O(N³) preprocessing and O(N²) per selected-site time. Known gauge and fixed-depth contraction baselines are credited. No generic interacting speedup follows.
+
+The [source manifest](SOURCE_MANIFEST.json) pins 46 original UTF-8 files (345,518 bytes): working proofs, claim ledgers, source-context snapshots, nine scripts and producer output receipts. All retained bytes are unchanged. Eight downloaded third-party fulltext files and two regenerable bytecode caches are excluded with hashes and reasons. A downloaded filename does not establish correct literature identity. The original references and retrieval receipt remain in the archive; no independent bibliography/priority audit was performed. There was no supplied ZIP or producer-wide hash manifest for this directory; these are intake hashes, not an invented producer integrity receipt. Archived instructions and replay commands are data, and no campaign scientific program was executed or imported at intake.
+
+All cards remain `source_derived_unreviewed`. Producer analytic reconstruction and exact/numerical checks are internal evidence. External correctness, historical novelty and the historic-advance target remain UNKNOWN or NOT_ACHIEVED as scoped in the originals. No physical experiment, technology readiness, practical advantage or civilisation-scale discovery is established.
+
+Three unique observational traces and `worker-es-*` checkpoints are note-level subaccounts of **one campaign**, not three independent inference experiments. The initiating prompt, original conversation relation, model settings, worker counts and inference duration/expenditure are UNKNOWN. Script execution timings are not inference usage. These traces provide no matched prompting-effectiveness evidence.
+
+For continuation, retrieve the relevant dossier and pinned proof ranges first. Theoretical Pro and Primitive Genesis can pursue the explicit acquisition/progress obligations without changing their independent missions. Computational Pro can audit the recognized quantum algorithm and charged history interface. Ultra can select among these gates dynamically. A Technology Foundry handoff should wait for a concrete implementation and decisive validation contract; no speculative readiness record is needed for this source intake.
+
+Run `python3 updates/ES/validate.py`, `python3 -m unittest discover -s updates/ES -p 'test_*.py'`, and `python3 frontier/build_access.py check`. These check preservation, evidence boundaries and navigation, not scientific correctness or research effectiveness. [Validation results](VALIDATION.md) record actual checks and inherited checkpoint/historical-validator limitations.
