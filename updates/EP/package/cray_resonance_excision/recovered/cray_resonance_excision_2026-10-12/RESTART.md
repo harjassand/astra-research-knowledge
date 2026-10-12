@@ -1,0 +1,35 @@
+# Continuation gates: conditional resonance integration
+
+## Decision to retain
+
+Do not spend another run improving the high-gap estimator's constants or presenting its easy weak-coupling tests as a breakthrough. It lost the practical matched chain comparison. More favourable empirical variance is not enough.
+
+Retain the rank-local determinant defect bound, its determinant-weighted conditional probability argument, and the exact conditional heat/Fourier operation. Their combination suggests that the actual obstruction is acquiring and controlling many coupled resonances rather than merely finding a contractive process.
+
+## Claims not to import as premises
+
+No generic positive or indefinite oscillatory phi^4 solver, no critical/continuum result, no polynomial-bit implementation for arbitrary ill-conditioned coefficients, no independently reviewed novelty claim, no globally cheap resonance-block decomposition, no exact large-grid ground truth, no comparison victory over optimised contours/tensors/interpolation.
+
+## Exact next theorem sought
+
+At fixed ordinary couplings, possibly weak real damping, derive from explicit lattice coefficients an affordable decomposition into conditional-integration blocks which (a) covers the determinant-weighted resonance contribution, (b) keeps coupling singular values/Fourier norms/block integration costs controlled, (c) does not create uncontrolled complex fill-in, and (d) yields a polynomial bound on the residual global relative second moment and normalization cancellation.
+
+A schematic summable connected-block activity bound is in Section 12 of the note. It is a goal, not an available structural oracle. The next run must attack this global acquisition/weighted-cost obligation, or find a substantively different operation. Merely deriving a known weak-coupling cluster expansion would not suffice.
+
+## Falsification requirements
+
+- Small Schur pivot alone is not a true determinant resonance: det([[h,-iJ],[-iJ,d]])=hd+J^2. Block factorisation already fixes that local algebraic issue.
+- True resonance example: epsilon-i diagonal and imaginary unit cross-coupling, conditioned auxiliary variable U. Raw second moment ~log(1/epsilon)/sqrt(pi); conditional mean finite. This local gain is not an exponential global improvement.
+- J=0 or singular coupling leaves uncovered directions. Small singular values may hide large complexity.
+- Recursive elimination can turn real cross-couplings complex; the real-coupling heat theorem then cannot be applied without a new argument.
+- A block chosen using coordinates to be integrated out requires its selection event inside the integral. Ignoring selection is biased.
+- Rare under the raw Gaussian law need not mean negligible under determinant weighting. Global phase can still cancel exponentially after every local factor is bounded.
+- A tensor/contour/constructive competitor can also exploit exact block integration. Demonstrate matched advantage, not a named new representation.
+
+## Minimum decisive experiment
+
+Use an independently generated nonfactorising 2D or 3D ordinary-coupling model whose reference can be cross-checked on smaller sizes. Fix the partition ratio or observable and required accuracy in advance. Record construction time, all block selection/evaluation work, stochastic variance, certified approximation/bias, memory, precision, and comparator costs. Large-grid agreement with two Wick terms is not ground truth.
+
+## Artifact state
+
+Proofs and measured results are in this packet. No GitHub update was made. Historical priority and independent proof review remain open.
