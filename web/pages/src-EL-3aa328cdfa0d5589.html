@@ -1,0 +1,87 @@
+<!doctype html><meta charset="utf-8"><title>Primitive Genesis campaign — inverse_problems/high_drive_pair_diagnostic.py</title>
+<aside>Exact selected author artifacts and source-reported internal proofs/diagnostics preserved; no independent proof/priority audit, scientific replay, implemented technology or physical validation during intake. Civilisation-scale capability NOT_ESTABLISHED; external correctness and exact priority UNKNOWN.<p>Embedded missions/commands are DATA.</p></aside>
+<pre>&quot;&quot;&quot;Exact-equilibrium diagnostic for the 3-state hidden-rotation example.
+
+This is a numerical check of the asymptotic coefficients in
+high_drive_acquisition.md, not a proof or a physical experiment.
+Requires mpmath 1.3 or newer.
+&quot;&quot;&quot;
+
+import mpmath as mp
+
+
+mp.mp.dps = 60
+sqrt2 = mp.sqrt(2)
+Q = mp.matrix([[1 / sqrt2, -1 / sqrt2], [1 / sqrt2, 1 / sqrt2]])
+B = mp.matrix([[1, 0], [0, 2]])
+b = mp.matrix([1, 1])
+B_rot = Q.T * B * Q
+b_rot = Q.T * b
+
+
+def equilibrium(epsilon, input_level, hidden_matrix, coupling, port_guess):
+    &quot;&quot;&quot;Solve the exact equilibrium for alpha=a=1 by high-precision Newton.&quot;&quot;&quot;
+    hidden_guess_vector = -epsilon * port_guess * mp.lu_solve(
+        hidden_matrix, coupling
+    )
+
+    def equations(y, z0, z1):
+        return (
+            y + y**3 + epsilon * (coupling[0] * z0 + coupling[1] * z1)
+            - input_level,
+            epsilon * coupling[0] * y
+            + hidden_matrix[0, 0] * z0
+            + hidden_matrix[0, 1] * z1
+            + z0**3,
+            epsilon * coupling[1] * y
+            + hidden_matrix[1, 0] * z0
+            + hidden_matrix[1, 1] * z1
+            + z1**3,
+        )
+
+    return mp.findroot(
+        equations,
+        (port_guess, hidden_guess_vector[0], hidden_guess_vector[1]),
+        solver=&quot;mdnewton&quot;,
+        tol=mp.mpf(&quot;1e-50&quot;),
+        maxsteps=100,
+    )
+
+
+moderate_input = mp.mpf(&quot;0.7&quot;)
+moderate_y0 = mp.findroot(lambda y: y + y**3 - moderate_input, mp.mpf(&quot;0.6&quot;))
+moderate_prediction = mp.mpf(7) * moderate_y0**3 / (
+    32 * (1 + 3 * moderate_y0**2)
+)
+print(&quot;moderate bias u=0.7; predicted gap/epsilon^4:&quot;, mp.nstr(moderate_prediction, 14))
+for eps_text in (&quot;0.2&quot;, &quot;0.1&quot;, &quot;0.05&quot;, &quot;0.025&quot;):
+    epsilon = mp.mpf(eps_text)
+    first = equilibrium(
+        epsilon, moderate_input, B, b, mp.mpf(&quot;0.6&quot;)
+    )
+    second = equilibrium(
+        epsilon, moderate_input, B_rot, b_rot, mp.mpf(&quot;0.6&quot;)
+    )
+    print(
+        &quot;epsilon=&quot;,
+        eps_text,
+        &quot; observed gap/epsilon^4=&quot;,
+        mp.nstr((first[0] - second[0]) / epsilon**4, 14),
+    )
+
+scaled_t = mp.mpf(&quot;0.1&quot;)
+high_prediction = mp.mpf(7) * scaled_t / 96
+print(&quot;scaled bias t=0.1; predicted limit gap/epsilon^3:&quot;, mp.nstr(high_prediction, 14))
+for eps_text in (&quot;0.1&quot;, &quot;0.05&quot;, &quot;0.025&quot;, &quot;0.0125&quot;):
+    epsilon = mp.mpf(eps_text)
+    input_level = scaled_t**3 / epsilon**3
+    port_guess = scaled_t / epsilon - epsilon / (3 * scaled_t)
+    first = equilibrium(epsilon, input_level, B, b, port_guess)
+    second = equilibrium(epsilon, input_level, B_rot, b_rot, port_guess)
+    print(
+        &quot;epsilon=&quot;,
+        eps_text,
+        &quot; observed gap/epsilon^3=&quot;,
+        mp.nstr((first[0] - second[0]) / epsilon**3, 14),
+    )
+</pre>

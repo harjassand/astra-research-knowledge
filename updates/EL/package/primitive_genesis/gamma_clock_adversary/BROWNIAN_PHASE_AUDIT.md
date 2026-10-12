@@ -1,0 +1,327 @@
+# Independent audit of the Brownian phase response constructions
+
+12 October 2026. Mathematical audit reconstructed independently from the local generator. The model is a modification of the original dynamics. The identities below do not invert an arbitrary unmodified process. Historical priority remains **UNKNOWN**.
+
+## Verdict
+
+The one-sided construction is correct for every finite stochastic matrix, including reducible matrices, self-loops, directed cycles, and arbitrarily slowly mixing matrices. Its generator-domain, stationary-centering, integrated-response, cubic-root, and rational roulette claims survive the audit. The proposed local-query lower bound also survives; it can be stated entirely on unit phases.
+
+The symmetric-sign extension in the root's `SIGNED_PHASE_RESPONSE.txt` is also correct, including the displayed constants. It has a sharp worst-case square-root response scale. A two-cycle with deterministic cancelling signs instead has inverse-rate response. These three examples are useful precise theorems, with distinct assumptions.
+
+The subsequent quantitative potential certificate for signed edges also passes, with its stated support-verification and charge-magnitude costs. A long cycle with positive winding shows why those quantitative costs cannot be omitted.
+
+The novelty gate is severe. The first-moment graph dependence is a single ordinary random walk, and the one-sided coefficient function is an explicit classical hypergeometric function. The scalar differential operator is exactly a one-sided complex Hill operator of the Gasymov class. The cubic damping mechanism, stochastic duality, and random-walk sampling of a weighted power series are established machinery. None of these audits establishes a new general inverse principle or technological advantage.
+
+## 1. Process, generator, and existence
+
+Let `V` be finite, `P` stochastic, `gamma>0`, and take the compact state space
+
+    E = (S^1)^V x S^1.
+
+Let `y=exp(i theta)` have Brownian generator `gamma partial_theta^2`. At independent rate-one clocks, replace `x_v` by `y x_w`, with `w` sampled from row `P(v,.)`. A self-loop still multiplies `x_v` by `y`; it must not be discarded as a null voter event.
+
+Between jumps only `theta` changes. The total candidate jump rate is `|V|`, so there are finitely many jumps on bounded time intervals almost surely. Each jump map is continuous. Brownian motion on the circle followed by these jumps defines a Feller process on the compact space. In particular invariant probability measures exist: time-averaged laws have weakly convergent subsequences, and the Feller property makes their limits invariant. No uniqueness or full-process mixing assertion is needed.
+
+For a continuous function twice differentiable in `theta`, the generator is
+
+    L f = gamma partial_theta^2 f
+          + sum_v sum_w P_vw [f(x^(v <- y x_w),y)-f(x,y)].
+
+The jump operator is bounded on continuous functions with sup norm, with norm at most `2|V|`. For `phi_(v,k)=x_v y^k`, direct substitution, including `w=v`, gives
+
+    L phi_(v,k) = -(1+gamma k^2) phi_(v,k)
+                 + sum_w P_vw phi_(w,k+1).                 (1)
+
+All sites other than `v` contribute exactly zero. This proves the claimed identity without a closure assumption, reversibility, or independence among the coordinates.
+
+The same functional formulas extend linearly to inputs with `|x_v|<=1`. Such inputs can alternatively be made actual states by replacing each circle coordinate with a closed unit disk; the compactness and Feller arguments remain valid. The distinction matters when a lower-bound fixture uses zero coordinates.
+
+## 2. The inverse and its domain
+
+Set `d_k=1+gamma k^2`, `w_n=product_(k=0)^n d_k^-1`, and
+
+    h_v = sum_(n>=0) w_n y^n (P^n x)_v.                   (2)
+
+Since `P` contracts the sup norm and `|y|=1`, each summand has norm at most `w_n`. For `n>=1`,
+
+    w_n <= gamma^-n/(n!)^2.
+
+Thus (2), and its first two `theta` derivatives, converge uniformly for fixed positive `gamma`. Each partial sum belongs to the Brownian generator domain, and hence to the domain after the bounded jump perturbation.
+
+Using `d_n w_n=w_(n-1)` for `n>=1`, equation (1) telescopes to
+
+    L h_v^(N) = -x_v+w_N y^(N+1)(P^(N+1)x)_v.             (3)
+
+The remainder tends uniformly to zero. Closedness of the Feller generator therefore gives `h_v in Dom(L)` and
+
+    -L h_v=x_v.                                           (4)
+
+There is no hidden boundary term at infinite Fourier charge.
+
+For an invariant law `pi`, stationarity and the generator-domain property imply `pi(Lh_v)=0`, so `pi(x_v)=0`. For each integer `k>=0`, the same proof starting with `x_v y^k` uses denominators `d_k,...,d_(k+n)` and proves `pi(x_v y^k)=0`. Absolute convergence then gives `pi(h_v)=0`.
+
+This proves centering under every invariant law; it does not prove unique ergodicity. Moreover the stationary mean of the source `x_v` is already the known number zero. The nontrivial object computed here is the transient Poisson response (2), rather than an unknown stationary expectation.
+
+## 3. Exact duality and the time integral
+
+Define a dual on `V x {0,1,...}` with cemetery state. From `(v,k)`, it jumps to `(w,k+1)` at rate `P_vw` and is killed at rate `gamma k^2`. The total birth rate is always one. The dual cannot explode: before killing its birth count is bounded by an independent rate-one Poisson birth process.
+
+Its generator applied to the initial-state evaluation `D_(x,y)(v,k)=x_v y^k` is exactly (1). Iterating the backward integral equation yields
+
+    E_(x,y)[x_v(t)y(t)^k]
+       = E_(v,k)[1_(alive at t) x_(W_t) y^(K_t)].          (5)
+
+Here the phases on the right are initial phases. The equality follows first with a birth-count cutoff; the omitted part is bounded by a Poisson tail on every bounded time interval. This proves duality directly and justifies removing the cutoff.
+
+From initial charge zero, reaching level `n` alive has probability `product_(j=0)^(n-1) d_j^-1`; the next holding time before a jump or kill has mean `d_n^-1`. Thus expected time spent at level `n` is exactly `w_n`. The vertex after the `n`th birth has law row `v` of `P^n`. Tonelli's theorem applied to the positive survival probability gives
+
+    E_(v,0)[lifetime] = S_gamma := sum_n w_n < infinity,
+    integral_0^infinity |E_(x,y) x_v(t)| dt <= S_gamma.
+
+Integrating (5) and summing occupation contributions now proves
+
+    integral_0^infinity E_(x,y) x_v(t) dt = h_v(x,y).       (6)
+
+This is a true integrated transient, rather than merely a formal solution of the Poisson equation.
+
+## 4. Sharp cubic-root norm and rational roulette
+
+Assume `0<gamma<=1`, and let `L=ceil(gamma^-1/3)`, equivalently the least positive integer with `gamma L^3>=1`. The first block satisfies
+
+    product_(k=1)^L(1+gamma k^2)
+       >=1+gamma sum_(k=1)^L k^2 >=4/3.
+
+Later blocks have no smaller factors. Consequently
+
+    w_n <=(3/4)^floor(n/L),       S_gamma<=4L.              (7)
+
+For every stochastic `P`, the worst-case norm of (2) is exactly `S_gamma`: the upper bound follows from contraction, and `x_v=1` at every vertex with `y=1` attains it. The worst-case norm is independent of graph structure, not just bounded independently of graph size.
+
+Let `M` have mass `(1/8)(7/8)^m`, let `J` be uniform on `0,...,L-1`, independently, and put `N=LM+J`. With an independent `P`-walk from `v`, return
+
+    Y=w_N y^N x_(W_N)/q_N,
+    q_N=(1/(8L))(7/8)^M.
+
+The countable absolute sum justifies conditioning on `N`, giving `E Y=h_v`. Equation (7) gives the actual deterministic output bound and expected work bound
+
+    |Y|<=8L(6/7)^M<=8L,
+    E|Y|^2<=64L^2,
+    E N=7L+(L-1)/2<8L.                                    (8)
+
+The computation makes `N` row-sampler calls and one endpoint coordinate query, absent caching or special graph structure. The output is bounded on every execution, but execution length is unbounded. A geometric random variable has positive probability of arbitrarily large values. Thus the row bound is expected, not an every-execution time bound.
+
+To prove sharpness put `a=gamma^1/3`, `n=floor(t/a)`. On each compact interval of `t>=0`,
+
+    log w_n = -gamma sum_(k=1)^n k^2+O(gamma^2 sum_(k=1)^n k^4)
+            = -t^3/3+O(a).
+
+The block estimate supplies an integrable exponential bound in the scaled variable. Riemann-sum convergence therefore yields
+
+    gamma^1/3 S_gamma -> integral_0^infinity exp(-t^3/3) dt
+                      =3^-2/3 Gamma(1/3).                 (9)
+
+In particular the claimed exponent is sharp. Any unbiased estimator at the all-one input has second moment at least `S_gamma^2=Theta(L^2)` by Jensen, regardless of its algorithm.
+
+For rational `gamma=b/a`, Gaussian-rational unit phases, and an exact rational row interface, all finite outputs are rational complex numbers. Unreduced products already give a transparent bit-size bound
+
+    bits(w_N)=O((N+1)(B+log(N+1))),
+    bits(y^N)=O(N B_y).
+
+Block selection uses integer comparisons `gamma L^3>=1`, rational geometric coins, and an exact uniform integer. All fixed moments of `N` are `O_r(L^r)`. Standard integer arithmetic therefore gives polynomial expected bit work in `B,B_y,L`, plus the declared row and coordinate costs. This is not a polynomial bound in the bit length of `gamma` alone: `gamma=2^-B` makes `L` exponential in `B`. Vertex labels also cost at least `log |V|` bits even when a row query is charged as one oracle operation.
+
+The rational-output claim is narrower than exact output for arbitrary real phases. No Brownian path needs to be simulated to evaluate (2).
+
+## 5. Local-query lower bound, with unit-phase inputs
+
+Let `gamma=L^-3`, integer `L>=4`, and `J0=floor(L/2)`. Use line states `0,...,L` and an absorbing star. Set `x_j=-1` on the line, `x_star=1`, and `y=1`. These are all unit phases. The base deterministic `P` moves along the line and absorbs at `L`; its response from zero is `-S_gamma`. Alternative `P_j`, `0<=j<J0`, redirects just row `j` to star. Its response differs from the base by
+
+    Delta_j=2 sum_(n>=j+1) w_n >=L/e,
+
+because `w_n>=exp[-gamma sum_(k=1)^n k^2]>=e^-1` for `n<=L`.
+
+An algorithm may query arbitrary deterministic rows adaptively. Couple its base run and a uniformly chosen alternative with the same internal random seed. Until the redirected row is queried their transcripts agree. If `C` is its expected base number of row queries, the probability `D` of ever querying that row is at most `C/J0`: the number of distinct rows queried is at most the number of queries.
+
+Assume the algorithm is unbiased on the base and every alternative and has second moment at most `M L^2` on each. Both outputs agree off `D`; Cauchy-Schwarz gives
+
+    L/e <= E|Y_alt-Y_base|
+         <=2 sqrt(M L^2 Pr(D)).
+
+Hence `C>=J0/(4e^2M)=Omega(L)` for fixed `M`. The original zero/one fixture is also valid under the disk-valued input interface and gives its stated weaker constant. This lower bound is compatible with (8), and shows that the cube-root row scale is optimal for this oracle model with uniformly bounded relative second moment.
+
+This says nothing against closed forms for a supplied special matrix, matrix-vector access that reveals all rows at once, or acquisition costs outside the declared oracle.
+
+## 6. Exact classical identification and primary-source comparison
+
+Define the entire scalar function
+
+    F_gamma(z)=sum_(n>=0) z^n/product_(k=1)^n(1+gamma k^2).
+
+Then exactly
+
+    h(x,y)=F_gamma(yP)x,
+    F_gamma(z)=_1F_2(1;1-i/sqrt(gamma),1+i/sqrt(gamma);z/gamma).
+
+The last identity follows simply by factoring `1+gamma k^2=gamma(k-i/sqrt(gamma))(k+i/sqrt(gamma))` and comparing Pochhammer coefficients with the [NIST hypergeometric definition, equation 16.2.1](https://dlmf.nist.gov/16.2#E1). No literature formula is being assumed as a proof premise.
+
+Its coefficient recurrence gives the scalar differential equation
+
+    [1+gamma(z partial_z)^2-z]F_gamma(z)=1.                 (10)
+
+For `P=[1]`, putting `z=exp(i theta)` gives the forced periodic equation
+
+    [1-gamma partial_theta^2-exp(i theta)]F_gamma(exp(i theta))=1.
+
+Writing `r=2sqrt(z/gamma)`, its homogeneous equation is the modified-Bessel equation of order `2i/sqrt(gamma)`. The explicit graph operator is therefore a classical scalar function applied to `P`; graph feedback does not create a new multidimensional inverse.
+
+**Exact operator-class collision.** [Shin (2003), Theorem 2 and the introduction](https://arxiv.org/html/math-ph/0308032) treats complex Hill potentials `V(theta)=sum_(k>=1) a_k exp(ik theta)`, with summable coefficients, and identifies the unperturbed Floquet discriminant. The introduction also records the periodic spectrum `{n^2}`. The scalar operator above is exactly `1+gamma H` with `V(theta)=-exp(i theta)/gamma`. Shin's theorem is a spectral theorem, not the row-query theorem (8). Gasymov's original 1980 paper and DOI are confirmed by its [journal record](https://www.mathnet.ru/eng/faa1764); the full original proof was not retrieved in this audit. Do not attribute the local-query constants or the specific response asymptotic to Gasymov without checking his original text.
+
+**Classical cubic damping.** [Grebenkov, Helffer and Henry (2016), Appendix B, equations B.2--B.4](https://arxiv.org/html/1603.06992) write the complex Airy operator in Fourier variables as `xi^2+partial_xi`, with semigroup multiplier `exp(-xi^2 t-xi t^2-t^3/3)` and norm bound `exp(-t^3/12)`. This is a primary-source match to the cubic damping mechanism. The formal local expansion `1-exp(i theta)=-i theta+O(theta^2)` explains the Airy scaling, but transferring a particular Airy theorem to the periodic model would require its own proof. Equation (9) already supplies that proof for the present forcing.
+
+**Exact Monte Carlo principle collision.** [Barto and Duff (1993), section 2](https://papers.neurips.cc/paper_files/paper/1993/file/3b3dbaf68507998acd6a5a5254ab2d76-Paper.pdf) explicitly samples a power-series term by an arbitrary probability mass, reweights by its reciprocal, and uses a random Markov trajectory with geometric stopping to estimate a Neumann series. This is the same random-term principle as (8), with different scalar coefficients and a block distribution. It cannot be claimed as a new estimator principle here.
+
+**General matrix-function comparison.** [Guidotti, Acebron and Monteiro (2024), sections 2.2--3.4](https://link.springer.com/article/10.1007/s10915-024-02500-w) studies random-walk evaluation of general matrix power series, including function actions on vectors and single entries. Its practical method uses a weight cutoff; that is a different termination contract from the unbiased rational roulette above. The [published correction](https://link.springer.com/article/10.1007/s10915-024-02740-w) adds funding information only. The general weighted-walk representation itself is a direct prior-art collision.
+
+**Stochastic-duality comparison.** [Fernley and Ortgiese (2023), section 4](https://onlinelibrary.wiley.com/doi/10.1002/rsa.21107) describes voter models on a general finite state space with arbitrary opinion set and their random-walk graphical dual. The present first-moment ancestry remains one lineage; copying carries an extra accumulated phase. The Brownian Fourier transform turns that phase history into killing. This is an independently verified dual representation, not evidence that this exact modulated copying model was previously published.
+
+These are concrete comparisons, not a completed historical search. Possible residual novelty is limited to a carefully scoped model-specific response/query theorem or a new useful application. No such priority or application is established here.
+
+## 7. Limits and decisive counterexamples
+
+1. `gamma=0` is excluded. Already `P=[1],x=y=1` has infinite response.
+2. The full modified process still has the slow observable `y`, since `Ly=-gamma y`; its Poisson response is `y/gamma`. Local response acceleration does not imply fast global mixing or a small inverse on all observables.
+3. If edges may erase charge, two active sites with `x_0<-y x_1` and `x_1<-y^-1 x_0` give the closed pair `phi_0=x_0`, `phi_1=y x_1`, and
+
+       L phi_0=-phi_0+phi_1,
+       L phi_1=phi_0-(1+gamma)phi_1,
+       h_0=[(1+gamma)phi_0+phi_1]/gamma.
+
+   At all-one phases this is `(2+gamma)/gamma`. Arbitrary edge signs therefore invalidate a universal cubic-root theorem.
+4. Taking a real part of the one-sided observable is harmless: real and imaginary parts inherit the same inverse by linearity. The obstruction is cancellation in the dynamics or in higher observable algebras, not merely use of real-valued outputs.
+5. A one-coordinate first moment is not a closure for all correlations. Products involving conjugates can generate both positive and negative charge and lose the monotone-charge proof.
+
+6. Even nonzero charge on every simple directed cycle is insufficient for a graph-uniform improvement. Consider a deterministic directed cycle of length `2m+1`, with edge signs `(+1,-1)` repeated `m` times followed by one `+1`. Its only simple cycle has positive total charge `+1`. Starting at the first vertex, charges alternate `0,1` through the first `2m` jumps. At all-one phases the integrated response is therefore at least
+
+       1+2 sum_(r=1)^m(1+gamma)^-r
+        =1+2[1-(1+gamma)^-m]/gamma.
+
+   For `0<gamma<=1` and `m=ceil(1/gamma)`, this is at least `2(1-exp(-1/2))/gamma`, since `log(1+gamma)>=gamma/2`. The response is finite: after each complete cycle the charge rises by one, so eventually its accumulated square grows cubically in the number of traversals. Nevertheless its size in this graph family is already inverse-rate before the winding becomes appreciable. A qualitative nonzero-cycle test must therefore be supplemented with a quantitative transient or winding-density bound.
+
+## 8. Checked symmetric-sign extension
+
+Now independently choose a fair sign at every refresh and set `x_v<-y^sigma x_w`. The exact identity for every integer `k` is
+
+    L(x_v y^k)=-(1+gamma k^2)x_v y^k
+              +(1/2)sum_w P_vw[x_w y^(k+1)+x_w y^(k-1)].
+
+Let `W_n` be an independent `P`-walk and `K_n` a simple symmetric walk starting at zero. Define
+
+    A_n=product_(j=0)^n(1+gamma K_j^2)^-1,
+    h_v=sum_n E[A_n y^(K_n) x_(W_n)].                     (11)
+
+The root's block proof is valid uniformly in initial charge. Here is an independent moment calculation. For a charge walk `k+S_j`, `j=0,...,L-1`, put `I=sum_j(k+S_j)^2`, `A=sum_j S_j`, `B=sum_j S_j^2`. Then
+
+    EI=Lk^2+L(L-1)/2 >=Lk^2+L^2/4          (L>=2),
+    EI^2=L^2 k^4+2Lk^2 EB+4k^2 EA^2+EB^2.
+
+Odd mixed terms vanish by sign symmetry. Using `EB<=L^2/2`, `EA^2=sum_(r=1)^(L-1)r^2<=L^3/3`, and `EB^2<=(sum_j sqrt(E S_j^4))^2<=3L^4/4`, gives
+
+    EI^2<=L^2 k^4+(7/3)k^2L^3+(3/4)L^4
+         <=L^2 k^4+3k^2L^3+L^4 <=16(EI)^2.
+
+Choose `L=ceil(sqrt(8/gamma))`. Paley--Zygmund gives `Pr(I>=EI/2)>=1/64`, and this event implies `gamma I>=1`. As `product_j(1+gamma(k+S_j)^2)>=1+gamma I`,
+
+    E product_j(1+gamma(k+S_j)^2)^-2 <=253/256=:r.
+
+The Markov property over blocks therefore gives
+
+    E A_n^2<=r^floor(n/L),
+    E A_n<=r^(floor(n/L)/2).                              (12)
+
+Since `|K_n|<=n`, (12) implies uniform convergence of (11) and its first two `theta` derivatives. The same finite-sum telescoping and closed-generator argument proves `-Lh_v=x_v`. The rate-one charge/vertex walk killed at `gamma K^2` is nonexplosive and has finite expected lifetime `sum_n E A_n`; integrating its exact dual proves the integrated-response interpretation and stationary centering.
+
+Take `M` geometric with success `1/256`, `J` uniform on a length-`L` block, `N=LM+J`, and `s=255/256`. Return
+
+    Y=A_N y^(K_N) x_(W_N)/q_N,
+    q_N=(1/(256L))s^M.
+
+Equation (12) gives precisely
+
+    E|Y|^2<=256L^2 sum_(m>=0)(r/s)^m=32640L^2,
+    EN=255L+(L-1)/2<256L.                                 (13)
+
+There is no deterministic output bound analogous to (8): charge can repeatedly return to zero. The second-moment and expected-work contracts are the appropriate ones.
+
+At all-one phases, every term is positive. Since `log(1+u)<=u` and `E K_j^2=j`, Jensen yields
+
+    E A_n>=exp[-gamma n(n+1)/2].
+
+Summation through `n` of order `gamma^-1/2`, together with (12), proves the sharp worst-case norm `Theta(gamma^-1/2)`. The maximum norm is again attained by a constant all-one input, for every stochastic `P`.
+
+There is also a matching local-query lower bound. Set `gamma=R^-2`, integer `R>=4`, and repeat the unit-phase line/star fixture from section 5 with line length `R`. For every `n<=R`, Jensen's estimate gives `E A_n>=e^-1`. Redirecting one unknown row `j<floor(R/2)` therefore changes the response by at least `R/e`. The identical-transcript argument gives
+
+    E[base row queries]>=floor(R/2)/(4e^2 M)=Omega(R)
+
+for any unbiased evaluator with second moment at most `M R^2` on the base and all alternatives. Thus (13) has the optimal row-query exponent for the same local oracle and natural second-moment scale.
+
+For the scalar `P=[1]`, the operator is exactly
+
+    1-gamma partial_theta^2-cos(theta).
+
+After translating and rescaling `theta`, this is a standard Mathieu operator. Near the zero of the potential, `1-cos(theta)=theta^2/2+O(theta^4)`; balancing the derivative and quadratic terms gives the classical harmonic-oscillator `sqrt(gamma)` scale. [NIST DLMF 28.8.1](https://dlmf.nist.gov/28.8#E1) records the corresponding large-parameter Mathieu characteristic-value expansion. This comparison explains the exponent but is not used as a premise for (12)--(13).
+
+The root's exact rational implementation contract also holds: all denominators are rational, negative powers of Gaussian-rational unit phases are rational conjugates, and `|K_N|<=N` bounds bit growth. It has polynomial expected bit work in input bit size and `L`, subject to the declared exact row-sampler interface. This remains exponential in the bit length of very small `gamma`.
+
+## 9. Checked quantitative potential certificate for signed edges
+
+The root subsequently proposed a sufficient certificate that allows some negative edge charges. Give each positive-probability edge an integer charge `c_vw` and update `x_v<-y^(c_vw) x_w`. Suppose a **verified** rational potential `a_v`, rational `delta>0`, and its oscillation bound `B=max a-min a` satisfy
+
+    c_vw+a_v-a_w>=delta                         on every support edge. (14)
+
+For a dual path starting at charge zero, telescoping proves
+
+    K_j=sum_(ell<j)c_(W_ell,W_(ell+1))
+       >=delta j+a_(W_j)-a_(W_0)>=delta j-B.
+
+Set `N0=ceil(2B/delta)`, let `L` be the least positive integer with `gamma delta^2 L^3>=4`, and set `R=N0+L`. At every index `j>=N0`, `K_j>=delta j/2`. In each aligned block of factors `j=bR+1,...,(b+1)R`, choose the `L` indices `j=bR+N0+ell`, `ell=1,...,L`. Then
+
+    product_(selected j)(1+gamma K_j^2)
+       >=1+(gamma delta^2/4)sum_(ell=1)^L ell^2>=4/3.
+
+This proves the root's pathwise bound, with all offsets accounted for,
+
+    A_n=product_(j=0)^n(1+gamma K_j^2)^-1
+          <=(3/4)^floor(n/R).                               (15)
+
+Using the length-`R` block roulette from section 4, independently of the path, gives an exact unbiased response estimator with `|Y|<=8R`, `E|Y|^2<=64R^2`, and `EN<8R`. The response norm is at most `4R`. Domain membership, the Poisson identity, invariant centering, and the time-integral representation follow exactly as before, now with `|K_n|<=C n`, where `C=max_(edges)|c_vw|` is finite. For initial charge `k` one can replace `B` with `B+|k|`; thus the corresponding inverse is also well-defined for every fixed Fourier monomial.
+
+For the two-cycle charges `(+2,-1)`, `a_0=0,a_1=3/2,delta=1/2` satisfy (14) on both edges. This genuinely admits a conjugate edge. It does not admit the zero-winding two-cycle `(+1,-1)`.
+
+The root's graph-certificate equivalence is correct. Necessity follows by summing (14) around a directed cycle, giving mean charge at least `delta`. Conversely, suppose every cycle has mean charge at least `delta`. The shifted edge weights `c_vw-delta` have no negative cycle. Add a super-source of zero-cost edges to every vertex and let `a_v` be shortest-path distances. Since negative cycles are absent, minima occur on simple paths, and
+
+    a_w<=a_v+c_vw-delta,
+
+which is precisely (14). This is the usual difference-constraint potential; no new graph invariant has been introduced. [Karp's original 1977 report, published in 1978](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1977/Archive/ERL-m-77-47.pdf), derives the minimum cycle mean using shifted weights and shortest paths and gives an `O(|V||E|)` explicit-graph algorithm. The equivalence above is reconstructed directly, without assuming its source proof.
+
+Two interface costs must remain explicit. A mere row **sampler** cannot exactly certify (14) on every positive-probability edge by finitely many sampled checks: an unobserved violating edge may have arbitrarily small positive probability. Exact support access, complete support enumeration, or a sound supplied verification interface is required. A global bound on potential oscillation must likewise be supplied or acquired. Full explicit-graph verification costs at least reading the relevant support; shortest-path acquisition has its usual graph cost.
+
+Arbitrary integer charges also change bit accounting. While (15) controls row queries and estimator magnitude, exact rational `y^K` can have bit length proportional to `|K|`. If one edge charge is `2^B`, an endpoint phase power may require exponentially many output bits in the charge's encoded length `B`. The appropriate bound includes charge magnitude or separately charged output arithmetic. Fixed bounded charges retain the previous polynomial-in-`R` rational contract. Rational potentials need not be used as fractional phase powers: the proof only telescopes their inequalities, so no nonperiodic gauge observable is required.
+
+The long alternating cycle from section 7 has minimum cycle mean `1/(2m+1)` and potential oscillation of order one. Consequently the certified delay term `B/delta` is of order `m`, consistent with its inverse-rate lower bound when `m` is of order `1/gamma`.
+
+## 10. What is proved, and what remains open
+
+**Independently proved:** the modified finite-state models exist; their local generator identities; domain membership and centering; exact dual/transient representations; cubic-root and square-root worst-case response norms; the displayed rational roulette moments and expected row counts; local-query lower bounds for both sign models; the cancelling-cycle and long-cycle counterexamples; and the quantitative-potential sufficient theorem with its stated acquisition and bit interfaces.
+
+**Not established:** priority; an advantage over the best equally informed algorithm for a consequential application; inverse access for the original dynamics; a stationary sampler; global mixing; a dimension-free acquisition/certification procedure from row sampling alone; a classification of all feedback/sign systems; or polynomial dependence on `log(1/gamma)`.
+
+The serious mathematical next gate is a useful charge-occupation certificate beyond the strict cycle-drift potential class and independent symmetric signs, in an application where the resulting response matters. Merely asserting a nonzero charge on some cycles is insufficient: graph structure can cause diffusive cancellation or long charge-neutral traps. The potential certificate is a rigorous sufficient answer under its quantitative and acquisition assumptions; it does not classify arbitrary sign systems or establish a new general physical mechanism.
+
+## 11. Reproducible finite checks
+
+`phase_audit_checks.py` is an independent exact-rational coefficient audit. It passed 440 finite partial-sum generator identities across self-loop, cyclic, reducible, and rational stochastic matrices for both sign models; 160 hypergeometric-coefficient identities; and 260 block/roulette fixtures, including exhaustive signed blocks of lengths 2 through 9 and initial charges -3 through 3. The symmetric-sign second-moment constant is also checked by exact rational arithmetic.
+
+It additionally passed 1,921 exact potential/path-state comparisons and 20 long-cycle prefix identities. The path audit retains the maximum exact weight among all paths to each vertex/charge pair, so these checks cover every path in the finite fixtures rather than one sampled trajectory.
+
+`phase_audit_results.json` records the results and script hash. Diagnostic scalar evaluations for gamma down to `10^-12` approach the proved one-sided constant `1.287899316854...`; the scaled signed truncated resolvents approach `1.8540748...`. The signed limiting constant is not asserted as a theorem here, and the finite floating-point truncations do not certify it.
+
+`sources/phase_sources_manifest.json` records source URLs, cache status, and SHA256 receipts for cached primary PDFs. These finite checks and receipts support reproducibility. The mathematical arguments above, rather than sampled agreement or file integrity, establish the claimed results.

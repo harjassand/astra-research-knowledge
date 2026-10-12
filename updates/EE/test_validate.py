@@ -80,7 +80,13 @@ class PreservationGuards(unittest.TestCase):
         def fixture(data):
             return '0' * 64 if data == target else original(data)
 
-        self.reject([patch.object(VALIDATOR, 'sha', fixture)], 'unscoped earlier navigation change')
+        # Exercise this guard directly: later legitimate semantic notices may
+        # stop main() at a separate frozen-projection check first.
+        scientific = {'frontier/dossiers/N700.txt': original(target)}
+        self.assertEqual(VALIDATOR.check_navigation_hashes(scientific, []), set())
+        with patch.object(VALIDATOR, 'sha', fixture), self.assertRaisesRegex(
+                ValueError, 'unscoped earlier navigation change'):
+            VALIDATOR.check_navigation_hashes(scientific, [])
 
 
 if __name__ == '__main__':

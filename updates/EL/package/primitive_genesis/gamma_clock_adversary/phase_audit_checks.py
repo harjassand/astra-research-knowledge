@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""Independent finite checks for the Brownian phase audit.
+
+Exact rational identities support the symbolic proof; numerical scale checks
+are diagnostic only. No continuous diffusion is approximated or simulated.
+"""
+from __future__ import annotations
+
+from collections import defaultdict
+from fractions import Fraction as F
+from itertools import product
+from math import ceil, gamma as gamma_fn
+from pathlib import Path
+import hashlib
+import json
+
+
+HERE = Path(__file__).resolve().parent
+
+
+def clean(p):
+    return {key: value for key, value in p.items() if value}
+
+
+def apply_generator(polynomial, P, gam, signed):
+    """Coefficient dictionary in the basis x_v y^k."""
+    out = defaultdict(F)
+    for (v, k), c in polynomial.items():
+        out[v, k] -= (1 + gam * k * k) * c
+        for w, prob in enumerate(P[v]):
+            if signed:
+                out[w, k + 1] += c * prob / 2
+                out[w, k - 1] += c * prob / 2
+            else:
+                out[w, k + 1] += c * prob
+    return clean(out)
+
+
+def finite_response(P, gam, root, depth, signed):
+    """Build finite h and its boundary independently via path recursion."""
+    current = {(root, 0): F(1)}
+    total = defaultdict(F)
+    for n in range(depth + 1):
+        for key, c in current.items():
+            total[key] += c
+        next_term = defaultdict(F)
+        boundary = defaultdict(F)
+        for (v, k), c in current.items():
+            for w, prob in enumerate(P[v]):
+                jumps = ((k - 1, F(1, 2)), (k + 1, F(1, 2))) if signed else ((k + 1, F(1)),)
+                for new_k, sign_prob in jumps:
+                    b = c * prob * sign_prob
+                    boundary[w, new_k] += b
+                    next_term[w, new_k] += b / (1 + gam * new_k * new_k)
+        current = clean(next_term)
+    return clean(total), clean(boundary)
+
+
+def exact_generator_checks():
+    matrices = [
+        [[F(1)]],
+        [[F(0), F(1)], [F(1), F(0)]],
+        [[F(1, 3), F(2, 3)], [F(1, 7), F(6, 7)]],
+        [[F(1), F(0), F(0)], [F(0), F(0), F(1)], [F(0), F(1), F(0)]],
+        [[F(1, 2), F(1, 3), F(1, 6)], [F(1, 4), F(3, 4), F(0)], [F(0), F(2, 5), F(3, 5)]],
+    ]
+    count = 0
+    for P in matrices:
+        for gam in (F(1), F(1, 7), F(1, 64), F(3, 257)):
+            for root in range(len(P)):
+                for depth in (0, 1, 2, 5, 9):
+                    for signed in (False, True):
+                        h, boundary = finite_response(P, gam, root, depth, signed)
+                        expected = defaultdict(F, boundary)
+                        expected[root, 0] -= 1
+                        actual = apply_generator(h, P, gam, signed)
+                        assert actual == clean(expected), (P, gam, root, depth, signed)
+                        count += 1
+    return count
+
+
+def exact_hypergeometric_checks():
+    # (1-i/sqrt(gamma))_n (1+i/sqrt(gamma))_n gamma^n
+    # equals product_(k=1)^n (1+gamma k^2), without irrational arithmetic.
+    count = 0
+    for gam in (F(1), F(1, 3), F(1, 1000), F(13, 97)):
+        denom = F(1)
+        w = F(1)
+        for n in range(1, 41):
+            denom *= gam * (n * n + 1 / gam)
+            w /= 1 + gam * n * n
+            assert w * denom == 1
+            assert (1 + gam * n * n) * w == (F(1) if n == 1 else previous)
+            previous = w
+            count += 1
+    return count
+
+
+def exact_block_checks():
+    count = 0
+    for gam in (F(1), F(1, 2), F(1, 7), F(1, 64), F(1, 1000), F(3, 8000)):
+        L = 1
+        while gam * L**3 < 1:
+            L += 1
+        w = F(1)
+        for n in range(6 * L + 1):
+            if n:
+                w /= 1 + gam * n * n
+            assert w <= F(3, 4) ** (n // L)
+            q = F(1, 8 * L) * F(7, 8) ** (n // L)
+            assert w / q <= 8 * L
+            count += 1
+
+    # Enumerate signed blocks exactly; formulas hold uniformly in k in proof.
+    r = F(253, 256)
+    for L in range(2, 10):
+        gam = F(8, L * L)
+        for k in range(-3, 4):
+            EI = F(0)
+            EI2 = F(0)
+            squared_weight = F(0)
+            good = F(0)
+            p = F(1, 2 ** (L - 1))
+            mean_formula = L * k * k + F(L * (L - 1), 2)
+            for signs in product((-1, 1), repeat=L - 1):
+                charge = k
+                I = charge * charge
+                weight = F(1, 1) / (1 + gam * charge * charge)
+                for step in signs:
+                    charge += step
+                    I += charge * charge
+                    weight /= 1 + gam * charge * charge
+                EI += p * I
+                EI2 += p * I * I
+                squared_weight += p * weight * weight
+                good += p * (I >= mean_formula / 2)
+            assert EI == mean_formula
+            assert EI2 <= 16 * EI * EI
+            assert good >= F(1, 64)
+            assert squared_weight <= r
+            count += 1
+    s = F(255, 256)
+    assert 256 / (1 - r / s) == 32640
+    return count
+
+
+def one_sided_scale(gam):
+    w = 1.0
+    total = w
+    n = 0
+    while w > 1e-17 * max(1.0, total):
+        n += 1
+        w /= 1 + gam * n * n
+        total += w
+    return {"gamma": gam, "terms": n + 1, "scaled_response": gam ** (1 / 3) * total}
+
+
+def exact_potential_and_cycle_checks():
+    # Each edge is (destination, integer charge); all have positive probability.
+    fixtures = [
+        ([[ (1, 2) ], [ (0, -1) ]], [F(0), F(3, 2)], F(1, 2)),
+        ([[ (1, 2) ], [ (2, 0) ], [ (0, -1) ]], [F(0), F(5, 3), F(4, 3)], F(1, 3)),
+        ([[ (0, 1), (1, 4) ], [ (0, -2), (1, 1) ]], [F(0), F(3)], F(1)),
+    ]
+    count = 0
+    for edges, potentials, delta in fixtures:
+        B = max(potentials) - min(potentials)
+        for v, row in enumerate(edges):
+            for w, c in row:
+                assert c + potentials[v] - potentials[w] >= delta
+        for gam in (F(1), F(1, 2), F(1, 64), F(1, 1000)):
+            L = 1
+            while gam * delta * delta * L**3 < 4:
+                L += 1
+            R = ceil(2 * B / delta) + L
+            for root in range(len(edges)):
+                # Dynamic programming keeps the maximum exact weight over all
+                # paths ending at each (vertex,charge), so every path is tested.
+                paths = {(root, 0): F(1)}
+                for n in range(3 * R + 1):
+                    for (v, k), weight in paths.items():
+                        assert k >= delta * n - B
+                        assert weight <= F(3, 4) ** (n // R)
+                        count += 1
+                    next_paths = {}
+                    for (v, k), weight in paths.items():
+                        for w, c in edges[v]:
+                            new_k = k + c
+                            new_weight = weight / (1 + gam * new_k * new_k)
+                            key = w, new_k
+                            next_paths[key] = max(next_paths.get(key, F(0)), new_weight)
+                    paths = next_paths
+    cycle_count = 0
+    for gam in (F(1), F(1, 2), F(1, 7), F(1, 64)):
+        for m in (1, 2, 4, 9, 32):
+            k = 0
+            w = F(1)
+            partial = w
+            for step in range(2 * m):
+                k += 1 if step % 2 == 0 else -1
+                w /= 1 + gam * k * k
+                partial += w
+            assert k == 0
+            assert partial == 1 + 2 * (1 - (1 + gam) ** (-m)) / gam
+            cycle_count += 1
+    return {"potential_path_states": count, "long_cycle_prefix_fixtures": cycle_count}
+
+
+def signed_truncated_response(gam):
+    # Exact finite tridiagonal equations in floating point, with zero boundary
+    # at |k|=K+1. Positive truncations increase toward the lifetime response.
+    K = max(20, int(14 * gam ** (-1 / 4)))
+    d = [1 + gam * k * k for k in range(-K, K + 1)]
+    rhs = [1.0] * len(d)
+    for i in range(1, len(d)):
+        ratio = -0.5 / d[i - 1]
+        d[i] += 0.5 * ratio
+        rhs[i] -= ratio * rhs[i - 1]
+    solution = [0.0] * len(d)
+    solution[-1] = rhs[-1] / d[-1]
+    for i in range(len(d) - 2, -1, -1):
+        solution[i] = (rhs[i] + 0.5 * solution[i + 1]) / d[i]
+    return {"gamma": gam, "charge_cutoff": K, "scaled_truncated_response": gam ** 0.5 * solution[K]}
+
+
+def main():
+    result = {
+        "status": "PASS",
+        "scope": "Exact finite rational identities and diagnostic scalar numerical scales; not a formal proof certificate or historical novelty check.",
+        "exact_generator_fixtures": exact_generator_checks(),
+        "exact_coefficient_fixtures": exact_hypergeometric_checks(),
+        "exact_block_fixtures": exact_block_checks(),
+        "exact_potential_and_cycle_checks": exact_potential_and_cycle_checks(),
+        "one_sided_limit": 3 ** (-2 / 3) * gamma_fn(1 / 3),
+        "one_sided_scale": [one_sided_scale(10.0 ** (-p)) for p in (0, 2, 4, 6, 8, 10, 12)],
+        "signed_scale": [signed_truncated_response(10.0 ** (-p)) for p in (0, 2, 4, 6, 8, 10, 12)],
+        "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    }
+    (HERE / "phase_audit_results.json").write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    main()

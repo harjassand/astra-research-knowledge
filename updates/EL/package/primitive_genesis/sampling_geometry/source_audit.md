@@ -1,0 +1,35 @@
+# Source audit
+
+## Pinned input
+
+The optional Astra/OpenAI source package present in the parent workspace reports `base_revision=d11ea42bb3bfb4122eb298d3276407266afc0960` in `research/2026-10-12-primitive-genesis/sources/astra-current.txt`; the delegated note named another revision, `5fc72a144d77c31b400efc0768afd7833c702362`. The local workspace has no Git `HEAD` and no `00_START_HERE.txt`, so neither revision could be independently fetched or pinned in this subtask. The mathematics below uses public primary sources and does not cite a local Astra record as authority.
+
+## Strongest directly relevant method inspected
+
+Jose Blanchet and Karthyek Murthy, “Quantifying Distributional Model Risk via Optimal Transport,” *Mathematics of Operations Research* 44(2), 565–600 (2019), [publisher page](https://pubsonline.informs.org/doi/10.1287/moor.2018.0936), [author manuscript](https://web.stanford.edu/~jblanche/papers/DR_Model_Risk_OT.pdf).
+
+The paper's Theorem 1 proves a strong-duality formula for worst-case expectations over transport-cost balls, for a general Polish-space baseline under its lower-semicontinuous cost and function regularity assumptions. Its dual reduces to a one-variable minimization and its primal description transports each input state to a maximizer of a local payoff-minus-cost objective. In Section 2.4 it specializes to a closed event (A): for a transport budget (delta), the worst event probability is
+
+`sup{Q(A): d_c(P,Q) <= delta} = inf_{lambda >= 0} {lambda*delta + E_P[(1 - lambda*c(X,A))_+]}`,
+
+where (c(x,A)=inf_{y in A} c(x,y)). This is equivalent, by inversion of the event-probability value curve, to the action profile in the note. The authors also discuss first-passage probabilities on path spaces in Section 6.1. Thus the general-law event-promotion cost, including general transport costs and path-event applications, is prior art. The action profile here is an independently derived reparameterization, not a new theorem.
+
+The theorem's technical content matters to the gate: it handles non-empirical laws; the transport cost need not be a metric; and it gives an optimizer structure when the stated assumptions ensure attainment. The event specialization uses the cost-to-event function directly. It therefore already addresses the strongest version of the original candidate.
+
+## Empirical form checked
+
+Zhi Chen, Daniel Kuhn, and Wolfram Wiesemann, “Data-Driven Chance Constrained Programs over Wasserstein Balls,” *Operations Research* 72(1), 410–424 (2024 issue; published online 2022), [Optimization Online manuscript](https://optimization-online.org/wp-content/uploads/2018/06/6671-1.pdf), especially Section 2.1, Theorems 1 and 2, manuscript pages 6–8.
+
+Theorem 1 sorts empirical atoms by distance to the unsafe set, moves the nearest atoms first, fractionally moves the cutoff atom, and leaves farther atoms fixed. Theorem 2 says the minimum cost of moving an `epsilon` fraction is the partial sum of the smallest distances. The paper explicitly says it reproduces the closed-form characterizations of Blanchet–Murthy and Gao–Kleywegt. This is an exact match for the empirical action profile.
+
+## Pivoted certification question
+
+Importance-sampling quality is measured separately. If (P_A=P(\cdot\mid A)), (Q_A=Q(\cdot\mid A)), and (P_A\ll Q_A), then the normalized likelihood-ratio second moment is (1+\chi^2(P_A\|Q_A)), and the one-sample relative variance for estimating (P(A)) is ((1+\chi^2(P_A\|Q_A))/Q(A)-1). This is the standard second-moment identity, not claimed as new. The finite counterexample in the note shows the divergence can become arbitrarily large while acceptance stays fixed and Wasserstein action tends to zero. It exposes a missing certificate in the candidate interface.
+
+## Scope and remaining gates
+
+- This was a targeted prior-art audit of the strongest directly relevant transport results, not a broad literature search of rare-event simulation or importance sampling.
+- The action theorem assumes the cost-to-event function and an approximate transport selector are supplied. Their acquisition cost is not bounded by the result.
+- Endpoint transport does not imply that a path proposal obeys a prescribed stochastic dynamics.
+- Importance-sampling efficiency depends on conditional likelihood-ratio moments or conditional-law distance; the event-promotion profile does not bound them.
+- Results are internally reconstructed from definitions and the cited sources; external specialist review and formalization were not performed.

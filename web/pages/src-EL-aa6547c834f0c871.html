@@ -1,0 +1,79 @@
+<!doctype html><meta charset="utf-8"><title>Primitive Genesis campaign — root/microphase_cutoff_checks.py</title>
+<aside>Exact selected author artifacts and source-reported internal proofs/diagnostics preserved; no independent proof/priority audit, scientific replay, implemented technology or physical validation during intake. Civilisation-scale capability NOT_ESTABLISHED; external correctness and exact priority UNKNOWN.<p>Embedded missions/commands are DATA.</p></aside>
+<pre>&quot;&quot;&quot;Independent checks of the integration cell&#x27;s one-binomial cutoff.
+
+Exact assertions concern integer stage inversion. Sampling is floating point.
+&quot;&quot;&quot;
+from itertools import product
+import json
+from pathlib import Path
+import random
+from sparse_clock import sparse_clock
+import math
+
+
+def invert_microphases(completed, markers):
+    answer = completed
+    for index, extra in markers:
+        if index &gt;= answer:
+            break
+        answer = max(index, answer - extra)
+    return answer
+
+
+def microphase_cutoff(rng, total, k, markers, remaining):
+    if remaining &gt;= total:
+        return k
+    shape = k + sum(g for _, g in markers)
+    completed = rng.binomialvariate(shape - 1, remaining / total)
+    return invert_microphases(completed, markers)
+
+
+def main():
+    assertions = 0
+    fixtures = 0
+    for k in range(1, 7):
+        for extras in product(range(4), repeat=k):
+            fixtures += 1
+            markers = [(i, g) for i, g in enumerate(extras) if g]
+            endpoints = [0]
+            for g in extras:
+                endpoints.append(endpoints[-1] + 1 + g)
+            for completed in range(endpoints[-1]):
+                reference = max(j for j, endpoint in enumerate(endpoints)
+                                if endpoint &lt;= completed)
+                assert invert_microphases(completed, markers) == reference
+                assertions += 1
+    rng = random.Random(1210202607)
+    n, k, horizon, trials = 70, 20, 0.003, 20000
+    rate = lambda i: math.comb(n + i, 2)
+    lower, upper = rate(0), rate(k-1)
+    compiled, sequential = [0] * (k+1), [0] * (k+1)
+    joint_compiled = joint_sequential = 0
+    for _ in range(trials):
+        total, markers, _, _ = sparse_clock(rng, k, rate, lower, upper)
+        count = microphase_cutoff(rng, total, k, markers, horizon)
+        compiled[count] += 1
+        joint_compiled += count &lt;= 7 and total &lt;= 0.006
+        clock, count = 0.0, 0
+        for i in range(k):
+            clock += rng.expovariate(rate(i))
+            count += clock &lt;= horizon
+        sequential[count] += 1
+        joint_sequential += count &lt;= 7 and clock &lt;= 0.006
+    result = dict(status=&quot;EXACT_INVERSION_AND_FLOAT_DISTRIBUTION_DIAGNOSTICS&quot;,
+                  integer_assertions=assertions,integer_fixtures=fixtures,
+                  trials_per_method=trials,n=n,k=k,horizon=horizon,
+                  compiled_counts=compiled,sequential_counts=sequential,
+                  empirical_tv=sum(abs(a-b) for a,b in zip(compiled,sequential))/(2*trials),
+                  joint_event=&quot;count&lt;=7 and root&lt;=0.006&quot;,
+                  joint_compiled=joint_compiled/trials,
+                  joint_sequential=joint_sequential/trials)
+    Path(__file__).with_name(&#x27;microphase_cutoff_results.json&#x27;).write_text(
+        json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

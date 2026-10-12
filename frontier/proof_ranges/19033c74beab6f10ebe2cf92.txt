@@ -1,0 +1,96 @@
+EXACT INDEXED SOURCE RANGE | {"path": "updates/EL/package/primitive_genesis/reaction_clock_integration/INTEGRATION_PROOF.md", "sha256": "14245df5727312fa38d59a9ab57b0a140f4684cc3a3cc51942b9cf8a8fe38a4b", "lines": [1, 92], "range_scope": "Inspected source interface, corrected uniformization, physical multiplier and collision independence.", "read_path": "updates/EL/package/primitive_genesis/reaction_clock_integration/INTEGRATION_PROOF.md", "source_id": "src-EL-6642622863125ea4", "hash_kind": "original_utf8_bytes"}
+range_sha256=e678c5713d4b8766462444c5b79ee04b5691fa982ab9f62726c36dcf963d4baa; line numbers refer to the source, not this wrapper.
+Scope: located text only; imported premises, completeness, correctness and priority remain unverified.
+--- BEGIN SOURCE BYTES ---
+# Exact sparse clocks for uniformly reactive CRN batching
+
+Status: internally reconstructed proof, with a numerical prototype. This is an algorithmic integration result in an idealized random-variate model; it is not a new distributional identity, a bit-complexity theorem, an implementation release, or an externally validated priority claim.
+
+## 1. Result and early gate
+
+The proposed compound-Poisson/gamma sampler has the correct distribution. More importantly, an equivalent sparse-geometric implementation samples exactly the same latent variables with no scan of the `k` rates. For fixed reaction order `o`, fixed uniform generativity `g >= 0`, and `k = O(sqrt(n))`, it uses an expected constant number of rate queries and random-variate operations. One binomial draw and a sparse scan resolve the fixed-time cutoff in expected constant work while preserving the joint law, provided exact binomial variates have uniformly bounded expected cost. A lazy beta tree provides an exact logarithmic-cost alternative with gamma primitives alone. Replacing the exact clock in Petrack--Doty Algorithm 5 removes its adaptive-rejection overhead, subject to the same discrete batching interface and an explicit bound on passive-event slowdown. The clock argument does not require repeated samples from one distribution.
+
+The law of the clock remains valid after conditioning on a collision length because the uniformized total rate is independent of all embedded reaction choices. It does **not** remain valid after conditioning on a length chosen using the clocks themselves. A deterministic transformed-event block, as already used in Algorithm 5, is the cleanest integration interface.
+
+The primary-source audit establishes that the underlying gamma series, geometric decomposition, and phase-type uniformization are classical. The potential contribution is the no-scan compiler for formula-specified close rates and its exact integration/cutoff proof, not those identities.
+
+## 2. Source interface actually being replaced
+
+The pinned source is Petrack and Doty, arXiv:2508.04079v2, revised 12 February 2026. Full source was downloaded. The relevant theorem and proof are in `sources/petrack_doty_v2/sections/making_time_work.tex`, lines 11--26 and 451--511. The fixed-time algorithm and correctness proof are lines 381--449; collision sampling and batch contents are in `sections/simulation.tex`. Section 7 is `sections/conclusion.tex` and has been read in full.
+
+Theorem 5.1 has expected-time expression
+
+\[
+ O\!\left((2q)^o s\ell\log(n_{\max})/n_{\min}^{p}
+       + n_{\max}^{2p/3}\ell^{1/3}\log(n_{\max})\right),\quad 0<p\le 1/2.
+\]
+
+Its second term comes from repeated exact hypoexponential sampling by adaptive rejection. The source assumes the claimed cube-root density-evaluation bound; the replacement below does not use that assumption. Algorithm 5 samples a deterministic block of `floor(n0^p)` **transformed events**, which can contain several collision batches and passive events. Its clock is therefore not conditional on an unknown ordering of original reaction types. Section 7 asks for a more efficient exact clock. [Paper](https://arxiv.org/html/2508.04079v2).
+
+This replaces the exact theoretical branch. The implementation branch in Section 5.4 uses a moment-matched gamma approximation; a single uncorrected gamma is generally not exact.
+
+## 3. Correct uniformization and the physical multiplier
+
+Use the propensity convention
+
+\[
+ a_r(c)=\frac{k_r}{v^{|r|-1}}\prod_A {c(A)\choose r(A)}.
+\]
+
+Choose a uniform order `o>=max(1,maximum original reaction order)`, a uniform generativity `g>=max(0,maximum original generativity)`, and a catalyst count `m >= o`. For an original reaction with order `d`, add `delta=o-d` catalyst molecules to both sides and enough inert waste products to obtain generativity `g`. To preserve the displayed propensity convention, set
+
+\[
+ k'_r=k_r v^{\delta}/{m\choose\delta}.
+\]
+
+Let `kappa` be the maximum, over reactant multisets of size `o`, of the sum of the modified rate constants sharing that multiset. Add passive reactions to make every such sum `kappa`. A passive reaction returns its reactants and adds `g` waste molecules. Then, at an extended configuration of total population `N`, Vandermonde's identity gives
+
+\[
+ A'(N)=\frac{\kappa}{v^{o-1}}
+       \sum_{|r|=o}\prod_A {c(A)\choose r(A)}
+       = a{N\choose o},\qquad a=\kappa/v^{o-1}.
+\]
+
+Within one block, `m`, `kappa`, and `v` are held fixed. Every transformed event, active or passive, increases the total population by `g`, so its chronological total rates are exactly
+
+\[
+ \lambda_i=a{n+ig\choose o},\qquad 0\le i<k.
+\]
+
+The multiplier `a` must be charged and retained. It cancels from the probabilities used to compile the latent counts and scales the final gamma duration by `1/a`. When catalyst counts and rate constants are recomputed between blocks, `a` can change; block times are conditionally correct, not globally independent and identically distributed.
+
+**Repairable source convention mismatch.** The source Eq. (1) uses binomial/factorial normalization, but Definition 2.7 and Algorithm 1 divide the catalyst correction by `m` falling-factorial `delta`, omitting `delta!`. With the source Eq. (1), a reaction padded by two catalyst molecules would run at half its original propensity. For example, a unary reaction padded to order three has an extra factor `binom(m,2)` and requires division by that binomial. This report uses the correctly normalized correction. Under the alternative no-factorial propensity convention, use the corresponding converted constants consistently. For fixed `o` the correction is a constant-factor normalization issue, not a change in the clock complexity.
+
+**Projection proof.** Let `pi` delete catalysts and waste. For each active reaction, its propensity after padding is exactly its original propensity. A passive reaction has zero increment in `pi`. Thus, for every test function `f`,
+
+\[
+ Q'(f\circ\pi)(y)=(Qf)(\pi y).
+\]
+
+Resetting catalyst and waste counts at a block boundary preserves `pi` and this equality when rate constants are adjusted as above. Equivalently, while the projected configuration is `c`, its active hazards remain `a_r(c)` regardless of intervening passive events. Its next active holding time and active reaction selection therefore have the original Gillespie law. With nonexplosion, kernel composition proves the entire projected fixed-time law, including any number of reaction types.
+
+For a joint claim about reaction counts, augment the original state by one counter for each labeled reaction. Its active transition increments the corresponding counter, while passive transitions increment none. The same generator identity then holds for test functions of both projected configuration and counters. This proves the joint count/configuration law, even for original reactions with no net state change. If syntactically identical transformed channels are combined, retain their labels by a proportional random split of their aggregate counts. Counts must be sampled from these same contents, not independently from the elapsed time or endpoint state.
+
+## 4. Conditioning on a collision length
+
+Fix the extended configuration and coefficients at a block start. Generate the embedded scheduler from a randomness stream `U`. Separately generate independent unit-rate exponentials `Z_0,Z_1,...`, independent of `U`, and put `T_i=Z_i/lambda_i`. Because `lambda_i` is deterministic given the start and the step index, the sequence `(T_i)` is independent of **the entire embedded scheduler**, not merely of each individual next-reaction choice.
+
+Let `K` be any positive integer measurable with respect to `U` and the block-start information. In particular, `K` may be a collision-free run length, that length plus its collision, or a cap of that length. For every `k` with positive conditional probability and every measurable sets `B_0,...,B_(k-1)`,
+
+\[
+ \Pr(T_i\in B_i\ \forall i<k\mid K=k,U\text{-event})
+   =\prod_{i<k}\Pr(\operatorname{Exp}(\lambda_i)\in B_i)
+\]
+
+whenever the conditioning event belongs to the embedded scheduler's sigma field. Therefore
+
+\[
+ H_K\mid\{K=k\}\ \overset d=\sum_{i=0}^{k-1}\operatorname{Exp}(\lambda_i),
+\]
+
+with independent summands. Reaction contents and the collision decision can be sampled before or after this clock, provided they retain their correct conditional law given `K`.
+
+This fails if `K` is time-selected. For example, set `K=1` when `T_0>h` and `K=2` otherwise. Conditional on `K=1`, `T_0` is an exponential conditioned to exceed `h`, not an unconditional exponential. An adaptive physical-time cutoff must be sampled jointly, as in Section 7 below.
+
+For a raw, untransformed CRN neither uniform order/generativity alone nor a nearly constant population is sufficient. For example, `A -> B` at rate 1 and `B -> A` at rate 100 conserve population but have state-dependent total intensity. A batch clock that ignores reaction types is invalid there. The passive-reaction uniformization is essential.
+
