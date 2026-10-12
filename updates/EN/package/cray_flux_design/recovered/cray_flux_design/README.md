@@ -1,0 +1,44 @@
+# CRAY flux-design research packet
+
+Start with `RESEARCH_NOTE.md`. The main executed acquisition-to-certificate result is
+`integer_results.json`; earlier numerical diagnostics are not interchangeable with
+that final report.
+
+## Reproduce
+
+Python 3 and the packages in `requirements.txt` are required. From this directory:
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python benchmark.py
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python exact_integer_assay.py
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python falsification.py
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python mixed_design.py
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python exact_algebra_audit.py
+```
+
+These scripts write their own JSON results. They run local synthetic experiments;
+they do not access a laboratory instrument or modify a remote repository. Runtime
+and solver details may differ between machines. The seeded random generator makes
+finite test data reproducible, not genuinely random in a cryptographic or physical
+sense. The integer embedded-race algorithm is exact under independent unbiased bits.
+
+## Contents
+
+- `flux_design.py`: measured-data outer LP and exact rational dual-residual repair.
+- `opaque_assay.py`: floating synthetic assay. Only small summaries go to inference.
+- `exact_integer_assay.py`: exact rational race sampler and primary experiment.
+- `rational_confidence.py`: confidence-radius inequalities checked with integers and fractions.
+- `benchmark.py`: random exact-data diagnostics and known-generator LP comparator.
+- `falsification.py`: pooled-source and cross-talk counterexamples, high-rate event measurement, fast-loop cost failure.
+- `mixed_design.py`: mixed-probe algebra and acquired rare-pathway example. Its noisy certificate is uninformative at the recorded budget.
+- `exact_algebra_audit.py`: 120 finite rational assertions across 12 small fixtures.
+- `CLAIM_LEDGER.json`: scope and evidence classifications.
+- `RESTART.md`: unresolved mathematical/acquisition gates and exact continuation target.
+- `MANIFEST.json`: SHA-256 and byte counts for files in this packet, excluding itself.
+
+`integer_results_float_radii_historical.json` is retained to record an earlier
+confidence-arithmetic implementation. Its simulations used the same random streams
+as the final integer experiment and are not an independent replication.
+
+No claim of a civilisation-scale breakthrough, established historical originality,
+physical deployment, or independent proof validation is made.

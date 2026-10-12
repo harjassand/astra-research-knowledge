@@ -1,0 +1,160 @@
+<!doctype html><meta charset="utf-8"><title>N744 recovered original — cray_flux_design/flux_design.py</title>
+<aside>Original producer evidence; hashes and ZIP CRC establish preservation, not mathematical correctness, priority, general implementation or technology validation. Scientific code syntax parsed only, never executed at intake.</aside>
+<pre>&quot;&quot;&quot;Experimental flux-calibrated steady-state design: a research prototype.
+
+The inference functions receive only probe summaries, rate bounds, and assay
+constants. Hidden transition matrices are used only by the benchmark module.
+Floating-point simulation is diagnostic, not an interval-certified physical model.
+The optional rational LP upper-bound checker does not trust solver tolerances.
+&quot;&quot;&quot;
+from __future__ import annotations
+from dataclasses import dataclass
+from fractions import Fraction
+from typing import Any
+import math
+import numpy as np
+from scipy.optimize import linprog
+
+@dataclass
+class Summary:
+    samples: int
+    source_counts: list[int]
+    reward_sum: int
+    intervention_counts: list[int]
+    physical_time: float
+    background_events: int
+    intervention_events: int
+    maximum_episode_interventions: int
+
+    def means(self) -&gt; np.ndarray:
+        return np.array(self.source_counts + [self.reward_sum], dtype=float)/self.samples
+
+
+def concentration_radii(samples: int, channels: int, delta: float,
+                         background_bound: float, reset_rate: float) -&gt; tuple[float,float]:
+    &quot;&quot;&quot;Simultaneous calibration radii: bounded endpoints and geometric-tail counts.&quot;&quot;&quot;
+    if samples &lt; 1 or channels &lt; 1 or not 0 &lt; delta &lt; 1 or reset_rate &lt;= 0 or background_bound &lt; 0:
+        raise ValueError(&#x27;Invalid concentration parameters.&#x27;)
+    quantities=(channels+1)**2+channels
+    t=math.log(2*quantities/delta)
+    endpoint=math.sqrt(t/(2*samples))
+    flux=(background_bound+reset_rate)*(2*math.sqrt(t/samples)+t/samples)
+    # Round upward to rational decimal upper bounds, for exact LP bookkeeping.
+    return math.ceil(endpoint*1e12)/1e12, math.ceil(flux*1e12)/1e12
+
+
+def build_outer_lp(means: np.ndarray, flux: np.ndarray, upper_rates: np.ndarray,
+                   endpoint_error: float, flux_error: float,
+                   activity_bound: float) -&gt; dict[str,Any]:
+    &quot;&quot;&quot;An outer LP containing every physically realisable design on the confidence event.
+
+    Variables: x=(alpha[0:k], z[0:k]), both nonnegative. All measurements of f
+    are in [0,1]. The ejection assumption justifies the activity inequality.
+    &quot;&quot;&quot;
+    means=np.asarray(means,float); flux=np.asarray(flux,float)
+    upper_rates=np.asarray(upper_rates,float)
+    k=len(flux)
+    if means.shape != (k+1,k+1) or upper_rates.shape != (k,):
+        raise ValueError(&#x27;Incompatible probe dimensions.&#x27;)
+    if min(endpoint_error,flux_error) &lt; 0 or np.any(upper_rates &lt;= 0):
+        raise ValueError(&#x27;Positive control bounds and nonnegative errors required.&#x27;)
+    lower=flux-flux_error
+    if np.any(lower&lt;=0):
+        raise ValueError(&#x27;Calibration flux is not resolved above zero; obtain more data or abstain.&#x27;)
+    z0=means[0,:k]
+    F=(means[1:,:k]-z0).T
+    differences=means[1:,k]-means[0,k]
+    eqrad=endpoint_error
+    A=[]; b=[]
+    for i in range(k):
+        a=np.zeros(2*k); a[:k]=-F[i]-2*eqrad; a[k+i]=1
+        A.append(a); b.append(z0[i]+eqrad)
+        a=np.zeros(2*k); a[:k]= F[i]-2*eqrad; a[k+i]=-1
+        A.append(a); b.append(-z0[i]+eqrad)
+    for j in range(k):
+        a=np.zeros(2*k); a[j]=lower[j]; a[k+j]=-upper_rates[j]
+        A.append(a); b.append(0.)
+    a=np.zeros(2*k); a[:k]=lower
+    A.append(a); b.append(activity_bound)
+    c=np.r_[differences+2*eqrad,np.zeros(k)]
+    c0=means[0,k]+eqrad
+    bounds=[(0.,activity_bound/x) for x in lower]+[(0.,1.)]*k
+    return dict(A=np.asarray(A),b=np.asarray(b),c=c,c0=c0,bounds=bounds,
+                F=F,flux_lower=lower,flux=flux,upper_rates=upper_rates,
+                means=means,endpoint_error=eqrad,flux_error=flux_error,
+                activity_bound=activity_bound)
+
+
+def solve_outer(model: dict[str,Any]) -&gt; dict[str,Any]:
+    result=linprog(-model[&#x27;c&#x27;],A_ub=model[&#x27;A&#x27;],b_ub=model[&#x27;b&#x27;],bounds=model[&#x27;bounds&#x27;],method=&#x27;highs&#x27;)
+    if not result.success:
+        raise RuntimeError(&#x27;Outer LP failed: &#x27;+result.message)
+    k=len(model[&#x27;flux&#x27;]); alpha=result.x[:k]; z=result.x[k:]
+    numerator=model[&#x27;flux&#x27;]*alpha
+    rates=np.zeros(k)
+    for j in range(k):
+        rates[j]=model[&#x27;upper_rates&#x27;][j] if z[j]&lt;=1e-15 and numerator[j]&gt;1e-15 else (
+            0. if z[j]&lt;=1e-15 else min(model[&#x27;upper_rates&#x27;][j],max(0.,numerator[j]/z[j])))
+    # Include multipliers on variable upper bounds in the exact checker.
+    # Lower bounds are handled directly using x&gt;=0.
+    y=np.r_[np.maximum(0.,-result.ineqlin.marginals),np.maximum(0.,-result.upper.marginals)]
+    return dict(alpha=alpha.tolist(),z=z.tolist(),rates=rates.tolist(),
+                floating_upper=float(model[&#x27;c0&#x27;]-result.fun),dual=y.tolist(),
+                floating_primal_residual=float(np.max(model[&#x27;A&#x27;]@result.x-model[&#x27;b&#x27;])))
+
+
+def rational_model_from_summaries(summaries: list[Summary], upper_rates: list[float],
+                                 endpoint_error: float, flux_error: float,
+                                 background_bound: float, reset_rate: float):
+    &quot;&quot;&quot;Construct the confidence LP directly from integer data with exact rational arithmetic.&quot;&quot;&quot;
+    k=len(summaries)-1
+    FQ=lambda a: Fraction(str(a))
+    rho=FQ(reset_rate); ep=FQ(endpoint_error); er=FQ(flux_error)
+    activity=FQ(background_bound)+rho
+    means=[[Fraction(v,s.samples) for v in s.source_counts+[s.reward_sum]] for s in summaries]
+    r=[rho*Fraction(summaries[j+1].intervention_counts[j],summaries[j+1].samples) for j in range(k)]
+    rl=[x-er for x in r]
+    if min(rl)&lt;=0: raise ValueError(&#x27;Unresolved calibration flux.&#x27;)
+    U=list(map(FQ,upper_rates)); zero=Fraction(0)
+    FF=[[means[j+1][i]-means[0][i] for j in range(k)] for i in range(k)]
+    AA=[]; bb=[]
+    for i in range(k):
+        a=[zero]*(2*k)
+        a[:k]=[-FF[i][j]-2*ep for j in range(k)]; a[k+i]=Fraction(1)
+        AA.append(a);bb.append(means[0][i]+ep)
+        a=[zero]*(2*k)
+        a[:k]=[FF[i][j]-2*ep for j in range(k)]; a[k+i]=Fraction(-1)
+        AA.append(a);bb.append(-means[0][i]+ep)
+    for j in range(k):
+        a=[zero]*(2*k);a[j]=rl[j];a[k+j]=-U[j];AA.append(a);bb.append(zero)
+    a=[zero]*(2*k);a[:k]=rl;AA.append(a);bb.append(activity)
+    bounds=[activity/x for x in rl]+[Fraction(1)]*k
+    for j,cap in enumerate(bounds):
+        a=[zero]*(2*k);a[j]=Fraction(1);AA.append(a);bb.append(cap)
+    cc=[means[j+1][k]-means[0][k]+2*ep for j in range(k)]+[zero]*k
+    return AA,bb,cc,means[0][k]+ep,bounds
+
+
+def exact_dual_upper(summaries: list[Summary], upper_rates: list[float], endpoint_error: float,
+                     flux_error: float, background_bound: float, reset_rate: float,
+                     dual: list[float]) -&gt; dict[str,Any]:
+    &quot;&quot;&quot;Valid upper bound using rational multipliers plus bounded-variable residual repair.
+
+    For ANY y&gt;=0: c.x &lt;= b.y + sum_j M_j max(0,c_j-(A.T y)_j).
+    Thus no numerical dual feasibility or optimality is assumed.
+    &quot;&quot;&quot;
+    A,b,c,c0,M=rational_model_from_summaries(summaries,upper_rates,endpoint_error,flux_error,
+                                          background_bound,reset_rate)
+    if len(dual)!=len(A):raise ValueError(&#x27;Wrong dual dimension.&#x27;)
+    y=[max(Fraction(0),Fraction.from_float(float(v))) for v in dual]
+    base=c0+sum((bj*yj for bj,yj in zip(b,y)),Fraction(0))
+    residual=[]
+    for j,cj in enumerate(c):
+        r=cj-sum((row[j]*yi for row,yi in zip(A,y)),Fraction(0))
+        residual.append(max(Fraction(0),r))
+    repair=sum((cap*r for cap,r in zip(M,residual)),Fraction(0))
+    upper=min(Fraction(1),base+repair)
+    return dict(upper=float(upper),upper_exact=str(upper),repair=float(repair),
+                maximum_dual_residual=float(max(residual)),
+                statement=&#x27;Exact rational upper for the confidence LP; statistical/model assumptions remain separate.&#x27;)
+</pre>
