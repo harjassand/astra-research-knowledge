@@ -1,0 +1,648 @@
+# Resonant convex lifting and undecidable convergent observables
+
+**Astra Theoretical — research note, 12 October 2026**
+
+## Status and scope
+
+This note records an internally derived proof candidate. The general lifting arguments below are supplied in full. The undecidability corollary imports the published polynomial-ODE simulation theorem stated as Theorem 3.1 in Cardona, Miranda and Peralta-Salas [CMP21], which in turn credits Graça, Campagnolo and Buescu [GCB08]. No unverified Astra or OpenAI repository theorem is a premise.
+
+Historical originality and independent verification have not been established. The universal simulator and its very large tensor lift have not been expanded into an executable coefficient table. The accompanying exact symbolic checks concern finite examples, not execution of a universal machine or formal verification of the general theorem.
+
+The Hamiltonians here are general canonical Hamiltonians, with mixed position–momentum interactions. This is not a theorem about the subclass H(q,p)=|p|²/2+V(q) with a convex potential V. The input model supplies an exact effectively specified initial point, not a fixed-resolution physical preparation. Fixed output separation is proved; noise tolerance is not.
+
+## 1. Main statement
+
+Fix a universal Turing machine U. There are a finite integer N, a homogeneous quartic polynomial K on R^(2N) with computable real coefficients, a homogeneous quadratic observable O, and an effective map w -> z_w from finite input words to computable points, with the following property.
+
+For every positive rational η<1, an effectively chosen positive rational ε gives the Hamiltonian
+
+\[
+ H_\eta(z)=\frac12\|z\|^2+\varepsilon\frac{K(z)}{(1+\|z\|^2)^2}
+ \tag{1}
+\]
+
+such that, globally on R^(2N),
+
+\[
+ (1-\eta)\mathbf 1\preceq\nabla^2H_\eta(z)
+ \preceq(1+\eta)\mathbf 1.
+ \tag{2}
+\]
+
+The Hamiltonian is real analytic, has its unique minimum at the origin, and has a complete flow Φ^t. Every trajectory conserves its Euclidean radius. All encoded inputs have the same radius R, where 1<R²<2, and the same energy R²/2. Along every encoded trajectory, 0≤O≤1. The observable converges for every input, with
+
+\[
+ \lim_{t\to\infty}O(\Phi^t(z_w))=\mathbf1_{\{U(w)\text{ halts}\}}.
+ \tag{3a}
+\]
+
+Moreover,
+
+\[
+ \begin{aligned}
+ U(w)\text{ does not halt}&\implies
+ O(\Phi^t(z_w))\le\frac{64}{1025}<\frac18\quad(t\ge0),\\
+ U(w)\text{ halts}&\implies
+ O(\Phi^t(z_w))\ge\frac34
+ \quad\text{for all sufficiently large }t.
+ \end{aligned}
+ \tag{3}
+\]
+
+Consequently, the input-to-limit map is noncomputable, even though each limit exists and is either zero or one. The long-time Cesàro average also exists and equals the same bit. In particular, no algorithm decides the promised alternatives “the observable always remains at most 1/8” and “the observable eventually reaches at least 3/4,” even for this one fixed system at any chosen η. The initial point is supplied by its effective finite description, generated from w. The Hamiltonian, dimension, energy, observable and thresholds do not vary with w.
+
+The claim about coefficients is **computability**, not rationality of every coefficient. The clock uses the computable constant π, and the source simulator is used with its stated constructive coefficient and initialization interface.
+
+## 2. Polynomial tangent dynamics as a quadratic skew system
+
+Let Y:R^n -> R^n be a polynomial vector field satisfying the polynomial identity
+
+\[
+ x\cdot Y(x)=0\quad\text{on all of }\mathbb R^n.
+ \tag{4}
+\]
+
+Write Y=Σ_d Y_d as homogeneous components. A constant component is zero, and each component separately satisfies x·Y_d=0. Differentiation and Euler's identity give
+
+\[
+ (DY_d(x))^T x=-Y_d(x),\qquad DY_d(x)x=dY_d(x).
+\]
+
+Therefore the polynomial matrix
+
+\[
+ A(x)=\sum_{d\ge1}\frac{DY_d(x)-(DY_d(x))^T}{d+1}
+ \tag{5}
+\]
+
+is skew-symmetric and satisfies A(x)x=Y(x).
+
+Fix an integer L≥max(1,deg A). A larger L can be used to include desired polynomial observables. Define the full, unsymmetrized tensor feature space and embedding
+
+\[
+ V=\bigoplus_{k=0}^L(\mathbb R^n)^{\otimes k},\qquad
+ N=\sum_{k=0}^L n^k,\qquad
+ \Psi(x)=(1,x,x^{\otimes2},\ldots,x^{\otimes L}).
+ \tag{6}
+\]
+
+The degree-zero component has index 0. Every polynomial of degree at most L is a linear functional of Ψ. Choose a linear matrix-valued map a:V -> so(n) with a(Ψ(x))=A(x); monomials can be assigned to any fixed ordered tensor representative, keeping opposite matrix entries exactly negative.
+
+On the k-th tensor sector, set
+
+\[
+ B(v)|_{V_k}=\sum_{j=1}^k
+ \mathbf1^{\otimes(j-1)}\otimes a(v)\otimes
+ \mathbf1^{\otimes(k-j)}.
+ \tag{7}
+\]
+
+On the zero-th sector, B(v)=0. Thus B is linear in v, each B(v) is skew-symmetric, and every B(v) annihilates the anchor coordinate e_0. Write
+
+\[
+ B(v)=\sum_{\ell=0}^{N-1}v_\ell B_\ell,\qquad
+ Q(v)=B(v)v.
+ \tag{8}
+\]
+
+Each B_ell is a constant skew-symmetric matrix. In particular,
+
+\[
+ Q_0=0,\qquad v\cdot Q(v)=0.
+\]
+
+The product rule on tensors proves the exact identity
+
+\[
+ D\Psi(x)Y(x)=Q(\Psi(x)).
+ \tag{9}
+\]
+
+Hence the feature manifold is invariant under the homogeneous quadratic ODE v'=Q(v), and its dynamics there are exactly the original dynamics. Since Ψ contains x itself, it is an embedding, not merely an information-losing projection. If |x|²=ρ² is conserved, then
+
+\[
+ |\Psi(x)|^2=\sum_{k=0}^L\rho^{2k}=:R^2.
+ \tag{10}
+\]
+
+Every polynomial observable P(x) of degree≤L has a linear representation P(x)=c·Ψ(x).
+
+### Scope of this step
+
+The theorem needs the global polynomial tangency identity (4). A polynomial field tangent only on the unit sphere can first be replaced by |x|²Y(x)-x(x·Y(x)); this agrees with it on the unit sphere and satisfies (4) globally. Our computational construction below already satisfies (4), so no such replacement is needed.
+
+## 3. An exactly resonant quartic Hamiltonian
+
+Use canonical coordinates (q,p) in V×V, with q'=∂_p H and p'=-∂_q H. Put
+
+\[
+ I(q,p)=\frac12(|q|^2+|p|^2),\qquad
+ F(v)=v_0Q(v).
+\]
+
+Define
+
+\[
+ \begin{aligned}
+ K(q,p)&=p\cdot F(q)-q\cdot F(p)\\
+ &=\sum_{\ell=0}^{N-1}
+ (q_0q_\ell+p_0p_\ell)\,p^TB_\ell q.
+ \end{aligned}
+ \tag{11}
+\]
+
+The second identity follows directly from B_ell^T=-B_ell. Each term has degree four.
+
+The harmonic-oscillator flow is
+
+\[
+ R_t(q,p)=(q\cos t+p\sin t,\ p\cos t-q\sin t).
+ \tag{12}
+\]
+
+Both factors in each summand of (11) are invariant under this rotation: the first is a two-dimensional dot product; the second is invariant because q^TB_ell q=p^TB_ell p=0 and q^TB_ell p=-p^TB_ell q. Consequently
+
+\[
+ K\circ R_t=K,\qquad\{I,K\}=0.
+ \tag{13}
+\]
+
+Also, directly from the first line of (11),
+
+\[
+ K(q,0)=0,\quad\partial_qK(q,0)=0,\quad
+ \partial_pK(q,0)=F(q).
+ \tag{14}
+\]
+
+The last identity uses that F is homogeneous cubic, so DF(0)=0. Thus the zero-momentum section is invariant for the K-flow and carries the prescribed vector field F. This is a cotangent-type encoding with an additional exact oscillator symmetry.
+
+## 4. Global curvature control
+
+Let r²=|q|²+|p|² and define
+
+\[
+ g(q,p)=K(q,p)(1+r^2)^{-2}.
+ \tag{15}
+\]
+
+If C is the sum of the absolute monomial coefficients of K, the Euclidean derivative bounds
+
+\[
+ |K|\le Cr^4,\qquad |\nabla K|\le4Cr^3,\qquad
+ \|\nabla^2K\|\le12Cr^2
+ \tag{16}
+\]
+
+follow by bounding the entrywise absolute sums of the derivatives of each monomial. These bounds also hold at r=0 by continuity.
+
+For h=(1+r²)^(-2),
+
+\[
+ |\nabla h|=\frac{4r}{(1+r^2)^3},\qquad
+ \|\nabla^2h\|\le
+ \frac4{(1+r^2)^3}+\frac{24r^2}{(1+r^2)^4}.
+\]
+
+The product rule yields
+
+\[
+ \begin{aligned}
+ \|\nabla^2g\|
+ &\le C\left[
+ \frac{12r^2}{(1+r^2)^2}
+ +\frac{36r^4}{(1+r^2)^3}
+ +\frac{24r^6}{(1+r^2)^4}\right]\\
+ &\le72C.
+ \end{aligned}
+ \tag{17}
+\]
+
+Choose a positive rational upper bound C_bar≥max(C,1), obtainable effectively from computable coefficients, and 0<ε≤η/(72 C_bar). Then H=I+εg satisfies (2).
+
+The rational denominator has no real zero, hence H is real analytic everywhere. Since ∇H(0)=0, strong convexity gives H(z)≥(1-η)|z|²/2, and zero is its unique minimizer. The Hamiltonian vector field J∇H is globally Lipschitz. In addition, (13) and radiality of the denominator give {I,g}=0, so radius is conserved by every H trajectory. Completeness follows either from this boundedness or global Lipschitz continuity.
+
+The perturbation is also uniformly bounded: |H-I|≤εC. The method is therefore not hiding nonconvex behavior far outside a chosen compact region.
+
+## 5. Exact evolution and a quadratic decoder
+
+On p=0, equations (14)–(15) imply
+
+\[
+ \partial_q g(q,0)=0,\qquad
+ \partial_p g(q,0)=\frac{F(q)}{(1+|q|^2)^2}.
+ \tag{18}
+\]
+
+Starting at q=Ψ(x), the anchor stays q_0=1 and the norm stays R. Hence the g-flow on this section is precisely the Q-flow slowed by (1+R²)^(-2).
+
+Because X_I and X_g commute, their complete flows commute and the flow of H=I+εg is their composition. If x(s) solves x'=Y(x) and v(s)=Ψ(x(s)), then the H trajectory with initial condition (Ψ(x(0)),0) is
+
+\[
+ q(t)=v(\lambda t)\cos t,\qquad
+ p(t)=-v(\lambda t)\sin t,\qquad
+ \lambda=\frac{\varepsilon}{(1+R^2)^2}>0.
+ \tag{19}
+\]
+
+This identity is exact for all times. There is no averaging remainder or finite-time approximation error.
+
+The anchor gives the phase-invariant quadratic decoder
+
+\[
+ D_i(q,p)=q_0q_i+p_0p_i.
+ \tag{20}
+\]
+
+Along (19), D_i=v_i. Therefore for P(x)=c·Ψ(x),
+
+\[
+ \mathcal O(q,p)=\sum_i c_i(q_0q_i+p_0p_i)
+ \tag{21}
+\]
+
+recovers P(x(λt)) exactly. Its degree is two even when P has higher degree.
+
+The precisely embedded system is the **circle extension** of Y: (x,θ) -> R_θ(Ψ(x),0), with dynamics λY+∂_θ. The anchor makes this map injective. The original flow is its exact observable factor; the construction is not a claim that every original flow embeds without the additional circle coordinate.
+
+Since K vanishes on the zero section and is rotation invariant, it vanishes on all these trajectories. Their energy is exactly R²/2.
+
+## 6. A compact polynomial simulation with a fixed output gap
+
+### 6.1 The published input theorem
+
+Theorem 3.1 of [CMP21], crediting [GCB08], supplies, for a fixed Turing machine and any prescribed error e in (0,1/4], a constructible nonautonomous polynomial ODE with a fixed auxiliary initial state. Its first three coordinates track the integer-encoded machine configuration to error<e throughout each interval [j,j+1/2]. Adding the time variable ω'=1 makes the field autonomous. We use e=1/8 and a fixed universal machine, with an absorbing halting state.
+
+Write x'=P(x) for this autonomous polynomial simulator. Let q(τ) denote its machine-state coordinate and q_h its integer halting-state label. Thus, on every monitored interval [j,j+1/2], q(τ) is within 1/8 of the appropriate integer state label. Solutions from valid encoded inputs exist for all τ≥0, as required by the source theorem's tracking assertion.
+
+### 6.2 Add a halting coordinate and a clock
+
+Adjoin a coordinate h satisfying
+
+\[
+ h'=4P_q(x),\qquad h(0)=4(q(0)-q_h).
+\]
+
+Then h=4(q-q_h) exactly along every valid trajectory. This only augments the original polynomial system by one coordinate. Rename the augmented field P on R^k and choose an integer d≥max(1,deg P).
+
+A further clock pair c,s will represent cos(2πτ), sin(2πτ). It is included below with the same time rescaling as the other coordinates.
+
+### 6.3 Coordinatewise compactification
+
+For each of the k real coordinates x_j, define
+
+\[
+ a_j=\frac{x_j^2-1}{1+x_j^2},\qquad
+ b_j=\frac{2x_j}{1+x_j^2}.
+ \tag{22}
+\]
+
+These lie on a unit circle and x_j=b_j/(1-a_j) on the image of finite x_j. Define
+
+\[
+ D(a)=2^{-kd}\prod_{j=1}^k(1-a_j)^d,
+\]
+
+and let Π_j(a,b) denote the polynomial obtained by clearing denominators in
+
+\[
+ \Pi_j(a,b)=D(a)P_j\left(\frac{b_1}{1-a_1},\ldots,
+ \frac{b_k}{1-a_k}\right).
+ \tag{23}
+\]
+
+This is polynomial because each exponent in any monomial of P_j is at most d. Now use the polynomial ODE in compactified time σ:
+
+\[
+ \begin{aligned}
+ \dot a_j&=b_j(1-a_j)\Pi_j,&
+ \dot b_j&=-a_j(1-a_j)\Pi_j,\\
+ \dot c&=-2\pi sD,&
+ \dot s&=2\pi cD.
+ \end{aligned}
+ \tag{24}
+\]
+
+Here a dot means d/dσ. The identities
+
+\[
+ a_j\dot a_j+b_j\dot b_j=0,
+ \qquad c\dot c+s\dot s=0
+\]
+
+hold polynomially throughout the ambient space, not just on the circles. Thus (24) satisfies global tangency (4), preserves the product torus of k+1 unit circles, and is complete on that compact set.
+
+Differentiating (22) shows that (24) represents the original flow with dτ/dσ=D. On every valid finite original trajectory, D>0 and D≤1. For each finite T,
+
+\[
+ \sigma(T)=\int_0^T\frac{d\tau}{D(a(\tau))}<\infty,
+ \qquad\sigma(T)\ge T.
+ \tag{25}
+\]
+
+Finiteness follows from continuity and strict positivity on the compact interval [0,T]. Therefore finite original events occur at finite compactified time, and infinite computation is not compressed into a finite-time singularity. Initialize (c,s)=(1,0); then s=sin(2πτ) along valid trajectories.
+
+### 6.4 A polynomial readout of degree five
+
+Let a_h be the circle coordinate corresponding to h. Since
+
+\[
+ \frac{1-a_h}{2}=\frac1{1+h^2}
+ =\frac1{1+16(q-q_h)^2},
+\]
+
+define the polynomial
+
+\[
+ P_{\rm out}(a,b,c,s)=\frac{(1+s)^4(1-a_h)}{32}.
+ \tag{26}
+\]
+
+It takes values in [0,1] on the product torus.
+
+If the machine never halts, then on every monitored half-interval, its integer state differs from q_h. Hence |q-q_h|≥7/8 and
+
+\[
+ \frac{1-a_h}{2}\le\frac1{1+16(7/8)^2}=\frac4{53}.
+\]
+
+Outside monitored half-intervals, s≤0, so ((1+s)/2)^4≤1/16. It follows at all times that
+
+\[
+ P_{\rm out}\le\max(4/53,1/16)=4/53.
+ \tag{27}
+\]
+
+If the machine halts at step j, its halting state is retained at all later discrete steps. At original time τ=j+1/4, the clock has s=1 and |q-q_h|<1/8. Therefore
+
+\[
+ P_{\rm out}\ge\frac1{1+16(1/8)^2}=\frac45.
+ \tag{28}
+\]
+
+The inequalities can be strict where the source error is strict; the weak inequalities displayed here are sufficient. The bounds do not depend on input length, tape size or halting time. In particular, no shrinking target or division by a vanishing tape coordinate is used by the readout.
+
+### 6.5 A bounded polynomial latch
+
+Call the compact variables in (24) ξ, their vector field Y₀, and the raw output P=P_out. Choose a rational M≥1 that bounds |DP(ξ)Y₀(ξ)| on the product torus. Such a bound is effective: on the cube [-1,1]^n, the coefficient absolute sum of this polynomial is an upper bound.
+
+Adjoin two real coordinates u and ℓ, with
+
+\[
+ \dot u=60M(2-u)\,[u(u+1)+P(\xi)],
+ \qquad
+ \dot\ell=u\ell(1-\ell),
+ \qquad (u(0),\ell(0))=(-1,1/32).
+ \tag{29a}
+\]
+
+These equations use the same compactified time σ as (24). The set [-1,2]×[0,1] is forward invariant: at u=-1 its derivative is nonnegative, at u=2 it is zero, and the boundaries ℓ=0 and ℓ=1 are invariant. Uniqueness ensures 0<ℓ<1 at every finite time for the stated initialization. On the compact product, the augmented flow is complete in forward time.
+
+If the machine never halts, P≤4/53. At u=-1/2,
+
+\[
+ \dot u=150M(P-1/4)<0.
+\]
+
+Thus [-1,-1/2] is invariant for u from its initial value -1. In particular u≤-1/2 for all time.
+
+If the machine halts, P reaches at least 4/5 at a finite time σ_h. The derivative bound implies
+
+\[
+ P(\xi(\sigma))\ge7/10>2/3
+ \quad\text{on }[\sigma_h,\sigma_h+1/(10M)].
+\]
+
+For u in [-1,1] during this interval,
+
+\[
+ u(u+1)+P\ge-1/4+2/3=5/12,\qquad
+ \dot u\ge25M.
+\]
+
+Therefore u reaches 1 within at most 2/(25M)<1/(10M), unless it was already at least 1. Once u≥1, that region is invariant and
+
+\[
+ \dot u\ge120M(2-u),
+\]
+
+so u tends to 2. The latch therefore turns a finite, uniformly separated pulse into a persistent positive state.
+
+### 6.6 A bit that always converges
+
+The second equation in (29a) satisfies the exact identity
+
+\[
+ \frac{d}{d\sigma}\log\frac{\ell}{1-\ell}=u.
+\]
+
+For a nonhalting input, u≤-1/2, so ℓ decreases from 1/32 to 0. For a halting input, u≥1 eventually, so ℓ tends to 1. Even if ℓ has become extremely small before the halt, it stays strictly positive at finite time and eventually grows to 1. This observation is valid in the exact-real model; it is not a tolerance guarantee for rounding or noise.
+
+### 6.7 Compactify the latch without losing the gap
+
+Apply the circle transformation (22) separately to u and ℓ, obtaining (a_u,b_u) and (a_ℓ,b_ℓ). Set
+
+\[
+ E=2^{-6}(1-a_u)^3(1-a_\ell)^3.
+\]
+
+Multiply Y₀ by E. For each of the two additional components f_u and f_ℓ in (29a), clear denominators to form
+
+\[
+ \widehat\Pi_j=E f_j\left(\xi,
+ \frac{b_u}{1-a_u},\frac{b_\ell}{1-a_\ell}\right),
+ \qquad j\in\{u,\ell\},
+\]
+
+and use \(a_j'=b_j(1-a_j)\widehat\Pi_j\),
+\(b_j'=-a_j(1-a_j)\widehat\Pi_j\).
+All these expressions are polynomial: f_u has degree three in u, and f_ℓ=uℓ(1-ℓ). Each circle radius, as well as the original total radius, is conserved by a global polynomial identity.
+
+Along valid trajectories, u∈[-1,2] and ℓ∈[0,1], so
+
+\[
+ 1/1000\le E\le1.
+\]
+
+The additional time change dσ/dθ=E thus preserves both finite events and the limit σ->infinity. The resulting field is a globally sphere-tangent polynomial field on the ambient space of a product of k+3 circles.
+
+The new raw observable is just the single circle coordinate
+
+\[
+ b_\ell=\frac{2\ell}{1+\ell^2}.
+ \tag{29b}
+\]
+
+For a nonhalting input it decreases to zero and always satisfies
+
+\[
+ 0\le b_\ell\le\frac{2/32}{1+(1/32)^2}
+ =\frac{64}{1025}<\frac18.
+\]
+
+For a halting input it tends to one; once u is positive it increases, and consequently it is at least 3/4 for all sufficiently large times. It always belongs to [0,1].
+
+### 6.8 Normalize energy and apply the lift
+
+Set m=k+3, let x denote all 2m compact coordinates, and rescale y=x/m. The rescaled polynomial field is Y(y)=m^(-1)Y_old(my); it still satisfies y·Y(y)=0. On the encoded product torus,
+
+\[
+ |y|^2=\rho^2=\frac1m\le\frac12.
+\]
+
+Use the tensor construction with L≥max(5,deg A,1). If i is the first-degree tensor coordinate corresponding to b_ℓ/m, then b_ℓ=m v_i. In this construction the final observable (21) therefore has the particularly simple form
+
+\[
+ O(q,p)=m(q_0q_i+p_0p_i).
+ \tag{29c}
+\]
+
+The norm of every encoded feature vector is
+
+\[
+ R^2=\sum_{j=0}^L m^{-j}\in(1,2).
+\]
+
+Apply Sections 3–5 and set z_w=(Ψ(y_w),0). Equations (19), (25), and (29a)–(29c) prove the main limit and fixed-gap assertions. The quadratic observable uses only the anchor mode and one additional mode; its fixed coefficient m does not grow with input length or elapsed time.
+
+All constructions are effective finite operations on the source simulator: adjoining coordinates, polynomial substitution with explicit denominator clearing, homogeneous decomposition, tensor products, and differentiation. The original finite word is not smuggled into the fixed coefficients; it enters only the initial condition.
+
+## 7. A globally strongly convex quartic-polynomial alternative
+
+The rational denominator can be eliminated at the cost of losing a globally bounded absolute Hessian. Retain the same K and take
+
+\[
+ H_{a,\varepsilon}(z)=\frac12r^2+ar^4+\varepsilon K(z),
+ \qquad a>3\varepsilon\bar C.
+ \tag{29}
+\]
+
+Since ∇²(r⁴)=4r²1+8zz^T, (16) gives
+
+\[
+ [1+(4a-12\varepsilon\bar C)r^2]\mathbf1
+ \preceq\nabla^2H_{a,\varepsilon}\preceq
+ [1+(12a+12\varepsilon\bar C)r^2]\mathbf1.
+ \tag{30}
+\]
+
+Thus H is globally strongly convex and the ratio of its largest to smallest Hessian eigenvalue at any one point is at most
+
+\[
+ \frac{3a+3\varepsilon\bar C}{a-3\varepsilon\bar C}.
+ \tag{31}
+\]
+
+Taking a=15ε C_bar makes this ratio at most 4. More generally, taking a/(ε C_bar) large enough gives any bound 3+δ with δ>0. This is a **pointwise condition-number bound**, not a global smoothness/strong-convexity ratio: the maximum Hessian eigenvalue is unbounded as r->infinity.
+
+The radial Hamiltonian commutes with K. At radius R, its oscillator frequency is ω=1+4aR², and the exact encoded trajectory is
+
+\[
+ q(t)=v(\varepsilon t)\cos(\omega t),\qquad
+ p(t)=-v(\varepsilon t)\sin(\omega t).
+ \tag{32}
+\]
+
+The decoder is unchanged. All encoded inputs have the same energy R²/2+aR⁴. Consequently the same convergent-bit theorem, noncomputable long-time average and fixed-gap undecidability hold for a globally strongly convex Hamiltonian that is a polynomial of degree four and has a cubic polynomial Hamiltonian vector field.
+
+No claim of rational coefficients is added by this alternative; it inherits the effective coefficient field of K.
+
+## 8. Consequences for prediction and certification
+
+### A convergent long-time average with a noncomputable input dependence
+
+For every encoded input, the observable has a limit in {0,1}. Since it is bounded, its Cesàro average converges to the same limit:
+
+\[
+ \lim_{T\to\infty}\frac1T\int_0^T O(\Phi^t(z_w))\,dt
+ =\mathbf1_{\{U(w)\text{ halts}\}}.
+\]
+
+Thus there is no algorithm that approximates this guaranteed-existing long-time average to error less than 1/2 uniformly over encoded inputs. This does not assert that an individual binary limit is a noncomputable real; it is the map from finite input descriptions to their limits that is noncomputable. The same conclusion holds for averages sampled at any fixed positive time step.
+
+There is no total computable convergence modulus for these observable limits. A modulus sufficient for error 1/4, followed by a finite-time approximation, would decide the halting problem.
+
+### No total computable event-time bound
+
+Fix η and the corresponding H and O. There is no total computable function T(w) guaranteed to bound the time of a high-output event whenever U(w) halts. Otherwise, compute the maximum of O along the finite interval [0,T(w)] to error smaller than the gap and decide whether U(w) halts.
+
+The needed finite-interval computation is effective: H has a computable global Lipschitz bound, trajectories have known fixed radius, and the quadratic observable has an explicit derivative bound on that ball. Certified integration and a time mesh therefore approximate the finite-interval maximum to any prescribed positive error. This also rules out a total computable bound depending only on input length.
+
+### No sound, complete, effectively checkable safety-certificate system
+
+Suppose a terminating computable verifier V(w,c) checked finite certificates, soundly and completely, for the statement O(Φ^t(z_w))≤1/8 for all t≥0. Enumerating c would enumerate exactly the nonhalting inputs. Halting inputs are already computably enumerable by ordinary simulation. Running the two enumerations in parallel would decide the halting problem, a contradiction.
+
+The qualifier “effectively checkable” is essential; a certificate definition with an undecidable verification oracle is not excluded by this argument. Individual inputs may have short safety proofs. The impossibility concerns a single sound and complete effective scheme for every encoded input.
+
+### Convex optimization is not conservative prediction
+
+For the same H, the gradient flow z'=-∇H(z) satisfies
+
+\[
+ \frac{d}{dt}\frac{|z|^2}{2}
+ =-z\cdot\nabla H(z)\le-(1-\eta)|z|^2,
+\]
+
+and therefore |z(t)|≤exp(-(1-η)t)|z(0)|. The canonical Hamiltonian flow has the undecidable event problem above. The energy function alone does not determine the dynamical information structure; the evolution law matters.
+
+## 9. Resource accounting and exclusions
+
+**Dimension and preprocessing.** The unsymmetrized tensor lift uses N=Σ_{j=0}^L n^j. This can be extremely large. Fixing a universal machine makes it one finite constant in the undecidability theorem, but does not make its construction practical. No efficient compiler or memory advantage is claimed.
+
+**Time.** There are three time changes: the coordinate-dependent factor D in (25), which may become very small; the bounded factor E in Section 6.7; and λ=ε/(1+R²)² from convexification. Smaller η permits a smaller perturbation but increases the conservative simulation time. No noncomputable result is delivered by a finite-time singularity. Infinite-time reachability, not a fixed prescribed finite-time query, is the undecidable task.
+
+**Initialization.** The input is an exact computable point specified by a finite recipe. Fixed computable auxiliary constants are allowed. The source theorem does not justify replacing this by rational-only initialization, bounded preparation effort independent of word length, or fixed resolution. Coordinatewise compactification stores large tape integers in increasingly fine coordinate differences.
+
+**Readout.** O is fixed, quadratic and independent of the input and halting time. Its coefficients and a Lipschitz bound on the common compact shell are fixed computable constants. The output converges to a binary value, is separated by a constant gap, and requires no external time-dependent amplification. The internal logistic coordinate may first become extremely small and later regrow; preserving that exact coordinate is part of the state-precision cost. Measuring it at an unknown event time and preserving the evolving state remain separate requirements.
+
+**Noise.** The exact tensor identities and zero-section initialization define lower-dimensional invariant geometry. No positive-volume universal basin, fault tolerance, uniform perturbation radius, or persistent-noise theorem has been proved. The logistic stage in particular can lose its later ability to switch if a small positive coordinate is rounded to exactly zero. Nonrecurrent encoded trajectories occupy exceptional lower-dimensional geometry, so the construction does not contradict almost-everywhere recurrence of a bounded Hamiltonian flow. Fixed readout margin does not supply these. Even a small vector-field error can accumulate over an unbounded horizon.
+
+**Finite-horizon precision bound.** Since the harmonic part generates an isometry and the remaining vector field has Lipschitz constant at most η, two exact trajectories satisfy
+
+\[
+ |z(t)-\widetilde z(t)|\le e^{\eta t}|z(0)-\widetilde z(0)|.
+\]
+
+Indeed, writing δ=z-\widetilde z, the term δ·Jδ vanishes, leaving a norm-growth bound at most η|δ|. If the second trajectory additionally has an additive vector-field error bounded by ν, the same argument gives
+
+\[
+ |z(t)-\widetilde z(t)|\le e^{\eta t}|z(0)-\widetilde z(0)|
+ +\frac{\nu}{\eta}(e^{\eta t}-1).
+\]
+
+These are sufficient finite-horizon error bounds, not lower bounds on the precision required and not uniform infinite-time guarantees. Reducing η also slows the encoded computation.
+
+**Near-integrability.** The base oscillator is fully resonant. The exact commutation relation deliberately retains nonlinear slow dynamics. This is not a statement about arbitrary nonresonant integrable Hamiltonians, and no generic-chaos claim is made. The perturbation tends to zero as η tends to zero, but the event question is not uniform over infinite time in that limit.
+
+**Physics.** Everything here is a mathematical consequence of canonical Hamiltonian equations for constructed functions. It does not introduce a new physical law or demonstrate that the required interactions can be built, isolated or initialized in an experiment. No quantum simulation, super-Turing computer, energy technology or practical speedup follows.
+
+## 10. Prior work and scope of the investigation
+
+The ordinary cotangent construction H(q,p)=p·Y(q) is known; it is explicitly recorded as Proposition 1.1 in [Tao17]. That paper also constructs Turing-complete coercive natural potential wells. [Huynh20] establishes universality under additional homogeneous-potential restrictions. [CGM26] realizes computable partial functions through return maps of Reeb flows on contact three-manifolds. General dynamical universality is therefore not a new claim here.
+
+The specific result proposed in this note is the conjunction of an exact quartic resonant lift, global Hessian closeness to the identity, fixed finite dimension, a common compact energy shell, and a fixed quadratic observable which converges for every encoded input to its halting bit, with a time-independent gap and a corresponding noncomputable long-time average. The quartic-polynomial variant has separately stated curvature quantifiers. The selective prior-art check does not establish that this conjunction is historically new or cannot be derived from other known constructions.
+
+The Astra and OpenAI mathematical repositories were inspected selectively for orientation and possible overlap. No theorem from either repository was imported. Observed repository heads were:
+
+- Astra: `095f9a48edd1efdcc09f5b63a86eeeb35e80bac2`.
+- OpenAI math: `fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb`.
+
+These are provenance records, not proof-validation claims. The investigation did not audit either entire corpus.
+
+## References
+
+[CMP21] Robert Cardona, Eva Miranda, Daniel Peralta-Salas. *Turing universality of the incompressible Euler equations and a conjecture of Moore*. arXiv:2104.04356v1. In particular, Theorem 3.1 and its autonomous extension. Primary text: `https://arxiv.org/html/2104.04356v1`.
+
+[GCB08] Daniel S. Graça, Manuel L. Campagnolo, Jorge Buescu. *Computability with polynomial differential equations*. Advances in Applied Mathematics 40 (2008), 330–349. Referenced through [CMP21], which supplies the exact simulation theorem used here. The original source has not been independently rederived in this investigation.
+
+[Tao17] Terence Tao. *On the universality of potential well dynamics*. arXiv:1707.02389; the inspected PDF is v3, 26 February 2020. Primary source: `https://arxiv.org/pdf/1707.02389`.
+
+[Huynh20] Khang Manh Huynh. *A note on the Turing universality of homogeneous potential wells and geodesible flows*. arXiv:2010.06210v1. Primary source: `https://arxiv.org/pdf/2010.06210`.
+
+[CGM26] Kai Cieliebak, Ángel González-Prieto, Eva Miranda. *Computable functions as Reeb flows*. arXiv:2607.10022v1. Primary source: `https://arxiv.org/html/2607.10022v1`.
+
+## Checks supplied with this note
+
+`check_lift.py` records exact symbolic tests of a finite skew-quadratic example, oscillator commutation, the zero-section derivative identities, a small tensor lift, stereographic derivative identities the readout margins, and the bounded-latch/logistic algebra. It requires Python and SymPy. Running it writes `symbolic_checks.json`.
+
+Twenty-six exact checks passed in the run accompanying this note. These are consistency checks only. They do not establish the historical novelty of any statement, do not constitute independent proof review, and do not instantiate the universal simulator.
