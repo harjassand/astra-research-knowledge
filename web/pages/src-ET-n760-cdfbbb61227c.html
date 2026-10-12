@@ -1,0 +1,110 @@
+<!doctype html><meta charset="utf-8"><title>N760 recovered original — cray_nonlocal_transport/verify_module.py</title>
+<aside>Archive/member hashes, ZIP CRC and Python AST syntax establish preservation only. No scientific program executed, NPZ arrays loaded, independent proof reconstructed, priority audited or physical experiment performed at intake. Producer finite checks remain source-reported.</aside>
+<pre>&quot;&quot;&quot;Independent finite certificate verifier: no optimizer, graph components, or CG.
+
+Uses NumPy for vectorized *integer* checks.  It checks an explicit overflow
+bound before accumulating int64 incidences.  Energy sums use Python integers.
+The independent REPORT.md proof is required for the infinite-lattice conclusion.
+&quot;&quot;&quot;
+from pathlib import Path
+from collections import Counter
+import json, time
+import numpy as np
+
+ROOT=Path(__file__).parent
+
+def verify(path: Path = ROOT/&#x27;module_flow.npz&#x27;, meta_path: Path=ROOT/&#x27;module_metadata.json&#x27;) -&gt; dict:
+    start=time.perf_counter()
+    meta=json.loads(meta_path.read_text())
+    if (meta[&#x27;width&#x27;],meta[&#x27;height&#x27;],meta[&#x27;ports&#x27;]) != (6,3,[7,10]):
+        raise ValueError(&#x27;This verifier is specialized to the stated 6 by 3 module.&#x27;)
+    den=int(meta[&#x27;denominator&#x27;])
+    if den&lt;=0: raise ValueError(&#x27;Invalid denominator&#x27;)
+    z=np.load(path,allow_pickle=False)
+    u=z[&#x27;u&#x27;].astype(np.int64);v=z[&#x27;v&#x27;].astype(np.int64)
+    bid=z[&#x27;bond&#x27;].astype(np.int64);flow=z[&#x27;flow&#x27;].astype(np.int64)
+    E=len(u);N=1&lt;&lt;18
+    if not (u.shape==v.shape==bid.shape==flow.shape):raise ValueError(&#x27;Array shape mismatch&#x27;)
+    if np.any(u&lt;0) or np.any(v&gt;=N) or np.any(u&gt;=v):raise ValueError(&#x27;Invalid oriented configuration edge&#x27;)
+    if len(np.unique(u*N+v))!=E:raise ValueError(&#x27;Duplicate configuration edges&#x27;)
+    sites=[(x,y)for y in range(3)for x in range(6)];index={z:i for i,z in enumerate(sites)}
+    physical=[(index[(x,y)],index[(x+dx,y+dy)])for x,y in sites
+              for dx,dy in [(1,0),(0,1)]if(x+dx,y+dy)in index]
+    if np.any(bid&lt;0)or np.any(bid&gt;=len(physical)):raise ValueError(&#x27;Invalid bond index&#x27;)
+    overlap=[]
+    for j,(a,b) in enumerate(physical):
+        rows=np.flatnonzero(bid==j);uu=u[rows];vv=v[rows]
+        if np.any(vv != (uu^(1&lt;&lt;a)^(1&lt;&lt;b))):raise ValueError(&#x27;Not the declared nearest-neighbor exchange&#x27;)
+        if np.any((((uu&gt;&gt;a)^(uu&gt;&gt;b))&amp;1)!=1):raise ValueError(&#x27;Exchange of equal occupations&#x27;)
+        # All exterior sites are occupied. Each endpoint requires at least one
+        # vacant INTERNAL neighbor other than the other exchange endpoint.
+        for endpoint,other in [(a,b),(b,a)]:
+            x,y=sites[endpoint]
+            neighbors=[index[(x+dx,y+dy)]for dx,dy in [(1,0),(-1,0),(0,1),(0,-1)]
+                       if(x+dx,y+dy)in index and index[(x+dx,y+dy)]!=other]
+            mask=sum(1&lt;&lt;t for t in neighbors)
+            if np.any((uu&amp;mask)==mask):raise ValueError(&#x27;Illegal hard KA transition&#x27;)
+        overlap.append(1 if (sites[a][0]==2 and sites[b][0]==3) else 4)
+    gate=sorted(int(x)for x in meta[&#x27;gate_allowed&#x27;])
+    if len(gate)!=len(set(gate)) or any(x&lt;0 or x&gt;=256 for x in gate):raise ValueError(&#x27;Invalid gate&#x27;)
+    offsets=[(x,y)for y in range(-1,2)for x in range(-1,2)if(x,y)!=(0,0)]
+    if [list(o) for o in offsets]!=meta[&#x27;gate_offsets&#x27;]:raise ValueError(&#x27;Gate indexing mismatch&#x27;)
+    off_index={o:i for i,o in enumerate(offsets)};gate_set=set(gate)
+    rule_set={pattern for pattern in range(256) if all((pattern &amp; mask)!=mask for mask in (7,41,90,148,224))}
+    if gate_set!=rule_set:raise ValueError(&#x27;Gate differs from the five-clause rule&#x27;)
+    for pattern in gate:
+        for reflect in [False,True]:
+            for rotate in range(4):
+                out=0
+                for bit,(x,y) in enumerate(offsets):
+                    if not ((pattern&gt;&gt;bit)&amp;1):continue
+                    if reflect:x=-x
+                    for _ in range(rotate):x,y=-y,x
+                    out|=1&lt;&lt;off_index[(x,y)]
+                if out not in gate_set:raise ValueError(&#x27;Gate is not square-symmetric&#x27;)
+    counts=[sum(v.bit_count()==n for v in gate)for n in range(9)]
+    expected=[1,8,28,52,49,16,0,0,0]
+    if counts!=expected:raise ValueError(&#x27;Gate probability polynomial mismatch&#x27;)
+    # Compute the full required source--sink vector from scratch.
+    state=np.arange(N,dtype=np.int64);allow=np.zeros(256,bool);allow[gate]=True
+    left=np.zeros(N,np.int64);right=np.zeros(N,np.int64)
+    for j,(x,y) in enumerate(offsets):
+        left|=((state&gt;&gt;index[(x+1,y+1)])&amp;1)&lt;&lt;j
+        right|=((state&gt;&gt;index[(x+4,y+1)])&amp;1)&lt;&lt;j
+    demand=(((state&gt;&gt;7)&amp;1)-((state&gt;&gt;10)&amp;1))*allow[left]*allow[right]
+    # An edge is uniquely determined by state and one of 27 physical bonds.
+    # No state can have more than 27 stored incident edges.
+    maxflow=max((abs(int(x))for x in flow),default=0)
+    if maxflow*len(physical)+den &gt;= 2**63:
+        raise OverflowError(&#x27;Certificate exceeds the verified int64 accumulation bound&#x27;)
+    div=np.zeros(N,np.int64)
+    np.add.at(div,u,flow);np.add.at(div,v,-flow)
+    if not np.array_equal(div,demand*den):
+        raise ValueError(&#x27;Exact source--sink identity failed&#x27;)
+    # Recompute both equilibrium energy polynomials and both transport moments.
+    energy=[0]*19;weighted=[0]*19;rx=[0]*19;ry=[0]*19
+    for uu,j,f in zip(u,bid,flow):
+        uu=int(uu);j=int(j);f=int(f);n=uu.bit_count();a,b=physical[j]
+        energy[n]+=f*f;weighted[n]+=overlap[j]*f*f
+        sign=((uu&gt;&gt;a)&amp;1)-((uu&gt;&gt;b)&amp;1)
+        rx[n]+=2*f*sign*(sites[b][0]-sites[a][0])
+        ry[n]+=2*f*sign*(sites[b][1]-sites[a][1])
+    if [str(x)for x in energy]!=meta[&#x27;energy_squares_by_particle_count&#x27;]:
+        raise ValueError(&#x27;Unweighted energy polynomial mismatch&#x27;)
+    if [str(x)for x in weighted]!=meta[&#x27;weighted_energy_squares_by_particle_count&#x27;]:
+        raise ValueError(&#x27;Weighted energy polynomial mismatch&#x27;)
+    for n in range(19):
+        conv=sum(counts[k]*counts[n-1-k] for k in range(9) if 0&lt;=n-1-k&lt;9)
+        if rx[n]!=6*den*conv or ry[n]!=0:
+            raise ValueError(&#x27;Exact transport normalization identity failed&#x27;)
+    return {&#x27;passed&#x27;:True,&#x27;states_checked&#x27;:N,&#x27;configuration_edges_checked&#x27;:E,
+            &#x27;gate_patterns&#x27;:len(gate),&#x27;gate_particle_counts&#x27;:counts,
+            &#x27;nonzero_demands&#x27;:int(np.count_nonzero(demand)),
+            &#x27;integer_divergence_residual&#x27;:0,&#x27;response_polynomial_checked&#x27;:True,
+            &#x27;wall_seconds&#x27;:time.perf_counter()-start}
+
+if __name__==&#x27;__main__&#x27;:
+    result=verify()
+    (ROOT/&#x27;verification_results.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+</pre>

@@ -1,0 +1,1 @@
+These records document gate discovery and a weaker initial tail bound. They are not needed to regenerate or verify the final certificate. The final theorem uses the two-state chordless-path bound in ../REPORT.md. Solver claims of search optimality are not used as mathematical proof.

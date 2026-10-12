@@ -1,0 +1,83 @@
+<!doctype html><meta charset="utf-8"><title>N760 recovered original — cray_nonlocal_transport/completed_current.py</title>
+<aside>Archive/member hashes, ZIP CRC and Python AST syntax establish preservation only. No scientific program executed, NPZ arrays loaded, independent proof reconstructed, priority audited or physical experiment performed at intake. Producer finite checks remain source-reported.</aside>
+<pre>&quot;&quot;&quot;Evaluate the actual lifted hard-KA current, or its finite-radius approximation.
+
+Occupations must be supplied as a deterministic callable returning 0 or 1 on
+integer lattice sites. Full evaluation may inspect arbitrarily distant sites;
+finite cutoff gives the local approximation certified in REPORT.md. The default
+cutoff is finite. Set cutoff=None only for a field with finite bad clusters.
+&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction
+from typing import Callable
+import json
+import numpy as np
+from coarse_flow import current as spatial_current
+
+ROOT=Path(__file__).parent
+Site=tuple[int,int]
+
+class CompletedCurrent:
+    def __init__(self,root:Path=ROOT):
+        self.meta=json.loads((root/&#x27;module_metadata.json&#x27;).read_text())
+        data=np.load(root/&#x27;module_flow.npz&#x27;,allow_pickle=False)
+        keys=data[&#x27;u&#x27;].astype(np.int64)*(1&lt;&lt;18)+data[&#x27;v&#x27;]
+        order=np.argsort(keys)
+        self.keys=keys[order];self.flow=data[&#x27;flow&#x27;][order]
+        self.den=int(self.meta[&#x27;denominator&#x27;])
+        self.offsets=tuple(tuple(t)for t in self.meta[&#x27;gate_offsets&#x27;])
+        self.allowed=frozenset(self.meta[&#x27;gate_allowed&#x27;])
+
+    def bond(self,x:Site,direction:int,eta:Callable[[Site],int],cutoff:int|None=8)-&gt;Fraction:
+        if direction not in (0,1):raise ValueError(&#x27;direction must be 0 or 1&#x27;)
+        step=((1,0),(0,1))[direction];y=(x[0]+step[0],x[1]+step[1])
+        bits:dict[Site,int]={}
+        def bit(z:Site)-&gt;int:
+            if z not in bits:
+                value=eta(z)
+                if value not in (0,1):raise ValueError(&#x27;Occupation must be 0 or 1&#x27;)
+                bits[z]=int(value)
+            return bits[z]
+        total=Fraction(0)
+        for sx in range(3):
+            for sy in range(3):
+                bx=((x[0]-sx)//3,(x[1]-sy)//3)
+                by=((y[0]-sx)//3,(y[1]-sy)//3)
+                if bx==by:
+                    modules=((bx,0),((bx[0]-1,bx[1]),0),(bx,1),((bx[0],bx[1]-1),1))
+                else:modules=((bx,direction),)
+                gates:dict[Site,bool]={}
+                def bad(z:Site)-&gt;bool:
+                    if z not in gates:
+                        center=(sx+3*z[0]+1,sy+3*z[1]+1)
+                        pattern=sum(bit((center[0]+dx,center[1]+dy))&lt;&lt;j
+                                    for j,(dx,dy)in enumerate(self.offsets))
+                        gates[z]=pattern not in self.allowed
+                    return gates[z]
+                for anchor,orientation in modules:
+                    ox=sx+3*anchor[0];oy=sy+3*anchor[1]
+                    state=0
+                    for b in range(3):
+                        for a in range(6):
+                            site=(ox+a,oy+b)if orientation==0 else(ox+b,oy+a)
+                            state|=bit(site)&lt;&lt;(a+6*b)
+                    def local_index(z:Site)-&gt;int:
+                        a,b=z[0]-ox,z[1]-oy
+                        return a+6*b if orientation==0 else b+6*a
+                    a=local_index(x);b=local_index(y)
+                    if ((state&gt;&gt;a)&amp;1)==((state&gt;&gt;b)&amp;1):continue
+                    swapped=state^(1&lt;&lt;a)^(1&lt;&lt;b)
+                    lo=min(state,swapped);hi=max(state,swapped);key=lo*(1&lt;&lt;18)+hi
+                    at=int(np.searchsorted(self.keys,key))
+                    if at==len(self.keys) or int(self.keys[at])!=key:continue
+                    numerator=int(self.flow[at])*(1 if state==lo else -1)
+                    if numerator==0:continue
+                    other=(anchor[0]+(orientation==0),anchor[1]+(orientation==1))
+                    # Freeze both local reservoirs as good in the coefficient.
+                    # This is essential: intermediate module states can be bad.
+                    def outside_bad(z:Site)-&gt;bool:
+                        return False if z==anchor or z==other else bad(z)
+                    k=spatial_current(anchor,orientation,outside_bad,cutoff)
+                    total+=Fraction(numerator,self.den)*k
+        return total/9
+</pre>

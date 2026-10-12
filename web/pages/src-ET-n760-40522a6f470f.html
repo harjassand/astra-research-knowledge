@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8"><title>N760 recovered original — cray_nonlocal_transport/coarse_flow.py</title>
+<aside>Archive/member hashes, ZIP CRC and Python AST syntax establish preservation only. No scientific program executed, NPZ arrays loaded, independent proof reconstructed, priority audited or physical experiment performed at intake. Producer finite checks remain source-reported.</aside>
+<pre>&quot;&quot;&quot;Exact nonlocal spatial current and finite-radius legal approximations.
+
+A bad-site predicate specifies the blocked coarse sites. Infinite evaluation
+terminates almost surely for the independent gate field when 1-4*b-b*b &gt; 0. Use a
+finite cutoff for a uniformly finite computation; REPORT.md supplies its error.
+&quot;&quot;&quot;
+from collections import deque
+from fractions import Fraction
+from typing import Callable
+
+Site=tuple[int,int]
+BadPredicate=Callable[[Site],bool]
+STAR=tuple((i,j)for i in (-1,0,1)for j in (-1,0,1)if(i,j)!=(0,0))
+
+def corners(site: Site) -&gt; tuple[Site,...]:
+    x,y=site
+    return ((x-1,y-1),(x-1,y),(x,y-1),(x,y))
+
+def beta(z: Site,bad: BadPredicate,cutoff: int|None=None) -&gt; Fraction:
+    &quot;&quot;&quot;Cluster-averaged height minus z&#x27;s height; zero on unresolved clusters.&quot;&quot;&quot;
+    if cutoff is not None and (not isinstance(cutoff,int) or cutoff&lt;0):
+        raise ValueError(&#x27;cutoff must be None or a nonnegative integer&#x27;)
+    checked:set[Site]=set();cluster:set[Site]=set();dual:set[Site]=set();queue=deque()
+    x,y=z
+    def inspect(v:Site)-&gt;None:
+        if v in checked:return
+        checked.add(v)
+        if bad(v):cluster.add(v);queue.append(v)
+    for dx,dy in ((0,0),(1,0),(0,1),(1,1)):inspect((x+dx,y+dy))
+    while queue:
+        v=queue.popleft()
+        cv=corners(v)
+        if cutoff is not None and any(max(abs(a-x),abs(b-y))&gt;cutoff for a,b in cv):
+            return Fraction(0)
+        dual.update(cv)
+        for dx,dy in STAR:inspect((v[0]+dx,v[1]+dy))
+    if not dual:return Fraction(0)
+    return Fraction(sum(v[1] for v in dual),len(dual))-y
+
+def current(x:Site,direction:int,bad:BadPredicate,cutoff:int|None=None)-&gt;Fraction:
+    &quot;&quot;&quot;Current on x -&gt; x+e_direction. Closed edges remain exactly zero.&quot;&quot;&quot;
+    if direction not in (0,1):raise ValueError(&#x27;direction must be 0 or 1&#x27;)
+    y=(x[0]+(direction==0),x[1]+(direction==1))
+    if bad(x) or bad(y):return Fraction(0)
+    if direction==0:
+        za=x;zb=(x[0],x[1]-1)
+        return 1+beta(za,bad,cutoff)-beta(zb,bad,cutoff)
+    zl=(x[0]-1,x[1]);zr=x
+    return beta(zl,bad,cutoff)-beta(zr,bad,cutoff)
+
+def divergence(x:Site,bad:BadPredicate,cutoff:int|None=None)-&gt;Fraction:
+    return (current(x,0,bad,cutoff)-current((x[0]-1,x[1]),0,bad,cutoff)
+            +current(x,1,bad,cutoff)-current((x[0],x[1]-1),1,bad,cutoff))
+</pre>

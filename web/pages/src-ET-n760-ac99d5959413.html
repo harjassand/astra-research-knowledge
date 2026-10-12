@@ -1,0 +1,63 @@
+<!doctype html><meta charset="utf-8"><title>N760 recovered original — cray_nonlocal_transport/exploration/demand_gate_search.py</title>
+<aside>Archive/member hashes, ZIP CRC and Python AST syntax establish preservation only. No scientific program executed, NPZ arrays loaded, independent proof reconstructed, priority audited or physical experiment performed at intake. Producer finite checks remain source-reported.</aside>
+<pre>&quot;&quot;&quot;Explore source-demand compatibility, weaker than prescribed path compatibility.&quot;&quot;&quot;
+import json,time
+from pathlib import Path
+from collections import defaultdict
+import numpy as np
+from scipy.optimize import milp, Bounds, LinearConstraint
+from scipy.sparse import coo_matrix
+R=Path(__file__).parent; start=time.perf_counter()
+comp=np.load(R/&#x27;graph_6x3.npz&#x27;)[&#x27;comp&#x27;]; ncomp=int(comp.max())+1
+ofs=[(x,y)for y in range(-1,2)for x in range(-1,2)if(x,y)!=(0,0)]
+def rot(v):return sum(((v&gt;&gt;i)&amp;1)&lt;&lt;ofs.index((-y,x))for i,(x,y)in enumerate(ofs))
+def ref(v):return sum(((v&gt;&gt;i)&amp;1)&lt;&lt;ofs.index((-x,y))for i,(x,y)in enumerate(ofs))
+def orb(v):
+ z=set()
+ for _ in range(4):z.update([v,ref(v)]);v=rot(v)
+ return frozenset(z)
+orbits=sorted(set(orb(v)for v in range(256)),key=min);m=len(orbits)
+where={v:i for i,o in enumerate(orbits)for v in o}
+pair={(i,i):i for i in range(m)}
+for i in range(m):
+ for j in range(i+1,m):pair[i,j]=len(pair)
+k=len(pair)
+left=[sum(((a&gt;&gt;i)&amp;1)&lt;&lt;((x+1)+6*(y+1))for i,(x,y)in enumerate(ofs))for a in range(256)]
+right=[sum(((a&gt;&gt;i)&amp;1)&lt;&lt;((x+4)+6*(y+1))for i,(x,y)in enumerate(ofs))for a in range(256)]
+coef=defaultdict(int)
+for a in range(256):
+ for b in range(256):
+  i,j=sorted((where[a],where[b]));col=pair[i,j]
+  s=left[a]|right[b]|(1&lt;&lt;7);t=s^(1&lt;&lt;7)^(1&lt;&lt;10)
+  coef[int(comp[s]),col]+=1;coef[int(comp[t]),col]-=1
+coef={a:b for a,b in coef.items()if b}
+rowmap={r:i for i,r in enumerate(sorted({r for r,c in coef}))}
+rows=[rowmap[r]for r,c in coef];cols=[c for r,c in coef];data=list(coef.values())
+lo=[0]*len(rowmap);hi=[0]*len(rowmap)
+for (i,j),col in pair.items():
+ if i==j:continue
+ row=len(lo);rows.extend([row,row]);cols.extend([col,i]);data.extend([1,-1]);lo.append(-np.inf);hi.append(0)
+ row=len(lo);rows.extend([row,row]);cols.extend([col,j]);data.extend([1,-1]);lo.append(-np.inf);hi.append(0)
+ row=len(lo);rows.extend([row,row,row]);cols.extend([col,i,j]);data.extend([-1,1,1]);lo.append(-np.inf);hi.append(1)
+A=coo_matrix((data,(rows,cols)),shape=(len(lo),k)).tocsc()
+print(&#x27;orbits&#x27;,m,&#x27;variables&#x27;,k,&#x27;nonzero component constraints&#x27;,len(rowmap),&#x27;totalconstraints&#x27;,len(lo),flush=True)
+out=[]
+for p in [.3,.4,.5,.65]:
+ c=np.zeros(k)
+ for i,o in enumerate(orbits):c[i]=-sum(p**v.bit_count()*(1-p)**(8-v.bit_count())for v in o)
+ result=milp(c,integrality=np.r_[np.ones(m),np.zeros(k-m)],bounds=Bounds(0,1),constraints=LinearConstraint(A,lo,hi),options={&#x27;time_limit&#x27;:8})
+ if result.x is None:print(&#x27;no incumbent&#x27;,p);continue
+ gate=sorted(v for i,o in enumerate(orbits)if result.x[i]&gt;.5 for v in o)
+ mass=np.zeros(ncomp,dtype=np.int64)
+ for a in gate:
+  for b in gate:
+   s=left[a]|right[b]|(1&lt;&lt;7);t=s^(1&lt;&lt;7)^(1&lt;&lt;10)
+   mass[comp[s]]+=1;mass[comp[t]]-=1
+ assert np.all(mass==0)
+ counts=[sum(v.bit_count()==n for v in gate)for n in range(9)]
+ prob=-sum(c[:m]*(result.x[:m]&gt;.5))
+ print(p,&#x27;prob&#x27;,prob,&#x27;counts&#x27;,counts,&#x27;status&#x27;,result.message,flush=True)
+ out.append({&#x27;p&#x27;:p,&#x27;prob&#x27;:prob,&#x27;counts&#x27;:counts,&#x27;allowed&#x27;:gate,&#x27;status&#x27;:result.message})
+(R/&#x27;demand_gate_search_results.json&#x27;).write_text(json.dumps(out,indent=2))
+print(&#x27;wall&#x27;,time.perf_counter()-start)
+</pre>
