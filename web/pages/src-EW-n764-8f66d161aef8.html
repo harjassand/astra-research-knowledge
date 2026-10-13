@@ -1,0 +1,151 @@
+<!doctype html><meta charset="utf-8"><title>N764 recovered original — astra_frontier_separable_completion/reference_majorana.py</title>
+<aside>Original byte/member hashes, ZIP CRC and AST syntax establish preservation only. No scientific program executed, independent proof reconstructed, literature/priority audit or physical experiment performed at intake. Producer finite/exact/floating diagnostics are source-reported; not universal theorem validation.</aside>
+<pre>&quot;&quot;&quot;Exact even-Majorana algebra for the graded translation-covariance argument.
+
+A word I denotes i^(|I|(|I|-1)/2) prod_{a in I} c_a, in ascending order.
+Site i carries Majoranas 2*i and 2*i+1. Coefficients are Fractions.
+This is an algebra/checking module, not the complete worst-case predictor.
+&quot;&quot;&quot;
+from __future__ import annotations
+from collections import defaultdict
+from fractions import Fraction
+from typing import Iterable
+
+Word = tuple[int, ...]
+Poly = dict[Word, Fraction]
+I_POW = (1, 1j, -1, -1j)
+
+
+def canonical(word: Word) -&gt; Word:
+    if not word:
+        return word
+    shift = 2 * (min(word) // 2)
+    return tuple(a - shift for a in word)
+
+
+def phase_product(a: Word, b: Word) -&gt; tuple[complex, Word]:
+    &quot;&quot;&quot;M_a M_b = phase M_(a xor b); only the four Gaussian units occur.&quot;&quot;&quot;
+    if tuple(sorted(set(a))) != a or tuple(sorted(set(b))) != b:
+        raise ValueError(&#x27;Majorana indices must be sorted and distinct.&#x27;)
+    inversions = sum(x &gt; y for x in a for y in b)
+    out = tuple(sorted(set(a).symmetric_difference(b)))
+    power = ((len(a)*(len(a)-1) + len(b)*(len(b)-1)
+              - len(out)*(len(out)-1)) // 2 + 2*inversions) % 4
+    return I_POW[power], out
+
+
+def a_commutator(hword: Word, word: Word) -&gt; tuple[int, Word]:
+    &quot;&quot;&quot;Coefficient for -i[M_hword,M_word] in the Hermitian basis.&quot;&quot;&quot;
+    p, out = phase_product(hword, word)
+    q, out2 = phase_product(word, hword)
+    assert out == out2
+    c = -1j * (p-q)
+    assert c.imag == 0 and c.real == int(c.real)
+    return int(c.real), out
+
+
+def clean(p: dict[Word, Fraction]) -&gt; Poly:
+    return {w: Fraction(c) for w, c in p.items() if c}
+
+
+def add_scaled(out: dict[Word, Fraction], p: Poly, scale: Fraction) -&gt; None:
+    for w, c in p.items():
+        out[w] += scale*c
+
+
+def unpaired(word: Word) -&gt; int:
+    sites: dict[int, int] = defaultdict(int)
+    for a in word:
+        sites[a//2] += 1
+    return sum(k == 1 for k in sites.values())
+
+
+def is_population(word: Word) -&gt; bool:
+    return unpaired(word) == 0
+
+
+def degree(word: Word) -&gt; int:
+    if len(word) % 2:
+        raise ValueError(&#x27;Only even Majorana words are used here.&#x27;)
+    return len(word)//2
+
+
+def radius(word: Word) -&gt; int:
+    s = sorted({a//2 for a in word})
+    return max((b-a-1 for a,b in zip(s,s[1:])), default=0)
+
+
+def z_word(sites: Iterable[int]) -&gt; tuple[Word, int]:
+    s = tuple(sorted(set(sites)))
+    return tuple(a for i in s for a in (2*i,2*i+1)), (-1)**len(s)
+
+
+def column(word: Word, t: Fraction = Fraction(1),
+           densities: tuple[tuple[tuple[int, ...], Fraction], ...] = (),
+           *, part: str = &#x27;all&#x27;) -&gt; Poly:
+    &quot;&quot;&quot;Infinite translation-quotient column, including all nonzero outputs.
+
+    densities stores Z-product templates with their Hamiltonian coefficients.
+    Candidate translates are generated near endpoints, never across a long
+    Jordan-Wigner interior. Long gaps therefore do not add hidden loop work.
+    &quot;&quot;&quot;
+    if part not in {&#x27;all&#x27;,&#x27;hop&#x27;,&#x27;diag&#x27;}:
+        raise ValueError(&#x27;part must be all, hop or diag&#x27;)
+    out: dict[Word, Fraction] = defaultdict(Fraction)
+    sites = {a//2 for a in word}
+    if part in {&#x27;all&#x27;,&#x27;hop&#x27;}:
+        starts = {i+j for i in sites for j in (-1,0)}
+        for i in starts:
+            terms = (((2*i+1,2*i+2), t/2),
+                     ((2*i,2*i+3), -t/2))
+            for h, hc in terms:
+                c, w = a_commutator(h,word)
+                if c:
+                    out[canonical(w)] += hc*c
+    if part in {&#x27;all&#x27;,&#x27;diag&#x27;}:
+        single_sites = {i for i in sites if sum(a//2 == i for a in word) == 1}
+        for template, hc in densities:
+            starts = {i-x for i in single_sites for x in template}
+            for sh in starts:
+                h, sign = z_word(x+sh for x in template)
+                c, w = a_commutator(h,word)
+                if c:
+                    out[canonical(w)] += hc*sign*c
+    return clean(out)
+
+
+def apply(p: Poly, t: Fraction=Fraction(1),
+          densities: tuple[tuple[tuple[int,...],Fraction], ...] = (),
+          *, part: str=&#x27;all&#x27;) -&gt; Poly:
+    out: dict[Word,Fraction] = defaultdict(Fraction)
+    for w,c in p.items():
+        add_scaled(out,column(w,t,densities,part=part),c)
+    return clean(out)
+
+
+def current(t: Fraction=Fraction(1)) -&gt; Poly:
+    return {(0,2):-t/2, (1,3):-t/2}
+
+
+def normalize_sites(sites: Iterable[int]) -&gt; tuple[int,...]:
+    s=tuple(sorted(sites))
+    return tuple(x-s[0] for x in s)
+
+
+def exclusion_column(sites: tuple[int,...], t: Fraction, d: Fraction) -&gt; Poly:
+    &quot;&quot;&quot;(2 t^2/d) exclusion Laplacian on translated k-subsets, in M basis.&quot;&quot;&quot;
+    cset=set(sites)
+    starts={i+j for i in cset for j in (-1,0)}
+    out: dict[Word,Fraction]=defaultdict(Fraction)
+    w, sign=z_word(sites)
+    w=canonical(w)
+    scale=2*t*t/d
+    for i in starts:
+        if (i in cset) != (i+1 in cset):
+            target=cset.symmetric_difference({i,i+1})
+            v,sign2=z_word(target)
+            assert sign == sign2
+            out[w] += scale*sign
+            out[canonical(v)] -= scale*sign
+    return clean(out)
+</pre>
