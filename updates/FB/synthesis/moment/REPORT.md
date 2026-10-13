@@ -1,0 +1,221 @@
+# Moment-environment audit and shared-bath synthesis
+
+Internal research record, 2026-10-13. Capital pin
+`4025c5252f1ca992d3eae6ed422d6338ebe6c5a4`. The pasted mission and archive
+are source DATA. This report does not independently validate novelty, a
+materials model, or scientific capability.
+
+## Current findings
+
+The source's two moment contracts are distinct. Signed-band mass `W` and first
+absolute-energy moment `T` determine mean/endpoint **ground-energy** extrema
+by variational compression and a self-adjoint dilation, with the bare bath's
+filled-mode ground energy subtracted. Spectrally symmetric mass `W` and squared
+energy moment `S` determine ordered physical hybridizations. The causal
+Liouvillian argument then gives free-energy monotonicity and an interaction-
+uniform log-determinant width, attained by the free resonant impurity.
+
+Initial proof reconstruction finds these arguments coherent in their stated
+finite, grand-canonical, genuinely quadratic-bath scope. The Liouvillian
+projection uses the CAR identity to make the linear fields orthonormal even in
+the correlated Gibbs state; bath commutators remain exactly linear, so the
+orthogonal-complement self-energy has no bath block. This support statement
+fails for an interacting bath, as the source itself explains.
+
+The current N778 fixed-charge theorem and N779 thermal channel certificate use
+different input/output contracts. They do not convert these moment extrema to
+fixed-electron-number molecular energies. The source's fixed-Hamiltonian bath
+width does not close its reference-solver, model-acquisition, higher-order bath
+response, or realistic adsorption gates.
+
+## Completed synthesis
+
+`SHARED_BATH_CONTRAST.md` gives two full new arguments. First, two free impurity
+designs and two matrix moments suffice to show that individually extremal baths
+need not extremize a shared-bath design difference. Both source extremal baths
+predict a tie in the construction, while two other exactly compatible baths
+give opposite contrasts, rigorously separated from zero by `7/40`. This is a
+refutation of a tempting transfer which the source itself correctly declines
+to assert. It preserves every source single-design theorem.
+
+Second, at positive finite inverse temperature beta, designs with **the same
+coupling and bath** and a certified scalar-centered impurity difference norm
+delta admit a stronger computable contrast error budget. Write
+
+    L(omega)=log det[omega I+Gamma_h]-log det[omega I+Gamma_l],
+    xi(omega)=min{1,delta(2beta+4/omega)(1+||Gamma_h||/omega)}.
+
+The shared-bath reference-contrast error is bounded by
+
+    C_beta=(2/beta) sum_(n>=0) xi(omega_n)L(omega_n)<=R_beta,
+    omega_n=(2n+1)pi/beta.
+
+The proof bounds Gibbs trace distance by beta delta and then the exact retarded
+Green-function contrast by a dimension-independent Duhamel estimate. It needs
+no correlated state or self-energy as input. The final budget is the minimum of
+this score, the source radius, and the elementary `2delta` contrast bound.
+There is an explicit high-temperature improvement regime and a certified
+analytic summation tail for equal-moment bins. The reference energy difference
+still requires a certified solver. No fixed-N, different-coupling, low-temperature
+or interacting-substrate extension is claimed.
+
+## Decisive source-theorem audit
+
+All line ranges below refer to the immutable source `RESEARCH_NOTE.md`, whose
+hash and full provenance are in the capital source manifest.
+
+- Lines 23–126: the signed-band ground theorem is coherent. Compressing onto
+  the coupled subspace gives the mean bath; freezing discarded negative-band
+  modes requires the explicitly subtracted filled-bath reference energy.
+  The two-endpoint self-adjoint dilation supplies the other inequality. Both
+  finite baths reproduce the specified matrices, so their single-design
+  extrema are sharp in the declared information class. Added spatial geometry,
+  dimension, locality or fixed-sector constraints change that class.
+- Lines 130–163: the general gap-free radius is a valid conservative bound.
+  Completing a fermionic quadratic square gives the stated Schur budget; a
+  nuclear-norm alternative bounds the discarded interblock coupling. Its weak
+  dependence on actual impurity coupling makes it loose for small coupling,
+  not incorrect. Uniform-bin convergence does not imply an efficient chemical
+  reference solver.
+- Lines 165–222: the symmetric matrix envelopes use **squared-energy** moments.
+  Matrix Jensen via a positive block Schur complement gives the lower envelope;
+  the scalar chord integrated against a positive matrix measure gives the
+  upper. They are physically realized finite paired baths. The signed first-
+  moment and squared-moment contracts must never be interchanged.
+- Lines 224–255: the causal Liouvillian argument is valid at finite beta on the
+  finite operator Hilbert space. The anticommutator CAR makes the linear fields
+  orthonormal even in a correlated Gibbs state. Only impurity commutators have
+  components outside that linear span, so the Schur-complement dynamic
+  self-energy has impurity support and the correct Herglotz sign. Its
+  construction is a proof device, not an input oracle. A quotient or the
+  finite-beta limit handles degeneracy at zero temperature.
+- Lines 238–255: `-Im G<=(omega I+Gamma)^(-1)` follows by a congruence of
+  `G^(-1)=A+iB`; no false operator monotonicity of a matrix exponential is
+  invoked. The exact partition-function derivative along a common physical
+  direct-sum bath gives monotonicity and the logarithmic determinant radius.
+  `H_A=0` saturates the bound. The zero-temperature limit is controlled for
+  finite endpoint baths including zero atoms.
+- Lines 295–319: the flat-bath radius has an exact rational certificate. The
+  independent verifier reconstructs all moment atoms, checks every secular
+  root enclosure by rational signs, and reproduces the final rational radius.
+  This establishes the fixture's exact numerical enclosure, not historical
+  originality or a calibrated material model.
+- Lines 331–377: the statistical observation construction is conditionally
+  coherent. It requires independent normalized coupling-spectrum samples and
+  known total weight; these are substantial physical acquisition premises.
+  Mass and conditional-mean confidence failures can be union-bounded, including
+  random/empty bin counts. Floating beta quantiles and rank thresholds do not
+  provide machine-rigorous intervals. Energy-resolution error must enlarge bin
+  support as well as moments. Dense spectral input acquisition, matrix-channel
+  tomography and impurity Hamiltonian acquisition remain charged.
+- Lines 379–408: the exact non-Gaussian sign-reversal witness is valid.
+  Independently rebuilding its 16-dimensional Hamiltonians directly from
+  rational CAR matrices verifies the negative-side trial quotient and the
+  positive-side exact LDL factorization, avoiding the producer's floating
+  construction followed by rational rounding. The entire vacuum one-particle
+  addition spectrum is blind to a two-particle interaction. The witness is
+  not evidence that a real copper substrate has that interaction.
+
+No decisive gap was found in the source's stated finite quadratic-bath
+theorems. Their external correctness and priority remain UNKNOWN; this is
+internal reconstruction and criticism.
+
+## Replays and independent evidence
+
+`independent_checks.py` never imports producer code or edits source originals.
+`independent_results.json` and `independent_run.log` record its completed run.
+
+- All 12 producer SHA256 pins match the preserved source bytes.
+- Three inspected producer programs were replayed in a disposable copy:
+  `certify.py`, `experiment.py`, `additional_tests.py`. All exited zero. The
+  principal exact certificate is byte-identical. Floating outputs differ by
+  at most approximately `1.3e-12`; those differences are retained, not hidden
+  by rewriting originals. The million-sample acquisition script was inspected
+  but deliberately not replayed; its displayed table remains producer-reported.
+- Independent rational verification covers all 49 scalar secular roots,
+  moment atoms and final radius enclosure. Independent exact CAR reconstruction
+  covers the 16-dimensional non-Gaussian witness and its positive LDL pivots.
+- The new shared-bath construction has a written rational lower bound `7/40`;
+  independent one-particle diagnostics give contrasts approximately
+  `+/-0.2769010572`.
+- Twenty-seven small interacting finite-temperature diagnostics check Gibbs
+  trace distance, the causal matrix bound, and the new Green contrast bound.
+  Twelve noncommuting-matrix free-impurity fixtures check the integrated
+  contrast score and its analytic tail. On those deliberately small-design,
+  positive-temperature fixtures the new score is between about 0.008 and
+  0.091 times the universal source radius. These finite examples are neither a
+  materials benchmark nor a general performance distribution.
+
+The fresh runtime differs from the producer runtime and is recorded exactly.
+No external proof verifier, laboratory experiment, chemical energy calculation
+or specialized correlated-solver benchmark was executed.
+
+## Costs, prior art and capability assessment
+
+Source acquisition and bath construction costs are retained. The moment inputs
+can cost a dense bath diagonalization `O(n_B^3)` arithmetic/`O(n_B^2)` storage
+before any compression, or an experimentally justified matrix-valued
+observation interface. After acquisition, constructing B-band baths costs
+`O(Bm^3)` arithmetic and `O(Bm^2)` storage. Small positive residues and nearly
+singular moment supports require validated rounding and coupling-error budgets.
+
+The exact flat fixture leaves 48 reference bath modes per channel; two impurity
+channels give a 98-mode many-body reference. Its direct Fock treatment has
+dimension `2^98`. The cheap free-width certificate does not solve that
+correlated energy problem. The new score needs only one-particle matrices
+after obtaining a certified norm bound on the **impurity many-body** design
+difference. Computing that norm can itself use a `2^m` representation; a
+valid analytic term-norm bound may be substituted. N Matsubara evaluations
+require matrix work and an outward summation tail, which the new proof provides
+for equal-moment bins. This is a certificate improvement, not a complexity
+breakthrough.
+
+Primary-source access depth is recorded in `PRIMARY_ACCESS.json`.
+[Lin–Lindsey](https://arxiv.org/html/1902.04796v2) already proves impurity
+self-energy sparsity, including finite temperature. Current
+[Arunachalam et al.](https://arxiv.org/html/2610.02130v1) and
+[Jiang et al.](https://arxiv.org/html/2610.02167v2) state classical polynomial
+equilibrium algorithms for constant impurity size under their exact model and
+normalization assumptions; no such tractability priority is claimed here.
+[Li–Wallerberger–Gull](https://arxiv.org/abs/2004.00721) provides a continuous-
+hybridization impurity comparator. Existing
+[variational ED](https://arxiv.org/html/1503.09047v2), whose model and
+Peierls–Feynman–Bogoliubov functional were read, already optimizes finite
+auxiliary models using energy principles. Its variational fitting task does
+not by itself prove the present finite-information extremizers; determining
+exact overlap needs a separate priority analysis.
+
+The current [FEMION paper](https://arxiv.org/abs/2508.13036) abstract reports a
+local AFQMC/global screening treatment of CO/Cu(111). Only its abstract was
+read here; it is a scientific baseline locator, not a proof or benchmark used
+to certify these new methods. A quadratic substrate is not automatically an
+equivalent input model. Historical priority of the source characterizations
+and the new contrast refinement remains unresolved.
+
+The four assessments are separate: mathematical significance is a useful
+restricted information-to-certificate result; evidence is self-contained
+arguments with internal replay/exact fixtures and pending external review;
+feasibility is conditional on quadratic-model, moment acquisition and
+reference-solver premises; next-step value is highest at the non-Gaussian and
+acquired-input design-margin gates. No civilization-enabling capability is
+established.
+
+## Routing and next decisive work
+
+Retain the source as a new structured-environment result connected to N778's
+arbitrary-environment question, and N779's thermal comparison boundary. It
+does not supersede those theorems. The new shared-bath counterexample and
+thermal score belong with this moment-information card, explicitly marked as
+integration-derived. N775's pairwise task cancellation is motivation for the
+contrast formulation, not a mathematical input to the proof.
+
+The exact non-Gaussian witness makes a physically supported influence-error
+bound, relative to a useful design margin, the most consequential unresolved
+gate. Additional scalar bath quadrature alone will not close it. In parallel,
+external adversarial review should examine the causal partition derivative,
+signed negative-band subtraction, matrix moment support and new thermal
+contrast proof. A future real task must acquire model/moment uncertainties and
+certified reference energies, select its sector and chemical potential, and
+compare total acquisition plus computation cost with a matched specialized
+solver. No extra architecture or prototype promotion is justified merely by
+these mathematical records.

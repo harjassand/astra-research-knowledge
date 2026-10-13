@@ -1,0 +1,109 @@
+<!doctype html><meta charset="utf-8"><title>N783 preserved original — qualification_calculations.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Conditional qualification arithmetic, not an atomistic simulation.
+
+All hBN numerical inputs come from ONE theoretical study:
+Hamdi et al., npj Computational Materials 6, 178 (2020),
+DOI: 10.1038/s41524-020-00451-y.
+The inputs are predictions, not measured Stone-Wales defect parameters.
+
+The optical branching calculation applies to the reported relaxed singlet
+cycle. It does not bound alternative excitation or charge-injection pathways.
+No repair barrier, repair probability, transfer rate, or gain is assumed.
+
+Run: python qualification_calculations.py
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import math
+from pathlib import Path
+
+EV_J = 1.602176634e-19  # Exact SI conversion.
+
+def branching_probability(isc_s: float, radiative_lifetime_s: float,
+                          additional_loss_s: float = 0.0) -&gt; float:
+    if not all(math.isfinite(x) for x in
+               (isc_s, radiative_lifetime_s, additional_loss_s)):
+        raise ValueError(&quot;Inputs must be finite&quot;)
+    if isc_s &lt; 0 or radiative_lifetime_s &lt;= 0 or additional_loss_s &lt; 0:
+        raise ValueError(&quot;Rates must be nonnegative and lifetime positive&quot;)
+    return isc_s / (isc_s + 1.0 / radiative_lifetime_s + additional_loss_s)
+
+def zero_success_upper_bound(trials: int, confidence: float = 0.95) -&gt; float:
+    &quot;&quot;&quot;Exact one-sided binomial bound: independent, verified trials only.&quot;&quot;&quot;
+    if trials &lt;= 0 or not 0 &lt; confidence &lt; 1:
+        raise ValueError(&quot;Positive trials and confidence in (0,1) required&quot;)
+    return -math.expm1(math.log1p(-confidence) / trials)
+
+def outcome_probabilities(exposure: float, useful: float, damage: float):
+    &quot;&quot;&quot;Poisson exposure; terminal useful/damage hazards; no reverse reaction.
+
+    &#x27;useful&#x27; and &#x27;damage&#x27; are mutually exclusive per-event probabilities.
+    This is an analytical diagnostic, not a fit to experimental observations.
+    &quot;&quot;&quot;
+    if exposure &lt; 0 or useful &lt; 0 or damage &lt; 0 or useful + damage &gt; 1:
+        raise ValueError(&quot;Invalid exposure or event probabilities&quot;)
+    total = useful + damage
+    if total == 0:
+        return (1.0, 0.0, 0.0)
+    changed = -math.expm1(-exposure * total)
+    return (1.0 - changed, useful / total * changed,
+            damage / total * changed)
+
+def main() -&gt; None:
+    isc = 100.0
+    tau = 2.4e-9
+    photon_ev = 4.53
+    eta = branching_probability(isc, tau)
+    photon_j = photon_ev * EV_J
+    target_yield = 0.99
+    # Unknown triplet-to-repair probability y remains symbolic. y=1 below
+    # defines an optimistic ceiling, not an inferred physical parameter.
+    result = {
+        &quot;status&quot;: &quot;Conditional arithmetic only; no qualified physical operation&quot;,
+        &quot;source_doi&quot;: &quot;10.1038/s41524-020-00451-y&quot;,
+        &quot;inputs_are_theoretical_predictions&quot;: True,
+        &quot;inputs&quot;: {&quot;isc_rate_s^-1&quot;: isc, &quot;radiative_lifetime_s&quot;: tau,
+                   &quot;vertical_excitation_eV&quot;: photon_ev},
+        &quot;relaxed_cycle_triplet_branching_probability&quot;: eta,
+        &quot;mean_absorbed_photons_per_triplet&quot;: 1 / eta,
+        &quot;absorbed_optical_energy_per_triplet_J&quot;: photon_j / eta,
+        &quot;G_threshold_for_more_than_one_retained_repair_per_absorbed_photon&quot;: 1 / eta,
+        &quot;optimistic_damage_probability_ceiling_for_99_percent_terminal_yield&quot;:
+            eta * (1 - target_yield) / target_yield,
+        &quot;damage_ceiling_qualification&quot;:
+            &quot;No chain, y=1, no extra optical loss, no later damage or reversal. &quot;
+            &quot;For general triplet repair probability y, multiply by y.&quot;,
+        &quot;no_damage_unsaturated_99_percent_fluence_coefficient_J&quot;:
+            photon_j * (-math.log1p(-target_yield)) / eta,
+        &quot;fluence_formula&quot;:
+            &quot;incident_fluence[J/cm^2] = coefficient_J / &quot;
+            &quot;(defect_absorption_cross_section[cm^2] * triplet_repair_probability). &quot;
+            &quot;Requires constant cross section, independent sites, no recycling, &quot;
+            &quot;no saturation, no damage, no reverse reaction.&quot;,
+        &quot;zero_success_95_percent_upper_bounds&quot;: {
+            str(n): zero_success_upper_bound(n) for n in (30, 300, 3000)
+        },
+        &quot;unacquired&quot;: [&quot;Structural identity of addressed optical centre&quot;,
+                       &quot;Excited-state repair path and nonadiabatic branching&quot;,
+                       &quot;Mobile outgoing excitation after repair&quot;,
+                       &quot;Same-specimen capture and transfer kinetics&quot;,
+                       &quot;Defect absorption cross section and parasitic absorption&quot;,
+                       &quot;Damage probability and retained lifetime&quot;,
+                       &quot;Matched competing repair process and wall energy&quot;],
+    }
+    # Numerical integrity checks, NOT scientific/physical validation.
+    assert abs(eta - 2.4e-7) / 2.4e-7 &lt; 3e-7
+    assert 3e-12 &lt; photon_j / eta &lt; 3.1e-12
+    for a in (0.0, 1.0, 1e5, 1e8):
+        probs = outcome_probabilities(a, eta, eta / 99)
+        assert abs(sum(probs) - 1.0) &lt; 1e-12
+        assert all(0 &lt;= p &lt;= 1 for p in probs)
+    for n in (30, 300, 3000):
+        p = zero_success_upper_bound(n)
+        assert math.isclose((1 - p) ** n, 0.05, rel_tol=1e-10)
+    output = Path(__file__).with_name(&quot;qualification_results.json&quot;)
+    output.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

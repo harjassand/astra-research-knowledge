@@ -1,0 +1,440 @@
+# CRAY — finite-moment information about a quantum environment
+
+Research record: 13 October 2026.
+
+## Status
+
+This continuation derives two related environmental-information results. The first gives exact extremal **ground impurity energies** among quadratic fermionic baths with specified signed-band coupling weights and first absolute-energy moments. The second, for spectrally symmetric quadratic baths, uses coupling weights and **squared-energy moments** to obtain an interaction-uniform uncertainty certificate computable entirely from one-particle matrices. The moment contracts are different and must not be interchanged.
+
+The mathematical arguments are given below. They have not been independently refereed or formalized. Historical novelty of these particular combinations and characterizations has not been established. Variational compression, self-adjoint dilation, moment inequalities, hybridization representations, and causal Green functions are established ingredients, not inventions of this investigation.
+
+The implementation includes numerical interacting checks, an independently specified finite-range metallic-reservoir control, an exact rational uncertainty certificate, a sampling-cost experiment, and an exact counterexample to extending single-particle spectral sufficiency to an interacting bath. No real molecule or adsorption-site energy has been calculated. No runtime advantage over a specialized impurity solver has been demonstrated. This is a substantive mathematical continuation, not a completed transformative chemical-design capability.
+
+## 1. Scientific task and current comparison
+
+The target considered was a certified local adsorption/design energy difference in a metallic environment, with CO atop versus hollow adsorption on Cu(111) as a documented motivating task. It is not an untouched benchmark. The current FEMION paper, revised 9 April 2026, treats CO/Cu(111) and hydrogen desorption using local AFQMC with a global RPA treatment of nonlocal screening [1]. Its inclusion of nonlocal correlation is important: replacing the whole substrate by an exactly quadratic bath is not automatically an equivalent physical model.
+
+Other important comparisons are continuous-hybridization diagrammatic Monte Carlo [2], multiorbital impurity methods [3], and rigorous impurity algorithms [4–6]. Two preprints submitted on 1 October 2026 give polynomial-time classical equilibrium algorithms for constant-size impurities [5,6]. The contribution claimed here is therefore **not** that a constant-size interacting impurity is newly classically tractable. It concerns what can be certified from incomplete environmental information, and when acquisition or bath fitting is already accurate enough for a decision.
+
+Endpoint relative-entropy inequalities and local variational-state response constructions were considered but not promoted as new capabilities. The former follow standard Gibbs identities and data processing; the latter do not exclude an unseen competing ground-state sector. The selected operation instead changes the information contract to measured or computed spectral moments of a genuinely quadratic bath.
+
+The previous UCP theorem remains valid under its stated unrestricted-environment assumptions. No unproved claim from it or either supplied repository is needed in the proofs here. Repository searches were selective, and no repository changes were made.
+
+## 2. Exact model and output
+
+Let d=(d_1,...,d_m) be impurity fermion annihilation operators. Let H_A be an arbitrary finite, even, number-conserving impurity Hamiltonian, including any scalar reference energy. It need not be weakly interacting, particle–hole symmetric, perturbative, or gapped.
+
+A bath is specified by a Hermitian one-particle matrix h and a coupling matrix V:
+
+    H = H_A + c^dagger h c + d^dagger V c + c^dagger V^dagger d.
+
+All one-particle energies are measured relative to the same specified chemical potential. Define
+
+    E_imp(H_A;h,V) = lambda_min(H) - Tr(h_-),
+    h_- = min(h,0).
+
+This subtracts the ground energy of the uncoupled bath. The minimum is over the entire Fock space, equivalently the zero-temperature grand-canonical problem at that chemical potential. Number conservation of H does not mean a particular total-number sector has been selected.
+
+The corresponding finite-temperature impurity grand potential is
+
+    F_imp(beta) = -(1/beta) log[ Z(H) / Z(c^dagger h c) ].
+
+For finite baths, F_imp tends to E_imp as beta tends to infinity. Theorems below first concern finite baths of arbitrary size. Section 6 explains controlled continuum limits.
+
+For a design pair with the same bare bath, the subtracted bath constant cancels. If the bare bath changes, its separately accounted reference contribution must be restored before interpreting a total design energy.
+
+## 3. General signed-band moment theorem: no spectral symmetry required
+
+Partition the bath spectrum into signed bands. In band b, write
+
+    h_b = sigma_b A_b,   sigma_b in {+1,-1},
+    a_b I <= A_b <= b_b I,   0 <= a_b < b_b.
+
+Let V_b be the coupling to that band. The supplied information is exactly
+
+    W_b = V_b V_b^dagger,
+    T_b = V_b A_b V_b^dagger.
+
+These are m by m matrices. Necessarily
+
+    W_b >= 0,
+    a_b W_b <= T_b <= b_b W_b.
+
+No bath eigenvectors, bath dimension, interacting state, marginal, spectral gap, or optimal quantum channel is supplied.
+
+### Construction of the mean bath
+
+Choose a full-column-rank factor L_b of W_b, with
+
+    W_b = L_b L_b^dagger,
+    r_b = rank W_b <= m.
+
+Define, using the Moore–Penrose inverse,
+
+    B_b = L_b^+ T_b (L_b^+)^dagger.
+
+This is r_b by r_b, and a_b I <= B_b <= b_b I. The mean bath has one-particle matrix sigma_b B_b and coupling L_b. It has r_b modes in this band.
+
+### Construction of the endpoint bath
+
+Define the positive semidefinite endpoint residues
+
+    W_b,a = (b_b W_b - T_b)/(b_b-a_b),
+    W_b,b = (T_b - a_b W_b)/(b_b-a_b).
+
+Put these residues at signed energies sigma_b a_b and sigma_b b_b. A residue W is realized by any coupling factor L with LL^dagger=W. The endpoint bath uses at most 2r_b modes per band.
+
+Both constructed baths reproduce the supplied W_b,T_b exactly.
+
+### Theorem 1 — exact extrema
+
+For every H_A and every quadratic bath compatible with these signed-band moments,
+
+    E_imp(endpoint bath) <= E_imp(true bath) <= E_imp(mean bath).
+
+Moreover, both bounding baths are compatible with the moment data. Consequently,
+
+    inf_compatible_baths E_imp = E_imp(endpoint bath),
+    sup_compatible_baths E_imp = E_imp(mean bath).
+
+If exact zero modes or closed-band endpoint atoms are excluded by an additional convention, use the closure and limiting extrema instead. No claim of sharpness is made after further constraints such as a fixed lattice geometry or a fixed bath dimension are imposed.
+
+### Proof of the upper bound
+
+The polar factorization gives an isometry U_b with V_b=L_b U_b^dagger. Compress A_b to the range of U_b:
+
+    U_b^dagger A_b U_b = B_b.
+
+For a positive-energy band, constrain all complementary bath modes to be empty. For a negative-energy band, constrain them to be filled. Coupling to those complementary modes vanishes because V_b U_b,perp=0. Off-diagonal bath terms have zero compression onto the constrained subspace.
+
+For a negative band, subtracting the filled-bath energy is essential. In a basis with blocks B,C, filling the complementary C block contributes -Tr C, while the original reference subtraction adds Tr B+Tr C. The remaining operator is Tr B-x^dagger Bx, exactly the normalized retained negative band.
+
+Thus the restriction of the full normalized Hamiltonian to this trial subspace is the mean-bath Hamiltonian. Rayleigh–Ritz gives E_true <= E_mean, regardless of the impurity interaction.
+
+### Proof of the lower bound
+
+For any A with aI<=A<=bI, use the self-adjoint dilation
+
+                [ A                     sqrt((A-aI)(bI-A)) ]
+    A_tilde  =  [                                             ].
+                [ sqrt((A-aI)(bI-A))    (a+b)I-A             ]
+
+Its spectrum is contained in {a,b}. Couple the impurity only to the original block, with [V,0]. The original Hamiltonian is recovered by restricting added modes to be empty for a positive band or filled for a negative band. Therefore the dilated normalized ground energy is no larger than the original.
+
+The spectral projectors of A_tilde at a and b have original-block compressions (bI-A)/(b-a) and (A-aI)/(b-a). Their coupling residues are precisely W_a,W_b above. Rotating within each degenerate endpoint eigenspace leaves at most rank(W_endpoint) coupled modes; all other modes decouple and contribute zero to E_imp. This gives the stated finite endpoint bath and proves the lower bound.
+
+### Why this is more than a fitted bath
+
+The construction does not posit that a best-fit bath has converged. It returns the actual extremal energies allowed by a specified finite information set. A different algorithm using exactly the same moment contract cannot universally improve those single-system extrema. For an energy difference under a common bath, subtracting separate extrema is valid but is not asserted to be jointly sharp.
+
+## 4. A computable general error budget and a gap-free convergence rate
+
+The mean and endpoint baths can be compared without solving H_A, although the following simple bound can be conservative.
+
+For one band let
+
+    K = sqrt((B-aI)(bI-B)),
+    D = (a+b)I-B.
+
+A realization of the endpoint bath has block one-particle matrix [[B,K],[K,D]], with the impurity coupled only to the B block. Positive-band particles and negative-band holes give the same normalized excitation calculation.
+
+Completing the square gives
+
+    y^dagger D y + x^dagger K y + y^dagger K x
+      >= -x^dagger K D^+ K x.
+
+Here ker(D) is contained in ker(K), so the pseudoinverse causes no omitted term. Since 0<=x^dagger Cx<=Tr(C)I for C>=0,
+
+    0 <= E_mean-E_endpoint <= R_gen,
+    R_gen = sum_b Tr[K_b D_b^+ K_b].
+
+One may also use the coupling norm Tr|K_b| and take the smaller bound per band. These bounds are independent of interaction strength and bath dimension.
+
+For uniformly spaced absolute-energy bins [k delta,(k+1)delta], k>=1,
+
+    Tr(KD^+K) <= r_b delta/(4k).
+
+For the bin starting at zero, the bound is at most r_b delta, with zero contributions handled by continuity/pseudoinverse as above. Covering both signs up to half-bandwidth D_max=N delta therefore gives
+
+    R_gen <= 2m delta + (m delta/2) H_(N-1),
+
+where H_n is the harmonic sum. This tends to zero as delta tends to zero without a spectral-gap assumption.
+
+This rate is a correctness guarantee, not a practical-speedup claim. It can require many bands; the numerical symmetric result below is substantially tighter. The exact moment construction uses at most mB mean-bath modes or 2mB endpoint-bath modes for B signed bands.
+
+## 5. Stronger symmetric-bath theorem: free particles certify interacting uncertainty
+
+This section uses a DIFFERENT moment contract. Assume the matrix-valued coupling spectral measure is symmetric about zero:
+
+    M(-d epsilon) = M(d epsilon).
+
+The impurity Hamiltonian itself need not have this symmetry. Let nu be the pair-total spectral measure on s=epsilon^2. Then
+
+    Delta(i omega) = -i Gamma(omega),
+    Gamma(omega) = omega integral nu(ds)/(omega^2+s).
+
+For every bin s in [a^2,b^2], supply
+
+    W = integral nu(ds),
+    S = integral s nu(ds).
+
+S is a squared-energy moment, not T from Theorem 1.
+
+### Constructive matrix bounds
+
+Factor W=LL^dagger and set B=L^+S(L^+)^dagger. Define
+
+    Gamma_low,b(omega) = omega L(omega^2 I+B)^(-1)L^dagger,
+
+    Wa = (b^2 W-S)/(b^2-a^2),
+    Wb = (S-a^2 W)/(b^2-a^2),
+
+    Gamma_high,b(omega)
+      = omega [ Wa/(omega^2+a^2) + Wb/(omega^2+b^2) ].
+
+Sum these expressions over bins. For a direct proof of the lower bound, normalize the matrix measure by L^+ on its support. Integrating the positive block matrix [[1/(omega^2+s),1],[1,omega^2+s]] against that normalized measure gives a block matrix with diagonal blocks integral 1/(omega^2+s) and omega^2 I+B and identity off-diagonal blocks. Its Schur complement gives the lower bound. The scalar chord inequality, integrated against a positive matrix measure, gives the upper bound:
+
+    Gamma_low(omega) <= Gamma_true(omega) <= Gamma_high(omega)
+
+in Loewner order for every omega>0. The lower and upper expressions are both physically realizable symmetric finite baths and reproduce W,S. The residues at a positive pole squared s are split equally between energies +/-sqrt(s). A pole at zero needs only a single coupled zero-energy block.
+
+### Theorem 2 — monotonicity and a sharp universal width
+
+For every finite H_A as in Section 2 and every beta>0,
+
+    F_imp(Gamma_high) <= F_imp(Gamma_true) <= F_imp(Gamma_low).
+
+Furthermore,
+
+    0 <= F_imp(Gamma_low)-F_imp(Gamma_high) <= R_beta,
+
+    R_beta = (2/beta) sum_{n>=0}
+             log[ det(omega_n I+Gamma_high(omega_n))
+                  /det(omega_n I+Gamma_low(omega_n)) ],
+    omega_n = (2n+1)pi/beta.
+
+At zero temperature,
+
+    R_0 = (1/pi) integral_0^infinity
+          log[ det(omega I+Gamma_high(omega))
+               /det(omega I+Gamma_low(omega)) ] d omega.
+
+These width bounds are **attained by the free resonant impurity H_A=0**. Hence they are optimal as bounds uniform over all allowed impurity Hamiltonians. For each fixed H_A, the two moment-extremal baths attain the corresponding moment-compatible energy/potential extrema.
+
+### Proof: causal Green function, not an assumed self-energy oracle
+
+Let G(z) be the exact impurity one-particle Green function in the Gibbs state. Its inverse has the form
+
+    G(z)^(-1)=zI-h_A,onebody-Sigma_infinity-Delta(z)-Sigma_dyn(z),
+
+where Sigma_infinity is Hermitian and -Im Sigma_dyn(z)>=0 for Im z>0.
+
+A finite-dimensional proof uses the operator inner product
+
+    (X,Y)=Tr[rho {X^dagger,Y}].
+
+The Liouvillian L X=[X,H] is self-adjoint in this inner product because rho commutes with H. Project its resolvent onto the span of all linear annihilation operators. The Schur-complement self-energy is a compressed resolvent of a self-adjoint operator and therefore has nonpositive imaginary part in the upper half-plane. The only nonlinear commutators originate in the impurity: bath annihilator commutators remain linear. Thus the dynamic self-energy is supported on the impurity. Eliminating the linear bath block yields the displayed formula. This also explains why replacing an interacting bath by its measured one-particle spectrum is not justified by this proof. Self-energy sparsity in impurity problems has prior literature [7].
+
+For z=i omega, write G^(-1)=A+iB with B>=omega I+Gamma. Then
+
+    0 <= -Im G
+       = B^(-1/2)[I+(B^(-1/2) A B^(-1/2))^2]^(-1)B^(-1/2)
+       <= B^(-1) <= (omega I+Gamma)^(-1).
+
+Interpolate Gamma_t=(1-t)Gamma_low+t Gamma_high. This is physically realized by taking the direct sum of the two baths with couplings multiplied by sqrt(1-t),sqrt(t). Subtract their free bath potentials. Differentiating the partition function, or equivalently eliminating mixed bath–impurity Green functions, gives
+
+    dF_imp/dt
+      = (2/beta) sum_{n>=0} Re Tr[(Delta_high-Delta_low) G_t]
+      = -(2/beta) sum_{n>=0} Tr[(Gamma_high-Gamma_low)(-Im G_t)].
+
+The derivative is nonpositive. Its magnitude is bounded by replacing -Im G_t by (omega I+Gamma_t)^(-1). Integrating t uses
+
+    d/dt log det(omega I+Gamma_t)
+      = Tr[(Gamma_high-Gamma_low)(omega I+Gamma_t)^(-1)].
+
+This proves both claims. For H_A=0, G_t=-i(omega I+Gamma_t)^(-1), so equality holds throughout. The zero-temperature result follows by the ground-energy limit; finite endpoint baths give integrable logarithmic behavior at omega=0 even when zero-energy atoms are present.
+
+### The operational benefit
+
+R_beta is exactly the difference of two **noninteracting** impurity grand potentials. It can be evaluated by diagonalizing the finite one-particle endpoint matrices; no many-body state or self-energy is computed. At zero temperature, use sums of negative one-particle eigenvalues and subtract the corresponding free bath sums.
+
+Thus a free-fermion calculation decides whether the supplied environment information is already sufficiently accurate for *every* interacting impurity model of that dimension.
+
+## 6. Continuum, locality, and what is not inferred
+
+For a symmetric bounded-bandwidth measure of finite total coupling weight, refinement gives pointwise convergence of the two Gamma envelopes. Their log-determinant difference is bounded by an integrable function of the form
+
+    m log(1+||W_total||/omega^2).
+
+The envelope intervals are nested when the information is consistently refined, and their width tends to zero. This supplies a controlled ground-impurity-energy limit for finite approximants, rather than requiring a bath gap or a resolved exponentially small many-body scale. The uniform-bin result in Section 4 provides a separate convergence route without spectral symmetry.
+
+A spatially finite-range quadratic Hamiltonian is included: its spectral modes may be delocalized, but the theorem does not approximate away its hopping before forming moments. A finite star realization can also be transformed into a block-tridiagonal chain. Neither fact proves that extremal baths preserve a specified two- or three-dimensional lattice geometry. Sharpness refers only to the stated moment information class.
+
+The theorem does not establish a quadratic effective bath for an interacting material. It also does not select a compact impurity region, account for omitted Coulomb terms, or prove that screening can be represented by a static one-particle bath. Those remain scientific-model obligations.
+
+## 7. Turning the certificate into a decision
+
+Use the higher-energy finite reference: the mean bath of Section 3, or Gamma_low of Section 5. Suppose
+
+    E_ref,j - R_j <= E_true,j <= E_ref,j.
+
+Then
+
+    Delta_ref-R_1 <= E_true,1-E_true,0 <= Delta_ref+R_0.
+
+With the same uncertainty radius R for both candidates, this is Delta_ref +/- R, not +/-2R. With certified solver intervals E_ref,j in [l_j,u_j], use
+
+    [l_1-u_0-R_1, u_1-l_0+R_0].
+
+A model-error bound |E_physical,j-E_true,j|<=eta_j expands the interval by eta_0+eta_1 on both sides. Shared omitted bath interactions do not automatically cancel from an energy difference.
+
+A sign-separated interval certifies the design ordering. An interval containing zero is not a prediction; more information or a stronger physical model is needed. This process requires a certified finite-reference solver or another valid lower-and-upper energy procedure. A variational upper bound alone is insufficient.
+
+## 8. Executed results
+
+### Exact continuum-moment certificate
+
+The scalar fixture has half-bandwidth one and symmetric coupling measure
+
+    dM(epsilon)=d epsilon/16,   -1<=epsilon<=1.
+
+Its total coupling weight is 1/8. This is a declared model fixture, not a fitted Cu spectrum. Divide |epsilon| into 24 bins using successive factors of 2/3 down to below 10^-4, plus the interval from zero to the smallest edge. Each bin supplies its exact mass and squared-energy moment.
+
+The resulting reference bath has 48 fermion modes per impurity channel; the opposite envelope has 49. Exact rational secular-root isolation and integer square-root bounds prove
+
+    0.00400824083758 < R_0 < 0.00400824083759
+
+in half-bandwidth units for one impurity channel. The code writes the exact rational enclosures, not just decimal optimizer output.
+
+For m identical independent bath channels, multiply this radius by m, even when the impurity interactions couple the channels. For one spinful impurity orbital, m=2, the radius is below 0.00801648167518. Assigning a 1 eV half-bandwidth would make this about 8.02 meV; that scaling is illustrative, not a materials result.
+
+The proof of the scalar certificate uses the particle–hole form: if poles have squared energies s_j and pair weights w_j, the positive one-particle eigenvalues are square roots of the eigenvalues of
+
+    diag(s)+sqrt(w)sqrt(w)^T.
+
+The free impurity energy is
+
+    sum_j sqrt(s_j) - sum_j sqrt(lambda_j).
+
+The eigenvalues strictly interlace distinct positive-weight poles and are isolated by rational bisection of 1+sum_j w_j/(s_j-lambda)=0. The code uses fixed-point integer bounds on each rational term to determine signs, with exact rational fallback. No floating-point eigenvalue enters this certificate.
+
+### Finite-range metallic-reservoir control
+
+The independent reservoir is a 256 by 256 nearest-neighbor square lattice, with hopping 1/4, antiperiodic x and periodic y boundary conditions, and a local coupling amplitude 0.3. Its 65,536 one-particle energies are defined analytically. This is a quadratic lattice reservoir, **not** a solved interacting Hubbard lattice.
+
+For 24 geometric bins, the numerical one-channel uniform uncertainty width is 0.00284150155348. With 16 uniform bins it is 0.02198546533440. These are double-precision calculations, not interval-certified values. No many-body impurity calculation with this reservoir was performed.
+
+### Interacting algebraic tests
+
+Six seeded non-symmetric, complex-coupling, two-impurity-mode tests with both attractive and repulsive interactions satisfied the signed-moment enclosure. Three further noncommuting matrix-valued symmetric-bath tests satisfied both the moment enclosure and the universal free-width bound. These small tests are implementation diagnostics; they are not claimed as the scientific advance or an independently specified hard chemistry benchmark.
+
+## 9. Acquisition: a constructive statistical contract and its actual cost
+
+The physical meaning of the required matrices is
+
+    W_b = V Pi_b(h) V^dagger,
+    T_b = V Pi_b(h)|h| V^dagger,
+
+or S_b with h^2 for the symmetric theorem. A scalar total density of states is not enough for a multiorbital bath: coupling weights and off-diagonal channel information matter.
+
+There are two distinct acquisition routes.
+
+**A documented one-particle Hamiltonian.** Dense diagonalization costs O(n_B^3) arithmetic and O(n_B^2) memory in the worst case; accumulating moments then costs polynomial work in n_B,m. Locality or Bloch structure can reduce this for a particular model, but no free spectral-projector oracle is assumed. Deriving that Hamiltonian and bounding its physical discrepancy are additional costs. DFT output is not automatically an exact input certificate.
+
+**A calibrated spectral-sampling interface.** For the scalar symmetric case, suppose a physically validated measurement produces independent samples of |epsilon| from the normalized coupling spectral measure, with known total weight. This interface could be supplied by a suitable one-particle spectroscopy or simulator, but its availability for an actual adsorbate was not established. It is not an assumed ground-state marginal of the interacting combined system.
+
+For B bins and failure probability alpha, use a binomial confidence interval [p_b^-,p_b^+] for each bin probability, and a conditional Hoeffding interval [s_b^-,s_b^+] for the conditional mean of epsilon^2 within that bin. Allocate alpha/(2B) failure to each mass interval and each conditional-mean interval. With probability at least 1-alpha all intervals hold simultaneously. Empty bins receive the full allowed conditional-mean interval.
+
+For a bin [a,b], a physical lower-Gamma contribution is
+
+    omega W_total p_b^- /(omega^2+s_b^+).
+
+A physical upper-Gamma contribution is the chord at a^2,b^2 with total mass W_total p_b^+ and mean s_b^-. These need not have equal total masses, but Theorem 2's monotonicity and free-width result still apply. Computing their free-particle width therefore supplies an explicit stopping certificate from the observed data.
+
+The implementation used simultaneous 99% intervals, 24 bins, and independent samples from the flat fixture:
+
+| Ideal spectral samples | Computed scalar uncertainty width |
+|---:|---:|
+| 10,000 | 0.0672806382 |
+| 100,000 | 0.0241744940 |
+| 1,000,000 | 0.0103694508 |
+| Exact moments | 0.00400824084 |
+
+These are a single seeded acquisition diagnostic, not an experimental performance claim or repeated-coverage study. The probability theorem is analytic; numerical beta quantiles in the diagnostic were not interval-certified. An implementation claiming machine-rigorous statistical coverage must round those intervals outward using validated arithmetic.
+
+This table is an important negative result for resource accounting: an elegant small-matrix certificate does not make precise moment acquisition free. The million-sample result still has over twice the exact-data width. Energy-resolution error, matrix-channel tomography, source preparation, calibration, and correlated/systematic noise would require further budgets. For an energy readout error bounded by r, bins assigned from reported energies must first have their true-energy supports enlarged to [max(0,a-r),b+r]. The squared-energy mean interval can also be widened by 2D_max r+r^2. Both changes, not only the mean correction, are required before constructing the bounds.
+
+## 10. Arithmetic, memory, and fixed sectors
+
+Building B signed-band finite moment baths costs O(Bm^3) dense matrix arithmetic and O(Bm^2) storage, after moments are acquired. General mean and endpoint models have at most mB and 2mB bath modes. Symmetric paired constructions have at most 2mB and 4mB modes before merging repeated endpoint poles. Free-width evaluation is polynomial in these one-particle dimensions.
+
+The many-body reference calculation is not free. Plain Fock-space exact diagonalization has dimension 2^(m+q) for q retained bath modes. In the two-channel exact fixture, the reference has 96 bath modes plus two impurity modes: a direct 2^98-dimensional treatment is unusable. Specialized impurity solvers can exploit its structure, and current constant-impurity complexity results matter, but none was implemented on that reference in this run. The code's small interacting tests do not establish affordability for chemically relevant multiorbital references.
+
+For rational scalar inputs, the supplied free-width certificate has polynomial bit complexity in pole count, input bit length, and requested root/square-root precision. Interlacing avoids an eigenvector-condition assumption. Matrix moments close to rank deficiency need validated support handling: simply dropping small eigenvalues is not an exact operation. One can discard a controlled coupling weight and charge a perturbation bound, but that budget must be included.
+
+For fixed bath energies, changing coupling V by delta V changes the many-body Hamiltonian by an operator of norm ||delta V||_* (the trace norm of the rectangular coupling difference). This follows from the +/- singular-value spectrum of the off-diagonal one-particle block. It gives a direct calibration/rounding budget. If matrix residue square roots are used, small residue error can cause square-root dependence; no universal linear-conditioning claim is made.
+
+The theorems respect fermionic parity and use number-conserving input Hamiltonians, but their energy minima are grand canonical. Canonical energies cannot in general be recovered by a Legendre transform without a convexity/supporting-chemical-potential condition: it gives the lower convex envelope of sector energies. An isolated molecule's fixed-electron-number reaction energy is therefore not automatically covered. One needs a sector-specific variational embedding with spectator-charge information, or a separately certified common chemical potential selecting the desired sectors. Neither has been established for a chemical benchmark here.
+
+## 11. Exact obstruction: identical one-particle spectra do not certify an interacting bath
+
+Consider two bath modes with
+
+    H_B(U_B)=n_2+n_3+U_B n_2 n_3,
+
+where U_B=-9/5 or U_B=2. In both cases the bath vacuum is the unique uncoupled ground state. Its entire zero-temperature one-particle Green function is identical:
+
+    G_B(z)=I_2/(z-1).
+
+The interaction is invisible to vacuum single-particle addition/removal spectroscopy because it first acts in the two-particle sector.
+
+Couple this bath to two impurity modes with
+
+    H_A=-n_0-n_1+n_0 n_1,
+    H_couple=(4/5)(d_0^dagger c_2+d_1^dagger c_3+h.c.).
+
+The exact certificate establishes
+
+    E(U_B=-9/5) < -19/10 < E(U_B=2).
+
+For the left inequality, the supplied rational trial vector has Rayleigh quotient
+
+    -9736502324091/4999995379115 < -19/10.
+
+For the right inequality, an exact rational LDL^T factorization proves H(U_B=2)+(19/10)I positive definite. The full pivots are in additional_results.json.
+
+A reference design with the impurity decoupled and a scalar offset -9/10 has energy exactly -19/10 for either bath. The design preference therefore reverses between two environments with identical entire uncoupled one-particle spectral data.
+
+This is a fermionic failure witness, not a proposed materials example. It establishes the boundary of the positive theorem: to use an interacting surrounding material, additional information about non-Gaussian response or a justified bound on omitted interactions is required. Spectral agreement alone cannot supply that bound.
+
+## 12. What was achieved and what remains
+
+Established within the stated mathematical models:
+
+- Exact extremal quadratic baths from finite signed-band matrix moments, without a gap or weak-coupling promise.
+- An interaction-uniform, sharp free-particle uncertainty certificate for symmetric spectral data, including a statistical observation version.
+- An exact rational numerical certificate and an exact limitation on extension to interacting surroundings.
+
+Not established:
+
+- Historical priority; an advantage over current specialized solvers; a certified real adsorption/reaction decision; an affordable, validated experimental spectral interface for that decision; a small chemically sufficient impurity region; a fixed-electron-number chemical theorem; or control of an interacting substrate's omitted higher-order response.
+
+The most consequential unresolved step is not another scalar quadrature refinement. It is connecting a real correlated substrate to an accepted information contract with a **non-Gaussian model-error bound small compared with the design-energy margin**. The counterexample proves why one-particle agreement is not enough.
+
+## References and provenance
+
+[1] C. Cao et al., *Quantum Many-Body Simulations of Catalytic Metal Surfaces*, arXiv:2508.13036v3, revised 9 April 2026. https://arxiv.org/abs/2508.13036
+
+[2] J. Li, M. Wallerberger, E. Gull, *Diagrammatic Monte Carlo Method for Impurity Models with General Interactions and Hybridizations*, arXiv:2004.00721. https://arxiv.org/abs/2004.00721
+
+[3] E. Eidelstein, E. Gull, G. Cohen, *Multiorbital Quantum Impurity Solver for General Interactions and Hybridizations*, arXiv:1907.08570. https://arxiv.org/abs/1907.08570
+
+[4] S. Bravyi and D. Gosset, *Complexity of quantum impurity problems*, Communications in Mathematical Physics 356, 451–500 (2017), arXiv:1609.00735. https://arxiv.org/abs/1609.00735
+
+[5] S. Arunachalam et al., *Quantum impurity models: easy at equilibrium, universal in motion*, arXiv:2610.02130, submitted 1 October 2026. https://arxiv.org/abs/2610.02130
+
+[6] J. Jiang et al., *Polynomial-time classical and quantum simulation of quantum impurity models*, arXiv:2610.02167v2, submitted 1 October 2026, revised 5 October 2026. https://arxiv.org/abs/2610.02167
+
+[7] L. Lin and M. Lindsey, *Sparsity pattern of the self-energy for classical and quantum impurity problems*, arXiv:1902.04796. https://arxiv.org/abs/1902.04796
+
+Previous work: the supplied CRAY environment-uniform UCP comparison note and archive. Research-capital searches: https://github.com/harjassand/astra-research-knowledge and https://github.com/openai/math . Search results were not treated as proofs of applicability or novelty.

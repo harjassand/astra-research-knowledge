@@ -1,0 +1,309 @@
+# What exact energy safety forbids a local actuator to do
+
+Internal finite-dimensional synthesis, 13 October 2026. Capital base
+4025c5252f1ca992d3eae6ed422d6338ebe6c5a4. The source's global filtered jumps
+are not assumed local. These results identify a missing actuator interface;
+they do not refute the source's algebraic completion. Standard pure-state
+channel, passivity and Lyapunov arguments are used. The exact rigidity step
+in Theorem 1 is already explicit in Frey, Funo and Hotta,
+[arXiv:1404.5081v2, equations (9)-(11)](https://arxiv.org/html/1404.5081v2).
+The stability bound and local-minimum synthesis are internally derived below;
+their historical novelty is UNKNOWN.
+
+## 1. A local all-state-safe channel must be trivial for a faithful entangled ground state
+
+Let H act on finite A tensor B. Suppose its ground state is unique,
+P=|Omega><Omega|, its energy is E0, and its gap to the orthogonal complement
+is Delta>0. Write rho_A=Tr_B P and assume rho_A>=s I_A for some s>0.
+Let Lambda be any CPTP channel on A. No special form of the Hamiltonian,
+eigenbasis oracle, weak-coupling approximation or Markov assumption is needed.
+
+**Theorem 1.** If
+
+    (Lambda* tensor id_B)(H) <= H,                              (1)
+
+then Lambda is the identity channel on all of B(A).
+
+Proof. Evaluating (1) on Omega gives output energy at most E0. The variational
+ground-energy bound gives the reverse inequality. Uniqueness forces
+(Lambda tensor id_B)(P)=P. Let V:A->A tensor E be a Stinespring isometry.
+The output purification must factor as
+
+    (V tensor I_B)|Omega> = |Omega> tensor |e>
+
+for a unit vector e. In a Schmidt basis,
+|Omega>=sum_i sqrt(lambda_i)|i>_A |i>_B with every lambda_i>0.
+Comparing the independent B vectors gives V|i>=|i> tensor |e> for every i.
+Thus V=I_A tensor |e> and Lambda=id. QED.
+
+Only the nonheating condition on this one ground input was needed. The
+all-state Loewner specification makes that condition unavoidable. In particular,
+a semigroup of channels Lambda_t tensor id_B satisfying L*(H)<=0 has
+(exp(tL)* tensor id_B)(H)<=H for every t>=0 and therefore is the identity
+semigroup. Its representation can contain canceling or scalar terms, but its
+system generator is zero. This corollary concerns a strictly local full channel.
+
+If nonlocal native evolution under H is retained, consider instead
+L=-i[H+G_A tensor I_B,.]+sum_a D[L_a tensor I_B]. Exact energy safety still
+forces every L_a to be scalar and G_A scalar, but leaves the native unitary
+evolution -i[H,.]. To see this, the energy derivative on Omega is a sum of
+nonnegative excitation energies times |<excited|L_a tensor I|Omega>|².
+Nonpositivity makes each local jump preserve Omega, and full Schmidt rank
+makes it scalar as above. Then L*(H)=i[G_A tensor I,H]<=0 has trace zero and
+must vanish. G_A preserves the unique ground state, so it too is scalar.
+Thus a native nonlocal Hamiltonian is not mistakenly called an identity channel;
+the conclusion is absence of any nontrivial local cooling term.
+
+Full Schmidt rank, uniqueness and strict locality are substantive. If the ground
+state is a product state, a local reset to its A factor can be nontrivial and
+energy safe. If the ground space is degenerate, a local operation may act within
+it. A global channel resetting AB to Omega is also energy safe and is not local
+on A. The theorem does not exclude any of these cases.
+
+## 2. Quantitative approximate-safety version
+
+**Theorem 2.** Under the same spectral and full-rank premises, if
+
+    (Lambda* tensor id_B)(H) <= H+epsilon I,   epsilon>=0,       (2)
+
+then
+
+    ||Lambda-id||_diamond
+      <= min{2, 2 sqrt(2 epsilon/(Delta s))}.                   (3)
+
+For delta=epsilon/Delta<=1 the sharper direct expression is
+
+    min{2, 2 sqrt(2[1-sqrt(1-delta)]/s)}.                       (4)
+
+These are upper bounds, not claimed optimal constants or a scalable oracle for
+Delta and s. Both quantities must be acquired or certified; s can be extremely
+small, making the quantitative bound weak.
+
+Proof. Let sigma=(Lambda tensor id_B)(P). Since
+H-E0 I >= Delta(I-P), (2) implies
+
+    F:=<Omega|sigma|Omega> >= 1-epsilon/Delta.
+
+For delta<=1, Uhlmann's purification statement supplies a unit e with
+<Omega tensor e|(V tensor I_B)|Omega>=sqrt(F), after a phase choice.
+Put W=V-I_A tensor |e>. Then
+
+    Tr[rho_A W†W]=2-2sqrt(F),
+    ||W||_op² <= Tr W†W <= [2-2sqrt(F)]/s.
+
+For every purified input, including an arbitrary reference, the output pure
+vectors under the two Stinespring isometries differ in norm by at most ||W||.
+Their density operators differ in trace norm by at most 2||W||. Partial trace
+cannot increase that norm, giving
+||Lambda-id||_diamond<=2||W|| and (4). Since
+1-sqrt(1-delta)<=delta and channels are at diamond distance at most two, (3)
+follows. If delta>1 the cap two gives (3) directly. QED.
+
+Thus an implemented local action at diamond distance d_act from identity requires
+
+    epsilon >= Delta s d_act²/8.                               (5)
+
+If W=Emax-E0 is the Hamiltonian bandwidth, every input's absolute energy
+change under this local channel is at most
+W min{1,sqrt(2epsilon/(Delta s))}. Indeed the output-input difference has
+trace zero, so centering H gives the bound W/2 times its trace norm, which is
+at most W/2 times the diamond distance in (3). This is a worst-case
+heating/cooling tradeoff under the stated strict-local interface. The global
+bandwidth and small Schmidt eigenvalue may make it weak; no optimality is claimed.
+
+If a time-dependent strictly local generator satisfies L_t*(H)<=epsilon_t I,
+integrating the energy inequality gives its finite channel the premise (2) with
+epsilon=integral epsilon_t dt. Equation (5) then lower-bounds the allowed
+worst-case heating budget. This conclusion assumes a genuine system CPTP map
+on A tensor id_B. Initially correlated external memories, operations that touch
+B, changes of H or an enlarged battery-energy accounting change the contract.
+
+## 3. Barrier obstruction without spectral filtering
+
+Now let H be diagonal in a product basis {|x>}. Fix a basis state x and a legal
+operator space V containing I. Suppose every M in V maps x into a neighborhood
+N_x, and every y in N_x distinct from x has
+
+    E_y >= E_x+Delta_loc,  Delta_loc>0.                         (6)
+
+For k-local operators (or their linear span), N_x can be the Hamming ball of
+radius k. A sum of k-local terms belongs to this span; a product of many terms
+need not. This precise support assumption is what the result uses.
+
+**Theorem 3, discrete form.** A CPTP map admitting Kraus operators K_a in V and
+obeying Phi*(H)<=H fixes |x><x|.
+
+Proof. Its output energy on x is
+
+    sum_a,y E_y |<y|K_a|x>|²
+      >= E_x + Delta_loc sum_a,y!=x |<y|K_a|x>|².
+
+Trace preservation was used for the E_x term. The energy-safety inequality
+forces every outside amplitude to vanish. Each K_a|x> is proportional to x,
+and the normalized output is exactly |x><x|. QED.
+
+The same argument gives outside probability at most epsilon/Delta_loc under
+Phi*(H)<=H+epsilon I. This bound applies to a single operation with the stated
+Kraus support; its compositions can leave that support class.
+
+**Theorem 3, generator form.** Suppose
+
+    L(rho)=-i[H+G,rho]+sum_a D[L_a](rho),
+
+with G Hermitian in V, L_a in V, V closed under taking adjoints and linear
+combinations, and L*(H)<=0. Then L(|x><x|)=0.
+
+Proof. The energy derivative on x is
+
+    <x|L*(H)|x> = sum_a,y (E_y-E_x)|<y|L_a|x>|² >=0.
+
+Its nonpositivity makes every outside amplitude zero. Set c_a=<x|L_a|x> and
+M_a=L_a-c_a I, so M_a|x>=0. The standard Lindblad gauge change rewrites the
+same generator with jumps M_a and Hamiltonian
+
+    H+G',  G'=G+(i/2)sum_a(c_a* M_a-c_a M_a†),
+
+where G' remains Hermitian in V. Each D[M_a]*(H) has zero x column, because
+M_a x=0 and Hx=E_x x. Put A=L*(H)<=0. Its x diagonal is zero, so positivity
+of -A implies Ax=0. Hence
+
+    0=Ax=i(E_x-H)G'x.
+
+By (6) and G' in V, G'x must be proportional to x. The gauge-adjusted coherent
+part and every dissipator therefore annihilate |x><x|. QED.
+
+Every piecewise continuous time-dependent family of such generators fixes the
+same state. So does a sequence of the discrete safe maps. Classical adaptive
+selection does not help: a pure unchanged unconditional output means that
+every branch with nonzero probability also returns that same state.
+
+For the source's periodic Ising chain
+H=-J sum Z_i Z_(i+1)-h sum Z_i, all-down is such a strict minimum whenever
+k<n and hk<2J. Any nonempty at-most-k flip creates at least two domain walls,
+with cost at least 4J-2hk>0. The source's filtered-seed trap is therefore one
+instance of a broader obstruction to every legal all-state-safe local channel
+or local Markov generator, even ones with unfiltered jumps and coherent controls.
+This is a scoped extension, not a statement about unrestricted cooling methods.
+
+## 4. What can escape, and what remains to prove
+
+A collective operator that flips a contiguous droplet of length
+ell>2J/h and ell<n lowers the all-down Ising energy by 4J-2h ell<0.
+The smallest support of a strictly lowering jump that acts on all-down is
+therefore ell_strict=min{n,floor(2J/h)+1}; necessity follows from the source's
+4J-2hk bound, and sufficiency from a contiguous droplet (or the whole n-spin
+flip). For mere nonheating, equality permits a zero-energy droplet, so the
+threshold is instead min{n,ceil(2J/h)}. Such zero-frequency moves are excluded
+by the source's strict lowering convention and must not be silently counted.
+
+An explicit boundary check uses the block jump B0=product_(i in block) sigma_i^+
+on ell_strict sites, together with directed growth jumps
+B_i=sigma_i^+ P_(i-1,up) around the ring, all at unit jump rate. The block jump's
+worst energy cost is 4J-2h ell_strict<0 if its block is proper, and -2hn if it
+is the whole ring. Each growth jump lowers energy by at least 2h. These jumps
+are partial basis permutations with diagonal B†B, so their Heisenberg energy
+drifts are diagonal and nonpositive for coherent as well as classical inputs.
+Every nonground configuration has an enabled jump: all-down has B0, and every
+mixed configuration has a directed up/down boundary. Every jump decreases
+the number of down spins. The population process is thus absorbed in at most
+n jumps, with total exit rate at least one before absorption. Its hitting time
+is stochastically bounded by a sum of n independent unit-rate exponential
+variables. Hence ground infidelity is at most 2^n exp(-t/2), and trace error
+is at most 2 sqrt(2^n exp(-t/2)). This is a simple known-style toy controller
+under supplied multi-spin jumps; it is not a novel many-body preparation result.
+It uses n+1 specified channels and support max{2,ell_strict}; those physical
+operations and rate normalization are additional resources, not acquired here.
+
+For fixed locality k<ell_strict the nucleator lies outside the legal move
+class. A circuit of one-spin flips can realize the final transformation, but
+its intermediate states have positive droplet energy until the threshold is
+crossed. Demanding system energy safety after each such local operation forbids
+that path. This identifies the missing resource: larger effective support, an
+explicit temporary heating budget, or a different preparation contract. Direct
+coherent reversal of a known classical Ising configuration is the strong simple
+comparator when temporary energy increase is legal. No material advantage is
+established.
+
+For the source completion write Q=sum_a C_a†C_a and E=H-E0 I. A standard
+Lyapunov condition Q>=a E with a>0 would give
+
+    Tr(E rho_t)<=exp(-at) Tr(E rho_0).
+
+If an implemented generator obeys the stronger certified bound
+Ltilde*(H)<=-a E+epsilon I, then
+
+    Tr(E rho_t)<=exp(-at) Tr(E rho_0)
+                     +(epsilon/a)(1-exp(-at)).
+
+With a ground gap Delta this gives excited population at most
+Tr(E rho_t)/Delta. This is a sufficient reusable closure gate, rather than a new
+mixing theorem. It is stronger than necessary: the source's single-star Q has
+rank one on a two-dimensional excited space, so Q>=aE fails for every a>0
+even when coherent evolution eventually rotates its instantaneous dark direction
+into a dissipating one. The following finite-window gate handles that case.
+
+Let Phi_t=exp(tL) be a finite-dimensional CPTP semigroup with
+L*(E)=-Q<=0 and E=H-E0 I>=0. Assume E is nonzero, with smallest positive
+eigenvalue Delta. Ground-space invariance follows already from energy safety.
+Define
+
+    Gamma_T=int_0^T Phi_s*(Q)ds=E-Phi_T*(E).                   (6)
+
+**Theorem 4, finite-window closure.** Every input converges to the ground
+subspace in population if and only if there exist finite T>0 and 0<a<1 with
+
+    Gamma_T>=a E.                                             (7)
+
+If (7) holds, then for t>=0,
+
+    Tr(E rho_t)<=(1-a)^floor(t/T) Tr(E rho_0),
+    Tr[(I-P0)rho_t]<=Tr(E rho_t)/Delta.                        (8)
+
+Proof. The integral in (6) follows by differentiating Phi_s*(E), and is positive
+because Q>=0 and each Phi_s* is positive. Equation (7) is exactly the all-input
+contraction Phi_T*(E)<=(1-a)E. Iterating it and using monotonicity during the
+remaining partial interval proves (8).
+
+Conversely, suppose every input's excited population tends to zero. Since
+E<=||E||(I-P0), its energy tends to zero on each vector in a fixed orthonormal
+basis. Positivity of Phi_t*(E) then gives
+||Phi_t*(E)||<=Tr Phi_t*(E)->0. Ground invariance and positivity imply
+Phi_t*(E)P0=0. On the excited support E>=Delta I, so
+
+    Phi_T*(E)<=||Phi_T*(E)||(I-P0)
+               <=[||Phi_T*(E)||/Delta] E.
+
+Choose T with the bracket less than one, and take a positive smaller than its
+complement. This proves (7). QED. If E=0, every state is already in the ground
+subspace; the target is trivial and no positive-gap normalization is performed.
+
+This is an exact finite-dimensional Lyapunov/observability reformulation,
+not a cheap general mixing algorithm. Acquiring the global generator, bounding
+T and certifying its channel action can remain exponentially hard. Its value
+is the correct missing lemma: time-integrated escape, rather than a necessarily
+full-rank instantaneous C†C. The source's trapped state makes Gamma_T vanish
+on an excited vector for every T, while its near-degenerate example loses the
+window contraction uniformly as the splitting tends to zero. Independent
+two-excitation calculations illustrate these scopes without replacing the proof.
+
+## 5. Relation to N778/N779 and status
+
+N778's channel maps compare distinct h0 and h1 while fixing a common environment;
+they are mathematical witnesses. Applying Theorem 1 to a real operation requires
+the same H on both sides and strict local support. This neither invalidates
+the paired comparison nor implements its witness. N779's free-energy certificate
+also supplies no dissipative actuator or escape rate. Conversely, the present
+source's global H-filtered B and G are generally nonlocal, and so are not
+counterexamples to Theorems 1-3.
+
+In a fixed-charge task, the local map must preserve the chosen total sector
+(strong charge-preserving Kraus operators suffice, as in N778). Theorem 1 then
+constrains only the locally occupied Schmidt support if rho_A is not faithful
+on all A. Empty local charge sectors cannot be silently treated as observed.
+
+These elementary obstructions and stability bounds have not been cleared for
+historical novelty. Strong local passivity and pure-state dissipative
+stabilization are known direct precedents. Their role here is to turn a vague
+physical-locality objection into an exact falsifiable interface requirement.
+No physical experiment, global many-body rate theorem, hardware cost advantage
+or civilisation-changing capability is established.

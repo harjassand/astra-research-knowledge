@@ -1,0 +1,256 @@
+<!doctype html><meta charset="utf-8"><title>N784 preserved original — verify_energy_descent.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Finite-dimensional diagnostics for an energy-descent completion.
+
+These are numerical checks, not a proof of general correctness, historical
+novelty, physical implementability, or efficient ground-state preparation.
+The spectral basis used here is a verification device, NOT an assumed input
+to the proposed time-domain construction.
+
+Requirements: Python 3.10+, numpy, scipy.
+Run: python verify_energy_descent.py
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import itertools
+import json
+from pathlib import Path
+import numpy as np
+from numpy.typing import NDArray
+from scipy.linalg import expm
+
+Matrix = NDArray[np.complex128]
+
+
+def dstar(jump: Matrix, observable: Matrix) -&gt; Matrix:
+    r = jump.conj().T @ jump
+    return jump.conj().T @ observable @ jump - (r @ observable + observable @ r) / 2
+
+
+def completion(energies: NDArray[np.float64], jump: Matrix) -&gt; tuple[Matrix, Matrix]:
+    &quot;&quot;&quot;Return Hermitian G and C for D[B]^*(H)+i[G,H] = -C^*C.
+
+    The supplied B must contain strictly downward matrix elements only.
+    &quot;&quot;&quot;
+    energies = np.asarray(energies, dtype=float)
+    jump = np.asarray(jump, dtype=complex)
+    d = len(energies)
+    if jump.shape != (d, d):
+        raise ValueError(&quot;Inconsistent dimensions&quot;)
+    drops = energies[None, :] - energies[:, None]
+    if np.linalg.norm(jump[drops &lt;= 0]) &gt; 1e-11:
+        raise ValueError(&quot;Jump includes zero-energy or upward matrix elements&quot;)
+    roots = np.sqrt(np.maximum(drops, 0))
+    c = roots * jump
+    g = np.zeros_like(jump)
+    for m in range(d):
+        active = np.flatnonzero(drops[m] &gt; 0)
+        for n in active:
+            for p in active:
+                x, y = roots[m, n], roots[m, p]
+                g[n, p] += 0.5j * (x-y)/(x+y) * jump[m, n].conjugate() * jump[m, p]
+    return g, c
+
+
+def cauchy_drift(energies: NDArray[np.float64], b: Matrix,
+                 cutoff: float | None = None) -&gt; Matrix:
+    &quot;&quot;&quot;Exact dual energy drift of int_0^cutoff D[e^{sH} B e^{-sH}] ds.&quot;&quot;&quot;
+    d = len(energies)
+    result = np.zeros_like(b)
+    for m in range(d):
+        for n in range(d):
+            x = energies[n]-energies[m]
+            if x &lt;= 0:
+                continue
+            for p in range(d):
+                y = energies[p]-energies[m]
+                if y &lt;= 0:
+                    continue
+                factor = 1.0 if cutoff is None else -np.expm1(-cutoff*(x+y))
+                result[n, p] -= 0.5*factor*b[m, n].conjugate()*b[m, p]
+    return result
+
+
+def full_generator(h: Matrix, g: Matrix, b: Matrix) -&gt; Matrix:
+    &quot;&quot;&quot;Column-major vectorization of -i[H+G,rho]+D[B](rho).&quot;&quot;&quot;
+    d = h.shape[0]
+    eye = np.eye(d)
+    a = h+g
+    r = b.conj().T @ b
+    return (-1j*(np.kron(eye, a)-np.kron(a.T, eye))
+            + np.kron(b.conjugate(), b)
+            - 0.5*(np.kron(eye, r)+np.kron(r.T, eye)))
+
+
+def kron_all(items: list[Matrix]) -&gt; Matrix:
+    out = np.ones((1, 1), dtype=complex)
+    for item in items:
+        out = np.kron(out, item)
+    return out
+
+
+def main() -&gt; None:
+    rng = np.random.default_rng(20261013)
+    report: dict[str, object] = {
+        &quot;status&quot;: &quot;finite numerical diagnostics only; no physical experiment or priority clearance&quot;,
+        &quot;seed&quot;: 20261013,
+    }
+    worst_identity = 0.0
+    worst_hermiticity = 0.0
+    worst_cauchy = 0.0
+    worst_truncation = 0.0
+    tests = 0
+    for d in (2, 3, 4, 6, 8, 12):
+        for repetition in range(30):
+            e = np.sort(rng.uniform(-2.0, 3.0, d))
+            if repetition % 3 == 0 and d &gt;= 3:
+                e[1] = e[0]  # include exact degeneracies
+            drop = e[None, :]-e[:, None]
+            b = (rng.normal(size=(d, d))+1j*rng.normal(size=(d, d)))*(drop &gt; 0)
+            b /= max(1.0, np.linalg.norm(b, 2))
+            h = np.diag(e)
+            g, c = completion(e, b)
+            drift = dstar(b, h)+1j*(g@h-h@g)
+            error = float(np.linalg.norm(drift+c.conj().T@c, 2))
+            worst_identity = max(worst_identity, error)
+            worst_hermiticity = max(worst_hermiticity, float(np.linalg.norm(g-g.conj().T, 2)))
+            assert error &lt; 5e-12
+            assert np.linalg.eigvalsh(drift).max() &lt; 5e-12
+            err_c = np.linalg.norm(cauchy_drift(e, b)+b.conj().T@b/2, 2)
+            worst_cauchy = max(worst_cauchy, float(err_c))
+            cutoff = 0.7
+            bs = b*np.exp(-cutoff*np.maximum(drop, 0))
+            err_s = np.linalg.norm(cauchy_drift(e, b, cutoff)
+                                   +b.conj().T@b/2-bs.conj().T@bs/2, 2)
+            worst_truncation = max(worst_truncation, float(err_s))
+            assert err_c &lt; 5e-12 and err_s &lt; 5e-12
+            tests += 1
+    report[&quot;random_matrix_cases&quot;] = tests
+    report[&quot;max_completion_identity_operator_norm_error&quot;] = worst_identity
+    report[&quot;max_G_hermiticity_error&quot;] = worst_hermiticity
+    report[&quot;max_cauchy_identity_error&quot;] = worst_cauchy
+    report[&quot;max_finite_cutoff_identity_error&quot;] = worst_truncation
+
+    # Exact-rational fixture (floating evaluation of displayed exact values).
+    e = np.array([0., 1., 4.])
+    h = np.diag(e)
+    b = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]], dtype=complex)
+    g, c = completion(e, b)
+    psi = np.array([0, -3, 1], dtype=complex)/np.sqrt(10)
+    naive = float(np.vdot(psi, dstar(b, h)@psi).real)
+    repaired = float(np.vdot(psi, (dstar(b, h)+1j*(g@h-h@g))@psi).real)
+    assert np.isclose(naive, 1/5) and np.isclose(repaired, -1/10)
+    assert np.isclose(g[1, 2], -1j/6)
+    report[&quot;three_level_fixture&quot;] = {
+        &quot;energies&quot;: e.tolist(), &quot;state&quot;: &quot;(-3|1&gt;+|2&gt;)/sqrt(10)&quot;,
+        &quot;naive_energy_derivative&quot;: naive,
+        &quot;completed_energy_derivative&quot;: repaired,
+        &quot;exact_G_12&quot;: &quot;-i/6&quot;,
+        &quot;independent_downward_channels_derivative&quot;: -1.3,
+    }
+    # Confirm dynamics, trace preservation, positivity, and nonincreasing energy.
+    liouv = full_generator(h, g, b)
+    rho0 = np.outer(psi, psi.conjugate()).reshape(-1, order=&#x27;F&#x27;)
+    energies_run = []
+    min_density_eigenvalue = 1.0
+    for t in np.linspace(0, 12, 121):
+        rho = (expm(t*liouv)@rho0).reshape((3, 3), order=&#x27;F&#x27;)
+        energies_run.append(float(np.trace(h@rho).real))
+        min_density_eigenvalue = min(min_density_eigenvalue, float(np.linalg.eigvalsh((rho+rho.conj().T)/2).min()))
+        assert abs(np.trace(rho)-1) &lt; 1e-11
+    assert np.diff(energies_run).max() &lt; 1e-11
+    report[&quot;three_level_evolution&quot;] = {
+        &quot;sampled_times&quot;: 121, &quot;initial_energy&quot;: energies_run[0],
+        &quot;final_energy_at_t12&quot;: energies_run[-1],
+        &quot;minimum_density_eigenvalue_roundoff&quot;: min_density_eigenvalue,
+    }
+
+    # Optimal reservoir coherence and the PSD energy-dissipation kernel.
+    max_kernel_error = 0.0
+    for size in (2, 4, 8, 12):
+        w = np.geomspace(0.1, 7.0, size)
+        k = 2*np.sqrt(w[:, None]*w[None, :])/(w[:, None]+w[None, :])
+        ck = (w[:, None]+w[None, :])*k/2
+        max_kernel_error = max(max_kernel_error, float(np.linalg.norm(ck-np.sqrt(w[:, None]*w[None, :]), 2)))
+        assert np.linalg.eigvalsh(k).min() &gt; -1e-12
+        assert np.linalg.eigvalsh(ck).min() &gt; -1e-12
+    report[&quot;max_cauchy_kernel_factorization_error&quot;] = max_kernel_error
+
+    # Slow near-degenerate excited pair: no-jump survival exponents.
+    slow_cases = []
+    for delta in (0.1, 0.03, 0.01, 0.003, 0.001):
+        e = np.array([0., 1., 1.+delta])
+        g, _ = completion(e, b)
+        m = -1j*(np.diag(e)[1:, 1:]+g[1:, 1:])-b.conj().T[1:]@b[:, 1:]/2
+        actual = -2*np.linalg.eigvals(m).real.max()
+        q = delta/(2*(np.sqrt(1+delta)+1)**2)  # stable root-ratio evaluation
+        radicand = delta**2+4*q*q
+        predicted = radicand/(1+np.sqrt(1-radicand))
+        r = 2*np.sqrt(1+delta)/(2+delta)
+        cauchy_rad = delta**2+delta**2/(2+delta)**2
+        cauchy_rate = cauchy_rad/(1+np.sqrt(1-cauchy_rad))
+        assert abs(actual-predicted) &lt; 3e-14
+        slow_cases.append({&quot;delta&quot;: delta, &quot;completed_population_decay_exponent&quot;: float(actual),
+                           &quot;completed_rate_over_delta_squared&quot;: float(actual/delta**2),
+                           &quot;cauchy_population_decay_exponent&quot;: float(cauchy_rate)})
+    report[&quot;near_degenerate_slowing&quot;] = slow_cases
+    report[&quot;asymptotic_completed_decay_exponent&quot;] = &quot;(17/32)*delta^2 + O(delta^3), rates and lower excitation energy fixed at 1&quot;
+
+    # Classical metastability defeats every &lt;=2-local Pauli seed on six spins.
+    pauli = [np.eye(2, dtype=complex), np.array([[0, 1], [1, 0]], complex),
+             np.array([[0, -1j], [1j, 0]], complex), np.diag([1., -1.]).astype(complex)]
+    n, local_limit, field = 6, 2, 0.2
+    es = []
+    for bitstring in itertools.product((0, 1), repeat=n):
+        z = 1-2*np.array(bitstring)
+        es.append(-float(sum(z[i]*z[(i+1)%n] for i in range(n)))-field*float(sum(z)))
+    es = np.asarray(es)
+    trapped = (1&lt;&lt;n)-1
+    seed_count = 0
+    max_dark = 0.0
+    for labels in itertools.product(range(4), repeat=n):
+        if not 1 &lt;= sum(label != 0 for label in labels) &lt;= local_limit:
+            continue
+        a = kron_all([pauli[label] for label in labels])
+        filtered = a*((es[None, :]-es[:, None]) &gt; 1e-10)
+        max_dark = max(max_dark, float(np.linalg.norm(filtered[:, trapped])))
+        # Since a column is zero, the completion G has zero corresponding row/column.
+        assert np.linalg.norm(filtered[:, trapped]) == 0
+        seed_count += 1
+    report[&quot;six_spin_metastable_fixture&quot;] = {
+        &quot;J&quot;: 1, &quot;h&quot;: field, &quot;locality_limit&quot;: local_limit,
+        &quot;all_down_energy&quot;: float(es[trapped]), &quot;ground_energy&quot;: float(es.min()),
+        &quot;energy_excess&quot;: float(es[trapped]-es.min()), &quot;seeds_checked&quot;: seed_count,
+        &quot;max_lowering_seed_action_on_trap&quot;: max_dark,
+        &quot;minimum_energy_cost_of_nonempty_at_most_k_spin_flip_bound&quot;: 4-2*field*local_limit,
+    }
+
+    # Unknown-H inverse construction: finite Pauli averaging identity.
+    n = 3
+    strings = list(itertools.product(range(4), repeat=n))
+    support = [s for s in strings if 1 &lt;= sum(x != 0 for x in s) &lt;= 2]
+    matrices = [kron_all([pauli[x] for x in s]) for s in strings]
+    sm = [kron_all([pauli[x] for x in s]) for s in support]
+    coeff = rng.normal(size=len(support))
+    hu = sum(c*p for c, p in zip(coeff, sm))
+    avg = np.zeros_like(hu)
+    probs = []
+    for label, p in zip(strings, matrices):
+        characters = [(-1)**sum(a != 0 and c != 0 and a != c for a, c in zip(label, q)) for q in support]
+        prob = (1-sum(characters)/len(support))/(4**n)
+        probs.append(prob)
+        avg += prob*(p@hu@p)
+    err_inv = float(np.linalg.norm(avg+hu/len(support), 2))
+    assert min(probs) &gt;= -1e-14 and abs(sum(probs)-1) &lt; 1e-13 and err_inv &lt; 1e-12
+    report[&quot;Pauli_inverse_average_fixture&quot;] = {
+        &quot;qubits&quot;: n, &quot;candidate_terms_K&quot;: len(support),
+        &quot;minimum_probability&quot;: float(min(probs)), &quot;probability_sum&quot;: float(sum(probs)),
+        &quot;average_identity_error&quot;: err_inv,
+        &quot;scope&quot;: &quot;verifies algebra only; no finite pulse circuit or lab experiment executed&quot;,
+    }
+    out = Path(__file__).with_name(&quot;diagnostics.json&quot;)
+    out.write_text(json.dumps(report, indent=2)+&quot;\n&quot;)
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

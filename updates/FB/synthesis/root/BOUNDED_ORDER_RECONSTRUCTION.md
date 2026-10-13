@@ -1,0 +1,138 @@
+# A supplied interaction-order bound changes the information problem
+
+13 October 2026. Internal restricted derivation, historical priority UNKNOWN.
+This is standard normal-order/CAR algebra applied to the environmental
+qualification gate. It is not a new electronic-structure primitive or an
+acquired spectroscopy protocol. It provides the positive boundary case to
+`NONGAUSSIAN_HIERARCHY.md`; it does not modify that frozen proof.
+
+## 1. A finite exact reconstruction theorem
+
+Let n labelled fermion modes have vacuum energy E0. Supply the promise that
+the number-conserving bath Hamiltonian has normal-ordered body order at most p:
+
+    H_B=U0 I+sum_(q=1)^p sum_(I,J, |I|=|J|=q)
+                         (Uq)_(I,J) C_I^dagger C_J,
+
+where I,J are increasing mode lists, C_I^dagger creates the ordered wedge basis
+state |I> from vacuum, C_I is its adjoint, and every Uq is a Hermitian matrix
+on wedge^q C^n. The coefficients and wedge basis conventions are part of the
+representation; there are no additional factorials in this convention.
+Assume p<=n. Let H[q] be the full operator restriction of H_B to particle
+number q, for0<=q<=p, in those same labelled wedge bases.
+
+**Theorem.** These p+1 restricted operators uniquely determine H_B throughout
+the complete Fock space, with the recursion
+
+    U0=H[0],
+    Uq=H[q]-sum_(ell=0)^(q-1) dGamma_ell^(q)(Uell).
+
+Here dGamma_ell^(q) denotes the displayed ell-body coefficient expression
+restricted to the q-particle space. On the q-particle space a pure q-body
+monomial C_I^dagger C_J is exactly the matrix unit |I><J|. Terms of body order
+greater than q vanish. Subtracting the already reconstructed lower terms
+therefore leaves Uq exactly. Induction proves existence and uniqueness.
+
+In particular, if two promised order-p Hamiltonians agree in every sector
+q<=p, they agree everywhere. The hierarchy witness has a nonzero body-order
+k+1 term. A supplied promise p<=k excludes precisely that alternative; no
+contradiction or universal finite-order recognition theorem is inferred.
+
+## 2. What a vacuum correlation experiment would have to acquire
+
+If vacuum is the prepared stationary reference, complete operator-resolved
+q-particle addition/removal propagators give
+
+    Kq(t)_(I,J)=<vac|C_I exp[-it(H_B-E0)]C_J^dagger|vac>
+               =<I|exp[-it(H[q]-E0 I)]|J>.
+
+Thus `i Kq'(0)=H[q]-E0 I`. This is a statement about the FULL complex matrix
+propagator and its derivative, not just peak positions, its trace, a scalar
+density of states or unresolved multiparticle intensity. Exact derivatives,
+vacuum preparation, arbitrary labelled coherent insertions and their phase/
+precision calibration are substantial supplied/acquired operations. The
+theorem supplies no efficient physical protocol to obtain them. A filled or
+correlated metal is not the vacuum reference of this lemma without a justified
+encoding/preparation and its costs.
+
+Without the order promise, the same data cannot rule out higher-body terms:
+the previous hierarchy construction agrees on every H[q], q<=k, yet reverses
+a coupled design decision. Interaction order itself must be justified from
+an accepted microscopic model or a quantitative tail bound, rather than
+inferred from these observations. Known two-body Coulomb models are an input
+model class, not proof that an effective reduced environment has no induced
+higher-order terms.
+
+## 3. Exact error amplification and its charge dependence
+
+For a Hermitian q-body coefficient difference X, define its lift on the
+N-particle sector by the same normal-ordered expression. Then
+
+    ||dGamma_q^(N)(X)||_op <= binom(N,q)||X||_op.          (1)
+
+It vanishes when q>N. To prove(1), the coefficient lift is positive: if
+X>=0, write X as sums of vv^dagger; each term lifts to B_v^dagger B_v with
+B_v=sum_J conjugate(v_J) C_J. Moreover,
+
+    dGamma_q^(N)(I)=sum_(|I|=q) C_I^dagger C_I
+                   =binom(N,q)I.
+
+The last identity counts occupied q-subsets on every N-particle occupation
+basis state. Apply the positive map to
+`-||X|| I<=X<=||X|| I`. For q<=N, dividing the lift by binom(N,q) gives a
+UCP map: write it as a compression `V^dagger(X tensor I)V` using the column
+of annihilators normalized by sqrt(binom(N,q)). This explains the norm bound
+without assuming a many-body state. The constant is sharp for X=I.
+
+If reconstructed coefficient errors obey ||Uq_hat-Uq||<=epsilon_q, then
+
+    ||(H_hat-H)|_N|| <= sum_(q=0)^min(p,N) binom(N,q)epsilon_q.  (2)
+
+For approximate supplied restrictions with ||H_hat[q]-H[q]||<=delta_q,
+the recursion gives the certified inductive budgets
+
+    epsilon_0=delta_0,
+    epsilon_q<=delta_q+sum_(ell<q) binom(q,ell)epsilon_ell.       (3)
+
+The full-Fock norm uses N=n as a safe maximum in(2). In a joint impurity/bath
+task with a certified total charge Q and nonnegative active charge, only
+bath charges N<=min(n,Q) occur; replace n by min(n,Q). This is compatible with
+N778's sector-safe interface. It does not acquire Q or a small hole/excitation
+encoding for a macroscopic material. Fixed-sector selection and grand-canonical
+comparison remain different outputs.
+
+If an unknown higher-body remainder has an independently acquired relevant
+norm bound eta_tail, add it to(2). No such tail bound follows from the finite
+low-sector data, as the hierarchy witness shows. Once a whole Hamiltonian
+error is certified, ordinary ground/free-energy Lipschitz bounds propagate it.
+Common omitted bath terms need not cancel in a design contrast; the safe
+two-design allowance still charges both energy errors.
+
+## 4. Resource and scientific boundary
+
+The supplied dense data and coefficient output contain
+sum_(q<=p) binom(n,q)^2 entries, of order n^(2p) for fixed p. A direct CAR
+lifting/subtraction construction is polynomial in these sizes for fixed p:
+enumerate q-sector states, their occupied ell-subsets and possible ell-mode
+creations, with index/sign work charged. An explicit enumeration bound is
+
+    sum_(q<=p) binom(n,q) sum_(ell<=q) binom(q,ell)binom(n,ell)
+
+times polynomial index/bit work, besides input precision and arithmetic. This
+is exponential when p grows with n, and quartic storage for a general two-body
+coefficient matrix can already be prohibitive. The norm budgets also amplify
+coefficient uncertainty combinatorially; exact algebra does not remove the
+precision needed for a small design margin.
+
+Reconstruction supplies a Hamiltonian, not its correlated ground state or a
+useful non-Gaussian approximation. For p=1 it reproduces the established
+quadratic model input of the new moment theorem. For p>=2 a reference solver,
+valid physical model and affordable error certificate are still required.
+The positive conclusion is narrower: a bounded interaction-order promise plus
+complete calibrated low-sector operators closes the exact information
+ambiguity. The cost of justifying that promise and acquiring those operators
+is the scientific gate. No novelty or chemistry advantage is established.
+
+`bounded_order_checks.py` separately checks exact CAR reconstruction and the
+sharp identity factor, and finite floating norm/error diagnostics. The universal
+statements are proved above; those tests do not provide external validation.

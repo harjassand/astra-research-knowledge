@@ -1,0 +1,93 @@
+<!doctype html><meta charset="utf-8"><title>N786 integration derived — hierarchy_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Independent finite diagnostics for the written environmental hierarchy proof.&quot;&quot;&quot;
+from fractions import Fraction as F
+import json
+from pathlib import Path
+import numpy as np
+
+def annihilator(n,j):
+    a=np.zeros((1&lt;&lt;n,1&lt;&lt;n))
+    for x in range(1&lt;&lt;n):
+        if (x&gt;&gt;j)&amp;1:
+            a[x^(1&lt;&lt;j),x]=(-1)**((x&amp;((1&lt;&lt;j)-1)).bit_count())
+    return a
+
+exact=[]
+for r in range(2,82):
+    delta=F(1,8*r);a=F(r,2*(4*r*r+1));v=F(-1,2*r)
+    rayleigh=(r*v*v+v+delta)/(v*v+1)
+    assert rayleigh==-a
+    assert r*delta-F(1,4)==F(-1,8)
+    assert (3*r)*delta-F(1,4)==F(1,8)
+    assert F(2*r+1)-F(1,4)&gt;0
+    exact.append(dict(r=r,a=str(a),negative_determinant=&#x27;-1/8&#x27;,positive_determinant=&#x27;1/8&#x27;,rayleigh=str(rayleigh)))
+
+fock=[];canonical=[]
+for r in range(2,8):
+    n=r+1;dim=1&lt;&lt;n;delta=1/(8*r);a=r/(2*(4*r*r+1))
+    d=annihilator(n,0);c=annihilator(n,1)
+    coupling=(d.T@c+c.T@d)/2
+    assert np.linalg.norm(coupling,2)&lt;=.5+1e-13
+    nb=np.array([(x&gt;&gt;1).bit_count() for x in range(dim)])
+    nd=np.array([x&amp;1 for x in range(dim)])
+    full=(nb==r).astype(float)
+    charges=nb+nd
+    matrices={}
+    for label,ub in [(&#x27;quad&#x27;,0),(&#x27;hidden&#x27;,-r+delta)]:
+        for design,m in [(1,1),(0,2*r+1)]:
+            scalar=0 if design==1 else -a/2
+            matrices[label,design]=np.diag(nb+ub*full+m*nd+scalar)+coupling
+    energies={str(k):float(np.linalg.eigvalsh(h)[0]) for k,h in matrices.items()}
+    contrast_q=energies[str((&#x27;quad&#x27;,1))]-energies[str((&#x27;quad&#x27;,0))]
+    contrast_h=energies[str((&#x27;hidden&#x27;,1))]-energies[str((&#x27;hidden&#x27;,0))]
+    assert abs(contrast_q-a/2)&lt;2e-12
+    assert contrast_h&lt;=-a/2+2e-12
+    assert abs(energies[str((&#x27;hidden&#x27;,0))]+a/2)&lt;2e-12
+    lower=(r+delta-np.sqrt((r-delta)**2+1))/2
+    assert abs(energies[str((&#x27;hidden&#x27;,1))]-lower)&lt;2e-12
+    fock.append(dict(r=r,dimension=dim,energies=energies,quadratic_contrast=contrast_q,hidden_contrast=contrast_h,certified_margin=a/2))
+    for q in range(r):
+        idx=np.where(charges==q)[0]
+        for design in [0,1]:
+            assert np.array_equal(matrices[&#x27;quad&#x27;,design][np.ix_(idx,idx)],matrices[&#x27;hidden&#x27;,design][np.ix_(idx,idx)])
+        canonical.append(dict(r=r,total_charge=q,sector_dimension=len(idx),operator_equality=True))
+
+def heisenberg_apply(v,energies,j,dagger,time):
+    z=np.exp(-1j*time*energies)*v
+    out=np.zeros_like(z)
+    for x in range(len(z)):
+        occupied=(x&gt;&gt;j)&amp;1
+        if occupied==int(not dagger):
+            out[x^(1&lt;&lt;j)]+=(-1)**((x&amp;((1&lt;&lt;j)-1)).bit_count())*z[x]
+    return np.exp(1j*time*energies)*out
+
+rng=np.random.default_rng(7872026);correlators=[];distinguishing=[]
+for r in range(2,8):
+    dim=1&lt;&lt;r;quad=np.array([x.bit_count() for x in range(dim)],float)
+    hidden=quad.copy();hidden[-1]=1/(8*r)
+    for m in range(1,r):
+        for trial in range(12):
+            modes=rng.choice(r,size=m,replace=False).tolist()
+            left=modes.copy();rng.shuffle(left)
+            # Rightmost creations act before the left annihilation sequence.
+            ops=[(j,False,float(rng.uniform(-3,3))) for j in left]+[(j,True,float(rng.uniform(-3,3))) for j in modes]
+            values=[]
+            for energies in [quad,hidden]:
+                v=np.zeros(dim,complex);v[0]=1
+                for j,dagger,time in reversed(ops):v=heisenberg_apply(v,energies,j,dagger,time)
+                values.append(v[0])
+            assert abs(values[0]-values[1])&lt;1e-13
+            assert abs(abs(values[0])-1)&lt;1e-12
+            correlators.append(dict(r=r,probe_pairs=m,absolute_difference=float(abs(values[0]-values[1]))))
+    full_values=[]
+    ops=[(j,False,.7) for j in range(r)]+[(j,True,0.) for j in range(r)]
+    for energies in [quad,hidden]:
+        v=np.zeros(dim,complex);v[0]=1
+        for j,dagger,time in reversed(ops):v=heisenberg_apply(v,energies,j,dagger,time)
+        full_values.append(v[0])
+    assert abs(full_values[0]-full_values[1])&gt;1e-3
+    distinguishing.append(dict(r=r,probe_pairs=r,difference=float(abs(full_values[0]-full_values[1]))))
+
+result=dict(status=&#x27;PASS&#x27;,exact_rational_fixtures=exact,full_fock_fixtures=fock,fixed_sector_equalities=canonical,vacuum_correlators=correlators,higher_order_distinguishers=distinguishing,scope=&#x27;Written all-k proof separate. Exact rational identities vs floating CAR/eigenvalue/correlator diagnostics. No producer imports, historical-priority or physical-validation claim.&#x27;)
+Path(&#x27;hierarchy_results.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(dict(status=&#x27;PASS&#x27;,rational=len(exact),full_fock=len(fock),fixed_sectors=len(canonical),low_order_correlators=len(correlators),higher_order_distinguishers=len(distinguishing)),indent=2))
+</pre>
