@@ -1,0 +1,159 @@
+<!doctype html><meta charset="utf-8"><title>N786 integration derived — addendum_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small CAR fixtures for bounded-body-order sector reconstruction.
+
+Does not import producer/root code or change the frozen review receipt.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import combinations
+from pathlib import Path
+import json
+import math
+import random
+
+OUT = Path(__file__).resolve().parent
+
+
+def subsets(n, q):
+    return list(combinations(range(n), q))
+
+
+def states(n, number):
+    return [sum(1 &lt;&lt; i for i in row) for row in subsets(n, number)]
+
+
+def zero(d):
+    return [[Q(0) for _ in range(d)] for _ in range(d)]
+
+
+def identity(d, value=Q(1)):
+    a = zero(d)
+    for i in range(d):
+        a[i][i] = value
+    return a
+
+
+def add(a, b, sign=1):
+    return [[x+sign*y for x, y in zip(ar, br)] for ar, br in zip(a, b)]
+
+
+def apply_monomial(state, creation, annihilation):
+    sign = 1
+    for j in annihilation:
+        if not ((state &gt;&gt; j) &amp; 1):
+            return None
+        sign *= (-1)**((state &amp; ((1 &lt;&lt; j)-1)).bit_count())
+        state ^= 1 &lt;&lt; j
+    for i in reversed(creation):
+        if (state &gt;&gt; i) &amp; 1:
+            return None
+        sign *= (-1)**((state &amp; ((1 &lt;&lt; i)-1)).bit_count())
+        state ^= 1 &lt;&lt; i
+    return state, sign
+
+
+def lift(n, order, matrix, number):
+    basis = states(n, number)
+    inverse = {b: j for j, b in enumerate(basis)}
+    modes = subsets(n, order)
+    result = zero(len(basis))
+    for col, b in enumerate(basis):
+        for j, annihilation in enumerate(modes):
+            if any(not ((b &gt;&gt; x) &amp; 1) for x in annihilation):
+                continue
+            for i, creation in enumerate(modes):
+                if not matrix[i][j]:
+                    continue
+                acted = apply_monomial(b, creation, annihilation)
+                if acted is not None:
+                    target, sign = acted
+                    result[inverse[target]][col] += sign*matrix[i][j]
+    return result
+
+
+def reconstruction_fixture(n, p, seed):
+    rng = random.Random(seed)
+    coefficients = []
+    for q in range(p+1):
+        d = math.comb(n, q)
+        u = zero(d)
+        for i in range(d):
+            for j in range(i+1):
+                u[i][j] = u[j][i] = Q(rng.randrange(-5, 6), 7)
+        coefficients.append(u)
+    blocks = []
+    for number in range(n+1):
+        block = zero(math.comb(n, number))
+        for q in range(min(number, p)+1):
+            block = add(block, lift(n, q, coefficients[q], number))
+        blocks.append(block)
+    recovered = []
+    for q in range(p+1):
+        residual = blocks[q]
+        for lower in range(q):
+            residual = add(residual, lift(n, lower, recovered[lower], q), -1)
+        assert residual == coefficients[q]
+        recovered.append(residual)
+    for number in range(n+1):
+        rebuilt = zero(math.comb(n, number))
+        for q in range(min(number, p)+1):
+            rebuilt = add(rebuilt, lift(n, q, recovered[q], number))
+        assert rebuilt == blocks[number]
+    # Sharp lift norm: a q-body identity lifts to C(N,q) times identity.
+    sharp = []
+    for q in range(p+1):
+        for number in range(q, n+1):
+            assert lift(n, q, identity(math.comb(n, q)), number) == \
+                   identity(math.comb(n, number), Q(math.comb(number, q)))
+            sharp.append([q, number, math.comb(number, q)])
+    # Exact noisy-sector recursion with identity input errors.
+    deltas = [Q(1, 1000), Q(1, 700), Q(1, 1300), Q(1, 1700)][:p+1]
+    noisy, radii, actual = [], [], []
+    for q in range(p+1):
+        residual = add(blocks[q], identity(math.comb(n, q), deltas[q]))
+        for lower in range(q):
+            residual = add(residual, lift(n, lower, noisy[lower], q), -1)
+        noisy.append(residual)
+        error = add(residual, coefficients[q], -1)
+        scalar = error[0][0]
+        assert error == identity(len(error), scalar)
+        radius = deltas[q]+sum(Q(math.comb(q, lower))*radii[lower]
+                              for lower in range(q))
+        assert abs(scalar) &lt;= radius
+        radii.append(radius); actual.append(abs(scalar))
+    lifted = []
+    for number in range(n+1):
+        err = zero(math.comb(n, number))
+        for q in range(min(number, p)+1):
+            err = add(err, lift(n, q, add(noisy[q], coefficients[q], -1), number))
+        scalar = err[0][0]
+        assert err == identity(len(err), scalar)
+        radius = sum(Q(math.comb(number, q))*radii[q]
+                     for q in range(min(number, p)+1))
+        assert abs(scalar) &lt;= radius
+        lifted.append({&quot;N&quot;: number, &quot;actual_error&quot;: str(abs(scalar)),
+                       &quot;conservative_radius&quot;: str(radius)})
+    return {&quot;bath_modes&quot;: n, &quot;body_order&quot;: p,
+            &quot;sector_dimensions&quot;: [math.comb(n, q) for q in range(p+1)],
+            &quot;all_reconstructed_coefficients_exact&quot;: True,
+            &quot;all_fock_sector_blocks_exact&quot;: True,
+            &quot;sharp_binomial_identity_fixtures&quot;: sharp,
+            &quot;input_sector_error_radii&quot;: list(map(str, deltas)),
+            &quot;recursive_coefficient_radii&quot;: list(map(str, radii)),
+            &quot;actual_coefficient_errors&quot;: list(map(str, actual)),
+            &quot;all_sector_error_bounds&quot;: lifted}
+
+
+def main():
+    result = {&quot;status&quot;: &quot;exact_finite_fixtures_not_external_validation&quot;,
+              &quot;producer_imports&quot;: False,
+              &quot;fixtures&quot;: [reconstruction_fixture(4, 2, 79013),
+                           reconstruction_fixture(5, 3, 79014)]}
+    (OUT/&quot;addendum_results.json&quot;).write_text(json.dumps(result, indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;all_checks_passed&quot;: True, &quot;exact_reconstruction_fixtures&quot;: 2,
+                      &quot;sharp_identity_lifts&quot;: sum(len(x[&quot;sharp_binomial_identity_fixtures&quot;])
+                                                 for x in result[&quot;fixtures&quot;])}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

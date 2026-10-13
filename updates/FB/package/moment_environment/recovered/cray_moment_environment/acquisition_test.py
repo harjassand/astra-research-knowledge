@@ -1,0 +1,48 @@
+"""Spectral-sampling diagnostics for scalar symmetric baths.
+The confidence construction is proved in the note; this implementation uses
+floating-point special functions and is not a machine-verified confidence proof.
+"""
+import json
+from pathlib import Path
+import numpy as np
+from scipy.stats import beta
+from experiment import grid, free_ph_energy
+
+def confidence_radius(samples,edges,alpha=.01,total_weight=.125):
+    """Clopper-Pearson bin masses + conditional Hoeffding second moments."""
+    n=len(samples); B=len(edges)-1
+    # Each of 2B events (mass interval / conditional mean interval) fails <=alpha/(2B).
+    failure=alpha/(2*B)
+    sl=[]; wl=[]; upper={}
+    diagnostics=[]
+    for j,(a,b) in enumerate(zip(edges[:-1],edges[1:])):
+        ix=(samples>=a)&((samples<b) if j<B-1 else (samples<=b))
+        z=samples[ix]; k=len(z)
+        pl=0. if k==0 else float(beta.ppf(failure/2,k,n-k+1))
+        pu=1. if k==n else float(beta.ppf(1-failure/2,k+1,n-k))
+        aa,bb=a*a,b*b
+        if k:
+            mu=float(np.mean(z*z)); err=(bb-aa)*np.sqrt(np.log(2/failure)/(2*k))
+            ml=max(aa,mu-err); mu=max(aa,min(bb,mu+err))
+        else:
+            ml,mu=aa,bb
+        wlo,wup=total_weight*pl,total_weight*pu
+        if wlo>0:
+            sl.append(mu); wl.append(wlo)
+        for s,w in [(aa,wup*(bb-ml)/(bb-aa)),(bb,wup*(ml-aa)/(bb-aa))]:
+            if w>0: upper[s]=upper.get(s,0.)+w
+        diagnostics.append(dict(a=a,b=b,count=k,mass_lower=wlo,mass_upper=wup,mean_s_lower=ml,mean_s_upper=mu))
+    su=np.array(sorted(upper)); wu=np.array([upper[s] for s in su])
+    R=free_ph_energy(sl,wl)-free_ph_energy(su,wu)
+    return dict(samples=n,simultaneous_confidence=1-alpha,scalar_radius=R,
+                bins=B,lower_total_mass=sum(wl),upper_total_mass=sum(wu)),diagnostics
+
+if __name__=='__main__':
+    rng=np.random.default_rng(63017); edges=grid(1.5)
+    res=[]; detail={}
+    for n in [10000,100000,1000000]:
+        samples=rng.uniform(0,1,n)
+        row,diag=confidence_radius(samples,edges)
+        res.append(row); detail[str(n)]=diag
+    Path(__file__).with_name('acquisition_results.json').write_text(json.dumps(dict(summary=res,details=detail),indent=2))
+    print(json.dumps(res,indent=2))

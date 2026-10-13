@@ -1,0 +1,81 @@
+<!doctype html><meta charset="utf-8"><title>N785 preserved original — additional_tests.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Additional noncommuting-matrix diagnostics and an exact non-Gaussian failure.&quot;&quot;&quot;
+from fractions import Fraction
+import json
+from pathlib import Path
+import numpy as np
+from scipy.linalg import eigvalsh
+import sympy as sp
+from experiment import psd_factor, impurity_energy, full_h, fermionic_hamiltonian
+
+
+def paired_bath(poles):
+    es=[]; vs=[]
+    for e,L in poles:
+        if e&lt;1e-14:
+            es.extend([0.]*L.shape[1]); vs.append(L)
+        else:
+            for sign in [-1,1]:
+                es.extend([sign*e]*L.shape[1]); vs.append(L/np.sqrt(2))
+    return np.array(es),np.concatenate(vs,axis=1)
+
+
+def matrix_ph_tests():
+    rng=np.random.default_rng(80326)
+    m=2; e=np.array([.2,.55,.9])
+    V=(rng.normal(size=(m,3))+1j*rng.normal(size=(m,3)))*.2
+    W=2*V@V.conj().T; S=2*(V*(e**2))@V.conj().T
+    L=psd_factor(W); Linv=np.linalg.pinv(L)
+    B=Linv@S@Linv.conj().T
+    lam,Q=np.linalg.eigh(B)
+    low=paired_bath([(np.sqrt(lam[i]),(L@Q[:,i:i+1])) for i in range(m)])
+    a,b=.1,1.
+    Wa=(b*b*W-S)/(b*b-a*a); Wb=(S-a*a*W)/(b*b-a*a)
+    high=paired_bath([(a,psd_factor(Wa)),(b,psd_factor(Wb))])
+    true=(np.concatenate([-e,e]),np.concatenate([V,V],axis=1))
+    def free(bath):
+        ee,v=bath; ev=eigvalsh(full_h(np.zeros((m,m)),bath))
+        return float(np.minimum(ev,0).sum()-np.minimum(ee,0).sum())
+    R=free(low)-free(high)
+    out=[]
+    for u in [-2.,0.,3.]:
+        ha=np.array([[.3,.17+.08j],[.17-.08j,-.5]])
+        z=[impurity_energy(ha,x,[(0,1,u)]) for x in [high,true,low]]
+        assert z[0]&lt;=z[1]+1e-9 and z[1]&lt;=z[2]+1e-9
+        assert z[2]-z[0] &lt;=R+1e-9
+        out.append(dict(U=u,lower_energy=z[0],true_energy=z[1],upper_energy=z[2],
+                        width=z[2]-z[0],universal_free_width=R))
+    return out
+
+
+def exact_failure():
+    ha=np.diag([-1.,-1.]); bath=(np.array([1.,1.]),.8*np.eye(2))
+    def rational_H(ub):
+        num=fermionic_hamiltonian(full_h(ha,bath),[(0,1,1.),(2,3,float(ub))]).toarray().real
+        return sp.Matrix([[sp.Rational(str(round(x,12))) for x in row] for row in num])
+    Hlo=rational_H(sp.Rational(-9,5)); Hhi=rational_H(sp.Integer(2))
+    shift=Hhi+sp.Rational(19,10)*sp.eye(16)
+    LL,DD=shift.LDLdecomposition(hermitian=False)
+    pivots=[DD[i,i] for i in range(16)]
+    assert all(x&gt;0 for x in pivots)
+    assert LL*DD*LL.T==shift
+    val,vec=np.linalg.eigh(np.array(Hlo,float))
+    q=sp.Matrix([sp.Rational(int(round(x*1000000)),1000000) for x in vec[:,0]])
+    rq=(q.T*Hlo*q)[0]/(q.T*q)[0]
+    assert rq &lt; sp.Rational(-19,10)
+    return dict(
+        reference_energy=&#x27;-19/10&#x27;,
+        bath_hamiltonian=&#x27;n_2+n_3+U_B*n_2*n_3&#x27;,
+        impurity_hamiltonian=&#x27;-n_0-n_1+n_0*n_1&#x27;,
+        coupling=&#x27;(4/5)*(d_0^dagger c_2+d_1^dagger c_3+h.c.)&#x27;,
+        lower_bath_U=&#x27;-9/5&#x27;,upper_bath_U=&#x27;2&#x27;,
+        low_trial_vector=[str(x) for x in q],low_trial_energy=str(rq),
+        high_shift_LDL_pivots=[str(x) for x in pivots],
+        certified_conclusion=&#x27;E(U_B=-9/5)&lt;-19/10&lt;E(U_B=2)&#x27;,
+        identical_data=&#x27;Uncoupled-bath vacuum Green function: G(z)=I_2/(z-1), for either U_B.&#x27;
+    )
+
+if __name__==&#x27;__main__&#x27;:
+    out=dict(matrix_ph_tests=matrix_ph_tests(),exact_non_gaussian_failure=exact_failure())
+    Path(__file__).with_name(&#x27;additional_results.json&#x27;).write_text(json.dumps(out,indent=2))
+    print(json.dumps(out,indent=2))
+</pre>

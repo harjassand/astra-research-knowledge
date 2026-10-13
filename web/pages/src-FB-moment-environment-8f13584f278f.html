@@ -1,0 +1,126 @@
+<!doctype html><meta charset="utf-8"><title>N785 preserved original — certify.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Exact rational certificate for a symmetric flat-bath uncertainty bound.
+No floating-point eigenvalues enter the certificate. Roots of diagonal-plus-
+rank-one matrices are isolated using rational secular equations, followed by
+integer square-root bounds. Python&#x27;s standard library suffices.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from math import isqrt
+import json
+from pathlib import Path
+
+
+def scalar_envelopes():
+    x=[F(1)]
+    while x[-1]&gt;F(1,10000):
+        x.append(x[-1]*F(2,3))
+    edges=[F(0)]+list(reversed(x))
+    lower={}; upper={}
+    for a,b in zip(edges[:-1],edges[1:]):
+        w=(b-a)/8
+        t=(b**3-a**3)/24
+        s=t/w
+        lower[s]=lower.get(s,F(0))+w
+        aa,bb=a*a,b*b
+        wa=(bb*w-t)/(bb-aa)
+        wb=(t-aa*w)/(bb-aa)
+        for s,q in [(aa,wa),(bb,wb)]:
+            if q: upper[s]=upper.get(s,F(0))+q
+    return edges,sorted(lower.items()),sorted(upper.items())
+
+
+def secular_sign(x,atoms,bits=160):
+    &quot;&quot;&quot;Sign of 1 + sum w/(s-x), using certified integer fixed-point sums.&quot;&quot;&quot;
+    scale=1&lt;&lt;bits
+    lower=scale
+    for s,w in atoms:
+        if s==x: raise ValueError(&#x27;Secular equation evaluated at a pole&#x27;)
+        r=w/(s-x)
+        lower+=(r.numerator*scale)//r.denominator
+    upper=lower+len(atoms)
+    if lower&gt;0: return 1
+    if upper&lt;0: return -1
+    exact=1+sum((w/(s-x) for s,w in atoms),F(0))
+    return (exact&gt;0)-(exact&lt;0)
+
+
+def root_intervals(atoms,bits=110):
+    &quot;&quot;&quot;Interlacing isolates every eigenvalue of diag(s)+sqrt(w)sqrt(w)^T.&quot;&quot;&quot;
+    nodes=[s for s,w in atoms]
+    upper_last=nodes[-1]+sum((w for s,w in atoms),F(0))
+    tol=F(1,1&lt;&lt;bits)
+    out=[]
+    for i,left in enumerate(nodes):
+        right=nodes[i+1] if i+1&lt;len(nodes) else upper_last
+        while right-left&gt;tol:
+            mid=(left+right)/2
+            sign=secular_sign(mid,atoms)
+            if sign&lt;0: left=mid
+            elif sign&gt;0: right=mid
+            else:
+                left=right=mid
+                break
+        out.append((left,right))
+    return out
+
+
+def sqrt_interval(x,bits=130):
+    if x&lt;0: raise ValueError(&#x27;Negative radicand&#x27;)
+    scale=1&lt;&lt;bits
+    k=isqrt((x.numerator*scale*scale)//x.denominator)
+    low=F(k,scale)
+    return low,(low if low*low==x else F(k+1,scale))
+
+
+def free_energy_interval(atoms):
+    roots=root_intervals(atoms)
+    lo=hi=F(0)
+    for s,w in atoms:
+        a,b=sqrt_interval(s)
+        lo+=a; hi+=b
+    for left,right in roots:
+        a,_=sqrt_interval(left)
+        _,b=sqrt_interval(right)
+        lo-=b; hi-=a
+    return (lo,hi),roots
+
+
+def outward_decimal(x,places=14,upper=False):
+    scale=10**places
+    k=(x.numerator*scale)//x.denominator
+    if upper and F(k,scale)&lt;x: k+=1
+    sign=&#x27;-&#x27; if k&lt;0 else &#x27;&#x27;
+    mag=abs(k)
+    return f&#x27;{sign}{mag//scale}.{mag%scale:0{places}d}&#x27;
+
+
+def main():
+    edges,low,high=scalar_envelopes()
+    el,rl=free_energy_interval(low)
+    eh,rh=free_energy_interval(high)
+    radius=(el[0]-eh[1],el[1]-eh[0])
+    assert radius[0]&gt;0
+    out={
+        &#x27;method&#x27;:&#x27;exact rational secular interlacing and integer square-root enclosure&#x27;,
+        &#x27;model&#x27;:&#x27;symmetric flat coupling measure dM(e)=de/16 on [-1,1]&#x27;,
+        &#x27;impurity_modes_for_scalar_certificate&#x27;:1,
+        &#x27;bin_count&#x27;:len(edges)-1,
+        &#x27;moment_types&#x27;:[&#x27;pair-total mass&#x27;,&#x27;pair-total squared-energy moment&#x27;],
+        &#x27;reference_physical_bath_modes&#x27;:2*len(low),
+        &#x27;adversarial_physical_bath_modes&#x27;:2*len(high)-1,
+        &#x27;radius_decimal_lower&#x27;:outward_decimal(radius[0]),
+        &#x27;radius_decimal_upper&#x27;:outward_decimal(radius[1],upper=True),
+        &#x27;radius_fraction_lower&#x27;:str(radius[0]),&#x27;radius_fraction_upper&#x27;:str(radius[1]),
+        &#x27;edges&#x27;:[str(x) for x in edges],
+        &#x27;lower_gamma_atoms&#x27;:[[str(s),str(w)] for s,w in low],
+        &#x27;upper_gamma_atoms&#x27;:[[str(s),str(w)] for s,w in high],
+        &#x27;lower_gamma_root_intervals&#x27;:[[str(a),str(b)] for a,b in rl],
+        &#x27;upper_gamma_root_intervals&#x27;:[[str(a),str(b)] for a,b in rh],
+        &#x27;reference_energy_interval&#x27;:[str(x) for x in el],
+        &#x27;adversarial_energy_interval&#x27;:[str(x) for x in eh]
+    }
+    Path(__file__).with_name(&#x27;exact_certificate.json&#x27;).write_text(json.dumps(out,indent=2))
+    print(json.dumps({k:v for k,v in out.items() if k not in [&#x27;edges&#x27;,&#x27;lower_gamma_atoms&#x27;,&#x27;upper_gamma_atoms&#x27;,&#x27;lower_gamma_root_intervals&#x27;,&#x27;upper_gamma_root_intervals&#x27;,&#x27;reference_energy_interval&#x27;,&#x27;adversarial_energy_interval&#x27;,&#x27;radius_fraction_lower&#x27;,&#x27;radius_fraction_upper&#x27;]},indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre>

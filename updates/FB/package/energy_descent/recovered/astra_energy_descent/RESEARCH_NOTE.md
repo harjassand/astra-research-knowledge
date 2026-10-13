@@ -1,0 +1,315 @@
+# ASTRA FRONTIER: energy-descent completion and its physical limits
+
+Date: 13 October 2026
+
+## Status
+
+This packet contains finite-dimensional mathematical derivations, an explicit reduction to controlled-register operations, and executed numerical diagnostics. It does **not** establish historical novelty, an experimentally implemented refrigerator, rapid preparation of general interacting ground states, or a civilisation-changing capability. The core square-root/Sylvester kernel has close precedents in KMS-detailed-balanced quantum Gibbs samplers. Any priority claim requires a more comprehensive comparison.
+
+No theorem from either Astra's repository or OpenAI's mathematical repository is a premise of these proofs. The repositories were inspected as research capital, not treated as independently validated results.
+
+The strongest derived candidate is a coherent correction that turns an arbitrary strictly energy-lowering jump into an all-state mean-energy-descent generator. It requires no division by the difference between two positive transition energies. This removes a mathematical interference obstruction; it does not remove inaccessible actuation, metastability, or slow mixing.
+
+## 1. Definitions
+
+Work in finite dimension, with hbar = 1. Let H have spectral eigenvalues E_n. A jump B is strictly lowering when B_mn = 0 unless E_n > E_m. Equal-energy entries are excluded; degeneracies of H are allowed.
+
+Write
+
+    D[B](rho) = B rho B* - (B*B rho + rho B*B)/2.
+
+For an observable O,
+
+    D[B]*(O) = B* O B - (B*B O + O B*B)/2.
+
+All assertions about monotonicity refer to ensemble mean energy under the specified completely positive, trace-preserving evolution. They are not assertions about each trajectory, entropy monotonicity, temperature, or every energy-tail probability.
+
+## 2. A downward jump can heat a coherent state
+
+Take H = diag(0,1,4), B = |0><1| + |0><2|. On the excited subspace,
+
+    D[B]*(H) = [[-1, -5/2], [-5/2, -4]].
+
+Its maximum eigenvalue is (sqrt(34)-5)/2 > 0. For
+
+    |psi> = (-3|1>+|2>)/sqrt(10),
+
+the instantaneous mean-energy derivative is 1/5. This is an exact algebraic counterexample, not an approximation or a weak-coupling assertion.
+
+## 3. Coherent energy-descent completion
+
+For every nonzero lowering entry, define x_mn = E_n-E_m > 0. Set
+
+    C_mn = sqrt(x_mn) B_mn,
+
+and set C_mn = 0 elsewhere. Define
+
+    G_nn' = (i/2) sum_{m: E_m < min(E_n,E_n')}
+              [(sqrt(E_n-E_m)-sqrt(E_n'-E_m)) /
+               (sqrt(E_n-E_m)+sqrt(E_n'-E_m))]
+              conjugate(B_mn) B_mn'.
+
+The diagonal of G is zero. The formula also gives zero between equal-energy source levels. G is Hermitian.
+
+### Theorem 1
+
+For
+
+    L(rho) = -i[H+G,rho] + D[B](rho),
+
+one has the exact operator identity
+
+    L*(H) = -C* C.
+
+Consequently, d Tr(H rho_t)/dt = -Tr(C*C rho_t) <= 0 for every density matrix, including arbitrary coherences. Every ground-state density matrix is stationary. For several jumps, sum the corresponding G_a and C_a*C_a.
+
+### Proof
+
+For a fixed common final level m, put x = E_n-E_m, y = E_n'-E_m. Its contribution to D[B]*(H)_nn' is
+
+    -(x+y)/2 * conjugate(B_mn) B_mn'.
+
+The correction contributes
+
+    i(E_n'-E_n) G_nn'
+      = [(x+y)/2 - sqrt(xy)] * conjugate(B_mn) B_mn',
+
+because
+
+    (y-x)(sqrt(x)-sqrt(y))/(sqrt(x)+sqrt(y))
+      = -(sqrt(x)-sqrt(y))^2.
+
+Adding gives -sqrt(xy) times the same product. Summing m gives -C*C. Hermiticity follows by exchanging n,n'. A ground-state column of B and the corresponding row/column of G vanish, proving stationarity. Degenerate eigenspaces cause no singular denominator. QED.
+
+### What is and is not small
+
+The scalar ratio in G has magnitude at most one and tends to zero when x approaches y > 0. There is no 1/|x-y| divergence. This is **not**, by itself, a dimension-independent operator-norm or implementation-cost bound on G. For arbitrary B, a conservative bound is ||G|| <= ||B||_HS^2/2. Better implementation estimates below use the fact that B is acquired by a smooth filter of a bounded accessible seed, not an arbitrary supplied dense matrix.
+
+### Exact three-level repair
+
+For the fixture in Section 2,
+
+    G_12 = -i/6, G_21 = i/6,
+    C = |0><1| + 2|0><2|.
+
+On the same input the derivative changes from +1/5 to -1/10. By comparison, two independent jumps |0><1| and |0><2|, each at the same unit population-decay rate, give derivative -13/10. The repair establishes safety, not superiority over independently addressable decay channels.
+
+## 4. Sharpness of coherent actuation in a star
+
+Consider H = diag(0,w_1,...,w_N), w_i > 0, and one fixed jump
+
+    B = sum_i b_i |0><i|.
+
+Let an arbitrary Hermitian correction G make D[B]*(H)+i[G,H] negative semidefinite. Its excited diagonal is fixed at -w_i |b_i|^2. A two-by-two principal minor therefore requires
+
+    |G_ij| >= |b_i b_j| * |sqrt(w_i)-sqrt(w_j)| /
+                              (2(sqrt(w_i)+sqrt(w_j)))
+
+for w_i != w_j. The proof is the reverse triangle inequality applied to the allowed disk of radius sqrt(w_i w_j)|b_i b_j| around the off-diagonal energy-dissipation entry. The completion in Section 3 attains all these bounds simultaneously.
+
+This is entrywise minimal actuation for this fixed-jump star problem. It is not a proof of minimum operator norm, minimum control energy, minimum circuit cost, or optimal cooling speed. At equal frequencies the lower bound is zero.
+
+## 5. Reservoir-only alternative and exact rank obstruction
+
+Let A_w denote lowering components satisfying [H,A_w] = -w A_w. Consider the dissipator with correlation matrix K:
+
+    L_K(rho) = sum_{w,v} K_wv
+       (A_w rho A_v* - {A_v* A_w,rho}/2).
+
+K >= 0 guarantees complete positivity. The energy drift is
+
+    L_K*(H) = -sum_{w,v} C_wv A_v* A_w,
+    C_wv = (w+v) K_wv/2.
+
+### Theorem 2
+
+A kernel gives nonpositive mean-energy drift for every choice of lowering components if and only if C is positive semidefinite on every finite frequency set.
+
+Sufficiency follows by factoring C as a Gram matrix. Necessity follows from a star with A_w = |0><w|: the excited-space drift is minus C, up to a harmless transpose convention.
+
+Conversely, any C >= 0 induces a completely positive kernel
+
+    K_wv = 2 C_wv/(w+v),
+
+because 1/(w+v) = integral_0^infinity exp(-sw) exp(-sv) ds is a positive kernel.
+
+At prescribed diagonals K_ww = r_w, the maximum pairwise correlation magnitude is
+
+    |K_wv| <= [2 sqrt(wv)/(w+v)] sqrt(r_w r_v).
+
+The bound is attained simultaneously by the corresponding Cauchy kernel, up to consistent phases. This maximizes correlation entries, not preparation speed.
+
+### Exact continuum construction
+
+For any strictly lowering B, put B_s = exp(sH) B exp(-sH). Then
+
+    integral_0^infinity D[B_s]*(H) ds = -B*B/2.
+
+The expression is an algebraic specification, not permission to apply imaginary-time evolution physically. On truncating the integral at S, the exact residual is
+
+    integral_0^S D[B_s]*(H) ds = -B*B/2 + B_S*B_S/2.
+
+Thus finite truncation need not preserve exact all-state monotonicity. An input in ker B but not ker B_S has positive energy drift. Small residual norm is not exact safety.
+
+### Theorem 3: rank cost without a coherent correction
+
+For N distinct positive frequencies, suppose K has strictly positive diagonal, K >= 0, and DK+KD >= 0, where D = diag(w_i). Then rank K = N.
+
+Proof: if z lies in ker K, then z*(DK+KD)z = 0. Positivity implies (DK+KD)z = 0, hence KDz = 0. Thus ker K is invariant under D. Since D has distinct eigenvalues, this invariant subspace is a span of coordinate vectors. A positive diagonal of K rules out every such vector in its kernel. Hence the kernel is zero. QED.
+
+A finite family of scalar-filtered jumps must therefore span N independent frequency-amplitude vectors for exact universal energy descent in this class. This is a Lindblad-rank statement, not a requirement for N simultaneous laboratory reservoirs: time-sharing and a continuum can realize high rank. Adding coherent control, as in Theorem 1, avoids the rank obstruction but incurs a separate actuator cost.
+
+## 6. Acquisition without an eigenbasis oracle
+
+A physical construction cannot simply be handed B or G. The following is a controlled-register reduction, not a demonstrated materials apparatus.
+
+### 6.1 State the interface
+
+Assume an n-qubit native Hamiltonian with terms supported in a known candidate Pauli set S of size K, bounded engineering energy scale ||H-cI|| <= h, local Pauli control, one resettable ancilla and controlled local seed operations. For fixed locality k, the candidate set can contain all weight-at-most-k Pauli strings, so K is polynomial in n. Actual coefficients and eigenvectors need not be known.
+
+A material with only one scalar field coupler does not automatically possess this interface. Local pulse durations, noise, reset error, and available amplitude must be charged.
+
+### 6.2 Acquire inverse evolution rather than assume it
+
+For a Pauli P and candidate term Q, let chi_Q(P) be its conjugation sign. Draw P from
+
+    p(P) = 4^(-n) [1 - (1/K) sum_{Q in S} chi_Q(P)].
+
+The probabilities are nonnegative and normalized. Character orthogonality gives, for traceless H supported on S,
+
+    E_P[P H P] = -H/K.
+
+Sampling does not require enumerating 4^n strings: choose a uniform Pauli string and rejection-sample with acceptance [1-K^(-1)sum chi]/2, whose average is 1/2.
+
+Short randomly conjugated native evolutions therefore approximate inverse time. To implement inverse duration t with total error epsilon_inv by this elementary construction, native exposure is Kt and a sufficient segment count scales as O(h^2 K^2 t^2/epsilon_inv). This is a channel-error statement, including its use on states entangled with ancillas. Identity terms are immaterial for the conjugations used here.
+
+Unknown-H transformations and more efficient variants are prior research (Odake et al., arXiv:2303.09788 and arXiv:2312.08848). The elementary identity is supplied to make the access cost explicit, not as a novelty claim.
+
+### 6.3 Acquire lowering filters from real time
+
+Choose a known smooth scalar b supported on positive transition energies, with a lower cutoff delta > 0 and a known upper bandwidth. For a known accessible seed A,
+
+    B = sum_w b(w) A_w
+      = integral hat_b(t) exp(iHt) A exp(-iHt) dt,
+
+where b(w) = integral hat_b(t) exp(-iwt) dt. Thus the full spectral sum is acquired from the native operator orbit rather than classically enumerated.
+
+For a twice differentiable compactly supported f, this Fourier convention gives
+
+    integral_{|t|>T} |hat_f(t)| dt <= ||f''||_1/(pi T),
+    integral |hat_f(t)| dt <= (2/pi) sqrt(||f||_1 ||f''||_1).
+
+These bound operator error by multiplying the first quantity by ||A|| and bound linear-combination normalization by the second. They do not contain the Hilbert-space dimension. Physical time and normalization still grow with delta^(-1) and the required error tolerance.
+
+A finite-duration filter cannot vanish on an entire interval of upward frequencies while remaining nonzero elsewhere: its Fourier transform is analytic. Consequently, this uniform unknown-H construction gives approximate finite-resource safety, not exact finite-resource one-sided filtering.
+
+### 6.4 Acquire the correction from the same orbit
+
+Define scalar-filtered operators
+
+    F_s = sum_w b(w) exp(-s sqrt(w)) A_w,
+    D_s = sum_w sqrt(w) b(w) exp(-s sqrt(w)) A_w.
+
+Then
+
+    G = (i/2) integral_0^infinity (D_s* F_s - F_s* D_s) ds.
+
+This follows by integrating (sqrt(w)-sqrt(v)) exp[-s(sqrt(w)+sqrt(v))]. Every F_s and D_s has a real-time Fourier representation. With support bounded below by delta, their derivative norms are bounded by explicit polynomials in s, the bandwidth and delta^(-1), multiplied by exp(-s sqrt(delta)). Scalar quadrature and product-formula errors can therefore be bounded without enumerating Bohr frequencies. There is no dependence on the minimum nonzero |w-v| in these filter formulas. This is not a corresponding mixing-time statement.
+
+For a non-Hermitian X define the Hermitian ancilla dilation
+
+    X_dil = [[0, X*], [X, 0]].
+
+The top ancilla block of i[D_dil,F_dil]/2 is i(D*F-F*D)/2. Hamiltonian commutator sequences, or linear-combination simulation, therefore reduce G to the acquired F_s,D_s controls. This construction uses coherent operations; an observed success Kraus alone is not sufficient.
+
+### 6.5 Unconditional dissipation
+
+Initialize an ancilla in |0>, apply exp(-i sqrt(dt) B_dil), and discard/reset it. The system channel is
+
+    rho -> rho + dt D[B](rho) + O(dt^2 ||B||^4).
+
+Both ancilla outcomes are retained. There is no uncharged postselection probability. Combining this collision with the G evolution yields the intended generator in the limit, and a finite approximation with charged step error.
+
+This is an explicit synthesis reduction, not an executed many-body compiler. No gate count for a consequential material, attainable pulse amplitude, measured coherence budget, reset work, or net refrigerator efficiency was obtained.
+
+## 7. Error and resource accounting
+
+If the implemented generator differs by diamond norm at most eta, then with W = E_max-E_min,
+
+    d<E>/dt <= -Tr(C*C rho) + W eta/2.
+
+Center H by (E_max+E_min)/2 to obtain the factor W/2. For jump and correction errors,
+
+    eta <= 2||G_tilde-G||
+           + 2(||B||+||B_tilde||)||B_tilde-B|| + eta_noise.
+
+Over a finite simulated duration t, a diamond channel error epsilon causes mean-energy error at most W epsilon/2. Strict nonheating cannot be inferred near a state with zero cooling margin.
+
+Each inverse segment has native exposure; each collision has an ancilla reset; scalar-filter normalizations amplify control cost. Finite pulse duration t_p adds drift error governed by accumulated h t_p. If N resets have error mu each, a conservative composition charge is N mu. The work budget is N times the measured per-reset work plus coherent drive work, not merely the decrease in system energy. None of those physical work parameters was measured here.
+
+The theorem needs no special initial overlap or state identification. However, it does not prepare a target state at a guaranteed rate. Nor does it turn a small energy error into a ground-state fidelity guarantee without a suitable gap or another certificate.
+
+## 8. Two decisive counterexamples to scalable capability
+
+### 8.1 Near-degenerate slowing
+
+Take H = diag(0,1,1+d), B = |0><1|+|0><2| with unit population-decay rates. Put
+
+    q = (sqrt(1+d)-1)/(2(sqrt(1+d)+1)).
+
+For the completed generator, the excited no-jump matrix has eigenvalues
+
+    -1/2 - i(1+d/2) +/- (1/2)sqrt(1-d^2-4q^2).
+
+For small positive d, its slow survival-probability exponent is
+
+    gamma = 1-sqrt(1-d^2-4q^2)
+          = (17/32)d^2 + O(d^3).
+
+Therefore fixed-rate preparation can require order d^(-2) despite the nonsingular correction. This is a concrete counterexample to gap-independent preparation speed, not a lower bound on every optimized controller. Independent resolved decay channels have unit population-decay rate on the same example, when that additional selectivity is available and paid for.
+
+### 8.2 Local metastability is untouched
+
+On an n-site periodic spin chain let
+
+    H = -J sum_i Z_i Z_(i+1) - h sum_i Z_i,
+
+with J>0, h>0. The all-down state exceeds the all-up ground-state energy by 2hn. Flipping a nonempty subset of at most k<n spins costs at least
+
+    4J - 2hk.
+
+Choose hk < 2J. Every k-local seed, after strict downward filtering, annihilates all-down. Its coherent completion also annihilates that state, since its source column is zero. Thus every combination of these repaired local lowering moves leaves an excited state exactly stationary.
+
+For n=6, J=1, h=0.2, k=2, the packet checks all 153 nonidentity Pauli seeds of weight at most two. All annihilate the trap after filtering. The trap has energy -4.8 versus ground energy -7.2. Reweighting, filtering, or coherent repair of these same moves does not supply the missing barrier-crossing operation.
+
+## 9. Executed evidence
+
+Run `python verify_energy_descent.py` to reproduce diagnostics.json.
+
+- 180 random matrix cases, dimensions 2 through 12, including exact degeneracies.
+- Maximum operator-norm residual in Theorem 1: approximately 1.13e-15.
+- Exact three-level fixture: derivative +1/5 before repair, -1/10 after repair.
+- A 121-time-point three-level evolution check preserves trace and positivity up to floating roundoff and has decreasing sampled mean energy.
+- Cauchy-kernel and finite-cutoff identities checked.
+- Near-degenerate survival exponents checked against their analytical formula.
+- All 153 two-local-or-less Pauli seeds checked on the six-spin trap.
+- The inverse-H Pauli-average identity checked on a three-qubit, 36-term candidate set.
+
+These are floating-point diagnostics. The proofs, not the number of checks, support the general statements. No formal proof assistant, independent reviewer, many-body hardware compiler, or laboratory experiment was used.
+
+## 10. Prior art and significance boundary
+
+The relevant direct comparators include:
+
+1. Ding, Chen, Lin, *Single-ancilla ground state preparation via Lindbladians*, arXiv:2308.15676.
+2. Ding, Li, Lin, *Efficient quantum Gibbs samplers with Kubo-Martin-Schwinger detailed balance condition*, arXiv:2404.05998; Communications in Mathematical Physics 406, 67 (2025). Its square-root/Sylvester coherent correction is a close mathematical antecedent, not something this packet can claim to invent.
+3. Zhan et al., *Rapid quantum ground state preparation via dissipative dynamics*, arXiv:2503.15827; Physical Review X 16, 011004 (2026).
+4. Langbehn et al., *Universal cooling of quantum systems via randomized measurements*, arXiv:2506.11964.
+5. Schloemer et al., *Model-agnostic cooling algorithms for strongly interacting fermions*, arXiv:2605.01029.
+6. Odake et al., *Higher-order quantum transformations of Hamiltonian dynamics*, arXiv:2303.09788.
+7. Odake et al., *Universal algorithm for transforming Hamiltonian eigenvalues*, arXiv:2312.08848.
+8. Elman, *Locality and filter design for dissipative ground-state preparation*, arXiv:2609.31266. The abstract was retrieved; the full manuscript was not analyzed here.
+
+Published constructions already address filtered jumps, coherent corrections, acquisition through time evolution, and structured mixing. This packet does not establish superiority over them. The energy-drop completion and entrywise optimality statement are derived here, but a priority review must determine whether they are already implicit in those frameworks.
+
+The substantive research lesson is sharper than “cooling needs a gap”: a mean-energy-safe operation can be acquired in a rich register-control interface while contributing neither the missing physical selectivity nor the missing escape from metastable subspaces. A consequential continuation must change that escape capability and benchmark it against direct controls; another refinement of the safe-descent identity alone is insufficient.
