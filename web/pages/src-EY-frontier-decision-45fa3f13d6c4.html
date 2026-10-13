@@ -1,0 +1,83 @@
+<!doctype html><meta charset="utf-8"><title>N768 preserved original — mathematical_checks.py</title><p>Exact source display; evidence status remains scoped to its card.</p><pre>&quot;&quot;&quot;Independent finite checks of error jets, balance, and wide-word assembly.
+Diagnostics are not a proof of thermodynamic transport or uniform complexity.
+&quot;&quot;&quot;
+from __future__ import annotations
+import math,json,time
+from fractions import Fraction as F
+from pathlib import Path
+import numpy as np
+import sympy as sy
+from local_solver import A_pair,reflect
+from fast_algebra import build
+
+def floating_checks():
+ rng=np.random.default_rng(261013);tests=0;max_ratio=0.;max_identity=0.
+ for it in range(48):
+  no,nq,npop=5,4,2;n=no+nq+npop
+  C=np.zeros((npop,no));C[:,:npop]=np.eye(npop)
+  K0=rng.normal(size=(no,nq))*2;K1=rng.normal(size=(no,nq))*.3
+  A=np.block([[np.zeros((no,no)),K0,C.T],[-K0.T,np.zeros((nq,nq)),np.zeros((nq,npop))],[-C,np.zeros((npop,nq)),np.zeros((npop,npop))]])
+  E=np.block([[np.zeros((no,no)),K1,np.zeros((no,npop))],[-K1.T,np.zeros((nq,nq)),np.zeros((nq,npop))],[np.zeros((npop,no+nq)),np.zeros((npop,npop))]])
+  S=np.diag([1.]*(no+nq)+[0.]*npop);R=np.diag([1.]*no+[-1.]*(nq+npop));B=S+A
+  w=np.linalg.norm(E,2);j=np.zeros(n);j[npop:no]=rng.normal(size=no-npop)
+  xs=[np.linalg.solve(B,j)]
+  for k in range(1,4):xs.append(-k*np.linalg.solve(B,E@xs[-1]))
+  ys=[]
+  for x in xs:
+   e=.005*rng.normal(size=n);e[:npop]=0.;ys.append(x+e)
+  rs=[B@ys[0]-j]+[B@ys[k]+k*E@ys[k-1] for k in range(1,4)]
+  qs=[np.linalg.norm(r[:no+nq]) for r in rs]
+  assert max(np.max(np.abs(r[no+nq:])) for r in rs)&lt;1e-12
+  for k in range(4):
+   correct=2*j@ys[k]
+   for a in range(k+1):correct-=math.comb(k,a)*ys[a]@R@B@ys[k-a]
+   if k:
+    for a in range(k):correct-=k*math.comb(k-1,a)*ys[a]@R@E@ys[k-1-a]
+   exact=j@xs[k]
+   bd=sum(math.factorial(k)*qs[a]*qs[b]*w**(k-a-b)/(math.factorial(a)*math.factorial(b)) for a in range(k+1) for b in range(k-a+1))
+   assert abs(exact-correct)&lt;=bd+1e-10,(k,exact-correct,bd)
+   max_ratio=max(max_ratio,abs(exact-correct)/bd);tests+=1
+  identity=rs[0]@R@np.linalg.solve(B,rs[0])
+  correct=2*j@ys[0]-ys[0]@R@B@ys[0]
+  max_identity=max(max_identity,abs(j@xs[0]-correct-identity))
+ return dict(derivative_inequalities=tests,max_error_to_bound_ratio=max_ratio,max_identity_error=max_identity)
+
+def exact_checks():
+ # Odd dimension three, one damped even and one population mode.
+ A=sy.Matrix([[0,0,0,1,1],[0,0,0,2,0],[0,0,0,-1,0],[-1,-2,1,0,0],[-1,0,0,0,0]])
+ E=sy.Matrix([[0,0,0,0,0],[0,0,0,sy.Rational(1,3),0],[0,0,0,sy.Rational(1,2),0],[0,-sy.Rational(1,3),-sy.Rational(1,2),0,0],[0,0,0,0,0]])
+ S=sy.diag(1,1,1,1,0);R=sy.diag(1,1,1,-1,-1);j=sy.Matrix([0,1,2,0,0]);s=sy.symbols(&#x27;s&#x27;)
+ B=S+A+s*E
+ y=sy.Matrix([0,sy.Rational(1,4)+s/7,sy.Rational(1,5)-s/8,sy.Rational(1,9)+s**2/11,sy.Rational(1,10)])
+ r=B*y-j;assert r[4]==0
+ full=(j.T*B.inv()*j)[0]
+ fc=(2*j.T*y-y.T*R*B*y)[0]
+ err=(r.T*R*B.inv()*r)[0]
+ assert sy.factor(full-fc-err)==0
+ assert R*B==B.T*R
+ n=0
+ for k in range(4):
+  assert sy.simplify(sy.diff(full-fc,s,k).subs(s,0)-sy.diff(err,s,k).subs(s,0))==0;n+=1
+ return dict(symbolic_error_identity=True,exact_derivative_identities=n)
+
+def wide_word_checks():
+ rng=np.random.default_rng(9347);n=0
+ for L in [4,8,14,18,20,22,26]:
+  for _ in range(16):
+   while True:
+    x=int(rng.integers(1,1&lt;&lt;L));z=int(rng.integers(0,1&lt;&lt;L))
+    if (x|z)&amp;1 and (x|z).bit_length()==L and (x,z)!=reflect((x,z)):break
+   w=min((x,z),reflect((x,z)))
+   rows,B=build([w],1.,4.,1109/512)
+   got={a:float(c) for a,c in zip(rows,B.toarray().ravel()) if c}
+   expected=A_pair(w,t=1.,U=4.,V=1109/512)
+   assert got==expected,(L,w,got,expected);n+=1
+ try:build([(1&lt;&lt;26,1)],1,4,1)
+ except ValueError:rejected=True
+ else:raise AssertionError(&#x27;key guard failed&#x27;)
+ return dict(independent_wide_word_columns=n,unsupported_key_range_rejected=rejected)
+
+if __name__==&#x27;__main__&#x27;:
+ start=time.perf_counter();x=dict(finite_error_jets=floating_checks(),symbolic=exact_checks(),packed_keys=wide_word_checks(),seconds=time.perf_counter()-start)
+ p=Path(__file__).resolve().parents[1]/&#x27;results&#x27;/&#x27;mathematical_checks.json&#x27;;p.write_text(json.dumps(x,indent=2));print(json.dumps(x,indent=2))
+</pre>

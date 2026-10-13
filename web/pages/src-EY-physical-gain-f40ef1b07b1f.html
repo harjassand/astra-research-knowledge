@@ -1,0 +1,398 @@
+<!doctype html><meta charset="utf-8"><title>N770 preserved original — feasibility.py</title><p>Exact source display; evidence status remains scoped to its card.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the scoped ASTRA feasibility calculations.
+
+No quantities computed here are new measurements. This program differentiates a
+published vibronic rate fit, checks coupled kinetic-response identities, and
+calculates explicitly hypothetical measurement budgets. It is not a materials
+simulation, an experimentally validated device model, or a novelty certificate.
+
+Run: python feasibility.py --output results
+Requires: Python 3.10+, NumPy, SciPy.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import math
+import platform
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import scipy
+from scipy.constants import Boltzmann as KB, elementary_charge as E, epsilon_0 as EPS0
+from scipy.constants import Avogadro as NA, Planck as H, speed_of_light as C
+from scipy.integrate import solve_ivp
+from scipy.special import gammaln, logsumexp
+
+T = 298.15
+KT_EV = KB * T / E
+
+
+def mlj_log_rate_and_slope(
+    gap_ev: float, temperature_k: float = T,
+    lambda_s_ev: float = 0.15, vibration_ev: float = 0.186,
+    huang_rhys: float = 2.7, terms: int = 100,
+) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Return log(rate/common prefactor) and -d log k/d gap [1/eV].
+
+    Electronic coupling and all reorganization parameters are held fixed.
+    Therefore the slope is NOT automatically a measured electric-field slope.
+    &quot;&quot;&quot;
+    if temperature_k &lt;= 0 or lambda_s_ev &lt;= 0 or vibration_ev &lt;= 0:
+        raise ValueError(&quot;Temperature and energies must be positive&quot;)
+    if huang_rhys &lt;= 0 or terms &lt; 20:
+        raise ValueError(&quot;Require a positive Huang-Rhys factor and &gt;=20 terms&quot;)
+    w = np.arange(terms, dtype=float)
+    kt_ev = KB * temperature_k / E
+    z = lambda_s_ev + w * vibration_ev - gap_ev
+    logs = -huang_rhys + w * np.log(huang_rhys) - gammaln(w + 1)
+    logs -= z**2 / (4 * lambda_s_ev * kt_ev)
+    logsum = float(logsumexp(logs))
+    weights = np.exp(logs - logsum)
+    slope = -float(np.dot(weights, z)) / (2 * lambda_s_ev * kt_ev)
+    return logsum, slope
+
+
+def marcus_rates(
+    voltage: float, q_e: float, drive_ev: float, reorg_ev: float,
+    prefactor_s: float, temperature_k: float,
+) -&gt; np.ndarray:
+    &quot;&quot;&quot;[a+, a-, b+, b-] for the symmetric chemical cycle; all rates in 1/s.
+
+    q_e is charge in units of e, so q_e * voltage is an energy in eV.
+    The four Marcus barriers implement local detailed balance together.
+    &quot;&quot;&quot;
+    if reorg_ev &lt;= 0 or prefactor_s &lt;= 0 or temperature_k &lt;= 0:
+        raise ValueError(&quot;Positive reorganization, prefactor and T required&quot;)
+    kt = KB * temperature_k / E
+    d = drive_ev / 2
+    z = np.array([reorg_ev-d-q_e*voltage,
+                  reorg_ev+d+q_e*voltage,
+                  reorg_ev-d+q_e*voltage,
+                  reorg_ev+d-q_e*voltage])
+    return prefactor_s * np.exp(-z*z/(4*reorg_ev*kt))
+
+
+def immobile_chi(s: complex | np.ndarray, rho: float, mu: float,
+                 occupation: float, recombination_s: float,
+                 slope_per_joule: float) -&gt; complex | np.ndarray:
+    &quot;&quot;&quot;Polarization susceptibility P/E [F/m], fixed isotropic dipoles.
+
+    Population changes only; ground-state dipole is taken to be zero.
+    Instantaneous electronic polarization and passive losses are separate.
+    &quot;&quot;&quot;
+    if not 0 &lt;= occupation &lt; 1 or recombination_s &lt;= 0:
+        raise ValueError(&quot;Require 0&lt;=p&lt;1 and positive recombination rate&quot;)
+    relaxation = recombination_s/(1-occupation)
+    return -(rho*mu*mu/3)*occupation*(1-occupation)*slope_per_joule \
+           * relaxation/(s+relaxation)
+
+
+def rotating_chi(s: complex | np.ndarray, rho: float, mu: float,
+                 occupation: float, recombination_s: float,
+                 slope_per_joule: float, rotation_s: float,
+                 temperature_k: float = T) -&gt; complex | np.ndarray:
+    &quot;&quot;&quot;Two orientational-moment reduction, ground dipole zero.
+
+    Both states have the same rotational diffusion rate b=1/tau_r. Optical
+    pumping is orientation-isotropic, with no first-order field dependence.
+    A nonzero pump slope can be used in a_eff only when the associated angular
+    forcing remains this model&#x27;s forcing. More general pumps require a new
+    generator. Intramolecular charge hopping is not identical to this rotation.
+    &quot;&quot;&quot;
+    p, k, b = occupation, recombination_s, rotation_s
+    if not 0 &lt;= p &lt; 1 or k &lt;= 0 or b &lt; 0 or temperature_k &lt;= 0:
+        raise ValueError(&quot;Invalid kinetic inputs&quot;)
+    if b == 0:
+        return immobile_chi(s, rho, mu, p, k, slope_per_joule)
+    pump = k*p/(1-p)
+    beta = 1/(KB*temperature_k)
+    numerator = b*beta*(1+pump/(s+b))-k*slope_per_joule
+    return rho*mu*mu*p/3 * numerator/(s+pump+k+b)
+
+
+def rotating_chi_matrix(s: complex, rho: float, mu: float,
+                        p: float, k: float, a: float,
+                        b: float, temperature_k: float = T) -&gt; complex:
+    &quot;&quot;&quot;Independent 2x2 resolvent calculation of the same linear model.&quot;&quot;&quot;
+    pump = k*p/(1-p)
+    beta = 1/(KB*temperature_k)
+    matrix = np.array([[-k-b, pump], [k, -pump-b]], dtype=complex)
+    force = mu*p/3*np.array([b*beta-k*a, k*a], dtype=complex)
+    response = np.linalg.solve(s*np.eye(2)-matrix, force)
+    return rho*mu*response[0]
+
+
+def reaction_current_noise(omega: float, molecule_number: float,
+                           q2_mean: float, p: float, k: float) -&gt; float:
+    &quot;&quot;&quot;One-sided current noise PSD [A^2/Hz] for independent Markov sites.
+
+    Convention: one-sided frequency f&gt;=0, omega=2*pi*f; variance of Q is the
+    integral S_Q(f) df. Pump and recombination jumps are stochastic.
+    &quot;&quot;&quot;
+    relaxation = k/(1-p)
+    return 4*molecule_number*q2_mean*p*(1-p)*relaxation*omega**2 \
+           /(relaxation**2+omega**2)
+
+
+def measurement_budget() -&gt; dict[str, Any]:
+    &quot;&quot;&quot;One instrument-design example, NOT a qualified material prediction.&quot;&quot;&quot;
+    _, a_ev = mlj_log_rate_and_slope(1.5)
+    a = a_ev/E
+    rho = NA * 1.0  # 1 mol/m^3 = 1 millimolar; design assumption, not measured
+    area, thickness, epsr = 1e-8, 1e-6, 2.0
+    mu = 1.5e-9*E  # measured effective dipole target, NOT raw charge separation
+    p, k = .01, .56e9
+    pump = k*p/(1-p)
+    relaxation = pump+k
+    capacitance = EPS0*epsr*area/thickness
+    cr = -area/thickness*rho*mu**2/3*p*(1-p)*a
+    omega = relaxation
+    y = 1j*omega*area/thickness*immobile_chi(1j*omega,rho,mu,p,k,a)
+    gain = -float(y.real)
+    number = rho*area*thickness
+    photon_j = H*C/600e-9
+    absorbed_minimum = number*p*k*photon_j
+    voltage_peak = .01
+    output_small_signal = .5*gain*voltage_peak**2
+    noise = reaction_current_noise(omega, number, mu**2/(3*thickness**2), p, k)
+    noise_temperature_ratio = 1/(KB*a)
+    return {
+        &quot;status&quot;: &quot;UNMEASURED instrument-design budget; no device performance claim&quot;,
+        &quot;inputs&quot;: {
+            &quot;k_s&quot;: {&quot;value&quot;:k,&quot;status&quot;:&quot;published amplitude-average at source conditions&quot;},
+            &quot;gap_ev&quot;: {&quot;value&quot;:1.5,&quot;status&quot;:&quot;selected nominal point near low end of source CR1 range; not a precise same-device energy measurement&quot;},
+            &quot;slope_per_ev&quot;: {&quot;value&quot;:a_ev,&quot;status&quot;:&quot;derivative of published MLJ fit at fixed coupling and reorganization; field-slope transfer unverified&quot;},
+            &quot;temperature_k&quot;: {&quot;value&quot;:T,&quot;status&quot;:&quot;chosen room-temperature evaluation&quot;},
+            &quot;density_m3&quot;: {&quot;value&quot;:rho,&quot;status&quot;:&quot;design concentration target, not source measurement&quot;},
+            &quot;effective_dipole_Cm&quot;: {&quot;value&quot;:mu,&quot;status&quot;:&quot;required measurable target; not established for CdS-AZ in the proposed cell&quot;},
+            &quot;occupation&quot;: {&quot;value&quot;:p,&quot;status&quot;:&quot;pump-occupation target, not measured&quot;},
+            &quot;area_m2&quot;: {&quot;value&quot;:area,&quot;status&quot;:&quot;proposed geometry&quot;},
+            &quot;thickness_m&quot;: {&quot;value&quot;:thickness,&quot;status&quot;:&quot;proposed active thickness; extra interfaces omitted from this ideal budget&quot;},
+            &quot;relative_background_permittivity&quot;: {&quot;value&quot;:epsr,&quot;status&quot;:&quot;design assumption, must measure at RF under illumination&quot;},
+            &quot;rotation&quot;: {&quot;value&quot;:&quot;immobile&quot;,&quot;status&quot;:&quot;ideal comparison; actual orientation persistence not acquired&quot;},
+        },
+        &quot;derived&quot;: {
+            &quot;pump_creation_rate_s&quot;:pump,
+            &quot;kinetic_relaxation_s&quot;:relaxation,
+            &quot;corner_frequency_hz&quot;:omega/(2*np.pi),
+            &quot;background_capacitance_F&quot;:capacitance,
+            &quot;population_capacitance_F&quot;:cr,
+            &quot;population_gain_S&quot;:gain,
+            &quot;background_susceptance_S&quot;:omega*capacitance,
+            &quot;loss_tangent_upper_limit_if_no_other_losses&quot;:gain/(omega*capacitance),
+            &quot;probe_voltage_peak_V&quot;:voltage_peak,
+            &quot;in_phase_current_peak_A&quot;:gain*voltage_peak,
+            &quot;available_small_signal_output_W&quot;:output_small_signal,
+            &quot;minimum_absorbed_pump_W&quot;:absorbed_minimum,
+            &quot;small_signal_output_to_absorbed_ratio&quot;:output_small_signal/absorbed_minimum,
+            &quot;ideal_population_current_noise_A_per_sqrtHz&quot;:math.sqrt(noise),
+            &quot;noise_to_gain_equivalent_temperature_K&quot;:noise_temperature_ratio,
+            &quot;rotation_time_critical_s&quot;:1/(k*a*KB*T),
+            &quot;free_carrier_escape_lifetime_mobility_product_max_m2_per_V&quot;:mu**2*a/(6*E),
+            &quot;ratio_abs_Cr_to_C0&quot;:-cr/capacitance,
+            &quot;resonator_Q_min_if_Ctotal_equals_C0&quot;:omega*capacitance/gain,
+            &quot;molecule_number&quot;:number,
+            &quot;mean_center_spacing_m&quot;:rho**(-1/3),
+            &quot;productive_cycles_per_molecule_s&quot;:p*k,
+            &quot;destruction_probability_per_cycle_max_for_90pct_retention_1000s&quot;:-math.log(.9)/(p*k*1000),
+            &quot;heat_density_W_m3_if_output_negligible&quot;:absorbed_minimum/(area*thickness),
+        },
+    }
+
+
+def checks() -&gt; list[dict[str, Any]]:
+    out: list[dict[str,Any]]=[]
+    def record(name: str, passed: bool, detail: str) -&gt; None:
+        out.append({&quot;name&quot;:name,&quot;passed&quot;:bool(passed),&quot;detail&quot;:detail})
+        if not passed:
+            raise AssertionError(name+&quot;: &quot;+detail)
+
+    # Finite differences of the published MLJ fit, no experimental refit.
+    slopes=[]
+    for d in np.linspace(.2,2.0,91):
+        _, a=mlj_log_rate_and_slope(float(d))
+        h=1e-6
+        fd=-(mlj_log_rate_and_slope(float(d+h))[0]-mlj_log_rate_and_slope(float(d-h))[0])/(2*h)
+        slopes.append(abs(a-fd))
+    record(&quot;MLJ analytic derivative versus centered differences&quot;,max(slopes)&lt;1e-7,
+           f&quot;91 gaps; max absolute error {max(slopes):.4g} per eV&quot;)
+    err=max(abs(mlj_log_rate_and_slope(float(d),terms=100)[1]-mlj_log_rate_and_slope(float(d),terms=200)[1]) for d in np.linspace(.2,2.,91))
+    record(&quot;MLJ truncation convergence&quot;,err&lt;1e-12,f&quot;100 vs 200 terms; max slope change {err:.4g}&quot;)
+
+    # Marcus reciprocal kinetics: input rate sensitivities are not independent.
+    q, drive, reorg, pref, temp=.3,.4374,.0729,1e9,423.
+    kt=KB*temp/E
+    errors=[]
+    for v in np.linspace(-.2,.2,41):
+        ap,am,bp,bm=marcus_rates(float(v),q,drive,reorg,pref,temp)
+        errors.extend([abs(math.log(ap/am)-(drive/2+q*v)/kt),
+                       abs(math.log(bp/bm)-(drive/2-q*v)/kt),
+                       abs(math.log(ap*bp/(am*bm))-drive/kt)])
+    record(&quot;Marcus local detailed balance and voltage-independent affinity&quot;,max(errors)&lt;1e-12,
+           f&quot;41 voltages; max log-ratio error {max(errors):.4g}&quot;)
+    def stationary(v: float) -&gt; float:
+        ap,am,bp,bm=marcus_rates(v,q,drive,reorg,pref,temp)
+        return (ap+bm)/(ap+am+bp+bm)
+    h=1e-6
+    derivative=(stationary(h)-stationary(-h))/(2*h)
+    gamma=drive/(2*reorg)
+    expected=q/(4*kt)*(1-gamma*math.tanh(drive/(4*kt)))
+    record(&quot;Marcus coupled gamma reproduces chemical response&quot;,abs(derivative-expected)&lt;1e-8,
+           f&quot;gamma={gamma:.8g}; derivative={derivative:.8g} /V&quot;)
+    delta=math.sqrt(2*reorg*kt)
+    objective=lambda x:x/reorg*math.exp(-x*x/(4*reorg*kt))
+    record(&quot;Strong-drive negative-conductance optimum&quot;,objective(delta)&gt;max(objective(.99*delta),objective(1.01*delta)),
+           &quot;Scoped constant-prefactor, strong-drive Marcus expression; not a materials optimization&quot;)
+
+    # Analytic orientational response compared with direct linear algebra.
+    rho=NA; mu=1.5e-9*E; p=.01; k=.56e9
+    a=mlj_log_rate_and_slope(1.5)[1]/E
+    errs=[]
+    for b in [1e5,1e7,1e8,1e9]:
+        for omega in np.geomspace(1e5,1e12,81):
+            analytic=rotating_chi(1j*omega,rho,mu,p,k,a,b)
+            direct=rotating_chi_matrix(1j*omega,rho,mu,p,k,a,b)
+            errs.append(abs(analytic-direct)/max(abs(direct),1e-30))
+    record(&quot;Rotation closed form versus 2x2 resolvent&quot;,max(errs)&lt;1e-10,
+           f&quot;324 complex evaluations; max relative discrepancy {max(errs):.4g}&quot;)
+    s=1j*k
+    limit=rotating_chi(s,rho,mu,p,k,a,1e-3)
+    fixed=immobile_chi(s,rho,mu,p,k,a)
+    record(&quot;Immobile limit&quot;,abs(limit-fixed)/abs(fixed)&lt;1e-9,
+           f&quot;relative discrepancy {abs(limit-fixed)/abs(fixed):.4g}&quot;)
+    grid=np.geomspace(1e4,1e13,2001)
+    bcrit=k*a*KB*T
+    no_gain=np.real(1j*grid*rotating_chi(1j*grid,rho,mu,p,k,a,2*bcrit))
+    has_gain=np.real(1j*grid*rotating_chi(1j*grid,rho,mu,p,k,a,.5*bcrit))
+    record(&quot;Fast rotation no-gain control&quot;,bool(np.all(no_gain&gt;0)),
+           &quot;b=2 bcrit; positive population+rotation absorption throughout finite test grid&quot;)
+    record(&quot;Slow rotation gain case&quot;,bool(np.any(has_gain&lt;0)),
+           &quot;b=0.5 bcrit; negative absorption exists in finite test grid, before other device losses&quot;)
+    normal=np.real(1j*grid*rotating_chi(1j*grid,rho,mu,p,k,-a,1e8))
+    record(&quot;Normal-region slope control&quot;,bool(np.all(normal&gt;0)),
+           &quot;Negative a produces positive absorption on test grid&quot;)
+    dark=rotating_chi(1j*grid,rho,mu,0.,k,a,1e8)
+    record(&quot;No-pump population-response control&quot;,bool(np.all(dark==0)),
+           &quot;Does not include passive background dielectric response&quot;)
+
+    # Independent time-domain integration of the linear angular equations.
+    b=.5*bcrit; pump=k*p/(1-p); rate=pump+k
+    omega=rate; ef=1e3; beta=1/(KB*T)
+    mat=np.array([[-k-b,pump],[k,-pump-b]])
+    forcing=mu*p/3*np.array([b*beta-k*a,k*a])*ef
+    # Normalize time by rate and moment by forcing/rate to avoid small atol.
+    scale=float(np.linalg.norm(forcing)/rate)
+    matn=mat/rate; fn=forcing/(rate*scale)
+    period=2*np.pi
+    def fun(tau: float, moment: np.ndarray) -&gt; np.ndarray:
+        return matn@moment+fn*np.cos(tau)
+    sol=solve_ivp(fun,[0,100*period],np.zeros(2),method=&quot;DOP853&quot;,rtol=1e-10,atol=1e-12,dense_output=True,max_step=.1)
+    if not sol.success:
+        raise RuntimeError(sol.message)
+    tau=np.linspace(80*period,100*period,20001)
+    m=sol.sol(tau)[0]*scale
+    phasor=(np.trapezoid(m*np.cos(tau),tau)-1j*np.trapezoid(m*np.sin(tau),tau))*2/(20*period)
+    theory=rotating_chi(1j*omega,rho,mu,p,k,a,b)*ef/(rho*mu)
+    record(&quot;Rotation frequency response versus time-domain integration&quot;,abs(phasor-theory)/abs(theory)&lt;1e-7,
+           f&quot;100 cycles integrated; relative phasor error {abs(phasor-theory)/abs(theory):.4g}; same model, no physical validation&quot;)
+
+    # The optical preparation state is not part of the two-state model.
+    # Compare a three-state G-&gt;X-&gt;C-&gt;G response with its fast-X reduction,
+    # with constant injection and pump rates and zero X dipole, just for this
+    # limiting calculation. No injection yield or X dipole is measured here.
+    inj=.038e12
+    W=k*p/(1-p)  # unit-yield limiting case; actual pump rate needs measurement
+    J=np.array([[-W-inj,-W],[inj,-k]])
+    g=1/(1+W/inj+W/k)
+    x=W*g/inj
+    pc=inj*x/k
+    field_force=np.array([0.,-k*a*mu*pc])
+    om=k/(1-p)
+    c_resp=np.linalg.solve(1j*om*np.eye(2)-J,field_force)[1]
+    approximate=-mu*p*(1-p)*a*(k/(1-p))/(1j*om+k/(1-p))
+    three_error=abs(c_resp-approximate)/abs(approximate)
+    record(&quot;Fast optical-intermediate reduction&quot;,three_error&lt;1e-3,
+           f&quot;G-X-C generator vs two-state limit; relative error {three_error:.4g}; zero X dipole and unit yield assumed only in this test&quot;)
+
+    # Geometry cancellation and stochastic noise-to-gain identity.
+    ratios=[]; noise_ratios=[]
+    for d in [1e-7,1e-6,1e-5]:
+        area=1e-8
+        q2=mu*mu/(3*d*d); num=rho*area*d
+        cr=-num*q2*p*(1-p)*a
+        c0=EPS0*2*area/d
+        ratios.append(-cr/c0)
+        om=k/(1-p)
+        gain=-float(np.real(1j*om*area/d*immobile_chi(1j*om,rho,mu,p,k,a)))
+        noise_ratios.append(reaction_current_noise(om,num,q2,p,k)/(4*gain))
+    record(&quot;Filled-gap reciprocal geometry cancellation&quot;,np.ptp(ratios)&lt;1e-15,
+           f&quot;|Cr|/C0={ratios[0]:.8g} at all 3 thicknesses; fixed density and material response&quot;)
+    record(&quot;Population shot-noise to gain identity&quot;,np.max(np.abs(np.array(noise_ratios)*a-1))&lt;1e-12,
+           &quot;S_I/(4 |Re Y_population|)=1/a for independent fixed isotropic two-state sites&quot;)
+    bd=measurement_budget(); der=bd[&quot;derived&quot;]
+    ratio_formula=a*(mu*.01/1e-6)**2/(12*H*C/600e-9)
+    record(&quot;Small-signal optical energy-ratio identity&quot;,abs(ratio_formula/der[&quot;small_signal_output_to_absorbed_ratio&quot;]-1)&lt;1e-12,
+           &quot;Ideal productive absorption and omega=R+k; no total system-efficiency claim&quot;)
+    # Mobile escaped charges introduce real conductivity even with blocking
+    # electrodes at frequencies where a bulk mobility description applies.
+    mobile_mu=1e-8; mobile_lifetime=1e-3  # illustrative only, not measurements
+    threshold=mu**2*a/(6*E)
+    escape=threshold/(mobile_mu*mobile_lifetime)
+    sigma_mobile=E*rho*p*k*escape*mobile_lifetime*mobile_mu
+    sigma_gain=rho*mu**2*p*k*a/6
+    record(&quot;Escaped-carrier leakage product bound&quot;,abs(sigma_mobile/sigma_gain-1)&lt;1e-12,
+           &quot;At omega=R+k: f_escape*tau_free*mobility_sum &lt; mu_dipole^2*a/(6e); no mobility or escape fraction acquired&quot;)
+    return out
+
+
+def write_results(outdir: Path) -&gt; dict[str,Any]:
+    outdir.mkdir(parents=True,exist_ok=True)
+    test_results=checks()
+    budget=measurement_budget()
+    _, aev=mlj_log_rate_and_slope(1.5)
+    k=.56e9; p=.01; a=aev/E
+    critical=1/(k*a*KB*T)
+    rotation=[]
+    frequencies=np.geomspace(1e5,5e8,701)
+    for tau_ns in [2.,5.,8.,12.,20.,50.,100.,1e9]:
+        b=1/(tau_ns*1e-9)
+        adm=1j*(2*np.pi*frequencies)*1e-2*rotating_chi(1j*2*np.pi*frequencies,NA,1.5e-9*E,p,k,a,b)
+        idx=int(np.argmin(adm.real))
+        rotation.append({&quot;tau_ns&quot;:tau_ns,&quot;any_negative_on_grid&quot;:bool(np.min(adm.real)&lt;0),
+                         &quot;minimum_population_and_rotation_ReY_S&quot;:float(adm.real[idx]),
+                         &quot;frequency_at_grid_minimum_Hz&quot;:float(frequencies[idx]),
+                         &quot;population_and_rotation_ReY_at_90MHz_S&quot;:float(np.real(1j*2*np.pi*90e6*1e-2*rotating_chi(1j*2*np.pi*90e6,NA,1.5e-9*E,p,k,a,b)))})
+    with (outdir/&#x27;mlj_slope.csv&#x27;).open(&#x27;w&#x27;,newline=&#x27;&#x27;) as f:
+        writer=csv.writer(f);writer.writerow([&#x27;gap_eV&#x27;,&#x27;log_relative_rate&#x27;,&#x27;minus_dlogk_dgap_per_eV&#x27;])
+        for d in np.linspace(.2,2.,181):
+            z=mlj_log_rate_and_slope(float(d));writer.writerow([d,*z])
+    with (outdir/&#x27;rotation_response.csv&#x27;).open(&#x27;w&#x27;,newline=&#x27;&#x27;) as f:
+        writer=csv.writer(f);writer.writerow([&#x27;frequency_Hz&#x27;,&#x27;tau_rotation_ns&#x27;,&#x27;population_plus_rotation_real_Y_S&#x27;,&#x27;population_plus_rotation_imag_Y_S&#x27;])
+        for tau_ns in [5.,8.,20.,50.,100.]:
+            yy=1j*2*np.pi*frequencies*1e-2*rotating_chi(1j*2*np.pi*frequencies,NA,1.5e-9*E,p,k,a,1/(tau_ns*1e-9))
+            for ff,v in zip(frequencies,yy):writer.writerow([ff,tau_ns,v.real,v.imag])
+    results={&quot;scope&quot;:&quot;Analytic feasibility and instrument-budget calculations; no measured gain or qualified material&quot;,
+             &quot;measured_source&quot;:&quot;Wang et al., Nature Communications 12,6333 (2021), DOI 10.1038/s41467-021-26705-x&quot;,
+             &quot;budget&quot;:budget,&quot;rotation_critical_time_s&quot;:critical,&quot;rotation_grid&quot;:rotation,
+             &quot;checks&quot;:test_results,
+             &quot;counts&quot;:{&quot;test_groups&quot;:len(test_results),&quot;passed&quot;:sum(r[&#x27;passed&#x27;] for r in test_results)},
+             &quot;environment&quot;:{&quot;python&quot;:platform.python_version(),&quot;numpy&quot;:np.__version__,&quot;scipy&quot;:scipy.__version__}}
+    (outdir/&#x27;results.json&#x27;).write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+    return results
+
+
+def main() -&gt; None:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(__file__).parent/&#x27;results&#x27;)
+    args=parser.parse_args()
+    r=write_results(args.output)
+    print(json.dumps({&quot;counts&quot;:r[&#x27;counts&#x27;],&quot;budget&quot;:r[&#x27;budget&#x27;][&#x27;derived&#x27;],&quot;rotation_grid&quot;:r[&#x27;rotation_grid&#x27;]},indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>

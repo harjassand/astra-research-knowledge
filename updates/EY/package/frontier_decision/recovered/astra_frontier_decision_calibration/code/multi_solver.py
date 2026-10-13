@@ -1,0 +1,53 @@
+"""Fresh multivariate residual-jet construction. No solver residual is a certificate.
+Axes: V, U, d. Coefficients are derivatives, not Taylor coefficients.
+"""
+from __future__ import annotations
+import math,time,json,argparse,resource
+from pathlib import Path
+import numpy as np
+import scipy.sparse.linalg as sla
+from fast_algebra import build,basis
+from jet_solver import JetSolver,align
+
+def indices(order,dim=3):
+ import itertools
+ return sorted([a for a in itertools.product(range(order+1),repeat=dim) if sum(a)<=order],key=lambda a:(sum(a),a))
+def predecessor(a,i):
+ q=list(a);q[i]-=1;return tuple(q)
+
+def run(fw,gw,out,order=3,U=4.,V=1109/512,d=2.,tol=2e-11):
+ start=time.perf_counter();s=JetSolver(fw,gw,U=U,V=V,d=d)
+ eu,FU=build(fw,0.,1.,0.);ou,GU=build(gw,0.,1.,0.)
+ # Every U derivative output occurs in the main nonzero-U operator or its row union.
+ s.FU=align(eu,FU,s.er);s.GU=align(ou,GU,s.orr)
+ inds=indices(order);fs=[];gs=[];us=[];logs=[];pos={a:i for i,a in enumerate(inds)}
+ for alpha in inds:
+  st=time.perf_counter();srcO=np.zeros(len(s.orr));srcE=np.zeros(len(s.er))
+  if not any(alpha):srcO=-s.j.copy()
+  for axis,count in enumerate(alpha):
+   if not count:continue
+   b=pos[predecessor(alpha,axis)]
+   if axis==0:srcO+=count*(s.BG@gs[b]);srcE+=count*(s.BF@fs[b])
+   elif axis==1:srcO+=count*(s.GU@gs[b]);srcE+=count*(s.FU@fs[b])
+   else:srcO[s.fidx]+=count*s.qf/d*fs[b];srcE[s.gidx]+=count*s.qg/d*gs[b]
+  rf=-s.N.T@(srcO[s.fidx]+s.AF.T@(s.ie*srcE))
+  rg=-(s.AG.T@(s.io*srcO)+srcE[s.gidx]);its=[0,0]
+  u,info=sla.cg(s.KF,rf,M=s.PF,rtol=tol,atol=0,maxiter=30000,callback=lambda x:its.__setitem__(0,its[0]+1))
+  if info:raise RuntimeError(('f',alpha,info))
+  g,info=sla.cg(s.KG,rg,M=s.PG,rtol=tol,atol=0,maxiter=30000,callback=lambda x:its.__setitem__(1,its[1]+1))
+  if info:raise RuntimeError(('g',alpha,info))
+  f=s.N@u;po=s.AG@g+srcO;pe=s.AF@f+srcE;po[s.fidx]+=s.qf*f;pe[s.gidx]+=s.qg*g
+  assert np.max(np.abs(pe[s.qe==0]),initial=0)<1e-8
+  q2=2*(po@(s.io*po)+pe@(s.ie*pe))
+  fs.append(f);gs.append(g);us.append(u);logs.append(dict(alpha=alpha,residual_squared=float(q2),iterations=its,seconds=time.perf_counter()-st));print(json.dumps(logs[-1]),flush=True)
+ out=Path(out);out.parent.mkdir(exist_ok=True,parents=True)
+ np.savez_compressed(str(out)+'.npz',fw=np.array(fw,dtype=np.int64),gw=np.array(gw,dtype=np.int64),fs=np.array(fs),gs=np.array(gs),us=np.array(us),indices=np.array(inds,dtype=np.int64))
+ rec=dict(parameters=dict(t=1.,U=U,V=V,d=d),axes=['V','U','d'],order=order,f_basis=len(fw),g_basis=len(gw),constraint_rank=s.rank,total_seconds=time.perf_counter()-start,jets=logs,peak_rss_KiB=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,prior_coefficients_used=False)
+ out.with_suffix('.json').write_text(json.dumps(rec,indent=2));print(json.dumps(rec),flush=True)
+ return rec
+if __name__=='__main__':
+ p=argparse.ArgumentParser();p.add_argument('--basis-file');p.add_argument('--L',type=int,default=8);p.add_argument('--V',type=float,default=1109/512);p.add_argument('--U',type=float,default=4.);p.add_argument('--d',type=float,default=2.);p.add_argument('--order',type=int,default=3);p.add_argument('--out',required=True);a=p.parse_args()
+ if a.basis_file:
+  q=np.load(a.basis_file);fw=[tuple(map(int,w)) for w in q['fw']];gw=[tuple(map(int,w)) for w in q['gw']]
+ else:fw=basis(a.L,1);gw=basis(a.L,0)
+ run(fw,gw,a.out,a.order,a.U,a.V,a.d)

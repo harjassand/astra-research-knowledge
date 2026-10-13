@@ -1,0 +1,80 @@
+<!doctype html><meta charset="utf-8"><title>N770 preserved original — pulse_calibration.py</title><p>Exact source display; evidence status remains scoped to its card.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Voltage-marked post-formation pulse calibration; NOT a power-gain test.
+
+Create charge pairs at zero field. After formation, apply +/-V and subtract a
+matched dark-step trace. This model predicts the slower population displacement
+only; real instrumental bandwidth, state polarizability and formation tails
+must be acquired separately. The step source supplies electrical energy.
+&quot;&quot;&quot;
+from pathlib import Path
+import json,csv
+import numpy as np
+from scipy.integrate import solve_ivp
+from scipy.constants import Boltzmann as KB, elementary_charge as E, Avogadro as NA
+from feasibility import mlj_log_rate_and_slope
+
+
+def main():
+    out=Path(__file__).resolve().parent/&#x27;results&#x27;
+    c=json.loads((out/&#x27;coupling_results.json&#x27;).read_text())
+    v=json.loads((out/&#x27;source_constrained_results.json&#x27;).read_text())
+    mu=c[&#x27;nominal&#x27;][&#x27;terminal_dipole_e_nm&#x27;]*E*1e-9
+    k=np.array([.996e9,.219e9]); w=np.array([.44,.56]); beta=1/(KB*298.15)
+    a=mlj_log_rate_and_slope(1.51)[1]/E
+    rho,area,d,pcreated=NA,1e-8,1e-6,.01
+    wait=.3e-9
+    p0=pcreated*np.exp(-k*wait)
+    tau=v[&#x27;derived&#x27;][&#x27;rigid_sphere_rotation_time_s&#x27;];b=1/tau
+    B=area/d*rho*mu**2*w*p0/3
+    t=np.linspace(0,30e-9,6001)
+    factors=(b*beta-k*a)/b
+    def q_per_v(times):
+        tt=np.asarray(times)
+        diff=np.exp(-k[:,None]*tt[None,:])*(-np.expm1(-b*tt[None,:]))
+        return np.sum(B[:,None]*factors[:,None]*diff,axis=0)
+    q=q_per_v(t)
+    current=np.sum(B[:,None]*factors[:,None]*(-k[:,None]*np.exp(-k[:,None]*t)
+                       +(k+b)[:,None]*np.exp(-(k+b)[:,None]*t)),axis=0)
+    # Independent integration for each component, normalized time to ns.
+    kn=k*1e-9;bn=b*1e-9
+    forcing=B*(b*beta-k*a)*1e-9
+    sol=solve_ivp(lambda tn,z:-(kn+bn)*z+forcing*np.exp(-kn*tn),[0,30],np.zeros(2),
+                  t_eval=t*1e9,method=&#x27;DOP853&#x27;,rtol=1e-10,atol=1e-28)
+    response_sum=sol.y.sum(axis=0)
+    idx=int(np.argmin(q))
+    # Whole integrated displacement is zero as time tends to infinity, not net DC work.
+    end=q_per_v(np.array([300e-9]))[0]
+    bsmall=1e-3
+    lim=np.sum(B[:,None]*(-k*a)[:,None]*t[None,:]*np.exp(-k[:,None]*t),axis=0)
+    approx=np.sum(B[:,None]*((bsmall*beta-k*a)/bsmall)[:,None]*np.exp(-k[:,None]*t)*(-np.expm1(-bsmall*t))[None,:],axis=0)
+    checks={
+      &#x27;zero_initial_population_displacement&#x27;:abs(q[0])&lt;1e-28,
+      &#x27;return_to_zero_after_reset&#x27;:abs(end)&lt;1e-28,
+      &#x27;linear_ODE_matches_closed_form&#x27;:float(np.max(abs(response_sum-q)))&lt;1e-25,
+      &#x27;initial_slope_negative_in_scoped_inverted_model&#x27;:bool(current[0]&lt;0),
+      &#x27;slow_rotation_limit&#x27;:float(np.max(abs(approx-lim)))&lt;1e-25
+    }
+    checks={name:bool(value) for name,value in checks.items()}
+    data={&#x27;status&#x27;:&#x27;Proposed calibration transient, not measured and not autonomous power&#x27;,
+          &#x27;scope&#x27;:&#x27;same mixture/host assumptions as final budget; ideal step and instantaneous completed formation&#x27;,
+          &#x27;created_occupation&#x27;:pcreated,&#x27;wait_after_ideal_creation_s&#x27;:wait,
+          &#x27;recombination_survival_at_step&#x27;:float(np.dot(w,np.exp(-k*wait))),
+          &#x27;maximum_voltage_for_example_V&#x27;:1.,
+          &#x27;predicted_peak_charge_per_volt_C_per_V&#x27;:float(q[idx]),
+          &#x27;predicted_peak_time_after_step_s&#x27;:float(t[idx]),
+          &#x27;predicted_initial_current_per_volt_A_per_V&#x27;:float(current[0]),
+          &#x27;linearization_parameter_a_mu_E_at_1V&#x27;:float(a*mu/d),
+          &#x27;checks&#x27;:checks,&#x27;check_count&#x27;:len(checks),&#x27;all_checks_pass&#x27;:all(checks.values()),
+          &#x27;limitations&#x27;:[&#x27;electrical step is an external energy source: this is calibration only&#x27;,
+             &#x27;source multiexponential formation is not instantaneous; use acquired convolution and wait dependence&#x27;,
+             &#x27;prompt polarization and state-dependent electronic polarizability require separate subtraction/model&#x27;,
+             &#x27;rotational diffusion and postformation hole hopping are not interchangeable&#x27;,
+             &#x27;instrument step response/readout needs subnanosecond bandwidth and matched-reference control&#x27;]}
+    (out/&#x27;pulse_calibration_results.json&#x27;).write_text(json.dumps(data,indent=2))
+    with (out/&#x27;pulse_calibration.csv&#x27;).open(&#x27;w&#x27;,newline=&#x27;&#x27;) as f:
+        z=csv.writer(f);z.writerow([&#x27;time_after_step_s&#x27;,&#x27;population_charge_per_volt_C_per_V&#x27;,&#x27;population_current_per_volt_A_per_V&#x27;])
+        z.writerows(zip(t,q,current))
+    print(json.dumps(data,indent=2))
+    if not all(checks.values()):raise AssertionError(&#x27;Pulse calibration check failed&#x27;)
+if __name__==&#x27;__main__&#x27;:main()
+</pre>
