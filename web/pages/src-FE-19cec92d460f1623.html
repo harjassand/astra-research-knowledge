@@ -1,0 +1,141 @@
+<!doctype html><meta charset="utf-8"><title>FE evidence — probe.py</title><p>Source or internal evidence;external correctness,priority and physical capability UNKNOWN.</p><pre>&quot;&quot;&quot;Development experiment: exact minimax conductance-query policy on soft-East kinetics.
+The learner receives only masses, edge endpoints, conductance bounds and an edge oracle.
+No trajectory, committor, facilitation parent or transport map enters its decisions.
+&quot;&quot;&quot;
+from pathlib import Path
+ROOT = Path(__file__).resolve().parent
+import os
+os.environ.setdefault(&#x27;OPENBLAS_NUM_THREADS&#x27;,&#x27;1&#x27;)
+os.environ.setdefault(&#x27;OMP_NUM_THREADS&#x27;,&#x27;1&#x27;)
+import time, json
+import numpy as np
+from scipy.linalg import solve, inv
+from scipy.sparse import coo_matrix
+from scipy.sparse.linalg import spsolve
+
+
+def soft_east(L=9, q=.08, softness=1e-5, seed=81426):
+    &quot;&quot;&quot;Open soft-East chain; last site is the absorbing target, others are relabelled.
+    This is a microscopic binary-state Markov model, NOT a fitted molecular MSM.
+    Source: product Bernoulli(q) conditioned on target site being zero.
+    &quot;&quot;&quot;
+    n=L-1; N=1&lt;&lt;n
+    rng=np.random.default_rng(seed)
+    order=list(rng.permutation(n))+[n]
+    parent={order[0]:None}
+    for j in range(1,L): parent[order[j]]=order[j-1]
+    ids=np.arange(N)
+    bits=((ids[:,None]&gt;&gt;np.arange(n))&amp;1)
+    counts=bits.sum(axis=1)
+    m=q**counts*(1-q)**(n-counts)
+    aa=[]; bb=[]; base=[]; fac=[]; dims=[]
+    for i in range(n):
+        for x in ids[bits[:,i]==0]:
+            aa.append(int(x));bb.append(int(x^(1&lt;&lt;i)));dims.append(i)
+            base.append(m[x]*q)
+            p=parent[i]
+            fac.append(1. if p is None or ((int(x)&gt;&gt;p)&amp;1) else softness)
+    for x in ids:
+        aa.append(int(x));bb.append(-1);dims.append(n);base.append(m[x]*q)
+        p=parent[n]
+        fac.append(1. if (int(x)&gt;&gt;p)&amp;1 else softness)
+    return {&#x27;a&#x27;:np.array(aa),&#x27;b&#x27;:np.array(bb),&#x27;m&#x27;:m,&#x27;base&#x27;:np.array(base),
+            &#x27;fac&#x27;:np.array(fac),&#x27;dims&#x27;:np.array(dims),&#x27;order&#x27;:order,
+            &#x27;q&#x27;:q,&#x27;softness&#x27;:softness,&#x27;L&#x27;:L}
+
+def matrix(model, c):
+    a,b=model[&#x27;a&#x27;],model[&#x27;b&#x27;]; N=len(model[&#x27;m&#x27;]); mask=b&gt;=0
+    rows=np.r_[a,b[mask],a[mask],b[mask]]
+    cols=np.r_[a,b[mask],b[mask],a[mask]]
+    data=np.r_[c,c[mask],-c[mask],-c[mask]]
+    return coo_matrix((data,(rows,cols)),shape=(N,N)).tocsc()
+
+def edge_values(K, m, a,b):
+    u=K@m; v=u[a].copy(); R=K[a,a].copy(); ok=b&gt;=0
+    v[ok]-=u[b[ok]]
+    R[ok]+=K[b[ok],b[ok]]-2*K[a[ok],b[ok]]
+    return u,v,R
+
+def update(K, a,b, delta):
+    if delta==0:return
+    k=K[:,a].copy()
+    if b&gt;=0:k-=K[:,b]
+    R=k[a]-(k[b] if b&gt;=0 else 0.)
+    den=1+delta*R
+    if den&lt;=0: raise ArithmeticError(&#x27;loss of positive definiteness&#x27;)
+    K-= (delta/den)*np.outer(k,k)
+
+def run(model, policy=&#x27;minimax&#x27;, rtol=.10, seed=1, max_queries=None, refresh=64, oracle=None):
+    start=time.perf_counter();a,b,m=model[&#x27;a&#x27;],model[&#x27;b&#x27;],model[&#x27;m&#x27;]
+    base=model[&#x27;base&#x27;];E=len(a);N=len(m)
+    if oracle is None:
+        # A fixture oracle: only selected indices are accessed, never used for scores.
+        oracle=lambda e: model[&#x27;fac&#x27;][e]
+    observations=[]
+    lo=base*model[&#x27;softness&#x27;];hi=base.copy();seen=np.zeros(E,dtype=bool)
+    kl=inv(matrix(model,lo).toarray(),check_finite=False)
+    kh=inv(matrix(model,hi).toarray(),check_finite=False)
+    rng=np.random.default_rng(seed)
+    hist=[];selected=[];max_queries=E if max_queries is None else max_queries
+    bad=0
+    for step in range(max_queries+1):
+        ul,vl,rl=edge_values(kl,m,a,b);uh,vh,rh=edge_values(kh,m,a,b)
+        Fmax=float(m@ul);Fmin=float(m@uh)
+        if step%16==0 or Fmax/Fmin&lt;=1+rtol or step==max_queries:
+            hist.append({&#x27;queries&#x27;:step,&#x27;lower&#x27;:Fmin,&#x27;upper&#x27;:Fmax,&#x27;ratio&#x27;:Fmax/Fmin,
+                         &#x27;seconds&#x27;:time.perf_counter()-start})
+        if Fmax/Fmin&lt;=1+rtol or step==max_queries:break
+        width=hi-lo
+        if policy==&#x27;minimax&#x27;:
+            improve_if_high=width*vl**2/(1+width*rl)
+            denom=1-width*rh
+            improve_if_low=width*vh**2/np.maximum(denom,1e-300)
+            score=np.minimum(improve_if_high,improve_if_low)
+            score[seen]=-1
+            e=int(np.argmax(score))
+        elif policy==&#x27;relative&#x27;:
+            from relative_query import worst_relative
+            worst,_=worst_relative(Fmax,Fmin,vl,vh,rl,rh,width)
+            worst[seen]=np.inf;e=int(np.argmin(worst))
+        elif policy==&#x27;pessimistic&#x27;:
+            score=width*vl**2/(1+width*rl);score[seen]=-1;e=int(np.argmax(score))
+        elif policy==&#x27;optimistic&#x27;:
+            score=width*vh**2/np.maximum(1-width*rh,1e-300);score[seen]=-1;e=int(np.argmax(score))
+        elif policy==&#x27;random&#x27;:
+            e=int(rng.choice(np.flatnonzero(~seen)))
+        else:raise ValueError(policy)
+        observed=float(oracle(e));observations.append(observed)
+        if not model[&#x27;softness&#x27;] &lt;= observed &lt;= 1.:raise ValueError(&#x27;oracle violates supplied envelope&#x27;)
+        value=base[e]*observed # sole rate-oracle access in the learner
+        selected.append(e)
+        update(kl,a[e],b[e],value-lo[e])
+        update(kh,a[e],b[e],value-hi[e])
+        lo[e]=hi[e]=value;seen[e]=True
+        if (step+1)%refresh==0:
+            kl=inv(matrix(model,lo).toarray(),check_finite=False)
+            kh=inv(matrix(model,hi).toarray(),check_finite=False)
+    # Fresh solves avoid reporting accumulated rank-update error as a certificate.
+    Fl=float(m@spsolve(matrix(model,hi),m));Fu=float(m@spsolve(matrix(model,lo),m))
+    return {&#x27;policy&#x27;:policy,&#x27;queries&#x27;:len(selected),&#x27;possible_edges&#x27;:E,&#x27;states&#x27;:N,
+            &#x27;lower&#x27;:Fl,&#x27;upper&#x27;:Fu,&#x27;ratio&#x27;:Fu/Fl,&#x27;seconds&#x27;:time.perf_counter()-start,
+            &#x27;history&#x27;:hist,&#x27;selected_edges&#x27;:selected,&#x27;observed_facilitations&#x27;:observations,&#x27;queried_dimensions&#x27;:np.bincount(model[&#x27;dims&#x27;][selected],minlength=model[&#x27;L&#x27;]).tolist(),
+            &#x27;max_relative_row_residual_lower&#x27;:float(np.max(np.abs(matrix(model,hi)@spsolve(matrix(model,hi),m)-m)/m)),
+            &#x27;max_relative_row_residual_upper&#x27;:float(np.max(np.abs(matrix(model,lo)@spsolve(matrix(model,lo),m)-m)/m))}
+
+if __name__==&#x27;__main__&#x27;:
+    output=[]
+    for L,q,soft in [(8,.1,1e-4),(9,.08,1e-5),(10,.05,1e-6)]:
+        model=soft_east(L,q,soft)
+        t=time.perf_counter(); c=model[&#x27;base&#x27;]*model[&#x27;fac&#x27;]
+        truth=float(model[&#x27;m&#x27;]@spsolve(matrix(model,c),model[&#x27;m&#x27;]))
+        ref_seconds=time.perf_counter()-t
+        print(&#x27;MODEL&#x27;,L,q,soft,len(model[&#x27;m&#x27;]),len(c),&#x27;truth&#x27;,truth,&#x27;solve secs&#x27;,ref_seconds,flush=True)
+        runs=[]
+        for policy in [&#x27;minimax&#x27;,&#x27;optimistic&#x27;,&#x27;pessimistic&#x27;,&#x27;random&#x27;]:
+            r=run(model,policy)
+            runs.append(r)
+            print(policy,&#x27;queries&#x27;,r[&#x27;queries&#x27;],&#x27;ratio&#x27;,r[&#x27;ratio&#x27;],&#x27;time&#x27;,r[&#x27;seconds&#x27;],&#x27;bracket&#x27;,r[&#x27;lower&#x27;],r[&#x27;upper&#x27;],flush=True)
+        output.append({&#x27;L&#x27;:L,&#x27;q&#x27;:q,&#x27;softness&#x27;:soft,&#x27;truth&#x27;:truth,&#x27;direct_solve_seconds&#x27;:ref_seconds,
+                       &#x27;hidden_chain_order&#x27;:[int(x) for x in model[&#x27;order&#x27;]],&#x27;runs&#x27;:runs})
+        with open(str(ROOT / &#x27;probe_results.json&#x27;),&#x27;w&#x27;) as f:json.dump(output,f,indent=2)
+</pre>

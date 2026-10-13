@@ -1,0 +1,113 @@
+<!doctype html><meta charset="utf-8"><title>FE evidence — exact_query_counterexamples.py</title><p>Source or internal evidence;external correctness,priority and physical capability UNKNOWN.</p><pre>&quot;&quot;&quot;Independent rational verification of two failed endpoint transfers.
+
+The search provenance belongs to the hidden-gate worker. This implementation
+uses a directly inverted two-by-two grounded matrix and Python Fraction only.
+It checks explicit counterexamples, not an exhaustive class or a new algorithm.
+Run with --output-dir to keep evidence writes in a new owned directory.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import product
+from pathlib import Path
+import argparse, json, platform
+
+
+def F(c, m=(Q(1), Q(1))):
+    a, b, c = c
+    x, y = m
+    return (b*x*x+a*y*y+c*(x+y)**2)/(a*b+a*c+b*c)
+
+
+def ratio(lo, hi, m):
+    return F(lo, m)/F(hi, m)
+
+
+def one_step(lo, hi, m, excluded):
+    candidates = {}
+    for e in range(3):
+        if e in excluded:
+            continue
+        vals = []
+        for t in [lo[e], hi[e]]:
+            ll, hh = list(lo), list(hi)
+            ll[e] = hh[e] = t
+            vals.append(ratio(ll, hh, m))
+        candidates[e] = max(vals)
+    return min(candidates.values()), candidates
+
+
+def record(q):
+    return {&quot;exact&quot;: str(q), &quot;approximate&quot;: float(q)}
+
+
+def main(out):
+    lo = [Q(1, 4), Q(8), Q(1, 8)]
+    hi = [Q(33, 4), Q(72), Q(5, 8)]
+    m = [Q(1), Q(1)]
+    rows = []
+    for t in [lo[0], Q(5, 4), hi[0]]:
+        ll, hh = lo.copy(), hi.copy()
+        ll[0] = hh[0] = t
+        value, options = one_step(ll, hh, m, {0})
+        rows.append({&quot;answer_a&quot;: str(t), &quot;value&quot;: record(value),
+                     &quot;second_query_scores&quot;: {str(k): record(v) for k, v in options.items()}})
+    peak = Q(rows[1][&quot;value&quot;][&quot;exact&quot;])
+    endpoint = max(Q(rows[0][&quot;value&quot;][&quot;exact&quot;]), Q(rows[2][&quot;value&quot;][&quot;exact&quot;]))
+    assert peak &gt; endpoint
+    # This is the value AFTER the fixed first query; do not claim that this
+    # particular first query is optimal among initial choices.
+    initial_endpoint_values = {}
+    for first in range(3):
+        scores = []
+        for t in [lo[first], hi[first]]:
+            ll, hh = lo.copy(), hi.copy()
+            ll[first] = hh[first] = t
+            scores.append(one_step(ll, hh, m, {first})[0])
+        initial_endpoint_values[str(first)] = record(max(scores))
+    endpoint_dp = min(Q(r[&quot;exact&quot;]) for r in initial_endpoint_values.values())
+    real_lower = min(peak, Q(initial_endpoint_values[&quot;1&quot;][&quot;exact&quot;]),
+                     Q(initial_endpoint_values[&quot;2&quot;][&quot;exact&quot;]))
+    assert real_lower &gt; endpoint_dp
+
+    lo2 = [Q(1, 8), Q(2), Q(4)]
+    hi2 = [Q(1025, 8), Q(10), Q(6)]
+    m2 = [Q(1, 2), Q(4)]
+    joint_rows = []
+    for t in [Q(0), Q(1, 4), Q(1)]:
+        a, b = Q(1, 8)+128*t, 2+8*t
+        rr = F([a,b,lo2[2]],m2)/F([a,b,hi2[2]],m2)
+        joint_rows.append({&quot;parameter&quot;: str(t), &quot;ratio&quot;: record(rr)})
+    assert Q(joint_rows[1][&quot;ratio&quot;][&quot;exact&quot;]) &gt; max(
+        Q(joint_rows[0][&quot;ratio&quot;][&quot;exact&quot;]), Q(joint_rows[2][&quot;ratio&quot;][&quot;exact&quot;]))
+    assert all(x &gt; 0 for x in lo+lo2)
+    relative_rows=[]
+    for t in [Q(1,8),Q(6),Q(513,32)]:
+        rr=F([Q(1),t,Q(8)],[Q(2),Q(8)])/F([Q(2),4*t,Q(10)],[Q(2),Q(8)])
+        formula=2*(t+216)*(12*t+5)/((2*t+141)*(9*t+8))
+        assert rr == formula
+        relative_rows.append({&quot;interval&quot;: [str(t),str(4*t)],&quot;ratio&quot;:record(rr)})
+    assert Q(relative_rows[1][&quot;ratio&quot;][&quot;exact&quot;])&gt;max(
+        Q(relative_rows[0][&quot;ratio&quot;][&quot;exact&quot;]),Q(relative_rows[2][&quot;ratio&quot;][&quot;exact&quot;]))
+    report = dict(status=&quot;PASS&quot;, runtime=platform.python_version(), arithmetic=&quot;exact fractions&quot;,
+        matrix=&quot;[[a+c,-c],[-c,b+c]]&quot;, edges=[&quot;0-ground&quot;,&quot;1-ground&quot;,&quot;0-1&quot;],
+        first_fixed_adaptive=dict(lower=list(map(str,lo)),upper=list(map(str,hi)),masses=list(map(str,m)),
+            rows=rows,interior_excess=record(peak-endpoint),
+            endpoint_only_initial_scores=initial_endpoint_values,
+            endpoint_only_two_query_minimax=record(endpoint_dp),
+            true_two_query_minimax_lower_bound=record(real_lower),
+            scope=&quot;Endpoint-only dynamic programming strictly underestimates deterministic two-query minimax ratio. Exact global optimum is not computed; randomized or average-case policies are not addressed.&quot;),
+        joint_rank_two=dict(lower=list(map(str,lo2)),upper=list(map(str,hi2)),masses=list(map(str,m2)),
+            update=&quot;a=1/8+128t,b=2+8t,c unresolved in [4,6],t in [0,1]&quot;, rows=joint_rows,
+            scope=&quot;Refutes a common-scalar rank-two extension; independent-coordinate fixed batches retain their vertex theorem.&quot;),
+        relative_precision=dict(lower=[&quot;1&quot;,&quot;1/8&quot;,&quot;8&quot;],upper=[&quot;2&quot;,&quot;513/8&quot;,&quot;10&quot;],masses=[&quot;2&quot;,&quot;8&quot;],
+            queried_edge=&quot;1-ground&quot;, legal_intervals=&quot;[a,4a], a in [1/8,513/32]&quot;,rows=relative_rows,
+            scope=&quot;An interior relative-error interval is worse than both end intervals; the bounded additive-width endpoint theorem remains intact.&quot;),
+        universal_proof_checked=False, historical_priority=&quot;UNKNOWN&quot;)
+    out.mkdir(parents=True,exist_ok=True)
+    (out/&quot;EXACT_QUERY_COUNTEREXAMPLES.json&quot;).write_text(json.dumps(report,indent=2)+&quot;\n&quot;)
+    print(json.dumps(report,indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    p=argparse.ArgumentParser();p.add_argument(&quot;--output-dir&quot;,type=Path,required=True)
+    main(p.parse_args().output_dir)
+</pre>

@@ -1,0 +1,73 @@
+<!doctype html><meta charset="utf-8"><title>FE evidence — rule_probe.py</title><p>Source or internal evidence;external correctness,priority and physical capability UNKNOWN.</p><pre>&quot;&quot;&quot;Strong structure-aware comparator and off-class hidden-gate falsification.
+Learning guarantee requires a constant-one or single-parent monotone gate promise.
+That promise is stated explicitly; the perturbation deliberately violates it.
+&quot;&quot;&quot;
+from pathlib import Path
+ROOT = Path(__file__).resolve().parent
+from probe import *
+from certify import *
+
+
+def learn_parent_rule(model,oracle):
+    n=model[&#x27;L&#x27;]-1
+    lookup={(int(i),int(d)):e for e,(i,d) in enumerate(zip(model[&#x27;a&#x27;],model[&#x27;dims&#x27;]))}
+    parent={};queries=[];answers=[]
+    def ask(x,i):
+        e=lookup[(int(x),i)];a=float(oracle(e));queries.append(e);answers.append(a)
+        return a
+    for i in range(n+1):
+        a=ask(0,i)
+        if a==1.:
+            parent[i]=None;continue
+        candidates=[j for j in range(n) if j!=i]
+        while len(candidates)&gt;1:
+            left=candidates[:len(candidates)//2]
+            x=sum(1&lt;&lt;j for j in left)
+            if ask(x,i)==1.:candidates=left
+            else:candidates=candidates[len(candidates)//2:]
+        parent[i]=candidates[0]
+    return parent,queries,answers
+
+def predicted_fac(model,parent):
+    return np.array([1. if parent[int(i)] is None or (int(x)&gt;&gt;parent[int(i)])&amp;1 else model[&#x27;softness&#x27;] for x,i in zip(model[&#x27;a&#x27;],model[&#x27;dims&#x27;])])
+
+if __name__==&#x27;__main__&#x27;:
+    out=[]
+    for q,eps in [(.05,1e-6),(.005,1e-12)]:
+        model=soft_east(10,q,eps);st=time.perf_counter()
+        parent,queries,ans=learn_parent_rule(model,lambda e:model[&#x27;fac&#x27;][e])
+        learned=predicted_fac(model,parent)
+        assert np.array_equal(learned,model[&#x27;fac&#x27;])
+        v=spsolve(matrix(model,model[&#x27;base&#x27;]*learned),model[&#x27;m&#x27;])
+        l,u,d,_=certify_field(model,learned,v)
+        record={&#x27;L&#x27;:10,&#x27;q&#x27;:q,&#x27;softness&#x27;:eps,&#x27;queries&#x27;:len(queries),&#x27;unique_queries&#x27;:len(set(queries)),
+                &#x27;query_indices&#x27;:queries,&#x27;predicted_facilitations_match_all_fixture_edges&#x27;:True,
+                &#x27;lower_conditional_on_single_parent_promise&#x27;:outward(l,True),
+                &#x27;upper_conditional_on_single_parent_promise&#x27;:outward(u,False),
+                &#x27;seconds_including_rational_validation&#x27;:time.perf_counter()-st}
+        # Select a deliberately adversarial, unqueried shortcut using full reference info.
+        # This is a falsification fixture, not an independent benchmark or learner input.
+        K=inv(matrix(model,model[&#x27;base&#x27;]*learned).toarray(),check_finite=False)
+        uu,vv,rr=edge_values(K,model[&#x27;m&#x27;],model[&#x27;a&#x27;],model[&#x27;b&#x27;])
+        delta=model[&#x27;base&#x27;]*(1-learned)
+        benefit=delta*vv**2/(1+delta*rr)
+        benefit[queries]=-np.inf;e=int(np.argmax(benefit))
+        pert=model.copy();pert[&#x27;fac&#x27;]=learned.copy();pert[&#x27;fac&#x27;][e]=1.
+        pp,qq,aa=learn_parent_rule(pert,lambda k:pert[&#x27;fac&#x27;][k])
+        assert qq==queries and aa==ans and pp==parent
+        vp=spsolve(matrix(pert,pert[&#x27;base&#x27;]*pert[&#x27;fac&#x27;]),pert[&#x27;m&#x27;])
+        pl,pu,pd,_=certify_field(pert,pert[&#x27;fac&#x27;],vp)
+        record[&#x27;off_class_hidden_shortcut&#x27;]={&#x27;edge&#x27;:e,&#x27;state&#x27;:int(model[&#x27;a&#x27;][e]),&#x27;flip_dimension&#x27;:int(model[&#x27;dims&#x27;][e]),
+                  &#x27;selected_adversarially_after_learning&#x27;:True,&#x27;all_learning_answers_unchanged&#x27;:True,
+                  &#x27;true_lower&#x27;:outward(pl,True),&#x27;true_upper&#x27;:outward(pu,False),
+                  &#x27;unperturbed_over_perturbed_ratio_lower&#x27;:outward(l/pu,True)}
+        # Run the broader-envelope acquisition operation on that modified model.
+        rrn=run(pert,&#x27;relative&#x27;,refresh=32);cert=certify_run(pert,rrn)
+        record[&#x27;off_class_hidden_shortcut&#x27;][&#x27;robust_queries&#x27;]=rrn[&#x27;queries&#x27;]
+        record[&#x27;off_class_hidden_shortcut&#x27;][&#x27;shortcut_was_queried&#x27;]=e in rrn[&#x27;selected_edges&#x27;]
+        record[&#x27;off_class_hidden_shortcut&#x27;][&#x27;robust_interval&#x27;]=[cert[&#x27;certified_lower&#x27;],cert[&#x27;certified_upper&#x27;]]
+        record[&#x27;off_class_hidden_shortcut&#x27;][&#x27;robust_ratio&#x27;]=cert[&#x27;certified_upper_lower_ratio&#x27;]
+        out.append(record)
+        print({k:v for k,v in record.items() if k!=&#x27;query_indices&#x27;},flush=True)
+    json.dump(out,open(str(ROOT / &#x27;rule_learning_results.json&#x27;),&#x27;w&#x27;),indent=2)
+</pre>

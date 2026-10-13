@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+"""Independent exact differentiation/convolution audit; source bytes unchanged.
+
+Finite identities are evidence for identities/certificates, not universal
+quasiconvexity or novelty. Analytic arguments are written in REPORT.txt.
+"""
+from pathlib import Path
+from fractions import Fraction
+import importlib.util
+import json
+import random
+import sys
+import sympy as sp
+
+HERE = Path(__file__).resolve().parent
+SOURCE = HERE.parent / "FE-sources" / "quartic"
+checks = {}
+a,b,c,d,s,t = sp.symbols("a b c d s t", real=True)
+x = sp.Matrix([a,b,c,d])
+u,v,w,q = a*a+c*c,b*b+d*d,a*b+c*d,a*d-b*c
+basis = [u*u,v*v,u*v,w*w,u*w,v*w,q*u,q*v,q*w]
+p = sp.symbols("A B C E G H L M N")
+F = sum(z*f for z,f in zip(p,basis))
+hessian = sp.hessian(F,x)
+# Freshly differentiate a rank-one line, instead of importing source blocks.
+hh = sp.Matrix([s,t,0,0])
+acoustic = sp.expand((hh.T*hessian*hh)[0])
+M11 = sp.zeros(4); M12 = sp.zeros(4); M22 = sp.zeros(4)
+for i in range(4):
+    for j in range(4):
+        M11[i,j] = sp.diff(acoustic,s,s,x[i],x[j])/4
+        M12[i,j] = sp.diff(acoustic,s,t,x[i],x[j])/4
+        M22[i,j] = sp.diff(acoustic,t,t,x[i],x[j])/4
+ks = sp.symbols("k12 k13 k14 k23 k24 k34")
+pairs = [(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)]
+K = sp.zeros(4)
+for (i,j),z in zip(pairs,ks): K[i,j],K[j,i] = z,-z
+gram = M11.row_join(M12+K).col_join((M12-K).row_join(M22))
+vec = (s*x).col_join(t*x)
+assert sp.expand((vec.T*gram*vec)[0]-acoustic)==0
+checks["fresh acoustic Gram identity"] = True
+pst = [1,1,sp.Rational(7,2),sp.Rational(1,2),0,0,sp.Rational(-29,10),sp.Rational(-29,10),0]
+kst = [sp.Rational(1,2),sp.Rational(17,10),0,0,sp.Rational(17,10),sp.Rational(23,10)]
+gs = gram.subs(dict(zip(p,pst))).subs(dict(zip(ks,kst)))
+minors = [sp.factor((gs-sp.eye(8)/16)[:j,:j].det()) for j in range(1,9)]
+assert all(z>0 for z in minors)
+checks["Fstar margin 1/16, independently differentiated leading minors"] = list(map(str,minors))
+gn = gram.subs(dict(zip(p,[1,1,2,0,0,0,0,0,0]))).subs(dict(zip(ks,[1,0,0,0,0,0])))
+checks["Slater eigenvalues"] = {str(ev): mult for ev,mult in gn.eigenvals().items()}
+assert all(ev>0 for ev in gn.eigenvals())
+# A nonidentity rational right transform tests correction scaling.
+S = sp.Matrix([[2,1],[-1,3]])
+r,lam = sp.symbols("r lambda", real=True)
+As = sp.Matrix([[a,b],[c,d]])*S
+sub = dict(zip(x,list(As)))
+delta_s = (u*v-w*w).subs(sub, simultaneous=True)
+assert sp.expand(delta_s-S.det()**2*q*q)==0
+checks["right transport determinant squared factor"] = str(S.det()**2)
+# Independently derive the full SO(2) degenerate acoustic constraints.
+alpha,ell,mu,nu = sp.symbols("alpha ell mu nu")
+Fd = alpha*u*u+lam*q*q+q*(ell*u+mu*v+nu*w)
+Ad1 = sp.hessian(sp.diff(Fd,a,a),x)/2
+Ad2 = sp.hessian(sp.diff(Fd,b,b),x)/2
+forced = list(Ad2[0,:])+list(Ad2[1,:])+list(Ad2[3,:])+list(Ad1[1,:])
+assert sp.solve(forced,[ell,mu,nu])=={ell:0,mu:0,nu:0}
+checks["degenerate acoustic zero rows force all odd terms zero"] = True
+Fs = F.subs(dict(zip(p,pst)))
+fI = Fs.subs({a:1,b:0,c:0,d:1})
+fJ = Fs.subs({a:1,b:0,c:0,d:-1})
+assert fI==-sp.Rational(3,10) and fJ==sp.Rational(113,10)
+assert sp.Rational(1,50)*7**4*fI+sp.Rational(49,50)*fJ==-sp.Rational(833,250)
+checks["non-polyconvex witness energy"] = "-833/250"
+# Import only the source moment function; independently construct Fourier
+# coefficients and take a direct fourfold constant-term contraction.
+spec = importlib.util.spec_from_file_location("source_moments_critic", SOURCE / "exact_fourier_moments.py")
+mod = importlib.util.module_from_spec(spec); sys.modules[spec.name]=mod; spec.loader.exec_module(mod)
+def direct_moments(bg,waves):
+    entries=[{} for _ in range(4)]
+    def term(poly,k,value): poly[k]=sp.expand(poly.get(k,0)+value)
+    for j,z in enumerate(sum((list(row) for row in bg),[])): term(entries[j],(0,0),sp.Rational(z))
+    for wave in waves:
+        k=wave.frequency
+        for i in range(2):
+            potplus=(sp.Rational(wave.cosine[i])-sp.I*sp.Rational(wave.sine[i]))/2
+            potminus=sp.conjugate(potplus)
+            for j in range(2):
+                term(entries[2*i+j],k,sp.I*k[j]*potplus)
+                term(entries[2*i+j],(-k[0],-k[1]),-sp.I*k[j]*potminus)
+    for i in range(2):
+        keys=set(entries[2*i])|set(entries[2*i+1])
+        for k in keys:
+            if k!=(0,0):
+                assert sp.expand(k[1]*entries[2*i].get(k,0)-k[0]*entries[2*i+1].get(k,0))==0
+    def conv(P,Q):
+        R={}
+        for k,z in P.items():
+            for l,y in Q.items():term(R,(k[0]+l[0],k[1]+l[1]),z*y)
+        return R
+    vals=[]
+    subs=dict(zip(x,[sp.Rational(z) for row in bg for z in row]))
+    for f in basis:
+        val=0
+        for powers,coef in sp.Poly(f,x).terms():
+            tr={(0,0):coef}
+            for entry,n in zip(entries,powers):
+                for _ in range(n):tr=conv(tr,entry)
+            val+=tr.get((0,0),0)
+        vals.append(sp.simplify(val-f.subs(subs)))
+    return tuple(vals)
+rng=random.Random(142026)
+frequency_sets=[[(1,0),(0,1),(1,1)],[(1,0),(1,0),(-1,0)],[(0,0),(2,-1),(-2,1)],[(10**12,0),(0,3),(10**12,3)]]
+replays=[]
+for j in range(12):
+    bg=[[Fraction(rng.randint(-3,3),rng.randint(1,4)) for _ in range(2)] for _ in range(2)]
+    waves=[mod.Wave(k,tuple(Fraction(rng.randint(-2,2),rng.randint(1,3)) for _ in range(2)),tuple(Fraction(rng.randint(-2,2),rng.randint(1,3)) for _ in range(2))) for k in frequency_sets[j%4]]
+    exact=direct_moments(bg,waves)
+    actual=mod.moment_vector(bg,waves)
+    assert all(sp.Rational(z)==y for z,y in zip(actual,exact))
+    replays.append({"case":j,"frequencies":[list(z.frequency) for z in waves],"moments":list(map(str,actual))})
+checks["mixed-polarization rational Fourier replays and modewise curl"] = replays
+output={"status":"PASS","checks":checks,"scope":"Finite exact identities and code comparison only; universal analytic claims separately assessed in REPORT.txt."}
+(HERE/"INDEPENDENT_RESULTS.json").write_text(json.dumps(output,indent=2)+"\n")
+print(json.dumps({"status":output["status"],"checks":len(checks),"fourier_cases":len(replays)}))

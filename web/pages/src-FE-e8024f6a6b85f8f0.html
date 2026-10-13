@@ -1,0 +1,84 @@
+<!doctype html><meta charset="utf-8"><title>FE evidence — certify.py</title><p>Source or internal evidence;external correctness,priority and physical capability UNKNOWN.</p><pre>&quot;&quot;&quot;Exact rational verification of final kinetic intervals.
+Floating-point solves provide candidate fields only. Every residual is recomputed
+using Fraction arithmetic for the exact rational soft-East model. M-matrix
+comparison then produces rigorous endpoints without a spectral-gap assumption.
+&quot;&quot;&quot;
+from pathlib import Path
+ROOT = Path(__file__).resolve().parent
+import sys,time,json
+from fractions import Fraction as F
+from decimal import Decimal,localcontext,ROUND_FLOOR,ROUND_CEILING
+import numpy as np
+from scipy.sparse.linalg import spsolve
+from probe import soft_east,matrix
+
+
+def outward(x,lower,places=14):
+    with localcontext() as ctx:
+        ctx.prec=places
+        ctx.rounding=ROUND_FLOOR if lower else ROUND_CEILING
+        return str(Decimal(x.numerator)/Decimal(x.denominator))
+
+def certify_field(model,fac,vec):
+    q=F(str(model[&#x27;q&#x27;]));eps=F(str(model[&#x27;softness&#x27;]));n=model[&#x27;L&#x27;]-1;N=1&lt;&lt;n
+    v=[F(float(x)) for x in vec] # exact IEEE-754 rational values
+    if min(v)&lt;=0:raise ArithmeticError(&#x27;candidate is not positive&#x27;)
+    residual=[F(-1) for _ in range(N)]
+    for e,(i,j) in enumerate(zip(model[&#x27;a&#x27;],model[&#x27;b&#x27;])):
+        i=int(i);j=int(j)
+        if fac[e]==1:ff=F(1)
+        elif fac[e]==model[&#x27;softness&#x27;]:ff=eps
+        else:raise ValueError(&#x27;This verifier expects binary endpoint facilitation factors.&#x27;)
+        if j&lt;0:
+            residual[i]+=q*ff*v[i]
+        else:
+            dv=v[i]-v[j]
+            residual[i]+=q*ff*dv
+            residual[j]-=(1-q)*ff*dv
+    delta=max(abs(x) for x in residual)
+    if delta&gt;=1:raise ArithmeticError(&#x27;residual too large to certify&#x27;)
+    masses=[q**x.bit_count()*(1-q)**(n-x.bit_count()) for x in range(N)]
+    assert sum(masses)==1
+    value=sum((p*x for p,x in zip(masses,v)),F(0))
+    low=value/(1+delta);high=value/(1-delta)
+    return low,high,delta,value
+
+def certify_run(model,result):
+    st=time.perf_counter();E=len(model[&#x27;a&#x27;])
+    flo=np.full(E,model[&#x27;softness&#x27;]);fhi=np.ones(E)
+    picked=result[&#x27;selected_edges&#x27;]
+    observed=result[&#x27;observed_facilitations&#x27;] if &#x27;observed_facilitations&#x27; in result else model[&#x27;fac&#x27;][picked]
+    flo[picked]=fhi[picked]=observed
+    vl=spsolve(matrix(model,model[&#x27;base&#x27;]*fhi),model[&#x27;m&#x27;])
+    vu=spsolve(matrix(model,model[&#x27;base&#x27;]*flo),model[&#x27;m&#x27;])
+    low,_,dl,_=certify_field(model,fhi,vl)
+    _,upper,du,_=certify_field(model,flo,vu)
+    return {&#x27;certified_lower&#x27;:outward(low,True),&#x27;certified_upper&#x27;:outward(upper,False),
+            &#x27;certified_upper_lower_ratio&#x27;:outward(upper/low,False),
+            &#x27;delta_lower_field_upper&#x27;:outward(dl,False),&#x27;delta_upper_field_upper&#x27;:outward(du,False),
+            &#x27;seconds&#x27;:time.perf_counter()-st,
+            &#x27;proof&#x27;:&#x27;Exact rational pointwise residual and inverse-positive killed-generator comparison.&#x27;,
+            &#x27;exact_lower_numerator&#x27;:str(low.numerator),&#x27;exact_lower_denominator&#x27;:str(low.denominator),
+            &#x27;exact_upper_numerator&#x27;:str(upper.numerator),&#x27;exact_upper_denominator&#x27;:str(upper.denominator)}
+
+if __name__==&#x27;__main__&#x27;:
+    data=json.load(open(str(ROOT / &#x27;probe_results.json&#x27;)))
+    rel=json.load(open(str(ROOT / &#x27;relative_results.json&#x27;)))
+    out=[]
+    for k,d in enumerate(data):
+        m=soft_east(d[&#x27;L&#x27;],d[&#x27;q&#x27;],d[&#x27;softness&#x27;])
+        tests=d[&#x27;runs&#x27;]+[rel[k]]
+        v=spsolve(matrix(m,m[&#x27;base&#x27;]*m[&#x27;fac&#x27;]),m[&#x27;m&#x27;])
+        st=time.perf_counter();tl,tu,dt,_=certify_field(m,m[&#x27;fac&#x27;],v)
+        record={&#x27;L&#x27;:d[&#x27;L&#x27;],&#x27;q&#x27;:d[&#x27;q&#x27;],&#x27;softness&#x27;:d[&#x27;softness&#x27;],
+                &#x27;reference_lower&#x27;:outward(tl,True),&#x27;reference_upper&#x27;:outward(tu,False),
+                &#x27;reference_delta_upper&#x27;:outward(dt,False),&#x27;reference_certification_seconds&#x27;:time.perf_counter()-st,&#x27;runs&#x27;:[]}
+        for r in tests:
+            c=certify_run(m,r);c[&#x27;policy&#x27;]=r[&#x27;policy&#x27;];c[&#x27;queries&#x27;]=r[&#x27;queries&#x27;]
+            assert F(int(c[&#x27;exact_lower_numerator&#x27;]),int(c[&#x27;exact_lower_denominator&#x27;]))&lt;=tl
+            assert tu&lt;=F(int(c[&#x27;exact_upper_numerator&#x27;]),int(c[&#x27;exact_upper_denominator&#x27;]))
+            record[&#x27;runs&#x27;].append(c)
+            print(d[&#x27;L&#x27;],r[&#x27;policy&#x27;],c[&#x27;certified_lower&#x27;],c[&#x27;certified_upper&#x27;],c[&#x27;certified_upper_lower_ratio&#x27;],c[&#x27;seconds&#x27;],flush=True)
+        out.append(record)
+    json.dump(out,open(str(ROOT / &#x27;certified_results.json&#x27;),&#x27;w&#x27;),indent=2)
+</pre>

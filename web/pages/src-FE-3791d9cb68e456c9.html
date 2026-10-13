@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8"><title>FE evidence — gram_certificate.py</title><p>Source or internal evidence;external correctness,priority and physical capability UNKNOWN.</p><pre>import numpy as np
+from sdp_objective import Bs,sv,sm
+from fractions import Fraction
+import sympy as S
+
+def feasible(p, margin=.001,steps=30000):
+ Q0=sum(B*p for B,p in zip(Bs[:9],p))
+ B=np.column_stack([sv(x) for x in Bs[9:]]);pin=np.linalg.pinv(B);P=B@pin
+ x0=(np.eye(36)-P)@sv(Q0)
+ y=x0.copy();z=np.zeros(36)
+ for it in range(steps):
+  x=x0+P@(y-z)
+  d,v=np.linalg.eigh(sm(x+z));yp=sv((v*np.maximum(d,margin))@v.T)
+  z+=x-yp;pr=np.linalg.norm(x-yp);du=np.linalg.norm(yp-y);y=yp
+  if it%100==0 and pr&lt;1e-11 and du&lt;1e-11:break
+ k=pin@(x-sv(Q0));return k,sm(x),pr,du,it
+if __name__==&#x27;__main__&#x27;:
+ p=np.array([1,1,3.5,.5,0,0,-2.9,-2.9,0])
+ k,Q,pr,du,it=feasible(p,.01)
+ print(&#x27;k=&#x27;,k, &#x27;res&#x27;,pr,du,it, &#x27;eigenvalues&#x27;,np.linalg.eigvalsh(Q))
+ krat=[S.Rational(round(x*10000),10000) for x in k]
+ prat=[S.Rational(str(x)) for x in p]
+ Qr=sum((S.Matrix(B.astype(int))*v for B,v in zip(Bs,prat+krat)), S.zeros(8))
+ print(&#x27;rational K coefficients&#x27;,krat)
+ print(&#x27;Qr&#x27;,Qr)
+ print(&#x27;leading principal minors&#x27;, [S.factor(Qr[:i,:i].det()) for i in range(1,9)])
+ np.savez(&#x27;/mnt/data/astra_meta_genesis/rational_gram_candidate.npz&#x27;,p=p,k=np.array(krat,float).flatten(),Q=np.array(Qr,float))
+ open(&#x27;/mnt/data/astra_meta_genesis/rational_gram_certificate.txt&#x27;,&#x27;w&#x27;).write(str(Qr)+&#x27;\nK=&#x27;+str(krat)+&#x27;\nleading_minors=&#x27;+str([S.factor(Qr[:i,:i].det()) for i in range(1,9)]))
+</pre>
