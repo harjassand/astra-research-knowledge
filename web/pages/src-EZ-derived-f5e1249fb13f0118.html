@@ -1,0 +1,206 @@
+<!doctype html><meta charset="utf-8"><title>N775 integration derived — synthesis_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;New internal finite checks; rational interlacing identities and tensor counterexample.
+Not a formal proof, independent reviewer, interval certificate, or complexity claim.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from random import Random
+from collections import Counter
+import json
+import math
+import numpy as np
+
+COUNTS=Counter()
+METRICS={}
+def check(cond, name):
+    if not cond:
+        raise AssertionError(name)
+    COUNTS[name]+=1
+
+def mul(p,q):
+    r=[F(0)]*(len(p)+len(q)-1)
+    for i,x in enumerate(p):
+        for j,y in enumerate(q):
+            r[i+j]+=x*y
+    return r
+
+def polynomial(roots):
+    p=[F(1)]
+    for t in roots:
+        p=mul(p,[-t,F(1)])
+    return p
+
+def add(p,q):
+    r=[F(0)]*max(len(p),len(q))
+    for i,x in enumerate(p):r[i]+=x
+    for i,x in enumerate(q):r[i]+=x
+    return r
+
+def max_window(xi,a):
+    # Definition-first exhaustive closed-left/open-right test, not source&#x27;s two-pointer code.
+    return max((sum(x&lt;=y&lt;x+a for y in xi) for x in xi), default=0)
+
+def chain_residues(c,a):
+    d=[x/(1-a*x) for x in c]
+    weights=[]
+    for j,dj in enumerate(d):
+        numerator=math.prod((dj-x for x in c),start=F(1))
+        denominator=math.prod((dj-x for k,x in enumerate(d) if k!=j),start=F(1))
+        weights.append(numerator/denominator)
+    check(all(w&gt;=0 for w in weights),&#x27;exact_nonnegative_residues&#x27;)
+    check(sum(weights)==sum(d)-sum(c),&#x27;exact_minimum_energy_trace&#x27;)
+    # det(zI-(D-vv*)) via determinant lemma, with v_j^2=weights_j.
+    lhs=polynomial(d)
+    for j,w in enumerate(weights):
+        lhs=add(lhs,[w*x for x in polynomial(d[:j]+d[j+1:])])
+    check(lhs==polynomial(c),&#x27;exact_characteristic_polynomial_match&#x27;)
+    return d,weights
+
+def source_rank_energy():
+    rng=Random(28102026)
+    spectra=[]
+    for n in range(1,26):
+        # Consecutive reciprocal endpoints, ties, and strict gaps.
+        for repeats in (1,2,3):
+            xi=[F(2+j//repeats) for j in range(n)]
+            spectra.append((xi,F(1)))
+    for _ in range(300):
+        a=F(rng.randint(1,5),rng.randint(1,5))
+        xi=sorted(a+F(rng.randint(1,50),rng.randint(1,7)) for j in range(rng.randint(1,25)))
+        spectra.append((xi,a))
+    energies=[]
+    numeric_residual=0.0
+    for xi,a in spectra:
+        lam=[1/x for x in xi]
+        r=max_window(xi,a)
+        expected=sum(x/(1-a*x)-x for x in lam)
+        actual=F(0)
+        blocks=[]
+        for offset in range(r):
+            c=lam[offset::r]
+            d,w=chain_residues(c,a)
+            actual+=sum(w)
+            check(sum(w)&gt;0,&#x27;exact_nonzero_rank_one_chain&#x27;)
+            check(all(c[j]&gt;=d[j+1] for j in range(len(c)-1)),&#x27;exact_chain_interlacing&#x27;)
+            blocks.append((c,d,w))
+        check(actual==expected,&#x27;exact_simultaneous_rank_energy_optimum&#x27;)
+        check(len(blocks)==r,&#x27;exact_rank_equals_window_occupancy&#x27;)
+        energies.append(float(expected))
+        # Numerical reconstruction of the polar factor on the first 40 small examples only.
+        if len(lam)&lt;=12 and COUNTS[&#x27;numeric_polar_curvature_equality&#x27;]&lt;40:
+            for c,d,w in blocks:
+                aa=np.diag([float(x) for x in c])
+                dd=np.diag([float(x) for x in d])
+                v=np.sqrt(np.array([float(x) for x in w]))
+                pp=np.outer(v,v)
+                cc=dd-pp
+                eig,u=np.linalg.eigh(cc)
+                # Sorted eigenbasis realizes C=U A U^T, reverse ascending eigh order.
+                u=u[:,::-1]
+                check(np.max(np.abs(eig[::-1]-np.diag(aa)))&lt;2e-11,&#x27;numeric_prescribed_C_spectrum&#x27;)
+                tt=u@np.sqrt(aa)
+                residual=max(np.linalg.norm(tt.T@tt-aa,2),np.linalg.norm(tt@tt.T+pp-dd,2))
+                numeric_residual=max(numeric_residual,float(residual))
+                check(residual&lt;2e-11,&#x27;numeric_polar_curvature_equality&#x27;)
+    METRICS[&#x27;spectra_tested&#x27;]=len(spectra)
+    METRICS[&#x27;largest_polar_reconstruction_residual&#x27;]=numeric_residual
+    METRICS[&#x27;example&#x27;]=example_rank_energy()
+
+def example_rank_energy():
+    a=F(1)
+    lam=[F(1,2),F(1,3),F(1,4)]
+    d,w=chain_residues(lam,a)
+    # lambda half-open reciprocal occupancy=1. Source padded shift energy=1.
+    # Exact equality construction energy=1-(1/4)=3/4.
+    return {&#x27;a&#x27;:&#x27;1&#x27;,&#x27;lambda&#x27;:[str(x) for x in lam], &#x27;minimum_source_rank&#x27;:1,
+        &#x27;residue_squared_coordinates&#x27;:[str(x) for x in w],
+        &#x27;minimum_HS_source_squared&#x27;:str(sum(w)),
+        &#x27;padded_shift_HS_source_squared&#x27;:&#x27;1&#x27;}
+
+def bell_unitary(m):
+    d=2**m
+    unitary=np.zeros((d*d,d*d))
+    # H on every left qubit then paired CNOTs: U|(l,r)&gt; = d^-1/2 sum_x (-1)^(l dot x)|x,r xor x&gt;.
+    for l in range(d):
+        for r in range(d):
+            col=l*d+r
+            for x in range(d):
+                parity=(l &amp; x).bit_count()%2
+                unitary[x*d+(r^x),col]=(-1 if parity else 1)/math.sqrt(d)
+    return unitary
+
+def tensor_counterexample():
+    for m in (1,2,3):
+        d=2**m
+        u=bell_unitary(m)
+        check(np.linalg.norm(u.T@u-np.eye(d*d),2)&lt;2e-12,&#x27;numeric_Bell_circuit_unitary&#x27;)
+        v=np.kron(np.array([[0.,0.],[1.,0.]]),u)
+        s=np.zeros(2*d*d); s[0]=1
+        e=v@s
+        ps=np.outer(s,s); pe=np.outer(e,e)
+        fixed=ps/2+pe/3
+        check(np.linalg.norm(v@fixed@v.T-pe/2,2)&lt;2e-12,&#x27;numeric_nilpotent_recursion_support&#x27;)
+        check(np.linalg.norm(v@e)&lt;2e-12,&#x27;numeric_second_source_word_zero&#x27;)
+        # Operator realignment across (clock,left) | right.
+        realignment=fixed.reshape(2*d,d,2*d,d).transpose(0,2,1,3).reshape((2*d)**2,d*d)
+        singular=np.linalg.svd(realignment,compute_uv=False)
+        expected=np.array([math.sqrt(.25+(1/(3*d))**2)]+[1/(3*d)]*(d*d-1))
+        check(np.max(np.abs(singular-expected))&lt;2e-12,&#x27;numeric_exact_operator_Schmidt_spectrum&#x27;)
+        check(np.count_nonzero(singular&gt;1e-10)==d*d,&#x27;numeric_operator_tensor_rank_exponential&#x27;)
+    rows=[]
+    for m in range(1,65):
+        d=2**m
+        required=3*d*d//4
+        # For a rank R approximation with HS error &lt;=1/6, 1/9*(1-R/d^2)&lt;=1/36.
+        check(F(1,9)*(1-F(required,d*d))==F(1,36),&#x27;exact_tensor_error_rank_threshold&#x27;)
+        rows.append({&#x27;m&#x27;:m,&#x27;word_dimension&#x27;:2,&#x27;ordinary_fixed_point_rank&#x27;:2,&#x27;operator_Schmidt_rank&#x27;:d*d,&#x27;rank_needed_for_HS_error_at_most_1_over_6&#x27;:required})
+    METRICS[&#x27;tensor_counterexample_m20&#x27;]=rows[19]
+
+def commutator_transfer():
+    rng=np.random.default_rng(20261013)
+    smallest_residual=0.0
+    largest_ratio=0.0
+    for n in (2,3,5,8):
+        for _ in range(12):
+            a=float(rng.uniform(.2,2.))
+            t=rng.standard_normal((n,n))+1j*rng.standard_normal((n,n))
+            t*=math.sqrt(.7/a)/np.linalg.norm(t,2)
+            aa=t.conj().T@t
+            cc=t@t.conj().T
+            def positive(x):
+                w,u=np.linalg.eigh((x+x.conj().T)/2)
+                return (u*np.maximum(w,0))@u.conj().T
+            lam,u=np.linalg.eigh(aa)
+            fa=(u*(lam/(1-a*lam)))@u.conj().T
+            pp=positive(fa-cc)
+            qq=positive(cc-aa)
+            residual=(pp+qq-a*aa@aa)
+            residmin=float(np.linalg.eigvalsh((residual+residual.conj().T)/2)[0])
+            smallest_residual=min(smallest_residual,residmin)
+            check(residmin&gt;=-2e-10,&#x27;numeric_commutator_positive_majorant&#x27;)
+            bp=np.maximum(np.linalg.eigvalsh(pp),0)
+            qp=np.maximum(np.linalg.eigvalsh(qq),0)
+            for p in (.25,.5,1.,1.5,2.,3.,6.):
+                if p&lt;=2:
+                    lhs=float(np.sum(lam**p))
+                    rhs=a**(-p/2)*(np.sum(bp**(p/2))+np.sum(qp**(p/2)))
+                else:
+                    lhs=float(np.sum(lam**p)**(2/p))
+                    rhs=a**-1*(np.sum(bp**(p/2))**(2/p)+np.sum(qp**(p/2))**(2/p))
+                largest_ratio=max(largest_ratio,lhs/rhs)
+                check(lhs&lt;=rhs+2e-9*max(1.,rhs),&#x27;numeric_commutator_Schatten_transfer&#x27;)
+    METRICS[&#x27;commutator_instances&#x27;]=48
+    METRICS[&#x27;smallest_commutator_majorant_eigenvalue&#x27;]=smallest_residual
+    METRICS[&#x27;largest_commutator_Schatten_lhs_over_rhs&#x27;]=largest_ratio
+
+def main():
+    source_rank_energy()
+    tensor_counterexample()
+    commutator_transfer()
+    report={&#x27;status&#x27;:&#x27;PASS_INTERNAL_FINITE_CHECKS_ONLY&#x27;,&#x27;scope&#x27;:&#x27;Exact rational identities plus floating diagnostics; no formal or external validation, no novelty clearance.&#x27;,
+        &#x27;assertions_total&#x27;:sum(COUNTS.values()),&#x27;exact_assertions_total&#x27;:sum(v for k,v in COUNTS.items() if k.startswith(&#x27;exact_&#x27;)),&#x27;floating_diagnostic_assertions_total&#x27;:sum(v for k,v in COUNTS.items() if k.startswith(&#x27;numeric_&#x27;)),&#x27;assertions_by_category&#x27;:dict(COUNTS),&#x27;metrics&#x27;:METRICS}
+    Path(__file__).with_name(&#x27;synthesis_results.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(report,indent=2))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>
