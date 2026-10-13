@@ -100,6 +100,13 @@ def check_technology(t):
     need([h['direction'] for h in t['handoffs']]==['forward','reverse'] and all(h['decision']=='pending' for h in t['handoffs']),'branch handoff invented')
     need(all(x in t['next_obligation'].lower() for x in ['calibrated','terminal charge','independently predict','energy']),'gain acquisition erased')
     need('excluding heaters' in t['contract']['energy_balance'].lower() and 'no identified' in t['contract']['materials'].lower(),'physical resource boundary erased')
+
+def check_topic(topic,text,router):
+    lines=text.splitlines();need(lines and lines[0]=='id\ttopics\tstatus\ttitle\tcard_path','topic header missing')
+    need(len(lines)>1 and all(len(l.split('\t'))==5 for l in lines[1:]),'topic row malformed')
+    need(len({l.split('\t')[0] for l in lines[1:]})==len(lines)-1,'duplicate topic route')
+    route_line=topic+': agent/topics/'+topic+'.tsv ('+str(len(lines)-1)+' cards)'
+    need(router.splitlines().count(route_line)==1,'topic router missing/stale')
 def check_projection(old_text,new_text,old_connection,new_connection,notice):
     block='SEMANTIC NOTICE '+notice['notice_id']+'\n'+notice['status']+': '+notice['clarification']+'\n\n'
     need(new_text.count(block)==1,'notice projection missing/duplicated')
@@ -154,6 +161,7 @@ def main():
     for e in mapping['claims']:
         gate=next(g for g in rows('frontier/OPEN_PROOF_GATES.jsonl') if g['gate_id']=='G-EX-'+route(e['id'])+'-CAPABILITY');check_capability(gate,e['id'])
     check_technology(load(TECHNOLOGY))
+    for topic in {t for e in mapping['claims'] for t in load('frontier/cards/'+e['id']+'.json')['topics']}:check_topic(topic,(ROOT/('agent/topics/'+topic+'.tsv')).read_text(),(ROOT/'agent/topics.txt').read_text())
     for path in list(ledgers)+['frontier/OPEN_PROOF_GATES.jsonl','state/branches.tsv','agent/routes.tsv','agent/SEMANTIC_NOTICES.jsonl']:
         need((ROOT/path).read_bytes().startswith(git('show',BASE+':'+path)),'historical ledger rewritten')
     for path,fields in [('indexes/agent_catalog.json',['claims']),('indexes/agent_graph.json',['nodes','edges'])]:

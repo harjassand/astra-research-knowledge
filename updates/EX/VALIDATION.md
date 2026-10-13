@@ -5,8 +5,8 @@ Base: `74c2843bd224c2975c6e46735b30ae7c927f948b`. [VALIDATION.json](VALIDATION.j
 | Check | Actual result |
 | --- | --- |
 | `python3 updates/EX/validate.py` | PASS: 79 original objects, 18,379,611 bytes, 73 ZIP members, 70 producer hashes, 38 proof ranges, three checkpoints |
-| EX evidence/development guards | **50 PASS**; mutations reject source loss, invented usage/status/physical evidence, lost balance/residual/acquisition limits, readiness promotion and historical rewrites |
-| Existing regression suites | **402 PASS**: checkpoint 7, frontier 7, evaluation 25, technology 24; EC–EW 339. **452 total PASS** |
+| EX evidence/development guards | **53 PASS**; mutations reject source loss, invented usage/status/physical evidence, lost balance/residual/acquisition limits, readiness promotion and historical rewrites |
+| Existing regression suites | **402 PASS**: checkpoint 7, frontier 7, evaluation 25, technology 24; EC–EW 339. **455 total PASS** |
 | `python3 frontier/build_access.py check` | PASS: 837 cards, 295 gates, 1,348 proof ranges, zero source-access issues |
 | Workflow/technology validation with fixtures and immutable base | PASS; existing versions remain intact, new chemomotor stage is simulation |
 | `python3 evaluation/research_eval.py validate` | PASS; no matched-evaluation history replaced or prompting advantage inferred |
@@ -27,6 +27,6 @@ The new technology record deliberately completes only mechanism/model/source-rep
 
 The unchanged global checkpoint publisher still rejects three unsupported inherited schemas; no ancestry is guessed. Older standalone validators retain their frozen-snapshot failures; their historical receipts are not rewritten. All existing unit tests pass. These failures are not reported as repository-wide validation success.
 
-All three browser download-event waits timed out after five seconds, but complete matching ZIPs appeared locally and were copied immediately. No successful event-wait receipt is claimed. Initial technology-reference and literal scope-guard errors were corrected before the final successful runs; the first 50-test attempt had two mutation failures and one wording error, fixed without editing original sources or changing scientific claims. The nullable reference fields are explicit and scope mutations now cover repeated wording case-insensitively. Original trailing Markdown spaces remain preserved.
+All three browser download-event waits timed out after five seconds, but complete matching ZIPs appeared locally and were copied immediately. No successful event-wait receipt is claimed. Initial technology-reference and literal scope-guard errors were corrected before the final successful runs; the first 50-test attempt had two mutation failures and one wording error, fixed without editing original sources or changing scientific claims. The nullable reference fields are explicit and scope mutations now cover repeated wording case-insensitively. Final publication review corrected the new chemistry TSV header/router and added a compatible topic index. Three new route/mutation tests reject this omission; rebuilt navigation and final core/regression runs pass. Original trailing Markdown spaces remain preserved.
 
 These checks establish repository integrity, navigation and evidence boundaries. They do not establish independent proof correctness, novelty, physical capability, competitive technology, universal complexity or discovery-workflow effectiveness. All three scientific cards remain source_derived_unreviewed, external correctness/priority UNKNOWN. No physical experiment or scientific replay was performed at intake.

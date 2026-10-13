@@ -150,4 +150,13 @@ class EvidenceGuards(unittest.TestCase):
     def test_missing_material_erasure_rejected(self):
         t=v.load(v.TECHNOLOGY);t['contract']['materials']='Known measured catalyst'
         with self.assertRaises(ValueError):v.check_technology(t)
+    def test_topic_routes(self):
+        for topic in ['chemistry','physics','quantum','analysis','algorithms','optimization','probability','complexity','methods']:
+            v.check_topic(topic,(v.ROOT/('agent/topics/'+topic+'.tsv')).read_text(),(v.ROOT/'agent/topics.txt').read_text())
+    def test_topic_header_loss_rejected(self):
+        text=(v.ROOT/'agent/topics/chemistry.tsv').read_text().split('\n',1)[1]
+        with self.assertRaises(ValueError):v.check_topic('chemistry',text,(v.ROOT/'agent/topics.txt').read_text())
+    def test_topic_router_loss_rejected(self):
+        router=(v.ROOT/'agent/topics.txt').read_text().replace('chemistry:','missing:')
+        with self.assertRaises(ValueError):v.check_topic('chemistry',(v.ROOT/'agent/topics/chemistry.tsv').read_text(),router)
 if __name__=='__main__':unittest.main()
