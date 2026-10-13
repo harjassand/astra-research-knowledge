@@ -1,0 +1,50 @@
+# ASTRA checkpoint — 13 October 2026
+
+## Scientific result
+
+Pivoted away from improving the auxiliary low-rank Hodge solver. New result concerns the full infinite-chain transport curve at t=1,U=4,d=2, V in [0,3].
+
+- Unique global maximum: 2.157 < V* < 2.175.
+- Chosen dyadic control V0=1109/512=2.166015625.
+- D(V0) in [0.6029063775, 0.6031637224].
+- Global regret <2.978e-6, despite absolute interval width 2.57345e-4.
+- D(V0)-D(71/32) in [0.0000852564, 0.0001633436]; independent value intervals using the same data fail to resolve this sign.
+- Same-data value-only envelope regret 0.0002573809386: new bound is 86.44 times narrower, NOT a runtime speedup or a lower bound against other methods.
+- Uniform V-setting error <=1/1024 retains regret <3.721e-6. Other parameter/model errors are not included automatically.
+- All guarantees separately apply to every finite-ring D_n for n>=41.
+
+## Mechanism
+
+Use the original finite, exactly balanced translation-polynomial f,g certificate but retain polynomial trial derivatives (jets) in the actual diagonal interaction V. Let R be + on odd and - on even observable parity. RB is symmetric, Rj=j. Corrected output F=2<j,f>-<f,Sf>+<g,Sg>+2<Af,g> has exact error <r,R T^-1 r> after S+lambda normalization. T^-1 has norm <=1 for real parameters; the normalized diagonal perturbation has norm <=w=4Jstar(H1)/d (w=1 here).
+
+Differentiate this error identity. With complete residual derivative norms q_k:
+|D^(m)-Dhat^(m)| <=4 m! sum_(a+b+c=m) q_a q_b w^c/(a! b!).
+E1=4(2q0q1+wq0^2), E2=4(2q0q2+2q1^2+4wq0q1+2w^2q0^2).
+
+Residual Gram matrices give exact polynomial norms over parameter intervals; Bernstein bounds and upward rational square roots give uniform derivative intervals. Exact population balance removes the 1/lambda population penalty. Uniform holomorphic control, finite-time locality and the previous second-moment construction pass derivative bounds to the infinite system. No completeness/annular rank theorem is assumed.
+
+Known negative curvature plus a gradient enclosure yields regret g^2/(2mu). If q0,q1=O(eta) and the corrected gradient is nearly zero, design regret is O(eta^4) while absolute value uncertainty is O(eta^2). Curvature is certified, not a supplied assumption.
+
+## Construction and actual costs
+
+Same two finite lower/upper matrices reused for every derivative order; right-hand sides use previous jets. Fresh span-eight dictionaries, ten error-jet-driven enrichments, max input span18. Full residual output span20. Final f/g dictionary sizes53088/53024; four trial orders, 3038619 commutator nonzeros. Final rational coefficient count is explicit; no compact inverse input.
+
+Central fresh stage168.7784s, seven fresh anchors23.4549s, global rational check1.2021s, sum193.4354s. Peak1.93GiB, oneBLASthread, existing compiler caches. All response coefficients freshly solved. Center/settings selected during exploration excluded from timing. This is instance certification, not a uniform optimizer runtime.
+
+## Evidence
+
+All eight exact packets recomputed without optimization in14.7181s. 192 finite derivative inequalities; an exact symbolic error identity and four derivative identities;112 independent wide-word commutators;2952 rational Bernstein checks;corrupted population defect rejected.
+
+An exploratory packed-key overflow/aliasing issue was caught by exact word metadata checks. Encoder widened and guarded; reported fresh run starts again from span8 under corrected implementation. No invalid packet is accepted.
+
+## Boundary and next question
+
+No C^N epsilon^-c rank or inversion theorem is proved. The TT repair and minimum-energy rank problem remain intact. The operational advance is output-specific: a physical design decision can be certified far more accurately than independent absolute output values by retaining shared residual derivatives.
+
+Next decisive theorem: construct balanced response jets with q0,q1 and curvature-certifying q2 at controlled total dictionary/rank/bit cost across a meaningful nonperturbative class, or exploit the same deterministic error jets for a broader physically consequential design problem. Do not assume low-rank inverses or suppress unbalanced residuals. General goal-oriented correction/sensitivity certification has prior art; priority of this quantum thermodynamic combination unverified.
+
+No physical experiment, finite-temperature result, zero-dephasing limit, Gaussian hydrodynamics, independent mathematical review, formal proof or repository publication.
+
+## Sources
+
+Latest full separable note/checkpoint read. Astra pinned4f251af9a6741f03581d2df1487c4430d267320f. OpenAI/math1581d4cbdd69a0faf34b2089614fe2a814316a6a GramVolume.lean inspected but no theorem imported or Lean build run. Guo–Zhong, Janon–Nodet–Prieur, Wu–Zhang, backflow, quantum reduced-basis comparators explicitly credited in note.

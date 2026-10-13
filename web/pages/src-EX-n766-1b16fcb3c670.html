@@ -1,0 +1,164 @@
+<!doctype html><meta charset="utf-8"><title>N766 recovered original — cray_genesis_acquisition/finite_bit_demo.py</title>
+<aside>Original byte/member hashes, ZIP CRC and AST syntax establish preservation only. No scientific program executed, independent proof reconstructed, literature/priority audit or physical experiment performed at intake. Producer finite/exact/floating diagnostics are source-reported; not universal theorem validation.</aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-bit response acquisition on a synthetic implicit 256 x 256 grid.
+
+All certificate arithmetic (including log and square-root upper bounds) is
+rational/integer. Target axial ratios are acquired lazily and cached. No target
+transverse coefficients are queried: the enclosure is valid for ANY positive
+values of those coefficients. The reference field is known analytically.
+
+The confidence theorem assumes independent uniform random bits, as usual for
+randomised algorithms. The default seeded PRNG is a reproducibility diagnostic,
+not a verification of a random-number generator. Use --system-random for an
+OS-backed bit source. The full sampled edge-index stream is recorded.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+from bisect import bisect_right
+from fractions import Fraction as F
+import json
+import math
+from pathlib import Path
+import random
+import time
+
+SCALE = 1 &lt;&lt; 48
+
+
+def ceil_div(num: int, den: int) -&gt; int:
+    return -(-num // den)
+
+
+def log_upper(q: int, terms: int = 16) -&gt; F:
+    &quot;&quot;&quot;Rational upper bound on log(q), q positive integer.
+
+    log(z) = 2 sum_{j&gt;=0} t^(2j+1)/(2j+1), t=(z-1)/(z+1).
+    Scaling z into [1,2] bounds t by 1/3. A geometric tail majorant
+    supplies a rigorous outward error bound without floating-point logs.
+    &quot;&quot;&quot;
+    if q &lt; 1:
+        raise ValueError(&#x27;q must be at least one&#x27;)
+    def unit_log(z: F) -&gt; F:
+        t = (z-1)/(z+1)
+        total = sum((2*t**(2*j+1)/F(2*j+1) for j in range(terms)), F(0))
+        return total + 2*t**(2*terms+1)/(F(2*terms+1)*(1-t*t))
+    k = q.bit_length()-1
+    return k * unit_log(F(2)) + unit_log(F(q, 1 &lt;&lt; k))
+
+
+def sqrt_upper(value: F) -&gt; F:
+    &quot;&quot;&quot;Ceil(sqrt(value) * 2^48) / 2^48, computed by integer arithmetic.&quot;&quot;&quot;
+    if value &lt; 0:
+        raise ValueError(&#x27;square-root input must be nonnegative&#x27;)
+    num, den = value.numerator * SCALE*SCALE, value.denominator
+    root = math.isqrt(num//den)
+    if root*root*den &lt; num:
+        root += 1
+    return F(root, SCALE)
+
+
+class Moments:
+    def __init__(self) -&gt; None:
+        self.n = self.lo_sum = self.hi_sum = self.square_hi_sum = 0
+
+    def add(self, value: F) -&gt; None:
+        if value &lt;= 0:
+            raise ValueError(&#x27;positive values required&#x27;)
+        p, q = value.numerator*SCALE, value.denominator
+        lo, hi = p//q, ceil_div(p, q)
+        self.n += 1
+        self.lo_sum += lo
+        self.hi_sum += hi
+        self.square_hi_sum += ceil_div(hi*hi, SCALE)
+
+    def mean_upper(self, log_two_over_delta: F) -&gt; F:
+        n = self.n
+        if n &lt; 2:
+            return F(2)
+        sample_mean_upper = F(self.hi_sum, n*SCALE)
+        # An upper enclosure of the unbiased sample variance.
+        var_upper = F(n*SCALE*self.square_hi_sum-self.lo_sum**2,
+                      n*(n-1)*SCALE*SCALE)
+        radius = sqrt_upper(2*var_upper*log_two_over_delta/n)
+        radius += 7*F(3,2)*log_two_over_delta/(3*(n-1))
+        return min(F(2), sample_mean_upper + radius)
+
+
+class LazyOracle:
+    def __init__(self, ny: int) -&gt; None:
+        self.ny, self.cache = ny, {}
+
+    def ratio(self, edge: int) -&gt; F:
+        if edge not in self.cache:
+            x, y = divmod(edge, self.ny)
+            # Exact synthetic target ratio in [0.95,1.05]. This arithmetic
+            # stands in for an expensive microscopic calculation, not a
+            # physical validation of a real transition rate.
+            self.cache[edge] = F(1000 + ((17*x+13*y) % 101)-50, 1000)
+        return self.cache[edge]
+
+
+def run(seed: int | None = 19031) -&gt; dict:
+    started = time.perf_counter()
+    nx = ny = 256
+    # An exact integer-weight reference with heterogeneous channels.
+    channel_weights = [256 + ((983*y+137*y*y) % 3841) for y in range(ny)]
+    cumulative, acc = [], 0
+    for w in channel_weights:
+        acc += w
+        cumulative.append(acc)
+    C0 = F(acc, 1024*(nx-1))
+    rng = random.SystemRandom() if seed is None else random.Random(seed)
+    oracle = LazyOracle(ny)
+    forward, inverse = Moments(), Moments()
+    lo, hi = C0/2, 2*C0
+    stream, stages = [], []
+    k, target_n = 0, 128
+    while target_n &lt;= 131072:
+        k += 1
+        while len(stream) &lt; target_n:
+            y = bisect_right(cumulative, rng.randrange(acc))
+            x = rng.randrange(nx-1)
+            edge = x*ny + y
+            stream.append(edge)
+            r = oracle.ratio(edge)
+            assert F(1,2) &lt;= r &lt;= 2
+            forward.add(r)
+            inverse.add(1/r)
+        # delta_k=alpha/[2 k(k+1)], alpha=1/100, for each of two moments.
+        # Hence 2/delta_k = 400 k(k+1).
+        logU = log_upper(400*k*(k+1))
+        aU, bU = forward.mean_upper(logU), inverse.mean_upper(logU)
+        lo, hi = max(lo, C0/bU), min(hi, C0*aU)
+        if lo &gt; hi:
+            raise RuntimeError(&#x27;confidence intersection is empty&#x27;)
+        stages.append({&#x27;stage&#x27;:k, &#x27;samples&#x27;:len(stream), &#x27;distinct_queries&#x27;:len(oracle.cache),
+                       &#x27;lower_exact&#x27;:str(lo), &#x27;upper_exact&#x27;:str(hi),
+                       &#x27;relative_width_display&#x27;:float(hi/lo-1)})
+        if hi/lo &lt;= F(21,20):
+            break
+        target_n *= 2
+    return {&#x27;status&#x27;:&#x27;synthetic finite-bit confidence procedure; no physical validation&#x27;,
+            &#x27;randomness_model&#x27;:&#x27;i.i.d. uniform bits required by theorem; PRNG not certified&#x27;,
+            &#x27;seed&#x27;:seed, &#x27;grid&#x27;:[nx,ny], &#x27;vertices&#x27;:nx*ny,
+            &#x27;edges&#x27;:(nx-1)*ny+nx*(ny-1), &#x27;axial_support&#x27;:(nx-1)*ny,
+            &#x27;C0_exact&#x27;:str(C0), &#x27;epsilon_exact&#x27;:&#x27;1/20&#x27;, &#x27;alpha_exact&#x27;:&#x27;1/100&#x27;,
+            &#x27;passed&#x27;:hi/lo &lt;= F(21,20), &#x27;samples&#x27;:len(stream),
+            &#x27;distinct_target_coefficients_acquired&#x27;:len(oracle.cache),
+            &#x27;transverse_coefficients_acquired&#x27;:0, &#x27;lower_exact&#x27;:str(lo), &#x27;upper_exact&#x27;:str(hi),
+            &#x27;lower_display&#x27;:float(lo), &#x27;upper_display&#x27;:float(hi),
+            &#x27;relative_width_display&#x27;:float(hi/lo-1), &#x27;compute_seconds&#x27;:time.perf_counter()-started,
+            &#x27;stages&#x27;:stages, &#x27;sampled_edge_stream&#x27;:stream,
+            &#x27;distinct_oracle_records&#x27;:{str(e):str(r) for e,r in sorted(oracle.cache.items())}}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--system-random&#x27;, action=&#x27;store_true&#x27;)
+    args = parser.parse_args()
+    result = run(None if args.system_random else 19031)
+    Path(__file__).with_name(&#x27;finite_bit_results.json&#x27;).write_text(json.dumps(result,indent=2))
+    print(json.dumps({k:v for k,v in result.items() if k not in
+                     (&#x27;stages&#x27;,&#x27;sampled_edge_stream&#x27;,&#x27;distinct_oracle_records&#x27;)},indent=2))
+</pre>
