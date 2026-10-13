@@ -1,0 +1,168 @@
+<!doctype html><meta charset="utf-8"><title>N787 preserved original — validate.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Reproducible finite checks; none substitutes for the general proof.
+
+Independent references: triangular moment ODE and, for small mark count,
+finite partition CTMC matrix exponential. Floating numerical references are
+not interval-certified. Fixed seed and input are recorded in JSON output.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse, json, time
+from collections import deque
+from math import exp, sqrt, pi, gamma
+from pathlib import Path
+import numpy as np
+from scipy.integrate import solve_ivp, simpson
+from scipy.linalg import expm
+from scipy.special import eval_genlaguerre, poch, gammaln
+from scipy.stats import poisson, nbinom, binom
+from collision_dual import (DiscreteVariance, terminal_blocks, laplace_sample,
+                            density_sample, approximate_velocity, tv_bound)
+
+SEED=20261013
+A,B=1.,3.
+INITIAL=DiscreteVariance((1.,3.),(.5,.5))
+
+
+def moment_reference(times: list[float], degree: int=96):
+    initial=np.full(degree+1,.5); initial[0]=1.
+    k=np.arange(degree+1)
+    def rhs(_t,m):
+        result=np.convolve(m,m)[:degree+1]/(k+1)-m
+        result[0]=result[1]=0.
+        return result
+    start=time.perf_counter()
+    sol=solve_ivp(rhs,(0.,max(times)),initial,t_eval=times,
+                  method=&#x27;DOP853&#x27;,rtol=2e-12,atol=2e-14)
+    if not sol.success:
+        raise RuntimeError(sol.message)
+    return sol.y.T, time.perf_counter()-start, sol.nfev
+
+
+def partition_distribution(n: int,t: float):
+    start=(n,); states=[start]; lookup={start:0}; transitions=[]
+    for state in states:
+        row={}
+        for i,k in enumerate(state):
+            if k&lt;2: continue
+            for r in range(1,k):
+                nxt=tuple(sorted(state[:i]+state[i+1:]+(r,k-r)))
+                if nxt not in lookup:
+                    lookup[nxt]=len(states); states.append(nxt)
+                idx=lookup[nxt]
+                row[idx]=row.get(idx,0.)+1/(k+1)
+        transitions.append(row)
+    q=np.zeros((len(states),len(states)))
+    for i,row in enumerate(transitions):
+        for j,rate in row.items(): q[i,j]+=rate
+        q[i,i]=-sum(row.values())
+    p=expm(t*q)[0]
+    pmf=np.zeros(n+1)
+    for weight,state in zip(p,states):
+        poly=np.array([1.])
+        for k in state:
+            factor=np.zeros(k+1); factor[0]=factor[k]=.5
+            poly=np.convolve(poly,factor)
+        pmf+=weight*poly
+    return pmf,len(states)
+
+
+def main(output: Path):
+    rng=np.random.default_rng(SEED)
+    result={&#x27;seed&#x27;:SEED,&#x27;model&#x27;:{&#x27;a&#x27;:A,&#x27;b&#x27;:B,&#x27;values&#x27;:[1.,3.],&#x27;weights&#x27;:[.5,.5]},
+            &#x27;status&#x27;:&#x27;Floating-point finite diagnostics, not formal verification or priority clearance.&#x27;}
+    times=[0.,1.,3.,10.,30.,100.]
+    moments,elapsed,nfev=moment_reference(times)
+    result[&#x27;moment_reference&#x27;]={&#x27;max_degree&#x27;:96,&#x27;runtime_seconds&#x27;:elapsed,&#x27;rhs_evaluations&#x27;:nfev,
+       &#x27;max_m2_closed_form_error&#x27;:float(max(abs(moments[i,2]-(.25+.25*exp(-t/3))) for i,t in enumerate(times)))}
+    rows=[]
+    z=1.; repeats=24000
+    for t,m in zip(times,moments):
+        start=time.perf_counter()
+        draws=np.array([laplace_sample(z,t,A,B,INITIAL,rng) for _ in range(repeats)])
+        target=exp(-A*z)*float(poisson.pmf(np.arange(len(m)),(B-A)*z)@m)
+        estimate=float(draws[:,0].mean()); se=float(draws[:,0].std(ddof=1)/sqrt(repeats))
+        rows.append({&#x27;time&#x27;:t,&#x27;z&#x27;:z,&#x27;samples&#x27;:repeats,&#x27;estimate&#x27;:estimate,&#x27;reference&#x27;:target,
+            &#x27;standard_error&#x27;:se,&#x27;standardized_error&#x27;:(estimate-target)/se,
+            &#x27;mean_poisson_degree&#x27;:float(draws[:,1].mean()),&#x27;mean_splits&#x27;:float(draws[:,2].mean()),
+            &#x27;runtime_seconds&#x27;:time.perf_counter()-start})
+    result[&#x27;laplace_checks&#x27;]=rows
+    # Independent finite partition-chain reference for actual sampling law.
+    n=8; t=3.; pmf,count=partition_distribution(n,t)
+    hist=np.zeros(n+1); repeats=32000
+    start=time.perf_counter()
+    for _ in range(repeats):
+        _,variance,_,_=approximate_velocity(n,t,A,B,INITIAL,rng)
+        hist[round((variance-A)*n/(B-A))]+=1
+    empirical=hist/repeats
+    result[&#x27;partition_reference&#x27;]={&#x27;n&#x27;:n,&#x27;time&#x27;:t,&#x27;partition_states&#x27;:count,&#x27;samples&#x27;:repeats,
+        &#x27;pmf&#x27;:pmf.tolist(),&#x27;empirical_pmf&#x27;:empirical.tolist(),
+        &#x27;empirical_TV_to_reference&#x27;:float(abs(pmf-empirical).sum()/2),
+        &#x27;runtime_seconds&#x27;:time.perf_counter()-start}
+    # End-to-end work and latent second-moment checks.
+    rows=[]; n=64; repeats=3500
+    for t in [0.,1.,3.,10.,100.,1e6]:
+        start=time.perf_counter(); vals=[];splits=[]; nodes=[]
+        for _ in range(repeats):
+            _,variance,split,node=approximate_velocity(n,t,A,B,INITIAL,rng)
+            vals.append(variance); splits.append(split); nodes.append(node)
+        vals=np.array(vals)
+        rows.append({&#x27;time&#x27;:t,&#x27;n&#x27;:n,&#x27;samples&#x27;:repeats,&#x27;mean_variance_parameter&#x27;:float(vals.mean()),
+          &#x27;second_central_moment&#x27;:float(np.mean((vals-2)**2)),
+          &#x27;second_central_moment_reference&#x27;:exp(-t/3)+(1-exp(-t/3))/n,
+          &#x27;mean_splits&#x27;:float(np.mean(splits)),&#x27;max_splits&#x27;:max(splits),&#x27;max_nodes&#x27;:max(nodes),
+          &#x27;uniform_TV_bound&#x27;:tv_bound(n,A,B),&#x27;runtime_seconds&#x27;:time.perf_counter()-start})
+    result[&#x27;full_sampler_checks&#x27;]=rows
+    # Numerical full-law TV comparisons via exact small-n partition probabilities
+    # and a deterministic Laguerre/moment reconstruction of the true PDE solution.
+    radius=np.linspace(0.,14.,10001)
+    r2=radius**2; x=r2/(2*B)
+    base=(2*pi*B)**(-1.5)*np.exp(-x)
+    lags=np.array([eval_genlaguerre(k,.5,x) for k in range(len(moments[0]))])
+    true_index=2 # t=3
+    weights=((B-A)/B)**np.arange(lags.shape[0])*moments[true_index]
+    true_density=base*(weights@lags)
+    spectail=.5*(B/A)**1.5*nbinom.sf(len(moments[0])-1,1.5,A/B)
+    tvrows=[]
+    for n in [1,2,4,8,16]:
+        pmf,_=partition_distribution(n,3.)
+        variances=A+(B-A)*np.arange(n+1)/n
+        density=np.sum(pmf[:,None]*(2*pi*variances[:,None])**(-1.5)*np.exp(-r2[None,:]/(2*variances[:,None])),axis=0)
+        tv=float(.5*simpson(4*pi*r2*abs(density-true_density),x=radius))
+        tvrows.append({&#x27;time&#x27;:3.,&#x27;n&#x27;:n,&#x27;numerical_TV&#x27;:tv,&#x27;proven_uniform_TV_bound&#x27;:tv_bound(n,A,B),
+          &#x27;proven_time_refined_TV_bound&#x27;:sqrt(15/2)*(1-exp(-1))/(4*n)})
+    result[&#x27;full_law_TV_checks&#x27;]={&#x27;note&#x27;:&#x27;Radial quadrature and ODE errors are not interval certified.&#x27;,
+        &#x27;analytic_series_tail_L1_half_bound&#x27;:float(spectail),&#x27;rows&#x27;:tvrows}
+    # Long-time law can be evaluated directly (all n blocks singleton).
+    equilibrium=(2*pi*2)**(-1.5)*np.exp(-r2/4)
+    rows=[]
+    for n in [8,16,32,64,128,256]:
+        variances=A+(B-A)*np.arange(n+1)/n
+        p=binom.pmf(np.arange(n+1),n,.5)
+        density=np.sum(p[:,None]*(2*pi*variances[:,None])**(-1.5)*np.exp(-r2[None,:]/(2*variances[:,None])),axis=0)
+        tv=float(.5*simpson(4*pi*r2*abs(density-equilibrium),x=radius))
+        rows.append({&#x27;n&#x27;:n,&#x27;numerical_TV_at_infinity&#x27;:tv,&#x27;uniform_TV_bound&#x27;:tv_bound(n,A,B)})
+    result[&#x27;equilibrium_full_law_checks&#x27;]=rows
+    # Density observable oracle: bounded signed output, no inversion grid needed.
+    rows=[]; t=3.;repeats=28000
+    for radius_value in [0.,2.]:
+        v=np.array([radius_value,0.,0.]); samples=[];degrees=[]
+        for _ in range(repeats):
+            value,degree,_=density_sample(v,t,A,B,INITIAL,rng);samples.append(value);degrees.append(degree)
+        x0=radius_value**2/(2*B)
+        reference=float((2*pi*B)**(-1.5)*exp(-x0)*sum(
+          eval_genlaguerre(k,.5,x0)*((B-A)/B)**k*moments[true_index,k] for k in range(len(moments[0]))))
+        samples=np.array(samples); se=float(samples.std(ddof=1)/sqrt(repeats))
+        rows.append({&#x27;time&#x27;:t,&#x27;radius&#x27;:radius_value,&#x27;samples&#x27;:repeats,&#x27;estimate&#x27;:float(samples.mean()),
+          &#x27;reference&#x27;:reference,&#x27;standard_error&#x27;:se,&#x27;standardized_error&#x27;:float((samples.mean()-reference)/se),
+          &#x27;mean_degree&#x27;:float(np.mean(degrees))})
+    result[&#x27;density_checks&#x27;]=rows
+    # Negative control: replacing every mark by an independent initial sample at t=0.
+    result[&#x27;negative_control&#x27;]={&#x27;n&#x27;:64,&#x27;time&#x27;:0.,&#x27;correct_latent_variance&#x27;:1.,
+          &#x27;incorrect_independent_marks_latent_variance&#x27;:1/64,
+          &#x27;explanation&#x27;:&#x27;Shared ancestry cannot be replaced by independent marks.&#x27;}
+    output.write_text(json.dumps(result,indent=2))
+    print(json.dumps(result,indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    p=argparse.ArgumentParser();p.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;results.json&#x27;))
+    main(p.parse_args().output)
+</pre>

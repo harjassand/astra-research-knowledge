@@ -1,0 +1,256 @@
+# From all-time collision sampling to acquired scientific decisions
+
+Pinned capital: `b34e22e8f8ef8bd853595952fcbd9c74c5ace306`.
+Status: internally derived, with separate finite diagnostics; external correctness
+and historical priority UNKNOWN. This note does not establish a new physical
+mechanism, a generally efficient kinetic solver, or a civilization-level capability.
+
+The source's useful distinction is preserved: a bounded expected cost for **one
+ideal sample** is a different resource from the number of samples needed to
+resolve a scientific effect. The following closes that distinction quantitatively
+for its actual Gaussian-mixture Maxwell family, and supplies an acquisition-aware
+approximation under a different, explicitly weaker output contract.
+
+## 1. Exact family and notation
+
+Let the source model have `V_0 ~ nu_0` supported on `[a,b]`, `a>0`, and
+`f_t(v)=E G_{V_t}(v)` in three dimensions, with uniform binary averaging at
+unit collision rate. Write
+
+`mu=E V_0`, `sigma2=Var(V_0)`, `D=max(mu-a,b-mu)`.
+
+The source's second-moment equation gives
+
+`E V_t=mu`, `Var(V_t)=sigma2 exp(-t/3)`.
+
+The unique equilibrium mixing law is the point mass at `mu`; the associated
+one-particle density is `Q=G_mu`. The statements below compare this actual
+transient density to that equilibrium; they do not replace the exact source
+sampler by equilibrium.
+
+## 2. An explicit chi-square contraction bound
+
+Assume `D<mu`. This holds throughout the source's exact-sampling regime
+`b<3a/2`, and also for some wider brackets. Define
+
+`q=(D/mu)^2 < 1`,
+
+`A(q)=((1-q)^(-3/2)-1-(3/2)q)/q^2`, with `A(0)=15/8`,
+
+`B=A(q) (sigma2/mu^2)^2`.
+
+Then
+
+**Theorem 1.** `chi2(f_t || G_mu) <= B exp(-2t/3)` for every `t>=0`.
+
+Here `chi2(P||Q)=integral (p/q-1)^2 q`. If `sigma2=0`, the transient is
+already equilibrium and this divergence is zero.
+
+### Proof
+
+A direct Gaussian integration, valid for `s,u` in the bracket, gives
+
+`integral G_s(v) G_u(v) / G_mu(v) dv`
+`= [1-(s-mu)(u-mu)/mu^2]^(-3/2)`.
+
+The denominator is positive because `|(s-mu)(u-mu)| <= D^2 < mu^2`.
+Expand `(1-z)^(-3/2)=sum_{j>=0} c_j z^j`, where
+`c_j=(3/2)_j/j! > 0`. Uniform absolute convergence on `[-q,q]` permits
+termwise expectation for independent `S,U ~ V_t`. The terms of degree zero
+and one respectively cancel the `-1` in chi-square and vanish by mean
+conservation. Therefore the exact identity is
+
+`chi2(f_t || G_mu) = sum_{j>=2} c_j [E (V_t-mu)^j / mu^j]^2`.
+
+For `j>=2`,
+
+`|E (V_t-mu)^j| <= D^(j-2) sigma2 exp(-t/3)`.
+
+Sum the resulting geometric-coefficient series. This proves the bound.
+No truncation or finite numerical quadrature is a proof premise.
+
+## 3. The cost of resolving the transient from output velocities
+
+Suppose an experiment or downstream decision receives only `N` independent
+velocity draws, promised to be from either `f_t` or `G_mu`, with equal priors.
+It does not receive the mixing sampler, a moment oracle, internal genealogy,
+or a direct analytic declaration of the hypothesis.
+
+**Corollary 2.** If `sigma2>0`, any test with average error at most `1/4` needs
+
+`N >= (log 2 / B) exp(2t/3)`.
+
+### Proof
+
+For product distributions,
+
+`1+chi2(P^N||Q^N)=[1+chi2(P||Q)]^N`.
+
+The elementary Cauchy-Schwarz inequality gives
+`TV(P^N,Q^N) <= (1/2) sqrt(chi2(P^N||Q^N))`.
+Average testing error is at least `(1-TV)/2`. Error at most `1/4` thus
+requires product chi-square at least one, or
+
+`N log(1+chi2(P||Q)) >= log 2`.
+
+Use `log(1+x)<=x` and Theorem 1.
+
+This is an observation-interface lower bound, **not** a computational lower
+bound on a solver supplied with the model or its moments. In particular, a
+model-aware method can calculate the variance decay directly. It is also not
+a statement that every scientific observable requires this many samples.
+It refutes precisely the transfer from constant expected work per sample to
+constant work for detecting this exponentially small distributional signal.
+
+### Matching exponent with a familiar moment statistic
+
+For known `mu` and known nonzero `sigma2`, use
+
+`h(v)=|v|^4-10 mu |v|^2+15 mu^2`.
+
+Its expectation is zero under `G_mu` and
+`m_t=15 sigma2 exp(-t/3)` under `f_t`. This follows from Gaussian radial
+moments `E U=3`, `E U^2=15` for `U~chi2_3`.
+
+Also `E h^2 <= H2` under either hypothesis, where a simple uniform bound is
+
+`H2=(sqrt(945) b^2 + 10 mu sqrt(15) b + 15 mu^2)^2`.
+
+Indeed Minkowski's inequality and `V_t<=b` bound the three terms of `h`
+in `L2`; `E U^4=945`. Testing the empirical average at threshold `m_t/2`
+has each error at most `1/4` when
+
+`N >= 16 H2 / (225 sigma2^2) exp(2t/3)`.
+
+Thus the exponential order is not merely an artifact of a loose divergence
+argument. These are conservative constants, not an optimal testing theorem.
+Acquiring `mu`, `sigma2`, independence and model calibration remains charged.
+
+For the producer's equal mixture on variances `1` and `1.1`, `B` is about
+`9.667e-6`; even at `t=0` the lower bound is about 71,700 output velocities.
+The exact value is recorded by the independent diagnostic. At large time
+the requirement grows as `exp(2t/3)`. This explains why 4,500 source outputs
+cannot establish detection of its tiny non-equilibrium fourth-moment signal.
+
+## 4. Late-time sampling using acquired energy rather than latent-law access
+
+The source assumes an independent sampler for `V_0`. Physical initial
+velocity measurements do not automatically provide this latent sampler.
+For sufficiently late times and an explicitly approximate output contract,
+one can bypass the inverse mixture reconstruction as follows.
+
+Assume the Maxwell-mixture model and bounds `[a,b]` are independently
+validated, and independent initial velocities `X_i~f_0` are accessible.
+Their calibrated kinetic quantity `Y_i=|X_i|^2/3` has
+
+`E Y_i=mu`, `Var(Y_i) <= (5/3)b^2`.
+
+Use median of independent block means to estimate `mu`, and project the
+estimate to `[a,b]`. For desired `0<epsilon<1` and `0<zeta<1`, set
+
+`delta_mu = a epsilon sqrt(2/3)`;
+
+take each block size `m0=ceil(10 b^2/(a^2 epsilon^2))`, and an odd number
+of blocks `L >= 8 log(1/zeta)`. Chebyshev gives each block error probability
+at most `1/4`; Hoeffding bounds the median's failure probability by
+`exp(-L/8) <= zeta`. Projection cannot increase error from `mu in [a,b]`.
+
+Let `mu_hat` be the resulting estimate. On the calibration event,
+
+`TV(f_t,G_mu_hat)`
+`<= sqrt(15/2) sigma2 exp(-t/3)/(4a^2)`
+`   + sqrt(3/2) |mu_hat-mu|/(2a)`.
+
+For the first term, Taylor-expand `G_s` around `mu`; the first-order term
+vanishes in expectation, and the source's bound
+`||d^2 G_s/ds^2||_1 <= sqrt(15/2)/a^2` controls the remainder. The second
+term follows by integrating the first derivative bound
+`||dG_s/ds||_1 <= sqrt(3/2)/a` along `[mu,mu_hat]`.
+
+Since `sigma2 <= (b-a)^2/4`, the total is at most `epsilon` when
+
+`t >= max(0, 3 log[ sqrt(15/2)(b-a)^2 / (8a^2 epsilon) ])`.
+
+After a charged acquisition of `m0 L` measured velocities, one may therefore
+generate independent `G_mu_hat` outputs at constant ideal arithmetic work
+per output; with probability at least `1-zeta` over calibration their
+**conditional one-output law** is within `epsilon` TV of `f_t`.
+
+This is an approximate, late-time, model-dependent interface. It neither
+implements the source's exact sampler nor acquires `nu_0` or verifies a
+collision model from data. Reusing one calibration estimate makes outputs
+conditionally independent, not unconditionally independent relative to the
+calibration randomness. For `M` joint outputs, the same event guarantees only
+`TV <= min(1,M epsilon)` by product coupling. More stringent joint accuracy
+requires choosing the per-output tolerance accordingly. Finite-bit Gaussian
+generation and sensor noise/timing/bias need separate budgets.
+
+## 5. What survives and what remains missing
+
+The source exact sampler retains the actual transient law with uniform
+expected ideal work in its stated bracket. Nothing here invalidates that
+construction. The new information bound prevents equating that theorem with
+uniform experimental ability to resolve vanishing departures from equilibrium.
+The late-time protocol shows that a matched approximate comparator can also
+avoid the latent inverse problem; a fair benchmark must compare the same
+accuracy and acquisition contract.
+
+The bounded marked genealogy does not by itself establish spatial transport,
+hard-sphere rates, reactive chemistry, a correlated particle/path law, or a
+finite-bit exact simulation. Those would require genuinely new closure and
+access theorems. The collision-clock batching capital (N735) accounts for a
+different indexed-rate/CRN interface and supplies none of these hypotheses.
+The DPP collision certificates (N470/N471) concern forbidden category
+collisions, with finite discrete determinants; they do not transfer a kinetic
+kernel or an exact-real arithmetic guarantee.
+
+The Gaussian integration, chi-square product identity, testing bound,
+moment method and median-of-means are standard methods. The work here is a
+scoped derivation and acquisition comparison for this source family, not a
+claim of inventing those tools. Historical priority of this particular
+combination and of the producer's marked/series/factory operation is UNKNOWN.
+
+## 6. A precise reusable full-law gate, and why it does not close N687
+
+The source's Bernoulli-factory step has a general conditional reuse interface.
+Let `q` be a sampleable proposal density, `f` a normalized target, and suppose
+one can acquire independent signed queries `W(x)` with
+
+`E W(x)=f(x)/q(x)`, `|W(x)|<=C`,
+`0<ell(x)<=f(x)/q(x)`, `I=integral q(x)/ell(x) dx<infinity`.
+
+The source proof, importing Huber's stated linear factory, then produces an
+ideal exact target sample using at most `19 C^2 I` signed queries in
+expectation and `C` proposals. If the expected query cost at fixed `x` is
+`c(x)`, the same predictable-stopping and renewal argument instead charges
+at most `19 C^2 integral q(x)c(x)/ell(x) dx`. Independent fresh queries and
+known pointwise bounds are part of the contract, not inferred from an
+unbiased matrix action or from empirical bounded values.
+
+A known positive margin is substantive. There is no a.s.-finite coin-only
+converter over the entire domain `p in [0,1/2]` with output mean `1-2p`:
+at `p=1/2` it must output zero almost surely, whereas at any interior
+`0<p<1/2` it must sometimes output one after a finite number of input flips.
+Every finite flip word has positive probability at both parameters. With
+the same auxiliary randomness, any positive-measure finite event producing
+one at the interior parameter also has positive measure at `p=1/2`, a
+contradiction. This is the standard finite-word Bernoulli-factory boundary
+obstruction; it is not a new impossibility theorem for other physical access.
+
+N687/R22 Sections 9--12 supply bounded unbiased **operator actions** acquired
+from two deterministic gradient-field value queries. They do not supply the
+pointwise density-ratio queries, uniform constants, positive lower envelope,
+or its integrated cost above. R22 also explicitly retains dependence on the
+Gaussian source; replacing it by a marginal estimator loses that contract.
+Therefore the converter is a CANDIDATE CONNECTION with a precise missing
+lemma, not a completed positive Gaussian-noise compiler.
+
+For a consequential N687 reuse, one must construct this full-law interface
+from legal gradient values, bound the weighted integral and each original
+query cost by the desired dimension/accuracy dependence, preserve required
+source correlations, and convert the **expected** converter work into the
+destination's **every-execution** approximate-query cap. Markov truncation
+can give a failure/TV budget from a proved expected cost, but cannot turn
+unbounded exact work into a bounded exact algorithm or eliminate a bad
+dimension-dependent constant. No such density construction is established
+here. R22's own generic iid-action obstruction remains intact.

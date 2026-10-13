@@ -1,0 +1,97 @@
+<!doctype html><meta charset="utf-8"><title>N788 integration derived — binary_coherence_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Independent finite matrix diagnostics for a written UCP entropy bound.&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+import math
+import numpy as np
+
+
+def entropy(matrix):
+    eig=np.linalg.eigvalsh(matrix)
+    assert eig.min()&gt;-1e-10
+    return float(-sum(v*math.log(v) for v in eig if v&gt;0))
+
+
+def h2(p):
+    return -sum(v*math.log(v) for v in [p,1-p] if v&gt;0)
+
+
+def penalty(p,x):
+    r=math.sqrt(max(0,(2*p-1)**2+x*x))
+    assert r&lt;=1+1e-9
+    return h2(p)-h2((1+min(1,r))/2)
+
+
+def gibbs(h,beta):
+    e,v=np.linalg.eigh(h);weights=np.exp(-beta*(e-e.min()))
+    rho=(v*(weights/weights.sum()))@v.conj().T
+    return rho,float(-beta*e.min()+math.log(weights.sum()))
+
+
+def main():
+    rng=np.random.default_rng(131026)
+    counts=dict(exact_qubit_feasibility=0,complex_choi_states=0,
+                entropy_and_partition_bounds=0,confidence_bias_order=0)
+    for p,x in [(F(1,10),F(2,5)),(F(1,4),F(1,2)),(F(1,2),F(3,4))]:
+        assert p*(1-p)-x*x/4&gt;=0
+        counts[&#x27;exact_qubit_feasibility&#x27;]+=1
+    largest_gain=0.0;smallest_choi=0.0;max_identity_error=0.0
+    for n0,n1 in [(1,1),(1,3),(2,3),(4,3)]:
+        n=n0+n1
+        p0=np.diag([1.0]*n0+[0.0]*n1);p1=np.eye(n)-p0
+        for fixture in range(30):
+            raw=rng.normal(size=(n,n))+1j*rng.normal(size=(n,n))
+            h=(raw+raw.conj().T)/2
+            h[:n0,:n0]+=rng.uniform(-3,3)*np.eye(n0)
+            h[n0:,n0:]+=rng.uniform(-3,3)*np.eye(n1)
+            d=p0@h@p0+p1@h@p1;t=h-d;b=p0@h@p1
+            k=np.linalg.norm(b,2)*(1 if fixture%2 else 1.3)
+            beta=[0.2,0.7,1.6][fixture%3]
+            rho,logzh=gibbs(h,beta);rhod,logzd=gibbs(d,beta)
+            sigma=p0@rho@p0+p1@rho@p1
+            p=float(np.trace(p0@rho).real)
+            a=-float(np.trace(rho@t).real);x=a/k
+            assert a&gt;=-1e-10 and x&lt;=2*math.sqrt(p*(1-p))+1e-9
+            choi=np.block([[p0,b/k],[b.conj().T/k,p1]])
+            smallest_choi=min(smallest_choi,float(np.linalg.eigvalsh(choi).min()))
+            assert np.linalg.eigvalsh(choi).min()&gt;-1e-9
+            z=np.trace(rho@b.conj().T)/k
+            q=np.array([[p,z],[z.conjugate(),1-p]])
+            assert np.linalg.eigvalsh(q).min()&gt;-1e-9
+            assert abs(2*k*z.real+a)&lt;1e-9
+            direct=entropy(sigma)-entropy(rho)
+            lower=penalty(p,x);old=penalty(.5,x)
+            assert direct&gt;=h2(p)-entropy(q)-1e-9
+            assert direct&gt;=lower-1e-9 and lower&gt;=old-1e-9
+            logarithm=logzh-logzd
+            new=beta*a-lower;previous=beta*a-old
+            assert logarithm&gt;=-1e-9 and logarithm&lt;=new+1e-9
+            assert new&lt;=previous+1e-9
+            es,vs=np.linalg.eigh(rhod)
+            logs=(vs*np.log(es))@vs.conj().T
+            relative=-entropy(sigma)-float(np.trace(sigma@logs).real)
+            error=abs(logarithm-(beta*a-direct-relative))
+            max_identity_error=max(max_identity_error,error)
+            assert error&lt;1e-9
+            largest_gain=max(largest_gain,lower-old)
+            counts[&#x27;complex_choi_states&#x27;]+=1
+            counts[&#x27;entropy_and_partition_bounds&#x27;]+=1
+    for lo,hi in [(.05,.2),(.2,.6),(.8,.95)]:
+        closest=min(hi,max(lo,.5))
+        for p in np.linspace(lo,hi,21):
+            for x in np.linspace(0,2*math.sqrt(p*(1-p))*.99,11):
+                assert penalty(p,x)&gt;=penalty(closest,x)-1e-10
+                counts[&#x27;confidence_bias_order&#x27;]+=1
+    result=dict(status=&#x27;PASS&#x27;,seed=131026,counts=counts,
+                maximum_activity_exponent_improvement=largest_gain,
+                minimum_choi_eigenvalue_roundoff=smallest_choi,
+                maximum_entropy_identity_residual=max_identity_error,
+                exact_scope=&#x27;Three rational qubit positivity determinants only.&#x27;,
+                floating_scope=&#x27;Finite complex Hermitian eigensolver diagnostics, tolerance1e-9; not outward certificates.&#x27;,
+                boundary=&#x27;Written proof carries universal statements; no physical data,external review or novelty clearance.&#x27;)
+    Path(&#x27;binary_coherence_results.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

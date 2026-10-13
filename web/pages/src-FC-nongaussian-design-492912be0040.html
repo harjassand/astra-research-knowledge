@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><title>N788 preserved original — kinetic_budget_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Check the optional measured-kinetic-energy and local-coherence budgets.&quot;&quot;&quot;
+from pathlib import Path
+import json
+import numpy as np
+from scipy.linalg import expm,block_diag
+from certificates import coherence_budget,histogram_interval,thermal_statistics
+rng=np.random.default_rng(915811); rows=[]
+for case in range(150):
+    da,db=int(rng.integers(1,7)),int(rng.integers(1,7)); n=da+db
+    a=rng.normal(size=(da,da))+1j*rng.normal(size=(da,da)); a=(a+a.conj().T)/2
+    b=rng.normal(size=(db,db))+1j*rng.normal(size=(db,db)); b=(b+b.conj().T)/2
+    if case%3==0: b+=30*np.eye(db)
+    t=(rng.normal(size=(da,db))+1j*rng.normal(size=(da,db)))*rng.uniform(.03,.4)
+    D=block_diag(a,b); T=np.zeros((n,n),complex); T[:da,da:]=t; T[da:,:da]=t.conj().T
+    H=D+T; beta=float(rng.uniform(.3,3)); eh=expm(-beta*H); zd=np.trace(expm(-beta*D)).real
+    z=np.trace(eh).real; rho=eh/z; tau=np.trace(rho@T).real
+    k=np.linalg.norm(t,2); Cnorm=np.cosh(beta*k); Ckin=np.exp(max(0,-beta*tau))
+    assert 1-1e-9&lt;=z/zd&lt;=min(Cnorm,Ckin)+1e-8
+    labels=np.r_[np.zeros(da,dtype=int),np.ones(db,dtype=int)]
+    p=np.array([np.trace(rho[:da,:da]).real,np.trace(rho[da:,da:]).real])
+    v=rng.uniform(-5,5,size=2); f,p2=thermal_statistics(H,beta,labels,2)
+    fv,_=thermal_statistics(H+np.diag(v[labels]),beta,labels,2)
+    lo,hi=histogram_interval(p,v,beta,min(Cnorm,Ckin))
+    assert lo-1e-9&lt;=fv-f&lt;=hi+1e-9
+    rows.append({&#x27;C_norm&#x27;:float(Cnorm),&#x27;C_kinetic&#x27;:float(Ckin),&#x27;true_ratio&#x27;:z/zd})
+# Predefined off-resonant illustration: large operator norm, small energetic activity.
+H=np.array([[0.,1.],[1.,100.]])
+beta=1.;D=np.diag(np.diag(H));T=H-D;eh=expm(-H);z=np.trace(eh);tau=np.trace(eh@T)/z
+example={&#x27;dimension&#x27;:2,&#x27;level_offset&#x27;:100.,&#x27;hopping&#x27;:1.,&#x27;beta&#x27;:1.,
+         &#x27;C_norm&#x27;:float(np.cosh(1.)),&#x27;C_kinetic&#x27;:float(np.exp(-tau)),
+         &#x27;true_Z_over_Zpinched&#x27;:float(z/np.trace(expm(-D)))}
+out={&#x27;passed_interacting_block_tests&#x27;:len(rows),&#x27;measured_budget_better_count&#x27;:sum(x[&#x27;C_kinetic&#x27;]&lt;x[&#x27;C_norm&#x27;] for x in rows),
+     &#x27;illustration_not_scientific_benchmark&#x27;:example,&#x27;warning&#x27;:&#x27;double precision only&#x27;}
+Path(__file__).with_name(&#x27;kinetic_checks.json&#x27;).write_text(json.dumps(out,indent=2));print(json.dumps(out,indent=2))
+</pre>

@@ -1,0 +1,185 @@
+<!doctype html><meta charset="utf-8"><title>N787 integration derived — independent_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Independent finite diagnostics, without importing any producer module.
+
+Exact fractions verify finite generators. Floating integration/ODE/calibration
+checks are scoped diagnostics, not interval or general proof certificates.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction as F
+from math import ceil, exp, factorial, log, pi, sqrt
+from pathlib import Path
+import json
+
+import numpy as np
+from scipy.integrate import quad, solve_ivp
+from scipy.linalg import expm
+from scipy.special import eval_genlaguerre, poch
+
+
+def partition_generator(n):
+    states = [(n,)]
+    lookup = {states[0]: 0}
+    rows = []
+    for state in states:
+        row = {}
+        for i, size in enumerate(state):
+            for left in range(1, size):
+                dest = tuple(sorted(state[:i] + state[i+1:] + (left, size-left)))
+                if dest not in lookup:
+                    lookup[dest] = len(states)
+                    states.append(dest)
+                j = lookup[dest]
+                row[j] = row.get(j, F(0)) + F(1, size+1)
+        row[lookup[state]] = -sum(row.values(), F(0))
+        rows.append(row)
+    matrix = [[F(0) for _ in states] for _ in states]
+    for i, row in enumerate(rows):
+        for j, rate in row.items():
+            matrix[i][j] = rate
+        assert sum(matrix[i], F(0)) == 0
+        assert all(rate &gt;= 0 for j, rate in enumerate(matrix[i]) if j != i)
+        # Every transition increases the number of blocks and conserves marks.
+        for j, rate in row.items():
+            if j != i and rate:
+                assert len(states[j]) == len(states[i])+1
+                assert sum(states[j]) == n
+    return states, np.array(matrix, dtype=float)
+
+
+def coefficients(count):
+    c = np.ones(count+1)
+    for j in range(1, count+1):
+        c[j] = c[j-1]*(j+.5)/j
+    return c
+
+
+def centered_moments(values, weights, times, degree=80):
+    mu = float(np.dot(values, weights))
+    initial = np.array([np.dot(weights, (values-mu)**j) for j in range(degree+1)])
+    initial[0], initial[1] = 1., 0.
+    def rhs(_t, moments):
+        out = np.zeros_like(moments)
+        for k in range(2, degree+1):
+            out[k] = -(k-1)/(k+1)*moments[k]
+            out[k] += sum(moments[j]*moments[k-j] for j in range(1, k))/(k+1)
+        return out
+    sol = solve_ivp(rhs, (0., max(times)), initial, t_eval=times,
+                    method=&#x27;DOP853&#x27;, atol=1e-15, rtol=1e-12)
+    assert sol.success
+    return mu, sol.y.T
+
+
+def main():
+    result = {&#x27;status&#x27;: &#x27;Independent exact finite algebra plus floating diagnostics; no general proof or exact-real certification.&#x27;,
+              &#x27;producer_imports&#x27;: [], &#x27;seed&#x27;: 2026101307}
+    rows = []
+    for n in range(2, 9):
+        states, generator = partition_generator(n)
+        squares = np.array([sum(q*q for q in state) for state in states])
+        for t in [0., 1., 3., 30.]:
+            law = expm(t*generator)[0]
+            exact = n+n*(n-1)*exp(-t/3)
+            error = abs(float(law@squares)-exact)
+            assert error &lt; 2e-11
+            rows.append({&#x27;n&#x27;: n, &#x27;time&#x27;: t, &#x27;states&#x27;: len(states), &#x27;pair_identity_error&#x27;: error})
+    result[&#x27;exact_partition_structure&#x27;] = {&#x27;generators&#x27;: 7, &#x27;floating_pair_checks&#x27;: rows}
+
+    rows = []
+    for a, b, mu in [(1., 1.1, 1.05), (1., 1.4, 1.13), (1., 3., 2.)]:
+        for s in [a, mu, b]:
+            for u in [a, b]:
+                rate = .5*(1/s+1/u-1/mu)
+                constant = (2*pi)**(-1.5)*mu**1.5/(s*u)**1.5
+                numerical, error_estimate = quad(lambda r: 4*pi*r*r*constant*exp(-rate*r*r), 0., np.inf,
+                                                 epsabs=1e-12, epsrel=1e-12)
+                identity = (1-(s-mu)*(u-mu)/mu**2)**(-1.5)
+                assert abs(numerical-identity) &lt; 1e-10
+                rows.append({&#x27;a&#x27;: a, &#x27;b&#x27;: b, &#x27;mu&#x27;: mu, &#x27;s&#x27;: s, &#x27;u&#x27;: u,
+                             &#x27;absolute_error&#x27;: abs(numerical-identity),
+                             &#x27;quadrature_error_estimate&#x27;: error_estimate})
+    result[&#x27;overlap_integrals&#x27;] = rows
+
+    c = coefficients(80)
+    times = [0., 1., 3., 10.]
+    rows = []
+    examples = [(np.array([1., 1.1]), np.array([.5, .5])),
+                (np.array([1., 1.4]), np.array([.7, .3])),
+                (np.array([1., 2., 3.]), np.array([.25, .5, .25]))]
+    constants = []
+    for values, weights in examples:
+        a, b = float(values.min()), float(values.max())
+        mu, moment_rows = centered_moments(values, weights, times)
+        sigma2 = float(weights@((values-mu)**2))
+        distance = max(mu-a, b-mu)
+        q = (distance/mu)**2
+        # Evaluate the positive series instead of a cancellation-prone formula.
+        aq = sum(c[j]*q**(j-2) for j in range(2, len(c)))
+        bound_constant = aq*(sigma2/mu**2)**2
+        constants.append({&#x27;values&#x27;: values.tolist(), &#x27;weights&#x27;: weights.tolist(), &#x27;mu&#x27;: mu,
+                          &#x27;sigma2&#x27;: sigma2, &#x27;q&#x27;: q, &#x27;A_series_to_80&#x27;: aq,
+                          &#x27;B_series_to_80&#x27;: bound_constant,
+                          &#x27;lower_N_prefactor&#x27;: log(2)/bound_constant})
+        for t, moments in zip(times, moment_rows):
+            assert abs(moments[2]-sigma2*exp(-t/3)) &lt; 1e-12
+            normalized = moments/mu**np.arange(len(moments))
+            chi_series = float(c[2:]@(normalized[2:]**2))
+            bound = bound_constant*exp(-2*t/3)
+            assert chi_series &lt;= bound*(1+1e-8)+1e-15
+            # Independent radial density integration of the derivative expansion.
+            def integrand(radius):
+                x = radius*radius/(2*mu)
+                ratio_minus_one = sum((-1)**j*normalized[j]*eval_genlaguerre(j,.5,x)
+                                      for j in range(1, len(normalized)))
+                return 4*pi*radius*radius*(2*pi*mu)**(-1.5)*exp(-x)*ratio_minus_one**2
+            numerical, qe = quad(integrand, 0., 18*sqrt(b), epsabs=2e-13, epsrel=1e-9, limit=300)
+            assert abs(numerical-chi_series) &lt; 1e-9
+            rows.append({&#x27;values&#x27;: values.tolist(), &#x27;time&#x27;: t, &#x27;chi2_series_to_80&#x27;: chi_series,
+                         &#x27;chi2_radial_quadrature&#x27;: numerical, &#x27;quadrature_error_estimate&#x27;: qe,
+                         &#x27;theorem_bound&#x27;: bound, &#x27;quadrature_series_error&#x27;: abs(numerical-chi_series)})
+    result[&#x27;transient_chi2_checks&#x27;] = rows
+    result[&#x27;testing_constants&#x27;] = constants
+    narrow = constants[0]
+    result[&#x27;producer_narrow_information_example&#x27;] = {
+        &#x27;B&#x27;: narrow[&#x27;B_series_to_80&#x27;],
+        &#x27;lower_N_times&#x27;: [{&#x27;time&#x27;: t, &#x27;lower_N&#x27;: narrow[&#x27;lower_N_prefactor&#x27;]*exp(2*t/3)}
+                          for t in [0., 3., 10., 100.]],
+        &#x27;status&#x27;: &#x27;Floating evaluation of rigorous analytic bound, not outward-rounded certification.&#x27;}
+
+    # Gaussian radial polynomial expectations, exactly in rational arithmetic.
+    def gaussian_h2(s, mu):
+        return 945*s**4-2100*mu*s**3+1950*mu**2*s**2-900*mu**3*s+225*mu**4
+    for mu in [F(1), F(21,20), F(2)]:
+        assert gaussian_h2(mu,mu) == 120*mu**4
+    result[&#x27;exact_quartic_variance_identities&#x27;] = 3
+
+    # Small measured-velocity acquisition fixtures. This does not validate a
+    # physical sensor/model, nor convert continuous target TV to finite-float TV.
+    rng = np.random.default_rng(result[&#x27;seed&#x27;])
+    a, b, epsilon, zeta = 1., 3., .2, .05
+    m0 = ceil(10*b*b/(a*a*epsilon*epsilon))
+    blocks = ceil(8*log(1/zeta))
+    if blocks%2 == 0:
+        blocks += 1
+    delta = a*epsilon*sqrt(2/3)
+    rows = []
+    for k in range(12):
+        variance = rng.choice(np.array([a,b]), size=(blocks,m0))
+        radius2 = variance*rng.chisquare(3, size=(blocks,m0))
+        estimate = float(np.clip(np.median(np.mean(radius2/3, axis=1)), a,b))
+        rows.append({&#x27;fixture&#x27;: k, &#x27;mu_hat&#x27;: estimate, &#x27;absolute_error&#x27;: abs(estimate-2.),
+                     &#x27;within_calibration_event&#x27;: abs(estimate-2.)&lt;=delta})
+    threshold = max(0., 3*log(sqrt(15/2)*(b-a)**2/(8*a*a*epsilon)))
+    result[&#x27;mean_only_acquisition&#x27;] = {&#x27;a&#x27;: a, &#x27;b&#x27;: b, &#x27;epsilon&#x27;: epsilon, &#x27;zeta&#x27;: zeta,
+         &#x27;per_block&#x27;: m0, &#x27;blocks&#x27;: blocks, &#x27;observations_per_calibration&#x27;: m0*blocks,
+         &#x27;delta_mu&#x27;: delta, &#x27;late_time_threshold&#x27;: threshold,
+         &#x27;analytic_failure_bound&#x27;: exp(-blocks/8), &#x27;diagnostics&#x27;: rows}
+    Path(&#x27;independent_results.json&#x27;).write_text(json.dumps(result, indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;: &#x27;PASS&#x27;, &#x27;partition_generators&#x27;: 7, &#x27;partition_pair_checks&#x27;: 28,
+                      &#x27;overlap_integrals&#x27;: len(result[&#x27;overlap_integrals&#x27;]), &#x27;chi2_checks&#x27;: len(result[&#x27;transient_chi2_checks&#x27;]),
+                      &#x27;quartic_exact&#x27;: 3, &#x27;calibration_fixtures&#x27;: len(rows),
+                      &#x27;narrow_B&#x27;: narrow[&#x27;B_series_to_80&#x27;], &#x27;narrow_N0&#x27;: narrow[&#x27;lower_N_prefactor&#x27;]}, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

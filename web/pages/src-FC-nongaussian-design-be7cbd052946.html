@@ -1,0 +1,101 @@
+<!doctype html><meta charset="utf-8"><title>N788 preserved original — run_diagnostics.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>from __future__ import annotations
+import json,time
+from pathlib import Path
+from itertools import combinations
+import numpy as np
+from scipy.linalg import expm,block_diag
+from certificates import thermal_statistics,coherence_budget,histogram_interval,confidence_interval
+OUT=Path(__file__).resolve().parent
+rng=np.random.default_rng(932174); checks=0; worst=0.0
+for trial in range(160):
+    k=int(rng.integers(2,6)); dims=rng.integers(1,7,size=k); n=int(sum(dims))
+    labels=np.repeat(np.arange(k),dims); off=np.r_[0,np.cumsum(dims)]; blocks=[]
+    for d in dims:
+        a=rng.normal(size=(d,d))+1j*rng.normal(size=(d,d)); blocks.append((a+a.conj().T)*.35)
+    D=block_diag(*blocks); T=np.zeros((n,n),complex); g=np.zeros((k,k))
+    for i in range(k):
+        for j in range(i+1,k):
+            a=rng.normal(size=(dims[i],dims[j]))+1j*rng.normal(size=(dims[i],dims[j]))
+            a*=rng.uniform(.001,.25)/np.linalg.norm(a,2)
+            T[off[i]:off[i+1],off[j]:off[j+1]]=a
+            T[off[j]:off[j+1],off[i]:off[i+1]]=a.conj().T
+            g[i,j]=g[j,i]=np.linalg.norm(a,2)
+    beta=float(rng.uniform(.2,2)); H=D+T
+    z=np.array([np.trace(expm(-beta*a)).real for a in blocks]); EH=expm(-beta*H)
+    c=np.array([np.trace(EH[off[i]:off[i+1],off[i]:off[i+1]]).real for i in range(k)])
+    u=np.diag(expm(np.diag(np.log(z))+beta*g)).real
+    assert min(c-z)&gt;-1e-8 and min(u-c)&gt;-1e-8, (&#x27;block bound&#x27;,trial)
+    C,eta=coherence_budget(g,beta); assert c.sum()&lt;=C*z.sum()+1e-8
+    F,p=thermal_statistics(H,beta,labels,k)
+    for _ in range(4):
+        v=rng.uniform(-4,4,size=k); Fv,_=thermal_statistics(H+np.diag(v[labels]),beta,labels,k)
+        lo,hi=histogram_interval(p,v,beta,C); slack=min(Fv-F-lo,hi-(Fv-F)); worst=min(worst,slack)
+        assert slack&gt;-1e-9, (&#x27;reweighting&#x27;,trial,lo,Fv-F,hi)
+        checks+=1
+print(&#x27;random block tests&#x27;,checks,&#x27;passed&#x27;,flush=True)
+
+# Eight-site 2x4 repulsive Hubbard implementation control, canonical Nup=Ndown=3.
+# This is not a measured material or a hard-system speedup benchmark.
+start=time.perf_counter(); L=8; Nu=Nd=3; U=8.; weak=.025; beta=2.; bias=-2.
+masks=[sum(1&lt;&lt;i for i in c) for c in combinations(range(L),Nu)]
+basis=[(u,d) for u in masks for d in masks]; lookup={s:i for i,s in enumerate(basis)}
+n=len(basis); H=np.zeros((n,n)); labels=np.array([u&amp;1 for u,d in basis],dtype=int)
+edges=[]
+for y in range(2):
+    for x in range(4):
+        i=4*y+x
+        if x&lt;3: edges.append((i,i+1))
+        if y&lt;1: edges.append((i,i+4))
+for col,(up,dn) in enumerate(basis):
+    H[col,col]=U*(up&amp;dn).bit_count()+bias*(up&amp;1)
+    for spin in (0,1):
+        mask=(up,dn)[spin]
+        for i,j in edges:
+            amp=weak if spin==0 and 0 in (i,j) else 1.
+            for a,b in ((i,j),(j,i)):
+                if (mask&gt;&gt;b)&amp;1 and not (mask&gt;&gt;a)&amp;1:
+                    mid=((1&lt;&lt;max(a,b))-1)^((1&lt;&lt;(min(a,b)+1))-1)
+                    sign=-1 if (mask&amp;mid).bit_count()%2 else 1
+                    new=mask^(1&lt;&lt;a)^(1&lt;&lt;b)
+                    state=(new,dn) if spin==0 else (up,new)
+                    H[lookup[state],col]+=-amp*sign
+assert np.max(abs(H-H.T))&lt;1e-14
+F,p=thermal_statistics(H,beta,labels,2)
+kappa=(2*weak**2)**.5; C=np.cosh(beta*kappa); eta=1-1/C
+# Counterfactual onsite design and independently declared scalar reference cost.
+v=np.array([.3,-.7]); H1=H+np.diag(v[labels]); F1,p1=thermal_statistics(H1,beta,labels,2)
+interval=histogram_interval(p,v,beta,C)
+assert interval[0]-1e-9&lt;=F1-F&lt;=interval[1]+1e-9
+Nshots=30000; observed=rng.multinomial(Nshots,p); phat=observed/Nshots
+stat_error=.01; ci=confidence_interval(phat,stat_error,v,beta,C)
+# This seeded draw happens to be within the specified intervals; coverage is analytic.
+assert np.max(abs(phat-p))&lt;stat_error
+assert ci[0]-1e-9&lt;=F1-F&lt;=ci[1]+1e-9
+output={&#x27;random_block_matrices&#x27;:160,&#x27;random_reweighting_checks&#x27;:checks,&#x27;worst_negative_slack&#x27;:worst,
+ &#x27;hubbard_control&#x27;:{&#x27;geometry&#x27;:&#x27;2x4 open rectangle&#x27;,&#x27;sites&#x27;:L,&#x27;N_up&#x27;:Nu,&#x27;N_down&#x27;:Nd,
+ &#x27;Hilbert_dimension&#x27;:n,&#x27;U_over_bulk_hopping&#x27;:U,&#x27;beta_times_bulk_hopping&#x27;:beta,
+ &#x27;weak_up_hopping&#x27;:weak,&#x27;reference_up_site0_potential&#x27;:bias,&#x27;local_hybridization_norm_bound&#x27;:kappa,
+ &#x27;C&#x27;:C,&#x27;coherent_weight_budget&#x27;:eta,&#x27;reference_free_energy&#x27;:F,&#x27;target_free_energy&#x27;:F1,
+ &#x27;reference_label_histogram&#x27;:p.tolist(),&#x27;target_label_histogram&#x27;:p1.tolist(),
+ &#x27;counterfactual_shifts&#x27;:v.tolist(),&#x27;true_free_energy_change&#x27;:F1-F,
+ &#x27;exact_histogram_analytic_interval_numerically_evaluated&#x27;:list(interval),
+ &#x27;simulated_shots&#x27;:Nshots,&#x27;simulated_counts&#x27;:observed.tolist(),&#x27;per_bin_error_bound&#x27;:stat_error,
+ &#x27;Hoeffding_failure_upper_bound&#x27;:float(2*np.exp(-2*Nshots*stat_error**2)),
+ &#x27;statistical_interval_numerically_evaluated&#x27;:list(ci),&#x27;seconds_including_two_full_diagonalizations&#x27;:time.perf_counter()-start},
+ &#x27;warnings&#x27;:[&#x27;Random and Hubbard results use double precision.&#x27;,&#x27;Histogram acquisition was simulated from exact diagonalization, not performed experimentally.&#x27;,&#x27;The eight-site control is not a scalability or scientific-discovery benchmark.&#x27;]}
+(OUT/&#x27;diagnostics.json&#x27;).write_text(json.dumps(output,indent=2))
+print(json.dumps(output,indent=2),flush=True)
+
+# An adaptively selected reference cost makes the information gain explicit.
+# Same histogram coverage applies to the entire diagonal design family.
+obj=json.loads((OUT/&#x27;diagnostics.json&#x27;).read_text()); h=obj[&#x27;hubbard_control&#x27;]
+base=h[&#x27;true_free_energy_change&#x27;]; exact=h[&#x27;exact_histogram_analytic_interval_numerically_evaluated&#x27;]
+h[&#x27;adaptive_design_after_threshold_calculation&#x27;]={
+    &#x27;declared_cost&#x27;:0.975,
+    &#x27;true_free_energy_change&#x27;:base+0.675,
+    &#x27;Gibbs_upper_from_exact_reference_histogram&#x27;:0.975-h[&#x27;reference_label_histogram&#x27;][1],
+    &#x27;Golden_Thompson_lower_from_exact_reference_histogram&#x27;:exact[0]+0.675,
+    &#x27;new_exact_histogram_interval&#x27;:[x+0.675 for x in exact],
+    &#x27;not_an_independently_selected_material_benchmark&#x27;:True}
+(OUT/&#x27;diagnostics.json&#x27;).write_text(json.dumps(obj,indent=2))
+</pre>

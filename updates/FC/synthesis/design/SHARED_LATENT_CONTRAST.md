@@ -1,0 +1,128 @@
+# Shared latent weights can improve a counterfactual design comparison
+
+Internal restricted derivation, 13 October 2026. Historical priority and
+external correctness remain UNKNOWN. It extends the submitted histogram
+operation; it does not change the frozen quadratic-bath results in N785.
+
+## 1. Contract and the two different mixing budgets
+
+Use one finite fixed-sector reference H=D+T, its exact histogram p, and
+diagonal shifts V_j=sum_i v_ji P_i, j=0,1. Acquire a reference budget
+
+    1<=Z_H/Z_D<=C_ref.
+
+C_ref may use the reference kinetic observation, including the strengthened
+activity bound in ACTIVITY_COHERENCE_BOUND.md. Separately supply valid bounds
+
+    1<=Z_(H+V_j)/Z_(D+V_j)<=C_j, j=0,1.
+
+The microscopic graph bound C_norm from the source is valid for BOTH target
+Hamiltonians because their off-diagonal T is unchanged. A measured kinetic
+budget of H alone does NOT supply C_j for either counterfactual.
+
+Set u_ji=exp(-beta v_ji) and
+
+    W={w:0<=w_i<=p_i, sum_i w_i=1/C_ref},
+    r_min=min_(w in W) (w.u_1)/(w.u_0),
+    r_max=max_(w in W) (w.u_1)/(w.u_0).
+
+Then the contrast obeys
+
+    -log(C_1 r_max)/beta
+      <=F(H+V_1)-F(H+V_0)
+      <=-log(r_min/C_0)/beta.                             (1)
+
+Intersect (1) with subtraction of the source's one-reference intervals and
+with [min_i(v_1i-v_0i),max_i(v_1i-v_0i)]. No claim of minimax sharpness over
+compatible quantum Hamiltonians is made. The ratio extrema are exact only
+for the stated outer polytope.
+
+## 2. Proof and a constructive finite calculation
+
+The true latent weights w_i^true=z_i/Z_H satisfy w^true<=p and
+s=sum w^true>=1/C_ref. Their rescaling w=w^true/(C_ref s) belongs to W
+and preserves every ratio of their weighted sums. Moreover
+
+    Z_(D+V_1)/Z_(D+V_0)=(w.u_1)/(w.u_0).
+
+The supplied target budgets put Z_(H+V_j)/Z_(D+V_j) in [1,C_j]. Dividing
+these two inequalities proves (1). The sign of neither individual design
+change nor the direction of target kinetic activity was assumed. QED.
+
+Normalize q=C_ref w. Then sum q=1 and 0<=q_i<=C_ref p_i. A standard
+Charnes-Cooper linear-fractional transformation gives two ordinary LPs.
+For y=q/(q.u_0), t=1/(q.u_0), optimize u_1.y subject to
+
+    u_0.y=1, sum y=t,
+    0<=y_i<=C_ref p_i t, t>=0.
+
+There are k+1 variables and O(k) constraints. Exponent precision, coefficient
+conditioning, LP error and outward rounding remain charged. No polynomial
+bit-cost claim is made for exponentially encoded beta|v| or negligible margins.
+
+For a simultaneous histogram confidence box l_i<=p_i<=h_i, retain variables
+y=w/(w.u_0), x=p/(w.u_0), t=1/(w.u_0). The equivalent LP constraints are
+
+    u_0.y=1, sum x=t, sum y=t/C_ref,
+    0<=y<=x, l_i t<=x_i<=h_i t, t>=0.
+
+Thus the same confidence event covers all later pairs of target vectors.
+The reference budget itself must have the declared joint confidence. The LP
+adds no statistical union penalty for adaptive design selection.
+
+## 3. A clean strict improvement over independent interval subtraction
+
+At beta=1 use four labels with p_i=1/4 and conservative valid budgets
+C_ref=C_0=C_1=101/100. Choose
+
+    v_0=(8,8,-8,8),
+    v_1=(15/2,17/2,-797/100,9).
+
+These are compatible inputs: take four one-dimensional blocks, D=0 and
+T_ij=-1/25 for i!=j. Permutation symmetry gives p_i=1/4. The exact graph
+budget is (exp(3/25)+3 exp(-1/25))/4<101/100. Both designs retain that T.
+The conservative supplied budgets above therefore apply to reference and
+targets without preparing either target.
+
+The shared ratio is dominated by label 2. Every feasible q_i<=101/400,
+so q_2>=97/400. With d=v_1-v_0=(-1/2,1/2,3/100,1),
+
+    (q.u_1)/(q.u_0)
+      <= exp(-3/100)+(303/97) exp(-16) exp(1/2)
+      <100/103+8/10^6.
+
+Here exp(-16)<10^-6 follows from the positive Taylor lower bound for exp(16),
+and exp(1/2)<2. The exact rational comparison
+
+    (101/100)(100/103+8/10^6)<1
+
+proves that (1) certifies a strictly POSITIVE contrast for every compatible
+input in this outer contract. No numerical LP optimum is used in that sign.
+
+By contrast, the lower endpoint from independently subtracting the two
+source intervals is log(L(v_0)/A(v_1)), which is negative. For v_0 the removal
+mass eta=1/101 comes from label 2. Thus its dominant coefficient is
+1/4-1/101, whereas A(v_1) has coefficient exp(-3/100)/4>97/400.
+Their difference exceeds the exponentially small nondominant terms.
+The independent upper endpoint is positive, so it straddles zero, even after
+the elementary perturbation-range intersection. The checker verifies these
+claims with independent rational exponential bounds.
+
+This is a mathematical control demonstrating a genuine information improvement,
+not a materials benchmark or a new general free-energy algorithm. In other
+regimes the microscopic target budget can be much weaker than reference
+kinetic information, so (1) may add no useful constraint; intersection is safe.
+
+## 4. Capital relationship
+
+N785 refutes evaluating a contrast at individual bath extremizers. Its general
+lesson is to retain shared uncertainty when making the actual decision.
+The present derivation retains shared latent block weights instead of sharing
+a quadratic spectral measure. The physical ensembles, inputs and mathematical
+derivatives differ; N785 is motivation, not a theorem dependency here.
+
+Standard linear-fractional optimization supplies the LP conversion. The new
+candidate contribution is the scoped common-latent design certificate and its
+counterexample to independent subtraction being decision-complete. External
+priority review, physical acquisition and matched strongest-method performance
+remain open.

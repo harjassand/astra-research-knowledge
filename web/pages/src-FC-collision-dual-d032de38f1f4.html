@@ -1,0 +1,163 @@
+<!doctype html><meta charset="utf-8"><title>N787 preserved original — collision_dual.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Finite marked collision genealogy, research prototype (2026-10-13).
+
+Model: normalized, homogeneous, isotropic 3-D Maxwell collisions and
+initial centered Gaussian scale mixtures, with scalar variances in [a,b].
+The probability identities are ideal-arithmetic results. This NumPy code
+is floating-point, not a certified exact-real or random-bit implementation.
+
+Run tests: python validate.py --output results.json
+&quot;&quot;&quot;
+from __future__ import annotations
+from dataclasses import dataclass
+from math import exp, sqrt, pi
+from typing import Callable
+import numpy as np
+
+VarianceSampler = Callable[[np.random.Generator], float]
+
+@dataclass(frozen=True)
+class DiscreteVariance:
+    values: tuple[float, ...]
+    probabilities: tuple[float, ...]
+
+    def __post_init__(self) -&gt; None:
+        v = np.asarray(self.values, dtype=float)
+        p = np.asarray(self.probabilities, dtype=float)
+        if len(v) == 0 or len(v) != len(p):
+            raise ValueError(&#x27;Nonempty values and equally long probabilities required.&#x27;)
+        if not np.all(np.isfinite(v)) or not np.all(v &gt; 0):
+            raise ValueError(&#x27;Variances must be finite and strictly positive.&#x27;)
+        if not np.all(np.isfinite(p)) or np.any(p &lt; 0) or abs(p.sum()-1) &gt; 1e-12:
+            raise ValueError(&#x27;Probabilities must be nonnegative and sum to one.&#x27;)
+
+    def __call__(self, rng: np.random.Generator) -&gt; float:
+        # Simple inversion; building an alias table is preferable for large mixtures.
+        u = rng.random()
+        acc = 0.0
+        for value, probability in zip(self.values, self.probabilities):
+            acc += probability
+            if u &lt; acc:
+                return float(value)
+        return float(self.values[-1])
+
+
+def terminal_blocks(n: int, t: float, rng: np.random.Generator) -&gt; tuple[list[int], int, int]:
+    &quot;&quot;&quot;Return terminal multiplicities, number of splits, and visited nodes.
+
+    Each block k&gt;=2 waits Exp((k-1)/(k+1)); on splitting r is uniform in
+    {1,...,k-1}. Both children receive the same remaining horizon.
+    Work is at most 2*n-1 nodes, regardless of t (n&gt;0).
+    &quot;&quot;&quot;
+    if not isinstance(n, (int, np.integer)) or n &lt; 0:
+        raise ValueError(&#x27;n must be a nonnegative integer.&#x27;)
+    if not np.isfinite(t) or t &lt; 0:
+        raise ValueError(&#x27;t must be finite and nonnegative.&#x27;)
+    if n == 0:
+        return [], 0, 0
+    stack = [(int(n), float(t))]
+    blocks: list[int] = []
+    splits = nodes = 0
+    while stack:
+        k, remaining = stack.pop()
+        nodes += 1
+        if k == 1 or remaining == 0:
+            blocks.append(k)
+            continue
+        waiting = rng.exponential((k+1)/(k-1))
+        if waiting &gt;= remaining:
+            blocks.append(k)
+        else:
+            r = int(rng.integers(1, k))
+            left = remaining-waiting
+            stack.append((r, left))
+            stack.append((k-r, left))
+            splits += 1
+    assert sum(blocks) == n and splits &lt;= n-1 and nodes &lt;= 2*n-1
+    return blocks, splits, nodes
+
+
+def moment_sample(k: int, t: float, a: float, b: float,
+                  initial: VarianceSampler, rng: np.random.Generator) -&gt; tuple[float, int, int]:
+    &quot;&quot;&quot;Unbiased ideal-arithmetic estimate of E[((b-V_t)/(b-a))**k].&quot;&quot;&quot;
+    if not (np.isfinite(a) and np.isfinite(b) and 0 &lt; a &lt; b):
+        raise ValueError(&#x27;Require 0 &lt; a &lt; b.&#x27;)
+    blocks, splits, nodes = terminal_blocks(k, t, rng)
+    value = 1.0
+    for count in blocks:
+        v = initial(rng)
+        if not a &lt;= v &lt;= b:
+            raise ValueError(&#x27;Initial sampler violated supplied bounds.&#x27;)
+        value *= ((b-v)/(b-a))**count
+    return value, splits, nodes
+
+
+def laplace_sample(z: float, t: float, a: float, b: float,
+                   initial: VarianceSampler, rng: np.random.Generator) -&gt; tuple[float, int, int]:
+    &quot;&quot;&quot;Estimate L_t(z)=E[exp(-z V_t)] with no tree/time truncation.
+
+    Returns estimate, Poisson degree, and effective split count.
+    &quot;&quot;&quot;
+    if not (np.isfinite(z) and z &gt;= 0 and 0 &lt; a &lt;= b):
+        raise ValueError(&#x27;Require finite z&gt;=0 and 0&lt;a&lt;=b.&#x27;)
+    if not (np.isfinite(t) and t &gt;= 0):
+        raise ValueError(&#x27;t must be finite and nonnegative.&#x27;)
+    if a == b:
+        return exp(-a*z), 0, 0
+    k = int(rng.poisson((b-a)*z))
+    h, splits, _ = moment_sample(k, t, a, b, initial, rng)
+    return exp(-a*z)*h, k, splits
+
+
+def density_sample(v: np.ndarray, t: float, a: float, b: float,
+                   initial: VarianceSampler, rng: np.random.Generator) -&gt; tuple[float, int, int]:
+    &quot;&quot;&quot;Unbiased signed estimate of the 3-D velocity density at v.
+
+    Its magnitude is bounded by (2*pi*a)**(-3/2). This is an estimator,
+    not a velocity draw and not a nonnegative density realization.
+    &quot;&quot;&quot;
+    v = np.asarray(v, dtype=float)
+    if v.shape != (3,) or not np.all(np.isfinite(v)):
+        raise ValueError(&#x27;v must be a finite 3-vector.&#x27;)
+    if not (np.isfinite(a) and np.isfinite(b) and 0 &lt; a &lt;= b):
+        raise ValueError(&#x27;Require 0&lt;a&lt;=b.&#x27;)
+    if not (np.isfinite(t) and t &gt;= 0):
+        raise ValueError(&#x27;t must be finite and nonnegative.&#x27;)
+    if a == b:
+        return (2*pi*a)**(-1.5)*exp(-float(v@v)/(2*a)), 0, 0
+    frequency = rng.normal(size=3)/sqrt(a)
+    z = float(frequency@frequency)/2
+    k = int(rng.poisson((b-a)*z))
+    h, splits, _ = moment_sample(k, t, a, b, initial, rng)
+    return (2*pi*a)**(-1.5)*float(np.cos(frequency@v))*h, k, splits
+
+
+def approximate_velocity(n: int, t: float, a: float, b: float,
+                         initial: VarianceSampler, rng: np.random.Generator
+                         ) -&gt; tuple[np.ndarray, float, int, int]:
+    &quot;&quot;&quot;Full-law approximation: returns velocity, latent variance, splits, nodes.
+
+    In ideal arithmetic its total variation error is at most
+    sqrt(15/2)*(b-a)**2/(16*a*a*n), uniformly over t&gt;=0.
+    The guarantee is relative to the supplied mixture/collision model,
+    not to arbitrary gas data. Every call uses fresh randomness.
+    &quot;&quot;&quot;
+    if not isinstance(n, (int, np.integer)) or n &lt; 1:
+        raise ValueError(&#x27;n must be a positive integer.&#x27;)
+    if not (np.isfinite(a) and np.isfinite(b) and 0 &lt; a &lt;= b):
+        raise ValueError(&#x27;Require finite 0&lt;a&lt;=b.&#x27;)
+    blocks, splits, nodes = terminal_blocks(n, t, rng)
+    total = 0.0
+    for count in blocks:
+        variance = initial(rng)
+        if not a &lt;= variance &lt;= b:
+            raise ValueError(&#x27;Initial sampler violated supplied bounds.&#x27;)
+        total += count*variance
+    variance = total/n
+    return sqrt(variance)*rng.normal(size=3), variance, splits, nodes
+
+
+def tv_bound(n: int, a: float, b: float) -&gt; float:
+    if n &lt; 1 or not (0 &lt; a &lt;= b):
+        raise ValueError(&#x27;Require n&gt;=1 and 0&lt;a&lt;=b.&#x27;)
+    return min(1.0, sqrt(15/2)*(b-a)**2/(16*a*a*n))
+</pre>

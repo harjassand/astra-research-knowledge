@@ -1,0 +1,307 @@
+<!doctype html><meta charset="utf-8"><title>N788 integration derived — independent_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Independently authored finite diagnostics and exact rational witnesses.
+
+No producer imports. Universal statements are in the accompanying proofs.
+Floating eigensolvers/LPs are diagnostics, not machine interval certificates.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import factorial
+from pathlib import Path
+import json
+import numpy as np
+from scipy.linalg import block_diag, expm
+from scipy.optimize import linprog
+from scipy.special import logsumexp
+
+ROOT = Path(__file__).resolve().parent
+rng = np.random.default_rng(171031)
+
+
+def exp_interval(x, terms=140):
+    x = F(x)
+    if x &lt; 0:
+        l, h = exp_interval(-x, terms)
+        return 1 / h, 1 / l
+    total, term = F(1), F(1)
+    for n in range(1, terms):
+        term *= x / n
+        total += term
+    first = term * x / terms
+    ratio = x / (terms + 1)
+    assert ratio &lt; 1
+    return total, total + first / (1 - ratio)
+
+
+def log_interval(x, terms=240):
+    x = F(x)
+    assert x &gt; 0
+    if x &lt; 1:
+        l, h = log_interval(1 / x, terms)
+        return -h, -l
+    # Bound the enormous Taylor fraction by 45-digit rationals before the
+    # logarithm series; monotonicity preserves a rigorous enclosure and avoids
+    # needless hundreds-of-thousands-digit intermediate denominators.
+    scale = 10**45
+    low = F((x.numerator*scale)//x.denominator, scale)
+    high = F(-((-x.numerator*scale)//x.denominator), scale)
+    def series(y):
+        z = (y - 1) / (y + 1)
+        s = sum((2 * z ** (2 * j + 1) / (2 * j + 1)
+                 for j in range(terms)), F(0))
+        tail = 2 * z ** (2 * terms + 1) / ((2 * terms + 1) * (1 - z * z))
+        return s, s + tail
+    def reduced(y):
+        power = 0
+        while y &gt;= 2:
+            y /= 2
+            power += 1
+        a,b = series(y)
+        c,d = series(F(2))
+        return a+power*c,b+power*d
+    a,_ = reduced(low)
+    _,b = reduced(high)
+    return a,b
+
+
+def gibbs(H, beta):
+    E, U = np.linalg.eigh(H)
+    logz = float(logsumexp(-beta * E))
+    rho = (U * np.exp(-beta * E - logz)) @ U.conj().T
+    return -logz / beta, rho, logz
+
+
+def entropy(rho):
+    ev = np.linalg.eigvalsh(rho)
+    ev = ev[ev &gt; 1e-16]
+    return float(-np.dot(ev, np.log(ev)))
+
+
+def binary_f(x):
+    x = min(1.0, max(0.0, float(x)))
+    z = 0.5 * (1 + x) * np.log1p(x)
+    if x &lt; 1:
+        z += 0.5 * (1 - x) * np.log1p(-x)
+    return float(z)
+
+
+def histogram_bounds(p, C, v, beta):
+    offset = min(v)
+    u = np.exp(-beta * (v - offset))
+    mass, lower = 1 / C, 0.0
+    for i in np.argsort(u):
+        take = min(mass, p[i])
+        mass -= take
+        lower += take * u[i]
+    assert mass &lt; 1e-12
+    return (max(offset, offset - np.log(p @ u) / beta),
+            min(max(v), offset - np.log(lower) / beta))
+
+
+def fractional_extrema(p, C, u0, u1, error=0.0):
+    k = len(p)
+    if error == 0:
+        # q formulation: variables y[0:k], t.
+        A = np.zeros((k, k + 1))
+        A[:, :k] = np.eye(k)
+        A[:, k] = -C * p
+        eq = np.zeros((2, k + 1))
+        eq[0, :k], eq[1, :k], eq[1, k] = u0, 1, -1
+        rhs, cost = [1, 0], np.r_[u1, 0]
+    else:
+        # w,p formulation: variables y[0:k], x[0:k], t.
+        A = np.zeros((3 * k, 2 * k + 1))
+        A[:k, :k], A[:k, k:2*k] = np.eye(k), -np.eye(k)
+        A[k:2*k, k:2*k], A[k:2*k, -1] = np.eye(k), -np.minimum(1, p + error)
+        A[2*k:, k:2*k], A[2*k:, -1] = -np.eye(k), np.maximum(0, p - error)
+        eq = np.zeros((3, 2 * k + 1))
+        eq[0, :k] = u0
+        eq[1, k:2*k], eq[1, -1] = 1, -1
+        eq[2, :k], eq[2, -1] = 1, -1 / C
+        rhs, cost = [1, 0, 0], np.r_[u1, np.zeros(k + 1)]
+    ans = []
+    for sign in [1, -1]:
+        result = linprog(sign * cost, A_ub=A, b_ub=np.zeros(len(A)),
+                         A_eq=eq, b_eq=rhs, bounds=[(0, None)] * len(cost),
+                         method=&quot;highs&quot;)
+        assert result.success, result.message
+        ans.append(float(sign * result.fun))
+    return ans
+
+
+random_rows = []
+max_identity_error = 0.0
+for trial in range(120):
+    k = int(rng.integers(2, 5))
+    sizes = rng.integers(1, 5, k)
+    offsets = np.r_[0, np.cumsum(sizes)]
+    labels = np.repeat(np.arange(k), sizes)
+    blocks = []
+    for d in sizes:
+        x = rng.normal(size=(d, d)) + 1j * rng.normal(size=(d, d))
+        blocks.append((x + x.conj().T) / 3 + rng.uniform(-3, 3) * np.eye(d))
+    D = block_diag(*blocks)
+    T = np.zeros_like(D)
+    g = np.zeros((k, k))
+    for i in range(k):
+        for j in range(i):
+            x = rng.normal(size=(sizes[i], sizes[j])) + 1j * rng.normal(size=(sizes[i], sizes[j]))
+            x *= rng.uniform(0.01, 0.3) / np.linalg.norm(x, 2)
+            T[offsets[i]:offsets[i+1], offsets[j]:offsets[j+1]] = x
+            T[offsets[j]:offsets[j+1], offsets[i]:offsets[i+1]] = x.conj().T
+            g[i, j] = g[j, i] = np.linalg.norm(x, 2)
+    beta = float(rng.uniform(0.2, 1.8))
+    H = D + T
+    F0, rho, logZH = gibbs(H, beta)
+    _, rhoD, logZD = gibbs(D, beta)
+    sigma = np.where(labels[:, None] == labels[None, :], rho, 0)
+    a = -float(np.trace(rho @ T).real)
+    K = float(np.linalg.norm(T, 2))
+    coh = entropy(sigma) - entropy(rho)
+    relD = -entropy(sigma) + beta * float(np.trace(sigma @ D).real) + logZD
+    identity_error = abs(logZH - logZD - (beta*a - coh - relD))
+    max_identity_error = max(max_identity_error, identity_error)
+    assert identity_error &lt; 2e-10
+    assert coh + 2e-10 &gt;= binary_f(a/K)
+    activity = beta*a - binary_f(a/K)
+    Cnorm = float(max(np.diag(expm(beta*g))))
+    Cref = float(np.exp(min(np.log(Cnorm), activity)))
+    trueC = float(np.exp(logZH - logZD))
+    assert trueC &lt;= Cref + 2e-10 and Cref &gt;= 1 - 2e-10
+    assert activity &lt;= np.log(np.cosh(beta*K)) + 1e-12
+    p = np.bincount(labels, weights=np.diag(rho).real, minlength=k)
+    z = np.array([np.trace(expm(-beta*b)).real for b in blocks])
+    c = p * np.exp(logZH)
+    blockupper = np.diag(expm(np.diag(np.log(z)) + beta*g)).real
+    assert min(c-z) &gt; -2e-8 and min(blockupper-c) &gt; -2e-8
+    enclosures = 0
+    for _ in range(3):
+        v = rng.uniform(-5, 5, k)
+        Fv, _, _ = gibbs(H + np.diag(v[labels]), beta)
+        low, high = histogram_bounds(p, Cref, v, beta)
+        assert low - 2e-9 &lt;= Fv-F0 &lt;= high + 2e-9
+        enclosures += 1
+    v0, v1 = rng.uniform(-5, 5, (2, k))
+    u0, u1 = np.exp(-beta*v0), np.exp(-beta*v1)
+    rlow, rhigh = fractional_extrema(p, Cref, u0, u1)
+    clow, chigh = fractional_extrema(p, Cref, u0, u1, error=0.02)
+    assert clow &lt;= rlow + 1e-9 and chigh &gt;= rhigh - 1e-9
+    Fj0, _, _ = gibbs(H + np.diag(v0[labels]), beta)
+    Fj1, _, _ = gibbs(H + np.diag(v1[labels]), beta)
+    low, high = -np.log(Cnorm*rhigh)/beta, -np.log(rlow/Cnorm)/beta
+    assert low - 2e-8 &lt;= Fj1-Fj0 &lt;= high + 2e-8
+    random_rows.append({&quot;labels&quot;: k, &quot;dimension&quot;: len(H), &quot;activity_C&quot;: Cref,
+                        &quot;source_min_C&quot;: min(Cnorm, np.exp(beta*a)),
+                        &quot;true_C&quot;: trueC, &quot;histogram_enclosures&quot;: enclosures})
+
+# Sharp resonant two-level equality in the activity bound.
+resonant = []
+for beta in [0.2, 1.0, 3.0]:
+    for K in [0.1, 0.7, 1.5]:
+        a = K*np.tanh(beta*K)
+        assert abs(beta*a-binary_f(a/K)-np.log(np.cosh(beta*K))) &lt; 2e-12
+        resonant.append([beta, K])
+
+# Exact rational checks for the shared four-label strict improvement.
+C = F(101, 100)
+eta = 1-1/C
+ep, ep_hi = exp_interval(F(16))
+assert ep &gt; 10**6
+halflo, halfhi = exp_interval(F(1, 2))
+assert halfhi &lt; 2
+assert C*(F(100, 103)+F(8, 10**6)) &lt; 1
+e12lo, e12hi = exp_interval(F(3,25))
+em4lo, em4hi = exp_interval(-F(1,25))
+assert (e12hi+3*em4hi)/4 &lt; C
+v0 = [F(8), F(8), -F(8), F(8)]
+v1 = [F(15,2), F(17,2), -F(797,100), F(9)]
+ul0, uh0, ul1, uh1 = [], [], [], []
+for x in v0:
+    a,b=exp_interval(-x); ul0.append(a); uh0.append(b)
+for x in v1:
+    a,b=exp_interval(-x); ul1.append(a); uh1.append(b)
+p = np.full(4, 0.25)
+A1lo = sum(ul1)/4
+L0hi = (F(1,4)-eta)*uh0[2] + sum(uh0[i] for i in [0,1,3])/4
+assert L0hi &lt; A1lo  # independent lower contrast endpoint is negative
+A0lo = sum(ul0)/4
+L1hi = (F(1,4)-eta)*uh1[2] + sum(uh1[i] for i in [0,1,3])/4
+assert A0lo &gt; L1hi  # independent upper contrast endpoint is positive
+v0f, v1f = np.array(v0, float), np.array(v1, float)
+old0, old1 = histogram_bounds(p,float(C),v0f,1), histogram_bounds(p,float(C),v1f,1)
+old = [old1[0]-old0[1],old1[1]-old0[0]]
+rr = fractional_extrema(p,float(C),np.exp(-v0f),np.exp(-v1f))
+new = [-np.log(float(C)*rr[1]),-np.log(rr[0]/float(C))]
+Hfour = -(np.ones((4,4))-np.eye(4))/25
+f0,_,_=gibbs(Hfour+np.diag(v0f),1)
+f1,_,_=gibbs(Hfour+np.diag(v1f),1)
+assert old[0]&lt;0&lt;old[1] and new[0]&gt;0
+assert new[0]&lt;=f1-f0&lt;=new[1]
+
+# Fixed-charge hidden preparation models and exact sign margins.
+e1lo, e1hi = exp_interval(F(1))
+assert e1lo &gt; F(8,3) and e1hi &lt; 3
+eqlo, eqhi = exp_interval(F(1,4))
+assert eqhi &lt; F(4,3)
+assert F(5,7)*F(1031,1027) &lt; F(3,4)
+assert F(4,7)*F(8,3)*F(1024,1027) &gt; F(4,3)
+n = np.diag([0,1,0,1])
+s = np.diag([0,0,1,1])
+Hp = -10*s+10*s@n
+Hm = -10*s+10*s@(np.eye(4)-n)
+prep = np.diag([0.5,0.5,0,0])
+V = np.eye(4)/2-n
+assert np.array_equal(Hp[:2,:2], Hm[:2,:2])
+assert np.array_equal(prep@Hp,Hp@prep) and np.array_equal(prep@Hm,Hm@prep)
+Xb = np.kron(np.array([[0,1],[1,0]]),np.eye(2))
+hidden = []
+for epsilon in [0,0.001,0.01,0.05]:
+    ds=[]
+    for H in [Hp,Hm]:
+        f,_,_=gibbs(H+epsilon*Xb,1)
+        fv,_,_=gibbs(H+V+epsilon*Xb,1)
+        ds.append(fv-f)
+    assert ds[0]&gt;.25-2*epsilon and ds[1]&lt;-.25+2*epsilon
+    hidden.append({&quot;epsilon&quot;:epsilon,&quot;contrast_plus&quot;:ds[0],&quot;contrast_minus&quot;:ds[1]})
+
+# Independent reconstruction of the source&#x27;s exact conditional certificate.
+sq=F(1,200)
+coslo=sum((sq**j/F(factorial(2*j)) for j in range(50)),F(0))
+first=sq**50/F(factorial(100))
+coshi=coslo+first/(1-sq/F(101*102))
+eta=1-1/coshi
+plo=F(28780,30000)-F(1,100)
+phi=F(28780,30000)+F(1,100)
+al,ah=exp_interval(-F(3,5));bl,bh=exp_interval(F(7,5))
+Rlo=(1-plo)*al+(plo-eta)*bl
+Rhi=(1-phi)*ah+phi*bh
+assert Rlo&gt;1
+ll,_=log_interval(Rlo);_,lh=log_interval(Rhi)
+Flo,Fhi=-lh/2,-ll/2
+assert Fhi+F(27,40)&lt;0
+e6lo,_=exp_interval(F(6))
+assert e6lo&gt;400
+source_stat={&quot;independent_rational_enclosure&quot;:[float(Flo),float(Fhi)],
+             &quot;adaptive_enclosure&quot;:[float(Flo+F(27,40)),float(Fhi+F(27,40))],
+             &quot;conditional_coverage_greater_than&quot;:&quot;0.995&quot;,
+             &quot;exact_integer_sign_checks&quot;:True}
+
+out={&quot;status&quot;:&quot;PASS; finite diagnostics and exact rational witnesses, not external validation&quot;,
+     &quot;random_complex_block_models&quot;:len(random_rows),
+     &quot;random_histogram_enclosures&quot;:sum(x[&quot;histogram_enclosures&quot;] for x in random_rows),
+     &quot;block_trace_and_partition_checks&quot;:len(random_rows),
+     &quot;activity_entropy_identities&quot;:len(random_rows),
+     &quot;activity_max_identity_error&quot;:max_identity_error,
+     &quot;activity_improves_source_min_count&quot;:int(sum(x[&quot;activity_C&quot;]&lt;x[&quot;source_min_C&quot;]-1e-10 for x in random_rows)),
+     &quot;shared_contrast_LP_models&quot;:len(random_rows),
+     &quot;confidence_shared_LP_models&quot;:len(random_rows),
+     &quot;sharp_resonant_activity_checks&quot;:len(resonant),
+     &quot;shared_strict_improvement&quot;:{&quot;exact_rational_sign&quot;:True,&quot;naive_interval&quot;:old,
+                                  &quot;shared_interval&quot;:new,&quot;direct_contrast&quot;:f1-f0},
+     &quot;hidden_preparation&quot;:{&quot;exact_margin_proof&quot;:True,&quot;fixed_pair_charges&quot;:[1,1],
+                           &quot;perturbed_fixtures&quot;:hidden},
+     &quot;source_conditional_certificate&quot;:source_stat,
+     &quot;warnings&quot;:[&quot;All populations generated from small matrices are simulated.&quot;,
+                 &quot;General eigenvalue, entropy and LP evaluations use double precision.&quot;,
+                 &quot;Proofs do not supply equilibrium acquisition, novelty clearance or a material benchmark.&quot;]}
+(ROOT/&quot;independent_results.json&quot;).write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+print(json.dumps(out,indent=2))
+</pre>
