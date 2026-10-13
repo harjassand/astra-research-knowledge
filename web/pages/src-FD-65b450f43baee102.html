@@ -1,0 +1,653 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — fixed_j_core.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>&quot;&quot;&quot;Source-free compact-polar partial-flag acquisition and local execution.
+
+`acquire` sees only n, r, beta, a seed, and a binary comparison callback. Its
+control path contains no teacher, source-rank, hidden-flag, inverse, or truth
+lookup. All acquired bodies and prefix samplers are built from comparison
+answers and learner-owned GF(2) algebra. `CompiledModel` below supplies local
+rank and inverse operations from the returned coefficient bodies.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from dataclasses import dataclass
+import math
+import random
+import time
+from collections import defaultdict
+
+
+class Meter:
+    &quot;&quot;&quot;Deterministic logical-operation/event counts (not CPU instruction counts).&quot;&quot;&quot;
+    def __init__(self):
+        self.ops = defaultdict(int)
+        self.phase = &quot;acquisition&quot;
+
+    def add(self, key, amount=1):
+        self.ops[key] += amount
+
+
+def parity(x: int, meter: Meter | None = None) -&gt; int:
+    if meter is not None:
+        meter.add(&quot;parity_calls&quot;)
+    return x.bit_count() &amp; 1
+
+
+def combine(basis, a: int, meter: Meter | None = None) -&gt; int:
+    &quot;&quot;&quot;XOR the basis vectors selected by the coefficient mask a.&quot;&quot;&quot;
+    if meter is not None:
+        meter.add(&quot;combine_calls&quot;)
+        meter.add(&quot;combine_selected_basis_vectors&quot;, a.bit_count())
+    z = 0
+    while a:
+        b = a &amp; -a
+        z ^= basis[b.bit_length() - 1]
+        if meter is not None:
+            meter.add(&quot;basis_xors&quot;)
+        a ^= b
+        if meter is not None:
+            meter.add(&quot;coefficient_bit_scans&quot;)
+    return z
+
+
+def linear(rows, x: int, meter: Meter | None = None) -&gt; int:
+    if meter is not None:
+        meter.add(&quot;linear_map_evaluations&quot;)
+    return sum(parity(row &amp; x, meter) &lt;&lt; j for j, row in enumerate(rows))
+
+
+def echelon(rows, n: int, meter: Meter | None = None):
+    &quot;&quot;&quot;Reduced row echelon basis, pivot columns, in low-bit-first order.&quot;&quot;&quot;
+    rows = list(rows)
+    if meter is not None:
+        meter.add(&quot;echelon_calls&quot;)
+        meter.add(&quot;echelon_input_rows&quot;, len(rows))
+    pivots = []
+    rank = 0
+    for j in range(n):
+        p = next((a for a in range(rank, len(rows)) if (rows[a] &gt;&gt; j) &amp; 1), None)
+        if p is None:
+            continue
+        rows[rank], rows[p] = rows[p], rows[rank]
+        for a in range(len(rows)):
+            if a != rank and ((rows[a] &gt;&gt; j) &amp; 1):
+                rows[a] ^= rows[rank]
+                if meter is not None:
+                    meter.add(&quot;gf2_row_xors&quot;)
+        pivots.append(j)
+        rank += 1
+        if rank == len(rows):
+            break
+    if meter is not None:
+        meter.add(&quot;gf2_pivots&quot;, rank)
+    return rows[:rank], pivots
+
+
+def kernel(rows, n: int, meter: Meter | None = None):
+    if meter is not None:
+        meter.add(&quot;kernel_calls&quot;)
+        meter.add(&quot;kernel_equations&quot;, len(rows))
+    reduced, pivots = echelon(rows, n, meter)
+    pivot_set = set(pivots)
+    out = []
+    for j in range(n):
+        if j not in pivot_set:
+            v = 1 &lt;&lt; j
+            for row, pivot in zip(reduced, pivots):
+                if (row &gt;&gt; j) &amp; 1:
+                    v |= 1 &lt;&lt; pivot
+            out.append(v)
+    return out
+
+
+def complement(basis, n: int, meter: Meter | None = None):
+    &quot;&quot;&quot;Return a deterministic basis completing `basis` to F_2^n.&quot;&quot;&quot;
+    if meter is not None:
+        meter.add(&quot;complement_calls&quot;)
+        meter.add(&quot;complement_input_basis_vectors&quot;, len(basis))
+    kept, _ = echelon(basis, n, meter)
+    out = []
+    rank = len(kept)
+    for j in range(n):
+        v = 1 &lt;&lt; j
+        trial, _ = echelon(kept + [v], n, meter)
+        if len(trial) &gt; rank:
+            kept = trial
+            rank += 1
+            out.append(v)
+    if rank != n:
+        raise ArithmeticError(&quot;basis completion failed&quot;)
+    return out
+
+
+def matrix_inverse(rows, n: int, meter: Meter | None = None):
+    &quot;&quot;&quot;Inverse of an invertible n-by-n binary matrix given by row masks.&quot;&quot;&quot;
+    if meter is not None:
+        meter.add(&quot;matrix_inverse_calls&quot;)
+        meter.add(&quot;matrix_inverse_dimension&quot;, n)
+    if n == 0:
+        return []
+    aug = [rows[i] | (1 &lt;&lt; (n + i)) for i in range(n)]
+    pivots = []
+    rank = 0
+    for j in range(n):
+        p = next((a for a in range(rank, n) if (aug[a] &gt;&gt; j) &amp; 1), None)
+        if p is None:
+            raise ArithmeticError(&quot;singular matrix in quotient construction&quot;)
+        aug[rank], aug[p] = aug[p], aug[rank]
+        for a in range(n):
+            if a != rank and ((aug[a] &gt;&gt; j) &amp; 1):
+                aug[a] ^= aug[rank]
+                if meter is not None:
+                    meter.add(&quot;gf2_row_xors&quot;)
+        pivots.append(j)
+        rank += 1
+    if pivots != list(range(n)):
+        raise ArithmeticError(&quot;matrix pivot order mismatch&quot;)
+    if meter is not None:
+        meter.add(&quot;gf2_pivots&quot;, n)
+    return [row &gt;&gt; n for row in aug]
+
+
+@dataclass
+class Quadratic:
+    constant: int
+    linear_mask: int
+    upper: list[int]
+
+    def __call__(self, x: int, meter: Meter | None = None) -&gt; int:
+        z = self.constant ^ parity(self.linear_mask &amp; x, meter)
+        a = x
+        while a:
+            b = a &amp; -a
+            z ^= parity(self.upper[b.bit_length() - 1] &amp; x, meter)
+            a ^= b
+        if meter is not None:
+            meter.add(&quot;quadratic_evaluations&quot;)
+        return z
+
+    def polar(self):
+        n = len(self.upper)
+        rows = [0] * n
+        for i, row in enumerate(self.upper):
+            a = row
+            while a:
+                b = a &amp; -a
+                j = b.bit_length() - 1
+                rows[i] |= 1 &lt;&lt; j
+                rows[j] |= 1 &lt;&lt; i
+                a ^= b
+        return rows
+
+    def translation_invariant(self, v: int, meter: Meter | None = None) -&gt; bool:
+        if any(parity(row &amp; v, meter) for row in self.polar()):
+            return False
+        return (self(v, meter) ^ self.constant) == 0
+
+    def toggles(self, v: int, meter: Meter | None = None) -&gt; bool:
+        if any(parity(row &amp; v, meter) for row in self.polar()):
+            return False
+        return (self(v, meter) ^ self.constant) == 1
+
+    def body(self):
+        return {&quot;constant&quot;: self.constant, &quot;linear&quot;: self.linear_mask,
+                &quot;upper&quot;: list(self.upper)}
+
+
+def coefficient_points(n: int):
+    return ([0] + [1 &lt;&lt; i for i in range(n)] +
+            [(1 &lt;&lt; i) | (1 &lt;&lt; j) for i in range(n) for j in range(i + 1, n)])
+
+
+def interpolate(values, n: int, meter: Meter | None = None):
+    c = values[0]
+    lin = 0
+    for i in range(n):
+        lin |= (values[1 &lt;&lt; i] ^ c) &lt;&lt; i
+    upper = [0] * n
+    for i in range(n):
+        for j in range(i + 1, n):
+            upper[i] |= (values[(1 &lt;&lt; i) | (1 &lt;&lt; j)] ^ values[1 &lt;&lt; i]
+                         ^ values[1 &lt;&lt; j] ^ c) &lt;&lt; j
+    if meter is not None:
+        meter.add(&quot;quadratic_interpolations&quot;)
+        meter.add(&quot;interpolation_coefficients&quot;, 1 + n + n * (n - 1) // 2)
+    return Quadratic(c, lin, upper)
+
+
+def common_stabilizer(polys, n: int, meter: Meter | None = None):
+    &quot;&quot;&quot;Exact common translation stabilizer, from acquired coefficient bodies.&quot;&quot;&quot;
+    if not polys:
+        return [1 &lt;&lt; i for i in range(n)]
+    radical = kernel([row for p in polys for row in p.polar()], n, meter)
+    response_rows = []
+    for p in polys:
+        response = 0
+        for j, v in enumerate(radical):
+            if (p(v, meter) ^ p.constant) &amp; 1:
+                response |= 1 &lt;&lt; j
+        response_rows.append(response)
+    coeff_kernel = kernel(response_rows, len(radical), meter)
+    return [combine(radical, a, meter) for a in coeff_kernel]
+
+
+class PrefixSampler:
+    &quot;&quot;&quot;Exact sampler for acquired-prefix fibers using the minimal S quotient.&quot;&quot;&quot;
+    def __init__(self, polys, toggles, stabilizer, n: int, meter: Meter | None = None):
+        self.polys = list(polys)
+        self.toggles = list(toggles)
+        self.S = list(stabilizer)
+        self.n = n
+        self.k = len(polys)
+        self.s = len(self.S)
+        self.d = n - self.s
+        self.meter = meter
+        if self.d &lt; self.k:
+            raise ArithmeticError(&quot;acquired own-toggles exceed quotient dimension&quot;)
+
+        # L is a basis of S^perp; U completes S; P=L U is invertible.
+        self.L = kernel(self.S, n, meter)
+        if len(self.L) != self.d:
+            raise ArithmeticError(&quot;annihilator dimension mismatch&quot;)
+        U = complement(self.S, n, meter)
+        if len(U) != self.d:
+            raise ArithmeticError(&quot;quotient complement dimension mismatch&quot;)
+        P_rows = [sum(parity(row &amp; u, meter) &lt;&lt; j for j, u in enumerate(U))
+                  for row in self.L]
+        Pinv = matrix_inverse(P_rows, self.d, meter)
+        self.J = []
+        for j in range(self.d):
+            coeff = sum(((Pinv[i] &gt;&gt; j) &amp; 1) &lt;&lt; i for i in range(self.d))
+            self.J.append(combine(U, coeff, meter))
+
+        self.a = [linear(self.L, w, meter) for w in self.toggles]
+        self.W = complement(self.a, self.d, meter)
+        if len(self.W) != self.d - self.k:
+            raise ArithmeticError(&quot;quotient toggle complement dimension mismatch&quot;)
+        self.random_bits = self.n - self.k
+
+    def lift(self, z: int) -&gt; int:
+        return combine(self.J, z, self.meter)
+
+    def sample_from_seed(self, target: int, seed: int) -&gt; int:
+        &quot;&quot;&quot;Enumerate one of the exactly 2^(n-k) equiprobable random seeds.&quot;&quot;&quot;
+        qdim = self.d - self.k
+        z = combine(self.W, seed &amp; ((1 &lt;&lt; qdim) - 1), self.meter)
+        for i, (p, a) in enumerate(zip(self.polys, self.a)):
+            self.meter.add(&quot;sampler_toggle_steps&quot;) if self.meter else None
+            bit = (target &gt;&gt; (self.k - i - 1)) &amp; 1
+            raw = self.lift(z)
+            if p(raw, self.meter) != bit:
+                z ^= a
+                if self.meter is not None:
+                    self.meter.add(&quot;sampler_quotient_toggles&quot;)
+        raw = self.lift(z)
+        sseed = seed &gt;&gt; qdim
+        raw ^= combine(self.S, sseed, self.meter)
+        if self.meter is not None:
+            self.meter.add(&quot;prefix_samples&quot;)
+        return raw
+
+    def sample(self, target: int, rng: random.Random, meter: Meter | None = None) -&gt; int:
+        seed = rng.getrandbits(self.random_bits)
+        if meter is not None:
+            meter.add(&quot;prefix_fiber_random_bits&quot;, self.random_bits)
+            meter.add(&quot;independent_prefix_samples&quot;)
+        return self.sample_from_seed(target, seed)
+
+    def project(self, x: int, target: int) -&gt; int:
+        &quot;&quot;&quot;Correct any raw state into the acquired prefix fiber.&quot;&quot;&quot;
+        for i, (p, w) in enumerate(zip(self.polys, self.toggles)):
+            bit = (target &gt;&gt; (self.k - i - 1)) &amp; 1
+            if p(x, self.meter) != bit:
+                x ^= w
+                if self.meter is not None:
+                    self.meter.add(&quot;sampler_raw_toggles&quot;)
+        if self.meter is not None:
+            self.meter.add(&quot;sampler_projections&quot;)
+        return x
+
+    def fiber(self, target: int):
+        # The direct raw complement is used only for explicit finite checking
+        # and the exact r-bit suffix enumeration, never for prefix sampling.
+        Wraw = complement(self.toggles, self.n, self.meter)
+        for seed in range(1 &lt;&lt; len(Wraw)):
+            yield self.project(combine(Wraw, seed, self.meter), target)
+
+
+class AcquiredPrefix:
+    def __init__(self, n: int, meter: Meter | None = None):
+        self.n = n
+        self.q: list[Quadratic] = []
+        self.toggles: list[int] = []
+        self.stabilizer = [1 &lt;&lt; i for i in range(n)]
+        self.meter = meter
+
+    def prefix(self, x: int) -&gt; int:
+        a = 0
+        for q in self.q:
+            a = (a &lt;&lt; 1) | q(x, self.meter)
+        return a
+
+    def sampler(self):
+        return PrefixSampler(self.q, self.toggles, self.stabilizer, self.n, self.meter)
+
+    def add(self, q: Quadratic, v: int):
+        if not q.toggles(v, self.meter):
+            raise ArithmeticError(&quot;candidate failed own-toggle gate&quot;)
+        if not all(p.translation_invariant(v, self.meter) for p in self.q):
+            raise ArithmeticError(&quot;selected direction escaped acquired stabilizer&quot;)
+        self.q.append(q)
+        self.toggles.append(v)
+        self.stabilizer = common_stabilizer(self.q, self.n, self.meter)
+
+
+class Source:
+    def __init__(self, query):
+        self.query = query
+        self.calls = 0
+        self.by_phase = defaultdict(int)
+        self.phase = &quot;acquisition&quot;
+
+    def __call__(self, x: int, y: int) -&gt; int:
+        self.calls += 1
+        self.by_phase[self.phase] += 1
+        return int(bool(self.query(x, y)))
+
+
+def parameters(n: int, r: int, beta: float):
+    if not (0 &lt;= r &lt;= n and 0 &lt; beta &lt;= 0.5):
+        raise ValueError(&quot;require 0&lt;=r&lt;=n and 0&lt;beta&lt;=1/2&quot;)
+    h = n - r
+    M = 1 + n + n * (n - 1) // 2
+    if h == 0:
+        return dict(n=n, r=r, beta=beta, stages=0, M=M, p=0.0, R=0,
+                    delta=0.0, t=0, J=0, tail_comparisons=M * ((1 &lt;&lt; r) - 1))
+    p = 2.0 ** (-r - 1)
+    R = math.ceil(math.log(2 * h / beta) / p)
+    delta = beta / (4 * h * R * R)
+    t = math.ceil(math.log(1 / delta) / math.log(16 / 15))
+    J = 0 if r == 0 else r + math.ceil(math.log2(4 * h * R / beta))
+    tail = M * ((1 &lt;&lt; r) - 1)
+    return dict(n=n, r=r, beta=beta, stages=h, M=M, p=p, R=R,
+                delta=delta, t=t, J=J, tail_comparisons=tail)
+
+
+def _pair_test(k: int, v: int, sampler: PrefixSampler, source: Source,
+               rng: random.Random, meter: Meter):
+    prefix = rng.getrandbits(k)
+    meter.add(&quot;pair_prefix_random_bits&quot;, k)
+    x0 = sampler.sample(prefix, rng, meter)
+    x1 = sampler.sample(prefix, rng, meter)
+    g0 = 1 ^ source(x0, x0 ^ v)
+    g1 = 1 ^ source(x1, x1 ^ v)
+    y0 = x0 ^ (v if g0 else 0)
+    y1 = x1 ^ (v if not g1 else 0)
+    passed = bool(source(y0, y1))
+    meter.add(&quot;pair_tests&quot;)
+    return passed
+
+
+def _label(source: Source, v: int, x: int):
+    return 1 ^ source(x, x ^ v)
+
+
+def _candidate_from_polar(n: int, k: int, r: int, v: int,
+                          prefix: AcquiredPrefix, source: Source,
+                          rng: random.Random, cfg: dict, meter: Meter):
+    &quot;&quot;&quot;Fixed-J sampled-image / selected-column compact-polar reconstruction.&quot;&quot;&quot;
+    S = prefix.stabilizer
+    sdim = len(S)
+    source.phase = &quot;polar_base&quot;
+    q0 = _label(source, v, 0)
+    qe = [_label(source, v, 1 &lt;&lt; i) for i in range(n)]
+    rows = []
+    for _ in range(cfg[&quot;J&quot;]):
+        z = combine(S, rng.getrandbits(sdim), meter)
+        meter.add(&quot;polar_direction_random_bits&quot;, sdim)
+        qz = _label(source, v, z)
+        qzi = [_label(source, v, z ^ (1 &lt;&lt; i)) for i in range(n)]
+        row = 0
+        for i in range(n):
+            if qzi[i] ^ qz ^ qe[i] ^ q0:
+                row |= 1 &lt;&lt; i
+        rows.append(row)
+        meter.add(&quot;sampled_polar_rows&quot;)
+        meter.add(&quot;polar_row_coordinates&quot;, n)
+
+    row_basis, pivots = echelon(rows, n, meter)
+    b = len(row_basis)
+    meter.add(&quot;sampled_image_rank_checks&quot;)
+    if b &gt; r:
+        return None, dict(status=&quot;UNKNOWN&quot;, reason=&quot;sampled_image_rank_exceeds_r&quot;,
+                          sampled_image_rank=b, stabilizer_dimension=sdim)
+
+    # RREF gives an invertible selected-column submatrix equal to I_b.
+    # For each basis vector of S, measure only the selected derivative columns.
+    images = []
+    source.phase = &quot;selected_columns&quot;
+    for z in S:
+        qz = _label(source, v, z)
+        selected = 0
+        for j, i in enumerate(pivots):
+            qzi = _label(source, v, z ^ (1 &lt;&lt; i))
+            derivative = qzi ^ qz ^ qe[i] ^ q0
+            selected |= derivative &lt;&lt; j
+        image = 0
+        for j, row in enumerate(row_basis):
+            if (selected &gt;&gt; j) &amp; 1:
+                image ^= row
+                meter.add(&quot;selected_row_basis_xors&quot;)
+        images.append(image)
+        meter.add(&quot;selected_column_rows&quot;)
+        meter.add(&quot;selected_column_derivatives&quot;, b)
+
+    # The reconstructed map is S -&gt; W. Its kernel is N-hat. If image samples
+    # missed a true polar direction, this kernel can be too large; the dim
+    # guard below does not certify completeness.
+    map_rows = []
+    for i in range(n):
+        map_rows.append(sum(((image &gt;&gt; i) &amp; 1) &lt;&lt; j for j, image in enumerate(images)))
+    coeff_kernel = kernel(map_rows, sdim, meter)
+    Nhat = [combine(S, c, meter) for c in coeff_kernel]
+    n_hat_dim = len(Nhat)
+    min_dim = n - r - k
+    if n_hat_dim &lt; min_dim:
+        return None, dict(status=&quot;UNKNOWN&quot;, reason=&quot;estimated_kernel_dimension_below_promise&quot;,
+                          sampled_image_rank=b, estimated_kernel_dimension=n_hat_dim,
+                          minimum_kernel_dimension=min_dim)
+
+    U = complement(Nhat, n, meter)
+    u = len(U)
+    if u &gt; k + r:
+        return None, dict(status=&quot;UNKNOWN&quot;, reason=&quot;quotient_dimension_guard&quot;,
+                          sampled_image_rank=b, estimated_kernel_dimension=n_hat_dim,
+                          quotient_dimension=u)
+
+    # Interpolate q on U. q(0) is already available from the polar base labels.
+    source.phase = &quot;quotient_interpolation&quot;
+    qU_values = {0: q0}
+    qU_points = [0]
+    qU_points.extend(1 &lt;&lt; i for i in range(u))
+    qU_points.extend((1 &lt;&lt; i) | (1 &lt;&lt; j) for i in range(u) for j in range(i + 1, u))
+    for c in qU_points[1:]:
+        x = combine(U, c, meter)
+        qU_values[c] = _label(source, v, x)
+    qU = interpolate(qU_values, u, meter)
+
+    source.phase = &quot;kernel_response&quot;
+    lambda_mask = 0
+    for j, z in enumerate(Nhat):
+        response = _label(source, v, z) ^ q0
+        lambda_mask |= response &lt;&lt; j
+    meter.add(&quot;kernel_response_queries&quot;, len(Nhat))
+
+    # Coordinates in the direct-sum basis U + N-hat define the learned
+    # quadratic f(y+z)=q_U(y)+lambda(z). Expand from local evaluations only.
+    basis = U + Nhat
+    basis_rows = [sum(((basis[j] &gt;&gt; i) &amp; 1) &lt;&lt; j for j in range(n)) for i in range(n)]
+    coord_rows = matrix_inverse(basis_rows, n, meter)
+
+    def f_eval(x):
+        coords = linear(coord_rows, x, meter)
+        y = coords &amp; ((1 &lt;&lt; u) - 1)
+        z = coords &gt;&gt; u
+        return qU(y, meter) ^ parity(lambda_mask &amp; z, meter)
+
+    global_points = coefficient_points(n)
+    f_values = {x: f_eval(x) for x in global_points}
+    meter.add(&quot;candidate_global_anchor_evaluations&quot;, len(global_points))
+    f = interpolate(f_values, n, meter)
+    if not f.toggles(v, meter):
+        return None, dict(status=&quot;UNKNOWN&quot;, reason=&quot;post_interpolation_own_toggle_failed&quot;,
+                          sampled_image_rank=b, estimated_kernel_dimension=n_hat_dim,
+                          quotient_dimension=u)
+    if not all(old.translation_invariant(v, meter) for old in prefix.q):
+        return None, dict(status=&quot;UNKNOWN&quot;, reason=&quot;selected_toggle_not_in_acquired_stabilizer&quot;,
+                          sampled_image_rank=b, estimated_kernel_dimension=n_hat_dim,
+                          quotient_dimension=u)
+
+    return f, dict(status=&quot;accepted_candidate&quot;, sampled_image_rank=b,
+                    estimated_kernel_dimension=n_hat_dim, quotient_dimension=u,
+                    selected_pivot_columns=pivots, selected_column_rows=len(S),
+                    q_quotient_anchor_count=len(qU_points),
+                    kernel_response_count=len(Nhat))
+
+
+def acquire(n: int, r: int, query, seed: int, beta: float = 0.01):
+    &quot;&quot;&quot;Acquire an n-coordinate quadratic model using comparisons only.&quot;&quot;&quot;
+    start = time.perf_counter()
+    cfg = parameters(n, r, beta)
+    rng = random.Random(seed)
+    meter = Meter()
+    source = Source(query)
+    prefix = AcquiredPrefix(n, meter)
+    stages = []
+
+    for k in range(cfg[&quot;stages&quot;]):
+        stage_start = time.perf_counter()
+        before = len(prefix.stabilizer)
+        sampler = prefix.sampler()
+        winner = None
+        trials = []
+        for j in range(cfg[&quot;R&quot;]):
+            direction_coeff = rng.getrandbits(len(prefix.stabilizer))
+            v = combine(prefix.stabilizer, direction_coeff, meter)
+            meter.add(&quot;direction_random_bits&quot;, len(prefix.stabilizer))
+            if v == 0:
+                trials.append(dict(trial=j, direction=0, status=&quot;zero_direction&quot;, pair_tests=0))
+                continue
+            source.phase = &quot;pair_validation&quot;
+            passed = True
+            used = 0
+            for _ in range(cfg[&quot;t&quot;]):
+                used += 1
+                if not _pair_test(k, v, sampler, source, rng, meter):
+                    passed = False
+                    break
+            trials.append(dict(trial=j, direction=v,
+                               status=&quot;accepted_raw&quot; if passed else &quot;pair_inversion_rejected&quot;,
+                               pair_tests=used, comparisons=3 * used))
+            if passed:
+                winner = v
+                break
+        if winner is None:
+            stages.append(dict(stage=k, dimension_S_before=before, trials=trials,
+                               stage_seconds=time.perf_counter() - stage_start))
+            return dict(status=&quot;UNKNOWN&quot;, reason=&quot;direction_cap_exhausted&quot;, parameters=cfg,
+                        stages=stages, comparison_calls=source.calls,
+                        source_calls_by_phase=dict(source.by_phase),
+                        local_operations=dict(meter.ops),
+                        elapsed_seconds=time.perf_counter() - start), None, prefix
+
+        f, polar_receipt = _candidate_from_polar(n, k, r, winner, prefix, source,
+                                                  rng, cfg, meter)
+        if f is None:
+            stages.append(dict(stage=k, dimension_S_before=before, winner=winner,
+                               trials=trials, polar=polar_receipt,
+                               stage_seconds=time.perf_counter() - stage_start))
+            return dict(status=&quot;UNKNOWN&quot;, reason=polar_receipt[&quot;reason&quot;], parameters=cfg,
+                        stages=stages, comparison_calls=source.calls,
+                        source_calls_by_phase=dict(source.by_phase),
+                        local_operations=dict(meter.ops),
+                        elapsed_seconds=time.perf_counter() - start), None, prefix
+        prefix.add(f, winner)
+        stages.append(dict(stage=k, dimension_S_before=before,
+                           dimension_S_after=len(prefix.stabilizer), winner=winner,
+                           trials=trials, polar=polar_receipt,
+                           stage_seconds=time.perf_counter() - stage_start))
+
+    # Exact suffix acquisition: enumerate the 2^r points in each acquired
+    # prefix fiber and count how many precede each coefficient anchor.
+    tail_start = time.perf_counter()
+    source.phase = &quot;tail_enumeration&quot;
+    points = coefficient_points(n)
+    values = [dict() for _ in range(r)]
+    suffix_sampler = prefix.sampler()
+    for x in points:
+        pfx = prefix.prefix(x)
+        local_rank = sum(source(y, x) for y in suffix_sampler.fiber(pfx) if y != x)
+        for j in range(r):
+            values[j][x] = (local_rank &gt;&gt; (r - j - 1)) &amp; 1
+    suffix = [interpolate(values[j], n, meter) for j in range(r)]
+    model = list(prefix.q) + suffix
+    expected_tail = cfg[&quot;M&quot;] * ((1 &lt;&lt; r) - 1)
+    if source.by_phase[&quot;tail_enumeration&quot;] != expected_tail:
+        raise ArithmeticError(&quot;tail comparison accounting mismatch&quot;)
+    result = dict(status=&quot;returned_model&quot;, parameters=cfg, stages=stages,
+                  comparison_calls=source.calls, source_calls_by_phase=dict(source.by_phase),
+                  random_bits=dict((key, value) for key, value in meter.ops.items()
+                                   if key.endswith(&quot;random_bits&quot;)),
+                  local_operations=dict(meter.ops),
+                  tail_comparisons=source.by_phase[&quot;tail_enumeration&quot;],
+                  tail_seconds=time.perf_counter() - tail_start,
+                  acquisition_seconds=time.perf_counter() - start,
+                  model_bodies=[q.body() for q in model],
+                  acquired_toggle_vectors=list(prefix.toggles),
+                  acquired_prefix_dimension=len(prefix.q),
+                  acquired_stabilizer_basis=list(prefix.stabilizer))
+    return result, model, prefix
+
+
+class CompiledModel:
+    &quot;&quot;&quot;Execution helpers built only from the returned acquired model.&quot;&quot;&quot;
+    def __init__(self, model, toggles, n: int, r: int):
+        self.model = list(model)
+        self.n, self.r = n, r
+        self.h = n - r
+        self.prefix_q = self.model[:self.h]
+        self.toggles = list(toggles)
+        self._fiber_basis = complement(self.toggles, self.n)
+
+    def rank(self, x: int) -&gt; int:
+        out = 0
+        for q in self.model:
+            out = (out &lt;&lt; 1) | q(x)
+        return out
+
+    def prefix(self, x: int, k: int | None = None) -&gt; int:
+        k = self.h if k is None else k
+        out = 0
+        for q in self.prefix_q[:k]:
+            out = (out &lt;&lt; 1) | q(x)
+        return out
+
+    def prefix_sampler(self, k: int):
+        q = self.prefix_q[:k]
+        w = self.toggles[:k]
+        S = common_stabilizer(q, self.n)
+        return PrefixSampler(q, w, S, self.n)
+
+    def fiber(self, prefix: int):
+        for seed in range(1 &lt;&lt; len(self._fiber_basis)):
+            x = combine(self._fiber_basis, seed)
+            for i, (q, v) in enumerate(zip(self.prefix_q, self.toggles)):
+                bit = (prefix &gt;&gt; (self.h - i - 1)) &amp; 1
+                if q(x) != bit:
+                    x ^= v
+            yield x
+
+    def inverse(self, rank: int):
+        pfx = rank &gt;&gt; self.r
+        hits = [x for x in self.fiber(pfx) if self.rank(x) == rank]
+        return hits
+
+</pre>

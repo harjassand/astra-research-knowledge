@@ -1,0 +1,334 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — witness_compiler.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>&quot;&quot;&quot;Comparison-only full fixed-degree compiler with low-codimension witnesses.
+
+The API sees only n,r,d,beta, a random seed and a chosen-pair comparison
+callback. Hidden flags/coordinates/ranks appear only in the separate harness.
+The copied safe-W/raw controls use the same raw selector and beta. Every
+period label is expanded into four actual source comparisons, never a
+supplied polynomial oracle. Python PRNG runs are finite reproducible fixtures;
+the probability proof separately assumes ideal fresh conditional randomness.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import math
+from pathlib import Path
+import random
+import sys
+import time
+
+SNAPSHOT = Path(__file__).resolve().parent / &#x27;reference_snapshot&#x27;
+sys.path.insert(0, str(SNAPSHOT / &#x27;degree_extension&#x27;))
+import fixed_degree as fd
+ac = fd.ac
+
+
+def parameters(n, r, d, beta, prefix_length=None, mode=&#x27;witness&#x27;):
+    if mode not in (&#x27;witness&#x27;, &#x27;safe_W&#x27;, &#x27;raw_body&#x27;):
+        raise ValueError(&#x27;unknown compiler mode&#x27;)
+    base_mode = &#x27;raw_body&#x27; if mode == &#x27;raw_body&#x27; else &#x27;safe_subspace&#x27;
+    cfg = fd.parameters(n, r, d, beta, prefix_length, base_mode)
+    m, h = cfg[&#x27;stages&#x27;], cfg[&#x27;h&#x27;]
+    p = 2.0 ** (-r-1)
+    R = math.ceil(math.log(4*m/beta)/p) if m else 0
+    gamma = 2.0 ** (-2*d)
+    delta_raw = beta/(4*m*R*R) if m else 0.0
+    raw_t = math.ceil(math.log(1/delta_raw)/-math.log1p(-gamma)) if m else 0
+    outer_L = math.ceil(math.log(8*R*(m+r)/beta)/-math.log1p(-2.0**(-d))) if m and r else 0
+    eta = beta/(8*r*R) if m and r else 0.0
+    nu = 2.0 ** (-(r-1)) if r else 0.0
+    period_L = (1 if r == 1 else math.ceil(math.log(n*(1 &lt;&lt; r)/eta)/-math.log1p(-nu))) if m and r else 0
+    P = sum(max(0, n-k-1) for k in range(m))
+    H = math.ceil(4*P+8*math.log(4/beta)) if P else 0
+    # Safe-W matched control: preserve its growth cap, strengthen the membership
+    # semantic budget to inverse-R, and share exactly the witness raw selector.
+    Nmax = max(cfg[&#x27;member_trial_caps&#x27;], default=0)
+    delta_member = beta/(8*m*R*Nmax) if m else 0.0
+    member_t = math.ceil(math.log(1/delta_member)/-math.log1p(-2.0**(-(d-1)))) if m else 0
+    A = sum(fd.M(k+r,d) for k in range(m))
+    B = A + m*(n+1) + 3*(m+r)*outer_L + 4*r*n*(1 &lt;&lt; r)*period_L
+    if mode == &#x27;witness&#x27;:
+        stage_cap = B
+    elif mode == &#x27;safe_W&#x27;:
+        stage_cap = A + sum(1 + cap*(1+2*member_t)+(h-k)
+                            for k,cap in enumerate(cfg[&#x27;member_trial_caps&#x27;]))
+    else:
+        stage_cap = m*fd.M(n,d)
+    cfg.update(mode=mode,control_budget=&#x27;common inverse-R raw validation; same beta and exact source&#x27;,
+               p=p,R=R,gamma=gamma,raw_t=raw_t,delta_raw=delta_raw,
+               outer_L=outer_L,period_eta=eta,period_L_max=period_L,
+               delta_member=delta_member,member_t=member_t,
+               tournament_pair_count_cap=P,tournament_total_attempt_cap=H,
+               leading_interpolation_cap=A if mode != &#x27;raw_body&#x27; else m*fd.M(n,d),
+               witness_conditional_cap=B,stage_comparison_cap=stage_cap,
+               worst_comparison_bound=stage_cap+3*m*R*raw_t+2*H+P+cfg[&#x27;tail_comparisons&#x27;],
+               expected_comparison_bound=(B+3*m*((1+beta/2)*raw_t+(1-p)/(p*gamma))
+                    +5*P+cfg[&#x27;tail_comparisons&#x27;]) if mode == &#x27;witness&#x27; else None,
+               failure_budget=dict(raw_cap=beta/4,tournament_cap=beta/4,
+                   first_false_raw=beta/(4*R) if R else 0,
+                   first_outer_miss=beta/(8*R) if R and mode==&#x27;witness&#x27; else 0,
+                   first_period_miss=beta/(8*R) if R and mode==&#x27;witness&#x27; else 0,
+                   member_growth=beta/8 if mode==&#x27;safe_W&#x27; else 0,
+                   first_false_member=beta/(8*R) if R and mode==&#x27;safe_W&#x27; else 0))
+    cfg[&#x27;failure_bound&#x27;] = sum(cfg[&#x27;failure_budget&#x27;].values())
+    return cfg
+
+
+def contains(v, basis, n, meter=None):
+    return len(ac.echelon(list(basis)+[v],n,meter)[0]) == len(basis)
+
+
+def period_dictionary(label, n, W, xstar, cap, eta, rng, source, meter,
+                      cached_q0=None,cached_qx=None):
+    &quot;&quot;&quot;Learn ker of the hidden quotient-column map of P_x restricted to W.&quot;&quot;&quot;
+    w = len(W)
+    if cap &lt;= 0:
+        return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;period_zero_cap&#x27;)
+    if cap == 1 and cached_q0 is not None and cached_qx is not None:
+        # A nonzero P with period codimension at most one and P(0)=0 is
+        # exactly a nonzero linear form. Read that form on the W basis.
+        source.phase=&#x27;period_cap_one_row&#x27;
+        row=sum((label(v)^label(v^xstar)^cached_q0^cached_qx) &lt;&lt; j
+                for j,v in enumerate(W))
+        meter.add(&#x27;period_cap_one_row_coefficients&#x27;,w)
+        D=[ac.combine(W,bits,meter) for bits in ac.kernel([row],w,meter)]
+        return D,dict(status=&#x27;accepted_candidate&#x27;,dimension_W=w,
+                      period_codimension=int(bool(row)),linear_row=row,
+                      candidates=0,rejections=0,probes=0,probe_cap=1,
+                      source_comparisons=2*w,nu=1.0,semantic_error_budget=0.0,
+                      exact_conditional_cap_one_row=True)
+    nu = 2.0 ** (-(cap-1))
+    Lp = 1 if cap == 1 else math.ceil(math.log(w*(1 &lt;&lt; cap)/eta)/-math.log1p(-nu))
+    reps,columns = [],[]
+    candidates = probes = rejected_count = 0
+    source.phase=&#x27;period_dictionary&#x27;
+    for j in range(w):
+        assigned = None
+        for u in range(1 &lt;&lt; len(reps)):
+            candidates += 1
+            meter.add(&#x27;period_quotient_candidates&#x27;)
+            tlocal = (1 &lt;&lt; j) ^ ac.combine(reps,u,meter)
+            if not tlocal:
+                assigned=u
+                break
+            t=ac.combine(W,tlocal,meter)
+            rejected=False
+            for _ in range(Lp):
+                z=ac.combine(W,rng.getrandbits(w),meter)
+                meter.add(&#x27;period_probe_random_bits&#x27;,w)
+                probes+=1
+                meter.add(&#x27;period_second_derivative_probes&#x27;)
+                if label(z)^label(z^xstar)^label(z^t)^label(z^t^xstar):
+                    rejected=True
+                    rejected_count+=1
+                    break
+            if not rejected:
+                assigned=u
+                break
+        if assigned is None:
+            if len(reps)&gt;=cap:
+                return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;period_rank_cap&#x27;,
+                    candidates=candidates,probes=probes,probe_cap=Lp)
+            assigned=1 &lt;&lt; len(reps)
+            reps.append(1 &lt;&lt; j)
+        columns.append(assigned)
+    rows=[sum(((column &gt;&gt; i)&amp;1) &lt;&lt; j for j,column in enumerate(columns))
+          for i in range(len(reps))]
+    D=[ac.combine(W,bits,meter) for bits in ac.kernel(rows,w,meter)]
+    if candidates&gt;w*(1 &lt;&lt; cap) or probes&gt;w*(1 &lt;&lt; cap)*Lp:
+        raise ArithmeticError(&#x27;dictionary deterministic cap&#x27;)
+    return D,dict(status=&#x27;accepted_candidate&#x27;,dimension_W=w,period_codimension=len(reps),
+                  quotient_columns=columns,candidates=candidates,rejections=rejected_count,
+                  probes=probes,probe_cap=Lp,source_comparisons=4*probes,nu=nu,
+                  semantic_error_budget=eta)
+
+
+def reconstruct(n,r,d,k,v,prefix,source,rng,cfg,meter,state):
+    h=cfg[&#x27;h&#x27;]
+    S=list(prefix.S)
+    W=list(S)
+    target=h-k
+    c=len(W)-target
+    source.phase=&#x27;witness_base&#x27;
+    q0=ac.core._label(source,v,0)
+    label=lambda x:ac.core._label(source,v,x)
+    if not 0&lt;=c&lt;=r or not contains(v,W,n,meter):
+        return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;constant_input_guard&#x27;)
+    L=cfg[&#x27;outer_L&#x27;]
+    mu=2.0 ** (-min(d-1,k+r-1)) if k+r&gt;=2 else None
+    tests=epochs=0
+    witnesses=[]
+    if c and d&gt;1 and k+r&gt;=2:
+        while len(W)&gt;target:
+            epochs+=1
+            state[&#x27;outer_epochs&#x27;]+=1
+            if state[&#x27;outer_epochs&#x27;]&gt;cfg[&#x27;stages&#x27;]+r:
+                return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;global_outer_epoch_cap&#x27;)
+            witness=None
+            source.phase=&#x27;outer_witness_tests&#x27;
+            for _ in range(L):
+                s=ac.combine(W,rng.getrandbits(len(W)),meter)
+                x=rng.getrandbits(n)
+                meter.add(&#x27;outer_direction_random_bits&#x27;,len(W))
+                meter.add(&#x27;outer_point_random_bits&#x27;,n)
+                meter.add(&#x27;outer_witness_probes&#x27;)
+                tests+=1
+                qs,qx,qxs=label(s),label(x),label(x^s)
+                if qs^qx^qxs^q0:
+                    witness=(s,x,qx)
+                    break
+            if witness is None:
+                break
+            # This is intentionally BEFORE the paid dictionary. Post-drop-only
+            # checking could pay one extra invocation after a bad-history refund.
+            if state[&#x27;global_drop&#x27;]&gt;=r or state[&#x27;paid_dictionaries&#x27;]&gt;=r:
+                return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;global_witness_budget_before_dictionary&#x27;,
+                                 outer_tests=tests,witnesses=witnesses)
+            detected,xstar,qxstar=witness
+            state[&#x27;paid_dictionaries&#x27;]+=1
+            D,receipt=period_dictionary(label,n,W,xstar,len(W)-target,
+                                       cfg[&#x27;period_eta&#x27;],rng,source,meter,q0,qxstar)
+            if D is None:
+                return None,dict(status=&#x27;UNKNOWN&#x27;,reason=receipt[&#x27;reason&#x27;],dictionary=receipt)
+            if len(ac.echelon(D,n,meter)[0])!=len(D) or not all(contains(s,W,n,meter) for s in D):
+                return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;period_subspace_guard&#x27;)
+            if len(D)&lt;target or not contains(v,D,n,meter):
+                return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;period_minimum_or_own_toggle_guard&#x27;)
+            if len(D)&gt;=len(W) or contains(detected,D,n,meter):
+                return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;period_strict_drop_or_witness_guard&#x27;)
+            drop=len(W)-len(D)
+            if state[&#x27;global_drop&#x27;]+drop&gt;r:
+                return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;global_drop_cap&#x27;)
+            state[&#x27;global_drop&#x27;]+=drop
+            receipt.update(old_dimension=len(W),new_dimension=len(D),drop=drop,
+                           xstar=xstar,detected_direction=detected,
+                           global_drop_after=state[&#x27;global_drop&#x27;])
+            witnesses.append(receipt)
+            W=D
+    U=ac.complement(W,n,meter)
+    if len(U)&gt;k+r:
+        return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;quotient_dimension_guard&#x27;)
+    source.phase=&#x27;witness_quotient_interpolation&#x27;
+    values={0:q0}
+    for bits in fd.points(len(U),d)[1:]:
+        values[bits]=label(ac.combine(U,bits,meter))
+    qU=fd.interpolate(values,len(U),d,meter)
+    source.phase=&#x27;witness_affine_responses&#x27;
+    responses=sum((label(w)^q0) &lt;&lt; j for j,w in enumerate(W))
+    basis=U+W
+    rows=[sum(((basis[j] &gt;&gt; i)&amp;1) &lt;&lt; j for j in range(n)) for i in range(n)]
+    coordinates=ac.matrix_inverse(rows,n,meter)
+    u=len(U)
+    def f(x):
+        c=ac.linear(coordinates,x,meter)
+        return qU(c&amp;((1 &lt;&lt; u)-1),meter)^ac.parity(responses&amp;(c &gt;&gt; u),meter)
+    # Raw polynomial expansion is local, separately charged; it is not a source
+    # query and is not a compact-update bit-work claim.
+    raw=fd.interpolate({x:f(x) for x in fd.points(n,d)},n,d,meter)
+    if not raw.toggles(v,meter) or not all(old.invariant(v,meter) for old in prefix.q):
+        return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;post_interpolation_toggle_gate&#x27;)
+    exact_C,_=fd.translation_filtration(raw,S,meter,constant_only=True)
+    if not all(contains(w,exact_C,n,meter) for w in W):
+        return None,dict(status=&#x27;UNKNOWN&#x27;,reason=&#x27;constructed_affine_space_guard&#x27;)
+    return raw,dict(status=&#x27;accepted_candidate&#x27;,constant_space_basis=W,
+                   constant_space_dimension=len(W),outer_tests=tests,outer_epochs=epochs,
+                   outer_cap=L,mu=mu,witnesses=witnesses,
+                   source_free_known_constant_space=(c==0 or k+r&lt;=1 or d&lt;=1),
+                   quotient_dimension=u,quotient_anchor_count=fd.M(u,d),
+                   affine_response_count=len(W),local_raw_expansion_anchors=fd.M(n,d),
+                   semantic_exactness=&#x27;conditional on raw/outer/period semantic success&#x27;)
+
+
+def acquire(n,r,d,query,seed,beta=.01,prefix_length=None,mode=&#x27;witness&#x27;,
+            force_zero_directions=False):
+    &quot;&quot;&quot;Full model only under ALL-output degree promise; prefix allows arbitrary tail.&quot;&quot;&quot;
+    start=time.perf_counter()
+    cfg=parameters(n,r,d,beta,prefix_length,mode)
+    source,meter=ac.Source(query),ac.Meter()
+    prefix=fd.Prefix(n,meter)
+    stages=[]
+    tournament=dict(attempts=0,matches=0)
+    witness_state=dict(global_drop=0,paid_dictionaries=0,outer_epochs=0)
+    def finish(status,reason=None,model=None):
+        out=dict(status=status,reason=reason,parameters=cfg,comparison_calls=source.calls,
+                 source_calls_by_phase=dict(source.by_phase),local_operations=dict(meter.ops),
+                 random_bits={k:v for k,v in meter.ops.items() if k.endswith(&#x27;random_bits&#x27;)},
+                 acquisition_seconds=time.perf_counter()-start,stages=stages,
+                 acquired_toggle_vectors=list(prefix.toggles),acquired_stabilizer_basis=list(prefix.S),
+                 model_bodies=[q.body() for q in model] if model is not None else None,
+                 witness_totals=dict(witness_state),tournament_totals=dict(tournament),
+                 failure_fixture=&#x27;forced zero direction tape&#x27; if force_zero_directions else None)
+        if source.calls&gt;cfg[&#x27;worst_comparison_bound&#x27;]:
+            raise ArithmeticError(&#x27;whole learner deterministic query cap&#x27;)
+        if mode==&#x27;witness&#x27; and witness_state[&#x27;paid_dictionaries&#x27;]&gt;r:
+            raise ArithmeticError(&#x27;global paid dictionary cap&#x27;)
+        return out,model,prefix
+    for k in range(cfg[&#x27;stages&#x27;]):
+        before=len(prefix.S)
+        if not cfg[&#x27;h&#x27;]-k&lt;=before&lt;=n-k:
+            return finish(&#x27;UNKNOWN&#x27;,&#x27;stabilizer_dimension_guard&#x27;)
+        raw_rng=random.Random(seed+1000003*(k+1))
+        witness_rng=random.Random(seed+1900033*(k+1))
+        certified_zero=before==cfg[&#x27;h&#x27;]-k
+        if certified_zero and not force_zero_directions:
+            winner,trials,reason=ac._select_certified_zero(prefix.S,k,source,raw_rng,cfg,meter,tournament)
+            if reason:
+                return finish(&#x27;UNKNOWN&#x27;,reason)
+        else:
+            sampler=prefix.sampler()
+            winner=None
+            trials=[]
+            for j in range(cfg[&#x27;R&#x27;]):
+                v=0 if force_zero_directions else ac.combine(prefix.S,raw_rng.getrandbits(before),meter)
+                meter.add(&#x27;direction_random_bits&#x27;,0 if force_zero_directions else before)
+                if not v:
+                    meter.add(&#x27;zero_raw_directions_skipped&#x27;)
+                    continue
+                source.phase=&#x27;raw_pair_validation&#x27;
+                passed=True
+                for test in range(cfg[&#x27;raw_t&#x27;]):
+                    if not ac.core._pair_test(k,v,sampler,source,raw_rng,meter):
+                        passed=False
+                        break
+                trials.append(dict(direction=v,passed=passed,pair_tests=test+1))
+                if passed:
+                    winner=v
+                    break
+            if winner is None:
+                return finish(&#x27;UNKNOWN&#x27;,&#x27;raw_direction_cap&#x27;)
+        if mode==&#x27;raw_body&#x27;:
+            source.phase=&#x27;raw_interpolation&#x27;
+            q=fd.interpolate({x:ac.core._label(source,winner,x) for x in fd.points(n,d)},n,d,meter)
+            rec=dict(status=&#x27;accepted_candidate&#x27;,raw_anchor_count=fd.M(n,d))
+            if not q.toggles(winner,meter) or not all(old.invariant(winner,meter) for old in prefix.q):
+                return finish(&#x27;UNKNOWN&#x27;,&#x27;post_interpolation_toggle_gate&#x27;)
+        elif mode==&#x27;safe_W&#x27;:
+            q,rec=fd.reconstruct(n,r,d,k,winner,prefix,source,witness_rng,cfg,meter)
+            if q is None:
+                return finish(&#x27;UNKNOWN&#x27;,rec[&#x27;reason&#x27;])
+        else:
+            q,rec=reconstruct(n,r,d,k,winner,prefix,source,witness_rng,cfg,meter,witness_state)
+            if q is None:
+                out,model,prefix=finish(&#x27;UNKNOWN&#x27;,rec[&#x27;reason&#x27;])
+                out[&#x27;failed_reconstruction&#x27;]=rec
+                return out,model,prefix
+        update=prefix.add(q,winner)
+        after=len(prefix.S)
+        if n-k-1-after&gt;r:
+            return finish(&#x27;UNKNOWN&#x27;,&#x27;stabilizer_defect_guard&#x27;)
+        stages.append(dict(stage=k,selector=&#x27;certified_zero_tournament&#x27; if certified_zero else &#x27;raw_paired_cut&#x27;,
+                           dimension_S_before=before,dimension_S_after=after,
+                           defect_before=n-k-before,defect_after=n-k-1-after,
+                           direction=winner,trials=trials,reconstruction=rec,exact_update=update))
+    if prefix_length is not None:
+        return finish(&#x27;returned_prefix&#x27;,model=list(prefix.q))
+    source.phase=&#x27;tail_enumeration&#x27;
+    sampler=prefix.sampler()
+    values=[{} for _ in range(r)]
+    for x in fd.points(n,d):
+        local=sum(source(y,x) for y in sampler.fiber(prefix.prefix(x)) if y!=x)
+        for j in range(r):
+            values[j][x]=(local &gt;&gt; (r-j-1))&amp;1
+    if source.by_phase[&#x27;tail_enumeration&#x27;]!=cfg[&#x27;tail_comparisons&#x27;]:
+        raise ArithmeticError(&#x27;full tail accounting&#x27;)
+    model=list(prefix.q)+[fd.interpolate(values_j,n,d,meter) for values_j in values]
+    return finish(&#x27;returned_model&#x27;,model=model)
+</pre>

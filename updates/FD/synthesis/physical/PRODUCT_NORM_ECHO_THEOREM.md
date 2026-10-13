@@ -1,0 +1,183 @@
+# A dimension-linear local-reset echo certificate
+
+SUPERSEDED DURING THIS INVESTIGATION: `SPECTRAL_WEIGHT_ECHO_THEOREM.md` proves
+a stronger dimension-linear bound under the ORIGINAL source assumptions, by
+retaining a maximal-eigenvector term in the reset mixture. This product-norm
+route is retained as a valid, dominated historical alternative. Its extra
+decomposition contract is unnecessary for the main outcome and should not be
+added to the primary experiment or architecture.
+
+14 October 2026. Internally derived restricted theorem and finite diagnostics;
+external correctness and historical priority UNKNOWN. This is a mathematical
+strengthening of the supplied `cray_active_acquisition` certificate, not a new
+device observation. The historical 100-million-trial records remain simulations.
+
+## Exact strengthened contract
+
+Let S and O be finite-dimensional Hilbert spaces, with dim(S)=d. Set hbar=1.
+The candidate comparison has
+
+    B=U†K1U-wI=K0+R,       R=r⊗I_O,       ||r||<=Rcap.
+
+All requirements in the producer note remain: coherent branch control, a known
+compiled U, reset S to I/d before each trial, arbitrary retained outside state,
+uniform history/state apparatus-probability allowance gamma, and all scalar,
+sector, support and model-error accounting. Here an additional calibrated
+PRODUCT decomposition is supplied:
+
+    K0=K_S⊗I + I⊗K_O + sum_j A_j⊗B_j,
+    J_cross=sum_j ||A_j|| ||B_j||,
+    J_pi=J_local+J_cross,       J_local>=||K_S||,
+    Lambda_pi=2J_pi+Rcap.
+
+Hermitian product terms may be used, as in the Pauli fixture. Neither the
+dimension nor the norm of K_O enters the bound. A bound on the operator norms
+of arbitrary entangling boundary terms does NOT automatically supply J_cross;
+product expansion overhead must be recorded. Fixed-arity Pauli terms have an
+explicit such expansion. No generic affordable decomposition-acquisition
+algorithm is asserted.
+
+Define E(t)=exp(iK0 t)exp(-iBt), and
+
+    r2=sqrt(Tr_S r²/d),
+    g(t)=Lambda_pi [exp(J_cross t)-1-J_cross t]/J_cross²
+
+when J_cross>0; its continuous J_cross=0 limit is Lambda_pi t²/2.
+For every t>0 with g(t)<t and EVERY outside state tau,
+
+    p_tau(t) >= (t-g(t))² r2²/4
+              >= (t-g(t))² ||r||²/(4d).                    (1)
+
+Thus c_pi(t)=(t-g(t))²/(4d) can replace the producer's coefficient in the
+same conditional Bernoulli-domination inference:
+
+    ||r|| <= sqrt[(q_up+gamma)/c_pi(t)].                    (2)
+
+The source spectral/min-max implication then gives the simultaneous interval
+[w-radius,w+radius] for every beta>0 and for ground-energy differences. This
+does not estimate a Gibbs observable and does not infer equilibrium.
+
+## Proof of the module-norm bound
+
+For an operator X on S⊗O put
+
+    ||X||_m = ||Tr_S(X†X)/d||_op^(1/2).
+
+It is a norm, equivalently sup over outside density matrices tau of
+||X (I/d⊗tau)^(1/2)||_HS. The equality follows by maximizing the positive
+linear functional of tau. Consequently it obeys the triangle inequality.
+Left multiplication by a unitary preserves it. Right multiplication by a
+product operator A⊗B has norm at most ||A||||B||: partial-trace cyclicity on S
+and positivity give
+
+    Tr_S[(A†⊗I)X†X(A⊗I)] <= ||A||² Tr_S(X†X),
+
+and conjugation by B supplies the second factor. Right product unitaries are
+therefore isometries. A local r has ||r⊗I||_m=r2.
+
+Split B=H_free+V with
+H_free=(K_S+r)⊗I+I⊗K_O and V=sum A_j⊗B_j. In the interaction picture,
+V(s) is the same product sum conjugated by product unitaries; its product-norm
+sum is J_cross. The Dyson series, or its integral equation and Gronwall,
+therefore proves, for every X and s>=0,
+
+    ||X exp(-iBs)||_m <= exp(J_cross s)||X||_m.              (3)
+
+The final free product unitary does not change this norm. The conjugation of
+B_j by exp(-iK_Os) changes no operator norm, which is why an arbitrarily large
+common outside Hamiltonian creates no extensive factor.
+
+Direct differentiation, as in the producer proof, gives
+
+    E''(s)=exp(iK0s)([K0,R]-R²)exp(-iBs).
+
+Locality cancels [I⊗K_O,R]. For every product term,
+||[A_j,r]⊗B_j||_m<=2||A_j||||B_j|| r2. Also
+||[K_S,r]||_HS/sqrt(d)<=2J_local r2 and
+||r²||_HS/sqrt(d)<=Rcap r2. Combining with (3),
+
+    ||E''(s)||_m <= Lambda_pi exp(J_cross s) r2.
+
+Integrating the second derivative proves
+
+    ||E(t)-I+itR||_m <= g(t) r2.                            (4)
+
+For rho_tau=I/d⊗tau, the leading term satisfies
+||R rho_tau^(1/2)||_HS=r2 for every tau. Applying (4) to this state and using
+the reverse triangle inequality gives
+||(E-I)rho_tau^(1/2)||_HS>=(t-g)r2. The exact destructive-outcome formula
+p_tau=||(E-I)rho_tau^(1/2)||_HS²/4 proves (1). QED.
+
+## Dimension and calibration consequences
+
+Since J_cross<=Lambda_pi/2, the universal time t=1/(2Lambda_pi) has
+J_cross t<=1/4. Using exp(1/4)<4/3 gives
+
+    g(t)<=Lambda_pi t² exp(J_cross t)/2 < t/3,
+    c_pi(t)>1/(36 Lambda_pi² d).
+
+Hence ideal zero-failure certification at radius epsilon needs at most
+
+    ceil[36 Lambda_pi² d log(1/alpha)/epsilon²]
+
+shots. This is O(d), replacing the producer's O(d²) factor under the stronger
+product contract. d=2^ell is still exponential in collar-qubit count. The
+best-case apparatus-only floor is at most 6Lambda_pi sqrt(d gamma) with this
+safe constant; actual failures and model errors can be worse. This is a shot
+bound conditional on the observed record, not a guaranteed successful runtime.
+
+For exact rational use when J_cross t<1, (4) admits the looser algebraic bound
+
+    g(t)<=g_bar=Lambda_pi t²/[2(1-J_cross t)].               (5)
+
+It follows from exp(J_cross s)<=1/(1-J_cross t) for 0<=s<=t. A fully rational
+c_bar=(t-g_bar)²/(4d) is valid whenever t>g_bar. The script uses (5), so no
+floating exponential or beta quantile is needed for the exact certificate.
+
+## Same-record strengthening, with provenance retained
+
+The source three-spin collar has nine Pauli terms with coefficient-norm sum
+6.09. The retained outside spin adds only 1.1 Z2Z3 and 0.6 X2X3 across the
+cut; the 0.5 X3 term is outside-only. Therefore
+
+    J_local=609/100, J_cross=17/10, J_pi=779/100,
+    Rcap=2, Lambda_pi=879/50, d=8, t=1/50.
+
+The exact source retained-memory record has n=100,000,000 and s=7 failures.
+The script proves that q=161/10^9 is a valid one-sided 99% upper endpoint by
+bounding its binomial lower tail with exact rational arithmetic. Equation (5)
+then gives c_bar=0.000008364304039... . The source bound has coefficient
+about 0.000003159..., explaining its inconclusive result.
+
+For gamma=1/10^8, exact rational squaring proves radius<143/1000 and therefore
+
+    DeltaF_beta in [57/1000,343/1000] for every beta>0
+
+and the same ground-energy interval, on the conditional 99% coverage event.
+For gamma=1/10^7 it proves radius<177/1000, giving [23/1000,377/1000]. These
+reuse the STRICTER seven-failure simulation; no fresh favorable trajectory or
+laboratory observation has been introduced. The broader physical calibration
+gate remains open. The simulated true residual is 0.03, and all exact local
+matrix information is already available to the simulation; this is not a
+matched computational speedup over evaluating that known local residual.
+
+## Surviving obstruction and capital relation
+
+N788/N790 require genuine Gibbs weights and have hidden-sector/rare-overlap
+acquisition obstructions. This operation supplies different coherent access
+and a stronger all-state output; it does not refute either lower bound or
+certify an arbitrary observed stationary histogram. N778/N779 admit broader
+local CHANNEL comparisons; the present coherent unitary witness does not
+automatically acquire those channels' residuals. For example K0=diag(0,2)
+and K1=diag(1.1,1.2) have a doubly stochastic averaging-channel certificate
+with positive margin0.1, but no positive unitary Loewner comparison, because
+the largest ordered eigenvalue falls from2 to1.2. Thus acquisition remains
+restricted even after the shot-factor improvement.
+
+The next decisive hardware test is a fixed, independently specified interacting
+spin/charge device with a meaningful compiled local witness, measured product
+boundary-norm/support budget, independently bounded uniform reset/control/readout
+error, and a predeclared sign margin. Compare complete pilot/calibration/reset/
+readout time with direct equilibrium thermodynamics and equally informed local
+Hamiltonian learning. Neither constituent operations in the literature nor this
+proof establishes the whole contract.

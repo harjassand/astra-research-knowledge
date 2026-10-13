@@ -1,0 +1,111 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — shifted_ball_decoder.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>&quot;&quot;&quot;Random sampled Reed majority decoding, with shared shifted Hamming balls.
+
+Input is a raw binary callback. No clean label, target coefficients, or bad-set
+identities enter this module.  See PROOF.txt for the conditional error theorem.
+Python stdlib only.  The decoder is a proposal routine outside its noise promise.
+&quot;&quot;&quot;
+from __future__ import annotations
+from itertools import combinations
+import math
+from typing import Callable
+
+
+def monomials(n: int, d: int) -&gt; list[int]:
+    return [sum(1 &lt;&lt; i for i in inds)
+            for k in range(min(n, d) + 1) for inds in combinations(range(n), k)]
+
+
+def submasks(s: int) -&gt; list[int]:
+    out = []
+    a = s
+    while True:
+        out.append(a)
+        if a == 0:
+            return out
+        a = (a - 1) &amp; s
+
+
+def odd_ceil(z: float) -&gt; int:
+    r = max(1, math.ceil(z))
+    return r if r &amp; 1 else r + 1
+
+
+def repetitions(n: int, d: int, rho: float, failure: float) -&gt; dict[int, int]:
+    if not 0 &lt;= d &lt;= n or not 0 &lt;= rho &lt; 2.0 ** (-d - 1) or not 0 &lt; failure &lt; 1:
+        raise ValueError(&quot;invalid degree/noise/confidence contract&quot;)
+    M = len(monomials(n, d))
+    return {k: odd_ceil(math.log(M / failure) / (2 * (0.5 - (1 &lt;&lt; k) * rho) ** 2))
+            for k in range(d + 1)}
+
+
+def evaluate(terms: list[int], x: int) -&gt; int:
+    return sum((x &amp; s) == s for s in terms) &amp; 1
+
+
+class ShiftedBallDecoder:
+    &quot;&quot;&quot;Recover all coefficients, or propose a degree-d body outside the promise.
+
+    A round queries raw(x xor a) at every weight-at-most-d mask a, for uniform x.
+    Coefficient votes descend by degree.  Higher recovered coefficients are
+    subtracted algebraically from finite differences, with all rounds retained.
+    These data are shared safely: the proof uses a union bound on votes defined
+    using the fixed TRUE higher coefficients, not conditioning those votes on
+    successful higher recovery.
+    &quot;&quot;&quot;
+    def __init__(self, n: int, d: int, rho: float, failure: float, rng):
+        self.n, self.d, self.rho, self.failure, self.rng = n, d, rho, failure, rng
+        self.anchors = monomials(n, d)
+        self.repeats = repetitions(n, d, rho, failure)
+        index = {a: j for j, a in enumerate(self.anchors)}
+        self.instructions = [(s, [index[a] for a in submasks(s)])
+                             for s in reversed(self.anchors)]
+        self.raw_requests = self.random_bits = self.coefficient_votes = 0
+        self.rounds = self.calls = self.peak_retained_bits = 0
+
+    def decode(self, raw: Callable[[int], int]) -&gt; list[int]:
+        R = max(self.repeats.values())
+        records = []
+        for _ in range(R):
+            x = self.rng.getrandbits(self.n)
+            self.random_bits += self.n
+            # Byte arrays hold actual binary labels, not Python integer objects.
+            labels = []
+            for a in self.anchors:
+                labels.append(int(raw(x ^ a)))
+                self.raw_requests += 1
+            word = bytes(labels)
+            if any(b &gt; 1 for b in word):
+                raise ValueError(&quot;raw callback must return a binary label&quot;)
+            records.append((x, word))
+        self.rounds += R
+        self.peak_retained_bits = max(self.peak_retained_bits,
+                                     R * (self.n + len(self.anchors)))
+        terms = []
+        for s, indices in self.instructions:
+            k = s.bit_count()
+            higher_differences = [t ^ s for t in terms if (t &amp; s) == s]
+            votes = 0
+            for x, word in records[:self.repeats[k]]:
+                bit = 0
+                for j in indices:
+                    bit ^= word[j]
+                for t in higher_differences:
+                    bit ^= int((x &amp; t) == t)
+                votes += bit
+            self.coefficient_votes += self.repeats[k]
+            if 2 * votes &gt; self.repeats[k]:
+                terms.append(s)
+        self.calls += 1
+        return sorted(terms)
+
+    def ledger(self):
+        return dict(decoder=&quot;sampled_shifted_ball_reed_majority&quot;, degree=self.d,
+                    raw_error_density_promise=self.rho,
+                    per_body_failure_budget=self.failure,
+                    repetitions_by_degree=self.repeats,
+                    shifted_ball_positions=len(self.anchors),
+                    decoded_bodies=self.calls, raw_label_requests=self.raw_requests,
+                    shift_random_bits=self.random_bits,
+                    sampled_rounds=self.rounds, coefficient_votes=self.coefficient_votes,
+                    peak_retained_logical_bits=self.peak_retained_bits)
+</pre>

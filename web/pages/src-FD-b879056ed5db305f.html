@@ -1,0 +1,162 @@
+<!doctype html><meta charset="utf-8"><title>FD evidence — spectral_weight_echo_checks.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact retained-record certificate, finite echo and Pauli-reset diagnostics.
+
+No laboratory data; no floating value is used to prove the rational interval.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from pathlib import Path
+from math import factorial
+import argparse,hashlib,itertools,json,math
+import numpy as np
+from scipy.linalg import expm
+
+HERE=Path(__file__).resolve().parent
+SOURCE=HERE.parent/&#x27;sources&#x27;/&#x27;cray_active_acquisition&#x27;
+
+def herm(rng,d):
+    a=rng.normal(size=(d,d))+1j*rng.normal(size=(d,d))
+    return (a+a.conj().T)/(2*math.sqrt(d))
+
+def norm(a):
+    return float(np.linalg.norm(a,2))
+
+def ptr_s(a,d,b):
+    return np.einsum(&#x27;aiaj-&gt;ij&#x27;,a.reshape(d,b,d,b))
+
+def exact_retained_record():
+    path=SOURCE/&#x27;retained_memory_results.json&#x27;
+    data=json.loads(path.read_text())
+    assert data[&#x27;N&#x27;]==100_000_000 and data[&#x27;failures&#x27;]==7
+    n=data[&#x27;N&#x27;];s=data[&#x27;failures&#x27;];q=F(161,10**9);x=n*q
+    poly=sum((x/(1-q))**j/F(factorial(j)) for j in range(s+1))
+    exp_lower=sum(x**j/F(factorial(j)) for j in range(101))
+    tail=poly/exp_lower
+    assert tail&lt;F(1,100)
+    Lam=F(879,50);d=8;t=F(1,50);w=F(1,5)
+    c=t*t*(1-Lam*t/2)**2/(4*d)
+    assert c==F(16982641,2000000000000)
+    rows=[]
+    for gamma,radius in [(F(0),F(138,1000)),(F(1,10**8),F(142,1000)),
+                         (F(1,10**7),F(176,1000))]:
+        rs=(q+gamma)/c
+        assert rs&lt;radius*radius
+        rows.append({&#x27;gamma&#x27;:str(gamma),&#x27;radius_square_exact&#x27;:str(rs),
+                     &#x27;radius_upper&#x27;:str(radius),
+                     &#x27;DeltaF_interval&#x27;:[str(w-radius),str(w+radius)],
+                     &#x27;sign_certified&#x27;:radius&lt;w})
+    return {&#x27;source_path&#x27;:str(path),
+            &#x27;source_sha256&#x27;:hashlib.sha256(path.read_bytes()).hexdigest(),
+            &#x27;source_data_kind&#x27;:&#x27;Producer simulated retained quantum-memory instrument trajectory&#x27;,
+            &#x27;n&#x27;:n,&#x27;failures&#x27;:s,&#x27;confidence&#x27;:&#x27;conditional 99 percent&#x27;,
+            &#x27;q_upper_exact&#x27;:str(q),&#x27;tail_upper_exact&#x27;:str(tail),
+            &#x27;tail_upper_display&#x27;:float(tail),&#x27;Lambda&#x27;:str(Lam),&#x27;time&#x27;:str(t),
+            &#x27;dimension&#x27;:d,&#x27;coefficient_exact&#x27;:str(c),&#x27;rows&#x27;:rows,
+            &#x27;physical_calibration_verified&#x27;:False,
+            &#x27;external_theorem_review&#x27;:&#x27;UNKNOWN&#x27;,&#x27;novelty&#x27;:&#x27;UNKNOWN&#x27;}
+
+def finite_echo_checks():
+    rng=np.random.default_rng(202610140192)
+    worst_remainder=0.;lowest_prob=math.inf;models=0
+    for d in [2,3,4,5,6]:
+        for b in [2,3]:
+            for j in range(8):
+                touch=herm(rng,d*b)
+                outside=(1+40*j)*herm(rng,b)
+                K=touch+np.kron(np.eye(d),outside)
+                r=herm(rng,d);delta=float(rng.uniform(.02,1))
+                r*=delta/norm(r)
+                R=np.kron(r,np.eye(b));cap=delta+.1
+                Lam=2*norm(touch)+cap
+                t=float(rng.uniform(.15,1.65))/Lam
+                E=expm(1j*K*t)@expm(-1j*(K+R)*t)
+                remainder=norm(E-np.eye(d*b)+1j*t*R)
+                bound=Lam*t*t*delta/2
+                assert remainder&lt;=bound+1e-10
+                worst_remainder=max(worst_remainder,remainder/bound)
+                Q=(E-np.eye(d*b)).conj().T@(E-np.eye(d*b))
+                P=ptr_s(Q,d,b)/(4*d)
+                p_min=float(np.linalg.eigvalsh((P+P.conj().T)/2)[0])
+                lb=t*t*(1-Lam*t/2)**2*delta**2/(4*d)
+                assert p_min+1e-12&gt;=lb
+                lowest_prob=min(lowest_prob,p_min/lb)
+                models+=1
+    return {&#x27;models&#x27;:models,&#x27;outside_state_scope&#x27;:&#x27;all outside states via minimum eigenvalue&#x27;,
+            &#x27;largest_remainder_to_operator_bound_ratio&#x27;:worst_remainder,
+            &#x27;smallest_probability_to_sharper_bound_ratio&#x27;:lowest_prob,
+            &#x27;evidence_scope&#x27;:&#x27;floating diagnostics only; arbitrary entangling boundary terms allowed&#x27;}
+
+def twirl_checks():
+    rng=np.random.default_rng(202610140193)
+    I=np.eye(2);X=np.array([[0,1],[1,0]])
+    Y=np.array([[0,-1j],[1j,0]]);Z=np.diag([1,-1])
+    paulis=[I,X,Y,Z];worst=0.;tests=0
+    for ell in [1,2,3]:
+        d=2**ell;b=3
+        for _ in range(5):
+            a=rng.normal(size=(d*b,d*b))+1j*rng.normal(size=(d*b,d*b))
+            rho=a@a.conj().T;rho/=np.trace(rho)
+            tau=ptr_s(rho,d,b)
+            average=np.zeros_like(rho)
+            for factors in itertools.product(paulis,repeat=ell):
+                p=np.array([[1.]])
+                for f in factors:p=np.kron(p,f)
+                u=np.kron(p,np.eye(b))
+                average+=u@rho@u.conj().T/(4**ell)
+            error=norm(average-np.kron(np.eye(d)/d,tau))
+            assert error&lt;1e-12
+            worst=max(worst,error);tests+=1
+    return {&#x27;correlated_host_states&#x27;:tests,&#x27;largest_twirl_decoupling_error&#x27;:worst,
+            &#x27;status&#x27;:&#x27;finite numerical check of exact Pauli identity; no hardware noise model&#x27;,
+            &#x27;fresh_random_bits_each_trial&#x27;:&#x27;2*ell&#x27;,
+            &#x27;forbidden_data_flow&#x27;:&#x27;postselection by current Pauli key; batching a fixed key without fresh independent randomization&#x27;}
+
+def obstructions():
+    # Locality/full support cannot be dropped: unseen outside or collar sectors.
+    delta=.3;t=.2;I=np.eye(2);P=np.diag([1.,0.])
+    outside_R=np.kron(I,delta*P)
+    outside_rho=np.kron(I/2,np.diag([0.,1.]))
+    local_R=np.kron(delta*P,I)
+    unsupported_rho=np.kron(np.diag([0.,1.]),I/2)
+    vals=[]
+    for R,rho in [(outside_R,outside_rho),(local_R,unsupported_rho)]:
+        E=expm(-1j*R*t)
+        p=float((1-np.trace(rho@E).real)/2)
+        assert abs(p)&lt;1e-14 and norm(R)&gt;.29
+        vals.append(p)
+    # Channel witness strictly broader than unitary positive comparison.
+    K0=np.diag([0.,2.]);K1=np.diag([1.1,1.2]);X=np.array([[0.,1.],[1.,0.]])
+    phi=(K0+X@K0@X)/2
+    margin=float(np.linalg.eigvalsh(K1-phi)[0])
+    assert margin&gt;.099 and K1[-1,-1]&lt;K0[-1,-1]
+    return {&#x27;nonlocal_unseen_sector_failure_probability&#x27;:vals[0],
+            &#x27;non_full_support_reset_failure_probability&#x27;:vals[1],
+            &#x27;nonzero_residual_norm&#x27;:delta,
+            &#x27;channel_averaging_margin&#x27;:margin,
+            &#x27;unitary_positive_comparison_impossible_by_ordered_top_eigenvalue&#x27;:True,
+            &#x27;rank_one_exact_probability&#x27;:&#x27;sin(delta*time/2)^2/d; dimension factor is necessary for prescribed null protocol&#x27;}
+
+if __name__==&#x27;__main__&#x27;:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--source-dir&#x27;,type=Path,default=None,
+                        help=&#x27;Path to preserved cray_active_acquisition producer packet&#x27;)
+    parser.add_argument(&#x27;--output-dir&#x27;,type=Path,default=HERE,
+                        help=&#x27;Directory for the new diagnostic result; originals are never edited&#x27;)
+    args=parser.parse_args()
+    if args.source_dir is not None:
+        SOURCE=args.source_dir
+    elif not SOURCE.exists():
+        candidates=[p/&#x27;updates/FD/package/echo_acquisition/cray_active_acquisition&#x27;
+                    for p in [HERE,*HERE.parents]]
+        SOURCE=next((p for p in candidates if p.is_dir()),SOURCE)
+    if not (SOURCE/&#x27;retained_memory_results.json&#x27;).is_file():
+        parser.error(&#x27;Preserved source not found; provide --source-dir&#x27;)
+    args.output_dir.mkdir(parents=True,exist_ok=True)
+    data={&#x27;exact_retained_record&#x27;:exact_retained_record(),&#x27;finite_echo&#x27;:finite_echo_checks(),
+          &#x27;twirl&#x27;:twirl_checks(),&#x27;obstructions&#x27;:obstructions()}
+    (args.output_dir/&#x27;SPECTRAL_WEIGHT_ECHO_RESULTS.json&#x27;).write_text(json.dumps(data,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;exact_rows&#x27;:data[&#x27;exact_retained_record&#x27;][&#x27;rows&#x27;],
+                      &#x27;tail&#x27;:data[&#x27;exact_retained_record&#x27;][&#x27;tail_upper_display&#x27;],
+                      &#x27;finite_echo&#x27;:data[&#x27;finite_echo&#x27;],&#x27;twirl&#x27;:data[&#x27;twirl&#x27;],
+                      &#x27;obstructions&#x27;:data[&#x27;obstructions&#x27;]},indent=2))
+</pre>

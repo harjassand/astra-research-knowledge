@@ -1,0 +1,83 @@
+"""Sequential quantum-instrument simulation, resetting only the collar/label.
+
+The external spin density matrix is propagated after each outcome. Long runs of
+'pass' outcomes are sampled using powers of the no-click superoperator, not by
+assuming independent trials. This is numerical validation, not laboratory data.
+"""
+from __future__ import annotations
+import json,math
+from pathlib import Path
+import numpy as np
+from scipy.linalg import expm
+from scipy.stats import beta as beta_distribution
+from run_tests import I,Y,pauli
+OUT=Path(__file__).resolve().parent
+arr=np.load(OUT/'local_search_matrices.npz')
+d=8;t=.02;w=.2
+ext=1.1*pauli(4,{2:3,3:3})+.6*pauli(4,{2:1,3:1})+.5*pauli(4,{3:1})
+K0=np.kron(arr['k0'],I)+ext
+K1=np.kron(arr['k1'],I)+ext
+U=np.kron(np.kron(arr['u'],I),I)
+B=U.conj().T@K1@U-w*np.eye(16)
+v0=expm(-1j*K0*t);v1=expm(-1j*B*t)
+
+def instrument(sign):
+    m=((v0+sign*v1)/2).reshape(d,2,d,2)
+    sup=np.zeros((4,4),complex)
+    for a in range(d):
+        for b in range(d):
+            k=m[a,:,b,:]/math.sqrt(d)
+            sup+=np.kron(k.conj(),k)
+    return sup
+plus=instrument(1);minus=instrument(-1)
+trace=np.array([1.,0,0,1.],complex)
+assert np.linalg.norm(trace@(plus+minus)-trace)<1e-12
+N=100_000_000
+powers=[plus]
+for j in range(N.bit_length()):powers.append(powers[-1]@powers[-1])
+def act(k,v):
+    j=0
+    while k:
+        if k&1:v=powers[j]@v
+        k>>=1;j+=1
+    return v
+
+rng=np.random.default_rng(20261013)
+rho=(I+Y)/2
+v=rho.reshape(4,order='F')
+remaining=N;events=[];done=0
+while remaining:
+    u=float(rng.random())
+    surv=float((trace@act(remaining,v)).real)
+    assert -.00001<=surv<=1.00001
+    if u<surv:
+        done+=remaining
+        v=act(remaining,v);v/=trace@v;remaining=0
+        break
+    # Smallest waiting time with survival <= u.
+    lo=1;hi=remaining
+    while lo<hi:
+        mid=(lo+hi)//2
+        if float((trace@act(mid,v)).real)<=u:hi=mid
+        else:lo=mid+1
+    wait=lo
+    v=minus@act(wait-1,v)
+    v/=trace@v
+    mat=v.reshape(2,2,order='F');mat=(mat+mat.conj().T)/2
+    assert np.min(np.linalg.eigvalsh(mat))>-1e-9
+    v=mat.reshape(4,order='F')
+    done+=wait;remaining-=wait;events.append(done)
+s=len(events);alpha=.01
+q=float(beta_distribution.ppf(1-alpha,s+1,N-s))
+Lambda=17.58
+c=t*t*(1/math.sqrt(d)-Lambda*t/2)**2/4
+rows=[]
+for gamma in [0.,1e-8,1e-7]:
+    rad=math.sqrt((q+gamma)/c)
+    rows.append(dict(gamma=gamma,radius=rad,interval=[w-rad,w+rad],sign_certified=rad<w))
+result=dict(N=N,failures=s,event_times=events,calibration_rows=rows,
+            initial_memory_state='+Y pure state',
+            final_memory_density_real=v.reshape(2,2,order='F').real.tolist(),
+            note='Sequential quantum-instrument simulation with no reset of the memory spin; numerical matrix powers and beta quantiles, not exact arithmetic or laboratory data.')
+(OUT/'retained_memory_results.json').write_text(json.dumps(result,indent=2))
+print(json.dumps(result,indent=2))

@@ -1,0 +1,449 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — run_comparisons.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>&quot;&quot;&quot;Bounded source-isolated fixtures; no large exponential verification.
+
+Truth is accessible only in this driver, after the learner returns. Learners
+receive a callback, dimensions, their stated promises and seeds. Output is
+saved incrementally per case in this lane&#x27;s directory.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+from pathlib import Path
+import random
+import time
+
+import adaptive_compiler as ac
+
+HERE = Path(__file__).resolve().parent
+
+
+class Teacher:
+    &quot;&quot;&quot;Synthetic comparison source; its construction is not given to learner.
+
+full: all n outputs quadratic, h=n-r partial flag. prefix_arbitrary: only
+the requested first k outputs are quadratic; remaining rank suffix can be
+ANY separately supplied bijection of the residual hidden coordinates inside
+each prefix fiber. The explicit demonstration uses a prefix-dependent cubic
+reversible gate, odd modular multiplication and addition. Future hidden
+x-directions supply the same codimension-r exposure promise for learned bits.
+&quot;&quot;&quot;
+    def __init__(self, n, r, seed, prefix_length=None, suffix_permutation=None):
+        start = time.perf_counter()
+        self.n, self.r, self.h = n, r, n-r
+        self.k = self.h if prefix_length is None else prefix_length
+        self.prefix_arbitrary = prefix_length is not None
+        rng = random.Random(seed)
+        # Invertibility is by elementary row operations, with no search cap.
+        self.rows = [1 &lt;&lt; i for i in range(n)]
+        for _ in range(12*n):
+            if n &gt; 1:
+                i, j = rng.sample(range(n), 2)
+                self.rows[i] ^= self.rows[j]
+        self.offset = rng.getrandbits(n)
+        self.hidden_q = []
+        for i in range(self.k):
+            allowed = list(range(i)) + list(range(self.h, n))
+            lin, upper = 1 &lt;&lt; i, [0]*n
+            for j in allowed:
+                lin ^= rng.getrandbits(1) &lt;&lt; j
+            for a, j in enumerate(allowed):
+                for l in allowed[a+1:]:
+                    upper[j] |= rng.getrandbits(1) &lt;&lt; l
+            self.hidden_q.append(ac.Quadratic(rng.getrandbits(1), lin, upper))
+        self.suffix_rows = [1 &lt;&lt; i for i in range(r)]
+        for _ in range(12*r):
+            if r &gt; 1:
+                i, j = rng.sample(range(r), 2)
+                self.suffix_rows[i] ^= self.suffix_rows[j]
+        self.suffix_offset = rng.getrandbits(r)
+        self.suffix_permutation = suffix_permutation or self._demo_suffix
+        self.calls = self.rank_requests = self.fresh_ranks = 0
+        self.cache = {}
+        self.query_seconds = 0.0
+        self.setup_seconds = time.perf_counter()-start
+        self.seed = seed
+
+    @staticmethod
+    def _demo_suffix(t, prefix, m):
+        if m &gt;= 4:
+            t ^= (((t &gt;&gt; 1) &amp; 1) &amp; ((t &gt;&gt; 2) &amp; 1) &amp; ((t &gt;&gt; 3) &amp; 1))
+        # Odd multiplication and addition are permutations modulo 2^m.
+        a = 5 + 2*(prefix &amp; 15)
+        b = (0x9e3779b97f4a7c15*(prefix+1)) &amp; ((1 &lt;&lt; m)-1)
+        return (a*t+b) &amp; ((1 &lt;&lt; m)-1)
+
+    def rank(self, x):
+        self.rank_requests += 1
+        if x not in self.cache:
+            self.fresh_ranks += 1
+            u = ac.linear(self.rows, x) ^ self.offset
+            prefix = 0
+            for q in self.hidden_q:
+                prefix = (prefix &lt;&lt; 1) | q(u)
+            if self.prefix_arbitrary:
+                m = self.n-self.k
+                suffix = self.suffix_permutation(u &gt;&gt; self.k, prefix, m)
+                value = (prefix &lt;&lt; m) | suffix
+            else:
+                z = u &gt;&gt; self.h
+                if self.r &gt;= 3:
+                    z ^= (((z &gt;&gt; 1) &amp; 1) &amp; ((z &gt;&gt; 2) &amp; 1))
+                z = ac.linear(self.suffix_rows, z) ^ self.suffix_offset
+                suffix = 0
+                for j in range(self.r):
+                    suffix = (suffix &lt;&lt; 1) | ((z &gt;&gt; j) &amp; 1)
+                value = (prefix &lt;&lt; self.r) | suffix
+            self.cache[x] = value
+        return self.cache[x]
+
+    def query(self, x, y):
+        start = time.perf_counter()
+        self.calls += 1
+        value = self.rank(x) &lt; self.rank(y)
+        self.query_seconds += time.perf_counter()-start
+        return value
+
+    def source_receipt(self):
+        q = self.calls
+        return dict(source=&quot;synthetic exact chosen-pair comparator&quot;, seed=self.seed,
+                    comparison_calls=q, rank_requests=self.rank_requests,
+                    fresh_rank_evaluations=self.fresh_ranks, cached_points=len(self.cache),
+                    rank_cache_logical_payload_bits=2*self.n*len(self.cache),
+                    query_argument_bits=2*self.n*q, comparison_answer_bits=q,
+                    source_setup_seconds=self.setup_seconds,
+                    measured_comparison_callback_seconds=self.query_seconds,
+                    rank_boolean_work_conservative_upper=self.fresh_ranks*(8*self.n**3+8*self.n**2),
+                    source_class_supplied=True, real_source_class_acquisition=&quot;UNKNOWN&quot;,
+                    physical_fair_entropy=&quot;not acquired; seeded Python PRNG finite replay&quot;)
+
+
+def truth_bodies(teacher, count):
+    values = [dict() for _ in range(count)]
+    for x in ac.coefficient_points(teacher.n):
+        rank = teacher.rank(x)
+        for i in range(count):
+            values[i][x] = (rank &gt;&gt; (teacher.n-i-1)) &amp; 1
+    return [ac.interpolate(v, teacher.n) for v in values]
+
+
+def partial_flag_algebra(teacher, truth, h):
+    inv = ac.matrix_inverse(teacher.rows, teacher.n)
+    raw_flag = [ac.linear(inv, 1 &lt;&lt; i) for i in range(teacher.h)]
+    for i, q in enumerate(truth[:h]):
+        assert q.toggles(raw_flag[i])
+        assert all(q.translation_invariant(v) for v in raw_flag[i+1:])
+        assert all(old.translation_invariant(raw_flag[i]) for old in truth[:i])
+    return dict(known_source_flag_verified_after_return=True,
+                learned_prefix_length=h, latent_partial_flag_length=teacher.h,
+                future_latent_flag_vectors_preserve_learned_prefix=True)
+
+
+def complete_extension(model, n):
+    previous, toggles = [], []
+    for i, q in enumerate(model):
+        S = ac.common_stabilizer(previous, n)
+        polar = q.polar()
+        columns = [ac.linear(polar, s) for s in S]
+        equations = [sum(((image &gt;&gt; j) &amp; 1) &lt;&lt; a for a, image in enumerate(columns))
+                     for j in range(n)]
+        radical = [ac.combine(S, a) for a in ac.kernel(equations, len(S))]
+        v = next((v for v in radical if (q(v) ^ q.constant)), None)
+        if v is None:
+            return dict(complete_flag=False, first_missing_stage=i,
+                        method=&quot;global polar-kernel and affine-response algebra; no span enumeration&quot;)
+        assert q.toggles(v) and all(old.translation_invariant(v) for old in previous)
+        previous.append(q)
+        toggles.append(v)
+    return dict(complete_flag=True, toggle_count=len(toggles))
+
+
+def verify_model(teacher, result, model, prefix, n, r, prefix_length):
+    start = time.perf_counter()
+    acquisition_calls, acquisition_fresh = teacher.calls, teacher.fresh_ranks
+    count = n if prefix_length is None else prefix_length
+    truth = truth_bodies(teacher, count)
+    equal = [q.body() == t.body() for q, t in zip(model, truth)]
+    assert len(equal) == count and all(equal)
+    body_fresh = teacher.fresh_ranks-acquisition_fresh
+    result[&quot;coefficient_check&quot;] = dict(bodies=count, anchors_per_body=ac.M2(n),
+                                      exact_body_equalities=sum(equal), all_equal=True,
+                                      source_truth_access=&quot;post-return coordinate ranks only&quot;)
+    result[&quot;source_promise_check&quot;] = partial_flag_algebra(teacher, truth, len(prefix.q))
+    # Retained own-toggles certify this intersection on arbitrary histories.
+    combined = ac.echelon(prefix.toggles+prefix.stabilizer, n)[0]
+    assert len(combined) == len(prefix.toggles)+len(prefix.stabilizer)
+    result[&quot;candidate_geometry_check&quot;] = dict(toggle_count=len(prefix.toggles),
+                                              stabilizer_dimension=len(prefix.stabilizer),
+                                              intersection_zero_by_exact_rank=True)
+    meter = ac.Meter()
+    rng = random.Random(teacher.seed+7770000)
+    checked_prefixes = sorted({0, 1, len(prefix.q)//2, len(prefix.q)})
+    checked_prefixes = [k for k in checked_prefixes if k &lt;= len(prefix.q)]
+    samplers = []
+    for k in checked_prefixes:
+        qs, ws = prefix.q[:k], prefix.toggles[:k]
+        S = ac.common_stabilizer(qs, n, meter)
+        sampler = ac.CompactPrefixSampler(qs, ws, S, n, meter)
+        assert k &lt;= sampler.d &lt;= k+r
+        factor_ok, bodies = sampler.factor_coefficient_check(qs)
+        assert factor_ok and bodies == k
+        targets = sorted({0, (1 &lt;&lt; k)-1, rng.getrandbits(k)})
+        seeds = [rng.getrandbits(n-k) for _ in range(16)]
+        for target in targets:
+            outputs = [sampler.sample_from_seed(target, s) for s in seeds]
+            for x in outputs:
+                true_prefix = teacher.rank(x) &gt;&gt; (n-k)
+                assert true_prefix == target and sampler.prefix(x) == target
+            assert len(set(outputs)) == len(set(seeds))
+        samplers.append(dict(**sampler.payload(), exact_factor_coefficient_check=True,
+                             tested_targets=len(targets), tested_seeds_per_target=len(seeds),
+                             tested_seed_collisions=0))
+    result[&quot;compact_execution&quot;] = samplers
+    points = sorted({0, (1 &lt;&lt; n)-1} | {rng.getrandbits(n) for _ in range(256)})
+    if prefix_length is None:
+        compiled = ac.CompiledModel(model, prefix.toggles, n, r, meter)
+        assert all(compiled.rank(x) == teacher.rank(x) for x in points)
+        targets = sorted({0, (1 &lt;&lt; n)-1} | {rng.getrandbits(n) for _ in range(64)})
+        for target in targets:
+            hits = compiled.inverse(target)
+            assert len(hits) == 1 and teacher.rank(hits[0]) == target
+        result[&quot;execution_check&quot;] = dict(rank_points=len(points), rank_errors=0,
+                                         inverse_targets=len(targets), inverse_errors=0,
+                                         enumerated_points_per_inverse=1 &lt;&lt; r,
+                                         source_comparisons_during_execution=teacher.calls-acquisition_calls,
+                                         full_cube_enumeration=False)
+        result[&quot;complete_class_membership&quot;] = complete_extension(truth, n)
+    else:
+        sampler = prefix.sampler()
+        assert all(sampler.prefix(x) == teacher.rank(x) &gt;&gt; (n-prefix_length) for x in points)
+        result[&quot;execution_check&quot;] = dict(prefix_rank_points=len(points), prefix_errors=0,
+                                         source_comparisons_during_execution=teacher.calls-acquisition_calls,
+                                         full_cube_enumeration=False,
+                                         arbitrary_suffix_fitted=False,
+                                         suffix_quadratic_promise_required=False)
+        # A finite explicit nonquadratic suffix witness, with a fixed prefix.
+        m = n-prefix_length
+        witness = None
+        if m &gt;= 4:
+            for prefix_target in range(min(1 &lt;&lt; prefix_length, 8)):
+                for bit in range(min(m, 16)):
+                    third = 0
+                    for mask in range(8):
+                        t = (((mask &gt;&gt; 0) &amp; 1) &lt;&lt; 1) | (((mask &gt;&gt; 1) &amp; 1) &lt;&lt; 2) | (((mask &gt;&gt; 2) &amp; 1) &lt;&lt; 3)
+                        third ^= (teacher.suffix_permutation(t, prefix_target, m) &gt;&gt; bit) &amp; 1
+                    if third:
+                        witness = dict(prefix=prefix_target, residual_output_bit=bit,
+                                       third_derivative_directions=[1,2,3], third_derivative=1)
+                        break
+                if witness:
+                    break
+        assert witness is not None
+        result[&quot;arbitrary_suffix_nonquadratic_witness&quot;] = witness
+    assert teacher.calls == acquisition_calls
+    result[&quot;verification&quot;] = dict(body_truth_fresh_ranks=body_fresh,
+                                  total_fresh_ranks=teacher.fresh_ranks-acquisition_fresh,
+                                  truth_comparisons=0, limited_sample_checks=True,
+                                  local_operations=dict(meter.ops),
+                                  seconds_including_external_truth=time.perf_counter()-start)
+    return result
+
+
+def run_case(n, r, seed, mode, prefix_length=None, beta=None):
+    beta = n**-2 if beta is None else beta
+    teacher = Teacher(n, r, seed, prefix_length)
+    result, model, prefix = ac.acquire(n, r, teacher.query, seed+1000000,
+                                       beta, prefix_length, mode)
+    result[&quot;case&quot;] = dict(n=n, r=r, seed=seed, mode=mode, prefix_length=prefix_length, beta=beta)
+    result[&quot;source&quot;] = teacher.source_receipt()
+    result[&quot;learner_local_seconds_estimate&quot;] = max(0.0, result[&quot;acquisition_seconds&quot;]-teacher.query_seconds)
+    if model is not None:
+        result = verify_model(teacher, result, model, prefix, n, r, prefix_length)
+    result[&quot;logical_output_bits&quot;] = len(model or [])*ac.M2(n)+len(prefix.toggles)*n
+    result[&quot;semantic_status&quot;] = &quot;Monte Carlo under supplied promise; successful finite receipt does not recognize the class&quot;
+    return result
+
+
+def complete_tournament(n, query, seed, beta):
+    &quot;&quot;&quot;Earlier exact-on-completion complete-class compact control.
+
+Same algorithm as root_ordinal/triangular_compact.py. Used only on a source
+with r=0, where the stronger complete hidden-triangular promise is supplied.
+&quot;&quot;&quot;
+    pairs = n*(n-1)//2
+    cap = max(0, math.ceil(math.log2(pairs/beta))) if pairs else 0
+    rng, source = random.Random(seed), ac.Source(query)
+    basis, functions, subspace = [], [], [1 &lt;&lt; i for i in range(n)]
+    meter = ac.Meter()
+    start = time.perf_counter()
+    for k in range(n):
+        winner = subspace[0]
+        source.phase = &quot;tournament_matches&quot;
+        for v in subspace[1:]:
+            for _ in range(cap):
+                x = rng.getrandbits(n)
+                meter.add(&quot;random_input_bits&quot;, n)
+                a = 1 ^ source(x, x ^ v)
+                b = 1 ^ source(x, x ^ winner)
+                if a == b:
+                    break
+            else:
+                return dict(status=&quot;UNKNOWN_MATCH_CAP&quot;, comparison_calls=source.calls), None
+            if bool(source(x ^ v, x ^ winner)) == bool(a):
+                winner = v
+        source.phase = &quot;compact_interpolation&quot;
+        values = {a: 1 ^ source(ac.combine(basis,a), ac.combine(basis,a) ^ winner)
+                  for a in ac.coefficient_points(k)}
+        functions.append(ac.interpolate(values, k, meter))
+        source.phase = &quot;linear_response&quot;
+        constant, row = values[0], 0
+        for j, v in enumerate(subspace):
+            response = 1 if v == winner else constant ^ (1 ^ source(v, v ^ winner))
+            row |= response &lt;&lt; j
+        if not row:
+            return dict(status=&quot;UNKNOWN_RESPONSE&quot;, comparison_calls=source.calls), None
+        basis.append(winner)
+        subspace = [ac.combine(subspace, a) for a in ac.kernel([row],len(subspace),meter)]
+    basis_rows = [sum(((basis[j] &gt;&gt; i) &amp; 1) &lt;&lt; j for j in range(n)) for i in range(n)]
+    coordinates = ac.matrix_inverse(basis_rows, n, meter)
+    def rank(x):
+        t, out = ac.linear(coordinates, x, meter), 0
+        for i, f in enumerate(functions):
+            out = (out &lt;&lt; 1) | (((t &gt;&gt; i) &amp; 1) ^ f(t &amp; ((1 &lt;&lt; i)-1), meter))
+        return out
+    out = dict(status=&quot;EXACT_ON_COMPLETION_UNDER_SUPPLIED_COMPLETE_CLASS&quot;,
+               comparison_calls=source.calls, source_calls_by_phase=dict(source.by_phase),
+               expected_comparison_bound=ac.D(n)+6*pairs,
+               worst_comparison_bound=ac.D(n)+(2*cap+2)*pairs,
+               unknown_bound=pairs*2.0**(-cap), completed_semantic_error_under_promise=0,
+               acquisition_seconds=time.perf_counter()-start,
+               local_operations=dict(meter.ops), coefficient_output_bits=ac.D(n),
+               basis_bits=n*n, inverse_basis_bits=n*n,
+               model=dict(basis=basis, functions=[f.body() for f in functions]))
+    assert source.calls &lt;= out[&quot;worst_comparison_bound&quot;]
+    return out, rank
+
+
+def run_complete_control(n, seed, beta=None):
+    beta = n**-2 if beta is None else beta
+    teacher = Teacher(n, 0, seed)
+    out, rank = complete_tournament(n, teacher.query, seed+1000000, beta)
+    out[&quot;source&quot;] = teacher.source_receipt()
+    out[&quot;case&quot;] = dict(n=n, r=0, seed=seed, mode=&quot;complete_tournament&quot;, beta=beta)
+    if rank is not None:
+        start, fresh = time.perf_counter(), teacher.fresh_ranks
+        truth = truth_bodies(teacher,n)
+        model = [ac.interpolate({x:(rank(x)&gt;&gt;(n-i-1))&amp;1 for x in ac.coefficient_points(n)},n)
+                 for i in range(n)]
+        assert [q.body() for q in truth] == [q.body() for q in model]
+        points = [random.Random(seed+j).getrandbits(n) for j in range(256)]
+        assert all(rank(x) == teacher.rank(x) for x in points)
+        out[&quot;verification&quot;] = dict(all_raw_bodies_equal=True, body_count=n,
+                                    sampled_rank_points=len(points), errors=0,
+                                    fresh_truth_ranks=teacher.fresh_ranks-fresh,
+                                    seconds=time.perf_counter()-start,
+                                    full_cube_enumeration=False)
+    return out
+
+
+def tiny_fixtures():
+    queried = []
+    result, model, _ = ac.acquire(8,2,lambda x,y:queried.append((x,y)),123,beta=.1,force_zero_directions=True)
+    assert result[&quot;status&quot;] == &quot;UNKNOWN&quot; and model is None and not queried
+    n=6
+    q=ac.Quadratic(0,1,[0,4,0,0,0,0])
+    S=ac.common_stabilizer([q],n)
+    sampler=ac.CompactPrefixSampler([q],[1],S,n)
+    assert sampler.d == 3
+    for target in (0,1):
+        outputs=[sampler.sample_from_seed(target,s) for s in range(1 &lt;&lt; (n-1))]
+        assert len(set(outputs)) == 1 &lt;&lt; (n-1)
+        assert all(q(x)==target for x in outputs)
+    ok, count=sampler.factor_coefficient_check([q])
+    assert ok and count==1
+    # Deliberately nonquadratic true next bit, but a strict total-order source.
+    # The chosen s=e1,t=e2+e3 has a nonzero cheap witness and zero full row.
+    # This must abort UNKNOWN on the first duplicate/nonincreasing row.
+    class ForcedTape:
+        def __init__(self, values):
+            self.values=iter(values)
+        def getrandbits(self, size):
+            return next(self.values)
+    def cubic_rank(x):
+        q=(x&amp;1)^(((x&gt;&gt;1)&amp;1)&amp;((x&gt;&gt;2)&amp;1)&amp;((x&gt;&gt;3)&amp;1))
+        return (q&lt;&lt;3)|(x&gt;&gt;1)
+    bad_source=ac.Source(lambda x,y:cubic_rank(x)&lt;cubic_rank(y))
+    bad_cfg=ac.parameters(4,2,.1)
+    bad, bad_receipt=ac._candidate_adaptive(4,0,2,1,ac.AcquiredPrefix(4),bad_source,
+                                           ForcedTape([2,12]),bad_cfg,ac.Meter())
+    assert bad is None and bad_receipt[&quot;reason&quot;]==&quot;detected_polar_row_not_new&quot;
+    assert bad_source.calls==12
+    # Missed image remains semantic error: a forced all-zero polar tape can
+    # return x0 for x0+x2*x3, even though the exact own-toggle gate passes.
+    qtrue=ac.Quadratic(0,1,[0,0,8,0])
+    def missed_rank(x):
+        return (qtrue(x)&lt;&lt;3)|(x&gt;&gt;1)
+    missed_source=ac.Source(lambda x,y:missed_rank(x)&lt;missed_rank(y))
+    missed, missed_receipt=ac._candidate_adaptive(4,0,2,1,ac.AcquiredPrefix(4),missed_source,
+             ForcedTape([0]*(2*bad_cfg[&quot;L&quot;])),bad_cfg,ac.Meter())
+    assert missed is not None and missed.toggles(1)
+    errors=sum(missed(x)!=qtrue(x) for x in range(16))
+    assert errors==4
+    return dict(forced_zero_cap=dict(status=result[&quot;status&quot;],reason=result[&quot;reason&quot;],
+                                     attempted_directions=len(result[&quot;stages&quot;][0][&quot;trials&quot;]),
+                                     source_queries=0,guessed_model=False),
+                compact_sharp_fixture=dict(n=n,k=1,r=2,d=sampler.d,
+                                           exact_uniform_seed_bijections=True,
+                                           tested_total_seeds=1 &lt;&lt; n,
+                                           entropy_bits=n-1,
+                                           factor_coefficient_check=True),
+                nonquadratic_duplicate_row=dict(status=&quot;UNKNOWN&quot;,reason=bad_receipt[&quot;reason&quot;],
+                                                actual_comparison_source=True,comparison_calls=bad_source.calls),
+                forced_missed_image=dict(accepted_wrong_candidate=True,own_toggle_passes=True,
+                                         exact_error_numerator=errors,exact_domain_size=16,
+                                         miss_budget_must_remain=True,forced_tape_is_not_uniform_run=True,
+                                         comparison_calls=missed_source.calls,
+                                         nondetection_cap=bad_cfg[&quot;L&quot;]))
+
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument(&quot;--case&quot;,default=&quot;16:2:920162&quot;)
+    parser.add_argument(&quot;--modes&quot;,default=&quot;adaptive,fixed_j,raw_pair&quot;)
+    parser.add_argument(&quot;--prefix-k&quot;,type=int)
+    parser.add_argument(&quot;--beta&quot;,type=float)
+    parser.add_argument(&quot;--complete-control&quot;,action=&quot;store_true&quot;)
+    parser.add_argument(&quot;--output&quot;)
+    args=parser.parse_args()
+    n,r,seed=map(int,args.case.split(&quot;:&quot;))
+    label=f&quot;n{n}_r{r}_seed{seed}&quot;+(f&quot;_prefix{args.prefix_k}&quot; if args.prefix_k is not None else &quot;&quot;)
+    path=Path(args.output) if args.output else HERE/f&quot;receipt_{label}.json&quot;
+    if not path.resolve().is_relative_to(HERE):
+        raise ValueError(&quot;write only inside this lane directory&quot;)
+    receipt=dict(scope=&quot;comparison-only synthetic promised source; no novelty/physical-source/mission claim&quot;,
+                 cases=[],tiny_fixtures=tiny_fixtures(),sources={})
+    for filename in (&quot;adaptive_compiler.py&quot;,&quot;fixed_j_core.py&quot;,&quot;run_comparisons.py&quot;):
+        receipt[&quot;sources&quot;][filename]=hashlib.sha256((HERE/filename).read_bytes()).hexdigest()
+    for mode in filter(None,args.modes.split(&quot;,&quot;)):
+        case=run_case(n,r,seed,mode,args.prefix_k,args.beta)
+        receipt[&quot;cases&quot;].append(case)
+        path.write_text(json.dumps(receipt,indent=2)+&quot;\n&quot;)
+        print(json.dumps(dict(n=n,r=r,mode=mode,status=case[&quot;status&quot;],
+                              comparisons=case[&quot;comparison_calls&quot;],
+                              source_fresh_ranks=case[&quot;source&quot;][&quot;fresh_rank_evaluations&quot;],
+                              acquisition_seconds=round(case[&quot;acquisition_seconds&quot;],3),
+                              bodies_equal=case.get(&quot;coefficient_check&quot;,{}).get(&quot;all_equal&quot;))),flush=True)
+    if args.complete_control:
+        assert r==0 and args.prefix_k is None
+        case=run_complete_control(n,seed,args.beta)
+        receipt[&quot;cases&quot;].append(case)
+        path.write_text(json.dumps(receipt,indent=2)+&quot;\n&quot;)
+        print(json.dumps(dict(n=n,r=0,mode=&quot;complete_tournament&quot;,status=case[&quot;status&quot;],
+                              comparisons=case[&quot;comparison_calls&quot;],
+                              acquisition_seconds=round(case.get(&quot;acquisition_seconds&quot;,0),3))),flush=True)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

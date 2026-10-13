@@ -1,0 +1,198 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — PROOF.txt</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>SEQUENTIAL VALIDATION FOR PERSISTENT COMPARATORS
+2026-10-13. Internal proof/audit. External review and novelty UNKNOWN.
+
+Scope. Read-only inputs are p_s02b_matching_robustness/PROOF.txt and the
+q_s09_robust_flag_implementation/robust_learner.py source. This note validates
+the matching-score confidence kernel, checks its adaptive budget, and gives a
+second sequential implementation with a finite cap that returns UNKNOWN.
+Neither kernel recognizes the teacher&#x27;s degree or flag promises. The degree d,
+fixed bad-item bound, partial-flag existence, and a correct acquired prefix are
+assumptions; candidate coefficients and own-toggle equations are checked
+exactly before fresh validation.
+
+1. Matching-score hypotheses
+
+Fix a correct prefix, its exact uniform fiber sampler, a frozen candidate f of
+degree at most d, and a nonzero candidate own-toggle v in the exact prefix
+stabilizer. The true next polynomial q has degree at most d and toggles on v.
+The source is a fixed map C on ordered pairs: it is correct when both items are
+outside a fixed bad set B of density at most epsilon, and arbitrary (including
+non-antisymmetric) on incident pairs. It has no fresh response noise.
+
+One batch chooses a fresh uniform prefix fiber and independently samples m
+positions from each of F_a intersect {f=0} and F_a intersect {f=1}. Repeated
+raw items remain separate sample positions. Greedy left-by-left matching over
+observed inversion edges C(y_0,y_1)=0 is maximal and uses at most m^2 ordered
+pair requests. Its normalized size Z is in [0,1]. The proof in
+p_s02b_matching_robustness/PROOF.txt gives, with
+
+  c_m = binom(2m,m)/(2*4^m),   a = 2 epsilon,
+  b = 2^(-d) - 2 epsilon - c_m,
+
+the conditional mean bounds E Z &lt;= a for a true candidate and E Z &gt;= b for a
+false candidate. The false bound uses the degree-d minimum distance
+Pr[f(X) != q(X)] &gt;= 2^(-d). Thus the validation gate exists only when a &lt; b,
+equivalently 2^(-d) - 4 epsilon - c_m &gt; 0. For d=2 these are the exact bounds
+in the pinned matching proof. For general fixed d, only the stated RM minimum-
+distance substitution is new here; the matching argument is unchanged.
+
+Fresh seeds make batch scores independent conditional on the frozen candidate
+and fixed source. Repeated source pairs do not invalidate this: their answers
+are repeated deterministic values, while the independently drawn positions
+and prefixes remain independent. Reusing one prefix or one sample bank across
+batches would invalidate the argument. An ordered cache is safe when it stores
+only the exact ordered answer C(x,y); it must not complement C(y,x) for an
+arbitrary non-antisymmetric source.
+
+2. Audit of q_s09&#x27;s fractional-score SPRT and finite fallback
+
+Let u=log(b/a)&gt;0 and w=log((1-b)/(1-a))&lt;0. q_s09 updates
+
+  W_t = sum_{i&lt;=t} [ Z_i u + (1-Z_i) w ].
+
+For every z in [0,1], exp(zu+(1-z)w) lies below the chord joining its endpoint
+values. If p=E Z &lt;= a, then
+
+  E exp(zu+(1-z)w)
+    &lt;= (1-p) exp(w) + p exp(u)
+    &lt;= (1-a) exp(w) + a exp(u) = 1.
+
+So exp(W_t) is a nonnegative supermartingale under every true-candidate law.
+Likewise, exp(-zu-(1-z)w) is convex in z and its endpoint-chord expectation
+is at most 1 for every p&gt;=b, so exp(-W_t) is a supermartingale under every
+false-candidate law. Ville&#x27;s inequality makes each crossing of
+W_t &gt;= log(2/delta) under a true candidate, or W_t &lt;= -log(2/delta) under a
+false candidate, have probability at most delta/2.
+
+At the deterministic batch cap, q_s09 decides by whether the empirical mean
+of Z is below the equal-KL threshold tau, defined by
+  D(tau||a)=D(tau||b),
+where D is binary relative entropy. For independent [0,1]-valued batch scores,
+the endpoint-chord Chernoff bound gives
+  Pr_true(mean Z &gt; tau) &lt;= exp(-N D(tau||a)),
+  Pr_false(mean Z &lt;= tau) &lt;= exp(-N D(tau||b)).
+The configured cap N=ceil(log(2/delta)/min{D(tau||a),D(tau||b)}) makes each
+fallback error at most delta/2. The crossing and fallback events are disjoint,
+so a true candidate is falsely rejected with probability at most delta and a
+false candidate is falsely accepted with probability at most delta. This is a
+valid finite-horizon sequential validator; it does not rely on i.i.d. source
+response noise. If a global request budget interrupts it first, that path
+returns UNKNOWN and is an extra operational stop unless the configured global
+budget is at least the analyzed worst-case query cap.
+
+For a cap-and-stopping bound, the increments are in [w,u], and their mean is
+at most -D(a||b) under a true candidate and at least D(b||a) under a false
+candidate. Let A=log(2/delta). First-exit overshoots are at most -w below and
+u above. Therefore the number of batches before the boundary or the cap has
+expectation at most
+
+  true:  (A-w)/D(a||b),
+  false: (A+u)/D(b||a).
+
+These bounds apply conditionally after every adaptive candidate selection.
+They are upper bounds; the actual expected stopping time can be smaller.
+
+3. A cap that returns UNKNOWN using an exact Bernoulli KL test
+
+There is a second option when a fail-closed validation cap is preferred. After
+computing each batch score Z_t, draw a fresh private U_t uniform on [0,1] and
+set Y_t=1[U_t&lt;=Z_t]. This private coin randomizes the score, not the teacher&#x27;s
+answer. If batches are independently sampled from the fixed source, then
+Y_t are iid Bernoulli(p), p=E Z, even when the same ordered source pair happens
+to recur. No claim is made that a cached source pair has fresh randomness.
+
+Use the Bernoulli likelihood ratio
+  W_t = S_t log(b/a) + (t-S_t) log((1-b)/(1-a)),  S_t=sum_i Y_i.
+Reject f as false at W_t &gt;= A_F=log(1/alpha_F); accept f at
+W_t &lt;= -A_T=-log(1/alpha_T). The same one-sided likelihood-ratio argument
+gives false acceptance probability at most alpha_F and true rejection at
+most alpha_T, uniformly over the composite ranges p&gt;=b and p&lt;=a.
+
+If neither boundary is reached by N, return UNKNOWN. Let u=log(b/a),
+w=log((1-b)/(1-a)), and
+  W_N(k)=Nw+k(u-w).
+No stop by N implies -A_T &lt; W_N &lt; A_F. Hence its probability is bounded by
+the exact endpoint tails
+
+  true candidate: Pr[Bin(N,a) &gt;= floor((-A_T-Nw)/(u-w)) + 1],
+  false candidate: Pr[Bin(N,b) &lt;= ceil(( A_F-Nw)/(u-w)) - 1].
+
+Choose N so both tails are &lt;= kappa. (The accompanying executable uses one
+extra count in each tail as a conservative numerical guard, evaluates the
+rational binomial tails by integer recurrence, and verifies the final cap.)
+Then a candidate test has false-accept, true-reject, and cap-UNKNOWN
+probabilities bounded by alpha_F, alpha_T, and kappa respectively.
+
+For the uncapped first-exit time tau, the log-likelihood drift is at most
+-D(a||b) for p&lt;=a and at least D(b||a) for p&gt;=b. The same overshoot argument
+gives
+
+  E_true tau  &lt;= (A_T-w)/D(a||b),
+  E_false tau &lt;= (A_F+u)/D(b||a).
+
+Truncation at N can only decrease the expected number of batches. This variant
+is useful when UNKNOWN is required at the validator cap, but it is not claimed
+to dominate q_s09&#x27;s bounded-score KL fallback in worst-case calls.
+
+4. All-history allocation and adaptive candidates
+
+Suppose at most H candidate validations can be invoked across all stages. Freeze
+each candidate after its proposal, before drawing its validation seeds. Allocate
+deterministic budgets alpha_F,i, alpha_T,i, kappa_i with
+  sum_i alpha_F,i &lt;= beta_v,
+  sum_i alpha_T,i &lt;= beta_v,
+  sum_i kappa_i &lt;= beta_v.
+For the UNKNOWN-at-cap variant, equal allocation
+alpha_F,i=alpha_T,i=kappa_i=beta_v/(3H) suffices. Conditional error bounds
+remain true after arbitrary adaptive history as long as the prefix is still
+correct; union-bound only up to the first wrong candidate acceptance. The
+event of any validator UNKNOWN is separately bounded by sum_i kappa_i.
+Combine beta_v with candidate-proposal, body-decoder, and suffix budgets from
+the surrounding learner. If H is unbounded, use summable allocations such as
+const/i^2; never reuse a fixed per-candidate delta indefinitely.
+
+q_s09 currently uses a stronger convenient allocation for its own proposal
+schedule: delta=beta/(4*h*Rcap^2), with at most h*Rcap validations, so the
+first-wrong-acceptance sum is beta/(4*Rcap). This is valid and leaves slack;
+it should be reported as such. The q_s09 validation itself makes a decision at
+its finite KL fallback cap, while an independently imposed lower global query
+cap returns UNKNOWN.
+
+5. Numerical benchmark and limits
+
+The executable benchmark uses admitted degree d=2, epsilon=0.0331, matching
+sample size m=11, H=1000 potential tests, and validation share beta_v=0.05.
+Thus alpha_F=alpha_T=kappa=1/60000. Here
+  c_m=88179/1048576 ~= 0.08409405,
+  a=0.0662, b~=0.09970595, b-a~=0.03350595.
+The p_s02b Hoeffding cap is 19601 batches per candidate. The Bernoulli-LR
+UNKNOWN cap chosen by exact binomial-tail evaluation is 7443 batches; its
+endpoint timeout tail bounds are 1.5200e-5 and 1.2601e-5, below 1/60000.
+Finite-state recursion at p=a and p=b gives expected stopping of 1572.02 and
+1404.78 batches. Wald upper bounds are 1574.71 and 1437.86. Since one batch
+uses at most m^2=121 pair requests, per-candidate worst-case matching requests
+are 900603 versus 2371721 for the Hoeffding cap, and expected endpoint request
+counts are about 190215 and 169978.
+
+At the same per-test alpha, the q_s09 bounded-score fixed-KL optimizer chooses
+m=12 and cap 5226 (752544 pair requests), so the Bernoulli conversion is not a
+worst-case call improvement over that fallback. It demonstrates an exact
+binomial cap with explicit UNKNOWN semantics and lower endpoint expected work
+than its own fixed cap. No large source execution was performed here. The
+receipt is a statistical-kernel calculation, not an end-to-end learner result
+or a source-comparison experiment.
+
+An original directed-answer cache stores only C(x,y). q_s09&#x27;s earlier harness
+also tested a derived C* that makes one canonical forward source call and
+complements its answer for the reverse orientation. C* is still a valid fixed
+oracle in this promise class: clean strict-order answers are antisymmetric and
+all incident-B answers remain arbitrary and persistent. It is a different
+oracle, so count its underlying source calls separately and use the same C*
+transformation in controls. Current primary q_s09 evidence reports the
+original directed cache path. Neither path may claim that the original teacher
+answered a reversed query unless it actually did.
+
+No validation here recognizes the teacher&#x27;s degree, bijection, flag existence,
+or bad-set promise. Without an admitted degree d, a false-candidate distance
+lower bound 2^(-d) and therefore this score gap are unavailable.
+</pre>

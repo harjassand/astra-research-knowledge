@@ -1,0 +1,197 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — forced_refund_cap.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Forced semantic-miss/refunded-defect fixture for p_s01c witness compiler.
+
+The random tape is deliberately forced to zero only in period-probe and
+post-witness outer samples. It is a positive-probability transcript under
+ideal fair bits, not a probability estimate or a fair-randomness run.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import random
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+COMPILER = ROOT / &quot;p_s01c_witness_compiler&quot;
+sys.path.insert(0, str(COMPILER))
+import witness_compiler as wc
+fd = wc.fd
+ac = wc.ac
+
+
+class ScriptedRng:
+    def __init__(self, values):
+        self.values = list(values)
+        self.i = 0
+    def getrandbits(self, n):
+        value = self.values[self.i] if self.i &lt; len(self.values) else 0
+        self.i += 1
+        return value &amp; ((1 &lt;&lt; n) - 1 if n else 0)
+
+
+def coord_mask(v, basis):
+    for mask in range(1 &lt;&lt; len(basis)):
+        if ac.combine(basis, mask) == v:
+            return mask
+    raise AssertionError(f&quot;target {v:#x} not in acquired S&quot;)
+
+
+def hidden_prefix(x):
+    a=(x&gt;&gt;0)&amp;1; y=(x&gt;&gt;1)&amp;1; s1=(x&gt;&gt;2)&amp;1; s2=(x&gt;&gt;3)&amp;1
+    z1=(x&gt;&gt;4)&amp;1; z2=(x&gt;&gt;5)&amp;1; z3=(x&gt;&gt;6)&amp;1
+    H=s1 ^ (s1 &amp; s2)
+    return [a ^ (y&amp;H), z1 ^ (y&amp;H), z2 ^ (y&amp;H), z3 ^ (y&amp;H)]
+
+
+def lex_rank(x):
+    bits=hidden_prefix(x)
+    y=(x&gt;&gt;1)&amp;1; s1=(x&gt;&gt;2)&amp;1; s2=(x&gt;&gt;3)&amp;1
+    out=0
+    for b in bits+[y,s1,s2]: out=(out&lt;&lt;1)|b
+    return out
+
+
+def source_q(k,x):
+    return hidden_prefix(x)[k]
+
+
+def exact_period_dimension(k):
+    periods=[]
+    for v in range(1&lt;&lt;n_global):
+        if all(source_q(j,x)==source_q(j,x^v) for j in range(k+1) for x in range(1&lt;&lt;n_global)):
+            periods.append(v)
+    # The period set is a linear subspace, so its cardinality determines rank.
+    return (len(periods).bit_length()-1), periods
+
+
+class CountedDictionary:
+    def __init__(self, original):
+        self.original=original
+        self.calls=[]
+    def __call__(self,label,n,W,xstar,cap,eta,rng,source,meter,cached_q0=None,cached_qx=None):
+        before=source.calls
+        D,receipt=self.original(label,n,W,xstar,cap,eta,rng,source,meter,cached_q0,cached_qx)
+        if D is not None:
+            self.calls.append(dict(input_dim=len(W),input_basis=list(W),output_dim=len(D),drop=len(W)-len(D),
+                                   detected_x=xstar,period_basis=list(D),receipt=receipt,
+                                   source_calls=source.calls-before,
+                                   false_period_direction=wc.contains(1&lt;&lt;3,D,n),
+                                   independent_dimension=len(ac.echelon(D,n)[0])))
+        else:
+            self.calls.append(dict(input_dim=len(W),input_basis=list(W),output_dim=None,drop=None,
+                                   detected_x=xstar,receipt=receipt,
+                                   source_calls=source.calls-before))
+        return D,receipt
+
+
+def main():
+    n,r,d,m=7,3,3,4
+    global n_global
+    n_global=n
+    beta=.5
+    cfg=wc.parameters(n,r,d,beta,prefix_length=m,mode=&#x27;witness&#x27;)
+    assert len({lex_rank(x) for x in range(1&lt;&lt;n)}) == 1&lt;&lt;n
+    source=ac.Source(lambda x,y: int(lex_rank(x)&lt;lex_rank(y)))
+    meter=ac.Meter()
+    prefix=fd.Prefix(n,meter)
+    state=dict(global_drop=0,paid_dictionaries=0,outer_epochs=0)
+    original=wc.period_dictionary
+    counter=CountedDictionary(original)
+    wc.period_dictionary=counter
+
+    stage_data=[]
+    toggles=[1&lt;&lt;0,1&lt;&lt;4,1&lt;&lt;5,1&lt;&lt;6]
+    for k,v in enumerate(toggles):
+        before=len(prefix.S)
+        # Check the promised hidden triangular flag exactly on this tiny source.
+        for x in range(1&lt;&lt;n):
+            assert source_q(k,x^v)==1^source_q(k,x)
+            for j in range(m):
+                if j!=k:
+                    assert source_q(j,x^v)==source_q(j,x)
+        # Target s1 at x=e_y witnesses H(s1)=1. The rest of the tape is all
+        # zero: period probes accept s2 at z=0, then all remaining outer tests
+        # miss. Stage 3 is stopped by the before-dictionary global cap.
+        s_mask=coord_mask(1&lt;&lt;2,prefix.S)
+        tape=ScriptedRng([s_mask,1&lt;&lt;1])
+        q,rec=wc.reconstruct(n,r,d,k,v,prefix,source,tape,cfg,meter,state)
+        if k&lt;3:
+            assert q is not None, (k,rec)
+            # Each stage&#x27;s learned candidate is just its own coordinate. This
+            # exhibits the three-bit geometric-defect refund explicitly.
+            assert q.terms=={v}, (k,q.terms,rec)
+            witness=rec[&#x27;witnesses&#x27;][0]
+            # The all-zero dictionary tape classifies s2 as a false period.
+            assert counter.calls[-1][&#x27;false_period_direction&#x27;]
+            # Verify e_s2 is truly not a period of the actual P(s)=F_s(e_y)
+            # on this stage&#x27;s input W. Its z=0 test passes, while z=e_s1
+            # separates P(e_s1) from P(e_s1+e_s2).
+            xstar=witness[&#x27;xstar&#x27;]
+            W=counter.calls[-1][&#x27;input_basis&#x27;]
+            assert xstar==(1&lt;&lt;1)
+            coord_mask(1&lt;&lt;2,W)
+            coord_mask(1&lt;&lt;3,W)
+            def P(s):
+                return source_q(k,xstar^s)^source_q(k,xstar)^source_q(k,s)^source_q(k,0)
+            assert P(0)==P(1&lt;&lt;3)==0
+            assert P(1&lt;&lt;2)!=P((1&lt;&lt;2)^(1&lt;&lt;3))
+            assert not wc.contains(witness[&#x27;detected_direction&#x27;],
+                                   counter.calls[-1][&#x27;period_basis&#x27;],n)
+            update=prefix.add(q,v)
+            after=len(prefix.S)
+            learned_defect=n-k-1-after
+            true_s_dim,_=exact_period_dimension(k)
+            true_defect=n-(k+1)-true_s_dim
+            assert true_defect==3, (k,true_s_dim,true_defect)
+            stage_data.append(dict(stage=k,source_output_degree=d,
+                dimension_S_before=before,dimension_S_after=after,
+                inferred_defect_after=learned_defect,
+                true_stabilizer_dimension_after=true_s_dim,
+                true_defect_after=true_defect, defect_refund=true_defect-learned_defect,
+                candidate_terms=sorted(q.terms),exact_update=update,
+                reconstruction=rec))
+        else:
+            assert q is None and rec[&#x27;reason&#x27;]==&#x27;global_witness_budget_before_dictionary&#x27;, rec
+            assert len(counter.calls)==r and state[&#x27;paid_dictionaries&#x27;]==r
+            stage_data.append(dict(stage=k,dimension_S_before=before,
+                reconstruction=rec,paid_dictionaries_at_abort=state[&#x27;paid_dictionaries&#x27;],
+                global_drop_at_abort=state[&#x27;global_drop&#x27;]))
+            break
+
+    # Per-call certificate bounds and exact oracle accounting.
+    actual=source.calls
+    assert actual&lt;=cfg[&#x27;witness_conditional_cap&#x27;], (actual,cfg[&#x27;witness_conditional_cap&#x27;])
+    assert actual&lt;=cfg[&#x27;worst_comparison_bound&#x27;]
+    assert state[&#x27;paid_dictionaries&#x27;]==r==len(counter.calls)
+    assert state[&#x27;global_drop&#x27;]==r
+    assert state[&#x27;outer_epochs&#x27;]&lt;=m+r
+    assert len(stage_data)==4
+    assert all(s[&#x27;inferred_defect_after&#x27;]==0 for s in stage_data[:3])
+    assert all(s[&#x27;defect_refund&#x27;]==3 for s in stage_data[:3])
+    assert all(s[&#x27;reconstruction&#x27;][&#x27;witnesses&#x27;][0][&#x27;period_codimension&#x27;]==1 for s in stage_data[:3])
+    # Every q-label and every period second-derivative label is a real chosen-
+    # pair comparison through ac.Source, with no direct access to hidden body.
+    phase_calls=dict(source.by_phase)
+    assert actual==sum(phase_calls.values())
+    out=dict(scope=&#x27;test-only positive-probability forced random transcript; not a fair-randomness frequency claim&#x27;,
+        source_model=dict(n=n,r=r,degree=d,prefix_length=m,
+          outputs=&#x27;(a+y(s1+s1*s2), z1+y(s1+s1*s2), z2+y(s1+s1*s2), z3+y(s1+s1*s2), y, s1, s2)&#x27;,
+          bijection=&#x27;tail (y,s1,s2) recovers H, then each of first four outputs recovers its own bit&#x27;,
+          toggles=toggles),
+        parameters={k:cfg[k] for k in (&#x27;stages&#x27;,&#x27;outer_L&#x27;,&#x27;period_L_max&#x27;,&#x27;witness_conditional_cap&#x27;,&#x27;worst_comparison_bound&#x27;,&#x27;failure_bound&#x27;)},
+        stages=stage_data,forced_dictionary_receipts=counter.calls,
+        final_state=state,comparison_calls=actual,source_calls_by_phase=phase_calls,
+        assertions=dict(defect_refunded_by_semantic_misses=True,
+          global_paid_dictionary_cap_holds=True,
+          next_dictionary_blocked_before_payment=True,
+          conditional_and_whole_query_caps_hold=True,
+          source_access_only_via_chosen_pair_comparator=True))
+    out_path=Path(__file__).with_name(&#x27;forced_refund_cap.json&#x27;)
+    out_path.write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(dict(status=&#x27;PASS&#x27;,comparison_calls=actual,
+       conditional_cap=cfg[&#x27;witness_conditional_cap&#x27;],whole_cap=cfg[&#x27;worst_comparison_bound&#x27;],
+       paid_dictionaries=state[&#x27;paid_dictionaries&#x27;],global_drop=state[&#x27;global_drop&#x27;],
+       outer_epochs=state[&#x27;outer_epochs&#x27;],reason=stage_data[-1][&#x27;reconstruction&#x27;][&#x27;reason&#x27;])))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre>

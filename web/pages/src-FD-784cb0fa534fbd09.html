@@ -1,0 +1,182 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — validation.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>&quot;&quot;&quot;Validation ports; no source ranks, coordinates or source degree tests.
+
+Exact chain/block validators recognize equality without degree assumptions.
+Random prefix/tail validators require the TRUE degree bound as a supplied
+promise. They do not recognize it. All source access is chosen-pair comparison.
+&quot;&quot;&quot;
+from __future__ import annotations
+import math
+from pathlib import Path
+import random
+import sys
+import time
+
+sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
+import witness_compiler as wc
+fd,ac=wc.fd,wc.ac
+
+
+def chain_validate(n,inverse,query):
+    &quot;&quot;&quot;Exact equality with a KNOWN bijective candidate, inverse provided locally.&quot;&quot;&quot;
+    source=ac.Source(query)
+    N=1 &lt;&lt; n
+    previous=inverse(0)
+    for rank in range(1,N):
+        current=inverse(rank)
+        if not source(previous,current):
+            return dict(status=&#x27;REJECT&#x27;,comparison_calls=source.calls,violated_boundary=rank-1)
+        previous=current
+    return dict(status=&#x27;EXACT_MATCH&#x27;,comparison_calls=source.calls,certificate=&#x27;all adjacent candidate items ordered&#x27;)
+
+
+def sampled_chain_validate(n,inverse,query,beta,rng,perfect_completeness=True):
+    &quot;&quot;&quot;Sharp worst-cap whole-order test; distinguishes equality vs ANY mismatch.&quot;&quot;&quot;
+    if not 0&lt;=beta&lt;.5:
+        raise ValueError(&#x27;beta in [0,1/2)&#x27;)
+    M=(1 &lt;&lt; n)-1
+    if not perfect_completeness and rng.random()&lt;beta:
+        return dict(status=&#x27;REJECT&#x27;,comparison_calls=0,branch=&#x27;blind rejection&#x27;)
+    fraction=1-beta if perfect_completeness else (1-2*beta)/(1-beta)
+    T=math.ceil(fraction*M)
+    source=ac.Source(query)
+    for j in rng.sample(range(M),T):
+        if not source(inverse(j),inverse(j+1)):
+            return dict(status=&#x27;REJECT&#x27;,comparison_calls=source.calls,sample_cap=T)
+    return dict(status=&#x27;ACCEPT&#x27;,comparison_calls=source.calls,sample_cap=T,
+                guarantee=&#x27;bounded error whole equality; source exact static bijection&#x27;)
+
+
+def prepare_prefix(n,d,polynomials,toggles):
+    if len(polynomials)!=len(toggles) or len(polynomials)&gt;n:
+        raise ValueError(&#x27;candidate dimensions&#x27;)
+    meter=ac.Meter()
+    prefix=fd.Prefix(n,meter)
+    for q,v in zip(polynomials,toggles):
+        if q.n!=n or any(mask.bit_count()&gt;d for mask in q.terms):
+            raise ValueError(&#x27;candidate degree/body mismatch&#x27;)
+        prefix.add(q,v)
+    return prefix,prefix.sampler(),meter
+
+
+def exact_prefix_validate(n,d,polynomials,toggles,query):
+    &quot;&quot;&quot;Exact prefix equality via actual source minima/maxima in model blocks.&quot;&quot;&quot;
+    prefix,sampler,meter=prepare_prefix(n,d,polynomials,toggles)
+    h=len(polynomials)
+    if h==0:
+        return dict(status=&#x27;EXACT_PREFIX_MATCH&#x27;,comparison_calls=0,local_operations=dict(meter.ops))
+    source=ac.Source(query)
+    previous_max=None
+    for target in range(1 &lt;&lt; h):
+        points=iter(sampler.fiber(target))
+        minimum=maximum=next(points)
+        for x in points:
+            if source(x,minimum):minimum=x
+            if source(maximum,x):maximum=x
+        if previous_max is not None and not source(previous_max,minimum):
+            return dict(status=&#x27;REJECT&#x27;,comparison_calls=source.calls,violated_model_block=target)
+        previous_max=maximum
+    B=1 &lt;&lt; h
+    cap=2*(1 &lt;&lt; n)-B-1
+    assert source.calls&lt;=cap
+    return dict(status=&#x27;EXACT_PREFIX_MATCH&#x27;,comparison_calls=source.calls,comparison_cap=cap,
+                local_operations=dict(meter.ops),certificate=&#x27;actual extrema order all balanced model blocks&#x27;)
+
+
+def _prefix_test(n,d,prefix,sampler,source,rng,eta,meter):
+    h=len(prefix.q)
+    if h==0:return dict(status=&#x27;ACCEPT&#x27;,tests=0,test_cap=0)
+    rejection=2.0**(-2*d)/h
+    cap=math.ceil(math.log(1/eta)/-math.log1p(-rejection))
+    for count in range(1,cap+1):
+        stage=rng.randrange(h)
+        earlier=rng.getrandbits(stage)
+        remaining=h-stage-1
+        left_target=(earlier &lt;&lt; (remaining+1))|rng.getrandbits(remaining)
+        right_target=(earlier &lt;&lt; (remaining+1))|(1 &lt;&lt; remaining)|rng.getrandbits(remaining)
+        meter.add(&#x27;validation_stage_draws&#x27;)
+        meter.add(&#x27;validation_prefix_random_bits&#x27;,stage+2*remaining)
+        left=sampler.sample(left_target,rng,meter)
+        right=sampler.sample(right_target,rng,meter)
+        if not source(left,right):
+            return dict(status=&#x27;REJECT&#x27;,tests=count,test_cap=cap,rejection_lower_bound=rejection,
+                        witness=dict(stage=stage,left=left,right=right,earlier_prefix=earlier))
+    return dict(status=&#x27;ACCEPT&#x27;,tests=cap,test_cap=cap,rejection_lower_bound=rejection)
+
+
+def degree_promised_validate(n,d,polynomials,toggles,query,seed,eta=.01,prefix_only=False):
+    &quot;&quot;&quot;Sound exact-model validation UNDER the true coordinate-degree promise.
+
+Prefix: true first h bits degree&lt;=d; arbitrary suffix allowed.
+Full: ALL true bits degree&lt;=d. Candidate need not be globally bijective.
+Candidate prefix identities are checked exactly locally. Every accepted
+wrong candidate has probability &lt;=eta conditional on any prior transcript
+when this validation uses fresh independent randomness and the true promise.
+&quot;&quot;&quot;
+    started=time.perf_counter()
+    h=len(toggles)
+    if (prefix_only and len(polynomials)!=h) or (not prefix_only and len(polynomials)!=n):
+        raise ValueError(&#x27;model scope&#x27;)
+    if not 0&lt;eta&lt;1:
+        raise ValueError(&#x27;eta in (0,1)&#x27;)
+    if any(q.n!=n or any(mask.bit_count()&gt;d for mask in q.terms) for q in polynomials):
+        raise ValueError(&#x27;candidate degree&#x27;)
+    prefix,sampler,meter=prepare_prefix(n,d,polynomials[:h],toggles)
+    source=ac.Source(query)
+    rng=random.Random(seed)
+    prefix_eta=eta if prefix_only else eta/2
+    first=_prefix_test(n,d,prefix,sampler,source,rng,prefix_eta,meter)
+    if first[&#x27;status&#x27;]==&#x27;REJECT&#x27;:
+        return dict(status=&#x27;REJECT&#x27;,comparison_calls=source.calls,prefix_test=first,
+                    tail_tests=0,local_operations=dict(meter.ops),seconds=time.perf_counter()-started)
+    if prefix_only:
+        return dict(status=&#x27;ACCEPT_UNDER_TRUE_DEGREE_PROMISE&#x27;,comparison_calls=source.calls,
+                    prefix_test=first,tail_tests=0,error_budget=eta,
+                    local_operations=dict(meter.ops),seconds=time.perf_counter()-started)
+    r=n-h
+    cap=math.ceil(math.log(2/eta)/-math.log1p(-2.0**(-d))) if r else 0
+    for count in range(1,cap+1):
+        x=rng.getrandbits(n)
+        meter.add(&#x27;tail_validation_raw_random_bits&#x27;,n)
+        source_rank=sum(source(y,x) for y in sampler.fiber(prefix.prefix(x)) if y!=x)
+        candidate_rank=0
+        for q in polynomials[h:]:candidate_rank=(candidate_rank &lt;&lt; 1)|q(x,meter)
+        if source_rank!=candidate_rank:
+            return dict(status=&#x27;REJECT&#x27;,comparison_calls=source.calls,prefix_test=first,
+                tail_tests=count,tail_test_cap=cap,
+                tail_witness=dict(raw=x,source_fiber_rank=source_rank,candidate_tail=candidate_rank),
+                local_operations=dict(meter.ops),seconds=time.perf_counter()-started)
+    return dict(status=&#x27;ACCEPT_UNDER_TRUE_DEGREE_PROMISE&#x27;,comparison_calls=source.calls,
+        prefix_test=first,tail_tests=cap,tail_test_cap=cap,
+        comparison_cap=first[&#x27;test_cap&#x27;]+((1 &lt;&lt; r)-1)*cap,error_budget=eta,
+        candidate_bijectivity_supplied_or_globally_checked=False,
+        local_operations=dict(meter.ops),seconds=time.perf_counter()-started)
+
+
+def ancestor_validate(n,inverse,query,epsilon,beta,seed):
+    &quot;&quot;&quot;Established sortedness test: exact match vs deletion-distance&gt;=epsilon.
+
+inverse must enumerate a KNOWN candidate total order; its acquisition/lifting
+cost is external and must be charged. PASS is an approximate validation only.
+&quot;&quot;&quot;
+    if not 0&lt;epsilon&lt;1 or not 0&lt;beta&lt;1:
+        raise ValueError(&#x27;epsilon,beta in (0,1)&#x27;)
+    rng=random.Random(seed)
+    source=ac.Source(query)
+    N=1 &lt;&lt; n
+    trials=math.ceil(math.log(1/beta)/-math.log1p(-epsilon))
+    for count in range(1,trials+1):
+        i=rng.randrange(N)
+        item=inverse(i)
+        low,high=0,N
+        while True:
+            middle=(low+high)//2
+            if middle==i:break
+            other=inverse(middle)
+            if bool(source(item,other))!=(i&lt;middle):
+                return dict(status=&#x27;REJECT&#x27;,comparison_calls=source.calls,trials=count,
+                            witness=[i,middle])
+            if i&lt;middle:high=middle
+            else:low=middle+1
+    return dict(status=&#x27;APPROXIMATE_PASS&#x27;,comparison_calls=source.calls,trials=trials,
+                comparison_cap=n*trials,distance=&#x27;(N-LIS)/N in candidate order&#x27;,beta=beta)
+</pre>
