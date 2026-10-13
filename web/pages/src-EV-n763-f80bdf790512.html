@@ -1,0 +1,219 @@
+<!doctype html><meta charset="utf-8"><title>N763 recovered original — cray_compressed_transport/frame_grammar.py</title>
+<aside>Original byte/member hashes, ZIP CRC and AST syntax establish preservation only. No scientific program executed, independent proof reconstructed, literature/priority audit or physical experiment performed at intake. Producer finite/exact/floating diagnostics are source-reported; not universal theorem validation.</aside>
+<pre>&quot;&quot;&quot;Implicit hard-KA frame and two-port swap programs.
+
+Gate checking and planning do not enumerate configuration graphs.  A plan stores
+only one chosen quadtree branch and strip vacancy locations.  Its microscopic
+execution is intentionally available for testing, not claimed inexpensive at
+large side length.
+&quot;&quot;&quot;
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Iterator
+import numpy as np
+
+Site=tuple[int,int]  # row, column
+Swap=tuple[Site,Site]
+Rect=tuple[int,int,int,int] # y0,x0,y1,x1
+
+
+def strip(rect:Rect, direction:str)-&gt;list[Site]:
+    y0,x0,y1,x1=rect
+    if direction==&#x27;R&#x27;: return [(y,x1) for y in range(y0,y1)]
+    if direction==&#x27;L&#x27;: return [(y,x0-1) for y in range(y0,y1)]
+    if direction==&#x27;U&#x27;: return [(y1,x) for x in range(x0,x1)]
+    if direction==&#x27;D&#x27;: return [(y0-1,x) for x in range(x0,x1)]
+    raise ValueError(direction)
+
+
+def extend(rect:Rect,direction:str)-&gt;Rect:
+    y0,x0,y1,x1=rect
+    return {&#x27;R&#x27;:(y0,x0,y1,x1+1),&#x27;L&#x27;:(y0,x0-1,y1,x1),
+            &#x27;U&#x27;:(y0,x0,y1+1,x1),&#x27;D&#x27;:(y0-1,x0,y1,x1)}[direction]
+
+
+def children(rect:Rect)-&gt;list[Rect]:
+    y0,x0,y1,x1=rect;n=(y1-y0)//2
+    return [(y0+dy*n,x0+dx*n,y0+(dy+1)*n,x0+(dx+1)*n)
+            for dy,dx in ((0,0),(0,1),(1,0),(1,1))]
+
+
+def expansion(child:Rect,parent:Rect, include_sites:bool=True):
+    y0,x0,y1,x1=child;Y0,X0,Y1,X1=parent
+    dx=&#x27;R&#x27; if x0==X0 else &#x27;L&#x27;;dy=&#x27;U&#x27; if y0==Y0 else &#x27;D&#x27;
+    current=child
+    for _ in range(y1-y0):
+        for direction in (dx,dy):
+            yield current,direction,(strip(current,direction) if include_sites else None)
+            current=extend(current,direction)
+    assert current==parent
+
+
+class Gate:
+    &quot;&quot;&quot;A deterministic port-independent gate, read on an occupied-port copy.&quot;&quot;&quot;
+    def __init__(self,occupied_port_state:np.ndarray):
+        self.a=occupied_port_state
+        self.cache:dict[Rect,int]={}
+        v=1-self.a.astype(np.int64)
+        self.prefix=np.pad(v.cumsum(0).cumsum(1),((1,0),(1,0)))
+    def zeros(self,rect:Rect)-&gt;int:
+        y0,x0,y1,x1=rect;s=self.prefix
+        return int(s[y1,x1]-s[y0,x1]-s[y1,x0]+s[y0,x0])
+    def good(self,rect:Rect)-&gt;bool:
+        if rect in self.cache:return self.cache[rect]&gt;=0
+        y0,x0,y1,x1=rect;n=y1-y0
+        if n!=x1-x0 or n&lt;2 or n&amp;(n-1):raise ValueError(&#x27;power-of-two square required&#x27;)
+        if n==2:
+            self.cache[rect]=0 if self.zeros(rect)&gt;=3 else -1
+            return self.cache[rect]&gt;=0
+        for i,child in enumerate(children(rect)):
+            if not self.good(child):continue
+            okay=True
+            for old,direction,_ in expansion(child,rect,False):
+                Y0,X0,Y1,X1=old
+                sr={&#x27;R&#x27;:(Y0,X1,Y1,X1+1),&#x27;L&#x27;:(Y0,X0-1,Y1,X0),
+                    &#x27;U&#x27;:(Y1,X0,Y1+1,X1),&#x27;D&#x27;:(Y0-1,X0,Y0,X1)}[direction]
+                if self.zeros(sr)==0:
+                    okay=False;break
+            if okay:
+                self.cache[rect]=i;return True
+        self.cache[rect]=-1;return False
+
+
+def line_word(A:list[Site],B:list[Site],r:int=0)-&gt;list[Swap]:
+    m=len(A)
+    assert len(B)==m and 0&lt;=r&lt;m
+    out=[]
+    for y in range(r,0,-1):out.append((B[y],B[y-1]))
+    for y in range(1,m):out.extend(((B[y],B[y-1]),(B[y-1],A[y-1])))
+    for y in range(m-1,r,-1):out.append((A[y],A[y-1]))
+    assert len(out)==3*(m-1)
+    return out
+
+
+def preparatory_words(rect:Rect,direction:str)-&gt;list[list[Swap]]:
+    y0,x0,y1,x1=rect
+    words=[]
+    if direction==&#x27;R&#x27;:
+        for x in range(x0,x1-1):
+            words.append(line_word([(y,x) for y in range(y0,y1)],[(y,x+1) for y in range(y0,y1)]))
+    elif direction==&#x27;U&#x27;:
+        for y in range(y0,y1-1):
+            words.append(line_word([(y,x) for x in range(x0,x1)],[(y+1,x) for x in range(x0,x1)]))
+    return words
+
+
+@dataclass
+class Instruction:
+    kind:str
+    payload:object
+    def word(self)-&gt;list[Swap]:
+        if self.kind==&#x27;base&#x27;:return list(self.payload)
+        rect,direction,r=self.payload
+        new=strip(rect,direction)
+        shifts=[(new[y],new[y-1]) for y in range(r,0,-1)]
+        if direction in (&#x27;R&#x27;,&#x27;U&#x27;):
+            pre=[s for w in preparatory_words(rect,direction) for s in w]
+            return pre+shifts+pre[::-1]
+        y0,x0,y1,x1=rect
+        old=([(y,x0) for y in range(y0,y1)] if direction==&#x27;L&#x27;
+             else [(y0,x) for x in range(x0,x1)])
+        return shifts+line_word(old,new,0)
+
+
+def apply(a:np.ndarray,s:Swap,tags:dict[str,Site]|None=None):
+    u,v=s;a[u],a[v]=int(a[v]),int(a[u])
+    if tags is not None:
+        for key,pos in list(tags.items()):
+            if pos==u:tags[key]=v
+            elif pos==v:tags[key]=u
+
+
+def plan_frame(a:np.ndarray,rect:Rect,gate:Gate,tags:dict[str,Site])-&gt;list[Instruction]:
+    if not gate.good(rect):raise ValueError(&#x27;gate failed&#x27;)
+    y0,x0,y1,x1=rect;n=y1-y0
+    instructions=[]
+    if n==2:
+        occupied=[(y,x) for y in range(y0,y1) for x in range(x0,x1) if a[y,x]]
+        moves=[]
+        if occupied:
+            assert len(occupied)==1
+            u=occupied[0];target=(y1-1,x1-1)
+            if u[1]!=target[1]:
+                v=(u[0],target[1]);moves.append((u,v));u=v
+            if u[0]!=target[0]:moves.append((u,target))
+        for s in moves:apply(a,s,tags)
+        instructions.append(Instruction(&#x27;base&#x27;,moves))
+    else:
+        child=children(rect)[gate.cache[rect]]
+        instructions.extend(plan_frame(a,child,gate,tags))
+        for current,direction,new in expansion(child,rect):
+            r=next(i for i,s in enumerate(new) if a[s]==0)
+            instructions.append(Instruction(&#x27;grow&#x27;,(current,direction,r)))
+            # Execute only the net effect, not the long prepare/unprepare word.
+            for i in range(r,0,-1):apply(a,(new[i],new[i-1]),tags)
+            if direction in (&#x27;L&#x27;,&#x27;D&#x27;):
+                Y0,X0,Y1,X1=current
+                old=([(y,X0) for y in range(Y0,Y1)] if direction==&#x27;L&#x27;
+                     else [(Y0,x) for x in range(X0,X1)])
+                for u,v in zip(old,new):apply(a,(u,v),tags)
+    assert not a[y0:y1,x0].any() and not a[y0,x0:x1].any()
+    return instructions
+
+
+def supported_swap(rect:Rect,u:Site,v:Site)-&gt;list[Swap]:
+    y0,x0,y1,x1=rect
+    pre=[]
+    if u[0]==v[0]:
+        y=u[0]
+        for yy in range(y0,y-1):
+            pre.extend(line_word([(yy,x) for x in range(x0,x1)],[(yy+1,x) for x in range(x0,x1)]))
+    else:
+        x=u[1]
+        for xx in range(x0,x-1):
+            pre.extend(line_word([(y,xx) for y in range(y0,y1)],[(y,xx+1) for y in range(y0,y1)]))
+    return pre+[(u,v)]+pre[::-1]
+
+
+@dataclass
+class PortModule:
+    L:int
+    ports:tuple[Site,Site]
+    shape:tuple[int,int]
+    preparation:list[Instruction]
+    port_positions:tuple[Site,Site]
+    def word(self)-&gt;Iterator[Swap]:
+        for ins in self.preparation:yield from ins.word()
+        u,v=self.port_positions
+        path=[u];y,x=u
+        while x!=v[1]:x+=(1 if x&lt;v[1] else -1);path.append((y,x))
+        while y!=v[0]:y+=(1 if y&lt;v[0] else -1);path.append((y,x))
+        edges=list(zip(path,path[1:]));seq=edges+edges[-2::-1]
+        for a,b in seq:yield from supported_swap((0,0,*self.shape),a,b)
+        for ins in self.preparation[::-1]:yield from ins.word()[::-1]
+
+
+def make_module(state:np.ndarray,ports:tuple[Site,Site])-&gt;PortModule:
+    L=min(state.shape)
+    if state.shape not in ((L,2*L),(2*L,L)):raise ValueError(&#x27;rectangle must be (L,2L) or (2L,L)&#x27;)
+    forced=state.copy()
+    for s in ports:forced[s]=1
+    original=forced.copy();gate=Gate(original)
+    tags={&#x27;a&#x27;:ports[0],&#x27;b&#x27;:ports[1]}
+    left=(0,0,L,L);right=((0,L,L,2*L) if state.shape[1]==2*L else (L,0,2*L,L))
+    if not(gate.good(left) and gate.good(right)):raise ValueError(&#x27;gate failed&#x27;)
+    prep=plan_frame(forced,left,gate,tags)+plan_frame(forced,right,gate,tags)
+    assert all(y&gt;0 and x&gt;0 for y,x in tags.values())
+    return PortModule(L,ports,state.shape,prep,(tags[&#x27;a&#x27;],tags[&#x27;b&#x27;]))
+
+
+def legal(a:np.ndarray,s:Swap)-&gt;bool:
+    u,v=s
+    if abs(u[0]-v[0])+abs(u[1]-v[1])!=1:return False
+    h,w=a.shape
+    for site,other in ((u,v),(v,u)):
+        y,x=site
+        if not any(0&lt;=yy&lt;h and 0&lt;=xx&lt;w and (yy,xx)!=other and a[yy,xx]==0
+                   for yy,xx in ((y-1,x),(y+1,x),(y,x-1),(y,x+1))):return False
+    return True
+</pre>

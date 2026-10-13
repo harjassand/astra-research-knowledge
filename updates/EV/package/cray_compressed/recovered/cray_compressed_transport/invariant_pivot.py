@@ -1,0 +1,57 @@
+"""All-pivot current, divided by a microscopic conserved count.
+
+The resulting exact current exchanges an empty column with a nonfull column.
+The direct description has 8*m-10 cylinder terms and does not expand histories.
+"""
+from collections import defaultdict
+from fractions import Fraction as F
+from math import comb
+from cylinder_flow import CylinderFlow, combine
+
+
+def direct_all_pivots(m:int)->CylinderFlow:
+    if m<2:raise ValueError('m >= 2 required')
+    A=list(range(m)); B=list(range(m,2*m))
+    def c(sites):return (sum(1<<s for s in sites),0)
+    terms=defaultdict(list)
+    def difference(b,first,second,k):
+        terms[tuple(sorted(b))].extend(((c(first),k),(c(second),-k)))
+    for y in range(1,m):
+        difference((B[y-1],B[y]),A[y-1:]+B[:y],A[y-1:]+B[:y-1]+[B[y]],m)
+        difference((B[y-1],B[y]),A+[B[y]],A+[B[y-1]],m-y)
+        difference((A[y-1],B[y-1]),A[y-1:]+B[:y-1]+[B[y]],A[y:]+B[:y+1],m)
+        difference((A[y-1],A[y]),B+[A[y]],B+[A[y-1]],y)
+    return CylinderFlow(2*m,{b:combine(ts) for b,ts in terms.items()},
+                        combine((c(A+[B[r]]),1) for r in range(m)),
+                        combine((c(B+[A[r]]),1) for r in range(m)),3*(m-1),m)
+
+
+def normalized_current(flow:CylinderFlow,state:int,bond:tuple[int,int])->F:
+    m=flow.nsites//2;k=m-state.bit_count()
+    # The numerator vanishes identically outside sectors k>0.
+    return F(flow.current(state,bond),k) if k>0 else F(0)
+
+
+def unnormalized_polynomial(m:int):
+    a=2*m*(m-1)*(8*m-7)//3
+    out={(0,m+1):a,(0,m+2):-a-4*m*(m-2)}
+    for z in range(m+3,2*m+1):out[(0,z)]=4*m
+    return out
+
+
+def sector_energies(m:int)->list[int]:
+    def choose(a,b):return comb(a,b) if 0<=b<=a else 0
+    a=2*m*(m-1)*(8*m-7)//3
+    return [a*choose(m-1,n)-(a+4*m*(m-2))*choose(m-2,n)+4*m*choose(m-2,n+1)
+            for n in range(m)]
+
+
+def exact_energy(m:int,p:F)->F:
+    q=1-p
+    return sum((F(e,(m-n)**2)*p**n*q**(2*m-n)
+                for n,e in enumerate(sector_energies(m))),F())
+
+
+def first_pivot_energy(m:int,p:F)->F:
+    q=1-p
+    return 2*q**(m+1)*sum(((3*m*(2*k-1)-k*(k-1))*p**k for k in range(1,m)),F())
