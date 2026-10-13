@@ -1,0 +1,380 @@
+# CRAY: certified local reweighting in an interacting quantum environment
+
+Research record — 13 October 2026
+
+## Status and claim boundary
+
+This note derives an information-acquisition operation for finite-temperature local design comparisons. A histogram of a finite local label in one equilibrated, fully interacting reference system, together with a certified bound on label-changing quantum mixing, bounds free-energy changes for an entire family of local diagonal interventions. A local kinetic-energy measurement can replace a pessimistic coupling-norm bound. Neither the environment nor the impurity must be Gaussian. The construction respects a specified conserved sector and does not require a global-state reconstruction, a bath Green function, an impurity solver, a spectral gap, a correlation-length promise, or truncation of connected responses.
+
+The mathematical statements below are proved here but have not been independently refereed or formalized. Historical priority of the combinations and characterizations is unresolved. Peierls/Jensen, Golden–Thompson, Gibbs variational principles, Duhamel expansions, Schatten Hölder inequalities, classical reweighting and charge sensing are established ingredients, not new inventions claimed here.
+
+This is not a general ground-energy algorithm, a first-principles chemical calculation, an experimentally completed defect decision, or a demonstrated advantage over specialized many-body methods. A fully specified eight-site Hubbard calculation and simulated acquisition test validate the implementation, not scalability or material predictive accuracy. Equilibrium preparation, calibrated controls, and a useful coherence-error budget remain physical requirements. No repository was modified.
+
+## 1. Scientific task and rejected routes
+
+The initial target was a local chemical decision with non-Gaussian substrate correlations. CO/Cu(111) remains a useful comparison, not an untouched problem: the FEMION work revised 9 April 2026 combines local AFQMC with global RPA screening and addresses both CO site preference and H2 desorption [1]. No operation developed here establishes that actual adsorption geometries differ only by a small calibrated diagonal term, so claiming an adsorption prediction would be unjustified.
+
+The selected restricted task is a local charge-trap design: determine the maximum independently specified reference cost that can be offset by a local level shift or on-site-interaction change in a correlated host. The intended domain is a weakly hybridized defect or a programmable interacting-fermion system with local occupation readout. For a spinful site, joint occupation labels permit interventions of the form delta_epsilon*(n_up+n_down)+delta_U*n_up*n_down. Arbitrary interactions in the surrounding system are retained. The statistical operation predicts counterfactual free energies rather than reconstructing those interactions.
+
+Several alternative mechanisms were considered and not promoted. Finite connected-response truncation lacked an economical all-orders remainder. Quantum work/fluctuation protocols and thermodynamic integration are established approaches and can charge difficult overlap or repeated equilibrium preparation. Quantum belief propagation is prior art [6], not a new operation simply because its generator is local. An unknown marginal, a fast Gibbs-preparation oracle, or a supplied small active region was not accepted as a solved input-acquisition problem.
+
+The positive construction below instead bounds the error of a local classical-looking reweighting formula in a genuinely quantum system. Its usefulness is assessed from acquired probabilities and local mixing, not from an assumed Gaussian bath.
+
+## 2. Exact model, ensemble and input/output contract
+
+Fix a finite-dimensional global conserved sector H_Q. All traces and minima in this note are on that same sector. For example, Q=(N_up,N_down) can fix both particle counts. Let P_1,...,P_k be nonzero mutually orthogonal projectors summing to the identity on H_Q. They describe a finite local label and commute with the conserved charges. Empty sectors can be omitted.
+
+Let H be an arbitrary Hermitian reference Hamiltonian, and beta>0 a known inverse temperature. Define
+
+    D = sum_i P_i H P_i,
+    T = H-D,
+    rho = exp(-beta H)/Z_H,
+    Z_X = Tr exp(-beta X),
+    F(X) = -(1/beta) log Z_X.
+
+D is the block-diagonal Hamiltonian, not the state obtained by measuring rho. There is no assumption that D is physically prepared. Its partition weights will be latent quantities, eliminated from the calculation.
+
+A candidate design is
+
+    H(v) = H + V(v),
+    V(v) = sum_i v_i P_i.
+
+The required output is a certified interval for F(H(v))-F(H), or a sign-separated design comparison. Scalar preparation, fabrication or reference-energy costs must be included as the same scalar added to every v_i. The theorem does not invent their values.
+
+The acquired data are a reference equilibrium histogram
+
+    p_i = Tr(P_i rho),
+
+and a bound C>=1 satisfying
+
+    1 <= Z_H/Z_D <= C.
+
+Sections 3 and 4 construct C from local microscopic information or an additional local expectation. No block partition weight, conditional environment state or interacting energy is supplied.
+
+For finite-range H and local P_i, only terms whose support meets the label region can enter T. In a density-based label, arbitrary density-density interactions preserve the label and belong to D; incident hopping can enter T. This is a support statement, not a Gaussian approximation. Long-range density interactions can also be retained when they commute with the label. Any omitted label-changing term must be included in a certified bound.
+
+## 3. Constructing a coherence budget from microscopic interactions
+
+Supply symmetric nonnegative numbers g_ij with zero diagonal such that
+
+    ||P_i T P_j|| <= g_ij.
+
+Let g be their k by k matrix and set
+
+    C_norm = max_i [exp(beta g)]_ii.
+
+Then
+
+    1 <= Z_H/Z_D <= C_norm.                    (3.1)
+
+### Proof
+
+Choose an orthonormal eigenbasis of each compression A_i=P_iHP_i restricted to its range. For any such eigenvector |a>, scalar Jensen applied to the spectral distribution of H gives
+
+    <a|exp(-beta H)|a> >= exp(-beta <a|H|a>).
+
+Summing over that block yields
+
+    c_i := Tr[P_i exp(-beta H)] >= z_i := Tr exp(-beta A_i).
+
+Thus Z_H>=Z_D. This is a trace inequality; it does not assert the false general operator inequality exp(-beta H)>=exp(-beta D).
+
+Golden–Thompson gives
+
+    Z_H <= Tr[exp(-beta D) exp(-beta T)].
+
+For a unit vector x in block i, expand exp(-beta T). The absolute value of each closed block word is bounded by the product of the corresponding g_ij. Therefore
+
+    <x|exp(-beta T)|x> <= [exp(beta g)]_ii.
+
+Equivalently, the diagonal compression of exp(-beta T) is bounded above by that scalar times P_i. Hence
+
+    Z_H <= sum_i z_i [exp(beta g)]_ii <= C_norm Z_D.
+
+All series converge absolutely in finite dimension. No sign or stoquasticity assumption is used.
+
+### Binary label
+
+For k=2, write kappa>=||P_0HP_1||. The Hermitian off-diagonal T has norm at most kappa, and
+
+    C_norm = cosh(beta kappa),
+    eta := 1-1/C_norm.
+
+For small beta*kappa, eta=(beta*kappa)^2/2+O((beta*kappa)^4). This restricts label-changing quantum mixing, not all environment correlations or all impurity-environment couplings.
+
+For a single fermionic occupation coupled by sum_j(t_j d^dagger c_j+h.c.), a certified bound is kappa=sqrt(sum_j |t_j|^2). A fermionic mode rotation isolates the coupled bath combination; the full-Fock-space operator has norm kappa, and restriction to a conserved sector cannot increase it. A measured low-energy linewidth alone does not establish this total coupling norm, especially with an unresolved broad band.
+
+## 4. Replacing the worst-case norm by measured boundary kinetic energy
+
+Let
+
+    tau = Tr(rho T).
+
+The Gibbs variational principle, with rho as a trial state for D, gives
+
+    F(D) <= Tr(rho D) - S(rho)/beta = F(H)-tau.
+
+Consequently
+
+    log(Z_H/Z_D) <= -beta*tau.                 (4.1)
+
+Also tau<=0. One proof is that f(s)=F(D+sT) is concave and f'(0)=Tr(rho_D T)=0, so f'(1)=tau<=0.
+
+A valid combined budget is therefore
+
+    C = exp(min{log C_norm, -beta*tau}).        (4.2)
+
+With a certified lower confidence bound tau_minus<=tau, replace tau by tau_minus. Confidence allocations for histogram and kinetic measurements must be added by a union bound. An input set inconsistent with tau<=0 should be flagged; a numerical routine must not silently use an unjustified C<1.
+
+This improvement does not reconstruct non-Gaussian response. It measures a local observable whose expectation already includes its influence. It can avoid a severe overestimate from energetically off-resonant modes, although acquisition can still be costly if the observable has a large range.
+
+For finite local hopping, write T=sum_l a_l O_l with Hermitian ||O_l||<=1. A randomized term measurement can return an unbiased estimator in [-A_T,A_T], A_T=sum_l|a_l|. Independent measurements estimate tau within b with failure at most alpha_T using
+
+    N_T >= 2 A_T^2 log(2/alpha_T)/b^2.
+
+This is a statistical bound, not a claim that every material permits the needed measurements. For controllable fermion sites, a calibrated two-mode rotation converts a hopping quadrature to a number difference, preserving total particle number. Interaction evolution during the pulse, sensor errors and phase errors must be calibrated or bounded. Merely assuming access to arbitrary boundary tomography would not satisfy this input contract.
+
+## 5. Main theorem: certified quantum reweighting
+
+Let p be the reference histogram and let C satisfy (3.1), whether obtained from norms, kinetic data, or another proved upper bound. For u_i=exp(-beta v_i), define
+
+    A(v) = sum_i p_i u_i,
+
+    L(v) = min sum_i w_i u_i
+           subject to 0<=w_i<=p_i,
+                      sum_i w_i=1/C.
+
+Then
+
+    -(1/beta) log A(v)
+       <= F(H(v))-F(H)
+       <= -(1/beta) log L(v).                 (5.1)
+
+Both endpoints can additionally be intersected with [min_i v_i,max_i v_i].
+
+### Proof
+
+Use the latent quantities
+
+    w_i^true = z_i/Z_H.
+
+The individual trace inequality in Section 3 implies 0<=w_i^true<=p_i, and the partition-ratio bound implies sum_i w_i^true>=1/C. Since u_i>0, minimizing over sum w>=1/C is equivalent to minimizing over equality.
+
+Apply the same trace inequality to H(v), whose block compression is A_i+v_iI. Then
+
+    Z_H(v)/Z_H >= sum_i w_i^true exp(-beta v_i) >= L(v).
+
+Golden–Thompson at the actual reference H gives
+
+    Z_H(v)/Z_H
+      <= Tr[rho exp(-beta V(v))]
+       = sum_i p_i exp(-beta v_i)=A(v).
+
+Take minus logarithms. The additional min/max bound follows from the variational free-energy principle and min(v)I<=V<=max(v)I.
+
+### Constructive computation
+
+Sort u_i from smallest to largest and retain probability mass 1/C, filling each bin up to p_i. This gives L in O(k log k) comparisons and O(k) subsequent arithmetic. Equivalently, remove mass eta=1-1/C from the most favorably weighted bins. There is no exponential-weight Monte Carlo simulation over bath trajectories.
+
+A(v) is the familiar commuting-system reweighting expression. It is generally only a one-sided partition bound in a quantum system. The mass-removal operation supplies a rigorous opposite side and an explicit failure criterion. The resulting interval is not claimed to be minimax sharp over all Hamiltonians matching the acquired histogram.
+
+### Uniform strong-intervention corollary
+
+Suppose all relevant p_i>=p_star>eta. For any v,
+
+    A(v)>=p_star max_i u_i,
+    L(v)>=A(v)-eta max_i u_i
+          >=(1-eta/p_star)A(v).
+
+Therefore the interval width satisfies
+
+    width <= (1/beta) log[1/(1-eta/p_star)]     (5.2)
+
+simultaneously for every v, irrespective of the size of its entries. A single reference histogram can therefore certify a whole finite-label design family, including nonperturbatively large diagonal shifts. The target state is never prepared or reconstructed.
+
+This does not give cheap estimation of initially unobserved configurations. When p_star is tiny or eta>=p_star, the uniform bound is unavailable; the design-specific interval remains valid but can be uninformative. Likewise k can grow exponentially with the number of resolved local degrees of freedom. Neither cost is hidden.
+
+### Comparing two counterfactual designs
+
+Let intervals for F(H(v_j))-F(H) be [l_j,u_j]. Then
+
+    F(H(v_1))-F(H(v_0)) in [l_1-u_0,u_1-l_0].
+
+This is valid but may sacrifice correlations in the shared unknown w. It is not asserted to be jointly optimal. A decision is certified only if the final interval, including all experimental and model errors, excludes the relevant threshold.
+
+## 6. A sharp block-partition comparison supporting the construction
+
+There is a stronger mathematical comparison when block partition weights are supplied or constrained. Define
+
+    M_ii=log z_i,
+    M_ij=beta*g_ij for i != j.
+
+Then
+
+    z_i <= c_i <= [exp M]_ii,
+    sum_i z_i <= Z_H <= Tr exp M.             (6.1)
+
+The upper partition bound is attained, for every positive z_i and nonnegative symmetric g, by one-dimensional blocks A_i=-(log z_i)/beta with T_ij=-g_ij. The lower bound is attained by T=0 when g specifies upper bounds. Thus these are exact worst-case partition extrema given that block information, without prescribed block dimensions or extra microscopic restrictions.
+
+### Proof of the upper bound
+
+Expand exp(-beta(D+T)) by its Duhamel series. A term contributing to block-i trace follows a closed word of block indices, interleaving off-diagonal factors -beta*T_ab and exponentials exp(-beta*s*A_a), where the nonnegative residence fractions sum to one. Combine the first and last residence factors by trace cyclicity. Generalized Schatten Hölder bounds the absolute trace by
+
+    product_a z_a^(total residence fraction in a)
+       times product_of_transitions beta*g_ab.
+
+For a zero residence fraction, use the operator norm of the corresponding projector, equal to one. Rectangular transitions can be embedded into the full direct-sum space without changing their operator norm. These products are exactly the nonnegative closed-word terms in the scalar Duhamel expansion of exp M. Absolute convergence permits termwise summation.
+
+No Hilbert-space dimension factor appears. The lower bound is the trace Jensen inequality already proved. Scalar blocks with negative real couplings make every term attain the upper construction. This sharpness does not imply that experimentally observed histograms and microscopic norms uniquely determine the environment, nor that (5.1) is sharp.
+
+Block norm-compression is an established subject [8]. This note does not establish historical priority of (6.1).
+
+## 7. Finite observations, adaptivity and numerical certification
+
+For N independent equilibrium label observations, let p_hat be the empirical frequencies. Hoeffding and a union bound give simultaneous intervals |p_i-p_hat_i|<=a with coverage at least 1-alpha if
+
+    N >= log(2k/alpha)/(2a^2).
+
+For a binary label, one binomial deviation controls both bins and failure is bounded by 2 exp(-2Na^2).
+
+Let Pconf be the intersection of those intervals, nonnegativity and sum p=1. Compute
+
+    A_plus(v)=max_{p in Pconf} p.u,
+    L_minus(v)=min_{p in Pconf, 0<=w<=p, sum w>=1/C} w.u.
+
+These are linear programs with k and 2k variables. Replacing A,L by A_plus,L_minus in (5.1) gives a confidence certificate. The same event p in Pconf validates every later candidate v, including adaptively chosen candidates. No new statistical union bound is needed for the number of designs.
+
+Readout calibration error and a justified local-equilibrium discrepancy bound expand Pconf. Correlated time-series frames are not automatically independent samples. A stationary-looking histogram alone does not prove global equilibrium: an unvisited metastable sector can change a free energy. No local equilibration-certification theorem is claimed here.
+
+For a binary controllable gate, the reference occupation p(b) is nonincreasing in b and |p'(b)|<=beta/4, from the Kubo–Mori covariance bound by ordinary Bernoulli variance. Given an experimentally verified finite gate bracket spanning p=1/2, bisection to width 4a/beta obtains a near-balanced reference, using O(log(beta*B/a)) bias settings. The bracket, admissible controls, and equilibration at each setting are requirements, not free oracles. Balancing many labels may require independent controls that a particular device lacks.
+
+For stable arithmetic shift v by its minimum and use log-sum-exp. Norm-budget evaluation is polynomial in the numeric parameter beta*||g||, the small label dimension and precision using, for example, a positive Taylor expansion with controlled tails. An exponentially large beta*||g|| encoded in few bits is not claimed to have cheap certification or useful C. General LP calculations need validated coefficients and outward rounding before their outputs are machine-rigorous. The scripts mark floating diagnostics accordingly; Section 10 supplies an exact rational special-case certificate.
+
+## 8. Physical costs and model discrepancy
+
+The statistical operation does not compute the whole local Hamiltonian. It needs the projectors, temperature, candidate local shifts and a bound on label-changing terms, or the corresponding kinetic observable. Unknown terms commuting with all labels are included in H and sensed through p; they are not discarded as a bath approximation.
+
+If the actual target is H+V(v)+R_v with ||R_v||<=epsilon_v on the sector, expand the target interval by epsilon_v on each side. If the measured reference itself is replaced by a different model, its discrepancy must also be charged. Common omitted terms do not automatically cancel. Uncertain temperature can be handled by optimization over a calibrated beta interval; assigning the preparation temperature to an isolated post-quench state is not justified.
+
+The same conserved sector must be used for reference and target. An open-system version uses H-mu*N and grand-canonical equilibrium, with specified mu. Number conservation alone does not justify mixing canonical and grand-canonical data. Omitted charge sectors, changes in particle count, bare formation energies and reservoir reference terms must be explicit.
+
+The experiment cost is at least
+
+    N_label * (equilibration/preparation + label readout)
+       + N_kinetic * (equilibration/preparation + local kinetic measurement)
+       + calibration and any reference balancing.
+
+No universal polynomial equilibration bound is proved. Weakening a contact to improve C can slow charge exchange and increase this cost. Large environments can also have slow collective relaxation despite small local label dimension. This is the largest remaining experimental qualification, not a hidden solved subproblem.
+
+Post-acquisition memory is O(k^2) for g and O(k) for histogram weights, aside from an optional LP workspace. No memory proportional to the full many-body Hilbert space is needed. Input generation and physical runtime need not be independent of material size. The bound is finite-temperature only: beta increasing can make C enormous, and no ground-energy conclusion follows without a separately justified entropy/thermal-error bound.
+
+## 9. Relation to strong existing methods
+
+Correlated-sampling AFQMC already targets chemical energy differences [2]. FEMION includes nonlocal substrate screening and addresses an actual surface task [1]. The present operation has neither their first-principles scope nor a measured speed advantage. It uses a different input contract: one physical interacting reference ensemble plus controlled local interventions, rather than only an electronic Hamiltonian and a classical solver.
+
+Continuous-hybridization impurity solvers do not necessarily require finite-bath fitting [3]. Polynomial-time equilibrium results submitted on 1 October 2026 [4,5] address constant-size interacting impurities in noninteracting fermion baths. Those results block any claim that small-impurity equilibrium has newly become tractable. The present environment need not be free, but the restriction is paid elsewhere: physical equilibrium access, a diagonal design family, and a useful coherence budget.
+
+Certified many-body bootstrap methods supply model-based ground-energy bounds [10]. They are not equivalent to this finite-temperature, measurement-assisted contract. No comparison on the same difficult physical instance, identical acquired information and required accuracy was completed.
+
+Local thermodynamic measurement is established: Hartman et al. measured few-electron entropy with a charge-sensing mesoscopic circuit [7]. That supports the plausibility of local thermodynamic readout, not the availability of every calibrated operation in this note for a correlated defect. The new candidate contribution is the rigorous error-controlled reweighting operation and its block and measurement bounds, not charge sensing or classical exponential reweighting.
+
+## 10. Executed tests and exact conditional certificate
+
+### Random-matrix diagnostics
+
+`run_diagnostics.py` tested 160 seeded complex-Hermitian block models with 2–5 labels and varying block sizes. It verified individual block comparisons, total norm budgets, and four counterfactual reweightings per model: 640 enclosure checks. All passed in double precision. These are algebraic diagnostics, not physical benchmarks.
+
+`kinetic_budget_checks.py` tested 150 additional block models, including off-resonant cases. The measured kinetic budget was smaller than the norm budget in 140 cases, and all tested bounds passed. The count is from this seeded diagnostic set, not a distribution-independent performance claim. A two-level off-resonant illustration is stored in the output but is not presented as a scientific result.
+
+### Fixed-sector Hubbard control
+
+The validation Hamiltonian is the repulsive nearest-neighbor Hubbard model on an open 2x4 rectangle, with eight sites and N_up=N_down=3. Its sector dimension is binom(8,3)^2=3136. In bulk hopping units:
+
+    U=8,
+    beta=2,
+    up-spin hopping on each edge incident to site 0 = 0.025,
+    all other hopping = 1,
+    reference site-0 up-spin potential = -2.
+
+There are two incident edges. The measured label is n_(0,up), so the certified mixing norm is sqrt(2)/40. The design lowers that local level by one hopping unit and includes a DECLARED scalar reference cost 0.3; its label shifts are (0.3,-0.7). This cost is not an experimentally calibrated fabrication cost.
+
+Full numerical diagonalization, used only to check the proposed measurement pipeline, gives
+
+    reference p = (0.040569912903712015, 0.9594300870962882),
+    C = 1.0025010418402933,
+    eta = 0.0024948022355190114,
+    actual DeltaF = -0.682129440875209.
+
+The exact-histogram theorem, numerically evaluated, gives
+
+    DeltaF in [-0.682145283968887, -0.680850859904823].
+
+Equivalently, the maximum scalar cost offset by the one-unit level lowering is numerically bounded between 0.980850859904823 and 0.982145283968887. The full-diagonalization value is 0.982129440875209. This is a decision threshold rather than merely observing that a negative local potential lowers free energy.
+
+The two full diagonalizations were affordable; this example does not demonstrate a speedup or an inaccessible-system solution. Its purpose is to test number conservation, strong host interactions, reference costs and the numerical acquisition pipeline together.
+
+### Simulated acquisition and exact arithmetic
+
+From the numerical reference distribution, 30,000 simulated independent shots produced counts (1220,28780). These are NOT laboratory observations. A simultaneous binary probability radius 1/100 has failure at most 2 exp(-6)<0.005.
+
+The exact verifier treats those counts and the declared physical contract as input. Rational Taylor bounds prove the needed cosh and exponent intervals. Rational atanh-series bounds enclose logarithms. It establishes, with the stated conditional coverage exceeding 99.5%,
+
+    DeltaF in [-0.686562857515, -0.676294589410],
+
+or the cost threshold
+
+    c_star in [0.976294589410, 0.986562857515].
+
+For an additional candidate, choose the scalar cost 0.975 from this acquired threshold curve. This is deliberately an adaptive decision test, not an independently supplied material benchmark. The same histogram confidence event applies, so there is no extra multiple-testing penalty. Exact arithmetic gives
+
+    DeltaF(cost=0.975) in [-0.011562857515, -0.001294589410].
+
+This is strictly negative. For comparison, using the numerical exact reference histogram, the reference-state Gibbs variational upper bound and Golden–Thompson lower bound alone give
+
+    DeltaF(cost=0.975) in [-0.007145283968887, +0.015569912903712].
+
+They do not decide the sign. The new exact-histogram interval is approximately [-0.007145283968887,-0.005850859904823], while the numerical direct result is -0.007129440875209. This establishes an information improvement over those two elementary bounds in the control; it is not a comparison with the strongest specialized solver.
+
+It also proves the partition-ratio lower bound for the original cost is strictly above one by an exact integer comparison. No floating eigenvalue is used in that sign certificate. The certificate does not prove that the simulation represents a real material, nor that a physical sample is equilibrated. The assumptions in `exact_certificate.json` are load-bearing.
+
+## 11. Why the extra information cannot simply be dropped
+
+An exact histogram alone does not justify quantum reweighting. At beta=1, take H_J=J*sigma_x, label projectors in the sigma_z basis, and V=(1/5)I+sigma_z. For every J, p=(1/2,1/2), but
+
+    DeltaF_J = 1/5 - log cosh(sqrt(J^2+1)) + log cosh J.
+
+At J=0 this is negative, since log cosh 1>1/5. At J=10 it is positive: log cosh is 1-Lipschitz, so the subtracted difference is less than sqrt(101)-10<1/20. Thus DeltaF_10>3/20. The histogram is identical and the design sign reverses. This elementary witness explains why calibrated label-changing dynamics or kinetic information cannot be silently omitted.
+
+The prior CRAY one-particle-spectrum counterexample is not contradicted. Here observations are made in the actual coupled equilibrium system, and a structural/energetic certificate controls their use under interventions. No theorem asserts that a finite list of uncoupled bath correlators determines arbitrary chemical energies.
+
+## 12. What changed and what remains
+
+The positive result removes Gaussianity from the environmental-information requirement for a specified local free-energy family. The surrounding interacting state can remain unknown: a finite histogram and an acquired coherence budget suffice to issue rigorous decisions. Strong nonlinear response to the target is covered without a perturbation series, when relevant configurations are sufficiently sampled.
+
+It does not solve general correlated chemistry. The task must truly be an additive diagonal intervention, any residual change must be bounded, equilibrium must be accessible and justified, and the statistical and coherent uncertainty must be smaller than the decision margin. The full construction was tested numerically and in an exact conditional certificate, not on an externally specified difficult material with measured input.
+
+Historical novelty, independent proof validation, experimental feasibility for a selected material, and superiority over the strongest matched method remain unresolved. These are not reasons to discard the theorem; they are precise limits on interpreting it as a transformative capability.
+
+## References and provenance
+
+[1] C. Cao et al., Quantum Many-Body Simulations of Catalytic Metal Surfaces, arXiv:2508.13036v3, revised 9 April 2026. https://arxiv.org/abs/2508.13036
+
+[2] J. Shee et al., Chemical Transformations Approaching Chemical Accuracy via Correlated Sampling in Auxiliary-Field Quantum Monte Carlo, arXiv:1703.01545. https://arxiv.org/abs/1703.01545
+
+[3] J. Li, M. Wallerberger, E. Gull, Diagrammatic Monte Carlo Method for Impurity Models with General Interactions and Hybridizations, arXiv:2004.00721. https://arxiv.org/abs/2004.00721
+
+[4] S. Arunachalam et al., Quantum impurity models: easy at equilibrium, universal in motion, arXiv:2610.02130, submitted 1 October 2026. https://arxiv.org/abs/2610.02130
+
+[5] J. Jiang et al., Polynomial-time classical and quantum simulation of quantum impurity models, arXiv:2610.02167v2, submitted 1 October 2026, revised 5 October 2026. https://arxiv.org/abs/2610.02167
+
+[6] M. B. Hastings, Quantum Belief Propagation, arXiv:0706.4094. https://arxiv.org/abs/0706.4094
+
+[7] N. Hartman et al., Direct Entropy Measurement in a Mesoscopic Quantum System, Nature Physics 14, 1083–1086 (2018); arXiv:1905.12388. https://arxiv.org/abs/1905.12388
+
+[8] C. King, Inequality for p-norms of positive matrices, arXiv:quant-ph/0302069. https://arxiv.org/abs/quant-ph/0302069
+
+[9] P. J. Forrester, C. J. Thompson, The Golden–Thompson inequality — historical aspects and random matrix applications, arXiv:1408.2008. https://arxiv.org/abs/1408.2008
+
+[10] S. Lawrence, Bootstrapping Lattice Vacua, arXiv:2111.13007. https://arxiv.org/abs/2111.13007
+
+Research capital: the supplied CRAY environment-uniform and quadratic-bath notes were read; their results are not unproved premises here. Selective read-only GitHub checks covered Astra navigation and searches for pinching/Golden–Thompson, and OpenAI/math Golden–Thompson search excerpts. The latter returned ordinary variational/trace-inequality uses and reference entries. These checks do not constitute an exhaustive priority search, and no repository manuscript theorem is imported into this proof. Repositories: https://github.com/harjassand/astra-research-knowledge ; https://github.com/openai/math .

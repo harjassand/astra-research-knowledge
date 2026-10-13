@@ -1,0 +1,49 @@
+<!doctype html><meta charset="utf-8"><title>N787 preserved original — validate_exact.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>from __future__ import annotations
+import json,time
+from pathlib import Path
+from math import exp,sqrt,pi
+import numpy as np
+from collision_dual import DiscreteVariance
+from exact_extension import linear_bernoulli_factory,exact_velocity_ideal_prototype,parameters
+
+rng=np.random.default_rng(2026101302)
+result={&#x27;seed&#x27;:2026101302,&#x27;status&#x27;:&#x27;Floating-point tests of ideal-exact construction; no exact-real certification.&#x27;}
+rows=[]
+for p,margin in [(.1,.7),(.3,.35),(.45,.08),(.49,.015)]:
+    count=[0]
+    def coin():
+        count[0]+=1
+        return bool(rng.random()&lt;p)
+    n=12000
+    samples=np.array([linear_bernoulli_factory(coin,2.,margin,rng) for _ in range(n)])
+    rows.append({&#x27;p&#x27;:p,&#x27;margin&#x27;:margin,&#x27;samples&#x27;:n,&#x27;empirical_probability&#x27;:float(samples.mean()),
+                 &#x27;target&#x27;:2*p,&#x27;standard_error&#x27;:sqrt(2*p*(1-2*p)/n),&#x27;mean_input_flips&#x27;:count[0]/n,
+                 &#x27;proven_input_flip_bound&#x27;:19/margin})
+result[&#x27;factory_checks&#x27;]=rows
+A,B,RHO=1.,1.1,.2
+initial=DiscreteVariance((A,B),(.5,.5))
+r,g,c,integral=parameters(A,B,RHO)
+result[&#x27;parameters&#x27;]={&#x27;a&#x27;:A,&#x27;b&#x27;:B,&#x27;rho&#x27;:RHO,&#x27;r&#x27;:r,&#x27;proposal_variance&#x27;:g,&#x27;envelope_C&#x27;:c,
+    &#x27;integrated_inverse_lower_bound&#x27;:integral,&#x27;input_coin_expectation_bound&#x27;:19*c*c*integral,
+    &#x27;degree_expectation_per_input_coin&#x27;:r/(RHO-r)}
+rows=[]
+for t in [0.,3.,100.,1e6]:
+    n=4500; samples=[];proposals=[];coins=[];degrees=[];splits=[]
+    start=time.perf_counter()
+    for _ in range(n):
+        v,w=exact_velocity_ideal_prototype(t,A,B,RHO,initial,rng)
+        samples.append(v);proposals.append(w.proposals);coins.append(w.input_coins)
+        degrees.append(w.total_degree);splits.append(w.effective_splits)
+    samples=np.array(samples);sq=np.sum(samples*samples,axis=1)
+    covariance=(A+B)/2
+    fourth=15*(covariance**2+((B-A)/2)**2*exp(-t/3))
+    rows.append({&#x27;time&#x27;:t,&#x27;samples&#x27;:n,&#x27;mean_squared_speed&#x27;:float(sq.mean()),
+        &#x27;target_mean_squared_speed&#x27;:3*covariance,&#x27;mean_fourth_speed&#x27;:float((sq*sq).mean()),
+        &#x27;target_mean_fourth_speed&#x27;:fourth,&#x27;fourth_speed_standard_error&#x27;:float((sq*sq).std(ddof=1)/sqrt(n)),
+        &#x27;mean_proposals&#x27;:float(np.mean(proposals)),&#x27;expected_proposals&#x27;:c,
+        &#x27;mean_input_coins&#x27;:float(np.mean(coins)),&#x27;mean_total_degree&#x27;:float(np.mean(degrees)),
+        &#x27;mean_effective_splits&#x27;:float(np.mean(splits)),&#x27;runtime_seconds&#x27;:time.perf_counter()-start})
+result[&#x27;sampler_checks&#x27;]=rows
+Path(&#x27;exact_results.json&#x27;).write_text(json.dumps(result,indent=2))
+print(json.dumps(result,indent=2))
+</pre>

@@ -1,0 +1,347 @@
+# Phonon-phase recoil: retained addressing qualification and conditional bounds
+
+Pinned capital: `b34e22e8f8ef8bd853595952fcbd9c74c5ace306`.
+The pasted mission is source data. The current integration request governs work.
+No physical operation, atomistic simulation or fabricated material rate is used.
+
+## Disposition and exact source contract
+
+Preserve this work as a specific, falsifiable physical hypothesis and a checked
+kinematic audit. Its proposed output is a retained basis-resolved occupancy or
+conversion imbalance under a broad, phase-locked electron beam. It establishes
+neither an acquired elemental-Te retained-event law nor useful addressing,
+throughput, room-temperature retention, manufacturing advantage or historical
+priority. It does not establish a civilization-enabling breakthrough.
+
+The initial paste contains 165 lines. The subsequently supplied
+`astra_phonon_recoil_audit.zip` contains README, arithmetic code and reported JSON;
+it supplies no Hamiltonian, trajectory ensemble or defect-yield data. All three
+files were read. The script was copied to private scratch before replay.
+The 43 numeric leaves and 12 other leaves agree within stated tolerance;
+one hazard-ratio value differs by 1.24e-16 relative roundoff. The preserved
+producer JSON is not byte-identical to replay output. See `REPLAY_RECEIPT.json`.
+No producer hash manifest was supplied. Intake hashes are provenance, not a
+producer signature or independent scientific validation.
+
+This is a new mechanism hypothesis alongside N774, rather than a demonstration
+of its ionic pump. N774's phase-odd direct-force counterexample remains a warning
+against identifying a mechanism from phase contrast alone. N777 supplies the
+configuration-level committor/control distinction; N783 supplies full-state,
+terminal retained-reward accounting. None supplies the missing Te reaction law.
+The three new conditional constructions below are integration-derived. They
+apply standard optimization, Gaussian testing and controlled competing-risk
+reasoning; they are not priority claims for those mathematical subjects.
+
+## Primary-source and arithmetic audit
+
+The primary [Te article](https://arxiv.org/html/1011.0090v1) describes a
+polycrystal, a three-atom helix and radial A1 motion. Its strongest case is at 3 K:
+3.24 THz, 0.81 ps damping, 1.4e21/cm3 carriers and 1.57 eV pump photons. The
+0.24 angstrom displacement comes from an optical formula using estimated
+dielectric derivatives, not direct atomic coordinates. Competing E modes also
+appear there. Fluences 3.3 and roughly 4.5 mJ/cm2 denote strongest excitation
+and observed damage threshold, not a fatigue margin for a thin single crystal.
+The [published record](https://doi.org/10.1103/PhysRevB.82.195202) confirms the
+cryogenic amplitude estimate. Coordinate normalization, sampled volume and
+carrier-dependent potential must be reconciled before using its time derivative.
+
+Independent SI arithmetic gives stationary maximum recoil energies 1.88795,
+6.67346 and 12.8051 eV at 100, 300 and 500 keV. At 300 keV, one picometre at
+3.24 THz gives speed 20.3575 m/s, recoil shift 0.0855284 eV and one-versus-other
+splitting 0.128293 eV. Its recoil-only equivalent beam shift is 3.13372 keV.
+Mass uses the [CIAAW Te standard](https://ciaaw.org/tellurium.htm); SI constants
+are from [2022 CODATA](https://physics.nist.gov/cuu/Constants/Table/allascii.txt).
+The natural-average mass is not a guarantee for an isotopically selected sample.
+
+Using the primary lattice constants a=4.456 and c=5.927 angstrom with three atoms
+per hexagonal cell gives 2.94351e22/cm3 and the quoted absorption estimate
+0.0746728 eV/atom. A literal undamped 0.24 angstrom per-atom radial amplitude gives
+488.580 m/s and 0.157845 eV/atom, a factor 2.11383 larger. This corroborates the
+source's input-compatibility flag. It does not refute the experiment: the
+inferred coordinate and energy-volume boundary have not been acquired. Under
+the explicitly optimistic equal-amplitude, no-other-reservoir assumption, the
+all-absorbed-energy speed ceiling is about 336.05 m/s. This is not an achievable
+operating point or an efficiency estimate. Source density-based arithmetic is
+separately preserved in its replay; the small independent difference comes from
+using the primary cell volume instead of its tabulated mass density.
+
+[Graphene displacement measurements](https://doi.org/10.1103/PhysRevLett.108.196102)
+established that lattice vibration matters; they do not qualify Te.
+The primary [finite-temperature graphene study](https://arxiv.org/html/1811.04011v4)
+finds distributed displacement thresholds influenced by neighbours and warns
+that classical MD velocities underestimate its phonon-DOS velocities. Its
+threshold numbers must not be transferred. Neither a scalar thermal width nor
+a fixed retained threshold is acquired for the proposed Te specimen. The
+7.9 eV value is not used. Its original binary-semiconductor publisher pages
+were inaccessible in this audit; source reports concerning that value are not
+promoted to a separately revalidated elemental-material parameter.
+
+The [Te photoexcitation calculation](https://doi.org/10.1103/PhysRevB.65.054302)
+couples carriers, optical absorption, diffusion and lattice dynamics. Opposite
+delays do not establish matched electronic states. The [28 fs electron study](https://doi.org/10.1038/ncomms9723)
+used 25 keV single-electron pulses, reported 28+/-5 fs FWHM and timing stability
+below 5 fs rms, and observed broadening with additional electrons. These are
+temporal-resolution precedents, not a joint 300 keV/current/processing contract.
+Gaussian convolution independently gives 0.91081, 0.68819 and 0.22431 at 50,
+100 and 200 fs FWHM for a linear 3.24 THz sinusoid. It is not a nonlinear-yield
+attenuation law. Extra independent timing jitter adds variance before convolution.
+
+## Construction 1: attainable mode contrast is a convex geometric quantity
+
+Fix a collision impulse and a supplied legal instantaneous velocity subspace.
+Let u be orthonormal mass-weighted velocity coordinates, so kinetic energy per
+specified control volume is ||u||^2/2. Let the first-order recoil shift of basis
+site j be l_j dot u. For a selected site t and finitely many unwanted classes i,
+put g_i=l_t-l_i. Under the kinetic budget ||u||^2/2<=E, the largest worst-class
+energy separation is exactly
+
+    max_u min_i g_i dot u = sqrt(2E) dist(0, conv{g_i}).       (1)
+
+Proof. Let z be the closest point of the convex hull to zero. For every u,
+min_i g_i dot u <= z dot u <= sqrt(2E)||z||. If z!=0, the projection inequality
+g_i dot z >= ||z||^2 holds for every i. Choosing u=sqrt(2E)z/||z|| attains the
+bound. If z=0, the upper bound is zero and u=0 attains it. QED.
+
+This identifies an exact obstruction: zero in that convex hull prevents a
+strictly positive linear margin against all unwanted classes. Conversely, a
+positive distance supplies an optimal velocity direction *inside the supplied
+subspace*. It supplies neither an actuator nor a retained-event threshold.
+If reachable velocities form a smaller/nonlinear set, use that set instead;
+the ball relaxation is only an upper bound. Mode frequencies, phase control,
+stiffness, damping, pump coupling and electronic excitation are acquired costs.
+This is the velocity counterpart of N774/N777 joint-control geometry, not a
+transfer of their ionic-current formula or a claim that spectral peaks determine
+controllability.
+
+For Te's prescribed radial A1 mode, target zero has projected velocity
+v cos(theta), while the other classes are at theta-120 and theta-240 degrees.
+The minimum of the two gaps is bounded by their average, 1.5v cos(theta)<=1.5v.
+Thus theta=0, giving (v,-v/2,-v/2), is max-min optimal for that one mode.
+There is no hidden azimuthal improvement within it.
+
+A useful conditional alternative is a zero-net-momentum, collinear three-atom
+velocity space. At total per-cell kinetic energy Ecell and common mass M,
+(1) gives maximum velocity margin sqrt(3Ecell/M), attained by
+(a,-a/2,-a/2) along the recoil direction. The native radial pattern spends half
+its kinetic energy in perpendicular components at the optimal azimuth, so its
+margin is sqrt(1.5Ecell/M). The full collinear relaxation is sqrt(2) larger.
+This is an actuator-search target, not an acquired Te mode combination. Arbitrary
+phase/amplitude mixing of unequal-frequency A1 and E modes is not granted.
+
+## Finite-angle correction and what a phase test identifies
+
+In the heavy-target approximation, take incoming unit beam direction b and
+outgoing direction b-prime at scattering angle chi. Ignoring relative changes
+of electron momentum of order nuclear recoil/electron energy,
+
+    q=p(b-b-prime), |q|=2p sin(chi/2),
+    Tstat=Tmax sin^2(chi/2), Tmax=2p^2/M.
+
+The energy gain identity DeltaK=q^2/(2M)+q dot v holds for the actual impulse.
+It does not make the outgoing momentum independent of v in the exact collision.
+For an azimuthally symmetric angular kernel and scalar retained response g(T),
+the transverse first-order velocity contribution averages to zero and
+
+    <q dot v>_azimuth=2p sin^2(chi/2) v_parallel.
+
+Consequently, let Y(E,v)=integral w_E(chi)g(Tstat+q dot v) dOmega. Assume
+g has three continuous derivatives, w_E is differentiable in E, and the
+derivatives used in the Taylor expansions have integrable uniform dominators
+on the energy/angle range. Write D^(1) for the term linear in v of the half
+opposite-velocity yield difference, and S^(0)=partial_E Y(E,0). Then
+
+    D^(1) = 2p v_parallel integral w_E sin^2(chi/2) g'(Tstat) dOmega,
+    S^(0) = Tmax' integral w_E sin^2(chi/2) g'(Tstat) dOmega + K_E,
+    K_E=integral (partial_E w_E) g(Tstat) dOmega,
+    D^(1)/(S^(0)-K_E)=2p v_parallel/Tmax'.                 (2)
+
+The actual source observables obey D=D^(1)+O(||v||^3) and
+S=S^(0)+O(||v||^2) under those dominated smoothness assumptions. Thus (2) is a
+linearized/baseline coefficient identity, not an exact nonlinear yield law.
+The last ratio assumes its denominator is nonzero. It extends the source's
+leading recoil-only benchmark beyond near-backscatter under the *additional*
+azimuthal/common-scalar-response premises. A normalized, energy-independent
+angular kernel has K_E=0. Mott cross sections, angular detector acceptance,
+direction-dependent escape/recombination and neighbour velocities do not
+automatically satisfy them. Their uncertainty must enter the test.
+
+An axial beam is not identical to an axial impulse at every scattering angle:
+finite-angle collisions retain transverse impulses. The first-order axial
+average null above needs the symmetry premises. Exact backscatter gives the
+literal projection null. Ideal screw symmetry plus matching illumination and
+boundaries also makes equivalent basis yields equal for an axial geometry;
+thin surfaces/supports and anisotropic acceptance can break that symmetry.
+
+For a common scalar g with four bounded continuous derivatives near T and
+a=qv, the three-site moment identities give
+
+    sum_j g(T+a cos(theta-2pi j/3))
+       =3g(T)+(3/4)a^2g''(T)+(1/8)a^3 cos(3theta)g'''(T)+O(a^4).
+
+Total yield loses the first-order signal, but need not lose all phase-odd
+response: a cubic threefold term survives. A basis contrast has first-order
+coefficient 1.5a g'(T) at theta=0. These conditional signatures are diagnostic
+predictions, not unique mechanism identifiers. A phase-dependent electronic
+barrier model can reproduce a prescribed scalar energy-shift response. Acquiring
+the atomic/electronic trajectory, energy-angle dependence and retention is
+essential, as it was for the N774 competing-force counterexample.
+
+## Construction 2: Gaussian overlap imposes a selectivity-throughput tradeoff
+
+Suppose the *entire state accessible to the retained-event response* under the
+two mapped basis classes has Gaussian laws Pt=N(mu_t,Sigma), Pu=N(mu_u,Sigma).
+Their common retained-event kernel is a measurable function 0<=g<=1. This
+includes randomized outcomes and independent common downstream noise. It is a
+supplied statistical contract, not inferred from chemical equivalence.
+Assume Delta=mu_t-mu_u lies in the support of Sigma; let
+
+    d^2=Delta^T Sigma^+ Delta, pt=E_t[g], pu=E_u[g].
+
+Then the exact, sharp lower boundary is
+
+    pu >= Phi(Phi^-1(pt)-d).                               (3)
+
+Proof. Whiten the supported coordinates and choose the first coordinate along
+Delta. The log density ratio is an increasing affine function of that coordinate;
+all perpendicular coordinates have the same conditional law. Among responses
+with fixed pt, moving response weight from a smaller likelihood ratio to a
+larger one reduces pu. A half-space threshold is therefore optimal. Its target
+normal tail is pt and its unwanted tail is Phi(Phi^-1(pt)-d). Boundary randomization
+handles endpoints. This proves (3) without assuming an energy threshold. QED.
+If Delta has a component outside the common support, the two laws may be
+mutually singular and this finite-d bound does not apply.
+
+For the restrictive local recoil-only scalar model, equal thermal projected
+velocity variance sigma_v^2 and the optimal A1 pattern give d=1.5v/sigma_v.
+Demanding pt>=.99 and pu<=.01 *per calibrated collision opportunity* requires
+d>=2Phi^-1(.99)=4.65270. If additionally sigma_v^2=kBT/M, then
+
+    epsilon_coh >= (2/9)[2Phi^-1(.99)]^2 kBT.               (4)
+
+At the hypothetical classical 300 K point this is about 0.12436 eV/atom.
+Using even the 0.07467 eV all-coherent ceiling would give d<=3.6053 and
+pu>=0.10046 when pt=.99. This falsifies simultaneous .99/.01 *single-opportunity*
+performance within that scalar model and budget. It is not a Te no-go: the
+source's strongest measurement is 3 K, actual covariance/quantum phonons are
+unacquired, and the true retained response sees neighbours/electronics.
+Projecting a richer physical state to one velocity can remove distinguishability;
+one must not apply (3) to that projection when g depends on omitted variables.
+
+For repeated rare events, high hazard ratio is possible in Gaussian tails, at
+an explicit target-rate cost. If target/unwanted rates share the same collision
+opportunity prefactor and require ratio R>1, (3) implies
+
+    Phi(z-d) <= Phi(z)/R, z=Phi^-1(pt).                    (5)
+
+The largest admissible pt is the equality root. In the illustrative 300 K local
+model at measured amplitudes 1,2,5,10 pm, the ceilings for R=458.2106 are about
+1.01e-171, 3.00e-43, 5.01e-7 and .08392. These are conditional event probabilities,
+not acquired per-incident-electron Te cross sections. Geometry and elastic
+opportunity probability add further factors. No throughput claim follows.
+Gaussian timing mixtures are not Gaussian states merely because their mean
+sinusoid is attenuated; substituting the attenuated mean into (3) is not legal
+without the full mixture law or a justified conservative bound. Additional
+classical or quantum correlations likewise require their acquired state model.
+
+## Construction 3: exact global-write bound even with adaptive stopping
+
+Define a finite irreversible model with n unfinished target sites and m>=1
+unwanted sites. Each remaining target has the same instantaneous rate rt, each
+unwanted site has rate ru; legal predictable global controls may depend on the
+full past but always satisfy rt<=R ru for a finite acquired R. Conditional
+intensities are these full-state rates, not marginal fits. Events occur singly,
+unwanted events cause failure, and each target completion permanently reduces
+the unfinished count by one. Completed targets incur no further damage in this
+optimistic model. Success is all n targets completed before any unwanted event.
+Perfect instantaneous observation/stopping is allowed as an upper relaxation.
+Freezing or abandoning unfinished targets does not count as success.
+
+Every such adaptive protocol satisfies the sharp upper bound
+
+    P(success) <= V(n)=product_{k=1}^n kR/(kR+m).           (6)
+
+Proof. Set V(0)=1 and V(failure)=0. At k unfinished sites the stopped generator
+acts on V as k rt[V(k-1)-V(k)]-m ru V(k). Using
+V(k)=kR V(k-1)/(kR+m), this is
+km V(k-1)(rt-Rru)/(kR+m)<=0. Thus stopped V is a bounded supermartingale.
+At finite time success mass is at most its initial value; take monotone limits.
+No finite mean completion time is needed for this upper bound. Constant positive
+rates at rt=Rru attain it with eventual absorption and immediate stopping. QED.
+Common clock acceleration cancels from (6). This is a concrete composition of
+N777's objective residual principle with N783's full-state terminal reward;
+neither theorem supplies these rates for Te.
+
+For one target and one unwanted site, ideal feedback permits .99 success only
+when R>=99, with equality reached in the infinite waiting horizon. The source's
+458.2106 fixed-dose number is correct for its different contract: separate
+target conversion>=.99 and unwanted conversion<=.01 without event-conditioned
+stopping. Feedback is therefore a meaningful changed interface, not a numerical
+correction to that source calculation.
+
+Parallel fidelity remains costly even under ideal feedback. At per-site
+R=458.2106, (6) gives global success about .88126 for (n,m)=(10,20), .11832 for
+(100,200), and 3.35e-12 for (1000,2000). To permit .99 global success the exact
+minimum R values are about 5823.31, 103196.45 and 1489376.66. These global
+specifications are illustrative; many useful materials tasks tolerate finite
+defect fractions rather than requiring every site correct. Those are different
+terminal rewards and should be assessed as such.
+
+Writing H_n=sum_{k=1}^n1/k gives
+
+    (m/R)H_n - (m/R)^2 sum_k k^-2/2 <= -log V(n) <= (m/R)H_n.
+
+Thus the large-R small-error requirement scales approximately m H_n/epsilon.
+For the saturating constant-rate model, completion without early failure
+stopping has mean mobility dose H_n/rt and expected unwanted count mH_n/R;
+count expectation is distinct from a no-damage probability. A deterministic
+feedback latency tau further decreases the one-target constant-rate no-unwanted
+probability to R/(R+1) exp(-ru tau). Detector false negatives, readout damage
+and completed-site overexposure add obligations; they cannot be silently omitted
+from a claimed operating process.
+
+Healing, passivation after completion, spatially selective removal of completed
+targets, state-dependent branching changes or correlated multi-site events can
+escape this model. Each needs the joint configuration-level transition law and
+terminal retention reward. Merely invoking feedback or repeating a pulse does
+not establish that changed interface. The general N783 superharmonic-potential
+framework is the appropriate next abstraction when (6)'s symmetric model fails.
+
+## Comparator, decisive gate and charged resources
+
+The direct [60 keV Si/graphene bond-inversion experiment](https://doi.org/10.1103/PhysRevLett.113.115501)
+already measured retained atom movement. A current [magnetic-bit experiment](https://doi.org/10.1038/s41467-026-74996-9)
+reports electron-induced NiFe2O4 phase patterning with live column-intensity
+feedback, about 4 nm magnetic bits, approximately four minutes and 1.6e4
+electrons/angstrom2 for a representative conversion, and preserved structure
+after 24 days. This is primary, material-specific precedent for retained
+electron fabrication and feedback. It is not a same-specimen Te comparator or
+proof of its claims beyond the observed scope. A hypothesis must demonstrate
+parallel selection of equivalent classes and useful output beyond such actual
+operations. The combined coherent-phonon/recoil operation's novelty is UNKNOWN;
+bounded searches found no matching demonstration but do not establish absence.
+
+The next decisive result is a same-specimen phase-resolved, basis-resolved,
+energy-angle-dose retained-event curve with uncertainty, independently calibrated
+atomic velocity and electronic state, pump-only/electron-only/random-phase
+controls, axial and azimuthal controls in their proper symmetry scope, and
+post-pump retention at a declared temperature/horizon. Readout-only exposure must
+be measured separately. First establish useful branching; a transient structural
+oscillation or total-damage modulation does not meet this output contract.
+
+The resource boundary includes lamella fabrication and supports, crystallographic
+and surface calibration, laser wall energy and absorbed/coherent/incoherent
+fractions, electron source and acceleration/compression losses, collision-angle
+acceptance and lost electrons, cryogenics/heat removal, clock/jitter monitoring,
+electronic-state measurement, sensing/feedback latency and compute, readout
+damage, sample replacement/fatigue, and the counted verified retained products.
+Incident kinetic energy, sample-deposited heat and total wall energy are separate
+quantities. All costs and rates for a qualified Te process remain UNKNOWN.
+No source-energy advantage follows from the impulse cross term alone.
+
+`independent_checks.py` checks 81 three-site moments, 300 supplied-subspace
+geometries, 96 finite-angle averages, 30 Gaussian extremizer equalities,
+54 smooth-response inequalities and 240 exact rational adaptive Bellman
+fixtures. Floating calculations are diagnostic, not outward interval certificates.
+These finite checks do not prove all quantifiers or qualify the physical model.
+The written arguments, source status and precise missing inputs must travel
+together in capital. No physical capability gate is closed by this intake.

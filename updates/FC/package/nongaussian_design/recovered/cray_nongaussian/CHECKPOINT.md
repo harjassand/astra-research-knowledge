@@ -1,0 +1,21 @@
+# Continuation checkpoint
+
+## Retain
+
+The proved operation uses a label histogram in an actual interacting reference Gibbs state, and a bound C>=ZH/Zpinched. The latter follows from local block-transition norms via max diag exp(beta*g), or from the measured local kinetic expectation tau via exp(-beta*tau). An adversarial removal of probability mass 1-1/C produces a lower partition-ratio bound; Golden–Thompson supplies the upper. No Gaussian bath assumption is made.
+
+All finite-label diagonal counterfactuals are covered by the same histogram event. If each relevant label probability exceeds eta=1-1/C, the absolute free-energy width is bounded independently of target-shift magnitude. This is not a claim for arbitrary chemical transformations.
+
+A separate sharp block partition theorem uses M_ii=log z_i and M_ij=beta||T_ij||. Individual block traces are bounded by diag exp M. Sharpness pertains to supplied block partition weights and upper transition norms, not to the final histogram interval.
+
+## Executed evidence
+
+640 random reweighting tests on 160 complex block matrices; 150 kinetic-budget checks; a 3136-dimensional canonical Hubbard control; simulated 30000-shot histogram; rational interval and sign certificate with conditional coverage >99.5%. The target cost 0.975 was adaptively chosen from the acquired threshold curve, not externally benchmarked. No physical experiment or hard solver comparison was completed.
+
+## Do not lose these limitations
+
+Equilibration/preparation and independent sampling are NOT solved. Stationarity is not a Gibbs certificate. Weak local tunnelling can improve C while slowing exchange. A linewidth is not a total hopping norm. Arbitrary geometry/hopping changes are not diagonal interventions. Fixed-sector and thermal reference conventions must be preserved. No general beta-to-infinity ground-energy claim. No theorem from Astra or OpenAI/math is an unverified premise. Historical priority of the combination is unresolved.
+
+## High-value substantive obligations
+
+Select a real programmable correlated defect for which the local observable, kinetic calibration and equilibrium error can all be established. Compare direct thermodynamic integration/local spectroscopy and strong model-based approaches under the same acquired information and accuracy. Determine whether the mathematical operation is already present in the reverse Golden–Thompson, block compression or quantum free-energy perturbation literature. Improve measurement-based activity bounds without demanding expensive tomography or supplied equilibrium certificates. Do not count more small-matrix sharpness tests as a scientific breakthrough.
