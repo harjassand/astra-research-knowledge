@@ -1,0 +1,98 @@
+"""Balanced stochastic frame grammar; no state-graph enumeration.
+
+A fresh strip is cyclically rotated by a uniformly selected vacant pivot.
+The exact density of its endpoint law is m/K on the event that its first
+site is vacant.  The scalar moment recurrence is in balanced_certificate.py.
+Microscopic words are for testing.  Their full execution is not required by
+the analytic certificate, and is not claimed affordable for L=4096.
+"""
+from __future__ import annotations
+from dataclasses import dataclass
+import numpy as np
+from frame_grammar import (Site,Swap,Rect,Gate,Instruction,PortModule,children,
+                           expansion,strip,preparatory_words,line_word,apply)
+
+
+def rotation_word(sites:list[Site],r:int)->list[Swap]:
+    """Left cyclic rotation by r using at most m*(m-1) adjacent swaps."""
+    return [(sites[i],sites[i+1]) for _ in range(r) for i in range(len(sites)-1)]
+
+
+@dataclass
+class BalancedInstruction:
+    kind:str
+    payload:object
+    pivot_count:int=1
+    def word(self)->list[Swap]:
+        if self.kind=='base':return list(self.payload)
+        rect,direction,r=self.payload
+        new=strip(rect,direction);rot=rotation_word(new,r)
+        if direction in ('R','U'):
+            pre=[s for w in preparatory_words(rect,direction) for s in w]
+            return pre+rot+pre[::-1]
+        y0,x0,y1,x1=rect
+        old=([(y,x0) for y in range(y0,y1)] if direction=='L'
+             else [(y0,x) for x in range(x0,x1)])
+        return rot+line_word(old,new,0)
+
+
+def rotate_endpoint(a:np.ndarray,sites:list[Site],r:int,tags:dict[str,Site])->None:
+    values=[int(a[s]) for s in sites];m=len(sites)
+    for i,s in enumerate(sites):a[s]=values[(i+r)%m]
+    index={s:i for i,s in enumerate(sites)}
+    for name,pos in list(tags.items()):
+        if pos in index:tags[name]=sites[(index[pos]-r)%m]
+
+
+def plan_balanced(a:np.ndarray,rect:Rect,gate:Gate,tags:dict[str,Site],rng)->list[BalancedInstruction]:
+    if not gate.good(rect):raise ValueError('gate failed')
+    y0,x0,y1,x1=rect;n=y1-y0;instructions=[]
+    if n==2:
+        occupied=[(y,x) for y in range(y0,y1) for x in range(x0,x1) if a[y,x]]
+        moves=[]
+        if occupied:
+            assert len(occupied)==1
+            u=occupied[0];target=(y1-1,x1-1)
+            if u[1]!=target[1]:
+                v=(u[0],target[1]);moves.append((u,v));u=v
+            if u[0]!=target[0]:moves.append((u,target))
+        for s in moves:apply(a,s,tags)
+        instructions.append(BalancedInstruction('base',moves))
+    else:
+        child=children(rect)[gate.cache[rect]]
+        instructions.extend(plan_balanced(a,child,gate,tags,rng))
+        for current,direction,new in expansion(child,rect):
+            zeros=[i for i,s in enumerate(new) if a[s]==0]
+            if not zeros:raise AssertionError('growth gate violated')
+            r=int(rng.choice(zeros))
+            instructions.append(BalancedInstruction('grow',(current,direction,r),len(zeros)))
+            rotate_endpoint(a,new,r,tags)
+            if direction in ('L','D'):
+                Y0,X0,Y1,X1=current
+                old=([(y,X0) for y in range(Y0,Y1)] if direction=='L'
+                     else [(Y0,x) for x in range(X0,X1)])
+                for u,v in zip(old,new):apply(a,(u,v),tags)
+    assert not a[y0:y1,x0].any() and not a[y0,x0:x1].any()
+    return instructions
+
+
+def make_balanced_module(state:np.ndarray,ports:tuple[Site,Site],rng)->PortModule:
+    L=min(state.shape)
+    if state.shape not in ((L,2*L),(2*L,L)):raise ValueError('invalid two-block rectangle')
+    forced=state.copy()
+    for s in ports:forced[s]=1
+    gate=Gate(forced.copy());tags={'a':ports[0],'b':ports[1]}
+    first=(0,0,L,L);second=((0,L,L,2*L) if state.shape[1]==2*L else (L,0,2*L,L))
+    if not(gate.good(first) and gate.good(second)):raise ValueError('gate failed')
+    prep=plan_balanced(forced,first,gate,tags,rng)+plan_balanced(forced,second,gate,tags,rng)
+    assert all(y>0 and x>0 for y,x in tags.values())
+    return PortModule(L,ports,state.shape,prep,(tags['a'],tags['b']))
+
+
+def sample_weight(module:PortModule):
+    """Exact probability of the sampled pivot history, conditional on input."""
+    from fractions import Fraction
+    weight=Fraction(1)
+    for instruction in module.preparation:
+        weight/=instruction.pivot_count
+    return weight
