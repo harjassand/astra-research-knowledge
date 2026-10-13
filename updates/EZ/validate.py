@@ -105,9 +105,11 @@ def main():
     before=json.loads(git('show',BASE+':indexes/query_aliases.json'));need(all(load('indexes/query_aliases.json').get(k)==v for k,v in before.items()),'historical aliases changed')
     before=json.loads(git('show',BASE+':web/catalog.json'));need(load('web/catalog.json')[:len(before)]==before,'historical web records changed')
     changed=git('diff','--name-only',BASE).decode().splitlines()
+    historical=set(git('ls-tree','-r','--name-only',BASE).decode().splitlines())
     immutable=('cards/','frontier/cards/','state/checkpoints/','technology/records/','evaluation/workflows/records/','updates/')
     for p in changed:
-        if p.startswith(immutable):need(p.startswith('updates/EZ/'),'historical immutable artifact changed: '+p)
+        if p in historical and p.startswith(immutable):
+            need(p.startswith('updates/EZ/'),'historical immutable artifact changed: '+p)
     publication=load('updates/EZ/PUBLICATION_STATUS.json')
     need(publication['standard_publisher_exit_code']!=0 and len(publication['individually_validated_new_checkpoints'])==4,'global failure/fallback misreported')
     for r in publication['inherited_records_preserved']:
