@@ -1,0 +1,200 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — pair_fluorescence_test.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Substantively different transmon erasure-readout attempt.
+
+Selective e&lt;-&gt;h two-photon microwave drive and Floquet-assisted h-&gt;e emission
+of two cavity photons. Preferred G106, source maximum frequency, all positive
+frequency a/b output harmonics, finite cosine microwave ramps, photon-count
+receiver, no terminal projector. Finite Floquet-RWA model only; the parent
+pump waveform/bath and intrinsic higher-level rates remain unacquired.
+&quot;&quot;&quot;
+import sys
+sys.dont_write_bytecode=True
+from pathlib import Path
+import argparse
+import json
+import time
+import numpy as np
+from scipy import sparse as sp
+from scipy.sparse.linalg import expm_multiply
+SOURCE=Path(&#x27;/Users/harjas/Documents/Codex/2026-10-13/astra-genesis-civilization-enabling-breakthrough-discovery&#x27;)
+sys.path.insert(0,str(SOURCE/&#x27;work/phase5/quantum_operation&#x27;))
+import floquet_record_instrument as f
+ROOT=Path(__file__).resolve().parent
+
+
+def model(qdim=5,nf=6,epsilon=217.28013507543088):
+    f.ecr.MEASURED_HALF_GE_CAVITY_SHIFT_MHZ=.5
+    g=f.ecr.calibrate_g();f.f.G=g;f.f.DELTA=-2203.
+    # Analytic sideband condition Delta+Omega=-3alpha/2=270MHz. Original JC
+    # dispersive corrections move it, so inspect only a bounded local crossing.
+    scan=[]
+    for omega in np.arange(2463.,2484.,1.):
+        block=f.f.floquet_block(3,epsilon,omega,sambe_half=5,ramp_steps=24)
+        ee=block[&#x27;values&#x27;][1]+omega;hh=block[&#x27;values&#x27;][3]+3*omega
+        scan.append({&#x27;omega_MHz&#x27;:float(omega),&#x27;e2_h0_gap_MHz&#x27;:float(abs(ee-hh))})
+    omega=min(scan,key=lambda row:row[&#x27;e2_h0_gap_MHz&#x27;])[&#x27;omega_MHz&#x27;]
+    blocks={N:f.f.floquet_block(N,epsilon,omega,sambe_half=5,ramp_steps=24) for N in range(qdim+nf)}
+    basis=[(q,n) for q in range(qdim) for n in range(nf)]
+    idx={state:i for i,state in enumerate(basis)};dim=len(basis)
+    energies=np.array([blocks[q+n][&#x27;values&#x27;][q]+q*omega for q,n in basis])
+    rf_detuning=(energies[idx[(3,0)]]-energies[idx[(1,0)]])/2
+    totals=np.array([q+n for q,n in basis])
+    energies-=rf_detuning*totals
+    calibration=f.static_vacuum_rates(g)
+    collapse={&#x27;a&#x27;:{},&#x27;b&#x27;:{}};outside=np.zeros(dim);drive=np.zeros((dim,dim),complex)
+    vacuum=[]
+    for i,(qi,n) in enumerate(basis):
+        N=qi+n
+        if N==0:continue
+        source,target=blocks[N],blocks[N-1]
+        for qo in range(len(target[&#x27;values&#x27;])):
+            no=N-1-qo
+            for bath,extractor in [(&#x27;a&#x27;,f.f.cavity_loss_harmonics),(&#x27;b&#x27;,f.bath_harmonics)]:
+                harmonics=extractor(source,target,qi,qo)
+                scale=f.KAPPA if bath==&#x27;a&#x27; else calibration[2 if qi&gt;=2 else 1][&#x27;bath_scale&#x27;]
+                for ell,z in harmonics.items():
+                    physical=7153.+source[&#x27;values&#x27;][qi]-target[&#x27;values&#x27;][qo]-ell*omega
+                    if physical&lt;=0 or abs(z)&lt;1e-10:continue
+                    k=ell+qi-qo
+                    if (qo,no) in idx:
+                        j=idx[(qo,no)]
+                        if k not in collapse[bath]:collapse[bath][k]=np.zeros((dim,dim),complex)
+                        collapse[bath][k][j,i]+=np.sqrt(scale)*z
+                        # Qubit microwave carrier omega_r-Omega, represented
+                        # by harmonic k=1 in this slow Floquet gauge.
+                        if bath==&#x27;b&#x27; and k==1:drive[j,i]+=z
+                    else:outside[i]+=scale*abs(z)**2
+                    if n==0 and scale*abs(z)**2&gt;1e-6:
+                        vacuum.append({&#x27;input_q&#x27;:qi,&#x27;output_q&#x27;:qo,&#x27;output_n&#x27;:no,&#x27;bath&#x27;:bath,
+                                       &#x27;harmonic_k&#x27;:k,&#x27;frequency_MHz&#x27;:float(physical),&#x27;rate_per_us&#x27;:float(scale*abs(z)**2)})
+    return {&#x27;dim&#x27;:dim,&#x27;basis&#x27;:basis,&#x27;energies&#x27;:energies,&#x27;drive&#x27;:drive,&#x27;collapse&#x27;:collapse,&#x27;outside&#x27;:outside,
+            &#x27;diagnostics&#x27;:{&#x27;G_MHz&#x27;:g,&#x27;epsilon_MHz&#x27;:epsilon,&#x27;omega_MHz&#x27;:omega,
+                           &#x27;frequency_range_MHz&#x27;:[4950.-epsilon,4950.+epsilon],
+                           &#x27;rf_frequency_MHz&#x27;:7153.-omega+rf_detuning,
+                           &#x27;rf_detuning_MHz&#x27;:float(rf_detuning),&#x27;local_crossing_scan&#x27;:scan,
+                           &#x27;higher_level_b_bath_scale_per_us&#x27;:calibration[2][&#x27;bath_scale&#x27;],
+                           &#x27;vacuum_channels&#x27;:vacuum,&#x27;maximum_unrepresented_loss_per_us&#x27;:float(outside.max())}}
+
+
+def generators(m,eta):
+    d=m[&#x27;dim&#x27;];I=sp.eye(d,format=&#x27;csr&#x27;)
+    H0=sp.diags(2*np.pi*m[&#x27;energies&#x27;]);Hd=sp.csr_matrix(2*np.pi*(m[&#x27;drive&#x27;]+m[&#x27;drive&#x27;].conj().T))
+    L=-1j*(sp.kron(H0,I)-sp.kron(I,H0.T))
+    Ld=-1j*(sp.kron(Hd,I)-sp.kron(I,Hd.T))
+    J=sp.csr_matrix((d*d,d*d),dtype=complex)
+    for bath,channels in m[&#x27;collapse&#x27;].items():
+        for a in channels.values():
+            C=sp.csr_matrix(a);Q=C.conj().T@C
+            recycle=sp.kron(C,C.conj())
+            L+=recycle-.5*(sp.kron(Q,I)+sp.kron(I,Q.T))
+            if bath==&#x27;a&#x27;:J+=eta*recycle
+    loss=sp.diags(m[&#x27;outside&#x27;])
+    L-=.5*(sp.kron(loss,I)+sp.kron(I,loss.T))
+    return L.tocsr(),Ld.tocsr(),J.tocsr()
+
+
+def run(m,eta,amplitude,flat,ramp,tail,segments,maxcount,modulation=0.,steps_per_period=12,legacy_count_phase=False,legacy_coarse_modulation=False):
+    d=m[&#x27;dim&#x27;];idx={state:i for i,state in enumerate(m[&#x27;basis&#x27;])}
+    z=np.zeros((d*d,4),complex)
+    for col,(left,right) in enumerate([((0,0),(0,0)),((2,0),(2,0)),((1,0),(1,0)),((0,0),(2,0))]):
+        z[idx[left]*d+idx[right],col]=1
+    L,Ld,J=generators(m,eta)
+    # Counts0..maxcount-1 are retained, all higher counts flag. No hidden
+    # qutrit state is used in the receiver; every output branch remains present.
+    bands=sp.diags(np.ones(maxcount-1),-1,shape=(maxcount,maxcount),format=&#x27;csr&#x27;)
+    B0=sp.kron(sp.eye(maxcount),L-J)+sp.kron(bands,J)
+    Bd=sp.kron(sp.eye(maxcount),Ld)
+    values=np.zeros((maxcount*d*d,4),complex);values[:d*d]=z
+    unconditional=z.copy();schedule=[]
+    for j in range(segments):
+        tmid=(j+.5)*ramp/segments
+        schedule.append((ramp/segments,amplitude*(1-np.cos(np.pi*tmid/ramp))/2))
+    schedule.append((flat,amplitude))
+    for j in range(segments):
+        tmid=(j+.5)*ramp/segments
+        schedule.append((ramp/segments,amplitude*(1+np.cos(np.pi*tmid/ramp))/2))
+    schedule.append((tail,0.))
+    if modulation:
+        refined=[]
+        # Midpoint approximation to an explicit finite waveform. The cosine
+        # modulation has zero linear carrier and a nonzero squared DC component.
+        elapsed=0.
+        components=schedule if legacy_coarse_modulation else [(ramp,None),(flat,None),(ramp,None)]
+        for dt,coarse_u in components:
+            if legacy_coarse_modulation and not coarse_u:
+                refined.append((dt,0.));elapsed+=dt;continue
+            steps=max(1,int(np.ceil(dt*modulation*steps_per_period)))
+            sub=dt/steps
+            for j in range(steps):
+                t=elapsed+(j+.5)*sub
+                envelope=(1-np.cos(np.pi*t/ramp))/2 if t&lt;ramp else (1+np.cos(np.pi*(t-ramp-flat)/ramp))/2 if t&gt;ramp+flat else 1.
+                u=coarse_u if legacy_coarse_modulation else amplitude*envelope
+                refined.append((sub,np.sqrt(2)*u*np.cos(2*np.pi*modulation*t)))
+            elapsed+=dt
+        if not legacy_coarse_modulation:refined.append((tail,0.))
+        schedule=refined
+    for j,(dt,u) in enumerate(schedule):
+        G=(B0+u*Bd).tocsr()
+        values=expm_multiply(G*dt,values,traceA=G.diagonal().sum()*dt)
+        Gfree=(L+u*Ld).tocsr()
+        unconditional=expm_multiply(Gfree*dt,unconditional,traceA=Gfree.diagonal().sum()*dt)
+        if j%12==0 or j==len(schedule)-1:
+            print(json.dumps({&#x27;segment&#x27;:j,&#x27;drive_amplitude_MHz&#x27;:u,&#x27;dt_us&#x27;:dt}),flush=True)
+    final=values.reshape(maxcount,d*d,4)
+    cases=[]
+    for cutoff in range(1,maxcount+1):
+        accepted=final[:cutoff].sum(axis=0).T.reshape(4,d,d)
+        populations=np.array([np.diag(mat).real for mat in accepted[:3]])
+        totals=populations.sum(axis=1)
+        gidx=[i for i,(q,n) in enumerate(m[&#x27;basis&#x27;]) if q==0]
+        fidx=[i for i,(q,n) in enumerate(m[&#x27;basis&#x27;]) if q==2]
+        # Physical photon count is retained, so a separate virtual Z may be
+        # applied for each accepted count. This favorable feedforward cannot
+        # restore logical information carried by missed photons.
+        gfcoherence=0.
+        for count in range(cutoff):
+            cross=final[count,:,3].reshape(d,d)
+            gfcoherence+=abs(sum(cross[idx[(0,n)],idx[(2,n)]] for n in range(max(n for q,n in m[&#x27;basis&#x27;])+1)))
+        if legacy_count_phase:
+            gfcoherence=abs(sum(accepted[3,idx[(0,n)],idx[(2,n)]] for n in range(max(n for q,n in m[&#x27;basis&#x27;])+1)))
+        p=(totals[0]+totals[1])/2
+        overlap=(populations[0,gidx].sum()+populations[1,fidx].sum()+2*gfcoherence)/4
+        leakage=(totals[:2].sum()-populations[:2,gidx+fidx].sum())/2
+        cases.append({&#x27;flag_if_detected_count_at_least&#x27;:cutoff,&#x27;code_acceptance&#x27;:float(p),
+                      &#x27;accepted_Choi_infidelity&#x27;:float(1-overlap/p),
+                      &#x27;accepted_terminal_outside_GF_mass&#x27;:float(leakage),
+                      &#x27;prepared_e_flag_probability&#x27;:float(1-totals[2]),
+                      &#x27;initial_g_f_flag_probabilities&#x27;:[float(1-totals[0]),float(1-totals[1])],
+                      &#x27;accepted_cavity_mean_photons_mixed_code&#x27;:float(sum(populations[i,j]*n for i in [0,1] for j,(q,n) in enumerate(m[&#x27;basis&#x27;]))/(2*p))})
+    matrices=unconditional.T.reshape(4,d,d)
+    return {&#x27;parameters&#x27;:{&#x27;eta&#x27;:eta,&#x27;qubit_drive_amplitude_MHz&#x27;:amplitude,&#x27;flat_us&#x27;:flat,
+                           &#x27;ramp_us_each&#x27;:ramp,&#x27;passive_tail_us&#x27;:tail,&#x27;ramp_segments_each&#x27;:segments,
+                           &#x27;RF_sign_modulation_MHz&#x27;:modulation,&#x27;modulation_steps_per_period&#x27;:steps_per_period},
+            &#x27;count_threshold_cases&#x27;:cases,
+            &#x27;represented_unconditional_traces_g_f_e&#x27;:[float(np.trace(mat).real) for mat in matrices[:3]],
+            &#x27;unconditional_cutoff_population_g_f_e&#x27;:[float(sum(mat[i,i].real for i,(q,n) in enumerate(m[&#x27;basis&#x27;]) if n==max(nn for qq,nn in m[&#x27;basis&#x27;]))) for mat in matrices[:3]]}
+
+
+def main():
+    start=time.perf_counter();p=argparse.ArgumentParser()
+    p.add_argument(&#x27;--nf&#x27;,type=int,default=6);p.add_argument(&#x27;--qdim&#x27;,type=int,default=5)
+    p.add_argument(&#x27;--amplitude&#x27;,type=float,default=4.);p.add_argument(&#x27;--flat&#x27;,type=float,default=1.)
+    p.add_argument(&#x27;--modulation&#x27;,type=float,default=0.);p.add_argument(&#x27;--modulation-steps&#x27;,type=int,default=12)
+    p.add_argument(&#x27;--legacy-count-phase&#x27;,action=&#x27;store_true&#x27;,help=&#x27;Replay initial pilot before per-count virtual-Z feedforward.&#x27;)
+    p.add_argument(&#x27;--legacy-coarse-modulation&#x27;,action=&#x27;store_true&#x27;,help=&#x27;Replay historical RF modulation retaining coarse ramp-envelope samples.&#x27;)
+    p.add_argument(&#x27;--segments&#x27;,type=int,default=6);p.add_argument(&#x27;--output&#x27;,default=&#x27;PAIR_FLUORESCENCE_RESULTS.json&#x27;)
+    args=p.parse_args();m=model(args.qdim,args.nf)
+    r=run(m,.5,args.amplitude,args.flat,.1,.8,args.segments,4,args.modulation,args.modulation_steps,args.legacy_count_phase,args.legacy_coarse_modulation)
+    result={&#x27;status&#x27;:&#x27;NEW_ERASURE_FLUORESCENCE_MECHANISM_ATTEMPT_IN_FLOAT_FLOQUET_RWA_MODEL&#x27;,
+            &#x27;arguments&#x27;:vars(args),&#x27;diagnostics&#x27;:m[&#x27;diagnostics&#x27;],&#x27;result&#x27;:r,
+            &#x27;runtime_seconds&#x27;:time.perf_counter()-start,
+            &#x27;limitations&#x27;:[&#x27;Floquet-RWA control projected to the commensurate RF harmonic; finite cosine RF ramps represented piecewise. Pump-on/off and real flux transfer remain separate gates.&#x27;,
+                           &#x27;Flat positive-frequency cavity and intrinsic-b baths; higher-level intrinsic rate continued from source FE calibration, not measured.&#x27;,
+                           &#x27;All cavity photon frequencies counted with eta .5 and no detector dark counts: extra receiver hardware is granted favorably.&#x27;,
+                           &#x27;Bath channels with equal harmonic are combined before secular averaging; full nonsecular driven model remains unvalidated.&#x27;,
+                           &#x27;No ideal terminal projector; code-only normalization is not used.&#x27;]}
+    (ROOT/args.output).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

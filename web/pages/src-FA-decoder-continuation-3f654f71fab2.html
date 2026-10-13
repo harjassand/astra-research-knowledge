@@ -1,0 +1,52 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — verify_block_certificate.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact replay; imports no synthesis code.&quot;&quot;&quot;
+from __future__ import annotations
+import hashlib
+import json
+from pathlib import Path
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+path = HERE / &quot;block_controller_certificate.npz&quot;
+data = np.load(path, allow_pickle=False)
+directions = data[&quot;directions&quot;]
+denominator = int(data[&quot;denominator&quot;])
+kden = int(data[&quot;kden&quot;])
+cap = int(data[&quot;cap&quot;])
+rn, rd = int(data[&quot;radius_numerator&quot;]), int(data[&quot;radius_denominator&quot;])
+extent, lattice = int(data[&quot;extent&quot;]), int(data[&quot;lattice&quot;])
+winning, policy = data[&quot;winning&quot;], data[&quot;policy&quot;]
+assert lattice == denominator * kden
+assert len(winning) == len(directions) + 1 == len(policy) + 1
+assert winning[0, extent, extent]
+coordinates = np.arange(-extent, extent + 1, dtype=np.int64)
+xx, yy = np.meshgrid(coordinates, coordinates)
+ball = (xx * xx + yy * yy) * rd * rd &lt;= (rn * lattice)**2
+assert all(not np.any(layer &amp; ~ball) for layer in winning)
+assert np.all(np.sum(directions * directions, axis=1) &lt;= denominator**2)
+transitions = 0
+for step, (vx, vy) in enumerate(directions):
+    rows, cols = np.where(winning[step])
+    actions = policy[step, rows, cols].astype(np.int64)
+    assert np.all((actions == 1) | (actions == -1))
+    for noise in range(-cap, cap + 1):
+        coefficients = actions * kden + noise
+        nr, nc = rows + vy * coefficients, cols + vx * coefficients
+        assert np.all((nr &gt;= 0) &amp; (nr &lt; len(coordinates)))
+        assert np.all((nc &gt;= 0) &amp; (nc &lt; len(coordinates)))
+        assert np.all(winning[step + 1, nr, nc])
+        transitions += len(rows)
+receipt = {
+    &quot;status&quot;: &quot;PASS&quot;,
+    &quot;evidence_status&quot;: &quot;exact finite certificate replay with integer shifts and integer ball tests&quot;,
+    &quot;certificate_sha256&quot;: hashlib.sha256(path.read_bytes()).hexdigest(),
+    &quot;chosen_action_universal_noise_transitions_checked&quot;: transitions,
+    &quot;winning_counts&quot;: [int(layer.sum()) for layer in winning],
+    &quot;origin_winning&quot;: True,
+    &quot;safe_virtual_radius&quot;: f&quot;{rn}/{rd}&quot;,
+    &quot;continuous_claim_requires&quot;: &quot;the scalar quantization/feedback transfer and supplied exact rational directions in RESULT.txt&quot;,
+    &quot;hardware_or_acquired_actuator_validation&quot;: False,
+}
+(HERE / &quot;block_certificate_replay.json&quot;).write_text(json.dumps(receipt, indent=2) + &quot;\n&quot;)
+print(json.dumps(receipt, indent=2))
+</pre>

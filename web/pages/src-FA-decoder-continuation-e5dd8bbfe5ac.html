@@ -1,0 +1,370 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — rarepath_certificate.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational constants + bounded IS on a coupled Gaussian Euler path.
+
+No inherited simulation replay. All output is confined to this directory.
+Rational normal-tail enclosures are deterministic certificates. The Monte Carlo
+coverage theorem assumes ideal independent Gaussian/uniform primitives; the
+NumPy/SciPy run is a floating implementation, not a formal random-bit or
+floating-point verification. See PROOF.txt for the precise distinction.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from math import isqrt
+from pathlib import Path
+import hashlib, json, math, sys, time
+import numpy as np
+from scipy.special import log_ndtr, ndtri_exp
+
+HERE = Path(__file__).resolve().parent
+SOURCE = Path(&#x27;/Users/harjas/Documents/Codex/2026-10-13/astra-genesis-civilization-enabling-breakthrough-discovery&#x27;)
+
+
+def identity(n):
+    return [[F(int(i == j)) for j in range(n)] for i in range(n)]
+
+
+def transpose(a):
+    return [list(x) for x in zip(*a)]
+
+
+def multiply(a,b):
+    bt=transpose(b)
+    return [[sum((x*y for x,y in zip(row,col)),F(0)) for col in bt] for row in a]
+
+
+def add(a,b):
+    return [[x+y for x,y in zip(ra,rb)] for ra,rb in zip(a,b)]
+
+
+def diag(values):
+    return [[F(values[i]) if i==j else F(0) for j in range(len(values))] for i in range(len(values))]
+
+
+def fmat(a):
+    return np.asarray([[float(x) for x in row] for row in a])
+
+
+def outward(q,digits=32):
+    &quot;&quot;&quot;Human-readable decimal strings enclosing an exact rational.&quot;&quot;&quot;
+    den=10**digits
+    scaled=q.numerator*den//q.denominator
+    def fmt(k):
+        sign=&#x27;-&#x27; if k&lt;0 else &#x27;&#x27;
+        k=abs(k)
+        return sign+str(k//den)+&#x27;.&#x27;+str(k%den).zfill(digits)
+    return [fmt(scaled),fmt(scaled+1)]
+
+
+def frac_record(q):
+    return {&#x27;numerator&#x27;:str(q.numerator),&#x27;denominator&#x27;:str(q.denominator),
+            &#x27;outward_decimal&#x27;:outward(q)}
+
+
+def sqrt_interval(q,digits=55):
+    scale=10**digits
+    k=isqrt(q.numerator*scale*scale//q.denominator)
+    lo,hi=F(k,scale),F(k+1,scale)
+    assert lo*lo&lt;=q&lt;=hi*hi
+    return lo,hi
+
+
+def arctan_interval(q,terms=100):
+    s=F(0)
+    for k in range(terms):
+        s+=(-1 if k%2 else 1)*q**(2*k+1)/(2*k+1)
+    nxt=q**(2*terms+1)/(2*terms+1)
+    return (s,s+nxt) if terms%2==0 else (s-nxt,s)
+
+
+def pi_interval():
+    a,b=arctan_interval(F(1,5))
+    c,d=arctan_interval(F(1,239),terms=32)
+    return 16*a-4*d,16*b-4*c
+
+
+PI=pi_interval()
+
+
+def floor_grid(x,digits=100):
+    scale=10**digits
+    return F(x.numerator*scale//x.denominator,scale)
+
+
+def ceil_grid(x,digits=100):
+    scale=10**digits
+    return F(-((-x.numerator*scale)//x.denominator),scale)
+
+
+def exp_negative_interval(x,terms=60):
+    &quot;&quot;&quot;e^-x by positive Taylor enclosure of e^(x/2^m), then reciprocal.&quot;&quot;&quot;
+    assert x&gt;=0
+    m=0
+    while x/(2**m)&gt;F(1,2):
+        m+=1
+    t=x/(2**m)
+    term=F(1); total=term
+    for k in range(1,terms+1):
+        term=term*t/k
+        total+=term
+    nxt=term*t/(terms+1)
+    # Every remaining successive term ratio is &lt;= t/(terms+2).
+    remainder=nxt/(1-t/(terms+2))
+    lo,hi=floor_grid(total),ceil_grid(total+remainder)
+    for _ in range(m):
+        lo,hi=floor_grid(lo*lo),ceil_grid(hi*hi)
+    return floor_grid(1/hi),ceil_grid(1/lo)
+
+
+def normal_sf_interval(z2,terms=12):
+    &quot;&quot;&quot;Integral-by-parts bounds: Q(z)=phi(z)/z times Mills expansion.
+
+    z2 is exact rational; all called z&gt;=6.2. Truncation error is bracketed,
+    not treated as a convergent infinite asymptotic series.
+    &quot;&quot;&quot;
+    assert z2&gt;36
+    exp_lo,exp_hi=exp_negative_interval(z2/2)
+    rlo,_=sqrt_interval(1/(2*PI[1]*z2))
+    _,rhi=sqrt_interval(1/(2*PI[0]*z2))
+    total=F(1); term=F(1)
+    for k in range(1,terms+1):
+        term*=F(2*k-1)/z2
+        total+=(-1 if k%2 else 1)*term
+    next_term=term*F(2*terms+1)/z2
+    if terms%2==0:
+        lower,upper=total-next_term,total
+    else:
+        lower,upper=total,total+next_term
+    assert 0&lt;lower&lt;=upper
+    return floor_grid(exp_lo*rlo*lower),ceil_grid(exp_hi*rhi*upper)
+
+
+def inherited_force_recovery():
+    &quot;&quot;&quot;Only the query wrapper uses the hidden rotation; the learner does not.&quot;&quot;&quot;
+    sys.dont_write_bytecode=True
+    sys.path.insert(0,str(SOURCE/&#x27;work/phase6/molecular_dynamics&#x27;))
+    from gated_acquisition import Simulator
+    sim=Simulator(20.,seed=4120)
+    queries=0
+    def observed_force(x,w):
+        nonlocal queries
+        queries+=1
+        latent=np.asarray(w)@sim.rotation
+        bx,by=sim.drift(np.asarray([x]),np.asarray([latent[0]]))
+        return float(bx[0])
+    cv=np.asarray([observed_force(0.,np.eye(9)[j]) for j in range(9)])
+    coupling=float(np.linalg.norm(cv))
+    direction=cv/coupling
+    at_half=observed_force(.5,np.zeros(9))
+    barrier=(at_half+.5*coupling)/1.5
+    rng=np.random.default_rng(12036)
+    w=rng.normal(size=(100,9)); x=rng.uniform(-1.4,1.4,100)
+    true_y=(w@sim.rotation)[:,0]
+    physical=sim.drift(x,true_y)[0]
+    fitted=-4*barrier*x*(x*x-1)-coupling*(x-w@direction)
+    residual=float(np.max(np.abs(physical-fitted)))
+    # Validation queries are separately counted, not hidden in the ten queries.
+    return {&#x27;acquisition_force_points&#x27;:queries,&#x27;separate_heldout_force_points&#x27;:100,
+            &#x27;recovered_barrier&#x27;:barrier,&#x27;recovered_coupling&#x27;:coupling,
+            &#x27;direction_alignment_scored_only&#x27;:float(direction@sim.rotation[:,0]),
+            &#x27;heldout_max_abs_drift_error_float&#x27;:residual,
+            &#x27;family_condition&#x27;:&#x27;global supplied cubic x + linear hidden-coordinate family, positive coupling, exact noiseless physical force access&#x27;,
+            &#x27;no_global_family_validation_from_finite_queries&#x27;:True}
+
+
+def make_coupled_model():
+    d=10; steps=16; dt=F(1,8)
+    b=diag([-1,-1,F(-3,100)]+[-5]*7)
+    b[0][2]=F(1);b[1][2]=F(-1)
+    b[2][0]=F(1,100);b[2][1]=F(-1,100)
+    r=identity(d)
+    v=list(range(1,9)); norm=sum(x*x for x in v)
+    for i in range(8):
+        for j in range(8):
+            r[i+2][j+2]=F(int(i==j))-F(2*v[i]*v[j],norm)
+    assert multiply(r,transpose(r))==identity(d)
+    observed=multiply(multiply(r,b),transpose(r))
+    # Eleven force queries reconstruct an arbitrary supplied affine drift.
+    count=0
+    def force(z):
+        nonlocal count
+        count+=1
+        return [sum((observed[i][j]*z[j] for j in range(d)),F(0)) for i in range(d)]
+    offset=force([F(0)]*d)
+    cols=[]
+    for j in range(d):
+        point=[F(0)]*d;point[j]=F(1)
+        cols.append([x-y for x,y in zip(force(point),offset)])
+    learnt=transpose(cols)
+    assert learnt==observed
+    a=add(identity(d),[[dt*x for x in row] for row in learnt])
+    root0=multiply(r,diag([0,0]+[1]*8))
+    root_noise=multiply(r,diag([F(1,2),F(1,2),F(1,20)]+[F(1,2)]*7))
+    # Exact coefficient rows of x_c(k) as a function of 170 independent normals.
+    powers=[identity(d)]
+    for _ in range(steps):
+        powers.append(multiply(powers[-1],a))
+    blocks0=[multiply(powers[k],root0) for k in range(steps+1)]
+    blocksn=[multiply(powers[k],root_noise) for k in range(steps)]
+    m=[];labels=[]
+    for k in range(1,steps+1):
+        for channel in [0,1]:
+            row=blocks0[k][channel].copy()
+            for t in range(1,steps+1):
+                row.extend(blocksn[k-t][channel] if t&lt;=k else [F(0)]*d)
+            m.append(row);labels.append([k,channel+1])
+    variances=[sum((x*x for x in row),F(0)) for row in m]
+    for k in range(steps):
+        assert variances[2*k]==variances[2*k+1]
+    return {&#x27;dimension&#x27;:d,&#x27;steps&#x27;:steps,&#x27;dt&#x27;:dt,&#x27;drift&#x27;:learnt,&#x27;matrix&#x27;:m,
+            &#x27;variance&#x27;:variances,&#x27;labels&#x27;:labels,&#x27;force_queries&#x27;:count}
+
+
+def run():
+    started=time.perf_counter()
+    recovered=inherited_force_recovery()
+    model=make_coupled_model()
+    b=F(17,2);j=len(model[&#x27;matrix&#x27;])
+    tail=[normal_sf_interval(b*b/v) for v in model[&#x27;variance&#x27;]]
+    lower=[x[0] for x in tail]; upper=[x[1] for x in tail]
+    # Rational masses u_j enclose the true marginal masses from above.
+    total=sum(upper,F(0))
+    # A channel-symmetry lower bound at the final time, with overlap bounded by
+    # P(x1+x2&gt;=2*b). Its variance is exact, and cross covariance is negative.
+    m0,m1=model[&#x27;matrix&#x27;][-2:]
+    sumvar=sum(((x+y)**2 for x,y in zip(m0,m1)),F(0))
+    overlap_lo,overlap_hi=normal_sf_interval((2*b)**2/sumvar)
+    deterministic_lower=2*lower[-1]-overlap_hi
+    assert deterministic_lower&gt;0
+    deterministic_upper=total
+    # Distinct channels remain nearly disjoint over the complete time window.
+    # Pair intersections imply x1(k)+x2(l)&gt;=2*b. Use the largest exact
+    # variance across all 16x16 such pairs, then a union bound.
+    cross_sum_variances=[]
+    cross_covariances=[]
+    for r0 in model[&#x27;matrix&#x27;][::2]:
+        for r1 in model[&#x27;matrix&#x27;][1::2]:
+            cross_sum_variances.append(sum(((x+y)**2 for x,y in zip(r0,r1)),F(0)))
+            cross_covariances.append(sum((x*y for x,y in zip(r0,r1)),F(0)))
+    assert max(cross_covariances)&lt;=0
+    _,cross_pair_upper=normal_sf_interval((2*b)**2/max(cross_sum_variances))
+    channel_intersection_upper=model[&#x27;steps&#x27;]**2*cross_pair_upper
+    n=20000;epsilon=F(1,100)
+    # Hoeffding: failure &lt;= 2exp(-2*n*epsilon^2)=2exp(-4)&lt;.05.
+    fail_lo,fail_hi=exp_negative_interval(2*n*epsilon*epsilon)
+    fail_hi*=2
+    assert fail_hi&lt;F(1,20)
+    rng=np.random.default_rng(611308)
+    mf=fmat(model[&#x27;matrix&#x27;]);sd=np.sqrt(np.asarray([float(v) for v in model[&#x27;variance&#x27;]]))
+    h=mf/sd[:,None]
+    z=float(b)/sd
+    alpha=np.asarray([float(u/total) for u in upper]);alpha/=alpha.sum()
+    # Every component is conditioned on a constituent event, not a mean shift.
+    count_hist=np.zeros(j+1,dtype=np.int64)
+    sum_lower=F(0);sum_upper=F(0)
+    means=[];dominance=[];min_margin=math.inf
+    multiplicity_records=[]
+    # Floating diagnostics use exact rational mass endpoints and all full-path
+    # event channels. Sample event masks are preserved for independent checking.
+    for base in range(0,n,500):
+        size=min(500,n-base)
+        chosen=rng.choice(j,size=size,p=alpha)
+        normal=rng.normal(size=(size,mf.shape[1]))
+        u=rng.random(size)
+        while np.any(u==0):
+            u[u==0]=rng.random(np.sum(u==0))
+        truncated=-ndtri_exp(log_ndtr(-z[chosen])+np.log(u))
+        chosen_rows=h[chosen]
+        proj=np.einsum(&#x27;ij,ij-&gt;i&#x27;,normal,chosen_rows)
+        normal+=(truncated-proj)[:,None]*chosen_rows
+        values=normal@mf.T
+        event=values&gt;=float(b)
+        assert np.all(event[np.arange(size),chosen])
+        mult=event.sum(axis=1)
+        count_hist+=np.bincount(mult,minlength=j+1)
+        min_margin=min(min_margin,float(np.min(np.abs(values-float(b)))))
+        for row,k in zip(event,mult):
+            # For q = sum_j (u_j/U) P(.|E_j),
+            # Y=U / sum_{j:E_j} u_j/p_j.
+            denom_upper=sum((upper[t]/lower[t] for t in np.flatnonzero(row)),F(0))
+            sum_lower+=floor_grid(total/denom_upper,70)
+            sum_upper+=total/int(k)
+            multiplicity_records.append(int(sum((1&lt;&lt;int(t) for t in np.flatnonzero(row)),0)))
+        dominance.extend(np.argmax(values.reshape(size,model[&#x27;steps&#x27;],2).max(axis=1),axis=1).tolist())
+    sample_lo=sum_lower/n;sample_hi=sum_upper/n
+    ci_lo=max(deterministic_lower,sample_lo-epsilon*total)
+    ci_hi=min(deterministic_upper,sample_hi+epsilon*total)
+    receipt={
+        &#x27;status&#x27;:&#x27;RATIONAL_DETERMINISTIC_ENCLOSURE_AND_BOUNDED_IDEAL_SAMPLER_CONFIDENCE_THEOREM;FLOAT_SAMPLER_DEMONSTRATION&#x27;,
+        &#x27;inherited_force_recovery&#x27;:recovered,
+        &#x27;inherited_gaussian_global_control_energy_bound&#x27;:6400,
+        &#x27;inherited_log_second_moment_bound&#x27;:6400,
+        &#x27;inherited_acquisition_cost_kept&#x27;:19400000,
+        &#x27;inherited_reported_path_force_points&#x27;:1438768,
+        &#x27;inherited_matched_direct_force_oracle_cost_if_same_path_work&#x27;:10+77360+1421804,
+        &#x27;inherited_matched_polynomial_reconstruction_cost_if_same_path_work&#x27;:10+1421804,
+        &#x27;distinct_model&#x27;:{
+            &#x27;target&#x27;:&#x27;P(any x1(k)&gt;=8.5 or x2(k)&gt;=8.5, k=1,...,16), exact full-state Euler dt=1/8; x1=x2=0 initially, eight nonreaction coordinates independent N(0,1)&#x27;,
+            &#x27;latent_drift&#x27;:[&#x27;-x1+y&#x27;,&#x27;-x2-y&#x27;,&#x27;.01*x1-.01*x2-.03*y&#x27;]+[&#x27;-5*z&#x27;]*7,
+            &#x27;noise_step_standard_deviations&#x27;:[&#x27;1/2&#x27;,&#x27;1/2&#x27;,&#x27;1/20&#x27;]+[&#x27;1/2&#x27;]*7,
+            &#x27;observation&#x27;:&#x27;reaction outputs x1,x2; rational Householder rotation of y,z1,...,z7&#x27;,
+            &#x27;family&#x27;:&#x27;globally affine drift supplied, noiseless full-vector force oracle, known exact Gaussian thermostat and preparation&#x27;,
+            &#x27;dimension&#x27;:10,&#x27;steps&#x27;:16,&#x27;events&#x27;:j,&#x27;innovation_dimension&#x27;:len(m0),
+            &#x27;force_queries_acquisition&#x27;:model[&#x27;force_queries&#x27;],
+            &#x27;exact_rational_acquisition_check_passed&#x27;:True,
+            &#x27;final_channel_correlation&#x27;:float(sum((x*y for x,y in zip(m0,m1)),F(0))/model[&#x27;variance&#x27;][-1]),
+            &#x27;all_cross_channel_time_covariances_nonpositive_exact_check&#x27;:True,
+            &#x27;all_time_channel_intersection_upper&#x27;:frac_record(channel_intersection_upper),
+            &#x27;one_channel_only_sampling_minimum_relative_bias&#x27;:float(F(1,2)-channel_intersection_upper/(2*deterministic_lower)),
+        },
+        &#x27;deterministic_certificate&#x27;:{
+            &#x27;lower&#x27;:frac_record(deterministic_lower),
+            &#x27;upper&#x27;:frac_record(deterministic_upper),
+            &#x27;upper_lower_ratio&#x27;:float(deterministic_upper/deterministic_lower),
+            &#x27;final_channel_overlap_upper&#x27;:frac_record(overlap_hi),
+            &#x27;scope&#x27;:&#x27;unconditional mathematical enclosure; exact rational Taylor/Mills/Machin arithmetic; no random samples used&#x27;},
+        &#x27;bounded_sampler&#x27;:{
+            &#x27;density&#x27;:&#x27;q(w)=p(w)/U * sum_j [u_j/P(E_j)] 1_Ej(w), u_j exact rational upper marginal masses; U=sum u_j&#x27;,
+            &#x27;contribution&#x27;:&#x27;Y=U / sum_j [u_j/P(E_j)] 1_Ej; 0&lt;Y&lt;=U&#x27;,
+            &#x27;samples&#x27;:n,&#x27;seed&#x27;:611308,&#x27;epsilon_relative_to_U&#x27;:str(epsilon),
+            &#x27;finite_sample_failure_upper&#x27;:frac_record(fail_hi),
+            &#x27;confidence_at_least&#x27;:float(1-fail_hi),
+            &#x27;sample_mean_enclosure_given_event_masks&#x27;:[outward(sample_lo)[0],outward(sample_hi)[1]],
+            &#x27;hoeffding_interval_if_ideal_sampler&#x27;:[outward(ci_lo)[0],outward(ci_hi)[1]],
+            &#x27;relative_halfwidth_if_ideal_sampler&#x27;:float((ci_hi-ci_lo)/(ci_hi+ci_lo)),
+            &#x27;contribution_multiplicity_histogram&#x27;:count_hist.tolist(),
+            &#x27;channel_dominance_counts&#x27;:np.bincount(dominance,minlength=2).tolist(),
+            &#x27;minimum_float_event_margin&#x27;:min_margin,
+            &#x27;not_formal_float_or_random_bit_validation&#x27;:True,
+            &#x27;operational_force_point_work_if_force_queried_each_step&#x27;:n*model[&#x27;steps&#x27;],
+            &#x27;post_acquisition_gaussian_generation_requires_physical_force_queries&#x27;:0,
+            &#x27;linear_algebra_and_rng_charged_separately&#x27;:True,
+        },
+        &#x27;matched_controls&#x27;:{
+            &#x27;data_free_exact_affine_force_reconstruction_plus_classical_ALOE&#x27;:{
+                &#x27;acquisition_force_points&#x27;:model[&#x27;force_queries&#x27;],
+                &#x27;path_oracle_force_points_if_queried_per_step&#x27;:n*model[&#x27;steps&#x27;],
+                &#x27;same_bounded_guarantee&#x27;:True,
+                &#x27;candidate_no_advantage_over_this_control&#x27;:True},
+            &#x27;deterministic_gaussian_tail_enclosure&#x27;:{&#x27;acquisition_force_points&#x27;:model[&#x27;force_queries&#x27;],&#x27;samples&#x27;:0},
+            &#x27;exact_union_Doob&#x27;:&#x27;zero-variance ideal comparator needs the union probability/conditional union law, not supplied here&#x27;,
+            &#x27;FFS_WE&#x27;:&#x27;full-state classical splitting applicable; not executed because ALOE is already an identical same-input control with the proved finite-sample guarantee&#x27;},
+        &#x27;scope_limitations&#x27;:[&#x27;global affine family is supplied, not inferred from finitely many force queries&#x27;,&#x27;new model is a solvable Gaussian benchmark, not an atomistic molecule&#x27;,&#x27;exact discrete Euler target only&#x27;,&#x27;ALOE/conditional Gaussian mixture is established prior art&#x27;,&#x27;weight-tail certificate for inherited nonlinear toy remains unresolved&#x27;,&#x27;no novelty or civilization-enabling advantage&#x27;],
+        &#x27;execution_seconds&#x27;:time.perf_counter()-started,
+    }
+    np.savez_compressed(HERE/&#x27;sample_masks.npz&#x27;,event_masks=np.asarray(multiplicity_records,dtype=np.uint64))
+    exact={&#x27;tail_bounds&#x27;:[{&#x27;label&#x27;:lab,&#x27;variance&#x27;:frac_record(v),&#x27;lower&#x27;:frac_record(l),&#x27;upper&#x27;:frac_record(u)} for lab,v,l,u in zip(model[&#x27;labels&#x27;],model[&#x27;variance&#x27;],lower,upper)],
+           &#x27;union_mass_upper&#x27;:frac_record(total),&#x27;deterministic_lower&#x27;:frac_record(deterministic_lower),
+           &#x27;sample_mean_lower&#x27;:frac_record(sample_lo),&#x27;sample_mean_upper&#x27;:frac_record(sample_hi),
+           &#x27;confidence_lower&#x27;:frac_record(ci_lo),&#x27;confidence_upper&#x27;:frac_record(ci_hi)}
+    (HERE/&#x27;exact_certificate.json&#x27;).write_text(json.dumps(exact,indent=2)+&#x27;\n&#x27;)
+    (HERE/&#x27;receipt.json&#x27;).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+    pins=[]
+    for rel in [&#x27;outputs/ASTRA_GENESIS_HANDOFF.txt&#x27;,&#x27;outputs/STRONGEST_VERIFIED_RESULT.txt&#x27;,&#x27;work/phase6/molecular_dynamics/HANDOFF.txt&#x27;,&#x27;work/phase6/molecular_dynamics/path_reweighting.py&#x27;,&#x27;work/phase6/molecular_dynamics/path_reweighting.json&#x27;,&#x27;work/phase6/molecular_dynamics/gated_acquisition.py&#x27;]:
+        data=(SOURCE/rel).read_bytes();pins.append({&#x27;path&#x27;:str(SOURCE/rel),&#x27;sha256&#x27;:hashlib.sha256(data).hexdigest(),&#x27;bytes&#x27;:len(data)})
+    (HERE/&#x27;source_pins.json&#x27;).write_text(json.dumps(pins,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;force_recovery&#x27;:recovered,&#x27;deterministic_interval&#x27;:[outward(deterministic_lower)[0],outward(deterministic_upper)[1]],&#x27;ideal_sampler_interval&#x27;:[outward(ci_lo)[0],outward(ci_hi)[1]],&#x27;relative_halfwidth&#x27;:receipt[&#x27;bounded_sampler&#x27;][&#x27;relative_halfwidth_if_ideal_sampler&#x27;],&#x27;confidence&#x27;:float(1-fail_hi),&#x27;execution_seconds&#x27;:receipt[&#x27;execution_seconds&#x27;]},indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:
+    run()
+</pre>

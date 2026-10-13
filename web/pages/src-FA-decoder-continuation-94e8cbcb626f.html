@@ -1,0 +1,258 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — ordinal_topbit.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Bounded nonlinear ordinal-to-executable-feature checkpoint.
+
+Known degree-two top bit of an unknown bijective decoder, scalar comparisons only.
+Near-median anchor + standard Reed-Muller self-correction, with all calls charged.
+No novelty or advantage over the identical known-method composition is asserted.
+&quot;&quot;&quot;
+import argparse
+import json
+import math
+import random
+import time
+from pathlib import Path
+from encoded_operations import lin, random_invertible, parity, kernel_basis
+
+
+class QuadraticOrderTeacher:
+    &quot;&quot;&quot;A nonlinear bijection: hidden affine map, then a top-bit quadratic shear.
+
+    Memoization belongs to the synthetic source and is counted explicitly.  The
+    learner sees only query(x,y); rank values and coefficients stay evaluator-only.
+    &quot;&quot;&quot;
+    def __init__(self, n, seed):
+        rng = random.Random(seed)
+        _, self._decoder = random_invertible(rng, n)
+        self._offset = rng.getrandbits(n)
+        self._quadratic = [rng.getrandbits(n-1) &amp; ~((1 &lt;&lt; (i+1))-1)
+                           for i in range(n-1)]
+        self.n, self.queries, self.unique_rank_evaluations = n, 0, 0
+        self._cache = {}
+
+    def rank(self, x):
+        if x not in self._cache:
+            self.unique_rank_evaluations += 1
+            u = lin(self._decoder, x) ^ self._offset
+            q = 0
+            for i, row in enumerate(self._quadratic):
+                if (u &gt;&gt; i) &amp; 1:
+                    q ^= parity(row &amp; u)
+            self._cache[x] = u ^ (q &lt;&lt; (self.n-1))
+        return self._cache[x]
+
+    def query(self, x, y):
+        self.queries += 1
+        return self.rank(x) &lt; self.rank(y)
+
+
+def merge_sort(values, query):
+    if len(values) &lt;= 1:
+        return list(values)
+    mid = len(values)//2
+    left, right = merge_sort(values[:mid], query), merge_sort(values[mid:], query)
+    out, i, j = [], 0, 0
+    while i &lt; len(left) and j &lt; len(right):
+        if query(left[i], right[j]):
+            out.append(left[i]); i += 1
+        else:
+            out.append(right[j]); j += 1
+    return out+left[i:]+right[j:]
+
+
+def points_degree_two(n):
+    return [0]+[1 &lt;&lt; i for i in range(n)]+[
+        (1 &lt;&lt; i) | (1 &lt;&lt; j) for i in range(n) for j in range(i+1, n)]
+
+
+def interpolate_two(values, n):
+    terms = {}
+    constant = values[0]
+    if constant:
+        terms[0] = 1
+    for i in range(n):
+        if values[1 &lt;&lt; i] ^ constant:
+            terms[1 &lt;&lt; i] = 1
+    for i in range(n):
+        for j in range(i+1, n):
+            key = (1 &lt;&lt; i) | (1 &lt;&lt; j)
+            if values[key] ^ values[1 &lt;&lt; i] ^ values[1 &lt;&lt; j] ^ constant:
+                terms[key] = 1
+    return sorted(terms)
+
+
+def poly_eval(terms, x):
+    return sum((x &amp; term) == term for term in terms) &amp; 1
+
+
+def single_fiber_sampler_check(terms, n, rng):
+    &quot;&quot;&quot;Compile a toggle for one balanced quadratic&#x27;s fiber, not joint fibers.
+
+    B(v,x)=q(v+x)+q(v)+q(x)+q(0) is the polar form.  A radical vector
+    with q(v)+q(0)=1 toggles q everywhere.  Balanced quadratics have one.
+    This is ordinary quadratic-form algebra; no novelty claim is made.
+    &quot;&quot;&quot;
+    start = time.perf_counter()
+    polar_rows = [0]*n
+    for term in terms:
+        if term.bit_count() == 2:
+            first = term &amp; -term
+            other = term ^ first
+            i, j = first.bit_length()-1, other.bit_length()-1
+            polar_rows[i] ^= other
+            polar_rows[j] ^= first
+    radical = kernel_basis(polar_rows, n)
+    constant = poly_eval(terms, 0)
+    toggle = next((v for v in radical if poly_eval(terms, v) ^ constant), None)
+    preparation_seconds = time.perf_counter()-start
+    if toggle is None:
+        return {&#x27;single_fiber_toggle_found&#x27;: False,
+                &#x27;single_fiber_preparation_seconds&#x27;: preparation_seconds}
+    # These two algebraic equalities certify q(x+v)=q(x)+1 for all x.
+    algebraic = all(parity(row &amp; toggle) == 0 for row in polar_rows)
+    algebraic &amp;= bool(poly_eval(terms, toggle) ^ constant)
+    checked = 0
+    distribution_exact = None
+    if n &lt;= 12:
+        counts = [{}, {}]
+        for x in range(1 &lt;&lt; n):
+            value = poly_eval(terms, x)
+            for bit in (0, 1):
+                z = x if value == bit else x ^ toggle
+                assert poly_eval(terms, z) == bit
+                counts[bit][z] = counts[bit].get(z, 0)+1
+                checked += 1
+        distribution_exact = all(
+            len(count) == 1 &lt;&lt; (n-1) and set(count.values()) == {2}
+            for count in counts)
+        assert distribution_exact
+    else:
+        for _ in range(4096):
+            x = rng.getrandbits(n)
+            assert poly_eval(terms, x ^ toggle) == (poly_eval(terms, x) ^ 1)
+            checked += 1
+    assert algebraic
+    return {&#x27;single_fiber_toggle_found&#x27;: True,
+            &#x27;single_fiber_toggle&#x27;: toggle,
+            &#x27;single_fiber_toggle_algebraically_verified&#x27;: algebraic,
+            &#x27;single_fiber_exhaustive_distribution_verified&#x27;: distribution_exact,
+            &#x27;single_fiber_checked_points&#x27;: checked,
+            &#x27;single_fiber_preparation_seconds&#x27;: preparation_seconds,
+            &#x27;single_fiber_total_check_seconds&#x27;: time.perf_counter()-start,
+            &#x27;single_fiber_extra_source_queries&#x27;: 0}
+
+
+def self_correct(point, threshold, n, repetitions, rng):
+    votes = 0
+    for _ in range(repetitions):
+        a, b, c = (rng.getrandbits(n) for _ in range(3))
+        value = 0
+        for shift in (a, b, a ^ b, c, a ^ c, b ^ c, a ^ b ^ c):
+            value ^= int(threshold(point ^ shift))
+        votes += value
+    return int(votes &gt; repetitions//2)
+
+
+def acquire_topbit(n, query, rng, beta=0.01, epsilon=1/32, sample_count=4095):
+    if n &lt; 8 or epsilon &lt;= 2**(-n):
+        raise ValueError(&#x27;This bounded confidence calculation uses n&gt;=8.&#x27;)
+    points = points_degree_two(n)
+    gap = 0.5-7*epsilon
+    repetitions = math.ceil(math.log(2*len(points)/beta)/(2*gap*gap))
+    if repetitions % 2 == 0:
+        repetitions += 1
+    samples = [rng.getrandbits(n) for _ in range(sample_count)]
+    ordered = merge_sort(samples, query)
+    anchor = ordered[sample_count//2]
+    threshold = lambda x: query(x, anchor)
+    # Direct threshold interpolation is only a diagnostic, not a strong comparator.
+    direct_values = {x: int(threshold(x)) ^ 1 for x in points}
+    corrected_values = {x: self_correct(x, threshold, n, repetitions, rng) ^ 1
+                        for x in points}
+    return interpolate_two(corrected_values, n), interpolate_two(direct_values, n), {
+        &#x27;sample_count&#x27;: sample_count, &#x27;anchor&#x27;: anchor, &#x27;epsilon&#x27;: epsilon,
+        &#x27;beta_target&#x27;: beta, &#x27;coefficient_points&#x27;: len(points),
+        &#x27;self_correction_repetitions&#x27;: repetitions,
+        &#x27;median_failure_bound&#x27;: 2*math.exp(-2*sample_count*(epsilon-2**(-n))**2),
+        &#x27;coefficient_failure_union_bound&#x27;: len(points)*math.exp(-2*repetitions*gap*gap),
+        &#x27;comparison_upper_bound_including_diagnostic&#x27;:
+            sample_count*math.ceil(math.log2(sample_count)) +
+            len(points)*(7*repetitions+1),
+    }
+
+
+def run(n, seed):
+    total_start = time.perf_counter()
+    teacher = QuadraticOrderTeacher(n, seed)
+    source_preparation_seconds = time.perf_counter()-total_start
+    rng = random.Random(seed+900000)
+    start = time.perf_counter()
+    terms, direct_terms, evidence = acquire_topbit(n, teacher.query, rng)
+    seconds = time.perf_counter()-start
+    acquisition_queries = teacher.queries
+    source_evaluations = teacher.unique_rank_evaluations
+    source_cache_entries = len(teacher._cache)
+    validation_start = time.perf_counter()
+    # Evaluator-only ground truth, read AFTER the learner returns.
+    truth_values = {x: (teacher.rank(x) &gt;&gt; (n-1)) &amp; 1 for x in points_degree_two(n)}
+    truth_terms = interpolate_two(truth_values, n)
+    exact_body = terms == truth_terms
+    direct_exact = direct_terms == truth_terms
+    heldout = range(1 &lt;&lt; n) if n &lt;= 12 else [rng.getrandbits(n) for _ in range(4096)]
+    errors = direct_errors = tested = 0
+    for x in heldout:
+        actual = (teacher.rank(x) &gt;&gt; (n-1)) &amp; 1
+        errors += poly_eval(terms, x) != actual
+        direct_errors += poly_eval(direct_terms, x) != actual
+        tested += 1
+    validation_seconds = time.perf_counter()-validation_start
+    evidence.update({
+        &#x27;n&#x27;: n, &#x27;seed&#x27;: seed, &#x27;acquisition_seconds_including_source&#x27;: seconds,
+        &#x27;source_preparation_seconds&#x27;: source_preparation_seconds,
+        &#x27;validation_seconds_including_source&#x27;: validation_seconds,
+        &#x27;acquisition_comparisons&#x27;: acquisition_queries,
+        &#x27;acquisition_returned_bits&#x27;: acquisition_queries,
+        &#x27;acquisition_query_input_bits&#x27;: acquisition_queries*2*n,
+        &#x27;source_unique_rank_evaluations&#x27;: source_evaluations,
+        &#x27;source_rank_bitwork_upper&#x27;: source_evaluations*(3*n*n+n),
+        &#x27;source_cache_entries_during_acquisition&#x27;: source_cache_entries,
+        &#x27;source_cache_payload_bits_upper&#x27;: source_cache_entries*2*n,
+        &#x27;exact_polynomial_body_matches_truth&#x27;: exact_body,
+        &#x27;direct_interpolation_exact_diagnostic&#x27;: direct_exact,
+        &#x27;heldout_points&#x27;: tested, &#x27;corrected_heldout_errors&#x27;: errors,
+        &#x27;direct_heldout_errors_diagnostic&#x27;: direct_errors,
+        &#x27;source_queries_during_learned_execution&#x27;: teacher.queries-acquisition_queries,
+        &#x27;anchor_rank_evaluator_only&#x27;: teacher.rank(evidence[&#x27;anchor&#x27;]),
+        &#x27;anchor_hamming_error_fraction_evaluator_only&#x27;:
+            abs(teacher.rank(evidence[&#x27;anchor&#x27;])-(1 &lt;&lt; (n-1)))/(1 &lt;&lt; n),
+        &#x27;acquired_anf_monomial_masks&#x27;: terms,
+        &#x27;acquired_body_coefficient_bits_upper&#x27;: 1+n+n*(n-1)//2,
+        &#x27;actual_nonzero_monomial_mask_payload_bits_upper&#x27;: n*len(terms),
+        &#x27;known_method_boundary&#x27;: &#x27;quantile concentration and Reed-Muller self-correction are standard; no advantage over their identical same-interface composition is claimed&#x27;,
+    })
+    evidence.update(single_fiber_sampler_check(terms, n, rng))
+    evidence[&#x27;overall_seconds_including_source_preparation_validation_and_fiber&#x27;] = (
+        time.perf_counter()-total_start)
+    assert acquisition_queries &lt;= evidence[&#x27;comparison_upper_bound_including_diagnostic&#x27;]
+    assert evidence[&#x27;median_failure_bound&#x27;] + evidence[&#x27;coefficient_failure_union_bound&#x27;] &lt;= 0.01
+    return evidence
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&#x27;--output&#x27;, default=&#x27;ordinal_topbit_evidence.json&#x27;)
+    args = parser.parse_args()
+    cases = []
+    for n, seed in [(8,610031),(12,610032),(16,610031),(16,610032),(32,610033)]:
+        result = run(n, seed)
+        cases.append(result)
+        print(json.dumps({k: v for k, v in result.items() if k != &#x27;acquired_anf_monomial_masks&#x27;}), flush=True)
+    Path(args.output).write_text(json.dumps({
+        &#x27;status&#x27;: &#x27;bounded_exact_nonlinear_feature_checkpoint_prior_art_not_cleared&#x27;,
+        &#x27;cases&#x27;: cases,
+        &#x27;interface&#x27;: &#x27;Only one-bit comparisons under a hidden quadratic bijective decoder. No target ranks, bits or intermediate traces given to learner.&#x27;,
+        &#x27;boundary&#x27;: &#x27;Only top bit is acquired here. One known balanced quadratic fiber has an exact compiled toggle sampler. Full decoder/order recovery and efficient joint deep-fiber acquisition/sampling are not solved.&#x27;
+    }, indent=2)+&#x27;\n&#x27;)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

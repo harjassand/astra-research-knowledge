@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+"""Bounded Cu-steel operation screen. No measured operating-window claim.
+Only standard library; all generated files stay beside this script.
+Mass checks, independent thermodynamic integral, symbolic selectivity witness,
+and a source-number charge consistency test are separate evidence categories.
+"""
+from pathlib import Path
+from fractions import Fraction as Q
+import math,json,hashlib,platform,datetime
+P=Path(__file__).resolve().parent
+R=8.31446261815324; F=96485.33212
+MCU=.063546; MFE=.055845; MAG=.1078682; MS=.032065
+TH=1873.; TR=1373. # both Cu and Ag liquid; 1273K needs a solid-Cu reference correction
+FE=997.; CU=3.; TARGET=.0005
+CHI_FE=R*TH*math.log(8.) # dilute source gamma; regular-solution continuation is a scenario
+CHI_AG=R*1523.*math.log(3.14) # inherited source gamma at1523K; regular-solution scenario
+
+def mole_fraction(massratio,hostmass):
+    return massratio/MCU/(1/hostmass+massratio/MCU)
+def massratio(x,hostmass): return x*MCU/((1-x)*hostmass)
+def logact(x,chi,T): return math.log(x)+chi/(R*T)*(1-x)**2
+
+def rootmon(fun,lo,hi,target,steps=80):
+    for _ in range(steps):
+        m=(lo+hi)/2
+        if fun(m)<target:lo=m
+        else:hi=m
+    return (lo+hi)/2
+
+def y_equil(X):
+    x=mole_fraction(X,MFE)
+    y=rootmon(lambda y:logact(y,CHI_AG,TH),1e-18,.1,logact(x,CHI_FE,TH))
+    return massratio(y,MAG)
+
+def x_equil(Y):
+    y=mole_fraction(Y,MAG)
+    x=rootmon(lambda x:logact(x,CHI_FE,TH),1e-18,.1,logact(y,CHI_AG,TH))
+    return massratio(x,MFE)
+
+def shoot(xn,s,N,Ylean):
+    # Work backwards; x[0] feed, x[N] refined out; y[N+1] lean Ag in.
+    x=[0.]*(N+1);y=[0.]*(N+2);x[N]=xn;y[N+1]=Ylean
+    for i in range(N,0,-1):
+        y[i]=y_equil(x[i]);x[i-1]=x[i]+s*(y[i]-y[i+1])
+    return x,y
+
+def stages(s,N,wlean):
+    Ylean=wlean/(1-wlean); xf=CU/FE
+    lo=x_equil(Ylean);hi=xf
+    for _ in range(80):
+        mid=(lo+hi)/2;x,_=shoot(mid,s,N,Ylean)
+        if x[0]<xf:lo=mid
+        else:hi=mid
+    x,y=shoot((lo+hi)/2,s,N,Ylean)
+    carrier=s*FE;removed=CU-FE*x[N]
+    residual=[FE*(x[i-1]-x[i])-carrier*(y[i]-y[i+1]) for i in range(1,N+1)]
+    assert max(map(abs,residual))<1e-9
+    assert abs(x[0]-xf)<1e-13
+    assert abs(carrier*(y[1]-Ylean)-removed)<1e-9
+    return dict(silver_over_Fe_mass_flow=s,ideal_stages=N,lean_Ag_Cu_mass_fraction=wlean,
+        Cu_out_mass_fraction=x[N]/(1+x[N]),Cu_removed_kg_per_t=removed,
+        Ag_circulation_kg_per_t=carrier,loaded_Ag_Cu_mass_fraction=y[1]/(1+y[1]),
+        target_pass=x[N]/(1+x[N])<=TARGET,stage_max_mass_residual_kg=max(map(abs,residual)),
+        Fe_Cu_mass_ratios=x,Ag_Cu_mass_ratios=y[1:])
+
+def Gmix(nhost,ncu,chi,T):
+    nt=nhost+ncu;x=ncu/nt
+    return R*T*(ncu*math.log(x)+nhost*math.log1p(-x))+chi*ncu*nhost/nt
+
+def simpson(f,a,b,n=4000):
+    assert n%2==0
+    h=(b-a)/n
+    return h/3*(f(a)+f(b)+4*sum(f(a+(2*i-1)*h) for i in range(1,n//2+1))
+                +2*sum(f(a+2*i*h) for i in range(1,n//2)))
+
+def thermodynamics(chosen,regen_T=TR,cu_fusion_correction=0.):
+    ag=chosen['Ag_circulation_kg_per_t'];nAg=ag/MAG
+    wl=chosen['lean_Ag_Cu_mass_fraction'];wload=chosen['loaded_Ag_Cu_mass_fraction']
+    ncl=ag*wl/(1-wl)/MCU;nch=ag*wload/(1-wload)/MCU
+    # Gmix uses pure-liquid Cu. A stable-solid Cu product is lower in mu
+    # by deltaG[liquid-solid], so subtract that value per transferred mole.
+    w=Gmix(nAg,ncl,CHI_AG,regen_T)-Gmix(nAg,nch,CHI_AG,regen_T)-(nch-ncl)*cu_fusion_correction
+    integral=simpson(lambda nc:-R*regen_T*logact(nc/(nAg+nc),CHI_AG,regen_T)-cu_fusion_correction,ncl,nch)
+    assert abs(integral-w)/w<1e-10
+    xlean=ncl/(nAg+ncl);xload=nch/(nAg+nch)
+    amin=math.exp(logact(xlean,CHI_AG,regen_T)+cu_fusion_correction/(R*regen_T))
+    amax=math.exp(logact(xload,CHI_AG,regen_T)+cu_fusion_correction/(R*regen_T))
+    muAg=math.log1p(-xlean)+CHI_AG/(R*regen_T)*xlean*xlean
+    aAg=math.exp(muAg)
+    out=dict(regenerator_K=regen_T,pure_Cu_phase='solid' if cu_fusion_correction else 'liquid',pure_Ag_phase='liquid',
+        liquid_minus_solid_Cu_standard_correction_J_per_mol=cu_fusion_correction,
+        reversible_electrorefining_model_kWh_per_t=w/3.6e6,
+        independent_mu_integral_kWh_per_t=integral/3.6e6,
+        lean_Cu_activity_regular_solution=amin,loaded_Cu_activity_regular_solution=amax,
+        lean_Ag_activity_regular_solution=aAg,
+        single_bath_anode_cathode_no_overlap_factor=aAg/amin,
+        minimum_voltage_CuI_at_loaded_V=-R*regen_T/F*math.log(amax),
+        minimum_voltage_CuI_at_lean_V=-R*regen_T/F*math.log(amin),
+        minimum_useful_CuI_charge_C_per_t=chosen['Cu_removed_kg_per_t']/MCU*F,
+        regenerator_actual_electricity_kWh_per_t=None,
+        current_efficiency=None,Ag_loss=None,
+        pure_Ag_sensible_cp_kJ_per_kgK_scenario=.300,
+        Ag_sensible_heat_gross_kWh_per_t=ag*.300*(TH-regen_T)/3600,
+        Ag_sensible_heat_at90pct_recovery_kWh_per_t=ag*.300*(TH-regen_T)/36000,
+        Ag_sensible_heat_1273K_original_kWh_per_t=ag*.300*(TH-1273)/3600,
+        Cu_cooling_product_enthalpy=None,alloy_mixing_enthalpy_measured=None,
+        circulation_mixing_settling_hardware_heat_and_work=None,
+        electrolyte_prep_inventory_heat_loss_regeneration=None,
+        oxygen_sulfur_chlorine_evolution=None,product_purification=None,
+        whole_process_heat_kWh_per_t=None,whole_process_work_kWh_per_t=None)
+    return out
+
+def audit_lu():
+    # Exact decimal readings of source1343, under the EXTRA all-other-mass=Fe assumption.
+    m_particles=Q('0.012');wp=Q('0.435');m_layer=Q('0.145');wl=Q('0.098') # g
+    mc=m_particles*wp+m_layer*wl
+    mf=m_particles*(1-wp)+m_layer*(1-wl)
+    f=Q('96485.33212');mcu=Q('63.546');mfe=Q('55.845');qa=Q(323)
+    qc=mc/mcu*f;qfe=mf/mfe*2*f
+    maxfe=(qa-qc)*mfe/(2*f)
+    assert qc+qfe>qa
+    # If non-Cu includes salt/carbon/substrate or product was chemically made,
+    # this contradiction does not imply a source error: it rejects joint assumptions.
+    return dict(primary_pdf_page=1343,reported_total_charge_C=323,
+        reported_Cu_specific_efficiency=.091,
+        reconstructed_Cu_mass_g=float(mc),implied_non_Cu_mass_g=float(mf),
+        CuI_charge_C=float(qc),
+        FeII_charge_C_if_all_nonCu_is_electrodeposited_Fe=float(qfe),
+        total_metal_charge_C_under_that_extra_assumption=float(qc+qfe),
+        excess_over_reported_charge_C=float(qc+qfe-qa),
+        maximum_FeII_mass_g_allowed_by_charge_even_without_electronic_leakage=float(maxfe),
+        nonCu_mass_g_needing_another_origin_or_composition=float(mf-maxfe),
+        exact_charge_excess_rational=str(qc+qfe-qa),
+        conclusion='joint all-metal/all-electrochemical/bulk-composition reading impossible; local EDS and total charge do not identify electronic transference',
+        source_9p1pct_is_not_measured_total_ionic_transference=True)
+
+def sulfide_pivot():
+    removal=CU-FE*TARGET/(1-TARGET);nc=removal/MCU
+    # Stoichiometric loop:2Cu+FeS->Cu2S+Fe; electrical reverse uses that Fe.
+    fes=nc/2*(MFE+MS);cu2s=nc/2*(2*MCU+MS);fe=nc/2*MFE;s=nc/2*MS
+    # Model quoted potential gap; not an independent thermochemical validation.
+    gap=.112;tp=1623.15
+    suppress=math.exp(-2*F*gap/(R*tp))
+    q=nc*F
+    return dict(operation='spent Na2S-FeS-Cu2S regeneration with electronic-blocking secondary salt',
+        novelty='generic electron-blocking molten secondary layer explicit Yin2016 prior art; Cu bicameral predecessor cited HoarWard1958',
+        actual_steelslag_layer_transfer_validated=False,
+        target_removed_Cu_kg_per_t=removal,
+        stoichiometric_FeS_kg_per_t_consumed_by_capture=fes,
+        stoichiometric_Cu2S_kg_per_t_to_regenerate=cu2s,
+        Fe_added_to_steel_capture_kg_per_t=fe,
+        Fe_needed_at_separate_regeneration_anode_kg_per_t=fe,
+        S_kg_per_t_if_elemental_sulfur_anode=s,
+        useful_charge_CuI_C_per_t=q,
+        electrical_kWh_per_t_per_cell_V_at_eta1=q/3.6e6,
+        electrical_kWh_per_t_per_cell_V_at_Lu_Cu_efficiency_p091=q/.091/3.6e6,
+        Lu_applied_working_electrode_potential_V=-.8,
+        full_cell_voltage_from_Lu=None,
+        Lu_source_reported_Fe_vs_Cu_decomposition_potential_gap_V=gap,
+        FeS_activity_suppression_factor_to_reverse_order_at_fixed_Cu2S_pure_metal_and_common_S=suppress,
+        measured_selective_Fe_suppression_or_barrier=None,
+        salt_mass_for_complete_Cu_capacity_capture=None,slag_partition_floor_lowC_steel=None,
+        molten_salt_cooling_reheat_and_recovery=None,sulfur_collection_or_FeS_recycle=None,
+        phase_separation_Cu_Fe_product_purification=None,
+        overall_energy=None,capex_lifetime=None)
+
+def main():
+    cases=[stages(s,n,wl) for s in (.3,.75,1.5) for n in (1,3,5,6,10)
+           for wl in (.00040909,.0001)]
+    chosen=next(c for c in cases if c['silver_over_Fe_mass_flow']==.75 and
+                c['ideal_stages']==6 and c['lean_Ag_Cu_mass_fraction']==.00040909)
+    nt=CU/MCU;nres=FE*TARGET/(1-TARGET)/MCU;nf=FE/MFE
+    sep=Gmix(nf,nres,CHI_FE,TH)-Gmix(nf,nt,CHI_FE,TH)
+    muint=simpson(lambda nc:-R*TH*logact(nc/(nf+nc),CHI_FE,TH),nres,nt)
+    assert abs(muint-sep)/sep<1e-10
+    t=thermodynamics(chosen)
+    # NIST-JANAF Cu(l): delta_fG at1200K=1.523 and1300K=.561 kJ/mol,
+    # relative to stable Cu(s); simple interpolation is an approximation.
+    fusion1273=1523+(1273-1200)/100*(561-1523)
+    tcold=thermodynamics(chosen,1273.,fusion1273)
+    a=audit_lu();sp=sulfide_pivot()
+    result=dict(status='NO_ACQUIRED_OPERATING_WINDOW; MODEL_SCOPE_EXACT_SELECTIVITY_STOP; PRIOR_ART_AND_MASS_CHARGE_PIVOT_GATES',
+        feed=dict(already_molten_kg=1000,Fe_kg=FE,Cu_kg=CU,T_K=TH,
+            target_Cu_mass_fraction=TARGET,exact_target_residual_Cu_kg=FE*TARGET/(1-TARGET),
+            exact_target_Cu_removed_kg=CU-FE*TARGET/(1-TARGET)),
+        activity_model='regular solution scenario fitted only to inherited dilute gamma values; NOT calibrated to commercial steel or full Ag-Cu composition',
+        ideal_equilibrium_cases=cases,chosen_case=chosen,regenerator=t,
+        original_1273K_regenerator_with_interpolated_NIST_Cu_solid_standard=tcold,
+        direct_isothermal_regular_solution_separation_lower_bound_kWh_per_t=sep/3.6e6,
+        lower_bound_independent_mu_integral_kWh_per_t=muint/3.6e6,
+        lu_source_charge_test=a,sulfide_pivot=sp,
+        information_and_acquisition=dict(feed_commercial_activity_coefficients=None,
+            full_composition_Fe_Ag_mutual_solubility=None,phase_transfer_rate_and_stage_efficiency=None,
+            calibrated_redox_and_speciation_at_regenerator_T=None,
+            selective_barrier_transport_and_leakage=None,Ag_all_stream_material_closure=None,
+            accurate_total_cell_voltage_current_and_product_assay=None,
+            final_bulk_Cu_ag_sulfur_specification_assay=None,
+            all_work_heat_flow_and_hardware_lifetime=None),
+        generated_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),python=platform.python_version())
+    (P/'BUDGET_RESULTS.json').write_text(json.dumps(result,indent=2)+'\n')
+    print(json.dumps({k:result[k] for k in ['status','feed','chosen_case','regenerator','lu_source_charge_test','sulfide_pivot']},indent=2))
+    (P/'RUN_RECEIPT.json').write_text(json.dumps(dict(exit_status='PASS',
+        calculation_integrity='all stage mass balances, two independent chemical-potential integrals and exact rational source-number inconsistency check passed',
+        script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        result_sha256=hashlib.sha256((P/'BUDGET_RESULTS.json').read_bytes()).hexdigest(),
+        physical_validation=False),indent=2)+'\n')
+if __name__=='__main__':main()

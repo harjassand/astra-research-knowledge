@@ -1,0 +1,127 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — periodic_block_lift.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Factorized all-time controller for orthogonal two-coordinate blocks.
+
+Each block follows the inherited four-direction local period. Blocks may be
+interleaved arbitrarily, including adaptively. This file does not synthesize
+or assume a general arbitrary-schedule controller.
+&quot;&quot;&quot;
+from __future__ import annotations
+import hashlib
+import json
+from fractions import Fraction as F
+from pathlib import Path
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+CERTIFICATE = HERE / &quot;inherited_continuous_r3.npz&quot;
+
+
+class BlockLiftController:
+    def __init__(self, blocks):
+        if blocks &lt; 1:
+            raise ValueError(&quot;positive block count required&quot;)
+        data = np.load(CERTIFICATE, allow_pickle=False)
+        self.winning = data[&quot;winning&quot;]
+        self.policy = data[&quot;policy&quot;]
+        self.scale = int(data[&quot;scale&quot;])
+        self.radius = int(data[&quot;radius_units&quot;])
+        self.directions = [tuple(map(int, v)) for v in data[&quot;directions&quot;]]
+        self.phase = [0] * blocks
+
+    def choose(self, block, observed_integer_cell):
+        &quot;&quot;&quot;Observe active 2D error with total per-coordinate error &lt;=1/20.
+
+        The returned direction has support {2*block,2*block+1}. The caller
+        actuates once, then supplies fresh feedback on the next activation.
+        &quot;&quot;&quot;
+        p = self.phase[block]
+        x, y = map(int, observed_integer_cell)
+        rx, ry = x + self.radius, y + self.radius
+        if not (0 &lt;= rx &lt; self.winning.shape[1] and 0 &lt;= ry &lt; self.winning.shape[2]):
+            raise ValueError(&quot;feedback cell is outside certified state range&quot;)
+        if not self.winning[p, rx, ry]:
+            raise ValueError(&quot;feedback cell is outside certified invariant&quot;)
+        sign = int(self.policy[p, rx, ry])
+        direction = tuple(F(value, 5) for value in self.directions[p])
+        self.phase[block] = (p + 1) % len(self.directions)
+        return sign, (2 * block, 2 * block + 1), direction
+
+
+def verify_and_write_receipt():
+    # Independent exact geometry reconstruction; no synthesis-code import.
+    data = np.load(CERTIFICATE, allow_pickle=False)
+    scale, radius = int(data[&quot;scale&quot;]), int(data[&quot;radius_units&quot;])
+    directions = [tuple(map(int, v)) for v in data[&quot;directions&quot;]]
+    winning, policy = data[&quot;winning&quot;], data[&quot;policy&quot;]
+    cells = {(p, x-radius, y-radius) for p, x, y in zip(*np.nonzero(winning))}
+    offsets = {}
+    geometry_checks = 0
+    for phase, direction in enumerate(directions):
+        scaled = [F(scale * value, 5) for value in direction]
+        for sign in (-1, 1):
+            ranges = []
+            for value in scaled:
+                lo = sign * value - abs(value)/2 - 2
+                hi = sign * value + abs(value)/2 + 2
+                ranges.append(range(-((-lo.numerator)//lo.denominator), hi.numerator//hi.denominator+1))
+            candidates = set()
+            for x in ranges[0]:
+                for y in ranges[1]:
+                    lower, upper, feasible = -F(1, 2), F(1, 2), True
+                    for coordinate, value in zip((x, y), scaled):
+                        if value == 0:
+                            feasible &amp;= abs(coordinate) &lt;= 2
+                        else:
+                            endpoints = [(F(coordinate)-sign*value-2)/value,
+                                         (F(coordinate)-sign*value+2)/value]
+                            lower = max(lower, min(endpoints))
+                            upper = min(upper, max(endpoints))
+                    if feasible and lower &lt;= upper:
+                        candidates.add((x, y))
+                    geometry_checks += 1
+            assert candidates == {tuple(map(int, v)) for v in data[f&quot;offsets_{phase}_{sign}&quot;]}
+            offsets[(phase, sign)] = candidates
+    transitions = 0
+    for p, x, y in cells:
+        assert (abs(x)+1)**2 + (abs(y)+1)**2 &lt;= radius**2
+        sign = int(policy[p, x+radius, y+radius])
+        assert sign in (-1, 1)
+        for dx, dy in offsets[(p, sign)]:
+            assert ((p+1) % len(directions), x+dx, y+dy) in cells
+            transitions += 1
+    initial_cells = [(x, y) for x in (-1, 0, 1) for y in (-1, 0, 1)]
+    assert all((0, x, y) in cells for x, y in initial_cells)
+    # Exact tensor-product proof, represented by a single local obligation:
+    # an active block takes one of the checked transitions; every inactive
+    # block retains its cell/phase. Safe squared norms add on disjoint supports.
+    example_blocks = 1000
+    receipt = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;evidence_status&quot;: &quot;inherited local exact certificate replay plus internally proved orthogonal product lift&quot;,
+        &quot;inherited_source_certificate&quot;: &quot;work/phase5/mathematical_operation/continuous_optimal_r60_q20.npz&quot;,
+        &quot;certificate_sha256&quot;: hashlib.sha256(CERTIFICATE.read_bytes()).hexdigest(),
+        &quot;local_winning_cells&quot;: len(cells),
+        &quot;local_exact_geometry_checks&quot;: geometry_checks,
+        &quot;local_chosen_action_universal_transitions_checked&quot;: transitions,
+        &quot;all_allowed_initial_feedback_cells_checked&quot;: len(initial_cells),
+        &quot;blocks&quot;: &quot;any positive integer k&quot;,
+        &quot;dimension&quot;: &quot;2*k (unused orthogonal coordinates may remain zero)&quot;,
+        &quot;direction_rule&quot;: &quot;each active block follows local period e1,(3/5,4/5),e2,(4/5,-3/5); arbitrary interleaving&quot;,
+        &quot;postdecision_scalar_noise&quot;: &quot;[-1/2,1/2] on the active direction only&quot;,
+        &quot;feedback_total_coordinate_error&quot;: &quot;&lt;=1/20 in active two-coordinate block&quot;,
+        &quot;all_time_actual_radius&quot;: &quot;3*sqrt(k)&quot;,
+        &quot;all_time_actual_squared_radius&quot;: &quot;9*k&quot;,
+        &quot;compressed_storage&quot;: &quot;one shared local table plus k phase indices; no tensor-product expansion&quot;,
+        &quot;per_pulse_operations&quot;: &quot;read active block feedback, one table lookup, increment its phase&quot;,
+        &quot;example_dimension&quot;: 2 * example_blocks,
+        &quot;example_certified_squared_radius&quot;: 9 * example_blocks,
+        &quot;scope&quot;: &quot;special block-local periodic schedules only; no general arbitrary-schedule theorem or novelty claim&quot;,
+        &quot;physical_experiment&quot;: False,
+    }
+    (HERE / &quot;periodic_block_lift_receipt.json&quot;).write_text(json.dumps(receipt, indent=2) + &quot;\n&quot;)
+    print(json.dumps(receipt, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    verify_and_write_receipt()
+</pre>

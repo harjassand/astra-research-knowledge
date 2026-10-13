@@ -1,0 +1,73 @@
+<!doctype html><meta charset="utf-8"><title>N779 integration derived — thermal_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Independent finite diagnostics; exact symbolic results vs floating controls.&quot;&quot;&quot;
+import json,math,time
+from pathlib import Path
+import numpy as np
+import sympy as sp
+
+def kron(xs):
+ out=xs[0]
+ for x in xs[1:]:out=np.kron(out,x)
+ return out
+I=np.eye(2);paulis=[np.array([[0,1],[1,0]]),np.array([[0,-1j],[1j,0]]),np.diag([1,-1])]
+def dot(i,j):
+ return sum(kron([p/2 if k in [i,j] else I for k in range(4)]) for p in paulis)
+def phi(x,ks,dc):
+ return sum(np.kron(k.conj().T,np.eye(dc))@x@np.kron(k,np.eye(dc)) for k in ks)
+def free(h,tau):
+ es=np.linalg.eigvalsh(h);m=es.min()
+ return float(m-tau*np.log(np.exp(-(es-m)/tau).sum()))
+def run():
+ started=time.monotonic();h0=dot(0,1)+dot(0,2)+dot(1,3);h1=h0+dot(0,1)
+ s=np.array([0,1,-1,0])/math.sqrt(2);ts=[np.array([1,0,0,0]),np.array([0,1,1,0])/math.sqrt(2),np.array([0,0,0,1])]
+ ps=np.outer(s,s);pt=np.eye(4)-ps;q=.5
+ ks=[ps+q*pt]+[math.sqrt(1-q*q)*np.outer(s,t) for t in ts]
+ assert np.max(np.abs(sum(k.conj().T@k for k in ks)-np.eye(4)))&lt;1e-14
+ kap=np.linalg.eigvalsh(sum(k@k.conj().T for k in ks)).max();assert abs(kap-13/4)&lt;1e-14
+ c=(5-math.sqrt(13))/8
+ assert abs(np.linalg.eigvalsh(h0-phi(h1,ks,4)).min()-c)&lt;1e-14
+ # Independent exact rational residual and characteristic polynomial.
+ half=sp.Rational(1,2)
+ pss=sp.Matrix([[0,0,0,0],[0,half,-half,0],[0,-half,half,0],[0,0,0,0]])
+ pts=sp.eye(4)-pss;k0=pss+sp.Rational(1,2)*pts
+ sps=[sp.Matrix([[0,1],[1,0]]),sp.Matrix([[0,-sp.I],[sp.I,0]]),sp.diag(1,-1)]
+ def sdot(i,j):
+  return sum((sp.kronecker_product(*[p/2 if k in [i,j] else sp.eye(2) for k in range(4)]) for p in sps),sp.zeros(16))
+ hh0=sdot(0,1)+sdot(0,2)+sdot(1,3);hh1=hh0+sdot(0,1)
+ assert np.max(np.abs(np.array(hh0,dtype=complex)-h0))&lt;1e-14
+ block=sp.zeros(4)
+ for a in range(4):
+  for b in range(4):block+=pss[b,a]*hh1[a*4:(a+1)*4,b*4:(b+1)*4]
+ resid=hh0-sp.kronecker_product(k0,sp.eye(4))*hh1*sp.kronecker_product(k0,sp.eye(4))-sp.Rational(3,4)*sp.kronecker_product(pts,block)
+ ev=resid.eigenvals();expected={sp.Rational(13,8):5,sp.Rational(7,8):3,1-sp.sqrt(2)/4:3,1+sp.sqrt(2)/4:3,(5-sp.sqrt(13))/8:1,(5+sp.sqrt(13))/8:1}
+ assert ev==expected,ev
+ lamI=(4-3*sp.Rational(1,4))*pss+sp.Rational(1,4)*pts
+ assert lamI.eigenvals()=={sp.Rational(13,4):1,sp.Rational(1,4):3}
+ rng=np.random.default_rng(20261013);count=0;minmargin=math.inf
+ for dr in [1,2,3]:
+  for scale in [0,.2,1,5,100]:
+   z=rng.normal(size=(4*dr,4*dr))+1j*rng.normal(size=(4*dr,4*dr));env=scale*(z+z.conj().T)/(2*np.sqrt(4*dr))
+   H0=np.kron(h0,np.eye(dr))+np.kron(np.eye(4),env);H1=np.kron(h1,np.eye(dr))+np.kron(np.eye(4),env)
+   for tau in [.01,.05,.1,.2,1,5]:
+    delta=free(H1,tau)-free(H0,tau);upper=-c+tau*math.log(kap)
+    assert -.75-2e-10&lt;=delta&lt;=upper+2e-10,(dr,scale,tau,delta,upper)
+    minmargin=min(minmargin,upper-delta);count+=1
+ naive=free(np.eye(2)/4,1)-free(np.diag([0,2]),1)
+ assert naive&lt;0 and naive&gt;=.25-math.log(2)
+ sharp=[]
+ for d in [2,3,4,8]:
+  f=free(np.eye(d)/4,1)-free(np.diag([0]+[40]*(d-1)),1)
+  assert abs(f-(.25-math.log(d)))&lt;1e-14
+  sharp.append(d)
+ # Certifiable cap mesh loss, using exact inequality log(1+h)&lt;=h.
+ from fractions import Fraction as F
+ grids=0
+ for d in [2,3,4,8]:
+  for h in [F(1,10),F(1,32)]:
+   for k in [F(1),F(3,2),F(d)-h/2,F(d)]:
+    cap=min(F(d),1+h*max(1,math.ceil((k-1)/h)))
+    assert k&lt;=cap&lt;=k+h
+    assert math.log(float(cap/k))&lt;=float(h)+1e-15;grids+=1
+ result=dict(status=&#x27;PASS&#x27;,exact_symbolic_residual_spectrum={str(k):v for k,v in ev.items()},exact_channel_kappa=&#x27;13/4&#x27;,random_environment_temperature_checks=count,minimum_floating_margin=minmargin,naive_ground_to_thermal_transfer_counterexample=naive,reset_family_sharpness_dimensions=sharp,cap_mesh_fixtures=grids,symbolic_threshold_tau=c/math.log(kap),conservative_rational_threshold_tau=.22421/math.log(4),seconds=time.monotonic()-started,scope=&#x27;Exact finite symbolic identities and independent floating diagnostics,not interval partition-function certification,universal proof verification,novelty or physical evidence.&#x27;)
+ Path(__file__).with_name(&#x27;thermal_results.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;);print(json.dumps(result,indent=2))
+if __name__==&#x27;__main__&#x27;:run()
+</pre>

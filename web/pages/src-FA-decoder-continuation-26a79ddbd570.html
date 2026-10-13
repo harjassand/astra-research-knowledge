@@ -1,0 +1,109 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — verify_certificates.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Read-only independent rational checker for saved certificate outputs.&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import hashlib
+import json
+
+HERE = Path(__file__).resolve().parent
+
+
+def decode(x):
+    if isinstance(x, dict) and &quot;rational&quot; in x:
+        return F(x[&quot;rational&quot;])
+    if isinstance(x, dict):
+        return {k: decode(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [decode(v) for v in x]
+    return x
+
+
+def read(name):
+    return decode(json.loads((HERE/name).read_text()))
+
+
+def dot(x,y):
+    return sum((a*b for a,b in zip(x,y)), F(0))
+
+
+def check_exp(x, threshold):
+    term = result = F(1)
+    for k in range(1, 100):
+        term *= x/k
+        result += term
+    assert result &gt; threshold
+
+
+checks = 0
+receipt = read(&quot;RUN_RECEIPT.json&quot;)
+for row in receipt[&quot;outputs&quot;]:
+    assert hashlib.sha256((HERE/row[&quot;path&quot;]).read_bytes()).hexdigest() == row[&quot;sha256&quot;]
+    checks += 1
+
+w = read(&quot;exact_identifiability.json&quot;)
+mu = [b-a for a,b in w[&quot;common_loss_coordinate_intervals&quot;]]
+T = w[&quot;common_step_temperatures_K&quot;]
+lo,hi = w[&quot;v_dx_du_bounds&quot;]
+L = w[&quot;length_m&quot;]
+lam = w[&quot;dual_multiplier_K&quot;]
+for key, choose in [(&quot;minimum_mean_model&quot;, min), (&quot;maximum_mean_model&quot;, max)]:
+    model = w[key]
+    assert dot(mu, model[&quot;v&quot;]) == L
+    assert all(lo &lt;= v &lt;= hi for v in model[&quot;v&quot;])
+    assert all(a*v == 1 for a,v in zip(model[&quot;a_per_m&quot;],model[&quot;v&quot;]))
+    mean = dot(T,[m*v for m,v in zip(mu,model[&quot;v&quot;])])/L
+    dual = (lam*L+sum(m*choose((t-lam)*lo,(t-lam)*hi) for m,t in zip(mu,T)))/L
+    assert mean == dual == model[&quot;physical_mean_K&quot;]
+    checks += 5
+assert w[&quot;mean_diameter_K&quot;] == w[&quot;exact_mean_interval_K&quot;][1]-w[&quot;exact_mean_interval_K&quot;][0]
+assert 2*w[&quot;any_point_estimator_minimax_absolute_error_lower_K&quot;] == w[&quot;mean_diameter_K&quot;]
+tri = w[&quot;continuous_triangular_temperature_witness&quot;]
+assert tri[&quot;mean_interval_K&quot;] == [300+(x-300)/2 for x in w[&quot;exact_mean_interval_K&quot;]]
+assert 2*tri[&quot;minimax_error_lower_K&quot;] == tri[&quot;mean_interval_K&quot;][1]-tri[&quot;mean_interval_K&quot;][0]
+checks += 4
+
+c = read(&quot;finite_calibration.json&quot;)
+A,B = c[&quot;design&quot;],c[&quot;left_inverse_dual_certificates&quot;]
+for i,row in enumerate(B):
+    for j in range(4):
+        assert dot(row,[a[j] for a in A]) == F(i==j)
+        checks += 1
+norms = [sum(abs(x) for x in row) for row in B]
+assert norms == c[&quot;dual_L1_error_amplifications&quot;]
+systematic = c[&quot;separate_normalized_contrast_error_bounds&quot;][&quot;total_systematic_floor&quot;]
+parts = [v for k,v in c[&quot;separate_normalized_contrast_error_bounds&quot;].items() if k!=&quot;total_systematic_floor&quot;]
+assert sum(parts) == systematic
+assert c[&quot;infinite_integration_parameter_error_floor&quot;] == [n*systematic for n in norms]
+checks += 3
+for plan in c[&quot;plans&quot;]:
+    N=10*plan[&quot;bins&quot;]
+    check_exp(plan[&quot;x&quot;], 2*N/plan[&quot;joint_failure_probability_strictly_below&quot;])
+    m = plan[&quot;complex_mode_count_each_power&quot;]
+    root = plan[&quot;single_power_statistical_error_K_counts&quot;]/1000-plan[&quot;x&quot;]/m
+    assert root&gt;=0 and root*root&gt;=2*plan[&quot;x&quot;]/m
+    total=2*plan[&quot;single_power_statistical_error_K_counts&quot;]/50+systematic
+    assert total==plan[&quot;contrast_plus_design_total_error&quot;]
+    assert [n*total for n in norms] == plan[&quot;parameter_error_radii&quot;]
+    checks += 4
+
+a=read(&quot;boundary_alarm.json&quot;)
+A,C,D=a[&quot;constructed_absorption_A&quot;],a[&quot;constructed_C_in_kB_units&quot;],a[&quot;constructed_D_C_minus_threshold_A&quot;]
+assert D==[[C[i][j]-a[&quot;threshold_K&quot;]*A[i][j] for j in range(2)] for i in range(2)]
+dual=a[&quot;exact_entrywise_dual_certificate&quot;]
+v=dual[&quot;v_unnormalized&quot;]
+assert dot(v,[dot(row,v) for row in D]) == dual[&quot;quadratic_form&quot;]
+assert dual[&quot;quadratic_form&quot;]-dual[&quot;entry_error_bound&quot;] == dual[&quot;strict_positive_lower_bound&quot;]&gt;0
+p=a[&quot;heldout_mode_power_certificate&quot;]
+check_exp(p[&quot;finite_sample_x&quot;],4/p[&quot;conditional_joint_failure_below&quot;])
+m=p[&quot;integration_s_each_state&quot;]*p[&quot;equivalent_independent_bandwidth_Hz&quot;]
+root=p[&quot;statistical_difference_error_bound_K_counts&quot;]/(2*p[&quot;power_upper_bound_K_counts&quot;])-p[&quot;finite_sample_x&quot;]/m
+assert root&gt;=0 and root*root&gt;=2*p[&quot;finite_sample_x&quot;]/m
+margin=p[&quot;constructed_measured_power_centers_K_counts&quot;][0]-p[&quot;constructed_measured_power_centers_K_counts&quot;][1]-p[&quot;statistical_difference_error_bound_K_counts&quot;]-sum(p[&quot;hypothetical_acquired_systematic_budgets_K_counts&quot;].values())
+assert margin == p[&quot;strict_positive_margin_after_all_stated_errors_K_counts&quot;]&gt;0
+checks += 6
+
+result={&quot;status&quot;:&quot;PASS&quot;, &quot;exact_rational_assertions&quot;:checks,
+        &quot;scope&quot;:&quot;Saved rational primal/dual, concentration enclosures and algebra checked independently of generator; physical premises and general analytic proofs are not machine formalized.&quot;}
+(HERE/&quot;VERIFY_RECEIPT.json&quot;).write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+print(json.dumps(result,indent=2))
+</pre>

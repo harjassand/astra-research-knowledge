@@ -1,0 +1,61 @@
+<!doctype html><meta charset="utf-8"><title>N776 preserved original — additional_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite pulse cutoff checks and the nonuniform product-dimer obstruction.&quot;&quot;&quot;
+from __future__ import annotations
+import json, math
+from pathlib import Path
+import numpy as np
+from scipy.integrate import quad
+from scipy.special import k0, k1
+from checks import A, BETA, matched_gamma, rate
+ROOT=Path(__file__).resolve().parent
+
+def cutoff_check(eta=1., W=10., tolerance=.01):
+    if eta&lt;=0 or W&lt;eta or not 0&lt;tolerance&lt;.5:
+        raise ValueError(&#x27;Require eta&gt;0, W&gt;=eta, and 0&lt;tolerance&lt;.5&#x27;)
+    c=3/4
+    lo=math.pi*tolerance*c/(2*A*W)
+    hi=8*A/(math.pi*tolerance*eta)
+    m=BETA*eta
+    lam_envelope=2*A/math.pi*(1/lo-1/hi)
+    phase_action_bound=2*A/math.pi*math.log(hi/lo)
+    phase_action_exact=2*A/math.pi*(k0(m*lo)-k0(m*hi))
+    rows=[]
+    for w in np.r_[0.,np.geomspace(.001,W,41)]:
+        val,quaderr=quad(lambda u:4*A*m/math.pi * k1(m*math.exp(u))*math.sin(w*math.exp(u)/2)**2,
+                        math.log(lo),math.log(hi),epsabs=1e-10,limit=400)
+        gm=float(matched_gamma(w,eta));gt=eta+val
+        assert gm-gt &gt;= -1e-8 and gm-gt&lt;=tolerance*gm+1e-8
+        r=float(rate(np.array(w),np.array(gt))/rate(np.array(w),np.array(max(eta,w))))
+        assert r&gt;=.97*(1-tolerance)-1e-8
+        rows.append({&#x27;gap&#x27;:float(w),&#x27;ideal_width&#x27;:gm,&#x27;truncated_width&#x27;:gt,&#x27;ratio_to_edge_oracle&#x27;:r})
+    return dict(eta=eta,local_gap_bound=W,tolerance=tolerance,minimum_pulse_phase=lo,
+                maximum_pulse_phase=hi,proposal_rate=lam_envelope,
+                expected_absolute_phase_per_unit_target_time=phase_action_exact,
+                absolute_phase_upper_bound=phase_action_bound,values=rows)
+
+def dimer_check(J=.05,eta=1.):
+    if not 0&lt;J&lt;eta/4:raise ValueError(&#x27;Overdamped regime required&#x27;)
+    om=math.sqrt(eta*eta-16*J*J)
+    a=(1+eta/om)/2;b=(1-eta/om)/2
+    lslow=(eta-om)/2;lfast=(eta+om)/2
+    def corr(t):
+        return a*math.exp(-lslow*t)+b*math.exp(-lfast*t)
+    rows=[]
+    for n in [1,10,100,1000,10000,1000000]:
+        scale=1/(J*math.sqrt(n))
+        def val(s):
+            c=corr(s*scale)
+            return math.exp(n*math.log(c)) if c&gt;0 else 0.
+        integral=quad(val,0,np.inf,epsabs=1e-9,limit=300)[0]*scale
+        kinetic=eta/(4*n*J*J)
+        asymptotic=math.sqrt(math.pi)/(2*math.sqrt(2)*J*math.sqrt(n))
+        rows.append(dict(dimers=n,quantum_integral=integral,kinetic_integral=kinetic,
+                         quantum_over_kinetic=integral/kinetic,
+                         quantum_over_large_n_asymptotic=integral/asymptotic))
+    return dict(J=J,eta=eta,status=&#x27;exact formula integrated numerically; asymptotic proved in note&#x27;,values=rows)
+
+if __name__==&#x27;__main__&#x27;:
+    out={&#x27;finite_pulse_cutoff&#x27;:cutoff_check(),&#x27;nonuniform_dimer_obstruction&#x27;:dimer_check()}
+    (ROOT/&#x27;additional_results.json&#x27;).write_text(json.dumps(out,indent=2))
+    print(json.dumps(out,indent=2))
+</pre>

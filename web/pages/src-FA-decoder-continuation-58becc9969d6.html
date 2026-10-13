@@ -1,0 +1,199 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — analytic_check.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Independent bounded checks for the Sol03 sequential ordinal flag draft.
+
+Uses only the standard library. The finite checks are diagnostics of the
+displayed formulas, not a proof of the algorithm for arbitrary n.
+&quot;&quot;&quot;
+from fractions import Fraction
+from math import ceil, comb, exp, log
+import json
+from pathlib import Path
+
+
+def cdf_median_numerator(r, N, m):
+    &quot;&quot;&quot;Numerator of P[discrete sample median &lt;= r], denominator N**m.&quot;&quot;&quot;
+    threshold = (m + 1) // 2
+    p_num = r + 1
+    q_num = N - p_num
+    return sum(comb(m, k) * p_num**k * q_num**(m-k)
+               for k in range(threshold, m + 1))
+
+
+def exact_discrete_median_error(N, m):
+    &quot;&quot;&quot;Exact E |median/N - 1/2| for m iid ranks in {0,...,N-1}.&quot;&quot;&quot;
+    denominator = N**m
+    previous = 0
+    absolute_numerator = 0
+    half = Fraction(N, 2)
+    for r in range(N):
+        current = cdf_median_numerator(r, N, m)
+        mass_numerator = current - previous
+        absolute_numerator += mass_numerator * abs(Fraction(r, 1) - half)
+        previous = current
+    return Fraction(absolute_numerator, denominator * N)
+
+
+def gf2_inverse(rows, n):
+    aug = [rows[i] | (1 &lt;&lt; (n + i)) for i in range(n)]
+    for col in range(n):
+        pivot = next((r for r in range(col, n) if (aug[r] &gt;&gt; col) &amp; 1), None)
+        if pivot is None:
+            raise ValueError(&quot;matrix is singular&quot;)
+        aug[col], aug[pivot] = aug[pivot], aug[col]
+        for r in range(n):
+            if r != col and ((aug[r] &gt;&gt; col) &amp; 1):
+                aug[r] ^= aug[col]
+    return [row &gt;&gt; n for row in aug]
+
+
+def mat_vec(rows, x):
+    return sum(((row &amp; x).bit_count() &amp; 1) &lt;&lt; i for i, row in enumerate(rows))
+
+
+def flag_projection_check(n=6, k=3):
+    &quot;&quot;&quot;Exhaust a hidden-affine triangular quadratic example and all prefixes.&quot;&quot;&quot;
+    # A nontrivial invertible upper-triangular affine coordinate change.
+    A = [(1 &lt;&lt; i) | ((1 &lt;&lt; (i + 1)) if i + 1 &lt; n else 0)
+         for i in range(n)]
+    Ainv = gf2_inverse(A, n)
+    offset = 0b101011 &amp; ((1 &lt;&lt; n) - 1)
+    v = [mat_vec(Ainv, 1 &lt;&lt; j) for j in range(n)]
+
+    def outputs(x):
+        u = mat_vec(A, x) ^ offset
+        out = 0
+        for j in range(n):
+            bit = (u &gt;&gt; j) &amp; 1
+            if j &gt;= 2:
+                bit ^= ((u &gt;&gt; (j - 2)) &amp; 1) &amp; ((u &gt;&gt; (j - 1)) &amp; 1)
+            out |= bit &lt;&lt; (n - 1 - j)
+        return out
+
+    def q(j, x):
+        return (outputs(x) &gt;&gt; (n - 1 - j)) &amp; 1
+
+    # The output list is triangular in u, hence a bijection. Verify the exact
+    # common-radical toggle identities directly on all x for every j.
+    flag_checks = 0
+    for j in range(n):
+        for i in range(j + 1):
+            expected = int(i == j)
+            for x in range(1 &lt;&lt; n):
+                assert q(i, x ^ v[j]) ^ q(i, x) == expected
+                flag_checks += 1
+
+    def project(x, b):
+        for j in range(k):
+            if q(j, x) != ((b &gt;&gt; (k - 1 - j)) &amp; 1):
+                x ^= v[j]
+        return x
+
+    # W is the image under A^{-1} of the last n-k coordinate directions.
+    W = []
+    for mask in range(1 &lt;&lt; (n - k)):
+        u_mask = mask &lt;&lt; k
+        W.append(mat_vec(Ainv, u_mask))
+    projection_cases = 0
+    enumerated_fibers = 0
+    for b in range(1 &lt;&lt; k):
+        images = [project(x, b) for x in range(1 &lt;&lt; n)]
+        counts = {}
+        for y in images:
+            counts[y] = counts.get(y, 0) + 1
+            assert (outputs(y) &gt;&gt; (n - k)) == b
+        assert len(counts) == 1 &lt;&lt; (n - k)
+        assert set(counts.values()) == {1 &lt;&lt; k}
+        representatives = [project(w, b) for w in W]
+        assert len(set(representatives)) == len(W)
+        assert set(representatives) == set(counts)
+        # Exact local ordinal rank within each acquired prefix fiber.
+        for x in counts:
+            rank = sum(outputs(y) &lt; outputs(x) for y in counts)
+            expected = outputs(x) &amp; ((1 &lt;&lt; (n - k)) - 1)
+            assert rank == expected
+            projection_cases += 1
+        enumerated_fibers += len(counts)
+    return {
+        &quot;n&quot;: n,
+        &quot;acquired_prefix_length&quot;: k,
+        &quot;output_map_bijective_by_triangular_construction&quot;: True,
+        &quot;flag_toggle_checks&quot;: flag_checks,
+        &quot;prefix_projection_points_checked&quot;: projection_cases,
+        &quot;fiber_representatives_checked&quot;: enumerated_fibers,
+        &quot;all_prefix_projections_exact_uniform&quot;: True,
+        &quot;complement_parameterizes_every_prefix_fiber&quot;: True,
+        &quot;local_ordinal_rank_equals_suffix_integer&quot;: True,
+    }
+
+
+def main():
+    m = 127
+    a_m = Fraction(comb(m + 1, (m + 1) // 2), 2 ** (m + 2))
+    N = 256
+    eta = a_m + Fraction(1, N)
+    gap = Fraction(1, 2) - 7 * eta
+    exact_actual_median = exact_discrete_median_error(N, m)
+    assert eta &lt; Fraction(1, 14)
+    assert exact_actual_median &lt;= eta
+
+    sizes = []
+    for n in (8, 16, 32, 64, 128, 256):
+        M = 1 + n + n * (n - 1) // 2
+        stages = max(0, n - 7)
+        stage_rows = []
+        comparisons = 0
+        for k in range(stages):
+            residual = 1 &lt;&lt; (n - k)
+            eta_k = float(a_m) + 1 / residual
+            gap_k = 0.5 - 7 * eta_k
+            t = ceil(log(n * M / 0.01) / (2 * gap_k * gap_k))
+            if t % 2 == 0:
+                t += 1
+            stage_calls = 7 * m * t * M
+            comparisons += stage_calls
+            stage_rows.append({&quot;stage&quot;: k, &quot;residual_size&quot;: residual,
+                               &quot;odd_t&quot;: t, &quot;stage_comparisons&quot;: stage_calls,
+                               &quot;stage_failure_bound&quot;: M * exp(-2 * t * gap_k * gap_k)})
+        tail_r = min(n, 7)
+        comparisons += M * ((1 &lt;&lt; tail_r) - 1)
+        t_max = max((s[&quot;odd_t&quot;] for s in stage_rows), default=0)
+        worst_gap = min((0.5 - 7 * (float(a_m) + 1 / s[&quot;residual_size&quot;])
+                         for s in stage_rows), default=float(gap))
+        sizes.append({
+            &quot;n&quot;: n,
+            &quot;M&quot;: M,
+            &quot;randomized_stages&quot;: stages,
+            &quot;maximum_odd_t&quot;: t_max,
+            &quot;comparison_upper_bound&quot;: comparisons,
+            &quot;query_argument_bits_upper_bound&quot;: 2 * n * comparisons,
+            &quot;worst_stage_majority_bound&quot;: exp(-2 * t_max * worst_gap * worst_gap),
+            &quot;per_stage_failure_bounds&quot;: [s[&quot;stage_failure_bound&quot;] for s in stage_rows],
+            &quot;tail_comparisons&quot;: M * ((1 &lt;&lt; tail_r) - 1),
+            &quot;stages&quot;: stage_rows,
+        })
+    result = {
+        &quot;median&quot;: {
+            &quot;m&quot;: m,
+            &quot;continuous_beta_mean_absolute_deviation&quot;: str(a_m),
+            &quot;continuous_beta_mean_absolute_deviation_decimal&quot;: float(a_m),
+            &quot;N_min&quot;: N,
+            &quot;eta_upper_bound&quot;: str(eta),
+            &quot;eta_upper_bound_decimal&quot;: float(eta),
+            &quot;7_eta_upper_bound&quot;: float(7 * eta),
+            &quot;rm_majority_gap_lower_bound&quot;: str(gap),
+            &quot;rm_majority_gap_lower_bound_decimal&quot;: float(gap),
+            &quot;exact_finite_N_median_error&quot;: str(exact_actual_median),
+            &quot;exact_finite_N_median_error_decimal&quot;: float(exact_actual_median),
+            &quot;verified_eta_below_1_over_14&quot;: True,
+        },
+        &quot;query_cost_examples_beta_0_01&quot;: sizes,
+        &quot;projection_exhaustion&quot;: flag_projection_check(),
+        &quot;scope&quot;: &quot;Exact formula arithmetic and a finite triangular example only; not an algorithm implementation, scaling experiment, or proof of novelty.&quot;,
+    }
+    path = Path(__file__).with_name(&quot;analytic_check.json&quot;)
+    path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

@@ -1,0 +1,240 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — nonlinear_transport.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Corrected unactuated control and a conditional nonlinear OSP pipe closure.
+
+Unactuated stress/rate law is digitised from primary SI Fig6. OSP reduction
+factors use author-deposited Fig1d data. Their multiplicative contact-viscosity
+combination away from the measured primary rate is an ASSUMPTION, explicitly
+different from measured validation. Complex-viscosity phase is swept separately.
+&quot;&quot;&quot;
+from dataclasses import dataclass,replace,asdict
+from functools import lru_cache
+from pathlib import Path
+import json
+import math
+import time
+
+import numpy as np
+from scipy.integrate import simpson
+from scipy.interpolate import PchipInterpolator
+from scipy.linalg import solve_banded
+from scipy.optimize import brentq,isotonic_regression
+
+import empirical_transport as empirical
+
+
+@dataclass(frozen=True)
+class Parameters(empirical.Parameters):
+    rate_scale: float = 1.0
+    phase_angle: float = math.pi/2
+    hydrodynamic_parallel: float = 9.0
+    hydrodynamic_cross: float = 7.0
+
+
+@lru_cache(maxsize=1)
+def unactuated_curve():
+    data=np.loadtxt(Path(__file__).parent/&#x27;sources/lin_fig6_digitised.csv&#x27;,
+                    delimiter=&#x27;,&#x27;,skiprows=1)
+    rate=np.exp(isotonic_regression(np.log(data[:,2]),increasing=True).x)
+    f=PchipInterpolator(np.log(data[:,0]),np.log(rate),extrapolate=False)
+    return f,data,rate
+
+
+def unactuated_rate(stress,p):
+    f,data,rate=unactuated_curve()
+    stress=np.asarray(stress)
+    low_eta=data[0,0]/rate[0]
+    high_eta=data[-1,0]/rate[-1]
+    result=np.exp(f(np.log(np.clip(stress,data[0,0],data[-1,0]))))
+    result=np.where(stress&lt;data[0,0],stress/low_eta,result)
+    result=np.where(stress&gt;data[-1,0],stress/high_eta,result)
+    return p.rate_scale*result
+
+
+def unactuated_mean(gradient,p,n=512):
+    r=np.linspace(0,p.radius,n+1)
+    gamma=unactuated_rate(gradient*r/2,p)
+    return simpson(r*r*gamma,x=r)/p.radius**2
+
+
+def unactuated_matched(target,p):
+    gradient=brentq(lambda g:unactuated_mean(g,p)-target,1e-9,1e7,xtol=1e-10)
+    flow=math.pi*p.radius**2*target
+    return gradient,gradient*p.length*flow/p.pump_efficiency
+
+
+def axial_from_cross(shear,gradient,p):
+    r=np.linspace(0,p.radius,len(shear))
+    stress=gradient*r/2
+    s=np.abs(shear)
+    # Parameterise by equivalent unperturbed stress h; this handles the steep
+    # DST graph without inventing a single-valued inverse rate/stress curve.
+    low=np.zeros_like(stress)
+    high=np.maximum(stress*200,2000.)
+    for _ in range(52):
+        h=(low+high)/2
+        gamma=unactuated_rate(h,p)
+        eta0=np.divide(h,gamma,out=np.full_like(h,p.eta_high),where=gamma&gt;0)
+        chi=np.divide(s,gamma,out=np.zeros_like(s),where=gamma&gt;0)
+        measured=empirical.empirical_viscosity(chi,p,&#x27;primary&#x27;)
+        fraction=np.clip((measured-p.hydrodynamic_parallel)/
+                         (p.eta_high-p.hydrodynamic_parallel),0,1)
+        eta_parallel=p.hydrodynamic_parallel+(eta0-p.hydrodynamic_parallel)*fraction
+        stress_model=gamma*eta_parallel
+        low=np.where(stress_model&lt;stress,h,low)
+        high=np.where(stress_model&lt;stress,high,h)
+    h=(low+high)/2
+    gamma=unactuated_rate(h,p)
+    eta0=np.divide(h,gamma,out=np.full_like(h,p.eta_high),where=gamma&gt;0)
+    chi=np.divide(s,gamma,out=np.zeros_like(s),where=gamma&gt;0)
+    para=empirical.empirical_viscosity(chi,p,&#x27;primary&#x27;)
+    cross=empirical.empirical_viscosity(chi,p,&#x27;OSP&#x27;)
+    fp=np.clip((para-p.hydrodynamic_parallel)/(p.eta_high-p.hydrodynamic_parallel),0,1)
+    fc=np.clip((cross-p.hydrodynamic_cross)/(p.eta_high-p.hydrodynamic_cross),0,1)
+    ep=p.hydrodynamic_parallel+(eta0-p.hydrodynamic_parallel)*fp
+    ec=p.hydrodynamic_cross+(eta0-p.hydrodynamic_cross)*fc
+    mean=simpson(r*r*gamma,x=r)/p.radius**2
+    return mean,ep,ec,gamma,chi,h
+
+
+def cross_solve(eta_magnitude,omega,velocity,p):
+    # For strain proportional to sin(omega*t), phase delta between stress and
+    # strain gives eta*=|eta*|(sin(delta)-i*cos(delta)). Re eta* is passive.
+    eta=eta_magnitude*(math.sin(p.phase_angle)-1j*math.cos(p.phase_angle))
+    n=len(eta)-1
+    dr=p.radius/n
+    faces=np.linspace(0,p.radius,n+1)
+    volume=np.diff(faces**4)/4
+    conductance=faces**3*eta/dr
+    left=conductance[:-1].copy()
+    right=conductance[1:].copy();right[-1]*=2
+    band=np.zeros((3,n),dtype=complex)
+    band[1]=left+right+1j*omega*p.density*volume
+    band[0,1:]=-right[:-1];band[2,:-1]=-left[1:]
+    rhs=np.zeros(n,dtype=complex);rhs[-1]=right[-1]*velocity/p.radius
+    angular=solve_banded((1,1),band,rhs)
+    gradient=np.zeros(n+1,dtype=complex)
+    gradient[1:-1]=np.diff(angular)/dr
+    gradient[-1]=(velocity/p.radius-angular[-1])/(dr/2)
+    shear=faces*gradient
+    edge_diff=np.r_[0,np.diff(angular),velocity/p.radius-angular[-1]]
+    edge_g=conductance.copy();edge_g[-1]*=2
+    power=float(math.pi*p.length*np.sum(edge_g.real*np.abs(edge_diff)**2))
+    torque=2*math.pi*p.radius**2*p.length*eta[-1]*shear[-1]
+    surface=float(.5*np.real(torque*velocity/p.radius))
+    assert power&gt;=0 and abs(power-surface)&lt;1e-7*max(1,power)
+    return shear,power,torque,angular
+
+
+def coupled(gradient,omega,velocity,p,n=96,initial=&#x27;high&#x27;,tol=1e-7):
+    eta=np.full(n+1,p.eta_high if initial==&#x27;high&#x27; else p.hydrodynamic_cross)
+    converged=False
+    for count in range(750):
+        shear,power,torque,angular=cross_solve(eta,omega,velocity,p)
+        mean,ep,ec,gamma,chi,h=axial_from_cross(shear,gradient,p)
+        error=float(np.max(np.abs(np.log(ec/eta))))
+        if error&lt;tol:
+            converged=True;break
+        eta=np.exp(.8*np.log(eta)+.2*np.log(ec))
+    flow=math.pi*p.radius**2*mean
+    angular_velocity=velocity/p.radius
+    impedance=torque/angular_velocity if angular_velocity else 0j
+    added_inertia=impedance.imag/omega
+    axial=gradient*p.length*flow
+    return {&#x27;converged&#x27;:converged,&#x27;iterations&#x27;:count+1,&#x27;fixed_point_error&#x27;:error,
+      &#x27;pressure_gradient&#x27;:float(gradient),&#x27;omega&#x27;:omega,&#x27;wall_velocity&#x27;:velocity,
+      &#x27;mean_velocity&#x27;:float(mean),&#x27;flow_L_min&#x27;:float(flow*60000),
+      &#x27;axial_fluid_power&#x27;:float(axial),&#x27;cross_fluid_power&#x27;:power,
+      &#x27;fluid_added_inertia&#x27;:float(added_inertia),
+      &#x27;fluid_torque_real&#x27;:float(torque.real),&#x27;fluid_torque_imag&#x27;:float(torque.imag),
+      &#x27;material_strain_max&#x27;:float(np.max(np.abs(shear))/omega),
+      &#x27;chi_max&#x27;:float(np.max(chi)),&#x27;primary_rate_wall&#x27;:float(gamma[-1]),
+      &#x27;equivalent_unactuated_stress_max&#x27;:float(np.max(h)),
+      &#x27;outside_unactuated_stress_data&#x27;:bool(np.max(h)&gt;unactuated_curve()[1][-1,0]),
+      &#x27;outside_OSP_chi_data&#x27;:bool(np.max(chi)&gt;empirical.raw_curve(p.empirical_amplitude,&#x27;primary&#x27;,p.eta_high)[1][-1,0]),
+      &#x27;eta_cross&#x27;:eta,&#x27;eta_parallel&#x27;:ep,&#x27;shear&#x27;:shear,&#x27;gamma&#x27;:gamma,&#x27;chi&#x27;:chi}
+
+
+def matched_mean(target,omega,velocity,p,n=96):
+    base,base_power=unactuated_matched(target,p)
+    if velocity==0:
+        row=coupled(base,omega,velocity,p,n=n)
+    else:
+        def residual(g):
+            row=coupled(g,omega,velocity,p,n=n)
+            if not row[&#x27;converged&#x27;]:
+                raise RuntimeError(&#x27;Nonconverged nonlinear constitutive fixed point&#x27;)
+            return row[&#x27;mean_velocity&#x27;]-target
+        g=brentq(residual,base*1e-5,base*1.01,xtol=1e-8,rtol=1e-8)
+        row=coupled(g,omega,velocity,p,n=n)
+    row[&#x27;baseline_pressure_gradient&#x27;]=base
+    row[&#x27;baseline_electric&#x27;]=base_power
+    row[&#x27;pressure_ratio&#x27;]=row[&#x27;pressure_gradient&#x27;]/base
+    return row
+
+
+def clean(row):
+    return {key:value for key,value in row.items() if not isinstance(value,np.ndarray)}
+
+
+def rigid_resonator(row,p,lever=.5,arm_mass_each=.5,quality=20.,detuning=0.):
+    &quot;&quot;&quot;A hypothetical globally rotating pipe on torsional flexures, not a retrofit.
+
+    Two H2W NCC05-18-060-2X moving coils: Kf27.8N/A,R11.5ohm,m99g.
+    Arm mass assumes uniform radial bars; bearing/seal/driver idle still absent.
+    Include fluid reactive loading in spring energy and detuning torque.
+    &quot;&quot;&quot;
+    outer=p.radius+p.steel_thickness
+    steel_inertia=.5*math.pi*p.steel_density*p.length*(outer**4-p.radius**4)
+    arm_inertia=2*(.099+arm_mass_each/3)*lever**2
+    inertia=steel_inertia+arm_inertia+row[&#x27;fluid_added_inertia&#x27;]
+    omega=row[&#x27;omega&#x27;];vel=row[&#x27;wall_velocity&#x27;];Omega=vel/p.radius
+    kinetic=.5*inertia*Omega**2
+    structural=omega*kinetic/quality
+    mechanical=row[&#x27;cross_fluid_power&#x27;]+structural
+    dissipative_torque=2*mechanical/Omega
+    reactive_torque=abs(2*detuning*inertia*omega*Omega)
+    peak_torque=math.hypot(dissipative_torque,reactive_torque)
+    peak_force=peak_torque/(2*lever)
+    current_rms=peak_force/(27.8*math.sqrt(2))
+    copper=2*current_rms**2*11.5
+    electric=row[&#x27;axial_fluid_power&#x27;]/p.pump_efficiency+mechanical+copper
+    return {&#x27;architecture&#x27;:&#x27;Assumed soft torsional flexures and flexible fluid connections; not demonstrated.&#x27;,
+      &#x27;lever_m&#x27;:lever,&#x27;arm_mass_each_kg_assumed&#x27;:arm_mass_each,
+      &#x27;mechanical_quality_assumed&#x27;:quality,&#x27;frequency_detuning_fraction&#x27;:detuning,
+      &#x27;steel_inertia&#x27;:steel_inertia,&#x27;arm_and_mover_inertia&#x27;:arm_inertia,
+      &#x27;fluid_added_inertia&#x27;:row[&#x27;fluid_added_inertia&#x27;],
+      &#x27;torsional_spring_stiffness_Nm_rad&#x27;:inertia*omega**2,
+      &#x27;spring_peak_energy&#x27;:kinetic,&#x27;structural_loss&#x27;:structural,
+      &#x27;copper_loss&#x27;:copper,&#x27;actuator_peak_force_N&#x27;:peak_force,
+      &#x27;actuator_rms_current_A&#x27;:current_rms,
+      &#x27;actuator_stroke_amplitude_m&#x27;:lever*vel/(omega*p.radius),
+      &#x27;actuator_force_within_continuous_rms_rating&#x27;:bool(peak_force/math.sqrt(2)&lt;27),
+      &#x27;total_electric_before_idle_and_seal&#x27;:electric,
+      &#x27;electric_ratio&#x27;:electric/row[&#x27;baseline_electric&#x27;],
+      &#x27;maximum_extra_idle_seal_support_W&#x27;:row[&#x27;baseline_electric&#x27;]-electric,
+      &#x27;mechanical_caveat&#x27;:&#x27;Required flexure, couplings, gravity supports, dynamic Q, driver losses and fatigue are unmeasured.&#x27;}
+
+
+def main():
+    tic=time.perf_counter();p=Parameters();target=.003125
+    rows=[];fail=[]
+    for factor in (1.,1.5,2.,3.):
+        for velocity in (.005,.01,.02,.04):
+            try:
+                row=matched_mean(target*factor,100.,velocity,p,n=64)
+                c=clean(row);c[&#x27;throughput_factor&#x27;]=factor
+                c[&#x27;rigid_resonator&#x27;]=rigid_resonator(row,p)
+                rows.append(c)
+            except RuntimeError as error:
+                fail.append({&#x27;factor&#x27;:factor,&#x27;velocity&#x27;:velocity,&#x27;error&#x27;:str(error)})
+            print(&#x27;checkpoint&#x27;,factor,velocity,flush=True)
+            Path(__file__).with_name(&#x27;nonlinear_transport.json&#x27;).write_text(json.dumps({
+              &#x27;status&#x27;:&#x27;conditional source-based nonlinear closure; no attained performance&#x27;,
+              &#x27;parameters&#x27;:asdict(p),&#x27;rows&#x27;:rows,&#x27;failures&#x27;:fail,
+              &#x27;seconds&#x27;:time.perf_counter()-tic},indent=2)+&#x27;\n&#x27;)
+    print(&#x27;complete&#x27;,len(rows),&#x27;failures&#x27;,len(fail),flush=True)
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>

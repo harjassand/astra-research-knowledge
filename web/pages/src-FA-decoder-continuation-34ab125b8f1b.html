@@ -1,0 +1,213 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — decisive_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded checks for source transfer, full mechanical gates, passive controls.
+
+Only reads the hash-pinned inherited copies and writes this directory.
+No standing-mode search or assumed-Q optimization is repeated.
+&quot;&quot;&quot;
+from pathlib import Path
+from dataclasses import replace
+import hashlib
+import json
+import math
+import platform
+import sys
+import time
+
+import numpy as np
+from scipy.integrate import simpson
+from scipy.optimize import brentq
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE / &#x27;inherited&#x27;))
+import nonlinear_transport as model
+import strong_controls
+
+
+def transfer_window(omega, maximum):
+    &quot;&quot;&quot;C1 nonnegative response-surface witness; not an acquired material law.&quot;&quot;&quot;
+    x = np.clip((np.asarray(omega) - maximum) / maximum, 0.0, 1.0)
+    return 1.0 - x*x*(3.0 - 2.0*x)
+
+
+def main():
+    tic = time.perf_counter()
+    p = model.Parameters()
+    standing = json.loads((HERE/&#x27;inherited/standing_mode.json&#x27;).read_text())
+    preferred = min((c for c in standing[&#x27;cases&#x27;] if not c[&#x27;any_OSP_chi_extrapolation&#x27;]),
+                    key=lambda c: c[&#x27;total_electric_before_idle_W&#x27;])
+    base = HERE/&#x27;inherited/sources/biaxial_raw/biaxial_repository&#x27;
+    source_rates = []
+    for amp in (&#x27;0.5&#x27;, &#x27;0.7&#x27;, &#x27;1.0&#x27;, &#x27;1.5&#x27;, &#x27;2.0&#x27;, &#x27;3.0&#x27;, &#x27;5.0&#x27;):
+        curve = np.loadtxt(base/f&#x27;fig1d/fig1d_{amp}_primary.csv&#x27;, delimiter=&#x27;,&#x27;)
+        a = float(amp)/100.0
+        omega = curve[:, 0]*0.2/a
+        source_rates.append({&#x27;strain_amplitude&#x27;: a, &#x27;points&#x27;: len(curve),
+                             &#x27;omega_min_rad_s&#x27;: float(omega.min()),
+                             &#x27;omega_max_rad_s&#x27;: float(omega.max()),
+                             &#x27;chi_min&#x27;: float(curve[:, 0].min()),
+                             &#x27;chi_max&#x27;: float(curve[:, 0].max())})
+    direct = np.loadtxt(base/&#x27;fig1c/fig1c_primary.csv&#x27;, delimiter=&#x27;,&#x27;)
+    omega_max = max(direct[:, 0].max(), max(r[&#x27;omega_max_rad_s&#x27;] for r in source_rates))
+    assert np.max(np.abs(direct[:, 0]*0.01/0.2 -
+               np.loadtxt(base/&#x27;fig1d/fig1d_1.0_primary.csv&#x27;, delimiter=&#x27;,&#x27;)[:, 0])) &lt; 1e-12
+    q = preferred[&#x27;flow_L_min&#x27;]/60000.0
+    volume0 = math.pi*p.radius**2*p.length
+    passive_receipts = []
+    # Within the inherited real-viscous torsion model, the fluid&#x27;s added
+    # inertia cannot exceed rigid rotation. Positive ground springs and loss
+    # cannot create a driving-point zero-reactance below a positive-definite
+    # stiffness-minus-inertia matrix. This gate is independent of Q/support k.
+    J = math.pi*((p.radius+p.steel_thickness)**4-p.radius**4)/2
+    G = 79e9
+    is_steel = p.steel_density*J
+    is_fluid_rigid = p.density*math.pi*p.radius**4/2
+    is_arms = 2*(.099+.5/3)*(.5**2)
+    denominator = (is_steel+is_fluid_rigid)*p.length**2/math.pi**2 + is_arms*p.length/4
+    lower_hz = math.sqrt(G*J/denominator)/(2*math.pi)
+    necessary_extra_point_inertia = max(0.,4/p.length*(G*J/omega_max**2-
+                               (is_steel+is_fluid_rigid)*p.length**2/math.pi**2)-is_arms)
+    aa=(is_steel+is_fluid_rigid)/math.pi**2
+    bb=is_arms/4
+    necessary_length = (-bb+math.sqrt(bb*bb+4*aa*G*J/omega_max**2))/(2*aa)
+    nz = preferred[&#x27;axial_nodes&#x27;]
+    h = p.length/(nz-1)
+    k = G*J/h*(np.diag(np.full(nz-2,2.))+np.diag(np.full(nz-3,-1.),1)+np.diag(np.full(nz-3,-1.),-1))
+    mi = np.full(nz-2,(is_steel+is_fluid_rigid)*h)
+    mi[(nz-2)//2] += is_arms
+    normalized = k/np.sqrt(mi[:,None]*mi[None,:])
+    discrete_rigid_lower_hz = math.sqrt(np.linalg.eigvalsh(normalized)[0])/(2*math.pi)
+    assert lower_hz &gt; omega_max/(2*math.pi)
+    assert discrete_rigid_lower_hz &gt; omega_max/(2*math.pi)
+
+    def passive(diameter):
+        radius = diameter/2
+        mean = q/(math.pi*radius**2)
+        g, power = model.unactuated_matched(mean, replace(p, radius=radius))
+        return {&#x27;ID_m&#x27;: diameter, &#x27;pressure_gradient_Pa_m&#x27;: g, &#x27;electric_W&#x27;: power,
+                &#x27;inventory_L&#x27;: 1000*math.pi*radius**2*p.length,
+                &#x27;mean_residence_min&#x27;: math.pi*radius**2*p.length/q/60,
+                &#x27;inventory_factor&#x27;: (radius/p.radius)**2}
+
+    active = preferred[&#x27;total_electric_before_idle_W&#x27;]
+    dmatch = brentq(lambda d: passive(d)[&#x27;electric_W&#x27;] - active, .125, .161, xtol=1e-13)
+    for d in (.125, .128, .130, .132, .134, .136, .140, .14348279661344573, .161, dmatch):
+        passive_receipts.append(passive(d))
+    inventory250_diameter = math.sqrt(4*.250/(math.pi*p.length))
+    passive250 = passive(inventory250_diameter)
+    film_match = brentq(lambda delta: strong_controls.wall_film(q/(math.pi*p.radius**2), delta, p)[&#x27;electric_W&#x27;]-active,
+                       0.0, 20e-6, xtol=1e-16)
+    film_controls = [strong_controls.wall_film(q/(math.pi*p.radius**2), delta, p)
+                     for delta in (film_match, 2e-6, 5e-6, 10e-6, 20e-6)]
+
+    # Direct plant impedance includes *all* loaded fluid, structural and
+    # support torques. This is measurable and needs no guessed Q or spring k.
+    # T_pk=Z*Omega_pk; two identical coils at lever ell give
+    # Pcu = Rc*Omega_pk^2*|Z|^2/(4*ell^2*Kf^2).
+    Omega = preferred[&#x27;wall_velocity_peak&#x27;]/p.radius
+    Rc, Kf, ell, inductance = 11.5, 27.8, .5, .0045
+    a = .5*Omega**2
+    b = Rc*Omega**2/(4*ell**2*Kf**2)
+    axial = preferred[&#x27;axial_fluid_power_W&#x27;]/p.pump_efficiency
+    z_real = 2*preferred[&#x27;drive_mechanical_power_W&#x27;]/Omega**2
+    torque = 2*ell*preferred[&#x27;actuator_peak_force_N&#x27;]
+    z_abs = torque/Omega
+    z_imag_abs = math.sqrt(max(0., z_abs*z_abs-z_real*z_real))
+    gates = []
+    for comparator in (passive(.125), passive250, passive(dmatch), passive(.161)):
+        headroom = comparator[&#x27;electric_W&#x27;]-axial
+        xmax = (-a + math.sqrt(a*a+4*b*headroom))/(2*b) if headroom &gt; 0 else None
+        gates.append({&#x27;comparator_ID_m&#x27;: comparator[&#x27;ID_m&#x27;],
+                      &#x27;comparator_inventory_L&#x27;: comparator[&#x27;inventory_L&#x27;],
+                      &#x27;comparator_W&#x27;: comparator[&#x27;electric_W&#x27;],
+                      &#x27;headroom_for_plant_copper_driver_W&#x27;: headroom,
+                      &#x27;measured_gate&#x27;: &#x27;a*Re(Z)+b*abs(Z)^2+P_extra &lt; headroom; Re(Z)&gt;=0. P_extra includes driver idle/conversion and non-fundamental copper losses.&#x27;,
+                      &#x27;a&#x27;: a, &#x27;b&#x27;: b,
+                      &#x27;maximum_resonant_ReZ_if_driver_extra_zero&#x27;: xmax,
+                      &#x27;driver_extra_budget_at_saved_model_Z_W&#x27;: headroom-a*z_real-b*z_abs*z_abs})
+    ipk = torque/(2*ell*Kf)
+    # Coil voltage check assumes saved near-resonant in-phase force/velocity.
+    vpk = abs((Rc+1j*preferred[&#x27;omega&#x27;]*inductance)*ipk + Kf*ell*Omega)
+
+    # Re-evaluate only the five frozen local fluid states, not mode iteration.
+    local = []
+    for saved in preferred[&#x27;local_rows&#x27;][:5]:
+        row = model.coupled(saved[&#x27;pressure_gradient&#x27;], preferred[&#x27;omega&#x27;], saved[&#x27;wall_velocity&#x27;],
+                            replace(p, length=1.0), n=48)
+        assert row[&#x27;converged&#x27;]
+        rr = np.linspace(0,p.radius,len(row[&#x27;gamma&#x27;]))
+        amp = np.abs(row[&#x27;shear&#x27;])/preferred[&#x27;omega&#x27;]
+        flux_integrand = rr*rr*row[&#x27;gamma&#x27;]
+        total_flux = simpson(flux_integrand, x=rr)
+        amp_mask = amp &gt;= .005
+        rate_mask = np.abs(row[&#x27;gamma&#x27;]/.2-1) &lt;= .1
+        local.append({&#x27;wall_velocity_m_s&#x27;: saved[&#x27;wall_velocity&#x27;],
+                      &#x27;amplitude_min&#x27;: float(amp.min()), &#x27;amplitude_max&#x27;: float(amp.max()),
+                      &#x27;primary_rate_max_s_inv&#x27;: float(row[&#x27;gamma&#x27;].max()),
+                      &#x27;flux_fraction_amp_at_least_0_5pct&#x27;: float(simpson(np.where(amp_mask,flux_integrand,0),x=rr)/total_flux),
+                      &#x27;flux_fraction_primary_rate_within_10pct_of_source&#x27;: float(simpson(np.where(rate_mask,flux_integrand,0),x=rr)/total_flux),
+                      &#x27;all_local_points_outside_source_frequency&#x27;: bool(preferred[&#x27;omega&#x27;] &gt; omega_max),
+                      &#x27;flux_fraction_with_all_frequency_rate_amplitude_conditions&#x27;: 0.0,
+                      &#x27;note&#x27;: &#x27;Quadrature diagnostic on the inherited conditional state; masks at cell faces are not rigorously integrated interfaces.&#x27;})
+
+    all_source_omegas = np.concatenate([np.loadtxt(base/f&#x27;fig1d/fig1d_{amp}_primary.csv&#x27;,delimiter=&#x27;,&#x27;)[:,0]*.2/(float(amp)/100)
+                                      for amp in (&#x27;0.5&#x27;,&#x27;0.7&#x27;,&#x27;1.0&#x27;,&#x27;1.5&#x27;,&#x27;2.0&#x27;,&#x27;3.0&#x27;,&#x27;5.0&#x27;)])
+    witness_check = {&#x27;class&#x27;: &#x27;frequency-dependent cycle-averaged dissipative response surfaces&#x27;,
+                     &#x27;not_claimed&#x27;: &#x27;A validated causal particle model or impossibility of all active devices&#x27;,
+                     &#x27;q_at_every_used_raw_source_frequency_exactly_one&#x27;: bool(np.all(transfer_window(all_source_omegas,omega_max)==1)),
+                     &#x27;q_at_all_standing_modes_exactly_zero&#x27;: bool(np.all(transfer_window(np.array([c[&#x27;omega&#x27;] for c in standing[&#x27;cases&#x27;]]),omega_max)==0)),
+                     &#x27;source_max_omega_rad_s&#x27;: float(omega_max),
+                     &#x27;source_max_hz&#x27;: float(omega_max/(2*math.pi)),
+                     &#x27;standing_preferred_frequency_factor_outside_source&#x27;: preferred[&#x27;omega&#x27;]/omega_max,
+                     &#x27;convexity_proof&#x27;: &#x27;eta_B=(1-q)*eta_0+q*eta_A; both eta_A,eta_0&gt;=0 and 0&lt;=q&lt;=1 imply eta_B&gt;=0.&#x27;,
+                     &#x27;no_suppression_active_hydraulic_W&#x27;: preferred[&#x27;baseline_electric_W&#x27;],
+                     &#x27;no_suppression_total_W_lower_bound&#x27;: preferred[&#x27;baseline_electric_W&#x27;],
+                     &#x27;strict_inequality_if_nonzero_actuation&#x27;: True}
+    sample = np.linspace(0,3*omega_max,2001)
+    assert np.all((transfer_window(sample,omega_max)&gt;=0)&amp;(transfer_window(sample,omega_max)&lt;=1))
+
+    low = model.unactuated_matched(.003125,p)[1]
+    assert abs(low-.1980373215478359) &lt; 1e-10
+    assert abs(a*z_real+b*z_abs*z_abs+axial-active)&lt;1e-10
+    assert abs(passive(dmatch)[&#x27;electric_W&#x27;]-active)&lt;1e-8
+    assert abs(film_controls[0][&#x27;electric_W&#x27;]-active)&lt;1e-7
+    result = {&#x27;status&#x27;: &#x27;bounded numerical diagnostics and internally reconstructed gates; no acquired pipe/material response&#x27;,
+              &#x27;corrected_low_flow_passive_W&#x27;: low,
+              &#x27;preferred_saved_case&#x27;: {k:v for k,v in preferred.items() if k not in [&#x27;local_rows&#x27;,&#x27;history&#x27;]},
+              &#x27;source_frequency_contract&#x27;: source_rates,
+              &#x27;mechanical_frequency_gate&#x27;: {&#x27;scope&#x27;:&#x27;Fixed-end inherited tube dimensions/G/densities/drive arm inertia, real positive frozen cross viscosity, no added external inertia, nonnegative grounded support stiffness. Elastic fluid resonances or added hardware fall outside this bound.&#x27;,
+                     &#x27;continuum_lower_bound_first_zero_reactance_hz&#x27;:lower_hz,
+                     &#x27;discrete_max_fluid_inertia_eigenfrequency_hz&#x27;:discrete_rigid_lower_hz,
+                     &#x27;unloaded_steel_first_mode_hz&#x27;:math.sqrt(G/p.steel_density)/(2*p.length),
+                     &#x27;steel_inertia_per_length&#x27;:is_steel,&#x27;rigid_fluid_inertia_per_length&#x27;:is_fluid_rigid,
+                     &#x27;arm_and_mover_point_inertia&#x27;:is_arms,
+                     &#x27;necessary_extra_midpoint_inertia_to_permit_source_band_kg_m2&#x27;:necessary_extra_point_inertia,
+                     &#x27;necessary_length_to_permit_source_band_same_tube_m&#x27;:necessary_length,
+                     &#x27;bound_formula&#x27;:&#x27;omega^2 &gt;= GJ / [ (Isteel+Ifluid_rigid)*L^2/pi^2 + Iarm*L/4 ]; independent of guessed Q or positive support stiffness.&#x27;},
+              &#x27;passive_controls_at_same_flow&#x27;: passive_receipts,
+              &#x27;passive_matching_active&#x27;: passive(dmatch),
+              &#x27;passive_at_250L_inventory_cap&#x27;: passive250,
+              &#x27;same_carrier_film_controls&#x27;: film_controls,
+              &#x27;impedance_gate&#x27;: {&#x27;Omega_peak_rad_s&#x27;: Omega, &#x27;saved_model_ReZ&#x27;: z_real,
+                                &#x27;saved_model_absZ&#x27;: z_abs, &#x27;saved_model_absImZ&#x27;: z_imag_abs,
+                                &#x27;coil_peak_current_A&#x27;: ipk, &#x27;conditional_coil_voltage_peak_V&#x27;: vpk,
+                                &#x27;coil_inductive_reactance_ohm&#x27;: preferred[&#x27;omega&#x27;]*inductance,
+                                &#x27;scope&#x27;:&#x27;Sinusoidal prescribed central angular velocity; Z is measured fundamental loaded torque/velocity at actual amplitude. Higher torque harmonics increase copper loss and must be charged in P_extra, or measured RMS currents used directly. The zero-extra ellipse is necessary, not sufficient, without those measurements.&#x27;,
+                                &#x27;acceptance_gates&#x27;: gates},
+              &#x27;frozen_local_source_compatibility&#x27;: local,
+              &#x27;data_nonidentifiability_witness&#x27;: witness_check,
+              &#x27;seconds&#x27;: time.perf_counter()-tic,
+              &#x27;runtime&#x27;: {&#x27;python&#x27;:sys.version,&#x27;platform&#x27;:platform.platform()}}
+    (HERE/&#x27;decisive_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    receipt = {&#x27;script_sha256&#x27;: hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+               &#x27;result_sha256&#x27;: hashlib.sha256((HERE/&#x27;decisive_checks.json&#x27;).read_bytes()).hexdigest(),
+               &#x27;seconds&#x27;: result[&#x27;seconds&#x27;], &#x27;assertions&#x27;: &#x27;passed&#x27;,
+               &#x27;no_physical_validation&#x27;: True}
+    (HERE/&#x27;COMPUTATION_RECEIPT.json&#x27;).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;low_passive_W&#x27;:low,&#x27;passive_matching_active&#x27;:passive(dmatch),
+                      &#x27;film_match_m&#x27;:film_match,&#x27;source_max_hz&#x27;:float(omega_max/(2*math.pi)),
+                      &#x27;model_Z&#x27;:z_real,&#x27;impedance_gates&#x27;:gates,&#x27;seconds&#x27;:result[&#x27;seconds&#x27;]},indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

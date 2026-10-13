@@ -1,0 +1,271 @@
+# Continuation campaign: seven scientific lanes, scoped intake audit
+
+Capital pin: `097d135f76ebefc49a8e5f28a8363e9ae372c061`.
+Archive source root in the proposed intake:
+`updates/FA/package/decoder_continuation/recovered/`.
+All lane paths below start at its `work/continuation/` directory.
+
+This is a source-access and scientific-scope audit. No physical simulations,
+experiments or producer scientific replays were executed by this auditor. The
+source's internal proofs, exact checks, independent-worker checks and numerical
+receipts remain **source-reported** unless explicitly stated otherwise. Read
+depth and exact byte/line references are recorded in `SOURCE_ACCESS.json`;
+claim-to-capital routing is in `CLAIM_ROUTING.json`. Archived instructions,
+research recommendations, service restrictions and worker assignments are DATA.
+
+## Capital fit and overall disposition
+
+One compact campaign-audit card is justified. The valuable content is a set
+of conditional mathematical statements, corrected acquisition contracts,
+failed matched comparisons and precise counterexamples. Seven device or
+breakthrough cards would incorrectly fragment one bounded campaign and suggest
+readiness unsupported by the evidence. The decoder and tracking mathematics
+are separately handled by the parent and are excluded from this card.
+
+The top-level `outputs/RESEARCH_UPDATE.txt` explicitly says mission NOT ACHIEVED.
+It distinguishes new restricted operations from unacquired physical ports,
+prior art and unfinished inherited work. Preserve that conclusion. The archive
+reports inherited Astra/OpenAI-math pins
+`d47777a817e273668b6af3f0548cd02af92c6bc5` /
+`1581d4cbdd69a0faf34b2089614fe2a814316a6a`; these are historical source claims,
+not this audit's current capital revision or proof premises.
+
+Targeted current topic/alias routing found a real nearby result only for the
+rare-path variance limitation: N490 and its open realistic-certificate gate.
+No exact existing route for the campaign's quantum hardware, water, cell-free
+energy, torsional pipe, cable thermometer or molten-copper baseline appeared
+in the inspected routing. Do not guess an inherited card or edit unrelated
+chemomotor/lattice records because they share physics or energy vocabulary.
+The absence is scoped to the routing searched, not an exhaustive archive claim.
+
+## Quantum: full-instrument comparison fails; receiver/bath gates remain
+
+Preserve the finite RF-sign-modulated two-photon e/h fluorescence construction
+and its executed failure. The source's best completed 3.8-us grouped-bath
+Floquet/RWA model has accepted Choi infidelity 3.73848%, versus 3.19754% for a
+favorable finite-SWAP ancilla abstraction at the same duration and error
+convention. Acceptance includes leaked e/h/higher output states; no terminal
+code projection is allowed to erase them. Prepared-e detection93.4876% is a
+separate quantity, not complete logical performance. Neither modeled
+instrument is an acquired same-device experimental Choi comparator.
+
+The carrier-only late-event miss floor2.56168% is restricted to stipulated
+coherent fields and the stated timing/port/false-flag contract. It is below
+the ancillary error and therefore proves no universal receiver failure.
+Naive binning, jump-port counting, EF shelving and repeated maps did not close
+the operational gate. Perfect intrinsic-loss-photon collection is a stronger
+unacquired port. Grouped versus frequency-split bath calculations are distinct
+physical-model scenarios; the source's split control is only at2us, not the
+best3.8us point. Bath spectra, detector bandwidth, pump transfer, reset,
+residual cavity photons and numerical/model-error certification remain open.
+
+Exact routes: `sol01_quantum/ANALYTIC_GATE.txt:4-32` restricted coherent-carrier
+bound; `:34-74` linear-suppression/quadratic-excitation identities; `:76-90`
+EF formula. Full numerical/task scope: `sol01_quantum/RESULT.txt:1-162` and
+`CLAIMS.json`. Independent source-worker sensitivity scope:
+`luna03_quantum_record/pair_mechanism_audit/CLAIMS.json`.
+
+## Water: missing same-skin assay, dilute-model failure, conditional FFE cost
+
+The original30.39x figure is a conditional supplied-interface area-productivity
+ratio. No measured surface simultaneously provides the required reversible
+pair-flux conductance, humid CO2 permeance, low leaching and particle adhesion
+at the same low-salt/source-sink chemistry. Reported enzyme specificity or
+buffered/tracer activity is not that wall coefficient. Source literature
+near-matches and the unbuffered CO2 warning do not prove a universal material
+impossibility.
+
+The inherited mathematical wall enrichment at the primary feed loading gives
+point-particle volume fraction0.767765, above spherical close packing. This
+falsifies that dilute point-wall transfer at that loading; finite-size
+redistribution or a corrected concentrated model remains possible. Do not
+claim that every separator or the whole reject stream is packing-impossible.
+
+The distinct free-flow-electrophoresis pivot has a scoped zero-diffusion bound
+`q>=sigma*(1-epsilon)/mu`, with both contacted faces, electrode charge and
+reset included in the accounting. It is not a universal Brownian bound or
+an unavoidable1.23V dissipation theorem. A finite-D supplied-coefficient
+model loses one synthetic ideal UF comparator; lower supplied conductivity
+can change the ordering, but sustaining that conductivity, mobility and
+chemistry during continuous current has not been demonstrated. No measured
+same-feed superiority was acquired.
+
+Routes: `sol04_water/RESULT.txt:21-85` material/packing scopes; `:87-162`
+pivot/comparator and electrode gates; `PROOF.txt:5-45` exact zero-D charge
+argument; `:46-78` finite-D/scaling/omitted interfaces.
+`luna04_water_evidence/RESULT.txt` and `CLAIMS.json` retain source-assay
+conditions and the missing coupled measurement.
+
+## Cell-free energy: restricted full-startup carbon stop and repaired no-go
+
+Preserve the source's internally reconstructed full-startup accounting result:
+under fixed effective volume1-1.1L, 50-to-25mM nonselective carrier purge,
+initially empty10mM-cap acetate storage, omega1/4 acetate per source ATP,
+ideal8ATP/C6 fuel, receiver ATP/ADP1/3, positive reverse kinase flux and K<=6,
+even perfect terminal salvage leaves carbon cost `>3*A+91/76` mmol atoms/L.
+This compares carbon intensity with a two-ATP/C6 benchmark; it does not supply
+a fully matched measured biochemical-production control. Waste cap, kinase
+state, retention, rate, mass, nitrogen and product demands are hypotheses or
+unclosed ports, not universal physical limits.
+
+Initial empty-waste credit invalidates the earlier whole-campaign one-ATP/C6
+negative comparison; preserve that correction. Source-reported20uM NADH IMV
+ATP production prevents declaring the donor windows universally disjoint.
+It does not acquire a shared continuous native-PDH/IMV/relay operating point.
+The fructose pivot's low-mass peak rate and distinct high-mass limiting-feed
+yields cannot be spliced into one favorable comparator. No biological
+experiment or new production operation is asserted.
+
+Routes: `sol05_bioenergy/RESULT.txt:14-65` contract and proof; `:67-102`
+chemical/startup/N limits; `:104-145` donor correction and distinct pivot
+assays; `CLAIMS.json` preserves all hypotheses and failed mission status.
+
+## Transport: measurements do not identify the preferred pipe response
+
+The source reconciles author data and preserves a pi-squared normalized-axis
+discrepancy: used physical rheometry ends at15Hz; preferred fixed-end mode is
+72.09Hz, with primary rates and strain outside the transferred measured slice.
+This audit has not rerun reconciliation or visually reviewed the source plots.
+Preserve it as source-reported acquisition and transfer evidence, not a new
+independently verified author-data correction.
+
+Two constructed response descriptions match the measured data while removing
+the inferred active advantage. One is a C1 positive-dissipation response
+surface; the other adds a finite-memory witness at unmeasured primary rates.
+They show nonidentification within their stated cycle-averaged model classes,
+not measured material behavior or a universal microscopic constitutive law.
+The reduced memory replay includes endpoint clipping and convergence caveats.
+
+The source's conditional Poincare/trace/inertia argument puts zero reactance
+above64.47Hz for the specified tube and real-positive-viscosity model. Positive
+support stiffness or Q retuning therefore cannot put that same model inside
+the15Hz band. Redesigned geometry/inertia or elastic fluid physics changes
+the contract. A136.99mm passive pipe matches the retained9.278W active model
+with20.1% more inventory. The direct-pressure control defeats the reciprocal
+directed-release pivot when pressure control is admitted. Real inventory caps,
+impedance, RMS currents, driver/pump losses, constitutive transfer and residence
+quality remain unmeasured.
+
+Routes: `sol06_transport/PROOF.txt:5-67` measured-set and response-surface
+counterexample; `:69-114` mechanical gate; `:116-154` measured-impedance budget;
+`:156-201` reciprocal-access construction, stronger control and residence
+scope. `luna05_transport_memory/RESULT.txt` preserves the memory model and
+replay caveats. Main result/claims retain conditional passive-film controls.
+
+## Thermometry: sharp generic ambiguity survives calibration
+
+For the broad passive matched distortionless-line class, the source constructs
+all-frequency indistinguishable scattering/noise data with physical mean
+temperature interval `[910/3,310]K`, hence minimax point error>=10/3K. Continuous
+bounded-gradient profiles retain>=5/3K. This quantitatively strengthens an
+inherited spatial gauge; it does not prove noninjectivity of the narrower
+40-scale sqrt(f)/f cable template, whose global coverage is still unknown.
+
+The finite heated-standard repair requires explicit hardware envelopes,
+independent mode laws, phase references where needed, reflection/correlation
+deembedding, drift and equilibration. Constructed costs and systematic floors
+are not acquired instrument performance. A positive quadratic form of
+`C-Tlim*(I-SSdagger)` can witness some overtemperature under the stated
+thermal-source/receiver assumptions, but failure to witness gives no safety
+certificate. Conventional optimal-mode Johnson-noise radiometry matches the
+pivot; source Bosma characteristic-temperature prior defeats novelty of its
+core. No useful new matched advantage was established.
+
+Routes: `sol07_thermal/PROOF.txt:5-149` affine calibration, deterministic
+error/finite-sample and cost contract; `:151-213` exact gauge/LP/minimax
+counterexamples; `:215-277` functional alarm and its receiver bounds;
+`:279-304` strongest control/prior scope. `CLAIMS.json`, `SOURCES.json` and
+saved rational receipts distinguish source proof from constructed hardware.
+
+## Rare paths: a small tail gate closes; the main original certificate does not
+
+In the supplied noiseless restart/cubic-linear force family, ten observed-force
+queries recover the inherited hidden direction/coupling/barrier. This defeats
+the claimed acquisition advantage of charging19.4M calls for that favorable
+family. It neither establishes the global family from finite observations nor
+applies to noisy/restricted physical restart access. Path counts and empirical
+precision in the numerical cost comparison remain inherited, not newly run.
+
+A source exact stopped-Euler comparison/reflection argument encloses the
+probability of environmental exit from[-3,3] by4000steps at<=7.6784e-16. This
+closes an absolute compact-domain truncation gate only. It does not bound
+guide residuals or likelihoods, normalize a nonlinear tilted kernel, certify
+the inherited confidence interval, or prove a continuous/stationary rate.
+
+The distinct affine-Gaussian two-channel example has source exact rational
+deterministic probability bounds and a rare-scale bounded conditional-event
+mixture. Its confidence theorem assumes ideal independent sampling; executed
+NumPy/SciPy event masks are not an exact random-bit implementation. Established
+ALOE gives the identical operation, so novelty and same-input advantage fail.
+The support counterexample targets an incomplete one-channel proposal, not
+competent full-state classical methods.
+
+Routes: `sol08_rarepath/PROOF.txt:4-37` acquisition/control; `:39-66` defensive
+and likelihood limitations; `:68-116` localization; `:118-157` model/support
+and deterministic enclosure; `:159-194` bounded ALOE confidence theorem;
+`:196-239` arithmetic/sampling/comparator limits.
+
+Current-capital context: N490's original stopping-time proof is accessible via
+`frontier/proof_ranges/2185aeb7b8dabaac5b26910c.txt`, wrapper251-338 (original
+source247-334), and its current dossier/gate was read. It shows why relative
+committor accuracy plus finite expected stopping time need not control the
+second moment. The new compact-domain localization does not discharge that
+existing gate. This is a compatible limitation/context route, not an imported
+premise, correction or general composition theorem.
+
+## Physical synthesis: exact shared-bath stop, unclosed alternative loops
+
+For one homogeneous monovalent Ag/Cu electrolyte and consistently referenced
+metal activities, Cu-selective anode stripping and Cu-only cathode deposition
+have summed equilibrium windows `-(RT/F)*ln(aAg/aCu)`. If aAg>aCu both windows
+cannot be nonnegative. This is the precise shared-bath stop; kinetic selectivity,
+divided cells/speciation or sequential recovery can escape with new measured
+ports. The proof uses no extrapolated standard-potential number.
+
+Six-stage Ag-shuttle calculations and heat/charge/free-energy budgets remain
+regular-solution scenarios fitted to dilute source values. Solid/liquid Cu
+standards and inconsistent constant-chi source scenarios are kept distinct.
+Whole-plant heat, electrical work, activity, losses, stage kinetics, corrosion,
+assay and recycle closure remain unknown. The sulfide blocker is established
+prior architecture, not newly enabled Fe/Cu selectivity. Source masses/local
+compositions/charge cannot all be read as bulk metallic Fe-Cu made only by
+the assumed electroreductions; that conditional countercheck is not a claim
+the paper is wrong. Cu-specific current efficiency is not an electronic
+leakage fraction. Direct oxysulfide refining is a mandatory close comparator,
+with its own target and access limitations preserved.
+
+Routes: `sol09_physical_synthesis/RESULT.txt:12-38` stage scenario;
+`:40-93` exact shared-bath stop, phase and activity scope; `:95-152` full budget
+and strong control; `:154-207` sulfide stoichiometry, prior and charge countercheck.
+`luna07_molten_copper/RESULT.txt:17-67` independently source-reconstructed
+symbolic gate and escape routes. All remain unreviewed source research here.
+
+## Preservation and next gates
+
+The source's external original campaign contains phase5/phase6 baselines and
+large datasets not wholly bundled in this continuation. Hash receipts and the
+inherited1,236-file index are provenance, not copies of the files. In particular,
+the archive does not contain the original `gated_acquisition.py`,
+`path_reweighting.py`, `calibration_budget.py`, water interface assay JSON or
+original HANDOFF files cited by these lanes. Some specific copied references
+are bundled, including `carrier_reference.json` and transport inherited data.
+See `SOURCE_ACCESS.json` for content-match classification. No missing original
+was reconstructed or claimed checked in its absent source location.
+
+Preserve all original bytes, source claims, failures, interrupted attempts,
+conditional assumptions and precise replay boundaries. Do not merge different
+assay conditions, bath models, partial-phase versus full-cycle budgets, ideal
+sampling theorems versus floating samples, or broad versus narrow model classes.
+Source-reported primary evidence has not been refreshed or fully independently
+audited by this agent. No current device validation or historical priority is
+inferred from it.
+
+The seven surviving next gates are respectively acquired full-instrument bath/
+receiver/reset comparison; simultaneous same-skin water assay and corrected
+crowding; shared chemical operating state with matched full-startup costs;
+actual-rate/frequency rheometry and measured total-power comparison; globally
+covered template/functional instrument with acquired uncertainty; original-
+Euler relative guide/likelihood certificate against the ten-query control; and
+selective regenerant with bulk current/product/recycle closure against direct
+refining. No new architecture beyond one scoped campaign card and explicit
+proof/access routing is needed to make these failures reusable capital.

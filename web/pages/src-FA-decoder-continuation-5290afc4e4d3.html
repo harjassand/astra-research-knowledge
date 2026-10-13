@@ -1,0 +1,348 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — exact_contracts.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational thermal identifiability, calibration, and alarm certificates.
+
+Only standard-library arithmetic is used. No hardware data are simulated or
+claimed. The radiometer confidence statements are conditional on independent
+proper complex Gaussian modes and an acquired upper bound on total power.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import isqrt, factorial
+from pathlib import Path
+import hashlib
+import json
+import time
+
+HERE = Path(__file__).resolve().parent
+
+
+def encode(x):
+    if isinstance(x, F):
+        return {&quot;rational&quot;: str(x), &quot;decimal&quot;: float(x)}
+    if isinstance(x, dict):
+        return {k: encode(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [encode(v) for v in x]
+    return x
+
+
+def dot(x, y):
+    return sum((a*b for a, b in zip(x, y)), F(0))
+
+
+def transpose(A):
+    return list(map(list, zip(*A)))
+
+
+def mm(A, B):
+    return [[dot(a, b) for b in transpose(B)] for a in A]
+
+
+def inverse(A):
+    n = len(A)
+    aug = [list(row)+[F(i == j) for j in range(n)]
+           for i, row in enumerate(A)]
+    for i in range(n):
+        j = next(j for j in range(i, n) if aug[j][i])
+        aug[i], aug[j] = aug[j], aug[i]
+        p = aug[i][i]
+        aug[i] = [v/p for v in aug[i]]
+        for j in range(n):
+            if j != i:
+                p = aug[j][i]
+                aug[j] = [x-p*y for x, y in zip(aug[j], aug[i])]
+    return [row[n:] for row in aug]
+
+
+def identity(n):
+    return [[F(i == j) for j in range(n)] for i in range(n)]
+
+
+def csq(z):
+    return z[0]**2+z[1]**2
+
+
+def cmul(a, b):
+    return (a[0]*b[0]-a[1]*b[1], a[0]*b[1]+a[1]*b[0])
+
+
+def cadd(a, b):
+    return (a[0]+b[0], a[1]+b[1])
+
+
+def sqrt_up(x, scale=10**12):
+    &quot;&quot;&quot;A rational upper enclosure, with an exact square check.&quot;&quot;&quot;
+    n = (x.numerator*scale*scale+x.denominator-1)//x.denominator
+    r = isqrt(n)
+    if r*r &lt; n:
+        r += 1
+    answer = F(r, scale)
+    assert answer*answer &gt;= x
+    return answer
+
+
+def exp_lower(x, terms=100):
+    return sum((x**k/F(factorial(k)) for k in range(terms)), F(0))
+
+
+def power_error(power_cap, modes, x):
+    # Gamma(m, scale=P/m) Chernoff/Laurent--Massart enclosure.
+    return power_cap*(sqrt_up(2*x/modes)+x/modes)
+
+
+def loss_coordinate_witness():
+    &quot;&quot;&quot;Continuous LP primal/dual certificates, no floating integration.&quot;&quot;&quot;
+    L, A = F(100), F(1, 5)
+    amin, amax = F(1, 1000), F(3, 1000)
+    vlo, vhi = 1/amax, 1/amin
+    mu = [F(9, 100), F(1, 50), F(9, 100)]
+    T = [F(300), F(350), F(300)]
+    lo_hot, hi_hot = vlo, vhi
+    lo_cold = (L-mu[1]*lo_hot)/(mu[0]+mu[2])
+    hi_cold = (L-mu[1]*hi_hot)/(mu[0]+mu[2])
+    vmin, vmax = [lo_cold, lo_hot, lo_cold], [hi_cold, hi_hot, hi_cold]
+    for v in [vmin, vmax]:
+        assert dot(mu, v) == L
+        assert all(vlo &lt;= x &lt;= vhi for x in v)
+        assert sum(mu) == A
+    mean_min = dot(T, [m*v for m, v in zip(mu, vmin)])/L
+    mean_max = dot(T, [m*v for m, v in zip(mu, vmax)])/L
+    lam = F(300)
+    dual_max = lam*L+sum(m*max((t-lam)*vlo, (t-lam)*vhi)
+                              for m, t in zip(mu, T))
+    dual_min = lam*L+sum(m*min((t-lam)*vlo, (t-lam)*vhi)
+                              for m, t in zip(mu, T))
+    assert dual_max/L == mean_max == 310
+    assert dual_min/L == mean_min == F(910, 3)
+    # Replacing the step by a continuous 50 K triangle on the same u interval
+    # preserves exactly half the excess area. Its physical Lipschitz bound is
+    # 5000*a_max = 15 K/m, including the endpoints of the hot interval.
+    triangular_min = 300+(mean_min-300)/2
+    triangular_max = 300+(mean_max-300)/2
+    assert triangular_max-triangular_min == F(10, 3)
+    return {
+        &quot;status&quot;: &quot;EXACT_RATIONAL_PRIMAL_DUAL_WITNESS_AND_ANALYTIC_ALL_FREQUENCY_GAUGE&quot;,
+        &quot;length_m&quot;: L, &quot;integrated_loss_A&quot;: A,
+        &quot;local_loss_bounds_per_m&quot;: [amin, amax],
+        &quot;common_loss_coordinate_intervals&quot;: [[0, mu[0]], [mu[0], mu[0]+mu[1]], [mu[0]+mu[1], A]],
+        &quot;common_step_temperatures_K&quot;: T,
+        &quot;v_dx_du_bounds&quot;: [vlo, vhi],
+        &quot;minimum_mean_model&quot;: {&quot;v&quot;: vmin, &quot;a_per_m&quot;: [1/v for v in vmin],
+                               &quot;physical_cell_lengths_m&quot;: [m*v for m, v in zip(mu, vmin)],
+                               &quot;physical_mean_K&quot;: mean_min},
+        &quot;maximum_mean_model&quot;: {&quot;v&quot;: vmax, &quot;a_per_m&quot;: [1/v for v in vmax],
+                               &quot;physical_cell_lengths_m&quot;: [m*v for m, v in zip(mu, vmax)],
+                               &quot;physical_mean_K&quot;: mean_max},
+        &quot;dual_multiplier_K&quot;: lam,
+        &quot;dual_objective_min_K_m&quot;: dual_min,
+        &quot;dual_objective_max_K_m&quot;: dual_max,
+        &quot;exact_mean_interval_K&quot;: [mean_min, mean_max],
+        &quot;mean_diameter_K&quot;: mean_max-mean_min,
+        &quot;any_point_estimator_minimax_absolute_error_lower_K&quot;: (mean_max-mean_min)/2,
+        &quot;continuous_triangular_temperature_witness&quot;: {
+            &quot;T_of_u&quot;: &quot;300+50*max(0,1-abs(u-1/10)/(1/100))&quot;,
+            &quot;physical_Lipschitz_bound_K_per_m&quot;: F(15),
+            &quot;mean_interval_K&quot;: [triangular_min, triangular_max],
+            &quot;minimax_error_lower_K&quot;: (triangular_max-triangular_min)/2},
+        &quot;data_generously_granted_exact&quot;: [&quot;absolute full S(f) at all frequencies&quot;,
+            &quot;full two-port emitted covariance C(f) at all frequencies&quot;,
+            &quot;all remote heated/unheated terminations&quot;, &quot;exact T(u)&quot;,
+            &quot;geometry length and phase velocity&quot;, &quot;local loss envelope&quot;],
+        &quot;preserved_data_proof&quot;: &quot;For z/Z0=Z0*y=a(x)+s/v0, boundary S depends only on A,L; C depends only on T(u),A. Both models share these exactly. Thus R=Z0*a, G=a/Z0, L=Z0/v0 and C=1/(Z0*v0) are passive and L,C are known constants. A common positive-real h(s) replacing a by a*h extends the same gauge but is unnecessary.&quot;,
+        &quot;model_boundary&quot;: &quot;Passive constant-impedance distortionless RLGC family with known constant L,C; does NOT prove nonidentifiability within the narrower inherited 40-scale sqrt(f)/f loss-law template.&quot;,
+        &quot;strongest_boundary_controls&quot;: &quot;Endpoint sensors see 300 K in both; arbitrary calibrated active TDR/VNA and all coherent thermal boundary measurements agree exactly. Internal probes change the access contract.&quot;,
+    }
+
+
+def interval_square(lo, hi):
+    return (F(0) if lo &lt;= 0 &lt;= hi else min(lo*lo, hi*hi), max(lo*lo, hi*hi))
+
+
+def recovered_parameter_bounds(q, error):
+    box = [(v-e, v+e) for v, e in zip(q, error)]
+    beta_lo, beta_hi = box[1]
+    if beta_lo &lt;= 0:
+        return {&quot;status&quot;: &quot;NO_POSITIVE_BETA_LOWER_BOUND&quot;, &quot;q_intervals&quot;: box}
+    dr = [(box[2][0]/beta_lo), (box[2][0]/beta_hi),
+          (box[2][1]/beta_lo), (box[2][1]/beta_hi)]
+    di = [(box[3][0]/beta_lo), (box[3][0]/beta_hi),
+          (box[3][1]/beta_lo), (box[3][1]/beta_hi)]
+    sq2, sq3 = interval_square(*box[2]), interval_square(*box[3])
+    Glo = box[0][0]+(sq2[0]+sq3[0])/beta_hi
+    Ghi = box[0][1]+(sq2[1]+sq3[1])/beta_lo
+    return {&quot;status&quot;: &quot;DETERMINISTIC_OUTER_INTERVALS&quot;, &quot;q_intervals&quot;: box,
+            &quot;d_real_interval&quot;: [min(dr), max(dr)],
+            &quot;d_imag_interval&quot;: [min(di), max(di)],
+            &quot;G_interval&quot;: [Glo, Ghi],
+            &quot;abs_c_squared_interval&quot;: [max(F(0), Glo)/beta_hi, Ghi/beta_lo],
+            &quot;phase_c&quot;: &quot;EXACTLY_UNIDENTIFIED_WITHOUT_INDEPENDENT_COHERENT_REFERENCE&quot;}
+
+
+def calibration_contract():
+    # A deliberately well-spread five-standard reference geometry. True values
+    # define this constructed certificate, not purchased/acquired standards.
+    gammas = [(F(0), F(0)), (F(1,2), F(0)), (-F(1,2), F(0)),
+              (F(0), F(1,2)), (F(0), -F(1,2))]
+    c, d, G = (F(1001,1000), F(1,1000)), (F(1,1000), -F(2,1000)), F(1)
+    reported = [cadd(d, cmul(c, z)) for z in gammas]
+    assert all(csq(g) &lt;= 1 for g in reported)
+    A = [[F(1), -csq(z), 2*z[0], 2*z[1]] for z in reported]
+    z = [G*(1-csq(g)) for g in gammas]
+    B = mm(inverse(mm(transpose(A), A)), transpose(A))
+    assert mm(B, A) == identity(4)
+    q = [dot(row, z) for row in B]
+    expected = [G*(1-csq(d)/csq(c)), G/csq(c),
+                G*d[0]/csq(c), G*d[1]/csq(c)]
+    assert q == expected
+    assert [dot(row, q) for row in A] == z
+    norms = [sum(abs(x) for x in row) for row in B]
+    Qmax = [F(2), F(2), F(1,50), F(1,50)]
+    assert all(abs(x) &lt;= Q for x, Q in zip(q, Qmax))
+    eps_report, eps_hotcold = F(1,100000), F(1,100000)
+    dT, deltaT_each, Gmax = F(50), F(1,100), F(2)
+    Rmax, Qnoise_max = F(350), F(50)
+    switch_residual, Mcurvature = F(1,100), F(1,100000)
+    subdwell, switch_dead = F(1), F(1,100)
+    abba_drift = Mcurvature*(subdwell+switch_dead)**2
+    temperature_error = 2*Gmax*deltaT_each/dT
+    hotcold_match_error = Gmax*((2*eps_hotcold+eps_hotcold**2)*Rmax+
+                             2*Qnoise_max*eps_hotcold)/dT
+    row_error = (2*eps_report+eps_report**2)*Qmax[1]+2*eps_report*(Qmax[2]+Qmax[3])
+    systematic = temperature_error+hotcold_match_error+(switch_residual+abba_drift)/dT+row_error
+    plans = []
+    for label, bins, bandwidth, x in [
+            (&quot;490_independent_100kHz_bins&quot;, 490, F(100000), F(13)),
+            (&quot;one_flat_50MHz_interface_ONLY_IF_FLATNESS_ACQUIRED&quot;, 1, F(50000000), F(6))]:
+        power_count = 2*len(gammas)*bins
+        alpha = F(1,20)
+        exp_proof = exp_lower(x)
+        assert exp_proof &gt; 2*power_count/alpha
+        for tau in [F(2), F(10), F(100), F(1000)]:
+            assert (tau/(2*subdwell)).denominator == 1
+            modes = bandwidth*tau
+            stat = power_error(F(1000), modes, x)
+            total = 2*stat/dT+systematic
+            err = [n*total for n in norms]
+            bounds = recovered_parameter_bounds(q, err)
+            wall = 3*(2*len(gammas)*tau)*(1+switch_dead/subdwell)
+            plans.append({&quot;interface&quot;: label, &quot;bins&quot;: bins, &quot;seconds_per_hot_or_cold_state&quot;: tau,
+                          &quot;complex_mode_count_each_power&quot;: modes, &quot;x&quot;: x,
+                          &quot;joint_failure_probability_strictly_below&quot;: alpha,
+                          &quot;single_power_statistical_error_K_counts&quot;: stat,
+                          &quot;contrast_plus_design_total_error&quot;: total,
+                          &quot;parameter_error_radii&quot;: err,
+                          &quot;parameter_outer_bounds&quot;: bounds,
+                          &quot;calibration_sequence_wallclock_s_at_one_third_duty&quot;: wall,
+                          &quot;including_inherited_1800s_VNA_warmup_s&quot;: wall+1800,
+                          &quot;excluded_unknown_costs&quot;: [&quot;thermal equilibration and temperature metrology&quot;,
+                              &quot;two thermostated copies per nominal impedance&quot;, &quot;VNA acquisition&quot;,
+                              &quot;commissioning, correlated-mode qualification and validation&quot;]})
+    return {
+        &quot;status&quot;: &quot;EXACT_LINEAR_DUAL_AND_DETERMINISTIC_INTERVAL_PROPAGATION_CONDITIONAL_FINITE_SAMPLE_COVERAGE&quot;,
+        &quot;design&quot;: A, &quot;left_inverse_dual_certificates&quot;: B,
+        &quot;checked_B_times_A&quot;: mm(B, A), &quot;true_constructed_q&quot;: q,
+        &quot;dual_L1_error_amplifications&quot;: norms,
+        &quot;exact_nonidentifiability&quot;: &quot;All heated contrasts are invariant under c -&gt; exp(i phi)c and gamma -&gt; exp(-i phi)gamma. Rotating receiver cross correlation consistently preserves powers and PSD. An independently acquired coherent phase reference is necessary.&quot;,
+        &quot;systematic_budget_inputs_not_hardware_acquired&quot;: {
+            &quot;nominal_hotcold_contrast_K&quot;: dT, &quot;each_standard_local_temperature_error_K&quot;: deltaT_each,
+            &quot;complex_reported_Gamma_error_radius&quot;: eps_report,
+            &quot;complex_hotcold_Gamma_change_radius&quot;: eps_hotcold,
+            &quot;gain_upper&quot;: Gmax, &quot;max_abs_Tu_minus_Th_K&quot;: Rmax,
+            &quot;receiver_noise_correlation_magnitude_upper_K&quot;: Qnoise_max,
+            &quot;differential_switch_power_error_K_counts&quot;: switch_residual,
+            &quot;common_gain_and_offset_drift_curvature_K_counts_per_s2&quot;: Mcurvature,
+            &quot;ABBA_subdwell_s&quot;: subdwell, &quot;switch_dead_s&quot;: switch_dead,
+            &quot;q_absolute_component_envelope&quot;: Qmax},
+        &quot;separate_normalized_contrast_error_bounds&quot;: {
+            &quot;standard_temperature&quot;: temperature_error, &quot;hotcold_match_and_correlated_receiver_noise&quot;: hotcold_match_error,
+            &quot;ABBA_common_drift&quot;: abba_drift/dT, &quot;switching&quot;: switch_residual/dT,
+            &quot;coherent_reported_Gamma_design_error&quot;: row_error,
+            &quot;total_systematic_floor&quot;: systematic},
+        &quot;infinite_integration_parameter_error_floor&quot;: [n*systematic for n in norms],
+        &quot;plans&quot;: plans,
+        &quot;not_a_cable_mean_certificate&quot;: &quot;These intervals constrain only the shared affine calibration. A spatial mean additionally requires absolute phase, global model injectivity and a certified local kernel enclosure over the entire admissible model set.&quot;,
+        &quot;non_gaussian_coverage_formula&quot;: &quot;For m independent proper complex Gaussian modes and true P&lt;=Pcap, |P_hat-P|&lt;=Pcap*(sqrt(2*x/m)+x/m) except probability 2 exp(-x). Union over all powers needs no independence between different powers.&quot;
+    }
+
+
+def thermal_alarm():
+    # Passive reciprocal two-mode network: a lossless hybrid mixes two equally
+    # absorbing modes, one 360 K and one 300 K. S=sqrt(1/2)*I, A=(1/2)*I.
+    absorption = [[F(1,2), F(0)], [F(0), F(1,2)]]
+    C = [[F(165), F(15)], [F(15), F(165)]]
+    limit = F(340)
+    D = [[C[i][j]-limit*absorption[i][j] for j in range(2)] for i in range(2)]
+    v = [F(1), F(1)]
+    assert dot(v, [dot(row, v) for row in D])/dot(v,v) == 10
+    assert [C[i][i]/absorption[i][i] for i in range(2)] == [330,330]
+    # Independent held-out validation of the chosen combiner mode.
+    source_power, reference_power = F(450), F(440)  # includes 100 K receiver
+    pcap, B, tau, x, alpha = F(500), F(1000000), F(1), F(5), F(1,20)
+    assert exp_lower(x) &gt; 4/alpha
+    stat = 2*power_error(pcap, B*tau, x)
+    budget = {&quot;threshold_bath_temperature&quot;: F(1), &quot;upstream_noise_covariance&quot;: F(1,5),
+              &quot;receiver_in_out_noise_correlation&quot;: F(1,5), &quot;switch_transfer&quot;: F(1,5),
+              &quot;receiver_offset_and_gain_drift&quot;: F(3,10)}
+    systematic = sum(budget.values())
+    margin = source_power-reference_power-stat-systematic
+    assert margin &gt; 0
+    # Exact deterministic entrywise certificate, independent of stochastic model.
+    error_diag, error_real_offdiag = F(1,2), F(1,2)
+    quadratic = dot(v, [dot(row, v) for row in D])
+    entry_error = 2*error_diag+2*error_real_offdiag
+    assert quadratic-entry_error == 18
+    # Optional absolute temperature lower bound needs absorption calibration.
+    absorption_upper = F(51,100)
+    Tmin_hot = limit+margin/absorption_upper
+    return {
+        &quot;status&quot;: &quot;EXACT_PASSIVE_NETWORK_ALGEBRA_AND_CONDITIONAL_FINITE_UNCERTAINTY_ALARM&quot;,
+        &quot;operation&quot;: &quot;Certify that some dissipative region exceeds Tlim, without assigning a location or reconstructing RLGC.&quot;,
+        &quot;theorem&quot;: &quot;If C=integral T(x)W(x)dx, W(x)&gt;=0 and A=integral W=I-S*Sdagger, then T(x)&lt;=Tlim everywhere implies C-Tlim*A&lt;=0. Any certified positive quadratic form disproves that temperature bound.&quot;,
+        &quot;constructed_absorption_A&quot;: absorption, &quot;constructed_C_in_kB_units&quot;: C,
+        &quot;threshold_K&quot;: limit, &quot;constructed_D_C_minus_threshold_A&quot;: D,
+        &quot;single_port_noise_temperatures_K&quot;: [F(330), F(330)],
+        &quot;coherent_plus_mode_noise_temperature_K&quot;: F(360),
+        &quot;coherent_plus_mode_threshold_power_margin_K&quot;: F(10),
+        &quot;exact_entrywise_dual_certificate&quot;: {&quot;v_unnormalized&quot;: v, &quot;quadratic_form&quot;: quadratic,
+            &quot;entry_error_bound&quot;: entry_error, &quot;strict_positive_lower_bound&quot;: quadratic-entry_error},
+        &quot;sign_comparison_receiver_contract&quot;: &quot;An acquired matched upstream thermal bath at Tlim with uncorrelated forward receiver noise gives Y_DUT-Y_direct_threshold=H*(C-Tlim*A)*Hdagger. Arbitrary fixed nonsingular H, including unknown phase, preserves the sign. Finite bath/correlation/switch/drift errors require the stated simultaneous norm bound.&quot;,
+        &quot;heldout_mode_power_certificate&quot;: {
+            &quot;constructed_measured_power_centers_K_counts&quot;: [source_power, reference_power],
+            &quot;power_upper_bound_K_counts&quot;: pcap, &quot;equivalent_independent_bandwidth_Hz&quot;: B,
+            &quot;integration_s_each_state&quot;: tau, &quot;finite_sample_x&quot;: x,
+            &quot;conditional_joint_failure_below&quot;: alpha,
+            &quot;statistical_difference_error_bound_K_counts&quot;: stat,
+            &quot;hypothetical_acquired_systematic_budgets_K_counts&quot;: budget,
+            &quot;strict_positive_margin_after_all_stated_errors_K_counts&quot;: margin,
+            &quot;measurement_wallclock_s_at_one_third_duty&quot;: 3*2*tau,
+            &quot;reference_equilibration_isolation_and_validation_cost&quot;: &quot;UNKNOWN; not included in six-second constructed integration&quot;,
+            &quot;optional_local_temperature_lower_K_with_absorption_upper_0p51&quot;: Tmin_hot},
+        &quot;correlated_receiver_noise_failure_boundary&quot;: &quot;Without a bound on upstream noise covariance and input/output noise correlation, a uniform safe DUT can produce a positive measured difference. Additive independent receiver-noise subtraction alone is insufficient.&quot;,
+        &quot;matched_controls&quot;: {&quot;endpoint_temperature_sensors&quot;: &quot;May miss an internal hot region; do not supply full physical temperature coverage.&quot;,
+            &quot;active_TDR&quot;: &quot;Cannot distinguish the exact loss-coordinate gauge pair and has no thermometer guarantee without acquired constitutive temperature dependence.&quot;,
+            &quot;optimal_mode_conventional_Johnson_noise_thermometry&quot;: &quot;A calibrated lossless hybrid plus a conventional one-channel radiometer measures the SAME 360 K plus mode. It matches this certificate with the same reference, bandwidth and system-noise budget.&quot;,
+            &quot;claimed_advantage_over_strongest_control&quot;: False},
+        &quot;prior_art&quot;: &quot;Characteristic noise-temperature eigenvalues and lossless mode diagonalization are present in Bosma 1967; this is a finite-error alarm formulation, not a novelty-cleared new sensing law.&quot;,
+        &quot;physical_validation&quot;: False,
+    }
+
+
+def main():
+    started = time.perf_counter()
+    outputs = {&quot;exact_identifiability.json&quot;: loss_coordinate_witness(),
+               &quot;finite_calibration.json&quot;: calibration_contract(),
+               &quot;boundary_alarm.json&quot;: thermal_alarm()}
+    receipts = []
+    for name, result in outputs.items():
+        payload = (json.dumps(encode(result), indent=2)+&quot;\n&quot;).encode()
+        (HERE/name).write_bytes(payload)
+        receipts.append({&quot;path&quot;: name, &quot;sha256&quot;: hashlib.sha256(payload).hexdigest(), &quot;bytes&quot;: len(payload)})
+    receipt = {&quot;status&quot;: &quot;ALL_EXACT_ASSERTIONS_PASSED&quot;, &quot;arithmetic&quot;: &quot;Python Fraction and integer square roots&quot;,
+               &quot;wallclock_s&quot;: time.perf_counter()-started, &quot;outputs&quot;: receipts,
+               &quot;scope&quot;: &quot;Constructed certificates; no acquired thermometry data, no hardware accuracy or novelty claim.&quot;}
+    (HERE/&quot;RUN_RECEIPT.json&quot;).write_text(json.dumps(receipt, indent=2)+&quot;\n&quot;)
+    print(json.dumps(receipt, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

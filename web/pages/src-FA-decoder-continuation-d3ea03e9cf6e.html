@@ -1,0 +1,295 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — block_shear.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Comparison-only full decoder acquisition for an explicit quadratic block class.
+
+The class and exact comparison access are supplied. Only the initial quadratic
+top-bit acquisition is probabilistic. This combines standard code correction,
+quadratic radicals and affine-order learning; novelty and best-prior advantage
+are not asserted. Ground truth is read exclusively after learner termination.
+&quot;&quot;&quot;
+import argparse
+import functools
+import hashlib
+import json
+import random
+import shutil
+import sys
+import time
+from collections import Counter
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+SOURCE = Path(&#x27;/Users/harjas/Documents/Codex/2026-10-13/astra-genesis-civilization-enabling-breakthrough-discovery/work/phase6/learning_invention&#x27;)
+VENDOR = HERE / &#x27;vendor&#x27;
+VENDOR.mkdir(exist_ok=True)
+receipts = []
+for name in (&#x27;encoded_operations.py&#x27;, &#x27;ordinal_topbit.py&#x27;):
+    source = SOURCE / name
+    dest = VENDOR / name
+    if not dest.exists():
+        shutil.copy2(source, dest)
+    assert source.read_bytes() == dest.read_bytes()
+    receipts.append({&#x27;source&#x27;: str(source), &#x27;copy&#x27;: str(dest),
+                     &#x27;sha256&#x27;: hashlib.sha256(source.read_bytes()).hexdigest()})
+sys.path.insert(0, str(VENDOR))
+from encoded_operations import (acquire_comparator, inverse, kernel_basis, lin,
+                                parity, random_invertible, transpose)
+from ordinal_topbit import (acquire_topbit, interpolate_two, points_degree_two,
+                           poly_eval)
+
+
+def polar_rows(terms, n):
+    rows = [0] * n
+    for term in terms:
+        if term.bit_count() == 2:
+            first = term &amp; -term
+            second = term ^ first
+            rows[first.bit_length()-1] ^= second
+            rows[second.bit_length()-1] ^= first
+    return rows
+
+
+def independent(columns):
+    pivots = {}
+    for value in columns:
+        while value:
+            pivot = value.bit_length()-1
+            if pivot not in pivots:
+                pivots[pivot] = value
+                break
+            value ^= pivots[pivot]
+    return len(pivots)
+
+
+def complement(radical, n):
+    columns = list(radical)
+    out = []
+    for i in range(n):
+        value = 1 &lt;&lt; i
+        if independent(columns + [value]) &gt; len(columns):
+            out.append(value)
+            columns.append(value)
+    assert len(columns) == n
+    return out
+
+
+class BlockShearTeacher:
+    &quot;&quot;&quot;Hidden affine input; Q=(y xor g(z),z), top g nondegenerate on z.&quot;&quot;&quot;
+    def __init__(self, n, r, seed):
+        assert n &gt;= 8 and 2 &lt;= r &lt; n and r % 2 == 0
+        rng = random.Random(seed)
+        _, self._decoder = random_invertible(rng, n)
+        self._offset = rng.getrandbits(n)
+        self.n, self.r, self.k = n, r, n-r
+        self._shears = []
+        for _ in range(self.k):
+            terms = [x for x in points_degree_two(r) if rng.getrandbits(1)]
+            self._shears.append(terms)
+        # Exact rank-r alternating polar form; any linear/constant coefficients.
+        self._shears[-1] = ([0] if rng.getrandbits(1) else []) + [
+            1 &lt;&lt; i for i in range(r) if rng.getrandbits(1)] + [
+            (1 &lt;&lt; i) | (1 &lt;&lt; (i+1)) for i in range(0, r, 2)]
+        self.queries = 0
+        self.source_evaluations = 0
+        self.cache = {}
+
+    def rank(self, x):
+        if x not in self.cache:
+            self.source_evaluations += 1
+            u = lin(self._decoder, x) ^ self._offset
+            z = u &amp; ((1 &lt;&lt; self.r)-1)
+            value = u
+            for i, terms in enumerate(self._shears):
+                value ^= poly_eval(terms, z) &lt;&lt; (self.r+i)
+            self.cache[x] = value
+        return self.cache[x]
+
+    def query(self, x, y):
+        self.queries += 1
+        return self.rank(x) &lt; self.rank(y)
+
+
+class CompiledDecoder:
+    def __init__(self, n, top_terms, duals, transversal, low_decoder, low_offset):
+        self.n = n
+        self.top_terms = top_terms  # actual significance: low-to-high
+        self.duals = duals
+        self.transversal = transversal
+        self.r = len(transversal)
+        self.low_decoder, self.low_offset = low_decoder, low_offset
+        basis = duals + transversal
+        self.coordinates = inverse(basis)
+
+    def rank(self, x):
+        top = sum(poly_eval(q, x) &lt;&lt; j for j, q in enumerate(self.top_terms))
+        # Quotient coordinates ignore translations in the acquired radical.
+        z = lin(self.coordinates, x) &gt;&gt; len(self.duals)
+        low = lin(self.low_decoder, z) ^ self.low_offset
+        return (top &lt;&lt; self.r) | low
+
+    def normalize_top(self, x):
+        word = sum(poly_eval(q, x) &lt;&lt; j for j, q in enumerate(self.top_terms))
+        return x ^ lin(self.duals, word)
+
+    def sample_prefix(self, bits, prefix, rng):
+        &quot;&quot;&quot;Uniform among the actual top `bits` values equal to prefix.
+
+        Normalize requested top bits by their independent radical translations;
+        remaining bits retain their uniform distribution. No source queries.
+        &quot;&quot;&quot;
+        k = len(self.top_terms)
+        if not 0 &lt;= bits &lt;= k:
+            raise ValueError(&#x27;This sampler currently exposes top-block prefixes.&#x27;)
+        x = rng.getrandbits(self.n)
+        for i in range(bits):
+            j = k-1-i
+            desired = (prefix &gt;&gt; (bits-1-i)) &amp; 1
+            if poly_eval(self.top_terms[j], x) != desired:
+                x ^= self.duals[j]
+        return x
+
+
+def acquire_block(n, query, rng, beta=.01):
+    start_queries = 0  # generic oracle exposes no metadata
+    top, _, evidence = acquire_topbit(n, query, rng, beta=beta)
+    radical = kernel_basis(polar_rows(top, n), n)
+    k, r = len(radical), n-len(radical)
+    if not (1 &lt;= k &lt; n and r % 2 == 0):
+        raise ValueError(&#x27;UNKNOWN: polar rank inconsistent with supplied block class&#x27;)
+    terms = [top]
+    restricted = [sum((poly_eval(top, v) ^ poly_eval(top, 0)) &lt;&lt; i
+                      for i, v in enumerate(radical))]
+    points = points_degree_two(n)
+    exact_probes = 0
+    while len(terms) &lt; k:
+        null = kernel_basis(restricted, k)
+        if not null:
+            raise ValueError(&#x27;UNKNOWN: translation restrictions lost rank&#x27;)
+        v = lin(radical, null[0])
+        values = {x: 1 ^ int(query(x, x ^ v)) for x in points}
+        exact_probes += len(points)
+        q = interpolate_two(values, n)
+        row = sum((poly_eval(q, w) ^ poly_eval(q, 0)) &lt;&lt; i
+                  for i, w in enumerate(radical))
+        if not parity(row &amp; null[0]) or independent(restricted+[row]) &lt;= len(restricted):
+            raise ValueError(&#x27;UNKNOWN: new quadratic translation feature invalid&#x27;)
+        if any(parity(b &amp; w) for b in polar_rows(q, n) for w in radical):
+            raise ValueError(&#x27;UNKNOWN: acquired feature violates common-radical promise&#x27;)
+        restricted.append(row)
+        terms.append(q)
+    matrix = transpose(restricted, k)
+    duals = [lin(radical, c) for c in inverse(matrix)]
+    zero = lin(duals, sum(poly_eval(q, 0) &lt;&lt; i for i, q in enumerate(terms)))
+
+    def priority(i, j):
+        if i == j:
+            return 0
+        return -1 if query(zero ^ duals[j], zero ^ duals[i]) else 1
+
+    high_to_low = sorted(range(k), key=functools.cmp_to_key(priority))
+    low_to_high = list(reversed(high_to_low))
+    terms = [terms[i] for i in low_to_high]
+    duals = [duals[i] for i in low_to_high]
+    transversal = complement(radical, n)
+
+    def normalize(x):
+        word = sum(poly_eval(q, x) &lt;&lt; i for i, q in enumerate(terms))
+        return x ^ lin(duals, word)
+
+    def low_query(a, b):
+        return query(normalize(lin(transversal, a)), normalize(lin(transversal, b)))
+
+    low_decoder, low_offset, low_probes = acquire_comparator(r, low_query)
+    compiled = CompiledDecoder(n, terms, duals, transversal, low_decoder, low_offset)
+    evidence.update({&#x27;acquired_top_block_dimension&#x27;: k, &#x27;acquired_affine_quotient_dimension&#x27;: r,
+                     &#x27;exact_quadratic_translation_probes&#x27;: exact_probes,
+                     &#x27;affine_quotient_row_probes&#x27;: low_probes,
+                     &#x27;quadratic_feature_count&#x27;: len(terms),
+                     &#x27;comparison_access_only&#x27;: True})
+    return compiled, evidence
+
+
+def run(n, r, seed):
+    total = time.perf_counter()
+    teacher = BlockShearTeacher(n, r, seed)
+    setup = time.perf_counter()-total
+    rng = random.Random(seed+1000000)
+    start = time.perf_counter()
+    compiled, evidence = acquire_block(n, teacher.query, rng)
+    acquisition_seconds = time.perf_counter()-start
+    queries = teacher.queries
+    source_evaluations = teacher.source_evaluations
+    source_cache_entries = len(teacher.cache)
+    validation_start = time.perf_counter()
+    # Read truth only now, after the learner has fully compiled.
+    body_points = points_degree_two(n)
+    true_bodies = [interpolate_two({x: (teacher.rank(x) &gt;&gt; j) &amp; 1 for x in body_points}, n)
+                   for j in range(n)]
+    compiled_bodies = [interpolate_two({x: (compiled.rank(x) &gt;&gt; j) &amp; 1 for x in body_points}, n)
+                       for j in range(n)]
+    assert true_bodies == compiled_bodies
+    tested = list(range(1 &lt;&lt; n)) if n &lt;= 12 else [rng.getrandbits(n) for _ in range(4096)]
+    for x in tested:
+        assert compiled.rank(x) == teacher.rank(x)
+    exact_fiber = None
+    if n &lt;= 12:
+        exact_fiber = []
+        for bits in range(min(compiled.n-compiled.r, 5)+1):
+            prefix = (1 &lt;&lt; bits)-1
+            counts = Counter()
+            for x in range(1 &lt;&lt; n):
+                z = x
+                for i in range(bits):
+                    j = len(compiled.top_terms)-1-i
+                    wanted = (prefix &gt;&gt; (bits-1-i)) &amp; 1
+                    if poly_eval(compiled.top_terms[j], z) != wanted:
+                        z ^= compiled.duals[j]
+                assert compiled.rank(z) &gt;&gt; (n-bits) == prefix
+                counts[z] += 1
+            assert len(counts) == 1 &lt;&lt; (n-bits) and set(counts.values()) == {1 &lt;&lt; bits}
+            exact_fiber.append({&#x27;bits&#x27;: bits, &#x27;fiber_size&#x27;: len(counts), &#x27;seed_preimages&#x27;: 1 &lt;&lt; bits})
+    else:
+        for bits in (1, (n-r)//2, n-r):
+            prefix = rng.getrandbits(bits)
+            for _ in range(256):
+                x = compiled.sample_prefix(bits, prefix, rng)
+                assert compiled.rank(x) &gt;&gt; (n-bits) == prefix
+    assert teacher.queries == queries
+    validation_seconds = time.perf_counter()-validation_start
+    # Explicit arithmetic counters; dictionary/allocator costs not included.
+    monomials = sum(len(q) for q in teacher._shears)
+    evidence.update({&#x27;n&#x27;: n, &#x27;residual_dimension&#x27;: r, &#x27;top_block_dimension&#x27;: n-r, &#x27;seed&#x27;: seed,
+        &#x27;total_one_bit_comparisons&#x27;: queries, &#x27;transmitted_input_bits&#x27;: 2*n*queries,
+        &#x27;source_unique_rank_evaluations_acquisition&#x27;: source_evaluations,
+        &#x27;source_cache_logical_payload_bits&#x27;: 2*n*source_cache_entries,
+        &#x27;source_rank_bitwork_conservative_upper&#x27;: source_evaluations*(n*n+n+n*monomials),
+        &#x27;source_setup_seconds&#x27;: setup, &#x27;acquisition_seconds_including_source&#x27;: acquisition_seconds,
+        &#x27;validation_seconds&#x27;: validation_seconds, &#x27;overall_seconds&#x27;: time.perf_counter()-total,
+        &#x27;all_n_coordinate_polynomials_match_exactly&#x27;: True, &#x27;validated_points&#x27;: len(tested),
+        &#x27;source_queries_during_compiled_execution&#x27;: 0, &#x27;exhaustive_prefix_distribution&#x27;: exact_fiber,
+        &#x27;initial_feature_failure_bound&#x27;: evidence[&#x27;median_failure_bound&#x27;]+evidence[&#x27;coefficient_failure_union_bound&#x27;],
+        &#x27;compact_top_coefficient_bits_upper&#x27;: (n-r)*len(points_degree_two(n)),
+        &#x27;closest_composition_status&#x27;: &#x27;Known algebra/correction/affine mechanisms; tailored prior and comparative advantage UNKNOWN.&#x27;,
+        &#x27;scope&#x27;: &#x27;Supplied hidden-affine block shear with nondegenerate top polar form; not arbitrary quadratic permutations.&#x27;})
+    return evidence
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&#x27;--output&#x27;, default=str(HERE/&#x27;BLOCK_SHEAR_RESULTS.json&#x27;))
+    args = parser.parse_args()
+    cases = [(8, 4, 610041), (12, 4, 610042), (16, 6, 610043),
+             (24, 8, 610044), (32, 12, 610045)]
+    results = []
+    for case in cases:
+        result = run(*case)
+        results.append(result)
+        print(json.dumps({key: result[key] for key in [&#x27;n&#x27;, &#x27;residual_dimension&#x27;,
+            &#x27;total_one_bit_comparisons&#x27;, &#x27;all_n_coordinate_polynomials_match_exactly&#x27;,
+            &#x27;acquisition_seconds_including_source&#x27;]}), flush=True)
+    Path(args.output).write_text(json.dumps({&#x27;cases&#x27;: results, &#x27;source_copies&#x27;: receipts,
+        &#x27;mission_status&#x27;: &#x27;NOT_ACHIEVED&#x27;, &#x27;novelty&#x27;: &#x27;UNKNOWN&#x27;,
+        &#x27;status&#x27;: &#x27;RESTRICTED_CLASS_COMPARATOR_ONLY_FULL_DECODER_CONSTRUCTION&#x27;}, indent=2)+&#x27;\n&#x27;)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

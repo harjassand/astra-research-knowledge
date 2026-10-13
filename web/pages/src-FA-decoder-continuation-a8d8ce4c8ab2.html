@@ -1,0 +1,142 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — block_controller.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact integer-grid robust controller for one rational two-coordinate block.
+
+The demonstration uses supplied rational directions without direction rounding.
+Every scalar grid noise value is checked after the action.  No random sampling
+or floating geometry enters the certificate.  NumPy performs integer/Boolean
+array operations only.  See RESULT.txt for the general block-support theorem.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import time
+from fractions import Fraction as F
+from pathlib import Path
+
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+
+
+def shift_back(dest, dx, dy):
+    &quot;&quot;&quot;Return indicator that (x+dx,y+dy) is in dest, with outside=False.&quot;&quot;&quot;
+    out = np.zeros_like(dest)
+    height, width = dest.shape
+    xlo, xhi = max(0, -dx), min(width, width - dx)
+    ylo, yhi = max(0, -dy), min(height, height - dy)
+    if xlo &lt; xhi and ylo &lt; yhi:
+        out[ylo:yhi, xlo:xhi] = dest[ylo + dy:yhi + dy, xlo + dx:xhi + dx]
+    return out
+
+
+def action_good(dest, safe, vx, vy, kden, cap, action):
+    good = safe.copy()
+    for noise in range(-cap, cap + 1):
+        coefficient = action * kden + noise
+        good &amp;= shift_back(dest, vx * coefficient, vy * coefficient)
+    return good
+
+
+def compile_controller(directions, denominator, kden, cap, radius, mode=&quot;optimal&quot;):
+    lattice = denominator * kden
+    extent = (radius.numerator * lattice + radius.denominator - 1) // radius.denominator
+    coordinates = np.arange(-extent, extent + 1, dtype=np.int64)
+    xx, yy = np.meshgrid(coordinates, coordinates)
+    safe = (xx * xx + yy * yy) * radius.denominator**2 &lt;= (radius.numerator * lattice)**2
+    masks = [None] * (len(directions) + 1)
+    policies = [None] * len(directions)
+    masks[-1] = safe
+    for step in range(len(directions) - 1, -1, -1):
+        vx, vy = directions[step]
+        plus = action_good(masks[step + 1], safe, vx, vy, kden, cap, 1)
+        minus = action_good(masks[step + 1], safe, vx, vy, kden, cap, -1)
+        if mode == &quot;greedy&quot;:
+            use_plus = vx * xx + vy * yy &lt;= 0
+            winning = safe &amp; ((use_plus &amp; plus) | (~use_plus &amp; minus))
+            policy = np.where(use_plus, 1, -1).astype(np.int8)
+        else:
+            winning = safe &amp; (plus | minus)
+            policy = np.where(plus, 1, -1).astype(np.int8)
+        masks[step], policies[step] = winning, policy
+    return bool(masks[0][extent, extent]), np.stack(masks), np.stack(policies), extent, lattice
+
+
+def main():
+    start = time.perf_counter()
+    directions = [(5, 0), (3, 4), (0, 5), (4, -3)]
+    denominator = 5
+    n = len(directions)
+    gamma = F(1, 2)
+    kden = 8 * n
+    cap = (gamma.numerator * kden + gamma.denominator - 1) // gamma.denominator + 1
+    candidates = [F(2), F(9, 4), F(5, 2), F(11, 4), F(3)]
+    trials = []
+    selected = None
+    for mode in (&quot;optimal&quot;, &quot;greedy&quot;):
+        for radius in candidates:
+            won, masks, policies, extent, lattice = compile_controller(
+                directions, denominator, kden, cap, radius, mode
+            )
+            trials.append({&quot;mode&quot;: mode, &quot;radius&quot;: str(radius), &quot;origin_winning&quot;: won})
+            if won:
+                if mode == &quot;optimal&quot;:
+                    selected = (radius, masks, policies, extent, lattice)
+                break
+    if selected is None:
+        raise RuntimeError(&quot;No tested radius won; no certificate written&quot;)
+    radius, masks, policies, extent, lattice = selected
+    np.savez_compressed(
+        HERE / &quot;block_controller_certificate.npz&quot;,
+        directions=np.asarray(directions, dtype=np.int64),
+        denominator=np.int64(denominator),
+        kden=np.int64(kden),
+        cap=np.int64(cap),
+        radius_numerator=np.int64(radius.numerator),
+        radius_denominator=np.int64(radius.denominator),
+        extent=np.int64(extent),
+        lattice=np.int64(lattice),
+        winning=masks,
+        policy=policies,
+    )
+    scalar_error = F(5, 8 * kden)
+    error_per_block = n * scalar_error
+    h = F(3, 2)
+    mixed_direction = (F(3, 5), F(4, 5))
+    mixed_corner = (h, -h)
+    extension_failures = []
+    for epsilon, noise in [(1, gamma), (-1, -gamma)]:
+        nxt = tuple(x + (epsilon + noise) * v for x, v in zip(mixed_corner, mixed_direction))
+        assert any(abs(x) &gt; h for x in nxt)
+        extension_failures.append({&quot;action&quot;: epsilon, &quot;postdecision_noise&quot;: str(noise), &quot;next_state&quot;: list(map(str, nxt))})
+    receipt = {
+        &quot;evidence_status&quot;: &quot;exact finite Boolean/integer game plus analytic continuous transfer&quot;,
+        &quot;directions&quot;: [[str(F(x, denominator)), str(F(y, denominator))] for x, y in directions],
+        &quot;noise_bound_original&quot;: str(gamma),
+        &quot;scalar_feedback_absolute_error_required&quot;: str(F(1, 8 * kden)),
+        &quot;virtual_noise_grid_denominator&quot;: kden,
+        &quot;virtual_noise_cap&quot;: cap,
+        &quot;virtual_noise_bound&quot;: str(F(cap, kden)),
+        &quot;trials&quot;: trials,
+        &quot;selected_virtual_radius&quot;: str(radius),
+        &quot;continuous_transfer_error_per_block&quot;: str(error_per_block),
+        &quot;continuous_radius_per_block&quot;: str(radius + error_per_block),
+        &quot;orthogonal_k_block_radius&quot;: f&quot;({radius + error_per_block})*sqrt(k)&quot;,
+        &quot;winning_counts&quot;: [int(x.sum()) for x in masks],
+        &quot;mixed_direction_naive_product_failure&quot;: {
+            &quot;product_halfwidth&quot;: str(h),
+            &quot;corner&quot;: list(map(str, mixed_corner)),
+            &quot;direction&quot;: list(map(str, mixed_direction)),
+            &quot;branches&quot;: extension_failures,
+            &quot;scope&quot;: &quot;invalidates only the independent coordinate-box product extension at this corner&quot;,
+        },
+        &quot;elapsed_seconds&quot;: time.perf_counter() - start,
+        &quot;general_arbitrary_schedule_compiler&quot;: &quot;NOT ESTABLISHED&quot;,
+        &quot;novelty&quot;: &quot;UNKNOWN; robust finite safety DP and coordinate decomposition are known methods&quot;,
+    }
+    (HERE / &quot;block_controller_receipt.json&quot;).write_text(json.dumps(receipt, indent=2) + &quot;\n&quot;)
+    print(json.dumps(receipt, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

@@ -1,0 +1,253 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — split_frequency_control.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Frequency-resolved partial-secular control for Sol01&#x27;s pair mechanism.
+
+This is a model-sensitivity check, not a claim that the grouped white-bath
+input-output model is wrong. It rebuilds the same Floquet transitions and
+compares (i) collapse operators grouped by harmonic k, as in the source model,
+with (ii) operators grouped only for lines in &lt;=1 MHz-wide frequency clusters
+within each (bath,k). Matched logical g/f carrier lines remain coherent; lines
+separated by 90 MHz do not. The finite RF waveform is imported from the exact
+current Sol01 script, including its continuous-envelope midpoint refinement.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
+SOL01 = ROOT / &quot;work/continuation/sol01_quantum&quot;
+SOURCE = Path(&quot;/Users/harjas/Documents/Codex/2026-10-13/astra-genesis-civilization-enabling-breakthrough-discovery&quot;)
+sys.path.insert(0, str(SOL01))
+import pair_fluorescence_test as pair  # noqa: E402
+import alternative_control_gates as controls  # noqa: E402
+from pair_fluorescence_test import f  # noqa: E402
+
+
+def _frequency_clusters(lines, tolerance_mhz):
+    &quot;&quot;&quot;Assign sorted lines to clusters whose full span is &lt;= tolerance.&quot;&quot;&quot;
+    order = sorted(range(len(lines)), key=lambda i: lines[i][&quot;frequency_MHz&quot;])
+    clusters = []
+    for ix in order:
+        nu = lines[ix][&quot;frequency_MHz&quot;]
+        if not clusters or nu - clusters[-1][&quot;low&quot;] &gt; tolerance_mhz:
+            clusters.append({&quot;low&quot;: nu, &quot;high&quot;: nu, &quot;members&quot;: [ix]})
+        else:
+            clusters[-1][&quot;high&quot;] = nu
+            clusters[-1][&quot;members&quot;].append(ix)
+    for cluster_id, cluster in enumerate(clusters):
+        for ix in cluster[&quot;members&quot;]:
+            lines[ix][&quot;cluster&quot;] = cluster_id
+    return clusters
+
+
+def build_models(qdim=5, nf=6, epsilon=217.28013507543088, tolerance_mhz=1.0):
+    &quot;&quot;&quot;Reconstruct the source transition map into grouped and split channels.&quot;&quot;&quot;
+    f.ecr.MEASURED_HALF_GE_CAVITY_SHIFT_MHZ = 0.5
+    g = f.ecr.calibrate_g()
+    f.f.G = g
+    f.f.DELTA = -2203.0
+
+    scan = []
+    for omega in np.arange(2463.0, 2484.0, 1.0):
+        block = f.f.floquet_block(3, epsilon, omega, sambe_half=5, ramp_steps=24)
+        ee = block[&quot;values&quot;][1] + omega
+        hh = block[&quot;values&quot;][3] + 3 * omega
+        scan.append({&quot;omega_MHz&quot;: float(omega), &quot;e2_h0_gap_MHz&quot;: float(abs(ee - hh))})
+    omega = min(scan, key=lambda row: row[&quot;e2_h0_gap_MHz&quot;])[&quot;omega_MHz&quot;]
+    blocks = {N: f.f.floquet_block(N, epsilon, omega, sambe_half=5, ramp_steps=24)
+              for N in range(qdim + nf)}
+    basis = [(q, n) for q in range(qdim) for n in range(nf)]
+    index = {state: i for i, state in enumerate(basis)}
+    dim = len(basis)
+    energies = np.array([blocks[q + n][&quot;values&quot;][q] + q * omega for q, n in basis])
+    rf_detuning = (energies[index[(3, 0)]] - energies[index[(1, 0)]]) / 2
+    totals = np.array([q + n for q, n in basis])
+    energies -= rf_detuning * totals
+    calibration = f.static_vacuum_rates(g)
+
+    # Retain each physical-frequency component until the secular grouping rule
+    # has been applied. A transition record is one matrix element of a jump.
+    lines = {&quot;a&quot;: {}, &quot;b&quot;: {}}
+    outside = np.zeros(dim)
+    drive = np.zeros((dim, dim), complex)
+    vacuum = []
+    for i, (qi, n) in enumerate(basis):
+        N = qi + n
+        if N == 0:
+            continue
+        source, target = blocks[N], blocks[N - 1]
+        for qo in range(len(target[&quot;values&quot;])):
+            no = N - 1 - qo
+            for bath, extractor in [(&quot;a&quot;, f.f.cavity_loss_harmonics), (&quot;b&quot;, f.bath_harmonics)]:
+                harmonics = extractor(source, target, qi, qo)
+                scale = f.KAPPA if bath == &quot;a&quot; else calibration[2 if qi &gt;= 2 else 1][&quot;bath_scale&quot;]
+                for ell, z in harmonics.items():
+                    physical = 7153.0 + source[&quot;values&quot;][qi] - target[&quot;values&quot;][qo] - ell * omega
+                    if physical &lt;= 0 or abs(z) &lt; 1e-10:
+                        continue
+                    k = ell + qi - qo
+                    if (qo, no) in index:
+                        j = index[(qo, no)]
+                        line = {&quot;bath&quot;: bath, &quot;k&quot;: k, &quot;frequency_MHz&quot;: float(physical),
+                                &quot;i&quot;: i, &quot;j&quot;: j, &quot;amp&quot;: complex(np.sqrt(scale) * z),
+                                &quot;qi&quot;: qi, &quot;qo&quot;: qo, &quot;n&quot;: n, &quot;no&quot;: no,
+                                &quot;ell&quot;: ell, &quot;rate&quot;: float(scale * abs(z) ** 2)}
+                        lines[bath].setdefault(k, []).append(line)
+                        if bath == &quot;b&quot; and k == 1:
+                            # Same commensurate RF drive projection as Sol01.
+                            drive[j, i] += z
+                    else:
+                        outside[i] += scale * abs(z) ** 2
+                    if n == 0 and scale * abs(z) ** 2 &gt; 1e-6:
+                        vacuum.append({&quot;input_q&quot;: qi, &quot;output_q&quot;: qo, &quot;output_n&quot;: no,
+                                       &quot;bath&quot;: bath, &quot;harmonic_k&quot;: k,
+                                       &quot;frequency_MHz&quot;: float(physical),
+                                       &quot;rate_per_us&quot;: float(scale * abs(z) ** 2)})
+
+    grouped = {&quot;a&quot;: {}, &quot;b&quot;: {}}
+    split = {&quot;a&quot;: {}, &quot;b&quot;: {}}
+    cluster_summary = {}
+    for bath in (&quot;a&quot;, &quot;b&quot;):
+        for k, by_frequency in lines[bath].items():
+            grouped[bath][k] = np.zeros((dim, dim), complex)
+            for line in by_frequency:
+                grouped[bath][k][line[&quot;j&quot;], line[&quot;i&quot;]] += line[&quot;amp&quot;]
+            clusters = _frequency_clusters(by_frequency, tolerance_mhz)
+            cluster_summary[f&quot;{bath}:k={k}&quot;] = [
+                {&quot;frequency_low_MHz&quot;: float(c[&quot;low&quot;]), &quot;frequency_high_MHz&quot;: float(c[&quot;high&quot;]),
+                 &quot;span_MHz&quot;: float(c[&quot;high&quot;] - c[&quot;low&quot;]), &quot;matrix_elements&quot;: len(c[&quot;members&quot;])}
+                for c in clusters
+            ]
+            for cluster_id, cluster in enumerate(clusters):
+                C = np.zeros((dim, dim), complex)
+                for ix in cluster[&quot;members&quot;]:
+                    line = by_frequency[ix]
+                    C[line[&quot;j&quot;], line[&quot;i&quot;]] += line[&quot;amp&quot;]
+                split[bath][(k, cluster_id)] = C
+
+    def make_model(collapse):
+        return {&quot;dim&quot;: dim, &quot;basis&quot;: basis, &quot;energies&quot;: energies, &quot;drive&quot;: drive,
+                &quot;collapse&quot;: collapse, &quot;outside&quot;: outside}
+
+    # The representative 90 MHz pair is from the vacuum h0 source. Compute its
+    # grouped jump cross term directly; splitting removes this one-click
+    # e1/f0 coherence, though not all physical coherences in the device.
+    by_q0 = {(x[&quot;output_q&quot;], x[&quot;output_n&quot;]): x for x in vacuum
+             if x[&quot;bath&quot;] == &quot;a&quot; and x[&quot;input_q&quot;] == 3 and x[&quot;harmonic_k&quot;] == 0}
+    h_e = by_q0[(1, 1)]
+    h_f = by_q0[(2, 0)]
+    r1, r2 = h_e[&quot;rate_per_us&quot;], h_f[&quot;rate_per_us&quot;]
+
+    # Exact near-degenerate matched logical carrier pair at n=1, k=0.
+    logical_lines = {}
+    for q in (0, 2):
+        N = q + 1
+        src, dst = blocks[N], blocks[N - 1]
+        matching = []
+        for ell, z in f.f.cavity_loss_harmonics(src, dst, q, q).items():
+            nu = 7153.0 + src[&quot;values&quot;][q] - dst[&quot;values&quot;][q] - ell * omega
+            if ell == 0 and nu &gt; 0:
+                matching.append((nu, abs(z)))
+        logical_lines[&quot;g&quot; if q == 0 else &quot;f&quot;] = {&quot;frequency_MHz&quot;: float(matching[0][0]),
+                                                    &quot;matrix_element_abs&quot;: float(matching[0][1])}
+    logical_delta = abs(logical_lines[&quot;g&quot;][&quot;frequency_MHz&quot;] - logical_lines[&quot;f&quot;][&quot;frequency_MHz&quot;])
+    # The two dressed routes into the same e1 target highlighted by Sol01.
+    # They share k=0, but differ by 1.77695 MHz because the h0 route uses
+    # ell=-2; a 1 MHz partial-secular grouping resolves them.
+    target = blocks[2]
+    source_ef = blocks[3]
+    route_records = {}
+    for label, source, qi, ell in [
+        (&quot;e1_n2_to_e1_n1&quot;, source_ef, 1, 0),
+        (&quot;h0_to_e1_n1&quot;, source_ef, 3, -2),
+    ]:
+        z = f.f.cavity_loss_harmonics(source, target, qi, 1)[ell]
+        nu = 7153.0 + source[&quot;values&quot;][qi] - target[&quot;values&quot;][1] - ell * omega
+        route_records[label] = {&quot;harmonic_ell&quot;: ell, &quot;harmonic_k&quot;: 0,
+                               &quot;frequency_MHz&quot;: float(nu), &quot;matrix_element_abs&quot;: float(abs(z)),
+                               &quot;rate_per_us&quot;: float(f.KAPPA * abs(z) ** 2)}
+    pair_r1 = route_records[&quot;e1_n2_to_e1_n1&quot;][&quot;rate_per_us&quot;]
+    pair_r2 = route_records[&quot;h0_to_e1_n1&quot;][&quot;rate_per_us&quot;]
+    return make_model(grouped), make_model(split), {
+        &quot;G_MHz&quot;: float(g), &quot;epsilon_MHz&quot;: float(epsilon), &quot;omega_MHz&quot;: float(omega),
+        &quot;rf_frequency_MHz&quot;: float(7153.0 - omega + rf_detuning),
+        &quot;rf_detuning_MHz&quot;: float(rf_detuning), &quot;higher_level_b_bath_scale_per_us&quot;: float(calibration[2][&quot;bath_scale&quot;]),
+        &quot;frequency_cluster_width_cap_MHz&quot;: float(tolerance_mhz),
+        &quot;channel_cluster_summary&quot;: cluster_summary,
+        &quot;grouped_channel_count&quot;: int(sum(len(chs) for chs in grouped.values())),
+        &quot;split_channel_count&quot;: int(sum(len(chs) for chs in split.values())),
+        &quot;matched_logical_carriers_n1_k0&quot;: logical_lines,
+        &quot;matched_gf_carrier_separation_MHz&quot;: float(logical_delta),
+        &quot;shared_target_dressed_pair_routes&quot;: {
+            **route_records,
+            &quot;frequency_gap_MHz&quot;: float(abs(route_records[&quot;e1_n2_to_e1_n1&quot;][&quot;frequency_MHz&quot;] - route_records[&quot;h0_to_e1_n1&quot;][&quot;frequency_MHz&quot;])),
+            &quot;clustered_together_at_1MHz&quot;: bool(abs(route_records[&quot;e1_n2_to_e1_n1&quot;][&quot;frequency_MHz&quot;] - route_records[&quot;h0_to_e1_n1&quot;][&quot;frequency_MHz&quot;]) &lt;= tolerance_mhz),
+            &quot;grouped_jump_cross_amplitude_per_us&quot;: float(math.sqrt(pair_r1 * pair_r2)),
+            &quot;grouped_jump_normalized_visibility&quot;: float(2 * math.sqrt(pair_r1 * pair_r2) / (pair_r1 + pair_r2)),
+        },
+        &quot;h0_vacuum_a_k0_line_pair&quot;: {
+            &quot;h0_to_e1&quot;: h_e, &quot;h0_to_f0&quot;: h_f,
+            &quot;frequency_gap_MHz&quot;: float(abs(h_e[&quot;frequency_MHz&quot;] - h_f[&quot;frequency_MHz&quot;])),
+            &quot;rate_cross_amplitude_per_us&quot;: float(math.sqrt(r1 * r2)),
+            &quot;normalized_jump_coherence_abs&quot;: float(math.sqrt(r1 * r2) / (r1 + r2)),
+            &quot;normalized_jump_visibility&quot;: float(2 * math.sqrt(r1 * r2) / (r1 + r2)),
+        },
+        &quot;vacuum_channels&quot;: vacuum,
+        &quot;maximum_unrepresented_loss_per_us&quot;: float(outside.max()),
+        &quot;current_sol01_script_sha256&quot;: hashlib.sha256((SOL01 / &quot;pair_fluorescence_test.py&quot;).read_bytes()).hexdigest(),
+    }
+
+
+def main():
+    started = time.perf_counter()
+    merged, resolved, diagnostics = build_models(tolerance_mhz=1.0)
+    params = {&quot;eta&quot;: 0.5, &quot;amplitude_MHz&quot;: 4.0, &quot;flat_us&quot;: 1.0,
+              &quot;ramp_us_each&quot;: 0.1, &quot;tail_us&quot;: 0.8, &quot;ramp_segments_each&quot;: 6,
+              &quot;modulation_MHz&quot;: 10.0, &quot;modulation_steps_per_period&quot;: 12,
+              &quot;maxcount&quot;: 4, &quot;partial_secular_tolerance_MHz&quot;: 1.0}
+    print(&quot;running source grouped-harmonic schedule&quot;, flush=True)
+    base = pair.run(merged, params[&quot;eta&quot;], params[&quot;amplitude_MHz&quot;], params[&quot;flat_us&quot;],
+                    params[&quot;ramp_us_each&quot;], params[&quot;tail_us&quot;], params[&quot;ramp_segments_each&quot;],
+                    params[&quot;maxcount&quot;], params[&quot;modulation_MHz&quot;], params[&quot;modulation_steps_per_period&quot;])
+    print(&quot;running split-frequency partial-secular schedule&quot;, flush=True)
+    control = pair.run(resolved, params[&quot;eta&quot;], params[&quot;amplitude_MHz&quot;], params[&quot;flat_us&quot;],
+                       params[&quot;ramp_us_each&quot;], params[&quot;tail_us&quot;], params[&quot;ramp_segments_each&quot;],
+                       params[&quot;maxcount&quot;], params[&quot;modulation_MHz&quot;], params[&quot;modulation_steps_per_period&quot;])
+    _, ancilla = controls.ancilla_cycle(2.0)
+    selected_base = base[&quot;count_threshold_cases&quot;][0]
+    selected_control = control[&quot;count_threshold_cases&quot;][0]
+    result = {
+        &quot;status&quot;: &quot;PARTIAL_SECULAR_FREQUENCY_GROUPING_SENSITIVITY_CHECK&quot;,
+        &quot;model_scope&quot;: (
+            &quot;Frequency-resolved partial-secular control, not a device bath model. The parent grouped-harmonic model is also a legitimate white-Markov &quot;
+            &quot;input-output scenario. Distinguishing physical bath spectra, coherent RF sidebands, detector bandwidth, and full driven Floquet treatment remain unacquired.&quot;),
+        &quot;parameters&quot;: params,
+        &quot;diagnostics&quot;: diagnostics,
+        &quot;grouped_harmonic_result&quot;: base,
+        &quot;split_frequency_result&quot;: control,
+        &quot;same_duration_ancilla_comparator&quot;: ancilla,
+        &quot;threshold_one_comparison&quot;: {
+            &quot;grouped_harmonic_accepted_Choi_infidelity&quot;: selected_base[&quot;accepted_Choi_infidelity&quot;],
+            &quot;split_frequency_accepted_Choi_infidelity&quot;: selected_control[&quot;accepted_Choi_infidelity&quot;],
+            &quot;difference_split_minus_grouped&quot;: selected_control[&quot;accepted_Choi_infidelity&quot;] - selected_base[&quot;accepted_Choi_infidelity&quot;],
+            &quot;same_2us_ancilla_accepted_Choi_infidelity&quot;: ancilla[&quot;metrics&quot;][&quot;accepted_Choi_infidelity&quot;],
+            &quot;split_minus_ancilla&quot;: selected_control[&quot;accepted_Choi_infidelity&quot;] - ancilla[&quot;metrics&quot;][&quot;accepted_Choi_infidelity&quot;],
+            &quot;grouped_minus_ancilla&quot;: selected_base[&quot;accepted_Choi_infidelity&quot;] - ancilla[&quot;metrics&quot;][&quot;accepted_Choi_infidelity&quot;],
+        },
+        &quot;runtime_seconds&quot;: time.perf_counter() - started,
+    }
+    out = HERE / &quot;SPLIT_FREQUENCY_CONTROL_RESULTS.json&quot;
+    out.write_text(json.dumps(result, indent=2, default=lambda z: z.real if isinstance(z, complex) else str(z)) + &quot;\n&quot;)
+    print(json.dumps(result[&quot;threshold_one_comparison&quot;], indent=2), flush=True)
+    print(json.dumps({&quot;runtime_seconds&quot;: result[&quot;runtime_seconds&quot;], &quot;output&quot;: str(out)}, indent=2), flush=True)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

@@ -1,0 +1,229 @@
+<!doctype html><meta charset="utf-8"><title>N777 integration derived — derive_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent finite diagnostics for controlled-matter synthesis.
+
+Exact Fraction checks concern absorbing finite CTMCs. Floating checks concern
+quadratic harmonic response. Every fixture is synthetic; no material is fitted.
+&quot;&quot;&quot;
+import json
+from fractions import Fraction as F
+from pathlib import Path
+import numpy as np
+from scipy.linalg import eigh, expm
+
+
+def solve(a, b):
+    a = [[F(x) for x in row] + [F(y)] for row, y in zip(a, b)]
+    n = len(a)
+    for i in range(n):
+        j = next(j for j in range(i, n) if a[j][i])
+        a[i], a[j] = a[j], a[i]
+        z = a[i][i]
+        a[i] = [x/z for x in a[i]]
+        for j in range(n):
+            if j != i:
+                z = a[j][i]
+                a[j] = [x-z*y for x, y in zip(a[j], a[i])]
+    return [row[-1] for row in a]
+
+
+def matvec(a, x):
+    return [sum(F(z)*F(y) for z, y in zip(row, x)) for row in a]
+
+
+def generator(rows, n=5):
+    out = [[F(0) for _ in range(n)] for _ in range(n)]
+    for i, edges in enumerate(rows):
+        for j, r in edges.items():
+            out[i][j] = F(r)
+            out[i][i] -= F(r)
+    return out
+
+
+def committor(l, transient=3, target=3):
+    return solve([row[:transient] for row in l[:transient]],
+                 [-row[target] for row in l[:transient]])
+
+
+def capture_checks():
+    l0 = generator([{1: 1, 4: 1}, {0: 1, 2: 1}, {1: 1, 3: 1}])
+    l1 = generator([{2: 1, 4: 2}, {3: 1, 4: 1}, {0: 1, 3: 2}])
+    q = [F(1, 4), F(1, 2), F(3, 4), F(1), F(0)]
+    assert matvec(l0, q) == matvec(l1, q) == [F(0)]*5
+    assert committor(l0) == committor(l1) == q[:3]
+    scalings = [(F(i, 3), F(j, 2), F(k, 5))
+                for i in (1, 3, 7) for j in (1, 2, 5) for k in (1, 5, 11)]
+    for a in scalings:
+        la = [[x*(a[i] if i &lt; 3 else 1) for x in row]
+              for i, row in enumerate(l0)]
+        assert committor(la) == q[:3]
+    lp = generator([{1: 1, 4: 1}, {0: 1, 2: 1, 3: 1}, {1: 1, 3: 1}])
+    lm = generator([{1: 1, 4: 1}, {0: 1, 2: 1, 4: 1}, {1: 1, 3: 1}])
+    qp, qm = committor(lp), committor(lm)
+    ep = matvec(lp, q)
+    correction = solve([row[:3] for row in lp[:3]], [-x for x in ep[:3]])
+    assert [x-y for x, y in zip(qp, q)] == correction
+    assert qp == [F(3, 8), F(3, 4), F(7, 8)]
+    assert qm == [F(1, 8), F(1, 4), F(5, 8)]
+    # Symmetric edge acceleration is not row acceleration. The un-killed
+    # five-node line retains uniform equilibrium but its committor changes.
+    le = generator([{1: 3, 4: 1}, {0: 3, 2: 1}, {1: 1, 3: 1}])
+    qe = committor(le)
+    assert qe == [F(3, 10), F(2, 5), F(7, 10)]
+    duration = [F(3, 2), F(2), F(3, 2), F(0), F(0)]
+    for l in (l0, l1, lp, lm):
+        assert all(x &lt;= -1 for x in matvec(l, duration)[:3])
+    # Finite-horizon invariant under switches among two non-clock-equivalent
+    # generators; expm is a diagnostic, not an exact proof of adaptive policies.
+    pi = np.array([0., 1., 0., 0., 0.])
+    maximum = 0.
+    for l, dt in [(l0, .17), (l1, .31), (l0, 2.1), (l1, .4)]:
+        pi = pi @ expm(np.asarray(l, dtype=float)*dt)
+        maximum = max(maximum, abs(pi @ np.asarray(q, dtype=float)-.5))
+    assert maximum &lt; 2e-14
+    # Two-stage capture: x0 -&gt; target at rate1, x0 -&gt; x1 at rate1,
+    # x1 -&gt; bad at rate1. Let z=exp(-operational_time).
+    finite = []
+    for z in (F(1, 2), F(1, 4)):
+        target = (1-z*z)/2
+        bad = (1-z)**2/2
+        remaining = z*z/2  # q(x0)*P(x0); q(x1)=0.
+        conditional = target/(target+bad)
+        assert target+remaining == F(1, 2)
+        finite.append({&#x27;exp_minus_dose&#x27;: str(z), &#x27;target&#x27;: str(target),
+                       &#x27;bad&#x27;: str(bad), &#x27;conditional_target&#x27;: str(conditional),
+                       &#x27;completion_corrected_target&#x27;: str(target+remaining)})
+    assert finite[0][&#x27;conditional_target&#x27;] == &#x27;3/4&#x27;
+    assert finite[1][&#x27;conditional_target&#x27;] == &#x27;5/8&#x27;
+    return {&#x27;exact_row_scalings&#x27;: len(scalings),
+            &#x27;shared_nonclock_committor&#x27;: [str(x) for x in q],
+            &#x27;selective_perturbation_committor&#x27;: [str(x) for x in qp],
+            &#x27;exact_residual_correction&#x27;: [str(x) for x in correction],
+            &#x27;symmetric_edge_acceleration_committor&#x27;: [str(x) for x in qe],
+            &#x27;switched_floating_invariant_max_error&#x27;: maximum,
+            &#x27;finite_pulse_conditional_selection_counterexample&#x27;: finite}
+
+
+def harmonic_checks():
+    rng = np.random.default_rng(134774)
+    bounds = []; sharp_errors = []; restricted_errors = []
+    for n in (2, 3, 5, 8):
+        for _ in range(3):
+            m = rng.normal(size=(n, n))
+            gamma = m.T @ m + np.eye(n)
+            g, h = rng.normal(size=(2, n))
+            H = (np.outer(g, h)-np.outer(h, g))/(2j)
+            eig, vec = eigh(H, gamma)
+            A = np.vstack([g, h])
+            gram = A @ np.linalg.solve(gamma, A.T)
+            rho = .5*np.sqrt(max(0., np.linalg.det(gram)))
+            sharp_errors.append(float(abs(max(abs(eig))-rho)))
+            # Endpoint eigenvectors attain each signed area/work extremum.
+            for k in (0, n-1):
+                q = vec[:, k]
+                area = float(np.imag(np.conj(g@q)*(h@q)))
+                norm = float(np.real(q.conj()@gamma@q))
+                sharp_errors.append(abs(area/norm-eig[k]))
+            for _ in range(20):
+                q = rng.normal(size=n)+1j*rng.normal(size=n)
+                area = abs(np.imag(np.conj(g@q)*(h@q)))
+                denom = float(np.real(q.conj()@gamma@q))
+                bounds.append(float(area/denom/rho))
+                assert area &lt;= rho*denom*(1+1e-11)
+            # Physical linear transfer to a strict subspace.
+            channels = min(2, n)
+            C = rng.normal(size=(n, channels))+1j*rng.normal(size=(n, channels))
+            G = C.conj().T@gamma@C
+            Hc = C.conj().T@H@C
+            ev, vv = eigh(Hc, G)
+            for j in (0, channels-1):
+                f = vv[:, j]; q = C@f
+                area = np.imag(np.conj(g@q)*(h@q))
+                denom = float(np.real(q.conj()@gamma@q))
+                restricted_errors.append(float(abs(area/denom-ev[j])))
+    assert max(sharp_errors) &lt; 1e-12
+    assert max(restricted_errors) &lt; 1e-12
+    # One real actuator, two unequal damped modes. Its scalar complex drive
+    # can change global phase/amplitude, not the sign of the enclosed area.
+    omega = 1.5
+    gamma = np.diag([.2, .3])
+    K = np.diag([1., 4.])
+    C = np.linalg.solve(K-omega**2*np.eye(2)-1j*omega*gamma,
+                        np.ones((2, 1)))
+    single = []
+    for phase in (0., .4, 1.2, 2.5):
+        q = C[:, 0]*np.exp(1j*phase)
+        area = float(np.imag(np.conj(q[0])*q[1]))
+        damping_work = float(np.pi*omega*np.real(q.conj()@gamma@q))
+        single.append({&#x27;global_drive_phase&#x27;: phase, &#x27;area_over_pi&#x27;: area,
+                       &#x27;damping_work_per_cycle&#x27;: damping_work,
+                       &#x27;mean_damping_power&#x27;: damping_work*omega/(2*np.pi)})
+    assert all(x[&#x27;area_over_pi&#x27;] &lt; 0 for x in single)
+    assert max(x[&#x27;area_over_pi&#x27;] for x in single)-min(x[&#x27;area_over_pi&#x27;] for x in single) &lt; 1e-14
+    return {&#x27;random_control_bound_cases&#x27;: len(bounds),
+            &#x27;maximum_bound_fraction&#x27;: max(bounds),
+            &#x27;sharp_unrestricted_cases&#x27;: len(sharp_errors),
+            &#x27;max_unrestricted_endpoint_error&#x27;: max(sharp_errors),
+            &#x27;restricted_endpoint_cases&#x27;: len(restricted_errors),
+            &#x27;max_restricted_endpoint_error&#x27;: max(restricted_errors),
+            &#x27;rank_one_drive_nonzero_fixed_orientation_loop&#x27;: single}
+
+
+def rare_capture_checks():
+    def u(n, c):
+        a, b = F(1), 1+c
+        for _ in range(1, n):
+            a, b = b, (2+c)*b-a
+        return b
+    c = F(97, 100)
+    rows = []
+    for n in (1, 10, 50, 100, 500):
+        baseline = u(n, F(1))
+        perturbed = u(n, c)
+        rows.append({&#x27;transient_states&#x27;: n, &#x27;baseline_target_probability&#x27;: float(1/baseline),
+                     &#x27;perturbed_target_probability&#x27;: float(1/perturbed),
+                     &#x27;relative_yield_ratio&#x27;: float(baseline/perturbed),
+                     &#x27;probability_recurrence_arithmetic&#x27;: &#x27;exact Fraction&#x27;})
+    # Direct exact linear-system reconstruction for small examples.
+    for n in range(1, 9):
+        A = [[F(0) for _ in range(n)] for _ in range(n)]
+        for i in range(n):
+            A[i][i] = c+1+(i &gt; 0)
+            if i &gt; 0: A[i][i-1] = -1
+            if i+1 &lt; n: A[i][i+1] = -1
+        b = [F(0)]*n; b[-1] = F(1)
+        assert solve(A,b)[0] == 1/u(n,c)
+    assert rows[-1][&#x27;relative_yield_ratio&#x27;] &gt; 100
+    # Actual spectral-matching formula at eta=1, |Delta|=2:
+    # sqrt(225+16*4)=17, gamma_M=(8*17-95)/25=41/25.
+    g = F(41, 25)
+    actual_c = 4*g/(g*g+4)
+    assert actual_c == F(4100, 4181)
+    assert 2*F(1, 2)*F(1)/(1+0) == 1  # forward slow-time oracle rate
+    assert 2*F(2)*F(2)/(4+4) == 1  # failure slow-time oracle rate
+    actual = []
+    for n in (1, 10, 50, 100, 500):
+        actual.append({&#x27;transient_states&#x27;: n,
+                       &#x27;relative_target_yield_to_oracle&#x27;: float(u(n,F(1))/u(n,actual_c))})
+    return {&#x27;failure_edge_multiplier&#x27;: str(c),
+            &#x27;all_baseline_edge_weights&#x27;: 1,
+            &#x27;exact_direct_solve_cases&#x27;: 8, &#x27;cases&#x27;: rows,
+            &#x27;Dirichlet_eigenvalue_enclosure&#x27;: [&#x27;c&#x27;, &#x27;c+4&#x27;],
+            &#x27;relative_quadratic_form_enclosure&#x27;: &#x27;c Q_1 &lt;= Q_c &lt;= Q_1&#x27;,
+            &#x27;actual_matching_width_at_detuning_2&#x27;: str(g),
+            &#x27;actual_matching_failure_ratio&#x27;: str(actual_c),
+            &#x27;actual_matching_geometry&#x27;: &#x27;chain plus one bad absorbing leaf per transient state; maximum degree3&#x27;,
+            &#x27;actual_matching_microscopic_norm_bounds&#x27;: {&#x27;D_operator_norm&#x27;: 2,
+                                                       &#x27;T_operator_norm_upper&#x27;: float(2*np.sqrt(2))},
+            &#x27;actual_matching_cases&#x27;: actual}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    out = {&#x27;status&#x27;: &#x27;internal exact/floating synthetic diagnostics only; no material validation&#x27;,
+           &#x27;capture&#x27;: capture_checks(), &#x27;harmonic&#x27;: harmonic_checks(),
+           &#x27;rare_capture_form_transfer_falsifier&#x27;: rare_capture_checks(),
+           &#x27;SiC_source_power_arithmetic_W&#x27;: {&#x27;VDS&#x27;: 10, &#x27;ID_range&#x27;: [7, 10],
+                                           &#x27;product_range&#x27;: [70, 100],
+                                           &#x27;source_claimed_upper&#x27;: 48}}
+    Path(__file__).with_name(&#x27;derived_checks.json&#x27;).write_text(json.dumps(out, indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out, indent=2))
+</pre>

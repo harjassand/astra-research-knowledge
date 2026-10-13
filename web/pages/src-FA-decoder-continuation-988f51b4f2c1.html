@@ -1,0 +1,386 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — degree3_4_audit.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Self-contained exact tests of the translation tournament at degree 3 and 4.
+
+The oracle exposes only strict comparisons.  Hidden ranks are inspected only
+after acquisition for exact finite verification.  No quadratic/polar-form
+machinery or Sol03 code is imported.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+import random
+from collections import Counter
+from itertools import combinations
+from pathlib import Path
+
+
+HERE = Path(__file__).resolve().parent
+
+
+def parity(x: int) -&gt; int:
+    return x.bit_count() &amp; 1
+
+
+def masks_of_degree_at_most(n: int, degree: int) -&gt; list[int]:
+    return [sum(1 &lt;&lt; i for i in subset)
+            for h in range(min(n, degree) + 1)
+            for subset in combinations(range(n), h)]
+
+
+def gf2_rank(rows: list[int], n: int) -&gt; int:
+    a = [r for r in rows if r]
+    rank = 0
+    for col in range(n):
+        pivot = next((i for i in range(rank, len(a))
+                      if (a[i] &gt;&gt; col) &amp; 1), None)
+        if pivot is None:
+            continue
+        a[rank], a[pivot] = a[pivot], a[rank]
+        for i in range(len(a)):
+            if i != rank and ((a[i] &gt;&gt; col) &amp; 1):
+                a[i] ^= a[rank]
+        rank += 1
+        if rank == len(a):
+            break
+    return rank
+
+
+def kernel_one_row(basis: list[int], response: list[int]) -&gt; list[int]:
+    &quot;&quot;&quot;Return a basis for the kernel of response on span(basis).&quot;&quot;&quot;
+    assert len(basis) == len(response)
+    pivot = next((i for i, bit in enumerate(response) if bit), None)
+    if pivot is None:
+        raise ValueError(&quot;UNKNOWN: next-bit response vanishes on the suffix basis&quot;)
+    result = [basis[i] ^ (basis[pivot] if response[i] else 0)
+              for i in range(len(basis)) if i != pivot]
+    assert len(result) == len(basis) - 1
+    assert gf2_rank(result, max((v.bit_length() for v in basis), default=0)) == len(result)
+    return result
+
+
+class ANF:
+    def __init__(self, n: int, degree: int, coefficients: dict[int, int]):
+        self.n = n
+        self.degree = degree
+        self.coefficients = {mask: int(bit) &amp; 1 for mask, bit in coefficients.items()}
+        self.coefficients = {mask: bit for mask, bit in self.coefficients.items() if bit}
+        assert all(mask.bit_count() &lt;= degree for mask in self.coefficients)
+
+    def __call__(self, x: int) -&gt; int:
+        value = 0
+        for monomial in self.coefficients:
+            if x &amp; monomial == monomial:
+                value ^= 1
+        return value
+
+    def body(self) -&gt; tuple[int, ...]:
+        return tuple(sorted(mask for mask, bit in self.coefficients.items() if bit))
+
+    def degree_actual(self) -&gt; int:
+        return max((mask.bit_count() for mask in self.coefficients), default=0)
+
+
+def interpolate_low_weight(values: dict[int, int], n: int, degree: int) -&gt; ANF:
+    &quot;&quot;&quot;Möbius inversion on all input vectors of Hamming weight &lt;= degree.&quot;&quot;&quot;
+    points = masks_of_degree_at_most(n, degree)
+    assert set(values) == set(points)
+    points.sort(key=lambda mask: (mask.bit_count(), mask))
+    coeff: dict[int, int] = {}
+    for monomial in points:
+        value = values[monomial]
+        sub = (monomial - 1) &amp; monomial
+        while True:
+            if sub in coeff:
+                value ^= coeff[sub]
+            if sub == 0:
+                break
+            sub = (sub - 1) &amp; monomial
+        coeff[monomial] = value
+    out = ANF(n, degree, coeff)
+    assert all(out(x) == values[x] for x in points)
+    return out
+
+
+class TriangularTeacher:
+    &quot;&quot;&quot;Random hidden-affine triangular bijection with total degree &lt;= d.&quot;&quot;&quot;
+    def __init__(self, n: int, degree: int, seed: int):
+        self.n, self.degree = n, degree
+        rng = random.Random(seed)
+        while True:
+            rows = [rng.getrandbits(n) for _ in range(n)]
+            if gf2_rank(rows, n) == n:
+                break
+        self.rows = rows
+        self.offset = rng.getrandbits(n)
+        self.g = []
+        for i in range(n):
+            monomials = masks_of_degree_at_most(i, degree)
+            self.g.append({monomial: rng.getrandbits(1) for monomial in monomials})
+        self.cache: dict[int, int] = {}
+        self.comparisons = 0
+
+    def hidden_input(self, x: int) -&gt; int:
+        return sum((parity(row &amp; x) ^ ((self.offset &gt;&gt; i) &amp; 1)) &lt;&lt; i
+                   for i, row in enumerate(self.rows))
+
+    def rank(self, x: int) -&gt; int:
+        if x not in self.cache:
+            u = self.hidden_input(x)
+            rank = 0
+            for i in range(self.n):
+                bit = (u &gt;&gt; i) &amp; 1
+                for monomial, coefficient in self.g[i].items():
+                    if coefficient and (u &amp; monomial) == monomial:
+                        bit ^= 1
+                rank = (rank &lt;&lt; 1) | bit
+            self.cache[x] = rank
+        return self.cache[x]
+
+    def query(self, x: int, y: int) -&gt; bool:
+        self.comparisons += 1
+        assert x != y
+        return self.rank(x) &lt; self.rank(y)
+
+
+class CountedQuery:
+    def __init__(self, oracle):
+        self.oracle = oracle
+        self.calls = 0
+        self.points: set[int] = set()
+
+    def __call__(self, x: int, y: int) -&gt; bool:
+        assert x != y
+        self.calls += 1
+        self.points.add(x)
+        self.points.add(y)
+        return self.oracle(x, y)
+
+
+def random_match_select(basis: list[int], n: int, query, rng,
+                        cap: int) -&gt; tuple[int | None, dict]:
+    if not basis:
+        return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;queries&quot;: 0,
+                      &quot;attempts&quot;: 0, &quot;matched_pairs&quot;: 0}
+    best = basis[0]
+    queries = attempts = matched_pairs = 0
+    for candidate in basis[1:]:
+        matched = False
+        for _ in range(cap):
+            x = rng.getrandbits(n)
+            attempts += 1
+            candidate_bit = 1 ^ int(query(x, x ^ candidate))
+            best_bit = 1 ^ int(query(x, x ^ best))
+            queries += 2
+            if candidate_bit != best_bit:
+                continue
+            answer = int(query(x ^ candidate, x ^ best))
+            queries += 1
+            matched_pairs += 1
+            # Equal labels at x: the response equals the common label exactly
+            # when candidate&#x27;s coordinate is the earlier one.  Same-coordinate
+            # ties can safely select either witness.
+            if answer == candidate_bit:
+                best = candidate
+            matched = True
+            break
+        if not matched:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;queries&quot;: queries,
+                          &quot;attempts&quot;: attempts, &quot;matched_pairs&quot;: matched_pairs}
+    return best, {&quot;status&quot;: &quot;selected&quot;, &quot;queries&quot;: queries,
+                  &quot;attempts&quot;: attempts, &quot;matched_pairs&quot;: matched_pairs}
+
+
+def prefix_projection(x: int, bits: int, target: int,
+                      polynomials: list[ANF], toggles: list[int]) -&gt; int:
+    for j in range(bits):
+        desired = (target &gt;&gt; (bits - j - 1)) &amp; 1
+        if polynomials[j](x) != desired:
+            x ^= toggles[j]
+    return x
+
+
+def rank_from_polynomials(polynomials: list[ANF], x: int) -&gt; int:
+    out = 0
+    for q in polynomials:
+        out = (out &lt;&lt; 1) | q(x)
+    return out
+
+
+def acquire(n: int, degree: int, query, seed: int, beta: float = 0.01):
+    m_d = len(masks_of_degree_at_most(n, degree))
+    pair_budget = n * (n - 1) // 2
+    cap = max(1, math.ceil(math.log2(pair_budget / beta))) if pair_budget else 1
+    rng = random.Random(seed)
+    points = masks_of_degree_at_most(n, degree)
+    suffix_basis = [1 &lt;&lt; i for i in range(n)]
+    polynomials, toggles, stages = [], [], []
+    for j in range(n):
+        if len(suffix_basis) != n - j:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;suffix dimension&quot;,
+                          &quot;stages&quot;: stages, &quot;cap&quot;: cap}
+        selected, tournament = random_match_select(suffix_basis, n, query, rng, cap)
+        if selected is None:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;matching cutoff&quot;,
+                          &quot;stages&quot;: stages, &quot;cap&quot;: cap}
+        values = {x: 1 ^ int(query(x, x ^ selected)) for x in points}
+        q = interpolate_low_weight(values, n, degree)
+        if (q(selected) ^ q(0)) != 1:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;selected translation certificate&quot;,
+                          &quot;stages&quot;: stages, &quot;cap&quot;: cap}
+        response = [q(v) ^ q(0) for v in suffix_basis]
+        new_basis = kernel_one_row(suffix_basis, response)
+        stages.append({&quot;stage&quot;: j, &quot;suffix_dimension&quot;: len(suffix_basis),
+                       &quot;tournament_queries&quot;: tournament[&quot;queries&quot;],
+                       &quot;tournament_attempts&quot;: tournament[&quot;attempts&quot;],
+                       &quot;interpolation_queries&quot;: m_d,
+                       &quot;response_row_rank&quot;: 1,
+                       &quot;selected_translation&quot;: selected})
+        polynomials.append(q)
+        toggles.append(selected)
+        suffix_basis = new_basis
+    return (polynomials, toggles), {&quot;status&quot;: &quot;acquired&quot;, &quot;stages&quot;: stages,
+                                    &quot;M_d&quot;: m_d, &quot;pair_budget&quot;: pair_budget,
+                                    &quot;cap&quot;: cap}
+
+
+def lower_bound_terms(n: int, degree: int) -&gt; int:
+    # Number of independent g_i ANF coefficients when hidden input basis is
+    # fixed and known: sum_i sum_h C(i-1,h) = sum_h C(n,h+1).
+    return sum(math.comb(n, h + 1) for h in range(degree + 1)
+               if h + 1 &lt;= n)
+
+
+def test_case(n: int, degree: int, seed: int, beta: float = 0.01) -&gt; dict:
+    teacher = TriangularTeacher(n, degree, seed)
+    query = CountedQuery(teacher.query)
+    result, receipt = acquire(n, degree, query, seed + 1000001, beta)
+    assert result is not None and receipt[&quot;status&quot;] == &quot;acquired&quot;, receipt
+    polynomials, toggles = result
+    points = masks_of_degree_at_most(n, degree)
+    truth = [interpolate_low_weight(
+        {x: (teacher.rank(x) &gt;&gt; (n - j - 1)) &amp; 1 for x in points}, n, degree)
+        for j in range(n)]
+    exact_bodies = [q.body() == actual.body()
+                    for q, actual in zip(polynomials, truth)]
+    assert all(exact_bodies)
+
+    rank_errors = 0
+    inverse_errors = 0
+    seen = set()
+    for x in range(1 &lt;&lt; n):
+        learned_rank = rank_from_polynomials(polynomials, x)
+        true_rank = teacher.rank(x)
+        rank_errors += learned_rank != true_rank
+        y = 0
+        for j, (q, v) in enumerate(zip(polynomials, toggles)):
+            target_bit = (true_rank &gt;&gt; (n - j - 1)) &amp; 1
+            if q(y) != target_bit:
+                y ^= v
+        inverse_errors += y != x
+        seen.add(y)
+    assert rank_errors == 0 and inverse_errors == 0 and len(seen) == (1 &lt;&lt; n)
+
+    prefix_laws = []
+    if n &lt;= 8:
+        for bits in range(n + 1):
+            targets = 0
+            for target in range(1 &lt;&lt; bits):
+                counts = Counter(prefix_projection(x, bits, target, polynomials, toggles)
+                                 for x in range(1 &lt;&lt; n))
+                assert len(counts) == 1 &lt;&lt; (n - bits)
+                assert set(counts.values()) == {1 &lt;&lt; bits}
+                assert all(rank_from_polynomials(polynomials, y) &gt;&gt; (n-bits) == target
+                           for y in counts)
+                targets += 1
+            prefix_laws.append({&quot;prefix_bits&quot;: bits, &quot;targets_exhausted&quot;: targets,
+                                &quot;fiber_points_each&quot;: 1 &lt;&lt; (n-bits),
+                                &quot;preimages_per_fiber_point&quot;: 1 &lt;&lt; bits})
+
+    p = receipt[&quot;pair_budget&quot;]
+    cap = receipt[&quot;cap&quot;]
+    m_d = receipt[&quot;M_d&quot;]
+    expected_upper = n * m_d + 5 * p
+    max_comparisons = n * m_d + (2 * cap + 1) * p
+    assert query.calls == sum(s[&quot;interpolation_queries&quot;] + s[&quot;tournament_queries&quot;]
+                              for s in receipt[&quot;stages&quot;])
+    assert query.calls &lt;= max_comparisons
+    l = lower_bound_terms(n, degree)
+    return {&quot;n&quot;: n, &quot;degree&quot;: degree, &quot;seed&quot;: seed,
+            &quot;status&quot;: receipt[&quot;status&quot;], &quot;exact_coordinate_bodies&quot;: exact_bodies,
+            &quot;all_rank_points_checked&quot;: 1 &lt;&lt; n, &quot;rank_errors&quot;: rank_errors,
+            &quot;inverse_targets_checked&quot;: 1 &lt;&lt; n, &quot;inverse_errors&quot;: inverse_errors,
+            &quot;prefix_projection_laws&quot;: prefix_laws,
+            &quot;comparison_count&quot;: query.calls, &quot;interpolation_comparison_count&quot;: n * m_d,
+            &quot;tournament_comparison_count&quot;: query.calls - n * m_d,
+            &quot;uncapped_expected_comparison_upper&quot;: expected_upper,
+            &quot;capped_worst_case_comparison_upper&quot;: max_comparisons,
+            &quot;pair_budget&quot;: p, &quot;matching_cap&quot;: cap,
+            &quot;fresh_random_bits_for_matching&quot;: sum(s[&quot;tournament_attempts&quot;] * n
+                                                  for s in receipt[&quot;stages&quot;]),
+            &quot;query_argument_bits&quot;: 2 * n * query.calls,
+            &quot;response_bits&quot;: query.calls,
+            &quot;M_d&quot;: m_d, &quot;known_basis_information_lower_bound_L&quot;: l,
+            &quot;finite_expected_upper_to_L_ratio&quot;: expected_upper / l,
+            &quot;source_unique_rank_cache_entries_including_postcheck&quot;: len(teacher.cache),
+            &quot;distinct_source_rank_inputs_during_acquisition&quot;: len(query.points),
+            &quot;logical_source_rank_cache_payload_bits_during_acquisition&quot;: 2 * n * len(query.points),
+            # The actual teacher uses n-bit integer masks. Charge each dense
+            # mask membership test O(n) elementary bit work, plus O(n^2) for
+            # the affine transform. A scalar-gate evaluator can tighten this
+            # to O(n^2 + dL), but that is a different implementation model.
+            &quot;source_dense_rank_elementary_bitwork_upper_per_distinct_input&quot;: n * n + n * l,
+            &quot;stages&quot;: receipt[&quot;stages&quot;]}
+
+
+class FixedRng:
+    def __init__(self, value: int):
+        self.value = value
+
+    def getrandbits(self, n: int) -&gt; int:
+        return self.value
+
+
+def cutoff_test() -&gt; dict:
+    &quot;&quot;&quot;Cutoff behavior is independent of degree; exercise it on a cubic map.&quot;&quot;&quot;
+    n, degree = 4, 3
+    teacher = TriangularTeacher(n, degree, 812341)
+    query = CountedQuery(teacher.query)
+    basis = [1, 2]
+    x = next(z for z in range(1 &lt;&lt; n)
+             if (int(teacher.rank(z) &lt; teacher.rank(z ^ basis[0]))) !=
+                (int(teacher.rank(z) &lt; teacher.rank(z ^ basis[1]))))
+    selected, result = random_match_select(basis, n, query, FixedRng(x), cap=5)
+    assert selected is None and result[&quot;status&quot;] == &quot;UNKNOWN&quot;
+    assert result[&quot;attempts&quot;] == 5 and result[&quot;queries&quot;] == 10
+    return {&quot;degree&quot;: degree, &quot;status&quot;: result[&quot;status&quot;],
+            &quot;attempts&quot;: result[&quot;attempts&quot;], &quot;comparisons&quot;: result[&quot;queries&quot;],
+            &quot;returns_no_guess&quot;: selected is None,
+            &quot;test_fixture_uses_hidden_ranks&quot;: True}
+
+
+def main() -&gt; None:
+    cases = []
+    for degree, ns in ((3, range(4, 10)), (4, range(5, 10))):
+        for n in ns:
+            for seed_offset in range(3):
+                cases.append(test_case(n, degree,
+                                       740000 + 101 * degree + 19 * n + seed_offset))
+    result = {&quot;status&quot;: &quot;EXACT_FINITE_DEGREE3_4_AUDIT&quot;,
+              &quot;case_count&quot;: len(cases), &quot;cases&quot;: cases,
+              &quot;all_exact&quot;: all(c[&quot;status&quot;] == &quot;acquired&quot;
+                               and all(c[&quot;exact_coordinate_bodies&quot;])
+                               and c[&quot;rank_errors&quot;] == 0
+                               and c[&quot;inverse_errors&quot;] == 0 for c in cases),
+              &quot;max_n&quot;: max(c[&quot;n&quot;] for c in cases),
+              &quot;cutoff_test&quot;: cutoff_test(),
+              &quot;scope&quot;: &quot;Hidden-affine triangular q_i=u_i+g_i(u_&lt;i), total degree &lt;= d, exact strict comparison oracle; degree 3 and 4.&quot;,
+              &quot;randomness&quot;: &quot;Seeded standard-library PRNG for finite reproducibility; theorem uses independent uniform global points.&quot;}
+    (HERE / &quot;degree3_4_audit.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;cases&quot;: len(cases),
+                      &quot;all_exact&quot;: result[&quot;all_exact&quot;], &quot;max_n&quot;: result[&quot;max_n&quot;],
+                      &quot;cutoff_test&quot;: result[&quot;cutoff_test&quot;]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

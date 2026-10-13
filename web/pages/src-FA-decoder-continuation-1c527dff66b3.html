@@ -1,0 +1,201 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — triangular_compact.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Compact comparison-only triangular acquisition, expected D+6*binom(n,2).
+
+D=sum_{h=0}^2 binom(n,h+1). Interpolate on the acquired-prefix complement,
+not the whole raw cube. The source class and exact comparison access are supplied.
+&quot;&quot;&quot;
+import argparse
+import json
+import math
+import random
+import time
+from pathlib import Path
+from triangular_tournament import matching_cap
+from triangular_translation import signature
+from ordinal_flag_snapshot import (TriangularTeacher, Quadratic, coefficient_points,
+                                   combine, interpolate, kernel)
+from encoded_operations import inverse
+
+HERE = Path(__file__).resolve().parent
+
+
+class CompactDecoder:
+    def __init__(self, basis, prefix_functions):
+        self.n = len(basis)
+        self.basis = basis
+        self.coordinates = inverse(basis)
+        self.prefix_functions = prefix_functions
+
+    def rank(self, x):
+        t = combine(self.coordinates, x)
+        value = 0
+        for j, h in enumerate(self.prefix_functions):
+            value = (value &lt;&lt; 1) | (((t &gt;&gt; j) &amp; 1) ^ h(t &amp; ((1 &lt;&lt; j)-1)))
+        return value
+
+    def inverse_rank(self, target):
+        t = 0
+        for j, h in enumerate(self.prefix_functions):
+            bit = (target &gt;&gt; (self.n-j-1)) &amp; 1
+            t |= (bit ^ h(t)) &lt;&lt; j
+        return combine(self.basis, t)
+
+    def sample_prefix(self, bits, target, rng):
+        t = rng.getrandbits(self.n-bits) &lt;&lt; bits
+        for j in range(bits):
+            bit = (target &gt;&gt; (bits-j-1)) &amp; 1
+            h = self.prefix_functions[j](t &amp; ((1 &lt;&lt; j)-1))
+            t |= (bit ^ h) &lt;&lt; j
+        return combine(self.basis, t)
+
+
+def acquire(n, query, rng, beta=.01):
+    pairs = n*(n-1)//2
+    cap = matching_cap(pairs, beta)
+    subspace = [1 &lt;&lt; i for i in range(n)]
+    basis, functions, stages = [], [], []
+    interpolation_calls = response_calls = probe_calls = priority_calls = draws = 0
+    for k in range(n):
+        assert len(subspace) == n-k
+        winner = subspace[0]
+        trials = []
+        for v in subspace[1:]:
+            for attempt in range(cap):
+                x = rng.getrandbits(n)
+                draws += 1
+                a = 1 ^ int(query(x, x ^ v))
+                b = 1 ^ int(query(x, x ^ winner))
+                probe_calls += 2
+                if a == b:
+                    break
+            else:
+                return None, {&#x27;status&#x27;: &#x27;UNKNOWN_MATCH_CAP&#x27;, &#x27;stage&#x27;: k}
+            if bool(query(x ^ v, x ^ winner)) == bool(a):
+                winner = v
+            priority_calls += 1
+            trials.append(attempt+1)
+        values = {}
+        for a in coefficient_points(k):
+            x = combine(basis, a)
+            values[a] = 1 ^ int(query(x, x ^ winner))
+        interpolation_calls += len(values)
+        h = interpolate(values, k)
+        constant = values[0]
+        row = 0
+        for i, v in enumerate(subspace):
+            if v == winner:
+                bit = 1
+            else:
+                bit = constant ^ (1 ^ int(query(v, v ^ winner)))
+                response_calls += 1
+            row |= bit &lt;&lt; i
+        assert row
+        next_subspace = [combine(subspace, a) for a in kernel([row], len(subspace))]
+        functions.append(h)
+        basis.append(winner)
+        subspace = next_subspace
+        stages.append({&#x27;stage&#x27;: k, &#x27;prefix_variable_count&#x27;: k,
+                       &#x27;prefix_interpolation_queries&#x27;: len(values),
+                       &#x27;linear_response_queries&#x27;: n-k-1,
+                       &#x27;match_attempts_per_pair&#x27;: trials})
+    assert not subspace
+    decoder = CompactDecoder(basis, functions)
+    dimension = sum(math.comb(n, h+1) for h in range(min(2, n-1)+1))
+    assert interpolation_calls == dimension and response_calls == pairs
+    return decoder, {&#x27;status&#x27;: &#x27;EXACT_ON_COMPLETION_UNDER_SUPPLIED_CLASS&#x27;,
+        &#x27;stages&#x27;: stages, &#x27;prefix_interpolation_comparisons&#x27;: interpolation_calls,
+        &#x27;linear_response_comparisons&#x27;: response_calls,
+        &#x27;matching_probe_comparisons&#x27;: probe_calls, &#x27;priority_comparisons&#x27;: priority_calls,
+        &#x27;random_input_draws&#x27;: draws, &#x27;random_input_bits&#x27;: n*draws,
+        &#x27;cap_per_pair&#x27;: cap, &#x27;unknown_probability_upper_bound&#x27;: pairs*2.0**(-cap),
+        &#x27;semantic_error_probability_on_completion_under_promise&#x27;: 0,
+        &#x27;known_basis_exact_identification_information_lower_bound&#x27;: dimension,
+        &#x27;expected_comparison_upper_bound&#x27;: dimension+6*pairs,
+        &#x27;capped_comparison_upper_bound&#x27;: dimension+(2*cap+2)*pairs,
+        &#x27;compact_polynomial_coefficient_bits&#x27;: dimension,
+        &#x27;basis_bits&#x27;: n*n,
+        &#x27;inverse_basis_optional_cache_bits&#x27;: n*n}
+
+
+def run(n, seed):
+    total = time.perf_counter()
+    teacher = TriangularTeacher(n, seed)
+    setup = time.perf_counter()-total
+    begin = time.perf_counter()
+    decoder, evidence = acquire(n, teacher.query, random.Random(seed+4000000))
+    seconds = time.perf_counter()-begin
+    if decoder is None:
+        return {&#x27;n&#x27;: n, &#x27;seed&#x27;: seed, **evidence}
+    calls, ranks, cache = teacher.calls, teacher.fresh_ranks, len(teacher.cache)
+    assert calls == sum(evidence[k] for k in (&#x27;prefix_interpolation_comparisons&#x27;,
+        &#x27;linear_response_comparisons&#x27;, &#x27;matching_probe_comparisons&#x27;, &#x27;priority_comparisons&#x27;))
+    assert calls &lt;= evidence[&#x27;capped_comparison_upper_bound&#x27;]
+    begin = time.perf_counter()
+    # Ground truth only after learner termination. Both complete bodies are
+    # interpolated in raw coordinates for comparison, without learner labels.
+    points = coefficient_points(n)
+    actual_values = {x: teacher.rank(x) for x in points}
+    learned_values = {x: decoder.rank(x) for x in points}
+    actual = [interpolate({x: (actual_values[x] &gt;&gt; j) &amp; 1 for x in points}, n)
+              for j in range(n)]
+    learned = [interpolate({x: (learned_values[x] &gt;&gt; j) &amp; 1 for x in points}, n)
+               for j in range(n)]
+    assert [signature(q) for q in actual] == [signature(q) for q in learned]
+    rng = random.Random(seed+5000000)
+    inputs = range(1 &lt;&lt; n) if n &lt;= 12 else [rng.getrandbits(n) for _ in range(4096)]
+    checked = 0
+    for x in inputs:
+        r = decoder.rank(x)
+        assert r == teacher.rank(x) and decoder.inverse_rank(r) == x
+        checked += 1
+    for bits in (0, 1, n//2, n-1, n):
+        target = rng.getrandbits(bits)
+        for _ in range(128):
+            x = decoder.sample_prefix(bits, target, rng)
+            assert decoder.rank(x) &gt;&gt; (n-bits) == target
+    assert teacher.calls == calls
+    validation_seconds = time.perf_counter()-begin
+    path = HERE/f&#x27;acquired_compact_n{n}_seed{seed}.json&#x27;
+    path.write_text(json.dumps({&#x27;n&#x27;: n,
+        &#x27;basis_columns&#x27;: decoder.basis,
+        &#x27;prefix_polynomials_high_to_low&#x27;: [h.body() for h in decoder.prefix_functions],
+        &#x27;promise&#x27;: &#x27;hidden affine triangular quadratic order; exact comparisons&#x27;,
+        &#x27;source&#x27;: &#x27;learned comparison answers only&#x27;}, indent=2)+&#x27;\n&#x27;)
+    evidence.update({&#x27;n&#x27;: n, &#x27;seed&#x27;: seed, &#x27;one_bit_comparisons&#x27;: calls,
+        &#x27;query_input_transmission_bits&#x27;: 2*n*calls,
+        &#x27;source_unique_rank_evaluations_acquisition&#x27;: ranks,
+        &#x27;source_cache_logical_payload_bits&#x27;: 2*n*cache,
+        &#x27;source_rank_elementary_bitwork_conservative_upper&#x27;: ranks*(8*n**3+8*n**2),
+        &#x27;source_setup_seconds&#x27;: setup, &#x27;acquisition_seconds_including_source&#x27;: seconds,
+        &#x27;post_acquisition_ground_truth_validation_seconds&#x27;: validation_seconds,
+        &#x27;all_raw_coordinate_polynomials_exact&#x27;: True,
+        &#x27;rank_and_inverse_validation_points&#x27;: checked,
+        &#x27;source_queries_during_compiled_execution&#x27;: 0,
+        &#x27;prefix_sampler_random_bits_per_sample&#x27;: &#x27;n-prefix_length&#x27;,
+        &#x27;acquired_model_path&#x27;: str(path),
+        &#x27;novelty&#x27;: &#x27;UNKNOWN&#x27;, &#x27;practical_advantage_over_tailored_prior&#x27;: &#x27;UNKNOWN&#x27;})
+    return evidence
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&#x27;--quick&#x27;, action=&#x27;store_true&#x27;)
+    parser.add_argument(&#x27;--output&#x27;, default=str(HERE/&#x27;TRIANGULAR_COMPACT_RESULTS.json&#x27;))
+    args = parser.parse_args()
+    cases = [(8, 610063), (12, 610065), (16, 610066),
+             (24, 610067), (32, 610068), (64, 610069)]
+    if args.quick:
+        cases = cases[:2]
+    results = []
+    for case in cases:
+        result = run(*case)
+        results.append(result)
+        print(json.dumps({k: result.get(k) for k in (&#x27;n&#x27;, &#x27;one_bit_comparisons&#x27;,
+            &#x27;all_raw_coordinate_polynomials_exact&#x27;, &#x27;acquisition_seconds_including_source&#x27;)}), flush=True)
+    Path(args.output).write_text(json.dumps({&#x27;cases&#x27;: results,
+        &#x27;mission_status&#x27;: &#x27;NOT_ACHIEVED&#x27;,
+        &#x27;scope&#x27;: &#x27;Complete hidden affine triangular quadratic class; expected leading query coefficient matches known-basis counting lower bound. No class recognition, noisy access, priority clearance or external validation.&#x27;}, indent=2)+&#x27;\n&#x27;)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

@@ -1,0 +1,264 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — optimized_tournament_audit.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Independent small-instance check of the capped random-match decoder.
+
+The learner receives only the scalar comparator.  Target rank bits are used
+only after acquisition to produce the finite-test receipt.  This file is an
+audit executable, not a source of the mathematical proof.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import importlib.util
+import json
+import math
+import random
+import sys
+from pathlib import Path
+
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[2]
+SOURCE = ROOT / &quot;work/continuation/sol03_learning/ordinal_flag.py&quot;
+spec = importlib.util.spec_from_file_location(&quot;ordinal_for_tournament&quot;, SOURCE)
+ordinal = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = ordinal
+spec.loader.exec_module(ordinal)
+
+
+def rank_rows(rows, n):
+    a = [r for r in rows if r]
+    pivots = []
+    row = 0
+    for col in range(n):
+        p = next((i for i in range(row, len(a)) if (a[i] &gt;&gt; col) &amp; 1), None)
+        if p is None:
+            continue
+        a[row], a[p] = a[p], a[row]
+        for i in range(len(a)):
+            if i != row and ((a[i] &gt;&gt; col) &amp; 1):
+                a[i] ^= a[row]
+        pivots.append(col)
+        row += 1
+        if row == len(a):
+            break
+    return a[:row], pivots
+
+
+def nullspace(rows, n):
+    reduced, pivots = rank_rows(rows, n)
+    return [
+        (1 &lt;&lt; free) | sum(((reduced[i] &gt;&gt; free) &amp; 1) &lt;&lt; p
+                          for i, p in enumerate(pivots))
+        for free in range(n) if free not in pivots
+    ]
+
+
+def combine(basis, mask):
+    value = 0
+    for i, v in enumerate(basis):
+        if (mask &gt;&gt; i) &amp; 1:
+            value ^= v
+    return value
+
+
+def preserving_subspace(quadratics, n):
+    &quot;&quot;&quot;Directions preserving all acquired bits for every input.&quot;&quot;&quot;
+    radical = nullspace([row for q in quadratics for row in q.polar()], n)
+    rows = [sum((q(v) ^ q.constant) &lt;&lt; i for i, v in enumerate(radical))
+            for q in quadratics]
+    return [combine(radical, mask) for mask in nullspace(rows, len(radical))]
+
+
+def interpolate_translation(v, n, query, points):
+    return ordinal.interpolate({x: 1 ^ int(query(x, x ^ v)) for x in points}, n)
+
+
+def body(q):
+    return q.constant, q.linear, tuple(q.upper)
+
+
+def random_match_select(basis, n, query, rng, cap):
+    &quot;&quot;&quot;Tournament on directions without interpolating any candidate.&quot;&quot;&quot;
+    if not basis:
+        return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;queries&quot;: 0, &quot;attempts&quot;: 0}
+    best = basis[0]
+    queries = attempts = pairings = 0
+    for candidate in basis[1:]:
+        matched = False
+        for _ in range(cap):
+            x = rng.getrandbits(n)
+            attempts += 1
+            candidate_bit = 1 ^ int(query(x, x ^ candidate))
+            best_bit = 1 ^ int(query(x, x ^ best))
+            queries += 2
+            if candidate_bit != best_bit:
+                continue
+            # At a match, the comparator chooses the earlier of the two
+            # one-coordinate toggles; equal-coordinate ties may go either way.
+            answer = int(query(x ^ candidate, x ^ best))
+            queries += 1
+            pairings += 1
+            if answer == candidate_bit:
+                best = candidate
+            matched = True
+            break
+        if not matched:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;queries&quot;: queries,
+                          &quot;attempts&quot;: attempts, &quot;matched_pairs&quot;: pairings}
+    return best, {&quot;status&quot;: &quot;selected&quot;, &quot;queries&quot;: queries,
+                  &quot;attempts&quot;: attempts, &quot;matched_pairs&quot;: pairings}
+
+
+class CountedQuery:
+    def __init__(self, oracle):
+        self.oracle = oracle
+        self.calls = 0
+
+    def __call__(self, x, y):
+        assert x != y
+        self.calls += 1
+        return self.oracle(x, y)
+
+
+def acquire_random_match(n, query, seed, beta=0.01):
+    &quot;&quot;&quot;Capped complete-flag learner; cap makes failure explicit UNKNOWN.&quot;&quot;&quot;
+    pair_budget = n * (n - 1) // 2
+    cap = max(1, math.ceil(math.log2(pair_budget / beta))) if pair_budget else 1
+    rng = random.Random(seed)
+    points = ordinal.coefficient_points(n)
+    learned, toggles, stages = [], [], []
+    for j in range(n):
+        basis = preserving_subspace(learned, n)
+        if len(basis) != n - j:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;flag dimension check&quot;,
+                          &quot;stages&quot;: stages, &quot;cap&quot;: cap}
+        selected, tournament = random_match_select(basis, n, query, rng, cap)
+        if selected is None:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;matching cutoff&quot;,
+                          &quot;stages&quot;: stages, &quot;cap&quot;: cap}
+        q = interpolate_translation(selected, n, query, points)
+        learned.append(q)
+        toggles.append(selected)
+        stages.append({&quot;stage&quot;: j, &quot;subspace_dimension&quot;: len(basis),
+                       &quot;interpolated_directions&quot;: 1,
+                       &quot;interpolation_comparisons&quot;: len(points),
+                       **tournament})
+    return (learned, toggles), {&quot;status&quot;: &quot;acquired&quot;, &quot;stages&quot;: stages,
+                               &quot;cap&quot;: cap, &quot;pair_budget&quot;: pair_budget}
+
+
+def test_case(n, seed, beta=0.01):
+    teacher = ordinal.TriangularTeacher(n, seed)
+    query = CountedQuery(teacher.query)
+    result, receipt = acquire_random_match(n, query, seed + 1000003, beta)
+    assert result is not None and receipt[&quot;status&quot;] == &quot;acquired&quot;, receipt
+    learned, toggles = result
+    points = ordinal.coefficient_points(n)
+    truth = [ordinal.interpolate(
+        {x: (teacher.rank(x) &gt;&gt; (n - j - 1)) &amp; 1 for x in points}, n)
+        for j in range(n)]
+    exact = [body(a) == body(b) for a, b in zip(learned, truth)]
+    assert all(exact)
+    decoder = lambda x: ordinal.learned_rank(learned, x)
+    if n &lt;= 9:
+        checked = list(range(1 &lt;&lt; n))
+    else:
+        check_rng = random.Random(seed + 3000001)
+        checked = [check_rng.getrandbits(n) for _ in range(4096)]
+    rank_errors = sum(decoder(x) != teacher.rank(x) for x in checked)
+    inverse_errors = 0
+    for x in checked:
+        target = teacher.rank(x)
+        y = 0
+        for q, v, j in zip(learned, toggles, range(n)):
+            desired = (target &gt;&gt; (n-j-1)) &amp; 1
+            if q(y) != desired:
+                y ^= v
+        inverse_errors += y != x
+    assert rank_errors == 0 and inverse_errors == 0
+
+    prefix_laws = []
+    if n &lt;= 8:
+        for bits in range(n + 1):
+            checked_targets = 0
+            for target_prefix in range(1 &lt;&lt; bits):
+                counts = {}
+                for original in range(1 &lt;&lt; n):
+                    x = original
+                    for j in range(bits):
+                        desired = (target_prefix &gt;&gt; (bits-j-1)) &amp; 1
+                        if learned[j](x) != desired:
+                            x ^= toggles[j]
+                    assert decoder(x) &gt;&gt; (n-bits) == target_prefix
+                    counts[x] = counts.get(x, 0) + 1
+                assert len(counts) == 1 &lt;&lt; (n-bits)
+                assert set(counts.values()) == {1 &lt;&lt; bits}
+                checked_targets += 1
+            prefix_laws.append({&quot;bits&quot;: bits, &quot;targets_exhausted&quot;: checked_targets,
+                                &quot;distinct_outputs_per_target&quot;: 1 &lt;&lt; (n-bits),
+                                &quot;preimages_each&quot;: 1 &lt;&lt; bits})
+
+    comparison_bound = (n * len(points)
+                        + (2 * receipt[&quot;cap&quot;] + 1) * receipt[&quot;pair_budget&quot;])
+    expected_pair_bound = n * len(points) + 5 * receipt[&quot;pair_budget&quot;]
+    actual = query.calls
+    assert actual == sum(s[&quot;queries&quot;] + s[&quot;interpolation_comparisons&quot;]
+                         for s in receipt[&quot;stages&quot;])
+    assert actual &lt;= comparison_bound
+    return {&quot;n&quot;: n, &quot;seed&quot;: seed, &quot;status&quot;: receipt[&quot;status&quot;],
+            &quot;coordinate_bodies_exact&quot;: exact, &quot;rank_check_points&quot;: len(checked),
+            &quot;rank_errors&quot;: rank_errors, &quot;inverse_errors&quot;: inverse_errors,
+            &quot;prefix_uniformity_exhausted&quot;: prefix_laws,
+            &quot;actual_comparisons&quot;: actual,
+            &quot;worst_case_comparison_bound&quot;: comparison_bound,
+            &quot;unbounded_expected_comparison_upper_bound&quot;: expected_pair_bound,
+            &quot;random_bits_drawn_for_matching&quot;: sum(s[&quot;attempts&quot;] * n
+                                                   for s in receipt[&quot;stages&quot;]),
+            &quot;input_transmission_bits&quot;: 2 * n * actual,
+            &quot;stages&quot;: receipt[&quot;stages&quot;], &quot;cap&quot;: receipt[&quot;cap&quot;],
+            &quot;failure_probability_bound&quot;: beta,
+            &quot;source_calls_during_acquisition&quot;: teacher.calls,
+            &quot;source_unique_rank_cache_entries&quot;: len(teacher.cache)}
+
+
+class FixedRng:
+    def __init__(self, value):
+        self.value = value
+
+    def getrandbits(self, n):
+        return self.value
+
+
+def cutoff_test():
+    # Identity order: at x=1 the e0/e1 candidate bits differ. A fixed RNG
+    # repeats that point, so a short cap must yield UNKNOWN, never a guess.
+    n = 2
+    rank = lambda x: x
+    query = CountedQuery(lambda x, y: rank(x) &lt; rank(y))
+    selected, result = random_match_select([1, 2], n, query, FixedRng(1), cap=4)
+    assert selected is None and result[&quot;status&quot;] == &quot;UNKNOWN&quot;
+    assert result[&quot;queries&quot;] == 8 and result[&quot;attempts&quot;] == 4
+    return {&quot;status&quot;: result[&quot;status&quot;], &quot;attempts&quot;: result[&quot;attempts&quot;],
+            &quot;comparisons&quot;: result[&quot;queries&quot;], &quot;no_false_selection&quot;: selected is None}
+
+
+def main():
+    cases = [test_case(n, 992000 + 17*n + s)
+             for n in range(2, 13) for s in range(3)]
+    output = {&quot;status&quot;: &quot;FINITE_EXACT_AUDIT&quot;,
+              &quot;algorithm&quot;: &quot;fresh global uniform match; one comparison resolves priority; interpolate winner only&quot;,
+              &quot;case_count&quot;: len(cases), &quot;all_exact&quot;: all(
+                  c[&quot;status&quot;] == &quot;acquired&quot; and all(c[&quot;coordinate_bodies_exact&quot;])
+                  and c[&quot;rank_errors&quot;] == 0 and c[&quot;inverse_errors&quot;] == 0
+                  for c in cases),
+              &quot;max_n&quot;: max(c[&quot;n&quot;] for c in cases), &quot;cases&quot;: cases,
+              &quot;explicit_cutoff_test&quot;: cutoff_test(),
+              &quot;proof_boundary&quot;: &quot;Complete flag only; partial flag need not make every direction a coordinate toggle.&quot;}
+    dest = HERE / &quot;optimized_tournament_audit.json&quot;
+    dest.write_text(json.dumps(output, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: output[&quot;status&quot;], &quot;case_count&quot;: len(cases),
+                      &quot;all_exact&quot;: output[&quot;all_exact&quot;], &quot;max_n&quot;: output[&quot;max_n&quot;],
+                      &quot;cutoff_test&quot;: output[&quot;explicit_cutoff_test&quot;]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

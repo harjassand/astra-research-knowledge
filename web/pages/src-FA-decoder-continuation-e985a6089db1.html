@@ -1,0 +1,157 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — verify_euclidean_selector_counterexamples.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Exact Euclidean-ball selector counterexamples for d=2 and d=3.
+
+The checker is independent of fractional_selector_probe.py. It uses Fraction
+arithmetic, explicitly enumerates all sign/noise endpoint plays, and uses
+convexity of the Euclidean ball to lift endpoint checks to the full interval
+zeta in [-1/2,1/2].
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product
+import json
+from pathlib import Path
+
+OUT=Path(__file__).resolve().parent
+G=F(1,2)
+R=F(11,10)
+SIGNS=(-1,1)
+NOISE=(-G,G)
+
+
+def add_scaled(s,c,v):
+    return tuple(x+c*y for x,y in zip(s,v))
+
+
+def sqnorm(s):
+    return sum(x*x for x in s)
+
+
+def safe(s):
+    return sqnorm(s)&lt;=R*R
+
+
+def terminal_states(s,epsilon,v):
+    return [add_scaled(s,F(epsilon)+z,v) for z in NOISE]
+
+
+def winning_last_action(s,v):
+    if not safe(s):
+        return []
+    return [e for e in SIGNS if all(safe(q) for q in terminal_states(s,e,v))]
+
+
+def txt(x):
+    return str(x)
+
+
+def enc(s):
+    return [txt(x) for x in s]
+
+
+def analyze(d,v1,v2,low,witness_a,witness_b,high):
+    zero=tuple(F(0) for _ in range(d))
+    first={e:terminal_states(zero,e,v1) for e in SIGNS}
+    assert all(safe(s) for branch in first.values() for s in branch)
+
+    # Directly enumerate the complete endpoint disturbance game.
+    second_witnesses={}
+    for s in sorted({q for branch in first.values() for q in branch}):
+        acts=winning_last_action(s,v2)
+        if acts:
+            second_witnesses[txt(s)]=[
+                {&quot;epsilon&quot;:e,&quot;terminal_states&quot;:[enc(q) for q in terminal_states(s,e,v2)]}
+                for e in acts]
+    exact_root_actions=[]
+    for e,branch in first.items():
+        if all(txt(s) in second_witnesses for s in branch):
+            exact_root_actions.append(e)
+    assert not exact_root_actions
+
+    # W_2 is the full continuous-noise last-step viability set. Endpoint
+    # checks suffice here because the entire scalar successor segment is convex.
+    assert safe(witness_a) and safe(witness_b)
+    assert winning_last_action(witness_a,v2)
+    assert winning_last_action(witness_b,v2)
+    assert tuple((a+b)/2 for a,b in zip(witness_a,witness_b))==low
+    assert safe(high) and winning_last_action(high,v2)
+    assert safe(low) and not winning_last_action(low,v2)
+    low_failures=[]
+    for e in SIGNS:
+        terminals=terminal_states(low,e,v2)
+        failed=[q for q in terminals if not safe(q)]
+        assert failed
+        low_failures.append({
+            &quot;epsilon&quot;:e,
+            &quot;endpoint_states&quot;:[enc(q) for q in terminals],
+            &quot;endpoint_squared_norms&quot;:[txt(sqnorm(q)) for q in terminals],
+            &quot;endpoint_safe&quot;:[safe(q) for q in terminals],
+        })
+    neg=lambda s:tuple(-x for x in s)
+    assert safe(neg(witness_a)) and winning_last_action(neg(witness_a),v2)
+    assert safe(neg(witness_b)) and winning_last_action(neg(witness_b),v2)
+    assert tuple((a+b)/2 for a,b in zip(neg(witness_a),neg(witness_b)))==neg(low)
+
+    # Every first-sign endpoint lies in conv(W_2): the high state is in W_2;
+    # the low state is an explicit midpoint of two W_2 states. The negative
+    # branch follows from symmetry. Yet low itself is not in W_2.
+    hull_membership=[]
+    for e,branch in first.items():
+        flags=[]
+        for s in branch:
+            if s==high or s==neg(high):
+                flags.append(&quot;in_W2&quot;)
+            elif s==low:
+                flags.append(&quot;midpoint_of_W2_witnesses&quot;)
+            elif s==neg(low):
+                flags.append(&quot;midpoint_of_negative_W2_witnesses&quot;)
+            else:
+                raise AssertionError((s,low,high))
+        hull_membership.append({&quot;epsilon&quot;:e,&quot;successors&quot;:[enc(s) for s in branch],
+                                &quot;convex_hull_membership_witness&quot;:flags})
+
+    return {
+        &quot;dimension&quot;:d,
+        &quot;gamma&quot;:txt(G),
+        &quot;safe_set&quot;:&quot;Euclidean ball ||s||_2 &lt;= 11/10 at every round boundary&quot;,
+        &quot;safe_radius_squared&quot;:txt(R*R),
+        &quot;directions&quot;:[enc(v1),enc(v2)],
+        &quot;v1_norm_squared&quot;:txt(sqnorm(v1)),
+        &quot;full_last_round_viability_definition&quot;:&quot;W_2={s: ||s||_2&lt;=11/10 and for some epsilon in {-1,+1}, both s+(epsilon-1/2)v2 and s+(epsilon+1/2)v2 lie in the ball}&quot;,
+        &quot;reachable_first_round_successors_by_sign&quot;:{str(e):[enc(s) for s in branch] for e,branch in first.items()},
+        &quot;reachable_second_round_winners_with_actions&quot;:second_witnesses,
+        &quot;low_losing_state&quot;:enc(low),
+        &quot;low_state_squared_norm&quot;:txt(sqnorm(low)),
+        &quot;low_state_is_in_W2&quot;:False,
+        &quot;low_state_second_round_failures&quot;:low_failures,
+        &quot;why_low_state_loses&quot;:&quot;For each second sign, one endpoint successor has squared norm greater than (11/10)^2.&quot;,
+        &quot;convex_hull_witness_for_low_state&quot;:{&quot;state_a_in_W2&quot;:enc(witness_a),&quot;state_b_in_W2&quot;:enc(witness_b),&quot;weights&quot;:[&quot;1/2&quot;,&quot;1/2&quot;]},
+        &quot;convex_hull_witness_action_options&quot;:{&quot;state_a_actions&quot;:winning_last_action(witness_a,v2),&quot;state_b_actions&quot;:winning_last_action(witness_b,v2)},
+        &quot;high_winning_state&quot;:enc(high),
+        &quot;high_state_squared_norm&quot;:txt(sqnorm(high)),
+        &quot;high_state_is_in_W2&quot;:True,
+        &quot;convex_hull_membership_of_root_successors&quot;:hull_membership,
+        &quot;fractional_hull_selector_accepts_root_actions&quot;:list(SIGNS),
+        &quot;exact_continuous_game_winning_root_actions&quot;:exact_root_actions,
+        &quot;root_is_exactly_losing&quot;:True,
+    }
+
+
+results=[
+    analyze(2,
+        (F(1,2),F(1,2)),(F(1),F(0)),
+        (F(1,4),F(1,4)),(F(1),F(1,4)),(F(-1,2),F(1,4)),
+        (F(3,4),F(3,4))),
+    analyze(3,
+        (F(1,2),F(1,2),F(1,10)),(F(1),F(0),F(0)),
+        (F(1,4),F(1,4),F(1,20)),(F(1),F(1,4),F(1,20)),(F(-1,2),F(1,4),F(1,20)),
+        (F(3,4),F(3,4),F(3,20))),
+]
+receipt={
+    &quot;status&quot;:&quot;exact Euclidean counterexamples to selector closure of pointwise convexified viability&quot;,
+    &quot;method&quot;:&quot;independent direct endpoint-game enumeration with exact Fraction arithmetic; exact last-step interval safety follows from convexity of the Euclidean ball&quot;,
+    &quot;scope&quot;:&quot;two-step rational d=2 and d=3 schedules in the unit ball, gamma=1/2, Euclidean radius 11/10; all-prefix round-boundary safety&quot;,
+    &quot;claim_limit&quot;:&quot;This rejects the pointwise convex-hull completion relaxation, not every compact polytope, every separation oracle, or all polynomial-time controllers.&quot;,
+    &quot;results&quot;:results,
+}
+(OUT/&quot;euclidean_selector_exact_receipt.json&quot;).write_text(json.dumps(receipt,indent=2))
+print(json.dumps(receipt,indent=2))
+</pre>

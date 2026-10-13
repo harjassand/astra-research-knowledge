@@ -1,0 +1,261 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — triangular_translation.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Exact comparison-only acquisition of hidden triangular quadratic order.
+
+Supplied promise: in hidden affine input coordinates u, the most-to-least
+significant bits are q_j=u_j+g_j(u_0,...,u_{j-1}), deg(g_j)&lt;=2.
+This is equivalent to a complete independent quadratic polar-toggle flag.
+No ranks, labels, target code, input transform, toggles or fibers are supplied.
+The comparator is queried only on chosen pairs and returns a single bit.
+&quot;&quot;&quot;
+import argparse
+import hashlib
+import json
+import random
+import shutil
+import sys
+import time
+from collections import Counter
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+SOURCE = HERE.parent/&#x27;sol03_learning/ordinal_flag.py&#x27;
+VENDOR = HERE/&#x27;vendor&#x27;
+VENDOR.mkdir(exist_ok=True)
+SNAPSHOT = VENDOR/&#x27;ordinal_flag_snapshot.py&#x27;
+if not SNAPSHOT.exists():
+    shutil.copy2(SOURCE, SNAPSHOT)
+sys.path.insert(0, str(VENDOR))
+from ordinal_flag_snapshot import (Quadratic, TriangularTeacher, coefficient_points,
+    combine, interpolate, kernel, parity)
+
+
+def signature(q):
+    return (q.constant, q.linear, tuple(q.upper))
+
+
+def xor_polynomial(a, b):
+    return Quadratic(a.constant ^ b.constant, a.linear ^ b.linear,
+                     [x ^ y for x, y in zip(a.upper, b.upper)])
+
+
+def preserving_subspace(quadratics, n):
+    radical = kernel([row for q in quadratics for row in q.polar()], n)
+    rows = [sum((q(v) ^ q.constant) &lt;&lt; i for i, v in enumerate(radical))
+            for q in quadratics]
+    return [combine(radical, w) for w in kernel(rows, len(radical))]
+
+
+def equal_value_point(a, b, n):
+    &quot;&quot;&quot;a+b is a balanced quadratic because a,b are distinct actual rank bits.&quot;&quot;&quot;
+    difference = xor_polynomial(a, b)
+    if difference.constant == 0:
+        return 0
+    radical = kernel(difference.polar(), n)
+    point = next((v for v in radical if difference(v) ^ difference.constant), None)
+    if point is None:
+        raise ValueError(&#x27;UNKNOWN: candidates fail the balanced quadratic criterion&#x27;)
+    assert a(point) == b(point)
+    return point
+
+
+class Decoder:
+    def __init__(self, n, quadratics, toggles):
+        self.n, self.quadratics, self.toggles = n, quadratics, toggles
+
+    def rank(self, x):
+        word = 0
+        for q in self.quadratics:
+            word = (word &lt;&lt; 1) | q(x)
+        return word
+
+    def project_prefix(self, x, bits, target):
+        for j in range(bits):
+            desired = (target &gt;&gt; (bits-j-1)) &amp; 1
+            if self.quadratics[j](x) != desired:
+                x ^= self.toggles[j]
+        return x
+
+    def inverse_rank(self, target):
+        return self.project_prefix(0, self.n, target)
+
+    def sample_prefix(self, bits, target, rng):
+        return self.project_prefix(rng.getrandbits(self.n), bits, target)
+
+
+def acquire(n, query):
+    points = coefficient_points(n)
+    quadratics, toggles, stages = [], [], []
+    candidate_cache = {}
+    comparison_count, priority_comparisons = 0, 0
+    for j in range(n):
+        subspace = preserving_subspace(quadratics, n)
+        if len(subspace) != n-j:
+            raise ValueError(&#x27;UNKNOWN: preservation dimension violates complete triangular promise&#x27;)
+        best = None
+        distinct = set()
+        fresh = 0
+        for v in subspace:
+            if v not in candidate_cache:
+                values = {x: 1 ^ int(query(x, x ^ v)) for x in points}
+                comparison_count += len(points)
+                candidate_cache[v] = interpolate(values, n)
+                fresh += 1
+            q = candidate_cache[v]
+            key = signature(q)
+            if key in distinct:
+                continue
+            distinct.add(key)
+            if any(parity(row &amp; v) for row in q.polar()) or (q(v) ^ q.constant) != 1:
+                raise ValueError(&#x27;UNKNOWN: extracted bit fails its translation certificate&#x27;)
+            if best is None:
+                best = (q, v)
+                continue
+            b, w = best
+            point = equal_value_point(q, b, n)
+            response = bool(query(point ^ v, point ^ w))
+            priority_comparisons += 1
+            # q is earlier iff it flips a shared bit value a to 1-a first.
+            if response == bool(q(point)):
+                best = (q, v)
+        if best is None:
+            raise ValueError(&#x27;UNKNOWN: no next decoder coordinate&#x27;)
+        q, v = best
+        for i, old in enumerate(quadratics):
+            assert all(parity(row &amp; v) == 0 for row in old.polar())
+            assert (old(v) ^ old.constant) == 0
+        quadratics.append(q)
+        toggles.append(v)
+        stages.append({&#x27;stage&#x27;: j, &#x27;preserving_dimension&#x27;: len(subspace),
+                       &#x27;distinct_candidate_bits&#x27;: len(distinct), &#x27;fresh_translation_bodies&#x27;: fresh})
+    assert not preserving_subspace(quadratics, n)
+    result = Decoder(n, quadratics, toggles)
+    certificate = all(
+        all(parity(row &amp; v) == 0 for row in q.polar()) and
+        (q(v) ^ q.constant) == int(i == j)
+        for j, v in enumerate(toggles) for i, q in enumerate(quadratics[:j+1]))
+    assert certificate
+    return result, {&#x27;stages&#x27;: stages, &#x27;translation_body_comparisons&#x27;: comparison_count,
+                    &#x27;priority_comparisons&#x27;: priority_comparisons,
+                    &#x27;cached_translation_bodies&#x27;: len(candidate_cache),
+                    &#x27;polar_toggle_flag_certificate&#x27;: certificate,
+                    &#x27;comparison_bound&#x27;: len(points)*n*(n+1)//2+n*(n-1)//2,
+                    &#x27;failure_probability_under_supplied_class&#x27;: 0}
+
+
+def full_sort_control(n, query):
+    &quot;&quot;&quot;Context only; full enumeration is not a strongest tailored-method claim.&quot;&quot;&quot;
+    from functools import cmp_to_key
+    values = list(range(1 &lt;&lt; n))
+    values.sort(key=cmp_to_key(lambda a, b: -1 if query(a, b) else 1))
+    return values
+
+
+def run(n, seed, compare_sort=True):
+    start = time.perf_counter()
+    teacher = TriangularTeacher(n, seed)
+    setup = time.perf_counter()-start
+    begin = time.perf_counter()
+    decoder, evidence = acquire(n, teacher.query)
+    acquisition = time.perf_counter()-begin
+    calls, ranks, cache_size = teacher.calls, teacher.fresh_ranks, len(teacher.cache)
+    assert calls == evidence[&#x27;translation_body_comparisons&#x27;]+evidence[&#x27;priority_comparisons&#x27;]
+    assert calls &lt;= evidence[&#x27;comparison_bound&#x27;]
+    begin = time.perf_counter()
+    # Evaluator-only truth, read after the algorithm has returned.
+    points = coefficient_points(n)
+    true_bodies = [interpolate({x: (teacher.rank(x) &gt;&gt; (n-1-j)) &amp; 1 for x in points}, n)
+                   for j in range(n)]
+    assert [signature(q) for q in decoder.quadratics] == [signature(q) for q in true_bodies]
+    rng = random.Random(seed+900000)
+    inputs = range(1 &lt;&lt; n) if n &lt;= 12 else [rng.getrandbits(n) for _ in range(4096)]
+    checked = 0
+    for x in inputs:
+        y = decoder.rank(x)
+        assert y == teacher.rank(x)
+        assert decoder.inverse_rank(y) == x
+        checked += 1
+    exact_distributions = []
+    if n &lt;= 10:
+        for bits in range(n+1):
+            target = (1 &lt;&lt; bits)-1
+            counts = Counter(decoder.project_prefix(x, bits, target) for x in range(1 &lt;&lt; n))
+            assert len(counts) == 1 &lt;&lt; (n-bits)
+            assert set(counts.values()) == {1 &lt;&lt; bits}
+            assert all(decoder.rank(x) &gt;&gt; (n-bits) == target for x in counts)
+            exact_distributions.append({&#x27;prefix_bits&#x27;: bits, &#x27;fiber_size&#x27;: len(counts),
+                                        &#x27;seed_preimages_each&#x27;: 1 &lt;&lt; bits})
+    else:
+        for bits in (1, n//2, n-1, n):
+            target = rng.getrandbits(bits)
+            for _ in range(256):
+                x = decoder.sample_prefix(bits, target, rng)
+                assert decoder.rank(x) &gt;&gt; (n-bits) == target
+    fresh_values = [rng.getrandbits(n) for _ in range(128)]
+    ordered = sorted(fresh_values, key=decoder.rank)
+    assert [teacher.rank(x) for x in ordered] == sorted(teacher.rank(x) for x in fresh_values)
+    assert teacher.calls == calls
+    validation = time.perf_counter()-begin
+    sort_control = None
+    if compare_sort and n &lt;= 12:
+        control = TriangularTeacher(n, seed)
+        begin = time.perf_counter()
+        sorted_values = full_sort_control(n, control.query)
+        wall = time.perf_counter()-begin
+        assert [control.rank(x) for x in sorted_values] == list(range(1 &lt;&lt; n))
+        sort_control = {&#x27;comparisons&#x27;: control.calls, &#x27;wall_seconds&#x27;: wall,
+            &#x27;fresh_source_ranks&#x27;: control.fresh_ranks,
+            &#x27;scope&#x27;: &#x27;Exact full-domain sort context, not strongest tailored comparator.&#x27;}
+    evidence.update({&#x27;n&#x27;: n, &#x27;seed&#x27;: seed, &#x27;one_bit_comparisons&#x27;: calls,
+        &#x27;input_transmission_bits&#x27;: 2*n*calls, &#x27;source_unique_ranks_acquisition&#x27;: ranks,
+        &#x27;source_cache_logical_payload_bits&#x27;: 2*n*cache_size,
+        &#x27;source_rank_bitwork_upper_without_object_overhead&#x27;: ranks*(3*n*n+n),
+        &#x27;source_setup_seconds&#x27;: setup, &#x27;acquisition_seconds_including_source&#x27;: acquisition,
+        &#x27;validation_seconds&#x27;: validation, &#x27;all_coordinate_polynomials_exact&#x27;: True,
+        &#x27;rank_and_inverse_validation_points&#x27;: checked,
+        &#x27;source_queries_during_execution&#x27;: 0, &#x27;all_prefix_sizes_exhaustive_seed_laws&#x27;: exact_distributions,
+        &#x27;full_domain_sort_context&#x27;: sort_control, &#x27;novelty&#x27;: &#x27;UNKNOWN&#x27;,
+        &#x27;tailored_prior_advantage&#x27;: &#x27;UNKNOWN&#x27;,
+        &#x27;scope&#x27;: &#x27;Supplied complete quadratic polar-toggle flag / hidden affine triangular order; exact chosen-input comparisons only.&#x27;})
+    return evidence
+
+
+def outside_class_counterexample():
+    # q_top=x2+x0*x1, q_mid=x0, q_low=x1: a quadratic bijection with no complete flag.
+    n = 3
+    def rank(x):
+        a, b, c = ((x &gt;&gt; i) &amp; 1 for i in range(3))
+        return ((c ^ (a &amp; b)) &lt;&lt; 2) | (a &lt;&lt; 1) | b
+    v = 1
+    values = {x: 1 ^ int(rank(x) &lt; rank(x ^ v)) for x in coefficient_points(n)}
+    extracted = interpolate(values, n)
+    actual = [interpolate({x: (rank(x) &gt;&gt; j) &amp; 1 for x in coefficient_points(n)}, n)
+              for j in range(n)]
+    assert all(extracted(x) == (1 ^ int(rank(x) &lt; rank(x ^ v))) for x in range(1 &lt;&lt; n))
+    assert all(signature(extracted) != signature(q) for q in actual)
+    return {&#x27;n&#x27;: n, &#x27;translation&#x27;: v, &#x27;all_outputs_are_quadratic&#x27;: True,
+            &#x27;rank_is_bijective&#x27;: len({rank(x) for x in range(1 &lt;&lt; n)}) == 1 &lt;&lt; n,
+            &#x27;comparison_extracted_quadratic_not_an_actual_bit&#x27;: extracted.body(),
+            &#x27;scope&#x27;: &#x27;Polynomial interpolation and local translation checks alone cannot recognize the complete-flag promise.&#x27;}
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&#x27;--output&#x27;, default=str(HERE/&#x27;TRIANGULAR_TRANSLATION_RESULTS.json&#x27;))
+    args = parser.parse_args()
+    cases = [(4, 610051), (6, 610052), (8, 610053), (10, 610054),
+             (12, 610055), (16, 610056), (24, 610057), (32, 610058)]
+    results = []
+    for case in cases:
+        result = run(*case)
+        results.append(result)
+        print(json.dumps({k: result[k] for k in [&#x27;n&#x27;, &#x27;one_bit_comparisons&#x27;,
+            &#x27;all_coordinate_polynomials_exact&#x27;, &#x27;acquisition_seconds_including_source&#x27;]}), flush=True)
+    Path(args.output).write_text(json.dumps({&#x27;status&#x27;: &#x27;EXACT_RESTRICTED_COMPARISON_ONLY_FULL_DECODER&#x27;,
+        &#x27;mission_status&#x27;: &#x27;NOT_ACHIEVED&#x27;, &#x27;cases&#x27;: results,
+        &#x27;outside_class_failure&#x27;: outside_class_counterexample(),
+        &#x27;source_snapshot&#x27;: {&#x27;source&#x27;: str(SOURCE), &#x27;snapshot&#x27;: str(SNAPSHOT),
+                            &#x27;sha256&#x27;: hashlib.sha256(SNAPSHOT.read_bytes()).hexdigest()}}, indent=2)+&#x27;\n&#x27;)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>
