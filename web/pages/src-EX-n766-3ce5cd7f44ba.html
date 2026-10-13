@@ -1,0 +1,96 @@
+<!doctype html><meta charset="utf-8"><title>N766 recovered original — cray_genesis_acquisition/cell_probe.py</title>
+<aside>Original byte/member hashes, ZIP CRC and AST syntax establish preservation only. No scientific program executed, independent proof reconstructed, literature/priority audit or physical experiment performed at intake. Producer finite/exact/floating diagnostics are source-reported; not universal theorem validation.</aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;All-data cell-coarsening diagnostic on a 64 x 64 synthetic network.
+
+This experiment ACQUIRES EVERY TARGET COEFFICIENT. It tests gap reduction,
+not a sublinear acquisition claim. Terminals are contracted before the cell
+construction, as required for the single-cell exactness theorem.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import time
+from pathlib import Path
+import numpy as np
+from scipy import sparse
+from scipy.sparse.linalg import spsolve
+from experiment import make_network, cases
+
+
+def laplacian(edges, c, n):
+    u,v=edges.T
+    return sparse.coo_matrix((np.r_[c,c,-c,-c],
+          (np.r_[u,v,u,v],np.r_[u,v,v,u])),shape=(n,n)).tocsr()
+
+
+def run():
+    net=make_network((64,64,1))
+    ratios=cases(net)[&#x27;strong_mismatch&#x27;]
+    nx,ny,_=net.shape
+    old_ids=np.arange(nx*ny)
+    x,y=old_ids//ny, old_ids%ny
+    mapped=np.where(x==0,0,np.where(x==nx-1,1,2+(x-1)*ny+y))
+    ed=mapped[net.edges]
+    keep=ed[:,0]!=ed[:,1]
+    original_tail=net.edges[keep,0]
+    ed=ed[keep]
+    c0=net.c0[keep]
+    c=c0*ratios[keep]
+    n=int(ed.max())+1
+    h0=np.empty(n); h0[:2]=[0.,1.]
+    h0[2:]=np.repeat(np.arange(1,nx-1)/(nx-1),ny)
+    dh0=h0[ed[:,0]]-h0[ed[:,1]]
+    f0=c0*dh0
+    C0=float(np.dot(c0,dh0**2))
+    L=laplacian(ed,c,n)
+    h=h0.copy(); h[2:]=0
+    h[2:]=spsolve(L[2:,2:].tocsc(),-(L@h)[2:])
+    C=float(np.dot(c,(h[ed[:,0]]-h[ed[:,1]])**2))
+    total_degree=np.bincount(ed.ravel(),minlength=n)
+    results=[]
+    for side in [1,2,4,8,16,32,64]:
+        started=time.perf_counter()
+        gid=(original_tail//ny//side)*((ny+side-1)//side)+(original_tail%ny//side)
+        Dsum=Nsum=0.
+        count=0
+        max_edges=0
+        for g in np.unique(gid):
+            K=np.flatnonzero(gid==g)
+            count+=1; max_edges=max(max_edges,len(K))
+            nodes, inv=np.unique(ed[K].ravel(),return_inverse=True)
+            localedges=inv.reshape(-1,2)
+            E0=float(np.dot(c0[K],dh0[K]**2))
+            if E0==0:
+                continue
+            nn=len(nodes)
+            local_degree=np.bincount(localedges.ravel(),minlength=nn)
+            fixed=(local_degree&lt;total_degree[nodes]) | (nodes&lt;2)
+            localL=laplacian(localedges,c[K],nn)
+            trial=h0[nodes].copy()
+            free=np.flatnonzero(~fixed)
+            trial[free]=0.
+            if len(free):
+                trial[free]=spsolve(localL[free][:,free].tocsc(),-(localL@trial)[free])
+            u,v=localedges.T
+            Dsum+=float(np.dot(c[K],(trial[u]-trial[v])**2))
+            b=np.bincount(u,weights=f0[K],minlength=nn)-np.bincount(v,weights=f0[K],minlength=nn)
+            z=np.zeros(nn)
+            z[1:]=spsolve(localL[1:,1:].tocsc(),b[1:])
+            Nsum+=float(np.dot(c[K],(z[u]-z[v])**2))
+        lower,upper=C0*C0/Nsum,Dsum
+        results.append({&#x27;side&#x27;:side,&#x27;cells&#x27;:count,&#x27;largest_cell_edges&#x27;:max_edges,
+                        &#x27;unique_target_coefficients_acquired&#x27;:len(c),
+                        &#x27;lower&#x27;:lower,&#x27;upper&#x27;:upper,&#x27;relative_gap&#x27;:upper/lower-1,
+                        &#x27;contains_float64_reference&#x27;:lower&lt;=C+1e-8 and C&lt;=upper+1e-8,
+                        &#x27;compute_seconds&#x27;:time.perf_counter()-started})
+    return {&#x27;status&#x27;:&#x27;float64 full-data gap-reduction diagnostic, NOT acquisition savings&#x27;,
+            &#x27;shape&#x27;:[64,64], &#x27;original_vertices&#x27;:4096,&#x27;contracted_vertices&#x27;:n,
+            &#x27;original_edges&#x27;:len(net.edges),&#x27;retained_edges&#x27;:len(ed),
+            &#x27;C0&#x27;:C0,&#x27;target_C&#x27;:C,&#x27;target_case&#x27;:&#x27;strong_mismatch&#x27;, &#x27;results&#x27;:results}
+
+
+if __name__==&#x27;__main__&#x27;:
+    r=run()
+    Path(__file__).with_name(&#x27;cell_results.json&#x27;).write_text(json.dumps(r,indent=2))
+    print(json.dumps(r,indent=2))
+</pre>

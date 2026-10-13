@@ -1,0 +1,249 @@
+# ASTRA Natural Sciences — Autonomous capacitive chemomotor
+
+**Research date:** 13 October 2026  
+**Status:** A conditional physical-mechanism candidate with an executed, thermodynamically consistent model. No catalyst satisfying the decisive kinetic and electrical conditions has been measured, identified by first-principles computation, or fabricated here. Historical novelty is unresolved. This is not a demonstrated generator or a civilisation-changing discovery.
+
+## Proposed capability
+
+Convert chemical free energy from a continuously operating surface reaction into alternating electrical work through a blocking capacitor, without an externally driven waveform, without an inductor, and without requiring sustained ionic conduction through the separator. The charge moving in the external wire need not be the electron directly involved in the reaction: reaction-dependent polarisation induces a terminal charge, and chemical kinetics supplies the phase relationship needed to deliver work.
+
+The proposal is NOT that adsorbate charge pulses alone generate continuous power. It is that chemically maintained **inverted occupancy response** can turn the surface into an active electrical element. A passive load supplies feedback; the reaction and capacitor jointly oscillate. Individual sites need not begin synchronised: their common electrode voltage couples their otherwise stochastic occupancies. The calculation below is the large-population mean-field limit, not an atomistic or finite-population simulation.
+
+Dynamic catalytic energy exchange and catalytic charging already have substantial prior art. The narrow candidate is autonomous passive-load operation in an electrically blocking catalytic device with independently measurable onset conditions. No claim of historical priority is made.
+
+## 1. Minimal chemically consistent construction
+
+All electrical quantities below are per geometric square metre unless otherwise stated. A site has states 0 and 1, occupancy p, density n, and state-energy difference
+
+    E1(V) - E0(V) = -q V.
+
+Here q is the charge conjugate to the **measured terminal voltage**, not automatically a Bader charge, formal oxidation state, or gate-injected charge per metal atom. A microscopic construction must establish this identification by electrostatics and measurement.
+
+The site exchanges with fuel and product reservoirs through two distinct reversible channels:
+
+    F + 0 <-> 1 <-> P + 0.
+
+For a multi-reactant reaction, F and P denote complete stoichiometric reservoir combinations. Coarse-graining a real multi-intermediate surface into this two-state network requires separate validation.
+
+Choose symmetric operating-point chemical potentials mu_F = +Delta_mu/2 and mu_P = -Delta_mu/2. Define
+
+    a = Delta_mu/(k_B T), r = exp(-a/2), x = q V/(k_B T),
+    theta_F = (1-gamma)/2, theta_P = (1+gamma)/2.
+
+Let the four rates be
+
+    a_plus  = k exp(theta_F x)            [0 -> 1 through fuel]
+    a_minus = k r exp((theta_F-1) x)      [1 -> 0 through fuel]
+    b_plus  = k exp((theta_P-1) x)        [1 -> 0 through product]
+    b_minus = k r exp(theta_P x)          [0 -> 1 through product].
+
+These obey local detailed balance exactly:
+
+    log(a_plus/a_minus) = a/2 + x,
+    log(b_plus/b_minus) = a/2 - x,
+    log(a_plus b_plus / (a_minus b_minus)) = a.
+
+The cycle affinity is independent of voltage. The electrical gate has not been inserted as a hidden chemical-energy source. Symmetric forward rates and opposite reservoir chemical potentials are simplifying design assumptions, not experimental facts.
+
+The kinetic and circuit equations are
+
+    p_dot = (a_plus+b_minus)(1-p) - (a_minus+b_plus)p,
+    Q = C0 V + n q p,
+    C0 V_dot = -(G_load+G_leak)V - n q p_dot.
+
+A resistor is the only external circuit element required by this model. C0 is positive, instantaneous geometric plus parasitic capacitance. The reaction response may be negative; the dielectric capacitance is not assumed to be a stable negative-capacitance material.
+
+## 2. Exact small-signal criterion
+
+At V=0 the stationary occupancy is 1/2. With
+
+    lambda = 2k(1+exp(-a/2)),
+
+linearisation gives
+
+    p_ss'(0) = q/(4 k_B T) [1-gamma tanh(a/4)].
+
+Thus the reaction contribution to the static charge response is
+
+    Cr = n q^2/(4 k_B T) [1-gamma tanh(a/4)].
+
+For a voltage perturbation at angular frequency omega, the device admittance is
+
+    Y(omega) = G_leak + i omega C0 + i omega Cr lambda/(lambda+i omega),
+
+and therefore
+
+    Re Y = G_leak + Cr lambda omega^2/(lambda^2+omega^2).
+
+A negative real part means net electrical power flows out of the device into the small-signal driving port. Negative imaginary capacitance by itself would not establish gain.
+
+**Microscopic gain condition:**
+
+    gamma tanh(a/4) > 1.
+
+Writing q_F^ddagger and q_P^ddagger for the transition-state terminal-charge derivatives, gamma = (q_P^ddagger-q_F^ddagger)/q. The two transition-state responses must differ by more than the stable-state response at strong chemical driving. When both transition-state charges remain between the two state charges, gamma <= 1 and this symmetric model cannot supply gain. This restricted no-gain conclusion does not cover every possible multistate reaction network.
+
+At equilibrium a=0, Cr=nq^2/(4k_B T)>0 for every gamma. Merely having unusual barrier slopes cannot turn a single equilibrium heat bath into a source of electrical work.
+
+## 3. Passive-load instability, without an inductor
+
+Let G=G_load+G_leak>0. The small-signal characteristic polynomial is
+
+    C0 s^2 + [C0 lambda + G + Cr lambda]s + G lambda = 0.
+
+The stationary state loses linear stability when
+
+    -Cr > C0 + G/lambda.
+
+At the nondegenerate linear crossing,
+
+    Gcrit = -lambda(C0+Cr),
+    omega_H = sqrt(Gcrit lambda/C0).
+
+This is a local instability result. It is NOT, by itself, a general proof of a stable nonlinear limit cycle. Nonlinear oscillations were obtained numerically for the explicit parameter choices below; other parameter sets require their own analysis.
+
+An equivalent physical budget is especially useful for experiment. At strong drive let S = d log(b_plus/a_plus)/dV and let Delta_Voc = n q/C0 be the extrapolated full-coverage open-circuit voltage difference. At half occupancy,
+
+    -Cr/C0 approximately = Delta_Voc S/4.
+
+Consequently,
+
+    Delta_Voc S > 4 [1 + G/(C0 lambda)]
+
+is the strong-drive, symmetric operating-point threshold. Large capacitance, appreciable adsorbate charge, fast kinetics, and steep rate response are not interchangeable. The measured **product of voltage swing and differential kinetic sensitivity** is what matters.
+
+## 4. Energy accounting
+
+Define the signed channel currents per site
+
+    jF = a_plus(1-p)-a_minus p,
+    jP = b_plus p-b_minus(1-p).
+
+Then p_dot=jF-jP. Chemical input power is
+
+    Pchem = n Delta_mu (jF+jP)/2.
+
+Load power is G_load V^2, and leakage loss is G_leak V^2. The internal Shannon entropy per area is
+
+    S = -n k_B [p log(p)+(1-p)log(1-p)].
+
+The stochastic entropy-production rate satisfies
+
+    T sigma = n k_B T [
+        jF log(a_plus(1-p)/(a_minus p))
+        + jP log(b_plus p/(b_minus(1-p))) ] >= 0,
+
+because each contribution is of the form (u-v)log(u/v). With U=C0 V^2/2,
+
+    Pchem - Pload - Pleak - T sigma = U_dot - T S_dot.
+
+On a closed periodic trajectory the boundary terms average to zero. Electricity is paid for by chemical free energy, with positive entropy production; no extraction of work from a lone equilibrium heat bath is claimed.
+
+Reported efficiency is Pload/Pchem for REACTED chemical free energy in this model. It excludes heating, gas circulation, reactant preparation, pressure drops, electronics, fabrication and unreacted-feed losses. It is not a measured fuel-cell efficiency and is not automatically comparable to an LHV-based system efficiency.
+
+For one simple monotone fill/empty coverage loop, the electrical loop area is bounded by n q Delta_V Delta_p <= n q Delta_V. This is a charge/work-per-coverage-cycle budget, NOT a universal efficiency bound per net chemical turnover in arbitrary networks.
+
+## 5. Executed numerical results
+
+The script `reproduce.py` generates `results.json`, numerical traces, and diagnostic output. The runs are deterministic kinetic/circuit simulations, not density-functional calculations or laboratory measurements.
+
+### High-coupling hypothesis — not a known catalyst
+
+Assumed parameters:
+
+- T=423 K; n=10^18 sites/m^2; q=0.30e; gamma=3.
+- Delta_mu=12 k_B T (approximately 0.4374 eV per model turnover).
+- k=50/s; C0=0.02403265 F/m^2; G_load=5 S/m^2; zero leakage.
+- Transition-state charge derivatives are -0.30e and +0.60e relative to state 0.
+
+Executed results:
+
+- Frequency: 25.2675 Hz; peak voltage approximately +/-0.73318 V.
+- RMS voltage: 0.44753 V; occupancy range approximately 0.0410 to 0.9590.
+- Load: 1.00142 W/m^2; chemical input: 1.81129 W/m^2.
+- Entropic dissipation: 0.80986 W/m^2.
+- Chemical-to-load efficiency: 55.2879%, before auxiliaries.
+
+For a 1 cm^2 element: C0=2.4033 microfarads, load resistance 2 kilohms, output about 100.14 microwatts. These figures are conditional model outputs, not a device specification backed by a material.
+
+Scaling EVERY reaction rate and the load conductance by 100 leaves the assumed waveform unchanged and rescales time. The executed rescaled model gives 2.52675 kHz and 100.142 W/m^2 (10.014 mW/cm^2) at the same efficiency. This is an algebraic time-scaling property, not evidence that real chemistry, transport, contacts, dielectric loss, or product removal support the faster device. The strong-coupling waveform has sharp switching: the largest elementary rate along the baseline trajectory is about 2.16e4/s and becomes about 2.16e6/s in the rescaled model. The cycle frequency therefore understates the kinetic and electrical bandwidth requirements; measured 3-kHz condenser response is not sufficient evidence for this waveform.
+
+### Weak-charge hypothesis
+
+T=423 K; n=10^19/m^2; q=0.003e; gamma=50; k=50/s; C0=0.00252977 F/m^2 (illustrative epsilon_r=20 and thickness 70 nm); G_load=0.1 S/m^2. Its full-coverage voltage swing is about 1.90 V, but the assumed transition-state contrast is 0.15e and is unmeasured.
+
+The result is 11.0079 Hz, peak voltage +/-0.90856 V, and 0.0329335 W/m^2: about 3.29 microwatts/cm^2. Efficiency is only 0.2307%. Detectable autonomous gain would not, by itself, establish useful energy technology.
+
+### Rejected material interpretation and controls
+
+An earlier q=0.02e, n=10^19/m^2, 70-nm/epsilon_r=20 calculation produced 4.822 W/m^2 and 21.96% model efficiency. However, it implied an extrapolated full-coverage open-circuit voltage difference of 12.67 V. It is retained as a mathematical example but rejected as a credible prediction for an ordinary Pt adsorbate layer without new evidence.
+
+Using the measured hydrogen/Pt charge magnitude 0.0019e as a *numerical magnitude control*, with gamma=3 and the illustrative 70-nm capacitor, gives no oscillation. This does NOT simulate measured Pt hydrogen-oxidation kinetics; the kinetic parameters are still assumed.
+
+Equilibrium, gamma=1, and sufficiently heavy-load controls also produce no sustained oscillation.
+
+### Numerical scope and checks
+
+27 explicit checks pass: local detailed balance, voltage-independent cycle affinity, the analytic charge-response derivative, nonnegative entropy production, integrated energy accounting, specified passive controls, oscillatory nominal behaviour and time-scaling. Tighter tolerances and a different seed were checked using the SAME DOP853 solver, not an independent implementation. The nominal relative change in chemical power was approximately 3.4e-8. The nominal integrated energy residual was about 6.1e-8 W/m^2.
+
+A uniform time-grid initially missed narrow entropy/power spikes in the strong-coupling relaxation cycle. The released version uses 12-point Gaussian quadrature on the adaptive solver intervals. This numerical correction is essential to its energy audit. The code is floating-point and is not interval-certified. Finite tests do not establish a real material, all-parameter stability, historical priority, or external scientific validation.
+
+## 6. Physical implementation and the decisive missing object
+
+The accessible first experiment is on existing catalytic-condenser hardware, not on a fabricated hypothetical redox relay. A Pt/graphene or Pt/carbon electrode on a blocking oxide and conductive back electrode provides a starting platform. CO oxidation is a candidate calibration chemistry because voltage-dependent CO binding and chemical-reaction electrical signals have already been investigated in related structures. Neither fact establishes the required inverted kinetic susceptibility.
+
+The hypothesis for a material modification is a metal/oxide perimeter that changes the reaction transition-state polarisation more strongly than the dominant adsorbate polarisation. The sign, size and stability of that effect must be measured. No named oxide/metal combination is asserted here to meet the gain condition.
+
+Useful power likely needs a different interface from a strongly screening continuous metal. A constructive high-coupling target is a field-exposed catalytic redox relay inside a gas-accessible insulating nanogap. In ideal parallel-plate electrostatics, moving one electron internally by Delta_z across a gap d induces a terminal charge of order
+
+    q_terminal approximately e Delta_z/d.
+
+A 1-nm displacement in a 3-nm gap therefore sets a 0.33e *electrostatic target*. It is not proof that a catalyst carries out that charge displacement. With effective epsilon_r near 8, a 3-nm gap has geometric capacitance near 0.024 F/m^2, the scale used in the high-coupling hypothesis.
+
+A possible fabrication investigation would combine dielectric spacers, porous or perforated electrodes, immobilised redox-active catalytic motifs, and insulating tethers that prevent a continuous electron-conduction path. The redox centre must be in the electric field rather than behind a screening electrode. Distinct spatially polarised activation routes are required: a molecule that only switches its equilibrium dipole is not enough.
+
+Still missing: an identified, stable catalytic molecule/interface with measured q about 0.3e, the necessary transition-state charge contrast, useful turnover, and low electronic/ionic leakage. Atomic packing, chemical access, thermal stability, charge screening and attachment chemistry have not been solved. This missing material is why the high-efficiency result remains a conditional candidate rather than a physical advance.
+
+## 7. Decisive experiment
+
+**Parameter acquisition before autonomous testing.** Measure blocking capacitance, leakage, electrode resistance and dielectric loss at the intended temperature and gas composition. Calibrate adsorbate-induced terminal charge, preferably with simultaneous vibrational coverage measurements. Under constant reactant flow and an independently controlled temperature, measure the small-signal complex admittance near zero terminal bias. Fit the measured response, including extra poles when required. Do not use the appearance of oscillation itself to fit the supposedly predicted onset.
+
+**Gain gate.** Demonstrate reproducible negative REAL admittance after de-embedding instrument phase shifts, cable/lead parasitics and passive losses. For a one-pole response, acquire Cr and lambda and check -Cr>C0+(G_load+G_leak)/lambda. Negative imaginary capacitance, open-circuit voltage, a single adsorption pulse or an oscillating reaction rate does not pass this gate.
+
+**Passive circuit test.** Remove the waveform source, retaining only a known passive resistor and high-impedance measurement. Maintain steady feed. Compare spontaneous load-power generation with the predicted load and shunt-capacitance thresholds.
+
+For the unmeasured high-coupling numerical hypothesis on 1 cm^2, the predicted load-quenching threshold is approximately 579 ohms. At the 2-kilohm operating load, adding approximately 12.24 microfarads in parallel reaches the linear quenching boundary. The weak-charge hypothesis instead predicts a load threshold about 43.53 kilohms and an added-capacitance threshold about 0.1294 microfarads at its 100-kilohm load. These are examples of falsifiable predictions from independently acquired parameters, not expected measured values for Pt. They are linear-stability boundaries. They do not, without a nonlinear continuation test, exclude hysteresis or a coexisting large-amplitude cycle beyond the boundary.
+
+**Exclusion controls.** Hold chemical feed constant; approach chemical equilibrium; block reaction on an otherwise comparable device; record and match temperature histories; reverse/check electrical wiring and phase calibration; quantify dielectric absorption and charging transients; demonstrate sustained output greatly exceeding the initially stored electrical AND chemical inventory. Simultaneous product analysis must support the chemical free-energy account. Thermal gradients, Faradaic shorts, hot-carrier current and feedback from the heater or instrument are alternative mechanisms, not confirmation of this candidate.
+
+Johnson noise and ideal occupancy noise are small for a macroscopic site population in the nominal model, but those estimates are not an instrument noise specification. Chemical fluctuations, drift, correlated surface domains and 1/f noise require experimental characterisation.
+
+## 8. Scaling and comparative gates
+
+There is no demonstrated advantage over fuel cells. Even a published 2019 alkaline polymer-electrolyte fuel-cell study reports power exceeding 1 W/cm^2, versus only 0.010 W/cm^2 in the hypothetical 100x-rate model. This is an order-of-magnitude reference, NOT a matched fuel/temperature/pressure/device comparison. A May 2026 PECC preprint also shows that conventional proton-transport architectures continue to improve; an ionomer-free catalyst layer in a PEM fuel cell must not be confused with an ion-transport-free complete cell.
+
+A fair future comparison must hold fuel and oxidant, conversion, pressure, temperature, catalyst inventory, geometric and internal area, lifetime and total auxiliary power fixed. Report measured net electrical output and fuel utilisation, not only current pulses or reactor conversion. Porous-area multiplication must carry its capacitance, fabrication, gas transport and durability costs. Thinning an oxide does not offer free improvement: it changes coupling, capacitance, leakage and breakdown together.
+
+For the high-coupling model a 3-nm gap at 0.733 V sees roughly 0.24 V/nm. This is an operating-field requirement, not a demonstrated dielectric reliability limit. Ten percent leakage loss at the assumed waveform would require leakage conductance below one tenth of the useful load conductance; other losses further tighten the budget. At the fast-model output 100 W/m^2, heat removal is about 81 W/m^2 even before auxiliary losses.
+
+The long-term technological attraction is a route from reaction free energy to a collective electrical degree of freedom without an ion-conducting separator or hot-electron collection. The present work establishes a consistent conditional construction and useful rejection criteria. The catalyst that would make the construction an actual technology is not yet established.
+
+## Reproduction
+
+    python reproduce.py
+
+Dependencies: Python 3, NumPy, SciPy. The research run used NumPy and SciPy installed in the working environment; `environment.json` records versions. `results.json` distinguishes all assumptions and cases. CSV traces are simulated trajectories. `run_log.txt` is the actual completed execution log.
+
+## Primary-source/provenance ledger
+
+1. Onn et al., *Platinum Graphene Catalytic Condenser for Millisecond Programmable Metal Surfaces*, JACS (2022), DOI 10.1021/jacs.2c09481. The retrieved author-institution abstract reports 70-nm HfO2, 2–4-nm Pt clusters, +/-6-V operation, CO binding-energy modulation and electrical response to 3 kHz. Those statements do not establish autonomous generation.
+2. Hopkins et al., *Isopotential Electron Titration: Hydrogen Adsorbate-Metal Charge Transfer*, ACS Central Science (2025), DOI 10.1021/acscentsci.5c00851. The publisher's associated primary deposit reports 0.19 +/-0.01 PERCENT of an electron per H at 125–200 C: 0.0019e, not 0.19e. Adsorption charge is reversed on desorption.
+3. Abdelrahman and Dauenhauer, *Energy Flows in Static and Programmable Catalysts*, ACS Energy Letters (2023), DOI 10.1021/acsenergylett.3c00522. Prior art on dynamic catalytic energy flows; complete text was not accessible in this run.
+4. Canavan et al., *Catalytic Resonance Theory: Turnover Efficiency and the Resonance Frequency*, ACS Catalysis (2025), DOI 10.1021/acscatal.4c06623. Retrieved publisher material explicitly discusses energy recovery for exothermic reactions. Consequently, broad energy recovery by programmable catalysis is not claimed as new here. Complete text was not accessible.
+5. Dakhchoune et al., *Ultrathin Catalytic Condensers with engineered Pt/HfO2 interfaces for charge modulation*, ChemRxiv version 1, 24 October 2024, DOI 10.26434/chemrxiv-2024-4fxh7. Primary preprint reports sub-5-nm hafnia and the charge-density/leakage tradeoff. Not a demonstrated generator.
+6. Lee et al., *Graphene-Semiconductor Catalytic Nanodiodes for Quantitative Detection of Hot Electrons Induced by a Chemical Reaction*, Nano Letters (2016), DOI 10.1021/acs.nanolett.5b04506. Primary abstract describes hydrogen-oxidation chemicurrent through a graphene/TiO2 Schottky junction.
+7. Ji et al., *Continuous hot electron generation in Pt/TiO2, Pd/TiO2, and Pt/GaN catalytic nanodiodes from oxidation of carbon monoxide*, J. Phys. Chem. B (2005), PubMed 16853934. Related electrical-reaction prior art, not the proposed blocking-capacitor mechanism.
+8. Zhang et al., *Proton-electron coupled catalyst for ionomer-free electrochemical energy conversion*, arXiv:2605.24757, 23 May 2026. A preprint, not an established independent performance benchmark. Retrieved abstract reports improved PEM fuel-cell catalyst-layer transport and power.
+9. Yang et al., *High-Loading Composition-Tolerant Co–Mn Spinel Oxides with Performance beyond 1 W/cm2 in Alkaline Polymer Electrolyte Fuel Cells*, ACS Energy Letters (2019), DOI 10.1021/acsenergylett.9b00597. Scale comparator only; no matched comparison to the unspecified F/P model.
+
+Astra and OpenAI mathematics repository entry materials were consulted as research context. No repository theorem is a load-bearing premise of the physical construction. Literature access and priority review were incomplete; some publisher full texts were inaccessible. This ledger is not a patent or exhaustive priority clearance.

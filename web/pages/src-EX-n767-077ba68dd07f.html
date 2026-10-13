@@ -1,0 +1,222 @@
+<!doctype html><meta charset="utf-8"><title>N767 recovered original — astra_capacitive_gain/reproduce.py</title>
+<aside>Original byte/member hashes, ZIP CRC and AST syntax establish preservation only. No scientific program executed, independent proof reconstructed, literature/priority audit or physical experiment performed at intake. Producer finite/exact/floating diagnostics are source-reported; not universal theorem validation.</aside>
+<pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Autonomous capacitive chemomotor: conditional model, not material prediction.
+
+Requires numpy and scipy. All reported device/catalytic parameters are design
+assumptions unless explicitly identified in README.md. No experimental data are
+simulated or represented as observations. Positive resistor power is computed
+from an autonomous, thermodynamically consistent two-state/two-channel model.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse, csv, json
+from dataclasses import dataclass, asdict, replace
+from pathlib import Path
+import numpy as np
+from scipy.integrate import solve_ivp
+from scipy.special import roots_legendre
+
+E = 1.602176634e-19
+KB = 1.380649e-23
+EPS0 = 8.8541878128e-12
+
+@dataclass(frozen=True)
+class Params:
+    name: str = &#x27;high_coupling_hypothesis&#x27;
+    temperature_K: float = 423.
+    sites_per_m2: float = 1e18
+    q_over_e: float = .3
+    gamma: float = 3.
+    affinity_kBT: float = 12.
+    k_per_s: float = 50.
+    capacitance_F_per_m2: float = 1e18*.3*E/2.
+    load_S_per_m2: float = 5.
+    leakage_S_per_m2: float = 0.
+
+    def validate(self):
+        if min(self.temperature_K,self.sites_per_m2,self.q_over_e,self.k_per_s,
+               self.capacitance_F_per_m2,self.load_S_per_m2) &lt;= 0:
+            raise ValueError(&#x27;Temperature, density, charge, rate, C and load must be positive.&#x27;)
+        if self.leakage_S_per_m2 &lt; 0:
+            raise ValueError(&#x27;Leakage cannot be negative.&#x27;)
+
+    @property
+    def q(self): return self.q_over_e*E
+    @property
+    def kbt(self): return KB*self.temperature_K
+    @property
+    def theta_F(self): return (1-self.gamma)/2
+    @property
+    def theta_P(self): return (1+self.gamma)/2
+    @property
+    def lam(self): return 2*self.k_per_s*(1+np.exp(-self.affinity_kBT/2))
+    @property
+    def G(self): return self.load_S_per_m2+self.leakage_S_per_m2
+    @property
+    def Cr(self):
+        return self.sites_per_m2*self.q**2/(4*self.kbt)*(1-self.gamma*np.tanh(self.affinity_kBT/4))
+
+
+def rates(v, p: Params):
+    x=p.q*np.asarray(v)/p.kbt
+    k=p.k_per_s; r=np.exp(-p.affinity_kBT/2)
+    return (k*np.exp(p.theta_F*x), k*r*np.exp((p.theta_F-1)*x),
+            k*np.exp((p.theta_P-1)*x), k*r*np.exp(p.theta_P*x))
+
+
+def rhs(t, y, p):
+    occ,v=y
+    af,ar,bf,br=rates(v,p)
+    d=(af+br)*(1-occ)-(ar+bf)*occ
+    return [d,(-p.G*v-p.sites_per_m2*p.q*d)/p.capacitance_F_per_m2]
+
+
+def metrics(p, rtol=1e-8, method=&#x27;DOP853&#x27;, seed_V=1e-4):
+    p.validate()
+    # Scale duration inversely with rate; high-rate run is an explicitly
+    # conditional time-rescaling, not an independent material calculation.
+    end=3.*50/p.k_per_s
+    def upward(t,y): return y[1]
+    upward.direction=1
+    # Explicit adaptive solvers can try and reject remote overflowing stages.
+    # Suppress only these floating warnings; require success and validate all
+    # accepted states below. Physical rates are not clipped or regularized.
+    with np.errstate(over=&quot;ignore&quot;,invalid=&quot;ignore&quot;):
+        sol=solve_ivp(lambda t,y:rhs(t,y,p),(0,end),[.5,seed_V],method=method,
+                      rtol=rtol,atol=rtol*1e-2,dense_output=True,events=upward,
+                      max_step=.001*50/p.k_per_s)
+
+    if not sol.success: raise RuntimeError(sol.message)
+    if not np.all(np.isfinite(sol.y)) or np.min(sol.y[0]) &lt; -1e-10 or np.max(sol.y[0]) &gt; 1+1e-10:
+        raise RuntimeError(&#x27;Invalid accepted trajectory.&#x27;)
+    crossings=sol.t_events[0]
+    late=crossings[crossings&gt;.5*end]
+    tail=np.linspace(.8*end,end,1001)
+    amp=float(np.max(np.abs(sol.sol(tail)[1])))
+    oscillatory=len(late)&gt;=4 and amp&gt;1e-3
+    if oscillatory:
+        t0=late[-min(11,len(late))]; t1=late[-1]
+        frequency=float(1/np.diff(late[-min(11,len(late)):]).mean())
+    else:
+        t0=.8*end; t1=end; frequency=None
+    # Integrate on adaptive solver intervals: uniform sampling misses narrow
+    # power/entropy spikes in the high-coupling relaxation oscillation.
+    knots=np.r_[t0,sol.t[(sol.t&gt;t0)&amp;(sol.t&lt;t1)],t1]
+    z,w=roots_legendre(12)
+    half=np.diff(knots)/2
+    mid=(knots[:-1]+knots[1:])/2
+    tq=(mid[:,None]+half[:,None]*z).ravel()
+    weights=(half[:,None]*np.broadcast_to(w,(len(half),len(w)))).ravel()
+    t=np.r_[t0,tq,t1]
+    weights=np.r_[0.,weights,0.]
+    occ,v=sol.sol(t)
+    af,ar,bf,br=rates(v,p)
+    jf=af*(1-occ)-ar*occ
+    jp=bf*occ-br*(1-occ)
+    d=jf-jp
+    pc=p.sites_per_m2*(p.affinity_kBT*p.kbt/2)*(jf+jp)
+    pl=p.load_S_per_m2*v*v
+    leak=p.leakage_S_per_m2*v*v
+    # Each term (a-b) log(a/b) is nonnegative.
+    ep=p.sites_per_m2*p.kbt*(jf*np.log(af*(1-occ)/(ar*occ))+
+                                 jp*np.log(bf*occ/(br*(1-occ))))
+    entropy=-p.sites_per_m2*KB*(occ*np.log(occ)+(1-occ)*np.log1p(-occ))
+    U=.5*p.capacitance_F_per_m2*v*v
+    dt=t1-t0
+    avg=lambda a:float(np.dot(weights,a)/dt)
+    # Exact integrated identity: Pchem-Pload-Pleak-Tsigma = (Delta U - T Delta S)/dt.
+    boundary=(U[-1]-U[0]-p.temperature_K*(entropy[-1]-entropy[0]))/dt
+    residual=avg(pc-pl-leak-ep)-boundary
+    D=p.capacitance_F_per_m2*p.lam+p.G+p.Cr*p.lam
+    roots=np.roots([p.capacitance_F_per_m2,D,p.G*p.lam])
+    qcrit=np.sqrt(4*p.kbt*(p.capacitance_F_per_m2+p.G/p.lam)/
+                (p.sites_per_m2*(p.gamma*np.tanh(p.affinity_kBT/4)-1))) \
+                if p.gamma*np.tanh(p.affinity_kBT/4)&gt;1 else np.inf
+    result={
+        &#x27;parameters&#x27;:asdict(p), &#x27;oscillatory&#x27;:bool(oscillatory),
+        &#x27;frequency_Hz&#x27;:frequency, &#x27;voltage_abs_peak_V&#x27;:float(np.max(np.abs(v))),
+        &#x27;voltage_rms_V&#x27;:float(np.sqrt(avg(v*v))),
+        &#x27;occupancy_min&#x27;:float(occ.min()),&#x27;occupancy_max&#x27;:float(occ.max()),
+        &#x27;Pload_W_per_m2&#x27;:avg(pl),&#x27;Pchemical_W_per_m2&#x27;:avg(pc),
+        &#x27;Pleak_W_per_m2&#x27;:avg(leak),&#x27;T_entropy_production_W_per_m2&#x27;:avg(ep),
+        &#x27;chemical_to_load_efficiency&#x27;:avg(pl)/avg(pc) if avg(pc)&gt;1e-12 else None,
+        &#x27;energy_balance_residual_W_per_m2&#x27;:float(residual),
+        &#x27;min_T_entropy_production_W_per_m2&#x27;:float(ep.min()),
+        &#x27;lambda_per_s&#x27;:p.lam,&#x27;reaction_capacitance_F_per_m2&#x27;:p.Cr,
+        &#x27;full_occupancy_open_circuit_swing_V&#x27;:p.sites_per_m2*p.q/p.capacitance_F_per_m2,
+        &#x27;linear_pole_real_per_s&#x27;:[float(a.real) for a in roots],
+        &#x27;linear_pole_imag_per_s&#x27;:[float(a.imag) for a in roots],
+        &#x27;critical_load_plus_leak_S_per_m2&#x27;:float(-p.lam*(p.capacitance_F_per_m2+p.Cr)),
+        &#x27;critical_q_over_e_fixed_gamma&#x27;:float(qcrit/E) if np.isfinite(qcrit) else None,
+        &#x27;single_cycle_work_ceiling_fraction&#x27;:float(p.q*(v.max()-v.min())/(p.affinity_kBT*p.kbt)) if p.affinity_kBT&gt;0 else None,
+    }
+    return result, (t,occ,v,pl,pc,ep)
+
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument(&#x27;--out&#x27;,type=Path,default=Path(__file__).resolve().parent)
+    args=parser.parse_args(); args.out.mkdir(parents=True,exist_ok=True)
+    nominal=Params()
+    c70=EPS0*20/70e-9
+    cases=[nominal,
+           replace(nominal,name=&#x27;same_model_100x_rates_NOT_material_forecast&#x27;,k_per_s=5000,load_S_per_m2=500),
+           Params(name=&#x27;small_charge_hypothesis&#x27;,sites_per_m2=1e19,q_over_e=.003,gamma=50,
+                  capacitance_F_per_m2=c70,load_S_per_m2=.1),
+           Params(name=&#x27;hydrogen_charge_magnitude_control&#x27;,sites_per_m2=1e19,q_over_e=.0019,gamma=3,
+                  capacitance_F_per_m2=c70,load_S_per_m2=.1),
+           replace(nominal,name=&#x27;equilibrium_control&#x27;,affinity_kBT=0),
+           replace(nominal,name=&#x27;no_barrier_overshoot_control&#x27;,gamma=1),
+           replace(nominal,name=&#x27;heavy_load_control&#x27;,load_S_per_m2=nominal.lam*(-nominal.Cr-nominal.capacitance_F_per_m2)*1.1),
+           Params(name=&#x27;REJECTED_as_material_forecast_large_Voc&#x27;,sites_per_m2=1e19,q_over_e=.02,gamma=3,
+                  capacitance_F_per_m2=c70,load_S_per_m2=.5)]
+    reports=[]; checks={}
+    for case in cases:
+        print(&quot;Solving&quot;,case.name,flush=True)
+        result,trace=metrics(case)
+        print(&quot;Finished&quot;,case.name,flush=True)
+        reports.append(result)
+        if case.name in [&#x27;high_coupling_hypothesis&#x27;,&#x27;small_charge_hypothesis&#x27;]:
+            np.savetxt(args.out/(case.name+&#x27;_trace.csv&#x27;),np.column_stack(trace),delimiter=&#x27;,&#x27;,
+                       header=&#x27;t_s,occupancy,V_V,Pload_W_m2,Pchem_W_m2,Tentropy_W_m2&#x27;,comments=&#x27;&#x27;)
+        checks[case.name+&#x27;_entropy_nonnegative&#x27;]=result[&#x27;min_T_entropy_production_W_per_m2&#x27;]&gt;=-1e-10
+        checks[case.name+&#x27;_balance&#x27;]=abs(result[&#x27;energy_balance_residual_W_per_m2&#x27;])&lt;1e-6*max(1.,abs(result[&#x27;Pchemical_W_per_m2&#x27;]))
+    # Exact detailed-balance ratios evaluated over a modest voltage grid.
+    p=nominal
+    v=np.linspace(-.8,.8,401);af,ar,bf,br=rates(v,p)
+    checks[&#x27;local_detailed_balance_F&#x27;]=bool(np.max(np.abs(np.log(af/ar)-(p.affinity_kBT/2+p.q*v/p.kbt)))&lt;1e-12)
+    checks[&#x27;local_detailed_balance_P&#x27;]=bool(np.max(np.abs(np.log(bf/br)-(p.affinity_kBT/2-p.q*v/p.kbt)))&lt;1e-12)
+    checks[&#x27;cycle_affinity_voltage_independent&#x27;]=bool(np.max(np.abs(np.log(af*bf/(ar*br))-p.affinity_kBT))&lt;1e-12)
+    # Numerical derivative check on the analytic response coefficient.
+    h=1e-6
+    def ss(v):
+        af,ar,bf,br=rates(v,p);return (af+br)/(af+ar+bf+br)
+    cr_fd=p.sites_per_m2*p.q*(ss(h)-ss(-h))/(2*h)
+    checks[&#x27;reaction_capacitance_derivative&#x27;]=bool(abs(cr_fd-p.Cr)&lt;1e-7*abs(p.Cr))
+    # Tighter-tolerance and different-seed convergence check; SAME DOP853 method.
+    other,_=metrics(nominal,rtol=2e-10,method=&#x27;DOP853&#x27;,seed_V=1e-6)
+    base=reports[0]
+    convergence_comparison={key:abs(base[key]-other[key])/max(abs(base[key]),1e-15)
+                       for key in [&#x27;frequency_Hz&#x27;,&#x27;Pload_W_per_m2&#x27;,&#x27;Pchemical_W_per_m2&#x27;]}
+    checks[&#x27;tolerance_and_seed_agreement&#x27;]=max(convergence_comparison.values())&lt;1e-6
+    for name in [&#x27;equilibrium_control&#x27;,&#x27;no_barrier_overshoot_control&#x27;,&#x27;heavy_load_control&#x27;,&#x27;hydrogen_charge_magnitude_control&#x27;]:
+        checks[name+&#x27;_no_oscillation&#x27;]=not next(x for x in reports if x[&#x27;parameters&#x27;][&#x27;name&#x27;]==name)[&#x27;oscillatory&#x27;]
+    checks[&#x27;nominal_oscillates&#x27;]=base[&#x27;oscillatory&#x27;]
+    # Expected time-rescaling is a property of this assumed model, not a discovery.
+    fast=reports[1]
+    checks[&#x27;conditional_rate_scaling&#x27;]=abs(fast[&#x27;Pload_W_per_m2&#x27;]/base[&#x27;Pload_W_per_m2&#x27;]-100)&lt;1e-4
+    all_pass=all(checks.values())
+    payload={&#x27;status&#x27;:&#x27;conditional theoretical model; no measured candidate catalyst&#x27;,
+             &#x27;cases&#x27;:reports,&#x27;checks&#x27;:checks,&#x27;all_checks_pass&#x27;:all_pass,
+             &#x27;tolerance_and_seed_relative_differences&#x27;:convergence_comparison}
+    (args.out/&#x27;results.json&#x27;).write_text(json.dumps(payload,indent=2)+&#x27;\n&#x27;)
+    for x in reports:
+        print(x[&#x27;parameters&#x27;][&#x27;name&#x27;], &#x27;f=&#x27;,x[&#x27;frequency_Hz&#x27;],&#x27;P=&#x27;,x[&#x27;Pload_W_per_m2&#x27;],
+              &#x27;eta=&#x27;,x[&#x27;chemical_to_load_efficiency&#x27;],&#x27;Vpeak=&#x27;,x[&#x27;voltage_abs_peak_V&#x27;],
+              &#x27;balance=&#x27;,x[&#x27;energy_balance_residual_W_per_m2&#x27;])
+    print(&#x27;CHECKS:&#x27;,sum(bool(x) for x in checks.values()),&#x27;/&#x27;,len(checks))
+    if not all_pass:
+        raise AssertionError({k:v for k,v in checks.items() if not v})
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre>

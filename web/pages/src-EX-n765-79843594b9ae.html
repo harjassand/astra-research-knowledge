@@ -1,0 +1,80 @@
+<!doctype html><meta charset="utf-8"><title>N765 recovered original — astra_frontier_residual_response/code/fast_algebra.py</title>
+<aside>Original byte/member hashes, ZIP CRC and AST syntax establish preservation only. No scientific program executed, independent proof reconstructed, literature/priority audit or physical experiment performed at intake. Producer finite/exact/floating diagnostics are source-reported; not universal theorem validation.</aside>
+<pre>&quot;&quot;&quot;Compiled implementation of the same finite translation-orbit Pauli algebra.&quot;&quot;&quot;
+import numpy as np
+import scipy.sparse as sp
+from numba import njit
+B=28
+MASK=(1&lt;&lt;B)-1
+@njit(cache=True)
+def pc(x):
+    n=0
+    while x:
+        n+=1;x&amp;=x-1
+    return n
+@njit(cache=True)
+def bitlen(x):
+    n=0
+    while x:n+=1;x&gt;&gt;=1
+    return n
+@njit(cache=True)
+def rev(x,l):
+    y=0
+    for i in range(l):y=(y&lt;&lt;1)|(x&amp;1);x&gt;&gt;=1
+    return y
+@njit(cache=True)
+def ckey(x,z):
+    u=x|z
+    while (u&amp;1)==0:
+        x&gt;&gt;=1;z&gt;&gt;=1;u&gt;&gt;=1
+    l=bitlen(u)
+    key=(x&lt;&lt;B)|z;rkey=(rev(x,l)&lt;&lt;B)|rev(z,l)
+    if key==rkey:return key,0
+    return (key,1) if key&lt;rkey else (rkey,-1)
+@njit(cache=True)
+def _basis(L,parity):
+    keys=[]
+    for ell in range(2,L+1):
+      for x in range(1&lt;&lt;ell):
+        if pc(x)%2:continue
+        for z in range(1&lt;&lt;ell):
+          if (x|z)&amp;1==0 or (x|z)&amp;(1&lt;&lt;(ell-1))==0:continue
+          if pc(x&amp;z)%2!=parity or pc(z)%2!=1:continue
+          key=(x&lt;&lt;B)|z;rkey=(rev(x,ell)&lt;&lt;B)|rev(z,ell)
+          if key&lt;rkey:keys.append(key)
+    return np.array(keys,dtype=np.int64)
+def basis(L,parity):
+    keys=_basis(L,parity)
+    return sorted([(int(k)&gt;&gt;B,int(k)&amp;MASK) for k in keys],key=lambda w:((w[0]|w[1]).bit_length(),w))
+@njit(cache=True)
+def _entries(words,t,U,V):
+    N=len(words);L=0
+    for j in range(N):L=max(L,bitlen(words[j,0]|words[j,1]))
+    cap=N*4*(L+3)
+    rr=np.empty(cap,np.int64);cc=np.empty(cap,np.int32);vv=np.empty(cap,np.float64);k=0
+    aa0=np.array([3,3,0,0]);bb0=np.array([0,3,3,5]);hh=np.array([-t/2,-t/2,U/4,V/4]);ranges=np.array([1,1,1,2])
+    for j in range(N):
+      x0,z0=words[j];ell=bitlen(x0|z0);x=x0&lt;&lt;2;z=z0&lt;&lt;2
+      for term in range(4):
+        h=hh[term]
+        if h==0:continue
+        for shift in range(2-ranges[term],ell+2):
+          a=aa0[term]&lt;&lt;shift;b=bb0[term]&lt;&lt;shift
+          if (pc(a&amp;z)+pc(b&amp;x))%2==0:continue
+          xx=x^a;zz=z^b
+          exp=(pc(a&amp;b)+pc(x&amp;z)-pc(xx&amp;zz)+2*pc(b&amp;x))%4
+          sig=1 if exp==1 else -1
+          key,s=ckey(xx,zz)
+          if s:
+            rr[k]=key;cc[k]=j;vv[k]=s*2*h*sig;k+=1
+    return rr[:k],cc[:k],vv[:k]
+def build(words,t,U,V):
+    if any((int(x)|int(z)).bit_length()&gt;B-2 for x,z in words):
+        raise ValueError(&quot;Pauli word exceeds collision-free packed-key range&quot;)
+    keys,cols,vals=_entries(np.asarray(words,dtype=np.int64),t,U,V)
+    rowsk,inds=np.unique(keys,return_inverse=True)
+    mat=sp.csc_matrix((vals,(inds,cols)),shape=(len(rowsk),len(words)))
+    mat.sum_duplicates();mat.eliminate_zeros()
+    rows=[(int(k)&gt;&gt;B,int(k)&amp;MASK) for k in rowsk]
+    return rows,mat
+</pre>
