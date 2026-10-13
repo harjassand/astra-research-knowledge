@@ -1,0 +1,166 @@
+<!doctype html><meta charset="utf-8"><title>N768 preserved original — multi_certificate.py</title><p>Exact source display; evidence status remains scoped to its card.</p><pre>&quot;&quot;&quot;Exact multivariate response certificate, including physical d uncertainty.
+Uses checked integer limbs with BLAS: every product and absolute partial sum &lt;2**52.
+Axes V,U,d; trial coefficients are partial derivatives at the recorded centre.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from collections import defaultdict
+from pathlib import Path
+import math,json,time,hashlib,argparse,resource
+import numpy as np
+import scipy.sparse as sp
+from fast_algebra import build
+from local_solver import nullspace_columns,reflect
+from prior_exact import integer_matrix,safe_dot
+from multi_solver import indices,predecessor
+from jet_solver import align
+
+def fac(a):return math.prod(math.factorial(int(x)) for x in a)
+def add(a,b):return tuple(x+y for x,y in zip(a,b))
+def inc(a,i):
+ b=list(a);b[i]+=1;return tuple(b)
+def objzero(m,n):return np.zeros((m,n),dtype=object)
+
+def exact_dot(A,B):
+ &quot;&quot;&quot;Return A @ B.T as arbitrary-precision integers, A,B int64.
+ Each limb matrix product is provably exact under IEEE binary64 arithmetic.
+ &quot;&quot;&quot;
+ A=np.asarray(A,dtype=np.int64);B=np.asarray(B,dtype=np.int64)
+ if A.shape[1]!=B.shape[1]:raise ValueError(&#x27;shape&#x27;)
+ n=A.shape[1];out=objzero(len(A),len(B))
+ if not n:return out
+ vmax=max(int(np.max(np.abs(A),initial=0)),int(np.max(np.abs(B),initial=0)))
+ if vmax&gt;=2**62:raise OverflowError(&#x27;input limb range&#x27;)
+ k=max(1,(vmax.bit_length()+13)//14);base=1&lt;&lt;14
+ assert n*(base-1)**2&lt;2**52
+ sa=np.sign(A);sb=np.sign(B);aa=np.abs(A);bb=np.abs(B)
+ al=[np.asarray(((aa&gt;&gt;(14*i))&amp;(base-1))*sa,dtype=np.float64) for i in range(k)]
+ bl=[np.asarray(((bb&gt;&gt;(14*i))&amp;(base-1))*sb,dtype=np.float64) for i in range(k)]
+ for i,x in enumerate(al):
+  if not np.any(x):continue
+  for j,y in enumerate(bl):
+   if not np.any(y):continue
+   v=x@y.T
+   assert np.max(np.abs(v),initial=0)&lt;2**52 and np.all(v==np.rint(v))
+   out+=v.astype(np.int64).astype(object)*(1&lt;&lt;(14*(i+j)))
+ return out
+
+def weighted_gram(A,weights,den=1,B=None,inverse=True,factor=2):
+ if B is None:B=A
+ out=objzero(len(A),len(B));weights=np.asarray(weights,dtype=int)
+ for q in sorted(set(weights)):
+  if not q:
+   assert not np.any(A[:,weights==0]),&#x27;undamped contribution&#x27;
+   continue
+  mask=weights==q;X=exact_dot(A[:,mask],B[:,mask]);mult=F(factor,den*int(q)) if inverse else F(factor*int(q),den)
+  for i in range(len(A)):
+   for j in range(len(B)):out[i,j]+=mult*int(X[i,j])
+ return out
+
+def polydump(p):return [[list(a),str(c)] for a,c in sorted(p.items(),key=lambda z:(sum(z[0]),z[0])) if c]
+def polyload(p):return {tuple(a):F(c) for a,c in p}
+
+def compile_exact(fw,gw,FN,GN,den,inds,params):
+ start=time.perf_counter();t,U,V,d=[F(str(params[k])) for k in [&#x27;t&#x27;,&#x27;U&#x27;,&#x27;V&#x27;,&#x27;d&#x27;]]
+ if t!=1 or d!=2:raise ValueError(&#x27;implemented centre requires t=1,d0=2&#x27;)
+ if len(fw)!=len(set(fw)) or len(gw)!=len(set(gw)):raise ValueError(&#x27;duplicate&#x27;)
+ for parity,words in [(1,fw),(0,gw)]:
+  for x,z in words:
+   assert (x|z)&amp;1 and (x,z)&lt;reflect((x,z))
+   assert x.bit_count()%2==0 and z.bit_count()%2==1 and (x&amp;z).bit_count()%2==parity
+   if (x|z).bit_length()&gt;18:raise ValueError(&#x27;span&#x27;)
+ scale=2*math.lcm(t.denominator,U.denominator,V.denominator)
+ if 3000*max(abs(int(x*scale)) for x in [t,U,V,F(1)])&gt;=2**50:raise ValueError(&#x27;assembly&#x27;)
+ mats=[];rows=[]
+ for words in [fw,gw]:
+  item=[];rws=[]
+  for pars in [(t,U,V),(0,0,1),(0,1,0)]:
+   rr,aa=build(words,*[float(F(x)*scale) for x in pars]);rws.append(rr);item.append(integer_matrix(aa,1))
+  rows.append(rws);mats.append(item)
+ er=sorted(set(gw).union(*map(set,rows[0])));orr=sorted(set(fw)|{(3,1)}|set().union(*map(set,rows[1])))
+ AF,BF,UF=[align(rr,aa,er).astype(np.int64) for rr,aa in zip(rows[0],mats[0])]
+ AG,BG,UG=[align(rr,aa,orr).astype(np.int64) for rr,aa in zip(rows[1],mats[1])]
+ ei={w:i for i,w in enumerate(er)};oi={w:i for i,w in enumerate(orr)};gidx=np.array([ei[w] for w in gw]);fidx=np.array([oi[w] for w in fw])
+ qf=np.array([w[0].bit_count() for w in fw]);qg=np.array([w[0].bit_count() for w in gw]);qe=np.array([w[0].bit_count() for w in er]);qo=np.array([w[0].bit_count() for w in orr])
+ Fa=[np.array([safe_dot(M,a) for a in FN]) for M in [AF,BF,UF]]
+ Ga=[np.array([safe_dot(M,a) for a in GN]) for M in [AG,BG,UG]]
+ assert not np.any(Fa[0][:,qe==0]),&#x27;exact population imbalance&#x27;
+ assert not np.any(Fa[1][:,qe==0]) and not np.any(Fa[2][:,qe==0])
+ assert max(int(np.max(np.abs(x),initial=0)) for x in Fa+Ga)&lt;2**58
+ order=max(map(sum,inds));rinds=indices(order+1);ip={a:i for i,a in enumerate(inds)}
+ RO=np.zeros((len(rinds),len(orr)),dtype=np.int64);RE=np.zeros((len(rinds),len(er)),dtype=np.int64)
+ for k,a in enumerate(rinds):
+  if a in ip:
+   ix=ip[a];RO[k]=Ga[0][ix];RE[k]=Fa[0][ix]
+   RO[k,fidx]+=scale*qf*FN[ix];RE[k,gidx]+=scale*qg*GN[ix]
+  if not any(a):RO[k,oi[(3,1)]]+=scale*den//2
+  for ax,num in enumerate(a):
+   if not num:continue
+   b=predecessor(a,ax)
+   if b not in ip:continue
+   ix=ip[b]
+   if ax&lt;2:RO[k]+=num*Ga[ax+1][ix];RE[k]+=num*Fa[ax+1][ix]
+   else:
+    assert scale%2==0
+    RO[k,fidx]+=num*(scale//2)*qf*FN[ix];RE[k,gidx]+=num*(scale//2)*qg*GN[ix]
+ assert not np.any(RE[:,qe==0]),&#x27;residual population defect&#x27;
+ # Checked limb bounds include all sums and degree factors.
+ assert max(int(np.max(np.abs(RO),initial=0)),int(np.max(np.abs(RE),initial=0)))&lt;2**60
+ print(&#x27;assembled exact residuals&#x27;,RO.shape,RE.shape,flush=True)
+ rd=(scale*den)**2
+ GO=weighted_gram(RO,qo,rd);GE=weighted_gram(RE,qe,rd)
+ print(&#x27;exact residual Grams&#x27;,time.perf_counter()-start,flush=True)
+ SF=weighted_gram(FN,qf,den*den,inverse=False)
+ # g may have undamped coefficients; don&#x27;t require zeros for direct S norm.
+ SG=objzero(len(GN),len(GN))
+ for q in sorted(set(qg)):
+  if q:
+   X=exact_dot(GN[:,qg==q],GN[:,qg==q])
+   for i in range(len(GN)):
+    for j in range(len(GN)):SG[i,j]+=F(2*int(q)*int(X[i,j]),den*den)
+ crosses=[]
+ for X in Fa:
+  Y=exact_dot(X[:,gidx],GN);crosses.append([[F(2*int(c),scale*den*den) for c in row] for row in Y])
+ ph=defaultdict(F);jix=fw.index((3,1))
+ for i,a in enumerate(inds):
+  ph[a]+=F(-8*int(FN[i,jix]),den*fac(a))
+  for j,b in enumerate(inds):
+   ab=add(a,b);ff=fac(a)*fac(b)
+   ph[ab]+=F(4,ff)*(-SF[i,j]+SG[i,j]+2*crosses[0][i][j])
+   ph[inc(ab,2)]+=F(2,ff)*(-SF[i,j]+SG[i,j])
+   ph[inc(ab,0)]+=F(8,ff)*crosses[1][i][j]
+   ph[inc(ab,1)]+=F(8,ff)*crosses[2][i][j]
+ def normpoly(G):
+  p=defaultdict(F)
+  for i,a in enumerate(rinds):
+   for j,b in enumerate(rinds):p[add(a,b)]+=G[i,j]/(fac(a)*fac(b))
+  return p
+ po,pe=normpoly(GO),normpoly(GE)
+ zero=(0,0,0);low=ph[zero]-4*pe[zero];up=ph[zero]+4*po[zero]
+ # Independent zeroth lower expression in original normalization.
+ jf=F(-int(FN[0,jix]),den)
+ na=weighted_gram(Fa[0][0:1],qe,rd)[0,0]
+ independentlow=4*(2*jf-SF[0,0]-na)
+ assert low==independentlow,(low,independentlow)
+ W=max((x|z).bit_length() for x,z in er+orr)
+ out=dict(parameters={k:str(F(str(params[k]))) for k in params},axes=[&#x27;V&#x27;,&#x27;U&#x27;,&#x27;d&#x27;],order=order,trial_indices=[list(a) for a in inds],residual_indices=[list(a) for a in rinds],denominator=str(den),assembly_scale=scale,f_basis=len(fw),g_basis=len(gw),commutator_nnz=sum(x.nnz for x in [AF,AG,BF,BG,UF,UG]),full_output_span=W,min_ring_size=2*W+1,balance_exact=True,residual_odd_gram_exact=[[str(c) for c in row] for row in GO],residual_even_gram_exact=[[str(c) for c in row] for row in GE],corrected_D_poly=polydump(ph),residual_odd_norm_poly=polydump(po),residual_even_norm_poly=polydump(pe),D_interval_exact=[str(low),str(up)],D_interval_float=[float(low),float(up)],residual_norm_squared_at_centre=[float(GO[k,k]+GE[k,k]) for k in range(len(rinds))],verification_seconds=time.perf_counter()-start,peak_rss_KiB=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+ return out
+
+def round_file(path,out,bits=34):
+ p=Path(path);data=np.load(p);pars=json.loads(p.with_suffix(&#x27;.json&#x27;).read_text())[&#x27;parameters&#x27;];fw=[tuple(map(int,w)) for w in data[&#x27;fw&#x27;]];gw=[tuple(map(int,w)) for w in data[&#x27;gw&#x27;]];inds=[tuple(map(int,a)) for a in data[&#x27;indices&#x27;]]
+ er,A=build(fw,1.,0.,0.);N,ent,free,rank=nullspace_columns(A[[w[0]==0 for w in er],:].tocsc())
+ lcm=math.lcm(*(x.denominator for i,j,x in ent));den=(1&lt;&lt;bits)*lcm
+ FN=[]
+ for u in data[&#x27;us&#x27;]:
+  vals=np.rint(u*(1&lt;&lt;bits)).astype(np.int64);nums=[0]*len(fw)
+  for i,j,x in ent:nums[i]+=int(x*lcm)*int(vals[j])
+  FN.append(np.array(nums,dtype=np.int64))
+ GN=np.rint(data[&#x27;gs&#x27;]*den).astype(np.int64);FN=np.array(FN)
+ rec=compile_exact(fw,gw,FN,GN,den,inds,pars)
+ out=Path(out);out.parent.mkdir(exist_ok=True,parents=True)
+ np.savez_compressed(str(out)+&#x27;.npz&#x27;,fw=np.array(fw),gw=np.array(gw),FN=FN,GN=GN,den=np.array([den],dtype=np.int64),indices=np.array(inds,dtype=np.int64),params=np.array([str(F(str(pars[k]))) for k in [&#x27;t&#x27;,&#x27;U&#x27;,&#x27;V&#x27;,&#x27;d&#x27;]]))
+ rec.update(rounding_bits=bits,witness_sha256=hashlib.sha256(out.with_suffix(&#x27;.npz&#x27;).read_bytes()).hexdigest(),witness_file=out.with_suffix(&#x27;.npz&#x27;).name)
+ out.with_suffix(&#x27;.json&#x27;).write_text(json.dumps(rec,indent=2));print(&#x27;certificate&#x27;,rec[&#x27;D_interval_float&#x27;],rec[&#x27;verification_seconds&#x27;],flush=True);return rec
+if __name__==&#x27;__main__&#x27;:
+ p=argparse.ArgumentParser();p.add_argument(&#x27;path&#x27;);p.add_argument(&#x27;out&#x27;);p.add_argument(&#x27;--bits&#x27;,type=int,default=34);a=p.parse_args();round_file(a.path,a.out,a.bits)
+</pre>

@@ -1,0 +1,92 @@
+"""Independent finite algebra, polynomial, sensing, and exact-arithmetic checks.
+These are diagnostics, not independent proof review or laboratory observations.
+"""
+from pathlib import Path
+from fractions import Fraction as F
+import itertools,json,math,time
+import numpy as np
+import scipy.linalg as la
+import sympy as sy
+from multi_certificate import exact_dot
+from multi_poly import *
+from certify_policy import sensor_polynomial,sensor_choice,exp_interval
+ROOT=Path(__file__).resolve().parent.parent
+
+def run():
+ start=time.perf_counter();rng=np.random.default_rng(132610);cnt={};worst=0.
+ for bits in [8,16,35,52,60]:
+  for n in [1,7,137,1001]:
+   a=rng.integers(-(1<<bits),(1<<bits),size=(3,n),dtype=np.int64);b=rng.integers(-(1<<bits),(1<<bits),size=(4,n),dtype=np.int64)
+   got=exact_dot(a,b);want=a.astype(object)@b.astype(object).T;assert np.array_equal(got,want)
+ cnt['exact_integer_limb_products']=20
+ # Independent exact, degenerate, four-dimensional parity model.
+ v,u,d=sy.symbols('v u d',real=True);lam=sy.Rational(1,7)
+ C=sy.Matrix([[u,v+1],[v,2*(v+1)]]) # variable population column would violate balance
+ # Keep the population coupling fixed, and vary the damped column instead.
+ C=sy.Matrix([[u+v,1],[u-v,2]])
+ A=sy.zeros(4);A[:2,2:]=C;A[2:,:2]=-C.T
+ S0=sy.diag(2,2,4,0);B=d*S0/2+A+lam*sy.eye(4);R=sy.diag(1,1,-1,-1);J=sy.Matrix([1,0,0,0])
+ f=(1+v/9+u/13+d/17)*sy.Matrix([2,-1,0,0]);g=sy.Matrix([0,0,sy.Rational(1,11)+u*v/19,sy.Rational(1,23)+d/29]);y=f+g
+ assert (A*f)[3]==0
+ Fout=2*(J.T*y)[0]-(y.T*R*B*y)[0];res=B*y-J
+ err=(J.T*B.inv()*J)[0]-Fout
+ rhs=(res.T*R*B.inv()*res)[0]
+ assert sy.cancel(err-rhs)==0
+ cnt['symbolic_error_identity_with_physical_noise_parameter']=1
+ # Numerically check mixed derivative bounds from the exact rational expression.
+ vars=[v,u,d];Sref=np.asarray(S0+lam*sy.eye(4),float);Sinv=la.fractional_matrix_power(Sref,-.5)
+ Ks=[Sinv@np.asarray(B.diff(z),float)@Sinv for z in vars];ws=[la.norm(k,2) for k in Ks]
+ derivatives=[a for a in itertools.product(range(3),repeat=3) if sum(a)<=2]
+ ef={a:sy.lambdify(vars,(sy.diff(err,*[q for q,n in zip(vars,a) for _ in range(n)]) if sum(a) else err),'numpy') for a in derivatives}
+ rf={a:sy.lambdify(vars,(sy.diff(res,*[q for q,n in zip(vars,a) for _ in range(n)]) if sum(a) else res),'numpy') for a in derivatives}
+ for _ in range(24):
+  pt=(rng.uniform(.2,1.4),rng.uniform(1.,3.),rng.uniform(1.8,2.2));beta=min(1,pt[2]/2)
+  q={a:la.norm(Sinv@np.asarray(fun(*pt),float).reshape(4)) for a,fun in rf.items()}
+  for alpha in derivatives:
+   boundval=0.
+   for a in derivatives:
+    if any(x>y for x,y in zip(a,alpha)):continue
+    for b in derivatives:
+     c=tuple(x-y-z for x,y,z in zip(alpha,a,b))
+     if min(c)<0:continue
+     multi=math.prod(math.factorial(x) for x in alpha)/(math.prod(math.factorial(x) for x in a)*math.prod(math.factorial(x) for x in b)*math.prod(math.factorial(x) for x in c))
+     boundval+=multi*math.factorial(sum(c))*beta**(-sum(c)-1)*math.prod(w**i for w,i in zip(ws,c))*q[a]*q[b]
+   val=abs(float(ef[alpha](*pt)));assert val<=boundval*(1+1e-10)+1e-10;worst=max(worst,val/boundval)
+ cnt['mixed_derivative_checks']=24*len(derivatives)
+ # Exact six-site classical diagonal-energy difference, including NNN terms.
+ def energy(occ,U,V):
+  z={i:F(1)-2*n for i,n in occ.items()};return U/4*sum(z[i]*z[i+1] for i in range(-2,3))+V/4*sum(z[i]*z[i+2] for i in range(-2,2))
+ for U in [F(39,10),F(4),F(41,10)]:
+  for V in [F(0),F(7,3),F(3)]:
+   a={-2:1,-1:1,0:1,1:0,2:0,3:0};b=dict(a);b[0],b[1]=0,1
+   assert energy(a,U,V)-energy(b,U,V)==U
+ cnt['physical_detuning_identities']=9
+ # Logical Ramsey density matrix versus direct exponential Lindbladian.
+ pol=json.loads((ROOT/'results/policy_certificate.json').read_text());nr=F(pol['readout_cos']);ns=F(pol['readout_sin']);psi=math.atan2(float(ns),float(nr));phi=psi-2
+ X=np.array([[0,1],[1,0]],complex);Y=np.array([[0,-1j],[1j,0]],complex);Z2=np.diag([1,-1]);I=np.eye(2)
+ # Measurement sign selected so Tr(O rho)=cos(U*tau+phi) * exp(-d*tau).
+ O=math.cos(phi)*X-math.sin(phi)*Y;rho=np.ones((2,2),complex)/2
+ for _ in range(40):
+  U=rng.uniform(3.9,4.1);d=rng.uniform(1.9,2.1);H=U*Z2/2
+  LL=-1j*(np.kron(I,H)-np.kron(H.T,I))+(d/2)*(np.kron(Z2,Z2)-np.eye(4))
+  rt=(la.expm(LL/2)@rho.reshape(-1,order='F')).reshape(2,2,order='F');mean=np.trace(O@rt).real
+  target=math.exp(-d/2)*math.cos(U/2+phi);assert abs(mean-target)<2e-14
+ cnt['logical_dephasing_measurement_checks']=40
+ # Polynomial composition bounds and sensor cubic remainder.
+ central=json.loads((ROOT/'results/main_multi_exact.json').read_text());cert=Certificate(central);cu,cd,norm,k=sensor_choice(cert);p,_,_=sensor_polynomial(cu,cd,norm,k)
+ E=2*norm*F(10,9)*F(1,10)**4/F(24)
+ for _ in range(200):
+  a=F(int(rng.integers(-100,101)),1000);b=F(int(rng.integers(-100,101)),1000)
+  exact=2*float(norm)*(math.exp(-float(b)/2)*(float(nr)*math.cos(float(a)/2)-float(ns)*math.sin(float(a)/2))-float(nr))
+  assert abs(exact-float(evalpoly(p,[0,a,b])))<float(E)
+ cnt['sensor_remainder_points']=200
+ # Cubic reduced polynomial versus direct finite trial operators on an acquired small dictionary.
+ # Local algebra and full Gram construction are regenerated separately by verify_multi.py.
+ for rpoly in [cert.p]+cert.q:
+  box=[(F(-1,5),F(1,5)),(F(-1,10),F(1,10)),(F(-1,10),F(1,10))];lo,hi=bound(rpoly,box)
+  for _ in range(50):
+   pt=[a+(b-a)*F(int(rng.integers(0,101)),100) for a,b in box];assert lo<=evalpoly(rpoly,pt)<=hi
+ cnt['exact_rational_polynomial_enclosure_points']=200
+ out=dict(counts=cnt,largest_finite_derivative_error_bound_ratio=worst,seconds=time.perf_counter()-start,evidence='Exact finite algebra and separately constructed finite diagnostics; no proof of the infinite-dimensional argument, no laboratory experiment.')
+ (ROOT/'results/structural_checks.json').write_text(json.dumps(out,indent=2));print(json.dumps(out,indent=2))
+if __name__=='__main__':run()

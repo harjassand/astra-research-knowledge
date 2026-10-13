@@ -1,0 +1,97 @@
+<!doctype html><meta charset="utf-8"><title>N768 preserved original — jet_solver.py</title><p>Exact source display; evidence status remains scoped to its card.</p><pre>&quot;&quot;&quot;Finite, exactly balance-parametrized response-jet discovery.
+Floating solves are proposals only; jet_certificate independently checks rational data.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json, time, math, argparse, resource, sys
+from pathlib import Path
+import numpy as np
+import scipy.sparse as sp
+import scipy.sparse.linalg as sla
+from fast_algebra import build,basis
+from local_solver import nullspace_columns
+
+def align(rows,A,target):
+    ri={w:i for i,w in enumerate(target)}
+    co=A.tocoo();rr=np.array([ri[rows[i]] for i in co.row],dtype=np.int32)
+    return sp.csc_matrix((co.data,(rr,co.col)),shape=(len(target),A.shape[1]))
+
+class JetSolver:
+ def __init__(self,fw,gw,U=4.,V=1.,d=2.,t=1.):
+    start=time.perf_counter();self.fw=fw;self.gw=gw;self.params=dict(U=U,V=V,d=d,t=t)
+    rAF,AF=build(fw,t,U,V);rAG,AG=build(gw,t,U,V)
+    rBF,BF=build(fw,0.,0.,1.);rBG,BG=build(gw,0.,0.,1.)
+    self.er=sorted(set(rAF)|set(rBF)|set(gw));self.orr=sorted(set(rAG)|set(rBG)|set(fw)|{(3,1)})
+    self.AF=align(rAF,AF,self.er);self.BF=align(rBF,BF,self.er)
+    self.AG=align(rAG,AG,self.orr);self.BG=align(rBG,BG,self.orr)
+    eidx={w:i for i,w in enumerate(self.er)};oidx={w:i for i,w in enumerate(self.orr)}
+    self.gidx=np.array([eidx[w] for w in gw]);self.fidx=np.array([oidx[w] for w in fw])
+    self.qf=np.array([w[0].bit_count()*d/2 for w in fw]);self.qg=np.array([w[0].bit_count()*d/2 for w in gw])
+    self.qe=np.array([w[0].bit_count()*d/2 for w in self.er]);self.qo=np.array([w[0].bit_count()*d/2 for w in self.orr])
+    self.ie=np.zeros_like(self.qe);np.divide(1,self.qe,out=self.ie,where=self.qe&gt;0)
+    self.io=1/self.qo
+    self.N,self.entries,self.free,self.rank=nullspace_columns(self.AF[self.qe==0,:].tocsc())
+    self.KF=sla.LinearOperator((self.N.shape[1],self.N.shape[1]),matvec=lambda u:self.N.T@(self.qf*(self.N@u)+self.AF.T@(self.ie*(self.AF@(self.N@u)))))
+    self.KG=sla.LinearOperator((len(gw),len(gw)),matvec=lambda g:self.qg*g+self.AG.T@(self.io*(self.AG@g)))
+    AN=self.AF@self.N
+    self.df=np.asarray(self.N.power(2).T@self.qf+AN.power(2).T@self.ie).ravel()
+    self.dg=self.qg+np.asarray(self.AG.power(2).T@self.io).ravel()
+    assert min(self.df)&gt;0 and min(self.dg)&gt;0
+    self.PF=sla.LinearOperator(self.KF.shape,matvec=lambda x:x/self.df)
+    self.PG=sla.LinearOperator(self.KG.shape,matvec=lambda x:x/self.dg)
+    self.j=np.zeros(len(self.orr));self.j[oidx[(3,1)]]=-t/2
+    self.assembly_seconds=time.perf_counter()-start
+ def solve(self,order=2,tol=1e-10,output=None):
+    start=time.perf_counter(); fs=[];gs=[];us=[];logs=[]
+    for k in range(order+1):
+      step=time.perf_counter()
+      if k==0: srcO=-self.j;srcE=np.zeros(len(self.er))
+      else: srcO=k*(self.BG@gs[-1]);srcE=k*(self.BF@fs[-1])
+      rhsF=-self.N.T@(srcO[self.fidx]+self.AF.T@(self.ie*srcE))
+      rhsG=-(self.AG.T@(self.io*srcO)+srcE[self.gidx])
+      its=[0,0]
+      u,info=sla.cg(self.KF,rhsF,M=self.PF,rtol=tol,atol=0,maxiter=20000,callback=lambda x:its.__setitem__(0,its[0]+1))
+      if info:raise RuntimeError((&#x27;f&#x27;,k,info))
+      g,info=sla.cg(self.KG,rhsG,M=self.PG,rtol=tol,atol=0,maxiter=20000,callback=lambda x:its.__setitem__(1,its[1]+1))
+      if info:raise RuntimeError((&#x27;g&#x27;,k,info))
+      f=self.N@u
+      p=self.AG@g+srcO;p[self.fidx]+=self.qf*f
+      q=self.AF@f+srcE;q[self.gidx]+=self.qg*g
+      assert np.max(np.abs(q[self.qe==0]),initial=0)&lt;1e-10
+      eta2=2*(p@(self.io*p)+q@(self.ie*q))
+      fs.append(f);gs.append(g);us.append(u)
+      rec=dict(order=k,q_squared=float(eta2),f_norm=float(2*f@(self.qf*f)),g_norm=float(2*g@(self.qg*g)),iterations=its,seconds=time.perf_counter()-step)
+      logs.append(rec);print(json.dumps(rec),flush=True)
+    # Derivatives of 2&lt;j,f&gt;-&lt;f,Sf&gt;+&lt;g,Sg&gt;+2&lt;Af,g&gt;.
+    vals=[]
+    for k in range(order+1):
+      ans=4*self.j[self.fidx]@fs[k]
+      for a in range(k+1):
+        b=k-a;c=math.comb(k,a)
+        ans+=c*(-2*fs[a]@(self.qf*fs[b])+2*gs[a]@(self.qg*gs[b])+4*(self.AF@fs[a])[self.gidx]@gs[b])
+      if k:
+        for a in range(k):
+          b=k-1-a;c=k*math.comb(k-1,a)
+          ans+=c*4*(self.BF@fs[a])[self.gidx]@gs[b]
+      vals.append(float(4*ans))
+    qs=[math.sqrt(l[&#x27;q_squared&#x27;]) for l in logs];w=2/self.params[&#x27;d&#x27;];err=[]
+    for k in range(order+1):
+      z=0.
+      for a in range(k+1):
+       for b in range(k-a+1):
+        c=k-a-b;z+=math.factorial(k)*qs[a]*qs[b]*w**c/(math.factorial(a)*math.factorial(b))
+      err.append(4*z)
+    result=dict(parameters=self.params,assembly_seconds=self.assembly_seconds,solve_seconds=time.perf_counter()-start,f_basis=len(self.fw),g_basis=len(self.gw),constraint_rank=self.rank,nnz=int(self.AF.nnz+self.AG.nnz+self.BF.nnz+self.BG.nnz),jets=logs,D_jet_centres=vals,D_jet_error_estimates=err,peak_rss_KiB=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    print(json.dumps(result,indent=2),flush=True)
+    if output:
+      p=Path(output);p.parent.mkdir(exist_ok=True,parents=True)
+      np.savez_compressed(str(p)+&#x27;.npz&#x27;,fw=np.array(self.fw,dtype=np.int64),gw=np.array(self.gw,dtype=np.int64),fs=np.array(fs),gs=np.array(gs),us=np.array(us))
+      Path(str(p)+&#x27;.json&#x27;).write_text(json.dumps(result,indent=2))
+    return result
+
+if __name__==&#x27;__main__&#x27;:
+ p=argparse.ArgumentParser();p.add_argument(&#x27;--basis-file&#x27;);p.add_argument(&#x27;--L&#x27;,type=int,default=8);p.add_argument(&#x27;--V&#x27;,type=float,default=2.21875);p.add_argument(&#x27;--order&#x27;,type=int,default=2);p.add_argument(&#x27;--out&#x27;,required=True);a=p.parse_args()
+ if a.basis_file:
+  q=np.load(a.basis_file);fw=[tuple(map(int,w)) for w in q[&#x27;fw&#x27;]];gw=[tuple(map(int,w)) for w in q[&#x27;gw&#x27;]]
+ else:fw=basis(a.L,1);gw=basis(a.L,0)
+ s=JetSolver(fw,gw,V=a.V);s.solve(a.order,output=a.out)
+</pre>

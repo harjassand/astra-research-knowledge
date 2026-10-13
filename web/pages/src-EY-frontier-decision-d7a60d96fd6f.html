@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8"><title>N768 preserved original — build_anchors.py</title><p>Exact source display; evidence status remains scoped to its card.</p><pre>&quot;&quot;&quot;Construct all global-design anchor packets without importing prior response data.
+The two large anchors reuse the dictionary acquired by the fresh central run; its
+acquisition cost is charged to that run. Other anchors enumerate span-eight words.
+&quot;&quot;&quot;
+import time,sys,json,gc,resource
+from pathlib import Path
+start=time.perf_counter()
+import numpy as np
+from fast_algebra import basis
+from jet_solver import JetSolver
+from jet_certificate import round_file
+root=Path(sys.argv[1]);root.mkdir(parents=True,exist_ok=True)
+main=np.load(Path(sys.argv[2]))
+largef=[tuple(map(int,w)) for w in main[&#x27;fw&#x27;]];largeg=[tuple(map(int,w)) for w in main[&#x27;gw&#x27;]]
+records=[]
+for name,V,large in [(&#x27;V0&#x27;,0.,False),(&#x27;Vhalf&#x27;,.5,False),(&#x27;V1&#x27;,1.,False),(&#x27;V1half&#x27;,1.5,False),(&#x27;V3&#x27;,3.,False),(&#x27;V2&#x27;,2.,True),(&#x27;V2half&#x27;,2.5,True)]:
+ t=time.perf_counter();fw,gw=(largef,largeg) if large else (basis(8,1),basis(8,0))
+ solver=JetSolver(fw,gw,V=V);solver.solve(0,output=root/(name+&#x27;_discovery&#x27;))
+ rec=round_file(root/(name+&#x27;_discovery.npz&#x27;),36,root/(name+&#x27;.npz&#x27;))
+ records.append(dict(name=name,parameter=rec[&#x27;parameters&#x27;][&#x27;V&#x27;],large=large,seconds=time.perf_counter()-t,width=rec[&#x27;D_width_float&#x27;],interval=rec[&#x27;D_interval_float&#x27;],sha256=rec[&#x27;witness_sha256&#x27;]))
+ del solver;gc.collect()
+report=dict(seconds=time.perf_counter()-start,peak_rss_KiB=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,records=records,notes=&#x27;All anchor response coefficients newly solved. Two dictionaries reuse the fully charged fresh central dictionary; no prior response packet. Total includes imports, assembly, all solves, dyadic rounding and exact checks, not central dictionary acquisition.&#x27;)
+(root/&#x27;benchmark.json&#x27;).write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2),flush=True)
+</pre>

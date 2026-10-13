@@ -1,0 +1,89 @@
+<!doctype html><meta charset="utf-8"><title>N768 preserved original — acquisition_protocol.py</title><p>Exact source display; evidence status remains scoped to its card.</p><pre>&quot;&quot;&quot;Local measurement-to-control protocol and labelled synthetic data checks.
+No connected laboratory instrument is used. Sampling here is synthetic.
+Optional coarse calibration includes its own shot budget and can be inconclusive.
+&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction as F
+import math,json,time
+import numpy as np
+from certify_policy import exp_interval,log_interval
+from multi_poly import Certificate
+ROOT=Path(__file__).resolve().parent.parent
+
+def sqrt_interval(x,bits=100):
+ x=F(x);assert x&gt;=0;s=1&lt;&lt;bits;k=math.isqrt((x.numerator*s*s)//x.denominator)
+ assert F(k*k,s*s)&lt;=x&lt;=F((k+1)**2,s*s)
+ return F(k,s),F(k+1,s)
+
+def atan_interval(x,terms=80):
+ x=F(x)
+ if x&lt;0:
+  lo,hi=atan_interval(-x,terms);return -hi,-lo
+ if x&gt;4:raise ValueError(&#x27;outside supported calibration sector&#x27;)
+ rlo,rhi=sqrt_interval(1+x*x);zlo=x/(1+rhi);zhi=x/(1+rlo)
+ def at(z):
+  ss=sum(((-1)**j*z**(2*j+1)/F(2*j+1) for j in range(terms)),F());rem=z**(2*terms+1)/F(2*terms+1)
+  return ss-rem,ss+rem
+ return 2*at(zlo)[0],2*at(zhi)[1]
+
+def coarse_calibrate(plus_x,plus_y,shots_each=1&lt;&lt;20):
+ if shots_each!=1&lt;&lt;20:raise ValueError(&#x27;the specified confidence budget uses 2^20 per axis&#x27;)
+ for n in [plus_x,plus_y]:
+  if not isinstance(n,int) or not 0&lt;=n&lt;=shots_each:raise ValueError(&#x27;invalid count&#x27;)
+ x=F(2*plus_x-shots_each,shots_each);y=F(2*plus_y-shots_each,shots_each)
+ if x&lt;=0:return dict(accepted=False,reason=&#x27;quadrature outside calibrated phase sector&#x27;)
+ try:alo,ahi=atan_interval(y/x)
+ except ValueError:return dict(accepted=False,reason=&#x27;quadrature outside supported ratio&#x27;)
+ rlo,rhi=sqrt_interval(x*x+y*y)
+ if rlo&lt;=0:return dict(accepted=False,reason=&#x27;insufficient contrast&#x27;)
+ loglo=log_interval(rlo,40)[0];loghi=log_interval(rhi,40)[1]
+ rad=F(79,1000)
+ Ui=(8*alo-rad,8*ahi+rad);di=(-8*loghi-rad,-8*loglo+rad)
+ def outward(I):
+  lo,hi=I;s=10**12
+  return (F((lo*s).numerator//(lo*s).denominator,s),F(-((-hi*s).numerator//(-hi*s).denominator),s))
+ Ui,di=outward(Ui),outward(di)
+ accepted=(Ui[0]&gt;=F(39,10) and Ui[1]&lt;=F(41,10) and di[0]&gt;=F(19,10) and di[1]&lt;=F(21,10))
+ return dict(accepted=accepted,U_interval=list(map(str,Ui)),d_interval=list(map(str,di)),mean_x=str(x),mean_y=str(y))
+
+def select_control(plus_count,shots,certificate=None):
+ rec=certificate or json.loads((ROOT/&#x27;results/policy_certificate.json&#x27;).read_text())
+ if shots not in [int(a[&#x27;shots&#x27;]) for a in rec[&#x27;policy_certificates&#x27;]]:raise ValueError(&#x27;unsupported shot budget&#x27;)
+ if not isinstance(plus_count,int) or not 0&lt;=plus_count&lt;=shots:raise ValueError(&#x27;invalid count&#x27;)
+ mean=F(2*plus_count-shots,shots)
+ raw=F(rec[&#x27;control_centre&#x27;])+F(rec[&#x27;gain_rounded&#x27;])*mean-F(rec[&#x27;offset&#x27;])
+ q=round(raw*2048);return max(F(0),min(F(3),F(q,2048)))
+
+def run():
+ start=time.perf_counter();pol=json.loads((ROOT/&#x27;results/policy_certificate.json&#x27;).read_text());rng=np.random.default_rng(20261013)
+ # Exact optional-coarse budget, starting only from U in [0,8], d in [1,4].
+ Nc=1&lt;&lt;20;hc=F(1,250);exc=F(Nc)*hc**2/2
+ assert exp_interval(exc)[0]&gt;4000 # four one-sided events: failure &lt;.001
+ assert exp_interval(F(1,2))[1]&lt;F(5,3) # true contrast exp(-d/8) &gt; .6
+ coarse_bias=F(1,10000);rho=F(5799,10**6);assert rho**2&gt;2*(hc+coarse_bias)**2
+ parameter_error=8*rho/(F(3,5)-rho);assert parameter_error&lt;F(79,1000)
+ for item in pol[&#x27;policy_certificates&#x27;]:
+  h=F(item[&#x27;hoeffding_radius&#x27;]);N=int(item[&#x27;shots&#x27;])
+  assert exp_interval(F(N)*h*h/2)[0]&gt;250 # decision-stage failure &lt;.008
+ # One synthetic coarse calibration, not a measurement of a physical device.
+ rx=math.exp(-2/8)*math.cos(4/8);ry=math.exp(-2/8)*math.sin(4/8)
+ px=int(rng.binomial(Nc,(1+rx)/2));py=int(rng.binomial(Nc,(1+ry)/2));coarse=coarse_calibrate(px,py,Nc)
+ # Good-event demonstration at several unknown parameters; no exact D or optimum is used.
+ c=Certificate(json.loads((ROOT/&#x27;results/main_multi_exact.json&#x27;).read_text()));cases=[]
+ psi=math.atan2(float(F(pol[&#x27;readout_sin&#x27;])),float(F(pol[&#x27;readout_cos&#x27;])))
+ for U,d in [(3.9,1.9),(3.9,2.1),(4.,2.),(4.1,1.9),(4.1,2.1)]:
+  mean=math.exp(-d/2)*math.cos((U-4)/2+psi)
+  for item in pol[&#x27;policy_certificates&#x27;]:
+   n=int(item[&#x27;shots&#x27;]);plus=int(rng.binomial(n,(1+mean)/2));V=select_control(plus,n,pol);observed=(2*plus-n)/n
+   good=abs(observed-mean)&lt;=float(F(item[&#x27;hoeffding_radius&#x27;]))
+   assert good
+   rr=c.compute([(V-c.centre[0],V-c.centre[0]),(F(str(U))-4,F(str(U))-4),(F(str(d))-2,F(str(d))-2)])
+   g=max(map(abs,rr[&#x27;gradient&#x27;]));mu=F(item[&#x27;curvature_lower&#x27;]);point_bound=g*g/(2*mu)
+   assert point_bound&lt;=F(item[&#x27;regret_upper&#x27;])
+   cases.append(dict(true_U=U,true_d=d,shots=n,synthetic_plus_count=plus,synthetic_mean=observed,control=str(V),good_event=good,model_certified_regret_upper=str(point_bound)))
+ # Single-copy variance optimum within this fixed local probe model.
+ cu,cd=map(F,pol[&#x27;compensation&#x27;]);tau=.5;r=math.exp(-1);var=(float(cu*cu+cd*cd)/r**2-float(cd*cd))/tau**2
+ out=dict(coarse_stage=dict(prior_U=[0,8],prior_d=[1,4],shots_per_axis=Nc,total_shots=2*Nc,interrogation_time=&#x27;1/8&#x27;,native_evolution_time=Nc//4,statistical_failure_less_than=&#x27;1/1000&#x27;,quadrature_statistical_radius=str(hc),quadrature_mean_bias_budget=str(coarse_bias),parameter_error_upper=str(parameter_error),accepted_region_rule=&#x27;Entire outward calibration box must lie inside U=[3.9,4.1], d=[1.9,2.1]. Otherwise return inconclusive.&#x27;,synthetic_observation=coarse),combined_stage_failure_less_than=&#x27;9/1000&#x27;,interpretation=&#x27;P(return an uncertified decision AND accept coarse calibration) &lt;.009 under the broad structural prior. This is not a conditional-on-acceptance probability; no acceptance probability is guaranteed for every true model.&#x27;,synthetic_policy_cases=cases,single_copy_locally_unbiased_variance=float(var),seconds=time.perf_counter()-start,evidence=&#x27;Synthetic counts and deterministic budget checks only; no experiment was performed.&#x27;)
+ (ROOT/&#x27;results/acquisition_checks.json&#x27;).write_text(json.dumps(out,indent=2));print(json.dumps(dict(coarse_accepted=coarse[&#x27;accepted&#x27;],synthetic_cases=len(cases),locally_optimal_variance=var,seconds=out[&#x27;seconds&#x27;]),indent=2))
+if __name__==&#x27;__main__&#x27;:run()
+</pre>

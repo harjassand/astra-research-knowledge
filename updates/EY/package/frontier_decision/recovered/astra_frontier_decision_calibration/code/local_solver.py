@@ -1,0 +1,158 @@
+"""Translation-orbit Pauli Galerkin discovery; exact certificates handled separately.
+The Pauli orbit pair w-reflect(w) has covariance norm squared 2.
+No finite periodic quantum Hilbert space is constructed.
+"""
+from __future__ import annotations
+import itertools, math, time, json, argparse
+from collections import defaultdict
+from fractions import Fraction
+from pathlib import Path
+import numpy as np
+import scipy.sparse as sp
+import scipy.sparse.linalg as sla
+
+Word=tuple[int,int]
+
+def canon(x:int,z:int)->Word:
+    a=x|z
+    if not a: return (0,0)
+    s=(a & -a).bit_length()-1
+    return x>>s,z>>s
+
+def reflect(w:Word)->Word:
+    x,z=w; L=(x|z).bit_length()
+    return (int(f'{x:0{L}b}'[::-1],2), int(f'{z:0{L}b}'[::-1],2))
+
+def orient(w:Word):
+    r=reflect(w)
+    if w==r: return None,0
+    return (w,1) if w<r else (r,-1)
+
+def basis(L:int,parity:int)->list[Word]:
+    out=[]
+    # reflection odd, even flip parity, odd global-X parity
+    for ell in range(2,L+1):
+      for p in itertools.product(range(4), repeat=ell):
+        if p[0]==0 or p[-1]==0: continue
+        nx=p.count(1); ny=p.count(2); nz=p.count(3)
+        if (nx+ny)%2 or ny%2!=parity or (ny+nz)%2!=1: continue
+        x=sum(1<<i for i,a in enumerate(p) if a in (1,2))
+        z=sum(1<<i for i,a in enumerate(p) if a in (2,3))
+        w=(x,z)
+        if w<reflect(w): out.append(w)
+    return sorted(out,key=lambda w:((w[0]|w[1]).bit_length(),w))
+
+def A_pair(w:Word,t=1.,U=4.,V=1.)->dict[Word,float]:
+    # H=-t/2(XX+YY)+U/4 ZZ+V/4 ZIZ; A=-i[H,.]
+    x,z=w; L=(x|z).bit_length(); x<<=2;z<<=2
+    out=defaultdict(float)
+    terms=[(3,0,-t/2,1),(3,3,-t/2,1),(0,3,U/4,1),(0,5,V/4,2)]
+    for a,b,h,R in terms:
+      if not h: continue
+      for shift in range(2-R,L+2):
+        aa=a<<shift;bb=b<<shift
+        if ((aa&z).bit_count()+(bb&x).bit_count())%2==0: continue
+        xx=x^aa;zz=z^bb
+        exponent=((aa&bb).bit_count()+(x&z).bit_count()-(xx&zz).bit_count()+2*(bb&x).bit_count())%4
+        sign=1 if exponent==1 else -1
+        v,s=orient(canon(xx,zz))
+        if s: out[v]+=s*2*h*sign
+    return {v:c for v,c in out.items() if c}
+
+def build(words,t,U,V):
+    dcts=[A_pair(w,t,U,V) for w in words]
+    rows=sorted(set().union(*(a.keys() for a in dcts)),key=lambda w:((w[0]|w[1]).bit_length(),w))
+    ri={w:i for i,w in enumerate(rows)}
+    ii=[];jj=[];vv=[]
+    for j,col in enumerate(dcts):
+      for w,v in col.items(): ii.append(ri[w]);jj.append(j);vv.append(v)
+    A=sp.csc_matrix((vv,(ii,jj)),shape=(len(rows),len(words)))
+    return rows,A
+
+def nullspace_columns(D:sp.csc_matrix):
+    """Exact sparse column elimination. D has rational entries represented exactly as floats.
+    Returns sparse rational-dyadic basis N with D*N=0; no tiny singular-value decision.
+    """
+    pivots=[]; pivotdict={}; free=[]; entries=[]
+    for j in range(D.shape[1]):
+      start,end=D.indptr[j:j+2]
+      v={int(i):Fraction(float(x)) for i,x in zip(D.indices[start:end],D.data[start:end]) if x}
+      rep=defaultdict(Fraction) # D_j=sum rep[p] D_p + remaining
+      for row,red,comb in (pivots if v else []):
+        if row not in v: continue
+        c=v[row]
+        for i,x in red.items():
+          v[i]=v.get(i,Fraction())-c*x
+          if not v[i]: del v[i]
+        for p,x in comb.items(): rep[p]+=c*x
+      if v:
+        row=min(v); a=v[row]
+        red={i:x/a for i,x in v.items()}
+        comb={j:1/a}
+        for p,x in rep.items():
+          if x: comb[p]=-x/a
+        pivots.append((row,red,comb));pivotdict[j]=row
+      else:
+        k=len(free);free.append(j);entries.append((j,k,Fraction(1)))
+        for p,x in rep.items():
+          if x: entries.append((p,k,-x))
+    N=sp.csc_matrix(([float(x) for i,j,x in entries],([i for i,j,x in entries],[j for i,j,x in entries])),shape=(D.shape[1],len(free)))
+    err=D@N
+    assert not err.nnz or np.max(np.abs(err.data))<1e-12
+    return N,entries,free,len(pivots)
+
+from fast_algebra import basis, build
+
+def solve(L,t=1.,U=4.,V=1.,d=2.,tol=1e-11,output=None,fw=None,gw=None,tag=None):
+    now=time.perf_counter(); fw=basis(L,1) if fw is None else fw;gw=basis(L,0) if gw is None else gw
+    er,AF=build(fw,t,U,V);orr,AG=build(gw,t,U,V)
+    if (3,1) not in orr:
+      orr.append((3,1));AG=sp.vstack([AG,sp.csc_matrix((1,len(gw)))],format="csc")
+    print('built',L,len(fw),len(gw),AF.nnz+AG.nnz,'time',time.perf_counter()-now,flush=True)
+    qf=np.array([w[0].bit_count()*d/2 for w in fw]);qg=np.array([w[0].bit_count()*d/2 for w in gw])
+    qe=np.array([w[0].bit_count()*d/2 for w in er]);qo=np.array([w[0].bit_count()*d/2 for w in orr])
+    off=qe>0; AO=AF[off,:].tocsc();D=AF[~off,:].tocsc()
+    N,entries,free,rank=nullspace_columns(D)
+    print('balanced',L,'rank',rank,'Nnnz',N.nnz,'time',time.perf_counter()-now,flush=True)
+    invqe=1/qe[off]
+    def kfull(x): return qf*x+AO.T@(invqe*(AO@x))
+    def kmv(u):return N.T@kfull(N@u)
+    K=sla.LinearOperator((N.shape[1],N.shape[1]),matvec=kmv)
+    j=np.zeros(len(fw)); j[fw.index((3,1))]=-t/2
+    rhs=N.T@j
+    # Exact diagonal via A*N; remains sparse in useful cutoffs.
+    AN=AO@N
+    diag=np.asarray(N.power(2).T@qf+AN.power(2).T@invqe).ravel()
+    its=[0];cb=lambda x:its.__setitem__(0,its[0]+1)
+    uu,info=sla.cg(K,rhs,M=sla.LinearOperator(K.shape,matvec=lambda x:x/diag),rtol=tol,atol=0,maxiter=10000,callback=cb)
+    assert info==0, ('lower',info)
+    f=N@uu
+    low=4*j@f-2*f@kfull(f)
+    print('lower_done',L,its[0],time.perf_counter()-now,flush=True)
+    # Upper solve includes diagonal pressures and all generated odd outputs.
+    jout=np.zeros(len(orr));jout[orr.index((3,1))]=-t/2
+    invqo=1/qo
+    def umv(g):return qg*g+AG.T@(invqo*(AG@g))
+    UG=sla.LinearOperator((len(gw),len(gw)),matvec=umv)
+    urhs=AG.T@(invqo*jout)
+    udiag=qg+np.asarray(AG.power(2).T@invqo).ravel()
+    assert np.all(udiag>0)
+    uits=[0]
+    g,info=sla.cg(UG,urhs,M=sla.LinearOperator(UG.shape,matvec=lambda x:x/udiag),rtol=tol,atol=0,maxiter=20000,callback=lambda x:uits.__setitem__(0,uits[0]+1))
+    assert info==0, ('upper',info)
+    r=jout-AG@g
+    upper=2*r@(invqo*r)+2*g@(qg*g)
+    result=dict(L=L,t=t,U=U,V=V,d=d,f_basis=len(fw),g_basis=len(gw),pressure_rank=rank,nnz=int(AF.nnz+AG.nnz),kappa_lower=float(low),kappa_upper=float(upper),D_lower=float(4*low),D_upper=float(4*upper),width=float(4*(upper-low)),lower_iterations=its[0],upper_iterations=uits[0],seconds=time.perf_counter()-now)
+    print(json.dumps(result),flush=True)
+    if output:
+      import pickle
+      Path(output).mkdir(parents=True,exist_ok=True)
+      tag=tag or f'L{L}_t{t:g}_U{U:g}_V{V:g}_d{d:g}'
+      np.savez_compressed(Path(output)/(tag+'.npz'),f=f,g=g,u=uu,fw=np.asarray(fw),gw=np.asarray(gw))
+      (Path(output)/(tag+'.json')).write_text(json.dumps(result,indent=2))
+      # The exact entries are rational and deterministic; certificate reconstructs them.
+    return result
+
+if __name__=='__main__':
+ p=argparse.ArgumentParser();p.add_argument('--L',type=int,nargs='+',default=[4,5,6]);p.add_argument('--output',default=str(Path(__file__).parent));p.add_argument('--U',type=float,default=4.);p.add_argument('--V',type=float,default=1.);p.add_argument('--d',type=float,default=2.);a=p.parse_args()
+ for L in a.L:solve(L,U=a.U,V=a.V,d=a.d,output=a.output)

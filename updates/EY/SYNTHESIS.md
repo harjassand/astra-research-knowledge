@@ -1,0 +1,256 @@
+# Decisions from incomplete physical information
+
+13 October 2026. Integration-derived mathematics and research directions; unreviewed.
+No physical experiment, general acquisition theorem, priority clearance or
+civilisation-scale breakthrough is established here.
+
+The three submissions advance different interfaces. N768 selects a quantum
+interaction from a contrast that cannot identify the absolute response. N769
+eliminates elementary rate constants from a chemical relocation and exposes the
+defect in a proposed physical adjoint. N770 proposes measuring a material's
+electrical response before investing in a gain device. Their useful common
+question is: **which missing information can change the particular decision?**
+That question is established in goal-oriented estimation and experimental design;
+it is not itself a new discovery. The following two deductions make the chemical
+interface more precise. Proofs below are reconstructed at intake from N769's
+explicit equations; the finite checks are new, rather than producer receipts.
+
+## 1. A chemical adjoint can be exact for one objective when the full transpose fails
+
+Use N769's ideal, open, reversible mass-action model and its physically compiled
+conjugate reactor. The full reaction list, reservoir activities, positive native
+concentrations, gates and detailed-balance reference are supplied or acquired.
+Let J and H be the native and conjugate Jacobians, C=diag(c), D=diag(d), and
+
+\[
+M=\sum_r j_r Q_r,\qquad Q_r=y'_ry_r'{}^T-y_ry_r^T.
+\]
+
+N769 derives CJ^T=HD+M. Assume J and H are invertible on the stated open-system
+coordinates and the conjugate equilibrium branch can actually be prepared and
+measured. For an objective covector a, its ideal infinitesimal readout is
+
+\[
+\lambda_0=-D^{-1}H^{-1}Ca.
+\]
+
+**Proposition 1.** This readout is the exact native adjoint for this objective if
+and only if M lambda_0=0. The full condition M=0 is sufficient but unnecessary.
+
+**Proof.** Substitute HD lambda_0=-Ca into the matrix identity:
+
+\[
+J^T\lambda_0+a=C^{-1}M\lambda_0.
+\tag{1}
+\]
+
+C is invertible, and the native adjoint is uniquely defined by J^T lambda=-a.
+This proves both directions. Invertibility of H and C,D also shows that the space
+of exact objective covectors at this state has dimension n-rank(M). QED.
+
+This dimension is a state-specific algebraic fact, not a cheap way to acquire M
+or a guarantee that a scientifically valuable objective belongs to the space.
+When M is nonzero, N769's M=0 stability argument no longer applies: stability,
+settling time and invertibility are additional obligations.
+
+### A stoichiometric certificate that does not require current magnitudes
+
+Let S have columns s_r=y'_r-y_r. Compute an exact basis k^(1),...,k^(b) of ker S.
+Define the stacked matrix and its nullspace
+
+\[
+Z=\begin{bmatrix}
+\sum_r k_r^{(1)}Q_r\\ \vdots\\ \sum_r k_r^{(b)}Q_r
+\end{bmatrix},\qquad W=\ker Z.
+\tag{2}
+\]
+
+**Proposition 2.** W is exactly the set of covectors ell for which
+(sum_r j_r Q_r)ell=0 for every j in ker S. In particular, if a returned ideal
+lambda_0 belongs to W, (1) certifies the chosen objective's adjoint for every
+stationary current vector compatible with this stoichiometry.
+
+**Proof.** Write j as a linear combination of the kernel basis. Every stacked
+block annihilates ell precisely when every such linear combination does. QED.
+
+The quantifier over every j in ker S is stronger than the physically achievable
+current set. W can therefore be conservative or zero. It is basis-independent.
+This relaxes N769's whole-operator structural test ker S subset ker R to an
+objective-specific test, without assuming a full transpose relation.
+
+For the source's wrong-sign network 0<->2A, A<->B, B<->0,
+ker S is spanned by (1,2,2), and the stacked block is diag(2,0). Hence W consists
+of covectors (0,z). At the source's state,
+
+\[
+J=\begin{pmatrix}-7&1\\3&-4\end{pmatrix},\quad
+H=\begin{pmatrix}-9&3\\1&-4\end{pmatrix}.
+\]
+
+The objective Phi=-3A+4B has a=(-3,4), returns lambda_0=(0,1), and is exact even
+though M=diag(2,0) is nonzero. The source's objective A+3B/5 still gives the wrong
+sign when used without its defect. This example establishes strict relaxation of
+the algebraic requirement, not a useful biochemical objective or an experiment.
+
+### Finite precision remains an acquisition obligation
+
+For any approximate measured ell, define its native adjoint residual
+
+\[
+\xi=J^T\ell+a
+=C^{-1}\{M\ell+(HD\ell+Ca)\}.
+\]
+
+Then lambda-ell=-(J^T)^(-1)xi. A justified bound K>=||(J^T)^(-1)|| implies
+||lambda-ell||<=K||xi|| in the same induced norm. Alternatively, for one known
+native source direction b, with R_N=-J^(-1), the exact correction is
+
+\[
+b^T(\lambda-\ell)=\xi^T R_N b.
+\tag{3}
+\]
+
+Equation (3) targets one response projection; it does not supply xi, b or a
+response bound for free. Unknown currents enter M, gate perturbations can have
+unknown effective source magnitudes, and finite tests of reciprocity cannot
+certify all directions. Membership of an approximate ell in W does not certify
+the residual HD ell+Ca, which includes finite-source, readout and settling errors.
+A new low-cost acquisition theorem for these projected quantities remains open.
+
+For stoichiometric input bit length B, exact rational nullspace calculation has
+its own bit-complexity and fill-in cost. A dense Z can have b*n^2 entries. This
+deduction contains no dimension-independent preprocessing or physical cost bound.
+
+## 2. Relative-flux relocation with catalyst caps and coupled resource inequalities
+
+Retain N769's fixed external reservoirs, exact elementary mass action and baseline
+steady state. Orient every nonzero-current pair so its known dimensionless
+affinity A_r is positive. Let c'=c*exp(h) componentwise and require
+A_r-s_r^T h>0. Define
+
+\[
+\rho_r(h)=\frac{1-e^{-A_r}}
+ {e^{y_r^T h}-e^{-A_r+y'_r{}^T h}},\quad
+\ell_r(h)=\log\rho_r(h).
+\]
+
+For any common scale sigma=exp(t)>0, choose
+e'_r=exp(t)e_r rho_r(h). Direct substitution into both one-way rates gives
+j'_r=exp(t)j_r. Thus Sj'=0 without acquiring the current magnitudes or absolute
+rate constants. Relative throughput is scaled by exp(t), and every flux ratio
+is retained. Absolute productivity still requires measuring a baseline flux.
+
+**Proposition 3.** In this relocation family, individual upper gate caps and any
+finite collection of nonnegative linear resource inequalities define a convex
+feasible set in (h,t):
+
+\[
+t+\log e_r+\ell_r(h)\le\log\bar e_r,
+\qquad
+\sum_r w_{kr}\exp(t+\log e_r+\ell_r(h))\le E_k,
+\quad w_{kr}\ge0.
+\tag{4}
+\]
+
+Intersect with convex log-concentration bounds, affinity margins and t>=log(sigma_min).
+Maximizing any linear functional of (h,t), including t or a log-concentration
+ratio, is a convex optimization problem on this set.
+
+**Proof.** Write x=exp(-A_r+s_r^T h)<1. Then
+
+\[
+\ell_r(h)=-y_r^T h+\log(1-e^{-A_r})-\log(1-x),
+\quad
+\nabla^2\ell_r=\frac{x}{(1-x)^2}s_rs_r^T\succeq0.
+\]
+
+Adding affine t preserves convexity. Exponentiation preserves convexity here
+because exp is convex and increasing. Nonnegative weighted sums and sublevel
+sets give (4). QED.
+
+This extends the explicit baseline-relative formula to caps and coupled upper
+budgets; it is directly within established enzyme-cost convexity, not a new
+convex-optimization principle. N769 already states common flux scaling. The
+deduction does not make its physical adjoint necessary: these added constraints
+can still admit a direct relocation solution. Compare ECM under the *same*
+baseline, rate-law and thermodynamic information before funding the adjoint.
+
+Zero-current channels require s_r^T h=0. A sufficient convex extension assigns
+their gates e'_r=exp(t)e_r exp(-y_r^T h), preserving both one-way fluxes up to the
+same common scale; the cancellation formula must not be evaluated as 0/0.
+
+Equation (4) characterizes exactly the family that scales the entire baseline
+current vector by one factor. It does not claim all possible stationary gate
+allocations belong to that family. Lower gate floors, exact coupled budgets,
+signed resource weights or general objectives can destroy convexity. Attainment
+and conditioning require a nonempty bounded domain or a separately justified
+coercivity argument, with margins away from vanishing affinities. No uniform
+practical runtime or finite-bit exponential accuracy bound is established.
+
+The exact rational fixture uses two driven three-edge cycles, including a
+bimolecular cycle, and two different hidden current magnitudes. The same
+permitted baseline concentrations, gates and affinities generate the same
+relocation controls in both systems. Its caps and two nonnegative resource
+budgets are checked with rational arithmetic. It tests the cancellation, not
+physical accessibility, stability or optimization performance.
+
+The source's saturation counterexample continues to block extension to unknown
+enzyme denominators. Replacing exact affinities or concentrations by uncertain
+estimates also gives a stationarity residual, not exact relocation. Bounding the
+resulting concentration or objective error requires acquired current/error and
+response information. Neither uncertainty nor dynamical convergence is solved
+by convexity of the design constraints.
+
+## 3. Consequences worth pursuing, and transfers that fail
+
+| Connection | What is supported | Decisive remaining obligation |
+|---|---|---|
+| N768 -> objective-specific chemical adjoints | A shared design criterion; Propositions 1-2 give an exact chemical specialization from N769's defect identity | Acquire a useful objective/readout in W, finite-precision error bounds and stable conjugate conditions at lower total cost than ECM, SPSA or a digital adjoint |
+| N769 -> capped pathway design | Proposition 3 constructs a relative-flux, upper-resource convex subproblem without absolute rates | Characterized reversible mass-action interface, calibrated affinities/gates, dynamical reachability and matched ECM comparison |
+| N744 -> N769 biochemical control | Candidate connection only | N744 requires state-selective additive generator interventions and reset/event access; chemical gates alter both forward/backward mass-action channels. A microscopic compiler is absent; its global LP guarantee cannot be copied |
+| N766 -> N770 material qualification | Candidate measurement-selection analogy only | Positive passive network envelopes do not certify an active, pumped dispersive material or bound unmeasured loss |
+| N768 -> N770 gain decision | Candidate decision-specific acquisition contract | No quantum-chain curvature/residual constants transfer. Directly acquire a confidence bound for complete-device Re Y under constant optical pump and zero DC bias |
+
+For the last direction a useful decision certificate is scalar. If a justified
+simultaneous measurement/error set establishes Y_low(f)<=Re Y_device(f)<=Y_up(f),
+accept a gain candidate only when Y_up(f)<0 at a preregistered frequency, or under
+an explicitly corrected simultaneous/adaptive selection rule. If the intervals
+contain zero, the decision remains inconclusive. A component-only fit is not a
+bound on the complete device. Leads may be de-embedded; sample losses remain.
+Post-formation voltage marking diagnoses recombination response, but its applied
+voltage supplies energy and cannot demonstrate autonomous gain. Independent RF
+power-flow and complete optical/electrical energy accounting remain later gates.
+
+This turns the physical hypothesis into a bounded next expenditure, rather than
+launching generator scale-up. Its reported pW probe signal against mW productive
+optical pumping and substantial population noise supply no technological edge.
+The possible scientific effect can still merit a careful falsification assay.
+
+## 4. Evidence, prior art and next allocation
+
+New `synthesis_checks.py` uses exact rational matrix and relocation arithmetic.
+`synthesis_results.json` records the executed finite fixtures. These checks are
+internal, share the derivation's author/context and do not replace mathematical
+review. The archived submissions, producer receipts and any intake reruns remain
+separately identified in `SOURCE_MANIFEST.json` and `REPLAY.md`.
+
+The closest primary prior art is [enzyme-cost convexity](https://arxiv.org/html/1501.02454v1),
+especially Appendix D; [Noor et al. ECM](https://doi.org/10.1371/journal.pcbi.1005167);
+[Tan-Frazier decision-risk design](https://arxiv.org/html/2210.15576v1), Theorem 3.4
+and Section 5; and [physical backpropagation](https://arxiv.org/html/2608.11585v1).
+Current primary-source checks support these comparator boundaries. No exhaustive
+priority search or claim of unprecedented mathematics is made.
+
+The highest-value mathematical follow-up is a finite-precision, output-specific
+chemical acquisition theorem for realistic saturation and coupled actuators, or
+a counterexample showing that its requisite observations already cost as much as
+the best comparator. The highest-value physical follow-up is N770's derivative,
+orientation and complete-loss assay. N768 needs a broader consequential task and
+a matched end-to-end comparison before scaling its dictionary construction.
+These are independent opportunities; none overrides another branch's objective.
+
+The existing scoped-card, bridge and technology architecture already represents
+all of these distinctions. This intake adds records and on-demand synthesis
+routes, without expanding the default bootstrap or claiming exponential research
+improvement. Multiple civilisation-enabling breakthroughs remain the ambition;
+the present contribution is preserved capital and two restricted deductions.

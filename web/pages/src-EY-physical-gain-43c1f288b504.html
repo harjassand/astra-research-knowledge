@@ -1,0 +1,113 @@
+<!doctype html><meta charset="utf-8"><title>N770 preserved original — source_constrained_budget.py</title><p>Exact source display; evidence status remains scoped to its card.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Source-linked two-component sensitivity model, not a qualified device.
+
+A biexponential pump-probe decay does NOT uniquely imply static populations.
+This calculation explicitly tests that interpretation; it does not infer a
+unique generator or transfer measured hexane kinetics into hexadecane as fact.
+&quot;&quot;&quot;
+from __future__ import annotations
+import csv
+import json
+from pathlib import Path
+import numpy as np
+from scipy.optimize import brentq
+from scipy.constants import Boltzmann as KB, elementary_charge as E, Avogadro as NA
+from scipy.constants import epsilon_0 as EPS0, Planck as H, speed_of_light as C
+from feasibility import mlj_log_rate_and_slope, rotating_chi, reaction_current_noise
+
+T=298.15
+
+def main() -&gt; None:
+    folder=Path(__file__).resolve().parent/&#x27;results&#x27;
+    coupling=json.loads((folder/&#x27;coupling_results.json&#x27;).read_text())
+    mu=coupling[&#x27;nominal&#x27;][&#x27;terminal_dipole_e_nm&#x27;]*E*1e-9
+    gap=1.51
+    aev=mlj_log_rate_and_slope(gap)[1]
+    a=aev/E
+    rates=np.array([.996e9,.219e9])
+    weights=np.array([.44,.56])
+    target=.01
+    pump=brentq(lambda r:float(weights@(r/(r+rates)))-target,1.,1e10,xtol=1e-7)
+    p=pump/(pump+rates)
+    eta=3.0594e-3  # NBS 1958 Table1, 25C measured sample, not RF dielectric data.
+    radius=2.05e-9
+    tau=4*np.pi*eta*radius**3/(KB*T)
+    rho=NA
+    area,d=1e-8,1e-6
+    epsh=coupling[&#x27;nominal&#x27;][&#x27;eps_host&#x27;]; epsc=coupling[&#x27;nominal&#x27;][&#x27;eps_core&#x27;]
+    phi=rho*4*np.pi*radius**3/3
+    epsr=epsh*(epsc+2*epsh+2*phi*(epsc-epsh))/(epsc+2*epsh-phi*(epsc-epsh))
+    cap=EPS0*epsr*area/d
+    def y(f: np.ndarray, rot_s: float) -&gt; np.ndarray:
+        s=2j*np.pi*f
+        return sum(s*(area/d)*rotating_chi(s,rho*w,mu,float(pi),float(k),a,rot_s)
+                   for w,pi,k in zip(weights,p,rates))
+    freq=np.geomspace(1e5,5e8,1200)
+    immobile=y(freq,0.)
+    viscous=y(freq,1/tau)
+    at90=y(np.array([90e6]),1/tau)[0]
+    idx=int(np.argmin(viscous.real))
+    passive_b=2*np.pi*90e6*cap
+    gain90=-float(at90.real)
+    pump_min=float(rho*area*d*np.dot(weights,p*rates)*H*C/600e-9)
+    psd90=sum(reaction_current_noise(2*np.pi*90e6,rho*area*d*w,mu**2/(3*d*d),float(pi),float(k))
+              for w,pi,k in zip(weights,p,rates))
+    # PSD here is the immobile independent-population noise only; rotation adds noise.
+    data={
+       &#x27;status&#x27;:&#x27;Conditional source-linked sensitivity, not measured gain or host-transfer validation&#x27;,
+       &#x27;interpretation&#x27;:&#x27;Static two-subpopulation mixture is one possible interpretation, NOT uniquely inferred from biexponential data&#x27;,
+       &#x27;source_facts&#x27;:{&#x27;decay_rates_s&#x27;:rates.tolist(),&#x27;amplitude_weights&#x27;:weights.tolist(),
+                       &#x27;gap_ev&#x27;:gap,&#x27;hexadecane_viscosity_25C_Pa_s&#x27;:eta},
+       &#x27;remaining_assumptions&#x27;:[&#x27;equal pump rates and equal field derivatives in two subpopulations&#x27;,
+          &#x27;same kinetics and MLJ parameters in proposed viscous host as source hexane sample: UNVERIFIED&#x27;,
+          &#x27;continuum effective dipole from coupling_model.py, not measured atomistic charge distribution&#x27;,
+          &#x27;no ground-state dipole; isotropic field-independent effective pump&#x27;,
+          &#x27;rigid hydrodynamic sphere; actual dipole orientation lifetime not acquired&#x27;,
+          &#x27;1 mM density, 1 percent total occupation, ideal uniform-field 1um gap&#x27;,
+          &#x27;real background from dilute Maxwell-Garnett mixture using same assumed core/host constants; passive loss unacquired&#x27;],
+       &#x27;derived&#x27;:{&#x27;mlj_slope_per_ev&#x27;:aev,&#x27;effective_dipole_e_nm&#x27;:mu/(E*1e-9),
+           &#x27;pump_per_site_s&#x27;:pump,&#x27;subpopulation_occupations&#x27;:p.tolist(),
+           &#x27;amplitude_average_rate_s&#x27;:float(weights@rates),
+           &#x27;weak_pump_effective_rate_s&#x27;:float(1/(weights@(1/rates))),
+           &#x27;kinetic_corner_frequencies_Hz&#x27;:((pump+rates)/(2*np.pi)).tolist(),
+           &#x27;rigid_sphere_rotation_time_s&#x27;:tau,
+           &#x27;individual_rotation_critical_times_s&#x27;:(1/(rates*a*KB*T)).tolist(),
+           &#x27;dot_volume_fraction&#x27;:phi,&#x27;Maxwell_Garnett_real_permittivity&#x27;:epsr,
+           &#x27;capacitance_F&#x27;:cap,&#x27;reaction_plus_orientation_Y_90MHz_real_S&#x27;:float(at90.real),
+           &#x27;reaction_plus_orientation_Y_90MHz_imag_S&#x27;:float(at90.imag),
+           &#x27;minimum_ReY_on_grid_S&#x27;:float(viscous.real[idx]),&#x27;frequency_of_minimum_on_grid_Hz&#x27;:float(freq[idx]),
+           &#x27;immobile_ReY_90MHz_S&#x27;:float(y(np.array([90e6]),0.)[0].real),
+           &#x27;max_background_tan_delta_at_90MHz_if_no_other_loss&#x27;:gain90/passive_b,
+           &#x27;minimum_matched_LC_Q_at_90MHz_ideal_capacitance_only&#x27;:passive_b/gain90,
+           &#x27;Vpeak_for_probe_budget&#x27;:.01,&#x27;incremental_RF_power_at_10mV_peak_W&#x27;:gain90*.01**2/2,
+           &#x27;minimum_absorbed_productive_pump_W&#x27;:pump_min,
+           &#x27;minimum_absorbed_pump_W_per_cm2&#x27;:pump_min/area/1e4,
+           &#x27;charge_dipole_model_validity&#x27;:&#x27;local-field interaction corrections beyond dilute dielectric estimate are omitted&#x27;,
+           &#x27;immobile_population_current_noise_90MHz_A_per_sqrtHz&#x27;:np.sqrt(psd90),
+           &#x27;immobile_noise_to_gain_temperature_ratio_K&#x27;:1/(KB*a),
+           &#x27;minimum_phase_resolution_rad_for_20percent_signal&#x27;:.2*gain90/passive_b},
+       &#x27;rotation_controls&#x27;:[]}
+    for tn in [2.,5.,8.,12.,20.,40.,80.,160.]:
+        z=y(np.array([90e6]),1/(tn*1e-9))[0]
+        data[&#x27;rotation_controls&#x27;].append({&#x27;tau_ns&#x27;:tn,&#x27;ReY_90MHz_S&#x27;:float(z.real)})
+    checks={
+        &#x27;mixture_weights_normalized&#x27;:abs(sum(weights)-1)&lt;1e-14,
+        &#x27;total_occupation_target&#x27;:abs(weights@p-target)&lt;1e-10,
+        &#x27;mixture_pump_recombination_balance&#x27;:abs(pump*(1-weights@p)-weights@(p*rates))&lt;1e-6,
+        &#x27;viscous_hydrodynamic_time_exceeds_component_thresholds&#x27;:bool(np.all(tau&gt;1/(rates*a*KB*T))),
+        &#x27;reaction_gain_in_selected_window&#x27;:bool(np.any(viscous.real&lt;0)),
+        &#x27;fast_rotation_control_absorbs&#x27;:bool(np.all(y(freq,1/(2e-9)).real&gt;0)),
+        &#x27;arithmetic_mean_differs_from_CW_rate&#x27;:abs((weights@rates)/(1/(weights@(1/rates)))-1)&gt;.5,
+    }
+    checks={key:bool(value) for key,value in checks.items()}
+    data[&#x27;checks&#x27;]=checks;data[&#x27;check_count&#x27;]=len(checks);data[&#x27;all_checks_pass&#x27;]=all(checks.values())
+    with (folder/&#x27;source_constrained_response.csv&#x27;).open(&#x27;w&#x27;,newline=&#x27;&#x27;) as f:
+        writer=csv.writer(f)
+        writer.writerow([&#x27;frequency_Hz&#x27;,&#x27;ReY_immobile_S&#x27;,&#x27;ImY_immobile_S&#x27;,&#x27;ReY_viscous_S&#x27;,&#x27;ImY_viscous_S&#x27;])
+        writer.writerows(zip(freq,immobile.real,immobile.imag,viscous.real,viscous.imag))
+    (folder/&#x27;source_constrained_results.json&#x27;).write_text(json.dumps(data,indent=2))
+    print(json.dumps(data,indent=2))
+    if not all(checks.values()): raise AssertionError(&#x27;Source-linked diagnostic failed&#x27;)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>
