@@ -1,0 +1,351 @@
+<!doctype html><meta charset="utf-8"><title>N779 integration derived — independent_checks.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Internal exact rational and independent floating proof diagnostics.
+
+No producer code is imported. Every fixture here is finite and synthetic.
+These checks do not formally verify the universal theorems or physical models.
+&quot;&quot;&quot;
+import json
+import math
+from fractions import Fraction as F
+from pathlib import Path
+import numpy as np
+import itertools
+
+
+def entropy(rho):
+    eig = np.linalg.eigvalsh(rho)
+    assert eig.min() &gt; -2e-13
+    eig = eig[eig &gt; 1e-14]
+    return float(-np.sum(eig*np.log(eig)))
+
+
+def thermal():
+    # In an abstract singlet/triplet basis the channel has no square roots.
+    k0 = np.diag([1., .5, .5, .5])
+    ps = np.diag([1., 0., 0., 0.])
+    def channel(rho):
+        return k0@rho@k0+.75*ps*np.trace(rho[1:,1:])
+    def gain(rho):
+        return entropy(channel(rho))-entropy(rho)
+    def polynomial(y):
+        return y**3*(4+3*y)-27
+    assert polynomial(F(59,40)) &gt; 0
+    lo, hi = F(1), F(59,40)
+    assert polynomial(lo) &lt; 0
+    for _ in range(80):
+        mid = (lo+hi)/2
+        if polynomial(mid) &lt;= 0: lo = mid
+        else: hi = mid
+    assert polynomial(lo) &lt;= 0 &lt; polynomial(hi)
+    y = float((lo+hi)/2); x = y/(1+y)
+    rho = np.diag([1-x]+[x/3]*3)
+    s = -math.log(1+.75*y)
+    assert abs(gain(rho)-s) &lt; 5e-15
+    rng = np.random.default_rng(2026101311)
+    gains = []
+    convex_gaps = []
+    twirl_gaps = []
+    for _ in range(160):
+        raw = rng.normal(size=(4,4))+1j*rng.normal(size=(4,4))
+        a = raw@raw.conj().T; a/=np.trace(a)
+        raw = rng.normal(size=(4,4))+1j*rng.normal(size=(4,4))
+        b = raw@raw.conj().T; b/=np.trace(b)
+        p = rng.random()
+        convex_gaps.append(p*gain(a)+(1-p)*gain(b)-gain(p*a+(1-p)*b))
+        xa = float(np.trace(a[1:,1:]).real)
+        twirled = np.diag([1-xa]+[xa/3]*3)
+        twirl_gaps.append(gain(a)-gain(twirled))
+        gains.append(gain(a))
+        assert convex_gaps[-1] &gt; -2e-13
+        assert twirl_gaps[-1] &gt; -2e-13
+        assert gains[-1] &gt; s-2e-13
+    c = (5-math.sqrt(13))/8
+    return {&#x27;exact_positive_root_polynomial&#x27;:&#x27;y^3*(4+3*y)-27&#x27;,
+            &#x27;exact_root_bracket&#x27;:[str(lo),str(hi)],
+            &#x27;conservative_entropy_penalty&#x27;:&#x27;log(337/160)&#x27;,
+            &#x27;root_floating&#x27;:y, &#x27;minimum_entropy_gain_floating&#x27;:s,
+            &#x27;previous_kappa_penalty&#x27;:math.log(13/4),
+            &#x27;conservative_threshold_tau_floating&#x27;:c/math.log(337/160),
+            &#x27;exact_scalar_threshold_tau_floating&#x27;:c/(-s),
+            &#x27;random_state_cases&#x27;:len(gains),
+            &#x27;minimum_convexity_gap&#x27;:min(convex_gaps),
+            &#x27;minimum_twirl_gap&#x27;:min(twirl_gaps)}
+
+
+def singular_work():
+    # For Gamma&gt;0, G=C*Gamma C has exactly ker(C), so Hc kills
+    # every zero-response vector: a quotient is automatically legitimate.
+    gamma = np.diag([1.,2.,3.])
+    c = np.array([[1,1,0],[0,0,1],[1,1,1]],complex)
+    g = np.array([1.,0.,2.]); h = np.array([0.,1.,1.])
+    H=(np.outer(g,h)-np.outer(h,g))/(2j)
+    G=c.conj().T@gamma@c; Hc=c.conj().T@H@c
+    null = np.array([1.,-1.,0.])
+    assert np.max(np.abs(G@null)) &lt; 1e-14
+    assert np.max(np.abs(Hc@null)) &lt; 1e-14
+    return {&#x27;positive_damping_zero_response_quotient_safe&#x27;:True}
+
+
+def solve_exact(a, b):
+    rows=[[F(v) for v in row]+[F(w)] for row,w in zip(a,b)]
+    n=len(rows)
+    for i in range(n):
+        j=next(j for j in range(i,n) if rows[j][i])
+        rows[i],rows[j]=rows[j],rows[i]
+        pivot=rows[i][i]; rows[i]=[v/pivot for v in rows[i]]
+        for j in range(n):
+            if j!=i:
+                scale=rows[j][i]
+                rows[j]=[v-scale*w for v,w in zip(rows[j],rows[i])]
+    return [row[-1] for row in rows]
+
+
+def relative_endpoint():
+    def killed(n,c):
+        a=[[F(0) for _ in range(n)] for _ in range(n)]
+        for i in range(n):
+            a[i][i]=c+1+(i&gt;0)
+            if i&gt;0: a[i][i-1]=-1
+            if i+1&lt;n: a[i][i+1]=-1
+        b=[F(0)]*n; b[-1]=1
+        return a,b
+    records=[]
+    for n in range(1,9):
+        qmat,b=killed(n,F(1)); q=solve_exact(qmat,b)
+        for c in [F(97,100),F(4100,4181),F(1,2)]:
+            amat,b=killed(n,c); h=solve_exact(amat,b)
+            # -G_E = Dq^-1 Q_c Dq + diag(1-c).
+            minus_g=[[amat[i][j]*q[j]/q[i] for j in range(n)] for i in range(n)]
+            for i in range(n): minus_g[i][i]+=1-c
+            b_g=[F(v)/qi for v,qi in zip(b,q)]
+            weighted=[[v-(1-c if i==j else 0) for j,v in enumerate(row)] for i,row in enumerate(minus_g)]
+            mgf=solve_exact(weighted,b_g)
+            assert mgf == [hi/qi for hi,qi in zip(h,q)]
+            # The transformed process is independent of c.
+            baseline_g=[[qmat[i][j]*q[j]/q[i] for j in range(n)] for i in range(n)]
+            assert minus_g==baseline_g
+            duration=solve_exact(minus_g,[1]*n)
+            physical_duration=solve_exact(amat,[1]*n)
+            assert all(v&lt;=1/c for v in physical_duration)
+            records.append({&#x27;n&#x27;:n,&#x27;c&#x27;:str(c),&#x27;relative_yield_exact&#x27;:str(mgf[0]),
+                            &#x27;tilted_mean_duration_exact&#x27;:str(duration[0]),
+                            &#x27;physical_mean_duration_exact&#x27;:str(physical_duration[0])})
+    durations=[]
+    for n in [1,10,100,1000]:
+        # Differentiate the exact recurrence at c=1.
+        u0,u1=F(1),F(2); d0,d1=F(0),F(1)
+        for _ in range(1,n):
+            u0,u1,d0,d1=u1,3*u1-u0,d1,u1+3*d1-d0
+        durations.append({&#x27;n&#x27;:n,&#x27;tilted_mean_duration_floating&#x27;:float(d1/u1),
+                          &#x27;mean_duration_divided_by_n&#x27;:float(d1/u1/n)})
+    return {&#x27;exact_feynman_kac_cases&#x27;:len(records),&#x27;cases&#x27;:records,
+            &#x27;conditioned_duration_growth&#x27;:durations,
+            &#x27;asymptotic_mean_duration_per_site&#x27;:1/math.sqrt(5)}
+
+
+def flux_current():
+    records=[]
+    for n,k in [(4,2),(5,2),(6,3)]:
+        states=[sum(1&lt;&lt;i for i in c) for c in itertools.combinations(range(n),k)]
+        index={x:i for i,x in enumerate(states)}; m=len(states)
+        occ=np.array([[(x&gt;&gt;i)&amp;1 for i in range(n)] for x in states])
+        theta=.37; z=np.exp(1j*theta)
+        T=np.zeros((m,m),complex); J0=np.zeros_like(T)
+        for x,bits in enumerate(states):
+            for i in range(n):
+                j=(i+1)%n
+                if (bits&gt;&gt;i)&amp;1 and not (bits&gt;&gt;j)&amp;1:
+                    y=index[bits^(1&lt;&lt;i)^(1&lt;&lt;j)]
+                    T[y,x]-=z; T[x,y]-=z.conjugate()
+                    J0[y,x]+=1j*z; J0[x,y]-=1j*z.conjugate()
+        assert np.max(np.abs(T@J0-J0@T)) &lt; 2e-14
+        alpha=k*(n-k)/(n*(n-1)); m0=np.vdot(J0,J0).real/(n*m)
+        assert abs(m0-2*alpha) &lt; 2e-14
+        field=np.array([((7*i+3)%11)-5 for i in range(n)])
+        E=occ@field+3*np.sum(occ*np.roll(occ,-1,axis=1),axis=1)
+        de=E[:,None]-E[None,:]
+        ham=np.sum(np.abs(occ[:,None,:]-occ[None,:,:]),axis=2)
+        gamma=ham/2+(32/25)*de**2/(np.hypot(15/4,de)+15/4)
+        mask=np.abs(J0)&gt;1e-12
+        resistance=np.sum(np.abs(J0[mask])**2*(gamma[mask]+de[mask]**2/gamma[mask]))/(n*m)
+        W=max(1.,float(np.max(np.abs(de[mask]))))
+        eye=np.eye(m); trace=eye.flatten(order=&#x27;F&#x27;)/math.sqrt(m)
+        for eps in [.2,1.3]:
+            H=np.diag(E)+eps*T
+            B=np.diag(gamma.flatten(order=&#x27;F&#x27;))-1j*(np.kron(eye,H)-np.kron(H.T,eye))
+            aug=np.zeros((m*m+1,m*m+1),complex)
+            aug[:-1,:-1]=B; aug[:-1,-1]=trace; aug[-1,:-1]=trace
+            current=(eps*J0).flatten(order=&#x27;F&#x27;)
+            response=np.linalg.solve(aug,np.r_[current,0j])[:-1]
+            residual=np.linalg.norm(B@response-current)/np.linalg.norm(current)
+            actual=float(np.vdot(current,response).real/(n*m))
+            bare=eps**2*m0*m0/resistance; floor=.97*eps**2*alpha/W
+            assert actual&gt;=bare-1e-11 and bare&gt;=floor-1e-11
+            records.append({&#x27;n&#x27;:n,&#x27;K&#x27;:k,&#x27;bond_phase&#x27;:theta,&#x27;epsilon&#x27;:eps,
+                            &#x27;actual_current&#x27;:actual,&#x27;bare_bound&#x27;:bare,
+                            &#x27;source_matched_absolute_floor&#x27;:floor,
+                            &#x27;relative_solve_residual&#x27;:float(residual)})
+    return {&#x27;complex_flux_finite_cases&#x27;:len(records),&#x27;cases&#x27;:records}
+
+
+def staggered_current():
+    &quot;&quot;&quot;Alternative quadratic-operator solve, not the worker&#x27;s many-body builder.&quot;&quot;&quot;
+    records=[]
+    for n,k in [(6,1),(6,2),(6,3),(8,3),(8,4),(10,5)]:
+        eta=1.; t=1.; delta=6.; gamma=4.7
+        twist=1 if k%2 else -1
+        U=np.zeros((n,n),complex)
+        for i in range(n): U[(i+1)%n,i]=twist if i==n-1 else 1
+        T=-t*(U+U.conj().T); J0=1j*t*(U-U.conj().T)
+        E=np.array([delta/2*(-1)**i for i in range(n)])
+        D=np.diag(E); gaps=E[:,None]-E[None,:]
+        widths=eta*(1-np.eye(n))+(gamma-eta)*(gaps/delta)**2
+        alpha=k*(n-k)/(n*(n-1)); weight=alpha/n
+        AD=lambda x:-1j*(D@x-x@D)
+        AT=lambda x:-1j*(T@x-x@T)
+        v=AT(AD(J0))
+        assert np.max(np.abs(D@v-v@D))&lt;2e-13
+        assert abs(weight*np.vdot(v,v).real-8*delta**2*t**4*alpha)&lt;2e-12
+        assert np.max(np.abs(np.diag(v)))&lt;2e-13
+        f0=gamma*J0/(gamma**2+delta**2)
+        g0=-AD(J0)/(gamma**2+delta**2)
+        assert np.max(np.abs(widths*f0+AD(g0)-J0))&lt;2e-14
+        assert np.max(np.abs(widths*g0+AD(f0)))&lt;2e-14
+        for eps in [.01,.1,1.7]:
+            H=D+eps*T; eye=np.eye(n)
+            B=np.diag(widths.flatten(order=&#x27;F&#x27;))-1j*(np.kron(eye,H)-np.kron(H.T,eye))
+            trace=eye.flatten(order=&#x27;F&#x27;)/math.sqrt(n)
+            aug=np.zeros((n*n+1,n*n+1),complex)
+            aug[:-1,:-1]=B; aug[:-1,-1]=trace; aug[-1,:-1]=trace
+            j=(eps*J0).flatten(order=&#x27;F&#x27;)
+            x=np.linalg.solve(aug,np.r_[j,0j])[:-1]
+            actual=float(weight*np.vdot(j,x).real)
+            f=eps*f0; g=eps*g0
+            A=lambda z:-1j*(H@z-z@H)
+            functional=weight*(2*np.vdot(eps*J0,f)-np.vdot(f,widths*f)
+                               +np.vdot(g,widths*g)+2*np.vdot(A(f),g)).real
+            kinetic=2*eps**2*t*t*alpha*gamma/(gamma**2+delta**2)
+            residual=B@((f+g).flatten(order=&#x27;F&#x27;))-j
+            assert np.max(np.abs(residual-eps**2*AT(g0).flatten(order=&#x27;F&#x27;)))&lt;3e-14
+            penalty=eps**4*8*delta**2*t**4*alpha/(eta*(gamma**2+delta**2)**2)
+            ks=2*np.pi*(np.arange(n)+(0 if k%2 else .5))/n
+            denominator=gamma+delta**2/(gamma+16*eps**2*t*t*np.cos(ks)**2/eta)
+            fourier=alpha*np.mean(4*eps**2*t*t*np.sin(ks)**2/denominator)
+            assert abs(actual-fourier)&lt;2e-12
+            assert abs(functional-kinetic)&lt;2e-12
+            assert -2e-12&lt;=actual-kinetic&lt;=penalty+2e-12
+            records.append({&#x27;n&#x27;:n,&#x27;K&#x27;:k,&#x27;epsilon&#x27;:eps,&#x27;actual&#x27;:actual,
+                            &#x27;kinetic&#x27;:kinetic,&#x27;corrected_functional&#x27;:float(functional),
+                            &#x27;Fourier_response&#x27;:float(fourier),
+                            &#x27;residual_penalty&#x27;:penalty,
+                            &#x27;actual_error_over_residual_penalty&#x27;:float((actual-kinetic)/penalty)})
+    return {&#x27;alternative_one_particle_operator_solve_cases&#x27;:len(records),&#x27;cases&#x27;:records}
+
+
+def sector_counterexample():
+    states=[sum(1&lt;&lt;i for i in c) for c in itertools.combinations(range(4),2)]
+    index={b:i for i,b in enumerate(states)}; n=len(states)
+    def bond(i,j):
+        a=[[F(0) for _ in range(n)] for _ in range(n)]
+        for x,bits in enumerate(states):
+            ni=(bits&gt;&gt;i)&amp;1; nj=(bits&gt;&gt;j)&amp;1
+            a[x][x]+=F((1-2*ni)*(1-2*nj),4)
+            if ni!=nj: a[index[bits^(1&lt;&lt;i)^(1&lt;&lt;j)]][x]+=F(1,2)
+        return a
+    h0=[[F(0) for _ in range(n)] for _ in range(n)]
+    for b in [bond(0,1),bond(0,2),bond(1,3)]:
+        h0=[[x+y for x,y in zip(rx,ry)] for rx,ry in zip(h0,b)]
+    active=bond(0,1); h1=[[x+y for x,y in zip(rx,ry)] for rx,ry in zip(h0,active)]
+    trial=index[12]  # bit positions0,1 active;2,3 collar.
+    assert h0[trial][trial]==-F(1,4) and h1[trial][trial]==0
+    shifted=[row[:] for row in h1]
+    for x,bits in enumerate(states):
+        shifted[x][x]+=100*(2-((bits&gt;&gt;2)&amp;1)-((bits&gt;&gt;3)&amp;1))+F(9,97)
+    pivots=[]
+    for i in range(n):
+        p=shifted[i][i]; assert p&gt;0; pivots.append(p)
+        for j in range(i+1,n):
+            for k in range(i+1,n):
+                shifted[j][k]-=shifted[j][i]*shifted[i][k]/p
+    assert F(1,4)-F(9,97)==F(61,388)
+    return {&#x27;exact_sector_dimension&#x27;:n,&#x27;positive_shift_pivots&#x27;:[str(p) for p in pivots],
+            &#x27;strong_energy_lower&#x27;:&#x27;-9/97&#x27;,&#x27;weak_energy_upper&#x27;:&#x27;-1/4&#x27;,
+            &#x27;difference_lower&#x27;:&#x27;61/388&#x27;}
+
+
+def rank_deficient_reachability():
+    # Unequal A/B charge multiplicities, rank-deficient sigma and nontrivial
+    # isometry completion: these are not the worker&#x27;s equal-block full-rank tests.
+    qa=np.array([0,0,1,2,2]); qb=np.array([2,1,1,1,0,0]); e=4
+    rng=np.random.default_rng(2447603); rows=[]
+    for _ in range(12):
+        p=rng.random(3)+.1; p/=p.sum()
+        psi=np.zeros((len(qa),len(qb)),complex)
+        phi=np.zeros((len(qa),len(qb),e),complex)
+        W=np.zeros((len(qa),e,len(qa)),complex)
+        for q in range(3):
+            ai=np.flatnonzero(qa==q); bi=np.flatnonzero(qb==2-q)
+            bvec=rng.normal(size=len(bi))+1j*rng.normal(size=len(bi)); bvec/=np.linalg.norm(bvec)
+            u=rng.normal(size=len(ai)*e)+1j*rng.normal(size=len(ai)*e); u/=np.linalg.norm(u)
+            vectors=[u]
+            # Complete within each charge block without altering its prescribed
+            # Schmidt-support column.
+            for basis in np.eye(len(ai)*e):
+                if len(vectors)==len(ai): break
+                v=basis.astype(complex)
+                for z in vectors: v-=z*np.vdot(z,v)
+                norm=np.linalg.norm(v)
+                if norm&gt;1e-12: vectors.append(v/norm)
+                if len(vectors)==len(ai): break
+            assert len(vectors)==len(ai)
+            for col,a in enumerate(ai): W[ai,:,a]=vectors[col].reshape(len(ai),e)
+            psi[ai[0],bi]=np.sqrt(p[q])*bvec
+            phi[np.ix_(ai,bi,np.arange(e))]=np.sqrt(p[q])*u.reshape(len(ai),1,e)*bvec[None,:,None]
+        ks=[W[:,r,:] for r in range(e)]
+        omega=np.einsum(&#x27;abe,cde-&gt;abcd&#x27;,phi,phi.conj()).reshape(len(qa)*len(qb),-1)
+        recovered=sum(np.outer((k@psi).ravel(),(k@psi).ravel().conj()) for k in ks)
+        tp=sum(k.conj().T@k for k in ks)
+        err=max(np.max(np.abs(recovered-omega)),np.max(np.abs(tp-np.eye(len(qa)))))
+        charge=max(np.max(np.abs(k*qa[None,:]-qa[:,None]*k)) for k in ks)
+        leak=np.linalg.norm(psi[(qa[:,None]+qb[None,:])!=2])
+        assert err&lt;2e-12 and charge==0 and leak==0
+        rows.append({&#x27;recovery_normalization_error&#x27;:float(err),&#x27;charge_commutator&#x27;:float(charge)})
+    return {&#x27;rank_deficient_unequal_block_cases&#x27;:len(rows),&#x27;cases&#x27;:rows}
+
+
+def phase_flip_endpoint():
+    records=[]
+    for n in [1,2,5,10,20]:
+        mu=F(n*(n+1),2)
+        for zeta in [F(1,10),F(1,100)]:
+            gamma=4*mu/zeta; rate=(gamma-1)/2
+            c=4*gamma/(gamma*gamma+4)
+            u0,u1=F(1),1+c
+            for _ in range(1,n): u0,u1=u1,(2+c)*u1-u0
+            target=1/u1
+            assert c*mu&lt;=zeta and target&gt;=1-zeta
+            # Static-rescaling comparator at rational squared amplitude.
+            a_squared=mu/zeta-F(1,4)
+            c_static=4/(1+4*a_squared)
+            assert c_static*mu==zeta
+            records.append({&#x27;n&#x27;:n,&#x27;target_error&#x27;:str(zeta),&#x27;gamma_exact&#x27;:str(gamma),
+                            &#x27;native_pulse_rate_exact&#x27;:str(rate),
+                            &#x27;failure_rate_slow_exact&#x27;:str(c),
+                            &#x27;actual_target_probability_exact&#x27;:str(target),
+                            &#x27;slow_mean_duration_upper_exact&#x27;:str(mu),
+                            &#x27;expected_native_pulses_times_epsilon_hop_squared_upper&#x27;:str(rate*mu),
+                            &#x27;static_comparator_amplitude_squared&#x27;:str(a_squared)})
+    return {&#x27;exact_phase_flip_endpoint_cases&#x27;:len(records),&#x27;cases&#x27;:records,
+            &#x27;scope&#x27;:&#x27;finite kinetic first-hit functional; no physical sink or finite-duration pulse proof&#x27;}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    out={&#x27;status&#x27;:&#x27;PASS; internal finite diagnostics, not formal or external validation&#x27;,
+         &#x27;thermal_entropy_refinement&#x27;:thermal(), &#x27;singular_work&#x27;:singular_work(),
+         &#x27;relative_endpoint&#x27;:relative_endpoint(),&#x27;parity_free_flux_current&#x27;:flux_current(),
+         &#x27;staggered_current_review&#x27;:staggered_current(),
+         &#x27;exact_fixed_sector_counterexample_review&#x27;:sector_counterexample(),
+         &#x27;rank_deficient_grouped_reachability&#x27;:rank_deficient_reachability(),
+         &#x27;finite_phase_flip_endpoint&#x27;:phase_flip_endpoint()}
+    Path(__file__).with_name(&#x27;independent_results.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2))
+</pre>

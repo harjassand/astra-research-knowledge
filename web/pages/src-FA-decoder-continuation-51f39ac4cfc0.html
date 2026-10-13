@@ -1,0 +1,429 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — compact_tournament_audit.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Independent exact finite audit of the compact winner-coordinate learner.
+
+The acquisition code sees only strict comparisons. Ground truth is used only
+by post-acquisition finite checks and to construct the forced-cutoff fixture.
+This deliberately does not import the v2 audit implementation.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+import random
+from collections import Counter
+from itertools import combinations
+from pathlib import Path
+
+
+HERE = Path(__file__).resolve().parent
+
+
+def parity(x: int) -&gt; int:
+    return x.bit_count() &amp; 1
+
+
+def low_weight_masks(nvars: int, degree: int) -&gt; list[int]:
+    return [sum(1 &lt;&lt; i for i in subset)
+            for weight in range(min(nvars, degree) + 1)
+            for subset in combinations(range(nvars), weight)]
+
+
+def gf2_rank(vectors: list[int], ambient: int) -&gt; int:
+    rows = [v for v in vectors if v]
+    rank = 0
+    for col in range(ambient):
+        pivot = next((i for i in range(rank, len(rows))
+                      if (rows[i] &gt;&gt; col) &amp; 1), None)
+        if pivot is None:
+            continue
+        rows[rank], rows[pivot] = rows[pivot], rows[rank]
+        for i in range(len(rows)):
+            if i != rank and ((rows[i] &gt;&gt; col) &amp; 1):
+                rows[i] ^= rows[rank]
+        rank += 1
+        if rank == len(rows):
+            break
+    return rank
+
+
+def xor_span(vectors: list[int], coefficient_mask: int) -&gt; int:
+    out = 0
+    for i, vector in enumerate(vectors):
+        if (coefficient_mask &gt;&gt; i) &amp; 1:
+            out ^= vector
+    return out
+
+
+def interpolate_low_weight(values: dict[int, int], nvars: int,
+                           degree: int) -&gt; dict[int, int]:
+    points = low_weight_masks(nvars, degree)
+    assert set(values) == set(points)
+    coefficients: dict[int, int] = {}
+    for mask in sorted(points, key=lambda x: (x.bit_count(), x)):
+        value = values[mask]
+        proper = (mask - 1) &amp; mask
+        while True:
+            value ^= coefficients.get(proper, 0)
+            if proper == 0:
+                break
+            proper = (proper - 1) &amp; mask
+        coefficients[mask] = value
+    return coefficients
+
+
+def evaluate_anf(coefficients: dict[int, int], point: int) -&gt; int:
+    value = 0
+    for monomial, bit in coefficients.items():
+        if bit and (point &amp; monomial) == monomial:
+            value ^= 1
+    return value
+
+
+class Teacher:
+    &quot;&quot;&quot;Random hidden-affine triangular map of total degree at most d.&quot;&quot;&quot;
+    def __init__(self, n: int, degree: int, seed: int):
+        self.n, self.degree = n, degree
+        rng = random.Random(seed)
+        while True:
+            rows = [rng.getrandbits(n) for _ in range(n)]
+            if gf2_rank(rows, n) == n:
+                break
+        self.rows = rows
+        self.offset = rng.getrandbits(n)
+        self.g: list[dict[int, int]] = []
+        for i in range(n):
+            self.g.append({mask: rng.getrandbits(1)
+                           for mask in low_weight_masks(i, degree)})
+        self.cache: dict[int, int] = {}
+        self.comparisons = 0
+
+    def hidden_coordinates(self, x: int) -&gt; list[int]:
+        return [parity(row &amp; x) ^ ((self.offset &gt;&gt; i) &amp; 1)
+                for i, row in enumerate(self.rows)]
+
+    def output_bits(self, x: int) -&gt; list[int]:
+        u = self.hidden_coordinates(x)
+        u_mask = sum(bit &lt;&lt; i for i, bit in enumerate(u))
+        out = []
+        for i in range(self.n):
+            bit = u[i]
+            for monomial, coefficient in self.g[i].items():
+                if coefficient and (u_mask &amp; monomial) == monomial:
+                    bit ^= 1
+            out.append(bit)
+        return out
+
+    def rank(self, x: int) -&gt; int:
+        if x not in self.cache:
+            rank = 0
+            for bit in self.output_bits(x):
+                rank = (rank &lt;&lt; 1) | bit
+            self.cache[x] = rank
+        return self.cache[x]
+
+    def query(self, x: int, y: int) -&gt; bool:
+        assert x != y
+        self.comparisons += 1
+        return self.rank(x) &lt; self.rank(y)
+
+
+class CountedQuery:
+    def __init__(self, oracle):
+        self.oracle = oracle
+        self.calls = 0
+        self.endpoints: set[int] = set()
+
+    def __call__(self, x: int, y: int) -&gt; bool:
+        assert x != y
+        self.calls += 1
+        self.endpoints.add(x)
+        self.endpoints.add(y)
+        return self.oracle(x, y)
+
+
+def select_earliest(basis: list[int], n: int, query, rng,
+                    cap: int) -&gt; tuple[int | None, int | None, dict]:
+    if not basis:
+        return None, None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;queries&quot;: 0,
+                            &quot;attempts&quot;: 0, &quot;matched_pairs&quot;: 0}
+    best = basis[0]
+    best_index = 0
+    queries = attempts = matched_pairs = 0
+    for candidate_index, candidate in enumerate(basis[1:], start=1):
+        matched = False
+        for _ in range(cap):
+            x = rng.getrandbits(n)
+            attempts += 1
+            candidate_bit = 1 ^ int(query(x, x ^ candidate))
+            best_bit = 1 ^ int(query(x, x ^ best))
+            queries += 2
+            if candidate_bit != best_bit:
+                continue
+            answer = int(query(x ^ candidate, x ^ best))
+            queries += 1
+            matched_pairs += 1
+            if answer == candidate_bit:
+                best = candidate
+                best_index = candidate_index
+            matched = True
+            break
+        if not matched:
+            return None, None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;queries&quot;: queries,
+                                &quot;attempts&quot;: attempts,
+                                &quot;matched_pairs&quot;: matched_pairs}
+    return best, best_index, {&quot;status&quot;: &quot;selected&quot;, &quot;queries&quot;: queries,
+                              &quot;attempts&quot;: attempts,
+                              &quot;matched_pairs&quot;: matched_pairs}
+
+
+def acquire_compact(n: int, degree: int, query, seed: int,
+                    beta: float = 0.01):
+    pair_budget = n * (n - 1) // 2
+    cap = max(1, math.ceil(math.log2(pair_budget / beta))) if pair_budget else 1
+    rng = random.Random(seed)
+    winners: list[int] = []
+    suffix: list[int] = [1 &lt;&lt; i for i in range(n)]
+    restricted: list[dict[int, int]] = []
+    stages = []
+    interpolation_total = response_total = 0
+
+    for k in range(n):
+        if len(suffix) != n - k:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;suffix dimension&quot;,
+                          &quot;stages&quot;: stages, &quot;cap&quot;: cap}
+        if gf2_rank(winners + suffix, n) != n:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;complement rank&quot;,
+                          &quot;stages&quot;: stages, &quot;cap&quot;: cap}
+
+        winner, winner_index, tournament = select_earliest(
+            suffix, n, query, rng, cap)
+        if winner is None:
+            return None, {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;matching cutoff&quot;,
+                          &quot;stages&quot;: stages, &quot;cap&quot;: cap}
+
+        points = low_weight_masks(k, degree)
+        values = {a: 1 ^ int(query(xor_span(winners, a),
+                                   xor_span(winners, a) ^ winner))
+                  for a in points}
+        h = interpolate_low_weight(values, k, degree)
+        h0 = evaluate_anf(h, 0)
+
+        # The winner is a suffix-basis vector and already has response one.
+        row = []
+        for i, vector in enumerate(suffix):
+            if i == winner_index:
+                row.append(1)
+            else:
+                q_at_vector = 1 ^ int(query(vector, vector ^ winner))
+                row.append(q_at_vector ^ h0)
+                response_total += 1
+        assert row[winner_index] == 1
+        new_suffix = [suffix[i] ^ (winner if row[i] else 0)
+                      for i in range(len(suffix)) if i != winner_index]
+        assert len(new_suffix) == n - k - 1
+        assert gf2_rank(new_suffix, n) == len(new_suffix)
+
+        interpolation_total += len(points)
+        stages.append({&quot;stage&quot;: k, &quot;suffix_dimension&quot;: len(suffix),
+                       &quot;winner_basis_index&quot;: winner_index,
+                       &quot;tournament_queries&quot;: tournament[&quot;queries&quot;],
+                       &quot;tournament_attempts&quot;: tournament[&quot;attempts&quot;],
+                       &quot;interpolation_queries&quot;: len(points),
+                       &quot;response_queries&quot;: len(suffix) - 1,
+                       &quot;suffix_after&quot;: len(new_suffix)})
+        winners.append(winner)
+        restricted.append(h)
+        suffix = new_suffix
+
+    total_dimension = sum(len(low_weight_masks(k, degree)) for k in range(n))
+    lower_bound = sum(math.comb(n, h + 1) for h in range(degree + 1)
+                      if h + 1 &lt;= n)
+    assert interpolation_total == total_dimension == lower_bound
+    assert response_total == pair_budget
+    assert not suffix and gf2_rank(winners, n) == n
+    return (winners, restricted), {
+        &quot;status&quot;: &quot;acquired&quot;, &quot;stages&quot;: stages, &quot;D&quot;: total_dimension,
+        &quot;known_basis_lower_bound_L&quot;: lower_bound,
+        &quot;pair_budget&quot;: pair_budget, &quot;cap&quot;: cap,
+        &quot;interpolation_queries&quot;: interpolation_total,
+        &quot;response_queries&quot;: response_total,
+        &quot;tournament_queries&quot;: sum(s[&quot;tournament_queries&quot;] for s in stages),
+        &quot;expected_comparison_upper&quot;: total_dimension + 6 * pair_budget,
+        &quot;unknown_probability_union_bound&quot;: pair_budget * (2.0 ** -cap),
+        &quot;fresh_matching_random_bits&quot;: n * sum(s[&quot;tournament_attempts&quot;]
+                                               for s in stages),
+        &quot;query_argument_bits&quot;: 2 * n * query.calls,
+        &quot;response_bits&quot;: query.calls,
+        &quot;output_coefficient_bits&quot;: total_dimension,
+        &quot;output_winner_vector_bits&quot;: n * n,
+        &quot;source_distinct_query_endpoints&quot;: len(query.endpoints),
+        &quot;worst_case_comparison_bound&quot;: total_dimension + (2 * cap + 2) * pair_budget,
+    }
+
+
+def basis_coordinates(vectors: list[int], point: int, n: int) -&gt; int:
+    echelon: dict[int, tuple[int, int]] = {}
+    for i, vector in enumerate(vectors):
+        row, coordinates = vector, 1 &lt;&lt; i
+        while row:
+            pivot = row.bit_length() - 1
+            if pivot in echelon:
+                old_row, old_coordinates = echelon[pivot]
+                row ^= old_row
+                coordinates ^= old_coordinates
+            else:
+                echelon[pivot] = (row, coordinates)
+                break
+    assert len(echelon) == n
+    remainder, coordinates = point, 0
+    for pivot in sorted(echelon, reverse=True):
+        if (remainder &gt;&gt; pivot) &amp; 1:
+            row, row_coordinates = echelon[pivot]
+            remainder ^= row
+            coordinates ^= row_coordinates
+    assert remainder == 0
+    return coordinates
+
+
+def compact_rank(point: int, winners: list[int],
+                 restricted: list[dict[int, int]], n: int) -&gt; int:
+    t = basis_coordinates(winners, point, n)
+    out = 0
+    for j, h in enumerate(restricted):
+        prefix = t &amp; ((1 &lt;&lt; j) - 1)
+        bit = ((t &gt;&gt; j) &amp; 1) ^ evaluate_anf(h, prefix)
+        out = (out &lt;&lt; 1) | bit
+    return out
+
+
+def compact_inverse(rank: int, winners: list[int],
+                    restricted: list[dict[int, int]], n: int) -&gt; int:
+    t = 0
+    for j, h in enumerate(restricted):
+        output_bit = (rank &gt;&gt; (n - j - 1)) &amp; 1
+        t_bit = output_bit ^ evaluate_anf(h, t &amp; ((1 &lt;&lt; j) - 1))
+        t |= t_bit &lt;&lt; j
+    return xor_span(winners, t)
+
+
+def sample_prefix_fiber(winners: list[int],
+                        restricted: list[dict[int, int]], n: int,
+                        prefix_bits: int, target: int,
+                        free_suffix: int) -&gt; int:
+    t = 0
+    for j in range(prefix_bits):
+        output_bit = (target &gt;&gt; (prefix_bits - j - 1)) &amp; 1
+        t_bit = output_bit ^ evaluate_anf(restricted[j], t &amp; ((1 &lt;&lt; j) - 1))
+        t |= t_bit &lt;&lt; j
+    for j in range(prefix_bits, n):
+        t_bit = (free_suffix &gt;&gt; (n - j - 1)) &amp; 1
+        t |= t_bit &lt;&lt; j
+    return xor_span(winners, t)
+
+
+def test_case(n: int, degree: int, seed: int) -&gt; dict:
+    teacher = Teacher(n, degree, seed)
+    query = CountedQuery(teacher.query)
+    result, receipt = acquire_compact(n, degree, query, seed + 880001)
+    assert result is not None and receipt[&quot;status&quot;] == &quot;acquired&quot;, receipt
+    winners, restricted = result
+    assert query.calls == (receipt[&quot;interpolation_queries&quot;] +
+                           receipt[&quot;response_queries&quot;] +
+                           receipt[&quot;tournament_queries&quot;])
+    assert query.calls &lt;= receipt[&quot;worst_case_comparison_bound&quot;]
+
+    rank_errors = inverse_errors = 0
+    seen_ranks = set()
+    for x in range(1 &lt;&lt; n):
+        predicted = compact_rank(x, winners, restricted, n)
+        actual = teacher.rank(x)
+        rank_errors += predicted != actual
+        inverse_errors += compact_inverse(actual, winners, restricted, n) != x
+        seen_ranks.add(predicted)
+    assert rank_errors == inverse_errors == 0 and len(seen_ranks) == (1 &lt;&lt; n)
+
+    fiber_checks = []
+    for k in range(n + 1):
+        targets = 0
+        for target in range(1 &lt;&lt; k):
+            sampled = [sample_prefix_fiber(winners, restricted, n, k,
+                                           target, free)
+                       for free in range(1 &lt;&lt; (n - k))]
+            assert len(set(sampled)) == 1 &lt;&lt; (n - k)
+            assert all((teacher.rank(x) &gt;&gt; (n - k)) == target for x in sampled)
+            targets += 1
+        fiber_checks.append({&quot;prefix_bits&quot;: k, &quot;targets_exhausted&quot;: targets,
+                             &quot;points_per_fiber&quot;: 1 &lt;&lt; (n - k)})
+
+    return {&quot;n&quot;: n, &quot;degree&quot;: degree, &quot;seed&quot;: seed,
+            &quot;status&quot;: receipt[&quot;status&quot;], &quot;rank_inputs_checked&quot;: 1 &lt;&lt; n,
+            &quot;rank_errors&quot;: rank_errors, &quot;inverse_targets_checked&quot;: 1 &lt;&lt; n,
+            &quot;inverse_errors&quot;: inverse_errors,
+            &quot;prefix_fiber_checks&quot;: fiber_checks,
+            &quot;actual_comparisons&quot;: query.calls,
+            &quot;D_equals_known_basis_L&quot;: receipt[&quot;D&quot;] == receipt[&quot;known_basis_lower_bound_L&quot;],
+            &quot;D&quot;: receipt[&quot;D&quot;], &quot;known_basis_lower_bound_L&quot;: receipt[&quot;known_basis_lower_bound_L&quot;],
+            &quot;response_queries&quot;: receipt[&quot;response_queries&quot;],
+            &quot;tournament_queries&quot;: receipt[&quot;tournament_queries&quot;],
+            &quot;matching_random_bits&quot;: receipt[&quot;fresh_matching_random_bits&quot;],
+            &quot;query_argument_bits&quot;: receipt[&quot;query_argument_bits&quot;],
+            &quot;response_bits&quot;: receipt[&quot;response_bits&quot;],
+            &quot;compact_output_bits&quot;: (receipt[&quot;output_coefficient_bits&quot;] +
+                                    receipt[&quot;output_winner_vector_bits&quot;]),
+            &quot;distinct_source_query_endpoints&quot;: receipt[&quot;source_distinct_query_endpoints&quot;],
+            &quot;capped_worst_case_bound&quot;: receipt[&quot;worst_case_comparison_bound&quot;],
+            &quot;stages&quot;: receipt[&quot;stages&quot;]}
+
+
+class FixedRng:
+    def __init__(self, value: int):
+        self.value = value
+
+    def getrandbits(self, n: int) -&gt; int:
+        return self.value
+
+
+def cutoff_test() -&gt; dict:
+    n, degree = 4, 3
+    teacher = Teacher(n, degree, 778239)
+    query = CountedQuery(teacher.query)
+    basis = [1, 2]
+    x = next(z for z in range(1 &lt;&lt; n)
+             if (int(teacher.rank(z) &lt; teacher.rank(z ^ basis[0]))) !=
+                (int(teacher.rank(z) &lt; teacher.rank(z ^ basis[1]))))
+    winner, index, receipt = select_earliest(basis, n, query,
+                                             FixedRng(x), cap=5)
+    assert winner is None and index is None and receipt[&quot;status&quot;] == &quot;UNKNOWN&quot;
+    assert query.calls == receipt[&quot;queries&quot;] == 10
+    return {&quot;degree&quot;: degree, &quot;status&quot;: receipt[&quot;status&quot;],
+            &quot;attempts&quot;: receipt[&quot;attempts&quot;], &quot;comparisons&quot;: query.calls,
+            &quot;returns_no_guess&quot;: winner is None}
+
+
+def main() -&gt; None:
+    cases = []
+    for degree, ns in ((3, range(4, 9)), (4, range(5, 9))):
+        for n in ns:
+            for seed_offset in range(2):
+                cases.append(test_case(n, degree,
+                                       918000 + 1009 * degree + 31 * n + seed_offset))
+    result = {&quot;status&quot;: &quot;EXACT_FINITE_COMPACT_TOURNAMENT_AUDIT&quot;,
+              &quot;case_count&quot;: len(cases), &quot;cases&quot;: cases,
+              &quot;all_exact&quot;: all(c[&quot;status&quot;] == &quot;acquired&quot; and
+                               c[&quot;rank_errors&quot;] == 0 and
+                               c[&quot;inverse_errors&quot;] == 0 and
+                               c[&quot;D_equals_known_basis_L&quot;] for c in cases),
+              &quot;degree_3_case_count&quot;: sum(c[&quot;degree&quot;] == 3 for c in cases),
+              &quot;degree_4_case_count&quot;: sum(c[&quot;degree&quot;] == 4 for c in cases),
+              &quot;max_n&quot;: max(c[&quot;n&quot;] for c in cases),
+              &quot;cutoff_test&quot;: cutoff_test(),
+              &quot;scope&quot;: &quot;Complete hidden-affine triangular F2 bijection, total degree &lt;= d; compact winner-basis representation; exact strict comparator.&quot;,
+              &quot;randomness&quot;: &quot;Seeded PRNG for reproducibility; theorem requires fresh independent uniform global points.&quot;}
+    (HERE / &quot;compact_tournament_audit.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;cases&quot;: len(cases),
+                      &quot;all_exact&quot;: result[&quot;all_exact&quot;], &quot;max_n&quot;: result[&quot;max_n&quot;],
+                      &quot;cutoff_test&quot;: result[&quot;cutoff_test&quot;]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

@@ -1,0 +1,465 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — ordinal_flag_snapshot.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Comparison-only acquisition of quadratic decoders with a polar toggle flag.
+
+All target labels/ranks stay inside the source.  Its truth is read only after
+acquisition.  Known-method components are not a novelty or comparator victory.
+Stdlib only; cache hits, random draws, source work and checking are charged.
+&quot;&quot;&quot;
+import argparse
+import json
+import math
+import random
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+
+def parity(x):
+    return x.bit_count() &amp; 1
+
+
+def lin(rows, x):
+    return sum(parity(row &amp; x) &lt;&lt; i for i, row in enumerate(rows))
+
+
+def echelon(rows, n):
+    rows = list(rows)
+    pivots = []
+    rank = 0
+    for j in range(n):
+        p = next((p for p in range(rank, len(rows)) if rows[p] &gt;&gt; j &amp; 1), None)
+        if p is None:
+            continue
+        rows[rank], rows[p] = rows[p], rows[rank]
+        for i in range(len(rows)):
+            if i != rank and rows[i] &gt;&gt; j &amp; 1:
+                rows[i] ^= rows[rank]
+        pivots.append(j)
+        rank += 1
+    return rows[:rank], pivots
+
+
+def kernel(rows, n):
+    reduced, pivots = echelon(rows, n)
+    return [sum(((reduced[i] &gt;&gt; f) &amp; 1) &lt;&lt; p for i, p in enumerate(pivots))
+            | (1 &lt;&lt; f) for f in range(n) if f not in pivots]
+
+
+def solve(rows, rhs, n):
+    augmented = [row | (b &lt;&lt; n) for row, b in zip(rows, rhs)]
+    reduced, pivots = echelon(augmented, n)
+    # echelon omits zero coefficient rows, so inspect a separate augmented pass.
+    rank = 0
+    for j in range(n):
+        p = next((p for p in range(rank, len(augmented))
+                  if augmented[p] &gt;&gt; j &amp; 1), None)
+        if p is None:
+            continue
+        augmented[rank], augmented[p] = augmented[p], augmented[rank]
+        for i in range(len(augmented)):
+            if i != rank and augmented[i] &gt;&gt; j &amp; 1:
+                augmented[i] ^= augmented[rank]
+        rank += 1
+    if any(row == 1 &lt;&lt; n for row in augmented):
+        return None
+    return sum(((row &gt;&gt; n) &amp; 1) &lt;&lt; p for row, p in zip(reduced, pivots))
+
+
+def complement(vectors, n):
+    kept = list(vectors)
+    result = []
+    for i in range(n):
+        candidate = 1 &lt;&lt; i
+        if len(echelon(kept + [candidate], n)[1]) &gt; len(kept):
+            kept.append(candidate)
+            result.append(candidate)
+    assert len(kept) == n
+    return result
+
+
+def combine(basis, coefficients):
+    out = 0
+    while coefficients:
+        bit = coefficients &amp; -coefficients
+        out ^= basis[bit.bit_length() - 1]
+        coefficients ^= bit
+    return out
+
+
+@dataclass
+class Quadratic:
+    constant: int
+    linear: int
+    upper: list
+
+    def __call__(self, x):
+        value = self.constant ^ parity(self.linear &amp; x)
+        active = x
+        while active:
+            bit = active &amp; -active
+            value ^= parity(self.upper[bit.bit_length() - 1] &amp; x)
+            active ^= bit
+        return value
+
+    def polar(self):
+        rows = self.upper.copy()
+        for i, upper in enumerate(self.upper):
+            while upper:
+                bit = upper &amp; -upper
+                rows[bit.bit_length() - 1] ^= 1 &lt;&lt; i
+                upper ^= bit
+        return rows
+
+    def body(self):
+        return {&#x27;constant&#x27;: self.constant, &#x27;linear&#x27;: self.linear, &#x27;upper&#x27;: self.upper}
+
+
+def coefficient_points(n):
+    return [0] + [1 &lt;&lt; i for i in range(n)] + [
+        (1 &lt;&lt; i) | (1 &lt;&lt; j) for i in range(n) for j in range(i + 1, n)]
+
+
+def interpolate(values, n):
+    c = values[0]
+    linear = sum((values[1 &lt;&lt; i] ^ c) &lt;&lt; i for i in range(n))
+    upper = [0] * n
+    for i in range(n):
+        for j in range(i + 1, n):
+            upper[i] |= (values[(1 &lt;&lt; i) | (1 &lt;&lt; j)] ^ values[1 &lt;&lt; i]
+                         ^ values[1 &lt;&lt; j] ^ c) &lt;&lt; j
+    return Quadratic(c, linear, upper)
+
+
+class TriangularTeacher:
+    def __init__(self, n, seed):
+        start = time.perf_counter()
+        rng = random.Random(seed)
+        while True:
+            rows = [rng.getrandbits(n) for _ in range(n)]
+            if len(echelon(rows, n)[1]) == n:
+                break
+        self._rows, self._offset = rows, rng.getrandbits(n)
+        self._g = []
+        for j in range(n):
+            upper = [rng.getrandbits(j) &amp; ~((1 &lt;&lt; (i + 1)) - 1)
+                     if i &lt; j else 0 for i in range(n)]
+            self._g.append(Quadratic(rng.getrandbits(1), rng.getrandbits(j), upper))
+        self.n = n
+        self.calls = self.fresh_ranks = 0
+        self.cache = {}
+        self.setup_seconds = time.perf_counter() - start
+
+    def rank(self, x):
+        if x not in self.cache:
+            self.fresh_ranks += 1
+            u = lin(self._rows, x) ^ self._offset
+            rank = 0
+            for j, g in enumerate(self._g):
+                rank = (rank &lt;&lt; 1) | (((u &gt;&gt; j) &amp; 1) ^ g(u))
+            self.cache[x] = rank
+        return self.cache[x]
+
+    def query(self, x, y):
+        self.calls += 1
+        return self.rank(x) &lt; self.rank(y)
+
+
+class FlagCompiler:
+    def __init__(self, n):
+        self.n = n
+        self.quadratics = []
+        self.toggles = []
+        self.complement = [1 &lt;&lt; i for i in range(n)]
+        self.sampler_cache = {}
+        self.draws = self.random_bits = self.projections = 0
+        self.projection_q_evaluations = self.cache_hits = self.enumerated_points = 0
+        self.maximum_sampler_cache_entries = 0
+        self.certificate_checks = []
+
+    def prefix(self, x):
+        return sum(q(x) &lt;&lt; j for j, q in enumerate(self.quadratics))
+
+    def project(self, x, target):
+        self.projections += 1
+        for j, (q, v) in enumerate(zip(self.quadratics, self.toggles)):
+            self.projection_q_evaluations += 1
+            if q(x) != ((target &gt;&gt; j) &amp; 1):
+                x ^= v
+        return x
+
+    def sample(self, target, rng):
+        r = len(self.complement)
+        seed = rng.getrandbits(r)
+        self.draws += 1
+        self.random_bits += r
+        key = (target &lt;&lt; r) | seed
+        if key not in self.sampler_cache:
+            self.sampler_cache[key] = self.project(combine(self.complement, seed), target)
+            self.maximum_sampler_cache_entries = max(
+                self.maximum_sampler_cache_entries, len(self.sampler_cache))
+        else:
+            self.cache_hits += 1
+        return self.sampler_cache[key]
+
+    def fiber(self, target):
+        for seed in range(1 &lt;&lt; len(self.complement)):
+            self.enumerated_points += 1
+            yield self.project(combine(self.complement, seed), target)
+
+    def add(self, q):
+        quadratics = self.quadratics + [q]
+        radical = kernel([row for p in quadratics for row in p.polar()], self.n)
+        response_rows = [sum((p(v) ^ p.constant) &lt;&lt; a for a, v in enumerate(radical))
+                         for p in quadratics]
+        a = solve(response_rows, [0] * len(self.quadratics) + [1], len(radical))
+        if a is None:
+            return False
+        v = combine(radical, a)
+        certificate = all(
+            all(parity(row &amp; v) == 0 for row in p.polar())
+            and (p(v) ^ p.constant) == int(i == len(quadratics) - 1)
+            for i, p in enumerate(quadratics))
+        assert certificate
+        self.quadratics.append(q)
+        self.toggles.append(v)
+        self.complement = complement(self.toggles, self.n)
+        self.sampler_cache = {}
+        self.certificate_checks.append(certificate)
+        return True
+
+
+def median_abs_deviation(m):
+    assert m % 2 == 1
+    return math.comb(m + 1, (m + 1) // 2) / (2 ** (m + 2))
+
+
+def noisy_bit(point, query, compiler, m, rng):
+    prefix = compiler.prefix(point)
+    votes = sum(query(point, compiler.sample(prefix, rng)) for _ in range(m))
+    return int(votes &lt;= m // 2)
+
+
+def corrected_bit(point, query, compiler, m, repetitions, rng):
+    votes = 0
+    for _ in range(repetitions):
+        a, b, c = (rng.getrandbits(compiler.n) for _ in range(3))
+        value = 0
+        for shift in (a, b, a ^ b, c, a ^ c, b ^ c, a ^ b ^ c):
+            value ^= noisy_bit(point ^ shift, query, compiler, m, rng)
+        votes += value
+    return int(votes &gt; repetitions // 2)
+
+
+def acquire(n, query, seed, beta=0.01, m=127, tail_dimension=7):
+    rng = random.Random(seed)
+    compiler = FlagCompiler(n)
+    points = coefficient_points(n)
+    learned = []
+    stages = []
+    total_start = time.perf_counter()
+    while n - len(learned) &gt; tail_dimension:
+        k = len(learned)
+        residual_size = 1 &lt;&lt; (n - k)
+        eta = median_abs_deviation(m) + 1 / residual_size
+        gap = 0.5 - 7 * eta
+        if gap &lt;= 0:
+            raise ValueError(&#x27;Choose larger m or residual tail bound.&#x27;)
+        repetitions = math.ceil(math.log(n * len(points) / beta) / (2 * gap * gap))
+        repetitions += 1 - repetitions % 2
+        start = time.perf_counter()
+        values = {x: corrected_bit(x, query, compiler, m, repetitions, rng) for x in points}
+        q = interpolate(values, n)
+        certificate_start = time.perf_counter()
+        added = compiler.add(q)
+        certificate_seconds = time.perf_counter() - certificate_start
+        stages.append({&#x27;stage&#x27;: k, &#x27;residual_size&#x27;: residual_size,
+                       &#x27;median_samples_per_label&#x27;: m, &#x27;average_label_error_bound&#x27;: eta,
+                       &#x27;rm_trial_error_bound&#x27;: 7 * eta, &#x27;correction_repetitions&#x27;: repetitions,
+                       &#x27;comparison_charge&#x27;: 7 * m * repetitions * len(points),
+                       &#x27;stage_failure_bound&#x27;: len(points) * math.exp(-2 * repetitions * gap * gap),
+                       &#x27;flag_certificate_acquired&#x27;: added,
+                       &#x27;certificate_seconds&#x27;: certificate_seconds,
+                       &#x27;stage_seconds_including_source&#x27;: time.perf_counter() - start})
+        if not added:
+            return {&#x27;status&#x27;: &#x27;flag_gate_failed&#x27;, &#x27;stages&#x27;: stages}, None, compiler
+        learned.append(q)
+    # This is the only enumeration. Its size is &lt;= 2^tail_dimension, independent
+    # of the number of prefixes. Each coefficient point&#x27;s own prefix is handled.
+    start = time.perf_counter()
+    remaining = n - len(learned)
+    tail_values = [dict() for _ in range(remaining)]
+    for x in points:
+        prefix = compiler.prefix(x)
+        rank = sum(query(y, x) for y in compiler.fiber(prefix) if y != x)
+        for j in range(remaining):
+            tail_values[j][x] = (rank &gt;&gt; (remaining - j - 1)) &amp; 1
+    learned.extend(interpolate(values, n) for values in tail_values)
+    receipt = {&#x27;status&#x27;: &#x27;acquired&#x27;, &#x27;stages&#x27;: stages, &#x27;n&#x27;: n,
+               &#x27;coefficient_points&#x27;: len(points), &#x27;beta_target&#x27;: beta,
+               &#x27;total_failure_bound&#x27;: sum(s[&#x27;stage_failure_bound&#x27;] for s in stages),
+               &#x27;tail_dimension_bound&#x27;: tail_dimension, &#x27;enumerated_residual_dimension&#x27;: remaining,
+               &#x27;tail_comparison_upper_bound&#x27;: len(points) * ((1 &lt;&lt; remaining) - 1),
+               &#x27;tail_seconds_including_source&#x27;: time.perf_counter() - start,
+               &#x27;acquisition_seconds_including_source&#x27;: time.perf_counter() - total_start}
+    return receipt, learned, compiler
+
+
+def learned_rank(quadratics, x):
+    out = 0
+    for q in quadratics:
+        out = (out &lt;&lt; 1) | q(x)
+    return out
+
+
+def invert_rank(quadratics, compiler, target_rank):
+    k = len(compiler.quadratics)
+    n = compiler.n
+    target_prefix = sum(((target_rank &gt;&gt; (n - j - 1)) &amp; 1) &lt;&lt; j for j in range(k))
+    return next(x for x in compiler.fiber(target_prefix)
+                if learned_rank(quadratics, x) == target_rank)
+
+
+def merge_sort(values, query):
+    if len(values) &lt;= 1:
+        return values
+    m = len(values) // 2
+    left, right = merge_sort(values[:m], query), merge_sort(values[m:], query)
+    out, i, j = [], 0, 0
+    while i &lt; len(left) and j &lt; len(right):
+        if query(left[i], right[j]):
+            out.append(left[i]); i += 1
+        else:
+            out.append(right[j]); j += 1
+    return out + left[i:] + right[j:]
+
+
+def run(n, seed, beta, m, tail_dimension):
+    start = time.perf_counter()
+    teacher = TriangularTeacher(n, seed)
+    receipt, quadratics, compiler = acquire(n, teacher.query, seed + 1000000,
+                                           beta=beta, m=m, tail_dimension=tail_dimension)
+    receipt.update({&#x27;seed&#x27;: seed, &#x27;source_setup_seconds&#x27;: teacher.setup_seconds,
+                    &#x27;source_calls_acquisition&#x27;: teacher.calls,
+                    &#x27;source_fresh_ranks_acquisition&#x27;: teacher.fresh_ranks,
+                    &#x27;source_rank_bitwork_upper_acquisition&#x27;: teacher.fresh_ranks * (3 * n ** 3 + 3 * n ** 2),
+                    &#x27;source_cache_payload_bits_acquisition&#x27;: len(teacher.cache) * 2 * n,
+                    &#x27;source_cache_entries_acquisition&#x27;: len(teacher.cache),
+                    &#x27;query_input_bits_acquisition&#x27;: teacher.calls * 2 * n,
+                    &#x27;returned_bits_acquisition&#x27;: teacher.calls,
+                    &#x27;uniform_fiber_draws&#x27;: compiler.draws,
+                    &#x27;fiber_random_bits&#x27;: compiler.random_bits,
+                    &#x27;random_cube_direction_bits&#x27;: sum(s[&#x27;correction_repetitions&#x27;] * 3 * n
+                                                      for s in receipt[&#x27;stages&#x27;]) * len(coefficient_points(n)),
+                    &#x27;fiber_projection_calls_acquisition&#x27;: compiler.projections,
+                    &#x27;fiber_projection_q_evaluations_acquisition&#x27;: compiler.projection_q_evaluations,
+                    &#x27;fiber_sampler_cache_hits&#x27;: compiler.cache_hits,
+                    &#x27;fiber_sampler_maximum_cache_entries&#x27;: compiler.maximum_sampler_cache_entries,
+                    &#x27;fiber_sampler_cache_payload_bits_upper&#x27;: compiler.maximum_sampler_cache_entries * 2 * n,
+                    &#x27;tail_enumerated_points_acquisition&#x27;: compiler.enumerated_points})
+    if quadratics is None:
+        return receipt
+    assert teacher.calls == (sum(s[&#x27;comparison_charge&#x27;] for s in receipt[&#x27;stages&#x27;])
+                             + receipt[&#x27;tail_comparison_upper_bound&#x27;])
+    source_calls_before_check = teacher.calls
+    fresh_before_check = teacher.fresh_ranks
+    check_start = time.perf_counter()
+    # Evaluator-only truth is accessed strictly after the learner has returned.
+    points = coefficient_points(n)
+    truth = [interpolate({x: (teacher.rank(x) &gt;&gt; (n - j - 1)) &amp; 1 for x in points}, n)
+             for j in range(n)]
+    exact_bodies = [q.body() == p.body() for q, p in zip(quadratics, truth)]
+    errors = sum(learned_rank(quadratics, x) != teacher.rank(x) for x in range(1 &lt;&lt; n))
+    prefix_checks = 0
+    for target_prefix in range(1 &lt;&lt; len(compiler.quadratics)):
+        fiber = list(compiler.fiber(target_prefix))
+        assert len(fiber) == len(set(fiber)) == (1 &lt;&lt; len(compiler.complement))
+        assert all(compiler.prefix(x) == target_prefix for x in fiber)
+        prefix_checks += len(fiber)
+    future_targets = random.Random(seed + 2000000).sample(range(1 &lt;&lt; n), min(32, 1 &lt;&lt; n))
+    assert all(teacher.rank(invert_rank(quadratics, compiler, target)) == target
+               for target in future_targets)
+    receipt.update({&#x27;exact_all_coordinate_bodies&#x27;: exact_bodies,
+                    &#x27;exhaustive_rank_points&#x27;: 1 &lt;&lt; n, &#x27;exhaustive_rank_errors&#x27;: errors,
+                    &#x27;exhaustive_prefix_fiber_points_checked&#x27;: prefix_checks,
+                    &#x27;future_inverse_targets_checked&#x27;: len(future_targets),
+                    &#x27;checking_seconds_including_source&#x27;: time.perf_counter() - check_start,
+                    &#x27;checking_fresh_source_ranks&#x27;: teacher.fresh_ranks - fresh_before_check,
+                    &#x27;source_queries_during_learned_execution&#x27;: teacher.calls - source_calls_before_check,
+                    &#x27;compact_coefficient_payload_bits&#x27;: n * len(points),
+                    &#x27;toggle_payload_bits&#x27;: n * len(compiler.toggles),
+                    &#x27;acquired_coordinate_bodies&#x27;: [q.body() for q in quadratics],
+                    &#x27;acquired_toggle_vectors&#x27;: compiler.toggles,
+                    &#x27;overall_seconds_before_baseline&#x27;: time.perf_counter() - start})
+    assert all(exact_bodies) and errors == 0
+    baseline = TriangularTeacher(n, seed)
+    baseline_start = time.perf_counter()
+    sorted_points = merge_sort(list(range(1 &lt;&lt; n)), baseline.query)
+    baseline_seconds = time.perf_counter() - baseline_start
+    baseline_correct = all(baseline.rank(x) == rank for rank, x in enumerate(sorted_points))
+    receipt[&#x27;enumeration_baseline&#x27;] = {&#x27;status&#x27;: &#x27;exact&#x27;, &#x27;comparisons&#x27;: baseline.calls,
+                                      &#x27;fresh_source_ranks&#x27;: baseline.fresh_ranks,
+                                      &#x27;seconds_including_source&#x27;: baseline_seconds,
+                                      &#x27;source_setup_seconds&#x27;: baseline.setup_seconds,
+                                      &#x27;full_table_points&#x27;: len(sorted_points),
+                                      &#x27;correct&#x27;: baseline_correct}
+    receipt[&#x27;known_method_control&#x27;] = &#x27;An equally informed composition using these same sampler/median/RM components ties exactly; no superiority claimed.&#x27;
+    return receipt
+
+
+def boundary_witness():
+    n = 4
+    q = [Quadratic(0, 1, [0, 0, 8, 0]),
+         Quadratic(0, 2, [0, 0, 8, 0]),
+         Quadratic(0, 4, [0] * n), Quadratic(0, 8, [0] * n)]
+    compiler = FlagCompiler(n)
+    certs = [compiler.add(p) for p in q[:3]]
+    assert certs == [True, True, False]
+    ranks = [learned_rank(q, x) for x in range(1 &lt;&lt; n)]
+    assert len(set(ranks)) == 1 &lt;&lt; n
+    return {&#x27;quadratics&#x27;: [p.body() for p in q], &#x27;first_three_flag_gates&#x27;: certs,
+            &#x27;exact_bijective&#x27;: True, &#x27;exhaustive_points&#x27;: 1 &lt;&lt; n,
+            &#x27;boundary&#x27;: &#x27;A quadratic bijection need not have the sequential polar flag.&#x27;}
+
+
+def analytic_scaling(beta=0.01, m=127, tail_dimension=7):
+    cases = []
+    for n in (8, 12, 16, 24, 32, 64, 128):
+        M = len(coefficient_points(n))
+        calls = 0
+        for k in range(max(0, n - tail_dimension)):
+            eta = median_abs_deviation(m) + 2 ** (-(n - k))
+            gap = 0.5 - 7 * eta
+            t = math.ceil(math.log(n * M / beta) / (2 * gap * gap))
+            t += 1 - t % 2
+            calls += 7 * m * t * M
+        calls += M * ((1 &lt;&lt; min(n, tail_dimension)) - 1)
+        cases.append({&#x27;n&#x27;: n, &#x27;comparison_bound&#x27;: calls,
+                      &#x27;enumeration_sort_upper_bound&#x27;: n * (1 &lt;&lt; n),
+                      &#x27;executed&#x27;: False})
+    return cases
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&#x27;--sizes&#x27;, default=&#x27;4,6,8,10,12&#x27;)
+    parser.add_argument(&#x27;--output&#x27;, default=&#x27;ordinal_flag_evidence.json&#x27;)
+    parser.add_argument(&#x27;--beta&#x27;, type=float, default=0.01)
+    parser.add_argument(&#x27;--median-samples&#x27;, type=int, default=127)
+    parser.add_argument(&#x27;--tail-dimension&#x27;, type=int, default=7)
+    args = parser.parse_args()
+    cases = []
+    result = {&#x27;status&#x27;: &#x27;internally_reconstructed_restricted_compiler_no_novelty_claim&#x27;,
+              &#x27;interface&#x27;: &#x27;n and supplied quadratic-bijection/flag promise; chosen raw-input one-bit comparisons only&#x27;,
+              &#x27;cases&#x27;: cases, &#x27;boundary_witness&#x27;: boundary_witness(),
+              &#x27;analytic_unexecuted_scaling&#x27;: analytic_scaling(args.beta, args.median_samples,
+                                                            args.tail_dimension)}
+    for n in map(int, args.sizes.split(&#x27;,&#x27;)):
+        case = run(n, 613003 + n, args.beta, args.median_samples, args.tail_dimension)
+        cases.append(case)
+        Path(args.output).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+        print(json.dumps({k: v for k, v in case.items() if k != &#x27;acquired_coordinate_bodies&#x27;}), flush=True)
+    Path(args.output).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

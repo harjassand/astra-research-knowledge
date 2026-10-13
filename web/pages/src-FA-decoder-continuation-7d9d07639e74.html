@@ -1,0 +1,108 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — selectivity_bound.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the monovalent common-bath Ag/Cu selectivity bound.
+
+Inputs are the inherited 1273 K Ag-shuttle compositions and the source-reported
+infinite-dilution Cu activity coefficient in liquid Ag. This is a thermodynamic
+screen for Cu+/Ag+ in a homogeneous shared electrolyte, not a kinetic model or
+an electrolysis experiment.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+M_CU_G_MOL = 63.546
+M_AG_G_MOL = 107.8682
+GAMMA_CU_IN_AG_1273K = 3.76
+R_GAS_J_MOL_K = 8.31446261815324
+FARADAY_C_MOL = 96485.33212
+TEMPERATURE_K = 1273.0
+# JANAF tabulates ΔfG° for metastable Cu(l) relative to stable Cu(s) as
+# 1.523 kJ/mol at 1200 K and 0.561 kJ/mol at 1300 K. Linear interpolation
+# supplies a documented, approximate solid/liquid standard-state correction.
+CU_LIQUID_MINUS_SOLID_G_1200_J_MOL = 1523.0
+CU_LIQUID_MINUS_SOLID_G_1300_J_MOL = 561.0
+CU_LIQUID_MINUS_SOLID_G_1273_J_MOL = (
+    CU_LIQUID_MINUS_SOLID_G_1200_J_MOL
+    + (TEMPERATURE_K - 1200.0)
+    / 100.0
+    * (CU_LIQUID_MINUS_SOLID_G_1300_J_MOL - CU_LIQUID_MINUS_SOLID_G_1200_J_MOL)
+)
+
+
+def mole_fraction_cu_from_mass_fraction(w_cu: float) -&gt; float:
+    n_cu = w_cu / M_CU_G_MOL
+    n_ag = (1.0 - w_cu) / M_AG_G_MOL
+    return n_cu / (n_cu + n_ag)
+
+
+def case(label: str, w_cu: float) -&gt; dict[str, float | str | bool]:
+    x_cu = mole_fraction_cu_from_mass_fraction(w_cu)
+    a_cu_liquid_standard = GAMMA_CU_IN_AG_1273K * x_cu
+    # Ito et al.&#x27;s alloy activity is relative to pure liquid Cu. At 1273 K
+    # cathodic Cu is stable as a solid. Convert the alloy activity to the
+    # common pure-solid standard with JANAF ΔG°(Cu(l)-Cu(s)).
+    a_cu_solid_standard = a_cu_liquid_standard * math.exp(
+        CU_LIQUID_MINUS_SOLID_G_1273_J_MOL
+        / (R_GAS_J_MOL_K * TEMPERATURE_K)
+    )
+    # Ag is the solvent at &lt;0.4 mass% Cu. The numeric ratio uses a_Ag ~= 1;
+    # exact general result is in terms of measured a_Ag/a_Cu.
+    a_ag_approx = 1.0
+    activity_ratio = a_ag_approx / a_cu_solid_standard
+    v_thermal = R_GAS_J_MOL_K * TEMPERATURE_K / FARADAY_C_MOL
+    return {
+        &quot;label&quot;: label,
+        &quot;cu_mass_fraction&quot;: w_cu,
+        &quot;cu_mole_fraction&quot;: x_cu,
+        &quot;cu_activity_relative_to_pure_liquid&quot;: a_cu_liquid_standard,
+        &quot;cu_activity_relative_to_stable_pure_solid&quot;: a_cu_solid_standard,
+        &quot;ag_activity_approximation&quot;: a_ag_approx,
+        &quot;anode_to_cathode_R_threshold_gap_factor&quot;: activity_ratio,
+        &quot;nernst_scale_activity_ratio_gap_V&quot;: v_thermal * math.log(activity_ratio),
+        &quot;selective_window_nonoverlap_if_shared_bath&quot;: activity_ratio &gt; 1.0,
+    }
+
+
+def main() -&gt; None:
+    results = {
+        &quot;scope&quot;: &quot;Cu(I)/Ag(I), one homogeneous shared molten electrolyte; alloy anode and pure-metal Cu cathode compared against pure-Ag deposition; all activities dimensionless in same-melt standard states&quot;,
+        &quot;temperature_K&quot;: TEMPERATURE_K,
+        &quot;thermal_voltage_V&quot;: R_GAS_J_MOL_K * TEMPERATURE_K / FARADAY_C_MOL,
+        &quot;source_input_gamma_Cu_in_liquid_Ag&quot;: GAMMA_CU_IN_AG_1273K,
+        &quot;source_input_gamma_status&quot;: &quot;reported-derived infinite-dilution coefficient; not a measurement of electrostripping&quot;,
+        &quot;Cu_standard_state_correction&quot;: {
+            &quot;source&quot;: &quot;NIST-JANAF Cu(l) table&quot;,
+            &quot;interpolation_inputs&quot;: {&quot;1200_K_delta_G_fusion_J_per_mol&quot;: CU_LIQUID_MINUS_SOLID_G_1200_J_MOL, &quot;1300_K_delta_G_fusion_J_per_mol&quot;: CU_LIQUID_MINUS_SOLID_G_1300_J_MOL},
+            &quot;delta_G_fusion_interpolated_at_1273_K_J_per_mol&quot;: CU_LIQUID_MINUS_SOLID_G_1273_J_MOL,
+            &quot;method&quot;: &quot;linear interpolation of tabulated ΔfG°(Cu(l)) values relative to stable Cu(s); approximate&quot;,
+        },
+        &quot;silver_activity_assumption&quot;: &quot;a_Ag approximately 1 in Ag-rich dilute liquid; exact theorem uses a_Ag/a_Cu and needs no numeric approximation&quot;,
+        &quot;cases&quot;: [
+            case(&quot;lean_regenerated_shuttle&quot;, 0.00040908983712882667),
+            case(&quot;loaded_shuttle_at_regenerator_interface&quot;, 0.0037255675322499476),
+            case(&quot;0.30_mass_percent_Cu&quot;, 0.003),
+            case(&quot;0.40_mass_percent_Cu&quot;, 0.004),
+        ],
+        &quot;symbolic_bounds&quot;: {
+            &quot;delta_E0_definition&quot;: &quot;E0_Ag(I)/Ag(l) - E0_Cu(I)/Cu(s) in the same electrolyte/reference at 1273 K&quot;,
+            &quot;R_definition&quot;: &quot;a_Ag_plus/a_Cu_plus in the homogeneous electrolyte&quot;,
+            &quot;anode_selective_Cu_dissolution&quot;: &quot;R &gt; (a_Ag_alloy/a_Cu_alloy)*exp(-F*delta_E0/(Rgas*T))&quot;,
+            &quot;cathode_Cu_deposition_before_Ag&quot;: &quot;R &lt; exp(-F*delta_E0/(Rgas*T))&quot;,
+            &quot;ratio_of_lower_anode_bound_to_upper_cathode_bound&quot;: &quot;a_Ag_alloy/a_Cu_alloy&quot;,
+            &quot;nonoverlap_condition&quot;: &quot;a_Ag_alloy/a_Cu_alloy &gt; 1&quot;,
+            &quot;independent_of_delta_E0&quot;: True,
+        },
+        &quot;interpretation&quot;: &quot;Thermodynamic non-overlap under stated assumptions. Kinetic Ag suppression, alternative salt speciation/valence, or a divided cell is not excluded and has no qualifying measured Ag-shuttle dataset in this review.&quot;,
+        &quot;receipt_status&quot;: &quot;internally computed arithmetic; inputs are source-derived or inherited scenario values; not experimental validation&quot;,
+    }
+    out = Path(__file__).with_name(&quot;bound_results.json&quot;)
+    out.write_text(json.dumps(results, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(results, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

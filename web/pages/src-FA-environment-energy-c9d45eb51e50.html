@@ -1,0 +1,77 @@
+<!doctype html><meta charset="utf-8"><title>N778 preserved original — symmetric.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;SU(2)-covariant reduction for the relative-energy channel prototype.&quot;&quot;&quot;
+from __future__ import annotations
+import os
+os.environ[&#x27;OPENBLAS_NUM_THREADS&#x27;]=&#x27;1&#x27;;os.environ[&#x27;OMP_NUM_THREADS&#x27;]=&#x27;1&#x27;
+import numpy as np,time,json
+from pathlib import Path
+from scipy.linalg import eigh,null_space
+from scipy.sparse.linalg import eigsh
+from scipy.optimize import linprog, minimize
+from experiment import kagome,heisenberg,local_pair
+
+
+def su2_basis(d=4):
+    if d!=4:raise ValueError(&#x27;This diagnostic uses an active spin pair.&#x27;)
+    m=d*d;iu,ju=np.triu_indices(m);p=len(iu)
+    B=np.zeros((p,m,m))
+    for k,(i,j) in enumerate(zip(iu,ju)):B[k,i,j]=B[k,j,i]=1
+    # Enforce the unital trace constraints and covariance of the Choi matrix.
+    tr=np.stack([sum(T.reshape(d,d,d,d)[i,:,i,:] for i in range(d)) for T in B])
+    eq=[tr.reshape(p,-1).T]
+    sig=[np.array([[0,1],[1,0]]),np.array([[0,-1j],[1j,0]]),np.diag([1,-1])]
+    for s in sig:
+        S=(np.kron(s,np.eye(2))+np.kron(np.eye(2),s))/2
+        G=-np.kron(S.T,np.eye(d))+np.kron(np.eye(d),S)
+        com=G@B-B@G
+        eq.extend([com.real.reshape(p,-1).T,com.imag.reshape(p,-1).T])
+    N=null_space(np.concatenate(eq),rcond=1e-10)
+    return np.eye(m)/d,np.einsum(&#x27;pk,pij-&gt;kij&#x27;,N,B),N
+
+
+def lower_symmetric(ha,hb,d=4,maxiter=180,tol=1e-6,verbose=True):
+    D=len(ha);r=D//d;m=d*d
+    t0=time.perf_counter();C0,BC,N=su2_basis(d);k=len(BC)
+    def image(C):return np.einsum(&#x27;iajb,irjs-&gt;arbs&#x27;,C.reshape(d,d,d,d),ha.reshape(d,r,d,r),optimize=True).reshape(D,D)
+    R0=hb-image(C0);BR=-np.stack([image(B) for B in BC])
+    ident=np.outer(np.eye(d).ravel(),np.eye(d).ravel())
+    iu,ju=np.triu_indices(m);xid=N.T@(ident-C0)[iu,ju]
+    assert np.linalg.norm(C0+np.einsum(&#x27;k,kij-&gt;ij&#x27;,xid,BC)-ident)&lt;1e-9
+    if verbose:print(&#x27;reduced real channel dimension&#x27;,k,&#x27;matrix dimensions&#x27;,m,D,flush=True)
+    raw=eigh(hb-ha,eigvals_only=True);best=float(raw[0]);bestC=ident;A=[];b=[];hist=[]
+    def ccut(v):return np.r_[-np.einsum(&#x27;i,kij,j-&gt;k&#x27;,v,BC,v),0],float(v@C0@v)
+    def rcut(v):return np.r_[-np.einsum(&#x27;i,kij,j-&gt;k&#x27;,v,BR,v),1],float(v@R0@v)
+    for v in np.eye(m):row,y=ccut(v);A.append(row);b.append(y)
+    for v in eigh(R0)[1].T:row,y=rcut(v);A.append(row);b.append(y)
+    upper=raw[-1]
+    for it in range(maxiter):
+        sol=linprog(np.r_[np.zeros(k),-1.],A_ub=np.array(A),b_ub=np.array(b),bounds=[(-d-1,d+1)]*k+[(raw[0]-1e-8,raw[-1]+1e-8)],method=&#x27;highs&#x27;,options={&#x27;dual_feasibility_tolerance&#x27;:1e-9,&#x27;primal_feasibility_tolerance&#x27;:1e-9})
+        if not sol.success:raise RuntimeError(sol.message)
+        u=sol.x[:-1];upper=float(sol.x[-1]);C=C0+np.einsum(&#x27;k,kij-&gt;ij&#x27;,u,BC);R=R0+np.einsum(&#x27;k,kij-&gt;ij&#x27;,u,BR)
+        ce,cv=eigh(C);re,rv=eigh(R)
+        t=max(0.,-d*ce[0])+1e-13;Cp=(C+t*C0)/(1+t)
+        actual=float(eigh(hb-image(Cp),eigvals_only=True)[0])
+        if actual&gt;best:best=actual;bestC=Cp
+        hist.append([it,upper,best,ce[0],re[0],len(A),time.perf_counter()-t0])
+        if verbose and (it%10==0 or upper-best&lt;tol):print(&#x27;it&#x27;,it,&#x27;outer&#x27;,upper,&#x27;feasible&#x27;,best,&#x27;gap&#x27;,upper-best,&#x27;cuts&#x27;,len(A),flush=True)
+        if upper-best&lt;tol:break
+        for v in cv[:,ce&lt;-tol*.05].T:row,y=ccut(v);A.append(row);b.append(y)
+        for v in rv[:,re&lt;upper-tol*.05].T:row,y=rcut(v);A.append(row);b.append(y)
+    return {&#x27;lower&#x27;:best,&#x27;optimization_upper&#x27;:upper,&#x27;seconds&#x27;:time.perf_counter()-t0,&#x27;iterations&#x27;:it+1,&#x27;choi&#x27;:bestC,&#x27;history&#x27;:hist,&#x27;raw_lower&#x27;:float(raw[0]),&#x27;raw_upper&#x27;:float(raw[-1]),&#x27;reduced_dim&#x27;:k}
+
+if __name__==&#x27;__main__&#x27;:
+    import argparse
+    pa=argparse.ArgumentParser();pa.add_argument(&#x27;--system&#x27;,default=&#x27;kagome&#x27;);pa.add_argument(&#x27;--delta&#x27;,type=float,default=1.);pa.add_argument(&#x27;--reverse&#x27;,action=&#x27;store_true&#x27;);pa.add_argument(&#x27;--iter&#x27;,type=int,default=200);a=pa.parse_args()
+    if a.system==&#x27;kagome&#x27;:coords,edges=kagome();n=len(coords)
+    elif a.system==&#x27;chain&#x27;:n=12;edges=[(i,(i+1)%n,1.) for i in range(n)]
+    elif a.system==&#x27;dimer&#x27;:n=4;edges=[(0,1,1.),(1,2,.2),(2,3,1.)]
+    else:raise ValueError(&#x27;Unknown system&#x27;)
+    change=(0,1,a.delta);ha,hb,sites=local_pair(edges,[0,1],change)
+    if a.reverse:ha,hb=hb,ha
+    out=lower_symmetric(ha,hb,maxiter=a.iter)
+    C=out.pop(&#x27;choi&#x27;);suffix=f&#x27;sym_{a.system}_{a.delta}_{&quot;rev&quot; if a.reverse else &quot;fwd&quot;}&#x27;
+    np.savez(Path(__file__).parent/f&#x27;{suffix}.npz&#x27;,ha=ha,hb=hb,choi=C)
+    ea=float(eigsh(heisenberg(n,edges),k=1,which=&#x27;SA&#x27;,return_eigenvectors=False,tol=1e-12)[0]);eb=float(eigsh(heisenberg(n,edges)+heisenberg(n,[change]),k=1,which=&#x27;SA&#x27;,return_eigenvectors=False,tol=1e-12)[0])
+    out.update({&#x27;system&#x27;:a.system,&#x27;n&#x27;:n,&#x27;sites&#x27;:sites,&#x27;delta&#x27;:a.delta,&#x27;reverse&#x27;:a.reverse,&#x27;EA&#x27;:ea,&#x27;EB&#x27;:eb,&#x27;exact_difference_numeric&#x27;:eb-ea,&#x27;edges&#x27;:edges})
+    (Path(__file__).parent/f&#x27;{suffix}.json&#x27;).write_text(json.dumps(out,indent=2))
+    print({k:v for k,v in out.items() if k not in [&#x27;history&#x27;,&#x27;edges&#x27;]},flush=True)
+</pre>

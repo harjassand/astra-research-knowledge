@@ -1,0 +1,163 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — analyze_evidence.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce unit and sensitivity comparisons for the sol04_water interface gate.
+
+Inputs are explicitly labeled as source-reported or inherited model targets.
+The CAIX conversion is a hypothetical one-ionization sensitivity, not a measured
+surface rate or material bound.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import math
+from pathlib import Path
+
+OUT = Path(__file__).resolve().parent / &quot;analysis_results.json&quot;
+
+# Inherited 50 um water-model operating point, not acquired material data.
+ks_target = 3.3464052287581706e-4  # m/s
+pco2_source_target_pa = 345.0
+pco2_sink_target_pa = 10.4
+ph_source_target = 5.196078890000271
+ph_sink_target = 5.829408023198054
+source_co2_mol_m3 = 0.08760728230459533
+source_hco3_mol_m3 = 0.00645037003082904
+sink_co2_mol_m3 = 0.0035477176954046706
+sink_hco3_mol_m3 = 0.0013367206327524759
+keq_mol_m3 = 4.72e-4
+source_gross_forward_turnovers_per_site_s = 441.37695
+
+# Hypothetical fully active CA monolayer at 25 nm^2/site.
+NA = 6.02214076e23
+site_footprint_m2 = 25e-18
+site_density_mol_m2 = 1.0 / (site_footprint_m2 * NA)
+required_specificity_M_inv_s = 1000.0 * ks_target / site_density_mol_m2
+
+# hCA IX-c reported maximum kcat/KM and low-pH ionization, applied only as a
+# one-ionization transfer sensitivity. The original assay was at high salt and
+# high bicarbonate and was not a surface assay.
+caix_smax_M_inv_s = 13e6
+caix_smax_uncertainty_M_inv_s = 1e6
+caix_low_pka = 6.6
+fu_enzyme_areal_density_per_cm2 = 8.0e11
+
+def caix_sensitivity(ph: float, smax: float) -&gt; dict[str, float]:
+    fraction = 1.0 / (1.0 + 10.0 ** (caix_low_pka - ph))
+    specificity = smax * fraction
+    ks = site_density_mol_m2 * specificity / 1000.0
+    return {
+        &quot;pH&quot;: ph,
+        &quot;one_ionization_fraction&quot;: fraction,
+        &quot;specificity_M_inv_s_assumed&quot;: specificity,
+        &quot;hypothetical_ks_m_s&quot;: ks,
+        &quot;fraction_of_target_ks&quot;: ks / ks_target,
+    }
+
+# Fu et al. (2018) reported maximum permeance, in GPU; this is a gas-throughput
+# measure under the paper&#x27;s own membrane and pressure conditions, not wall ks.
+gpu_to_mol_m2_s_pa = 3.34639e-10
+fu_permeance_gpu = 2600.0
+target_permeance_mol_m2_s_pa = 1.025e-6
+target_permeance_gpu = target_permeance_mol_m2_s_pa / gpu_to_mol_m2_s_pa
+
+# 2020 unbuffered bulk absorption assay: report gives 0.5 mg/g protein and 2 g
+# solution for Figure 5; 1.5 bar initial total pressure, 30 C. It reports +76%
+# initial rate at pH 10. Figure values are approximate visual reads, so not used
+# as a precise rate conversion here.
+protein_mg_per_g = 0.5
+solution_mass_g = 2.0
+protein_mg_in_assay = protein_mg_per_g * solution_mass_g
+
+results = {
+    &quot;status&quot;: &quot;literature does not identify a matched measured surface conductance; values below are source conversions or explicit sensitivities&quot;,
+    &quot;inherited_model_contract&quot;: {
+        &quot;ks_target_m_s&quot;: ks_target,
+        &quot;pCO2_source_target_Pa&quot;: pco2_source_target_pa,
+        &quot;pCO2_sink_target_Pa&quot;: pco2_sink_target_pa,
+        &quot;pH_source_target&quot;: ph_source_target,
+        &quot;pH_sink_target&quot;: ph_sink_target,
+        &quot;source_CO2_mol_m3&quot;: source_co2_mol_m3,
+        &quot;source_HCO3_mol_m3&quot;: source_hco3_mol_m3,
+        &quot;sink_CO2_mol_m3&quot;: sink_co2_mol_m3,
+        &quot;sink_HCO3_mol_m3&quot;: sink_hco3_mol_m3,
+        &quot;source_total_CO2_species_mM&quot;: source_co2_mol_m3 + source_hco3_mol_m3,
+        &quot;sink_total_CO2_species_mM&quot;: sink_co2_mol_m3 + sink_hco3_mol_m3,
+        &quot;keq_mol_m3&quot;: keq_mol_m3,
+        &quot;source_drive_mol_m3&quot;: source_co2_mol_m3 - (10.0 ** (-ph_source_target) * 1000.0) * source_hco3_mol_m3 / keq_mol_m3,
+        &quot;target_net_source_flux_mol_m2_s&quot;: ks_target * (source_co2_mol_m3 - (10.0 ** (-ph_source_target) * 1000.0) * source_hco3_mol_m3 / keq_mol_m3),
+        &quot;hypothetical_25nm2_monolayer_gross_forward_source_flux_mol_m2_s&quot;: site_density_mol_m2 * source_gross_forward_turnovers_per_site_s,
+        &quot;hypothetical_gross_forward_to_net_flux_ratio&quot;: (site_density_mol_m2 * source_gross_forward_turnovers_per_site_s) / (ks_target * (source_co2_mol_m3 - (10.0 ** (-ph_source_target) * 1000.0) * source_hco3_mol_m3 / keq_mol_m3)),
+        &quot;CAIX_assay_25mM_substrate_to_target_source_species_ratio&quot;: 25.0 / (source_co2_mol_m3 + source_hco3_mol_m3),
+    },
+    &quot;caix_25nm2_monolayer_sensitivity_not_measurement&quot;: {
+        &quot;site_footprint_nm2&quot;: 25.0,
+        &quot;site_density_mol_m2&quot;: site_density_mol_m2,
+        &quot;required_effective_specificity_M_inv_s&quot;: required_specificity_M_inv_s,
+        &quot;measured_kcat_over_KM_max_M_inv_s&quot;: caix_smax_M_inv_s,
+        &quot;reported_uncertainty_M_inv_s&quot;: caix_smax_uncertainty_M_inv_s,
+        &quot;reported_uncertainty_note&quot;: &quot;The article Results text says 13 +/- 1, while Table 1 says 13.0 +/- 0.1; the calculation uses the wider text range.&quot;,
+        &quot;reported_low_pKa&quot;: caix_low_pka,
+        &quot;assay_ionic_strength_M&quot;: 0.2,
+        &quot;target_background_NaCl_uM_range&quot;: [0.1, 1.0],
+        &quot;assay_ionic_strength_to_target_background_concentration_ratio&quot;: [0.2 / (1.0e-6), 0.2 / (0.1e-6)],
+        &quot;source_pH_one_ionization_sensitivity&quot;: caix_sensitivity(ph_source_target, caix_smax_M_inv_s),
+        &quot;source_pH_low_high_sensitivity&quot;: {
+            &quot;minus_one_sigma&quot;: caix_sensitivity(ph_source_target, caix_smax_M_inv_s - caix_smax_uncertainty_M_inv_s),
+            &quot;plus_one_sigma&quot;: caix_sensitivity(ph_source_target, caix_smax_M_inv_s + caix_smax_uncertainty_M_inv_s),
+        },
+        &quot;sink_pH_one_ionization_sensitivity&quot;: caix_sensitivity(ph_sink_target, caix_smax_M_inv_s),
+        &quot;scope&quot;: &quot;Hypothetical one-ionization pH transfer from an 18O equilibrium assay at 25 mM bicarbonate and ionic strength 0.2 M. It is not an immobilized-surface measurement and is not a strict upper bound for other materials or enzyme loadings.&quot;,
+    },
+    &quot;caix_peak_pH_fully_active_monolayer_sensitivity_not_measurement&quot;: {
+        &quot;assumed_site_footprint_nm2&quot;: 25.0,
+        &quot;site_density_mol_m2&quot;: site_density_mol_m2,
+        &quot;reported_peak_specificity_M_inv_s&quot;: caix_smax_M_inv_s,
+        &quot;hypothetical_ks_at_peak_pH_m_s&quot;: site_density_mol_m2 * caix_smax_M_inv_s / 1000.0,
+        &quot;fraction_of_target_ks_at_peak_pH&quot;: (site_density_mol_m2 * caix_smax_M_inv_s / 1000.0) / ks_target,
+        &quot;source_total_substrate_mM&quot;: source_co2_mol_m3 + source_hco3_mol_m3,
+        &quot;caix_assay_substrate_mM&quot;: 25.0,
+        &quot;assay_to_target_source_substrate_ratio&quot;: 25.0 / (source_co2_mol_m3 + source_hco3_mol_m3),
+        &quot;scope&quot;: &quot;Optimistic transfer of the published peak free-enzyme specificity to a hypothetical fully active 25 nm^2/site monolayer. The peak value is not at either target pH and the source assay used 25 mM substrate and 0.2 M ionic strength; this is not a measured or material-independent upper bound.&quot;,
+    },
+    &quot;gas_permeance_comparison&quot;: {
+        &quot;gpu_to_mol_m2_s_pa&quot;: gpu_to_mol_m2_s_pa,
+        &quot;target_mol_m2_s_pa&quot;: target_permeance_mol_m2_s_pa,
+        &quot;target_GPU&quot;: target_permeance_gpu,
+        &quot;Fu2018_reported_max_GPU&quot;: fu_permeance_gpu,
+        &quot;Fu2018_to_target_ratio&quot;: fu_permeance_gpu / target_permeance_gpu,
+        &quot;target_shortfall_fraction_at_reported_max&quot;: 1.0 - fu_permeance_gpu / target_permeance_gpu,
+        &quot;target_source_pCO2_Pa&quot;: pco2_source_target_pa,
+        &quot;Fu2018_pH_or_temperature_sweep_pCO2_Pa&quot;: 0.48e5,
+        &quot;Fu2018_source_pressure_ratio_to_target&quot;: 0.48e5 / pco2_source_target_pa,
+        &quot;Fu2018_20pct_feed_at_0p48bar_pCO2_Pa&quot;: 0.20 * 0.48e5,
+        &quot;Fu2018_20pct_feed_source_ratio_to_target&quot;: (0.20 * 0.48e5) / pco2_source_target_pa,
+        &quot;Fu2018_reported_CA_areal_density_per_cm2&quot;: fu_enzyme_areal_density_per_cm2,
+        &quot;Fu2018_reported_CA_areal_density_mol_m2&quot;: fu_enzyme_areal_density_per_cm2 * 1.0e4 / NA,
+        &quot;Fu2018_CA_areal_density_over_hypothetical_25nm2_monolayer&quot;: (fu_enzyme_areal_density_per_cm2 * 1.0e4 / NA) / site_density_mol_m2,
+        &quot;Fu2018_reported_effective_CA_concentration_mM&quot;: 3.7,
+        &quot;scope&quot;: &quot;2600 GPU is an integrated CO2 membrane permeance result under Fu et al.&#x27;s own membrane, gas and sink setup. It does not measure the catalytic wall law J=ks(C-HB/Keq).&quot;,
+    },
+    &quot;unbuffered_bulk_assay_2020&quot;: {
+        &quot;BCA_mg_per_g_solution&quot;: protein_mg_per_g,
+        &quot;solution_mass_g&quot;: solution_mass_g,
+        &quot;total_BCA_mg_in_2g_test&quot;: protein_mg_in_assay,
+        &quot;initial_pressure_bar_abs&quot;: 1.5,
+        &quot;initial_pressure_ratio_to_target_source_pCO2&quot;: 1.5e5 / pco2_source_target_pa,
+        &quot;temperature_C&quot;: 30.0,
+        &quot;observed_unbuffered_pH10_initial_rate_increase_fraction_reported&quot;: 0.76,
+        &quot;rate_readout&quot;: &quot;bulk headspace pressure-decay rate; no membrane area or interfacial species profile reported&quot;,
+        &quot;scope&quot;: &quot;Free BCA in mineral water; not immobilized, not low salt, and not at target pH or gas pressure. No surface conductance can be computed from this cell rate.&quot;,
+    },
+    &quot;particle_near_match_2026&quot;: {
+        &quot;particle&quot;: &quot;uncoated polystyrene, diameter 0.08 um&quot;,
+        &quot;CO2_driven_PDMS_microchannel_mobility_m2_s&quot;: -2.9e-10,
+        &quot;Stokes_Einstein_Dp_m2_s&quot;: 5.4e-12,
+        &quot;reported_Pe&quot;: 53.0,
+        &quot;source_wall_CO2_mM&quot;: 29.5,
+        &quot;source_wall_ion_mM&quot;: 0.118,
+        &quot;scope&quot;: &quot;Measured concentration profiles in a bare gas-permeable PDMS channel; mobility is calculated from reported particle parameters. No CA coating, wall mass closure, or particle adhesion coefficient was measured.&quot;,
+    },
+    &quot;matched_surface_conductance_measured_m_s&quot;: None,
+    &quot;matched_particle_adsorption_velocity_measured_m_s&quot;: None,
+}
+OUT.write_text(json.dumps(results, indent=2) + &quot;\n&quot;)
+print(json.dumps(results, indent=2))
+</pre>

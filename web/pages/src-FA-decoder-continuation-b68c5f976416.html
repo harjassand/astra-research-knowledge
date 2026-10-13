@@ -1,0 +1,63 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — strong_controls.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Matched nonlinear passive controls; no assumed uniform500Pa.s baseline.&quot;&quot;&quot;
+from dataclasses import replace
+from pathlib import Path
+import json
+import math
+
+import numpy as np
+from scipy.integrate import simpson
+from scipy.optimize import brentq
+
+import nonlinear_transport as model
+
+
+def wall_film(target,delta,p,carrier=.084):
+    a=p.radius-delta
+    r=np.linspace(0,a,1025)
+    def mean(G):
+        core=simpson(r*r*model.unactuated_rate(G*r/2,p),x=r)
+        film=G*(p.radius**4-a**4)/(8*carrier)
+        return (core+film)/p.radius**2
+    gradient=brentq(lambda G:mean(G)-target,1e-10,1e7,xtol=1e-10)
+    power=gradient*p.length*math.pi*p.radius**2*target/p.pump_efficiency
+    return {&#x27;film_thickness_m&#x27;:delta,&#x27;carrier_viscosity_Pa_s&#x27;:carrier,
+      &#x27;pressure_gradient_Pa_m&#x27;:gradient,&#x27;electric_W&#x27;:power,
+      &#x27;gate&#x27;:&#x27;Ideal stable same-carrier layer; its physical availability, migration and concentration changes are not supplied.&#x27;}
+
+
+def main():
+    p=model.Parameters();target=.003125;rows=[]
+    active=json.loads(Path(__file__).with_name(&#x27;nonlinear_transport.json&#x27;).read_text())[&#x27;rows&#x27;]
+    for factor in (1.,1.5,2.,3.):
+        flow=math.pi*p.radius**2*target*factor
+        candidates=[r for r in active if r[&#x27;throughput_factor&#x27;]==factor and
+                    not r[&#x27;outside_OSP_chi_data&#x27;] and not r[&#x27;outside_unactuated_stress_data&#x27;]
+                    and r[&#x27;material_strain_max&#x27;]&lt;=.05]
+        best=min(candidates,key=lambda r:r[&#x27;rigid_resonator&#x27;][&#x27;total_electric_before_idle_and_seal&#x27;])
+        power=best[&#x27;rigid_resonator&#x27;][&#x27;total_electric_before_idle_and_seal&#x27;]
+        def passive(radius):
+            mean=flow/(math.pi*radius**2)
+            return model.unactuated_matched(mean,replace(p,radius=radius))[1]
+        baseline=passive(p.radius)
+        radius_match=brentq(lambda r:passive(r)-power,p.radius,p.radius*2) if power&lt;baseline else None
+        films=[wall_film(target*factor,d,p) for d in (2e-6,5e-6,10e-6,20e-6)]
+        rows.append({&#x27;throughput_factor&#x27;:factor,&#x27;flow_L_min&#x27;:flow*60000,
+          &#x27;same125mm_pipe_unactuated_W&#x27;:baseline,
+          &#x27;conditional_rigid_active_before_missing_costs_W&#x27;:power,
+          &#x27;active_wall_velocity&#x27;:best[&#x27;wall_velocity&#x27;],
+          &#x27;unactuated161mm_pipe_W&#x27;:passive(.0805),
+          &#x27;161mm_holdup_factor&#x27;:(.0805/p.radius)**2,
+          &#x27;minimum_passive_ID_matching_active_power_m&#x27;:None if radius_match is None else 2*radius_match,
+          &#x27;passive_holdup_factor_matching_active&#x27;:None if radius_match is None else (radius_match/p.radius)**2,
+          &#x27;ideal_carrier_film_controls&#x27;:films})
+    data={&#x27;status&#x27;:&#x27;strong matched passive controls against explicitly conditional active cases&#x27;,
+      &#x27;rows&#x27;:rows,&#x27;passive_geometry_gate&#x27;:&#x27;Larger-pipe control changes envelope and inventory; fixed-envelope benefit requires a real constraint forbidding this change.&#x27;,
+      &#x27;source_caveat&#x27;:&#x27;Unactuated curve is SI figure-digitised; OSP raw curve and its off-rate multiplicative extension are separate evidence.&#x27;}
+    Path(__file__).with_name(&#x27;strong_controls.json&#x27;).write_text(json.dumps(data,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(data,indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>

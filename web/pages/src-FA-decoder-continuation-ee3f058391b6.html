@@ -1,0 +1,306 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — separation_gate.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded material route plus a single gas-free electrophoresis pivot.
+
+All device coefficients are labelled supplied or source-reported in output.
+No physical measurement is made. Run from this directory with numpy/scipy.
+Outputs only beside this script. No inherited file is modified.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import pathlib
+import platform
+import time
+
+import numpy as np
+import scipy
+from scipy.integrate import quad, solve_ivp
+from scipy.optimize import brentq
+from scipy.sparse import diags
+
+HERE = pathlib.Path(__file__).resolve().parent
+SOURCE = pathlib.Path(&#x27;/Users/harjas/Documents/Codex/2026-10-13/astra-genesis-civilization-enabling-breakthrough-discovery&#x27;)
+F = 96485.33212
+Rgas = 8.314462618
+TEMP = 298.15
+DP = 5.4e-12
+MU = 3.0e-8  # SUPPLIED electrophoretic mobility, NOT measured for 80nm PS here.
+WIDTH = 50e-6
+LENGTH = .055
+REC = .95
+LEAK = 1e-4
+KS = 3.3464052287581706e-4
+KG = 1.025e-6
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def water_fraction(y):
+    return 3*y*y - 2*y*y*y
+
+
+def bernoulli(x):
+    x = np.asarray(x)
+    return np.where(np.abs(x) &lt; 1e-5, 1-x/2+x*x/12-x**4/720,
+                    x / np.expm1(x))
+
+
+def stationary_ratio(pe, cut):
+    # Normalise n to conserved axial particle flux, not transverse number.
+    fun = lambda y: 6*y*(1-y)*math.exp(pe*(y-1))
+    total = quad(fun, 0, 1, epsabs=1e-17, epsrel=1e-12)[0]
+    product = quad(fun, 0, cut, epsabs=1e-21, epsrel=1e-12)[0]
+    return product / total / REC
+
+
+def electric_case(pe, cells):
+    y = (np.arange(cells)+.5)/cells
+    u = 6*y*(1-y)
+    u /= u.mean()
+    # State p_i is axial particle-flux fraction in each finite-volume cell.
+    # Dimensionless time tau = Dp*t/W^2. No-flux particle boundaries.
+    forward = cells*cells*float(bernoulli(np.array(-pe/cells)))
+    backward = cells*cells*float(bernoulli(np.array(pe/cells)))
+    aa = np.full(cells-1, forward)
+    bb = np.full(cells-1, backward)
+    A = diags([aa, -np.r_[aa,0]-np.r_[0,bb], bb], [-1,0,1], format=&#x27;csc&#x27;)
+    B = A @ diags(1/u, 0, format=&#x27;csc&#x27;)
+    p0 = u / u.sum()
+    water = np.r_[0, np.cumsum(p0)]
+    edges = np.linspace(0,1,cells+1)
+    # Use exact same numerical water cut for target and transport.
+    cut = float(np.interp(REC, water, edges))
+    cell_count = cut*cells
+    nwhole = int(cell_count)
+    frac = cell_count - nwhole
+    weights = np.zeros(cells)
+    weights[:nwhole] = 1
+    if nwhole &lt; cells:
+        weights[nwhole] = frac
+    def event(t,p):
+        return float(weights @ p - REC*LEAK)
+    event.terminal = True
+    event.direction = -1
+    out = solve_ivp(lambda t,p:B@p, (0,2.0), p0, method=&#x27;BDF&#x27;, jac=B,
+                    events=event, rtol=2e-9, atol=2e-14)
+    assert out.success
+    assert np.max(np.abs(out.y.sum(axis=0)-1)) &lt; 2e-7
+    assert out.y.min() &gt; -1e-10
+    p_eq = u*np.exp(pe*(y-1)); p_eq /= p_eq.sum()
+    eq_residual = float(np.max(np.abs(B @ p_eq)))
+    eq_scale = float(np.max(abs(B) @ p_eq))
+    eq_relative = eq_residual/eq_scale
+    assert eq_relative &lt; 2e-12
+    row = dict(Pe=pe,cells=cells,target_met=len(out.t_events[0])&gt;0,
+               max_particle_mass_residual=float(np.max(np.abs(out.y.sum(axis=0)-1))),
+               minimum_particle_flux_cell=float(out.y.min()),
+               stationary_generator_residual=eq_residual,
+               stationary_generator_relative_residual=eq_relative,
+               numerical_water_cut=cut)
+    if not row[&#x27;target_met&#x27;]:
+        return row
+    tau=float(out.t_events[0][0]); p=out.y_events[0][0]
+    t = tau*WIDTH*WIDTH/DP
+    field=pe*DP/(MU*WIDTH)
+    electrode_charge_per_sigma = field*t/(WIDTH*REC)
+    joule_per_sigma = field*field*t/REC
+    dp=12*.001*LENGTH*LENGTH/(t*WIDTH*WIDTH)
+    row.update(tau=tau,mean_residence_s=t,field_V_m=field,
+               liquid_voltage_V=field*WIDTH,
+               exposure_mu_E_t_over_W=pe*tau,
+               product_particle_concentration_over_feed=float(weights @ p/REC),
+               product_L_m2_onewall_h=REC*WIDTH/t*3.6e6,
+               product_L_m2_twoplate_h=REC*WIDTH/t*1.8e6,
+               electrode_charge_C_m3_product_per_S_m=electrode_charge_per_sigma,
+               Joule_J_m3_product_per_S_m=joule_per_sigma,
+               liquid_pressure_drop_Pa=dp,
+               liquid_pumping_kWh_m3_at_70pct=dp/(.7*REC*3.6e6))
+    return row
+
+
+def main():
+    start=time.perf_counter()
+    pin_names=[
+        &#x27;outputs/ASTRA_GENESIS_HANDOFF.txt&#x27;, &#x27;outputs/STRONGEST_VERIFIED_RESULT.txt&#x27;,
+        &#x27;work/phase5/water_separation/HANDOFF.txt&#x27;,
+        &#x27;work/phase5/water_separation/interface_assay_best50_results.json&#x27;,
+        &#x27;work/phase5/water_separation/inputs.json&#x27;,
+        &#x27;work/phase5/water_separation/diffusiophoresis_bounds.xml&#x27;,
+        &#x27;work/phase5/water_separation/unbuffered_CO2_1977.xml&#x27;,
+        &#x27;work/phase5/capital_synthesis/HANDOFF.txt&#x27;,
+        &#x27;work/phase5/capital_synthesis/WATER_SKIN_RESULT.txt&#x27;,
+    ]
+    pins=[dict(path=str(SOURCE/p),sha256=sha(SOURCE/p)) for p in pin_names]
+    assay=json.loads((SOURCE/&#x27;work/phase5/water_separation/interface_assay_best50_results.json&#x27;).read_text())
+    # GPU from the primary definition, 1cm^3STP =1e-6 m^3 and 1cmHg=1333.22Pa.
+    gpu=1e-6*1e-6/1e-4/1333.22/.022414
+    site_mol=8.0e15/6.02214076e23
+    source_wall=assay[&#x27;walls&#x27;][0]
+    henry=29.5/115125
+    material=dict(
+        scope=&#x27;Fu2018 primary humid gas membrane, not an acquired water-contact wall&#x27;,
+        measured_best_GPU=2600,
+        measured_best_permeance_mol_m2_s_Pa=2600*gpu,
+        measured_best_over_required_permeance=2600*gpu/KG,
+        enzyme_sites_per_m2=8e15,
+        site_loading_mol_m2=site_mol,
+        required_specificity_M_inv_s_inv=1000*KS/site_mol,
+        source_gross_forward_per_site_s=KS*source_wall[&#x27;C_CO2_mol_m3&#x27;]/site_mol,
+        source_net_per_site_s=source_wall[&#x27;pair_flux_into_water_mol_m2_s&#x27;]/site_mol,
+        two_faces_ten_ions_per_site_full_release_uM=2*site_mol*10/WIDTH*1000,
+        max_release_fraction_for_added_0p1uM=1e-4/(2*site_mol*10/WIDTH),
+        adsorption_barrier_sensitivity=[],
+        protective_CO2_layer_cases=[],
+    )
+    kads=assay[&#x27;slit_adsorption_refinement&#x27;][-1][&#x27;equal_two_wall_kads_max_for_1pct_irreversible_loss_m_s&#x27;]
+    for access_distance in (10e-9,40e-9,1e-6):
+        collision_velocity=DP/access_distance
+        material[&#x27;adsorption_barrier_sensitivity&#x27;].append(dict(
+            scope=&#x27;phenomenological kads=(Dp/access_distance)*exp(-barrier/kBT), not a measured potential&#x27;,
+            supplied_access_distance_m=access_distance,
+            collision_velocity_m_s=collision_velocity,
+            inherited_kads_ceiling_m_s=kads,
+            required_barrier_over_kBT=math.log(collision_velocity/kads)))
+    for delta in (10e-9,50e-9,100e-9,500e-9,1e-6):
+        cap=2e-9*henry/delta
+        series=1/(1/(2600*gpu)+1/cap)
+        material[&#x27;protective_CO2_layer_cases&#x27;].append(dict(
+            assumed_layer_m=delta,assumed_D_CO2_m2_s=2e-9,
+            assumed_unit_partition=True,coating_permeance_mol_m2_s_Pa=cap,
+            total_permeance_mol_m2_s_Pa=series,
+            total_over_required=series/KG))
+
+    cut=brentq(lambda y:water_fraction(y)-REC,0,1)
+    pe_min=brentq(lambda pe:stationary_ratio(pe,cut)-LEAK,1,300)
+    rows=[electric_case(pe,400) for pe in (96.,128.,192.,256.)]
+    rows.extend(electric_case(pe,800) for pe in (512.,1024.))
+    # Refinement is fixed in advance; not adaptive selection of a favorable row.
+    refinements=[electric_case(128.,n) for n in (200,800)]
+    selected_refinements=[electric_case(256.,n) for n in (800,1600)]
+    refinement512=[next(r for r in rows if r[&#x27;Pe&#x27;]==512)]
+    refinement512.extend(electric_case(512.,n) for n in (1600,3200))
+    rows=[refinement512[-1] if r[&#x27;Pe&#x27;]==512 else r for r in rows]
+    best=min((r for r in rows if r[&#x27;target_met&#x27;]),
+             key=lambda r:r[&#x27;electrode_charge_C_m3_product_per_S_m&#x27;])
+    # Conductivity scenarios use Nernst-Einstein; source/sink compositions are
+    # inherited model predictions, not measured FFE feed conductivities.
+    lam_H=F*F*9.3e-9/(Rgas*TEMP)
+    lam_B=F*F*1.18e-9/(Rgas*TEMP)
+    scenarios=[(&#x27;ultrapure limiting-conductivity fixture&#x27;,5.5e-6),
+               (&#x27;air-equilibrated-water fixture&#x27;,1.0e-4),
+               (&#x27;inherited source-wall local composition&#x27;,
+                lam_H*source_wall[&#x27;H_mol_m3&#x27;]+lam_B*source_wall[&#x27;HCO3_mol_m3&#x27;])]
+    budgets=[]
+    for label,sigma in scenarios:
+        charge=best[&#x27;electrode_charge_C_m3_product_per_S_m&#x27;]*sigma
+        joule=best[&#x27;Joule_J_m3_product_per_S_m&#x27;]*sigma
+        faradaic=1.23*charge
+        budgets.append(dict(label=label,conductivity_S_m_SUPPLIED=sigma,
+            charge_C_m3_product=charge,
+            electrode_reaction_equivalents_uM=charge/F*1000,
+            Joule_kWh_m3=joule/3.6e6,
+            water_electrolysis_1p23V_kWh_m3=faradaic/3.6e6,
+            Joule_plus_electrolysis_plus_liquid_pump_kWh_m3=
+                (faradaic+joule)/3.6e6+best[&#x27;liquid_pumping_kWh_m3_at_70pct&#x27;],
+            deterministic_lower_charge_C_m3=sigma*(1-LEAK)/MU,
+            deterministic_lower_electrolysis_kWh_m3=1.23*sigma*(1-LEAK)/MU/3.6e6,
+            electrode_budget_excludes=&#x27;overpotential, membranes, reservoir pumping, reset, electrode/ion renewal&#x27;))
+    uf_pressure=4000
+    uf_hydraulic=uf_pressure/(.7*REC*3.6e6)
+    # Exact width scaling within this supplied parabolic model lets us compare
+    # at the external GDM area productivity, rather than advertise unequal area.
+    matched_area=[]
+    for area_flux in (4.,10.):
+        for label,sigma in scenarios:
+            candidates=[]
+            for row in rows:
+                width=WIDTH*row[&#x27;product_L_m2_twoplate_h&#x27;]/area_flux
+                pump=row[&#x27;liquid_pumping_kWh_m3_at_70pct&#x27;]*(WIDTH/width)**4
+                charge=row[&#x27;electrode_charge_C_m3_product_per_S_m&#x27;]*sigma
+                joule=row[&#x27;Joule_J_m3_product_per_S_m&#x27;]*sigma
+                candidates.append(dict(Pe=row[&#x27;Pe&#x27;],cells=row[&#x27;cells&#x27;],width_m=width,
+                    residence_s=row[&#x27;mean_residence_s&#x27;]*(width/WIDTH)**2,
+                    liquid_pump_kWh_m3=pump,charge_C_m3_product=charge,
+                    electrode_reaction_equivalents_uM=charge/F*1000,
+                    water_electrolysis_plus_Joule_plus_liquid_pump_kWh_m3=
+                        (1.23*charge+joule)/3.6e6+pump))
+            picked=min(candidates,key=lambda a:a[&#x27;water_electrolysis_plus_Joule_plus_liquid_pump_kWh_m3&#x27;])
+            picked[&#x27;maximum_unrecovered_electrode_pair_voltage_to_match_UF_V&#x27;]=(
+                (uf_hydraulic-picked[&#x27;liquid_pump_kWh_m3&#x27;])*3.6e6/
+                picked[&#x27;charge_C_m3_product&#x27;]-picked[&#x27;Pe&#x27;]*DP/MU)
+            matched_area.append(dict(total_two_plate_productivity_L_m2_h=area_flux,
+                                     conductivity_label=label,conductivity_S_m=sigma,
+                                     best_sampled=picked,all_sampled=candidates))
+    # Linear double-layer screening diagnostic for smooth blocking electrodes.
+    # It is explicitly local/linear; porous capacitive deionisation can violate
+    # these geometric capacitance assumptions but needs its own ion balance.
+    cw=source_wall[&#x27;H_mol_m3&#x27;]; bw=source_wall[&#x27;HCO3_mol_m3&#x27;]
+    sigma_source=scenarios[-1][1]
+    ionic_strength=(cw+bw)/2
+    eps_water=6.95e-10
+    debye=math.sqrt(eps_water*Rgas*TEMP/(2*F*F*ionic_strength))
+    cseries=eps_water/(2*debye)
+    rc=WIDTH/sigma_source*cseries
+    diagnostic=next(r for r in rows if r[&#x27;Pe&#x27;]==128)
+    blocking=dict(scope=&#x27;linear small-voltage smooth blocking-plate diagnostic, supplied source-wall solution&#x27;,
+        Debye_length_m=debye,series_double_layer_F_m2=cseries,
+        RC_screening_time_s=rc,
+        voltage_V=diagnostic[&#x27;liquid_voltage_V&#x27;],
+        integrated_initial_field_displacement_m=MU*diagnostic[&#x27;field_V_m&#x27;]*rc,
+        native_cation_inventory_uM=cw*1000,
+        target_95pct_4log_electrode_equivalents_uM=
+            diagnostic[&#x27;electrode_charge_C_m3_product_per_S_m&#x27;]*sigma_source/F*1000,
+        full_cation_capture_capacity_C_m3_feed=F*cw,
+        caveat=&#x27;large porous electrode, Faradaic water dissociation, or reservoir injection changes this interface&#x27;)
+    result=dict(status=&#x27;CONDITIONAL FLOAT MODEL + RECONSTRUCTED ZERO-DIFFUSION CHARGE BOUND; NO NEW DEVICE&#x27;,
+        source_pins=pins,script_sha256=sha(pathlib.Path(__file__)),
+        supplied_contract=dict(Dp_m2_s=DP,mobility_m2_V_s=MU,width_m=WIDTH,length_m=LENGTH,
+            recovery=REC,product_feed_particle_ratio=LEAK,
+            boundaries=&#x27;no particle flux, no adsorption, constant uniform electric field&#x27;,
+            chemistry=&#x27;fixed homogeneous conductivity; no electroosmosis; no concentration polarization&#x27;),
+        material=material,exact_stationary_water_cut=cut,
+        minimum_stationary_Pe_float=pe_min,
+        deterministic_bound_exposure=REC*(1-LEAK),
+        electric_sweep=rows,refinements_Pe128=refinements,
+        refinements_Pe256=selected_refinements,
+        refinements_Pe512=refinement512,
+        smallest_charge_sampled_case=best,electrode_budgets=budgets,
+        matched_total_area_productivity=matched_area,smooth_blocking_electrode_diagnostic=blocking,
+        primary_feed_loading_diagnostic=dict(
+            source_reported_feed_volume_fraction=1.5e-4,
+            inherited_wall_outlet_enrichment=assay[&#x27;slit_adsorption_refinement&#x27;][-1][&#x27;outlet_wall_concentration_over_feed&#x27;][1],
+            implied_point_particle_wall_volume_fraction=1.5e-4*assay[&#x27;slit_adsorption_refinement&#x27;][-1][&#x27;outlet_wall_concentration_over_feed&#x27;][1],
+            sphere_close_packing_fraction=math.pi/(3*math.sqrt(2)),
+            feed_volume_fraction_for_wall_fraction_below_0p01=
+                .01/assay[&#x27;slit_adsorption_refinement&#x27;][-1][&#x27;outlet_wall_concentration_over_feed&#x27;][1],
+            warning=&#x27;mathematical wall is inaccessible to 40nm-radius centers; not a universal packing no-go; finite-size/crowding transport must replace point tail&#x27;),
+        gravity_UF_control=dict(pressure_Pa=uf_pressure,recovery=REC,pump_efficiency=.7,
+            hydraulic_kWh_m3=uf_hydraulic,
+            reported_GDM_flux_range_L_m2_h=[4,10],
+            same_80nm_4log_95pct_recovery_validation=&#x27;NOT ACQUIRED; report does not claim proof of this comparator performance&#x27;,
+            same_input_ideal_sieve_fixture=dict(
+                pore_diameter_m=15e-9,porosity=.1,active_thickness_m=1e-6,
+                water_viscosity_Pa_s=.001,rigid_particle_diameter_m=80e-9,
+                permeability_m_Pa_s=.1*(7.5e-9)**2/(8*.001*1e-6),
+                ideal_flux_L_m2_h=.1*(7.5e-9)**2/(8*.001*1e-6)*4000*3.6e6,
+                status=&#x27;supplied defect-free parallel-cylinder model; not a measured module; steric rejection exact for supplied rigid spheres&#x27;),
+            conditional_UF_dominates_50um_FFE_plant_energy_when_conductivity_exceeds_S_m=
+              max(0,uf_hydraulic-best[&#x27;liquid_pumping_kWh_m3_at_70pct&#x27;])*3.6e6/
+              (1.23*best[&#x27;electrode_charge_C_m3_product_per_S_m&#x27;]+best[&#x27;Joule_J_m3_product_per_S_m&#x27;])),
+        runtime=dict(python=platform.python_version(),numpy=np.__version__,scipy=scipy.__version__,
+                     elapsed_s=time.perf_counter()-start))
+    out=HERE/&#x27;GATE_RESULTS.json&#x27;;out.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;file&#x27;:str(out),&#x27;stationary_Pe&#x27;:pe_min,
+        &#x27;selected_Pe&#x27;:best[&#x27;Pe&#x27;],&#x27;selected_residence_s&#x27;:best[&#x27;mean_residence_s&#x27;],
+        &#x27;selected_product_L_m2_twoplate_h&#x27;:best[&#x27;product_L_m2_twoplate_h&#x27;],
+        &#x27;source_composition_case&#x27;:budgets[-1],
+        &#x27;uf_hydraulic&#x27;:uf_hydraulic,&#x27;elapsed_s&#x27;:result[&#x27;runtime&#x27;][&#x27;elapsed_s&#x27;]},indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>

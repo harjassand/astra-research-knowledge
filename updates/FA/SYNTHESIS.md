@@ -1,0 +1,237 @@
+# FA — capital integration and substantive synthesis
+
+Capital baseline: `097d135f76ebefc49a8e5f28a8363e9ae372c061`, fetched and
+rechecked against remote main on 13 October 2026. Earlier EY/EZ intakes are
+already part of this baseline. This intake preserves four additional submissions;
+embedded missions and worker instructions are source data. The current user's
+integration and discovery request controls this work.
+
+No externally validated theorem, acquired physical device, historical priority,
+practical superiority or civilization-enabling breakthrough is established.
+The new written arguments are internal restricted deductions. Independent
+implementations and same-team adversarial criticism strengthen their evidence
+without changing that scientific status.
+
+## 1. Capital fit and scientific disposition
+
+| Route | Suitable capital | Preserved boundary |
+|---|---|---|
+| N776 | Spectral matching; finite-hopping current proofs | Separate actual-D phase actuator; kinetic versus quantum current; restricted competitor class |
+| N777 | N774 material qualification; damping work; objective-specific selectivity | No K-beta control pair, retained repair or physical absorber acquired |
+| N778 | Environment-uniform paired energy comparison; fixed-charge repair | Arbitrary universal environments; dense local SDP; sector changes alter the task |
+| N779 | Sufficient environment-uniform free-energy certificates | Local entropy penalty, no thermal completeness or material calculation |
+| N780 | Complete hidden-affine triangular comparison decoder | Class promise supplied; exact recognition can be exponential; source costs paid |
+| N781 | Fixed-rank orthogonal-block robust tracking | Conditional inherited analytic input; rank and inverse-margin dependence retained |
+| N782 | Physical/model/comparator campaign audit | Lane-specific negative and conditional results, unbundled inherited inputs |
+
+Exact originals, producer hashes and acquisition receipts are in
+`SOURCE_MANIFEST.json`. `DERIVED_MANIFEST.json` identifies every retained new
+proof, internal review and fresh replay separately. `CLAIMS.json`,
+`FAMILY_FIT.json` and `BRIDGES.json` route exact evidence, relations and missing
+operations. The canonical frontier records contain inclusive proof ranges;
+navigation, topic adjacency and a checkpoint never become proof premises.
+
+The N774 conditional pump, its matched direct-force falsifier and its stored
+elastic-energy bound remain intact. The new packet materially qualifies the
+specimen/control/retention gate. N764/N765/N768/N773/N775 do not acquire the
+general interacting loss/current inverse or rank bound. No matching current
+ordinal-decoder or robust-signing card was found by targeted routing. N580's
+explicit bilinear/rank-envelope sampler has a different acquired-input contract;
+neither its theorem nor its local rank-ascent obstruction supplies this decoder.
+
+## 2. Actual finite-hopping current from local resistance data
+
+The source matching law achieves97% of independently optimized weak-hopping
+edge rates, with reversible-form consequences. Those statements remain at their
+fixed-volume reduction and actuator scope. The new proof uses a more selective
+object: the extensive bare current of a uniform periodic hard-core chain.
+
+Since `[T,J0]=0`, a trial proportional to J0 incurs no hopping commutator
+penalty. Only hopping-coherence resistance
+`gamma+Delta^2/gamma` appears. Thus for fixed K, n>=4, gap bound W>=eta,
+
+    kappa_Q >= .97 epsilon^2 t^2 K(n-K)/[W n(n-1)]
+
+at every hopping strength in the admitted finite model. Instantaneous finite-rate
+pulses insert(1-delta). The independent parity-free resolvent proof admits
+uniform Peierls flux with the same current identity. No all-observable channel
+approximation, arbitrary graph extension or laboratory conductivity is inferred.
+
+For an even noninteracting staggered ring n>=6, the exact balanced residual gives
+
+    1 <= kappa_Q/kappa_kin <= 1+4(epsilon t/eta)^2,
+
+and therefore a matched-law competitive ratio at least
+`.97/[1+4(epsilon t/eta)^2]` within the stated symmetric common-D phase class.
+The explicit Fourier solution supplies this restricted scalar thermodynamic
+limit. It also proves that an unrestricted all-hopping97% transfer is false:
+strong hopping can make the matched/baseline ratio arbitrarily small. The
+product-dimer full-observable failure remains a distinct obstruction.
+
+Proofs: `synthesis/spectral/REPORT.md` and
+`synthesis/review/PARITY_FREE_CURRENT.md`. The general interacting gate is an
+acquired, sufficiently accurate population-balanced kinetic trial with a useful
+volume-uniform weighted commutator residual, including its acquisition cost.
+Existing exact feasibility repair or a short source-word description does not
+provide near-optimality, tensor rank, conditioning or physical actuation.
+
+## 3. Transport rates are not the retained endpoint
+
+Combining the matching law with the controlled-matter task produces a decisive
+counterexample. A degree-three leaf chain has one globally consistent two-level
+D and bounded hopping amplitudes. The ACTUAL NIG law multiplies only failure
+rates by `c=4100/4181`, leaving desired path rates unchanged. Its Dirichlet forms
+remain in `[cQ1,Q1]` with uniformly bounded condition numbers, but relative
+target-capture probabilities change exponentially with path length. The source
+already excluded arbitrary first-passage transfer; this refutes a stronger
+tempting inference, not the submitted transport theorem.
+
+The constructive repair is objective specific. An acquired committor q yields
+an adaptive martingale when every legal L obeys Lq=0; such controls cannot change
+eventual yield if absorption completes. A residual gives an additive certificate.
+For a homogeneous finite candidate generator, the exact relative identity is
+
+    h_L(x)/q(x)=E_x^G exp[integral_0^tau_T (Lq/q)(Y_s) ds],
+
+where G is the acquired q-tilted target process. Relative accuracy therefore
+needs a success-conditioned exponential-duration certificate. A fast ordinary
+failure/absorption clock cannot replace it. Finite-pulse conditional yield also
+differs from eventual selectivity because unfinished trajectories are censored.
+
+There is a positive kinetic construction on the same deliberately separated
+graph. Ideal phases +/-pi/2 with rate r=(gamma-1)/2 suppress failure edges to
+`4gamma/(gamma^2+4)` while preserving desired rates. Choosing
+`gamma>=2n(n+1)/zeta` yields success>=1-zeta. This pays native expected pulse
+count `O(n^4/[zeta epsilon_hop^2])`, plus preparation, resetting, physical sinks,
+finite pulse duration/bandwidth and all energy. A legal static rescaling aD can
+do the same with a=O(n/sqrt(zeta)) and no repeated kicks; its amplitude/holding
+costs also matter. No operational superiority or material implementation follows.
+
+Proofs: `synthesis/matter/SYNTHESIS_REPORT.md` and
+`synthesis/review/RELATIVE_ENDPOINT.md`. No joint large-size, strong-noise,
+finite-duration and weak-hopping limit has been established. Absorbing/retained
+quantum output is not part of the current kinetic interface.
+
+## 4. Physical control needs an acquired work metric
+
+N774's stored-elastic-energy bound combines with actual complex susceptibility
+to give a sharp area-per-damping-work generalized eigenproblem. The legal force
+subspace, constrained transition derivatives and damping must come from the same
+specimen. A single actuator can produce area through unequal phase lag while
+allowing only one orientation; it does not acquire reversible two-coordinate
+control. A measured phonon plus a relaxed barrier cannot determine this map, as
+the new explicit potential family demonstrates.
+
+The work in this bound is selected passive damping loss, not wall energy. With
+Gamma>0, redundant force directions obey `ker(C*Gamma C)=ker C` and can be
+removed safely. For a more general singular cost matrix, a finite quotient bound
+requires `ker G subset ker H_C`; an arbitrary pseudoinverse cannot erase nonzero
+area at zero recorded cost. The independent review records this qualification.
+The source's material, PNP and SiC comparators are scoped in its report and access
+ledger. No measured structural pump or retained selective repair was supplied.
+
+## 5. Ground comparison, sectors and thermal entropy
+
+The supplied common-environment ground comparison is complete for its
+unrestricted finite class. A distinct fixed-charge theorem requires every Kraus
+operator to preserve active charge, nonnegative environment grades and an
+explicit grouped purification/conditional-dual argument. Ordinary covariance
+is insufficient. An exact half-filled collar changes the source motif's sign:
+Delta_Q>=61/388>0, whereas its full-space upper bound is negative. The repaired
+universal fixed-Q interval is[-3/4,+1/4] in closure. This prevents a false
+particle-number/chemistry transfer without contradicting the source theorem.
+
+A separate thermal synthesis gives, for a certified UCP local residual c,
+
+    F_tau(H1)-F_tau(H0)>=c-tau log||Lambda(I_A)||,
+
+uniformly in finite common environments. Scalar Jensen and trace monotonicity
+prove it; minimum entropy gain gives a stronger sufficient bound. Exact
+U(1)xU(3) symmetry reduction of the explicit singlet-cooling channel yields
+entropy penalty log(1+3y/4), y^3(4+3y)=27. The rational y<59/40 bound gives
+
+    Fstrong-Fweak<=-(5-sqrt13)/8+tau log(337/160).
+
+The resulting sufficient native-energy window is tau<.23399645...; this decimal
+is diagnostic. The exact expression requires outward logarithm evaluation for a
+numerical certificate. Neither material/Kelvin conversion nor fixed-sector
+validity of that original cooling channel is supplied. The reset-channel example
+proves that ground-energy sign can reverse at positive temperature and that the
+local-dimension penalty is worst-case sharp.
+
+Proofs: `synthesis/cray/derived/FIXED_CHARGE_THEOREM.md`,
+`synthesis/root/THERMAL_COMPARISON.md` and
+`synthesis/review/SHARPER_THERMAL.md`. The corrected quantitative smoothing uses
+`tau=min(1,epsilon/[4(B0+B1)])` for positive denominator and treats the zero case
+separately. Dense active dimensions, acquired Hamiltonian/model errors, realistic
+environment restrictions, finite-temperature completeness and useful scientific
+benchmarks remain open. A mathematical witness is not a physically executed
+entropy-disposal operation.
+
+## 6. Acquiring a decoder does not acquire its class promise
+
+The comparison learner is a substantive restricted operation: a translation
+exposes an actual rank bit, a randomized priority tournament selects the next
+one, and prefix interpolation plus a linear suffix response acquires the entire
+compact triangular decoder. Expected queries D+6binom(n,2) match the leading
+information lower bound for fixed d>=2. Inverse evaluation and arbitrary-prefix
+sampling then need no source comparisons. The capped variant returns UNKNOWN
+explicitly and has no semantic error only under its exact supplied promise.
+
+The original64-bit,53,746-comparison result remains producer-reported; this
+integration replays the six bounded groups and supplies new independent small
+learner/fiber checks. Input transmission, source setup/evaluation/cache, basis
+storage, algebra, random draws and checking are paid. A source's one-bit response
+does not make chosen n-bit input access cheap or physically available.
+
+The new exact recognition lower bound is
+`max(0,1-alpha-beta)2^(n-1)` expected identity-run comparisons, for
+1<=d<=n-2, against arbitrary permutation comparators. Adjacent pair swaps are
+outside the class by affine-invariant degree and change only one comparison.
+This leaves promised learning intact and does not obstruct far-from-class or
+approximate testing. A standard majority wrapper handles calibrated full-history
+conditional comparison noise with explicit rB budget and wrong-model probability;
+marginal accuracy and correlated systematic errors do not suffice.
+
+A complete triangular prefix sampler also covers the explicit quadratic example
+whose common-radical right-inverse condition fails. This separates two sufficient
+representations, without solving general joint quadratic systems or closing
+N580's different collective-rank acquisition gate. Partial toggle flags,
+median/correction costs and the sparse minimal-monomial conjecture retain their
+source distinctions. Proofs: `synthesis/decoder/REPORT.md`,
+`RECOGNITION_AND_NOISE.md` and its separate internal `CRITIC.md`.
+
+## 7. Strategy, dependency and publication continuity
+
+The broader continuation's fixed-rank tracking compiler is conditional on an
+inherited analytic existence theorem. Its candidate proof and selected original
+OpenAI/math signing/assembly files were retrieved at the exact1581d4cb... pin;
+remaining analytic dependencies and external correctness are unvalidated. The
+large retained transition receipts were not rerun. General growing-rank selector
+closure stays open; convexification and monotone-box counterexamples are scoped
+representation failures. Physical campaign controls are recorded separately in
+`synthesis/campaign/REPORT.md`; inherited full data/source trees are not claimed
+to be bundled or revalidated.
+
+The highest-value next work is: (a) a strongest same-oracle prior and real
+structural target for the decoder; (b) an economical balanced-current residual
+for interacting systems; (c) realistic sector/environment restrictions with a
+robust thermal action margin; (d) same-specimen work/control and a retained
+endpoint certificate before further ionic manufacture claims. These gates name
+missing mathematics or information; extra workers, report volume and a finer
+parameter sweep do not discharge them.
+
+No broad research architecture change is justified. Existing five-state paired
+composition, versioned technology and independent construction/criticism were
+sufficient. New technology records retain simulation-stage evidence and open
+physical or independent-benchmark gates. The lattice development appends a new
+version qualifying its material contract; it does not erase the earlier model.
+
+Historical scientific records, checkpoints and technology versions are retained.
+Seven new independent handoff branches have empty parent sets and describe this
+intake rather than inventing producer ancestry. The standard publisher is tried;
+the known three malformed legacy checkpoints, if still blocking, remain byte
+identical and are reported as a global validation failure. The new-only fallback
+validates each record, exclusively creates it and appends only its new view/row.
+`PUBLICATION_STATUS.json` records actual outcomes. Repository tests and manifest
+validators check code/schema/integrity, never scientific truth or mission success.

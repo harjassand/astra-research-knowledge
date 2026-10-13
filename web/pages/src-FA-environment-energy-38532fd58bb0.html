@@ -1,0 +1,54 @@
+<!doctype html><meta charset="utf-8"><title>N778 preserved original — rational_verify.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>&quot;&quot;&quot;Build and verify a rational Choi/residual certificate using exact LDL^T.
+A successful verification is independent of the floating-point optimizer.
+&quot;&quot;&quot;
+from __future__ import annotations
+from pathlib import Path
+import json,time
+import numpy as np
+import sympy as s
+
+def exact_pd(M:s.Matrix):
+    &quot;&quot;&quot;Exact LDL^T without pivoting: positive pivots prove positive definiteness.&quot;&quot;&quot;
+    n=M.rows;L=s.eye(n);p=[]
+    for j in range(n):
+        dj=s.cancel(M[j,j]-sum(L[j,k]**2*p[k] for k in range(j)))
+        if dj&lt;=0:raise ArithmeticError(f&#x27;Nonpositive pivot {j}: {dj}&#x27;)
+        p.append(dj)
+        for i in range(j+1,n):L[i,j]=s.cancel((M[i,j]-sum(L[i,k]*L[j,k]*p[k] for k in range(j)))/dj)
+    return p
+
+def partial_input(C,d):return s.Matrix(d,d,lambda a,b:sum(C[i*d+a,i*d+b] for i in range(d)))
+def channel_image(C,H,d):
+    r=H.rows//d
+    return s.Matrix(d*r,d*r,lambda x,y:sum(C[i*d+x//r,j*d+y//r]*H[i*r+x%r,j*r+y%r] for i in range(d) for j in range(d)))
+def ratmatrix(M,den=10**10):return s.Matrix([[s.Rational(round(float(x)*den),den) for x in row] for row in M])
+
+def build():
+    start=time.perf_counter();root=Path(__file__).parent;z=np.load(root/&#x27;extremal_chain.npz&#x27;);d=4
+    C=ratmatrix(z[&#x27;choi&#x27;]);I=s.eye(d)
+    C-=s.kronecker_product(I/d,partial_input(C,d)-I)
+    # A small exact depolarizing component puts Choi into the PSD interior.
+    eps=s.Rational(1,10**6);C=(1-eps)*C+eps*s.eye(d*d)/d
+    assert partial_input(C,d)==I
+    Hstrong=ratmatrix(z[&#x27;h1&#x27;]);Hweak=ratmatrix(z[&#x27;h0&#x27;]);bound=s.Rational(22421,100000)
+    R=Hweak-channel_image(C,Hstrong,d)-bound*s.eye(16)
+    cp=exact_pd(C);rp=exact_pd(R)
+    data={&#x27;dimension_active&#x27;:d,&#x27;dimension_collar&#x27;:4,&#x27;lower_reverse&#x27;:str(bound),&#x27;meaning&#x27;:&#x27;E(strong)-E(weak) &lt;= -22421/100000 for every compatible environment&#x27;,
+          &#x27;choi&#x27;:[[str(x) for x in row] for row in C.tolist()],
+          &#x27;hstrong&#x27;:[[str(x) for x in row] for row in Hstrong.tolist()],
+          &#x27;hweak&#x27;:[[str(x) for x in row] for row in Hweak.tolist()]}
+    (root/&#x27;rational_chain_certificate.json&#x27;).write_text(json.dumps(data,indent=2))
+    summary={&#x27;verification&#x27;:&#x27;exact rational LDL^T&#x27;,&#x27;unital_exact&#x27;:True,&#x27;choi_positive_pivots&#x27;:len(cp),&#x27;residual_positive_pivots&#x27;:len(rp),&#x27;certified_difference_interval&#x27;:[&#x27;-3/4&#x27;,&#x27;-22421/100000&#x27;],&#x27;seconds&#x27;:time.perf_counter()-start,
+          &#x27;smallest_choi_pivot_numeric&#x27;:float(min(cp)),&#x27;smallest_residual_pivot_numeric&#x27;:float(min(rp))}
+    (root/&#x27;rational_chain_verification.json&#x27;).write_text(json.dumps(summary,indent=2));print(json.dumps(summary,indent=2))
+
+def verify():
+    root=Path(__file__).parent;x=json.loads((root/&#x27;rational_chain_certificate.json&#x27;).read_text());d=x[&#x27;dimension_active&#x27;];C=s.Matrix(x[&#x27;choi&#x27;]);Hstrong=s.Matrix(x[&#x27;hstrong&#x27;]);Hweak=s.Matrix(x[&#x27;hweak&#x27;]);c=s.Rational(x[&#x27;lower_reverse&#x27;])
+    assert C==C.T and partial_input(C,d)==s.eye(d)
+    exact_pd(C);exact_pd(Hweak-channel_image(C,Hstrong,d)-c*s.eye(Hweak.rows))
+    print(&#x27;VERIFIED: E(strong)-E(weak) in [-3/4, -22421/100000], uniformly over arbitrary common environments.&#x27;)
+if __name__==&#x27;__main__&#x27;:
+    import argparse
+    p=argparse.ArgumentParser();p.add_argument(&#x27;--verify-only&#x27;,action=&#x27;store_true&#x27;);a=p.parse_args()
+    verify() if a.verify_only else build()
+</pre>

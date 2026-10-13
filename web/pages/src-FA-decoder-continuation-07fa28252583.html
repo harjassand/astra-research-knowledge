@@ -1,0 +1,163 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — standing_mode.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Coupled finite-volume radial slurry / fixed-end whole-pipe torsional model.
+
+The steel tube ends do not rotate. A central drive excites its first loaded
+torsional mode. The material law is the explicitly conditional nonlinear law
+in nonlinear_transport.py. Intermediate gravity supports are represented by
+stated rotational stiffness and loss, not silently omitted.
+&quot;&quot;&quot;
+from dataclasses import replace,asdict
+from pathlib import Path
+import json
+import math
+import time
+
+import numpy as np
+from scipy.linalg import solve_banded
+from scipy.optimize import brentq
+
+import nonlinear_transport as model
+
+
+def mechanical_matrix(omega,inertia,fluid_damping,stiffness,quality):
+    n=len(inertia)
+    band=np.zeros((3,n),dtype=complex)
+    diagonal=stiffness.diagonal()
+    band[1]=(1+1j/quality)*diagonal-omega**2*inertia+1j*omega*fluid_damping
+    band[0,1:]=(1+1j/quality)*np.diag(stiffness,1)
+    band[2,:-1]=(1+1j/quality)*np.diag(stiffness,-1)
+    return band
+
+
+def solve_mode(target,Vpeak,p,nz=11,nr=48,lever=.5,quality=20.,support_k=100.,max_steps=12):
+    assert nz%2==1
+    z=np.linspace(0,p.length,nz);h=z[1]-z[0]
+    center=(nz-2)//2
+    outer=p.radius+p.steel_thickness
+    J=math.pi*(outer**4-p.radius**4)/2
+    Isteel=p.steel_density*J
+    Gsteel=79e9 # Design assumption, not measured on this proposed pipe.
+    stiffness=Gsteel*J/h*(np.diag(np.full(nz-2,2.))+
+       np.diag(np.full(nz-3,-1.),1)+np.diag(np.full(nz-3,-1.),-1))
+    # One ideal rotationally compliant gravity support at every interior node.
+    # A separate loss quality is not supplied; quality20 applies also to these
+    # ground springs. Their actual loaded stiffness and loss remain a gate.
+    stiffness+=np.eye(nz-2)*support_k
+    steel_mass=np.full(nz-2,Isteel*h)
+    drive_arm_inertia=2*(.099+.5/3)*lever**2
+    steel_mass[center]+=drive_arm_inertia
+    rhs=np.zeros(nz-2,dtype=complex);rhs[center]=1
+    omega=math.pi*math.sqrt(Gsteel/p.steel_density)/p.length
+    shape=np.sin(math.pi*z[1:-1]/p.length).astype(complex)
+    rows=[];history=[];converged=False
+    for count in range(max_steps):
+        local_p=replace(p,length=1.)
+        # Symmetry halves the costly source-based nonlinear fluid solves.
+        half=[]
+        for j in range(center+1):
+            v=Vpeak*abs(shape[j])
+            half.append(model.matched_mean(target,omega,v,local_p,n=nr))
+        rows=half+half[-2::-1]
+        fluid_inertia=np.array([r[&#x27;fluid_added_inertia&#x27;] for r in rows])*h
+        Omega=Vpeak*np.abs(shape)/p.radius
+        fluid_damping=np.array([r[&#x27;fluid_torque_real&#x27;] for r in rows])/Omega*h
+        inertia=steel_mass+fluid_inertia
+        def response(w):
+            return solve_banded((1,1),mechanical_matrix(w,inertia,fluid_damping,stiffness,quality),rhs)
+        def reactance(w):
+            return (1/response(w)[center]).real
+        newomega=brentq(reactance,omega*.7,omega*1.3,xtol=1e-8)
+        trial=response(newomega)
+        newshape=trial/trial[center]
+        err=max(abs(newomega/omega-1),float(np.max(np.abs(newshape-shape))))
+        history.append({&#x27;iteration&#x27;:count+1,&#x27;omega&#x27;:float(newomega),&#x27;shape_frequency_error&#x27;:err})
+        print(&#x27;mode&#x27;,Vpeak,count+1,newomega,err,flush=True)
+        if err&lt;2e-4:
+            shape=newshape;omega=newomega;converged=True;break
+        shape=.4*shape+.6*newshape;omega=.4*omega+.6*newomega
+    # Recompute the final fluid state, then solve the linear mechanical system
+    # at this frozen state. This ensures exact discrete energy bookkeeping.
+    half=[]
+    for j in range(center+1):
+        half.append(model.matched_mean(target,omega,Vpeak*abs(shape[j]),replace(p,length=1.),n=nr))
+    rows=half+half[-2::-1]
+    fluid_inertia=np.array([r[&#x27;fluid_added_inertia&#x27;] for r in rows])*h
+    Omega=Vpeak*np.abs(shape)/p.radius
+    fluid_damping=np.array([r[&#x27;fluid_torque_real&#x27;] for r in rows])/Omega*h
+    inertia=steel_mass+fluid_inertia
+    band=mechanical_matrix(omega,inertia,fluid_damping,stiffness,quality)
+    response=solve_banded((1,1),band,rhs)
+    theta0=Vpeak/(p.radius*omega)
+    torque=theta0/response[center]
+    theta=torque*response
+    shape_error=float(np.max(np.abs(theta/theta[center]-shape)))
+    fluid_power=float(.5*omega**2*np.sum(fluid_damping*np.abs(theta)**2))
+    structural=float(.5*omega/quality*np.vdot(theta,stiffness@theta).real)
+    drive_power=float(.5*np.real(torque*np.conj(1j*omega*theta[center])))
+    balance=abs(drive_power-fluid_power-structural)/max(1e-30,drive_power)
+    assert balance&lt;1e-9
+    # Lumped axial integration includes half-cell regions at the clamped ends,
+    # where local wall velocity vanishes and the unactuated gradient applies.
+    baseline_g,baseline=model.unactuated_matched(target,p)
+    gradients=np.r_[baseline_g,[r[&#x27;pressure_gradient&#x27;] for r in rows],baseline_g]
+    pressure=float(np.trapezoid(gradients,x=z))
+    flow=math.pi*p.radius**2*target
+    axial=pressure*flow
+    force=abs(torque)/(2*lever)
+    current=force/(27.8*math.sqrt(2))
+    copper=2*11.5*current**2
+    electric=axial/p.pump_efficiency+drive_power+copper
+    theta_with_ends=np.r_[0,theta,0]
+    twist=np.diff(theta_with_ends)/h
+    shear_stress_peak=Gsteel*outer*float(np.max(np.abs(twist)))
+    linear_weight=(p.steel_density*math.pi*(outer**2-p.radius**2)+
+                   p.density*math.pi*p.radius**2)*9.81
+    # Beam estimate: steel only provides bending stiffness; supports at h.
+    bending_I=J/2;E=200e9
+    support_deflection=5*linear_weight*h**4/(384*E*bending_I)
+    support_bending_stress=linear_weight*h**2/8*outer/bending_I
+    return {&#x27;converged_mode_iteration&#x27;:converged,&#x27;history&#x27;:history,
+      &#x27;axial_nodes&#x27;:nz,&#x27;radial_cells&#x27;:nr,&#x27;support_spacing_m&#x27;:h,
+      &#x27;assumed_support_rotational_stiffness_Nm_rad&#x27;:support_k,
+      &#x27;assumed_structural_quality&#x27;:quality,&#x27;steel_shear_modulus_assumed_Pa&#x27;:Gsteel,
+      &#x27;frequency_hz&#x27;:omega/(2*math.pi),&#x27;omega&#x27;:omega,&#x27;wall_velocity_peak&#x27;:Vpeak,
+      &#x27;center_wall_displacement_m&#x27;:Vpeak/omega,&#x27;center_angle_rad&#x27;:theta0,
+      &#x27;flow_L_min&#x27;:flow*60000,&#x27;axial_pressure_drop_Pa&#x27;:pressure,
+      &#x27;baseline_electric_W&#x27;:baseline,&#x27;axial_fluid_power_W&#x27;:axial,
+      &#x27;cross_fluid_power_W&#x27;:fluid_power,&#x27;structural_loss_W&#x27;:structural,
+      &#x27;actuator_copper_loss_W&#x27;:copper,&#x27;drive_mechanical_power_W&#x27;:drive_power,
+      &#x27;total_electric_before_idle_W&#x27;:electric,&#x27;electric_ratio&#x27;:electric/baseline,
+      &#x27;maximum_extra_idle_support_W&#x27;:baseline-electric,
+      &#x27;actuator_peak_force_N&#x27;:force,&#x27;actuator_rms_current_A&#x27;:current,
+      &#x27;actuator_stroke_amplitude_m&#x27;:lever*theta0,
+      &#x27;actuator_continuous_rating_met&#x27;:bool(force/math.sqrt(2)&lt;27),
+      &#x27;steel_torsional_stress_peak_Pa&#x27;:shear_stress_peak,
+      &#x27;support_static_load_N&#x27;:linear_weight*h,
+      &#x27;span_bending_deflection_m&#x27;:support_deflection,
+      &#x27;span_bending_stress_Pa&#x27;:support_bending_stress,
+      &#x27;linearized_mechanical_power_balance_error&#x27;:balance,
+      &#x27;final_shape_self_consistency_error&#x27;:shape_error,
+      &#x27;maximum_material_strain&#x27;:max(r[&#x27;material_strain_max&#x27;] for r in rows),
+      &#x27;maximum_chi&#x27;:max(r[&#x27;chi_max&#x27;] for r in rows),
+      &#x27;any_OSP_chi_extrapolation&#x27;:any(r[&#x27;outside_OSP_chi_data&#x27;] for r in rows),
+      &#x27;any_unactuated_extrapolation&#x27;:any(r[&#x27;outside_unactuated_stress_data&#x27;] for r in rows),
+      &#x27;local_rows&#x27;:[model.clean(r) for r in rows],
+      &#x27;physical_gate&#x27;:&#x27;End rotation is zero, avoiding torsional fluid couplings. Actual gravity-support stiffness/loss, actuator driver loss, material dynamics and fatigue remain unmeasured.&#x27;}
+
+
+def main():
+    tic=time.perf_counter();p=model.Parameters();out=[];fail=[]
+    for v in (.006,.01,.016):
+        try:
+            out.append(solve_mode(.00625,v,p))
+        except (RuntimeError,ValueError) as error:
+            fail.append({&#x27;wall_velocity&#x27;:v,&#x27;error&#x27;:str(error)})
+        Path(__file__).with_name(&#x27;standing_mode.json&#x27;).write_text(json.dumps({
+          &#x27;status&#x27;:&#x27;Conditional coupled radial fluid/whole-pipe mechanical construction; not demonstrated&#x27;,
+          &#x27;parameters&#x27;:asdict(p),&#x27;cases&#x27;:out,&#x27;failures&#x27;:fail,
+          &#x27;seconds&#x27;:time.perf_counter()-tic},indent=2)+&#x27;\n&#x27;)
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>

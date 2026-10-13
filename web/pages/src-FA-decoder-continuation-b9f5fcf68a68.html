@@ -1,0 +1,269 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — empirical_transport.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Experimental-curve cylindrical transport model.
+
+Data: Lin, Ness, Cates, Sun, Cohen (2016), DOI10.7488/ds/1445, CC-BY4.0.
+Modified by monotone log-space pooling/interpolation and plateau clipping.
+Use as a local cycle-averaged pipe law remains an unvalidated assumption.
+&quot;&quot;&quot;
+from dataclasses import dataclass, asdict
+from pathlib import Path
+import json
+import math
+import time
+
+import numpy as np
+from scipy.linalg import solve_banded
+from scipy.special import iv
+from scipy.optimize import brentq
+from scipy.integrate import simpson
+from scipy.interpolate import PchipInterpolator
+from scipy.optimize import isotonic_regression
+from functools import lru_cache
+
+
+@dataclass(frozen=True)
+class Parameters:
+    empirical_amplitude: str = &quot;1.0&quot;
+    radius: float = 0.0625
+    length: float = 20.0
+    density: float = 1700.0
+    eta_high: float = 500.0
+    eta_low: float = 5.0
+    eta_low_cross: float = 8.0
+    chi_parallel: float = 0.55
+    chi_cross: float = 0.35
+    exponent_parallel: float = 1.8
+    exponent_cross: float = 1.7
+    steel_thickness: float = 0.0077
+    steel_density: float = 7850.0
+    pump_efficiency: float = 0.70
+    actuator_efficiency: float = 0.60
+    structural_quality: float = 20.0
+    max_material_strain: float = 0.05
+
+
+@lru_cache(maxsize=32)
+def raw_curve(amplitude,kind,high):
+    path=(Path(__file__).parent/&#x27;sources/biaxial_raw/biaxial_repository/fig1d&#x27;/
+          f&#x27;fig1d_{amplitude}_{kind}.csv&#x27;)
+    data=np.loadtxt(path,delimiter=&#x27;,&#x27;)
+    # Pool noisy local reversals without a tunable parametric viscosity law.
+    log_eta=np.log(data[:,1])
+    fit=isotonic_regression(log_eta,increasing=False).x
+    eta=np.minimum(np.exp(fit),high)
+    # Under-range values return to the measured unperturbed approximate
+    # plateau over one decade, rather than extrapolating a drop to chi=0.
+    x=np.r_[np.log(data[0,0]/10),np.log(data[:,0])]
+    y=np.r_[np.log(high),np.log(eta)]
+    f=PchipInterpolator(x,y,extrapolate=False)
+    return f,data,eta
+
+
+def empirical_viscosity(chi,p,kind):
+    f,data,eta=raw_curve(p.empirical_amplitude,kind,p.eta_high)
+    x=np.log(np.maximum(chi,1e-100))
+    clipped=np.clip(x,np.log(data[0,0]/10),np.log(data[-1,0]))
+    return np.exp(f(clipped))
+
+
+def curve_diagnostics(amplitude,p):
+    result={}
+    for kind in (&#x27;primary&#x27;,&#x27;OSP&#x27;):
+        f,data,eta=raw_curve(amplitude,kind,p.eta_high)
+        result[kind]={&#x27;points&#x27;:len(data),&#x27;chi_min&#x27;:float(data[0,0]),
+          &#x27;chi_max&#x27;:float(data[-1,0]),&#x27;endpoint_eta&#x27;:float(eta[-1]),
+          &#x27;max_log_adjustment_from_raw&#x27;:float(np.max(np.abs(np.log(eta/data[:,1])))),
+          &#x27;assumed_perturbation_free_viscosity&#x27;:p.eta_high,
+          &#x27;modification&#x27;:&#x27;PAVA decreasing log-viscosity; clip to stated baseline; PCHIP log-log; conservative constant upper-chi endpoint; lower-chi bridge over one decade.&#x27;}
+    return result
+
+
+def cross_solve(eta_faces, omega, velocity, p):
+    &quot;&quot;&quot;Finite volume for (r^3 eta v&#x27;)&#x27; = i omega rho r^3 v, w=r*v.
+
+    Face angular velocity gradient is the physical shear / r. Thus rigid
+    rotation has exactly zero shear, unlike a planar approximation w&#x27;.
+    &quot;&quot;&quot;
+    n=len(eta_faces)-1
+    dr=p.radius/n
+    faces=np.linspace(0,p.radius,n+1)
+    volume=(faces[1:]**4-faces[:-1]**4)/4
+    conductance=faces**3*eta_faces/dr
+    left=conductance[:-1].copy()
+    right=conductance[1:].copy()
+    right[-1]*=2
+    band=np.zeros((3,n),dtype=complex)
+    band[1]=left+right+1j*omega*p.density*volume
+    band[0,1:]=-right[:-1]
+    band[2,:-1]=-left[1:]
+    rhs=np.zeros(n,dtype=complex)
+    rhs[-1]=right[-1]*velocity/p.radius
+    angular=solve_banded((1,1),band,rhs)
+    gradient=np.zeros(n+1,dtype=complex)
+    gradient[1:-1]=np.diff(angular)/dr
+    gradient[-1]=(velocity/p.radius-angular[-1])/(dr/2)
+    shear=faces*gradient
+    # Surface stress times velocity; average of real sinusoidal products.
+    fluid_power=math.pi*p.radius*p.length*np.real(eta_faces[-1]*shear[-1]*velocity)
+    # Independent volume dissipation of the discrete finite-volume system.
+    # Each interior edge is counted once; outer Dirichlet half-cell included.
+    edge_diff=np.r_[0,np.diff(angular),velocity/p.radius-angular[-1]]
+    edge_g=conductance.copy();edge_g[-1]*=2
+    discrete_power=math.pi*p.length*np.sum(edge_g*np.abs(edge_diff)**2)
+    relative_balance=abs(fluid_power-discrete_power)/max(1e-30,fluid_power)
+    assert fluid_power &gt;= -1e-12 and discrete_power &gt;=0
+    # At very small frequency, the real part of wall stress is obtained by
+    # subtracting almost rigid rotations and loses relative precision. The
+    # strictly positive volume form is the stable power evaluation used below.
+    assert abs(fluid_power-discrete_power)&lt;1e-6*max(1.,discrete_power)
+    return shear,float(discrete_power),angular,relative_balance
+
+
+def axial_from_cross(shear, pressure_gradient, p):
+    n=len(shear)-1
+    r=np.linspace(0,p.radius,n+1)
+    stress=pressure_gradient*r/2
+    s=np.abs(shear)
+    low=stress/p.eta_high
+    high=stress/p.eta_low
+    for _ in range(55):
+        gamma=(low+high)/2
+        chi=np.divide(s,gamma,out=np.zeros_like(s),where=gamma&gt;0)
+        eta=empirical_viscosity(chi,p,&quot;primary&quot;)
+        too_low=gamma*eta&lt;stress
+        low=np.where(too_low,gamma,low)
+        high=np.where(too_low,high,gamma)
+    gamma=(low+high)/2
+    chi=np.divide(s,gamma,out=np.zeros_like(s),where=gamma&gt;0)
+    eta_parallel=empirical_viscosity(chi,p,&quot;primary&quot;)
+    eta_cross=empirical_viscosity(chi,p,&quot;OSP&quot;)
+    # Q/pi = integral r^2 gamma(r) dr, hence mean velocity = integral/R^2.
+    # Simpson integrates the constant-viscosity cubic integrand exactly. This
+    # prevents an O(grid^-2) fake gain against the analytic Poiseuille control.
+    mean_velocity=simpson(r*r*gamma,x=r)/(p.radius*p.radius)
+    return mean_velocity,eta_parallel,eta_cross,gamma,chi
+
+
+def coupled(pressure_gradient,omega,velocity,p,n=128,initial=&#x27;high&#x27;,tol=1e-8):
+    eta=np.full(n+1,p.eta_high if initial==&#x27;high&#x27; else p.eta_low_cross)
+    converged=False
+    for count in range(600):
+        shear,power,angular,balance=cross_solve(eta,omega,velocity,p)
+        mean,eta_parallel,target,gamma,chi=axial_from_cross(shear,pressure_gradient,p)
+        error=np.max(np.abs(np.log(target/eta)))
+        if error&lt;tol:
+            converged=True
+            break
+        eta=np.exp(0.75*np.log(eta)+0.25*np.log(target))
+    flow=math.pi*p.radius*p.radius*mean
+    axial_power=pressure_gradient*p.length*flow
+    outer=p.radius+p.steel_thickness
+    inertia=0.5*math.pi*p.steel_density*p.length*(outer**4-p.radius**4)
+    wall_kinetic=0.5*inertia*(velocity/p.radius)**2
+    structural_power=omega*wall_kinetic/p.structural_quality
+    electrical=axial_power/p.pump_efficiency+(power+structural_power)/p.actuator_efficiency
+    return {&#x27;converged&#x27;:converged,&#x27;iterations&#x27;:count+1,&#x27;fixed_point_error&#x27;:float(error),
+      &#x27;pressure_gradient&#x27;:pressure_gradient,&#x27;omega&#x27;:omega,&#x27;wall_velocity&#x27;:velocity,
+      &#x27;mean_velocity&#x27;:float(mean),&#x27;flow_m3_s&#x27;:float(flow),
+      &#x27;axial_power&#x27;:float(axial_power),&#x27;cross_fluid_power&#x27;:float(power),
+      &#x27;wall_structural_loss&#x27;:float(structural_power),&#x27;electrical_total&#x27;:float(electrical),
+      &#x27;wall_peak_kinetic_energy&#x27;:float(wall_kinetic),
+      &#x27;material_strain_max&#x27;:float(np.max(np.abs(shear))/omega),
+      &#x27;material_strain_admissible&#x27;:bool(np.max(np.abs(shear))/omega &lt;=p.max_material_strain),
+      &#x27;wall_displacement_amplitude_m&#x27;:velocity/omega,
+      &#x27;surface_power_balance_relative_error&#x27;:float(balance),
+      &#x27;eta_parallel_wall&#x27;:float(eta_parallel[-1]),&#x27;eta_cross_wall&#x27;:float(eta[-1]),
+      &#x27;chi_wall&#x27;:float(chi[-1]),&#x27;chi_max&#x27;:float(np.max(chi)),
+      &#x27;chi_above_experimental_max&#x27;:bool(np.max(chi)&gt;raw_curve(p.empirical_amplitude,&#x27;primary&#x27;,p.eta_high)[1][-1,0]),
+      &#x27;eta_cross&#x27;:eta,&#x27;shear&#x27;:shear,
+      &#x27;gamma_axial&#x27;:gamma,&#x27;eta_parallel&#x27;:eta_parallel,&#x27;chi&#x27;:chi}
+
+
+def matched_mean(target,omega,velocity,p,n=128):
+    baseline_gradient=8*p.eta_high*target/(p.radius*p.radius)
+    def residual(g):
+        row=coupled(g,omega,velocity,p,n=n)
+        if not row[&#x27;converged&#x27;]:
+            raise RuntimeError(&#x27;Nonconverged constitutive fixed point&#x27;)
+        return row[&#x27;mean_velocity&#x27;]-target
+    gradient=brentq(residual,baseline_gradient*p.eta_low/p.eta_high/2,
+                    baseline_gradient*1.01,xtol=1e-8,rtol=1e-9)
+    row=coupled(gradient,omega,velocity,p,n=n)
+    row[&#x27;baseline_pressure_gradient&#x27;]=baseline_gradient
+    row[&#x27;baseline_electrical&#x27;]=baseline_gradient*p.length*math.pi*p.radius**2*target/p.pump_efficiency
+    row[&#x27;energy_ratio&#x27;]=row[&#x27;electrical_total&#x27;]/row[&#x27;baseline_electrical&#x27;]
+    row[&#x27;pressure_ratio&#x27;]=gradient/baseline_gradient
+    headroom=p.actuator_efficiency*(row[&#x27;baseline_electrical&#x27;]-row[&#x27;axial_power&#x27;]/p.pump_efficiency)-row[&#x27;cross_fluid_power&#x27;]
+    row[&#x27;minimum_structural_quality_for_energy_gain&#x27;]=(omega*row[&#x27;wall_peak_kinetic_energy&#x27;]/headroom if headroom&gt;0 else None)
+    return row
+
+
+def clean(row):
+    return {key:value for key,value in row.items() if not isinstance(value,np.ndarray)}
+
+
+def check_exact_solution():
+    p=Parameters()
+    results=[]
+    for omega in (0.01,1,10,100):
+        errors=[]
+        for n in (64,128,256):
+            eta=np.full(n+1,500.0)
+            shear,power,angular,balance=cross_solve(eta,omega,0.01,p)
+            r=(np.arange(n)+.5)*p.radius/n
+            k=np.sqrt(1j*omega*p.density/500.0)
+            exact=0.01*iv(1,k*r)/iv(1,k*p.radius)/r
+            relative=float(np.max(np.abs(angular-exact))/np.max(np.abs(exact)))
+            exact_wall=0.01*k*iv(2,k*p.radius)/iv(1,k*p.radius)
+            wall_error=abs(shear[-1]-exact_wall)/abs(exact_wall)
+            errors.append({&#x27;grid&#x27;:n,&#x27;relative_angular_error&#x27;:relative,
+                          &#x27;relative_wall_shear_error&#x27;:float(wall_error),
+                          &#x27;power_balance_error&#x27;:balance})
+        assert errors[-1][&#x27;relative_angular_error&#x27;]&lt;errors[0][&#x27;relative_angular_error&#x27;]/10
+        results.append({&#x27;omega&#x27;:omega,&#x27;grids&#x27;:errors})
+    return results
+
+
+def main():
+    from dataclasses import replace
+    tic=time.perf_counter()
+    p=Parameters()
+    target=.2*p.radius/4
+    fixed=[]
+    for amplitude in (&#x27;0.5&#x27;,&#x27;0.7&#x27;,&#x27;1.0&#x27;,&#x27;1.5&#x27;,&#x27;2.0&#x27;,&#x27;3.0&#x27;):
+        for plateau in (450.,500.,550.):
+            model=replace(p,empirical_amplitude=amplitude,eta_high=plateau)
+            try:
+                row=clean(matched_mean(target,100.,.01,model,n=96))
+            except RuntimeError as error:
+                row={&#x27;converged&#x27;:False,&#x27;error&#x27;:str(error)}
+            row.update(amplitude_percent=amplitude,baseline_viscosity=plateau)
+            fixed.append(row)
+    grids=[clean(matched_mean(target,100.,.01,p,n=n))|{&#x27;grid&#x27;:n} for n in (64,128,256)]
+    scan=[];failures=[]
+    for omega in (30.,60.,100.,200.,300.):
+        for velocity in np.geomspace(.001,.03,12):
+            try:
+                scan.append(clean(matched_mean(target,omega,float(velocity),p,n=64)))
+            except RuntimeError as error:
+                failures.append({&#x27;omega&#x27;:omega,&#x27;wall_velocity&#x27;:float(velocity),&#x27;error&#x27;:str(error)})
+    admissible=[r for r in scan if r[&#x27;material_strain_admissible&#x27;] and not r[&#x27;chi_above_experimental_max&#x27;]]
+    best=min(admissible,key=lambda r:r[&#x27;energy_ratio&#x27;]) if admissible else None
+    result={&#x27;status&#x27;:&#x27;measured viscosity curves; conditional local pipe closure and assumed mechanics&#x27;,
+      &#x27;data_attribution&#x27;:&#x27;Lin, Ness, Cates, Sun, Cohen2016, DOI10.7488/ds/1445, CC-BY4.0; modified interpolation described below.&#x27;,
+      &#x27;data_archive_sha256&#x27;:&#x27;9eb8ebcb1a188099a0a30cc2530294ab2e850236ad0e9058399828ff399963b3&#x27;,
+      &#x27;parameters&#x27;:asdict(p),&#x27;curves&#x27;:{a:curve_diagnostics(a,p) for a in (&#x27;0.5&#x27;,&#x27;0.7&#x27;,&#x27;1.0&#x27;,&#x27;1.5&#x27;,&#x27;2.0&#x27;,&#x27;3.0&#x27;)},
+      &#x27;fixed_candidate_data_sensitivity&#x27;:fixed,&#x27;fixed_candidate_grid_convergence&#x27;:grids,
+      &#x27;scan&#x27;:scan,&#x27;nonconvergence&#x27;:failures,&#x27;best_in_range&#x27;:best,
+      &#x27;gate_caveats&#x27;:[&#x27;Complex OSP viscosity magnitude is treated as a real dissipative coefficient; phase unavailable.&#x27;,
+          &#x27;Spatially varying pipe primary rate differs from fixed0.2/s source rheometry.&#x27;,
+          &#x27;Each amplitude curve is a sensitivity model, not a measured local material amplitude law.&#x27;,
+          &#x27;Whole-pipe support, seal, driver idle, density and quality factor are not measured.&#x27;],
+      &#x27;seconds&#x27;:time.perf_counter()-tic}
+    Path(__file__).with_name(&#x27;empirical_transport.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in result.items() if k not in (&#x27;scan&#x27;,&#x27;curves&#x27;)},indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>

@@ -1,0 +1,447 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — terminal_change_point_bound.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Known-arrival homodyne miss bound for the inherited G106 Floquet carrier schedule.
+
+This is a deterministic coherent-carrier model, not a jump-aware instrument.
+It uses the source model&#x27;s q-preserving linear pole schedule, keeps the cavity
+pole coordinate continuous at an f-&gt;e change point, and applies the source
+eta=0.5 collection scenario to the one monitored cavity carrier.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+from scipy.integrate import quad
+from scipy.special import ndtr, ndtri
+
+# Source: work/phase5/quantum_operation/floquet_record_300_noecho.json and the
+# schedule() values reproduced by floquet_record_instrument.py (G=106.10699).
+KAPPA = 2 * math.pi * 0.21  # us^-1
+ETA = 0.5
+ALPHA_FPR = 0.02  # false rejection of a no-jump code record, per full window
+READ_T = 3.0
+RESET_T = 0.8
+T_DECISION = READ_T + RESET_T
+LAMBDA_E = 0.6566397373540859 + 0j
+LAMBDA_F = 0.6532249326634637 + 2j * math.pi * (5.011138786285301 - 4.015441048361026)
+V_E = 0.9976149195061285
+V_F = 0.9945578968993299
+READ_DRIVE = 1.4718014543910638 + 0j
+RESET_DRIVES = (
+    -1.869440159721404 + 0.8871173164501848j,
+    -1.804861391639724 - 0.6821989567129426j,
+)
+READ_BINS = 24
+RESET_BINS = 8
+# Source model&#x27;s q=2-&gt;1 branch rate and total q=2 vacuum decay (per us).
+# These rates only weight an illustrative event-time distribution; no jump
+# photons are placed in the homodyne record.
+RATE_FE = 0.04131524752645586
+RATE_F_TOTAL = 0.04133833561408882
+RATE_E_TOTAL = 0.01753125447611327
+
+
+def schedule_segments(tail_us: float) -&gt; list[tuple[float, float, complex]]:
+    &quot;&quot;&quot;Exact piecewise-constant input schedule and a finite passive tail.&quot;&quot;&quot;
+    segs: list[tuple[float, float, complex]] = []
+    dt = READ_T / READ_BINS
+    for i in range(READ_BINS):
+        segs.append((i * dt, (i + 1) * dt, READ_DRIVE))
+    reset_bin = RESET_T / RESET_BINS
+    half_bins = RESET_BINS // 2
+    for i in range(half_bins):
+        segs.append((READ_T + i * reset_bin, READ_T + (i + 1) * reset_bin, RESET_DRIVES[0]))
+    offset = RESET_T / 2
+    for i in range(half_bins):
+        segs.append((READ_T + offset + i * reset_bin,
+                     READ_T + offset + (i + 1) * reset_bin, RESET_DRIVES[1]))
+    if tail_us &gt; 0:
+        segs.append((T_DECISION, T_DECISION + tail_us, 0j))
+    return segs
+
+
+def advance(x: complex, lam: complex, drive_gain: float, u: complex, dt: float) -&gt; complex:
+    if dt &lt;= 0:
+        return x
+    return x * np.exp(-lam * dt) + drive_gain * u * (-np.expm1(-lam * dt)) / lam
+
+
+def state_at_f(t: float, segs: list[tuple[float, float, complex]]) -&gt; complex:
+    &quot;&quot;&quot;No-jump physical-f branch amplitude at time t in the pole model.&quot;&quot;&quot;
+    x = 0j
+    for a, b, u in segs:
+        if t &lt;= a:
+            break
+        end = min(t, b)
+        x = advance(x, LAMBDA_F, V_F ** 2, u, end - a)
+        if t &lt;= b:
+            return x
+    if t &gt; T_DECISION:
+        x *= np.exp(-LAMBDA_F * (t - T_DECISION))
+    return x
+
+
+def exp_integral(z: complex, dt: float) -&gt; complex:
+    if abs(z) &lt; 1e-13:
+        return complex(dt)
+    return np.expm1(z * dt) / z
+
+
+def carrier_distance_piece(xe: complex, xf: complex, u: complex, dt: float) -&gt; float:
+    &quot;&quot;&quot;Integral kappa*|x_e-x_f|^2 over one constant-drive piece.&quot;&quot;&quot;
+    if dt &lt;= 0:
+        return 0.0
+    # x_q=v_q*alpha_q is the physical carrier field in the one-pole schedule.
+    # The source schedule has alpha-dot=-lambda*alpha+v_q*u and beta=sqrt(kappa)*v_q*alpha.
+    # x is continuous across the qutrit change, while its drive gain becomes v_q^2.
+    xe_ss = V_E ** 2 * u / LAMBDA_E
+    xf_ss = V_F ** 2 * u / LAMBDA_F
+    coeffs = (
+        (xe_ss - xf_ss, 0j),
+        (xe - xe_ss, -LAMBDA_E),
+        (-(xf - xf_ss), -LAMBDA_F),
+    )
+    total = 0j
+    for ci, ri in coeffs:
+        for cj, rj in coeffs:
+            total += ci * np.conj(cj) * exp_integral(ri + np.conj(rj), dt)
+    ans = KAPPA * total.real
+    return max(0.0, float(ans))
+
+
+def J_known_tau(tau: float, tail_us: float) -&gt; float:
+    &quot;&quot;&quot;Raw monitored-carrier displacement norm before efficiency, for known tau.&quot;&quot;&quot;
+    W = T_DECISION + tail_us
+    if tau &gt;= W:
+        return 0.0
+    segs = schedule_segments(tail_us)
+    xf = state_at_f(tau, segs)
+    # The q-preserving pole state alpha is continuous at the qutrit change.
+    # Since the measured carrier is x=v_q*alpha, its expectation can step when
+    # q changes; the f-&gt;e jump photon itself is not included in this record.
+    xe = (V_E / V_F) * xf
+    total = 0.0
+    current = tau
+    for a, b, u in segs:
+        lo = max(a, tau)
+        hi = min(b, W)
+        if hi &lt;= lo:
+            continue
+        # Intervals are contiguous in the acquired schedule; handle any gap
+        # explicitly with the drive off before entering the next segment.
+        if lo &gt; current:
+            gap = lo - current
+            xe = advance(xe, LAMBDA_E, V_E ** 2, 0j, gap)
+            xf = advance(xf, LAMBDA_F, V_F ** 2, 0j, gap)
+            current = lo
+        dt = hi - lo
+        total += carrier_distance_piece(xe, xf, u, dt)
+        xe = advance(xe, LAMBDA_E, V_E ** 2, u, dt)
+        xf = advance(xf, LAMBDA_F, V_F ** 2, u, dt)
+        current = hi
+    return total
+
+
+def beta_homodyne(j_raw: float, alpha: float = ALPHA_FPR) -&gt; float:
+    &quot;&quot;&quot;Exact NP miss probability for time-matched homodyne at size alpha.&quot;&quot;&quot;
+    shift = 2.0 * math.sqrt(ETA * max(0.0, j_raw))
+    return float(ndtr(float(ndtri(1.0 - alpha)) - shift))
+
+
+def beta_coherent_povm(j_raw: float, alpha: float = ALPHA_FPR) -&gt; float:
+    &quot;&quot;&quot;Exact minimum miss for two pure coherent states at false-flag size alpha.&quot;&quot;&quot;
+    c2 = math.exp(-ETA * max(0.0, j_raw))
+    if alpha &gt;= c2:
+        return 0.0
+    return (math.sqrt((1.0 - alpha) * c2) - math.sqrt(alpha * (1.0 - c2))) ** 2
+
+
+def direct_quad_distance(tau: float, tail_us: float) -&gt; float:
+    &quot;&quot;&quot;Independent direct quadrature of the two exact piecewise ODE solutions.&quot;&quot;&quot;
+    W = T_DECISION + tail_us
+    segs = schedule_segments(tail_us)
+    xf_tau = state_at_f(tau, segs)
+
+    def branch_at(t: float, q: str) -&gt; complex:
+        if t &lt;= tau:
+            return state_at_f(t, segs)
+        x = (V_E / V_F) * xf_tau if q == &#x27;e&#x27; else xf_tau
+        lam, gain = (LAMBDA_E, V_E ** 2) if q == &#x27;e&#x27; else (LAMBDA_F, V_F ** 2)
+        for a, b, u in segs:
+            lo = max(a, tau)
+            hi = min(b, t)
+            if hi &gt; lo:
+                x = advance(x, lam, gain, u, hi - lo)
+        return x
+
+    points = sorted({tau, W, *(x for a, b, _ in segs for x in (a, b) if tau &lt; x &lt; W)})
+    total = 0.0
+    for a, b in zip(points, points[1:]):
+        def integrand(t):
+            xe = branch_at(t, &#x27;e&#x27;)
+            xf = branch_at(t, &#x27;f&#x27;)
+            return KAPPA * abs(xe - xf) ** 2
+        total += quad(integrand, a, b, epsabs=2e-13, epsrel=2e-11, limit=100)[0]
+    return total
+
+
+def gauss_integrate_missed(tail_us: float, order: int) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Counterfactual diagnostic: hold e after each first f-&gt;e event through W.&quot;&quot;&quot;
+    W = T_DECISION + tail_us
+    nodes, weights = np.polynomial.legendre.leggauss(order)
+    segs = schedule_segments(tail_us)
+    missed = 0.0
+    mass = 0.0
+    for a, b, _ in segs:
+        xs = (a + b) / 2 + (b - a) / 2 * nodes
+        ws = (b - a) / 2 * weights
+        for t, w in zip(xs, ws):
+            density = RATE_FE * math.exp(-RATE_F_TOTAL * t)
+            mass += w * density
+            missed += w * density * beta_homodyne(J_known_tau(float(t), tail_us))
+    return missed, mass
+
+
+def gauss_integrate_terminal_e(tail_us: float, order: int, start_time: float = 0.0) -&gt; dict:
+    &quot;&quot;&quot;Terminal-e event and missed masses; excludes paths returning e-&gt;g before W.&quot;&quot;&quot;
+    W = T_DECISION + tail_us
+    nodes, weights = np.polynomial.legendre.leggauss(order)
+    segs = schedule_segments(tail_us)
+    masses = {&#x27;terminal_e_mass&#x27;: 0.0, &#x27;homodyne_miss&#x27;: 0.0, &#x27;coherent_povm_miss&#x27;: 0.0}
+    for a, b, _ in segs:
+        a = max(a, start_time)
+        if b &lt;= a:
+            continue
+        xs = (a + b) / 2 + (b - a) / 2 * nodes
+        ws = (b - a) / 2 * weights
+        for t, w in zip(xs, ws):
+            density = RATE_FE * math.exp(-RATE_F_TOTAL * t) * math.exp(-RATE_E_TOTAL * (W - t))
+            j = J_known_tau(float(t), tail_us)
+            masses[&#x27;terminal_e_mass&#x27;] += w * density
+            masses[&#x27;homodyne_miss&#x27;] += w * density * beta_homodyne(j)
+            masses[&#x27;coherent_povm_miss&#x27;] += w * density * beta_coherent_povm(j)
+    return masses
+
+
+def passive_tail_upper(tail_us: float) -&gt; float:
+    &quot;&quot;&quot;Analytic uniform J upper bound for events during a finite free-decay tail.&quot;&quot;&quot;
+    if tail_us &lt;= 0:
+        return 0.0
+    xf_T = state_at_f(T_DECISION, schedule_segments(0.0))
+    # x_f=v_f*alpha_f is the output-carrier amplitude. For a passive tail,
+    # alpha_f(tau)=alpha_f(T)*exp(-lambda_f*(tau-T)). At the change point
+    # alpha_e(tau)=alpha_f(tau), so the output difference is proportional to
+    # v_e*exp(-lambda_e*s)-v_f*exp(-lambda_f*s). For Re(lambda)&gt;0,
+    # |...| &lt;= |v_e-v_f| + v_f*|lambda_e-lambda_f|*s. Integrating its square
+    # gives a uniform upper bound on J over every tau in [T,T+L].
+    alpha_f_T_sq = abs(xf_T / V_F) ** 2
+    dv = abs(V_E - V_F)
+    dl = abs(LAMBDA_E - LAMBDA_F)
+    return float(KAPPA * alpha_f_T_sq * (
+        dv ** 2 * tail_us + dv * V_F * dl * tail_us ** 2
+        + V_F ** 2 * dl ** 2 * tail_us ** 3 / 3.0
+    ))
+
+
+def late_miss_intervals(tail_us: float, j_threshold: float) -&gt; list[list[float]]:
+    &quot;&quot;&quot;Numerically locate connected tau intervals where homodyne miss &gt;= .95.&quot;&quot;&quot;
+    W = T_DECISION + tail_us
+    ngrid = 6001
+    ts = np.linspace(0.0, W, ngrid)
+    vals = [J_known_tau(float(t), tail_us) - j_threshold for t in ts]
+    roots: list[float] = []
+    for i in range(ngrid - 1):
+        lo, hi = float(ts[i]), float(ts[i + 1])
+        flo, fhi = vals[i], vals[i + 1]
+        if flo == 0.0:
+            roots.append(lo)
+        if flo * fhi &lt; 0.0:
+            for _ in range(60):
+                mid = (lo + hi) / 2
+                fm = J_known_tau(mid, tail_us) - j_threshold
+                if flo * fm &lt;= 0:
+                    hi, fhi = mid, fm
+                else:
+                    lo, flo = mid, fm
+            roots.append((lo + hi) / 2)
+    points = [0.0, *sorted(set(roots)), W]
+    intervals = []
+    for lo, hi in zip(points, points[1:]):
+        if J_known_tau((lo + hi) / 2, tail_us) &lt;= j_threshold:
+            intervals.append([lo, hi])
+    return intervals
+
+
+def tail_beta_gate(tail_us: float) -&gt; dict:
+    W = T_DECISION + tail_us
+    j_upper = passive_tail_upper(tail_us)
+    beta_lower = beta_homodyne(j_upper)
+    povm_beta_lower = beta_coherent_povm(j_upper)
+    late_mass = (RATE_FE / RATE_F_TOTAL) * (
+        math.exp(-RATE_F_TOTAL * T_DECISION) - math.exp(-RATE_F_TOTAL * W)
+    )
+    return {
+        &#x27;tail_us&#x27;: tail_us,
+        &#x27;decision_us&#x27;: W,
+        &#x27;physical_carrier_field_squared_at_drive_off&#x27;: abs(state_at_f(T_DECISION, schedule_segments(0.0))) ** 2,
+        &#x27;pole_coordinate_alpha_squared_at_drive_off&#x27;: abs(
+            state_at_f(T_DECISION, schedule_segments(0.0)) / V_F
+        ) ** 2,
+        &#x27;J_upper_for_any_event_in_tail&#x27;: j_upper,
+        &#x27;homodyne_miss_probability_lower_bound_per_tail_event_surviving_as_e&#x27;: beta_lower,
+        &#x27;arbitrary_coherent_carrier_POVM_miss_probability_lower_bound_per_tail_event_surviving_as_e&#x27;: povm_beta_lower,
+        &#x27;source_scenario_FE_event_mass_per_initial_f_in_tail&#x27;: late_mass,
+    }
+
+
+def main() -&gt; None:
+    alpha = ALPHA_FPR
+    zcut = float(ndtri(1.0 - alpha))
+    target = 0.95
+    j95 = ((zcut - float(ndtri(target))) / (2.0 * math.sqrt(ETA))) ** 2
+    tails = [0.0, 0.8, 1.6]
+    rows = []
+    convergence = {}
+    for L in tails:
+        miss16, mass16 = gauss_integrate_missed(L, 16)
+        miss32, mass32 = gauss_integrate_missed(L, 32)
+        miss64, mass64 = gauss_integrate_missed(L, 64)
+        convergence[str(L)] = {
+            &#x27;order16_missed_mass&#x27;: miss16,
+            &#x27;order32_missed_mass&#x27;: miss32,
+            &#x27;order64_missed_mass&#x27;: miss64,
+            &#x27;order32_to_64_abs_difference&#x27;: abs(miss32 - miss64),
+            &#x27;order64_event_mass&#x27;: mass64,
+        }
+        W = T_DECISION + L
+        times = sorted({0.0, 1.0, 2.0, 3.0, 3.4, 3.7, 3.79, 3.8, T_DECISION + L / 2, W})
+        samples = []
+        for tau in times:
+            if 0 &lt;= tau &lt;= W:
+                j = J_known_tau(tau, L)
+                samples.append({&#x27;tau_us&#x27;: tau, &#x27;J_raw&#x27;: j,
+                                &#x27;collected_eta_J&#x27;: ETA * j,
+                                &#x27;homodyne_miss_at_2pct_FPR&#x27;: beta_homodyne(j),
+                                &#x27;coherent_POVM_miss_at_2pct_FPR&#x27;: beta_coherent_povm(j)})
+        terminal16 = gauss_integrate_terminal_e(L, 16)
+        terminal32 = gauss_integrate_terminal_e(L, 32)
+        terminal64 = gauss_integrate_terminal_e(L, 64)
+        terminal_tail64 = gauss_integrate_terminal_e(L, 64, start_time=T_DECISION)
+        rows.append({
+            &#x27;tail_us&#x27;: L,
+            &#x27;decision_window_us&#x27;: W,
+            &#x27;counterfactual_fixed_e_hold_branch_missed_mass_from_first_FE_arrivals_per_initial_f&#x27;: miss64,
+            &#x27;first_FE_arrival_mass_before_decision_per_initial_f&#x27;: mass64,
+            &#x27;counterfactual_fixed_e_hold_branch_miss_fraction_among_first_FE_arrivals&#x27;: miss64 / mass64 if mass64 else None,
+            &#x27;terminal_e_only_scenario&#x27;: {
+                &#x27;terminal_e_mass_per_initial_f&#x27;: terminal64[&#x27;terminal_e_mass&#x27;],
+                &#x27;homodyne_missed_terminal_e_mass_lower_bound_per_initial_f&#x27;: terminal64[&#x27;homodyne_miss&#x27;],
+                &#x27;arbitrary_coherent_carrier_POVM_missed_terminal_e_mass_lower_bound_per_initial_f&#x27;: terminal64[&#x27;coherent_povm_miss&#x27;],
+                &#x27;mixed_code_POVM_missed_terminal_e_mass_lower_bound&#x27;: 0.5 * terminal64[&#x27;coherent_povm_miss&#x27;],
+                &#x27;mixed_code_homodyne_missed_terminal_e_mass_lower_bound&#x27;: 0.5 * terminal64[&#x27;homodyne_miss&#x27;],
+                &#x27;homodyne_miss_fraction_lower_bound&#x27;: terminal64[&#x27;homodyne_miss&#x27;] / terminal64[&#x27;terminal_e_mass&#x27;],
+                &#x27;coherent_POVM_miss_fraction_lower_bound&#x27;: terminal64[&#x27;coherent_povm_miss&#x27;] / terminal64[&#x27;terminal_e_mass&#x27;],
+                &#x27;tail_terminal_e_mass_per_initial_f&#x27;: terminal_tail64[&#x27;terminal_e_mass&#x27;],
+                &#x27;tail_homodyne_missed_terminal_e_mass_lower_bound_per_initial_f&#x27;: terminal_tail64[&#x27;homodyne_miss&#x27;],
+                &#x27;tail_coherent_POVM_missed_terminal_e_mass_lower_bound_per_initial_f&#x27;: terminal_tail64[&#x27;coherent_povm_miss&#x27;],
+                &#x27;tail_mixed_code_POVM_missed_terminal_e_mass_lower_bound&#x27;: 0.5 * terminal_tail64[&#x27;coherent_povm_miss&#x27;],
+                &#x27;order16_to64_homodyne_abs_difference&#x27;: abs(terminal16[&#x27;homodyne_miss&#x27;] - terminal64[&#x27;homodyne_miss&#x27;]),
+                &#x27;order16_to64_POVM_abs_difference&#x27;: abs(terminal16[&#x27;coherent_povm_miss&#x27;] - terminal64[&#x27;coherent_povm_miss&#x27;]),
+            },
+            &#x27;known_arrival_point_samples&#x27;: samples,
+            &#x27;connected_intervals_with_miss_at_least_95pct&#x27;: late_miss_intervals(L, j95),
+            &#x27;passive_tail_gate&#x27;: tail_beta_gate(L),
+        })
+
+    # Exact analytic piece integration vs independent quadrature at representative
+    # in-drive and in-tail change points.
+    quad_checks = []
+    for L, tau in [(0.0, 2.713), (0.0, 3.79), (0.8, 3.79), (0.8, 4.21), (1.6, 5.11)]:
+        ja = J_known_tau(tau, L)
+        jq = direct_quad_distance(tau, L)
+        quad_checks.append({&#x27;tail_us&#x27;: L, &#x27;tau_us&#x27;: tau, &#x27;analytic_J&#x27;: ja,
+                            &#x27;direct_quadrature_J&#x27;: jq, &#x27;abs_error&#x27;: abs(ja - jq)})
+
+    # Exact whole-record Gaussian likelihood check for one representative event.
+    tau_check, tail_check = 2.713, 0.8
+    j_check = J_known_tau(tau_check, tail_check)
+    shift = 2 * math.sqrt(ETA * j_check)
+    c = zcut
+    alpha_quad = quad(lambda z: math.exp(-z*z/2) / math.sqrt(2*math.pi), c, 12.0,
+                      epsabs=1e-14)[0]
+    beta_quad = quad(lambda z: math.exp(-(z-shift)**2/2) / math.sqrt(2*math.pi), -12.0, c,
+                     epsabs=1e-14)[0]
+    tradeoff = {
+        &#x27;FPR_target&#x27;: alpha,
+        &#x27;threshold_sigma_above_nojump_mean&#x27;: c,
+        &#x27;J_raw&#x27;: j_check,
+        &#x27;collected_squared_displacement_eta_J&#x27;: ETA * j_check,
+        &#x27;Gaussian_mean_shift_sigma&#x27;: shift,
+        &#x27;FPR_from_direct_normal_integral&#x27;: alpha_quad,
+        &#x27;miss_from_closed_form&#x27;: beta_homodyne(j_check),
+        &#x27;miss_from_direct_normal_integral&#x27;: beta_quad,
+        &#x27;KL_event_vs_nojump_nats&#x27;: shift**2 / 2,
+    }
+
+    out = {
+        &#x27;status&#x27;: &#x27;INTERNAL_LINEAR_COHERENT_CARRIER_GAUSSIAN_LRT_ONLY&#x27;,
+        &#x27;model_inputs&#x27;: {
+            &#x27;candidate&#x27;: &#x27;G106 full-pull preferred300; source finite schedule no echo&#x27;,
+            &#x27;kappa_per_us&#x27;: KAPPA,
+            &#x27;eta_collected&#x27;: ETA,
+            &#x27;false_rejection_FPR_per_full_window&#x27;: alpha,
+            &#x27;read_us&#x27;: READ_T, &#x27;active_reset_us&#x27;: RESET_T,
+            &#x27;decision_windows_us&#x27;: [T_DECISION + L for L in tails],
+            &#x27;read_bins&#x27;: READ_BINS, &#x27;reset_bins&#x27;: RESET_BINS,
+            &#x27;lambda_e_per_us&#x27;: [LAMBDA_E.real, LAMBDA_E.imag],
+            &#x27;lambda_f_per_us&#x27;: [LAMBDA_F.real, LAMBDA_F.imag],
+            &#x27;carrier_v_e&#x27;: V_E, &#x27;carrier_v_f&#x27;: V_F,
+            &#x27;read_drive_per_us&#x27;: [READ_DRIVE.real, READ_DRIVE.imag],
+            &#x27;reset_drives_per_us&#x27;: [[z.real, z.imag] for z in RESET_DRIVES],
+            &#x27;f_to_e_branch_rate_per_us_scenario&#x27;: RATE_FE,
+            &#x27;total_f_loss_rate_per_us_scenario&#x27;: RATE_F_TOTAL,
+            &#x27;total_e_loss_rate_per_us_scenario&#x27;: RATE_E_TOTAL,
+            &#x27;jump_photon_collection&#x27;: &#x27;excluded; no jump outputs enter the homodyne record&#x27;,
+        },
+        &#x27;gaussian_tradeoff_check&#x27;: tradeoff,
+        &#x27;tail_gate_threshold&#x27;: {
+            &#x27;target_miss_probability&#x27;: target,
+            &#x27;max_raw_J_for_that_miss_at_2pct_FPR&#x27;: j95,
+            &#x27;derivation&#x27;: &#x27;beta=Phi(Phi^-1(1-alpha)-2*sqrt(eta*J)); solve beta&gt;=0.95&#x27;,
+        },
+        &#x27;schedule_results&#x27;: rows,
+        &#x27;integration_convergence&#x27;: convergence,
+        &#x27;analytic_piece_vs_direct_quadrature&#x27;: quad_checks,
+        &#x27;scope&#x27;: [
+            &#x27;Event time tau is granted to the likelihood-ratio receiver; this is an optimistic pointwise benchmark.&#x27;,
+            &#x27;An unknown-arrival receiver with the same whole-window FPR cannot have a smaller miss at any fixed tau.&#x27;,
+            &#x27;Carrier-only coherent model; no f-&gt;e jump photons, sideband photons, other collected ports, or nonlinear jump-conditioned cavity states.&#x27;,
+            &#x27;Source rates and eta=0.5 are scenarios, not acquired operating-point measurements.&#x27;,
+            &#x27;The all-first-event fixed-e-hold integral is a counterfactual diagnostic; only terminal-e masses include e survival, and returned cascades need another change point.&#x27;,
+            &#x27;The arbitrary-POVM expression is the exact binary optimum only for the two pure coherent carrier states; it does not include collected jump photons or other output modes.&#x27;,
+            &#x27;Terminal-e weighting includes e-state survival exp(-Lambda_e*(W-tau)); returned e-&gt;g paths are excluded from terminal-e-only mass.&#x27;,
+            &#x27;A finite passive tail is explicitly charged as added decision latency; events continue during that tail.&#x27;,
+            &#x27;No universal quantum or hardware lower bound is asserted.&#x27;,
+        ],
+    }
+    path = Path(__file__).with_name(&#x27;NUMERICAL_RESULTS.json&#x27;)
+    path.write_text(json.dumps(out, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({
+        &#x27;status&#x27;: out[&#x27;status&#x27;],
+        &#x27;whole_window&#x27;: [{&#x27;tail_us&#x27;: r[&#x27;tail_us&#x27;],
+                          &#x27;mixed_code_terminal_e_POVM_missed_mass_lb&#x27;: r[&#x27;terminal_e_only_scenario&#x27;][&#x27;mixed_code_POVM_missed_terminal_e_mass_lower_bound&#x27;],
+                          &#x27;terminal_e_mass_per_initial_f&#x27;: r[&#x27;terminal_e_only_scenario&#x27;][&#x27;terminal_e_mass_per_initial_f&#x27;],
+                          &#x27;terminal_e_POVM_miss_fraction_lb&#x27;: r[&#x27;terminal_e_only_scenario&#x27;][&#x27;coherent_POVM_miss_fraction_lower_bound&#x27;]}
+                         for r in rows],
+        &#x27;tail_gates&#x27;: [r[&#x27;passive_tail_gate&#x27;] for r in rows],
+        &#x27;quad_max_abs_error&#x27;: max(x[&#x27;abs_error&#x27;] for x in quad_checks),
+        &#x27;tradeoff&#x27;: tradeoff,
+        &#x27;result_path&#x27;: str(path),
+    }, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

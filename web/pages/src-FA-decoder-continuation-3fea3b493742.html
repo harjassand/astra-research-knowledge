@@ -1,0 +1,176 @@
+<!doctype html><meta charset="utf-8"><title>N780 preserved original — certificate_arithmetic.py</title><p>Source and internally derived claims remain unreviewed. External correctness, historical priority and physical validity are UNKNOWN. Exact/floating diagnostics, producer-code replay and same-team analytic criticism do not independently validate universal mathematics, novelty or scientific capability.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact-formula arithmetic for the defensive-mixture bound.
+
+No trajectories are simulated.  The input p_scale is a planning scale inherited
+from the reported estimate, not a newly certified target value.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+
+P_SCALE = 4.304224792713203e-10
+DELTA = 0.05
+REL_TOL = 0.10
+DT = 0.0005
+HORIZON = 2.0
+TOTAL_FORCE_BUDGET = 20_838_768
+ACQUISITION_FORCE_POINTS = 19_400_000
+OBSERVED_GUIDE_FORCE_POINTS = 1_438_768
+N_STEPS_MAX = round(HORIZON / DT)
+
+
+def bernstein_ci_at_mean(x: float, n: int, epsilon: float,
+                         delta: float = DELTA) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Two-sided Bernstein CI for mean of iid Y in [0,1/epsilon].
+
+    Uses Var(Y) &lt;= E[Y^2] &lt;= E[Y]/epsilon.  The displayed x is the observed
+    sample mean; this function does not generate observations.
+    &quot;&quot;&quot;
+    if n &lt;= 0 or not (0.0 &lt; epsilon &lt;= 1.0) or not (0.0 &lt; delta &lt; 1.0):
+        raise ValueError(&quot;require n&gt;0, 0&lt;epsilon&lt;=1, and 0&lt;delta&lt;1&quot;)
+    M = 1.0 / epsilon
+    L = math.log(2.0 / delta)  # two tails, delta/2 each
+    a = 2.0 * M * L / n
+    c = math.sqrt(a)
+    b = 2.0 * M * L / (3.0 * n)
+
+    # Invert x &gt;= mu - sqrt(a*mu) - b for an upper endpoint.
+    upper = ((c + math.sqrt(c*c + 4.0*(x+b))) / 2.0) ** 2
+    # Invert x &lt;= mu + sqrt(a*mu) + b for a lower endpoint.
+    if x &lt;= b:
+        lower = 0.0
+    else:
+        lower = ((math.sqrt(c*c + 4.0*(x-b)) - c) / 2.0) ** 2
+    return lower, upper
+
+
+def bernstein_n_required(p: float = P_SCALE, rel_tol: float = REL_TOL,
+                         epsilon: float = 1.0,
+                         delta: float = DELTA) -&gt; int:
+    &quot;&quot;&quot;Sufficient n for the two-sided Bernstein radius &lt;= rel_tol*p.
+
+    Put t=epsilon*n*p and s=sqrt(2L/t); the relative radius is
+    s+s^2/3.  Solve this quadratic for s, then round n upwards.
+    &quot;&quot;&quot;
+    L = math.log(2.0 / delta)
+    s = (math.sqrt(9.0 + 12.0*rel_tol) - 3.0) / 2.0
+    t = 2.0*L/(s*s)
+    return math.ceil(t/(epsilon*p))
+
+
+def main() -&gt; None:
+    n_after_acquisition_worst = (
+        TOTAL_FORCE_BUDGET - ACQUISITION_FORCE_POINTS
+    ) // N_STEPS_MAX
+    n_total_worst = TOTAL_FORCE_BUDGET // N_STEPS_MAX
+    n_req_eps1 = bernstein_n_required()
+    effective_count_required = n_req_eps1*P_SCALE
+    coupling_lower_bound_paths = math.ceil((1.0-2.0*DELTA)/(3.0*REL_TOL*P_SCALE))
+    L = math.log(2.0/DELTA)
+    doob_sample_cases = []
+    for n in (359, 10_000):
+        variance_ratio_cap = n / effective_count_required
+        log_envelope_cap = 0.5*math.log(variance_ratio_cap) if variance_ratio_cap &gt;= 1.0 else None
+        doob_sample_cases.append({
+            &quot;n&quot;: n,
+            &quot;maximum_R_for_Bernstein_10pct_95pct&quot;: variance_ratio_cap,
+            &quot;maximum_log_path_envelope_h_if_R_equals_exp_2h&quot;: log_envelope_cap,
+            &quot;maximum_uniform_log_residual_per_step_over_4000_steps&quot;: (
+                log_envelope_cap/N_STEPS_MAX if log_envelope_cap is not None else None
+            ),
+        })
+    finite_example_epsilon = 0.1
+    finite_example_qc_event = 0.5
+    finite_example_event_scale_C = 1.0/((1.0-finite_example_epsilon)*finite_example_qc_event)
+    finite_example_relative_radius = (
+        math.sqrt(2.0*finite_example_event_scale_C*L/10_000)
+        + 2.0*finite_example_event_scale_C*L/(3.0*10_000)
+    )
+    table = []
+    for n, label in [
+        (n_after_acquisition_worst, &quot;remaining budget after 19.4M acquisition; 4000-step cap&quot;),
+        (n_total_worst, &quot;entire budget, no acquisition; 4000-step cap&quot;),
+        (10_000, &quot;same count as inherited guided paths; hypothetical Q-mixture data&quot;),
+        (OBSERVED_GUIDE_FORCE_POINTS, &quot;optimistic one iid sample per remaining force point (impossible accounting)&quot;) ,
+        (TOTAL_FORCE_BUDGET, &quot;optimistic one iid sample per total force point (impossible accounting)&quot;),
+    ]:
+        for eps in (1.0, 0.1, 0.01):
+            lo, hi = bernstein_ci_at_mean(P_SCALE, n, eps)
+            table.append({
+                &quot;case&quot;: label,
+                &quot;n&quot;: n,
+                &quot;epsilon&quot;: eps,
+                &quot;illustrative_observed_mean&quot;: P_SCALE,
+                &quot;lower&quot;: lo,
+                &quot;upper&quot;: hi,
+                &quot;upper_over_p_scale&quot;: hi/P_SCALE,
+                &quot;empirical_bernstein_range_term_scale&quot;: (
+                    7.0*(1.0/eps)*math.log(2.0/DELTA)/(3.0*max(1, n-1))
+                ),
+            })
+
+    # The global-mixture M=1/epsilon bound is best at epsilon=1.  A stepwise
+    # mixture compounds M across at most N_STEPS_MAX transitions.
+    result = {
+        &quot;status&quot;: &quot;ARITHMETIC_ONLY_NO_SIMULATION&quot;,
+        &quot;p_scale_not_certified_truth&quot;: P_SCALE,
+        &quot;delta&quot;: DELTA,
+        &quot;relative_tolerance&quot;: REL_TOL,
+        &quot;dt&quot;: DT,
+        &quot;horizon&quot;: HORIZON,
+        &quot;maximum_euler_steps_per_stopped_path&quot;: N_STEPS_MAX,
+        &quot;total_force_budget&quot;: TOTAL_FORCE_BUDGET,
+        &quot;acquisition_force_points&quot;: ACQUISITION_FORCE_POINTS,
+        &quot;remaining_force_points_after_acquisition&quot;: TOTAL_FORCE_BUDGET-ACQUISITION_FORCE_POINTS,
+        &quot;worst_case_paths_from_remaining_budget&quot;: n_after_acquisition_worst,
+        &quot;worst_case_paths_from_total_budget_without_acquisition&quot;: n_total_worst,
+        &quot;two_sided_bernstein_sufficient_paths_at_epsilon_1&quot;: n_req_eps1,
+        &quot;two_sided_bernstein_sufficient_force_points_at_4000_per_path&quot;: n_req_eps1*N_STEPS_MAX,
+        &quot;two_sided_bernstein_force_factor_over_budget_at_4000_per_path&quot;: (n_req_eps1*N_STEPS_MAX)/TOTAL_FORCE_BUDGET,
+        &quot;epsilon_scaled_effective_sample_requirement&quot;: &quot;n*epsilon*p_scale &gt;= &quot; + str(effective_count_required),
+        &quot;distribution_free_rare_spike_coupling_lower_bound_paths_at_epsilon_1&quot;: coupling_lower_bound_paths,
+        &quot;distribution_free_rare_spike_coupling_lower_bound_over_total_force_budget&quot;: coupling_lower_bound_paths/TOTAL_FORCE_BUDGET,
+        &quot;illustrative_intervals_if_observed_mean_equals_p_scale&quot;: table,
+        &quot;stepwise_global_weight_bound_epsilon_0_1&quot;: &quot;10^4000&quot;,
+        &quot;stepwise_log10_bound_epsilon_0_1&quot;: N_STEPS_MAX,
+        &quot;stepwise_epsilon_min_for_global_weight_cap_2&quot;: 2.0**(-1.0/N_STEPS_MAX),
+        &quot;stepwise_epsilon_min_for_global_weight_cap_10&quot;: 10.0**(-1.0/N_STEPS_MAX),
+        &quot;control_energy_H_max&quot;: 80.0**2*HORIZON,
+        &quot;gaussian_second_moment_log10_bound_for_Qc&quot;: (80.0**2*HORIZON/2.0)/math.log(10.0),
+        &quot;control_energy_log_weight_cutoff_for_0p1p_tail_bias&quot;: (
+            (80.0**2*HORIZON)/4.0
+            + math.sqrt((80.0**2*HORIZON)*math.log(1.0/(0.1*P_SCALE)))
+        ),
+        &quot;control_energy_log10_weight_cutoff_for_0p1p_tail_bias&quot;: (
+            (80.0**2*HORIZON)/4.0
+            + math.sqrt((80.0**2*HORIZON)*math.log(1.0/(0.1*P_SCALE)))
+        )/math.log(10.0),
+        &quot;ideal_physical_event_count_at_total_force_budget_if_one_force_point_per_sample&quot;: TOTAL_FORCE_BUDGET*P_SCALE,
+        &quot;physical_no_hit_probability_at_worst_case_5209_paths&quot;: (1.0-P_SCALE)**n_total_worst,
+        &quot;physical_no_hit_probability_at_359_paths&quot;: (1.0-P_SCALE)**n_after_acquisition_worst,
+        &quot;physical_zero_hit_95pct_exact_upper_at_359_paths&quot;: -math.expm1(math.log(DELTA)/n_after_acquisition_worst),
+        &quot;physical_zero_hit_95pct_exact_upper_at_5209_paths&quot;: -math.expm1(math.log(DELTA)/n_total_worst),
+        &quot;doob_residual_envelope_requirements&quot;: doob_sample_cases,
+        &quot;doob_deterministic_10pct_relative_enclosure_total_log_residual&quot;: math.log1p(REL_TOL),
+        &quot;doob_deterministic_10pct_relative_enclosure_per_step_over_4000_steps&quot;: math.log1p(REL_TOL)/N_STEPS_MAX,
+        &quot;finite_two_atom_event_envelope_example&quot;: {
+            &quot;target_P_event_mass&quot;: &quot;p&quot;,
+            &quot;controlled_Qc_event_mass&quot;: finite_example_qc_event,
+            &quot;epsilon&quot;: finite_example_epsilon,
+            &quot;global_defensive_weight_bound&quot;: 1.0/finite_example_epsilon,
+            &quot;event_scaled_weight_bound_Y_over_p&quot;: finite_example_event_scale_C,
+            &quot;two_sided_Bernstein_relative_radius_at_n_10000&quot;: finite_example_relative_radius,
+            &quot;interpretation&quot;: &quot;If an event-specific likelihood envelope Y&lt;=C*p is proved, the range/variance certificate can be useful; the Gaussian controller has no such proved envelope.&quot;,
+        },
+    }
+    out = Path(__file__).with_name(&quot;certificate_arithmetic.json&quot;)
+    out.write_text(json.dumps(result, indent=2, sort_keys=True) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>
