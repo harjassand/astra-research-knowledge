@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8"><title>N764 recovered original — astra_frontier_separable_completion/multiscale_repair.py</title>
+<aside>Original byte/member hashes, ZIP CRC and AST syntax establish preservation only. No scientific program executed, independent proof reconstructed, literature/priority audit or physical experiment performed at intake. Producer finite/exact/floating diagnostics are source-reported; not universal theorem validation.</aside>
+<pre>&quot;&quot;&quot;Multiscale separated completion, with a radius-independent energy bound
+in gap dimension &gt;=3. This is a source-class theorem, not a full inverse theorem.
+&quot;&quot;&quot;
+
+if not __debug__:
+    raise RuntimeError(&#x27;Do not run with Python -O: certificate checks must execute.&#x27;)
+from separable_repair import *
+from pathlib import Path
+import json,time
+
+def measure(q,m):
+    return {(geo(q),)*m:(1-q)**m}
+
+def canonical_unshifted(v):
+    &quot;&quot;&quot;Exact partial fractions; delta offsets stay explicit.&quot;&quot;&quot;
+    out=defaultdict(F)
+    for key,c in v.items():
+        parts=[]
+        for a,q in key:
+            if not q or not a:parts.append([(F(1),(a,q))]);continue
+            part=[(q**(-a),geo(q))]
+            part +=[(-q**(j-a),geo(0,j)) for j in range(a)]
+            parts.append(part)
+        for term in product(*parts):
+            out[tuple(s for cf,s in term)]+=c*product_f(cf for cf,s in term)
+    return clean(out)
+
+def multiscale(m,J):
+    flows=[{} for _ in range(m)]
+    for j in range(1,J+1):
+        q=1-F(1,2**j);r=1-F(1,2**(j-1))
+        b=add((1,measure(q,m)),(-1,measure(r,m)))
+        step=complete(b,[geo(r)]*m)
+        flows=[add((1,u),(1,v)) for u,v in zip(flows,step)]
+    routes=route_edges(flows)
+    b=add((1,measure(1-F(1,2**J),m)),(-1,measure(F(0),m)))
+    residual=canonical_unshifted(add((1,routed_divergence(routes)),(-1,b)))
+    assert not residual
+    return routes
+
+if __name__==&#x27;__main__&#x27;:
+    start=time.perf_counter();checks=[]
+    for m,J in[(2,4),(3,4),(4,4)]:
+        w=multiscale(m,J);energy=sum(inner(v,v) for v in w)
+        checks.append(dict(dimension=m,levels=J,atoms=sum(map(len,w)),energy=str(energy),energy_float=float(energy)))
+    w=multiscale(4,40)
+    # m=4: ||w|| &lt;= 4*sqrt(8)*sum_{j=1}^J 2^{-j}&lt;sqrt(128).
+    out=dict(small_exact_energy_checks=checks,dimension=4,levels=40,
+       length_scale=2**40,route_atoms=sum(map(len,w)),
+       exact_divergence=True,certified_energy_upper=128,
+       seconds=time.perf_counter()-start,
+       scope=&#x27;Exact completion of normalized geometric-product minus point source; original exclusion graph&#x27;)
+    Path(&#x27;multiscale_repair_checks.json&#x27;).write_text(json.dumps(out,indent=2));print(json.dumps(out,indent=2))
+</pre>
