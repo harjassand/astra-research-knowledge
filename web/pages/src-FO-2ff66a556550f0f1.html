@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — ising_retention.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/retained_kinetics/ising_retention.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite-state Glauber model for phase-selective domain writing.
+
+Dimensionless, illustrative model only: no GaAs/BTO material parameters.
+The state is a periodic chain of inversion-related +/- variants. Single-site
+heat-bath flips explicitly include pair-wall nucleation, wall migration,
+domain growth and regrowth. The driven field is a hypothetical effective
+conjugate field h(phi); its optical realization is not acquired.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import itertools
+import json
+import math
+import pathlib
+import sys
+
+import numpy as np
+from scipy.linalg import expm
+
+
+N = 8
+BETA = 1.0
+J = 1.0
+H = 0.30
+NU = 1.0
+PULSE_TIME = 40.0
+RETENTION_TIME = 2.0
+
+
+def states_for(n: int) -&gt; np.ndarray:
+    return np.asarray(list(itertools.product((-1, 1), repeat=n)), dtype=np.int8)
+
+
+def energy(s: np.ndarray, h: float, j: float = J) -&gt; float:
+    return -j * float(np.sum(s * np.roll(s, -1))) - h * float(np.sum(s))
+
+
+def generator(states: np.ndarray, h: float, nu: float = NU, j: float = J) -&gt; np.ndarray:
+    lookup = {tuple(row): k for k, row in enumerate(states)}
+    q = np.zeros((len(states), len(states)), dtype=float)
+    for a, s in enumerate(states):
+        for i in range(len(s)):
+            sp = s.copy()
+            sp[i] *= -1
+            b = lookup[tuple(sp)]
+            de = energy(sp, h, j) - energy(s, h, j)
+            rate = nu / (1.0 + math.exp(BETA * de))
+            q[a, b] = rate
+        q[a, a] = -q[a].sum()
+    return q
+
+
+def gibbs(states: np.ndarray, h: float) -&gt; np.ndarray:
+    e = np.asarray([energy(s, h) for s in states])
+    z = np.exp(-BETA * (e - e.min()))
+    return z / z.sum()
+
+
+def evolve(p: np.ndarray, q: np.ndarray, t: float) -&gt; np.ndarray:
+    return p @ expm(q * t)
+
+
+def obs(p: np.ndarray, states: np.ndarray) -&gt; dict[str, float]:
+    m = states.sum(axis=1) / len(states[0])
+    walls = (states != np.roll(states, -1, axis=1)).sum(axis=1) / 2
+    p_positive = float(p @ (states.sum(axis=1) &gt; 0))
+    p_negative = float(p @ (states.sum(axis=1) &lt; 0))
+    p_tie = float(p @ (states.sum(axis=1) == 0))
+    return {
+        &quot;mean_polarity&quot;: float(p @ m),
+        &quot;prob_all_plus&quot;: float(p @ np.all(states == 1, axis=1)),
+        &quot;prob_all_minus&quot;: float(p @ np.all(states == -1, axis=1)),
+        &quot;prob_positive_majority&quot;: p_positive,
+        &quot;prob_negative_majority&quot;: p_negative,
+        &quot;prob_tied&quot;: p_tie,
+        &quot;mean_domain_walls&quot;: float(p @ walls),
+    }
+
+
+def main() -&gt; None:
+    s = states_for(N)
+    p0 = gibbs(s, 0.0)
+    qplus = generator(s, H)
+    qminus = generator(s, -H)
+    qzero = generator(s, 0.0)
+    qfast = generator(s, 0.0, nu=10.0)
+
+    p_plus_on = evolve(p0, qplus, PULSE_TIME)
+    p_pulse_kernel = expm(qplus * PULSE_TIME)
+    p_minus_on = evolve(p0, qminus, PULSE_TIME)
+    p_plus = evolve(p_plus_on, qzero, RETENTION_TIME)
+    p_minus = evolve(p_minus_on, qzero, RETENTION_TIME)
+    p_unbiased = evolve(evolve(p0, qzero, PULSE_TIME), qzero, RETENTION_TIME)
+    p_fast = evolve(evolve(p0, qfast, PULSE_TIME), qzero, RETENTION_TIME)
+    p_long = evolve(p_plus_on, qzero, 1000.0)
+    # A genuinely nonequilibrium, inversion-symmetric domain mosaic isolates
+    # the clock/coarsening effect of a common mobility multiplier.
+    p_mosaic0 = np.full(len(s), 1.0 / len(s))
+    p_mosaic_slow = evolve(p_mosaic0, qzero, 1.0)
+    p_mosaic_fast = evolve(p_mosaic0, qfast, 1.0)
+
+    # Row-generator detailed balance and global inversion identities.
+    pi_h = gibbs(s, H)
+    db_residual = max(
+        abs(pi_h[a] * qplus[a, b] - pi_h[b] * qplus[b, a])
+        for a in range(len(s)) for b in range(len(s))
+    )
+    inv = {tuple(row): i for i, row in enumerate(s)}
+    inversion_residual = max(
+        abs(p_plus[i] - p_minus[inv[tuple(-row)]]) for i, row in enumerate(s)
+    )
+    # Mean work for sudden h: 0 -&gt; +H -&gt; 0, in kBT units, starts in pi_0.
+    # W_on=-H M(before); &lt;M(before)&gt;=0. W_off=+H M(after pulse).
+    m_on = float(p_plus_on @ (s.sum(axis=1) / N))
+    work_beta = H * N * m_on
+    total_m = s.sum(axis=1).astype(float)
+    joint_work = H * (total_m[None, :] - total_m[:, None])
+    joint_prob = p0[:, None] * p_pulse_kernel
+    work_second_beta2 = float(np.sum(joint_prob * joint_work * joint_work))
+    work_variance_beta2 = work_second_beta2 - work_beta * work_beta
+    work_support = np.unique(np.round(joint_work, 12))
+    work_histogram = {
+        f&quot;{float(w):.12g}&quot;: float(joint_prob[np.isclose(joint_work, w)].sum())
+        for w in work_support
+    }
+    # Nonequilibrium free energy at final h=0 relative to equilibrium pi_0.
+    e0 = np.asarray([energy(row, 0.0) for row in s])
+    safe = np.maximum(p_plus, np.finfo(float).tiny)
+    rel_entropy = float(np.sum(safe * np.log(safe / p0)))
+    free_energy_beta = rel_entropy
+    sign_obs = obs(p_plus, s)
+    record_probs = [
+        sign_obs[&quot;prob_positive_majority&quot;],
+        sign_obs[&quot;prob_negative_majority&quot;],
+        sign_obs[&quot;prob_tied&quot;],
+    ]
+    record_reset_entropy = -sum(x * math.log(x) for x in record_probs if x &gt; 0)
+    non_tie_pplus = record_probs[0] / (record_probs[0] + record_probs[1])
+    binary_write_info = math.log(2.0) + non_tie_pplus * math.log(non_tie_pplus) + (1.0 - non_tie_pplus) * math.log(1.0 - non_tie_pplus)
+
+    # Coarse two-variant demonstration that a small per-site field can have
+    # extensive coupling. k is a hypothetical whole-domain attempt rate.
+    coarse_n = 100
+    coarse_beta_h = 0.01
+    coarse_k = 0.001
+    coarse_pulse_t = 3000.0
+    coarse_hold_t = 10.0
+    x = coarse_n * coarse_beta_h
+    coarse_m_pulse = math.tanh(x) * (1.0 - math.exp(-2.0 * coarse_k * math.cosh(x) * coarse_pulse_t))
+    coarse_m_ret = coarse_m_pulse * math.exp(-2.0 * coarse_k * coarse_hold_t)
+    coarse_p_ret = 0.5 * (1.0 + coarse_m_ret)
+    coarse_free_energy_beta = (
+        coarse_p_ret * math.log(2.0 * coarse_p_ret)
+        + (1.0 - coarse_p_ret) * math.log(2.0 * (1.0 - coarse_p_ret))
+    )
+    coarse_record_entropy = -(
+        coarse_p_ret * math.log(coarse_p_ret)
+        + (1.0 - coarse_p_ret) * math.log(1.0 - coarse_p_ret)
+    )
+
+    result = {
+        &quot;status&quot;: &quot;dimensionless finite-state countermodel; not material data&quot;,
+        &quot;parameters&quot;: {
+            &quot;N_ring_sites&quot;: N,
+            &quot;beta_J&quot;: BETA * J,
+            &quot;beta_h&quot;: BETA * H,
+            &quot;attempt_rate_nu&quot;: NU,
+            &quot;pulse_duration_nu_t&quot;: PULSE_TIME * NU,
+            &quot;field_free_retention_nu_t&quot;: RETENTION_TIME * NU,
+            &quot;state_count&quot;: len(s),
+            &quot;field_coupling&quot;: &quot;hypothetical F(s;h)=-J sum_i s_i s_(i+1)-h sum_i s_i&quot;,
+        },
+        &quot;metrics&quot;: {
+            &quot;plus_field_then_field_free_hold&quot;: obs(p_plus, s),
+            &quot;minus_field_then_field_free_hold&quot;: obs(p_minus, s),
+            &quot;unbiased_thermal_same_time&quot;: obs(p_unbiased, s),
+            &quot;unbiased_common_mobility_x10&quot;: obs(p_fast, s),
+            &quot;symmetric_random_mosaic_unbiased_same_elapsed_time&quot;: obs(p_mosaic_slow, s),
+            &quot;symmetric_random_mosaic_common_mobility_x10&quot;: obs(p_mosaic_fast, s),
+            &quot;same_positive_field_after_long_field_free_wait&quot;: obs(p_long, s),
+            &quot;pulse_end_mean_polarity_before_field_removal&quot;: m_on,
+            &quot;mean_work_kBT_sudden_field_on_off&quot;: work_beta,
+            &quot;mean_work_kBT_per_site_sudden_field_on_off&quot;: work_beta / N,
+            &quot;work_variance_kBT_squared_sudden_field_on_off&quot;: work_variance_beta2,
+            &quot;final_nonequilibrium_free_energy_kBT&quot;: free_energy_beta,
+            &quot;mean_dissipated_work_above_final_nonequilibrium_free_energy_kBT&quot;: work_beta - free_energy_beta,
+            &quot;three_outcome_measurement_record_reset_floor_kBT&quot;: record_reset_entropy,
+            &quot;binary_sign_write_information_floor_conditional_on_no_tie_kBT&quot;: binary_write_info,
+            &quot;coarse_two_variant_small_per_site_field_countermodel&quot;: {
+                &quot;N_sites&quot;: coarse_n,
+                &quot;beta_h_per_site&quot;: coarse_beta_h,
+                &quot;N_beta_h&quot;: x,
+                &quot;whole_domain_attempt_rate_nu&quot;: coarse_k,
+                &quot;pulse_duration_nu_t&quot;: coarse_k * coarse_pulse_t,
+                &quot;field_free_hold_nu_t&quot;: coarse_k * coarse_hold_t,
+                &quot;polarity_after_pulse&quot;: coarse_m_pulse,
+                &quot;polarity_after_field_free_hold&quot;: coarse_m_ret,
+                &quot;selected_probability_after_hold&quot;: coarse_p_ret,
+                &quot;mean_pulse_work_kBT&quot;: x * coarse_m_pulse,
+                &quot;final_nonequilibrium_free_energy_kBT&quot;: coarse_free_energy_beta,
+                &quot;binary_record_reset_floor_kBT&quot;: coarse_record_entropy,
+                &quot;status&quot;: &quot;exact two-state kinetics with illustrative dimensionless rates; no material data&quot;,
+            },
+        },
+        &quot;exact_distributions&quot;: {
+            &quot;work_kBT_sudden_on_then_off_histogram&quot;: work_histogram,
+            &quot;configuration_probabilities_after_plus_pulse_and_field_free_hold&quot;: {
+                &quot;&quot;.join(&quot;+&quot; if bit &gt; 0 else &quot;-&quot; for bit in row): float(prob)
+                for row, prob in zip(s, p_plus)
+            },
+        },
+        &quot;checks&quot;: {
+            &quot;max_detailed_balance_flux_residual&quot;: db_residual,
+            &quot;max_phase_reversal_inversion_residual&quot;: inversion_residual,
+            &quot;probability_mass_plus&quot;: float(p_plus.sum()),
+            &quot;probability_mass_minus&quot;: float(p_minus.sum()),
+            &quot;plus_retained_configuration_distribution_mass&quot;: float(p_plus.sum()),
+            &quot;sudden_on_off_work_histogram_mass&quot;: float(sum(work_histogram.values())),
+            &quot;symmetric_random_mosaic_mean_polarity_slow&quot;: obs(p_mosaic_slow, s)[&quot;mean_polarity&quot;],
+            &quot;symmetric_random_mosaic_mean_polarity_fast&quot;: obs(p_mosaic_fast, s)[&quot;mean_polarity&quot;],
+            &quot;x10_mobility_reduces_mosaic_wall_density_at_equal_elapsed_time&quot;: (
+                obs(p_mosaic_fast, s)[&quot;mean_domain_walls&quot;] &lt; obs(p_mosaic_slow, s)[&quot;mean_domain_walls&quot;]
+            ),
+        },
+        &quot;interpretation&quot;: [
+            &quot;The effective field biases both nucleation and interface drift while present.&quot;,
+            &quot;Field-free dynamics retains a finite-time polarity but is symmetric and eventually erases it for finite N and T.&quot;,
+            &quot;A common mobility multiplier changes the coarsening clock and leaves an exactly symmetric initial ensemble unbiased.&quot;,
+            &quot;An electric conjugate field that produces the same h(t) has the identical Markov law; optical advantage needs a measured lower-cost or otherwise inaccessible coupling.&quot;,
+            &quot;The binary sign-record reset floor is kBT times its Shannon entropy; this is optional for open-loop operation and excludes sensing/control work.&quot;,
+        ],
+    }
+    out = pathlib.Path(__file__).with_name(&quot;ising_results.json&quot;)
+    out.write_text(json.dumps(result, indent=2, sort_keys=True) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

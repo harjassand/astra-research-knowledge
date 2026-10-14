@@ -1,0 +1,44 @@
+"""Affine projection of a numerical proposal, followed by exact PD tests."""
+from pathlib import Path
+import json
+import sympy as S
+r,s,p,q=S.symbols('r s p q',real=True)
+vs=(r,s,p,q)
+z=[[r*r,p*p,s*s,q*q,r*p,s*q],[r*s,r*q,p*s,p*q]]
+eu2=p**4+q**4+4*p*p*q*q
+ev2=r**4+s**4+4*r*r*s*s
+euv=(p*p+q*q)*(r*r+s*s)-2*r*s*p*q
+ew2=(r*q+s*p)**2/2
+eju=r*p**3-s*q**3-2*s*p*p*q+2*r*p*q*q
+ejv=r**3*p-s**3*q-2*r*r*s*q+2*s*s*r*p
+L=S.Rational(107,24)*eu2+3*ev2+19*euv-13*ew2-S.Rational(29,2)*eju-12*ejv
+N=eu2+ev2+2*euv
+P=-S.Rational(16,3)*r**4+S.Rational(25,4)*s**4-S.Rational(11,6)*r*r*s*s
+target=S.Poly(S.expand(L-S.diff(P,r)*p-S.diff(P,s)*q-N/2),*vs)
+indices=[(b,i,j) for b,a in enumerate(z) for i in range(len(a)) for j in range(i,len(a))]
+xx=S.symbols('x:'+str(len(indices)))
+expr=sum(x*(1 if i==j else 2)*z[b][i]*z[b][j] for x,(b,i,j) in zip(xx,indices))
+delta=S.Poly(S.expand(expr-target.as_expr()),*vs)
+A,b=S.linear_eq_to_matrix(delta.coeffs(),xx)
+R,pivots=A.row_join(b).rref()
+assert len(xx) not in pivots
+free=[i for i in range(len(xx)) if i not in pivots]
+root=Path(__file__).resolve().parent
+proposal=json.loads((root/'SOS_PROPOSALS.json').read_text())['cases'][0]['matrices']
+for denominator in [6,12,24,48,96,192,1000]:
+    x=[S.Rational(0)]*len(xx)
+    for k in free:
+        bb,i,j=indices[k]
+        x[k]=S.Rational(round(proposal[bb][i][j]*denominator),denominator)
+    for row,k in enumerate(pivots):
+        x[k]=R[row,-1]-sum(R[row,j]*x[j] for j in free)
+    assert A*S.Matrix(x)==b
+    Q=[S.zeros(len(a)) for a in z]
+    for value,(bb,i,j) in zip(x,indices): Q[bb][i,j]=Q[bb][j,i]=value
+    minors=[[M[:k,:k].det() for k in range(1,M.rows+1)] for M in Q]
+    print('denominator',denominator,'all_leading_positive',all(c>0 for row in minors for c in row),flush=True)
+    if all(c>0 for row in minors for c in row):
+        doc=dict(scope='Exact rational coefficient identity and Sylvester positive-definiteness certificate,not solver status',eta='1/2',potential=str(P),bases=[[str(t) for t in a] for a in z],matrices=[[[str(c) for c in row] for row in M.tolist()] for M in Q],leading_principal_minors=[[str(c) for c in row] for row in minors],rounding_grid=denominator,identity_zero=S.expand(expr.subs(dict(zip(xx,x)))-target.as_expr())==0)
+        (root/'EXACT_STORAGE_CERTIFICATE.json').write_text(json.dumps(doc,indent=2)+'\n')
+        break
+else: raise AssertionError('No rational PD proposal found')

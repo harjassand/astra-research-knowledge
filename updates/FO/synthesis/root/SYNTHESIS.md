@@ -1,0 +1,170 @@
+# FO: signed interactions, acoustic faces and obtainable information
+
+## Strongest achieved result
+
+An exact continuous storage potential now controls the complete nonlinear
+interaction of opposite Fourier carriers for the specified non-polyconvex
+quartic G. For arbitrary complex periodic W^{1,4} amplitudes,
+
+    phi(x,y)=alpha(x)e^{iy}+beta(x)e^{-iy},
+    inf_B E[G(B+Dphi)-G(B)] = E G(Dphi) >= (1/2) E|Dphi|^4.
+
+This replaces the source's finite81-profile/five-width coverage by arbitrary
+amplitudes, phases, speeds, positive strip widths and closed paths at one
+transverse frequency. It permits negative transitions and nonzero circulation.
+The explicit invariant quartic potential, rational12x12+9x9 positive-definite
+Gram identity, analytic chain-rule/Parseval proof, separate cold reconstruction
+and discovery history are preserved. Numerical solver status is not a premise.
+An initially isolated worker independently found another continuum potential
+for real amplitudes, including edgewise affine quadratic completion. A separately
+labelled post-sharing composition gives root's complex potential the same
+edgewise all-B extension via a one-scalar exact LMI. That independent derivation
+and the later composition are preserved separately.
+
+The source universal two-column circulation identity and restricted all-quartic
+moment-cancellation theorem also survive cold reconstruction. For cancellation
+across all quartics/profiles/backgrounds, six signed area moments are necessary:
+six exact convex Fourier witnesses attain the full curvature span. A fixed
+profile can require fewer; positivity itself does not require cancellation.
+
+This does **not** settle arbitrary-profile quasiconvexity of G or the full
+left-invariant quartic cone. Root's exact k1/k3 jet gives residual
+−183426997/480000000 against the naive sum of its single-frequency potentials.
+Raw energy remains positive and the jet is not a closed loop; it refutes only
+that additive storage ansatz. A uniform storage functional retaining genuine
+cross-frequency resonances is the precise next mathematical operation.
+
+## A reusable obstruction to a tempting capital shortcut
+
+The already completed Fstar heat certificate cannot simply synthesize G by
+positive right-coordinate transforms plus polyconvex quartics. A worker proved
+exclusion even from the coefficient-closed cone, including singular-transform
+limits. Root generalized the mechanism: for a uniformly strict acoustic
+generator with two input columns, an acoustic-zero target in that closed cone
+must have nonnegative Jensen value under every finite lifted-barycenter law.
+Mass concentrating at the zero acoustic face leaves rank-one transforms, whose
+integrands are convex; the other polyconvex terms are Jensen-nonnegative.
+
+For Fstar the exact strict acoustic constant is1/16. G has an acoustic zero
+at I in direction e1 tensor e2, while its determinant-balanced four-atom law
+has energy−1350/1297. That contradiction separates the cone. The law is a
+non-polyconvexity witness, not a compatible-gradient counterexample. Positive
+transfer from this specific completed theorem is blocked; a different global
+G mechanism remains possible. Signed synthesis and other generators are outside
+the result. General proof and exact specific replay are separate records.
+
+The six-copy cancellation stencil improves the source's eight-copy operation
+in its declared integer traversal metric, but preserves neither the input
+field nor its energy. Exact current/signature residuals and quartic connector
+cost survive. This is useful construction/failure capital, not a universal
+reduction. Finite graph/common-background searches supply only their stated
+negative-search scopes; an overlong Sturm attempt is explicitly incomplete.
+
+## Chemical information: change the decision interface
+
+The incoming ancestry law is largely a reaffirmation of N813's already stronger
+ideal all-waveform/bin result. New scoped failures are retained: odd-carbon
+pooled fair-telegraph parity cancels, one-carbon deletion can erase the full
+synthetic four-carbon contrast, and the stated information scaling requires
+observable intact/fragment classes and uninformative fragments. A correlated-
+label counterexample makes the conditional independent-label premise explicit.
+Ancestry input is prose only; independent programs are reconstructions.
+
+For the tested HSAPO34 selectivity question, primary prior work already combines
+position-specific isotope tracing, actual retained-pool homologation, and the
+subsequent propylene/ethylene response. Its20hour conditioning and isotope/
+preparation burden are real; no industrial cost advantage is established.
+This defeats a simple novelty case for that specific target. It neither
+invalidates generic ancestry theory nor proves temporal coding useless.
+
+The useful next primitive is a calibrated operation that separates the target
+chemical states or directly changes the decision outcome. A target contrast
+need only lie in the row space of the calibrated operation/scrambling/detector
+map with known constraints; full mechanism recovery is unnecessary. With
+uncertain calibration/collateral, optimize its sharp compatible bounds and
+certify only a threshold that the entire range clears. Atom fate is not causal
+effect. Published DTBP external-site poisoning at403K is an obtainable known
+operation for its MFI toluene-methylation regime; it is not a transferable
+high-temperature MTO oracle or a new Astra capability.
+
+## Physical control: retained transitions remain unacquired
+
+Published phase-locked GaAs optics does measure scalar carrier/absorption
+control. Inversion symmetry predicts opposite local response in true
+inversion-related variants with matched geometry, but no paired-domain
+retained structural operation was demonstrated. The ideal bulk electric-dipole
+xyz tensor is exactly null at normal incidence on001 with in-plane fields.
+That geometric mismatch must be resolved before a meaningful structural trial.
+
+The source equal-molar impulsive full-melt thresholdC>0.44849 is correct under
+its stated enthalpy/dose assumptions. The roughly2percent carrier signal is
+not a local deposited-heat measurement. Sustained cooling, unequal regions,
+boundary-local and nonthermal mechanisms escape that specific threshold;
+their rates/material properties cannot be supplied by equations alone.
+
+Symmetric mobility can speed coarsening while leaving signed polarity unbiased.
+A true phase-odd conjugate structural bias can select and retain a state over
+a finite horizon in conditional detailed-balanced models, with finite work,
+noise and reset costs. Optical excitation data do not acquire that bias or
+kernel. The simulations are synthetic, not laboratory verification.
+
+Strong comparators are retained capped GaAs/Si thermal APB reduction and
+bonding/lithography/regrowth for selected polarity patterns. FeLiNbO3 has
+published retained optical domain writing, but through material-specific
+photovoltaic/screening control with substantial dose and unresolved total-cost/
+cycling comparisons; it is established prior art, not coherent-phase GaAs
+rewriting. The decisive missing operation is phase-reversed retained boundary
+motion or structure on the same mapped specimen, after drive removal, with
+local absorbed-energy/temperature/field and CASH discrimination and matched
+thermal/electric controls.
+
+## Cross-capital adjudication
+
+The pinned unmerged Ultra-derived N816 response packet was read deeply. Exact
+source-current feasibility supplies a gap-free source-specific response upper,
+while an N810-type bounded transition fold supplies a regularized lower.
+Combining them gives a conditional interval, but fixed resolution cannot give
+a uniform unregularized upper. The tested AKLT fixture loses to the source's
+exact primal-plus-Knabe comparator, and path-current construction matches the
+O(n) tridiagonal baseline. No exact current for N798's actual retained source
+was acquired. Quartic profile action and quadratic response have no proved
+norm/domain-preserving map; shared graph vocabulary creates no transfer.
+
+Across these branches, a certificate can avoid full reconstruction only when
+the target-specific witness or control is acquired: continuous profile storage,
+exact source current, calibrated chemical contrast, or retained structural
+kernel. This is a comparison of explicit contracts, not a universal theorem
+identifying the four operations or an excuse to supply their costly inputs.
+
+## Provenance, publication and scientific status
+
+Base/current main is1c45f77e32d6fbd72483aed5014061c7bda4f372, the verified
+merge of completed PR83. Concurrent draft PR84 is pinned at
+5ddabf53324159aa6c88e4fef3b75bc7b8b6c4ff; it was not merged or altered.
+The available published Ultra ref00d1c9769bc26829fef2653dbcc10ed1dc8a927c
+is separate from newer Ultra source commits cited inside PR84. The original
+local intake label FM is preserved, while publication uses FO to avoid
+PR84's FM/FN namespaces and N815/N816. All23source payloads165,959bytes
+are retained with exact provenance. Embedded missions are research data.
+
+Fifteen workers configured gpt-6-luna/max/fork-none were observed running
+simultaneously: seven mathematics/response, three chemical-information and
+five physical investigations. Root independently derived the storage, complex
+extension and multifrequency countertest, generalized the cone obstruction,
+and adjudicated proof/physics/comparator claims. Subsequent cold reviews were
+explicit post-isolation follow-ups. No nested agents, laboratory experiment,
+new user-owned chat or external branch message was performed. Aggregate token,
+pure-inference and financial cost were not measured.
+
+New N817–N819 records, precise paired transfers, scoped historical notices,
+two conditional technology records and one independent continuation checkpoint
+use the existing architecture. No architecture redesign is justified. Original
+theorems, failures, source bytes and concurrent objectives remain preserved.
+The inherited global checkpoint-schema failure is kept separate from individual
+new-record validation and the bounded software/integrity checks.
+
+Status is source_derived_unreviewed. Exact algebra, finite numerical checks,
+manifest integrity, same-team criticism and repository publication establish
+only their scopes. External mathematical correctness, novelty, physical
+obtainability and practical superiority remain unestablished. No
+civilisation-enabling breakthrough is claimed.

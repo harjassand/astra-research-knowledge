@@ -1,0 +1,35 @@
+# Read ledger — GaAs material/process path
+
+**Scope and authority:** Independent investigation of retained post-growth phase-selective GaAs APB/polarity rewriting and its strongest material/process comparators. Work was confined to `work/FO-material-path/`; no capital files, other FO worker outputs, source scripts, memory files, or Git state were edited. Source payloads remain in `primary/` where a local PDF was obtained.
+
+## Primary-source pins and read depth
+
+| Source | Exact pin / URL | Read depth and evidence used | Local copy/status |
+|---|---|---|---|
+| Barrett et al. (2019), *J. Mater. Sci.* 54, 7028–7034 | DOI 10.1007/s10853-019-03353-7; https://swamp.mse.ufl.edu/wp-content/uploads/sites/286/2020/06/Barrett2019.pdf | Full 7-page article: sample, growth/anneal/cap methods; Fig. 1 line densities; Figs. 2–3 time and depth trends; discussion/conclusion of curvature, {110} planes and 3.8 eV surface activation energy. | `primary/Barrett2019.pdf`, valid 7-page PDF. |
+| Granger et al. (2023), *Light: Science & Applications* 12, 252 | DOI 10.1038/s41377-023-01299-9; https://d-nb.info/1318787319/34 | Full paper: methods for bonded orientation-patterned template and MBE regrowth; chip dimensions/period; experimental supercontinuum and output power. | `primary/Granger2023.pdf`, valid 8-page PDF. |
+| Fraser et al. (1999), *Phys. Rev. Lett.* 83, 4192 | DOI 10.1103/PhysRevLett.83.4192; https://www.physics.utoronto.ca/~vandriel/papers/fraser1.pdf | Full 4-page paper: interference model and energy-transfer terms; (111) sample, pulse/irradiance conditions, 2% carrier modulation, transmission measurement and geometry-specific projection. | `primary/Fraser1999.pdf`, valid 4-page PDF. |
+| Sokolowski-Tinten et al. (1998), *Phys. Rev. B* 58, R11805 | DOI 10.1103/PhysRevB.58.R11805; https://qcmd.mpsd.mpg.de/wp-content/uploads/2023/06/PhysRevB.58.R11805.pdf | Full 4-page paper: bare GaAs(100) sample and pump/probe; threshold and timescale distinction for nonthermal/electronic vs thermal melting; transient reflectivity interpretation. | `primary/SokolowskiTinten1998.pdf`, valid 4-page PDF. |
+| Xu et al. (2024), *Light: Advanced Manufacturing* 5, 26 | DOI 10.37188/lam.2024.026; https://www.light-am.com/en/article/doi/10.37188/lam.2024.026 | Full article/PDF: Methods; pulse energy, repetition rate and pressure; XPS/SEM/depth and TEM results; intended surface-activation endpoint. Recorded internal methods/results pulse-range discrepancy. | `primary/Xu2024.pdf`, local publisher-associated PDF, 8 pages. |
+| Yamaguchi, Itagaki & Yazawa (1989), *J. Japan Inst. Metals* 53, 764–770 | DOI 10.2320/jinstmet1952.53.8_764; https://www.jstage.jst.go.jp/article/jinstmet1952/53/8/53_8_764/_pdf | Full 7-page paper: drop-calorimetry method; Table 1 GaAs(s) heat-content fit and range/error; Table 2 melting point and heat of fusion. Fit coefficients checked in the rendered table. | `primary/Yamaguchi1989.pdf`, valid 7-page encrypted PDF. |
+| Ruda et al. (1992), *J. Phys. D: Appl. Phys.* 25, 1538–1544 | DOI 10.1088/0022-3727/25/10/023; https://www.researchgate.net/publication/230962995_Control_of_EL2_concentration_and_dislocation_density_in_liquid_encapsulated_Czochralski-grown_GaAs_using_laser_processing | Selected full article text: abstract, methods, Table 1 text/results, discussion/conclusion; 5×5 mm LEC pieces, As-pressure ampoule, 700 °C/10 h and 532 nm 10 ns / 10 Hz / ~0.07±0.01 J cm⁻², EL2/Hall/EPD endpoints and thermal comparisons. | Publisher PDF URL returned HTML; author-upload PDF link returned 404. No local PDF retained. Full-text view is third-party-hosted article text, not a local PDF. |
+| Morizane (1977), *J. Crystal Growth* 38, 249–254 | DOI 10.1016/0022-0248(77)90305-0; publisher abstract page | Abstract only: GaAs APDs on Ge; reversed 〈111〉 polarity axes in adjoining domains; APDs reported in (100)/(110), not (111). | Full paper unavailable in this read; no local PDF. |
+| Rasmussen, McKernan & Carter (1991), *Phys. Rev. Lett.* 66, 2629 | DOI 10.1103/PhysRevLett.66.2629; APS abstract page | Abstract only: rigid-body translation parallel to {110} APB; absolute polarity can be assigned from bright-field contrast. | Full paper unavailable in this read; no local PDF. |
+| Rys et al. (1990), *Optical Engineering* 29, 329–338 | DOI 10.1117/12.55603; https://digitalcommons.unl.edu/electricalengineeringfacpub/592/ | Repository record/abstract only: implanted Si/Se GaAs, 308/728 nm ~10 ns, fluence range, transient melt signal, cap-damage thresholds and activation endpoints. | Full PDF request failed (403); no local PDF. |
+
+## Original proposal material inspected
+
+Read `work/FM-sources/physical/RESEARCH_RECORD.md`, `work/FM-sources/physical/calculate_bounds.py`, and `work/FM-sources/physical_PASTED_SOURCE.txt` as task inputs only. Did not execute the source-tree script. Reimplemented the thermodynamic calculation in the owned directory using the published table values and standard-library Python. No other FO worker investigation was read.
+
+## Owned calculation and checks
+
+- `calculate_bounds.py` reproduces the GaAs sensible-heat value, strict complete-melt contrast condition, hypothetical partial-melt fraction bound, temperature sensitivity and Barrett line-density ratio.
+- Command run: `python3 work/FO-material-path/calculate_bounds.py`.
+- The script asserts that the derived dose interval is empty below the threshold and nonempty at a contrast above threshold for the listed initial temperatures.
+- Main outputs: (H_s=65.6165825) kJ mol⁻¹ at 298.15 K; (C_Q>0.4484916); hot/cold ratio 2.626418 at the boundary; hypothetical (C_Q=0.02) gives a 0.0250958 partial-melt supremum under the stated model; Barrett surface APB line density drops 86%, or 7.14286-fold.
+- The `C_Q=0.02` insertion is deliberately labelled hypothetical; Fraser's carrier modulation is not converted into heat contrast.
+- `pdfinfo` and `file` were used to inspect local PDF type/page metadata. `pdfinfo` reports 7 pages for Barrett and Yamaguchi, 8 for Granger, and 4 each for Fraser and Sokolowski-Tinten. Xu's PDF page count was not recovered by the installed utility.
+
+## Unknowns preserved
+
+No same-sample phase-dependent deposited-energy contrast, phase-odd retained APB velocity, polarity-sensitive post-drive structural data, GaAs/Si capped-film incident threshold, full wafer yield, ramp/cooling time, laser wall-plug energy, process throughput, manufacturing cost, or novelty certification was acquired. The thermodynamic result is conditional and does not exclude nonthermal, boundary-local, sustained-heating, or partial-melt pathways.

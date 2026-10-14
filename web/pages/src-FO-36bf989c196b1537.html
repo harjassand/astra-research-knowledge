@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — full_affine_square_lattice_search.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/cycle_optimizer/full_affine_square_lattice_search.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact full-common-affine search on elementary mixed-parity profile loops.&quot;&quot;&quot;
+from fractions import Fraction as Q
+from pathlib import Path
+import json,sys,time
+import sympy as S
+ROOT=Path(__file__).resolve().parent
+sys.path.insert(0,str(ROOT/&#x27;incoming_resonant&#x27;))
+from profile_algebra import add,scale,mul,cos,sin,meanprod,const,r,s,p,q,B
+
+T=S.symbols(&#x27;T&#x27;,real=True)
+L=Q(11,100)
+
+def gap_poly(n,m, verts, widths):
+    a=add(scale(cos(n),p),scale(cos(m),q)); c=add(scale(sin(n),p),scale(sin(m),q))
+    b=add(scale(sin(n),-n*r),scale(sin(m),-m*s)); d=add(scale(cos(n),n*r),scale(cos(m),m*s))
+    X=[add(x,const(bb)) for x,bb in zip([a,b,c,d],B)]
+    a,b,c,d=X
+    u=add(mul(a,a),mul(c,c));v=add(mul(b,b),mul(d,d));w=add(mul(a,b),mul(c,d));det=add(mul(a,d),scale(mul(b,c),-1))
+    Favg=S.expand(meanprod(u,u)+meanprod(v,v)+4*meanprod(w,w)+S.Rational(339,100)*meanprod(det,det)-S.Rational(29,10)*meanprod(det,add(u,v)))
+    B0,B1,B2,B3=B
+    ub=B0**2+B2**2;vb=B1**2+B3**2;wb=B0*B1+B2*B3;qb=B0*B3-B1*B2
+    Fbase=ub**2+vb**2+4*wb**2+S.Rational(339,100)*qb**2-S.Rational(29,10)*qb*(ub+vb)
+    gap=0
+    for (r0,s0),(r1,s1),h0 in zip(verts,verts[1:]+verts[:1],widths):
+        h=S.Rational(h0.numerator,h0.denominator)
+        sub={r:S.Rational(r0.numerator,r0.denominator)+T*S.Rational((r1-r0).numerator,(r1-r0).denominator),
+             s:S.Rational(s0.numerator,s0.denominator)+T*S.Rational((s1-s0).numerator,(s1-s0).denominator),
+             p:S.Rational((r1-r0).numerator,(r1-r0).denominator)/h,
+             q:S.Rational((s1-s0).numerator,(s1-s0).denominator)/h}
+        expr=S.expand((Favg-Fbase).subs(sub,simultaneous=True))
+        gap+=h*S.integrate(expr,(T,0,1))
+    g=S.Poly(S.expand(gap),*B)
+    if g.total_degree()&gt;2: raise ValueError(&#x27;affine degree exceeded two&#x27;)
+    ex=g.as_expr();zero={x:0 for x in B}
+    H=S.hessian(ex,B).subs(zero,simultaneous=True);bv=S.Matrix([S.diff(ex,x).subs(zero,simultaneous=True) for x in B]);c0=ex.subs(zero,simultaneous=True)
+    if not all(H[:i,:i].det()&gt;0 for i in range(1,5)):
+        return {&#x27;status&#x27;:&#x27;NONPOSITIVE_HESSIAN&#x27;,&#x27;H&#x27;:str(H),&#x27;b&#x27;:[str(x) for x in bv],&#x27;c&#x27;:str(c0)}
+    opt=-H.inv()*bv
+    value=S.factor(c0+bv.dot(opt)/2)
+    return {&#x27;status&#x27;:&#x27;EXACT_FULL_AFFINE_OPTIMUM&#x27;,&#x27;optimized_gap&#x27;:str(value),&#x27;B_opt&#x27;:[str(x) for x in opt],
+            &#x27;c_at_B0&#x27;:str(c0),&#x27;third_moment_vector&#x27;:[str(x) for x in bv],
+            &#x27;H_ldl&#x27;:[str(x) for x in H.LDLdecomposition(hermitian=False)[1].diagonal()]}
+
+def main():
+    t0=time.time(); axis=[Q(i,4) for i in range(-4,5)]
+    widths=[Q(1,4),Q(1,2),Q(1),Q(2)]
+    patterns=[[w]*4 for w in widths]+[[Q(1,4),Q(1,2),Q(1),Q(2)],[Q(2),Q(1),Q(1,2),Q(1,4)]]
+    runs=[]
+    for i in range(len(axis)-1):
+      for j in range(len(axis)-1):
+        x,y=axis[i],axis[j]
+        verts=[(x,y),(axis[i+1],y),(axis[i+1],axis[j+1]),(x,axis[j+1])]
+        for ws in patterns:
+          ans=gap_poly(1,2,verts,ws)
+          runs.append({&#x27;square_lower_left&#x27;:[str(x),str(y)],&#x27;widths&#x27;:[str(z) for z in ws],**ans})
+    neg=[x for x in runs if x.get(&#x27;optimized_gap&#x27;) is not None and Q(x[&#x27;optimized_gap&#x27;])&lt;0]
+    smallest=min((Q(x[&#x27;optimized_gap&#x27;]) for x in runs if x.get(&#x27;optimized_gap&#x27;) is not None),default=None)
+    out={&#x27;integrand&#x27;:&#x27;Fstar-(11/100)q^2&#x27;,&#x27;carrier_pair&#x27;:[1,2],
+         &#x27;scope&#x27;:&#x27;all 64 axis-aligned elementary squares in [-1,1]^2 on (1/4)Z^2; each loop uses common B optimized over all four edges; widths are four common widths plus two cyclic varied-width patterns&#x27;,
+         &#x27;width_patterns&#x27;:[[str(z) for z in row] for row in patterns], &#x27;loop_count&#x27;:len(runs),
+         &#x27;exact_negative_fully_optimized_loops&#x27;:len(neg),&#x27;smallest_optimized_gap&#x27;:str(smallest),
+         &#x27;runtime_seconds&#x27;:time.time()-t0,&#x27;runs&#x27;:runs}
+    (ROOT/&#x27;full_affine_square_lattice_search.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in out.items() if k!=&#x27;runs&#x27;},indent=2))
+if __name__==&#x27;__main__&#x27;: main()
+</pre></body></html>

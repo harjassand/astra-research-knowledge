@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — search_exact_cycles.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/cycle_optimizer/search_exact_cycles.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded exact compatible-cycle search for one acoustic-certified quartic.
+
+The source package is imported only from its copy under this owned directory.
+All Fourier averages and edge actions are rational Laurent-polynomial integrals.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from pathlib import Path
+import json
+import sys
+
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / &quot;incoming_resonant&quot;))
+from profile_algebra import add, scale, mul, cos, sin, meanprod, poly_terms, edge_coeffs, edge_value, r, s, p, q
+
+
+def energy(n: int, m: int, lam=Q(1,10)):
+    # Matrix entries are [[a,b],[c,d]]; carriers n,m enter the two
+    # output coordinates as in the copied producer&#x27;s Laurent convention.
+    a = add(scale(cos(n), p), scale(cos(m), q))
+    c = add(scale(sin(n), p), scale(sin(m), q))
+    b = add(scale(sin(n), -n*r), scale(sin(m), -m*s))
+    d = add(scale(cos(n), n*r), scale(cos(m), m*s))
+    u = add(mul(a, a), mul(c, c))
+    v = add(mul(b, b), mul(d, d))
+    w = add(mul(a, b), mul(c, d))
+    det = add(mul(a, d), scale(mul(b, c), -1))
+    # F_lam = F_* - lam det^2.  Exact acoustic certificates are recorded
+    # separately for lam=1/10 and 11/100.
+    F = (meanprod(u, u) + meanprod(v, v) + 4*meanprod(w, w)
+         + (Q(7,2)-lam)*meanprod(det, det)
+         - Q(29, 10)*meanprod(det, add(u, v)))
+    N4 = meanprod(add(u, v), add(u, v))
+    return F, N4
+
+
+def bellman(vertices, edge_choices):
+    &quot;&quot;&quot;Exact all-source Bellman-Ford on the min-width graph; return cycle/potential.&quot;&quot;&quot;
+    n = len(vertices)
+    best = {}
+    for i, j, k, cost in edge_choices:
+        if (i, j) not in best or cost &lt; best[i, j][0]:
+            best[i, j] = (cost, k)
+    dist = [Q(0) for _ in range(n)]
+    pred = [None for _ in range(n)]
+    changed = None
+    for iteration in range(n):
+        changed = None
+        for (i, j), (cost, k) in best.items():
+            cand = dist[i] + cost
+            if cand &lt; dist[j]:
+                dist[j] = cand
+                pred[j] = (i, k, cost)
+                changed = j
+        if changed is None:
+            # Verify every original width choice, not merely each minimum.
+            slacks = [cost + dist[i] - dist[j] for i, j, _k, cost in edge_choices]
+            assert min(slacks) &gt;= 0
+            return {&quot;kind&quot;: &quot;NO_NEGATIVE_CYCLE&quot;, &quot;passes&quot;: iteration+1,
+                    &quot;potential&quot;: [str(v) for v in dist],
+                    &quot;minimum_slack&quot;: str(min(slacks)),
+                    &quot;tight_edges&quot;: sum(v == 0 for v in slacks)}
+    # Follow predecessors n times to enter a negative cycle, then close it.
+    v = changed
+    for _ in range(n):
+        assert pred[v] is not None
+        v = pred[v][0]
+    start = v
+    rev = []
+    while True:
+        edge = pred[v]
+        assert edge is not None
+        i, k, cost = edge
+        rev.append((i, v, k, cost))
+        v = i
+        if v == start:
+            break
+        assert len(rev) &lt;= n+1
+    cycle = list(reversed(rev))
+    total = sum((e[3] for e in cycle), Q(0))
+    assert total &lt; 0
+    return {&quot;kind&quot;: &quot;NEGATIVE_CYCLE&quot;, &quot;passes&quot;: n, &quot;cycle_weight&quot;: str(total),
+            &quot;cycle&quot;: [[i, j, k, str(cost)] for i, j, k, cost in cycle]}
+
+
+def run_graph(n, m, low=Q(0), radius=Q(2), step=Q(1,4), widths=None, lam=Q(1,10)):
+    widths = widths or [Q(1,8), Q(1,4), Q(1,2), Q(1), Q(2)]
+    axis=[]; x=Q(low)
+    while x &lt;= radius:
+        axis.append(x); x += step
+    vertices=[(x,y) for x in axis for y in axis]
+    F, N4 = energy(n,m,lam)
+    ft, nt = poly_terms(F), poly_terms(N4)
+    choices=[]; negative_edges=0; min_edge=None
+    for i, a in enumerate(vertices):
+        for j, b in enumerate(vertices):
+            fc=edge_coeffs(ft,a,b)
+            for k,h in enumerate(widths):
+                cost=edge_value(fc,h)
+                choices.append((i,j,k,cost))
+                if cost &lt; 0: negative_edges += 1
+                if min_edge is None or cost &lt; min_edge[0]: min_edge=(cost,i,j,k)
+    graph=bellman(vertices,choices)
+    if graph[&quot;kind&quot;] == &quot;NEGATIVE_CYCLE&quot;:
+        graph[&quot;cycle_profiles&quot;]=[[list(map(str,vertices[i])),list(map(str,vertices[j])),str(widths[k]),cost]
+                                  for i,j,k,cost in graph.pop(&quot;cycle&quot;)]
+    return {&quot;integrand&quot;: f&quot;Fstar - ({lam}) q^2&quot;,
+            &quot;carriers&quot;: [n,m], &quot;profile_box&quot;: [str(low),str(radius)],
+            &quot;profile_step&quot;: str(step), &quot;vertex_count&quot;: len(vertices),
+            &quot;widths&quot;: [str(h) for h in widths],
+            &quot;edge_width_count&quot;: len(choices), &quot;negative_raw_edges&quot;: negative_edges,
+            &quot;minimum_raw_edge&quot;: {&quot;cost&quot;:str(min_edge[0]),&quot;from&quot;:list(map(str,vertices[min_edge[1]])),
+                                 &quot;to&quot;:list(map(str,vertices[min_edge[2]])),&quot;width&quot;:str(widths[min_edge[3]])},
+            **graph}
+
+
+if __name__ == &quot;__main__&quot;:
+    lam=Q(sys.argv[1]) if len(sys.argv)&gt;1 else Q(1,10)
+    runs=[]
+    # Replay the incoming nonnegative 81-vertex geometry on three carrier
+    # pairs, then broaden signs while holding the vertex count and widths
+    # fixed.  The second family is not a generic fine grid.
+    for n,m in [(1,-1),(1,3),(1,5),(1,-3),(3,-1)]:
+        runs.append(run_graph(n,m,lam=lam))
+        print(json.dumps({k:v for k,v in runs[-1].items()
+                          if k not in (&quot;potential&quot;,)}, indent=2), flush=True)
+    for n,m in [(1,-1),(1,3),(1,-3)]:
+        runs.append(run_graph(n,m,low=Q(-2),radius=Q(2),step=Q(1,2),lam=lam))
+        print(json.dumps({k:v for k,v in runs[-1].items()
+                          if k not in (&quot;potential&quot;,)}, indent=2), flush=True)
+    out=ROOT/f&quot;exact_cycle_search_{lam.numerator}_{lam.denominator}.json&quot;
+    out.write_text(json.dumps(runs,indent=2)+&quot;\n&quot;)
+    if lam==Q(1,10): (ROOT/&quot;exact_cycle_search.json&quot;).write_text(json.dumps(runs,indent=2)+&quot;\n&quot;)
+</pre></body></html>

@@ -1,0 +1,48 @@
+"""Numerical SOS proposal; exact verification is a separate required step."""
+from pathlib import Path
+import sys, json, time
+BASE=Path(__file__).resolve().parents[3]
+sys.path.insert(0,str(BASE/'work/FO-sos-deps'))
+import numpy as np
+import sympy as S
+import cvxpy as cp
+r,s,p,q=S.symbols('r s p q',real=True)
+vs=(r,s,p,q)
+eu2=p**4+q**4+4*p*p*q*q
+ev2=r**4+s**4+4*r*r*s*s
+euv=(p*p+q*q)*(r*r+s*s)-2*r*s*p*q
+ew2=(r*q+s*p)**2/2
+eju=r*p**3-s*q**3-2*s*p*p*q+2*r*p*q*q
+ejv=r**3*p-s**3*q-2*r*r*s*q+2*s*s*r*p
+L=S.Rational(107,24)*eu2+3*ev2+19*euv-13*ew2-S.Rational(29,2)*eju-12*ejv
+N=eu2+ev2+2*euv
+z=[[r*r,p*p,s*s,q*q,r*p,s*q],[r*s,r*q,p*s,p*q]]
+P=-S.Rational(16,3)*r**4+S.Rational(25,4)*s**4-S.Rational(11,6)*r*r*s*s
+out=Path(__file__).resolve().parent
+rows=[]
+for eta in [S.Rational(1,2),S.Rational(1,4),S.Rational(1,1)]:
+    target=S.Poly(S.expand(L-S.diff(P,r)*p-S.diff(P,s)*q-eta*N),*vs)
+    Q=[cp.Variable((len(a),len(a)),symmetric=True) for a in z]
+    entries={}
+    for b,a in enumerate(z):
+        for i in range(len(a)):
+            for j in range(i,len(a)):
+                e=S.Poly(a[i]*a[j],*vs).monoms()[0]
+                entries.setdefault(e,[]).append((b,i,j,1 if i==j else 2))
+    constraints=[]
+    for e in set(entries)|set(target.monoms()):
+        lhs=sum(c*Q[b][i,j] for b,i,j,c in entries.get(e,[]))
+        constraints.append(lhs==float(target.coeff_monomial(e)))
+    epsilon=cp.Variable()
+    constraints += [M-epsilon*np.eye(M.shape[0]) >> 0 for M in Q]
+    problem=cp.Problem(cp.Maximize(epsilon),constraints)
+    start=time.monotonic()
+    try:
+        problem.solve(solver='CLARABEL',tol_gap_abs=1e-10,tol_feas=1e-10,tol_gap_rel=1e-10,max_iter=300)
+        row=dict(eta=str(eta),status=problem.status,epsilon=float(epsilon.value) if epsilon.value is not None else None,seconds=time.monotonic()-start,
+                 matrices=[M.value.tolist() for M in Q] if Q[0].value is not None else None)
+    except Exception as e:
+        row=dict(eta=str(eta),error=str(e),seconds=time.monotonic()-start)
+    rows.append(row)
+    print(json.dumps({k:v for k,v in row.items() if k!='matrices'}),flush=True)
+(out/'SOS_PROPOSALS.json').write_text(json.dumps(dict(scope='Numerical discovery only',cvxpy=cp.__version__,solver='CLARABEL',potential=str(P),cases=rows),indent=2)+'\n')

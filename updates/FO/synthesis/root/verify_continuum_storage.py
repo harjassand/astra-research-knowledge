@@ -1,0 +1,113 @@
+"""Exact reconstruction. Needs SymPy, not CVXPY or any numerical solver.
+
+The rational Gram matrices are certificate inputs; stored averaged polynomials,
+solver status and discovery minima are not premises. No producer code imported.
+"""
+from pathlib import Path
+import json
+import sympy as S
+ROOT=Path(__file__).resolve().parent
+r,s,p,q,t,h=S.symbols('r s p q t h',real=True)
+vs=(r,s,p,q,t,h)
+checks=[]
+def record(name,**kw):checks.append(dict(name=name,status='PASS',**kw))
+def add(a,b):
+ c=dict(a)
+ for k,x in b.items():c[k]=S.expand(c.get(k,0)+x)
+ return c
+def scale(a,k):return {i:S.expand(k*x) for i,x in a.items()}
+def mul(a,b):
+ c={}
+ for i,x in a.items():
+  for j,y in b.items():c[i+j]=S.expand(c.get(i+j,0)+x*y)
+ return c
+def conj(a):return {-i:S.conjugate(x) for i,x in a.items()}
+def mean(a):return S.expand(a.get(0,0))
+def zero(x):assert S.expand(x)==0,x
+
+# Pointwise choose the independent output/y phases so amplitudes are r,s real.
+# p+it,q+ih are the actual transformed x-velocities, not derivative of a gauge.
+X={1:p+S.I*t,-1:q+S.I*h};Y={1:S.I*r,-1:-S.I*s}
+u=mul(X,conj(X));v=mul(Y,conj(Y));xy=mul(conj(X),Y)
+j=scale(add(xy,scale(conj(xy),-1)),1/(2*S.I))
+E=add(add(u,v),scale(j,-2))
+LG=mean(add(add(scale(mul(E,E),3),scale(mul(u,u),S.Rational(35,24))),add(mul(j,j),scale(mul(j,u),-S.Rational(5,2)))))
+N=mean(mul(add(u,v),add(u,v)))
+P=-S.Rational(16,3)*r**4+S.Rational(25,4)*s**4-S.Rational(11,6)*r*r*s*s
+target=S.expand(LG-S.diff(P,r)*p-S.diff(P,s)*q-N/2)
+cert=json.loads((ROOT/'CONTINUUM_STORAGE_CERTIFICATE.json').read_text())
+z=[S.Matrix([S.sympify(x,locals=dict(zip(map(str,vs),vs))) for x in row]) for row in cert['bases']]
+Q=[S.Matrix([[S.Rational(x) for x in row] for row in M]) for M in cert['matrices']]
+assert [a.rows for a in z]==[12,9]
+zero(target-sum((a.T*M*a)[0] for a,M in zip(z,Q)))
+minors=[]
+for M in Q:
+ assert M==M.T
+ mm=[M[:k,:k].det() for k in range(1,M.rows+1)]
+ assert all(x>0 for x in mm)
+ minors.append(list(map(str,mm)))
+record('complex-amplitude gauge Fourier identity and exact PD storage',matrix_sizes=[12,9],leading_minors=minors)
+
+# Independent G rank-one-convex acoustic reconstruction from its four entries.
+a,b,c,d=S.symbols('a b c d',real=True);coords=(a,b,c,d)
+u0=a*a+c*c;v0=b*b+d*d;j0=a*d-b*c
+G=S.expand(3*(u0+v0-2*j0)**2+S.Rational(35,24)*u0*u0+j0*j0-S.Rational(5,2)*j0*u0)
+HG=S.hessian(G,coords);Z=S.Matrix(coords)
+M11=S.hessian(HG[0,0],coords)/2
+M12=S.hessian(HG[0,1],coords)/2
+M22=S.hessian(HG[1,1],coords)/2
+K=S.zeros(4)
+vals=iter([11,S.Rational(91,6),0,0,11,S.Rational(41,3)])
+for i in range(4):
+ for k in range(i+1,4):K[i,k]=next(vals);K[k,i]=-K[i,k]
+A=M11.row_join(M12+K).col_join((M12-K).row_join(M22))
+xi,eta=S.symbols('xi eta',real=True)
+dir=S.Matrix([xi,eta,0,0]);lift=(xi*Z).col_join(eta*Z)
+zero((lift.T*A*lift)[0]-(dir.T*HG*dir)[0])
+assert A==A.T and A.rank()==6
+assert all(A[:k,:k].det()>0 for k in range(1,7))
+# The leading positive block and total rank make its exact Schur complement zero.
+zero_matrix=A[6:,6:]-A[6:,:6]*A[:6,:6].inv()*A[:6,6:]
+assert zero_matrix==S.zeros(2)
+record('inherited G acoustic Gram independently reconstructed',rank=6,leading_minors=[str(A[:k,:k].det()) for k in range(1,7)])
+# Left rotations extend output e1 to every real output direction.
+cos0,sin0=S.symbols('co si',real=True)
+rot=S.Matrix([[cos0,-sin0],[sin0,cos0]])*S.Matrix([[a,b],[c,d]])
+expr=S.expand(G.subs(dict(zip(coords,list(rot))),simultaneous=True)-G)
+assert S.rem(S.Poly(expr,cos0),S.Poly(cos0**2+sin0**2-1,cos0)).as_expr()==0
+record('left SO2 invariance needed to cover every acoustic output direction')
+
+# Full affine gap: odd terms vanish by half-turn, and quartic reciprocity.
+xx=S.symbols('X:4',real=True);bb=S.symbols('B:4',real=True)
+Xv=S.Matrix(xx);Bv=S.Matrix(bb)
+GX=G.subs(dict(zip(coords,xx)));GB=G.subs(dict(zip(coords,bb)))
+HXX=HG.subs(dict(zip(coords,xx)));HBB=HG.subs(dict(zip(coords,bb)))
+zero((Bv.T*HXX*Bv)[0]-(Xv.T*HBB*Xv)[0])
+plus=G.subs(dict(zip(coords,[x+y for x,y in zip(xx,bb)])))
+minus=G.subs(dict(zip(coords,[-x+y for x,y in zip(xx,bb)])))
+zero((plus+minus)/2-GB-GX-(Bv.T*HXX*Bv)[0]/2)
+record('all-affine quartic reciprocity and half-turn expansion')
+
+# Pointwise storage is invariant under both independent carrier phases.
+# d|alpha|^2/dx=2 Re(conj(alpha)alpha'), etc., hence equals dP in this gauge.
+radial_derivative=4*(-S.Rational(16,3))*r**3*p+4*S.Rational(25,4)*s**3*q-2*S.Rational(11,6)*(r*s*s*p+r*r*s*q)
+zero(radial_derivative-S.diff(P,r)*p-S.diff(P,s)*q)
+record('invariant storage derivative including angular velocities')
+zero(mean(j)-(r*p-s*q))
+record('complex determinant flux for post-isolation edgewise affine composition',flux='Re(conj(alpha)alpha_prime)-Re(conj(beta)beta_prime)')
+
+# Explicit member of incoming graph: even the most negative raw edge is covered.
+lam=S.symbols('lambda',real=True)
+r0,s0=S.Rational(5,4),S.Integer(2);r1,s1=S.Integer(2),S.Rational(5,4)
+width=S.Rational(1,2)
+edge_sub={r:r0+(r1-r0)*lam,s:s0+(s1-s0)*lam,p:(r1-r0)/width,q:(s1-s0)/width,t:0,h:0}
+raw=S.integrate(LG.subs(edge_sub),(lam,0,1))*width
+norm=S.integrate(N.subs(edge_sub),(lam,0,1))*width
+storage_delta=P.subs({r:r1,s:s1})-P.subs({r:r0,s:s0})
+assert raw==-S.Rational(1431,1280)
+assert raw-norm/2-storage_delta>0
+record('negative original strip certified without grid or moment cancellation',raw=str(raw),storage_difference=str(storage_delta),residual=str(raw-norm/2-storage_delta))
+
+OUT=dict(scope='Exact polynomial,PD/acoustic identities and illustrative strip; analytic chain rule/Parseval proof in CONTINUUM_STORAGE_THEOREM.md. No full-profile QC,novelty or external certification.',groups=checks,group_count=len(checks),status='PASS')
+(ROOT/'CONTINUUM_STORAGE_CHECKS.json').write_text(json.dumps(OUT,indent=2)+'\n')
+print(json.dumps(dict(status='PASS',group_count=len(checks))),flush=True)

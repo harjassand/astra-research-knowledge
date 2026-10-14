@@ -1,0 +1,178 @@
+# Phase-selective retained crystal rewriting: working research record
+
+Date: 14 October 2026.
+Status: unvalidated physical hypothesis plus conditional analytical calculations.
+No physical experiment, atomistic simulation, industrial advantage, or novelty
+certification was obtained. This record was created in the conversation workspace;
+it was not published to the Astra repository.
+
+Repository consulted: harjassand/astra-research-knowledge, revision
+`ace0cfc4437fe91c20ccd24d69e0ee4bb335e871`. Relevant negative records: N783
+(retained repair and outgoing-carrier qualification) and N789 (unacquired
+same-specimen coherent-recoil retained-write response). These negatives remain
+unchanged; no source-unreviewed mathematical result is promoted here.
+
+## Proposed physical operation
+
+Use a common phase-locked fundamental/second-harmonic field to distinguish
+inversion-related crystal variants and bias which variant remains after the
+field is removed. The proposed output is retained polarity selection or directed
+antiphase-boundary migration, not an optical signal, carrier current, heating
+contrast, or mere disappearance of material.
+
+Restrict the hypothesis to domains whose inversion relation and opposite nonlinear
+response have actually been established. Not every translational antiphase domain
+can simply be assigned opposite optical susceptibility. Use a geometry with a
+nonzero population-control tensor projection. A (111) optical experiment cannot
+supply the contrast for normally illuminated (001) material.
+
+In a two-channel perturbative model, opposite variants can have excitation
+probabilities proportional to sum_f |a_f + s exp(i phi) b_f|^2, with s=+1 or -1.
+A phase shift of pi exchanges the interference contribution. This is established
+coherent-control structure, not a new law discovered here. Whether it changes a
+retained structural transition is the missing physical operation.
+
+## Strong comparators and scope of novelty
+
+Post-growth thermal antiphase-boundary removal already exists. Fabrication of
+chosen orientation patterns through bonding, lithography and epitaxial regrowth
+also exists. Neither APB elimination nor patterned polarity itself is claimed new.
+The proposed differentiator is post-growth phase-selected correction/reconfiguration
+without imposing the existing template and processing requirements, and only if a
+matched whole-process comparison establishes useful performance.
+
+Direct carrier-population modulation and cascaded second-harmonic (CASH) control
+are established precedents. Published suggestions of near-unity CASH control
+are not measured near-unity local heat contrast. A common external converter
+cannot, merely by varying a shared input intensity, discriminate two domains
+with identical subsequent linear response. Domain-correlated local transduction
+and the complete propagation/absorption problem must be acquired.
+
+## Conditional impulsive complete-melting constraint
+
+Assume equal molar amounts initially at T0, fixed composition, equilibrium melting,
+no appreciable heat exchange during the energy-partition step, and actual net
+thermal energies Q(1+C) and Q(1-C). C is not automatically the carrier contrast.
+Let Hs be sensible heat to Tm and L the fusion heat.
+
+Complete melting of one region while the other stays below melt onset requires
+
+    Q(1+C) >= Hs + L
+    Q(1-C) < Hs
+
+Thus a nonempty dose window exists only if
+
+    C > L / (2 Hs + L).
+
+The accompanying script uses the published GaAs heat-content fit to obtain
+Hs=65.6166 kJ/mol at the 298.15 K reference, L=106.72 kJ/mol and a threshold
+C>0.44849. Values are approximate model calculations, not uncertainty-certified
+process specifications. Preheating reduces Hs and increases this particular
+contrast requirement. Correct regrowth is an additional, unsatisfied obligation.
+
+The maximum molten fraction allowed by the protected-solid inequality is bounded
+by the supremum min[1, 2 C Hs / ((1-C)L)]. Hypothetically inserting C=0.02 gives
+0.0251 at room temperature. This does not measure a molten fraction or establish
+a high-fluence contrast, and does not exclude boundary-local partial melting.
+
+## Why this is not a universal impossibility result
+
+Sustained heating with cooling can accumulate latent heat even for small C.
+For equal lumped patches, P(1-C)<G(Tm-Tb)<P(1+C) is possible for any C>0.
+This pays for heat loss and does not establish useful speed or fine-scale contrast.
+
+In a linear solid-state thin-film model,
+
+    Ca dT/dt = kappa d Laplacian(T) - G(T-Tb) + P0[1+C cos(kx)],
+
+where Ca is areal heat capacity, kappa is thermal conductivity, d is thickness,
+G is areal thermal conductance, and P0 is absorbed power per area. The steady
+contrast is
+
+    delta_T/(Tmean-Tb) = C/[1+(k ell_T)^2],
+    ell_T = sqrt(kappa d/G).
+
+Reducing substrate heat loss lowers the mean-power requirement but increases
+lateral thermal smoothing. The linear model does not describe melting dynamics.
+No favourable G, kappa, high-temperature susceptibility or damage rate was assumed.
+
+Nonthermal transitions, partial melting, and local bond rearrangement can escape
+the complete-equilibrium-melting assumptions. Their retained transition kernels
+have not been measured here. Lower-energy excitation is not itself proof of lower
+energy per useful retained output.
+
+## Smallest decisive retained-output experiment
+
+Use a capped GaAs specimen containing pre-mapped opposite-polarity domains and
+an approximately flat boundary. Verify polarity structurally and by phase-sensitive
+second-harmonic imaging; intensity-only SHG is insufficient. Choose incidence and
+polarizations with a nonzero scalar population-control tensor component.
+
+First acquire domain-resolved phase-dependent energy/carrier response under the
+actual temperature, fluence, cap and geometry to be used. Resolve transmission and
+reflection at both frequencies and separate frequency conversion, carrier escape,
+and heating. Do not transfer the contrast from another specimen or fluence regime.
+
+Then compare phi and phi+pi drives at matched individual-colour fluences, together
+with randomized-phase, non-overlapping-pulse, single-colour and temperature-history
+controls. Measure retained boundary displacement, material inventory/stoichiometry,
+new defects and post-drive retention. Use independent regions/specimens and
+counterbalanced sequence order; pulses are not independent specimens.
+
+A decisive result is retained, phase-selected domain advance with structural
+confirmation and a response incompatible with measured thermal asymmetries or
+simple material removal. Faster curvature-driven shrinkage alone does not show
+chosen-polarity control. Phase-odd optical signals alone do not show structural
+control or distinguish direct interference from CASH.
+
+## A different physical mechanism worth testing
+
+Instead of bulk melting, test whether nonequilibrium excitation at the boundary
+creates a directional bias in interfacial bond rearrangement. A schematic model is
+v=M[gamma curvature + stress driving + optical driving(phi)]. Raising M alone
+speeds existing relaxation without proving selectable polarity. The missing
+measurement is a phase-reversible directional term, or equivalent asymmetric
+retained transition rates, on a nearly flat controlled boundary.
+
+This is a distinct physical hypothesis, not a favourable constitutive coefficient
+inserted into a proposed machine. It remains unqualified until the retained
+boundary experiment succeeds.
+
+## Resource and stop criteria
+
+Count laser wall energy, frequency conversion and stabilization, preheating,
+cooling, specimen/cap preparation, feedback/readout, material loss, and yield.
+Report energy and elapsed time per retained-good area or volume against matched
+annealing or template-growth controls. No energy-recovery credit is assigned.
+
+Stop the bulk impulsive route if measured local deposited-energy contrast cannot
+meet the relevant enthalpy window. Do not stop all other mechanisms from that
+scoped negative. Stop claiming capability if the result is transient only, pure
+ablation, uncontrolled regrowth, mobility-only acceleration, or inferior to the
+matched baseline. A successful signal alone does not establish technological value.
+
+## Primary sources
+
+- Fraser et al. (1999), Quantum Interference in Electron-Hole Generation in
+  Noncentrosymmetric Semiconductors. DOI: 10.1103/PhysRevLett.83.4192.
+- Stevens et al. (2005), Enhanced coherent control of carrier and spin density in a
+  zinc-blende semiconductor by cascaded second-harmonic generation.
+  DOI: 10.1063/1.1879079.
+- Yamaguchi, Itagaki and Yazawa (1989), High Temperature Heat Content Measurements
+  of the III-V Compounds. DOI: 10.2320/jinstmet1952.53.8_764. Table 1 coefficients
+  were checked against the rendered original table.
+- Barrett et al. (2019), Dissolution of antiphase domain boundaries in GaAs on
+  Si(001) via post-growth annealing. DOI: 10.1007/s10853-019-03353-7.
+- Sokolowski-Tinten et al. (1998), Thermal and nonthermal melting of gallium
+  arsenide after femtosecond laser excitation. DOI: 10.1103/PhysRevB.58.R11805.
+- Granger et al. (2023), GaAs-chip-based mid-infrared supercontinuum generation.
+  DOI: 10.1038/s41377-023-01299-9. Methods specify orientation-patterned fabrication.
+- Kobayashi et al., Light-programmable reorientation of the crystallographic c-axis
+  of Tellurium thin films. arXiv:2508.18584. Existing retained-axis-control precedent;
+  the preprint is not evidence of full polarity rewriting in GaAs.
+
+## Reproduction
+
+Run `python calculate_bounds.py` using Python 3.10 or newer. The standard-library
+script validates fit ranges, checks dose-window inequalities, prints results and
+writes `results.json`. These arithmetic checks do not validate the physical model.

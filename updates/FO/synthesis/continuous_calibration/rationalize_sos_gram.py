@@ -1,0 +1,50 @@
+import sympy as sp
+import numpy as np
+from math import prod
+# variable order r,s,p,q
+
+def comps(total,n=4,prefix=()):
+ if n==1:return [prefix+(total,)]
+ out=[]
+ for k in range(total+1):out+=comps(total-k,n-1,prefix+(k,))
+ return out
+m2=comps(2);m4=comps(4); ix={e:i for i,e in enumerate(m4)}
+inds=[(i,j) for i in range(10) for j in range(i,10)]
+A=sp.zeros(len(m4),len(inds))
+for k,(i,j) in enumerate(inds):
+ e=tuple(a+b for a,b in zip(m2[i],m2[j])); A[ix[e],k]+=1 if i==j else 2
+terms={
+ (0,0,4,0):sp.Rational(101,24),(0,0,0,4):sp.Rational(101,24),(0,0,2,2):sp.Rational(101,6),
+ (1,0,3,0):-sp.Rational(29,2),(0,1,0,3):sp.Rational(29,2),
+ (0,1,2,1):29,(1,0,1,2):-29,(1,1,1,1):-50,
+ (2,0,2,0):sp.Rational(37,2),(0,2,2,0):12,(2,0,0,2):12,(0,2,0,2):sp.Rational(37,2),
+ (1,2,1,0):-24,(2,1,0,1):24,
+ (4,0,0,0):sp.Rational(11,4),(0,4,0,0):sp.Rational(11,4),(2,2,0,0):11,
+}
+b=sp.Matrix([terms.get(e,0) for e in m4])
+Aug=A.row_join(b); R,pivs=Aug.rref(); pivs=tuple(j for j in pivs if j<len(inds)); free=[j for j in range(len(inds)) if j not in pivs]
+assert len(pivs)==35 and len(free)==20
+Qnum=np.load('work/FO-continuous-calibration/gram_pd.npy')
+xnum=np.array([Qnum[i,j] for i,j in inds])
+# rationalize free variables from a numerical strictly positive Gram point
+xfree=[sp.Rational(float(xnum[j])).limit_denominator(10**6) for j in free]
+x=[sp.Rational(0) for _ in inds]
+for j,v in zip(free,xfree):x[j]=v
+for row,piv in enumerate(pivs):
+ x[piv]=R[row,-1]-sum(R[row,j]*x[j] for j in free)
+Q=sp.zeros(10)
+for v,(i,j) in zip(x,inds):Q[i,j]=Q[j,i]=v
+print('min eig numeric',np.linalg.eigvalsh(np.array(Q,dtype=float)).min())
+# Sylvester leading principal minors prove positive definiteness exactly.
+mins=[]
+for k in range(1,11):
+ d=sp.factor(Q[:k,:k].det());mins.append(d);assert d>0,(k,d)
+print('LDL pivots', [str(sp.factor(mins[k]/mins[k-1])) if k else str(mins[k]) for k in range(10)])
+# Exact identity check.
+for row,e in enumerate(m4):
+ coefficient=sum(A[row,j]*x[j] for j in range(len(x)))
+ assert coefficient==b[row],(e,coefficient,b[row])
+print('basis',m2)
+print('Q rows:')
+for row in Q.tolist():print([str(v) for v in row])
+open('work/FO-continuous-calibration/quartic_sos_gram.txt','w').write('\n'.join(' '.join(str(v) for v in row) for row in Q.tolist())+'\n')

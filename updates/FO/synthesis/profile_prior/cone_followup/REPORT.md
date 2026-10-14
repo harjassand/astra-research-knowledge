@@ -1,0 +1,133 @@
+# Acoustic-zero obstruction to positive right-GL transfer
+
+## Result
+
+Let
+
+\[
+F_*(A)=u^2+v^2+4w^2+\frac72q^2-\frac{29}{10}q(u+v),
+\quad G(A)=3(u+v-2q)^2+\frac{35}{24}u^2+q^2-\frac52qu,
+\]
+where for columns \(A=(x\mid y)\), \(u=|x|^2\), \(v=|y|^2\), \(w=x\cdot y\), and \(q=\det A\).
+
+Write \(\mathcal P_4^{pc}\) for the cone of homogeneous quartic polyconvex integrands on \(\mathbb R^{2\times2}\). In the finite-dimensional coefficient topology, define
+
+\[
+\mathcal C=\overline{\operatorname{cone}\{A\mapsto F_*(AS):S\in GL_2(\mathbb R)\}+\mathcal P_4^{pc}}.
+\]
+
+Then
+
+\[
+\boxed{G\notin\mathcal C.}
+\]
+
+The result also excludes a positive multiple of \((\det A)^2\) as the only added polyconvex generator. The closure is important: the proof includes singular right-transform limits and does not infer separation from unequal coefficient vectors. It uses a target acoustic zero, an exact Jensen witness, and a compactness argument that controls total orbit weight.
+
+The transfer point is an integrand already covered by N794's original closed-heat argument: for \(F_*\), that certificate takes \(\gamma=83/1000\) and gives an exact identity for \(F_* - \gamma q^2\), with a globally closed two-form and a positive 24-dimensional compatible-jet Gram satisfying \(R-(1/500)I>0\). Periodic heat flow proves quasiconvexity of the corrected integrand; \(q^2\) is quasiconvex by the determinant null-Lagrangian/Jensen argument. The certificate proves this one \(F_*\) QC result. The obstruction below is a separate test of whether its right-GL orbit can positively synthesize the specified \(G\).
+
+## Exact inputs
+
+Set \(R_0=e_1\otimes e_2\) and \(I=\operatorname{diag}(1,1)\). Direct substitution gives
+
+\[
+G(I+tR_0)=-\frac1{24}+3t^4,
+\qquad D^2G(I)[R_0,R_0]=0.
+\]
+Thus \(G\) has an acoustic zero at an invertible background. Also \(G(I)=-1/24\) (whereas \(F_*(I)=-3/10\)); the value \(G(\operatorname{diag}(1,-1))=1271/24\).
+
+Use the symmetric finite law \(\mu\) supported on \(\pm36I,\pm J\), with \(J=\operatorname{diag}(1,-1)\), assigning mass \(1/(2\cdot1297)\) to each of \(\pm36I\) and \(1296/(2\cdot1297)\) to each of \(\pm J\). The opposite signs make \(\mathbb E_\mu A=0\), and
+
+\[
+\mathbb E_\mu\det A=\frac{36^2-36^2}{1297}=0,
+\qquad
+\mathbb E_\mu G(A)=\frac{36^4G(I)+36^2G(J)}{1297}=-\frac{1350}{1297}<0.
+\]
+Every polyconvex quartic \(P(A)=\Phi(A,\det A)\) therefore has
+\[
+\mathcal J_\mu(P):=\mathbb E_\mu P(A)-P(0)\ge0
+\]
+by convex Jensen in the lifted variables \((A,\det A)\). The calculation is an algebraic non-polyconvexity witness for \(G\), not a compatible-gradient counterexample.
+
+The transfer atom has an exact uniform rank-one Hessian bound. For \(x=(a,b,c,d)\), the N794 acoustic Gram in the bilinear monomials \((s x,t x)\) is the rational 8-by-8 matrix printed in Section 5 of `work/astra-capital/updates/FE/package/quartic/ASTRA_META_GENESIS_Morrey_quartics.md`. Direct differentiation recovers that Gram, and its shifted matrix \(Q-(1/16)I_8\) has exact positive leading principal minors
+
+\[
+\frac{191}{16},\frac{24257}{256},\frac{27924391}{102400},
+\frac{6668081409}{40960000},\frac{22758891}{5242880},
+\frac{591689749}{83886080},\frac{29238470371}{33554432000},
+\frac{103803542518401}{1677721600000000}.
+\]
+Sylvester's criterion and output-rotation invariance give, for all matrices \(B\) and vectors \(a,b\),
+
+\[
+D^2F_*(B)[a\otimes b,a\otimes b]
+\ge \frac1{16}|B|^2|a|^2|b|^2. \tag{1}
+\]
+The accompanying local replay `verify_cone_obstruction.py` reconstructs the polynomial identity and checks these exact minors, rather than using sampled directions or numerical eigenvalues.
+
+## Proof of closed-cone exclusion
+
+Assume toward a contradiction that a coefficient-convergent sequence has the form
+
+\[
+H_n(A)=\sum_{i=1}^{N_n}c_{ni}F_*(AS_{ni})+P_n(A)\longrightarrow G(A),
+\]
+where \(c_{ni}\ge0\), \(S_{ni}\in GL_2\), and \(P_n\in\mathcal P_4^{pc}\). Since the integrands are homogeneous of degree four, absorb \(|S_{ni}|_F^4\) into \(c_{ni}\) and henceforth take \(|S_{ni}|_F=1\). This does not alter invertibility. Singular matrices appear only as limit points of the compact unit sphere.
+
+For \(H_S(A)=F_*(AS)\), the chain rule and (1) yield
+
+\[
+D^2H_S(I)[a\otimes b,a\otimes b]
+=D^2F_*(S)[a\otimes(S^Tb),a\otimes(S^Tb)]
+\ge\frac1{16}|S|_F^2|a|^2|S^Tb|^2. \tag{2}
+\]
+Define two linear functionals on quartics:
+
+\[
+\ell(H)=D^2H(I)[e_1\otimes e_2,e_1\otimes e_2],\quad
+\Lambda(H)=\sum_{j=1}^2D^2H(I)[e_1\otimes e_j,e_1\otimes e_j].
+\]
+Polyconvexity implies rank-one convexity, so \(\ell(P_n),\Lambda(P_n)\ge0\). Equation (2) gives, for \(|S|_F=1\),
+
+\[
+\ell(H_S)\ge\tfrac1{16}|S^Te_2|^2,\qquad
+\Lambda(H_S)\ge\tfrac1{16}.
+\]
+As \(H_n\to G\), \(\Lambda(H_n)\) stays bounded. Positivity of every term then gives a uniform total-mass bound
+
+\[
+\sum_i c_{ni}\le 16\Lambda(H_n)=O(1). \tag{3}
+\]
+Also \(\ell(H_n)\to\ell(G)=0\), and all its summands are nonnegative. Therefore
+
+\[
+\sum_i c_{ni}|S_{ni}^Te_2|^2\le16\ell(H_n)\longrightarrow0. \tag{4}
+\]
+Thus, in the weighted orbit sum, mass outside any fixed neighborhood of
+
+\[
+Z=\{S:|S|_F=1,\ S^Te_2=0\}
+\]
+tends to zero. This is the step that closes the possible escape to singular right transforms.
+
+For \(S\in Z\), write \(S=\begin{pmatrix}s&t\\0&0\end{pmatrix}\). The matrix \(AS\) is rank one and
+
+\[
+H_S(A)=\bigl(s^4+4s^2t^2+t^4\bigr)|Ae_1|^4,
+\]
+which is convex in \(A\). Hence \(j(S):=\mathcal J_\mu(H_S)\ge0\) on \(Z\). The function \(j\) is continuous on the compact normalized orbit, so its negative part is uniformly arbitrarily small near \(Z\). On the complement of that neighborhood, (4) makes the total orbit weight tend to zero; (3) bounds the total weight. Consequently
+
+\[
+\liminf_n\sum_i c_{ni}\mathcal J_\mu(H_{S_{ni}})\ge0.
+\]
+Meanwhile \(\mathcal J_\mu(P_n)\ge0\) for every polyconvex summand. Linearity gives \(\liminf_n\mathcal J_\mu(H_n)\ge0\). Coefficient convergence implies \(\mathcal J_\mu(H_n)\to\mathcal J_\mu(G)=-1350/1297\), contradiction. This proves \(G\notin\mathcal C\).
+
+The same argument allows any finite conic sum and its coefficient closure, and any positive polyconvex-quartic addend; it does not require the added polyconvex terms to be determinant squares or to share a symmetry. It depends on positive coefficients. A signed subtraction of a polyconvex generator is outside the stated cone.
+
+## Interpretation and limits
+
+The transfer obstruction is invariant under the right action: the target null direction tests \(S^Te_2\), and the only transforms that can approach zero at that test collapse the second row and become convex rank-one-profile atoms. The proof is not a coefficient comparison. It shows that no positive right-GL orbit synthesis of the known closed-heat-certified \(F_*\), even augmented by arbitrary polyconvex quartics, can produce this \(G\) in coefficient closure.
+
+This makes the profile-graph result for \(G\) more than a re-expression of that particular \(F_*\)-certificate transfer: its source proof uses 81 opposite-carrier vertices, five widths, and exact inequalities for all 32,805 directed edge/width choices to certify every finite closed walk in that library, including cycles not covered by zero-area-moment cancellation. For example, the 4-cycle \((0,0)\to(1/4,0)\to(1/4,1/4)\to(0,1/4)\to(0,0)\), with width 1/8 on each edge, encloses signed area 1/16 in the two amplitude coordinates, so its constant area moment is nonzero; the graph certificate covers it. The source permits negative individual strip energies (the reported minimum is \(-1431/1280\)) while proving the all-affine bound \(\inf_B \mathbb E[G(B+D\phi)-G(B)]\ge\frac14\mathbb E|D\phi|^4\) for the closed-walk class. The conclusion remains restricted to that graph/library. The six-moment theorem covers its separate exact-cancellation path family; neither result proves arbitrary-profile quasiconvexity, the full rank-one-convex-to-quasiconvex implication, or a compatible negative gap. The exact graph/potential receipt remains source-produced evidence and is not independently replayed here.
+
+The mathematical input sources remain repository-derived and explicitly unreviewed externally. This follow-up does not establish novelty or external correctness. No external papers, measurements, controls, compute services, or laboratory materials were acquired; precise wall-clock, bit-operation and token costs are unmeasured. The only replay here is the exact finite symbolic calculation saved alongside this report.

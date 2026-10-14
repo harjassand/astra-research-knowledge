@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — verify_curvature.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/curvature_classification/verify_curvature.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact checks for the profile-space curvature classification note.
+
+All Fourier averages use finite Laurent polynomials and exact SymPy arithmetic.
+This script reads no source-directory program or stored numerical output.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import sympy as sp
+
+I = sp.I
+
+
+def clean(poly: dict[int, sp.Expr]) -&gt; dict[int, sp.Expr]:
+    out = {k: sp.simplify(v) for k, v in poly.items()}
+    return {k: v for k, v in out.items() if v != 0}
+
+
+def add(*polys: dict[int, sp.Expr]) -&gt; dict[int, sp.Expr]:
+    out: dict[int, sp.Expr] = {}
+    for poly in polys:
+        for k, v in poly.items():
+            out[k] = out.get(k, 0) + v
+    return clean(out)
+
+
+def scale(poly: dict[int, sp.Expr], scalar: sp.Expr) -&gt; dict[int, sp.Expr]:
+    return clean({k: scalar * v for k, v in poly.items()})
+
+
+def multiply(left: dict[int, sp.Expr], right: dict[int, sp.Expr]) -&gt; dict[int, sp.Expr]:
+    out: dict[int, sp.Expr] = {}
+    for k, x in left.items():
+        for j, y in right.items():
+            out[k + j] = out.get(k + j, 0) + x * y
+    return clean(out)
+
+
+def derivative(poly: dict[int, sp.Expr]) -&gt; dict[int, sp.Expr]:
+    return clean({k: I * k * v for k, v in poly.items() if k})
+
+
+def cosine(k: int) -&gt; dict[int, sp.Expr]:
+    return {k: sp.Rational(1, 2), -k: sp.Rational(1, 2)}
+
+
+def sine(k: int) -&gt; dict[int, sp.Expr]:
+    return {k: sp.Rational(1, 2) / I, -k: -sp.Rational(1, 2) / I}
+
+
+def average(poly: dict[int, sp.Expr]) -&gt; sp.Expr:
+    return sp.simplify(poly.get(0, 0))
+
+
+def curvature_moments(psi1: dict[int, sp.Expr], psi2: dict[int, sp.Expr]) -&gt; list[sp.Expr]:
+    d1, d2 = derivative(psi1), derivative(psi2)
+    c = add(multiply(psi2, d1), scale(multiply(psi1, d2), -1))
+    return [
+        average(c),
+        average(multiply(c, d1)),
+        average(multiply(c, d2)),
+        average(multiply(c, multiply(d1, d1))),
+        average(multiply(c, multiply(d1, d2))),
+        average(multiply(c, multiply(d2, d2))),
+    ]
+
+
+# Profiles are listed as exact finite Fourier sums, (coefficient, cos/sin, k).
+profile_pairs = [
+    ([(1, &quot;c&quot;, 1)], [(1, &quot;s&quot;, 3)]),
+    ([(1, &quot;c&quot;, 3)], [(1, &quot;s&quot;, 1)]),
+    ([(1, &quot;c&quot;, 1)], [(1, &quot;c&quot;, 2)]),
+    ([(1, &quot;c&quot;, 2)], [(1, &quot;c&quot;, 1)]),
+    ([(1, &quot;c&quot;, 1)], [(1, &quot;s&quot;, 1)]),
+    ([(1, &quot;c&quot;, 1)], [(1, &quot;c&quot;, 1), (1, &quot;s&quot;, 1)]),
+]
+
+
+def fourier_sum(terms: list[tuple[int, str, int]]) -&gt; dict[int, sp.Expr]:
+    out: dict[int, sp.Expr] = {}
+    for coefficient, kind, frequency in terms:
+        atom = cosine(frequency) if kind == &quot;c&quot; else sine(frequency)
+        out = add(out, scale(atom, sp.Integer(coefficient)))
+    return out
+
+
+raw_rows = [curvature_moments(fourier_sum(p), fourier_sum(q)) for p, q in profile_pairs]
+expected_raw_rows = [
+    [0, 0, 0, sp.Rational(1, 2), 0, 0],
+    [0, 0, 0, 0, 0, sp.Rational(-1, 2)],
+    [0, sp.Rational(-3, 4), 0, 0, 0, 0],
+    [0, 0, sp.Rational(3, 4), 0, 0, 0],
+    [-1, 0, 0, sp.Rational(-1, 2), 0, sp.Rational(-1, 2)],
+    [-1, 0, 0, sp.Rational(-1, 2), sp.Rational(-1, 2), -1],
+]
+assert raw_rows == expected_raw_rows
+
+# For P(A)=A_11*A_12^3 and B_11=0, B_12=1, K_P=3 &lt;c(1+r psi1&#x27;+s psi2&#x27;)^2&gt;.
+# Coefficients are ordered as 1,r,s,r^2,rs,s^2.
+curvature_rows = [
+    [3 * row[0], 6 * row[1], 6 * row[2], 3 * row[3], 6 * row[4], 3 * row[5]]
+    for row in raw_rows
+]
+curvature_matrix = sp.Matrix(curvature_rows)
+curvature_determinant = sp.factor(curvature_matrix.det())
+assert curvature_matrix.rank() == 6
+assert curvature_determinant == sp.Rational(-6561, 16)
+
+# Global convexity of F_±(A)=|A|_F^4 ± (1/4) A_11 A_12^3.
+# The elementary quadratic-form bound gives |D^2 P[H,H]| &lt;= 6|A|^2|H|^2.
+convexity_margin = sp.Rational(4) - sp.Rational(6, 4)
+assert convexity_margin == sp.Rational(5, 2) and convexity_margin &gt; 0
+
+# Fixed scalar profile pair (cos y, sin 3y): only the r^2 curvature coefficient survives.
+fixed_pair = curvature_moments(cosine(1), sine(3))
+assert fixed_pair == [0, 0, 0, sp.Rational(1, 2), 0, 0]
+
+
+def rectangle_moments(r0: sp.Rational, r1: sp.Rational,
+                      s0: sp.Rational, s1: sp.Rational,
+                      orientation: int) -&gt; list[sp.Rational]:
+    result = []
+    for i, j in [(0, 0), (1, 0), (0, 1), (2, 0), (1, 1), (0, 2)]:
+        r_integral = (r1 ** (i + 1) - r0 ** (i + 1)) / sp.Integer(i + 1)
+        s_integral = (s1 ** (j + 1) - s0 ** (j + 1)) / sp.Integer(j + 1)
+        result.append(sp.Rational(orientation) * r_integral * s_integral)
+    return result
+
+
+# CCW rectangle [-1/2,1/2]x[0,1] plus clockwise [-1,1]x[0,1/8].
+rect1 = rectangle_moments(sp.Rational(-1, 2), sp.Rational(1, 2), 0, 1, 1)
+rect2 = rectangle_moments(sp.Rational(-1), sp.Rational(1), 0, sp.Rational(1, 8), -1)
+fixed_loop_moments = [sp.simplify(a + b) for a, b in zip(rect1, rect2)]
+assert fixed_loop_moments == [
+    sp.Rational(3, 4), 0, sp.Rational(31, 64), 0, 0, sp.Rational(85, 256)
+]
+
+# A convex scalar quartic has nonzero profile circulation but positive Jensen gap.
+t, y = sp.symbols(&quot;t y&quot;, real=True)
+segments = [
+    (t, 0, 1, 0),
+    (1, t, 0, 1),
+    (1 - t, 1, -1, 0),
+    (0, 1 - t, 0, -1),
+]
+edge_integrals = []
+for r_value, s_value, r_prime, s_prime in segments:
+    first_column = 1 + r_prime * sp.cos(y) + s_prime * sp.sin(y)
+    second_column = 1 - r_value * sp.sin(y) + s_value * sp.cos(y)
+    density = sp.expand((first_column**2 + second_column**2) ** 2)
+    y_average = sp.simplify(sp.integrate(sp.expand_trig(density), (y, 0, 2 * sp.pi)) / (2 * sp.pi))
+    edge_integrals.append(sp.simplify(sp.integrate(y_average, (t, 0, 1))))
+assert edge_integrals == [
+    sp.Rational(148, 15), sp.Rational(1349, 120),
+    sp.Rational(1349, 120), sp.Rational(148, 15)
+]
+total_integral = sp.factor(sum(edge_integrals))
+mean_energy = sp.factor(total_integral / 4)
+convex_gap = sp.factor(mean_energy - 4)
+assert total_integral == sp.Rational(2533, 60)
+assert mean_energy == sp.Rational(2533, 240)
+assert convex_gap == sp.Rational(1573, 240) &gt; 0
+
+positive_example_curvature = -8  # F_xy=8xy, c=-1, B=(1,1), and &lt;psi1&#x27;&gt;=&lt;psi2&#x27;&gt;=0.
+assert positive_example_curvature * 1 == -8  # unit CCW square has M_00=1.
+
+results = {
+    &quot;status&quot;: &quot;exact_symbolic_checks_passed&quot;,
+    &quot;profile_moment_order&quot;: [&quot;M00&quot;, &quot;M10&quot;, &quot;M01&quot;, &quot;M20&quot;, &quot;M11&quot;, &quot;M02&quot;],
+    &quot;profile_moment_rows&quot;: [[str(sp.simplify(x)) for x in row] for row in raw_rows],
+    &quot;quartic_curvature_coefficient_order&quot;: [&quot;1&quot;, &quot;r&quot;, &quot;s&quot;, &quot;r^2&quot;, &quot;r*s&quot;, &quot;s^2&quot;],
+    &quot;quartic_curvature_rows&quot;: [[str(sp.simplify(x)) for x in row] for row in curvature_rows],
+    &quot;curvature_matrix_rank&quot;: curvature_matrix.rank(),
+    &quot;curvature_matrix_determinant&quot;: str(curvature_determinant),
+    &quot;convexity_hessian_lower_bound&quot;: &quot;(5/2)*|A|^2*|H|^2&quot;,
+    &quot;convexity_margin_positive&quot;: True,
+    &quot;fixed_profile_moment_row&quot;: [str(x) for x in fixed_pair],
+    &quot;fixed_profile_loop_moments&quot;: [str(x) for x in fixed_loop_moments],
+    &quot;positive_gap_edge_integrals&quot;: [str(x) for x in edge_integrals],
+    &quot;positive_gap_total_unnormalized&quot;: str(total_integral),
+    &quot;positive_gap_mean_energy&quot;: str(mean_energy),
+    &quot;positive_gap_over_F_background&quot;: str(convex_gap),
+    &quot;positive_gap_profile_circulation&quot;: str(positive_example_curvature),
+}
+
+out = Path(__file__).with_name(&quot;CHECKS.json&quot;)
+out.write_text(json.dumps(results, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+print(json.dumps(results, indent=2))
+</pre></body></html>

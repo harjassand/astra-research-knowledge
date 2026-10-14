@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — certify_all_widths_eta1_8.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/continuous_calibration/certify_all_widths_eta1_8.py">Exact bytes</a></p><pre>&quot;&quot;&quot;Exact all-width extension of the incoming rational profile-graph calibration.
+For each directed vertex pair, certify its adjusted edge polynomial is &gt;=0
+for every tau&gt;0, using rational factorisation and Sturm root counts.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+import json, sys
+import sympy as sp
+sys.path.insert(0, &#x27;work/FO-continuous-calibration/source-copy/resonant&#x27;)
+from profile_algebra import averaged, poly_terms, edge_coeffs
+
+PIN=&#x27;work/FO-continuous-calibration/source-copy/resonant/profile_graph_certificate.json&#x27;
+z=json.load(open(PIN))
+vertices=[tuple(map(Q, row)) for row in z[&#x27;vertices&#x27;]]
+P=[Q(int(x),int(z[&#x27;common_denominator&#x27;])) for x in z[&#x27;potential_numerators&#x27;]]
+G,N,_,_=averaged(1,-1,False)
+gt,nt=poly_terms(G),poly_terms(N)
+s=sp.symbols(&#x27;s&#x27;, real=True)
+checked=0; zeros=0; root_edges=0; max_degree=0; failures=[]
+for i,U in enumerate(vertices):
+    for j,V in enumerate(vertices):
+        gc=edge_coeffs(gt,U,V); nc=edge_coeffs(nt,U,V)
+        # W_eta(tau)-[P(V)-P(U)] = sum_k c[k] tau**(1-k).
+        c=[gc[k]-Q(1,8)*nc[k] for k in range(5)]
+        c[1]-=P[j]-P[i]
+        # q(s)=s*(W_eta(1/s)-Delta P) has the same sign for s&gt;0.
+        q=sp.Poly(sum(sp.Rational(x.numerator,x.denominator)*s**k for k,x in enumerate(c)),s)
+        checked+=1; max_degree=max(max_degree,q.degree() if not q.is_zero else 0)
+        if q.is_zero:
+            zeros+=1; continue
+        # The first nonzero coefficient fixes the sign sufficiently near 0+.
+        low=min(k[0] for k,_ in q.terms())
+        low_coeff=q.nth(low)
+        if low_coeff &lt; 0:
+            failures.append((i,j,&#x27;negative near zero&#x27;,str(q.as_expr())))
+            continue
+        # Each rational irreducible factor has simple roots; an odd exponent
+        # would change sign at any positive root. Sturm counts roots exactly.
+        _, facs=sp.factor_list(q.as_expr(),s)
+        has_odd_positive=False
+        for fac,exp in facs:
+            if exp%2 and sp.Poly(fac,s).count_roots(0,sp.oo)&gt;0:
+                has_odd_positive=True
+                break
+        if has_odd_positive:
+            root_edges+=1
+            failures.append((i,j,&#x27;odd positive root&#x27;,str(q.as_expr())))
+        checked
+print(json.dumps({&#x27;checked_directed_pairs&#x27;:checked,&#x27;zero_polynomials&#x27;:zeros,
+                  &#x27;pairs_with_positive_real_roots&#x27;:root_edges,&#x27;max_degree&#x27;:max_degree,
+                  &#x27;failures&#x27;:failures[:5],&#x27;failure_count&#x27;:len(failures)},indent=2))
+if failures: raise SystemExit(1)
+</pre></body></html>

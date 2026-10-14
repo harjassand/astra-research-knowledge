@@ -1,0 +1,55 @@
+from fractions import Fraction
+import sympy as s
+
+# Exact F* acoustic Gram from the original N794 certificate, rebuilt from F*.
+a,b,c,d,p,t=s.symbols('a b c d p t', real=True)
+X=s.Matrix([a,b,c,d])
+u=a*a+c*c; v=b*b+d*d; w=a*b+c*d; q=a*d-b*c
+F=u*u+v*v+4*w*w+s.Rational(7,2)*q*q-s.Rational(29,10)*q*(u+v)
+H=s.hessian(F,X)
+E1=s.Matrix([1,0]); r=s.Matrix([p,t])
+R=s.Matrix([p,t,0,0]) # e_1 tensor (p,t), row-major matrix entries
+acoustic=s.expand((R.T*H*R)[0])
+xv=s.Matrix([a,b,c,d])
+Q=s.Matrix([
+[12,0,0,s.Rational(-87,10),0,s.Rational(17,2),s.Rational(23,5),0],
+[0,8,s.Rational(29,10),0,s.Rational(15,2),0,0,s.Rational(-6,5)],
+[0,s.Rational(29,10),4,0,s.Rational(6,5),0,0,s.Rational(14,5)],
+[s.Rational(-87,10),0,0,7,0,s.Rational(-23,5),s.Rational(-9,5),0],
+[0,s.Rational(15,2),s.Rational(6,5),0,8,0,0,s.Rational(-29,10)],
+[s.Rational(17,2),0,0,s.Rational(-23,5),0,12,s.Rational(87,10),0],
+[s.Rational(23,5),0,0,s.Rational(-9,5),0,s.Rational(87,10),7,0],
+[0,s.Rational(-6,5),s.Rational(14,5),0,s.Rational(-29,10),0,0,4]])
+z=s.Matrix([p*z for z in xv]).col_join(s.Matrix([t*z for z in xv]))
+assert s.expand(acoustic-(z.T*Q*z)[0])==0
+shifted=Q-s.eye(8)/16
+shifted_minors=[s.factor(shifted[:k,:k].det()) for k in range(1,9)]
+assert all(m>0 for m in shifted_minors)
+
+# Exact target G has an invertible-background acoustic zero.
+G=3*(u+v-2*q)**2+s.Rational(35,24)*u*u+q*q-s.Rational(5,2)*q*u
+R0=s.Matrix([0,1,0,0])
+line=s.Matrix([1,0,0,1])+s.Symbol('tau')*R0
+tau=s.Symbol('tau',real=True)
+line=s.Matrix([1,tau,0,1])
+g_line=s.factor(G.subs({a:line[0],b:line[1],c:line[2],d:line[3]}))
+assert s.expand(g_line-(3*tau**4-s.Rational(1,24))) == 0
+assert s.diff(g_line,tau,2).subs(tau,0)==0
+assert G.subs({a:1,b:0,c:0,d:1})==-s.Rational(1,24)
+assert G.subs({a:1,b:0,c:0,d:-1})==s.Rational(1271,24)
+
+# Determinant-balanced finite Jensen witness for G.
+gI=-s.Rational(1,24); gJ=s.Rational(1271,24)
+mean_det=s.Rational(1,1297)*36**2-s.Rational(1296,1297)
+mean_energy=(36**4*gI+36**2*gJ)/s.Integer(1297)
+assert mean_det==0 and mean_energy==-s.Rational(1350,1297)
+
+# Boundary right transforms killing e2 are convex rank-one restrictions.
+alpha,beta=s.symbols('alpha beta', real=True)
+C=s.factor(alpha**4+4*alpha**2*beta**2+beta**4)
+assert C == alpha**4+4*alpha**2*beta**2+beta**4
+print('PASS: exact F* acoustic Gram and Q - I/16 positive definiteness')
+print('shifted leading principal minors:', [str(x) for x in shifted_minors])
+print('PASS: G(I+t e12) = -1/24 + 3 t^4 and acoustic zero')
+print('PASS: determinant-balanced G witness has lifted mean (0,0) and energy -1350/1297')
+print('F* rank-one profile for boundary row (alpha,beta):', C)

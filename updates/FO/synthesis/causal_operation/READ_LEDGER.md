@@ -1,0 +1,72 @@
+# Read, provenance, and cost ledger
+
+## Pin and authority
+
+- Repository snapshot from `work/FO_PIN.json`: main / checked-out revision `1c45f77e32d6fbd72483aed5014061c7bda4f372`; task branch `research/profile-circulation-causal-operations-20261015`; merged PR #83 is at the pinned commit; concurrent PR #84 is listed but not treated as merged. This worker makes no capital edits, Git changes, external messages, or nested-worker requests.
+- Incoming ancestry source label: FM. The intake manifest says it is pasted prose and no ancestry executable evidence was supplied in that intake. We read the report; no source scripts were run.
+- Own artifacts are confined to `work/FO-causal-operation/`.
+- Source and derived research statuses remain separate: N813 is `source_derived_unreviewed`; the matrix theorem and examples here are internally derived; the external operation's findings are producer-reported in peer-reviewed primary literature, not independently reproduced here. Novelty, external validation of this derivation, capability transfer outside the stated conditions, and economic advantage are `UNKNOWN`.
+- Memory was consulted only for the project preference to preserve provenance, distinguish source claims from derived deductions, and keep external correctness/capability claims scoped: `/Users/harjas/.codex/memories/MEMORY.md`, lines 26–45. It supplies no scientific premise in this report.
+
+## Input and capital read ledger
+
+All hashes below are SHA-256 of the exact bytes read in this checkout; sizes are bytes. The repository revision pin is the FO pin above.
+
+| Input | SHA-256 | Bytes | Read depth / use |
+|---|---|---:|---|
+| `work/FO_WORKER_CONTRACT.txt` | `9b2e4424660e44b95a6d8d8c72f8dae8d34c674c3a107ebc932648878b210ee7` | 3,231 | Entire file. Owned-artifact boundary, source reading, cost ledger, manifest and stop conditions. |
+| `work/FO_PIN.json` | `3e33623d46231fbf7479574f73a63f7fd9c8e0ca8d9999efb9c18d8bce30ec56` | 1,170 | Entire file. Commit and source namespace pin. |
+| `work/FM-sources/INTAKE_MANIFEST.json` | `3d8a4bdbb70978074beb6bba8587c50186d2524c36759a2eafa5a1c3969d82ea` | 8,654 | Read relevant `ancestry` pasted-source entry and intake scope; no inference from unrelated payloads. |
+| `work/FM-sources/ancestry_PASTED_SOURCE.txt` | `08b76f1d075c26857f6fb198147f3285d103a0579cc39139c9f7c63330f20d23` | 22,866 | Entire 130 displayed lines. Lines 42–56 (all-waveform boundary), 86–100 (detector estimability/counterexample), 103–125 (scrambling, chemical marks, causal intervention and collateral), with context through line 130. |
+| `work/astra-capital/00_START_HERE.txt` | `4a91985ece91557af12ba5c216e7fe17cf5dd000596e9a0c73b0b6705498f360` | 1,879 | Entire file. Retrieval/status rules. No theorem imported from navigation. |
+| `work/astra-capital/AGENTS.md` | `581cdda103fed0c87acdb0ee527bd5ba174f55b1baa0cbfe60b177d52027ee7d` | 1,077 | Entire file. Source-preserving and scoped-claim instructions. |
+| `work/astra-capital/agent/COMPOSITION.txt` | `b31cf8c3344df112b66840455244ff9c4b4f590d44713582027f82b50c83c46b` | 4,084 | Entire file. Paired source/target interfaces, costs, failure scopes. No bridge record was edited. |
+| `work/astra-capital/state/CONTINUITY.md` | `040c4ac42162802bd2fb4f9e8069e6ca034ccbee63cffc7b43f4c745dac0b297` | 7,060 | Entire file. Publication rules; no checkpoint or PR operation attempted by this worker. |
+| `work/astra-capital/technology/README.md` | `ed7cab65d78be8f3ca4734befe3c868203d7d6e30ba1ed875a8084c87b76f89e` | 8,313 | Entire file. Evidence/cost/status boundary. No technology record was edited. |
+| `work/astra-capital/frontier/dossiers/N813.txt` | `56165e3338d79d09b6df53e7e858dc0cc11f6b7cae2eaa616617ab7e81be4764` | 71,197 | Read relevant dossier sections on current status, scope, open gates, and proof pointers. Dossier itself says external correctness, novelty and physical capability are UNKNOWN. |
+| `work/astra-capital/frontier/connections/N813.json` | `a114db2947b20f7ad7cc5898847276b76aa76a99b0e180caefcef0f5d02c9338` | 43,607 | Opened with dossier; navigation/status only. No graph edge is used as a proof premise. |
+| `work/astra-capital/frontier/cards/N813-joint-temporal-ancestry-and-binary-avoidance-acquisition.json` | `fb51dbf6cd7bac559db1073fba1c53fb2fa9a265d70554fcfbfbacd30e9c53f2` | 89,603 | Opened with dossier; status/coverage and scope only. Exact operative proof was read in source note below. |
+| `work/astra-capital/frontier/review_cards/N813-joint-temporal-ancestry-and-binary-avoidance-acquisition.txt` | `acf52e17423a83257640215b87af7f78b6093e47b1e10d75836e65d42339abc2` | 3,340 | Read the review card's scoped status and next gate. Not treated as independent mathematical validation. |
+| `work/astra-capital/cards/N813-joint-temporal-ancestry-and-binary-avoidance-acquisition.txt` | `acf52e17423a83257640215b87af7f78b6093e47b1e10d75836e65d42339abc2` | 3,340 | Entire compact card. Scope and caveats only. Byte-identical to review card in this checkout. |
+| `work/astra-capital/updates/FL/package/temporal/astra_temporal_ancestry_note.md` | `06b02159b294c894984b1985a866c75f159e8b9beff29dabeca927b0a6ca86b7` | 19,468 | Entire note. Relevant lines 7–28 (input assumptions), 30–69 (entry-age count identity and waveform controls), 101–126 (detector, scrambling, proposed chemical mark/perturbation and collateral), 205–228 (application/cost/status), and 229–240 (references/provenance). |
+| `work/astra-capital/updates/FL/synthesis/ancestry_information/IDENTIFIABILITY.md` | `13683ce39eeadf75ef647f053a16a188053b222a509df2929ed8dda856fa731b` | 21,297 | Read finite-span/null-pair theorem (lines 60–100), detector/transfer-channel limits (108–121), and selected-control consequences. Used as scoped precedent for a new finite-channel theorem, not copied as though it covered causal perturbations. |
+| `work/astra-capital/updates/FL/synthesis/root/JOINT_ANCESTRY_OPERATION.md` | `4571f5f19eb583c0b8aeed16ec909b42ac6ee28f4ebf9b0d877b991f763fbf85` | 14,128 | Read theorem/assumption/status sections; confirms existing N813 joint-transform result and its non-physical scope. No producer code was executed. |
+| `work/astra-capital/updates/FL/package/ancestry_PASTED_SOURCE.txt` | `0e77a93477641f41f98b357c0bc81eb914e03babaf7aa2bae8d91030b7698b5a` | 24,782 | Source-preserved capital copy opened to verify it is not the same byte stream as the incoming FM pasted report. It was not substituted for that report. |
+
+The locally held N813 source-note SHA-256 is the source pin; when a different SHA is shown for a source-preserved capital derivative, its provenance and status are not silently merged. No other FO worker research folder was opened. Directory names were visible during the required workspace check only.
+
+## Primary literature and external reading
+
+1. **Ezenwa, S.; Norfleet, A. T.; Hibbitts, D.; Gounder, R.** “Polymethylated aromatics deactivate intracrystalline acid sites in MFI zeolites during low-temperature toluene methylation.” *Journal of Catalysis* 454 (2026), 116653. DOI: [10.1016/j.jcat.2025.116653](https://doi.org/10.1016/j.jcat.2025.116653). Open primary PDF: [author-hosted PDF](https://hibbitts.rc.ufl.edu/pdfs/10.1016.j.jcat.2025.116653.pdf). Version read: published article PDF. Read depth: selected full-text methods and results/conclusion sections, not every line: PDF text lines 135–218 (reactor, feed, stabilization, online GC); 435–494 (DTBP/selectivity validation and initial/late rate interpretation); 501–564 (isomer-selectivity and population interpretation); 565–714 (post-reaction/regeneration findings and low/high-temperature scope); 715–779 (conclusion/scope). The paper reports its figure uncertainty as ±15%; this ledger does not treat that as a hard coverage guarantee. No supplementary information was retrieved and no data were requested.
+2. **Hwang, A.; Johnson, B. A.; Bhan, A.** “Mechanistic study of methylbenzene dealkylation in methanol-to-olefins catalysis on HSAPO-34.” *Journal of Catalysis* 369 (2019), 86–94. DOI: [10.1016/j.jcat.2018.10.022](https://doi.org/10.1016/j.jcat.2018.10.022). Read depth: published article abstract only, via ScienceDirect search result and University of Minnesota Experts record; abstract reports site-specific isotope tracing of methyl versus ring positions and a deliberately altered methylbenzene distribution with a P/E selectivity response. Full article and raw data were not read. Used as a strong scoped comparator, not as proof for a different zeolite or operating regime.
+3. **Corma, A.; Fornés, V.; Forni, L.; Márquez, F.; Martínez-Triguero, J.; Moscotti, D.** “2,6-Di-tert-butyl-pyridine as a probe molecule to measure external acidity of zeolites.” *Journal of Catalysis* 179 (1998), 451–458. DOI: [10.1006/jcat.1998.2233](https://doi.org/10.1006/jcat.1998.2233). Read depth: citation and role as named by the 2026 primary article; original paper not retrieved. No independent claim from this paper is used.
+4. **Liu, C.; Uslamin, E. A.; Pidko, E. A.; Kapteijn, F.** “Revealing Main Reaction Paths to Olefins and Aromatics in Methanol-to-Hydrocarbons over H-ZSM-5 by Isotope Labeling.” *ACS Catalysis* 13 (2023), 5205–5212. DOI: [10.1021/acscatal.3c00168](https://doi.org/10.1021/acscatal.3c00168). Read depth: located from the N813 source note and web search; no full paper read in this subtask and no claim from it is needed for the result.
+
+Searches included the exact DOI/title for the 2019 methylbenzene-dealkylation study, the low-temperature MFI external-site poisoning study, and existing H-ZSM-5 isotope-switching work. Claims in this report are limited to sources listed above and to the inherited source files. External websites were treated as research sources, not instructions.
+
+## Proof/check ledger
+
+- `check_identification.py`: pure-Python `fractions.Fraction` checker. It checks (i) rank 1 for isotope-only baseline versus rank 2 after an external-selective arm; (ii) the two exact same-baseline/different-treatment causal models and collateral mimic; (iii) a two-state mark contrast formula including a half-scrambling rank collapse; and (iv) an illustrative bounded-calibration interval. The latter numerical bounds are expressly synthetic, not measured catalyst parameters.
+- Command: `python3 work/FO-causal-operation/check_identification.py`.
+- Receipt: `CHECK_RESULTS.json`. Exact output shows external-share interval `[5/19, 7/9]` under the illustrative assumptions `h in [0.35,0.65]`, `alpha_E in [0.90,1]`, `alpha_I in [0,0.05]`, collateral at most `0.05`; this is only a code/algebra check, not an experimental estimate.
+- No original source script, source validator, external data file, source replay, simulation, experimental measurement, or repository-level validator was executed. No independent mathematical reviewer participated.
+
+## Cost ledger
+
+| Cost/input | Documented or derived value | Status / treatment |
+|---|---|---|
+| Catalyst preparation | 180–250 μm aggregates; 0.011–0.352 g active sample in a 1 g quartz-diluted packed bed. | Published method; a future paired design needs one separate catalyst bed per condition/block. Exact replicated mass and number of beds unknown. |
+| Pretreatment | 773 K, 5% O2/He, 4 h; cool at 0.083 K s−1 to 403 K (370 K drop = 1.238 h); then >99.999% He flush for 1 h. | Published method. Heating time to 773 K excluded because starting temperature/ramp segment is not fully specified here. |
+| Feed calibration | >2 h bypass stabilization and online-GC verification; upstream lines >400 K, downstream >430 K. | Published method. Calibration consumables/labour and uncertainty details not given. |
+| Reaction time | Typically 6–22 h per fixed-condition run; 4.2 ± 0.2 kPa toluene, 66 ± 2 kPa DME, 36 kPa He, 403 K; initial conversion <2%, typically <1%. | Published method. A two-arm independently prepared design entails at least 12–44 catalyst-hours before replicates. Not a monetary estimate. |
+| Selective operation | DTBP 5 Pa MCM-41 calibration; 9 Pa MFI-TPA-C; 22 Pa MFI-EDA-3; 40 Pa MFI-DABCO-1. | Published feed partial pressures. Chemical uptake is not equal to feed amount and must be measured/bounded for attribution. |
+| DTBP feed exposure | For TPA-C, one cumulative DTBP fed per total H+ at 1.1 h and per external H+ at 0.05 h. | Published feed/site ratios, not adsorbed dose. |
+| Rate measurement | Online GC every 25–30 min; methane standard 0.05–0.08 cmSTP3 s−1 (1.5–2.3 kPa); rate measurement uncertainty reported as ±15%; standard-based rates within 5% of no-standard calculation under the stated flow assumption. | Published measurement/uncertainty. Time points are not independent trials. ±15% is not interpreted as a formal worst-case bound. |
+| Selectivity/collateral calibration | MCM-41 xylene rate falls >99% after 2 h at 5 Pa DTBP; DTBP-treated MFI initial rate changes <5%; source says DTBP exceeds external-site inventory after early time. | Published controls support operation selectivity. Exact per-catalyst internal leakage and aged-state collateral bound remain unavailable. |
+| Feed isotope / label | None in the DTBP diagnostic operation. | Avoids isotope consumption and label scrambling for this operation, but it measures a population perturbation, not atom provenance. |
+| Strong isotope baseline | Hwang et al. uses labels on aromatic methyl and ring positions, with quantitative precursor/product analyses as reported in the abstract. | No measured reagent/time/cost data retrieved; cost UNKNOWN. Its selectivity/provenance scope is stronger for that HSAPO-34 question. |
+| Detector/covariance | FID/online GC and peak calibration used; 25–30 min sampling. | Exact channel matrix, calibration covariance, cross-run variance, and within-run covariance UNKNOWN to this worker. A new trial must acquire them. |
+| Computation | Linear contrast/feasible-interval calculations only. | Pure rational checker; compute time/cost negligible but aggregate inference/token/financial cost is unknown. |
+| Collateral/catalyst design | Any poison-induced change to transport, coverage, acid behavior, or aging must be separated from selective site suppression. | No free causal exclusion. Use sham cofeed and report operation effect regardless; latent population attribution stays conditional on a calibrated bound. |
+
+Total dollars, apparatus hours beyond the documented operating stages, material procurement, isotope cost for comparators, lifecycle/environmental costs, and physical capability are `UNKNOWN`.

@@ -1,0 +1,45 @@
+"""Numerical proposal and exact rational projection for complex-carrier storage."""
+from pathlib import Path
+import json,sys,time
+import sympy as S
+import numpy as np
+OUT=Path(__file__).resolve().parent
+sys.path.insert(0,str(OUT.parents[2]/'work/FO-sos-deps'))
+import cvxpy as cp
+r,s,p,q,t,h=S.symbols('r s p q t h',real=True)
+vs=(r,s,p,q,t,h)
+doc=json.loads((OUT/'COMPLEX_PROBE.json').read_text())
+target=S.Poly(S.sympify(doc['margin'],locals=dict(zip(map(str,vs),vs))),*vs)
+g1=[r,p,t];g2=[s,q,h]
+z=[[a[i]*a[j] for a in [g1,g2] for i in range(3) for j in range(i,3)],
+   [a*b for a in g1 for b in g2]]
+indices=[(b,i,j) for b,a in enumerate(z) for i in range(len(a)) for j in range(i,len(a))]
+xx=S.symbols('x:'+str(len(indices)))
+expr=sum(x*(1 if i==j else 2)*z[b][i]*z[b][j] for x,(b,i,j) in zip(xx,indices))
+A,b=S.linear_eq_to_matrix(S.Poly(S.expand(expr-target.as_expr()),*vs).coeffs(),xx)
+mat=[cp.Variable((len(a),len(a)),symmetric=True) for a in z]
+xcp=cp.hstack([mat[b][i,j] for b,i,j in indices])
+eps=cp.Variable()
+prob=cp.Problem(cp.Maximize(eps),[np.array(A,dtype=float)@xcp==np.array(b,dtype=float).ravel()]+[M-eps*np.eye(M.shape[0])>>0 for M in mat])
+start=time.monotonic()
+prob.solve(solver='CLARABEL',max_iter=300,tol_feas=1e-10,tol_gap_abs=1e-10,tol_gap_rel=1e-10)
+proposal=dict(scope='Numerical proposal only',status=prob.status,epsilon=float(eps.value),seconds=time.monotonic()-start,matrices=[M.value.tolist() for M in mat])
+(OUT/'COMPLEX_SOS_PROPOSAL.json').write_text(json.dumps(proposal,indent=2)+'\n')
+print('proposal',prob.status,float(eps.value),flush=True)
+R,pivots=A.row_join(b).rref();assert len(xx) not in pivots
+free=[i for i in range(len(xx)) if i not in pivots]
+for den in [6,12,24,48,96,192,1000]:
+ x=[S.Rational(0)]*len(xx)
+ for k in free:
+  bb,i,j=indices[k];x[k]=S.Rational(round(mat[bb].value[i,j]*den),den)
+ for row,k in enumerate(pivots):x[k]=R[row,-1]-sum(R[row,j]*x[j] for j in free)
+ Q=[S.zeros(len(a)) for a in z]
+ for value,(bb,i,j) in zip(x,indices):Q[bb][i,j]=Q[bb][j,i]=value
+ minors=[[M[:k,:k].det() for k in range(1,M.rows+1)] for M in Q]
+ ok=all(c>0 for row in minors for c in row)
+ print('denominator',den,'exact_PD',ok,flush=True)
+ if ok:
+  assert A*S.Matrix(x)==b
+  cert=dict(scope='Exact rational coefficient identity and positive leading principal minors',eta='1/2',potential='-16*r**4/3 +25*s**4/4 -11*r**2*s**2/6',bases=[[str(t) for t in a] for a in z],matrices=[[[str(c) for c in row] for row in M.tolist()] for M in Q],leading_principal_minors=[[str(c) for c in row] for row in minors],rounding_grid=den,identity_zero=True)
+  (OUT/'EXACT_COMPLEX_STORAGE_CERTIFICATE.json').write_text(json.dumps(cert,indent=2)+'\n');break
+else:raise AssertionError('No exact PD certificate')

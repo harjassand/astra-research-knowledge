@@ -1,0 +1,219 @@
+# Cold audit of the continuous storage certificate
+
+## Finding
+
+I found no countermodel or algebraic gap in the strengthened theorem for
+
+\[
+G(A)=3(u+v-2j)^2+\frac{35}{24}u^2+j^2-\frac52ju,
+\quad u=|A_1|^2,\quad v=|A_2|^2,\quad j=\det A.
+\]
+
+The exact storage identities in both the real-amplitude draft and the later
+complex-amplitude theorem pass an independent Laurent reconstruction. The
+listed Gram matrices are symmetric positive definite by recomputed rational
+Sylvester minors. The invariant phase gauge, periodic \(W^{1,4}\) closure,
+quartic Hessian reciprocity, and all-affine Parseval argument are valid with
+the theorem's stated hypotheses.
+
+The verified conclusion is substantial but restricted: for this one fixed
+rank-one-convex quartic and every periodic first transverse harmonic
+\(\phi(x,y)=\alpha(x)e^{iy}+\beta(x)e^{-iy}\), with arbitrary complex
+\(W^{1,4}\) amplitudes, the exact all-background gap is minimized at \(B=0\)
+and is at least one half of the fourth gradient moment. It is not a certificate
+for arbitrary transverse profiles, sums of distinct transverse frequencies,
+or every rank-one-convex quartic. The N794 and N812 universal gates therefore
+remain open.
+
+## Independent reconstruction
+
+Write \(\phi=\alpha e^{iy}+\beta e^{-iy}\), with \(\alpha,\beta\) complex.
+At a fixed \(x\), use a constant output rotation and a constant translation
+of \(y\) to make the two current amplitudes real, \(\alpha=r,\beta=s\).
+These two symmetries independently set the two phases. They are used only to
+evaluate the circle averages at that point. The transformed velocities are the
+actual values of \(\alpha',\beta'\) multiplied by those same constants; write
+them \(p+it,q+ih\). No derivative of an \(x\)-dependent phase choice is
+taken. The averaged energy and norm are invariant under this pointwise change,
+and the storage is radial.
+
+For the original real-amplitude draft, direct coefficient extraction from
+\(z=e^{iy}\) gives
+
+\[
+\begin{aligned}
+L&=\frac{107}{24}U+3V+19W-13Z-\frac{29}{2}T-12R,\\
+N&=U+V+2W,
+\end{aligned}
+\]
+
+with \(U,V,W,Z,T,R\) as defined in the draft. Both displayed Fourier
+averages match exactly. For complex amplitudes the actual columns in this
+gauge are
+
+\[
+X=(p+it)z+(q+ih)z^{-1},\qquad Y=irz-isz^{-1}.
+\]
+
+Recomputing \(u=X\bar X\), \(v=Y\bar Y\), and
+\(j=\operatorname{Im}(\bar X Y)\), then taking the constant Laurent
+coefficient, verifies the final 12-variable plus 9-variable Gram identity
+from `CONTINUUM_STORAGE_CERTIFICATE.json` exactly. The two matrices have all
+listed leading principal minors positive; the exact values are also emitted
+by `EXACT_CHECKS.json`. Thus the solver's discovery history is not needed for
+identity or positivity.
+
+For the first draft's 6-by-6 and 4-by-4 matrices, independent expansion gives
+\[
+L-DP(r,s)[p,q]-\frac12N=z_6^TQ_6z_6+z_4^TQ_4z_4,
+\]
+with the stated bases and all ten leading principal minors positive. The
+complex theorem's larger matrices independently verify the same statement
+with the extra angular velocities \(t,h\).
+
+For arbitrary complex amplitudes, let \(a=|\alpha|^2\), \(b=|\beta|^2\).
+The actual chain rule is
+
+\[
+\frac d{dx}\mathcal P(\alpha,\beta)
+=\left(-\frac{64}{3}a-\frac{11}{3}b\right)\Re(\bar\alpha\alpha')
++\left(25b-\frac{11}{3}a\right)\Re(\bar\beta\beta').
+\]
+
+In the pointwise real gauge this is precisely \(P_rp+P_sq\); the angular
+velocities \(t,h\) disappear. The potential is smooth as a polynomial in
+\(|\alpha|^2,|\beta|^2\), including at zeros. Since periodic one-dimensional
+\(W^{1,4}\) amplitudes are bounded and absolutely continuous,
+\(\mathcal P(\alpha,\beta)\) is absolutely continuous with integrable
+derivative and has zero total increment over a closed period. Also
+\(\partial_x\phi\in L^4\) and \(\partial_y\phi\in L^\infty\), so every
+quartic integral in the theorem is well-defined. This proves the zero-background
+bound for the full claimed regularity class; polygonal loops are already in
+that class.
+
+## All affine backgrounds
+
+For every such \(\phi\), \(X=D\phi\) obeys
+\(X(x,y+\pi)=-X(x,y)\). The odd terms in the quartic expansion therefore
+average to zero. If \(G\) is written as a symmetric four-linear polarization,
+then
+
+\[
+D^2G(X)[B,B]=12T(X,X,B,B)=D^2G(B)[X,X]
+\]
+pointwise. Hence
+
+\[
+\mathbb E[G(B+X)-G(B)]
+=\mathbb E G(X)+\frac12\mathbb E D^2G(B)[X,X].
+\]
+
+I independently reconstructed the exact rank-one acoustic Gram for this
+specific \(G\). Its positive 6-by-6 principal block has leading minors
+\(107/2,642,1605/8,8445/16,2815/8,26865/4\); the remaining 2-by-2 Schur
+complement is exactly zero. The Gram identity proves nonnegativity of
+\(D^2G(B)[a\otimes\xi,a\otimes\xi]\) for every rank-one direction after
+using the left \(SO(2)\) invariance to rotate its target vector. Thus the
+Hessian at fixed \(B\) is nonnegative on every rank-one matrix.
+
+For any periodic \(\mathbb R^2\)-valued potential on the two-torus, each
+nonzero Fourier coefficient of its gradient has the form
+\(\widehat\phi(n)\otimes n\). Its real and imaginary parts are real rank-one
+matrices with the same spatial vector \(n\). Parseval therefore writes
+\(\mathbb E D^2G(B)[X,X]\) as a sum of nonnegative acoustic terms. The zero
+frequency of a periodic gradient is zero. Since \(X\in L^4\subset L^2\),
+the argument applies directly to this \(W^{1,4}\) field, without a Fourier
+cutoff or a bound on \(B\). Taking \(B=0\) attains the affine infimum.
+
+This Parseval step is valid for every periodic gradient, but the zero-background
+storage inequality has only been proved for the stated first-harmonic family.
+It does not imply positivity for a sum of transverse frequencies.
+
+## Frequency scaling
+
+For a positive integer \(k\), all terms in the \(y\)-average are the
+\(k=1\) Laurent averages with \((r,s)\) replaced by \((kr,ks)\); the
+\(x\)-velocities \((p,q,t,h)\) are unchanged. The identity uses
+\(\mathcal P(kr,ks)/k=k^3\mathcal P(r,s)\), whose derivative is the
+storage term. The Gram remains positive because this substitution rescales
+its feature vectors diagonally by positive powers of \(k\). For negative
+frequency, the correct canonical relabeling exchanges the two carriers, so
+the potential is \(|k|^3\mathcal P(\beta,\alpha)\). The original draft's
+parenthetical “exchange carriers or use signed \(k\) consistently” must be
+read this way: the unqualified formula \(k^3\mathcal P(\alpha,\beta)\) for
+negative \(k\) is false because \(\mathcal P\) is not symmetric. For example,
+at \((\alpha,\beta)=(1,0)\) and \(k=-1\), the exchanged potential is
+\(25/4\), whereas \(k^3\mathcal P(1,0)=16/3\).
+
+## Curvature, coboundaries, and the six moments
+
+The source curvature argument concerns a different quantifier: cancellation
+of the signed circulation for every rank-one-convex homogeneous quartic,
+profile pair, and affine background in its stated setup. In two amplitude
+coordinates, its degree-two curvature pairs with
+the six signed area moments \(M_{00},M_{10},M_{01},M_{20},M_{11},M_{02}\).
+The storage theorem does not produce a smaller invariant that is complete for
+that universal cancellation problem. It fixes \(G\) and the first transverse
+harmonic, and proves positivity by pointwise domination.
+
+As an exact illustration, the counterclockwise unit square in the \((r,s)\)
+plane has moments
+\[
+(M_{00},M_{10},M_{01},M_{20},M_{11},M_{02})
+=(1,1/2,1/2,1/3,1/4,1/3),
+\]
+all nonzero. Direct integration of the reconstructed real-amplitude
+Lagrangian along its four unit-speed edges gives
+\(\int(L-N/2)\,dx=201/2>0\), with
+\(\int N\,dx=242/15\). The storage theorem applies despite the nonzero
+area data. This proves that moment cancellation is unnecessary for positivity
+on this fixed \(G\)/profile subclass; it does not refute the six-coordinate
+description of universal curvature cancellation.
+
+A pure curvature gauge cannot erase a signed period. If a profile-space
+one-form \(\alpha\) is replaced by \(\alpha+dS\), its curvature remains
+\(d\alpha\), since \(d^2S=0\), and its integral over a closed loop changes by
+\(\oint dS=0\). The storage potential is exactly such a total derivative:
+it integrates to zero on a closed path. What makes the estimate work is the
+additional positive Gram remainder, which controls the action after that
+derivative is removed. This is compensation by a positive remainder, not
+cancellation of the signed curvature. Any non-exact correction with a
+nonzero period would change the closed-loop action unless another term
+compensated it; it would not be a gauge-only removal preserving the original
+objective.
+
+## Scope against the pinned results
+
+N794's exact acoustic criterion and N812's global modulation proof justify
+the source mechanisms used here, but the current gates remain unchanged.
+N794 still asks for external proof/priority review and broader completion of
+the nine-coefficient acoustic cone. N812 still asks for full compatible-moment
+completion or separation outside its certified profile families, plus
+independent review. The present theorem fixes one non-polyconvex quartic and
+one transverse Fourier frequency. It supplies no arbitrary-gradient
+quasiconvexity result for \(G\), no all-quartic result, and no closure under
+sums of frequencies. Density of Fourier sums does not extend this single-mode
+storage certificate across their nonlinear resonances.
+
+## Verification and status
+
+Run the separate checker from the workspace root:
+
+```text
+/Users/harjas/Documents/Codex/2026-10-14/astra-research-capital-integration-synthesis-breakthrough/work/FE-hidden-gate/venv/bin/python work/FO-curvature-classification/storage_critique/verify_storage_critique.py
+```
+
+It passes 17 exact groups in under one second with Python 3.14.3 and SymPy
+1.14.0. It independently computes Laurent means, verifies both storage
+identities, recomputes 10 real-profile, 21 complex-profile and 6 acoustic
+principal minors, checks quartic reciprocity and the half-turn expansion,
+checks the phase-invariant chain rule and positive-frequency scaling, and
+integrates the nonzero-moment square loop. These are exact algebraic checks,
+not formal proof checking, external review, or novelty evidence. The analytic
+regularity and Parseval arguments are proved above.
+
+All input artifacts were supplied in the local workspace; no external
+acquisition, calibration, physical preparation, or paid service was used.
+Inference-token and total financial cost were not measured. Mathematical
+correctness outside the exact reconstruction and the analytic arguments here,
+historical novelty, and independent external review remain UNKNOWN.

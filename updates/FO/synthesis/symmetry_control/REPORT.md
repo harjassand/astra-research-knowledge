@@ -1,0 +1,109 @@
+# Phase-locked GaAs control: scalar readout versus retained structural bias
+
+## Finding
+
+A phase-locked ω/2ω field can produce a real, phase-dependent *scalar* carrier-injection and optical-absorption signal in noncentrosymmetric GaAs. The local electric-dipole signal is odd under inversion of the zinc-blende polarity, so opposite-polarity variants are distinguishable in principle at a fixed calibrated optical phase. This is supported by a direct single-domain GaAs experiment plus the tensor symmetry; it is not yet a published domain-pair comparison. The clean reported geometry was (111), while common GaAs/Ge polarity-domain specimens in the cited growth literature were (100)/(110); normal-incidence (001) also nulls the bulk electric-dipole contraction. Incidence and polarization therefore matter.
+
+The evidence does **not** show a retained structural transition or a persistent bias of domain-wall motion. The observed optical cross term supplies phase-odd absorbed energy, but does not identify a force, a phase-odd carrier chemical potential, a transition-state free-energy tilt, or a structural transition kernel. A symmetry-allowed force mechanism can be written, but its coupling is unmeasured. The experiment measures a total injection rate, not a state-resolved quasi-Fermi-level or chemical-potential difference. There is an exact decoupled-coordinate countermodel with the same optical signal and no structural switching. Thus the defensible verdict is **measured scalar optical control; symmetry-conditional domain discrimination; retained structural writing not established**.
+
+## Symmetry and scalar-channel result
+
+For one-photon absorption of a $2\omega$ photon and two-photon absorption of two $\omega$ photons into the same electron-hole continuum states, write the amplitude for a given band pair and crystal momentum as
+
+\[
+K_{cv\mathbf k}=K^{(1)}_{cv\mathbf k}(E_{2\omega})+K^{(2)}_{cv\mathbf k}(E_\omega,E_\omega).
+\]
+
+The scalar injection rate contains the cross term in the sum of \(|K|^2\) over the same final states. In the notation of Fraser et al. (1999),
+
+\[
+\dot n_I=2\,\mathrm{Re}\!\left[\eta_{ijk}E_{2\omega}^{i*}E_\omega^jE_\omega^k\right],
+\]
+
+or, for fixed polarization vectors,
+
+\[
+\dot n_s(\Phi)=\dot n_0+s A\cos(\Phi+\delta),\qquad
+\Phi=2\phi_\omega-\phi_{2\omega},\quad s\in\{+1,-1\}.
+\]
+
+Here $s$ labels opposite-polarity variants related by inversion in a fixed cubic-axis frame. A third-rank polar tensor changes sign under inversion; the second- and fourth-rank baseline absorption responses do not. Therefore $A\mapsto -A$ between those variants and shifting the locked phase by \(\pi\) swaps their local rates. The total rate remains nonnegative. In the usual injection formulation, the coefficient is proportional to the dissipative part, \( \mathrm{Im}\chi^{(2)}(-2\omega;\omega,\omega)\); it is not itself a conservative force coefficient. A phase scan or calibrated phase lock is essential: at a quadrature where the cosine vanishes there is no contrast.
+
+This is **population/absorption control**, not merely current injection. The 1999 paper derives the direct cross-term energy balance
+
+\[
+\dot u_I(2\omega)+\dot u_I(\omega)=2\hbar\omega\dot n_I,
+\]
+
+so the phase-odd population term corresponds to phase-odd removal of optical energy from the two beams. The experiment also measures carrier density by delayed probe transmission. The current-injection observable is a separate velocity-weighted channel and is not needed for this scalar effect.
+
+### Tensor and geometry
+
+For bulk zinc-blende GaAs with $T_d$ symmetry, the scalar injection tensor has only the independent all-distinct component $\eta_{xyz}$ (and permutations). The polarizations must contract all three cubic axes. In the source-selected (111) geometry, take cubic-basis unit vectors
+
+\[
+\hat e_\omega=(0,1,-1)/\sqrt2,\qquad
+\hat e_{2\omega}=(2,-1,-1)/\sqrt6.
+\]
+
+The all-distinct contraction is \(-2/\sqrt6=-\sqrt{2/3}\), attaining the magnitude reported by Fraser et al. for their chosen polarization. This computation is independently reproduced in `derived_checks.json`.
+
+For normal incidence on (001), tangential electric fields have only two cubic components, so the bulk electric-dipole $xyz$ contraction is zero. A (001) or (110) polarity-domain sample needs an appropriate oblique-incidence/azimuth and p/s polarization arrangement (or another explicitly modeled contribution) to supply all three components. Surface and higher-multipole terms are different channels and cannot be silently substituted for the bulk result.
+
+### What was physically measured, and what was inferred
+
+Fraser et al. measured an undoped, 650-nm-thick, (111)-oriented bulk GaAs specimen at room temperature with phase-locked 1550-nm and 775-nm pulses. The reported peak incident irradiances were 9 GW/cm² and 150 MW/cm²; the peak carrier concentration was about $10^{18}\,\mathrm{cm}^{-3}$. A delayed 825-nm transmission probe found a sinusoidal carrier-density modulation of about 2%; the sample rotation gave the expected sixfold pattern. Their propagation model included dispersion, pump depletion, reflections and phase mismatch; the phase mismatch across the sample was $0.6\pi$, modeled to reduce the direct cross term by 15%. Under these conditions the measured modulation was dominated by direct quantum interference control (QUIC), rather than the indirect cascade. These are high-peak-irradiance femtosecond experiments, not a low-fluence extrapolation: the 1999 propagation calculation assumes pulses longer than the thin-film transit time and shorter than recombination, and the reported fit is demonstrated for that sample and dose. Neither paper validates continued scaling at larger fluence or through a structural threshold. Higher-dose use would need measured saturation, carrier-screening, local-heating and damage behavior; those data are UNKNOWN here.
+
+That experiment used one crystal domain. It established phase-sensitive scalar response in noncentrosymmetric GaAs, but did not image or compare adjacent opposite-polarity domains. If its measured 2% sinusoidal amplitude carried over with equal magnitude to an inversion-related pair in a matched geometry, their optimal-phase local rate difference would be $2A\approx0.04\dot n_0$, i.e. 4% of the pair-mean rate. That is a symmetry-based prediction, not a measured domain-pair contrast. The sign reversal for a domain pair follows from inversion of the tensor, conditional on the variants sharing the same lab-frame optical geometry and on the response being locally resolved.
+
+GaAs opposite-polarity domains are not hypothetical: the 1977 GaAs/Ge study reports adjoining domains with reversed polarity of the \(\langle111\rangle\) axes, in (100) and (110) specimens but not in its (111) specimens; a 2001 paper reports engineered sublattice-reversal/domain-inversion structures. These sources establish material configurations, not phase-controlled structural writing. The lack of domains in the 1977 (111) specimens is especially relevant: the optical geometry with the cleanest cited QUIC measurement does not by itself supply the desired opposite-domain test specimen.
+
+## Bounds and possible mechanisms
+
+For transition amplitudes $a_f$ and $b_f$ for the two optical paths into final states $f$, the scalar cross term obeys
+
+\[
+|2\operatorname{Re}\sum_f a_f^*b_f|≤ 2\sqrt{\Gamma_1\Gamma_2},
+\quad \Gamma_1=\sum_f|a_f|^2,\quad \Gamma_2=\sum_f|b_f|^2.
+\]
+
+Hence the modulation fraction relative to $\Gamma_1+\Gamma_2$ is at most
+
+\[
+\frac{2\sqrt{\Gamma_1\Gamma_2}}{\Gamma_1+\Gamma_2}\le1.
+\]
+
+This exact Cauchy bound is only a universal ceiling. Equality needs balanced pathways and phase-aligned amplitudes across all final states. The GaAs coefficients used by Fraser et al. instead predict at most 6.4% at 1550 nm and 14% as the fundamental approaches the band edge; these are calculated ceilings, not measured controls. The measured value in their sample was about 2%. Stevens et al. (2005) measured density control in (110) GaAs/AlGaAs quantum wells, typically at 14 GW/cm² and 190 MW/cm², and showed that an upstream AlGaAs layer can enhance the response through cascaded second-harmonic generation (CASH). Their near-100% statement is a projection for an appropriately phase-matched preamplifier with about 1% conversion, not a demonstrated near-unity response or structural transition.
+
+**Heat-only screening calculation (conditional).** If the measured 2% direct population modulation maps to the same fractional modulation of energy ultimately thermalized locally, write the deposited energies in two equal-molar regions as $E(1\pm C)$, with $C=0.02$. From Yamaguchi et al. (1989), the GaAs solid heat-content fit gives sensible heat from 298.15 K to 1514 K of 65.6166 kJ/mol, and the measured fusion enthalpy is 106.72 kJ/mol. Keeping the cooler region below the solidus requires $E(1-C)<H_s$. The largest possible melt fraction on the hotter side under that condition is therefore
+
+\[
+f_{\rm melt}<\frac{2 C H_s}{(1-C)L}=0.02510.
+\]
+
+To have one whole region melt while the other remains below the solidus would require
+
+\[
+C>\frac{L}{2H_s+L}=0.44849.
+\]
+
+These calculations are reproducible in `derive_checks.py` and `derived_checks.json`. They screen only the equilibrium, equal-molar, impulsive-melt route with the stated energy-to-heat mapping. The 2% carrier result is **not** itself a measured lattice-temperature or retained-event contrast. Partial/interface melting, nonthermal rearrangement, sustained heating, unequal volumes, and other structural coordinates are outside this bound.
+
+Two routes could convert the optical signal into writing, but each requires new coefficients or measurements:
+
+1. A conservative inversion-odd coordinate $Q$ could couple through an allowed term $U_{\rm int}=-\lambda Q\,\operatorname{Re}(E_{2\omega}^*E_\omega E_\omega)$. The field product and $Q$ are both inversion-odd, so their product is symmetry-even; a phase change by \(\pi\) reverses the candidate force $F_Q=\lambda\operatorname{Re}(E_{2\omega}^*E_\omega E_\omega)$. This is a permitted mechanism, not an inferred one: the measured dissipative population coefficient $\mathrm{Im}\,\chi^{(2)}$ does not give $\lambda$, which requires the coordinate-dependent Hamiltonian/response and a calibrated structural trajectory.
+2. A phase-dependent local dose could bias a metastable transition if the transition rate responds sufficiently sharply to carrier energy or temperature. For example, a measured $k_\pm(t)$ could yield a retained-event probability $1-\exp[-\int k_\pm(t)dt]$. No such GaAs transition law, barrier response, or post-pulse retention curve is supplied by the coherent-control papers. An optical population difference alone does not fix these rates.
+
+A decisive logical counterexample is an inversion-odd structural coordinate $Q$ with a symmetric double-well $U(Q)=a(Q^2-Q_0^2)^2$, while the measured carrier source is exactly $\dot n_s=\dot n_0+sA\cos(\Phi+\delta)$ and carrier-to-lattice relaxation is independent of $Q$. For a pulse dose below the basin-crossing threshold, $Q$ stays in its initial well at every phase although the domain-dependent optical readout and absorption remain. This model satisfies the optical observation and tensor symmetry yet has zero retained structural bias. It proves that the scalar excitation interference by itself does not entail a structural transition; it is a countermodel to that implication, not a claim about a measured GaAs barrier.
+
+## Propagation and the CASH distinction
+
+Direct QUIC is local to the absorbing region and changes sign with its local polarity. CASH is a propagation-mediated sequence: a real-χ² conversion step changes the downstream $2\omega$ field, followed by one-photon absorption. Stevens et al. demonstrated that reversing which side of their multilayer sample the beams entered changed the modulation; the upstream AlGaAs etch-stop layer behaved as a “preamplifier.” Thus a shared external or upstream converter that is independent of domain can phase-modulate $2\omega$ intensity for both variants in common. Ordinary linear absorption then gives common-mode heat, not a polarity sign readout. A domain-local converter can in principle inherit the sign of χ², but the field is a coherent propagation integral over χ²(z), phase mismatch, absorption and interfaces. Stevens et al. quote a CASH coherence length of roughly 5 μm for their conditions; target-sample coherence length, domain size, local fields and boundary effects must be measured. A shared-converter gain cannot be attributed to local structural selection.
+
+## Capital-gate relevance and next decisive test
+
+The inspected N789/N795/N814 source gates remain open. N789 asks for same-specimen phase/basis/energy/angle/dose-resolved retained events, calibrated joint trajectory and uncertainty, controls, retention horizon, matched comparators, and full resource accounting. Its trigonal-Te recoil result is not a GaAs transition law. N795 is a specified-graph/rate-box kinetic query boundary; it does not supply optical transition rates. N814 concerns regenerative molecular work return and has no applicable optical structural law. This analysis closes none of those gates and makes no transfer claim.
+
+The decisive next experiment is a same-specimen comparison of identified opposite-polarity GaAs domains with a geometry that makes the bulk $xyz$ contraction nonzero. Lock/scan $\Phi$, map local carrier injection and absorbed energy against domain sign, and measure the generated $2\omega$ field separately to identify CASH. Then record the structural coordinate/domain-wall trajectory during excitation and after the fields are removed, with randomized-phase, single-color, matched absorbed-energy, and geometry-null controls; report retained-event probability versus phase and dose, retention horizon, uncertainty, acquisition/conditioning/readout/damage costs, and an equally informed thermal/feedback comparator. Until that gate is acquired, the supported endpoint is optical domain contrast in principle, not retained structural writing.
+
+No hardware experiment, structural switching, external validation, or novelty claim was performed here. The algebra and heat calculation are internal checks only; physical capability beyond the cited published optical measurements remains UNKNOWN.

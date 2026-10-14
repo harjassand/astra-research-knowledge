@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — rederive_audit.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/phase_audit/checks/rederive_audit.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent standard-library checks; does not import the producer script.&quot;&quot;&quot;
+from decimal import Decimal as D, getcontext
+from fractions import Fraction
+from pathlib import Path
+import json
+
+getcontext().prec = 40
+TREF, TM, L = D(&quot;298.15&quot;), D(&quot;1514&quot;), D(&quot;106720&quot;)
+
+def Hrel(t):
+    return D(&quot;47.3&quot;)*t + D(&quot;3.99e-3&quot;)*t*t + D(&quot;2.40e5&quot;)/t - D(&quot;1.53e4&quot;)
+
+def Hs(t0):
+    return Hrel(TM) if t0 == TREF else Hrel(TM)-Hrel(t0)
+
+def Cstar(h, latent=L):
+    return latent/(2*h+latent)
+
+def f_sup(c,h,latent=L):
+    return min(D(1), 2*c*h/((1-c)*latent))
+
+temperatures = list(map(D, (&quot;298.15&quot;,&quot;800&quot;,&quot;1000&quot;,&quot;1200&quot;,&quot;1400&quot;,&quot;1500&quot;)))
+rows=[]
+for t0 in temperatures:
+    h=Hs(t0); c=Cstar(h)
+    rows.append({&quot;initial_temperature_K&quot;:str(t0),&quot;Hs_J_per_mol&quot;:str(h),
+                 &quot;Cstar&quot;:str(c),&quot;threshold_hot_to_cold_specific_dose_ratio&quot;:str((1+c)/(1-c))})
+
+# At C=Cstar, the permitted baseline-dose interval collapses to one point;
+# strict protection of the cold patch excludes that endpoint.
+h=Hs(TREF); c=Cstar(h)
+q_hot_min=(h+L)/(1+c)
+q_cold_max=h/(1-c)
+assert abs(q_hot_min-q_cold_max) &lt; D(&quot;1e-30&quot;)
+
+# Exact partial-melt witness: Hs=5, L=3, C=1/10, f=1/3 &lt; f_sup=10/27.
+Hf,Lf,Cf,f=Fraction(5),Fraction(3),Fraction(1,10),Fraction(1,3)
+bound=2*Cf*Hf/((1-Cf)*Lf)
+qlo=(Hf+f*Lf)/(1+Cf); qhi=Hf/(1-Cf); Q=(qlo+qhi)/2
+assert f &lt; bound and Q*(1+Cf) &gt; Hf+f*Lf and Q*(1-Cf) &lt; Hf
+
+# Exact equal-patch sustained-cooling countermodels. Normalize G*DeltaT=Pbar=1.
+cooling=[]
+for C in (Fraction(1,50),Fraction(1,10),Fraction(1,2)):
+    cold,hot=1-C,1+C
+    assert cold &lt; 1 &lt; hot
+    cooling.append({&quot;C&quot;:str(C),&quot;cold_steady_drive&quot;:str(cold),
+                    &quot;hot_power_surplus_at_Tm&quot;:str(hot-1),
+                    &quot;unit_latent_energy_time&quot;:str(1/(hot-1))})
+
+# Exact total-energy-vs-specific-energy countermodel for unequal patch amounts.
+n_hot,n_cold,each=Fraction(1,4),Fraction(1),Fraction(3,5)
+q_h,q_c=each/n_hot,each/n_cold
+assert q_h &gt;= 2 and q_c &lt; 1
+
+# Local first-order sensitivity only; source uncertainty convention/covariance unknown.
+cp= D(&quot;47.3&quot;)+2*D(&quot;3.99e-3&quot;)*TM-D(&quot;2.40e5&quot;)/(TM*TM)
+dh=D(&quot;100&quot;)+cp  # table +/-100 J/mol plus local 1 K Tm sensitivity
+dl=D(&quot;200&quot;)     # fusion heat +/-0.20 kJ/mol
+c_lo=(L-dl)/(2*(h+dh)+L-dl)
+c_hi=(L+dl)/(2*(h-dh)+L+dl)
+
+result={
+ &quot;scope&quot;:&quot;independent algebra and arithmetic only; no physical validation&quot;,
+ &quot;room_temperature&quot;:{&quot;Hs_J_per_mol&quot;:str(h),&quot;L_J_per_mol&quot;:str(L),
+   &quot;complete_melt_enthalpy_J_per_mol&quot;:str(h+L),&quot;Cstar&quot;:str(c),
+   &quot;specific_dose_ratio_at_Cstar&quot;:str((1+c)/(1-c)),
+   &quot;collapsed_dose_gap_J_per_mol&quot;:str(q_cold_max-q_hot_min)},
+ &quot;nominal_temperature_rows&quot;:rows,
+ &quot;exact_partial_melt_witness&quot;:{&quot;Hs&quot;:str(Hf),&quot;L&quot;:str(Lf),&quot;C&quot;:str(Cf),
+   &quot;melt_fraction&quot;:str(f),&quot;fraction_supremum&quot;:str(bound),
+   &quot;baseline_dose_Q&quot;:str(Q),&quot;hot_specific_dose&quot;:str(Q*(1+Cf)),
+   &quot;cold_specific_dose&quot;:str(Q*(1-Cf))},
+ &quot;sustained_cooling_countermodels&quot;:cooling,
+ &quot;unequal_patch_countermodel&quot;:{&quot;n_hot&quot;:str(n_hot),&quot;n_cold&quot;:str(n_cold),
+   &quot;equal_total_energy_each&quot;:str(each),&quot;total_energy_contrast&quot;:&quot;0&quot;,
+   &quot;hot_specific_dose&quot;:str(q_h),&quot;cold_specific_dose&quot;:str(q_c),
+   &quot;conditions&quot;:&quot;hot fully melts at Hs+L; cold remains below Hs&quot;},
+ &quot;linearized_sensitivity_not_confidence_interval&quot;:{&quot;Cp_Tm_J_per_mol_K&quot;:str(cp),
+   &quot;assumed_Hs_half_width_J_per_mol&quot;:str(dh),&quot;assumed_L_half_width_J_per_mol&quot;:str(dl),
+   &quot;Cstar_low&quot;:str(c_lo),&quot;Cstar_high&quot;:str(c_hi),
+   &quot;warning&quot;:&quot;Source gives no statistical convention or fit covariance; 1 K derivative is local and upper endpoint lies 1 K beyond the tabulated solid-fit range.&quot;}
+}
+out=Path(__file__).with_name(&quot;independent_checks.json&quot;)
+out.write_text(json.dumps(result,indent=2)+&quot;\n&quot;,encoding=&quot;utf-8&quot;)
+print(json.dumps(result,indent=2))
+</pre></body></html>

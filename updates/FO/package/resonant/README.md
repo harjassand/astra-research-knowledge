@@ -1,0 +1,44 @@
+# ASTRA: joint profile circulation and cycle compensation
+
+Read `PROFILE_CIRCULATION.md` for the analytic statements, assumptions and proofs.
+
+## Scope
+
+The full planar or left-SO(2)-invariant quartic quasiconvexity question is not solved.
+No negative compatible quasiconvexity gap is produced. The package establishes:
+
+- A conditional all-affine theorem from joint polynomial circulation cancellation.
+- An exact finite-difference construction with nonzero higher circulation.
+- A rational calibration for every finite closed walk on an 81-profile library,
+  despite 104 negative raw-energy transitions.
+
+## Reproduce the finite checks
+
+Use Python 3.10 or later and SymPy (the checked environment used SymPy 1.14.0). No numerical solver is required.
+Keep the bundled modules together and run:
+
+```bash
+python verify_circulation.py
+```
+
+This recreates `circulation_verification.json` and `profile_graph_certificate.json`.
+It does not trust the stored JSON results or discovery potentials. It checks all
+32,805 rational edge inequalities, not a sample of cycles. The checker depends on
+`profile_algebra.py`, `check_loop_examples.py`, and `certify_profile_graph.py`.
+The analytic supporting inequality, Green identity, approximation and Fourier
+arguments are written in the note; symbolic checks are not formal proof of them.
+
+`loop_examples.json` contains full rational moments and affine optimizers for the
+explicit constructions. `prior_replay.log` records the previous modulation checker
+replay; it is provenance, not a premise of the new theorem.
+
+## Exploratory work
+
+`exploration/` contains discovery scripts and floating outputs. Some require NumPy
+and SciPy. Their residuals do not certify infeasibility or mathematical truth.
+They are not needed to reproduce the exact results. The profile-graph scripts can
+be run with the package root on PYTHONPATH. No broader conclusion follows from
+these finite exploratory classes.
+
+No external review, proof-assistant validation, historical priority clearance,
+or repository publication is claimed. No third-party manuscripts are included.
