@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — verify_weighted_alpha_correction.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/synthesis/kinetics/analysis/verify_weighted_alpha_correction.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact reversibility and alpha-order checks for the append-only correction.&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction as F
+import json
+from pathlib import Path
+import sys
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+REPLICA = ROOT / &quot;replica&quot;
+sys.path.insert(0, str(REPLICA))
+
+from model import Compiler, discover_partition, from_transcript
+
+
+def main() -&gt; None:
+    replay = json.loads((HERE / &quot;fresh_replay_results.json&quot;).read_text())
+    fresh = {item[&quot;name&quot;]: item[&quot;exact_high_precision_alpha_recertification&quot;]
+             for item in replay[&quot;tensor_replays&quot;]}
+    records = []
+    for name in (&quot;reverse_A&quot;, &quot;reverse_B&quot;, &quot;reverse_matched_tensor&quot;):
+        transcript = json.loads((REPLICA / f&quot;{name}_transcript.json&quot;).read_text())
+        model = from_transcript(18, transcript)
+        groups, _ = discover_partition(model)
+        compiler = Compiler(model, groups)
+        block = next(b for b, group in enumerate(groups) if model[&quot;target&quot;] in group)
+        K = compiler.refraw[block]
+        p = compiler.prob[block]
+        q = len(K)
+
+        balance_checks = 0
+        for i in range(q):
+            for j in range(q):
+                assert p[i] * F(K[i, j]) == p[j] * F(K[j, i]), (name, i, j)
+                balance_checks += 1
+
+        asym_pairs = [(i, j) for i in range(q) for j in range(i + 1, q)
+                      if F(K[i, j]) != F(K[j, i])]
+        assert asym_pairs, f&quot;{name}: raw K unexpectedly Euclidean symmetric&quot;
+        sample_i, sample_j = asym_pairs[0]
+        assert all(F(K[i, j]) &lt;= 0 for i in range(q) for j in range(q) if i != j)
+        flip_edges = 0
+        for i in range(q):
+            for bit in range(len(groups[block])):
+                j = i ^ (1 &lt;&lt; bit)
+                assert F(K[i, j]) &lt; 0, (name, i, j)
+                flip_edges += 1
+
+        target_local = groups[block].index(model[&quot;target&quot;])
+        target_rows = 0
+        row_sums = []
+        for i in range(q):
+            row_sum = sum(F(K[i, j]) for j in range(q))
+            expected = model[&quot;kappa&quot;] * int(compiler.bits[block][i, target_local])
+            assert row_sum == expected, (name, i, row_sum, expected)
+            if expected &gt; 0:
+                target_rows += 1
+        assert target_rows &gt; 0
+
+        old = json.loads((REPLICA / f&quot;{name}.json&quot;).read_text())
+        old_alpha = F(old[&quot;alpha_lower&quot;])
+        new_alpha = F(fresh[name][&quot;alpha_lower&quot;])
+        assert old_alpha &lt;= new_alpha, name
+        records.append({
+            &quot;name&quot;: name,
+            &quot;target_block&quot;: block,
+            &quot;local_states&quot;: q,
+            &quot;probability_sum_exactly_one&quot;: sum(p, F(0)) == 1,
+            &quot;exact_detailed_balance_pair_checks&quot;: balance_checks,
+            &quot;all_detailed_balance_equalities_hold&quot;: True,
+            &quot;raw_K_euclidean_symmetric&quot;: False,
+            &quot;raw_K_unequal_unordered_pairs&quot;: len(asym_pairs),
+            &quot;raw_K_asymmetry_witness&quot;: {
+                &quot;i&quot;: sample_i,
+                &quot;j&quot;: sample_j,
+                &quot;K_ij&quot;: str(F(K[sample_i, sample_j])),
+                &quot;K_ji&quot;: str(F(K[sample_j, sample_i])),
+                &quot;p_i_K_ij&quot;: str(p[sample_i] * F(K[sample_i, sample_j])),
+                &quot;p_j_K_ji&quot;: str(p[sample_j] * F(K[sample_j, sample_i])),
+            },
+            &quot;all_offdiagonals_nonpositive&quot;: True,
+            &quot;exact_nonzero_flip_edges_checked&quot;: flip_edges,
+            &quot;target_killing_rows&quot;: target_rows,
+            &quot;all_row_sums_equal_target_killing&quot;: True,
+            &quot;retained_old_alpha&quot;: str(old_alpha),
+            &quot;fresh_exact_replay_alpha&quot;: str(new_alpha),
+            &quot;old_alpha_le_fresh_alpha_exactly&quot;: True,
+        })
+
+    output = {
+        &quot;scope&quot;: &quot;exact rational checks on three retained synthetic canonical local killed generators&quot;,
+        &quot;no_source_or_frozen_artifact_modified&quot;: True,
+        &quot;records&quot;: records,
+        &quot;interpretation&quot;: (
+            &quot;The raw local K matrices are reversible but generally nonsymmetric in Euclidean coordinates. &quot;
+            &quot;Their exact detailed balance makes them self-adjoint under the local equilibrium weights; &quot;
+            &quot;the fresh exact alpha bounds therefore remain valid through the inverse infinity-norm and &quot;
+            &quot;spectral-radius argument stated in WEIGHTED_ALPHA_CORRECTION.md.&quot;
+        ),
+    }
+    out = HERE / &quot;weighted_alpha_exact_checks.json&quot;
+    out.write_text(json.dumps(output, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;cases&quot;: len(records), &quot;all_exact_checks_passed&quot;: True,
+                      &quot;result_file&quot;: out.name}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

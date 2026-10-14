@@ -1,0 +1,22 @@
+# Independent checker results
+
+The checkers in this directory were written from the displayed formulas and import only SymPy and Python's standard library. They do not import the source verifier, source JSON, notebooks, cached matrices, or exploratory outputs.
+
+## Main packet replay
+
+`independent_checker.py` independently reconstructs the quartic and acoustic Gram, exact rank-one-convexity identity, nonpolyconvexity witness, the profile integrals, covariance/Hessian matrices, background loss limit, and positive rational full gap. `independent_rigidity_checker.py` reconstructs the all-35 coefficient kernel/cubic formulas, rank-one and generic Schur cases, singular-face eliminations, shear invariance, and the nonshear acoustic Schur test.
+
+Both scripts completed successfully. Main exact outputs:
+
+- G acoustic Gram leading principal minors: `107/2, 642, 1605/8, 8445/16, 2815/8, 26865/4`.
+- `G(I)=-1/24`; `G(diag(1,-1))=1271/24`; the displayed balanced law has mean energy `-1350/1297`.
+- Profile covariance and Hessian leading minors are all positive; the printed matrices match the source exactly.
+- Concentrating loss limit: `80089/21313530`.
+- Scaled optimizer limit: `(-566/3759, 0, 0, -566/3759)`.
+- The exact concentrating gap is a rational function with positive numerator and denominator coefficients for `rho>0`, so it is positive.
+- Rank-one distinguished Hessian and generic PSD remainder match the source's displayed matrices.
+- Generic cubic coefficient difference: `-alpha^3*(p-3*r)^3/(2*p^3*r^2)`.
+- Cubic on the surviving shear plane: `-4*lambda^3*r*k^3/p^3`.
+- Nonshear acoustic Schur coefficient: `-(p-3*r)^4/(324*V*r^2)`.
+
+These are exact algebra checks, not a proof-assistant formalization. Proofs of the Finsler decomposition, Fourier compatibility, coordinate reductions, and analytic compactness remain mathematical arguments outside the scripts.

@@ -1,0 +1,277 @@
+"""Independent tiny rational check of reverse kinetics and source certificates.
+
+Uses only the finite model written below and Python's Fraction arithmetic; it does
+not import producer code or load NPZ files.
+"""
+from fractions import Fraction as F
+from itertools import product, combinations
+from math import isqrt
+import json
+
+n = 4
+GROUPS = ((0, 1), (2, 3))
+FIELDS = tuple(map(F, (2, F(3,2), F(2,3), F(1,2))))
+EDGES = {(0,1): F(2), (2,3): F(3,2), (1,2): F(3,2), (0,3): F(2,3)}
+TARGET = 0
+KAPPA = F(1,2)
+
+# a_i(y) = constant + linear terms + quadratic terms; entries are keyed by
+# a sorted tuple of non-target bit indices, with () for the constant.
+CLOCK_COEFFS = {
+  0: {():F(1), (1,):F(1,2), (2,):F(1,3), (1,2):F(1,6)},
+  1: {():F(2), (0,):F(1,4), (2,):F(1,2), (0,2):F(1,8)},
+  2: {():F(3,2), (1,):F(1,3), (3,):F(1,2), (1,3):F(1,4)},
+  3: {():F(1,2), (0,):F(1,5), (2,):F(1,5), (0,2):F(1,10)},
+}
+STATES = tuple(range(1 << n))
+
+
+def bits(x): return tuple((x >> i) & 1 for i in range(n))
+def weight(x, edges=EDGES, fields=FIELDS):
+    b = bits(x); z = F(1)
+    for i, h in enumerate(fields):
+        if b[i]: z *= h
+    for (i,j),t in edges.items():
+        if b[i] == b[j]: z *= t
+    return z
+
+def local_weight(x, group):
+    b = bits(x); z=F(1)
+    for i in group:
+        if b[i]: z *= FIELDS[i]
+    for (i,j),t in EDGES.items():
+        if i in group and j in group and b[i] == b[j]: z *= t
+    return z
+
+def attempt(i, x, cubic=F(0), prep_factor=F(1)):
+    b=bits(x); z=F(0)
+    for S,c in CLOCK_COEFFS[i].items():
+        if all(b[j] for j in S): z += c
+    if i == 0 and cubic:
+        z -= cubic*b[1]*b[2]*b[3]
+    return z*prep_factor
+
+def full_generator(cubic=F(0), prep_factor=F(1)):
+    L=[[F(0) for _ in STATES] for _ in STATES]
+    for x in STATES:
+        b=bits(x)
+        for i in range(n):
+            y=x^(1<<i)
+            a=attempt(i,x,cubic,prep_factor)
+            q=a*weight(y)/(weight(x)+weight(y))
+            L[x][x] += q
+            L[x][y] -= q
+        L[x][x] += KAPPA*b[TARGET]
+    return L
+
+def local_reference_attempt(i, x, group_index):
+    own=set(GROUPS[group_index]); inside=bits(x)
+    # Minimum over all contexts outside the block with the internal state fixed.
+    outsiders=[j for j in range(n) if j not in own]
+    vals=[]
+    for z in product((0,1), repeat=len(outsiders)):
+        b=list(inside)
+        for j,v in zip(outsiders,z): b[j]=v
+        xx=sum(v<<j for j,v in enumerate(b))
+        vals.append(attempt(i,xx))
+    return min(vals)
+
+def reference_generator():
+    C=[[F(0) for _ in STATES] for _ in STATES]
+    block_of={i:k for k,g in enumerate(GROUPS) for i in g}
+    for x in STATES:
+        b=bits(x)
+        for i in range(n):
+            y=x^(1<<i); g=GROUPS[block_of[i]]
+            rate=local_reference_attempt(i,x,block_of[i])*local_weight(y,g)/(local_weight(x,g)+local_weight(y,g))
+            C[x][x] += rate; C[x][y] -= rate
+        C[x][x] += KAPPA*b[TARGET]
+    return C
+
+def p0_vector():
+    block_prob=[]
+    for g in GROUPS:
+        masses=[local_weight(x,g) for x in STATES]
+        # Local mass depends only on bits in g; normalization over all x adds a
+        # repeated factor. Use unique local bit patterns directly.
+        rows=[]
+        for local in range(1<<len(g)):
+            b=[0]*n
+            for s,i in enumerate(g): b[i]=(local>>s)&1
+            xx=sum(v<<i for i,v in enumerate(b))
+            rows.append(local_weight(xx,g))
+        z=sum(rows,F(0)); block_prob.append({local:rows[local]/z for local in range(len(rows))})
+    out=[]
+    for x in STATES:
+        b=bits(x); p=F(1)
+        for g,prob in zip(GROUPS,block_prob):
+            local=sum(b[i]<<s for s,i in enumerate(g)); p*=prob[local]
+        out.append(p)
+    assert sum(out,F(0)) == 1
+    return out
+
+def normalized_w(x):
+    # Divide each cross-edge potential by its minimum value. This common scalar
+    # cancels from the equilibrium law and makes 1 <= w <= product max(t,1/t).
+    b=bits(x); cross=[]
+    for (i,j),t in EDGES.items():
+        if not any(i in g and j in g for g in GROUPS): cross.append((i,j,t))
+    w=F(1)
+    for i,j,t in cross:
+        factor=t if b[i]==b[j] else F(1)
+        w *= factor/min(F(1),t)
+    return w
+
+def matmul(A,B):
+    return [[sum((A[i][k]*B[k][j] for k in range(len(B))),F(0)) for j in range(len(B[0]))] for i in range(len(A))]
+def matvec(A,v): return [sum((a*b for a,b in zip(row,v)),F(0)) for row in A]
+def inner(p,a,b): return sum((pi*x*y for pi,x,y in zip(p,a,b)),F(0))
+def scaled(A,s): return [[s*x for x in row] for row in A]
+def add(A,B): return [[x+y for x,y in zip(ar,br)] for ar,br in zip(A,B)]
+def sub(A,B): return [[x-y for x,y in zip(ar,br)] for ar,br in zip(A,B)]
+def diag(v): return [[v[i] if i==j else F(0) for j in range(len(v))] for i in range(len(v))]
+def weighted(A,p): return [[p[i]*x for x in row] for i,row in enumerate(A)]
+
+def solve(A,b):
+    M=[list(row)+[rhs] for row,rhs in zip(A,b)]; N=len(M)
+    for j in range(N):
+        pivot=next((i for i in range(j,N) if M[i][j]),None)
+        if pivot is None: raise ValueError('singular matrix')
+        M[j],M[pivot]=M[pivot],M[j]
+        z=M[j][j]; M[j]=[v/z for v in M[j]]
+        for i in range(N):
+            if i!=j and M[i][j]:
+                z=M[i][j]; M[i]=[a-z*b for a,b in zip(M[i],M[j])]
+    return [M[i][-1] for i in range(N)]
+
+def psd_exact(A):
+    """Symmetric rational PSD test via exact positive diagonal pivots."""
+    M=[list(row) for row in A]; N=len(M)
+    if any(M[i][j] != M[j][i] for i in range(N) for j in range(N)): return False
+    k=0
+    while k<N:
+        p=next((i for i in range(k,N) if M[i][i] > 0),None)
+        if p is None:
+            return all(M[i][j]==0 for i in range(k,N) for j in range(k,N))
+        if p!=k:
+            M[k],M[p]=M[p],M[k]
+            for i in range(N): M[i][k],M[i][p]=M[i][p],M[i][k]
+        d=M[k][k]
+        for i in range(k+1,N):
+            for j in range(k+1,N): M[i][j] -= M[i][k]*M[k][j]/d
+        k+=1
+    return True
+
+def dot(x,y): return sum((a*b for a,b in zip(x,y)),F(0))
+def ceil_sqrt(x,bits=60):
+    z=(x.numerator*(1<<(2*bits))+x.denominator-1)//x.denominator
+    r=isqrt(z)
+    if r*r<z:r+=1
+    return F(r,1<<bits)
+
+def main():
+    P=p0_vector(); w=[normalized_w(x) for x in STATES]; Z=sum((p*t for p,t in zip(P,w)),F(0))
+    assert sum((p*wi/Z for p,wi in zip(P,w)),F(0)) == 1
+    L=full_generator(); A=[[w[i]*x for x in row] for i,row in enumerate(L)]; C=reference_generator()
+    KA=weighted(A,P); KC=weighted(C,P)
+    cross=[t for (i,j),t in EDGES.items() if not any(i in g and j in g for g in GROUPS)]
+    Rm=F(1)
+    for t in cross: Rm*=max(t,1/t)
+    Rk=max(attempt(i,x)/local_reference_attempt(i,x,next(k for k,g in enumerate(GROUPS) if i in g)) for i in range(n) for x in STATES)
+    R=Rm*Rk
+    # Check coupled conductance ratios edgewise as well as the full exact PSD forms.
+    edge_ratios=[]
+    for x in STATES:
+        for i in range(n):
+            y=x^(1<<i)
+            q=attempt(i,x)*weight(y)/(weight(x)+weight(y))
+            q0=local_reference_attempt(i,x,next(k for k,g in enumerate(GROUPS) if i in g))*local_weight(y,GROUPS[next(k for k,g in enumerate(GROUPS) if i in g)])/(local_weight(x,GROUPS[next(k for k,g in enumerate(GROUPS) if i in g)])+local_weight(y,GROUPS[next(k for k,g in enumerate(GROUPS) if i in g)]))
+            edge_ratios.append(P[x]*w[x]*q/(P[x]*q0))
+    assert min(edge_ratios)>=1 and max(edge_ratios)<=R
+    assert min(w)>=1 and max(w)<=Rm
+    assert psd_exact(sub(KA,KC))
+    assert psd_exact(sub(scaled(KC,R),KA))
+
+    # Local supersolution: exact target-block solve C_t u=1; alpha=1/max(u).
+    target_group=next(g for g in GROUPS if TARGET in g)
+    q=1<<len(target_group); local_states=[]
+    for z in range(q): local_states.append(sum(((z>>s)&1)<<i for s,i in enumerate(target_group)))
+    Ct=[[F(0) for _ in range(q)] for _ in range(q)]
+    for r,x in enumerate(local_states):
+        b=bits(x)
+        for i in target_group:
+            y=x^(1<<i); s=local_states.index(y)
+            rate=local_reference_attempt(i,x,next(k for k,g in enumerate(GROUPS) if i in g))*local_weight(y,target_group)/(local_weight(x,target_group)+local_weight(y,target_group))
+            Ct[r][r]+=rate; Ct[r][s]-=rate
+        Ct[r][r]+=KAPPA*b[TARGET]
+    ut=solve(Ct,[F(1)]*q); alpha=1/max(ut)
+    alpha_form=sub(KC,scaled(diag(P),alpha))
+    assert psd_exact(alpha_form)
+    assert psd_exact(sub(weighted(C,P),scaled(diag(P),alpha)))
+
+    # Equilibrium source certificate.
+    u=solve(A,w); assert matvec(A,u)==w
+    tau=inner(P,w,u)/Z
+    assert tau==sum((p*wi*u[i]/Z for i,(p,wi) in enumerate(zip(P,w))),F(0))
+    v=list(u); v[3]+=F(1,1000)
+    Av=matvec(A,v); resid=[wi-ai for wi,ai in zip(w,Av)]
+    lower=(2*inner(P,w,v)-inner(P,v,Av))/Z
+    upper=(2*inner(P,w,v)-inner(P,v,Av)+inner(P,resid,resid)/alpha)/Z
+    assert lower<=tau<=upper
+
+    # Point-preparation response via a second source b2=1_{x*}/rho0(x*).
+    xstar=0; b2=[F(0)]*len(STATES); b2[xstar]=1/P[xstar]
+    u2=solve(A,b2)
+    v1=list(u); v1[2]+=F(1,2000)
+    v2=list(u2); v2[7]-=F(1,3000)
+    r1=[wi-ai for wi,ai in zip(w,matvec(A,v1))]
+    r2=[bi-ai for bi,ai in zip(b2,matvec(A,v2))]
+    G=inner(P,w,v2)+inner(P,b2,v1)-inner(P,v1,matvec(A,v2))
+    n1=inner(P,r1,r1); n2=inner(P,r2,r2); n12=inner(P,r1,r2)
+    center=n12/(2*alpha); radius=ceil_sqrt(n1*n2)/(2*alpha)
+    cross_lo=G+center-radius; cross_hi=G+center+radius
+    true_cross=inner(P,b2,u)
+    assert cross_lo<=true_cross<=cross_hi
+
+    # Recover degree<=2 Boolean coefficients for clock 0 from empty/single/pair probes.
+    def queried_clock0(S):
+        x=sum(1<<j for j in S)
+        r=weight(x^(1<<0))/weight(x)
+        unfavorable=x if r>=1 else x|(1<<0)
+        downhill=attempt(0,unfavorable)*weight(unfavorable^(1<<0))/(weight(unfavorable)+weight(unfavorable^(1<<0)))
+        recovered=downhill*(1+r)/max(F(1),r)
+        assert recovered==attempt(0,x)
+        return recovered
+    a0=queried_clock0(())
+    lin={j:queried_clock0((j,))-a0 for j in (1,2,3)}
+    quad={pair:queried_clock0(pair)-queried_clock0((pair[0],))-queried_clock0((pair[1],))+a0 for pair in combinations((1,2,3),2)}
+    for y in product((0,1),repeat=3):
+        x=sum(y[j-1]<<j for j in (1,2,3))
+        pred=a0+sum(lin[j]*y[j-1] for j in (1,2,3))+sum(quad[p]*y[p[0]-1]*y[p[1]-1] for p in quad)
+        assert pred==attempt(0,x)
+    # Degree-3 perturbation is exactly invisible on the acquisition contexts.
+    cubic=F(1,10)
+    for S in [()] + [(j,) for j in (1,2,3)] + list(combinations((1,2,3),2)):
+        x=sum(1<<j for j in S)
+        assert attempt(0,x)==attempt(0,x,cubic=cubic)
+    tau_cubic=inner(P,w,solve([[w[i]*z for z in row] for i,row in enumerate(full_generator(cubic=cubic))],w))/Z
+    assert tau_cubic!=tau
+    # A preparation actuator that doubles the attempt clock keeps W but changes d.
+    x=0; r=weight(1)/weight(0); d_free=attempt(0,x)*max(F(1),r)/(1+r)
+    d_prepared=attempt(0,x,prep_factor=2)*max(F(1),r)/(1+r)
+    assert d_prepared==2*d_free
+
+    return {
+      'states':len(STATES),'cross_edges':len(cross),'Rm':str(Rm),'Rk':str(Rk),'R':str(R),
+      'min_edge_ratio':str(min(edge_ratios)),'max_edge_ratio':str(max(edge_ratios)),
+      'form_psd_checks':{'A_minus_C':True,'RC_minus_A':True,'C_minus_alphaI':True},
+      'Z':str(Z),'alpha':str(alpha),'tau_exact':str(tau),'tau_float':float(tau),
+      'equilibrium_certificate':{'lower':str(lower),'upper':str(upper),'contains_exact':True},
+      'point_source':{'state':xstar,'p0_state_mass':str(P[xstar]),'response_exact':str(true_cross),
+                      'lower':str(cross_lo),'upper':str(cross_hi),'contains_exact':True},
+      'degree2_clock_recovery':{'queried_contexts':7,'all_contexts_checked':8,'coefficients':{'constant':str(a0),'linear':{str(k):str(v) for k,v in lin.items()},'quadratic':{str(k):str(v) for k,v in quad.items()}},'passed':True},
+      'cubic_countermodel':{'perturbation':str(cubic),'queried_contexts_unchanged':True,'tau_original':str(tau),'tau_modified':str(tau_cubic),'ratio':str(tau_cubic/tau)},
+      'preparation_clock_control':{'free_downhill_rate':str(d_free),'prepared_downhill_rate':str(d_prepared),'ratio':str(d_prepared/d_free),'same_energy_ratio':str(r)}
+    }
+
+if __name__=='__main__': print(json.dumps(main(),indent=2))

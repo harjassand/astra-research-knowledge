@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — verify_source_snapshot.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/synthesis/kinetics/analysis/verify_source_snapshot.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Read-only source snapshot equality and NPZ-header safety audit.&quot;&quot;&quot;
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+import zipfile
+
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+WORKSPACE = ROOT.parent.parent
+SOURCE = WORKSPACE / &quot;work/FI-sources/kinetics&quot;
+PASTED = WORKSPACE / &quot;work/FI-sources/kinetics_PASTED_SOURCE.txt&quot;
+SNAPSHOT = ROOT / &quot;source_snapshot&quot;
+
+
+def describe(path: Path):
+    data = path.read_bytes()
+    return {&quot;bytes&quot;: len(data), &quot;sha256&quot;: hashlib.sha256(data).hexdigest()}
+
+
+def inspect_npz(path: Path):
+    members = []
+    with zipfile.ZipFile(path) as archive:
+        for member in archive.namelist():
+            if not member.endswith(&quot;.npy&quot;):
+                continue
+            with archive.open(member) as stream:
+                version = np.lib.format.read_magic(stream)
+                reader = {
+                    (1, 0): np.lib.format.read_array_header_1_0,
+                    (2, 0): np.lib.format.read_array_header_2_0,
+                    (3, 0): np.lib.format.read_array_header_2_0,
+                }[version]
+                shape, fortran, dtype = reader(stream)
+            members.append({
+                &quot;member&quot;: member,
+                &quot;shape&quot;: list(shape),
+                &quot;dtype&quot;: str(dtype),
+                &quot;has_object_dtype&quot;: bool(dtype.hasobject),
+                &quot;fortran_order&quot;: bool(fortran),
+            })
+    return members
+
+
+def main():
+    source_files = sorted(p for p in SOURCE.rglob(&quot;*&quot;) if p.is_file())
+    snapshot_files = sorted(
+        p for p in SNAPSHOT.rglob(&quot;*&quot;) if p.is_file() and p.name != &quot;PASTED_SOURCE.txt&quot;
+    )
+    source_rel = {p.relative_to(SOURCE).as_posix(): describe(p) for p in source_files}
+    snapshot_rel = {p.relative_to(SNAPSHOT).as_posix(): describe(p) for p in snapshot_files}
+    if source_rel != snapshot_rel:
+        missing = sorted(set(source_rel) - set(snapshot_rel))
+        extra = sorted(set(snapshot_rel) - set(source_rel))
+        changed = sorted(k for k in set(source_rel) &amp; set(snapshot_rel) if source_rel[k] != snapshot_rel[k])
+        raise AssertionError({&quot;missing&quot;: missing, &quot;extra&quot;: extra, &quot;changed&quot;: changed})
+    pasted_source = describe(PASTED)
+    pasted_snapshot = describe(SNAPSHOT / &quot;PASTED_SOURCE.txt&quot;)
+    if pasted_source != pasted_snapshot:
+        raise AssertionError(&quot;pasted source snapshot differs from input&quot;)
+
+    npz_files = sorted(p for p in SNAPSHOT.rglob(&quot;*.npz&quot;) if p.is_file())
+    npz_inventory = {
+        p.relative_to(SNAPSHOT).as_posix(): inspect_npz(p) for p in npz_files
+    }
+    objects = [
+        f&quot;{path}:{member[&#x27;member&#x27;]}&quot;
+        for path, members in npz_inventory.items()
+        for member in members
+        if member[&quot;has_object_dtype&quot;]
+    ]
+    if objects:
+        raise AssertionError({&quot;object_arrays&quot;: objects})
+
+    source_audit_bytes = (SNAPSHOT / &quot;audit.py&quot;).read_bytes()
+    replica_audit_bytes = (ROOT / &quot;replica/audit.py&quot;).read_bytes()
+    original_loader = b&quot;np.load(ROOT/(name+&#x27;.npz&#x27;))&quot;
+    safe_loader = b&quot;np.load(ROOT/(name+&#x27;.npz&#x27;),allow_pickle=False)&quot;
+    if source_audit_bytes.count(original_loader) != 1:
+        raise AssertionError(&quot;source replay loader shape changed; inspect before asserting replica scope&quot;)
+    safe_audit_bytes = source_audit_bytes.replace(original_loader, safe_loader, 1)
+    if replica_audit_bytes != safe_audit_bytes:
+        raise AssertionError(&quot;replica audit.py contains changes beyond the explicit safe loader&quot;)
+    audit_reverse_unchanged = describe(ROOT / &quot;replica/audit_reverse.py&quot;) == describe(SNAPSHOT / &quot;audit_reverse.py&quot;)
+    if not audit_reverse_unchanged:
+        raise AssertionError(&quot;audit_reverse.py was changed in the replay copy&quot;)
+
+    result = {
+        &quot;source_files&quot;: len(source_files),
+        &quot;source_bytes&quot;: sum(p.stat().st_size for p in source_files),
+        &quot;pasted_source_bytes&quot;: PASTED.stat().st_size,
+        &quot;source_tree_exact_snapshot_match&quot;: True,
+        &quot;pasted_source_exact_snapshot_match&quot;: True,
+        &quot;npz_file_count&quot;: len(npz_files),
+        &quot;npz_array_count&quot;: sum(map(len, npz_inventory.values())),
+        &quot;all_npz_arrays_non_object&quot;: True,
+        &quot;npz_header_inventory&quot;: npz_inventory,
+        &quot;replica_audit_reverse_unchanged&quot;: audit_reverse_unchanged,
+        &quot;replica_audit_py_diff_scope&quot;: &quot;the only source-to-replica difference is allow_pickle=False in the replay loader&quot;,
+        &quot;replica_audit_py_source_sha256&quot;: describe(SNAPSHOT / &quot;audit.py&quot;)[&quot;sha256&quot;],
+        &quot;replica_audit_py_bytes&quot;: describe(SNAPSHOT / &quot;audit.py&quot;)[&quot;bytes&quot;],
+        &quot;replica_audit_py_sha256&quot;: describe(ROOT / &quot;replica/audit.py&quot;)[&quot;sha256&quot;],
+        &quot;replica_audit_py_bytes_actual&quot;: describe(ROOT / &quot;replica/audit.py&quot;)[&quot;bytes&quot;],
+        &quot;snapshot_sha256_inventory&quot;: source_rel,
+    }
+    out = HERE / &quot;source_integrity.json&quot;
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: result[k] for k in [
+        &quot;source_files&quot;, &quot;source_bytes&quot;, &quot;pasted_source_bytes&quot;,
+        &quot;source_tree_exact_snapshot_match&quot;, &quot;pasted_source_exact_snapshot_match&quot;,
+        &quot;npz_file_count&quot;, &quot;npz_array_count&quot;, &quot;all_npz_arrays_non_object&quot;,
+        &quot;replica_audit_reverse_unchanged&quot;, &quot;replica_audit_py_diff_scope&quot;,
+    ]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

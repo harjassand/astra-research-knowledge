@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — verify_barrier_gating.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/barrier/verify_barrier_gating.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproducible conditional Landau-model calculations; not material validation.
+
+Dependencies: numpy, scipy, sympy. Run:
+    python verify_barrier_gating.py --output results.json
+
+Source for the *illustrative* BaTiO3 parameter screen:
+Bar et al., arXiv:2604.26089v1, Table 1 and elastic/electrostrictive
+constants in End Notes .1. This combines a frozen-coefficient scalar
+coexistence model with ideal symmetric biaxial elastic loading. It is NOT a
+fit to, or prediction for, a fabricated device. The coefficient a is
+set by exact coexistence, not copied from a measured susceptibility.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+from pathlib import Path
+import numpy as np
+import sympy as sp
+from scipy.integrate import quad
+
+
+def check_symbolic() -&gt; dict:
+    q, b, c, u, C, K, alpha = sp.symbols(&#x27;q b c u C K alpha&#x27;, positive=True)
+    B = sp.symbols(&#x27;B&#x27;, positive=True)
+    a = 3*b**2/(16*c)
+    qb2 = 3*b/(4*c)
+    f0 = a*q**2/2-b*q**4/4+c*q**6/6
+    assert sp.simplify(f0 - c*q**2*(q**2-qb2)**2/6) == 0
+    # Tangent-compensated removal is a nonnegative quartic Bregman divergence.
+    d = (q**4-B**4)/4-B**3*(q-B)
+    assert sp.factor(d) == (q-B)**2*(3*B**2+2*B*q+q**2)/4
+    estar=C*alpha*q**2/(C+K)
+    elastic=sp.simplify(C*(estar-alpha*q**2)**2/2+K*estar**2/2)
+    ugate=2*alpha**2*C*K/(C+K)
+    assert sp.simplify(elastic-ugate*q**4/4) == 0
+    assert sp.simplify(sp.diff(elastic,K)-estar**2/2) == 0
+    return {&#x27;coexistence_factorization&#x27;: True, &#x27;removal_nonnegative_factorization&#x27;: True,
+            &#x27;elastic_elimination&#x27;: True, &#x27;gate_work_derivative&#x27;: True}
+
+
+def audit_path(b: float, c: float, fraction: float, samples: int = 401) -&gt; dict:
+    if b &lt;= 0 or c &lt;= 0 or fraction &lt;= 0:
+        raise ValueError(&#x27;b, c, and gate fraction must be positive&#x27;)
+    a=3*b*b/(16*c); qb=np.sqrt(3*b/(4*c)); U=fraction*b
+    def f(q: float, u: float, h: float) -&gt; float:
+        return a*q*q/2+(u-b)*q**4/4+c*q**6/6-h*q
+    def fp(q: float, u: float) -&gt; float:
+        return a*q+(u-b)*q**3+c*q**5
+    def fpp(q: float, u: float) -&gt; float:
+        return a+3*(u-b)*q*q+5*c*q**4
+    points=[]
+    for t in np.linspace(0,1,samples):
+        points.append((0.,t*U,0.))
+    for q in np.linspace(0,qb,samples):
+        points.append((float(q),U,float(fp(q,U))))
+    for u in np.linspace(U,0,samples):
+        points.append((float(qb),float(u),float(u*qb**3)))
+    max_stationarity=0.; worst_global_excess=0.; min_curvature=np.inf
+    for q,u,h in points:
+        roots=np.roots([c,0,u-b,0,a,-h])
+        real_roots=[float(z.real) for z in roots if abs(z.imag)&lt;1e-7]
+        if not real_roots:
+            raise AssertionError(&#x27;No real stationary point found&#x27;)
+        best=min(f(r,u,h) for r in real_roots)
+        worst_global_excess=max(worst_global_excess,f(q,u,h)-best)
+        max_stationarity=max(max_stationarity,abs(fp(q,u)-h))
+        min_curvature=min(min_curvature,fpp(q,u))
+    field_work=quad(lambda q:fp(q,U),0,qb,epsabs=1e-11)[0]
+    gate_work=quad(lambda u:qb**4/4,U,0,epsabs=1e-11)[0]
+    gap_global=a if U&gt;=b else a-9*(b-U)**2/(20*c)
+    assert gap_global&gt;0
+    assert max_stationarity&lt;1e-10
+    assert worst_global_excess&lt;1e-10
+    assert abs(field_work+gate_work)&lt;1e-10
+    spinodal_q=np.sqrt((3*b-np.sqrt(9*b*b-20*c*a))/(10*c))
+    spinodal_h=fp(spinodal_q,0.)
+    barrier=b**3/(96*c*c)
+    # Direct Hessian check of the spatial failure for a mean-only clamp.
+    if U&lt;3*b:
+        qg=np.sqrt((3*b-U)/(10*c)); N=4
+        base=a-3*b*qg*qg+5*c*qg**4
+        H=(base+U*qg*qg)*np.eye(N)+(2*U*qg*qg/N)*np.ones((N,N))
+        predicted=a-(3*b-U)**2/(20*c)
+        assert abs(np.linalg.eigvalsh(H)[0]-predicted)&lt;1e-10
+    return {&#x27;parameters&#x27;:{&#x27;a&#x27;:a,&#x27;b&#x27;:b,&#x27;c&#x27;:c,&#x27;q_B&#x27;:float(qb),&#x27;U&#x27;:U},
+            &#x27;sampled_control_points&#x27;:len(points),&#x27;max_stationarity_residual&#x27;:max_stationarity,
+            &#x27;worst_energy_excess_over_stationary_global_minimum&#x27;:worst_global_excess,
+            &#x27;min_sampled_path_curvature&#x27;:min_curvature,&#x27;exact_middle_global_curvature_bound&#x27;:gap_global,
+            &#x27;field_work&#x27;:field_work,&#x27;gate_work&#x27;:gate_work,&#x27;net_reversible_work&#x27;:field_work+gate_work,
+            &#x27;peak_field&#x27;:U*qb**3,&#x27;field_only_A_spinodal&#x27;:spinodal_h,
+            &#x27;peak_field_over_field_only_spinodal&#x27;:U*qb**3/spinodal_h,
+            &#x27;ungated_barrier_density&#x27;:barrier,
+            &#x27;circulated_work_over_ungated_barrier&#x27;:field_work/barrier,
+            &#x27;matched_quadratic_gate&#x27;: {
+                &#x27;description&#x27;:&#x27;Constant quadratic gate during traversal, matched global curvature margin; not an optimization over all feedback controls.&#x27;,
+                &#x27;k&#x27;:gap_global-a+9*b*b/(20*c),
+                &#x27;circulated_work&#x27;:(gap_global-a+9*b*b/(20*c))*qb*qb/2,
+                &#x27;peak_field&#x27;:(gap_global-a+9*b*b/(20*c))*qb,
+                &#x27;quartic_to_quadratic_work_ratio&#x27;:field_work/((gap_global-a+9*b*b/(20*c))*qb*qb/2)},
+            &#x27;global_clamp_counterexample&#x27;:{
+                &#x27;homogeneous_energy&#x27;:&#x27;F = sum f0(q_i) + U/(4*N)*(sum q_i^2)^2 - h*sum q_i&#x27;,
+                &#x27;nonuniform_mode_curvature_min&#x27;: a-(3*b-U)**2/(20*c) if U&lt;3*b else a,
+                &#x27;q_at_nonuniform_mode_min&#x27;:float(np.sqrt((3*b-U)/(10*c))) if U&lt;3*b else 0.,
+                &#x27;within_traversed_interval&#x27;:bool(0 &lt;= (3*b-U)/(10*c) &lt;= qb*qb)}}
+
+
+def bto_screen(fraction: float) -&gt; dict:
+    # f0 = A P^2 + B P^4 + D P^6, versus a P^2/2 - b P^4/4 + c P^6/6.
+    B=-1.69e8; D=2.37e9
+    b=-4*B; c=6*D; a=3*b*b/(16*c)
+    p=np.sqrt(3*b/(4*c)); U=fraction*b
+    C11=178e9; C12=96.4e9
+    Q12=-0.045; Q11=0.11
+    # In-plane exx=eyy=e; zero out-of-plane stress.
+    D_biax=C11+C12-2*C12*C12/C11
+    C_effective=2*D_biax
+    umax=2*C_effective*Q12*Q12
+    if U&gt;=umax:
+        raise ValueError(&#x27;Requested gate exceeds ideal fully clamped limit&#x27;)
+    kappa=U/(umax-U) # Effective biaxial reference stiffness ratio K/C_effective.
+    e=Q12*p*p/(1+kappa)
+    ez=Q11*p*p-2*C12/C11*(e-Q12*p*p)
+    strain=np.array([e,e,ez])
+    stress=np.array([D_biax*(e-Q12*p*p),D_biax*(e-Q12*p*p),0.])
+    spin_q=np.sqrt((3*b-np.sqrt(9*b*b-20*c*a))/(10*c))
+    spin_field=a*spin_q-b*spin_q**3+c*spin_q**5
+    return {&#x27;status&#x27;:&#x27;illustrative frozen-coefficient material screen, not a device prediction&#x27;,
+            &#x27;source&#x27;:&#x27;https://arxiv.org/html/2604.26089v1&#x27;,
+            &#x27;B_J_m5_Cminus4&#x27;:B,&#x27;D_J_m9_Cminus6&#x27;:D,
+            &#x27;polarization_C_per_m2&#x27;:p,&#x27;a_set_by_coexistence&#x27;:a,
+            &#x27;required_U_J_m5_Cminus4&#x27;:U,&#x27;fully_biaxially_clamped_U_limit&#x27;:umax,
+            &#x27;effective_biaxial_modulus_Pa&#x27;:C_effective,
+            &#x27;required_effective_reference_modulus_Pa&#x27;:kappa*C_effective,
+            &#x27;ideal_reference_to_active_stiffness_ratio&#x27;:kappa,
+            &#x27;middle_global_curvature_fraction&#x27;:1-2.4*(1-fraction)**2 if fraction&lt;1 else 1,
+            &#x27;peak_electric_field_V_per_m&#x27;:U*p**3,
+            &#x27;voltage_across_500nm_V&#x27;:U*p**3*500e-9,
+            &#x27;ideal_circulated_work_J_per_m3&#x27;:U*p**4/4,
+            &#x27;active_strain_at_gated_endpoint&#x27;:strain.tolist(),
+            &#x27;active_normal_stress_at_gated_endpoint_Pa&#x27;:stress.tolist(),
+            &#x27;field_only_scalar_spinodal_V_per_m&#x27;:spin_field,
+            &#x27;caveats&#x27;:[&#x27;Measured multidimensional constitutive data are required.&#x27;,
+                       &#x27;Symmetric local biaxial spring loading and zero out-of-plane stress are assumed.&#x27;,
+                       &#x27;No local stiffness gate or recovery efficiency was experimentally obtained.&#x27;,
+                       &#x27;No dielectric breakdown, fatigue, domain or rate certification is implied.&#x27;,
+                       &#x27;The preprint end-note sixth-order temperature formula is not used; Table 1 supplies D.&#x27;]}
+
+
+def main() -&gt; None:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;results.json&#x27;))
+    args=parser.parse_args()
+    results={&#x27;scope&#x27;:&#x27;Exact scalar mean-field algebra and floating-point diagnostics only.&#x27;,
+             &#x27;symbolic&#x27;:check_symbolic(),
+             &#x27;normalized_models&#x27;:[audit_path(3.,1.,fraction) for fraction in (1.,0.55)],
+             &#x27;BaTiO3_illustrative_screens&#x27;:[bto_screen(fraction) for fraction in (1.,0.55)]}
+    args.output.write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;,encoding=&#x27;utf-8&#x27;)
+    print(json.dumps(results,indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre></body></html>

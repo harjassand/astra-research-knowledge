@@ -1,0 +1,179 @@
+# Independent delta audit: mixed local/mean gate
+
+Date: 14 October 2026  
+Status: exact conditional audit of the mixed-gate ansatz; no material or device
+claim.
+
+## Verdict and scope
+
+I independently checked the mixed-gate theorem and its finite-cell example in
+`work/FI-root/mixed_compliance_gate.py` and
+`work/FI-root/MIXED_GATE_RESULTS.json`. Symbolic expansion confirms the gap
+decomposition, local tangent factorization, terminal removal identity, and
+Hessian formulas. An exact rational evaluation confirms the reported
+32-cell finite-amplitude counterexample. I found no algebraic error in the
+stated theorem.
+
+For the specified control ansatz, the sharp threshold uniform over system size
+for the tangent path to remain a global-minimum path is
+`theta*=0.167258048943982...`. This is below the threshold for full-functional
+convexity, `0.354502775632097...`, and above the homogeneous linear-stability
+threshold, `0.031754163448146...`. Thus a homogeneous trajectory may be locally
+stable at every point and still lose global optimality to a finite-amplitude,
+spatially nonuniform state.
+
+The threshold is a theorem about an ideal blend of local and mean-field
+quartics. It does not identify a compatible elastic shunt, establish that its
+mixing fraction is controllable, or validate a BaTiO3 constitutive model. The
+primary-source coefficient discrepancy and the local-versus-nonlocal
+elasticity caveat in `READ_PRIMARY_LEDGER.md` remain in force. No finite-noise,
+finite-rate, actuator, recovery-efficiency, novelty, or performance conclusion
+is inherited from this zero-temperature energy audit.
+
+## Model and exact path
+
+Take `0<=theta<=1`, `beta=(1-theta)b`, `a=3b^2/(16c)`, and
+`qB^2=3b/(4c)`, with `b,c>0`. The N-site energy is
+
+\[
+ E(q;u,h)=\sum_{i=1}^N f_0(q_i)-h\sum_iq_i
+ +\frac{\theta u}{4}\sum_iq_i^4
+ +\frac{(1-\theta)u}{4N}\left(\sum_iq_i^2\right)^2.
+\]
+
+During engagement, `h=0` and `u` rises from zero to `b`. Since
+`f0(q_i)>=0` and both gate terms are nonnegative, the all-zero state is the
+unique global minimum for every `u>0`, for all `theta` in the stated range.
+
+For terminal removal at `B=qB 1`, use `h=u qB^3`. The energy gap is the
+nonnegative onsite base plus `u` times the Bregman remainder of the mixed
+gate. That remainder has the exact decomposition
+
+\[
+\begin{split}
+G_\theta(q)-G_\theta(B)-\nabla G_\theta(B)\cdot(q-B)
+={}&\frac{\theta}{4}\sum_i(q_i-q_B)^2
+ (q_i^2+2q_Bq_i+3q_B^2)\\
+&+\frac{1-\theta}{4N}\left(\sum_iq_i^2-Nq_B^2\right)^2
+ +\frac{(1-\theta)q_B^2}{2}\sum_i(q_i-q_B)^2\geq0.
+\end{split}
+\]
+
+Adding `sum_i f0(q_i)>=0` proves the selected endpoint is a global minimum
+for every `u>=0` and every `theta`. For `u>0` it is unique; at `u=0`, the
+coexistence states are restored. These two path segments do not require the
+middle-stage threshold.
+
+## Middle-stage gap and sharp threshold
+
+Set `u=b`, choose a homogeneous reference `q_i=v` with
+`0<=v<=qB`, and apply `h(v)=av+cv^5`. The mean quartic contributes the
+homogeneous derivative `(1-theta)b v^3`; together with the local term this
+cancels the bare `-b v^3`, so `q=v1` is stationary. For arbitrary `q`, let
+`S2=sum_i q_i^2`. Direct expansion gives
+
+\[
+ E(q;b,h(v))-E(v1;b,h(v))
+ =\sum_i D_\theta(q_i;v)
+  +\frac{\beta}{4N}(S_2-Nv^2)^2,
+\]
+
+where
+
+\[
+ D_\theta(q;v)=(q-v)^2K_\theta(q,v),\quad
+ K_\theta=\frac a2-\frac{\beta(q+v)^2}{4}
+ +\frac c6(q^4+2q^3v+3q^2v^2+4qv^3+5v^4).
+\]
+
+For `v>0`, write `t=q/v>=0` and `y=v^2`. Then
+
+\[
+ K_\theta=\frac a2-\frac{\beta(t+1)^2}{4}y
+                       +\frac{cP(t)}6y^2,
+ \qquad P(t)=t^4+2t^3+3t^2+4t+5.
+\]
+
+The minimum over `y>=0` is nonnegative exactly when
+`(beta/b)^2 <= R(t)=P(t)/(t+1)^4`. Its derivative is
+`R'(t)=2(t^3-3t-8)/(t+1)^5`. The cubic has one positive root `alpha`
+between 2 and 3; it is the unique minimizer of `R` on `[0,infinity)`. Thus
+
+\[
+ \theta_* = 1-\sqrt{R(\alpha)}
+           =0.167258048943982... .
+\]
+
+For `theta>=theta*`, every scalar `Dtheta` is nonnegative; if `q<0`, evenness
+of the polynomial terms gives
+`Dtheta(-|q|;v)=Dtheta(|q|;v)+2h(v)|q|>=Dtheta(|q|;v)`. The vector gap is
+therefore nonnegative for every `N`. At `theta=theta*`, the bound is
+non-strict at one scalar ratio/scale. For each finite `N` the mean-square
+correction removes a one-site tie, but that correction is `O(1/N)`; no
+size-independent gap is proved at the threshold.
+
+For `theta<theta*`, take `t=alpha` and the minimizing scale
+`v_*^2=3 beta(alpha+1)^2/(4cP(alpha))`, `q_*=alpha v_*`. Then
+`Ktheta(q*,v*)<0`. Both `v*` and `q*` lie below `qB`: after dividing their
+squared values by `qB^2`, the bounds reduce to
+`(alpha+1)^2<P(alpha)` and
+`alpha^2(alpha+1)^2<P(alpha)`, respectively. A vector with one site at `q*`
+and all other sites at `v*` has energy difference
+
+\[
+ D_\theta(q_*;v_*)+\frac{\beta}{4N}(q_*^2-v_*^2)^2.
+\]
+
+The first term is a fixed negative number and the second tends to zero as
+`N` grows. Therefore every `theta<theta*` fails to certify a global-minimum
+path uniformly over all system sizes. This establishes sharpness for the
+stated path/model family, not for other feedback laws or other architectures.
+
+## Local stability, convexity, and the finite-amplitude witness
+
+Writing `m2=S2/N`, the full Hessian is
+
+\[
+ H=\operatorname{diag}\left(a-3\beta q_i^2+\beta m_2+5cq_i^4\right)
+          +\frac{2\beta}{N}qq^T.
+\]
+
+For a lattice with at least two sites, at a homogeneous state the longitudinal
+eigenvalue is `a+5cv^4`; each transverse eigenvalue is
+`a-2 beta v^2+5cv^4`. The minimum over `v` is
+`a-beta^2/(5c)`, so every homogeneous Hessian is positive exactly above
+`theta_lin=1-sqrt(15)/4=0.031754163448146...` (marginal at equality).
+
+For the entire functional, dropping the nonnegative `beta m2` diagonal term
+and the positive-semidefinite rank-one term gives a uniform lower bound
+`a-9 beta^2/(20c)`. It is positive above
+`theta_conv=1-sqrt(15)/6=0.354502775632097...`. This is also sharp uniformly
+in `N`: one nonzero site at the scalar-curvature minimizer has a Rayleigh
+quotient approaching that lower bound as `N` grows. Hence the global-path
+threshold lies between homogeneous local stability and full convexity.
+
+An exact witness at `N=32`, `theta=1/10`, `b=c=1`, `v=1/4`, and one
+alternative site `q=5/8` uses `h=49/1024`. Both values are inside
+`[0,qB]` (`qB=sqrt(3)/2`). The scalar tangent gap is
+`-3969/2621440`; the positive mean-square correction is
+`3969/5242880`; the net energy difference is
+`-3969/5242880`. Yet the minimum transverse curvature across every homogeneous
+state is `51/2000>0`, and the longitudinal curvature is positive. This is a
+finite-amplitude spatial failure despite homogeneous linear stability.
+
+Along the homogeneous path the mixed gate has exactly the same value and
+derivative as a fully local gate: its field work per site is `b qB^4/4`, and
+removing the gate returns `-b qB^4/4` in the ideal quasistatic model. The
+conditional ideal net is zero. This says nothing about actuator work or
+recovery losses. The principal comparison boundary remains the supplied
+barrier/tilt feedback, charge-controlled/negative-capacitance, mechanical
+boundary-condition, and multicaloric baselines recorded in the main audit.
+
+## Independent replay
+
+`delta_mixed_gate_checker.py` does not import the root checker. It proves the
+decompositions by symbolic expansion, checks the threshold derivative and
+interior scale, derives the Hessian thresholds, and evaluates the finite-cell
+witness exactly over rationals. The recorded output is
+`DELTA_MIXED_GATE_RESULTS.json`. This check is mathematical consistency
+evidence only; it is not external review or implementation validation.

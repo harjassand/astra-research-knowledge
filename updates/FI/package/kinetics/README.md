@@ -1,0 +1,76 @@
+# Reproduce the acquired-reference kinetic experiment
+
+Read `RESEARCH_NOTE.md` first for the model assumptions, limits, failed runs and close prior art. Canonical headline outputs are `reverse_A.json`, `reverse_B.json`, `reverse_matched_*.json`, `reverse_uncertainty_results.json`, and `combined_audit.json`.
+
+Requirements: Python 3, NumPy, SciPy and SymPy; exact versions used are in `environment.json`. Run commands from this directory. Use a single numerical thread for the recorded configuration:
+
+```sh
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+python reverse_experiment.py
+python reverse_uncertainty.py
+python response_ambiguity.py
+python failure_preflight.py
+```
+
+The four reverse experiment runs include model acquisition, reference construction, proposal and final verification. This writes fresh timing values; they will vary by machine. Witness NPZ arrays are floating *proposals*. `certify.py` defines an exact dyadic witness and rationally checks it.
+
+## Replay final witnesses without private model data
+
+```sh
+python - <<'PY'
+from audit import replay
+for name in ['reverse_A','reverse_B','reverse_matched_tensor']:
+    print(replay(name))
+PY
+```
+
+`from_transcript` reconstructs the law from acquired energies and original-law reverse rates. It does not use the fixture's hidden graph or private clock arrays. The target coordinate and reaction coefficient remain specified inputs.
+
+## Additional tests
+
+```sh
+python audit.py
+python audit_extended.py
+python audit_reverse.py
+```
+
+The complete base audit can exceed a short execution-tool timeout. To run in stages:
+
+```sh
+python - <<'PY'
+from audit import check_small
+print(check_small(11,B=2,m=2))
+print(check_small(23,B=2,m=2,context=True))
+PY
+python - <<'PY'
+from audit import check_small
+print(check_small(7,B=3,m=2))
+print(check_small(19,B=3,m=2,context=True))
+PY
+python - <<'PY'
+from audit import replay
+print(replay('primary_r2'))
+print(replay('pcg_primary_r3','primary_r3'))
+print(replay('context_rare'))
+print(replay('strong_repair'))
+PY
+```
+
+The original all-at-once audit attempts hit tool time limits; their stages completed and are preserved. `combined_audit.json` describes exactly what ran. Audit assertion counts include repeated entrywise identities, not that many independent mathematical results.
+
+## File map
+
+- `reverse_tomography.py`: original-law downhill interrogation, unknown degree-two prefactor support recovery.
+- `kinetic_tomography.py`: Boolean polynomial recovery and earlier balancing-interface pilot.
+- `model.py`: pairwise model acquisition, partition search, exact operator/source compiler.
+- `tt_ops.py`, `solve.py`: tensor operations and conventional approximate inverse/PCG proposals.
+- `certify.py`: exact rational full-source and two-source certificates; local alpha construction.
+- `full_reference.py`: intentionally enumerative, source-certified preconditioned comparator.
+- `reverse_experiment.py`: canonical comparison and prediction driver.
+- `reverse_uncertainty.py`: deterministic observation-error propagation plus physical measurement cost ledger.
+- `response_ambiguity.py`: exact finite-response nonidentifiability example.
+- `failure_preflight.py`: admitted-block comparison failure on a dense heterogeneous law.
+- Other `primary_*`, `pcg_*`, `context_*`, `rank_*`, `field_*`, `clock_*`, `prepared_*`, `matched_*` and `unknown_support_*` files retain completed pilots, repairs, failures and earlier interface tests. They are not additional independent molecules.
+
+No physical rate measurements, external molecular tools or experimental trajectories were used. The exact synthetic local generator is the computational input; calling it a metastable escape-rate oracle would change the problem and invalidate the resource claims.

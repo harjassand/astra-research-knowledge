@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — audit.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/audit.py">Original bytes</a></p><pre>import json,time
+from pathlib import Path
+from fractions import Fraction as F
+import numpy as np
+import sympy as sp
+from model import *
+from solve import pcg_tensor
+from certify import certify
+from tt_ops import dense_for_audit_only
+ROOT=Path(__file__).parent
+
+def kron_all(ms):
+    a=np.array([[F(1)]],dtype=object)
+    for m in ms:a=np.kron(a,m)
+    return a
+
+def check_small(seed=11,B=3,m=2,context=False):
+    checks=0;truth=fixture(B=B,m=m,rarity=1,seed=seed)
+    if context:truth=add_context_clock(truth,F(1,10))
+    learn,tr=acquire(truth);gs,pp=discover_partition(learn,max_local_bits=m);c=Compiler(learn,gs);dims=[len(p) for p in c.prob];N=int(np.prod(dims))
+    A=sum((kron_all(ms) for ms in c.rawterms),np.full((N,N),F(0),dtype=object));C=np.full_like(A,F(0))
+    for b,M in enumerate(c.refraw):C+=kron_all([M if b==j else eye(d) for j,d in enumerate(dims)])
+    rho=[];ww=[];statephys=[]
+    for aa in np.ndindex(*dims):
+        p=F(1);x=0
+        for b,a in enumerate(aa):
+            p*=c.prob[b][a]
+            for j,node in enumerate(gs[b]):x|=int(c.bits[b][a,j])&lt;&lt;node
+        w=F(1)
+        for b,s,d,t,g in c.cross:w*=(g if c.bits[b][aa[b],s]==c.bits[d][aa[d],t] else F(1))/min(F(1),g)
+        rho.append(p);ww.append(w);statephys.append(x)
+    inv={x:j for j,x in enumerate(statephys)}
+    for j,x in enumerate(statephys):
+        total=F(0)
+        for i in range(learn[&#x27;n&#x27;]):
+            xp=x^(1&lt;&lt;i);jp=inv[xp];mx=weight(truth,x);mp=weight(truth,xp);nu=truth[&#x27;nu&#x27;][i]
+            if context:
+                z=sum(((x&gt;&gt;node)&amp;1)&lt;&lt;k for k,node in enumerate(truth[&#x27;clock_contexts&#x27;][i]));nu=truth[&#x27;clock_tables&#x27;][i][z]
+            q=nu*mp/(mx+mp)
+            assert A[j,jp]==-ww[j]*q;checks+=1;total+=q
+            ratio=A[j,jp]/C[j,jp];assert 1&lt;=ratio&lt;=c.R;checks+=1
+            assert rho[j]*A[j,jp]==rho[jp]*A[jp,j];checks+=1
+        kill=learn[&#x27;kappa&#x27;]*((x&gt;&gt;learn[&#x27;target&#x27;])&amp;1)
+        assert A[j,j]==ww[j]*(total+kill);checks+=1
+        assert sum(A[j,:])==ww[j]*kill;checks+=1
+    assert sum(p*w for p,w in zip(rho,ww))==c.Z;checks+=1
+    W=np.diag(np.array(rho,dtype=object));rng=np.random.default_rng(seed)
+    for k in range(10):
+        z=np.array([F(int(x),7) for x in rng.integers(-5,6,N)],dtype=object)
+        ac=z@(W@A)@z;cc=z@(W@C)@z;assert cc&lt;=ac&lt;=c.R*cc;checks+=1
+    results={&#x27;states&#x27;:N,&#x27;checks&#x27;:checks}
+    if N&lt;=16:
+        AA=sp.Matrix(A);bb=sp.Matrix(ww);u=AA.inv()*bb
+        mean=sum(p*w*F(u[j]) for j,(p,w) in enumerate(zip(rho,ww)))/c.Z
+        v,log=pcg_tensor(c,rank=4,iterations=8);cert=certify(c,v);assert F(cert[&#x27;lower&#x27;])&lt;=mean&lt;=F(cert[&#x27;upper&#x27;]);checks+=1
+        # Exact preconditioned contraction, including noncommuting actual/reference forms.
+        CC=sp.Matrix(C);invC=CC.inv();step=F(2)/(1+c.R);q=(c.R-1)/(c.R+1)
+        for k in range(6):
+            z=sp.Matrix([sp.Rational(int(x),9) for x in rng.integers(-4,5,N)]);ep=z-step*invC*AA*z
+            en=(z.T*sp.Matrix(W)*CC*z)[0];ee=(ep.T*sp.Matrix(W)*CC*ep)[0];assert ee&lt;=q*q*en;checks+=1
+        results.update(exact_mean=str(mean),candidate_ratio=cert[&#x27;ratio_float&#x27;],checks=checks)
+    return results
+
+def replay(name,transcript_name=None):
+    tr=json.load(open(ROOT/((transcript_name or name)+&#x27;_transcript.json&#x27;)))
+    # Solve 1+n+n(n-1)/2 = query count exactly, avoiding float identification.
+    n=next(k for k in range(1,200) if 1+k+k*(k-1)//2==tr[&#x27;energy_queries&#x27;])
+    learn=from_transcript(n,tr);gs,_=discover_partition(learn);c=Compiler(learn,gs)
+    a=np.load(ROOT/(name+&#x27;.npz&#x27;));v=[a[str(i)] for i in range(c.B)];ans=certify(c,v)
+    old=json.load(open(ROOT/(name+&#x27;.json&#x27;)))
+    assert F(ans[&#x27;lower&#x27;])==F(old[&#x27;lower&#x27;]) and F(ans[&#x27;upper&#x27;])==F(old[&#x27;upper&#x27;])
+    return {&#x27;name&#x27;:name,&#x27;ratio&#x27;:ans[&#x27;ratio_float&#x27;],&#x27;seconds&#x27;:ans[&#x27;seconds&#x27;],&#x27;exact_endpoint_matches&#x27;:2,&#x27;private_truth_used&#x27;:False}
+
+def main():
+    start=time.perf_counter();small=[check_small(11,B=2,m=2),check_small(23,B=2,m=2,context=True),check_small(7,B=3,m=2),check_small(19,B=3,m=2,context=True)]
+    replays=[replay(&#x27;primary_r2&#x27;),replay(&#x27;pcg_primary_r3&#x27;,&#x27;primary_r3&#x27;),replay(&#x27;context_rare&#x27;),replay(&#x27;strong_repair&#x27;)]
+    # Context tomography must detect a model that identical energy and all-zero probes cannot.
+    a=json.load(open(ROOT/&#x27;primary_r2_transcript.json&#x27;));b=json.load(open(ROOT/&#x27;context_100_transcript.json&#x27;))
+    assert a[&#x27;weights&#x27;]==b[&#x27;weights&#x27;]
+    assert all(F(a[&#x27;balanced_rates&#x27;][str(i)])==F(b[&#x27;balanced_rates&#x27;][f&#x27;{i}:0&#x27;]) for i in range(18))
+    extra=1+18
+    from response_ambiguity import main as ambiguity
+    ambiguity();amb=json.load(open(ROOT/&#x27;response_ambiguity.json&#x27;))
+    out={&#x27;small_models&#x27;:small,&#x27;replays&#x27;:replays,&#x27;exact_assertions&#x27;:sum(x[&#x27;checks&#x27;] for x in small)+sum(x[&#x27;exact_endpoint_matches&#x27;] for x in replays)+extra+amb[&#x27;exact_assertions&#x27;],&#x27;seconds&#x27;:time.perf_counter()-start,&#x27;scope&#x27;:&#x27;same-session algebra and deterministic replay; not external or formal review&#x27;}
+    json.dump(out,open(ROOT/&#x27;audit_results.json&#x27;,&#x27;w&#x27;),indent=2);print(json.dumps(out,indent=2))
+if __name__==&#x27;__main__&#x27;:main()
+</pre></body></html>

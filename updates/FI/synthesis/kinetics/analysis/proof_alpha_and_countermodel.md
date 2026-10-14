@@ -1,0 +1,53 @@
+# Exact certificate and acquisition-obstruction notes
+
+This file states the two new finite claims checked in the owned replay package. They are mathematical checks of the retained synthetic models, not physical claims.
+
+## Validating a stored local alpha scalar with a new witness
+
+Let `K` be the exact symmetric killed local reference matrix for the target block. It is a positive definite M-matrix, so `K^{-1}` is entrywise nonnegative. Suppose `u` is an exact rational vector with `u>0` and
+
+`delta = ||K u - 1||_infinity < 1`.
+
+Then `K u >= (1-delta) 1`. Applying the positive inverse gives
+
+`K^{-1} 1 <= u/(1-delta)`.
+
+Thus the infinity norm of `K^{-1}` is at most `max(u)/(1-delta)`. Since `K^{-1}` is symmetric positive definite, its largest eigenvalue is bounded by its induced infinity norm. Consequently
+
+`lambda_min(K) >= alpha(u) := (1-delta)/max(u)`.
+
+The global reference is a Kronecker sum of nonnegative local generators plus the target reaction term in the target block, so its smallest eigenvalue is no smaller than this target-block lower bound.
+
+The checker forms `u` by solving the acquired local system at 100 decimal digits and rounding to a 112-bit dyadic vector. It then checks all entries of `u` positive, computes `delta` with exact `Fraction` arithmetic, and checks the killed-generator off-diagonal signs. For each packet scalar `alpha_old`, it checks the exact rational inequality `alpha_old <= alpha(u)`. This is sufficient to certify the old scalar as a conservative lower bound, even though the original local `u` was not saved.
+
+For the saved tensor response `v`, the source checker computes exact rational `L` and `r^2` from the fixed TT arrays. It verifies
+
+`lower = L/Z`
+
+and independently reconstructs
+
+`upper_old = (L + r^2/alpha_old)/Z`.
+
+Those values equal the original stored endpoint strings exactly. The fresh endpoint instead uses `alpha(u)`. This recertification validates the original scalar and the retained response array while leaving the original platform-regenerated endpoint audit as FAIL. It cannot identify the original 46-bit `u` because only scalar residual/max data were retained.
+
+## Degree-three mobility hidden from the degree-two scan
+
+Take four bits `x=(x_0,x_1,x_2,x_3)`, uniform energy `W(x)=1`, and target hazard `k(x)=x_0`. For every bit the reversible heat-bath flip rate is
+
+`q_i(x) = a_i(x_{-i})/2`.
+
+In model A, set `a_i=1` everywhere. In model B, set
+
+`a_0(y) = 1 - (99/100) y_1 y_2 y_3`,
+
+and `a_i=1` for `i=1,2,3`. The hidden prefactor is positive (its minimum is `1/100`) and has degree three. Both models have the same energy at every state.
+
+The acquisition scans, for each coordinate `i`, contexts with zero, one, or two excited entries among the other three. At every such context, `y_1 y_2 y_3=0`, so `a_0=1` in both models. Their downhill query rates are therefore identical (`1/2`) for every query at every coordinate. This is an exact transcript collision, not a finite-precision statement.
+
+Let `K=-Q+diag(x_0)` be the 16-by-16 killed generator. The saved checker solves `K u=1` by rational Gaussian elimination and verifies every residual entry equals one and every entry of `u` is positive. For uniform initial mass it obtains
+
+- Model A: `16^{-1} 1^T u = 3`.
+- Model B: `16^{-1} 1^T u = 5500371/1711720`.
+- Ratio: `1833457/1711720 = 1.071119692473068...`.
+
+The full response vectors and exact checks are saved in `degree3_countermodel_results.json`. A downhill-clock query with all three context bits excited distinguishes this particular pair immediately. The general remedy is a justified global degree bound or enough context coverage for the admitted support class; the degree-two observations alone do not supply either one.

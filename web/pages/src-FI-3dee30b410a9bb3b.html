@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — countermodels.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/synthesis/kinetics_critic/countermodels.py">Original bytes</a></p><pre>&quot;&quot;&quot;Exact information-boundary examples for cubic clocks and prep controls.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations
+import json
+import independent_check as c
+
+# Four-bit reversible heat-bath model: target bit 0, three strongly occupied
+# context bits, and deliberately slow but degree-zero context clocks on 1..3.
+old=(c.FIELDS,c.EDGES,c.KAPPA,c.CLOCK_COEFFS)
+c.FIELDS=(F(1),F(10**6),F(10**6),F(10**6))
+c.EDGES={}
+c.KAPPA=F(1)
+c.CLOCK_COEFFS={0:{():F(1)},1:{():F(1,10**6)},2:{():F(1,10**6)},3:{():F(1,10**6)}}
+P=c.p0_vector()
+def eq_mean(cubic):
+    L=c.full_generator(cubic=cubic)
+    u=c.solve(L,[F(1)]*len(c.STATES))
+    return c.inner(P,[F(1)]*len(P),u)
+base=eq_mean(F(0)); eps=F(1,10**15); cubic=F(1)-eps; hidden=eq_mean(cubic)
+queries=[()] + [(j,) for j in (1,2,3)] + list(combinations((1,2,3),2))
+unchanged=all(c.attempt(0,sum(1&lt;&lt;j for j in S))==c.attempt(0,sum(1&lt;&lt;j for j in S),cubic=cubic) for S in queries)
+assert unchanged and hidden&gt;base
+cubic_result={&#x27;n&#x27;:4,&#x27;fields&#x27;:[str(x) for x in c.FIELDS],&#x27;target&#x27;:0,&#x27;reaction_kappa&#x27;:&#x27;1&#x27;,&#x27;other_clock&#x27;:&#x27;1/1000000&#x27;,
+ &#x27;degree3_coefficient&#x27;:str(-cubic),&#x27;hidden_context_attempt&#x27;:&#x27;1/1000000000000000&#x27;,
+ &#x27;degree0_1_2_context_queries&#x27;:len(queries),&#x27;all_those_clock_readings_unchanged&#x27;:unchanged,
+ &#x27;energy_law_same&#x27;:True,&#x27;baseline_mean&#x27;:str(base),&#x27;hidden_clock_mean&#x27;:str(hidden),
+ &#x27;mean_ratio_exact&#x27;:str(hidden/base),&#x27;mean_ratio_float&#x27;:float(hidden/base),
+ &#x27;status&#x27;:&#x27;exact finite countermodel; cubic law is outside the acquired degree&lt;=2 premise&#x27;}
+
+# One-coordinate detailed-balance law with W(1)/W(0)=3/2 and a reaction
+# hazard at state 1. The preparation operation can double the microscopic
+# clock in one physical model, making it observationally identical to a model
+# whose free clock is itself twice as fast.
+def one_bit_mean(attempt):
+    r=F(3,2); W=[F(1),r]; q01=attempt*r/(1+r); q10=attempt/(1+r); k=F(1)
+    L=[[q01,-q01],[-q10,q10+k]]
+    u=c.solve(L,[F(1),F(1)])
+    # Equilibrium weights normalized from W.
+    p=[x/sum(W) for x in W]
+    return c.inner(p,[F(1),F(1)],u)
+# Free law 1, prep multiplies clock by 2; second free law 2, prep factor 1.
+a_free_1=F(1); prep_factor_1=F(2); a_free_2=F(2); prep_factor_2=F(1)
+r=F(3,2); downhill=lambda a: a*max(F(1),r)/(1+r)
+obs1=downhill(a_free_1*prep_factor_1);obs2=downhill(a_free_2*prep_factor_2)
+assert obs1==obs2
+prep_result={&#x27;energy_ratio&#x27;:&#x27;3/2&#x27;,&#x27;reaction_kappa&#x27;:&#x27;1&#x27;,&#x27;model_1&#x27;:{&#x27;free_attempt&#x27;:str(a_free_1),&#x27;prep_factor&#x27;:str(prep_factor_1),&#x27;prepared_downhill_rate&#x27;:str(obs1),&#x27;free_equilibrium_mean&#x27;:str(one_bit_mean(a_free_1))},
+ &#x27;model_2&#x27;:{&#x27;free_attempt&#x27;:str(a_free_2),&#x27;prep_factor&#x27;:str(prep_factor_2),&#x27;prepared_downhill_rate&#x27;:str(obs2),&#x27;free_equilibrium_mean&#x27;:str(one_bit_mean(a_free_2))},
+ &#x27;prepared_observations_equal&#x27;:True,&#x27;free_mean_ratio&#x27;:str(one_bit_mean(a_free_1)/one_bit_mean(a_free_2)),
+ &#x27;status&#x27;:&#x27;exact control-dependence countermodel; the source avoids it only by assuming preparation/readout preserves the original conditional clock&#x27;}
+
+(c.FIELDS,c.EDGES,c.KAPPA,c.CLOCK_COEFFS)=old
+print(json.dumps({&#x27;cubic_hidden_clock&#x27;:cubic_result,&#x27;preparation_clock_invariance&#x27;:prep_result},indent=2))
+</pre></body></html>

@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — deepening_checker.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/synthesis/barrier/deepening_checker.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact scalar identities and scoped finite-time/noise consequences.
+
+This checker is independent of the supplied sampled-root verifier. It proves
+the polynomial identities symbolically, evaluates the normalized U=0.55 b
+case, and records asymptotic one-coordinate Gibbs/Laplace diagnostics. Those
+finite-volume diagnostics are conditional on the stated scalar model; they
+are not a physical BaTiO3 prediction.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+import sympy as sp
+
+
+def bisect_root(fn, lo: float, hi: float, iterations: int = 200) -&gt; float:
+    flo, fhi = fn(lo), fn(hi)
+    if flo * fhi &gt; 0:
+        raise ValueError(&quot;root is not bracketed&quot;)
+    for _ in range(iterations):
+        mid = (lo + hi) / 2
+        fm = fn(mid)
+        if flo * fm &lt;= 0:
+            hi, fhi = mid, fm
+        else:
+            lo, flo = mid, fm
+    return (lo + hi) / 2
+
+
+def main() -&gt; None:
+    q, b, c, u, U, C, K, alpha, e0 = sp.symbols(
+        &quot;q b c u U C K alpha e0&quot;, positive=True
+    )
+    a = sp.Rational(3, 16) * b**2 / c
+    qb2 = sp.Rational(3, 4) * b / c
+    f0 = a * q**2 / 2 - b * q**4 / 4 + c * q**6 / 6
+    assert sp.factor(f0 - c * q**2 * (q**2 - qb2) ** 2 / 6) == 0
+
+    # Middle-stage lower Hessian bound and the requested partial gate.
+    mu = a - sp.Rational(9, 20) * (b - U) ** 2 / c
+    partial = sp.Rational(11, 20) * b
+    mu_partial = sp.factor(mu.subs(U, partial))
+    assert sp.simplify(mu_partial / a - sp.Rational(257, 500)) == 0
+    threshold_fraction = 1 - sp.sqrt(sp.Rational(5, 12))
+    assert sp.simplify(mu.subs(U, threshold_fraction * b)) == 0
+
+    # Tangent compensation is the Bregman divergence of G(q)=q^4/4.
+    # Use B as an independent symbol to keep the factorization exact.
+    B = sp.symbols(&quot;B&quot;, positive=True)
+    bregman_B = q**4 / 4 - B**4 / 4 - B**3 * (q - B)
+    assert sp.factor(bregman_B) == (q - B) ** 2 * (q**2 + 2 * B * q + 3 * B**2) / 4
+
+    # Local elastic shunt elimination, plus a prestretched reference spring.
+    e = sp.symbols(&quot;e&quot;, real=True)
+    estar = C * alpha * q**2 / (C + K)
+    elastic = C * (e - alpha * q**2) ** 2 / 2 + K * e**2 / 2
+    uK = 2 * alpha**2 * C * K / (C + K)
+    elastic_min = sp.simplify(elastic.subs(e, estar))
+    assert sp.simplify(elastic_min - uK * q**4 / 4) == 0
+    assert sp.simplify(sp.diff(elastic_min, K) - estar**2 / 2) == 0
+
+    estar_pre = (C * alpha * q**2 + K * e0) / (C + K)
+    elastic_pre = C * (e - alpha * q**2) ** 2 / 2 + K * (e - e0) ** 2 / 2
+    elastic_pre_min = sp.simplify(elastic_pre.subs(e, estar_pre))
+    pre_expansion = uK * q**4 / 4 - uK * e0 * q**2 / (2 * alpha) + uK * e0**2 / (4 * alpha**2)
+    assert sp.simplify(elastic_pre_min - pre_expansion) == 0
+    assert sp.simplify(
+        sp.diff(elastic_pre_min, K) - (estar_pre - e0) ** 2 / 2
+    ) == 0
+
+    # Reversible control work and a constant-friction finite-time floor.
+    qb = sp.sqrt(qb2)
+    field_work = sp.integrate(a * q - b * q**3 + c * q**5 + U * q**3, (q, 0, qb))
+    gate_return = -U * qb2**2 / 4
+    assert sp.simplify(field_work - U * qb2**2 / 4) == 0
+    assert sp.simplify(field_work + gate_return) == 0
+    zeta, tau = sp.symbols(&quot;zeta tau&quot;, positive=True)
+    ratio = sp.simplify((zeta * qb2 / tau) / (U * qb2**2 / 4))
+    ratio_partial = sp.simplify(ratio.subs(U, partial))
+    tau_rel = zeta / a
+    assert sp.simplify(ratio_partial - sp.Rational(20, 11) * tau_rel / tau) == 0
+
+    # The mean-only clamp has a different zero-mean Hessian from a local gate.
+    mean_mode_min = a - (3 * b - U) ** 2 / (20 * c)
+    assert sp.simplify(mean_mode_min.subs(U, b) + a / 15) == 0
+    mean_mode_partial = sp.factor(mean_mode_min.subs(U, partial) / a)
+    assert sp.simplify(mean_mode_partial + sp.Rational(901, 1500)) == 0
+
+    # For a two-site graph Laplacian, adding PSD onsite margins to a PSD
+    # coupling preserves the strong-convexity lower bound.
+    x1, x2, kappa = sp.symbols(&quot;x1 x2 kappa&quot;, nonnegative=True)
+    shifted_two_site_hessian = sp.Matrix([[x1 + kappa, -kappa], [-kappa, x2 + kappa]])
+    assert sp.simplify(shifted_two_site_hessian.det() - (x1 * x2 + kappa * (x1 + x2))) == 0
+
+    # Positive semidefinite nonlocal quartic kernels need not be convex in q.
+    q1, q2 = sp.symbols(&quot;q1 q2&quot;, real=True)
+    J = sp.Matrix([[1, -1], [-1, 1]])
+    rvec = sp.Matrix([q1**2, q2**2])
+    G = sp.expand((rvec.T * J * rvec)[0] / 4)
+    H_G = sp.hessian(G, (q1, q2))
+    H_example = H_G.subs({q1: 1, q2: 0})
+    assert sp.factor(G - (q1**2 - q2**2) ** 2 / 4) == 0
+    assert J.eigenvals() == {sp.Integer(0): 1, sp.Integer(2): 1}
+    assert H_example == sp.diag(3, -1)
+
+    # Scalar finite-volume Gibbs/Laplace weights at exact coexistence.
+    # Contributions scale as 1/sqrt(f&#x27;&#x27;(q_i)): a at 0 and 4a at +/-qB.
+    p0, pplus, pminus = sp.Rational(1, 2), sp.Rational(1, 4), sp.Rational(1, 4)
+    entropy_nats = -sum(float(p) * math.log(float(p)) for p in (p0, pplus, pminus))
+    assert abs(entropy_nats - 1.5 * math.log(2)) &lt; 1e-15
+
+    # Under the final tangent-compensated removal h=u qB^3, small-u Laplace
+    # ratios are p0/pB ~ 2 exp(-3x/4), pminus/pB ~ exp(-2x),
+    # x = V u qB^4/(k_B T). Find the asymptotic 99%-occupancy threshold.
+    eps = 0.01
+    initial_x_star = 4 * math.log((1 - eps) / eps)
+    def bad_to_good_ratio(x: float) -&gt; float:
+        return 2 * math.exp(-0.75 * x) + math.exp(-2 * x)
+    target = eps / (1 - eps)
+    x_star = bisect_root(lambda x: bad_to_good_ratio(x) - target, 0.0, 100.0)
+
+    # During the strongly convex middle stage, Brascamp-Lieb gives
+    # Var(q) &lt;= kBT/(V mu); report the scale-free width condition.
+    mu_over_a = sp.Rational(257, 500)
+
+    # Exact scalar mean-field parameter screen from the supplied coefficient
+    # choice. It is reproduced by the original verifier and remains conditional.
+    b_num, c_num = 6.76e8, 6 * 2.37e9
+    a_num = 3 * b_num**2 / (16 * c_num)
+    qb_num = math.sqrt(3 * b_num / (4 * c_num))
+    U_num = 0.55 * b_num
+    mu_num = a_num - 9 * (b_num - U_num) ** 2 / (20 * c_num)
+
+    result = {
+        &quot;scope&quot;: &quot;symbolic scalar identities plus conditional one-coordinate finite-volume asymptotics&quot;,
+        &quot;exact_checks&quot;: {
+            &quot;coexistence_factorization&quot;: True,
+            &quot;middle_curvature_partial_gate_mu_over_a&quot;: &quot;257/500&quot;,
+            &quot;minimum_gate_fraction_for_strong_convexity&quot;: float(threshold_fraction),
+            &quot;tangent_bregman_factorization&quot;: True,
+            &quot;zero_preload_elimination&quot;: True,
+            &quot;preload_quadratic_shift_and_work_term&quot;: True,
+            &quot;ideal_quasistatic_field_gate_work_cancellation&quot;: True,
+            &quot;finite_time_dissipation_ratio_partial_gate&quot;: &quot;(20/11)*(tau_relax/tau)&quot;,
+            &quot;mean_only_gate_at_U_equals_b_mode_minimum&quot;: &quot;-a/15&quot;,
+            &quot;mean_only_gate_at_U_0.55b_mode_minimum_over_a&quot;: &quot;-901/1500&quot;,
+            &quot;local_gate_plus_psd_graph_coupling_sufficient_condition&quot;: True,
+            &quot;positive_semidefinite_kernel_nonconvex_countermodel&quot;: True,
+        },
+        &quot;finite_time&quot;: {
+            &quot;dynamics&quot;: &quot;zeta*qdot = h - (f0&#x27;(q)+U*q^3), constant zeta, exact monotone q:0-&gt;qB in tau&quot;,
+            &quot;dissipation_density_lower_bound&quot;: &quot;zeta*qB^2/tau&quot;,
+            &quot;partial_gate_fraction&quot;: 0.55,
+            &quot;loss_over_ideal_circulated_work_lower_bound&quot;: &quot;(20/11)*(tau_relax/tau)&quot;,
+            &quot;excluded_costs&quot;: [&quot;shunt hysteresis&quot;, &quot;dielectric loss&quot;, &quot;leakage&quot;, &quot;actuator and field-generation losses&quot;, &quot;heat transfer&quot;],
+        },
+        &quot;compatibility_kernel_countermodel&quot;: {
+            &quot;kernel&quot;: [[1, -1], [-1, 1]],
+            &quot;kernel_eigenvalues&quot;: [0, 2],
+            &quot;gate&quot;: &quot;G(q1,q2)=(q1^2-q2^2)^2/4 &gt;= 0&quot;,
+            &quot;hessian_at_q1_1_q2_0&quot;: [[3, 0], [0, -1]],
+            &quot;general_hessian&quot;: &quot;diag(J*r)+2*diag(q)*J*diag(q), r_i=q_i^2&quot;,
+            &quot;sufficient_convexity_condition&quot;: &quot;symmetric PSD J with entrywise J_ij&gt;=0&quot;,
+            &quot;scope&quot;: &quot;abstract nonlocal quartic countermodel, not a BaTiO3 compatibility kernel&quot;,
+        },
+        &quot;finite_volume_noise&quot;: {
+            &quot;model&quot;: &quot;single uniform scalar coordinate with Gibbs density proportional exp(-V*f/(kBT)); Laplace approximation around the three nondegenerate coexistence wells&quot;,
+            &quot;zero_control_well_probabilities_asymptotic&quot;: {&quot;q=0&quot;: 0.5, &quot;q=+qB&quot;: 0.25, &quot;q=-qB&quot;: 0.25},
+            &quot;coarse_grained_equilibrium_entropy_nats&quot;: entropy_nats,
+            &quot;restricted_state_free_energy_costs_from_equilibrium&quot;: {&quot;select_q0&quot;: &quot;kBT*ln(2)&quot;, &quot;select_plus_qB&quot;: &quot;kBT*ln(4)&quot;},
+            &quot;initial_gate_engagement&quot;: {
+                &quot;x_definition&quot;: &quot;x=V*u*qB^4/(kBT)&quot;,
+                &quot;small_u_polar_to_central_ratio&quot;: &quot;exp(-x/4) + o(1)&quot;,
+                &quot;epsilon_target&quot;: eps,
+                &quot;x_threshold_for_central_phase_probability_at_least_1_minus_epsilon&quot;: initial_x_star,
+                &quot;interpretation&quot;: &quot;the u=0 initial equilibrium is a mixture; selecting q=0 with high confidence requires gate work or prior state preparation&quot;,
+            },
+            &quot;middle_stage_variance_bound&quot;: &quot;Var(q) &lt;= kBT/(V*mu)&quot;,
+            &quot;middle_stage_mu_over_a_at_U_0.55b&quot;: str(mu_over_a),
+            &quot;terminal_tangent_removal&quot;: {
+                &quot;x_definition&quot;: &quot;x=V*u*qB^4/(kBT)&quot;,
+                &quot;small_u_laplace_ratios&quot;: {&quot;central_to_plus_phase&quot;: &quot;2*exp(-3*x/4) + o(1)&quot;, &quot;minus_to_plus_phase&quot;: &quot;exp(-2*x) + o(1)&quot;},
+                &quot;epsilon_target&quot;: eps,
+                &quot;x_threshold_for_plus_phase_probability_at_least_1_minus_epsilon&quot;: x_star,
+                &quot;residual_gate_requirement&quot;: &quot;u &gt;= x_threshold*kBT/(V*qB^4), asymptotically&quot;,
+                &quot;residual_bias_requirement&quot;: &quot;h=u*qB^3 &gt;= x_threshold*kBT/(V*qB), asymptotically&quot;,
+                &quot;interpretation&quot;: &quot;high-confidence equilibrium phase selection is incompatible with taking both controls fully to zero; full restoration requires finite-time metastable retention or other boundary selection, with lifetime and work separately measured&quot;,
+            },
+            &quot;limitations&quot;: [&quot;uniform single-coordinate model only&quot;, &quot;Laplace asymptotics do not resolve domains or nucleation&quot;, &quot;not a BaTiO3 prediction&quot;],
+        },
+        &quot;conditional_BaTiO3_coefficient_choice&quot;: {
+            &quot;source_table_B&quot;: -1.69e8,
+            &quot;source_table_D&quot;: 2.37e9,
+            &quot;mapped_b&quot;: b_num,
+            &quot;mapped_c&quot;: c_num,
+            &quot;coexistence_set_a&quot;: a_num,
+            &quot;polarization_qB_C_per_m2&quot;: qb_num,
+            &quot;U_0.55b&quot;: U_num,
+            &quot;mu_same_units_as_a&quot;: mu_num,
+            &quot;status&quot;: &quot;reproduced only as the stated frozen Table 1 coefficient choice; primary Table 1/end-note sextic sign discrepancy unresolved&quot;,
+        },
+    }
+    out = Path(__file__).with_name(&quot;deepening_results.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

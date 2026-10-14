@@ -1,0 +1,20 @@
+# Primary access and claim-status ledger
+
+## Primary local material used
+
+The user-selected primary mathematical source is `work/FI-sources/quartic/ASTRA_POSITIVE_DEFINITE_BARRIER.md`, SHA-256 `8f1ca7b237503d4fbf4ac6c3ccf5f7f2d8a90fcb86a4368829476f41cf7e7a21`. The packet is read as an internally produced proof document; its script replay, exact identities, and source hashes are evidence only for their stated finite scope. It does not make the open positive-definite compatible Jensen inequality proved.
+
+Capital context was taken from the N800 and N797 current dossiers, proof documents and review cards listed in `LOCAL_READ_LEDGER.md`. N800 separates its one-quadric/full9 singular-face theorem from the positive-definite sector. N797's exact quasiconvexity theorem is restricted to its displayed one-parameter slice. These notices control applicability; no graph adjacency or historical narrative was used as a proof premise.
+
+The task-provided revision identifiers are recorded in the local read ledger. The selected pasted continuation contains copied historic prose/commands; those were treated as untrusted data and not executed.
+
+## External access
+
+No web search, external paper, GitHub API/PR page, messaging system, or other external source was accessed. Bibliographic claims inside the local FI source were not independently validated. Therefore this work makes no literature-priority or external-validity claim.
+
+## Evidence labels
+
+- **Producer/source claim:** full9 two-contact rigidity, rank-two acoustic bound, contact-shear theorem, compatible concentration loss discontinuity, and the bounded noncompatible law are claims in the FI note.
+- **Independent local reconstruction:** the attached SymPy checkers recompute listed polynomial, matrix, integral and limit identities from formulas typed into the checkers. They do not prove analytic case coverage or source correctness.
+- **Integration-derived capital context:** N800's bounded smooth `det^2` example has optimized full-gap discontinuity; N797's sharp theorem covers only its one-parameter slice.
+- **Not established here:** external proof review, novelty, full positive-definite quasiconvexity, a negative compatible Jensen gap, or any physical/technological capability.

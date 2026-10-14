@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — audit_reverse.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/audit_reverse.py">Original bytes</a></p><pre>from fractions import Fraction as F
+from pathlib import Path
+import json,time
+from model import fixture,add_context_clock
+from kinetic_tomography import physical_clock
+from reverse_tomography import recover_reverse
+from audit import replay
+ROOT=Path(__file__).parent
+
+def main():
+    t=time.perf_counter();checks=0
+    for label,truth in [(&#x27;A&#x27;,fixture(B=3,m=6,rarity=3)),(&#x27;B&#x27;,add_context_clock(fixture(B=3,m=6,rarity=3),F(1,100)))]:
+        tr=json.load(open(ROOT/f&#x27;reverse_{label}_transcript.json&#x27;));m,cc,derived=recover_reverse(18,tr)
+        for key,z in tr[&#x27;reverse_rates&#x27;].items():
+            i,x=map(int,key.split(&#x27;:&#x27;));aa=physical_clock(truth,i,x)
+            assert aa/2&lt;=F(z)&lt;=aa;checks+=1
+            assert 2*F(derived[key])==aa;checks+=1
+        assert m[&#x27;edges&#x27;]==truth[&#x27;edges&#x27;] and m[&#x27;fields&#x27;]==truth[&#x27;fields&#x27;];checks+=1
+    a=json.load(open(ROOT/&#x27;reverse_A_transcript.json&#x27;));b=json.load(open(ROOT/&#x27;reverse_B_transcript.json&#x27;))
+    assert a[&#x27;weights&#x27;]==b[&#x27;weights&#x27;];checks+=1
+    for i in range(18):assert a[&#x27;reverse_rates&#x27;][f&#x27;{i}:0&#x27;]==b[&#x27;reverse_rates&#x27;][f&#x27;{i}:0&#x27;];checks+=1
+    reps=[replay(&#x27;reverse_A&#x27;),replay(&#x27;reverse_B&#x27;),replay(&#x27;reverse_matched_tensor&#x27;)];checks+=sum(r[&#x27;exact_endpoint_matches&#x27;] for r in reps)
+    out=dict(exact_assertions=checks,replays=reps,seconds=time.perf_counter()-t,scope=&#x27;exact synthetic query consistency and private-data-free final response replay; no experimental validation&#x27;)
+    json.dump(out,open(ROOT/&#x27;reverse_audit_results.json&#x27;,&#x27;w&#x27;),indent=2)
+    old=json.load(open(ROOT/&#x27;combined_audit.json&#x27;));old[&#x27;reverse_extension&#x27;]=out;old[&#x27;all_exact_assertions_total&#x27;]=old[&#x27;exact_assertions_total&#x27;]+checks
+    json.dump(old,open(ROOT/&#x27;combined_audit.json&#x27;,&#x27;w&#x27;),indent=2)
+    print(checks,&#x27;total&#x27;,old[&#x27;all_exact_assertions_total&#x27;],&#x27;seconds&#x27;,out[&#x27;seconds&#x27;],flush=True)
+if __name__==&#x27;__main__&#x27;:main()
+</pre></body></html>

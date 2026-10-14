@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — reverse_experiment.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/reverse_experiment.py">Original bytes</a></p><pre>import time,json,numpy as np
+from pathlib import Path
+from fractions import Fraction as F
+from model import fixture,add_context_clock,Compiler,discover_partition
+from reverse_tomography import acquire_reverse
+from solve import pcg_tensor
+from certify import certify
+from full_reference import run_reference
+ROOT=Path(__file__).parent
+
+def run(name,context=True,method=&#x27;tensor&#x27;,target=None):
+    start=time.perf_counter();truth=fixture(B=3,m=6,rarity=3)
+    if context:truth=add_context_clock(truth,F(1,100))
+    model,tr=acquire_reverse(truth);groups,search=discover_partition(model);c=Compiler(model,groups);acq=time.perf_counter()-start
+    if method==&#x27;tensor&#x27;:
+        v,log=pcg_tensor(c,rank=12 if context else 8,iterations=12 if context else 8,target_ratio=target)
+        ans=certify(c,v);ans.update(log=log,coefficients=sum(a.size for a in v),iterations=len(log))
+        np.savez_compressed(ROOT/(name+&#x27;.npz&#x27;),**{str(i):a for i,a in enumerate(v)})
+    else:ans=run_reference(c,target_ratio=1.05)
+    ans.update(end_to_end_seconds=time.perf_counter()-start,acquisition_compilation_seconds=acq,energy_queries=tr[&#x27;energy_queries&#x27;],reverse_clock_queries=tr[&#x27;reverse_clock_queries&#x27;],method=method,physical_experiment=False,scope=&#x27;original-law reverse-relaxation computational queries; no intervention-invariance under bias assumed&#x27;,partition=search)
+    json.dump(ans,open(ROOT/(name+&#x27;.json&#x27;),&#x27;w&#x27;),indent=2);json.dump(tr,open(ROOT/(name+&#x27;_transcript.json&#x27;),&#x27;w&#x27;),indent=2)
+    print(name,{k:ans[k] for k in [&#x27;lower_float&#x27;,&#x27;upper_float&#x27;,&#x27;ratio_float&#x27;,&#x27;end_to_end_seconds&#x27;,&#x27;iterations&#x27;,&#x27;reverse_clock_queries&#x27;]},flush=True)
+    return ans
+if __name__==&#x27;__main__&#x27;:
+    run(&#x27;reverse_A&#x27;,context=False)
+    run(&#x27;reverse_B&#x27;)
+    run(&#x27;reverse_matched_tensor&#x27;,target=1.025)
+    run(&#x27;reverse_matched_full&#x27;,method=&#x27;full&#x27;)
+</pre></body></html>

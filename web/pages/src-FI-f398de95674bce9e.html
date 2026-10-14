@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — finite_response_check.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/synthesis/kinetics_critic/finite_response_check.py">Original bytes</a></p><pre>&quot;&quot;&quot;Independent exact reconstruction of finite Stieltjes-response nonidentifiability.&quot;&quot;&quot;
+from fractions import Fraction as F
+import json
+import independent_check as c
+
+rates=[F(1),F(2),F(3),F(4)]
+base=[F(1,4)]*4
+shifts=[F(1),F(2),F(4)]
+delta=F(1,1000)
+base_response=[sum((p/(lam+s) for p,lam in zip(base,rates)),F(0)) for s in shifts]
+base_mean=sum((p/lam for p,lam in zip(base,rates)),F(0))
+# Unknown old masses solve normalization plus all three exact response constraints.
+M=[[F(1) for _ in rates]] + [[F(1,1)/(lam+s) for lam in rates] for s in shifts]
+rows=[]
+for eps in [F(1,100),F(1,10000),F(1,10**8),F(1,10**12)]:
+    rhs=[1-delta]+[f-delta/(eps+s) for f,s in zip(base_response,shifts)]
+    q=c.solve(M,rhs)
+    weights=q+[delta]
+    assert all(w&gt;0 for w in weights)
+    assert sum(weights,F(0))==1
+    got=[sum((weights[j]/((rates+[eps])[j]+s) for j in range(5)),F(0)) for s in shifts]
+    assert got==base_response
+    mean=sum((weights[j]/(rates+[eps])[j] for j in range(5)),F(0))
+    rows.append({&#x27;epsilon&#x27;:str(eps),&#x27;old_weights&#x27;:[str(w) for w in q],&#x27;minimum_weight&#x27;:str(min(weights)),
+                 &#x27;responses&#x27;:[str(z) for z in got],&#x27;mean&#x27;:str(mean),&#x27;mean_float&#x27;:float(mean)})
+# A symbolic nonsingularity argument is recorded in the report: if c_i has sum
+# zero and its resolvent sum vanishes at k distinct shifts, the numerator has
+# degree at most k-1 and k roots, so all residues vanish.
+print(json.dumps({&#x27;baseline_rates&#x27;:[str(x) for x in rates],&#x27;baseline_weights&#x27;:[str(x) for x in base],
+ &#x27;shifts&#x27;:[str(x) for x in shifts],&#x27;baseline_response&#x27;:[str(x) for x in base_response],
+ &#x27;baseline_mean&#x27;:str(base_mean),&#x27;hidden_mass&#x27;:str(delta),&#x27;exact_samples&#x27;:rows,
+ &#x27;status&#x27;:&#x27;exactly equal finite regularized responses with positive masses; lifetime grows as delta/epsilon plus bounded correction&#x27;},indent=2))
+</pre></body></html>

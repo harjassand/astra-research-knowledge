@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — response_ambiguity.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/response_ambiguity.py">Original bytes</a></p><pre>&quot;&quot;&quot;Exact finite positive-frequency response ambiguity.
+Finitely many perfect regularized responses do not bound the zero-frequency mean
+unless global model structure excludes hidden near-zero rates.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import sympy as sp
+import json
+from pathlib import Path
+
+def main():
+    shifts=[F(1),F(2),F(4)];nodes=[F(1),F(2),F(3),F(4)];weights=[F(1,4)]*4
+    A=sp.Matrix([[1]*4]+[[sp.Rational(1,x+s) for x in nodes] for s in shifts]);delta=F(1,1000);results=[];checks=0
+    responses=[sum(w/(x+s) for x,w in zip(nodes,weights)) for s in shifts]
+    baseline=sum(w/x for x,w in zip(nodes,weights))
+    for eps in [F(1,100),F(1,10000),F(1,10**8),F(1,10**12)]:
+        f=sp.Matrix([1]+[sp.Rational(1,eps+s) for s in shifts]);a=A.inv()*f
+        new=[weights[j]-delta*F(a[j]) for j in range(4)]
+        assert all(w&gt;0 for w in new);checks+=4
+        assert sum(new)+delta==1;checks+=1
+        for s,resp in zip(shifts,responses):assert sum(w/(x+s) for x,w in zip(nodes,new))+delta/(eps+s)==resp;checks+=1
+        mean=sum(w/x for x,w in zip(nodes,new))+delta/eps
+        results.append({&#x27;hidden_rate&#x27;:str(eps),&#x27;hidden_mass&#x27;:str(delta),&#x27;adjusted_weights&#x27;:list(map(str,new)),&#x27;mean&#x27;:str(mean),&#x27;mean_float&#x27;:float(mean),&#x27;baseline_mean&#x27;:str(baseline),&#x27;response_values&#x27;:list(map(str,responses))})
+    out={&#x27;exact_assertions&#x27;:checks,&#x27;results&#x27;:results,&#x27;scope&#x27;:&#x27;exact family of reversible killed mixtures; not a theorem for fully identified finite-dimensional physical laws&#x27;}
+    json.dump(out,open(Path(__file__).with_suffix(&#x27;.json&#x27;),&#x27;w&#x27;),indent=2)
+    print(json.dumps({&#x27;checks&#x27;:checks,&#x27;baseline&#x27;:float(baseline),&#x27;means&#x27;:[x[&#x27;mean_float&#x27;] for x in results],&#x27;same_responses&#x27;:list(map(str,responses))},indent=2))
+if __name__==&#x27;__main__&#x27;:main()
+</pre></body></html>

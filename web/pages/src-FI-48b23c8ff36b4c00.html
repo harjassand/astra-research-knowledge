@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — verify_retained_alpha.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/synthesis/root/verify_retained_alpha.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact retained-vector alpha check in the correct weighted generator geometry.
+
+The inspected producer Compiler/from_transcript are reused explicitly. No source
+NPZ or object array is loaded. No new floating solve proposes a local alpha vector.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import argparse,hashlib,json,platform,sys,time
+
+def main(source,evidence,out):
+ st=time.monotonic();sys.path.insert(0,str(source))
+ from model import Compiler,discover_partition,from_transcript
+ data=json.loads(evidence.read_text());rows=[]
+ for case in data[&#x27;tensor_replays&#x27;]:
+  name=case[&#x27;name&#x27;];tr=json.loads((source/(name+&#x27;_transcript.json&#x27;)).read_text());model=from_transcript(18,tr);groups,_=discover_partition(model);compiler=Compiler(model,groups)
+  wit=case[&#x27;exact_high_precision_alpha_recertification&#x27;][&#x27;alpha_witness&#x27;];block=wit[&#x27;target_block&#x27;];K=compiler.refraw[block];mass=list(map(F,compiler.mass[block]));n=len(K)
+  assert n==wit[&#x27;local_states&#x27;] and n==len(wit[&#x27;u_numerators&#x27;]) and all(x&gt;0 for x in mass)
+  nonsym=any(K[i,j]!=K[j,i] for i in range(n) for j in range(n));assert nonsym
+  assert all(mass[i]*F(K[i,j])==mass[j]*F(K[j,i]) for i in range(n) for j in range(n))
+  assert all(F(K[i,j])&lt;=0 for i in range(n) for j in range(n) if i!=j)
+  kills=[sum(F(K[i,j]) for j in range(n)) for i in range(n)];assert min(kills)&gt;=0 and max(kills)&gt;0
+  seen={0};queue=[0]
+  while queue:
+   i=queue.pop()
+   for j in range(n):
+    if K[i,j]&lt;0 and j not in seen:seen.add(j);queue.append(j)
+  assert len(seen)==n
+  den=int(wit[&#x27;u_denominator&#x27;]);u=[F(int(x),den) for x in wit[&#x27;u_numerators&#x27;]];assert min(u)&gt;0
+  delta=max(abs(sum(F(K[i,j])*u[j] for j in range(n))-1) for i in range(n));assert delta&lt;1
+  alpha=(1-delta)/max(u);assert alpha==F(wit[&#x27;alpha_lower&#x27;])
+  old=json.loads((source/(name+&#x27;.json&#x27;)).read_text());assert F(old[&#x27;alpha_lower&#x27;])&lt;=alpha
+  rows.append(dict(case=name,local_states=n,raw_Euclidean_symmetric=not nonsym,weighted_detailed_balance_exact=True,irreducible_Z_matrix_with_positive_killing=True,retained_u_positive=True,retained_u_residual_below_one=True,new_alpha_exact=str(alpha),old_alpha_exact=old[&#x27;alpha_lower&#x27;],old_alpha_le_new_alpha=True,witness_source_sha256=hashlib.sha256(evidence.read_bytes()).hexdigest()))
+ report=dict(status=&#x27;PASS&#x27;,python=platform.python_version(),seconds=time.monotonic()-st,cases=rows,scope=&#x27;Exact retained112-bit local vectors validate old scalar alphas in weighted L2,with producer compiler reused explicitly. No new alpha solve,no claim to recover missing historical vector;source default endpoint-equality audit remains FAIL.&#x27;)
+ out.mkdir(parents=True,exist_ok=True);(out/&#x27;WEIGHTED_ALPHA_REPLAY.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;);print(json.dumps(dict(status=report[&#x27;status&#x27;],cases=len(rows),all_raw_matrices_nonsymmetric=True,seconds=report[&#x27;seconds&#x27;])))
+if __name__==&#x27;__main__&#x27;:
+ ap=argparse.ArgumentParser();ap.add_argument(&#x27;--source-dir&#x27;,type=Path,required=True);ap.add_argument(&#x27;--evidence&#x27;,type=Path,required=True);ap.add_argument(&#x27;--output-dir&#x27;,type=Path,required=True);a=ap.parse_args();main(a.source_dir.resolve(),a.evidence.resolve(),a.output_dir.resolve())
+</pre></body></html>

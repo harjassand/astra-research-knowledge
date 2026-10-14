@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — tomography_experiment.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/tomography_experiment.py">Original bytes</a></p><pre>import time,json
+from pathlib import Path
+from fractions import Fraction as F
+import numpy as np
+from model import fixture,add_context_clock,discover_partition,Compiler
+from kinetic_tomography import acquire_unknown_support
+from solve import pcg_tensor
+from certify import certify
+ROOT=Path(__file__).parent
+
+def run(name,cross_kinetic=False):
+    start=time.perf_counter();truth=add_context_clock(fixture(B=3,m=6,rarity=3),F(1,100))
+    # An additional authored falsification variant: kinetic dependence outside
+    # the energy neighbourhood, invisible to all-zero-context clock readings.
+    if cross_kinetic:
+        energy_nei=set(truth[&#x27;clock_contexts&#x27;][0])
+        a=min(energy_nei);j=next(j for j in range(1,truth[&#x27;n&#x27;]) if j not in energy_nei)
+        truth[&#x27;clock_contexts&#x27;][0]=sorted([a,j]);truth[&#x27;clock_tables&#x27;][0]=[truth[&#x27;nu&#x27;][0],truth[&#x27;nu&#x27;][0]/2,truth[&#x27;nu&#x27;][0]/2,truth[&#x27;nu&#x27;][0]]
+    model,tr=acquire_unknown_support(truth);groups,search=discover_partition(model);c=Compiler(model,groups)
+    acquisition=time.perf_counter()-start
+    v,log=pcg_tensor(c,rank=12,iterations=12)
+    ans=certify(c,v);ans.update(total_seconds=time.perf_counter()-start,acquisition_compilation_seconds=acquisition,energy_queries=tr[&#x27;energy_queries&#x27;],clock_queries=tr[&#x27;balanced_clock_queries&#x27;],R_mass=str(c.R_mass),R_clock=str(c.R_clock),R=str(c.R),partition=search,metadata=truth[&#x27;metadata&#x27;],unknown_clock_support=True,rank=12,coefficients=sum(x.size for x in v),raw_operator_terms=len(c.rawterms),kinetic_dependencies_beyond_energy=[(i,j) for i,ss in model[&#x27;clock_contexts&#x27;].items() for j in ss if tuple(sorted((i,j))) not in model[&#x27;edges&#x27;]],clock_context_table_entries=sum(map(len,model[&#x27;clock_tables&#x27;].values())),log=log)
+    json.dump(ans,open(ROOT/(name+&#x27;.json&#x27;),&#x27;w&#x27;),indent=2);json.dump(tr,open(ROOT/(name+&#x27;_transcript.json&#x27;),&#x27;w&#x27;),indent=2);np.savez_compressed(ROOT/(name+&#x27;.npz&#x27;),**{str(i):a for i,a in enumerate(v)})
+    print(name,{k:ans[k] for k in [&#x27;lower_float&#x27;,&#x27;upper_float&#x27;,&#x27;ratio_float&#x27;,&#x27;total_seconds&#x27;,&#x27;energy_queries&#x27;,&#x27;clock_queries&#x27;,&#x27;R&#x27;,&#x27;coefficients&#x27;,&#x27;raw_operator_terms&#x27;,&#x27;kinetic_dependencies_beyond_energy&#x27;]},flush=True)
+    return ans
+if __name__==&#x27;__main__&#x27;:
+    run(&#x27;unknown_support_rare&#x27;)
+    run(&#x27;unknown_support_cross&#x27;,True)
+</pre></body></html>

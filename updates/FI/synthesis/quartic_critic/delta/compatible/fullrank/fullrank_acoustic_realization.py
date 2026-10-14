@@ -1,0 +1,142 @@
+"""Exact, self-contained audit of the optional full-rank compatible extension.
+
+This script reconstructs the displayed quartic and Fourier modes directly. It
+does not import any other verifier or inspect sibling artifacts.
+"""
+import itertools
+import sympy as s
+
+a, b, c, d, e = s.symbols("a b c d e", real=True)
+u, v = a*a + c*c, b*b + d*d
+w, q = a*b + c*d, a*d - b*c
+G = s.expand(3*(u + v - 2*q)**2 + s.Rational(35, 24)*u**2 + q**2 - s.Rational(5, 2)*q*u)
+variables = s.Matrix([a, b, c, d])
+HG = s.hessian(G, variables)
+
+# The two independent added rank-one directions have strictly positive full
+# Hessians, as verified by Sylvester's criterion in the stated row-major basis.
+E11 = s.Matrix([1, 0, 0, 0])
+E21 = s.Matrix([0, 0, 1, 0])
+H_E11 = HG.subs(dict(zip(variables, E11))).applyfunc(s.factor)
+H_E21 = HG.subs(dict(zip(variables, E21))).applyfunc(s.factor)
+expected_E11 = s.Matrix([
+    [s.Rational(107, 2), 0, 0, s.Rational(-87, 2)],
+    [0, 12, s.Rational(29, 2), 0],
+    [0, s.Rational(29, 2), s.Rational(107, 6), 0],
+    [s.Rational(-87, 2), 0, 0, 38],
+])
+expected_E21 = s.Matrix([
+    [s.Rational(107, 6), 0, 0, s.Rational(-29, 2)],
+    [0, 38, s.Rational(87, 2), 0],
+    [0, s.Rational(87, 2), s.Rational(107, 2), 0],
+    [s.Rational(-29, 2), 0, 0, 12],
+])
+assert H_E11 == expected_E11
+assert H_E21 == expected_E21
+minors_E11 = [s.factor(H_E11[:j, :j].det()) for j in range(1, 5)]
+minors_E21 = [s.factor(H_E21[:j, :j].det()) for j in range(1, 5)]
+assert minors_E11 == [s.Rational(107, 2), 642, s.Rational(1605, 8), s.Rational(8445, 16)]
+assert minors_E21 == [s.Rational(107, 6), s.Rational(2033, 3), s.Rational(60241, 24), s.Rational(8445, 16)]
+
+# Main two-contact field. Its two rank-one coefficient matrices are B +/- e T.
+B = s.Matrix([0, 1, 6*e**2, 0])
+T = s.Matrix([2, 0, 0, 3])
+rp, rm = B + e*T, B - e*T
+D = 1 + 13*e**2 + 36*e**4
+assert s.factor(rp.dot(rp) - D) == 0
+assert s.factor(rm.dot(rm) - D) == 0
+HG_at = lambda x: HG.subs(dict(zip(variables, x))).applyfunc(s.factor)
+H_main = ((HG_at(rp) + HG_at(rm))/(2*D)).applyfunc(s.factor)
+main_minors = [s.factor(H_main[:j, :j].det()) for j in range(1, 5)]
+expected_main_minors = [
+    2*(321*e**4 + 104*e**2 + 6)/D,
+    24*(6*e**2 + 1)*(19*e**2 + 3)*(321*e**4 + 104*e**2 + 6)/D**2,
+    24*(321*e**4 + 104*e**2 + 6)
+      *(15201*e**8 + 9752*e**6 + 2129*e**4 + 192*e**2 + 6)/D**3,
+    240*e**4*(243*e**4 + 192*e**2 + 13)
+      *(15201*e**8 + 9752*e**6 + 2129*e**4 + 192*e**2 + 6)/D**4,
+]
+assert all(s.factor(actual - expected) == 0
+           for actual, expected in zip(main_minors, expected_main_minors))
+
+# The main field has phase frequencies (1,m),(-1,m); the two extras have
+# frequencies (3,0),(4,0). Distinct frequencies have zero pairwise cosine
+# average, and none is the negative of another.
+m = s.symbols("m", integer=True, positive=True)
+frequency_modes = [(1, m), (-1, m), (3, 0), (4, 0)]
+for i, j in itertools.combinations(range(4), 2):
+    ki, kj = frequency_modes[i], frequency_modes[j]
+    assert not all(s.simplify(ki[t] - kj[t]) == 0 for t in range(2))
+    assert not all(s.simplify(ki[t] + kj[t]) == 0 for t in range(2))
+
+# Exact finite sign enumeration proves that no signed triple of frequency
+# types sums to zero for any m>0: the y-coordinate is an integer coefficient
+# times m; whenever that coefficient vanishes, the x-coordinate is nonzero.
+# Repeated modes are included, as required for cubic Fourier monomials.
+frequency_x = [1, -1, 3, 4]
+frequency_y_coeff = [1, 1, 0, 0]
+triple_cases = 0
+for indices in itertools.product(range(4), repeat=3):
+    for signs in itertools.product((-1, 1), repeat=3):
+        x_sum = sum(signs[j]*frequency_x[indices[j]] for j in range(3))
+        y_coefficient = sum(signs[j]*frequency_y_coeff[indices[j]] for j in range(3))
+        assert y_coefficient != 0 or x_sum != 0
+        triple_cases += 1
+assert triple_cases == 4**3*2**3
+
+# Full covariance. The added gradients are e^3 E11 cos(6 pi x1) and
+# e^3 E21 cos(8 pi x1), with frequencies (3,0),(4,0).
+C_main = ((rp*rp.T + rm*rm.T)/(2*D)).applyfunc(s.factor)
+C_extra = e**6*(E11*E11.T + E21*E21.T)/2
+C_full = (C_main + C_extra).applyfunc(s.factor)
+assert s.factor(s.trace(C_main) - 1) == 0
+assert s.factor(s.trace(C_full) - (1 + e**6)) == 0
+V = s.Matrix.hstack(rp, rm, E11, E21)
+det_V = s.factor(V.det())
+assert det_V != 0
+det_C_full = s.factor(C_full.det())
+assert s.factor(det_C_full - 9*e**14/(4*D**2)) == 0
+M2_full = s.trace(C_full)
+
+# For the two-contact covariance, dot(rp,rm)/D determines its top eigenvalue.
+dot = s.factor(rp.dot(rm)/D)
+tau_main = s.factor((1 - dot)/2)
+assert s.factor(tau_main - 13*e**2/D) == 0
+# Weyl's inequality: ||C_full-C_main||_op <= e^6/2, while tr(C_full)=1+e^6.
+# Consequently tau_full=tau_main+O(e^6), hence tau_full/e^2 -> 13.
+
+# Average Hessian: cross terms vanish by pairwise Fourier orthogonality, and
+# each cosine square averages to 1/2. Thus H_full=H_main+e^6/2*(H_E11+H_E21).
+H_full = (H_main + e**6*(H_E11 + H_E21)/2).applyfunc(s.factor)
+assert (H_full - H_main - e**6*(H_E11 + H_E21)/2).applyfunc(s.factor) == s.zeros(4)
+
+# The limiting main Hessian has one simple null eigenvalue. The exact leading
+# minors/determinant give lambda_min(H_main)/e^4 -> 65/6. Since the added term
+# is positive definite and has norm O(e^6), Weyl sandwiches the full smallest
+# eigenvalue between lambda_min(H_main) and lambda_min(H_main)+O(e^6).
+main_det = s.factor(H_main.det())
+det_limit = s.limit(main_det/e**4, e, 0, dir="+")
+H0 = H_main.subs(e, 0)
+assert H0 == s.Matrix([
+    [12, 0, 0, -12], [0, 36, 36, 0],
+    [0, 36, 38, 0], [-12, 0, 0, 12],
+])
+assert H0.rank() == 3
+assert H0.nullspace() == [s.Matrix([1, 0, 0, 1])]
+assert det_limit == 18720
+nonzero_product = s.Integer(1728)
+lambda_limit = s.factor(det_limit/nonzero_product)
+assert lambda_limit == s.Rational(65, 6)
+tau_ratio = s.factor(lambda_limit/13**2)
+assert tau_ratio == s.Rational(5, 78)
+
+# Gradient bound from the main field is 2; the two added rank-one cosine terms
+# contribute at most 2 e^3 by the triangle inequality.
+
+print("full-rank compatible extension exact checks passed")
+print("D, det([R+,R-,E11,E21]):", D, det_V)
+print("added Hessian leading minors:", minors_E11, minors_E21)
+print("main Hessian leading minors:", main_minors)
+print("covariance trace, det, main tau:", s.factor(M2_full), det_C_full, tau_main)
+print("det(H_main)/e^4 limit, lambda_min/e^4 limit:", det_limit, lambda_limit)
+print("lambda_min/(M2*tau^2) limit:", tau_ratio)
