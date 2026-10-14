@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — test_multifrequency_storage.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/root/test_multifrequency_storage.py">Exact bytes</a></p><pre>&quot;&quot;&quot;Attack additive extension of the one-frequency potential, not G quasiconvexity.&quot;&quot;&quot;
+from pathlib import Path
+import json
+import sympy as S
+import numpy as np
+from scipy.optimize import minimize
+vs=S.symbols(&#x27;r0 s0 r1 s1 p0 q0 p1 q1&#x27;,real=True)
+r0,s0,r1,s1,p0,q0,p1,q1=vs
+def mul(a,b):
+ c={}
+ for i,x in a.items():
+  for j,y in b.items():c[i+j]=S.expand(c.get(i+j,0)+x*y)
+ return c
+def add(a,b):
+ c=dict(a)
+ for i,x in b.items():c[i]=S.expand(c.get(i,0)+x)
+ return c
+def scale(a,k):return {i:S.expand(k*x) for i,x in a.items()}
+def conj(a):return {-i:S.conjugate(x) for i,x in a.items()}
+X={1:p0,-1:q0,3:p1,-3:q1};Y={1:S.I*r0,-1:-S.I*s0,3:3*S.I*r1,-3:-3*S.I*s1}
+u=mul(X,conj(X));v=mul(Y,conj(Y));xy=mul(conj(X),Y)
+j=scale(add(xy,scale(conj(xy),-1)),1/(2*S.I))
+E=add(add(u,v),scale(j,-2));norm=add(u,v)
+L=add(add(scale(mul(E,E),3),scale(mul(u,u),S.Rational(35,24))),add(mul(j,j),scale(mul(j,u),-S.Rational(5,2)))).get(0,0)
+N=mul(norm,norm).get(0,0)
+P=lambda r,s:-S.Rational(16,3)*r**4+S.Rational(25,4)*s**4-S.Rational(11,6)*r*r*s*s
+storage=P(r0,s0)+27*P(r1,s1)
+dP=sum(S.diff(storage,a)*b for a,b in zip(vs[:4],vs[4:]))
+margin=S.expand(L-N/2-dP)
+f=S.lambdify(vs,margin,&#x27;numpy&#x27;);grad=S.lambdify(vs,[S.diff(margin,a) for a in vs],&#x27;numpy&#x27;)
+rng=np.random.default_rng(20261015);best=None
+for _ in range(20):
+ x=rng.normal(size=8);x/=np.linalg.norm(x)
+ result=minimize(lambda a:float(f(*a)),x,jac=lambda a:np.asarray(grad(*a),float),constraints=[dict(type=&#x27;eq&#x27;,fun=lambda a:np.dot(a,a)-1,jac=lambda a:2*a)],method=&#x27;SLSQP&#x27;,options=dict(maxiter=300,ftol=1e-12))
+ if best is None or result.fun&lt;best.fun:best=result
+rat=[S.Rational(round(float(x)*100),100) for x in best.x]
+exact=S.factor(margin.subs(dict(zip(vs,rat))))
+out=dict(scope=&#x27;Attack on additive single-frequency storage only; a negative pointwise residual is not a negative compatible loop or QC violation.&#x27;,seed=20261015,local_starts=20,minimum_found=float(best.fun),candidate=list(map(str,rat)),exact_margin=str(exact),exact_negative=bool(exact&lt;0))
+if exact&lt;0:
+ out[&#x27;exact_L&#x27;]=str(S.factor(L.subs(dict(zip(vs,rat)))))
+ out[&#x27;exact_norm&#x27;]=str(S.factor(N.subs(dict(zip(vs,rat)))))
+ out[&#x27;exact_dP&#x27;]=str(S.factor(dP.subs(dict(zip(vs,rat)))))
+(Path(__file__).resolve().parent/&#x27;MULTIFREQUENCY_STORAGE_CHECK.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out),flush=True)
+</pre></body></html>

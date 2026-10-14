@@ -1,0 +1,40 @@
+# Read and provenance ledger
+
+All paths below are relative to the repository root unless stated otherwise. No capital files were modified.
+
+## Instructions and live state consulted
+
+- `work/FO_WORKER_CONTRACT.txt` — ownership boundary, read-capital-first, copy-before-execution, required receipts, and stop/freeze expectations.
+- `work/FO_PIN.json` — capital/checkout pins and current integration state.
+- `work/astra-capital/00_START_HERE.txt`, `work/astra-capital/AGENTS.md`, `agent/COMPOSITION.txt`, `state/CONTINUITY.md`, `technology/README.md` — active capital route, composition rules, current state and technology gates.
+- Relevant N740 and N794 dossiers, N794 quartic proof, and N797 card — scope of pointwise versus closed certificates and current quartic results.
+
+## Incoming exact profile-graph package
+
+Copied before execution from `work/FM-sources/resonant/` to `incoming_resonant/`. Read `PROFILE_CIRCULATION.md`, `README.md`, `profile_algebra.py`, `certify_profile_graph.py`, `verify_circulation.py`, `profile_graph_certificate.json`, package logs, and `MANIFEST.json`. The immutable original output receipts are separately preserved under `producer_receipts/` because the copied verifier regenerates output files.
+
+Pinned producer SHA-256 values:
+
+- `PROFILE_CIRCULATION.md`: `881b80eac0bcfd04113dcba7226b9faee324dda66d44ffee5ae3ea097b072622`
+- `certify_profile_graph.py`: `03235da8b9edb6c28f3f5a6783c341b61c669aedce9c53289e5ffd498d5c158f`
+- `profile_algebra.py`: `5472dc38d87e195dca55782eec773d8555827495a3b25d4ca9b3a9768ed613be`
+- `profile_graph_certificate.json`: `f9782aafd2828375c06d0bd08f9ff7dfdb38655da714ebd5b1a60979bf86d1da`
+
+Replay: copied `verify_circulation.py` completed with all nine grouped checks passing. The exact producer outputs from before replay are `producer_receipts/circulation_verification.json` and `producer_receipts/profile_graph_certificate.json`.
+
+## N794 exact quartic certificates
+
+Copied before execution into `n794_replay/` and read `QUARTIC_AUDIT_AND_PROOF.md`, `FSTAR_CLOSED_HEAT_CERTIFICATE.json`, `N794.txt`, `verify_closed_heat.py`, and `verify_morrey_quartics.py`.
+
+Pinned source SHA-256 values:
+
+- N794 proof: `a33fc432c01680fdcbc4676801aed5b496b2b8db289100aa30177b3380ff9ae7`
+- Fstar heat certificate: `b4f049d37ccdfc28257dd66e714cc4822e1d35f39f1a53e5fce607f0375d6ec2`
+- `verify_closed_heat.py`: `0c8222e9cd7ee4fd54d0d89ca19edf85f5fcd8dd4ea8fc2813a9fddb1438f9dd`
+- `verify_morrey_quartics.py`: `b4f7d24e70562576bdffddab0a75bcdcd1984de91e0c66aa068675e862420ef7`
+
+Replay: closed-heat exact verifier passed; Morrey checker passed 23 checks. These are internal exact replays. The accompanying proof remains scoped to its stated Fstar family and coefficient neighborhood.
+
+## Local work and execution boundary
+
+All new scripts, candidate certificates, graph searches, width audits, ledgers, and report are inside `work/FO-cycle-optimizer/`. Exact Python work used the prescribed FE-hidden-gate virtual environment. No nested agents, capital mutation, Git mutation, external publication, or externally sent messages occurred.

@@ -1,0 +1,24 @@
+# Read and execution ledger
+
+## Pin and scope
+
+- Read `work/FO_WORKER_CONTRACT.txt` in full (13 lines; SHA-256 `9b2e4424660e44b95a6d8d8c72f8dae8d34c674c3a107ebc932648878b210ee7`).
+- Read `work/FO_PIN.json` in full (29 lines; SHA-256 `3e33623d46231fbf7479574f73a63f7fd9c8e0ca8d9999efb9c18d8bce30ec56`). It records main/checkout `1c45f77e32d6fbd72483aed5014061c7bda4f372`, branch `research/profile-circulation-causal-operations-20261015`, source manifest `work/FM-sources/INTAKE_MANIFEST.json`, and publication namespace FO. The mounted workspace has no `.git` directory, and `git rev-parse HEAD` therefore could not independently confirm that recorded revision.
+- Read the incoming `work/FM-sources/resonant/PROFILE_CIRCULATION.md` in full (378 lines; SHA-256 `881b80eac0bcfd04113dcba7226b9faee324dda66d44ffee5ae3ea097b072622`). Relevant portions: the arbitrary profile-loop identity and quartic theorem, lines 25–124; two-coordinate area moments, 125–164; translated-loop cancellation, 165–199; limits and global gate discussion, 333–358.
+
+## Capital and gate context
+
+- Read `work/astra-capital/AGENTS.md`, `00_START_HERE.txt`, `state/CONTINUITY.md`, and `agent/COMPOSITION.txt` to follow the source-preservation, claim-scope, and gate conventions.
+- Read `work/astra-capital/frontier/dossiers/N812.txt` in full (172 lines; SHA-256 `523627d823b1c93be90a6197e8d8e07d2a78360e11de81c0309170794721d2a4`), including the open G-FL-N812-REVIEW and G-FL-N812-CAPABILITY scopes at lines 12–24 and the current scope at lines 28–42.
+- Read the N812 review card in full (15 lines; SHA-256 `5f91facc7a85f9ca0ef4e1e554aec930705190e9867ca5d82ce3bdac90a688ea`).
+- Read `work/astra-capital/frontier/gates/G-FL-N812-REVIEW.json` (30 lines; SHA-256 `cb9c7ab478b4b3e45835ebac769feeac8254fb05c967e96bded541987f2c47e2`) and `G-FL-N812-CAPABILITY.json` (30 lines; SHA-256 `58d1a9a0dbebd5f5f03e7a76e02e0836b14355f72eb857544e1bb28f15853075`). Both remain open and require connected compatible-gradient completion or separation, exact all-background optimization, certified acoustic rank-one convexity, and independent review.
+- Read `work/astra-capital/mechanisms/bridges/FL_dual_hull_to_global_compatibility.json` (78 lines; SHA-256 `61b6a55a683a5f9bf6960d64329cc9ce2a610a54e47c9fd4ccb88f60126d14ca`) and the relevant N812 dossier links. Its state is CANDIDATE CONNECTION; the explicit missing lemma is arbitrary-gradient inclusion, not another finite family of profiles.
+- Read the source `work/astra-capital/updates/FL/package/global/GLOBAL_COMPATIBILITY.md` at lines 1–220 and 333–415 (file SHA-256 `bddd6149e1523a8e73fdd26a3d8820dadc3ebad023eb319878ff77ca64f32eee`). Lines 333–375 exhibit the signed variable-phase term; lines 404–415 keep the complete nine-coefficient implication unresolved and identify control of connected interactions or a compatible negative profile as the next operation.
+
+## Independent work and execution
+
+- Wrote `checks.py` in this owned directory; no source-directory script was executed or copied.
+- Command: `/Users/harjas/Documents/Codex/2026-10-14/astra-research-capital-integration-synthesis-breakthrough/work/FE-hidden-gate/venv/bin/python work/FO-signature-cancellation/checks.py`.
+- Runtime returned success. The exact checker used SymPy for the translated-square polynomial line integrals and Python `Fraction` tensor multiplication through signature level 5. It checked the degree-3 current cancellation, degree-4 residual, centered-stencil moments/statistics, and a concrete connector-attached signature.
+- Local resource cost: two short exact checker runs (each tool-reported at about 0.3 s; the second output was captured below). Aggregate inference, token, or financial cost: `null` / unmeasured. No web search or external literature was used.
+- The checker output is `EXACT_CHECKS.log`; the report is `REPORT.md`. These checks establish only the exact finite identities stated there. No external mathematical or historical validation is claimed.

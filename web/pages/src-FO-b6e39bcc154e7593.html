@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — verify_morrey_quartics.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/cycle_optimizer/n794_replay/verify_morrey_quartics.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact algebra audit for ASTRA Meta-Genesis quartic calculations.
+
+Requires Python 3.10+ and SymPy. Uses no numerical optimizer or floating-point
+positivity decision. This verifies finite algebra, not historical priority,
+the whole normal-form proof, or quasiconvexity of the retained interior example.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from pathlib import Path
+import sympy as S
+
+
+def main() -&gt; None:
+    a,b,c,d,s,t = S.symbols(&#x27;a b c d s t&#x27;, real=True)
+    x=S.Matrix([a,b,c,d]); u=a*a+c*c; v=b*b+d*d; w=a*b+c*d; q=a*d-b*c
+    pars=S.symbols(&#x27;A B C E G H L M N&#x27;, real=True)
+    basis=[u*u,v*v,u*v,w*w,u*w,v*w,q*u,q*v,q*w]
+    F=sum(p*f for p,f in zip(pars,basis))
+    checks: list[str] = []
+    def zero(expr: S.Expr, label: str) -&gt; None:
+        if S.expand(expr) != 0:
+            raise AssertionError(label)
+        checks.append(label)
+    def same(M: S.Matrix, N: S.Matrix, label: str) -&gt; None:
+        if M.shape != N.shape or any(S.expand(z) != 0 for z in M-N):
+            raise AssertionError(label)
+        checks.append(label)
+
+    zero(u*v-w*w-q*q, &#x27;Gram determinant identity&#x27;)
+    zero(-c*S.diff(F,a)-d*S.diff(F,b)+a*S.diff(F,c)+b*S.diff(F,d),
+         &#x27;Infinitesimal left SO(2) invariance&#x27;)
+    even=sum(pars[i]*basis[i] for i in range(6)); odd=F-even
+    zero(F.subs({c:-c,d:-d}, simultaneous=True)-(even-odd),
+         &#x27;Reflection-even / orientation-sensitive splitting&#x27;)
+
+    # Exact invariance dimension and spanning computation in all 35 quartics.
+    exps=[(i,j,k,4-i-j-k) for i in range(5) for j in range(5-i) for k in range(5-i-j)]
+    mon=[a**i*b**j*c**k*d**ell for i,j,k,ell in exps]
+    def coeffs(poly: S.Expr) -&gt; S.Matrix:
+        p=S.Poly(S.expand(poly),a,b,c,d)
+        return S.Matrix([p.coeff_monomial(m) for m in mon])
+    rot=S.Matrix.hstack(*[coeffs(-c*S.diff(m,a)-d*S.diff(m,b)+a*S.diff(m,c)+b*S.diff(m,d)) for m in mon])
+    dim=35-rot.rank(); span=S.Matrix.hstack(*[coeffs(f) for f in basis]).rank()
+    assert dim == span == 9
+    assert S.Matrix.hstack(*[coeffs(f) for f in basis[:6]]).rank()==6
+    checks.append(&#x27;SO(2) dimension 9 and reflection-even dimension 6&#x27;)
+
+    acoustic=S.expand(s*s*S.diff(F,a,a)+2*s*t*S.diff(F,a,b)+t*t*S.diff(F,b,b))
+    M11=S.hessian(acoustic.coeff(s,2).coeff(t,0),x)/2
+    M12=S.hessian(acoustic.coeff(s,1).coeff(t,1),x)/4
+    M22=S.hessian(acoustic.coeff(s,0).coeff(t,2),x)/2
+    kk=S.symbols(&#x27;k12 k13 k14 k23 k24 k34&#x27;, real=True)
+    K=S.zeros(4)
+    pairs=[(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)]
+    for (i,j),z in zip(pairs,kk): K[i,j]=z;K[j,i]=-z
+    Q=M11.row_join(M12+K).col_join((M12-K).row_join(M22))
+    z=(s*x).col_join(t*x)
+    zero((z.T*Q*z)[0]-acoustic, &#x27;Exact acoustic Gram identity, all parameters&#x27;)
+
+    r,lam,ell,mu,nu=S.symbols(&#x27;r lam ell mu nu&#x27;,real=True)
+    canon={pars[0]:1,pars[1]:1,pars[2]:lam,pars[3]:2*r-lam,
+           pars[4]:0,pars[5]:0,pars[6]:ell,pars[7]:mu,pars[8]:nu}
+    Fc=S.expand(F.subs(canon)); E=S.expand(Fc-q*(ell*u+mu*v+nu*w))
+    H1=u*u+v*v+2*w*w
+    H3=(u+v)**2+4*w*w
+    zero(E-((3-r)*H1/2+(r-1)*H3/2+(lam-r+1)*q*q),
+         &#x27;Canonical convex plus nonnegative determinant-square decomposition&#x27;)
+    zero(H3-(((a+b)**2+(c+d)**2)**2+((a-b)**2+(c-d)**2)**2)/2,
+         &#x27;Explicit fourth-power representation of H3&#x27;)
+
+    M=(s*s*M11+2*s*t*M12+t*t*M22).subs(canon)
+    ep=S.Matrix([1,1])/S.sqrt(2); em=S.Matrix([1,-1])/S.sqrt(2)
+    U=ep.row_join(em)
+    Mp=M.subs({s:1,t:1}); Mm=M.subs({s:1,t:-1})
+    eps=3-r; D=1+lam-r
+    same(U.T*Mp[:2,:2]*U,S.diag(12*(1+r),4*eps),&#x27;Plus-direction p block eigenvalues&#x27;)
+    same(U.T*Mp[2:,2:]*U,S.diag(4*(1+r),4*D),&#x27;Plus-direction q block eigenvalues&#x27;)
+    same(U.T*Mm[:2,:2]*U,S.diag(4*eps,12*(1+r)),&#x27;Minus-direction p block eigenvalues&#x27;)
+    same(U.T*Mm[2:,2:]*U,S.diag(4*D,4*(1+r)),&#x27;Minus-direction q block eigenvalues&#x27;)
+    Cp=U.T*Mp[:2,2:]*U; Cm=U.T*Mm[:2,2:]*U
+    zero(Cp[1,0]-(ell+mu+nu),&#x27;Plus cross coupling S+nu&#x27;)
+    zero(Cp[1,1]-2*(mu-ell),&#x27;Plus cross coupling difference&#x27;)
+    zero(Cp[0,1]+3*(ell+mu+nu),&#x27;Plus cross coupling -3(S+nu)&#x27;)
+    zero(Cm[0,1]-(nu-ell-mu),&#x27;Minus cross coupling nu-S&#x27;)
+    zero(Cm[0,0]-2*(ell-mu),&#x27;Minus cross coupling difference&#x27;)
+    zero(Cm[1,0]-3*(ell+mu-nu),&#x27;Minus cross coupling 3(S-nu)&#x27;)
+
+    # The reflection-even null locus is rigid at either boundary.
+    constraints_r3=list((em.T*Mp[:2,2:]).subs(r,3))+list((ep.T*Mm[:2,2:]).subs(r,3))
+    constraints_D0=list((Mp[:2,2:]*em).subs(lam,r-1))+list((Mm[:2,2:]*ep).subs(lam,r-1))
+    assert S.solve(constraints_r3,[ell,mu,nu]) == {ell:0,mu:0,nu:0}
+    assert S.solve(constraints_D0,[ell,mu,nu]) == {ell:0,mu:0,nu:0}
+    checks.extend([&#x27;r=3 forces all orientation couplings zero&#x27;,&#x27;D=0 forces all orientation couplings zero&#x27;])
+
+    pstar=[1,1,S.Rational(7,2),S.Rational(1,2),0,0,S.Rational(-29,10),S.Rational(-29,10),0]
+    kstar=[S.Rational(1,2),S.Rational(17,10),0,0,S.Rational(17,10),S.Rational(23,10)]
+    Qs=Q.subs(dict(zip(pars,pstar))).subs(dict(zip(kk,kstar)))
+    minors=[S.factor(Qs[:i,:i].det()) for i in range(1,9)]
+    margin=S.Rational(1,16)
+    shifted=Qs-margin*S.eye(8)
+    shifted_minors=[S.factor(shifted[:i,:i].det()) for i in range(1,9)]
+    assert all(z&gt;0 for z in minors+shifted_minors)
+    checks.extend([&#x27;Interior-example Gram matrix positive definite, exact Sylvester criterion&#x27;,
+                   &#x27;Interior-example Gram margin at least 1/16, exact Sylvester criterion&#x27;])
+    Fs=F.subs(dict(zip(pars,pstar)))
+    I={a:1,b:0,c:0,d:1}; J={a:1,b:0,c:0,d:-1}
+    fI=Fs.subs(I);fJ=Fs.subs(J)
+    assert fI == -S.Rational(3,10) and fJ == S.Rational(113,10)
+    bad_measure=(S.Rational(1,50)*7**4*fI+S.Rational(49,50)*fJ)
+    assert bad_measure == -S.Rational(833,250)
+    assert S.Rational(1,50)*49-S.Rational(49,50)==0
+    checks.append(&#x27;Non-polyconvexity witness: zero barycentre, zero determinant mean, negative quartic mean&#x27;)
+
+    # Strict feasibility needed for the exact moment-duality formulation.
+    normp=[1,1,2,0,0,0,0,0,0]; normk=[1,0,0,0,0,0]
+    Qnorm=Q.subs(dict(zip(pars,normp))).subs(dict(zip(kk,normk)))
+    assert all(Qnorm[:i,:i].det()&gt;0 for i in range(1,9))
+    checks.append(&#x27;Strictly feasible Gram matrix for |A|^4, supporting dual attainment&#x27;)
+
+    result={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;checks&#x27;:len(checks),&#x27;check_names&#x27;:checks,
+            &#x27;method&#x27;:&#x27;exact SymPy polynomial and rational matrix arithmetic&#x27;,
+            &#x27;theorem_status&#x27;:&#x27;proofs in accompanying note; no independent review or priority clearance&#x27;,
+            &#x27;retained_example_quasiconvexity&#x27;:&#x27;NOT ESTABLISHED&#x27;,
+            &#x27;example_coefficients&#x27;:[str(z) for z in pstar],
+            &#x27;example_skew_coefficients&#x27;:[str(z) for z in kstar],
+            &#x27;leading_principal_minors&#x27;:[str(z) for z in minors],
+            &#x27;gram_margin&#x27;:str(margin),&#x27;shifted_leading_principal_minors&#x27;:[str(z) for z in shifted_minors],
+            &#x27;non_polyconvex_measure_mean&#x27;:str(bad_measure)}
+    path=Path(__file__).with_name(&#x27;verification_results.json&#x27;)
+    path.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre></body></html>

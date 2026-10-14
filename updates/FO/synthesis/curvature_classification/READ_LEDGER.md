@@ -1,0 +1,75 @@
+# Read ledger
+
+All paths below are relative to the shared workspace root:
+`/Users/harjas/Documents/Codex/2026-10-14/astra-research-capital-integration-synthesis-breakthrough`.
+
+## Pins and instructions
+
+| Source | Read depth | SHA-256 / state | Use |
+|---|---|---|---|
+| `work/FO_WORKER_CONTRACT.txt` | Full | `9b2e4424660e44b95a6d8d8c72f8dae8d34c674c3a107ebc932648878b210ee7` | Write-scope, evidence, freeze, and no-nested-agent rules. |
+| `work/FO_PIN.json` | Full | `3e33623d46231fbf7479574f73a63f7fd9c8e0ca8d9999efb9c18d8bce30ec56`; supplied main/checkout `1c45f77e32d6fbd72483aed5014061c7bda4f372`, branch `research/profile-circulation-causal-operations-20261015` | Source state and namespace pin. The current scratch workspace has no `.git` metadata, so a live `HEAD` could not be independently read. |
+| `work/astra-capital/00_START_HERE.txt` | Full | `4a91985ece91557af12ba5c216e7fe17cf5dd000596e9a0c73b0b6705498f360` | Retrieval and evidence conventions. |
+| `work/astra-capital/AGENTS.md` | Full | `581cdda103fed0c87acdb0ee527bd5ba174f55b1baa0cbfe60b177d52027ee7d` | Capital read/write and evidence rules. |
+| `work/astra-capital/agent/COMPOSITION.txt` | Full | `b31cf8c3344df112b66840455244ff9c4b4f590d44713582027f82b50c83c46b` | Transfer state definitions; no transfer claim is made here. |
+| `work/astra-capital/state/CONTINUITY.md` | Full | `040c4ac42162802bd2fb4f9e8069e6ca034ccbee63cffc7b43f4c745dac0b297` | Checkpoint publication rules; no checkpoint was published. |
+| `work/astra-capital/technology/README.md` | Full | `ed7cab65d78be8f3ca4734befe3c868203d7d6e30ba1ed875a8084c87b76f89e` | Read for source interface/cost conventions; no technology claim follows. |
+
+## Incoming profile-circulation source
+
+| Source | Read depth | SHA-256 / size | Use |
+|---|---|---|---|
+| `work/FM-sources/resonant/PROFILE_CIRCULATION.md` | Full, 378 lines | `881b80eac0bcfd04113dcba7226b9faee324dda66d44ffee5ae3ea097b072622`; 26,697 bytes | Original statement, profile one-form, quartic cancellation, six area moments, scope, and supplied checks. Main ranges read: 68–123, 125–153, 169–198, 224–252, 296–375. |
+| `work/FM-sources/resonant/README.md` | Full | `d013ff24b75caf639f0e946d4574e28f83c8e6b6ad90d4f1ce196ebd1da2c4b7` | Reproduction and scope labels. |
+| `work/FM-sources/resonant/MANIFEST.json` and matching `work/FM-sources/INTAKE_MANIFEST.json` entry | Relevant entries | source manifest `9a48c53735d156bb713851a64134e5db8c8b6eeddbe671e09521b47badfd8b58`; source entry independently matches the Markdown hash above | Confirms incoming source bytes. |
+
+No script in `work/FM-sources/resonant/` was executed, and no other FO worker output was read.
+
+## Decisive N794 source proofs and current gates
+
+| Source | Read depth | SHA-256 | Use and live scope |
+|---|---|---|---|
+| `work/astra-capital/frontier/dossiers/N794.txt` | Full | `bdd17cc2ca4802a5e935fe5aeddd53a1b23bfcb56d45b04a3f113cba5db00a63` | Current scoped classification, retained example, and open obligations. |
+| `work/astra-capital/cards/N794-left-invariant-quartic-classification-and-closed-heat-certificate.txt` | Full | `c215f2d34c0f6e8119757a3849fa86ece6b5c7bf94a4ffd58657363806b5a576` | Status: source-derived/unreviewed; arbitrary-gradient compatibility remains open. |
+| `work/astra-capital/frontier/gates/G-FE-N794-REVIEW.json` | Full | `bab72e2cbd05a53794ebd634ab099a136f8d60bd653db14fd25706309d0a1e06` | Open; independent proof/priority review and full-cone operation remain required. |
+| `work/astra-capital/frontier/gates/G-FE-N794-CAPABILITY.json` | Full | `97fcb5b59fe7243a033083415daeec839173fabbcb4b1db0e470546bf0d37878` | Same open scope; no gate change. |
+| `work/astra-capital/updates/FE/package/quartic/ASTRA_META_GENESIS_Morrey_quartics.md` | Full, 449 lines | `7c88a08aa6aef88786751fde9671b7568e97676c516824028c3aac9d9859725b` | Decisive proof ranges: 154–218 (left-SO(2) form and necessary bounds); 231–267 (exact acoustic Gram); 340–389 (nine-moment dual and remaining compatibility theorem). |
+| `work/astra-capital/updates/FE/synthesis/quartic/QUARTIC_AUDIT_AND_PROOF.md` | Read ranges 30–67 and 181–189 | `a33fc432c01680fdcbc4676801aed5b496b2b8db289100aa30177b3380ff9ae7` | Reconstructs the reflection-invariant theorem, nine-coefficient acoustic interface, exact F-star certificate and limits. Used only to keep the new result's scope separate. |
+
+N794's six skew-block Gram constraints are not the six signed amplitude-area moments classified here.
+
+## Decisive N812 source proofs and current gates
+
+| Source | Read depth | SHA-256 | Use and live scope |
+|---|---|---|---|
+| `work/astra-capital/frontier/dossiers/N812.txt` | Full | `523627d823b1c93be90a6197e8d8e07d2a78360e11de81c0309170794721d2a4` | Current structured-profile results and open connected-gradient gate. |
+| `work/astra-capital/cards/N812-global-modulation-and-curved-phase-moment-certificates.txt` | Full | `5f91facc7a85f9ca0ef4e1e554aec930705190e9867ca5d82ce3bdac90a688ea` | Source-derived/unreviewed status and scope. |
+| `work/astra-capital/frontier/gates/G-FL-N812-REVIEW.json` | Full | `cb9c7ab478b4b3e45835ebac769feeac8254fb05c967e96bded541987f2c47e2` | Open; arbitrary connected compatible gradients and independent review remain required. |
+| `work/astra-capital/frontier/gates/G-FL-N812-CAPABILITY.json` | Full | `58d1a9a0dbebd5f5f03e7a76e02e0836b14355f72eb857544e1bb28f15853075` | Same open scope; no gate change. |
+| `work/astra-capital/updates/FL/package/global/GLOBAL_COMPATIBILITY.md` | Read decisive proof ranges 27–101 and 333–375; inspected scope/limitations 404–424 | `bddd6149e1523a8e73fdd26a3d8820dadc3ebad023eb319878ff77ca64f32eee` | Convex-loop identity and variable-phase signed correction; the latter is distinct from the two-amplitude profile curvature here. |
+| `work/astra-capital/updates/FL/synthesis/global_moments/REPORT.md` | Read ranges 30–122 and 124–179 | `633f4e1fb206b786082f2da9812e63ac7117c653f1fd2d4993631ca8fe22b38f` | Explicit N794 completion for a structured family and the remaining arbitrary-gradient inclusion. |
+| `work/astra-capital/updates/FL/synthesis/global_moments/curved_completion/REPORT.md` | Read decisive ranges 35–106 and limits 319–362 | `fe9e0e3c22b70c55266c007db92716d9dd422a18e5fe80795939700a6114d87f` | Two weighted cancellations for a specific sheared phase family, not a universal reduction. |
+| `work/astra-capital/updates/FL/synthesis/phase_geometry/REPORT.md` | Read curvature/sign and scope ranges 48–83, 161–189 | `9c6149286ff3de35619c7b6efb84786481f3b9e64e212a418c0c369d5b32b67b` | Confirms mixed-Hessian curvature can have either sign and that its structured family does not settle arbitrary gradients. |
+
+## Exact check and resources
+
+Executed only the owned verifier:
+
+```text
+/Users/harjas/Documents/Codex/2026-10-14/astra-research-capital-integration-synthesis-breakthrough/work/FE-hidden-gate/venv/bin/python work/FO-curvature-classification/verify_curvature.py
+```
+
+Environment: Python in the supplied FE helper venv, SymPy 1.14.0. The exact
+finite Fourier averages, 6-by-6 determinant, convexity lower bound, rectangle
+moments, and positive-gap integration all passed and were saved to
+`CHECKS.json`. This verifies only the finite algebra encoded in the script;
+the analytic derivations are in `REPORT.md`. No optimizer, source-directory
+program, third-party paper, external inference service, physical measurement,
+calibration, or acquired dataset was used. Supplied information is the pinned
+Markdown/capital source. Physical acquisition/preparation/noise cost is not
+applicable; aggregate inference tokens and financial cost were not measured
+(`null`).
+
+No additional external literature was consulted. No external proof review,
+formal proof-assistant validation, or historical-priority search was done;
+novelty and external mathematical correctness remain UNKNOWN.

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — certify_integrand.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/cycle_optimizer/certify_integrand.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact acoustic and non-polyconvexity checks for F_new.&quot;&quot;&quot;
+from pathlib import Path
+import hashlib, json
+import sympy as S
+
+ROOT=Path(__file__).resolve().parent
+a,b,c,d,s,t=S.symbols(&#x27;a b c d s t&#x27;, real=True)
+x=S.Matrix([a,b,c,d])
+u=a*a+c*c; v=b*b+d*d; w=a*b+c*d; q=a*d-b*c
+Fstar=u*u+v*v+4*w*w+S.Rational(7,2)*q*q-S.Rational(29,10)*q*(u+v)
+F=S.expand(Fstar-S.Rational(1,10)*q*q)
+F_basis=u*u+v*v+4*w*w+S.Rational(17,5)*q*q-S.Rational(29,10)*q*(u+v)
+assert S.expand(F-F_basis)==0
+
+ac=S.expand(s*s*S.diff(F,a,2)+2*s*t*S.diff(F,a,b)+t*t*S.diff(F,b,2))
+M11=S.hessian(ac.coeff(s,2).coeff(t,0),x)/2
+M12=S.hessian(ac.coeff(s,1).coeff(t,1),x)/4
+M22=S.hessian(ac.coeff(s,0).coeff(t,2),x)/2
+pairs=[(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)]
+ks=[S.Rational(311,1000),S.Rational(1417,1000),0,0,S.Rational(1417,1000),S.Rational(2161,1000)]
+K=S.zeros(4)
+for (i,j),v0 in zip(pairs,ks):
+    K[i,j]=v0; K[j,i]=-v0
+Q=M11.row_join(M12+K).col_join((M12-K).row_join(M22))
+z=(s*x).col_join(t*x)
+assert S.expand((z.T*Q*z)[0]-ac)==0
+minors=[S.factor(Q[:i,:i].det()) for i in range(1,9)]
+assert all(vv&gt;0 for vv in minors)
+L,D=Q.LDLdecomposition(hermitian=False)
+assert L*D*L.T==Q and all(vv&gt;0 for vv in D.diagonal())
+
+# The two-point determinant-balanced law from the N794 proof is not a
+# compatible-gradient test. It only witnesses failure of polyconvexity.
+I={a:7,b:0,c:0,d:7}; J={a:1,b:0,c:0,d:-1}
+law= S.Rational(1,50)*F.subs(I)+S.Rational(49,50)*F.subs(J)
+assert law==S.Rational(-1029,125)
+assert S.Rational(1,50)*49-S.Rational(49,50)==0
+
+pins={}
+for rel in [
+    &#x27;work/FM-sources/resonant/PROFILE_CIRCULATION.md&#x27;,
+    &#x27;work/FM-sources/resonant/certify_profile_graph.py&#x27;,
+    &#x27;work/FM-sources/resonant/profile_algebra.py&#x27;,
+    &#x27;work/astra-capital/updates/FE/synthesis/quartic/QUARTIC_AUDIT_AND_PROOF.md&#x27;,
+    &#x27;work/astra-capital/updates/FE/synthesis/quartic/checks/FSTAR_CLOSED_HEAT_CERTIFICATE.json&#x27;,
+]:
+    raw=(ROOT.parents[1]/rel).read_bytes()
+    pins[rel]=hashlib.sha256(raw).hexdigest()
+
+out={
+    &#x27;status&#x27;:&#x27;EXACT PASS&#x27;,
+    &#x27;scope&#x27;:&#x27;homogeneous planar left-SO(2) quartic F_new; exact acoustic sufficient certificate and scoped non-polyconvexity witness&#x27;,
+    &#x27;Fstar_coefficients_in_basis_u2_v2_uv_w2_uw_vw_qu_qv_qw&#x27;:[&#x27;1&#x27;,&#x27;1&#x27;,&#x27;7/2&#x27;,&#x27;1/2&#x27;,&#x27;0&#x27;,&#x27;0&#x27;,&#x27;-29/10&#x27;,&#x27;-29/10&#x27;,&#x27;0&#x27;],
+    &#x27;Fnew_coefficients_in_basis_u2_v2_uv_w2_uw_vw_qu_qv_qw&#x27;:[&#x27;1&#x27;,&#x27;1&#x27;,&#x27;17/5&#x27;,&#x27;3/5&#x27;,&#x27;0&#x27;,&#x27;0&#x27;,&#x27;-29/10&#x27;,&#x27;-29/10&#x27;,&#x27;0&#x27;],
+    &#x27;identity&#x27;:&#x27;F_new = F_star - (1/10) det(A)^2&#x27;,
+    &#x27;acoustic_gram_K_upper_skew_entries&#x27;:[str(vv) for vv in ks],
+    &#x27;acoustic_gram&#x27;:[[str(Q[i,j]) for j in range(8)] for i in range(8)],
+    &#x27;leading_principal_minors&#x27;:[str(vv) for vv in minors],
+    &#x27;ldl_diagonal&#x27;:[str(vv) for vv in D.diagonal()],
+    &#x27;nonpolyconvexity_law_mean&#x27;:str(law),
+    &#x27;law_mean_determinant&#x27;:&#x27;0&#x27;,
+    &#x27;law_is_compatible_gradient&#x27;:False,
+    &#x27;source_sha256&#x27;:pins,
+    &#x27;limitations&#x27;:[&#x27;No compatible negative Jensen gap is established by the atomic law.&#x27;,
+                   &#x27;The closed-heat certificate for F_star does not transfer by subtracting 1/10 det^2; its certified subtraction is 83/1000.&#x27;,
+                   &#x27;Historical novelty and external proof review remain UNKNOWN.&#x27;]
+}
+(ROOT/&#x27;acoustic_certificate.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({k:v for k,v in out.items() if k not in (&#x27;acoustic_gram&#x27;,&#x27;source_sha256&#x27;)},indent=2))
+</pre></body></html>

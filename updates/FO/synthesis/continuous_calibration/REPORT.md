@@ -1,0 +1,330 @@
+# Continuous calibration for the two-opposite-carrier profile plane
+
+**Status:** exact analytic certificate for one specified integrand and one
+two-real-parameter family. The certificate covers every closed loop and every
+positive strip width in the full profile plane, uniformly for every affine
+background. It is not a result for arbitrary periodic profiles or for the
+full planar rank-one-convex class. External mathematical review and historical
+priority remain UNKNOWN.
+
+## Result
+
+For the quartic
+
+\[
+G(A)=3(u+v-2q)^2+\frac{35}{24}u^2+q^2-\frac52qu,
+\quad u=|A_{\cdot1}|^2,\quad v=|A_{\cdot2}|^2,\quad q=\det A,
+\]
+consider the real two-component profile
+
+\[
+U_{r,s}(y)=(r+s)(\cos y,0)+(r-s)(0,\sin y)
+             = (r\cos y+s\cos y,\ r\sin y-s\sin y),
+\]
+equivalently $U_{r,s}=r e^{iy}+s e^{-iy}$ under the usual complex-to-real
+identification. Let $a(x)=(r(x),s(x))$ be any closed absolutely continuous
+path on a finite interval, with $r',s'\in L^4$, and put
+
+\[
+\phi(x,y)=U_{r(x),s(x)}(y),\qquad p=r'(x),\ q_1=s'(x).
+\]
+The symbol $q_1$ here is the profile velocity (the $q$ in the source
+algebra), while $q=\det A$ above is the matrix determinant. Write
+$\langle\cdot\rangle_y$ for normalized average over $0\le y<2\pi$.
+
+For every constant $B\in\mathbb R^{2\times2}$, the exact inequality is
+
+\[
+\int_0^L\!\left\langle G(B+D\phi)-G(B)\right\rangle_y dx
+\ \ge\ \frac14\int_0^L\!\left\langle |D\phi|^4\right\rangle_y dx.
+\tag{1}
+\]
+
+More strongly, (1) holds edge by edge with an explicit profile-polynomial
+storage $P_B$: on any strip joining $U$ to $V$ linearly over any
+\(\tau>0\),
+
+\[
+W_B(U,V,\tau)-\frac14\int_0^\tau\!\left\langle|D\phi|^4\right\rangle_y dx
+\ \ge\ P_B(V)-P_B(U).
+\tag{2}
+\]
+Thus negative raw strip energies are allowed, but every closed concatenation
+telescopes to (1). No finite mesh, finite width library, limiting argument,
+or background truncation is used in (1)–(2).
+
+The storage is
+
+\[
+P_B(r,s)=-3r^4+3s^4+\frac{\lambda_B}{2}(r^2-s^2),
+\tag{3}
+\]
+where $\lambda_B$ is defined exactly by a one-scalar semidefinite
+completion below. For each fixed $B$, (3) is a polynomial in the profile
+coordinates. The coefficient is not claimed to be a polynomial or analytic
+function of $B$.
+
+## Exact reconstruction of the strip action
+
+On a straight strip from $U=(r_0,s_0)$ to $V=(r_1,s_1)$, set
+
+\[
+r_t=r_0+t(r_1-r_0),\quad s_t=s_0+t(s_1-s_0),\quad
+p=\frac{r_1-r_0}{\tau},\quad q_1=\frac{s_1-s_0}{\tau},\quad 0\le t\le1.
+\]
+The exact gradient matrix is
+
+\[
+D\phi=\begin{pmatrix}
+(p+q_1)\cos y&-(r_t+s_t)\sin y\\
+(p-q_1)\sin y&(r_t-s_t)\cos y
+\end{pmatrix}.
+\tag{4}
+\]
+Half-period parity gives
+\(\langle G(B+D\phi)-G(B)\rangle_y
+=\mathcal G_0(r_t,s_t,p,q_1)+\mathcal Q_B(r_t,s_t,p,q_1)\): the terms odd in
+\(D\phi\) vanish, leaving the zero-background quartic and the Hessian
+quadratic $\mathcal Q_B=\langle\tfrac12D^2G(B)[D\phi,D\phi]\rangle_y$.
+The exact zero-background polynomials, reconstructed from Laurent coefficients,
+are
+
+\[
+\begin{aligned}
+\mathcal G_0={}&\frac{107}{24}(p^4+q_1^4)+\frac{107}{6}p^2q_1^2
+-\frac{29}{2}p^3r+\frac{29}{2}q_1^3s
++19p^2r^2+\frac{25}{2}p^2s^2+\frac{25}{2}q_1^2r^2+19q_1^2s^2\\
+&+29p^2q_1s-29pq_1^2r-51pq_1rs
++3r^4+12r^2s^2+3s^4\\
+&-12pr^3-24prs^2+24q_1r^2s+12q_1s^3,
+\end{aligned}
+\tag{5}
+\]
+
+\[
+\begin{aligned}
+\mathcal N_0:=\langle|D\phi|^4\rangle_y={}&p^4+q_1^4+4p^2q_1^2
++2p^2r^2+2p^2s^2+2q_1^2r^2+2q_1^2s^2\\
+&-4pq_1rs+r^4+4r^2s^2+s^4.
+\end{aligned}
+\tag{6}
+\]
+
+For $B=\begin{psmallmatrix}b_0&b_1\\b_2&b_3\end{psmallmatrix}$, an exact
+compact form for the Hessian profile polynomial is
+
+\[
+\mathcal Q_B=A(p^2+q_1^2)+C p q_1+L(pr-q_1s)
++M(ps-q_1r)+E(r^2+s^2)+F rs,
+\tag{7}
+\]
+where
+
+\[
+\begin{aligned}
+A={}&(107b_0^2-174b_0b_3+75b_1^2+174b_1b_2+107b_2^2+75b_3^2)/6,\\
+C={}&(107b_0^2-174b_0b_3-78b_1^2-174b_1b_2-107b_2^2+78b_3^2)/6,\\
+L={}&-29b_0^2+51b_0b_3-24b_1^2-51b_1b_2-29b_2^2-24b_3^2,\\
+M={}&(29b_0^2-50b_0b_3-24b_1^2-50b_1b_2-29b_2^2+24b_3^2)/2,\\
+E={}&(25b_0^2-48b_0b_3+24b_1^2+48b_1b_2+25b_2^2+24b_3^2)/2,\\
+F={}&-13b_0^2+24b_0b_3+12b_1^2+24b_1b_2+13b_2^2-12b_3^2.
+\end{aligned}
+\tag{8}
+\]
+Equations (4)–(8) reconstruct $W_B$ by integrating their right sides over
+$x\in[0,\tau]$ with $r=r_t,s=s_t,p,q_1$ as above. This is an exact
+quartic-in-endpoints/quadratic-in-background action, not a sampled quadrature.
+
+## Storage proof
+
+First take $B=0$. With
+\(P_0(r,s)=-3r^4+3s^4\), direct differentiation gives
+
+\[
+\mathcal G_0-\frac14\mathcal N_0-
+\bigl(p\,\partial_rP_0+q_1\,\partial_sP_0\bigr)=R_0.
+\tag{9}
+\]
+The homogeneous quartic $R_0$ is exactly $m^TQm$, where
+
+\[
+m=(q_1^2,pq_1,p^2,sq_1,sp,s^2,rq_1,rp,rs,r^2)^T.
+\]
+The full rational $10\times10$ matrix $Q$ is in
+[quartic_sos_gram.txt](quartic_sos_gram.txt). Exact coefficient matching
+reconstructs (9), and its ten leading principal minors are strictly positive
+by Sylvester's criterion; hence $R_0\ge0$ everywhere. The exact verifier
+records the minors and the equivalent positive LDL pivots in
+[continuum_storage_verification.json](continuum_storage_verification.json).
+This is a continuum identity in all real $r,s,p,q_1$, so it gives the edge
+storage $P_0$ for every endpoint pair and every $\tau>0$.
+
+For general $B$, write $X\in\mathbb R^{2\times2}$ in row-major order and
+let $H_B=\tfrac12D^2G(B)$ be its symmetric $4\times4$ quadratic-form
+matrix. Let $D$ be the symmetric matrix with $D_{14}=D_{41}=1/2$,
+\(D_{23}=D_{32}=-1/2\), and all other entries zero; then
+\(X^TDX=\det X\). Since the pinned N812 proof establishes global
+rank-one convexity of this exact $G$,
+
+\[
+X=a\otimes\xi\quad\Longrightarrow\quad X^TH_BX\ge0
+\tag{10}
+\]
+for every $B,a,\xi$. Apply the indefinite case of the non-strict Finsler
+lemma to $q(X)=\det X$ and $Q(X)=X^TH_BX$: $q$ is indefinite, and (10) says
+$Q\ge0$ on its zero cone. It follows that for some scalar $\lambda$,
+\[
+X^TH_BX=S_B(X)+\lambda\det X,\qquad S_B\succeq0.
+\tag{11}
+\]
+
+Here is the finite-dimensional completion argument, so the decomposition is
+not a black-box appeal to a theorem about biquadratic sums of squares. On
+any plane spanned by one vector where $q>0$ and one where $q<0$, a linear
+change of coordinates puts $q=s^2-t^2$. Write the restriction of $Q$ as
+$\alpha s^2+2\beta st+\gamma t^2$. Nonnegativity on the two null lines
+$s=\pm t$ gives $\alpha+\gamma\ge2|\beta|$. With
+$\lambda_0=(\alpha-\gamma)/2$, the matrix of $Q-\lambda_0q$ on that plane
+has equal diagonal entries $(\alpha+\gamma)/2$ and off-diagonal $\beta$,
+so it is positive semidefinite. Consequently, for every $X,Y$ with
+$q(X)>0>q(Y)$,
+\[
+\frac{Q(Y)}{q(Y)}\le\frac{Q(X)}{q(X)}.
+\]
+Thus $\sup_{q(Y)<0}Q(Y)/q(Y)\le\inf_{q(X)>0}Q(X)/q(X)$. Both endpoints
+are finite: fixing one positive-$q$ vector bounds the supremum above, and
+fixing one negative-$q$ vector bounds the infimum below; each set also
+contains a finite ratio. Any scalar between the endpoints satisfies
+$Q-\lambda q\ge0$ on both strict-sign cones, and the assumed null-cone
+condition covers $q=0$. This proves (11) for $q=\det$.
+
+To make the coefficient canonical and checkable, define
+
+\[
+\lambda_B=\sup\{\lambda\in\mathbb R:H_B-\lambda D\succeq0\}.
+\tag{12}
+\]
+By (11) the set is nonempty; it is closed. It is bounded above by evaluating
+the constraint at $X=I$, where $\det I=1$, so its supremum is finite and
+belongs to the set. Consequently $S_B=H_B-\lambda_BD\succeq0$.
+This is a one-scalar exact LMI definition, not a numerically fitted value.
+
+For (4), direct averaging gives
+
+\[
+\langle\det D\phi\rangle_y=pr-q_1s
+=\frac{d}{dx}\frac{r^2-s^2}{2}.
+\tag{13}
+\]
+Substitute (11) and (13) into (7), and combine with (9):
+
+\[
+\left\langle G(B+D\phi)-G(B)\right\rangle_y-\frac14\mathcal N_0
+=\frac{d}{dx}P_B(r,s)+R_0(r,s,p,q_1)
++\left\langle S_B(D\phi)\right\rangle_y.
+\tag{14}
+\]
+Both non-storage terms on the right are nonnegative. Integrating (14) proves
+(2) and (1). The line-strip case is included by taking $r,s$ affine in
+\(x\), with arbitrary positive width. A closed AC path follows directly
+almost everywhere; piecewise-linear paths concatenate into compatible
+periodic fields. Approximation in $W^{1,4}$ gives the same inequality for
+the stated AC class because all terms are quartic polynomials in
+\((r,s,r',s')\).
+
+This proves an explicit all-background profile-polynomial calibration. It is
+stronger than deriving nonnegative loop costs and then invoking a shortest-path
+potential. The scalar LMI does not supply a closed formula or regularity
+of \(B\mapsto\lambda_B\); no such property is needed for (2).
+
+## Cycle–storage equivalence and exact limits
+
+For completeness, on any directed profile graph with a cost $c_B(e)$ for
+each allowed labelled edge (including its width), the following elementary
+equivalence holds. Suppose every vertex is reachable from a base vertex by a
+finite-cost path and has a finite-cost return path to the base. Then:
+
+* if every finite directed closed walk has nonnegative total cost, the function
+  \(P_B(v)=\inf_{\pi:o\to v} c_B(\pi)\) is finite at every vertex and obeys
+  \(c_B(e)\ge P_B(\mathrm{end}(e))-P_B(\mathrm{start}(e))\);
+* if a finite-valued $P_B$ obeys those edge inequalities, telescoping gives
+  nonnegative cost on every finite closed walk.
+
+The lower bound on $P_B(v)$ follows by appending one fixed finite return path
+from $v$ to $o$ to any $o$-to-$v$ path; otherwise that concatenation
+would be a negative cycle. The fixed access path gives an upper bound. For the
+present profile plane every ordered endpoint pair is connected by one strip
+of width $1$, and its polynomial cost is finite, so the reachability/return
+premises hold. This equivalence alone gives only a finite-valued Bellman
+potential, with no continuity, coercivity, or polynomial regularity. The
+explicit $P_B$ in (3) supplies that stronger structure for this integrand.
+
+The graph certificate from the incoming source is an exact but narrower
+finite check: 81 lattice vertices \((i/4,j/4)\), five widths
+\(\{1/8,1/4,1/2,1,2\}\), and 32,805 rational edge actions at \(\eta=1/4\).
+Its vertex potential has denominator 245,760, 93 tight inequalities; 2,046
+adjusted edges and 104 raw energy edges are negative, with minimum raw edge
+energy \(-1431/1280\). Replaying the copied verifier gave all nine groups
+PASS, including the exact graph group. The finite graph itself says nothing
+about arbitrary real endpoints or unlisted widths. The continuous SOS/storage
+identity above removes both restrictions for this fixed two-real-mode family.
+
+The all-affine transfer in the finite graph theorem was already supported by
+the N812 source's global acoustic rank-one certificate for $G$: its verifier
+reconstructs a rank-six $8\times8$ PSD Gram with leading $6\times6$ minors
+$107/2, 642, 1605/8, 8445/16, 2815/8, 26865/4$. N812 also proves all-background
+Jensen for a circular carrier with arbitrary real scalar amplitude, and a
+separate one-coordinate complex-envelope class. Those results do not cover
+independent $r,s$ profiles in the opposite-carrier plane. Therefore a
+G-only *finite-grid* certificate is not needed to establish global
+rank-one convexity or the one-carrier theorem, but its two-carrier zero-
+background loop certificate was not redundant. The present continuum proof
+replaces that finite-grid step on this specific profile plane.
+The retained quartic in N794 is a different polynomial (`Fstar`); N794's
+general acoustic criterion supplies relevant background machinery but is not
+the G-specific positivity certificate.
+
+## Error, conditioning, and cost ledger
+
+There is no mesh approximation and no width interpolation error: (9) and (14)
+are exact polynomial identities, and (13) is exact. Summing $K$ edges adds
+their nonnegative residual integrals and telescopes the exact endpoint storage;
+there is no per-edge approximation error to accumulate. If a future numerical
+implementation replaces the LMI solution or exact identities by approximants,
+its error could accumulate with $K$; no such implementation or bound is
+claimed here. The finite graph has zero arithmetic error because its costs and
+potential are rational; it leaves the stated coverage gap, not a numerical
+error interval.
+
+The integrand and profile family were supplied as symbolic source inputs;
+there was no physical/model acquisition or measurement. A floating-point
+feasibility search was used only to find a candidate quartic Gram; 20 free
+parameters were then rationalized and the final coefficient identity and all
+ten leading minors checked over exact rationals. That search's numerical
+conditioning is UNKNOWN and is not a premise of the proof. Exact continuum
+verification ran in 1.24 s wall time in the pinned scientific venv on this
+host; memory, aggregate inference tokens, and total resource cost were not
+measured. The N812 verifier replay took about 1.2 s for nine exact groups; the
+copied resonant verifier took about 2.7 s for the finite graph subroutine
+(the verifier records 2.75 s). These timings describe local verification only.
+
+The indefinite non-strict Finsler lemma is a classical input recorded in the
+FI source packet, which cites T. J. Meijer et al., “A General Non-Strict
+Finsler's Lemma,” [arXiv:2403.10306v1](https://arxiv.org/html/2403.10306v1).
+The primary-source ledger records the inspected v2 rendering as “A Unified
+Non-Strict Finsler Lemma,” with the abstract and theorem/intro lines 86–99
+read; the source packet's v1 title/version and the inspected v2 title/version
+difference are retained rather than silently normalized. The completion
+used here is also proved directly in the preceding paragraph. The N812
+global rank-one certificate remains the input for (10).
+
+## Decisive remaining limits
+
+This result is a proof for $G$ and the real opposite-carrier plane only. It
+does not cover four-real-dimensional complex amplitudes with independent
+phases, three or more interacting frequencies, arbitrary loops in the full
+function space of transverse profiles, other rank-one-convex quartics, or an
+unrestricted compatible gradient. The coefficient $\lambda_B$ is an exact
+feasibility definition; a closed elementary expression, its regularity in $B$,
+and an exact symbolic expansion of the PSD remainder $S_B$ remain
+open. External proof validation and prior-art review are also open.

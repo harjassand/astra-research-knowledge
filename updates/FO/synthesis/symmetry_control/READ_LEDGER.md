@@ -1,0 +1,33 @@
+# Read ledger — FO symmetry control
+
+## Assignment and boundaries
+
+Read `/Users/harjas/Documents/Codex/2026-10-14/astra-research-capital-integration-synthesis-breakthrough/work/FO_WORKER_CONTRACT.txt` and `work/FO_PIN.json`. Scope: determine whether phase-locked ω/2ω control distinguishes opposite-polarity GaAs variants in scalar injection/heat and whether it establishes retained structural bias. Writes are confined to `work/FO-symmetry-control/`. No capital files, source payloads, scripts outside this folder, or other FO worker investigations were modified or executed. No nested agents, Git operations, laboratory operations, or external messages were used.
+
+## Primary literature
+
+| Source | Exact pin | Read depth and material used |
+|---|---|---|
+| A. D. Fraser, G. S. Shkrebtii, J. E. Sipe, H. M. van Driel, “Quantum Interference in Electron-Hole Generation in Noncentrosymmetric Semiconductors,” *Physical Review Letters* 83, 4192–4195 (1999). | DOI: [10.1103/PhysRevLett.83.4192](https://doi.org/10.1103/PhysRevLett.83.4192); author-hosted PDF: https://www.physics.utoronto.ca/~vandriel/papers/fraser1.pdf | Full four-page article downloaded to `primary/fraser_shkrebtii_sipe_van-driel_1999_PRL83_4192.pdf`; text extracted to `primary/fraser1999.txt` and read. Checked transition-amplitude sum and Eq. (1), scalar interference tensor and phase, energy balance Eqs. (3)–(4), GaAs coefficient bound, apparatus/irradiances, (111) polarization geometry, measured ~2% density modulation, sample rotation, propagation modeling, and direct-QUIC versus current distinction. |
+| M. J. Stevens et al., “Enhanced coherent control of carrier and spin density in a zinc-blende semiconductor by cascaded second-harmonic generation,” *Journal of Applied Physics* 97, 093709 (2005). | DOI: [10.1063/1.1879079](https://doi.org/10.1063/1.1879079); author-hosted PDF: https://www.physics.utoronto.ca/~vandriel/papers/stevens5.pdf | Full article downloaded to `primary/stevens_et-al_2005_JAP97_093709.pdf`; extracted text `primary/stevens2005.txt` read. Checked QUIC rate/tensor equations, CASH’s nonlocal propagation mechanism, sample and pump conditions, phase-dependent density measurements, propagation-direction test, and distinction between demonstrated preamplifier enhancement and projected near-100% control. |
+| K. Yamaguchi, K. Itagaki, A. Yazawa, “High Temperature Heat Content Measurements of the III-V Compounds,” *Journal of the Japan Institute of Metals* 53(8), 764–770 (1989). | DOI: [10.2320/jinstmet1952.53.8_764](https://doi.org/10.2320/jinstmet1952.53.8_764); publisher index: https://www.jstage.jst.go.jp/article/jinstmet1952/53/8/53_8_764/_article | Full article downloaded to `primary/yamaguchi_itagaki_yazawa_1989_JIM53_764.pdf`; extracted text `primary/yamaguchi1989.txt` read. Checked abstract, drop-calorimeter method, GaAs row of Table 1 (Shomate coefficients and 800–1514 K fit interval), GaAs fusion enthalpy/melting point, and the GaAs measurement discussion. Used only for a conditional bulk melt-energy screen. |
+| “Antiphase domain structures in GaP and GaAs epitaxial layers grown on Si and Ge,” *Journal of Crystal Growth* 38(2), 249–254 (1977). | DOI: [10.1016/0022-0248(77)90305-0](https://doi.org/10.1016/0022-0248(77)90305-0); publisher record: https://www.sciencedirect.com/science/article/pii/0022024877903050 | Abstract only. Used only for the report’s limited statement that GaAs/Ge adjoining domains with reversed ⟨111⟩ polarity were reported in (100)/(110), but not the cited (111) specimens. Full text was not obtained/read. |
+| “GaAs/Ge/GaAs sublattice reversal epitaxy and its application to nonlinear optical devices,” *Journal of Crystal Growth* 227–228, 183–192 (2001). | DOI: [10.1016/S0022-0248(01)00660-1](https://doi.org/10.1016/S0022-0248(01)00660-1); publisher record: https://www.sciencedirect.com/science/article/abs/pii/S0022024801006601 | Abstract only. Used only to establish that MBE sublattice reversal/domain-inversion structures were reported, not that the optical control in this report writes them. Full text was not obtained/read. |
+
+## Capital context and source payloads
+
+- Read `work/astra-capital/00_START_HERE.txt`, `AGENTS.md`, `agent/COMPOSITION.txt`, `state/CONTINUITY.md`, `technology/README.md`, and the targeted N789, N795, N814 dossiers/cards/review cards/gates. Current capability gates `G-FC-N789-CAPABILITY`, `G-FE-N795-CAPABILITY`, and `G-FL-N814-CAPABILITY` were read directly and are `open`; no completion evidence is listed. N789’s gate requests same-specimen phase/basis/energy/angle/dose-resolved retained-event evidence and full controls/costs. N795 concerns justified graph/rate boxes and independent solver/comparator evidence. N814 concerns measured chemistry-compatible net work return. These are routing context only; this analysis closes none.
+- Read `work/FM-sources/physical/RESEARCH_RECORD.md`, its `results.json`, `calculate_bounds.py` (read-only; **not executed**), and `work/FM-sources/ancestry_PASTED_SOURCE.txt`. The source’s separate Te recoil evidence was not transferred to GaAs. No source-directory script was run.
+
+## Independent arithmetic and replay
+
+- Created `derive_checks.py`, a standard-library-only script in the owned folder. It calculates the GaAs solid heat content from the published fit, the equal-molar melt-screen threshold/fraction, the exact balanced-pathway Cauchy ceiling, and the (111) tensor contraction.
+- An initial shell attempt using bare `python` failed because that command is unavailable; it created no result. The successful replay was:
+
+  `/Users/harjas/Documents/Codex/2026-10-14/astra-research-capital-integration-synthesis-breakthrough/work/FE-hidden-gate/venv/bin/python work/FO-symmetry-control/derive_checks.py > work/FO-symmetry-control/derived_checks.json`
+
+- The successful result is preserved at `derived_checks.json`. It is internal arithmetic, not experimental validation or an independent review. Full paper PDFs stay only in owned `primary/` as required; they are third-party sources, not republished as original work.
+
+## Resource and physical-state limits
+
+Acquisition/conditioning consisted of retrieving the three full papers above and two publisher abstracts; no sample, optical setup, calibrated field, or domain-resolved dataset was acquired. Full-time, financial, and aggregation costs are not measured (`UNKNOWN`). No hardware/lab claim, experimental reproduction, structural readout, retained-event curve, external validation, or novelty/priority claim is made. The published irradiance/response values are reported from the cited papers with their stated scope; extrapolation to structural writing or other fluences is not justified.

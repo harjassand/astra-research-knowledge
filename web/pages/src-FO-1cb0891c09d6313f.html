@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — full_affine_loop_search.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/cycle_optimizer/full_affine_loop_search.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact common-affine optimization for a few mixed-parity compatible loops.&quot;&quot;&quot;
+from fractions import Fraction as Q
+from pathlib import Path
+import json,sys,time
+import sympy as S
+
+ROOT=Path(__file__).resolve().parent
+sys.path.insert(0,str(ROOT/&#x27;incoming_resonant&#x27;))
+from profile_algebra import add,scale,mul,cos,sin,meanprod,const,r,s,p,q,B
+
+T=S.symbols(&#x27;T&#x27;,real=True)
+lam=Q(11,100)
+
+def expressions(n,m):
+    a=add(scale(cos(n),p),scale(cos(m),q)); c=add(scale(sin(n),p),scale(sin(m),q))
+    b=add(scale(sin(n),-n*r),scale(sin(m),-m*s)); d=add(scale(cos(n),n*r),scale(cos(m),m*s))
+    X=[a,b,c,d]
+    X=[add(x,const(bb)) for x,bb in zip(X,B)]
+    a,b,c,d=X
+    u=add(mul(a,a),mul(c,c));v=add(mul(b,b),mul(d,d));w=add(mul(a,b),mul(c,d));det=add(mul(a,d),scale(mul(b,c),-1))
+    Favg=S.expand(meanprod(u,u)+meanprod(v,v)+4*meanprod(w,w)
+                  +S.Rational(339,100)*meanprod(det,det)
+                  -S.Rational(29,10)*meanprod(det,add(u,v)))
+    B0,B1,B2,B3=B
+    ub=B0**2+B2**2;vb=B1**2+B3**2;wb=B0*B1+B2*B3;qb=B0*B3-B1*B2
+    Fbase=S.expand(ub**2+vb**2+4*wb**2+S.Rational(339,100)*qb**2-S.Rational(29,10)*qb*(ub+vb))
+    N4=S.expand(meanprod(add(u,v),add(u,v)))
+    N4=S.expand(N4.subs({bb:0 for bb in B},simultaneous=True))
+    return Favg,Fbase,N4
+
+def loop(n,m,vertices,widths):
+    Favg,Fbase,N4=expressions(n,m)
+    gap=0; n4=0
+    total=Q(0)
+    for (r0,s0),(r1,s1),h0 in zip(vertices,vertices[1:]+vertices[:1],widths):
+        h=S.Rational(h0); t=T
+        sub={r:S.Rational(r0)+t*(S.Rational(r1)-S.Rational(r0)),
+             s:S.Rational(s0)+t*(S.Rational(s1)-S.Rational(s0)),
+             p:(S.Rational(r1)-S.Rational(r0))/h,
+             q:(S.Rational(s1)-S.Rational(s0))/h}
+        gap+=h*S.integrate(S.expand((Favg-Fbase).subs(sub,simultaneous=True)),(t,0,1))
+        n4+=h*S.integrate(S.expand(N4.subs(sub,simultaneous=True)),(t,0,1))
+        total+=h0
+    gap=S.Poly(S.expand(gap),*B)
+    assert gap.total_degree()&lt;=2
+    g=gap.as_expr()
+    zero={x:0 for x in B}
+    H=S.hessian(g,B).subs(zero,simultaneous=True)
+    bvec=S.Matrix([S.diff(g,x).subs(zero,simultaneous=True) for x in B])
+    c0=g.subs(zero,simultaneous=True)
+    if H.det()==0:
+        return {&#x27;status&#x27;:&#x27;SINGULAR_AFFINE_HESSIAN&#x27;,&#x27;H&#x27;:str(H),&#x27;b&#x27;:list(map(str,bvec)),&#x27;c&#x27;:str(c0)}
+    assert all(H[:i,:i].det()&gt;0 for i in range(1,5))
+    Bopt=-H.inv()*bvec
+    optgap=S.factor(c0+(bvec.dot(Bopt))/2)
+    return {&#x27;status&#x27;:&#x27;EXACT_AFFINE_OPTIMUM&#x27;,&#x27;carrier_pair&#x27;:[n,m],
+            &#x27;vertices&#x27;:[[str(x),str(y)] for x,y in vertices],
+            &#x27;widths&#x27;:[str(x) for x in widths],&#x27;total_width&#x27;:str(total),
+            &#x27;third_moment_vector_b&#x27;:[str(x) for x in bvec],
+            &#x27;common_Hessian&#x27;:[[str(H[i,j]) for j in range(4)] for i in range(4)],
+            &#x27;H_ldl_diagonal&#x27;:[str(x) for x in H.LDLdecomposition(hermitian=False)[1].diagonal()],
+            &#x27;constant_c&#x27;:str(c0),&#x27;common_B_opt&#x27;:[str(x) for x in Bopt],
+            &#x27;fully_optimized_unnormalized_gap&#x27;:str(optgap),
+            &#x27;fully_optimized_normalized_gap&#x27;:str(S.factor(optgap/S.Rational(total.numerator,total.denominator))),
+            &#x27;fourth_gradient_integral&#x27;:str(S.factor(n4)),
+            &#x27;cubic_nonzero&#x27;:bvec!=S.zeros(4,1)}
+
+if __name__==&#x27;__main__&#x27;:
+    start=time.time(); square=Q(0)
+    paths=[
+      (&#x27;unit-square&#x27;,[(Q(0),Q(0)),(Q(1),Q(0)),(Q(1),Q(1)),(Q(0),Q(1))],[Q(1)]*4),
+      (&#x27;centered-square&#x27;,[(Q(-1,2),Q(-1,2)),(Q(1,2),Q(-1,2)),(Q(1,2),Q(1,2)),(Q(-1,2),Q(1,2))],[Q(1)]*4),
+      (&#x27;translated-square&#x27;,[(Q(1),Q(1)),(Q(2),Q(1)),(Q(2),Q(2)),(Q(1),Q(2))],[Q(1)]*4),
+      (&#x27;rectangle-varied-width&#x27;,[(Q(0),Q(0)),(Q(1),Q(0)),(Q(1),Q(1,2)),(Q(0),Q(1,2))],[Q(1,2),Q(1),Q(2),Q(1,4)]),
+    ]
+    runs=[]
+    for name,path,widths in paths:
+        for n,m in [(1,2),(2,1)]:
+            result=loop(n,m,path,widths);result[&#x27;path_name&#x27;]=name;runs.append(result)
+    out={&#x27;integrand&#x27;:&#x27;Fstar-(11/100)q^2&#x27;,&#x27;purpose&#x27;:&#x27;bounded mixed-parity test; exact common affine optimization&#x27;,&#x27;runtime_seconds&#x27;:time.time()-start,&#x27;runs&#x27;:runs}
+    (ROOT/&#x27;full_affine_loop_search.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2))
+</pre></body></html>

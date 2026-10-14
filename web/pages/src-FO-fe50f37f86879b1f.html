@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — profile_algebra.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/package/resonant/profile_algebra.py">Exact bytes</a></p><pre>&quot;&quot;&quot;Exact two-carrier profile algebra and rational polygon actions.
+All Fourier averages are reconstructed from Laurent polynomials; no spatial grid.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as Q
+from math import comb
+import sympy as S
+from functools import lru_cache
+r,s,p,q=S.symbols(&#x27;r s p q&#x27;,real=True)
+B=S.symbols(&#x27;B0:4&#x27;,real=True)
+VARS=(r,s,p,q)
+
+def add(f,g):
+ d=f.copy()
+ for k,v in g.items():d[k]=d.get(k,0)+v
+ return {k:S.expand(v) for k,v in d.items() if v!=0}
+def scale(f,c):return {k:c*v for k,v in f.items()}
+def mul(f,g):
+ d={}
+ for k,v in f.items():
+  for j,w in g.items():d[k+j]=d.get(k+j,0)+v*w
+ return {k:S.expand(v) for k,v in d.items() if v!=0}
+def const(c):return {0:c}
+def cos(n):return {n:S.Rational(1,2),-n:S.Rational(1,2)}
+def sin(n):return {n:-S.I/2,-n:S.I/2}
+def meanprod(f,g):return S.expand(sum(v*g.get(-k,0) for k,v in f.items()))
+
+@lru_cache(None)
+def averaged(n:int,m:int,background:bool=False):
+ a=add(scale(cos(n),p),scale(cos(m),q))
+ c=add(scale(sin(n),p),scale(sin(m),q))
+ b=add(scale(sin(n),-n*r),scale(sin(m),-m*s))
+ d=add(scale(cos(n),n*r),scale(cos(m),m*s))
+ X=[a,b,c,d]
+ if background:X=[add(z,const(bb)) for z,bb in zip(X,B)]
+ a,b,c,d=X
+ u=add(mul(a,a),mul(c,c));v=add(mul(b,b),mul(d,d));det=add(mul(a,d),scale(mul(b,c),-1))
+ w=add(mul(a,b),mul(c,d));norm=add(u,v)
+ G=3*meanprod(add(norm,scale(det,-2)),add(norm,scale(det,-2)))+S.Rational(35,24)*meanprod(u,u)+meanprod(det,det)-S.Rational(5,2)*meanprod(det,u)
+ N=meanprod(norm,norm)
+ C=S.Matrix(4,4,lambda i,j:meanprod(X[i],X[j]))
+ return S.expand(G),S.expand(N),C,S.expand(det.get(0,0))
+
+def poly_terms(poly):
+ return [(exps,Q(int(c.p),int(c.q))) for exps,c in S.Poly(poly,*VARS).terms()]
+
+@lru_cache(maxsize=150000)
+def integ_linear_product(r0,s0,dr,ds,i,j):
+ return sum((Q(comb(i,a)*comb(j,b),a+b+1)*r0**(i-a)*dr**a*s0**(j-b)*ds**b
+     for a in range(i+1) for b in range(j+1)),Q(0))
+
+def edge_coeffs(terms,start,end):
+ r0,s0=map(Q,start);dr=Q(end[0])-r0;ds=Q(end[1])-s0
+ out=[Q(0) for _ in range(5)]
+ for (i,j,k,l),c in terms:
+  out[k+l]+=c*dr**k*ds**l*integ_linear_product(r0,s0,dr,ds,i,j)
+ return out
+
+def edge_value(co,tau):
+ tau=Q(tau)
+ return sum((a*tau**(1-j) for j,a in enumerate(co)),Q(0))
+
+def polygon_integral(poly,vertices,widths=None):
+ assert vertices[0]==vertices[-1]
+ terms=poly_terms(poly); widths=widths or [Q(1)]*(len(vertices)-1)
+ assert len(widths)==len(vertices)-1
+ return sum((edge_value(edge_coeffs(terms,a,b),h) for a,b,h in zip(vertices,vertices[1:],widths)),Q(0))
+
+def winding_moment(vertices,i,j):
+ # Green: integral w(r,s) r^i s^j dr ds = 1/(i+1) integral r^(i+1)s^j ds.
+ out=Q(0)
+ for aa,bb in zip(vertices,vertices[1:]):
+  x,y=map(Q,aa);dx=Q(bb[0])-x;dy=Q(bb[1])-y
+  out+=dy*integ_linear_product(x,y,dx,dy,i+1,j)/Q(i+1)
+ return out
+
+def square_loop(x=Q(0),y=Q(0),side=Q(1),reverse=False):
+ v=[(x,y),(x+side,y),(x+side,y+side),(x,y+side),(x,y)]
+ return v[::-1] if reverse else v
+
+def cancelled_loop():
+ base=(Q(0),Q(0));v=[base]
+ for j,coef in enumerate([1,-3,3,-1]):
+  x=Q(2*j);loop=square_loop(x,0,1,reverse=coef&lt;0)
+  for _ in range(abs(coef)):
+   if v[-1]!=loop[0]:v.append(loop[0])
+   v.extend(loop[1:])
+   if v[-1]!=base:v.append(base)
+ return v
+
+if __name__==&#x27;__main__&#x27;:
+ import time
+ t=__import__(&#x27;time&#x27;).time()
+ for nm in [(1,-1),(1,2),(1,3)]:
+  G,N,C,det=averaged(*nm,False)
+  print(nm,&#x27;terms&#x27;,len(S.Poly(G,*VARS).terms()),&#x27;seconds&#x27;,time.time()-t,flush=True)
+ print(&#x27;loop length&#x27;,len(cancelled_loop())-1)
+ print(&#x27;moments&#x27;,[(i,j,winding_moment(cancelled_loop(),i,j)) for i in range(4) for j in range(4-i)])
+</pre></body></html>

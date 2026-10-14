@@ -1,0 +1,111 @@
+# Routing information audit for topology-preserving DNA repair
+
+## Verdict
+
+Sequence complementarity plus an endogenous 3′ primer is not, by itself, enough to recover arbitrary crossover or staple routing. A local routing junction can be damaged while the rest of the nanostructure and its complete scaffold sequence survive, yet two distinct target routings can produce the exact same surviving molecules. Polymerase can copy bases and ligase can seal compatible ends; neither enzyme can infer which of two lost topological continuations was intended.
+
+The proposed dual template cover can close this gap only if its *surviving covalent path* retains an addressable routing certificate across each repaired region. I give a nontrivial local condition: after applying all retained, typed junction constraints, sequence/register compatibility, and 3′-primer orientation, the damaged patch must have a unique valid continuation matching. A local gap at a crossover is then uniquely specified even if no staple is supplied at that site. This is a precise restricted repair class, not arbitrary-damage repair.
+
+## Formal contract
+
+Represent the intended origami near a damaged patch by a typed graph (G). Vertices are strand ends or sequence-addressed scaffold intervals; edges record (i) covalent backbone continuation, (ii) crossover routing, and (iii) hybridization of a staple/template interval to its scaffold address. Each edge has strand identity, 5′/3′ orientation, and register. Let (S(G)) be the full scaffold sequence and (K(G)) the surviving covalent routing-junction set after damage (D). The information available to repair is
+
+\[
+O_D(G)=\bigl(S(G),\ \text{surviving strand fragments and their termini},\ \text{template covers},\ K(G)\bigr).
+\]
+
+Two targets are survivor-equivalent when
+
+\[
+G\sim_D G'\quad\Longleftrightarrow\quad O_D(G)=O_D(G').
+\]
+
+Exact routing recovery on an allowed target class requires that each survivor-equivalence class contain just one target routing (up to a topology-preserving relabeling that leaves the scientific function unchanged). This condition is necessary: if two different target routings are survivor-equivalent, every repair procedure receives the same input in both cases and cannot return both distinct targets.
+
+## Partial-junction counterexample
+
+Take one local crossover neighborhood with four oriented arms (A,B,C,D). Outside this neighborhood, the scaffold path, all staples, and all covalent routing junctions are identical in two target designs. Let the local sequence domains be repeated: each arm presents the same sequence word (w) in the relevant 5′→3′ orientation. The corresponding complementary template domains are therefore also identical. Repeats of this kind are permitted by sequence design; the example does not assume that the whole scaffold has been erased.
+
+The two intact targets differ only in the pairing of the two local crossover paths:
+
+\[
+R_0=\{A\leftrightarrow B,\ C\leftrightarrow D\},\qquad
+R_1=\{A\leftrightarrow D,\ C\leftrightarrow B\}.
+\]
+
+These are the two perfect matchings of the four arms. Because the relevant domains are repeated, both routings can use the same scaffold word and the same multiset of staple/template oligo sequences; what differs is which scaffold addresses the strands visit. This is a local 2-switch in topology, not a whole-object erasure.
+
+Now damage the routing junction itself: remove or sever the crossover-specific staple segments that carry the local pairing, leaving the four flanking strand ends (including the same endogenous 3′-OH primers), their local sequence, the continuous scaffold sequence, and every routing junction outside the patch. Let the dual covers remain continuous sequence complements to the scaffold, but assume the repeated domains give them no distinct address or pairing label at this patch. The two cover backbones and sequences are then identical in both worlds; they still provide bases, but do not encode which missing staple route was present. Then
+
+\[
+O_D(G_0)=O_D(G_1),\qquad R_0\ne R_1.
+\]
+
+The survivor is large and topologically informative everywhere except this one junction. The information deficit is exactly one local pairing bit: which matching was present before the crossover-specific staple connection was destroyed. The two continuous covers supply bases, but a shared sequence without an address distinction does not supply that bit. If a cover instead has a retained, uniquely addressable covalent path through the junction, it is a routing witness and this counterexample's information contract no longer applies.
+
+**Impossibility lemma.** If (G_0\ne G_1) and (O_D(G_0)=O_D(G_1)), no algorithm (A) that sees only (O_D) can be correct on both. For equal prior probability on (G_0,G_1), its maximum exact-reconstruction probability is (1/2), including randomized algorithms.
+
+**Proof.** The algorithm has the same input in both worlds, so its output distribution is the same. The events “output (G_0)” and “output (G_1)” are disjoint. Their probabilities sum to at most one; averaging success over the two equally likely targets gives at most (1/2). \(\square\)
+
+The result also applies if the target is only a staple-routing map rather than the entire geometry: use the projection of (G) onto the damaged routing edges. An exact scaffold sequence does not resolve a lost pairing when repeated addresses make both routings sequence-compatible.
+
+## A nontrivial positive topology condition
+
+The repair is uniquely specified when the survivor retains enough *typed covalent routing information* to leave exactly one local route compatible with the covers and primers. This can be checked as a finite constraint problem before claiming repair.
+
+Construct a local compatibility graph whose left vertices are the surviving 3′ primer ends and whose right vertices are the possible continuation/template addresses across the damaged patch. Add a candidate edge only when all of these hold:
+
+1. The continuation matches the template sequence in the correct 5′/3′ orientation and in one admissible register.
+2. It is consistent with every retained, addressable covalent routing junction in the patch boundary.
+3. It meets the topology's required local degree and strand-continuity constraints.
+4. The product termini can be completed chemically (polymerase-compatible 3′-OH; ligatable 3′-OH/5′-phosphate where a nick is to be sealed).
+
+Require that this graph have a **unique perfect matching**, and that each matched continuation has a unique path through the relevant template cover to the next intact routing anchor. This condition is strictly stronger than “there is a complementary sequence”: it requires the retained topology and sequence/register together to pick one continuation. In matching language, a proposed perfect matching is unique exactly when the compatibility graph has no alternating cycle relative to it.
+
+For the four-arm example, repeated sequence alone gives the complete bipartite compatibility graph (K_{2,2}), with two valid matchings (R_0,R_1). Now suppose damage is only a one-base gap in the (C\leftrightarrow D) continuation while one differently labelled, covalent routing junction in the same patch survives and identifies that continuation as (C\to D). The other continuation is already anchored as (A\to B). The retained junction removes the (C\to B), (A\to D) alternative; the compatibility graph has one perfect matching, (R_0). The topology remains partially damaged at a routing junction, but the route is uniquely specified. A cover that runs continuously through the gap provides the missing bases; the existing 3′-OH primes extension; ligase closes the remaining nick if the downstream 5′ terminus is phosphorylated. No per-site staple is required for this local fill-in.
+
+This is conditional on the anchor actually being observable in the surviving molecule. A schematic design file known only to the experimenter is extra information; it cannot be counted as information acquired by a repair process operating on the nanostructure. Likewise, two identical cover copies do not add routing information merely by being two copies. They help only if their covalent paths or address labels retain an asymmetric route certificate.
+
+## What each proposed component can and cannot supply
+
+| Component | Information or operation it supplies | What it does not supply by itself |
+|---|---|---|
+| Continuous template cover | Complementary base sequence across a gap, if intact and correctly registered | Which of several sequence-identical scaffold intervals is the intended destination |
+| Endogenous 3′-OH primer | Strand polarity and a polymerase starting end | The missing crossover pairing or a lost route identity |
+| Polymerase | 5′→3′ extension complementary to an available template | De novo initiation or choice between observationally equivalent templates |
+| Ligase | Covalent sealing of compatible adjacent termini | Sequence insertion across a gap or inference of a topology erased at the junction |
+| Retained covalent routing junction | A physical identity/adjacency constraint, if strand and address are distinguishable | Global route recovery when surviving constraints leave multiple completions |
+
+Thus, “topology preserving” needs an operational invariant. For every damage event in the claimed class, at least one route-identifying path must survive from each affected primer/template segment to an intact, uniquely addressable covalent junction. If all route witnesses at one junction are erased on both covers and the remaining local domains admit more than one matching, arbitrary repair is information-theoretically impossible even though almost the whole origami survives.
+
+## Literature-grounded incumbent and scope
+
+Sequence-only reverse engineering is already known to encounter crossover ambiguity. Shirt-Ediss et al.'s REVNANO reconstructs guide schematics from scaffold/staple sequences, but its reported “sequence-ambiguous junction” view marks crossovers not fixed by complementarity; for the Fivewell Plate example, the authors use global symmetry and unambiguous junctions to guess the ambiguous positions. Their benchmark recovered good guide schematics for 29 of 36 published designs, not a universally unique inverse. This is direct prior-art evidence that sequence lists can fail to encode a unique routing without added global constraints.
+
+The strongest experimental repair comparator is Scheckenbach et al.'s self-healing DNA origami. Their 12-helix bundle experiment added a 300-fold excess of the *missing matching staples*, incubated from 50°C and slowly cooled; the defective fraction fell from 63% to 32% by AFM angle scoring and from 72% to 38% by DNA-PAINT scoring. Their approach uses supplied matching staple strands and addresses staple damage; the authors explicitly state that their exchange method does not repair damage to the long scaffold strand. This is genuine structural-repair evidence, but it does not establish arbitrary topology recovery or no-staple local routing reconstruction.
+
+Ramakrishnan et al. demonstrated post-assembly enzymatic ligation of accessible staple ends to improve origami stability under heat and urea. That is a strong incumbent for sealing nicks after a valid design is already assembled. It does not show that ligase selects a missing crossover route or reconstructs a sequence gap. The distinction is central: **bond sealing is not topology inference**.
+
+## Decision for the proposed operation
+
+The broad claim “repair arbitrary damage without per-site staples” is refuted under sequence-only/local-survivor information whenever damage can erase every routing certificate at a crossover while leaving repeated/ambiguous domains. The no-staple operation survives as a narrower candidate:
+
+- Damage is a local nick or bounded gap in a route whose identity remains fixed by a surviving, typed covalent junction or uniquely addressable cover path.
+- The local compatibility graph has one perfect matching; repeated sequences are acceptable only if retained junction information removes all alternative matchings.
+- At least one correctly oriented endogenous 3′-OH primer and a continuous complementary cover survive; the cover's register is uniquely fixed.
+- Polymerase fill length, damaged-base chemistry, 5′ phosphorylation, and ligase accessibility fall within an experimentally demonstrated envelope.
+- The repair claim is measured as restoration of both sequence and crossover topology, not merely increased AFM height, stiffness, or yield.
+
+The decisive falsifier is a patch where two nonisomorphic routings satisfy the actual surviving-template and junction constraints. If one such patch exists in the allowed damage class, the unique-route premise fails. The decisive positive result would be a preregistered set of crossover-adjacent gap/nick constructs with retained anchors, plus anchor-erased repeated-sequence controls: recover exact strand routing and sequence for the anchored class, and observe the predicted unresolved mixture for the ambiguous class. Count template/cover construction, dNTPs, ATP, enzyme amounts, preparation, temperature/time, ligation-end chemistry, readout, failed structures, and matched staple-resupply baseline.
+
+## Primary sources
+
+1. B. Shirt-Ediss et al., “Reverse engineering DNA origami nanostructure designs from raw scaffold and staple sequence lists,” *Computational and Structural Biotechnology Journal* 21 (2023), 3615–3626. [DOI: 10.1016/j.csbj.2023.07.011](https://doi.org/10.1016/j.csbj.2023.07.011). Sequence ambiguity is also documented in the [REVNANO sequence-ambiguous junction view](https://revnano.readthedocs.io/en/latest/guide_schematic_views.html).
+2. M. Scheckenbach, T. Schubert, C. Forthmann, V. Glembockyte, and P. Tinnefeld, “Self-Regeneration and Self-Healing in DNA Origami Nanostructures,” *Angewandte Chemie International Edition* 60 (2021), 4931–4938. [DOI: 10.1002/anie.202012986](https://doi.org/10.1002/anie.202012986). Open full text: [PMC7986372](https://pmc.ncbi.nlm.nih.gov/articles/PMC7986372/).
+3. S. Ramakrishnan et al., “Enhancing the stability of DNA origami nanostructures: staple strand redesign versus enzymatic ligation,” *Nanoscale* 11 (2019), 16270–16276. [DOI: 10.1039/C9NR04460D](https://doi.org/10.1039/C9NR04460D).
+4. Y. Morii et al., “Stabilization and structural changes of 2D DNA origami by enzymatic ligation,” *Nucleic Acids Research* 49 (2021), 7884–7900. [DOI: 10.1093/nar/gkab611](https://doi.org/10.1093/nar/gkab611).
+
+## Status
+
+The impossibility lemma and unique-matching condition are mathematical statements about the explicit route-graph model above. They do not establish that a proposed physical dual-cover architecture realizes the required labeled topology, that its polymerase/ligase chemistry works at a crossover, or that arbitrary damage can be repaired. Those claims require a concrete strand-level design and experiments. The literature search was limited to accessible primary papers and article records; I did not inspect unpublished designs, sequences, or raw experimental data.
+

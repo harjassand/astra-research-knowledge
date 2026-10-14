@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — certify_all_widths.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/cycle_optimizer/certify_all_widths.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Try to extend one rational cycle potential to every positive strip width.
+
+For each fixed profile edge, exact Laurent integration gives
+W(t)=c0*t+c1+c2/t+c3/t^2+c4/t^3. Multiplying W(t)-dV by t^3
+produces a rational quartic. Exact Sturm root isolation checks its sign on
+(0,infinity); this is a separate, stronger test than the five sampled widths.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from pathlib import Path
+import json, sys
+import sympy as S
+
+ROOT=Path(__file__).resolve().parent
+sys.path.insert(0,str(ROOT/&#x27;incoming_resonant&#x27;))
+from profile_algebra import add,scale,mul,cos,sin,meanprod,poly_terms,edge_coeffs,r,s,p,q
+
+def energy(n,m):
+    a=add(scale(cos(n),p),scale(cos(m),q)); c=add(scale(sin(n),p),scale(sin(m),q))
+    b=add(scale(sin(n),-n*r),scale(sin(m),-m*s)); d=add(scale(cos(n),n*r),scale(cos(m),m*s))
+    u=add(mul(a,a),mul(c,c)); v=add(mul(b,b),mul(d,d)); w=add(mul(a,b),mul(c,d)); det=add(mul(a,d),scale(mul(b,c),-1))
+    F=meanprod(u,u)+meanprod(v,v)+4*meanprod(w,w)+Q(17,5)*meanprod(det,det)-Q(29,10)*meanprod(det,add(u,v))
+    return poly_terms(F)
+
+def nonnegative_on_positive(poly,t):
+    p=S.Poly(poly,t,domain=S.QQ)
+    while p.eval(0)==0:
+        p=p.exquo(S.Poly(t,t,domain=S.QQ))
+    roots=p.intervals(eps=S.Rational(1,10**12))
+    pos=[]
+    for (lo,hi),mult in roots:
+        if hi&lt;=0: continue
+        if lo&lt;0:
+            # The zero root was removed above; a positive root is isolated
+            # strictly unless the requested precision was unexpectedly poor.
+            raise AssertionError((lo,hi,mult))
+        pos.append((lo,hi,mult))
+    if not pos:
+        return p.eval(1)&gt;=0, []
+    samples=[]
+    first=pos[0][0]
+    samples.append(first/2 if first&gt;0 else pos[0][1]+1)
+    for (lo1,hi1,_),(lo2,hi2,_) in zip(pos,pos[1:]):
+        samples.append((hi1+lo2)/2)
+    samples.append(pos[-1][1]+1)
+    signs=[S.sign(p.eval(x)) for x in samples]
+    return all(vv&gt;=0 for vv in signs), [(str(x),int(vv)) for x,vv in zip(samples,signs)]
+
+def main():
+    runs=json.loads((ROOT/&#x27;exact_cycle_search.json&#x27;).read_text())
+    source=runs[0]
+    assert source[&#x27;carriers&#x27;]==[1,-1] and source[&#x27;profile_box&#x27;]==[&#x27;0&#x27;,&#x27;2&#x27;]
+    vertices=[(Q(i,4),Q(j,4)) for i in range(9) for j in range(9)]
+    potential=[Q(v) for v in source[&#x27;potential&#x27;]]
+    terms=energy(1,-1); tau=S.symbols(&#x27;tau&#x27;,positive=True)
+    failures=[]; root_edges=0; checked=0; min_coeff_signs=None
+    for i,a in enumerate(vertices):
+        for j,b in enumerate(vertices):
+            co=edge_coeffs(terms,a,b)
+            delta=potential[j]-potential[i]
+            poly=co[0]*tau**4+(co[1]-delta)*tau**3+co[2]*tau**2+co[3]*tau+co[4]
+            ok,samples=nonnegative_on_positive(poly,tau)
+            checked+=1
+            if samples: root_edges+=1
+            if not ok and len(failures)&lt;20:
+                failures.append({&#x27;from&#x27;:list(map(str,a)),&#x27;to&#x27;:list(map(str,b)),
+                                 &#x27;poly_coeff_high_to_low&#x27;:[str(v) for v in S.Poly(poly,tau).all_coeffs()],
+                                 &#x27;negative_sample&#x27;:next((x for x,v in samples if v&lt;0),None),
+                                 &#x27;sample_signs&#x27;:samples})
+    out={&#x27;status&#x27;:&#x27;EXACT PASS&#x27; if not failures else &#x27;CONTINUOUS-WIDTH EXTENSION REFUTED FOR THIS POTENTIAL&#x27;,
+         &#x27;scope&#x27;:&#x27;F_new, carriers (1,-1), same 81 vertices; every positive real strip width&#x27;,
+         &#x27;checked_directed_profile_edges&#x27;:checked,&#x27;edges_with_positive_roots&#x27;:root_edges,
+         &#x27;potential_source&#x27;:&#x27;exact Bellman potential from the five-width finite graph&#x27;,
+         &#x27;counterexample_edges&#x27;:failures}
+    (ROOT/&#x27;all_width_certificate.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre></body></html>

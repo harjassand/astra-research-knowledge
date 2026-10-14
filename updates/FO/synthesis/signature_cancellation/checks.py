@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+"""Exact, independent checks for the FO profile-current analysis.
+
+Uses SymPy only for polynomial line integrals; the Chen signature calculation
+uses exact Fraction arithmetic in the truncated tensor algebra.
+"""
+from fractions import Fraction as Q
+from math import factorial
+
+import sympy as sp
+
+
+NODES = (0, 1, 3, 4)
+WEIGHTS = (1, -2, 2, -1)
+CENTERED_NODES = (-2, -1, 1, 2)
+
+
+def check_polynomial_currents():
+    t, x, y = sp.symbols("t x y")
+    for i in range(4):
+        for j in range(4 - i):
+            # Integral of r^i s^j dr around [t,t+1] x [0,1].
+            dx_period = -sp.integrate((t + x) ** i, (x, 0, 1)) if j else 0
+            # Integral of r^i s^j ds around the translated square.
+            dy_period = ((t + 1) ** i - t**i) / sp.Integer(j + 1)
+            for component, period in (("dr", dx_period), ("ds", dy_period)):
+                period = sp.expand(period)
+                degree = sp.Poly(period, t).degree() if period else -sp.oo
+                assert degree <= 2, (i, j, component, period, degree)
+                cancelled = sp.expand(
+                    sum(c * period.subs(t, node)
+                        for c, node in zip(WEIGHTS, NODES))
+                )
+                assert cancelled == 0, (i, j, component, period, cancelled)
+
+    # A degree-four test detects the nonzero residual current exactly.
+    high_degree = sp.expand(((t + 1) ** 4 - t**4))
+    residual = sp.expand(sum(c * high_degree.subs(t, node)
+                             for c, node in zip(WEIGHTS, NODES)))
+    assert residual == -48, residual
+
+    moments = [sum(c * node**k for c, node in zip(WEIGHTS, NODES))
+               for k in range(3)]
+    assert moments == [0, 0, 0], moments
+    centered_moments = [sum(c * node**k
+                            for c, node in zip(WEIGHTS, CENTERED_NODES))
+                        for k in range(3)]
+    assert centered_moments == [0, 0, 0], centered_moments
+    centered_high_degree = sp.expand(
+        sum(c * high_degree.subs(t, node)
+            for c, node in zip(WEIGHTS, CENTERED_NODES))
+    )
+    assert centered_high_degree == -48, centered_high_degree
+    total_traversals = sum(abs(c) for c in WEIGHTS)
+    assert total_traversals == 6
+    return moments, high_degree, residual, centered_moments, \
+        centered_high_degree, total_traversals
+
+
+def check_preserved_mean_and_changed_second_moment():
+    # A figure-eight made of two unit squares in opposite quadrants, based at
+    # the origin. With unit time per edge it has duration 8, mean r = 0, and
+    # integral r^2 dx = 10/3.
+    base_duration = Q(8)
+    base_r = Q(0)
+    base_r2 = Q(10, 3)
+    loop_count = sum(abs(c) for c in WEIGHTS)
+    t1 = sum(abs(c) * t for c, t in zip(WEIGHTS, CENTERED_NODES))
+    t2 = sum(abs(c) * t**2 for c, t in zip(WEIGHTS, CENTERED_NODES))
+    assert (loop_count, t1, t2) == (6, 0, 12)
+
+    loop_r = loop_count * base_r + base_duration * t1
+    loop_r2 = loop_count * base_r2 + base_duration * t2
+    loop_time = loop_count * base_duration
+
+    # Four connector/retrace pairs, each direction taking one time unit.
+    connector_r = sum(t for t in CENTERED_NODES)  # each pair integrates r to t
+    connector_r2 = Q(2, 3) * sum(t**2 for t in CENTERED_NODES)
+    connector_time = Q(2 * len(CENTERED_NODES))
+    total_time = loop_time + connector_time
+    output_r = loop_r + connector_r
+    output_r2 = loop_r2 + connector_r2
+
+    input_r_mean = Q(0)  # append a 48-unit wait at the zero profile
+    input_r2_mean = base_r2 / Q(56)
+    output_r_mean = output_r / total_time
+    output_r2_mean = output_r2 / total_time
+    assert total_time == 56
+    assert output_r_mean == input_r_mean == 0
+    assert input_r2_mean == Q(5, 84)
+    assert output_r2_mean == Q(46, 21)
+    return input_r2_mean, output_r2_mean
+
+
+def tensor_mul(a, b, order):
+    out = {}
+    for u, av in a.items():
+        for v, bv in b.items():
+            if len(u) + len(v) <= order:
+                key = u + v
+                out[key] = out.get(key, Q(0)) + av * bv
+    return {k: v for k, v in out.items() if v}
+
+
+def segment_signature(letter, length, order):
+    out = {(): Q(1)}
+    for degree in range(1, order + 1):
+        out[(letter,) * degree] = Q(length) ** degree / factorial(degree)
+    return out
+
+
+def path_signature(segments, order):
+    out = {(): Q(1)}
+    for letter, length in segments:
+        out = tensor_mul(out, segment_signature(letter, length, order), order)
+    return out
+
+
+def signature_power(signature, count, order):
+    out = {(): Q(1)}
+    for _ in range(count):
+        out = tensor_mul(out, signature, order)
+    return out
+
+
+def check_signature():
+    order = 5
+    # CCW unit square and its exact reversal, based at (0,0).
+    ccw = path_signature((("x", 1), ("y", 1), ("x", -1), ("y", -1)), order)
+    cw = path_signature((("y", 1), ("x", 1), ("y", -1), ("x", -1)), order)
+    identity = {(): Q(1)}
+    assert tensor_mul(ccw, cw, order) == identity
+
+    # For each translated square, take a connector from (0,0) to (t,0),
+    # traverse with signed multiplicity, then retrace the connector.
+    out = identity
+    for t, signed_count in zip(NODES, WEIGHTS):
+        loop = (signature_power(ccw, signed_count, order)
+                if signed_count > 0
+                else signature_power(cw, -signed_count, order))
+        connector = segment_signature("x", t, order)
+        back = segment_signature("x", -t, order)
+        conjugate = tensor_mul(tensor_mul(connector, loop, order), back, order)
+        out = tensor_mul(out, conjugate, order)
+
+    nonzero_by_degree = {}
+    for degree in range(1, order + 1):
+        terms = {word: value for word, value in out.items()
+                 if len(word) == degree and value}
+        if terms:
+            nonzero_by_degree[degree] = terms
+    assert set(nonzero_by_degree) == {5}, sorted(nonzero_by_degree)
+    assert nonzero_by_degree[5][("x", "y", "x", "x", "x")] == 8
+    return {degree: len(terms) for degree, terms in nonzero_by_degree.items()}, \
+        nonzero_by_degree[5][("x", "y", "x", "x", "x")]
+
+
+def main():
+    moments, high_degree, residual, centered_moments, centered_high, count = \
+        check_polynomial_currents()
+    levels, witness = check_signature()
+    input_r2, output_r2 = check_preserved_mean_and_changed_second_moment()
+    print("PASS: moments k=0,1,2 ->", moments)
+    print("PASS: every monomial one-form of coefficient degree <=3 on the translated unit square is annihilated")
+    print("PASS: degree-four form r^4 ds period ->", high_degree)
+    print("PASS: residual pairing for r^4 ds ->", residual)
+    print("PASS: centered stencil moments k=0,1,2 ->", centered_moments)
+    print("PASS: centered-stencil residual pairing for r^4 ds ->", centered_high)
+    print("PASS: loop traversals ->", count, "(binomial stencil would use 8)")
+    print("PASS: equal-period first profile mean is preserved at 0")
+    print("PASS: equal-period second moment input/output ->", input_r2, output_r2)
+    print("PASS: attached-path Chen signature is identity through level 4")
+    print("PASS: level-5 nonzero tensor words ->", levels[5])
+    print("PASS: exact signature coefficient <x,y,x,x,x> ->", witness)
+
+
+if __name__ == "__main__":
+    main()

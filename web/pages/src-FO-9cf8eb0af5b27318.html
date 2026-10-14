@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — calculate_bounds.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/package/physical/calculate_bounds.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce a SCOPED impulsive selective-melting audit; not a device simulation.
+
+Thermophysical source: Yamaguchi, Itagaki &amp; Yazawa (1989),
+DOI 10.2320/jinstmet1952.53.8_764, Table 1 and reported GaAs fusion heat.
+The heat-content polynomial gives H(T)-H(298.15 K); it is not extrapolated
+outside its published 800--1514 K interval. Room temperature is its reference.
+
+Assumptions: equal molar amounts and initial temperature, equilibrium melting,
+fixed composition, negligible cooling/heat exchange during energy partition,
+net deposited energies Q*(1+C) and Q*(1-C), desired region stays below melt
+onset while the other region melts completely. C is actual deposited-energy
+contrast, NOT automatically the measured carrier-population contrast.
+
+Not applicable as a universal limit to nonthermal transitions, interfacial
+rearrangements, sustained heating with cooling, or partial melting/regrowth.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+T_REF_K = 298.15
+T_M_K = 1514.0
+L_FUSION_J_MOL = 106720.0
+
+
+def heat_content_relative_to_298(t_k: float) -&gt; float:
+    &quot;&quot;&quot;Published solid-state heat-content fit, J/mol relative to 298.15 K.&quot;&quot;&quot;
+    if not math.isfinite(t_k) or not 800.0 &lt;= t_k &lt;= T_M_K:
+        raise ValueError(&quot;The published fit is valid only on 800--1514 K.&quot;)
+    return 47.3*t_k + 3.99e-3*t_k*t_k + 2.40e5/t_k - 1.53e4
+
+
+def sensible_heat_to_melting(t0_k: float) -&gt; float:
+    &quot;&quot;&quot;Use the reference directly; otherwise stay within the published fit.&quot;&quot;&quot;
+    if t0_k == T_REF_K:
+        initial = 0.0
+    else:
+        initial = heat_content_relative_to_298(t0_k)
+    return heat_content_relative_to_298(T_M_K) - initial
+
+
+def threshold_contrast(h_sensible: float, latent: float) -&gt; float:
+    &quot;&quot;&quot;A nonempty full-melt/protected-solid dose window requires C &gt; this.&quot;&quot;&quot;
+    if not (math.isfinite(h_sensible) and h_sensible &gt;= 0):
+        raise ValueError(&quot;Sensible heat must be finite and nonnegative.&quot;)
+    if not (math.isfinite(latent) and latent &gt; 0):
+        raise ValueError(&quot;Latent heat must be finite and positive.&quot;)
+    return latent/(2.0*h_sensible + latent)
+
+
+def molten_fraction_supremum(contrast: float, h_sensible: float,
+                            latent: float) -&gt; float:
+    &quot;&quot;&quot;Supremum under strict protection, capped at 1; not a regrowth yield.&quot;&quot;&quot;
+    if not math.isfinite(contrast) or not 0 &lt;= contrast &lt; 1:
+        raise ValueError(&quot;Contrast must be in [0, 1).&quot;)
+    threshold_contrast(h_sensible, latent)  # validate the thermodynamic inputs
+    return min(1.0, 2.0*contrast*h_sensible/((1.0-contrast)*latent))
+
+
+def verify_window(h_sensible: float, latent: float) -&gt; None:
+    &quot;&quot;&quot;Check the equivalent dose-window inequalities on each threshold side.&quot;&quot;&quot;
+    cstar = threshold_contrast(h_sensible, latent)
+    for c in (0.5*cstar, 0.5*(1+cstar)):
+        lower = (h_sensible+latent)/(1+c)
+        upper = h_sensible/(1-c)
+        assert (lower &lt; upper) == (c &gt; cstar)
+
+
+def main() -&gt; None:
+    h_room = sensible_heat_to_melting(T_REF_K)
+    temperatures = [T_REF_K, 800.0, 1000.0, 1200.0, 1400.0, 1500.0]
+    rows = []
+    for temperature in temperatures:
+        h = sensible_heat_to_melting(temperature)
+        verify_window(h, L_FUSION_J_MOL)
+        rows.append({
+            &quot;initial_temperature_K&quot;: temperature,
+            &quot;sensible_heat_J_per_mol&quot;: h,
+            &quot;required_contrast_strictly_greater_than&quot;:
+                threshold_contrast(h, L_FUSION_J_MOL),
+        })
+    result = {
+        &quot;status&quot;: &quot;Conditional analytic-model arithmetic; no physical validation&quot;,
+        &quot;thermophysical_source_doi&quot;: &quot;10.2320/jinstmet1952.53.8_764&quot;,
+        &quot;melting_temperature_K&quot;: T_M_K,
+        &quot;latent_heat_J_per_mol&quot;: L_FUSION_J_MOL,
+        &quot;room_temperature_complete_melting_J_per_mol&quot;: h_room+L_FUSION_J_MOL,
+        &quot;contrast_thresholds&quot;: rows,
+        &quot;hypothetical_heat_contrasts_not_measured_high_fluence_values&quot;: [
+            {&quot;contrast&quot;: c,
+             &quot;molten_fraction_supremum_room_temperature&quot;:
+                 molten_fraction_supremum(c, h_room, L_FUSION_J_MOL)}
+            for c in [0.02, 0.064, 0.14]
+        ],
+        &quot;excluded_conclusions&quot;: [
+            &quot;No universal no-go for phase-selected retained rewriting&quot;,
+            &quot;No identification of carrier contrast with heat contrast&quot;,
+            &quot;No high-fluence optical constants or reaction kernel acquired&quot;,
+            &quot;No retained polarity rewriting demonstrated&quot;,
+            &quot;No industrial cost, throughput, or novelty established&quot;,
+        ],
+    }
+    out = Path(__file__).resolve().with_name(&quot;results.json&quot;)
+    out.write_text(json.dumps(result, indent=2)+&quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

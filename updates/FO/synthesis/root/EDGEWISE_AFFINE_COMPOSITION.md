@@ -1,0 +1,74 @@
+# Composing the continuous storage with affine quadratic completion
+
+This post-isolation composition uses the continuous worker's independently
+derived real-profile edgewise all-background completion and root's stronger
+complex-profile storage. It is not attributed as an independent rediscovery
+of the same proof. The original real certificate and root theorem remain
+separate immutable scientific records after freeze.
+
+For fixed B put H_B=D²G(B)/2 as a quadratic-form matrix on row-major matrix
+entries and let D represent determinant: D14=D41=1/2,D23=D32=−1/2.
+Rank-one convexity says XᵀH_BX≥0 when XᵀDX=det X=0. There exists a real
+λ such that H_B−λD is positive semidefinite. Define canonically
+
+    λ_B=max{λ: H_B−λD >=0}.
+
+The set is nonempty by the elementary completion proof below, closed, and
+bounded above by testing X=I, so the maximum is attained. No polynomial or
+smooth dependence on B is claimed. This is an exact one-scalar LMI definition.
+
+For arbitrary complex α,β, define
+
+    P_B(α,β)=−16|α|⁴/3+25|β|⁴/4−11|α|²|β|²/6
+             + λ_B(|α|²−|β|²)/2.
+
+Half-turn parity kills the odd quartic expansion terms even on a single
+transition, and exact averaging gives
+
+    Ey det Dφ = Re(conj(α)α')−Re(conj(β)β')
+              = (|α|²−|β|²)'/2.
+
+Combining this identity with the exact complex Gram storage therefore proves
+
+    Ey[G(B+Dφ)−G(B)]−(1/2)Ey|Dφ|⁴ >= dP_B/dx.
+
+Every non-closed transition with arbitrary complex endpoints and positive
+width now has a storage bound at every fixed B; closed paths telescope.
+This strengthens the edgewise statement, while the already established
+closed-loop all-B theorem needs only Parseval and does not require λ_B.
+For transverse frequency k>0 the potential is
+k³P(α,β)+(k λ_B/2)(|α|²−|β|²). Negative k requires carrier relabeling.
+The statement still fixes one transverse frequency and G.
+
+## Elementary indefinite quadratic completion
+
+Let q be any indefinite real quadratic form and Q another quadratic form
+nonnegative on q=0. Restrict to the span of x,y with q(x)>0>q(y).
+An invertible coordinate change makes q=s²−t² there. Write
+Q=a s²+2b st+c t². Its values on s=±t imply a+c≥2|b|.
+Then Q−((a−c)/2)q has matrix with equal diagonals(a+c)/2 and
+off-diagonal b, hence is PSD on this plane. Consequently
+
+    Q(y)/q(y) <= Q(x)/q(x)
+
+for every such x,y. Thus
+
+    sup_{q(y)<0} Q(y)/q(y) <= inf_{q(x)>0} Q(x)/q(x).
+
+Both endpoints are finite: a fixed positive-q vector bounds the supremum
+above, a fixed negative-q vector bounds the infimum below, and each set
+contains a finite ratio. Any scalar between them makes Q−λq nonnegative
+on both strict-sign cones, and the assumed null-cone condition covers q=0.
+This is the classical indefinite non-strict Finsler completion, with its
+needed finite-dimensional proof supplied rather than an unread prior theorem.
+
+## Acquisition and computation boundary
+
+For an exactly encoded rational B, H_B is a supplied rational4x4 matrix.
+The feasible λ set is determined by its15 principal-minor polynomial
+inequalities, of degree at most4. Exact real-root isolation/intersection
+can obtain its algebraic endpoint; a floating eigenvalue is not an exact
+feasibility proof. No all-B numerical implementation, conditioning theorem,
+closed formula or practical runtime advantage is claimed here. The affine
+completion is classical algebra; the novel-status question concerns the
+specific profile certificate, and remains UNKNOWN.

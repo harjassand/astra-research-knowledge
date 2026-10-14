@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — check_loop_examples.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/package/resonant/check_loop_examples.py">Exact bytes</a></p><pre>from fractions import Fraction as Q
+import sympy as S
+import json,time
+from pathlib import Path
+from profile_algebra import *
+ROOT=Path(__file__).resolve().parent
+
+def asrat(a):return S.Rational(a.numerator,a.denominator)
+def loop_moments(n,m,path):
+ F,N,C,det=averaged(n,m,True)
+ zeroB={b:0 for b in B}; T=Q(len(path)-1)
+ def integral(expr):return asrat(polygon_integral(S.expand(expr),path)/T)
+ f=F.subs(zeroB)
+ n4=integral(N.subs(zeroB))
+ H=S.Matrix(4,4,lambda i,j:integral(S.diff(F,B[i],B[j]).subs(zeroB)))
+ cubic=S.Matrix([integral(S.diff(F,bb).subs(zeroB)) for bb in B])
+ covariance=S.Matrix(4,4,lambda i,j:integral(C[i,j].subs(zeroB)))
+ cf=integral(f);df=integral(det.subs(zeroB))
+ assert df==0
+ assert all(H[:j,:j].det()&gt;0 for j in range(1,5))
+ opt=-H.inv()*cubic;gap=cf+(cubic.dot(opt))/2
+ return {&#x27;C&#x27;:covariance,&#x27;H&#x27;:H,&#x27;b&#x27;:cubic,&#x27;c&#x27;:cf,&#x27;n4&#x27;:n4,&#x27;gap&#x27;:gap,&#x27;Bopt&#x27;:opt}
+def serial(z):return {k:([str(x) for x in v] if isinstance(v,S.MatrixBase) else str(v)) for k,v in z.items()}
+if __name__==&#x27;__main__&#x27;:
+ start=time.time();out={}
+ path=square_loop(Q(1),Q(1))
+ for nm in [(1,-1),(1,3)]:
+  z=loop_moments(*nm,path);zr=loop_moments(*nm,path[::-1]);assert z[&#x27;b&#x27;]==zr[&#x27;b&#x27;]==S.zeros(4,1)
+  if nm==(1,3):
+   assert z[&#x27;C&#x27;]==zr[&#x27;C&#x27;];assert z[&#x27;H&#x27;]==zr[&#x27;H&#x27;]
+  out[str(nm)+&#x27;_forward&#x27;]=serial(z);out[str(nm)+&#x27;_reverse&#x27;]=serial(zr)
+  print(nm,&#x27;C&#x27;,z[&#x27;C&#x27;],&#x27;forward&#x27;,z[&#x27;c&#x27;],&#x27;reverse&#x27;,zr[&#x27;c&#x27;],&#x27;diff&#x27;,z[&#x27;c&#x27;]-zr[&#x27;c&#x27;],&#x27;n4&#x27;,z[&#x27;n4&#x27;],flush=True)
+ path=cancelled_loop();z=loop_moments(1,2,path)
+ assert z[&#x27;gap&#x27;]&gt;=z[&#x27;n4&#x27;]/2
+ out[&#x27;eight_loop&#x27;]=serial(z);out[&#x27;eight_loop&#x27;][&#x27;path&#x27;]=[[str(x),str(y)] for x,y in path]
+ print(&#x27;eight-loop&#x27;, &#x27;b&#x27;,z[&#x27;b&#x27;],&#x27;c&#x27;,z[&#x27;c&#x27;],&#x27;n4&#x27;,z[&#x27;n4&#x27;],&#x27;gap&#x27;,z[&#x27;gap&#x27;],&#x27;ratio&#x27;,z[&#x27;gap&#x27;]/z[&#x27;n4&#x27;],&#x27;time&#x27;,time.time()-start,flush=True)
+ (ROOT/&#x27;loop_examples.json&#x27;).write_text(json.dumps(out,indent=2))
+</pre></body></html>

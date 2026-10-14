@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — check_identification.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/causal_operation/check_identification.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small checks for the linear-identification examples in REPORT.md.
+
+Uses fractions only. This checks algebra/examples, not chemistry or external
+correctness of the literature claims.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+import json
+from pathlib import Path
+
+
+def rank_2(rows):
+    &quot;&quot;&quot;Rank of a matrix with two columns over the rationals.&quot;&quot;&quot;
+    nonzero = [row for row in rows if row[0] or row[1]]
+    if not nonzero:
+        return 0
+    first = nonzero[0]
+    return 1 if all(first[0] * row[1] == first[1] * row[0] for row in nonzero) else 2
+
+
+def two_state_mark(e_a, e_b, d, s):
+    kappa = d * (1 - s) + (1 - d) * s
+    h_a = e_a * kappa
+    h_b = e_b * (1 - kappa)
+    return h_a, h_b, h_a - h_b
+
+
+def feasible_theta_interval(h_lo, h_hi, a_lo, a_hi, i_lo, i_hi, k):
+    &quot;&quot;&quot;Exact interval for the independent box-calibration model in REPORT.md.&quot;&quot;&quot;
+    def feasible(t):
+        lower = a_lo * t + i_lo * (1 - t) - k
+        upper = a_hi * t + i_hi * (1 - t) + k
+        return lower &lt;= h_hi and upper &gt;= h_lo
+
+    grid = [F(i, 10000) for i in range(10001)]
+    accepted = [t for t in grid if feasible(t)]
+    assert accepted
+    return accepted[0], accepted[-1]
+
+
+def main():
+    # Isotope-only observation row is constant on the two models; the targeted
+    # intervention creates a rank-2 design when calibrated as external-only.
+    isotope_rows = [[F(1), F(1)]]
+    selective_rows = [[F(1), F(1)], [F(1), F(0)]]
+    assert rank_2(isotope_rows) == 1
+    assert rank_2(selective_rows) == 2
+
+    # Two exact same-baseline models in the report.
+    model_a = (F(1), F(1, 2))
+    model_b = (F(3, 2), F(0))
+    base_a = sum(model_a)
+    base_b = sum(model_b)
+    treated_a = model_a[0]  # internal remains; external fully suppressed
+    treated_b = model_b[0]
+    assert base_a == base_b == F(3, 2)
+    assert treated_a == 1 and treated_b == F(3, 2)
+    # Unknown collateral in B can exactly mimic A&#x27;s treated observation.
+    assert treated_b + F(-1, 2) == treated_a
+
+    h_a, h_b, delta = two_state_mark(F(4, 5), F(4, 5), F(19, 20), F(1, 10))
+    assert delta == F(72, 125)  # e*(2d-1)*(1-2s)
+    scrambled_a, scrambled_b, scrambled_delta = two_state_mark(
+        F(4, 5), F(4, 5), F(19, 20), F(1, 2)
+    )
+    assert scrambled_delta == 0 and scrambled_a == scrambled_b
+    observed = F(1, 2)
+    mark_x = (observed - h_b) / delta
+    assert mark_x == F(97, 144)
+
+    # The sharp box interval from the report&#x27;s illustrative—not empirical—
+    # calibration/noise values. Grid resolution verifies the stated endpoints.
+    grid_lo, grid_hi = feasible_theta_interval(
+        F(35, 100), F(65, 100), F(90, 100), F(1), F(0), F(5, 100), F(5, 100)
+    )
+    analytic_lo = F(25, 95)
+    analytic_hi = F(70, 90)
+    assert abs(grid_lo - analytic_lo) &lt;= F(1, 10000)
+    assert abs(grid_hi - analytic_hi) &lt;= F(1, 10000)
+
+    result = {
+        &quot;scope&quot;: &quot;exact rational/algebraic checks only; not chemistry validation&quot;,
+        &quot;isotope_only_design_rank&quot;: 1,
+        &quot;calibrated_selective_design_rank&quot;: 2,
+        &quot;same_baseline_rate&quot;: str(base_a),
+        &quot;model_A_treated_rate&quot;: str(treated_a),
+        &quot;model_B_treated_rate&quot;: str(treated_b),
+        &quot;model_B_collateral_to_match_A&quot;: &quot;-1/2&quot;,
+        &quot;mark_example&quot;: {
+            &quot;e_A&quot;: &quot;4/5&quot;, &quot;e_B&quot;: &quot;4/5&quot;, &quot;detector_correct&quot;: &quot;19/20&quot;,
+            &quot;scrambling_swap&quot;: &quot;1/10&quot;, &quot;effective_A_response&quot;: str(h_a),
+            &quot;effective_B_response&quot;: str(h_b), &quot;contrast&quot;: str(delta),
+            &quot;x_A_when_observed_A_rate_is_1/2&quot;: str(mark_x),
+            &quot;contrast_at_half_scrambling&quot;: str(scrambled_delta),
+        },
+        &quot;illustrative_partial_identification&quot;: {
+            &quot;h_interval&quot;: [&quot;35/100&quot;, &quot;65/100&quot;],
+            &quot;selectivity_bounds&quot;: {&quot;a_E&quot;: [&quot;90/100&quot;, &quot;1&quot;], &quot;a_I&quot;: [&quot;0&quot;, &quot;5/100&quot;]},
+            &quot;collateral_bound&quot;: &quot;5/100&quot;,
+            &quot;theta_E_interval_exact&quot;: [str(analytic_lo), str(analytic_hi)],
+            &quot;grid_check_resolution&quot;: &quot;1/10000&quot;,
+        },
+    }
+    out = Path(__file__).with_name(&quot;CHECK_RESULTS.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

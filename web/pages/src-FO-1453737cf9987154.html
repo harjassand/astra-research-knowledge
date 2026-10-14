@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FO evidence — search_mixed_parity_at_B.py</title><body><p>FO source/internal evidence, externally unreviewed. <a href="../../updates/FO/synthesis/cycle_optimizer/search_mixed_parity_at_B.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact fixed-common-background cycle search for resonant carriers 1 and 2.&quot;&quot;&quot;
+from fractions import Fraction as Q
+from pathlib import Path
+import json,sys
+
+ROOT=Path(__file__).resolve().parent
+sys.path.insert(0,str(ROOT/&#x27;incoming_resonant&#x27;))
+from profile_algebra import add,scale,mul,cos,sin,meanprod,const,poly_terms,edge_coeffs,edge_value,r,s,p,q
+
+LAM=Q(11,100)
+WIDTHS=[Q(1,4),Q(1,2),Q(1),Q(2)]
+
+def gap_terms(n,m,Bvec):
+    a=add(scale(cos(n),p),scale(cos(m),q)); c=add(scale(sin(n),p),scale(sin(m),q))
+    b=add(scale(sin(n),-n*r),scale(sin(m),-m*s)); d=add(scale(cos(n),n*r),scale(cos(m),m*s))
+    X=[add(x,const(Q(Bvec[i]))) for i,x in enumerate([a,b,c,d])]
+    a,b,c,d=X
+    u=add(mul(a,a),mul(c,c));v=add(mul(b,b),mul(d,d));w=add(mul(a,b),mul(c,d));det=add(mul(a,d),scale(mul(b,c),-1))
+    F=meanprod(u,u)+meanprod(v,v)+4*meanprod(w,w)+ (Q(7,2)-LAM)*meanprod(det,det)-Q(29,10)*meanprod(det,add(u,v))
+    aa,bb,cc,dd=map(Q,Bvec); ub=aa*aa+cc*cc;vb=bb*bb+dd*dd;wb=aa*bb+cc*dd;qb=aa*dd-bb*cc
+    Fbase=ub*ub+vb*vb+4*wb*wb+(Q(7,2)-LAM)*qb*qb-Q(29,10)*qb*(ub+vb)
+    return poly_terms(F-Fbase)
+
+def graph(Bvec,low=Q(-1),high=Q(1),step=Q(1,4)):
+    axis=[];x=low
+    while x&lt;=high:axis.append(x);x+=step
+    V=[(x,y) for x in axis for y in axis];terms=gap_terms(1,2,Bvec)
+    choices=[]
+    for i,a in enumerate(V):
+        for j,b in enumerate(V):
+            co=edge_coeffs(terms,a,b)
+            for k,h in enumerate(WIDTHS): choices.append((i,j,k,edge_value(co,h)))
+    best={}
+    for i,j,k,cost in choices:
+        if (i,j) not in best or cost&lt;best[i,j][0]:best[i,j]=(cost,k)
+    d=[Q(0)]*len(V);pred=[None]*len(V);changed=None
+    for it in range(len(V)):
+        changed=None
+        for (i,j),(cost,k) in best.items():
+            if d[i]+cost&lt;d[j]:d[j]=d[i]+cost;pred[j]=(i,k,cost);changed=j
+        if changed is None:
+            slacks=[cost+d[i]-d[j] for i,j,k,cost in choices]
+            assert min(slacks)&gt;=0
+            return {&#x27;kind&#x27;:&#x27;NO_NEGATIVE_CYCLE_AT_FIXED_COMMON_B&#x27;,&#x27;passes&#x27;:it+1,
+                    &#x27;negative_raw_strip_edges&#x27;:sum(cost&lt;0 for i,j,k,cost in choices),
+                    &#x27;min_edge&#x27;:str(min(x[3] for x in choices)),
+                    &#x27;min_potential_slack&#x27;:str(min(slacks)),
+                    &#x27;potential&#x27;:[str(x) for x in d], &#x27;tight_edge_widths&#x27;:sum(x==0 for x in slacks)}
+    v=changed
+    for _ in V:v=pred[v][0]
+    start=v;rev=[]
+    while True:
+        i,k,cost=pred[v];rev.append((i,v,k,cost));v=i
+        if v==start:break
+    cyc=list(reversed(rev));total=sum((e[3] for e in cyc),Q(0));assert total&lt;0
+    return {&#x27;kind&#x27;:&#x27;EXACT_NEGATIVE_CYCLE&#x27;,&#x27;cycle_weight&#x27;:str(total),
+            &#x27;cycle&#x27;:[[list(map(str,V[i])),list(map(str,V[j])),str(WIDTHS[k]),str(c)] for i,j,k,c in cyc]}
+
+if __name__==&#x27;__main__&#x27;:
+    affine=json.loads((ROOT/&#x27;full_affine_loop_search.json&#x27;).read_text())
+    chosen=[]
+    for row in affine[&#x27;runs&#x27;]:
+        if row.get(&#x27;carrier_pair&#x27;)==[1,2] and row.get(&#x27;cubic_nonzero&#x27;):
+            if row[&#x27;common_B_opt&#x27;] not in [x[&#x27;B&#x27;] for x in chosen]:
+                chosen.append({&#x27;name&#x27;:row[&#x27;path_name&#x27;],&#x27;B&#x27;:row[&#x27;common_B_opt&#x27;]})
+    chosen.insert(0,{&#x27;name&#x27;:&#x27;zero-background&#x27;,&#x27;B&#x27;:[&#x27;0&#x27;,&#x27;0&#x27;,&#x27;0&#x27;,&#x27;0&#x27;]})
+    results=[]
+    for item in chosen:
+        out={&#x27;background_name&#x27;:item[&#x27;name&#x27;],&#x27;common_B&#x27;:item[&#x27;B&#x27;],**graph([Q(x) for x in item[&#x27;B&#x27;]])}
+        results.append(out);print(json.dumps({k:v for k,v in out.items() if k!=&#x27;potential&#x27;},indent=2),flush=True)
+    result={&#x27;integrand&#x27;:&#x27;Fstar-(11/100)q^2&#x27;,&#x27;carriers&#x27;:[1,2],
+            &#x27;vertices&#x27;:&#x27;[-1,1]^2 intersect (1/4)Z^2&#x27;,&#x27;allowed_widths&#x27;:[str(x) for x in WIDTHS],
+            &#x27;per_background_edge_width_choices&#x27;:(9*9)**2*len(WIDTHS),&#x27;backgrounds_tested&#x27;:len(results),
+            &#x27;results&#x27;:results}
+    (ROOT/&#x27;mixed_parity_fixed_background_search.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+</pre></body></html>
