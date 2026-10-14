@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — conditional_envelope.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — conditional_envelope.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/compact/conditional_envelope.py">Original file</a></p><pre>&quot;&quot;&quot;Two-source conditional-envelope closure.
+Compiles bounds for every hidden bath from local weight/conductance envelopes.
+No hidden-bath states, transition alphabet, normalizer or rate queries enter it.
+The small resolved gate block is deliberately explicit for an exact audit of
+this more general closure; large tensor experiments use the constant-envelope case.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from time import perf_counter
+from pathlib import Path
+import sympy as s,json
+BASE=Path(__file__).resolve().parent
+
+def compile_envelope(n=4,R=100,feature=&#x27;all_open&#x27;):
+ t=perf_counter();N=2**n;q=s.Rational(1,26);eps=s.Rational(1,10000)
+ m=s.Matrix([q**g.bit_count()*(1-q)**(n-g.bit_count()) for g in range(N)])
+ indicator={&#x27;all_open&#x27;:lambda g:int(g==N-1),&#x27;first_open&#x27;:lambda g:g&amp;1,&#x27;all_closed&#x27;:lambda g:int(g==0)}[feature]
+ l=[s.Rational(1)]*N;u=[1+(s.Rational(R)-1)*indicator(g) for g in range(N)]
+ def form(weights):
+  A=s.zeros(N)
+  for g in range(N):
+   A[g,g]+=m[g]*weights[g]*q*(1 if (g&gt;&gt;(n-1))&amp;1 else eps)
+   for i in range(n):
+    if (g&gt;&gt;i)&amp;1:continue
+    h=g|(1&lt;&lt;i);c=m[g]*q*(1 if i==0 or (g&gt;&gt;(i-1))&amp;1 else eps)*min(weights[g],weights[h])
+    A[g,g]+=c;A[h,h]+=c;A[g,h]-=c;A[h,g]-=c
+  return A
+ Aminus=form(l);Aplus=form(u);bminus=s.Matrix([m[i]*l[i] for i in range(N)]);bplus=s.Matrix([m[i]*u[i] for i in range(N)])
+ lower=(bminus.T*Aplus.inv()*bminus)[0]/sum(bplus)
+ upper=(bplus.T*Aminus.inv()*bplus)[0]/sum(bminus)
+ tau0=(m.T*Aminus.inv()*m)[0]
+ return {&#x27;gate_coordinates&#x27;:n,&#x27;gate_states&#x27;:N,&#x27;feature&#x27;:feature,&#x27;R&#x27;:R,&#x27;lower_exact&#x27;:str(lower),&#x27;upper_exact&#x27;:str(upper),&#x27;baseline_exact&#x27;:str(tau0),&#x27;lower&#x27;:float(lower),&#x27;upper&#x27;:float(upper),&#x27;ratio&#x27;:float(upper/lower),&#x27;scalar_envelope_ratio&#x27;:float(s.Rational(R)**4),&#x27;hidden_states_constructed&#x27;:0,&#x27;unknown_bath_equilibrium_samples&#x27;:0,&#x27;seconds&#x27;:perf_counter()-t}
+
+if __name__==&#x27;__main__&#x27;:
+ out=[compile_envelope(feature=f,R=r) for f in [&#x27;all_open&#x27;,&#x27;first_open&#x27;,&#x27;all_closed&#x27;] for r in [3,100]]
+ (BASE/&#x27;conditional_envelope_results.json&#x27;).write_text(json.dumps(out,indent=2));print(json.dumps([{k:r[k] for k in [&#x27;feature&#x27;,&#x27;R&#x27;,&#x27;lower&#x27;,&#x27;upper&#x27;,&#x27;ratio&#x27;,&#x27;scalar_envelope_ratio&#x27;,&#x27;seconds&#x27;]} for r in out],indent=2))
+</pre></html>

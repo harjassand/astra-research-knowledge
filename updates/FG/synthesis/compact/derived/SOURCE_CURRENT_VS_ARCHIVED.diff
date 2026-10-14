@@ -1,0 +1,123 @@
+--- exact_check_initial.py
++++ exact_check.py
+@@ -8,6 +8,7 @@
+ sys.set_int_max_str_digits(0)
+ 
+ def exact_validate(prefix:str,eps:str|None=None,degree:int=-1,bits:int=48):
++    total_start=time.perf_counter()
+     p=Path(prefix); meta=json.loads(p.with_suffix('.json').read_text()); n=meta['n'];k=int(meta['k'])
+     ef=F(eps if eps is not None else str(meta['eps']));q=F(1,k*k+1)
+     f=np.load(p.with_suffix('.npz')); cores=[f['a'+str(i)] for i in range(n)]
+@@ -41,13 +42,13 @@
+         else:assert tail==0
+     else:
+         ws=[r0*r0];tail=rr-ws[0];gap=ws[0]/(ef*q)+tail/(ef*(q+1))
+-    upper=lower+gap
++    rawupper=lower+gap;uniformupper=1/(ef*q);upper=min(rawupper,uniformupper)
+     assert lower>0 and upper>=lower
+     def out(fr,places=12,upper=False):
+         sc=10**places;num=fr.numerator*sc;den=fr.denominator
+         v=(num+den-1)//den if upper else num//den
+         return f'{v//sc}.{v%sc:0{places}d}'
+-    res={'n':n,'states':str(2**n),'k':k,'q':str(q),'eps':str(ef),'core_parameters':sum(a.size for a in cores),'max_rank':max(a.shape[2] for a in cores),'dyadic_bits':bits,'total_dyadic_exponent':ints['p'],'validation_seconds':time.perf_counter()-start,'lower':out(lower),'upper':out(upper,upper=True),'ratio_upper':out(upper/lower,upper=True),'residual_sq':str(float(rr)),'source_residual':str(float(r0)),'degree':degree,'sector_weights':[str(float(w)) for w in ws], 'coarse_gap_upper':out(rr/(ef*q),upper=True),'sector_gap_upper':out(gap,upper=True),'exact_integer_contractions':True}
++    res={'n':n,'states':str(2**n),'k':k,'q':str(q),'eps':str(ef),'core_parameters':sum(a.size for a in cores),'max_rank':max(a.shape[2] for a in cores),'dyadic_bits':bits,'total_dyadic_exponent':ints['p'],'validation_seconds':time.perf_counter()-start,'lower':out(lower),'upper':out(upper,upper=True),'ratio_upper':out(upper/lower,upper=True),'residual_sq':str(float(rr)),'source_residual':str(float(r0)),'degree':degree,'sector_weights':[str(float(w)) for w in ws], 'coarse_gap_upper':out(rr/(ef*q),upper=True),'sector_gap_upper':out(gap,upper=True),'exact_integer_contractions':True,'raw_residual_upper':out(rawupper,upper=True),'uniform_killing_upper':out(uniformupper,upper=True),'total_validation_seconds':time.perf_counter()-total_start}
+     p.with_suffix('.certificate.json').write_text(json.dumps(res,indent=2))
+     print(json.dumps(res,indent=2),flush=True)
+     return res
+--- certify_continuum_initial.py
++++ certify_continuum.py
+@@ -14,6 +14,7 @@
+     return reduce(math.lcm,(F(x).denominator for x in xs),1)
+ 
+ def validate(prefix,degree_sector=2,bits=48):
++    total_start=time.perf_counter()
+     p=Path(prefix);meta=json.loads(p.with_suffix('.json').read_text());n=meta['n'];q=F(meta['q']);rho=F(meta['rho']);eps=F(meta['eps']);kappa=q*rho
+     degree=meta['degree'];d=degree+2;info=local_basis(q,rho,degree+1);X=info['X'];lam=info['lambda'];norms=info['norms'];L=lcm_den(lam)
+     I=np.eye(d,dtype=int).astype(object);h=np.diag([x*L for x in lam]);C=(1-eps)*X/F(L)
+@@ -52,12 +53,18 @@
+     ws[0]=r0*r0;tail=rrlow-sum(ws);assert tail>=0 and all(w>=0 for w in ws)
+     gap=sum(w/(eps*(kappa+rho*j)) for j,w in enumerate(ws))
+     gap+=tail/(eps*(kappa+rho*(degree_sector+1)))
+-    gap+=(rr-rrlow)/(eps*(kappa+2*(1+rho)))
+-    lower=2*bv-energy;upper=lower+gap;assert lower>0
++    gap_initial=gap+(rr-rrlow)/(eps*(kappa+2*(1+rho)))
++    previous=ynlow;maxmode_weights={}
++    for j in range(2,d):
++        cur=yn if j==d-1 else F(ints['Hnorm_cap'+str(j)],D*D*S*S*GN)
++        weight=cur-previous;assert weight>=0
++        gap+=weight/(eps*(kappa+lam[j]))
++        maxmode_weights[str(j)]=float(weight);previous=cur
++    lower=2*bv-energy;rawupper=lower+gap;uniformupper=1/(eps*kappa);upper=min(rawupper,uniformupper);assert lower>0
+     def out(fr,places=10,up=False):
+         sc=10**places;num=fr.numerator*sc;den=fr.denominator;v=(num+den-1)//den if up else num//den
+         return f'{v//sc}.{v%sc:0{places}d}'
+-    res={'continuous':True,'n':n,'q':str(q),'rho':str(rho),'eps':str(eps),'trial_degree':degree,'residual_local_degree':degree+1,'core_parameters':params,'max_rank':max(f['a'+str(i)].shape[2] for i in range(n)),'lower':out(lower),'upper':out(upper,up=True),'ratio_upper':out(upper/lower,up=True),'residual_sq':float(rr),'residual_binary_sector_sq':float(rrlow),'residual_higher_modes_sq':float(rr-rrlow),'gap':out(gap,up=True),'crude_gap':out(rr/(eps*kappa),up=True),'validation_seconds':time.perf_counter()-t,'exact_integer_contractions':True,'equilibrium_samples':0,'lattice_discretization':False,'bits':bits}
++    res={'continuous':True,'n':n,'q':str(q),'rho':str(rho),'eps':str(eps),'trial_degree':degree,'residual_local_degree':degree+1,'core_parameters':params,'max_rank':max(f['a'+str(i)].shape[2] for i in range(n)),'lower':out(lower),'upper':out(upper,up=True),'ratio_upper':out(upper/lower,up=True),'residual_sq':float(rr),'residual_binary_sector_sq':float(rrlow),'residual_higher_modes_sq':float(rr-rrlow),'gap':out(gap,up=True),'crude_gap':out(rr/(eps*kappa),up=True),'initial_two_band_gap':out(gap_initial,up=True),'maxmode_residual_weights':maxmode_weights,'validation_seconds':time.perf_counter()-t,'exact_integer_contractions':True,'equilibrium_samples':0,'lattice_discretization':False,'bits':bits,'raw_residual_upper':out(rawupper,up=True),'uniform_killing_upper':out(uniformupper,up=True),'total_validation_seconds':time.perf_counter()-total_start}
+     p.with_suffix('.certificate.json').write_text(json.dumps(res,indent=2));print(json.dumps(res,indent=2),flush=True);return res
+ if __name__=='__main__':
+     import argparse
+--- exact_continuum_initial.cpp
++++ exact_continuum.cpp
+@@ -24,7 +24,7 @@
+ int physdim; Z gramden,opden;std::vector<Z>grams;std::vector<MPO>allW;
+ MPO local(int i,int n,long k,long en,long ed){return allW[i];}
+ // <v, H_D v>, and <v,H_D^2 v>. Both numerator integers.
+-Z quadratic(const std::vector<Core>&A,long k,long en,long ed,int power){
++Z quadratic(const std::vector<Core>&A,long k,long en,long ed,int power,int cap=-1){
+     int ch=power==1?3:9;
+     std::vector<Mat>E(ch,Mat(1));E[ch-1][0]=1;
+     for(size_t i=0;i<A.size();i++){
+@@ -33,7 +33,7 @@
+         for(int l=0;l<ch;l++)if(nz(E[l]))for(int s=0;s<physdim;s++)for(int t=0;t<physdim;t++){
+             std::vector<Z>coeff(ch);
+             if(power==1) for(int r=0;r<3;r++)coeff[r]=grams[s]*W[l][r][s*physdim+t];
+-            else for(int r=0;r<9;r++)for(int z=0;z<(power==3?2:physdim);z++)coeff[r]+=grams[z]*W[l/3][r/3][z*physdim+s]*W[l%3][r%3][z*physdim+t];
++            else for(int r=0;r<9;r++)for(int z=0;z<(cap>=0?cap+1:(power==3?2:physdim));z++)coeff[r]+=grams[z]*W[l/3][r/3][z*physdim+s]*W[l%3][r%3][z*physdim+t];
+             bool any=false;for(auto &c:coeff)if(c!=0)any=true;if(!any)continue;
+             Mat T=sand(E[l],a,s,t);
+             for(int r=0;r<ch;r++)addscaled(N[r],T,coeff[r]);
+@@ -87,6 +87,7 @@
+     std::cout<<"energy "<<quadratic(A,0,0,0,1)<<"\n"<<std::flush;
+     std::cout<<"Hnorm "<<quadratic(A,0,0,0,2)<<"\n"<<std::flush;
+     std::cout<<"Hnorm_low "<<quadratic(A,0,0,0,3)<<"\n"<<std::flush;
++    for(int cap=2;cap<physdim-1;cap++)std::cout<<"Hnorm_cap"<<cap<<" "<<quadratic(A,0,0,0,2,cap)<<"\n"<<std::flush;
+     int degree=argc>2?std::stoi(argv[2]):-1;
+     if(degree>=0){auto w=sectors(A,0,0,0,degree);for(int i=0;i<=degree;i++)std::cout<<"sector"<<i<<" "<<w[i]<<"\n";}
+     return 0;
+--- generic_tensor_pre_audit.py
++++ generic_tensor.py
+@@ -77,7 +77,7 @@
+     lower=2*f-energy
+     r0=1-hy
+     gap=(r0*r0/q+max(0.,rr-r0*r0)/(1+q))/eps
+-    return {'source':f,'energy':energy,'lower_float':lower,'residual_sq_float':rr,'r0_float':r0,'upper_two_sector_float':lower+gap,'max_rank':max(a.shape[2] for a in A)}
++    return {'source':f,'energy':energy,'lower_float':lower,'residual_sq_float':rr,'r0_float':r0,'diagnostic_scope':'projected_Galerkin_only_not_a_continuum_certificate','max_rank':max(a.shape[2] for a in A)}
+ 
+ def solve_generic(W,rank:int=8,sweeps:int=3,verbose:bool=True,initial=None):
+     n=len(W);d=W[0].shape[2]; q=0.2;eps=1.0
+--- tensor_solver_original.py
++++ tensor_solver.py
+@@ -51,7 +51,7 @@
+ def apply_mpo(W,A):
+     out=[]
+     for w,a in zip(W,A):
+-        c=np.einsum('mnij,aib->manjb',w,a,optimize=True) if False else np.einsum('mnij,ajb->ma inb',w,a,optimize=True)
++        c=np.einsum('mnij,ajb->mainb',w,a,optimize=True)
+         # physical output i, combined left (m,a), right (n,b)
+         out.append(c.reshape(w.shape[0]*a.shape[0],2,w.shape[1]*a.shape[2]))
+     return out
+--- bath_completion_initial_test.py
++++ bath_completion.py
+@@ -51,7 +51,11 @@
+     specs +=[(4,F(1,20),F(1,10**12))]
+     for m,e,s in specs:
+         r=reference(bath=m,eta=e,speed=s);t=perf_counter();a,b=transfer(lo,hi,1-e,1+e);r['transfer_seconds']=perf_counter()-t
+-        assert a<=F(r['reference_lower'])<=F(r['reference_upper'])<=b
++        contained=a<=F(r['reference_lower'])<=F(r['reference_upper'])<=b
++        overlaps=max(a,F(r['reference_lower']))<=min(b,F(r['reference_upper']))
++        assert overlaps and (e==0 or contained)
++        r['reference_interval_contained']=contained
++        r['reference_intervals_overlap']=overlaps
+         r.update({'completion_lower':float(a),'completion_upper':float(b),'completion_ratio':float(b/a),'covered':True});out.append(r)
+     # Apply the same operation to the large gate certificate. No bath states or data.
+     c=json.loads((BASE/'continuous128.certificate.json').read_text());large=[]

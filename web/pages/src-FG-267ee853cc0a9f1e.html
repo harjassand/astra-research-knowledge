@@ -1,0 +1,136 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — generic_tensor.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — generic_tensor.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/compact/generic_tensor.py">Original file</a></p><pre>from __future__ import annotations
+import time, warnings
+import numpy as np
+from scipy.linalg import solve, svd
+
+
+def east_mpo(n: int, k: float, eps: float):
+    if n &lt; 2 or k &lt;= 0 or not 0 &lt; eps &lt;= 1:
+        raise ValueError(&#x27;Require n&gt;=2, k&gt;0 and 0&lt;eps&lt;=1&#x27;)
+    q=1/(1+k*k); s=k/(1+k*k)
+    I=np.eye(2); h=np.diag([0.,1.]); N=np.array([[q,-s],[-s,1-q]])
+    cores=[]
+    for i in range(n):
+        W=np.zeros((3,3,2,2))
+        W[0,0]=I; W[1,0]=h; W[2,2]=I
+        W[2,1]=(1-eps)*N
+        O=(1. if i==0 else eps)*h
+        if i==0: O=O+q*eps*I
+        if i==n-1: O=O+q*(1-eps)*N
+        W[2,0]=O
+        if i==0: W=W[2:3]
+        if i==n-1: W=W[:,0:1]
+        cores.append(W)
+    return cores
+
+
+def left_step(L,A,W):
+    return np.einsum(&#x27;amb,aic,mnik,bkd-&gt;cnd&#x27;,L,A,W,A,optimize=True)
+
+def right_step(R,A,W):
+    return np.einsum(&#x27;aic,mnik,bkd,cnd-&gt;amb&#x27;,A,W,A,R,optimize=True)
+
+def source_left(l,A): return l@A[:,0,:]
+def source_right(r,A): return A[:,0,:]@r
+
+def overlap(A,B):
+    e=np.ones((1,1))
+    for x,y in zip(A,B):
+        e=np.einsum(&#x27;ab,aic,bid-&gt;cd&#x27;,e,x,y,optimize=True)
+    return float(e[0,0])
+
+def source_overlap(A):
+    v=np.ones(1)
+    for x in A: v=v@x[:,0,:]
+    return float(v[0])
+
+def apply_mpo(W,A):
+    out=[]
+    for w,a in zip(W,A):
+        c=np.einsum(&#x27;mnij,ajb-&gt;mainb&#x27;,w,a,optimize=True)
+        # physical output i, combined left (m,a), right (n,b)
+        out.append(c.reshape(w.shape[0]*a.shape[0],w.shape[2],w.shape[1]*a.shape[2]))
+    return out
+
+def dense_mps(A):
+    v=np.ones((1,1))
+    for a in A:
+        v=np.einsum(&#x27;xa,aib-&gt;xib&#x27;,v,a).reshape(-1,a.shape[2])
+    return v[:,0]
+
+def dense_mpo(W):
+    # only for explicitly labelled SMALL reference checks
+    E=np.ones((1,1,1))
+    for w in W:
+        E=np.einsum(&#x27;xym,mnij-&gt;xiyjn&#x27;,E,w).reshape(E.shape[0]*2,E.shape[1]*2,w.shape[1])
+    return E[:,:,0]
+
+def diagnostics(A,W,eps,q):
+    f=source_overlap(A)
+    L=np.ones((1,1,1))
+    for a,w in zip(A,W): L=left_step(L,a,w)
+    energy=float(L[0,0,0])
+    y=apply_mpo(W,A)
+    hy=source_overlap(y)
+    yn=overlap(y,y)
+    rr=1-2*hy+yn
+    lower=2*f-energy
+    r0=1-hy
+    gap=(r0*r0/q+max(0.,rr-r0*r0)/(1+q))/eps
+    return {&#x27;source&#x27;:f,&#x27;energy&#x27;:energy,&#x27;lower_float&#x27;:lower,&#x27;residual_sq_float&#x27;:rr,&#x27;r0_float&#x27;:r0,&#x27;diagnostic_scope&#x27;:&#x27;projected_Galerkin_only_not_a_continuum_certificate&#x27;,&#x27;max_rank&#x27;:max(a.shape[2] for a in A)}
+
+def solve_generic(W,rank:int=8,sweeps:int=3,verbose:bool=True,initial=None):
+    n=len(W);d=W[0].shape[2]; q=0.2;eps=1.0
+    if initial is None:
+        A=[np.eye(d)[0].reshape(1,d,1).copy() for _ in range(n)]
+        e=np.ones((1,1,1))
+        for aa,ww in zip(A,W):e=left_step(e,aa,ww)
+        A[-1]/=float(e[0,0,0])
+    else:
+        A=[a.copy() for a in initial]
+    logs=[]; t0=time.perf_counter()
+    for sweep in range(sweeps):
+        # Forward sweep. The previous backward sweep left right-canonical cores.
+        R=[None]*(n+1); rb=[None]*(n+1)
+        R[n]=np.ones((1,1,1)); rb[n]=np.ones(1)
+        for i in range(n-1,-1,-1):
+            R[i]=right_step(R[i+1],A[i],W[i]); rb[i]=source_right(rb[i+1],A[i])
+        L=np.ones((1,1,1)); lb=np.ones(1)
+        for i in range(n-1):
+            a=A[i].shape[0]; c=A[i+1].shape[2]
+            H=np.einsum(&#x27;amb,mnik,npjl,cpd-&gt;aijcbkld&#x27;,L,W[i],W[i+1],R[i+2],optimize=True).reshape(a*d*d*c,a*d*d*c)
+            H=(H+H.T)/2
+            b=np.zeros((a,d,d,c)); b[:,0,0,:]=lb[:,None]*rb[i+2][None,:]
+            with warnings.catch_warnings(record=True) as warn:
+                x=solve(H,b.ravel(),assume_a=&#x27;pos&#x27;,check_finite=False)
+            if warn: logs.append({&#x27;warning&#x27;:str(warn[0].message),&#x27;sweep&#x27;:sweep,&#x27;site&#x27;:i,&#x27;direction&#x27;:&#x27;forward&#x27;})
+            U,S,Vh=svd(x.reshape(a*d,d*c),full_matrices=False,check_finite=False,lapack_driver=&#x27;gesvd&#x27;)
+            rr=min(rank,len(S))
+            A[i]=U[:,:rr].reshape(a,d,rr)
+            A[i+1]=(S[:rr,None]*Vh[:rr,:]).reshape(rr,d,c)
+            L=left_step(L,A[i],W[i]); lb=source_left(lb,A[i])
+        # Backward sweep
+        LL=[None]*(n+1); lbb=[None]*(n+1)
+        LL[0]=np.ones((1,1,1)); lbb[0]=np.ones(1)
+        for i in range(n):
+            LL[i+1]=left_step(LL[i],A[i],W[i]); lbb[i+1]=source_left(lbb[i],A[i])
+        Rcur=np.ones((1,1,1)); rbcur=np.ones(1)
+        for i in range(n-2,-1,-1):
+            a=A[i].shape[0]; c=A[i+1].shape[2]
+            H=np.einsum(&#x27;amb,mnik,npjl,cpd-&gt;aijcbkld&#x27;,LL[i],W[i],W[i+1],Rcur,optimize=True).reshape(a*d*d*c,a*d*d*c)
+            H=(H+H.T)/2
+            b=np.zeros((a,d,d,c)); b[:,0,0,:]=lbb[i][:,None]*rbcur[None,:]
+            with warnings.catch_warnings(record=True) as warn:
+                x=solve(H,b.ravel(),assume_a=&#x27;pos&#x27;,check_finite=False)
+            if warn: logs.append({&#x27;warning&#x27;:str(warn[0].message),&#x27;sweep&#x27;:sweep,&#x27;site&#x27;:i,&#x27;direction&#x27;:&#x27;backward&#x27;})
+            U,S,Vh=svd(x.reshape(a*d,d*c),full_matrices=False,check_finite=False,lapack_driver=&#x27;gesvd&#x27;)
+            rr=min(rank,len(S))
+            A[i]=(U[:,:rr]*S[:rr]).reshape(a,d,rr)
+            A[i+1]=Vh[:rr,:].reshape(rr,d,c)
+            Rcur=right_step(Rcur,A[i+1],W[i+1]); rbcur=source_right(rbcur,A[i+1])
+        dd=diagnostics(A,W,eps,q); dd[&#x27;sweep&#x27;]=sweep+1; dd[&#x27;seconds&#x27;]=time.perf_counter()-t0
+        logs.append(dd)
+        if verbose: print(n,rank,dd,flush=True)
+    return A,logs
+
+</pre></html>

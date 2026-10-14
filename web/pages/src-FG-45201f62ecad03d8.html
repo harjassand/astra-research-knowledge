@@ -1,0 +1,177 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — independent_history_checks.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — independent_history_checks.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/synthesis/history/independent_history_checks.py">Original file</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent history-interface diagnostics; no experimental inputs are inferred.
+
+Python &gt;=3.10, NumPy, SciPy. No producer implementation is imported.
+&quot;&quot;&quot;
+from pathlib import Path
+import argparse, json, math
+import numpy as np
+from scipy.linalg import expm
+from scipy.integrate import solve_ivp
+from scipy import constants as const
+
+
+def split(U, labels):
+    labels=np.asarray(labels)
+    diff=labels[:,None]-labels[None,:]
+    return {int(m):np.where(diff==m,U,0) for m in np.unique(diff)}
+
+
+def select(K, parts, ell, x):
+    return sum(np.exp(1j*(m+n)*x)*A@K@parts[n].conj().T
+               for m,A in parts.items() for n in parts if m-n==ell)
+
+
+def second_code_coefficients(model, s):
+    H=np.diag(model[&#x27;energies&#x27;])+np.diag(model[&#x27;coupling&#x27;],1)+np.diag(model[&#x27;coupling&#x27;],-1)
+    pulses=[split(expm(-1j*area*H),[0,1,2]) for area in model[&#x27;areas&#x27;]]
+    K=select(np.diag([1.,0.,0.]),pulses[0],-1,s/2)
+    coefficients=[]
+    for h in [-3,-1,1,3]:
+        m,n=(h+1)//2,(h-1)//2
+        K2=pulses[1][m]@K@pulses[1][n].conj().T
+        coefficients.append(np.trace(select(select(K2,pulses[2],1,s/2),pulses[3],-1,s/2)))
+    return np.array(coefficients)
+
+
+def main():
+    ap=argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(&#x27;--output&#x27;,type=Path,default=Path(__file__).with_name(&#x27;independent_results.json&#x27;))
+    args=ap.parse_args();base=Path(__file__).resolve().parent
+    out={&#x27;status&#x27;:&#x27;INTERNAL ANALYTIC/NUMERICAL DIAGNOSTICS; NO LABORATORY VALIDATION&#x27;,&#x27;groups&#x27;:{}}
+    s=.702;a=s/2
+
+    # Exact formula nullspace is evaluated independently of any pulse simulator.
+    kappa=math.sin(3*a)/math.sin(a)
+    h=np.array([-3,-1,1,3])
+    blind=np.array([-1.,kappa,-kappa,1.])/2
+    port_matrix=np.exp(1j*np.outer([-a,0.,a],h))
+    assert np.linalg.norm(port_matrix@blind)&lt;1e-13
+    extra=np.exp(.5j*a*h)@blind
+    assert abs(extra)&gt;.01
+    out[&#x27;groups&#x27;][&#x27;exact_three_port_blind_direction&#x27;]={
+        &#x27;s&#x27;:s,&#x27;coefficient_vector&#x27;:blind.tolist(),&#x27;maximum_old_port_residual&#x27;:float(np.max(abs(port_matrix@blind))),
+        &#x27;extra_half_momentum_response&#x27;:[float(extra.real),float(extra.imag)],
+        &#x27;proof&#x27;:&#x27;sin(3x) - [sin(3a)/sin(a)] sin(x) vanishes at x=-a,0,a; exact identity, not a numerical proof&#x27;}
+
+    # An explicit coherent RWA ladder mixture, not just arbitrary Fourier numbers.
+    saved=json.loads((base/&#x27;blind_port_search.json&#x27;).read_text())
+    cs=np.array([second_code_coefficients(m,s) for m in saved[&#x27;models&#x27;]])
+    resid=cs[:,0]+cs[:,3]
+    barycentric=np.linalg.solve(np.array([resid.real,resid.imag,np.ones(3)]),np.array([0.,0.,1.]))
+    assert np.min(barycentric)&gt;.08
+    assert all(m[&#x27;areas&#x27;]==[1.,1.,1.,1.] for m in saved[&#x27;models&#x27;])
+    mixed=barycentric@cs
+    residual=2*(math.cos(3*a)-math.cos(a))*(mixed[0]+mixed[3])
+    assert abs(residual)&lt;1e-13 and abs(mixed[3])&gt;.002
+    Splus=np.exp(1j*a*h)@mixed;Sminus=np.exp(-1j*a*h)@mixed
+    apparent=np.array([(np.exp(1j*a)*Splus-np.exp(-1j*a)*Sminus)/(2j*math.sin(s)),
+                       (-np.exp(-1j*a)*Splus+np.exp(1j*a)*Sminus)/(2j*math.sin(s))])
+    out[&#x27;groups&#x27;][&#x27;three_band_physical_pulse_mixture&#x27;]={
+        &#x27;weights_defined_by_barycentric_formula&#x27;:barycentric.tolist(),
+        &#x27;third_port_residual&#x27;:[float(residual.real),float(residual.imag)],
+        &#x27;actual_odd_coefficients&#x27;:[[float(z.real),float(z.imag)] for z in mixed],
+        &#x27;apparent_two_band_coefficients&#x27;:[[float(z.real),float(z.imag)] for z in apparent],
+        &#x27;nonzero_three_band_leakage_amplitude&#x27;:float(abs(mixed[3])),
+        &#x27;scope&#x27;:&#x27;finite floating realization of block-diagonal three-level ladder models under identical four unit-area pulse controls; only static class detunings and dipoles differ; not CaOH+, no certified interval arithmetic&#x27;}
+
+    # Finite-band inversion and fixed maximum momentum conditioning certificate.
+    rows=[]
+    for r in range(1,8):
+        n=2*r-1;freq=np.arange(-n,n+1,2)
+        xs=np.linspace(-a,a,max(2*r,5))
+        design=np.exp(1j*np.outer(xs,freq))
+        sv=np.linalg.svd(design,compute_uv=False)
+        coefficients=np.array([(-1)**j*math.comb(n,j) for j in range(n+1)],float)
+        coefficients/=np.linalg.norm(coefficients)
+        worst=np.linalg.norm(design@coefficients)
+        bound=math.sqrt(len(xs))*(2*math.sin(a))**n/math.sqrt(math.comb(2*n,n))
+        assert worst&lt;=bound+1e-12
+        condition_lower=math.sqrt(math.comb(2*n,n))/(2*math.sin(a))**n
+        assert sv[0]/sv[-1]&gt;=condition_lower*(1-1e-10)
+        rows.append({&#x27;bands&#x27;:r+1,&#x27;unknown_coefficients&#x27;:2*r,&#x27;ports&#x27;:len(xs),
+                     &#x27;condition_number&#x27;:float(sv[0]/sv[-1]),&#x27;proven_condition_lower_bound&#x27;:condition_lower,
+                     &#x27;null_test_vector_norm&#x27;:float(worst),&#x27;upper_bound_on_test_vector_norm&#x27;:bound})
+    out[&#x27;groups&#x27;][&#x27;fixed_cat_phase_arc_conditioning&#x27;]=rows
+
+    # Reference agreement is not instrument identification. All known equatorial
+    # calibration inputs give the same C=.4 for both legitimate +/-1 POVMs.
+    X=np.array([[0,1],[1,0]],complex);Y=np.array([[0,-1j],[1j,0]],complex);Z=np.diag([1.,-1.])
+    O0=.4*np.kron(X,np.eye(2));O1=np.kron(X,.4*np.eye(2)+.6*Z)
+    assert np.max(abs(np.linalg.eigvalsh(O1)))&lt;=1+1e-14
+    discrepancy=0.
+    for phi in np.linspace(0,2*math.pi,41):
+        anc=(np.eye(2)+math.cos(phi)*X+math.sin(phi)*Y)/2
+        ref=np.kron(anc,np.eye(2)/2)
+        discrepancy=max(discrepancy,abs(np.trace((O1-O0)@ref)))
+    anc=(np.eye(2)+X)/2
+    science=np.kron(anc,np.diag([1.,0.]))
+    difference=np.trace((O1-O0)@science).real
+    assert discrepancy&lt;1e-14 and abs(difference-.6)&lt;1e-14
+    out[&#x27;groups&#x27;][&#x27;loaded_reference_instrument_countermodel&#x27;]={
+        &#x27;reference_C&#x27;:.4,&#x27;all_reference_phase_scans_discrepancy&#x27;:float(discrepancy),
+        &#x27;science_expectation_O0&#x27;:float(np.trace(O0@science).real),
+        &#x27;science_expectation_O1&#x27;:float(np.trace(O1@science).real),
+        &#x27;difference&#x27;:float(difference),&#x27;meaning&#x27;:&#x27;valid joint POVMs agree on entire loaded reference phase circle but differ on a science-correlated hidden state&#x27;}
+
+    # Explicit conditional parking construction using the original allowed D state.
+    # Ground RF/Raman swap, followed by old-D-to-vacant-S shelving, avoids a delta-m=3 edge.
+    R=np.array([[1,0,1],[0,math.sqrt(2),0],[1,0,-1]],complex)/math.sqrt(2)
+    ground_swap=np.array([[0,1,0],[1,0,0],[0,0,1]],complex)
+    shelf=np.array([[0,0,1],[0,1,0],[1,0,0]],complex)
+    W=shelf@ground_swap@R
+    plus=np.array([1,0,1])/math.sqrt(2);minus=np.array([1,0,-1])/math.sqrt(2)
+    assert np.linalg.norm(W@plus-[0,1,0])&lt;1e-14
+    assert np.linalg.norm(W@minus-[1,0,0])&lt;1e-14
+    for dphase in [-20.,0.,20.]:
+        light=np.diag([np.exp(-.31j),np.exp(-.31j),np.exp(-1j*dphase)])
+        for v in [plus,minus]:assert np.linalg.norm(W.conj().T@light@W@v-np.exp(-.31j)*v)&lt;1e-13
+    out[&#x27;groups&#x27;][&#x27;parking_using_allowed_old_D_state&#x27;]={
+        &#x27;states&#x27;:[&#x27;S,-1/2&#x27;,&#x27;S,+1/2&#x27;,&#x27;D,-5/2&#x27;],
+        &#x27;forward_operations&#x27;:[&#x27;optical +/- to energy basis&#x27;,&#x27;ground-Zeeman swap&#x27;,&#x27;D,-5/2 to now-vacant S,-1/2 shelving&#x27;],
+        &#x27;status&#x27;:&#x27;exact conditional unitary construction; RF/Raman selectivity, cat dependence, spectator modes and full round-trip errors unacquired&#x27;}
+
+    # Integrate the Schrodinger equation directly for a small rotor. This does
+    # not reuse the producer&#x27;s splitting, eigensystem or frequency filter.
+    jmax=4;js=np.arange(jmax+1);N=len(js);sigma=116.2e-15/(2*math.sqrt(2*math.log(2)))
+    e=np.r_[.3655*js*(js+1),.3655*js*(js+1)]
+    D=np.zeros((2*N,2*N),complex)
+    for j in range(jmax):
+        g=(j+1)/math.sqrt((2*j+1)*(2*j+3))
+        for je,jg in [(j+1,j),(j,j+1)]:D[N+je,jg]=D[jg,N+je]=g
+    dipole=4.810962939951982e-31;fluence=275.
+    field_peak=math.sqrt(2*fluence/(const.epsilon_0*const.c*math.sqrt(2*math.pi)*sigma))
+    theta=dipole*field_peak/const.hbar*2*math.sqrt(math.pi)*sigma
+    H0=np.diag(2*math.pi*const.c*100*e*sigma)
+    def rhs(u,flat):
+        H=H0+theta/(4*math.sqrt(math.pi))*math.exp(-u*u/4)*D
+        return (-1j*H@flat.reshape((2*N,2*N))).reshape(-1)
+    sol=solve_ivp(rhs,[-8.,8.],np.eye(2*N,dtype=complex).reshape(-1),rtol=2e-11,atol=2e-13,method=&#x27;DOP853&#x27;)
+    U=sol.y[:,-1].reshape((2*N,2*N));phase=np.exp(8j*np.diag(H0));U=phase[:,None]*U*phase[None,:]
+    ref=np.load(base/&#x27;repaired_small_rotor_pulse.npy&#x27;)
+    err=float(np.linalg.norm(U-ref,ord=2));unitarity=float(np.linalg.norm(U.conj().T@U-np.eye(2*N),ord=2))
+    assert sol.success and err&lt;1e-6 and unitarity&lt;1e-9
+    out[&#x27;groups&#x27;][&#x27;independent_small_rotor_ODE&#x27;]={&#x27;success&#x27;:sol.success,&#x27;steps&#x27;:len(sol.t),
+        &#x27;ODE_vs_repaired_400_step_splitting_operator_norm&#x27;:err,&#x27;ODE_unitarity_operator_error&#x27;:unitarity,
+        &#x27;scope&#x27;:&#x27;Jmax4,M0 reference equation only; not full CaOH+ or universal numerical certification&#x27;}
+
+    # Acquisition, geometry, and emission scales remain conditional arithmetic.
+    source_grid=json.loads((base/&#x27;replay_repaired/rotor_reference_results.json&#x27;).read_text())
+    costs=[]
+    for row in source_grid:
+        if row[&#x27;t3_ps&#x27;]!=1.:continue
+        amplitude=abs(complex(*row[&#x27;XL&#x27;]));trials=100/(.4**2*math.sin(s)**2*amplitude**2)
+        costs.append({&#x27;centre_cm&#x27;:row[&#x27;center_cm&#x27;],&#x27;each_fluence_Jcm2&#x27;:row[&#x27;fluence_each_J_cm2&#x27;],
+                      &#x27;coefficient_magnitude&#x27;:amplitude,&#x27;planning_trials_C04&#x27;:trials,
+                      &#x27;planning_days_at_assumed_50_Hz&#x27;:trials/50/86400})
+    out[&#x27;groups&#x27;][&#x27;reference_costs&#x27;]=costs
+    out[&#x27;groups&#x27;][&#x27;same_physical_model_gates&#x27;]={
+        &#x27;grating_cutoff_cm_inverse_for_K0p9k0&#x27;:.9*3783,
+        &#x27;Gaussian_spectral_fraction_below_cutoff_at_retuned_centre&#x27;:.5*math.erfc((3783-.9*3783)/(126.7/(2*math.sqrt(2*math.log(2))))/math.sqrt(2)),
+        &#x27;one_isotropic_emission_fringe_at_kd0p78&#x27;:math.sin(.78)/.78,
+        &#x27;meaning&#x27;:&#x27;illustrative exact integrals/scale arithmetic; actual angular emission, spectral phase, loss, T2, atomic transfer and complete-cycle rate remain unacquired&#x27;}
+    args.output.write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;);print(json.dumps(out,indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

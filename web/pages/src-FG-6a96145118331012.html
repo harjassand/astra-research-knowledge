@@ -1,0 +1,45 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — conditional_reference.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — conditional_reference.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/compact/conditional_reference.py">Original file</a></p><pre>&quot;&quot;&quot;Full-state reference checks only for small baths, independently of envelope compiler.
+The 16-state closure itself never builds the hidden states used for these audits.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from time import perf_counter
+import json,numpy as np
+from scipy.sparse import coo_matrix
+from scipy.sparse.linalg import spsolve
+from conditional_envelope import compile_envelope
+BASE=Path(__file__).resolve().parent
+
+def full_reference(n,m,R,feature=&#x27;all_open&#x27;,speed=F(1,10**9)):
+ t=perf_counter();q=F(1,26);eps=F(1,10000);N=2**n;B=2**m
+ nu=[F(2)**z.bit_count()*F(3)**sum(((z&gt;&gt;i)&amp;1)==((z&gt;&gt;(i+1))&amp;1) for i in range(m-1)) for z in range(B)]
+ mg=[q**g.bit_count()*(1-q)**(n-g.bit_count()) for g in range(N)]
+ h={&#x27;all_open&#x27;:lambda g:int(g==N-1),&#x27;all_closed&#x27;:lambda g:int(g==0),&#x27;first_open&#x27;:lambda g:g&amp;1}[feature]
+ def w(g,z):return F(1)+(R-1)*h(g)*(z.bit_count()%2)
+ rows=[];ir=[];ic=[];dat=[];mass=[]
+ for z in range(B):
+  for g in range(N):
+   x=z*N+g;row=[];diag=F(0);wx=w(g,z);mass.append(mg[g]*nu[z]*wx)
+   for i in range(n):
+    gg=g^(1&lt;&lt;i);fac=F(1) if i==0 or ((g&gt;&gt;(i-1))&amp;1) else eps
+    rate=(1-q if (g&gt;&gt;i)&amp;1 else q)*fac*min(wx,w(gg,z))/wx
+    row.append((z*N+gg,-rate));diag+=rate
+   for j in range(m):
+    zz=z^(1&lt;&lt;j);rate=speed*(j+1)*(1+F(g.bit_count(),n))*min(F(1),nu[zz]/nu[z])*min(wx,w(g,zz))/wx
+    row.append((zz*N+g,-rate));diag+=rate
+   diag+=q*(1 if (g&gt;&gt;(n-1))&amp;1 else eps);row.append((x,diag));rows.append(row)
+   for y,a in row:ir.append(x);ic.append(y);dat.append(float(a))
+ A=coo_matrix((dat,(ir,ic)),shape=(N*B,N*B)).tocsr();v=spsolve(A,np.ones(N*B));vf=[F.from_float(float(a)) for a in v]
+ delta=max(abs(sum(a*vf[y] for y,a in row)-1) for row in rows);assert delta&lt;1 and min(v)&gt;0
+ mean=sum(a*b for a,b in zip(mass,vf))/sum(mass);lo=mean/(1+delta);hi=mean/(1-delta)
+ return {&#x27;bath_coordinates&#x27;:m,&#x27;reference_states&#x27;:N*B,&#x27;R&#x27;:R,&#x27;feature&#x27;:feature,&#x27;speed&#x27;:str(speed),&#x27;lower_exact&#x27;:str(lo),&#x27;upper_exact&#x27;:str(hi),&#x27;mean&#x27;:float(mean),&#x27;delta&#x27;:float(delta),&#x27;seconds&#x27;:perf_counter()-t}
+
+if __name__==&#x27;__main__&#x27;:
+ out=[];envelopes={}
+ for feature,m,R in [(&#x27;all_open&#x27;,m,100) for m in [0,2,4,6]]+[(&#x27;all_closed&#x27;,4,100),(&#x27;first_open&#x27;,4,100)]:
+  if feature not in envelopes:envelopes[feature]=compile_envelope(feature=feature,R=R)
+  c=envelopes[feature];r=full_reference(4,m,R,feature)
+  assert F(c[&#x27;lower_exact&#x27;])&lt;=F(r[&#x27;lower_exact&#x27;])&lt;=F(r[&#x27;upper_exact&#x27;])&lt;=F(c[&#x27;upper_exact&#x27;])
+  r.update({&#x27;completion_lower&#x27;:c[&#x27;lower&#x27;],&#x27;completion_upper&#x27;:c[&#x27;upper&#x27;],&#x27;covered&#x27;:True});out.append(r)
+ (BASE/&#x27;conditional_reference_results.json&#x27;).write_text(json.dumps({&#x27;references&#x27;:out,&#x27;all_passed&#x27;:True,&#x27;envelopes&#x27;:envelopes},indent=2));print(json.dumps([{k:r[k] for k in [&#x27;bath_coordinates&#x27;,&#x27;feature&#x27;,&#x27;mean&#x27;,&#x27;completion_lower&#x27;,&#x27;completion_upper&#x27;,&#x27;seconds&#x27;]} for r in out],indent=2))
+</pre></html>

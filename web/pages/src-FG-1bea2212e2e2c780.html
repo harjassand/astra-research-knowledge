@@ -1,0 +1,54 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — global_power_audit.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — global_power_audit.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/synthesis/source_cut_critic/global_power_audit.py">Original file</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact same-envelope sharp-power family checks.&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+
+from independent_audit import check_spd, invert, quad
+
+BASE = Path(__file__).resolve().parent
+
+
+def main():
+    records = []
+    for R in (3, 10, 100):
+        for n in (10, 1000, 1000000):
+            delta, T = F(1, n), F(n)
+            c = delta * delta / T
+            A0 = [[1 + c, -c], [-c, c]]
+            check_spd(A0)
+            G0 = invert(A0)
+            assert G0 == [[F(1), F(1)], [F(1), 1 + 1 / c]]
+            assert list(map(sum, A0)) == [F(1), F(0)]
+            ell, u = [F(1), delta], [F(R), R * delta]
+            sourceU, sourceL = [F(1), R * delta], [F(R), delta]
+            assert all(lo &lt;= x &lt;= hi for lo, x, hi in zip(ell, sourceU, u))
+            assert all(lo &lt;= x &lt;= hi for lo, x, hi in zip(ell, sourceL, u))
+            tau0 = quad(G0, ell) / sum(ell)
+            tauU = quad(G0, sourceU) / sum(sourceU)
+            tauL = quad(G0, sourceL) / (R * sum(sourceL))
+            assert tau0 == ((1 + delta) ** 2 + T) / (1 + delta)
+            assert tauU == ((1 + R * delta) ** 2 + R * R * T) / (1 + R * delta)
+            assert tauL == ((R + delta) ** 2 + T) / (R * (R + delta))
+            assert F(1, R * R) &lt;= tauL / tau0
+            assert tauU / tau0 &lt;= R * R
+            assert tauU / tauL &lt;= R ** 4
+            records.append({&quot;R&quot;: R, &quot;delta&quot;: str(delta), &quot;T&quot;: str(T),
+                &quot;tau0&quot;: str(tau0), &quot;tauU&quot;: str(tauU), &quot;tauL&quot;: str(tauL),
+                &quot;upper_over_baseline&quot;: str(tauU / tau0),
+                &quot;lower_over_baseline&quot;: str(tauL / tau0), &quot;width&quot;: str(tauU / tauL),
+                &quot;upper_fraction_of_R_squared&quot;: str(tauU / (tau0 * R * R)),
+                &quot;lower_fraction_of_inverse_R_squared&quot;: str(tauL * R * R / tau0),
+                &quot;width_fraction_of_R_fourth&quot;: str(tauU / (tauL * R ** 4))})
+    report = {&quot;status&quot;: &quot;PASS&quot;, &quot;instances&quot;: len(records), &quot;results&quot;: records,
+              &quot;scope&quot;: &quot;same abstract CE source/form envelopes; source-dependent reversible rates; not a fixed min(weight)-edge law&quot;}
+    (BASE / &quot;GLOBAL_POWER_RESULTS.json&quot;).write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: &quot;PASS&quot;, &quot;instances&quot;: len(records),
+        &quot;last_record_decimal_ratios&quot;: {&quot;upper_fraction_of_R_squared&quot;: float(F(records[-1][&quot;upper_fraction_of_R_squared&quot;])),
+            &quot;lower_fraction_of_inverse_R_squared&quot;: float(F(records[-1][&quot;lower_fraction_of_inverse_R_squared&quot;])),
+            &quot;width_fraction_of_R_fourth&quot;: float(F(records[-1][&quot;width_fraction_of_R_fourth&quot;]))}}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></html>

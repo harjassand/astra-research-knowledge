@@ -1,0 +1,245 @@
+# What loaded references and momentum codes can identify
+
+14 October 2026. Internal restricted derivation and explicit countermodels.
+No laboratory result, external proof review, novelty clearance or capability
+advantage is established. Linear inverse problems, trace duality, angular-
+momentum symmetry and phase covariance are established mathematics. The work
+below makes their exact interface to the new proposed molecular operation
+explicit, and supplies falsifiers of several tempting stronger transfers.
+
+## 1. A loaded transverse reference is useful but not a universal corrector
+
+The source's all-pulses transverse sequence can test infrared-loaded return
+without presupposing molecular optical coherence. This is a valuable necessary
+experiment. It does not identify how every science-correlated input is read out.
+
+Let A be the atomic label and H all remaining degrees of freedom relevant to
+the return/readout. A binary readout is a Hermitian observable O on A tensor H
+with ||O||<=1. The actual mean on input sigma is Tr(O sigma). Reference phase
+scans acquire this functional only on their prepared reference states; the
+joint science state can lie outside their linear span.
+
+Exact countermodel: H is a qubit and every loaded reference is
+
+    sigma_phi = (I+cos(phi)X+sin(phi)Y)/2 tensor I/2.
+
+The two valid binary readout observables
+
+    O0=.4 X tensor I,
+    O1=X tensor (.4 I+.6 Z)
+
+agree on EVERY reference phase scan, yielding .4 cos(phi). Both have norm<=1,
+so (I+/-Oj)/2 are valid POVM effects. On the legitimate science state
+
+    sigma_science=(I+X)/2 tensor |0><0|,
+
+their means are .4 and 1. Thus a perfect reference phase curve with measured
+C=.4 is compatible with a .6 science error. This is a joint-instrument
+countermodel, not an assertion that CaOH+ exhibits this particular error.
+
+The same issue applies if a reference and science route have different
+spectator recoil, spatial fields or joint internal/motional correlations.
+Matching incident fluence or one measured visibility does not prove uniform
+readout factorization. The source already warns against scalar-C division;
+this countermodel explains the missing information precisely.
+
+## 2. A quantitative reference-to-science contract
+
+Let V be the real linear span of known calibration input operators, and let O0
+be a proposed calibrated readout. Put Delta=O-O0. If calibration proves
+Tr(Delta v)=0 for all v in V and separately supplies ||Delta||<=epsilon, then
+
+    |Tr(Delta sigma)| <= epsilon dist_1(sigma,V),        (1)
+    dist_1(sigma,V)=inf_(v in V) ||sigma-v||_1.
+
+Proof: Tr(Delta sigma)=Tr(Delta(sigma-v)), followed by operator/trace norm
+duality and minimization over v. In finite dimensions this seminorm is sharp:
+
+    sup_(Delta in V^perp, ||Delta||<=1) |Tr(Delta sigma)|
+       = dist_1(sigma,V).                               (2)
+
+This is the finite-dimensional dual formula for the quotient norm. It follows
+by extending the norm-one functional on the one-dimensional quotient direction
+using Hahn-Banach, with the dual of trace norm equal to operator norm. The
+sharpness is a norm statement; extra POVM corner constraints can narrow a
+particular device's attainable error. O0=0 permits the full contraction ball.
+
+Approximate calibration extends directly: if v=sum c_j sigma_j and
+|Tr(Delta sigma_j)|<=delta_j, then
+
+    |Tr(Delta sigma)| <= epsilon ||sigma-v||_1
+                         +sum_j |c_j| delta_j.          (3)
+
+This identifies the actual additional input: known science decomposition in
+the calibration span, or a state-uniform instrument bound, or a justified
+factorization O=O_A tensor I_H. The proposed loaded experiment supplies none
+of these automatically. It can reject a bad implementation without predicting
+every science response. No tomography of unknown molecular states is declared
+free.
+
+## 3. More bands create more direction coefficients
+
+Let the phase charge Q have bands numbered 0,...,r. Assume the same coherent
+phase-covariant pulse model as the source,
+
+    U(phi)=exp(i phi Q) U exp(-i phi Q)
+          =sum_(m=-r)^r exp(i m phi) U_m.
+
+For two spatial branches separated by d and one pulse's axial wavevector k_z,
+write x=k_z d/2. Its selected optical harmonic ell=1 acts on a cross-block as
+
+    K -> sum_(m-n=1) exp(i(m+n)x) U_m K U_n†.            (4)
+
+Hold all other pulses, delays, input and instruments fixed. After their linear
+operations and trace, the measured coefficient has the form
+
+    S(x)=sum_(h=-2r+1,-2r+3,...,2r-1) c_h exp(i h x).   (5)
+
+The c_h are complex, independent of the second-pulse momentum. There are up
+to 2r of them. For two bands r=1, these are exactly the source's two coefficients.
+For three bands r=2, four coefficients are permitted. Extra physical constraints
+may reduce them, but those constraints must be supplied and justified.
+
+The statement requires coherent phase covariance and a common calibrated
+momentum-independent subsequent functional. Open branch-specific pulse dynamics,
+route-dependent transfer, changed initial distributions and uncorrected all-mode
+motion are separate errors; they are not eliminated by (5).
+
+## 4. Exact blindness of three direction ports
+
+Let a=s/2 and sample x=-a,0,a, as in q2=-1,0,+1. In a three-band coefficient
+model the nonzero function
+
+    F(x)=sin(3x)-[sin(3a)/sin(a)] sin(x)                  (6)
+
+vanishes at all three ports whenever sin(a) is nonzero. It uses only the four
+allowed frequencies -3,-1,1,3. Therefore adding any sufficiently small multiple
+of F changes the allowed coefficient vector without changing ANY three-port
+measurement. The source third-port consistency test can be exactly satisfied
+while the inferred two-band decomposition is wrong in the broader model.
+
+This is an exact coefficient-model impossibility, not a blanket theorem about
+every constrained CaOH+ Hamiltonian. The independent code also constructs a
+finite coherent ladder realization: three three-level blocks, each with a real
+tridiagonal Hamiltonian, initial ground state, and phase-covariant finite pulses.
+All blocks receive the same four unit-duration, unit-amplitude pulse controls;
+only their static detunings and dipoles differ.
+A classical mixture of the blocks has nonzero h=+/-3 components while its
+third-port residual vanishes. The weights are defined by the barycentric
+equations that cancel Re(c_-3+c_+3) and Im(c_-3+c_+3). The saved numerical
+evaluation gives positive weights approximately .41609,.49859,.08532 and
+|c_3| about .002753. The construction is explicit and replayable, but its
+floating matrix exponentials/positivity checks are not interval-certified
+laboratory evidence or a universal proof of CaOH+ leakage.
+
+Thus a small measured third-port residual is a necessary model check with
+useful rejection power, not a certificate of band closure. The source's
+separate counterexample showed that leakage can violate the test. This new
+blind direction explains why passing it cannot establish the intended origins.
+
+## 5. Conditional extra-port repair and its conditioning cost
+
+With a supplied finite band bound r, at least 2r independent complex port
+means are necessary to identify arbitrary c in (5). For 2r distinct x_j with
+exp(2i x_j) distinct, the matrix A_(j,k)=exp[i(-2r+1+2k)x_j] is invertible:
+factor exp[-i(2r-1)x_j] from row j and obtain an ordinary Vandermonde matrix
+in z_j=exp(2i x_j). This is an exact conditional reconstruction, with no
+unknown Hamiltonian diagonalization in the inversion.
+
+An illustrative three-band optical extension uses a second-pulse grating with
+twice the original pitch, providing momenta -K,-K/2,0,K/2,K through diffraction
+orders -2,-1,0,1,2. Other pulses keep their original momentum. If all these
+orders propagate and their delivered waveforms/transfer are calibrated, five
+ports overdetermine the four coefficients. This changes the available optics;
+it is not an already qualified apparatus component.
+
+At s=.702 the equally weighted five-port design has condition number about
+99.3 for the four coefficients, compared with 2.731 for the source's ideal
+two-port/two-band matrix. Greater identifiability can be expensive at fixed cat
+size. Known noise covariance and route costs should determine allocation;
+counting extra ports without their noise amplification is insufficient.
+
+## 6. An explicit fixed-phase-arc conditioning obstruction
+
+Suppose every allowed port has |x_j|<=A<pi/2, and use M>=2r port rows. Put
+n=2r-1. The polynomial
+
+    (exp(ix)-exp(-ix))^n
+
+has exactly the 2r allowed odd frequencies, coefficient squared norm
+sum_(k=0)^n binom(n,k)^2=binom(2n,n), and magnitude at most (2 sin A)^n.
+Normalize this coefficient vector. Then
+
+    sigma_min(A_ports) <= sqrt(M)(2 sin A)^n/sqrt(binom(2n,n)),
+    condition(A_ports) >= sqrt(binom(2n,n))/(2 sin A)^n.  (7)
+
+The second line uses sigma_max>=sqrt(M), since every column has norm sqrt(M).
+This is valid for any port allocation on that phase arc; adding repeated ports
+cannot remove the small normalized signal direction. Asymptotically the lower
+bound grows as (sin A)^(-n)/(pi n)^(1/4).
+
+For propagating achromatic single-photon ports over a used spectral band with
+minimum wavevector k_min, |k_z|<=k_min gives A<=k_min d/2. At fixed small cat
+separation, arbitrarily many bands cannot be recovered stably merely by adding
+direction settings. Larger d, additional physical controls or supplied
+structural restrictions change this contract and retain their own costs.
+
+This is a restricted linear-measurement conditioning obstruction. It is not a
+lower bound on every spectroscopy, adaptive experiment, pulse-shaping or
+Hamiltonian-learning method. Translating it into trial counts additionally
+requires the actual observation variance, calibrated visibility and target
+coefficient precision. Under ordinary constant-variance shot noise, resolving
+the small direction pays the square of its inverse amplitude.
+
+The source's weak-first-two-write proposal can reduce the permitted second-
+pulse phase orders to +/-1 without imposing two-band closure on later reads.
+That is a different, potentially useful interface; its extrapolation bias,
+read-pulse phase harmonics, preparation and smaller signal must be measured.
+
+## 7. Dose and leakage cannot be optimized independently
+
+In a specified weak four-pulse regime with the desired response linear in each
+field, |X| is proportional to sqrt(F1 F2 F3 F4). At fixed total incident fluence,
+AM-GM maximizes this product with equal fluences. If all fluences scale by F,
+|X| scales as F², the specified constant-variance coefficient estimator needs
+N proportional to F^-4, and total incident dose NF scales as F^-3.
+
+If an independently acquired small-loss model has q_loss(F) proportional to
+F^m, expected replacements scale as F^(m-4). Weakening pulses can increase the
+total expected losses when m<4, even though per-trial loss decreases. No CaOH+
+exponent, prefactor or favorable dose is supplied here. Saturation, destructive
+thresholds, read-pulse changes and unknown dynamics invalidate this weak-law
+scaling. It is a joint-acquisition warning, not a predicted optimum.
+
+## 8. Conditional parking with the existing allowed D level
+
+The source symmetry claim is correct to its stated leading electric-dipole
+polarizability order: linear light has no vector contribution and J=1/2 has
+no rank-two tensor contribution. It does not remove finite-field, ellipticity,
+magnetic, spatial-force, higher-order or transfer errors.
+
+An explicit ideal map need not invoke a forbidden D,-5/2 to S,+1/2 edge.
+After mapping optical +/- into S,-1/2 and D,-5/2, swap the two ground Zeeman
+states with a selective RF/Raman pi operation. S,-1/2 is then vacant. Shelve
+D,-5/2 into that allowed S,-1/2 level. Reverse the operations after infrared
+exposure. The independent three-level unitary check preserves both cat labels
+and removes the arbitrary D-state light phase during ideal parking.
+
+RF/Raman selectivity, phases, recoil, neighboring D Zeeman coupling, carrier
+dependence on the displaced motional distribution, spectator states and the
+complete round trip are still unacquired. This is a concrete conditional map
+within known kinds of control, not a new high-fidelity gate demonstration.
+
+## 9. Relation to N796 and N791
+
+N796's common-dilation, cross-block and erasure-completion obligations survive.
+Parking removes one leading error operator; the reference and direction codes
+do not determine a shared bath, future survival or state-uniform calibration.
+The N796 survivor-completion disk still concerns one common instrument.
+
+N791 additionally needs its intended local Hamiltonian residual, collar support,
+compiled witness, full-support local reset or fresh pooled Pauli ensemble,
+coherent echo and uniform history/state apparatus error. Neither a loaded
+reference curve nor the two-band separator supplies those hypotheses. The new
+countermodel in Section 1 makes the uniform-error gap quantitative rather than
+closing it by assigning a contrast. No thermodynamic certificate is established.

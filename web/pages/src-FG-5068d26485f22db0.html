@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — refine_lower_certificate.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — refine_lower_certificate.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/synthesis/root/refine_lower_certificate.py">Original file</a></p><pre>&quot;&quot;&quot;Floating lower-field proposal followed by exact rational source certificate.
+
+Optimization success is not acceptance. Every final trial is rounded, its
+physical quadratic energy recomputed exactly, and the full source-box minimum
+evaluated by the proved prefix rule. Needs NumPy/SciPy for proposals only.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import argparse,json,time,platform
+import numpy as np
+import scipy
+from scipy.optimize import minimize
+from source_normalization_cut import inverse,mv,dot,maximize_source,minimize_trial,serial
+
+def run(feature,R):
+ n=4;N=1&lt;&lt;n;q=F(1,26);eps=F(1,10000)
+ mass=[q**g.bit_count()*(1-q)**(n-g.bit_count()) for g in range(N)]
+ indicator={&#x27;all_open&#x27;:lambda g:g==N-1,&#x27;first_open&#x27;:lambda g:g&amp;1,&#x27;all_closed&#x27;:lambda g:g==0}[feature]
+ wl=[F(1)]*N;wu=[F(1)+(R-1)*int(bool(indicator(g))) for g in range(N)]
+ def form(w):
+  a=[[F(0) for _ in range(N)] for _ in range(N)]
+  for g in range(N):
+   a[g][g]+=mass[g]*w[g]*q*(1 if (g&gt;&gt;(n-1))&amp;1 else eps)
+   for i in range(n):
+    if (g&gt;&gt;i)&amp;1:continue
+    h=g|(1&lt;&lt;i);c=mass[g]*q*(1 if i==0 or (g&gt;&gt;(i-1))&amp;1 else eps)*min(w[g],w[h])
+    a[g][g]+=c;a[h][h]+=c;a[g][h]-=c;a[h][g]-=c
+  return a
+ lo=mass;hi=[x*y for x,y in zip(mass,wu)];ap=form(wu);gp=inverse(ap);gm=inverse(form(wl))
+ ids=[i for i in range(N) if hi[i]&gt;lo[i]];dd=[hi[i]-lo[i] for i in ids]
+ gn=np.array(gp,dtype=float);ln=np.array(lo,dtype=float);dn=np.array(dd,dtype=float)
+ scale=float(dot(lo,mv(gp,lo))/sum(lo))
+ def obj(z):
+  s=ln.copy();s[ids]+=z*dn;v=gn@s;Z=s.sum();Q=s@v
+  return Q/Z/scale, dn*(2*v[ids]*Z-Q)/(Z*Z)/scale
+ start=time.monotonic();best=None
+ for z0 in [np.zeros(len(ids)),np.ones(len(ids)),np.full(len(ids),.5)]:
+  candidate=minimize(lambda z:obj(z)[0],z0,jac=lambda z:obj(z)[1],bounds=[(0.,1.)]*len(ids),method=&#x27;SLSQP&#x27;,options=dict(ftol=1e-12,maxiter=300))
+  if best is None or candidate.fun&lt;best.fun:best=candidate
+ s=ln.copy();s[ids]+=best.x*dn;vf=gn@s
+ v=[F(round(float(z)*(1&lt;&lt;40)),1&lt;&lt;40) for z in vf]
+ energy=dot(v,mv(ap,v));lower,profile=minimize_trial(lo,hi,v,energy)
+ fixedv=mv(gp,lo);fixed,_=minimize_trial(lo,hi,fixedv,dot(lo,fixedv))
+ upper,_,history=maximize_source(gm,lo,hi)
+ assert lower&lt;=upper
+ # If numerical acquisition loses to the original fixed field, retain the
+ # original certificate rather than reporting an inferior run as progress.
+ chosen=max(lower,fixed)
+ return dict(feature=feature,R=R,retained_states=N,optimizer_success=bool(best.success),optimizer_message=str(best.message),
+  floating_minimum_proposal=float(best.fun*scale),dyadic_field=v,exact_energy=energy,optimized_trial_lower=lower,
+  original_fixed_trial_lower=fixed,accepted_lower=chosen,cut_upper=upper,accepted_ratio=upper/chosen,
+  cut_calls=len(history),seconds=time.monotonic()-start,scope=&#x27;Exact valid bound;no claimed exact attainment of convex minimum or physical completion extrema.&#x27;)
+
+def main(out):
+ rows=[run(f,R) for f in [&#x27;all_open&#x27;,&#x27;first_open&#x27;,&#x27;all_closed&#x27;] for R in [3,100]]
+ result=dict(status=&#x27;PASS&#x27;,python=platform.python_version(),numpy=np.__version__,scipy=scipy.__version__,rows=rows,
+  acceptance=&#x27;Exact field energy and exact affine-fractional source-box minimum;floating optimality not used.&#x27;)
+ out.mkdir(parents=True,exist_ok=True);(out/&#x27;OPTIMIZED_LOWER_CERTIFICATES.json&#x27;).write_text(json.dumps(serial(result),indent=2)+&#x27;\n&#x27;)
+ print(json.dumps(serial([dict(feature=x[&#x27;feature&#x27;],R=x[&#x27;R&#x27;],lower=x[&#x27;accepted_lower&#x27;],upper=x[&#x27;cut_upper&#x27;],ratio=x[&#x27;accepted_ratio&#x27;],optimizer_success=x[&#x27;optimizer_success&#x27;]) for x in rows]),indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+ p=argparse.ArgumentParser();p.add_argument(&#x27;--output-dir&#x27;,required=True,type=Path);main(p.parse_args().output_dir)
+</pre></html>

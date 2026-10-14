@@ -1,0 +1,70 @@
+# Reproduce the compact hidden-kinetics checkpoint
+
+Start with `RESEARCH_NOTE.md`. The strongest claim is a **model-conditional, source-aware enclosure without a full hidden-state list**, not a validated molecular or historically novel breakthrough.
+
+The packet includes proposed tensor witnesses, exact input files, raw integer contractions, output certificates, all completed pilot logs retained in this directory, and proof/audit source. `canonical_results.json` selects the principal runs. `*.certificate.json` files contain the authoritative enclosures; floating solver diagnostics are not certificates. In particular, original continuous pilot logs containing `upper_two_sector_float` were inherited diagnostics and must not be used as continuum bounds.
+
+## Requirements
+
+Python 3 with NumPy, SciPy and SymPy; a C++17 compiler and GMP development libraries. The captured environment is in `ENVIRONMENT.json`. No external model weights, API keys, equilibrium samples or molecular rate files are required. Compiled Linux executables are included for the captured environment; recompile them on another platform.
+
+## Compile the exact backend
+
+```sh
+cd astra_compact_response
+g++ -O3 -std=c++17 exact_contract.cpp -o exact_contract -lgmpxx -lgmp
+g++ -O3 -std=c++17 exact_continuum.cpp -o exact_continuum -lgmpxx -lgmp
+```
+
+## Verify supplied large witnesses without rerunning optimization
+
+```sh
+OPENBLAS_NUM_THREADS=1 python exact_check.py n128 --degree 2
+OPENBLAS_NUM_THREADS=1 python certify_continuum.py continuous128
+OPENBLAS_NUM_THREADS=1 python audit_exact.py
+OPENBLAS_NUM_THREADS=1 python energy_envelope_audit.py
+```
+
+The first two commands independently reconstruct the exact dyadic trial and integer contraction from the saved tensor coefficients. They overwrite the corresponding validation artifacts with the replay result and fresh timing metadata. Check `MANIFEST.json` before replay if verifying snapshot integrity; reruns legitimately change output timing hashes.
+
+## Recreate source-aware bath closures
+
+```sh
+OPENBLAS_NUM_THREADS=1 python conditional_envelope.py
+OPENBLAS_NUM_THREADS=1 python conditional_reference.py
+OPENBLAS_NUM_THREADS=1 python bath_completion.py
+```
+
+`conditional_envelope.py` never constructs hidden-bath states. `conditional_reference.py` explicitly constructs only small reference baths to audit the theorem implementation; these states and their cost are separately reported, not hidden inside the algorithm. Large bath-count rows in `bath_completion_results.json` are theorem applications, not simulations.
+
+## Regenerate a response proposal
+
+```sh
+OPENBLAS_NUM_THREADS=1 python tensor_solver.py --n 128 --k 5 --eps 0.0001 --rank 16 --sweeps 3 --out my_discrete
+OPENBLAS_NUM_THREADS=1 python exact_check.py my_discrete --degree 2
+
+OPENBLAS_NUM_THREADS=1 python jacobi_gate.py --n 128 --q 1/26 --rho 1/10 --eps 1/100 --degree 3 --rank 8 --sweeps 2 --out my_continuous
+OPENBLAS_NUM_THREADS=1 python certify_continuum.py my_continuous
+```
+
+Floating optimizer outputs depend slightly on numerical libraries. The verifier assesses the actual returned dyadic witness. Failure to obtain a narrow interval is a valid outcome; it must not be replaced by a floating estimate.
+
+## Main files
+
+`tensor_solver.py`: standard two-site tensor proposal for the discrete East model.
+
+`generic_tensor.py`, `jacobi_gate.py`: continuous polynomial proposal and exact local moment definitions.
+
+`exact_contract.cpp`, `exact_check.py`: discrete exact contractions and rational enclosure.
+
+`exact_continuum.cpp`, `certify_continuum.py`: true-continuum polynomial residual, maximum-mode/excitation counters and rational enclosure.
+
+`conditional_envelope.py`: two-source hidden-bath closure, exact small retained-region prototype.
+
+`window_baseline.py`: strong separately charged local-window comparison.
+
+`audit_exact.py`: independent small expanded-polynomial and matrix algebra checks.
+
+`SOURCES.md`, `RESTART.md`, `STATUS.json`: lineage, failures, unresolved work and scope.
+
+Files with `initial`, `original`, or `pre_audit` in their name preserve earlier implementations and diagnostics. Use the unsuffixed source files above, not those archived versions. The initial bath-test script contains an overly strict interval-containment assertion at zero perturbation; the current script correctly tests overlapping numerical enclosures there.

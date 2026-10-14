@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — audit_exact.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — audit_exact.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/compact/audit_exact.py">Original file</a></p><pre>&quot;&quot;&quot;Independent small-system audits; exact rational arithmetic except final PSD spot diagnostics.
+No dense expansion is used by the large-state solvers or their certificates.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from itertools import product
+import json, math, random, time, sys
+import numpy as np
+import sympy as sp
+from jacobi_gate import local_basis
+sys.set_int_max_str_digits(0)
+BASE=Path(__file__).resolve().parent
+checks=0
+
+def check(b):
+    global checks
+    assert b
+    checks+=1
+
+def audit_continuum(prefix=&#x27;audit_continuum3&#x27;):
+    p=BASE/prefix;meta=json.loads(p.with_suffix(&#x27;.json&#x27;).read_text())
+    it=iter(map(int,p.with_suffix(&#x27;.continuum.txt&#x27;).read_text().split()))
+    n,d,D,G=[next(it) for _ in range(4)]
+    gram=[F(next(it),G) for _ in range(d)]
+    Ws=[]
+    for _ in range(n):Ws.append(np.array([F(next(it),D) for _ in range(9*d*d)],object).reshape(3,3,d,d))
+    # W above has shared numerator D only once per MPO path, not at every site.
+    cores=[];exponents=[]
+    for i in range(n):
+        l,r,ex=[next(it) for _ in range(3)];exponents.append(ex)
+        cores.append(np.array([F(next(it),2**ex) for _ in range(l*d*r)],object).reshape(l,d,r))
+    try:next(it);raise AssertionError(&#x27;extra file payload&#x27;)
+    except StopIteration:pass
+    indices=list(product(range(d),repeat=n))
+    v=[]
+    for ind in indices:
+        row=np.array([[F(1)]],object)
+        for a,j in zip(cores,ind):row=row@a[:,j,:]
+        v.append(row[0,0])
+    v=np.array(v,object)
+    q=F(meta[&#x27;q&#x27;]);rho=F(meta[&#x27;rho&#x27;]);eps=F(meta[&#x27;eps&#x27;]);k=q*rho
+    basis=local_basis(q,rho,d-1);X=basis[&#x27;X&#x27;];h=np.diag(basis[&#x27;lambda&#x27;]);I=np.eye(d,dtype=int).astype(object)
+    def kron(ms):
+        out=np.array([[F(1)]],object)
+        for m in ms:out=np.kron(out,m)
+        return out
+    H=k*eps*np.eye(d**n,dtype=int).astype(object)
+    for i in range(n):
+        terms=[I]*n;terms[i]=h
+        if i==0:H+=kron(terms)
+        else:
+            terms[i-1]=eps*I+(1-eps)*X;H+=kron(terms)
+    terms=[I]*n;terms[-1]=X;H+=k*(1-eps)*kron(terms)
+    w=np.array([math.prod(gram[j] for j in ind) for ind in indices],object)
+    y=H@v
+    raw={key:int(val) for key,val in (line.split() for line in p.with_suffix(&#x27;.continuum_raw.txt&#x27;).read_text().splitlines())}
+    S=2**sum(exponents);GN=G**n
+    check(v[0]==F(raw[&#x27;source&#x27;],S));check(y[0]==F(raw[&#x27;Hsource&#x27;],D*S))
+    check(sum(w*v*y)==F(raw[&#x27;energy&#x27;],D*S*S*GN))
+    check(sum(w*y*y)==F(raw[&#x27;Hnorm&#x27;],D*D*S*S*GN))
+    for cap in range(1,d-1):
+        name=&#x27;Hnorm_low&#x27; if cap==1 else &#x27;Hnorm_cap&#x27;+str(cap)
+        check(sum(wi*yi*yi for wi,yi,ind in zip(w,y,indices) if max(ind)&lt;=cap)==F(raw[name],D*D*S*S*GN))
+    for j in range(3):
+        check(sum(wi*yi*yi for wi,yi,ind in zip(w,y,indices) if max(ind)&lt;=1 and sum(ind)==j)==F(raw[&#x27;sector&#x27;+str(j)],D*D*S*S*GN))
+    for i in range(len(indices)):
+        for j in range(len(indices)):
+            check(w[i]*H[i,j]==w[j]*H[j,i])
+    # Local polynomials solve the actual Jacobi differential eigenproblem.
+    x=sp.symbols(&#x27;x&#x27;);alpha=q*rho
+    for j,coeff in enumerate(basis[&#x27;polys&#x27;]):
+        poly=sum(sp.Rational(c.numerator,c.denominator)*x**i for i,c in enumerate(coeff))
+        Lj=x*(1-x)*sp.diff(poly,x,2)+(sp.Rational(alpha.numerator,alpha.denominator)-sp.Rational(rho.numerator,rho.denominator)*x)*sp.diff(poly,x)
+        check(sp.expand(Lj+sp.Rational(basis[&#x27;lambda&#x27;][j])*poly)==0)
+    return {&#x27;coefficient_dimension&#x27;:d**n,&#x27;checks_after_continuum&#x27;:checks,&#x27;maximum_trial_degree&#x27;:meta[&#x27;degree&#x27;],&#x27;actual_residual_degree&#x27;:meta[&#x27;degree&#x27;]+1}
+
+def psd(M):
+    # All principal minors, necessary/sufficient for a real symmetric finite matrix.
+    from itertools import combinations
+    check(M==M.T)
+    for k in range(1,M.rows+1):
+        for ids in combinations(range(M.rows),k):check(M.extract(ids,ids).det()&gt;=0)
+
+def audit_source_matrices():
+    rng=random.Random(1649)
+    for k in range(12):
+        d=3 if k&lt;6 else 4
+        Z=sp.Matrix(d,d,lambda i,j:rng.randint(-2,2));Y=sp.Matrix(d,d,lambda i,j:rng.randint(-2,2))
+        C=Z.T*Z+sp.eye(d);H=C+Y.T*Y
+        B=sp.Matrix(d,2,lambda i,j:rng.randint(-3,3));V=sp.Matrix(d,2,lambda i,j:sp.Rational(rng.randint(-3,3),7))
+        R=B-H*V;G=B.T*H.inv()*B;G0=B.T*V+V.T*B-V.T*H*V;Gamma=R.T*C.inv()*R
+        E=G-G0
+        check(E==R.T*H.inv()*R);psd(E);psd(Gamma-E)
+        # Two-load cross-response range; avoid irrational square roots by squaring.
+        check((2*E[0,1]-Gamma[0,1])**2&lt;=Gamma[0,0]*Gamma[1,1])
+        # Source-aware Schur equality, including hidden gamma.
+        O=[0];J=list(range(1,d));K=H.extract(O,O)-H.extract(O,J)*H.extract(J,J).inv()*H.extract(J,O)
+        m=sp.ones(d,1);mo=m.extract(O,[0]);mh=m.extract(J,[0]);Ah=H.extract(J,J)
+        b=mo-H.extract(O,J)*Ah.inv()*mh;gamma=(mh.T*Ah.inv()*mh)[0]
+        check((m.T*H.inv()*m)[0]==gamma+(b.T*K.inv()*b)[0])
+        # A relative form perturbation bounds the response even if dense/nonlocal.
+        eta=sp.Rational(1,10);T=H+eta*Y.T*Y
+        lo=(m.T*H.inv()*m)[0]/(1+eta);hi=(m.T*H.inv()*m)[0]/(1-eta)
+        check(lo&lt;=(m.T*T.inv()*m)[0]&lt;=hi)
+    return {&#x27;matrix_instances&#x27;:12,&#x27;loads_per_instance&#x27;:2}
+
+if __name__==&#x27;__main__&#x27;:
+    t=time.perf_counter();a=audit_continuum();b=audit_source_matrices();out={&#x27;passed&#x27;:True,&#x27;exact_assertions&#x27;:checks,&#x27;continuum&#x27;:a,&#x27;source_matrix&#x27;:b,&#x27;seconds&#x27;:time.perf_counter()-t,&#x27;scope&#x27;:&#x27;small algebra/implementation audit, not external review or a convergence guarantee&#x27;}
+    (BASE/&#x27;audit_exact_results.json&#x27;).write_text(json.dumps(out,indent=2));print(json.dumps(out,indent=2))
+</pre></html>

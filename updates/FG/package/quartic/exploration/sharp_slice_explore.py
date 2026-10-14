@@ -1,0 +1,30 @@
+"""Numerical fixed-slice compatible heat optimization; not a proof."""
+import numpy as np,scipy.linalg as la,pickle,itertools,os,time
+BASE=os.path.dirname(__file__)
+with open(BASE+'/c4_spin2.pkl','rb') as f:z=pickle.load(f)
+C=np.array(z['C']).astype(float);P=np.array(z['P']).astype(float);EA=np.array(z['EA']).astype(float);EM=np.array(z['EM']).astype(float)
+ns=[6,3,3,1];ij=[np.array(list(itertools.combinations_with_replacement(range(n),2))).T for n in ns];sf=[np.where(i==j,1,np.sqrt(2)) for i,j in ij];offset=np.r_[0,np.cumsum([len(v) for v in sf])];sfv=np.r_[sf[0],sf[1],sf[2],1]
+D=np.c_[C,P@EM]/sfv
+Cs=P@EA;Q0=Cs@np.array([1.,3.5,.5,0]);CL=Cs[:,3]
+# decision block entries and L. Affine D g - CL L =Q0.
+A=np.c_[D,-CL];U,s,R=la.svd(A,full_matrices=False);rank=(s>1e-9).sum();U=U[:,:rank];s=s[:rank];R=R[:rank];g0=R.T@((U.T@Q0)/s)
+def mats(g):
+ out=[]
+ for n,(i,j),s,l,r in zip(ns,ij,sf,offset[:-1],offset[1:]):
+  G=np.zeros((n,n));G[i,j]=g[l:r]/s;G[j,i]=g[l:r]/s;out.append(G)
+ return out
+def psd(g):
+ out=[]
+ for G,(i,j),s in zip(mats(g),ij,sf):
+  w,V=la.eigh(G);G=(V*np.maximum(w,0))@V.T;out.extend(G[i,j]*s)
+ return np.r_[out,g[-1]]
+def aff(x):return x+g0-R.T@(R@x)
+if __name__=='__main__':
+ x=g0.copy();cost=np.zeros(len(x));cost[-1]=-1
+ for k in range(150000):
+  y=psd(x);v=aff(2*y-x-.5*cost);x+=v-y
+  if k%10000==0 or k==149999:
+   g=aff(y);err=la.norm(g-y)
+   print(k,'L',g[-1],'err',err,'eigen',[la.eigvalsh(m) for m in mats(g)],flush=True)
+   if k>0 and err<1e-11:break
+ np.savez(BASE+'/sharp_slice_heat.npz',g=g,blocks=ns,A=A,Q0=Q0)

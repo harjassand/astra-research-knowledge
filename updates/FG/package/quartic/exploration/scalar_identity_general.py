@@ -1,0 +1,11 @@
+import sympy as s,numpy as np,pickle,os,itertools
+BASE=os.path.dirname(__file__);z=pickle.load(open(BASE+'/c4_heat_symbolic.pkl','rb'));a0,c0,e0,L0,d0=z['param'];tau=sorted([v for v in z['S'].free_symbols if str(v).startswith('tau')],key=str)
+S=z['S'].subs({a0:1,c0:s.Rational(7,2),e0:s.Rational(1,2),d0:0})
+sv=s.Matrix([S[i,j] for i,j in z['ij']]);rhs=z['T']*sv-z['EA']*s.Matrix([1,s.Rational(7,2),s.Rational(1,2),L0]);zz=np.load(BASE+'/heat_matrices.npz');N=s.Matrix(zz['N'].astype(int));cols=N.rref()[1];rows=N[:,cols].T.rref()[1];cs=N[list(rows),list(cols)].inv()*rhs[list(rows),:];cc=s.zeros(80,1)
+for co,idx in zip(cs,cols):cc[idx]=s.factor(co)
+assert (N*cc-rhs).applyfunc(s.expand)==s.zeros(210,1)
+A=s.symbols('a b c d');alpha=s.zeros(4,1)
+for co,inds in zip(cc,zz['alphas']):alpha[int(inds[-1])]+=co*s.prod(A[int(i)] for i in inds[:3])
+print('S',S)
+for i in range(4):print('alpha',i,s.Poly(s.expand(alpha[i]),*A))
+pickle.dump(dict(S=S,L=L0,tau=tau,alpha=alpha,cc=cc,monomials=zz['alphas']),open(BASE+'/scalar_identity_general.pkl','wb'))

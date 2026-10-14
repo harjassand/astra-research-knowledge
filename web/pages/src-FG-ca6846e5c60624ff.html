@@ -1,0 +1,161 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — optimized_lower_audit.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — optimized_lower_audit.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/synthesis/source_cut_critic/optimized_lower_audit.py">Original file</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Audit rationalized root trial fields without importing root scientific code.
+
+The source matrices are reconstructed from the supplied four-bit law, exact
+field energies are evaluated directly, and every distinct full-box vertex is
+compared with all sixteen-coordinate threshold prefixes.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from hashlib import sha256
+from itertools import product
+from pathlib import Path
+import argparse
+import json
+import time
+
+from independent_audit import check_spd, invert, mv, dot, quad, lower_scan
+
+BASE = Path(__file__).resolve().parent
+ROOT_INPUT = BASE.parent / &quot;FG-root&quot; / &quot;OPTIMIZED_LOWER_CERTIFICATES.json&quot;
+SOURCE_SCRIPT = BASE.parent / &quot;FG-sources&quot; / &quot;compact&quot; / &quot;conditional_envelope.py&quot;
+
+
+def source_form(feature, R):
+    n, N = 4, 16
+    q, softness = F(1, 26), F(1, 10000)
+    mass = [q ** state.bit_count() * (1 - q) ** (n - state.bit_count())
+            for state in range(N)]
+    def feature_value(state):
+        if feature == &quot;all_open&quot;:
+            return int(state == N - 1)
+        if feature == &quot;first_open&quot;:
+            return state &amp; 1
+        if feature == &quot;all_closed&quot;:
+            return int(state == 0)
+        raise ValueError(feature)
+    weight = [F(1 + (R - 1) * feature_value(state)) for state in range(N)]
+    Aplus = [[F(0) for _ in range(N)] for _ in range(N)]
+    for state in range(N):
+        reaction_factor = F(1) if state &amp; 8 else softness
+        Aplus[state][state] += mass[state] * weight[state] * q * reaction_factor
+        for bit in range(n):
+            if state &amp; (1 &lt;&lt; bit):
+                continue
+            other = state | (1 &lt;&lt; bit)
+            gate_factor = F(1) if bit == 0 or state &amp; (1 &lt;&lt; (bit - 1)) else softness
+            conductance = mass[state] * q * gate_factor * min(weight[state], weight[other])
+            Aplus[state][state] += conductance
+            Aplus[other][other] += conductance
+            Aplus[state][other] -= conductance
+            Aplus[other][state] -= conductance
+    check_spd(Aplus)
+    ell = mass
+    u = [x * y for x, y in zip(mass, weight)]
+    return Aplus, ell, u
+
+
+def audit_row(row, prior):
+    feature, R = row[&quot;feature&quot;], row[&quot;R&quot;]
+    Aplus, ell, u = source_form(feature, R)
+    v = [F(x[&quot;exact&quot;]) for x in row[&quot;dyadic_field&quot;]]
+    assert len(v) == len(ell) == row[&quot;retained_states&quot;] == 16
+    assert all(x.denominator &amp; (x.denominator - 1) == 0 for x in v)
+    energy = quad(Aplus, v)
+    assert energy == F(row[&quot;exact_energy&quot;][&quot;exact&quot;])
+    L, prefix_witness, best_prefix = lower_scan(ell, u, v, energy)
+    assert L == F(row[&quot;optimized_trial_lower&quot;][&quot;exact&quot;])
+    # Independently evaluate all n+1 prefixes directly, not by scan updates.
+    order = sorted(range(16), key=lambda i: (2 * v[i], i))
+    prefix_values = []
+    for k in range(17):
+        selected = set(order[:k])
+        s = [u[i] if i in selected else ell[i] for i in range(16)]
+        prefix_values.append((2 * dot(s, v) - energy) / sum(s))
+    assert min(prefix_values) == L
+    # Fixed-width coordinates create only duplicates in a 2^16 enumeration.
+    # Enumerating the uncertain coordinates covers every distinct box vertex.
+    active = [i for i in range(16) if ell[i] != u[i]]
+    vertex_values = []
+    direct_witnesses = []
+    for bits in product((0, 1), repeat=len(active)):
+        s = list(ell)
+        for i, bit in zip(active, bits):
+            if bit:
+                s[i] = u[i]
+        value = (2 * dot(s, v) - energy) / sum(s)
+        vertex_values.append(value)
+        if value == L:
+            direct_witnesses.append(list(map(str, s)))
+    assert min(vertex_values) == L
+    assert list(map(str, prefix_witness)) in direct_witnesses
+    threshold_residual = -energy + sum((min((2 * vi - L) * lo, (2 * vi - L) * hi)
+        for vi, lo, hi in zip(v, ell, u)), F(0))
+    assert threshold_residual == 0
+    # Recompute the fallback field energy and lower bound from Aplus itself.
+    baseline_v = mv(invert(Aplus), ell)
+    baseline_energy = quad(Aplus, baseline_v)
+    assert baseline_energy == dot(ell, baseline_v)
+    baseline_L, _, _ = lower_scan(ell, u, baseline_v, baseline_energy)
+    assert baseline_L == F(row[&quot;original_fixed_trial_lower&quot;][&quot;exact&quot;])
+    assert baseline_L == F(prior[&quot;fixed_trial_lower&quot;])
+    accepted = max(L, baseline_L)
+    assert accepted == F(row[&quot;accepted_lower&quot;][&quot;exact&quot;])
+    upper = F(prior[&quot;upper&quot;])
+    assert upper == F(row[&quot;cut_upper&quot;][&quot;exact&quot;])
+    ratio = upper / accepted
+    assert ratio == F(row[&quot;accepted_ratio&quot;][&quot;exact&quot;])
+    return {&quot;feature&quot;: feature, &quot;R&quot;: R, &quot;retained_states&quot;: 16,
+        &quot;uncertain_sources&quot;: len(active), &quot;distinct_vertices_checked&quot;: len(vertex_values),
+        &quot;all_coordinate_prefixes_checked&quot;: len(prefix_values),
+        &quot;exact_field_energy&quot;: str(energy), &quot;exact_optimized_trial_lower&quot;: str(L),
+        &quot;exact_baseline_lower&quot;: str(baseline_L), &quot;exact_accepted_lower&quot;: str(accepted),
+        &quot;exact_cut_upper&quot;: str(upper), &quot;exact_accepted_ratio&quot;: str(ratio),
+        &quot;accepted_ratio_decimal&quot;: float(ratio), &quot;accepted_lower_decimal&quot;: float(accepted),
+        &quot;accepted_field&quot;: &quot;optimized_rational&quot; if L &gt; baseline_L else &quot;original_exact&quot;,
+        &quot;optimized_minus_original&quot;: str(L - baseline_L),
+        &quot;exact_threshold_residual&quot;: str(threshold_residual),
+        &quot;best_prefix_length&quot;: best_prefix, &quot;source_witness&quot;: list(map(str, prefix_witness)),
+        &quot;all_direct_prefix_ratios&quot;: list(map(str, prefix_values)),
+        &quot;positive_field_entries&quot;: all(x &gt;= 0 for x in v),
+        &quot;field_max_numerator_bits&quot;: max(abs(x.numerator).bit_length() for x in v),
+        &quot;field_max_denominator_bits&quot;: max(x.denominator.bit_length() for x in v),
+        &quot;scope&quot;: &quot;Exact valid rational variational lower certificate; no exact convex optimality claim.&quot;}
+
+
+def main(root_input=ROOT_INPUT, source_script=SOURCE_SCRIPT):
+    started = time.time()
+    input_bytes = root_input.read_bytes()
+    root = json.loads(input_bytes)
+    prior_path = BASE / &quot;independent_results.json&quot;
+    prior_bytes = prior_path.read_bytes()
+    prior = {(x[&quot;feature&quot;], x[&quot;R&quot;]): x for x in json.loads(prior_bytes)[&quot;source_cases&quot;]}
+    rows = [audit_row(row, prior[row[&quot;feature&quot;], row[&quot;R&quot;]]) for row in root[&quot;rows&quot;]]
+    assert len(rows) == 6
+    report = {&quot;status&quot;: &quot;PASS&quot;, &quot;input_path&quot;: str(root_input),
+        &quot;input_sha256&quot;: sha256(input_bytes).hexdigest(),
+        &quot;source_script_sha256&quot;: sha256(source_script.read_bytes()).hexdigest() if source_script.exists() else None,
+        &quot;prior_critic_results_sha256&quot;: sha256(prior_bytes).hexdigest(),
+        &quot;rows_checked&quot;: len(rows),
+        &quot;exact_field_energies_checked&quot;: len(rows),
+        &quot;all_coordinate_prefixes_checked&quot;: sum(x[&quot;all_coordinate_prefixes_checked&quot;] for x in rows),
+        &quot;distinct_box_vertices_checked&quot;: sum(x[&quot;distinct_vertices_checked&quot;] for x in rows),
+        &quot;equivalent_unreduced_vertex_evaluations&quot;: len(rows) * (1 &lt;&lt; 16),
+        &quot;accepted_optimized_fields&quot;: sum(x[&quot;accepted_field&quot;] == &quot;optimized_rational&quot; for x in rows),
+        &quot;accepted_exact_fallback_fields&quot;: sum(x[&quot;accepted_field&quot;] == &quot;original_exact&quot; for x in rows),
+        &quot;optimizer_float_values_used_as_premises&quot;: False,
+        &quot;elapsed_seconds&quot;: time.time() - started,
+        &quot;scope&quot;: &quot;Exact finite rational energy, source normalization, prefix minimum, exhaustive distinct vertices, fallback selection and ratio verification.&quot;,
+        &quot;rows&quot;: rows}
+    (BASE / &quot;OPTIMIZED_LOWER_AUDIT.json&quot;).write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: v for k, v in report.items() if k != &quot;rows&quot;}, indent=2))
+    print(json.dumps([{k: x[k] for k in (&quot;feature&quot;, &quot;R&quot;, &quot;accepted_field&quot;, &quot;accepted_lower_decimal&quot;, &quot;accepted_ratio_decimal&quot;)}
+        for x in rows], indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--certificates&quot;, type=Path, default=ROOT_INPUT)
+    parser.add_argument(&quot;--source-script&quot;, type=Path, default=SOURCE_SCRIPT)
+    args = parser.parse_args()
+    main(args.certificates, args.source_script)
+</pre></html>

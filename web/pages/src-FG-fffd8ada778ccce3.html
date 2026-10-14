@@ -1,0 +1,60 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — exact_check.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — exact_check.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/compact/exact_check.py">Original file</a></p><pre>&quot;&quot;&quot;Export a dyadic tensor witness and validate all-state energy and residual exactly.&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from pathlib import Path
+import json, math, subprocess, sys, time
+import numpy as np
+BASE=Path(__file__).resolve().parent
+sys.set_int_max_str_digits(0)
+
+def exact_validate(prefix:str,eps:str|None=None,degree:int=-1,bits:int=48):
+    total_start=time.perf_counter()
+    p=Path(prefix); meta=json.loads(p.with_suffix(&#x27;.json&#x27;).read_text()); n=meta[&#x27;n&#x27;];k=int(meta[&#x27;k&#x27;])
+    ef=F(eps if eps is not None else str(meta[&#x27;eps&#x27;]));q=F(1,k*k+1)
+    f=np.load(p.with_suffix(&#x27;.npz&#x27;)); cores=[f[&#x27;a&#x27;+str(i)] for i in range(n)]
+    lines=[f&#x27;{n} {k} {ef.numerator} {ef.denominator}&#x27;]; ps=[]
+    for a in cores:
+        maximum=float(np.max(np.abs(a)))
+        exponent=bits-max(0,math.ceil(math.log2(maximum))) if maximum else bits
+        scale=2.0**exponent
+        z=np.rint(a*scale).astype(np.int64)
+        assert np.max(np.abs(z))&lt;2**62
+        ps.append(exponent)
+        lines.append(f&#x27;{a.shape[0]} {a.shape[2]} {exponent}&#x27;)
+        lines.append(&#x27; &#x27;.join(str(int(v)) for v in z.flat))
+    text=p.with_suffix(&#x27;.dyadic.txt&#x27;);text.write_text(&#x27;\n&#x27;.join(lines)+&#x27;\n&#x27;)
+    start=time.perf_counter()
+    result=subprocess.run([str(BASE/&#x27;exact_contract&#x27;),str(text),str(degree)],text=True,capture_output=True,check=True)
+    p.with_suffix(&#x27;.exact_raw.txt&#x27;).write_text(result.stdout)
+    ints={key:int(value) for key,value in (line.split() for line in result.stdout.splitlines())}
+    S=2**ints[&#x27;p&#x27;];D=ints[&#x27;D&#x27;]
+    bv=F(ints[&#x27;source&#x27;],S);bHv=F(ints[&#x27;Hsource&#x27;],D*S);ev=F(ints[&#x27;energy&#x27;],D*S*S);hn=F(ints[&#x27;Hnorm&#x27;],D*D*S*S)
+    lower=2*bv-ev; r0=1-bHv; rr=1-2*bHv+hn
+    assert rr&gt;=r0*r0&gt;=0
+    if degree&gt;=0:
+        ws=[F(ints[&#x27;sector&#x27;+str(j)],D*D*S*S) for j in range(degree+1)]
+        assert ws[0]==bHv*bHv
+        ws[0]=r0*r0
+        assert all(x&gt;=0 for x in ws)
+        tail=rr-sum(ws);assert tail&gt;=0
+        gap=sum(w/(q+j) for j,w in enumerate(ws))/ef
+        if degree&lt;n:gap+=tail/(ef*(q+degree+1))
+        else:assert tail==0
+    else:
+        ws=[r0*r0];tail=rr-ws[0];gap=ws[0]/(ef*q)+tail/(ef*(q+1))
+    rawupper=lower+gap;uniformupper=1/(ef*q);upper=min(rawupper,uniformupper)
+    assert lower&gt;0 and upper&gt;=lower
+    def out(fr,places=12,upper=False):
+        sc=10**places;num=fr.numerator*sc;den=fr.denominator
+        v=(num+den-1)//den if upper else num//den
+        return f&#x27;{v//sc}.{v%sc:0{places}d}&#x27;
+    res={&#x27;n&#x27;:n,&#x27;states&#x27;:str(2**n),&#x27;k&#x27;:k,&#x27;q&#x27;:str(q),&#x27;eps&#x27;:str(ef),&#x27;core_parameters&#x27;:sum(a.size for a in cores),&#x27;max_rank&#x27;:max(a.shape[2] for a in cores),&#x27;dyadic_bits&#x27;:bits,&#x27;total_dyadic_exponent&#x27;:ints[&#x27;p&#x27;],&#x27;validation_seconds&#x27;:time.perf_counter()-start,&#x27;lower&#x27;:out(lower),&#x27;upper&#x27;:out(upper,upper=True),&#x27;ratio_upper&#x27;:out(upper/lower,upper=True),&#x27;residual_sq&#x27;:str(float(rr)),&#x27;source_residual&#x27;:str(float(r0)),&#x27;degree&#x27;:degree,&#x27;sector_weights&#x27;:[str(float(w)) for w in ws], &#x27;coarse_gap_upper&#x27;:out(rr/(ef*q),upper=True),&#x27;sector_gap_upper&#x27;:out(gap,upper=True),&#x27;exact_integer_contractions&#x27;:True,&#x27;raw_residual_upper&#x27;:out(rawupper,upper=True),&#x27;uniform_killing_upper&#x27;:out(uniformupper,upper=True),&#x27;total_validation_seconds&#x27;:time.perf_counter()-total_start}
+    p.with_suffix(&#x27;.certificate.json&#x27;).write_text(json.dumps(res,indent=2))
+    print(json.dumps(res,indent=2),flush=True)
+    return res
+
+if __name__==&#x27;__main__&#x27;:
+    import argparse
+    p=argparse.ArgumentParser();p.add_argument(&#x27;prefix&#x27;);p.add_argument(&#x27;--degree&#x27;,type=int,default=-1);p.add_argument(&#x27;--bits&#x27;,type=int,default=48)
+    a=p.parse_args();exact_validate(a.prefix,degree=a.degree,bits=a.bits)
+</pre></html>
