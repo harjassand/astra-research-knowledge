@@ -1,0 +1,11 @@
+# Adaptive rank-one regression and full affine stability
+
+Start with `ADAPTIVE_AFFINE_STABILITY.md` for the theorem, assumptions, complete proof, examples and unresolved boundary.
+
+Run `python verify_adaptive_affine.py` with SymPy installed to reproduce the finite exact checks. The script does not call an optimization solver or read prior verification output. It writes `adaptive_verification.json`.
+
+`verification.log` records this run. `prior_replay.log` records the separate replay of the previous contact-compensation verifier. Neither log is a proof-assistant or external mathematical review.
+
+`exploration/search_moving.py` requires NumPy, SymPy and PyTorch and reproduces the exploratory compatible Fourier search. Its floating-point results are not lower bounds or quasiconvexity certificates. `moving_search.json` retains the actual saved best coefficients and directly reevaluated background. The input transform changes the periodic cell, not the curl compatibility of the field.
+
+The theorem controls all affine backgrounds in neighborhoods of transverse contacts. Tangent contacts and the full nine-coefficient implication remain unresolved. Historical novelty is not certified. No third-party source manuscripts are redistributed.

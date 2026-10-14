@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FK evidence — exact_resonant_profile.py</title><body><p>FK source/internal evidence, externally unreviewed. <a href="../../updates/FK/synthesis/quartic_global/exact_resonant_profile.py">Original bytes</a></p><pre>&quot;&quot;&quot;Exact Laurent check of the supplied three-wave compatible profile.
+
+This is a finite example check only; it does not certify a global theorem.
+All output stays beside this script in the assigned worker directory.
+&quot;&quot;&quot;
+
+import json
+from pathlib import Path
+
+import sympy as sp
+
+
+z, w = sp.symbols(&quot;z w&quot;, nonzero=True)
+I = sp.I
+ca = (z + z**-1) / 2
+cb = (w + w**-1) / 2
+cc = (z * w + (z * w) ** -1) / 2
+
+# psi = cos(x+y) + cos(x+2y) + cos(2x+3y), with phases z, w, zw.
+# x1=cos(x+y), x2=cos(x+2y), x3=cos(2x+3y).
+psi_xx = -(ca + cb + 4 * cc)
+psi_xy = -(ca + 2 * cb + 6 * cc)
+psi_yy = -(ca + 4 * cb + 9 * cc)
+
+# phi = (psi_y/(3/2), psi_x), so X = D phi in row-major order.
+X = sp.Matrix([sp.Rational(2, 3) * psi_xy,
+               sp.Rational(2, 3) * psi_yy,
+               psi_xx,
+               psi_xy])
+a, b, c, d = sp.symbols(&quot;a b c d&quot;, real=True)
+variables = sp.Matrix([a, b, c, d])
+u = a**2 + c**2
+v = b**2 + d**2
+q = a * d - b * c
+G = 3 * (u + v - 2 * q) ** 2 + sp.Rational(35, 24) * u**2 + q**2 - sp.Rational(5, 2) * q * u
+grad_G = sp.Matrix([sp.diff(G, x) for x in variables])
+hess_G = sp.hessian(G, variables)
+
+
+def average(expr):
+    &quot;&quot;&quot;Torus average over independent phases (x+y, x+2y).&quot;&quot;&quot;
+    expanded = sp.expand(expr * z**8 * w**8)
+    return sp.factor(sp.Poly(expanded, z, w).coeff_monomial(z**8 * w**8))
+
+
+def sub_field(expr):
+    return sp.expand(expr.subs(dict(zip(variables, X))))
+
+
+c_value = average(sub_field(G))
+b_value = sp.Matrix([average(sub_field(term)) for term in grad_G])
+H_value = sp.Matrix(4, 4, lambda i, j: average(sub_field(hess_G[i, j])))
+C_value = sp.Matrix(4, 4, lambda i, j: average(X[i] * X[j]))
+det_H = sp.factor(H_value.det())
+leading = [sp.factor(H_value[:k, :k].det()) for k in range(1, 5)]
+gap = sp.factor(c_value - (b_value.T * H_value.inv() * b_value)[0] / 2)
+B_opt = sp.simplify(-H_value.inv() * b_value)
+
+# Transverse-to-e12 fourth mass and line fourth mass.
+s = X[1]
+Y2_pointwise = X[0] ** 2 + X[2] ** 2 + X[3] ** 2
+Y4 = average(Y2_pointwise**2)
+s2 = average(s**2)
+s4 = average(s**4)
+Y2 = average(Y2_pointwise)
+det_X = sp.expand(X[0] * X[3] - X[1] * X[2])
+norm2_X = sp.expand(sum(entry**2 for entry in X))
+det2 = average(det_X**2)
+norm4 = average(norm2_X**2)
+
+result = {
+    &quot;profile&quot;: &quot;psi=cos(x+y)+cos(x+2y)+cos(2x+3y); phi=(2/3 psi_y, psi_x)&quot;,
+    &quot;frequencies&quot;: [[1, 1], [1, 2], [2, 3]],
+    &quot;resonance&quot;: &quot;(1,1)+(1,2)=(2,3)&quot;,
+    &quot;integrand&quot;: &quot;G=3(u+v-2q)^2+(35/24)u^2+q^2-(5/2)qu&quot;,
+    &quot;c&quot;: str(c_value),
+    &quot;b&quot;: [str(x) for x in b_value],
+    &quot;H&quot;: [[str(H_value[i, j]) for j in range(4)] for i in range(4)],
+    &quot;covariance_C&quot;: [[str(C_value[i, j]) for j in range(4)] for i in range(4)],
+    &quot;covariance_rank&quot;: str(C_value.rank()),
+    &quot;covariance_eigenvalues_numeric&quot;: [float(sp.re(ev)) for ev in C_value.evalf().eigenvals().keys()],
+    &quot;H_leading_principal_minors&quot;: [str(x) for x in leading],
+    &quot;det_H&quot;: str(det_H),
+    &quot;optimized_gap&quot;: str(gap),
+    &quot;optimized_gap_over_E_normX4&quot;: str(sp.factor(gap / norm4)),
+    &quot;optimal_background_row_major&quot;: [str(x) for x in B_opt],
+    &quot;e12_L2_transverse_to_line_ratio_squared&quot;: str(sp.factor(Y2 / s2)),
+    &quot;e12_L4_transverse_to_line_ratio_fourth_power&quot;: str(sp.factor(Y4 / s4)),
+    &quot;E_detX_squared&quot;: str(det2),
+    &quot;E_normX_fourth&quot;: str(norm4),
+    &quot;universal_L4_distance_to_any_rank_one_line_lower_bound&quot;: str(sp.factor(sp.sqrt(det2 / norm4))),
+    &quot;source_cubic_mean_DG_I&quot;: str(average(sub_field(grad_G[0] + grad_G[3]))),
+    &quot;scope&quot;: &quot;Exact finite Fourier integration of one compatible profile; not a uniform estimate or proof of quasiconvexity.&quot;,
+}
+
+Path(__file__).with_name(&quot;exact_resonant_profile.json&quot;).write_text(
+    json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;
+)
+print(json.dumps(result, indent=2))
+</pre></body></html>

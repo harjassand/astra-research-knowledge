@@ -1,0 +1,139 @@
+# Delta audit: conditional multi-quadric all-affine theorem
+
+## Judgment
+
+I found no fatal gap in the stated conditional theorem. Under its explicit manifold/rank hypotheses, the covariance fit gives the claimed Moore–Penrose normal regression. A fixed continuous local certificate $D^2F(A)=P(A)+\sum_j\lambda_j(A)J_j$, with $P(A)\succeq0$ and $\ker P(A_0)=\mathbb R R_0$, is enough for the moving Schur estimate: continuity yields the needed uniform transverse coercivity and operator bound, and the exact minor/quadratic balances remove the multipliers when computing $h$. No derivative or Lipschitz bound on the certificate is used.
+
+The line-fit quantifiers, including arbitrary maximizing ties, are covered by the residual-minimization argument. The $v=0$ case is correctly separate from inverse-based minimization: it is an exact line law, and Euler’s identity supplies the range condition even when $H$ is singular. The higher-dimensional minor geometry is correct for $m,n\ge2$; the constant-rank/$\mathcal A$-free discussion is explicitly conditional on genuine quadratic null-Lagrangian balances and does not claim that constant rank alone suffices.
+
+The main tightening I recommend is wording rather than a new hypothesis: say that the constants may depend on the chosen continuous certificate (or on explicit bounds for it). Also qualify the 3-by-3 nonpolyconvex quadratic example: it shows that cone nonnegativity of a general quadratic form does not imply a PSD-plus-minors representation; by itself it is not a counterexample specifically for Hessians $D^2F(A_0)$ of globally rank-one-convex quartics. Neither point breaks the conditional theorem.
+
+## Input and scope
+
+I audited the copied report at `inputs/REPORT.md`, SHA256 `08c5a68ea6bdc1885fd98bf6b0a296ffa8bbeacdb975d64da641231043f8b1ec`. It exactly matches the requested `work/FK-regression-geometry/REPORT.md` when copied. This delta assesses the report’s theorem and its claims; it does not re-run its `verify_examples.py` or independently re-review the cited literature. The earlier `work/FK-affine-audit/` packet was left untouched.
+
+## Quantifiers and covariance fit
+
+Let $\Sigma=\{R\in S(V):\Phi(R)=0\}$, with $R_0\in\Sigma$. Since $\Sigma$ is a closed subset of the unit sphere, it is compact, so the covariance objective has a maximizer. For any maximizer $R$, the residual identity is
+
+\[
+\mathbb E|X-(X:R)R|^2=\operatorname{tr}C-R^TCR
+\le \operatorname{tr}C-R_0^TCR_0=\mathbb E|Y_0|^2.
+\]
+
+This works for every tied maximizer, not just a selected stationary branch. Projection onto $R^\perp$ gives
+
+\[
+\sin\theta\,\|s_0\|_2\le\|Y_0\|_2+\|Y\|_2\le2\|Y_0\|_2,
+\qquad
+\|Y\|_4\le\|Y_0\|_4+\sin\theta\,\|s_0\|_4.
+\]
+
+After orienting $R:R_0\ge0$, $s=s_0\cos\theta+R:Y_0$, whence
+$\|s-s_0\|_p\le(\sin\theta+\delta_*)\|s_0\|_p$ for $p=2,4$. Thus small initial relative norms make every maximizing line lie in the local manifold chart and make both fitted ratios small. If $s_0=0$ in either norm, the initial condition forces $X=0$, so the nonzero-law clause makes all denominators meaningful. The report’s stated positivity/comparability argument is sound.
+
+At an interior maximizer in the chart, $CR-m_2R\in R^\perp$ is orthogonal to $T_R\Sigma=\ker\mathcal J_R$, so it belongs to $\operatorname{ran}\mathcal J_R^*$. Since $z=\mathbb E[sY]\in R^\perp$, quadratic balance gives, component by component,
+
+\[
+\mathcal J_Rz=-\mathbb E\Phi(Y),\qquad
+|z|\le\gamma^{-1}|\mathbb E\Phi(Y)|
+\le\gamma^{-1}\Big(\sum_j\|J_j\|^2\Big)^{1/2}v.
+\]
+
+The identity also proves that its right-hand side is in $\operatorname{ran}\mathcal J_R$, even with redundant constraints. The inverse bound applies only on $\operatorname{ran}\mathcal J_R^*$, exactly where stationarity places $z$. The report does not silently assume the original $R_0$ is stationary.
+
+## Is continuity of the certificate enough?
+
+Yes, for the estimates used here. Fix one certificate and write $P_0=P(A_0)$. Since $P_0\succeq0$ and its kernel is exactly $\mathbb R R_0$, there is $\nu_0>0$ with $P_0[Y,Y]\ge\nu_0|Y|^2$ on $R_0^\perp$. For $R$ close to $R_0$ and $Y\perp R$, the component of $Y$ along $R_0$ is $O(|R-R_0|)|Y|$. Hence $P_0[Y,Y]\ge(\nu_0-o(1))|Y|^2$. Continuity of $P(A)$ at $A_0$ then gives
+
+\[
+P(A)[Y,Y]\ge\nu|Y|^2
+\quad (A\text{ near }A_0,\ R\text{ near }R_0,\ Y\perp R),
+\qquad \|P(A)\|\le L.
+\]
+
+The simple eigenpair gives $a_R\to A_0$, so $P_R=P(a_R)$ has these bounds. No rate for $P(a_R)-P(A_0)$ is needed. More importantly, the identities that feed the Schur estimate are exact:
+
+\[
+P_R[R,R]=D^2F(a_R)[R,R]
+=D^2F(R)[a_R,a_R]=\epsilon,
+\]
+
+because $q_j(R)=0$. The multiplier terms also vanish in
+$h=\mathbb E D^2F(X)[a_R,a_R]=\mathbb E P_R[X,X]$, since each $\mathbb E q_j(X)=0$. Therefore
+
+\[
+h=m_2\epsilon+2\langle P_RR,z\rangle+\mathbb E P_R[Y,Y],
+\qquad |P_RR|^2\le\|P_R\|\epsilon,
+\]
+
+and the normal regression gives
+
+\[
+h\ge m_2\epsilon+(\nu-C\sqrt\epsilon)v.
+\]
+
+The simple acoustic gap gives $D\succeq c m_2I$, while $k=O(v)$ because the $m_2M_R$ term is diagonal in the $a_R\oplus a_R^\perp$ frame. Thus
+
+\[
+\sigma=h-k^TD^{-1}k
+\ge m_2\epsilon+c v-Cv^2/m_2
+\ge c'(m_2\epsilon+v),
+\]
+
+and $\sigma\ge(1-C\delta_2^2)h$. This is the actual Schur complement. Continuity of $P$ suffices for the local bounds; $\lambda$-continuity is more than this particular estimate needs, though it is part of the stated hypothesis and keeps the decomposition as a local certificate.
+
+The proof constants do use $\nu$, the local bound on $P$, the spectral gaps, and the inverse Jacobian bound. Strictly, the theorem should say these constants depend on a fixed chosen certificate, or include those quantitative local bounds in the fixed data. If “fixed data” means only $(F,\Phi,R_0,A_0)$ while the certificate remains unchosen, this is a quantifier ambiguity. It is repairable by choosing one admissible witness first; it is not an obstruction to existence of constants for any fixed $F$ satisfying the hypothesis.
+
+## Cubic regression, inverse control, and the $v=0$ edge
+
+The report’s exact identity for \(\ell=b-uHR\) is the same quartic polarization identity as the one-quadric proof. Centeredness gives \(\mathbb EY=0\), and reciprocity actually sharpens its last term to zero as a full vector:
+
+\[
+\langle W,\mathbb E[D^2F(Y)R]\rangle
+=\mathbb E D^2F(Y)[R,W]
+=D^2F(R)[\mathbb EY,W]=0.
+\]
+
+Writing $S=m_4^{1/4}$, the reported estimates yield
+
+\[
+|\ell_\perp|\le CS^2\sqrt v,
+\qquad |\ell_a|\le CS^2\sqrt v(\epsilon+\delta_2+\delta_4).
+\]
+
+The potentially small-eigenvalue contribution is controlled by
+
+\[
+\frac{\epsilon^2v}{m_2\epsilon+v}\le\epsilon\frac v{m_2}
+=\epsilon\delta_2^2,
+\qquad
+\frac{|\ell_\perp|^2}{m_2}\le C\delta_2^2m_4.
+\]
+
+The other acoustic terms use $v/(m_2\epsilon+v)\le1$; hence $\ell^TH^{-1}\ell\le C(\delta_2^2+\delta_4^2)m_4$. The reduced numerator bound follows from $\sigma\gtrsim m_2\epsilon+v$, $|k|\le Cv$, and the same component estimates. These statements are sound, though a line-by-line proof could make the expansion of $\ell_a^2/(m_2\epsilon+v)$ explicit as done here.
+
+
+A rare-spike stress test does not expose a concentration loophole. If an event of probability $p$ carries $|Y|=L$, then $v=pL^2$, $t=p^{1/4}L$, and $\mathbb E|Y|^3=pL^3=t^2\sqrt v$. If $s$ is supported on the same event with amplitude $S p^{-1/4}$, then $\|s\|_4=S$ and $\mathbb E(|s||Y|^2)=S\,t\sqrt v$, attaining the mixed Hölder scale in (6). Signs can be split equally to keep $s$ and $Y$ centered; this isolates the Hölder estimate and is not asserted to satisfy every quadratic balance. Thus the stated moment bounds survive maximally correlated rare spikes; they impose no amplitude cap, while the small fitted $\delta_4$ condition controls the spike’s relative fourth-moment mass.
+
+When $v=0$, $Y=0$ almost surely, so $X=sR$, $H=m_2M_R\succeq0$, and
+
+\[
+b=m_3DF(R)=\frac{m_3}{3m_2}HR=uHR.
+\]
+
+Thus $B=-uR$ is a global minimizer of the semidefinite affine quadratic without invoking an inverse or an unproved range theorem. Euler’s identity gives the exact line formula. If $\epsilon>0$, the local block argument also makes $H\succ0$; if $\epsilon=0$, the direct semidefinite argument covers the singular case. No missing $v=0$ branch was found.
+
+## Higher-dimensional minors and \(\mathcal A\)-free claims
+
+For $m,n\ge2$, the list of all $2$-by-$2$ minors has common zero set equal to rank-at-most-one matrices. At a unit rank-one matrix, orthogonal left/right changes reduce to $e_{11}$. The derivative of the $(1,i;1,j)$ minor reads the $(i,j)$ lower-right perturbation entry; these $(m-1)(n-1)$ entries are independent and constitute the normal block. Thus the derivative rank is exactly the normal codimension. With the standard Euclidean coordinates for minors, the singular values on that normal block are $1$ at $e_{11}$; orthogonal covariance of the exterior-square representation preserves them. The normalized rank-one manifold is compact, so the uniform nonzero singular-value condition follows. The omitted edge $m=1$ or $n=1$ has no minors and rank $r=0$, excluded by the theorem’s explicit $r\ge1$.
+
+Each minor is a quadratic null Lagrangian for gradients, so mean-zero periodic or zero-boundary $W^{1,4}$ gradients balance every component. Conditional application in higher matrix dimensions is therefore mathematically valid when the separate simple-kernel and local PSD-plus-minors certificate hypotheses hold. The report is right that these hypotheses are extra; the geometric identity alone does not establish them.
+
+The $\mathcal A$-free transfer is also correctly conditional in substance: constant rank alone supplies neither a finite quadratic description of the wave cone nor quadratic conserved moments. For the stated transfer, one must have actual homogeneous quadratic $\mathcal A$-quasiaffine null Lagrangians whose integrals give $\mathbb E q_j(X)=q_j(\mathbb EX)=0$, and their common zero set must describe the relevant wave-cone neighborhood with the stated regularity. Mere pointwise vanishing on the wave cone is not enough. With those identities and geometric hypotheses, the law theorem applies; without them there is no justified multi-quadric regression.
+
+One prior-art wording needs narrower scope. Taking the incoming report’s characterization of the cited Harutyunyan–Milton example, it establishes that a general quadratic form nonnegative on the rank-one cone need not have a PSD-plus-minors representation. It does not, by itself, produce a Hessian $D^2F(A_0)$ belonging to a globally rank-one-convex quartic $F$ and failing that representation. The conditional theorem remains valid because it assumes the representation directly; the cited example is a warning against an automatic general S-procedure, not a quartic-Hessian counterexample.
+
+## Final scope assessment
+
+The theorem is valid as a conditional law-level result under all enumerated geometric, spectral, and certificate assumptions. The continuous certificate is sufficient; tied covariance fits are handled; $v=0$ is correctly closed; the minors geometry and null-Lagrangian transfer are valid with the stated qualifications. The two wording refinements above (certificate dependence of constants, and the scope of the quadratic nonpolyconvex example) would make the result more exact but are not fatal missing assumptions. The tangent balanced-law counterexample correctly shows why the transverse kernel assumption cannot simply be dropped, and it is not a compatible-gradient counterexample.

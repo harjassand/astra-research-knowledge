@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FK evidence — corrected_equal_information_witness.py</title><body><p>FK source/internal evidence, externally unreviewed. <a href="../../updates/FK/synthesis/response_bounds/corrected_equal_information_witness.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Append-only precision-aligned rerun of the frozen equal-information witness.
+
+The original frozen file remains unchanged.  Here, the intended decimal
+frequencies and rational Euclidean times are constructed after the requested
+mpmath precision is set.  A separate interval implementation rebuilds those
+same input strings/rationals and encloses the determinant, Cramer vector,
+weights, and target gap.  The old module-import-at-15-dps construction is also
+recreated solely to quantify the correction.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+import mpmath as mp
+import numpy as np
+
+
+HERE = Path(__file__).resolve().parent
+BETA_TEXT = &quot;1&quot;
+ETA_TEXT = &quot;1&quot;
+TAU_NUMERATORS = [0, 1, 2, 3, 4, 5]
+TAU_DENOMINATOR = 12
+OMEGA_TEXTS = [&quot;0.07&quot;, &quot;0.16&quot;, &quot;1.9&quot;, &quot;5.3&quot;, &quot;9&quot;, &quot;15&quot;, &quot;21.5&quot;, &quot;28.5&quot;, &quot;40&quot;]
+DELTA_TEXT = &quot;0.000001&quot;
+RNG_SEED = 20261014
+
+
+def intended_mp_inputs() -&gt; tuple[mp.mpf, mp.mpf, list[mp.mpf], list[mp.mpf]]:
+    &quot;&quot;&quot;Create intended rational/decimal inputs in the caller&#x27;s high-dps context.&quot;&quot;&quot;
+    beta = mp.mpf(BETA_TEXT)
+    eta = mp.mpf(ETA_TEXT)
+    taus = [mp.mpf(k) / TAU_DENOMINATOR for k in TAU_NUMERATORS]
+    omegas = [mp.mpf(x) for x in OMEGA_TEXTS]
+    return beta, eta, taus, omegas
+
+
+def frozen_rounded_mp_inputs() -&gt; tuple[mp.mpf, mp.mpf, list[mp.mpf], list[mp.mpf]]:
+    &quot;&quot;&quot;Recreate the frozen script&#x27;s module-level construction at 15 dps.&quot;&quot;&quot;
+    with mp.workdps(15):
+        beta = mp.mpf(1)
+        eta = mp.mpf(1)
+        taus = [mp.mpf(0)] + [mp.mpf(k) / 12 for k in range(1, 6)]
+        omegas = list(map(mp.mpf, OMEGA_TEXTS))
+    # mpf values retain the 15-dps binary mantissas after the context exits.
+    return beta, eta, taus, omegas
+
+
+def kernels(beta: mp.mpf, taus: list[mp.mpf], omegas: list[mp.mpf]) -&gt; mp.matrix:
+    def euclidean(tau: mp.mpf, omega: mp.mpf) -&gt; mp.mpf:
+        return (mp.exp(-tau * omega) + mp.exp(-(beta - tau) * omega)) / (
+            1 - mp.exp(-beta * omega)
+        )
+
+    def static(omega: mp.mpf) -&gt; mp.mpf:
+        return 2 / omega
+
+    return mp.matrix(
+        [[euclidean(tau, omega) for omega in omegas] for tau in taus]
+        + [[2 * omega for omega in omegas], [static(omega) for omega in omegas]]
+    )
+
+
+def pair_from_matrix(
+    beta: mp.mpf,
+    eta: mp.mpf,
+    taus: list[mp.mpf],
+    omegas: list[mp.mpf],
+    a: mp.matrix,
+) -&gt; dict:
+    v = list(mp.lu_solve(a[:, 0:8], -a[:, 8])) + [mp.mpf(1)]
+    base = [1 / (2 * len(omegas) * omega) for omega in omegas]
+    delta = mp.mpf(DELTA_TEXT)
+    plus = [b + delta * q for b, q in zip(base, v)]
+    minus = [b - delta * q for b, q in zip(base, v)]
+    if min(plus + minus) &lt;= 0:
+        raise ArithmeticError(&quot;witness weights lost positivity&quot;)
+
+    def integrate(weights: list[mp.mpf], fn) -&gt; mp.mpf:
+        return mp.fsum(w * fn(x) for w, x in zip(weights, omegas))
+
+    # Use the supplied beta explicitly, so comparison instances are evaluated
+    # under their own inputs rather than silently sharing beta=1.
+    euclidean_means = [
+        integrate(
+            plus,
+            lambda omega, tau=tau: (
+                mp.exp(-tau * omega) + mp.exp(-(beta - tau) * omega)
+            )
+            / (1 - mp.exp(-beta * omega)),
+        )
+        for tau in taus
+    ]
+    static_plus = integrate(plus, lambda omega: 2 / omega)
+    static_minus = integrate(minus, lambda omega: 2 / omega)
+    chi_plus = integrate(plus, lambda omega: 2 * omega / (omega * omega + eta * eta))
+    chi_minus = integrate(minus, lambda omega: 2 * omega / (omega * omega + eta * eta))
+    m1_plus = integrate(plus, lambda omega: 2 * omega)
+    m1_minus = integrate(minus, lambda omega: 2 * omega)
+    numeric_null_residuals = [
+        mp.fsum(a[row, col] * v[col] for col in range(len(omegas)))
+        for row in range(a.rows)
+    ]
+    euclidean_minus = [
+        integrate(
+            minus,
+            lambda omega, tau=tau: (
+                mp.exp(-tau * omega) + mp.exp(-(beta - tau) * omega)
+            )
+            / (1 - mp.exp(-beta * omega)),
+        )
+        for tau in taus
+    ]
+    return {
+        &quot;matrix&quot;: a,
+        &quot;v&quot;: v,
+        &quot;base&quot;: base,
+        &quot;delta&quot;: delta,
+        &quot;plus&quot;: plus,
+        &quot;minus&quot;: minus,
+        &quot;euclidean_means&quot;: euclidean_means,
+        &quot;euclidean_minus&quot;: euclidean_minus,
+        &quot;numeric_null_residuals&quot;: numeric_null_residuals,
+        &quot;static_plus&quot;: static_plus,
+        &quot;static_minus&quot;: static_minus,
+        &quot;chi_plus&quot;: chi_plus,
+        &quot;chi_minus&quot;: chi_minus,
+        &quot;m1_plus&quot;: m1_plus,
+        &quot;m1_minus&quot;: m1_minus,
+        &quot;gap&quot;: abs(chi_plus - chi_minus),
+    }
+
+
+def interval_instance() -&gt; dict:
+    &quot;&quot;&quot;Independent interval construction from the exact decimal/rational text.&quot;&quot;&quot;
+    iv = mp.iv
+    iv.dps = 80
+    beta = iv.mpf(BETA_TEXT)
+    eta = iv.mpf(ETA_TEXT)
+    taus = [iv.mpf(k) / TAU_DENOMINATOR for k in TAU_NUMERATORS]
+    omegas = [iv.mpf(x) for x in OMEGA_TEXTS]
+
+    def k(tau, omega):
+        return (iv.exp(-tau * omega) + iv.exp(-(beta - tau) * omega)) / (
+            1 - iv.exp(-beta * omega)
+        )
+
+    a = iv.matrix(
+        [[k(tau, omega) for omega in omegas] for tau in taus]
+        + [[2 * omega for omega in omegas], [2 / omega for omega in omegas]]
+    )
+    square = a[:, 0:8]
+    det = iv.det(square)
+    if not float(det.b) &lt; 0:
+        raise ArithmeticError(&quot;intended-instance determinant interval failed to exclude zero&quot;)
+
+    v = []
+    for col in range(8):
+        repl = iv.matrix(square)
+        for row in range(8):
+            repl[row, col] = a[row, 8]
+        v.append(-iv.det(repl) / det)
+    v.append(iv.mpf(1))
+
+    delta = iv.mpf(DELTA_TEXT)
+    base = [1 / (18 * omega) for omega in omegas]
+    wplus, wminus = [], []
+    for b, x in zip(base, v):
+        wp, wm = b + delta * x, b - delta * x
+        if min(float(wp.a), float(wm.a)) &lt;= 0:
+            raise ArithmeticError(&quot;intended-instance interval positivity failed&quot;)
+        wplus.append(wp)
+        wminus.append(wm)
+
+    g = [2 * omega / (omega * omega + eta * eta) for omega in omegas]
+    target_plus = sum((w * x for w, x in zip(wplus, g)), iv.mpf(0))
+    target_minus = sum((w * x for w, x in zip(wminus, g)), iv.mpf(0))
+    gap = target_plus - target_minus
+    if not (float(gap.a) &gt; 0 or float(gap.b) &lt; 0):
+        raise ArithmeticError(&quot;intended-instance response-gap interval contains zero&quot;)
+    euclidean = [
+        sum((w * k(tau, omega) for w, omega in zip(wplus, omegas)), iv.mpf(0))
+        for tau in taus
+    ]
+    m1 = sum((w * 2 * omega for w, omega in zip(wplus, omegas)), iv.mpf(0))
+    static = sum((w * 2 / omega for w, omega in zip(wplus, omegas)), iv.mpf(0))
+    return {
+        &quot;determinant&quot;: det,
+        &quot;v&quot;: v,
+        &quot;weights_plus&quot;: wplus,
+        &quot;weights_minus&quot;: wminus,
+        &quot;target_plus&quot;: target_plus,
+        &quot;target_minus&quot;: target_minus,
+        &quot;gap&quot;: gap,
+        &quot;euclidean&quot;: euclidean,
+        &quot;m1&quot;: m1,
+        &quot;static&quot;: static,
+    }
+
+
+def iv_contains_mp(interval, value: mp.mpf) -&gt; bool:
+    iv_value = mp.iv.mpf(mp.nstr(value, 110))
+    difference = iv_value - interval
+    return float(difference.a) &lt;= 0 &lt;= float(difference.b)
+
+
+def thermal_realization(pair: dict, beta: mp.mpf, omegas: list[mp.mpf]) -&gt; dict:
+    z = 1 + mp.fsum(mp.exp(-beta * omega) for omega in omegas)
+    probabilities = [1 / z] + [mp.exp(-beta * omega) / z for omega in omegas]
+
+    def observable_norm(weights: list[mp.mpf]) -&gt; mp.mpf:
+        # H is diagonal; A is the star matrix with only A_0i entries.
+        row_norm_sq = mp.fsum(
+            weight * z / (1 - mp.exp(-beta * omega))
+            for weight, omega in zip(weights, omegas)
+        )
+        return mp.sqrt(row_norm_sq)
+
+    # Shannon entropy is descriptive; it is not a preparation-cost guarantee.
+    entropy_bits = -mp.fsum(p * mp.log(p, 2) for p in probabilities)
+    return {
+        &quot;dimension&quot;: len(omegas) + 1,
+        &quot;partition_function&quot;: z,
+        &quot;thermal_probabilities&quot;: probabilities,
+        &quot;hamiltonian_operator_norm&quot;: max(omegas),
+        &quot;observable_operator_norm_plus&quot;: observable_norm(pair[&quot;plus&quot;]),
+        &quot;observable_operator_norm_minus&quot;: observable_norm(pair[&quot;minus&quot;]),
+        &quot;thermal_shannon_entropy_bits&quot;: entropy_bits,
+        &quot;preparation_model&quot;: {
+            &quot;classical_mixture&quot;: &quot;sample one of 10 diagonal energy-basis states using the Gibbs probabilities, then prepare that basis label; finite-precision sampling uses O(log(1/eps)+log d) random bits and O(d) probability setup&quot;,
+            &quot;coherent_purification&quot;: &quot;one possible O(d)-rotation state-preparation circuit with O(log(1/eps)) angle precision; actual gate synthesis and device thermalization costs are not supplied&quot;,
+            &quot;algorithm_access&quot;: &quot;neither these probabilities nor this preparation oracle is granted to a Euclidean-data estimator&quot;,
+        },
+    }
+
+
+def main() -&gt; None:
+    mp.mp.dps = 110
+    beta_exact, eta_exact, taus_exact, omegas_exact = intended_mp_inputs()
+    exact_matrix = kernels(beta_exact, taus_exact, omegas_exact)
+    exact_pair = pair_from_matrix(beta_exact, eta_exact, taus_exact, omegas_exact, exact_matrix)
+
+    beta_old, eta_old, taus_old, omegas_old = frozen_rounded_mp_inputs()
+    old_matrix = kernels(beta_old, taus_old, omegas_old)
+    rounded_pair = pair_from_matrix(beta_old, eta_old, taus_old, omegas_old, old_matrix)
+
+    iv_pair = interval_instance()
+    containment = {
+        &quot;determinant&quot;: iv_contains_mp(iv_pair[&quot;determinant&quot;], mp.det(exact_matrix[:, 0:8])),
+        &quot;null_vector&quot;: [iv_contains_mp(box, x) for box, x in zip(iv_pair[&quot;v&quot;], exact_pair[&quot;v&quot;])],
+        &quot;weights_plus&quot;: [iv_contains_mp(box, x) for box, x in zip(iv_pair[&quot;weights_plus&quot;], exact_pair[&quot;plus&quot;])],
+        &quot;weights_minus&quot;: [iv_contains_mp(box, x) for box, x in zip(iv_pair[&quot;weights_minus&quot;], exact_pair[&quot;minus&quot;])],
+        &quot;target_plus&quot;: iv_contains_mp(iv_pair[&quot;target_plus&quot;], exact_pair[&quot;chi_plus&quot;]),
+        &quot;target_minus&quot;: iv_contains_mp(iv_pair[&quot;target_minus&quot;], exact_pair[&quot;chi_minus&quot;]),
+        &quot;gap&quot;: iv_contains_mp(iv_pair[&quot;gap&quot;], exact_pair[&quot;chi_plus&quot;] - exact_pair[&quot;chi_minus&quot;]),
+        &quot;euclidean_means&quot;: [iv_contains_mp(box, x) for box, x in zip(iv_pair[&quot;euclidean&quot;], exact_pair[&quot;euclidean_means&quot;])],
+        &quot;M1&quot;: iv_contains_mp(iv_pair[&quot;m1&quot;], exact_pair[&quot;m1_plus&quot;]),
+        &quot;static_response&quot;: iv_contains_mp(iv_pair[&quot;static&quot;], exact_pair[&quot;static_plus&quot;]),
+    }
+    if not all(containment[&quot;null_vector&quot;] + containment[&quot;weights_plus&quot;] + containment[&quot;weights_minus&quot;]):
+        raise ArithmeticError(&quot;independent interval instance failed to enclose corrected witness&quot;)
+    if not all(containment[k] for k in [&quot;determinant&quot;, &quot;target_plus&quot;, &quot;target_minus&quot;, &quot;gap&quot;, &quot;M1&quot;, &quot;static_response&quot;]):
+        raise ArithmeticError(&quot;independent interval instance failed to enclose a corrected scalar&quot;)
+    if not all(containment[&quot;euclidean_means&quot;]):
+        raise ArithmeticError(&quot;independent interval instance failed to enclose Euclidean means&quot;)
+
+    realization = thermal_realization(exact_pair, beta_exact, omegas_exact)
+    input_differences = {
+        &quot;max_abs_tau_old_rounded_minus_exact&quot;: max(abs(x - y) for x, y in zip(taus_old, taus_exact)),
+        &quot;max_abs_omega_old_rounded_minus_exact&quot;: max(abs(x - y) for x, y in zip(omegas_old, omegas_exact)),
+        &quot;max_abs_chi_plus_old_minus_corrected&quot;: abs(rounded_pair[&quot;chi_plus&quot;] - exact_pair[&quot;chi_plus&quot;]),
+        &quot;max_abs_chi_minus_old_minus_corrected&quot;: abs(rounded_pair[&quot;chi_minus&quot;] - exact_pair[&quot;chi_minus&quot;]),
+        &quot;abs_target_gap_old_minus_corrected&quot;: abs(rounded_pair[&quot;gap&quot;] - exact_pair[&quot;gap&quot;]),
+        &quot;max_abs_mean_old_minus_corrected&quot;: max(abs(x - y) for x, y in zip(rounded_pair[&quot;euclidean_means&quot;], exact_pair[&quot;euclidean_means&quot;])),
+    }
+
+    # Deterministic simulated Gaussian readout from corrected exact means.
+    rng = np.random.default_rng(RNG_SEED)
+    sigma_c = 0.02
+    observed_c = [float(x) for x in exact_pair[&quot;euclidean_means&quot;]]
+    observed_c = [x + float(rng.normal(0.0, sigma_c)) for x in observed_c]
+
+    result = {
+        &quot;schema&quot;: &quot;fk-response-bounds-correction-results/1&quot;,
+        &quot;delta_scope&quot;: &quot;precision alignment and realization-cost correction only; original REPORT.md, RESULTS.json, and MANIFEST.json are unchanged&quot;,
+        &quot;precision&quot;: {
+            &quot;corrected_mp_dps&quot;: 110,
+            &quot;input_construction&quot;: &quot;decimal strings and tau numerators/12 are converted only after mp.mp.dps=110&quot;,
+            &quot;interval_construction&quot;: &quot;independent mpmath.iv instance at 80 dps from the same decimal strings and rational tau definitions&quot;,
+            &quot;old_reconstruction&quot;: &quot;frozen module-level input construction repeated at mp.workdps(15), then arithmetic performed at 110 dps&quot;,
+            &quot;corrected_mp_instance_enclosed_by_independent_interval_instance&quot;: containment,
+            &quot;containment_all_pass&quot;: all(containment[&quot;null_vector&quot;] + containment[&quot;weights_plus&quot;] + containment[&quot;weights_minus&quot;] + containment[&quot;euclidean_means&quot;])
+                and all(containment[k] for k in [&quot;determinant&quot;, &quot;target_plus&quot;, &quot;target_minus&quot;, &quot;gap&quot;, &quot;M1&quot;, &quot;static_response&quot;]),
+            &quot;differences_old_rounded_vs_corrected_exact&quot;: {k: mp.nstr(v, 20) for k, v in input_differences.items()},
+            &quot;status&quot;: &quot;precision mismatch confirmed in frozen v1; intended exact-decimal/rational witness independently interval-enclosed; existence and separated-target conclusion preserved&quot;,
+        },
+        &quot;corrected_equal_information_pair&quot;: {
+            &quot;exact_definition&quot;: &quot;A is the exact real 8x9 matrix generated by beta=1, tau=k/12 (k=0,...,5), exact decimal omega strings, and rows K_beta(tau,omega), 2 omega, 2/omega. Define v_9=1 and v_1:8=-A_1:8^{-1}A_9 by Cramer&#x27;s rule over the exact inputs; define b_i=1/(18 omega_i) and w_i^plus/minus=b_i +/- 10^-6 v_i. The interval receipts certify det(A_1:8) excludes zero and every weight is positive. Thus A v=0 and equal-observation constraints hold exactly; mp values below are approximations enclosed by independent intervals.&quot;,
+            &quot;beta&quot;: mp.nstr(beta_exact, 20),
+            &quot;eta&quot;: mp.nstr(eta_exact, 20),
+            &quot;tau&quot;: [mp.nstr(x, 20) for x in taus_exact],
+            &quot;omega&quot;: [mp.nstr(x, 20) for x in omegas_exact],
+            &quot;delta&quot;: mp.nstr(exact_pair[&quot;delta&quot;], 20),
+            &quot;null_vector&quot;: [mp.nstr(x, 20) for x in exact_pair[&quot;v&quot;]],
+            &quot;weights_plus&quot;: [mp.nstr(x, 20) for x in exact_pair[&quot;plus&quot;]],
+            &quot;weights_minus&quot;: [mp.nstr(x, 20) for x in exact_pair[&quot;minus&quot;]],
+            &quot;euclidean_means_common&quot;: [mp.nstr(x, 20) for x in exact_pair[&quot;euclidean_means&quot;]],
+            &quot;max_numeric_null_residual&quot;: mp.nstr(max(abs(x) for x in exact_pair[&quot;numeric_null_residuals&quot;]), 8),
+            &quot;max_numeric_plus_minus_Euclidean_difference&quot;: mp.nstr(max(abs(x-y) for x,y in zip(exact_pair[&quot;euclidean_means&quot;], exact_pair[&quot;euclidean_minus&quot;])), 8),
+            &quot;numeric_plus_minus_M1_difference&quot;: mp.nstr(abs(exact_pair[&quot;m1_plus&quot;] - exact_pair[&quot;m1_minus&quot;]), 8),
+            &quot;numeric_plus_minus_static_difference&quot;: mp.nstr(abs(exact_pair[&quot;static_plus&quot;] - exact_pair[&quot;static_minus&quot;]), 8),
+            &quot;M1_plus&quot;: mp.nstr(exact_pair[&quot;m1_plus&quot;], 20),
+            &quot;M1_minus&quot;: mp.nstr(exact_pair[&quot;m1_minus&quot;], 20),
+            &quot;static_plus&quot;: mp.nstr(exact_pair[&quot;static_plus&quot;], 20),
+            &quot;static_minus&quot;: mp.nstr(exact_pair[&quot;static_minus&quot;], 20),
+            &quot;chi_eta_plus&quot;: mp.nstr(exact_pair[&quot;chi_plus&quot;], 20),
+            &quot;chi_eta_minus&quot;: mp.nstr(exact_pair[&quot;chi_minus&quot;], 20),
+            &quot;target_gap&quot;: mp.nstr(exact_pair[&quot;gap&quot;], 20),
+            &quot;interval_receipts&quot;: {
+                &quot;determinant&quot;: str(iv_pair[&quot;determinant&quot;]),
+                &quot;target_plus&quot;: str(iv_pair[&quot;target_plus&quot;]),
+                &quot;target_minus&quot;: str(iv_pair[&quot;target_minus&quot;]),
+                &quot;gap&quot;: str(iv_pair[&quot;gap&quot;]),
+            },
+        },
+        &quot;realization_scope_and_cost&quot;: {
+            &quot;construction&quot;: &quot;H=diag(0,omega_1,...,omega_9); A has only A_0i=A_i0=sqrt(w_i*Z/(1-exp(-beta*omega_i))) entries&quot;,
+            &quot;dimension&quot;: realization[&quot;dimension&quot;],
+            &quot;partition_function&quot;: mp.nstr(realization[&quot;partition_function&quot;], 20),
+            &quot;thermal_probabilities&quot;: [mp.nstr(x, 20) for x in realization[&quot;thermal_probabilities&quot;]],
+            &quot;hamiltonian_operator_norm&quot;: mp.nstr(realization[&quot;hamiltonian_operator_norm&quot;], 20),
+            &quot;observable_operator_norm_plus&quot;: mp.nstr(realization[&quot;observable_operator_norm_plus&quot;], 20),
+            &quot;observable_operator_norm_minus&quot;: mp.nstr(realization[&quot;observable_operator_norm_minus&quot;], 20),
+            &quot;thermal_shannon_entropy_bits&quot;: mp.nstr(realization[&quot;thermal_shannon_entropy_bits&quot;], 20),
+            &quot;preparation_model&quot;: realization[&quot;preparation_model&quot;],
+            &quot;bounded_unit_observable_claim&quot;: False,
+            &quot;interpretation&quot;: &quot;the finite-dimensional witness is valid for the unbounded-A access class used in the proof; it does not establish the same numerical gap under an externally imposed ||A||&lt;=1 promise&quot;,
+        },
+        &quot;simulated_noisy_euclidean_vector&quot;: {
+            &quot;seed&quot;: RNG_SEED,
+            &quot;sigma_per_reading&quot;: sigma_c,
+            &quot;observed_values&quot;: observed_c,
+            &quot;same_law_under_corrected_pair&quot;: True,
+            &quot;physical_or_mcmc_data&quot;: False,
+        },
+    }
+    (HERE / &quot;CORRECTION_01_RESULTS.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    (HERE / &quot;CORRECTION_01_noisy_euclidean.csv&quot;).write_text(
+        &quot;tau,observed_C,simulated_sigma\n&quot;
+        + &quot;&quot;.join(
+            f&quot;{float(tau):.12g},{value:.17g},{sigma_c:.17g}\n&quot;
+            for tau, value in zip(taus_exact, observed_c)
+        )
+    )
+    print(json.dumps({
+        &quot;old_vs_corrected&quot;: result[&quot;precision&quot;][&quot;differences_old_rounded_vs_corrected_exact&quot;],
+        &quot;chi_plus&quot;: result[&quot;corrected_equal_information_pair&quot;][&quot;chi_eta_plus&quot;],
+        &quot;chi_minus&quot;: result[&quot;corrected_equal_information_pair&quot;][&quot;chi_eta_minus&quot;],
+        &quot;gap&quot;: result[&quot;corrected_equal_information_pair&quot;][&quot;target_gap&quot;],
+        &quot;interval_all_pass&quot;: result[&quot;precision&quot;][&quot;containment_all_pass&quot;],
+        &quot;A_norm_plus&quot;: result[&quot;realization_scope_and_cost&quot;][&quot;observable_operator_norm_plus&quot;],
+        &quot;A_norm_minus&quot;: result[&quot;realization_scope_and_cost&quot;][&quot;observable_operator_norm_minus&quot;],
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

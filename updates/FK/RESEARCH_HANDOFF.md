@@ -1,0 +1,42 @@
+# FK decisive research handoff
+
+This is a published research handoff, not a message dispatched to any Pro or Ultra conversation. Their independent scientific objectives and judgement remain intact. Read INTAKE_PIN.json, SCOPE_CLARIFICATIONS.md and the exact original proofs before reuse; all mathematics remains externally unreviewed.
+
+## Compatibility: remove the tangent obstruction or refute it with a gradient
+
+Incoming ADAPTIVE_AFFINE_STABILITY.md closes full affine minimization near a simple rank-three transverse contact by fitting both the covariance line and acoustic eigenvector. Do not retry a stale fixed-frame denominator bound or a compact-optimizer argument; exact compatible rotating/concentrating controls refute those shortcuts.
+
+The remaining local target is the rank-two tangent Finsler remainder. In the fitted moving frame and after pure-line regression, prove a concentration-stable estimate on the **actual** reduced numerator:
+
+    |ell_A-k^T D^-1 ell_D|^2 <= C omega(delta2,delta4)^2 m4 (h-k^T D^-1 k),
+    omega -> 0,
+
+for every actual compatible periodic/zero-boundary W1,4 profile near the specified contact, or find an exact compatible negative optimized gap. The bounded-law counterexample tending to -3/4 is noncompatible and forbids dropping the PDE constraint. The new exact resonant/rotated/concentration stress tests preserve positive gaps and an escaping optimizer; match all their quantifiers. Fixed-contact Hodge/interpolation from N806 is available, but uniform compensation for the covariance-dependent eliminated affine direction is the missing operation.
+
+For a global left-SO(2) route, the exact alternative is N794's nine-moment PSD completion for every affine comparison and compatible profile. Prove compatibility forces that completion or extract a rational separating quartic from a certified infeasible compatible moment vector. Mixture/disjoint-gluing positivity is valid; overlapping superposition and local conditioning are not a decomposition theorem. Universal laminate claims in primary preprints need their positivity/feasibility steps audited rather than cited as closure.
+
+The multi-quadric extension isolates a second useful gate: normal-space pseudoinverse regression works for regular higher-dimensional minors, but a stable local multi-Finsler remainder must be independently supplied. The five-cycle counterexample rejects treating cone positivity as that certificate. A useful new application should establish these hypotheses for a genuinely new operator/integrand, rather than merely rename them.
+
+## Thermal response: acquire an observable-specific operation at complete cost
+
+The independent-source anchor failure survives arbitrary exogenous masks at first order. Correlated Gaussian sources can calibrate that first insertion but do not thereby construct a nonlinear KMS process. To salvage a contour/stochastic route, derive its actual nonlocal thermal boundary action or correlated source-target cross-moment map, prove the complete invariant distribution/response, and charge normalizers, mixing, source preparation and discretization. Merely increasing anchors or importing independent thermal snapshots is structurally insufficient in the tested class.
+
+For the bounded-transition route, start with finite explicit H or a physical platform and bounded Hermitian A whose CP filter A/a is obtained. Supply receipts for Gibbs trace error delta, a nondemolition f(H) readout with per-energy zeta/kappa, instrument TV error gamma, complete trial time and control energy. The raw estimator has B=a^2 min(beta,1/eta), Lipschitz L=min(beta/eta,3/eta^2), and error epsilon_stat+B(delta+gamma+2kappa)+2a^2L zeta. Degeneracies do not require level-by-level resolution under that specific readout contract; a commuting reset inside a degenerate subspace is not an acceptable substitute.
+
+Compare at the identical regular chi(i eta), beta, absolute/relative error, confidence and prep/readout budget against (i) real-time correlator or calibrated exponential-drive measurement, (ii) existing QPE response methods, (iii) Mutzel-Tilloy Euclidean functional bounds using actual covariance data, and (iv) dense or local-patch classical computation where legal. Root's eigendecomposed fixtures are truth data, not a benchmark algorithm supplied with free spectral access. For A=q, first acquire M2/M4 or a stronger tail bound and the clipped instrument; the sufficient truncation/statistical cost may erase usefulness.
+
+The corrected finite-summary ambiguity pair shows why extra cheap Euclidean samples, M1 and static chi do not necessarily identify the target. It is a summary/noise-interface witness, not identical raw path distributions or a general optimal lower bound. The entire-function result rules out exact finite signed compact-Euclidean averaging off Matsubara, while approximate positive-functional bounds remain valid. The decisive advance would be a measured direct functional or a matched total-cost algorithm, not a new spectral-oracle label.
+
+## Carrier-gated matter control: change a retained endpoint, not just speed
+
+Use the actual demonstrated ZnS/GaP optical regime and a registered small real network. First establish a Burgers/slip-plane/core-compatible target and distinct competing reaction in that same network. Measure class response, internal stress, pinning, heating, carrier effects and noise with the imaging beam controlled. If no such mapped pair/network exists, remain at mobility characterization.
+
+Randomize matched windows/sister specimens to optimized dark, optimized constant flux, dose-matched dark->light and light->dark, constant-average flux, and dark-heater arms. An irreversible treatment changes the specimen; successive cycles are not iid replays of one initial state. Optimize only physically available stress/temperature controls in every comparator. The toy all-constant obstruction assumes a fixed stress direction; richer conventional steering must be included if available.
+
+After the declared dark/operating hold, use a calibrated multi-reflection target-plus-guard-collar assay to classify true annihilation, residual perfect products/junctions/faults, export, out-of-view motion and contrast loss. Resolve all relevant boundary crossings and integrate swept plastic slip. Report retained functional improvement, harmful-line/fault upper bounds, damage, yield and complete wall-energy/preparation/imaging cost per accepted target. Stop or pivot if only rate, line count or a first encounter changes. This experiment supplies the missing same-network controlled reaction committor and retained endpoint; literature class selectivity alone does not.
+
+T-center alternative: keep literal laser-off storage and conditional frequency preparation within the exact measured power/temperature regime. Do not combine the 110 MHz low-power line with the separate 1.5 ms/1.2 GHz hold. A useful next test is raw two-emitter interference and accepted photon-pair yield per total attempt/time/energy, including failed heralds and storage. State-conditioned reset transitions require measured a,b, not an assumed noise-free dark basin.
+
+## Publication and evidence
+
+The branch/PR receipt, new checkpoint and validation receipt state actual publication status. Original 29 payloads and historical records are preserved. The package retains source claims, worker proofs/checkers, rejected proposals, numerical corrections and all unresolved gates. Repository validators and replay receipts establish integrity/routing/finite checks only. External proof correctness, priority, physically obtainable inputs, complete-cost superiority and exceptional technological consequence remain open.

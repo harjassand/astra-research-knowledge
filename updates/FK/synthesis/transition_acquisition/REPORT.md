@@ -1,0 +1,256 @@
+# Thermal transition acquisition: exact operation, bounded estimator, and limits
+
+**Disposition.** For a finite-dimensional Hamiltonian and bounded Hermitian observable, I specified an explicit CP measurement protocol that acquires the thermal transition law from a paid Gibbs preparation, an observable filter, and two energy readouts. The protocol yields the response measure in the thermal source and, after folding forward and reverse transitions by detailed balance, gives a bounded unbiased estimator of the scalar susceptibility without estimating the sum-rule normalization or rejecting rare transitions. This closes the source's exact *operation-specification* gap under that access model. It is a composition of standard quantum operations and spectroscopy ideas, not a new quantum primitive. No end-to-end advantage over direct real-time response or correction-vector methods is established. The source's unbounded oscillator observable still needs a cutoff and a controlled truncation error.
+
+The thermal source already gives the Lehmann measure, the f-sum rule, and the identity \(\chi=M_1\mathbb E_\nu[(\Delta^2+\eta^2)^{-1}]\) (copied source, `REPORT.md`, lines 310–332). Its explicit unresolved issue is exactly how to acquire temperature-correct transition information without hiding a sampler oracle. The derivation below supplies one protocol, and then charges its preparation, control, readout, resolution, normalization, and sampling costs.
+
+## Model and exact transition law
+
+Let \(H=\sum_E E P_E\) act on a finite-dimensional Hilbert space, with actual energy span \(W_H=E_{\max}-E_{\min}\), inverse temperature \(\beta>0\), partition function \(Z=\operatorname{Tr}e^{-\beta H}\), and \(\rho_\beta=e^{-\beta H}/Z\). In all algorithms below, \(W\ge W_H\) denotes a certified span upper bound; if the exact span is known, take \(W=W_H\). A coarse bound can be obtained from the explicit Hamiltonian terms (for the displayed chain, \(W\le2[(2+|\Delta_z|)|J|(L-1)+|h|L]\)). Let \(A=A^\dagger\) satisfy \(\|A\|\le a<\infty\), where \(a\) is likewise a supplied or certified implementation normalization, and put
+
+\[
+S(E,E')=\operatorname{Tr}(P_E A P_{E'} A P_E)\ge0.
+\]
+
+This trace sums transition strengths across degenerate eigenspaces, so no eigenbasis inside a degenerate subspace is selected. For \(E<E'\), write \(d=E'-E\), \(p_E=e^{-\beta E}/Z\), and \(p_{E'}=e^{-\beta E'}/Z=p_E e^{-\beta d}\). The regular susceptibility is
+
+\[
+\chi_{\beta,A}(i\eta)=\sum_{E<E'}
+ \frac{2d(p_E-p_{E'})}{d^2+\eta^2}S(E,E'),\qquad \eta>0.
+\]
+
+The first-moment normalization in the source is
+
+\[
+M_1=2\sum_{E<E'}d(p_E-p_{E'})S(E,E')
+   =\operatorname{Tr}\!\left(\rho_\beta[A,[H,A]]\right).
+\]
+
+The equality follows by expanding the double commutator in the energy basis and pairing the \((E,E')\) and \((E',E)\) terms. In particular, \(M_1\) is a Gibbs expectation, not a free normalization constant.
+
+If one chooses the source's normalized measure route, \(M_1\) can in principle be acquired separately as the expectation of the Hermitian observable \(D=[A,[H,A]]\). Centering \(H\) at the midpoint of its spectral enclosure gives \(\|D\|\le2a^2W\), so this step has a bounded-observable measurement range and its own sampling error/cost. The direct folded estimator below avoids this extra measurement and the multiplication of two uncertain estimates.
+
+For projective measurement of \(D\), the worst-case outcome interval is \([-2a^2W,2a^2W]\), giving the sufficient count \(N_{M_1}\ge8a^4W^2\epsilon_{M_1}^{-2}\ln(2/\delta)\) for additive error \(\epsilon_{M_1}\). A Pauli decomposition or block encoding must still be implemented and paid; this is only the statistical component.
+
+## CP instrument and two-sided readout
+
+Each trial uses the following operations.
+
+1. Prepare a fresh \(\rho_\beta\), with its actual preparation error and cost recorded. Measure \(H\), obtaining \(E\). Since \([\rho_\beta,H]=0\), the ideal measurement does not change the Gibbs ensemble.
+2. Apply the two-outcome instrument
+   \[
+   K_s=A/a,\qquad K_f=(I-A^2/a^2)^{1/2}.
+   \]
+   It is completely positive and trace preserving when both outcomes are retained because \(K_s^\dagger K_s+K_f^\dagger K_f=I\). The success outcome has the exact transition probabilities below. On failure output zero and reset the apparatus.
+3. On success, measure \(H\) again, obtaining \(E'\), and record the signed gap \(\Delta=E'-E\).
+
+For a Gibbs input, the joint probability of success and the ordered energy pair is
+
+\[
+\Pr(E,E',s)=\frac{e^{-\beta E}}{Za^2}S(E,E').
+\]
+
+Thus the unnormalized probability of a transition is exactly the Gibbs factor times the squared matrix element, with no unknown transition list. The map is realizable as a Stinespring isometry
+
+\[
+|\psi\rangle\longmapsto (A/a)|\psi\rangle|s\rangle+
+ (I-A^2/a^2)^{1/2}|\psi\rangle|f\rangle,
+\]
+
+which extends to a unitary. An implementation still has to construct and calibrate this dilation. For a Pauli observable such as \(A=Z_1\), \(a=1\), the success branch is simply the deterministic local pulse \(Z_1\), so no postselection or amplitude encoding is needed. For a general Pauli sum, a block encoding or equivalent ancilla-controlled decomposition has a normalization and gate cost; choosing \(a\) much larger than \(\|A\|\) reduces success probability and worsens the estimator range.
+
+One concrete finite-spin instance is
+
+\[
+H_L=J\sum_{j=1}^{L-1}\left(X_jX_{j+1}+Y_jY_{j+1}+\Delta_z Z_jZ_{j+1}\right)
+   +h\sum_{j=1}^L Z_j,\qquad A=Z_1.
+\]
+
+Here the Hamiltonian is an explicit local Pauli sum, the observable is a physical one-site pulse, and \(W_L\) is the finite spectral span. The acquisition contract is: pay \(C_G(L,\beta,\tau_\beta)\) for each Gibbs copy, pay for controlled simulation of this displayed \(H_L\), perform two energy readouts, and pay for reset and calibration. This is a concrete circuit-level measurement model, not a claim that a particular laboratory already provides the Gibbs state or QPE readout.
+
+For a general bounded \(A\), a unitary block encoding with top-left block \(A/a\) and an ancilla measurement implements the success Kraus operator \(K_s=A/a\); the coarse-grained complementary outcome is the failure map. Its success probability on the Gibbs input is \(p_s=\operatorname{Tr}(\rho_\beta A^2)/a^2\). Failure is retained as an observed zero, so it causes no hidden rejection loop, although it is included in the raw-shot count. A direct Stinespring completion can use \(K_f=(I-A^2/a^2)^{1/2}\). The block encoding, ancilla readout and reset are paid operations. For \(A=Z_1\), \(p_s=1\) and the filter is just a local pulse. For a general observable with small thermal \(p_s\), most trials can be zero; the bounded-shot guarantee remains valid but can be conservative. If only accepted transitions are retained, that is a separate postselection cost and must be reported.
+
+The energy-pair acquisition itself is a two-point-measurement (TPM) spectroscopy operation around the controlled observable intervention. TPM protocols, including ancilla-assisted implementations with direct energy-exchange statistics, are established prior art [R6]. The present contribution is the exact response-weight derivation and detailed-balance fold for this stated access model, not a new energy-measurement primitive.
+
+There is also direct QPE-response prior. Roggero and Carlson prepare a normalized excited-state response vector proportional to \(O|\psi_0\rangle\), then use phase estimation to sample its energy-frequency spectrum, with stated resolution/time and sample-error analysis; their setup assumes ground-state preparation and controlled \(O\)- and \(H\)-evolution. They explicitly note that finite-temperature generalization is possible by preparing thermal-equilibrium states, but their algorithm and numerical example are ground-state response [R9]. Sakuma et al. use entangled-input phase estimation to reduce spectral leakage and estimate transition energies and weights for specified, isolated peaks, again from a ground state [R10]. Neither paper is the same thermal two-readout scalar estimator derived here, but together with TPM they make the implementation route conventional: prepare the state, apply the observable, and resolve the final energy. The present protocol uses ordinary paid energy readout (or QPE as one implementation), not Sakuma's entangled phase-estimation variant; it should be treated as a precisely specified finite-temperature composition, not as a new response-acquisition primitive or a priority claim.
+
+## Detailed balance gives a direct bounded response estimator
+
+For \(d>0\), the forward and reverse probabilities for the same unordered energy pair obey
+
+\[
+\frac{\Pr(E',E,s)}{\Pr(E,E',s)}=e^{-\beta d},\qquad
+\frac{p_E-p_{E'}}{p_E+p_{E'}}=\tanh(\beta d/2).
+\]
+
+The first relation is the thermal detailed-balance identity. An initially considered but unnecessary exponential reweighting assigns, on a successful ordered transition,
+\[
+Y_{\rm exp}=a^2\frac{\Delta(1-e^{-\beta\Delta})}{\Delta^2+\eta^2}.
+\]
+Pairing the forward and reverse probabilities gives \(\mathbb E Y_{\rm exp}=\chi_{\beta,A}(i\eta)\), but for \(\Delta<0\) the factor grows exponentially. At \(\beta=1,\Delta=-10,\eta=1\), it is about 2180.7\(a^2\). Its expectation is finite on a finite-span system, but this unnecessary reweighting can have an exponentially large range in \(\beta W\); any proposed uniform bound for it is false and rejected. It is not the matched bounded baseline below.
+
+On the same ordered transition record, the simpler odd kernel
+\[
+Y_{\rm odd}=2a^2\frac{\Delta}{\Delta^2+\eta^2}
+\]
+is already unbiased: summing its two directions for each unordered pair gives \(2d(p_E-p_{E'})S(E,E')/(d^2+\eta^2)\). It has the uniform bound \(|Y_{\rm odd}|\le a^2/\eta\), since \(2d/(d^2+\eta^2)\le1/\eta\), and thus the same raw trials suffice with
+\[
+N_{\rm odd}\ge \frac{2a^4}{\eta^2\epsilon_{\rm stat}^2}\ln\frac{2}{\delta}.
+\]
+This is the strongest simple matched ordered-gap baseline in the present analysis: it uses the same Gibbs/filter/energy trials and does not require an exponential thermal reweighting.
+
+There is also an unbiased upward-only alternative, zero on failure and on \(\Delta\le0\):
+\[
+Y_+=2a^2\frac{d(1-e^{-\beta d})}{d^2+\eta^2}\,\mathbf 1_{\{\Delta=d>0\}}.
+\]
+Its expectation is exactly \(\chi\), since the upward transition probability alone contains \(p_E\), and \(p_E(1-e^{-\beta d})=p_E-p_{E'}\). Its range is at most \(a^2\min\{2\beta,1/\eta\}\). It is valid, but the two-sided fold below is its conditional mean given the unordered gap and therefore has no larger variance.
+
+Instead, discard the sign after recording it and use the conditional average of the two odd-kernel values at fixed \(d=|\Delta|\):
+
+\[
+Y_{\rm fold}=\begin{cases}
+a^2\,\displaystyle\frac{2d\tanh(\beta d/2)}{d^2+\eta^2}, & \text{filter success and }d>0,\\[1ex]
+0,&\text{filter failure or }d=0.
+\end{cases}
+\]
+
+For one unordered pair, summing its two ordered outcomes gives
+
+\[
+\frac{p_E+p_{E'}}{a^2}S(E,E')\,Y_{\rm fold}
+=\frac{2d(p_E-p_{E'})}{d^2+\eta^2}S(E,E'),
+\]
+
+so \(\mathbb E Y_{\rm fold}=\chi_{\beta,A}(i\eta)\) exactly. This is a Rao–Blackwell fold of either the bounded odd statistic \(Y_{\rm odd}\) or \(Y_+\), conditioned on the unordered gap: it uses detailed balance to average over transition orientation, and the law of total variance gives no larger variance than either parent statistic. It directly estimates the scalar response; it needs neither \(M_1\) nor rejection sampling.
+
+Define the exact envelope
+
+\[
+B(\beta,\eta,W)=\max_{0\le d\le W}
+ \frac{2d\tanh(\beta d/2)}{d^2+\eta^2}.
+\]
+
+Then
+
+\[
+0\le Y_{\rm fold}\le a^2B(\beta,\eta,W),\qquad
+B(\beta,\eta,W)\le \min\!\left\{\beta,\frac1\eta\right\}.
+\]
+
+The two bounds follow from \(\tanh x\le x\) and \(\tanh x\le1\). This expression carries the exact \(\beta,\eta,W\) dependence; for example, at high temperature \(\beta W\ll1\), \(B\le \beta W^2/(W^2+\eta^2)\), while at low temperature the universal envelope is at most \(1/\eta\). Independent trials and Hoeffding give the sufficient raw-shot count
+
+\[
+N_{\rm stat}\ge \frac{a^4B(\beta,\eta,W)^2}{2\epsilon_{\rm stat}^2}
+ \ln\frac{2}{\delta}.
+\]
+
+Because \(B\le1/\eta\), this range-based bound is at most one quarter of the corresponding \(Y_{\rm odd}\) Hoeffding bound. In the high-temperature regime \(\beta W\ll1\), using \(B\le\beta W^2/(W^2+\eta^2)\) gives the stronger explicit dependence \(N_{\rm stat}=O(a^4\beta^2W^4/((W^2+\eta^2)^2\epsilon_{\rm stat}^2)\log(1/\delta))\). This compares two estimators on the same trial law; it is not a query lower bound.
+
+Thus this direct estimator does not incur the source's conditional \(M_1^2\eta^{-4}\epsilon^{-2}\) shot bound for ideal \(\nu\) samples. It is an upper bound for a different charged measurement interface, not a universal query lower bound or a proven speedup. If the trials come from a correlated thermalization chain rather than fresh preparations, the effective sample count must include its autocorrelation/mixing cost.
+
+If one specifically needs iid samples from \(\nu\), the same folded transition proposal can use accept probability
+
+\[
+r(d)=\frac{2d\tanh(\beta d/2)}{2W\tanh(\beta W/2)}.
+\]
+
+The numerator is increasing on \([0,W]\), so this is a valid rejection rule. The accepted gap has exactly the \(\nu\) law, but the acceptance probability per raw Gibbs/filter trial is
+
+\[
+p_{\rm acc}=\frac{M_1}{a^2\,2W\tanh(\beta W/2)},\qquad
+\mathbb E[\text{raw trials per accepted gap}]
+=\frac{a^2\,2W\tanh(\beta W/2)}{M_1}.
+\]
+
+This formula assumes \(M_1>0\); if \(M_1=0\), the response measure is zero and \(\nu\) is undefined. It uses the certified upper span \(W\), not an assumed known exact spectral endpoint. The denominator cap \(2W\tanh(\beta W/2)\) is about \(\beta W^2\) for \(\beta W\ll1\), and about \(2W\) for \(\beta W\gg1\). There is no uniform lower bound on \(p_{\rm acc}\): \(A\) may commute with \(H\), the response may be arbitrarily weak, or all relevant transitions may lie at arbitrarily small gaps. The response estimator above is preferable when the sole output is \(\chi\), since it avoids this normalization/rejection cost.
+
+A directly matched QPE implementation of the thermal transition record is to prepare each Gibbs copy, read its initial energy, apply the normalized observable filter, and QPE-read its final energy. That is the same two-readout CP experiment specified above; phase estimation is only one implementation of its energy instrument. The bounded odd estimator \(Y_{\rm odd}\) and its fold have identical per-trial state/filter/readout cost; the fold replaces the symmetric range \([-a^2/\eta,a^2/\eta]\) by \([0,a^2B]\) and is a Rao–Blackwell postprocessing improvement, not a new QPE acquisition primitive. The exponential \(Y_{\rm exp}\) proposal above is retained only as a rejected estimator, not as an equal-cost benchmark.
+
+## Finite-resolution, state, and control costs
+
+An energy measurement is not free. One explicit finite-resolution CP readout is the Gaussian energy instrument with Kraus density
+\[
+M_x=(2\pi\kappa^2)^{-1/4}\exp[-(x-H)^2/(4\kappa^2)],\qquad
+\int_{\mathbb R}M_x^\dagger M_x\,dx=I.
+\]
+It has outcome density \(x\sim\mathcal N(E,\kappa^2)\) on an energy eigenstate of energy \(E\). An ideal pointer realization prepares a Gaussian coordinate wavefunction and couples it by \(e^{-iH\otimes P}\), then measures the pointer coordinate. This is a physical dilation of the stated instrument, not a free measurement: the \(H\)-pointer coupling, pointer range/bandwidth, calibration, readout, and reset must be implemented and charged. Because the initial Gibbs state commutes with \(H\), the first Gaussian readout leaves an energy-diagonal mixture; the exact joint transition law is convolved with independent Gaussian readout noise on the two energies.
+
+A digital alternative is phase estimation on controlled \(e^{-iHt}\). To report one energy to absolute resolution \(\kappa\) with failure probability \(\zeta\), the longest required physical evolution is \(O(1/\kappa)\); with a normalized time step \(\Theta(1/W)\), the controlled-time queries are \(O((W/\kappa)\log(1/\zeta))\). Hamiltonian-simulation error, controlled-gate depth, ancilla readout and energy calibration are additional. Two readouts are required per raw trial. For example, if each of \(Q\) controlled-simulation calls has diamond error at most \(\epsilon_{\rm sim}\), a telescoping bound charges instrument error at most \(Q\epsilon_{\rm sim}\); choosing \(\epsilon_{\rm sim}\le\tau_{\rm inst}/Q\) keeps this contribution within the separately budgeted readout-instrument error. An analog calorimeter can replace these models only with measured resolution, disturbance, drift, and per-shot time.
+
+For an exact finite-span gap, define \(F(d)=2d\tanh(\beta d/2)/(d^2+\eta^2)\) and
+
+\[
+L(\beta,\eta,W)=\max_{0\le d\le W}|F'(d)|,
+\]
+
+where, with \(x=\beta d/2\),
+
+\[
+F'(d)=2\,\frac{(\tanh x+x\,\mathrm{sech}^2x)(d^2+\eta^2)-2d^2\tanh x}
+ {(d^2+\eta^2)^2}.
+\]
+
+This is finite for every \(\eta>0\) and gives a computable one-dimensional resolution certificate. Useful explicit bounds are
+\[
+L(\beta,\eta,W)\le \min\!\left\{\frac{\beta}{\eta},\frac{3}{\eta^2}\right\}.
+\]
+For the first bound, set \(x=d/\eta\), \(b=\beta\eta\) and apply \(\tanh(bx/2)\le bx/2\), \(\operatorname{sech}^2\le1\) to the two terms of \(\eta^2F'(d)\); the resulting factor is \(b[x|1-x^2|/(1+x^2)^2+x/(1+x^2)]\le b\). For the second, the first derivative term is at most 2 and the second at most \(q\operatorname{sech}^2(q/2)\le1\), where \(q=\beta d\). The last inequality follows from \(\cosh^2(q/2)\ge1+q^2/4\ge q\). For digital readout, if both energy estimates are within \(\kappa\), the gap error is at most \(2\kappa\); clipping the reported gap to \([0,W]\) keeps every shot inside the envelope, and the response bias is at most \(2a^2L\kappa\). Choose \(\kappa\le\epsilon_{\rm res}/(2a^2L)\). Two readout failure events contribute at most \(2\zeta a^2B\) to the expectation error. For the Gaussian instrument, write the measured gap as the true signed gap plus \(N(0,2\kappa^2)\), take its absolute value and clip to \([0,W]\). Clipping cannot increase the error in the true absolute gap, so \(\mathbb E|\widehat d-d|\le2\kappa/\sqrt\pi\); its resolution bias is at most \(2a^2L\kappa/\sqrt\pi\). In either implementation the clipped statistic is bounded by \(a^2B\), so the same Hoeffding shot count applies.
+
+If a Gibbs-preparation device returns \(\widetilde\rho\) with trace distance \(\tfrac12\|\widetilde\rho-\rho_\beta\|_1\le\tau_\beta\), its response bias is at most \(a^2B\tau_\beta\). An approximate filter or energy-readout instrument with joint total-variation error \(\tau_{\rm inst}\) adds at most \(a^2B\tau_{\rm inst}\). For digital QPE, a sufficient additive error budget is
+\[
+\epsilon_{\rm stat}+2a^2L\kappa+a^2B(\tau_\beta+\tau_{\rm inst}+2\zeta)\le\epsilon,
+\]
+with \(N_{\rm stat}\) as above and \(\kappa\le\epsilon_{\rm res}/(2a^2L)\) when \(\epsilon_{\rm res}\) is the allocated resolution error. For the Gaussian pointer, replace the \(2a^2L\kappa\) term by \(2a^2L\kappa/\sqrt\pi\) and omit the QPE failure contribution \(2\zeta a^2B\). A norm bound \(\|H-\widetilde H\|\le\epsilon_H\) alone is not treated as merely an energy-label error: nearby Hamiltonians can have different energy projectors, and a Gibbs state prepared for \(\widetilde H\) also differs from \(\rho_\beta(H)\). Those effects need separate state- and instrument-distance bounds. For the exact target-H readout model, the total per-trial cost is
+
+\[
+C_G(H,\beta,\tau_\beta)+C_A(A,a,\tau_A)
++2C_E(H,W,\kappa,\zeta)+C_{\rm reset/calibration},
+\]
+
+with the displayed terms paid on every trial. At QPE resolution \(\kappa=\epsilon_{\rm res}/(2a^2L)\), the readout query count per trial is \(O(Wa^2L\epsilon_{\rm res}^{-1}\log(1/\zeta))\) controlled-time queries, the longest coherent evolution is \(O(a^2L/\epsilon_{\rm res})\), and the energy register needs \(O(\log(Wa^2L/\epsilon_{\rm res}))\) qubits up to constant factors. The explicit \(L\) bound gives dependence no worse than \(O(Wa^2\min\{\beta/\eta,3/\eta^2\}\epsilon_{\rm res}^{-1}\log(1/\zeta))\); the exact one-dimensional maximum can be smaller and may depend on \(W\). The total acquisition cost is \(N_{\rm stat}\) times this per-trial cost, with \(C_G\) not assumed efficient and \(C_E\) including controlled Hamiltonian simulation. No favorable spectral gap, free purification, exact energy readout, free norm estimate, or free filter is assumed. Existing Gibbs-state algorithms have explicit state-preparation assumptions and costs; for example, Poulin–Wocjan's algorithm [R7] has dimension/free-energy/thermalization parameters rather than making a Gibbs sample an uncharged primitive.
+
+## Equal-information comparators and advantage check
+
+The direct quantum response protocol starts from the same paid Gibbs state and measures the unequal-time correlator \(C_\beta(t)=\operatorname{Tr}(\rho_\beta A(t)A)\). Its exact spectral expansion gives
+
+\[
+\chi_{\beta,A}(i\eta)=-2\int_0^\infty e^{-\eta t}\,\operatorname{Im}C_\beta(t)\,dt.
+\]
+
+A Hadamard/Ramsey circuit estimates the correlator using controlled real-time evolution and observable controls. For \(A/a\) unitary (in particular \(A=Z_1\)) a single ancilla outcome \(q\in\{-1,+1\}\) can be arranged with conditional mean \(\operatorname{Im}C_\beta(t)/a^2\). For a general bounded observable, a block encoding supplies this control with its own paid normalization. Draw \(T\sim\mathrm{Exp}(\eta)\); then \(Z=-2a^2q/\eta\) is unbiased for \(\chi\), with range \([-2a^2/\eta,2a^2/\eta]\). Hoeffding gives \(N_{\rm time}\ge 8a^4/(\eta^2\epsilon_{\rm stat}^2)\ln(2/\delta)\). The expected simulated duration per trial is \(1/\eta\); a high-confidence maximum over \(N\) samples adds the usual exponential-tail/log factor. Alternatively, truncating the integral at \(T_{\max}\) incurs bias at most \(2a^2e^{-\eta T_{\max}}/\eta\). This route has no two energy readouts or transition rejection. At high temperature, the folded estimator's statistical envelope can be smaller in \(\beta\), but its energy resolution/filter cost remains; there is no uniform total-cost winner.
+
+This time-domain comparator is not hypothetical prior art. Sun et al. compute finite-temperature dynamical correlations by combining QITE/QMETTS thermal preparation with an ancilla-controlled real-time correlator circuit; their demonstration is on spin Hamiltonians up to four sites, and the paper discusses the resource limits of scaling [R1]. Baez et al. give a Ramsey/real-time unequal-time-correlation protocol for dynamical structure factors and Fourier transformation; their principal worked setting is ground-state response [R2]. These methods acquire the same response-relevant transition weights without producing a list of individual energy pairs.
+
+For an equally informed frequency-domain comparison, Roggero–Carlson estimate a ground-state dynamical response spectrum with QPE, a normalized observable-excited state, energy span, and controlled evolution, and give an explicit resolution/error construction [R9]. Their finite-temperature extension is stated as a possibility contingent on thermal-equilibrium state preparation, not demonstrated in that paper. Sakuma et al. refine ground-state QPE spectra with entangled phase estimation to reduce spectral leakage for isolated peaks [R10]. These methods estimate a spectral output, whereas the folded protocol targets one smoothed scalar and uses both initial and final thermal energies; neither output choice alone establishes a total-cost advantage. A fair quantitative ranking would include each method's Gibbs/ground-state preparation, observable normalization, coherent simulation, and measurement costs. In particular, evaluating the scalar by summing a reconstructed frequency histogram is not free and may be less direct than the folded single-scalar statistic.
+
+Correction-vector/dynamical DMRG directly solves a broadened resolvent problem for response at selected frequencies and is a mature comparator in low-dimensional systems. Jeckelmann's primary paper describes dynamical DMRG as an alternate correction-vector formulation [R3]. Finite-temperature diagrammatic Monte Carlo has also been developed directly on the real-frequency axis, avoiding Matsubara analytic continuation in the field-theory regimes treated by Tupitsyn et al. [R4]. Certified output-specific spectral-functional bounds from Euclidean Monte Carlo data are another comparator; Mutzel and Tilloy formulate convex/SDP bounds using positivity and Euclidean correlator uncertainty rather than acquiring Hamiltonian transition pairs [R8]. These methods have different input regimes and assumptions; this record does not rerun them or establish a universal rank order.
+
+The folded estimator's tradeoff is positive bounded per-shot weights and no analytic continuation, in exchange for state preparation, two energy readouts at resolution tied to \(\eta,\beta,W,\epsilon\), and a nontrivial observable filter. It may be useful for a bounded spin observable with inexpensive local control and direct energy readout. It has no demonstrated advantage over direct real-time scalar estimation or frequency-specific correction vectors under the same acquisition contract. Coherent amplitude estimation can reduce the sampling dependence on \(\epsilon\) only if a fully reversible Gibbs preparation, filter, readout, and uncomputation are available and charged [R5]. This remains a conditional quantum comparator, not a result of this worker.
+
+## Capital interfaces and exact mismatch
+
+The pinned capital checkout is `work/astra-capital` at `4c47df1fda950e27e48295689dd642194bfac046`. The targeted dossiers were read and copied under `inputs/capital/`.
+
+- **N724** is a minimax result for an unknown measure observed only through noisy scalar \(G_\mu(s)\) or \(\log G_\mu(s)\) values, with a real-time return-probability output. Its dossier explicitly excludes Hamiltonian entries, spectral-weight readout, and coherent real-time access. The CP protocol above adds a Gibbs preparation, observable control, and initial/final energy measurements, so N724's lower bound does not apply to this stronger interface. The N728 nominal Jacobi bridge recorded on N724 is source-derived/unreviewed and does not supply the instrument or an energy readout cost.
+- **N765** concerns an instance-specific infinite-temperature, all-particle-sector spin-transport design certificate for a specified dephasing chain and a global control parameter. **N768** extends that narrow setting to a one-contrast decision policy with unknown interaction/noise parameters and explicit sensing/control budgets. Its dossier's one-copy locally-unbiased variance statement is explicitly fixed-preparation/fixed-time and not a global finite-shot sensing optimum; it also gives a pair of models indistinguishable by that single contrast at every shot count, while noting that additional quadratures can distinguish them. These are decision-matched transport objectives, not a general finite-temperature spectral transition law. The protocols have no exact common output or hypotheses that transfer to \(\chi_{\beta,A}(i\eta)\); no capital theorem is imported.
+
+These are **incompatible application interfaces**, not refutations or validation of the capital results. Their dossiers mark correctness/priority gates open, and their source-derived claims remain unreviewed. A decision-specific finite-T observable could become a candidate interface only after a precise common Hamiltonian, target, sensor, state-preparation, and error/cost contract is supplied.
+
+## Evidence boundary
+
+New derivation in this worker: the CP instrument probabilities, detailed-balance fold, bounded direct estimator, rejection normalization, and comparison formulas. Source-derived material: the positive response measure, \(M_1\) identity, and earlier oscillator/lattice results in the thermal report. Primary-literature screen: prior finite-T dynamical correlations, time-domain spectroscopy, Gibbs sampling, transition-energy measurement, direct-frequency response, correction-vector methods, and amplitude estimation. An independently authored deterministic five-level check with a degenerate eigenspace verifies the response identities, commutator sum rule, rejection normalization, and lower folded second moment than the odd-kernel baseline to floating-point precision; it is a finite algebra check, not a proof or scaling/device result. The initial test-harness corrections are preserved in `CHECK_NOTES.md`. No thermal source code was executed and no source numerical replay was performed.
+
+The result is an exact operation under a finite-dimensional, bounded-observable interface. It does not establish a new fundamental primitive, generic efficient thermal response, full quantum advantage, physical lab validation, or priority. For the thermal source's oscillator with \(A=q\), \(q\) is unbounded and the operation above is not yet defined without a finite cutoff and a proved thermal/truncation error bound. The capital repositories and the user-provided sources were not modified.
+
+## Primary references
+
+- [R1] S.-N. Sun et al., “Quantum Computation of Finite-Temperature Static and Dynamical Properties of Spin Systems Using Quantum Imaginary Time Evolution,” [arXiv:2009.03542v1](https://arxiv.org/abs/2009.03542); full HTML: [arxiv.org/html/2009.03542v1](https://arxiv.org/html/2009.03542v1).
+- [R2] M. L. Baez et al., “Dynamical structure factors of dynamical quantum simulators,” *PNAS* 117(42), 26123–26134 (2020), [doi:10.1073/pnas.2006103117](https://doi.org/10.1073/pnas.2006103117); [arXiv:1912.06076v2](https://arxiv.org/abs/1912.06076).
+- [R3] E. Jeckelmann, “Dynamical density-matrix renormalization-group method,” *Phys. Rev. B* 66, 045114 (2002), [arXiv:cond-mat/0203500](https://arxiv.org/abs/cond-mat/0203500).
+- [R4] I. S. Tupitsyn et al., “Real-frequency response functions at finite temperature,” *Phys. Rev. Lett.* 127, 026403 (2021), [arXiv:2102.11418v2](https://arxiv.org/abs/2102.11418v2).
+- [R5] G. Brassard et al., “Quantum Amplitude Amplification and Estimation,” [arXiv:quant-ph/0005055](https://arxiv.org/abs/quant-ph/0005055).
+- [R6] A. Solfanelli, A. Santini, and M. Campisi, “Experimental Verification of Fluctuation Relations with a Quantum Computer,” *PRX Quantum* 2, 030353 (2021), [doi:10.1103/PRXQuantum.2.030353](https://doi.org/10.1103/PRXQuantum.2.030353); [arXiv:2106.04388v1](https://arxiv.org/abs/2106.04388).
+- [R7] D. Poulin and P. Wocjan, “Sampling from the thermal quantum Gibbs state and evaluating partition functions with a quantum computer,” *Phys. Rev. Lett.* 103, 220502 (2009), [arXiv:0905.2199v2](https://arxiv.org/abs/0905.2199).
+- [R8] S. Mutzel and A. Tilloy, “Certified spectral functions from lattice Monte Carlo data,” [arXiv:2606.09791v1](https://arxiv.org/abs/2606.09791).
+- [R9] A. Roggero and J. Carlson, “Dynamic linear response quantum algorithm,” *Phys. Rev. C* 100, 034610 (2019), [doi:10.1103/PhysRevC.100.034610](https://doi.org/10.1103/PhysRevC.100.034610); preprint “Linear Response on a Quantum Computer,” [arXiv:1804.01505v2](https://arxiv.org/abs/1804.01505v2).
+- [R10] R. Sakuma, S. Kanno, K. Sugisaki, T. Abe, and N. Yamamoto, “Entanglement-assisted phase estimation algorithm for calculating dynamical response functions,” *Phys. Rev. A* 110, 022618 (2024), [arXiv:2404.19554v2](https://arxiv.org/abs/2404.19554v2).

@@ -1,0 +1,271 @@
+# Global KMS–Liouville representation of a finite-temperature scalar response
+
+**Disposition:** exact finite-dimensional identity established; legally computable from an explicit finite matrix Hamiltonian by a dense classical method; no cheaper many-body response algorithm or novelty claim established. The representation preserves the full inverse-temperature dependence without sparse auxiliary-time anchors. Its Kubo–Mori, modular, and resolvent ingredients are standard linear-response objects. The useful result here is the self-contained identity, explicit acquisition routes, cost accounting, and exact scope counterexample.
+
+## 1. Contract and conventions
+
+Input is a supplied Hermitian matrix \(H\in\mathbb C^{D\times D}\), a supplied Hermitian observable \(A\), inverse temperature \(\beta>0\), and broadening \(\eta>0\). Write
+
+\[
+  \rho_\beta=\frac{e^{-\beta H}}{Z},\qquad
+  Z=\operatorname{Tr}(e^{-\beta H}),\qquad
+  \mathcal L(X)=[H,X].
+\]
+
+The target is the regular imaginary-frequency susceptibility
+
+\[
+ \chi_{\beta,A}(i\eta)
+ =\sum_{E_m>E_n}(p_n-p_m)
+     \frac{2(E_m-E_n)}{(E_m-E_n)^2+\eta^2}|A_{nm}|^2,
+ \qquad p_n=\frac{e^{-\beta E_n}}Z.
+\]
+
+This is an observable-specific scalar. It is not by itself a DC conductivity; conserved, diamagnetic, elastic, and order-of-limits terms require their own definitions. The claim below is finite-dimensional. For an infinite-dimensional or unbounded model, trace convergence and operator-domain assumptions need a separate proof.
+
+## 2. Exact global KMS identity
+
+Define the Kubo–Mori inner product
+
+\[
+ (X,Y)_{\beta,K}
+ :=\int_0^1\operatorname{Tr}
+       (\rho_\beta^{1-s}X^\dagger\rho_\beta^sY)\,ds,
+\]
+
+and the bounded even Liouvillian filter
+
+\[
+ g_\eta(\mathcal L)
+ :=\frac{\mathcal L^2}{\mathcal L^2+\eta^2 I}.
+\]
+
+For every finite-dimensional \(H=H^\dagger\), \(A=A^\dagger\), \(\beta>0\), and \(\eta>0\),
+
+\[
+\boxed{\quad \chi_{\beta,A}(i\eta)
+       =\beta\,(A,g_\eta(\mathcal L)A)_{\beta,K}
+       =\beta\,\|g_\eta(\mathcal L)^{1/2}A\|_{\beta,K}^{2}.\quad}
+\]
+
+Thus the response is a positive quadratic form, not merely a signed transition sum. The full \(\beta\) appears in \(\rho_\beta\) and in the Kubo–Mori divided difference at every transition. No sparse set of auxiliary-time anchors occurs.
+
+### Proof
+
+Choose an energy eigenbasis, with multiplicities retained, and put \(\Delta_{mn}=E_m-E_n\). On the matrix unit \(|m\rangle\langle n|\),
+
+\[
+ \mathcal L(|m\rangle\langle n|)=\Delta_{mn}|m\rangle\langle n|.
+\]
+
+The Kubo–Mori map \(\Omega_\rho(Y)=\int_0^1\rho^{1-s}Y\rho^s ds\) has eigenvalue
+
+\[
+ \Omega_\rho(|m\rangle\langle n|)
+ =\frac{p_m-p_n}{\log p_m-\log p_n}|m\rangle\langle n|
+ =\frac{p_n-p_m}{\beta\Delta_{mn}}|m\rangle\langle n|
+\]
+
+when \(\Delta_{mn}\ne0\), and the continuous value \(p_n\) when \(\Delta_{mn}=0\). Since \(g_\eta(\Delta)=\Delta^2/(\Delta^2+\eta^2)\) is even, each unordered pair \(E_m>E_n\) contributes
+
+\[
+ \beta\,2\,\frac{p_n-p_m}{\beta\Delta_{mn}}
+       \frac{\Delta_{mn}^2}{\Delta_{mn}^2+\eta^2}|A_{nm}|^2
+ = (p_n-p_m)\frac{2\Delta_{mn}}{\Delta_{mn}^2+\eta^2}|A_{nm}|^2.
+\]
+
+Summing the pairs proves the identity. Positivity follows because \(\Omega_\rho\) and \(g_\eta(\mathcal L)\) are positive semidefinite and commute: \(\rho\) is a function of \(H\), so left/right multiplication by \(\rho\) commutes with \(\mathcal L\). This also proves the squared-norm form.
+
+As an explicit positive field lift in Hilbert–Schmidt space,
+
+\[
+ \chi_{\beta,A}(i\eta)
+   =\beta\left\|\Omega_\rho^{1/2}
+                   g_\eta(\mathcal L)^{1/2}A\right\|_{HS}^{2}.
+\]
+
+The lifted vector is constructed from \(H,A,\beta\) through \(\rho\) and the modular divided difference; neither the vector nor its norm is an input oracle.
+
+The modular operator \(\Delta_\rho=L_\rho R_\rho^{-1}\) satisfies
+
+\[
+ \Delta_\rho=e^{-\beta\mathcal L},\qquad
+ \Omega_\rho=R_\rho\,\varphi(\Delta_\rho),\qquad
+ \varphi(x)=\frac{x-1}{\log x},\quad \varphi(1)=1.
+\]
+
+Here \(L_\rho(X)=\rho X\), \(R_\rho(X)=X\rho\), and the value at one is the continuous divided-difference limit. This expression has no inverse energy gap or singularity at degeneracy. It makes the global KMS gluing explicit: \(p_m/p_n=e^{-\beta\Delta_{mn}}\) for every pair, rather than at selected time slices.
+
+The same scalar has the doubled-Liouvillian resolvent form
+
+\[
+\boxed{\quad
+ \chi_{\beta,A}(i\eta)
+ =2\operatorname{Tr}\!\left[\rho_\beta A\,
+       \frac{\mathcal L}{\mathcal L^2+\eta^2 I}(A)\right]
+ =2\operatorname{Tr}[\rho_\beta A Y_\eta],\quad
+ Y_\eta=(\mathcal L^2+\eta^2I)^{-1}\mathcal L(A).
+ \quad}
+\]
+
+With row-major vectorization, \(\mathcal L=H\otimes I-I\otimes H^T\). Equivalently,
+
+\[
+ \frac{\mathcal L}{\mathcal L^2+\eta^2I}
+ =\tfrac12\big((\mathcal L-i\eta I)^{-1}
+                 +(\mathcal L+i\eta I)^{-1}\big).
+\]
+
+These are identities, not supplied inverse oracles. Section 4 gives actual construction and conditioning costs.
+
+## 3. Exact finite-dimensional cases and a zero-mode counterexample
+
+### Two-level transition
+
+Let \(H=\operatorname{diag}(0,1)\), \(\beta=\log3\), and \(A=|0\rangle\langle1|+|1\rangle\langle0|\). Then \(p_0=3/4\), \(p_1=1/4\), and the only nonzero transition has gap one. Therefore
+
+\[
+ \chi_{\beta,A}(i\eta)=\frac{1}{1+\eta^2}.
+\]
+
+At \(\eta=1\), the exact answer is \(1/2\). The Kubo–Mori norm is \((A,A)_{\beta,K}=1/\log3\), while \(g_1(1)=1/2\), so \(\beta(A,g_1A)_{\beta,K}=1/2\) exactly. The resolvent route has \(Y_1=\mathcal L(A)/2\) and gives \(2\operatorname{Tr}(\rho A Y_1)=1/2\). This case checks all three representations with nontrivial finite temperature.
+
+### Commuting observable: dynamic regular response is not the isothermal derivative
+
+With the same \(H\) and \(\beta\), instead take \(A=\operatorname{diag}(1,-1)\). Since \([H,A]=0\), the regular dynamic susceptibility above is zero for every \(\eta>0\). But the equilibrium derivative for \(H_h=H-hA\) is
+
+\[
+ \left.\frac{d}{dh}\operatorname{Tr}(\rho_{\beta,h}A)\right|_{h=0}
+ =\beta\operatorname{Var}_{\rho_\beta}(A)
+ =\frac34\log3>0.
+\]
+
+The difference is the zero-frequency sector. In general \(\eta\downarrow0\) in the regular retarded response gives the Kubo–Mori norm after projecting off \(\ker\mathcal L\); the isothermal derivative retains the centered \(\ker\mathcal L\) component. Degenerate energy blocks also lie in \(\ker\mathcal L\). Any application that calls both quantities “static susceptibility” must state which order of limits and which conserved terms it uses. The thermal oscillator in the intake report avoids this example because parity removes its diagonal matrix elements; that special case does not remove the general distinction.
+
+## 4. Legal acquisition from explicit \(H,A,\beta\)
+
+No transition measure is an input. A deterministic finite-matrix implementation is:
+
+1. Read the supplied \(D\times D\) entries of \(H\) and \(A\), verify Hermiticity to the declared input precision, and record \(\beta,\eta\) and coefficient bit lengths.
+2. Compute a certified eigendecomposition \(H=U\operatorname{diag}(E_n)U^\dagger\). Shift by \(E_{\min}\) when forming thermal weights: \(q_n=e^{-\beta(E_n-E_{\min})}\in(0,1]\), \(Z_s=\sum_nq_n\), \(p_n=q_n/Z_s\). This evaluates the partition function and thermal probabilities; neither is supplied as an oracle.
+3. Form \(A_E=U^\dagger A U\), and sum the \(D(D-1)/2\) unordered-pair terms. Exact degeneracies are grouped or enclosed as spectral projectors; the answer is basis invariant within a degenerate block.
+4. Use outward interval arithmetic until the final interval has the requested width. The susceptibility kernel is bounded by \(1/\eta\), and its derivative on \([0,\infty)\) is bounded by \(2/\eta^2\), so low-frequency precision is explicitly controlled.
+
+For a dense matrix input, the straightforward cost is \(O(D^3)\) arithmetic for the eigendecomposition, \(O(D^3)\) for transforming \(A\), \(O(D^2)\) pair evaluations, and \(O(D^2)\) memory. The formula itself does not give a better scaling. If the physical input is an \(n\)-qubit local-term description with \(D=2^n\), this dense route takes \(O(8^n)\) arithmetic and \(O(4^n)\) memory, up to precision factors. Constructing or validating the physical Hamiltonian and observable is additional acquisition cost if they were not supplied.
+
+An alternative implementation solves
+
+\[
+ (\mathcal L^2+\eta^2I)Y=\mathcal L(A)
+\]
+
+on the \(D^2\)-dimensional operator space. If \(W=E_{\max}-E_{\min}\), its condition number is exactly bounded by
+
+\[
+ \kappa=1+(W/\eta)^2.
+\]
+
+Conjugate gradients therefore needs \(O(\sqrt\kappa\log(1/\tau))\) matrix-vector iterations for relative residual \(\tau\), under the standard Hermitian positive-definite arithmetic model. One matrix-vector multiply by \(\mathcal L^2+\eta^2I\) uses two commutator applications. For dense \(H\), each commutator on a \(D\times D\) matrix costs \(O(D^3)\), yielding \(O(D^3(1+W/\eta)\log(1/\tau))\) arithmetic plus the thermal trace. For \(\operatorname{nnz}(H)=S\), a commutator costs \(O(SD)\). The Gibbs density or exact thermal sampling still has to be acquired separately; the resolvent does not compute \(Z\) for free.
+
+If an approximate solve has Frobenius residual \(\|r\|_F\le\delta_L\), then \(\|Y-\widetilde Y\|_F\le\delta_L/\eta^2\) and
+
+\[
+ |\chi-\widetilde\chi|\le 2\|\rho A\|_F\|Y-\widetilde Y\|_F
+ \le \frac{2\|A\|\,\delta_L}{\eta^2}.
+\]
+
+Thus an absolute response allocation \(\epsilon_L\) requires \(\delta_L\le\epsilon_L\eta^2/(2\|A\|)\). The \(\eta^{-2}\) precision penalty is real and not hidden by the positive norm identity.
+
+For explicit input-precision budgets, let \(a=\|A\|\), \(W=E_{\max}-E_{\min}\), \(\delta_p=\|\tilde p-p\|_1\), \(\delta_\Delta\) be the largest certified gap error, and \(\delta_A=\|\tilde A_E-A_E\|_F\). For the observable perturbation, write \(\widetilde A_E=A_E+E\). Each pair coefficient is at most \(p_n/\eta\) for \(E_m>E_n\); weighted Cauchy–Schwarz bounds the cross term by \(2a\|E\|_F/\eta\), and the quadratic error by \(\|E\|_F^2/\eta\). This avoids assuming entrywise error or a gap between eigenvalues. Direct pairwise bounds give
+
+\[
+ \epsilon_p\le a^2\delta_p/\eta,\qquad
+ \epsilon_\Delta\le 2a^2\delta_\Delta/\eta^2,\qquad
+ \epsilon_A\le(2a\delta_A+\delta_A^2)/\eta.
+\]
+
+For uncertainty \(|\tilde\beta-\beta|\le\delta_\beta\) at fixed \(H,A\), \(\|dp/d\beta\|_1\le W\), hence \(\epsilon_\beta\le a^2W\delta_\beta/\eta\). These are separate budget terms; allocate their sum, plus solver and interval-arithmetic errors, below the target \(\epsilon\). An eigenvector-based numerical route must also certify the transformed observable or group degenerate spectral projectors; a small eigenvalue residual alone does not do that. No minimum-gap assumption is needed for the mathematical identity, but an implementation must pay the conditioning of its chosen eigensolver or enclose whole clusters.
+
+For an operational precision budget, assign \(\epsilon=\epsilon_p+\epsilon_\Delta+\epsilon_A+\epsilon_\beta+\epsilon_L+\epsilon_{\rm round}\). Sufficient tolerances are
+
+\[
+ \delta_p\le\frac{\eta\epsilon_p}{a^2},\quad
+ \delta_\Delta\le\frac{\eta^2\epsilon_\Delta}{2a^2},\quad
+ \delta_\beta\le\frac{\eta\epsilon_\beta}{a^2W},\quad
+ \delta_A\le\min\!\left(\frac{\eta\epsilon_A}{4a},\sqrt{\frac{\eta\epsilon_A}{2}}\right),\quad
+ \delta_L\le\frac{\eta^2\epsilon_L}{2a}.
+\]
+
+Each requested dyadic tolerance needs at least \(\lceil\log_2(1/\delta)\rceil\) fractional bits, plus outward-rounding guard bits. These are explicit output-precision requirements; runtime in bit operations additionally depends on the input encoding, certified eigensolver/cluster routine, and arbitrary-precision arithmetic. If \(a=0\) or \(W=0\), the target is identically zero and these divisions are unnecessary.
+
+### A legal sampling route, with the missing operations charged
+
+After an exact energy basis is obtained, sample \(n\sim p\), let \(s_n=\sum_m|A_{mn}|^2\), and sample \(m\) with probability \(|A_{mn}|^2/s_n\); if \(s_n=0\), assign response sample zero for that \(n\). The random value
+
+\[
+ Y_{nm}=2s_n\frac{E_m-E_n}{(E_m-E_n)^2+\eta^2}
+\]
+
+has expectation \(\chi\) and lies in \([-a^2/\eta,a^2/\eta]\). Thus exact independent samples need
+
+\[
+ N\ge \frac{2a^4}{\eta^2\epsilon^2}\log\frac{2}{\delta}
+\]
+
+for an additive-\(\epsilon\) estimate with failure probability at most \(\delta\). If energy differences are estimated to error \(\delta_\Delta\), the kernel derivative bound \(\sup_{x\ge0}|(2x/(x^2+\eta^2))'|\le2/\eta^2\) gives per-sample bias at most \(2a^2\delta_\Delta/\eta^2\). Choose \(\delta_\Delta\le\epsilon\eta^2/(4a^2)\) if half the error budget is assigned to that bias, and use \(N\ge8a^4(\eta^2\epsilon^2)^{-1}\log(2/\delta)\) for the remaining half-error sampling bound.
+
+This operation is legal from explicit finite \(H,A,\beta\) once the eigenbasis, Gibbs draw, \(A\)-conditioned transition draw, and energy resolution are actually implemented. Its per-sample cost is
+
+\[
+ C_{\rm Gibbs}(H,\beta,\delta_{\rm prep})
+ +C_A(\delta_{\rm op})+C_H(\delta_\Delta),
+\]
+
+plus reset and classical bookkeeping. Diagonalizing \(H\) makes the draw explicit but already costs \(O(D^3)\); state and transition preparation are not free. For a block-encoded quantum implementation, a concrete Gibbs-purification route applies \(e^{-\beta(H-E_L)/2}\) to one half of \(D^{-1/2}\sum_j|j,j\rangle\), with a certified lower bound \(E_L\le E_{\min}\). Its success probability is
+
+\[
+ p_{\rm prep}=\frac{e^{\beta E_L}Z}{D}.
+\]
+
+Amplitude amplification costs \(O(p_{\rm prep}^{-1/2})\) filter attempts, in addition to the controlled Hamiltonian simulation/filter-synthesis and reflection costs. With \(E_L=E_{\min}\), \(p_{\rm prep}=Z/(D e^{-\beta E_{\min}})\), which can be exponentially small: for a \(D=2^n\) Hamiltonian with one ground state and a large common excited-state gap at low temperature, \(Z e^{\beta E_{\min}}\approx1\) and \(p_{\rm prep}\approx2^{-n}\). A looser lower bound worsens it. A physical sampler instead pays equilibration and mixing. Neither branch has a universal efficient bound from the explicit-matrix promise alone.
+
+For a scalar decision against threshold \(q\), form the confidence interval for \(\chi\): decide above or below only if the interval excludes \(q\); otherwise return unresolved. The representation gives no promise of a margin from \(q\), so decision complexity can be arbitrarily large near a boundary.
+
+## 5. Matched comparison and significance
+
+The operation does not establish an advantage over the current methods.
+
+| Method | Information actually supplied | Scalar-response route | Resource or scope that remains |
+|---|---|---|---|
+| Kubo–Mori–Liouville identity here | Explicit \(H,A,\beta\) | Exact positive quadratic form or doubled resolvent | Gibbs weights / preparation and the \(\eta\)-conditioned solve still cost; dense finite algorithm is exponential in qubit count |
+| [Mutzel–Tilloy, arXiv:2606.09791v1](https://arxiv.org/abs/2606.09791) | Finite-temperature Euclidean correlator samples, covariance/error model, reflection positivity | Direct rigorous upper/lower bounds on a chosen linear spectral functional via a finite SDP hierarchy | Target kernel must have certified envelopes; Monte Carlo acquisition and covariance estimation are charged |
+| [Tupitsyn et al., arXiv:2102.11418v2](https://arxiv.org/abs/2102.11418) | Finite-temperature field-theory propagators/interactions and a convergent diagrammatic expansion | Direct real-frequency response by analytic internal Matsubara summation and sampling remaining variables | Model-specific expansion and sampling costs; not a generic finite-matrix solver |
+| [Jeckelmann, arXiv:cond-mat/0203500v1](https://arxiv.org/abs/cond-mat/0203500) | Ground state and one operator in a low-dimensional lattice model | Correction-vector / dynamical DMRG solves shifted Hamiltonian equations for broadened response | Bond dimension, truncation, broadening \(\eta\), and finite-size extrapolation; cited formulation is zero-temperature |
+| [Pawlowski–Rothkopf, arXiv:1710.02672v1](https://arxiv.org/abs/1710.02672) | Compact Euclidean thermal initial condition plus real-time contour fields | Improved imaginary-frequency sampling with the full thermal contour | Different field-theory path-integral model; no matched finite-matrix cost or implementation replay here |
+| Direct real-time Kubo integral | Thermal state plus controlled real-time evolution | \(\chi=2\int_0^\infty e^{-\eta t}\operatorname{Tr}(\rho A\sin(t\mathcal L)A)dt\) | Truncating at time \(T\) has absolute tail \(\le2a^2e^{-\eta T}/\eta\); time evolution and thermal preparation remain charged |
+
+The scalar target is already a linear spectral functional: \(G_\eta(\Delta)=2\Delta/(\Delta^2+\eta^2)\). The Euclidean-certificate method is expressly designed to bound such functionals from positive-spectral Euclidean data, without reconstructing one preferred spectrum. On **the same Euclidean data**, our identity cannot be evaluated unless the explicit Hamiltonian or an equivalent thermal Liouvillian is additionally supplied. On **the same explicit finite matrix input**, diagonalization and the pair sum are a direct exact baseline; a D²-dimensional solve does not reduce its worst-case acquisition cost. These are different information models, so no apples-to-apples runtime claim follows.
+
+The real-time integral and resolvent are exact Laplace-transform equivalents. Since \(\|\sin(t\mathcal L)A\|\le a\) in operator norm, truncating the integral at \(T\) leaves at most \(2a^2e^{-\eta T}/\eta\), so \(T\ge\eta^{-1}\max(0,\log(2a^2/(\eta\epsilon)))\) controls this tail. The resolvent replaces a time horizon of this order with conditioning of order \(W/\eta\); it does not remove low-frequency difficulty. The source report's finite-anchor theorem remains a scoped negative result for its specified anchored Langevin update. This KMS representation is an alternative *mathematical interface*, not a repair or performance result for that implementation.
+
+### Historical comparison and capital interfaces
+
+Kubo's fluctuation–dissipation framework predates this work by decades ([Kubo, J. Phys. Soc. Jpn. 12, 570–586 (1957)](https://doi.org/10.1143/JPSJ.12.570)). The Kubo–Mori inner product, its logarithmic divided difference, the spectral Kubo formula, and shifted resolvents are established machinery; no historical priority is claimed. The recent target-specific comparator by Mutzel and Tilloy is especially close because it bounds the requested scalar functional directly. The direct-frequency DiagMC method of Tupitsyn et al., correction-vector family, and full-thermal-contour method of Pawlowski–Rothkopf are also established competitors in their own regimes. This artifact reconstructs no new theorem of physical capability.
+
+Capital checks found only conditional or mismatched interfaces:
+
+* **N765 / N764:** source scope is an infinite-temperature product trace with a dephasing Liouvillian and an interacting transport-design output. Our input is a finite-\(\beta\) Hamiltonian Gibbs state and a scalar response of \(\operatorname{ad}_H\). N765's corrected-output derivative bounds and global design certificate do not supply a finite-temperature Gibbs state, a KMS weight, or a comparable acquisition theorem. Its independent-review and capability gates remain open.
+* **N711:** its source-reported candidate lower-bounds a static KMS covariance on a bounded-incidence Pauli coefficient space. Our exact identity contains the additional filter \(g_\eta(\mathcal L)\), which suppresses the kernel and low-frequency directions. The commuting example above is already a one-qubit Pauli case: \(H=(I-Z)/2\), \(A=Z\), \(\beta=\log3\). Its centered KMS variance is \(3/4\), while the regular dynamical susceptibility is zero. Hence an N711-style covariance floor cannot transfer to dynamic response without an added spectral-weight-away-from-zero premise. N711 remains source-derived and unreviewed; none of its proof is imported here.
+* **N661 / N676 / N149:** the SLD records concern channel-order certificates or reconstruction/Fisher-score interfaces, not thermal Liouvillian response. The shared word “SLD” supplies no bridge.
+* **N152:** the curated record is a strict-attraction XXZ finite-chain / collective Kubo archive with conditional canonical-Gibbs preparation. Its listed interface is not a general finite-temperature dynamical-susceptibility solver.
+* **N742:** the source-reported local thermal-update result explicitly charges reference Gibbs copies, filter success and rare-overlap cost. Its patch interface is not this full-H problem, but it reinforces that reference preparation cannot be hidden in a “Gibbs purification” input.
+
+The only direct reusable mathematical overlap is the Kubo–Mori positive form with N711's static metric vocabulary. The dynamic filter creates a decisive missing premise, so this is a candidate conceptual connection and a refuted unqualified transfer, not a proven capital bridge.
+
+## 6. Final scope and exact open obstruction
+
+Established here: the finite-dimensional KMS identity, its positive field lift and doubled-resolvent form, a legal dense acquisition algorithm from explicit \(H,A,\beta\), its \(D\), \(\eta\), precision and state-preparation costs, and exact two-level checks including the conserved-sector counterexample.
+
+Not established: any polynomial-in-qubit-count algorithm for general local \(H\); a fast Gibbs preparation or sampler; a dimension-independent Liouvillian solve; advantage over Euclidean spectral-functional certificates, correction-vector, or direct-frequency methods; an improvement to the sparse-anchor construction; general infinite-dimensional validity; or novelty/physical validation.
+
+The decisive remaining theorem/algorithm would need an acquired structural class where (i) the Gibbs state or Kubo–Mori action is prepared/evaluated at stated cost, (ii) the KMS-filtered response vector admits a certified low-complexity representation, (iii) the \(\eta\)-dependent solve or measurement achieves the requested error, including near-zero modes, and (iv) total cost beats a same-information scalar-functional baseline. No such class was established in this worker result. Status remains **NOT_ACHIEVED** for computational superiority.

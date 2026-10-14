@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FK evidence — search_moving.py</title><body><p>FK source/internal evidence, externally unreviewed. <a href="../../updates/FK/package/moving/exploration/search_moving.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exploratory compatible Fourier search, not a proof.
+The physical periodic cell is allowed to deform by a constant invertible input map.
+All reported gaps are directly reevaluated at the saved affine background.
+&quot;&quot;&quot;
+import json, math, time
+from pathlib import Path
+import numpy as np
+import sympy as sp
+import torch
+
+torch.set_num_threads(1)
+torch.set_default_dtype(torch.float64)
+root=Path(__file__).resolve().parent
+xx=sp.symbols(&#x27;a b c d&#x27;,real=True);a,b,c,d=xx
+u=a*a+c*c;v=b*b+d*d;q=a*d-b*c
+F=3*(u+v-2*q)**2+sp.Rational(35,24)*u*u+q*q-sp.Rational(5,2)*q*u
+T=np.zeros((4,4,4,4))
+for idx in np.ndindex(T.shape):
+ T[idx]=float(sp.diff(F,*[xx[j] for j in idx])/24)
+T=torch.tensor(T)
+K=3;n=4*K+1
+ks=np.array([(p,r) for p in range(-K,K+1) for r in range(-K,K+1) if (p&gt;0 or (p==0 and r&gt;0))],float)
+grid=np.array([(x,y) for x in range(n) for y in range(n)],float)*2*math.pi/n
+phase=grid@ks.T
+basis=np.empty((n*n,2*len(ks),2))
+basis[:,0::2,:]=-np.sin(phase)[:,:,None]*ks[None,:,:]
+basis[:,1::2,:]=np.cos(phase)[:,:,None]*ks[None,:,:]
+basis=torch.tensor(basis)
+
+def calc(coef,geom):
+ X0=torch.einsum(&#x27;mo,nmi-&gt;noi&#x27;,coef,basis)
+ al=4*torch.tanh(geom[0]/4); sh=3*torch.tanh(geom[1]/3)
+ S=torch.stack([torch.stack([torch.exp(al),sh]),torch.stack([al*0,torch.exp(-al)])])
+ X=X0@S
+ vv=X.reshape(-1,4)
+ m4=torch.mean(torch.sum(vv*vv,dim=1)**2)
+ vv=vv/m4.pow(.25)
+ aa,bb,cc,dd=vv.unbind(1)
+ uu=aa*aa+cc*cc;ww=bb*bb+dd*dd;qq=aa*dd-bb*cc
+ cval=(3*(uu+ww-2*qq)**2+(35/24)*uu*uu+qq*qq-2.5*qq*uu).mean()
+ C2=vv.T@vv/len(vv)
+ C3=torch.einsum(&#x27;ni,nj,nk-&gt;ijk&#x27;,vv,vv,vv)/len(vv)
+ H=12*torch.einsum(&#x27;ijkl,kl-&gt;ij&#x27;,T,C2)
+ bvec=4*torch.einsum(&#x27;ijkl,jkl-&gt;i&#x27;,T,C3)
+ B=-torch.linalg.solve(H+1e-9*torch.eye(4),bvec)
+ gap=cval+torch.dot(bvec,B)+.5*torch.dot(B,H@B)
+ return gap, H, B, S, m4
+
+records=[];bestall=None
+for seed in [17,29,43,71,103,137]:
+ torch.manual_seed(seed)
+ coef=torch.nn.Parameter(.2*torch.randn(len(ks)*2,2))
+ initial_a=0.0 if seed in [17,29] else (-2.5 if seed in [43,71] else 2.5)
+ geom=torch.nn.Parameter(torch.tensor([initial_a,0.0]))
+ opt=torch.optim.Adam([coef,geom],lr=.025)
+ best=float(&#x27;inf&#x27;); snap=None
+ for step in range(600):
+  opt.zero_grad();gap,H,B,S,m4=calc(coef,geom)
+  if not torch.isfinite(gap):break
+  vgap=float(gap.detach())
+  if vgap&lt;best:
+   best=vgap
+   snap={&#x27;seed&#x27;:seed,&#x27;step&#x27;:step,&#x27;gap&#x27;:best,&#x27;coefficients&#x27;:coef.detach().numpy().tolist(),&#x27;geometry_parameters&#x27;:geom.detach().numpy().tolist(),&#x27;input_transform&#x27;:S.detach().numpy().tolist(),&#x27;affine_background&#x27;:B.detach().numpy().tolist(),&#x27;hessian_eigenvalues&#x27;:torch.linalg.eigvalsh(H.detach()).numpy().tolist(),&#x27;unnormalized_fourth_moment&#x27;:float(m4.detach())}
+  gap.backward();torch.nn.utils.clip_grad_norm_([coef,geom],100);opt.step()
+ with torch.no_grad():
+  savedcoef=torch.tensor(snap[&#x27;coefficients&#x27;]);savedgeom=torch.tensor(snap[&#x27;geometry_parameters&#x27;])
+  reevaluated,*_=calc(savedcoef,savedgeom)
+  snap[&#x27;reevaluated_gap&#x27;]=float(reevaluated)
+ records.append({key:snap[key] for key in [&#x27;seed&#x27;,&#x27;step&#x27;,&#x27;gap&#x27;,&#x27;reevaluated_gap&#x27;,&#x27;hessian_eigenvalues&#x27;,&#x27;input_transform&#x27;]})
+ print(json.dumps(records[-1]),flush=True)
+ if bestall is None or best&lt;bestall[&#x27;gap&#x27;]:bestall=snap
+(root/&#x27;moving_search.json&#x27;).write_text(json.dumps({&#x27;cutoff&#x27;:K,&#x27;grid&#x27;:n,&#x27;steps_per_start&#x27;:600,&#x27;starts&#x27;:records,&#x27;best&#x27;:bestall,&#x27;frequencies&#x27;:ks.tolist(),&#x27;status&#x27;:&#x27;FLOATING LOCAL SEARCH ONLY; NOT A LOWER BOUND OR QUASICONVEXITY CERTIFICATE&#x27;},indent=2)+&#x27;\n&#x27;)
+</pre></body></html>

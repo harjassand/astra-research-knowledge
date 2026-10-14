@@ -1,0 +1,16 @@
+# Independent check corrections
+
+The first run of `check_transition_protocol.py` failed, because that test
+harness (not the derivation in `REPORT.md`) made two convention mistakes:
+
+1. It evaluated \([A,[A,H]]\) instead of the target \([A,[H,A]]\), reversing
+   the sign of the f-sum expectation.
+2. It used the upward-only statistic, which has twice the upward value of the
+   signed statistic, for the positive-gap branch of the signed-statistic check.
+
+The harness was corrected to use \([A,[H,A]]\) and the signed branch
+\(a^2d(1-e^{-\beta d})/(d^2+\eta^2)\). Its rejection-law comparison was also
+made pairwise (not against all pairs sharing an energy gap). The later matched
+baseline check separately tests the bounded odd kernel and confirms the fold's
+second moment is no larger on this instance. The corrected script then passed all assertions; its deterministic output is
+`CHECK_RESULTS.txt`. These corrections concern only the independent test code.

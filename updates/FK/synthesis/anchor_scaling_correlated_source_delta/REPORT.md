@@ -1,0 +1,126 @@
+# Correlated Gaussian source: exact first-order repair, charged scope
+
+**Disposition: exact first-order construction; no all-coupling thermal repair.** The proposed source (Y=sX^0), where (X^0) is the reference Gaussian OU path and the gain is independent of λ, does repair the finite-temperature quartic tadpole at λ=0. The calculation is exact Wick contraction plus a Lyapunov equation. It does so by deliberately correlating the source with the reference path and calibrating its third cross-moment to the missing thermal contraction. It is not a genuine compact thermal path, and the resulting full-mask dynamics are linear in (X) with an external source fixed from (X^0); their covariance is exactly quadratic in λ. The target quartic law is not quadratic in λ.
+
+This is a constructive first-order control/insertion, not a response solver. The tests below do not establish finite-coupling correctness, quantum thermal path preparation, reduced cost, or a new source of the required coefficient.
+
+## 1. First-order identity
+
+At λ=0 let (X^0) be the centered stationary Gaussian OU field with drift matrix (K=K^T>0), covariance (C=K^{-1}), and constant diagonal (C_{ii}=c_0). For a fixed diagonal anchor mask (P), (Q=I-P), consider
+
+\[
+dX=-\bigl[KX+\tfrac{\lambda}{6}(QX^3+PY^3)\bigr]dt+\sqrt2\,dW,
+\qquad Y=sX^0,
+\]
+
+where (X^0) and (X) use the same Brownian path, and (Y) is held fixed as a functional of the λ=0 reference path for all λ. Componentwise powers are meant. The zero-coupling covariance is (C). Gaussian Wick's identity gives, for every (i,j),
+
+\[
+R_{ij}:=\mathbb E[Y_i^3X_j^0]
+=s^3\mathbb E[(X_i^0)^3X_j^0]
+=3s^3c_0C_{ij}.
+\]
+
+Differentiating the stationary covariance equation at (0^+) yields
+
+\[
+KC_1+C_1K=-\frac{c_0}{2}(QC+CQ)-\frac16(PR+R^TP).
+\]
+
+For a normalized plane wave (v_q) with (Kv_q=k_qv_q), set (f_q=v_q^*Pv_q). Since (C v_q=k_q^{-1}v_q),
+
+\[
+v_q^*C_1v_q=-\frac{c_0(1-f_q+s^3f_q)}{2k_q^2}.
+\]
+
+On a homogeneous lattice, every plane wave has constant coordinate magnitude, so (f_q=f=|A|/|\mathcal I|) for any diagonal mask. A single gain matches the desired thermal tadpole coefficient (-c_\beta/(2k_q^2)) simultaneously for all plane-wave diagonals exactly when
+
+\[
+\boxed{s^3=\frac{c_\beta/c_0-(1-f)}{f}},\qquad f>0.
+\]
+
+For (P=I), (f=1), and (s^3=c_\beta/c_0). In that case (R=3c_\beta C) and the complete matrix Lyapunov equation—not only its Fourier diagonal—has the solution
+
+\[
+\boxed{C_1=-\frac{c_\beta}{2}C^2=-\frac{c_\beta}{2}K^{-2}.}
+\]
+
+This is a valid constructive repair of the specified first-order coefficient. It is not an approximation to the missing derivative: it matches it exactly under the stated Gaussian sharing and gain assumptions.
+
+## 2. Exact finite Gaussian checks
+
+`correlated_source_checks.py` builds a three-site periodic Gaussian lattice with rational (K,C,c_0,c_\beta), solves the (9\times9) Lyapunov system over exact fractions, and checks both the full-mask matrix identity and the partial-mask Fourier diagonals. For the partial-mask check it uses one of three sites as anchors, (f=1/3), and (c_\beta/c_0=2), hence (s^3=4). The exact matrix solve verifies every plane-wave diagonal against (-c_\beta/(2k_q^2)). It separately evaluates the Wick cross-moment formula. The output is a finite algebra check, not an independent theorem review.
+
+## 3. Why the construction is charged and what it supplies
+
+The source path is not an independently sampled compact thermal path at period β. It is a scaled copy of the reference zero-coupling OU trajectory on the auxiliary domain. It inherits that path's temporal covariance, mode structure, and shared driving noise; multiplying by (s) changes amplitude but does not impose the thermal circle or its Matsubara correlations. The construction therefore replaces source independence with deliberate global coupling to (X^0).
+
+The gain uses (c_\beta/c_0), the very finite-temperature contraction absent from the independent-source update. If (c_\beta) is supplied from a thermal computation, that acquisition and its error must be charged. If it is estimated from a compact thermal source, that sampler's preparation, mixing, finite-size, and uncertainty costs remain. The gain is a calibrated insertion/control variate: it writes the known one-loop tadpole into the correlated drift response. It provides no procedure for obtaining (c_\beta) from (H,\beta) without paying the corresponding thermal-information cost. In the full-mask variant, producing and retaining the reference OU path on an (N\times M) lattice costs (O(NM)) coordinate values per trajectory under a direct representation; an exact correlated source is not an independently supplied compact path. Any faster Gaussian sampler still needs its own setup, precision, and covariance costs accounted for. No end-to-end equal-accuracy comparison is made.
+
+For partial masks write (r_\beta=c_\beta/c_0>1). Then
+
+\[
+s^3=1+\frac{r_\beta-1}{f},\qquad
+s\asymp f^{-1/3},\quad \mathbb E[Y_i^2]=s^2c_0\asymp f^{-2/3},\quad
+\mathbb E[Y_i^6]=15s^6c_0^3\asymp f^{-2} \quad (f\downarrow0).
+\]
+
+At λ=0, (X=X^0), so the anchor discrepancy entering the comparison is exactly
+
+\[
+\left\|\frac{\lambda}{6}(Y_i^3-(X_i^0)^3)\right\|_2
+=\frac{\lambda\sqrt{15}}6|s^3-1|c_0^{3/2}.
+\]
+
+It grows as (f^{-1}) when the mask is thinned. Thus the first-order calibration is not a free sparse-mask gain: source amplitude, sixth moment, forcing norm, and source/target correlation all diverge as (f\to0). The linear-algebraic work for a complete run, path storage, cross-moment estimation, mixing, and verification also remain. No matched speedup follows.
+
+## 4. Exact all-orders limitation
+
+For full mask (P=I), the λ-dependent SDE conditioned on the reference path is linear in (X):
+
+\[
+dX_\lambda=-KX_\lambda dt-\frac{\lambda}{6}(sX^0)^3dt+\sqrt2\,dW.
+\]
+
+Its stationary pullback solution is pathwise affine,
+
+\[
+X_\lambda=X^0+\lambda U,\qquad
+U_t=-\frac{s^3}{6}\int_0^\infty e^{-K\tau}(X^0_{t-\tau})^3\,d\tau.
+\]
+
+Consequently its covariance is exactly
+
+\[
+\mathbb E[X_\lambda X_\lambda^T]
+=C+\lambda\,\mathbb E[X^0U^T+UX^{0T}]+\lambda^2\mathbb E[UU^T];
+\]
+
+every Taylor coefficient of order three or higher is zero. This alone rules out generic all-coupling equivalence to a quartic target.
+
+An explicit scalar check makes the gap visible already at second order when no thermal rescaling is needed. Take (k>0), (c=1/k), (s=1). In the full-mask engineered OU process, the Gaussian OU covariance (c e^{-k|t-u|}) gives
+
+\[
+\mathbb E[X_\lambda^2]
+=c-\frac{c^3}{2}\lambda+\frac{c^5}{6}\lambda^2
+\quad\text{(exactly; higher coefficients vanish).}
+\]
+
+By contrast, the genuine scalar quartic Langevin target
+
+\[
+d\widetilde X=-\left(k\widetilde X+\frac{\lambda}{6}\widetilde X^3\right)dt+\sqrt2\,dW
+\]
+
+has stationary density proportional to (e^{-kx^2/2-\lambda x^4/24}). Expanding its exact Gaussian integral gives
+
+\[
+\mathbb E[\widetilde X^2]
+=c-\frac{c^3}{2}\lambda+\frac{2c^5}{3}\lambda^2-\frac{11c^7}{8}\lambda^3+O(\lambda^4).
+\]
+
+The first derivatives agree, but the λ² coefficients differ by (c^5/2), and the target also has a nonzero cubic coefficient while the engineered covariance has none. `correlated_source_checks.py` checks these rational coefficients and the OU convolution integrals. This scalar classical witness establishes the all-orders limitation of the construction; it is not a computation of the physical quantum oscillator's second-order susceptibility.
+
+## 5. Claim boundary
+
+The surviving result is precise: a deliberately correlated, globally coupled Gaussian source can repair the quartic response's first derivative by supplying the exact missing cross-moment. For full mask this gives the exact covariance derivative matrix; for constant-magnitude modes a partial mask can do the same with an amplitude that diverges as the mask fraction shrinks. The operation is equivalent to inserting a calibrated thermal tadpole at first order. The missing all-orders operation remains the temperature-correct nonlinear response law (or its equivalent cross-moments), with source preparation, calibration, mixing, and uncertainty paid. No such operation is supplied here.
