@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — nonlinear_query_plain.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/nonlinear_audit/source-copy/nonlinear_query_plain.py">Original bytes</a></p><pre>&quot;&quot;&quot;Bounded, tangent-resummed correction sampling: reproducible research prototype.
+
+Equation on the periodic interval [0, 2*pi):
+    -u&#x27;&#x27; + u + 25*u**4 = 26 + 10*g(x),
+    g(x) = .45*cos(x) + .30*cos(7*x) + .25*sin(13*x).
+
+The two predictors are constructed without using the nonlinear reference solution.
+The Monte Carlo sampler uses exact-in-law Brownian endpoints at exponential times
+in the mathematical model; this implementation uses ordinary floating point.
+No claim of historical novelty, interval-verified floating-point output, or
+superiority over modern deterministic solvers is made.
+
+Run: python nonlinear_query.py --samples 200000 --output results.json
+Dependencies: numpy, numba. Numba compilation is excluded from query timing
+and reported separately. The reference calculation is only a numerical check.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+import math
+import time
+from dataclasses import dataclass, asdict
+from pathlib import Path
+import numpy as np
+
+
+@dataclass(frozen=True)
+class Certificate:
+    predictor: int
+    radius: float
+    residual_bound: float
+    tangent_lower: float
+    proposal_rate: float
+    b2: float
+    b3: float
+    b4: float
+    envelope_slack: float
+    nonlinear_slope: float
+    offspring_bound: float
+    expected_node_bound: float
+
+
+def certificate(predictor: int, radius: float | None = None) -&gt; Certificate:
+    &quot;&quot;&quot;Global analytic bounds; neither grid search nor a solved field is used.&quot;&quot;&quot;
+    if predictor == 0:
+        h = .125 if radius is None else radius
+        R, low, high, b2, b3, b4 = 10., 101., 101., 150., 100., 25.
+    elif predictor == 1:
+        h = .011 if radius is None else radius
+        amp = 10. * (.45 / 102. + .30 / 150. + .25 / 270.)
+        vlo, vhi = 1. - amp, 1. + amp
+        R = 25. * (6. * amp**2 + 4. * amp**3 + amp**4)
+        low, high = 1. + 100. * vlo**3, 1. + 100. * vhi**3
+        b2, b3, b4 = 150. * vhi**2, 100. * vhi, 25.
+    else:
+        raise ValueError(&#x27;predictor must be 0 or 1&#x27;)
+    if not math.isfinite(h) or h &lt;= 0:
+        raise ValueError(&#x27;radius must be positive and finite&#x27;)
+    slack = low * h - R - (b2*h*h + b3*h**3 + b4*h**4)
+    slope = 2.*b2*h + 3.*b3*h*h + 4.*b4*h**3
+    if slack &lt; 0 or slope &gt;= low:
+        raise ValueError(f&#x27;Certificate rejected: slack={slack:g}, slope={slope:g}, &#x27;
+                         f&#x27;tangent_lower={low:g}&#x27;)
+    q = 1. - (low - slope) / high
+    return Certificate(predictor,h,R,low,high,b2,b3,b4,slack,slope,q,1./(1.-q))
+
+
+def base_and_residual(x: float, predictor: int):
+    c1, c7, s13 = math.cos(x), math.cos(7.*x), math.sin(13.*x)
+    if predictor == 0:
+        return 1., 10.*(.45*c1 + .30*c7 + .25*s13)
+    e0 = 10.*(.45*c1/102. + .30*c7/150. + .25*s13/270.)
+    # The screened linear correction solves (-d_xx+101)*e0 = 10*g exactly.
+    # Evaluating the algebraic remainder avoids cancellation of large terms.
+    return 1.+e0, -25.*(6.*e0*e0 + 4.*e0**3 + e0**4)
+
+
+def sample_corrections(x: float, n: int, seed: int, predictor: int,
+                       h: float, R: float, rate: float,
+                       B2: float, B3: float, B4: float):
+    np.random.seed(seed)
+    vals = np.empty(n)
+    node_counts = np.empty(n, dtype=np.int64)
+    p0 = R/(rate*h)
+    p2, p3, p4 = B2*h/rate, B3*h*h/rate, B4*h**3/rate
+    max_pending = 0
+    for sample in range(n):
+        pending = [x]
+        weight, nodes = 1., 0
+        while len(pending):
+            if len(pending) &gt; max_pending:
+                max_pending = len(pending)
+            xx = pending.pop()
+            tau = np.random.exponential(1./rate)
+            y = (xx + math.sqrt(2.*tau)*np.random.normal()) % (2.*math.pi)
+            v, residual = base_and_residual(y, predictor)
+            tangent = 1.+100.*v**3
+            p1 = 1.-tangent/rate
+            total = p0+p1+p2+p3+p4
+            # Abort rather than clip or silently condition on successful paths.
+            if p1 &lt; -1.e-12 or total &gt; 1.+1.e-12:
+                raise ValueError(&#x27;Local sampling probabilities violate certificate&#x27;)
+            draw = np.random.random()
+            nodes += 1
+            if draw &lt; p0:
+                weight *= residual/R
+            elif draw &lt; p0+p1:
+                pending.append(y)
+            elif draw &lt; p0+p1+p2:
+                weight *= -(150.*v*v)/B2
+                pending.append(y); pending.append(y)
+            elif draw &lt; p0+p1+p2+p3:
+                weight *= -(100.*v)/B3
+                pending.append(y); pending.append(y); pending.append(y)
+            elif draw &lt; total:
+                weight *= -25./B4
+                for _ in range(4):
+                    pending.append(y)
+            else:
+                weight = 0.
+                break  # a zero factor annihilates the whole product
+        vals[sample] = h*weight
+        node_counts[sample] = nodes
+    return vals, node_counts, max_pending
+
+
+def spectral_reference(xq: float, n: int):
+    &quot;&quot;&quot;Full-field FFT fixed-point baseline and non-validated numerical reference.&quot;&quot;&quot;
+    x = 2.*np.pi*np.arange(n)/n
+    k = np.fft.fftfreq(n, d=1./n)
+    r = 10.*(.45*np.cos(x)+.30*np.cos(7.*x)+.25*np.sin(13.*x))
+    e = np.zeros(n)
+    start = time.perf_counter()
+    for iteration in range(1,2001):
+        nonlin = 150.*e**2+100.*e**3+25.*e**4
+        new = np.fft.ifft(np.fft.fft(r-nonlin)/(101.+k*k)).real
+        difference = float(np.max(np.abs(new-e)))
+        e = new
+        if difference &lt; 2.e-15:
+            break
+    else:
+        raise RuntimeError(&#x27;Reference solver failed to converge&#x27;)
+    coefficients = np.fft.fft(e)/n
+    value = 1.+float(np.real(np.sum(coefficients*np.exp(1j*k*xq))))
+    duration = time.perf_counter()-start
+    lap = np.fft.ifft(-(k*k)*np.fft.fft(e)).real
+    residual = -lap+101.*e+150.*e**2+100.*e**3+25.*e**4-r
+    return {&#x27;grid&#x27;:n, &#x27;value&#x27;:value, &#x27;iterations&#x27;:iteration,
+            &#x27;seconds&#x27;:duration, &#x27;collocation_residual_sup&#x27;:float(np.max(np.abs(residual))),
+            &#x27;last_iteration_difference&#x27;:difference}
+
+
+def run(samples: int = 200000) -&gt; dict:
+    if samples &lt; 2:
+        raise ValueError(&#x27;at least two samples required&#x27;)
+    xq=.5
+    c0=certificate(0)
+    compile_start=time.perf_counter()
+    sample_corrections(xq,1,123,c0.predictor,c0.radius,c0.residual_bound,
+                       c0.proposal_rate,c0.b2,c0.b3,c0.b4)
+    compile_seconds=time.perf_counter()-compile_start
+    refs=[spectral_reference(xq,n) for n in (256,512,1024,2048)]
+    reference=refs[-1][&#x27;value&#x27;]
+    results=[]
+    for mode in (0,1):
+        c=certificate(mode)
+        start=time.perf_counter()
+        vals,nodes,pending=sample_corrections(
+            xq,samples,20261014+mode,c.predictor,c.radius,c.residual_bound,
+            c.proposal_rate,c.b2,c.b3,c.b4)
+        seconds=time.perf_counter()-start
+        v,_=base_and_residual(xq,mode)
+        estimate=v+float(np.mean(vals))
+        variance=float(np.var(vals,ddof=1))
+        # Valid for ideal iid samples with the proved range [-h,h].
+        half_width=c.radius*math.sqrt(2.*math.log(2./.05)/samples)
+        assert np.max(np.abs(vals)) &lt;= c.radius*(1.+1.e-12)
+        results.append({&#x27;certificate&#x27;:asdict(c),&#x27;samples&#x27;:samples,
+                        &#x27;predictor_at_query&#x27;:v,&#x27;estimate&#x27;:estimate,
+                        &#x27;error_vs_numerical_reference&#x27;:estimate-reference,
+                        &#x27;sample_variance&#x27;:variance,&#x27;standard_error&#x27;:math.sqrt(variance/samples),
+                        &#x27;hoeffding_95_half_width_ideal_arithmetic&#x27;:half_width,
+                        &#x27;mean_nodes&#x27;:float(np.mean(nodes)),&#x27;max_nodes&#x27;:int(np.max(nodes)),
+                        &#x27;max_pending&#x27;:int(pending),&#x27;query_seconds_excluding_compilation&#x27;:seconds,
+                        &#x27;within_hoeffding_interval_vs_reference&#x27;:abs(estimate-reference)&lt;=half_width})
+    rejected=[]
+    for h in (.05,.30):
+        try:
+            certificate(0,h)
+            rejected.append({&#x27;radius&#x27;:h,&#x27;rejected&#x27;:False})
+        except ValueError as exc:
+            rejected.append({&#x27;radius&#x27;:h,&#x27;rejected&#x27;:True,&#x27;reason&#x27;:str(exc)})
+    return {&#x27;equation&#x27;:&#x27;-u_xx + u + 25u^4 = 26 + 10(.45cos x + .30cos 7x + .25sin 13x)&#x27;,
+            &#x27;domain&#x27;:&#x27;periodic [0,2pi)&#x27;, &#x27;query&#x27;:xq,
+            &#x27;seed_base&#x27;:20261014, &#x27;compilation_seconds&#x27;:compile_seconds,
+            &#x27;reference_is_interval_verified&#x27;:False,&#x27;spectral_references&#x27;:refs,
+            &#x27;results&#x27;:results,&#x27;negative_tests&#x27;:rejected,
+            &#x27;limitations&#x27;:[&#x27;synthetic scalar model; not an engineering validation&#x27;,
+                           &#x27;theory uses exact arithmetic and exact random draws&#x27;,
+                           &#x27;FFT baseline is substantially faster in this one-dimensional example&#x27;,
+                           &#x27;prior-art novelty and stronger-baseline superiority are not established&#x27;]}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--samples&#x27;,type=int,default=200000)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;results.json&#x27;))
+    args=parser.parse_args()
+    result=run(args.samples)
+    args.output.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+</pre></body></html>

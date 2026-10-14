@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — analyze.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/nonlinear_benchmark/analyze.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact certificate and matched deterministic/MLP work analysis.
+
+Uses only Python&#x27;s standard library. Fourier arithmetic is floating-point and is
+reported as a diagnostic, not an interval-verified reference solution.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import cmath
+import json
+import math
+from fractions import Fraction as Q
+from pathlib import Path
+
+OUT = Path(__file__).resolve().parent
+D = 8
+J = 16
+H_Q = Q(1, 40)
+EPS = 0.01
+DELTA = 0.05
+
+
+def certificate() -&gt; dict:
+    # e0 is the exact screened linear solution for each displayed Fourier mode.
+    A = Q(5, 102) + Q(5, 103)
+    lo, hi = 1 - A, 1 + A
+    R = 25 * (6*A*A + 4*A**3 + A**4)
+    lam = 1 + 100*lo**3
+    Lam = 1 + 100*hi**3
+    B2, B3, B4 = 150*hi**2, 100*hi, Q(25)
+    h = H_Q
+    P = B2*h**2 + B3*h**3 + B4*h**4
+    Gamma = 2*B2*h + 3*B3*h**2 + 4*B4*h**3
+    slack = lam*h - R - P
+    # For any h &gt;= 0, lambda*h - P(h) &lt;= lambda*h - B2*h^2
+    # &lt;= lambda^2/(4*B2). A residual bound above this value cannot pass
+    # the enclosure inequality for any tube radius.
+    R_critical_upper = lam*lam/(4*B2)
+    assert A &lt; 1 and R &gt; 0 and lam &gt; 0 and Lam &gt;= lam
+    assert slack &gt; 0 and Gamma &lt; lam
+    q_fj = 1 - (lam-Gamma)/Lam
+    expected_nodes = Lam/(lam-Gamma)
+    n_fj = math.ceil(2*float(h*h)/(EPS*EPS)*math.log(2/DELTA))
+
+    vmid = (lam+Lam)/2
+    lam_mlp = vmid/2
+    L_mlp = (Lam-lam)/4 + Gamma/2
+    q_mlp = L_mlp/lam_mlp
+    assert L_mlp &lt; lam_mlp
+    # Exact MLP Corollary 3.11 bound after bounding its source integral by
+    # (R/2)^2/(lambda-L). Here G(x,z) is the fixed-point integrand.
+    mlp_constant = (R/2) / ((math.sqrt(float(lam_mlp))-math.sqrt(float(L_mlp)))
+                            * math.sqrt(float(lam_mlp-L_mlp)))
+    target_rms = math.sqrt(DELTA)*EPS
+    threshold = ((math.sqrt(float(lam_mlp))+math.sqrt(float(L_mlp)))
+                 /(math.sqrt(float(lam_mlp))-math.sqrt(float(L_mlp))))**2
+    m_min = math.floor(threshold) + 1
+
+    best = None
+    mlp_search_max_M = 100_000
+    for M in range(m_min, mlp_search_max_M + 1):
+        beta = (1+(1+math.sqrt(M))*math.sqrt(float(q_mlp)))/math.sqrt(M)
+        if beta &gt;= 1:
+            continue
+        n = max(1, math.ceil(math.log(target_rms/mlp_constant)/math.log(beta)))
+        if mlp_constant * beta**n &gt; target_rms:
+            n += 1
+        # The full-history recursion includes one endpoint at every summand:
+        # C_0=0; C_n=M^n + sum M^(n-k)(1+C_k+C_(k-1)).
+        C = [0]*(n+1)
+        for level in range(1, n+1):
+            C[level] = M**level + sum(
+                M**(level-k)*(1+C[k]+C[k-1]) for k in range(1, level)
+            )
+        candidate = (C[n], M, n, beta, mlp_constant*beta**n)
+        if best is None or candidate[0] &lt; best[0]:
+            best = candidate
+    assert best is not None
+
+    # Lower bound for black-box certificate acquisition: an evaluator-only
+    # verifier must rule out one smooth bump in each disjoint support ball.
+    rho = Q(1, 8)
+    centers_per_axis = math.floor(math.pi/float(rho))
+    hidden_bump_locations = centers_per_axis**D
+
+    return {
+        &quot;model&quot;: &quot;-Delta u + u + 25 u^4 = 26 + 10 g(x), x in T^8&quot;,
+        &quot;g_definition&quot;: &quot;(1/16) sum_j cos(k_j dot x + phase_j); k_j=e_j and e_j+e_(j+1 mod 8)&quot;,
+        &quot;dimension&quot;: D,
+        &quot;mode_count&quot;: J,
+        &quot;query&quot;: [0.21+0.19*i for i in range(D)],
+        &quot;predictor&quot;: &quot;v=1+e0; e0=(10/16) sum_j cos(k_j dot x+phase_j)/(101+|k_j|^2)&quot;,
+        &quot;source_supplied_coeff_l1_certificate&quot;: &quot;sum abs(source Fourier amplitudes) &lt;= 1, hence |g|&lt;=1&quot;,
+        &quot;certificate_exact_rationals&quot;: {
+            &quot;A_e0&quot;: str(A), &quot;R&quot;: str(R), &quot;lambda_lower&quot;: str(lam),
+            &quot;Lambda_proposal&quot;: str(Lam), &quot;h&quot;: str(h), &quot;B2&quot;: str(B2),
+            &quot;B3&quot;: str(B3), &quot;B4&quot;: str(B4), &quot;P_h&quot;: str(P),
+            &quot;Gamma_h&quot;: str(Gamma), &quot;enclosure_slack&quot;: str(slack),
+            &quot;q_fj_upper&quot;: str(q_fj), &quot;expected_nodes_per_query&quot;: str(expected_nodes),
+            &quot;largest_residual_bound_that_could_pass_any_tube_radius_upper&quot;: str(R_critical_upper),
+        },
+        &quot;certificate_float_summary&quot;: {
+            &quot;R&quot;: float(R), &quot;lambda_lower&quot;: float(lam), &quot;Lambda_proposal&quot;: float(Lam),
+            &quot;h&quot;: float(h), &quot;P_h&quot;: float(P), &quot;Gamma_h&quot;: float(Gamma),
+            &quot;enclosure_slack&quot;: float(slack), &quot;q_fj_upper&quot;: float(q_fj),
+            &quot;expected_nodes_per_query&quot;: float(expected_nodes),
+            &quot;mlp_lambda&quot;: float(lam_mlp), &quot;mlp_L&quot;: float(L_mlp),
+            &quot;mlp_q_upper&quot;: float(q_mlp),
+            &quot;deterministic_first_correction_error_bound&quot;: float(q_mlp*float(h)),
+        },
+        &quot;point_sampler_contract&quot;: {
+            &quot;epsilon&quot;: EPS, &quot;confidence&quot;: 1-DELTA,
+            &quot;Hoeffding_samples&quot;: n_fj,
+            &quot;expected_endpoint_nodes_upper&quot;: n_fj*float(expected_nodes),
+            &quot;model_evaluator_cost_per_node&quot;: &quot;8 Gaussian coordinates + 16 phases, each 8-term dot product and cosine, then scalar branch arithmetic&quot;,
+            &quot;build_and_certificate_cost&quot;: &quot;16 mode entries; exact rational bounds use O(16*8) elementary coefficient operations; no grid/reference solve&quot;,
+        },
+        &quot;published_elliptic_MLP_pointwise_certificate&quot;: {
+            &quot;source&quot;: &quot;Beck, Gonon, Jentzen (2024), Corollary 3.11 and Theorem 3.16&quot;,
+            &quot;confidence_to_rms&quot;: target_rms,
+            &quot;M_threshold_strict&quot;: threshold,
+            &quot;minimum_integer_M_for_Theorem_3_16&quot;: m_min,
+            &quot;searched_integer_M_range&quot;: [m_min, mlp_search_max_M],
+            &quot;optimized_published_bound_choice&quot;: {
+                &quot;endpoint_nodes_per_realization&quot;: int(best[0]),
+                &quot;M&quot;: best[1], &quot;level&quot;: best[2], &quot;beta&quot;: best[3],
+                &quot;rms_bound&quot;: best[4],
+                &quot;one_endpoint_evaluator_cost&quot;: &quot;same 16-mode v/r/V evaluation as point sampler; full-history MLP evaluates every recursion endpoint&quot;,
+            },
+            &quot;scope_note&quot;: &quot;This is the published uniform-bound certificate, not an empirical lower bound on a tuned MLP or a custom Fourier-aware implementation.&quot;,
+        },
+        &quot;deterministic_comparator&quot;: {
+            &quot;constant_tangent&quot;: float(vmid),
+            &quot;first_Picard_correction&quot;: &quot;e1=(-Delta+Vmid)^(-1) r; output v(xq)+e1(xq)&quot;,
+            &quot;certified_error_bound&quot;: float(q_mlp*float(h)),
+            &quot;target_met&quot;: float(q_mlp*float(h)) &lt; EPS,
+            &quot;source_support_signed_modes&quot;: 32,
+            &quot;V_fourier_candidate_modes&quot;: 3825,
+            &quot;r_fourier_candidate_modes&quot;: 21487,
+            &quot;exact_sparse_convolution_complex_products&quot;: 32*32 + 465*32 + 465*465,
+            &quot;query_mode_evaluations&quot;: 21487,
+            &quot;warning&quot;: &quot;The sparse Fourier correction arithmetic is floating point here; the analytic contraction error bound is exact once e1 is evaluated. No interval arithmetic is claimed.&quot;,
+        },
+        &quot;black_box_certificate_obstruction&quot;: {
+            &quot;support_radius&quot;: str(rho),
+            &quot;centers_per_axis&quot;: centers_per_axis,
+            &quot;disjoint_hidden_bump_locations&quot;: hidden_bump_locations,
+            &quot;lower_bound&quot;: &quot;An evaluator-only worst-case verifier making fewer than this many point queries cannot certify that a residual is zero / below a threshold that an unqueried smooth bump of height 10 violates.&quot;,
+            &quot;fixed_certificate_threshold&quot;: float(R_critical_upper),
+            &quot;height_10_fails_enclosure_for_every_tube_radius&quot;: Q(10) &gt; R_critical_upper,
+            &quot;scope&quot;: &quot;This applies only when no symbolic representation or supplied global majorant is available. The Fourier benchmark above supplies its coefficient representation, so its certificate is cheap.&quot;,
+        },
+    }
+
+
+def sparse_fourier_diagnostic() -&gt; dict:
+    modes = []
+    for i in range(D):
+        k = [0]*D; k[i] = 1; modes.append((tuple(k), 1))
+    for i in range(D):
+        k = [0]*D; k[i] = 1; k[(i+1) % D] = 1; modes.append((tuple(k), 2))
+    phases = [0.17*(j+1)+0.013*(j+1)*(j+1) for j in range(J)]
+    E0 = {}
+    for j, (k, norm2) in enumerate(modes):
+        amplitude = (10/J)/(101+norm2)
+        for sign in (1, -1):
+            kk = tuple(sign*z for z in k)
+            E0[kk] = amplitude*cmath.exp(1j*sign*phases[j])/2
+
+    def conv(a, b):
+        out = {}
+        for ka, va in a.items():
+            for kb, vb in b.items():
+                key = tuple(x+y for x, y in zip(ka, kb))
+                out[key] = out.get(key, 0j) + va*vb
+        return out
+
+    E2 = conv(E0, E0)
+    E3 = conv(E2, E0)
+    E4 = conv(E2, E2)
+    residual = {}
+    for source, scale in ((E2, -150), (E3, -100), (E4, -25)):
+        for k, value in source.items():
+            residual[k] = residual.get(k, 0j) + scale*value
+    residual = {k: v for k, v in residual.items() if abs(v) &gt; 1e-14}
+    A = 5/102+5/103
+    lam = 1+100*(1-A)**3
+    Lam = 1+100*(1+A)**3
+    Vmid = (lam+Lam)/2
+    x = [0.21+0.19*i for i in range(D)]
+    correction = 0j
+    weighted_l1 = 0.0
+    for k, value in residual.items():
+        norm2 = sum(z*z for z in k)
+        phase = sum(kk*xx for kk, xx in zip(k, x))
+        correction += value/(Vmid+norm2)*cmath.exp(1j*phase)
+        weighted_l1 += abs(value)/(Vmid+norm2)
+    predictor = 1+sum((a*cmath.exp(1j*sum(kk*xx for kk, xx in zip(k, x)))).real
+                       for k, a in E0.items())
+    return {
+        &quot;fourier_support&quot;: {&quot;e0_signed&quot;: len(E0), &quot;e0_squared&quot;: len(E2),
+                            &quot;e0_cubed&quot;: len(E3), &quot;e0_fourth&quot;: len(E4),
+                            &quot;residual&quot;: len(residual)},
+        &quot;sparse_convolution_product_count&quot;: 32*32+465*32+465*465,
+        &quot;query&quot;: [0.21+0.19*i for i in range(D)],
+        &quot;predictor_at_query&quot;: predictor,
+        &quot;constant_tangent_correction_at_query&quot;: correction.real,
+        &quot;deterministic_first_correction_estimate&quot;: predictor+correction.real,
+        &quot;l1_weighted_sup_bound_for_correction&quot;: weighted_l1,
+        &quot;warning&quot;: &quot;Floating-point coefficient convolution and evaluation; not interval verified.&quot;,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    result = certificate()
+    result[&quot;sparse_fourier_diagnostic&quot;] = sparse_fourier_diagnostic()
+    (OUT/&quot;analysis_results.json&quot;).write_text(json.dumps(result, indent=2)+&quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+</pre></body></html>

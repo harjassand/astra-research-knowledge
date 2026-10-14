@@ -1,0 +1,48 @@
+# Read ledger — Gaussian output-sampling audit
+
+All repository reads were against the read-only checkout `work/astra-capital` at `cb62d881a071c617b11d7dbc82a98921969389a7`, matching `FJ_PIN.json`'s `checkout` and `cumulative_pr83_head`. The original FJ packet `work/FJ-decision-quantum` was not changed. Ultra worker output was not opened.
+
+## Contract and capital navigation
+
+| Source | Exact read | SHA-256 | Use |
+|---|---:|---|---|
+| `work/FJ_WORKER_CONTRACT.txt` | complete, 8 lines | `4516f9b3dd25310868cd2e449765e244c1a72cef8137339edcb8c63c266eb19c` | Role, write boundary, source-vs-validation requirements. |
+| `work/FJ_PIN.json` | complete, 12 lines | `b152a3f7ca70e8c582b69a47f46876ed44745c8a152f53800fe2de449eb7440c` | Frozen capital/source pin and checkout revision. |
+| `work/astra-capital/00_START_HERE.txt` | lines 1–8 | `4a91985ece91557af12ba5c216e7fe17cf5dd000596e9a0c73b0b6705498f360` | Task-first retrieval and scoped evidence policy. |
+| `work/astra-capital/agent/COMPOSITION.txt` | complete, 31 lines | `b31cf8c3344df112b66840455244ff9c4b4f590d44713582027f82b50c83c46b` | Required source/destination interface distinctions. |
+| `work/astra-capital/agent/SEMANTIC_NOTICES.jsonl` | searched for `N687`, `N722`, `Gaussian mean`; no matching notice | `544c892af61400a20b52dc37b89bb098871e26831c7f8a9f211d3955e23435e3` | No matching notice surfaced in that index search. |
+
+## N687 model, claim, and proof scope
+
+| Source | Exact read | SHA-256 | Use |
+|---|---:|---|---|
+| `work/astra-capital/frontier/dossiers/N687.txt` | lines 1–59 | `df97376c5f666c651606788d6c07284164b3705a3c3ea12c72b1dcd2728e213c` | Current dossier, exact global-Lipschitz conservative whole-vector value oracle, target, exact-real Gaussian seed, every-execution candidate and open polylog gate. |
+| `work/astra-capital/frontier/review_cards/N687-gaussian-gradient-mean-sampler-stein-continuation.txt` | lines 1–30 | `13c73a0f6286a559fc1cb55ce6a8b7050122d0e733bf1c11983453d7a1c201f7` | Exact model, sampler scope, acquisition boundary, finite-bit caveat and novelty uncertainty. |
+| `work/astra-capital/updates/DP/package/foundational_campaign/FINAL_ROUND/ROUND_FINDINGS.txt` | lines 43–76 and 78–126 | `3a99d8c382cc83241c5c051836d48d67d1395edf069f0e9c35ed148a627f9cc4` | Fixed-exponent result and limits; exact two-query action and no realized completion; historical scope. |
+| `work/astra-capital/updates/DP/package/foundational_campaign/FINAL_ROUND/r22_polylog_mean_factory.txt` | lines 1–25 | `11a39e2ddeeaacc7daecdcfb837a1425dc7b2840a17a92ef7f15c6f2f83b2ba1` | Original hard target, oracle restrictions, exact-real seed model and polylogarithmic goal. |
+
+The review does not validate N687's inherited R16 candidate or the other source proof claims; it uses their current dossier scope to assess the new direct Gaussian-smoothing argument.
+
+## N722 comparator and quantitative source
+
+| Source | Exact read | SHA-256 | Use |
+|---|---:|---|---|
+| `work/astra-capital/frontier/dossiers/N722.txt` | lines 1–37 | `7827cae4709f28266e52680fe78df5a26ebb22e11c3abf9d578b6488cc679f05` | Bounded iid unknown-mean Gaussian factory, expected acquisition cost, strongest-comparator statement, and exact mismatch to N687. |
+| `work/astra-capital/updates/EG/package/frontier_campaign/computation_opening/THEOREM.md` | lines 165–210 | `f696de4d60c3313e7b0fd122941c6a57a887390e9d6e95d0727fe16ae66e7b9b` | Source's bounded-iid FORS comparison, sample-mean-plus-Gaussian TV ≤ R²/(2n), acquisition and finite-bit gates. |
+
+N722 remains `source_derived_unreviewed`; the local source's priority/comparator statement is preserved as provenance, not elevated to an externally audited conclusion. This audit independently rederived only the Gaussian-mixture inequalities written in `REPORT.md`.
+
+## Primary literature checked
+
+| Primary source | Read scope | Use |
+|---|---|---|
+| Chen, Chewi, Daskalakis, Rakhlin, *High-accuracy sampling for diffusion models and log-concave distributions*, arXiv:2602.01338v2 (2026), https://arxiv.org/abs/2602.01338 | Official arXiv abstract and HTML introduction / FORS section (roughly HTML lines 75–205) | First-order rejection sampling and bounded unbiased estimators for exponential tilts; related mechanism, distinct target. |
+| Chen, Chewi, Daskalakis, Rakhlin, *High-accuracy log-concave sampling with stochastic queries*, arXiv:2602.14342v2 (2026), https://arxiv.org/abs/2602.14342 | Official arXiv abstract, FORS Theorem 3.1, stochastic-query Theorem 3.3 (HTML lines 48–74, 127–165, 236–254) | Stochastic value/gradient extension of FORS; related interface, not the same generic g(G) sampler. |
+| Goldfeld, Greenewald, Polyanskiy, Weed, *Convergence of Smoothed Empirical Measures with Applications to Entropy Estimation*, arXiv:1905.13576v3 (2020), https://arxiv.org/abs/1905.13576 | Official arXiv abstract (HTML lines 8–20) | Nearby Gaussian-smoothed empirical-measure convergence literature; not treated as an exact theorem for this sample-mean output law. |
+| Nielsen, Nock, *On the Chi square and higher-order Chi distances for approximating f-divergences*, arXiv:1309.3029v2 (2013), https://arxiv.org/abs/1309.3029 | Official arXiv abstract, lines 8–22 | Closed-form chi-square distances for distributions in the same exponential family with affine natural space, instantiated for isotropic Gaussians; relevant background for Gaussian location-family calculations, not the exact random-mixture/proxy theorem here. |
+
+Browsing was selective and does not establish historical priority. The exact mixture identity is derived directly in the audit rather than attributed to one of these papers.
+
+## Reproduction
+
+The small-check program is `checks/gaussian_output_sampling_checks.py`; exact interpreter used was `work/FE-hidden-gate/venv/bin/python` with NumPy 2.5.3 and SciPy 1.18.1. It was run with `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`; captured output is `checks/small_checks.json`. Checks cover one-dimensional density quadrature versus the mixture identity, two-coordinate state enumeration versus product factorization, equality of the determinant bound for a Gaussian proxy, the exact integer TV threshold, a gradient-realizable independent rare-bump family, and an intentionally dependent rare-marginal counterexample. The checks do not substitute for the proof and do not certify a finite-bit implementation.

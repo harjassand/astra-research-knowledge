@@ -1,0 +1,36 @@
+# ASTRA Beyond Contact — proof and reproducibility packet
+
+Main report: `CONTACT_COMPENSATION.md`.
+Main checker: `verify_contact_compensation.py`.
+
+## Reproduce the finite checks
+
+Use Python 3.10 or later with SymPy installed, then run:
+
+    python verify_contact_compensation.py
+
+The checker writes `contact_verification.json` next to itself. It uses exact
+symbolic/rational arithmetic, not an optimization solver, network service,
+or prior verification JSON. The supplied run passed nine grouped checks.
+
+The previous report's checker is included as `verify_previous.py` solely for
+reconstruction continuity. Run it from this directory:
+
+    python verify_previous.py
+
+It writes `positive_definite_verification.json`. Its supplied replay passed
+twelve grouped checks. That replay does not establish the new analytic results.
+
+## Scope
+
+The report proves quantitative contact compensation and a contact-plane
+Jensen theorem. The complete nine-coefficient quasiconvexity implication is
+not proved, and no compatible negative quasiconvexity gap is claimed.
+
+Finite checks do not verify the analytic Hodge/multiplier/interpolation,
+density, classification and variational arguments in a proof assistant.
+Those arguments must be reviewed in the report. No external review or
+historical novelty clearance is claimed. No third-party papers are included.
+
+`MANIFEST.json` records SHA-256 hashes of the other files and the environment
+used for the supplied finite verification.

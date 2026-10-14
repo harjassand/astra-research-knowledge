@@ -1,0 +1,146 @@
+# Hydro-electronic/Hall network audit
+
+## Verdict and scope
+
+I found no fatal sign or algebra error in the pasted source's stated linear, isothermal, DC model. Its electrical elimination, skew-rank identity (when every wet coupling is active), grounded three-contact Hall reduction, ideal-chiral one-way cross-response, and scalar receiver-load optimization are correct under the source's port conventions and passivity hypotheses.
+
+The 25% figure is correctly topology-scoped. For a heterogeneous two-wet-port pair, it is generally a strict upper bound because the single Hall conductance \(g\) is shared and cannot usually satisfy both independent matching conditions. It is not a universal passive nonreciprocal-network bound: an exact passive ideal-gyrator counterexample exceeds 25%, but is not one-way isolation and does not establish a realizable DC Hall component.
+
+The mathematical operation is therefore a conditional design theorem, not a demonstrated power technology. The indispensable wet two-port has not been acquired: no supplied evidence measures both steady cross-responses in one device and regime, or its full \(K,C,G\) and losses. The reported graphene droplet experiment supports a dynamic flow-to-current effect; it does not provide the required pressure-driven reciprocal converter. The 2024 hydro-electronic paper is theoretical and explicitly says its reciprocal flow response had not then been observed.
+
+## Pinned inputs and conventions
+
+The supplied physical source is work/FJ-sources/physical_PASTED_SOURCE.txt, SHA256 040c3c95168c6c088e07e50943e934276bca88ff1ba4bd5d00d31bacd1d9a845; the pin is work/FJ_PIN.json, SHA256 b152a3f7ca70e8c582b69a47f46876ed44745c8a152f53800fe2de449eb7440c. Its relevant ranges are lines 53–89 (signs, elimination, rank, power), 90–105 (Hall terminal model), 106–130 (load efficiency and 25% scope), and 154–188 (wet-interface experiment). The capital checkout was read at pinned HEAD cb62d881a071c617b11d7dbc82a98921969389a7; it remained clean.
+
+For each wet device, pressure drop \(p_i\), flow \(Q_i\), voltage \(V_i\), and current \(I_i\) enter the device, so its terminal power is \(p_iQ_i+V_iI_i\). At the stated near-equilibrium, isothermal point and with no local magnetic field,
+\[
+\begin{pmatrix}Q\\I\end{pmatrix}
+=
+\begin{pmatrix}K&C\\C&G\end{pmatrix}
+\begin{pmatrix}p\\V\end{pmatrix},\qquad
+K>0,\ G>0,\ C^2\le KG.
+\]
+For several independent wet devices these are diagonal matrices. With dry network current \(I=-YV\), \(A=G+Y\), and passive DC \(Y\), \(A\) is invertible: for nonzero real \(x\), \(x^T(G+\operatorname{sym}Y)x>0\). Thus
+\[
+V=-A^{-1}Cp,\qquad H=K-CA^{-1}C,\qquad Q=Hp.
+\]
+This verifies equation (3).
+
+Subtracting its transpose gives
+\[
+H-H^T=C(A^{-T}-A^{-1})C
+=CA^{-T}(A-A^T)A^{-1}C
+=CA^{-T}(Y-Y^T)A^{-1}C.
+\]
+If all diagonal entries of \(C\) are nonzero, both outside factors are invertible, so \(\operatorname{rank}(H-H^T)=\operatorname{rank}(Y-Y^T)\). This is a valid heterogeneous-device identity, not a lower bound on useful transfer: the magnitude still vanishes with weak coupling. If any \(C_i=0\), rank equality can fail; the exact check has \(\operatorname{rank}(Y-Y^T)=2\) but \(\operatorname{rank}(H-H^T)=0\) when one of two wet couplings is zero.
+
+The result extends beyond diagonal \(C\) for a square reciprocal wet block
+\[
+Q=Kp+CV,\qquad I=C^Tp+GV:
+\quad H=K-C(G+Y)^{-1}C^T,
+\]
+with
+\[
+H-H^T=C(G+Y)^{-T}(Y-Y^T)(G+Y)^{-1}C^T.
+\]
+An invertible \(C\) again preserves skew rank; singular \(C\) can hide some or all electrical nonreciprocity hydraulically. If \(Y(-B)=Y(B)^T\) while the wet blocks are field-independent, then \(H(-B)=H(B)^T\), the expected Onsager–Casimir reversal signature.
+
+For real DC terminal variables, the source power balance is also correct:
+\[
+p^TQ=\sum_i(p_iQ_i+V_iI_i)+V^TYV.
+\]
+The dry term is \(V^T\operatorname{sym}(Y)V\ge0\); each wet term is nonnegative by its transport-matrix passivity. Therefore \(\operatorname{sym}(H)\succeq0\). In the compliance model \(S_c\dot p=-Hp\), positive definite \(S_c\) gives \(\dot E=-p^T\operatorname{sym}(H)p\le0\). This is a DC/quasistatic stability statement; asymptotic decay needs strict dissipation, and bandwidth needs added dynamic states.
+
+## Hall terminals, loss, and one-way behavior
+
+The source's
+\[
+Y=\begin{pmatrix}g_++g_-&-g_-\\-g_+&g_++g_-\end{pmatrix}
+\]
+is a grounded two-port reduction of a three-contact forward/backward conductor, not a floating two-terminal Hall bar. The third contact is a physical reservoir held at reference potential. Its contact conditions and the rest of the measured electrical path must be represented in the terminal model. For the two exposed port voltages, \(V^T\operatorname{sym}(Y)V\ge0\); the ground reference supplies no \(V_3 I_3\) terminal work, while dissipation in contacts/reservoirs remains part of the reduced network response. A bulk Hall conductivity tensor alone is not the required \(Y\).
+
+Let \(s=g_++g_-\) and
+\[
+\Delta=(G_1+s)(G_2+s)-g_+g_->0.
+\]
+Then
+\[
+H_{12}=-C_1C_2g_-/\Delta,\qquad
+H_{21}=-C_1C_2g_+/\Delta.
+\]
+Hence \(H_{21}/H_{12}=g_+/g_-\) when \(g_->0\), and ideal chirality \(g_-=0<g_+\) makes \(H_{12}=0\), \(H_{21}\ne0\) for active wet couplings. This means the receiver pressure has zero linear small-signal effect on source flow with the other terminals fixed. It is not a nonlinear check valve, finite-range isolation guarantee, or zero-loss statement. Reversing field/interchanging \(g_+\) and \(g_-\) reverses the direction. A gyrator with equal-magnitude opposite-sign cross terms is nonreciprocal but not this one-way response.
+
+The terminal-loss warning in the source is supported by Viola and DiVincenzo's primary Hall-circuit analysis: an ordinary ohmically contacted Hall gyrator has substantial contact-related loss even as bulk longitudinal conductivity tends to zero; capacitive AC coupling changes the frequency-dependent circuit problem. The demonstrated quantum-Hall circulator of Mahoney et al. is a passive microwave device near 1 GHz. It establishes AC component feasibility, not a measured steady/DC \(Y\) for this hydraulic construction.
+
+## Two-port work efficiency and the shared-match correction
+
+For ideal chirality, orient the receiver so
+\[
+H=\begin{pmatrix}\kappa_1&0\\b&\kappa_2\end{pmatrix},\quad
+\kappa_i=K_i-\frac{C_i^2}{G_i+g},\quad
+b=\frac{|C_1C_2|g}{(G_1+g)(G_2+g)}.
+\]
+With \(p_2=-RQ_2\), \(Q_2=bp_1/(1+\kappa_2R)\), and source-port work \(p_1Q_1=\kappa_1p_1^2\),
+\[
+\eta(R)=\frac{b^2R}{\kappa_1(1+\kappa_2R)^2},\qquad
+R_*=\kappa_2^{-1},\qquad
+\eta_{R,*}=\frac{b^2}{4\kappa_1\kappa_2}.
+\]
+This is receiver resistance output divided by work entering the wet source port. It does not include an external pump, field supply, gate/control energy, or other system costs.
+
+Put \(\chi_i=C_i^2/(K_iG_i)\), \(t_i=g/G_i\), and
+\[
+f_i(t)=\frac{\chi_i t}{(1+t)(1+t-\chi_i)}.
+\]
+Direct substitution gives \(b^2/(\kappa_1\kappa_2)=f_1(t_1)f_2(t_2)\). Each factor has its unique maximum at \(t=\sqrt{1-\chi_i}\), where it equals
+\[
+\eta_c(Z_i)=\frac{1-\sqrt{1-\chi_i}}{1+\sqrt{1-\chi_i}}
+=\frac{\sqrt{1+Z_i}-1}{\sqrt{1+Z_i}+1},\quad
+Z_i=\frac{\chi_i}{1-\chi_i}.
+\]
+Consequently the source's \(\eta\le\frac14\eta_c(Z_1)\eta_c(Z_2)\le\frac14\) is valid. The refinement is that the one Hall link supplies a single \(g\): the product bound is attained only if \(g=G_i\sqrt{1-\chi_i}\) for both devices. This matching need not exist. For the exact heterogeneous example \(K_i=G_i=1,\ C_1=4/5,\ C_2=3/5\), the individual matches are \(g=3/5\) and \(4/5\), so the product bound \(1/144\) is strict at the common-\(g\) optimum. At the rational test point \(g=7/10\), the exact load-optimized efficiency is \(7056/1026239\), with exact gap \(10175/147778416\) below \(1/144\). In the equal case \(K_i=G_i=1,\ C_i=4/5,\ g=3/5\), equality is attained exactly: \(H=\bigl(\begin{smallmatrix}3/5&0\\-3/20&3/5\end{smallmatrix}\bigr)\) before receiver orientation, and \(\eta_*=1/64\).
+
+The 25% ceiling is therefore a correct upper bound for the specified grounded three-contact, quasi-static, ideal-chiral two-port with passive reciprocal hydraulic load. It cannot be exported to every passive electrical topology. An exact lossless ideal two-port gyrator \(Y=\bigl(\begin{smallmatrix}0&1/3\\-1/3&0\end{smallmatrix}\bigr)\), \(K_i=G_i=1\), \(C_i=19/20\), and scalar receiver load \(R=3\) yields
+\[
+H=\begin{pmatrix}751/4000&1083/4000\\-1083/4000&751/4000\end{pmatrix},\qquad
+\eta=\frac{1407466800}{5136633151}\approx0.274006>1/4.
+\]
+It remains passive (\(\operatorname{sym}Y=0\), \(\operatorname{sym}H\succ0\)), but \(H_{12}=-H_{21}\ne0\): it is not a one-way isolator. This is a mathematical passive-network counterexample to a universal 25% claim, not a claim that this ideal DC gyrator has been built or acquired.
+
+## Heterogeneous receiver multiport load theorem
+
+A useful load result survives for any passive reduced hydraulic matrix with one isolated source port:
+\[
+H=\begin{pmatrix}h_{00}&0\\b&D\end{pmatrix},\qquad
+S=\operatorname{sym}(D)\succ0.
+\]
+For a reciprocal passive resistive receiver multiport with conductance matrix \(B=B^T\succ0\), set \(x=-p_R/p_0\). The load equation \((B+D)x=b\) gives output power per \(p_0^2\) as
+\[
+x^TBx=x^Tb-x^TSx.
+\]
+Over unrestricted \(x\), this is a concave quadratic with maximum \(\frac14 b^TS^{-1}b\) at \(x_*=\frac12 S^{-1}b\). This optimizer is realizable in the stated positive-definite load class: with \(y=b-Dx_*\), \(x_*^Ty=\frac14b^TS^{-1}b>0\), a symmetric positive-definite \(B\) can be chosen with \(Bx_*=y\) (for example \(B=yy^T/(x_*^Ty)+\alpha[I-x_*x_*^T/(x_*^Tx_*)]\), \(\alpha>0\)). Thus
+\[
+\eta_{\max}=\frac{b^TS^{-1}b}{4h_{00}}.
+\]
+All symmetric receiver losses and skew/nonreciprocal circulation in \(D\) are retained; the skew part does no DC work. If only diagonal or a prescribed geometry of loads is allowed, this is an upper bound and the constrained optimum can be lower. If the source row is not isolated, the load changes source input and this formula does not apply unchanged.
+
+Passivity of \(H\) implies \(\operatorname{sym}H=\bigl(\begin{smallmatrix}h_{00}&b^T/2\\b/2&S\end{smallmatrix}\bigr)\succeq0\). For \(S\succ0\), its Schur complement gives \(h_{00}\ge b^TS^{-1}b/4\), hence \(\eta_{\max}\le1\). For \(S\succeq0\), replace inverse with Moore–Penrose \(S^+\); passivity requires \(b\in\mathrm{range}(S)\), and the same bound follows. This is the general passive limit, not a 25% cap. An exact two-receiver check used \(h_{00}=3\), \(b=(1,1/2)^T\), \(D=\bigl(\begin{smallmatrix}2&1/2\\-1/2&2\end{smallmatrix}\bigr)\), and a constructed \(B\succ0\); the exact attained efficiency is \(5/96=b^TS^{-1}b/(4h_{00})\).
+
+## Experimental and systems gate
+
+The proposed operation still requires measuring one actual wet transducer's \(K,G,C_{\text{flow}\to\text{current}},C_{\text{voltage}\to\text{flow}}\) at the same fixed temperature/gate point, confirming cross-coefficient equality and passivity, under long pressure steps and low-frequency modulation. Measure pressure, volume flow, voltage, current, liquid conductivity, contact/gate leakage, parasitic capacitance, and heat/work boundaries. The complete dry \(Y\) must be measured at the actual contacts, wiring, grounding, and magnetic field, then reversed in field to test \(H(-B)=H(B)^T\). A transient-only signal does not meet the DC constitutive law.
+
+Lizée et al., “Strong electronic winds blowing under liquid flows on carbon surfaces,” report oscillation-induced current while a tuning-fork AFM deposits/displaces droplets on multilayer graphene; the analysis attributes the effect chiefly to phonon-mediated momentum transfer and discusses dependence on longitudinal bias. That is evidence for dynamic flow-to-current coupling, not for a calibrated pressure/flow two-port, its reciprocal voltage-to-flow response, steady extracted work, or a complete measured \(K,C,G\). Coquinot, Bocquet and Kavokine's arXiv:2403.20209v2 develops the reciprocal transport matrix theoretically, states the reciprocal flow response (“quantum osmosis”) had not yet been observed, and reports model-derived graphene/graphite figures of merit. Those values are not measured complete transducers. No acquired wet device or usable output power is claimed here.
+
+## Reproducible exact checks
+
+The file exact_checks.py uses Python standard-library Fraction arithmetic and exact Gaussian elimination. It verifies the algebraic skew identity, active-coupling rank preservation and inactive-coupling failure; exact positive-power/passivity witnesses; ideal chirality; equality and heterogeneous shared-match cases; the multiport load construction; and the gyrator counterexample. Its output is frozen in exact_checks.out. These checks validate the stated arithmetic examples only. They do not validate a physical device, its linear regime, literature novelty, or any external performance claim.
+
+## Primary literature
+
+- Onsager, “Reciprocal Relations in Irreversible Processes. I” (1931), [Phys. Rev. 37, 405](https://doi.org/10.1103/PhysRev.37.405); and “II” (1931), [Phys. Rev. 38, 2265](https://doi.org/10.1103/PhysRev.38.2265). The field-reversal form is the relevant reciprocal framework; the no-local-field wet converter is modeled as reciprocal.
+- Büttiker, “Absence of backscattering in the quantum Hall effect in multiprobe conductors” (1988), [Phys. Rev. B 38, 9375](https://doi.org/10.1103/PhysRevB.38.9375), for contact-defined multiprobe quantum Hall transport.
+- Viola and DiVincenzo, “Hall Effect Gyrators and Circulators” (2014), [arXiv:1312.5190v3](https://arxiv.org/html/1312.5190v3), [Phys. Rev. X 4, 021019](https://doi.org/10.1103/PhysRevX.4.021019), for loss of ohmically contacted Hall circuits and distinct capacitive AC designs.
+- Mahoney et al., “On-Chip Microwave Quantum Hall Circulator” (2017), [Phys. Rev. X 7, 011007](https://doi.org/10.1103/PhysRevX.7.011007), for a passive 1-GHz, 330-µm microwave Hall circulator with 25-dB nonreciprocity over 50 MHz.
+- Lizée et al., “Strong electronic winds blowing under liquid flows on carbon surfaces” (2023), [arXiv:2205.05037v3](https://arxiv.org/html/2205.05037v3), [Phys. Rev. X 13, 011020](https://doi.org/10.1103/PhysRevX.13.011020), for the droplet-motion experiment.
+- Coquinot, Bocquet and Kavokine, “Hydroelectric energy conversion of waste flows through hydroelectronic drag,” [arXiv:2403.20209v2](https://arxiv.org/html/2403.20209v2), for the model transport matrix and theoretical efficiency estimates.

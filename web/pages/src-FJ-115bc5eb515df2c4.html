@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — run_source_control.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/query_variance/run_source_control.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Float prototype of the root source-leaf control variate.&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+import time
+from pathlib import Path
+
+import numpy as np
+
+from nonlinear_query_reference import base_and_residual, certificate
+
+
+def sample_with_root_control(x, n, seed, h, R, rate, B2, B3, B4):
+    np.random.seed(seed)
+    zvals = np.empty(n)
+    root_controls = np.zeros(n)
+    nodes = np.empty(n, dtype=np.int64)
+    p0 = R / (rate * h)
+    p2, p3, p4 = B2 * h / rate, B3 * h * h / rate, B4 * h**3 / rate
+    max_nodes = 0
+    for sample in range(n):
+        pending = [x]
+        weight = 1.0
+        count = 0
+        root_control = 0.0
+        while len(pending):
+            xx = pending.pop()
+            tau = np.random.exponential(1.0 / rate)
+            y = (xx + math.sqrt(2.0 * tau) * np.random.normal()) % (2.0 * math.pi)
+            v, residual = base_and_residual(y, 1)
+            tangent = 1.0 + 100.0 * v**3
+            p1_local = 1.0 - tangent / rate
+            total = p0 + p1_local + p2 + p3 + p4
+            if p1_local &lt; -1.e-12 or total &gt; 1.0 + 1.e-12:
+                raise ValueError(&quot;local probabilities violate supplied certificate&quot;)
+            draw = np.random.random()
+            count += 1
+            if draw &lt; p0:
+                leaf = residual / R
+                weight *= leaf
+                if count == 1:
+                    root_control = leaf
+            elif draw &lt; p0 + p1_local:
+                pending.append(y)
+            elif draw &lt; p0 + p1_local + p2:
+                weight *= -(150.0 * v * v) / B2
+                pending.append(y)
+                pending.append(y)
+            elif draw &lt; p0 + p1_local + p2 + p3:
+                weight *= -(100.0 * v) / B3
+                pending.append(y)
+                pending.append(y)
+                pending.append(y)
+            elif draw &lt; total:
+                weight *= -25.0 / B4
+                pending.append(y)
+                pending.append(y)
+                pending.append(y)
+                pending.append(y)
+            else:
+                weight = 0.0
+                break
+        zvals[sample] = weight
+        root_controls[sample] = root_control
+        nodes[sample] = count
+        if count &gt; max_nodes:
+            max_nodes = count
+    return zvals, root_controls, nodes, max_nodes
+
+
+def q_at_x_from_receipt(x: float) -&gt; float:
+    receipt = json.loads(Path(__file__).with_name(&quot;source_control_certificate.json&quot;).read_text())
+    coeffs = receipt[&quot;weak_source_control&quot;][&quot;fourier_coefficients&quot;]
+    return math.fsum(
+        (entry[&quot;real&quot;][&quot;numerator&quot;] / entry[&quot;real&quot;][&quot;denominator&quot;]) * math.cos(entry[&quot;k&quot;] * x)
+        - (entry[&quot;imag&quot;][&quot;numerator&quot;] / entry[&quot;imag&quot;][&quot;denominator&quot;]) * math.sin(entry[&quot;k&quot;] * x)
+        for entry in coeffs)
+
+
+def main():
+    n = 200_000
+    x = 0.5
+    h = 0.011
+    cert = certificate(1)
+    start = time.perf_counter()
+    z, c, nodes, max_nodes = sample_with_root_control(
+        x, n, 20261015, h, cert.residual_bound,
+        cert.proposal_rate, cert.b2, cert.b3, cert.b4)
+    seconds = time.perf_counter() - start
+    w = z - c
+    v, _ = base_and_residual(x, 1)
+    q = q_at_x_from_receipt(x)
+    old_est = v + h * float(np.mean(z))
+    new_est = v + q + h * float(np.mean(w))
+    p0 = cert.residual_bound / (cert.proposal_rate * h)
+    result = {
+        &quot;samples&quot;: n,
+        &quot;seed&quot;: 20261015,
+        &quot;target_x&quot;: x,
+        &quot;compile_seconds_excluded&quot;: True,
+        &quot;sample_seconds&quot;: seconds,
+        &quot;tree_nodes_mean&quot;: float(np.mean(nodes)),
+        &quot;tree_nodes_max&quot;: int(max_nodes),
+        &quot;root_source_probability_theory&quot;: p0,
+        &quot;root_source_probability_observed&quot;: float(np.mean(c != 0.0)),
+        &quot;q_lambda_at_x_float&quot;: q,
+        &quot;q_over_h&quot;: q / h,
+        &quot;root_control_mean&quot;: float(np.mean(c)),
+        &quot;ordinary_normalized_variance&quot;: float(np.var(z, ddof=1)),
+        &quot;controlled_normalized_variance&quot;: float(np.var(w, ddof=1)),
+        &quot;controlled_to_ordinary_variance_ratio&quot;: float(np.var(w, ddof=1) / np.var(z, ddof=1)),
+        &quot;ordinary_standard_error&quot;: float(h * np.std(z, ddof=1) / math.sqrt(n)),
+        &quot;controlled_standard_error&quot;: float(h * np.std(w, ddof=1) / math.sqrt(n)),
+        &quot;ordinary_estimate&quot;: old_est,
+        &quot;controlled_estimate&quot;: new_est,
+        &quot;paired_difference_due_to_C&quot;: new_est - old_est,
+        &quot;numerical_fft_reference_from_source&quot;: 1.0208709917983396,
+        &quot;scope&quot;: &quot;Floating-point ideal-law replay only; this does not interval-validate the source or transcendental control evaluation.&quot;,
+    }
+    Path(__file__).with_name(&quot;source_control_run.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

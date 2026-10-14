@@ -1,0 +1,89 @@
+# Scope clarifications after independent criticism
+
+14 October 2026. This document supplements the frozen-input versions of the
+root manuscripts and worker reports; it does not replace their historical bytes.
+All mathematical findings remain internally derived and externally unreviewed.
+
+## Conditional tree laws and the meaning of the cap
+
+In Theorem 2 of `NONLINEAR_OBSERVATION_CHANNEL.md`, the displayed offspring
+inequality must hold **conditional on the explored history and the current
+frontier node's state**. Fresh branching randomness and the Markov state used
+by the source sampler provide that condition. A marginal PGF bound does not
+cover a shared hidden environment that changes subsequent offspring laws.
+The exact two-type witness and all source cap arithmetic were independently
+reconstructed in the branching worker's post-freeze audit.
+
+The two-type operation already has a bounded unbiased output and weighted
+mean-progeny termination proof in that worker's original derivation. The root's
+`(t,z)` witness adds an exponential node tail and a deterministic truncation
+certificate. It does not first establish that operation or a general new
+branching-process theorem. Likewise, the nonlinear observation compiler uses
+the existing N722/FORS sampler. Its contribution is a verified input interface,
+nested cost accounting, and a hard node cap under acquired PGF certificates.
+
+A PDE-node ceiling is not a ceiling on bits, coefficient evaluation, exact
+Gaussian generation, endpoint rejection or arithmetic work. The theorem's
+polylogarithmic error dependence holds at fixed model/certificate margins,
+observation count, noise radius and admitted primitive costs. A digital output
+compared with an unrounded continuous Gaussian has TV distance one. The
+executable's Gaussian, diffusion and acceptance arithmetic is diagnostic only.
+
+The 8D benchmark report calls both the correction `T(0)` and the corrected
+field estimate `e1`. Its interval code and `e1_interval` field actually return
+`u1=v+T(0)`; `e1_correction_interval` contains the small negative correction.
+The appended benchmark `DELTA-001.md` resolves that notation. The contraction
+radius, interval for u and comparator conclusion are unchanged.
+
+## Energy accounting correction
+
+The original shunt worker proof's final paragraph in section 6 incorrectly
+states that electrical shunt dissipation is not captured by hydraulic input
+work. Under its passive steady model and entering-power convention, put
+`Y_t=Y+t u u^T`, `I=-Y_t V`. Multiplying the wet equations gives
+
+    p^T Q = D_wet + V^T sym(Y) V + t (u^T V)^2.
+
+Thus passive shunt heat is an internal destination of the signed net hydraulic
+input. It should be measured to partition and close that balance, and must not
+be added again as a separate external source. Gross donor input, receiver
+output and signed net input are different quantities. Powered switching,
+pressure-source overhead, sensors, gates, field generation and temperature
+control have separate boundary inputs and are charged once. The worker
+accepted this correction in `DELTA_001_ENERGY_ACCOUNTING.md`; the frozen
+original proof is retained with that correction routed beside it. No Schur,
+identification, sample-count or SNR formula changes.
+
+## Noise and physical qualification
+
+The common-temperature classical FDT identity gives second moments. The
+matched-filter KL/SNR claims additionally use a specified equal-covariance
+Gaussian observation model. The loaded DC time-average equality assumes an
+ideal memoryless white-noise circuit. A real finite-duration pulse requires
+the full frequency-dependent transfer and measurement filters; a rectangular
+pulse is not band limited. The OU Lyapunov calculation proves an invariant
+Gibbs covariance, and proves convergence only with added stability/ergodicity.
+Load noise belongs either inside the reduced system boundary or as an external
+term, once. Unequal-temperature baths require their separate contributions.
+
+The recovered original hydraulic archive confirms conditional model status,
+six symbolic check labels, 1,000 random four-port diagnostics and 40,804 grid
+points. Replay does not measure any wet coefficient or acquire an isolator.
+Only five returned labels have direct symbolic assertions in the source
+checker: the sixth factorized-efficiency label relies on the written
+factorization, checked scalar optimum and the selected numerical grid. The
+independent algebraic audit, rather than that label, supports the factorization.
+Ideal-chiral nonzero transmission requires `g_+>0`, `g_-=0`, and nonzero wet
+couplings. Directionality rank, useful amplitude and work efficiency remain
+different claims.
+
+## Ultra lower-bound correction
+
+The hidden narrow-coordinate bump construction yields a lower bound against
+fixed deterministic query locations. Extending that argument to randomized
+whole-vector queries was invalid. The root's Gaussian-mixture calculation and
+the cold audit give a one-query output sampler with TV error `O(d^(-1/4))` on
+that independent-coordinate family even while the mean has nonvanishing norm.
+The Ultra worker withdrew the randomized extension before freezing its final
+packet. No invalid randomized theorem is promoted. This neither validates nor
+refutes R16 and does not close N687's general polylogarithmic query gate.

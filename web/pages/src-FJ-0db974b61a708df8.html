@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — benchmark.cpp</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/nonlinear_benchmark/benchmark.cpp">Original bytes</a></p><pre>#include &lt;array&gt;
+#include &lt;chrono&gt;
+#include &lt;cmath&gt;
+#include &lt;cstdint&gt;
+#include &lt;cstdlib&gt;
+#include &lt;iomanip&gt;
+#include &lt;iostream&gt;
+#include &lt;random&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+// 8D nonseparable periodic semilinear elliptic point-query benchmark.
+// Model and certificate are specified independently in REPORT.md/analyze.py.
+// The only algorithm implemented here is the source&#x27;s bounded tangent-resummed
+// branching sampler. All arithmetic and random draws are ordinary floating point.
+
+static constexpr int D = 8;
+static constexpr int J = 16;
+static constexpr double A_BOUND = 5.0/102.0 + 5.0/103.0;
+static constexpr double V_UPPER = 1.0 + A_BOUND;
+static constexpr double R_BOUND = 25.0 * (6.0*A_BOUND*A_BOUND + 4.0*A_BOUND*A_BOUND*A_BOUND
+                                           + A_BOUND*A_BOUND*A_BOUND*A_BOUND);
+static constexpr double LAMBDA_BAR = 1.0 + 100.0*V_UPPER*V_UPPER*V_UPPER;
+static constexpr double B2 = 150.0*V_UPPER*V_UPPER;
+static constexpr double B3 = 100.0*V_UPPER;
+static constexpr double B4 = 25.0;
+static constexpr double H = 1.0/40.0;
+using Vec = std::array&lt;double, D&gt;;
+using IVec = std::array&lt;int, D&gt;;
+
+struct Model {
+    std::array&lt;IVec, J&gt; k{};
+    std::array&lt;double, J&gt; phase{};
+
+    Model() {
+        for (int i = 0; i &lt; D; ++i) k[i][i] = 1;
+        for (int i = 0; i &lt; D; ++i) {
+            k[D + i][i] = 1;
+            k[D + i][(i + 1) % D] = 1;
+        }
+        for (int j = 0; j &lt; J; ++j) {
+            phase[j] = 0.17 * (j + 1) + 0.013 * (j + 1) * (j + 1);
+        }
+    }
+
+    double g(const Vec&amp; x) const {
+        double s = 0.0;
+        for (int j = 0; j &lt; J; ++j) {
+            double z = phase[j];
+            for (int i = 0; i &lt; D; ++i) z += k[j][i] * x[i];
+            s += std::cos(z);
+        }
+        return s / J;
+    }
+
+    double e0(const Vec&amp; x) const {
+        double s = 0.0;
+        for (int j = 0; j &lt; J; ++j) {
+            double z = phase[j];
+            int norm2 = 0;
+            for (int i = 0; i &lt; D; ++i) {
+                z += k[j][i] * x[i];
+                norm2 += k[j][i] * k[j][i];
+            }
+            s += (10.0 / J) * std::cos(z) / (101.0 + norm2);
+        }
+        return s;
+    }
+
+    double v(const Vec&amp; x) const { return 1.0 + e0(x); }
+    double residual_from_v(double v) const {
+        const double z = v - 1.0;
+        return -25.0 * (6.0*z*z + 4.0*z*z*z + z*z*z*z);
+    }
+    double tangent(const Vec&amp; x) const {
+        const double w = v(x);
+        return 1.0 + 100.0*w*w*w;
+    }
+};
+
+struct Stats {
+    std::uint64_t nodes = 0;
+    std::uint64_t source_evals = 0;
+    std::uint64_t max_nodes_sample = 0;
+};
+
+struct Sampler {
+    const Model&amp; m;
+    std::mt19937_64 rng;
+    std::uniform_real_distribution&lt;double&gt; unif{0.0, 1.0};
+    std::normal_distribution&lt;double&gt; normal{0.0, 1.0};
+    Stats stats;
+
+    explicit Sampler(const Model&amp; model, std::uint64_t seed) : m(model), rng(seed) {}
+
+    Vec endpoint(const Vec&amp; x) {
+        const double tau = -std::log(unif(rng)) / LAMBDA_BAR;
+        const double scale = std::sqrt(2.0 * tau);
+        Vec y{};
+        const double twopi = 2.0 * std::acos(-1.0);
+        for (int i = 0; i &lt; D; ++i) {
+            double z = x[i] + scale * normal(rng);
+            z = std::fmod(z, twopi);
+            if (z &lt; 0) z += twopi;
+            y[i] = z;
+        }
+        return y;
+    }
+
+    double sample_z(const Vec&amp; x, std::uint64_t&amp; local_nodes) {
+        const Vec y = endpoint(x);
+        ++stats.nodes;
+        ++local_nodes;
+        const double vy = m.v(y);
+        const double p0 = R_BOUND / (LAMBDA_BAR * H);
+        const double p1 = 1.0 - (1.0 + 100.0*vy*vy*vy) / LAMBDA_BAR;
+        const double p2 = 150.0*vy*vy * H / LAMBDA_BAR;
+        const double p3 = 100.0*vy * H*H / LAMBDA_BAR;
+        const double p4 = B4 * H*H*H / LAMBDA_BAR;
+        const double t = unif(rng);
+        if (t &lt; p0) {
+            ++stats.source_evals;
+            return m.residual_from_v(vy) / R_BOUND;
+        }
+        double cut = p0 + p1;
+        if (t &lt; cut) return sample_z(y, local_nodes);
+        cut += p2;
+        if (t &lt; cut) {
+            const double a = sample_z(y, local_nodes);
+            const double b = sample_z(y, local_nodes);
+            return -(150.0*vy*vy/B2)*a*b;
+        }
+        cut += p3;
+        if (t &lt; cut) {
+            const double a = sample_z(y, local_nodes);
+            const double b = sample_z(y, local_nodes);
+            const double c = sample_z(y, local_nodes);
+            return -(100.0*vy/B3)*a*b*c;
+        }
+        cut += p4;
+        if (t &lt; cut) {
+            const double a = sample_z(y, local_nodes);
+            const double b = sample_z(y, local_nodes);
+            const double c = sample_z(y, local_nodes);
+            const double d = sample_z(y, local_nodes);
+            return -(25.0/25.0)*a*b*c*d;
+        }
+        return 0.0;
+    }
+
+    double sample(const Vec&amp; x) {
+        std::uint64_t local = 0;
+        const double z = sample_z(x, local);
+        if (local &gt; stats.max_nodes_sample) stats.max_nodes_sample = local;
+        return H*z;
+    }
+};
+
+struct RunResult {
+    std::string label;
+    std::uint64_t samples = 0;
+    std::uint64_t nodes = 0;
+    std::uint64_t source_evals = 0;
+    std::uint64_t max_nodes_sample = 0;
+    double estimate = 0.0;
+    double correction_mean = 0.0;
+    double correction_variance = 0.0;
+    double seconds = 0.0;
+};
+
+RunResult run(const Model&amp; model, const Vec&amp; x, std::uint64_t n,
+              std::uint64_t seed, const std::string&amp; label) {
+    Sampler sampler(model, seed);
+    double sum = 0.0, sum2 = 0.0;
+    const auto t0 = std::chrono::steady_clock::now();
+    for (std::uint64_t i = 0; i &lt; n; ++i) {
+        const double z = sampler.sample(x);
+        sum += z;
+        sum2 += z*z;
+    }
+    const auto t1 = std::chrono::steady_clock::now();
+    const double mean = sum / n;
+    RunResult out;
+    out.label = label;
+    out.samples = n;
+    out.nodes = sampler.stats.nodes;
+    out.source_evals = sampler.stats.source_evals;
+    out.max_nodes_sample = sampler.stats.max_nodes_sample;
+    out.correction_mean = mean;
+    out.correction_variance = (sum2 - n*mean*mean) / (n-1);
+    out.estimate = model.v(x) + mean;
+    out.seconds = std::chrono::duration&lt;double&gt;(t1-t0).count();
+    return out;
+}
+
+int main(int argc, char** argv) {
+    std::uint64_t diagnostic_n = 100000;
+    if (argc &gt; 1) diagnostic_n = std::strtoull(argv[1], nullptr, 10);
+    Model model;
+    Vec x{};
+    for (int i = 0; i &lt; D; ++i) x[i] = 0.21 + 0.19*i;
+    const auto certified = run(model, x, 47, 2026101401ULL, &quot;certified_95pct_epsilon_0.01&quot;);
+    const auto diagnostic = run(model, x, diagnostic_n, 2026101402ULL, &quot;diagnostic_large_run&quot;);
+    const int timing_repeats = 1000;
+    std::uint64_t timing_nodes = 0;
+    const auto timing_start = std::chrono::steady_clock::now();
+    for (int rep = 0; rep &lt; timing_repeats; ++rep) {
+        Sampler sampler(model, 2026200000ULL + rep);
+        for (int i = 0; i &lt; 47; ++i) sampler.sample(x);
+        timing_nodes += sampler.stats.nodes;
+    }
+    const auto timing_stop = std::chrono::steady_clock::now();
+    const double timed_seconds = std::chrono::duration&lt;double&gt;(timing_stop-timing_start).count();
+    std::cout &lt;&lt; std::setprecision(17);
+    std::cout &lt;&lt; &quot;{\n  \&quot;dimension\&quot;: 8,\n  \&quot;modes\&quot;: 16,\n  \&quot;query\&quot;: [&quot;;
+    for (int i = 0; i &lt; D; ++i) std::cout &lt;&lt; (i ? &quot;, &quot; : &quot;&quot;) &lt;&lt; x[i];
+    std::cout &lt;&lt; &quot;],\n  \&quot;runs\&quot;: [\n&quot;;
+    const RunResult* arr[2] = {&amp;certified, &amp;diagnostic};
+    for (int j = 0; j &lt; 2; ++j) {
+        const auto&amp; a = *arr[j];
+        std::cout &lt;&lt; &quot;    {\&quot;label\&quot;: \&quot;&quot; &lt;&lt; a.label &lt;&lt; &quot;\&quot;, \&quot;samples\&quot;: &quot; &lt;&lt; a.samples
+                  &lt;&lt; &quot;, \&quot;nodes\&quot;: &quot; &lt;&lt; a.nodes &lt;&lt; &quot;, \&quot;source_evals\&quot;: &quot; &lt;&lt; a.source_evals
+                  &lt;&lt; &quot;, \&quot;max_nodes_sample\&quot;: &quot; &lt;&lt; a.max_nodes_sample
+                  &lt;&lt; &quot;, \&quot;predictor_at_query\&quot;: &quot; &lt;&lt; model.v(x)
+                  &lt;&lt; &quot;, \&quot;estimate\&quot;: &quot; &lt;&lt; a.estimate
+                  &lt;&lt; &quot;, \&quot;correction_mean\&quot;: &quot; &lt;&lt; a.correction_mean
+                  &lt;&lt; &quot;, \&quot;correction_sample_variance\&quot;: &quot; &lt;&lt; a.correction_variance
+                  &lt;&lt; &quot;, \&quot;seconds\&quot;: &quot; &lt;&lt; a.seconds &lt;&lt; &quot;}&quot;
+                  &lt;&lt; (j == 0 ? &quot;,\n&quot; : &quot;\n&quot;);
+    }
+    std::cout &lt;&lt; &quot;  ],\n  \&quot;timing_1000_certified_queries\&quot;: {\&quot;queries\&quot;: &quot; &lt;&lt; timing_repeats
+              &lt;&lt; &quot;, \&quot;nodes\&quot;: &quot; &lt;&lt; timing_nodes &lt;&lt; &quot;, \&quot;seconds\&quot;: &quot; &lt;&lt; timed_seconds
+              &lt;&lt; &quot;, \&quot;seconds_per_query\&quot;: &quot; &lt;&lt; timed_seconds/timing_repeats &lt;&lt; &quot;}\n}\n&quot;;
+}
+</pre></body></html>

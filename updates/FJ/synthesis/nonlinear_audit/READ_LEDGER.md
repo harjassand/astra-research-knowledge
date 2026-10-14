@@ -1,0 +1,49 @@
+# Read and access ledger
+
+The audit followed `work/FJ_WORKER_CONTRACT.txt`. The repository checkout was treated as read-only. Pin read: `work/FJ_PIN.json`, with main/base `ace0fc…e871`, attached checkout `cb62d8…89a7`, and source-manifest digest `2a8f77…95043`. The capital record itself states that its inventory is generated, not a research assessment, and that correctness and novelty stay scoped to cited source proofs.
+
+## Supplied source package
+
+| Source | Access | Read depth and use |
+|---|---|---|
+| `work/FJ-sources/nonlinear/research_note.md` | Local frozen original | Entire file, lines 1–272. Theorem/proof lines 11–117; example and exact certificates lines 119–175; adversarial radii and uncentered separation lines 177–206; sinh extension lines 208–245; prior-art and unresolved-scope claims lines 247–272. |
+| `work/FJ-sources/nonlinear/nonlinear_query.py` | Local frozen original | Entire file, lines 1–214. Read before copying/execution; predictor certificates 44–66, endpoint sampler 69–127, FFT reference and bounded run 130–204. |
+| `work/FJ-sources/nonlinear/verify_certificates.py` | Local frozen original; copied to assigned folder before execution | Entire file, lines 1–55. Exact rational global-envelope verifier; output is not a floating-point or interval sampler validation. |
+| `work/FJ-sources/nonlinear/exact_certificate_checks.json` | Local frozen original | Entire JSON, 176 lines. Read the supplied exact checks and compared them to the copied verifier output. |
+| `work/FJ-sources/nonlinear/README.md`, `environment.json` | Local frozen original metadata | Read for input/output and dependency context; no environment changes or installs. |
+
+Copy-first checks live under `source-copy/`. `nonlinear_query.py` is byte-copied. `nonlinear_query_plain.py` differs only by deletion of the Numba import and two `@njit` decorators, to enable a bounded Python replay because Numba is unavailable in the permitted local environment. The exact verifier ran on that copy and regenerated the same certificate JSON. No upstream file was run or edited in place.
+
+## Capital and route check
+
+| Source | Access | Read depth and result |
+|---|---|---|
+| `work/astra-capital/00_START_HERE.txt` | Local pinned capital checkout | Lines 1–8. Used its retrieval/preservation protocol and warning that graph navigation is not proof applicability. |
+| `work/astra-capital/agent/CURRENT.txt` | Local pinned capital checkout | Entire six-line record. Inventory/revision scope only; not treated as an assessment of this theorem. |
+| `work/astra-capital/agent/COMPOSITION.txt` | Local pinned capital checkout | Lines 1–31. Used to classify transfer states and preserve unknown assumptions/cost. |
+| `work/astra-capital/AGENTS.md` | Local pinned capital checkout | Lines 1–7. Read-only use, source-history and claim-scope requirements. |
+| `work/astra-capital/agent/concepts/b.tsv`, `d.tsv` | Lexical route search | `branching` points only to N783; `defect` yields generic numeric records but no applicable PDE sampler theorem. This was treated as navigation, not evidence. |
+| `work/astra-capital/frontier/dossiers/N783.txt` | Relevant lexical-hit dossier | Lines 1–40 and scoped notices. N783 concerns hBN retained repair and carrier-reward Markov certificates, not semilinear PDE branching; its correctness/physical state remains open. Discarded as a lexical collision. No source proof or data for this task was imported. |
+| `work/astra-capital/agent/RECENT.tsv`, `SEMANTIC_NOTICES.jsonl` | Current relevant inventory/notices | Recent entries through N805 and notices mentioning N783/N789 were checked. No relevant current capital theorem, transfer record, or FJ nonlinear route was found. |
+
+## Primary literature read
+
+| Primary source and version | Exact access | Read depth and relevance |
+|---|---|---|
+| Agarwal & Claisse (2020), accepted manuscript, *Branching diffusion representation of semi-linear elliptic PDEs and estimation using Monte Carlo method*, SPA 130(8), 5006–5036, DOI 10.1016/j.spa.2020.02.009 | [University of Glasgow accepted PDF](https://eprints.gla.ac.uk/210343/7/210343.pdf), 26 pages | Read branching process construction (Section 2.2), representation setup/results (Section 3.1), and integrability analysis (Section 3.3), especially Proposition 3.4 and its `q=1` constant-supersolution discussion; the nearby Proposition 3.5 was inspected for alternate criteria. Prop. 3.4 supplies an `L^q` supersolution test with coefficient majorants `|c_l|^q/p_l^(q−1)`, directly limiting novelty claims about majorant-certified branching integrability. Full paper was not independently re-proved. |
+| Bossy et al. (2015), version 3, *Monte Carlo methods for linear and non-linear Poisson-Boltzmann equation*, arXiv:1411.2304 | [Primary arXiv HTML v3](https://arxiv.org/html/1411.2304v3), Sections 3.1–3.2.2 | Read the branching Brownian construction and sinh Poisson–Boltzmann specialization, including Eq. (3.5), Corollary 3 and Remark 4. Eq. (3.5) gives odd factorial offspring and subcritical mean; Corollary/remark scope the unresolved integrability and variance issues. |
+| Fan, Sun, Yang & Lu (ICLR 2026), *Physics-Informed Inference Time Scaling for Solving High-Dimensional Partial Differential Equations* | [Official proceedings PDF](https://proceedings.iclr.cc/paper_files/paper/2026/file/cf8353a0efc3644454a5591a7cb55c17-Paper-Conference.pdf), locally copied to `source-copy/scasml_iclr2026.pdf`; [OpenReview copy](https://openreview.net/pdf?id=d2pUyiXwcm) | Read main paper pp. 3–7 / Sections 2.1–2.4: linear defect Feynman–Kac correction, semilinear defect Fact 2.3, MLP inference-time method and Theorem 2.5. The appendices defining all regularity assumptions and proving every cost bound were not audited in full. The read suffices to establish high-level surrogate defect correction as prior art, not to claim theorem-to-theorem equivalence. |
+| Beck, Gonon & Jentzen (2024), *Overcoming the curse of dimensionality in the numerical approximation of high-dimensional semilinear elliptic partial differential equations*, PDEs and Applications 5:31, DOI 10.1007/s42985-024-00272-4 | [Official Springer article](https://link.springer.com/article/10.1007/s42985-024-00272-4) | Read publisher abstract/introduction, Theorem 1.1 and the explanatory SFPE/Exponential-time representation. Theorem 3.16 and its proof were not read in full. Used only to identify a strong elliptic MLP baseline and to avoid implying that high dimension or point query alone is novel. |
+
+No secondary-source claim is used as technical evidence. Publisher/proceedings summaries and empirical results are reported only as their authors' claims. The citations establish a prior-art boundary, not historical priority.
+
+## Owned calculations, tests, and deviations
+
+- `KILLED_TANGENT_THEOREM.md`: independent theorem derivation and rational two-state check.
+- `exact_cases.py` / `.json`: exact Fraction endpoint kernels, event probabilities, fixed-point recursions, work bounds and scoped uncentered contradiction.
+- `sinh_degree_audit.py` / `.json`: bounded floating inverse-series and mass/subcriticality audit; not an exact sampler.
+- `source-copy/floating_boundary.py` / `.json`: exact-rational reconstruction of runtime binary floats and envelope gaps.
+- `source-copy/replay_2000.json`: 2,000 samples per predictor in the copied Python version, with a numerical FFT comparator.
+- `source-copy/guard_tolerance_probe.py` / `.json`: a static evaluation of the copied guard on synthetic `1+5×10⁻¹³` event mass, which falls inside the `1e−12` acceptance band.
+
+One direct execution probe with deliberately invalid, supercritical synthetic branching parameters was interrupted after the Python replay became slow. No result is claimed from that run. The finite guard conclusion is based solely on the copied source predicate `p1 < -1e-12 or total > 1+1e-12`; the failed probe was not based on either valid certificate. No other source or environment changes were made.

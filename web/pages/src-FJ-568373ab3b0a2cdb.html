@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — near_contact_modes.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/contact_global/near_contact_modes.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded exact Fourier experiment for the G contact and arbitrary backgrounds.
+
+The script builds compatible gradients from three integer Fourier modes,
+integrates all polynomial moments exactly by Laurent convolution, and reports
+the full optimized Jensen gap and the contact-direction Schur complement.
+It is evidence for this finite family only, not a proof of quasiconvexity.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import sympy as s
+
+
+Poly = dict[tuple[int, int], s.Expr]
+
+
+def add(*items: Poly) -&gt; Poly:
+    out: Poly = {}
+    for p in items:
+        for k, v in p.items():
+            out[k] = out.get(k, s.S.Zero) + v
+    return {k: s.expand(v) for k, v in out.items() if v != 0}
+
+
+def scale(p: Poly, c: s.Expr) -&gt; Poly:
+    return {k: s.expand(c * v) for k, v in p.items() if c * v != 0}
+
+
+def mul(p: Poly, q: Poly) -&gt; Poly:
+    out: Poly = {}
+    for (i, j), x in p.items():
+        for (k, ell), y in q.items():
+            key = (i + k, j + ell)
+            out[key] = out.get(key, s.S.Zero) + x * y
+    return {k: s.expand(v) for k, v in out.items() if v != 0}
+
+
+def cosine(k: tuple[int, int]) -&gt; Poly:
+    return {k: s.Rational(1, 2), (-k[0], -k[1]): s.Rational(1, 2)}
+
+
+def mean(p: Poly) -&gt; s.Expr:
+    return s.factor(p.get((0, 0), 0))
+
+
+def substitute(poly: s.Expr, entries: list[Poly], variables: tuple[s.Symbol, ...]) -&gt; Poly:
+    &quot;&quot;&quot;Evaluate a scalar polynomial on four exact Laurent polynomials.&quot;&quot;&quot;
+    out: Poly = {}
+    expanded = s.Poly(s.expand(poly), *variables)
+    for powers, coeff in expanded.terms():
+        term: Poly = {(0, 0): coeff}
+        for p, power in zip(entries, powers):
+            for _ in range(power):
+                term = mul(term, p)
+        out = add(out, term)
+    return out
+
+
+a, b, c, d, eps = s.symbols(&quot;a b c d eps&quot;, real=True)
+u, v, w, q = a*a + c*c, b*b + d*d, a*b + c*d, a*d - b*c
+G = 3*(u + v - 2*q)**2 + s.Rational(35, 24)*u**2 + q**2 - s.Rational(5, 2)*q*u
+variables = (a, b, c, d)
+gradients = [s.diff(G, z) for z in variables]
+Hessian = s.hessian(G, variables)
+
+
+def run_family(modes: list[tuple[tuple[int, int], tuple[int, int, int, int], s.Expr]]) -&gt; dict:
+    entries: list[Poly] = [{} for _ in range(4)]
+    for frequency, matrix, amplitude in modes:
+        c_mode = scale(cosine(frequency), amplitude)
+        for index, value in enumerate(matrix):
+            entries[index] = add(entries[index], scale(c_mode, s.sympify(value)))
+    bvec = [mean(substitute(g, entries, variables)) for g in gradients]
+    hmat = s.Matrix([
+        [mean(substitute(Hessian[i, j], entries, variables)) for j in range(4)]
+        for i in range(4)
+    ])
+    cval = mean(substitute(G, entries, variables))
+    # Background basis: A=I first, then its Euclidean orthogonal complement.
+    A = s.Matrix([1, 0, 0, 1])
+    W = [s.Matrix([0, 1, 0, 0]), s.Matrix([0, 0, 1, 0]), s.Matrix([1, 0, 0, -1])]
+    basis = [A, *W]
+    change = s.Matrix.hstack(*basis)
+    hb = change.T * hmat * change
+    bb = change.T * s.Matrix(bvec)
+    D = hb[1:, 1:]
+    k = hb[1:, 0]
+    h = hb[0, 0]
+    bA = bb[0]
+    bW = bb[1:, 0]
+    if s.det(D) == 0:
+        raise AssertionError(&quot;transverse block unexpectedly singular&quot;)
+    z = D.inv() * k
+    ht = s.factor(h - (k.T * D.inv() * k)[0])
+    bt = s.factor(bA - (k.T * D.inv() * bW)[0])
+    reduced = s.factor(cval - (bW.T * D.inv() * bW)[0] / 2)
+    bfull = s.Matrix(bvec)
+    if s.factor(hmat.det()) != 0:
+        quadratic = (bfull.T * hmat.inv() * bfull)[0]
+    else:
+        # Solve H z=b; the quadratic b.z is invariant across solutions because
+        # nullspace closure puts b in range(H).
+        solution, _parameters = hmat.gauss_jordan_solve(bfull)
+        quadratic = (bfull.T * solution)[0]
+    full_gap = s.factor(cval - quadratic / 2)
+    fourth = mean(substitute((a*a+b*b+c*c+d*d)**2, entries, variables))
+    out = {
+        &quot;covariance_rank&quot;: s.Matrix([
+            [mean(mul(entries[i], entries[j])) for j in range(4)] for i in range(4)
+        ]).rank(),
+        &quot;fourth_moment&quot;: s.factor(fourth),
+        &quot;c&quot;: s.factor(cval),
+        &quot;b&quot;: [s.factor(x) for x in bvec],
+        &quot;H&quot;: [[s.factor(hmat[i, j]) for j in range(4)] for i in range(4)],
+        &quot;H_principal_minors&quot;: [s.factor(hmat[:j, :j].det()) for j in range(1, 5)],
+        &quot;H_contact&quot;: s.factor(h),
+        &quot;H_cross&quot;: [s.factor(x) for x in k],
+        &quot;H_transverse_det&quot;: s.factor(s.det(D)),
+        &quot;H_schur_contact&quot;: ht,
+        &quot;b_contact&quot;: s.factor(bA),
+        &quot;b_transverse&quot;: [s.factor(x) for x in bW],
+        &quot;b_schur_contact&quot;: bt,
+        &quot;background_transverse_shift&quot;: [s.factor(x) for x in z],
+        &quot;gap_before_contact_elimination&quot;: reduced,
+        &quot;full_optimized_gap&quot;: full_gap,
+        &quot;negative_on_eps_positive&quot;: bool(s.factor(full_gap).is_negative),
+    }
+    return out
+
+
+families = {
+    &quot;two_modes_independent&quot;: [
+        ((0, 1), (0, 1, 0, 0), s.Integer(1)),  # e12 cos(y)
+        ((1, 0), (1, 0, 0, 0), eps),            # e11 cos(x)
+    ],
+    &quot;three_mode_resonant&quot;: [
+        ((0, 1), (0, 1, 0, 0), s.Integer(1)),  # e12 cos(y)
+        ((1, 0), (1, 0, 0, 0), eps),            # e11 cos(x)
+        ((1, 1), (0, 0, 1, 1), eps),            # (e21+e22) cos(x+y)
+    ],
+    &quot;rotating_one_frequency&quot;: [
+        ((0, 1), (0, 1, 0, 0), s.Integer(1)),
+        ((0, 1), (0, 0, 0, 1), eps),            # same wave, changed output vector
+    ],
+    &quot;rotated_line_plus_tiny_independent_mode&quot;: [
+        ((0, 1), (0, 1, 0, eps), s.Integer(1)), # rank-one line rotated by eps
+        ((1, 0), (eps**2, 0, 0, 0), s.Integer(1)), # smaller independent mode
+    ],
+    &quot;tangent_resonant_flatness&quot;: [
+        # In physical coordinates these are frequencies (1,N), (2,N), (3,2N),
+        # with eps=1/N. Their exact relation k1+k2=k3 gives a genuine cubic
+        # resonance while all three rank-one matrices approach e12.
+        ((1, 0), (eps, 1, s.Rational(3, 2)*eps**2, s.Rational(3, 2)*eps), s.Integer(1)),
+        ((0, 1), (2*eps, 1, 6*eps**2, 3*eps), s.Integer(1)),
+        ((1, 1), (s.Rational(3, 2)*eps, 1, s.Rational(27, 8)*eps**2, s.Rational(9, 4)*eps), s.Integer(1)),
+    ],
+}
+
+for n in (2, 4, 8, 16):
+    families[f&quot;anisotropic_resonance_N{n}&quot;] = [
+        ((1, n), (s.Rational(1, n), 1, s.Rational(1, n*n), s.Rational(1, n)), s.Integer(1)),
+        ((-1, n), (s.Rational(-1, n), 1, s.Rational(1, n*n), s.Rational(-1, n)), s.Integer(1)),
+        ((0, 2*n), (0, 1, 0, 0), s.Integer(1)),
+    ]
+
+if __name__ == &quot;__main__&quot;:
+    results = {name: run_family(modes) for name, modes in families.items()}
+    tangent = results[&quot;tangent_resonant_flatness&quot;]
+    eps4 = eps**4
+    assert tangent[&quot;covariance_rank&quot;] == 3
+    assert s.factor(tangent[&quot;H_schur_contact&quot;]).as_leading_term(eps) == s.Rational(74285, 4608)*eps4
+    assert s.factor(tangent[&quot;b_contact&quot;]).as_leading_term(eps) == -s.Rational(15, 8)*eps**3
+    assert s.factor(tangent[&quot;b_schur_contact&quot;]).as_leading_term(eps) == s.Rational(25, 64)*eps**3
+    resonant_loss = s.factor(tangent[&quot;b_schur_contact&quot;]**2/(2*tangent[&quot;H_schur_contact&quot;]))
+    assert resonant_loss.as_leading_term(eps) == s.Rational(1125, 237712)*eps**2
+    assert s.limit(tangent[&quot;full_optimized_gap&quot;], eps, 0) == s.Rational(111, 8)
+    for minor in tangent[&quot;H_principal_minors&quot;]:
+        assert all(coefficient &gt; 0 for coefficient in s.Poly(minor, eps).all_coeffs() if coefficient != 0)
+    for polynomial in s.fraction(tangent[&quot;full_optimized_gap&quot;]):
+        assert all(coefficient &gt; 0 for coefficient in s.Poly(polynomial, eps).all_coeffs() if coefficient != 0)
+
+    rotated = results[&quot;rotated_line_plus_tiny_independent_mode&quot;]
+    assert s.limit(rotated[&quot;H_schur_contact&quot;]/eps**4, eps, 0) == s.Rational(9, 4)
+    assert s.limit(rotated[&quot;H_schur_contact&quot;]/rotated[&quot;H_contact&quot;], eps, 0) == 0
+    assert s.limit(rotated[&quot;full_optimized_gap&quot;], eps, 0) == s.Rational(9, 8)
+    for minor in rotated[&quot;H_principal_minors&quot;]:
+        assert all(coefficient &gt; 0 for coefficient in s.Poly(minor, eps).all_coeffs() if coefficient != 0)
+
+    single_rotation = results[&quot;rotating_one_frequency&quot;]
+    assert single_rotation[&quot;H_schur_contact&quot;] == 0
+    assert single_rotation[&quot;full_optimized_gap&quot;] == 9*(eps**2 + 1)**2/8
+    for name, item in results.items():
+        print(name)
+        for key in (&quot;covariance_rank&quot;, &quot;fourth_moment&quot;, &quot;H_contact&quot;, &quot;H_cross&quot;,
+                    &quot;H_schur_contact&quot;, &quot;b_contact&quot;, &quot;b_schur_contact&quot;,
+                    &quot;gap_before_contact_elimination&quot;, &quot;full_optimized_gap&quot;):
+            print(f&quot;  {key}: {item[key]}&quot;)
+
+    Path(__file__).with_name(&quot;near_contact_modes.json&quot;).write_text(
+        json.dumps(results, indent=2, default=str) + &quot;\n&quot;
+    )
+    checks = {
+        &quot;exact_tangent_resonance&quot;: {
+            &quot;covariance_rank&quot;: tangent[&quot;covariance_rank&quot;],
+            &quot;H_principal_minor_coefficients_positive&quot;: True,
+            &quot;h_star_over_eps4&quot;: &quot;74285/4608&quot;,
+            &quot;beta_star_over_eps3&quot;: &quot;25/64&quot;,
+            &quot;reduced_loss_over_eps2&quot;: &quot;1125/237712&quot;,
+            &quot;optimized_gap_limit&quot;: &quot;111/8&quot;,
+        },
+        &quot;rotated_line_plus_small_independent_mode&quot;: {
+            &quot;h_star_over_eps4&quot;: &quot;9/4&quot;,
+            &quot;h_star_over_h_limit&quot;: &quot;0&quot;,
+            &quot;optimized_gap_limit&quot;: &quot;9/8&quot;,
+        },
+        &quot;single_rotated_rank_one_mode&quot;: {
+            &quot;h_star&quot;: &quot;0&quot;,
+            &quot;optimized_gap&quot;: str(single_rotation[&quot;full_optimized_gap&quot;]),
+        },
+    }
+    Path(__file__).with_name(&quot;near_contact_checks.json&quot;).write_text(
+        json.dumps(checks, indent=2) + &quot;\n&quot;
+    )
+</pre></body></html>

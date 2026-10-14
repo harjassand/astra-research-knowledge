@@ -1,0 +1,250 @@
+# A contact-operator criterion for cubic compensation
+
+## 1. Statement
+
+Let `Q=(0,2π)^2` be a periodic cell with normalized average. The same estimate holds on `R²` for compactly supported potentials with averages replaced by integrals, and on a fixed bounded zero-boundary cell by extension by zero. Write a compatible field as a gradient
+
+\[
+X=D\phi=\begin{pmatrix}a&b\\c&d\end{pmatrix},\qquad R=e_{12},\qquad r=d-\lambda a,
+\]
+
+where $\lambda\ne0$. Set $Y=X-bR$ and $e=(c,r)$. Let $Q_0$ be a nonnegative quadratic form satisfying the pointwise coercivity
+
+\[
+Q_0(X)\ge \nu(c^2+r^2),\qquad \nu>0.
+\]
+
+Let $C$ be a homogeneous cubic polynomial in the four entries of $X$. Assume
+
+\[
+C(a,b,0,\lambda a)=\kappa a^3,
+\qquad \partial_b^2 C\equiv0.
+\tag{1}
+\]
+
+Then there is a finite constant $K=K(\lambda,C,\nu)$ such that every periodic or zero-boundary $W^{1,4}$ potential satisfies
+
+\[
+\left|\fint C(D\phi)\right|
+\le K\left(\fint Q_0(D\phi)\right)^{1/2}
+       \|D\phi\|_{L^4}\,\|D\phi-(D\phi:R)R\|_{L^4}.
+\tag{2}
+\]
+
+The constant may depend on the fixed contact coordinates and the polynomial. No coefficient-rotation symmetry is assumed. This is a local contact theorem: it does not classify which rank-one-convex quartics possess such a contact, and it does not imply full quasiconvexity.
+
+The hypotheses are a checkable differential-algebraic certificate. The first identity says the cubic on the energy kernel $U=\{c=0,d=\lambda a\}$ is a single transverse cube. The second says the cubic is at most linear in the contact coordinate $b=X:R$. The latter is equivalent to the polynomial identity $D^2C(X)[R,R]=0$.
+
+## 2. Polynomial ideal estimate
+
+Use $r=d-\lambda a$ as a coordinate in place of $d$. By the first identity in (1), $C-\kappa a^3$ vanishes on $c=r=0$, so
+
+\[
+C-\kappa a^3\in(c,r)\subset\mathbb R[a,b,c,r].
+\]
+
+It is homogeneous of degree three. Since $\partial_b^2C=0$, no monomial contains $b^2$. Every monomial in the remainder therefore has one defect factor from $(c,r)$, one factor from $Y$ (whose entries are $(a,c,d)$), and a final factor bounded by $C(|b|+|Y|)$. Thus
+
+\[
+|C(X)-\kappa a^3|\le C_C |e|\,|Y|\,(|b|+|Y|).
+\]
+
+Hölder and finite-dimensional norm equivalence give
+
+\[
+\left|\fint (C(X)-\kappa a^3)\right|
+\le C_C\|e\|_2\|Y\|_4(\|b\|_4+\|Y\|_4)
+\le C_C'\|e\|_2\|X\|_4\|Y\|_4.
+\tag{3}
+\]
+
+The differential step is needed only for \(\fint a^3\).
+
+## 3. The mixed-derivative estimate
+
+For a scalar periodic potential \(\psi\),
+
+\[
+\|\psi_{12}\|_{8/3}^{2}
+\le C\|\psi_{11}\|_2\|\psi_{22}\|_4.
+\tag{4}
+\]
+
+Here and below constants do not depend on Fourier bandwidth or the ratio of frequencies. A concise proof uses the analytic family
+
+\[
+T_z=|D_1|^{2z}|D_2|^{2(1-z)}.
+\]
+
+On $\operatorname{Re}z=1$, its $L^2$ norm is $\|\psi_{11}\|_2$. On $\operatorname{Re}z=0$, it is $|D_1|^{2it}|D_2|^{-2it}\psi_{22}$, bounded in $L^4$ by the one-dimensional imaginary-power multiplier estimates in the two coordinate directions, with at most polynomial growth in $|t|$. The three-lines interpolation theorem at $z=1/2$ gives
+
+\[
+\||D_1||D_2|\psi\|_{8/3}
+\le C\|\psi_{11}\|_2^{1/2}\|\psi_{22}\|_4^{1/2}.
+\]
+
+Two directional Hilbert transforms convert the left side to \(\|\psi_{12}\|_{8/3}\); squaring proves (4). Trigonometric polynomials are dense in the stated spaces, so the estimate extends to the required Sobolev classes. The same proof works after a fixed nonsingular linear change of the two coordinate directions.
+
+This is standard mixed-derivative interpolation, included to expose the exact exponents and symbol factorization. It is not a new interpolation inequality.
+
+## 4. Hodge projection and proof of (2)
+
+First take a smooth periodic potential. With the zero-mean inverse Laplacian, define
+
+\[
+\phi_1^0=\phi_1+\lambda^{-1}\partial_1\Delta^{-1}r,
+\qquad
+\phi_2^0=\phi_2-\partial_2\Delta^{-1}r.
+\tag{5}
+\]
+
+For $X_0=D\phi^0$, direct differentiation gives $d_0=\lambda a_0$. Each entry of $X-X_0$ is a fixed order-zero Riesz transform of $r$; hence
+
+\[
+\|X-X_0\|_p\le C_{p,\lambda}\|r\|_p,\qquad p=2,4.
+\tag{6}
+\]
+
+The field $X_0$ remains a gradient. There is a periodic scalar stream potential $\psi$ such that
+
+\[
+\phi_1^0=\lambda^{-1}\psi_2,\quad \phi_2^0=\psi_1,
+\qquad
+a_0=\lambda^{-1}\psi_{12},\quad b_0=\lambda^{-1}\psi_{22},\quad c_0=\psi_{11}.
+\tag{7}
+\]
+
+By (4), (6), and the fact that $b_0-b$ is an order-zero transform of $r$,
+
+\[
+\|a_0\|_{8/3}^{2}
+\le C_\lambda\|c_0\|_2\|b_0\|_4
+\le C_\lambda\|e\|_2\|X\|_4.
+\tag{8}
+\]
+
+Also, $a_0-a$ is an order-zero transform of $r$, and $a,r$ are coordinates of $Y$. Therefore
+
+\[
+\|a_0\|_4\le C_\lambda\|Y\|_4,
+\qquad
+\|a_0-a\|_2\le C_\lambda\|r\|_2.
+\tag{9}
+\]
+
+Hölder with (2/(8/3)+1/4=1), followed by the cubic difference identity, gives
+
+\[
+\begin{aligned}
+\left|\fint a^3\right|
+&\le \|a_0\|_{8/3}^2\|a_0\|_4
+ +\|a-a_0\|_2(\|a\|_4+\|a_0\|_4)^2\\
+&\le C_\lambda\|e\|_2\|X\|_4\|Y\|_4.
+\end{aligned}
+\tag{10}
+\]
+
+Combining (3) and (10), then using $\|e\|_2\le \nu^{-1/2}(\fint Q_0)^{1/2}$, proves (2). Density gives the $W^{1,4}$ result. Extension by zero gives the compact-support version.
+
+## 5. Differential-operator form
+
+For a scalar constant-coefficient compatibility system, let $e$ be a fixed linear defect slot and suppose a nonnegative quadratic energy satisfies $Q(u)\ge\nu|e|^2$. The same proof applies whenever the contact Hodge projection and scalar operators have the following explicit properties:
+
+1. The projection corrects the field by an order-zero multiplier of a defect $e$, with $\|u-u_0\|_p\lesssim\|e\|_p$ for $p=2,4$.
+2. On the projected field, write the cubic slot as $s(u_0)=S(D)\psi$, a defect slot as $e_0=E(D)\psi$, and a transverse slot as $t_0=T(D)\psi$, where $E,T$ are scalar Fourier multipliers with nonnegative symbols $\epsilon(\xi),\tau(\xi)$. Require $\|s(u)\|_4\lesssim\|u\|_4$, $\|e_0\|_2\lesssim\|e\|_2$, $\|t_0\|_4\lesssim\|u\|_4$, $\|s(u_0)\|_4\lesssim\|\Pi_\perp u\|_4$, and $\|s(u)-s(u_0)\|_2\lesssim\|e\|_2$.
+3. The ratio multipliers with symbols $(\epsilon/\tau)^{it}$ are bounded on $L^4$, with at most polynomial growth in $|t|$; values on null sets of the symbols are immaterial. The cubic-slot symbol has the mixed factorization $s(\xi)=m(\xi)|e_0(\xi)t_0(\xi)|^{1/2}$, where $e_0(\xi)=\epsilon(\xi)$ and $t_0(\xi)=\tau(\xi)$ denote the corresponding scalar symbols and $m$ is an order-zero multiplier bounded on $L^{8/3}$.
+4. The cubic has the form $C(u)=\kappa s(u)^3+R(u)$, where $R$ belongs to the defect ideal and satisfies $|R(u)|\lesssim|e|\,|\Pi_\perp u|(|u|+|\Pi_\perp u|)$.
+
+Under these hypotheses, $\left|\fint C(u)\right|\lesssim\left(\fint Q(u)\right)^{1/2}\|u\|_4\|\Pi_\perp u\|_4$.
+
+Indeed, the analytic family with symbol $\epsilon^z\tau^{1-z}$ has an $L^2$ boundary bound on $\operatorname{Re}z=1$, since the ratio factor has modulus one, and an $L^4$ boundary bound on $\operatorname{Re}z=0$ by the stated ratio-multiplier hypothesis. Three-lines at $z=1/2$, followed by $m(D)$, gives $\|S(D)\psi\|_{8/3}^2\lesssim\|E(D)\psi\|_2\|T(D)\psi\|_4$. The projection bounds and the cubic remainder estimate then prove the same compensation inequality for $u$. The planar gradient case is $S=\partial_1\partial_2$, $E=-\partial_1^2$, $T=-\partial_2^2$, where $(\epsilon/\tau)^{it}=|\xi_1/\xi_2|^{2it}$ is a product of standard directional imaginary-power multipliers and the projection is (5). Finding a compatible projection and verifying the symbol identity are substantive hypotheses, not consequences of a wave-cone condition alone.
+
+## 6. Two concrete checks on the condition
+
+### 6.1 A wave-cone-null cubic whose average is nonzero
+
+Take $C(X)=\det(X)X_{11}=a(ad-bc)$, $\lambda=1$, and $Q_0(X)=c^2+(d-a)^2$. Then
+
+\[
+C=a^3+a^2(d-a)-abc,
+\]
+
+so (1) holds: $C=a^3$ on $c=0,d=a$, and $C$ is linear in $b$. The polynomial vanishes on the entire gradient wave cone $\Lambda=\{z\otimes\xi\}$, since $\det(z\otimes\xi)=0$.
+
+Nevertheless, for
+
+\[
+\phi_1=\sin x+\sin y,\qquad \phi_2=\sin(x+y),
+\]
+
+one has $a=\cos x$, $b=\cos y$, $c=d=\cos(x+y)$, and direct integration gives
+
+\[
+\fint C(D\phi)=-\frac14.
+\]
+
+Thus the condition $C|_\Lambda=0$ is a one-wave test, not a cubic-average cancellation rule. Resonant three-wave terms survive. The contact-operator theorem controls them quantitatively rather than asserting that they vanish.
+
+### 6.2 Removing \(\partial_b^2C=0\) fails on compatible gradients
+
+The kernel geometry and the restriction to (U) alone do not suffice. Set
+
+\[
+C(X)=b^2c,\qquad Q_0(X)=c^2+(d-a)^2,
+\]
+
+so $U=\ker Q_0=\{c=0,d=a\}$, $C|_U=0$, and $U\cap\Lambda=\mathbb R e_{12}$. For an integer $n\ge1$, let
+
+\[
+\psi_n=n^{-2}\cos(ny-x)+n^{-2}\cos(ny+x)+(4n^2)^{-1}\cos(2ny),
+\qquad \phi_n=(\partial_2\psi_n,\partial_1\psi_n).
+\]
+
+Then $X_n=D\phi_n$ is periodic and compatible, and
+
+\[
+\begin{aligned}
+a_n=d_n&=2n^{-1}\sin x\sin(ny),\\
+b_n&=-2\cos x\cos(ny)-\cos(2ny),\\
+c_n&=-2n^{-2}\cos x\cos(ny).
+\end{aligned}
+\]
+
+Orthogonality of the integer Fourier modes gives $\fint c_n^2=4n^{-4}(1/2)(1/2)=n^{-4}$. In $b_n^2c_n$, the terms proportional to $\cos^3x$ and $\cos x$ average to zero; the surviving cross term is
+
+\[
+-8n^{-2}\left(\fint\cos^2x\right)\left(\fint\cos^2(ny)\cos(2ny)\right)
+=-8n^{-2}\cdot\frac12\cdot\frac14=-n^{-2}.
+\]
+
+Moreover $\|X_n\|_4\le C$ and $\|X_n-b_ne_{12}\|_4\le C/n$, directly from the displayed component formulas. Hence the proposed right side is $O(n^{-3})$ while the left side is $n^{-2}$. No uniform compensation constant exists for this weakened cubic class. The failure is compatible, resonant, and high-frequency; an algebraic kernel intersection with the wave cone does not supply the missing factor.
+
+## 7. Concentration fixes the endpoint exponents
+
+Choose a compactly supported Lipschitz $f$ with $f'=1$ on an interval of length $1/3$, $f'=-1/2$ on an adjacent interval of length $2/3$, and $f'=0$ outside their union. Then $f$ returns to zero at the right endpoint and $\int (f')^3=1/4$. Take a nonzero nonnegative $g\in C_c^\infty(0,1)$, and
+
+\[
+\phi(x,y)=(f(x)g(y),0),\qquad C(X)=a^3,\qquad Q_0(X)=c^2+(d-a)^2.
+\]
+
+Here $a=f'g$, $b=fg'$, and $c=d=0$, so $\int C(D\phi)=\frac14\int g^3>0$ and $\int Q_0(D\phi)=\int a^2>0$. Insert the scaled potential
+
+\[
+\phi_\rho(x)=\rho^{1/2}\phi((x-x_0)/\rho)
+\]
+
+in a cell, with \(\rho\downarrow0\). In two dimensions,
+
+\[
+\int C(D\phi_\rho)\asymp\rho^{1/2},\qquad
+\left(\int Q_0(D\phi_\rho)\right)^{1/2}\asymp\rho^{1/2},\qquad
+\|D\phi_\rho\|_p\asymp\|Y_\rho\|_p\asymp\rho^{2/p-1/2}.
+\]
+
+At $p=4$, both field norms are scale-invariant and the inequality has matching powers. Replacing either $L^4$ factor by $L^p$ with $p<4$ makes the right side decay like $\rho^{2/p}$, faster than the left side. Likewise replacing the defect $L^2$ norm by $L^q$ with $q<2$ gives a right side of order $\rho^{2/q-1/2}=o(\rho^{1/2})$. Thus $4$ is the minimal scale-invariant exponent in each field slot, and $2$ is the minimal defect exponent, for this factorized form. Higher exponents are weaker on finite measure cells and are not excluded.
+
+## 8. Scope and failure boundary
+
+The theorem abstracts the incoming nine-coefficient result's Type-II analytic mechanism. The algebraic hypotheses involve only the local cubic, the contact direction, and a positive quadratic defect; there is no rotational-invariant quartic parameterization. Its essential analytic input is a bounded Hodge correction plus a geometric-mean symbol identity. Wave-cone contact and classical compensated-compactness cubic conditions are not replacements for those quantitative hypotheses.
+
+The proof does not handle an arbitrary differential constraint solely from its wave cone, does not show the condition is necessary modulo all gradient null Lagrangians, and does not classify full quartic cones. The counterexample $b^2c$ shows that deleting the contact-direction null identity is too broad even in the planar gradient setting.

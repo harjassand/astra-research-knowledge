@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — verify_source_control.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/query_variance/verify_source_control.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact consistency checks for the source-leaf control receipt.&quot;&quot;&quot;
+from fractions import Fraction as Q
+import json
+from pathlib import Path
+
+from source_control_certificate import build
+
+
+def main():
+    result = build()
+    p = Q(result[&quot;root_source_probability&quot;][&quot;numerator&quot;],
+          result[&quot;root_source_probability&quot;][&quot;denominator&quot;])
+    complement = Q(result[&quot;root_source_complement&quot;][&quot;numerator&quot;],
+                   result[&quot;root_source_complement&quot;][&quot;denominator&quot;])
+    rate = Q(result[&quot;rate&quot;][&quot;numerator&quot;], result[&quot;rate&quot;][&quot;denominator&quot;])
+    lam = Q(result[&quot;tangent_lower_lambda&quot;][&quot;numerator&quot;],
+            result[&quot;tangent_lower_lambda&quot;][&quot;denominator&quot;])
+    Gamma = Q(result[&quot;nonlinear_slope_Gamma_h&quot;][&quot;numerator&quot;],
+              result[&quot;nonlinear_slope_Gamma_h&quot;][&quot;denominator&quot;])
+    offspring = Q(result[&quot;offspring_mean_upper&quot;][&quot;numerator&quot;],
+                  result[&quot;offspring_mean_upper&quot;][&quot;denominator&quot;])
+    expected_nodes = Q(result[&quot;proposal_tree_node_bound&quot;][&quot;numerator&quot;],
+                       result[&quot;proposal_tree_node_bound&quot;][&quot;denominator&quot;])
+    h = Q(result[&quot;radius&quot;][&quot;numerator&quot;], result[&quot;radius&quot;][&quot;denominator&quot;])
+    R = Q(result[&quot;global_residual_bound_R&quot;][&quot;numerator&quot;],
+          result[&quot;global_residual_bound_R&quot;][&quot;denominator&quot;])
+    assert p == R / (rate * h)
+    assert p + complement == 1
+    assert 0 &lt; p &lt; 1
+    assert 0 &lt;= Gamma &lt; lam &lt;= rate
+    assert offspring == 1 - (lam - Gamma) / rate and 0 &lt;= offspring &lt; 1
+    assert expected_nodes == 1 / (1 - offspring)
+    coeffs = {
+        row[&quot;k&quot;]: (Q(row[&quot;real&quot;][&quot;numerator&quot;], row[&quot;real&quot;][&quot;denominator&quot;]),
+                   Q(row[&quot;imag&quot;][&quot;numerator&quot;], row[&quot;imag&quot;][&quot;denominator&quot;]))
+        for row in result[&quot;weak_source_control&quot;][&quot;fourier_coefficients&quot;]
+    }
+    assert max(abs(k) for k in coeffs) == 52
+    assert all(coeffs[-k] == (re, -im) for k, (re, im) in coeffs.items())
+    out = {
+        &quot;checks&quot;: [
+            &quot;exact p_source=R/(Lambda*h)&quot;,
+            &quot;exact p_source+(1-p_source)=1&quot;,
+            &quot;0&lt;p_source&lt;1&quot;,
+            &quot;exact subcritical offspring upper bound from Lambda, lambda and Gamma(h)&quot;,
+            &quot;exact expected-tree-size bound is the geometric sum 1/(1-q)&quot;,
+            &quot;resolvent Fourier coefficients have exact conjugate symmetry and degree 52&quot;,
+            &quot;certificate and variance formula regenerated from exact rational polynomial data&quot;,
+        ],
+        &quot;p_source&quot;: str(p),
+        &quot;one_minus_p_source&quot;: str(complement),
+        &quot;scope&quot;: &quot;Exact rational consistency checks; they do not validate floating-point sampling, Brownian draws, transcendental evaluation, or historical novelty.&quot;,
+    }
+    Path(__file__).with_name(&quot;source_control_validation.json&quot;).write_text(
+        json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

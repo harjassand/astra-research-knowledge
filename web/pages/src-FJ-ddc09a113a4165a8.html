@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — scan_resonant_contacts.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/contact_global/scan_resonant_contacts.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact grid over resonant near-contact rank-one Fourier profiles.&quot;&quot;&quot;
+from __future__ import annotations
+
+import itertools
+import json
+from pathlib import Path
+
+import sympy as s
+
+from near_contact_modes import eps, run_family
+
+
+def leading(expr: s.Expr) -&gt; tuple[int, s.Expr]:
+    expr = s.factor(expr)
+    num, den = s.fraction(expr)
+    def valuation(poly: s.Expr) -&gt; int:
+        p = s.Poly(s.expand(poly), eps)
+        return min(power[0] for power, coeff in p.terms() if coeff != 0)
+    order = valuation(num) - valuation(den)
+    coefficient = s.factor(s.limit(expr / eps**order, eps, 0, dir=&quot;+&quot;))
+    return order, coefficient
+
+
+rows = []
+delta_sets = (
+    (s.Integer(0), s.Integer(0), s.Integer(0)),
+    (s.Integer(1), s.Integer(1), s.Integer(1)),
+    (s.Integer(-1), s.Integer(-1), s.Integer(-1)),
+    (s.Integer(1), s.Integer(-1), s.Integer(0)),
+    (s.Integer(-1), s.Integer(1), s.Integer(0)),
+)
+amp_sets = ((1, 1, 1), (1, 1, -1))
+for deltas in delta_sets:
+    mu1 = s.Rational(3, 2) + deltas[0]
+    mu2 = s.Integer(3) + deltas[1]
+    mu3 = s.Rational(9, 4) + deltas[2]
+    for amps in amp_sets:
+        modes = [
+            ((1, 0), (eps, 1, mu1*eps**2, mu1*eps), s.Integer(amps[0])),
+            ((0, 1), (2*eps, 1, 2*mu2*eps**2, mu2*eps), s.Integer(amps[1])),
+            ((1, 1), (s.Rational(3, 2)*eps, 1,
+                      s.Rational(3, 2)*mu3*eps**2, mu3*eps), s.Integer(amps[2])),
+        ]
+        try:
+            out = run_family(modes)
+        except Exception as exc:
+            rows.append({&quot;deltas&quot;: list(map(str, deltas)), &quot;amps&quot;: amps,
+                         &quot;status&quot;: f&quot;skipped:{type(exc).__name__}&quot;})
+            continue
+        loss = s.factor(out[&quot;b_schur_contact&quot;]**2/(2*out[&quot;H_schur_contact&quot;]))
+        loss_order, loss_coeff = leading(loss, )
+        gap_order, gap_coeff = leading(out[&quot;full_optimized_gap&quot;])
+        rows.append({
+            &quot;deltas&quot;: list(map(str, deltas)), &quot;amps&quot;: amps,
+            &quot;h_schur&quot;: [str(x) for x in leading(out[&quot;H_schur_contact&quot;])],
+            &quot;b_schur&quot;: [str(x) for x in leading(out[&quot;b_schur_contact&quot;])],
+            &quot;loss&quot;: [str(loss_order), str(loss_coeff)],
+            &quot;full_gap&quot;: [str(gap_order), str(gap_coeff)],
+            &quot;covariance_rank&quot;: out[&quot;covariance_rank&quot;],
+        })
+
+Path(__file__).with_name(&quot;scan_resonant_contacts.json&quot;).write_text(
+    json.dumps(rows, indent=2) + &quot;\n&quot;
+)
+for row in rows:
+    if row.get(&quot;status&quot;):
+        print(row)
+    elif int(row[&quot;loss&quot;][0]) &lt;= 0:
+        print(row)
+print(f&quot;checked {len(rows)} exact families; loss limits saved to scan_resonant_contacts.json&quot;)
+</pre></body></html>

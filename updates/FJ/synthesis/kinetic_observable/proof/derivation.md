@@ -1,0 +1,159 @@
+# Source-reset branching assay: exact identification and finite cost
+
+Status: new internally derived operation; exact rational examples replayed in `../code/verify_branch_assay.py`. No physical experiment, external mathematical review, or novelty result is claimed.
+
+## 1. Finite killed-chain model
+
+Let X_t be a finite-state continuous-time Markov chain before absorption, with transient row generator Q. Thus Q_ij is nonnegative for i != j, each row sum is nonpositive, and every state is eventually killed. Put A=-Q, a nonsingular M-matrix. Let p be an initial probability column, with p^T exp(tQ) the row law at time t, and let c be a nonnegative state reward rate. Define
+
+\[
+R=\int_0^T c(X_t)\,dt,\qquad \mu=\mathbb E_p R,
+\]
+
+where T is the absorption time. The killed semigroup gives
+
+\[
+\mu=\int_0^\infty p^T e^{tQ}c\,dt=p^T A^{-1}c.
+\]
+
+This is finite for a finite transient chain and bounded c. No eigenmode or state reconstruction is part of the identity.
+
+## 2. Intervention and theorem
+
+For a chosen rate scale alpha>0, run a parent under the unmodified generator Q. While it occupies state x, let it emit a daughter at instantaneous rate alpha*c(x). Every daughter is independently prepared from the same source law p and follows the same rule. Daughter births do not change the parent's kinetic rates.
+
+Conditional on the parent's path, the daughter count K is Poisson with mean alpha*R. Therefore its probability generating function and mean are
+
+\[
+g_\alpha(s)=\mathbb E_p[e^{-\alpha(1-s)R}],\qquad
+\mathbb E K=\alpha\mu.
+\]
+
+The full family is a Galton–Watson process with this mixed-Poisson offspring law. Since the law has positive probability of zero offspring whenever Pr(R>0)>0, it is not the exceptional deterministic-one law. The Galton–Watson extinction criterion then gives
+
+\[
+\boxed{\alpha_c=1/\mu.}
+\]
+
+At alpha<=alpha_c, extinction occurs almost surely; at alpha>alpha_c, survival has positive probability. Thus testing whether mu>T_star is equivalent, in the ideal infinite-family limit, to setting alpha=1/T_star and asking which side of criticality the source-reset process occupies. This is an observable for the selected source/reward pair, not an estimate of the full generator.
+
+The exact critical-rate statement is not a finite-time statistical certificate. A finite lineage observed for a finite time can look extinct on either side of criticality. Section 4 gives a terminating estimator and its cost instead.
+
+## 3. Relation to the pinned kinetic results
+
+For N798, take a positive reference measure rho_0, source function w>=0, and Z=<w,1>_rho0. Use the initial law
+
+\[
+p(x)=\rho_0(x)w(x)/Z,
+\]
+
+and reward rate c(x)=w(x). For the positive killed reversible operator A_theta,
+
+\[
+\mu=\mathbb E_p\!\int_0^T w(X_t)dt
+=\frac{\langle w,A_\theta^{-1}w\rangle_{\rho_0}}{Z}
+=\tau.
+\]
+
+The branching readout therefore contains the complete small-rate and source-visible contribution to this one N798 scalar. For an ordinary prepared-source mean lifetime, use its actual source p and c=1. More generally it measures p^T A^-1 c for any nonnegative query reward c.
+
+This can complement a residual certificate without replacing it. If the N798 trial response G_0 and exact normalization Z are available, the assay's target mu returns the scalar omitted contribution Z*mu-G_0=<r,A_theta^-1 r> for the same load and physical generator. It does not give cross-load residuals, arbitrary boundary data, a generator representation, or a counterfactual response. N801's all-omitted-mode bound remains a model-class result. N804's acquired reference remains a conditional structural route. The assay instead observes one selected functional directly and does not infer low-degree mobility.
+
+## 4. Exact finite-response separation
+
+The pinned N804 checker gives the baseline spectral mixture with rates \(1,2,3,4\), weights \(1/4\), and exact positive-shift responses
+
+\[
+F(1)=77/240,\quad F(2)=19/80,\quad F(4)=533/3360.
+\]
+
+Its mean is \(F(0)=25/48\), so its branching threshold is \(48/25=1.92\). The same checker inserts mass \(1/1000\) at rate \(10^{-8}\), exactly adjusts the four old masses to remain positive and normalized, and preserves all three responses. The new exact mean is
+
+\[
+\frac{1600008300000146066667395166667709}
+     {16000000280000001400000002000}
+\approx100000.51700000008,
+\]
+
+so the threshold becomes its reciprocal, approximately 9.99994830026728e-6. The finite-response observations are identical while the proposed source-reset observable separates the means by a factor over 1.9e5 in critical rate. This is a derived consequence of N804's exact counterexample, not an independent physical observation.
+
+The owned exact replay additionally constructs a connected two-state reversible killed chain. With \(\epsilon=10^{-8}\),
+
+\[
+A=-Q=\begin{pmatrix}1+\epsilon&-\epsilon\\-\epsilon&2\epsilon\end{pmatrix},
+\qquad p=(999/1000,1/1000)^T.
+\]
+
+Here Q has interconversion rate epsilon in both directions and killing rates 1 and epsilon; it is symmetric, so the killed kinetics are reversible for the uniform reference measure. Exact inversion gives
+
+\[
+\mu=p^TA^{-1}\mathbf 1=3333433300000/66666667
+\approx50001.49924999251,
+\]
+
+and \(\alpha_c=66666667/3333433300000\approx1.9999400318\times10^{-5}\). The calculation requires neither its slow eigenvector nor recovery of its state labels by the assay.
+
+## 5. A terminating sampling protocol
+
+For measurement, use N independent source-prepared parents and count only their first-generation daughters. Quench daughters immediately after preparation; they do not reproduce. Let K_i be each parent's count and set
+
+\[
+\widehat\mu=\frac{1}{N\alpha}\sum_{i=1}^N K_i.
+\]
+
+It is unbiased. Conditional on R, K is Poisson with mean alpha*R.
+
+\[
+\operatorname{Var}(K)=\alpha\mu+\alpha^2\operatorname{Var}(R),\qquad
+\operatorname{Var}(\widehat\mu)=\frac{\mu/\alpha+\operatorname{Var}(R)}{N}.
+\]
+
+Consequently, for relative tolerance \(\varepsilon\) and failure probability \(\zeta\), Chebyshev gives the sufficient instance-wise allocation
+
+\[
+N\ge \frac{1/(\alpha\mu)+\mathrm{CV}(R)^2}{\zeta\varepsilon^2}.
+\]
+
+At critical tuning alpha*mu=1, the factor is 1+CV(R)^2. This tuning is not free when mu is unknown; a pilot or an externally acquired bracket is additional cost. No finite N works uniformly over the unrestricted family because the coefficient of variation is unbounded.
+
+For the connected two-state example, at its exact critical rate, a 10% relative-error / 95% Chebyshev guarantee takes 3,999,801 independent parent runs. At this tuning, the expected daughter count is one per parent, so roots plus daughters require 7,999,602 source preparations. Parent kinetic exposure is about \(1.999960467\times10^{11}\) model-time units. These are exact-arithmetic-derived sampling bounds under the authored chain, not lab times or observed outcomes. Daughters are counted as prepared then quenched; daughter evolution is not included.
+
+For c=1, direct observation of each absorption time has variance Var(T)/N. The offspring counter has variance [Var(T)+mu/alpha]/N, strictly larger at every finite alpha, before charging the extra source preparations. Thus the active readout supplies an alternative encoding of the same occupation integral; it does not improve sample efficiency when lifetimes can already be timed directly. Its possible value would be an apparatus where a cumulative activity or offspring signal is measurable but the full hidden path and absorption time are not; no such advantage is demonstrated here.
+
+For reward c=1, each root consumes expected physical model time mu. For general c, the root's expected wall-clock residence E_p[T] is separately acquired. If each source preparation costs C_p, the expected preparation charge is N*(1+alpha*mu)*C_p; at critical tuning it is 2*N*C_p. Add trigger calibration, counter readout, resets, and any intervention-induced change to the original kinetics. For the N798 mapping, one must also implement and calibrate the state reward w(x); that cost is not supplied here.
+
+## 6. Necessary source-information lower bound
+
+Let one model draw T~Exp(1). In a second model, a source start chooses a hidden slow component with probability delta: conditional on that choice T~Exp(epsilon), otherwise T~Exp(1). Consider any protocol that makes at most N independent source starts and does not label the component or alter its rates. Under the second model, with probability (1-delta)^N, every start takes the fast branch; on that event the entire transcript has the first model's law. Hence
+
+\[
+\operatorname{TV}(P_0^{(N)},P_1^{(N)})\le1-(1-\delta)^N,
+\qquad
+\text{equal-prior testing error}\ge(1-\delta)^N/2.
+\]
+
+To get error below 1/3 therefore requires
+
+\[
+N>\frac{\log(2/3)}{\log(1-\delta)}=\Omega(1/\delta).
+\]
+
+For delta=10^-3, the integer lower bound is 406 independent source starts. This bound is independent of the observation horizon: one may detect a slow component when it is sampled, but no path readout can reveal an unselected component. In a recursive source-reset family, count every independently re-prepared daughter as a source start. The lower bound is on starts, not on all descendants or clock exposure.
+
+## 7. Information, preparation, and representation ledger
+
+The assay needs no list of kinetic states or rate coefficients. Its input/output contract is instead:
+
+| Item | Required operation | Cost that must be charged |
+|---|---|---|
+| Source p | Prepare an independent root and each daughter from the same law | C_p per preparation, including reset and normalization |
+| Reward c | Generate branch events at rate alpha*c(X_t) during the original path | Observable construction, calibration, and a test that it leaves Q unchanged |
+| Branch scale alpha | Calibrate/scan a physical rate or select a pilot rate | Tuning, uncertainty, and finite-time decision overhead |
+| Count K | Record offspring until the parent is absorbed | Counter, lineage separation, and censoring controls |
+| Repetition N | Repeat independent roots for statistical precision | Formula above, using a valid upper bound on CV(R)^2 |
+
+For a dense arbitrary m-state source and reward, supplying exact lookup tables costs Omega(m) bits/entries in the worst case; the assay cannot create a succinct representation. If p and c have a validated compact representation, its storage, sampler, and trigger costs replace the dense table and must still be paid. With c=1, no hidden-state reward label is needed. The assay's primary resource is path exposure and independent source preparation, not linear algebra.
+
+## 8. Decision and unresolved physical gate
+
+This is a query-specific observable that is sensitive to every source-visible slow component and that avoids the finite-positive-shift ambiguity exactly. It is not a new solver, a model-acquisition theorem, a uniform finite-sample certificate, or evidence of experimental capability. The first-generation counter is statistically no cheaper than direct lifetime sampling in the worst case; the critical-family readout can be especially costly near threshold. No implementation is known here that can reproduce a hidden molecular source law and leave parent dynamics unchanged. A physical test would first need to demonstrate source-preserving reset, calibrated reward-coupled reproduction, unchanged parent transition law, and the predicted mean/survival relation on an independently measured finite CTMC. Until then, the actuator and physical utility remain UNKNOWN.

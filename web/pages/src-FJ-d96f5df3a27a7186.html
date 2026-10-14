@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — observation_channel.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/root/observation_channel.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent diagnostic implementation of the composed observation channel.
+
+Exact Fractions verify supplied source and hard-cap certificates. Sampling and
+the optional FFT comparator use floats: this is NOT a continuous-TV validated
+executable. The theorem concerns exact-real primitives / a suitably certified
+rounded implementation. No supplied scientific code is imported.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import argparse
+import json
+import math
+import platform
+import time
+
+import numpy as np
+
+
+def ceiling(x):
+    return -(-x.numerator // x.denominator)
+
+
+def min_power(base, target):
+    &quot;&quot;&quot;Smallest n&gt;=0 with rational base**n&gt;=target, without logarithms.&quot;&quot;&quot;
+    assert base &gt; 1 and target &gt; 0
+    lo, hi = 0, 1
+    while base**hi &lt; target:
+        hi *= 2
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if base**mid &gt;= target:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo
+
+
+def certificates(r, sigma, epsilon):
+    h = F(1, 8)
+    V = F(101)
+    Rsource = F(10)
+    psource = Rsource / (V * h)
+    branches = {2: F(150) * h / V, 3: F(100) * h**2 / V, 4: F(25) * h**3 / V}
+    p0 = 1 - sum(branches.values())
+    q = sum(k * p for k, p in branches.items())
+    assert p0 &gt;= psource and q == F(5425, 12928) &lt; 1
+    assert Rsource + F(150)*h**2 + F(100)*h**3 + F(25)*h**4 &lt;= V*h
+    s = F(3, 2)
+    fs = p0 + sum(p * s**k for k, p in branches.items())
+    assert fs == F(1051417, 827392)
+    z = s / fs
+    assert z == F(1241088, 1051417) &gt; 1
+    # Independent exact nonuniform PGF certificate.
+    tA, tB, z2 = F(11, 10), F(28, 25), F(352, 351)
+    fA = F(3, 8) + F(5, 16)*tA + F(5, 16)*tA*tA
+    fB = F(1, 4) + F(3, 8)*tA + F(3, 8)*tA*tA
+    assert z2*fA &lt;= tA and z2*fB &lt;= tB
+
+    radius2 = r*h*h/(sigma*sigma)
+    eg = epsilon/2
+    delta = epsilon/2
+    # Exact sufficient m: e^-x &lt;= 2^-floor(x), with m=ceil(8R²*j).
+    j = 1
+    while True:
+        m = max(1, ceiling(8*radius2*j))
+        clipping_bound = F(10*m, 2**j)
+        if clipping_bound &lt;= eg:
+            break
+        j += 1
+    assert m &gt;= radius2 and F(m, 1)/(8*radius2) &gt;= j
+    K = min_power(F(8, 7), F(3*m, 1)/delta)
+    B0 = m*K
+    Jcap = min_power(F(2), F(24*B0, 1)/delta)
+    B = B0*Jcap*r
+    ncap = min_power(z, F(3*B, 1)*s/delta)
+    assert m*F(7, 8)**K &lt;= delta/3
+    assert B0*F(8, 2**Jcap) &lt;= delta/3
+    assert B*s*z**(-ncap) &lt;= delta/3
+    return dict(h=h, psource=psource, branches=branches, q=q, s=s, z=z,
+                radius2=radius2, m=m, K=K, Jcap=Jcap, B=B, ncap=ncap,
+                exact_clipping_bound=clipping_bound, epsilon_g=eg, delta=delta)
+
+
+class CapReached(Exception):
+    def __init__(self, reason, completed_nodes=0):
+        super().__init__(reason)
+        self.completed_nodes = completed_nodes
+
+
+def correction(x, rng, c):
+    &quot;&quot;&quot;DFS product tree with an explicit stack and a deterministic node cap.&quot;&quot;&quot;
+    stack = []
+    nodes = 0
+    current = x
+    while True:
+        nodes += 1
+        if nodes &gt; c[&#x27;ncap&#x27;]:
+            raise CapReached(&#x27;coordinate_tree&#x27;, nodes-1)
+        y = (current + math.sqrt(2*rng.exponential(1/101))*rng.normal()) % (2*math.pi)
+        u = rng.random()
+        if u &lt; float(c[&#x27;psource&#x27;]):
+            val = .45*math.cos(y) + .30*math.cos(7*y) + .25*math.sin(13*y)
+            assert abs(val) &lt;= 1
+        else:
+            degree = 0
+            threshold = float(c[&#x27;psource&#x27;])
+            for k, p in c[&#x27;branches&#x27;].items():
+                threshold += float(p)
+                if u &lt; threshold:
+                    degree = k
+                    break
+            if degree:
+                stack.append([y, degree-1, 1.0])
+                current = y
+                continue
+            val = 0.0
+        while stack:
+            frame = stack[-1]
+            frame[2] *= val
+            if frame[1] == 0 or val == 0:
+                val = -frame[2]
+                stack.pop()
+            else:
+                frame[1] -= 1
+                current = frame[0]
+                break
+        else:
+            assert abs(val) &lt;= 1
+            return float(c[&#x27;h&#x27;])*val, nodes
+
+
+def capped_poisson(rng, cap):
+    u = rng.random()
+    p = math.exp(-2)
+    cumulative = p
+    for j in range(cap+1):
+        if u &lt;= cumulative:
+            return j
+        p *= 2/(j+1)
+        cumulative += p
+    raise CapReached(&#x27;Poisson_degree&#x27;)
+
+
+def channel(xs, sigma, rng, c):
+    out = np.zeros(len(xs))
+    calls = nodes = attempts = 0
+    try:
+        for factor in range(c[&#x27;m&#x27;]):
+            for trial in range(c[&#x27;K&#x27;]):
+                attempts += 1
+                y = rng.normal(size=len(xs))/math.sqrt(c[&#x27;m&#x27;])
+                degree = capped_poisson(rng, c[&#x27;Jcap&#x27;])
+                accept = 1.0
+                for unused in range(degree):
+                    vec = []
+                    calls += 1
+                    for x in xs:
+                        v, work = correction(x, rng, c)
+                        nodes += work
+                        vec.append(v/sigma)
+                    accept *= (1+max(-1.0, min(1.0, float(y @ np.asarray(vec)))))/2
+                if rng.random() &lt;= accept:
+                    out += y
+                    break
+            else:
+                raise CapReached(&#x27;factor_proposals&#x27;)
+        assert nodes &lt;= c[&#x27;B&#x27;]*c[&#x27;ncap&#x27;]
+        return 1+sigma*out, dict(calls=calls, nodes=nodes, attempts=attempts, abort=None)
+    except CapReached as e:
+        nodes += e.completed_nodes
+        assert nodes &lt;= c[&#x27;B&#x27;]*c[&#x27;ncap&#x27;]
+        return np.ones(len(xs)), dict(calls=calls, nodes=nodes, attempts=attempts, abort=str(e))
+
+
+def self_tests(c):
+    class ForcedRNG:
+        def __init__(self):
+            self.values = iter([.80, .10, .10])
+        def exponential(self, scale):
+            return 0.0
+        def normal(self):
+            return 0.0
+        def random(self):
+            return next(self.values)
+    # A degree-two root needs three nodes. A two-node cap must retain its cost.
+    short = dict(c, ncap=2)
+    try:
+        correction(0.0, ForcedRNG(), short)
+        raise AssertionError(&#x27;Expected tree cap&#x27;)
+    except CapReached as e:
+        assert e.completed_nodes == 2 and str(e) == &#x27;coordinate_tree&#x27;
+    val, nodes = correction(0.0, ForcedRNG(), dict(c, ncap=3))
+    assert nodes == 3 and abs(val) &lt;= float(c[&#x27;h&#x27;])
+    assert min_power(F(8, 7), F(64, 49)) == 2
+    return [&#x27;exact polynomial enclosure and offspring probabilities&#x27;,
+            &#x27;exact uniform and nonuniform PGF moment certificates&#x27;,
+            &#x27;exact rational clipping/proposal/Poisson/tree cap budgets&#x27;,
+            &#x27;forced tree abort preserves all completed node costs&#x27;,
+            &#x27;forced complete product tree retains bounded output&#x27;]
+
+
+def fft_diagnostic(xs, n):
+    grid = 2*math.pi*np.arange(n)/n
+    freq = np.fft.fftfreq(n, 1/n)
+    forcing = 10*(.45*np.cos(grid)+.30*np.cos(7*grid)+.25*np.sin(13*grid))
+    e = np.zeros(n)
+    for steps in range(300):
+        rhs = forcing - 150*e*e - 100*e**3 - 25*e**4
+        new = np.fft.ifft(np.fft.fft(rhs)/(freq*freq+101)).real
+        if np.max(np.abs(new-e)) &lt; 2e-15:
+            e = new
+            break
+        e = new
+    coefficients = np.fft.fft(e)/n
+    return [float(1+np.sum(coefficients*np.exp(1j*freq*x)).real) for x in xs]
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(&#x27;--outputs&#x27;, type=int, default=800)
+    ap.add_argument(&#x27;--seed&#x27;, type=int, default=144281)
+    ap.add_argument(&#x27;--sigma&#x27;, default=&#x27;1/4&#x27;)
+    ap.add_argument(&#x27;--epsilon&#x27;, default=&#x27;1/20&#x27;)
+    ap.add_argument(&#x27;--output-dir&#x27;, type=Path, required=True)
+    a = ap.parse_args()
+    assert a.outputs &gt; 1
+    sigma, epsilon = F(a.sigma), F(a.epsilon)
+    assert sigma &gt; 0 and 0 &lt; epsilon &lt; 1
+    xs = [.5, 1.25]
+    c = certificates(len(xs), sigma, epsilon)
+    checked = self_tests(c)
+    rng = np.random.default_rng(a.seed)
+    start = time.monotonic()
+    samples = []
+    work = []
+    for unused in range(a.outputs):
+        value, receipt = channel(xs, float(sigma), rng, c)
+        samples.append(value)
+        work.append(receipt)
+    samples = np.asarray(samples)
+    reference128 = fft_diagnostic(xs, 128)
+    reference256 = fft_diagnostic(xs, 256)
+    report = dict(status=&#x27;PASS_EXACT_CERTIFICATES_AND_FLOAT_DIAGNOSTIC&#x27;,
+        python=platform.python_version(), numpy=np.__version__, seconds=time.monotonic()-start,
+        model=&#x27;-u&quot;+u+25u^4=26+10(.45cosx+.30cos7x+.25sin13x), periodic; v=1,h=1/8&#x27;,
+        points=xs, observation_sigma=str(sigma), ideal_law_epsilon=str(epsilon), outputs=a.outputs, seed=a.seed,
+        checks=checked,
+        exact_certificate={k: str(v) if isinstance(v, F) else v for k, v in c.items() if k != &#x27;branches&#x27;},
+        expected_vector_acquisitions_bound=2*math.e**2*c[&#x27;m&#x27;],
+        expected_PDE_nodes_bound=2*math.e**2*c[&#x27;m&#x27;]*len(xs)/float(1-c[&#x27;q&#x27;]),
+        every_execution_PDE_node_cap=c[&#x27;B&#x27;]*c[&#x27;ncap&#x27;],
+        observed=dict(vector_acquisitions=sum(x[&#x27;calls&#x27;] for x in work), nodes=sum(x[&#x27;nodes&#x27;] for x in work),
+            proposals=sum(x[&#x27;attempts&#x27;] for x in work), aborts=sum(x[&#x27;abort&#x27;] is not None for x in work),
+            max_nodes_per_output=max(x[&#x27;nodes&#x27;] for x in work), mean=samples.mean(axis=0).tolist(),
+            covariance=np.cov(samples, rowvar=False).tolist()),
+        FFT_reference=dict(n128=reference128, n256=reference256,
+            scope=&#x27;Independent discretized fixed-point diagnostic, not interval-validated solution or full-law certificate.&#x27;),
+        scope=&#x27;Fractions verify enclosure, offspring/PGF, rational outer cap and total ideal TV-budget inequalities. &#x27;
+              &#x27;Float sampling/FFT moments are diagnostic only, not continuous-TV validation, physical evidence or superiority. &#x27;
+              &#x27;Known FORS/Gaussian factory is composed with the supplied bounded PDE oracle; no new generic sampler claimed.&#x27;)
+    a.output_dir.mkdir(parents=True, exist_ok=True)
+    (a.output_dir/&#x27;OBSERVATION_CHANNEL_RESULTS.json&#x27;).write_text(json.dumps(report, indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(dict(status=report[&#x27;status&#x27;], m=c[&#x27;m&#x27;], cap=c[&#x27;B&#x27;]*c[&#x27;ncap&#x27;],
+        outputs=a.outputs, nodes=report[&#x27;observed&#x27;][&#x27;nodes&#x27;], aborts=report[&#x27;observed&#x27;][&#x27;aborts&#x27;],
+        mean=report[&#x27;observed&#x27;][&#x27;mean&#x27;], reference=reference256, seconds=report[&#x27;seconds&#x27;])))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre></body></html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — calculations.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/wet_experiment/calculations.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce report scales; every nonconstant input is source-derived or labeled.&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+OUT = Path(__file__).with_name(&quot;calculation_results.json&quot;)
+
+# Lizée et al. Fig. 4(f): visual estimates from the plotted trace only.
+# The graph spans about 0..3.5 s and about ten cycles; current extrema are
+# approximately +6.5 and -3.0 nA, and the red position trace is about +/-6 um.
+f_hz = 10.0 / 3.5
+position_amplitude_um = 6.0
+current_peak_amplitude_na = (6.5 - (-3.0)) / 2.0
+drop_diameter_um = 10.0
+v_peak_um_s = 2.0 * math.pi * f_hz * position_amplitude_um
+sigma_visual_na_s_um2 = current_peak_amplitude_na / (drop_diameter_um * v_peak_um_s)
+
+# Equilibrium Johnson-current-noise floors for reported 300 K samples with
+# reported 300 ohm--2 kohm resistance. The 1-Hz bandwidth is explicitly chosen
+# only to express a spectral-density scale as RMS; actual noise/SNR is unknown.
+k_B = 1.380649e-23  # J/K, exact SI constant
+temperature_K = 300.0  # room-temperature illustrative input, not a measured value
+resistances_ohm = [300.0, 2000.0]
+johnson_sample_conductance_S = [1.0 / max(resistances_ohm), 1.0 / min(resistances_ohm)]
+johnson_A_sqrtHz = [math.sqrt(4.0 * k_B * temperature_K / r) for r in resistances_ohm]
+johnson_only_snr_1Hz = [
+    current_peak_amplitude_na * 1e-9 / x for x in johnson_A_sqrtHz
+]
+
+# Coquinot et al. PNAS 121 (2024), model-only one-CNT estimate:
+# 40 pA short-circuit at 1 bar, R_int ~= 13 Gohm, Z ~= 11.
+pressure_Pa = 1.0e5
+current_short_A = 40.0e-12
+resistance_internal_ohm = 13.0e9
+conductance_S = 1.0 / resistance_internal_ohm
+cross_coefficient_A_Pa = current_short_A / pressure_Pa
+figure_of_merit_Z = 11.0
+# From the reported linear two-port matrix and Z=C^2/(L G-C^2):
+permeance_m3_s_Pa = (
+    cross_coefficient_A_Pa**2 / conductance_S
+    * (1.0 + 1.0 / figure_of_merit_Z)
+)
+flow_short_m3_s = permeance_m3_s_Pa * pressure_Pa
+voltage_open_V = current_short_A / conductance_S
+electric_power_max_W = current_short_A**2 * resistance_internal_ohm / 4.0
+efficiency_at_max_power = figure_of_merit_Z / (2.0 * (figure_of_merit_Z + 2.0))
+hydraulic_power_at_max_power_W = electric_power_max_W / efficiency_at_max_power
+hydraulic_power_at_short_W = flow_short_m3_s * pressure_Pa
+johnson_model_A_sqrtHz = math.sqrt(4.0 * k_B * temperature_K / resistance_internal_ohm)
+
+result = {
+    &quot;source_scopes&quot;: {
+        &quot;lizee_visual&quot;: &quot;Approximate digitization from Fig. 4(f), not a tabulated measurement or pressure coefficient.&quot;,
+        &quot;johnson&quot;: &quot;Equilibrium resistor floor at an illustrative 300 K; 1 Hz bandwidth; not measured device/amplifier noise.&quot;,
+        &quot;coquinot&quot;: &quot;Published theoretical model estimates only; no experimental CNT wet-generator measurement. Rounded source values propagate rounding.&quot;
+    },
+    &quot;lizee_fig4f_visual_estimate&quot;: {
+        &quot;frequency_hz&quot;: f_hz,
+        &quot;position_amplitude_um&quot;: position_amplitude_um,
+        &quot;current_peak_amplitude_na&quot;: current_peak_amplitude_na,
+        &quot;drop_diameter_um&quot;: drop_diameter_um,
+        &quot;peak_speed_um_s&quot;: v_peak_um_s,
+        &quot;sigma_ef_visual_na_s_um2&quot;: sigma_visual_na_s_um2,
+        &quot;note&quot;: &quot;Current trace is asymmetric and has an offset; neither this value nor sigma_ef is the channel transport coefficient C_he.&quot;
+    },
+    &quot;lizée_reported_resistance_johnson_floor&quot;: {
+        &quot;temperature_K_illustrative&quot;: temperature_K,
+        &quot;resistance_ohm_order&quot;: resistances_ohm,
+        &quot;inverse_two_terminal_conductance_S_order&quot;: johnson_sample_conductance_S,
+        &quot;current_noise_A_sqrtHz_order&quot;: johnson_A_sqrtHz,
+        &quot;current_noise_pA_sqrtHz_order&quot;: [x * 1e12 for x in johnson_A_sqrtHz],
+        &quot;visual_current_amplitude_over_1Hz_johnson_floor_only&quot;: johnson_only_snr_1Hz,
+        &quot;actual_SNR&quot;: &quot;UNKNOWN&quot;
+    },
+    &quot;coquinot_single_CNT_model_only&quot;: {
+        &quot;pressure_Pa&quot;: pressure_Pa,
+        &quot;short_circuit_current_A&quot;: current_short_A,
+        &quot;C_he_A_per_Pa&quot;: cross_coefficient_A_Pa,
+        &quot;internal_resistance_ohm&quot;: resistance_internal_ohm,
+        &quot;G_S&quot;: conductance_S,
+        &quot;open_circuit_voltage_V&quot;: voltage_open_V,
+        &quot;Z&quot;: figure_of_merit_Z,
+        &quot;derived_model_permeance_m3_per_s_per_Pa&quot;: permeance_m3_s_Pa,
+        &quot;derived_model_short_circuit_flow_m3_per_s&quot;: flow_short_m3_s,
+        &quot;derived_model_short_circuit_flow_fL_per_s&quot;: flow_short_m3_s * 1e18,
+        &quot;derived_model_hydraulic_power_short_circuit_W&quot;: hydraulic_power_at_short_W,
+        &quot;matched_load_power_max_W&quot;: electric_power_max_W,
+        &quot;efficiency_at_matched_load_max_power&quot;: efficiency_at_max_power,
+        &quot;hydraulic_power_at_matched_load_max_power_W&quot;: hydraulic_power_at_max_power_W,
+        &quot;johnson_current_noise_A_sqrtHz_300K&quot;: johnson_model_A_sqrtHz,
+        &quot;actual_experimental_K_C_G&quot;: &quot;UNKNOWN&quot;
+    }
+}
+
+OUT.write_text(json.dumps(result, indent=2, sort_keys=True) + &quot;\n&quot;)
+print(json.dumps(result, indent=2, sort_keys=True))
+</pre></body></html>
