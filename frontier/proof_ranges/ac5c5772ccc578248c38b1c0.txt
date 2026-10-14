@@ -1,0 +1,232 @@
+EXACT INDEXED SOURCE RANGE | {"path": "updates/FN/package/frontier_genesis_v1/source/workers/f_sol_quantum_dual/aklt_compact_gram.py", "sha256": "38fd8e8e5302678b3ff1465c5679f1ebe13466134590bb56c9488830e9d49022", "lines": [1, 228], "range_scope": "Exact transfer-only compact Gram implementation.", "read_path": "updates/FN/package/frontier_genesis_v1/source/workers/f_sol_quantum_dual/aklt_compact_gram.py", "source_id": "src-FN-quantum-38fd8e8e5302678b", "hash_kind": "original_utf8_bytes"}
+range_sha256=38fd8e8e5302678b3ff1465c5679f1ebe13466134590bb56c9488830e9d49022; line numbers refer to the source, not this wrapper.
+Scope: located text only; imported premises, completeness, correctness and priority remain unverified.
+--- BEGIN SOURCE BYTES ---
+#!/usr/bin/env python3
+"""Compact exact Gram feasibility for local AKLT susceptibility duals.
+
+No 3**N vector or matrix is constructed. Each local column is a three-site
+rank-one operator acting on the integer-gauge AKLT MPS. Gram entries use 4x4
+transfer matrices and exact signed integers after scaling each column by 6.
+Only bond separations 0, 1, and 2 can contribute to the Gram matrix.
+"""
+
+from dataclasses import dataclass
+import json
+from pathlib import Path
+import sys
+
+import numpy as np
+import sympy as sp
+from sympy.polys.matrices import DomainMatrix
+
+
+N = int(sys.argv[1]) if len(sys.argv) > 1 else 6
+assert N >= 6
+A = (
+    np.array([[0, 2], [0, 0]], dtype=object),
+    np.array([[-1, 0], [0, 1]], dtype=object),
+    np.array([[0, 0], [-1, 0]], dtype=object),
+)
+I2 = np.eye(2, dtype=object)
+E = sum((np.kron(a, a) for a in A), np.zeros((4, 4), dtype=object))
+MAG = (1, 0, -1)
+PAIR_BASIS = ((0, 0), (0, 1), (0, 2), (1, 2), (2, 2))
+V_BASIS = ((0, 1, 1), (0, 1, 2), (1, 1, 1), (1, 1, 2))
+Q6 = {
+    (0, 0): {(0, 0): 6},
+    (0, 1): {(0, 1): 3, (1, 0): 3},
+    (0, 2): {(0, 2): 1, (1, 1): 2, (2, 0): 1},
+    (1, 2): {(1, 2): 3, (2, 1): 3},
+    (2, 2): {(2, 2): 6},
+}
+
+
+@dataclass(frozen=True)
+class Defect:
+    sites: tuple[int, ...]
+    q6: dict[tuple[int, ...], int]
+    c: np.ndarray
+
+
+def dual(bond, offset, u, v):
+    sites = tuple((bond + offset + t) % N for t in range(3))
+    pair_pos = -offset
+    q6 = {}
+    for pair, coeff in Q6[u[pair_pos:pair_pos + 2]].items():
+        word = list(u)
+        word[pair_pos:pair_pos + 2] = pair
+        q6[tuple(word)] = coeff
+    c = A[v[0]] @ A[v[1]] @ A[v[2]]
+    return Defect(sites, q6, c)
+
+
+def source():
+    return (
+        Defect((0,), {(0,): 6}, A[0]),
+        Defect((0,), {(2,): -6}, A[2]),
+    )
+
+
+def local_basis(bond):
+    out = []
+    for offset in (0, -1):
+        for v in V_BASIS:
+            mv = sum(MAG[t] for t in v)
+            for pair in PAIR_BASIS:
+                for spectator in range(3):
+                    u = (*pair, spectator) if offset == 0 else (spectator, *pair)
+                    if sum(MAG[t] for t in u) == mv:
+                        out.append(dual(bond, offset, u, v))
+    assert len(out) == 24
+    return out
+
+
+def overlap(left, right):
+    """Exact overlap of *six-times-scaled* states via 4x4 transfers."""
+    if isinstance(left, tuple):
+        return sum(overlap(item, right) for item in left)
+    if isinstance(right, tuple):
+        return sum(overlap(left, item) for item in right)
+    lp = {site: p for p, site in enumerate(left.sites)}
+    rp = {site: p for p, site in enumerate(right.sites)}
+    total = 0
+    for lw, lc in left.q6.items():
+        for rw, rc in right.q6.items():
+            product = np.eye(4, dtype=object)
+            compatible = True
+            for site in range(N):
+                il = lp.get(site)
+                ir = rp.get(site)
+                if il is None and ir is None:
+                    transfer = E
+                elif il is not None and ir is not None:
+                    if lw[il] != rw[ir]:
+                        compatible = False
+                        break
+                    transfer = np.kron(left.c if il == 0 else I2,
+                                       right.c if ir == 0 else I2)
+                elif il is not None:
+                    transfer = np.kron(left.c if il == 0 else I2, A[lw[il]])
+                else:
+                    transfer = np.kron(A[rw[ir]], right.c if ir == 0 else I2)
+                product = product @ transfer
+            if compatible:
+                total += int(lc * rc * np.trace(product))
+    return total
+
+
+def exact_affine_solution(matrix, rhs):
+    reduced, pivots = DomainMatrix.from_Matrix(matrix.row_join(rhs)).to_field().rref()
+    if matrix.cols in pivots:
+        raise AssertionError("Gram normal equations inconsistent")
+    r = reduced.to_Matrix()
+    x = sp.zeros(matrix.cols, 1)
+    for row, col in enumerate(pivots):
+        x[col] = r[row, matrix.cols]
+    assert matrix * x == rhs
+    free = [j for j in range(matrix.cols) if j not in pivots]
+    null = sp.zeros(matrix.cols, len(free))
+    for k, j in enumerate(free):
+        null[j, k] = 1
+        for row, col in enumerate(pivots):
+            null[col, k] = -r[row, j]
+    assert matrix * null == sp.zeros(matrix.rows, len(free))
+    return x, null, len(pivots)
+
+
+def exact_solution(matrix, rhs):
+    x, null, rank = exact_affine_solution(matrix, rhs)
+    assert null.cols == 0 and rank == matrix.cols
+    return x
+
+
+def main():
+    base = local_basis(0)
+    kernels = []
+    for distance in range(3):
+        other = local_basis(distance)
+        block = np.array([[overlap(left, right) for right in other]
+                          for left in base], dtype=object)
+        kernels.append(block)
+    assert np.array_equal(kernels[0], kernels[0].T)
+    # A bond's left/right placements overlap; use independent columns from
+    # the exact same-bond Gram block before assigning a physical dual norm.
+    _, pivots = DomainMatrix.from_Matrix(sp.Matrix(kernels[0].tolist())).to_field().rref()
+    pivots = list(pivots)
+    assert len(pivots) == 20
+    local_dim = len(pivots)
+    blocks = [k[np.ix_(pivots, pivots)] for k in kernels]
+    for distance in range(3, N - 2):
+        assert overlap(base[0], local_basis(distance)[0]) == 0
+
+    dim = N * local_dim
+    k = np.zeros((dim, dim), dtype=object)
+    for j in range(N):
+        sl = slice(j * local_dim, (j + 1) * local_dim)
+        k[sl, sl] = blocks[0]
+        for distance in (1, 2):
+            l = (j + distance) % N
+            sr = slice(l * local_dim, (l + 1) * local_dim)
+            k[sl, sr] = blocks[distance]
+            k[sr, sl] = blocks[distance].T
+    assert np.array_equal(k, k.T)
+
+    g = np.zeros(dim, dtype=object)
+    for bond in (0, N - 1):
+        local = local_basis(bond)
+        for a, raw_col in enumerate(pivots):
+            g[bond * local_dim + a] = overlap(local[raw_col], source())
+    h = overlap(source(), source())
+    z = int(np.trace(np.linalg.matrix_power(E, N)))
+    assert h * 3 == 36 * z * 2
+
+    ks = sp.Matrix(k.tolist())
+    gs = sp.Matrix(g.tolist())
+    c0, null, gram_rank = exact_affine_solution(ks, gs)
+    residual = sp.Integer(h) - gs.dot(c0)
+    assert residual == 0
+
+    # Minimize the *physical* sum of squared bond vectors over all affine
+    # solutions. M is block diagonal because the primal row is each physical
+    # bond; the left/right local placements were already merged in K00.
+    m0 = sp.Matrix(blocks[0].tolist())
+    metric = sp.diag(*([m0] * N))
+    rref_numerator = (c0.T * metric * c0)[0]
+    correction = exact_solution(null.T * metric * null,
+                                -null.T * metric * c0)
+    c = c0 + null * correction
+    assert ks * c == gs
+    assert null.T * metric * c == sp.zeros(null.cols, 1)
+    numerator = (c.T * metric * c)[0]
+    assert numerator <= rref_numerator
+    upper = numerator / (36 * z)
+    rref_upper = rref_numerator / (36 * z)
+
+    output = {
+        "n": N,
+        "full_hilbert_dimension_not_built": 3**N,
+        "transfer_dimension": 4,
+        "raw_local_columns_per_bond": 24,
+        "independent_local_columns_per_bond": local_dim,
+        "global_gram_dimension": dim,
+        "gram_nonzero_bond_distances": [0, 1, 2],
+        "gram_rank": gram_rank,
+        "nullity": null.cols,
+        "ground_norm_integer_gauge": z,
+        "source_norm_normalized": str(sp.Rational(h, 36*z)),
+        "membership_residual_exact": str(residual),
+        "source_in_span": True,
+        "feasible_dual_upper_rref_exact": str(rref_upper),
+        "feasible_dual_upper_rref_decimal": str(sp.N(rref_upper, 12)),
+        "optimal_dual_upper_exact": str(upper),
+        "optimal_dual_upper_decimal": str(sp.N(upper, 12)),
+        "note": "The dual norm is minimized over the stated finite R3 local span with the correct per-physical-bond metric. All Gram data came from local 4x4 transfer contractions.",
+    }
+    path = Path(__file__).with_name(f'aklt_compact_gram_n{N}.json')
+    path.write_text(json.dumps(output, indent=2)+'\n')
+    print(json.dumps(output, indent=2))
+
+
+if __name__ == '__main__':
+    main()

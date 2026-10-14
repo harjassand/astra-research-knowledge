@@ -1,0 +1,34 @@
+# Direct hot-process gas provenance: construction and decisive limits
+
+The desired decision is whether to change printing/gas preparation, seal an accessible pore before HIP, or change the pressure/thermal process. Ordinary endpoint CT and total retained argon need not distinguish gas present before HIP from gas admitted during HIP. The proposed additional physical query is to use a calibrated stable-isotope argon composition during a small-coupon HIP trial, then extract gas from a CT-registered cavity under vacuum and measure total moles and isotope composition. It directly tests hot-process source rather than extrapolating a cold Xe/He transient.
+
+This is a **proposed diagnostic experiment**, not an acquired operation or a demonstrated repair. Generic isotope-tagged HIP gas, inert isotopes trapped in microporosities, and post-treatment mass-spectrometric readout are explicitly disclosed in EP3243585A1 (2016 priority; https://patents.google.com/patent/EP3243585A1/en, description around isotope-coded HIP and its argon table). Root inspected this primary patent. Its purpose is component authentication; it still preempts a generic new-operation claim. Individual fluid-inclusion noble-gas laser extraction/MS is established in minerals (Boehlke and Irwin 1992, DOI 10.1016/0016-7037(92)90126-4). Neither source establishes CT-registered single-micropore extraction and process control in an AM metal after HIP.
+
+## Exact consequence of the simplest source query
+
+Let f0 and fH be effective isotope fractions of retained pre-HIP and HIP-source argon, and let lambda be the fraction of retained gas originating in the HIP source. A calibrated two-source model gives f=(1-lambda)f0+lambda fH and lambda=(f-f0)/(fH-f0). This requires acquired endmember ranges that include fractionation, instrument mass bias, collection efficiency, initial-gas variation and any preferential loss. Bounds can be obtained by interval inversion; if the effective source ranges overlap or are unacquired, the implementation returns UNKNOWN.
+
+This identifies a **retained source fraction**. Isotopic counter-diffusion can replace original argon without adding net total gas. Therefore lambda is neither cumulative total ingress nor a seal time. Matrix/surface isotope uptake can also contaminate a pore extraction; blank subtraction and extraction localization are decisive physical calibrations. A positive source-specific isotope excess beyond all acquired blanks proves source atoms reached the sampled region; it does not alone prove a specific throat path or gas-tight bonding. A null signal requires an acquired sensitivity and open-path transport lower bound to rule out access.
+
+The synthetic interval test in isotope_query.py is reproducible, and an ordinary isotope-mixture decoder given identical measurements obtains exactly the same answer. There is no claimed algorithmic advantage. Any future contribution must be the physical query and its action-level validation or a material-specific resource advantage.
+
+## Why three argon isotopes do not give a general closure clock
+
+Even under favorable monotone no-outflow ingress, isotope counts are integrals y_i=integral f_i(t)dmu(t), with f36+f38+f40=1. They give total mass and at most two independent time functionals. For the physically admissible code f36=t/3, f38=t^2/3, f40=1-t/3-t^2/3 on [0,1], the positive measures
+
+    mu_A=(4/7) delta_(1/4)+(3/7) delta_(5/6)
+    mu_B=(1/6) delta_0+(2/3) delta_(1/2)+(1/6) delta_1
+
+have identical total mass, first moment 1/2, second moment 1/3 and all three isotope counts, but different last ingress times 5/6 and 1. Exact rational execution verifies this. No decoder can distinguish these model histories from those observations.
+
+An even simpler exchange adversary holds total moles constant. After a marker switch at t=1, let x'=k(t)(1-x). k=1 until cutoff 2 and k=1/2 until cutoff 3 give the same final x=1-exp(-1). The isotope endpoint reports integrated exchange, not the cutoff. Finite bins with three independent compositions can yield three bin masses only under a validated transport model and independently handled initial inventory. A small enrichment epsilon amplifies isotope count and blank errors by order 1/epsilon. No late-bin uptake bounds a seal time only if an open throat has a separately validated positive hot uptake rate under the challenge.
+
+## A physically bounded first test
+
+Use sparse engineered cavities on sacrificial coupons from one alloy/build, including independently known sealed, open, and throttled controls. Begin with a constant isotope composition for the whole cycle to avoid an unacquired fast gas-switching interface. Measure actual gas composition, pressure and temperature at the sample; quantify pre-existing argon, dead-volume carryover, surface/matrix uptake, extraction yield, vacuum blank, isotope discrimination and detector linearity. CT registration and blind sequential extraction must show that a single chosen cavity's gas can be separated from neighboring pores and the surrounding metal. Recovered isotope/mole balances must agree with known seeded standards before inferring source fractions in unknown defects.
+
+For scale only, an ideal 10 um-radius cavity at 100 MPa and 1200 K contains about 4.2e-11 mol total gas, or 4.2e-13 mol marker at 1% fraction. These are calculated quantities, not actual trapped inventories or detection guarantees. Published mineral/noble-gas instruments motivate feasibility; metal-specific backgrounds, laser release, aliquot split, dynamic range and recovery remain unacquired. Destruction means this is a process-policy experiment on witness coupons, not a same-part online controller. Transfer to production parts requires separate held-out validation.
+
+After calibration, compare printing, standard gas-HIP, rapid gas forging, and verified full-surface pre-seal/HIP arms on matched initial defects. Match heat treatment, surface finish and specimen geometry. Measure source-resolved gas, independently sectioned bonding, post-heat pore regrowth and fatigue or functional leakage. Give the existing-method comparator identical gas/CT/assay observations. Charge isotope procurement and recovery, dedicated lines, blank/purge cycles, sacrificial coupons, CT, extraction/MS, vessel work/thermal time, seal/removal, failed runs and functional testing. No quotes, facility access, full resource advantage or physical outcomes were acquired here.
+
+Decision: abandon generic isotope coding as a novelty claim and exact seal-clock reconstruction. A source-resolved pore assay is a narrower metrology hypothesis worth testing only with an existing small-coupon facility and validated extraction standards; it does not yet establish the requested new scientific capability.
