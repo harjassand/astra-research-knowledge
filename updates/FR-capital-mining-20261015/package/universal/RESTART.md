@@ -1,0 +1,54 @@
+# Exact continuation state — do not restart the whole campaign
+
+## Target still unresolved
+
+For every rank-one-convex homogeneous planar quartic invariant under left SO(2), prove
+
+\[
+\mathbb E F(B+D\varphi)\ge F(B)
+\]
+
+for all constant B and periodic or zero-boundary compatible potentials, or give an exact negative compatible gradient with an independently valid acoustic certificate.
+
+The current run did **not** establish a universal domination potential and did **not** find a negative cycle. It did establish global obstructions to several natural continuum potential constructions.
+
+## Definitions to retain
+
+For a complete transverse profile U and its velocity V,
+
+\[
+L_B(U,V)=\mathbb E_y[F(B+(V\mid U_y))-F(B)].
+\]
+
+A dominating functional satisfies DP_B(U)[V] <= L_B(U,V), or its integrated version for every open compatible strip. This is stronger than a finite graph certificate. It is sufficient for closed-loop positivity; simply restating its existence is not a new theorem.
+
+## Results already proved here
+
+1. If P_B(U)=integral p_B(U,U_y), p_B C^3, dominates every profile/velocity, then F has a determinant-affine support at B. Conversely that support supplies a local area storage. If such local storages exist at every B, an explicit supremum of affine supports is a convex lift of F. This proof does not use rotational symmetry or polynomial degree.
+2. For the Dacorogna–Marcellini endpoint, actual strips of width 2/N connect zero to N^(-3/4)e^(iNy) with action -delta and connect N^(-3/4)e^(-iNy) to zero with action -delta, delta=sqrt(3)/2-103/120>0. Any dominating storage must distinguish the two orientations by a fixed amount at arbitrarily high frequency. It cannot be subcritical-trace continuous, critical-trace weakly lower or upper semicontinuous, or an arbitrary fixed Fourier-cutoff function. Strong-critical nonlocal storage is NOT excluded.
+3. The scalar orientation-odd Poisson-extension rule P=(c/2)integral F^o(D exp(lambda x|D|)U) fails for every fixed c and lambda>0 across the cone. Exact convex tests prove this. An independent coupled-frequency test also defeats c=lambda=1 for the DM endpoint itself.
+4. Straight-edge timing is convex at fixed geometry/background. Its nondegenerate optimum is the unique positive solution of a0*tau^4-a2*tau^2-2a3*tau-3a4=0. Joint geometry/background optimization is not convex.
+
+## Strongest unresolved positive attack
+
+A genuinely nonlocal, orientation-sensitive critical-trace storage with mixed-frequency terms. For an amplitude-homogeneous, spatially dilation-covariant quartic Fourier construction, the quartic-profile term has total frequency order three. At general B, a B^(4-j) term with j profile factors has total frequency order j-1. These are necessary design constraints, not an existence proof or a sufficient inequality.
+
+Required substantive lemma: exhibit such a functional, or a different constructive operation, whose derivative is bounded by the full L_B(U,V) uniformly in B, U and V. It must pass both exact convex and DM tests in the note. It must retain frequency orientation, critical concentration and mixed interactions. A finite-cutoff rule or a primitive formed only from p(U,U_y) cannot meet the target.
+
+A possible direction is an integrand-dependent nonlocal mixed kernel with a remainder identity. No explicit feasible kernel was obtained. Do not report this suggestion as a theorem. Do not define the kernel by the unknown quasiconvex envelope and call that a proof.
+
+## Strongest completed compatible-cycle test
+
+`rational_free_cycle.json` gives five rational complex Fourier profiles, frequencies -3,...,3, and rational positive widths. Concatenated linear interpolation is an actual continuous periodic potential. `certify_free_cycle.py` reconstructs exact gradients, mean zero, determinant mean zero, positive-definite covariance and averaged Hessian, and the complete affine minimum. The certified ratio is between 19/20 and 24/25, approximately 0.9516451182703068724350. It is positive and worse than the prior campaign's ~0.615 positive witness.
+
+Exploratory full-cone search: six saved outer records, all positive. Their integrands are numerical and must be independently certified before claiming a counterexample. A negative open edge, a failed storage inequality, or an infeasible calibration is not a Morrey counterexample.
+
+## What not to repeat
+
+- More smooth first-derivative local densities: excluded at non-polyconvex backgrounds by theorem, not merely unsuccessful numerics.
+- A weakly compact finite-measurement extension of the finite graph potential: the critical trace test excludes the stated continuity properties.
+- The same fixed Poisson odd action: exact failures are supplied.
+- More positive graph vertices as a purported continuum proof.
+- Near-line/contact reclassification or single-carrier searches: earlier work already excludes those classes conditionally, and none is a premise needed by this run's new theorems.
+
+Further inference is justified by a new mixed-frequency critical-trace mechanism or a qualitatively new negative compatible geometry. There is no evidence that unconstrained repetition of the current architectures will cross the barrier.
