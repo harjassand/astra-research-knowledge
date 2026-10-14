@@ -1,0 +1,79 @@
+# Pressure access, sealing and useful repair are distinct operations
+
+Internal derivation, 14 October 2026. No alloy constitutive law was acquired.
+
+The selected task is durable repair of fatigue-relevant surface-connected pores in additive-manufactured metal, including pores whose narrow connecting path is unresolved by CT. The action is choosing a physically achievable repair process. The missing information is pressure-gas access and the evolving hot throat/bond state, not merely a reconstructed room-temperature pore shape.
+
+## Conservation before and after sealing
+
+Under ideal-gas, cylindrical, continuum, no-slip, quasi-steady, common-temperature assumptions, let external and internal absolute pressures be P and p, cavity volume V, throat radius a and length L, gas temperature T and viscosity mu. Write n=pV/(RT). Then
+
+    dn/dt = pi a^4 (P^2-p^2)/(16 mu L R T)
+    dp/dt = C(P^2-p^2) + p(T'/T - V'/V)
+    C = pi a^4/(16 mu L V).
+
+For q=p/P, c=-V'/V, theta=T'/T and r=P'/P,
+
+    q' = CP(1-q^2) + (c+theta-r)q.
+
+Shrinking the cavity and heating its gas increase internal pressure. Narrowing the throat decreases gas conductance. Neither effect can be dropped silently. These equations are conditional fluid mechanics, not a new physical law. Slip/Knudsen flow, nonideal gas, evolving complex throats, adsorption and gas dissolution require different or measured transport laws.
+
+After a genuinely gas-tight seal and with no dissolution/diffusion, n is fixed. At prescribed final temperature, p_f=p_s(V_s/V_f)(T_f/T_s). Without capillary or other closing traction, ongoing pressure-driven contraction to V_f requires
+
+    p_s/P_f <= (V_f/V_s)(T_s/T_f).
+
+If additional inward traction is bounded by Pi_max, replace P_f with P_f+Pi_max. This is a necessary quasistatic pressure-balance gate, not a universal volume floor in the presence of capillarity, plastic overshoot, gas loss or bonding. An adiabatic sealed gas has a different relation, pV^gamma=constant. CT disappearance alone does not establish a seal, diffusion bond, fatigue improvement or absence of regrowth.
+
+## A conservative pressure-slew exclusion certificate
+
+Suppose P>=0 is nondecreasing and absolutely continuous, P'<=R_max, p>=0, C(t)>=C_min>0, and c+theta>=0 on an acquired interval. Let Delta=P-p with Delta(0)<=D. At a putative first crossing Delta=D, necessarily P>=D and
+
+    Delta' = P' - C D(2P-D) - (c+theta)p
+           <= R_max - C_min D^2.
+
+Hence, by scalar comparison (or a strict barrier followed by a limit), if R_max<=C_min D^2, Delta(t)<=D throughout the interval. In general Delta<=max{Delta(0),sqrt(R_max/C_min)}. This excludes attaining a declared minimum pressure deficit if the coefficient bound remains valid. It does NOT rule out arbitrarily slow below-threshold creep or independent capillary/chemical sealing. If a throat law has no deformation below an independently measured threshold Y>D, it excludes pressure-induced throat sealing over that interval. If a finite-time creep upper bound is instead supplied, integrate that upper bound and compare with the required closure strain. A throat may reduce C as it closes; an initial C alone is insufficient for the certificate.
+
+The fourth-root critical-radius expression under constant geometry is
+
+    a_critical = [16 mu L V R_max/(pi D^2)]^(1/4).
+
+With fixed acquired geometry, a>=a_critical makes the slew bound at most D (provided the initial deficit is at most D). It is a sensitivity expression, not a numerical prediction for an alloy. The public sources do not provide the complete hot throat geometry, constitutive law and gas-property uncertainty needed to evaluate a physical certificate.
+
+## What a normalized contrast-gas query actually acquires
+
+For a fixed cavity, constant external step P_x, initial p=0 and fixed coefficient C_x,
+
+    p(t)/P_x = tanh(C_x P_x t).
+
+Suppose attenuation is y=b+s p/T_x. If the baseline y_0 and fully equilibrated y_inf are independently obtained without changing the cavity, normalized u=(y-y_0)/(y_inf-y_0) cancels b,s and gives p/P_x. An error bound epsilon on the ENTIRE normalized reading gives
+
+    atanh(max(0,u-epsilon))/(P_x t) <= C_x
+      <= atanh(min(1,u+epsilon))/(P_x t),
+
+with infinite upper endpoint when u+epsilon>=1. A missing response after finite time bounds transport; it does not prove isolation. Acquiring the equilibrium normalization of an almost isolated cavity may itself take prohibitively long. It must be replaced by an independently calibrated contrast/volume scale, with its errors charged. Mixtures of cavities, changing geometry and adsorption do not inherit the single-cavity formula.
+
+A hot coefficient interval requires an acquired transfer factor
+
+    C_H/C_x = (a_H/a_x)^4 (mu_x/mu_H) (L_x/L_H) (V_x/V_H)
+
+in this model, as well as the hot closure law. Without those inputs, the implementation returns UNKNOWN. Standard nonlinear fitting or c-optimal design given the identical observations has access to the identical coefficient interval; this is not an advantage over an equally informed method.
+
+## Exact action-changing ambiguity survives a perfect room tracer
+
+Two model worlds have identical geometry, gas laws and all room-temperature tracer observations. Give them different unmeasured hot throat creep coefficients m. In a restricted dimensionless hot model at P=1, fixed V, z=ln(a0/a),
+
+    p'=exp(-4z)(1-p),   z'=m(1-p),   geometric criterion at z=ln 2.
+
+Eliminating time gives p(z)=(1-exp(-4z))/(4m). For m=10, pressure at the criterion is 3/128. For m=1/10, the formal criterion pressure is 75/32>1; the trajectory stalls at z=-ln(3/5)/4<ln2. One world reaches the stipulated geometric criterion with a low gas inventory; the other cannot. A finite z means a POSITIVE cylindrical radius; a gas-tight seal needs an additional independently acquired contact, snap-through or bonding law at that event. The ODE alone does not supply a seal. The equality of the two complete room tracer maps is by construction, not a claim about an experimentally discovered alloy pair.
+
+The obstruction also survives full compressible Poiseuille flow. Let q'=tau^-1 exp(-4z)(1-q^2), z'=lambda(1-q), with q(0)=z(0)=0. Then
+
+    ln(1+q)=(1-exp(-4z))/(4 lambda tau).
+
+At z_s=0.1, lambda*tau=0.2 reaches the geometric criterion at q about 0.51; lambda*tau=0.01 approaches q=1 before that criterion. These worlds can share the same full room map. Literal sealing again needs the additional contact/bond law. Thus more accurate room imaging or room transient fitting cannot acquire the missing hot state-to-action link without a validated transfer or hot test.
+
+## Redesign tested within the same task
+
+Root proposed curvature-selective vapor condensation to close nanothroats at low pressure while leaving intended macrochannels open. The ideal wetting Kelvin relation is ln(p_v/p_sat)=-2 gamma V_m cos(theta_w)/(a R T), with geometry/contact-angle qualifications. This would directly change gas access, rather than infer it. But curvature-selective vapor deposition is already experimentally established (Lovikka et al., DOI 10.1039/C8MH01523F), and precursor fixation into a dense, alloy-compatible, gas-tight bridge that survives HIP is not supplied by that result. Low-melting volatile metals, oxides/polymers, byproducts, wetting and persistent interfacial films can destroy the required bonding or fatigue endpoint. No compatible HIP seal was acquired or demonstrated. The Kelvin calculation is a proposed physical gate, not a new established operation.
+
+The task remains selected; the unmodified rapid-ramp novelty claim is abandoned. Generic gas tomography, rapid forging, and pre-sealing each have strong existing methods. Further work merits an experiment only if it acquires a compatible selective low-pressure seal and demonstrates a durable action endpoint against all-face encapsulation, rapid forging and optimized HIP at complete cost. More theorem polishing does not close that obligation.
