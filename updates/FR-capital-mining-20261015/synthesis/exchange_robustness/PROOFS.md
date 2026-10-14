@@ -1,0 +1,331 @@
+# Scoped proofs for conditional exchange robustness
+
+Worker: exchange_robustness. Date: 2026-10-15. Repository pin:
+`00631610750c708263d5cf6d812ebbb8edc77335`.
+
+These are internal finite-dimensional derivations. No independent external
+mathematical or physical validation and no historical novelty claim is made.
+The wire-cutting identity in Section 5 is established prior art, reconstructed
+here to give an explicit comparator/resource tradeoff.
+
+## 1. Exact reconstruction of the incoming operation
+
+Write the native cq state as
+
+\[
+ \rho_{CRSE}=\sum_c p_c|c\rangle\langle c|\otimes\rho^c_{RSE},
+ \quad \sigma_c=\rho^c_{RS},\quad \tau_c=\rho^c_E.
+\]
+
+For independent joint copies i,j, a local permutation of their S registers
+gives tagged marginal \(\sigma_c\otimes\tau_c\) on donor reference R_j,
+recipient data S_i, recipient environment E_i. This is just the original
+cross marginal \(\rho_{R_jS_jE_i}\), with S_j moved to S_i. Independence
+factorizes that marginal. The donor, rather than recipient, C label follows
+the job and reference.
+
+For N iid copies, cyclically route each condition group of size at least two;
+leave singleton groups native. A tagged condition-c copy is unmatched iff
+the other N-1 records avoid c. Thus exactly
+
+\[
+ \rho_N=\sum_c p_c |c\rangle\langle c|\otimes
+ [ (1-p_c)^{N-1}\rho^c_{RSE}
+  +(1-(1-p_c)^{N-1})\sigma_c\otimes\tau_c].
+\]
+
+With trace distance normalized by 1/2, its distance from complete conditional
+grafting is at most \(s_N(C)=\sum_cp_c(1-p_c)^{N-1}\). Every [0,1] task score
+inherits this bound; a two-policy difference inherits twice the bound.
+None of these statements makes the whole output batch independent.
+
+The source's phase model with hidden bit X~Bernoulli(u), RS Bell phase X,
+and future controlled-Z has native echo success 1 and independent graft
+success \((1-u)^2+u^2\). Sharing X between copies leaves echo success 1.
+An extra bath X gate is invisible to reduced SWAP characterization but can
+change future success from 1 to 0 even on an initially product input.
+
+## 2. Matching on the task-relevant quotient of the record
+
+Let Z=f(C) be a declared deterministic coarsening; \(q_z=\Pr(Z=z)\) and
+\(\bar\tau_z=\sum_{c:f(c)=z}p(c|z)\tau_c\). Draw N iid joint preparations.
+Route S within Z groups by a fixed index-based derangement (e.g. a cycle),
+leaving singleton groups native. Selection may depend on Z and independent
+routing randomness, but not on the fine C values within a group or on any
+unrecorded variable. Attach the full donor C and original donor R to the
+transferred job. Sites and continuation operations are interchangeable.
+
+**Exact finite-batch theorem.** The tagged output is
+
+\[
+ \rho_N^Z=\sum_c p_c|c\rangle\langle c|\otimes
+ [a_{f(c)}\rho^c_{RSE}+(1-a_{f(c)})\sigma_c\otimes\bar\tau_{f(c)}],
+ \qquad a_z=(1-q_z)^{N-1}.                                      \tag{1}
+\]
+
+**Proof.** Condition on the tagged donor's fine record c and all coarse
+records. If its coarse group is a singleton, its joint state is unchanged.
+Otherwise its recipient is a distinct index selected without inspecting
+the fine records. The recipient's fine record has distribution p(c'|z),
+independent of the donor's joint state. The recipient environment marginal
+is therefore \(\bar\tau_z\). Averaging the singleton event proves (1).
+The argument works for any fixed cycle length, and does not require product
+states inside a replica. QED.
+
+If \(\tau_c=\bar\tau_{f(c)}\) for every c, the only difference from complete
+fine-C grafting is singleton mass \(s_N(Z)=\sum_zq_z(1-q_z)^{N-1}\). Both the
+fine CRS and fine CE marginals are then preserved. The condition does not
+require the donor RS states to agree within a coarse group.
+
+There is a weaker, task-only version. Let \(\Lambda_a^\tau\) denote the
+continuation channel S->S' with initial independent environment state tau.
+R is idle; its dimension and its entanglement with S are unrestricted. The
+policy a may include a full predeclared continuation sequence. A finite
+menu may contain the fine-record-dependent policies used in scoring.
+Suppose, for every scored policy and each relevant c,
+
+\[
+ \Lambda_a^{\tau_c}=\Lambda_a^{\bar\tau_{f(c)}}.                 \tag{2}
+\]
+
+Then every tagged reference-inclusive task score equals the full fine-C
+graft score, apart from singleton mass \(s_N(Z)\). Equation (2) follows from
+equality of normalized Choi states, so it can in principle be tested using
+system-only causal-break channel probes on a fixed finite policy menu;
+full bath-state tomography is unnecessary. Such testing still requires
+certified local replacement operations and enough support/precision in C.
+Infinitely many or unique fine records do not come with a free certificate.
+
+For approximate matching put
+\(\eta_{a,c}=\frac12\|\Lambda_a^{\tau_c}-
+\Lambda_a^{\bar\tau_{f(c)}}\|_\diamond\). Then, for a [0,1] effect on RS',
+
+\[
+ |F_a(\rho_N^Z)-F_a(\mathcal G_C(\rho))|
+ \le s_N(Z)+\sum_c p_c(1-a_{f(c)})\eta_{a,c}.                  \tag{3}
+\]
+
+**Proof.** Apply (1). On singleton branches use the [0,1] range. On matched
+branches the diamond definition applies to the arbitrary reference-bearing
+input \(\sigma_c\). Average the bounds. QED.
+
+For d-dimensional S and normalized Choi states J, the sufficient bound
+\(\eta_{a,c}\le(d/2)\|J_a^{\tau_c}-J_a^{\bar\tau_z}\|_1\) gives one finite
+acquisition interface; uncertainty of the Choi estimates must be included.
+Its tomography cost depends on d and output dimension and the policy menu,
+not on a declared bath Hilbert-space size. It is not generally cheap.
+
+Equation (2) preserves selected task response, not the full fine CE
+marginal. If two conditional baths differ only on a spectator that never
+couples during the selected future, they may be task-equivalent and remain
+different physical states. A null task response is not global memorylessness.
+
+**Explicit removal of the rare-record obstruction.** Let C=(Z,U), with Z
+fair and U an independently generated 128-bit nonce. Suppose E's conditional
+marginal depends only on Z. U may select arbitrary genuinely local unitaries
+on S, so the RS states need not coincide. For N=32,
+
+\[
+ s_N(C)=(1-2^{-129})^{31}\ge1-31\,2^{-129},\qquad
+ s_N(Z)=2^{-31}\simeq4.657\times10^{-10}.                       \tag{4}
+\]
+
+Fine-record matching is almost inert; coarse routing realizes the desired
+tagged fine-record graft to the small bound in (4). The nonce's independence
+can be supplied by the actual generation/causal design, rather than guessed
+from bath measurements. With genuinely informative fine records, condition
+coarsening is allowed only when (2) or an explicit error budget is acquired.
+
+### Approximate matching with continuous informative records
+
+The response certificate can be used without coarse bins. Suppose a known
+observed scalar t(c) lies in [a,b], and, uniformly over the scored policy
+menu and all relevant c,c', an acquired bound gives
+
+\[
+ \tfrac12\|\Lambda_a^{\tau_c}-\Lambda_a^{\tau_{c'}}\|_\diamond
+ \le L|t(c)-t(c')|.                                         \tag{4a}
+\]
+
+For even N, sort the batch by t and exchange adjacent pairs. Conditional on
+the complete fine record list, the copies remain independent under the iid
+joint preparation contract. Donor j then sees its recipient's tau rather
+than its own. By the diamond bound, the batch-mean expected score differs
+from the sample average of the ideal fine-C graft scores by at most
+
+\[
+ \frac{2L}{N}\sum_{k=1}^{N/2}(t_{(2k)}-t_{(2k-1)})
+ \le \frac{2L(b-a)}{N}.                                    \tag{4b}
+\]
+
+The paired intervals are disjoint subsets of [a,b], proving the second
+inequality. Averaging over the records gives the same bias bound against
+the population fine-C graft score. Every fine C may be unique almost surely;
+exact matching would be inert, whereas this protocol gives O(1/N) worst-case
+task bias and uses N/2 block SWAPs. For donor-specific policies a(c), the
+Lipschitz certificate must hold for each such policy with both compared bath
+states. For odd N, keeping one singleton adds at most 1/N to the stated
+even-batch upper bound; discarding it changes the target and is not assumed.
+
+The same proof covers simultaneous upper confidence edge costs and a
+minimum-cost permutation, provided the edge certificate is valid for all
+candidate matches and route selection does not inspect hidden replica
+states. This is ordinary assignment optimization, not an algorithmic
+novelty claim. A selected task may admit tighter costs than a full-channel
+diamond certificate.
+
+Equation (4a), its scope/support and its calibration uncertainty are paid
+inputs. A smooth recorded scalar by itself does not establish a smooth
+conditional bath response. Fine CE preservation is not claimed. This is a
+conditional removal of exact-record collision cost, not removal of the
+correlation-safe router or cross-independence premises.
+
+## 3. The exact partial-independence requirement
+
+Let Omega be an arbitrary joint N-replica state with a measured label/routing
+transcript T. On a branch t, donor j(t) routes to recipient i(t). An ideal
+data permutation has tagged state exactly
+
+\[
+ \Omega_{R_jS_jE_i|t}.                                       \tag{5}
+\]
+
+Consequently full N-copy independence can be replaced by the selection-stable
+cross-marginal condition
+
+\[
+ \Omega_{R_jS_jE_i|t}
+ =\Omega_{R_jS_j|t}\otimes\Omega_{E_i|t}.                     \tag{6}
+\]
+
+This is sufficient, and is necessary if equality is required for all future
+channels and all effects. If (6) fails, the difference of the two states has
+a positive spectral projector that separates them by their trace distance.
+For a limited task menu only indistinguishability under that menu is needed.
+For comparison with a specified unselected cq ensemble, the two conditional
+marginals in (6) must additionally equal the intended sigma_c and tau_c (or
+the declared coarse bath mixture). Otherwise selection changes the target
+marginals even when the conditional cross state factorizes. The iid
+finite-singleton formula is not inferred from (6) alone.
+
+With discrepancy epsilon_t equal to that trace distance, the average
+tagged task-score error is at most \(\sum_t\Pr(t)\epsilon_t\). This statement
+includes conditioning on the entire selection transcript: pairwise
+independence before adaptive matching does not automatically survive its
+selection events. Nor do one-copy statistics certify (6).
+
+**Non-iid success example.** Three fair hidden phase bits conditioned on even
+parity are globally dependent but every pair is independent. Constant C and
+a deterministic 3-cycle satisfy (6), so tagged grafting works exactly. This
+strictly weakens the source's full-iid requirement for the mean. It does not
+supply independent endpoints or a free concentration bound.
+
+## 4. A bath-marginal and reset-probe certificate is insufficient
+
+Take two independent copies of any correlated state \(\rho_{RSE}\), with
+identical bath marginal tau. Compare ideal \(U_0=SWAP_{S_1S_2}\) with
+
+\[
+ U_1=SWAP_{S_1S_2}\otimes SWAP_{E_1E_2}.                     \tag{7}
+\]
+
+Both have exactly the same reduced action on every accessible-register
+input, including arbitrary initial correlations. Both square to identity.
+The complete bath marginal is tau tensor tau before and after (7); even
+complete bath-state tomography sees no change in this marginal.
+
+More strongly, prepare ANY accessible-register probe state xi, possibly
+entangled across the copies and with external references, independently of
+the baths. Because bath SWAP fixes tau tensor tau,
+
+\[
+ U_0(\xi\otimes\tau\otimes\tau)U_0^\dagger
+ =U_1(\xi\otimes\tau\otimes\tau)U_1^\dagger.                 \tag{8}
+\]
+
+Thus every subsequent probe, even a joint bath-and-system measurement,
+has identical calibration data on this reset-input class. Arbitrarily many
+such product-probe process tomographies cannot resolve the ambiguity.
+
+Nevertheless on the native correlated input, U_1 delivers the donor bath
+with the donor state, so the intended conditional decorrelation fails. In
+the u=0.2 phase model the ideal tagged echo score is 0.68; U_1's score is 1.
+The unmatched mass is zero, all local and joint bath marginals agree, and
+the reset-probe certificate is perfect. The error is still 0.32.
+
+This falsifies a proposed acquisition shortcut, not every system-only
+certification protocol. A router audit must constrain action on relevant
+correlations, or use justified locality/no-cross-bath-transfer premises, or
+an adequate family of independently auditable correlated calibration
+states. Merely showing that the bath's state or its product-input channel
+is unchanged cannot furnish that contract.
+
+**Reference-pairing boundary, invented by quantum_information_operation,
+relayed by root and independently checked here.** Let
+\(\rho_{RSE}=|0\rangle\langle0|_S\otimes\Phi_{RE}\). Data SWAP between two
+copies leaves the entire physical state unchanged. A later local SWAP_SE
+returns a Bell pair to each resident reference, scoring 1. Pairing each
+output with the other, donor-tracked reference instead scores 1/4. The
+tagged acquisition identity remains correct: the operational estimand
+includes routing/job/reference assignment. It is not by itself a measure
+of changed resident processor dynamics. Any held-out decision must specify
+this assignment and justify its relevance to the physical job.
+
+## 5. A known virtual alternative trades routing for sampling
+
+Suppose actual local measurement and replacement primitives at the cut are
+certified to act on S alone. Take two independent same-condition copies.
+Measure donor S; send its classical outcome to the recipient; discard the
+recipient S nonselectively and prepare a state determined by that outcome.
+Retain donor R. The recipient environment marginal is tau, independently of
+the donor's conditional reference state. No data-register transport or
+coherent intermodule SWAP is required. This is a score estimator, not an
+entanglement-preserving physical output state.
+
+For d-dimensional S choose a Haar-random orthonormal basis or an appropriate
+finite 2-design/MUB implementation. Define D+ by measuring and preparing
+the observed basis vector. Define D- by measuring and preparing a uniformly
+chosen orthogonal vector in that basis. Averaging gives
+
+\[
+ D_+(A)=\frac{A+I\operatorname{Tr}A}{d+1},\qquad
+ D_-(A)=\frac{dI\operatorname{Tr}A-A}{d^2-1},
+ \qquad \operatorname{id}=dD_+-(d-1)D_-.                     \tag{9}
+\]
+
+For a qubit only the X,Y,Z measurement bases are needed: prepare the same
+eigenstate for D+, the opposite eigenstate for D-. Each branch is a physical
+measure-and-prepare channel. Equation (9), including its extension by an
+arbitrary untouched reference, follows directly by substitution. Its signed
+combination reconstructs \(\sigma_{RS}\otimes\tau_E\) before continuation.
+
+Let gamma=2d-1. Sample + with probability d/gamma and - with probability
+(d-1)/gamma. For an available raw score m in [0,1], the centered estimator
+
+\[
+ Y=\frac12+\gamma\operatorname{sign}(t)(m-\tfrac12)           \tag{10}
+\]
+
+has mean equal to the ideal tagged graft score. Its range has length gamma,
+so independent trials/batches need gamma squared times the ordinary bounded
+score Hoeffding budget. For one qubit the multiplier is 9. For m qubits
+collectively it is \((2^{m+1}-1)^2\), in addition to local basis synthesis,
+reference measurement, full-history preparation, record matching, feedforward,
+readout calibration and bath-safe local-operation costs. Measuring Bell
+fidelity by separate Pauli correlators gives raw range [-1/2,1], whose width
+1.5 must also be charged if comparing with a direct binary Bell projection.
+
+The coefficient norm gamma is optimal among signed decompositions of the
+identity into deterministic entanglement-breaking channels. Indeed, their
+normalized Choi states are separable, with overlap with the maximally
+entangled state at most 1/d. If positive coefficients total a and negative
+coefficients total b, trace preservation gives a-b=1. Unit Choi overlap
+requires 1<=a/d, so a>=d and a+b>=2d-1. Equation (9) attains this. This is
+not a universal lower bound for a particular easy task functional, and it is
+not a new wire-cutting result.
+
+The conditional/coarse matching and selection-stable cross-independence
+conditions of Sections 2-3 apply unchanged to this estimator. Local
+measure-and-prepare bath disturbance does NOT disappear by algebra; a real
+local-operation certificate is still required. System-only benchmarking of
+those primitives does not automatically supply such a certificate.

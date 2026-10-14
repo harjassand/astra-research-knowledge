@@ -1,0 +1,172 @@
+# Separate late review of PR 87: matched clocks, exchange interfaces, and score acquisition
+
+Date: 15 October 2026. Reviewer: adversarial_proof_review. This file is separate from the previously frozen proof review and does not alter its inventory.
+
+Actual source inspected: [PR 87](https://github.com/harjassand/astra-research-knowledge/pull/87), head `a69ae39e8a23cc4d5b337bfa01ef2bd5ccbb7a0c`, base `00631610750c708263d5cf6d812ebbb8edc77335`. The PR was open when read. Source bytes were retrieved by read-only `git show` at that exact head and saved in `late_pr87_sources/`, with their repository paths and SHA256 values in `READ_SOURCE_MANIFEST.json`.
+
+This is an internal analytic review and a separate acquisition refinement. It is not blanket validation, a merge endorsement, external proof certification, physical validation, or historical novelty clearance. No repository, other branch, source file, or previously frozen review file was edited. The root's fresh canonical namespace `FR-capital-mining-20261015`, with N830–N832, remains separate from PR 87's FQ/N822 namespace.
+
+## Findings
+
+1. The killed-path-affinity theorem reconstructs under its exact stationary finite all-even CTMC, passive memoryless emission, and independent specimen/clock assumptions. No fatal gap was identified in that theorem.
+2. There is no automatic transfer from its dissipation floor to conditional-exchange task contrast, gate bath safety, or response calibration. Exact countermodels separate those claims.
+3. Central-snapshot stratification can share a record interface with conditional exchange, but its conditional negative score must be weighted by the stationary prevalence before using the source's stationary inequality.
+4. The iid matched clock condition is sufficient, not necessary. The overlap worker's conditionally iid clock-mixture and finite-grid positive-semidefinite clock extensions reconstruct; an explicit spectral deficit gives a paid approximate-clock correction. Arbitrary exchangeable correlation remains insufficient.
+5. A variance-sensitive iid confidence bound materially improves the source's particular sufficient short-gap planning count **if a valid variance upper bound is independently supplied or acquired**. For the exact supplied ring fixture, an independent rational calculation gives a sufficient radius budget of `143,821,410` triplets, versus about `7.4e14` for the elementary Hoeffding calculation. Variance calibration and all physical acquisition costs remain open inputs. This is not a necessary sample lower bound or an advantage over a matched incumbent.
+
+## 1. Actual killed-path proof and its essential assumptions
+
+Primary source: `updates/FQ/package/operational_closure_v1/root/THREE_SNAPSHOT_OPERATION.md`, preserved locally with the same filename. The decisive proof is lines 23–40; assumptions are lines 7–19.
+
+For a stationary irreducible finite CTMC, `pi_i>0` and stationarity gives the same escape rates for `Q` and its stationary adjoint `Q*`. When path entropy is finite, jump supports agree. The geometric mean of their path densities is represented by initial path weight `pi`, unchanged holding factors, and jump factors `sqrt(Q_ij Q*_ij)`. This yields the killed generator `G` in the source. The initial weight is not a claim that the unnormalized surviving path measure has a normalized stationary marginal.
+
+AM-GM gives row sums at most zero. Moreover
+
+    pi_i G_ij=sqrt(pi_i Q_ij pi_j Q_ji)=pi_j G_ji,
+
+so `G` and its semigroup are self-adjoint in `L2(pi)`. The killed mass is essential and must not be normalized away.
+
+With fixed gaps `s,t` and independent Bernoulli emissions conditional on the microscopic states, set `f=b-r1`. Integrating emissions and moving the left semigroup by self-adjointness gives
+
+    integral W dnu = sum_i pi_i b_i (exp(sG)f)_i (exp(tG)f)_i.
+
+Independent equal-law gaps turn the product into a square after averaging. This argument permits unknown fixed emission probabilities but does not permit arbitrary detector memory, disturbance, or state-dependent timing.
+
+For unequal gaps, ordinary reversal changes the ordered observation schedule from `(s,t)` to `(t,s)`. The averaged clock law is exchangeable, so the forward and reverse score expectations agree after clock averaging. It is unnecessary and generally incorrect to assert this equality separately at every ordered unequal pair. The source's averaged proof uses the correct symmetry.
+
+The positive measure `(P+P^R)/2-nu` has mass `1-A`. Since `W>=-r(1-r)`, its expectation bounds the negative forward mean by `D<=r(1-r)(1-A)`. Stationary path entropy has mean `(s+t)sigma`; Jensen gives `A_(s+t)>=exp(-(s+t)sigma/2)`. Another Jensen step over independent specimen-free clocks uses only their mean sum `2m`, giving `A>=exp(-m sigma)`. This reconstructs the displayed lower bound.
+
+The physical all-even reversal assumption is indispensable to interpreting this as the named mathematical irreversibility rate and to constructing the self-adjoint ordinary-reversal killed operator. Its identification with physical entropy production additionally needs the physical reversal and thermodynamic ledger. The parity-lift countermodel retained at source lines 79–81 correctly prevents acquiring those premises from the binary law alone.
+
+The score-family optimization at lines 52–67 also checks: dividing by `r(1-r)` leaves `c01+c10-c00 x-c11/x` with `x=r/(1-r)`. AM-GM gives the stated envelope and centering. First-jump expansion gives `C/t -> (2/3)(1-sqrt(q))^2`. This is a supplied exact-law consequence; arbitrarily short physical clock access is not thereby acquired.
+
+Historical comparisons in the PR's addendum were read as claims and boundaries, but the external papers and numerical tables were not independently revalidated in this separate review.
+
+## 2. Substantive interface with conditional exchange
+
+### 2.1 Dissipation is not a certificate of exchange task memory
+
+Consider a stationary symmetric two-state CTMC `Z` with switching rate `gamma>0`, all states even, so its specimen path entropy-production rate is zero. At the cut, let an external reference and data register contain the past observed bit `Z_(-s)`, and let the environment contain the present `Z_0`. Continue the environment to time `s`, copy its final bit into the output data register, and score equality with the donor's reference. Passive classical observation suffices for this mathematical example; external recording/preparation costs remain paid.
+
+The native score is
+
+    Pr(Z_s=Z_(-s))=(1+exp(-4 gamma s))/2.
+
+Grafting the data/reference from an independent copy onto the resident environment makes its reference independent of the future bit, giving score `1/2`. Thus the exchange contrast is `exp(-4 gamma s)/2>0`, while the specimen's dissipation is exactly zero. The three-snapshot equilibrium score has no negative witness under the matched-clock theorem. Exchange can reveal a useful history association without a dissipative specimen.
+
+Conversely, take the PR's driven ring as an independent environment, with data/reference initially product with it and a continuation that never couples that environment to the task. Its three-snapshot law gives the positive model-class dissipation certificate, but native and grafted task states coincide and the exchange contrast is zero. A positive floor therefore supplies neither a task-relevant coupling nor an exchange advantage.
+
+Neither direction acquires the conditional-exchange gate's joint bath action. A reduced SWAP characterization remains compatible with an additional environmental operation; a stationary baseline snapshot theorem does not test that joint intervention.
+
+### 2.2 Central-condition weighting is a valid narrow bridge
+
+Suppose a protocol retains only windows whose central snapshot is `Y0=1`, and let
+
+    p1=Pr(Y0=1),
+    d_cond=-E[(Y_--r)(Y_+-r) | Y0=1].
+
+Because the source score is identically zero when `Y0=0`, its **stationary unconditional** negative mean is exactly
+
+    D=p1 d_cond.
+
+If this is positive and below `r(1-r)`, the valid stationary certificate is
+
+    sigma >= -log(1-p1 d_cond/[r(1-r)])/m.
+
+Substituting `d_cond` without `p1` changes the path law and can overstate the bound. The conditioned hidden process is not generally a stationary CTMC with the same entropy identity. The prevalence, retained-window probability, and independent stationary-trial acquisition must be charged. The clocks must still be selected independently of the specimen; selection on arbitrary history or task score does not inherit the middle-state square automatically.
+
+More generally, a nonnegative memoryless central weight can replace `b_i` in the killed square. An arbitrary previously recorded condition from a history-dependent detector is not such a weight without a separate Markov/reversal/observation proof.
+
+This is a legitimate shared record and population-accounting interface. It does not turn the dissipation statistic into a calibration of the conditional continuation channels, or make rare stationary conditions free to acquire.
+
+## 3. Clock extensions independently reconstructed in coordination
+
+The overlap_capital_audit worker proposed these refinements; the arguments below reconstruct their algebra independently. They are additional scoped deductions, not attributed to PR 87's author or accepted from worker agreement.
+
+### 3.1 Conditionally iid matched clocks and PSD clock pairs
+
+Suppose, independently of specimen and readout, draw a latent clock variable `z`, then draw both gaps independently from the same law `rho_z`. Their unconditional joint law may be correlated. For each fixed `z`, the killed score is a nonnegative square; averaging in `z` preserves positivity. The clock pair is exchangeable and has a known common marginal mean `m`, so the same affinity/Jensen proof yields the same floor.
+
+A particularly simple allowed design is to draw one positive gap `S` before the trial and use `S` on both sides. Its killed score is the average of `(exp(SG)f)_i^2`. This does not invalidate the source's anti-correlated-clock equilibrium counterexample. Rather, it shows that equal marginals or exchangeability alone are insufficient, while specified positive clock correlation can be sufficient. The iid requirement must not be promoted into an impossibility of every correlated clock.
+
+For a finite clock grid, write the symmetric joint clock probability matrix as `K`. If `K` is positive semidefinite, each killed score is a quadratic form `f_i^T K f_i>=0`, so the same conclusion holds. A conditionally iid mixture is one sufficient representation of such a matrix; it is unnecessary to assume every nonnegative PSD matrix has a product-mixture representation.
+
+### 3.2 Quantitative spectral deficit
+
+Let `p` be the positive marginal clock vector and suppose an acquired bound gives
+
+    D_p^(-1/2) K D_p^(-1/2) >= -eta I, eta>=0.
+
+Sub-Markov contractivity gives `|(exp(sG)(b-r1))_i|<=R`, where `R=max(r,1-r)`. Hence
+
+    E_nu W >= -eta R^2 p_B,  p_B=sum_i pi_i b_i=E Y0.
+
+The positive measure subtraction then gives
+
+    D_eff=D-eta R^2 p_B <= r(1-r)(1-A).
+
+If `D_eff>0`, the original lower bound holds with `D_eff` in place of `D`. The PSD case has `eta=0`. The source two-point anti-diagonal joint clock has normalized eigenvalue `-1`, so it is not covered by a zero-deficit claim.
+
+This repair needs valid clock-law, mean-gap, spectral and prevalence bounds. It does not repair clock dependence on the specimen. If a common random clock is reused across many triplets, the individual-triplet theorem may hold but iid concentration does not automatically hold for that batch; the trial-level randomization or a dependence-aware inference proof must be specified.
+
+## 4. Exact variance-sensitive acquisition refinement
+
+New files: `verify_late_pr87_acquisition.py` and `LATE_PR87_ACQUISITION_CHECK.json`. The script uses only the Python standard library and the saved `late_pr87_sources/SMALL_GAP_EXTENSION_v0001.json`. It does not execute the incoming checker.
+
+### 4.1 Confidence inequality with an explicitly paid variance bound
+
+For iid score observations `W` of known range width `R`, suppose a valid supplied or independently calibrated bound `Var(W)<=v` is available. For centered `X=E W-W`, `|X|<=R` and `E X^2<=v`. For `0<=lambda<3/R`, the inequalities `|E X^k|<=v R^(k-2)` and `k!>=2*3^(k-2)` give
+
+    log E exp(lambda X) <= v lambda^2/[2(1-lambda R/3)].
+
+Chernoff with `lambda=delta/(v+R delta/3)` gives
+
+    Pr(E W-sample_mean >= delta)
+       <= exp(-n delta^2/[2(v+R delta/3)]).
+
+Thus `sample_mean+delta` is a one-sided upper confidence limit at error at most `alpha` whenever
+
+    n >= 2 log(1/alpha)(v+R delta/3)/delta^2.
+
+This centered range bound uses the full width `R`; it does not incorrectly substitute the much smaller negative-score magnitude. A valid variance bound is an extra input. A plug-in empirical variance without its own confidence proof is not sufficient. If a pilot is used, its preparations, confidence allocation and independence from the test must be counted; a naive Hoeffding pilot at extremely fine variance precision could erase the benefit.
+
+### 4.2 Supplied-ring computation
+
+Use the actual source fixture `q=1/20`, fixed gap `t=1/1000`, deterministic visible label `{1,2}`, and predeclared `r=39991/40000`. The independent checker builds `exp(tQ)` with a signed rational matrix Taylor series through order 12. The induced infinity-norm tail is bounded by
+
+    ||tQ||^(13)/13! / (1-||tQ||/14).
+
+That rational bound encloses every transition entry. Multiplying interval transitions gives all eight triplet probabilities, then the first and second score moments. The exact interval for the negative mean encloses the source's separately saved decimal interval.
+
+The resulting displays are
+
+    D = 9.006373980369936...e-8,
+    E[W^2] = 3.360125783167674...e-8.
+
+Taking the rigorous upper endpoint of `E[W^2]` bounds the variance conservatively. Set the design radius to half the rigorous lower endpoint of `D`. The exact rational partial sum for `exp(3)` through order eight exceeds `20`, proving `log(20)<3` without a floating-point logarithm. At one-sided confidence `0.95`, the Bernstein sufficient radius budget is
+
+    n_Bernstein = 143,821,410 iid stationary triplets.
+
+Using the same conservative logarithm upper bound, the Hoeffding sufficient radius budget is
+
+    n_Hoeffding = 739,359,815,185,143.
+
+The source uses `log(20)` directly and reports `738,308,020,039,682`; the slight difference is due to the conservative `3` used here. With the identical logarithm convention, the ratio is approximately `5,140,818.85`.
+
+These are sufficient budgets for a confidence radius equal to half the fixture's expected negative margin. They do not ensure that every realized sample produces a specified positive floor, and they are not necessary lower bounds. The radius is a predeclared design tolerance; using an unknown true mean adaptively without a stopping/confidence correction would be invalid.
+
+### 4.3 Why the scaling changes, and what remains unpaid
+
+For near-optimal `r`, write `h=1-r=O(t)`. On the events with central `Y0=1`, the score values are `r^2`, `-rh`, and `h^2`, with probabilities respectively `O(t^2)`, `O(t)`, and `O(1)`. Consequently `E W^2=O(t^2)`, whereas `D=O(t^2)`. A known-variance Bernstein radius can therefore reach the negative signal with a sufficient budget `O(t^-2 log(1/alpha))`, rather than the elementary range-only `O(t^-4 log(1/alpha))` budget.
+
+This is a substantive same-score scientific-information acquisition refinement, not a completed experiment. Its numeric variance here is derived from a supplied exact generator. A real specimen still requires a valid variance/confidence interface, independent stationary windows or a separate dependence argument, timing resolution, actual physical reversal, detector memory/back-action control and total resource accounting. The remaining `143.8 million` triplets are themselves a large planning number. Every matched raw-snapshot incumbent must receive the same variance-sensitive inference and acquisition budget. No full-cost superiority is established.
+
+## 5. Reproduction and disposition
+
+Run from any working directory while preserving the saved directory structure:
+
+    python3 /absolute/path/to/workers/adversarial_proof_review/verify_late_pr87_acquisition.py
+
+Required files are that script and `late_pr87_sources/SMALL_GAP_EXTENSION_v0001.json`; all other copied sources are retained for proof provenance. The receipt records exact rational enclosures, both sufficient budgets, script hash and interpretation limits.
+
+The actual PR 87 theorem survives this independent scoped audit. The valid interfaces are population-weighted central-condition scoring, paid positive/spectral clock classes, and a paid variance-sensitive acquisition refinement. No inference here certifies the exchange gate, physical entropy production, hidden parity, a task benefit, practical superiority, or merging any PR. The canonical publication can preserve these late additions without changing the previously frozen provisional packet.

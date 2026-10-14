@@ -1,0 +1,449 @@
+# Astra Meta-Genesis: locality rigidity, critical trace concentration, and free-time profile actions
+
+Research date: 15 October 2026.
+
+## Status
+
+The complete implication from rank-one convexity to quasiconvexity for the nine-coefficient left-SO(2)-invariant homogeneous quartic cone is **not established**. No rigorously negative compatible closed cycle was obtained. This investigation did not construct the requested universal compensation potential.
+
+The strongest proved result concerns what such a potential must represent. A smooth profile potential obtained by integrating a density depending on the profile and its first transverse derivative exists at a fixed affine background **if and only if the integrand has a determinant-affine supporting inequality there**. Requiring this at every background supplies a polyconvex lift. Thus this natural continuum extension of the finite-library potential cannot prove the non-polyconvex part of the problem.
+
+There is also an explicit compatible trace-concentration obstruction. For the Dacorogna–Marcellini endpoint, negative transitions from zero to positive-winding profiles, and from negative-winding profiles to zero, survive at the critical W^(3/4,4) trace scale. Any globally dominating profile potential is neither weakly lower nor weakly upper semicontinuous at zero in that space. It cannot be continuous in any W^(s,4), s<3/4, or depend continuously on finitely many weakly continuous measurements. These are obstructions to classes of certificates, **not** quasiconvexity counterexamples. The endpoint's quasiconvexity is a published prior result; the no-go proofs use its explicit formula and do not assume that result.
+
+Two nonlocal candidates were confronted. A fixed scalar multiple of the orientation-odd Poisson-extension action cannot be a universal linear calibration across the cone, even allowing a fixed Poisson rate: explicit convex quartics defeat it. A concrete multi-frequency test also disproves the initially tested coefficient for the isotropic Dacorogna–Marcellini endpoint itself. Correct critical scaling is therefore necessary but insufficient.
+
+Finally, convex timing yields an exact free-duration reduction, including a scalar quartic equation for each nondegenerate strip and a support-function description of its instantaneous geometric action. This was used in continuous-geometry closed-cycle searches, including an alternating search over the full acoustic coefficient cone. All retained cycle gaps were positive. One rational five-profile cycle was independently reconstructed and its complete affine optimum certified positive. No positive finite result is promoted to a continuum theorem.
+
+The included exact verifier passed ten groups checking the finite identities and countertests. The analytic proofs below are not delegated to symbolic computation. No external review, proof-assistant verification, or historical priority clearance is claimed. No repository was modified.
+
+## 1. Reconstructing the profile formulation
+
+Let y have period 2pi and let E_y denote normalized averaging. For a profile U(y) and profile velocity V(y), define
+
+    L_B(U,V) = E_y [F(B+(V|U_y))-F(B)].                    (1.1)
+
+A scalar functional P_B on smooth periodic profiles is called dominating if, for every compatible strip Phi on [0,T] x T,
+
+    P_B(Phi(T,.))-P_B(Phi(0,.))
+       <= integral_0^T L_B(Phi(x,.),Phi_x(x,.)) dx.       (1.2)
+
+If P_B is differentiable along all smooth profile directions, its differential version is
+
+    DP_B(U)[V] <= L_B(U,V)                                (1.3)
+
+for every U,V. Integrating (1.3) implies (1.2); conversely short straight profile paths yield (1.3) when the derivatives and action are continuous. Closed paths eliminate the potential, so (1.2) proves Jensen at B. Existence of an unrestricted P_B is not assumed merely from rank-one convexity.
+
+Write P=(Phi_x|0), Q=(0|Phi_y), and
+
+    R_F(C,Z)=F(C+Z)-F(C)-DF(C)[Z].
+
+Both P and Q have rank at most one. Direct subtraction gives
+
+    F(B+P+Q)-F(B)
+      = R_F(B+Q,P)+R_F(B,Q)+DF(B+Q)[P]+DF(B)[Q].          (1.4)
+
+The final term averages to zero. The remaining linear term is the circulation of
+
+    alpha_(F,B)(U)[V] = E_y DF(B+(0|U_y))[(V|0)].         (1.5)
+
+Thus the prior identity is correct: it retains a joint signed circulation and two nonnegative rank-one remainders. Cancellation of polynomial circulation through degree three is sufficient for quartic Jensen, but is not automatic for profiles. A no-negative-cycle certificate on a fixed graph supplies (1.2) only for the tested transitions and does not address profiles outside that graph.
+
+The full prior PROFILE_CIRCULATION.md was read. Its nine-group verifier was replayed successfully, including reconstruction of all 32,805 edge inequalities. The replay checks the inherited finite claims; it is not an independent analytic proof of any of the earlier long contact classifications. None of those classifications is a premise below.
+
+## 2. First-derivative local storage is exactly a polyconvex support
+
+This result holds without rotational symmetry, homogeneity, or a rank-one-convexity assumption. The latter is irrelevant because the existence of the proposed storage is itself a strong condition.
+
+### Theorem 2.1 (local storage rigidity)
+
+Let F:R^(2x2)->R be C^2 and fix B. The following are equivalent.
+
+(a) There is p in C^3(R^2 x R^2) such that
+
+    P(U)=E_y p(U,U_y)
+
+satisfies (1.3) for every smooth periodic U,V.
+
+(b) There is a real number kappa such that, for every matrix X,
+
+    F(B+X)-F(B)-DF(B):X >= kappa det X.                   (2.1)
+
+If (b) holds, an explicit storage is
+
+    P(U)=F_1(B).E_y U + (kappa/2) E_y det(U,U_y),         (2.2)
+
+where F_1(B) is the derivative with respect to the first column.
+
+A periodic explicit dependence p(y,U,U_y) does not enlarge the existence class: average a proposed functional over transverse translations of U. Invariance of L_B under those translations preserves domination and produces an autonomous density.
+
+### Proof
+
+Write z=U and q=U_y. Integration by parts gives the Euler derivative
+
+    DP(U)[V] = E_y [p_z - p_(qz) U_y - p_(qq) U_yy].V.  (2.3)
+
+First prove p_(qq)=0. Fix z0 and smooth periodic w,v, and let
+
+    U_N(y)=z0+N^(-1)w(Ny),   V_N(y)=v(Ny).
+
+The left side of (1.3), namely L_B(U_N,V_N), stays bounded as N grows, because U_N,y=w'(Ny), V_N=v(Ny). In (2.3), all terms stay bounded except possibly
+
+    -N E_y [p_(qq)(z0,w') w''].v + O(1).
+
+Apply domination to V_N and -V_N. The displayed leading coefficient must vanish. Since v is arbitrary,
+
+    p_(qq)(z0,w'(y)) w''(y)=0
+
+pointwise. A smooth periodic w can have any prescribed w'(0)=q0 and w''(0)=h0: make those jets locally and adjust w' away from the point to have zero mean. Therefore p_(qq)(z0,q0)h0=0 for every z0,q0,h0, proving p_(qq)=0.
+
+It follows that
+
+    p(z,q)=A(z).q+c(z).
+
+The Euler derivative becomes
+
+    DP(U)[V] = E_y [grad c(U).V + k(U) det(V,U_y)],       (2.4)
+
+where k(z)=partial_1 A_2-partial_2 A_1. For constant U=z and constant V=epsilon a, differentiation of the two signs of epsilon in (1.3) gives
+
+    grad c(z)=F_1(B)
+
+for every z.
+
+Again take U_N=z0+w(Ny)/N and V_N=v(Ny), now in (2.4), and pass to the limit. For every smooth zero-mean q=w' and every smooth v,
+
+    E_y {F(B+(v|q))-F(B)-F_1(B).v-k(z0)det(v,q)} >=0.    (2.5)
+
+Fix arbitrary vectors v0,q0. In a fraction theta of a period take (v,q)=(v0,q0); on the remainder take (v,q)=(0,-theta q0/(1-theta)). Smooth approximations preserve the inequality and the zero mean of q. Dividing (2.5) by theta and letting theta decrease to zero gives
+
+    F(B+(v0|q0))-F(B)-F_1(B).v0-F_2(B).q0
+       >= k(z0) det(v0,q0).
+
+This is (2.1). No compactness of gradient laws, quasiconvex Jensen theorem, or unproved moment completion was used.
+
+Conversely, the first variation of (2.2) is
+
+    DP(U)[V] = F_1(B).E_y V+kappa E_y det(V,U_y).
+
+Integrate (2.1) with X=(V|U_y). The F_2(B).U_y term has zero average, proving (1.3). QED.
+
+### Corollary 2.2 (all backgrounds force polyconvexity)
+
+If such a local storage exists at every B, let k_B be the supporting coefficient from (2.1). Then
+
+    g(A,t)=sup_B {F(B)+(DF(B)-k_B cof B):(A-B)
+                       +k_B(t-det B)}
+
+is convex as a supremum of affine functions of (A,t), and
+
+    g(A,det A)=F(A).
+
+Thus F is polyconvex. This is a constructive support representation, not an appeal to an unspecified convex lift.
+
+The proof extends to R^(m x 2). Freezing the skew matrix in (2.4) at one profile value yields constant coefficients of the 2x2 minors of (V|U_y). An explicit replacement storage is a first-column affine term plus a constant skew area functional; this does not assert that every initially supplied density has constant curvature. Existence at every background again yields a convex lift in the entries and minors.
+
+This result is closely related to the classical null-Lagrangian/minor structure. Ball–Currie–Olver [2] develop that structure in far greater generality. The present statement is the precise conclusion for the universal differential domination ansatz (1.3); historical priority for this formulation has not been established.
+
+### A consequence at the zero background
+
+For a homogeneous quartic with F(A_*)<0, no coefficient k can satisfy F(X)>=k det X for all X: set X=tA_* and let t grow. Therefore no first-derivative local storage exists at B=0. This rules out arbitrary smooth densities p(U,U_y), not just a fixed polynomial degree.
+
+The theorem does not rule out genuinely nonlocal functionals, arbitrary higher-derivative functionals, nonsmooth storages, or calibrated bounds restricted to a proper class of profiles.
+
+## 3. An exact trace-concentration obstruction for a quasiconvex energy
+
+Let
+
+    F_DM(A)=|A|^4-(4/sqrt(3))|A|^2 det A.                  (3.1)
+
+Bruno and Pasqualotto prove its quasiconvexity [1]. Its rank-one convexity can also be checked directly: by left and right rotational invariance it suffices to test e11. For A=(a,b;c,d), the acoustic quadratic is
+
+    12(a-d/sqrt(3))^2
+      +2(1+1/sqrt(3))(b+c)^2
+      +2(1-1/sqrt(3))(b-c)^2 >=0.
+
+Meanwhile F_DM(I)=4-8/sqrt(3)<0. None of the following negative-transition calculations requires the quasiconvexity theorem; citing it shows that these are obstructions to certificates, not evidence against quasiconvexity.
+
+### 3.1 Negative entry and exit strips
+
+Set U_+(y)=(cos y,sin y). On 0<=x<=2 use
+
+    Phi_+(x,y)=(x/2)U_+(y).
+
+Writing r=x/2, its columns are (U_+/2 | r J U_+). Thus
+
+    |D Phi_+|^2=1/4+r^2,   det D Phi_+=r/2.
+
+Exact integration gives
+
+    integral_0^2 E_y F_DM(D Phi_+) dx
+      =103/120-sqrt(3)/2 = -delta,                        (3.2)
+    delta=sqrt(3)/2-103/120>0.
+
+The sign follows by squaring: 3/4-(103/120)^2=191/14400>0.
+
+This is a negative transition from 0 to U_+, not a closed test. Simultaneously reverse x and y. The gradient is negated, so the quartic energy is unchanged. This produces a negative transition from U_-(y)=U_+(-y) to 0 with the same action -delta.
+
+### 3.2 Critical concentration of the traces
+
+For integer N>=1 set
+
+    U_N^+(y)=N^(-3/4)U_+(Ny),
+    U_N^-(y)=N^(-3/4)U_-(Ny).
+
+Rescale the two strips by
+
+    Phi_N(x,y)=N^(-3/4) Phi(Nx,Ny),  0<=x<=2/N.
+
+The gradient scales by N^(1/4), the quartic by N, and the x width by N^(-1). Transverse normalized averaging is unchanged. Hence both directed actions remain exactly -delta.
+
+Every dominating profile functional, normalized by P(0)=0, must therefore satisfy
+
+    P(U_N^+) <= -delta,       P(U_N^-) >= delta             (3.3)
+
+for every N.
+
+These conclusions require no differentiability of P and no homogeneous ansatz for P. They follow from open-path domination alone.
+
+### Theorem 3.1 (necessary topology and orientation sensitivity)
+
+A functional satisfying (1.2) for F_DM at B=0:
+
+* cannot be continuous at zero in W^(s,4)(T), for 0<=s<3/4 (nor even uniformly continuous in the profile values alone);
+* is neither sequentially weakly lower nor sequentially weakly upper semicontinuous at zero on W^(3/4,4)(T);
+* cannot be a continuous function of finitely many continuous linear measurements on the critical trace space, or of finitely many weakly continuous measurements;
+* cannot depend only on profile quantities that identify U_N^+ and U_N^-, such as unoriented Sobolev norms.
+
+Proof. For 0<s<1, the Slobodeckij seminorm of a circular mode follows from
+
+    |U_N(y+h)-U_N(y)|=2N^(-3/4)|sin(Nh/2)|.
+
+Changing variables h->Nh in its integral gives
+
+    ||U_N||_(W^(s,4)) = O(N^(s-3/4))+O(N^(-3/4)).          (3.4)
+
+The corresponding seminorm is also bounded below by a positive constant times N^(s-3/4). At s=3/4 the sequence is bounded. Its L4 norm tends to zero, so reflexivity and uniqueness of its distributional limit imply weak convergence to zero in W^(3/4,4). Equations (3.3) then contradict each proposed continuity or semicontinuity property. The two signs exclude lower and upper semicontinuity separately. Finite continuous linear measurements converge to zero along both sequences. QED.
+
+A potential depending only on Fourier modes |n|<=M fails even without continuity: for N>M, its input data agree exactly with those at zero, contradicting (3.3).
+
+Because F_DM is quasiconvex by the separately cited theorem, every compatible transition from U_N^+ to U_N^- has action at least 2delta. Indeed, precede it by the exact negative entry from zero and follow it by the exact negative return to zero. The concatenated field is periodic in x, so its total energy is nonnegative. The two traces both tend uniformly to zero, but this oriented connecting cost cannot vanish. This corollary uses the known endpoint quasiconvexity; the certificate obstructions (3.3) themselves do not.
+
+
+### 3.3 The scaling applies far beyond this example
+
+For a real amplitude a and frequency N, the same construction forces
+
+    P(a U_+(Ny))-P(0) <= -delta a^4 N^3,
+    P(a U_-(Ny))-P(0) >=  delta a^4 N^3.                    (3.5)
+
+Thus a universal storage must see a signed cubic growth in frequency at quartic amplitude order. The critical exponent 3/4 is the standard trace scaling of W^(1,4) strip energies; it is not a newly invented Sobolev exponent. What is explicit here is the incompatibility of domination with weaker or weakly semicontinuous profile descriptions.
+
+More generally, let F be left-SO(2)-invariant, homogeneous of degree four, and suppose F(A)<0 at an invertible A=(a1|a2). Choose n=sign(det A), v=-J a2/n, and decompose a1=alpha v+beta Jv. Then alpha=det A/(n|v|^2)>0. The potential
+
+    Phi(x,y)=exp(alpha x) R_(beta x+n y) v,  x<=0,
+
+has gradient exp(alpha x) R_(beta x+n y) A, hence action
+
+    F(A)/(4alpha)<0.
+
+Truncate at -T and attach a unit-width linear ramp from zero to its exponentially small initial trace. That ramp has O(exp(-4alpha T)) action. For sufficiently large T this is a finite negative entry transition to the single-frequency profile R_(ny)v. Simultaneous x,y reversal supplies a negative return from its reversed-winding profile. The preceding concentration and regularity conclusions therefore hold for every such F, with an F-dependent positive delta. A negative rank-one-convex homogeneous quartic value is necessarily at an invertible matrix.
+
+This does not claim every non-polyconvex invariant quartic has a negative value. It includes the central negative-valued examples and is enough to refute universal constructions that would have to cover the whole cone.
+
+### 3.4 Necessary trace-energy size, and what has not been ruled out
+
+For a smooth mean-zero profile define its trace energy by the infimum of integral |D Phi|^4 over finite compatible strips from zero to that profile (arbitrary positive width). Standard trace/extension theory identifies the resulting homogeneous trace scale with W^(3/4,4), modulo constants [3]. If |F(A)|<=C_F|A|^4 and P is dominating at B=0, apply domination to any extension and to its x-reversal. This gives the necessary bound
+
+    |P(U)-P(0)| <= C_F inf_extensions integral |D Phi|^4.  (3.6)
+
+One may use this energy definition directly; no trace equivalence is needed for the explicit examples.
+
+The lower estimates (3.3) are consistent with (3.6): the critical trace energy does not tend to zero. The results do not rule out strong continuity in the critical trace topology, nonlocal direction-sensitive functionals there, or nonsmooth potentials. Nor do they say a quasiconvex F lacks any abstract storage. For an already quasiconvex F, infimum of incoming actions gives a finite storage: closing an incoming path with one fixed return path bounds it from below. That construction is not used to prove quasiconvexity of an unknown F, because doing so would be circular.
+
+## 4. A natural critical nonlocal candidate also fails
+
+A profile storage must retain frequency orientation and the critical derivative order. The following candidate has those features but is still insufficient.
+
+Let E_(lambda,x)U=e^(lambda x|D_y|)U for x<=0, lambda>0, on periodic profiles. The constant Fourier mode is retained; its spatial derivatives vanish, so it contributes no extension action. Let S be an output reflection and
+
+    F^o(A)=[F(A)-F(SA)]/2
+
+be the orientation-odd part of a left-SO(2)-invariant quartic. Consider the fixed linear rule
+
+    P_F^(c,lambda)(U)
+       =(c/2) integral_(-infinity)^0 E_y F^o(D E_(lambda,x)U) dx. (4.1)
+
+It has fourth-degree amplitude scaling and third-degree frequency scaling. At lambda=1 it is a signed quartic Poisson-extension action. This is a candidate, not a claimed calibration.
+
+### Theorem 4.1 (no universal fixed scalar and fixed Poisson rate)
+
+For every c in R and every fixed lambda>0, rule (4.1) fails differential domination for some independently convex or rank-one-convex member of the full invariant cone.
+
+Proof. Use the explicitly convex quartic
+
+    F_rho(A)=|x_C+i rho y_C|^4, rho>0.
+
+For the boundary profile U=e^(iy) and velocity V=alpha U,
+
+    L_0(U,V)=(alpha-rho)^4.
+
+The orientation-odd part is -4rho q(u+rho^2 v), so direct integration yields
+
+    P_F^(c,lambda)(rU)=-(c/2)rho(lambda^2+rho^2)r^4.
+
+Hence the domination residual is exactly
+
+    L_0(U,V)-DP(U)[V]
+      =(alpha-rho)^4+2c rho(lambda^2+rho^2)alpha.           (4.2)
+
+If c<0, choose alpha=rho. If c>0, choose alpha=-rho/3 and take rho sufficiently small: the positive term is O(rho^4), while the negative term is -(2c/3)lambda^2 rho^2+O(rho^4). If c=0, use F_DM and U=e^(iy), V=U, for which L_0=F_DM(I)<0. QED.
+
+For the exact numerical choices c=lambda=1, rho=1/4, alpha=-1/12, the convex-energy residual is
+
+    -331/10368 < 0.                                      (4.3)
+
+This theorem does not exclude an integrand-dependent nonlinear choice of storage, an integrand-dependent metric, or more general nonlocal kernels. It excludes this proposed fixed linear rule across the cone.
+
+### 4.2 A coupled-frequency failure for the isotropic endpoint itself
+
+The initially tested candidate has c=lambda=1 and F=F_DM. Put
+
+    f(y)=cos y-(1/5)sin(2y)-(1/6)cos(3y),
+    h(y)=-3/8+(7/6)sin y+(1/10)cos(2y)-(1/2)sin(3y),
+    U=(f,0), V=(0,h).
+
+Let f~,h~ be their harmonic extensions to x<=0 (the constant mode of h~ has zero derivative). Since the base extension has second output zero,
+
+    DP(U)[V]=-(2/sqrt(3)) integral
+       (f~_x h~_y-h~_x f~_y)(f~_x^2+f~_y^2) dx dy.
+
+The exact integral in this display is 265631/360000. Consequently
+
+    L_0(U,V)-DP(U)[V]
+      =550762363/69120000 -6118187 sqrt(3)/1296000 <0.      (4.4)
+
+The sign is certified by comparing the squares of positive rational coefficients, not a decimal eigenvalue. Dividing by E_y |(V|U_y)|^4 gives approximately -0.02616653532.
+
+This is an actual instantaneous compatible transition: use Phi(x,y)=U(y)+xV(y) for small positive x. The negative differential residual implies violation of the proposed storage inequality for sufficiently short such strips. It is not a closed compatible cycle and is not a quasiconvexity counterexample. Its role is to show that the scaling-correct, orientation-sensitive nonlocal candidate can still miss coupled-frequency interactions, even for an integrand whose quasiconvexity is established externally.
+
+For lambda=1 the signed quantity integral |D E U|^2 det D E U equals twice the difference of the analytic and anti-analytic fourth-gradient extension energies. That observation explains the candidate's appeal and its limitation: a signed separation of the two harmonic sectors is not by itself a valid domination principle for their nonlinear boundary interaction.
+
+## 5. What convex timing actually eliminates
+
+This section supplies a useful exact reduction, not existence of a global potential.
+
+### 5.1 Straight-edge timing is completely solvable
+
+For fixed profiles U,V, fixed background B, and local interpolation parameter t in [0,1], set
+
+    P=(V-U|0), Q_t=(0|(1-t)U_y+t V_y).
+
+The action at width tau is
+
+    W_B(tau)=tau integral_0^1 E_y
+                 [F(B+P/tau+Q_t)-F(B)] dt.
+
+Its second derivative is
+
+    W_B''(tau)=tau^(-3) integral_0^1 E_y
+          D^2F(B+P/tau+Q_t)[P,P] dt >=0.                  (5.1)
+
+For a homogeneous quartic and fixed B this has the exact algebraic form
+
+    W_B(tau)=a0 tau+a1+a2/tau+a3/tau^2+a4/tau^3.          (5.2)
+
+The coefficient a0 is nonnegative: at each interpolation profile, convexity in the second column and E_y Q_t=0 give its Jensen bound. The leading coefficient a4 is the mean rank-one value F(P), hence nonnegative. If a0,a4>0, W tends to infinity at both ends and is strictly convex (its analytic nonnegative second derivative cannot vanish on an interval). The unique optimal duration solves
+
+    a0 tau^4-a2 tau^2-2a3 tau-3a4=0.                     (5.3)
+
+Its positive root can be isolated exactly for rational data. Thus a search need not sample a finite width library. At fixed geometry and fixed common B, the optimal durations of all edges are independent convex minimizations. Optimizing B and the profile geometry jointly remains nonconvex.
+
+Degenerate a0=0 or a4=0 cases can have an infimum at zero or infinite duration; they are not silently treated as finite stationary points.
+
+### 5.2 Instantaneous duration elimination is a support function
+
+For a fixed profile U in a finite-dimensional profile subspace, let L(v)=L_B(U,v). It is a finite convex function of v because the varying first column is a rank-one direction, and L(0)>=0 by transverse Jensen. Define
+
+    A(U,w)=inf_(tau>0) tau L(w/tau).                       (5.4)
+
+Let
+
+    H(U,p)=sup_v [p.v-L(v)],
+    Z(U)={p:H(U,p)<=0}.
+
+Then
+
+    A(U,w)=sup_(p in Z(U)) p.w.                            (5.5)
+
+Proof. A supporting slope p0 of L at zero gives L(v)>=L(0)+p0.v, so A is bounded below by p0.w and above by L(w). Its perspective construction is convex and positively homogeneous. Its conjugate is
+
+    A*(p)=sup_(tau>0) tau L*(p),
+
+which is zero when L*(p)<=0 and infinite otherwise. Finite-dimensional convex duality proves (5.5). The same statement holds in the L4/L^(4/3) profile-velocity setting under the usual continuity and quartic-growth hypotheses.
+
+For a prescribed geometric profile path, optimizing the speed amounts to integrating A, with limiting speeds allowed by approximation. This produces a signed Finsler-type action. Domination requires choosing covectors in Z(U) that are the derivative of one global functional. Nonemptiness of each Z(U) does not produce that integrable selection. Thus convex timing removes a real scalar optimization but does not make the circulation problem disappear.
+
+The perspective and conjugacy ingredients are standard convex analysis. Equation (5.5) is not promoted as a solution by reformulating the missing global selection.
+
+## 6. Competing compatible-cycle computations
+
+The numerical route was changed from graph-width enumeration to continuous profile geometry with free durations. It did not merely add vertices to the preceding positive graph.
+
+Each cycle had five complete complex Fourier profiles, using frequencies -3,...,3. On an edge the potential is affine in x between its endpoint profiles. Continuity enforces exact compatibility across strip interfaces. All four affine-background entries were optimized. The y grid resolves quartic products; three-point Gauss integration is exact for the local affine interpolation at representation level. Floating arithmetic remains.
+
+At every geometric iterate, each original-energy edge duration was minimized using the unique positive root of (5.3), with implicit differentiation through that root. This is convex timing at fixed geometry/background. It is not claimed that the global optimizer was found. Degenerate numerical coefficient floors were used in the exploratory routine; the exact witness below uses the saved positive rational durations and does not rely on their optimality.
+
+Three 1,200-update runs for the independently certified G retained no negative gap. Their best directly reevaluated ratios were approximately 0.9550162066, 1.0599256919 and 0.9550138383. Some optimal observed widths exceeded 2,500, outside the earlier discrete width library.
+
+An independent exact reconstruction rounded the best retained coefficients and widths to rationals of denominator 10^6, rebuilt the whole five-profile cycle, and minimized all four affine directions by rational matrix arithmetic. Its mean gradient and determinant mean are exactly zero, and its covariance and averaged Hessian are positive definite. The resulting ratio is
+
+    Delta_G / E|D Phi|^4 = 0.9516451182703068724350...
+
+with the exact rational value in rational_free_cycle_verification.json. It is certified between 19/20 and 24/25. This is positive, and does not improve upon the prior ~0.615 exact piecewise-affine witness. No evidence of convergence toward a counterexample is inferred.
+
+A further alternating search varied all nine integrand coefficients subject to the exact acoustic Gram structure, using an interior log-determinant cone solve with an explicitly added small |A|^4 term. Six fully saved outer iterations were completed across two seeds; each used 900 profile/background updates. None returned a negative closed-cycle gap. Four outer records were saved for seed zero and two for seed one. These integrands and Gram eigenvalues are numerical exploratory data, not independently certified new theorems. Their differently normalized gaps are not compared to G's numbers.
+
+Separate Poisson-candidate searches produced negative domination residuals, including full-cone ones, but these are not closed-cycle energies. The distinction is maintained in the files and in the report. One interrupted batch did not save all planned runs; only the completed JSON records are retained as evidence.
+
+## 7. The exact mathematical state to preserve
+
+What was removed is a broad class of misleading continuum continuations:
+
+1. A smooth storage obtained by integrating p(U,U_y) cannot go beyond determinant-affine support and therefore cannot prove the non-polyconvex part of the full problem.
+2. A potential on a weakly compact or subcritical trace description cannot dominate all profiles even for the known quasiconvex endpoint. Critical, oriented concentration cannot be discarded in a finite-library extension.
+3. A simple fixed Poisson-extension orientation action has the correct homogeneity but fails exact domination tests. Correct topology and frequency order do not by themselves control resonance.
+
+These are rigorous certificate obstructions, not proof of non-quasiconvexity or a universally applicable positive operation.
+
+The most concrete unresolved positive attack is now a genuinely nonlocal critical-trace storage with mixed-frequency terms. For a candidate chosen to respect amplitude homogeneity and spatial dilation, its translation-invariant quartic Fourier kernel must have total frequency order three under simultaneous spatial dilation. At nonzero B, the homogeneous extension would have terms B^(4-j) times j profile factors of frequency order j-1. This is a scaling requirement, not an existence theorem or a prescribed sufficient ansatz. A valid kernel must satisfy the full velocity domination (1.3), retain both frequency orientations, and pass the explicit convex and isotropic tests in Section 4. Choosing its coefficients by quasiconvexity itself would be circular.
+
+A substantive proof would either exhibit a kernel/remainder identity valid uniformly over all frequency configurations and profiles, or prove another constructive nonlocal domination rule. Merely writing the zero-Hamiltonian selection problem in (5.5), or taking an unverified limit of finite graph potentials, does not meet that standard.
+
+The strongest competing negative attack retained here is simultaneous continuous profile-cycle geometry, exact convex timing, and variation over the acoustic coefficient cone, followed by exact reconstruction of any negative candidate. The exact positive five-profile witness is the current completed result of that route; no negative candidate survived even to the exact-certification stage.
+
+There is no evidence from this run that more unconstrained inference using the same local-density, fixed Poisson, or finite-graph architecture will cross the global barrier. Those particular continuations are either disproved or empirically unproductive. Further concentrated work is justified only by a genuinely mixed-frequency critical-trace mechanism or a new negative compatible geometry. No compute-calibrated success probability is claimed. Preserving this state is preferable to repeating the contact and single-carrier investigations.
+
+## 8. Verification and references
+
+Run:
+
+    python verify_universal_obstructions.py
+    python certify_free_cycle.py
+
+The first uses SymPy only, with all exact constants and formulas written directly in the script. It verifies polynomial bookkeeping for the local-storage Euler derivative and area variation, the Dacorogna–Marcellini acoustic squares, the negative entry/exit strips, critical scaling exponents, perspective timing and its quartic stationarity equation, the convex Poisson-calibration obstruction, the coupled-frequency exact failure, and G's independent acoustic certificate. These checks do not formalize the high-frequency localization proof, trace weak-convergence argument, or convex-duality proof.
+
+The second uses SymPy's exact Gaussian-rational polynomial arithmetic to reconstruct the rational profile cycle from its endpoint Fourier coefficients and widths. It does not use floating gradients or a stored reported optimum. The prior nine-group circulation replay is in prior_replay.log.
+
+Primary references inspected:
+
+[1] G. Bruno and F. Pasqualotto, Quasiconvexity for the Dacorogna–Marcellini Energy, arXiv:2608.06367v1 (2026). Theorem 1 gives the endpoint quasiconvexity; Theorem 2 addresses both left and right rotational invariance. No theorem for the entire left-invariant cone is imported.
+
+[2] J. M. Ball, J. C. Currie and P. J. Olver, Null Lagrangians, Weak Continuity, and Variational Problems of Arbitrary Order, Journal of Functional Analysis 41 (1981), 135–174. The primary manuscript's introduction and its first-order minor characterization were inspected. The local-storage proof here is supplied explicitly rather than attributed as a verbatim theorem of that paper.
+
+[3] E. Di Nezza, G. Palatucci and E. Valdinoci, Hitchhiker's guide to the fractional Sobolev spaces, arXiv:1104.4345. Fractional Sobolev and trace background. The particular oscillatory scaling calculation used here is direct and is proved in Section 3.
+
+[4] P. Pedregal, arXiv:1905.06571v4 (2025), claims the complete planar implication via a fixed-point argument. Its claim was inspected but not independently validated or used as a premise. No inference about acceptance or rejection is made from its title.
+
+[5] Prior conversation artifact PROFILE_CIRCULATION.md and its exact code package. Read, reconstructed where used, and replayed. The finite graph theorem remains a finite-library result.
+
+A selective connected GitHub search in Astra and OpenAI's mathematics repositories returned no directly applicable result. No unverified repository theorem was imported. Literature inspection is not a complete priority audit; absence of a retrieved match does not establish novelty. No third-party manuscripts, fonts, or user account data are redistributed.

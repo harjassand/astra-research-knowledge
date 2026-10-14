@@ -1,0 +1,269 @@
+# No universal coefficient-linear profile compensation
+
+Date: 15 October 2026. Worker: nonlocal_compensation.
+
+## Exact conclusion and status
+
+The full implication from rank-one convexity to quasiconvexity for planar homogeneous quartics invariant under left SO(2) remains **NOT ESTABLISHED**. No negative closed compatible cycle is constructed here.
+
+The main result is a certificate obstruction broader than the incoming fixed-Poisson obstruction:
+
+> There is no universal assignment of a finite dominating profile storage which is linear in the nine coefficients of the integrand. This remains true for arbitrary nonlocal, mixed-frequency and nonsmooth functionals. Translation invariance of the proposed functionals need not be assumed. No topology on the full profile space is assumed. It already fails at zero affine background, even if domination is required only for energies in the interior of the rank-one-convex coefficient cone.
+
+Equivalently, no fixed vector of nine profile functionals can compensate all energies in the acoustic rank-one cone by pairing that vector with the coefficient vector. This also excludes additive, positively homogeneous choices defined only on the cone. It does **not** exclude a different functional chosen nonlinearly from each integrand.
+
+The proof uses explicitly convex energies and determinant square to force a symmetrized linear selection to vanish. An explicitly checked strictly rank-one-convex energy with a negative open-strip action contradicts that conclusion. Neither quasiconvexity nor abstract no-negative-cycle equivalence is a premise.
+
+Historical originality: **UNKNOWN**. External mathematical review and formal proof-assistant verification: **NOT OBTAINED**. The accompanying exact script checks eight algebraic groups, including the separate exact convex-action supplement; it does not turn analytic limits into finite tests.
+
+## 1. Contract, notation and input pin
+
+Let the transverse domain be R/(2pi Z), with normalized averaging E_y. Smooth profiles are maps U from this circle to R^2, identified with complex maps when convenient. Write a matrix as (X|Y), with complex columns, and put
+
+    u=|X|^2, v=|Y|^2, w=Re(conj(X)Y), q=Im(conj(X)Y),
+    q^2=uv-w^2.
+
+The nine-dimensional real vector space V9 consists of
+
+    F=A u^2+B v^2+C uv+E w^2+G uw+H vw+L qu+M qv+N qw.
+
+For a finite smooth compatible strip Phi on [0,T] x circle, its action is
+
+    W_F(Phi)=integral_0^T E_y F(Phi_x|Phi_y) dx.
+
+A finite real-valued profile functional P_F is dominating if
+
+    P_F(Phi(T,.))-P_F(Phi(0,.)) <= W_F(Phi)               (D)
+
+for every strip and every T>0. Normalize P_F(0)=0. There is no requirement that P_F be polynomial, differentiable, weakly semicontinuous, or continuous in a subcritical trace topology.
+
+Read-only repository:
+
+    /Users/harjas/Documents/ChatGPT/ultra/work/astra-capital-compensation-exchange
+    HEAD = 00631610750c708263d5cf6d812ebbb8edc77335
+
+Current dossiers N794, N812 and N819 were inspected before their decisive proofs. Incoming source, read without modification:
+
+    /Users/harjas/Downloads/ASTRA_Universal_Compensation/UNIVERSAL_PROFILE_OBSTRUCTIONS.md
+
+All results in Sections 3–5 are separate worker deductions, not attributed to the incoming producer or repository.
+
+## 2. Incoming reconstruction
+
+The profile identity is exact. For P=(Phi_x|0) and Q=(0|Phi_y), two rank-one Bregman remainders and the circulation of
+
+    alpha_(F,B)(U)[V]=E_y DF(B+(0|U_y))[(V|0)]
+
+sum to the action. Only the remainders are nonnegative under rank-one convexity. The joint circulation need not vanish, and summing single-frequency storages need not cancel mixed terms. N819 retains this obstruction.
+
+The local-density rigidity argument also reconstructs. For P(U)=E p(U,U_y), the Euler derivative contains -p_qq(U,U_y)U_yy. Test U_N=z+w(Ny)/N and V_N=v(Ny), with both velocity signs. The action stays bounded while this term has an order-N coefficient. Arbitrary periodic jets force p_qq=0. The resulting density is affine in U_y; its variation is an affine first-column term plus k(U)det(V,U_y). Freeze U near a point by the same oscillation and localize the zero-mean derivative distribution. This yields a constant determinant-affine support at the chosen background. Requiring that support at all backgrounds gives a polyconvex lift. This proves existence of a constant skew-area replacement; it need not show every initially supplied density has constant curvature.
+
+The critical trace construction is also valid at the level used here. For
+
+    F_DM(A)=|A|^4-(4/sqrt(3))|A|^2 det A,
+    Phi(x,y)=(x/2)(cos y,sin y), 0<=x<=2,
+
+the action is 103/120-sqrt(3)/2<0. Scaling Phi_N(x,y)=N^(-3/4)Phi(Nx,Ny) preserves the action. The terminal profiles have bounded W^(3/4,4) norm, converge weakly to zero there, and converge strongly in W^(s,4) for s<3/4. Reversed winding supplies the opposite storage bound. These are open paths, not negative cycles.
+
+The new theorem does not assume the local-density theorem, trace compactness, or the published quasiconvexity of F_DM. It only reuses the explicitly checked open strip.
+
+## 3. Main theorem and full proof
+
+### Theorem 3.1
+
+There is no real-linear map
+
+    T: V9 -> {finite real-valued functionals on all smooth periodic profiles},
+    F -> P_F,
+
+with P_F(0)=0 for every F, such that (D) holds for every rank-one-convex F in V9.
+
+There is no assumed full-profile regularity or transverse translation covariance.
+
+### Step A: domination justifies averaging
+
+Fix an F for which (D) holds and a smooth U. Write U_theta(y)=U(y+theta). For h nonzero connect U_theta to U_(theta+h) in width |h| by
+
+    Phi(x,y)=U(y+theta+sgn(h)x), 0<=x<=|h|.
+
+The columns are (sgn(h)U_y|U_y), evaluated at a translated argument. Hence the absolute action is at most |h|C(F,U), where
+
+    C(F,U)=max_(sigma=+1,-1) E_y |F(sigma U_y|U_y)| < infinity.
+
+Use domination for the path and its reverse. This gives
+
+    |P_F(U_(theta+h))-P_F(U_theta)| <= C(F,U)|h|.          (3.1)
+
+Thus every dominating functional is Lipschitz on every smooth transverse translation orbit. This does not imply continuity on weakly convergent high-frequency sequences.
+
+Every f in V9 is a difference of convex quartics in V9. Let H(A)=|A|^4. Homogeneity gives a constant C_f with
+
+    |D^2 f(A)[R,R]| <= C_f |A|^2 |R|^2,
+    D^2 H(A)[R,R] = 8(A:R)^2+4|A|^2|R|^2.
+
+For sufficiently large M, MH+f and MH are convex, and f=(MH+f)-MH. By linearity, P_f also has a Lipschitz translation orbit. Therefore the following integral exists for every f, without any additional regularity hypothesis:
+
+    bar P_f(U)=(1/(2pi)) integral_0^(2pi) P_f(U_theta) dtheta. (3.2)
+
+This map remains real-linear and normalized, and is transverse-translation invariant. For rank-one-convex F, apply (D) to every transverse translate of a strip and integrate in theta. The action is translation invariant, so bar P_F remains dominating.
+
+It suffices to prove this averaged linear map vanishes.
+
+### Step B: reflection-even components vanish
+
+For each real t, define the convex quartic
+
+    R_t(X|Y)=|X+tY|^4=(u+2tw+t^2v)^2.                    (3.3)
+
+Let U,W be arbitrary smooth profiles. Choose a smooth path psi(s,y), 0<=s<=1, from U to W; straight interpolation suffices. For T>0 take the genuinely compatible strip
+
+    Phi_T(x,y)=psi(x/T,y-tx), 0<=x<=T.
+
+Its columns satisfy Phi_x+t Phi_y=T^(-1)psi_s. Averaged storage ignores the endpoint's transverse translation, so
+
+    bar P_(R_t)(W)-bar P_(R_t)(U)
+      <= T^(-3) integral_0^1 E_y |psi_s|^4 ds.            (3.4)
+
+Let T tend to infinity. Reversing psi gives the opposite inequality. Thus bar P_(R_t) is constant, hence zero by normalization.
+
+The quartic q^2 is rank-one convex, because the determinant is affine on a rank-one matrix line. For Phi_T(x,y)=psi(x/T,y), its determinant-square action is
+
+    T^(-1) integral_0^1 E_y det(psi_s,psi_y)^2 ds.
+
+The same argument gives bar P_(q^2)=0.
+
+Expansion of (3.3) gives
+
+    R_t=u^2+4t uw+2t^2(uv+2w^2)+4t^3 vw+t^4v^2.
+
+As t varies, these span the five directions u^2, uw, uv+2w^2, vw, v^2. Adding q^2=uv-w^2 spans all six reflection-even quartics. Consequently
+
+    bar P_E=0 for every reflection-even E in V9.          (3.5)
+
+The exact coefficient matrix in the verifier has determinant -96.
+
+### Step C: thin complex tilts kill the odd components
+
+For real t and rho>0, define the explicitly convex quartic
+
+    C_(t,rho)(X|Y)=|X+(t+i rho)Y|^4.                     (3.6)
+
+Complex multiplication is a real linear map, so convexity follows from convexity of the fourth power of the Euclidean norm. Exact expansion gives
+
+    C_(t,rho)=E_(t,rho)-4rho[qu+2t qw+(t^2+rho^2)qv],
+    E_(t,rho)=(u+2tw+(t^2+rho^2)v)^2+4rho^2q^2.         (3.7)
+
+The even part contributes zero by (3.5). Define the profile functional
+
+    K_t=bar P_(qu)+2t bar P_(qw)+t^2 bar P_(qv).
+
+For the same arbitrary smooth psi from U to W, use the compatible strip
+
+    Phi_rho(x,y)=psi(rho x,y-tx), 0<=x<=1/rho.
+
+Its columns satisfy
+
+    Phi_x+(t+i rho)Phi_y=rho(psi_s+i psi_y).
+
+The original convex action is exactly
+
+    rho^3 A_+(psi),
+    A_+(psi)=integral_0^1 E_y |psi_s+i psi_y|^4 ds < infinity. (3.8)
+
+Write Delta for the difference of functional values at W and U. Domination gives
+
+    -4rho Delta K_t-4rho^3 Delta bar P_(qv)
+      <= rho^3 A_+(psi).
+
+Divide by 4rho and let rho tend to zero from above. All functional differences are fixed finite numbers, so this limit uses no coefficient continuity, profile continuity or compactness. It gives Delta K_t>=0. Use the reversed path to get Delta K_t<=0.
+
+Therefore K_t is constant and, by normalization, zero. Values t=0,1,-1 recover
+
+    bar P_(qu)=bar P_(qw)=bar P_(qv)=0.                   (3.9)
+
+The recovery matrix has determinant 4. Equations (3.5) and (3.9) prove
+
+    bar P_F=0 for every F in V9.                         (3.10)
+
+### Step D: a strictly rank-one-convex witness contradicts zero storage
+
+Put
+
+    F_witness(A)=F_DM(A)+(1/1000)|A|^4.
+
+This is distinct from the repository's retained Fstar. Rank-one convexity of F_DM follows from its left and right SO(2) invariance and the exact e11 acoustic identity
+
+    D^2 F_DM(A)[e11,e11]
+      =12(a-d/sqrt(3))^2
+       +2(1+1/sqrt(3))(b+c)^2
+       +2(1-1/sqrt(3))(b-c)^2 >=0.
+
+Left and right rotations align arbitrary rank-one directions with e11. The added term has Hessian at least (1/250)|A|^2|R|^2, so F_witness lies in the interior of the rank-one-convex coefficient cone: small coefficient perturbations preserve a positive bound on |A|=|R|=1.
+
+For the finite compatible strip Phi(x,y)=(x/2)(cos y,sin y), 0<=x<=2, exact integration gives
+
+    W_(F_witness)(Phi)=103103/120000-sqrt(3)/2 <0.         (3.11)
+
+The sign is certified by
+
+    3/4-(103103/120000)^2=169771391/14400000000 >0.
+
+Equation (3.10) makes its storage difference zero. This contradicts (D). QED.
+
+## 4. Cone-only and strict-interior versions
+
+### 4.1 Additive positively homogeneous choices only on the cone
+
+Suppose normalized dominating storages are assigned only on the rank-one-convex cone, with P_(F+G)=P_F+P_G and P_(cF)=c P_F for c>=0. The cone spans V9 by Step A. Define T(F-G)=P_F-P_G. If F-G=F'-G', then F+G'=F'+G, and additivity makes this definition independent of representation. Positive homogeneity gives real linearity of the extension. Theorem 3.1 contradicts its existence.
+
+Adding any two individually verified storages remains a valid operation for their sum energy. What fails is one additive selection covering the entire cone.
+
+### 4.2 Domination only in the strict interior
+
+If a real-linear map is required to dominate only for interior energies, take any boundary F and H=|A|^4. For epsilon>0, F+epsilon H is interior. For each fixed strip,
+
+    Delta P_(F+epsilon H)=Delta P_F+epsilon Delta P_H,
+    W_(F+epsilon H)=W_F+epsilon W_H.
+
+Let epsilon tend to zero. Every right-side quantity is a fixed finite number. Domination passes to F. This is an exact linear identity, not an assumed uniform coefficient continuity or profile compactness. The witness in (3.11) is interior itself.
+
+## 5. Implications and the actual open lemma
+
+The theorem excludes every fixed coefficient-independent nine-vector S(U) with P_F(U)=p_F dot S(U). Its coordinates may be arbitrary nonlocal functions of all frequencies, include all quartic resonances, use critical derivatives, or be nonsmooth, provided their values are finite. It excludes fixed extension constructions followed by a rule linear in F. A coefficient-polynomial rule positively homogeneous of degree one is also excluded because such a polynomial must be linear.
+
+It does not exclude nonlinear selection of a Fourier kernel from the coefficients, an integrand-dependent metric or complex structure, optimization among candidates, piecewise coefficient constructions, or the general existence of a dominating functional for each F. No quasiconvexity conclusion follows.
+
+The incoming action/Hamiltonian formulation remains useful. For an unknown integrand, however, the lower bound making the incoming-action infimum finite is precisely missing; naming the infimum a Bellman function is not a proof.
+
+A genuine replacement must both control mixed frequencies at the critical trace scale and depend nonlinearly on the integrand. The exact degeneration in (3.8) is a useful additional test: the action of these convex complex-linear energies is order rho^3 while their orientation-odd coefficients are order rho.
+
+One possible nonlinear direction is to choose and optimize the complex/shear geometry from F before constructing the critical trace functional. The still-open sufficient lemma is an independently proved lower bound on all incoming actions for every acoustic-feasible coefficient vector, or an explicit nonlinear storage/remainder identity giving such a bound without assuming quasiconvexity. This worker has not proved that lemma.
+
+## 6. Verification, costs, provenance and prior art
+
+Run:
+
+    python3 verify_no_linear_selector.py
+
+Python 3 and SymPy suffice. The final complete run took about 0.76 seconds on this task host. Eight exact groups check the even span, complex decomposition, compatible drift identity, slow-strip exponents, odd recovery, endpoint acoustic squares, negative entry and the supplement's equality control/free-width constants. It writes exact_checks.json. No optimizer, model oracle or frequency grid is used. The long-strip limits and averaging argument are analytic proofs, not finite computational certification.
+
+The argument does not supply an algorithm for acquiring nonlinear universal storage, a polynomial-bit guarantee, a finite representation bound, or physical capability. Its coefficient algebra is finite dimensional; its strip hypotheses allow arbitrary smooth profiles and arbitrarily long durations.
+
+Decisive reads:
+
+- AGENTS.md, 00_START_HERE.txt and current dossiers N794, N812 and N819.
+- updates/FE/package/quartic/ASTRA_META_GENESIS_Morrey_quartics.md, sections 3–4: nine coefficients and acoustic interface.
+- updates/FE/synthesis/quartic/QUARTIC_AUDIT_AND_PROOF.md, sections 2–3 and 6: known Fstar certificate versus open full-cone gate.
+- updates/FL/package/global/GLOBAL_COMPATIBILITY.md, section 2: restricted-family compatibility identity.
+- updates/FO/package/resonant/PROFILE_CIRCULATION.md, sections 2–3, and updates/FO/synthesis/root/CONTINUUM_STORAGE_THEOREM.md: joint circulation and one-frequency storage scope.
+- Incoming UNIVERSAL_PROFILE_OBSTRUCTIONS.md, sections 1–5 and 7–8: local rigidity, critical trace and fixed Poisson failures.
+
+The older memory registry was used only for capital-first/source-scope conventions; no unverified memory fact is a mathematical premise.
+
+Primary sources inspected on 15 October 2026:
+
+- [G. Bruno and F. Pasqualotto, Quasiconvexity for the Dacorogna–Marcellini Energy, arXiv:2608.06367v1](https://arxiv.org/html/2608.06367v1), Theorems 1–2 and heat/exact-form strategy. Their endpoint and two-sided invariant quasiconvexity theorem is prior work and is not used as a premise of Theorem 3.1.
+- [J. C. Willems, Dissipative Dynamical Systems, Part I: General Theory, Archive for Rational Mechanics and Analysis 45 (1972), 321–351](https://doi.org/10.1007/BF00276493), [author manuscript](https://homes.esat.kuleuven.be/~sistawww/smc/jwillems/Articles/JournalArticles/1972.1.pdf): established storage/supply and extremal-action framework. No novelty is claimed for that framework.
+- [X. Cabré, I. U. Erneta and J.-C. Felipe-Navarro, Null-Lagrangians and calibrations for general nonlocal functionals and an application to the viscosity theory, arXiv:2312.11636](https://arxiv.org/abs/2312.11636): adjacent calibration literature. Its field-of-extremals premise is not imported as a solution here.
+
+This selective search does not establish historical priority for the no-selection theorem. Originality remains **UNKNOWN**.
