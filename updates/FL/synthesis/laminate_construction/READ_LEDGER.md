@@ -1,0 +1,49 @@
+# Read and access ledger
+
+Hashes are SHA-256 of local UTF-8/raw file bytes. The global packet checker revalidated every declared payload size and hash against its frozen `MANIFEST.json`. No source packet or capital file was modified. The external papers were read from their primary publisher/arXiv pages; no third-party manuscript was copied into this workspace.
+
+## Pinned intake and decision context
+
+| Source | Read depth and use | SHA-256 |
+|---|---|---|
+| `work/FL_WORKER_CONTRACT.txt` | Full file. Followed assignment, isolation, read-only capital boundary, and artifact requirements. | `acbe78c446d847d6936a1ab7fff32419e30399e206d32bf9d64af54bf039409a` |
+| `work/FL_PIN.json` | Full file. Confirmed main/cumulative PR83 revisions and frozen input manifests. | `7ceea5724f1be63666f121f0ebd8adddf0ceb06b37766feff37d94175303c27d` |
+| `work/FL-sources/INTAKE_MANIFEST.json` | Full file. Checked original global-packet path, byte counts, and hashes. | `e66de8b042a3e445ec7aa35aaed63bf32440344c527ba897494034099707b9ab` |
+| `work/FL-sources/SUPPLEMENTAL_INTAKE_MANIFEST.json` | Full file. Recorded the later ancestry-source addition; it is outside this global-laminate subtask. | `765399e29c370fae24f3080d87ada50874536e690e76d6202a05055c7f95c913` |
+| `work/astra-capital/00_START_HERE.txt` | Full file. Followed task-first, exact-scope and source-status guidance. | `4a91985ece91557af12ba5c216e7fe17cf5dd000596e9a0c73b0b6705498f360` |
+| `work/astra-capital/AGENTS.md` | Full file. Followed knowledge-interface and evidence-boundary rules. | `581cdda103fed0c87acdb0ee527bd5ba174f55b1baa0cbfe60b177d52027ee7d` |
+| `work/astra-capital/frontier/dossiers/N803.txt` | Full dossier and exact N803 scope/open-gate summary. It leaves a general compatible-law Jensen lower bound open. | `599fda081ef18e5de13453ab1b284c29cf9f842822ab6e6dcf8be78bef0742d3` |
+| `work/astra-capital/cards/N803-two-contact-rigidity-and-compatible-acoustic-flatness.txt` | Full historical/scoped card as reproduced in the dossier; used only to preserve the full-cone planar boundary. | `ce51e0cb84f6c71ed775ad6a9e15c49f6a8ad4dccfa89bad28dd586c7cf3f469` |
+
+## Frozen global input
+
+| Source | Read depth and use | SHA-256 |
+|---|---|---|
+| `work/FL-sources/global/MANIFEST.json` | Full file. Listed all 11 frozen payloads; all entries were independently rehashed by `check_phase_only.py`. | `89fb357bf39ed398dcdf88a3c87384867dbc99ba184c27b867fa20066cd18cad` |
+| `work/FL-sources/global/GLOBAL_COMPATIBILITY.md` | Full file, lines 1–444. Read Theorem 2.1, bounded-gradient convolution extension, quartic example, packet-assembly and variable-phase limits, status, and primary citations. | `bddd6149e1523a8e73fdd26a3d8820dadc3ebad023eb319878ff77ca64f32eee` |
+| `work/FL-sources/global/README.md` | Full file. Read verification/search provenance and scope. | `0d0a832f930c55bc35210b653b437ab3c641f7ed4d0a0605e04f13946c7f5b8a` |
+| `work/FL-sources/global/verify_global_compatibility.py` | Full 249 lines. Read exact symbolic flux, quartic, Fourier, interaction, and phase-curvature checks. Not rerun for this subtask. | `00eb94a94ae587a4ab09640bbfa94dba189657dc9c3b0bad4e0317692ac0d5fb` |
+| `work/FL-sources/global/search_carrier_envelopes.py` | Full 107 lines. Read finite-element/Fourier representation and exploratory optimizer boundaries; did not rerun. | `9b662d7b5a11a3f78612856fb93262cecab1995b215f7706d4fd01a745ceddfb` |
+| `work/FL-sources/global/verification.log` | Full file; nine exact-check groups passed in the supplied record. | `1d4c0548bf5c2ebc4921ff5cdb9c395585b31bb5808d344c434a269b48e1a052` |
+| `work/FL-sources/global/global_verification.json` | Full check names and scope, plus the modulation examples and exact interaction metadata relevant to this task. | `04991a22e98bc05534cf7c495aa3c9fdf84fdd32fa87e10daf63a0c7183b614f` |
+| `work/FL-sources/global/carrier_search.json` | Frozen hash checked; read scope and result metadata. Treated as floating exploratory output only. | `57c7dcb13b2e9491457a45a89db5ca0f4b7ff9f646c8440919bea01ffc8cde22` |
+| `work/FL-sources/global/carrier_search_200_steps.json` | Frozen hash checked; read scope and result metadata. Treated as preliminary floating exploratory output only. | `9b7d33064946e7a7ddbb85aeab89fa44cef02363455560b7c7f49bdc3ce7cced` |
+| `work/FL-sources/global/carrier_search_2000_steps.log` | Full log; read completed configurations and recorded floating-point scope. | `d365d93c04bf5fc50473d959d7d1e2043715d77598e620a731298d2d9184e37e` |
+| `work/FL-sources/global/prior_replay.log` | Full log; historical 12-group replay treated as an audit record, not a premise. | `13cf98ff75348a86aa782cfa815c43473401d3610c0f0a894a466284b8d59da9` |
+| `work/FL-sources/global/environment.json` | Full file; recorded the source runtime versions as metadata only. | `f27f6eb7fed8a473f06e9bf76137a749c92c262bef7567259c58a55948f620cd` |
+| `work/FL-sources/global_PASTED_SOURCE.txt` | Read producer-context passages on the Jensen-to-laminate inference, the convex-loop proof, radial prior art, and the stated boundary against arbitrary gradients; not used as a separate theorem premise. | `f2ff5f839c69a0d981f1988cc474704a87d815be1bfaecb9561b3fd705e9a671` |
+
+The unlisted JSON payloads named by the source manifest were also byte-counted and SHA-256 checked by the checker. The temporal and isotope-ancestry source streams were not needed for this laminate-construction question.
+
+## Primary literature read
+
+| Primary source | Version/passages read | Use and boundary |
+|---|---|---|
+| K. Astala, T. Iwaniec, I. Prause, E. Saksman, “A hunt for sharp (L^p)-estimates and rank-one convex variational integrals,” arXiv:1403.1095v1, <https://arxiv.org/html/1403.1095v1>. | Section 5, Proposition 5.1 and its proof (HTML lines 231–262): radial-linear class, rank-one supporting inequality, mollification, spherical integral. | Direct Jensen calibration for (f(x)=\Lambda(|x|)x) and continuous rank-one-concave integrands. This is a different profile family and supplies no finite splitting rate/tree. |
+| S. Müller, V. Šverák, “Convex integration with constraints and applications to phase transitions and partial differential equations,” *J. Eur. Math. Soc.* 1 (1999), 393–422, <https://ems.press/content/serial-article-files/31472>. | Introductory four-well example (PDF pp. 396–397); laminate/Jensen definitions and Theorem 3.1 (pp. 400–401); proof via separation/Hahn–Banach; finite-tree microstructure lemma 4.1 (pp. 404–405). | Confirms weak-* existence of finite-order approximants in any open neighborhood of (K^{rc}), and the separate finite-tree-to-piecewise-linear realization. It gives no effective rate or universal bounded-leaf result for the modulation supports. |
+
+The primary pages were accessed successfully. No full external paper was downloaded to the workspace. The arXiv version is pinned as v1; Müller–Šverák is the 1999 journal paper.
+
+## Owned outputs
+
+`REPORT.md`, `check_phase_only.py`, `checker_results.json`, and this ledger are authored in this directory. Their path, byte count, and hash are in the sibling `MANIFEST.json`; only the manifest itself is excluded.

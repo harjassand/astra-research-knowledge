@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — derive.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/synthesis/molecular_recovery/derive.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproducible scale and ergotropy calculations for the FL molecular audit.
+
+Uses only Python&#x27;s standard library. Literature values are inputs, not refit
+parameters. The collision/unloading calculation is an explicit toy model.
+&quot;&quot;&quot;
+
+import json
+import math
+from pathlib import Path
+
+K_B = 1.380649e-23                 # J K^-1, exact SI value
+EV_J = 1.602176634e-19             # J, exact SI value
+N_A = 6.02214076e23                # mol^-1, exact SI value
+H = 6.62607015e-34                 # J s, exact SI value
+C = 299792458.0                    # m s^-1, exact SI value
+TORR_PA = 101325.0 / 760.0
+T_K = 300.0
+
+
+def passive_rotor_energy_in_units_B(J: int) -&gt; float:
+    &quot;&quot;&quot;Passive energy for a uniform mixture over the (2J+1) m states.
+
+    Rigid-rotor levels are E_j/B = j(j+1) with degeneracy 2j+1.
+    The passive rearrangement sorts the 2J+1 equal nonzero eigenvalues into
+    the lowest 2J+1 rotor states. This idealized model omits nuclear-spin,
+    electronic, and field-selection restrictions.
+    &quot;&quot;&quot;
+    slots = 2 * J + 1
+    remaining = slots
+    energy = 0
+    for j in range(J + 1):
+        degeneracy = 2 * j + 1
+        filled = min(remaining, degeneracy)
+        energy += filled * j * (j + 1)
+        remaining -= filled
+        if remaining == 0:
+            break
+    assert remaining == 0
+    return energy / slots
+
+
+def ideal_linear_deceleration_return(z: float) -&gt; float:
+    &quot;&quot;&quot;Fraction of initial rotor energy returned under a toy loss hazard.
+
+    Assumes L(t)=L0(1-t/td), E(t)=E0(1-t/td)^2 and a constant hazard
+    lambda_loss=z/td that destroys all still-unextracted rotor energy.
+    It is not a measured CO2 extraction efficiency.
+    &quot;&quot;&quot;
+    if z == 0:
+        return 1.0
+    return 2.0 * (z - 1.0 + math.exp(-z)) / (z * z)
+
+
+def net_activation_energy_per_product(r: float, p_productive: float) -&gt; float:
+    &quot;&quot;&quot;E_net/E for one activation attempt, with survivor return r.
+
+    Products consume one E; unsuccessful survivors retain E until return.
+    Assumes no other loss, loading work, unloading time, or product recovery.
+    &quot;&quot;&quot;
+    if not 0.0 &lt;= r &lt;= 1.0 or not 0.0 &lt; p_productive &lt;= 1.0:
+        raise ValueError(&quot;r must be in [0,1], p must be in (0,1]&quot;)
+    s = 1.0 - p_productive
+    return (1.0 - r * s) / p_productive
+
+
+def main() -&gt; None:
+    n_co2_380 = (380.0 * TORR_PA) / (K_B * T_K)
+    n_co2_50 = (50.0 * TORR_PA) / (K_B * T_K)
+    n_h2_sio = 7.0e6 * 1.0e6       # cm^-3 -&gt; m^-3
+    p_h2_pa = n_h2_sio * K_B * T_K
+    tau_co2_s = 500e-12 / 3.0
+    k_react_sio = 0.18 / 60.0
+    k_unpumped_sio = 0.05 / 60.0
+
+    e_co2_ev = 6.14
+    e_co2_j = e_co2_ev * EV_J
+    molar_activation_j_mol = e_co2_j * N_A
+    co_kg_mol = 28.0101e-3
+    activation_kwh_kg = molar_activation_j_mol / co_kg_mol / 3.6e6
+
+    # Approximate one high-J CO2 delta-J=2 gap with the low-J B constant;
+    # actual high-J shifts require centrifugal-distortion constants.
+    B_co2_cm = 0.390
+    delta_j = B_co2_cm * (364 * 365 - 362 * 363)
+    carrier_cm_790nm = 1.0e7 / 790.0
+
+    # Theoretical state-space rearrangement example, normalized by E_J.
+    passive = {}
+    for J in (57, 170):
+        e_initial_over_B = J * (J + 1)
+        e_passive_over_B = passive_rotor_energy_in_units_B(J)
+        passive[str(J)] = {
+            &quot;initial_E_over_B&quot;: e_initial_over_B,
+            &quot;passive_E_over_B_uniform_m&quot;: e_passive_over_B,
+            &quot;passive_fraction_of_initial&quot;: e_passive_over_B / e_initial_over_B,
+            &quot;ergotropy_fraction_uniform_m&quot;: 1.0 - e_passive_over_B / e_initial_over_B,
+            &quot;assumptions&quot;: &quot;rigid rotor; all m states accessible; same electronic/nuclear-spin block&quot;,
+        }
+
+    unload = {}
+    for td_ps in (1, 5, 10, 20, 50, 100, 167):
+        z = td_ps / (tau_co2_s * 1e12)
+        unload[str(td_ps)] = {
+            &quot;collision_exposure_z&quot;: z,
+            &quot;ideal_return_if_each_collision_erases_remaining_work&quot;: ideal_linear_deceleration_return(z),
+            &quot;no_collision_probability&quot;: math.exp(-z),
+        }
+
+    sio_cycles = {}
+    for t_s in (1.0, 10.0, 60.0, 300.0):
+        p = 1.0 - math.exp(-k_react_sio * t_s)
+        s = 1.0 - p
+        sio_cycles[str(int(t_s))] = {
+            &quot;product_probability&quot;: p,
+            &quot;survivor_fraction&quot;: s,
+            &quot;throughput_per_ion_per_s_if_unload_time_zero&quot;: p / t_s,
+            &quot;activation_E_per_product_at_r_0.99&quot;: net_activation_energy_per_product(0.99, p),
+            &quot;activation_E_per_product_at_r_0.9999&quot;: net_activation_energy_per_product(0.9999, p),
+        }
+
+    d2 = {
+        &quot;J0_to_J2_rotational_shift_cm-1&quot;: 179.0,
+        &quot;pump_carrier_wavenumber_cm-1_at_1064nm&quot;: 1.0e7 / 1064.0,
+        &quot;single_photon_fraction_from_molecular_shift&quot;: 179.0 / (1.0e7 / 1064.0),
+        &quot;observed_anti-Stokes_power_W&quot;: 60e-6,
+        &quot;reported_pump_output_power_W&quot;: 17.5e-3,
+        &quot;anti-Stokes_to_pump_power_ratio&quot;: 60e-6 / 17.5e-3,
+        &quot;condition&quot;: &quot;77 K D2, 10 Torr; this ratio is not an energy-recovery efficiency&quot;,
+    }
+
+    # Externally triggered coherent two-photon emission in p-H2. The reported
+    # photon count is an estimate at the target; output energy below is derived
+    # from that count and wavelength, not a separate calorimetric measurement.
+    h2_density = 60e3 / (K_B * 78.0)
+    h2_partner_photons = 6.0e11
+    h2_partner_lambda_m = 5.048e-6
+    h2_partner_energy_j = h2_partner_photons * H * C / h2_partner_lambda_m
+    h2_trigger_energy_j = 150e-6
+    h2_pump_each_j = 5e-3
+    h2_rep_rate_hz = 10.0
+    h2 = {
+        &quot;condition&quot;: &quot;para-H2 at 78 K and 60 kPa; coherent Raman preparation plus externally triggered emission&quot;,
+        &quot;number_density_cm-3_ideal_gas&quot;: h2_density / 1e6,
+        &quot;reported_vibrational_gap_cm-1&quot;: 4161.0,
+        &quot;reported_coherence_estimate&quot;: 0.04,
+        &quot;reported_maximum_coherence&quot;: 0.5,
+        &quot;reported_partner_wavelength_um&quot;: h2_partner_lambda_m * 1e6,
+        &quot;reported_partner_photons_per_pulse_at_target&quot;: h2_partner_photons,
+        &quot;derived_partner_channel_energy_J_per_pulse&quot;: h2_partner_energy_j,
+        &quot;reported_partner_to_trigger_energy_ratio_approx&quot;: 1e-4,
+        &quot;derived_partner_energy_ratio_from_photon_count&quot;: h2_partner_energy_j / h2_trigger_energy_j,
+        &quot;reported_external_trigger_J_per_pulse&quot;: h2_trigger_energy_j,
+        &quot;reported_drive_energy_each_J_per_pulse&quot;: h2_pump_each_j,
+        &quot;rep_rate_Hz&quot;: h2_rep_rate_hz,
+        &quot;derived_partner_channel_average_power_W&quot;: h2_partner_energy_j * h2_rep_rate_hz,
+        &quot;derived_two_visible_driver_average_power_W&quot;: 2 * h2_pump_each_j * h2_rep_rate_hz,
+        &quot;reported_first_anti-Stokes_to_partner_intensity_ratio_approx&quot;: 50.0,
+        &quot;status&quot;: &quot;coherent emitted channel; not total optical balance, net work recovery, or chemistry-compatible cycle&quot;,
+    }
+
+    out = {
+        &quot;status&quot;: &quot;derived estimates; no lab measurement reproduced&quot;,
+        &quot;gas_state_assumption&quot;: {&quot;temperature_K&quot;: T_K, &quot;ideal_gas&quot;: True},
+        &quot;co2_380Torr&quot;: {
+            &quot;number_density_m-3&quot;: n_co2_380,
+            &quot;number_density_cm-3&quot;: n_co2_380 / 1e6,
+            &quot;mean_collision_time_s_inferred_from_500ps_per_3_collisions&quot;: tau_co2_s,
+            &quot;collision_rate_s-1&quot;: 1.0 / tau_co2_s,
+            &quot;J364_tail_energy_eV_per_molecule&quot;: e_co2_ev,
+            &quot;molar_energy_kJ_mol&quot;: molar_activation_j_mol / 1000.0,
+            &quot;activation_energy_kWh_per_kg_CO_if_one_J364_activation_per_CO&quot;: activation_kwh_kg,
+            &quot;delta_J_364_to_362_cm-1_rigid_B_approx&quot;: delta_j,
+            &quot;790nm_carrier_wavenumber_cm-1&quot;: carrier_cm_790nm,
+            &quot;one_step_Raman_gap_fraction_of_790nm_carrier&quot;: delta_j / carrier_cm_790nm,
+            &quot;pulse_energy_at_sample_J&quot;: [0.004, 0.007],
+            &quot;amplifier_repetition_rate_Hz&quot;: 10,
+            &quot;actual_molecular_energy_transfer_efficiency&quot;: None,
+            &quot;number_of_excited_molecules_per_shot&quot;: None,
+        },
+        &quot;co2_50Torr_number_density_cm-3&quot;: n_co2_50 / 1e6,
+        &quot;sio_plus_h2&quot;: {
+            &quot;H2_density_cm-3_reported&quot;: n_h2_sio / 1e6,
+            &quot;equivalent_ideal_gas_pressure_Pa_at_300K&quot;: p_h2_pa,
+            &quot;equivalent_pressure_Torr_at_300K&quot;: p_h2_pa / TORR_PA,
+            &quot;density_ratio_CO2_380Torr_to_H2_in_ion_trap&quot;: n_co2_380 / n_h2_sio,
+            &quot;pumped_reaction_rate_min-1_reported&quot;: 0.18,
+            &quot;pumped_reaction_rate_s-1&quot;: k_react_sio,
+            &quot;pumped_mean_reaction_time_s&quot;: 1.0 / k_react_sio,
+            &quot;unpumped_reaction_rate_min-1_reported&quot;: 0.05,
+            &quot;observed_rate_enhancement&quot;: k_react_sio / k_unpumped_sio,
+            &quot;activation_scale_eV_from_100_kBT_quoted_at_300K&quot;: 100.0 * K_B * T_K / EV_J,
+            &quot;optical_work_input_and_optical_recovery_measured&quot;: False,
+        },
+        &quot;passive_state_examples&quot;: passive,
+        &quot;toy_rotor_unloading&quot;: {
+            &quot;loss_hazard_assumed_equal_to_CO2_collision_rate_s-1&quot;: 1.0 / tau_co2_s,
+            &quot;by_unload_duration_ps&quot;: unload,
+            &quot;formula&quot;: &quot;r=2*(z-1+exp(-z))/z^2; z=lambda_loss*t_d&quot;,
+            &quot;warning&quot;: &quot;each collision erasing all remaining recoverable work is an adverse toy assumption, not measured physics&quot;,
+        },
+        &quot;sio_reaction_waiting_cycle&quot;: {
+            &quot;by_reaction_hold_time_s&quot;: sio_cycles,
+            &quot;formula&quot;: &quot;p=1-exp(-k_r*t); E_net_per_product/E=(1-r*(1-p))/p&quot;,
+            &quot;excludes&quot;: [&quot;loading work&quot;, &quot;laser holding power&quot;, &quot;unloading duration&quot;, &quot;other losses&quot;, &quot;product-side energy recovery&quot;],
+        },
+        &quot;cavity_D2_primary_paper&quot;: d2,
+        &quot;coherent_pH2_emission_primary_paper&quot;: h2,
+    }
+    path = Path(__file__).with_name(&quot;CALCULATIONS.json&quot;)
+    path.write_text(json.dumps(out, indent=2, sort_keys=True) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(out, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

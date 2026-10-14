@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — verify_global_compatibility.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/package/global/verify_global_compatibility.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact algebra supporting GLOBAL_COMPATIBILITY.md.
+Requires SymPy. No optimiser or saved search output is used.
+Finite checks do not certify the analytic arguments or historical novelty.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from itertools import combinations_with_replacement, product
+from pathlib import Path
+import sympy as S
+from sympy import QQ_I
+
+ROOT=Path(__file__).resolve().parent
+checks=[]; details={}
+def passed(name):
+    checks.append(name); print(f&#x27;PASS {len(checks):02d}: {name}&#x27;,flush=True)
+def zero(p):
+    assert S.expand(p)==0
+
+# Polynomial ingredients.
+a,b,c,d=S.symbols(&#x27;a b c d&#x27;,real=True); xx=(a,b,c,d)
+u=a*a+c*c; v=b*b+d*d; q=a*d-b*c
+N=(u+v)**2
+G=3*(u+v-2*q)**2+S.Rational(35,24)*u*u+q*q-S.Rational(5,2)*q*u
+basis=[u*u,v*v,u*v,(a*b+c*d)**2,u*(a*b+c*d),v*(a*b+c*d),q*u,q*v,q*(a*b+c*d)]
+monoms=[S.prod(xx[j] for j in inds) for inds in combinations_with_replacement(range(4),4)]
+assert len(monoms)==35
+
+# Exact flux identity for every quartic monomial and arbitrary B,k,r,grad r.
+# At theta=0 the circular carrier has V=e1,W=e2,V&#x27;=W,W&#x27;=-V.
+# Differentiation of the primitive includes BOTH its base and its direction.
+B=S.Matrix(S.symbols(&#x27;B0:4&#x27;)); k1,k2,r,t,h1,h2=S.symbols(&#x27;k1 k2 r t h1 h2&#x27;,real=True)
+Vk=S.Matrix([k1,k2,0,0]); Wk=S.Matrix([0,0,k1,k2]); Q=S.Matrix([h1,h2,0,0])
+base=B+t*Wk
+for f in monoms:
+    df=S.Matrix([S.diff(f,z) for z in xx]); hf=S.hessian(f,xx)
+    sub=dict(zip(xx,base)); dfs=df.subs(sub,simultaneous=True); hfs=hf.subs(sub,simultaneous=True)
+    pr=[]; dtheta=[]
+    for i in range(2):
+        ve=S.eye(4)[:,i]; we=S.eye(4)[:,i+2]
+        pr.append(S.integrate(S.expand(dfs.dot(ve)),(t,0,r)))
+        dtheta.append(S.integrate(S.expand(-t*(Vk.T*hfs*ve)[0]+dfs.dot(we)),(t,0,r)))
+    div=S.diff(pr[0],r)*h1+S.diff(pr[1],r)*h2+k1*dtheta[0]+k2*dtheta[1]
+    acoustic=S.integrate(S.expand(t*(Vk.T*hfs*Vk)[0]),(t,0,r))
+    fbase=f.subs(dict(zip(xx,B+r*Wk)),simultaneous=True)
+    fB=f.subs(dict(zip(xx,B)),simultaneous=True)
+    dfbase=df.subs(dict(zip(xx,B+r*Wk)),simultaneous=True)
+    zero(div-(dfbase.dot(Q)+fbase-fB-acoustic))
+passed(&#x27;circular flux/divergence identity: all 35 monomials, symbolic B,k,r and gradient&#x27;)
+
+# Two exact scalar completions used for all-background coercivity.
+A,L,C,z=S.symbols(&#x27;A L C z&#x27;,nonzero=True)
+zero(A+L+C-A/3-(3*(L+4*A/3)**2/(8*A)+C-3*L**2/(8*A)))
+I=A*z**4/4+L*z**3/3+C*z**2/2
+zero(I-A*z**4/36-(z**2*(L+4*A*z/3)**2/(8*A)+z**2*(C-L**2/(4*A))/2))
+x,y=S.symbols(&#x27;x y&#x27;)
+zero(12*(x*x/3+y*y/9)-(x+y)**2-(3*x-y)**2/3)
+# Invariance supplies the leading acoustic coefficient 4F(e2 tensor k).
+for f in basis:
+    hf=S.hessian(f,xx).subs(dict(zip(xx,Wk)),simultaneous=True)
+    zero((Vk.T*hf*Vk)[0]-4*f.subs(dict(zip(xx,Wk)),simultaneous=True))
+passed(&#x27;quartic rank-one Bregman margin, weighted acoustic margin, and mu/12 constant&#x27;)
+
+# Reconstruct G&#x27;s global rank-one convexity certificate.
+M11=S.hessian(S.diff(G,a,2),xx)/2
+M12=S.hessian(S.diff(G,a,b),xx)/2
+M22=S.hessian(S.diff(G,b,2),xx)/2
+K=S.zeros(4)
+pairs=[(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)]
+for (i,j),val in zip(pairs,[11,S.Rational(91,6),0,0,11,S.Rational(41,3)]): K[i,j]=val;K[j,i]=-val
+Gram=M11.row_join(M12+K).col_join((M12-K).row_join(M22))
+minors=[Gram[:i,:i].det() for i in range(1,7)]
+assert minors==[S.Rational(107,2),642,S.Rational(1605,8),S.Rational(8445,16),S.Rational(2815,8),S.Rational(26865,4)]
+T=Gram[:6,:6];U=Gram[:6,6:]
+assert Gram[6:,6:]-U.T*T.inv()*U==S.zeros(2)
+witness=(36**4*G.subs({a:1,b:0,c:0,d:1})+36**2*G.subs({a:1,b:0,c:0,d:-1}))/(1+36**2)
+assert witness==-S.Rational(1350,1297)
+zero(G-3*N-S.Rational(35,24)*u*u -q*(-12*(u+v)+13*q-S.Rational(5,2)*u))
+details[&#x27;G_acoustic_leading_minors&#x27;]=[str(z) for z in minors]
+passed(&#x27;G: exact PSD acoustic Gram, rank-one lower bound mu=3, non-polyconvex witness&#x27;)
+
+# Exact two-dimensional Fourier algebra over Q(i).
+class Fourier:
+    def __init__(self,coeff=None):
+        self.c={tuple(k):QQ_I.convert(v) for k,v in (coeff or {}).items() if v!=0}
+    def __add__(self,o):
+        if not isinstance(o,Fourier): o=Fourier({(0,0):o})
+        d=self.c.copy()
+        for k,v in o.c.items(): d[k]=d.get(k,QQ_I.zero)+v
+        return Fourier({k:v for k,v in d.items() if v})
+    __radd__=__add__
+    def __neg__(self):return Fourier({k:-v for k,v in self.c.items()})
+    def __sub__(self,o):return self+-o
+    def __rsub__(self,o):return -self+o
+    def __mul__(self,o):
+        if not isinstance(o,Fourier):return Fourier({k:v*QQ_I.convert(o) for k,v in self.c.items()})
+        d={}
+        for k,v in self.c.items():
+            for l,w in o.c.items():
+                m=(k[0]+l[0],k[1]+l[1]);d[m]=d.get(m,QQ_I.zero)+v*w
+        return Fourier({k:v for k,v in d.items() if v})
+    __rmul__=__mul__
+    def __pow__(self,n):
+        out=Fourier({(0,0):1})
+        for _ in range(n):out=out*self
+        return out
+    def diff(self,j):return Fourier({k:v*QQ_I.convert(S.I*k[j]) for k,v in self.c.items()})
+    def mean(self):
+        out=QQ_I.to_sympy(self.c.get((0,0),QQ_I.zero));assert S.im(out)==0;return S.re(out)
+    def dilate(self,n):return Fourier({(n*k[0],n*k[1]):v for k,v in self.c.items()})
+
+def cos(k):return Fourier({k:S.Rational(1,2),(-k[0],-k[1]):S.Rational(1,2)})
+def sin(k):return Fourier({k:1/(2*S.I),(-k[0],-k[1]):-1/(2*S.I)})
+def derivative(pot):return [pot[0].diff(0),pot[0].diff(1),pot[1].diff(0),pot[1].diff(1)]
+def evaluate(poly,X):
+    out=Fourier()
+    for powers,coef in S.Poly(poly,*xx).terms():
+        term=Fourier({(0,0):coef})
+        for t,n in zip(X,powers):
+            if n:term=term*t**n
+        out=out+term
+    return out
+
+def moments(f,X):
+    C=S.Matrix(4,4,lambda i,j:(X[i]*X[j]).mean())
+    H=S.Matrix(4,4,lambda i,j:evaluate(S.diff(f,xx[i],xx[j]),X).mean())
+    b=S.Matrix([evaluate(S.diff(f,z),X).mean() for z in xx])
+    c=evaluate(f,X).mean();n4=evaluate(N,X).mean()
+    assert [z.mean() for z in X]==[0]*4
+    assert evaluate(q,X).mean()==0
+    return C,H,b,c,n4
+
+def summary(f,X):
+    C,H,b,c,n4=moments(f,X)
+    assert all(H[:i,:i].det()&gt;0 for i in range(1,5))
+    B=-H.inv()*b;delta=c+(b.dot(B))/2
+    return {&#x27;C&#x27;:C,&#x27;H&#x27;:H,&#x27;b&#x27;:b,&#x27;c&#x27;:c,&#x27;n4&#x27;:n4,&#x27;B&#x27;:B,&#x27;delta&#x27;:delta}
+def record(z):
+    return {k:([str(x) for x in v] if isinstance(v,S.MatrixBase) else str(v)) for k,v in z.items()}
+
+# A full-rank field far from every rank-one line.
+r0=1+S.Rational(1,2)*cos((1,0))
+X0=derivative([r0*cos((0,1)),r0*sin((0,1))])
+z0=summary(G,X0)
+assert z0[&#x27;C&#x27;]==S.diag(S.Rational(1,16),S.Rational(9,16),S.Rational(1,16),S.Rational(9,16))
+assert z0[&#x27;b&#x27;]==S.zeros(4,1)
+assert z0[&#x27;n4&#x27;]==S.Rational(33,16)
+assert z0[&#x27;delta&#x27;]&gt;=z0[&#x27;n4&#x27;]/4
+details[&#x27;far_from_any_line&#x27;]=record(z0)
+passed(&#x27;compatible circular modulation: full covariance, captured fraction 9/20, exact positive gap&#x27;)
+
+# Real two-dimensional amplitude: internally resonant and nonzero cubic.
+rr=1+S.Rational(1,3)*cos((1,0))+S.Rational(1,4)*cos((0,1))+S.Rational(1,5)*cos((1,1))
+pot=[rr*cos((0,1)),rr*sin((0,1))]
+X=derivative(pot);z=summary(G,X)
+assert z[&#x27;b&#x27;]!=S.zeros(4,1)
+assert z[&#x27;delta&#x27;]&gt;=z[&#x27;n4&#x27;]/4
+assert z[&#x27;C&#x27;].det()&gt;0
+details[&#x27;two_dimensional_amplitude&#x27;]=record(z)
+# Verify that this is one connected primitive-resonance component, not separated waves.
+def canon(k):
+    return k if (k[0]&gt;0 or (k[0]==0 and k[1]&gt;0)) else (-k[0],-k[1])
+freq=sorted(set().union(*(set(t.c) for t in X))-{(0,0)})
+vertices=sorted({canon(k) for k in freq});parent={k:k for k in vertices}
+def root(k):
+    while parent[k]!=k:k=parent[k]
+    return k
+edge_count={3:0,4:0}
+for degree in (3,4):
+    for ks in combinations_with_replacement(freq,degree):
+        if tuple(map(sum,zip(*ks)))!=(0,0):continue
+        if any(ks[i][0]+ks[j][0]==0 and ks[i][1]+ks[j][1]==0 for i in range(degree) for j in range(i+1,degree)):continue
+        edge_count[degree]+=1
+        targets=[canon(k) for k in ks]
+        for k in targets[1:]:parent[root(k)]=root(targets[0])
+assert len({root(k) for k in vertices})==1
+assert edge_count[3]&gt;0 and edge_count[4]&gt;0
+details[&#x27;two_dimensional_amplitude&#x27;][&#x27;frequency_classes&#x27;]=vertices
+details[&#x27;two_dimensional_amplitude&#x27;][&#x27;primitive_resonance_counts&#x27;]=edge_count
+passed(&#x27;two-dimensional resonant amplitude: nonzero b, complete affine minimization, connected triad/quartet graph&#x27;)
+
+# Exact degree-four independent dilation and optimized gluing.
+# Base support max infinity norm 2; a dilation by 17 separates all short cross relations.
+Y=[f.dilate(17) for f in X0]
+zY=summary(G,Y)
+zsum=summary(G,[p+q for p,q in zip(X,Y)])
+assert zsum[&#x27;H&#x27;]==z[&#x27;H&#x27;]+zY[&#x27;H&#x27;] and zsum[&#x27;b&#x27;]==z[&#x27;b&#x27;]+zY[&#x27;b&#x27;]
+cross=(z[&#x27;H&#x27;]*zY[&#x27;C&#x27;]).trace()/2
+assert zsum[&#x27;c&#x27;]==z[&#x27;c&#x27;]+zY[&#x27;c&#x27;]+cross
+penalty=((z[&#x27;B&#x27;]-zsum[&#x27;B&#x27;]).T*z[&#x27;H&#x27;]*(z[&#x27;B&#x27;]-zsum[&#x27;B&#x27;]))[0]/2
+penalty+=((zY[&#x27;B&#x27;]-zsum[&#x27;B&#x27;]).T*zY[&#x27;H&#x27;]*(zY[&#x27;B&#x27;]-zsum[&#x27;B&#x27;]))[0]/2
+assert S.cancel(zsum[&#x27;delta&#x27;]-z[&#x27;delta&#x27;]-zY[&#x27;delta&#x27;]-cross-penalty)==0
+assert cross&gt;=0 and penalty&gt;=0
+details[&#x27;dilated_packet_sum&#x27;]={&#x27;cross_energy&#x27;:str(cross),&#x27;background_disagreement&#x27;:str(penalty),&#x27;delta&#x27;:str(zsum[&#x27;delta&#x27;]),&#x27;n4&#x27;:str(zsum[&#x27;n4&#x27;])}
+passed(&#x27;actual Fourier packet gluing: covariance interaction and all-background disagreement identity&#x27;)
+
+# A compatible resonant obstruction to extending that gluing without hypotheses.
+rr=1+S.Rational(1,2)*cos((1,0));ss=1-S.Rational(1,2)*cos((1,0))
+X1=derivative([rr*cos((0,1)),rr*sin((0,1))])
+X2=derivative([ss*cos((0,2)),ss*sin((0,2))])
+xsum=[p+q for p,q in zip(X1,X2)]
+c1=evaluate(q*q,X1).mean();c2=evaluate(q*q,X2).mean();ct=evaluate(q*q,xsum).mean()
+assert c1==S.Rational(17,128) and c2==S.Rational(17,32)
+assert ct==S.Rational(75,256) and ct-c1-c2==-S.Rational(95,256)
+assert moments(q*q,X1)[2]==S.zeros(4,1) and moments(q*q,X2)[2]==S.zeros(4,1)
+details[&#x27;resonant_gluing_obstruction&#x27;]={&#x27;c1&#x27;:str(c1),&#x27;c2&#x27;:str(c2),&#x27;c_sum&#x27;:str(ct),&#x27;difference&#x27;:str(ct-c1-c2)}
+passed(&#x27;compatible two-carrier resonance: exact negative interaction -95/256, not a negative QC gap&#x27;)
+
+# General variable-phase defect: Hessian(theta) appears with the asserted sign.
+# Fix theta=0 as above and allow an arbitrary symmetric phase Hessian.
+h11,h12,h22=S.symbols(&#x27;h11 h12 h22&#x27;);KH=S.Matrix([[h11,h12],[h12,h22]])
+for f in monoms:
+    df=S.Matrix([S.diff(f,z) for z in xx]); hf=S.hessian(f,xx)
+    sub=dict(zip(xx,B+t*Wk));dfs=df.subs(sub,simultaneous=True);hfs=hf.subs(sub,simultaneous=True)
+    pr=[S.integrate(S.expand(dfs[i]),(t,0,r)) for i in range(2)]
+    extra=sum(S.diff(pr[i],kj)*KH[j,i] for i in range(2) for j,kj in enumerate((k1,k2)))
+    target=0
+    for i in range(2):
+        Wki=S.Matrix([0,0,KH[0,i],KH[1,i]])
+        target+=S.integrate(S.expand(t*(Wki.T*hfs*S.eye(4)[:,i])[0]),(t,0,r))
+    zero(extra-target)
+passed(&#x27;all 35 monomials: exact variable-phase curvature defect (no sign assertion)&#x27;)
+
+# At B=0 in the left-SO(2) cone, phase curvature depends only on q-odd coefficients.
+Lc,Mc,Nc=S.symbols(&#x27;Lc Mc Nc&#x27;)
+FO=Lc*q*u+Mc*q*v+Nc*q*(a*b+c*d)
+# The derivative in the orthogonal output direction is Xi=M(k)*(k2,-k1).
+Xi=S.Matrix([(S.diff(FO,z).subs(dict(zip(xx,Wk)),simultaneous=True)) for z in (a,b)])
+Mk=Lc*k1*k1+Mc*k2*k2+Nc*k1*k2
+assert S.simplify(Xi-Mk*S.Matrix([k2,-k1]))==S.zeros(2,1)
+for f in basis[:6]:
+ assert S.Matrix([S.diff(f,z).subs(dict(zip(xx,Wk)),simultaneous=True) for z in (a,b)])==S.zeros(2,1)
+# theta=x+eps sin(y), r^4=1+beta sin(2y): average defect = Mc eps^2 beta/8.
+eps,bet,yy=S.symbols(&#x27;eps bet yy&#x27;,real=True)
+divXi=sum(S.diff(Xi[i],kj)*KH[j,i] for i in range(2) for j,kj in enumerate((k1,k2)))
+phase_sub={k1:1,k2:eps*S.cos(yy),h11:0,h12:0,h22:-eps*S.sin(yy),Nc:0}
+defect=S.expand_trig(divXi.subs(phase_sub))* (1+bet*S.sin(2*yy))/4
+avg=S.integrate(S.expand_trig(defect),(yy,0,2*S.pi))/(2*S.pi)
+zero(avg-Mc*eps**2*bet/8)
+# Convex Fc=(u+v-2q)^2 has Mc=-4. eps=1,beta=-1/2 gives positive signed defect 1/4.
+assert avg.subs({Mc:-4,eps:1,bet:-S.Rational(1,2)})==S.Rational(1,4)
+details[&#x27;phase_curvature_example&#x27;]={&#x27;F&#x27;:&#x27;(u+v-2q)^2, convex&#x27;,&#x27;theta&#x27;:&#x27;x+sin(y)&#x27;,
+ &#x27;amplitude_fourth_power&#x27;:&#x27;1-sin(2y)/2&#x27;,&#x27;mean_signed_defect&#x27;:&#x27;1/4&#x27;}
+passed(&#x27;variable phase in the invariant cone: exact signed defect, positive even for a convex quartic&#x27;)
+
+out={&#x27;scope&#x27;:&#x27;Exact finite checks; analytic theorems are proved in GLOBAL_COMPATIBILITY.md. No novelty or formal-proof certification.&#x27;,
+     &#x27;checks&#x27;:checks,&#x27;details&#x27;:details}
+(ROOT/&#x27;global_verification.json&#x27;).write_text(json.dumps(out,indent=2))
+print(&#x27;WROTE global_verification.json;&#x27;,len(checks),&#x27;groups passed.&#x27;,flush=True)
+</pre></body></html>

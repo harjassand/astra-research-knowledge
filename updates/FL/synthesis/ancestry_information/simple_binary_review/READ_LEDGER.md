@@ -1,0 +1,8 @@
+# Read and derivation ledger
+
+- Scope source: the parent task's explicit follow-up statement describing calibrated binary controls, whole-product count histograms, a proposed void-probability route, and the requirement to preserve the frozen report.
+- No capital repository files, other workstreams, N786/N790 records, or frozen root-level report files were opened or edited in this follow-up.
+- `PROOF.md` is derived directly from the stated conditional independent-label/count-channel model. Its assumptions and non-claims are made explicit in that file.
+- `finite_checks.py` is new code in this isolated subfolder. It uses only Python standard-library `fractions`, `itertools`, `math`, `json`, and `pathlib`; all probability checks use exact rational arithmetic.
+- Verification run: `python3 work/FL-ancestry-information/simple_binary_review/finite_checks.py` completed successfully and generated `results.json`.
+- No external sources or runtime data were used.

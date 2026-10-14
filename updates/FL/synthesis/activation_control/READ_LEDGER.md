@@ -1,0 +1,87 @@
+# Read ledger: FL activation-control
+
+Read date: 2026-10-14 (Australia/Brisbane). This is an access and provenance ledger, not a scientific validator. Files in the isolated artifact directory are owned outputs; no capital file was edited.
+
+## Task contract, pin, and capital start instructions
+
+| Input | Bytes | SHA-256 | Access |
+|---|---:|---|---|
+| work/FL_WORKER_CONTRACT.txt | 3,118 | acbe78c446d847d6936a1ab7fff32419e30399e206d32bf9d64af54bf039409a | Read all 17 lines; contract, output scope, runtime, evidence and status requirements. |
+| work/FL_PIN.json | 795 | 7ceea5724f1be63666f121f0ebd8adddf0ceb06b37766feff37d94175303c27d | Read all 18 lines; pinned revisions and source map. |
+| work/astra-capital/00_START_HERE.txt | 1,879 | 4a91985ece91557af12ba5c216e7fe17cf5dd000596e9a0c73b0b6705498f360 | Read all 8 lines. |
+| work/astra-capital/AGENTS.md | 1,077 | 581cdda103fed0c87acdb0ee527bd5ba174f55b1baa0cbfe60b177d52027ee7d | Read all 7 lines. |
+| /Users/harjas/.codex/memories/MEMORY.md | 503,024 | 8325935bd841b47b5beac3ca13549a745e03c7fddbfe78e9a357cf52add0bdf3 | Consulted task group lines 1–5 and 26–39 for capital-first provenance and claim-scope guidance; no scientific assumption imported. |
+
+Pinned capital checkout was observed at revision 3c9c5564fc7f51cdbaa0a5a5b5b54ee9382dcd8d on branch research/capital-synthesis-active-certificates-20261014, clean at inspection. No files in work/astra-capital were changed.
+
+## Supplied research packets
+
+| Input | Bytes | SHA-256 | Access and use |
+|---|---:|---|---|
+| work/FL-sources/temporal_PASTED_SOURCE.txt | 25,794 | 7dfff79bddb5175067e4b90549b52c0c50fa5c9e5d9c2cc92f4e1a2f3b87d6ce | Read all 379 newline-terminated lines. Main activation source. Used exact competing-hazard assumptions and equations in lines 114–161, unloading-time limitation in 162–208, CO2 route/baseline assessment in 209–302, and experiment gate in 303–378. Filename is preserved as received. |
+| work/FL-sources/temporal/astra_temporal_ancestry_note.md | 19,468 | 06b02159b294c894984b1985a866c75f159e8b9beff29dabeca927b0a6ca86b7 | Read all 240 lines to check temporal ancestry and scope. |
+| work/FL-sources/ancestry_PASTED_SOURCE.txt | 24,782 | 0e77a93477641f41f98b357c0bc81eb914e03babaf7aa2bae8d91030b7698b5a | Read all 329 newline-terminated lines for supplied lineage and overlap. |
+| work/FL-sources/global_PASTED_SOURCE.txt | 26,076 | f2ff5f839c69a0d981f1988cc474704a87d815be1bfaecb9561b3fd705e9a671 | Read all 516 newline-terminated lines; not used as activation evidence. |
+| work/FL-sources/INTAKE_MANIFEST.json | 5,486 | e66de8b042a3e445ec7aa35aaed63bf32440344c527ba897494034099707b9ab | Read all 128 lines for source path/hash provenance. |
+| work/FL-sources/SUPPLEMENTAL_INTAKE_MANIFEST.json | 886 | 765399e29c370fae24f3080d87ada50874536e690e76d6202a05055c7f95c913 | Read all 16 lines for supplemental provenance. |
+
+The global compatibility packet was examined and excluded as unrelated to product-state activation: it concerns a Morrey/quasiconvexity compatibility search. No result from it is used in the model. The files below were read in full except the two large search outputs, which were structurally parsed and summarized by configuration rather than printed linewise. The scripts were inspected but not executed.
+
+| Input | Bytes | SHA-256 | Access |
+|---|---:|---|---|
+| work/FL-sources/global/GLOBAL_COMPATIBILITY.md | 32,255 | bddd6149e1523a8e73fdd26a3d8820dadc3ebad023eb319878ff77ca64f32eee | Full 444 lines. |
+| work/FL-sources/global/MANIFEST.json | 1,842 | 89fb357bf39ed398dcdf88a3c87384867dbc99ba184c27b867fa20066cd18cad | Full 60 lines. |
+| work/FL-sources/global/README.md | 1,379 | 0d0a832f930c55bc35210b653b437ab3c641f7ed4d0a0605e04f13946c7f5b8a | Full 11 lines. |
+| work/FL-sources/global/carrier_search.json | 84,068 | 57c7dcb13b2e9491457a45a89db5ca0f4b7ff9f646c8440919bea01ffc8cde22 | Parsed full JSON structure; per-configuration summary. |
+| work/FL-sources/global/carrier_search_2000_steps.log | 379 | d365d93c04bf5fc50473d959d7d1e2043715d77598e620a731298d2d9184e37e | Full 6 lines. |
+| work/FL-sources/global/carrier_search_200_steps.json | 84,026 | 9b7d33064946e7a7ddbb85aeab89fa44cef02363455560b7c7f49bdc3ce7cced | Parsed full JSON structure; per-configuration summary. |
+| work/FL-sources/global/environment.json | 90 | f27f6eb7fed8a473f06e9bf76137a749c92c262bef7567259c58a55948f620cd | Full 6 lines. |
+| work/FL-sources/global/global_verification.json | 3,862 | 04991a22e98bc05534cf7c495aa3c9fdf84fdd32fa87e10daf63a0c7183b614f | Full 178 lines. |
+| work/FL-sources/global/prior_replay.log | 1,093 | 13cf98ff75348a86aa782cfa815c43473401d3610c0f0a894a466284b8d59da9 | Full 13 lines. |
+| work/FL-sources/global/search_carrier_envelopes.py | 5,334 | 9b662d7b5a11a3f78612856fb93262cecab1995b215f7706d4fd01a745ceddfb | Full 107 lines; inspected, not run. |
+| work/FL-sources/global/verification.log | 922 | 1d4c0548bf5c2ebc4921ff5cdb9c395585b31bb5808d344c434a269b48e1a052 | Full 10 lines. |
+| work/FL-sources/global/verify_global_compatibility.py | 12,325 | 00eb94a94ae587a4ab09640bbfa94dba189657dc9c3b0bad4e0317692ac0d5fb | Full 249 lines; inspected, not run. |
+
+## N783 applicability check
+
+The following pinned capital materials were read to determine whether the reward theorem applies. Hashes are of local pinned files, not copied artifacts.
+
+| Input | Bytes | SHA-256 | Access |
+|---|---:|---|---|
+| work/astra-capital/frontier/dossiers/N783.txt | 26,568 | 9d3bf4febfb32775517998f67c126243d04cc7e2755b4999aa22156debe9a116 | Full 94 lines, dossier and current conditional status. |
+| work/astra-capital/frontier/review_cards/N783-retained-repair-qualification-and-carrier-reward-certificates.txt | 5,299 | cf6872d590380aec7b169940b9ec8d1b5701819f2627f01518eb1e3714603431 | Full 23 lines. |
+| work/astra-capital/frontier/gates/G-FB-N783-CAPABILITY.json | 2,386 | 2e866d9c4058d3304d7876be6ec3427b791729aafe594c0c8d3e1cfc3ff9ac97 | Full 30 lines. |
+| work/astra-capital/frontier/gates/G-FB-N783-REVIEW.json | 2,366 | f9ee16b4a4e6761192599059f7837e291b0337d09b86d7706b42a7adab9dddaa | Full 30 lines. |
+| work/astra-capital/updates/FB/package/retained_repair/recovered/astra_retained_repair/RESEARCH_RECORD.md | 8,410 | e06b559f28c09790ad787b4e2891ee10f11f0be7234564af4980f5190dd7bdf0 | Full 78 lines. |
+| work/astra-capital/updates/FB/synthesis/repair/REPORT.md | 19,453 | eae7bd7a8bd216e32a9db5e8775cc1fc90e08d839ec360df85a44fa3f0a07e7d | Read proof and contract sections, lines 125–323. |
+| work/astra-capital/updates/FB/synthesis/critic/REVIEW.md | 16,195 | 0128f3a07d36a777a067564858f83acb6b02a17e546c37d008014d33f60056bb | Read applicable review sections, lines 220–266. |
+
+Applicability decision: N783 concerns conditional retained-repair rewards when a defect-repair event leaves a mobile carrier for a future event, under a full carrier/configuration state and a joint transition/reward/damage/cost law. The present CO process specifies no such reusable carrier chain, retained repair event, or state kernel; CO is a terminal product. No N783 result is imported or presented as novel.
+
+## External sources accessed
+
+Access date for all web sources below: 2026-10-14. Numerical values in the report are transcribed from the cited primary source or are arithmetic derived from stated inputs. Links are direct source pages, not search-result pages.
+
+| Source | Access depth and use |
+|---|---|
+| NIST-JANAF, CO table: https://janaf.nist.gov/tables/C-093.html | Opened table. Used 298.15 K formation enthalpy, Gibbs energy, and entropy values. |
+| NIST-JANAF, CO2 table: https://janaf.nist.gov/tables/C-095.html | Opened table. Used 298.15 K formation enthalpy, Gibbs energy, and entropy values. |
+| NIST-JANAF, O2 table: https://janaf.nist.gov/tables/O-029.html | Opened table. Used 298.15 K entropy and zero standard formation quantities. |
+| ISPT/TNO, SOE Public Final Report (2023): https://ispt.eu/media/20230508-FINAL-SOE-public-report-ISPT.pdf | Opened full 33-page PDF. Used use-case design/output passages around PDF text lines 583–611 and electricity breakdown around lines 617–690; retained model boundary and excess-steam caveat. |
+| Haldor Topsoe high-volume HTE presentation, US DOE-hosted copy: https://www.energy.gov/documents/shared-learnings-achieving-high-volume-hte-manufacturing-poul-georg-haldor-topsoe | Opened source lines 98–109. Used reported test duration, volume/mass, electricity and Faradaic-efficiency figures; derived stack-only kWh/kg from same reported mass and volume. |
+| 2023 CO2 optical-centrifuge primary paper: https://doi.org/10.1038/s41467-023-38873-z | Opened article and checked results/discussion around lines 76–84 and 172. Used observed high-J tail, centrifugal dissociation barrier, and distinction between moderate-J transfer and high-J contribution. |
+| Allahverdyan, Balian, Nieuwenhuizen, ergotropy prior: https://arxiv.org/abs/cond-mat/0401574 | Abstract and metadata accessed. Used only to mark ergotropy as prior art; no novelty claim depends on it. |
+| Sagawa and Ueda, feedback thermodynamics prior: https://arxiv.org/abs/0907.4914 | Abstract and metadata accessed. Used only to mark feedback thermodynamics as prior art. |
+| PMCID anti-Stokes/rhodopsin page encountered during lookup | Access attempt returned a bot challenge; not relied on. |
+
+No exhaustive novelty or patent-priority search was performed. The physical route, product state, coupled kinetics, net-return train, and matched industrial performance were not acquired.
+
+## Owned artifacts and reproduction
+
+- REPORT.md: assumptions, exact equations, countermodel, policy-invariant free-energy proof, comparator boundary, physical gate, and scoped disposition.
+- model.py: standard-library-only scenario arithmetic; no kinetics, state estimator, or quantum simulation package.
+- results.json: generated by python3 work/FL-activation-control/model.py. The program was run after the final scenario update; syntax compilation, 10,000 randomized checks of the expanded stochastic ledger, and named assertions for the reversible case, matched a = 1/2 comparison, and exact RP improvement passed.
+- MANIFEST.json: owned artifact sizes and SHA-256 digests; excludes itself to avoid circular hashing.
+
+The model's results establish only arithmetic under supplied parameters. They are not an empirical validation, kinetic result, quantum control demonstration, novelty determination, or process certification.
+

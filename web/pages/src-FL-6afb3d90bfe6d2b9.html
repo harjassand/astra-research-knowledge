@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — analyze.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/synthesis/physical_pivot/analyze.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Recompute reported concentration changes and SI regional means; no mass closure assumed.&quot;&quot;&quot;
+from __future__ import annotations
+
+import csv
+import json
+import math
+from collections import defaultdict
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+DATA = ROOT / &quot;data&quot;
+R = 8.31446261815324  # J mol^-1 K^-1
+F = 96485.33212  # C mol^-1
+M_FE = 55.845  # g mol^-1
+M_SN = 118.710  # g mol^-1
+
+
+def number(value: str | None) -&gt; float | None:
+    if value is None or not value.strip():
+        return None
+    return float(value)
+
+
+def read_csv(name: str) -&gt; list[dict[str, str]]:
+    with (DATA / name).open(newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as stream:
+        return list(csv.DictReader(stream))
+
+
+def mean(values: list[float]) -&gt; float | None:
+    return sum(values) / len(values) if values else None
+
+
+def apparent_removal_pct(before: float | None, after: float | None) -&gt; float | None:
+    if before is None or after is None or before == 0:
+        return None
+    return 100.0 * (before - after) / before
+
+
+def main() -&gt; None:
+    regional = read_csv(&quot;ambiru2026-s4-regions.csv&quot;)
+    preprint = read_csv(&quot;ambiru2026-preprint-table1.csv&quot;)
+    groups: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in regional:
+        groups[row[&quot;run&quot;]].append(row)
+    preprint_by_run = {row[&quot;run&quot;]: row for row in preprint}
+    expected_runs = {str(run) for run in range(1, 17)}
+    if len(regional) != 48 or len(preprint) != 16 or len(preprint_by_run) != 16 or set(groups) != expected_runs or set(preprint_by_run) != expected_runs:
+        raise ValueError(&quot;Expected source transcriptions to cover runs 1 through 16 exactly&quot;)
+    for run, group in groups.items():
+        if len(group) != 3 or {row[&quot;region&quot;] for row in group} != {&quot;upper&quot;, &quot;middle&quot;, &quot;lower&quot;}:
+            raise ValueError(f&quot;Run {run} must have exactly upper/middle/lower SI rows&quot;)
+    for run in (&quot;11&quot;, &quot;15&quot;, &quot;16&quot;):
+        group = sorted(groups[run], key=lambda row: (&quot;upper&quot;, &quot;middle&quot;, &quot;lower&quot;).index(row[&quot;region&quot;]))
+        sn_values = [row[&quot;sn_after_wt_pct&quot;] for row in group]
+        expected_sn = {
+            &quot;11&quot;: [&quot;0.020&quot;, &quot;0.004&quot;, &quot;0.005&quot;],
+            &quot;15&quot;: [&quot;0.010&quot;, &quot;0.015&quot;, &quot;0.047&quot;],
+            &quot;16&quot;: [&quot;0.009&quot;, &quot;0.080&quot;, &quot;0.073&quot;],
+        }[run]
+        if sn_values != expected_sn:
+            raise ValueError(f&quot;Run {run} SI Sn values do not match the audited Table S4 transcription&quot;)
+
+    results: dict[str, object] = {
+        &quot;input_validation&quot;: {
+            &quot;si_regional_rows&quot;: len(regional),
+            &quot;si_runs&quot;: len(groups),
+            &quot;si_regions_per_run&quot;: 3,
+            &quot;preprint_table1_rows&quot;: len(preprint),
+            &quot;pinned_si_sn_transcription_wt_pct&quot;: {
+                &quot;run_11_upper_middle_lower&quot;: [0.020, 0.004, 0.005],
+                &quot;run_15_upper_middle_lower&quot;: [0.010, 0.015, 0.047],
+                &quot;run_16_upper_middle_lower&quot;: [0.009, 0.080, 0.073],
+            },
+        },
+        &quot;provenance&quot;: {
+            &quot;regional_source&quot;: &quot;Ambiru et al. 2026 published SI Table S4, manually transcribed; caption says Table 1 values are arithmetic means of the three regional assays.&quot;,
+            &quot;comparison_source&quot;: &quot;Author preprint Table 1 as indexed in the ResearchSquare PDF search result; direct PDF route returned 403. It is not represented here as the inaccessible final article table.&quot;,
+            &quot;units&quot;: &quot;wt% concentrations; concentration changes are not element-inventory mass balances.&quot;,
+        },
+        &quot;regional_table1_reconciliation&quot;: [],
+        &quot;comparisons_of_interest&quot;: [],
+        &quot;thermochemistry&quot;: {},
+        &quot;conditional_faraday_equivalents&quot;: {},
+        &quot;process_baseline&quot;: {
+            &quot;source&quot;: &quot;Paeng and Azimi 2025 ACS Supporting Information, Table S1-S4; 2024 USD assumptions.&quot;,
+            &quot;cases_per_si_one_tonne_basis&quot;: [
+                {&quot;case&quot;: 1, &quot;feed_molten_steel_kg&quot;: 959.20, &quot;reductant_or_desulfurizer_kg&quot;: 40.80, &quot;flux_remaining_kg&quot;: 1440.00, &quot;new_flux_kg&quot;: 480.00, &quot;supply_feS2_or_fe2o3_kg&quot;: 96.00, &quot;electricity_kwh&quot;: 117.66, &quot;combined_steel_output_kg&quot;: 1017.80, &quot;flux_residue_kg&quot;: 480.00, &quot;co_g_kg&quot;: 78.20, &quot;opex_usd_per_t&quot;: 137.64},
+                {&quot;case&quot;: 2, &quot;feed_molten_steel_kg&quot;: 951.80, &quot;reductant_or_desulfurizer_kg&quot;: 48.20, &quot;flux_remaining_kg&quot;: 1819.90, &quot;new_flux_kg&quot;: 296.27, &quot;supply_feS2_or_fe2o3_kg&quot;: 105.81, &quot;electricity_kwh&quot;: 53.95, &quot;combined_steel_output_kg&quot;: 1001.62, &quot;flux_residue_kg&quot;: 296.27, &quot;co_g_kg&quot;: 104.19, &quot;opex_usd_per_t&quot;: 121.27},
+                {&quot;case&quot;: 3, &quot;feed_molten_steel_kg&quot;: 1001.62, &quot;reductant_or_desulfurizer_kg&quot;: 56.00, &quot;flux_remaining_kg&quot;: 0.00, &quot;new_flux_kg&quot;: 0.00, &quot;supply_feS2_or_fe2o3_kg&quot;: 0.00, &quot;electricity_kwh&quot;: 0.00, &quot;combined_steel_output_kg&quot;: 994.74, &quot;flux_residue_kg&quot;: 62.88, &quot;co_g_kg&quot;: 0.00, &quot;opex_usd_per_t&quot;: 41.72},
+                {&quot;case&quot;: 4, &quot;feed_molten_steel_kg&quot;: 994.74, &quot;reductant_or_desulfurizer_kg&quot;: 0.00, &quot;flux_remaining_kg&quot;: 1940.00, &quot;new_flux_kg&quot;: 60.00, &quot;supply_feS2_or_fe2o3_kg&quot;: 210.00, &quot;electricity_kwh&quot;: 408.08, &quot;combined_steel_output_kg&quot;: 1117.75, &quot;flux_residue_kg&quot;: 60.00, &quot;co_g_kg&quot;: 53.91, &quot;opex_usd_per_t&quot;: -56.61},
+            ],
+            &quot;material_cost_assumptions_usd_per_unit&quot;: {
+                &quot;scrap_steel_per_t&quot;: 313,
+                &quot;calcium_aluminate_flux_per_t&quot;: 200,
+                &quot;pyrite_FeS2_per_t&quot;: 250,
+                &quot;iron_ore_Fe2O3_per_t&quot;: 104,
+                &quot;coal_per_t&quot;: 132,
+                &quot;CaC2_per_t&quot;: 650,
+                &quot;N2_per_Nm3&quot;: 3,
+                &quot;ZrB2_per_g&quot;: 0.13,
+                &quot;water_per_t&quot;: 0.69,
+                &quot;waste_disposal_per_t&quot;: 24,
+            },
+            &quot;capital_cost_usd_per_t_capacity&quot;: {
+                &quot;electrorefining_cell&quot;: 1584.33,
+                &quot;desulfurization&quot;: 96.88,
+                &quot;EAF&quot;: 278.52,
+                &quot;continuous_casting&quot;: 273.30,
+                &quot;hot_strip_mill&quot;: 246.53,
+            },
+            &quot;levelized_hrc_cost_usd_per_t&quot;: {&quot;0.43_wt_pct_Cu_scrap&quot;: 941.73, &quot;0.21_wt_pct_Cu_scrap&quot;: 783.24},
+            &quot;unknowns&quot;: [&quot;The SI labels four cases but the main-text definitions are not reconstructed from the SI; case ids are preserved as printed.&quot;, &quot;The TEA is a model of a Cu/C process, not measured process data for the 2026 Sn/FeS batch screen.&quot;]
+        },
+    }
+
+    analytes = [
+        (&quot;Cu&quot;, &quot;cu_before_wt_pct&quot;, &quot;cu_after_wt_pct&quot;),
+        (&quot;Sn&quot;, &quot;sn_before_wt_pct&quot;, &quot;sn_after_wt_pct&quot;),
+        (&quot;Ni&quot;, &quot;ni_before_wt_pct&quot;, &quot;ni_after_wt_pct&quot;),
+        (&quot;Cr&quot;, &quot;cr_before_wt_pct&quot;, &quot;cr_after_wt_pct&quot;),
+    ]
+    for run, group in groups.items():
+        for element, before_key, after_key in analytes:
+            before_values = [row[before_key] for row in group if row[before_key].strip()]
+            after_values = [row[after_key] for row in group if row[after_key].strip()]
+            if after_values and len(after_values) != 3:
+                raise ValueError(f&quot;Run {run} {element} assay must have all three regional values&quot;)
+            if before_values and len(set(before_values)) != 1:
+                raise ValueError(f&quot;Run {run} {element} initial assay differs across regional rows&quot;)
+    for run in sorted(groups, key=int):
+        group = groups[run]
+        p = preprint_by_run[run]
+        row_out: dict[str, object] = {
+            &quot;run&quot;: int(run),
+            &quot;atmosphere&quot;: group[0][&quot;atmosphere&quot;],
+            &quot;potential&quot;: group[0][&quot;potential&quot;],
+            &quot;charge_C&quot;: number(group[0][&quot;charge_C&quot;]),
+            &quot;regional_measurement_count&quot;: len(group),
+            &quot;analytes&quot;: {},
+        }
+        for element, before_key, after_key in analytes:
+            values = [number(r[after_key]) for r in group]
+            values = [v for v in values if v is not None]
+            before = number(p[f&quot;{element.lower()}_before_wt_pct&quot;])
+            preprint_after = number(p[f&quot;{element.lower()}_after_wt_pct&quot;])
+            regional_mean = mean(values)
+            if values or before is not None or preprint_after is not None:
+                diff = None if regional_mean is None or preprint_after is None else regional_mean - preprint_after
+                row_out[&quot;analytes&quot;][element] = {
+                    &quot;preprint_initial_wt_pct&quot;: before,
+                    &quot;preprint_table1_after_wt_pct&quot;: preprint_after,
+                    &quot;si_region_values_wt_pct&quot;: values,
+                    &quot;si_region_count&quot;: len(values),
+                    &quot;si_region_mean_wt_pct&quot;: regional_mean,
+                    &quot;si_region_min_wt_pct&quot;: min(values) if values else None,
+                    &quot;si_region_max_wt_pct&quot;: max(values) if values else None,
+                    &quot;preprint_apparent_concentration_removal_pct&quot;: apparent_removal_pct(before, preprint_after),
+                    &quot;si_mean_apparent_concentration_removal_pct&quot;: apparent_removal_pct(before, regional_mean),
+                    &quot;mean_minus_preprint_table1_wt_pct&quot;: diff,
+                    &quot;constant_1000kg_basis_change_kg_t_equivalent&quot;: None if before is None or regional_mean is None else (before - regional_mean) * 10.0,
+                }
+        results[&quot;regional_table1_reconciliation&quot;].append(row_out)
+
+    for run in (&quot;7&quot;, &quot;9&quot;, &quot;11&quot;):
+        row = next(x for x in results[&quot;regional_table1_reconciliation&quot;] if x[&quot;run&quot;] == int(run))
+        results[&quot;comparisons_of_interest&quot;].append(row)
+
+    temperature = 1873.0
+    dg_form = {&quot;SnS_g_kJ_per_mol&quot;: -61.338, &quot;FeS_l_kJ_per_mol&quot;: -55.124, &quot;Cu2S_l_kJ_per_mol&quot;: -71.212, &quot;Ni3S2_l_kJ_per_mol&quot;: -116.081, &quot;CrS_s_kJ_per_mol&quot;: -96.723}
+    reactions = {
+        &quot;Sn_exchange&quot;: dg_form[&quot;SnS_g_kJ_per_mol&quot;] - dg_form[&quot;FeS_l_kJ_per_mol&quot;],
+        &quot;Cu_exchange_per_Cu2S&quot;: dg_form[&quot;Cu2S_l_kJ_per_mol&quot;] - dg_form[&quot;FeS_l_kJ_per_mol&quot;],
+        &quot;Ni_exchange_per_Ni3S2&quot;: dg_form[&quot;Ni3S2_l_kJ_per_mol&quot;] - 2 * dg_form[&quot;FeS_l_kJ_per_mol&quot;],
+        &quot;Cr_exchange_per_CrS&quot;: dg_form[&quot;CrS_s_kJ_per_mol&quot;] - dg_form[&quot;FeS_l_kJ_per_mol&quot;],
+    }
+    results[&quot;thermochemistry&quot;] = {
+        &quot;temperature_K&quot;: temperature,
+        &quot;source_standard_formation_gibbs_kJ_per_mol_product&quot;: dg_form,
+        &quot;exchange_reaction_deltaG0_kJ_per_reaction_extent&quot;: reactions,
+        &quot;standard_state_quotient_at_equilibrium_K&quot;: {k: math.exp(-dg * 1000.0 / (R * temperature)) for k, dg in reactions.items()},
+        &quot;caveat&quot;: &quot;Standard-state comparison only. Activities, phases/speciation (including listed SnS gas standard), slag/metal partition, and kinetic barriers are not solved.&quot;,
+    }
+
+    results[&quot;conditional_faraday_equivalents&quot;] = {
+        &quot;formula&quot;: &quot;m = M*|Q|/(n F), conditional on all signed net charge being a single n-electron metal oxidation/reduction; this is not measured metal loss or full-cell energy.&quot;,
+        &quot;Fe_as_Fe2plus_g&quot;: {str(q): M_FE * abs(q) / (2 * F) for q in (19, 110, 844, 12455)},
+        &quot;Sn_as_Sn2plus_g&quot;: {str(q): M_SN * abs(q) / (2 * F) for q in (19, 110, 844, 12455)},
+        &quot;known_lab_basis&quot;: {&quot;initial_alloy_g&quot;: 30.0, &quot;slag_g_approx&quot;: 60.0, &quot;metal_to_slag_mass_ratio&quot;: 0.5, &quot;temperature_K&quot;: 1873.0, &quot;pre_equilibration_s&quot;: 7200, &quot;electrolysis_s&quot;: 3600, &quot;gas_flow_L_min&quot;: 2.0},
+        &quot;sn_inventory_caveat&quot;: &quot;At 30 g initial metal, 0.199 wt% Sn is 0.0597 g initially. Final metal mass is not reported, so a concentration decrement cannot be converted into an exact Sn mass transfer.&quot;,
+    }
+
+    out = ROOT / &quot;results.json&quot;
+    out.write_text(json.dumps(results, indent=2, allow_nan=False) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(out)
+    print(&quot;Sn Table1/SI regional means:&quot;)
+    for row in results[&quot;regional_table1_reconciliation&quot;]:
+        sn = row[&quot;analytes&quot;].get(&quot;Sn&quot;)
+        if sn:
+            print(row[&quot;run&quot;], row[&quot;potential&quot;], sn[&quot;preprint_table1_after_wt_pct&quot;], sn[&quot;si_region_mean_wt_pct&quot;], sn[&quot;preprint_apparent_concentration_removal_pct&quot;], sn[&quot;si_mean_apparent_concentration_removal_pct&quot;])
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

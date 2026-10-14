@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — finite_checks.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/synthesis/ancestry_information/finite_checks.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite checks for the four-carbon E/O ancestry witness.
+
+Uses only Python&#x27;s standard library. This is a derived fixture, not copied from
+the source packet and not an experimental model.
+&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations, permutations, product
+import json
+from math import comb, exp, log
+from pathlib import Path
+
+
+def parity_vectors(parity):
+    return [x for x in product((0, 1), repeat=4) if sum(x) % 2 == parity]
+
+
+def count_law(bits, parity, contrast):
+    &quot;&quot;&quot;Whole-product K law for a five-node normalized input mask.&quot;&quot;&quot;
+    u = [Fraction(2 * bit - 1) for bit in bits]
+    out = [Fraction(0) for _ in range(5)]
+    histories = parity_vectors(parity)
+    for x in histories:
+        pmf = [Fraction(1)]
+        for j, bit in enumerate(x):
+            p = (1 + contrast * u[j + bit]) / 2
+            next_pmf = [Fraction(0) for _ in range(len(pmf) + 1)]
+            for k, mass in enumerate(pmf):
+                next_pmf[k] += mass * (1 - p)
+                next_pmf[k + 1] += mass * p
+            pmf = next_pmf
+        for k, mass in enumerate(pmf):
+            out[k] += mass / len(histories)
+    return out
+
+
+def marginal_laws():
+    laws = []
+    for parity in (0, 1):
+        law = {}
+        xs = parity_vectors(parity)
+        for size in (1, 2, 3):
+            for coordinates in combinations(range(4), size):
+                for values in product((0, 1), repeat=size):
+                    count = sum(
+                        tuple(x[j] for j in coordinates) == values for x in xs
+                    )
+                    law[(coordinates, values)] = Fraction(count, len(xs))
+        laws.append(law)
+    assert laws[0] == laws[1]
+    assert len(laws[0]) == 8 + 24 + 32
+    return len(laws[0])
+
+
+def permutation_parity(values):
+    locations = {value: index for index, value in enumerate((0, 1, 5))}
+    perm = [locations[value] for value in values]
+    inversions = sum(
+        perm[i] &gt; perm[j]
+        for i in range(len(perm))
+        for j in range(i + 1, len(perm))
+    )
+    return inversions % 2
+
+
+def count_law_from_occupancies(occupancies, high_mask, p_low, p_high):
+    out = [Fraction(0) for _ in range(7)]
+    for counts in occupancies:
+        pmf = [Fraction(1)]
+        for node, count in enumerate(counts):
+            p = p_high if (high_mask &gt;&gt; node) &amp; 1 else p_low
+            for _ in range(count):
+                next_pmf = [Fraction(0) for _ in range(len(pmf) + 1)]
+                for k, mass in enumerate(pmf):
+                    next_pmf[k] += mass * (1 - p)
+                    next_pmf[k + 1] += mass * p
+                pmf = next_pmf
+        for k, mass in enumerate(pmf):
+            out[k] += mass / len(occupancies)
+    return out
+
+
+def adjacent_pair_length(counts):
+    ages = [node for node, count in enumerate(counts) for _ in range(count)]
+    return sum(ages[j + 1] - ages[j] for j in range(0, len(ages), 2))
+
+
+def main():
+    contrast = Fraction(49, 50)
+    equal_masks = []
+    different_masks = []
+    pulse_masks = []
+    for integer in range(32):
+        bits = tuple((integer &gt;&gt; j) &amp; 1 for j in range(5))
+        switches = sum(bits[j] != bits[j + 1] for j in range(4))
+        if switches &lt;= 2:
+            pulse_masks.append(&quot;&quot;.join(map(str, bits)))
+        e = count_law(bits, 0, contrast)
+        o = count_law(bits, 1, contrast)
+        (equal_masks if e == o else different_masks).append(&quot;&quot;.join(map(str, bits)))
+
+    assert len(equal_masks) == 30
+    assert len(different_masks) == 2
+    assert len(pulse_masks) == 22
+    assert set(different_masks) == {&quot;01010&quot;, &quot;10101&quot;}
+    assert all(mask in equal_masks for mask in pulse_masks)
+    assert marginal_laws() == 64
+
+    square_bits = (0, 1, 0, 1, 0)
+    e = count_law(square_bits, 0, contrast)
+    o = count_law(square_bits, 1, contrast)
+    delta = [x - y for x, y in zip(e, o)]
+    tv = sum(abs(x) for x in delta) / 2
+    raw_parity_gap = sum(((-1) ** k) * x for k, x in enumerate(delta))
+    assert sum(e) == sum(o) == 1
+    assert tv == contrast**4
+    assert raw_parity_gap == 2 * contrast**4
+    assert (1 - tv) / 2 == (1 - contrast**4) / 2
+
+    occupancy_even = [
+        values for values in permutations((0, 1, 5))
+        if permutation_parity(values) == 0
+    ]
+    occupancy_odd = [
+        values for values in permutations((0, 1, 5))
+        if permutation_parity(values) == 1
+    ]
+    low = Fraction(1, 100)
+    high = Fraction(99, 100)
+    binary_control_equal = []
+    for mask in range(8):
+        e_binary = count_law_from_occupancies(occupancy_even, mask, low, high)
+        o_binary = count_law_from_occupancies(occupancy_odd, mask, low, high)
+        binary_control_equal.append(e_binary == o_binary)
+    assert all(binary_control_equal)
+    assert len(occupancy_even) == len(occupancy_odd) == 3
+    assert (0, 1, 5) in occupancy_even
+    assert (0, 1, 5) not in occupancy_odd
+    even_lengths = sorted(adjacent_pair_length(v) for v in occupancy_even)
+    odd_lengths = sorted(adjacent_pair_length(v) for v in occupancy_odd)
+    assert even_lengths == odd_lengths
+
+    tau = 1
+    r = 2
+    x = exp(-2 * r * tau)
+    q_even = (1 + 6 * x**2 + x**4) / 8
+    q_odd = (x + x**3) / 2
+    q_gap = q_even - q_odd
+
+    n = 4
+    grid_nodes = 5
+    ancestry_atoms = comb(grid_nodes + n - 1, n)
+    independent_bins_per_readout = n
+    min_readouts = (ancestry_atoms - 1 + n - 1) // n
+
+    # Two deterministic histories wholly before a finite observation start.
+    # Their K laws are identical whenever the pre-start feed is constant.
+    q_old_near = exp(-2 * r * (2 * tau))
+    q_old_far = exp(-2 * r * (20 * tau))
+
+    results = {
+        &quot;schema&quot;: &quot;fl-ancestry-identifiability-checks/1&quot;,
+        &quot;scope&quot;: &quot;Exact finite support and arithmetic fixtures only; not experimental data or an external proof review.&quot;,
+        &quot;assumptions&quot;: {
+            &quot;atom_count&quot;: 4,
+            &quot;ages&quot;: &quot;A_j = C + j*tau + tau*X_j for j=0,1,2,3&quot;,
+            &quot;models&quot;: &quot;X uniform on even or odd four-bit parity class&quot;,
+            &quot;label_model&quot;: &quot;conditional independent Bernoulli labels with p=(1+a*u)/2&quot;,
+            &quot;contrast&quot;: str(contrast),
+            &quot;common_delay&quot;: &quot;arbitrary and common to the four atoms&quot;,
+        },
+        &quot;proper_coordinate_subsets_checked&quot;: 14,
+        &quot;low_order_marginal_pattern_probabilities_checked&quot;: marginal_laws(),
+        &quot;five_node_binary_masks_checked&quot;: 32,
+        &quot;masks_with_identical_whole_product_count_laws&quot;: equal_masks,
+        &quot;masks_with_different_whole_product_count_laws&quot;: different_masks,
+        &quot;masks_with_at_most_two_internal_switches&quot;: len(pulse_masks),
+        &quot;all_masks_with_at_most_two_switches_are_indistinguishable&quot;: True,
+        &quot;square_wave_even_count_probabilities&quot;: [str(v) for v in e],
+        &quot;square_wave_odd_count_probabilities&quot;: [str(v) for v in o],
+        &quot;square_wave_count_probability_difference&quot;: [str(v) for v in delta],
+        &quot;square_wave_total_variation_exact&quot;: str(tv),
+        &quot;square_wave_total_variation_float&quot;: float(tv),
+        &quot;square_wave_raw_parity_gap_exact&quot;: str(raw_parity_gap),
+        &quot;square_wave_raw_parity_gap_float&quot;: float(raw_parity_gap),
+        &quot;square_wave_corrected_parity_gap_exact&quot;: str(raw_parity_gap / contrast**4),
+        &quot;one_product_even_odd_classifier_error_exact&quot;: str((1 - tv) / 2),
+        &quot;one_product_even_odd_classifier_error_float&quot;: float((1 - tv) / 2),
+        &quot;square_wave_kl_even_to_odd_nats_float&quot;: sum(
+            float(pk) * log(float(pk / qk)) for pk, qk in zip(e, o)
+        ),
+        &quot;two_level_full_law_witness&quot;: {
+            &quot;atom_count&quot;: 6,
+            &quot;age_grid_tau_units&quot;: [0, 1, 2],
+            &quot;even_permutation_occupancies&quot;: [list(v) for v in occupancy_even],
+            &quot;odd_permutation_occupancies&quot;: [list(v) for v in occupancy_odd],
+            &quot;binary_waveforms_checked&quot;: 8,
+            &quot;all_binary_waveforms_give_same_whole_count_laws&quot;: all(binary_control_equal),
+            &quot;history_event_probability_even&quot;: &quot;1/3&quot;,
+            &quot;history_event_probability_odd&quot;: &quot;0&quot;,
+            &quot;target&quot;: &quot;indicator of the occupancy history (0,1,5)&quot;,
+            &quot;L6_values_tau_units_even&quot;: even_lengths,
+            &quot;L6_values_tau_units_odd&quot;: odd_lengths,
+            &quot;telegraph_Q6_distribution_is_same&quot;: even_lengths == odd_lengths,
+        },
+        &quot;telegraph_at_rtau_2&quot;: {
+            &quot;switch_rate&quot;: 2.0,
+            &quot;q_even_float&quot;: q_even,
+            &quot;q_odd_float&quot;: q_odd,
+            &quot;corrected_parity_gap_float&quot;: q_gap,
+        },
+        &quot;finite_grid_full_law_lower_bound&quot;: {
+            &quot;grid_nodes&quot;: grid_nodes,
+            &quot;unordered_histories&quot;: ancestry_atoms,
+            &quot;independent_probabilities_per_full_count_histogram&quot;: independent_bins_per_readout,
+            &quot;minimum_one_time_readouts_by_dimension&quot;: min_readouts,
+            &quot;formula&quot;: &quot;J*n &gt;= binomial(q+n-1,n)-1&quot;,
+        },
+        &quot;finite_prehistory_witness&quot;: {
+            &quot;histories_tau_units&quot;: [[-4, -3, -2, -1], [-40, -30, -20, -10]],
+            &quot;same_observed_count_law_if_all_entries_precede_control&quot;: &quot;Binomial(4,p0)&quot;,
+            &quot;L4_tau_units&quot;: [2, 20],
+            &quot;Q4_at_rtau_2_float&quot;: [q_old_near, q_old_far],
+        },
+        &quot;checks&quot;: {
+            &quot;parity_laws_sum_to_one&quot;: True,
+            &quot;rectangular_single_pulse_masks_indistinguishable&quot;: True,
+            &quot;alternating_masks_distinguishable&quot;: True,
+            &quot;square_wave_total_variation_equals_a4&quot;: True,
+        },
+    }
+    output = Path(__file__).with_name(&quot;finite_results.json&quot;)
+    output.write_text(json.dumps(results, indent=2, sort_keys=True) + &quot;\n&quot;)
+    print(json.dumps(results, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

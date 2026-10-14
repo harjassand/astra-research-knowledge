@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""Independent exact checks for the FL global modulation audit.
+
+This deliberately uses a separate Laurent-polynomial implementation from the
+producer verifier.  All arithmetic is rational or in Q(i).
+"""
+from __future__ import annotations
+
+from itertools import combinations
+import json
+from pathlib import Path
+
+import sympy as sp
+
+
+ROOT = Path(__file__).resolve().parent
+
+
+class Laurent:
+    """A small exact Laurent-polynomial algebra on the 2-torus."""
+
+    def __init__(self, terms=None):
+        self.terms = {}
+        for freq, value in (terms or {}).items():
+            value = sp.expand(value)
+            if value != 0:
+                self.terms[tuple(freq)] = self.terms.get(tuple(freq), 0) + value
+        self.terms = {k: sp.expand(v) for k, v in self.terms.items() if sp.expand(v) != 0}
+
+    @staticmethod
+    def scalar(value):
+        return Laurent({(0, 0): sp.sympify(value)})
+
+    def __add__(self, other):
+        if not isinstance(other, Laurent):
+            other = Laurent.scalar(other)
+        out = dict(self.terms)
+        for f, v in other.terms.items():
+            out[f] = out.get(f, 0) + v
+        return Laurent(out)
+
+    __radd__ = __add__
+
+    def __neg__(self):
+        return Laurent({f: -v for f, v in self.terms.items()})
+
+    def __sub__(self, other):
+        return self + (-other if isinstance(other, Laurent) else -sp.sympify(other))
+
+    def __rsub__(self, other):
+        return (-self) + other
+
+    def __mul__(self, other):
+        if not isinstance(other, Laurent):
+            return Laurent({f: v * sp.sympify(other) for f, v in self.terms.items()})
+        out = {}
+        for (i, j), x in self.terms.items():
+            for (k, ell), y in other.terms.items():
+                f = (i + k, j + ell)
+                out[f] = out.get(f, 0) + x * y
+        return Laurent(out)
+
+    __rmul__ = __mul__
+
+    def __pow__(self, power):
+        if power < 0:
+            raise ValueError("negative Laurent-polynomial powers are not used")
+        out = Laurent.scalar(1)
+        for _ in range(power):
+            out = out * self
+        return out
+
+    def derivative(self, coordinate):
+        out = {}
+        for freq, value in self.terms.items():
+            out[freq] = value * sp.I * freq[coordinate]
+        return Laurent(out)
+
+    def average(self):
+        value = sp.simplify(self.terms.get((0, 0), 0))
+        assert sp.simplify(sp.im(value)) == 0
+        return sp.re(value)
+
+
+def cosine(freq):
+    f = tuple(freq)
+    return Laurent({f: sp.Rational(1, 2), (-f[0], -f[1]): sp.Rational(1, 2)})
+
+
+def sine(freq):
+    f = tuple(freq)
+    return Laurent({f: 1 / (2 * sp.I), (-f[0], -f[1]): -1 / (2 * sp.I)})
+
+
+def gradient(potential):
+    return [potential[0].derivative(0), potential[0].derivative(1),
+            potential[1].derivative(0), potential[1].derivative(1)]
+
+
+def evaluate(poly, field, variables):
+    result = Laurent()
+    for powers, coefficient in sp.Poly(sp.expand(poly), *variables).terms():
+        term = Laurent.scalar(coefficient)
+        for value, exponent in zip(field, powers):
+            term = term * (value ** exponent)
+        result = result + term
+    return result
+
+
+def exact_moments(energy, field, variables):
+    covariance = sp.Matrix(4, 4, lambda i, j: (field[i] * field[j]).average())
+    hessian_average = sp.Matrix(
+        4, 4,
+        lambda i, j: evaluate(sp.diff(energy, variables[i], variables[j]), field, variables).average(),
+    )
+    linear = sp.Matrix([
+        evaluate(sp.diff(energy, z), field, variables).average() for z in variables
+    ])
+    constant = evaluate(energy, field, variables).average()
+    norm4 = evaluate(sum(z * z for z in variables) ** 2, field, variables).average()
+    assert all(f.average() == 0 for f in field)
+    return covariance, hessian_average, linear, constant, norm4
+
+
+def all_leading_minors_positive(matrix):
+    return all(sp.factor(matrix[:n, :n].det()) > 0 for n in range(1, matrix.rows + 1))
+
+
+def main():
+    a, b, c, d = sp.symbols("a b c d", real=True)
+    entries = sp.Matrix([a, b, c, d])
+    u = a * a + c * c
+    v = b * b + d * d
+    q = a * d - b * c
+    norm2 = u + v
+    G = 3 * (norm2 - 2 * q) ** 2 + sp.Rational(35, 24) * u ** 2 + q ** 2 - sp.Rational(5, 2) * q * u
+
+    # Reconstruct the rank-one acoustic Gram with a separate implementation.
+    s, t = sp.symbols("s t", real=True)
+    acoustic = s ** 2 * sp.diff(G, a, 2) + 2 * s * t * sp.diff(G, a, b) + t ** 2 * sp.diff(G, b, 2)
+    m11 = sp.hessian(sp.diff(G, a, 2), entries) / 2
+    m12 = sp.hessian(sp.diff(G, a, b), entries) / 2
+    m22 = sp.hessian(sp.diff(G, b, 2), entries) / 2
+    k = sp.zeros(4)
+    skew_pairs = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]
+    skew_values = [11, sp.Rational(91, 6), 0, 0, 11, sp.Rational(41, 3)]
+    for (i, j), value in zip(skew_pairs, skew_values):
+        k[i, j], k[j, i] = value, -value
+    gram = m11.row_join(m12 + k).col_join((m12 - k).row_join(m22))
+    vector = sp.Matrix([s * z for z in entries]).col_join(sp.Matrix([t * z for z in entries]))
+    assert sp.expand((vector.T * gram * vector)[0] - acoustic) == 0
+    top = gram[:6, :6]
+    cross = gram[:6, 6:]
+    minors = [sp.factor(top[:j, :j].det()) for j in range(1, 7)]
+    expected_minors = [
+        sp.Rational(107, 2), 642, sp.Rational(1605, 8),
+        sp.Rational(8445, 16), sp.Rational(2815, 8), sp.Rational(26865, 4),
+    ]
+    assert minors == expected_minors
+    assert gram[6:, 6:] - cross.T * top.inv() * cross == sp.zeros(2)
+    assert all(x > 0 for x in minors)
+    assert sp.factor(G.subs({a: 1, b: 0, c: 0, d: 1})) == -sp.Rational(1, 24)
+    assert sp.factor(G.subs({a: 1, b: 0, c: 0, d: -1})) == sp.Rational(1271, 24)
+    assert sp.factor((36 ** 4 * G.subs({a: 1, b: 0, c: 0, d: 1})
+                      + 36 ** 2 * G.subs({a: 1, b: 0, c: 0, d: -1})) / (1 + 36 ** 2)) == -sp.Rational(1350, 1297)
+    # On rank one q=0, G=3|A|^4+(35/24)u^2, hence mu_G=3.
+    rank_one_remainder = sp.factor(G - 3 * norm2 ** 2 - sp.Rational(35, 24) * u ** 2)
+    assert sp.expand(rank_one_remainder - q * (-12 * norm2 + 13 * q - sp.Rational(5, 2) * u)) == 0
+
+    # Re-evaluate the full-rank affine-phase field from its Laurent coefficients.
+    x = (a, b, c, d)
+    r1 = Laurent.scalar(1) + sp.Rational(1, 2) * cosine((1, 0))
+    field1 = gradient([r1 * cosine((0, 1)), r1 * sine((0, 1))])
+    c1, h1, b1, e1, n41 = exact_moments(G, field1, x)
+    assert c1 == sp.diag(sp.Rational(1, 16), sp.Rational(9, 16), sp.Rational(1, 16), sp.Rational(9, 16))
+    assert b1 == sp.zeros(4, 1)
+    assert e1 == sp.Rational(8139, 1024)
+    assert n41 == sp.Rational(33, 16)
+    assert all_leading_minors_positive(h1)
+    # For every unit rank-one direction, the covariance quadratic form is at most 9/16.
+    assert sp.trace(c1) == sp.Rational(20, 16)
+
+    # Re-evaluate the internally resonant two-coordinate amplitude and its exact optimum.
+    r2 = (Laurent.scalar(1) + sp.Rational(1, 3) * cosine((1, 0))
+          + sp.Rational(1, 4) * cosine((0, 1)) + sp.Rational(1, 5) * cosine((1, 1)))
+    field2 = gradient([r2 * cosine((0, 1)), r2 * sine((0, 1))])
+    c2, h2, b2, e2, n42 = exact_moments(G, field2, x)
+    optimum2 = sp.factor(e2 - (b2.T * h2.inv() * b2)[0] / 2)
+    assert b2 != sp.zeros(4, 1)
+    assert c2.det() > 0
+    assert all_leading_minors_positive(h2)
+    assert n42 == sp.Rational(27691873, 12960000)
+    assert optimum2 == sp.Rational(3646241010554033, 507189555936000)
+    assert sp.factor(optimum2 - n42 / 4) > 0
+
+    # Verify the determinant-square cross-packet obstruction as a compatible field.
+    r = Laurent.scalar(1) + sp.Rational(1, 2) * cosine((1, 0))
+    ss = Laurent.scalar(1) - sp.Rational(1, 2) * cosine((1, 0))
+    field_a = gradient([r * cosine((0, 1)), r * sine((0, 1))])
+    field_b = gradient([ss * cosine((0, 2)), ss * sine((0, 2))])
+    det_a = (field_a[0] * field_a[3] - field_a[1] * field_a[2]) ** 2
+    det_b = (field_b[0] * field_b[3] - field_b[1] * field_b[2]) ** 2
+    sum_field = [f + g for f, g in zip(field_a, field_b)]
+    det_sum = (sum_field[0] * sum_field[3] - sum_field[1] * sum_field[2]) ** 2
+    values = (det_a.average(), det_b.average(), det_sum.average())
+    assert values == (sp.Rational(17, 128), sp.Rational(17, 32), sp.Rational(75, 256))
+    assert values[2] - values[0] - values[1] == -sp.Rational(95, 256)
+
+    result = {
+        "scope": "independent exact algebra and compatible Fourier examples; not a formal proof",
+        "G_acoustic_gram": {
+            "identity": "exact for symbolic A and both input-direction coordinates (s,t)",
+            "leading_principal_minors_of_PD_block": [str(z) for z in minors],
+            "schur_complement": "zero",
+            "rank_one_minimum": "3",
+            "non_polyconvex_measure_energy": "-1350/1297",
+        },
+        "affine_phase_examples": {
+            "circular_modulation_covariance_diagonal": [str(c1[i, i]) for i in range(4)],
+            "circular_modulation_G_gap": str(e1),
+            "circular_modulation_fourth_norm": str(n41),
+            "resonant_amplitude_G_gap": str(optimum2),
+            "resonant_amplitude_fourth_norm": str(n42),
+            "resonant_amplitude_margin_over_mu12_bound": str(sp.factor(optimum2 - n42 / 4)),
+        },
+        "unrestricted_assembly_obstruction": {
+            "individual_energies": [str(z) for z in values[:2]],
+            "sum_energy": str(values[2]),
+            "interaction": str(values[2] - values[0] - values[1]),
+        },
+    }
+    (ROOT / "independent_results.json").write_text(json.dumps(result, indent=2) + "\n")
+    print("PASS independent G acoustic polynomial identity, Schur-positive Gram, and rank-one minimum")
+    print("PASS exact affine-phase examples: full-rank modulation and nonzero-cubic resonant amplitude")
+    print("PASS exact compatible determinant-square interaction obstruction")
+    print("WROTE independent_results.json")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — search_carrier_envelopes.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/package/global/search_carrier_envelopes.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Compatible carrier-envelope search. All optimization output is exploratory.
+A complex periodic potential is sum_n z_n(x)*exp(i*n*y); z_n is continuous P1.
+Three-point Gauss integration is exact in each x cell for quartic energies;
+uniform y quadrature has more than four times the maximum carrier frequency.
+&quot;&quot;&quot;
+import json, math, time, argparse
+from pathlib import Path
+import numpy as np
+import sympy as sp
+import torch
+
+torch.set_num_threads(1); torch.set_default_dtype(torch.float64)
+root=Path(__file__).resolve().parent
+# Construct Hessian&#x27;s exact quadratic coefficient tensor.
+a,b,c,d=sp.symbols(&#x27;a b c d&#x27;); xx=(a,b,c,d)
+u=a*a+c*c; v=b*b+d*d; q=a*d-b*c
+f=3*(u+v-2*q)**2+sp.Rational(35,24)*u*u+q*q-sp.Rational(5,2)*q*u
+hc=np.empty((4,4,4,4))
+for i in range(4):
+ for j in range(4):
+  for k in range(4):
+   for l in range(4): hc[i,j,k,l]=float(sp.diff(f,xx[i],xx[j],xx[k],xx[l])/2)
+HC=torch.tensor(hc)
+
+def moments(X,weights):
+ a,b,c,d=X.unbind(-1); u=a*a+c*c; v=b*b+d*d; q=a*d-b*c
+ h=u+v-2*q
+ f=3*h*h+(35/24)*u*u+q*q-2.5*q*u
+ U=6*h+(35/12)*u-2.5*q; V=6*h; Q=-12*h+2*q-2.5*u
+ df=torch.stack((2*a*U+d*Q,2*b*V-c*Q,2*c*U-b*Q,2*d*V+a*Q),dim=-1)
+ C=torch.einsum(&#x27;p,pi,pj-&gt;ij&#x27;,weights,X,X)
+ H=torch.einsum(&#x27;ijkl,kl-&gt;ij&#x27;,HC,C)
+ bb=torch.einsum(&#x27;p,pi-&gt;i&#x27;,weights,df)
+ cc=(weights*f).sum(); n4=(weights*(u+v)**2).sum()
+ return C,H,bb,cc,n4
+
+def run(carriers,N,graded,seed,steps):
+ rng=np.random.default_rng(seed)
+ # Fixed nonuniform widths: ample x-resolution without introducing discontinuities.
+ ii=np.arange(N)
+ widths=np.exp(graded*np.cos(2*np.pi*(ii+.5)/N)); widths*=2*np.pi/widths.sum()
+ dx=torch.tensor(widths)
+ ns=torch.tensor(carriers,dtype=torch.float64)
+ ny=4*max(abs(x) for x in carriers)+1
+ theta=torch.arange(ny)*(2*math.pi/ny)
+ trig=torch.stack((torch.cos(ns[:,None]*theta),torch.sin(ns[:,None]*theta)),dim=-1)
+ gl,gw=np.polynomial.legendre.leggauss(3); gl=torch.tensor((gl+1)/2); gw=torch.tensor(gw/2)
+ weights=(dx[:,None,None]/(2*math.pi)*gw[None,:,None]*torch.ones(1,1,ny)/ny).reshape(-1)
+ # Complex envelope nodal values (real, imaginary).
+ init=rng.normal(size=(N,len(carriers),2))*.15
+ coords=np.r_[0,np.cumsum(widths)[:-1]]
+ for j,n in enumerate(carriers):
+  init[:,j,0]+=.3*np.cos((j+1)*coords+seed*.4)
+  init[:,j,1]+=.3*np.sin((j+2)*coords+seed*.7)
+ nodes=torch.nn.Parameter(torch.tensor(init))
+ # Constant input transformation exp(trace-free symmetric)*rotation.
+ pars=torch.nn.Parameter(torch.zeros(3))
+ opt=torch.optim.Adam([nodes,pars],lr=.025)
+ def build():
+  nxt=torch.roll(nodes,-1,0); slopes=(nxt-nodes)/dx[:,None,None]
+  z=nodes[:,None,:,:]*(1-gl[None,:,None,None])+nxt[:,None,:,:]*gl[None,:,None,None]
+  # z*e^{iny}; x derivative and y derivative i*n*z*e^{iny}.
+  zx=slopes[:,None,:,:].expand(-1,3,-1,-1)
+  xr=torch.einsum(&#x27;igj,jy-&gt;igy&#x27;,zx[...,0],trig[...,0])-torch.einsum(&#x27;igj,jy-&gt;igy&#x27;,zx[...,1],trig[...,1])
+  xi=torch.einsum(&#x27;igj,jy-&gt;igy&#x27;,zx[...,0],trig[...,1])+torch.einsum(&#x27;igj,jy-&gt;igy&#x27;,zx[...,1],trig[...,0])
+  zr=torch.einsum(&#x27;igj,jy-&gt;igy&#x27;,z[...,0]*ns,trig[...,0])-torch.einsum(&#x27;igj,jy-&gt;igy&#x27;,z[...,1]*ns,trig[...,1])
+  zi=torch.einsum(&#x27;igj,jy-&gt;igy&#x27;,z[...,0]*ns,trig[...,1])+torch.einsum(&#x27;igj,jy-&gt;igy&#x27;,z[...,1]*ns,trig[...,0])
+  X=torch.stack((xr,-zi,xi,zr),dim=-1).reshape(-1,2,2)
+  p0=1.5*torch.tanh(pars[0]); p1=1.5*torch.tanh(pars[1]); ang=pars[2]
+  mat=torch.stack((p0,p1,p1,-p0)).reshape(2,2)
+  rot=torch.stack((torch.cos(ang),-torch.sin(ang),torch.sin(ang),torch.cos(ang))).reshape(2,2)
+  S=torch.matrix_exp(mat)@rot
+  X=(X@S).reshape(-1,4)
+  nn=((X.square().sum(-1)**2)*weights).sum()
+  return X/(nn+1e-30)**.25,S
+ best=None
+ for it in range(steps):
+  opt.zero_grad(); X,S=build(); C,H,bb,cc,n4=moments(X,weights)
+  reg=1e-9*torch.trace(H)/4+1e-12
+  B=-torch.linalg.solve(H+reg*torch.eye(4),bb)
+  gap=cc+bb@B+.5*B@H@B
+  # Each profile is actual; no covariance penalty is included.
+  gap.backward(); torch.nn.utils.clip_grad_norm_([nodes,pars],20);opt.step()
+  if it%50==0 or it==steps-1:
+   with torch.no_grad():
+    X,S=build();C,H,bb,cc,n4=moments(X,weights)
+    eig=torch.linalg.eigvalsh(H)
+    if eig[0]&gt;1e-13:
+     B=-torch.linalg.solve(H,bb)
+     exactfloat=cc+bb@B+.5*B@H@B
+     if best is None or exactfloat.item()&lt;best[&#x27;gap&#x27;]:
+      mean=(weights[:,None]*X).sum(0)
+      det=(X[:,0]*X[:,3]-X[:,1]*X[:,2])@weights
+      best={&#x27;gap&#x27;:exactfloat.item(),&#x27;H_eigenvalues&#x27;:eig.tolist(),&#x27;C_eigenvalues&#x27;:torch.linalg.eigvalsh(C).tolist(),
+       &#x27;B&#x27;:B.tolist(),&#x27;nodes&#x27;:nodes.detach().tolist(),&#x27;transform&#x27;:S.tolist(),&#x27;mean&#x27;:mean.tolist(),&#x27;det_mean&#x27;:det.item(),
+       &#x27;n4&#x27;:n4.item(),&#x27;iteration&#x27;:it+1,&#x27;widths&#x27;:widths.tolist(),&#x27;carriers&#x27;:carriers,&#x27;N&#x27;:N,&#x27;graded&#x27;:graded,&#x27;seed&#x27;:seed}
+ return best
+
+if __name__==&#x27;__main__&#x27;:
+ ap=argparse.ArgumentParser();ap.add_argument(&#x27;--steps&#x27;,type=int,default=300);ap.add_argument(&#x27;--runs&#x27;,type=int,default=6);args=ap.parse_args()
+ configs=[([1,2],32,0,31),([-1,1],32,0,47),([1,2],48,3,61),([-2,-1,1,2],40,0,73),([1,2,3],48,2,89),([-3,-1,1,2],48,4,103)]
+ results=[];t0=time.time()
+ for c in configs[:args.runs]:
+  ans=run(*c,args.steps);results.append(ans)
+  print(&#x27;RESULT&#x27;,c,ans[&#x27;gap&#x27;] if ans else None,&#x27;seconds&#x27;,round(time.time()-t0,1),flush=True)
+  (root/&#x27;carrier_search.json&#x27;).write_text(json.dumps({&#x27;scope&#x27;:&#x27;Floating compatible P1-carrier search; not a certificate or lower bound.&#x27;,&#x27;steps&#x27;:args.steps,&#x27;results&#x27;:results},indent=2))
+</pre></body></html>

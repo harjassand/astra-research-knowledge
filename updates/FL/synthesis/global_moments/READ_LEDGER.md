@@ -1,0 +1,47 @@
+# Read ledger
+
+Research was isolated to `work/FL-global-moments`; no capital or source files
+were edited. The capital checkout was read-only at pinned HEAD
+`3c9c5564fc7f51cdbaa0a5a5b5b54ee9382dcd8d`; `git status --short` was empty
+before analysis. That HEAD matches `FL_PIN.json`'s `checkout` and
+`cumulative_pr83_head`.
+
+| Source | Read depth | SHA-256 |
+|---|---|---|
+| `work/FL_WORKER_CONTRACT.txt` | All 17 lines; own-directory, source-preservation, isolation, proof/artifact, and status rules. | `acbe78c446d847d6936a1ab7fff32419e30399e206d32bf9d64af54bf039409a` |
+| `work/FL_PIN.json` | All 18 lines; pinned main/cumulative head, published Ultra ref, manifests, streams. | `7ceea5724f1be63666f121f0ebd8adddf0ceb06b37766feff37d94175303c27d` |
+| `work/astra-capital/00_START_HERE.txt` | All 8 lines; route retrieval and scope/proof rules. | `4a91985ece91557af12ba5c216e7fe17cf5dd000596e9a0c73b0b6705498f360` |
+| `work/astra-capital/AGENTS.md` | All 7 lines; capital preservation and proof-scope rules. | `581cdda103fed0c87acdb0ee527bd5ba174f55b1baa0cbfe60b177d52027ee7d` |
+| `work/FL-sources/INTAKE_MANIFEST.json` | All entries; original provenance and hashes for initial source intake. | `e66de8b042a3e445ec7aa35aaed63bf32440344c527ba897494034099707b9ab` |
+| `work/FL-sources/SUPPLEMENTAL_INTAKE_MANIFEST.json` | All entries; supplemental intake and filename correction. | `765399e29c370fae24f3080d87ada50874536e690e76d6202a05055c7f95c913` |
+| `work/FL-sources/global/GLOBAL_COMPATIBILITY.md` | All 444 lines; theorem, flux proof, uniform quartic bound, companion envelope, optimized packet assembly, exact interaction and variable-phase obstruction, search limits. | `bddd6149e1523a8e73fdd26a3d8820dadc3ebad023eb319878ff77ca64f32eee` |
+| `work/FL-sources/global_PASTED_SOURCE.txt` | All 515 lines; original mission/data text, theorem presentation, limits, numerical context. | `f2ff5f839c69a0d981f1988cc474704a87d815be1bfaecb9561b3fd705e9a671` |
+| `work/FL-sources/global/README.md` | All 11 lines; artifact roles and validation limits. | `0d0a832f930c55bc35210b653b437ab3c641f7ed4d0a0605e04f13946c7f5b8a` |
+| `work/FL-sources/global/MANIFEST.json` | All 59 lines; frozen packet file lengths and hashes. | `89fb357bf39ed398dcdf88a3c87384867dbc99ba184c27b867fa20066cd18cad` |
+| `work/FL-sources/global/environment.json` | All 5 lines; producer Python/SymPy/NumPy/Torch versions. | `f27f6eb7fed8a473f06e9bf76137a749c92c262bef7567259c58a55948f620cd` |
+| `work/FL-sources/global/global_verification.json` | All 177 lines; exact-check scope and all nine finite result groups/details. | `04991a22e98bc05534cf7c495aa3c9fdf84fdd32fa87e10daf63a0c7183b614f` |
+| `work/FL-sources/global/verification.log` | All 10 lines; nine exact groups passed. | `1d4c0548bf5c2ebc4921ff5cdb9c395585b31bb5808d344c434a269b48e1a052` |
+| `work/FL-sources/global/prior_replay.log` | All 13 lines; 12 predecessor checks and their stated finite scope. | `13cf98ff75348a86aa782cfa815c43473401d3610c0f0a894a466284b8d59da9` |
+| `work/FL-sources/global/carrier_search_2000_steps.log` | All 6 lines; five in-batch results and separate sixth completion. | `d365d93c04bf5fc50473d959d7d1e2043715d77598e620a731298d2d9184e37e` |
+| `work/FL-sources/global/verify_global_compatibility.py` | All 249 lines; independently inspected exact Fourier, gluing, and variable-phase checks; not rerun. | `00eb94a94ae587a4ab09640bbfa94dba189657dc9c3b0bad4e0317692ac0d5fb` |
+| `work/FL-sources/global/search_carrier_envelopes.py` | All 107 lines; inspected compatible P1 representation, affine optimization, integration and search loop; not rerun. | `9b662d7b5a11a3f78612856fb93262cecab1995b215f7706d4fd01a745ceddfb` |
+| `work/FL-sources/global/carrier_search.json` | Parsed full 84,068-byte JSON; inspected all six scalar configurations, steps, gaps, Hessian spectra and diagnostic keys. Saved node/mesh arrays were retained but not individually interpreted. | `57c7dcb13b2e9491457a45a89db5ca0f4b7ff9f646c8440919bea01ffc8cde22` |
+| `work/FL-sources/global/carrier_search_200_steps.json` | Parsed full 84,026-byte JSON; inspected all six scalar configurations, steps, gaps, Hessian spectra and diagnostic keys. Saved node/mesh arrays were retained but not individually interpreted. | `9b7d33064946e7a7ddbb85aeab89fa44cef02363455560b7c7f49bdc3ce7cced` |
+| `work/astra-capital/frontier/dossiers/N794.txt` | All 108 lines; current scope, N797/N800 notices, open completion gate, nine-coefficient moment interface, heat certificate, proof routes. | `b033dab30dd10dba9142ebd0a37ca9526ed475996615de57d038f62968222965` |
+| `work/astra-capital/frontier/review_cards/N794-left-invariant-quartic-classification-and-closed-heat-certificate.txt` | All 19 lines; exact nine-coefficient and N794 status summary. | `c215f2d34c0f6e8119757a3849fa86ece6b5c7bf94a4ffd58657363806b5a576` |
+| `work/astra-capital/updates/FE/package/quartic/ASTRA_META_GENESIS_Morrey_quartics.md` | Lines 145–390; orientation-sensitive class, exact acoustic Gram, and nine-moment PSD dual equivalence/gate. | `7c88a08aa6aef88786751fde9671b7568e97676c516824028c3aac9d9859725b` |
+| `work/astra-capital/updates/FE/SCOPED_NOTICES.json` | Lines 1–29 and 54–end; N794/Fstar clarification and cited source scope. | `9f6381c84e72a6db67f26affa61d31b9361701dfd1177c2ac8e2f31eb52a3fb3` |
+| `work/astra-capital/updates/FE/synthesis/quartic/QUARTIC_AUDIT_AND_PROOF.md` | Lines 1–199; reconstruction and scoped heat-certificate proof/status; no external validation inference. | `a33fc432c01680fdcbc4676801aed5b496b2b8db289100aa30177b3380ff9ae7` |
+| `work/astra-capital/frontier/dossiers/N806.txt` | All 130 lines; full nine-coefficient contact scope, open all-background gate, N809 semantic notice, proof route. | `fa2930c600e1f291279e30fc43001f52d7bc08611ffe38a568feca4d8b59272f` |
+| `work/astra-capital/frontier/review_cards/N806-contact-cubic-compensation-and-moving-schur-obstruction.txt` | All 17 lines; exact fixed-contact compensation and moving-Schur limits. | `e126db674654117fb007b268a443bab09a04cc874bb8b59964fa90a6651122e` |
+| `work/astra-capital/updates/FJ/SCOPED_NOTICES.json` | Lines 1–29 and related N806 notice; fixed-contact compensation scope and retained open moving-background gate. | `78b9508a299bb165ba27dbcf913779cc04980b7af109e2015fe46b69c7dd96a6` |
+| `work/astra-capital/frontier/dossiers/N809.txt` | All 145 lines; full35, simple rank-three transverse, all-background local scope; tangent/global gates. | `d712726215c275e0d2df7c0807cf7d8b6b11d42728d99c0d992211132aee91a8` |
+| `work/astra-capital/frontier/review_cards/N809-moving-transverse-quartic-stability-and-normal-regression.txt` | All 17 lines; exact N809 theorem conditions and global left-SO(2) completion gate. | `261b2194be6c7cdad4045cfaebb05ca1a45e4a67256d3e5b4e12b3a03202f34c` |
+| `work/astra-capital/updates/FK/SCOPED_NOTICES.json` | Lines 1–27 and N809-referenced material; full35 transverse extension, rank-two/global limits. | `95a5cd8b9030be412ee28d42e0c31629227b2e1d9ef3744aeda9ce10eb3eeb6d` |
+
+The capital dossiers/cards and notices state that producer claims and internal
+proofs remain unreviewed externally; no correctness, novelty, or physical
+capability promotion was inferred. No external paper was used as a theorem
+premise. No oracle, optimizer, environment installation, or paid acquisition
+was used for this task; exact symbolic checks used the existing
+`work/FE-hidden-gate/venv/bin/python` environment.

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — check_activation.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/synthesis/activation_audit/code/check_activation.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent bounded arithmetic checks for the FL activation ledger.
+
+Standard library only. This checks algebraic instances and unit conversions; it
+does not simulate chemistry, certify the proof, or validate a physical system.
+Run from any directory: python3 check_activation.py [optional-output-json].
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+import sys
+from decimal import Decimal, getcontext
+from fractions import Fraction
+from pathlib import Path
+
+
+getcontext().prec = 60
+
+
+def D(value: str | int) -&gt; Decimal:
+    return Decimal(str(value))
+
+
+def hold_probabilities(lam_r: Decimal, lam_l: Decimal, hold_s: Decimal) -&gt; tuple[Decimal, Decimal, Decimal]:
+    K = lam_r + lam_l
+    survival = (-K * hold_s).exp()
+    a = lam_r / K
+    product = a * (1 - survival)
+    loss = (1 - a) * (1 - survival)
+    return product, loss, survival
+
+
+def work_per_product(
+    E: Decimal,
+    eta: Decimal,
+    lam_r: Decimal,
+    lam_l: Decimal,
+    hold_s: Decimal,
+    recovery: Decimal,
+    overhead: Decimal,
+) -&gt; Decimal:
+    p, _, survival = hold_probabilities(lam_r, lam_l, hold_s)
+    return (E / eta - recovery * E * survival + overhead) / p
+
+
+def unload_return(z: Decimal) -&gt; Decimal:
+    if z == 0:
+        return Decimal(1)
+    return 2 * (z - 1 + (-z).exp()) / (z * z)
+
+
+def bisect_z_for_recovery(target: Decimal) -&gt; Decimal:
+    lo, hi = Decimal(0), Decimal(1)
+    for _ in range(220):
+        mid = (lo + hi) / 2
+        if unload_return(mid) &gt;= target:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def renewal_cost(q: Fraction, productive_cost: Fraction, failure_cost: Fraction) -&gt; Fraction:
+    return productive_cost + ((1 - q) / q) * failure_cost
+
+
+def main() -&gt; None:
+    # Constant-hazard finite-time checks. Decimal precision avoids cancellation
+    # at the selected moderate parameters; the theorem itself is continuous.
+    E, eta = D(100), D(&quot;0.8&quot;)
+    lam_r, lam_l, hold_s = D(3), D(7), D(&quot;0.4&quot;)
+    recovery, overhead = D(&quot;0.9&quot;), D(2)
+    p, qloss, survival = hold_probabilities(lam_r, lam_l, hold_s)
+    w = work_per_product(E, eta, lam_r, lam_l, hold_s, recovery, overhead)
+    lower = E / (eta * (lam_r / (lam_r + lam_l)))
+    assert abs((p + qloss + survival) - 1) &lt; D(&quot;1e-55&quot;)
+    assert w + D(&quot;1e-50&quot;) &gt;= lower
+    assert abs((p / (1 - survival)) - (lam_r / (lam_r + lam_l))) &lt; D(&quot;1e-55&quot;)
+
+    # Exact renewal countermodels: same q, different recoverable work by branch.
+    q = Fraction(1, 10)
+    full_loss = renewal_cost(q, Fraction(1), Fraction(1))
+    partial_failure_loss = renewal_cost(q, Fraction(1), Fraction(1, 10))
+    partial_failure_and_product_recovery = renewal_cost(q, Fraction(1, 10), Fraction(1, 10))
+    assert full_loss == 10
+    assert partial_failure_loss == Fraction(19, 10)
+    assert partial_failure_and_product_recovery == 1
+    rare_p = Fraction(1, 1_000_000)
+    recovery_99 = Fraction(99, 100)
+    rare_product_cost_ratio = recovery_99 + (1 - recovery_99) / rare_p
+    assert rare_product_cost_ratio == Fraction(1_000_099, 100)
+
+    # If both binary-collision hazards scale by one density factor, their
+    # branching fraction is invariant (throughput may still change).
+    density_selectivities = [Fraction(n * 2, n * 2 + n * 3) for n in (1, 10, 100)]
+    assert density_selectivities == [Fraction(2, 5)] * 3
+
+    # Exact type-mixture counterexample to pooling cause-specific rates.
+    # Type A: weight 1/10, q=1. Type B: weight 9/10, q=1/10.
+    q_actual = Fraction(1, 10) * Fraction(1) + Fraction(9, 10) * Fraction(1, 10)
+    lam_r_mean = Fraction(1, 10) * 100 + Fraction(9, 10) * 1
+    lam_l_mean = Fraction(1, 10) * 0 + Fraction(9, 10) * 9
+    q_from_pooled_rates = lam_r_mean / (lam_r_mean + lam_l_mean)
+    w_actual_mixture = 1 / q_actual
+    w_pooled = 1 / q_from_pooled_rates
+    assert q_actual == Fraction(19, 100)
+    assert lam_r_mean == Fraction(109, 10)
+    assert lam_l_mean == Fraction(81, 10)
+    assert q_from_pooled_rates == Fraction(109, 190)
+    assert w_actual_mixture == Fraction(100, 19)
+    assert w_pooled == Fraction(190, 109)
+    assert w_actual_mixture &gt; w_pooled
+
+    # Exact action-specific hazard outcomes. Selecting either action is legal;
+    # an average across actions is not a guarantee for the selected policy.
+    q_action_a = Fraction(1, 10)
+    q_action_b = Fraction(9, 10)
+    assert 1 / q_action_a == 10
+    assert 1 / q_action_b == Fraction(10, 9)
+
+    # Exact action-set check for a uniform hazard-ratio floor kappa=1/2.
+    kappa = Fraction(1, 2)
+    action_rates = [(Fraction(2), Fraction(1)), (Fraction(4), Fraction(3)), (Fraction(10), Fraction(5))]
+    q_action_set = [r / (r + ell) for r, ell in action_rates]
+    q_cap = 1 / (1 + kappa)
+    assert max(q_action_set) &lt;= q_cap
+
+    # Torque-limited unloading: numerical values and the 99% threshold.
+    zs = [D(&quot;0.1&quot;), D(1), D(3), D(10)]
+    unload_values = {str(z): unload_return(z) for z in zs}
+    z99 = bisect_z_for_recovery(D(&quot;0.99&quot;))
+    assert abs(unload_return(z99) - D(&quot;0.99&quot;)) &lt; D(&quot;1e-55&quot;)
+    assert all(unload_return(zs[i]) &gt; unload_return(zs[i + 1]) for i in range(len(zs) - 1))
+
+    # eV/molecule -&gt; kWh/kg CO with nominal M(CO)=28.010 g/mol.
+    ev_j = D(&quot;1.602176634e-19&quot;)
+    avogadro = D(&quot;6.02214076e23&quot;)
+    co_kg_per_mol = D(&quot;0.028010&quot;)
+    joules_per_kwh = D(&quot;3600000&quot;)
+    kwh_per_kg_per_ev = ev_j * avogadro / joules_per_kwh / co_kg_per_mol
+    activation_kwh_per_kg = D(&quot;6.14&quot;) * kwh_per_kg_per_ev
+    ispt_ratio_32 = activation_kwh_per_kg / D(&quot;3.2&quot;)
+    ispt_ratio_33 = activation_kwh_per_kg / D(&quot;3.3&quot;)
+
+    # Full-plant range sensitivity for two explicitly stated Nm3 conventions.
+    vendor_implied_kg_per_nm3 = D(&quot;35.5&quot;) / D(&quot;30000&quot;) * D(1000)
+    vendor_fullplant_range = [D(6) / vendor_implied_kg_per_nm3, D(8) / vendor_implied_kg_per_nm3]
+    molar_volume_0c_m3_per_mol = D(&quot;22.41396954e-3&quot;)
+    kg_per_nm3_0c = co_kg_per_mol / molar_volume_0c_m3_per_mol
+    ideal_gas_fullplant_range_0c = [D(6) / kg_per_nm3_0c, D(8) / kg_per_nm3_0c]
+    stack_kwh_per_kg_vendor_mass = D(&quot;3.44&quot;) / vendor_implied_kg_per_nm3
+
+    result = {
+        &quot;scope&quot;: &quot;Independent arithmetic checks only; no chemistry, physical performance, or proof certification.&quot;,
+        &quot;constant_hazard_example&quot;: {
+            &quot;lambda_r_per_s&quot;: str(lam_r),
+            &quot;lambda_loss_per_s&quot;: str(lam_l),
+            &quot;hold_s&quot;: str(hold_s),
+            &quot;product_probability&quot;: str(p),
+            &quot;loss_probability&quot;: str(qloss),
+            &quot;survival_probability&quot;: str(survival),
+            &quot;eta_energy&quot;: str(eta),
+            &quot;recovery_fraction&quot;: str(recovery),
+            &quot;overhead_per_attempt&quot;: str(overhead),
+            &quot;work_per_product&quot;: str(w),
+            &quot;derived_lower_bound&quot;: str(lower),
+        },
+        &quot;renewal_countermodels_per_E&quot;: {
+            &quot;q&quot;: &quot;1/10&quot;,
+            &quot;full_failure_loss_no_product_recovery&quot;: str(full_loss),
+            &quot;failure_recovers_90_percent_product_recovers_none&quot;: str(partial_failure_loss),
+            &quot;both_branches_recover_90_percent&quot;: str(partial_failure_and_product_recovery),
+        },
+        &quot;rare_product_recovery_tradeoff&quot;: {
+            &quot;product_probability&quot;: str(rare_p),
+            &quot;survivor_recovery_fraction&quot;: str(recovery_99),
+            &quot;work_per_product_over_E&quot;: str(rare_product_cost_ratio),
+        },
+        &quot;shared_binary_collision_density_factor&quot;: {
+            &quot;density_multipliers&quot;: [1, 10, 100],
+            &quot;branching_fractions&quot;: [str(x) for x in density_selectivities],
+        },
+        &quot;heterogeneous_rate_mixture_countermodel&quot;: {
+            &quot;actual_product_probability&quot;: str(q_actual),
+            &quot;unweighted_mean_lambda_r&quot;: str(lam_r_mean),
+            &quot;unweighted_mean_lambda_loss&quot;: str(lam_l_mean),
+            &quot;fictitious_pooled_rate_product_probability&quot;: str(q_from_pooled_rates),
+            &quot;actual_work_per_product&quot;: str(w_actual_mixture),
+            &quot;pooled_rate_work_per_product&quot;: str(w_pooled),
+        },
+        &quot;adaptive_action_set&quot;: {
+            &quot;uniform_loss_to_reaction_hazard_floor_kappa&quot;: str(kappa),
+            &quot;implied_product_probability_cap&quot;: str(q_cap),
+            &quot;action_product_probabilities&quot;: [str(qx) for qx in q_action_set],
+            &quot;separate_action_countermodel&quot;: {
+                &quot;A_q&quot;: str(q_action_a),
+                &quot;A_work_per_E&quot;: str(1 / q_action_a),
+                &quot;B_q&quot;: str(q_action_b),
+                &quot;B_work_per_E&quot;: str(1 / q_action_b),
+            },
+        },
+        &quot;unloading&quot;: {
+            &quot;r_by_lambda_t_d&quot;: {key: str(value) for key, value in unload_values.items()},
+            &quot;z_for_99_percent_return&quot;: str(z99),
+        },
+        &quot;industrial_energy_units&quot;: {
+            &quot;nominal_molar_mass_CO_kg_per_mol&quot;: str(co_kg_per_mol),
+            &quot;kWh_per_kg_per_eV_per_molecule&quot;: str(kwh_per_kg_per_ev),
+            &quot;6.14_eV_per_CO_kWh_per_kg&quot;: str(activation_kwh_per_kg),
+            &quot;ratio_to_ISPT_3.2_kWh_per_kg&quot;: str(ispt_ratio_32),
+            &quot;ratio_to_ISPT_3.3_kWh_per_kg&quot;: str(ispt_ratio_33),
+            &quot;vendor_implied_kg_per_Nm3_from_35.5t_per_30000Nm3&quot;: str(vendor_implied_kg_per_nm3),
+            &quot;Topsoe_stack_3.44_kWh_per_Nm3_as_kWh_per_kg_using_vendor_mass&quot;: str(stack_kwh_per_kg_vendor_mass),
+            &quot;Topsoe_plant_6_to_8_kWh_per_Nm3_as_kWh_per_kg_using_vendor_mass&quot;: [str(x) for x in vendor_fullplant_range],
+            &quot;CO_kg_per_Nm3_at_0C_1atm_ideal_gas&quot;: str(kg_per_nm3_0c),
+            &quot;Topsoe_plant_6_to_8_kWh_per_Nm3_as_kWh_per_kg_at_0C_1atm&quot;: [str(x) for x in ideal_gas_fullplant_range_0c],
+        },
+        &quot;assertions&quot;: &quot;PASS: finite formulas, renewal examples, rare-yield recovery tradeoff, shared-density-factor identity, pooled-rate counterexample, hazard-ratio action cap, unload values/threshold, and unit conversion arithmetic.&quot;,
+    }
+
+    output = json.dumps(result, indent=2) + &quot;\n&quot;
+    if len(sys.argv) &gt; 1:
+        Path(sys.argv[1]).write_text(output, encoding=&quot;utf-8&quot;)
+    else:
+        sys.stdout.write(output)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

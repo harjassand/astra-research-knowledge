@@ -1,0 +1,60 @@
+# Primary-source access and read ledger
+
+All dates below are 2026-10-14. Hashes are SHA-256 of exact local bytes. Source excerpts are used only within their stated scope. The full source PDFs and HTML captures under `primary/` are local research references; exclude those third-party bytes from any publication selection.
+
+## Ambiru et al. (2026): final article page and supporting information
+
+- Final article: Ambiru et al., “Potential-dependent removal of Cu, Sn, Ni, and Cr from molten Fe in contact with FeS-containing slag,” *Scientific Reports*, published 2026-09-26, DOI [10.1038/s41598-026-73440-8](https://doi.org/10.1038/s41598-026-73440-8), official URL `https://www.nature.com/articles/s41598-026-73440-8`.
+- Access: the saved publisher HTML (`primary/ambiru2026-nature-html-save-1.html`) contains the article metadata and full abstract only; it does not contain the methods/results body. The direct web `open` request redirected to Nature's cookie/IDP page and returned HTTP 500. The abstract is read in full and supports only the article-level claims quoted in `REPORT.md` (element-dependent screening; apparent 95.0% Sn decrease; negligible Ni; limited Cu; +1 V did not improve single-element screens; no mass-balanced process claim).
+- Final-version Supplementary Information: publisher-linked PDF, direct static URL `https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41598-026-73440-8/MediaObjects/41598_2026_73440_MOESM1_ESM.pdf`. Directly retrieved; all four pages read, including S1 current traces, S1 formal formation energies, S2–S3 activity-coefficient assumptions, and S4 regional ICP-AES table/caption. The S4 values were manually transcribed into `data/ambiru2026-s4-regions.csv` and arithmetically checked by `analyze.py`. The SI says main Table 1 uses the arithmetic mean of three regions; the corrected transcription contains three regional values for every reported assay/run.
+- Exact local files:
+
+| File | Bytes | SHA-256 | Read depth/use |
+|---|---:|---|---|
+| `primary/ambiru2026-nature-html-save-1.html` | 229158 | `4830747cfc4a8c9e14fcffbb952036ffe01a60669015a4ed5b552c7f1629f497` | Publisher page metadata and complete abstract; body absent. |
+| `primary/ambiru2026-nature-page-extract.txt` | 28353 | `132ec57df3f3537eb08bc0a773789d99d55780f36fa5b53fe034a48d1bccd323` | Saved extracted page text; same abstract-level scope. |
+| `primary/ambiru2026-supplement.pdf` | 348889 | `65707848931ee1f27ee6382d72c76b57585e54db11189fdd725e64246769493e` | Complete 4-page final SI, inspected with `pypdf` 6.19.0. |
+
+The attempted full-text/static route did not yield an article PDF; the HTML/error captures are retained below as access records, not as scientific evidence.
+
+## Ambiru et al. (2026): author preprint and experimental methods
+
+- Author preprint v1: “Polarization Effects on Interfacial Migration Between Molten Fe–Tramp Elements (Cu, Sn, Ni, Cr) and Molten Oxide Containing FeS,” DOI [10.21203/rs.3.rs-9676758/v1](https://doi.org/10.21203/rs.3.rs-9676758/v1), direct PDF URL `https://assets-eu.researchsquare.com/files/rs-9676758/v1/5588b648-594e-458f-a2ba-8d73cd3fa4b2.pdf?c=1780476675`.
+- Access: direct PDF requests returned HTTP 403; the PDF is not retained locally. ResearchSquare's indexed PDF text was queried for the Table 1 rows and experimental-method sections. The index exposed the full conditions used in `REPORT.md` (30 g alloy, approximately 60 g slag, 1873 K, 7200 s pre-hold, 3600 s operation, 2 L/min gas, electrode configuration, ICP-AES sampling) and the Table 1 values transcribed into `data/ambiru2026-preprint-table1.csv`. This is an indexed-text transcription, not a claim that the complete preprint PDF was read. The preprint is used only for those tabulated rows and methods; published SI data are kept separate.
+- The final article page confirms the 95.0% abstract claim, but because its full-text body was not available, the discrepancy analysis in `REPORT.md` is explicitly a comparison of the accessible preprint Table 1 against the final SI—not a finding that the unavailable final main Table 1 itself differs.
+- Primary historical screening reference: [ESTAD 2025 contribution 5148](https://submit.m-n.marketing/event/65/contributions/5148/) was read as an author abstract. It reports a related 1873 K, 3600 s Fe/FeS-slag screen and preliminary Sn/Cr versus Cu/Ni response; its values are not pooled with the 2026 preprint or final SI.
+
+## Prior electrorefining comparator: Paeng, Judge, and Azimi (2024)
+
+- Paeng, Judge, and Azimi, “Electrorefining for copper tramp element removal from molten iron for green steelmaking,” *Resources, Conservation and Recycling* 206 (2024) 107654, DOI [10.1016/j.resconrec.2024.107654](https://doi.org/10.1016/j.resconrec.2024.107654), publisher URL `https://www.sciencedirect.com/science/article/pii/S0921344924002489`.
+- Access/read depth: publisher search-index output exposed the complete abstract and relevant introduction passage. A direct page request returned HTTP 403; no article PDF was retained. Used only as prior art showing an established oxysulfide electrorefining route for Cu and C, including reported Cu reduction from 0.43 wt% to 790 ppmw. It is not used as evidence for Sn extraction or for the 2026 experiment's performance.
+
+## Process-level comparator: Paeng and Azimi (2025)
+
+- Paeng and Azimi, “Technoeconomic Analysis of the Electrorefining Process for Copper and Carbon Removal from Scrap Steel for Green Steelmaking,” *Industrial & Engineering Chemistry Research* 64(1) (2025), 613–626, DOI [10.1021/acs.iecr.4c02665](https://doi.org/10.1021/acs.iecr.4c02665). Publisher search-index output exposed the complete abstract and Supporting Information description; it reports modeled HRC quality, levelized costs, NPV/IRR, and sensitivity to electrolyte and scrap cost.
+- Supporting Information DOI `10.1021/acs.iecr.4c02665.s001`; ACS Figshare record [28070765](https://acs.figshare.com/articles/journal_contribution/Technoeconomic_Analysis_of_the_Electrorefining_Process_for_Copper_and_Carbon_Removal_from_Scrap_Steel_for_Green_Steelmaking/28070765), public API `https://api.figshare.com/v2/articles/28070765`, file download `https://ndownloader.figshare.com/files/51325754`.
+- Direct ACS SI route returned a Cloudflare challenge; the public Figshare API and PDF download succeeded. The API metadata was read, and all 11 pages of the SI PDF were read with `pypdf` 6.19.0. Tables S1–S4 were used for the four one-tonne-basis mass/energy/OPEX cases, reported 2024 material prices, and plant component CAPEX. The case labels are preserved as published; this ledger does not reconstruct scenario names from inaccessible main-text detail. The abstract and SI describe an industrial-scale model extrapolated from lab results, not measured plant performance and not a Sn/FeS route.
+
+| File | Bytes | SHA-256 | Read depth/use |
+|---|---:|---|---|
+| `primary/paeng2025-tea-si-metadata.json` | 6550 | `93f1ea45fb396233f007fc0c6b25fe969fcceaaa08ba435bee834175344f8fe4` | Complete public Figshare API record; validates title, DOI relation, filename and download metadata. |
+| `primary/paeng2025-tea-si.pdf` | 370802 | `f38c3e91631889b40c1f209dee8963c1c012fbfe7aac9a2eae4f6935693e0424` | Complete 11-page Supporting Information, especially Tables S1–S4. |
+
+## Captured access responses
+
+These files are preserved only to document access attempts. They are not technical sources.
+
+| File | Bytes | SHA-256 | Access result |
+|---|---:|---|---|
+| `primary/ambiru2026-nature-html-save-2.html` | 3038 | `32ed63159c77e21ee19ca1b9aa3213ccf0218eb59539560b132a8e68ef0e18ea` | Static full-article/PDF route returned an HTML response, not PDF. |
+| `primary/ambiru2026-static-route-error.html` | 4059 | `0831a9ed0fe4811e46128f9e078679d8fab24995427c4f99feb501f0538b4638` | Static-route error response. |
+| `primary/ambiru2026-rg.html` | 21116 | `89be357053fe91187e32442343e5bbf680ea9140b56780c649d824cafa0942c5` | ResearchGate temporary-unavailability page; not used as evidence. |
+| `primary/paeng2025-tea-cloudflare-response.html` | 5632 | `da332ed76f0fb6b8cef86d33c3725578554ef22db02e449a81a7d008c3a1b7ef` | ACS SI route's Cloudflare challenge; not used as evidence. |
+
+## Calculation and derived-data provenance
+
+- `data/ambiru2026-s4-regions.csv`: corrected manual transcription of final SI S4 regional values; the SI itself is the authoritative source. All reported assay/run combinations have three regional values.
+- `data/ambiru2026-preprint-table1.csv`: Table 1 transcription from the indexed v1 preprint extract; it is not silently overwritten with final SI means.
+- `analyze.py` and `results.json`: standard-library arithmetic for regional means, concentration-removal percentages, differences, kg/t-equivalent normalization at an explicitly assumed unchanged 1000 kg metal mass, standard-state exchange calculations from the SI values, conditional Faraday equivalents, and the Paeng–Azimi SI transcription. It does not estimate Fe loss, partition, cell or furnace energy, or missing activity/kinetic coefficients.
+- CSV shape check: 48 SI assay rows plus header (14 columns each, three regions for each of 16 runs); 16 preprint rows plus header (12 columns each). Calculation output regenerated on 2026-10-14 with Python 3; no external package or global environment changes.
+- A first manual S4 transcription was misaligned at run 11 and later rows, leading to a false concern about the 95% Sn headline and a false two-region reading of run 16. The original SI was re-read column-by-column, the CSV was fully rewritten, and all tables/calculations/report claims were regenerated. `CORRECTIONS.md` records this correction; superseded numerical claims are withdrawn.

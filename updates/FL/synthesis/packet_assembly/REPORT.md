@@ -1,0 +1,182 @@
+# FL Fourier packet assembly: exact affine optimization and its boundary
+
+## Result and scope
+
+The degree-four packet argument survives a cold reconstruction, including singular averaged Hessians, when its hypotheses are stated precisely. It also admits an exact weakening: for one fixed quartic, the full joint degree-four moment table is unnecessary; it is enough that the *three coefficients of the affine-gap quadratic* agree with those of the independent product coupling. For every quartic at once, this becomes equality of the second, third and fourth moment tensors of the packet sum, not equality of every mixed packet moment.
+
+This coefficient test can retain some cross-packet resonances. An exact compatible example has a primitive triad across its two Fourier supports and still factors every joint moment through degree four because the triad coefficient cancels. A second exact example shows why cross-packet resonances cannot be discarded uniformly: for the polyconvex energy `(det A)^2`, two individually positive packets have optimized gaps `17/128` and `17/32`, while their overlapping compatible sum has optimized gap `67/256`. The sum remains nonnegative for every affine background; this refutes unrestricted superadditivity, not quasiconvexity.
+
+No representation found here covers every compatible gradient. The original separated-frequency construction preserves every resonance internal to a packet but changes the combined field and can require exponentially large bandwidth. A finite Fourier profile's degree-four resonance component can contain its entire support. The full global positivity question therefore remains open.
+
+## Exact affine-gap quadratic
+
+Flatten matrices into a Euclidean space `E` of dimension `d`. Let `F:E -> R` be a homogeneous quartic and let `Z` be a centered random vector with finite fourth moment. Write
+
+\[
+ c_Z=\mathbb E F(Z),\qquad b_Z=\mathbb E DF(Z),\qquad
+ H_Z=\mathbb E D^2F(Z).
+\]
+
+Homogeneous quartic polarization gives, for every affine background `B`,
+
+\[
+ g_Z(B):=\mathbb E[F(B+Z)-F(B)]
+ =c_Z+\langle b_Z,B\rangle+\tfrac12\langle B,H_ZB\rangle. \tag{1}
+\]
+
+The centered condition removes the cubic-in-`B` term. The linear, quadratic and constant coefficients in (1) are respectively the cubic, quadratic and quartic moments of `Z`, contracted against the polarization tensor of `F`.
+
+For a compatible periodic gradient `Z=D\varphi` and a rank-one-convex homogeneous quartic, `H_Z` is positive semidefinite. For a finite Fourier potential, quartic reciprocity gives
+
+\[
+ A^T H_Z A
+ =\mathbb E D^2F(Z)[A,A]
+ =\mathbb E D^2F(A)[Z,Z].
+\]
+
+Parseval splits the last expression into terms at real and imaginary Fourier coefficients of `D\varphi`. Each coefficient is a real rank-one matrix (`a\otimes k`), where rank-one convexity makes the Hessian quadratic form nonnegative. Approximation extends this statement to periodic `W^{1,4}` gradients. Compatibility is essential here: for an arbitrary probability law, rank-one convexity does not imply `H_Z >= 0`.
+
+## Composition theorem with all nullspace conditions
+
+Let `X_1,...,X_N` be centered compatible periodic gradients. Let `\widetilde X_i` have the same individual laws but be independent on a product probability space, and put `S=\sum_i X_i`, `\widetilde S=\sum_i\widetilde X_i`. Fix a rank-one-convex homogeneous quartic `F`. Assume the **quartic-gap coefficient match**
+
+\[
+\begin{aligned}
+\mathbb E F(S)&=\mathbb E F(\widetilde S),\\
+\mathbb E DF(S)&=\mathbb E DF(\widetilde S),\\
+\mathbb E D^2F(S)&=\mathbb E D^2F(\widetilde S).
+\end{aligned} \tag{2}
+\]
+
+By (1), (2) is equivalent to equality of the complete affine-gap functions for every `B`. It is sufficient, but stronger than necessary for fixed `F`, to require every mixed polynomial moment of the packets through degree four to match the independent product. For *all* homogeneous quartics at once, (2) is equivalent to equality of the symmetric second, third and fourth moment tensors of `S` and `\widetilde S`. No packet-label-resolved mixed-moment table is needed.
+
+For each packet define
+
+\[
+ C_i=\mathbb E[X_iX_i^T],\quad H_i=\mathbb E D^2F(X_i),\quad
+ b_i=\mathbb E DF(X_i),\quad c_i=\mathbb E F(X_i).
+\]
+
+Assume the individual affine minima are finite. Since `H_i >= 0`, this is equivalent to the exact range condition `b_i in Ran(H_i)`, and the minimum is attained. Define
+
+\[
+ B_i=-H_i^\dagger b_i,\qquad
+ \Delta_i=c_i-\tfrac12 b_i^T H_i^\dagger b_i.
+\]
+
+All individual minimizers are `B_i+ker(H_i)`. Put `H_\Sigma=\sum_i H_i`, `b_\Sigma=\sum_i b_i`, and `B_*=-H_\Sigma^\dagger b_\Sigma`. Then `H_\Sigma >= 0`, `b_\Sigma in Ran(H_\Sigma)`, and all total minimizers are `B_*+ker(H_\Sigma)`, where
+
+\[
+ \ker H_\Sigma=\bigcap_i\ker H_i,\qquad
+ \operatorname{Ran}H_\Sigma=\sum_i\operatorname{Ran}H_i.
+\]
+
+Writing `tr(H_i C_j)=tr(H_j C_i)` by symmetry of the quartic polarization, exact expansion under the independent product and minimization of the resulting quadratic give
+
+\[
+\boxed{\displaystyle
+ \Delta_F(S)=\sum_i\Delta_i
+ +\frac12\sum_{i<j}\operatorname{tr}(H_iC_j)
+ +\frac12\sum_i(B_i-B_*)^TH_i(B_i-B_*).} \tag{3}
+\]
+
+Equation (2) transfers this exact optimized value to the original, possibly dependent, coupling. Each covariance is positive semidefinite, so `tr(H_i C_j) >= 0`; the disagreement term is also nonnegative. Formula (3) is independent of which minimizer is chosen in a singular block, because adding a null vector does not change its `H_i`-quadratic term. If an individual range condition fails, its affine quadratic is unbounded below along a null direction and (3) is not an applicable finite-minimum formula.
+
+Thus, if every packet has `Delta_i >= 0`, coefficient matching proves the full optimized global gap is nonnegative and gives the explicit cross-covariance and background-mismatch margin. It does not infer `Delta_i >= 0` from rank-one convexity alone; that must come from an individually covered class or a separate proof.
+
+## Moment matching is weaker than Fourier support separation
+
+Take the standard torus and
+
+\[
+ \varphi_1(x,y)=(\sin x,0),\qquad
+ \varphi_2(x,y)=(\tfrac12\cos 2x,0),\qquad
+ X_1=fR,\quad X_2=gR,
+\]
+
+where `R=e_11`, `f=cos x`, and `g=-sin 2x`. The Fourier supports have the primitive cross-packet triad `(1,0)+(1,0)-(2,0)=0`, so the no-cross-resonance support condition in the source's Section 5.2 fails. Nevertheless direct Laurent integration gives
+
+\[
+ \mathbb E[f^p g^q]=\mathbb E[f^p]\,\mathbb E[g^q]
+ \quad (p+q\le4).
+\]
+
+The nontrivial mixed cases are `E[fg]=E[f^2g]=E[fg^2]=E[f^3g]=E[fg^3]=0` and `E[f^2g^2]=1/4=(1/2)(1/2)`. This is coefficient cancellation, not statistical independence: the exact relation `g^2=4f^2(1-f^2)` confines the joint law to an algebraic curve. At degree six, `E[f^4g^2]=5/32`, whereas the independent product is `3/16`.
+
+For the convex quartic `F(A)=|A|^4`, each packet has `C_i=(1/2)RR^T`, `b_i=0`, `c_i=3/8`, and `H_i=4RR^T+2I` (eigenvalues `6,2,2,2`). Thus `Delta_i=3/8`; the cross constant in (3) is `1/2 tr(H_i C_j)=3/2`, and both affine optimizers are zero. The sum has exact optimized gap `9/4`. This is a positive affine-optimized composition with an actual cross-packet resonance. It establishes that the support-separation test is sufficient, not necessary.
+
+There is a further fixed-integrand relaxation: with `f=cos x`, `g=cos 2x`, `X_i=f_iR`, and `F(A)=(det A)^2`, the mixed third moment `E[f^2g]=1/4` differs from the independent value zero, but the entire affine gap depends only on the second moment because `det(B+tR)` is affine in `t`. Since `E[fg]=0`, the actual and independent affine-gap quadratics agree exactly. This example has zero optimized margins, so it is only a strictness witness for the coefficient criterion; it is not a new positivity result.
+
+## What exact frequency dilation buys, and what it costs
+
+For finitely supported packets with maximum frequency norm `K_i`, replace
+
+\[
+ X_i(x)=D\varphi_i(x)\quad\hbox{by}\quad
+ X_i(N_ix)=D[\varphi_i(N_ix)/N_i].
+\]
+
+This preserves each packet's gradient-value law, every internal resonance, and every individual affine gap. On the normalized torus, `x -> N_i x` is measure preserving. Choosing `N_1=1` and
+
+\[
+ N_j>4\sum_{i<j}N_iK_i
+\]
+
+forces every zero-sum relation of length at most four to have zero net frequency separately in each packet. For equal support radii `K`, the integer choice `N_j=(4K+1)^{j-1}` works, so the maximum frequency reaches `K(4K+1)^{N-1}` for `N` packets. With `K=1`, this is `5^{N-1}`. The gradient `L^p` costs and marginal energies do not grow, but the bandwidth is exponential and the assembled field has changed. This construction certifies a newly designed separated-scale sum; it does not certify the original overlapping field.
+
+For an already supplied finite Fourier profile, joining frequencies through primitive zero-sum tuples of lengths three and four gives compatible resonance components. The composition theorem applies across distinct components. This can reduce a counterexample search: if the full optimized gap is negative, at least one component must itself have negative optimized gap (or an unbounded-below affine quadratic). But the component reduction has no nontrivial worst-case size bound. For `f_j=(1,j)`, `j=0,...,M-1`, the compatible potential `(\sum_j cos(x+jy),0)` contains primitive quartets
+
+\[
+ f_j+f_{j+2}-f_{j+1}-f_{j+1}=0,
+\]
+
+which connect every frequency class into one component. Arbitrarily large supports therefore remain a single unresolved unit.
+
+The coefficient test itself is finite for finite Fourier data: it needs only the constant, linear and quadratic coefficients of the affine-gap polynomial, obtainable from Fourier convolutions of orders four, three and two. A direct tuple implementation is `O(M^4)` coefficient products in the largest support size `M`, before rational bit-cost. This is a verification criterion for a given profile, not an algorithm that decomposes arbitrary profiles into positive packets.
+
+## Mixtures, independent couplings and overlapping sums
+
+These operations have different laws and different conclusions.
+
+* **Probability mixture.** For `mu=sum_i theta_i mu_i`, the gap is `g_mu(B)=sum_i theta_i g_{mu_i}(B)` and `inf_B g_mu(B) >= sum_i theta_i inf_B g_{mu_i}(B)`. This is a latent-label mixture, not a sum of matrices. The law-level inequality does not by itself realize the mixture as a compatible gradient.
+* **Independent sum.** Independent `X_i` form a product coupling, and their pointwise values are added in the random-vector space. Quartic polarization gives the covariance cross term in (3); affine optimization contributes the separate nullspace-safe disagreement term.
+* **Moment-independent Fourier packets.** A common spatial variable can produce dependent random vectors whose moments through degree four equal the independent product. This is enough for one quartic's complete affine gap. It does not imply independence of the full distributions.
+* **Overlapping compatible superposition.** `X(x)=sum_i D phi_i(x)` is still a gradient, but all packets share the same `x`. Cross resonances can change the three gap coefficients. Their signs are not controlled by rank-one convexity alone.
+
+The supplied Section 6 obstruction can be strengthened from a negative zero-background increment to an exact failure of optimized superadditivity. Let
+
+\[
+ r=1+\tfrac12\cos x,\quad s=1-\tfrac12\cos x,\quad
+ \varphi_1=r(\cos y,\sin y),\quad
+ \varphi_2=s(\cos 2y,\sin 2y),\quad F(A)=(\det A)^2.
+\]
+
+The exact marginal minima are `17/128` and `17/32` (output-rotation averaging gives zero linear coefficient, and compatibility gives positive semidefinite averaged Hessians). For their sum `X`, its determinant is
+
+\[
+ \det X=\frac{\sin x}{4}(3\cos x\cos y-3\cos x-2\cos y+2),
+\]
+
+and exact integration gives `w=E[(det X)^2]=75/256`, `C=E[XX^T]=diag(1/8,45/16,1/8,45/16)`, and `v=E[X det X]=(1/16,0,0,0)`, in entry order `(A11,A12,A21,A22)`. The carrier frequencies contain the primitive triad `1+1-2=0`; its nonzero effect appears in `v` and accounts for the extra affine-optimization reduction of `8/256`. The determinant null-Lagrangian identity makes the gap at any `B` the variance
+
+\[
+ g_X(B)=\mathbb E[(\operatorname{cof}B:X+\det X)^2].
+\]
+
+`B -> cof B` is a linear bijection in two dimensions. Completing the square gives `Delta_F(X)=w-v^T C^{-1}v=67/256`; the minimizing cofactor vector is `(-1/2,0,0,0)` (one minimizing matrix is `diag(0,-1/2)`). The sum of the marginal minima is `85/128`, so
+
+\[
+ \Delta_F(X)-\Delta_F(X_1)-\Delta_F(X_2)=-103/256.
+\]
+
+Yet `g_X(B)>=0` for every `B`, since it is a variance. The stricter source-level zero-background defect is `75/256-17/128-17/32=-95/256`; complete affine optimization lowers the total by another `8/256`. This is an exact counterexample to unrestricted gap superadditivity, while preserving positivity for this energy.
+
+## Exact remaining operation
+
+The reusable theorem supplies global positivity for finite collections whose **actual sum** satisfies the quartic coefficient match and whose members already have nonnegative optimized gaps. The support-separation construction produces such collections while preserving within-packet resonances. The cross-resonant cancellation example shows that some additional inter-packet resonances may also be admitted by exact coefficients.
+
+The missing operation is a compatibility-preserving decomposition or comparison for an arbitrary gradient `D phi` that controls the full triple `(c_S,b_S,H_S)` uniformly over every affine background, and either proves the resulting packet margins nonnegative or bounds its coefficient defect by an available positive residual. A spatial indicator partition does not provide it: it generally destroys curl compatibility and changes the common affine background. Unrestricted additivity is false by the `-103/256` example. Resonance-component reduction can leave the whole support connected. Consequently these results establish a wider exact packet-composition interface, not global quasiconvexity for the left-`SO(2)` quartic cone, a Morrey counterexample, historical novelty, or external proof validation.
+
+## Verification scope
+
+The supplied exact verifier was copied into this owned directory and rerun with the existing scientific runtime. All nine groups passed, and the generated JSON was byte-identical to the supplied `global_verification.json` (SHA-256 `04991a22e98bc05534cf7c495aa3c9fdf84fdd32fa87e10daf63a0c7183b614f`). That verifier checks finite algebraic identities; it does not certify analytic proofs. The new standard-library checker independently verifies the cross-resonant moment table, the exact positive composition values, the determinant-square affine optimizer and the growing connected resonance examples. These exact calculations are finite checks supporting the formulas above, not an external proof review.

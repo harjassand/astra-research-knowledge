@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — check_joint_ancestry.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/synthesis/root/check_joint_ancestry.py">Original bytes</a></p><pre>&quot;&quot;&quot;Exact finite checks of the root FL operation; not a producer replay or lab test.&quot;&quot;&quot;
+from collections import Counter
+from fractions import Fraction as F
+from itertools import combinations, product
+from pathlib import Path
+import json
+import math
+import sympy as s
+
+OUT = Path(__file__).resolve().parent
+checks = []
+
+def check(name, condition):
+    if not condition:
+        raise AssertionError(name)
+    checks.append(name)
+
+def encoded(value):
+    if isinstance(value, (F, s.Rational)):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(k): encoded(v) for k, v in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [encoded(v) for v in value]
+    return value
+
+x, y = s.symbols(&#x27;x y&#x27;, positive=True)
+c, r = y/2, (2*x-y)/4
+Qgen = s.Matrix([[-c-r,c,r],[c/2,-c,c/2],[r,c,-c-r]])
+pi = s.Matrix([[s.Rational(1,4),s.Rational(1,2),s.Rational(1,4)]])
+f = s.Matrix([-1,0,1])
+h = s.Matrix([s.Rational(1,2),-s.Rational(1,2),s.Rational(1,2)])
+check(&#x27;generator row sums&#x27;, Qgen*s.ones(3,1) == s.zeros(3,1))
+check(&#x27;invariant pi&#x27;, s.simplify(pi*Qgen) == s.zeros(1,3))
+check(&#x27;f eigenfunction&#x27;, s.simplify(Qgen*f+x*f) == s.zeros(3,1))
+check(&#x27;h eigenfunction&#x27;, s.simplify(Qgen*h+y*h) == s.zeros(3,1))
+check(&#x27;detailed balance&#x27;, s.simplify(s.diag(*list(pi))*Qgen-(s.diag(*list(pi))*Qgen).T) == s.zeros(3))
+check(&#x27;f h multiplication&#x27;, f.multiply_elementwise(h) == f/2)
+check(&#x27;f variance&#x27;, (pi*f.multiply_elementwise(f))[0] == s.Rational(1,2))
+check(&#x27;stationary jump rate&#x27;, s.simplify(sum(pi[i]*(-Qgen[i,i]) for i in range(3))-(x/4+3*y/8)) == 0)
+
+u, v = s.symbols(&#x27;u v&#x27;)
+def symbolic_transition(uu, vv):
+    return s.Matrix(3,3,lambda i,j: pi[j]*(1+2*uu*f[i]*f[j]+4*vv*h[i]*h[j]))
+Pt = symbolic_transition(u,v)
+check(&#x27;semigroup at zero&#x27;, symbolic_transition(1,1) == s.eye(3))
+up,vp = s.symbols(&#x27;up vp&#x27;)
+check(&#x27;semigroup multiplication&#x27;, s.simplify(Pt*symbolic_transition(up,vp)-symbolic_transition(u*up,v*vp)) == s.zeros(3))
+t = s.symbols(&#x27;t&#x27;, nonnegative=True)
+Ptime = symbolic_transition(s.exp(-x*t), s.exp(-y*t))
+check(&#x27;semigroup forward equation&#x27;, s.simplify(s.diff(Ptime,t)-Ptime*Qgen) == s.zeros(3))
+u1,u3,v2 = s.symbols(&#x27;u1 u3 v2&#x27;)
+v1,u2,v3 = s.symbols(&#x27;v1 u2 v3&#x27;)
+Df = s.diag(*list(f))
+four = (pi*Df*symbolic_transition(u1,v1)*Df*symbolic_transition(u2,v2)*Df*symbolic_transition(u3,v3)*f)[0]
+check(&#x27;universal four-point identity&#x27;, s.factor(four-u1*u3*(1+v2)/4)==0)
+
+bits = list(product((0,1),repeat=4))
+even = [b for b in bits if sum(b)%2==0]
+odd = [b for b in bits if sum(b)%2==1]
+def ancestry_law(first,second):
+    result=Counter()
+    for shift,bank in [(0,first),(1,second)]:
+        for b in bank:
+            ages=tuple(j+b[j]+shift*(j&gt;=2) for j in range(4))
+            result[ages]+=F(1,16)
+    return result
+law_P, law_R = ancestry_law(even,odd), ancestry_law(odd,even)
+check(&#x27;probability laws&#x27;, sum(law_P.values())==sum(law_R.values())==1)
+check(&#x27;ordered ages, including ties&#x27;, all(tuple(sorted(a))==a for a in list(law_P)+list(law_R)))
+def pushforward(law,fun):
+    result=Counter()
+    for ages,p in law.items(): result[fun(ages)]+=p
+    return result
+for size in range(1,4):
+    for inds in combinations(range(4),size):
+        check(&#x27;proper marginal &#x27;+str(inds),pushforward(law_P,lambda a:tuple(a[i] for i in inds))==pushforward(law_R,lambda a:tuple(a[i] for i in inds)))
+def LG(a): return a[1]-a[0]+a[3]-a[2], a[2]-a[1]
+Llaw = pushforward(law_P,lambda a:LG(a)[0])
+check(&#x27;entire L law, hence every telegraph rate&#x27;, Llaw==pushforward(law_R,lambda a:LG(a)[0]))
+spanlaw=pushforward(law_P,lambda a:a[3]-a[0])
+check(&#x27;entire total span law&#x27;,spanlaw==pushforward(law_R,lambda a:a[3]-a[0]))
+check(&#x27;joint L,G law is different&#x27;,pushforward(law_P,LG)!=pushforward(law_R,LG))
+def transform(law):
+    return sum(s.Rational(p.numerator,p.denominator)*u**LG(a)[0]*v**LG(a)[1] for a,p in law.items())
+delta = s.factor(transform(law_P)-transform(law_R))
+check(&#x27;joint transform difference polynomial&#x27;,s.factor(delta-(1-v)*(1-u)**2*(u-v)**2/16)==0)
+delta_M=F(delta.subs({u:s.Rational(1,4),v:s.Rational(1,2)}))
+check(&#x27;joint transform exact witness&#x27;,delta_M==F(9,8192))
+
+def count_histogram(law,mask,contrast=F(1),bias=F(0)):
+    hist=[F(0)]*5
+    for ages,mass in law.items():
+        coef=[F(1)]
+        for age in ages:
+            prob=(1+bias+contrast*(2*mask[age]-1))/2
+            nxt=[F(0)]*(len(coef)+1)
+            for k,q in enumerate(coef):
+                nxt[k]+=q*(1-prob); nxt[k+1]+=q*prob
+            coef=nxt
+        for k,q in enumerate(coef): hist[k]+=mass*q
+    return hist
+
+waveforms=[]
+contrast=F(49,50)
+for mask in product((0,1),repeat=6):
+    hp,hr=count_histogram(law_P,mask),count_histogram(law_R,mask)
+    tv=sum(abs(a-b) for a,b in zip(hp,hr))/2
+    hp_a,hr_a=count_histogram(law_P,mask,contrast),count_histogram(law_R,mask,contrast)
+    tv_a=sum(abs(a-b) for a,b in zip(hp_a,hr_a))/2
+    raw_parity=sum((-1)**k*(hp_a[k]-hr_a[k]) for k in range(5))
+    runs=sum(mask[j]==1 and (j==0 or mask[j-1]==0) for j in range(6))
+    if runs&lt;=1 or sum(mask)==0 or sum(mask)==6:
+        check(&#x27;single rectangle count law &#x27;+&#x27;&#x27;.join(map(str,mask)),hp==hr and hp_a==hr_a)
+    waveforms.append(dict(mask=mask,TV_ideal=tv,TV_contrast_49_50=tv_a,raw_parity_difference=raw_parity,
+                          P_histogram=hp_a,R_histogram=hr_a))
+distinguishing=[row for row in waveforms if row[&#x27;TV_ideal&#x27;]]
+best=max(waveforms,key=lambda row:row[&#x27;TV_contrast_49_50&#x27;])
+check(&#x27;four deterministic distinguishing masks&#x27;,len(distinguishing)==4)
+check(&#x27;stronger ideal deterministic competitor&#x27;,max(row[&#x27;TV_ideal&#x27;] for row in waveforms)==F(1,2))
+
+def transition(gap):
+    return symbolic_transition(s.Rational(1,4)**gap,s.Rational(1,2)**gap)
+def exact_moment(times):
+    ordered=sorted(times)
+    row=pi*Df
+    for a,b in zip(ordered,ordered[1:]): row=row*transition(b-a)*Df
+    return (row*s.ones(3,1))[0]
+mean_P=sum(s.Rational(p.numerator,p.denominator)*exact_moment(a) for a,p in law_P.items())
+mean_R=sum(s.Rational(p.numerator,p.denominator)*exact_moment(a) for a,p in law_R.items())
+check(&#x27;direct code difference exact witness&#x27;,mean_P-mean_R==s.Rational(9,32768))
+for label,law,mean in [(&#x27;P&#x27;,law_P,mean_P),(&#x27;R&#x27;,law_R,mean_R)]:
+    q=sum(s.Rational(p.numerator,p.denominator)*s.Rational(1,4)**LG(a)[0] for a,p in law.items())
+    mm=transform(law).subs({u:s.Rational(1,4),v:s.Rational(1,2)})
+    check(&#x27;decoded M &#x27;+label,4*mean-q==mm)
+
+# Finite exact stress checks do not replace the chronological-cuts proof.
+patterns=[(0,0,0,0),(0,1,2,3),(0,1,20,21),(0,10,20,30),(0,0,30,30),(0,2,2,5)]
+covariance_examples=[]
+for aa in patterns:
+    base=exact_moment(aa)
+    for shift in (0,1,2,3,5,10,20,30,50):
+        bb=tuple(a+shift for a in aa)
+        covariance=s.factor(exact_moment(aa+bb)-base**2)
+        bound=sum(2*(s.Rational(1,4)**abs(b-a)+s.Rational(1,2)**abs(b-a)) for a in aa for b in bb)
+        check(&#x27;chronological covariance finite stress &#x27;+str((aa,shift)),abs(covariance)&lt;=bound)
+        covariance_examples.append(dict(pattern=aa,shift=shift,covariance=covariance,bound=bound))
+
+# Analytic upper-sufficient budgets are intentionally conservative, not lower bounds.
+xf,yf=math.log(4),math.log(2)
+Kthree=1/(2*xf)+1/(2*yf)
+Ktele=1/(2*xf)
+err=float(delta_M)/4
+failure=.05
+variance_budget=failure*err**2
+N=math.ceil(2*17*float(contrast)**-8/variance_budget)
+T=2*(16*16*16*Kthree+16*16*Ktele)/variance_budget
+cost=dict(tau_units=&#x27;all durations in units of known tau&#x27;,x_tau=xf,y_tau=yf,
+          M_difference=str(delta_M),C_difference=&#x27;9/32768&#x27;,
+          raw_parity_difference_three_level=str(F(9,32768)*contrast**4),
+          estimator_error_target=err,chebyshev_failure_probability=failure,
+          N_per_campaign_upper_sufficient=N,T_per_campaign_upper_sufficient_tau=T,
+          campaign_count=2,budget_kind=&#x27;conservative sufficient bound, not a lower bound or optimized design&#x27;,
+          maximum_uniform_normalized_waveform_error_if_alone=err/20,
+          known_grid_competitor_requires=&#x27;known tau and common phase C; full binary schedule, prehistory and preparation paid&#x27;,
+          three_level_mean_switch_rate_tau=xf/4+3*yf/8)
+
+report=dict(status=&#x27;PASS&#x27;,scope=&#x27;exact finite identities and conservative analytic cost evaluation; no physical experiment or formal proof-assistant certification&#x27;,
+            checks_passed=len(checks),checks=checks,law_P=law_P,law_R=law_R,L_law=Llaw,span_law=spanlaw,
+            joint_transform_difference=str(delta),C_P=mean_P,C_R=mean_R,
+            binary_waveforms_checked=len(waveforms),distinguishing_binary_waveforms=distinguishing,
+            strongest_matched_grid_competitor=best,code_covariance_stress=covariance_examples,cost=cost)
+(OUT/&#x27;JOINT_ANCESTRY_CHECKS.json&#x27;).write_text(json.dumps(encoded(report),indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;checks_passed&#x27;:len(checks),&#x27;best_binary_mask&#x27;:best[&#x27;mask&#x27;],
+                  &#x27;best_binary_TV&#x27;:str(best[&#x27;TV_contrast_49_50&#x27;]), &#x27;M_difference&#x27;:str(delta_M), &#x27;cost&#x27;:cost},indent=2))
+</pre></body></html>

@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — independent_packet_checks.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/synthesis/packet_assembly/independent_packet_checks.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact Laurent checks for the FL packet-assembly audit.
+
+Pure Python standard library.  This does not import the supplied verifier.
+It checks bounded-degree moment factorisation for two dependent gradient
+packets and exact affine optimisation in a resonant determinant-square example.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction as Q
+import json
+from pathlib import Path
+
+
+class G:
+    &quot;&quot;&quot;Gaussian rational, represented by a pair of Fractions.&quot;&quot;&quot;
+    __slots__ = (&quot;r&quot;, &quot;i&quot;)
+
+    def __init__(self, r=0, i=0):
+        self.r, self.i = Q(r), Q(i)
+
+    def __add__(self, other):
+        other = as_g(other)
+        return G(self.r + other.r, self.i + other.i)
+
+    __radd__ = __add__
+
+    def __neg__(self):
+        return G(-self.r, -self.i)
+
+    def __sub__(self, other):
+        return self + (-as_g(other))
+
+    def __rsub__(self, other):
+        return as_g(other) - self
+
+    def __mul__(self, other):
+        other = as_g(other)
+        return G(self.r * other.r - self.i * other.i,
+                 self.r * other.i + self.i * other.r)
+
+    __rmul__ = __mul__
+
+    def __eq__(self, other):
+        other = as_g(other)
+        return self.r == other.r and self.i == other.i
+
+    def pair(self):
+        return [str(self.r), str(self.i)]
+
+
+def as_g(x):
+    if isinstance(x, G):
+        return x
+    return G(x, 0)
+
+
+def clean(d):
+    return {k: v for k, v in d.items() if v != G()}
+
+
+def add(a, b):
+    out = dict(a)
+    for k, v in b.items():
+        out[k] = out.get(k, G()) + v
+    return clean(out)
+
+
+def neg(a):
+    return {k: -v for k, v in a.items()}
+
+
+def sub(a, b):
+    return add(a, neg(b))
+
+
+def scale(a, s):
+    return clean({k: as_g(s) * v for k, v in a.items()})
+
+
+def mul(a, b):
+    out = {}
+    for k, v in a.items():
+        for ell, w in b.items():
+            key = tuple(k[j] + ell[j] for j in range(len(k)))
+            out[key] = out.get(key, G()) + v * w
+    return clean(out)
+
+
+def power(a, n):
+    out = {(0,) * len(next(iter(a), (0,))): G(1)}
+    for _ in range(n):
+        out = mul(out, a)
+    return out
+
+
+def mean(a):
+    z = a.get((0,) * len(next(iter(a), (0,))), G())
+    assert z.i == 0, f&quot;nonreal mean: {z.pair()}&quot;
+    return z.r
+
+
+def cos1(n):
+    return {(n,): G(Q(1, 2)), (-n,): G(Q(1, 2))}
+
+
+def sin1(n):
+    return {(n,): G(0, Q(-1, 2)), (-n,): G(0, Q(1, 2))}
+
+
+def cos2(k):
+    return {k: G(Q(1, 2)), (-k[0], -k[1]): G(Q(1, 2))}
+
+
+def sin2(k):
+    return {k: G(0, Q(-1, 2)), (-k[0], -k[1]): G(0, Q(1, 2))}
+
+
+def d2(poly, j):
+    out = {}
+    for (kx, ky), v in poly.items():
+        k = (kx, ky)[j]
+        out[(kx, ky)] = G(0, k) * v
+    return clean(out)
+
+
+def vec_add(a, b):
+    return [add(x, y) for x, y in zip(a, b)]
+
+
+def vec_sub(a, b):
+    return [sub(x, y) for x, y in zip(a, b)]
+
+
+def vec_scale(a, s):
+    return [scale(x, s) for x in a]
+
+
+def vec_mean_product(a, b):
+    return mean(mul(a, b))
+
+
+def determinant(x):
+    # Vector order is (A11,A12,A21,A22).
+    return sub(mul(x[0], x[3]), mul(x[1], x[2]))
+
+
+def check_low_degree_packet_moments():
+    # The compatible scalar gradients are X1=f R, X2=g R, R=e11,
+    # with f=cos(x), g=-sin(2x). Their supports have a primitive triad.
+    f, g = cos1(1), scale(sin1(2), -1)
+    counts = {}
+    checked = 0
+    for degree in range(5):
+        count = 0
+        for p in range(degree + 1):
+            q = degree - p
+            actual = mean(mul(power(f, p), power(g, q)))
+            independent = mean(power(f, p)) * mean(power(g, q))
+            assert actual == independent, (degree, p, q, actual, independent)
+            checked += 1
+            count += 1
+        counts[str(degree)] = count
+
+    # Dependence and a degree-six mixed-moment failure are exact.
+    identity = sub(power(g, 2),
+                   scale(sub(power(f, 2), power(f, 4)), 4))
+    assert not identity
+    actual_degree_six = mean(mul(power(f, 4), power(g, 2)))
+    independent_degree_six = mean(power(f, 4)) * mean(power(g, 2))
+    assert actual_degree_six == Q(5, 32)
+    assert independent_degree_six == Q(3, 16)
+    return {
+        &quot;compatible_potentials&quot;: [&quot;phi_1=(sin x,0)&quot;, &quot;phi_2=(cos(2x)/2,0)&quot;],
+        &quot;gradient_values&quot;: [&quot;X_1=cos(x) R&quot;, &quot;X_2=-sin(2x) R&quot;, &quot;R=e11&quot;],
+        &quot;monomials_checked_by_degree&quot;: counts,
+        &quot;total_monomials_checked&quot;: checked,
+        &quot;all_actual_moments_equal_product_marginal_moments_through_degree_4&quot;: True,
+        &quot;cross_packet_primitive_relation&quot;: &quot;(1,0)+(1,0)-(2,0)=0, length 3&quot;,
+        &quot;resonant_support_condition_is_sufficient_not_necessary&quot;: True,
+        &quot;degree_6_witness&quot;: {
+            &quot;observable&quot;: &quot;E[f^4 g^2]&quot;,
+            &quot;actual_mean&quot;: str(actual_degree_six),
+            &quot;independent_phase_mean&quot;: str(independent_degree_six),
+        },
+        &quot;statistically_independent&quot;: False,
+        &quot;dependence_witness&quot;: {
+            &quot;identity_verified&quot;: &quot;g^2=4 f^2(1-f^2)&quot;,
+            &quot;meaning&quot;: &quot;joint law lies on a proper algebraic curve&quot;,
+        },
+    }
+
+
+def check_norm_four_assembly():
+    f, g = cos1(1), scale(sin1(2), -1)
+    m2_f, m4_f = mean(power(f, 2)), mean(power(f, 4))
+    m2_g, m4_g = mean(power(g, 2)), mean(power(g, 4))
+    m3_sum = mean(power(add(f, g), 3))
+    m2_sum = mean(power(add(f, g), 2))
+    csum = mean(power(add(f, g), 4))
+    # C_i=(1/2)RR^T, H_i=8 C_i+4 E|X_i|^2 I=4RR^T+2I.
+    C = [Q(1, 2), Q(0), Q(0), Q(0)]
+    Hdiag = [Q(6), Q(2), Q(2), Q(2)]
+    cross = sum(h * c for h, c in zip(Hdiag, C)) / 2
+    assert (m2_f, m2_g, m4_f, m4_g) == (Q(1, 2), Q(1, 2), Q(3, 8), Q(3, 8))
+    assert m2_sum == 1 and m3_sum == 0 and csum == Q(9, 4)
+    assert csum - Q(2, 3) * m3_sum**2 / m2_sum == Q(9, 4)
+    assert cross == Q(3, 2)
+    assert m4_f + m4_g + cross == csum
+    return {
+        &quot;integrand&quot;: &quot;F(A)=|A|^4&quot;,
+        &quot;marginal_C_diagonal&quot;: [str(z) for z in C],
+        &quot;marginal_H_diagonal&quot;: [str(z) for z in Hdiag],
+        &quot;marginal_b&quot;: [&quot;0&quot;] * 4,
+        &quot;marginal_delta&quot;: [&quot;3/8&quot;, &quot;3/8&quot;],
+        &quot;cross_constant_half_trace_HC&quot;: str(cross),
+        &quot;background_disagreement_penalty&quot;: &quot;0&quot;,
+        &quot;actual_sum_delta&quot;: str(csum),
+        &quot;independent_sum_delta&quot;: str(csum),
+        &quot;all_exact&quot;: True,
+    }
+
+
+def check_fixed_integrand_observable_match():
+    f, g = cos1(1), cos1(2)
+    mixed_third = mean(mul(power(f, 2), g))
+    independent_third = mean(power(f, 2)) * mean(g)
+    covariance = mean(mul(f, g))
+    variance_sum = mean(power(add(f, g), 2))
+    product_variance_sum = mean(power(f, 2)) + mean(power(g, 2))
+    assert mixed_third == Q(1, 4) and independent_third == 0
+    assert covariance == 0 and variance_sum == product_variance_sum == 1
+    return {
+        &quot;integrand&quot;: &quot;F(A)=(det A)^2&quot;,
+        &quot;packets&quot;: &quot;X_1=cos(x)R, X_2=cos(2x)R, R=e11&quot;,
+        &quot;primitive_cross_triad&quot;: &quot;(1,0)+(1,0)-(2,0)=0&quot;,
+        &quot;mixed_moment_mismatch_E[f^2g]&quot;: {
+            &quot;actual&quot;: str(mixed_third),
+            &quot;independent&quot;: str(independent_third),
+        },
+        &quot;actual_and_independent_second_moment_of_sum&quot;: str(variance_sum),
+        &quot;affine_gap_match_reason&quot;: &quot;det(B+tR) is affine in t, so this F sees only the centered scalar second moment&quot;,
+        &quot;actual_affine_gap_equals_independent_affine_gap_for_all_B&quot;: True,
+        &quot;optimized_gap&quot;: &quot;0&quot;,
+    }
+
+
+def check_resonant_determinant_square():
+    a = Q(1, 2)
+    one = {(0, 0): G(1)}
+    cx, sx = cos2((1, 0)), sin2((1, 0))
+    cy, sy = cos2((0, 1)), sin2((0, 1))
+    c2y, s2y = cos2((0, 2)), sin2((0, 2))
+    r = add(one, scale(cx, a))
+    s = sub(one, scale(cx, a))
+    rp, sp = scale(sx, -a), scale(sx, a)
+    # Actual gradients of r(x)(cos y,sin y) and s(x)(cos 2y,sin 2y).
+    x1 = [mul(rp, cy), scale(mul(r, sy), -1),
+          mul(rp, sy), mul(r, cy)]
+    x2 = [mul(sp, c2y), scale(mul(s, s2y), -2),
+          mul(sp, s2y), scale(mul(s, c2y), 2)]
+    d1, d2 = determinant(x1), determinant(x2)
+    xs = vec_add(x1, x2)
+    ds = determinant(xs)
+    expected_ds = scale(
+        mul(sx, add(add(scale(mul(cx, cy), 3), scale(cx, -3)),
+                     add(scale(cy, -2), {(0, 0): G(2)}))),
+        Q(1, 4))
+    assert ds == expected_ds
+    c1, c2, w = mean(mul(d1, d1)), mean(mul(d2, d2)), mean(mul(ds, ds))
+    assert (c1, c2, w) == (Q(17, 128), Q(17, 32), Q(75, 256))
+
+    def covariance_and_det_cross(x, d):
+        c = [[vec_mean_product(x[i], x[j]) for j in range(4)] for i in range(4)]
+        v_local = [vec_mean_product(x[i], d) for i in range(4)]
+        return c, v_local
+
+    C1, v1 = covariance_and_det_cross(x1, d1)
+    C2, v2 = covariance_and_det_cross(x2, d2)
+    assert v1 == [Q(0)] * 4 and v2 == [Q(0)] * 4
+    assert all(mean(z) == 0 for z in xs) and mean(ds) == 0
+
+    C = [[vec_mean_product(xs[i], xs[j]) for j in range(4)] for i in range(4)]
+    v = [vec_mean_product(xs[i], ds) for i in range(4)]
+    expected_C = [[Q(0) for _ in range(4)] for _ in range(4)]
+    for i, d in enumerate((Q(1, 8), Q(45, 16), Q(1, 8), Q(45, 16))):
+        expected_C[i][i] = d
+    assert C == expected_C
+    assert v == [Q(1, 16), Q(0), Q(0), Q(0)]
+    # cofactor(B) ranges over all of R^4, so the affine optimization is
+    # min_z z^T C z + 2 v^T z + w.
+    delta = w - sum(v[i] * v[i] / C[i][i] for i in range(4))
+    assert delta == Q(67, 256)
+    zstar = [-v[i] / C[i][i] for i in range(4)]
+    assert zstar == [Q(-1, 2), Q(0), Q(0), Q(0)]
+    return {
+        &quot;integrand&quot;: &quot;F(A)=(det A)^2&quot;,
+        &quot;packets&quot;: &quot;r=1+cos(x)/2 at carrier y; s=1-cos(x)/2 at carrier 2y&quot;,
+        &quot;marginal_zero_background_values&quot;: [str(c1), str(c2)],
+        &quot;marginal_affine_minima&quot;: [str(c1), str(c2)],
+        &quot;marginal_E[X_i det X_i]&quot;: [[str(t) for t in v1], [str(t) for t in v2]],
+        &quot;total_zero_background_value&quot;: str(w),
+        &quot;total_covariance_C_diagonal&quot;: [str(expected_C[i][i]) for i in range(4)],
+        &quot;total_v=E[X det X]&quot;: [str(t) for t in v],
+        &quot;cofactor_affine_optimizer&quot;: [str(t) for t in zstar],
+        &quot;total_affine_optimized_delta&quot;: str(delta),
+        &quot;sum_of_marginal_deltas&quot;: str(c1 + c2),
+        &quot;failure_of_unrestricted_superadditivity&quot;: str(delta - c1 - c2),
+        &quot;total_gap_nonnegative&quot;: &quot;yes; equals a variance for every affine B&quot;,
+    }
+
+
+def check_long_resonance_component():
+    # For f_j=(1,j), the primitive quartets f_j+f_{j+2}-2 f_{j+1}=0
+    # link every consecutive triple. Check the graph for several M.
+    rows = []
+    for M in (3, 5, 8, 16):
+        edges = [(j, j + 1, j + 2) for j in range(M - 2)]
+        seen = {0}
+        changed = True
+        while changed:
+            changed = False
+            for edge in edges:
+                if seen.intersection(edge) and not set(edge).issubset(seen):
+                    seen.update(edge)
+                    changed = True
+        assert seen == set(range(M))
+        rows.append({&quot;support_classes&quot;: M, &quot;primitive_quartet_edges&quot;: len(edges),
+                     &quot;largest_component_classes&quot;: len(seen)})
+    return {
+        &quot;frequency_classes&quot;: &quot;f_j=(1,j), j=0,...,M-1&quot;,
+        &quot;primitive_relation&quot;: &quot;f_j+f_(j+2)-f_(j+1)-f_(j+1)=0&quot;,
+        &quot;component_growth_examples&quot;: rows,
+        &quot;arbitrary_finite_profile_can_be_one_degree_4_resonance_component&quot;: True,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    result = {
+        &quot;scope&quot;: &quot;Exact rational Laurent checks for stated finite examples; not a proof of the analytic composition theorem or a global quasiconvexity result.&quot;,
+        &quot;dependent_degree_four_packets&quot;: check_low_degree_packet_moments(),
+        &quot;positive_optimized_composition&quot;: check_norm_four_assembly(),
+        &quot;fixed_integrand_coefficient_match&quot;: check_fixed_integrand_observable_match(),
+        &quot;resonant_unrestricted_gluing_counterexample&quot;: check_resonant_determinant_square(),
+        &quot;resonance_component_coverage&quot;: check_long_resonance_component(),
+    }
+    out = Path(__file__).resolve().parent / &quot;independent_packet_checks.json&quot;
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+    print(f&quot;WROTE {out}&quot;)
+</pre></body></html>
