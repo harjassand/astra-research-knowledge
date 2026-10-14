@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — verify_certificates_reference.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/query_variance/verify_certificates_reference.py">Original bytes</a></p><pre>&quot;&quot;&quot;Verify the two global certificates with exact rational arithmetic.
+
+This verifies the algebraic enclosures, not floating-point Monte Carlo output,
+transcendental function implementations, or the numerical FFT reference.
+Run: python verify_certificates.py
+No third-party dependencies.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+import json
+from pathlib import Path
+
+
+def assess(name: str, h: Q, R: Q, low: Q, high: Q,
+           b2: Q, b3: Q, b4: Q) -&gt; dict:
+    P = b2*h**2 + b3*h**3 + b4*h**4
+    slope = 2*b2*h + 3*b3*h**2 + 4*b4*h**3
+    slack = low*h - R - P
+    q = 1 - (low - slope)/high
+    valid = h &gt; 0 and 0 &lt; low &lt;= high and slack &gt;= 0 and slope &lt; low
+    def encode(x: Q) -&gt; dict:
+        return {&#x27;numerator&#x27;: x.numerator, &#x27;denominator&#x27;: x.denominator,
+                &#x27;decimal_approximation&#x27;: float(x)}
+    return {&#x27;name&#x27;:name, &#x27;valid&#x27;:valid, &#x27;radius&#x27;:encode(h),
+            &#x27;residual_bound&#x27;:encode(R), &#x27;tangent_lower&#x27;:encode(low),
+            &#x27;proposal_rate&#x27;:encode(high), &#x27;enclosure_slack&#x27;:encode(slack),
+            &#x27;nonlinear_slope&#x27;:encode(slope), &#x27;offspring_bound&#x27;:encode(q),
+            &#x27;expected_node_bound&#x27;:encode(1/(1-q)) if valid else None}
+
+
+def verify() -&gt; dict:
+    one=Q(1)
+    simple=(Q(10),Q(101),Q(101),Q(150),Q(100),Q(25))
+    c0=assess(&#x27;constant predictor&#x27;,Q(1,8),*simple)
+    # Every quantity below is a rational number; the enclosure follows from
+    # |cos x|, |cos 7x|, |sin 13x| &lt;= 1, not from sampled locations.
+    E=10*(Q(45,100)/102+Q(3,10)/150+Q(1,4)/270)
+    lo,hi=one-E,one+E
+    R=25*(6*E**2+4*E**3+E**4)
+    c1=assess(&#x27;one screened linear correction&#x27;,Q(11,1000),R,
+              1+100*lo**3,1+100*hi**3,150*hi**2,100*hi,Q(25))
+    small=assess(&#x27;too-small radius&#x27;,Q(1,20),*simple)
+    large=assess(&#x27;enclosure without finite-work certificate&#x27;,Q(3,10),*simple)
+    assert c0[&#x27;valid&#x27;] and c1[&#x27;valid&#x27;]
+    assert not small[&#x27;valid&#x27;] and not large[&#x27;valid&#x27;]
+    assert large[&#x27;enclosure_slack&#x27;][&#x27;numerator&#x27;] &gt; 0
+    return {&#x27;method&#x27;:&#x27;exact rational arithmetic&#x27;, &#x27;certificates&#x27;:[c0,c1],
+            &#x27;negative_tests&#x27;:[small,large],
+            &#x27;scope&#x27;:&#x27;Algebraic global certificates only; not interval verification of the sampler.&#x27;}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    result=verify()
+    path=Path(__file__).with_name(&#x27;exact_certificate_checks.json&#x27;)
+    path.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+</pre></body></html>

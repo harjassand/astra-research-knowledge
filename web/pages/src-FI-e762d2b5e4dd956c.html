@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — reverse_tomography.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/reverse_tomography.py">Original bytes</a></p><pre>&quot;&quot;&quot;Unknown-support kinetic recovery from fast reverse-relaxation interrogations.
+An exact computational experiment, not a laboratory calibration. Physical use
+requires local state/context preparation and access to the original conditional
+clock after preparation; preparation, resets and statistical errors are not free.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations
+from model import weight,fsqrt
+from kinetic_tomography import recover,physical_clock
+
+def energy_model(n,weights):
+    data={int(k):F(v) for k,v in weights.items()};w0=data[0];ss=[data[1&lt;&lt;i] for i in range(n)];edges={};fields=[]
+    for i,j in combinations(range(n),2):
+        t=fsqrt(data[(1&lt;&lt;i)|(1&lt;&lt;j)]*w0/(ss[i]*ss[j]))
+        if t!=1:edges[i,j]=t
+    for i in range(n):
+        h=ss[i]/w0
+        for (a,b),t in edges.items():
+            if i==a or i==b:h*=t
+        fields.append(h)
+    return dict(n=n,fields=fields,edges=edges)
+
+def ratio_on(model,i,x):
+    # m(x with bit i=1)/m(x with bit i=0); x is a context with bit i zero.
+    r=model[&#x27;fields&#x27;][i]
+    for (a,b),t in model[&#x27;edges&#x27;].items():
+        if i==a or i==b:
+            j=b if i==a else a;r*=t if (x&gt;&gt;j)&amp;1 else 1/t
+    return r
+
+def recover_reverse(n,tr,target=0,kappa=F(1)):
+    energy=energy_model(n,tr[&#x27;weights&#x27;]);derived={}
+    for key,raw in tr[&#x27;reverse_rates&#x27;].items():
+        i,x=map(int,key.split(&#x27;:&#x27;));r=ratio_on(energy,i,x)
+        downhill_probability=max(F(1),r)/(1+r)
+        derived[key]=str(F(raw)/downhill_probability/2)
+        assert int(tr[&#x27;prepared_bit&#x27;][key])==(0 if r&gt;=1 else 1)
+    model,coefs=recover(n,tr[&#x27;weights&#x27;],derived,target,kappa)
+    return model,coefs,derived
+
+def acquire_reverse(truth):
+    n=truth[&#x27;n&#x27;];weights={}
+    for S in [()]+[(i,) for i in range(n)]+list(combinations(range(n),2)):
+        x=sum(1&lt;&lt;i for i in S);weights[str(x)]=str(weight(truth,x))
+    energy=energy_model(n,weights);rates={};prep={};workratios=[]
+    for i in range(n):
+        others=[j for j in range(n) if j!=i]
+        for S in [()]+[(j,) for j in others]+list(combinations(others,2)):
+            x=sum(1&lt;&lt;j for j in S);r=ratio_on(energy,i,x);xi=0 if r&gt;=1 else 1
+            # Oracle returns original elementary rate after resetting local bit.
+            # It is NOT a metastable escape rate and no bias is applied during readout.
+            xx=x|(xi&lt;&lt;i);xp=xx^(1&lt;&lt;i)
+            raw=physical_clock(truth,i,xx)*weight(truth,xp)/(weight(truth,xx)+weight(truth,xp))
+            rates[f&#x27;{i}:{x}&#x27;]=str(raw);prep[f&#x27;{i}:{x}&#x27;]=xi;workratios.append(max(r,1/r))
+    tr=dict(energy_queries=len(weights),reverse_clock_queries=len(rates),weights=weights,reverse_rates=rates,prepared_bit=prep,clock_interface=&#x27;unknown-support-degree-two-reverse&#x27;,maximum_local_excitation_weight_ratio=str(max(workratios)),scope=&#x27;exact synthetic original-law downhill rates after local/context preparation; no physical measurement performed&#x27;)
+    model,coefs,derived=recover_reverse(n,tr,truth[&#x27;target&#x27;],truth[&#x27;kappa&#x27;]);tr[&#x27;coefficients&#x27;]=coefs
+    return model,tr
+
+if __name__==&#x27;__main__&#x27;:
+    from model import fixture,add_context_clock
+    m,t=acquire_reverse(add_context_clock(fixture(B=3,m=6,rarity=3),F(1,100)))
+    print(t[&#x27;energy_queries&#x27;],t[&#x27;reverse_clock_queries&#x27;],t[&#x27;maximum_local_excitation_weight_ratio&#x27;])
+</pre></body></html>

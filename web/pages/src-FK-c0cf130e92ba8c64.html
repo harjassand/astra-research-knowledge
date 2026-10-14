@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FK evidence — geometry_checks.py</title><body><p>FK source/internal evidence, externally unreviewed. <a href="../../updates/FK/synthesis/anchor_scaling/geometry_checks.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent checks for massive-Green anchor geometry and source covariance.
+
+Exact Fraction arithmetic checks the 1D spatial Green matrix and its row-sum /
+walk-decay bounds. Floating point linear-algebra checks the general-mask
+first-order Lyapunov identity. The covariance scaling formulas are evaluated
+exactly for coherent and iid stationary sources in a linear forced comparator.
+These are controlled mathematical diagnostics, not a simulation of the
+nonlinear anchored quantum-response sampler.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction
+import json
+import math
+import platform
+from pathlib import Path
+
+import numpy as np
+import scipy
+from scipy.linalg import solve_sylvester
+
+
+def inverse_fraction(matrix: list[list[Fraction]]) -&gt; list[list[Fraction]]:
+    n = len(matrix)
+    a = [row[:] + [Fraction(i == j) for j in range(n)]
+         for i, row in enumerate(matrix)]
+    for col in range(n):
+        pivot = next((r for r in range(col, n) if a[r][col]), None)
+        if pivot is None:
+            raise ValueError(&quot;singular matrix&quot;)
+        a[col], a[pivot] = a[pivot], a[col]
+        scale = a[col][col]
+        a[col] = [x / scale for x in a[col]]
+        for r in range(n):
+            if r == col:
+                continue
+            factor = a[r][col]
+            if factor:
+                a[r] = [x - factor * y for x, y in zip(a[r], a[col])]
+    return [row[n:] for row in a]
+
+
+def cycle_laplacian(n: int) -&gt; list[list[Fraction]]:
+    out = [[Fraction(0) for _ in range(n)] for _ in range(n)]
+    for i in range(n):
+        out[i][i] = Fraction(2)
+        out[i][(i - 1) % n] -= 1
+        out[i][(i + 1) % n] -= 1
+    return out
+
+
+def exact_green_check() -&gt; dict:
+    n = 13
+    alpha, kappa = Fraction(1), Fraction(1)
+    lap = cycle_laplacian(n)
+    k = [[alpha * Fraction(i == j) + kappa * lap[i][j]
+          for j in range(n)] for i in range(n)]
+    g = inverse_fraction(k)
+    rho = Fraction(2 * kappa, alpha + 2 * kappa)
+    row_sums = [sum(row, Fraction(0)) for row in g]
+    assert all(s == 1 / alpha for s in row_sums)
+    assert all(g[i][j] &gt;= 0 for i in range(n) for j in range(n))
+    distances = [min(i, n - i) for i in range(n)]
+    bounds = [Fraction(1, 1) / alpha * rho ** d for d in distances]
+    assert all(g[0][j] &lt;= bounds[j] for j in range(n))
+    return {
+        &quot;n_cycle&quot;: n,
+        &quot;alpha&quot;: str(alpha),
+        &quot;kappa&quot;: str(kappa),
+        &quot;row_sum_exact&quot;: str(row_sums[0]),
+        &quot;neumann_rho_exact&quot;: str(rho),
+        &quot;green_row_from_site_0&quot;: [str(x) for x in g[0]],
+        &quot;distance_bounds_from_site_0&quot;: [str(x) for x in bounds],
+        &quot;all_nonnegative&quot;: True,
+        &quot;all_walk_bounds_pass&quot;: True,
+    }
+
+
+def temporal_geometry_check() -&gt; dict:
+    # Exact row sum gives exact random-placement means. Small moving-cycle
+    # inverses independently illustrate the graph-distance suppression.
+    alpha = Fraction(1)
+    kappa = Fraction(1)
+    rho = Fraction(2, 3)  # Neumann-walk upper bound for degree two.
+    rows = []
+    for n in (100, 400, 1600):
+        root = math.isqrt(n)
+        assert root * root == n
+        r = root
+        full_slice = Fraction(r, root)  # r full spatial slices, row sum 1/alpha.
+
+        # One site is anchored each time at graph distance R_N. Choose R_N so
+        # the proved walk bound is &lt;=1/log(N), and invert that finite cycle
+        # exactly as an additional check.
+        R = (math.ceil(math.log(root) / -math.log(float(rho)))
+             + math.ceil(math.log(math.log(n)) / -math.log(float(rho))))
+        m_remote = 2 * R + 1
+        lap_r = cycle_laplacian(m_remote)
+        k_r = [[alpha * Fraction(i == j) + kappa * lap_r[i][j]
+                for j in range(m_remote)] for i in range(m_remote)]
+        g_r = inverse_fraction(k_r)
+        remote_value = g_r[0][R]
+        remote_exposure = root * remote_value
+        remote_bound = root * rho ** R
+        assert remote_exposure &lt;= remote_bound
+
+        # One independent uniform spatial anchor at each time. The exposure
+        # mean is sqrt(N)/(alpha*M); its variance is &lt;=1/(alpha^2 M).
+        m_sqrt = root
+        m_large = n
+        rows.append({
+            &quot;N&quot;: n,
+            &quot;full_space_r_slices_r_eq_sqrtN_exposure_exact&quot;: str(full_slice),
+            &quot;moving_anchor_distance_R&quot;: R,
+            &quot;moving_cycle_size&quot;: m_remote,
+            &quot;moving_anchor_G_exact&quot;: str(remote_value),
+            &quot;moving_anchor_exposure_exact&quot;: str(remote_exposure),
+            &quot;moving_anchor_walk_bound&quot;: str(remote_bound),
+            &quot;moving_anchor_walk_bound_decimal&quot;: float(remote_bound),
+            &quot;random_one_per_slice_M_eq_sqrtN_expected_exposure&quot;: str(Fraction(root, m_sqrt)),
+            &quot;random_one_per_slice_M_eq_N_expected_exposure&quot;: str(Fraction(root, m_large)),
+            &quot;random_M_eq_sqrtN_variance_upper_bound&quot;: str(Fraction(1, m_sqrt)),
+            &quot;random_M_eq_N_variance_upper_bound&quot;: str(Fraction(1, m_large)),
+        })
+    return {
+        &quot;alpha&quot;: str(alpha),
+        &quot;kappa&quot;: str(kappa),
+        &quot;neumann_rho&quot;: str(rho),
+        &quot;random_geometry_expectation_identity&quot;: &quot;E[G(x,Y)] = 1/(alpha*M)&quot;,
+        &quot;random_geometry_variance_bound&quot;: &quot;Var(N^-1/2 sum_s G(x,Y_s)) &lt;= 1/(alpha^2*M)&quot;,
+        &quot;rows&quot;: rows,
+    }
+
+
+def source_covariance_check() -&gt; dict:
+    # In the exact linear comparator, a local zero-frequency output has
+    # F_delta = G_xx/sqrt(N) * sum_{s in S} xi_s. Both source families below
+    # are centered, stationary, and have the same unit one-site variance.
+    nspace = 13
+    alpha = Fraction(1)
+    kappa = Fraction(1)
+    lap = cycle_laplacian(nspace)
+    k = [[alpha * Fraction(i == j) + kappa * lap[i][j]
+          for j in range(nspace)] for i in range(nspace)]
+    g = inverse_fraction(k)
+    h = g[0][0]
+    rows = []
+    for n in (100, 400, 1600):
+        r = math.isqrt(n)
+        # Common-mode source xi_s=Z: C(s,t)=1, exactly stationary but not
+        # mixing. iid source has C(s,t)=1_{s=t}, also stationary.
+        var_common = h * h * Fraction(r * r, n)
+        var_iid = h * h * Fraction(r, n)
+        rows.append({
+            &quot;N&quot;: n,
+            &quot;r&quot;: r,
+            &quot;Var_common_mode_exact&quot;: str(var_common),
+            &quot;Var_iid_exact&quot;: str(var_iid),
+            &quot;Var_common_mode_float&quot;: float(var_common),
+            &quot;Var_iid_float&quot;: float(var_iid),
+        })
+    return {
+        &quot;Gxx&quot;: str(h),
+        &quot;same_marginal_variance&quot;: 1,
+        &quot;common_mode_covariance&quot;: &quot;C(s,t)=1 for all s,t&quot;,
+        &quot;iid_covariance&quot;: &quot;C(s,t)=1{s=t}&quot;,
+        &quot;rows&quot;: rows,
+    }
+
+
+def lyapunov_mask_check() -&gt; dict:
+    # Independent dense implementation of the first right derivative for a
+    # symmetric independent source. Q=I-P is the set whose cubic is retained.
+    n = 12
+    alpha, kappa = 1.3, 0.7
+    lap = np.zeros((n, n))
+    for i in range(n):
+        lap[i, i] = 2.0
+        lap[i, (i - 1) % n] -= 1.0
+        lap[i, (i + 1) % n] -= 1.0
+    k = alpha * np.eye(n) + kappa * lap
+    cmat = np.linalg.inv(k)
+    c = float(np.diag(cmat)[0])
+    masks = [
+        [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0],
+        [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+        [1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+    ]
+    rows = []
+    for mask in masks:
+        p = np.diag(np.asarray(mask, dtype=float))
+        q = np.eye(n) - p
+        rhs = -(c / 2.0) * (q @ cmat + cmat @ q)
+        c1 = solve_sylvester(k, k, rhs)
+        maxerr = 0.0
+        mode_rows = []
+        for j in range(n):
+            phase = np.exp(2j * np.pi * j * np.arange(n) / n)
+            v = phase / np.sqrt(n)
+            eigenvalue = alpha + 4 * kappa * math.sin(math.pi * j / n) ** 2
+            actual = float(np.real(np.vdot(v, c1 @ v)))
+            fraction = float(np.sum(mask) / n)
+            predicted = -c * (1 - fraction) / (2 * eigenvalue ** 2)
+            err = abs(actual - predicted)
+            maxerr = max(maxerr, err)
+            if j in (0, 1, n // 2):
+                mode_rows.append({
+                    &quot;mode&quot;: j,
+                    &quot;anchor_fraction&quot;: fraction,
+                    &quot;actual&quot;: actual,
+                    &quot;predicted&quot;: predicted,
+                    &quot;absolute_error&quot;: err,
+                })
+        assert maxerr &lt; 2e-12, maxerr
+        rows.append({&quot;mask&quot;: mask, &quot;max_mode_error&quot;: maxerr,
+                     &quot;selected_modes&quot;: mode_rows})
+    return {
+        &quot;N_cycle&quot;: n,
+        &quot;alpha&quot;: alpha,
+        &quot;kappa&quot;: kappa,
+        &quot;onsite_reference_variance&quot;: c,
+        &quot;identity&quot;: &quot;d C_vv/dlambda = -c*(1-f)/(2*k_q^2)&quot;,
+        &quot;rows&quot;: rows,
+    }
+
+
+def continuum_scaling_check() -&gt; dict:
+    # Discretized oscillator action on a periodic interval of physical length
+    # T=N*a, with a separate compact source period beta=1.
+    mass, lam, beta_source = 1.0, 1.0, 1.0
+    c_source = 0.5 / math.tanh(beta_source * mass / 2.0)
+    c_zero = 1.0 / (2.0 * mass)
+    rows = []
+    for target_length in (1.0, 4.0, 16.0):
+        for a in (1 / 16, 1 / 32, 1 / 64):
+            n = round(target_length / a)
+            modes = np.arange(n)
+            eig = a * mass * mass + (4.0 / a) * np.sin(np.pi * modes / n) ** 2
+            local_c_target = float(np.mean(1.0 / eig))
+            g = a * lam / 6.0
+            # BL sub-Gaussian sixth moments for the compact beta-source and
+            # the finite-T target; both are O(1) in a. Also retain the
+            # long-target vacuum asymptotic separately.
+            b_bound = math.sqrt(96.0) * g * (c_source ** 1.5 + local_c_target ** 1.5)
+            b_bound_long = math.sqrt(96.0) * g * (c_source ** 1.5 + c_zero ** 1.5)
+            alpha = a * mass * mass
+            r_exposure = min(n, math.ceil(math.sqrt(target_length) / a))
+            row = {&quot;target_length_T&quot;: target_length, &quot;N&quot;: n, &quot;a&quot;: a,
+                   &quot;alpha&quot;: alpha, &quot;kappa_tau&quot;: 1.0 / a,
+                   &quot;kappa_x_over_fixed_graph&quot;: a, &quot;g&quot;: g,
+                   &quot;target_local_green_diagonal_c_a&quot;: local_c_target,
+                   &quot;target_continuum_c_T&quot;: 0.5 / math.tanh(target_length * mass / 2.0),
+                   &quot;compact_source_c_beta&quot;: c_source,
+                   &quot;vacuum_reference_c_infinity&quot;: c_zero,
+                   &quot;B_local_moment_bound&quot;: b_bound,
+                   &quot;B_asymptotic_long_target_bound&quot;: b_bound_long,
+                   &quot;B_over_alpha&quot;: b_bound / alpha,
+                   &quot;physical_zero_mode_reference_bound_a_over_alpha&quot;: a / alpha,
+                   &quot;r_exposure_scale&quot;: r_exposure,
+                   &quot;r_exposure_scale_temporal_fraction&quot;: r_exposure / n}
+            for label, r in ((&quot;r1&quot;, 1), (&quot;rsqrtN&quot;, math.isqrt(n)),
+                             (&quot;rexposure&quot;, r_exposure), (&quot;rN&quot;, n)):
+                # F_phys=sqrt(a)*F_N; D_phys=r*B/(m^2*sqrt(T)).
+                row[f&quot;physical_amplitude_bound_{label}&quot;] = (
+                    math.sqrt(a) * r * b_bound / (alpha * math.sqrt(n)))
+            rows.append(row)
+    return {
+        &quot;action&quot;: &quot;sum_t[(q[t+1]-q[t])^2/(2a)+a*m^2*q[t]^2/2+a*lambda*q[t]^4/24]&quot;,
+        &quot;mapping&quot;: {&quot;alpha&quot;: &quot;a*m^2&quot;, &quot;kappa_tau&quot;: &quot;1/a&quot;, &quot;kappa_x&quot;: &quot;a*kappa&quot;, &quot;g&quot;: &quot;a*lambda/6&quot;},
+        &quot;compact_source_beta&quot;: beta_source,
+        &quot;mass&quot;: mass,
+        &quot;quartic_lambda&quot;: lam,
+        &quot;continuum_compact_source_variance&quot;: c_source,
+        &quot;continuum_zero_temperature_target_variance&quot;: c_zero,
+        &quot;rows&quot;: rows,
+        &quot;scope&quot;: &quot;temporal continuum scaling with fixed compact source beta, finite spatial cutoff, and target length T; not a spatial continuum/renormalization result&quot;,
+    }
+
+
+def main() -&gt; None:
+    result = {
+        &quot;scope&quot;: &quot;independent exact/controlled checks; not a nonlinear sampler replay&quot;,
+        &quot;python&quot;: platform.python_version(),
+        &quot;numpy&quot;: np.__version__,
+        &quot;scipy&quot;: scipy.__version__,
+        &quot;exact_spatial_green&quot;: exact_green_check(),
+        &quot;moving_random_geometry&quot;: temporal_geometry_check(),
+        &quot;stationary_source_covariance&quot;: source_covariance_check(),
+        &quot;arbitrary_mask_first_order&quot;: lyapunov_mask_check(),
+        &quot;fixed_beta_temporal_continuum_scaling&quot;: continuum_scaling_check(),
+    }
+    out = Path(__file__).parent / &quot;results.json&quot;
+    out.write_text(json.dumps(result, indent=2, sort_keys=True) + &quot;\n&quot;)
+    print(out)
+    print(json.dumps({
+        &quot;green_exact_row_sum&quot;: result[&quot;exact_spatial_green&quot;][&quot;row_sum_exact&quot;],
+        &quot;green_rho&quot;: result[&quot;exact_spatial_green&quot;][&quot;neumann_rho_exact&quot;],
+        &quot;covariance_scaling&quot;: result[&quot;stationary_source_covariance&quot;][&quot;rows&quot;],
+        &quot;max_lyapunov_error&quot;: max(x[&quot;max_mode_error&quot;]
+                                    for x in result[&quot;arbitrary_mask_first_order&quot;][&quot;rows&quot;]),
+        &quot;continuum_scaling&quot;: result[&quot;fixed_beta_temporal_continuum_scaling&quot;][&quot;rows&quot;],
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

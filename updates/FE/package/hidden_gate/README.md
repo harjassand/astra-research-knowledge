@@ -1,0 +1,34 @@
+# Completion-directed hidden-gate investigation
+
+Start with `RESEARCH_NOTE.md`. This is a candidate mathematical research checkpoint, not a validated molecular prediction or a priority-cleared discovery.
+
+## Reproduce
+
+Requires Python 3, NumPy, SciPy and SymPy. From this directory:
+
+```bash
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python exact_checks.py
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python final_experiment.py
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python rule_probe.py
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python audit_artifacts.py
+```
+
+The scripts write JSON beside themselves and send diagnostic output to standard output/error; redirect these streams to retain new logs. `final_experiment.py` performs all canonical runs; an interrupted run can be resumed by importing `experiment` and storing additional results, as documented in the research note. The provided canonical JSON is complete.
+
+## Canonical evidence
+
+- `final_results.json`: seven completed model/label settings, explicit query transcripts, exact residual certificates, resource counts and matched small-state baselines.
+- `exact_checks.json`: 32 finite rational systems, 5,740 exact assertions.
+- `audit_results.json`: all 15 canonical completion intervals replayed from public inputs and recorded query transcripts across seven settings.
+- `rule_learning_results.json`: structure-aware comparator and deliberately adversarial off-class shortcut falsification.
+- `final_run.log` and `final_warnings.log`: executed driver outputs and retained numerical warnings.
+- `certify.py`: exact rational endpoint verifier. It can validate a completion interval without accessing unqueried true rates.
+- `relative_query.py`: the endpoint formula for one-step minimax multiplicative acquisition.
+
+Other JSON files are exploratory runs, not additional independent performance evidence. The empty `relative_interior_witness.json` records an unsuccessful exploratory search before the endpoint theorem was proved; it is not a proof.
+
+## Important limitations
+
+The benchmark assumes a finite microscopic move alphabet, known masses, global conductance envelopes and an exact microscopic rate-query interface. It explicitly represents all 512 transient states. It does not implement atomistic state/gate discovery, affordable general high-dimensional integration, a WE/AIMMD/TAMMBER comparator, or a high-dimensional compressed solver. No physical waiting-time advantage over the strongest specialized exact solver is claimed.
+
+The 37-query learner is valid only under a stated single-parent structural promise. Its failure under one extra unqueried gate is retained rather than hidden.

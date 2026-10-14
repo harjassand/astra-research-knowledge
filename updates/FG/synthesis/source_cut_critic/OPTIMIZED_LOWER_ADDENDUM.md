@@ -1,0 +1,22 @@
+# Optimized rational lower-certificate addendum
+
+The six fields in the root worker's `OPTIMIZED_LOWER_CERTIFICATES.json` pass an independent exact audit. The input bytes are bound by SHA-256 `6a85be9b7b0f59d071e4d55482d464ee61ce93d97b081603a2ffb7750d2a4dee`.
+
+`optimized_lower_audit.py` reconstructs every source `A_+` from the supplied four-bit soft-East law, without importing the root scientific implementation. It checks each rational field energy `v^T A_+ v`, all 17 sorted-prefix profiles for each 16-coordinate source box, and every distinct box vertex. Zero-width coordinates produce only duplicates: 520 distinct vertices cover the same source profiles as 393,216 unreduced binary vertex choices. The exact threshold excess vanishes at every reported optimized lower value.
+
+The checker also reconstructs the original fallback field `A_+^{-1}ell`, evaluates its energy and lower bound exactly, takes the maximum of the optimized and fallback lower certificates, and verifies each accepted upper/lower ratio against the previously audited exact-cut upper. Four optimized fields improve their original bounds. For both all-closed cases, the exact original field remains stronger than the rationalized proposal and is correctly retained. Floating optimizer convergence and its reported objective values are not premises of acceptance.
+
+| Feature | R | Accepted lower, decimal display | Accepted upper/lower | Accepted field |
+|---|---:|---:|---:|---|
+| all open | 3 | 18556.015122682550 | 1.0007487523578646 | optimized rational |
+| all open | 100 | 18225.546552979606 | 1.0188944912448912 | optimized rational |
+| first open | 3 | 14108.339323933713 | 1.4214572627984423 | optimized rational |
+| first open | 100 | 2066.3462890818555 | 44.68602034567501 | optimized rational |
+| all closed | 3 | 16316.589197182831 | 3.337540231304509 | original exact |
+| all closed | 100 | 2384.220378693950 | 754.0929065036909 | original exact |
+
+These are exact valid variational lower certificates after rationalization. This audit does not certify exact attainment of the convex lower-envelope minimum, physical completion extrema, external scientific validation, or historical novelty.
+
+The saved receipt is `OPTIMIZED_LOWER_AUDIT.json`; exact energies, normalized minima, witness profiles, prefix ratios, accepted fractions, and source/input hashes are retained there. The replay command is `python3 optimized_lower_audit.py`. If copied into a different layout, use `--certificates PATH` to select the frozen root certificate JSON and, optionally, `--source-script PATH` to record the original source-script hash. The source formula is reconstructed inside the checker, so the source-script file is a provenance reference rather than executable input. Keep `independent_audit.py` and `independent_results.json` beside the checker.
+
+All 18 files listed in the original `MANIFEST.json` were verified byte-identical after this addendum. That original manifest is a **local acquisition inventory**, containing externally acquired literature files as well as owned evidence. It is not the publication copy list. `PUBLICATION_MANIFEST.json` is the frozen publication list and contains only owned proof, audit, metadata, replay, and receipt artifacts. The acquired Goldberg PDF, extracted text, rendered PNGs, and original local acquisition manifest are excluded from publication.

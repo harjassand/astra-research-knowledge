@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FK evidence — derive_quantities.py</title><body><p>FK source/internal evidence, externally unreviewed. <a href="../../updates/FK/synthesis/defect_experiment/derive_quantities.py">Original bytes</a></p><pre>&quot;&quot;&quot;Reproduce small arithmetic derivations from the cited primary reports.
+
+Source values are transcribed in this file; outputs are arithmetic only and do
+not model carrier generation, dislocation kinetics, or reaction probabilities.
+&quot;&quot;&quot;
+
+import json
+from pathlib import Path
+
+H = 6.62607015e-34  # J s, exact SI value
+C = 299_792_458  # m s^-1, exact SI value
+LAMBDA_M = 365e-9
+
+# Fonseca Montenegro et al., Fig. 2 / Methods VI.3, 365 nm incident power
+# density. Convert mW cm^-2 to W m^-2 (factor 10), then to photons cm^-2 s^-1.
+power_mw_cm2 = [0.07, 0.09, 0.29, 0.67]
+photon_flux = {
+    f&quot;{p:g}_mW_cm-2&quot;: {
+        &quot;incident_power_W_m-2&quot;: p * 10,
+        &quot;incident_photons_cm-2_s-1&quot;: (p * 10) * LAMBDA_M / (H * C) / 1e4,
+    }
+    for p in power_mw_cm2
+}
+
+# Appendix VIII.2 reports dark-to-light glide reductions for Zn-core and
+# S-core TD populations in two film thicknesses. The ratio-change calculation
+# is (Zn reduction)/(S reduction); it is not a reaction-probability estimate.
+mobility_reductions = {
+    &quot;20_nm_film&quot;: {&quot;Zn_core_dark_to_light_reduction&quot;: 100, &quot;S_core_dark_to_light_reduction&quot;: 5},
+    &quot;25_nm_film&quot;: {&quot;Zn_core_dark_to_light_reduction&quot;: 10, &quot;S_core_dark_to_light_reduction&quot;: 2},
+}
+for values in mobility_reductions.values():
+    values[&quot;Zn_to_S_mobility_ratio_change_factor&quot;] = (
+        values[&quot;Zn_core_dark_to_light_reduction&quot;]
+        / values[&quot;S_core_dark_to_light_reduction&quot;]
+    )
+
+# Main text gives line densities at N_Al=4e17 and 4e19 cm^-3.
+low = {&quot;Zn_core_um-1&quot;: 9.1, &quot;S_core_um-1&quot;: 5.3}
+high = {&quot;Zn_core_um-1&quot;: 0.9, &quot;S_core_um-1&quot;: 5.0}
+doping = {
+    &quot;N_Al_low_cm-3&quot;: 4e17,
+    &quot;N_Al_high_cm-3&quot;: 4e19,
+    &quot;low_doping_line_density_um-1&quot;: low,
+    &quot;high_doping_line_density_um-1&quot;: high,
+    &quot;Zn_core_density_reduction_factor&quot;: low[&quot;Zn_core_um-1&quot;] / high[&quot;Zn_core_um-1&quot;],
+    &quot;S_core_density_ratio_low_to_high&quot;: low[&quot;S_core_um-1&quot;] / high[&quot;S_core_um-1&quot;],
+    &quot;Zn_to_S_density_ratio_low&quot;: low[&quot;Zn_core_um-1&quot;] / low[&quot;S_core_um-1&quot;],
+    &quot;Zn_to_S_density_ratio_high&quot;: high[&quot;Zn_core_um-1&quot;] / high[&quot;S_core_um-1&quot;],
+}
+doping[&quot;change_in_Zn_to_S_density_ratio_factor&quot;] = (
+    doping[&quot;Zn_to_S_density_ratio_low&quot;] / doping[&quot;Zn_to_S_density_ratio_high&quot;]
+)
+
+out = {
+    &quot;status&quot;: &quot;derived_arithmetic_only&quot;,
+    &quot;source&quot;: {
+        &quot;paper&quot;: &quot;Fonseca Montenegro et al., Phys. Rev. Materials 10, 025003 (2026)&quot;,
+        &quot;doi&quot;: &quot;10.1103/c2hc-lyp2&quot;,
+        &quot;accessed_version&quot;: &quot;arXiv:2506.07908v2 (2025-10-27)&quot;,
+        &quot;figures_sections&quot;: [&quot;Fig. 2&quot;, &quot;Fig. 4&quot;, &quot;Appendix VIII.2&quot;, &quot;Methods VI.3&quot;],
+    },
+    &quot;optical_incident_photon_flux&quot;: {
+        &quot;wavelength_nm&quot;: 365,
+        &quot;exposure_duration_reported&quot;: False,
+        &quot;absorbed_fraction_or_carrier_density_reported_for_this_measurement&quot;: False,
+        &quot;values&quot;: photon_flux,
+    },
+    &quot;dark_light_relative_mobility_selectivity&quot;: mobility_reductions,
+    &quot;growth_doping_line_density_comparison&quot;: doping,
+    &quot;limits&quot;: [
+        &quot;Incident photon flux is not absorbed carrier flux or dose.&quot;,
+        &quot;The relative mobility factors are derived from reported fold reductions, not reaction rates.&quot;,
+        &quot;Doping densities are growth-integrated line-density observations, not post-growth repair yields.&quot;,
+    ],
+}
+
+Path(__file__).with_name(&quot;DERIVATIONS.json&quot;).write_text(
+    json.dumps(out, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;
+)
+</pre></body></html>

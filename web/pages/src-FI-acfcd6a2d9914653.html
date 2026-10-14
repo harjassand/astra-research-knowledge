@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — search_tangent.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/quartic/exploration/search_tangent.py">Original bytes</a></p><pre>from pathlib import Path
+import numpy as np
+import sympy as s
+import torch, json, time
+from itertools import product
+torch.set_num_threads(1);torch.set_default_dtype(torch.float64)
+a,b,c,d=s.symbols(&#x27;a b c d&#x27;);vs=(a,b,c,d);u=a*a+c*c;v=b*b+d*d;q=a*d-b*c
+F=s.expand(3*(u+v-2*q)**2+s.Rational(35,24)*u**2+q*q-s.Rational(5,2)*q*u)
+TT=np.empty((4,)*4)
+for ids in product(range(4),repeat=4):
+ g=F
+ for ix in ids:g=s.diff(g,vs[ix])
+ TT[ids]=float(g/24)
+T=torch.tensor(TT)
+K=3;N=13
+ks=np.array([(i,j) for i in range(K+1) for j in range(-K,K+1) if i&gt;0 or j&gt;0],float)
+xx=np.array(list(product(np.arange(N)*2*np.pi/N,repeat=2)))
+phase=xx@ks.T
+wave=torch.tensor(np.stack([-np.sin(phase),np.cos(phase)],axis=-1))
+kn=torch.tensor(ks/np.linalg.norm(ks,axis=1,keepdims=True))
+logs=[]
+for seed in range(6):
+ torch.manual_seed(seed)
+ amps=torch.nn.Parameter(torch.randn(2,len(ks),2)*.1)
+ opt=torch.optim.Adam([amps],lr=.035)
+ best=None
+ def moments():
+  g=torch.einsum(&#x27;pmf,omf,mj-&gt;poj&#x27;,wave,amps,kn).reshape(-1,4)
+  norm=torch.mean(torch.sum(g*g,1)**2)**.25;g=g/norm
+  C=g.T@g/len(g)
+  H=12*torch.einsum(&#x27;ijkl,kl-&gt;ij&#x27;,T,C)
+  bvec=4*torch.einsum(&#x27;ijkl,pj,pk,pl-&gt;i&#x27;,T,g,g,g)/len(g)
+  en=torch.einsum(&#x27;ijkl,pi,pj,pk,pl-&gt;&#x27;,T,g,g,g,g)/len(g)
+  A=-torch.linalg.solve(H+1e-9*torch.eye(4),bvec)
+  loss=en+torch.dot(bvec,A)+.5*torch.dot(A,H@A)
+  return loss,en,H,bvec,A,g
+ for it in range(800):
+  opt.zero_grad();loss,*rest=moments()
+  if not torch.isfinite(loss): break
+  if best is None or loss.item()&lt;best[0]:best=(loss.item(),amps.detach().numpy().copy(),it)
+  loss.backward();torch.nn.utils.clip_grad_norm_([amps],20);opt.step()
+ with torch.no_grad():
+  amps.copy_(torch.tensor(best[1]));loss,en,H,bvec,A,g=moments()
+  out={&#x27;seed&#x27;:seed,&#x27;iteration&#x27;:best[2],&#x27;gap&#x27;:loss.item(),&#x27;c&#x27;:en.item(),&#x27;H&#x27;:H.tolist(),&#x27;b&#x27;:bvec.tolist(),&#x27;background&#x27;:A.tolist(),&#x27;eigenvalues&#x27;:torch.linalg.eigvalsh(H).tolist(),&#x27;amplitudes&#x27;:amps.tolist()}
+  logs.append(out)
+  print(seed,loss.item(),torch.linalg.eigvalsh(H).tolist(),flush=True)
+Path(__file__).with_name(&#x27;tangent_search.json&#x27;).write_text(json.dumps({&#x27;cutoff&#x27;:K,&#x27;grid&#x27;:N,&#x27;steps&#x27;:800,&#x27;wavevectors&#x27;:ks.tolist(),&#x27;runs&#x27;:logs},indent=2))
+</pre></body></html>

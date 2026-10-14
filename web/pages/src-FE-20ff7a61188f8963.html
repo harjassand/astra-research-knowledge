@@ -1,0 +1,118 @@
+<!doctype html><meta charset="utf-8"><title>FE evidence — verify_heat_independent.py</title><p>Source or internal evidence;external correctness,priority and physical capability UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent verification of the new Fstar-only closed heat certificate.
+
+Reads the certificate as data. Does not import producer/search code.
+All computations below are over Q; analytic implication in REPORT.txt.
+&quot;&quot;&quot;
+from pathlib import Path
+import hashlib
+import itertools
+import json
+import sympy as S
+
+HERE=Path(__file__).resolve().parent
+path=HERE.parent / &quot;FE-quartic/checks/FSTAR_CLOSED_HEAT_CERTIFICATE.json&quot;
+raw=path.read_bytes(); data=json.loads(raw)
+x=S.symbols(&quot;a b c d&quot;); a,b,c,d=x
+jet=S.symbols(&quot;r0:6&quot;)
+u,v,w,q=a*a+c*c,b*b+d*d,a*b+c*d,a*d-b*c
+gamma=S.Rational(data[&quot;gamma&quot;])
+F=u*u+v*v+4*w*w+S.Rational(7,2)*q*q-S.Rational(29,10)*q*(u+v)
+G=F-gamma*q*q
+assert gamma&gt;=0
+Q=S.Matrix([[S.Rational(z) for z in row] for row in data[&quot;gram&quot;]])
+assert Q==Q.T and Q.shape==(24,24)
+L,D=Q.LDLdecomposition(hermitian=False)
+pivots=list(D.diagonal())
+assert all(z&gt;0 for z in pivots)
+assert L*D*L.T==Q
+assert pivots==list(map(S.Rational,data[&quot;ldl_diagonal&quot;]))
+bilinear=S.Matrix([a*z for a in x for z in jet])
+B1=S.Matrix([jet[0],jet[1],jet[3],jet[4]])
+B2=S.Matrix([jet[1],jet[2],jet[4],jet[5]])
+H=S.hessian(G,x)
+energy=(B1.T*H*B1+B2.T*H*B2)[0]
+omega=S.zeros(4)
+for pair,row in zip(data[&quot;omega_pair_order&quot;],data[&quot;omega_coefficients&quot;]):
+    i,j=pair
+    poly=sum(S.Rational(z)*x[k]*x[l] for (k,l),z in zip(data[&quot;quadratic_coefficient_order&quot;],row))
+    omega[i,j],omega[j,i]=poly,-poly
+evaluation=(B1.T*omega*B2)[0]
+identity=S.Poly(S.expand((bilinear.T*Q*bilinear)[0]-energy-evaluation),x+jet)
+assert identity.is_zero
+closure=[]
+for i,j,k in itertools.combinations(range(4),3):
+    z=S.expand(S.diff(omega[j,k],x[i])-S.diff(omega[i,k],x[j])+S.diff(omega[i,j],x[k]))
+    assert z==0; closure.append(str(z))
+alpha=S.Matrix([sum(x[i]*omega[i,j] for i in range(4))/4 for j in range(4)])
+for i,j in itertools.combinations(range(4),2):
+    assert S.expand(S.diff(alpha[j],x[i])-S.diff(alpha[i],x[j])-omega[i,j])==0
+# Compactly replay the pure-compatible-jet reduction: omega vanishes and
+# the heat density becomes |xi|^2 D2G[A][eta outer xi,eta outer xi].
+eta0,eta1,k0,k1=S.symbols(&quot;eta0 eta1 k0 k1&quot;)
+sub=dict(zip(jet,[eta0*k0*k0,eta0*k0*k1,eta0*k1*k1,eta1*k0*k0,eta1*k0*k1,eta1*k1*k1]))
+rankone=S.Matrix([eta0*k0,eta0*k1,eta1*k0,eta1*k1])
+assert S.expand(evaluation.subs(sub))==0
+assert S.expand(energy.subs(sub)-(k0*k0+k1*k1)*(rankone.T*H*rankone)[0])==0
+rho=S.Rational(1,500)
+shiftL,shiftD=(Q-rho*S.eye(24)).LDLdecomposition(hermitian=False)
+assert all(z&gt;0 for z in shiftD.diagonal())
+assert shiftL*shiftD*shiftL.T==Q-rho*S.eye(24)
+def diss(f):
+    h=S.hessian(f,x)
+    return S.expand((B1.T*h*B1+B2.T*h*B2)[0])
+basis=[u*u,v*v,u*v,w*w,u*w,v*w,q*u,q*v,q*w]
+perturb=[]
+for f in basis:
+    R=S.zeros(24)
+    for exponents,coefficient in S.Poly(diss(f),x+jet).terms():
+        aa=[i for i,n in enumerate(exponents[:4]) for _ in range(n)]
+        jj=[i for i,n in enumerate(exponents[4:]) for _ in range(n)]
+        assert len(aa)==len(jj)==2
+        row,col=6*aa[0]+jj[0],6*aa[1]+jj[1]
+        if row==col:R[row,col]+=coefficient
+        else:R[row,col]+=coefficient/2;R[col,row]+=coefficient/2
+    assert R==R.T and S.expand((bilinear.T*R*bilinear)[0]-diss(f))==0
+    perturb.append(R)
+envelope=S.zeros(24)
+for R in perturb:envelope+=R.applyfunc(abs)
+K=max(sum(envelope[i,j] for j in range(24)) for i in range(24))
+assert K==82
+eta=rho/(2*K)
+assert eta==S.Rational(1,82000)
+moments=[S.expand(f.subs({a:7,b:0,c:0,d:7})/50+S.Rational(49,50)*f.subs({a:1,b:0,c:0,d:-1})) for f in basis]
+assert moments==[49,49,49,0,0,0,S.Rational(1176,25),S.Rational(1176,25),0]
+witness=sum(z*m for z,m in zip([1,1,S.Rational(7,2),S.Rational(1,2),0,0,-S.Rational(29,10),-S.Rational(29,10),0],moments))
+witness_upper=witness+eta*sum(abs(z) for z in moments)
+assert witness_upper==-S.Rational(166453,50000)
+# Exact SOS identities for the two analytic inequalities used in the
+# Jensen-gap corollary. No angular/directional sample is used.
+norm=sum(z*z for z in x)
+cauchy=sum((x[i]*B[j]-x[j]*B[i])**2 for B in (B1,B2) for i,j in itertools.combinations(range(4),2))
+residual=12*norm*(jet[0]**2+jet[2]**2+jet[3]**2+jet[5]**2)+8*cauchy
+assert S.expand(24*norm*sum(z*z for z in jet)-diss(norm**2)-residual)==0
+increment=S.symbols(&quot;h0:4&quot;)
+hnorm=sum(z*z for z in increment)
+dot=sum(z*y for z,y in zip(x,increment))
+rel=(norm**2).subs(dict(zip(x,[z+y for z,y in zip(x,increment)])),simultaneous=True)-norm**2-4*norm*dot
+resid=6*(dot+hnorm/3)**2+2*sum((x[i]*increment[j]-x[j]*increment[i])**2 for i,j in itertools.combinations(range(4),2))
+assert S.expand(rel-hnorm**2/3-resid)==0
+result={
+    &quot;status&quot;:&quot;PASS&quot;,
+    &quot;certificate_sha256&quot;:hashlib.sha256(raw).hexdigest(),
+    &quot;gamma&quot;:str(gamma),
+    &quot;checks&quot;:[&quot;Q symmetric 24 by 24&quot;, &quot;exact LDL factor identity&quot;, &quot;all 24 exact positive pivots&quot;, &quot;producer pivot values agree&quot;, &quot;210-coefficient degree-(2,2) heat Gram identity&quot;, &quot;all 4 exterior-closure identities&quot;, &quot;explicit polynomial primitive alpha=(1/4)i_R omega&quot;, &quot;pure compatible jets remove omega and force G rank-one convex&quot;, &quot;Q-(1/500)I exact positive LDL&quot;, &quot;nine exact perturbation Gram identities and row-sum 82&quot;, &quot;robust non-polyconvex measure exact moments and budget&quot;, &quot;E_|A|4 &lt;=24|A|2|jet|2 by exact SOS identity&quot;, &quot;norm-four Bregman lower bound |increment|4/3 by exact SOS identity&quot;],
+    &quot;ldl_pivots&quot;:[str(z) for z in pivots],
+    &quot;primitive_coefficients&quot;:[str(S.expand(z)) for z in alpha],
+    &quot;exact_gram_margin&quot;:str(rho),
+    &quot;perturbation_operator_bound&quot;:str(K),
+    &quot;coefficient_supnorm_radius&quot;:str(eta),
+    &quot;robust_gram_margin&quot;:str(rho/2),
+    &quot;robust_nonpolyconvex_witness_upper_bound&quot;:str(witness_upper),
+    &quot;Fstar_jensen_gap_constant&quot;:str(rho/72),
+    &quot;coefficient_cube_jensen_gap_constant&quot;:str(rho/144),
+    &quot;proof_scope&quot;:&quot;Exact Fstar-only algebra independently reconstructed. Analytic heat implication separately checked in REPORT.txt. Universal SO(2) Morrey and N740 Q4 remain unresolved. Historical novelty and external review UNKNOWN.&quot;
+}
+(HERE/&quot;HEAT_INDEPENDENT_RESULTS.json&quot;).write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+print(json.dumps({&quot;status&quot;:result[&quot;status&quot;],&quot;certificate_sha256&quot;:result[&quot;certificate_sha256&quot;],&quot;gamma&quot;:result[&quot;gamma&quot;],&quot;exact_checks&quot;:len(result[&quot;checks&quot;])}))
+</pre>

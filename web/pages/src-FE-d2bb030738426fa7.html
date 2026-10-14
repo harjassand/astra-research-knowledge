@@ -1,0 +1,303 @@
+<!doctype html><meta charset="utf-8"><title>FE evidence — independent_interferometry_checks.py</title><p>Source or internal evidence;external correctness,priority and physical capability UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent mathematical checks; no experimental or CaOH+ simulation claims.
+
+Run with Python &gt;=3.10, numpy, scipy. This program does not import producer code.
+All paths are command-line supplied or relative to this file.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+import platform
+from fractions import Fraction
+from pathlib import Path
+
+import numpy as np
+import scipy
+from scipy.integrate import quad
+from scipy.linalg import expm
+
+
+X = np.array([[0, 1], [1, 0]], complex)
+Y = np.array([[0, -1j], [1j, 0]], complex)
+Z = np.diag([1., -1.]).astype(complex)
+I2 = np.eye(2, dtype=complex)
+
+
+def wave(Ea, Eb, s, x):
+    a, b = np.exp(0.5j*s), np.exp(-0.5j*s)
+    cp = (a*Ea-b*Eb)/(2j*math.sin(s))
+    cm = (-b*Ea+a*Eb)/(2j*math.sin(s))
+    return cp*np.exp(1j*x)+cm*np.exp(-1j*x), abs(cp)**2+abs(cm)**2
+
+
+def pulse(theta, E):
+    h = np.array([[0., np.conj(E)], [E, 0.]], complex)
+    return expm(-0.5j*theta*h)
+
+
+def order_vectors(p, s, q=0.):
+    theta = 2*math.asin(math.sqrt(p))
+    states = []
+    for x in (s/2+q, -s/2+q):
+        f1, _ = wave(1., 1j, s, x)
+        f2, _ = wave(1j, 1., s, x)
+        states.append(pulse(theta, f2)@pulse(theta, f1)@np.array([1., 0.]))
+    return states
+
+
+def completion_vectors(pa, pb, zs, zl):
+    qa, qb = 1-pa, 1-pb
+    # Two orthogonal outcome sectors, each of dimension two. Inner products are
+    # &lt;vB|P_s|vA&gt;=zs and &lt;vB|P_l|vA&gt;=zl, fixing all branch outcome probabilities.
+    a = np.array([math.sqrt(pa), 0., math.sqrt(qa), 0.], complex)
+    b = np.array([np.conj(zs)/math.sqrt(pa),
+                  math.sqrt(max(0., pb-abs(zs)**2/pa)),
+                  np.conj(zl)/math.sqrt(qa),
+                  math.sqrt(max(0., qb-abs(zl)**2/qa))], complex)
+    return a, b
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(&#x27;--source-dir&#x27;, type=Path)
+    ap.add_argument(&#x27;--replay-dir&#x27;, type=Path)
+    ap.add_argument(&#x27;--output&#x27;, type=Path, default=Path(__file__).with_name(&#x27;independent_results.json&#x27;))
+    args = ap.parse_args()
+    rng = np.random.default_rng(1431)
+    result = {&#x27;status&#x27;: &#x27;INTERNAL MATHEMATICAL CHECKS; NO PHYSICAL VALIDATION&#x27;,
+              &#x27;runtime&#x27;: {&#x27;python&#x27;: platform.python_version(), &#x27;numpy&#x27;: np.__version__,
+                          &#x27;scipy&#x27;: scipy.__version__}, &#x27;groups&#x27;: {}}
+
+    # Closed-form inverse and matrix exponential are independent of producer
+    # linear solve and hand-coded rotation. Exercise multiple conditioning regimes.
+    errors = dict(interpolation=0., energy=0., equal_intensity=0., unitary_formula=0.)
+    for s in (.1, .4, .78, 1.2, 1.57, 2.2, 3.0):
+        for _ in range(30):
+            ea, eb = rng.normal(size=2)+1j*rng.normal(size=2)
+            va, e = wave(ea, eb, s, s/2)
+            vb, _ = wave(ea, eb, s, -s/2)
+            formula = (abs(ea)**2+abs(eb)**2-2*math.cos(s)*np.real(ea*np.conj(eb)))/(2*math.sin(s)**2)
+            errors[&#x27;interpolation&#x27;] = max(errors[&#x27;interpolation&#x27;], abs(va-ea), abs(vb-eb))
+            errors[&#x27;energy&#x27;] = max(errors[&#x27;energy&#x27;], abs(e-formula))
+        for x in rng.uniform(-12, 12, 100):
+            f1, _ = wave(1., 1j, s, x)
+            f2, _ = wave(1j, 1., s, x)
+            errors[&#x27;equal_intensity&#x27;] = max(errors[&#x27;equal_intensity&#x27;], abs(abs(f1)**2-abs(f2)**2))
+    for p in (.001, .01, .03, .1, .3, .49):
+        va, vb = order_vectors(p, .78)
+        target = 1-2*p*p+2j*p*(1-p)
+        errors[&#x27;unitary_formula&#x27;] = max(errors[&#x27;unitary_formula&#x27;], abs(np.vdot(vb, va)-target))
+    assert max(errors.values()) &lt; 1e-11
+    result[&#x27;groups&#x27;][&#x27;independent_field_and_unitary_checks&#x27;] = errors
+
+    # Adaptive integration of the entire spatially dependent unitary, not a
+    # point-packet interpolation or the producer&#x27;s Gauss-Hermite rule.
+    sigma, p, s = .03, .03, .78
+    def integrand(q):
+        va, vb = order_vectors(p, s, q)
+        return np.vdot(vb, va)*math.exp(-q*q/(2*sigma*sigma))/(math.sqrt(2*math.pi)*sigma)
+    re, err_re = quad(lambda q: integrand(q).real, -10*sigma, 10*sigma, epsabs=1e-12, epsrel=1e-12)
+    im, err_im = quad(lambda q: integrand(q).imag, -10*sigma, 10*sigma, epsabs=1e-12, epsrel=1e-12)
+    assert abs(re-.9981841219781635) &lt; 1e-7 and abs(im-.05809073) &lt; 1e-7
+    result[&#x27;groups&#x27;][&#x27;adaptive_finite_width&#x27;] = {&#x27;L_real&#x27;: re, &#x27;L_imag&#x27;: im,
+        &#x27;reported_quadrature_error_real&#x27;: err_re, &#x27;reported_quadrature_error_imag&#x27;: err_im,
+        &#x27;excluded_gaussian_tail_bound&#x27;: math.erfc(10/math.sqrt(2)),
+        &#x27;limitation&#x27;: &#x27;floating diagnostics, not rigorous interval quadrature or CaOH+ prediction&#x27;}
+
+    # Construct every sampled disk point explicitly, including both extremal
+    # signs; these are physical normalized dilation vectors, not a loose norm test.
+    worst = 0.
+    for _ in range(300):
+        pa, pb = rng.uniform(.02, .98, size=2)
+        zs = rng.uniform(0., 1.)*math.sqrt(pa*pb)*np.exp(1j*rng.uniform(-math.pi, math.pi))
+        radius = math.sqrt((1-pa)*(1-pb))
+        for frac in (0., .3, 1.):
+            zl = frac*radius*np.exp(1j*rng.uniform(-math.pi, math.pi))
+            a, b = completion_vectors(pa, pb, zs, zl)
+            err = max(abs(np.vdot(a, a)-1), abs(np.vdot(b, b)-1),
+                      abs(np.vdot(b[:2], a[:2])-zs), abs(np.vdot(b, a)-(zs+zl)))
+            worst = max(worst, err)
+    assert worst &lt; 1e-13
+    result[&#x27;groups&#x27;][&#x27;sharp_erasure_disk&#x27;] = {&#x27;constructed_cases&#x27;: 900, &#x27;max_error&#x27;: worst}
+
+    pa = pb = .99
+    a, b = completion_vectors(pa, pb, .99, -.01)
+    full = float(np.vdot(b, a).real)
+    assert abs(full-.98) &lt; 1e-14
+    result[&#x27;groups&#x27;][&#x27;postselection_countermodels&#x27;] = {
+        &#x27;perfect_survivors&#x27;: {&#x27;survival_each_branch&#x27;: .99, &#x27;conditional_overlap&#x27;: 1.,
+                             &#x27;full_overlap&#x27;: full, &#x27;full_X_failure&#x27;: (1-full)/2},
+        &#x27;rank_one_residual&#x27;: {}}
+    d, t, r = 8, 1., 1.
+    L = ((d-1)+np.exp(-1j*r*t))/d
+    pfull = (1-L.real)/2
+    assert pfull &gt; 0
+    result[&#x27;groups&#x27;][&#x27;postselection_countermodels&#x27;][&#x27;rank_one_residual&#x27;] = {
+        &#x27;d&#x27;: d, &#x27;H&#x27;: &#x27;0&#x27;, &#x27;R&#x27;: &#x27;|0&gt;&lt;0|&#x27;, &#x27;Rcap&#x27;: 1., &#x27;Lambda&#x27;: 1., &#x27;t&#x27;: t,
+        &#x27;reset&#x27;: &#x27;I/d&#x27;, &#x27;erase_rule&#x27;: &#x27;projector |0&gt;&lt;0| at final time&#x27;,
+        &#x27;erasure_probability&#x27;: 1/d, &#x27;conditional_X_failure&#x27;: 0.,
+        &#x27;full_X_failure&#x27;: float(pfull), &#x27;actual_residual_operator_norm&#x27;: r,
+        &#x27;sharp_completion_upper_X_failure&#x27;: 1/d,
+        &#x27;naive_discarded_record_norm_certificate&#x27;: 0.}
+
+    # Full controlled GKSL generator. Each branch&#x27;s internal map is identity,
+    # while the environmental mark destroys branch coherence.
+    gamma, duration = .7, .4
+    jump = math.sqrt(gamma)*np.kron(Z, I2)
+    n = 4
+    ld = np.kron(jump.conj(), jump)-.5*(np.kron(np.eye(n), jump.conj().T@jump)
+                                              +np.kron((jump.conj().T@jump).T, np.eye(n)))
+    rho = np.kron(np.ones((2, 2))/2, np.diag([.6, .4]))
+    final = (expm(duration*ld)@rho.reshape(-1, order=&#x27;F&#x27;)).reshape((n, n), order=&#x27;F&#x27;)
+    observed = 2*np.trace(final[:2, 2:])
+    analytic = math.exp(-2*gamma*duration)
+    assert abs(observed-analytic) &lt; 1e-13
+    result[&#x27;groups&#x27;][&#x27;identical_channel_marginals_different_cross_block&#x27;] = {
+        &#x27;branch_channels&#x27;: &#x27;both exactly identity at every t&#x27;,
+        &#x27;same_jump_choice&#x27;: {&#x27;J_A&#x27;: &#x27;sqrt(gamma) I&#x27;, &#x27;J_B&#x27;: &#x27;sqrt(gamma) I&#x27;, &#x27;overlap&#x27;: 1.},
+        &#x27;opposite_jump_choice&#x27;: {&#x27;J_A&#x27;: &#x27;sqrt(gamma) I&#x27;, &#x27;J_B&#x27;: &#x27;-sqrt(gamma) I&#x27;,
+                               &#x27;gamma&#x27;: gamma, &#x27;t&#x27;: duration, &#x27;observed_overlap&#x27;: float(observed.real),
+                               &#x27;analytic_overlap&#x27;: analytic},
+        &#x27;meaning&#x27;: &#x27;mathematical shared-environment countermodel, not measured scattering rate&#x27;}
+
+    # A common atomic energy phase mixes cat labels. Model an ideal cat by
+    # CNOT encoding into orthogonal motion branches, then undo that encoding.
+    # This keeps the erroneous unrecombined motion, which a label-only model loses.
+    cnot = np.zeros((4, 4), complex)
+    for anc in (0, 1):
+        for motion in (0, 1):
+            cnot[2*anc+(motion^anc), 2*anc+motion] = 1.
+    encode = np.kron(cnot, I2)
+    theta = 2*math.asin(math.sqrt(.03))
+    ua = pulse(theta, 1j)@pulse(theta, 1.)
+    ub = pulse(theta, 1.)@pulse(theta, 1j)
+    conditional = np.zeros((4, 4), complex)
+    conditional[:2, :2], conditional[2:, 2:] = ua, ub
+    conditional = np.kron(I2, conditional)
+    init = np.kron(np.array([1., 1.])/math.sqrt(2), np.array([1., 0., 0., 0.]))
+    chi = .8
+    mixed = np.kron(expm(-.5j*chi*X), np.eye(4))
+    psi = encode@conditional@mixed@encode@init
+    amp = psi.reshape((2, 4))
+    rho_anc = amp@amp.conj().T
+    measured = 2*rho_anc[0, 1]
+    ideal = np.vdot(ub@np.array([1., 0.]), ua@np.array([1., 0.]))
+    expected = ideal.real+1j*math.cos(chi)*ideal.imag
+    assert abs(measured-expected) &lt; 1e-13
+    result[&#x27;groups&#x27;][&#x27;common_atomic_mixing_without_scalar_visibility&#x27;] = {
+        &#x27;chi_scenario_not_dynamic_prediction&#x27;: chi,
+        &#x27;ideal_overlap&#x27;: [float(ideal.real), float(ideal.imag)],
+        &#x27;measured_qubit_coherence&#x27;: [float(measured.real), float(measured.imag)],
+        &#x27;real_quadrature_retention&#x27;: 1., &#x27;imaginary_quadrature_retention&#x27;: math.cos(chi),
+        &#x27;limitation&#x27;: &#x27;orthogonal spatial-branch toy, no CaOH+ material parameters&#x27;,
+        &#x27;blank_control&#x27;: &#x27;UA=UB implies no order-odd signal under the same common background&#x27;}
+
+    # Exact finite-envelope scope counterexample to promoting a carrier-field
+    # intensity identity to a pointwise spacetime identity. No apparatus length,
+    # lifetime or rate is inferred from this dimensionless construction.
+    a, b, delay, kx = 1., -2., .1, .39
+    def intensities(time):
+        gplus = math.exp(-(time-delay)**2/4)
+        gminus = math.exp(-(time+delay)**2/4)
+        f1 = a*gplus*np.exp(1j*kx)+b*gminus*np.exp(-1j*kx)
+        f2 = b*gplus*np.exp(1j*kx)+a*gminus*np.exp(-1j*kx)
+        return abs(f1)**2, abs(f2)**2
+    envelope_error = 0.
+    maximum_difference = 0.
+    for time in np.linspace(-6., 6., 501):
+        i1, i2 = intensities(time)
+        formula = (a*a-b*b)*(math.exp(-(time-delay)**2/2)-math.exp(-(time+delay)**2/2))
+        envelope_error = max(envelope_error, abs(i1-i2-formula))
+        maximum_difference = max(maximum_difference, abs(i1-i2))
+    integrated_difference, err = quad(lambda time: intensities(time)[0]-intensities(time)[1], -10., 10., epsabs=1e-12)
+    assert envelope_error &lt; 1e-13 and maximum_difference &gt; .1 and abs(integrated_difference) &lt; 1e-12
+    result[&#x27;groups&#x27;][&#x27;finite_envelope_intensity_scope&#x27;] = {
+        &#x27;dimensionless_delay&#x27;: delay, &#x27;beam_amplitudes&#x27;: [a, b], &#x27;kx&#x27;: kx,
+        &#x27;maximum_pointwise_intensity_difference&#x27;: maximum_difference,
+        &#x27;closed_form_identity_max_error&#x27;: envelope_error,
+        &#x27;integrated_fluence_difference&#x27;: integrated_difference,
+        &#x27;meaning&#x27;: &#x27;finite counterpropagating envelopes break instantaneous carrier identity; integrated fluence equality at fixed x survives&#x27;}
+
+    # A harmonic Gaussian mixture can have nonzero log-overlap quartic response.
+    # L(eps)=exp(-eps^2) cosh(eps^2/2), hence d^4 log L(0)=3 exactly.
+    mean_variance = (Fraction(1)+Fraction(3))/2
+    mean_squared_variance = (Fraction(1)+Fraction(9))/2
+    fourth_log_coefficient = mean_squared_variance/8-mean_variance**2/8
+    assert fourth_log_coefficient*math.factorial(4) == 3
+    result[&#x27;groups&#x27;][&#x27;harmonic_mixture_quartic_countermodel&#x27;] = {
+        &#x27;variance_values&#x27;: [1, 3], &#x27;weights&#x27;: [.5, .5],
+        &#x27;L&#x27;: &#x27;0.5 exp(-epsilon^2/2)+0.5 exp(-3epsilon^2/2)&#x27;,
+        &#x27;log_L&#x27;: &#x27;-epsilon^2+log(cosh(epsilon^2/2))&#x27;,
+        &#x27;fourth_log_derivative_at_zero&#x27;: 3,
+        &#x27;exact_rational_quartic_coefficient&#x27;: str(fourth_log_coefficient),
+        &#x27;status&#x27;: &#x27;exact symbolic identity; a nonzero fourth connected signal alone does not certify anharmonicity&#x27;}
+
+    # Finite variable-history domination check. The proof in the note is uniform
+    # and not limited to these sampled conditional probability trees.
+    qstar, steps, checked = .2, 8, 0
+    min_slack = 1.
+    for _ in range(20):
+        paths = {(): 1.}
+        for j in range(steps):
+            new = {}
+            for hist, prob in paths.items():
+                pz = qstar+(1-qstar)*rng.uniform(0, 1)
+                new[hist+(0,)] = prob*(1-pz)
+                new[hist+(1,)] = prob*pz
+            paths = new
+        for k in range(steps):
+            actual = sum(v for h, v in paths.items() if sum(h) &lt;= k)
+            comparison = sum(math.comb(steps, j)*qstar**j*(1-qstar)**(steps-j) for j in range(k+1))
+            min_slack = min(min_slack, comparison-actual)
+            assert actual &lt;= comparison+1e-13
+            checked += 1
+    result[&#x27;groups&#x27;][&#x27;memory_safe_erasure_failure_count&#x27;] = {&#x27;history_trees&#x27;: 20,
+        &#x27;lower_tail_checks&#x27;: checked, &#x27;minimum_slack&#x27;: min_slack,
+        &#x27;proof_scope&#x27;: &#x27;predeclared finite N; every conditional failure probability lower bounded&#x27;}
+
+    N = 102729
+    q_exact = -math.expm1(math.log(.9)/N)
+    q_approx = -math.log(.9)/N
+    n_zero = math.ceil(math.log(.05)/math.log1p(-1e-6))
+    result[&#x27;groups&#x27;][&#x27;cost_and_survival_arithmetic&#x27;] = {
+        &#x27;C_and_R_scenarios&#x27;: [.52, .03], &#x27;completed_two_setting_trials&#x27;: N,
+        &#x27;exact_independent_loss_ceiling_for_90pct_survival&#x27;: q_exact,
+        &#x27;source_first_order_loss_ceiling&#x27;: q_approx,
+        &#x27;first_order_overstatement&#x27;: q_approx-q_exact,
+        &#x27;zero_loss_trials_for_95pct_one_sided_1e_minus6_bound&#x27;: n_zero,
+        &#x27;five_sigma_completed_rate_minutes_at_assumed_50_Hz&#x27;: N/50/60,
+        &#x27;Hoeffding_one_sided_fixed_N_alpha_2p87e_minus7_coefficient&#x27;: 2*math.log(1/2.87e-7),
+        &#x27;scope&#x27;: &#x27;planning arithmetic; actual signal, reset independence, attempt rate, systematic error and loss remain unacquired&#x27;}
+
+    if args.source_dir and args.replay_dir:
+        old = json.loads((args.source_dir/&#x27;results.json&#x27;).read_text())
+        new = json.loads((args.replay_dir/&#x27;results.json&#x27;).read_text())
+        changes = []
+        def compare(a, b, path=&#x27;&#x27;):
+            if isinstance(a, dict) and isinstance(b, dict):
+                assert a.keys() == b.keys()
+                for k in a: compare(a[k], b[k], path+&#x27;/&#x27;+k)
+            elif isinstance(a, list) and isinstance(b, list):
+                assert len(a) == len(b)
+                for i, (aa, bb) in enumerate(zip(a, b)): compare(aa, bb, path+&#x27;/&#x27;+str(i))
+            elif a != b:
+                changes.append({&#x27;path&#x27;: path, &#x27;source&#x27;: a, &#x27;replay&#x27;: b,
+                                &#x27;absolute_difference&#x27;: abs(a-b) if isinstance(a, (int, float)) and isinstance(b, (int, float)) else None})
+        compare(old, new)
+        maxdiff = max((v[&#x27;absolute_difference&#x27;] or 0. for v in changes), default=0.)
+        result[&#x27;producer_replay&#x27;] = {&#x27;source_sha256&#x27;: hashlib.sha256((args.source_dir/&#x27;results.json&#x27;).read_bytes()).hexdigest(),
+            &#x27;replay_sha256&#x27;: hashlib.sha256((args.replay_dir/&#x27;results.json&#x27;).read_bytes()).hexdigest(),
+            &#x27;differences&#x27;: changes, &#x27;maximum_numeric_absolute_difference&#x27;: maxdiff,
+            &#x27;finite_width_independent_overlap_difference&#x27;: abs((re+1j*im)-complex(new[&#x27;noncommuting_control_scenarios&#x27;][1][&#x27;pure_ground_finite_width&#x27;][&#x27;L_real&#x27;], new[&#x27;noncommuting_control_scenarios&#x27;][1][&#x27;pure_ground_finite_width&#x27;][&#x27;L_imag&#x27;]))}
+        assert maxdiff &lt; 1e-10
+        assert result[&#x27;producer_replay&#x27;][&#x27;finite_width_independent_overlap_difference&#x27;] &lt; 1e-10
+    args.output.write_text(json.dumps(result, indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

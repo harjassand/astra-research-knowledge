@@ -1,0 +1,150 @@
+# Three-level isotope coding acquires a joint temporal-ancestry transform
+
+Status: internally derived conditional acquisition/statistical theorem. No physical experiment, novelty clearance, superiority over optimized nonlinear isotope-transient methods, or catalyst mechanism is established. The construction uses standard Markov semigroups and isotope-count moments. It extends the particular telegraph observable rather than supplying microscopic histories.
+
+## 1. The missing information in the incoming operation
+
+For four ordered entry times S1<=S2<=S3<=S4, put
+
+    L=(S2-S1)+(S4-S3),  G=S3-S2.
+
+The incoming telegraph code acquires Q(x)=E exp(-x L) by setting its flip rate to x/2. Varying x identifies the distribution of L in the ideal infinite-data sense, but cannot identify its joint distribution with G. The common shift of all four times remains irrelevant.
+
+We construct a second, finite-state, three-level feed code that, together with Q, acquires
+
+    M(x,y)=E exp(-x L-y G),   x>0, 0<y<=2x.
+
+There is no reaction-network, elementary-rate or ancestry-trajectory input. The legal information is the prescribed and calibrated feed waveform, whole-product isotope-count frequencies, a stationary code-independent ancestry law, and the same preparation/neutrality/detection premises as the source. This changes the acquisition kernel; it does not remove those premises.
+
+## 2. An implementable Markov code and exact readout
+
+Let Z(t) be the stationary continuous-time Markov chain on {-1,0,1} with invariant law pi=(1/4,1/2,1/4). In this order its generator is
+
+    Q = [-(c+r),   c,       r
+          c/2,    -c,      c/2
+          r,      c,     -(c+r)],
+    c=y/2,  r=(2x-y)/4.
+
+These are nonnegative rates exactly when 0<=y<=2x. For y>0 the chain is irreducible. It is reversible. The functions f(z)=z and h(z)=z^2-1/2 satisfy
+
+    Q f=-x f,   Q h=-y h,   E_pi f^2=1/2,   f h=f/2.
+
+Set the physical heavy-isotope fraction to p(t)=[1+b+a Z(t)]/2, where known a>0 and b give valid purities at all three levels. The middle level is (1+b)/2; total chemical feed is held constant. With independent single-carbon labels conditional on entry times and this actual waveform, the incoming corrected count statistic still works:
+
+    W4(K)=(1-b)^K(-1-b)^(4-K)/a^4,
+    E[W4(K)|history,code]=product_i Z(S_i).
+
+This is a five-bin weighted sum, not position-resolved isotopomer enumeration. A controlled jump sequence with three prescribed isotope levels is a physical input hypothesis; instantaneous transitions and perfect isotope neutrality are not granted experimentally.
+
+### Exact four-point identity
+
+For d1=S2-S1,d2=S3-S2,d3=S4-S3, the Markov property gives
+
+    E product_i Z(S_i)
+      = (1/4) exp[-x(d1+d3)] [1+exp(-y d2)].
+
+Proof. First condition the last f on time S3, producing exp(-x d3) f(S3)^2. Write f^2=1/2+h and condition on S2. Multiplication by f(S2) gives (1/2)[1+exp(-y d2)]f(S2), because f h=f/2. Finally E f(S1)f(S2)=(1/2)exp(-x d1). The displayed formula follows, including coincident times by P_0=I.
+
+Consequently the observed corrected mean C(x,y) satisfies
+
+    C=(Q(x)+M(x,y))/4,      M(x,y)=4C(x,y)-Q(x).
+
+Q is acquired in a separate ordinary telegraph campaign at flip rate x/2. Every product, code duration, preparation, failure and calibration in both campaigns is paid. No subtraction is called variance-free. The full middle-gap correlation is obtained without estimating a microscopic model.
+
+The open wedge 0<y<2x is sufficient, in the ideal infinite-data setting, to determine the joint law of (L,G): the two-variable Laplace transform is real analytic on x,y>0, so equality on this open wedge extends throughout the connected positive quadrant; standard Laplace uniqueness then applies. This is an identifiability statement only. Finite noisy transform inversion can be severely ill-conditioned; useful operation should target particular M(x,y), not assume a cheap reconstruction.
+
+## 3. Exact information separation beyond every telegraph rate
+
+The following histories are abstract stationary ancestry laws. They are not fitted catalytic mechanisms. Let tau>0 and C>=0 be a common independent delay with identical law in both models. Let X=(X1,...,X4) be uniform on even parity strings (E) or odd parity strings (O). For d in {0,tau}, define ages
+
+    A_j=C+(j-1)tau+tau X_j+d 1_(j>=3).
+
+They are ordered (ties allowed). Define model P as an equal mixture of E at d=0 and O at d=tau; define model R as an equal mixture of O at d=0 and E at d=tau.
+
+These two models have exactly the same:
+
+- every labelled proper-coordinate age marginal (orders one,two,three);
+- complete isotope-count response at every output time for every ideal two-level single rectangular pulse, including arbitrary widths, placements and a common-delay mixture;
+- distribution of L, hence Q(x) for every x>0;
+- distribution of total span S4-S1=L+G, hence all integrated all-heavy rectangular-pulse span measurements.
+
+The first two statements follow from the source E/O marginal/at-most-two-boundary argument separately at each d. Translating the last pair changes only G, leaving the entire E/O difference of the L law independent of d, so the two mixture differences cancel for every function of L. Span is determined by the first and last ages and is already a proper-coordinate marginal.
+
+They do not have the same joint (L,G) law. Write u=exp(-x tau),v=exp(-y tau). The E-minus-O transform difference before the last-pair translation is
+
+    (1-u)^2(u-v)^2/8.
+
+This follows by factoring the four-bit parity sum. Translation multiplies it by exp(-y d). Therefore
+
+    M_P-M_R=(1-v)(1-u)^2(u-v)^2/16.
+
+At x tau=log4 and y tau=log2, this is exactly 9/8192. Both rates satisfy the legal wedge. Since Q agrees, C_P-C_R=9/32768. Whole-product parity at actual symmetric contrast a attenuates the raw difference by a^4.
+
+This is a positive acquisition separation from the stated complete single-pulse and all-telegraph interfaces, even though their transforms are available at every rate. It does not defeat arbitrary multi-pulse, shaped or nonlinear frequency-response measurements. The accompanying checker exhausts the finite binary-waveform grid and records a stronger deterministic competitor; its distinguishing waveform and information are fully charged. Claims about identical raw chemical histories, all physical observables or all conventional methods would be false.
+
+## 4. Uniform code variance for bounded mixing Markov codes
+
+The new three-level code needs a finite-duration guarantee; products cannot be assigned independent code realizations. We prove a broader lemma rather than importing the source telegraph-only covariance formula.
+
+Let Z be any stationary Markov process with invariant law pi and a nonincreasing bound
+
+    sup_z TV(P_t(z,.),pi) <= d(t),   K_code=integral_0^infinity d(t)dt<infinity.
+
+TV is sup-event distance, half L1. Let f be real with |f|<=1. For a fixed n-time pattern A=(a1,...,an), define U_A(t)=product_i f(Z(t+ai)). Repeated times are permitted. Then
+
+    integral_0^infinity |Cov(U_A(0),U_A(s))|ds <= 8 n^2 K_code,
+    Var[(1/T) integral_0^T U_A(t)dt] <= 16 n^2 K_code/T.
+
+No maximum age-span or number of hidden chemical states occurs in this code-only bound.
+
+### Proof by chronological cuts
+
+Merge the two colored lists A and A+s chronologically, choosing an arbitrary fixed order for ties. Call a gap a cross edge if its two consecutive endpoints have different colors. The joint moment is a stationary Markov kernel product with multiplication factors bounded by one. Replace the transition at every cross edge by the stationary-reset kernel Pi(z,.)=pi(.). Each replacement changes the expectation by at most 2d(gap): the continuation is bounded in [-1,1] and TV uses the half-L1 convention. Telescoping yields a total error at most twice the sum of d over cross edges.
+
+The reset moment is the product of the moments of monochromatic contiguous blocks. Compare it with E U_A E U_(A+s). In each single-color Markov product, reset the transition between successive blocks of that color. That gap is at least the outgoing cross-edge gap after the earlier block, so its error is bounded by 2d of that edge. Each cross edge is charged at most once in this comparison. Thus
+
+    |Cov| <= 4 sum_cross_edges d(gap)
+            <= 4 sum_(i,j) d(|s+aj-ai|).
+
+For any shift h, integral_0^infinity d(|s-h|)ds<=2K_code. Summing n^2 pairs proves the first bound. The stationary time-average variance is at most (2/T) times that covariance integral, proving the second. Kernel positivity/contraction justifies the telescoping, including zero gaps and unbounded pattern span.
+
+For a fixed code-independent mixture of patterns, apply Jensen to the square of the centered mixture mean. The same bound holds. It is a bound on the code randomness of the mixture mean, not arbitrary correlated chemistry. If a whole campaign shares a latent history class, its between-class variance is additional; stationarity alone does not make product draws independent.
+
+### Three-level mixing budget
+
+The reversible three-state transition kernel is explicitly
+
+    P_t(i,j)=pi_j[1+2e^(-xt) f_i f_j+4e^(-yt) h_i h_j].
+
+Direct row variation gives
+
+    d(t)<= (e^(-xt)+e^(-yt))/2,
+    K_code <= 1/(2x)+1/(2y).
+
+The mean physical level-change rate is c+r/2=x/4+3y/8. The ordinary telegraph campaign has d(t)=e^(-xt)/2 and K_code=1/(2x). Small y makes slow code mixing and long observation time explicit. No free zero-frequency phase sector is assumed.
+
+## 5. Product statistics and complete error/cost contract
+
+Assume observation times are iid uniform on [0,T] and histories/labels are iid conditional on the complete stationary code, with histories drawn from the same fixed code-independent stationary law. This is an idealized product-sampling interface; raw detector ion counts need not realize it.
+
+Put R_W=((1+|b|)/a)^4. The corrected per-product statistic has |W4|<=R_W. For N such products,
+
+    Var(C_hat) <= 16 n^2 K_code/T + R_W^2/N,   n=4.
+
+The first term is code variance, the second conditional sampling variance. Independently prepared phase and telegraph campaigns then give
+
+    Var(M_hat) <= 16 Var(C_hat) + Var(Q_hat).
+
+Chebyshev gives a conservative confidence radius; a Gaussian interval is not implied. Independent repeat campaigns or an acquired mixing/covariance model may improve it. For symmetric contrast R_W=a^-4, so the purity penalty remains a^-8. The decoder's coefficients 4 and -1 can make a very small joint contrast expensive. Count calibration, backgrounds, uncertain normalization, catalyst ageing and isotope-induced history changes need additional acquired bounds.
+
+If actual normalized feed values stay in [-1,1] and differ from the intended code by at most epsilon_u at every ancestral entry, telescoping products gives at most 4epsilon_u error in each corrected expectation. Thus 4C-Q has at most 20epsilon_u waveform error across both campaigns. If an unaccounted fraction eta of histories can lie outside the code prehistory, a conservative corrected-readout error is 2eta R_W per campaign, hence 10eta R_W after decoding. Valid tighter purity/history assumptions can improve this, but must be stated. A measured whole-product response matrix requires its own conditioning and error budget.
+
+Preparation covers the relevant prehistory or carries that bias; a common delay is a statistic's gauge, not permission to skip wash-in. The chemical feed is constant, but isotope dose, three-level transitions, switching hardware bandwidth, labelled inventory, detector/product recovery and total catalyst time are paid. No reaction-hazard/rate or spectral model is silently supplied.
+
+## 6. Capabilities and limits
+
+The positive result is an explicit finite-state feed intervention plus count projection acquiring a joint temporal-ancestry Laplace functional that all rates of the original telegraph transform miss. A complete history-uniform code-variance theorem and an exact same-interface countermodel accompany it. The Markov generator and statistical decoder are executable; physically obtaining the isotope-neutral stationary code/count interface is still a gate.
+
+Known nonlinear isotope frequency-response and multipulse product-isotopomer methods are the strongest relevant competitors. Markov conditional moments, Fourier/semigroup spectral design, randomized input systems identification and polynomial polarization are established mathematics. The source already credits these fields and withdraws its C2 and optimized E/O dominance claims. No priority or economic advantage follows from our exact separation against narrower interfaces.
+
+A decisive next experiment needs a real catalyst ambiguity that survives the strongest calibrated shaped/multipulse analysis, measured inlet three-level dynamics and count-response covariance, sufficient wash-in, and a prospectively held-out mechanism/decision separated by M(x,y) at lower total cost or greater reliability. Synthetic mixtures alone do not establish that application. No laboratory verification or civilization-enabling capability is asserted.

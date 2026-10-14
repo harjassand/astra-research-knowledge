@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ supporting evidence - verify_branch_assay.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/kinetic_observable/code/verify_branch_assay.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact checks for the source-prepared branching/offspring assay.
+
+This reads the pinned finite-response result as data; it does not execute or
+modify any capital code.  All arithmetic below is rational.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import json
+import math
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[3]
+FINITE_RESPONSE = (
+    ROOT
+    / &quot;work/astra-capital/updates/FI/synthesis/kinetics_critic/finite_response_results.json&quot;
+)
+
+
+def mixture_moments(rates, weights):
+    mean = sum((p / lam for p, lam in zip(weights, rates)), F(0))
+    second = 2 * sum((p / (lam * lam) for p, lam in zip(weights, rates)), F(0))
+    variance = second - mean * mean
+    return mean, second, variance
+
+
+def main():
+    src = json.loads(FINITE_RESPONSE.read_text())
+    rates0 = [F(s) for s in src[&quot;baseline_rates&quot;]]
+    weights0 = [F(s) for s in src[&quot;baseline_weights&quot;]]
+    shifts = [F(s) for s in src[&quot;shifts&quot;]]
+    response0 = [F(s) for s in src[&quot;baseline_response&quot;]]
+
+    def response(rates, weights, shift):
+        return sum((p / (lam + shift) for p, lam in zip(weights, rates)), F(0))
+
+    assert sum(weights0, F(0)) == 1
+    assert [response(rates0, weights0, s) for s in shifts] == response0
+    mean0, second0, var0 = mixture_moments(rates0, weights0)
+    assert mean0 == F(src[&quot;baseline_mean&quot;])
+
+    hidden = next(x for x in src[&quot;exact_samples&quot;] if x[&quot;epsilon&quot;] == &quot;1/100000000&quot;)
+    eps = F(hidden[&quot;epsilon&quot;])
+    rates1 = rates0 + [eps]
+    weights1 = [F(s) for s in hidden[&quot;old_weights&quot;]] + [F(src[&quot;hidden_mass&quot;])]
+    assert sum(weights1, F(0)) == 1
+    assert min(weights1) &gt; 0
+    response1 = [response(rates1, weights1, s) for s in shifts]
+    assert response1 == response0
+    mean1, second1, var1 = mixture_moments(rates1, weights1)
+    assert mean1 == F(hidden[&quot;mean&quot;])
+    assert mean1 &gt; mean0
+
+    # If a parent lives for T and emits children at constant rate alpha,
+    # then K|T ~ Poisson(alpha*T).  At alpha=1/E[T],
+    # Var(K)=1+Var(T)/E[T]^2.
+    def offspring_variance_at_critical(mean, variance):
+        alpha = 1 / mean
+        return alpha * mean + alpha * alpha * variance
+
+    # A connected two-state reversible killed CTMC.  Q=-A has symmetric
+    # interconversion eps and killing rates 1 (state 0), eps (state 1).
+    delta = F(1, 1000)
+    A00, A01, A11 = 1 + eps, -eps, 2 * eps
+    det = A00 * A11 - A01 * A01
+    assert det &gt; 0
+    # A^{-1} 1 = (3 eps, 1+2 eps)/(2 eps+eps^2).
+    inv1 = [3 * eps / det, (1 + 2 * eps) / det]
+    p = [1 - delta, delta]
+    mean2 = sum((pi * ui for pi, ui in zip(p, inv1)), F(0))
+    # E[T^2]=2 p^T A^{-2} 1.  Apply A^{-1} once more exactly.
+    inv2_1 = [
+        (A11 * inv1[0] - A01 * inv1[1]) / det,
+        (-A01 * inv1[0] + A00 * inv1[1]) / det,
+    ]
+    second2 = 2 * sum((pi * ui for pi, ui in zip(p, inv2_1)), F(0))
+    var2 = second2 - mean2 * mean2
+    assert mean2 &gt; 0 and var2 &gt;= 0
+
+    # Exact finite-sample variance identity for N independent founder runs.
+    # K|R ~ Poisson(alpha R), so Var(K)=alpha*mu+alpha^2*Var(R).
+    alpha = 1 / mean2
+    mean_k = alpha * mean2
+    var_k = alpha * mean2 + alpha * alpha * var2
+    assert mean_k == 1
+    assert var_k == 1 + var2 / (mean2 * mean2)
+    chebyshev_n_fraction = var_k / F(1, 2000)
+    chebyshev_n = (chebyshev_n_fraction.numerator + chebyshev_n_fraction.denominator - 1) // chebyshev_n_fraction.denominator
+    rarity_start_lower_bound = math.ceil(math.log(2 / 3) / math.log(float(1 - delta)))
+
+    out = {
+        &quot;input&quot;: &quot;pinned N804 finite_response_results.json, read as data&quot;,
+        &quot;finite_response_pair&quot;: {
+            &quot;shifts&quot;: [str(x) for x in shifts],
+            &quot;identical_responses&quot;: [str(x) for x in response0],
+            &quot;baseline&quot;: {
+                &quot;mean&quot;: str(mean0),
+                &quot;critical_birth_rate&quot;: str(1 / mean0),
+                &quot;second_lifetime_moment&quot;: str(second0),
+                &quot;lifetime_variance&quot;: str(var0),
+                &quot;offspring_variance_at_critical&quot;: str(
+                    offspring_variance_at_critical(mean0, var0)
+                ),
+            },
+            &quot;hidden_slow_component_epsilon_1e-8&quot;: {
+                &quot;weights&quot;: [str(x) for x in weights1],
+                &quot;minimum_weight&quot;: str(min(weights1)),
+                &quot;mean&quot;: str(mean1),
+                &quot;mean_float&quot;: float(mean1),
+                &quot;critical_birth_rate&quot;: str(1 / mean1),
+                &quot;critical_birth_rate_float&quot;: float(1 / mean1),
+                &quot;second_lifetime_moment&quot;: str(second1),
+                &quot;lifetime_variance&quot;: str(var1),
+                &quot;offspring_variance_at_critical&quot;: str(
+                    offspring_variance_at_critical(mean1, var1)
+                ),
+            },
+        },
+        &quot;connected_two_state_reversible_killed_chain&quot;: {
+            &quot;epsilon&quot;: str(eps),
+            &quot;source&quot;: [str(x) for x in p],
+            &quot;A_minus_Q&quot;: [[str(A00), str(A01)], [str(A01), str(A11)]],
+            &quot;determinant&quot;: str(det),
+            &quot;mean_lifetime&quot;: str(mean2),
+            &quot;mean_lifetime_float&quot;: float(mean2),
+            &quot;critical_birth_rate&quot;: str(alpha),
+            &quot;critical_birth_rate_float&quot;: float(alpha),
+            &quot;second_lifetime_moment&quot;: str(second2),
+            &quot;lifetime_variance&quot;: str(var2),
+            &quot;offspring_mean_at_critical&quot;: str(mean_k),
+            &quot;offspring_variance_at_critical&quot;: str(var_k),
+            &quot;offspring_variance_at_critical_float&quot;: float(var_k),
+            &quot;relative_variance_factor_at_critical&quot;: str(var_k),
+            &quot;founder_runs_for_10pct_relative_error_95pct_chebyshev&quot;: chebyshev_n,
+            &quot;expected_source_preparations_at_critical&quot;: 2 * chebyshev_n,
+            &quot;expected_root_kinetic_time_at_critical&quot;: float(mean2) * chebyshev_n,
+        },
+        &quot;sampling_formula&quot;: {
+            &quot;mu_hat&quot;: &quot;sum(K_i)/(N*alpha)&quot;,
+            &quot;variance&quot;: &quot;[mu/alpha + Var(R)]/N&quot;,
+            &quot;chebyshev_relative_error_bound&quot;: &quot;[1/(alpha*mu)+CV(R)^2]/(N*epsilon_rel^2)&quot;,
+            &quot;scope&quot;: &quot;instance-wise bound; CV(R), source-preparation cost, and physical branch actuator must be acquired&quot;,
+        },
+        &quot;source_rarity_lower_bound&quot;: {
+            &quot;delta&quot;: str(delta),
+            &quot;epsilon&quot;: str(eps),
+            &quot;model_0&quot;: &quot;every source draw has T~Exp(1)&quot;,
+            &quot;model_1&quot;: &quot;each source draw is slow with probability delta and then T~Exp(epsilon); otherwise T~Exp(1)&quot;,
+            &quot;censored_path_tv_per_source_draw_upper_bound&quot;: &quot;delta&quot;,
+            &quot;N_draw_product_tv_upper_bound&quot;: &quot;1-(1-delta)^N &lt;= N*delta&quot;,
+            &quot;starts_for_error_below_one_third_at_delta_1e-3&quot;: rarity_start_lower_bound,
+            &quot;interpretation&quot;: &quot;under controls that preserve the fast branch and do not label hidden components, distinguishing the hidden source component with error &lt;1/3 needs Omega(1/delta) independent source starts&quot;,
+        },
+        &quot;checks&quot;: {
+            &quot;finite_responses_exactly_equal&quot;: response1 == response0,
+            &quot;all_adjusted_source_masses_positive&quot;: min(weights1) &gt; 0,
+            &quot;finite_response_mean_separated&quot;: mean1 &gt; mean0,
+            &quot;critical_birth_rate_exact_reciprocal&quot;: alpha * mean2 == 1,
+            &quot;offspring_variance_identity_exact&quot;: var_k == 1 + var2 / mean2**2,
+        },
+        &quot;scope&quot;: &quot;exact rational algebra checks; not a physical experiment, external review, or novelty result&quot;,
+    }
+    result_path = ROOT / &quot;work/FJ-kinetic-observable/results/branch_assay_exact_results.json&quot;
+    result_path.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

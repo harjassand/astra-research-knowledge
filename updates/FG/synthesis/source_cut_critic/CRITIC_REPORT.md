@@ -1,0 +1,267 @@
+# Independent source-normalization audit
+
+Status: **the source-box upper cut construction and fixed-field lower refinement survive this audit.** The sharpened lower envelope has a convex variational characterization and exact rational certificates. Adding a fixed source-mass equality creates a separate NP-hard upper problem. These are internally reconstructed mathematical results, with finite rational implementation checks; external review and historical novelty remain UNKNOWN.
+
+All writes by this worker are in `work/FG-source-cut-critic`. The source packet, Astra repository, and root worker artifacts were read without editing. The scientific inputs used were the supplied compact packet's `RESEARCH_NOTE.md` Sections 3 and 5 and its finite conditional-envelope example. Source hashes are recorded in `independent_results.json`.
+
+## 1. Exact source-only upper relaxation
+
+Let `0<ell<=u` componentwise, `Z(s)=1^T s`, and let `G=A_-^{-1}` be a supplied symmetric positive definite, entrywise nonnegative rational matrix. Define
+
+\[
+U_* = \max_{\ell\le s\le u} \frac{s^TG s}{Z(s)}.
+\]
+
+The maximum exists by compactness and strictly positive mass. The quadratic-over-linear function is convex on `Z>0`: it is the restriction of the perspective `x^T Gx/z` to the affine pair `(s,Z(s))`. Every box point is a convex combination of its vertices, so a vertex attains the maximum. This proves a vertex reduction, not that every maximizer must be a vertex.
+
+For a bath profile `s_y` and normalized bath reference measure `nu`, form order gives
+
+\[
+\tau\le \frac{\int s_y^TG s_y\,d\nu(y)}{\int Z(s_y)\,d\nu(y)}
+=\int\frac{s_y^TG s_y}{Z(s_y)}\,
+       \frac{Z(s_y)d\nu(y)}{\int Z(s_y)d\nu(y)}\le U_*.
+\]
+
+The averaging weights include source mass. Averaging individual normalized ratios using `nu` alone is generally incorrect. The source-box maximum is no larger than the separated packet upper `u^TGu/Z(ell)`.
+
+### Exact cut factors
+
+Discard coordinates with `d_i=u_i-ell_i=0` and number the remaining coordinates `1,...,m`. Set `s=ell+Dz` for binary `z`. Then
+
+\[
+q(z)=q_0+\sum_i a_i z_i+2\sum_{i<j}b_{ij}z_iz_j,
+\]
+
+where
+
+\[
+q_0=\ell^TG\ell,\quad a_i=2d_i(G\ell)_i+d_i^2G_{ii},
+\quad b_{ij}=d_id_jG_{ij}\ge0.
+\]
+
+Let `alpha_i=a_i+sum_{j!=i}b_ij`. For `t>=0`,
+
+\[
+q(z)-tZ(z)=q_0-tZ_0+\sum_i\alpha_i z_i
+-t\sum_i d_i z_i-\sum_{i<j}b_{ij}|z_i-z_j|.
+\]
+
+Use source-side membership `z_i=1`, source-to-i capacity `alpha_i`, i-to-sink capacity `t d_i`, and **two directed pair arcs, each with capacity `b_ij`**. Exactly one pair arc crosses a split cut. Thus
+
+\[
+C_t(z)=\sum_i\alpha_i(1-z_i)+t\sum_i d_i z_i
++\sum_{i<j}b_{ij}|z_i-z_j|,
+\]
+
+and
+
+\[
+H(t):=\max_z(q(z)-tZ(z))=q_0-tZ_0+\sum_i\alpha_i-\operatorname{mincut}(t).
+\]
+
+The pair capacity is `b_ij`, not `2b_ij`. An equally valid signed-unary construction uses `h_i=alpha_i-t d_i`, capacities `max(h_i,0)` and `max(-h_i,0)`, and offset `q0-tZ0+sum max(h_i,0)`. The monotone construction above is simpler here because `alpha_i>0` for every retained uncertain coordinate.
+
+After any exact maximum flow, a greatest source-side minimum cut is the complement of vertices that can reach the sink in the residual graph. Ordinary forward reachability from the source instead yields the least source-side minimum cut. Both solve the threshold problem; the greatest choice makes ties canonical.
+
+### Dinkelbach call count
+
+Initialize `t0=0`. At each threshold choose a maximizer `S_k`; if `H(t_k)=0`, return `t_k`. Otherwise set
+
+\[
+t_{k+1}=q(S_k)/Z(S_k)=t_k+H(t_k)/Z(S_k)>t_k.
+\]
+
+The excess is nonnegative because every threshold is at most `U_*`. For thresholds `t<t'`, let `S` maximize at `t` and `T` maximize at `t'`. Supermodularity of `q`, together with the two optimality comparisons against `S union T` and `S intersection T`, gives
+
+\[
+0\le F_t(S)+F_{t'}(T)-F_t(S\cup T)-F_{t'}(S\cap T)
+\le -(t'-t)\sum_{i\in T\setminus S}d_i.
+\]
+
+Since every retained `d_i>0`, **any** optimizers at distinct thresholds satisfy `T subset S`. A canonical tie rule is sufficient but is not needed for this cross-threshold nesting statement. If consecutive positive-excess calls returned the same set, the second threshold would equal that set's ratio and its excess would be zero, a contradiction. Positive-excess sets therefore strictly decrease, except that the final certificate call can repeat the last set. There are at most `m+1` positive-excess calls and one final zero-excess call: **at most `m+2` cuts from `t0=0`**.
+
+Starting instead at `q(ell)/Z0` reduces the bound to `m+1`: the empty set has zero excess initially and negative excess at every later threshold, so it cannot be a positive-excess optimizer. The scalar fixed case `m=0` needs two calls from zero or one call from the baseline ratio.
+
+### Complexity qualification
+
+This is polynomial exact computation **after the finite rational Green matrix has been supplied or acquired**. A graph has `m+2` vertices and `O(m^2)` arcs. Edmonds-Karp gives a conservative `O(m^5)` arithmetic-operation bound per cut, hence `O(m^6)` overall. Faster max-flow or parametric-flow methods are available, but this worker's implementation does not claim them.
+
+If the total rational input encoding has length `L`, a common denominator of the supplied entries has `O(L)` bits. Every threshold is a ratio of one vertex quadratic and one vertex mass, so threshold bit length stays polynomial in `L` and `n`; it does not inherit an unbounded recurrence from previous thresholds. Capacities can be scaled to integers with polynomial bit length using the common input denominator and the current vertex mass. Exact max-flow arithmetic therefore has polynomial bit complexity. This is not a unit-cost claim for arbitrarily large rational numerators. Obtaining `G`, its entrywise signs, and any dense `n^2` representation remains a separate charged operation.
+
+## 2. Lower bound: exact fixed-field optimization and full refinement
+
+For any retained admissible trial field `v`, set `c=v^T A_+v` and
+
+\[
+L(v)=\min_{\ell\le s\le u}\frac{2s^Tv-c}{Z(s)}.
+\]
+
+The gate-only form comparison and the variational principle give `tau>=L(v)`. This direct box minimization is valid for **any real trial field**; it does not require componentwise positivity of `v`. Positivity was needed in the packet's earlier step replacing the unknown source pairing by `ell^Tv`.
+
+Writing `r_i=2v_i`, the strictly decreasing continuous threshold function is
+
+\[
+\psi_v(t)=-c+\sum_i\min\{(r_i-t)\ell_i,(r_i-t)u_i\}.
+\]
+
+Its unique zero is `L(v)`. At threshold `t`, choose `u_i` where `r_i<t`, `ell_i` where `r_i>t`, and either endpoint at equality. Sorting `r_i` leaves `n+1` prefix profiles; evaluating their normalized ratios and taking the smallest is exact. Sorting and incremental numerator/mass updates require `O(n log n)` rational comparisons and `O(n)` rational arithmetic updates. For the original choice `v=A_+^{-1}ell`, `c=ell^Tv>0` and `c/Z(u)<=L(v)<=c/Z(ell)`.
+
+There is a stronger source-only lower envelope. Let `bar s` be the bath-averaged retained source. Reoptimizing the retained trial field for this mean source yields
+
+\[
+\tau\ge\frac{\bar s^T A_+^{-1}\bar s}{Z(\bar s)}
+\ge L_{\rm sharp}:=\min_{\ell\le s\le u}\frac{s^T A_+^{-1}s}{Z(s)}.
+\]
+
+This minimization is convex and may have an interior, irrational minimizer. It has the exact saddle characterization `Lsharp=max_v L(v)`. To prove attainment, let `s*` minimize the convex objective, `v*=A_+^{-1}s*`, and `L*=q_+(s*)/Z(s*)`. Its first-order box condition is
+
+\[
+(2v_*-L_*1)^T(s-s_*)\ge0\quad\text{for all box }s.
+\]
+
+Since `c*=v*^T A_+v*=q_+(s*)=L*Z(s*)`,
+
+\[
+2s^Tv_*-c_*-L_*Z(s)=(2v_*-L_*1)^T(s-s_*)\ge0.
+\]
+
+Equality holds at `s*`, so `L(v*)=Lsharp`. For every other field, the variational identity gives `L(v)<=Lsharp`. This proves the characterization without treating numerical optimizer convergence as a certificate.
+
+An approximate optimizer can be used to select a field, then the field can be rationalized and `L(v)` computed exactly. The bound remains rigorous; approximation affects tightness. Every actual retained trial-field energy and source pairing must be computed or bounded in the same represented coordinates. Nonuniform reference measures must be included consistently in the source masses, form matrix, and pairing.
+
+### Interior counterexample and rational certificate
+
+Take `A_+^{-1}=diag(100,1)`, `ell=(1,1)`, `u=(1,20)`. The minimizer is
+
+\[
+s_*=(1,\sqrt{101}-1),\qquad L_{\rm sharp}=2(\sqrt{101}-1).
+\]
+
+The best vertex value is `500/21`, strictly larger than this minimum. The original field `v=(100,1)` gives `139/21`. A rationalized field `v=(100,72399/8000)` gives the exact enclosure
+
+\[
+\frac{24326064799}{1344000000}\le L_{\rm sharp}
+\le\frac{11641615201}{643192000},
+\]
+
+of width `69993199/108056256000000 < 10^-5`. The lower is an exact fixed-field certificate; the upper is the value at a rational primal profile. Squaring `L/2+1` and `U/2+1` independently verifies that the stated algebraic optimum lies between them.
+
+## 3. Exact-normalization hardness boundary
+
+The box-cut theorem does not extend unchanged to `sum s=n+k`. Let an arbitrary graph on `n` vertices have adjacency `Adj`, degrees `deg_i`, and edge count `E`. Define
+
+\[
+B_{ij}=Adj_{ij}\ (i\ne j),\qquad B_{ii}=n-\tfrac23\deg_i,
+\quad\epsilon=(256n^3)^{-1},\quad A=I-\epsilon B.
+\]
+
+Then `B>=0`, `B1_i=n+deg_i/3<2n`, and `A` is symmetric, strictly diagonally dominant, and positive definite, with nonpositive off-diagonal entries. Its row sums
+
+\[
+\kappa_i=1-\epsilon(n+\deg_i/3)>0
+\]
+
+are killing conductances, while edge conductances are `epsilon Adj_ij`. Thus `A` is a genuine grounded reversible conductance form. For any positive source mass vector `s`, rates `c_ij/s_i` and killing rates `kappa_i/s_i` realize that same weighted form and reversible mass. This interface does not require source and conductance envelopes that cannot coexist physically.
+
+The source polytope `1<=s_i<=2`, `sum s=n+k` is a hypersimplex. Its vertices are `s=1+1_S`, `|S|=k`. With fixed mass, maximizing the convex quadratic attains one of these vertices. Set
+
+\[
+C_B=1^TB1=n^2+\tfrac23|E|,\qquad
+\operatorname{base}=n+3k+\epsilon(C_B+3nk).
+\]
+
+The degree terms cancel exactly:
+
+\[
+s^TBs=C_B+3nk+2|E(S)|.
+\]
+
+The Neumann expansion gives
+
+\[
+s^TA^{-1}s=\operatorname{base}+2\epsilon|E(S)|+T(S),
+\]
+
+with
+
+\[
+0\le T(S)\le\frac{16n^3\epsilon^2}{1-2n\epsilon},
+\qquad\frac{\sup T}{\epsilon}\le\frac8{127}<\frac14.
+\]
+
+Here `||B||_2<=||B||_infinity<2n` and `||s||^2<=4n` justify the tail bound. Consequently maximizing the ratio recovers a densest size-k induced subgraph. If `R*` denotes the optimal normalized ratio, its edge count is
+
+\[
+e_{\max}=\left\lfloor\frac{(n+k)R_*-\operatorname{base}}{2\epsilon}\right\rfloor.
+\]
+
+An estimate with additive error `<epsilon/[4(n+k)]` also suffices, using
+
+\[
+e_{\max}=\left\lfloor\frac{(n+k)\widetilde R-\operatorname{base}+\epsilon/2}{2\epsilon}\right\rfloor.
+\]
+
+Equivalently, the CLIQUE decision threshold in unnormalized q units is `base+2epsilon*binom(k,2)-epsilon/2`, with a gap exceeding the allowed `epsilon/4` q error. The construction has polynomial encoding length, and rational inversion of `A` also has polynomial bit complexity. Thus exact optimization, or the specified inverse-polynomial additive approximation, is NP-hard. The reduction does **not** establish hardness at constant additive error or relative error. Extra source information tightens the information-theoretic envelope; computing its sharp extremum can nevertheless become harder.
+
+The use of CLIQUE as a standard hard problem is grounded in [Karp's original 1972 chapter](https://link.springer.com/chapter/10.1007/978-1-4684-2001-2_9). The particular resolvent reduction above was independently reconstructed here; historical novelty of that reduction is not established.
+
+## 4. Physical and acquisition limits
+
+`U*` is exact for a fixed-G source-only box relaxation. It is not automatically sharp for the source packet's physical model class. A one-state counterexample already suffices: let `ell=1`, `u=2`, and let physical weighted form `A_s=s`. The admissible envelopes are `A_-=1`, `A_+=2`; actual `tau=s^2/(A_s s)=1` for every source, while the fixed `G=A_-^{-1}=1` source-box maximum is 2. Source and form extrema need not be simultaneously physical.
+
+Conversely, the hardness reduction explicitly realizes all allowed sources using fixed conductances and source-dependent reversible rates. It is a valid abstract killed-network family, not an atomistic or calibrated molecular family.
+
+The finite source compiler does not acquire a positive dense Green kernel for a 128-coordinate tensor system, nor globally valid coefficient/source envelopes from sparse forces. Its graph dimension is the number of supplied finite retained source entries, not the number of elementary coordinates. If the retained state count is exponential, a dense source-cut construction has not removed that exponential acquisition and representation cost. The packet's one-load residual certificate likewise does not certify the dense Green kernel required here.
+
+### Same-envelope global powers remain sharp
+
+Let `ell=(1,delta)`, `u=R ell`, `c=delta^2/T`, and
+
+\[
+A_0=\begin{pmatrix}1+c&-c\\-c&c\end{pmatrix},\qquad
+G_0=\begin{pmatrix}1&1\\1&1+1/c\end{pmatrix}.
+\]
+
+Use the same abstract inputs `A_-=A0`, `A_+=R A0`. The upper completion has source `(1,R delta)` and form `A0`; the lower completion has source `(R,delta)` and form `R A0`. Both are genuine reversible grounded two-state networks: the baseline has edge conductance `c`, killing conductance 1 at its first state, and no killing at its second; the lower form multiplies these conductances by `R`. Rates divide conductances by the selected source masses. All sources and forms satisfy the same supplied envelope bounds.
+
+Their normalized times and the baseline time are
+
+\[
+\tau_U=\frac{(1+R\delta)^2+R^2T}{1+R\delta},\quad
+\tau_L=\frac{(R+\delta)^2+T}{R(R+\delta)},\quad
+\tau_0=\frac{(1+\delta)^2+T}{1+\delta}.
+\]
+
+For fixed positive `delta`, first sending `T` to infinity gives upper/baseline ratio `R^2(1+delta)/(1+R delta)`, lower/baseline ratio `(1+delta)/[R(R+delta)]`, and width `R^3(R+delta)/(1+R delta)`. Sending `delta` to zero then yields `R^2`, `R^-2`, and `R^4`. The single sequence `delta=1/n,T=n` has the same limits. Thus normalization refinement cannot uniformly improve these global powers over the generic CE class, because the same input permits both asymptotically extreme completions. This does not establish sharpness within a fixed unit-mobility continuum law or a fixed `min(weight)` conductance law.
+
+## 5. Prior-method overlap
+
+The optimization principles are established. [Dinkelbach's 1967 paper](https://pubsonline.informs.org/doi/10.1287/mnsc.13.7.492) treats fractional programming via parametric objectives. [Goldberg's 1984 report](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1984/5956.html) is the primary maximum-density-subgraph max-flow reference: printed page 2 of the scanned report explicitly describes a density-threshold minimum cut and weighted-node/weighted-edge extensions. That page was rendered and visually inspected in this audit. [Gallo, Grigoriadis and Tarjan's 1989 paper](https://epubs.siam.org/doi/abs/10.1137/0218003) develops monotone parametric maximum flow; its primary publisher record explicitly lists fractional programming, maximum-density subgraphs, nonlinear zero-one programming and ratio closure, and references both Dinkelbach and Goldberg.
+
+The present cut is a direct attractive quadratic ratio-optimization instance, with constants and positive vertex mass shifts. The source-envelope application and its useful normalization improvement can be recorded as an integration-derived consequence. These sources rule out claiming the underlying fractional-programming, min-cut, or nested-set principle as invented here. They do not settle historical novelty of the exact physical-envelope application.
+
+## 6. Independent finite receipts
+
+`independent_audit.py` uses standard-library `Fraction` arithmetic, direct vertex evaluation, a separately written Edmonds-Karp implementation, and an independently reconstructed 16-state source example. It imports no producer or root scientific code. Results:
+
+- 168 seeded Gram-plus-diagonal positive kernels, six source-packet cases, and two explicit valid controls: 176 valid instances.
+- 3,881 directly evaluated vertices; 19,388 exact cut-identity comparisons; 870 max-flow/brute-cut equalities; 3,881 fixed-field lower vertex comparisons; 1,165 nested-set checks; 823 Dinkelbach cut calls; 176 rational interior checks.
+- Six producer separated bounds reproduced exactly. Twenty-four old/new upper/lower fields matched the root compiler exactly; see `ROOT_FIXED_TRIAL_COMPARISON.json`.
+- Negative-kernel SPD control, zero-mass-boundary control, all-upper-suboptimal control, doubled-pair-capacity mutation, mass-weighted-mixture control, physical-sharpness counterexample, and irrational-lower rational-certificate control are saved in `independent_results.json`.
+
+The source example's fixed-field intervals reproduce the root outputs:
+
+| Feature | R | Exact-cut upper, decimal display | Fixed-field lower, decimal display | Upper/lower |
+|---|---:|---:|---:|---:|
+| all open | 3 | 18569.908982758232 | 18556.015120316410 | 1.0007487525 |
+| all open | 100 | 18569.908982758232 | 18225.543667035830 | 1.0188946526 |
+| first open | 3 | 20054.401398030440 | 14108.329885751036 | 1.4214582137 |
+| first open | 100 | 92336.792315121860 | 2063.567574934841 | 44.7461926795 |
+| all closed | 3 | 54457.272883266250 | 16316.589197182831 | 3.3375402313 |
+| all closed | 100 | 1797923.675114651000 | 2384.220378693950 | 754.0929065037 |
+
+`correlated_source_audit.py` separately checks all labelled graphs up to four vertices and 32 seeded graphs with 5–8 vertices: **107 graphs, 386 graph/k instances, 4,724 hypersimplex vertices, and 1,158 signed rational precision-recovery checks**. Exact inverses, grounded-form signs, source normalization, cancellation, Neumann tail bounds, edge-count recovery and CLIQUE thresholds all pass. Results are in `CORRELATED_SOURCE_RESULTS.json`.
+
+`global_power_audit.py` checks nine exact rational two-state instances of the same-envelope upper/lower power family, including source/form admissibility and the displayed normalized formulas. Results are in `GLOBAL_POWER_RESULTS.json`.
+
+Finite receipts verify this implementation scope. They are not external scientific validation, novelty evidence, a universal formal proof, or a practical molecular speed comparison.

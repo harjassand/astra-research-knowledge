@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — kinetics_audit.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/synthesis/kinetics/analysis/kinetics_audit.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent, read-only replay checks for the acquired-kinetics packet.
+
+The source snapshot remains untouched. All NPZ inputs are opened with
+allow_pickle=False. This checker recomputes the tensor enclosures with an
+exactly checked high-precision local alpha witness and builds one full-state
+comparator certificate using integer-scaled exact arithmetic.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import os
+import resource
+import sys
+import time
+from fractions import Fraction as F
+from pathlib import Path
+
+import mpmath as mp
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+REPLICA = ROOT / &quot;replica&quot;
+sys.path.insert(0, str(REPLICA))
+
+import certify as certmod
+import full_reference as fullmod
+from model import Compiler, discover_partition, from_transcript
+
+
+def load_case(name: str):
+    tr = json.loads((REPLICA / f&quot;{name}_transcript.json&quot;).read_text())
+    model = from_transcript(18, tr)
+    groups, partition = discover_partition(model)
+    c = Compiler(model, groups)
+    with np.load(REPLICA / f&quot;{name}.npz&quot;, allow_pickle=False) as archive:
+        arrays = [np.array(archive[str(i)], copy=True) for i in range(c.B)]
+    old = json.loads((REPLICA / f&quot;{name}.json&quot;).read_text())
+    return tr, c, arrays, old, partition
+
+
+def load_model_case(name: str):
+    tr = json.loads((REPLICA / f&quot;{name}_transcript.json&quot;).read_text())
+    model = from_transcript(18, tr)
+    groups, partition = discover_partition(model)
+    return tr, Compiler(model, groups), partition
+
+
+def exact_alpha_witness(c: Compiler, bits: int = 112, dps: int = 100):
+    &quot;&quot;&quot;Solve K u=1 numerically, then certify the dyadic u and alpha exactly.&quot;&quot;&quot;
+    block = next(b for b, group in enumerate(c.groups) if c.model[&quot;target&quot;] in group)
+    K = c.refraw[block]
+    mp.mp.dps = dps
+    M = mp.matrix(
+        [
+            [mp.mpf(K[i, j].numerator) / K[i, j].denominator for j in range(len(K))]
+            for i in range(len(K))
+        ]
+    )
+    proposal = mp.lu_solve(M, mp.matrix([1] * len(K)))
+    den = 1 &lt;&lt; bits
+    u_int = [int(mp.nint(proposal[i] * den)) for i in range(len(K))]
+    u = [F(value, den) for value in u_int]
+    if min(u) &lt;= 0:
+        raise ArithmeticError(&quot;local alpha witness has a nonpositive entry&quot;)
+    delta = max(
+        abs(sum(F(K[i, j]) * u[j] for j in range(len(K))) - 1)
+        for i in range(len(K))
+    )
+    if delta &gt;= 1:
+        raise ArithmeticError(&quot;local alpha witness residual is not below one&quot;)
+    alpha = (1 - delta) / max(u)
+    if any(F(K[i, j]) &gt; 0 for i in range(len(K)) for j in range(len(K)) if i != j):
+        raise ArithmeticError(&quot;local killed generator is not a Z-matrix&quot;)
+    return alpha, {
+        &quot;target_block&quot;: block,
+        &quot;local_states&quot;: len(K),
+        &quot;dyadic_bits&quot;: bits,
+        &quot;u_numerators&quot;: [str(value) for value in u_int],
+        &quot;u_denominator&quot;: str(den),
+        &quot;u_min&quot;: str(min(u)),
+        &quot;u_max&quot;: str(max(u)),
+        &quot;residual_infinity&quot;: str(delta),
+        &quot;alpha_lower&quot;: str(alpha),
+        &quot;alpha_lower_float&quot;: float(alpha),
+        &quot;exact_checks&quot;: {
+            &quot;all_u_positive&quot;: True,
+            &quot;exact_Ku_minus_one_infinity_lt_one&quot;: True,
+            &quot;all_offdiagonals_nonpositive&quot;: True,
+        },
+        &quot;validity_argument&quot;: (
+            &quot;For the irreducible killed-generator M-matrix K, exact Ku &gt;= &quot;
+            &quot;(1-delta)1 and u&gt;0 imply K^{-1}1 &lt;= u/(1-delta). Thus the &quot;
+            &quot;row-sum norm of K^{-1} is at most max(u)/(1-delta), so &quot;
+            &quot;lambda_min(K) &gt;= (1-delta)/max(u).&quot;
+        ),
+    }
+
+
+def tensor_replay(name: str, alpha_cache: dict[str, tuple[F, dict]]):
+    t0 = time.perf_counter()
+    tr, c, V, old, partition = load_case(name)
+    old_alpha = F(old[&quot;alpha_lower&quot;])
+
+    naive, naive_data = certmod.certify(c, V, return_data=True)
+    na_rr = certmod.dot_sums(c, naive_data[&quot;residual&quot;], naive_data[&quot;residual&quot;], same=True)
+
+    key = &quot;A&quot; if name == &quot;reverse_A&quot; else &quot;B&quot;
+    if key not in alpha_cache:
+        alpha_cache[key] = exact_alpha_witness(c)
+    alpha, witness = alpha_cache[key]
+    original_alpha_bound = certmod.alpha_bound
+    try:
+        certmod.alpha_bound = lambda _c, bits=46: (alpha, {
+            &quot;reference_residual&quot;: witness[&quot;residual_infinity&quot;],
+            &quot;reference_max_trial&quot;: witness[&quot;u_max&quot;],
+            &quot;reference_local_states&quot;: witness[&quot;local_states&quot;],
+            &quot;witness_bits&quot;: witness[&quot;dyadic_bits&quot;],
+        })
+        fresh, data = certmod.certify(c, V, return_data=True)
+    finally:
+        certmod.alpha_bound = original_alpha_bound
+
+    rr = certmod.dot_sums(c, data[&quot;residual&quot;], data[&quot;residual&quot;], same=True)
+    old_lower = data[&quot;L&quot;] / c.Z
+    old_upper = (data[&quot;L&quot;] + rr / old_alpha) / c.Z
+    old_lower_matches = old_lower == F(old[&quot;lower&quot;])
+    old_upper_matches = old_upper == F(old[&quot;upper&quot;])
+    if not old_lower_matches or not old_upper_matches:
+        raise AssertionError(f&quot;stored endpoints do not follow from the stored alpha: {name}&quot;)
+    old_alpha_rec = old_alpha &lt;= alpha
+    if not old_alpha_rec:
+        raise AssertionError(f&quot;new exact alpha witness does not validate stored alpha: {name}&quot;)
+
+    stat = (REPLICA / f&quot;{name}.npz&quot;).stat()
+    return {
+        &quot;name&quot;: name,
+        &quot;source_transcript_queries&quot;: {
+            &quot;energy&quot;: tr[&quot;energy_queries&quot;],
+            &quot;reverse_relaxation&quot;: tr[&quot;reverse_clock_queries&quot;],
+        },
+        &quot;partition&quot;: partition[&quot;selected&quot;],
+        &quot;witness&quot;: {
+            &quot;arrays&quot;: [list(a.shape) for a in V],
+            &quot;coefficients&quot;: sum(a.size for a in V),
+            &quot;npz_bytes&quot;: stat.st_size,
+            &quot;npz_sha256&quot;: hashlib.sha256((REPLICA / f&quot;{name}.npz&quot;).read_bytes()).hexdigest(),
+        },
+        &quot;source_reported_interval&quot;: {
+            &quot;lower&quot;: old[&quot;lower&quot;], &quot;upper&quot;: old[&quot;upper&quot;], &quot;ratio&quot;: old[&quot;ratio_float&quot;],
+            &quot;alpha_lower&quot;: old[&quot;alpha_lower&quot;],
+        },
+        &quot;fresh_platform_alpha_replay&quot;: {
+            &quot;lower&quot;: naive[&quot;lower&quot;], &quot;upper&quot;: naive[&quot;upper&quot;], &quot;ratio&quot;: naive[&quot;ratio_float&quot;],
+            &quot;alpha_lower&quot;: naive[&quot;alpha_lower&quot;],
+            &quot;lower_exact_matches_source&quot;: F(naive[&quot;lower&quot;]) == F(old[&quot;lower&quot;]),
+            &quot;upper_exact_matches_source&quot;: F(naive[&quot;upper&quot;]) == F(old[&quot;upper&quot;]),
+            &quot;source_minus_replay_lower_exact&quot;: str(F(old[&quot;lower&quot;]) - F(naive[&quot;lower&quot;])),
+            &quot;source_minus_replay_upper_exact&quot;: str(F(old[&quot;upper&quot;]) - F(naive[&quot;upper&quot;])),
+            &quot;source_minus_replay_lower_float&quot;: float(F(old[&quot;lower&quot;]) - F(naive[&quot;lower&quot;])),
+            &quot;source_minus_replay_upper_float&quot;: float(F(old[&quot;upper&quot;]) - F(naive[&quot;upper&quot;])),
+            &quot;source_minus_replay_ratio&quot;: old[&quot;ratio_float&quot;] - naive[&quot;ratio_float&quot;],
+            &quot;certificate_seconds&quot;: naive[&quot;seconds&quot;],
+            &quot;recomputed_residual_squared&quot;: str(na_rr),
+        },
+        &quot;exact_high_precision_alpha_recertification&quot;: {
+            &quot;lower&quot;: fresh[&quot;lower&quot;], &quot;upper&quot;: fresh[&quot;upper&quot;], &quot;ratio&quot;: fresh[&quot;ratio_float&quot;],
+            &quot;ratio_exact&quot;: str(data[&quot;U&quot;] / data[&quot;L&quot;]),
+            &quot;alpha_lower&quot;: str(alpha),
+            &quot;old_alpha_le_new_exact_alpha&quot;: old_alpha_rec,
+            &quot;stored_lower_rebuilt_exactly&quot;: old_lower_matches,
+            &quot;stored_upper_rebuilt_exactly_from_old_alpha&quot;: old_upper_matches,
+            &quot;fresh_certificate_seconds&quot;: fresh[&quot;seconds&quot;],
+            &quot;alpha_witness&quot;: witness,
+        },
+        &quot;wall_seconds&quot;: time.perf_counter() - t0,
+    }
+
+
+def exact_full_certificate(c: Compiler, v_int: np.ndarray, bits: int, alpha: F):
+    &quot;&quot;&quot;Evaluate the complete 2^n residual and source contractions as integers.&quot;&quot;&quot;
+    if F(c.model[&quot;kappa&quot;]) != 1:
+        raise ValueError(&quot;this checker is scoped to the canonical kappa=1 case&quot;)
+    n = c.model[&quot;n&quot;]
+    dims = [len(p) for p in c.prob]
+    N = math.prod(dims)
+    if len(v_int) != N:
+        raise ValueError(&quot;full-state witness length mismatch&quot;)
+
+    strides = [math.prod(dims[b + 1 :]) for b in range(len(dims))]
+    block_masks = []
+    for b, group in enumerate(c.groups):
+        block_masks.append([
+            sum(int(c.bits[b][a, s]) &lt;&lt; node for s, node in enumerate(group))
+            for a in range(dims[b])
+        ])
+    flip_stride = [strides[c.loc[i][0]] * (1 &lt;&lt; c.loc[i][1]) for i in range(n)]
+
+    block_denoms = [sum(mass) for mass in c.mass]
+    rho_denom = math.prod(block_denoms)
+
+    cross_count = len(c.cross)
+    cross_weights = []
+    for code in range(1 &lt;&lt; cross_count):
+        value = F(1)
+        for e, (_b, s, _d, t, g) in enumerate(c.cross):
+            equal = (code &gt;&gt; e) &amp; 1
+            value *= (g if equal else F(1)) / min(F(1), g)
+        cross_weights.append(value)
+    w_denom = math.lcm(*(x.denominator for x in cross_weights)) if cross_weights else 1
+    w_num_table = [int(w * w_denom) for w in cross_weights]
+
+    energy_neighbors = {
+        i: sorted(j if i == a else a for a, j in c.model[&quot;edges&quot;] if i == a or i == j)
+        for i in range(n)
+    }
+    clock_contexts = c.model.get(&quot;clock_contexts&quot;, {})
+    contexts = {i: sorted(set(energy_neighbors[i]) | set(clock_contexts.get(i, []))) for i in range(n)}
+    rate_fractions = {}
+    for i in range(n):
+        for xi in (0, 1):
+            for code in range(1 &lt;&lt; len(contexts[i])):
+                bits_by_node = {node: (code &gt;&gt; p) &amp; 1 for p, node in enumerate(contexts[i])}
+                cc = clock_contexts.get(i, [])
+                if &quot;clock_tables&quot; in c.model:
+                    clock_code = sum(bits_by_node[node] &lt;&lt; p for p, node in enumerate(cc))
+                    prefactor = F(c.model[&quot;clock_tables&quot;][i][clock_code])
+                else:
+                    prefactor = F(c.model[&quot;nu&quot;][i])
+                ratio = F(c.model[&quot;fields&quot;][i]) ** (1 - 2 * xi)
+                for j in energy_neighbors[i]:
+                    same = xi == bits_by_node[j]
+                    t = F(c.model[&quot;edges&quot;][tuple(sorted((i, j)))])
+                    ratio *= 1 / t if same else t
+                rate_fractions[i, xi, code] = prefactor * ratio / (1 + ratio)
+    q_denom = math.lcm(*(q.denominator for q in rate_fractions.values()))
+    rate_nums = {
+        key: int(value * q_denom) for key, value in rate_fractions.items()
+    }
+
+    v_denom = 1 &lt;&lt; bits
+    b_num = energy_num = residual_num = z_num = 0
+    for state in range(N):
+        local = [(state // stride) % dim for stride, dim in zip(strides, dims)]
+        xmask = 0
+        rho_num = 1
+        for b, a in enumerate(local):
+            xmask |= block_masks[b][a]
+            rho_num *= c.mass[b][a]
+
+        cross_code = 0
+        for e, (b, s, d, t, _g) in enumerate(c.cross):
+            xb = (xmask &gt;&gt; c.groups[b][s]) &amp; 1
+            xd = (xmask &gt;&gt; c.groups[d][t]) &amp; 1
+            if xb == xd:
+                cross_code |= 1 &lt;&lt; e
+        w_num = w_num_table[cross_code]
+
+        Vx = int(v_int[state])
+        raw_num = 0
+        for i in range(n):
+            context_code = sum(((xmask &gt;&gt; node) &amp; 1) &lt;&lt; p for p, node in enumerate(contexts[i]))
+            xi = (xmask &gt;&gt; i) &amp; 1
+            q_num = rate_nums[i, xi, context_code]
+            raw_num += q_num * (Vx - int(v_int[state ^ flip_stride[i]]))
+        raw_num += ((xmask &gt;&gt; c.model[&quot;target&quot;]) &amp; 1) * Vx * q_denom
+
+        b_num += rho_num * w_num * Vx
+        energy_num += rho_num * w_num * Vx * raw_num
+        residual_gap_num = q_denom * v_denom - raw_num
+        residual_num += rho_num * w_num * w_num * residual_gap_num * residual_gap_num
+        z_num += rho_num * w_num
+
+    b = F(b_num, rho_denom * w_denom * v_denom)
+    energy = F(energy_num, rho_denom * w_denom * q_denom * v_denom * v_denom)
+    residual_sq = F(
+        residual_num,
+        rho_denom * w_denom * w_denom * q_denom * q_denom * v_denom * v_denom,
+    )
+    Z = F(z_num, rho_denom * w_denom)
+    if Z != c.Z:
+        raise AssertionError(&quot;exact full-state normalization disagrees with source compiler&quot;)
+    lower_unnormalized = 2 * b - energy
+    upper_unnormalized = lower_unnormalized + residual_sq / alpha
+    return {
+        &quot;states&quot;: N,
+        &quot;full_state_dyadic_bits&quot;: bits,
+        &quot;q_common_denominator_bits&quot;: q_denom.bit_length(),
+        &quot;weight_common_denominator&quot;: str(w_denom),
+        &quot;rho0_common_denominator_bits&quot;: rho_denom.bit_length(),
+        &quot;normalizer&quot;: str(Z),
+        &quot;L_unnormalized&quot;: str(lower_unnormalized),
+        &quot;residual_squared_exact&quot;: str(residual_sq),
+        &quot;alpha_lower&quot;: str(alpha),
+        &quot;lower&quot;: str(lower_unnormalized / Z),
+        &quot;upper&quot;: str(upper_unnormalized / Z),
+        &quot;ratio&quot;: float(upper_unnormalized / lower_unnormalized),
+        &quot;ratio_exact&quot;: str(upper_unnormalized / lower_unnormalized),
+        &quot;exact_identity&quot;: True,
+        &quot;scope&quot;: &quot;full 2^18-state rational residual and source contraction from acquired transcript&quot;,
+    }
+
+
+def full_state_comparator(alpha_cache):
+    t0 = time.perf_counter()
+    phase = {}
+    phase_start = time.perf_counter()
+    tr, c, partition = load_model_case(&quot;reverse_matched_full&quot;)
+    tr_b = json.loads((REPLICA / &quot;reverse_B_transcript.json&quot;).read_text())
+    same_transcript = (
+        tr[&quot;weights&quot;] == tr_b[&quot;weights&quot;]
+        and tr[&quot;reverse_rates&quot;] == tr_b[&quot;reverse_rates&quot;]
+    )
+    if not same_transcript:
+        raise AssertionError(&quot;matched full-state model did not receive the B transcript&quot;)
+    alpha, alpha_witness = alpha_cache[&quot;B&quot;]
+    phase[&quot;transcript_model_reconstruction_seconds&quot;] = time.perf_counter() - phase_start
+
+    # build_full imports certify.alpha_bound locally, so patch that source
+    # function (the same exactly checked witness used for the tensor path).
+    original_alpha = certmod.alpha_bound
+    try:
+        certmod.alpha_bound = lambda _c, bits=46: (alpha, {
+            &quot;reference_residual&quot;: alpha_witness[&quot;residual_infinity&quot;],
+            &quot;reference_max_trial&quot;: alpha_witness[&quot;u_max&quot;],
+            &quot;reference_local_states&quot;: alpha_witness[&quot;local_states&quot;],
+        })
+        phase_start = time.perf_counter()
+        data = fullmod.build_full(c)
+        phase[&quot;full_state_setup_seconds&quot;] = time.perf_counter() - phase_start
+    finally:
+        certmod.alpha_bound = original_alpha
+
+    b = data[&quot;rp&quot;] * data[&quot;w&quot;]
+    x = np.zeros_like(b)
+    r = b.copy()
+    z = fullmod.apply_Cinv(c, data, r)
+    p = z.copy()
+    rz = r @ z
+    history = []
+    pcg_start = time.perf_counter()
+    directed_cert_seconds = 0.0
+    for it in range(1, 13):
+        ap = fullmod.apply_A(data, p)
+        step = rz / (p @ ap)
+        x += step * p
+        r = b - fullmod.apply_A(data, x)
+        if it % 2 == 0:
+            proposal = x / data[&quot;rp&quot;]
+            cert_start = time.perf_counter()
+            rounded = fullmod.certify_full(data, proposal, bits=18)
+            directed_cert_seconds += time.perf_counter() - cert_start
+            history.append({&quot;iteration&quot;: it, &quot;source_interval_ratio&quot;: rounded.get(&quot;ratio_float&quot;)})
+            if rounded.get(&quot;valid&quot;) and rounded[&quot;ratio_float&quot;] &lt;= 1.05:
+                break
+        z = fullmod.apply_Cinv(c, data, r)
+        new_rz = r @ z
+        p = z + (new_rz / rz) * p
+        rz = new_rz
+
+    u = x / data[&quot;rp&quot;]
+    dyadic_bits = 18
+    v_int = np.rint(u * (1 &lt;&lt; dyadic_bits)).astype(np.int64)
+    if int(v_int.min()) &lt;= 0:
+        raise ArithmeticError(&quot;rounded full-state response is not positive&quot;)
+    cert_start = time.perf_counter()
+    source_float_certificate = fullmod.certify_full(data, v_int.astype(float) / (1 &lt;&lt; dyadic_bits), bits=dyadic_bits)
+    directed_cert_seconds += time.perf_counter() - cert_start
+    phase[&quot;pcg_seconds_including_directed_checks&quot;] = time.perf_counter() - pcg_start
+    phase[&quot;directed_float_certificate_seconds&quot;] = directed_cert_seconds
+    phase_start = time.perf_counter()
+    exact = exact_full_certificate(c, v_int, dyadic_bits, alpha)
+    phase[&quot;exact_rational_full_certificate_seconds&quot;] = time.perf_counter() - phase_start
+    if exact[&quot;ratio&quot;] &gt; 1.05:
+        raise AssertionError(&quot;fresh exact full-state comparator missed the shared 5% interval target&quot;)
+
+    old_source = json.loads((REPLICA / &quot;reverse_matched_full.json&quot;).read_text())
+    stat = (REPLICA / &quot;reverse_matched_full_transcript.json&quot;).stat()
+    return {
+        &quot;method&quot;: &quot;full-state PCG using acquired local preconditioner, independently rationally recertified&quot;,
+        &quot;matched_transcript_equals_reverse_B&quot;: same_transcript,
+        &quot;partition&quot;: partition[&quot;selected&quot;],
+        &quot;queries&quot;: {&quot;energy&quot;: tr[&quot;energy_queries&quot;], &quot;reverse_relaxation&quot;: tr[&quot;reverse_clock_queries&quot;]},
+        &quot;iterations&quot;: it,
+        &quot;iteration_history&quot;: history,
+        &quot;source_reported_full_certificate&quot;: old_source,
+        &quot;fresh_directed_float_full_certificate&quot;: source_float_certificate,
+        &quot;fresh_exact_rational_full_certificate&quot;: exact,
+        &quot;states&quot;: data[&quot;N&quot;],
+        &quot;full_response_vector_bytes&quot;: v_int.nbytes,
+        &quot;npz_witness_bytes&quot;: 0,
+        &quot;transcript_bytes&quot;: stat.st_size,
+        &quot;phase_seconds&quot;: phase,
+        &quot;process_peak_rss_bytes&quot;: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+        &quot;wall_seconds&quot;: time.perf_counter() - t0,
+    }
+
+
+def main():
+    alpha_cache = {}
+    tensors = [tensor_replay(name, alpha_cache) for name in [
+        &quot;reverse_A&quot;, &quot;reverse_B&quot;, &quot;reverse_matched_tensor&quot;
+    ]]
+    full = full_state_comparator(alpha_cache)
+    outputs = {
+        &quot;runtime&quot;: {
+            &quot;python&quot;: sys.version.split()[0],
+            &quot;numpy&quot;: np.__version__,
+            &quot;scipy&quot;: __import__(&quot;scipy&quot;).__version__,
+            &quot;sympy&quot;: __import__(&quot;sympy&quot;).__version__,
+            &quot;mpmath&quot;: mp.__version__,
+            &quot;thread_environment&quot;: {
+                &quot;OPENBLAS_NUM_THREADS&quot;: os.environ.get(&quot;OPENBLAS_NUM_THREADS&quot;),
+                &quot;OMP_NUM_THREADS&quot;: os.environ.get(&quot;OMP_NUM_THREADS&quot;),
+            },
+        },
+        &quot;tensor_replays&quot;: tensors,
+        &quot;matched_full_state_comparator&quot;: full,
+        &quot;process_peak_rss_bytes&quot;: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+        &quot;scope&quot;: &quot;fresh exact residual certificates from acquired transcripts; no private fixture truth&quot;,
+    }
+    out = HERE / &quot;fresh_replay_results.json&quot;
+    out.write_text(json.dumps(outputs, indent=2) + &quot;\n&quot;)
+    failed_audit = json.loads((HERE / &quot;audit_reverse_failure.json&quot;).read_text())
+    endpoint_differences = {
+        &quot;original_unmodified_audit&quot;: {
+            &quot;file&quot;: &quot;audit_reverse_failure.json&quot;,
+            &quot;returncode&quot;: failed_audit[&quot;returncode&quot;],
+            &quot;failure_site&quot;: &quot;audit.py exact lower/upper endpoint equality assertion&quot;,
+            &quot;audit_reverse_py_sha256&quot;: hashlib.sha256((REPLICA / &quot;audit_reverse.py&quot;).read_bytes()).hexdigest(),
+            &quot;source_snapshot_audit_reverse_py_sha256&quot;: hashlib.sha256((ROOT / &quot;source_snapshot&quot; / &quot;audit_reverse.py&quot;).read_bytes()).hexdigest(),
+        },
+        &quot;per_tensor_witness&quot;: [
+            {
+                &quot;name&quot;: item[&quot;name&quot;],
+                &quot;lower_exactly_equal&quot;: item[&quot;fresh_platform_alpha_replay&quot;][&quot;lower_exact_matches_source&quot;],
+                &quot;upper_exactly_equal&quot;: item[&quot;fresh_platform_alpha_replay&quot;][&quot;upper_exact_matches_source&quot;],
+                &quot;source_minus_replay_lower_exact&quot;: item[&quot;fresh_platform_alpha_replay&quot;][&quot;source_minus_replay_lower_exact&quot;],
+                &quot;source_minus_replay_upper_exact&quot;: item[&quot;fresh_platform_alpha_replay&quot;][&quot;source_minus_replay_upper_exact&quot;],
+                &quot;source_minus_replay_lower_float&quot;: item[&quot;fresh_platform_alpha_replay&quot;][&quot;source_minus_replay_lower_float&quot;],
+                &quot;source_minus_replay_upper_float&quot;: item[&quot;fresh_platform_alpha_replay&quot;][&quot;source_minus_replay_upper_float&quot;],
+                &quot;source_ratio_minus_replay_ratio&quot;: item[&quot;fresh_platform_alpha_replay&quot;][&quot;source_minus_replay_ratio&quot;],
+                &quot;new_exact_alpha_recertification_rebuilds_stored_upper&quot;: item[&quot;exact_high_precision_alpha_recertification&quot;][&quot;stored_upper_rebuilt_exactly_from_old_alpha&quot;],
+            }
+            for item in tensors
+        ],
+        &quot;interpretation&quot;: (
+            &quot;The source audit remains a FAIL. Fresh platform alpha regeneration changes the exact upper endpoints. &quot;
+            &quot;A separate exact local supersolution witness proves each stored scalar alpha is conservative and &quot;
+            &quot;rebuilds the saved upper endpoint from the saved tensor response; this does not retroactively pass the original audit.&quot;
+        ),
+    }
+    (HERE / &quot;audit_reverse_endpoint_differences.json&quot;).write_text(json.dumps(endpoint_differences, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;output&quot;: str(out),
+        &quot;tensor&quot;: [
+            {&quot;name&quot;: x[&quot;name&quot;], &quot;ratio&quot;: x[&quot;exact_high_precision_alpha_recertification&quot;][&quot;ratio&quot;],
+             &quot;stored_upper_rebuilt&quot;: x[&quot;exact_high_precision_alpha_recertification&quot;][&quot;stored_upper_rebuilt_exactly_from_old_alpha&quot;]}
+            for x in tensors
+        ],
+        &quot;full&quot;: {&quot;iterations&quot;: full[&quot;iterations&quot;], &quot;ratio&quot;: full[&quot;fresh_exact_rational_full_certificate&quot;][&quot;ratio&quot;],
+                 &quot;seconds&quot;: full[&quot;wall_seconds&quot;]},
+        &quot;peak_rss_bytes&quot;: outputs[&quot;process_peak_rss_bytes&quot;],
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

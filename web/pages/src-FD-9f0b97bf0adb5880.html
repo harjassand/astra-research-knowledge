@@ -1,0 +1,219 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — recognition_fixture.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact recognition/validation checks; no compiler performance reruns.&quot;&quot;&quot;
+from __future__ import annotations
+from bisect import bisect_left
+from fractions import Fraction
+import hashlib
+from itertools import permutations
+import json
+from pathlib import Path
+import random
+
+import validation as val
+fd,ac=val.fd,val.ac
+HERE=Path(__file__).resolve().parent
+
+
+def anf_degree(table,n):
+    coefficients=list(table)
+    for bit in range(n):
+        for x in range(1 &lt;&lt; n):
+            if x &gt;&gt; bit &amp; 1:coefficients[x]^=coefficients[x^(1 &lt;&lt; bit)]
+    return max((x.bit_count() for x,c in enumerate(coefficients) if c),default=-1)
+
+
+def identity_model(n,d):
+    return [fd.Polynomial(n,d,{1 &lt;&lt; (n-i-1)}) for i in range(n)]
+
+
+def rank_from_model(model,x):
+    out=0
+    for q in model:out=(out &lt;&lt; 1)|q(x)
+    return out
+
+
+def lis_length(values):
+    tails=[]
+    for x in values:
+        j=bisect_left(tails,x)
+        if j==len(tails):tails.append(x)
+        else:tails[j]=x
+    return len(tails)
+
+
+def exact_prefix_rejection(permutation,n,h):
+    # Candidate order is raw numeric order. Every pair has a unique first
+    # differing candidate bit/stage and hence one explicit probe weight.
+    numerator=0
+    N=1 &lt;&lt; n
+    for x in range(N):
+        for y in range(x+1,N):
+            stage=n-(x^y).bit_length()
+            if stage&lt;h and permutation[x]&gt;permutation[y]:numerator+=1 &lt;&lt; (stage+2)
+    return Fraction(numerator,h*N*N) if h else Fraction(0)
+
+
+def ancestor_good(permutation,n,i):
+    low,high=0,1 &lt;&lt; n
+    while True:
+        pivot=(low+high)//2
+        if pivot==i:return True
+        if (permutation[i]&lt;permutation[pivot])!=(i&lt;pivot):return False
+        if i&lt;pivot:high=pivot
+        else:low=pivot+1
+
+
+def adjacent_needles():
+    records=[]
+    for n in range(2,9):
+        N=1 &lt;&lt; n
+        boundaries=[0]*(n+1)
+        comparisons=0
+        for j in range(N-1):
+            table=[int(x==j or x==j+1) for x in range(N)]
+            assert anf_degree(table,n)==n-1
+            # Adjacent swaps change exactly one unordered comparison. Check
+            # every pair for small n; the larger cases check the unique pair
+            # plus all comparisons involving either endpoint.
+            p=list(range(N));p[j],p[j+1]=p[j+1],p[j]
+            pairs=[(x,y) for x in range(N) for y in range(x+1,N)] if n&lt;=5 else [
+                (x,y) for x in range(N) for y in range(x+1,N) if x in (j,j+1) or y in (j,j+1)]
+            changed=[(x,y) for x,y in pairs if (p[x]&lt;p[y])!=(x&lt;y)]
+            comparisons+=len(pairs)
+            assert changed==[(j,j+1)]
+            for h in range(1,n+1):
+                r=n-h
+                changes=(j &gt;&gt; r)!=((j+1) &gt;&gt; r)
+                boundaries[h]+=int(changes)
+        assert all(boundaries[h]==(1 &lt;&lt; h)-1 for h in range(1,n+1))
+        records.append(dict(n=n,adjacent_swaps=N-1,all_delta_pair_degrees=n-1,
+                            prefix_changed_adjacent_counts=boundaries[1:],pair_checks=comparisons))
+    return records
+
+
+def sharp_budget_checks():
+    rows=[]
+    for M in (1,3,7,15,31,255):
+        for beta in (Fraction(0),Fraction(1,10),Fraction(1,4),Fraction(1,3)):
+            expected_one=(1-beta)*M
+            expected_two=(1-2*beta)*M
+            conditional_two=Fraction(M)*(1-2*beta)/(1-beta)
+            ceil=lambda q:(q.numerator+q.denominator-1)//q.denominator
+            T_one,T_two=ceil(expected_one),ceil(conditional_two)
+            assert Fraction(M-T_one,M)&lt;=beta
+            assert (1-beta)*Fraction(M-T_two,M)&lt;=beta
+            # Randomize between floor/ceil subset sizes to meet the exact null
+            # expected lower bounds rather than merely the worst-cap versions.
+            assert (1-beta)*(1-conditional_two/M)==beta
+            rows.append(dict(M=M,beta=str(beta),perfect_complete_cap=T_one,
+                two_sided_cap=T_two,perfect_complete_null_expected=str(expected_one),
+                two_sided_null_expected=str(expected_two)))
+    return rows
+
+
+def exhaustive_three_bit():
+    n,N,d=3,8,2
+    count=0
+    minima={h:Fraction(1) for h in (1,2,3)}
+    min_deletion=Fraction(1)
+    for p in permutations(range(N)):
+        count+=1
+        degrees=[anf_degree([(p[x] &gt;&gt; (n-i-1))&amp;1 for x in range(N)],n) for i in range(n)]
+        assert max(degrees)&lt;=d  # Every balanced three-bit coordinate has no cubic term.
+        if p==tuple(range(N)):continue
+        deletion=Fraction(N-lis_length(p),N)
+        min_deletion=min(min_deletion,deletion)
+        assert deletion&gt;=Fraction(1,1 &lt;&lt; (d+1))
+        for h in (1,2,3):
+            wrong=any((p[x] &gt;&gt; (n-h))!=(x &gt;&gt; (n-h)) for x in range(N))
+            rejection=exact_prefix_rejection(p,n,h)
+            if wrong:
+                minima[h]=min(minima[h],rejection)
+                assert rejection&gt;=Fraction(1,h*(1 &lt;&lt; (2*d)))
+            else:assert rejection==0
+        good=[i for i in range(N) if ancestor_good(p,n,i)]
+        assert all(p[x]&lt;p[y] for a,x in enumerate(good) for y in good[a+1:])
+        assert len(good)&lt;=lis_length(p)
+    return dict(n=n,degree=d,permutations=count,
+                minimum_distinct_model_deletion=str(min_deletion),
+                prefix_rejection_minima={str(h):str(v) for h,v in minima.items()},
+                all_ancestor_good_sets_increasing=True)
+
+
+def executable_validators():
+    records=[]
+    n,d=4,2
+    linear=[fd.Polynomial(n,d,{1 &lt;&lt; i}) for i in range(n)]
+    actual=[fd.Polynomial(n,d,{1,4|8})]+linear[1:]
+    actual_rank=lambda x:rank_from_model(actual,x)
+    compare=lambda x,y:int(actual_rank(x)&lt;actual_rank(y))
+    # Explicit candidates for unknown-r selection. This tests new validation,
+    # not acquisition or a claim that the compiler generated these candidates.
+    for r in (0,1,2):
+        model=linear if r&lt;2 else actual
+        out=val.degree_promised_validate(n,d,model,[1 &lt;&lt; i for i in range(n-r)],
+                                         compare,seed=991200+r,eta=.001)
+        assert out[&#x27;status&#x27;]==(&#x27;REJECT&#x27; if r&lt;2 else &#x27;ACCEPT_UNDER_TRUE_DEGREE_PROMISE&#x27;)
+        records.append(dict(scope=&#x27;degree-only validator with supplied candidate; not acquisition&#x27;,
+                            assumed_r=r,actual_valid_partial_flag_r=2,result=out))
+    # A candidate need NOT be bijective for the full tail validator&#x27;s soundness.
+    n,d,h=5,3,3
+    model=identity_model(n,d)
+    nonbijective=model[:h]+[fd.Polynomial(n,d,set()) for _ in range(n-h)]
+    out=val.degree_promised_validate(n,d,nonbijective,[1 &lt;&lt; (n-i-1) for i in range(h)],
+                                    lambda x,y:int(x&lt;y),seed=881119,eta=.001)
+    assert out[&#x27;status&#x27;]==&#x27;REJECT&#x27;
+    records.append(dict(scope=&#x27;nonbijective candidate rejected without a global candidate bijectivity test&#x27;,result=out))
+    # Exact prefix equality check admits arbitrary within-block source order.
+    n,d,h=5,2,2
+    model=identity_model(n,d)
+    r=n-h
+    p=[((x &gt;&gt; r) &lt;&lt; r)|(((x&amp;((1 &lt;&lt; r)-1))*5+3)&amp;((1 &lt;&lt; r)-1)) for x in range(1 &lt;&lt; n)]
+    cmp=lambda x,y:int(p[x]&lt;p[y])
+    exact=val.exact_prefix_validate(n,d,model[:h],[1 &lt;&lt; (n-i-1) for i in range(h)],cmp)
+    assert exact[&#x27;status&#x27;]==&#x27;EXACT_PREFIX_MATCH&#x27;
+    whole=val.chain_validate(n,lambda i:i,cmp)
+    assert whole[&#x27;status&#x27;]==&#x27;REJECT&#x27;
+    records.append(dict(scope=&#x27;prefix exact equality accepts arbitrary suffix; whole equality rejects&#x27;,
+                        prefix=exact,whole=whole))
+    return records
+
+
+def off_promise_misses():
+    n,d,h=8,2,6
+    N=1 &lt;&lt; n
+    model=identity_model(n,d)
+    toggles=[1 &lt;&lt; (n-i-1) for i in range(h)]
+    p=list(range(N));j=N//2-1;p[j],p[j+1]=p[j+1],p[j]
+    exact_rejection=exact_prefix_rejection(p,n,h)
+    assert exact_rejection==Fraction(4,h*N*N)&lt;Fraction(1,h*(1 &lt;&lt; (2*d)))
+    out=val.degree_promised_validate(n,d,model[:h],toggles,lambda x,y:int(p[x]&lt;p[y]),
+                                    seed=0,eta=.01,prefix_only=True)
+    assert out[&#x27;status&#x27;]==&#x27;ACCEPT_UNDER_TRUE_DEGREE_PROMISE&#x27;
+    cap=out[&#x27;prefix_test&#x27;][&#x27;test_cap&#x27;]
+    return dict(status=&#x27;EXPECTED_OFF_PROMISE_FALSE_ACCEPT&#x27;,n=n,d=d,h=h,
+        source_modification=&#x27;one adjacent swap across midpoint&#x27;,source_coordinate_degree=n-1,
+        exact_rejection_per_prefix_probe=str(exact_rejection),
+        degree_promised_rejection_lower_bound=str(Fraction(1,h*(1 &lt;&lt; (2*d)))),
+        actual_miss_probability=float((1-exact_rejection)**cap),
+        promised_error_budget=.01,result=out,
+        interpretation=&#x27;true degree promise fails; this validation is not exact promise recognition&#x27;)
+
+
+def main():
+    receipt=dict(status=&#x27;PASS_WITH_EXPECTED_OFF_PROMISE_MISS&#x27;,
+        scope=&#x27;exact finite algebra and new validator execution; no compiler performance rerun&#x27;,
+        adjacent_needles=adjacent_needles(),sharp_budgets=sharp_budget_checks(),
+        exhaustive_three_bit=exhaustive_three_bit(),validators=executable_validators(),
+        off_promise=off_promise_misses(),
+        source_hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest()
+                       for p in (HERE/&#x27;validation.py&#x27;,Path(__file__))})
+    (HERE/&#x27;recognition_fixture.json&#x27;).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(dict(status=receipt[&#x27;status&#x27;],
+        adjacent_swaps=sum(row[&#x27;adjacent_swaps&#x27;] for row in receipt[&#x27;adjacent_needles&#x27;]),
+        exact_permutations=receipt[&#x27;exhaustive_three_bit&#x27;][&#x27;permutations&#x27;],
+        validator_cases=len(receipt[&#x27;validators&#x27;]),
+        off_promise_miss_probability=receipt[&#x27;off_promise&#x27;][&#x27;actual_miss_probability&#x27;])))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre>

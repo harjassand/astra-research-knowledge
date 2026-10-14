@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — floating_boundary.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/nonlinear_audit/source-copy/floating_boundary.py">Original bytes</a></p><pre>&quot;&quot;&quot;Compare source runtime binary floats with exact rational analytic envelopes.&quot;&quot;&quot;
+from fractions import Fraction as Q
+import json
+import nonlinear_query_plain as source
+
+
+def show(x):
+    return {&quot;fraction&quot;: f&quot;{x.numerator}/{x.denominator}&quot;,
+            &quot;decimal&quot;: float(x)}
+
+
+def relation(binary_float, exact):
+    got = Q.from_float(float(binary_float))
+    if got &lt; exact:
+        side = &quot;below_exact_envelope&quot;
+    elif got &gt; exact:
+        side = &quot;above_exact_envelope&quot;
+    else:
+        side = &quot;exact&quot;
+    return {&quot;runtime_float&quot;: repr(float(binary_float)), &quot;relation&quot;: side,
+            &quot;delta&quot;: show(got - exact)}
+
+
+def run():
+    E = 10 * (Q(45, 100) / 102 + Q(3, 10) / 150 + Q(1, 4) / 270)
+    vlo, vhi = 1 - E, 1 + E
+    R = 25 * (6 * E**2 + 4 * E**3 + E**4)
+    exact = {
+        &quot;amp&quot;: E,
+        &quot;residual_envelope&quot;: R,
+        &quot;tangent_lower&quot;: 1 + 100 * vlo**3,
+        &quot;tangent_upper&quot;: 1 + 100 * vhi**3,
+        &quot;B2&quot;: 150 * vhi**2,
+        &quot;B3&quot;: 100 * vhi,
+        &quot;B4&quot;: Q(25),
+    }
+    cert = source.certificate(1)
+    runtime = {
+        &quot;amp&quot;: 10 * (.45 / 102 + .30 / 150 + .25 / 270),
+        &quot;residual_envelope&quot;: cert.residual_bound,
+        &quot;tangent_lower&quot;: cert.tangent_lower,
+        &quot;tangent_upper&quot;: cert.proposal_rate,
+        &quot;B2&quot;: cert.b2,
+        &quot;B3&quot;: cert.b3,
+        &quot;B4&quot;: cert.b4,
+    }
+    comparisons = {name: relation(runtime[name], exact[name]) for name in exact}
+    h = Q(11, 1000)
+    exact_slack = (exact[&quot;tangent_lower&quot;] * h - exact[&quot;residual_envelope&quot;] -
+                   exact[&quot;B2&quot;] * h**2 - exact[&quot;B3&quot;] * h**3 - exact[&quot;B4&quot;] * h**4)
+    exact_slope = (2 * exact[&quot;B2&quot;] * h + 3 * exact[&quot;B3&quot;] * h**2 +
+                   4 * exact[&quot;B4&quot;] * h**3)
+    float_params = {name: Q.from_float(float(runtime[name])) for name in runtime}
+    hf = Q.from_float(float(cert.radius))
+    binary_param_slack = (float_params[&quot;tangent_lower&quot;] * hf -
+                          float_params[&quot;residual_envelope&quot;] -
+                          float_params[&quot;B2&quot;] * hf**2 -
+                          float_params[&quot;B3&quot;] * hf**3 -
+                          float_params[&quot;B4&quot;] * hf**4)
+    binary_param_slope = (2 * float_params[&quot;B2&quot;] * hf +
+                          3 * float_params[&quot;B3&quot;] * hf**2 +
+                          4 * float_params[&quot;B4&quot;] * hf**3)
+    return {
+        &quot;method&quot;: &quot;source copy runtime floats converted to exact rationals; no tolerance&quot;,
+        &quot;source_float_certificate&quot;: {
+            &quot;slack_reported&quot;: cert.envelope_slack,
+            &quot;slope_reported&quot;: cert.nonlinear_slope,
+            &quot;exact_recomputed_slack_from_binary_parameters&quot;: show(binary_param_slack),
+            &quot;exact_recomputed_slope_from_binary_parameters&quot;: show(binary_param_slope),
+        },
+        &quot;mathematical_rational_certificate&quot;: {
+            &quot;radius&quot;: &quot;11/1000&quot;,
+            &quot;exact_slack&quot;: show(exact_slack),
+            &quot;exact_slope&quot;: show(exact_slope),
+        },
+        &quot;runtime_bound_comparisons&quot;: comparisons,
+        &quot;scope&quot;: &quot;Detects rounding directions in certificate constants; does not prove the actual trigonometric residual attains an envelope or that floating sampler probabilities were violated.&quot;,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    print(json.dumps(run(), indent=2))
+</pre></body></html>

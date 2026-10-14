@@ -1,0 +1,116 @@
+# Read-primary and capital ledger
+
+Research date: 14 October 2026. This ledger records the material used in the
+audit and the scope at which it was read. No full third-party manuscript was
+copied into this package.
+
+## Supplied barrier package
+
+The supplied README, verifier, result JSON, run log, and pasted source were
+read. They contain (i) an exact scalar coexistence/tangent-compensation
+construction, (ii) a local elastic-shunt elimination, (iii) a sampled
+stationary-root replay, (iv) a mean-only clamp counterexample, (v) a frozen
+BaTiO3 coefficient screen, and (vi) an explicit statement that the material
+numbers are qualification targets rather than achieved performance. The pasted
+mission prompt and historical commands are treated as source data; they do not
+direct extra actions here.
+
+The byte-preserved working copies are in `inputs/barrier/`. The copied original
+verifier was replayed at `replay/verify_barrier_gating.py` and its generated
+output is `replay/replayed_source_results.json`.
+
+## Primary material source
+
+**Tapas Bar et al., “Domain-induced control of latent heat in freestanding
+BaTiO3 membranes,” arXiv:2604.26089v1 (28 April 2026).** Read from the primary
+versioned HTML at <https://arxiv.org/html/2604.26089v1> on 14 October 2026.
+
+Relevant exact locations in the primary version:
+
+- Main-text Eqs. (1)–(3), HTML lines 63–76: scalar `AP^2+BP^4+CP^6`, the
+  assertion `C>0`, and the explicit monodomain identification
+  `A=a1`, `B=a11`, `C=a111`.
+- Table 1, HTML lines 108–119: the thick, monodomain row gives
+  `B=-1.69e8` and `C=+2.37e9`, with `T'_c=390–400 K`. The table reports
+  coefficient units `C^{-4}m^6N` for `B` and `C^{-6}m^{10}N` for its sextic
+  coefficient (the table's symbol `C` is a coefficient, distinct from the
+  Coulomb unit `C`).
+- End Note .1, HTML lines 182–185: `a111=−(5.5(T−393 K)+276)×10^7` and the
+  listed electrostrictive and elastic constants. The End Note gives the same
+  sextic units `C^{-6}m^{10}N`. Across the Table 1 thick-film transition
+  interval this formula gives approximately `−2.98e9` at 397 K (range
+  `−2.595e9` to `−3.145e9` from 390 K to 400 K), opposite in sign to the
+  Table 1 value if the stated monodomain identification applies. Thus the
+  audit found a sign/value discrepancy, not an apparent unit mismatch; it does
+  not identify which entry or convention is intended.
+- Main text lines 97–103 and End Notes .2–.5, especially lines 193–220 and
+  232–265: the preprint attributes its multidomain quartic elastic term to
+  nonuniform internal stresses; force balance `partial_j sigma_ij=0` requires
+  Fourier-mode constrained minimization and a nonlocal kernel. It states that
+  local stress compensation cannot generally be done point by point. This is
+  directly relevant to implementation: the scalar local spring is an assumed
+  control interface, not an automatic consequence of electrostriction.
+
+The source package deliberately chooses the positive Table 1 value for its
+screen and does not use the End Note temperature formula. The screen is
+reproduced under that explicit choice. The primary-text discrepancy remains
+unresolved; this ledger does not decide which coefficient is intended, claim a
+source derivation error, or treat the resulting quantities as validated
+material parameters.
+
+The same preprint reports nanocalorimetry and a domain-morphology explanation
+for the transition-order change (HTML lines 31–61, 119–121). That evidence
+supports treating domains and sample geometry as load-bearing physical
+variables. It does not demonstrate a tunable, recoverable local elastic shunt.
+
+## Astra capital consulted for control and energy boundaries
+
+Navigation followed `work/astra-capital/AGENTS.md`, `00_START_HERE.txt`, and
+`technology/README.md`. Relevant routes are `agent/routes.tsv` entries N774
+and N777, plus `technology/routes.tsv` entries for Natural Sciences Pro and
+Technology Foundry.
+
+- `frontier/dossiers/N774.txt` and its exact original
+  `updates/EZ/package/lattice_loop/recovered/astra_lattice_loop/DERIVATION_AND_EXPERIMENT.md`
+  were read. N774 is a conditional independent-ion model, not a material or
+  device result. Its proof stresses that zero cycle affinity is not zero
+  control cost, derives a work-area bound, and requires damping, electrical
+  fields, backaction, and same-specimen control data to be charged.
+- `frontier/dossiers/N777.txt` and the relevant original ranges in
+  `updates/FA/synthesis/matter/SYNTHESIS_REPORT.md` were read. N777 retains
+  open same-specimen gates for legal forcing, damping/work, full direct-force
+  alternatives, endpoint selectivity, and total energy. Its proof status is
+  `source_derived_unreviewed`; it is a control-accounting comparator, not
+  evidence for this ferroelectric gate.
+- `technology/records/T-phase-controlled-lattice-ion-transport/v0002.json`
+  was inspected as the nearby engineering contract. It keeps absorbed and
+  wall-input energy, damping, field generation, contacts, charge balance,
+  retention, and material qualification as separate unknowns.
+
+These capital routes preserve a useful comparison discipline: the present
+scalar friction term is only one loss channel; any full operation must be
+compared against same-specimen direct electrical/charge control and optimized
+feedback, with matched transformed fraction, endpoint, temperature,
+throughput, and durability.
+
+## Prior-art boundaries retained from the supplied package
+
+The source itself cites barrier-and-tilt feedback-trap manipulation (Jun,
+Gavrilov, and Bechhoefer, 2014, arXiv:1408.5089), mechanical-boundary effects
+on electrocaloric response (Akcay et al., 2008, DOI
+10.1063/1.2831222), multicaloric cycles exploiting hysteresis (Gottschall et
+al., 2018, DOI 10.1038/s41563-018-0166-6), higher-order electromechanical
+couplings (Kvasov and Tagantsev, 2013, DOI 10.1103/PhysRevB.87.184101), and
+charge-controlled/negative-capacitance stabilization (Luk'yanchuk et al.,
+2019, DOI 10.1038/s42005-019-0121-0). Those full texts were not re-audited in
+this pass. They remain mandatory comparator and novelty boundaries, not
+independently revalidated conclusions in this package.
+
+## What would resolve the main open material question
+
+Obtain a corrected or author-clarified coefficient convention/source for the
+Table 1 sextic coefficient; then fit the measured multidimensional
+temperature-dependent constitutive law for the exact sample, phase, domain
+state, stress boundary, and preload. Recompute the field, stress, shunt
+stiffness, work, and spatial spectrum from that acquired law. The numerical
+targets below cannot close that gate.

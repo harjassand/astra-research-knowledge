@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""Exact finite identities for ADAPTIVE_AFFINE_STABILITY.md.
+
+Requires SymPy. No optimizer, network call, prior result JSON or pickle is used.
+These checks do not formalize the analytic spectral/Holder/neighborhood proof.
+"""
+from __future__ import annotations
+import json
+from pathlib import Path
+import sympy as S
+
+ROOT=Path(__file__).resolve().parent
+passed=[]; details={}
+def zero(expr,label='identity'):
+    entries=list(expr) if isinstance(expr,S.MatrixBase) else [expr]
+    for v in entries:
+        if S.cancel(S.expand(v)) != 0:
+            raise AssertionError(label)
+def done(label):
+    passed.append(label)
+    print(f'PASS {len(passed):02d}: {label}',flush=True)
+def sub(poly,variables,values):
+    return poly.subs(dict(zip(variables,values)),simultaneous=True)
+
+a,b,c,d=S.symbols('a b c d',real=True);xx=(a,b,c,d);X=S.Matrix(xx)
+ra,rb,rc,rd=S.symbols('ra rb rc rd',real=True);rr=(ra,rb,rc,rd);R=S.Matrix(rr)
+ya,yb,yc,yd=S.symbols('ya yb yc yd',real=True);yy=(ya,yb,yc,yd);Y=S.Matrix(yy)
+s,u=S.symbols('s u',real=True)
+q=a*d-b*c;J=S.hessian(q,xx)/2
+zero(J*J-S.eye(4)/4)
+monoms=[]
+for i in range(5):
+ for j in range(5-i):
+  for k in range(5-i-j):
+   l=4-i-j-k
+   monoms.append(a**i*b**j*c**k*d**l)
+assert len(monoms)==35
+for f in monoms:
+ H=S.hessian(f,xx); grad=S.Matrix([S.diff(f,t) for t in xx])
+ HR=sub(H,xx,R); HY=sub(H,xx,Y)
+ zero((X.T*HR*X)[0]-(R.T*H*R)[0],'quartic reciprocity')
+ zero(H*X-3*grad,'quartic Euler Hessian identity')
+ fshift=sub(f,xx,R+Y)
+ zero(fshift-sub(f,xx,R)-(sub(grad,xx,R).T*Y)[0]
+      -(Y.T*HR*Y)[0]/2-(sub(grad,xx,Y).T*R)[0]-sub(f,xx,Y),'quartic Taylor identity')
+done('all 35 monomial reciprocity, Euler and background-expansion identities')
+
+for f in monoms:
+ H=S.hessian(f,xx); grad=S.Matrix([S.diff(f,t) for t in xx])
+ HR=sub(H,xx,R); HY=sub(H,xx,Y)
+ D3YY=S.Matrix([sum(Y[i]*Y[j]*sub(S.diff(f,xx[o],xx[i],xx[j]),xx,R)
+                       for i in range(4) for j in range(4)) for o in range(4)])
+ target=(s**3-3*u*s*s)*sub(grad,xx,R)+HR*((s*s-2*u*s)*Y)+s*D3YY/2+sub(grad,xx,Y)-u*HY*R
+ actual=sub(grad,xx,s*R+Y)-u*sub(H,xx,s*R+Y)*R
+ zero(actual-target,'regressed cubic identity')
+done('all 35 monomials: full vector regression identity before averaging')
+
+AA,CC,DD,AC,AD,CD,MM=S.symbols('AA CC DD AC AD CD MM',real=True)
+Cov=S.Matrix([[AA,0,AC,AD],[0,MM,AD,0],[AC,AD,CC,CD],[AD,0,CD,DD]])
+R0=S.Matrix([0,1,0,0]);Pperp=S.eye(4)-R0*R0.T
+Ycov=Pperp*Cov*Pperp
+z=Cov*R0-MM*R0
+qY=S.trace(J*Ycov)
+zero(S.trace(J*Cov));zero(z+qY*(J*R0)/(2*(J*R0).dot(J*R0)))
+# Exact cancellation of the first-order moment into a normal component.
+assert z==S.Matrix([0,0,AD,0])
+done('stationary fitted covariance: exact quadratic-normal regression identity')
+
+hh=S.symbols('hh',real=True);kk=S.Matrix(S.symbols('k0 k1 k2',real=True))
+p=S.symbols('p0 p1 p2',positive=True);D=S.diag(*p)
+HH=S.Matrix([[hh]]).row_join(kk.T).col_join(kk.row_join(D))
+sigma=hh-(kk.T*D.inv()*kk)[0]
+L=S.eye(4)
+L[1:,0]=-D.inv()*kk
+zero(L.T*HH*L-S.diag(sigma,*p))
+B=S.Matrix(S.symbols('B0:4',real=True));bv=S.Matrix(S.symbols('bv0:4',real=True))
+Rv=S.Matrix(S.symbols('Rv0:4',real=True));cv=S.symbols('cv',real=True)
+ell=bv-u*HH*Rv
+Q=cv-u*(bv.T*Rv)[0]+u*u*(Rv.T*HH*Rv)[0]/2
+zero(cv+(bv.T*(B-u*Rv))[0]+((B-u*Rv).T*HH*(B-u*Rv))[0]/2
+     -Q-(ell.T*B)[0]-(B.T*HH*B)[0]/2)
+done('complete Schur congruence and unrestricted affine-origin regression')
+
+N=a*a+b*b+c*c+d*d
+FDM=N*N-4/S.sqrt(3)*N*q
+HDM=S.hessian(FDM,xx); ADM=S.Matrix([0,-S.sqrt(3)/3,1,0])
+MDM=sub(HDM,xx,R0)
+assert MDM.rank()==3;zero(MDM*ADM)
+HADM=sub(HDM,xx,ADM)
+lam=S.simplify(((J*R0).T*(HADM*R0))[0]/(J*R0).dot(J*R0))
+PDM=S.simplify(HADM-lam*J)
+zero(PDM*R0);assert PDM.rank()==3
+for ev in PDM.eigenvals():
+ assert ev==0 or ev.is_positive is True
+acoustic=S.diff(FDM,a,2)
+zero(acoustic-(12*a*a+4*(b*b+c*c+d*d)-4/S.sqrt(3)*(6*a*d-2*b*c)))
+details['transverse_DM_remainder_eigenvalues']=[str(v) for v in PDM.eigenvals()]
+done('known endpoint: direct acoustic positivity and a genuine transverse contact')
+
+U=a*a+c*c;V=b*b+d*d
+G=3*(U+V-2*q)**2+S.Rational(35,24)*U*U+q*q-S.Rational(5,2)*q*U
+HG=S.hessian(G,xx);DG=S.Matrix([S.diff(G,t) for t in xx]);I=S.Matrix([1,0,0,1])
+M11=S.hessian(S.diff(G,a,2),xx)/2
+M12=S.hessian(S.diff(G,a,b),xx)/2
+M22=S.hessian(S.diff(G,b,2),xx)/2
+K=S.zeros(4)
+for (i,j),val in zip([(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)],
+                      [11,S.Rational(91,6),0,0,11,S.Rational(41,3)]):
+ K[i,j]=val;K[j,i]=-val
+Gram=M11.row_join(M12+K).col_join((M12-K).row_join(M22))
+minors=[S.factor(Gram[:i,:i].det()) for i in range(1,7)]
+assert minors==[S.Rational(107,2),642,S.Rational(1605,8),S.Rational(8445,16),S.Rational(2815,8),S.Rational(26865,4)]
+C6=Gram[:6,:6];B6=Gram[:6,6:]
+zero(Gram[6:,6:]-B6.T*C6.inv()*B6)
+s1,s2=S.symbols('s1 s2',real=True);zz=(s1*X).col_join(s2*X)
+zero((zz.T*Gram*zz)[0]-(s1*s1*S.diff(G,a,2)+2*s1*s2*S.diff(G,a,b)+s2*s2*S.diff(G,b,2)))
+PG=S.Rational(1,2)*(3*a-2*d)**2+S.Rational(5,6)*c*c
+zero((X.T*sub(HG,xx,I)*X)[0]-PG+q)
+assert (S.hessian(PG,xx)/2).rank()==2
+assert sub(G,xx,I)==-S.Rational(1,24)
+done('tangent G: exact global acoustic Gram certificate and rank-two remainder')
+
+t=S.symbols('t',positive=True);Rt=S.Matrix([t,1,0,0]);Mt=sub(HG,xx,Rt)
+comp=S.Matrix.hstack(S.Matrix([1,0,0,-1]),R0,S.Matrix([0,0,1,0]))
+h=(I.T*Mt*I)[0];k=comp.T*Mt*I;dc=comp.T*Mt*comp
+sig=S.factor(h-(k.T*dc.inv()*k)[0])
+expected=10*t**4*(563*t**4+1296*t*t+1248)/(3*(595*t**6+7992*t**4+8064*t*t+3072))
+zero(sig-expected);zero(h-S.Rational(9,2)*t*t)
+zero(Mt.det()-S.Rational(15,16)*t**4*(563*t**4+1296*t*t+1248))
+assert S.limit(sig/(h*t*t),t,0)==S.Rational(65,216)
+details['tilted_h']=str(h);details['tilted_sigma']=str(sig)
+done('actual tilted rank-one field: positive-definite Hessian and exact Schur collapse')
+
+zeta=S.symbols('zeta',nonzero=True)
+spol=(zeta+1/zeta)/2+(zeta*zeta+1/zeta**2)/4
+xp,yp=S.symbols('xp yp',real=True); nn=S.symbols('nn',positive=True,integer=True)
+phase=xp+nn*yp
+potential=(S.sin(phase)+S.sin(2*phase)/4)/nn
+wave=S.cos(phase)+S.cos(2*phase)/2
+zero(S.diff(potential,xp)-wave/nn)
+zero(S.diff(potential,yp)-wave)
+mom={j:S.expand(spol**j).coeff(zeta,0) for j in range(1,5)}
+assert mom=={1:0,2:S.Rational(5,8),3:S.Rational(3,8),4:S.Rational(99,128)}
+HX=mom[2]*Mt;bX=mom[3]*sub(DG,xx,Rt);cX=mom[4]*sub(G,xx,Rt)
+Bopt=-Rt/5;zero(HX*Bopt+bX)
+gap=S.factor(cX+(bX.T*Bopt)[0]+(Bopt.T*HX*Bopt)[0]/2)
+zero(gap-S.Rational(399,640)*sub(G,xx,Rt))
+kX=comp.T*HX*I;DX=comp.T*HX*comp
+sigX=S.factor((I.T*HX*I)[0]-(kX.T*DX.inv()*kX)[0])
+betared=S.factor((I.T*bX)[0]-(kX.T*DX.inv()*comp.T*bX)[0])
+zero(betared-t*sigX/10)
+zero(sub(G,xx,Rt)-(S.Rational(107,24)*t**4+6*t*t+3))
+details['tilted_full_gap']=str(gap);details['tilted_reduced_beta']=str(betared)
+done('compatible trigonometric moments, joint numerator cancellation and full positive gap')
+
+e=S.symbols('e',positive=True);m=S.Integer(9);w=1-3*e/2
+tsmall=S.Rational(9,2)*m*m*e/w
+Rsmall=S.Matrix([0,1,tsmall,0]);Sdiag=S.Matrix([1,0,0,S.Rational(3,2)])
+atoms=[(Rsmall,w/2),(-Rsmall,w/2),(m*Sdiag,e),(-2*m*Sdiag,e/2)]
+def mean(poly):
+ return S.factor(sum(wgt*sub(poly,xx,atom) for atom,wgt in atoms))
+zero(sum((wgt*atom for atom,wgt in atoms),S.zeros(4,1)))
+zero(mean(q));CL=sum((wgt*atom*atom.T for atom,wgt in atoms),S.zeros(4))
+HRlaw=S.simplify(sum((wgt*sub(HG,xx,atom) for atom,wgt in atoms),S.zeros(4)))
+betalaw=mean((DG.T*I)[0]);hlaw=mean(PG);claw=mean(G)
+zero(betalaw-S.Rational(5,4)*e*m**3)
+zero(hlaw-S.Rational(135,8)*m**4*e**2/w)
+fitAD=m*m*e*S.Matrix([[3,9],[9,S.Rational(27,4)]])
+# Equality on the rank-one cone: the difference is a multiple of det.
+fitpoly=w*b*b+w*tsmall**2*c*c+(S.Matrix([a,d]).T*fitAD*S.Matrix([a,d]))[0]
+diff=S.factor((X.T*CL*X)[0]-fitpoly)
+zero(diff+9*m*m*e*q)
+val={e:S.Rational(1,10**6)}
+fitgap=(w*S.eye(2)-fitAD).subs(val)
+assert fitgap[0,0]>0 and fitgap.det()>0 and tsmall.subs(val)<1
+for j in range(1,5):
+ assert S.factor(HRlaw.subs(val)[:j,:j].det())>0
+done('noncompatible tangent law: balance, exact optimal fitted line and positive Hessian')
+
+bad=S.factor(claw-betalaw**2/(2*hlaw))
+assert bad.subs(val)<0
+assert S.limit(bad,e,0)==-S.Rational(3,4)
+Y4=mean((a*a+c*c+d*d)**2);Y2=mean(a*a+c*c+d*d)
+assert S.limit(Y4,e,0)==0 and S.limit(Y2,e,0)==0
+assert S.limit(mean(b*b),e,0)==1 and S.limit(mean(b**4),e,0)==1
+details['noncompatible_directional_gap_at_e_1e6']=str(bad.subs(val))
+details['noncompatible_gap_limit']=str(S.limit(bad,e,0))
+done('tangent laws defeat a universal moment-only near-line extension; not a gradient counterexample')
+
+# A compatible concentrating profile inside the transverse theorem, with B_opt escaping.
+sp,tp=S.symbols('sp tp',real=True)
+kt=tp*(1-tp);gs=sp*(1-sp)
+def square_profile_mean(poly):
+    ans=S.Integer(0)
+    for fp,lo,hi in [(2*sp,S.Integer(0),S.Rational(1,3)),(1-sp,S.Rational(1,3),S.Integer(1))]:
+        gradp=S.Matrix([S.diff(fp,sp)*kt,fp*S.diff(kt,tp),S.diff(gs,sp)*kt,gs*S.diff(kt,tp)])
+        pol=S.Poly(S.expand(sub(poly,xx,gradp)),sp,tp)
+        ans+=sum(coef*(hi**(i+1)-lo**(i+1))/S.Integer(i+1)/S.Integer(j+1)
+                 for (i,j),coef in pol.terms())
+    return S.simplify(ans)
+Hprof=HDM.applyfunc(square_profile_mean)
+bprof=S.Matrix([square_profile_mean(S.diff(FDM,z)) for z in xx])
+cprof=square_profile_mean(FDM)
+hprof=S.simplify((ADM.T*Hprof*ADM)[0]); betaprof=S.simplify((bprof.T*ADM)[0])
+assert hprof==S.Rational(4,15) and betaprof==S.Rational(296,25515)
+assert cprof==S.Rational(29023,1071630)==square_profile_mean(N*N)
+mp=[S.simplify(Hprof[:j,:j].det()) for j in range(1,5)]
+assert mp==[S.Rational(88,81),S.Rational(4561904,4428675),S.Rational(433077568,1793613375),S.Rational(871474623232,19613162255625)]
+assert all(v>0 for v in mp)
+assert S.simplify(betaprof/hprof)==S.Rational(74,1701)
+assert S.simplify(betaprof**2/(2*hprof))==S.Rational(10952,43401015)
+details['transverse_concentrating_profile']={'beta':str(betaprof),'h':str(hprof),'c':str(cprof),'loss_leading_coefficient':str(betaprof**2/(2*hprof)),'background_leading_coefficient':str(-betaprof/hprof)}
+done('genuine transverse concentration: exact profile moments and escaping-background coefficients')
+
+result={'passed_groups':passed,'count':len(passed),'details':details,
+        'proof_boundary':'Exact identities and explicit examples only. The general spectral-neighborhood, covariance fitting, Holder, inverse-metric and Jensen arguments are proved in ADAPTIVE_AFFINE_STABILITY.md, not formalized by this script.'}
+(ROOT/'adaptive_verification.json').write_text(json.dumps(result,indent=2)+'\n')
+print(f'WROTE adaptive_verification.json; {len(passed)} groups passed.',flush=True)

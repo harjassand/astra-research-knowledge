@@ -1,0 +1,267 @@
+# Native molecular-history interference: readout repair and experimental decision
+
+Research note — 14 October 2026
+
+## Status
+
+This is a proposed experimental implementation with derived identities and numerical reference calculations. No laboratory measurements were performed. Historical novelty, achievable joint visibility, molecular survival, and superiority to existing spectroscopy are NOT established. The numerical rotor is not a calibrated CaOH+ model and is not the full open-system model specified below.
+
+The strongest outcome is a concrete way to remove the leading atomic Stark path-mixing term and measure the remaining interferometer visibility under the actual infrared exposure, without assuming molecular coherence. A direction-coded four-pulse operation can then distinguish two waiting-interval contributions, subject to explicit band-closure or weak-write conditions. The cost calculation does NOT support an affordable full nonlinear spectrum at the original reference energy.
+
+## 1. Proposed apparatus
+
+Use a CaOH+ / 40Ca+ mixed crystal and the existing axial motional cat. Replace the optical S/D path-label memory during infrared interrogation with the two S1/2 Zeeman states. Replace independently addressed standing-wave branches with separated travelling-wave pulses whose axial momenta are selected from 0, +K and -K. Construct the four pulses from replicas of ONE source pulse, rather than assuming coherence across different source pulses.
+
+Three operations are distinct:
+
+1. Ground-Zeeman parking suppresses the leading differential electronic Stark operator.
+2. All-four-pulses q=0 is an equal-history reference: it drives the molecule while imposing no axial path mark. With calibrated electrical kicks and ancilla phase scans, it tests the complete infrared-loaded readout.
+3. Science uses q1=q3=q4=+1, and q2=+1,-1 (with q2=0 as a consistency measurement). Direction reversal provides a second weighting of the nonlinear molecular histories.
+
+These ingredients are known physical controls in related contexts. Their proposed combination here requires experimental validation and specialist priority review.
+
+## 2. Provenance and baseline
+
+The preceding Astra proposal is supplied in this conversation as `astra_genesis_work/README.md`. Its ideal overlap, independent-branch field interpolation and two-pulse algebra are not treated as new experimental evidence.
+
+Wu et al. [1] report the CaOH+/Ca+ recoil platform, cat amplitude approximately 6.5, infrared Lamb-Dicke parameter approximately 0.03, and recoil-transfer contrast 0.52(3). The source is 100 kHz, with a broad spectrum; the 116.2 fs duration is a transform-limited modelling assumption. Their simple excitation model does not reproduce the observed absolute absorption magnitude. Its estimated 2.8 ms radiative lifetime is not a molecular T2 measurement. The reference contrast is not the visibility of this proposed sequence.
+
+The authors' analysis code [2], read through GitHub, supplies average intensity 1.1e8 W/m2, repetition rate 1e5 Hz, theoretical transition centre 3783 cm^-1, and reduced dipole 4.810962939951982e-31 C m. Thus the reference source fluence is 1100 J/m2 = 0.11 J/cm2. These are source-model inputs, not a newly measured dipole. The rotational constant and other vibrational frequencies used for reference calculations come from cation-specific work [3], not neutral CaOH line lists.
+
+## 3. Common physical description
+
+Start with
+
+    H = H_rv + sum_nu hbar omega_nu a_nu^dagger a_nu
+        + H_Ca + H_729(t)
+        - d_m . E(x_m,t) - d_a . E(x_a,t)
+        + H_environment + H_coupling.
+
+Here H_rv must include O-H, Ca-O and bending excitations, angular momentum, rotational distortion, and relevant anharmonic couplings. A basis may be labelled by (v_OH,v_CaO,v_bend,l,J,M). Include intramolecular vibrational redistribution in H_rv, rather than adding an independently favourable lifetime or counting the same dynamics again in a phenomenological dephasing constant.
+
+The atomic polarizability Hamiltonian is an effective reduction of the atomic dipole coupling, NOT an additional term to double-count with the same explicit electronic transitions. The spectral field at each ion, including polarization, phase, bandwidth, envelope, spatial gradients and dispersion, is an input measured at or referred to the ion position.
+
+The initial preparation is a measured mixture, including all motional modes and rovibrational populations. A vibrationally cold O-H coordinate is not evidence that all other vibrations are cold. The readout is an actual ancilla POVM with a calibrated confusion matrix after the reverse memory map and cat recombination.
+
+For branch-dependent open dynamics, propagate the coherence cross-block K:
+
+    dK/dt = -i (H_A K - K H_B)/hbar
+      + sum_l [J_lA K J_lB^dagger
+        - (J_lA^dagger J_lA K + K J_lB^dagger J_lB)/2].
+
+A shared l labels the same environment channel on both branches. Molecular radiative jumps include recoil:
+
+    J_ab(k) = sqrt(A_ab) |b><a| exp(-i k . x_m).
+
+The radiative rate is determined by the same dipole matrix element as the driven coupling,
+
+    A_ab = omega_ab^3 |d_ab|^2 / (3 pi epsilon0 hbar c^3),
+
+with the appropriate angular conventions. Blackbody channels, collisions, motional electric-field noise, magnetic noise, and optical-control noise must be measured or derived from a shared physical source. Do not tune them independently to improve visibility.
+
+This note does not supply missing experimental values for all these inputs. In particular, it does not pretend that writing down this model constitutes a full CaOH+ simulation.
+
+## 4. Ground-Zeeman parking
+
+Map the original optical cat labels |+>,|-> onto the two ground Zeeman levels:
+
+    (|+>|alpha> + |->|-alpha>)/sqrt(2)
+       -> (|S,-1/2>|alpha> + exp(i phi)|S,+1/2>|-alpha>)/sqrt(2).
+
+A carrier rotation can first map the optical +/- labels to S and D; coherent shelving then moves D into the unused S Zeeman state. An allowed shared intermediate is D5/2,m=-3/2, connected to S,-1/2 and S,+1/2 by quadrupole transitions with delta m=-1 and -2. Do not propose the forbidden direct D,-5/2 to S,+1/2 delta-m=3 transfer. The actual implemented D state determines additional mapping steps.
+
+For 40Ca+ (I=0), linear infrared polarization removes the vector electric-dipole light shift, while J=1/2 has no rank-two tensor contribution. To that order the infrared interaction within the parked doublet is
+
+    H_parked,IR = h_scalar(x,t) I_ancilla.
+
+This removes the path-mixing operator rather than merely subtracting a large phase. Finite magnetic-field corrections, ellipticity, unwanted Raman coupling, residual D population, higher-order processes and field gradients remain experimental errors. No particular mapping fidelity is assumed.
+
+Use a near-transverse 729 nm mapping beam to reduce axial recoil and cat-dependent carrier coupling. A design target eta_729,z <= 0.01 is not a demonstrated value. The carrier matrix element contains exp(-eta^2/2)L_n(eta^2); with mean n about |alpha|^2, ordinary ground-state carrier calibration is insufficient. Characterize the forward and reverse map on the full cat and all populated spectator modes. Experimental spectator-mode effects in molecular quantum-logic readout have been demonstrated [6].
+
+The atomic symmetry follows from [4]; coherent ground-Zeeman manipulation has precedent [5]. Neither source establishes our complete transfer sequence or its fidelity.
+
+## 5. Equal-history visibility reference
+
+Choose the cat separation along z and polarization along y. For q=0, the probe propagates perpendicular to z, so both branch centres receive the same field waveform. In the ideal axial model, U_A=U_B and molecular evolution itself does not reduce the overlap.
+
+Run the full infrared sequence with q=0 for EVERY pulse, plus a known electrical kick. Measure the ancilla fringe versus the known kick and analysis phase. This tests loaded visibility, offsets and quadrature mixing with the real molecular excitation and real infrared dose present. It does not require a known molecular coherence time.
+
+A common trace-preserving molecular channel conserves Tr K, even if K is not Hermitian. Therefore molecular optical coherence need not last through the whole millisecond-scale detection sequence. It is required during the ultrafast history interval. Later internal relaxation cannot change the ancilla marginal if it acts only on the molecule. Photon recoil while spatial branches remain separated, state-dependent trap forces and other which-path channels do not satisfy this simplification and remain in the common model.
+
+The q=0 port has different radial momentum from q=+/-1. Thus all-mode recoil, pulse-route mismatch and readout non-factorizability must be calibrated. This reference is not permission to divide every signal by an assumed scalar C. A scalar visibility reduction is allowed only after the measured transfer response supports it; otherwise use a transfer matrix or full likelihood model.
+
+## 6. Achromatic momentum coding
+
+A grating at normal incidence with reciprocal vector along z gives the transmitted/diffracted spectral components
+
+    E_q(z,x,t) = integral d omega Etilde_q(omega)
+      exp[i q K z + i sqrt((omega/c)^2-q^2 K^2) x - i omega t],
+    K = 2 pi / Lambda, q in {0,+1,-1}.
+
+The axial momentum qK is independent of optical frequency. This avoids pretending that a broad optical pulse has one wavelength-dependent branch phase. The transmitted q=0 reference and diffracted q=+/-1 science fields can share linear y polarization. Match the actual spectral phase, fluence and envelope at the ion for each route; diffraction efficiency and optical losses are not assumed ideal.
+
+At lambda0 = 1/(3783 cm^-1), choose K=0.9 k0. Then Lambda about 2.94 micrometres, s=Kd about 0.702 and selected-mode eta about 0.027, using the reference cat geometry. The propagating-band condition |K|<omega/c must hold over the used spectral band. There is no request for a larger cat.
+
+The pulses do not overlap in time, so no counterpropagating standing-wave intensity grating is required during the molecular history. Four phase-related replicas of one OPA pulse are sufficient. The selected phase harmonic has index sum zero, so its common source optical phase cancels; relative phase and delay stability still have to be measured.
+
+## 7. Exact two-band, multilevel direction separator
+
+Let G and E be two pump-connected energy bands, each containing many rotational and internal states. They are not necessarily just OH occupation 0 and 1: dark combination states can belong to E. Under a rotating-wave, two-band phase-covariant Hamiltonian, an arbitrary finite pulse has
+
+    U(phi) = U_d + exp(i phi) U_+ + exp(-i phi) U_-,
+
+where U_d is block diagonal, U_+ maps G to E, and U_- maps E to G. This is an exact decomposition of a coherent two-band pulse, not a small-area approximation. Branch-dependent dissipative events during a pulse require an additional error bound; the unitary pulse theorem does not silently include them. It accommodates arbitrary intraband structure and finite pulse duration. The initial density operator is supported in G.
+
+Apply four pulses with delays (t1,T,t3). Extract the complex optical phase harmonic ell=(-1,+1,+1,-1). Hold q1=q3=q4=+1 and choose q2=+1 or -1. The first harmonic prepares a G-E coherence cross-block. The second-pulse selected superoperator is
+
+    K -> exp(i q2 s/2) U_+ K U_d^dagger
+       + exp(-i q2 s/2) U_d K U_-^dagger.
+
+The two terms occupy E-E and G-G respectively at the beginning of T. Subsequent native dynamics, including relaxation or transfer, act on each contribution; their later signals define X_E and X_G.
+
+After the calibrated motional and instrument transfer correction,
+
+    S_+ = exp(i a) X_E + exp(-i a) X_G,
+    S_- = exp(-i a) X_E + exp(i a) X_G,       a=s/2.
+
+Thus
+
+    X_E = [exp(i a) S_+ - exp(-i a) S_-]/[2i sin(s)],
+    X_G = [-exp(-i a) S_+ + exp(i a) S_-]/[2i sin(s)].
+
+The matrix condition number is cot(s/2) approximately 2.73 for the chosen s. A third measurement with q2=0 (only the second pulse transverse) gives the consistency relation
+
+    S_+ + S_- = 2 cos(s/2) S_0.
+
+This S_0 is NOT the all-four-pulses q=0 visibility reference.
+
+In an impulsive selected-mode model, finite packet width multiplies each coefficient by exp[-eta^2 (sum ell_j q_j)^2/2]. For q2=+1,-1,0 these factors are 1, exp(-2 eta^2), exp(-eta^2/2), before spectator contributions. Correct them before applying the consistency relation. All-mode thermal characteristic functions replace this single-mode example in the actual apparatus.
+
+For a strictly two-band pulse, each optical phase harmonic lies in [-2,2], so a 5x5x5 grid with the fourth phase fixed extracts the target coefficient without aliasing. Both ancilla quadratures are required. Full momentum reversal obeys S_ell(-q)=S_{-ell}(q)*, not in general S_ell(-q)=S_ell(q)*.
+
+### Failure scope
+
+Extra vibrational bands or excited-state absorption can invalidate the exact strong-pulse separator. A three-band ladder in `validate_extra.py` explicitly violates the third-port relation. Conversely, a small third-port residual alone does not prove the absence of leakage: cancellations are possible.
+
+Measure excited-state absorption and harmonic/fluence dependence. If strong-pulse band closure cannot be established, use weak first and second WRITE pulses and extract their bilinear response by amplitude extrapolation, while allowing strong final READ pulses. This retains the two origins at leading write order without assuming that the final readout remains in two bands. It is not free: signal is smaller, higher read-pulse harmonics require a sufficiently rich phase grid, and the extrapolation and aliasing errors must be measured. No numerical speedup for that variant is claimed here.
+
+## 8. Scientific question
+
+The proposed target is to distinguish waiting-time dynamics that begin in the ground vibrational band from dynamics that begin in the excited band, even when their optical-frequency contributions overlap. For CaOH+, ground-band rotational/Raman beats must not be mistaken for excited-band vibrational redistribution. The resulting pair X_G(t1,T,t3), X_E(t1,T,t3) can test competing assignments directly.
+
+A nonzero four-pulse phase harmonic is NOT automatically a connected correlation, anharmonicity, or complicated chemistry. Connected cumulants require subtraction of products of measured lower-order responses with propagated uncertainty. Thermal mixtures can also generate non-Gaussian responses. The finite rotor supplied here has no IVR and therefore demonstrates only how rotational structure and finite bandwidth influence acquisition, not evidence of the targeted chemistry.
+
+The mathematical two-row inversion establishes access relative to one fixed conventional response combination. It does not prove that all conventional pulse-shaping, polarization, frequency-selection or action-detection methods lack equivalent information.
+
+## 9. Numerical reference, not a molecular forecast
+
+`rotor_exact.py` propagates finite Gaussian pulses in two vibrational bands and a full linear-rotor angular basis. It uses B0=0.3655 cm^-1, B1=B0 as an explicit reference assumption, a 300 K rotational distribution, the source-model dipole above, and a transform-limited 116.2 fs envelope. It includes all M values and J up to 70 for production results. It omits hot-band shifts, anharmonic coupling, extra vibrational manifolds, homogeneous dephasing and instrumental errors.
+
+The rotational dipole matrix element is
+
+    <J+1,M|cos(theta)|J,M>
+      = sqrt(((J+1)^2-M^2)/((2J+1)(2J+3))).
+
+The pulse is propagated by symmetric kinetic/interaction splitting and converted to a pulse-centred scattering operator before free delay evolution. The finite-bandwidth filter used in `rotor_probe.py` is removed before exact propagation, avoiding counting bandwidth twice.
+
+At t1=T=t3=1 ps, the calculated |X_E| is approximately:
+
+| Centre (cm^-1) | Fluence per pulse (J/cm2) | Total fluence | Magnitude of X_E |
+|---|---:|---:|---:|
+| 3703.3 | 0.0275 | 0.11 | 0.000359 |
+| 3783 | 0.0275 | 0.11 | 0.001783 |
+| 3783 | 0.11 | 0.44 | 0.007725 |
+
+The last row has FOUR TIMES the total energy. It is not the same-resource result and is not established to be available in the current apparatus. Optical losses and damage are not included. At a Gaussian waist of 20 micrometres, 0.11 J/cm2 corresponds to about 0.691 microjoules per pulse at the ion.
+
+At the retuned quarter-fluence setting, the echo-like response near t3=t1=1 ps persists outside the assumed pulse overlap. It is a model result, not a measured T2. Refining 200 to 400 pulse steps changes X_E by about 8.9e-9 relative, and Jmax=70 to 80 by about 5.7e-5. Numerical convergence does not validate the omitted physics.
+
+The same dipole implies a bright-line radiative rate about 353 s^-1 in the reference convention. This is not a tunable lifetime or a total molecular decoherence rate. Harmonic thermal populations from the other quoted cation frequencies give only about 0.788 probability for all modes simultaneously in their vibrational ground state at 300 K. That calculation illustrates why an O-H-ground-state assumption alone is insufficient.
+
+## 10. Acquisition and survival
+
+Let C be the calibrated, infrared-loaded visibility, and X the complex pathway coefficient or change to be measured. For a uniform phase-cycle estimator, the single-shot complex estimator can be chosen as
+
+    Z = 2 y exp(i beta) exp(-i ell.phi), y in {-1,+1}.
+
+Its mean is C S and E|Z|^2=4. Equal allocation between the two direction settings and the inversion above gives a conservative complex mean-square-error bound
+
+    MSE(X) <= 4/[N C^2 sin(s)^2].
+
+A five-standard-error planning criterion therefore is
+
+    N >= 100/[C^2 sin(s)^2 |X|^2].
+
+This is a sufficient protocol budget, not a fundamental lower bound. A matched likelihood estimator may improve constants. It does not justify using the earlier two-pulse N=25/(C R)^2 budget for a separated four-pulse coefficient.
+
+At ASSUMED C=0.4, s=0.702 and ASSUMED 50 independent complete trials/s:
+
+| Magnitude of X | Total trials | Acquisition time for ONE coefficient |
+|---:|---:|---:|
+| 0.0018 | 4.63e8 | about 107 days |
+| 0.0077 | 2.53e7 | about 5.9 days |
+| 0.03 | 1.67e6 | about 9.3 hours |
+
+The 125 optical-phase settings, two directions and two quadratures are allocations within N, not another multiplicative factor of 500. Additional controls, calibration and delay scans add cost. A small dynamical CHANGE uses its magnitude Delta X rather than X; a 10% change can require about 100 times as many trials before accounting for a second delay's variance. Autocorrelation, preparation drift, ion-order swaps and resets reduce effective independent sample count.
+
+Do not require one physical molecule to survive an entire campaign unless single-individual dynamics are the scientific target. With per-trial irreversible-loss probability q_loss, expected replacements are approximately N q_loss. Expected total time is N/f + N q_loss t_reload under an independent-loss model. As an illustrative calculation, f=50/s and t_reload=300 s require q_loss<6.7e-6 for less than 10% reload-time overhead. These are not measured survival data. Same chemical identity, unchanged internal state and trap retention are separate claims.
+
+## 11. Smallest decisive experiment
+
+First perform the parked-memory, all-q=0 infrared-loaded visibility measurement with calibrated kicks. Characterize the complete return, not just individual transfer gates. Obtain the pulse spectral phase and overlap pedestal, all-mode thermometry, ancilla confusion matrix, residual ellipticity/Stark sensitivity, and repeatability across optical routes.
+
+A provisional gate C_loaded>=0.4 is a planning requirement, not an observed result. A smaller value can be used, but costs rise as C^-2. Calibrate s substantially better than its uncertainty inferred from the reported cat amplitude; about 0.005 rad is an illustrative geometry target.
+
+Only after that gate, acquire the four-pulse direction-coded coefficient at a small preselected set of non-overlap delays near t1=t3=1 ps and T=1--50 ps. Compare q2=+1,-1,0, interleaving the all-q=0 reference. Delete each pulse in turn, randomize relative pulse phase, reverse all momenta with the correct conjugation test, detune while matching delivered dose, and check the measured intensity/background phase harmonics. Use the full model to account for route-dependent spectator recoil.
+
+For a prospective |X|=0.03, the residual raw Fourier systematic should be much smaller than C sin(s)|X|, for example below one tenth of it. Absolute generic “small Stark error” statements are insufficient; measure the targeted Fourier component.
+
+Reject the optical implementation if the parked map plus IR destroys visibility. Reject a claimed molecular signal if it tracks pulse overlap or atomic backgrounds. Reject the practical nonlinear-spectroscopy claim at a stated budget if the measured X and effective cycle rate give prohibitive acquisition. Do not repair a failed gate by assigning stronger molecular coherence, a bigger noiseless cat or unattested gate fidelity.
+
+## 12. Prior-art and advantage boundary
+
+Recoil pump-probe and stimulated-return spectroscopy were proposed by Schindler [7]. Phase-sensitive molecular forces [8], coherent trapped-N2+ vibrational control [9], gas-phase multidimensional action spectroscopy [10,11], and mode-selective pathway filtering [12] are existing comparators. Nonlinear pathway selection with quantum light also has prior art [13]. Neither “first molecular coherence,” “first pathway separation,” nor “first recoil pump-probe” is claimed.
+
+The candidate distinguishing feature is a ground-memory-protected, untagged single-molecule readout whose photon momentum supplies a second branch-origin weighting without requiring each rotational transition to be spectrally resolved. Whether that gives lower total cost or better scientific identifiability than the strongest existing method is unestablished. Existing gas-phase 2D IR already measures substantially richer molecular systems than CaOH+.
+
+## 13. Reproduction
+
+Requirements: Python 3.10+, NumPy, SciPy. No external network access is needed.
+
+    python validate.py
+    python validate_extra.py
+    python generate_reference.py
+
+The last command regenerates the numerical reference grid. All outputs are calculations, not experimental data. `validate.py` checks the arbitrary-strength multilevel separator against explicit 5x5x5 phase cycling, the memory-parking scalar-Stark identity, a common-channel trace identity, resource arithmetic, and rotor numerical convergence. `validate_extra.py` contains a three-band counterexample and an equal-history reference test with strong driving and common relaxation.
+
+## Primary sources and code provenance
+
+[1] Wu et al., Infrared absorption spectroscopy of a single polyatomic molecular ion. Author version arXiv:2511.19687v2 (24 April 2026); Nature DOI 10.1038/s41586-026-10915-8.
+
+[2] Authors' public repository: quantum-molecules/absorption-spectroscopy. Read files: cat_state.py (blob 4aaccbde9f90cf5668881cbb36d4d87ed32e2f3e); molecule_spec_analysis.ipynb (blob 2600beba196c6c8c9eb85ff498764814f339f745). No authors' data are repackaged here. The code in this package is a separate reference calculation.
+
+[3] Photodissociation spectra of single trapped CaOH+ molecular ions. arXiv:2401.10854v2; Journal of Chemical Physics 161, 044304 (2024), DOI 10.1063/5.0217685.
+
+[4] Magic wavelengths of Ca+ ion for linearly and circularly polarized light. arXiv:1703.09950. Used for the scalar/vector/tensor atomic-polarizability structure, not a demonstrated fidelity at the proposed wavelength.
+
+[5] Coherent Manipulation of a Ca Spin Qubit in a Micro Ion Trap. arXiv:0902.2826.
+
+[6] Roguski, Shlykov, Meir and Willitsch, The role of spectator modes in the quantum-logic spectroscopy of single trapped molecular ions. Communications Physics 8, 471 (25 November 2025), DOI 10.1038/s42005-025-02373-x.
+
+[7] Schindler, Ultrafast infrared spectroscopy with single molecular ions. New Journal of Physics 21, 083025 (2019), arXiv:1809.06776.
+
+[8] Najafian et al., Identification of molecular quantum states using phase-sensitive forces. Nature Communications 11, 4470 (2020), DOI 10.1038/s41467-020-18170-9.
+
+[9] Quantum-logic spectroscopy of forbidden vibrational transitions in single nitrogen molecular ions. arXiv:2603.10553 (11 March 2026).
+
+[10] Ma et al., Two-Dimensional Infrared Spectroscopy of Isolated Molecular Ions. Journal of Physical Chemistry Letters 14, 9683--9689 (2023), DOI 10.1021/acs.jpclett.3c02661.
+
+[11] Ma, McCaslin and Fournier, Coherent Vibrational Dynamics in an Isolated Peptide Captured with Two-Dimensional Infrared Spectroscopy. JACS 147, 9556--9565 (2025), DOI 10.1021/jacs.4c17464.
+
+[12] Ma and Fournier, Pathway-specific nonlinear vibrational action spectroscopy with mixed frequency-time domain pulse shaping. Journal of Chemical Physics 163, 164202 (2025), DOI 10.1063/5.0295308.
+
+[13] Roslyak, Marx and Mukamel, Nonlinear spectroscopy with entangled photons; manipulating quantum pathways of matter. arXiv:0902.2549 (2009). Broader pathway-selection prior art; not this apparatus.
+
+## Final assessment
+
+The leading atomic Stark path-mixing obstruction has an explicit symmetry-based repair, and useful loaded visibility can be tested without first knowing molecular coherence. This is a candidate obtainable operation, not its laboratory demonstration. The direction-coded science extension has a genuine multilevel derivation and concrete failure tests, but current evidence and the reference calculations do not establish affordable consequential molecular spectroscopy. The next evidence must be measured joint response, loaded visibility and loss under the complete sequence.

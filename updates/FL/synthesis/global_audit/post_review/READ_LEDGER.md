@@ -1,0 +1,98 @@
+# Post-isolation read and provenance ledger
+
+Audit date: 2026-10-14 Australia/Brisbane.
+
+## Scope and isolation
+
+This is the adversarial follow-up requested after the initial isolated FL global audit. It reads and reconstructs the frozen phase-geometry and global-moments reports in their own work directories, then stores the critique and independent replay under work/FL-global-audit/post_review only. The initial isolated packet is preserved byte-for-byte; the five original file hashes are listed below and were rechecked after this follow-up. No source, capital, or other worker file was edited.
+
+The conclusions are internal mathematical reconstruction, not external certification. No general quasiconvexity theorem was imported. No external source, acquisition, measurement, or oracle was used.
+
+## Pin and governing instructions
+
+| Artifact | SHA-256 | Read/use |
+|---|---|---|
+| work/FL_WORKER_CONTRACT.txt | acbe78c446d847d6936a1ab7fff32419e30399e206d32bf9d64af54bf039409a | All 17 lines; ownership, copy-before-replay, scope, proof, and evidence rules. |
+| work/FL_PIN.json | 7ceea5724f1be63666f121f0ebd8adddf0ceb06b37766feff37d94175303c27d | All 18 lines; source and capital pins. |
+| work/astra-capital/00_START_HERE.txt | 4a91985ece91557af12ba5c216e7fe17cf5dd000596e9a0c73b0b6705498f360 | All 8 lines; route retrieval and claim-scope rules. |
+| work/astra-capital/AGENTS.md | 581cdda103fed0c87acdb0ee527bd5ba174f55b1baa0cbfe60b177d52027ee7d | All 7 lines; applicable capital preservation and proof-scope rules. |
+| work/astra-capital checkout | 3c9c5564fc7f51cdbaa0a5a5b5b54ee9382dcd8d | HEAD matches cumulative PR83 pin. git status --short remained empty. |
+
+## Incoming phase-geometry packet
+
+| Artifact | Read depth / role | SHA-256 |
+|---|---|---|
+| work/FL-phase-geometry/REPORT.md | All 189 lines; variable-phase identity, signed defect, sheared all-background theorem, example, limits, and scope comparisons. | 9c6149286ff3de35619c7b6efb84786481f3b9e64e212a418c0c369d5b32b67b |
+| work/FL-phase-geometry/READ_LEDGER.md | All 57 lines; source pins and claimed replay/read boundary. | 83600e784057cc229642d0e0ed49a0f027cae63e73ab9082975269a6ffa904a1 |
+| work/FL-phase-geometry/MANIFEST.json | All 29 lines; all four listed files independently size/hash checked; self_excluded=true. | 7d05a2e7781a71b4db4e84d2e05674fe11933de0eaacc27e5fd756da4ecd3f19 |
+| work/FL-phase-geometry/phase_geometry_checks.py | All 188 lines; exact verifier inspected, copied, and replayed. | 95472e8324d83ac5e6c6c5a06cdb9f97539a707c12c8aaec350e4249648e54ca |
+| work/FL-phase-geometry/EXACT_CHECKS.log | All 61 lines; 60 exact assertions, independently replayed byte-for-byte. | 75e48d13b33e717611959b0e0ea485db76eb1312abf844a76f05bb0a76781165 |
+
+The all-background theorem assumes n is a nonzero integer, theta=ny+g(x), half-turn symmetry of r, and the two weighted curvature cancellations in (9). The report's scope is its profile family, not arbitrary periodic gradients.
+
+## Incoming global-moments packet
+
+| Artifact | Read depth / role | SHA-256 |
+|---|---|---|
+| work/FL-global-moments/REPORT.md | All 270 lines; explicit PSD completion, nine exact pairings, closed-cone polar proof, profile obstruction, and stated limits. | 633f4e1fb206b786082f2da9812e63ac7117c653f1fd2d4993631ca8fe22b38f |
+| work/FL-global-moments/READ_LEDGER.md | All 47 lines; source pins and read boundary. | 547da017ce70bc43b3db0e3837f8a35d11ca5c290fcecd7f56f3955f0a1d084b |
+| work/FL-global-moments/MANIFEST.json | All 29 lines; all four listed files independently size/hash checked; self_excluded=true. | 66bebac1f5136cfd10087d7d46aff5cafcb50b2450e8340d4b3df0ae080a05ca |
+| work/FL-global-moments/verify_global_moment_bridge.py | All 210 lines; exact verifier inspected, copied, and replayed. | 09f65ad03a58c708cb8ba497b7f9c169ea11072365249b1adfa490135c5896bd |
+| work/FL-global-moments/verification_results.json | All 114 lines; two exact example groups, independently replayed byte-for-byte. | 873d7899e4d14e6d8922fc9f3f950f60f3c50684f1a939e9db9092a77118ccf2 |
+
+The closed-cone statement concerns the closure of the conic hull of the specified modulation-family moments. The report itself leaves the inclusion of moment vectors from arbitrary compatible gradients as the missing global step.
+
+## Initial audit and exact gate sources
+
+The complete first-round ledger remains at work/FL-global-audit/READ_LEDGER.md (SHA-256 a12a07793f1ba268982f6d674dee32445fb8d3427a373b76574400a61145684c). Its global source, original verifier, capital dossiers, proofs, notices, and gates were read and hashed there. Relevant pinned sources were checked again for this scope comparison:
+
+| Capital source | Read/use | SHA-256 |
+|---|---|---|
+| updates/FK/package/moving/ADAPTIVE_AFFINE_STABILITY.md | All 526 lines. N809's proof and explicit transverse/tangent/global boundary. | 61a4c3a75967e07f8e5517f2a9d828b2074270cb2a4ceda8f8a3d6ba3344fe46 |
+| frontier/gates/G-FK-N809-REVIEW.json | All 30 lines. Open gate; exact pass condition includes rank-two tangent control or an exact compatible negative optimized gap, global left-SO(2) compatibility-to-nine-moment completion or separator, and independent validation/application. | 47033e9e4360a183ff0a5c1ada2c56bf904fa44fd8afe112eec57e6f340b2cd5 |
+| updates/FK/SCOPED_NOTICES.json | Full file hashed; N809 notice parsed. It closes only simple rank-three transverse contacts for determinant-balanced laws relatively close in L2/L4; rank-two tangent, large-transverse, global Morrey, and independent review remain open. | 95a5cd8b9030be412ee28d42e0c31629227b2e1d9ef3744aeda9ce10eb3eeb6d |
+| updates/FJ/package/quartic/CONTACT_COMPENSATION.md | All 524 lines, as recorded in the initial ledger. Fixed-contact cubic/cross-Hessian mechanism and its stated boundary. | f47796d9088b9a4b75c43d31f93b05d36dbe025c4db9d6a8ec02dbd6d0a8ca28 |
+| frontier/gates/G-FJ-N806-REVIEW.json | All 30 lines. Open gate for concentration-stable control relative to the reduced denominator h-star or an exact compatible negative optimized gap. | e7a4582c45a303b3454afc338ee65749c2cbd69ffdce734531040cee328d423c |
+| updates/FJ/SCOPED_NOTICES.json | Full file hashed; N806 notice parsed. The fixed-contact estimate leaves the moving reduced-denominator obligation open. | 78b9508a299bb165ba27dbcf913779cc04980b7af109e2015fe46b69c7dd96a6 |
+| frontier/gates/G-FE-N794-REVIEW.json | All 30 lines. Open full nine-coefficient compatibility-completion gate. | bab72e2cbd05a53794ebd634ab099a136f8d60bd653db14fd25706309d0a1e06 |
+| updates/FE/package/quartic/ASTRA_META_GENESIS_Morrey_quartics.md | Read in full in the initial audit. N794 acoustic Gram/dual interface and the arbitrary-compatible-gradient completion obligation. | 7c88a08aa6aef88786751fde9671b7568e97676c516824028c3aac9d9859725b |
+
+N809's positive result applies at simple rank-three transverse contacts under its determinant-balance and relative L2/L4 conditions. The non-affine phase family is not a proof of the reduced moving-Schur estimate at tangent contact, nor does it provide a compatible negative gap or global moment inclusion. N806's fixed-contact Hodge/cubic mechanism does not bound the phase-curvature transport defect after affine optimization. Both gates remain open. The N794 family-specific completion likewise does not meet its arbitrary-gradient compatibility gate.
+
+## Reconstruction and attempted falsification
+
+The variable-phase flux was differentiated independently. The upper-limit derivative gives DF(B+P)[Q], phase differentiation gives F(B+P)-F(B) and the signed acoustic integral, and differentiation of k gives the mixed-Hessian curvature defect with a minus sign in the averaged Jensen identity. The first two terms are nonnegative by rank-one convexity; the defect has no universal sign.
+
+For the circular carrier, the left-SO(2) invariant quartic's orientation-odd coefficients give Xi(k)=(L k1^2+M k2^2+N k1 k2)(k2,-k1). With theta=ny+g(x), direct divergence is n(2L g'+nN)g''. A draft transcription in this owned post-review had g' in place of g''; it was corrected before freezing. The two weighted identities (9) cancel the averaged defect at B=0. The convex example has exact defects +1/4 and -1/4, so no sign or blanket omission is valid.
+
+For the affine optimization, two cancellations have different causes. Mean-zero compatibility kills the quartic expansion's cubic-in-B contribution because D3F(X) is linear in X. The half-turn symmetry is separately needed to make X change sign and kill b=average DF(X), which is cubic in X. Without that symmetry, F=|A|^4, theta=y, and r=1+epsilon cos(y) give active-column b=(0,4 epsilon). This blocks that cancellation argument but is not a negative Jensen gap. Once b=0, quartic polarization and Fourier decomposition of a compatible periodic gradient show the averaged Hessian in B is positive semidefinite, including singular cases.
+
+For the dual completion, each Y_B summand is a nonnegative weight times zz-transpose, hence PSD. A skew Gram freedom has block matrix [[0,K],[-K,0]], K-transpose=-K; on z=(b1 x,b2 x), z-transpose DeltaQ z=2 b1 b2 x-transpose K x=0. The atom's off-diagonal block b1 b2 xx-transpose is symmetric, so every skew annihilator pairing vanishes. Exact differentiation of all nine basis quartics and the displayed rational example reproduces the nine moments. A positive-definite acoustic Gram for |A|^4 supplies the strict Slater point used for finite dual attainment.
+
+The polar proof is reconstructed by testing nonnegativity of a coefficient functional on a rank-one sine wave, expanding exactly, dividing by epsilon squared, and sending epsilon to zero. If strict ellipses are required by the family definition, the sine is the limit of nondegenerate ellipses and the acoustic conclusion follows by continuity. This yields equality for the closed conic hull of the modulation-family moments with the dual rank-one-convex cone. It does not establish that every compatible periodic gradient moment lies in that closed cone. The connected-triad profile obstructs specified direct templates, not the PSD completion of its moment vector and not the Jensen inequality.
+
+## Copy-first replay and independent checks
+
+All three incoming verifier scripts were copied before replay to work/FL-global-audit/post_review/replay/. Python 3.14.3 and SymPy 1.14.0 were used.
+
+| Replay input | Copied SHA-256 | Replay result |
+|---|---|---|
+| verify_global_compatibility.py | 00eb94a94ae587a4ab09640bbfa94dba189657dc9c3b0bad4e0317692ac0d5fb | All nine groups pass; regenerated global_verification.json SHA-256 04991a22e98bc05534cf7c495aa3c9fdf84fdd32fa87e10daf63a0c7183b614f, same as source. |
+| phase_geometry_checks.py | 95472e8324d83ac5e6c6c5a06cdb9f97539a707c12c8aaec350e4249648e54ca | All 60 exact assertions pass; replay log SHA-256 75e48d13b33e717611959b0e0ea485db76eb1312abf844a76f05bb0a76781165, same as source log. |
+| verify_global_moment_bridge.py | 09f65ad03a58c708cb8ba497b7f9c169ea11072365249b1adfa490135c5896bd | Both exact example groups pass; regenerated verification_results.json SHA-256 873d7899e4d14e6d8922fc9f3f950f60f3c50684f1a939e9db9092a77118ccf2, same as source. |
+
+The independent implementation in independent_post_review.py passed 88 exact checks. It differentiates all nine acoustic basis forms, verifies all six skew freedoms and the explicit PSD example, checks the strict Slater Gram, exact sheared curvature, both signed defects, the nonzero b without half-turn, all 35 quartic affine expansions, the ellipse degeneration moments, and the displayed profile's half-turn, fourth moment, and full-rank gradient sample. These checks substantiate finite algebra only; they do not formally verify the analytic theorems or provide external correctness or priority review.
+
+## Frozen initial packet hashes
+
+The following original files were not changed in this post-review and their hashes were rechecked:
+
+| Original file | SHA-256 |
+|---|---|
+| work/FL-global-audit/REPORT.md | bab867a3080ee16c42ba113be54cb0af58baa444d67468ae843518858fce129e |
+| work/FL-global-audit/READ_LEDGER.md | a12a07793f1ba268982f6d674dee32445fb8d3427a373b76574400a61145684c |
+| work/FL-global-audit/MANIFEST.json | acdbbc8481a1e674ef044f4573721f1f40a1357caf8d095b1c535508b3e68f9a |
+| work/FL-global-audit/independent_checks.py | 0b8c4d517cf3ac52330c16810af395ef340c064f71da7b798f7a4ee89711a848 |
+| work/FL-global-audit/independent_results.json | f7de7481f54d7fcecc905ce7f1a0ca7c3784311435a455004b4f3c0b944546f6 |
+
+The post-review packet's MANIFEST.json inventories every file under post_review except itself and declares self_excluded=true. The initial packet manifest remains untouched.

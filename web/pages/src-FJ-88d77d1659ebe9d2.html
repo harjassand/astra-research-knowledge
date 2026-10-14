@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — check_model.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/package/physical/check_model.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Checks for a proposed electronic pressure-isolation operation.
+
+These are algebraic and lumped-network checks, not experimental evidence,
+not a microscopic material simulation, and not a novelty certification.
+Dependencies: numpy, sympy. Run: python check_model.py
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from pathlib import Path
+import numpy as np
+import sympy as sp
+
+
+def hydraulic_matrix(k: np.ndarray, c: np.ndarray, g: np.ndarray,
+                     y: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;Eliminate a passive electrical load from reciprocal wet transducers.&quot;&quot;&quot;
+    k, c, g, y = map(lambda z: np.asarray(z, dtype=float), (k, c, g, y))
+    n = len(k)
+    if c.shape != (n,) or g.shape != (n,) or y.shape != (n, n):
+        raise ValueError(&#x27;Incompatible dimensions&#x27;)
+    if np.any(k &lt;= 0) or np.any(g &lt;= 0) or np.any(c*c &gt;= k*g):
+        raise ValueError(&#x27;Wet transducers must be strictly passive&#x27;)
+    if np.linalg.eigvalsh((y+y.T)/2).min() &lt; -1e-10:
+        raise ValueError(&#x27;The electrical load is not passive&#x27;)
+    cm = np.diag(c)
+    return np.diag(k) - cm @ np.linalg.solve(np.diag(g)+y, cm)
+
+
+def single_converter_eta(z: float) -&gt; float:
+    &quot;&quot;&quot;Maximum linear-response hydraulic/electrical conversion efficiency.&quot;&quot;&quot;
+    if z &lt; 0:
+        raise ValueError(&#x27;z must be nonnegative&#x27;)
+    # This expression is stable for small z.
+    return z/(1+np.sqrt(1+z))**2
+
+
+def symbolic_checks() -&gt; list[str]:
+    k1,k2,c1,c2,g1,g2,gp,gm = sp.symbols(
+        &#x27;k1 k2 c1 c2 g1 g2 gp gm&#x27;, positive=True)
+    c = sp.diag(c1,c2)
+    y = sp.Matrix([[gp+gm,-gm],[-gp,gp+gm]])
+    a = sp.diag(g1,g2)+y
+    h = sp.diag(k1,k2)-c*a.inv()*c
+    assert sp.simplify(h[1,0]*gm-h[0,1]*gp)==0
+    assert sp.simplify(h-h.T-c*a.inv().T*(y-y.T)*a.inv()*c)==sp.zeros(2)
+    # In the ideal chiral limit reverse hydraulic influence vanishes.
+    assert sp.simplify(h[0,1].subs(gm,0)) == 0
+
+    # Fixed hydraulic matrix H=[[kappa1,0],[b,kappa2]], output resistance R.
+    b,kap1,kap2,r,p = sp.symbols(&#x27;b kap1 kap2 r p&#x27;, positive=True)
+    q2 = b*p/(1+kap2*r)
+    eta = sp.cancel(r*q2**2/(kap1*p**2))
+    derivative = sp.factor(sp.diff(eta,r))
+    assert sp.simplify(derivative-b*b*(1-kap2*r)/(kap1*(1+kap2*r)**3))==0
+    assert sp.simplify(eta.subs(r,1/kap2)-b*b/(4*kap1*kap2))==0
+
+    # Dimensionless matching: chi=1-s^2, 0&lt;s&lt;1; t=g_H/G.
+    s,t = sp.symbols(&#x27;s t&#x27;, positive=True)
+    f = (1-s*s)*t/((1+t)*(t+s*s))
+    assert sp.simplify(sp.diff(f,t)-(1-s*s)*(s*s-t*t)/((1+t)**2*(t+s*s)**2))==0
+    assert sp.simplify(f.subs(t,s)-(1-s)/(1+s))==0
+    # Product bound: eta_iso,max = eta_converter(Z1)*eta_converter(Z2)/4.
+    return [
+        &#x27;exact off-diagonal asymmetry transfer&#x27;,
+        &#x27;exact antisymmetric Schur-complement identity&#x27;,
+        &#x27;zero reverse response in the ideal chiral limit&#x27;,
+        &#x27;optimal output hydraulic load R=1/kappa2&#x27;,
+        &#x27;optimal electrical matching t=sqrt(1-chi)&#x27;,
+        &#x27;factorized conversion/4 efficiency ceiling&#x27;,
+    ]
+
+
+def numerical_checks(seed: int = 20261014, trials: int = 1000) -&gt; dict:
+    rng = np.random.default_rng(seed)
+    worst_passivity_eigenvalue = float(&#x27;inf&#x27;)
+    max_reciprocity_error = 0.0
+    max_power_residual = 0.0
+    max_antisymmetric_identity_error = 0.0
+    for _ in range(trials):
+        n=4
+        k=np.exp(rng.uniform(-2,2,n)); g=np.exp(rng.uniform(-2,2,n))
+        chi=rng.uniform(0.01,0.99,n)
+        c=np.sqrt(chi*k*g)*rng.choice([-1,1],n)
+        w=rng.normal(size=(n,n)); d=w@w.T/4
+        v=rng.normal(size=(n,n)); a=(v-v.T)/2
+        y=d+a
+        h=hydraulic_matrix(k,c,g,y)
+        hb=hydraulic_matrix(k,c,g,y.T)
+        max_reciprocity_error=max(max_reciprocity_error,float(np.max(abs(hb-h.T))))
+        worst_passivity_eigenvalue=min(worst_passivity_eigenvalue,float(np.linalg.eigvalsh((h+h.T)/2).min()))
+        am=np.diag(g)+y; cm=np.diag(c); ai=np.linalg.inv(am)
+        rhs=cm@ai.T@(y-y.T)@ai@cm
+        max_antisymmetric_identity_error=max(max_antisymmetric_identity_error,float(np.max(abs(h-h.T-rhs))))
+        p=rng.normal(size=n)
+        volt=-np.linalg.solve(am,c*p)
+        q=k*p+c*volt
+        current=c*p+g*volt
+        wet=float(p@q+volt@current)
+        dry=float(volt@y@volt)
+        residual=float(p@q-wet-dry)
+        max_power_residual=max(max_power_residual,abs(residual))
+        assert wet&gt;=-1e-10 and dry&gt;=-1e-10
+        assert np.linalg.matrix_rank(h-h.T)==np.linalg.matrix_rank(y-y.T)
+    assert worst_passivity_eigenvalue&gt;0
+    assert max_reciprocity_error&lt;1e-10
+    assert max_power_residual&lt;1e-10
+    assert max_antisymmetric_identity_error&lt;1e-10
+    return dict(seed=seed,trials=trials,ports_per_trial=4,
+        minimum_symmetric_hydraulic_eigenvalue=worst_passivity_eigenvalue,
+        maximum_onsager_casimir_error=max_reciprocity_error,
+        maximum_power_balance_residual=max_power_residual,
+        maximum_antisymmetric_identity_error=max_antisymmetric_identity_error,
+        note=&#x27;Finite floating-point diagnostics of a specified network model only.&#x27;)
+
+
+def table() -&gt; list[dict]:
+    rows=[]
+    for z in [0.0004,1.,11.,100.,1000.]:
+        eta=single_converter_eta(z)
+        rows.append(dict(z=z,single_converter_max_efficiency=eta,
+            ideal_chiral_isolator_max_efficiency=eta*eta/4,
+            ideal_lossless_gyrator_pair_max_efficiency=eta*eta,
+            provenance=(&#x27;Published theoretical estimate used as a conditional input; &#x27;
+                        &#x27;not a measured complete transducer.&#x27; if z in (0.0004,11.)
+                        else &#x27;Hypothetical dimensionless input; not a material claim.&#x27;)))
+    return rows
+
+
+def check_matching_grid() -&gt; dict:
+    points=0
+    max_excess=0.
+    for z1,z2 in [(0.0004,0.0004),(1,11),(11,11),(100,1000)]:
+        chi1=z1/(1+z1); chi2=z2/(1+z2)
+        target=single_converter_eta(z1)*single_converter_eta(z2)/4
+        for t1 in np.logspace(-4,4,101):
+            for t2 in np.logspace(-4,4,101):
+                f1=chi1*t1/((1+t1)*(1+t1-chi1))
+                f2=chi2*t2/((1+t2)*(1+t2-chi2))
+                max_excess=max(max_excess,float(f1*f2/4-target))
+                points+=1
+        ts=[np.sqrt(1-chi1),np.sqrt(1-chi2)]
+        fs=[ch*t/((1+t)*(1+t-ch)) for ch,t in zip([chi1,chi2],ts)]
+        assert abs(fs[0]*fs[1]/4-target)&lt;1e-12
+    assert max_excess&lt;1e-12
+    return dict(points=points,maximum_excess_above_bound=max_excess)
+
+
+if __name__==&#x27;__main__&#x27;:
+    report=dict(status=&#x27;MODEL CHECKS ONLY; NO PHYSICAL EXPERIMENT&#x27;,
+        symbolic_checks=symbolic_checks(),network_checks=numerical_checks(),
+        matching_grid=check_matching_grid(),conditional_table=table())
+    path=Path(__file__).resolve().parent/&#x27;model_checks.json&#x27;
+    path.write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;,encoding=&#x27;utf-8&#x27;)
+    print(json.dumps(report,indent=2))
+</pre></body></html>

@@ -1,0 +1,214 @@
+INDEPENDENT AUDIT: p_s01c WITNESS COMPILER
+13 October 2026
+
+Scope and conclusion
+--------------------
+I read p_s01c_witness_compiler/PROOF.txt and the current witness_compiler.py,
+including its pinned fixed-degree and adaptive-compiler helpers. I found no
+substantive counterexample to the stated witness/period compiler after
+checking the all-history guards, raw-label interface, exact interpolation,
+failure accounting, and an adversarial semantic-miss transcript. The central
+guard correction is present in the current implementation: both persistent
+global_drop and paid_dictionaries are checked before any new dictionary label
+is queried. The finite fixture below confirms that false period passes can
+refund measured defect while the paid-call cap still stops the next call.
+
+I initially reported an apparent counterexample to the certified-zero
+tournament because I reversed its loop condition. That report is retracted.
+The helper stops on label agreement (a == b), not disagreement. The actual
+helper was run on the two-bit identity order in both basis orders and 16 seeds
+per order; all 32 runs selected the q_0 toggle. The saved result is
+selector_square_check.json. The proof below gives the order-independent
+argument; the finite check is only a sanity check.
+
+1. Exact dimension and defect accounting
+----------------------------------------
+Write h=n-r. On a correct prefix history of length k, let S_k be the exact
+common translation stabilizer of q_0,...,q_(k-1). The remaining flag vectors
+v_k,...,v_(h-1) all lie in S_k by triangularity, so dim S_k >= h-k. Each
+acquired q_i has a direction v_i in the previous S_i with Delta_(v_i)q_i=1.
+The response-one direction is not in the full period kernel, so adding q_i
+reduces the exact stabilizer dimension by at least one. Thus
+
+    h-k <= dim S_k <= n-k.
+
+For the next true bit q=q_k, put C={s in S_k: Delta_s q is constant}. C is a
+subspace: the derivative cocycle makes the constant response lambda(s)
+additive on C. The suffix flag vectors v_k,...,v_(h-1) lie in C, with
+lambda(v_k)=1 and lambda(v_j)=0 for j>k. Hence lambda is nonzero. If
+a_k=codim_(S_k) C, then a_k <= dim S_k-(h-k) = r-d_k, where
+d_k=n-k-dim S_k is the measured defect.
+
+For good directions G={s in C:lambda(s)=1}, |G|=2^(dim C-1), and
+|G|/|S_k|=2^(-a_k-1) >= 2^(-r-1). Zero is never good, so skipping zero raw
+draws does not invalidate this lower bound. For a correct transition,
+
+    dim S_(k+1)=dim S_k-a_k-1,
+    d_(k+1)=d_k+a_k.
+
+Summing gives sum a_k <= r over the acquired prefix. This is the geometric
+budget that correct dictionary drops consume.
+
+2. Raw own-toggle selection under an arbitrary suffix order
+------------------------------------------------------------
+For nonzero v in S_k, define g_v(x)=1+Cmp(x,x+v). If Delta_v q=1, the
+lexicographic leading-bit property gives g_v=q on every x. Otherwise
+1+Delta_v q is a nonzero Boolean polynomial of degree at most d-1, so
+Pr[Delta_v q=0] >= 2^(-(d-1)) by Reed-Muller minimum distance. On every
+acquired-prefix fiber, q is balanced because the hidden v_k toggle preserves
+that fiber; g_v is balanced because translation by nonzero v swaps g_v and
+1-g_v. The two off-diagonal cells in the (g_v,q) table therefore have equal
+mass. If e_f is the conditional error rate on fiber f, then the folded
+g_v=0 and g_v=1 samples in _pair_test independently land on wrong q sides
+with probability e_f each. When both are wrong, the source order must put
+the nominal q=0 point after the nominal q=1 point, so the test rejects.
+Since E_f[e_f] = Pr[g_v!=q] = (1/2)Pr[Delta_v q=0] >= 2^-d,
+Jensen gives rejection probability at least E_f[e_f^2] >= 2^-2d.
+Good directions never reject. This proves the raw false-pass bound for the
+actual arbitrary within-fiber source order; it does not assume suffix order
+is uniform or random.
+
+There is a separate exact-on-completion tournament when dim S_k=h-k. Then
+the flag directions span S_k, and the response lambda on S_k is nonzero.
+The selector compares basis directions u,w, drawing a uniform x until
+g_u(x)=g_w(x). For distinct independent u,w, partition V into cosets of
+span{u,w}. On each four-point square, each g flips across its own direction.
+The number of disagreements between g_u and g_w on the square is even.
+It cannot be four: assuming all four are opposite gives a strict-order cycle
+around the square. Hence at least two of four points agree, and each attempt
+matches with conditional probability at least 1/2. (For u=w, agreement is
+certain; distinct basis elements are independent.)
+
+When the match occurs, the selector's comparison of x+u and x+w has a
+one-bit consequence. If both directions have response one, either winner is
+good. If both have response zero, either is bad. If u has response one and
+w zero, agreement means g_u=g_w=q(x); the endpoint comparison equals that
+common bit, so u replaces w. If u has response zero and w one, the endpoint
+comparison is the complement of the common bit, so the good incumbent w
+stays. Thus a good winner is absorbing, and the first good basis direction
+replaces a bad winner whenever that match completes. Some basis direction
+is good because lambda is nonzero. Therefore a completed tournament returns
+a true own-toggle; cap exhaustion returns UNKNOWN.
+
+Across all stages there are at most P=sum_(k<m)(n-k-1) matches. A match's
+attempt count is conditionally dominated by Geom(1/2); H=ceil(4P+8 log(4/beta))
+gives the stated beta/4 cap failure by the geometric-sum Chernoff bound.
+Each attempt uses two labels, and each completed match one extra comparison,
+so expected tournament comparisons are at most 5P. These claims hold even
+after a wrong prefix for the cap and cost: the square/order argument uses
+only a strict total order. Correct-prefix semantics are used only to prove
+that the completed tournament's winner toggles q_k.
+
+3. Witness-space geometry and interpolation
+--------------------------------------------
+For s in S_k define F_s(x)=q(x+s)+q(x)+q(s)+q(0). It vanishes identically
+exactly when s is in C. If s is not in C, F_s is nonzero, has degree at most
+d-1, and is invariant under C+span{s}. Since dim C>=h-k, it descends to at
+most k+r-1 variables. Its uniform weight is therefore at least
+2^(-min(d-1,k+r-1)). A uniform s in W containing C escapes C with
+probability at least 1/2 when W>C. Thus a witness probe detects F_s(x)=1
+with probability at least 2^-d; the code uses this conservative uniform
+bound in outer_L. When k+r<=1, a nonzero such F_s would descend to zero
+variables and vanish at zero, impossible, so C=S and skipping the witness
+loop is sound.
+
+For a detected (s*,x*), P(s)=F_s(x*) on W has P(0)=0 and P(s*)=1. Its true
+period space D contains C, excludes s*, and has codimension at most
+cap=dim W-(h-k). For t not in D, Delta_t P is nonzero and invariant under
+D+span{t}; it is a nonzero function on at most cap-1 quotient bits, so its
+weight is at least 2^(-(cap-1)). This needs no degree bound on P. The
+dictionary tests the quotient columns using the actual second derivative
+label identity
+
+    Delta_t P(z)=q(z)+q(z+x*)+q(z+t)+q(z+t+x*).
+
+Each label is obtained by one chosen-pair comparison through the selected
+genuine own-toggle v. True periods never reject. Conditional on no false
+period pass, the basis scan identifies the quotient columns and returns
+exactly ker(P); adaptive candidate choices are covered by a union bound over
+at most dim(W)*2^cap probes, each with fresh samples. The cap-one shortcut
+is exact: a detected P with P(0)=0 cannot be constant, and period codimension
+at most one makes P the nonzero linear form on W/D. Two cached-label calls
+per W basis vector recover that row and its kernel.
+
+On semantic success, final W=C. Choose a complement U. For y in U,z in W,
+q(y+z)=q(y)+lambda(z). Degree-d interpolation of q|U from M_d(dim U)
+anchors and one response per basis vector of W therefore reconstructs q
+exactly. The raw degree-d ANF expansion is source-free local work; it is not
+being counted as compact computation. Its dimension is bounded by
+dim U<=k+r. The full-raw polynomial expansion and its bit-work are disclosed
+in the source proof; the comparison bound does not pretend to bound Python
+wall time or total physical bit cost.
+
+4. Bad-history scope and hard caps
+----------------------------------
+The current code carries global_drop, paid_dictionaries, and outer_epochs
+outside the stage loop. After a witness is found it checks
+global_drop>=r OR paid_dictionaries>=r before calling period_dictionary.
+Each returned dictionary must pass subspace, minimum-dimension,
+own-toggle, detected-direction exclusion, strict-drop, and
+global_drop+drop<=r guards before the candidate W is updated. A dictionary
+that aborts is already counted as paid and terminates. Hence no history can
+pay more than r dictionaries, including paid-then-abort histories. Each
+dictionary makes at most n*2^r*Lp probes, and the cap-one shortcut's 2n
+labels are below the same conservative comparison allowance. The outer
+epoch counter is incremented before testing and capped at m+r. On a correct
+history, at most r strict drops plus one closing epoch per stage are needed;
+after a bad history, the explicit counter still enforces the hard limit.
+
+The B reconstruction-query bound includes A=sum_k M_d(k+r) quotient
+anchors, at most m(n+1) cached origins/affine responses, at most
+3(m+r)L outer labels, and at most 4r*n*2^r*Lp period labels. The current
+code returns UNKNOWN before a further dictionary if either persistent cap
+has been used. This is stronger than a post-drop-only check and closes the
+refund loophole. All claimed probability bounds are first-error bounds under
+fresh ideal conditional fair randomness. Seeded Python randomness only
+replays finite fixtures and is not an entropy-source claim.
+
+5. Forced semantic-miss/refund fixture
+---------------------------------------
+forced_refund_cap.py runs the actual p_s01c reconstruct and period_dictionary
+through the counted ac.Source comparator, with a forced positive-probability
+transcript. The teacher is the 7-bit bijection
+
+    (a+yH, z1+yH, z2+yH, z3+yH, y, s1, s2), H=s1+s1*s2,
+
+with four cubic first coordinates and flag directions e_a,e_z1,e_z2,e_z3.
+The controlled first three dictionaries accept e_s2 after probing at zero,
+although it is not a period of the actual restricted P: P(0)=P(e_s2)=0,
+but P(e_s1)=1 and P(e_s1+e_s2)=0. Each detected direction is e_s1. Their
+geometric guards all pass. The accepted candidate bodies are a,z1,z2, each of which
+omits the common cubic yH contribution. After each stage, the candidate's
+measured defect is zero while the exact true stabilizer defect is three; the
+three units are refunded by semantic misses. Nonetheless, after three paid
+dictionaries and cumulative drop three, the next detected witness returns
+UNKNOWN at global_witness_budget_before_dictionary, before paying a fourth.
+The saved receipt reports 3,132 actual comparisons, below the conditional
+reconstruction cap 29,733 and whole cap 521,833; seven outer epochs are at
+most m+r=7. It also checks the flag promise on every input, the teacher's
+bijection, false-period containment, detected-direction exclusion, exact
+stabilizer dimensions, and actual comparator-only label access.
+
+The fixture is one forced positive-probability path, not a fair-random
+frequency estimate. It demonstrates why geometric guards alone do not
+recognize the true C and why the separate global accounting is necessary.
+
+6. Failure-budget audit and remaining limits
+---------------------------------------------
+The proof allocates beta/4 to raw cap exhaustion, beta/4 to the global
+tournament cap, beta/(4R) to first false raw selection, beta/(8R) to first
+false outer closure, and beta/(8R) to first false period pass. The latter
+three sum to beta/(2R); total UNKNOWN-or-wrong probability is at most
+beta/2+beta/(2R)<=beta. Raw false passes union-bound mR candidates using
+delta_raw=beta/(4mR^2). Outer closure union-bounds at most m+r epochs. Period
+misses union-bound at most r dictionaries using eta=beta/(8rR), with no
+failure term for cap one. These counts are all-history safe because failed
+dictionary calls are charged before execution and the explicit invocation
+counter persists across stages.
+
+I found no mismatch in these budget compositions. The proof remains
+conditional on the supplied low-degree/flag promises and exact source
+comparator; it does not prove promise recognition, novelty, a physical
+randomness interface, or a practical wall-time advantage. The existing
+matched-control evidence is finite and the source proof itself correctly
+retains the strongest generalized-junta/value-oracle caveat.

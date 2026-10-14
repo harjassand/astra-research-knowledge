@@ -1,0 +1,304 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — sequential_matching_validation.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact Bernoulli-LR confidence/cap audit for robust matching validation.
+
+This is a statistical-kernel benchmark. It consumes independent batch scores
+Z in [0,1] through Y|Z ~ Bernoulli(Z); it does not simulate a comparator or
+claim source execution. Every matching batch costs at most m^2 ordered query
+requests. The endpoint Bernoulli laws are the proved worst-case means.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from collections import defaultdict
+from dataclasses import asdict, dataclass
+from fractions import Fraction
+import json
+import math
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class Parameters:
+    degree: int
+    epsilon: str
+    m: int
+    candidate_slots: int
+    validation_budget: str
+
+
+@dataclass(frozen=True)
+class BatchBounds:
+    c_m: str
+    p_true_max: float
+    p_false_min: float
+    gap: float
+    alpha_each: float
+    hoeffding_batches: int
+    cap_batches: int
+    cap_tail_true: float
+    cap_tail_false: float
+    kl_true: float
+    kl_false: float
+    expected_upper_true: float
+    expected_upper_false: float
+
+
+def batch_mean_bounds(degree: int, epsilon: Fraction, m: int) -&gt; tuple[Fraction, Fraction, Fraction]:
+    if degree &lt; 1 or m &lt; 1 or epsilon &lt; 0:
+        raise ValueError(&quot;degree, m and epsilon are outside their allowed range&quot;)
+    c_m = Fraction(math.comb(2 * m, m), 2 * (4**m))
+    a = 2 * epsilon
+    b = Fraction(1, 2**degree) - 2 * epsilon - c_m
+    if not (0 &lt;= a &lt; b &lt;= 1):
+        raise ValueError(f&quot;no validation gap: need 0 &lt;= a &lt; b &lt;= 1, got a={a}, b={b}&quot;)
+    return a, b, c_m
+
+
+def _log_binomial_pmf(n: int, k: int, p: float) -&gt; float:
+    return (
+        math.lgamma(n + 1)
+        - math.lgamma(k + 1)
+        - math.lgamma(n - k + 1)
+        + k * math.log(p)
+        + (n - k) * math.log1p(-p)
+    )
+
+
+def _sum_log_probs(log_values: list[float]) -&gt; float:
+    if not log_values:
+        return 0.0
+    top = max(log_values)
+    return min(1.0, math.exp(top) * math.fsum(math.exp(v - top) for v in log_values))
+
+
+def binomial_upper_tail(n: int, p: float, k_min: int) -&gt; float:
+    if k_min &lt;= 0:
+        return 1.0
+    if k_min &gt; n:
+        return 0.0
+    return _sum_log_probs([_log_binomial_pmf(n, k, p) for k in range(k_min, n + 1)])
+
+
+def binomial_lower_tail(n: int, p: float, k_max: int) -&gt; float:
+    if k_max &lt; 0:
+        return 0.0
+    if k_max &gt;= n:
+        return 1.0
+    return _sum_log_probs([_log_binomial_pmf(n, k, p) for k in range(0, k_max + 1)])
+
+
+def binomial_tail_fraction(n: int, p: Fraction, cutoff: int, upper: bool) -&gt; Fraction:
+    &quot;&quot;&quot;Evaluate one Binomial tail exactly using integer recurrence.&quot;&quot;&quot;
+    if upper:
+        if cutoff &lt;= 0:
+            return Fraction(1)
+        if cutoff &gt; n:
+            return Fraction(0)
+    else:
+        if cutoff &lt; 0:
+            return Fraction(0)
+        if cutoff &gt;= n:
+            return Fraction(1)
+
+    q = p.denominator
+    r = p.numerator
+    term = (q - r) ** n
+    total = 0
+    for k in range(n + 1):
+        if (upper and k &gt;= cutoff) or (not upper and k &lt;= cutoff):
+            total += term
+        if k &lt; n:
+            term = term * (n - k) * r // ((k + 1) * (q - r))
+    return Fraction(total, q**n)
+
+
+def log_lr_parameters(a: float | Fraction, b: float | Fraction) -&gt; tuple[float, float, float, float]:
+    &quot;&quot;&quot;Return success increment u, failure increment w, KL(a||b), KL(b||a).&quot;&quot;&quot;
+    a = float(a)
+    b = float(b)
+    if a == 0.0 or b == 1.0:
+        raise ValueError(&quot;interior Bernoulli bounds required by this LR implementation&quot;)
+    u = math.log(b / a)
+    w = math.log((1.0 - b) / (1.0 - a))
+    d0 = a * math.log(a / b) + (1.0 - a) * math.log((1.0 - a) / (1.0 - b))
+    d1 = b * math.log(b / a) + (1.0 - b) * math.log((1.0 - b) / (1.0 - a))
+    return u, w, d0, d1
+
+
+def timeout_tail_bounds(
+    n: int,
+    a: Fraction,
+    b: Fraction,
+    alpha_true: Fraction,
+    alpha_false: Fraction,
+) -&gt; tuple[Fraction, Fraction]:
+    &quot;&quot;&quot;Exact endpoint Binomial bounds on failing to hit either LR boundary by n.&quot;&quot;&quot;
+    u, w, _, _ = log_lr_parameters(a, b)
+    span = u - w
+    # Lower boundary is log(LR) &lt;= -log(1/alpha_true).
+    low = -math.log(1.0 / float(alpha_true))
+    # Upper boundary is log(LR) &gt;= log(1/alpha_false).
+    high = math.log(1.0 / float(alpha_false))
+    # Include one extra terminal count on each side. This is a conservative
+    # guard for floating evaluation of the logarithmic integer cutoffs.
+    k_true_min = math.floor((low - n * w) / span)  # superset of W_n &gt; low
+    k_false_max = math.ceil((high - n * w) / span)  # superset of W_n &lt; high
+    return (
+        binomial_tail_fraction(n, a, k_true_min, upper=True),
+        binomial_tail_fraction(n, b, k_false_max, upper=False),
+    )
+
+
+def exact_tail_cap(a: Fraction, b: Fraction, alpha: Fraction) -&gt; tuple[int, Fraction, Fraction]:
+    &quot;&quot;&quot;Choose a deterministic cap whose exact tails pass alpha.&quot;&quot;&quot;
+    def passing(n: int) -&gt; tuple[bool, Fraction, Fraction]:
+        t_true, t_false = timeout_tail_bounds(n, a, b, alpha, alpha)
+        return t_true &lt;= alpha and t_false &lt;= alpha, t_true, t_false
+
+    low, high = 0, 1
+    ok, tail_true, tail_false = passing(high)
+    while not ok:
+        low = high
+        high *= 2
+        ok, tail_true, tail_false = passing(high)
+
+    # Keep high as a checked passing cap; the bisection is only an optimization.
+    while high - low &gt; 1:
+        middle = (low + high) // 2
+        ok, _, _ = passing(middle)
+        if ok:
+            high = middle
+        else:
+            low = middle
+    ok, tail_true, tail_false = passing(high)
+    if not ok:
+        raise ArithmeticError(&quot;final exact binomial cap check failed&quot;)
+    return high, tail_true, tail_false
+
+
+def capped_lr_dp(n: int, p: float, a: float, b: float, alpha_true: float, alpha_false: float) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Exact-state recursion (floating probabilities) for a Bernoulli(p) score stream.&quot;&quot;&quot;
+    u, w, _, _ = log_lr_parameters(a, b)
+    low = -math.log(1.0 / alpha_true)
+    high = math.log(1.0 / alpha_false)
+    alive: dict[int, float] = {0: 1.0}  # successes among the batches seen
+    accept_candidate = 0.0
+    reject_candidate = 0.0
+    expected_batches = 0.0
+
+    for t in range(n):
+        expected_batches += math.fsum(alive.values())
+        next_alive: defaultdict[int, float] = defaultdict(float)
+        for successes, mass in alive.items():
+            for y, py in ((0, 1.0 - p), (1, p)):
+                if py == 0.0:
+                    continue
+                s2 = successes + y
+                log_lr = (t + 1) * w + s2 * (u - w)
+                next_mass = mass * py
+                if log_lr &gt;= high:
+                    reject_candidate += next_mass
+                elif log_lr &lt;= low:
+                    accept_candidate += next_mass
+                else:
+                    next_alive[s2] += next_mass
+        alive = dict(next_alive)
+        if not alive:
+            break
+
+    unknown = math.fsum(alive.values())
+    return {
+        &quot;expected_batches&quot;: expected_batches,
+        &quot;accept_candidate&quot;: accept_candidate,
+        &quot;reject_candidate&quot;: reject_candidate,
+        &quot;unknown_at_cap&quot;: unknown,
+        &quot;mass_total&quot;: accept_candidate + reject_candidate + unknown,
+    }
+
+
+def benchmark(parameters: Parameters) -&gt; dict[str, object]:
+    eps_q = Fraction(parameters.epsilon)
+    beta_q = Fraction(parameters.validation_budget)
+    a_q, b_q, c_m = batch_mean_bounds(parameters.degree, eps_q, parameters.m)
+    a, b = float(a_q), float(b_q)
+    gap = b - a
+    slots = parameters.candidate_slots
+    # Three equal all-history ledgers: false acceptance, true rejection, timeout.
+    alpha_q = beta_q / (3 * slots)
+    alpha = float(alpha_q)
+    fixed = math.ceil(2.0 * math.log(1.0 / alpha) / (gap * gap))
+    n_cap, tail_true_q, tail_false_q = exact_tail_cap(a_q, b_q, alpha_q)
+    tail_true, tail_false = float(tail_true_q), float(tail_false_q)
+    u, w, kl_true, kl_false = log_lr_parameters(a, b)
+    expected_upper_true = (math.log(1.0 / alpha) - w) / kl_true
+    expected_upper_false = (math.log(1.0 / alpha) + u) / kl_false
+    true_dp = capped_lr_dp(n_cap, a, a, b, alpha, alpha)
+    false_dp = capped_lr_dp(n_cap, b, a, b, alpha, alpha)
+    m2 = parameters.m * parameters.m
+
+    bounds = BatchBounds(
+        c_m=str(c_m),
+        p_true_max=a,
+        p_false_min=b,
+        gap=gap,
+        alpha_each=alpha,
+        hoeffding_batches=fixed,
+        cap_batches=n_cap,
+        cap_tail_true=tail_true,
+        cap_tail_false=tail_false,
+        kl_true=kl_true,
+        kl_false=kl_false,
+        expected_upper_true=expected_upper_true,
+        expected_upper_false=expected_upper_false,
+    )
+    return {
+        &quot;status&quot;: &quot;exact_binomial_cap_and_finite_state_expected_stop_benchmark&quot;,
+        &quot;parameters&quot;: asdict(parameters),
+        &quot;bounds&quot;: asdict(bounds),
+        &quot;endpoint_dp&quot;: {
+            &quot;true_candidate_at_p_a&quot;: true_dp,
+            &quot;false_candidate_at_p_b&quot;: false_dp,
+        },
+        &quot;logical_ordered_pair_request_bounds&quot;: {
+            &quot;per_batch_max&quot;: m2,
+            &quot;fixed_hoeffding_cap&quot;: fixed * m2,
+            &quot;sequential_hard_cap&quot;: n_cap * m2,
+            &quot;all_slots_fixed_hoeffding_cap&quot;: slots * fixed * m2,
+            &quot;all_slots_sequential_hard_cap&quot;: slots * n_cap * m2,
+            &quot;sequential_expected_true_endpoint&quot;: true_dp[&quot;expected_batches&quot;] * m2,
+            &quot;sequential_expected_false_endpoint&quot;: false_dp[&quot;expected_batches&quot;] * m2,
+        },
+        &quot;ledger&quot;: {
+            &quot;number_of_potential_candidate_tests&quot;: slots,
+            &quot;false_accept_sum_bound&quot;: slots * alpha,
+            &quot;true_reject_sum_bound&quot;: slots * alpha,
+            &quot;cap_unknown_sum_bound&quot;: slots * alpha,
+            &quot;total_validation_failure_or_unknown_bound&quot;: min(
+                1.0, 3.0 * slots * alpha
+            ),
+        },
+        &quot;limits&quot;: [
+            &quot;Endpoint score streams are the exact Bernoulli worst-case mean models, not simulated comparator batches.&quot;,
+            &quot;The matching batch itself still costs at most m^2 ordered pair requests; cache hits and unique source calls are separate.&quot;,
+            &quot;The result is conditional on a frozen candidate of admitted degree d, a correct prefix, fresh independent batch randomness, and a fixed comparator.&quot;,
+        ],
+    }
+
+
+def main() -&gt; None:
+    params = Parameters(
+        degree=2,
+        epsilon=&quot;0.0331&quot;,
+        m=11,
+        candidate_slots=1000,
+        validation_budget=&quot;0.05&quot;,
+    )
+    result = benchmark(params)
+    out = Path(__file__).with_name(&quot;sequential_matching_receipt.json&quot;)
+    out.write_text(json.dumps(result, indent=2, sort_keys=True) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

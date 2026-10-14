@@ -1,0 +1,122 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — validate.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — validate.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/history/validate.py">Original file</a></p><pre>&quot;&quot;&quot;Algebra, resource, and finite-duration reference checks. No experimental data.&quot;&quot;&quot;
+import json,itertools,math,time
+from pathlib import Path
+import numpy as np
+from scipy.linalg import expm
+from scipy import constants as c
+from rotor_exact import build_model,signal,free,theta_from_fluence,pulse_parts,fourier_map
+from rotor_probe import rotor_blocks,NU,B,sigma_t,d
+
+rng=np.random.default_rng(721104)
+report={&#x27;status&#x27;:&#x27;theoretical checks; no laboratory validation&#x27;}
+
+def pair(z): return [float(np.real(z)),float(np.imag(z))]
+
+def split_unitary(U,ng):
+    n=len(U);p={m:np.zeros((n,n),complex) for m in (-1,0,1)}
+    p[0][:ng,:ng]=U[:ng,:ng];p[0][ng:,ng:]=U[ng:,ng:]
+    p[1][ng:,:ng]=U[ng:,:ng];p[-1][:ng,ng:]=U[:ng,ng:]
+    return p
+
+# Strong pulses, multiple states in each band, mixed preparation.
+ng=3;ne=2;n=ng+ne
+parts=[]
+for j in range(4):
+    a=rng.normal(size=(n,n))+1j*rng.normal(size=(n,n))
+    h=(a+a.conj().T)/3
+    parts.append(split_unitary(expm(-1j*h),ng))
+rho=np.diag([.2,.3,.5,0,0]).astype(complex)
+ell=[-1,1,1,-1];s=.702;a=s/2
+
+def calc(q2):
+    K=fourier_map(rho,parts[0],-1,1,s)
+    K=fourier_map(K,parts[1],1,q2,s)
+    K=fourier_map(K,parts[2],1,1,s)
+    return np.trace(fourier_map(K,parts[3],-1,1,s))
+Sp,Sm,S0=calc(1),calc(-1),calc(0)
+XL=(np.exp(1j*a)*Sp-np.exp(-1j*a)*Sm)/(2j*np.sin(s))
+XR=(-np.exp(-1j*a)*Sp+np.exp(1j*a)*Sm)/(2j*np.sin(s))
+K1=fourier_map(rho,parts[0],-1,1,s)
+Ks=[parts[1][1]@K1@parts[1][0].conj().T,
+    parts[1][0]@K1@parts[1][-1].conj().T]
+# The second-pulse contributions land in E-E and G-G respectively.
+assert np.linalg.norm(Ks[0][:ng,:])+np.linalg.norm(Ks[0][:,:ng])&lt;1e-12
+assert np.linalg.norm(Ks[1][ng:,:])+np.linalg.norm(Ks[1][:,ng:])&lt;1e-12
+truth=[]
+for K in Ks:
+    truth.append(np.trace(fourier_map(fourier_map(K,parts[2],1,1,s),parts[3],-1,1,s)))
+assert np.max(abs(np.array([XL,XR])-truth))&lt;1e-12
+assert abs(Sp+Sm-2*np.cos(a)*S0)&lt;1e-12
+# Actual 5x5x5 phase cycling of full unitaries, including strong pulse terms.
+coeff=0j
+for phis in itertools.product(2*np.pi*np.arange(5)/5,repeat=3):
+    K=rho.copy()
+    phases=list(phis)+[0.]
+    for j,phi in enumerate(phases):
+        UA=sum(np.exp(1j*m*(phi+a))*parts[j][m] for m in (-1,0,1))
+        UB=sum(np.exp(1j*m*(phi-a))*parts[j][m] for m in (-1,0,1))
+        K=UA@K@UB.conj().T
+    coeff+=np.trace(K)*np.exp(-1j*np.dot(ell,phases))/125
+assert abs(coeff-Sp)&lt;1e-12
+report[&#x27;multilevel_strong_pulse&#x27;]={&#x27;inversion_error&#x27;:float(np.max(abs(np.array([XL,XR])-truth))),
+ &#x27;phase_cycle_error&#x27;:float(abs(coeff-Sp)),&#x27;zero_port_residual&#x27;:float(abs(Sp+Sm-2*np.cos(a)*S0)),
+ &#x27;condition_number&#x27;:float(1/np.tan(a)),&#x27;XL&#x27;:pair(XL),&#x27;XR&#x27;:pair(XR)}
+
+# Ancilla parking: original optical +/- labels -&gt; ground Zeeman states.
+plus=np.array([1,1,0])/np.sqrt(2);minus=np.array([1,-1,0])/np.sqrt(2)
+unused=np.array([0,0,1.])
+W=np.outer([1,0,0],plus)+np.outer([0,0,1],minus)+np.outer([0,1,0],unused)
+assert np.linalg.norm(W.conj().T@W-np.eye(3))&lt;1e-12
+for phase in np.linspace(-20,20,41):
+    Uir=np.diag([np.exp(-1j*.31),np.exp(-1j*phase),np.exp(-1j*.31)])
+    for v in [plus,minus]:
+        assert np.linalg.norm(W.conj().T@Uir@W@v-np.exp(-1j*.31)*v)&lt;1e-12
+report[&#x27;ground_parking&#x27;]=&#x27;scalar atomic Stark phase cancels for arbitrary optical S-D differential phase; transfer errors not simulated&#x27;
+
+# Tr of an arbitrary cross-block is conserved by a common trace-preserving channel.
+K=rng.normal(size=(2,2))+1j*rng.normal(size=(2,2));p=.73
+E0=np.diag([1,np.sqrt(1-p)]);E1=np.array([[0,np.sqrt(p)],[0,0]])
+assert abs(np.trace(E0@K@E0.T+E1@K@E1.T)-np.trace(K))&lt;1e-12
+report[&#x27;common_relaxation_trace_test&#x27;]=&#x27;passed; branch-dependent photon recoil is excluded from this common-channel identity&#x27;
+
+# Physically linked inputs and cost arithmetic.
+w0=2*np.pi*c.c*100*NU
+Arad=w0**3*d*d/(3*np.pi*c.epsilon_0*c.hbar*c.c**3)
+thcm=c.k*300/(c.h*c.c*100)
+ground_vib=(1-np.exp(-747.4/thcm))*(1-np.exp(-481.2/thcm))**2*(1-np.exp(-3949.9/thcm))
+alphaS=75.46*c.physical_constants[&#x27;atomic unit of electric polarizability&#x27;][0]
+k=w0/c.c;F=1100.
+ray_cs=k**4*alphaS**2/(6*np.pi*c.epsilon_0**2)
+report[&#x27;derived_scales&#x27;]={
+ &#x27;thermal_energy_cm&#x27;:thcm,&#x27;harmonic_thermal_all_modes_ground_probability&#x27;:ground_vib,
+ &#x27;dipole_C_m&#x27;:d,&#x27;radiative_A_s_inverse&#x27;:Arad,&#x27;radiative_lifetime_ms&#x27;:1000/Arad,
+ &#x27;grating_pitch_um&#x27;:(1/(NU*100))/.9*1e6,&#x27;s&#x27;:s,&#x27;eta_after_angular_dispersion&#x27;:.027,
+ &#x27;theta_F011_Jcm2&#x27;:theta_from_fluence(1100),&#x27;theta_F00275_Jcm2&#x27;:theta_from_fluence(275),
+ &#x27;max_finite_packet_fourpulse_attenuation&#x27;:float(np.exp(-.5*.027**2*16)),
+ &#x27;static_alphaS_common_phase_rad_F011&#x27;:float(alphaS*F/(2*c.epsilon_0*c.c*c.hbar)),
+ &#x27;static_alphaS_Rayleigh_photons_F011&#x27;:float(ray_cs*F/(c.hbar*w0)),
+ &#x27;added_20us_reference_delay_factor&#x27;:float(np.exp(-20e-6/.92e-3)),
+ &#x27;20um_waist_energy_per_F011_pulse_uJ&#x27;:float(F*np.pi*(20e-6)**2/2*1e6),
+ &#x27;20um_waist_total_energy_four_F011_pulses_uJ&#x27;:float(4*F*np.pi*(20e-6)**2/2*1e6)}
+# Independent samples; normalized complex Fourier coefficient; conservative 5-sigma bound.
+report[&#x27;costs&#x27;]=[]
+for X in [.00036,.0018,.0077,.01,.03]:
+    N=100/(.4**2*np.sin(s)**2*X**2)
+    report[&#x27;costs&#x27;].append({&#x27;X&#x27;:X,&#x27;C_assumed&#x27;:.4,&#x27;N_conservative&#x27;:N,&#x27;hours_at_ASSUMED_50_trials_per_second&#x27;:N/50/3600,
+                          &#x27;p_loss_for_90pct_survival_one_molecule&#x27;:-np.log(.9)/N})
+
+# Convergence checks of the finite-duration two-band rotor reference.
+conv=[]
+for jmax,steps in [(60,160),(70,200),(70,400),(80,200)]:
+    model,ps=build_model(jmax=jmax,steps=steps)
+    S,X=signal(model)
+    conv.append(dict(Jmax=jmax,steps=steps,single_pulse_excitation_reference=ps,XL=pair(X[0]),XR=pair(X[1])))
+report[&#x27;rotor_convergence&#x27;]=conv
+x200=np.array(conv[1][&#x27;XL&#x27;]);x400=np.array(conv[2][&#x27;XL&#x27;]);x80=np.array(conv[3][&#x27;XL&#x27;])
+report[&#x27;rotor_convergence_summary&#x27;]={&#x27;relative_step_refinement_error&#x27;:float(np.linalg.norm(x400-x200)/np.linalg.norm(x400)),
+ &#x27;relative_J70_J80_difference&#x27;:float(np.linalg.norm(x80-x200)/np.linalg.norm(x80))}
+assert report[&#x27;rotor_convergence_summary&#x27;][&#x27;relative_step_refinement_error&#x27;]&lt;.005
+assert report[&#x27;rotor_convergence_summary&#x27;][&#x27;relative_J70_J80_difference&#x27;]&lt;.005
+Path(&#x27;validation_results.json&#x27;).write_text(json.dumps(report,indent=2))
+print(json.dumps(report,indent=2))
+</pre></html>

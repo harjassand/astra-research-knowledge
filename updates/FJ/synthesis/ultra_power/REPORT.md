@@ -1,0 +1,36 @@
+# Ultra sampler audit: a bump lower bound and its randomized failure
+
+**Result.** I derived a deterministic-query lower bound for a natural separable smooth-bump family, then checked it against the actual sampler interface. The lower bound is valid when query locations are deterministic, but it does not extend to randomized samplers. On the same family, one exact whole-vector Gaussian query followed by independent Gaussian noise produces the target law within `O(d^(-1/4))` in total variation while the target mean has order-one Euclidean norm. This rules out the proposed family as a randomized query lower bound. It neither proves nor refutes the published fixed-exponent sampler candidate or the polylogarithmic full-law target.
+
+The derivation and its scope boundary are in [SAMPLER_SCOPE.md](proof/SAMPLER_SCOPE.md). The owned files contain no repo edits, external claims, or scientific code runs.
+
+## Capital lineage and exact target
+
+At retained Ultra revision `00d1c9769bc26829fef2653dbcc10ed1dc8a927c`, `state/branches/ultra.txt` pointed to the 10 October `2026-10-10-ct-ultra` checkpoint. The checked-out capital is `cb62d881a071c617b11d7dbc82a98921969389a7`; the retained Ultra revision is an ancestor. At that current checkout, `state/branches/ultra.txt` points to `2026-10-11-sampler-encoder-gates`. I read the checkpoint record at the retained revision and reviewed all 11 checkpoint summaries under `state/checkpoints/ultra/`; the 11 October sampler/encoder gate is the directly relevant current continuation, with the 10 October QEC screen as its parent.
+
+The live N687 notice gives the exact oracle scope: `g = ∇F` is globally `L`-Lipschitz with `F ∈ C^{1,1}`; the interface supplies exact whole-vector values and exact-real Gaussian seeds, but no derivative, potential, or conditional-mean oracle. Its recorded candidate is `C_a d^a poly_a(1/ε)` queries on every execution for each fixed `a > 0`, with polynomial real arithmetic. It does not imply a polylogarithmic query bound. The source R16 proof candidate states the same fixed-`a` target for `σ ≥ L > 0`, and explicitly marks itself as needing independent audit. R21 and R22 retain the stronger polylogarithmic full-law target as open. The current N687 gate is still a positive full-law completion with an every-run polylogarithmic cap; the bounded two-query Stein action is only an expected action, and the baseline inverse does not invert the nonlinear operator. The retained R28 counterexample rejects one frozen-source central-secant rotation, not the sampler target.
+
+## What the derivation establishes
+
+For a fixed deterministic adaptive query schedule, the bump family yields a valid `Ω(d^(1/4))` lower bound at fixed error and fixed `σ/L`. It satisfies every regularity and value-oracle condition in R16/N687. Thus this family can obstruct deterministic probing.
+
+For randomized queries, the same family has a one-query sampler with a full-joint-law bound. In the normalized construction `L=σ=1`, draw `G,Z ∼ N(0,I_d)` independently, query `g(G)`, and output `g(G)+Z`. Coordinate independence makes the exact joint chi-square divergence a product. For each coordinate, Gaussian convolution has the exact identity
+
+\[
+1+\chi^2(\mathcal L(V_i+\sigma Z_i)\|N(0,\sigma^2))
+=\mathbb E\exp(V_iV_i'/\sigma^2),
+\]
+
+where `V_i = g_i(G_i) − E[g_i(G_i)]` and `V_i'` is an independent copy. The centered first-order term vanishes. For bumps of width `w = κ d^(-1/4)`, the coordinate variance is `O(w³)`, so the joint chi-square divergence is `O(dw^6) = O(d^(-1/2))`. Hence TV error is `O(d^(-1/4))`, despite exponentially many sign choices and `Θ(d^(1/4))` possible centers in each coordinate.
+
+The query-count lower bound therefore cannot be promoted from deterministic query paths to randomized oracle samplers. The failure is specifically at the distributional interface: a sampler may use its random Gaussian query and output noise together, and TV closeness does not require recovering the hidden mean vector or matching it coordinate by coordinate.
+
+## Status and next decisive step
+
+This is a scoped Gaussian-smoothing lemma and a rejected randomized lower-bound route. It is not an end-to-end sampler, a validation of R16, a refutation of R21/R22, or evidence of novelty. No source mechanism from the other FJ investigations was read or composed, as required by the worker isolation contract.
+
+The remaining decisive operation is unchanged: construct or rule out a positive full-law completion for arbitrary conservative Lipschitz fields with the stated acquisition interface and all adaptive-query, precision, tail, arithmetic, and every-run query costs charged. This work supplies neither that completion nor a general lower bound.
+
+## Validation scope
+
+All estimates in the owned proof are analytic. I did not run the preserved Ultra diagnostic scripts or invoke external proof/code validation. The pinned reports and current notices remain `source_derived_unreviewed`; my result is an independent scoped derivation only.

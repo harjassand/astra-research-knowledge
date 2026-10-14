@@ -1,0 +1,424 @@
+#!/usr/bin/env python3
+"""Fresh exact checks for the FH full-cone quartic note.
+
+This file was written from the mathematical definitions in the note.  It does
+not import, execute, or reuse source verifier code or exploratory artifacts.
+It checks finite algebra and exact examples; analytic quantifiers are assessed
+separately in REPORT.md.
+"""
+from __future__ import annotations
+
+import hashlib
+import itertools
+import json
+import math
+from pathlib import Path
+
+import sympy as s
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "FH-sources"
+OUT = Path(__file__).resolve().parent
+R: dict[str, object] = {}
+
+
+def z(expr):
+    assert s.expand(expr) == 0, s.factor(expr)
+
+
+
+
+def monomials(xs, degree):
+    return [s.prod(xs[i] for i in ind)
+            for ind in itertools.combinations_with_replacement(range(len(xs)), degree)]
+
+
+def coeff_equations(poly, xs):
+    p = s.Poly(s.expand(poly), *xs)
+    return list(p.coeffs())
+
+
+def record(key, value=True):
+    R[key] = value
+    print("PASS", key, flush=True)
+
+
+# Verify each source-manifest digest without executing its verifier.
+manifest = json.loads((SRC / "quartic" / "MANIFEST_SHA256.json").read_text())
+manifest_results = {}
+for rel, expected in manifest.items():
+    path = SRC / "quartic" / rel
+    observed = hashlib.sha256(path.read_bytes()).hexdigest()
+    manifest_results[rel] = {"expected": expected, "observed": observed,
+                              "match": observed == expected}
+assert all(x["match"] for x in manifest_results.values())
+(OUT / "source_manifest_recheck.json").write_text(
+    json.dumps(manifest_results, indent=2) + "\n")
+record("source_manifest_all_listed_files_match")
+
+
+# Quartic Hessian reciprocity and the affine expansion, rebuilt generically
+# over all 35 quartic monomials in four real variables.
+x = s.symbols("x0:4", real=True)
+a = s.symbols("a0:4", real=True)
+b = s.symbols("b0:4", real=True)
+mons4 = monomials(x, 4)
+assert len(mons4) == 35
+for f0 in mons4:
+    H0 = s.hessian(f0, x)
+    H_at_a = H0.subs(dict(zip(x, a)))
+    H_at_x = H0
+    z((s.Matrix(x).T * H_at_a * s.Matrix(x))[0]
+      - (s.Matrix(a).T * H_at_x.subs(dict(zip(x, x))) * s.Matrix(a))[0])
+    df_at_a = s.Matrix([s.diff(f0, xi) for xi in x]).subs(dict(zip(x, a)))
+    df_at_b = s.Matrix([s.diff(f0, xi) for xi in x]).subs(dict(zip(x, b)))
+    shifted = f0.xreplace({xi: ai + bi for xi, ai, bi in zip(x, a, b)})
+    hb = H0.subs(dict(zip(x, b)))
+    z(shifted - f0.xreplace(dict(zip(x, b))) - (df_at_b.T * s.Matrix(a))[0]
+      - (s.Matrix(a).T * hb * s.Matrix(a))[0] / 2
+      - (df_at_a.T * s.Matrix(b))[0] - f0.xreplace(dict(zip(x, a))))
+record("quartic_reciprocity_and_polarized_background_expansion")
+
+
+# Quadratic vanishing on the determinant cone, including a two-dimensional
+# radical.  Restrict a generic quadratic to the two null sheets x0=+/-x1.
+v = s.symbols("v0:4", real=True)
+qdiag = s.diag(1, -1, 0, 0)
+sym_entries = s.symbols("m0:10", real=True)
+M = s.zeros(4)
+idx = 0
+for i in range(4):
+    for j in range(i, 4):
+        M[i, j] = M[j, i] = sym_entries[idx]
+        idx += 1
+t, r1, r2 = s.symbols("t r1 r2", real=True)
+null_eq = []
+for sign in (1, -1):
+    val = (s.Matrix([t, sign * t, r1, r2]).T * M
+           * s.Matrix([t, sign * t, r1, r2]))[0]
+    null_eq += coeff_equations(val, (t, r1, r2))
+mat, _ = s.linear_eq_to_matrix(null_eq, sym_entries)
+ns = mat.nullspace()
+assert len(ns) == 1
+candidate = s.zeros(4)
+for pos, (i, j) in enumerate(( (i,j) for i in range(4) for j in range(i,4) )):
+    candidate[i,j] = candidate[j,i] = ns[0][pos]
+assert candidate.rank() == 2 and s.simplify(candidate[0,0] + candidate[1,1]) == 0
+assert all(candidate[i,j] == 0 for i,j in ((0,2),(0,3),(1,2),(1,3),(2,2),(2,3),(3,3)))
+record("quadratic_null_cone_equality_for_indefinite_form_with_radical")
+
+
+# Cubic integrability: solve D^2 C(Y)[R,R]=lambda(Y)q(R) coefficientwise.
+# Three signatures cover no radical, a radical, and higher positive index.
+cubic_results = {}
+for diag in ((1,-1), (1,-1,0), (1,-1,0,0), (1,1,-1),
+             (1,-1,-1), (1,1,-1,0), (1,-1,-1,0), (1,1,-1,-1)):
+    n = len(diag)
+    Y = s.symbols(f"y0:{n}", real=True)
+    T = s.symbols(f"r0:{n}", real=True)
+    cm = monomials(Y, 3)
+    cc = s.symbols(f"d0:{len(cm)}", real=True)
+    ll = s.symbols(f"ell0:{n}", real=True)
+    C3 = sum(ci * mi for ci, mi in zip(cc, cm))
+    lam = sum(li * yi for li, yi in zip(ll, Y))
+    hess = s.hessian(C3, Y)
+    lhs = (s.Matrix(T).T * hess * s.Matrix(T))[0]
+    rhs = lam * sum(di * ti * ti for di, ti in zip(diag, T))
+    equations = coeff_equations(lhs - rhs, tuple(Y) + tuple(T))
+    linmat, _ = s.linear_eq_to_matrix(equations, tuple(cc) + tuple(ll))
+    rank = linmat.rank()
+    cubic_results[str(diag)] = {"unknowns": len(cc) + len(ll), "rank": rank}
+    assert rank == len(cc) + len(ll)
+record("cubic_proportional_hessian_has_only_zero_solution", cubic_results)
+
+
+# Complete planar left-SO(2) quartic space by the infinitesimal rotation
+# operator.  Construct nine candidates in matrix-entry variables and verify
+# that they span the entire invariant kernel.
+aa, bb, cc0, dd = s.symbols("a b c d", real=True)
+V = (aa, bb, cc0, dd)
+rotvec = (-cc0, -dd, aa, bb)
+u = aa**2 + cc0**2
+vv = bb**2 + dd**2
+w = aa*bb + cc0*dd
+q = aa*dd - bb*cc0
+quartic_basis = (u**2, vv**2, u*vv, w**2, u*w, vv*w, q*u, q*vv, q*w)
+assert all(s.expand(sum(s.diff(g, vi) * ri for vi,ri in zip(V,rotvec))) == 0
+           for g in quartic_basis)
+all4 = monomials(V, 4)
+Lie = s.zeros(len(all4))
+for j, g in enumerate(all4):
+    deriv = s.expand(sum(s.diff(g, vi) * ri for vi,ri in zip(V,rotvec)))
+    p = s.Poly(deriv, *V)
+    for i, m in enumerate(all4):
+        Lie[i,j] = p.coeff_monomial(m)
+assert len(all4) - Lie.rank() == 9
+canmat = s.Matrix([[s.Poly(g, *V).coeff_monomial(m) for g in quartic_basis]
+                   for m in all4])
+assert canmat.rank() == 9
+record("left_so2_invariant_quartic_dimension_and_complete_basis")
+
+
+# Hessian and branch identities for the full nine-parameter invariant basis
+# in the simultaneous-rotation complex coordinates z=i+I*j,w=k+I*l.
+i0, j0, k0, l0 = s.symbols("i j k l", real=True)
+z2 = i0**2 + j0**2
+w2 = k0**2 + l0**2
+rr = i0*k0 + j0*l0
+ss = j0*k0 - i0*l0
+al, be, ga, dr, di, er, ei, hr, hi = s.symbols(
+    "al be ga dr di er ei hr hi", real=True)
+Finv = (al*z2**2 + be*z2*w2 + ga*w2**2 + dr*(rr**2-ss**2)
+        - 2*di*rr*ss + er*z2*rr - ei*z2*ss + hr*w2*rr - hi*w2*ss)
+H_I = s.hessian(Finv, (i0,j0,k0,l0)).subs({i0:1,j0:0,k0:0,l0:0})
+H_target = s.Matrix([[12*al,0,3*er,3*ei],
+                      [0,4*al,-ei,er],
+                      [3*er,-ei,2*(be+dr),2*di],
+                      [3*ei,er,2*di,2*(be-dr)]])
+assert H_I == H_target
+
+f, g = s.symbols("f g", real=True)
+Fplus = s.expand(Finv.subs({al:f, be:-2*f, ga:f+g, dr:0, di:0, er:0, ei:0}))
+qzw = z2 - w2
+z(Fplus - (f*qzw**2 + g*w2**2 + w2*(hr*rr-hi*ss)))
+z(s.diff(Fplus,i0).subs(i0,0) - w2*(hr*k0+hi*l0))
+
+# In the zero-value branch, the determinant of the k,l Hessian vanishes and
+# positivity gives beta>=0, |delta|=beta.  Set its phase to the real axis and
+# check the two rank-one second-variation equations exactly.
+Fzero0 = be*z2*w2 + ga*w2**2 + dr*(rr**2-ss**2) - 2*di*rr*ss + w2*(hr*rr-hi*ss)
+block = s.hessian(Fzero0, (k0,l0)).subs({i0:1,j0:0,k0:0,l0:0})
+assert block == s.Matrix([[2*(be+dr),2*di],[2*di,2*(be-dr)]])
+Fzero = s.expand(Fzero0.subs({dr:be, di:0, hi:0}))
+Z,W,tt,sgn,hpar = s.symbols("Z W t sigma h", real=True)
+line = s.expand(Fzero.subs({i0:sgn*tt,j0:Z,k0:tt,l0:W,hr:hpar}))
+d2 = s.diff(line,tt,2).subs(tt,0)
+d2target = 2*((4*be*sgn+hpar)*Z*W + (2*ga+hpar*sgn)*W**2)
+z(d2-d2target)
+assert s.solve([4*be+hpar, -4*be+hpar], (be,hpar), dict=True) == [{be:0,hpar:0}]
+record("invertible_background_hessian_and_both_low_rank_branches")
+
+
+# Rank-one distinguished-background branch, retaining all orientation-odd
+# coefficients.  Zero diagonal rows in a PSD matrix force these entries away.
+lam0, L, M0, N = s.symbols("lam L M N", real=True)
+Fdeg = (f*u**2 + lam0*q**2 + q*(L*u+M0*vv+N*w))
+Hdeg = s.hessian(Fdeg,V)
+H_e12 = Hdeg.subs({aa:0,bb:1,cc0:0,dd:0})
+H_e11 = Hdeg.subs({aa:1,bb:0,cc0:0,dd:0,M0:0,N:0})
+assert H_e12 == s.Matrix([[0,0,-N,M0],[0,0,-3*M0,0],[-N,-3*M0,2*lam0,0],[M0,0,0,0]])
+assert H_e11 == s.Matrix([[12*f,0,0,3*L],[0,0,-L,0],[0,-L,4*f,0],[3*L,0,0,2*lam0]])
+record("rank_one_background_hessian_rows_retain_all_odd_coefficients")
+
+
+# Exceptional three-rank-one configuration and its compatible three-wave
+# gradient.  The chosen exceptional quartic is det^2+|w|^4, with w=0 on I.
+R1 = s.Matrix([[0,1],[0,0]])
+R2 = s.Matrix([[0,0],[1,0]])
+R3 = s.Matrix([[1,1],[-1,-1]])
+Rs = (R1,R2,R3)
+vecs = [s.Matrix([Q[0,0],Q[0,1],Q[1,0],Q[1,1]]) for Q in Rs]
+assert all(Q.det() == 0 and s.trace(Q) == 0 for Q in Rs)
+assert s.Matrix.hstack(*vecs).rank() == 3
+C3wave = sum((v*v.T/2 for v in vecs), s.zeros(4))
+Jdet = s.Matrix([[0,0,0,s.Rational(1,2)],
+                 [0,0,-s.Rational(1,2),0],
+                 [0,-s.Rational(1,2),0,0],
+                 [s.Rational(1,2),0,0,0]])
+assert C3wave.rank() == 3 and s.trace(Jdet*C3wave) == 0
+det0 = q
+ell4 = ((aa-dd)**2 + (cc0+bb)**2) / 4
+Fexception = det0**2 + ell4**2
+Hexception = s.hessian(Fexception,V)
+Havg = sum((Hexception.subs(dict(zip(V, tuple(Q))))/2 for Q in Rs), s.zeros(4))
+Ivec = s.Matrix([1,0,0,1])
+assert Havg * Ivec == s.zeros(4,1) and Havg.rank() == 3
+record("exceptional_rank_three_moment_has_singular_averaged_hessian",
+       {"rank_C":C3wave.rank(),"rank_H":Havg.rank(),"kernel_vector":list(Ivec)})
+
+
+# Exact trig averages for the compatible heat-increase example.  This uses
+# independent moments of sin/cos rather than Fourier data or the source script.
+sx,cx,sy,cy,A0,B0,C0 = s.symbols("sx cx sy cy A B C", real=True)
+trig_ring = s.groebner((sx**2 + cx**2 - 1, sy**2 + cy**2 - 1),
+                        sx, cx, sy, cy, order="lex", domain="EX")
+
+def ztrig(expr):
+    rem = trig_ring.reduce(s.expand(expr))[1]
+    assert s.expand(rem) == 0, s.factor(rem)
+
+def trig_moment(ps, pc):
+    if ps % 2 or pc % 2:
+        return s.S.Zero
+    m, n = ps//2, pc//2
+    return s.Rational(math.factorial(2*m)*math.factorial(2*n),
+                      4**(m+n)*math.factorial(m)*math.factorial(n)*math.factorial(m+n))
+
+
+def torus_average(poly):
+    p = s.Poly(s.expand(poly), sx,cx,sy,cy)
+    ans = s.S.Zero
+    for powers, coef in p.terms():
+        ans += coef * trig_moment(powers[0],powers[1]) * trig_moment(powers[2],powers[3])
+    return s.factor(ans)
+
+
+Gheat = s.Matrix([[-A0*sx,-A0*sy],
+                  [-2*sx*(B0*cx+C0*cy),-2*sy*(B0*cy+C0*cx)]])
+mean_det_sq = torus_average(Gheat.det()**2)
+mean_norm4 = torus_average(sum(e*e for e in Gheat)**2)
+z(mean_det_sq - A0**2*(C0-B0)**2/2)
+z(mean_norm4 - (s.Rational(5,4)*A0**4 + 2*A0**2*B0**2 + 4*A0**2*C0**2
+                + s.Rational(5,4)*B0**4 + 10*B0**2*C0**2 + 5*C0**4))
+dt = lambda h: s.factor((-A0*s.diff(h,A0)-4*B0*s.diff(h,B0)-2*C0*s.diff(h,C0))
+                        .subs({A0:1,B0:1,C0:s.Rational(4,3)}))
+d_det = dt(mean_det_sq)
+d_norm = dt(mean_norm4)
+eta = s.Rational(1,10000)
+d_energy = s.factor(d_det+eta*d_norm)
+assert d_det == s.Rational(1,3)
+assert d_norm == -s.Rational(34621,81)
+assert d_energy == s.Rational(235379,810000) and d_energy > 0
+record("exact_compatible_heat_increase_and_derivative_at_zero",
+       {"mean_det_squared":str(mean_det_sq),"mean_norm_fourth":str(mean_norm4),
+        "derivative_det_squared":str(d_det),"derivative_norm_fourth":str(d_norm),
+        "eta":str(eta),"total_derivative":str(d_energy)})
+
+
+# Exact near-singular deflation path sent for adversarial review.  The fields
+# are gradients of fixed trigonometric potentials; no sampled grid is used.
+eps = s.symbols("eps", real=True, nonzero=True)
+Xbase = s.Matrix([[cx*cy,-sx*sy],[sx*sy,-cx*cy]])
+qbase = s.expand(Xbase.det())
+Yfield = s.Matrix([[-(cx**2-sx**2)/2,0],[0,-(cy**2-sy**2)/2]])
+Zfield = s.Matrix([[0,cy],[cx,0]])
+XnoZ = Xbase + eps*Yfield
+Xfull = XnoZ + eps**2*Zfield
+ztrig(qbase + (cx**2-sx**2+cy**2-sy**2)/2)
+ztrig(s.expand(s.trace(XnoZ) - eps*qbase))
+ztrig(s.expand(s.trace(Xfull) - eps*qbase))
+q_noZ = s.expand(XnoZ.det())
+q_full = s.expand(Xfull.det())
+z(torus_average(qbase))
+z(torus_average(q_noZ))
+z(torus_average(q_full))
+delta_noZ = s.factor(q_noZ - qbase)
+delta_full = s.factor(q_full - qbase)
+gap_noZ = s.factor(torus_average(delta_noZ**2))
+gap_full = s.factor(torus_average(delta_full**2))
+leading_noZ = s.factor(s.limit(gap_noZ/eps**2, eps, 0))
+leading_full = s.factor(s.limit(gap_full/eps**2, eps, 0))
+assert leading_noZ > 0 and leading_full > 0
+
+# The background B=-I/eps produces det(B+X)=eps^-2-q0+q(X), hence the same
+# exact gaps as above because E q(X)=E q0=0.
+background = -s.eye(2)/eps
+det_background = s.factor((background + Xfull).det())
+ztrig(det_background - (eps**-2 - qbase + q_full))
+det_background_noZ = s.factor((background + XnoZ).det())
+ztrig(det_background_noZ - (eps**-2 - qbase + q_noZ))
+gap_direct_full = s.factor(torus_average(det_background**2) - eps**-4)
+gap_direct_noZ = s.factor(torus_average(det_background_noZ**2) - eps**-4)
+z(gap_direct_full - gap_full)
+z(gap_direct_noZ - gap_noZ)
+
+# Covariances separate exact singular and positive-definite cases.  The
+# determinant Hessian is invertible, and H(q^2)=2 Qdet C Qdet because E q=0.
+def covariance(Mfield):
+    vv0 = (Mfield[0,0],Mfield[0,1],Mfield[1,0],Mfield[1,1])
+    return s.Matrix(4,4,lambda r,c: torus_average(vv0[r]*vv0[c]))
+
+C_noZ = covariance(XnoZ)
+C_full = covariance(Xfull)
+C_base = covariance(Xbase)
+det_C_full = s.factor(C_full.det())
+assert C_noZ.det() == 0 and det_C_full != 0
+rank3_minor = next(
+    (s.factor(C_noZ.extract(rows, cols).det())
+     for rows in itertools.combinations(range(4),3)
+     for cols in itertools.combinations(range(4),3)
+     if s.factor(C_noZ.extract(rows, cols).det()) != 0), None)
+assert rank3_minor is not None
+Qdet = s.hessian(q,(aa,bb,cc0,dd))
+H_noZ = 2*Qdet*C_noZ*Qdet
+H_full = 2*Qdet*C_full*Qdet
+H_base = 2*Qdet*C_base*Qdet
+assert s.factor(H_noZ.det()) == 0 and s.factor(H_full.det()) != 0
+assert s.factor(H_noZ.rank()) == 3 and H_full.rank() == 4
+assert C_base.rank() == 2 and H_base.rank() == 2
+
+# Adding eps^4 |A|^4 makes the averaged Hessian positive definite even on the
+# rank-three covariance path: D^2|A|^4 = 8 vv^T + 4|v|^2 I.
+H_variant = H_noZ + eps**4*(8*C_noZ + 4*s.trace(C_noZ)*s.eye(4))
+trace_C_noZ = s.factor(s.trace(C_noZ))
+assert trace_C_noZ != 0 and s.factor(H_variant.det()) != 0
+
+# At epsilon=0 the exact minimized relative energy is c=1/4 because b=0.
+qbase_sq = s.factor(torus_average(qbase**2))
+gradq = s.Matrix([s.diff(q,xi) for xi in (aa,bb,cc0,dd)])
+Xbase_vec = s.Matrix([Xbase[0,0],Xbase[0,1],Xbase[1,0],Xbase[1,1]])
+bbase = s.Matrix([torus_average(2*qbase*g0) for g0 in Qdet*Xbase_vec])
+assert qbase_sq == s.Rational(1,4) and bbase == s.zeros(4,1)
+
+# For F_eps=q^2+eps^4|A|^4, the extra Jensen gap is nonnegative by convexity.
+# At B=-I/eps it is O(eps^-2) before multiplication by eps^4, hence the full
+# test gap still tends to zero. Compute its exact rational function.
+norm2_background = sum(e*e for e in background)
+norm2_shifted = sum(e*e for e in (background + XnoZ))
+norm4_gap_at_B = s.factor(torus_average(norm2_shifted**2) - norm2_background**2)
+weighted_norm_gap = s.factor(eps**4 * norm4_gap_at_B)
+assert s.limit(weighted_norm_gap, eps, 0) == 0
+record("exact_near_singular_deflation_sequence_and_attained_singular_face",
+       {"det_gap_noZ":str(gap_noZ),"det_gap_full_rank_path":str(gap_full),
+        "leading_gap_over_eps2_noZ":str(leading_noZ),
+        "leading_gap_over_eps2_full":str(leading_full),
+        "rank_C_noZ_generic":3,"rank_H_noZ_generic":3,
+        "rank_C_full_generic":4,"rank_H_full_generic":4,
+        "det_C_full":str(det_C_full),
+        "rank3_minor_noZ":str(rank3_minor),
+        "rank_C_at_eps0":2,"rank_H_at_eps0":2,
+        "rank_H_variant_generic":4,
+        "trace_C_noZ":str(trace_C_noZ),
+        "weighted_norm4_gap_at_B":str(weighted_norm_gap),
+        "singular_face_minimum_at_eps0":str(qbase_sq),
+        "b_at_eps0":list(bbase)})
+
+
+# Finite-group averaging for arbitrary real output matrices and input tensors.
+Rot = s.Matrix([[0,-1],[1,0]])
+Ref = s.diag(1,-1)
+D4 = [Rot**j for j in range(4)] + [Ref*Rot**j for j in range(4)]
+om = s.Matrix(2,2,s.symbols("m0:4", real=True))
+avg_out = sum((g*om*g.T for g in D4),s.zeros(2))/len(D4)
+assert avg_out == s.trace(om)*s.eye(2)/2
+p00,p01,p11 = s.symbols("p00 p01 p11", real=True)
+S = s.Matrix([[p00,p01],[p01,p11]])
+avg_in = sum((g.T*S*g for g in D4),s.zeros(2))/len(D4)
+assert avg_in == s.trace(S)*s.eye(2)/2
+record("dihedral_average_removes_output_skew_and_input_anisotropy")
+
+
+# A small Fourier compatibility check for L=span{e11,e22}: determinant is
+# indefinite on L, its two rank-one generators have independent input factors,
+# and no mode with a non-axis integer frequency has a nonzero gradient in L.
+from itertools import product
+mode_checks = []
+for k1 in range(-3,4):
+    for k2 in range(-3,4):
+        if (k1,k2) == (0,0):
+            continue
+        # An output vector y gives gradient mode y tensor k.  Membership in L
+        # requires both off-diagonal coordinates to vanish.
+        y1,y2 = s.symbols("y1 y2")
+        eqs = (y1*k2, y2*k1)
+        matm,_ = s.linear_eq_to_matrix(eqs,(y1,y2))
+        rankm = matm.rank()
+        expected_nonzero = (k1 == 0 or k2 == 0)
+        assert (rankm < 2) == expected_nonzero
+        mode_checks.append((k1,k2,rankm))
+record("compatible_fourier_modes_select_only_the_two_null_line_directions",
+       {"tested_nonzero_integer_frequencies":len(mode_checks)})
+
+
+(OUT / "independent_checks.json").write_text(json.dumps(R, indent=2, default=str) + "\n")
+print(f"ALL {len(R)} FRESH EXACT CHECK GROUPS PASSED", flush=True)

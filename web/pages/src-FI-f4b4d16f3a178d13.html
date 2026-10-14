@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — uncertainty.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/uncertainty.py">Original bytes</a></p><pre>&quot;&quot;&quot;Conservative global uncertainty from finite pairwise/degree-two query errors.
+This propagates declared deterministic oracle errors, not a laboratory validation.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb,log,ceil
+from pathlib import Path
+import json
+ROOT=Path(__file__).parent
+
+def exp_interval(x,N=32):
+    assert x&gt;=0 and x&lt;N+2
+    term=F(1);s=term
+    for k in range(1,N+1):term*=x/k;s+=term
+    nex=term*x/(N+1)
+    return s,s+nex/(1-x/F(N+2))
+
+def propagate(row,energy_error=F(1,10**6),balanced_error=F(1,10**8),amin=F(1,200),kappa_rel=F(1,500),n=18):
+    # All pair terms may be uncertain, including nominal zero interactions.
+    Omega=(2*n+6*comb(n,2))*energy_error
+    amp=2*(1+2*(n-1)+4*comb(n-1,2))
+    eta=max(amp*balanced_error/amin,kappa_rel)
+    assert eta&lt;1
+    elo,ehi=exp_interval(2*Omega)
+    lower=F(row[&#x27;lower&#x27;])/ehi/(1+eta);upper=F(row[&#x27;upper&#x27;])*ehi/(1-eta)
+    return dict(lower=str(lower),upper=str(upper),lower_float=float(lower),upper_float=float(upper),mass_log_oscillation=str(Omega),clock_relative_envelope=str(eta),attempt_absolute_error_amplifier=amp)
+
+def main():
+    a=json.load(open(ROOT/&#x27;pcg_primary_r3.json&#x27;));b=json.load(open(ROOT/&#x27;unknown_support_rare.json&#x27;))
+    aa=propagate(a);bb=propagate(b)
+    ratio=F(b[&#x27;lower&#x27;])/F(a[&#x27;upper&#x27;]);robust=F(bb[&#x27;lower&#x27;])/F(aa[&#x27;upper&#x27;])
+    tr=json.load(open(ROOT/&#x27;unknown_support_rare_transcript.json&#x27;));rates=[F(x) for x in tr[&#x27;balanced_rates&#x27;].values()]
+    M=len(rates);confidence=0.05;absolute_error=1e-8
+    # Sample each clamped-context first-flip dwell repeatedly. If |samplemean/true-1|&lt;=e,
+    # inverse-mean rate estimate has relative error&lt;=e/(1-e). Set e to meet absolute bound.
+    expected_time=0;sample_count=0
+    for q in rates:
+        eps=absolute_error/(float(q)+absolute_error)
+        m=ceil(4*log(2*M/confidence)/(eps*eps));sample_count+=m;expected_time+=m/float(q)
+    out={&#x27;exact_decision_ratio_lower&#x27;:str(ratio),&#x27;exact_decision_ratio_lower_float&#x27;:float(ratio),&#x27;robust_A&#x27;:aa,&#x27;robust_B&#x27;:bb,&#x27;robust_decision_ratio_lower&#x27;:str(robust),&#x27;robust_decision_ratio_lower_float&#x27;:float(robust),&#x27;assumed_dimensionless_energy_error&#x27;:&#x27;1e-6&#x27;,&#x27;assumed_balanced_rate_absolute_error&#x27;:&#x27;1e-8&#x27;,&#x27;minimum_reference_attempt&#x27;:&#x27;1/200&#x27;,&#x27;measurement_accounting&#x27;:{&#x27;number_of_distinct_contexts&#x27;:M,&#x27;confidence_failure_bound&#x27;:confidence,&#x27;conservative_dwell_samples&#x27;:str(sample_count),&#x27;expected_total_dwell_model_time&#x27;:expected_time,&#x27;includes_reset_or_clamp_cost&#x27;:False,&#x27;scope&#x27;:&#x27;upper-bound design based on independent exponential dwells; not actual experiments or a lower bound&#x27;}}
+    json.dump(out,open(ROOT/&#x27;uncertainty_results.json&#x27;,&#x27;w&#x27;),indent=2)
+    print({k:v for k,v in out.items() if k not in [&#x27;robust_A&#x27;,&#x27;robust_B&#x27;,&#x27;exact_decision_ratio_lower&#x27;,&#x27;robust_decision_ratio_lower&#x27;]});print(&#x27;A&#x27;,aa[&#x27;lower_float&#x27;],aa[&#x27;upper_float&#x27;],&#x27;B&#x27;,bb[&#x27;lower_float&#x27;],bb[&#x27;upper_float&#x27;])
+if __name__==&#x27;__main__&#x27;:main()
+</pre></body></html>

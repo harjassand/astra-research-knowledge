@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — query_tree_exact_replay.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/synthesis/escape/query_tree_exact_replay.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational replay of the shared-tree acquisition query decoder.&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction
+import json, math, random
+from pathlib import Path
+
+ROOT = Path(__file__).parent
+OUT = ROOT / &quot;replay&quot; / &quot;query_tree_exact_replay.json&quot;
+
+def tree(lo, hi):
+    if hi-lo == 1:
+        return (1 &lt;&lt; lo, None, None)
+    mid=(lo+hi)//2
+    L,R=tree(lo,mid),tree(mid,hi)
+    return (L[0]|R[0],L,R)
+
+def boundaries(mask,n,edges):
+    return sum(((mask&gt;&gt;u)&amp;1) != ((mask&gt;&gt;v)&amp;1) for u,v in edges)
+
+def exact_weight(mask,n,edges,t,r):
+    return r**mask.bit_count() * t**(n-boundaries(mask,n,edges))
+
+def rational_sqrt(x):
+    a=math.isqrt(x.numerator); b=math.isqrt(x.denominator)
+    if a*a != x.numerator or b*b != x.denominator:
+        raise ValueError(&quot;not a perfect rational square&quot;)
+    return Fraction(a,b)
+
+def learn(order,t=Fraction(3,2),r=Fraction(5,3)):
+    n=len(order); V=(1&lt;&lt;n)-1
+    edges={tuple(sorted((order[j],order[(j+1)%n]))) for j in range(n)}
+    calls=[]; cache={}
+    def W(mask):
+        if mask not in cache:
+            cache[mask]=exact_weight(mask,n,edges,t,r)
+            calls.append(mask)
+        return cache[mask]
+    # Bootstrap cache: empty, all singleton weights, full, and V\{0}.
+    for mask in [0,V,*[1&lt;&lt;j for j in range(n)],V^1]: W(mask)
+    root_ratio=W(V)*W(0)/(W(V^1)*W(1))
+    q=rational_sqrt(root_ratio)
+    recovered=set(); contrasts=0; visited=0
+    def recurse(i,node,L,R,k):
+        nonlocal contrasts,visited
+        visited+=1
+        if L is None:
+            assert node.bit_count()==1 and k==1
+            j=node.bit_length()-1
+            recovered.add(tuple(sorted((i,j))))
+            return
+        if node &amp; (1&lt;&lt;i):
+            A,B=(R,L) if L[0] &amp; (1&lt;&lt;i) else (L,R)
+        else:
+            A,B=L,R
+        a=A[0]
+        ratio=W(a|(1&lt;&lt;i))*W(0)/(W(a)*W(1&lt;&lt;i))
+        candidates=[0,1,2]
+        ms=[m for m in candidates if q**m==ratio]
+        assert len(ms)==1, (i,a,ratio,q)
+        ka=ms[0]; kb=k-ka
+        assert 0&lt;=kb&lt;=2
+        contrasts+=1
+        if ka: recurse(i,a,A[1],A[2],ka)
+        if kb: recurse(i,B[0],B[1],B[2],kb)
+    T=tree(0,n)
+    for i in range(n): recurse(i,V,T[1],T[2],2)
+    assert recovered==edges, (recovered^edges)
+    return {&quot;n&quot;:n,&quot;t&quot;:str(t),&quot;r&quot;:str(r),&quot;weight_queries_unique&quot;:len(cache),
+            &quot;seed_unique&quot;:len({0,V,V^1,*[1&lt;&lt;j for j in range(n)]}),
+            &quot;pairwise_baseline&quot;:1+n+n*(n-1)//2,&quot;contrast_calls&quot;:contrasts,
+            &quot;positive_nodes&quot;:visited,&quot;cycle_edges_recovered&quot;:len(recovered),
+            &quot;exact_weight_cache_masks&quot;:sorted(cache)}
+
+def run():
+    # Verify one canonical ring and a deterministic sample of random relabelings.
+    rng=random.Random(0xF4E5CA9E)
+    cases=[list(range(24))]
+    for _ in range(100):
+        p=list(range(24)); rng.shuffle(p); cases.append(p)
+    rows=[learn(p) for p in cases]
+    counts=[x[&quot;weight_queries_unique&quot;] for x in rows]
+    source_like_rng=random.Random(0x1000)
+    source_like_orders=[]
+    for _ in range(25):
+        p=list(range(24));source_like_rng.shuffle(p);source_like_orders.append(p)
+    source_like=[learn(p,Fraction(1000),Fraction(1)) for p in source_like_orders]
+    source_like_counts=[x[&quot;weight_queries_unique&quot;] for x in source_like]
+    lq=math.log(3/2); delta=lq/10
+    # Adversarial deterministic error bound for m=0,1,2.
+    maxdevs=[]
+    a=2*lq
+    for k in (0,1,2):
+        maxdevs.append((4*delta+2*k*delta)/(a-2*delta))
+    result={&quot;claim&quot;:&quot;Exact rational weight-oracle replay; all cache entries are unique subset masks; cycle recovered exactly.&quot;,
+      &quot;n&quot;:24,&quot;sample_count&quot;:len(rows),&quot;seed&quot;:0xF4E5CA9E,
+      &quot;counts&quot;:{&quot;min&quot;:min(counts),&quot;median&quot;:sorted(counts)[len(counts)//2],&quot;max&quot;:max(counts),&quot;natural_order&quot;:rows[0][&quot;weight_queries_unique&quot;],&quot;pairwise_baseline&quot;:301},
+      &quot;source_parameter_fixture&quot;:{&quot;t&quot;:&quot;1000&quot;,&quot;r&quot;:&quot;1&quot;,&quot;samples&quot;:len(source_like),&quot;all_recovered_exactly&quot;:all(x[&quot;cycle_edges_recovered&quot;]==24 for x in source_like),&quot;unique_masks&quot;:{&quot;min&quot;:min(source_like_counts),&quot;median&quot;:sorted(source_like_counts)[len(source_like_counts)//2],&quot;max&quot;:max(source_like_counts)}},
+      &quot;all_recovered_exactly&quot;:all(x[&quot;cycle_edges_recovered&quot;]==24 for x in rows),
+      &quot;canonical_case&quot;:rows[0],
+      &quot;finite_error_check&quot;:{&quot;assumption&quot;:&quot;Each queried dimensionless energy has deterministic absolute error at most delta; t &gt;= t_min &gt; 1.&quot;,&quot;delta_over_log_t&quot;:0.1,&quot;log_q_error_bound&quot;:2*delta,&quot;candidate_error_bounds_k0_k1_k2&quot;:maxdevs,&quot;strictly_below_half&quot;:all(d&lt;0.5 for d in maxdevs),&quot;generic_sufficient_threshold&quot;:&quot;delta &lt; log(t_min)/9; the proposed delta &lt; log(t_min)/10 is stricter.&quot;},
+      &quot;limitations&quot;:[&quot;This validates the algebra and decoder under the promised homogeneous degree-2 cycle family only.&quot;,&quot;A finite set of queried configurations does not establish that a physical energy oracle has no higher-order terms.&quot;,&quot;Oracle mask-call counts omit preparation/calibration, physical readout, arithmetic bit costs, and all-source uncertainty unless explicitly included elsewhere.&quot;]}
+    OUT.write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+    print(json.dumps(result,indent=2))
+if __name__==&quot;__main__&quot;:run()
+</pre></body></html>

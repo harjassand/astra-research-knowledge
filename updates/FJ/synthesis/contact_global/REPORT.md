@@ -1,0 +1,244 @@
+# Full-background near-contact synthesis
+
+## Status
+
+I did not prove a uniform near-contact Jensen inequality for every affine background, and I did not find a compatible negative gap. I derived an exact conditional all-background theorem and isolated the missing estimate: control of the residual cubic after eliminating the positive background block, relative to the *reduced* Schur denominator. Exact compatible examples show why rank-three contact Hessian alone does not supply that control. One example has a nonzero resonant cubic, anisotropic frequencies, covariance rank three, and a strictly positive full-background gap. A separate concentration construction shows that near-contact positivity cannot be proved by first bounding the optimizing background uniformly.
+
+All new claims below are internal derivations or exact finite checks. They do not resolve the full nine-coefficient quasiconvexity implication or establish external correctness.
+
+## 1. Exact all-background reduction
+
+Let \(F\) be a rank-one-convex homogeneous quartic, \(X=D\phi\) a centered compatible gradient, and
+
+\[
+ H=\mathbb E D^2F(X),\qquad b=\mathbb E DF(X),\qquad c=\mathbb E F(X).
+\]
+
+The one-quadric closure gives \(H\succeq0\) and \(b\in\operatorname{ran}H\), so the all-background minimum is
+
+\[
+ \Delta_F(X)=c-\tfrac12 b^T H^\dagger b.
+\]
+
+Fix an acoustic contact \((A,R)\), with \(|R|=1\), and write \(X=sR+Y\), \(Y:R=0\). Put \(W=A^\perp\). In the decomposition \(\mathbb RA\oplus W\), write
+
+\[
+ H=\begin{pmatrix}h&k^T\\k&D\end{pmatrix},\qquad
+ b=\binom{\beta}{\gamma},\qquad
+ h_*=h-k^TD^{-1}k,\qquad \beta_*=\beta-k^TD^{-1}\gamma.
+\]
+
+Whenever \(D\succ0\), the exact minimum is
+
+\[
+ \boxed{\Delta_F(X)=c-\tfrac12\gamma^TD^{-1}\gamma-\tfrac12\frac{\beta_*^2}{h_*}}
+ \tag{1}
+\]
+
+when \(h_*>0\). If \(h_*=0\), range closure forces the reduced numerator to vanish, and the last term is zero. This is the Schur complement that must be controlled to cover all backgrounds.
+
+## 2. Pure-line margin and a conditional theorem
+
+There is a uniform all-background baseline for every rank-one line. For nonzero mean-zero \(s\) and \(a=F(R)>0\), let \(m_j=\mathbb E s^j\). For every \(B\in\mathbb R^{2\times2}\),
+
+\[
+ \mathbb E\,[F(B+sR)-F(B)]\ge a\left(m_4-\frac{2m_3^2}{3m_2}\right)\ge\frac a3m_4. \tag{2}
+\]
+
+For the proof, let \(f(t)=F(B+tR)=at^4+dt^3+et^2+\ell t+c_0\). Rank-one convexity makes \(f''\ge0\) on the real line, hence \(e\ge3d^2/(8a)\). The mean-zero gap is \(am_4+dm_3+em_2\). Minimizing this lower bound over \(d\), then using \(m_3^2\le m_2m_4\), gives (2). This covers arbitrary backgrounds and arbitrary scalar profiles, including concentration.
+
+Here is the extension I can prove once the reduced Hessian is not too flat. Assume \(s\not\equiv0\) and
+
+\[
+ \|Y\|_2\le\delta\|s\|_2,\qquad
+ \|Y\|_4\le\delta\|s\|_4,\qquad
+ h_*=0\quad\text{or}\quad h_*\ge\theta h
+ \tag{3}
+\]
+
+for a fixed \(\theta>0\). Then for sufficiently small \(\delta=\delta(F,A,R,\theta)\),
+
+\[
+ \boxed{\Delta_F(sR+Y)\ge\left(\frac{F(R)}3-C\delta-C'(1+\theta^{-1})\delta^2\right)\|s\|_4^4>0.} \tag{4}
+\]
+
+This is an all-background statement under (3), not a restriction on the minimizing background. Its proof uses the contact estimates in CONTACT_COMPENSATION and the rank-three Hessian at \(R\): \(D^2F(R)\) has kernel exactly \(\mathbb RA\), so on \(W\) it is positive definite. With \(m_2=\mathbb E s^2\), \(m_4=\mathbb E s^4\), and \(\alpha=m_3/(3m_2)\),
+
+\[
+ H_0=m_2D^2F(R),\quad b_0=m_3DF(R),\quad H_0(\alpha R)=b_0.
+\]
+
+The quartic difference estimates and (3) give
+
+\[
+ |c-F(R)m_4|\le C\delta m_4,\quad
+ \|b-b_0\|\le C\delta\sqrt{m_2m_4},\quad
+ \|H-H_0\|\le C\delta m_2.
+\]
+
+Thus \(D\succeq\kappa m_2I\) on \(W\), and \(r=b-H(\alpha R)\) obeys
+
+\[
+ \|r_W\|\le C\delta\sqrt{m_2m_4},\qquad
+ |r_A|=|\beta-\alpha H[A,R]|\le C\delta\sqrt h\sqrt{m_4}.
+\]
+
+The second estimate is where both contact-compensation bounds matter. Exact completion of the square gives
+
+\[
+ \Delta_F(X)=\mathbb E[F(X-\alpha R)-F(-\alpha R)]-\tfrac12 r^TH^\dagger r.
+\]
+
+The first term is at least \(F(R)m_4/3-C\delta m_4\) by (2) and the moment bounds above. Block inversion gives
+
+\[
+ r^TH^\dagger r
+ =r_W^TD^{-1}r_W+\frac{(r_A-k^TD^{-1}r_W)^2}{h_*}
+ \le C\delta^2(1+\theta^{-1})m_4,
+\]
+
+because \(k^TD^{-1}k\le h\) and \(h_*\ge\theta h\). If \(h_*=0\), nullspace closure makes the reduced residual zero. This proves (4).
+
+The extra condition in (3) is not discharged by rank-one Hessian rank three or by either current dossier. The missing estimate is the same formula with \(h_*\) in the denominator and no assumed comparison to \(h\):
+
+\[
+ |r_A-k^TD^{-1}r_W|^2\stackrel{?}{\le}
+ C\delta^2m_4\,h_* .\tag{5}
+\]
+
+The fixed-contact bounds control the numerator against \(h=H[A,A]\). Substituting \(h\) for \(h_*\) is invalid when the soft background rotates during Schur elimination.
+
+## 3. Exact rotating-background controls
+
+All calculations use the fixed non-polyconvex rank-one-convex quartic
+
+\[
+ G=3(u+v-2q)^2+\frac{35}{24}u^2+q^2-\frac52qu,
+ \quad u=a^2+c^2,\;v=b^2+d^2,\;q=ad-bc,
+\]
+
+with the contact \(A=I,R=e_{12}\) and \(P_A(X)=\tfrac12(3a-2d)^2+\tfrac56c^2\), as in the incoming source.
+
+First take the compatible one-frequency field \(X_\epsilon=(e_{12}+\epsilon e_{22})\cos y\). It is a rank-one line whose direction is tilted from the contact direction. Exact moments give \(h=\epsilon^2\), \(h_*=0\), \(b=0\), and
+
+\[
+ \Delta_G(X_\epsilon)=\frac98(1+\epsilon^2)^2>0.
+\]
+
+Now add a much smaller independent mode:
+
+\[
+ X_\epsilon=(e_{12}+\epsilon e_{22})\cos y+\epsilon^2e_{11}\cos x.
+\]
+
+This is a genuine compatible gradient with rank-two covariance and \(H\succ0\). Exact Laurent integration yields
+
+\[
+ h=\epsilon^2+\frac94\epsilon^4,\qquad
+ h_*\sim\frac94\epsilon^4,\qquad
+ \frac{h_*}{h}\longrightarrow0,\qquad b=0,
+\]
+
+and
+
+\[
+ \Delta_G(X_\epsilon)=
+ \frac{107\epsilon^8+304\epsilon^6+168\epsilon^4+144\epsilon^2+72}{64}>0.
+\]
+
+The determinant of \(H\) and its first three leading principal minors have positive exact polynomial coefficients for \(\epsilon>0\). This refutes the proposed shortcut \(h_*\ge\theta h\), even with a positive-definite averaged Hessian and compatible gradients. It does not give a negative Jensen gap.
+
+## 4. A resonant anisotropic near-contact family
+
+The next control retains a true cubic resonance and Hessian flatness. Let \(\epsilon=1/N\), \(N\in\mathbb N\), and use physical frequencies
+
+\[
+ k_1=(1,N),\quad k_2=(2,N),\quad k_3=(3,2N)=k_1+k_2.
+\]
+
+For \(\theta_j=2\pi k_j\cdot(x,y)\), set
+
+\[
+ X_\epsilon=S_1\cos\theta_1+S_2\cos\theta_2+S_3\cos\theta_3,
+\]
+
+where
+
+\[
+ S_1=\begin{pmatrix}\epsilon&1\(3/2)\epsilon^2&(3/2)\epsilon\end{pmatrix},\quad
+ S_2=\begin{pmatrix}2\epsilon&1\\6\epsilon^2&3\epsilon\end{pmatrix},\quad
+ S_3=\begin{pmatrix}(3/2)\epsilon&1\(27/8)\epsilon^2&(9/4)\epsilon\end{pmatrix}.
+\]
+
+Each \(S_j\) has rank one and is realized by the potential mode \(p_j\sin(2\pi k_j\cdot x)/(2\pi k_{j,2})\), with \(p_1=(1,3\epsilon/2)\), \(p_2=(1,3\epsilon)\), \(p_3=(1,9\epsilon/4)\). The phase map \((x,y)\mapsto(k_1\cdot x,k_2\cdot x)\) has nonzero integer determinant (-N), so the two phases are Haar-uniform; \(\theta_3=\theta_1+\theta_2\) is an actual resonance. The covariance has rank three, and \(Y=X-(X:R)R\) has \(L^2\) and \(L^4\) norms \(O(\epsilon)\) relative to \(s=X:R\).
+
+Exact rational Fourier integration gives
+
+\[
+ h=\frac{5295}{256}\epsilon^4,\qquad
+ h_*\sim\frac{74285}{4608}\epsilon^4,\qquad
+ \beta\sim-\frac{15}{8}\epsilon^3,\qquad
+ \beta_*\sim\frac{25}{64}\epsilon^3,
+\]
+
+so the reduced loss is
+
+\[
+ \frac{\beta_*^2}{2h_*}\sim\frac{1125}{237712}\epsilon^2\longrightarrow0.
+\]
+
+Every leading principal minor of \(H\) is a polynomial with nonnegative coefficients and at least one positive coefficient, and the exact optimized gap has a positive-coefficient numerator and denominator for \(\epsilon>0\). Its limit is
+
+\[
+ \Delta_G(X_\epsilon)\longrightarrow\frac{111}{8}>0.
+\]
+
+This experiment is consistent with (5) having a useful compatible-gradient strengthening. It is only one fixed quartic and one finite profile family; it cannot establish the missing uniform theorem.
+
+## 5. Concentration prevents a compact-background proof
+
+The incoming exact localized profile can be scaled by an arbitrary amplitude \(\alpha\) and placed at scale \(\rho\) in a zero-gradient region of the base \(\phi_0=(Mh_0(y),0)\). Its exact profile data are
+
+\[
+ \beta_\psi=\frac{283}{5670},\quad h_\psi=\frac{179}{540},\quad
+ c_\psi=\frac{5951}{58800},\quad
+ \|Y_\psi\|_4^4=\frac{2641}{198450},\quad
+ \|Y_\psi\|_2^2=\frac4{45}.
+\]
+
+The local moments scale as
+
+\[
+ b_\rho=\alpha^3\sqrt\rho\,b_\psi,\qquad
+ H_\rho=M^2H_0+\alpha^2\rho H_\psi,\qquad
+ c_\rho=\frac32M^4+\alpha^4c_\psi.
+\]
+
+The singular base Hessian has kernel \(\mathbb RI\) and zero cubic vector. Exact block inversion therefore gives
+
+\[
+ \lim_{\rho\downarrow0}\Delta_G(D\phi_\rho)
+ =\frac32M^4+\alpha^4\left(\frac{5951}{58800}-\frac{80089}{21313530}\right)
+ =\frac32M^4+\alpha^4\frac{83079989}{852541200}>0,
+\]
+
+while the minimizing background satisfies
+
+\[
+ \sqrt\rho\,B^*_\rho\longrightarrow-\frac{566\alpha}{3759}I.
+\]
+
+The relative transverse \(L^4\) size is exactly
+
+\[
+ \frac{\|Y_\rho\|_4^4}{\|sR\|_4^4}
+ =\left(\frac{\alpha}{M}\right)^4\frac{2641}{99225},
+\]
+
+and the relative \(L^2\) size tends to zero like \(\alpha\sqrt\rho/M\). Choosing \(\alpha/M\) arbitrarily small meets the near-contact norm conditions, yet the optimizer escapes as \(\rho^{-1/2}\). This refutes a uniform compact-background strategy. It does not refute all-background positivity, and the gap stays positive in this family.
+
+## 6. Conclusion and decisive missing step
+
+Rank-three \(D^2F(R)\) yields exactly the positive transverse block needed for Schur elimination. It does not control the scalar Schur complement \(h_*\) relative to \(h\): the rotated-line controls make that ratio zero or arbitrarily small. The incoming cubic estimates control \(\beta\) and \(H[A,R]\) relative to \(h\), and the resonant example shows the desired numerator/denominator scaling in one anisotropic flat family. What remains unproved is a compatible-gradient estimate like (5), stable under the moving Schur direction and concentration.
+
+No determinant-balanced non-gradient law was used as a gradient claim. No negative compatible profile was found. The full quasiconvexity question, uniformity across contacts or integrands, and external mathematical review remain open.

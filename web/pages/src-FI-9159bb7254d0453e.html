@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — audit_extended.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/audit_extended.py">Original bytes</a></p><pre>import json,time
+from fractions import Fraction as F
+from pathlib import Path
+import numpy as np
+from model import fixture,add_context_clock,Compiler,discover_partition,from_transcript
+from kinetic_tomography import acquire_unknown_support,physical_clock
+from audit import replay
+ROOT=Path(__file__).parent
+
+def main():
+    t=time.perf_counter();checks=0;details=[]
+    for name,alter in [(&#x27;unknown_support_rare&#x27;,False),(&#x27;unknown_support_cross&#x27;,True)]:
+        truth=add_context_clock(fixture(B=3,m=6,rarity=3),F(1,100))
+        if alter:
+            nei=set(truth[&#x27;clock_contexts&#x27;][0]);a=min(nei);j=next(j for j in range(1,18) if j not in nei)
+            truth[&#x27;clock_contexts&#x27;][0]=sorted([a,j]);truth[&#x27;clock_tables&#x27;][0]=[truth[&#x27;nu&#x27;][0],truth[&#x27;nu&#x27;][0]/2,truth[&#x27;nu&#x27;][0]/2,truth[&#x27;nu&#x27;][0]]
+        model,tr=acquire_unknown_support(truth)
+        for i in range(18):
+            union=sorted(set(truth[&#x27;clock_contexts&#x27;][i])|set(model[&#x27;clock_contexts&#x27;][i]))
+            for z in range(1&lt;&lt;len(union)):
+                x=sum(((z&gt;&gt;k)&amp;1)&lt;&lt;node for k,node in enumerate(union))
+                assert physical_clock(truth,i,x)==physical_clock(model,i,x);checks+=1
+        details.append(replay(name));checks+=2
+    details.append(replay(&#x27;matched_tensor&#x27;));checks+=2
+    # Compare main baseline and context models after identical unknown-support scans.
+    truth=fixture(B=3,m=6,rarity=3);model,tr=acquire_unknown_support(truth)
+    json.dump(tr,open(ROOT/&#x27;unknown_support_baseline_transcript.json&#x27;,&#x27;w&#x27;),indent=2)
+    a=json.load(open(ROOT/&#x27;unknown_support_rare_transcript.json&#x27;))
+    assert tr[&#x27;weights&#x27;]==a[&#x27;weights&#x27;];checks+=1
+    for i in range(18):assert tr[&#x27;balanced_rates&#x27;][f&#x27;{i}:0&#x27;]==a[&#x27;balanced_rates&#x27;][f&#x27;{i}:0&#x27;];checks+=1
+    details.append(replay(&#x27;pcg_primary_r3&#x27;,&#x27;unknown_support_baseline&#x27;));checks+=2
+    # Prove non-invariance of the degree-one spin space by an exact nonzero
+    # higher-degree Walsh coefficient of L sigma_i, using only a local table.
+    nonlinear=None
+    for i in range(18):
+        nei=sorted(j if i==a else a for a,j in truth[&#x27;edges&#x27;] if i==a or i==j)
+        support=[i]+nei;vals=[]
+        for z in range(1&lt;&lt;len(support)):
+            xi=z&amp;1;ratio=truth[&#x27;fields&#x27;][i]**(1-2*xi)
+            for k,j in enumerate(nei):
+                tedge=truth[&#x27;edges&#x27;][tuple(sorted((i,j)))];ratio*=1/tedge if xi==((z&gt;&gt;(k+1))&amp;1) else tedge
+            q=truth[&#x27;nu&#x27;][i]*ratio/(1+ratio);vals.append(2*(2*xi-1)*q)
+        for mask in range(1,1&lt;&lt;len(support)):
+            if mask.bit_count()&lt;2:continue
+            coef=sum(v*(-1 if ((z&amp;mask).bit_count()%2) else 1) for z,v in enumerate(vals))/len(vals)
+            if coef:
+                nonlinear={&#x27;coordinate&#x27;:i,&#x27;support&#x27;:support,&#x27;Walsh_mask&#x27;:mask,&#x27;degree&#x27;:mask.bit_count(),&#x27;exact_coefficient&#x27;:str(coef)};break
+        if nonlinear:break
+    assert nonlinear is not None;checks+=1
+    out={&#x27;exact_assertions&#x27;:checks,&#x27;replays&#x27;:details,&#x27;nonclosed_single_spin_space_witness&#x27;:nonlinear,&#x27;seconds&#x27;:time.perf_counter()-t}
+    json.dump(out,open(ROOT/&#x27;extended_audit_results.json&#x27;,&#x27;w&#x27;),indent=2);print(json.dumps(out,indent=2))
+if __name__==&#x27;__main__&#x27;:main()
+</pre></body></html>

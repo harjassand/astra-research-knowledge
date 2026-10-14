@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — cross_implementation_check.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/synthesis/spectral/analysis/cross_implementation_check.py">Original bytes</a></p><pre>&quot;&quot;&quot;Compare the independent global matrix with the safe-copy source recursion.&quot;&quot;&quot;
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+REPLAY = HERE.parent / &quot;replay&quot; / &quot;producer_copy&quot;
+sys.path.insert(0, str(HERE))
+from independent_checks import SEQ_A, SEQ_B, rp_transfer  # noqa: E402
+
+spec = importlib.util.spec_from_file_location(&quot;producer_optical_model&quot;, REPLAY / &quot;optical_model.py&quot;)
+if spec is None or spec.loader is None:
+    raise RuntimeError(&quot;could not load the frozen safe-copy optical model&quot;)
+producer = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(producer)
+
+rows = np.genfromtxt(REPLAY / &quot;reference_spectrum.csv&quot;, delimiter=&quot;,&quot;, names=True)
+nu_grid = rows[&quot;wavenumber_cm1&quot;]
+q_csv = 2e7
+freq_diffs = []
+for name, seq in ((&quot;A&quot;, SEQ_A), (&quot;B&quot;, SEQ_B)):
+    source = producer.rp(nu_grid, q_csv, seq)
+    independent = np.array([rp_transfer(float(nu), q_csv, seq) for nu in nu_grid])
+    delta = np.abs(source - independent)
+    rel = delta / np.maximum(np.maximum(np.abs(source), np.abs(independent)), 1e-300)
+    freq_diffs.append({
+        &quot;sequence&quot;: name,
+        &quot;points&quot;: int(len(nu_grid)),
+        &quot;max_abs_complex_reflection_difference&quot;: float(delta.max()),
+        &quot;max_relative_complex_reflection_difference&quot;: float(rel.max()),
+    })
+
+q_grid = np.geomspace(1.2e6, 4e8, 801)
+static_diffs = []
+for ideal in (False, True):
+    for name, seq in ((&quot;A&quot;, SEQ_A), (&quot;B&quot;, SEQ_B)):
+        source = producer.rp(0, q_grid, seq, ideal=ideal)
+        independent = rp_transfer(0, q_grid, seq, ideal_mass_only=ideal)
+        delta = np.abs(source - independent)
+        rel = delta / np.maximum(np.maximum(np.abs(source), np.abs(independent)), 1e-300)
+        static_diffs.append({
+            &quot;ideal_mass_match&quot;: ideal,
+            &quot;sequence&quot;: name,
+            &quot;points&quot;: int(len(q_grid)),
+            &quot;max_abs_complex_reflection_difference&quot;: float(delta.max()),
+            &quot;max_relative_complex_reflection_difference&quot;: float(rel.max()),
+        })
+
+out = {
+    &quot;status&quot;: &quot;Independent global amplitude matrix compared with unchanged safe-copy source recursion.&quot;,
+    &quot;frequency_spectrum&quot;: {&quot;q_per_m&quot;: q_csv, &quot;rows&quot;: freq_diffs},
+    &quot;static_q_sweep&quot;: {&quot;q_min_per_m&quot;: float(q_grid.min()), &quot;q_max_per_m&quot;: float(q_grid.max()), &quot;rows&quot;: static_diffs},
+}
+(HERE / &quot;cross_implementation_results.json&quot;).write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+print(json.dumps(out, indent=2))
+</pre></body></html>

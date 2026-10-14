@@ -1,0 +1,95 @@
+# Wet liquid–electron transducer evidence audit
+
+**Frozen result, 14 October 2026.** This audit evaluates whether the experimental literature establishes a usable, steady, neutral-liquid/electronic two-port for the proposed pressure-to-current and current-to-volume-flow operation. The short answer is **no**. The strongest primary experiment is real evidence of droplet-motion-induced graphene current, including one zero-longitudinal-bias glycerol trace under a static backgate. It does not measure pressure-driven channel flow, the hydraulic permeance, the reciprocal volume-flow response to voltage, or output work. The 2024 “hydronic generator” paper supplies a theoretical transport model and estimates, not experimental coefficients; it explicitly says its reciprocal liquid-flow response had not been observed. A separate experimentally reciprocal CNT device moves *ions* through an electrolyte, not neutral solvent volume. A 2025 flow-gated transistor provides an experimentally useful flow sensor alternative, but it is a powered sensor and not a reciprocal work converter.
+
+I therefore do **not** certify a usable wet transducer, and the data do **not** decisively falsify the possibility that one can be built. They do falsify the shortcut of treating Lizée et al.’s droplet-normalized electrofluidic conductivity as a measured pressure coefficient C, or treating a short-circuit current trace as an energy-conversion measurement. The appropriate next gate is one same-device, near-equilibrium measurement of all four entries in the (Q,I) versus (ΔP,ΔV) matrix before attempting a dry nonreciprocal network.
+
+## Evidence and scope
+
+| Primary source | What it establishes | What it does not establish |
+|---|---|---|
+| Lizée et al., [Phys. Rev. X 13, 011020 (2023)](https://doi.org/10.1103/PhysRevX.13.011020), main paper and appendices | Electronic current correlated with an oscillating liquid droplet on graphene; similar-order responses with glycerol and silicone oil; a glycerol current trace at zero longitudinal bias with 10 V backgate; controls against several AFM, substrate, and pipette artifacts. | No confined pressure-driven Q or ΔP, measured K, same-condition G, pressure-normalized C, voltage-induced volume flow, loaded output power, or work balance. The zero-bias trace is an oscillatory surface-droplet test, not a steady channel test. |
+| Coquinot, Bocquet & Kavokine, [PNAS 121, e2411613121 (2024)](https://doi.org/10.1073/pnas.2411613121) | A reciprocal transport-matrix theory and a CNT case study with model estimates for C, K, G, load power, and efficiency. | Experimental validation of any of those wet-generator coefficients. The authors state that the predicted reciprocal current-driven flow “has so far never been observed.” |
+| Rabinowitz, Cohen & Shepard, [Nano Lett. (2020), DOI 10.1021/acs.nanolett.9b04552](https://doi.org/10.1021/acs.nanolett.9b04552) | A measured, electrically actuated ion pump with electronic-to-ionic and, in one device, reciprocal ionic-to-electronic Coulomb drag currents. | Neutral-liquid volume flow or the Q,I matrix for a neutral-liquid interface. Ionic current is not volumetric flow Q. |
+| Kang et al., [Sci. Adv. 11, eadx5747 (2025)](https://doi.org/10.1126/sciadv.adx5747) | A flow-gated FET and a two-electrode water-flow signal: 1.3 mV at 0.6 µm/s, reported SNR ~6.5; peak responsivity 1.53×10⁴ V·s/m; response persisting over 25 min; a water-flow-input logic demonstration. | A passive pressure/current power converter or a reciprocal voltage-to-volume-flow coefficient. The FET is electrically biased, and an Ag/AgCl reference electrode sits in the water. |
+
+## Lizée PRX: direct signal, but not a measured hydraulic two-port
+
+The main article uses graphene/graphite flakes from monolayer to about 70 nm thick, with gold contacts typically 10 µm apart and sample resistance reported as 300 Ω–2 kΩ. A tuning-fork AFM displaces a micrometric droplet laterally at an oscillation frequency of order 1 Hz. The liquids include BMIM-PF6 ionic liquid, glycerol (1 Pa·s), and neutral apolar silicone oil (0.1 Pa·s). The reported currents of nA to µA occur with a few µm/s motion and an applied longitudinal voltage for the principal current-density measurements. The paper defines (j=I/D) using droplet diameter (D), then σ_ef = j/v; it reports σ_ef = 2.8–21.6 nA·s/µm² on five samples and σ_ef/ΔV = 0.05–0.2 nA·s/(µm²·mV). It says the current is small or negligible at zero potential drop in those bias sweeps and changes sign with the bias.
+
+The distinct zero-bias datum is in **Fig. 4(f) of the main paper**, not in a separately linked supplemental PDF: a 10 µm glycerol droplet moves on flat graphene with zero longitudinal bias while a 10 V backgate sets the static electronic state. The time plot shows a clear periodic current with several-nA excursions. A visual read gives about ten position cycles over 3.5 s, position near ±6 µm, and current extrema roughly +6.5 and −3 nA. With only that graph read, the drive frequency is about 2.9 Hz, peak speed about 108 µm/s, and half peak-to-peak current scale about 4.8 nA. Applying the authors’ I/(D·v) normalization gives a **rough chart-derived** σ_ef ≈ 0.0044 nA·s/µm². These are plot estimates, not tabulated values; the trace is asymmetric and offset. Most importantly, this normalization remains current per droplet velocity and diameter. It is not C = ∂I/∂ΔP, and neither ΔP nor volumetric flow is measured.
+
+The authors include meaningful controls: no current when the droplet travels over SiO₂ instead of graphene; no current when the pipette moves above a stationary droplet; no material effect from retracting the pipette 300 nm from the graphene while it still drives the droplet; and no visible dependence on tuning-fork amplitude/contact stiffness. Their glycerol and silicone-oil traces support the conclusion that dissolved ions are not necessary for the droplet-motion signal. The paper also reports a strong wrinkle dependence: flat low-corrugation flakes can fall below the detection level under a 20 mV bias, while corrugated flakes amplify the current. The authors attribute the signal principally to phonon-mediated momentum transfer, but leave viscosity dependence for future work.
+
+There are limits for the proposed use. The reported no-bias glycerol trace is driven by an externally oscillated surface droplet, not a pressure-controlled confined flow; its static backgate is 10 V. Inverting the reported typical two-terminal sample-resistance span gives G ≈ 0.5–3.3 mS for those flakes, but resistance/conductance is not reported for the specific zero-bias glycerol/backgate trace, so same-condition G is UNKNOWN. The main paper reports neither ionic conductivity/concentration of the glycerol or oil nor quantitative gate/contact leakage in that zero-bias setup. It does not measure K or pressure-normalized C, Q, pressure work, a voltage-to-flow response, or power into a load. The force required to drag the droplet is not calibrated. At zero longitudinal voltage a current reading alone supplies no output electrical power; a load curve and source-work measurement are absent. Thus the chart establishes a flow-correlated signal, not a generator.
+
+The frequency response also matters: the Appendix C/Fig. 4(h) plots show current decay cutoffs of 2, 0.7, and 0.3 Hz across three samples. The article describes an approximately 1 Hz low-pass effect and associates it with a wetting film and roughly one-second dewetting, while noting sensitivity to cleanliness and contamination. This is a reported dynamic caveat, not proof that the signal cannot reach steady state, but the published experiment does not establish a steady DC coefficient.
+
+Using the paper’s typical 300 Ω–2 kΩ sample-resistance range at an illustrative 300 K gives an equilibrium Johnson-current floor of about 7.4–2.9 pA/√Hz. Against the graph-read ∼4.8 nA amplitude, this gives a Johnson-only amplitude/noise-density scale of about 640–1,650 per √Hz in a 1 Hz equivalent bandwidth; it is **not** the experiment’s SNR because amplifier noise, low-frequency noise, measurement bandwidth, drift, and offsets are not all reported. The calculation is reproduced in `calculations.py` and the output is in `calculation_results.json`.
+
+## Coquinot et al.: useful model estimates, not observed transduction
+
+The PNAS paper writes
+
+\[
+\begin{pmatrix}Q\\ I\end{pmatrix}
+=\begin{pmatrix}K&C_{he}\\C_{he}&G\end{pmatrix}
+\begin{pmatrix}\Delta P\\\Delta V\end{pmatrix}.
+\]
+
+The paper predicts equal cross-coefficients by Onsager symmetry and names the voltage-driven liquid response “quantum osmosis”; it explicitly says this response “has so far never been observed.” Its example is a *modeled* multiwall CNT with radius 40 nm, length 10 µm, and 1 bar pressure drop. It predicts 40 pA short-circuit current and infers an internal resistance near 13 GΩ from a modeled electron density. It further uses a predicted hydroelectronic/classical friction ratio near 25 to obtain Z ≈ 11 and maximum efficiency near 0.53. These are theoretical material/device estimates; no pressure-driven wet CNT generator was tested.
+
+The report calculation reconstructs the model’s scales from only those rounded published values:
+
+\[
+C_{he}^{model}=\frac{40\,\mathrm{pA}}{10^5\,\mathrm{Pa}}=4\times10^{-16}\ \mathrm{A/Pa},
+\qquad
+G^{model}=\frac1{13\,\mathrm{G\Omega}}\approx7.69\times10^{-11}\ \mathrm S.
+\]
+
+The model’s own load-efficiency equation implies Z = C²/(K·G − C²). Therefore, using its Z ≈ 11,
+
+\[
+K^{model}=\frac{C^2}{G}\left(1+\frac1Z\right)\approx2.27\times10^{-21}\ \mathrm{m^3/(s\,Pa)}.
+\]
+
+At 1 bar and ΔV = 0 this implies about 227 fL/s and 23 pW hydraulic input in the model. The implied open-circuit voltage is about 0.52 V but carries no load power. At the matched electrical load R_L ≈ 13 GΩ, the predicted maximum electric output is I_sc²·R_int/4 ≈ 5.2 pW; the model’s efficiency at that maximum-power point is about 0.423, with about 12.3 pW mechanical input. The separately reported 0.53 is the model’s maximum efficiency at a different load/current. A 13 GΩ resistor at 300 K would have a Johnson current-noise density near 1.1 fA/√Hz; this is an ideal model-scale floor, not measured device noise.
+
+These arithmetic reconstructions do not turn modeled coefficients into observations. K, C, G, flow, and work for any actual neutral-liquid device remain UNKNOWN. The friction input is taken from the paper’s theory and supporting citations; I do not assign a favorable friction coefficient to an experimental fixture. The separate PNAS SI PDF was referenced by the full-text XML, but direct publisher retrieval returned 403 and the NCBI binary endpoint served a reCAPTCHA page. The quantitative reconstruction therefore uses the complete main paper only.
+
+## What the related devices add
+
+Rabinowitz et al. demonstrate a real reciprocal *charge* device: one SWCNT has an electronic shell and an ionic core, and the two isolated circuits can drag currents in one another. Under drive sweeps of V_ds and V_ionic with V_gs = 0, Device A in 10 mM KCl shows nonzero short-circuit current in both circuits; the article reports ionic short-circuit currents exceeding 1 nA and coupling through 1 M electrolyte. Device B demonstrates that the ionic-to-electronic drag signal can fall below noise when electronic current dominates. The paper records averages with at least 2 s integration and SNR above 9, samples at 20 kHz, compensates both circuit offsets at zero applied voltages, and reports measurements only before polymer leakage causes orders-of-magnitude current jumps. It also identifies Schottky-contact asymmetry and field-effect gating as significant influences. About one in three plasma treatments opened a tube without a leakage path. This is a valuable two-port measurement/control precedent, but its flux is ionic charge through a KCl-filled nanotube—not neutral-solvent volume flow (Q). It cannot supply K or the proposed voltage-to-volume-flow coefficient.
+
+Kang et al. offer a more obtainable alternate endpoint if the near-term need is **flow sensing**. Their water-flow-gated transistor uses DI water with reported resistivity >1.5×10^7 Ω·cm, a 2D material FET, and an immersed Ag/AgCl gate/reference. They report a 1.3 mV flow-induced electrode-potential shift at 0.6 µm/s, SNR around 6.5, stable response beyond 25 min, a 16.7% graphene-FET current change above 32.8 µm/s, and peak voltage responsivity 1.53×10⁴ V·s/m. The graphene FET time-series readout uses V_DS = 100 mV and V_GS = 0, so the current sensor is externally biased. The FET and logic circuit are electrically powered; the demonstrated output is a flow-modulated gate signal/current, not flow-to-work conversion or voltage-induced Q. The paper describes molecular redistribution as its mechanism, while its main experimental methods establish very low-conductivity water and exclude direct water contact with the Cr/Au current collectors. This is a credible sensor pivot, separate from the neutral-fluid energy-transducer claim.
+
+## Smallest decisive experiment
+
+Build one sealed, two-reservoir microchannel whose wetted wall is the electronically contacted carbon material under test; treat graphene and CNT geometries as separate devices rather than transferring coefficients between them. Keep all metal pads and wiring dry; make ΔP, ΔV, gate, and temperature independently controllable. Choose terminal signs so pQ + VI is power entering the wet device. Measure volume flow using calibrated meniscus/tracer displacement or gravimetry, with pressure-sensor calibration and dead-volume/compliance subtraction. Measure the electronic current with a guarded transimpedance amplifier, and separately measure open-circuit voltage and loaded power. Use one fixed gate state for the coefficient matrix; repeat at V_g = 0 and at the published 10 V setting only as separate, explicitly reported operating points. Quantify gate leakage and wet-interface leakage.
+
+With the same device, fluid, temperature, gate, and low-frequency/steady operating point, fit
+
+\[
+\begin{pmatrix}Q\\I\end{pmatrix}
+=\begin{pmatrix}K&C_{flow\to current}\\C_{voltage\to flow}&G\end{pmatrix}
+\begin{pmatrix}\Delta P\\\Delta V\end{pmatrix}
+\]
+
+from independent small positive and negative ΔP and ΔV steps. Directly acquire K = ∂Q/∂ΔP, G = ∂I/∂ΔV, C_flow→current = ∂I/∂ΔP at ΔV = 0, and C_voltage→flow = ∂Q/∂ΔV at ΔP = 0. Check K > 0, G > 0, and C² ≤ K·G as the passive-matrix condition. Use long holds plus a sweep spanning roughly 0.01–2 Hz: this separates settled response from the reported approximately 1 Hz droplet wetting dynamics. Compare the two cross-coefficients with uncertainty, and measure a load curve and source hydraulic power only after the matrix response is established. Reciprocity is a prediction only in the same near-equilibrium, isothermal, time-reversal-symmetric regime; a transient or nonlinear mismatch does not refute Onsager’s theorem, but it fails the proposed operating contract.
+
+The strongest competitor is classical electrokinetic/ionic coupling: residual ions at the liquid–carbon interface can create streaming current/potential or electroosmotic flow, while immersed references, leakage, and contact gating can make a signal look electronic. Measure fluid conductivity/ionic contamination before and after, and use conductivity titration in the same fixture; monitor ion-reference potential and temperature; reverse pressure and voltage; include a no-carbon dielectric channel, insulated wet contacts, a no-flow electrical sweep, and a matched pressure-driven blank. Run glycerol and silicone oil separately, with fluid properties measured rather than inferred from their names. A second control set should bound strain/piezoresistive response, vibration pickup, and displacement current with dummy resistors and a blocked channel.
+
+Decision rules:
+
+* Matching, nonzero, steady cross-coefficients in a neutral fluid, with verified low leakage and a positive passive matrix, would establish a candidate wet work transducer. It would still not establish quantum friction as the unique microscopic cause or validate a two-cell isolator.
+* A transient-only trace, or a pressure-driven current without measurable voltage-driven volume flow above calibrated detection, fails the claimed steady two-port under those test conditions; it does not falsify reciprocity outside that regime.
+* A response that scales with ionic conductivity, follows the reference-electrode potential, or disappears with ionic/charge controls favors ordinary electrokinetics over an ion-independent neutral-liquid mechanism.
+* If the immediate objective is a robust flow-to-electrical information signal rather than power transfer, the WGT architecture is the nearer experimental pivot. Keep its transistor bias and reference-electrode input power in the system boundary.
+
+## Capital interface and limits
+
+The pinned knowledge checkout is `cb62d881a071c617b11d7dbc82a98921969389a7`, with main history pinned as `ace0cfc4437fe91c20ccd24d69e0ee4bb335e871` in `work/FJ_PIN.json`. The supplied physical source itself requires measured, same-device (K,C,G) and both cross responses, then says “a measurable voltage, open-circuit pressure or displacement alone does not establish useful power transfer” (`work/FJ-sources/physical_PASTED_SOURCE.txt`, lines 53–64 and 154–176). This audit supports that gate. It does not estimate the proposed assembled Hall-network response, prove historical novelty, establish material yield/endurance, or validate an energy advantage. No inference, lab, acquisition, or auxiliary-system cost is represented as measured.
+
+## Frozen artifacts
+
+The machine-readable calculations are in `calculations.py` and `calculation_results.json`. Exact source acquisition, hashes, access limitations, and read depth are recorded in `READ_LEDGER.md`; the final file hashes, byte counts, and scopes are in `MANIFEST.txt`.

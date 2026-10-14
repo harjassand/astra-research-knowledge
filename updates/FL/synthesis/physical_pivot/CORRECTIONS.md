@@ -1,0 +1,5 @@
+# Correction log
+
+On 2026-10-14, direct re-reading of the final Ambiru SI Table S4 exposed a column/row alignment error in the first manual transcription. In particular, run 11 Sn regions are 0.020, 0.004, and 0.005 wt% (mean 0.00967 wt%), not 0.004, 0.005, and 0.032 wt%; run 16 also has three regions, not two. The first version shifted some later-run values.
+
+The S4 CSV was rewritten from the four-page PDF, and `analyze.py`, `results.json`, and `REPORT.md` were regenerated/revised. Withdrawn conclusions: a run-11 discrepancy against the abstract's 95.0% value and an incomplete two-region run 16. The corrected data show run 11's preprint value and SI mean both yield approximately 95% concentration decrease; the notable residual cross-version differences are run 9 Cu and the near-swapped assay means in runs 15–16. The source does not establish why those later-run values differ.

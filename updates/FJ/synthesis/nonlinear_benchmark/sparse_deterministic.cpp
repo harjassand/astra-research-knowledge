@@ -1,0 +1,104 @@
+#include <array>
+#include <chrono>
+#include <cmath>
+#include <complex>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
+#include <unordered_map>
+
+static constexpr int D=8, J=16;
+using Key=std::array<int,D>;
+
+struct Hash {
+    std::size_t operator()(const Key& a) const noexcept {
+        std::size_t h=1469598103934665603ULL;
+        for(int x:a) { h^=static_cast<std::uint32_t>(x+33); h*=1099511628211ULL; }
+        return h;
+    }
+};
+
+using Map=std::unordered_map<Key,std::complex<double>,Hash>;
+
+Map multiply(const Map& a,const Map& b) {
+    Map out;
+    out.reserve(a.size()*b.size());
+    for(const auto& [ka,va]:a) for(const auto& [kb,vb]:b) {
+        Key k{};
+        for(int i=0;i<D;++i) k[i]=ka[i]+kb[i];
+        out[k]+=va*vb;
+    }
+    return out;
+}
+
+int main() {
+    const auto start=std::chrono::steady_clock::now();
+    std::array<Key,J> k{};
+    std::array<double,J> phase{};
+    for(int i=0;i<D;++i) k[i][i]=1;
+    for(int i=0;i<D;++i) { k[D+i][i]=1; k[D+i][(i+1)%D]=1; }
+    for(int j=0;j<J;++j) phase[j]=0.17*(j+1)+0.013*(j+1)*(j+1);
+
+    Map E0;
+    for(int j=0;j<J;++j) {
+        int norm2=0; for(int z:k[j]) norm2+=z*z;
+        const double amp=(10.0/J)/(101.0+norm2);
+        for(int sign:{1,-1}) {
+            Key kk{}; for(int i=0;i<D;++i) kk[i]=sign*k[j][i];
+            E0[kk]=amp*std::exp(std::complex<double>(0.0,sign*phase[j]))/2.0;
+        }
+    }
+    Map E2=multiply(E0,E0);
+    Map E3=multiply(E2,E0);
+    Map E4=multiply(E2,E2);
+    Map r;
+    r.reserve(E4.size());
+    for(const auto& [key,value]:E2) r[key]+=-150.0*value;
+    for(const auto& [key,value]:E3) r[key]+=-100.0*value;
+    for(const auto& [key,value]:E4) r[key]+=-25.0*value;
+
+    const double A=5.0/102.0+5.0/103.0;
+    const double lo=1.0+100.0*std::pow(1.0-A,3);
+    const double hi=1.0+100.0*std::pow(1.0+A,3);
+    const double Vmid=0.5*(lo+hi);
+    std::array<double,D> x{}; for(int i=0;i<D;++i) x[i]=0.21+0.19*i;
+    std::complex<double> w1(0,0);
+    double weighted_l1=0;
+    for(const auto& [key,value]:r) {
+        int norm2=0; double theta=0;
+        for(int i=0;i<D;++i) { norm2+=key[i]*key[i]; theta+=key[i]*x[i]; }
+        const double denom=Vmid+norm2;
+        const auto term=value*std::exp(std::complex<double>(0,theta))/denom;
+        w1+=term;
+        weighted_l1+=std::abs(value)/denom;
+    }
+    double vq=1.0;
+    for(int j=0;j<J;++j) {
+        double theta=phase[j]; int norm2=0;
+        for(int i=0;i<D;++i) { theta+=k[j][i]*x[i]; norm2+=k[j][i]*k[j][i]; }
+        vq+=(10.0/J)*std::cos(theta)/(101.0+norm2);
+    }
+    const auto stop=std::chrono::steady_clock::now();
+    const auto total_us=std::chrono::duration<double,std::micro>(stop-start).count();
+    const auto out_start=std::chrono::steady_clock::now();
+    for(int repeat=0;repeat<100;++repeat) {
+        std::complex<double> check(0,0);
+        for(const auto& [key,value]:r) {
+            int norm2=0; double theta=0;
+            for(int i=0;i<D;++i) { norm2+=key[i]*key[i]; theta+=key[i]*x[i]; }
+            check+=value*std::exp(std::complex<double>(0,theta))/(Vmid+norm2);
+        }
+        (void)check;
+    }
+    const auto out_stop=std::chrono::steady_clock::now();
+    const auto query_us=std::chrono::duration<double,std::micro>(out_stop-out_start).count()/100.0;
+    std::cout<<std::setprecision(17)
+             <<"{\n  \"support_e0\": "<<E0.size()<<",\n  \"support_e0_squared\": "<<E2.size()
+             <<",\n  \"support_e0_cubed\": "<<E3.size()<<",\n  \"support_e0_fourth\": "<<E4.size()
+             <<",\n  \"support_residual\": "<<r.size()<<",\n  \"sparse_products\": "<<(32*32+465*32+465*465)
+             <<",\n  \"predictor_at_query\": "<<vq<<",\n  \"correction_at_query\": "<<w1.real()
+             <<",\n  \"estimate\": "<<vq+w1.real()<<",\n  \"weighted_l1_sup_bound\": "<<weighted_l1
+             <<",\n  \"total_seconds_one_build_plus_query\": "<<total_us/1e6
+             <<",\n  \"query_seconds_excluding_build\": "<<query_us/1e6
+             <<"\n}\n";
+}

@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — rotor_probe.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — rotor_probe.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/history/rotor_probe.py">Original file</a></p><pre>import numpy as np
+from scipy import constants as c
+from scipy.sparse import csr_matrix
+
+# Primary-paper estimates, not fitted experimental transition strengths.
+B=0.3655; TEMP=300.; NU=3783.; WIDTH=126.7
+sigma_t=116.2e-15/(2*np.sqrt(2*np.log(2)))
+d=4.810962939951982e-31
+
+def theta_from_fluence(F):
+    # F in J/m2; E(t)=Epk exp(-t^2/(4 sigma_t^2)).
+    Epk=np.sqrt(2*F/(c.epsilon_0*c.c*np.sqrt(2*np.pi)*sigma_t))
+    return d*Epk/c.hbar*2*np.sqrt(np.pi)*sigma_t
+
+def rotor_blocks(jmax=60, center=NU, B1=B, temperature=TEMP):
+    thermal_cm=c.k*temperature/(c.h*c.c*100)
+    Jall=np.arange(jmax+1); boltz=np.exp(-B*Jall*(Jall+1)/thermal_cm)
+    Z=np.sum((2*Jall+1)*boltz)
+    for M in range(jmax+1):
+        js=np.arange(M,jmax+1); nj=len(js)
+        e=np.r_[B*js*(js+1), (NU-center)+B1*js*(js+1)]
+        n=2*nj
+        row=[]; col=[]; val=[]
+        for k,j in enumerate(js[:-1]):
+            elem=np.sqrt(((j+1)**2-M*M)/((2*j+1)*(2*j+3)))
+            for ie,ig in ((k+1,k),(k,k+1)):
+                de=(e[nj+ie]-e[ig])
+                filt=np.exp(-(2*np.pi*c.c*100*de*sigma_t)**2)
+                row.append(nj+ie); col.append(ig); val.append(elem*filt)
+        plus=csr_matrix((val,(row,col)),shape=(n,n),dtype=complex)
+        rho=np.diag(np.r_[boltz[js]/Z*(1 if M==0 else 2), np.zeros(nj)]).astype(complex)
+        yield e,plus,plus.conj().T,rho,nj
+
+def right(K,D): return (D.T @ K.T).T
+
+def free(K,e,tps):
+    p=np.exp(-2j*np.pi*c.c*100*e*tps*1e-12)
+    return p[:,None]*K*p.conj()[None,:]
+
+def coefficient(T=1.,t1=1.,t3=1.,q=(1,1,1,1),s=.702,areas=None,center=NU,B1=B,jmax=60):
+    # Exactly the leading one-interaction-per-pulse Gaussian-filtered result.
+    # No homogeneous dephasing, hot bands, anharmonicity or instrumental errors.
+    if areas is None: areas=np.repeat(theta_from_fluence(1100/4),4)
+    total=0j; groups=np.zeros(2,complex)
+    for e,plus,minus,rho,nj in rotor_blocks(jmax,center,B1):
+        K=1j*(areas[0]/2)*right(rho,minus)*np.exp(+1j*q[0]*s/2)
+        K=free(K,e,t1)
+        for z in (0,1):
+            K2= (-1j*(areas[1]/2)*(plus@K)) if z==0 else (1j*(areas[1]/2)*right(K,plus))
+            # omit pulse 2&#x27;s branch phase for grouped response X_L/R
+            K2=free(K2,e,T)
+            K3=areas[2]/2*(-1j*np.exp(1j*q[2]*s/2)*(plus@K2)+1j*np.exp(-1j*q[2]*s/2)*right(K2,plus))
+            K3=free(K3,e,t3)
+            K4=areas[3]/2*(-1j*np.exp(-1j*q[3]*s/2)*(minus@K3)+1j*np.exp(1j*q[3]*s/2)*right(K3,minus))
+            groups[z]+=np.trace(K4)
+    return np.sum(groups*np.exp(1j*q[1]*s/2*np.array([1,-1]))),groups
+
+if __name__==&#x27;__main__&#x27;:
+    import itertools,time
+    print(&#x27;theta total&#x27;,theta_from_fluence(1100),&#x27;quarter&#x27;,theta_from_fluence(275))
+    start=time.time()
+    for q3,q4 in itertools.product([-1,1],repeat=2):
+        print(q3,q4,coefficient(q=(1,1,q3,q4),jmax=50))
+    print(&#x27;time&#x27;,time.time()-start)
+</pre></html>

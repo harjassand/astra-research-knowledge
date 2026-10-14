@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FK evidence — verify_exact_moving_metric.py</title><body><p>FK source/internal evidence, externally unreviewed. <a href="../../updates/FK/synthesis/tangent_compatibility/verify_exact_moving_metric.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact symbolic certificate for the resonant compatible tangent family.&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import sympy as sp
+
+from exact_tangent_triad import run
+
+
+def bernstein_coefficients(poly: sp.Expr, x: sp.Symbol, right: sp.Rational) -&gt; list[sp.Expr]:
+    y = sp.symbols(&quot;y&quot;)
+    p = sp.Poly(sp.expand(poly.subs(x, right*y)), y)
+    n = p.degree()
+    power = [p.nth(i) for i in range(n+1)]
+    return [sp.factor(sum(power[i]*sp.binomial(k, i)/sp.binomial(n, i)
+                          for i in range(k+1))) for k in range(n+1)]
+
+
+def Q_basis(A: sp.Matrix) -&gt; sp.Matrix:
+    # Exact orthogonal complement of A=I in row-major coordinates.
+    return sp.Matrix.hstack(A, sp.Matrix([1,0,0,-1]),
+                            sp.Matrix([0,1,0,0]), sp.Matrix([0,0,1,0]))
+
+
+def schur(H: sp.Matrix, ell: sp.Matrix, A: sp.Matrix) -&gt; tuple[sp.Expr, sp.Expr, sp.Expr]:
+    Q = Q_basis(A)
+    Hb = Q.T*H*Q
+    eb = Q.T*ell
+    D = Hb[1:,1:]
+    k = Hb[1:,0]
+    h = sp.factor(Hb[0,0])
+    hs = sp.factor(h-(k.T*D.inv()*k)[0])
+    rs = sp.factor(eb[0]-(k.T*D.inv()*eb[1:,0])[0])
+    return h, hs, rs
+
+
+def main() -&gt; None:
+    e = sp.symbols(&quot;e&quot;, positive=True)
+    result = run(1/e, 1, -3, (sp.Integer(2), sp.Integer(1), sp.Integer(1)))
+    H = sp.Matrix(result[&quot;H&quot;])
+    C = sp.Matrix(result[&quot;covariance&quot;])
+    b = sp.Matrix(result[&quot;b&quot;])
+    ell = sp.Matrix(result[&quot;ell&quot;])
+    I4 = sp.eye(4)
+    J = sp.zeros(4)
+    J[0,3] = J[3,0] = sp.Rational(1,2)
+    J[1,2] = J[2,1] = -sp.Rational(1,2)
+    expected_C = sp.Matrix([
+        [7*e**2, 0, -18*e**3, sp.Rational(21,2)*e**2],
+        [0, 3, sp.Rational(21,2)*e**2, 0],
+        [-18*e**3, sp.Rational(21,2)*e**2, sp.Rational(387,4)*e**4, -27*e**3],
+        [sp.Rational(21,2)*e**2, 0, -27*e**3, sp.Rational(63,4)*e**2],
+    ])
+    assert sp.simplify(C-expected_C) == sp.zeros(4)
+    K = sp.simplify(3*I4-C-21*e**2*J)
+    assert K[1,:] == sp.zeros(1,4) and K[:,1] == sp.zeros(4,1)
+    x = sp.symbols(&quot;x&quot;, nonnegative=True)
+    # The nonzero 3x3 block&#x27;s principal minors are positive on e^2 in [0,1/16].
+    inds = [0,2,3]
+    block = K.extract(inds, inds)
+    minors=[]
+    for size in (1,2,3):
+        for subset in __import__(&#x27;itertools&#x27;).combinations(range(3),size):
+            minor=sp.factor(block.extract(subset,subset).det())
+            coeffs=bernstein_coefficients(minor.subs(e**2,x),x,sp.Rational(1,16))
+            assert all(sp.simplify(v)&gt;0 for v in coeffs)
+            minors.append({&quot;indices&quot;:[inds[i] for i in subset],&quot;polynomial&quot;:str(minor),
+                           &quot;bernstein_coefficients_on_x_in_0_1_over_16&quot;:[str(v) for v in coeffs]})
+    # Sylvester&#x27;s criterion on H shows H&gt;0 for every e&gt;0.
+    leading=[]
+    for size in range(1,5):
+        minor=sp.factor(H[:size,:size].det())
+        poly=sp.Poly(minor,e)
+        assert all(coef&gt;=0 for coef in poly.all_coeffs()) and minor!=0
+        leading.append(str(minor))
+
+    A=sp.Matrix([1,0,0,1]); R=sp.Matrix([0,1,0,0])
+    h,hs,rs=schur(H,ell,A)
+    m2,m3,m4=(result[k] for k in (&quot;m2&quot;,&quot;m3&quot;,&quot;m4&quot;))
+    d2sq=result[&quot;delta2_sq&quot;]
+    d4four=result[&quot;delta4_4&quot;]
+    limits={
+        &quot;h_over_e4&quot;:sp.limit(h/e**4,e,0),
+        &quot;hstar_over_e4&quot;:sp.limit(hs/e**4,e,0),
+        &quot;rstar_over_e3&quot;:sp.limit(rs/e**3,e,0),
+        &quot;delta2_sq_over_e2&quot;:sp.limit(d2sq/e**2,e,0),
+        &quot;delta4_sq_over_e2&quot;:sp.limit(sp.sqrt(d4four)/e**2,e,0),
+        &quot;normalized_reduced_metric_using_delta2&quot;:sp.limit(rs**2/(hs*m4*d2sq),e,0),
+        &quot;normalized_reduced_metric_using_delta4&quot;:sp.limit(rs**2/(hs*m4*sp.sqrt(d4four)),e,0),
+        &quot;full_gap&quot;:sp.limit(result[&quot;gap&quot;],e,0),
+    }
+    expected={&quot;h_over_e4&quot;:sp.Rational(645,8),
+              &quot;hstar_over_e4&quot;:sp.Rational(10385,144),
+              &quot;rstar_over_e3&quot;:-sp.Rational(25,2),
+              &quot;delta2_sq_over_e2&quot;:sp.Rational(91,12),
+              &quot;delta4_sq_over_e2&quot;:sp.Rational(91,12),
+              &quot;normalized_reduced_metric_using_delta2&quot;:sp.Rational(8000,567021),
+              &quot;normalized_reduced_metric_using_delta4&quot;:sp.Rational(8000,567021),
+              &quot;full_gap&quot;:sp.Rational(219,4)}
+    assert limits==expected
+    assert (m2,m3,m4)==(3,3,sp.Rational(81,4))
+    Bopt=sp.simplify(-H.inv()*b)
+    Bopt_limits={
+        &quot;e_times_entry_a&quot;:sp.limit(e*Bopt[0],e,0),
+        &quot;entry_b&quot;:sp.limit(Bopt[1],e,0),
+        &quot;entry_c_over_e2&quot;:sp.limit(Bopt[2]/e**2,e,0),
+        &quot;e_times_entry_d&quot;:sp.limit(e*Bopt[3],e,0),
+    }
+    assert Bopt_limits=={&quot;e_times_entry_a&quot;:sp.Rational(360,2077),
+                         &quot;entry_b&quot;:-sp.Rational(1,3),
+                         &quot;entry_c_over_e2&quot;:-sp.Rational(72487,18693),
+                         &quot;e_times_entry_d&quot;:sp.Rational(360,2077)}
+
+    # Rational Pythagorean output rotation: sin(theta)=2e/(1+e^2).
+    cth=(1-e**2)/(1+e**2); sth=2*e/(1+e**2)
+    T=sp.Matrix([[cth,0,-sth,0],[0,cth,0,-sth],[sth,0,cth,0],[0,sth,0,cth]])
+    Hrot=sp.simplify(T*H*T.T)
+    ellrot=sp.simplify(T*ell)
+    hfix,hsfix,rsfix=schur(Hrot,ellrot,A)
+    fixed_limits={
+        &quot;h_over_e2&quot;:sp.limit(hfix/e**2,e,0),
+        &quot;hstar_over_e4&quot;:sp.limit(hsfix/e**4,e,0),
+        &quot;hstar_over_h_over_e2&quot;:sp.limit((hsfix/hfix)/e**2,e,0),
+        &quot;rstar_over_e3&quot;:sp.limit(rsfix/e**3,e,0),
+        &quot;normalized_reduced_metric&quot;:sp.limit(rsfix**2/(hsfix*m4*d2sq),e,0),
+    }
+    assert fixed_limits=={&quot;h_over_e2&quot;:sp.Integer(24),
+                          &quot;hstar_over_e4&quot;:sp.Rational(10385,144),
+                          &quot;hstar_over_h_over_e2&quot;:sp.Rational(10385,3456),
+                          &quot;rstar_over_e3&quot;:-sp.Rational(25,2),
+                          &quot;normalized_reduced_metric&quot;:sp.Rational(8000,567021)}
+    # Following both the rank-one covariance line and acoustic direction is an
+    # exact orthogonal conjugacy, so every fitted-frame block is unchanged.
+    Q=Q_basis(A)
+    assert sp.simplify((T*Q).T*Hrot*(T*Q)-Q.T*H*Q)==sp.zeros(4)
+    assert sp.simplify((T*Q).T*ellrot-Q.T*ell)==sp.zeros(4,1)
+
+    report={
+        &quot;status&quot;:&quot;exact symbolic identities and asymptotic limits for one compatible family&quot;,
+        &quot;field&quot;:{&quot;epsilon&quot;:&quot;1/N, N integer &gt;=4&quot;,&quot;slow_frequencies&quot;:[[1,1],[-3,1],[-2,2]],
+                 &quot;amplitudes_s&quot;:[2,1,1],&quot;tangent_residual_r&quot;:&quot;0&quot;,
+                 &quot;phase_relation&quot;:&quot;theta_1+theta_2=theta_3&quot;,&quot;periodic_output_vectors&quot;:&quot;(epsilon*s_j/q_j, epsilon*d_j/q_j)&quot;},
+        &quot;covariance_fitted_line&quot;:&quot;e12 exactly for 0&lt;epsilon&lt;=1/4 by K=3I-C-21 epsilon^2 J &gt;=0&quot;,
+        &quot;covariance_psd_finsler_minor_certificates&quot;:minors,
+        &quot;averaged_Hessian_leading_principal_minors&quot;:leading,
+        &quot;moments&quot;:{&quot;m2&quot;:str(m2),&quot;m3&quot;:str(m3),&quot;m4&quot;:str(m4)},
+        &quot;moving_contact_asymptotic_limits&quot;:{k:str(v) for k,v in limits.items()},
+        &quot;full_background_optimizer_scaled_limits&quot;:{k:str(v) for k,v in Bopt_limits.items()},
+        &quot;rotated_stale_frame_limits&quot;:{k:str(v) for k,v in fixed_limits.items()},
+        &quot;interpretation&quot;:&quot;The compatible resonant family satisfies the requested reduced estimate with a finite sharp-family limit, retains a positive all-background gap, and has an escaping optimizer. It does not prove a uniform estimate over all gradients or integrands.&quot;,
+    }
+    path=Path(__file__).with_name(&quot;exact_moving_metric_certificate.json&quot;)
+    path.write_text(json.dumps(report,indent=2)+&quot;\n&quot;)
+    print(path)
+
+
+if __name__==&quot;__main__&quot;:main()
+</pre></body></html>

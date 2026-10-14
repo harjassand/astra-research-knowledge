@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FK evidence — checks.py</title><body><p>FK source/internal evidence, externally unreviewed. <a href="../../updates/FK/package/physical/checks.py">Original bytes</a></p><pre>&quot;&quot;&quot;Transparent algebraic checks for the Astra physical-operation audit.
+
+These are NOT simulations of a material, measurements, or proof of novelty.
+Run with Python 3.10+: python checks.py
+All experimentally motivated values retain source identifiers in the output.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction
+from math import ceil, log
+import json
+from pathlib import Path
+
+
+def concentration(q: float, rate_ratio: float) -&gt; float:
+    &quot;&quot;&quot;Target occupancy in the explicitly assumed two-state reset model.&quot;&quot;&quot;
+    if not 0.0 &lt; q &lt; 1.0 or rate_ratio &lt;= 0.0:
+        raise ValueError(&quot;Require 0 &lt; q &lt; 1 and a positive rate ratio.&quot;)
+    return q * rate_ratio / (q * rate_ratio + 1.0 - q)
+
+
+def required_ratio(q: float, target: float) -&gt; float:
+    if not 0.0 &lt; q &lt; 1.0 or not 0.0 &lt; target &lt; 1.0:
+        raise ValueError(&quot;Probabilities must lie strictly between zero and one.&quot;)
+    return target * (1.0 - q) / (q * (1.0 - target))
+
+
+def main() -&gt; None:
+    # Burgers vectors are expressed in units of the lattice constant a.
+    b1 = tuple(Fraction(i, 6) for i in (1, -2, 1))
+    b2 = tuple(Fraction(i, 6) for i in (2, -1, -1))
+    total = tuple(x + y for x, y in zip(b1, b2))
+    assert total == (Fraction(1, 2), Fraction(-1, 2), Fraction(0))
+    # With line direction [1,-1,0], each partial has cos^2(theta)=3/4.
+    t = (1, -1, 0)
+    for b in (b1, b2):
+        dot = sum(x * y for x, y in zip(b, t))
+        norm2 = sum(x * x for x in b)
+        assert dot * dot / (norm2 * sum(x*x for x in t)) == Fraction(3, 4)
+        assert sum(b) == 0  # Both vectors lie in the (111) plane.
+
+    q, target = 0.01, 0.99
+    needed = required_ratio(q, target)
+    assert abs(needed - 9801.0) &lt; 1e-8
+    assert abs(concentration(q, needed) - target) &lt; 1e-12
+
+    fields = (5.8e6, 2.4e7)  # Li et al.; specimen-specific estimated onset fields.
+    peak_speed = 623.5e-9    # Li et al.; maximum, NOT sustained processing speed.
+    result = {
+        &quot;status&quot;: &quot;Analytical checks only; no material simulation or new experiment&quot;,
+        &quot;repository_revision_consulted&quot;: &quot;ace0cfc4437fe91c20ccd24d69e0ee4bb335e871&quot;,
+        &quot;burgers_counterexample&quot;: {
+            &quot;b1_over_a&quot;: list(map(str, b1)),
+            &quot;b2_over_a&quot;: list(map(str, b2)),
+            &quot;sum_over_a&quot;: list(map(str, total)),
+            &quot;meaning&quot;: &quot;Two 30-degree partials can recombine into a nonzero perfect screw dislocation, not annihilate.&quot;
+        },
+        &quot;spectral_reset_model&quot;: {
+            &quot;assumptions&quot;: &quot;Each reset redraws target membership with probability q; target and non-target departure rates can differ; no additional diffusion or readout perturbation.&quot;,
+            &quot;q&quot;: q, &quot;desired_occupancy&quot;: target,
+            &quot;required_outside_to_inside_departure_rate_ratio&quot;: needed,
+            &quot;illustrative_occupancy_at_ratio_100&quot;: concentration(q, 100.0),
+            &quot;warning&quot;: &quot;100 is an illustration, NOT a measured resonance-selective contrast or material upper bound.&quot;
+        },
+        &quot;uniform_field_geometry_arithmetic&quot;: {
+            &quot;source&quot;: &quot;Li et al., Nature Materials (2023), DOI 10.1038/s41563-023-01572-7; author manuscript arXiv:2211.14933&quot;,
+            &quot;field_V_per_m&quot;: list(fields),
+            &quot;voltage_over_1_um_V&quot;: [E * 1e-6 for E in fields],
+            &quot;voltage_over_1_mm_V&quot;: [E * 1e-3 for E in fields],
+            &quot;warning&quot;: &quot;V=E*d for a hypothetical uniform field, not an electrode design or breakdown assessment.&quot;
+        },
+        &quot;constant_peak_speed_extrapolation&quot;: {
+            &quot;peak_m_per_s&quot;: peak_speed,
+            &quot;seconds_for_1_um&quot;: 1e-6 / peak_speed,
+            &quot;seconds_for_100_um&quot;: 100e-6 / peak_speed,
+            &quot;minutes_for_1_mm&quot;: 1e-3 / peak_speed / 60,
+            &quot;warning&quot;: &quot;Illustrative extrapolation only; neither sustained speed, transport range nor removal yield is established.&quot;
+        },
+        &quot;DFT_field_to_experimental_field_ratio&quot;: {
+            &quot;illustrative_DFT_field_V_per_m&quot;: 3e9,
+            &quot;ratios&quot;: [3e9 / E for E in fields],
+            &quot;warning&quot;: &quot;A high-field barrier illustration is not a quantitative barrier calibration at experimental fields. Observed motion is not disputed.&quot;
+        },
+        &quot;zero_failure_binomial_example&quot;: {
+            &quot;confidence&quot;: 0.95,
+            &quot;desired_failure_probability_upper_bound&quot;: 0.01,
+            &quot;independent_successes_needed&quot;: ceil(log(0.05) / log(0.99)),
+            &quot;warning&quot;: &quot;Identically distributed, independent trials are assumed; repeated cycles on one evolving specimen do not automatically qualify.&quot;
+        }
+    }
+    path = Path(__file__).with_name(&quot;checks.json&quot;)
+    path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

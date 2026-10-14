@@ -1,0 +1,48 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — run_preserved_controls.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Rerun the original safe-W/raw implementations without parameter changes.&quot;&quot;&quot;
+import hashlib
+import json
+from pathlib import Path
+import time
+
+import run_witness as rw
+wc,fd,ac=rw.wc,rw.fd,rw.ac
+HERE=Path(__file__).resolve().parent
+
+
+def run(n,r,d,seed,prefix_length=None):
+    cases=[]
+    for mode in (&#x27;safe_subspace&#x27;,&#x27;raw_body&#x27;):
+        source=rw.Teacher(n,r,d,seed,prefix_length)
+        out,model,prefix=fd.acquire(n,r,d,source.query,seed+1000000,n**-2,prefix_length,mode)
+        out[&#x27;case&#x27;]=dict(n=n,r=r,degree=d,seed=seed,mode=&#x27;preserved_&#x27;+mode,
+                         prefix_length=prefix_length,source_r=None,forced_failure=False)
+        out[&#x27;source_pin&#x27;]=source.pin()
+        out[&#x27;source_acquisition&#x27;]=source.receipt()
+        out[&#x27;parameter_checks&#x27;]=rw.reference.check_parameters(out[&#x27;parameters&#x27;])
+        out[&#x27;learner_local_seconds_estimate&#x27;]=max(0,out[&#x27;acquisition_seconds&#x27;]-source.callback_seconds)
+        out[&#x27;witness_totals&#x27;]=dict(global_drop=0,paid_dictionaries=0,outer_epochs=0)
+        out[&#x27;parameters&#x27;][&#x27;control_budget&#x27;]=&#x27;unchanged original safe-W/raw parameters&#x27;
+        if model is not None:
+            out=rw.verify(source,out,model,prefix,prefix_length)
+        out[&#x27;source_after_test_only_verification&#x27;]=source.receipt()
+        out=rw.resource_proxy(out,n)
+        cases.append(out)
+        print(json.dumps(rw.summary(out)),flush=True)
+    assert len({case[&#x27;source_pin&#x27;] for case in cases})==1
+    label=f&#x27;n{n}_r{r}_d{d}_seed{seed}&#x27;+(&#x27;&#x27; if prefix_length is None else f&#x27;_prefix{prefix_length}&#x27;)
+    receipt=dict(scope=&#x27;preserved original implementations; identical source and beta, original differing raw budgets&#x27;,
+                 beta=n**-2,precision=&#x27;exact GF(2) and strict integer rank comparisons&#x27;,cases=cases,
+                 source_hashes={str(p.relative_to(HERE)):hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in (HERE/&#x27;reference_snapshot&#x27;).rglob(&#x27;*.py&#x27;)})
+    (HERE/f&#x27;preserved_receipt_{label}.json&#x27;).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+
+
+if __name__==&#x27;__main__&#x27;:
+    import argparse
+    parser=argparse.ArgumentParser()
+    parser.add_argument(&#x27;--case&#x27;,required=True)
+    parser.add_argument(&#x27;--prefix-k&#x27;,type=int)
+    args=parser.parse_args()
+    run(*map(int,args.case.split(&#x27;:&#x27;)),args.prefix_k)
+</pre>

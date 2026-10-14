@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — jacobi_gate.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — jacobi_gate.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/compact/jacobi_gate.py">Original file</a></p><pre>&quot;&quot;&quot;Continuous kinetically gated Jacobi diffusion. Exact local polynomial algebra.
+The continuum is never discretized into microscopic conformations.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from pathlib import Path
+import numpy as np,json,math,time
+from generic_tensor import solve_generic
+
+
+def local_basis(q:F,rho:F,maxdeg:int):
+    alpha=q*rho
+    moments=[F(1)]
+    for k in range(2*maxdeg+3):moments.append(moments[-1]*(alpha+k)/(rho+k))
+    def ip(a,b,shift=0):return sum(x*y*moments[i+j+shift] for i,x in enumerate(a) for j,y in enumerate(b))
+    polys=[];norms=[];diag=[];bet=[]
+    for j in range(maxdeg+1):
+        v=[F(0)]*j+[F(1)]
+        for p,h in zip(polys,norms):
+            z=ip(v,p)/h
+            for t,c in enumerate(p):v[t]-=z*c
+        h=ip(v,v);assert h&gt;0
+        polys.append(v);norms.append(h);diag.append(ip(v,v,1)/h);bet.append(F(0) if j==0 else h/norms[-2])
+    X=np.zeros((maxdeg+1,maxdeg+1),dtype=object)
+    for j in range(maxdeg+1):
+        X[j,j]=diag[j]
+        if j&lt;maxdeg:X[j+1,j]=F(1)
+        if j&gt;0:X[j-1,j]=bet[j]
+    # Exact orthogonality/self-adjointness tests.
+    for i in range(maxdeg+1):
+        for j in range(maxdeg+1):
+            assert norms[i]*X[i,j]==norms[j]*X[j,i]
+    lam=[F(j)*(j-1+rho) for j in range(maxdeg+1)]
+    return {&#x27;polys&#x27;:polys,&#x27;norms&#x27;:norms,&#x27;X&#x27;:X,&#x27;lambda&#x27;:lam,&#x27;moments&#x27;:moments}
+
+
+def build_mpo(n:int,q:F,rho:F,eps:F,degree:int):
+    info=local_basis(q,rho,degree+1);d=degree+1
+    h=np.diag([float(x) for x in info[&#x27;lambda&#x27;][:d]])
+    norms=np.array([float(x) for x in info[&#x27;norms&#x27;][:d]])
+    X=np.array(info[&#x27;X&#x27;][:d,:d],float)*np.sqrt(norms[:,None]/norms[None,:])
+    assert np.max(abs(X-X.T))&lt;1e-12
+    ef=float(eps);kappa=float(rho*q);I=np.eye(d);W=[]
+    for i in range(n):
+        w=np.zeros((3,3,d,d));w[0,0]=I;w[1,0]=h;w[2,2]=I
+        w[2,1]=(1-ef)*X
+        w[2,0]=(1. if i==0 else ef)*h
+        if i==0:w[2,0]+=kappa*ef*I
+        if i==n-1:w[2,0]+=kappa*(1-ef)*X
+        if i==0:w=w[2:3]
+        if i==n-1:w=w[:,0:1]
+        W.append(w)
+    return W,info
+
+if __name__==&#x27;__main__&#x27;:
+    import argparse
+    p=argparse.ArgumentParser();p.add_argument(&#x27;--n&#x27;,type=int,default=8);p.add_argument(&#x27;--q&#x27;,default=&#x27;1/5&#x27;);p.add_argument(&#x27;--rho&#x27;,default=&#x27;1/10&#x27;);p.add_argument(&#x27;--eps&#x27;,default=&#x27;1/100&#x27;);p.add_argument(&#x27;--degree&#x27;,type=int,default=2);p.add_argument(&#x27;--rank&#x27;,type=int,default=8);p.add_argument(&#x27;--sweeps&#x27;,type=int,default=3);p.add_argument(&#x27;--out&#x27;,default=&#x27;jacobi&#x27;)
+    a=p.parse_args();t=time.perf_counter();W,info=build_mpo(a.n,F(a.q),F(a.rho),F(a.eps),a.degree);buildtime=time.perf_counter()-t
+    cores,logs=solve_generic(W,rank=a.rank,sweeps=a.sweeps)
+    np.savez(a.out+&#x27;.npz&#x27;,**{f&#x27;a{i}&#x27;:x for i,x in enumerate(cores)})
+    meta=vars(a);meta.update({&#x27;build_seconds&#x27;:buildtime,&#x27;logs&#x27;:logs,&#x27;continuum_model&#x27;:True})
+    Path(a.out+&#x27;.json&#x27;).write_text(json.dumps(meta,indent=2))
+</pre></html>

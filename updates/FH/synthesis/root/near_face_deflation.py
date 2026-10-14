@@ -1,0 +1,69 @@
+"""Fresh exact Fourier construction: background deflation is not continuous.
+
+No source or critic scientific code is imported. Laurent coefficients encode
+actual smooth periodic gradients;the zero Fourier coefficient is exact average.
+The analytic consequence and its limits are in QUARTIC_DEFLATION_AND_CONTROL.md.
+"""
+from pathlib import Path
+import argparse,json,platform,time
+import sympy as S
+
+def main(out):
+ st=time.monotonic();z,w=S.symbols('z w',nonzero=True);e=S.symbols('eps',positive=True);I=S.I
+ sx,cx=(z-1/z)/(2*I),(z+1/z)/2;sy,cy=(w-1/w)/(2*I),(w+1/w)/2
+ c2x,c2y=(z*z+z**-2)/2,(w*w+w**-2)/2
+ avg=lambda f:S.expand(f).coeff(z,0).coeff(w,0).expand()
+ Dx=lambda f:S.expand(I*z*S.diff(f,z));Dy=lambda f:S.expand(I*w*S.diff(f,w))
+ phi=S.Matrix([sx*cy,-cx*sy]);psi=S.Matrix([-(z*z-z**-2)/(8*I),-(w*w-w**-2)/(8*I)]);chi=S.Matrix([sy,sx])
+ grad=lambda p:S.Matrix([[Dx(p[0]),Dy(p[0])],[Dx(p[1]),Dy(p[1])]])
+ X0,Y,Z=map(grad,[phi,psi,chi]);X=(X0+e*Y+e*e*Z).applyfunc(S.expand);q0=S.expand(X0.det());q=S.expand(X.det())
+ assert S.expand(q0+(c2x+c2y)/2)==0 and avg(q0*q0)==S.Rational(1,4)
+ assert S.expand(S.trace(X)-e*q0)==0
+ assert all(avg(v)==0 for v in X) and avg(q)==0
+ vec=S.Matrix([X[0,0],X[0,1],X[1,0],X[1,1]])
+ K=S.Matrix([[0,0,0,1],[0,0,-1,0],[0,-1,0,0],[1,0,0,0]])
+ C=(vec*vec.T).applyfunc(avg);g=K*vec;H=(2*g*g.T).applyfunc(avg);b=(2*q*g).applyfunc(avg);c=avg(q*q)
+ expected=S.Matrix([[S.Rational(1,4)+e*e/8,0,0,-S.Rational(1,4)],
+ [0,S.Rational(1,4)+e**4/2,-S.Rational(1,4),0],
+ [0,-S.Rational(1,4),S.Rational(1,4)+e**4/2,0],
+ [-S.Rational(1,4),0,0,S.Rational(1,4)+e*e/8]])
+ assert C==expected and H==2*K*C*K
+ assert S.factor(C.det())==e**6*(e*e+4)*(e**4+1)/256
+ assert b==S.Matrix([e/4+e**4/2,0,0,e/4-e**4/2])
+ eigs=[e*e/8,S.Rational(1,2)+e*e/8,e**4/2,S.Rational(1,2)+e**4/2]
+ assert S.expand(S.prod(eigs)-C.det())==0
+ trial=S.factor(avg((q-q0)**2));expected_trial=e*e/S.Integer(32)+9*e**4/S.Integer(64)+e**8/4
+ assert S.expand(trial-expected_trial)==0
+ optimum=S.factor(c-(b.T*H.inv()*b)[0]/2)
+ expected_opt=e*e/S.Integer(32)+9*e**4/S.Integer(64)+e**10/(4*(e*e+4))
+ assert S.factor(optimum-expected_opt)==0 and S.limit(optimum,e,0)==0
+ H0=H.subs(e,0);b0=b.subs(e,0);assert H0.rank()==2 and b0==S.zeros(4,1) and c.subs(e,0)==S.Rational(1,4)
+ Bstar=(-H.inv()*b).applyfunc(S.factor);assert any(S.limit(abs(v),e,0,dir='+')==S.oo for v in Bstar)
+ # A strictly quasiconvex,nonexceptional varying-integrand version needs noZ.
+ Xn=(X0+e*Y).applyfunc(S.expand);vn=S.Matrix(list(Xn));qn=S.expand(Xn.det());Cn=(vn*vn.T).applyfunc(avg)
+ assert Cn.rank()==3
+ def norm4(A):return S.expand(sum(v*v for v in A)**2)
+ B=-S.eye(2)/e;norm_gap=avg(norm4(B+Xn)-norm4(B))
+ det_gap=avg((qn-q0)**2);scaled=S.factor(e**4*norm_gap)
+ assert S.factor(det_gap-e*e*(e*e+2)/64)==0
+ assert scaled==e*e*(5*e**6+40*e**4+208*e*e+256)/64
+ strict_H=2*K*Cn*K+e**4*(8*Cn+4*S.trace(Cn)*S.eye(4))
+ assert S.factor(strict_H.det())>0 or all(S.factor(strict_H[:j,:j].det()).is_positive for j in range(1,5))
+ # Full-source residual certificate works on the proved range;fresh finite check.
+ hf=S.Matrix([[4,0,0],[0,2,0],[0,0,0]]);bf=S.Matrix([3,1,0]);v=S.Matrix([S.Rational(2,3),S.Rational(1,5),7]);cf=S.diag(2,1,0)
+ r=bf-hf*v;exact=(bf.T*hf.pinv()*bf)[0];base=2*(bf.T*v)[0]-(v.T*hf*v)[0]
+ assert exact==base+(r.T*hf.pinv()*r)[0]
+ upper=base+(r.T*cf.pinv()*r)[0];assert base<=exact<=upper
+ # Wrong nullspace/load coverage is explicitly rejected,not silently inverted.
+ bad=S.Matrix([3,1,1]);assert hf*hf.pinv()*bad!=bad
+ report=dict(status='PASS',python=platform.python_version(),sympy=S.__version__,seconds=time.monotonic()-st,
+  full_rank_C=[[str(v) for v in row] for row in C.tolist()],det_C=str(S.factor(C.det())),C_eigenvalues=list(map(str,eigs)),
+  b=list(map(str,b)),c=str(S.factor(c)),trial_gap=str(trial),exact_minimum_for_eps_positive=str(optimum),
+  minimum_at_eps_zero='1/4',optimal_background=list(map(str,Bstar)),
+  strict_varying_integrand_gap=str(S.factor(det_gap+scaled)),strict_H_PD='Proved by4eps4 tr(C)I lower bound;exact minors cross-checked.',
+  residual_example=dict(exact=str(exact),lower=str(base),upper=str(upper),null_load_rejected=True),
+  conclusion='Optimized Jensen gap fails lower semicontinuity at a singular face,even for fixedpolyconvex F=det² and bounded smooth fixed-bandwidth compatible gradients;background escapes toinfinity. No negative gap orQCcounterexample.',
+  scope='Exact internally derived identities and written analytic proof;external correctness and novelty UNKNOWN.')
+ out.mkdir(parents=True,exist_ok=True);(out/'NEAR_FACE_DEFLATION_RESULTS.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
+if __name__=='__main__':
+ p=argparse.ArgumentParser();p.add_argument('--output-dir',required=True,type=Path);main(p.parse_args().output_dir)

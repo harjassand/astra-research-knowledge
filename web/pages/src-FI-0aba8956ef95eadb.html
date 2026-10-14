@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — model.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/model.py">Original bytes</a></p><pre>&quot;&quot;&quot;Energy acquisition and factor compiler for a declared pairwise heat-bath law.&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import isqrt,lcm
+from itertools import product
+import numpy as np
+from scipy.linalg import eigh
+from tt_ops import product as ttproduct,add,rounded
+
+
+def fpow2(k):return F(2**k) if k&gt;=0 else F(1,2**(-k))
+def fsqrt(x):
+    a,b=isqrt(x.numerator),isqrt(x.denominator)
+    if a*a!=x.numerator or b*b!=x.denominator:raise ValueError(&#x27;Nonrational pair factor&#x27;)
+    return F(a,b)
+def ffmat(a):return np.array(a,dtype=object)
+def zeros(q):return np.full((q,q),F(0),dtype=object)
+def eye(q):
+    A=zeros(q)
+    for j in range(q):A[j,j]=F(1)
+    return A
+
+def fixture(B=3,m=4,rarity=1,cross=F(3,2),seed=71,field_scale=1,clock_scale=1):
+    &quot;&quot;&quot;Authored disordered modular gate, not an independently selected molecule.&quot;&quot;&quot;
+    rng=np.random.default_rng(seed);n=B*m;edges={};fields=[];nus=[]
+    for b in range(B):
+        # Disordered cycle plus chords; external field and site clocks break closure.
+        local=set(tuple(sorted((i,(i+1)%m))) for i in range(m))
+        if m&gt;=4:local.add((0,m//2))
+        if m&gt;=6:local.add((1,m-2))
+        for i,j in sorted(local):edges[(b*m+i,b*m+j)]=fpow2(rarity*int(rng.integers(2,5)))
+        # One weak frustrated internal bond, not a homogeneous ferromagnetic ring.
+        if b==1 and m&gt;=4:edges[(b*m+1,b*m+2)]=fpow2(-rarity)
+        for i in range(m):
+            fields.append(fpow2(field_scale*int(rng.integers(-1,2))))
+            nus.append(fpow2(int(rng.integers(-1,2)))*F(clock_scale))
+    for b in range(B-1):edges[(b*m,(b+1)*m)]=F(cross)
+    # Relabel all non-target coordinates; target remains coordinate zero.
+    perm=np.concatenate(([0],rng.permutation(np.arange(1,n))))
+    ee={tuple(sorted((int(perm[i]),int(perm[j])))):v for (i,j),v in edges.items()}
+    ff=[None]*n;nn=[None]*n
+    for i in range(n):ff[int(perm[i])]=fields[i];nn[int(perm[i])]=nus[i]
+    return {&#x27;n&#x27;:n,&#x27;edges&#x27;:ee,&#x27;fields&#x27;:ff,&#x27;nu&#x27;:nn,&#x27;kappa&#x27;:F(1),&#x27;target&#x27;:0,&#x27;metadata&#x27;:dict(B=B,m=m,rarity=rarity,cross=str(cross),seed=seed,field_scale=field_scale,clock_scale=str(clock_scale))}
+
+def weight(truth,x):
+    v=F(1)
+    for i,h in enumerate(truth[&#x27;fields&#x27;]):
+        if (x&gt;&gt;i)&amp;1:v*=h
+    for (i,j),t in truth[&#x27;edges&#x27;].items():
+        if ((x&gt;&gt;i)&amp;1)==((x&gt;&gt;j)&amp;1):v*=t
+    return v
+
+def acquire(truth):
+    n=truth[&#x27;n&#x27;];answers={};clocks={}
+    def query(x):
+        y=weight(truth,x);answers[x]=str(y);return y
+    w0=query(0);single=[query(1&lt;&lt;i) for i in range(n)];edges={}
+    for i in range(n):
+        for j in range(i+1,n):
+            t=fsqrt(query((1&lt;&lt;i)|(1&lt;&lt;j))*w0/(single[i]*single[j]))
+            if t!=1:edges[(i,j)]=t
+    fields=[]
+    for i in range(n):
+        h=single[i]/w0
+        for (j,k),t in edges.items():
+            if i==j or i==k:h*=t
+        fields.append(h)
+    # Synthetic exact answer under energy-equalizing intervention, not a laboratory result.
+    nu=[];baseline_rates=[]
+    for i in range(n):
+        rate=(truth[&#x27;clock_tables&#x27;][i][0] if &#x27;clock_tables&#x27; in truth else truth[&#x27;nu&#x27;][i])/2
+        clocks[i]=str(rate);baseline_rates.append(rate);nu.append(2*rate)
+    learned={&#x27;n&#x27;:n,&#x27;edges&#x27;:edges,&#x27;fields&#x27;:fields,&#x27;nu&#x27;:nu,&#x27;kappa&#x27;:truth[&#x27;kappa&#x27;],&#x27;target&#x27;:truth[&#x27;target&#x27;]}
+    if &#x27;clock_tables&#x27; in truth:
+        learned[&#x27;clock_contexts&#x27;]={};learned[&#x27;clock_tables&#x27;]={}
+        clocks={}
+        for i in range(n):
+            ctx=sorted(j if i==a else a for a,j in edges if i==a or i==j)
+            learned[&#x27;clock_contexts&#x27;][i]=ctx;learned[&#x27;clock_tables&#x27;][i]=[]
+            assert ctx==truth[&#x27;clock_contexts&#x27;][i]
+            for z,aa in enumerate(truth[&#x27;clock_tables&#x27;][i]):
+                rate=baseline_rates[i] if z==0 else aa/2
+                clocks[f&#x27;{i}:{z}&#x27;]=str(rate);learned[&#x27;clock_tables&#x27;][i].append(2*rate)
+    assert edges==truth[&#x27;edges&#x27;] and fields==truth[&#x27;fields&#x27;] and nu==truth[&#x27;nu&#x27;]
+    return learned,{&#x27;energy_queries&#x27;:len(answers),&#x27;balanced_clock_queries&#x27;:len(clocks),&#x27;weights&#x27;:answers,&#x27;balanced_rates&#x27;:clocks,&#x27;scope&#x27;:&#x27;exact synthetic coefficient acquisition under declared pairwise and intervention-invariant heat-bath law&#x27;}
+
+def partition(model,threshold=F(2)):
+    n=model[&#x27;n&#x27;];parent=list(range(n))
+    def root(x):
+        while parent[x]!=x:parent[x]=parent[parent[x]];x=parent[x]
+        return x
+    for (i,j),v in model[&#x27;edges&#x27;].items():
+        if max(v,1/v)&gt;=threshold:
+            parent[root(i)]=root(j)
+    groups={}
+    for i in range(n):groups.setdefault(root(i),[]).append(i)
+    out=sorted(groups.values(),key=lambda a:(0 not in a,min(a)))
+    return out
+
+class Compiler:
+    def __init__(self,model,groups):
+        self.model=model;self.groups=groups;self.B=len(groups)
+        if self.B&lt;2:raise ValueError(&#x27;No nontrivial factorization at this threshold&#x27;)
+        self.loc={x:(b,i) for b,g in enumerate(groups) for i,x in enumerate(g)}
+        self.cross=[];self.internal=[[] for _ in groups]
+        for (i,j),v in model[&#x27;edges&#x27;].items():
+            b,s=self.loc[i];c,t=self.loc[j]
+            if b==c:self.internal[b].append((s,t,v))
+            else:self.cross.append((b,s,c,t,v))
+        self.R=F(1)
+        for *_,v in self.cross:self.R*=max(v,1/v)
+        self.bits=[];self.mass=[];self.prob=[];self.rootprob=[];self.refraw=[];self.refsym=[]
+        for b,g in enumerate(groups):
+            q=1&lt;&lt;len(g);bits=np.array([[(a&gt;&gt;i)&amp;1 for i in range(len(g))] for a in range(q)],int);self.bits.append(bits)
+            mass=[]
+            for a in range(q):
+                v=F(1)
+                for s,i in enumerate(g):
+                    if bits[a,s]:v*=model[&#x27;fields&#x27;][i]
+                for s,t,h in self.internal[b]:
+                    if bits[a,s]==bits[a,t]:v*=h
+                mass.append(v)
+            den=lcm(*(v.denominator for v in mass));mi=[int(v*den) for v in mass];self.mass.append(mi)
+            p=[F(v,sum(mi)) for v in mi];self.prob.append(p);rp=np.sqrt(np.array(p,float));self.rootprob.append(rp)
+            C=self.local_weighted(b,[F(1)]*q)
+            if model[&#x27;target&#x27;] in g:
+                ti=g.index(model[&#x27;target&#x27;])
+                for a in range(q):C[a,a]+=model[&#x27;kappa&#x27;]*int(bits[a,ti])
+            self.refraw.append(C);self.refsym.append(rp[:,None]*np.array(C,float)/rp[None,:])
+        self.R_mass=self.R;self.R_clock=F(1)
+        if &#x27;clock_tables&#x27; in model:
+            for b,g in enumerate(groups):
+                for ss,i in enumerate(g):
+                    for a in range(len(self.bits[b])):
+                        amin=self.clock_value(b,a,ss,None)
+                        for z,val in enumerate(model[&#x27;clock_tables&#x27;][i]):
+                            if all(((z&gt;&gt;j)&amp;1)==self.bits[b][a,self.loc[node][1]] for j,node in enumerate(model[&#x27;clock_contexts&#x27;][i]) if self.loc[node][0]==b):self.R_clock=max(self.R_clock,val/amin)
+        self.R*=self.R_clock
+        self.rawterms=self.make_terms();self.terms=[]
+        for term in self.rawterms:self.terms.append([p[:,None]*np.array(M,float)/p[None,:] for M,p in zip(term,self.rootprob)])
+        self.wterms=self.cross_terms(range(len(self.cross)))
+        self.source=None
+        for vs in self.wterms:
+            z=ttproduct([np.array(v,float)*p for v,p in zip(vs,self.rootprob)])
+            self.source=z if self.source is None else add(self.source,z)
+        self.source=rounded(self.source,64,1e-15)
+        self.Z=sum(self.prod_expect(vs) for vs in self.wterms)
+        self.evals=[];self.evecs=[]
+        for b,C in enumerate(self.refsym):
+            lam,U=eigh((C+C.T)/2)
+            if model[&#x27;target&#x27;] not in groups[b]:lam[0]=0.0
+            if lam.min()&lt;-1e-8:raise ValueError(&#x27;Invalid reference eigenvalues&#x27;)
+            self.evals.append(np.maximum(lam,0));self.evecs.append(U)
+    def prod_expect(self,vs):
+        v=F(1)
+        for p,f in zip(self.prob,vs):v*=sum(a*b for a,b in zip(p,f))
+        return v
+    def clock_value(self,b,a,s,outside):
+        i=self.groups[b][s]
+        if &#x27;clock_tables&#x27; not in self.model:return self.model[&#x27;nu&#x27;][i]
+        ctx=self.model[&#x27;clock_contexts&#x27;][i];tab=self.model[&#x27;clock_tables&#x27;][i]
+        if outside is None:
+            vals=[val for z,val in enumerate(tab) if all(((z&gt;&gt;j)&amp;1)==self.bits[b][a,self.loc[node][1]] for j,node in enumerate(ctx) if self.loc[node][0]==b)]
+            return min(vals)
+        z=0
+        for j,node in enumerate(ctx):
+            c,t=self.loc[node];bit=int(self.bits[b][a,t]) if c==b else outside[(c,t)];z|=bit&lt;&lt;j
+        return tab[z]
+    def local_weighted(self,b,d,outside=None):
+        q=len(self.bits[b]);M=zeros(q);g=self.groups[b];mass=self.mass[b]
+        for a in range(q):
+            for s,i in enumerate(g):
+                ap=a^(1&lt;&lt;s);rate=self.clock_value(b,a,s,outside)*mass[ap]*d[ap]/(mass[a]*d[a]+mass[ap]*d[ap]);z=d[a]*rate;M[a,a]+=z;M[a,ap]-=z
+        return M
+    def cross_terms(self,ids):
+        terms=[[np.full(len(bits),F(1),dtype=object) for bits in self.bits]]
+        for e in ids:
+            b,s,c,t,v=self.cross[e];a=(1+v)/(2*min(F(1),v));h=(v-1)/(2*min(F(1),v));new=[]
+            for vs in terms:
+                vv=[x.copy() for x in vs];vv[b]*=a;new.append(vv)
+                vv=[x.copy() for x in vs];vv[b]*=h*(2*self.bits[b][:,s]-1);vv[c]*=2*self.bits[c][:,t]-1;new.append(vv)
+            terms=new
+        return terms
+    def make_terms(self):
+        out=[]
+        for b in range(self.B):
+            inc=[i for i,e in enumerate(self.cross) if b==e[0] or b==e[2]];rest=[i for i in range(len(self.cross)) if i not in inc]
+            nb=set((e[2],e[3]) if e[0]==b else (e[0],e[1]) for i in inc for e in [self.cross[i]])
+            # Kinetic dependence can cross a block even without an energy bond.
+            for i in self.groups[b]:
+                for node in self.model.get(&#x27;clock_contexts&#x27;,{}).get(i,[]):
+                    if self.loc[node][0]!=b:nb.add(self.loc[node])
+            nb=sorted(nb)
+            for z in product((0,1),repeat=len(nb)):
+                zz=dict(zip(nb,z));d=[F(1)]*len(self.bits[b]);projs=[np.ones(len(bits),dtype=object) for bits in self.bits]
+                for (c,t),a in zz.items():projs[c]*=(self.bits[c][:,t]==a).astype(int)
+                for i in inc:
+                    bb,s,c,t,v=self.cross[i]
+                    if bb!=b:bb,s,c,t=c,t,bb,s
+                    for a in range(len(d)):d[a]*=(v if self.bits[b][a,s]==zz[(c,t)] else F(1))/min(F(1),v)
+                M=self.local_weighted(b,d,zz)
+                for vs in self.cross_terms(rest):
+                    term=[np.diag(v*p) for v,p in zip(vs,projs)];term[b]=M.copy();out.append(term)
+        tb,ts=self.loc[self.model[&#x27;target&#x27;]]
+        for vs in self.cross_terms(range(len(self.cross))):
+            term=[np.diag(v) for v in vs];term[tb]*=self.model[&#x27;kappa&#x27;];term[tb]=np.diag(self.bits[tb][:,ts])@term[tb];out.append(term)
+        return out
+
+def discover_partition(model,max_local_bits=6):
+    &quot;&quot;&quot;Search thresholds of acquired bond contrasts; never expand an oversized block.
+    The score is a transparent heuristic, not a globally optimal partition theorem.
+    &quot;&quot;&quot;
+    import math
+    values=sorted(set(max(v,1/v) for v in model[&#x27;edges&#x27;].values()))
+    thresholds=values+[max(values)*2] if values else [F(2)]
+    candidates=[]
+    for threshold in thresholds:
+        gs=partition(model,threshold)
+        if len(gs)&lt;2 or max(map(len,gs))&gt;max_local_bits:continue
+        loc={i:b for b,g in enumerate(gs) for i in g};cross=[v for (i,j),v in model[&#x27;edges&#x27;].items() if loc[i]!=loc[j]]
+        R=F(1)
+        for v in cross:R*=max(v,1/v)
+        score=math.log(sum(2**(3*len(g)) for g in gs))+math.log(float(R))+len(cross)*math.log(2)
+        candidates.append({&#x27;threshold&#x27;:str(threshold),&#x27;groups&#x27;:gs,&#x27;R&#x27;:str(R),&#x27;cross_edges&#x27;:len(cross),&#x27;heuristic_log_cost&#x27;:score})
+    if not candidates:raise ValueError(&#x27;No admitted small-block factorization&#x27;)
+    best=min(candidates,key=lambda r:r[&#x27;heuristic_log_cost&#x27;])
+    return best[&#x27;groups&#x27;],{&#x27;selected&#x27;:best,&#x27;candidates&#x27;:candidates,&#x27;scope&#x27;:&#x27;energy-derived heuristic; not an optimal separator search&#x27;}
+
+
+def add_context_clock(truth,slow=F(1,100)):
+    &quot;&quot;&quot;Same energies and all-zero-context clocks; hidden mobility differs on mixed contacts.
+    Full context tables are disclosed ONLY through the balancing-query interface.
+    &quot;&quot;&quot;
+    truth={**truth};truth[&#x27;clock_contexts&#x27;]={};truth[&#x27;clock_tables&#x27;]={}
+    for i in range(truth[&#x27;n&#x27;]):
+        nei=sorted(j if i==a else a for a,j in truth[&#x27;edges&#x27;] if i==a or i==j)
+        strong=[j for j,node in enumerate(nei) if max(truth[&#x27;edges&#x27;][tuple(sorted((i,node)))],1/truth[&#x27;edges&#x27;][tuple(sorted((i,node)))])&gt;=2]
+        tab=[]
+        for z in range(1&lt;&lt;len(nei)):
+            bb=[(z&gt;&gt;j)&amp;1 for j in strong];mixed=bool(bb) and min(bb)!=max(bb)
+            tab.append(truth[&#x27;nu&#x27;][i]*(slow if mixed else F(1)))
+        truth[&#x27;clock_contexts&#x27;][i]=nei;truth[&#x27;clock_tables&#x27;][i]=tab
+    truth[&#x27;metadata&#x27;]={**truth[&#x27;metadata&#x27;],&#x27;mixed_contact_clock_factor&#x27;:str(slow)}
+    return truth
+
+
+def from_transcript(n,trans,target=0,kappa=F(1)):
+    if trans.get(&#x27;clock_interface&#x27;)==&#x27;unknown-support-degree-two-reverse&#x27;:
+        from reverse_tomography import recover_reverse
+        return recover_reverse(n,trans,target,kappa)[0]
+    if trans.get(&#x27;clock_interface&#x27;)==&#x27;unknown-support-degree-two&#x27;:
+        from kinetic_tomography import recover
+        return recover(n,trans[&#x27;weights&#x27;],trans[&#x27;balanced_rates&#x27;],target,kappa)[0]
+    data={int(k):F(v) for k,v in trans[&#x27;weights&#x27;].items()};w0=data[0];ss=[data[1&lt;&lt;i] for i in range(n)];edges={}
+    for i in range(n):
+        for j in range(i+1,n):
+            t=fsqrt(data[(1&lt;&lt;i)|(1&lt;&lt;j)]*w0/(ss[i]*ss[j]))
+            if t!=1:edges[(i,j)]=t
+    fields=[]
+    for i in range(n):
+        h=ss[i]/w0
+        for (a,b),t in edges.items():
+            if i==a or i==b:h*=t
+        fields.append(h)
+    cr=trans[&#x27;balanced_rates&#x27;];context=any(&#x27;:&#x27; in str(k) for k in cr)
+    nu=[2*F(cr[f&#x27;{i}:0&#x27;] if context else cr[str(i)]) for i in range(n)]
+    out=dict(n=n,edges=edges,fields=fields,nu=nu,target=target,kappa=kappa)
+    if context:
+        out[&#x27;clock_contexts&#x27;]={};out[&#x27;clock_tables&#x27;]={}
+        for i in range(n):
+            ctx=sorted(j if i==a else a for a,j in edges if i==a or i==j);out[&#x27;clock_contexts&#x27;][i]=ctx
+            out[&#x27;clock_tables&#x27;][i]=[2*F(cr[f&#x27;{i}:{z}&#x27;]) for z in range(1&lt;&lt;len(ctx))]
+    return out
+</pre></body></html>

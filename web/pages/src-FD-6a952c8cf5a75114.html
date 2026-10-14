@@ -1,0 +1,67 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — check_decoder_and_caps.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>&quot;&quot;&quot;Independent component checks and acquisition failure fixtures.&quot;&quot;&quot;
+import sys
+sys.dont_write_bytecode = True
+from pathlib import Path
+HERE=Path(__file__).resolve().parent
+from shifted_ball_decoder import ShiftedBallDecoder, monomials, evaluate
+from robust_learner import acquire
+from run_experiment import run_case
+import json
+import random
+import time
+
+
+def main():
+    start=time.perf_counter()
+    cases=[]
+    for n,d in ((4,1),(4,2),(5,3),(8,2),(8,3),(16,3),(32,2)):
+        for seed in range(8):
+            rng=random.Random(970000+1000*n+100*d+seed)
+            masks=monomials(n,d)
+            if n&lt;=8:
+                terms=[s for s in masks if rng.getrandbits(1)]
+                # Exactly rho=1/32 where the input domain allows it; density
+                # 1/64 at higher d. Nonzero deterministic errors are retained.
+                bad_count=max(1,(1&lt;&lt;n)//(64 if d&gt;=3 else 32))
+                bad=set(rng.sample(range(1&lt;&lt;n),bad_count))
+                rho=bad_count/(1&lt;&lt;n)
+                if rho&gt;=2.0**(-d-1):
+                    rho=0
+                    bad=set()
+                def raw(x):
+                    return evaluate(terms,x)^int(x in bad)
+            else:
+                terms=rng.sample(masks,min(25,len(masks)))
+                rho=1/128
+                def raw(x):
+                    return evaluate(terms,x)^int((x&amp;127)==0)
+            decoder=ShiftedBallDecoder(n,d,rho,1e-6,random.Random(980000+seed))
+            found=decoder.decode(raw)
+            assert found==sorted(terms),(n,d,seed)
+            cases.append(dict(n=n,d=d,seed=seed,rho=rho,exact_coefficients=True,
+                              decoder=decoder.ledger()))
+    calls=0
+    def forbidden_query(x,y):
+        nonlocal calls
+        calls+=1
+        raise AssertionError(&#x27;force-zero fixture must never query&#x27;)
+    cap,model,comp=acquire(8,2,1/32,.05,forbidden_query,999,
+                           force_zero_directions=True)
+    assert model is None and cap[&#x27;status&#x27;]==&#x27;UNKNOWN&#x27;
+    assert cap[&#x27;reason&#x27;]==&#x27;candidate_cap_exhausted&#x27; and calls==0
+    # A budget stop is surfaced as UNKNOWN without a partially returned model.
+    budget=run_case(n=8,r=2,seed=960082,mode=&#x27;asymmetric_hash&#x27;,
+                    max_requests=10,check=False)
+    assert budget[&#x27;status&#x27;]==&#x27;UNKNOWN&#x27; and budget[&#x27;finite_result&#x27;]==&#x27;UNKNOWN&#x27;
+    assert budget[&#x27;oracle&#x27;][&#x27;logical_requests&#x27;]==10
+    out=dict(component_cases=cases,component_case_count=len(cases),
+             force_zero_fixture=cap,request_budget_fixture=budget,
+             seconds=time.perf_counter()-start,status=&#x27;PASS&#x27;)
+    (HERE/&#x27;decoder_and_caps_receipt.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(dict(status=&#x27;PASS&#x27;,component_case_count=len(cases),
+                         force_zero_requests=calls,budget_requests=10,
+                         seconds=out[&#x27;seconds&#x27;]),indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>

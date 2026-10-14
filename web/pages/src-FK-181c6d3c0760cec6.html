@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FK evidence — equal_information_witness.py</title><body><p>FK source/internal evidence, externally unreviewed. <a href="../../updates/FK/synthesis/response_bounds/equal_information_witness.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce an equal-information thermal-response witness and noisy readout.
+
+The certification rule receives only the Euclidean data, the exact first
+commutator moment, and an optional static-response calibration.  The spectral
+atoms below are hidden benchmark-generator inputs; they are not inputs to the
+rule.  Noise is a declared independent Gaussian instrument model, not physical
+device data or an MCMC error model.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+from statistics import NormalDist
+
+import mpmath as mp
+import numpy as np
+
+
+HERE = Path(__file__).resolve().parent
+BETA = mp.mpf(1)
+ETA = mp.mpf(1)
+TAUS = [mp.mpf(0)] + [mp.mpf(k) / 12 for k in range(1, 6)]
+OMEGAS = list(
+    map(mp.mpf, [&quot;0.07&quot;, &quot;0.16&quot;, &quot;1.9&quot;, &quot;5.3&quot;, &quot;9&quot;, &quot;15&quot;, &quot;21.5&quot;, &quot;28.5&quot;, &quot;40&quot;])
+)
+SEED = 20261014
+
+
+def euclidean_kernel(tau: mp.mpf, omega: mp.mpf) -&gt; mp.mpf:
+    return (mp.exp(-tau * omega) + mp.exp(-(BETA - tau) * omega)) / (
+        1 - mp.exp(-BETA * omega)
+    )
+
+
+def response_kernel(eta: mp.mpf, omega: mp.mpf) -&gt; mp.mpf:
+    return 2 * omega / (omega * omega + eta * eta)
+
+
+def static_kernel(omega: mp.mpf) -&gt; mp.mpf:
+    return 2 / omega
+
+
+def finite_duration_response(weight: mp.mpf, omega: mp.mpf, eta: mp.mpf, tmax: mp.mpf) -&gt; mp.mpf:
+    &quot;&quot;&quot;Integral_0^T exp(-eta*t) 2*weight*sin(omega*t) dt.&quot;&quot;&quot;
+    numerator = omega - mp.exp(-eta * tmax) * (
+        eta * mp.sin(omega * tmax) + omega * mp.cos(omega * tmax)
+    )
+    return 2 * weight * numerator / (omega * omega + eta * eta)
+
+
+def make_pair() -&gt; dict:
+    # Six Euclidean correlators, M_1=2 int omega dmu, and chi(0).
+    constraints = [
+        [euclidean_kernel(tau, omega) for omega in OMEGAS] for tau in TAUS
+    ] + [
+        [2 * omega for omega in OMEGAS],
+        [static_kernel(omega) for omega in OMEGAS],
+    ]
+    a = mp.matrix(constraints)
+    # Define the null vector exactly in terms of the displayed real matrix.
+    # The first eight columns have nonzero determinant for this fixed support;
+    # interval determinant/Cramer checks below certify the sign and positivity.
+    v_head = mp.lu_solve(a[:, 0:8], -a[:, 8])
+    v = list(v_head) + [mp.mpf(1)]
+
+    # Positive reference measure with M_1 exactly one.
+    base = [1 / (2 * len(OMEGAS) * omega) for omega in OMEGAS]
+    delta = mp.mpf(&quot;0.000001&quot;)
+    plus = [b + delta * q for b, q in zip(base, v)]
+    minus = [b - delta * q for b, q in zip(base, v)]
+    assert min(plus + minus) &gt; 0
+
+    def integrate(weights: list[mp.mpf], fn) -&gt; mp.mpf:
+        return mp.fsum(w * fn(x) for w, x in zip(weights, OMEGAS))
+
+    c_plus = [integrate(plus, lambda x: euclidean_kernel(tau, x)) for tau in TAUS]
+    c_minus = [integrate(minus, lambda x: euclidean_kernel(tau, x)) for tau in TAUS]
+    m1_plus = integrate(plus, lambda x: 2 * x)
+    m1_minus = integrate(minus, lambda x: 2 * x)
+    static_plus = integrate(plus, static_kernel)
+    static_minus = integrate(minus, static_kernel)
+    chi_plus = integrate(plus, lambda x: response_kernel(ETA, x))
+    chi_minus = integrate(minus, lambda x: response_kernel(ETA, x))
+
+    residual = max(
+        [abs(x - y) for x, y in zip(c_plus, c_minus)]
+        + [abs(m1_plus - m1_minus), abs(static_plus - static_minus)]
+    )
+    assert residual &lt; mp.mpf(&quot;1e-80&quot;)
+    return {
+        &quot;matrix&quot;: a,
+        &quot;null_vector&quot;: v,
+        &quot;base&quot;: base,
+        &quot;delta&quot;: delta,
+        &quot;plus&quot;: plus,
+        &quot;minus&quot;: minus,
+        &quot;correlators&quot;: c_plus,
+        &quot;m1&quot;: m1_plus,
+        &quot;static&quot;: static_plus,
+        &quot;chi_plus&quot;: chi_plus,
+        &quot;chi_minus&quot;: chi_minus,
+        &quot;gap&quot;: abs(chi_plus - chi_minus),
+        &quot;residual&quot;: residual,
+    }
+
+
+def interval_audit() -&gt; dict:
+    &quot;&quot;&quot;Outward interval checks for the concrete support and delta=10^-6.&quot;&quot;&quot;
+    iv = mp.iv
+    iv.dps = 60
+    beta, eta = iv.mpf(1), iv.mpf(1)
+    frequencies = [
+        iv.mpf(x) for x in [&quot;0.07&quot;, &quot;0.16&quot;, &quot;1.9&quot;, &quot;5.3&quot;, &quot;9&quot;, &quot;15&quot;, &quot;21.5&quot;, &quot;28.5&quot;, &quot;40&quot;]
+    ]
+    taus = [iv.mpf(0)] + [iv.mpf(k) / 12 for k in range(1, 6)]
+
+    def k_iv(tau, omega):
+        return (iv.exp(-tau * omega) + iv.exp(-(beta - tau) * omega)) / (
+            1 - iv.exp(-beta * omega)
+        )
+
+    constraints = [
+        [k_iv(tau, omega) for omega in frequencies] for tau in taus
+    ] + [[2 * omega for omega in frequencies], [2 / omega for omega in frequencies]]
+    matrix = iv.matrix(constraints)
+    square = matrix[:, 0:8]
+    determinant = iv.det(square)
+    if not float(determinant.b) &lt; 0:
+        raise ArithmeticError(&quot;interval determinant did not exclude zero&quot;)
+
+    v_bounds = []
+    for column in range(8):
+        replaced = iv.matrix(square)
+        for row in range(8):
+            replaced[row, column] = matrix[row, 8]
+        v_bounds.append(-iv.det(replaced) / determinant)
+    v_bounds.append(iv.mpf(1))
+
+    delta = iv.mpf(&quot;0.000001&quot;)
+    base = [1 / (18 * omega) for omega in frequencies]
+    weights = []
+    for b, v in zip(base, v_bounds):
+        wp, wm = b + delta * v, b - delta * v
+        if min(float(wp.a), float(wm.a)) &lt;= 0:
+            raise ArithmeticError(&quot;interval positivity check failed&quot;)
+        weights.append((wp, wm))
+
+    target = [2 * omega / (omega * omega + eta * eta) for omega in frequencies]
+    gap = 2 * delta * sum((v * g for v, g in zip(v_bounds, target)), iv.mpf(0))
+    if not (float(gap.a) &gt; 0 or float(gap.b) &lt; 0):
+        raise ArithmeticError(&quot;interval response-gap check failed&quot;)
+    return {
+        &quot;determinant_interval&quot;: str(determinant),
+        &quot;response_gap_interval_signed&quot;: str(gap),
+        &quot;minimum_weight_lower_endpoint&quot;: min(
+            min(float(wp.a), float(wm.a)) for wp, wm in weights
+        ),
+    }
+
+
+def s(x: mp.mpf, digits: int = 15) -&gt; str:
+    return mp.nstr(x, digits)
+
+
+def main() -&gt; None:
+    mp.mp.dps = 100
+    pair = make_pair()
+    audited = interval_audit()
+
+    # A single realized data vector under the common Gaussian mean model.
+    rng = np.random.default_rng(SEED)
+    sigma_euclidean = 0.02
+    sigma_static = 0.05
+    cmean = np.array([float(x) for x in pair[&quot;correlators&quot;]])
+    observed_c = cmean + rng.normal(0.0, sigma_euclidean, size=len(cmean))
+    observed_static = float(pair[&quot;static&quot;]) + rng.normal(0.0, sigma_static)
+
+    # A finite-duration exponentially ramped source probes the desired
+    # susceptibility directly in linear response.  Simulate its calibrated
+    # central-difference readout; all calibration bounds are explicit below.
+    eta_f = float(ETA)
+    tmax_f = 12.0
+    f0 = 0.1
+    n_per_sign = 10_000
+    sigma_A = 0.02
+    sigma_Abar = sigma_A / math.sqrt(n_per_sign)
+    chi_t = mp.fsum(
+        finite_duration_response(w, om, ETA, mp.mpf(str(tmax_f)))
+        for w, om in zip(pair[&quot;plus&quot;], OMEGAS)
+    )
+    a_plus_mean = f0 * float(chi_t)
+    a_minus_mean = -f0 * float(chi_t)
+    a_plus_obs = a_plus_mean + rng.normal(0.0, sigma_Abar)
+    a_minus_obs = a_minus_mean + rng.normal(0.0, sigma_Abar)
+    chi_hat = (a_plus_obs - a_minus_obs) / (2 * f0)
+
+    alpha_intervention = 0.01
+    z_intervention = NormalDist().inv_cdf(1 - alpha_intervention / 2)
+    stat_radius = z_intervention * sigma_A / (math.sqrt(2 * n_per_sign) * f0)
+
+    # Declared conditional systematic bounds for this simulated instrument.
+    alpha_euclidean = 0.01
+    z_euclidean = NormalDist().inv_cdf(1 - alpha_euclidean / (2 * len(observed_c)))
+    c0_upper = observed_c[0] + z_euclidean * sigma_euclidean
+    m0_upper = 2 * c0_upper
+    tail_radius = m0_upper * math.exp(-eta_f * tmax_f) / eta_f
+    gain_A_rel = 0.003
+    force_rel = 0.002
+    cal_factor_high = (1 + gain_A_rel) ** 2 * (1 + force_rel) - 1
+    cal_factor_low = 1 - (1 - gain_A_rel) ** 2 * (1 - force_rel)
+    calibration_radius = max(cal_factor_high, cal_factor_low) * abs(chi_hat)
+    B3 = 0.3
+    nonlinear_radius = B3 * f0 * f0 / 6
+    waveform_l1_error = 1e-5
+    waveform_radius = m0_upper * waveform_l1_error
+    total_radius = (
+        stat_radius + tail_radius + calibration_radius + nonlinear_radius + waveform_radius
+    )
+
+    result = {
+        &quot;scope&quot;: {
+            &quot;status&quot;: &quot;reproducible synthetic Gaussian acquisition; not physical device data&quot;,
+            &quot;noise_law&quot;: &quot;independent Gaussian additive Euclidean/static readout; Gaussian central-difference readout&quot;,
+            &quot;hidden_generator_inputs_not_given_to_certifier&quot;: &quot;finite positive spectral atoms in the script&quot;,
+            &quot;physical_acquisition&quot;: False,
+            &quot;MCMC_or_autocorrelation_model&quot;: False,
+        },
+        &quot;model&quot;: {
+            &quot;beta&quot;: 1.0,
+            &quot;eta&quot;: 1.0,
+            &quot;first_matsubara&quot;: 2 * math.pi,
+            &quot;eta_over_first_matsubara&quot;: 1 / (2 * math.pi),
+            &quot;tau&quot;: [float(t) for t in TAUS],
+            &quot;frequencies&quot;: [float(x) for x in OMEGAS],
+            &quot;M1_exact&quot;: s(pair[&quot;m1&quot;]),
+        },
+        &quot;equal_information_pair&quot;: {
+            &quot;weights_plus&quot;: [s(x) for x in pair[&quot;plus&quot;]],
+            &quot;weights_minus&quot;: [s(x) for x in pair[&quot;minus&quot;]],
+            &quot;null_vector_definition_values&quot;: [s(x) for x in pair[&quot;null_vector&quot;]],
+            &quot;null_vector_scale_delta&quot;: s(pair[&quot;delta&quot;]),
+            &quot;euclidean_means_common&quot;: [s(x) for x in pair[&quot;correlators&quot;]],
+            &quot;static_response_common&quot;: s(pair[&quot;static&quot;]),
+            &quot;target_chi_eta_plus&quot;: s(pair[&quot;chi_plus&quot;]),
+            &quot;target_chi_eta_minus&quot;: s(pair[&quot;chi_minus&quot;]),
+            &quot;target_gap&quot;: s(pair[&quot;gap&quot;]),
+            &quot;max_equal_information_residual_100dps&quot;: s(pair[&quot;residual&quot;], 8),
+            &quot;first_8_column_determinant_100dps_diagnostic&quot;: s(mp.det(pair[&quot;matrix&quot;][:, 0:8]), 20),
+            &quot;interval_audit&quot;: audited,
+        },
+        &quot;noisy_euclidean_acquisition&quot;: {
+            &quot;seed&quot;: SEED,
+            &quot;sigma_each&quot;: sigma_euclidean,
+            &quot;observed_values&quot;: observed_c.tolist(),
+            &quot;known_simulator_standard_errors&quot;: [sigma_euclidean] * len(observed_c),
+            &quot;same_distribution_under_plus_and_minus&quot;: True,
+            &quot;static_response_sigma&quot;: sigma_static,
+            &quot;static_response_observed&quot;: observed_static,
+            &quot;static_response_same_distribution_under_plus_and_minus&quot;: True,
+        },
+        &quot;calibrated_exponential_drive_demo&quot;: {
+            &quot;drive&quot;: &quot;f(t)=+/-f0*exp(eta*t), -T&lt;=t&lt;=0; linear-response output is +/-f0*int_0^T exp(-eta*s)R(s)ds&quot;,
+            &quot;T&quot;: tmax_f,
+            &quot;f0&quot;: f0,
+            &quot;samples_per_sign&quot;: n_per_sign,
+            &quot;per_sample_A_standard_deviation&quot;: sigma_A,
+            &quot;finite_T_mean_plus&quot;: a_plus_mean,
+            &quot;finite_T_mean_minus&quot;: a_minus_mean,
+            &quot;observed_chi_estimate&quot;: chi_hat,
+            &quot;statistical_radius_99pct&quot;: stat_radius,
+            &quot;C0_upper_from_euclidean_data&quot;: c0_upper,
+            &quot;M0_upper&quot;: m0_upper,
+            &quot;tail_radius&quot;: tail_radius,
+            &quot;relative_A_gain_bound&quot;: gain_A_rel,
+            &quot;relative_force_calibration_bound&quot;: force_rel,
+            &quot;maximum_multiplicative_error_factor&quot;: max(cal_factor_high, cal_factor_low),
+            &quot;calibration_radius&quot;: calibration_radius,
+            &quot;declared_third_derivative_bound&quot;: B3,
+            &quot;nonlinear_radius&quot;: nonlinear_radius,
+            &quot;source_waveform_L1_error_bound&quot;: waveform_l1_error,
+            &quot;waveform_radius&quot;: waveform_radius,
+            &quot;total_radius_under_declared_bounds&quot;: total_radius,
+            &quot;joint_coverage_lower_bound&quot;: 1 - alpha_intervention - alpha_euclidean / len(observed_c),
+            &quot;conditional_interval&quot;: [chi_hat - total_radius, chi_hat + total_radius],
+            &quot;warning&quot;: &quot;synthetic acquisition only; real-system gain, waveform, nonlinear-response and thermalization bounds require independent receipts&quot;,
+        },
+    }
+    (HERE / &quot;RESULTS.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    with (HERE / &quot;noisy_euclidean.csv&quot;).open(&quot;w&quot;) as f:
+        f.write(&quot;tau,observed_C,simulated_sigma\n&quot;)
+        for tau, val in zip(TAUS, observed_c):
+            f.write(f&quot;{float(tau):.12g},{val:.17g},{sigma_euclidean:.17g}\n&quot;)
+
+    print(json.dumps({
+        &quot;euclidean_means&quot;: result[&quot;equal_information_pair&quot;][&quot;euclidean_means_common&quot;],
+        &quot;static&quot;: result[&quot;equal_information_pair&quot;][&quot;static_response_common&quot;],
+        &quot;chi_plus&quot;: result[&quot;equal_information_pair&quot;][&quot;target_chi_eta_plus&quot;],
+        &quot;chi_minus&quot;: result[&quot;equal_information_pair&quot;][&quot;target_chi_eta_minus&quot;],
+        &quot;gap&quot;: result[&quot;equal_information_pair&quot;][&quot;target_gap&quot;],
+        &quot;equal_residual&quot;: result[&quot;equal_information_pair&quot;][&quot;max_equal_information_residual_100dps&quot;],
+        &quot;noisy_euclidean&quot;: observed_c.tolist(),
+        &quot;intervention_center&quot;: chi_hat,
+        &quot;intervention_total_radius&quot;: total_radius,
+        &quot;intervention_interval&quot;: result[&quot;calibrated_exponential_drive_demo&quot;][&quot;conditional_interval&quot;],
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

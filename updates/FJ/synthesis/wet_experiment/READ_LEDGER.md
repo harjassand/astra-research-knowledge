@@ -1,0 +1,44 @@
+# Read and source-access ledger
+
+**Audit date:** 2026-10-14. External technical claims in `REPORT.md` are grounded in primary articles. “Read full text” below means the complete locally available article text was extracted/inspected; page-render inspection is stated separately. An inaccessible supplement is an access boundary, not evidence that the source has no other supporting data.
+
+## Pinned repository and supplied branch
+
+* Read `work/FJ_PIN.json`: main revision `ace0cfc4437fe91c20ccd24d69e0ee4bb335e871`; task checkout `cb62d881a071c617b11d7dbc82a98921969389a7`; cumulative PR83 head is the same checkout hash.
+* Read pinned checkout `work/astra-capital/00_START_HERE.txt`, `AGENTS.md`, `agent/CURRENT.txt`, `agent/OBSTRUCTIONS.txt`, `agent/COMPOSITION.txt`, and `agent/ACCESS.txt`. These direct navigation, authority, and scope; no mathematical claim was inferred from the generated current counts or navigation files.
+* A narrow case-insensitive search for `hydroelectronic`, `hydro-electronic`, `quantum friction`, `liquid-electron`, and `current-driven flow` over the current dossiers/cards/concepts and notices found no directly applicable capital record. This is a bounded lexical search, not a claim that the repository has no related material.
+* Read `work/FJ-sources/physical_PASTED_SOURCE.txt`, lines 29–188. In particular, lines 53–64 specify the same-device `K,C,G` and reciprocal-cross-response measurement gate; lines 154–176 require long pressure steps, ionic/leakage controls, independent dry-network measurements, and measured output work. This file is supplied candidate material, treated as a claim/source record rather than independent experimental validation.
+
+## Primary experimental and theory sources
+
+### Lizée et al. 2023, PRX 13, 011020
+
+* Citation: Mathieu Lizée et al., “Strong Electronic Winds Blowing under Liquid Flows on Carbon Surfaces,” *Physical Review X* 13, 011020 (2023), DOI [10.1103/PhysRevX.13.011020](https://doi.org/10.1103/PhysRevX.13.011020). Publisher landing page: [APS Journals](https://journals.aps.org/prx/abstract/10.1103/PhysRevX.13.011020). Primary article PDF: [APS PDF](https://journals.aps.org/prx/pdf/10.1103/PhysRevX.13.011020).
+* Local article PDF: `lizee2023_main.pdf`, 12 pages, 2,272,369 bytes, SHA-256 `6d57bd665fadc055451ac638413cd61a61de0e6b3fcaababee8539006ab4c47f`.
+* Extracted complete PDF text to `lizee2023_main.txt` with Python 3.14.3 / pypdf 6.19.0. Read experimental procedure and current/geometry ranges (printed pp. 2–3), bias scaling and wrinkle response (printed pp. 3–4), model discussion (printed pp. 4–6), Fig. 4 and its caption (printed p. 8), and Appendix C controls/frequency discussion (printed p. 9). Rendered selected pages with Swift 6.2.3 / PDFKit using `render_pdf_pages.swift`; visually inspected Fig. 4 on PDF page 7, Appendix C on PDF page 8, and Fig. 5/Appendix D on PDF page 9. Fig. 4(f) digitizations in the report are explicitly visual estimates.
+* No separate supplemental-material link appeared in the accessible APS article/abstract page. Tried common APS paths ending in `/supplemental_materials.pdf`, `/SupMat.pdf`, `/suppl_mat.pdf`, `/Supplemental_Material.pdf`, and `/supplemental.pdf`; each returned 404. The accessible 12-page main article includes Appendices A–D and the Fig. 4(f) glycerol control. This does not rule out a nonlinked or differently named file.
+
+### Coquinot, Bocquet & Kavokine 2024, PNAS 121, e2411613121
+
+* Citation: Baptiste Coquinot, Lydéric Bocquet & Nikita Kavokine, “Hydroelectric energy conversion of waste flows through hydroelectronic drag,” *PNAS* 121 (2024), e2411613121, DOI [10.1073/pnas.2411613121](https://doi.org/10.1073/pnas.2411613121). Publisher record: [PNAS](https://www.pnas.org/doi/10.1073/pnas.2411613121). Primary article PDF: [PNAS PDF](https://www.pnas.org/doi/pdf/10.1073/pnas.2411613121). Public full-text record: [Europe PMC / PMC11513952](https://europepmc.org/articles/PMC11513952).
+* Local main PDF: `coquinot2024_pnas.pdf`, 7 pages, 3,156,629 bytes, SHA-256 `e8dc934a3d4cd16a6fa5a21565f409c3eb6dad8f84f3271ec43d2852ec1f3797`.
+* Local full-text XML: `coquinot2024_fulltext.xml`, 129,413 bytes, SHA-256 `24b2e1d628300ba966879b773a8cca08d27a524cc56606a11d224fad51376740`; retrieved via Europe PMC REST `https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11513952/fullTextXML`. Extracted complete main PDF text to `coquinot2024_pnas.txt` with Python 3.14.3 / pypdf 6.19.0. Read the transport-matrix/model discussion (printed pp. 2–4), the CNT estimates and figure of merit (pp. 4–5), and the membrane-model discussion (pp. 5–6). The EPMC XML independently confirms the article’s supplementary-material reference.
+* The XML identifies `pnas.2411613121.sapp.pdf` as the SI. Direct PNAS supplemental-file retrieval returned HTTP 403; the NCBI binary path `https://pmc.ncbi.nlm.nih.gov/articles/PMC11513952/bin/pnas.2411613121.sapp.pdf` returned an HTTP-200 reCAPTCHA HTML page, not a PDF. No content from that response was used. All numeric reconstruction in the report is based on the full main paper and is marked model-only.
+
+### Rabinowitz, Cohen & Shepard 2020, Nano Letters
+
+* Citation: Jake Rabinowitz, Charishma Cohen & Kenneth L. Shepard, “An Electrically Actuated, Carbon-Nanotube-Based Biomimetic Ion Pump,” *Nano Letters* (2020), DOI [10.1021/acs.nanolett.9b04552](https://doi.org/10.1021/acs.nanolett.9b04552). Publisher record: [ACS](https://pubs.acs.org/doi/10.1021/acs.nanolett.9b04552). Primary author-hosted article PDF: [Columbia BioEE PDF](https://bioee.ee.columbia.edu/wp-content/uploads/2020/01/acs.nanolett.9b04552.pdf). Public full-text record: [PMC7018576](https://pmc.ncbi.nlm.nih.gov/articles/PMC7018576/).
+* Local article PDF: `rabinowitz2020_main.pdf`, 6 pages, 3,125,092 bytes, SHA-256 `dd28193a073752ea078c8d077530d03bf769241a75f6750fb948d32096ffdf0a`.
+* Extracted complete PDF text to `rabinowitz2020_main.txt` with Python 3.14.3 / pypdf 6.19.0. Read the device/electrolyte design, mutual-drag and reverse-noise-floor results, controls, and methods (printed pp. A–E, particularly B–E). The reported >1 nA ionic short-circuit value comes from the paper abstract; the report does not digitize additional current values from figures. The text-supported details include zero-bias cross-current, SNR/integration, leakage caveats, and device-specific reverse coupling.
+* The article lists an ACS Supporting Information PDF with device overview, AFM, electronic/ionic conductance, working-device data, and interlayer coupling. The PMC binary path referencing `nihms-1066059-supplement-Supplement.pdf` returned an HTTP-200 reCAPTCHA HTML response; the ACS SI link was not resolved to an accessible file. SI data were not used.
+
+### Kang et al. 2025, Science Advances 11, eadx5747
+
+* Citation: “Water-flow electric-gating effect on a van der Waals surface,” *Science Advances* 11 (2025), eadx5747, DOI [10.1126/sciadv.adx5747](https://doi.org/10.1126/sciadv.adx5747). Publisher record: [Science](https://www.science.org/doi/10.1126/sciadv.adx5747). Public full-text record: [PMC12494036](https://pmc.ncbi.nlm.nih.gov/articles/PMC12494036/).
+* Full-text XML: `kang2025_wgt.xml`, 140,679 bytes, SHA-256 `57b69e978eee5e279a327d38e3aef867b7e59ccecb8508450e854f050062df49`; retrieved from `https://www.ebi.ac.uk/europepmc/webservices/rest/PMC12494036/fullTextXML`. Read abstract, Results (flow-gating, voltage-response and WGT performance), Discussion, and Materials and Methods. The publisher landing/PDF endpoints returned HTTP 403 from this environment. The XML identifies `sciadv.adx5747_sm.pdf`; a PMC binary attempt returned 404 and the publisher supplement endpoint returned 403. Supplement contents were not used.
+
+## Tooling and calculation provenance
+
+* Source downloads and endpoint checks used curl 8.7.1 or Python 3.14.3 `urllib.request`; full-text extraction used pypdf 6.19.0. No source/environment files were edited. PDF page renders are local derivatives of the acquired APS PDF, created with Swift 6.2.3 and PDFKit.
+* `calculations.py` uses Python standard-library arithmetic only and writes only `calculation_results.json` beside itself. It separately labels (i) the graph-read PRX estimate, (ii) a Johnson-noise floor at an illustrative 300 K and 1 Hz bandwidth, and (iii) model-only PNAS reconstruction from rounded published inputs. It assumes no friction value beyond the paper’s explicitly identified theoretical CNT case.
+* The SI access failures are recorded above as failures of the checked routes. No conclusion of absence, invalidity, or nonpublication is drawn from those failures.

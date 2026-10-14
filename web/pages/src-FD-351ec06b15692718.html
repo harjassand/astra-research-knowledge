@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><title>FD evidence — replay_source.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Replay the kinetic packet in an isolated output copy, without source mutation.&quot;&quot;&quot;
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument(&quot;--source-dir&quot;, required=True, type=Path)
+parser.add_argument(&quot;--output-dir&quot;, required=True, type=Path)
+args = parser.parse_args()
+source = args.source_dir.resolve()
+output = args.output_dir.resolve()
+if output == source or source in output.parents:
+    raise SystemExit(&quot;Output directory must be outside the immutable source packet.&quot;)
+output.mkdir(parents=True, exist_ok=True)
+manifest = json.loads((source / &quot;MANIFEST.json&quot;).read_text())
+hashes = []
+for name, entry in manifest.items():
+    data = (source / name).read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    hashes.append({&quot;path&quot;: name, &quot;sha256&quot;: digest,
+                   &quot;sha256_ok&quot;: digest == entry[&quot;sha256&quot;],
+                   &quot;size_ok&quot;: len(data) == entry[&quot;bytes&quot;]})
+if not all(x[&quot;sha256_ok&quot;] and x[&quot;size_ok&quot;] for x in hashes):
+    raise SystemExit(&quot;Source integrity check failed.&quot;)
+shutil.copy2(source / &quot;verify.py&quot;, output / &quot;verify.py&quot;)
+run = subprocess.run([sys.executable, str(output / &quot;verify.py&quot;)], cwd=output,
+                     capture_output=True, text=True, check=False)
+(output / &quot;run_log.json&quot;).write_text(run.stdout)
+(output / &quot;stderr.txt&quot;).write_text(run.stderr)
+receipt = {&quot;scope&quot;: &quot;Producer diagnostic replay only; no independent universal theorem or novelty validation.&quot;,
+           &quot;python_version&quot;: sys.version, &quot;returncode&quot;: run.returncode, &quot;source_hashes&quot;: hashes}
+if run.returncode == 0:
+    produced = (output / &quot;results.json&quot;).read_bytes()
+    original = (source / &quot;results.json&quot;).read_bytes()
+    receipt.update({&quot;bytes_match&quot;: produced == original,
+                    &quot;semantic_match&quot;: json.loads(produced) == json.loads(original),
+                    &quot;output_sha256&quot;: hashlib.sha256(produced).hexdigest()})
+(output / &quot;REPLAY_RECEIPT.json&quot;).write_text(json.dumps(receipt, indent=2) + &quot;\n&quot;)
+print(json.dumps({k: receipt[k] for k in [&quot;scope&quot;, &quot;returncode&quot;, &quot;bytes_match&quot;, &quot;semantic_match&quot;] if k in receipt}, indent=2))
+if run.returncode:
+    raise SystemExit(run.returncode)
+</pre>

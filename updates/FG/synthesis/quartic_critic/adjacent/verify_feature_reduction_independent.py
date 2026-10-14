@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Exact24-feature basis and symmetry-action audit for the SOS reduction.
+
+Completeness of the averaged block description is a representation argument
+written in ADJACENT_REPORT.txt, not a universal positive-certificate theorem.
+"""
+from pathlib import Path
+import json
+import sympy as S
+
+HERE=Path(__file__).resolve().parent
+a,b,c,d=S.symbols("a b c d",real=True);x=S.Matrix([a,b,c,d]);h=S.symbols("h0:6",real=True)
+f=S.Matrix([a,c]);g=S.Matrix([b,d]);X=S.Matrix([h[0],h[3]]);Y=S.Matrix([h[1],h[4]]);Z=S.Matrix([h[2],h[5]])
+def cross(v,w):return v[0]*w[1]-v[1]*w[0]
+zp=S.Matrix([f.dot(X),f.dot(Z),g.dot(Y),cross(f,Y),cross(g,X),cross(g,Z)])
+zm=S.Matrix([-g.dot(Z),-g.dot(X),-f.dot(Y),cross(g,Y),cross(f,Z),cross(f,X)])
+cx=a+S.I*c;cy=b+S.I*d;CX=h[0]+S.I*h[3];CY=h[1]+S.I*h[4];CZ=h[2]+S.I*h[5]
+bu=S.Matrix([cx*CX+S.I*cy*CZ,cx*CZ+S.I*cy*CX,cy*CY+S.I*cx*CY])
+bv=S.Matrix([cx*CX-S.I*cy*CZ,cx*CZ-S.I*cy*CX,cy*CY-S.I*cx*CY])
+real=lambda z:z.applyfunc(lambda p:S.expand(S.re(p)))
+imag=lambda z:z.applyfunc(lambda p:S.expand(S.im(p)))
+features=zp.col_join(zm).col_join(real(bu)).col_join(imag(bu)).col_join(real(bv)).col_join(imag(bv))
+original=[xx*hh for xx in x for hh in h]
+matrix=S.Matrix([[S.Poly(p,tuple(x)+h).coeff_monomial(m) for m in original] for p in features])
+det=matrix.det();assert det!=0 and matrix.rank()==24
+rot={a:b,b:-a,c:d,d:-c,h[0]:h[2],h[1]:-h[1],h[2]:h[0],h[3]:h[5],h[4]:-h[4],h[5]:h[3]}
+refl={a:a,b:-b,c:-c,d:d,h[0]:h[0],h[1]:-h[1],h[2]:h[2],h[3]:-h[3],h[4]:h[4],h[5]:-h[5]}
+assert (zp.subs(rot,simultaneous=True)+zm).applyfunc(S.expand)==S.zeros(6,1)
+assert (zm.subs(rot,simultaneous=True)-zp).applyfunc(S.expand)==S.zeros(6,1)
+assert (bu.subs(rot,simultaneous=True)+S.I*bu).applyfunc(S.expand)==S.zeros(3,1)
+assert (bv.subs(rot,simultaneous=True)-S.I*bv).applyfunc(S.expand)==S.zeros(3,1)
+assert (zp.subs(refl,simultaneous=True)-zp).applyfunc(S.expand)==S.zeros(6,1)
+assert (zm.subs(refl,simultaneous=True)+zm).applyfunc(S.expand)==S.zeros(6,1)
+assert (bu.subs(refl,simultaneous=True)-bu.conjugate()).applyfunc(S.expand)==S.zeros(3,1)
+assert (bv.subs(refl,simultaneous=True)-bv.conjugate()).applyfunc(S.expand)==S.zeros(3,1)
+# The infinitesimal outputSO2 action proves scalar weight0 and tensor weight2.
+variables=list(x)+list(h)
+speeds=[-c,-d,a,b,-h[3],-h[4],-h[5],h[0],h[1],h[2]]
+def generator(poly):return S.expand(sum(v*S.diff(poly,k) for k,v in zip(variables,speeds)))
+assert zp.applyfunc(generator)==zm.applyfunc(generator)==S.zeros(6,1)
+assert (bu.applyfunc(generator)-2*S.I*bu).applyfunc(S.expand)==S.zeros(3,1)
+assert (bv.applyfunc(generator)-2*S.I*bv).applyfunc(S.expand)==S.zeros(3,1)
+AA,CC,EE,LL=S.symbols("AA CC EE LL",real=True)
+u,v,w,q=f.dot(f),g.dot(g),f.dot(g),cross(f,g)
+F=AA*(u*u+v*v)+CC*u*v+EE*w*w+LL*q*(u+v)
+assert generator(F)==0
+assert S.expand(F.subs(rot,simultaneous=True)-F)==0
+assert S.expand(F.subs(refl,simultaneous=True)-F)==0
+# Constant diffusion covariance and its finite rotation average.
+m00,m01,m11=S.symbols("m00 m01 m11",real=True)
+M=S.Matrix([[m00,m01],[m01,m11]]);R=S.Matrix([[0,-1],[1,0]])
+average=sum((R**k*M*(R**k).T for k in range(4)),S.zeros(2))/4
+assert average==S.trace(M)*S.eye(2)/2
+out={"status":"PASS","feature_matrix_rank":24,"feature_matrix_determinant":str(det),"original_order":"A outer compatible-jet, row major","new_order":"zplus,zminus,Re bplus,Im bplus,Re bminus,Im bminus",
+     "exact_actions":{"outputSO2":"z fixed; bplus/bminus multiply exp(2i theta)","inputC4":"(zp,zm)->(-zm,zp); bplus->-i bplus; bminus->+i bminus","paired_reflection":"(zp,zm)->(zp,-zm); bplus/bminus->conjugates"},
+     "averaged_Gram_blocks":"S6 PSD common to zplus/zminus; real Pplus3 PSD and Pminus3 PSD for complex spin2 squared norms","number_of_symmetric_block_parameters":33,
+     "scope":"Complete representation reduction of full24 bilinear-SOS heat certificates for the specified leftSO2/C4/paired-reflection invariant quartic class, preserving closed corrections with det(R) pullback sign. Not a certificate-existence theorem, not all9 or all35 quartics, not arbitrary non-SOS nonnegative densities."}
+(HERE/"FEATURE_REDUCTION_INDEPENDENT_RESULTS.json").write_text(json.dumps(out,indent=2)+"\n")
+print(json.dumps({"status":"PASS","feature_rank":24,"feature_determinant":str(det)}))

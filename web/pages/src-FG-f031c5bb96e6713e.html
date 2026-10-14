@@ -1,0 +1,421 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — independent_audit.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — independent_audit.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/synthesis/source_cut_critic/independent_audit.py">Original file</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact audit of normalized source-box closure.
+
+This file uses only the Python standard library. The mathematical oracle is
+direct rational vertex evaluation, separately checked against Edmonds-Karp.
+It does not import the producer or root worker&#x27;s scientific implementation.
+&quot;&quot;&quot;
+from collections import deque
+from fractions import Fraction as F
+from hashlib import sha256
+from itertools import product
+from pathlib import Path
+import json
+import platform
+import random
+import sys
+import time
+
+BASE = Path(__file__).resolve().parent
+SOURCE = BASE.parent / &quot;FG-sources&quot; / &quot;compact&quot;
+COUNTS = {&quot;instances&quot;: 0, &quot;vertices&quot;: 0, &quot;thresholds&quot;: 0,
+          &quot;cut_identity_vertex_checks&quot;: 0, &quot;flow_equalities&quot;: 0,
+          &quot;lower_vertex_checks&quot;: 0, &quot;nested_checks&quot;: 0,
+          &quot;dinkelbach_cut_calls&quot;: 0, &quot;interior_convexity_checks&quot;: 0}
+
+
+def dot(x, y):
+    return sum((a * b for a, b in zip(x, y)), F(0))
+
+
+def mv(A, x):
+    return [dot(row, x) for row in A]
+
+
+def quad(A, x):
+    return dot(x, mv(A, x))
+
+
+def invert(A):
+    n = len(A)
+    M = [list(row) + [F(int(i == j)) for j in range(n)]
+         for i, row in enumerate(A)]
+    for k in range(n):
+        pivot = next(i for i in range(k, n) if M[i][k])
+        M[k], M[pivot] = M[pivot], M[k]
+        a = M[k][k]
+        M[k] = [v / a for v in M[k]]
+        for i in range(n):
+            if i != k:
+                a = M[i][k]
+                if a:
+                    M[i] = [x - a * y for x, y in zip(M[i], M[k])]
+    return [row[n:] for row in M]
+
+
+def check_spd(A):
+    &quot;&quot;&quot;Exact LDL^T diagonal pivots; no eigenvalue tolerance.&quot;&quot;&quot;
+    n = len(A)
+    assert all(A[i][j] == A[j][i] for i in range(n) for j in range(n))
+    M = [list(row) for row in A]
+    for k in range(n):
+        assert M[k][k] &gt; 0
+        for i in range(k + 1, n):
+            for j in range(i, n):
+                M[i][j] -= M[i][k] * M[k][j] / M[k][k]
+                M[j][i] = M[i][j]
+
+
+def profile(ell, u, active, bits):
+    s = list(ell)
+    for i, z in zip(active, bits):
+        if z:
+            s[i] = u[i]
+    return s
+
+
+def coefficients(G, ell, u):
+    n = len(ell)
+    assert all(0 &lt; ell[i] &lt;= u[i] for i in range(n))
+    check_spd(G)
+    assert all(x &gt;= 0 for row in G for x in row)
+    active = [i for i in range(n) if ell[i] &lt; u[i]]
+    d = [u[i] - ell[i] for i in active]
+    gell = mv(G, ell)
+    a = [2 * di * gell[i] + di * di * G[i][i]
+         for i, di in zip(active, d)]
+    b = [[d[j] * d[k] * G[active[j]][active[k]]
+          if j != k else F(0) for k in range(len(active))]
+         for j in range(len(active))]
+    alpha = [a[j] + sum(b[j], F(0)) for j in range(len(active))]
+    assert all(x &gt; 0 for x in alpha)
+    return active, d, a, b, alpha, quad(G, ell), sum(ell, F(0))
+
+
+def graph_cut(alpha, b, d, t, bits, pair_factor=F(1)):
+    &quot;&quot;&quot;z=1 on source side; monotone source-alpha, sink-t*d network.&quot;&quot;&quot;
+    return (sum((a * (1 - z) + t * di * z
+                 for a, di, z in zip(alpha, d, bits)), F(0))
+            + sum((pair_factor * b[i][j] * abs(bits[i] - bits[j])
+                   for i in range(len(bits)) for j in range(i + 1, len(bits))), F(0)))
+
+
+def mincut(alpha, b, d, t):
+    &quot;&quot;&quot;Exact Edmonds-Karp plus maximal source-side minimum-cut recovery.&quot;&quot;&quot;
+    assert t &gt;= 0
+    m = len(d)
+    ss, tt = m, m + 1
+    N = m + 2
+    residual = [[F(0) for _ in range(N)] for _ in range(N)]
+    for i in range(m):
+        residual[ss][i] = alpha[i]
+        residual[i][tt] = t * d[i]
+        for j in range(i + 1, m):
+            residual[i][j] = residual[j][i] = b[i][j]
+    flow, augmentations = F(0), 0
+    while True:
+        parent = [-1] * N
+        parent[ss] = ss
+        Q = deque([ss])
+        while Q and parent[tt] == -1:
+            v = Q.popleft()
+            for w in range(N):
+                if parent[w] == -1 and residual[v][w] &gt; 0:
+                    parent[w] = v
+                    Q.append(w)
+        if parent[tt] == -1:
+            break
+        w = tt
+        path = []
+        while w != ss:
+            v = parent[w]
+            path.append((v, w))
+            w = v
+        delta = min(residual[v][w] for v, w in path)
+        for v, w in path:
+            residual[v][w] -= delta
+            residual[w][v] += delta
+        flow += delta
+        augmentations += 1
+    # Every minimum-cut source side excludes any node that can reach tt.
+    reaches_sink = {tt}
+    Q = deque([tt])
+    while Q:
+        w = Q.popleft()
+        for v in range(N):
+            if v not in reaches_sink and residual[v][w] &gt; 0:
+                reaches_sink.add(v)
+                Q.append(v)
+    assert ss not in reaches_sink
+    bits = tuple(int(i not in reaches_sink) for i in range(m))
+    assert graph_cut(alpha, b, d, t, bits) == flow
+    return flow, bits, augmentations
+
+
+def dinkelbach(G, ell, u, initialize=&quot;zero&quot;):
+    active, d, a, b, alpha, q0, Z0 = coefficients(G, ell, u)
+    t = F(0) if initialize == &quot;zero&quot; else q0 / Z0
+    steps = []
+    prev_bits = None
+    for _ in range(len(active) + 3):
+        flow, bits, aug = mincut(alpha, b, d, t)
+        s = profile(ell, u, active, bits)
+        q, Z = quad(G, s), sum(s, F(0))
+        H = q0 - t * Z0 + sum(alpha, F(0)) - flow
+        assert H == q - t * Z
+        assert H &gt;= 0
+        if prev_bits is not None:
+            assert all(x &lt;= y for x, y in zip(bits, prev_bits))
+            COUNTS[&quot;nested_checks&quot;] += 1
+        steps.append({&quot;threshold&quot;: str(t), &quot;bits&quot;: list(bits), &quot;excess&quot;: str(H),
+                      &quot;q&quot;: str(q), &quot;mass&quot;: str(Z), &quot;ratio&quot;: str(q / Z),
+                      &quot;cut&quot;: str(flow), &quot;augmentations&quot;: aug})
+        COUNTS[&quot;dinkelbach_cut_calls&quot;] += 1
+        if H == 0:
+            assert len(steps) &lt;= len(active) + (2 if initialize == &quot;zero&quot; else 1)
+            return t, s, steps
+        new_t = q / Z
+        assert new_t &gt; t
+        t, prev_bits = new_t, bits
+    raise AssertionError(&quot;finite Dinkelbach bound violated&quot;)
+
+
+def lower_scan(ell, u, v, c):
+    r = [2 * x for x in v]
+    order = sorted(range(len(ell)), key=lambda i: (r[i], i))
+    s = list(ell)
+    numerator, mass = dot(r, s) - c, sum(s, F(0))
+    candidates = [(numerator / mass, tuple(s), 0)]
+    for k, i in enumerate(order, 1):
+        numerator += r[i] * (u[i] - ell[i])
+        mass += u[i] - ell[i]
+        s[i] = u[i]
+        candidates.append((numerator / mass, tuple(s), k))
+    L, s, k = min(candidates, key=lambda x: x[0])
+    psi = -c + sum((min((ri - L) * lo, (ri - L) * hi)
+                    for ri, lo, hi in zip(r, ell, u)), F(0))
+    assert psi == 0
+    return L, list(s), k
+
+
+def audit_instance(G, ell, u, Gplus=None, name=&quot;random&quot;):
+    active, d, a, b, alpha, q0, Z0 = coefficients(G, ell, u)
+    vertices = list(product((0, 1), repeat=len(active)))
+    data = [(bits, profile(ell, u, active, bits)) for bits in vertices]
+    qz = [(bits, s, quad(G, s), sum(s, F(0))) for bits, s in data]
+    U = max(q / Z for _, _, q, Z in qz)
+    old_U = quad(G, u) / Z0
+    assert U &lt;= old_U
+    COUNTS[&quot;instances&quot;] += 1
+    COUNTS[&quot;vertices&quot;] += len(vertices)
+    thresholds = sorted(set((F(0), q0 / Z0, U, U + F(1), U / 2)))
+    prev_bits = None
+    for t in thresholds:
+        direct = max(q - t * Z for _, _, q, Z in qz)
+        cuts = [(graph_cut(alpha, b, d, t, bits), bits) for bits in vertices]
+        C = min(x[0] for x in cuts)
+        for bits, _, q, Z in qz:
+            assert q - t * Z == q0 - t * Z0 + sum(alpha, F(0)) - graph_cut(alpha, b, d, t, bits)
+            COUNTS[&quot;cut_identity_vertex_checks&quot;] += 1
+        flow, bits, aug = mincut(alpha, b, d, t)
+        assert flow == C
+        assert direct == q0 - t * Z0 + sum(alpha, F(0)) - flow
+        all_min_bits = [zs for val, zs in cuts if val == C]
+        maximal_bits = tuple(max(zs[i] for zs in all_min_bits) for i in range(len(active)))
+        assert bits == maximal_bits
+        if prev_bits is not None:
+            assert all(x &lt;= y for x, y in zip(bits, prev_bits))
+            COUNTS[&quot;nested_checks&quot;] += 1
+        prev_bits = bits
+        COUNTS[&quot;thresholds&quot;] += 1
+        COUNTS[&quot;flow_equalities&quot;] += 1
+    Ucut, witness, steps0 = dinkelbach(G, ell, u)
+    Ucut1, _, steps1 = dinkelbach(G, ell, u, &quot;ell&quot;)
+    assert Ucut == Ucut1 == U
+    # A rational interior mixture is bounded by the vertex maximum.
+    s_mid = [(lo + hi) / 2 for lo, hi in zip(ell, u)]
+    assert quad(G, s_mid) / sum(s_mid, F(0)) &lt;= U
+    COUNTS[&quot;interior_convexity_checks&quot;] += 1
+    Gplus = G if Gplus is None else Gplus
+    v = mv(Gplus, ell)
+    assert all(x &gt;= 0 for x in v)
+    c = dot(ell, v)
+    L, lwitness, prefix = lower_scan(ell, u, v, c)
+    assert c / sum(u, F(0)) &lt;= L &lt;= c / sum(ell, F(0))
+    direct_L = min((2 * dot(s, v) - c) / Z for _, s, _, Z in qz)
+    assert L == direct_L
+    COUNTS[&quot;lower_vertex_checks&quot;] += len(vertices)
+    return {&quot;name&quot;: name, &quot;n&quot;: len(ell), &quot;m&quot;: len(active),
+            &quot;old_upper&quot;: str(old_U), &quot;upper&quot;: str(U), &quot;upper_decimal&quot;: float(U),
+            &quot;upper_witness&quot;: list(map(str, witness)),
+            &quot;old_lower&quot;: str(c / sum(u, F(0))), &quot;fixed_trial_lower&quot;: str(L),
+            &quot;lower_decimal&quot;: float(L), &quot;lower_witness&quot;: list(map(str, lwitness)),
+            &quot;lower_prefix_length&quot;: prefix,
+            &quot;calls_zero&quot;: len(steps0), &quot;calls_ell&quot;: len(steps1),
+            &quot;trace_zero&quot;: steps0, &quot;trace_ell&quot;: steps1}
+
+
+def random_instances():
+    rng = random.Random(20261014)
+    records = []
+    for case in range(168):
+        n = 1 + case % 7
+        B = [[F(rng.randrange(5), rng.randrange(1, 5)) for _ in range(n)] for _ in range(n)]
+        G = [[sum((B[i][k] * B[j][k] for k in range(n)), F(0))
+              + (F(rng.randrange(1, 6), rng.randrange(1, 5)) if i == j else F(0))
+              for j in range(n)] for i in range(n)]
+        ell = [F(rng.randrange(1, 8), rng.randrange(1, 7)) for _ in range(n)]
+        u = [lo + F(rng.randrange(5), rng.randrange(1, 6)) for lo in ell]
+        records.append(audit_instance(G, ell, u, name=f&quot;seeded-{case}&quot;))
+    return records
+
+
+def source_cases():
+    n, N = 4, 16
+    q, eps = F(1, 26), F(1, 10000)
+    mass = [q ** g.bit_count() * (1 - q) ** (n - g.bit_count()) for g in range(N)]
+    def form(weight):
+        A = [[F(0) for _ in range(N)] for _ in range(N)]
+        for g in range(N):
+            A[g][g] += mass[g] * weight[g] * q * (1 if g &amp; 8 else eps)
+            for i in range(n):
+                if g &amp; (1 &lt;&lt; i):
+                    continue
+                h = g | (1 &lt;&lt; i)
+                gate = F(1) if i == 0 or g &amp; (1 &lt;&lt; (i - 1)) else eps
+                c = mass[g] * q * gate * min(weight[g], weight[h])
+                A[g][g] += c
+                A[h][h] += c
+                A[g][h] -= c
+                A[h][g] -= c
+        return A
+    G = invert(form([F(1)] * N))
+    records = []
+    producer = {(x[&quot;feature&quot;], x[&quot;R&quot;]): x for x in json.loads((SOURCE / &quot;conditional_envelope_results.json&quot;).read_text())}
+    for feature in (&quot;all_open&quot;, &quot;first_open&quot;, &quot;all_closed&quot;):
+        for R in (3, 100):
+            indicator = lambda g: int(g == 15) if feature == &quot;all_open&quot; else (g &amp; 1) if feature == &quot;first_open&quot; else int(g == 0)
+            weight = [F(1 + (R - 1) * indicator(g)) for g in range(N)]
+            u = [m * w for m, w in zip(mass, weight)]
+            Gplus = invert(form(weight))
+            record = audit_instance(G, mass, u, Gplus, f&quot;source-{feature}-R{R}&quot;)
+            assert record[&quot;old_upper&quot;] == str(F(producer[feature, R][&quot;upper_exact&quot;]))
+            assert record[&quot;old_lower&quot;] == str(F(producer[feature, R][&quot;lower_exact&quot;]))
+            record[&quot;feature&quot;], record[&quot;R&quot;] = feature, R
+            records.append(record)
+    return records
+
+
+def controls():
+    controls = {}
+    G = [[F(100), F(0)], [F(0), F(1)]]
+    ell, u = [F(1), F(1)], [F(1), F(2)]
+    r = audit_instance(G, ell, u, name=&quot;all-upper-is-suboptimal&quot;)
+    assert r[&quot;upper&quot;] == &quot;101/2&quot;
+    assert quad(G, u) / sum(u) == F(104, 3)
+    controls[&quot;all_upper_is_suboptimal&quot;] = r
+    scalar = audit_instance([[F(1)]], [F(1)], [F(2)], name=&quot;normalization-gap&quot;)
+    assert scalar[&quot;old_upper&quot;] == &quot;4&quot; and scalar[&quot;upper&quot;] == &quot;2&quot;
+    controls[&quot;normalization_gap&quot;] = scalar
+    Gbad = [[F(1), F(-9, 10)], [F(-9, 10), F(1)]]
+    check_spd(Gbad)
+    x, hi = [F(1), F(1, 10)], [F(1), F(1)]
+    assert quad(Gbad, x) == F(83, 100) &gt; quad(Gbad, hi) == F(1, 5)
+    rejected = False
+    try:
+        coefficients(Gbad, [F(1, 10)] * 2, hi)
+    except AssertionError:
+        rejected = True
+    assert rejected, &quot;sign control did not reject negative G entries&quot;
+    controls[&quot;spd_without_entrywise_positivity&quot;] = {
+        &quot;G&quot;: [[str(x) for x in row] for row in Gbad],
+        &quot;source_x&quot;: list(map(str, x)), &quot;source_u&quot;: list(map(str, hi)),
+        &quot;q_x&quot;: str(quad(Gbad, x)), &quot;q_u&quot;: str(quad(Gbad, hi)),
+        &quot;meaning&quot;: &quot;PSD alone does not permit q(w)&lt;=q(u), nonnegative pair capacities, or attractive nesting.&quot;}
+    # Factor mutation: there exists a split-cut where 2*b is incorrect.
+    G = [[F(2), F(1)], [F(1), F(2)]]
+    ell, u = [F(1)] * 2, [F(2)] * 2
+    active, d, a, b, alpha, q0, Z0 = coefficients(G, ell, u)
+    bits, t = (1, 0), F(4)
+    s = profile(ell, u, active, bits)
+    excess = quad(G, s) - t * sum(s)
+    mutated = q0 - t * Z0 + sum(alpha) - graph_cut(alpha, b, d, t, bits, F(2))
+    assert excess != mutated
+    controls[&quot;double_pair_capacity_mutation&quot;] = {&quot;bits&quot;: list(bits), &quot;threshold&quot;: str(t),
+        &quot;true_excess&quot;: str(excess), &quot;mutated_excess&quot;: str(mutated), &quot;detected&quot;: True}
+    # In an equal-mass source mixture, averaging ratios without mass weights is invalid.
+    G = [[F(1)]]
+    x, y, p = [F(1)], [F(3)], F(1, 2)
+    mixture = (p * quad(G, x) + (1 - p) * quad(G, y)) / (p * sum(x) + (1 - p) * sum(y))
+    naive = p * quad(G, x) / sum(x) + (1 - p) * quad(G, y) / sum(y)
+    assert mixture == F(5, 2) != naive == F(2)
+    controls[&quot;mixture_requires_mass_weighting&quot;] = {&quot;mixture_ratio&quot;: str(mixture),
+        &quot;naive_average_of_ratios&quot;: str(naive), &quot;correct_weight_on_y&quot;: &quot;3/4&quot;}
+    # Positivity of total mass is load-bearing even for G=I.
+    eps = F(1, 1000)
+    s = [F(-1) + eps, F(1)]
+    ratio = dot(s, s) / sum(s)
+    assert ratio &gt; 1000
+    controls[&quot;mass_boundary&quot;] = {&quot;s&quot;: list(map(str, s)), &quot;G&quot;: &quot;I_2&quot;, &quot;ratio&quot;: str(ratio),
+        &quot;meaning&quot;: &quot;A box touching mass zero admits divergence as epsilon decreases; ell_i&gt;0 excludes it.&quot;}
+    # Fixed-trial lower optimization does not equal reoptimized lower envelope.
+    lo, hi, v = [F(1), F(1)], [F(1), F(20)], [F(100), F(1)]
+    L, _, _ = lower_scan(lo, hi, v, F(101))
+    assert L == F(139, 21)
+    controls[&quot;fixed_trial_lower_scope&quot;] = {&quot;fixed_trial_lower&quot;: str(L),
+        &quot;reoptimized_minimizer_second_coordinate&quot;: &quot;sqrt(101)-1&quot;,
+        &quot;reoptimized_minimum&quot;: &quot;2*(sqrt(101)-1)&quot;,
+        &quot;meaning&quot;: &quot;Exact fixed-trial lower is generally weaker than optimizing the retained trial field for mean source.&quot;}
+    # A rationalized near-optimal field gives an exact lower certificate.
+    y = F(72399, 8000)
+    v_rational = [F(100), y]
+    c_rational = F(100) + y * y
+    Lr, witness, prefix = lower_scan(lo, hi, v_rational, c_rational)
+    Ur = (F(100) + y * y) / (1 + y)
+    assert 0 &lt; Ur - Lr &lt; F(1, 100000)
+    assert (Lr / 2 + 1) ** 2 &lt;= 101 &lt;= (Ur / 2 + 1) ** 2
+    for bits in product((0, 1), repeat=2):
+        s = [hi[i] if bits[i] else lo[i] for i in range(2)]
+        assert (2 * dot(s, v_rational) - c_rational) / sum(s) &gt;= Lr
+    controls[&quot;rational_field_certificate_for_irrational_lower&quot;] = {
+        &quot;v&quot;: list(map(str, v_rational)), &quot;energy&quot;: str(c_rational),
+        &quot;certified_lower&quot;: str(Lr), &quot;rational_primal_upper_on_lower_optimum&quot;: str(Ur),
+        &quot;interval_width&quot;: str(Ur - Lr), &quot;lower_witness&quot;: list(map(str, witness)),
+        &quot;lower_prefix_length&quot;: prefix, &quot;exact_algebraic_optimum&quot;: &quot;2*(sqrt(101)-1)&quot;,
+        &quot;meaning&quot;: &quot;Optimization approximation affects tightness; all reported certificate arithmetic is rational.&quot;}
+    # Sharpness over physical completions can fail even in one state:
+    # if weighted form A_s=s, actual q_s(s)/mass is always 1.
+    controls[&quot;physical_sharpness_failure&quot;] = {&quot;ell&quot;: &quot;1&quot;, &quot;u&quot;: &quot;2&quot;, &quot;A_minus&quot;: &quot;1&quot;, &quot;A_plus&quot;: &quot;2&quot;,
+        &quot;admissible_physical_form&quot;: &quot;A_s=s&quot;, &quot;physical_tau_all_s&quot;: &quot;1&quot;,
+        &quot;source_only_upper&quot;: &quot;2&quot;, &quot;meaning&quot;: &quot;Source and form extrema cannot be combined independently in this physical class.&quot;}
+    return controls
+
+
+def main():
+    started = time.time()
+    random_results = random_instances()
+    source_results = source_cases()
+    countercontrols = controls()
+    elapsed = time.time() - started
+    payload = {&quot;status&quot;: &quot;PASS&quot;, &quot;scope&quot;: &quot;finite represented rational retained sources only; internally reconstructed audit&quot;,
+        &quot;python&quot;: sys.version, &quot;platform&quot;: platform.platform(),
+        &quot;elapsed_seconds&quot;: elapsed, &quot;counts&quot;: COUNTS,
+        &quot;random_seed&quot;: 20261014, &quot;random_instances&quot;: len(random_results),
+        &quot;maximum_calls_zero&quot;: max(x[&quot;calls_zero&quot;] for x in random_results),
+        &quot;maximum_calls_ell&quot;: max(x[&quot;calls_ell&quot;] for x in random_results),
+        &quot;random_summary&quot;: [{k: x[k] for k in (&quot;name&quot;, &quot;n&quot;, &quot;m&quot;, &quot;upper&quot;, &quot;fixed_trial_lower&quot;, &quot;calls_zero&quot;, &quot;calls_ell&quot;)}
+                           for x in random_results],
+        &quot;source_cases&quot;: source_results, &quot;countercontrols&quot;: countercontrols,
+        &quot;source_hashes&quot;: {f: sha256((SOURCE / f).read_bytes()).hexdigest()
+                          for f in (&quot;RESEARCH_NOTE.md&quot;, &quot;conditional_envelope.py&quot;, &quot;conditional_envelope_results.json&quot;)}}
+    path = BASE / &quot;independent_results.json&quot;
+    path.write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: payload[&quot;status&quot;], &quot;elapsed_seconds&quot;: elapsed, &quot;counts&quot;: COUNTS,
+        &quot;maximum_calls_zero&quot;: payload[&quot;maximum_calls_zero&quot;], &quot;maximum_calls_ell&quot;: payload[&quot;maximum_calls_ell&quot;],
+        &quot;source_summary&quot;: [{k: x[k] for k in (&quot;feature&quot;, &quot;R&quot;, &quot;m&quot;, &quot;upper_decimal&quot;, &quot;lower_decimal&quot;, &quot;calls_zero&quot;, &quot;calls_ell&quot;)}
+                           for x in source_results], &quot;output&quot;: str(path)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></html>

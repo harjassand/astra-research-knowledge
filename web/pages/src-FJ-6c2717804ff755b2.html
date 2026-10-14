@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — source_control_certificate.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/query_variance/source_control_certificate.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact source-leaf control variate certificate for the supplied PDE toy.&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction as Q
+import json
+import math
+from pathlib import Path
+
+from derive_weighted_certificate import add, cosine, l1, powp, resolvent, scale, sine
+
+
+def encode(q: Q) -&gt; dict[str, object]:
+    return {&quot;numerator&quot;: q.numerator, &quot;denominator&quot;: q.denominator,
+            &quot;decimal&quot;: float(q)}
+
+
+def evaluate_float(p, x: float) -&gt; float:
+    return math.fsum(float(r) * math.cos(k * x) - float(i) * math.sin(k * x)
+                     for k, (r, i) in p.items())
+
+
+def build() -&gt; dict[str, object]:
+    # This is the exact trigonometric polynomial e0 from the incoming package.
+    e0 = {}
+    e0 = add(e0, cosine(1, Q(3, 68)))
+    e0 = add(e0, cosine(7, Q(1, 50)))
+    e0 = add(e0, sine(13, Q(1, 108)))
+    N_e0 = add(add(scale(powp(e0, 2), Q(150)),
+                   scale(powp(e0, 3), Q(100))),
+               scale(powp(e0, 4), Q(25)))
+    r1 = scale(N_e0, Q(-1))
+
+    E = l1(e0)
+    vmin, vmax = 1 - E, 1 + E
+    lam = 1 + 100 * vmin**3
+    rate = 1 + 100 * vmax**3
+    B2, B3, B4 = 150 * vmax**2, 100 * vmax, Q(25)
+    h = Q(11, 1000)
+    R = 25 * (6 * E**2 + 4 * E**3 + E**4)
+    Gamma = 2 * B2 * h + 3 * B3 * h**2 + 4 * B4 * h**3
+    p_source = R / (rate * h)
+    offspring_mean = 1 - (lam - Gamma) / rate
+    expected_nodes = 1 / (1 - offspring_mean)
+    q = resolvent(r1, rate=rate)
+
+    assert 0 &lt; p_source &lt; 1
+    assert Gamma &lt; lam
+    assert q
+    q05_float = evaluate_float(q, 0.5)
+    q0_exact = sum((real for real, _ in q.values()), Q(0))
+
+    # Standard Bernstein bound for independent corrected trees.  The original
+    # package&#x27;s Hoeffding bound is 2h^2/epsilon^2 * log(2/delta).
+    delta = 0.05
+    sample_rows = []
+    for eps in (1e-3, 1e-4, 1e-5):
+        old = (2 * float(h) ** 2 / eps**2) * math.log(2 / delta)
+        new = (2 * float(h) ** 2 * float(1 - p_source) / eps**2 +
+               4 * float(h) / (3 * eps)) * math.log(2 / delta)
+        sample_rows.append({&quot;epsilon&quot;: eps, &quot;delta&quot;: delta,
+                            &quot;package_Hoeffding_samples_upper&quot;: math.ceil(old),
+                            &quot;corrected_Bernstein_samples_upper&quot;: math.ceil(new),
+                            &quot;ratio&quot;: new / old})
+
+    return {
+        &quot;method&quot;: &quot;exact rational Fourier algebra and exact rational inequalities&quot;,
+        &quot;predictor&quot;: &quot;incoming nonlinear package Predictor B, v1=1+e0&quot;,
+        &quot;query&quot;: &quot;u(0.5), same point as incoming package&quot;,
+        &quot;residual&quot;: &quot;r1=-150 e0^2-100 e0^3-25 e0^4&quot;,
+        &quot;rate&quot;: encode(rate),
+        &quot;tangent_lower_lambda&quot;: encode(lam),
+        &quot;nonlinear_slope_Gamma_h&quot;: encode(Gamma),
+        &quot;offspring_mean_upper&quot;: encode(offspring_mean),
+        &quot;radius&quot;: encode(h),
+        &quot;global_residual_bound_R&quot;: encode(R),
+        &quot;root_source_probability&quot;: encode(p_source),
+        &quot;root_source_probability_decimal&quot;: float(p_source),
+        &quot;root_source_complement&quot;: encode(1 - p_source),
+        &quot;proposal_tree_node_bound&quot;: encode(expected_nodes),
+        &quot;weak_source_control&quot;: {
+            &quot;q_lambda(x)&quot;: &quot;sum_k r1_hat[k] exp(i k x)/(rate+k^2) = ((rate-d^2)^-1 r1)(x)&quot;,
+            &quot;q_at_x0_exact&quot;: encode(q0_exact),
+            &quot;q_at_x05_float_only&quot;: q05_float,
+            &quot;fourier_degree&quot;: max(abs(k) for k in q),
+            &quot;fourier_coefficients&quot;: [
+                {&quot;k&quot;: k, &quot;real&quot;: encode(r), &quot;imag&quot;: encode(i)}
+                for k, (r, i) in sorted(q.items())
+            ],
+        },
+        &quot;variance_theorem&quot;: {
+            &quot;corrected_sample&quot;: &quot;W=Z-I_root_source*r1(Y)/R&quot;,
+            &quot;identity&quot;: &quot;E[ I_root_source*r1(Y)/R ] = q_lambda(x)/h&quot;,
+            &quot;boundedness&quot;: &quot;W=0 on the root source event; otherwise W=Z and |W|&lt;=1&quot;,
+            &quot;variance_upper&quot;: &quot;Var(W)&lt;=E[W^2]&lt;=1-p_source&quot;,
+            &quot;bernstein_tail&quot;: &quot;P(|h mean(W)-h E W|&gt;=epsilon)&lt;=2 exp(-M epsilon^2/(2 h^2(1-p_source)+(4h epsilon/3)))&quot;,
+            &quot;tree_work&quot;: &quot;The tree and its offspring law are unchanged, so E[nodes]&lt;=rate/(lambda-Gamma(h)); q_lambda evaluation is one target-specific precomputation, not a sampled field.&quot;,
+        },
+        &quot;sample_count_comparison&quot;: sample_rows,
+        &quot;scope&quot;: &quot;The exact theorem assumes ideal endpoint draws and exact evaluation as the supplied theorem does. The float q(0.5) is diagnostic only; interval arithmetic/finite-precision error must be charged in an implementation.&quot;,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    result = build()
+    path = Path(__file__).with_name(&quot;source_control_certificate.json&quot;)
+    path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    summary = {k: v for k, v in result.items() if k != &quot;weak_source_control&quot;}
+    summary[&quot;q_lambda_x05_float_only&quot;] = result[&quot;weak_source_control&quot;][&quot;q_at_x05_float_only&quot;]
+    print(json.dumps(summary, indent=2))
+</pre></body></html>

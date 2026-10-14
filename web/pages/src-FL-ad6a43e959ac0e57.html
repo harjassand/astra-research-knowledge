@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — code_design.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/synthesis/code_design/code_design.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the finite-slew isotope-code design calculations.
+
+Uses only the Python standard library. The waveform is the peak-slew,
+tau-antiperiodic ramp/plateau code derived in PROOF.md. Product histories are
+the synthetic E/O four-carbon age laws from the supplied FL ancestry report.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import itertools
+import json
+import math
+from pathlib import Path
+
+
+CONTRAST = 0.98
+PURE_H = (1.0 + CONTRAST) / 2.0
+PURE_L = (1.0 - CONTRAST) / 2.0
+TARGET_Z = (0.5, 1.0, 1.5, 2.0, 3.0, math.pi, 4.0, 5.0, 10.0)
+
+
+def q_slew_opt(z: float) -&gt; float:
+    &quot;&quot;&quot;Maximum mean u^4 for a tau-antiperiodic code with ||u&#x27;|| &lt;= M, z=M*tau.&quot;&quot;&quot;
+    if z &lt;= 2.0:
+        return z**4 / 80.0
+    return 1.0 - 8.0 / (5.0 * z)
+
+
+def q_single_sine(z: float) -&gt; float:
+    &quot;&quot;&quot;Mean u^4 for u=A*cos(pi*t/tau), with the same maximum slew M.&quot;&quot;&quot;
+    amplitude = min(1.0, z / math.pi)
+    return 3.0 * amplitude**4 / 8.0
+
+
+def u_phase(phase: float, z: float) -&gt; float:
+    &quot;&quot;&quot;Unit-period-in-tau antiperiodic peak-slew waveform, period 2 tau.&quot;&quot;&quot;
+    phase %= 2.0
+    if z &lt;= 2.0:
+        amplitude = z / 2.0
+        if phase &lt; 1.0:
+            return -amplitude + z * phase
+        return amplitude - z * (phase - 1.0)
+
+    ramp = 2.0 / z
+    if phase &lt; ramp:
+        return -1.0 + z * phase
+    if phase &lt; 1.0:
+        return 1.0
+    if phase &lt; 1.0 + ramp:
+        return 1.0 - z * (phase - 1.0)
+    return -1.0
+
+
+def count_distribution(high_probabilities: list[float]) -&gt; list[float]:
+    dist = [1.0]
+    for p in high_probabilities:
+        nxt = [0.0] * (len(dist) + 1)
+        for k, mass in enumerate(dist):
+            nxt[k] += mass * (1.0 - p)
+            nxt[k + 1] += mass * p
+        dist = nxt
+    return dist
+
+
+def pooled_histogram_tv(z: float) -&gt; tuple[float, list[float], list[float], float]:
+    &quot;&quot;&quot;Integrate the E/O count laws exactly with 3-point Gaussian quadrature.
+
+    Each waveform segment is affine or constant, while each isotope-count
+    probability is a polynomial of degree at most four in the waveform value.
+    Three-point Gauss-Legendre integration is therefore exact on every segment.
+    &quot;&quot;&quot;
+    p_even = [0.0] * 5
+    p_odd = [0.0] * 5
+    q_numeric = 0.0
+    gl_nodes = (-math.sqrt(3.0 / 5.0), 0.0, math.sqrt(3.0 / 5.0))
+    gl_weights = (5.0 / 9.0, 8.0 / 9.0, 5.0 / 9.0)
+    if z &lt;= 2.0:
+        segments = ((0.0, 1.0), (1.0, 2.0))
+    else:
+        ramp = 2.0 / z
+        segments = ((0.0, ramp), (ramp, 1.0), (1.0, 1.0 + ramp), (1.0 + ramp, 2.0))
+    for lo, hi in segments:
+        mid = (lo + hi) / 2.0
+        half = (hi - lo) / 2.0
+        for node, gl_weight in zip(gl_nodes, gl_weights):
+            phase = mid + half * node
+            v = u_phase(phase, z)
+            phase_weight = half * gl_weight / 2.0  # normalized by the period 2*tau
+            q_numeric += phase_weight * v**4
+            for bits in itertools.product((0, 1), repeat=4):
+                parity = sum(bits) &amp; 1
+                target = p_odd if parity else p_even
+                probs = [
+                    (1.0 + CONTRAST * ((-1.0) ** (j + bit)) * v) / 2.0
+                    for j, bit in enumerate(bits)
+                ]
+                mass = phase_weight / 8.0
+                for k, value in enumerate(count_distribution(probs)):
+                    target[k] += mass * value
+
+    tv = 0.5 * sum(abs(e - o) for e, o in zip(p_even, p_odd))
+    return tv, p_even, p_odd, q_numeric
+
+
+def hoeffding_odd_n95(signal: float) -&gt; int:
+    &quot;&quot;&quot;Odd N sufficient for &lt;=5% majority-parity error by Hoeffding&#x27;s bound.&quot;&quot;&quot;
+    if signal &lt;= 0.0:
+        return math.inf  # type: ignore[return-value]
+    n = math.ceil(2.0 * math.log(20.0) / signal**2)
+    if n % 2 == 0:
+        n += 1
+    return n
+
+
+def row(z: float) -&gt; dict[str, float | int]:
+    q_square = q_slew_opt(z)
+    q_sine = q_single_sine(z)
+    signal = CONTRAST**4 * q_square
+    return {
+        &quot;slew_times_tau_z&quot;: z,
+        &quot;q_slew_opt&quot;: q_square,
+        &quot;q_single_sine&quot;: q_sine,
+        &quot;q_ratio_square_to_sine&quot;: q_square / q_sine if q_sine else math.inf,
+        &quot;purity_contrast_a&quot;: CONTRAST,
+        &quot;a4&quot;: CONTRAST**4,
+        &quot;raw_parity_gap_E_minus_O&quot;: 2.0 * signal,
+        &quot;single_product_TV&quot;: signal,
+        &quot;single_product_equal_prior_bayes_error&quot;: (1.0 - signal) / 2.0,
+        &quot;odd_N_sufficient_for_95pct_majority&quot;: hoeffding_odd_n95(signal),
+    }
+
+
+def main() -&gt; None:
+    rows = [row(z) for z in TARGET_Z]
+    hist_checks = []
+    for z in (0.5, 1.0, 2.0, math.pi, 5.0, 10.0):
+        tv, pe, po, q_num = pooled_histogram_tv(z)
+        tv_exact = CONTRAST**4 * q_slew_opt(z)
+        hist_checks.append(
+            {
+                &quot;z&quot;: z,
+                &quot;q_numeric&quot;: q_num,
+                &quot;q_formula&quot;: q_slew_opt(z),
+                &quot;TV_numeric_full_five_bin&quot;: tv,
+                &quot;TV_formula&quot;: tv_exact,
+                &quot;absolute_TV_residual&quot;: abs(tv - tv_exact),
+                &quot;even_count_distribution&quot;: pe,
+                &quot;odd_count_distribution&quot;: po,
+            }
+        )
+        if abs(tv - tv_exact) &gt; 2e-12:
+            raise AssertionError(f&quot;full histogram TV identity failed at z={z}: {tv} vs {tv_exact}&quot;)
+
+    payload = {
+        &quot;schema&quot;: &quot;fl-code-design-results/1&quot;,
+        &quot;scope&quot;: &quot;Synthetic four-carbon E/O benchmark; deterministic, phase-pooled code; independent product draws only.&quot;,
+        &quot;contrast&quot;: CONTRAST,
+        &quot;p_low&quot;: PURE_L,
+        &quot;p_high&quot;: PURE_H,
+        &quot;table&quot;: rows,
+        &quot;full_histogram_checks&quot;: hist_checks,
+        &quot;periodic_code_accounting&quot;: {
+            &quot;period_over_tau&quot;: 2,
+            &quot;switches_per_tau&quot;: 1,
+            &quot;switches_in_2000_tau&quot;: 2000,
+            &quot;cycles_in_2000_tau&quot;: 1000,
+            &quot;heavy_fraction_per_integer_cycle&quot;: 0.5,
+            &quot;heavy_feed_dose_in_2000_tau&quot;: &quot;1000 * F * tau&quot;,
+            &quot;minimum_precode_history_for_Cmax&quot;: &quot;Cmax + 4*tau&quot;,
+            &quot;unknown_Cmax&quot;: &quot;UNKNOWN; carry an explicit unprepared-history fraction or measure wash-in&quot;,
+        },
+    }
+    out = Path(__file__).with_name(&quot;CODE_DESIGN_NUMERICS.json&quot;)
+    out.write_text(json.dumps(payload, indent=2, sort_keys=True) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(f&quot;wrote {out}&quot;)
+    print(&quot;z,q_slew,q_sine,TV,one_product_error,N95_Hoeffding&quot;)
+    for item in rows:
+        print(
+            f&quot;{item[&#x27;slew_times_tau_z&#x27;]:.6g},&quot;
+            f&quot;{item[&#x27;q_slew_opt&#x27;]:.8g},&quot;
+            f&quot;{item[&#x27;q_single_sine&#x27;]:.8g},&quot;
+            f&quot;{item[&#x27;single_product_TV&#x27;]:.8g},&quot;
+            f&quot;{item[&#x27;single_product_equal_prior_bayes_error&#x27;]:.8g},&quot;
+            f&quot;{item[&#x27;odd_N_sufficient_for_95pct_majority&#x27;]}&quot;
+        )
+    print(f&quot;max full-histogram TV residual: {max(x[&#x27;absolute_TV_residual&#x27;] for x in hist_checks):.3g}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

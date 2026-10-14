@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — fstar_small_certificate.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — fstar_small_certificate.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/quartic/exploration/fstar_small_certificate.py">Original file</a></p><pre>import numpy as np,sympy as sp,scipy.linalg as la,scipy.optimize as opt,pickle,os,itertools,json
+BASE=os.path.dirname(__file__)
+with open(BASE+&#x27;/c4_heat_symbolic.pkl&#x27;,&#x27;rb&#x27;) as f:z=pickle.load(f)
+S=z[&#x27;S&#x27;];tau=sorted([x for x in S.free_symbols if str(x).startswith(&#x27;tau&#x27;)],key=str);a,c,e,L,d=z[&#x27;param&#x27;];SP=S.subs({a:1,c:sp.Rational(7,2),e:sp.Rational(1,2),L:-sp.Rational(29,10),d:0});sf=sp.lambdify([tau],SP,&#x27;numpy&#x27;)
+Sd=np.array([np.array(SP.diff(t)).astype(float) for t in tau])
+def fun(x):return -x[-1]
+def con(x):return la.eigvalsh(sf(x[:6]))-x[-1]
+def jac(x):
+ val,V=la.eigh(sf(x[:6]));r=np.einsum(&#x27;ik,pij,jk-&gt;kp&#x27;,V,Sd,V);return np.c_[r,-np.ones(6)]
+x0=np.array([8,0,0,0,1,1,0.]);sol=opt.minimize(fun,x0,jac=lambda x:np.r_[np.zeros(6),-1],constraints=[dict(type=&#x27;ineq&#x27;,fun=con,jac=jac)],method=&#x27;SLSQP&#x27;,options=dict(maxiter=2000,ftol=1e-12))
+print(sol.success,sol.message,sol.x,con(sol.x),flush=True)
+for den in [10,20,50,100,200,1000]:
+ ts=[sp.Rational(round(float(x)*den),den) for x in sol.x[:6]];SS=SP.subs(dict(zip(tau,ts)));ev=la.eigvalsh(np.array(SS).astype(float))[0]
+ print(&#x27;den&#x27;,den,&#x27;tau&#x27;,ts,&#x27;eigen&#x27;,ev)
+ if ev&gt;0:
+  print(&#x27;S=&#x27;,SS)
+  print(&#x27;LDLdiags&#x27;,[sp.factor(v) for v in SS.LDLdecomposition(hermitian=False)[1].diagonal()])
+  # N coefficient solve for exact primitive; sparse solution through rref
+  zz=np.load(BASE+&#x27;/heat_matrices.npz&#x27;);N=sp.Matrix(zz[&#x27;N&#x27;].astype(int).tolist());EA=z[&#x27;EA&#x27;];p=sp.Matrix([1,sp.Rational(7,2),sp.Rational(1,2),-sp.Rational(29,10)])
+  sv=sp.Matrix([SS[i,j] for i,j in z[&#x27;ij&#x27;]]);rhs=z[&#x27;T&#x27;]*sv-EA*p
+  solc=next(iter(sp.linsolve((N,rhs))));free=set().union(*(v.free_symbols for v in solc));solc=sp.Matrix([v.subs({t:0 for t in free}) for v in solc])
+  A=sp.symbols(&#x27;a b c d&#x27;);alph=[0]*4
+  for co,inds in zip(solc,zz[&#x27;alphas&#x27;]):alph[inds[-1]]+=co*sp.prod(A[int(i)] for i in inds[:3])
+  print(&#x27;alpha raw&#x27;,alph)
+  with open(BASE+&#x27;/fstar_exact_small.pkl&#x27;,&#x27;wb&#x27;) as f:pickle.dump(dict(S=SS,tau=ts,alpha=alph,c=solc,margin=sp.Rational(1,100)),f)
+  break
+</pre></html>

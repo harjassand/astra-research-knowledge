@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — heat_with_minor.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — heat_with_minor.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/quartic/exploration/heat_with_minor.py">Original file</a></p><pre>import numpy as np, scipy.linalg as la, os
+BASE=os.path.dirname(__file__)
+z=np.load(BASE+&#x27;/heat_matrices.npz&#x27;);i,j=z[&#x27;ij&#x27;].T;sf=np.where(i==j,1,np.sqrt(2))
+def sv(G):return G[i,j]*sf
+def sm(g):
+ G=np.zeros((24,24));G[i,j]=g[:300]/sf;G[j,i]=g[:300]/sf;return G
+Eminor=z[&#x27;E&#x27;][:,2]-z[&#x27;E&#x27;][:,3]
+B=z[&#x27;P&#x27;]@np.c_[z[&#x27;T&#x27;],Eminor]
+U,s,R=la.svd(B,full_matrices=False);n=(s&gt;1e-9).sum();U=U[:,:n];s=s[:n];R=R[:n]
+def solve(p,maxiter=10000,tol=1e-8,margin=0):
+ rhs=z[&#x27;P&#x27;]@z[&#x27;E&#x27;]@np.asarray(p);g0=R.T@((U.T@rhs)/s)
+ def aff(g):return g+g0-R.T@(R@g)
+ def psd(g):
+  v,O=la.eigh(sm(g),check_finite=False);return np.r_[sv((O*np.maximum(v,margin))@O.T),max(0,g[-1])]
+ x=g0.copy()
+ for k in range(maxiter):
+  y=psd(x);v=aff(2*y-x);x+=v-y
+  if k%100==0 or k==maxiter-1:
+   gg=aff(y);err=la.norm(gg-y)
+   if err&lt;tol:break
+ G=sm(gg);c=la.lstsq(z[&#x27;N&#x27;],z[&#x27;T&#x27;]@gg[:300]+gg[-1]*Eminor-z[&#x27;E&#x27;]@p)[0]
+ return G,c,float(gg[-1]),[k,float(la.eigvalsh(G)[0]),float(err)]
+if __name__==&#x27;__main__&#x27;:
+ from sample_acoustic import T,D
+ import itertools
+ # project onto c4 acoustic subspace by selecting its parameters
+ P=np.zeros((15,7));P[0,0]=P[1,0]=1;P[2,1]=1;P[3,2]=1;P[6,3]=P[7,3]=1
+ # K entries (01,02,03,12,13,23)
+ P[9,4]=1;P[10,5]=P[13,5]=1;P[14,6]=1
+ TT=T@P
+ RR,_=la.qr(TT,mode=&#x27;economic&#x27;);si,sj=np.array(list(itertools.combinations_with_replacement(range(8),2))).T;sf8=np.where(si==sj,1,np.sqrt(2))
+ def sv8(G):return G[si,sj]*sf8
+ def sm8(g):
+  G=np.zeros((8,8));G[si,sj]=g/sf8;G[sj,si]=g/sf8;return G
+ tr=RR.T@sv8(np.eye(8));R0=la.null_space(tr[None,:]);RS=RR@R0;g0=RR@tr/(tr@tr);pinv=la.pinv(TT)
+ rng=np.random.default_rng(1182);res=[]
+ for seed in range(25):
+  cost=pinv.T@np.r_[rng.normal(size=4),[0]*3];step=1/max(la.norm(cost),1);x=g0.copy()
+  for k in range(5000):
+   val,V=la.eigh(sm8(x));y=sv8((V*np.maximum(val,0))@V.T)
+   zz=g0+RS@(RS.T@(2*y-x-step*cost));x+=zz-y
+  g=g0+RS@(RS.T@y);params=pinv@g;p=(P@params)[:9];p=p/max(abs(p))
+  G,c,d,diag=solve(p,maxiter=6000)
+  print(seed,np.round(p[[0,2,3,6]],5),diag,&#x27;delta&#x27;,d,&#x27;Q&#x27;,la.eigvalsh(sm8(g))[0],flush=True)
+  res.append(dict(p=p,G=G,c=c,d=d,diag=diag))
+ np.savez(BASE+&#x27;/c4_heat_trials.npz&#x27;,results=np.array(res,dtype=object))
+</pre></html>

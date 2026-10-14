@@ -1,0 +1,28 @@
+# FL ancestry audit
+
+**Result:** The isotope-count identity, telegraph parity law, interval-union code-variance bound, E/O four-carbon construction, single-step/single-rectangle indistinguishability, smooth-waveform contrast formula, C2 pulse equivalence, and calibrated square-wave competitor all survive independent reconstruction under their stated assumptions. I found no fatal counterexample inside those assumptions. The finite-product variance claim is narrower than its headline: it needs iid history draws conditional on the complete code. A shared campaign environment adds a non-vanishing variance term, which I state explicitly in [PROOF_RECONSTRUCTION.md](PROOF_RECONSTRUCTION.md).
+
+The useful correction is an assumption-complete theorem. For a stationary code-independent history mixture and an exactly measured two-sided Poisson telegraph at the actual entry boundary,
+\[
+\operatorname{Var}_{\rm code}(\text{mixture conditional-mean time average})
+\le \frac{1+m^2/e}{2rT}.
+\]
+If, in addition, exactly (N) independent product histories are sampled at iid uniform times and labels are conditionally independent, then
+\[
+\operatorname{Var}(\widehat Q_n)\le \frac{1+m^2/e}{2rT}+\frac{[(1+|b|)/a]^{2n}}{N}.
+\]
+For an unobserved campaign-level latent regime \(\Theta\), add \(\operatorname{Var}_\Theta(Q_\Theta)\); for serially dependent products, use the covariance sum of the weighted counts. These additions concern product sampling and chemical variation, not the code-only geometric bound.
+
+`independent_checks.py` exhaustively compared all 14 proper-coordinate marginals and all 32 five-node binary masks using exact rational label probabilities. All 22 masks with at most two switches gave identical E/O count laws; only the two alternating masks distinguished the classes. It also verified unequal-purity recoding for all 16 four-atom telegraph sign vectors, exact E/O pair-gap multiplicities, the closed-form waveform contrast, square-wave count laws, and the quoted telegraph values. A separate seeded check generated 1,000 interval unions and analytically integrated each piecewise-exponential covariance; the largest observed integral/bound ratio was 0.7310585786, with no geometric-lemma or bound violation.
+
+`simulate_shared_code.py` independently reconstructed the stated toy Monte Carlo setup using 100 shared telegraph campaigns and 50,000 product draws per model per campaign. Its fresh results are in [shared_code_simulation.json](shared_code_simulation.json). They are consistent with the exact means. They do not reproduce the pasted report's exact simulated statistics because the original script and RNG seed were not supplied.
+
+The square-wave competitor is decisive on the supplied synthetic grid. At known \(\tau\), a balanced square wave with \(\sigma(s-\tau)=-\sigma(s)\) gives corrected E/O parity (+1/-1), contrast 2, and switch rate (1/\tau). The telegraph setting at (r\tau=2) gives contrast 0.1160907195 and expected switch rate (2/\tau). Exact square-wave statements exclude switching endpoints; a continuous randomized phase prevents a discrete sampler from aliasing those discontinuities. Real ramps or an unmeasured mixing filter change the input kernel and need separate analysis.
+
+I also constructed explicit examples showing why three acquisition assumptions cannot be dropped. Correlated incoming isotope labels break the product recoding identity even when every atom has the right marginal purity. A code that starts after all relevant entries can give a corrected parity mean of 1 when the telegraph target is arbitrarily close to 0. A fully mixed boundary with zero isotope modulation gives mean 0 for coincident pair entries, whose target is 1. These are failures outside the note's assumptions; they confirm that conditional label independence, charged prehistory, and measuring the actual entry-boundary waveform are operational premises, not technical niceties.
+
+The single-pulse argument is correct, including node-aligned pulse boundaries, but the clean proof is the five-node membership sequence: a translated rectangle yields a contiguous block, so at most two adjacent node edges—and hence at most two (X_j)—can affect the complete count law. The note's shorthand “one variable per boundary” should be read with that discrete endpoint convention made explicit.
+
+No catalyst data, physical feed waveform, isotope response matrix, correlated-product error model, startup bound, external proof review, or prior-art priority review was established here. The note itself labels the E/O families synthetic, records that full text for one isotope-frequency-response reference was not retrieved, and leaves practical superiority open. This audit supports the conditional mathematical claims only; it does not establish novelty, a real catalytic ambiguity, or an experimental advantage.
+
+The original ancestry producer script was not present in the supplied intake: `INTAKE_MANIFEST.json` and `SUPPLEMENTAL_INTAKE_MANIFEST.json` list the ancestry note and pasted report, but no ancestry `.py` file. The checks in this directory are independent reconstructions and are labelled accordingly. Capital was read at the pinned checkout; no capital or source files were changed.

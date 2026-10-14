@@ -1,0 +1,364 @@
+<!doctype html><meta charset="utf-8"><title>FD evidence — independent_echo_audit.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>&quot;&quot;&quot;Independent finite tests and exact conditional echo certificate.
+
+Uses only numpy for finite matrix tests; exact certificate uses Fraction.
+Does not import or alter the CRAY source scripts. Finite passes do not prove
+the theorem, certify a simulator, establish novelty, or validate hardware.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction as F
+import hashlib
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+BASE = HERE.parent.parent
+SOURCE = BASE / &quot;work/sources/cray_active_acquisition&quot;
+
+
+def frac(value: F) -&gt; str:
+    return str(value)
+
+
+def exp_lower(x: F, degree: int = 100) -&gt; F:
+    assert x &gt;= 0
+    term = F(1)
+    total = term
+    for k in range(1, degree + 1):
+        term *= x / k
+        total += term
+    return total
+
+
+def exact_certificate() -&gt; dict:
+    record = json.loads((SOURCE / &quot;retained_memory_results.json&quot;).read_text())
+    n, observed = record[&quot;N&quot;], record[&quot;failures&quot;]
+    assert (n, observed) == (100_000_000, 7)
+    assert len(record[&quot;event_times&quot;]) == observed
+    assert all(1 &lt;= x &lt;= n for x in record[&quot;event_times&quot;])
+    assert sorted(set(record[&quot;event_times&quot;])) == record[&quot;event_times&quot;]
+    q, alpha = F(161, 10**9), F(1, 100)
+    x = n * q
+    a = x / (1 - q)
+    poly = sum(a**j / math.factorial(j) for j in range(observed + 1))
+    tail_upper = poly / exp_lower(x)
+    assert tail_upper &lt; alpha
+
+    # Source inputs, not the simulator&#x27;s exact residual.
+    d, t = 8, F(1, 50)
+    J, Rcap, w = F(779, 100), F(2), F(1, 5)
+    Lambda = 2 * J + Rcap
+    assert Lambda == F(879, 50)
+    D = t * (1 - Lambda * t / 2)
+    coefficient = D**2 / (4 * d)
+    assert D == F(4121, 250000)
+    assert coefficient == F(16982641, 2000000000000)
+
+    rows = []
+    for gamma, radius_bound in [
+        (F(0), F(69, 500)),
+        (F(1, 10**8), F(71, 500)),
+        (F(1, 10**7), F(22, 125)),
+    ]:
+        radius_square = (q + gamma) / coefficient
+        assert radius_square &lt; radius_bound**2
+        rows.append({
+            &quot;gamma&quot;: frac(gamma),
+            &quot;exact_squared_radius&quot;: frac(radius_square),
+            &quot;radius_approximation_only&quot;: math.sqrt(radius_square),
+            &quot;strict_rational_radius_upper&quot;: frac(radius_bound),
+            &quot;closed_deltaF_interval&quot;: [frac(w - radius_bound), frac(w + radius_bound)],
+            &quot;positive_interval_exact&quot;: radius_bound &lt; w,
+        })
+    ceiling = coefficient * w**2 - q
+    assert ceiling == F(8932641, 50000000000000)
+    assert (q + F(2, 10**7)) / coefficient &gt; w**2
+
+    # Optional tighter endpoint: a small exact margin remains mathematically
+    # valid, although the main certificate above uses the wider tail slack.
+    q_tight = F(160, 10**9)
+    x_tight = n * q_tight
+    a_tight = x_tight / (1 - q_tight)
+    tail_tight = sum(a_tight**j / math.factorial(j) for j in range(observed + 1)) / exp_lower(x_tight)
+    assert tail_tight &lt; alpha
+    tight_radius_square = (q_tight + F(1, 10**7)) / coefficient
+    assert tight_radius_square &lt; F(7, 40)**2
+
+    return {
+        &quot;status&quot;: &quot;Exact conditional arithmetic for a supplied simulated count record&quot;,
+        &quot;source_count_sha256&quot;: hashlib.sha256((SOURCE / &quot;retained_memory_results.json&quot;).read_bytes()).hexdigest(),
+        &quot;N&quot;: n,
+        &quot;failures&quot;: observed,
+        &quot;alpha&quot;: frac(alpha),
+        &quot;q_safe_upper&quot;: frac(q),
+        &quot;tail_upper_rational&quot;: frac(tail_upper),
+        &quot;tail_upper_approximation_only&quot;: float(tail_upper),
+        &quot;tail_upper_strictly_below_alpha_exact&quot;: True,
+        &quot;dimension&quot;: d,
+        &quot;time&quot;: frac(t),
+        &quot;J&quot;: frac(J),
+        &quot;Rcap&quot;: frac(Rcap),
+        &quot;Lambda&quot;: frac(Lambda),
+        &quot;w&quot;: frac(w),
+        &quot;coefficient_exact&quot;: frac(coefficient),
+        &quot;positive_sign_gamma_ceiling_strict&quot;: frac(ceiling),
+        &quot;gamma_rows&quot;: rows,
+        &quot;optional_tighter_certificate&quot;: {
+            &quot;q_safe_upper&quot;: frac(q_tight),
+            &quot;tail_upper_rational&quot;: frac(tail_tight),
+            &quot;tail_upper_approximation_only&quot;: float(tail_tight),
+            &quot;gamma&quot;: &quot;1/10000000&quot;,
+            &quot;strict_rational_radius_upper&quot;: &quot;7/40&quot;,
+            &quot;closed_deltaF_interval&quot;: [&quot;1/40&quot;, &quot;3/8&quot;],
+        },
+        &quot;extra_product_budget_required&quot;: False,
+        &quot;unchanged_obligations&quot;: [
+            &quot;True residual support and collar/outside factorization&quot;,
+            &quot;Coherent comparison and local maximally mixed reset&quot;,
+            &quot;State-uniform conditional apparatus-error allowance&quot;,
+            &quot;Fixed predeclared validation count/time/candidate or proper selection budget&quot;,
+            &quot;Source model, tails, sector, scalar-reference and physical-unit accounting&quot;,
+        ],
+        &quot;nonclaims&quot;: [
+            &quot;No laboratory data or verified apparatus allowance&quot;,
+            &quot;No rigorous floating-point quantum-trajectory simulation certificate&quot;,
+            &quot;No novelty, generic successful witness, or matched-method advantage&quot;,
+        ],
+    }
+
+
+def exact_twirl_checks() -&gt; dict:
+    &quot;&quot;&quot;Exact real-rational correlated example; XZ and Y conjugations agree.&quot;&quot;&quot;
+    I = np.array([[F(1), F(0)], [F(0), F(1)]], dtype=object)
+    X = np.array([[F(0), F(1)], [F(1), F(0)]], dtype=object)
+    Z = np.array([[F(1), F(0)], [F(0), F(-1)]], dtype=object)
+    paulis = [I, X, Z, X @ Z]
+    # Normalized entangled vector (3|00&gt;+4|11&gt;)/5 has rational amplitudes.
+    v = np.array([[F(3, 5)], [F(0)], [F(0)], [F(4, 5)]], dtype=object)
+    rho = v @ v.T
+    outside = np.array([[F(9, 25), F(0)], [F(0), F(16, 25)]], dtype=object)
+    target = np.kron(I / 2, outside)
+    twirled = np.zeros((4, 4), dtype=object)
+    for P in paulis:
+        G = np.kron(P, I)
+        term = G @ rho @ G.T
+        twirled += term / 4
+        # Every conditional state remains pure, entangled, and not product.
+        assert np.trace(term @ term) == F(1)
+        assert not np.array_equal(term, target)
+    assert np.array_equal(twirled, target)
+    assert np.trace(target) == F(1)
+
+    # Current-P conditioning counterexample: H=0, rank-one local residual,
+    # initial |1&gt;, with echo real part diag(3/5,1). This is the real part of a
+    # unitary diag(3/5-4i/5,1), so the following failure probabilities are exact.
+    initial = np.array([[F(0), F(0)], [F(0), F(1)]], dtype=object)
+    echo_real = np.array([[F(3, 5), F(0)], [F(0), F(1)]], dtype=object)
+    failures = []
+    for P in paulis:
+        current = P @ initial @ P.T
+        p = (1 - np.trace(current @ echo_real)) / 2
+        failures.append(p)
+    assert failures == [F(0), F(1, 5), F(0), F(1, 5)]
+    pooled = sum(failures) / 4
+    assert pooled == F(1, 10)
+    return {
+        &quot;status&quot;: &quot;Exact Fraction identities for declared two-qubit example and count-selection counterexample&quot;,
+        &quot;correlated_input&quot;: &quot;Pure (3|00&gt;+4|11&gt;)/5&quot;,
+        &quot;Pauli_conjugations&quot;: [&quot;I&quot;, &quot;X&quot;, &quot;Z&quot;, &quot;XZ (same conjugation as Y)&quot;],
+        &quot;outside_density_diagonal&quot;: [&quot;9/25&quot;, &quot;16/25&quot;],
+        &quot;twirled_density_diagonal&quot;: [frac(target[i, i]) for i in range(4)],
+        &quot;twirl_equals_product_exact&quot;: True,
+        &quot;each_current_P_conditioned_state_remains_entangled&quot;: True,
+        &quot;selection_counterexample_failure_probabilities&quot;: [frac(p) for p in failures],
+        &quot;selection_counterexample_pooled_failure&quot;: frac(pooled),
+        &quot;selection_counterexample_I_Z_conditioned_failure&quot;: &quot;0&quot;,
+        &quot;fresh_label_preparation_still_required&quot;: True,
+        &quot;not_hardware_validation&quot;: True,
+    }
+
+
+def opnorm(x: np.ndarray) -&gt; float:
+    return float(np.linalg.svd(x, compute_uv=False)[0])
+
+
+def hermitian(rng, dim: int, norm: float = 1.) -&gt; np.ndarray:
+    x = rng.normal(size=(dim, dim)) + 1j * rng.normal(size=(dim, dim))
+    h = (x + x.conj().T) / 2
+    return h * (norm / opnorm(h))
+
+
+def unitary_exp(h: np.ndarray, t: float) -&gt; np.ndarray:
+    # Spectral construction is independent of the source&#x27;s scipy expm route.
+    eigenvalues, eigenvectors = np.linalg.eigh(h)
+    return (eigenvectors * np.exp(1j * t * eigenvalues)) @ eigenvectors.conj().T
+
+
+def density(rng, dim: int, pure: bool = False) -&gt; np.ndarray:
+    width = 1 if pure else dim
+    x = rng.normal(size=(dim, width)) + 1j * rng.normal(size=(dim, width))
+    rho = x @ x.conj().T
+    return rho / np.trace(rho)
+
+
+def module_norm(o: np.ndarray, d: int, b: int) -&gt; float:
+    blocks = (o.conj().T @ o).reshape(d, b, d, b)
+    reduced = np.einsum(&quot;aiaj-&gt;ij&quot;, blocks) / d
+    return math.sqrt(max(0., float(np.linalg.eigvalsh(reduced)[-1])))
+
+
+def matrix_tests() -&gt; dict:
+    rng = np.random.default_rng(20261014_721)
+    counts = {&quot;generic_models&quot;: 0, &quot;product_models&quot;: 0, &quot;pointwise_bounds&quot;: 0,
+              &quot;product_multiplier_checks&quot;: 0, &quot;extremal_vector_checks&quot;: 0}
+    ratios = {&quot;largest_source_remainder_fraction&quot;: 0.,
+              &quot;largest_module_remainder_fraction&quot;: 0.,
+              &quot;largest_product_multiplier_fraction&quot;: 0.,
+              &quot;minimum_new_probability_to_bound&quot;: 1e300,
+              &quot;minimum_module_probability_to_bound&quot;: 1e300,
+              &quot;maximum_unitary_identity_error&quot;: 0.}
+
+    # Arbitrary finite interaction matrices; no product-budget input.
+    for index in range(100):
+        d = [2, 3, 4, 8, 12][index % 5]
+        b = [2, 3, 5][index % 3]
+        touching = hermitian(rng, d * b, rng.uniform(.3, 3.))
+        bath = hermitian(rng, b, rng.uniform(0., 2000.))
+        H = touching + np.kron(np.eye(d), bath)
+        if index % 2:
+            v = density(rng, d, pure=True)
+            r = v * rng.uniform(.02, .7)
+        else:
+            r = hermitian(rng, d, rng.uniform(.02, .7))
+        R = np.kron(r, np.eye(b))
+        rnorm = opnorm(r)
+        Rcap = rnorm * rng.uniform(1., 5.)
+        lam = 2 * opnorm(touching) + Rcap
+        rvals, rvecs = np.linalg.eigh(r)
+        vstar = rvecs[:, np.argmax(np.abs(rvals))]
+        for time_ratio in [.2, .7, 1., 1.5, 1.9]:
+            t = time_ratio / lam
+            E = unitary_exp(H, t) @ unitary_exp(H + R, -t)
+            L = E - np.eye(d * b)
+            D = L + 1j * t * R
+            cap = lam * t * t * rnorm / 2
+            assert opnorm(D) &lt;= cap + 5e-10
+            ratios[&quot;largest_source_remainder_fraction&quot;] = max(
+                ratios[&quot;largest_source_remainder_fraction&quot;], opnorm(D) / cap)
+            c = t * t * (1 - lam * t / 2)**2 / (4 * d)
+            for pure in [False, True]:
+                tau = density(rng, b, pure=pure)
+                rho = np.kron(np.eye(d) / d, tau)
+                p = float(np.trace(rho @ (L.conj().T @ L)).real / 4)
+                p_via_echo = (1 - float(np.trace(rho @ E).real)) / 2
+                error = abs(p - p_via_echo)
+                assert error &lt; 5e-10
+                ratios[&quot;maximum_unitary_identity_error&quot;] = max(
+                    ratios[&quot;maximum_unitary_identity_error&quot;], error)
+                assert p + 5e-11 &gt;= c * rnorm**2
+                ratios[&quot;minimum_new_probability_to_bound&quot;] = min(
+                    ratios[&quot;minimum_new_probability_to_bound&quot;], p / (c * rnorm**2))
+                counts[&quot;pointwise_bounds&quot;] += 1
+            x = rng.normal(size=b) + 1j * rng.normal(size=b)
+            x /= np.linalg.norm(x)
+            signal = np.linalg.norm(L @ np.kron(vstar, x))
+            lower = t * (1 - lam * t / 2) * rnorm
+            assert signal + 5e-10 &gt;= lower
+            counts[&quot;extremal_vector_checks&quot;] += 1
+        counts[&quot;generic_models&quot;] += 1
+
+    # Independently inspect the superseded draft&#x27;s actual product-norm claim.
+    for index in range(80):
+        d = [2, 3, 4, 8][index % 4]
+        b = [2, 3, 5][index % 3]
+        hs = hermitian(rng, d, rng.uniform(.1, 2.))
+        he = hermitian(rng, b, rng.uniform(0., 1000.))
+        V = np.zeros((d * b, d * b), dtype=complex)
+        kappa = 0.
+        for _ in range(3):
+            A = hermitian(rng, d, rng.uniform(.1, 1.5))
+            B = hermitian(rng, b, rng.uniform(.1, 1.5))
+            V += np.kron(A, B)
+            kappa += opnorm(A) * opnorm(B)
+            O = rng.normal(size=(d * b, d * b)) + 1j * rng.normal(size=(d * b, d * b))
+            multiplier_fraction = module_norm(O @ np.kron(A, B), d, b) / (
+                opnorm(A) * opnorm(B) * module_norm(O, d, b))
+            assert multiplier_fraction &lt;= 1. + 1e-11
+            ratios[&quot;largest_product_multiplier_fraction&quot;] = max(
+                ratios[&quot;largest_product_multiplier_fraction&quot;], multiplier_fraction)
+            counts[&quot;product_multiplier_checks&quot;] += 1
+        r = hermitian(rng, d, rng.uniform(.02, .8))
+        R = np.kron(r, np.eye(b))
+        rnorm = opnorm(r)
+        lam = 2 * opnorm(hs) + 2 * kappa + 2 * rnorm
+        H = np.kron(hs, np.eye(b)) + np.kron(np.eye(d), he) + V
+        t = rng.uniform(.1, .9) / lam
+        E = unitary_exp(H, t) @ unitary_exp(H + R, -t)
+        D = E - np.eye(d * b) + 1j * t * R
+        sigma = math.sqrt(float(np.trace(r @ r).real) / d)
+        f = (math.expm1(kappa * t) - kappa * t) / kappa**2
+        cap = lam * f * sigma
+        norm_d = module_norm(D, d, b)
+        assert norm_d &lt;= cap + 5e-10
+        ratios[&quot;largest_module_remainder_fraction&quot;] = max(
+            ratios[&quot;largest_module_remainder_fraction&quot;], norm_d / cap)
+        for pure in [False, True]:
+            tau = density(rng, b, pure)
+            rho = np.kron(np.eye(d) / d, tau)
+            L = E - np.eye(d * b)
+            p = float(np.trace(rho @ (L.conj().T @ L)).real / 4)
+            lb = (t - lam * f)**2 * rnorm**2 / (4 * d)
+            assert p + 5e-11 &gt;= lb
+            ratios[&quot;minimum_module_probability_to_bound&quot;] = min(
+                ratios[&quot;minimum_module_probability_to_bound&quot;], p / lb)
+        counts[&quot;product_models&quot;] += 1
+
+    # Exact structure of the multiplier counterexample, evaluated numerically.
+    swap_rows = []
+    for d in [2, 4, 8, 16]:
+        swap = np.zeros((d * d, d * d))
+        for i in range(d):
+            for j in range(d):
+                swap[j * d + i, i * d + j] = 1.
+        P = np.zeros((d, d)); P[0, 0] = 1.
+        O = np.kron(P, np.eye(d))
+        quotient = module_norm(O @ swap, d, d) / module_norm(O, d, d)
+        assert abs(quotient - math.sqrt(d)) &lt; 1e-12
+        assert abs(opnorm(swap) - 1.) &lt; 1e-12
+        swap_rows.append({&quot;d&quot;: d, &quot;operator_norm_V&quot;: 1., &quot;module_multiplier_ratio&quot;: quotient})
+
+    # Rank-one signal formula: shows the dimension factor of this interface.
+    rank_one_rows = []
+    theta = .4
+    for d in [2, 4, 8, 16, 32]:
+        expected = (1 - math.cos(theta)) / (2 * d)
+        R = np.zeros((d, d)); R[0, 0] = theta
+        E = unitary_exp(R, -1.)
+        p = (1 - np.trace(E).real / d) / 2
+        assert abs(p - expected) &lt; 1e-14
+        rank_one_rows.append({&quot;d&quot;: d, &quot;p&quot;: p, &quot;d_times_p&quot;: d * p})
+    return {
+        &quot;status&quot;: &quot;Finite floating-point diagnostics only; proof is in the accompanying note&quot;,
+        &quot;seed&quot;: 20261014_721,
+        &quot;counts&quot;: counts,
+        &quot;ratios&quot;: ratios,
+        &quot;SWAP_multiplier_counterexamples&quot;: swap_rows,
+        &quot;rank_one_signal_dimension_checks&quot;: rank_one_rows,
+        &quot;numpy_version&quot;: np.__version__,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    result = {&quot;exact_conditional_certificate&quot;: exact_certificate(),
+              &quot;exact_twirl_checks&quot;: exact_twirl_checks(),
+              &quot;independent_matrix_tests&quot;: matrix_tests()}
+    (HERE / &quot;INDEPENDENT_ECHO_AUDIT.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    short = dict(result[&quot;independent_matrix_tests&quot;])
+    short.pop(&quot;SWAP_multiplier_counterexamples&quot;)
+    short.pop(&quot;rank_one_signal_dimension_checks&quot;)
+    print(json.dumps(short, indent=2))
+    print(&quot;Exact gamma=1e-7 interval:&quot;, result[&quot;exact_conditional_certificate&quot;][&quot;gamma_rows&quot;][2][&quot;closed_deltaF_interval&quot;])
+</pre>

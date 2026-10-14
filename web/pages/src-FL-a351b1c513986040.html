@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FL evidence — model.py</title><body><p>FL source/internal evidence, externally unreviewed. <a href="../../updates/FL/synthesis/activation_control/model.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproducible ideal-cycle ledger for reaction-conditioned product-state work extraction.
+
+This is an algebraic scenario calculator, not a chemical kinetics or device model.
+All constants and boundaries are stated in REPORT.md and READ_LEDGER.md.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+OUT = Path(__file__).with_name(&quot;results.json&quot;)
+
+# Standard thermochemical inputs from NIST-JANAF, at 298.15 K and 0.1 MPa.
+H_CO = -110.527        # kJ/mol
+H_CO2 = -393.522       # kJ/mol
+G_CO = -137.163        # kJ/mol
+G_CO2 = -394.389       # kJ/mol
+S_CO = 197.653         # J/(mol K)
+S_CO2 = 213.795        # J/(mol K)
+S_O2 = 205.147         # J/(mol K)
+
+T_K = 298.15
+R_J_MOL_K = 8.31446261815324
+KJ_PER_EV_MOLECULE = 96.48533212331002
+KWH_PER_KJ = 1.0 / 3600.0
+M_CO_KG_MOL = 0.0280104
+E_LOAD_EV = 6.14
+P_CO_BAR = 14.0         # 13 barg, treated as 14 bar absolute
+P_O2_BAR = 1.0          # standard-state product activity for conservative screen
+SOEC_KWH_KG = 3.2      # ISPT modeled system electricity, excess-steam assumption
+
+
+def cycle_work_per_product_ev(
+    *,
+    p: float,
+    s: float,
+    loss: float,
+    eta_load: float,
+    recover_survivor: float,
+    recover_product: float,
+    recover_loss_residual: float,
+    residual_fraction_after_loss: float,
+    overhead_ev_per_attempt: float,
+    conditioning_ev_per_product: float,
+    delta_product_ev: float,
+    activation_ev: float = E_LOAD_EV,
+) -&gt; float:
+    &quot;&quot;&quot;Expected wall-to-wall net work per useful product for the 3-branch model.
+
+    `recover_*` are fractions of the corresponding non-equilibrium work potential
+    delivered back to the same cyclic work bus after source/receiver round-trip loss.
+    `overhead_ev_per_attempt` includes auxiliary actuators, readout, feedback
+    reset, and controls not already deducted in the net return fractions;
+    conditioning is charged per saleable product.
+    &quot;&quot;&quot;
+    if p &lt;= 0 or eta_load &lt;= 0:
+        return math.inf
+    if abs(p + s + loss - 1.0) &gt; 1e-12:
+        raise ValueError(&quot;branch probabilities must sum to one&quot;)
+    if activation_ev &lt; delta_product_ev:
+        raise ValueError(&quot;paid auxiliary work is required when activation is below product free energy&quot;)
+    residual_product = activation_ev - delta_product_ev
+    numerator = (
+        activation_ev / eta_load
+        + overhead_ev_per_attempt
+        - s * recover_survivor * activation_ev
+        - p * recover_product * residual_product
+        - loss * recover_loss_residual * residual_fraction_after_loss * activation_ev
+    )
+    return numerator / p + conditioning_ev_per_product
+
+
+def main() -&gt; None:
+    delta_h_kj_mol = H_CO - H_CO2
+    delta_g_standard_kj_mol = G_CO - G_CO2
+    delta_s_j_mol_k = S_CO + 0.5 * S_O2 - S_CO2
+    q_rev_kj_mol = T_K * delta_s_j_mol_k / 1000.0
+    compression_kj_mol = R_J_MOL_K * T_K * math.log(P_CO_BAR) / 1000.0
+    delta_g_target_kj_mol = delta_g_standard_kj_mol + compression_kj_mol
+    delta_g_target_ev = delta_g_target_kj_mol / KJ_PER_EV_MOLECULE
+    product_free_energy_potential_ev = E_LOAD_EV - delta_g_target_ev
+    delta_h_target_kj_mol = delta_h_kj_mol + compression_kj_mol
+
+    baseline_kj_mol = SOEC_KWH_KG * M_CO_KG_MOL / KWH_PER_KJ
+    baseline_ev = baseline_kj_mol / KJ_PER_EV_MOLECULE
+    budget_kj_mol = baseline_kj_mol - delta_g_target_kj_mol
+    budget_ev = budget_kj_mol / KJ_PER_EV_MOLECULE
+    ideal_kwh_kg = delta_g_target_kj_mol * KWH_PER_KJ / M_CO_KG_MOL
+    budget_kwh_kg = budget_kj_mol * KWH_PER_KJ / M_CO_KG_MOL
+    enthalpy_kwh_kg = delta_h_target_kj_mol * KWH_PER_KJ / M_CO_KG_MOL
+
+    # Independent one-loss-at-a-time thresholds. Combined losses must share the
+    # single budget in REPORT.md and therefore be stricter.
+    loss_ratio_max = budget_ev / E_LOAD_EV
+    eta_load_min = E_LOAD_EV / (E_LOAD_EV + budget_ev)
+    recover_product_min = 1.0 - budget_ev / product_free_energy_potential_ev
+    p_if_only_full_attrition = 1.0 / (1.0 + loss_ratio_max)
+
+    # Exact source-restricted survivor model for a=1/2, perfect survivor return.
+    a = 0.5
+    restricted_survivor_floor_ev = E_LOAD_EV / a
+
+    scenarios = {
+        # Loss-free case: every nonproduct event is an unchanged survivor, so
+        # the source model has a=1 even though only half of attempts react.
+        &quot;loss_free_ideal_product_state_recovery&quot;: cycle_work_per_product_ev(
+            p=0.5, s=0.5, loss=0.0, eta_load=1.0,
+            recover_survivor=1.0, recover_product=1.0,
+            recover_loss_residual=0.0, residual_fraction_after_loss=0.0,
+            overhead_ev_per_attempt=0.0, conditioning_ev_per_product=0.0,
+            delta_product_ev=delta_g_target_ev,
+        ),
+        # Matched a=1/2 comparison: p=a(1-s)=0.25, s=0.5, loss=0.25.
+        # The extra operation recovers product excess, but the loss branch is
+        # deliberately left unrecovered. It saves exactly R_P vs E/a.
+        &quot;a_half_product_state_recovery&quot;: cycle_work_per_product_ev(
+            p=0.25, s=0.5, loss=0.25, eta_load=1.0,
+            recover_survivor=1.0, recover_product=1.0,
+            recover_loss_residual=0.0, residual_fraction_after_loss=0.0,
+            overhead_ev_per_attempt=0.0, conditioning_ev_per_product=0.0,
+            delta_product_ev=delta_g_target_ev,
+        ),
+        &quot;full_loss_5pct_probability&quot;: cycle_work_per_product_ev(
+            p=0.95, s=0.0, loss=0.05, eta_load=1.0,
+            recover_survivor=1.0, recover_product=1.0,
+            recover_loss_residual=0.0, residual_fraction_after_loss=0.0,
+            overhead_ev_per_attempt=0.0, conditioning_ev_per_product=0.0,
+            delta_product_ev=delta_g_target_ev,
+        ),
+        &quot;product_return_80pct&quot;: cycle_work_per_product_ev(
+            p=1.0, s=0.0, loss=0.0, eta_load=1.0,
+            recover_survivor=1.0, recover_product=0.80,
+            recover_loss_residual=0.0, residual_fraction_after_loss=0.0,
+            overhead_ev_per_attempt=0.0, conditioning_ev_per_product=0.0,
+            delta_product_ev=delta_g_target_ev,
+        ),
+        &quot;load_efficiency_90pct&quot;: cycle_work_per_product_ev(
+            p=1.0, s=0.0, loss=0.0, eta_load=0.90,
+            recover_survivor=1.0, recover_product=1.0,
+            recover_loss_residual=0.0, residual_fraction_after_loss=0.0,
+            overhead_ev_per_attempt=0.0, conditioning_ev_per_product=0.0,
+            delta_product_ev=delta_g_target_ev,
+        ),
+    }
+
+    kbt_ev = 8.617333262145e-5 * T_K
+    data = {
+        &quot;status&quot;: &quot;idealized model arithmetic only; not a measured device or kinetic prediction&quot;,
+        &quot;thermochemistry&quot;: {
+            &quot;temperature_K&quot;: T_K,
+            &quot;standard_pressure_MPa&quot;: 0.1,
+            &quot;reaction&quot;: &quot;CO2(g) -&gt; CO(g) + 0.5 O2(g)&quot;,
+            &quot;delta_H_kJ_per_mol_CO&quot;: delta_h_kj_mol,
+            &quot;delta_G_standard_kJ_per_mol_CO&quot;: delta_g_standard_kj_mol,
+            &quot;delta_S_J_per_mol_K&quot;: delta_s_j_mol_k,
+            &quot;T_delta_S_kJ_per_mol_CO&quot;: q_rev_kj_mol,
+            &quot;CO_pressure_bar_absolute&quot;: P_CO_BAR,
+            &quot;O2_activity_pressure_bar&quot;: P_O2_BAR,
+            &quot;ideal_CO_compression_kJ_per_mol&quot;: compression_kj_mol,
+            &quot;delta_G_at_target_kJ_per_mol_CO&quot;: delta_g_target_kj_mol,
+            &quot;delta_G_at_target_eV_per_CO&quot;: delta_g_target_ev,
+            &quot;delta_H_plus_ideal_compression_kJ_per_mol_CO&quot;: delta_h_target_kj_mol,
+            &quot;delta_H_plus_ideal_compression_eV_per_CO&quot;: delta_h_target_kj_mol / KJ_PER_EV_MOLECULE,
+            &quot;heat_is_recorded_separately_from_work&quot;: True,
+        },
+        &quot;activation_model&quot;: {
+            &quot;loaded_free_energy_eV_per_addressed_CO2&quot;: E_LOAD_EV,
+            &quot;ideal_product_non_equilibrium_free_energy_eV_per_CO&quot;: product_free_energy_potential_ev,
+            &quot;source_restricted_survivor_floor_for_a_half_eV_per_CO&quot;: restricted_survivor_floor_ev,
+            &quot;loss_free_ideal_state_recovery_net_work_eV_per_CO&quot;: scenarios[&quot;loss_free_ideal_product_state_recovery&quot;],
+            &quot;a_half_extended_net_work_eV_per_CO&quot;: scenarios[&quot;a_half_product_state_recovery&quot;],
+            &quot;a_half_source_restricted_floor_eV_per_CO&quot;: restricted_survivor_floor_ev,
+        },
+        &quot;comparator&quot;: {
+            &quot;ISPT_modeled_system_electricity_kWh_per_kg_CO&quot;: SOEC_KWH_KG,
+            &quot;ISPT_standard_CO_molar_mass_kg_per_mol&quot;: M_CO_KG_MOL,
+            &quot;ISPT_energy_kJ_per_mol_CO&quot;: baseline_kj_mol,
+            &quot;ISPT_energy_eV_per_CO&quot;: baseline_ev,
+            &quot;ideal_reversible_target_floor_kWh_per_kg_CO&quot;: ideal_kwh_kg,
+            &quot;conditional_extra_cost_budget_kWh_per_kg_CO&quot;: budget_kwh_kg,
+            &quot;conditional_extra_cost_budget_eV_per_CO&quot;: budget_ev,
+            &quot;no_heat_credit_enthalpy_screen_kWh_per_kg_CO&quot;: enthalpy_kwh_kg,
+            &quot;no_heat_credit_budget_kWh_per_kg_CO&quot;: SOEC_KWH_KG - enthalpy_kwh_kg,
+        },
+        &quot;independent_thresholds_one_at_a_time&quot;: {
+            &quot;maximum_full_attrition_probability_over_product_probability&quot;: loss_ratio_max,
+            &quot;minimum_product_return_fraction&quot;: recover_product_min,
+            &quot;minimum_wall_to_molecule_loading_efficiency&quot;: eta_load_min,
+            &quot;minimum_product_probability_if_all_nonproducts_are_full_losses&quot;: p_if_only_full_attrition,
+            &quot;combined_terms_must_fit_one_budget&quot;: True,
+        },
+        &quot;examples_eV_per_CO&quot;: scenarios,
+        &quot;feedback_memory_examples&quot;: {
+            &quot;kBT_eV_at_298_15K&quot;: kbt_ev,
+            &quot;one_bit_erasure_eV&quot;: kbt_ev * math.log(2.0),
+            &quot;three_outcome_record_erasure_eV&quot;: kbt_ev * math.log(3.0),
+            &quot;scope&quot;: &quot;Landauer reset floor only for explicit classical record; actuator and measurement costs are additional&quot;,
+        },
+        &quot;cascade_energy_ceiling&quot;: {
+            &quot;maximum_integer_CO_outputs_per_6_14eV_activation_at_target_deltaG&quot;: math.floor(E_LOAD_EV / delta_g_target_ev),
+            &quot;not_a_kinetic_or_physical_yield_claim&quot;: True,
+        },
+        &quot;topsoe_stack_crosscheck&quot;: {
+            &quot;reported_electricity_kWh_per_Nm3_CO&quot;: 3.44,
+            &quot;reported_CO_tonnes_per_30000_Nm3&quot;: 35.5,
+            &quot;derived_stack_only_kWh_per_kg_CO&quot;: 3.44 / (35.5 * 1000.0 / 30000.0),
+            &quot;scope&quot;: &quot;derived from reported volume and mass; stack-level, not matched purified-product system energy&quot;,
+        },
+        &quot;limitations&quot;: [
+            &quot;No joint CO2 reaction, survivor, attrition, or product-state distribution is measured.&quot;,
+            &quot;No product ergotropy or net work returned to the wall-side bus is measured.&quot;,
+            &quot;Product conditioning, oxygen-side stream, cooling, laser wall efficiency, and throughput remain unacquired.&quot;,
+            &quot;The 6.14 eV state is an observed high-J tail; it is not an ensemble mean or an established productive state.&quot;,
+        ],
+    }
+    OUT.write_text(json.dumps(data, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(data, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

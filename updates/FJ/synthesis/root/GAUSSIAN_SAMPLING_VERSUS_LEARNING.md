@@ -1,0 +1,104 @@
+# Sampling a noisy answer need not learn its hidden mean
+
+Root derivation and adjudication, 14 October 2026. This uses standard Gaussian
+mixture/chi-square calculations, not a new Gaussian factory. N722 already has
+the bounded-iid sampler and a stronger stochastic-FORS comparator. The purpose
+here is to test a tempting lower bound for Ultra's N687 interface and retain a
+correct explicit baseline for unbounded Lipschitz vector values. Historical
+novelty and generic optimality are not claimed.
+
+## 1. Exact mixture identity and covariance-proxy bound
+
+Let V be any centered random vector and Z an independent N(0,sigma^2 I).
+For an independent copy V', Tonelli and completing the square give
+
+    1+chi2(Law(m+V+Z) || N(m,sigma^2 I))
+       = E exp(V·V'/sigma^2).                            (1)
+
+Both sides may initially be infinite. Suppose instead
+`E exp(a·V)<=exp(a^T S a/2)` for every a, with a supplied PSD proxy S and
+`||S||op<sigma^2`. Condition on V and apply the proxy to V'. Represent the
+remaining quadratic exponential with an independent Gaussian, then apply the
+proxy to V. Gaussian integration yields
+
+    chi2 <= det(I−S^2/sigma^4)^(-1/2)−1.                 (2)
+
+This proves finiteness and bounds TV by half the square root of (2). For k iid
+values g(G_j) of a globally L-Lipschitz vector map at standard Gaussian inputs,
+Gaussian concentration gives the centered sample-average proxy `S=L^2 I/k`.
+The map need not be conservative. Therefore the *actual N687 whole-vector*
+query model admits the explicit sampler
+
+    Y=k^−1 sum_j g(G_j)+sigma Z0,
+
+where Z0 is standard Gaussian, with TV error<=epsilon if
+
+    k >= (L^2/sigma^2) /
+          sqrt(1−exp[−2log(1+4epsilon^2)/d]).              (3)
+
+Use at least one query when an unknown constant field is allowed. The small-
+epsilon scaling is `(L^2/sigma^2)*sqrt(d)/(sqrt(8)*epsilon)` queries, each
+returning and reading d coordinates. This is an O(sqrt(d)) baseline at fixed
+ratio/accuracy, not the N687 fixed-exponent or polylogarithmic theorem. It does
+not outperform the stronger bounded-oracle FORS result in its covered setting.
+For affine g this particular Gaussian covariance bound is exact, yet g(0)
+already gives the mean; sharpness for this sampler is not a minimax lower bound.
+
+## 2. A rare independent-coordinate family defeats a proposed hard instance
+
+For independent centered scalar V_i with |V_i|<=b_i and variance v_i,
+the linear Taylor term in (1) vanishes. The exponential remainder gives
+
+    chi2_i <= exp(b_i^2/sigma^2)*v_i^2/(2sigma^4).
+
+Independence tensorizes `1+chi2`, so the joint chi-square is bounded by the
+exponential of the sum of these scalar bounds, minus one.
+
+An explicit conservative Lipschitz field is
+
+    g_i(x)=theta_i (w−|x_i−c_i|)_+,
+    theta_i in {−1,1}, |c_i|<=B.
+
+Its diagonal Jacobian has norm<=1 almost everywhere and its integrated
+potential is C^(1,1). Smooth compact bumps give the same scaling. Under iid
+Gaussian coordinates, `|g_i|<=w`,
+`P(g_i!=0)<=sqrt(2/pi)*w`, and `Var(g_i)<=sqrt(2/pi)*w^3`.
+After centering, |V_i|<=w because each signed coordinate has an interval of
+length w. One whole-vector oracle query g(G), plus independent sigma-noise,
+therefore obeys
+
+    TV <= (1/2) sqrt(exp[exp(w^2/sigma^2)*d*w^6/(pi*sigma^4)]−1). (4)
+
+For w=d^(−1/4) and fixed sigma this tends to zero as O(d^(−1/4)). Yet
+`|E g_i(G_i)|>=phi(B+w)*w^2`, so ||E g(G)|| is bounded below by a positive
+constant. The hidden signs and narrow bump centers need not be reconstructed.
+
+The Ultra worker initially explored a polynomial lower bound from unqueried
+coordinate bumps. A deterministic zero-transcript construction remains valid
+for deterministic query locations, but it does not extend to randomized
+sampling. Equation (4), derived by the root and independently reconstructed by
+the Ultra worker and a separate critic, explicitly defeats that proposed family.
+No lower-bound refutation of the R16 randomized candidate was established.
+
+Coordinate independence is essential for (4). Shared rare latent events can
+produce enormous joint chi-square despite small individual coordinate effects;
+the critic includes such a countermodel. Noise here is locally generated sampler
+postprocessing, not a claim that raw oracle transcripts hide information. The
+target retains the mean m; two well-separated means still define distinguishable
+target laws. The construction says that an appropriate randomized output may
+carry the required weak information without explicitly learning its parameters.
+
+## 3. Scientific consequence and gate
+
+Lower bounds for reconstruction or deterministic querying cannot be imported
+as lower bounds for randomized output-law simulation. This is directly relevant
+to compiling nonlinear correction oracles into noisy scientific observations,
+but (1)–(4) alone are not the optimal compiler: N722/FORS supplies the stronger
+bounded-input accuracy dependence used in NONLINEAR_OBSERVATION_CHANNEL.md.
+
+Exact-real Gaussian draws/value queries are mathematical primitives. Finite
+machine output is compared with a commonly rounded target or needs its own
+primitive-error proof. No floating empirical moment/KS check establishes a
+continuous full-law TV statement. The original N687 open full-Gaussian-law and
+cost gates remain open; the lower-bound attempt, its failure and the surviving
+scope are retained rather than promoted to an obstruction it did not prove.

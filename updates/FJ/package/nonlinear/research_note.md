@@ -1,0 +1,272 @@
+# Stability-resummed correction sampling for nonlinear field queries
+
+**Astra research investigation — 14 October 2026**
+
+## Status
+
+This package contains a mathematical construction, a proof, an implemented scalar PDE test, exact rational checks of its global certificates, and a prior-art assessment. It is not a claim of historical novelty or a demonstrated scientific-computing breakthrough. The construction combines substantial established machinery: nonlinear branching representations, defect correction, linearization, and majorant bounds. The numerical test is synthetic and one-dimensional. A deterministic Fourier baseline is faster on that test.
+
+The proposed operation takes an evaluable predictor and verified analytic bounds and returns a bounded stochastic correction to a selected nonlinear field value. Its central representation choice is to put the positive linearized reaction into the linear resolvent, rather than into signed nonlinear branching weights. The remaining error is sampled, not reconstructed as a global field.
+
+## 1. Complete mathematical setting
+
+Let the domain be the flat periodic torus T^d = [0,2π)^d, let D>0, and let L=DΔ. Consider
+
+    -L u(x) + F(x,u(x)) = s(x).
+
+Assume sufficiently smooth periodic data; alternatively the conclusions may be read in the mild-solution sense. Supply an evaluable C² predictor v and define
+
+    r = s + L v - F(x,v),
+    V = ∂_u F(x,v).
+
+Suppose that 0<λ≤V(x)≤Λ everywhere and that, for |e|≤h,
+
+    F(x,v+e) - F(x,v) - V(x)e = Σ_{m≥2} c_m(x)e^m,
+    |r(x)|≤R,    |c_m(x)|≤B_m.
+
+The power series and its derivative must converge absolutely and uniformly on the stated tube. A finite polynomial is sufficient. Define
+
+    P(h) = Σ_{m≥2} B_m h^m,
+    Γ(h) = P'(h) = Σ_{m≥2} m B_m h^(m-1).
+
+The two certificates are
+
+    R + P(h) ≤ λh,                 (enclosure)
+    Γ(h) < λ.                      (finite expected work)
+
+These are assumptions on explicitly supplied, verified bounds, not consequences of a low training loss or a finite set of residual samples. The cost of obtaining them belongs to the algorithm's total cost.
+
+## 2. Theorem
+
+Under these assumptions there is a unique fixed-point solution u in the tube ||u-v||∞≤h. A random variable Z_x can be generated with
+
+    |Z_x|≤1 almost surely,
+    E[h Z_x] = u(x)-v(x).
+
+The random computation terminates almost surely. If N_x is the number of diffusion endpoints generated for one full tree, then
+
+    E[N_x] ≤ Λ / (λ-Γ(h)).
+
+Consequently, for M independent samples,
+
+    û_M(x) = v(x) + (h/M) Σ_{j=1}^M Z_x^(j)
+
+satisfies the finite-sample bound
+
+    P(|û_M(x)-u(x)|>ε) ≤ 2 exp[-M ε²/(2h²)].
+
+The probability statement refers to exact arithmetic and exact random draws in the mathematical model. The supplied floating-point implementation is not an interval-validated executable.
+
+### Construction
+
+At a node starting at x, draw τ~Exp(Λ) and a standard d-dimensional Gaussian G, independently. Set
+
+    Y = x + sqrt(2Dτ) G   modulo 2π.
+
+At Y select one of the following mutually exclusive events:
+
+| Event | Probability | Normalized return |
+|---|---:|---|
+| Source leaf | R/(Λh) | r(Y)/R |
+| One child | 1-V(Y)/Λ | Z_1(Y) |
+| m children, m≥2 | B_m h^(m-1)/Λ | -[c_m(Y)/B_m] Π_{j=1}^m Z_j(Y) |
+| Zero leaf | Remaining probability | 0 |
+
+Child trees are mutually independent conditional on Y. Zero-coefficient branches are omitted. If R=0, v is already an exact solution and the correction may simply be returned as zero. When a zero factor is encountered, evaluation of the remaining product can be stopped exactly; this is not rejection or conditioning on successful samples.
+
+### Proof
+
+**Probability validity.** The event probabilities are nonnegative. Their sum is at most
+
+    R/(Λh) + 1-λ/Λ + P(h)/(Λh) ≤ 1.
+
+**Termination and cost.** The conditional mean number of children is at most
+
+    q = 1-λ/Λ + Γ(h)/Λ < 1.
+
+The expected size of generation n is therefore at most q^n. Summing over generations gives E[N_x]≤1/(1-q), so the total tree is finite almost surely. This argument permits spatially dependent continuation probabilities; identical offspring laws are not required.
+
+**Bounded output.** On a finite tree every source or nonlinear coefficient factor has magnitude at most one. Products, one-child copies, and zero leaves preserve this bound, so |Z_x|≤1.
+
+**Identification.** The resolvent identity gives the fixed-point map
+
+    (T e)(x) = E_x[ r(Y)/Λ + (1-V(Y)/Λ)e(Y)
+                            - Σ_{m≥2} c_m(Y)e(Y)^m/Λ ].
+
+It maps the sup-norm ball of radius h into itself. For functions in that ball its Lipschitz constant is at most q<1. Thus it has a unique fixed point e. Equivalently,
+
+    (-L+V)e = r - Σ_{m≥2} c_m e^m,
+
+which is precisely the original equation for u=v+e. Since the random output is bounded and the tree is finite almost surely, its expectation satisfies the same fixed-point equation, by conditioning on the first event and using independence of children. Hence E[hZ_x]=e(x).
+
+**Confidence bound.** Each hZ_x lies in [-h,h]. Applying the elementary bounded-variable concentration inequality to M independent samples yields the displayed probability bound. There is no unproved finite-variance assumption: boundedness establishes it.
+
+### Arithmetic and input cost
+
+Let C_node include diffusion endpoint generation, coefficient evaluation, predictor evaluation and derivatives, source evaluation, and branch selection. Then an expected query-work bound is
+
+    C_build + C_verify
+      + O( C_node · Λ/(λ-Γ(h)) · h²/ε² · log(2/δ) ).
+
+Rounding the sample count up to a positive integer is understood; when ε≥h, simply returning v already gives a deterministic error bound. In the torus implementation a diffusion endpoint costs O(d) random normal variates plus vector arithmetic. There is no dimension-free claim about C_node, C_build, or C_verify. A succinct input may permit cheap evaluation; a full mesh or expensive microscopic computation may not. No general sublinear-in-input-size algorithm has been proved.
+
+## 3. What is and is not resummed
+
+The exact linearized reaction V is retained in the resolvent. Constant-rate uniformization implements it through the one-child continuation probability 1-V/Λ. Thus the solver does not need to compute or store the inverse of -L+V.
+
+This separates a large stabilizing tangent from the residual nonlinear curvature. The relevant work margin is λ-Γ(h), not the absolute size of F or its derivative alone. A large Λ/λ contrast still has a cost. Nonpositive tangent damping, derivative-dependent nonlinearities, systems of coupled fields, and arbitrary boundary geometries are outside this theorem as stated.
+
+## 4. Exact synthetic experiment
+
+The equation is
+
+    -u'' + u + 25u⁴ = 26 + 10g(x),
+    g(x)=0.45cos(x)+0.30cos(7x)+0.25sin(13x),
+
+on [0,2π), with periodic boundary conditions. The query is x=0.5. The intended branch is positive. Since u+25u⁴ is strictly increasing on u≥0, the positive solution is unique; the local theorem does not claim to classify negative mathematical branches.
+
+### Predictor A: no precomputed field
+
+Set v=1. Then
+
+    r=10g,  V=101,
+    c₂=150, c₃=100, c₄=25.
+
+The bound |g|≤1 follows from its displayed coefficients, not from grid samples. With h=1/8,
+
+    R=10, λ=Λ=101,
+    λh-R-P(h)=327/4096 > 0,
+    Γ(h)=5425/128 = 42.3828125 < 101,
+    q=5425/12928 ≈ 0.4196318069,
+    E[N]≤12928/7503 ≈ 1.723044116.
+
+### Predictor B: one analytically available linear correction
+
+Let
+
+    e₀(x)=10[0.45cos(x)/102 + 0.30cos(7x)/150 + 0.25sin(13x)/270],
+    v=1+e₀.
+
+This solves (-d_xx+101)e₀=10g exactly. It does not use the nonlinear reference solution. Its residual is exactly
+
+    r=-25(6e₀²+4e₀³+e₀⁴).
+
+Let E=10(0.45/102+0.30/150+0.25/270). The global predictor bounds are 1-E≤v≤1+E. Taking h=0.011 gives
+
+    R≈0.84785766595,
+    λ≈80.5626718423, Λ≈124.667830386,
+    Γ(h)≈3.84115202566,
+    λh-R-P(h)≈0.0172771874293 > 0,
+    E[N]≤1.62493953046.
+
+All coefficients and radii in both certificates are rational. `verify_certificates.py` verifies the inequalities with exact integer/fraction arithmetic. It does not interval-verify trigonometric evaluations or the Monte Carlo executable.
+
+### Results, 200,000 samples per predictor
+
+A full-field Fourier fixed-point calculation on grids of 256, 512, 1024 and 2048 points gives the same displayed value, 1.0208709917983396. This is a converged numerical reference, not an interval proof of the continuum value.
+
+| Predictor | Estimate | Error versus numerical reference | Ideal-arithmetic 95% Hoeffding half-width | Mean evaluated nodes |
+|---|---:|---:|---:|---:|
+| Constant 1 | 1.020887638048931 | +1.6646250591e-5 | 7.5920182739e-4 | 1.716505 |
+| One linear correction | 1.020868665271134 | -2.3265272058e-6 | 6.6809760810e-5 | 1.178515 |
+
+Sample variances were 8.1369853283e-4 and 1.7589688699e-6 respectively: about a 462.6-fold reduction within this method. This is not a comparison with the best existing solvers.
+
+In the recorded run, Monte Carlo query times were approximately 0.049 s and 0.034 s, excluding 1.20 s of Numba compilation. The 512-point Fourier computation took approximately 0.0016 s and produced a far more accurate full-field result. Single-run timings are noisy, but this example plainly does not demonstrate a speed advantage over the deterministic baseline.
+
+## 5. Adversarial checks and representation obstruction
+
+With predictor v=1, choosing h=0.05 fails the enclosure inequality. Choosing h=0.30 satisfies enclosure but gives Γ=119.7>101, so the finite-work certificate fails. The latter is an explicit demonstration that a verified error enclosure and a finite-work sampling certificate are different requirements.
+
+For this family of constant majorants define
+
+    R_crit = max_{h≥0} [λh-P(h)].
+
+For a nonzero polynomial P with nonnegative coefficients and degree at least two, the maximizing h_* satisfies P'(h_*)=λ. Thus R<R_crit admits a subcritical radius on the increasing side; R=R_crit is critical and gives no finite expected-work bound. This is a threshold for this certificate family, not a hardness theorem for the PDE. Here
+
+    h_*≈0.26201742822,
+    R_crit≈14.2491273042.
+
+For fixed predictor and bounds, the stated work-confidence bound is proportional to h²/(λ-P'(h)), which is strictly increasing while P'(h)<λ. Therefore the best feasible radius for this bound is the smaller root of λh-P(h)=R, approximately 0.12364399516 when R=10. The implementation uses the simpler rational radius 1/8.
+
+### An actual separation from an uncentered representation
+
+The uncentered equation can be written
+
+    u=(-d_xx+1)^(-1)(s-25u⁴).
+
+Consider the standard independent-product signed branching expansion of this identity. If its absolute expectation m(x) were uniformly finite, conditioning on the first event and using nonnegative expectations would give
+
+    m=(-d_xx+1)^(-1)(s+25m⁴).
+
+The resolvent is positive and maps the constant 1 to 1. Since s≥16, letting w=inf_x m(x) gives
+
+    w≥16+25w⁴,
+
+which is impossible for w≥0: the inequality first forces w≥16, after which 25w⁴>w. Thus that uncentered representation has no uniformly finite absolute first moment, even though the centered construction has bounded output and finite expected work. This statement is restricted to the specified branching representation. It is not a lower bound against Newton methods, optimized branching representations, multilevel Picard schemes, or deterministic PDE solvers.
+
+## 6. Analytic extension: amplitude-resummed sinh reaction
+
+This section is a derived corollary, not an implemented biomolecular calculation.
+
+For
+
+    -L u + κ² sinh(u)=s,
+    V=κ² cosh(v),
+
+write the Taylor coefficients c_m around v. For even m, c_m=κ²sinh(v)/m!; for odd m, c_m=κ²cosh(v)/m!. Therefore
+
+    Σ_{m≥2}|c_m|h^m/V
+       = |tanh(v)|(cosh(h)-1) + sinh(h)-h
+       ≤ exp(h)-1-h,
+
+and
+
+    Σ_{m≥2}m|c_m|h^(m-1)/V
+       = |tanh(v)|sinh(h)+cosh(h)-1
+       ≤ exp(h)-1.
+
+Use local probabilities p₀(Y)=|r(Y)|/(Λh), p_m(Y)=|c_m(Y)|h^(m-1)/Λ, one-child probability 1-V(Y)/Λ, and residual probability for zero. Source and coefficient factors are their signs; the normalized output remains bounded by one. If
+
+    |r(x)|/V(x)≤δ,
+    δ≤2h+1-exp(h),
+    0<h<log(2),
+
+the event probabilities are valid and the mean offspring number is at most
+
+    1 - [V(Y)/Λ][2-exp(h)].
+
+It follows that
+
+    E[N]≤Λ/[λ(2-exp(h))].
+
+An admissible h exists whenever δ<2log(2)-1≈0.3862943611. This is a sufficient threshold independent of the bulk amplitude of v. It is not independent of spatial stiffness contrast Λ/λ, coefficient-evaluation cost, or the effort needed to construct v and verify δ. Infinite-degree branch selection also needs an explicitly implementable probability law; here the factorial coefficients allow direct sampling by a convergent Poisson-series inversion, with its cost accounted for.
+
+The corollary does not address dielectric interfaces, singular molecular charges, realistic molecular boundaries, physical validity of Poisson–Boltzmann at extreme conditions, or parameter acquisition. Those problems have not been solved by this calculation.
+
+## 7. Prior art and the remaining novelty question
+
+Branching representations and nonlinear Monte Carlo computations are established. Dauchet et al. (2018) discuss nonlinear expectation calculations and scientific applications. Agarwal and Claisse (2020), especially their Section 3.3, prove moment bounds for elliptic branching representations, including supersolution-based criteria. Accordingly, neither nonlinear random trees nor the use of a majorant to ensure integrability is a new claim here.
+
+Fan et al. (ICLR 2026) explicitly construct a defect PDE around a scientific surrogate and solve that defect by stochastic methods. Thus “use a learned or approximate field, then Monte Carlo-correct it” is also not new. Beck, Gonon and Jentzen (2024) analyze multilevel Picard approximation for high-dimensional semilinear elliptic equations. Merely avoiding a full tensor grid cannot establish an advantage over that literature.
+
+The narrower object studied here is a certificate-directed, positive-tangent-resummed stationary correction sampler with simultaneously bounded samples and finite-work bounds, including the explicit sinh residual-to-damping criterion. Historical novelty of that exact package has not been established. It may be a specialization or useful recombination of existing results. The cited literature must be treated as the baseline, not as support for an inflated invention claim.
+
+Related work on nonlinear radiative boundary conditions does not establish that the bulk periodic theorem here solves those boundary problems. Transfer requires additional representations, sampling operations and error accounting.
+
+## 8. Information requirements and unresolved significance
+
+The method assumes access to the actual forward model. It cannot infer unknown interactions or physical parameters from a finite set of residual evaluations. A small sampled training loss is insufficient to certify the global inequalities. A predictor whose construction already required the expensive solution does not create a free computational advantage. Approximate path simulators introduce numerical bias that must be bounded separately. Gradient queries, design derivatives, joint nonlinear observables and field-wide guarantees require further analysis.
+
+What is established is an explicit transformation from a verified predictor and known model to bounded point-query samples, a complete mathematical work/confidence contract, a representation-specific integrability separation, and reproducible toy evidence. What is not established is priority, a win over the strongest current methods, or access to a consequential physical answer previously unattainable by those methods.
+
+The next decisive research test is not another easy PDE demonstration. It is whether a physically meaningful, expensive instance admits a cheaply acquired certificate and a complete query cost lower than competitive deterministic, multilevel Picard, and modern branching solvers under the same input and error model. Without that result, this is supporting research machinery rather than completion of Astra's scientific-capability mission.
+
+## Primary sources consulted
+
+1. Dauchet et al. (2018), *Addressing nonlinearities in Monte Carlo*, Scientific Reports 8, 13359. https://doi.org/10.1038/s41598-018-31574-4
+2. Agarwal and Claisse (2020), *Branching diffusion representation of semi-linear elliptic PDEs and estimation using Monte Carlo method*, Stochastic Processes and their Applications 130(8), 5006–5036. https://doi.org/10.1016/j.spa.2020.02.009 ; accepted manuscript: https://eprints.gla.ac.uk/210343/7/210343.pdf
+3. Fan, Sun, Yang and Lu (2026), *Physics-Informed Inference Time Scaling for Solving High-Dimensional Partial Differential Equations via Defect Correction*, ICLR 2026. https://proceedings.iclr.cc/paper_files/paper/2026/file/cf8353a0efc3644454a5591a7cb55c17-Paper-Conference.pdf
+4. Beck, Gonon and Jentzen (2024), *Overcoming the curse of dimensionality in the numerical approximation of high-dimensional semilinear elliptic partial differential equations*, Partial Differential Equations and Applications 5, 31. https://doi.org/10.1007/s42985-024-00272-4
+5. Bossy et al., *Monte Carlo methods for linear and non-linear Poisson–Boltzmann equation*, arXiv:1411.2304 (version consulted dated 2018). https://arxiv.org/abs/1411.2304
+6. Bao, Shen and Wang (2026), *Monte Carlo PDE Solvers for Nonlinear Radiative Boundary Conditions*, arXiv:2604.21717. https://arxiv.org/abs/2604.21717

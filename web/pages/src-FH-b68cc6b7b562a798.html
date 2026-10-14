@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — independent_checks.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/synthesis/spectral/analysis/independent_checks.py">Original bytes</a></p><pre>&quot;&quot;&quot;Independent transfer-matrix and exact sequence audit for FH-spectral.
+
+This script uses only NumPy/SciPy and the parameter values transcribed from
+the frozen producer README. It does not import the producer&#x27;s optical model.
+The optical calculations remain source-reference scenarios, not κ-ET fits.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import itertools
+import json
+from pathlib import Path
+
+import numpy as np
+from scipy.integrate import simpson
+
+
+OUT = Path(__file__).resolve().parent
+SEQ_A = np.array([0, 1, 1, 0, 1, 0, 0, 1], dtype=int)
+SEQ_B = SEQ_A[::-1].copy()
+
+
+def eps_reference(nu_cm: float, isotope: int, loss: float = 1.0,
+                  ideal_mass_only: bool = False,
+                  material_overrides: dict[str, float] | None = None
+                  ) -&gt; tuple[complex, complex]:
+    &quot;&quot;&quot;Uniaxial Lorentz model, transcribed from producer README/code.
+
+    isotope=0 denotes 10B and isotope=1 denotes 11B. The &quot;ideal&quot; option
+    mass-scales both in-plane endpoints equally to enforce exact DC equality.
+    &quot;&quot;&quot;
+    if isotope not in (0, 1) or loss &lt;= 0:
+        raise ValueError(&quot;isotope must be 0/1 and loss must be positive&quot;)
+    p = {
+        &quot;eps_inf_t_10&quot;: 5.1, &quot;eps_inf_t_11&quot;: 5.1,
+        &quot;eps_inf_z_10&quot;: 2.5, &quot;eps_inf_z_11&quot;: 2.5,
+        &quot;to_t_10&quot;: 1394.5, &quot;lo_t_10&quot;: 1650.0,
+        &quot;to_t_11&quot;: 1359.8, &quot;lo_t_11&quot;: 1608.7,
+        &quot;to_z_10&quot;: 785.0, &quot;lo_z_10&quot;: 845.0,
+        &quot;to_z_11&quot;: 785.0 * (1359.8 / 1394.5),
+        &quot;lo_z_11&quot;: 845.0 * (1359.8 / 1394.5),
+        &quot;gamma_t_10&quot;: 1.8, &quot;gamma_t_11&quot;: 1.8,
+        &quot;gamma_z_10&quot;: 1.0, &quot;gamma_z_11&quot;: 1.0,
+    }
+    if ideal_mass_only:
+        p[&quot;lo_t_11&quot;] = p[&quot;lo_t_10&quot;] * p[&quot;to_t_11&quot;] / p[&quot;to_t_10&quot;]
+    if material_overrides:
+        p.update(material_overrides)
+    suffix = &quot;10&quot; if isotope == 0 else &quot;11&quot;
+    to_t, lo_t = p[f&quot;to_t_{suffix}&quot;], p[f&quot;lo_t_{suffix}&quot;]
+    to_z, lo_z = p[f&quot;to_z_{suffix}&quot;], p[f&quot;lo_z_{suffix}&quot;]
+    et_inf, ez_inf = p[f&quot;eps_inf_t_{suffix}&quot;], p[f&quot;eps_inf_z_{suffix}&quot;]
+    gamma_t = p[f&quot;gamma_t_{suffix}&quot;] * loss
+    gamma_z = p[f&quot;gamma_z_{suffix}&quot;] * loss
+    nu = complex(nu_cm)
+    et = et_inf * (1 + (lo_t**2 - to_t**2) /
+                   (to_t**2 - nu**2 - 1j * nu * gamma_t))
+    ez = ez_inf * (1 + (lo_z**2 - to_z**2) /
+                   (to_z**2 - nu**2 - 1j * nu * gamma_z))
+    return et, ez
+
+
+def rp_transfer(nu_cm: float, q_per_m: np.ndarray | float,
+                sequence: np.ndarray, layer_nm: float = 10.0,
+                cap_nm: float = 5.0, loss: float = 1.0,
+                ideal_mass_only: bool = False,
+                host_eps: complex = 1.0,
+                material_overrides: dict[str, float] | None = None,
+                substrate_eps: complex = 1.0) -&gt; np.ndarray:
+    &quot;&quot;&quot;Global amplitude-transfer-matrix reflection, independent of recursion.
+
+    The incident and terminal media are isotropic half spaces (host_eps and
+    substrate_eps). For source reproduction both are vacuum; target-load
+    stress cases keep the incident side at vacuum and vary substrate_eps.
+    This p-amplitude convention is checked against source outputs.
+    &quot;&quot;&quot;
+    q0 = np.asarray(q_per_m, dtype=float)
+    q = np.atleast_1d(q0).astype(complex)
+    if layer_nm &lt;= 0 or cap_nm &lt; 0:
+        raise ValueError(&quot;invalid geometric thickness&quot;)
+    if len(sequence) == 0:
+        raise ValueError(&quot;sequence must contain at least one internal layer&quot;)
+
+    k0 = 2 * np.pi * 100 * float(nu_cm)
+    eps_layers = [eps_reference(nu_cm, int(i), loss, ideal_mass_only,
+                                material_overrides)
+                  for i in np.r_[0, sequence, 0]]
+    media = [(complex(host_eps), complex(host_eps))] + eps_layers + [
+        (complex(substrate_eps), complex(substrate_eps))]
+    thicknesses_m = [cap_nm * 1e-9] + [layer_nm * 1e-9] * len(sequence) + [cap_nm * 1e-9]
+
+    kz: list[np.ndarray] = []
+    admittance: list[np.ndarray] = []
+    for et, ez in media:
+        k = np.sqrt(et * k0**2 - et / ez * q**2 + 0j)
+        flip = (k.imag &lt; 0) | ((np.abs(k.imag) &lt; 1e-15) &amp; (k.real &lt; 0))
+        k = np.where(flip, -k, k)
+        kz.append(k)
+        admittance.append(et / k)
+
+    eye = np.broadcast_to(np.eye(2, dtype=complex), (len(q), 2, 2)).copy()
+    transfer = eye
+    for idx, thickness in enumerate(thicknesses_m):
+        yi, yj = admittance[idx], admittance[idx + 1]
+        interface = np.empty_like(transfer)
+        interface[:, 0, 0] = 0.5 * (1 + yj / yi)
+        interface[:, 0, 1] = 0.5 * (1 - yj / yi)
+        interface[:, 1, 0] = 0.5 * (1 - yj / yi)
+        interface[:, 1, 1] = 0.5 * (1 + yj / yi)
+        phase = kz[idx + 1] * thickness
+        propagation = np.zeros_like(transfer)
+        propagation[:, 0, 0] = np.exp(-1j * phase)
+        propagation[:, 1, 1] = np.exp(1j * phase)
+        transfer = transfer @ interface @ propagation
+
+    yi, yj = admittance[-2], admittance[-1]
+    interface = np.empty_like(transfer)
+    interface[:, 0, 0] = 0.5 * (1 + yj / yi)
+    interface[:, 0, 1] = 0.5 * (1 - yj / yi)
+    interface[:, 1, 0] = 0.5 * (1 - yj / yi)
+    interface[:, 1, 1] = 0.5 * (1 + yj / yi)
+    transfer = transfer @ interface
+    # The source uses the p-polarization Fresnel basis, opposite to tangential-E.
+    reflected = -transfer[:, 1, 0] / transfer[:, 0, 0]
+    return reflected.reshape(q0.shape)
+
+
+def exact_balanced_sequences(n_layers: int) -&gt; list[tuple[int, ...]]:
+    &quot;&quot;&quot;Enumerate 50:50 isotope partitions matching moments 1 and 2.&quot;&quot;&quot;
+    if n_layers % 2:
+        return []
+    half = n_layers // 2
+    found: list[tuple[int, ...]] = []
+    for chosen in itertools.combinations(range(n_layers), half):
+        comp = tuple(j for j in range(n_layers) if j not in chosen)
+        if chosen &lt; comp and all(
+            sum(j**degree for j in chosen) == sum(j**degree for j in comp)
+            for degree in (1, 2)
+        ):
+            found.append(chosen)
+    return found
+
+
+def flip_matched_sequences(n_layers: int) -&gt; list[tuple[int, ...]]:
+    &quot;&quot;&quot;Enumerate 50:50 stacks with zero first moment, modulo physical reversal.
+
+    For a stack and its geometric mirror, the A and D laminate matrices are
+    invariant and B changes sign. Thus zero centered first moment is the
+    necessary and sufficient scalar isotope-order condition for equal A/B/D
+    matrices for arbitrary fixed isotope coefficients.
+    &quot;&quot;&quot;
+    if n_layers % 2:
+        return []
+    half = n_layers // 2
+    target = n_layers * (n_layers - 1) // 4
+    if n_layers * (n_layers - 1) % 4:
+        return []
+    found: list[tuple[int, ...]] = []
+    for chosen in itertools.combinations(range(n_layers), half):
+        if sum(chosen) != target:
+            continue
+        reverse = tuple(sorted(n_layers - 1 - j for j in chosen))
+        if chosen &lt;= reverse:
+            found.append(chosen)
+    return found
+
+
+def unrestricted_flip_matched_sequences(n_layers: int) -&gt; list[tuple[int, ...]]:
+    &quot;&quot;&quot;Enumerate all isotope fractions with zero first moment, modulo reversal.
+
+    This is the physical flip-only static match condition. The same laminate
+    is mounted in both orientations, so its isotope inventory is conserved
+    across the pair automatically; a 50:50 inventory inside each laminate is
+    an optional additional constraint, not part of mirror matching.
+    &quot;&quot;&quot;
+    found: list[tuple[int, ...]] = []
+    weights = [2 * j - (n_layers - 1) for j in range(n_layers)]
+    for k in range(n_layers + 1):
+        for chosen in itertools.combinations(range(n_layers), k):
+            if sum(weights[j] for j in chosen) != 0:
+                continue
+            reverse = tuple(sorted(n_layers - 1 - j for j in chosen))
+            if chosen &lt;= reverse:
+                found.append(chosen)
+    return found
+
+
+def laminate_moments(sequence: np.ndarray, values: tuple[float, float]) -&gt; np.ndarray:
+    &quot;&quot;&quot;Exact-piecewise-constant moments z^0,z^1,z^2 for unit layers.&quot;&quot;&quot;
+    n = len(sequence)
+    edges = np.arange(n + 1, dtype=float) - n / 2
+    v = np.asarray(values)[sequence]
+    return np.array([
+        np.sum(v * (edges[1:] ** (k + 1) - edges[:-1] ** (k + 1)) / (k + 1))
+        for k in range(3)
+    ])
+
+
+def witness(sequence: np.ndarray, nu_cm: float = 1470.0,
+            z_nm: float = 20.0, loss: float = 1.0, n_q: int = 10_000,
+            layer_nm: float = 10.0, cap_nm: float = 5.0,
+            ideal_mass_only: bool = False,
+            host_eps: complex = 1.0,
+            material_overrides: dict[str, float] | None = None,
+            substrate_eps: complex = 1.0) -&gt; float:
+    q = np.geomspace(1.2e6, 1.0e9, n_q)
+    weights = q**2 * np.exp(-2 * q * z_nm * 1e-9)
+    r = rp_transfer(nu_cm, q, sequence, layer_nm, cap_nm, loss,
+                    ideal_mass_only, host_eps, material_overrides,
+                    substrate_eps)
+    return float(simpson(weights * r.imag, x=q))
+
+
+def contrast(sequence: np.ndarray, **kwargs: float) -&gt; float:
+    a = witness(sequence, **kwargs)
+    b = witness(sequence[::-1], **kwargs)
+    return float(2 * (a - b) / (a + b))
+
+
+def main() -&gt; None:
+    result: dict[str, object] = {
+        &quot;status&quot;: &quot;Independent model audit; not experimental data or a kappa-ET loaded fit.&quot;,
+        &quot;code&quot;: &quot;Global amplitude transfer matrix plus exact integer sequence enumeration.&quot;,
+        &quot;environment&quot;: &quot;Python 3.13.2; NumPy 2.3.5; SciPy 1.17.0&quot;,
+    }
+
+    # Algebraic sequence checks and the source pattern&#x27;s isotope convention.
+    moments = [int(np.sum((1 - 2 * SEQ_A) * np.arange(8) ** k)) for k in range(4)]
+    assert moments[:3] == [0, 0, 0]
+    assert np.array_equal(SEQ_B, SEQ_A[::-1])
+    result[&quot;source_sequence_signed_moments_degrees_0_to_3&quot;] = moments
+    result[&quot;balanced_exact_patterns_modulo_complement&quot;] = {
+        str(n): [list(p) for p in exact_balanced_sequences(n)]
+        for n in (4, 6, 8, 10, 12, 14, 16)
+    }
+    flip_catalog = {}
+    for n in (2, 4, 6, 8, 10, 12, 14, 16):
+        reps = flip_matched_sequences(n)
+        palindrome = [p for p in reps if tuple(sorted(n - 1 - j for j in p)) == p]
+        flip_catalog[str(n)] = {
+            &quot;reversal_classes&quot;: len(reps),
+            &quot;palindromic_no_spectral_change_by_flip&quot;: len(palindrome),
+            &quot;nontrivial_reversal_pairs&quot;: len(reps) - len(palindrome),
+            &quot;representatives&quot;: [list(p) for p in reps],
+        }
+    result[&quot;flip_only_50_50_exact_static_match_catalog&quot;] = flip_catalog
+    unrestricted_catalog = {}
+    for n in range(1, 17):
+        reps = unrestricted_flip_matched_sequences(n)
+        palindrome = [p for p in reps if tuple(sorted(n - 1 - j for j in p)) == p]
+        unrestricted_catalog[str(n)] = {
+            &quot;reversal_classes&quot;: len(reps),
+            &quot;palindromic_no_spectral_change_by_flip&quot;: len(palindrome),
+            &quot;nontrivial_reversal_pairs&quot;: len(reps) - len(palindrome),
+            &quot;nontrivial_representatives&quot;: [list(p) for p in reps if p not in palindrome],
+        }
+    result[&quot;unrestricted_flip_only_exact_static_match_catalog&quot;] = unrestricted_catalog
+
+    # Compare the independent global matrix against the producer&#x27;s output points.
+    points = []
+    for seq_name, seq in ((&quot;A&quot;, SEQ_A), (&quot;B&quot;, SEQ_B)):
+        for nu, q in ((1470.0, 51e6), (1450.0, 30e6), (1405.0, 20e6)):
+            points.append({
+                &quot;sequence&quot;: seq_name, &quot;nu_cm-1&quot;: nu, &quot;q_per_m&quot;: q,
+                &quot;r_independent&quot;: [float(x) for x in (
+                    rp_transfer(nu, q, seq).real,
+                    rp_transfer(nu, q, seq).imag)],
+            })
+    result[&quot;cross_implementation_points&quot;] = points
+
+    # Exact static equality in ideal oscillator model and residual for published endpoints.
+    q_static = np.geomspace(1.2e6, 4e8, 801)
+    static_rows = {}
+    for ideal in (True, False):
+        ra = rp_transfer(0.0, q_static, SEQ_A, ideal_mass_only=ideal)
+        rb = rp_transfer(0.0, q_static, SEQ_B, ideal_mass_only=ideal)
+        static_rows[&quot;ideal&quot; if ideal else &quot;published_endpoints&quot;] = {
+            &quot;max_abs_difference&quot;: float(np.max(np.abs(ra - rb))),
+            &quot;max_difference_over_global_max_abs_rA&quot;: float(
+                np.max(np.abs(ra - rb)) / np.max(np.abs(ra))),
+        }
+    result[&quot;static_reflection&quot;] = static_rows
+    loaded_static = []
+    for eps_substrate in (1.0, 2.0, 5.0, 10.0, 20.0):
+        ra = rp_transfer(0.0, q_static, SEQ_A, ideal_mass_only=True,
+                         substrate_eps=eps_substrate)
+        rb = rp_transfer(0.0, q_static, SEQ_B, ideal_mass_only=True,
+                         substrate_eps=eps_substrate)
+        loaded_static.append({
+            &quot;dimensionless_real_isotropic_substrate_stress_case&quot;: eps_substrate,
+            &quot;max_abs_static_reflection_difference&quot;: float(np.max(np.abs(ra-rb))),
+            &quot;status&quot;: &quot;same epsilon(0) in every hBN layer; substrate values are synthetic&quot;,
+        })
+    result[&quot;ideal_static_reflection_with_synthetic_substrate_loads&quot;] = loaded_static
+
+    # Material-input robustness: report changes to the proposed finite spectral witness.
+    # Loss factors are the producer&#x27;s explicit 1/3/6 cases. Geometric values below are
+    # stress probes around the proposal, not asserted fabrication tolerances.
+    base = contrast(SEQ_A, z_nm=20.0, loss=1.0, n_q=10_000)
+    result[&quot;base_1470cm-1_20nm_contrast&quot;] = base
+    robustness = []
+    for loss in (1.0, 3.0, 6.0):
+        for z in (10.0, 20.0, 40.0, 80.0):
+            robustness.append({&quot;loss_multiplier&quot;: loss, &quot;height_nm&quot;: z,
+                               &quot;signed_contrast&quot;: contrast(SEQ_A, z_nm=z,
+                                                              loss=loss, n_q=10_000)})
+    result[&quot;source_geometry_and_loss_contrasts&quot;] = robustness
+    substrate_rows = []
+    for eps_substrate in (1.0, 2.0, 5.0, 10.0, 20.0):
+        substrate_rows.append({
+            &quot;dimensionless_real_isotropic_substrate_stress_case&quot;: eps_substrate,
+            &quot;signed_contrast&quot;: contrast(
+                SEQ_A, z_nm=20, loss=1, n_q=4000,
+                substrate_eps=eps_substrate),
+            &quot;status&quot;: &quot;synthetic loaded-stack stress case; not a measured kappa-ET dielectric&quot;,
+        })
+    result[&quot;terminal_substrate_load_stress_cases&quot;] = substrate_rows
+
+    # Local one-at-a-time sensitivity for every Lorentz-table input, including
+    # assumptions shared between isotopes. A 1% perturbation is a derivative
+    # probe only; it is not an uncertainty interval or a measured tolerance.
+    model_parameters = {
+        &quot;eps_inf_t_10&quot;: 5.1, &quot;eps_inf_t_11&quot;: 5.1,
+        &quot;eps_inf_z_10&quot;: 2.5, &quot;eps_inf_z_11&quot;: 2.5,
+        &quot;to_t_10&quot;: 1394.5, &quot;lo_t_10&quot;: 1650.0,
+        &quot;to_t_11&quot;: 1359.8, &quot;lo_t_11&quot;: 1608.7,
+        &quot;to_z_10&quot;: 785.0, &quot;lo_z_10&quot;: 845.0,
+        &quot;to_z_11&quot;: 785.0 * (1359.8 / 1394.5),
+        &quot;lo_z_11&quot;: 845.0 * (1359.8 / 1394.5),
+        &quot;gamma_t_10&quot;: 1.8, &quot;gamma_t_11&quot;: 1.8,
+        &quot;gamma_z_10&quot;: 1.0, &quot;gamma_z_11&quot;: 1.0,
+    }
+    parameter_sensitivity = []
+    for name, nominal in model_parameters.items():
+        shifts = []
+        for factor in (0.99, 1.01):
+            c = contrast(SEQ_A, z_nm=20.0, loss=1.0, n_q=4000,
+                         material_overrides={name: nominal * factor})
+            shifts.append(c)
+        parameter_sensitivity.append({
+            &quot;parameter&quot;: name, &quot;source_reference_value&quot;: nominal,
+            &quot;relative_probe&quot;: [-0.01, 0.01],
+            &quot;contrast_at_minus_1pct&quot;: shifts[0],
+            &quot;contrast_at_plus_1pct&quot;: shifts[1],
+            &quot;max_abs_change_from_1pct_probes&quot;: max(abs(x - base) for x in shifts),
+            &quot;status&quot;: &quot;local mathematical sensitivity only; not uncertainty or a physical range&quot;,
+        })
+    result[&quot;all_lorentz_parameter_local_sensitivity&quot;] = parameter_sensitivity
+
+    geometric_sensitivity = []
+    for parameter, nominal in ((&quot;layer_nm&quot;, 10.0), (&quot;cap_nm&quot;, 5.0)):
+        shifts = []
+        for factor in (0.99, 1.01):
+            kwargs = {parameter: nominal * factor}
+            shifts.append(contrast(SEQ_A, z_nm=20.0, loss=1.0, n_q=4000,
+                                   **kwargs))
+        geometric_sensitivity.append({
+            &quot;parameter&quot;: parameter, &quot;proposed_value_nm&quot;: nominal,
+            &quot;relative_probe&quot;: [-0.01, 0.01],
+            &quot;contrast_at_minus_1pct&quot;: shifts[0],
+            &quot;contrast_at_plus_1pct&quot;: shifts[1],
+            &quot;max_abs_change_from_1pct_probes&quot;: max(abs(x - base) for x in shifts),
+            &quot;status&quot;: &quot;local mathematical sensitivity only; not a fabrication tolerance&quot;,
+        })
+    result[&quot;geometric_parameter_local_sensitivity&quot;] = geometric_sensitivity
+
+    # Exact static-match countermodel: Im chi for two passive damped harmonic
+    # oscillators, centered in opposite-sign spectral lobes, yields opposite
+    # signed responses. Their linewidths are synthetic countermodel settings.
+    probe_nu = np.linspace(1380.0, 1650.0, 1081)
+    probe_q = 51e6
+    delta_im = np.array([
+        rp_transfer(float(nu), probe_q, SEQ_A, ideal_mass_only=True).imag -
+        rp_transfer(float(nu), probe_q, SEQ_B, ideal_mass_only=True).imag
+        for nu in probe_nu
+    ])
+    passive_filters = []
+    for center in (1470.0, 1572.0):
+        gamma = 5.0
+        filt = (gamma * probe_nu) / (
+            (center**2 - probe_nu**2)**2 + (gamma * probe_nu)**2)
+        weighted_delta = float(simpson(filt * delta_im, x=probe_nu) /
+                               simpson(filt, x=probe_nu))
+        passive_filters.append({
+            &quot;filter_center_cm-1&quot;: center,
+            &quot;synthetic_damping_cm-1&quot;: gamma,
+            &quot;weight&quot;: &quot;Im[1/(center^2 - nu^2 - i gamma nu)]&quot;,
+            &quot;nonnegative_filter_weighted_delta_Im_r&quot;: weighted_delta,
+            &quot;sign&quot;: &quot;negative&quot; if weighted_delta &lt; 0 else &quot;positive&quot;,
+        })
+    result[&quot;exact_static_match_passive_probe_sign_countermodels&quot;] = {
+        &quot;ideal_mass_model_max_static_reflection_difference&quot;: static_rows[&quot;ideal&quot;][&quot;max_abs_difference&quot;],
+        &quot;q_per_m&quot;: probe_q,
+        &quot;integration_band_cm-1&quot;: [float(probe_nu[0]), float(probe_nu[-1])],
+        &quot;delta_Im_r_range&quot;: [float(delta_im.min()), float(delta_im.max())],
+        &quot;filters&quot;: passive_filters,
+        &quot;status&quot;: &quot;synthetic passive damped-oscillator susceptibilities; not a kappa-ET susceptibility&quot;,
+    }
+
+    # Fixed total internal thickness (80 nm), using the source&#x27;s stronger
+    # complement-moment constraint. This is a stricter subset of flip matching.
+    optimized = []
+    for n in (8, 12, 16):
+        patterns = exact_balanced_sequences(n)
+        d = 80.0 / n
+        n_q = 3000
+        candidates = []
+        for ten_boron_positions in patterns:
+            seq = np.ones(n, dtype=int)
+            seq[list(ten_boron_positions)] = 0
+            c1 = contrast(seq, z_nm=20.0, loss=1.0, n_q=n_q,
+                          layer_nm=d, cap_nm=5.0)
+            c6 = contrast(seq, z_nm=20.0, loss=6.0, n_q=n_q,
+                          layer_nm=d, cap_nm=5.0)
+            candidates.append({
+                &quot;10B_layer_indices&quot;: list(ten_boron_positions),
+                &quot;layer_thickness_nm_for_80nm_internal_total&quot;: d,
+                &quot;contrast_loss1&quot;: c1,
+                &quot;contrast_loss6&quot;: c6,
+            })
+        optimized.append({&quot;n_layers&quot;: n, &quot;exact_pairs_modulo_complement&quot;: candidates,
+                          &quot;status&quot;: &quot;scenario ranking only; source dielectric and vacuum output&quot;})
+    result[&quot;fixed_total_thickness_sequence_search&quot;] = optimized
+
+    # Broader physical flip design space: equal composition plus zero first
+    # moment suffices for static A/B/D matching of a stack and its mirror.
+    # The values remain a model-based ranking, not material performance claims.
+    flip_search = []
+    for n in (8, 12):
+        reps = flip_matched_sequences(n)
+        d = 80.0 / n
+        candidates = []
+        for ten_boron_positions in reps:
+            seq = np.ones(n, dtype=int)
+            seq[list(ten_boron_positions)] = 0
+            reverse = seq[::-1].copy()
+            palindromic = np.array_equal(seq, reverse)
+            c1 = contrast(seq, z_nm=20.0, loss=1.0, n_q=2500,
+                          layer_nm=d, cap_nm=5.0)
+            c6 = contrast(seq, z_nm=20.0, loss=6.0, n_q=2500,
+                          layer_nm=d, cap_nm=5.0)
+            candidates.append({
+                &quot;10B_layer_indices&quot;: list(ten_boron_positions),
+                &quot;palindromic&quot;: bool(palindromic),
+                &quot;layer_thickness_nm_for_80nm_internal_total&quot;: d,
+                &quot;contrast_loss1&quot;: c1,
+                &quot;contrast_loss6&quot;: c6,
+            })
+        candidates.sort(key=lambda row: abs(row[&quot;contrast_loss1&quot;]), reverse=True)
+        flip_search.append({&quot;n_layers&quot;: n, &quot;reversal_classes&quot;: candidates,
+                            &quot;status&quot;: &quot;flip-only static match; model-based ranking only&quot;})
+    result[&quot;fixed_total_thickness_flip_design_search&quot;] = flip_search
+
+    # The seven-layer minimum disappears if composition is not artificially
+    # constrained to 50:50 within each parent laminate. Both examples have
+    # zero centered first moment and therefore exact mirror-pair A/B/D match.
+    unrestricted_n7 = []
+    for positions in unrestricted_flip_matched_sequences(7):
+        seq = np.ones(7, dtype=int)
+        seq[list(positions)] = 0
+        if np.array_equal(seq, seq[::-1]):
+            continue
+        d = 80.0 / 7
+        unrestricted_n7.append({
+            &quot;10B_layer_indices&quot;: list(positions),
+            &quot;11B_layer_indices&quot;: [j for j in range(7) if j not in positions],
+            &quot;mirror_10B_layer_indices&quot;: list(sorted(6 - j for j in positions)),
+            &quot;layer_thickness_nm_for_80nm_internal_total&quot;: d,
+            &quot;signed_centered_first_moment_integer_scale_2&quot;: sum(2*j-6 for j in positions),
+            &quot;A_integral_moments_Q10_299_Q11_281&quot;: laminate_moments(seq, (299.0, 281.0)).tolist(),
+            &quot;B_integral_moments_Q10_299_Q11_281&quot;: laminate_moments(seq[::-1], (299.0, 281.0)).tolist(),
+            &quot;contrast_loss1&quot;: contrast(seq, z_nm=20.0, loss=1.0, n_q=4000,
+                                        layer_nm=d, cap_nm=5.0),
+            &quot;contrast_loss3&quot;: contrast(seq, z_nm=20.0, loss=3.0, n_q=4000,
+                                        layer_nm=d, cap_nm=5.0),
+            &quot;contrast_loss6&quot;: contrast(seq, z_nm=20.0, loss=6.0, n_q=4000,
+                                        layer_nm=d, cap_nm=5.0),
+            &quot;status&quot;: &quot;exact mirror-pair laminate match; source-reference vacuum optics only&quot;,
+        })
+    result[&quot;unrestricted_seven_layer_flip_examples&quot;] = unrestricted_n7
+    n7_seq = np.ones(7, dtype=int)
+    n7_seq[[0, 4, 5]] = 0
+    loaded_design_compare = []
+    for eps_substrate in (1.0, 2.0, 5.0, 10.0, 20.0):
+        loaded_design_compare.append({
+            &quot;dimensionless_real_isotropic_substrate_stress_case&quot;: eps_substrate,
+            &quot;seven_layer_pattern_0_4_5_contrast&quot;: contrast(
+                n7_seq, z_nm=20, loss=1, n_q=3000,
+                layer_nm=80/7, cap_nm=5,
+                substrate_eps=eps_substrate),
+            &quot;source_eight_layer_pattern_contrast&quot;: contrast(
+                SEQ_A, z_nm=20, loss=1, n_q=3000,
+                layer_nm=10, cap_nm=5,
+                substrate_eps=eps_substrate),
+            &quot;status&quot;: &quot;synthetic substrate comparison; not a kappa-ET loaded fit&quot;,
+        })
+    result[&quot;loaded_design_comparison_stress_cases&quot;] = loaded_design_compare
+
+    # Verify exact equality of static mechanical laminate moments for unequal moduli.
+    ma = laminate_moments(SEQ_A, (299.0, 281.0))
+    mb = laminate_moments(SEQ_B, (299.0, 281.0))
+    result[&quot;mechanical_moments_unequal_coefficients&quot;] = {
+        &quot;A&quot;: ma.tolist(), &quot;B&quot;: mb.tolist(),
+        &quot;max_abs_difference&quot;: float(np.max(np.abs(ma - mb))),
+        &quot;coefficient_pair_is_synthetic_identity_fixture&quot;: True,
+    }
+    seq_a_mech = laminate_moments(SEQ_A, (299.0, 281.0))
+    seq_b_mech = laminate_moments(SEQ_B, (299.0, 281.0))
+    result[&quot;mirror_pair_moments_unequal_coefficients&quot;] = {
+        &quot;A&quot;: seq_a_mech.tolist(), &quot;mirror_B&quot;: seq_b_mech.tolist(),
+        &quot;signed_difference&quot;: (seq_a_mech - seq_b_mech).tolist(),
+        &quot;interpretation&quot;: &quot;z^0 and z^2 match by reflection; z^1 vanishes for both&quot;,
+    }
+
+    (OUT / &quot;independent_results.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;sequence_moments&quot;: moments,
+        &quot;sequence_counts&quot;: {n: len(exact_balanced_sequences(n)) for n in (4,6,8,10,12,14,16)},
+        &quot;balanced_flip_catalog_counts&quot;: {n: {
+            &quot;reversal_classes&quot;: flip_catalog[str(n)][&quot;reversal_classes&quot;],
+            &quot;nontrivial_reversal_pairs&quot;: flip_catalog[str(n)][&quot;nontrivial_reversal_pairs&quot;],
+        } for n in (2,4,6,8,10,12,14,16)},
+        &quot;unrestricted_flip_catalog_counts&quot;: {n: {
+            &quot;reversal_classes&quot;: unrestricted_catalog[str(n)][&quot;reversal_classes&quot;],
+            &quot;nontrivial_reversal_pairs&quot;: unrestricted_catalog[str(n)][&quot;nontrivial_reversal_pairs&quot;],
+        } for n in range(1,17)},
+        &quot;static_reflection&quot;: static_rows,
+        &quot;base_contrast&quot;: base,
+        &quot;substrate_load_stress&quot;: substrate_rows,
+        &quot;fixed_total_optimization&quot;: optimized,
+        &quot;fixed_total_flip_design_search&quot;: flip_search,
+        &quot;unrestricted_seven_layer_flip_examples&quot;: unrestricted_n7,
+        &quot;loaded_design_comparison_stress_cases&quot;: loaded_design_compare,
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

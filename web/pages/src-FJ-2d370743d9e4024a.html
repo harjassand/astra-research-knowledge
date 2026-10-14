@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — verify_contact_compensation.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/package/quartic/verify_contact_compensation.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact algebra accompanying CONTACT_COMPENSATION.md.
+
+Requires SymPy. This is not a formal proof of the analytic interpolation theorem.
+No numerical optimizer, network access or prior result JSON is used.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from pathlib import Path
+import sympy as S
+
+out = {}
+passed = []
+def zero(expr, label=&#x27;identity&#x27;):
+    values = list(expr) if isinstance(expr, S.MatrixBase) else [expr]
+    for x in values:
+        if S.cancel(S.expand(x)) != 0:
+            raise AssertionError(label)
+def done(label):
+    passed.append(label)
+    print(f&#x27;PASS {len(passed):02d}: {label}&#x27;, flush=True)
+def means(poly, variables, boxes):
+    &quot;&quot;&quot;Integrate a polynomial over rational boxes, by monomial antiderivatives.&quot;&quot;&quot;
+    result = S.Integer(0)
+    p = S.Poly(S.expand(poly), *variables)
+    for bounds in boxes:
+        for exps, coeff in p.terms():
+            term = coeff
+            for power,(lo,hi) in zip(exps,bounds):
+                term *= (hi**(power+1)-lo**(power+1))/S.Integer(power+1)
+            result += term
+    return S.factor(result)
+
+a,b,c,d = S.symbols(&#x27;a b c d&#x27;, real=True)
+xx = (a,b,c,d)
+u,v,w,q = a*a+c*c,b*b+d*d,a*b+c*d,a*d-b*c
+Ac,Bc,Cc,Ec,Gc,Hc,Lc,Mc,Nc=S.symbols(&#x27;Ac Bc Cc Ec Gc Hc Lc Mc Nc&#x27;, real=True)
+F=Ac*u*u+Bc*v*v+Cc*u*v+Ec*w*w+Gc*u*w+Hc*v*w+Lc*q*u+Mc*q*v+Nc*q*w
+H=S.hessian(F,xx)
+Q=H.subs({a:1,b:0,c:0,d:0})
+D=Q.extract([0,2],[0,2]); B=Q.extract([0,2],[1,3])
+conditions={Cc:(Gc**2+3*Lc**2)/(8*Ac),Ec:(Gc**2-Lc**2)/(4*Ac),Nc:Gc*Lc/(2*Ac)}
+zero((Q.extract([1,3],[1,3])-B.T*D.inv()*B).subs(conditions))
+lead=Ac*(u+Gc*w/(2*Ac)+Lc*q/(2*Ac)+(Gc**2+Lc**2)*v/(16*Ac**2))**2
+Bp=Bc-(Gc**2+Lc**2)**2/(256*Ac**3)
+Hp=Hc-Gc*(Gc**2+Lc**2)/(16*Ac**2)
+Mp=Mc-Lc*(Gc**2+Lc**2)/(16*Ac**2)
+zero(F.subs(conditions)-lead-Bp*v*v-Hp*v*w-Mp*v*q)
+hp,mp,bp,t=S.symbols(&#x27;hp mp bp t&#x27;,real=True)
+W=lead+bp*v*v+hp*v*w+mp*v*q
+kernel={a:-(Gc*b+Lc*d)/(4*Ac),c:(Lc*b-Gc*d)/(4*Ac)}
+acoustic=S.diff(W,a,2)+2*t*S.diff(W,a,b)+t*t*S.diff(W,b,2)
+zero(S.diff(acoustic,t).subs(t,0).subs(kernel)-2*(hp*(3*b*b+d*d)+2*mp*b*d))
+done(&#x27;rank-two rank-one Hessian: convex reconstruction and mixed acoustic elimination&#x27;)
+
+G=3*(u+v-2*q)**2+S.Rational(35,24)*u*u+q*q-S.Rational(5,2)*q*u
+HG=S.hessian(G,xx)
+CG=S.diff(G,a)+S.diff(G,d)
+r=S.symbols(&#x27;r&#x27;,real=True)
+P=S.Rational(1,2)*(3*a-2*d)**2+S.Rational(5,6)*c*c
+I=S.Matrix([1,0,0,1]);R=S.Matrix([0,1,0,0]); X=S.Matrix(xx)
+zero((X.T*HG.subs(dict(zip(xx,I)))*X)[0]-P+q)
+zero(S.diff(CG,b,2))
+canonical=-S.Rational(5,12)*a**3+S.Rational(1,2)*a*a*r-S.Rational(5,12)*a*c*c+2*a*r*r-2*b*c*r-S.Rational(5,2)*c*c*r
+zero(CG.subs(d,r+S.Rational(3,2)*a)-canonical)
+zero(S.diff(CG,b).subs(d,r+S.Rational(3,2)*a)+2*c*r)
+HR=HG.subs(dict(zip(xx,R)))
+assert HR.rank()==3 and HR*I==S.zeros(4,1)
+out[&#x27;G_cubic_canonical&#x27;]=str(canonical)
+done(&#x27;explicit contact form, cubic null structure and simple null direction for G&#x27;)
+
+# Reconstruct the global acoustic certificate for G, not just contact data.
+M11=S.hessian(S.diff(G,a,2),xx)/2
+M12=S.hessian(S.diff(G,a,b),xx)/2
+M22=S.hessian(S.diff(G,b,2),xx)/2
+K=S.zeros(4)
+for (ij,val) in zip([(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)], [11,S.Rational(91,6),0,0,11,S.Rational(41,3)]):
+    j,k=ij;K[j,k]=val;K[k,j]=-val
+Gram=M11.row_join(M12+K).col_join((M12-K).row_join(M22))
+assert [Gram[:j,:j].det() for j in range(1,7)]==[S.Rational(107,2),642,S.Rational(1605,8),S.Rational(8445,16),S.Rational(2815,8),S.Rational(26865,4)]
+D6=Gram[:6,:6]; E6=Gram[:6,6:]
+zero(Gram[6:,6:]-E6.T*D6.inv()*E6)
+k1,k2=S.symbols(&#x27;k1 k2&#x27;,real=True)
+z=(k1*X).col_join(k2*X)
+zero((z.T*Gram*z)[0]-(S.diff(G,a,2)*k1*k1+2*S.diff(G,a,b)*k1*k2+S.diff(G,b,2)*k2*k2))
+assert G.subs(dict(zip(xx,I)))==-S.Rational(1,24)
+done(&#x27;global exact rank-one convexity certificate for G; negative value at I&#x27;)
+
+# Symbolic Fourier verification of the compatibility-preserving Hodge correction.
+xi,eta,f1,f2,lam=S.symbols(&#x27;xi eta f1 f2 lam&#x27;,real=True)
+af,bf,cf,df=xi*f1,eta*f1,xi*f2,eta*f2
+rf=df-lam*af
+T11=xi*xi/(xi*xi+eta*eta);T12=xi*eta/(xi*xi+eta*eta);T22=eta*eta/(xi*xi+eta*eta)
+a0=af+T11*rf/lam;b0=bf+T12*rf/lam;c0=cf-T12*rf;d0=df-T22*rf
+zero(d0-lam*a0);zero(eta*a0-xi*b0);zero(eta*c0-xi*d0)
+done(&#x27;Hodge correction restores d=lambda*a and preserves both curl constraints&#x27;)
+
+# A genuinely resonant compatible Hessian potential, with a nonzero cubic mean.
+x1,x2,x3=S.symbols(&#x27;x1 x2 x3&#x27;,real=True)
+lamval=S.Rational(3,2)
+asym=-(x1+2*x2+6*x3)/lamval
+csym=-(x1+x2+4*x3)
+# Frequencies (1,1),(1,2),(2,3): the only cubic resonance is k1+k2=k3.
+cubic_reduced=-S.Rational(5,12)*(asym**3+asym*csym**2)
+mean_cubic=S.Poly(S.expand(cubic_reduced),x1,x2,x3).coeff_monomial(x1*x2*x3)/4
+assert mean_cubic==S.Rational(85,18)
+out[&#x27;resonant_cubic_mean&#x27;]=str(mean_cubic)
+done(&#x27;three-direction compatible resonances are retained, not assumed to cancel&#x27;)
+
+# Determinant-balanced laws violate the new estimate without curl compatibility.
+e,m=S.symbols(&#x27;e m&#x27;,positive=True)
+tsmall=S.Rational(9,2)*m*m*e/(1-S.Rational(3,2)*e)
+Rt=S.Matrix([0,1,tsmall,0]); T=S.Matrix([1,0,0,S.Rational(3,2)])
+atoms=[(Rt,(1-S.Rational(3,2)*e)/2),(-Rt,(1-S.Rational(3,2)*e)/2),(m*T,e),(-2*m*T,e/2)]
+def atommean(poly):
+    return S.factor(sum(weight*poly.subs(dict(zip(xx,atom)),simultaneous=True) for atom,weight in atoms))
+zero(sum((weight*atom for atom,weight in atoms),S.zeros(4,1)))
+zero(atommean(q))
+hlaw=atommean(P);betalaw=atommean(CG)
+M4=atommean((a*a+b*b+c*c+d*d)**2)
+T4=atommean((a*a+c*c+d*d)**2)
+zero(hlaw-S.Rational(135,8)*m**4*e**2/(1-S.Rational(3,2)*e))
+zero(betalaw-S.Rational(5,4)*e*m**3)
+zero(T4-((1-S.Rational(3,2)*e)*tsmall**4+S.Rational(1521,16)*e*m**4))
+ratio_squared=S.factor(betalaw**4/(hlaw**2*M4*T4))
+leading=S.limit(e*ratio_squared,e,0)
+assert leading==S.Rational(400,2916*1521)&gt;0
+out[&#x27;noncompatible_normalized_ratio_squared_leading&#x27;]=str(leading)
+done(&#x27;exact determinant-balanced laws violate any universal contact compensation constant&#x27;)
+
+# Recompute the localized compatible profile moments directly by rational integration.
+s,z=S.symbols(&#x27;s z&#x27;,real=True)
+k=z*(1-z); g=s*(1-s)
+profiles=[(2*s,(S.Integer(0),S.Rational(1,3))),(1-s,(S.Rational(1,3),S.Integer(1)))]
+profile={}
+polys={&#x27;h&#x27;:P,&#x27;beta&#x27;:CG,&#x27;c&#x27;:G,&#x27;M4&#x27;:(a*a+b*b+c*c+d*d)**2,&#x27;Y4&#x27;:(a*a+c*c+d*d)**2,&#x27;Y2&#x27;:a*a+c*c+d*d}
+for key,poly in polys.items():
+    ans=0
+    for f,bounds in profiles:
+        grad=[S.diff(f,s)*k,f*S.diff(k,z),S.diff(g,s)*k,g*S.diff(k,z)]
+        ans += means(poly.subs(dict(zip(xx,grad)),simultaneous=True),(s,z),[(bounds,(S.Integer(0),S.Integer(1)))])
+    profile[key]=S.factor(ans)
+assert profile[&#x27;h&#x27;]==S.Rational(179,540)
+assert profile[&#x27;beta&#x27;]==S.Rational(283,5670)
+assert profile[&#x27;c&#x27;]==S.Rational(5951,58800)
+assert profile[&#x27;M4&#x27;]==S.Rational(29023,1071630)
+assert profile[&#x27;Y2&#x27;]==S.Rational(4,45)
+assert profile[&#x27;Y4&#x27;]&gt;0
+loss=profile[&#x27;beta&#x27;]**2/(2*profile[&#x27;h&#x27;])
+assert loss==S.Rational(80089,21313530)
+out[&#x27;localized_profile&#x27;]={k:str(v) for k,v in profile.items()}
+out[&#x27;nonzero_directional_loss&#x27;]=str(loss)
+done(&#x27;compatible concentration profile and sharp obstruction to using transverse Lp, p&lt;4&#x27;)
+
+# The shear is a bijective volume-preserving change, not an energy contraction.
+j=S.symbols(&#x27;j&#x27;,real=True)
+Sh=S.Matrix([[1,j],[0,1]]);Shi=S.Matrix([[1,-j],[0,1]])
+zero(Sh*Shi-S.eye(2));assert Sh.det()==1
+norm4=S.expand(sum(t*t for t in Sh)**2)
+zero(norm4-(4+4*j*j+j**4))
+amp=S.symbols(&#x27;amp&#x27;,real=True)
+mean_excess=2*amp**2+S.Rational(3,8)*amp**4
+out[&#x27;convex_variable_reference_drop&#x27;]=str(-mean_excess)
+done(&#x27;exact shear conjugacy and failure of spatially frozen Jensen even for convex energy&#x27;)
+
+# Scalar rank-one fourth-degree Jensen has an explicit margin.
+x,y=S.symbols(&#x27;x y&#x27;,real=True)
+zero(6*x*x+4*x*y+y*y-(S.Rational(2,3)*x*x+S.Rational(1,4)*y*y+(4*x/S.sqrt(3)+S.sqrt(3)*y/2)**2))
+# The sign of the middle term can be reversed by x -&gt; -x.
+done(&#x27;uniform pure-line margin used in the two-background-direction positivity theorem&#x27;)
+
+out[&#x27;passed_groups&#x27;]=passed
+out[&#x27;count&#x27;]=len(passed)
+out[&#x27;analytic_boundary&#x27;]=&#x27;Finite exact checks only. Hodge boundedness, complex interpolation, contact classification and variational estimates require the analytic proof.&#x27;
+Path(__file__).with_name(&#x27;contact_verification.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(f&#x27;WROTE contact_verification.json; {len(passed)} groups passed.&#x27;,flush=True)
+</pre></body></html>

@@ -1,0 +1,41 @@
+<!doctype html><meta charset="utf-8"><title>FE evidence — audit_artifacts.py</title><p>Source or internal evidence;external correctness,priority and physical capability UNKNOWN.</p><pre>&quot;&quot;&quot;Replay certificates from recorded public inputs and query transcripts.&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction
+import json
+from probe import soft_east
+from certify import certify_run
+
+ROOT = Path(__file__).resolve().parent
+
+def main() -&gt; None:
+    data = json.loads((ROOT / &#x27;final_results.json&#x27;).read_text())
+    checked = 0
+    rows = []
+    for entry in data[&#x27;results&#x27;]:
+        model = soft_east(entry[&#x27;L&#x27;], entry[&#x27;q&#x27;], entry[&#x27;softness&#x27;], entry[&#x27;seed&#x27;])
+        public = {key: value for key, value in model.items() if key not in (&#x27;fac&#x27;, &#x27;order&#x27;)}
+        for item in entry[&#x27;runs&#x27;]:
+            cert = certify_run(public, item[&#x27;run&#x27;])
+            lower = Fraction(int(cert[&#x27;exact_lower_numerator&#x27;]), int(cert[&#x27;exact_lower_denominator&#x27;]))
+            upper = Fraction(int(cert[&#x27;exact_upper_numerator&#x27;]), int(cert[&#x27;exact_upper_denominator&#x27;]))
+            assert 0 &lt; lower &lt;= upper
+            assert upper / lower &lt;= Fraction(11, 10)
+            assert item[&#x27;run&#x27;][&#x27;queries&#x27;] == len(item[&#x27;run&#x27;][&#x27;selected_edges&#x27;])
+            assert item[&#x27;run&#x27;][&#x27;queries&#x27;] == len(item[&#x27;run&#x27;][&#x27;observed_facilitations&#x27;])
+            assert len(set(item[&#x27;run&#x27;][&#x27;selected_edges&#x27;])) == item[&#x27;run&#x27;][&#x27;queries&#x27;]
+            checked += 1
+            rows.append({&#x27;q&#x27;: entry[&#x27;q&#x27;], &#x27;softness&#x27;: entry[&#x27;softness&#x27;], &#x27;seed&#x27;: entry[&#x27;seed&#x27;],
+                         &#x27;policy&#x27;: item[&#x27;run&#x27;][&#x27;policy&#x27;], &#x27;queries&#x27;: item[&#x27;run&#x27;][&#x27;queries&#x27;],
+                         &#x27;replayed_lower&#x27;: cert[&#x27;certified_lower&#x27;],
+                         &#x27;replayed_upper&#x27;: cert[&#x27;certified_upper&#x27;],
+                         &#x27;replayed_ratio_upper&#x27;: cert[&#x27;certified_upper_lower_ratio&#x27;]})
+    result = {&#x27;status&#x27;: &#x27;PASS&#x27;, &#x27;canonical_settings&#x27;: len(data[&#x27;results&#x27;]),
+              &#x27;transcript_certificates_replayed&#x27;: checked,
+              &#x27;scope&#x27;: &#x27;Same-session independent residual-verifier replay, not external review.&#x27;,
+              &#x27;results&#x27;: rows}
+    (ROOT / &#x27;audit_results.json&#x27;).write_text(json.dumps(result, indent=2))
+    print(json.dumps({key: value for key, value in result.items() if key != &#x27;results&#x27;}, indent=2))
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre>

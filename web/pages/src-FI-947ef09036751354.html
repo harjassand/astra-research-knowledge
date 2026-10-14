@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — certify.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/certify.py">Original bytes</a></p><pre>&quot;&quot;&quot;Source-complete rational tensor residual verification.
+The witness and operators are interpreted as exact rationals. No global state
+vector, sampled residual, approximate eigenvalue, or discarded tail is used.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import lcm
+from functools import reduce
+import time
+import numpy as np
+from scipy.linalg import solve
+
+
+def dyadic(x,bits=42):
+    # Round the exact IEEE value to a nearest dyadic; the resulting witness is exact.
+    a,b=float(x).as_integer_ratio();return F(round(F(a*(1&lt;&lt;bits),b)),1&lt;&lt;bits)
+
+def integer_core(A,bits=42):
+    den=1&lt;&lt;bits
+    out=np.array([int(dyadic(x,bits)*den) for x in np.asarray(A).ravel()],dtype=object).reshape(A.shape)
+    return out,den
+
+def rational_array(A):
+    aa=[F(x) for x in np.asarray(A,dtype=object).ravel()];den=lcm(*(x.denominator for x in aa));num=np.array([int(x*den) for x in aa],dtype=object).reshape(np.asarray(A).shape)
+    return num,den
+
+def witness(c,V,bits=42):
+    return [integer_core(a/p[None,:,None],bits) for a,p in zip(V,c.rootprob)]
+
+def product_term(vs):return [(rational_array(np.array(v,dtype=object).reshape(1,-1,1))) for v in vs]
+
+def apply_one(term,v):
+    out=[]
+    for M,(a,den) in zip(term,v):
+        N,D=rational_array(M)
+        if all(N[i,j]==0 for i in range(len(N)) for j in range(len(N)) if i!=j):z=a*np.diag(N)[None,:,None]
+        else:z=(N@a.transpose(1,0,2).reshape(a.shape[1],-1)).reshape(a.shape[1],a.shape[0],a.shape[2]).transpose(1,0,2)
+        out.append((z,den*D))
+    return out
+
+def negative(v):
+    z=list(v);z[0]=(-z[0][0],z[0][1]);return z
+
+def dot(c,A,B):
+    E=np.ones((1,1),dtype=object);den=1
+    for (a,da),(b,db),mass in zip(A,B,c.mass):
+        tmp=(E@b.reshape(b.shape[0],-1)).reshape(a.shape[0],a.shape[1],b.shape[2]);tmp=tmp*np.array(mass,dtype=object)[None,:,None]
+        E=a.reshape(-1,a.shape[2]).T@tmp.reshape(-1,b.shape[2]);den*=da*db*sum(mass)
+    return F(int(E[0,0]),den)
+
+def dot_sums(c,As,Bs,same=False):
+    ans=F(0)
+    if same:
+        for i,a in enumerate(As):
+            ans+=dot(c,a,a)
+            for b in As[:i]:ans+=2*dot(c,a,b)
+    else:
+        for a in As:
+            for b in Bs:ans+=dot(c,a,b)
+    return ans
+
+def alpha_bound(c,bits=46):
+    b=next(b for b,g in enumerate(c.groups) if c.model[&#x27;target&#x27;] in g);K=c.refraw[b];u0=solve(np.array(K,float),np.ones(len(K)),check_finite=False)
+    u=[dyadic(x,bits) for x in u0]
+    if min(u)&lt;=0:raise ValueError(&#x27;Nonpositive reference MFPT witness&#x27;)
+    d=max(abs(sum(F(K[i,j])*u[j] for j in range(len(K)))-1) for i in range(len(K)))
+    if d&gt;=1:raise ValueError(&#x27;Reference residual too large&#x27;)
+    return (1-d)/max(u),{&#x27;reference_residual&#x27;:str(d),&#x27;reference_max_trial&#x27;:str(max(u)),&#x27;reference_local_states&#x27;:len(K)}
+
+def certify(c,V,source_vectors=None,bits=42,return_data=False):
+    t=time.perf_counter();v=witness(c,V,bits);sources=[product_term(vs) for vs in (c.wterms if source_vectors is None else source_vectors)]
+    av=[apply_one(M,v) for M in c.rawterms]
+    r=sources+[negative(a) for a in av]
+    bv=dot_sums(c,sources,[v]);energy=dot_sums(c,[v],av);rr=dot_sums(c,r,r,same=True)
+    if rr&lt;0:raise ArithmeticError(&#x27;Negative exact squared residual&#x27;)
+    alpha,ad=alpha_bound(c);L=2*bv-energy;U=L+rr/alpha
+    ans={&#x27;lower&#x27;:str(L/c.Z),&#x27;upper&#x27;:str(U/c.Z),&#x27;ratio&#x27;:str(U/L) if L&gt;0 else None,&#x27;lower_float&#x27;:float(L/c.Z),&#x27;upper_float&#x27;:float(U/c.Z),&#x27;ratio_float&#x27;:float(U/L) if L&gt;0 else None,&#x27;residual_squared&#x27;:str(rr),&#x27;alpha_lower&#x27;:str(alpha),&#x27;seconds&#x27;:time.perf_counter()-t,&#x27;witness_dyadic_bits&#x27;:bits,&#x27;norm_term_count&#x27;:len(r),&#x27;scope&#x27;:&#x27;exact rational full-source tensor enclosure for the declared model&#x27;,&#x27;reference_check&#x27;:ad}
+    if return_data:return ans,dict(v=v,source=sources,av=av,residual=r,L=L,U=U,alpha=alpha)
+    return ans
+
+def sqrt_upper(x,bits=80):
+    from math import isqrt
+    n=(x.numerator*(1&lt;&lt;(2*bits))+x.denominator-1)//x.denominator
+    a=isqrt(n)
+    if a*a&lt;n:a+=1
+    return F(a,1&lt;&lt;bits)
+
+def cross_certificate(c,d1,d2):
+    a=min(d1[&#x27;alpha&#x27;],d2[&#x27;alpha&#x27;]);G=dot_sums(c,d1[&#x27;source&#x27;],[d2[&#x27;v&#x27;]])+dot_sums(c,d2[&#x27;source&#x27;],[d1[&#x27;v&#x27;]])-dot_sums(c,[d1[&#x27;v&#x27;]],d2[&#x27;av&#x27;])
+    g11=dot_sums(c,d1[&#x27;residual&#x27;],d1[&#x27;residual&#x27;],True)/a;g22=dot_sums(c,d2[&#x27;residual&#x27;],d2[&#x27;residual&#x27;],True)/a;g12=dot_sums(c,d1[&#x27;residual&#x27;],d2[&#x27;residual&#x27;])/a;s=sqrt_upper(g11*g22)
+    lo=G+(g12-s)/2;hi=G+(g12+s)/2
+    return {&#x27;lower&#x27;:str(lo),&#x27;upper&#x27;:str(hi),&#x27;lower_float&#x27;:float(lo),&#x27;upper_float&#x27;:float(hi),&#x27;ratio_float&#x27;:float(hi/lo) if lo&gt;0 else None,&#x27;scope&#x27;:&#x27;two-load exact-rational prepared-source enclosure&#x27;}
+</pre></body></html>

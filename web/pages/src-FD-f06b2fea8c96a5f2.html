@@ -1,0 +1,292 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — run_witness.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Full chosen-pair compiler fixtures; truth access is confined to this harness.&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+from collections import defaultdict
+from fractions import Fraction
+import hashlib
+import json
+from pathlib import Path
+import random
+import time
+
+import witness_compiler as wc
+fd,ac=wc.fd,wc.ac
+import run_degree as reference
+
+HERE=Path(__file__).resolve().parent
+
+
+class Teacher(reference.Teacher):
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.work=defaultdict(int)
+    def rank(self,x):
+        if x not in self.cache:
+            self.work[&#x27;affine_coordinate_parities&#x27;]+=self.n
+            self.work[&#x27;hidden_polynomial_evaluations&#x27;]+=len(self.hidden)
+            self.work[&#x27;hidden_anf_monomial_tests&#x27;]+=sum(len(q.terms) for q in self.hidden)
+            self.work[&#x27;rank_output_bits&#x27;]+=self.n
+            if self.arbitrary_suffix:
+                self.work[&#x27;demo_suffix_evaluations&#x27;]+=1
+        return super().rank(x)
+    def receipt(self):
+        out=super().receipt()
+        out.update(source_work=dict(self.work),
+                   source_dense_anf_candidate_draws=sum(fd.M(i+self.r,self.d) for i in range(self.k)),
+                   source_affine_setup_row_xors=12*self.n,
+                   source_model_logical_bits=self.n*self.n+self.n+len(self.hidden)*fd.M(self.n,self.d),
+                   suffix_promise=&#x27;arbitrary bijective demo suffix; no rank model claim&#x27; if self.arbitrary_suffix
+                        else &#x27;all outputs degree bounded; defect tail linear&#x27;)
+        out[&#x27;source_bit_work_charged_proxy&#x27;]=self.n*(self.work[&#x27;affine_coordinate_parities&#x27;]+
+             self.work[&#x27;hidden_anf_monomial_tests&#x27;])+self.work[&#x27;rank_output_bits&#x27;]
+        out[&#x27;source_bit_work_proxy_scope&#x27;]=&#x27;n-bit AND/parity or monomial tests plus output; excludes Python/cache overhead&#x27;
+        return out
+    def pin(self):
+        body=dict(n=self.n,r=self.r,d=self.d,k=self.k,seed=self.seed,rows=self.rows,
+                  offset=self.offset,hidden_terms=[sorted(q.terms) for q in self.hidden],
+                  arbitrary_suffix=self.arbitrary_suffix)
+        return hashlib.sha256(json.dumps(body,sort_keys=True).encode()).hexdigest()
+
+
+def rational_checks(cfg):
+    beta=Fraction.from_float(cfg[&#x27;beta&#x27;])
+    m,r,d=cfg[&#x27;stages&#x27;],cfg[&#x27;r&#x27;],cfg[&#x27;degree&#x27;]
+    if not m:
+        return dict(exact_rational_budgets=True)
+    p=Fraction(1,1 &lt;&lt; (r+1))
+    assert (1-p)**cfg[&#x27;R&#x27;]&lt;=beta/(4*m)
+    assert (1-Fraction(1,1 &lt;&lt; (2*d)))**cfg[&#x27;raw_t&#x27;]&lt;=beta/(4*m*cfg[&#x27;R&#x27;]**2)
+    if r:
+        assert (m+r)*(1-Fraction(1,1 &lt;&lt; d))**cfg[&#x27;outer_L&#x27;]&lt;=beta/(8*cfg[&#x27;R&#x27;])
+        if r&gt;=2:
+            nu=Fraction(1,1 &lt;&lt; (r-1))
+            assert cfg[&#x27;n&#x27;]*(1 &lt;&lt; r)*(1-nu)**cfg[&#x27;period_L_max&#x27;]&lt;=beta/(8*r*cfg[&#x27;R&#x27;])
+    P,H=cfg[&#x27;tournament_pair_count_cap&#x27;],cfg[&#x27;tournament_total_attempt_cap&#x27;]
+    if P:
+        assert P&lt;=H/4 and Fraction(16,27)**H&lt;=(beta/4)**4
+    if cfg[&#x27;mode&#x27;]==&#x27;safe_W&#x27;:
+        Nmax=max(cfg[&#x27;member_trial_caps&#x27;])
+        assert (1-Fraction(1,1 &lt;&lt; (d-1)))**cfg[&#x27;member_t&#x27;]&lt;=beta/(8*m*cfg[&#x27;R&#x27;]*Nmax)
+        for k,N in enumerate(cfg[&#x27;member_trial_caps&#x27;]):
+            target=cfg[&#x27;h&#x27;]-k
+            term=(1-p)**N
+            tail=term
+            for j in range(1,target):
+                term*=Fraction(N-j+1,j)*p/(1-p)
+                tail+=term
+            assert tail&lt;=beta/(8*m)
+    assert cfg[&#x27;failure_bound&#x27;]&lt;=cfg[&#x27;beta&#x27;]+1e-15
+    return dict(exact_rational_budgets=True,first_wrong_bounds_separate=True)
+
+
+def execution(model,prefix,source,prefix_length):
+    &quot;&quot;&quot;Source-free acquired-model execution, followed by separately charged truth checks.&quot;&quot;&quot;
+    sampler=fd.Sampler(prefix.q,prefix.toggles,prefix.S,source.n,ac.Meter())
+    d,n,k=sampler.d,source.n,len(prefix.q)
+    meter=sampler.meter
+    rng=random.Random(source.seed+78000000)
+    before_comparisons=source.calls
+    before_fresh=source.fresh_ranks
+    before_ranks=source.rank_requests
+    start=time.perf_counter()
+    checks=128 if n&gt;8 else 1 &lt;&lt; n
+    raw_points=list(range(1 &lt;&lt; n)) if n&lt;=8 else [rng.getrandbits(n) for _ in range(checks)]
+    def rank(x):
+        value=0
+        for q in model:
+            value=(value &lt;&lt; 1)|q(x,meter)
+        meter.add(&#x27;full_rank_outputs&#x27;)
+        return value
+    local_values=[rank(x) if prefix_length is None else sampler.prefix(x) for x in raw_points]
+    full=prefix_length is None
+    inverse_targets=[rng.getrandbits(n) for _ in range(32)] if full else []
+    inverses=[]
+    for target in inverse_targets:
+        hits=[x for x in sampler.fiber(target &gt;&gt; source.r) if rank(x)==target]
+        assert len(hits)==1
+        inverses.append(hits[0])
+    fibers=[]
+    for target in {0,(1 &lt;&lt; k)-1,rng.getrandbits(k)}:
+        seeds=[rng.getrandbits(n-k) for _ in range(16)]
+        outputs=[sampler.sample_from_seed(target,seed) for seed in seeds]
+        assert len(set(outputs))==len(set(seeds))
+        fibers.append((target,outputs))
+    local_seconds=time.perf_counter()-start
+    # Actual retained static compact representation; dense acquisition objects
+    # are not part of this payload, though they remain in the harness for audits.
+    payload=dict(quotient_dimension=d,prefix_bits=k,
+        compact_polynomial_coefficient_bits=k*fd.M(d,source.d),
+        compact_polynomial_sparse_index_bits=sum(len(F.terms)*max(1,d) for F in sampler.F),
+        L_bits=n*d,B_bits=(n-d)*d,quotient_toggle_bits=k*d,
+        quotient_complement_bits=(d-k)*d,
+        coordinate_index_bits=n*max(1,(n-1).bit_length()),
+        entropy_bits_per_sample=n-k,
+        no_dense_raw_polynomial_or_stabilizer_fields=True,
+        full_tail_coefficient_bits=source.r*fd.M(n,source.d) if full else 0)
+    # Test-only source ranks after all local operations are finished.
+    truth=[source.rank(x) if full else source.rank(x)&gt;&gt;(n-k) for x in raw_points]
+    assert truth==local_values
+    assert all(source.rank(x)==target for x,target in zip(inverses,inverse_targets))
+    for target,outputs in fibers:
+        assert all(source.rank(x)&gt;&gt;(n-k)==target for x in outputs)
+    assert source.calls==before_comparisons
+    return dict(source_comparisons=0,local_seconds=local_seconds,local_operations=dict(meter.ops),
+                rank_or_prefix_points=checks,rank_or_prefix_errors=0,
+                inverse_targets=len(inverse_targets),inverse_errors=0,
+                sampled_fiber_seed_pairs=sum(len(outputs) for _,outputs in fibers),
+                compact_payload=payload,
+                test_only_truth_rank_requests=source.rank_requests-before_ranks,
+                test_only_truth_fresh_ranks=source.fresh_ranks-before_fresh)
+
+
+def verify(source,out,model,prefix,prefix_length):
+    start=time.perf_counter()
+    n,r,d=source.n,out[&#x27;parameters&#x27;][&#x27;r&#x27;],source.d
+    before=dict(calls=source.calls,ranks=source.rank_requests,fresh=source.fresh_ranks)
+    count=n if prefix_length is None else prefix_length
+    truth=reference.truth_bodies(source,count)
+    assert [q.body() for q in model]==[q.body() for q in truth]
+    flag_inv=ac.matrix_inverse(source.rows,n)
+    hidden_flag=[ac.linear(flag_inv,1 &lt;&lt; j) for j in range(source.h)]
+    acquired=[]
+    S=[1 &lt;&lt; j for j in range(n)]
+    constant_spaces=[]
+    for stage,q in zip(out[&#x27;stages&#x27;],truth):
+        assert q.toggles(stage[&#x27;direction&#x27;])
+        assert all(previous.invariant(stage[&#x27;direction&#x27;]) for previous in acquired)
+        C,_=fd.translation_filtration(q,S,constant_only=True)
+        if out[&#x27;case&#x27;][&#x27;mode&#x27;]==&#x27;witness&#x27;:
+            learned=stage[&#x27;reconstruction&#x27;][&#x27;constant_space_basis&#x27;]
+            assert len(learned)==len(C)
+            assert all(wc.contains(v,C,n) for v in learned)
+            constant_spaces.append(dict(stage=stage[&#x27;stage&#x27;],dimension=len(C),exact=True))
+        S,_=fd.translation_filtration(q,C)
+        acquired.append(q)
+    assert len(S)==len(prefix.S) and all(wc.contains(v,S,n) for v in prefix.S)
+    for v in hidden_flag[len(prefix.q):]:
+        assert wc.contains(v,prefix.S,n)
+    defect=sum(stage[&#x27;exact_update&#x27;][&#x27;constant_translation_codimension&#x27;] for stage in out[&#x27;stages&#x27;])
+    assert defect==n-len(prefix.q)-len(prefix.S)&lt;=r
+    if out[&#x27;case&#x27;][&#x27;mode&#x27;]==&#x27;witness&#x27;:
+        assert defect==out[&#x27;witness_totals&#x27;][&#x27;global_drop&#x27;]
+        assert out[&#x27;witness_totals&#x27;][&#x27;paid_dictionaries&#x27;]&lt;=defect&lt;=r
+    sampler=prefix.sampler()
+    for q,F in zip(prefix.q,sampler.F):
+        factor=fd.interpolate({x:F(ac.linear(sampler.L,x)) for x in fd.points(n,d)},n,d)
+        assert factor.body()==q.body()
+    actual_degree=max((m.bit_count() for q in truth for m in q.terms),default=0)
+    assert actual_degree&lt;=d
+    if n&lt;=8:
+        exact={v for v in range(1 &lt;&lt; n) if all(q.invariant(v) for q in prefix.q)}
+        found={ac.combine(prefix.S,bits) for bits in range(1 &lt;&lt; len(prefix.S))}
+        assert exact==found
+    # All full coefficient-body equalities are exact under degree promise; the
+    # smaller rank/inverse checks exercise execution and do not replace them.
+    out[&#x27;verification&#x27;]=dict(all_raw_bodies_equal=True,body_count=count,
+        raw_coefficient_positions_checked=count*fd.M(n,d),actual_output_degree=actual_degree,
+        exact_all_constant_spaces=constant_spaces,full_stabilizer_exact_by_filtration=True,
+        exhaustive_stabilizer_vectors=(1 &lt;&lt; n) if n&lt;=8 else 0,
+        all_future_hidden_toggles_retained=True,
+        factor_identity_coefficients_checked=len(prefix.q)*fd.M(n,d),
+        source_comparisons=source.calls-before[&#x27;calls&#x27;],
+        test_only_truth_rank_requests=source.rank_requests-before[&#x27;ranks&#x27;],
+        test_only_truth_fresh_ranks=source.fresh_ranks-before[&#x27;fresh&#x27;],
+        seconds=time.perf_counter()-start)
+    assert out[&#x27;verification&#x27;][&#x27;source_comparisons&#x27;]==0
+    out[&#x27;execution&#x27;]=execution(model,prefix,source,prefix_length)
+    return out
+
+
+def resource_proxy(out,n):
+    ops=out[&#x27;local_operations&#x27;]
+    # Conservative width for the listed XOR/AND/popcount events. It is a scoped
+    # bit-operation proxy, not a complete measurement of Python instructions.
+    events=(&#x27;gf2_row_xors&#x27;,&#x27;basis_xors&#x27;,&#x27;anf_monomial_tests&#x27;,&#x27;shifted_monomial_terms&#x27;,
+            &#x27;parity_calls&#x27;,&#x27;scatter_coordinate_bits&#x27;)
+    out[&#x27;local_bit_work_charged_proxy&#x27;]=2*n*sum(ops.get(key,0) for key in events)
+    out[&#x27;bit_work_proxy_events&#x27;]=list(events)
+    out[&#x27;bit_work_proxy_limit&#x27;]=&#x27;scoped listed integer operations only; Python loops/hash/cache overhead excluded; wall time also reported&#x27;
+    out[&#x27;acquisition_dense_payload_bits&#x27;]=len(out[&#x27;model_bodies&#x27;] or [])*fd.M(n,out[&#x27;parameters&#x27;][&#x27;degree&#x27;])+n*(
+        len(out[&#x27;acquired_toggle_vectors&#x27;])+len(out[&#x27;acquired_stabilizer_basis&#x27;]))
+    return out
+
+
+def run(n,r,d,seed,mode,prefix_length=None,source_r=None,forced=False):
+    source=Teacher(n,r if source_r is None else source_r,d,seed,prefix_length)
+    source_pin=source.pin()
+    out,model,prefix=wc.acquire(n,r,d,source.query,seed+1000000,n**-2,prefix_length,mode,forced)
+    out[&#x27;case&#x27;]=dict(n=n,r=r,degree=d,seed=seed,mode=mode,prefix_length=prefix_length,
+                     source_r=source_r,forced_failure=forced)
+    out[&#x27;source_pin&#x27;]=source_pin
+    out[&#x27;source_acquisition&#x27;]=source.receipt()
+    out[&#x27;parameter_checks&#x27;]=rational_checks(out[&#x27;parameters&#x27;])
+    out[&#x27;learner_local_seconds_estimate&#x27;]=max(0,out[&#x27;acquisition_seconds&#x27;]-source.callback_seconds)
+    if model is not None:
+        out=verify(source,out,model,prefix,prefix_length)
+    else:
+        out[&#x27;verification&#x27;]=dict(returned_model=False,reason=out[&#x27;reason&#x27;])
+    out[&#x27;source_after_test_only_verification&#x27;]=source.receipt()
+    return resource_proxy(out,n)
+
+
+def summary(case):
+    return dict(n=case[&#x27;case&#x27;][&#x27;n&#x27;],r=case[&#x27;case&#x27;][&#x27;r&#x27;],d=case[&#x27;case&#x27;][&#x27;degree&#x27;],
+        prefix_length=case[&#x27;case&#x27;][&#x27;prefix_length&#x27;],mode=case[&#x27;case&#x27;][&#x27;mode&#x27;],
+        status=case[&#x27;status&#x27;],reason=case[&#x27;reason&#x27;],comparisons=case[&#x27;comparison_calls&#x27;],
+        fresh_source_ranks=case[&#x27;source_acquisition&#x27;][&#x27;fresh_ranks&#x27;],
+        source_cache_bits=case[&#x27;source_acquisition&#x27;][&#x27;logical_cache_bits&#x27;],
+        query_argument_bits=case[&#x27;source_acquisition&#x27;][&#x27;query_argument_bits&#x27;],
+        local_bit_work_charged_proxy=case[&#x27;local_bit_work_charged_proxy&#x27;],
+        source_bit_work_charged_proxy=case[&#x27;source_acquisition&#x27;][&#x27;source_bit_work_charged_proxy&#x27;],
+        witness_totals=case[&#x27;witness_totals&#x27;],
+        raw_or_tournament_comparisons=sum(v for k,v in case[&#x27;source_calls_by_phase&#x27;].items()
+                if k in (&#x27;raw_pair_validation&#x27;,&#x27;certified_zero_tournament&#x27;)),
+        reconstruction_comparisons=sum(v for k,v in case[&#x27;source_calls_by_phase&#x27;].items()
+                if k not in (&#x27;raw_pair_validation&#x27;,&#x27;certified_zero_tournament&#x27;,&#x27;tail_enumeration&#x27;)),
+        tail_comparisons=case[&#x27;source_calls_by_phase&#x27;].get(&#x27;tail_enumeration&#x27;,0),
+        all_bodies_equal=case[&#x27;verification&#x27;].get(&#x27;all_raw_bodies_equal&#x27;),
+        actual_output_degree=case[&#x27;verification&#x27;].get(&#x27;actual_output_degree&#x27;),
+        acquisition_seconds=round(case[&#x27;acquisition_seconds&#x27;],6),
+        learner_local_seconds_estimate=round(case[&#x27;learner_local_seconds_estimate&#x27;],6))
+
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument(&#x27;--case&#x27;,default=&#x27;8:3:3:940083&#x27;)
+    parser.add_argument(&#x27;--modes&#x27;,default=&#x27;witness,safe_W,raw_body&#x27;)
+    parser.add_argument(&#x27;--prefix-k&#x27;,type=int)
+    parser.add_argument(&#x27;--source-r&#x27;,type=int)
+    parser.add_argument(&#x27;--force-zero&#x27;,action=&#x27;store_true&#x27;)
+    args=parser.parse_args()
+    n,r,d,seed=map(int,args.case.split(&#x27;:&#x27;))
+    label=f&#x27;n{n}_r{r}_d{d}_seed{seed}&#x27;
+    if args.prefix_k is not None: label+=f&#x27;_prefix{args.prefix_k}&#x27;
+    if args.source_r is not None: label+=f&#x27;_source_r{args.source_r}&#x27;
+    if args.force_zero:label+=&#x27;_force_zero&#x27;
+    receipt=dict(scope=&#x27;whole comparator-only synthetic acquisition; finite execution, not class recognition&#x27;,
+        beta=n**-2,precision=&#x27;exact GF(2) and strict integer rank comparisons&#x27;,
+        modes=args.modes.split(&#x27;,&#x27;),cases=[],source_hashes={
+            str(path.relative_to(HERE)):hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in [HERE/&#x27;witness_compiler.py&#x27;,HERE/&#x27;run_witness.py&#x27;]+
+                list((HERE/&#x27;reference_snapshot&#x27;).rglob(&#x27;*.py&#x27;))})
+    for mode in receipt[&#x27;modes&#x27;]:
+        case=run(n,r,d,seed,mode,args.prefix_k,args.source_r,args.force_zero)
+        receipt[&#x27;cases&#x27;].append(case)
+        pins={entry[&#x27;source_pin&#x27;] for entry in receipt[&#x27;cases&#x27;]}
+        assert len(pins)==1
+        # On the retained exact fixtures all acquisition bodies are correct; the
+        # common raw/tournament transcript must therefore be identical.
+        completed=[entry for entry in receipt[&#x27;cases&#x27;] if entry[&#x27;status&#x27;].startswith(&#x27;returned&#x27;)]
+        if len(completed)&gt;1:
+            assert len({tuple(entry[&#x27;acquired_toggle_vectors&#x27;]) for entry in completed})==1
+            assert len({sum(v for k,v in entry[&#x27;source_calls_by_phase&#x27;].items()
+                if k in (&#x27;raw_pair_validation&#x27;,&#x27;certified_zero_tournament&#x27;)) for entry in completed})==1
+        (HERE/f&#x27;receipt_{label}.json&#x27;).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+        print(json.dumps(summary(case)),flush=True)
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre>

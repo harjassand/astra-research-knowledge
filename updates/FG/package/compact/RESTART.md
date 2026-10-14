@@ -1,0 +1,43 @@
+# Continuation state: do not retreat to a favorable-map theorem
+
+## Retained objective
+
+Reliable long-timescale molecular residence/reaction-time prediction with important unknown conformational gates, without microscopic enumeration or metastable-rate/equilibrium oracles.
+
+## New capital from this run
+
+The conditional-envelope closure turns local, globally valid interaction-density and kinetic-form envelopes into two source-aware retained-coordinate resolvents:
+
+    <ell,Aplus^{-1}ell>/Z_u <= tau <= <u,Aminus^{-1}u>/Z_ell.
+
+The theorem permits arbitrary unknown interacting bath dynamics and a non-product physical equilibrium. It has a complete written proof, an exact 16-state retained-region implementation, and small full-bath checks. Global ranges must be physically established; local samples do not prove them.
+
+The source-response matrix certificate is
+
+    G0 <= B*H^{-1}B <= G0+R*C^{-1}R.
+
+It retains the source column/internal residence. A tensor/spectral counter compiles the residual bound without a state list. Exact dyadic/GMP continuum checks include polynomial-degree leakage. The 128-bit and 128-coordinate witnesses are supplied.
+
+## Do not overclaim
+
+Tensor trains, variational residual bounds, low-rank PDE solving, and kinetic uncertainty-directed exploration are prior art. Historical novelty of the specific closure/counter construction is unresolved. No external proof review or optimized-WE/TAMMBER/AIMMD head-to-head occurred. No calibrated molecule was studied.
+
+The large continuous example is an authored Jacobi diffusion with product reference measure, singular endpoint potentials and a specified reaction hazard. It is not atomistic ligand dissociation. The actual current general closure is implemented only on a small retained graph; the large continuous backend handles the analytic gated model and constant-envelope bath extension, not arbitrary ell/u or interacting retained thermodynamics.
+
+## Precisely informative failures
+
+1. Put the same 100-fold weight uncertainty in the all-closed four-gate trap: the closure ratio exceeds five million. That is the decisive unresolved case, not a false success.
+2. The 32-bit East model at q=1/26,epsilon=10^-6,rank16 remains [1.18e6,26e6]. Do not quote its stable-looking estimate as certified.
+3. A near-zero Galerkin residual can conceal a nonzero continuum residual. Always pad through the actual differential operator and charge all omitted modes.
+4. A 4096-state local-window method can beat the large tensor method at matched tolerance. Large nominal state count alone is not a speedup argument.
+5. Unrestricted smooth pointwise energy/force access permits invisible deep pockets; a finite transcript cannot certify a finite uniform mean-lifetime upper bound. Explicit model structure or independently acquired global constraints are essential.
+
+## Next substantive operation to construct
+
+Attack the broad dominant-trap envelope without reconstructing the hidden state space. Preserve dependencies between hidden source mass and escape conductance; the present independent extrema may be too pessimistic. Derive those dependencies from local energy-barrier/geometry/mobility relations or controlled physical perturbations with full acquisition cost.
+
+Build an exact source-aware continuum compiler for nonconstant interaction envelopes and investigate retained interacting equilibrium models whose moments cannot simply be assumed. Parameter/range acquisition must be globally justified, not obtained by declaring a fitted sparse force law true everywhere.
+
+For a meaningful next benchmark, fix an independently specified molecularly motivated potential/mobility/target. Vary rare-gate strength, bath size and uncertainty separately. Supply all competitors identical physical information and include parameter acquisition, tensor training, simulation, integration, precision, unsuccessful refinement and coverage validation. Include optimized WE, TAMMBER or adaptive KMC where their assumptions apply, adaptive/committor path sampling, and strong tensor/local-window solvers.
+
+Do not spend the next investigation demonstrating another large-n weak-interface success. The question is whether the broad hidden-trap uncertainty can be reduced from physically obtainable information at a cost that does not reproduce the original rare-event problem.

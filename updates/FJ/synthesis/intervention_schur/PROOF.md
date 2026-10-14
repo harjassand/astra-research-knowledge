@@ -1,0 +1,322 @@
+# Exact theorem, proof, obstructions, and acquisition contract
+
+## 1. Interface and quantified unknowns
+
+There are $n$ hydraulic ports and $m$ electrical terminals. In one fixed operating condition, the wet assembly obeys the real, steady, near-equilibrium linear law
+
+\[
+\begin{pmatrix}Q\\I\end{pmatrix}
+=
+\begin{pmatrix}K&C\\C^T&G\end{pmatrix}
+\begin{pmatrix}p\\V\end{pmatrix},
+\qquad K=K^T,\quad G=G^T\succ0,
+\quad \begin{pmatrix}K&C\\C^T&G\end{pmatrix}\succeq0.
+\tag{1}
+\]
+
+Here $(p,Q,V,I)$ are respectively hydraulic pressure, hydraulic flow, terminal voltage, and current entering the wet assembly. The reciprocal cross-block $C$ is an assumption to be tested for the actual device; its entries are not assumed known. $(K,C,G)$ are unknown and must stay fixed during all interventions. The dry electrical network has unknown admittance $Y$, which may be nonsymmetric but is passive at this operating point:
+
+\[
+\operatorname{sym}Y:=\tfrac12(Y+Y^T)\succeq0.
+\tag{2}
+\]
+
+The baseline current balance is $I=-YV$. A calibrated, physically isolated, passive shunt of strength $t>0$ in one known electrical direction $u\in\mathbb R^m\setminus\{0\}$ changes it to $I=-(Y+tuu^T)V$. The intervention is assumed to have no direct hydraulic, thermal, chemical, gate, or mechanical effect and to leave the wet law (1) invariant. These are experimental hypotheses, not consequences of the algebra.
+
+Eliminating $V$ defines the measured hydraulic response matrix
+
+\[
+Q=H(t)p,\qquad
+H(t)=K-C(A+tuu^T)^{-1}C^T,\qquad A:=G+Y.
+\tag{3}
+\]
+
+The target is deliberately smaller than the internal model: identify the scalar
+
+\[
+q:=u^TA^{-1}u
+\]
+
+and the intervention-resolved hydraulic fingerprint
+
+\[
+F:=vw^T,
+\qquad v:=CA^{-1}u,\qquad w:=CA^{-T}u.
+\tag{4}
+\]
+
+No target is set for reconstructing (K,C,G,Y), their hidden graph, or an internal state realization.
+
+## 2. Shunt-intervention Schur theorem
+
+**Theorem 1 (one-direction load intervention).** Under (1)–(3), $A$ is invertible, $q>0$, and for every $t>0$,
+
+\[
+\boxed{\Delta H(t):=H(t)-H(0)=\frac{t}{1+tq}\,F.}
+\tag{5}
+\]
+
+Consequently:
+
+1. ​$\operatorname{rank}\Delta H(t)\le1$. It is zero exactly when at least one of $v,w$ is zero; otherwise it has rank one.
+2. For any $0<t_1<t_2$, if $F\ne0$, the exact data $H(0),H(t_1),H(t_2)$ uniquely identify $q,F$. With
+
+\[
+r:=\frac{\|\Delta H(t_1)\|_F}{\|\Delta H(t_2)\|_F},
+\]
+
+the identifying formulas are
+
+\[
+\boxed{q=\frac{rt_2-t_1}{t_1t_2(1-r)},\qquad
+F=\left(\frac1{t_1}+q\right)\Delta H(t_1).}
+\tag{6}
+\]
+
+Moreover $t_1/t_2<r<1$, and $r(q)$ is strictly increasing. If $F=0$, the two measurements identify only the zero port-visible fingerprint; they do not identify $q$ or establish that $C=0$.
+3. One nonzero shunt strength cannot in general identify both $q$ and $F$, even among strictly passive scalar wet devices. Thus baseline plus two distinct positive strengths is necessary and sufficient for this target in the stated unrestricted class, on the nonzero-fingerprint stratum.
+
+**Proof.** Since $\operatorname{sym}A=G+\operatorname{sym}Y\succ0$, $A$ is nonsingular. Set $x=A^{-1}u\ne0$. Then
+
+\[
+q=u^Tx=(Ax)^Tx=x^TA^Tx=x^T\operatorname{sym}(A)x>0,
+\]
+
+because the skew-symmetric part has zero quadratic form. Also $A+tuu^T$ has positive-definite symmetric part. Sherman–Morrison gives
+
+\[
+(A+tuu^T)^{-1}
+=A^{-1}-\frac{t}{1+tq}A^{-1}uu^TA^{-1}.
+\]
+
+Substitute this into (3) to obtain (5) with (4). A rank-one outer product is nonzero exactly when both factors are nonzero. When $F\ne0$, the norm ratio cancels its unknown norm and equals
+
+\[
+r(q)=\frac{t_1(1+t_2q)}{t_2(1+t_1q)}.
+\]
+
+It ranges strictly between $t_1/t_2$ and $1$; differentiation gives
+
+\[
+\frac{dr}{dq}=\frac{t_1(t_2-t_1)}{t_2(1+t_1q)^2}>0.
+\]
+
+Solving for $q$, then dividing (5) by its known scalar, gives (6). A single-level nonidentifiability witness is given in Section 4. \(\square\)
+
+### Rank-$r$ extension
+
+For $U\in\mathbb R^{m\times r}$ with full column rank, the passive shunt $tUU^T$ gives
+
+\[
+\Delta H_U(t)=t\,V(I+tQ_U)^{-1}W,
+\quad V=CA^{-1}U,
+\quad Q_U=U^TA^{-1}U,
+\quad W=U^TA^{-1}C^T.
+\tag{7}
+\]
+
+The symmetric part of $A^{-1}$ is $A^{-T}(\operatorname{sym}A)A^{-1}\succ0$. Hence the symmetric part of $Q_U$ is positive definite and $I+tQ_U$ is invertible. Therefore $\operatorname{rank}\Delta H_U(t)\le r$; it is exactly $r$ if $V$ has full column rank and $W$ has full row rank. Equation (7) exposes only the intervention-accessible and port-visible quotient. It does not identify $Q_U,V,W$ separately without additional assumptions and interventions.
+
+## 3. Nonreciprocal path certificate
+
+For any matrix $M$, write $\operatorname{skew}M=(M-M^T)/2$. Since the intervention leaves $K=K^T$ unchanged, (5) implies
+
+\[
+\operatorname{skew}H(t)-\operatorname{skew}H(0)
+=\frac{t}{2(1+tq)}(vw^T-wv^T).
+\tag{8}
+\]
+
+Thus, under the isolation and invariance controls above, a differential skew signal proves that the shunt-controlled pathway contributes nonreciprocal hydraulic response visible at the measured ports. If $Y$ is reciprocal, then $A$ and $A^{-1}$ are symmetric, $v=w$, and (8) vanishes. Conversely, a nonreciprocal $Y$ can be invisible: $C$ may annihilate its asymmetric directions or make $v,w$ collinear. A zero skew change therefore does not certify reciprocal $Y$. Equation (8) tests the effective path; it does not reveal microscopic origin.
+
+For two hydraulic ports and nonzero denominators,
+
+\[
+\frac{\Delta H_{21}(t)}{\Delta H_{12}(t)}
+=\frac{v_2w_1}{v_1w_2},
+\tag{9}
+\]
+
+independent of $t$. This is a load-invariant directional ratio for the intervention-resolved path. It is not the ratio of the total entries of $H(t)$ unless the direct and other mediated contributions have separately been removed.
+
+If the wet matrices $(K,C,G)$ are unchanged by magnetic-field reversal and the measured dry network obeys the source's Onsager–Casimir condition $Y(-B)=Y(B)^T$, then
+
+\[
+q(-B)=q(B),\qquad F(-B)=F(B)^T,
+\qquad \Delta H(-B,t)=\Delta H(B,t)^T.
+\tag{10}
+\]
+
+This predicts a sign reversal of the differential skew part while preserving its symmetric part. It is a test of the assumed field-reversal response of the assembled model, not an additional novelty claim. If the wet sample itself changes with $B$, this corollary does not apply.
+
+## 4. Necessary-access and confounding counterexamples
+
+### One intervention level is insufficient
+
+Take one hydraulic and one electrical port, $Y=0$, $u=1$. Both examples satisfy (1):
+
+| Model | $K$ | $C$ | $G=A$ | $H(0)=K-C^2/G$ | $q=1/G$ | $F=(C/G)^2$ |
+|---|---:|---:|---:|---:|---:|---:|
+| A | $2$ | $1$ | $1$ | $1$ | $1$ | $1$ |
+| B | $5/3$ | $\sqrt2/3$ | $1/3$ | $1$ | $3$ | $2$ |
+
+The wet block determinants are $1$ and $1/3$, respectively, so both are strictly passive. At $t=1$, both have $\Delta H=1/2$. At $t=2$, their changes are $2/3$ and $4/7$, so the second level separates them. Thus a passive baseline plus one active load cannot identify $(q,F)$.
+
+### Two-sided visibility is necessary under nonreciprocity
+
+Let
+
+\[
+G=I_2,\quad Y=\begin{pmatrix}0&1\\-1&0\end{pmatrix},\quad
+A=\begin{pmatrix}1&1\\-1&1\end{pmatrix},\quad
+u=e_1,\quad C=\begin{pmatrix}-1&1\end{pmatrix},\quad K=2.
+\]
+
+Here $\operatorname{sym}Y=0$ and the wet block is positive semidefinite because $K-CG^{-1}C^T=0$. Direct calculation gives
+
+\[
+A^{-1}u=(1/2,1/2)^T,\quad A^{-T}u=(1/2,-1/2)^T,
+\quad v=0,\quad w=-1,\quad q=1/2.
+\]
+
+Therefore $\Delta H(t)=0$ for every $t>0$, even though one dual visibility factor is nonzero and the system contains a passive nonreciprocal electrical element. No output-only procedure using this shunt direction can recover the hidden factor that cancels. A different intervention direction or a different hydraulic port is required.
+
+### Intervention leakage defeats causal attribution
+
+If a load change also changes the direct hydraulic block, then the data alone do not identify electrical mediation. For example, set $C=0$ and choose any $q>0$, $F=F^T\succeq0$, and $K(t)=K(0)+t(1+tq)^{-1}F$ with $K(0)\succ0$. This strictly passive, reciprocal but shunt-dependent direct response produces exactly the same $H(t)$ curve as (5), while no electrical mediation exists. The fixed-wet-law and no-direct-effect controls are therefore logically necessary for interpreting the differential as a mediated path. Thermal drift, electrostatic forcing, electrochemistry, strain, vibration, and displacement current are experimental instances of this confound.
+
+## 5. Error and conditioning
+
+Assume the measured matrices satisfy Frobenius error bounds
+
+\[
+\|\widehat H(t_i)-H(t_i)\|_F\le\epsilon_i,\quad i=0,1,2,
+\]
+
+and set \(\delta_i=\epsilon_0+\epsilon_i\), so \(\|\widehat{\Delta H_i}-\Delta H_i\|_F\le\delta_i\). Write $a_i=\|\Delta H(t_i)\|_F$, $r=a_1/a_2$, and \(\widehat r=\|\widehat{\Delta H_1}\|_F/\|\widehat{\Delta H_2}\|_F\). If \(\delta_2<a_2\), then
+
+\[
+|\widehat r-r|\le\eta_r:=\frac{\delta_1+r\delta_2}{a_2-\delta_2}.
+\tag{11}
+\]
+
+This follows from \(|\|X+E\|_F-\|X\|_F|\le\|E\|_F\) and a ratio perturbation bound. If \(\eta_r<1-r\), the inverse remains on its valid side of its pole and
+
+\[
+|\widehat q-q|
+\le \frac{t_2-t_1}{t_1t_2(1-r-\eta_r)^2}\,\eta_r.
+\tag{12}
+\]
+
+Using the ratio estimator, define
+
+\[
+\widehat q=\frac{\widehat r t_2-t_1}{t_1t_2(1-\widehat r)},\qquad
+\widehat F=\left(\frac1{t_1}+\widehat q\right)\widehat{\Delta H_1}.
+\]
+
+Report these estimates only when the ratio and calibration intervals keep the implied ratio inside \((t_1/t_2,1)\), so every implied $q$ is positive and finite. For calibrated strengths, the exact local sensitivities are
+
+\[
+\frac{\partial q}{\partial r}=\frac{t_2-t_1}{t_1t_2(1-r)^2},\quad
+\frac{\partial q}{\partial t_1}=-\frac{r}{t_1^2(1-r)},\quad
+\frac{\partial q}{\partial t_2}=\frac{1}{t_2^2(1-r)}.
+\tag{13}
+\]
+
+Bound intervention-strength calibration errors by interval-evaluating (6), or by applying the supremum of these derivatives on the declared calibration box. Do not report an estimate if the interval crosses $r=1$, $t_1=t_2$, or $q\le0$.
+
+Since $F=(1/t_1+q)\Delta H(t_1)$, the estimator $\widehat F=(1/t_1+\widehat q)\widehat{\Delta H_1}$ obeys
+
+\[
+\|\widehat F-F\|_F
+\le (1/t_1+|\widehat q|)\delta_1+a_1|\widehat q-q|.
+\tag{14}
+\]
+
+For a model check, every exact \(\Delta H(t_i)\) has second singular value zero. Therefore \(s_2(\widehat{\Delta H_i})>\delta_i\) falsifies the one-direction linear model at the stated matrix-error bound; \(s_1(\widehat{\Delta H_i})>\delta_i\) certifies that its exact fingerprint is nonzero. A small $s_1$ cannot distinguish zero coupling from a weakly visible path. The holdout prediction at a third level is
+
+\[
+\widehat{\Delta H}_{\mathrm{pred}}(t_3)
+=\frac{t_3(1+t_1\widehat q)}{t_1(1+t_3\widehat q)}\widehat{\Delta H}(t_1),
+\tag{15}
+\]
+
+and must be compared to the independently acquired \(\widehat{\Delta H}(t_3)\) using propagated intervals.
+
+The inverse problem is poorly conditioned when $t_1,t_2$ are close or when both loads greatly exceed $1/q$: in the latter regime $r\uparrow1$ and $\partial q/\partial r$ diverges. For a useful design relation, if $t_1=1/q$ and $t_2=\kappa/q$ with $\kappa>1$, then
+
+\[
+r=\frac{\kappa+1}{2\kappa},\qquad
+\frac1q\frac{\partial q}{\partial r}=\frac{4\kappa}{\kappa-1}.
+\]
+
+The best-separated levels are near the unknown scale $1/q$; a logarithmic shunt sweep can locate that scale before choosing the identifying pair. The sweep's extra trials and switching work must be charged. Weak wet coupling gives a concrete acquisition obstruction, not only a conditioning warning. Let $n_h=m=1$, $Y=0$, $G=A=1$, and compare the null wet model $(K,C)=(1,0)$ with the signal model $(K,C)=(1+\varepsilon^2,\varepsilon)$. Both have the same passive response $H(0)=1$, and the signal wet block has Schur complement $K-C^2/G=1>0$. At any fixed shunt $t>0$, the null response is 1, while the signal response is
+
+\[
+H_\varepsilon(t)=1+\varepsilon^2\frac{t}{1+t}.
+\]
+
+For $N$ independent measurements at pressure amplitude $P$ with Gaussian output noise variance $\sigma_Q^2$, the two-point KL divergence is exactly
+
+\[
+D_{\mathrm{KL}}=\frac{NP^2\varepsilon^4}{2\sigma_Q^2}\left(\frac{t}{1+t}\right)^2.
+\]
+
+Pinsker's inequality therefore forces $N=\Omega(\sigma_Q^2/(P^2\varepsilon^4))$ for any fixed-success distinction of these models. This is scoped to the stated Gaussian experiment; it is not a universal lower bound outside that observation model.
+
+## 6. Exact acquisition and complete cost
+
+Let $n_h$ be the number of hydraulic ports. To measure a full $n_h\times n_h$ response matrix at one configuration/load setting, apply $n_h$ linearly independent pressure patterns. One identification arm uses at least three settings (baseline and two identifying shunts), or four with the third-load holdout; field reversal, open-path, reciprocal-substitute, and wet-interface-gate controls add their own matrices. Let $s$ count all response matrices actually acquired across these configurations. Under the explicit statistical model
+
+\[
+Q=H(t)P e_j+\xi,\qquad
+\xi\sim N(0,\sigma_Q^2 I_{n_h}),
+\]
+
+with $N$ independent settled trials for each setting and pressure basis vector, \(P>0\) fixed, the entrywise mean estimator has standard deviation \(\sigma_Q/(P\sqrt N)\). A union bound gives, with probability at least $1-\zeta$, all entries of all $s$ matrices within
+
+\[
+a=\frac{\sigma_Q}{P}\sqrt{\frac{2\log(2s n_h^2/\zeta)}{N}}.
+\]
+
+Thus a sufficient condition for Frobenius error at most \(\epsilon_H\) per matrix is
+
+\[
+N\ge \frac{2n_h^2\sigma_Q^2}{P^2\epsilon_H^2}
+\log\!\left(\frac{2s n_h^2}{\zeta}\right),
+\qquad
+N_{\mathrm{trial}}=s n_h N.
+\tag{16}
+\]
+
+This bound assumes independent trials, calibrated pressure patterns, stationary means, known noise scale, and no uncertainty in the shunt beyond the separately propagated calibration interval. Correlated settling noise, drift, unknown covariance, nonlinear response, or unknown pressure gain requires a new bound. Equation (16) is a conservative sufficient count, not an optimal sample complexity or a measured apparatus cost. The prior wet-interface reciprocity gate and all control arms require separately charged trials and preparation.
+
+The full acquisition ledger must include:
+
+* $N_{\mathrm{trial}}$ pressure-settle/readout cycles and the corresponding wall time;
+* measured hydraulic source work \(W_{\mathrm{hyd}}=\sum\int p^TQ\,dt\) over every calibration and acquisition pulse;
+* shunt verification and switching, voltage/current/flow sensors, pressure calibration, thermal stabilization, sample preparation, reset, and cleaning;
+* magnetic-field generation or refrigeration if present, gate/leakage monitoring, control electronics, temperature-gradient monitoring, and replacement/endurance costs where relevant;
+* model-error bounds for drift and direct shunt effects, plus the numerical precision used for matrix inversion, ratios, and interval propagation.
+
+Meter electrical shunt dissipation separately from the hydraulic source work $\int p^TQ\,dt$ and include each once in the complete energy balance; it is not captured by the hydraulic-work integral. The source's total-energy and auxiliary-power boundary remains required. No measured $\sigma_Q,P,T_{\mathrm{trial}},W_{\mathrm{hyd}}$, shunt dissipation, or calibration cost is available, so the actual experiment budget is **UNKNOWN**.
+
+## 7. Comparator and prior-art boundary
+
+The strongest direct comparator is the source's component-first procedure: acquire $(K,C,G)$ for the wet devices and the complete dry-network $Y$, compute $H_{\mathrm{pred}}=K-C(G+Y)^{-1}C^T$, and compare with an assembled-device measurement. That procedure predicts other configurations and attributes mismatches to components, so it is more informative if all its measurements are physically accessible. The shunt certificate measures the assembled system under intervention and cancels a fixed direct hydraulic background, so it is the stronger causal test for whether one electrical route actually changes hydraulic behavior. It does not reduce the number of pressure directions needed for a complete $H$, and no cost win over component-first calibration has been established.
+
+Classical Kron reduction already gives the boundary response by Schur elimination, and electrical impedance tomography/network tomography uses boundary responses to infer internal structure. Arbitrary internal networks can share a reduced boundary response, although stronger inverse results exist for restricted classes such as critical circular-planar resistor networks. Ho–Kalman/control realization uses dynamical Markov parameters to recover a minimal state model up to similarity when controllability/observability hold. Causal mediation theory already formalizes direct and path-specific effects and provides identification results under assumptions such as sequential ignorability; see Pearl's path-specific framework and Imai, Keele, and Tingley's counterfactual formulation. This static device theorem is an experimentally imposed, calibrated shunt intervention followed by an effective multiport readout, not a statistical natural-effect estimand. Its interpretation still requires the no-direct-effect and invariant-wet-law controls, just as causal identification frameworks require their own assumptions. The theorem does not recover hidden state-space, circuit, or individual mediators. The formulas are standard rank-one update algebra packaged into a physical falsification experiment. The package's historical priority is **UNKNOWN**.
+
+## 8. Capital and supplied-source interface exclusions
+
+* **Physical pasted source:** exact interface match after one explicit extension: it supplies the wet reciprocal small-signal law and Schur response $H=K-C(G+Y)^{-1}C^T$; this theorem adds the controlled electrical shunt and acquires $H(t)$ directly. The source's wet reciprocity, zero-bias, fixed-temperature, and full-energy gates remain prerequisites. Source path: `work/FJ-sources/physical_PASTED_SOURCE.txt`, inclusive lines 51–84, 154–188.
+* **N713 active response closure:** incompatible interface. N713 uses stationary CTMC labels, generator perturbations (q_{ij}^{(h,a)}), path-response derivatives, and a calibrated kinetic intervention; this theorem uses steady hydraulic/electrical terminal matrices and a shunt. No conversion between these objects is supplied. Pinned capital checkout `cb62d881a071c617b11d7dbc82a98921969389a7`; dossier `work/astra-capital/frontier/dossiers/N713.txt`; raw record described there as `updates/EC/package/active_closure/ORIGINAL_PASTED_SOURCE.txt`, SHA-256 `d6ebe2c66dfab6af079e66ed518c86cbcf88f39a37c9903c00f85b6eb3e9ba97`, proof ranges 20–80 and 81–130. Capital status remains source-derived/unreviewed.
+* **N804/N801 reverse-clock/kinetic route:** incompatible interface. N804's finite binary state space, context-preserving downhill rate queries, equilibrium source normalization, and lifetime are not shunt-controlled multiport admittance data. It cannot supply $(A,q,F)$ or the pressure-response matrix. Pinned capital checkout as above; dossier `work/astra-capital/frontier/dossiers/N804.txt`; source `updates/FI/package/kinetics/RESEARCH_NOTE.md`, SHA-256 `49d94e13caf4ab8693e0a95b92c1c8e60cb33fa8174255c0741044fdfae8dafd`, proof ranges 59–125 and 299–376. Existing reverse-clock composition N804→N798 concerns a complete microscopic equilibrium source and is not used here.
+* **Supplied nonlinear residual sampler:** incompatible interface. It assumes an already supplied nonlinear PDE forward model plus globally certified residual bounds and pointwise residual evaluations; it has no electrical terminal, hydraulic response, or shunt-control mapping. Source path `work/FJ-sources/nonlinear/research_note.md`, lines 11–58 and 104–118.
+* **Supplied quartic contact work:** incompatible interface. It operates on compatible gradient fields, acoustic Hessian contacts, and cubic quantities; its own note says the nonlinear shear is an exact conjugacy without admissible-class reduction (lines 454–467), while the coupled Schur-eliminated residual remains uncontrolled (lines 481–494). No component maps these observables to (1)–(5).
+
+## 9. Validation scope
+
+`verify_schur_intervention.py` uses exact SymPy rational and algebraic arithmetic. It checks the nonreciprocal rank-one formula, the two-load reconstruction, a strictly passive one-load ambiguity pair, an exactly invisible one-sided mode, and a passive visible nonreciprocal shunt signature. The script does not validate the completeness of the assumptions, any physical sample, sensor, control, or historical priority. See [verification.log](verification.log).
+

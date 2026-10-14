@@ -1,0 +1,122 @@
+# Positive graph acquisition from exact energy contrasts
+
+14 October 2026. This implements established graph/group-testing ideas in the
+incoming energy-oracle interface. It is an acquisition improvement over the
+packet's implementation, not a new graph-query primitive or an optimal query
+theorem. Microscopic dynamics and global model validity remain separate inputs.
+
+## 1. The legal oracle and a useful exact contrast
+
+Assume a globally pairwise ferromagnetic binary law
+
+    W(S)=product_{i in S} r_i times product_{edges ij with equal bits} t_ij,
+    r_i>0, t_ij>1.
+
+The learner may request exact positive rational configuration weights. Under
+the rational-coupling implementation, t_ij and r_i themselves are rational.
+For i outside S,
+
+    R_i(S)=W(S+i)W(empty)/[W(S)W({i})]
+          =product_{j in N(i) intersect S} t_ij².             (1)
+
+Fields and unrelated interactions cancel. Strict positivity of each log t_ij
+prevents cancellation: R_i(S)=1 iff S contains no neighbor. Subdividing groups
+with nontrivial products recovers individual neighbors and couplings. This
+does not infer absence of higher-order interactions from finitely many probes.
+
+## 2. A shared-tree implementation for the promised uniform cycle
+
+For the incoming uniform degree-two cycle, put q=t². Four configuration calls
+obtain q as the positive rational square root of
+
+    W(V)W(empty)/[W(V minus {0})W({0})]=t⁴.
+
+The implementation also acquires all singleton weights to retain explicit
+field checks. Use a balanced binary tree on the known vertex labels. For each
+i, the root has two neighbors. At every positive internal node, query the child
+not containing i; when neither child contains i, use the left child. Its exact
+ratio is 1,q or q². Infer the other child's neighbor count by subtraction,
+then recurse only into nonempty neighbor groups. A leaf identifies a neighbor.
+No planted graph attribute is read by the learner.
+
+All W(S) values are cached globally. The full tree has2n−1 node masks. Beyond
+them, empty and V minus {0} add at most two masks. Each vertex visits at most
+the union of two root-to-leaf paths, hence at most2h−1 positive internal nodes,
+h=ceil(log2 n). Each such node contributes at most one new W(S+i). Therefore
+
+    distinct W queries <= n(2h+1)+1.                        (2)
+
+For n=24, the worst-case bound is265, versus301 for the source's complete pair
+queries. A fresh replay of its seed17,t=1000,r=1 layout uses210 distinct calls
+and reconstructs the identical law. The independent implementation uses a
+different tree subdivision and records its own counts. These counts must not
+be silently exchanged. For small n the tree can lose: the independent n=6
+natural-cycle example uses28 calls versus22 pair calls.
+
+The global cache, queried configuration descriptions, field checks, arithmetic,
+rational bit lengths and model-class premises remain paid. The exact weights
+are a computational oracle, not an acquired physical energy sensor or equilibrium
+ensemble. The kinetic compiler still requires the declared heat-bath clock law.
+
+## 3. Heterogeneous positive graphs and a precision contract
+
+Without the cycle promise, acquire each total R_i(V minus {i}), then use (1)
+on one child and divide the parent product to infer the other. Positivity again
+identifies empty groups. For m edges, at most2mh positive internal nodes are
+visited. A conservative distinct-weight bound is3n+2mh+1. Leaf products give
+edge-square couplings; rational square-root checks retain the representation
+promise. Arbitrary positive rational fields are then recovered from singleton
+ratios and incident couplings. The source's slow-complement theorem remains
+specific to its homogeneous ring; this graph lemma alone gives no new lifetime
+certificate for a heterogeneous graph.
+
+For the uniform cycle, suppose every requested dimensionless energy E=−log W
+has deterministic absolute error<=d, and log t>=J_min>0. Four-energy contrasts
+have error<=4d. The bootstrap estimate of log q has error<=2d. For k=0,1,2,
+
+    |estimated_contrast/estimated_log_q−k|
+        <=8d/(2J_min−2d)<1/2 if d<J_min/10.
+
+Nearest-integer neighbor counts are then valid under this noise and separation
+contract. The present execution uses exact weights; this is an analytic robust
+classification condition, not a general noisy graph-inference backend. Clock
+or global-energy-error propagation into lifetime intervals must still be applied.
+
+## 4. Stronger prior methods and the surviving information barrier
+
+Grebinski–Kucherov already study hidden Hamiltonian cycles and bounded-degree
+graphs under additive queries; their2000 primary abstract gives nonadaptive
+O(dn) queries. Once uniform t,r are calibrated, one W(S) call also gives the
+induced-edge count through
+
+    s(S)=[log W(S)−|S|log r]/log t=n−cut(S),
+    edges_inside(S)=|S|−[n−s(S)]/2.
+
+Thus an asymptotically linear additive-query comparator is applicable to the
+same declared cycle. Its finite constants/construction were not implemented
+here. Our O(n log n) tree is not query-optimal or a demonstrated best-method win.
+The measured improvement is only against the incoming all-pairs implementation.
+
+Primary references include Grebinski–Kucherov1998, DOI
+10.1016/S0166-218X(98)00070-5; Grebinski–Kucherov2000, DOI
+10.1007/s004530010033; and Choi–Kim2008, DOI10.1145/1374376.1374484.
+The worker primary ledger records actual reading depth. No absence-of-prior-art
+claim is inferred from search. No full third-party manuscripts are redistributed.
+
+An independently exact n=6 construction changes the weight at one unqueried
+three-bit configuration, preserves the complete adaptive tree transcript, and
+changes the true killed mean by more than two orders of magnitude. A separate
+clock countermodel preserves all energies while slowing target mobility. These
+reject global class or mobility certification from the transcript. They do not
+refute a certificate used inside its explicitly assumed pairwise/Glauber class.
+
+## 5. Executed evidence
+
+`positive_graph_acquisition.py` uses only standard-library Fraction arithmetic.
+It checks120 independently relabeled cycle cases and140 heterogeneous positive
+graphs, recovering every planted coupling and field exactly. It preserves the
+210-query source-sized transcript. The independent worker has its own exact
+query implementation and hidden-well countermodel. End-to-end source closure is
+replayed with the recovered law and a separately labeled retained witness.
+No new trajectories, laboratory measurements or general molecular advantage
+are established.

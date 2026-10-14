@@ -1,0 +1,134 @@
+<!doctype html><meta charset="utf-8"><title>FD later-source evidence — unique_pair_replay.py</title><p>Source or internal evidence; correctness,priority and physical validation UNKNOWN.</p><pre>&quot;&quot;&quot;Replay matched n=16 controls while logging external ordered-pair IDs.
+
+The source-call stream is written as decimal 32-bit pair keys to a temporary
+file and externally sorted/deduplicated. This yields exact distinct external
+pairs even after the learner memo reaches its 250,000-entry cap. Pair logging
+is audit instrumentation; its bytes and sorting are reported separately from
+the acquisition runtime.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import time
+from pathlib import Path
+import subprocess
+
+HERE = Path(__file__).resolve().parent
+WAVE = HERE.parent
+S09_DIR = WAVE / &quot;q_s09_robust_flag_implementation&quot;
+if str(S09_DIR) not in sys.path:
+    sys.path.insert(0, str(S09_DIR))
+
+import run_experiment as s09
+import rm_controls as rm
+
+
+def run_logged(case: str) -&gt; dict:
+    with tempfile.TemporaryDirectory(prefix=f&quot;pair-audit-{case}-&quot;, dir=HERE) as td:
+        td = Path(td)
+        raw = td / &quot;external-pairs.txt&quot;
+        sorted_unique = td / &quot;external-pairs-unique.txt&quot;
+
+        class LoggedSource(s09.PersistentSource):
+            last_instance = None
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self._pair_log = raw.open(&quot;w&quot;, encoding=&quot;ascii&quot;, buffering=1 &lt;&lt; 20)
+                type(self).last_instance = self
+
+            def query(self, x, y):
+                self._pair_log.write(f&quot;{x | (y &lt;&lt; self.n)}\n&quot;)
+                return super().query(x, y)
+
+            def close_pair_log(self):
+                self._pair_log.close()
+
+        start = time.perf_counter()
+        if case == &quot;s09&quot;:
+            original = s09.PersistentSource
+            s09.PersistentSource = LoggedSource
+            try:
+                receipt = s09.run_case(n=16, r=2, seed=960162, epsilon=1/32,
+                                       beta=.05, mode=&quot;asymmetric_hash&quot;,
+                                       bad_count=2048, sequential=True,
+                                       pair_cache_cap=250000,
+                                       canonicalize=False)
+            finally:
+                s09.PersistentSource = original
+        else:
+            original = rm.PersistentSource
+            rm.PersistentSource = LoggedSource
+            try:
+                factory = (rm.decoder_factory_full if case == &quot;full-cube&quot;
+                           else rm.decoder_factory_local)
+                receipt = rm.run_full_case(n=16, r=2, seed=960162,
+                                           epsilon=1/32, beta=.05,
+                                           mode=&quot;asymmetric_hash&quot;,
+                                           bad_count=2048,
+                                           pair_cache_cap=250000,
+                                           decoder_factory=factory)
+            finally:
+                rm.PersistentSource = original
+        # All source calls are made synchronously by the learner. Locate and
+        # close the fixture logger without retaining source or labels.
+        # run_case/run_full_case do not return the source object, so the class
+        # keeps the most recent instance only for lifecycle cleanup.
+        # (This attribute is installed below by the constructor wrapper.)
+        source = LoggedSource.last_instance
+        source.close_pair_log()
+
+        sort_start = time.perf_counter()
+        subprocess.run([&quot;sort&quot;, &quot;-u&quot;, str(raw), &quot;-o&quot;, str(sorted_unique)],
+                       check=True)
+        with sorted_unique.open(&quot;rb&quot;) as f:
+            unique_count = sum(1 for _ in f)
+        sort_seconds = time.perf_counter() - sort_start
+        call_count = (receipt.get(&quot;oracle&quot;, {}).get(&quot;source_calls&quot;)
+                      if case == &quot;s09&quot; else
+                      receipt.get(&quot;oracle&quot;, {}).get(&quot;external_source_calls&quot;))
+        receipt[&quot;external_pair_identity_audit&quot;] = dict(
+            exact_unique_ordered_pairs=unique_count,
+            external_source_calls=call_count,
+            repeated_external_pair_calls=call_count - unique_count,
+            pair_key_encoding=&quot;x | (y &lt;&lt; 16), preserving source direction&quot;,
+            pair_log_bytes_written=raw.stat().st_size,
+            audit_sort_seconds=sort_seconds,
+            audit_runtime_excluded_from_acquisition_seconds=True,
+            pair_logging_overhead_included_in_receipt_seconds=True,
+            exactness=&quot;external sort -u over every source.query call&quot;)
+        receipt[&quot;pair_audit_total_wall_seconds&quot;] = time.perf_counter() - start
+        return receipt
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;case&quot;, choices=[&quot;s09&quot;, &quot;full-cube&quot;, &quot;local-full&quot;])
+    args = parser.parse_args()
+    receipt = run_logged(args.case)
+    names = {&quot;s09&quot;: &quot;unique_pairs_s09_n16.json&quot;,
+             &quot;full-cube&quot;: &quot;unique_pairs_full_cube_n16.json&quot;,
+             &quot;local-full&quot;: &quot;unique_pairs_local_rm_n16.json&quot;}
+    out = HERE / names[args.case]
+    out.write_text(json.dumps(receipt, indent=2) + &quot;\n&quot;)
+    print(json.dumps(dict(output=str(out), case=args.case,
+                          finite_result=receipt.get(&quot;finite_result&quot;),
+                          acquisition_seconds=receipt.get(&quot;seconds&quot;),
+                          pair_audit_total_wall_seconds=receipt.get(
+                              &quot;pair_audit_total_wall_seconds&quot;),
+                          source_calls=receipt.get(&quot;external_pair_identity_audit&quot;, {}).get(
+                              &quot;external_source_calls&quot;),
+                          exact_unique_pairs=receipt.get(
+                              &quot;external_pair_identity_audit&quot;, {}).get(
+                                  &quot;exact_unique_ordered_pairs&quot;),
+                          repeat_external_calls=receipt.get(
+                              &quot;external_pair_identity_audit&quot;, {}).get(
+                                  &quot;repeated_external_pair_calls&quot;)), indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>

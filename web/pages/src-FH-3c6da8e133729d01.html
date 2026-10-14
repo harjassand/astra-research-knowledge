@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — experiments.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/package/escape/experiments.py">Original bytes</a></p><pre>from fractions import Fraction as F
+import json,time
+from acquisition import run_acquired
+from collective_sector import CollectiveRing
+from preparation import run as prep
+
+def exp_bounds(x,tol=F(1,10**35)):
+    &quot;&quot;&quot;Rational Taylor enclosure for nonnegative x; explicit tail bound.&quot;&quot;&quot;
+    if x&lt;0:raise ValueError(&#x27;requires x&gt;=0&#x27;)
+    term=F(1);total=term;j=0
+    while True:
+        j+=1;term=term*x/j;total+=term
+        ratio=x/(j+1)
+        if ratio&lt;1:
+            tail=term*ratio/(1-ratio)
+            if tail&lt;=tol:return total,total+tail
+
+def uncertainty(lo,hi,n,logt_error,field_error,clock_error):
+    # Oscillation of dimensionless energy discrepancy on a uniform n-cycle.
+    omega=n*(logt_error+field_error);_,expup=exp_bounds(2*omega)
+    a=1-clock_error;b=1+clock_error
+    low=lo/(b*expup);high=hi*expup/a
+    return {&#x27;n&#x27;:n,&#x27;logt_error&#x27;:str(logt_error),&#x27;field_error&#x27;:str(field_error),&#x27;clock_error&#x27;:str(clock_error),
+            &#x27;lo&#x27;:float(low),&#x27;hi&#x27;:float(high),&#x27;ratio&#x27;:float(high/low),&#x27;lo_exact&#x27;:str(low),&#x27;hi_exact&#x27;:str(high)}
+
+def main():
+    start=time.perf_counter();root=&#x27;/mnt/data/astra_source_escape&#x27;;out={&#x27;rarity&#x27;:[],&#x27;dimension&#x27;:[],&#x27;clock&#x27;:[],&#x27;uncertainty&#x27;:[],&#x27;decisions&#x27;:{}}
+    for t in [10,100,1000,10000]:
+        a=run_acquired(16,F(t));json.dump(a,open(f&#x27;{root}/acquired_n16_t{t}.json&#x27;,&#x27;w&#x27;));out[&#x27;rarity&#x27;].append(a)
+        print(&#x27;rarity&#x27;,t,a[&#x27;tau_lo&#x27;],a[&#x27;tau_hi&#x27;],a[&#x27;ratio&#x27;],a[&#x27;end_to_end_seconds&#x27;],flush=True)
+    for n in [8,16,24,32]:
+        a=run_acquired(n,F(1000));json.dump(a,open(f&#x27;{root}/acquired_n{n}_t1000.json&#x27;,&#x27;w&#x27;));out[&#x27;dimension&#x27;].append(a)
+        print(&#x27;dimension&#x27;,n,a[&#x27;ratio&#x27;],a[&#x27;end_to_end_seconds&#x27;],flush=True)
+    for nu,kap in [(F(1,10),F(1)),(F(10),F(1)),(F(1),F(1,10)),(F(1),F(10))]:
+        a=run_acquired(16,F(1000),nu=nu,kappa=kap);out[&#x27;clock&#x27;].append(a)
+        print(&#x27;clock&#x27;,nu,kap,a[&#x27;tau_lo&#x27;],a[&#x27;tau_hi&#x27;],a[&#x27;ratio&#x27;],flush=True)
+    A=out[&#x27;dimension&#x27;][2];B=run_acquired(24,F(1200));json.dump(B,open(f&#x27;{root}/acquired_n24_t1200.json&#x27;,&#x27;w&#x27;))
+    L=F(A[&#x27;lower_exact&#x27;]);U=F(A[&#x27;upper_exact&#x27;])
+    for h in [F(0),F(1,100000),F(1,10000),F(1,1000),F(1,100)]:
+        out[&#x27;uncertainty&#x27;].append(uncertainty(L,U,24,F(0),h,F(0)))
+    for eta in [F(0),F(1,500),F(1,100),F(1,20)]:
+        out[&#x27;uncertainty&#x27;].append(uncertainty(L,U,24,F(0),F(0),eta))
+    # Each energy query has error delta=1e-5. Four-term contrasts yield
+    # |delta log t|&lt;=2delta and |delta field|&lt;=6delta in this class.
+    Arob=uncertainty(L,U,24,F(2,100000),F(6,100000),F(1,500))
+    Brob=uncertainty(F(B[&#x27;lower_exact&#x27;]),F(B[&#x27;upper_exact&#x27;]),24,F(2,100000),F(6,100000),F(1,500))
+    out[&#x27;decisions&#x27;]={&#x27;A&#x27;:{k:v for k,v in A.items() if k not in [&#x27;witness&#x27;,&#x27;query_transcript&#x27;]},
+                     &#x27;B&#x27;:{k:v for k,v in B.items() if k not in [&#x27;witness&#x27;,&#x27;query_transcript&#x27;]},
+                     &#x27;A_robust&#x27;:Arob,&#x27;B_robust&#x27;:Brob,
+                     &#x27;B_over_A_certified&#x27;:float(F(Brob[&#x27;lo_exact&#x27;])/F(Arob[&#x27;hi_exact&#x27;]))}
+    prepout=prep(24,F(1000));json.dump(prepout,open(f&#x27;{root}/prepared_n24_t1000.json&#x27;,&#x27;w&#x27;))
+    out[&#x27;preparation&#x27;]=prepout;out[&#x27;total_experiment_seconds&#x27;]=time.perf_counter()-start
+    # Smaller summary retains paths to witness files for principal cases.
+    for key in [&#x27;rarity&#x27;,&#x27;dimension&#x27;,&#x27;clock&#x27;]:
+        out[key]=[{k:v for k,v in a.items() if k not in [&#x27;witness&#x27;,&#x27;query_transcript&#x27;]} for a in out[key]]
+    out[&#x27;preparation&#x27;]={k:v for k,v in prepout.items() if k not in [&#x27;witnesses&#x27;,&#x27;Gamma&#x27;,&#x27;G0&#x27;]}
+    json.dump(out,open(f&#x27;{root}/experiments.json&#x27;,&#x27;w&#x27;));print(&#x27;decision&#x27;,out[&#x27;decisions&#x27;][&#x27;B_over_A_certified&#x27;],flush=True)
+if __name__==&#x27;__main__&#x27;:main()
+</pre></body></html>

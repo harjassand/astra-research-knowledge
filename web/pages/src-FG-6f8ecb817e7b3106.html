@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — bath_completion_initial_test.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — bath_completion_initial_test.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/compact/bath_completion_initial_test.py">Original file</a></p><pre>&quot;&quot;&quot;Source-aware completion over an unmodeled bath.
+The operation transfers a gate interval algebraically; small full matrices below
+are separately charged validation references, never required by the transfer.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from time import perf_counter
+import numpy as np, json
+from scipy.sparse import coo_matrix
+from scipy.sparse.linalg import spsolve
+from window_baseline import solve_window
+BASE=Path(__file__).resolve().parent
+
+def reference(gates=4,bath=4,eta=F(1,20),speed=F(1,10**6)):
+    start=perf_counter();q=F(1,26);eps=F(1,10000);ng=2**gates;nb=2**bath;N=ng*nb
+    # A correlated (Ising-type rational Boltzmann-weight) hidden bath.
+    nu=[F(2)**z.bit_count()*F(3)**sum(((z&gt;&gt;i)&amp;1)==((z&gt;&gt;(i+1))&amp;1) for i in range(bath-1)) for z in range(nb)]
+    Z=sum(nu);mg=[q**g.bit_count()*(1-q)**(gates-g.bit_count()) for g in range(ng)]
+    rows=[];rr=[];cc=[];dd=[]
+    for z in range(nb):
+      for g in range(ng):
+        x=z*ng+g;row=[];diag=F(0)
+        for i in range(gates):
+            facil=F(1) if i==0 or (g&gt;&gt;(i-1))&amp;1 else eps
+            # Depends on bath and another gate but not the flipped bit: reversible.
+            other=(i+1)%gates;sgn=1 if ((z.bit_count()+((g&gt;&gt;other)&amp;1)+i)%2) else -1
+            mult=1+eta*sgn
+            rate=(1-q if (g&gt;&gt;i)&amp;1 else q)*facil*mult
+            row.append((z*ng+(g^(1&lt;&lt;i)),-rate));diag+=rate
+        for i in range(bath):
+            rate=speed*F(i+1)*(1+F(g.bit_count(),gates))*min(F(1),nu[z^(1&lt;&lt;i)]/nu[z])
+            row.append(((z^(1&lt;&lt;i))*ng+g,-rate));diag+=rate
+        kill=q*(1 if (g&gt;&gt;(gates-1))&amp;1 else eps)*(1+eta*(1 if z.bit_count()%2 else -1))
+        diag+=kill;row.append((x,diag));rows.append(row)
+        for y,a in row:rr.append(x);cc.append(y);dd.append(float(a))
+    A=coo_matrix((dd,(rr,cc)),shape=(N,N)).tocsr();v=spsolve(A,np.ones(N));vf=[F.from_float(float(a)) for a in v]
+    delta=max(abs(sum(a*vf[y] for y,a in row)-1) for row in rows);assert delta&lt;1 and min(v)&gt;0
+    mean=sum(mg[g]*nu[z]*vf[z*ng+g] for z in range(nb) for g in range(ng))/Z
+    lo=mean/(1+delta);hi=mean/(1-delta)
+    return {&#x27;gates&#x27;:gates,&#x27;bath_coordinates&#x27;:bath,&#x27;reference_states&#x27;:N,&#x27;eta&#x27;:str(eta),&#x27;bath_rate_scale&#x27;:str(speed),&#x27;reference_lower&#x27;:str(lo),&#x27;reference_upper&#x27;:str(hi),&#x27;estimate&#x27;:float(mean),&#x27;exact_residual_delta&#x27;:float(delta),&#x27;reference_seconds&#x27;:perf_counter()-start}
+
+def transfer(lo,hi,a,b):
+    assert F(0)&lt;a&lt;=b and lo&lt;=hi
+    return lo/b,hi/a
+
+def run():
+    start=perf_counter();gate=reference(bath=0,eta=F(0))
+    lo=F(gate[&#x27;reference_lower&#x27;]);hi=F(gate[&#x27;reference_upper&#x27;]);out=[]
+    specs=[(m,F(1,20),F(1,10**6)) for m in (0,2,4,6)]
+    specs +=[(4,e,F(1,10**6)) for e in (F(0),F(1,100),F(1,4))]
+    specs +=[(4,F(1,20),F(1,10**12))]
+    for m,e,s in specs:
+        r=reference(bath=m,eta=e,speed=s);t=perf_counter();a,b=transfer(lo,hi,1-e,1+e);r[&#x27;transfer_seconds&#x27;]=perf_counter()-t
+        assert a&lt;=F(r[&#x27;reference_lower&#x27;])&lt;=F(r[&#x27;reference_upper&#x27;])&lt;=b
+        r.update({&#x27;completion_lower&#x27;:float(a),&#x27;completion_upper&#x27;:float(b),&#x27;completion_ratio&#x27;:float(b/a),&#x27;covered&#x27;:True});out.append(r)
+    # Apply the same operation to the large gate certificate. No bath states or data.
+    c=json.loads((BASE/&#x27;continuous128.certificate.json&#x27;).read_text());large=[]
+    for m in [0,10,1000,1000000]:
+      for eta in [F(0),F(1,100),F(1,20),F(1,10)]:
+        t=perf_counter();l,u=transfer(F(c[&#x27;lower&#x27;]),F(c[&#x27;upper&#x27;]),1-eta,1+eta)
+        large.append({&#x27;bath_coordinates&#x27;:m,&#x27;eta&#x27;:str(eta),&#x27;lower&#x27;:float(l),&#x27;upper&#x27;:float(u),&#x27;ratio&#x27;:float(u/l),&#x27;bath_states_constructed&#x27;:0,&#x27;bath_samples&#x27;:0,&#x27;transfer_seconds&#x27;:perf_counter()-t})
+    results={&#x27;small_reference_gate&#x27;:gate,&#x27;small_validation&#x27;:out,&#x27;large_uniform_completion&#x27;:large,&#x27;total_seconds&#x27;:perf_counter()-start,&#x27;scope&#x27;:&#x27;large bath rows are applications of a uniform theorem, not simulations of those baths; all small full-state reference work is charged separately&#x27;}
+    (BASE/&#x27;bath_completion_results.json&#x27;).write_text(json.dumps(results,indent=2));print(json.dumps({&#x27;small_reference_estimates&#x27;:[(r[&#x27;bath_coordinates&#x27;],r[&#x27;eta&#x27;],r[&#x27;bath_rate_scale&#x27;],r[&#x27;estimate&#x27;],r[&#x27;completion_lower&#x27;],r[&#x27;completion_upper&#x27;],r[&#x27;reference_seconds&#x27;]) for r in out],&#x27;large_completion_at_bath1000&#x27;:[r for r in large if r[&#x27;bath_coordinates&#x27;]==1000],&#x27;total_seconds&#x27;:results[&#x27;total_seconds&#x27;]},indent=2))
+if __name__==&#x27;__main__&#x27;:run()
+</pre></html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — reverse_query_check.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/synthesis/kinetics_critic/reverse_query_check.py">Original bytes</a></p><pre>&quot;&quot;&quot;Independent Fraction reconstruction of all final reverse-clock queries.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations
+from math import isqrt
+from pathlib import Path
+import json
+
+ROOT=Path(__file__).resolve().parents[1]/&#x27;FI-sources&#x27;/&#x27;kinetics&#x27;
+def sqrtf(x):
+    a=isqrt(x.numerator); b=isqrt(x.denominator)
+    if a*a!=x.numerator or b*b!=x.denominator: raise ValueError(&#x27;nonrational pair factor&#x27;)
+    return F(a,b)
+def load(stem): return json.loads((ROOT/(stem+&#x27;.json&#x27;)).read_text())
+def loadtr(stem): return json.loads((ROOT/(stem+&#x27;_transcript.json&#x27;)).read_text())
+def reconstruct(tr):
+    data={int(k):F(v) for k,v in tr[&#x27;weights&#x27;].items()}; n=next(k for k in range(1,200) if 1+k+k*(k-1)//2==tr[&#x27;energy_queries&#x27;])
+    w0=data[0]; singles=[data[1&lt;&lt;i] for i in range(n)]; edges={}; fields=[]
+    for i,j in combinations(range(n),2):
+        t=sqrtf(data[(1&lt;&lt;i)|(1&lt;&lt;j)]*w0/(singles[i]*singles[j]))
+        if t!=1: edges[i,j]=t
+    for i in range(n):
+        h=singles[i]/w0
+        for (a,b),t in edges.items():
+            if i in (a,b): h*=t
+        fields.append(h)
+    def ratio(i,x):
+        r=fields[i]
+        for (a,b),t in edges.items():
+            if i==a:r*=t if (x&gt;&gt;b)&amp;1 else 1/t
+            elif i==b:r*=t if (x&gt;&gt;a)&amp;1 else 1/t
+        return r
+    attempts={}; expected_prep={}; rates={}
+    for key,raw0 in tr[&#x27;reverse_rates&#x27;].items():
+        i,x=map(int,key.split(&#x27;:&#x27;)); raw=F(raw0); r=ratio(i,x)
+        dprob=max(F(1),r)/(1+r); a=raw/dprob
+        expected_prep[key]=0 if r&gt;=1 else 1
+        assert int(tr[&#x27;prepared_bit&#x27;][key])==expected_prep[key]
+        # Re-evaluate the actual downhill edge from its selected less probable endpoint.
+        src=x | (expected_prep[key]&lt;&lt;i); dst=src^(1&lt;&lt;i)
+        def W(mask):
+            z=F(1)
+            for j,h in enumerate(fields):
+                if (mask&gt;&gt;j)&amp;1:z*=h
+            for (j,k),t in edges.items():
+                if ((mask&gt;&gt;j)&amp;1)==((mask&gt;&gt;k)&amp;1):z*=t
+            return z
+        actual_d=a*W(dst)/(W(src)+W(dst))
+        assert actual_d==raw
+        assert a/2&lt;=raw&lt;=a
+        attempts[key]=a; rates[key]=raw
+    # Möbius recovery, support, and exact evaluation over every context in each
+    # recovered support (the only step needing an exponential truth table).
+    by_i={}; max_support=0; min_attempt=None; max_attempt=F(0); all_recovered=True
+    for i in range(n):
+        others=[j for j in range(n) if j!=i]
+        def query(S):return attempts[f&#x27;{i}:{sum(1&lt;&lt;j for j in S)}&#x27;]
+        c0=query(())
+        linear={j:query((j,))-c0 for j in others}
+        quad={(j,k):query((j,k))-query((j,))-query((k,))+c0 for j,k in combinations(others,2)}
+        linear={j:v for j,v in linear.items() if v}
+        quad={p:v for p,v in quad.items() if v}
+        support=sorted(set(linear)|{j for pair in quad for j in pair})
+        max_support=max(max_support,len(support))
+        for z in range(1&lt;&lt;len(support)):
+            y={j:(z&gt;&gt;p)&amp;1 for p,j in enumerate(support)}
+            a=c0+sum((v*y.get(j,0) for j,v in linear.items()),F(0))+sum((v*y.get(j,0)*y.get(k,0) for (j,k),v in quad.items()),F(0))
+            assert a&gt;0
+            min_attempt=a if min_attempt is None else min(min_attempt,a)
+            max_attempt=max(max_attempt,a)
+        # Compare coefficients against every acquired context (empty/single/pair).
+        for size in range(3):
+            for S in combinations(others,size):
+                pred=c0+sum((v for j,v in linear.items() if j in S),F(0))+sum((v for (j,k),v in quad.items() if j in S and k in S),F(0))
+                assert pred==query(S)
+        by_i[i]={&#x27;support_size&#x27;:len(support),&#x27;nonzero_linear&#x27;:len(linear),&#x27;nonzero_quadratic&#x27;:len(quad),&#x27;support&#x27;:support,&#x27;coefficients_positive_on_full_support&#x27;:True}
+    assert len(attempts)==n*(1+(n-1)+(n-1)*(n-2)//2)
+    return {&#x27;n&#x27;:n,&#x27;energy_queries&#x27;:tr[&#x27;energy_queries&#x27;],&#x27;reverse_queries&#x27;:len(attempts),&#x27;edge_count&#x27;:len(edges),&#x27;all_preparation_bits_match&#x27;:True,&#x27;all_d_rates_recomputed_exactly&#x27;:True,&#x27;all_rates_in_a_over2_to_a&#x27;:True,&#x27;degree2_coefficients_recover_every_queried_context&#x27;:all_recovered,&#x27;max_recovered_support&#x27;:max_support,&#x27;all_acquired_support_tables_positive&#x27;:True,&#x27;min_attempt_on_recovered_support_tables&#x27;:str(min_attempt),&#x27;max_attempt_on_recovered_support_tables&#x27;:str(max_attempt),&#x27;supports&#x27;:by_i,&#x27;maximum_local_excitation_weight_ratio&#x27;:tr[&#x27;maximum_local_excitation_weight_ratio&#x27;]}
+
+A=loadtr(&#x27;reverse_A&#x27;);B=loadtr(&#x27;reverse_B&#x27;)
+ra=reconstruct(A); rb=reconstruct(B)
+assert A[&#x27;weights&#x27;]==B[&#x27;weights&#x27;]
+zero_same=all(A[&#x27;reverse_rates&#x27;][f&#x27;{i}:0&#x27;]==B[&#x27;reverse_rates&#x27;][f&#x27;{i}:0&#x27;] for i in range(18))
+assert zero_same
+loB=F(load(&#x27;reverse_B&#x27;)[&#x27;lower&#x27;]); hiA=F(load(&#x27;reverse_A&#x27;)[&#x27;upper&#x27;]); ratio=loB/hiA
+assert ratio&gt;F(154685,100000)
+print(json.dumps({&#x27;A&#x27;:ra,&#x27;B&#x27;:rb,&#x27;same_energy_transcript&#x27;:True,&#x27;all_zero_context_rates_equal&#x27;:zero_same,&#x27;exact_certified_separation_lower&#x27;:str(ratio),&#x27;separation_float&#x27;:float(ratio)},indent=2))
+</pre></body></html>

@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FJ evidence — noise_delta_checks.py</title><body><p>FJ scoped source/internal evidence; externally unreviewed. <a href="../../updates/FJ/synthesis/hydro_audit/noise_delta_checks.py">Original bytes</a></p><pre>&quot;&quot;&quot;Independent exact checks for the equilibrium-noise directionality derivation.
+
+Uses only Python&#x27;s Fraction and locally defined Gaussian-rational matrix algebra.
+It imports and executes no FJ worker code.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+
+
+def z(re=0, im=0):
+    return (F(re), F(im))
+
+
+def add(a, b):
+    return (a[0] + b[0], a[1] + b[1])
+
+
+def neg(a):
+    return (-a[0], -a[1])
+
+
+def sub(a, b):
+    return add(a, neg(b))
+
+
+def mul(a, b):
+    return (a[0] * b[0] - a[1] * b[1],
+            a[0] * b[1] + a[1] * b[0])
+
+
+def div(a, b):
+    d = b[0] * b[0] + b[1] * b[1]
+    assert d
+    return ((a[0] * b[0] + a[1] * b[1]) / d,
+            (a[1] * b[0] - a[0] * b[1]) / d)
+
+
+def conj(a):
+    return (a[0], -a[1])
+
+
+def half(a):
+    return (a[0] / 2, a[1] / 2)
+
+
+def transpose(A):
+    return [list(row) for row in zip(*A)]
+
+
+def adjoint(A):
+    return [[conj(v) for v in row] for row in transpose(A)]
+
+
+def matmul(A, B):
+    return [[sum_z([mul(A[i][k], B[k][j]) for k in range(len(B))])
+             for j in range(len(B[0]))] for i in range(len(A))]
+
+
+def sum_z(xs):
+    out = z()
+    for x in xs:
+        out = add(out, x)
+    return out
+
+
+def matadd(A, B):
+    return [[add(A[i][j], B[i][j]) for j in range(len(A[0]))]
+            for i in range(len(A))]
+
+
+def matsub(A, B):
+    return [[sub(A[i][j], B[i][j]) for j in range(len(A[0]))]
+            for i in range(len(A))]
+
+
+def matscale(s, A):
+    return [[mul(z(s), A[i][j]) for j in range(len(A[0]))]
+            for i in range(len(A))]
+
+
+def inverse2(A):
+    assert len(A) == len(A[0]) == 2
+    det = sub(mul(A[0][0], A[1][1]), mul(A[0][1], A[1][0]))
+    return [[div(A[1][1], det), div(neg(A[0][1]), det)],
+            [div(neg(A[1][0]), det), div(A[0][0], det)]]
+
+
+def zeros(m, n):
+    return [[z() for _ in range(n)] for _ in range(m)]
+
+
+def diag(values):
+    A = zeros(len(values), len(values))
+    for i, value in enumerate(values):
+        A[i][i] = z(value)
+    return A
+
+
+def is_zero_matrix(A):
+    return all(v == z() for row in A for v in row)
+
+
+def show_z(v):
+    r, i = v
+    if i == 0:
+        return str(r)
+    if r == 0:
+        return f&quot;{i}i&quot;
+    sign = &quot;+&quot; if i &gt; 0 else &quot;-&quot;
+    return f&quot;{r}{sign}{abs(i)}i&quot;
+
+
+def show_matrix(A):
+    return [[show_z(v) for v in row] for row in A]
+
+
+def dynamic_heterogeneous_check():
+    # Heterogeneous passive wet converters and a grounded Hall network with
+    # nonzero reverse transmission plus lossless shunt capacitors at omega=1.
+    K = diag([2, 3])
+    C = diag([F(1, 2), F(1, 3)])
+    G = diag([1, 2])
+    g_plus, g_minus = F(1, 2), F(1, 8)
+    s = g_plus + g_minus
+    Y = [
+        [z(s, F(1, 3)), z(-g_minus)],
+        [z(-g_plus), z(s, F(1, 5))],
+    ]
+    A = matadd(G, Y)
+    Ainv = inverse2(A)
+    H = matsub(K, matmul(matmul(C, Ainv), C))
+    Yh = matscale(F(1, 2), matadd(Y, adjoint(Y)))
+
+    # Primitive covariance divided by 2 k_B T, ordered (eta_Q, eta_I, eta_Y).
+    P = zeros(6, 6)
+    blocks = [(0, 0, K), (0, 2, C), (2, 0, C), (2, 2, G), (4, 4, Yh)]
+    for row0, col0, block in blocks:
+        for i in range(2):
+            for j in range(2):
+                P[row0 + i][col0 + j] = block[i][j]
+
+    # eta_eff = eta_Q - C A^-1 eta_I - C A^-1 eta_Y.
+    CA = matmul(C, Ainv)
+    T = zeros(2, 6)
+    for i in range(2):
+        T[i][i] = z(1)
+        for j in range(2):
+            T[i][2 + j] = neg(CA[i][j])
+            T[i][4 + j] = neg(CA[i][j])
+    N = matmul(matmul(T, P), adjoint(T))
+    Hh = matscale(F(1, 2), matadd(H, adjoint(H)))
+    assert is_zero_matrix(matsub(N, Hh))
+
+    # Check all static thermodynamic wet matrices and the dry conductance part.
+    assert F(1, 2) ** 2 &lt; F(2) * F(1)
+    assert F(1, 3) ** 2 &lt; F(3) * F(2)
+    # Y_s = [[5/8,-5/16],[-5/16,5/8]]: positive diagonal and determinant.
+    ydet = F(5, 8) ** 2 - F(5, 16) ** 2
+    assert ydet == F(75, 256) and ydet &gt; 0
+    hdet = sub(mul(Hh[0][0], Hh[1][1]), mul(Hh[0][1], Hh[1][0]))
+    assert Hh[0][0][1] == 0 and Hh[1][1][1] == 0 and hdet[1] == 0
+    assert Hh[0][0][0] &gt; 0 and hdet[0] &gt; 0
+
+    ratio = div(H[1][0], H[0][1])
+    assert ratio == z(g_plus / g_minus)
+
+    # Repeat at the same frequency in the ideal chiral limit. The dynamic
+    # receiver remains unilateral while its forward transfer is complex.
+    Yc = [[z(g_plus, F(1, 3)), z(0)],
+          [z(-g_plus), z(g_plus, F(1, 5))]]
+    Ac = matadd(G, Yc)
+    Acinv = inverse2(Ac)
+    Hc = matsub(K, matmul(matmul(C, Acinv), C))
+    Ych = matscale(F(1, 2), matadd(Yc, adjoint(Yc)))
+    Pc = zeros(6, 6)
+    for row0, col0, block in [(0, 0, K), (0, 2, C), (2, 0, C),
+                              (2, 2, G), (4, 4, Ych)]:
+        for i in range(2):
+            for j in range(2):
+                Pc[row0 + i][col0 + j] = block[i][j]
+    CAc = matmul(C, Acinv)
+    Tc = zeros(2, 6)
+    for i in range(2):
+        Tc[i][i] = z(1)
+        for j in range(2):
+            Tc[i][2 + j] = neg(CAc[i][j])
+            Tc[i][4 + j] = neg(CAc[i][j])
+    Nc = matmul(matmul(Tc, Pc), adjoint(Tc))
+    Hch = matscale(F(1, 2), matadd(Hc, adjoint(Hc)))
+    chiral_hdet = sub(mul(Hch[0][0], Hch[1][1]),
+                      mul(Hch[0][1], Hch[1][0]))
+    assert is_zero_matrix(matsub(Nc, Hch))
+    assert Hc[0][1] == z() and Hc[1][0] != z()
+    assert chiral_hdet[1] == 0 and chiral_hdet[0] &gt; 0
+    return {
+        &quot;frequency_omega&quot;: 1,
+        &quot;K&quot;: [[str(F(2)), &quot;0&quot;], [&quot;0&quot;, str(F(3))]],
+        &quot;C&quot;: [[str(F(1, 2)), &quot;0&quot;], [&quot;0&quot;, str(F(1, 3))]],
+        &quot;G&quot;: [[str(F(1)), &quot;0&quot;], [&quot;0&quot;, str(F(2))]],
+        &quot;Y&quot;: show_matrix(Y),
+        &quot;Y_hermitian_part&quot;: show_matrix(Yh),
+        &quot;H&quot;: show_matrix(H),
+        &quot;H_hermitian_part&quot;: show_matrix(Hh),
+        &quot;reduced_noise_over_2kBT&quot;: show_matrix(N),
+        &quot;noise_equals_hermitian_response_exactly&quot;: True,
+        &quot;H21_over_H12&quot;: show_z(ratio),
+        &quot;wet_determinants&quot;: [str(F(2) * F(1) - F(1, 2) ** 2),
+                             str(F(3) * F(2) - F(1, 3) ** 2)],
+        &quot;dry_determinant&quot;: str(ydet),
+        &quot;hermitian_H_determinant&quot;: str(hdet[0]),
+        &quot;ideal_chiral_dynamic&quot;: {
+            &quot;H&quot;: show_matrix(Hc),
+            &quot;H_hermitian_part&quot;: show_matrix(Hch),
+            &quot;reduced_noise_over_2kBT&quot;: show_matrix(Nc),
+            &quot;noise_equals_hermitian_response_exactly&quot;: True,
+            &quot;H12_exactly_zero&quot;: True,
+            &quot;H21_nonzero&quot;: show_z(Hc[1][0]),
+            &quot;det_Hermitian_part&quot;: str(chiral_hdet[0]),
+        },
+    }
+
+
+def exact_source_topology_loaded_case():
+    # Two identical wet devices with K=G=1, C=3/5, and ideal chiral g=4/5.
+    # This is an exact rational equality case for the topology-specific bound.
+    k, c, g, d = F(1), F(3, 5), F(4, 5), F(4, 5)
+    K2, C2, G2 = diag([k, k]), diag([c, c]), diag([k, k])
+    Ydc = [[z(g), z(0)], [z(-g), z(g)]]
+    Hraw = matsub(K2, matmul(matmul(C2, inverse2(matadd(G2, Ydc))), C2))
+    assert Hraw == [[z(F(4, 5)), z(0)],
+                    [z(F(-4, 45)), z(F(4, 5))]]
+    # Reverse both pressure and flow orientations at receiver port 2.
+    H_oriented = [[Hraw[0][0], neg(Hraw[0][1])],
+                  [neg(Hraw[1][0]), Hraw[1][1]]]
+    assert H_oriented == [[z(F(4, 5)), z(0)],
+                          [z(F(4, 45)), z(F(4, 5))]]
+    kappa = k - c * c / (k + g)
+    b = c * c * g / ((k + g) * (k + g))
+    assert kappa == d == F(4, 5)
+    assert b == F(4, 45)
+    eta = b * b / (4 * kappa * d)
+    assert eta == F(1, 324)
+    chi = c * c / (k * k)
+    eta_c = F(1, 9)  # sqrt(1-chi)=4/5, so eta_c=(1/5)/(9/5).
+    assert chi == F(9, 25) and eta == F(1, 4) * eta_c * eta_c
+    # Matching at R=1/d, p=1, tau=1, k_B T=1.
+    R, p, tau, kBT = F(1, 1) / d, F(1), F(1), F(1)
+    qbar = b * p / (1 + d * R)
+    pressure_noise_device = 2 * kBT * d
+    pressure_noise_load = 2 * kBT * R
+    q_noise_psd = (pressure_noise_device + d * d * pressure_noise_load) / (
+        (1 + d * R) ** 2)
+    average_noise_variance = q_noise_psd / tau
+    snr2 = qbar * qbar / average_noise_variance
+    load_power = R * qbar * qbar
+    source_work = kappa * p * p * tau
+    assert qbar == F(2, 45)
+    assert pressure_noise_device == F(8, 5)
+    assert pressure_noise_load == F(5, 2)
+    assert q_noise_psd == F(4, 5)
+    assert average_noise_variance == F(4, 5)
+    assert load_power == F(1, 405)
+    assert source_work == F(4, 5)
+    assert snr2 == F(1, 405)
+    assert snr2 == eta * source_work / kBT
+    assert snr2 == load_power * tau / kBT
+
+    # General passivity/FDT SNR bound is independently sharp for an abstract
+    # one-way passive matrix H=[[1,0],[2,1]].
+    a, d_sharp, b_sharp = F(1), F(1), F(2)
+    determinant_hs = a * d_sharp - b_sharp * b_sharp / 4
+    source_work_sharp = F(1)
+    q_signal = b_sharp
+    output_noise_psd = 2 * d_sharp
+    snr2_sharp = q_signal * q_signal / output_noise_psd
+    assert determinant_hs == 0
+    assert snr2_sharp == F(2) * source_work_sharp
+
+    return {
+        &quot;wet_K_G_C&quot;: [&quot;1&quot;, &quot;1&quot;, &quot;3/5&quot;],
+        &quot;chiral_g_plus_g_minus&quot;: [&quot;4/5&quot;, &quot;0&quot;],
+        &quot;H_unoriented_from_schur&quot;: show_matrix(Hraw),
+        &quot;H_oriented_from_schur&quot;: show_matrix(H_oriented),
+        &quot;eta_max_power&quot;: str(eta),
+        &quot;eta_c_each&quot;: &quot;1/9&quot;,
+        &quot;source_topology_eta_bound&quot;: &quot;1/324&quot;,
+        &quot;R_max_power&quot;: str(R),
+        &quot;p1_tau_kBT&quot;: [&quot;1&quot;, &quot;1&quot;, &quot;1&quot;],
+        &quot;mean_loaded_flow&quot;: str(qbar),
+        &quot;device_flow_noise_psd&quot;: str(pressure_noise_device),
+        &quot;load_pressure_noise_psd&quot;: str(pressure_noise_load),
+        &quot;loaded_flow_noise_psd&quot;: str(q_noise_psd),
+        &quot;time_average_noise_variance&quot;: str(average_noise_variance),
+        &quot;load_power_times_tau&quot;: str(load_power * tau),
+        &quot;input_work&quot;: str(source_work),
+        &quot;loaded_SNR_squared&quot;: str(snr2),
+        &quot;loaded_identity_eta_W_over_kBT&quot;: str(eta * source_work / kBT),
+        &quot;general_unloaded_SNR_bound_sharp_witness&quot;: {
+            &quot;H&quot;: [[&quot;1&quot;, &quot;0&quot;], [&quot;2&quot;, &quot;1&quot;]],
+            &quot;det_Hs&quot;: str(determinant_hs),
+            &quot;input_work&quot;: str(source_work_sharp),
+            &quot;SNR_squared&quot;: str(snr2_sharp),
+            &quot;2W_over_kBT&quot;: str(2 * source_work_sharp),
+        },
+    }
+
+
+def main():
+    import json
+    result = {
+        &quot;scope&quot;: &quot;independent exact arithmetic; no physical acquisition&quot;,
+        &quot;dynamic_heterogeneous_FDT&quot;: dynamic_heterogeneous_check(),
+        &quot;exact_loaded_source_topology&quot;: exact_source_topology_loaded_case(),
+        &quot;convention&quot;: &quot;two-sided angular-frequency, kBT normalized to one in load example&quot;,
+    }
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

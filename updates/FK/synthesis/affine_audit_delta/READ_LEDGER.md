@@ -1,0 +1,22 @@
+# Read ledger
+
+Audit date: 2026-10-14. This is a separate, report-only delta in work/FK-affine-audit-delta/; it preserves the earlier owned packet work/FK-affine-audit/ unchanged. The pinned capital checkout remains work/astra-capital at 4c47df1fda950e27e48295689dd642194bfac046. No capital files were written.
+
+## Authorization and provenance
+
+- Read work/FK_WORKER_CONTRACT.txt, work/FK_PIN.json, and work/FK-sources/INTAKE_MANIFEST.json. The pin records the capital checkout at 4c47df1fda950e27e48295689dd642194bfac046, main at ace0cfc4437fe91c20ccd24d69e0ee4bb335e871, and published Ultra ref at 00d1c9769bc26829fef2653dbcc10ed1dc8a927c.
+- Root explicitly authorized an independent critical audit of work/FK-regression-geometry/REPORT.md, which is the comparison exception contemplated by the contract. No other FK worker output, source implementation, verifier, or dossier was inspected in this delta.
+- Copied the full target report first to inputs/REPORT.md, then reviewed the copy. cmp confirms byte identity with work/FK-regression-geometry/REPORT.md; both copies have SHA256 08c5a68ea6bdc1885fd98bf6b0a296ffa8bbeacdb975d64da641231043f8b1ec.
+- Consulted the earlier work/FK-affine-audit/ packet only to preserve its boundary and avoid modifying it. It remains a separate, previously frozen packet; this delta does not amend its report or manifest.
+
+## Review performed
+
+- Read the copied multi-quadric theorem report in full, focusing on its theorem quantifiers and proof of covariance fitting, normal regression, the continuous local PSD remainder, moving spectral frame, Schur complement, all-affine elimination, the cubic residual estimates, the zero-transverse-mass case, higher-dimensional minors, and the conditional A-free transfer.
+- Reconstructed the key estimates directly. In particular, checked that every covariance maximizer has residual no larger than the competitor R0, that stationarity places z in ran(J_R*), and that the balance identity places J_R z in ran(J_R) even when constraints are redundant. Checked the moving transverse lower bound from continuity of one fixed P witness, then the actual Schur complement h-k^T D^{-1}k.
+- Stress-tested the moment estimates against maximally correlated rare spikes; the report records the saturating Hölder scales. Checked the singular v=0 line law directly through b=uHR, which avoids inverse-based minimization.
+- Re-derived the higher-dimensional minor Jacobian at e_11 and its orthogonal covariance. Treated the A-free conclusion as conditional on actual quadratic null-Lagrangian balances, not constant rank alone.
+- No verifier, producer script, optimizer, external search, or external paper was run or re-reviewed for this delta. The uncertainty addressed here is analytic; the conclusion is not a finite-check result. The prior-art paragraph is deliberately limited to the logical scope of the incoming report’s cited example.
+
+## Result and limitations
+
+The delta finds no fatal gap in the conditional law theorem as stated. It recommends two precision edits: make constants’ dependence on a chosen certificate witness explicit, and avoid presenting the cited general nonpolyconvex quadratic as a demonstrated Hessian of a globally rank-one-convex quartic. These are scope/quantifier clarifications, not failures of the conditional estimate. All new authored work and the copied input are listed separately in MANIFEST.json; the manifest excludes its own hash.

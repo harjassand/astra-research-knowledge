@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — full_reference.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/full_reference.py">Original bytes</a></p><pre>&quot;&quot;&quot;Explicit full-state comparator. Enumeration is intentional and charged here.
+Final positivity-residual checking uses directed binary interval arithmetic;
+source averaging uses an exact integer mass vector and dyadic trial values.
+&quot;&quot;&quot;
+import time
+from fractions import Fraction as F
+import numpy as np
+
+def downward(x):return np.nextafter(x,-np.inf)
+def upward(x):return np.nextafter(x,np.inf)
+
+def build_full(c):
+    dims=[len(p) for p in c.prob];N=int(np.prod(dims));idx=np.arange(N,dtype=np.int64);locidx=[];strides=[]
+    for b,d in enumerate(dims):
+        stride=int(np.prod(dims[b+1:]));strides.append(stride);locidx.append((idx//stride)%d)
+    bits={i:c.bits[b][locidx[b],s] for i,(b,s) in c.loc.items()}
+    p0=np.ones(N);mass=np.ones(N,dtype=object)
+    for b in range(c.B):
+        p0*=np.array(c.prob[b],float)[locidx[b]];mass*=np.array(c.mass[b],dtype=object)[locidx[b]]
+    w=np.ones(N)
+    for b,s,d,t,g in c.cross:
+        eq=c.bits[b][locidx[b],s]==c.bits[d][locidx[d],t]
+        # Benchmarks have g&gt;1; scaled numerator remains valid for g&lt;1 as well.
+        fac=np.where(eq,g.numerator,g.denominator);mass*=fac.astype(object)
+        w*=np.where(eq,float(g),1.)/float(min(F(1),g))
+    rates=[];rlo=[];rhi=[];flips=[]
+    for i in range(c.model[&#x27;n&#x27;]):
+        enei=sorted(j if i==a else a for a,j in c.model[&#x27;edges&#x27;] if i==a or i==j)
+        context=c.model.get(&#x27;clock_contexts&#x27;,{}).get(i,[])
+        nei=sorted(set(enei)|set(context))
+        code=bits[i].copy()
+        for k,j in enumerate(nei):code|=bits[j]&lt;&lt;(k+1)
+        tab=[]
+        for h in range(1&lt;&lt;(len(nei)+1)):
+            xi=h&amp;1;ratio=c.model[&#x27;fields&#x27;][i]**(1-2*xi)
+            for j in enei:
+                same=xi==((h&gt;&gt;(nei.index(j)+1))&amp;1);t=c.model[&#x27;edges&#x27;][tuple(sorted((i,j)))];ratio*=1/t if same else t
+            cz=sum(((h&gt;&gt;(nei.index(j)+1))&amp;1)&lt;&lt;kk for kk,j in enumerate(context))
+            pref=c.model[&#x27;clock_tables&#x27;][i][cz] if &#x27;clock_tables&#x27; in c.model else c.model[&#x27;nu&#x27;][i]
+            tab.append(pref*ratio/(1+ratio))
+        f=np.array(tab,float);lo=np.array([x if F(float(x))&lt;=a else downward(x) for x,a in zip(f,tab)]);hi=np.array([x if F(float(x))&gt;=a else upward(x) for x,a in zip(f,tab)])
+        rates.append(f[code]);rlo.append(lo[code]);rhi.append(hi[code]);b,s=c.loc[i];flips.append(idx^(strides[b]*(1&lt;&lt;s)))
+    kill=np.asarray(bits[c.model[&#x27;target&#x27;]],float)*float(c.model[&#x27;kappa&#x27;]);rp=np.sqrt(p0)
+    eigsum=np.zeros(dims)
+    for b,ev in enumerate(c.evals):
+        shape=[1]*c.B;shape[b]=len(ev);eigsum+=ev.reshape(shape)
+    from certify import alpha_bound
+    alpha,_=alpha_bound(c)
+    return dict(N=N,dims=dims,idx=idx,rp=rp,w=w,mass=mass,rates=rates,rlo=rlo,rhi=rhi,flips=flips,kill=kill,eigsum=eigsum,alpha=alpha,all_cross_dyadic=all((max(v,1/v).denominator&amp;(max(v,1/v).denominator-1))==0 for *_,v in c.cross))
+
+def apply_raw(d,v):
+    out=d[&#x27;kill&#x27;]*v
+    for rate,flip in zip(d[&#x27;rates&#x27;],d[&#x27;flips&#x27;]):out=out+rate*(v-v[flip])
+    return out
+
+def apply_A(d,v):return d[&#x27;rp&#x27;]*d[&#x27;w&#x27;]*apply_raw(d,v/d[&#x27;rp&#x27;])
+def apply_Cinv(c,d,v):
+    x=v.reshape(d[&#x27;dims&#x27;])
+    for b,U in enumerate(c.evecs):x=np.moveaxis(np.tensordot(U.T,x,axes=(1,b)),0,b)
+    x=x/d[&#x27;eigsum&#x27;]
+    for b,U in enumerate(c.evecs):x=np.moveaxis(np.tensordot(U,x,axes=(1,b)),0,b)
+    return x.ravel()
+
+def certify_full(d,u,bits=18):
+    if np.max(abs(u))*(1&lt;&lt;bits)&gt;=2**62:bits=8
+    integers=np.rint(u*(1&lt;&lt;bits)).astype(np.int64);v=integers.astype(float)/(1&lt;&lt;bits)
+    if v.min()&lt;=0:return {&#x27;valid&#x27;:False,&#x27;reason&#x27;:&#x27;nonpositive trial&#x27;}
+    # kappa=1 in executed full-state comparisons; multiplication by 0 or 1 exact.
+    lo=d[&#x27;kill&#x27;]*v;hi=lo.copy()
+    for ql,qh,flip in zip(d[&#x27;rlo&#x27;],d[&#x27;rhi&#x27;],d[&#x27;flips&#x27;]):
+        diff=v-v[flip];dl=downward(diff);dh=upward(diff)
+        pl=downward(np.where(dl&gt;=0,ql*dl,qh*dl));ph=upward(np.where(dh&gt;=0,qh*dh,ql*dh))
+        lo=downward(lo+pl);hi=upward(hi+ph)
+    # Outward rounding of the subtraction defining the residual distance.
+    delta=max(float(upward(1.-lo).max()),float(upward(hi-1.).max()))
+    candidates=[]
+    num=sum(d[&#x27;mass&#x27;]*integers.astype(object));den=sum(d[&#x27;mass&#x27;])*(1&lt;&lt;bits);mean=F(int(num),int(den))
+    if delta&lt;1:
+        deltaq=F(delta);L=mean/(1+deltaq);U=mean/(1-deltaq);candidates.append((L,U,&#x27;pointwise&#x27;))
+    # Source-weighted energy residual certificate, much sharper than worst-point error.
+    if d[&#x27;all_cross_dyadic&#x27;]:
+        def weighted_bounds(flo,fhi):
+            mf=np.array(d[&#x27;mass&#x27;],float);ml=downward(mf);mh=upward(mf)
+            pl=downward(np.where(flo&gt;=0,ml*flo,mh*flo));ph=upward(np.where(fhi&gt;=0,mh*fhi,ml*fhi))
+            eps=np.finfo(float).eps;gam=len(pl)*eps/(1-len(pl)*eps)
+            # gamma_N bound is conservative for NumPy&#x27;s pairwise sum as well.
+            el=upward(2*gam/(1-gam)*np.sum(abs(pl)));eh=upward(2*gam/(1-gam)*np.sum(abs(ph)))
+            sl=downward(np.sum(pl)-el);sh=upward(np.sum(ph)+eh)
+            M=float(sum(d[&#x27;mass&#x27;]));mL=downward(M);mH=upward(M)
+            return downward(sl/(mH if sl&gt;=0 else mL)),upward(sh/(mL if sh&gt;=0 else mH))
+        llo=downward(v*downward(2.-hi));lhi=upward(v*upward(2.-lo));LL,LH=weighted_bounds(llo,lhi)
+        err=np.maximum(upward(1.-lo),upward(hi-1.));err=np.maximum(err,0.)
+        ru=upward(d[&#x27;w&#x27;]*upward(err*err));_,EH=weighted_bounds(np.zeros_like(ru),ru)
+        af=downward(float(d[&#x27;alpha&#x27;]));UU=upward(LH+upward(EH/af))
+        if LL&gt;0:candidates.append((F(float(LL)),F(float(UU)),&#x27;source-weighted interval residual&#x27;))
+    if not candidates:return {&#x27;valid&#x27;:False,&#x27;delta&#x27;:delta}
+    L=max(x[0] for x in candidates);U=min(x[1] for x in candidates)
+    return {&#x27;valid&#x27;:True,&#x27;lower&#x27;:str(L),&#x27;upper&#x27;:str(U),&#x27;lower_float&#x27;:float(L),&#x27;upper_float&#x27;:float(U),&#x27;ratio_float&#x27;:float(U/L),&#x27;delta&#x27;:delta,&#x27;dyadic_bits&#x27;:bits,&#x27;scope&#x27;:&#x27;full-state directed-rounding residual and exact source average&#x27;,&#x27;certificates&#x27;:[x[2] for x in candidates]}
+
+def run_reference(c,maxiter=30,target_ratio=1.05):
+    start=time.perf_counter();d=build_full(c);setup=time.perf_counter()-start
+    b=d[&#x27;rp&#x27;]*d[&#x27;w&#x27;];x=np.zeros_like(b);r=b.copy();z=apply_Cinv(c,d,r);p=z.copy();rz=r@z;history=[];cert=None
+    for it in range(1,maxiter+1):
+        ap=apply_A(d,p);step=rz/(p@ap);x+=step*p;r=b-apply_A(d,x)
+        if it%2==0:
+            cert=certify_full(d,x/d[&#x27;rp&#x27;]);history.append({&#x27;iteration&#x27;:it,**{k:v for k,v in cert.items() if k in [&#x27;valid&#x27;,&#x27;ratio_float&#x27;,&#x27;delta&#x27;]}})
+            if cert[&#x27;valid&#x27;] and cert[&#x27;ratio_float&#x27;]&lt;=target_ratio:break
+        z=apply_Cinv(c,d,r);newrz=r@z;p=z+(newrz/rz)*p;rz=newrz
+    if cert is None:cert=certify_full(d,x/d[&#x27;rp&#x27;])
+    cert.update(states=d[&#x27;N&#x27;],setup_seconds=setup,total_seconds=time.perf_counter()-start,iterations=it,history=history,method=&#x27;full-state separably preconditioned conjugate gradient&#x27;,allocated_float_rate_arrays=3*c.model[&#x27;n&#x27;])
+    return cert
+</pre></body></html>

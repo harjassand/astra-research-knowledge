@@ -1,0 +1,13 @@
+# Work and failure ledger
+
+The sequence was: read the inherited report; examine conditional/pinned and direct-response alternatives; derive and implement the local reference comparison; run disordered modular fixtures and exact source certificates; compare to full-state preconditioned CG; repair Richardson failures with standard TT-PCG; examine finite-response identifiability; add separate kinetic-context acquisition; remove supplied kinetic supports through degree-two recovery; extend context compilation beyond energy bonds; replace balancing perturbations by original-law reverse relaxation; run matched reverse-acquired comparisons; propagate measurement errors and account for a conservative physical sampling design; replay witnesses and write the report.
+
+The `primary`, `coupling`, `rank`, `field_clock`, `prepared`, `context`, `pcg` and `strong_repair` outputs retain unsuccessful and successful settings. A failed rank/iteration setting is not a mathematical lower bound. Reverse acquisition supersedes the earlier energy-balancing interface, which required stronger invariance under bias. Earlier data remain for provenance, not as separate independent molecules.
+
+A raw all-at-once base audit exceeded tool execution limits at 30 and 45 seconds. Its small-system and transcript stages completed separately; final reverse tests also completed separately. Combined results describe staged completion, not a falsely reported all-at-once pass. The blank timeout log is retained.
+
+Algorithm timings include the indicated single-run acquisition, compilation, proposal and certificate, not research/development, literature reading, hyperparameter selection, previous failed attempts, apparatus setup or physical energy. Rank and iteration choices were informed by pilots. No total research-compute or laboratory advantage is claimed. Full-state PCG wins the main matched runtime comparison.
+
+Only selected completed witnesses were independently replayed within the same session. No external reviewer or proof assistant was used. Exact assertion counts include directed-edge checks, local function values and entries of identities; they are not counts of independent theorems.
+
+Some generic inherited tensor-source files were inspected during development. They are not active dependencies and are excluded from this checkpoint. The operative implementation is in the included `tt_ops.py`, `solve.py`, `model.py`, acquisition modules and certificate modules.

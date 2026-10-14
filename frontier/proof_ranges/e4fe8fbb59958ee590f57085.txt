@@ -1,0 +1,93 @@
+EXACT INDEXED SOURCE RANGE | {"path": "updates/FK/synthesis/modular_response/REPORT.md", "sha256": "99aca2d05726b545af144d10191eaceb76dcd700cbbac0e7a034eab72c80ad7a", "lines": [145, 233], "range_scope": "## 4. Legal acquisition from explicit \\(H,A,\\beta\\)", "read_path": "updates/FK/synthesis/modular_response/REPORT.md", "source_id": "src-FK-c03e8faf6823a4de", "hash_kind": "original_utf8_bytes"}
+range_sha256=04f9eaab90130b5f0aeff6777e7ac15f4fceaad617db8c2091c5f1d8bc90e9ed; line numbers refer to the source, not this wrapper.
+Scope: located text only; imported premises, completeness, correctness and priority remain unverified.
+--- BEGIN SOURCE BYTES ---
+## 4. Legal acquisition from explicit \(H,A,\beta\)
+
+No transition measure is an input. A deterministic finite-matrix implementation is:
+
+1. Read the supplied \(D\times D\) entries of \(H\) and \(A\), verify Hermiticity to the declared input precision, and record \(\beta,\eta\) and coefficient bit lengths.
+2. Compute a certified eigendecomposition \(H=U\operatorname{diag}(E_n)U^\dagger\). Shift by \(E_{\min}\) when forming thermal weights: \(q_n=e^{-\beta(E_n-E_{\min})}\in(0,1]\), \(Z_s=\sum_nq_n\), \(p_n=q_n/Z_s\). This evaluates the partition function and thermal probabilities; neither is supplied as an oracle.
+3. Form \(A_E=U^\dagger A U\), and sum the \(D(D-1)/2\) unordered-pair terms. Exact degeneracies are grouped or enclosed as spectral projectors; the answer is basis invariant within a degenerate block.
+4. Use outward interval arithmetic until the final interval has the requested width. The susceptibility kernel is bounded by \(1/\eta\), and its derivative on \([0,\infty)\) is bounded by \(2/\eta^2\), so low-frequency precision is explicitly controlled.
+
+For a dense matrix input, the straightforward cost is \(O(D^3)\) arithmetic for the eigendecomposition, \(O(D^3)\) for transforming \(A\), \(O(D^2)\) pair evaluations, and \(O(D^2)\) memory. The formula itself does not give a better scaling. If the physical input is an \(n\)-qubit local-term description with \(D=2^n\), this dense route takes \(O(8^n)\) arithmetic and \(O(4^n)\) memory, up to precision factors. Constructing or validating the physical Hamiltonian and observable is additional acquisition cost if they were not supplied.
+
+An alternative implementation solves
+
+\[
+ (\mathcal L^2+\eta^2I)Y=\mathcal L(A)
+\]
+
+on the \(D^2\)-dimensional operator space. If \(W=E_{\max}-E_{\min}\), its condition number is exactly bounded by
+
+\[
+ \kappa=1+(W/\eta)^2.
+\]
+
+Conjugate gradients therefore needs \(O(\sqrt\kappa\log(1/\tau))\) matrix-vector iterations for relative residual \(\tau\), under the standard Hermitian positive-definite arithmetic model. One matrix-vector multiply by \(\mathcal L^2+\eta^2I\) uses two commutator applications. For dense \(H\), each commutator on a \(D\times D\) matrix costs \(O(D^3)\), yielding \(O(D^3(1+W/\eta)\log(1/\tau))\) arithmetic plus the thermal trace. For \(\operatorname{nnz}(H)=S\), a commutator costs \(O(SD)\). The Gibbs density or exact thermal sampling still has to be acquired separately; the resolvent does not compute \(Z\) for free.
+
+If an approximate solve has Frobenius residual \(\|r\|_F\le\delta_L\), then \(\|Y-\widetilde Y\|_F\le\delta_L/\eta^2\) and
+
+\[
+ |\chi-\widetilde\chi|\le 2\|\rho A\|_F\|Y-\widetilde Y\|_F
+ \le \frac{2\|A\|\,\delta_L}{\eta^2}.
+\]
+
+Thus an absolute response allocation \(\epsilon_L\) requires \(\delta_L\le\epsilon_L\eta^2/(2\|A\|)\). The \(\eta^{-2}\) precision penalty is real and not hidden by the positive norm identity.
+
+For explicit input-precision budgets, let \(a=\|A\|\), \(W=E_{\max}-E_{\min}\), \(\delta_p=\|\tilde p-p\|_1\), \(\delta_\Delta\) be the largest certified gap error, and \(\delta_A=\|\tilde A_E-A_E\|_F\). For the observable perturbation, write \(\widetilde A_E=A_E+E\). Each pair coefficient is at most \(p_n/\eta\) for \(E_m>E_n\); weighted Cauchy–Schwarz bounds the cross term by \(2a\|E\|_F/\eta\), and the quadratic error by \(\|E\|_F^2/\eta\). This avoids assuming entrywise error or a gap between eigenvalues. Direct pairwise bounds give
+
+\[
+ \epsilon_p\le a^2\delta_p/\eta,\qquad
+ \epsilon_\Delta\le 2a^2\delta_\Delta/\eta^2,\qquad
+ \epsilon_A\le(2a\delta_A+\delta_A^2)/\eta.
+\]
+
+For uncertainty \(|\tilde\beta-\beta|\le\delta_\beta\) at fixed \(H,A\), \(\|dp/d\beta\|_1\le W\), hence \(\epsilon_\beta\le a^2W\delta_\beta/\eta\). These are separate budget terms; allocate their sum, plus solver and interval-arithmetic errors, below the target \(\epsilon\). An eigenvector-based numerical route must also certify the transformed observable or group degenerate spectral projectors; a small eigenvalue residual alone does not do that. No minimum-gap assumption is needed for the mathematical identity, but an implementation must pay the conditioning of its chosen eigensolver or enclose whole clusters.
+
+For an operational precision budget, assign \(\epsilon=\epsilon_p+\epsilon_\Delta+\epsilon_A+\epsilon_\beta+\epsilon_L+\epsilon_{\rm round}\). Sufficient tolerances are
+
+\[
+ \delta_p\le\frac{\eta\epsilon_p}{a^2},\quad
+ \delta_\Delta\le\frac{\eta^2\epsilon_\Delta}{2a^2},\quad
+ \delta_\beta\le\frac{\eta\epsilon_\beta}{a^2W},\quad
+ \delta_A\le\min\!\left(\frac{\eta\epsilon_A}{4a},\sqrt{\frac{\eta\epsilon_A}{2}}\right),\quad
+ \delta_L\le\frac{\eta^2\epsilon_L}{2a}.
+\]
+
+Each requested dyadic tolerance needs at least \(\lceil\log_2(1/\delta)\rceil\) fractional bits, plus outward-rounding guard bits. These are explicit output-precision requirements; runtime in bit operations additionally depends on the input encoding, certified eigensolver/cluster routine, and arbitrary-precision arithmetic. If \(a=0\) or \(W=0\), the target is identically zero and these divisions are unnecessary.
+
+### A legal sampling route, with the missing operations charged
+
+After an exact energy basis is obtained, sample \(n\sim p\), let \(s_n=\sum_m|A_{mn}|^2\), and sample \(m\) with probability \(|A_{mn}|^2/s_n\); if \(s_n=0\), assign response sample zero for that \(n\). The random value
+
+\[
+ Y_{nm}=2s_n\frac{E_m-E_n}{(E_m-E_n)^2+\eta^2}
+\]
+
+has expectation \(\chi\) and lies in \([-a^2/\eta,a^2/\eta]\). Thus exact independent samples need
+
+\[
+ N\ge \frac{2a^4}{\eta^2\epsilon^2}\log\frac{2}{\delta}
+\]
+
+for an additive-\(\epsilon\) estimate with failure probability at most \(\delta\). If energy differences are estimated to error \(\delta_\Delta\), the kernel derivative bound \(\sup_{x\ge0}|(2x/(x^2+\eta^2))'|\le2/\eta^2\) gives per-sample bias at most \(2a^2\delta_\Delta/\eta^2\). Choose \(\delta_\Delta\le\epsilon\eta^2/(4a^2)\) if half the error budget is assigned to that bias, and use \(N\ge8a^4(\eta^2\epsilon^2)^{-1}\log(2/\delta)\) for the remaining half-error sampling bound.
+
+This operation is legal from explicit finite \(H,A,\beta\) once the eigenbasis, Gibbs draw, \(A\)-conditioned transition draw, and energy resolution are actually implemented. Its per-sample cost is
+
+\[
+ C_{\rm Gibbs}(H,\beta,\delta_{\rm prep})
+ +C_A(\delta_{\rm op})+C_H(\delta_\Delta),
+\]
+
+plus reset and classical bookkeeping. Diagonalizing \(H\) makes the draw explicit but already costs \(O(D^3)\); state and transition preparation are not free. For a block-encoded quantum implementation, a concrete Gibbs-purification route applies \(e^{-\beta(H-E_L)/2}\) to one half of \(D^{-1/2}\sum_j|j,j\rangle\), with a certified lower bound \(E_L\le E_{\min}\). Its success probability is
+
+\[
+ p_{\rm prep}=\frac{e^{\beta E_L}Z}{D}.
+\]
+
+Amplitude amplification costs \(O(p_{\rm prep}^{-1/2})\) filter attempts, in addition to the controlled Hamiltonian simulation/filter-synthesis and reflection costs. With \(E_L=E_{\min}\), \(p_{\rm prep}=Z/(D e^{-\beta E_{\min}})\), which can be exponentially small: for a \(D=2^n\) Hamiltonian with one ground state and a large common excited-state gap at low temperature, \(Z e^{\beta E_{\min}}\approx1\) and \(p_{\rm prep}\approx2^{-n}\). A looser lower bound worsens it. A physical sampler instead pays equilibration and mixing. Neither branch has a universal efficient bound from the explicit-matrix promise alone.
+
+For a scalar decision against threshold \(q\), form the confidence interval for \(\chi\): decide above or below only if the interval excludes \(q\); otherwise return unresolved. The representation gives no promise of a margin from \(q\), so decision complexity can be arbitrarily large near a boundary.
+

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — degree3_countermodel.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/synthesis/kinetics/analysis/degree3_countermodel.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact degree-three hidden-clock countermodel for degree-two acquisition.&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from fractions import Fraction as F
+from pathlib import Path
+from itertools import combinations
+
+
+def solve_exact(A, b):
+    n=len(b)
+    aug=[list(map(F,row))+[F(rhs)] for row,rhs in zip(A,b)]
+    for j in range(n):
+        pivot=next((i for i in range(j,n) if aug[i][j]),None)
+        if pivot is None: raise ArithmeticError(&#x27;singular killed generator&#x27;)
+        aug[j],aug[pivot]=aug[pivot],aug[j]
+        p=aug[j][j]
+        aug[j]=[v/p for v in aug[j]]
+        for i in range(n):
+            if i==j or not aug[i][j]: continue
+            q=aug[i][j]
+            aug[i]=[x-q*y for x,y in zip(aug[i],aug[j])]
+    return [aug[i][-1] for i in range(n)]
+
+
+def mean(eps):
+    N=16; K=[[F(0) for _ in range(N)] for _ in range(N)]
+    for x in range(N):
+        for i in range(4):
+            if i==0:
+                context=[j for j in range(4) if j!=i]
+                rate=eps/F(2) if all((x&gt;&gt;j)&amp;1 for j in context) else F(1,2)
+            else: rate=F(1,2)
+            y=x^(1&lt;&lt;i)
+            K[x][x]+=rate
+            K[x][y]-=rate
+        K[x][x]+=F((x&gt;&gt;0)&amp;1)
+    u=solve_exact(K,[F(1)]*N)
+    residual=[sum(K[x][y]*u[y] for y in range(N)) for x in range(N)]
+    if any(value != 1 for value in residual): raise AssertionError(&#x27;exact killed-system residual failed&#x27;)
+    if min(u) &lt;= 0: raise AssertionError(&#x27;mean-response witness not positive&#x27;)
+    return sum(u,F(0))/N,u
+
+
+def main():
+    eps=F(1,100)
+    base,base_u=mean(F(1));slow,slow_u=mean(eps)
+    records=[]
+    for i in range(4):
+        contexts=[sum(1&lt;&lt;j for j in S) for S in [()] + [(j,) for j in range(4) if j!=i] + list(combinations([j for j in range(4) if j!=i],2))]
+        old=[F(1,2)]*len(contexts)
+        new=[(eps/F(2) if i==0 and all((x&gt;&gt;j)&amp;1 for j in [1,2,3]) else F(1,2)) for x in contexts]
+        records.append({&#x27;coordinate&#x27;:i,&#x27;queries&#x27;:len(contexts),&#x27;exact_clock_query_vectors_equal&#x27;:old==new})
+    out={&#x27;n&#x27;:4,&#x27;energy_weights&#x27;:&#x27;W(x)=1 for all states in both laws&#x27;,&#x27;target&#x27;:&#x27;k(x)=x_0, kappa=1&#x27;,&#x27;attempt_law_base&#x27;:&#x27;a_i(y)=1 for every i,y&#x27;,&#x27;attempt_law_hidden&#x27;:&#x27;a_0(y)=1-(99/100)y_1 y_2 y_3; a_i(y)=1 for i&gt;0&#x27;,&#x27;hidden_clock_positive&#x27;:eps&gt;0,&#x27;max_degree_of_hidden_law&#x27;:3,&#x27;degree_at_most_two_query_count&#x27;:4*7,&#x27;energy_queries&#x27;:1+4+6,&#x27;query_vectors_identical_for_every_coordinate&#x27;:all(r[&#x27;exact_clock_query_vectors_equal&#x27;] for r in records),&#x27;per_coordinate_query_checks&#x27;:records,&#x27;base_uniform_source_mean_exact&#x27;:str(base),&#x27;hidden_uniform_source_mean_exact&#x27;:str(slow),&#x27;lifetime_difference_exact&#x27;:str(slow-base),&#x27;lifetime_ratio_exact&#x27;:str(slow/base),&#x27;lifetime_ratio_float&#x27;:float(slow/base),&#x27;base_positive_response_exact&#x27;:all(v&gt;0 for v in base_u),&#x27;hidden_positive_response_exact&#x27;:all(v&gt;0 for v in slow_u),&#x27;both_exact_Ku_eq_one&#x27;:True,&#x27;base_response_witness&#x27;:list(map(str,base_u)),&#x27;hidden_response_witness&#x27;:list(map(str,slow_u)),&#x27;exact_generator_solve&#x27;:&#x27;16x16 Fraction Gaussian elimination with exact Ku=1 and positivity checks&#x27;,&#x27;scope&#x27;:&#x27;finite exact countermodel: degree-three mobility is invisible to degree-two reverse-clock support acquisition; no molecular or general capability claim&#x27;}
+    outpath=Path(__file__).with_name(&#x27;degree3_countermodel_results.json&#x27;)
+    outpath.write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:out[k] for k in [&#x27;query_vectors_identical_for_every_coordinate&#x27;,&#x27;base_uniform_source_mean_exact&#x27;,&#x27;hidden_uniform_source_mean_exact&#x27;,&#x27;lifetime_difference_exact&#x27;,&#x27;lifetime_ratio_exact&#x27;,&#x27;lifetime_ratio_float&#x27;]},indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre></body></html>

@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FK evidence — checks.py</title><body><p>FK source/internal evidence, externally unreviewed. <a href="../../updates/FK/package/thermal/checks.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproducible falsification checks for a finite-anchor thermal-response sampler.
+
+These are deterministic floating-point diagnostics, not a general-purpose
+many-body solver, a replay of an author&#x27;s implementation, or interval proofs.
+Run with: OPENBLAS_NUM_THREADS=1 python checks.py --out results
+Dependencies: Python &gt;= 3.10, NumPy, SciPy.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import csv
+import json
+import platform
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import scipy
+from scipy.linalg import eigh, solve_continuous_lyapunov
+
+BETAS = (1.0, 0.5, 0.25)
+
+
+def thermal_weights(energies: np.ndarray, beta: float | None) -&gt; np.ndarray:
+    if beta is None:
+        p = np.zeros_like(energies)
+        p[0] = 1.0
+        return p
+    if beta &lt;= 0:
+        raise ValueError(&quot;beta must be positive&quot;)
+    w = np.exp(-beta * (energies - energies[0]))
+    return w / w.sum()
+
+
+def susceptibility(energies: np.ndarray, observable: np.ndarray,
+                   beta: float | None, eta: float = 0.0,
+                   time_step: float | None = None) -&gt; float:
+    &quot;&quot;&quot;Off-diagonal response; q has zero diagonal by parity in these tests.
+
+    With time_step supplied, return the discrete Euclidean zero-Matsubara
+    sum; beta must be an integer multiple of time_step. Otherwise return
+    the continuum spectral susceptibility at the supplied eta &gt;= 0.
+    &quot;&quot;&quot;
+    if eta &lt; 0:
+        raise ValueError(&quot;eta must be nonnegative&quot;)
+    p = thermal_weights(energies, beta)
+    i, j = np.triu_indices(len(energies), 1)
+    gap = energies[j] - energies[i]
+    if np.any(gap &lt;= 0):
+        raise ValueError(&quot;This check assumes a nondegenerate ordered spectrum&quot;)
+    weights = (p[i] - p[j]) * np.abs(observable[i, j]) ** 2
+    if time_step is not None:
+        if eta != 0 or time_step &lt;= 0:
+            raise ValueError(&quot;Discrete-time kernel implemented only for eta=0&quot;)
+        if beta is not None and not np.isclose(beta / time_step,
+                                              round(beta / time_step)):
+            raise ValueError(&quot;beta must be a multiple of time_step&quot;)
+        kernel = time_step / np.tanh(0.5 * time_step * gap)
+    else:
+        kernel = 2 * gap / (gap * gap + eta * eta)
+    return float(np.dot(weights, kernel))
+
+
+def harmonic_basis(dimension: int) -&gt; tuple[np.ndarray, np.ndarray]:
+    &quot;&quot;&quot;Galerkin H=p^2/2+q^2/2+q^4; pad q before taking its fourth power.
+
+    The padding makes the retained q^4 matrix the actual infinite-basis
+    matrix restricted to the first dimension states, rather than q_d^4.
+    &quot;&quot;&quot;
+    if dimension &lt; 8:
+        raise ValueError(&quot;dimension must be at least 8&quot;)
+    padded = dimension + 4
+    lowering = np.diag(np.sqrt(np.arange(1, padded)), 1)
+    qfull = (lowering + lowering.T) / np.sqrt(2.0)
+    qfour = np.linalg.matrix_power(qfull, 4)[:dimension, :dimension]
+    hamiltonian = np.diag(np.arange(dimension) + 0.5) + qfour
+    energies, vectors = eigh(hamiltonian)
+    q = qfull[:dimension, :dimension]
+    return energies, vectors.T @ q @ vectors
+
+
+def oscillator_checks() -&gt; dict[str, Any]:
+    rows = []
+    all_values: dict[int, np.ndarray] = {}
+    for dimension in (64, 96, 144, 192):
+        start = time.perf_counter()
+        energies, q = harmonic_basis(dimension)
+        values = []
+        for beta in (None, *BETAS):
+            value = susceptibility(energies, q, beta)
+            rows.append({&quot;dimension&quot;: dimension,
+                         &quot;beta&quot;: &quot;infinity&quot; if beta is None else beta,
+                         &quot;chi_zero&quot;: value, &quot;ground_energy&quot;: float(energies[0]),
+                         &quot;lowest_gap&quot;: float(energies[1] - energies[0])})
+            values.append(value)
+        all_values[dimension] = np.asarray(values)
+        rows[-1][&quot;entire_dimension_seconds&quot;] = time.perf_counter() - start
+    err = float(np.max(np.abs(all_values[144] - all_values[192])))
+    assert err &lt; 1e-9, f&quot;Basis convergence failed: {err}&quot;
+    energies, q = harmonic_basis(192)
+    vacuum = susceptibility(energies, q, None)
+    summary = []
+    for beta in BETAS:
+        val = susceptibility(energies, q, beta)
+        summary.append({&quot;beta&quot;: beta, &quot;thermal_chi_zero&quot;: val,
+                        &quot;vacuum_chi_zero&quot;: vacuum,
+                        &quot;relative_vacuum_bias&quot;: (vacuum - val) / val})
+    curve = []
+    for eta in np.linspace(0, 4, 81):
+        row = {&quot;eta&quot;: float(eta), &quot;vacuum&quot;: susceptibility(energies, q, None, eta)}
+        for beta in BETAS:
+            row[f&quot;beta_{beta}&quot;] = susceptibility(energies, q, beta, eta)
+        curve.append(row)
+    # The f-sum equals 1 for an untruncated canonical oscillator.
+    fsum = []
+    for beta in (None, *BETAS):
+        p = thermal_weights(energies, beta)
+        i, j = np.triu_indices(len(energies), 1)
+        mass = float(np.sum(2 * (p[i] - p[j]) * (energies[j] - energies[i])
+                            * q[i, j] ** 2))
+        fsum.append({&quot;beta&quot;: &quot;infinity&quot; if beta is None else beta, &quot;M1&quot;: mass})
+        assert abs(mass - 1) &lt; 1e-7
+    return {&quot;cutoff_rows&quot;: rows, &quot;summary&quot;: summary,
+            &quot;max_144_vs_192_difference&quot;: err, &quot;curve&quot;: curve, &quot;f_sum&quot;: fsum}
+
+
+def transfer_matrix(grid_points: int, time_step: float,
+                    half_width: float = 6.0, levels: int = 70
+                    ) -&gt; tuple[np.ndarray, np.ndarray]:
+    &quot;&quot;&quot;Nystrom discretization of the symmetric primitive path-integral kernel.
+
+    This is an independent representation, at fixed nonzero imaginary-time
+    lattice spacing. Its output should NOT equal the continuum result exactly.
+    Small positive eigenvalues are truncated; convergence is numerical only.
+    &quot;&quot;&quot;
+    q = np.linspace(-half_width, half_width, grid_points)
+    dq = q[1] - q[0]
+    potential = q * q / 2 + q ** 4
+    kernel = dq / np.sqrt(2 * np.pi * time_step) * np.exp(
+        -(q[:, None] - q[None, :]) ** 2 / (2 * time_step)
+        - time_step * (potential[:, None] + potential[None, :]) / 2)
+    vals, vectors = eigh(kernel, subset_by_index=[grid_points - levels, grid_points - 1])
+    vals, vectors = vals[::-1], vectors[:, ::-1]
+    keep = vals &gt; 1e-14 * vals[0]
+    vals, vectors = vals[keep], vectors[:, keep]
+    energies = -np.log(vals / vals[0]) / time_step
+    return energies, vectors.T @ (q[:, None] * vectors)
+
+
+def transfer_checks() -&gt; dict[str, Any]:
+    rows = []
+    compare = []
+    for points in (401, 601, 801):
+        energies, q = transfer_matrix(points, 1 / 16)
+        values = []
+        for beta in (None, *BETAS):
+            val = susceptibility(energies, q, beta, time_step=1 / 16)
+            values.append(val)
+            rows.append({&quot;grid_points&quot;: points, &quot;time_step&quot;: 1 / 16,
+                         &quot;beta&quot;: &quot;infinity&quot; if beta is None else beta,
+                         &quot;chi_zero&quot;: val, &quot;lowest_gap&quot;: float(energies[1])})
+        compare.append(values)
+    error = float(np.max(np.abs(np.asarray(compare[-1]) - compare[-2])))
+    assert error &lt; 1e-9
+    # Approach the continuum independently by reducing the time spacing.
+    continuum = []
+    reference_e, reference_q = harmonic_basis(192)
+    for a in (1 / 16, 1 / 32, 1 / 64, 1 / 128):
+        e, q = transfer_matrix(801, a)
+        val = susceptibility(e, q, 1.0, time_step=a)
+        reference = susceptibility(reference_e, reference_q, 1.0)
+        continuum.append({&quot;time_step&quot;: a, &quot;chi_beta1&quot;: val,
+                          &quot;difference_from_continuum_basis&quot;: val - reference})
+    assert abs(continuum[-1][&quot;difference_from_continuum_basis&quot;]) &lt; 1e-5
+    return {&quot;grid_rows&quot;: rows, &quot;max_601_vs_801_difference&quot;: error,
+            &quot;time_spacing_rows&quot;: continuum}
+
+
+def lattice_variances(side: int, beta: float, mass: float = 1.0,
+                      spatial_coupling: float = 1.0) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Exact free-theory variances that determine the first quartic derivative.
+
+    This evaluates sums for an interacting-in-space 3D oscillator lattice.
+    It is NOT a finite-coupling quantum many-body simulation.
+    &quot;&quot;&quot;
+    s = np.sin(np.pi * np.arange(side) / side) ** 2
+    omega = np.sqrt(mass * mass + 4 * spatial_coupling *
+                    (s[:, None, None] + s[None, :, None] + s[None, None, :]))
+    zero = float(np.mean(1 / (2 * omega)))
+    thermal = float(np.mean(1 / (2 * omega * np.tanh(beta * omega / 2))))
+    return zero, thermal
+
+
+def many_site_checks() -&gt; list[dict[str, Any]]:
+    rows = []
+    for side in (8, 16, 32, 64):
+        for beta in (1.0, 0.5, 0.25):
+            start = time.perf_counter()
+            vacuum, thermal = lattice_variances(side, beta)
+            rows.append({&quot;side&quot;: side, &quot;spatial_sites&quot;: side ** 3,
+                         &quot;beta&quot;: beta, &quot;mass&quot;: 1, &quot;coupling&quot;: 1,
+                         &quot;vacuum_variance&quot;: vacuum, &quot;thermal_variance&quot;: thermal,
+                         &quot;fractional_missing_first_order_coefficient&quot;:
+                             (thermal - vacuum) / thermal,
+                         &quot;seconds&quot;: time.perf_counter() - start})
+            assert thermal &gt; vacuum
+    return rows
+
+
+def cycle_laplacian(n: int) -&gt; np.ndarray:
+    eye = np.eye(n)
+    return 2 * eye - np.roll(eye, 1, axis=0) - np.roll(eye, -1, axis=0)
+
+
+def finite_matrix_checks() -&gt; dict[str, Any]:
+    &quot;&quot;&quot;Verify the exact first-order Lyapunov identity and Green-function sum.&quot;&quot;&quot;
+    nt, nx = 12, 5
+    mass_squared, time_coupling, space_coupling = 1.21, 1.3, 0.7
+    K = (mass_squared * np.eye(nt * nx)
+         + time_coupling * np.kron(cycle_laplacian(nt), np.eye(nx))
+         + space_coupling * np.kron(np.eye(nt), cycle_laplacian(nx)))
+    covariance = np.linalg.inv(K)
+    c = float(covariance[0, 0])
+    anchors = (0, 3)
+    p = np.zeros(nt * nx)
+    for anchor in anchors:
+        p[anchor * nx: (anchor + 1) * nx] = 1
+    unanchored = np.diag(1 - p)
+    rhs = -(c / 2) * (unanchored @ covariance + covariance @ unanchored)
+    derivative = solve_continuous_lyapunov(K, rhs)
+    residual = float(np.max(np.abs(K @ derivative + derivative @ K - rhs)))
+    mode_errors = []
+    anchor_fraction = len(anchors) / nt
+    for r in range(nt):
+        for k in range(nx):
+            z = np.exp(2j * np.pi * (r * np.arange(nt)[:, None] / nt
+                                      + k * np.arange(nx)[None, :] / nx))
+            z = z.ravel() / np.sqrt(nt * nx)
+            eigenvalue = (mass_squared + 4 * time_coupling * np.sin(np.pi * r / nt) ** 2
+                          + 4 * space_coupling * np.sin(np.pi * k / nx) ** 2)
+            expected = -(1 - anchor_fraction) * c / (2 * eigenvalue ** 2)
+            actual = np.vdot(z, derivative @ z)
+            mode_errors.append(abs(actual - expected))
+    greens_errors = []
+    target_x = 2
+    rows = np.arange(nt) * nx + target_x
+    for anchor in anchors:
+        cols = anchor * nx + np.arange(nx)
+        greens_errors.append(abs(covariance[np.ix_(rows, cols)].sum()
+                                 - 1 / mass_squared))
+    result = {&quot;time_sites&quot;: nt, &quot;space_sites&quot;: nx, &quot;anchors&quot;: list(anchors),
+              &quot;lyapunov_residual_max&quot;: residual,
+              &quot;fourier_derivative_error_max&quot;: float(max(mode_errors)),
+              &quot;greens_identity_error_max&quot;: float(max(greens_errors)),
+              &quot;inverse_K_minimum_entry&quot;: float(covariance.min())}
+    assert residual &lt; 1e-11 and max(mode_errors) &lt; 1e-11 and max(greens_errors) &lt; 1e-11
+    assert covariance.min() &gt;= -1e-12
+    return result
+
+
+def independent_noise_check() -&gt; dict[str, Any]:
+    &quot;&quot;&quot;A separate covariance obstruction for a proposed thermal-field repair.
+
+    The finite-temperature Euclidean covariance on its physical strip is
+    NOT the response covariance used elsewhere; keep this distinction.
+    &quot;&quot;&quot;
+    beta, omega, separation = 1.0, 1.0, 0.5
+    bose = 1 / np.expm1(beta * omega)
+    d0 = bose / omega
+    dt = d0 * np.cosh(omega * separation)
+    eigenvalues = np.linalg.eigvalsh([[d0, dt], [dt, d0]])
+    assert eigenvalues[0] &lt; 0
+    return {&quot;beta&quot;: beta, &quot;omega&quot;: omega, &quot;separation&quot;: separation,
+            &quot;covariance_difference_eigenvalues&quot;: eigenvalues.tolist(),
+            &quot;interpretation&quot;: &quot;No independent stationary positive additive thermal-field correction&quot;}
+
+
+def perturbative_oscillator_checks() -&gt; list[dict[str, Any]]:
+    &quot;&quot;&quot;Independent finite-difference check of the right derivative at lambda=0.&quot;&quot;&quot;
+    dimension = 144
+    lowering = np.diag(np.sqrt(np.arange(1, dimension + 4)), 1)
+    qfull = (lowering + lowering.T) / np.sqrt(2.0)
+    q = qfull[:dimension, :dimension]
+    qfour = np.linalg.matrix_power(qfull, 4)[:dimension, :dimension]
+    hzero = np.diag(np.arange(dimension) + 0.5)
+    spectra = []
+    for coupling in (1e-4, 5e-5):
+        e, u = eigh(hzero + coupling * qfour / 24)
+        spectra.append((coupling, e, u.T @ q @ u))
+    rows = []
+    for beta in BETAS:
+        for eta in (0.0, 0.7, 2.0):
+            predicted = -(0.5 / np.tanh(beta / 2)) / (2 * (1 + eta * eta) ** 2)
+            differences = [(susceptibility(e, q_e, beta, eta)
+                            - 1 / (1 + eta * eta)) / coupling
+                           for coupling, e, q_e in spectra]
+            extrapolated = 2 * differences[1] - differences[0]
+            error = abs(extrapolated - predicted)
+            assert error &lt; 1e-6
+            rows.append({&quot;beta&quot;: beta, &quot;eta&quot;: eta,
+                         &quot;predicted_right_derivative&quot;: predicted,
+                         &quot;extrapolated_finite_difference&quot;: extrapolated,
+                         &quot;absolute_difference&quot;: error})
+    return rows
+
+
+def write_csv(path: Path, rows: list[dict[str, Any]]) -&gt; None:
+    if not rows:
+        return
+    fields = list(dict.fromkeys(key for row in rows for key in row))
+    with path.open(&quot;w&quot;, newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as f:
+        w = csv.DictWriter(f, fieldnames=fields)
+        w.writeheader()
+        w.writerows(rows)
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--out&quot;, type=Path, default=Path(__file__).parent / &quot;results&quot;)
+    args = parser.parse_args()
+    args.out.mkdir(parents=True, exist_ok=True)
+    start = time.perf_counter()
+    results = {
+        &quot;status&quot;: &quot;Deterministic floating-point checks only; no speedup or novelty certification&quot;,
+        &quot;environment&quot;: {&quot;python&quot;: sys.version, &quot;numpy&quot;: np.__version__,
+                        &quot;scipy&quot;: scipy.__version__, &quot;platform&quot;: platform.platform()},
+        &quot;oscillator&quot;: oscillator_checks(),
+        &quot;transfer_matrix&quot;: transfer_checks(),
+        &quot;coupled_lattice_first_order&quot;: many_site_checks(),
+        &quot;finite_matrix_identities&quot;: finite_matrix_checks(),
+        &quot;oscillator_first_order&quot;: perturbative_oscillator_checks(),
+        &quot;independent_additive_noise&quot;: independent_noise_check(),
+    }
+    results[&quot;entire_run_seconds&quot;] = time.perf_counter() - start
+    (args.out / &quot;results.json&quot;).write_text(json.dumps(results, indent=2), encoding=&quot;utf-8&quot;)
+    write_csv(args.out / &quot;oscillator.csv&quot;, results[&quot;oscillator&quot;][&quot;summary&quot;])
+    write_csv(args.out / &quot;oscillator_cutoffs.csv&quot;, results[&quot;oscillator&quot;][&quot;cutoff_rows&quot;])
+    write_csv(args.out / &quot;response_curves.csv&quot;, results[&quot;oscillator&quot;][&quot;curve&quot;])
+    write_csv(args.out / &quot;coupled_lattice.csv&quot;, results[&quot;coupled_lattice_first_order&quot;])
+    write_csv(args.out / &quot;transfer_time_spacings.csv&quot;, results[&quot;transfer_matrix&quot;][&quot;time_spacing_rows&quot;])
+    print(json.dumps({&quot;oscillator&quot;: results[&quot;oscillator&quot;][&quot;summary&quot;],
+                      &quot;finite_matrix_checks&quot;: results[&quot;finite_matrix_identities&quot;],
+                      &quot;seconds&quot;: results[&quot;entire_run_seconds&quot;],
+                      &quot;output_directory&quot;: str(args.out.resolve())}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></body></html>

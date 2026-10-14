@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FI evidence — experiments.py</title><body><p>FI scoped source/internal evidence; externally unreviewed. <a href="../../updates/FI/package/kinetics/experiments.py">Original bytes</a></p><pre>import os,sys,time,json
+from pathlib import Path
+import numpy as np
+from fractions import Fraction as F
+from model import fixture,acquire,discover_partition,Compiler
+from solve import solve
+from certify import certify,cross_certificate,product_term
+from tt_ops import product as ttproduct
+ROOT=Path(__file__).parent
+
+def run(name,**kw):
+    rank=kw.pop(&#x27;rank&#x27;,8);its=kw.pop(&#x27;iterations&#x27;,7);maxbits=kw.pop(&#x27;max_local_bits&#x27;,6)
+    start=time.perf_counter();truth=fixture(**kw);learn,trans=acquire(truth);groups,part=discover_partition(learn,maxbits);c=Compiler(learn,groups);comp=time.perf_counter()-start
+    print(&#x27;START&#x27;,name,truth[&#x27;metadata&#x27;],&#x27;groupsizes&#x27;,list(map(len,groups)),&#x27;R&#x27;,str(c.R),flush=True)
+    v,log=solve(c,rank=rank,iterations=its);proptime=time.perf_counter()-start-comp
+    cert=certify(c,v);cert.update(name=name,metadata=truth[&#x27;metadata&#x27;],n=learn[&#x27;n&#x27;],full_state_count=2**learn[&#x27;n&#x27;],local_state_count=sum(len(p) for p in c.mass),groups=groups,partition=part,energy_queries=trans[&#x27;energy_queries&#x27;],clock_queries=trans[&#x27;balanced_clock_queries&#x27;],raw_operator_terms=len(c.rawterms),source_product_terms=len(c.wterms),R=str(c.R),compile_seconds=comp,proposal_seconds=proptime,total_seconds=time.perf_counter()-start,log=log)
+    np.savez(ROOT/(name+&#x27;.npz&#x27;),**{str(i):a for i,a in enumerate(v)})
+    json.dump(cert,open(ROOT/(name+&#x27;.json&#x27;),&#x27;w&#x27;),indent=2);json.dump(trans,open(ROOT/(name+&#x27;_transcript.json&#x27;),&#x27;w&#x27;),indent=2)
+    print(&#x27;DONE&#x27;,name,cert[&#x27;lower_float&#x27;],cert[&#x27;upper_float&#x27;],cert[&#x27;ratio_float&#x27;],&#x27;time&#x27;,cert[&#x27;total_seconds&#x27;],flush=True)
+    return c,v,cert
+
+if __name__==&#x27;__main__&#x27;:
+    group=sys.argv[1] if len(sys.argv)&gt;1 else &#x27;primary&#x27;
+    if group==&#x27;primary&#x27;:
+        for r in [1,2,3,4]:
+            try:run(&#x27;primary_r&#x27;+str(r),B=3,m=6,rarity=r)
+            except Exception as e:
+                json.dump({&#x27;name&#x27;:&#x27;primary_r&#x27;+str(r),&#x27;failure&#x27;:repr(e)},open(ROOT/(&#x27;primary_r&#x27;+str(r)+&#x27;_failure.json&#x27;),&#x27;w&#x27;));print(&#x27;FAIL&#x27;,r,repr(e),flush=True)
+    elif group==&#x27;coupling&#x27;:
+        for t in [F(11,10),F(19,10),F(3),F(6)]:
+            run(&#x27;coupling_&#x27;+str(t).replace(&#x27;/&#x27;,&#x27;_&#x27;),B=3,m=6,rarity=2,cross=t)
+    elif group==&#x27;rank&#x27;:
+        for rank in [2,4,12]:run(&#x27;rank_&#x27;+str(rank),B=3,m=6,rarity=3,rank=rank)
+    elif group==&#x27;field_clock&#x27;:
+        for f in [0,2]:run(&#x27;field_&#x27;+str(f),B=3,m=6,rarity=2,field_scale=f)
+        for nu in [F(1,10),F(10)]:run(&#x27;clock_&#x27;+str(nu).replace(&#x27;/&#x27;,&#x27;_&#x27;),B=3,m=6,rarity=2,clock_scale=nu)
+    elif group==&#x27;prepared&#x27;:
+        c,v,res=run(&#x27;prepared_base&#x27;,B=3,m=6,rarity=2)
+        _,d1=certify(c,v,return_data=True)
+        # A point preparation with every elementary coordinate zero; no equilibrium sample.
+        vs=[]
+        for p in c.prob:
+            x=np.full(len(p),F(0),dtype=object);x[0]=1/p[0];vs.append(x)
+        be=ttproduct([np.array(x,float)*p for x,p in zip(vs,c.rootprob)])
+        u,log=solve(c,rank=8,iterations=7,source=be)
+        _,d2=certify(c,u,source_vectors=[vs],return_data=True)
+        cc=cross_certificate(c,d1,d2);cc.update(preparation=&#x27;all microscopic bits zero&#x27;,n=c.model[&#x27;n&#x27;],log_second_load=log)
+        json.dump(cc,open(ROOT/&#x27;prepared_point.json&#x27;,&#x27;w&#x27;),indent=2);np.savez(ROOT/&#x27;prepared_point.npz&#x27;,**{str(i):a for i,a in enumerate(u)})
+        print(&#x27;PREPARED&#x27;,cc[&#x27;lower_float&#x27;],cc[&#x27;upper_float&#x27;],cc[&#x27;ratio_float&#x27;],flush=True)
+</pre></body></html>

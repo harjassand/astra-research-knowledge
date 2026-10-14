@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Exact Fraction replay of the post-freeze root proposal comparison."""
+from fractions import Fraction as Q
+
+
+def ceil_q(x):
+    return -(-x.numerator // x.denominator)
+
+
+def min_power(base, target):
+    assert base > 1 and target > 0
+    n = 0
+    while base**n < target:
+        n += 1
+    return n
+
+
+def main():
+    # Root source offspring law: source/zero marks both have degree zero.
+    h = Q(1, 8)
+    V = Q(101)
+    R = Q(10)
+    p_source = R / (V * h)
+    branch = {2: Q(150) * h / V,
+              3: Q(100) * h**2 / V,
+              4: Q(25) * h**3 / V}
+    p0 = 1 - sum(branch.values(), Q(0))
+    q = sum((k * p for k, p in branch.items()), Q(0))
+    assert p_source == Q(80, 101)
+    assert branch == {2: Q(75, 404), 3: Q(25, 1616), 4: Q(25, 51712)}
+    assert p0 >= p_source and q == Q(5425, 12928) < 1
+    s = Q(3, 2)
+    f_s = p0 + sum((p * s**k for k, p in branch.items()), Q(0))
+    z = s / f_s
+    assert f_s == Q(1051417, 827392)
+    assert z == Q(1241088, 1051417) > 1
+
+    # Parent's exact nonuniform two-type t,z witness.
+    t_a, t_b, z_multi = Q(11, 10), Q(28, 25), Q(352, 351)
+    g_a = Q(3, 8) + Q(5, 16)*t_a + Q(5, 16)*t_a**2
+    g_b = Q(1, 4) + Q(3, 8)*t_a + Q(3, 8)*t_a**2
+    assert g_a == Q(351, 320) and g_b == Q(893, 800)
+    assert z_multi*g_a == t_a
+    assert z_multi*g_b == Q(314336, 280800) <= t_b
+    assert Q(314336, 280800) < t_b
+
+    # Exact outer-factory caps used by the root's recorded diagnostic.
+    r, sigma, epsilon = 2, Q(1, 4), Q(1, 20)
+    radius2 = r*h*h/sigma**2
+    eps_g = delta = epsilon/2
+    assert radius2 == Q(1, 2)
+    j = 1
+    while True:
+        m = max(1, ceil_q(8*radius2*j))
+        clip = Q(10*m, 2**j)
+        if clip <= eps_g:
+            break
+        j += 1
+    assert j == 15 and m == 60 and clip == Q(75, 4096)
+    K = min_power(Q(8, 7), 3*m/delta)
+    B0 = m*K
+    jcap = min_power(Q(2), 24*B0/delta)
+    B = B0*jcap*r
+    ncap = min_power(z, 3*B*s/delta)
+    assert (K, jcap, B, ncap) == (67, 22, 176880, 105)
+    assert m*Q(7, 8)**K <= delta/3
+    assert B0*Q(8, 2**jcap) <= delta/3
+    assert B*s*z**(-ncap) <= delta/3
+    assert B*ncap == 18572400
+
+    # Frozen PDE weighted mean certificate and failure of the scalar test.
+    M = [[Q(15, 16), Q(0)], [Q(9, 8), Q(0)]]
+    w = [Q(1), Q(6, 5)]
+    Mw = [sum((a*b for a, b in zip(row, w)), Q(0)) for row in M]
+    alpha = Q(15, 16)
+    assert Mw == [alpha*w[0], alpha*w[1]]
+    assert max(Q(1)*a-Q(1, 2)*a*a for a in [Q(1)]) == Q(1, 2)
+    # Algebraic PDE root check: for a=(-11+3 sqrt(19))/5,
+    # a^2+(22/5)a-2 has zero rational and sqrt(19) coefficients.
+    rational_coeff = Q(292, 25)-Q(242, 25)-2
+    radical_coeff = Q(-66, 25)+Q(66, 25)
+    assert rational_coeff == 0 and radical_coeff == 0
+
+    print("PASS: exact incoming PDE offspring PGF and root z witness")
+    print("PASS: parent-proposed nonuniform t=(11/10,28/25), z=352/351")
+    print("PASS: rational N722 clipping, proposal, Poisson and tree caps")
+    print("PASS: weighted spectral witness and old scalar-criterion failure")
+    print(f"source caps: m={m}, K={K}, Jcap={jcap}, B={B}, ncap={ncap}, nodes={B*ncap}")
+    print("Scope: arithmetic and finite-state identities only; no float/continuous-TV validation.")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — query_tree_audit.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/synthesis/escape/query_tree_audit.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent query/cache-count audit of shared balanced-tree cycle learner.&quot;&quot;&quot;
+from __future__ import annotations
+import json, math, random
+from collections import Counter
+from pathlib import Path
+
+N = 24
+
+def tree(lo: int, hi: int):
+    if hi - lo == 1:
+        return (1 &lt;&lt; lo, None, None)
+    mid = (lo + hi) // 2
+    left = tree(lo, mid)
+    right = tree(mid, hi)
+    return (left[0] | right[0], left, right)
+
+def edges_from_order(order):
+    n = len(order)
+    return {tuple(sorted((order[j], order[(j+1) % n]))) for j in range(n)}
+
+def learn(n, order):
+    V = (1 &lt;&lt; n) - 1
+    # Store query weights as actual bitmasks. The bootstrap has q=t^2 from
+    # W(V)W(0)/(W(V\{0})W({0})) = t^4; all n singleton masks are seeded.
+    queried = {0, V, V ^ 1} | {1 &lt;&lt; j for j in range(n)}
+    tr = tree(0, n)
+    cyc = edges_from_order(order)
+    recovered = set()
+    active_nodes = 0
+    contrasts = 0
+
+    def recurse(i, node_mask, left, right, k):
+        nonlocal active_nodes, contrasts
+        active_nodes += 1
+        if left is None:  # singleton leaf, positive count means this is a neighbor
+            assert node_mask.bit_count() == 1 and k == 1
+            j = node_mask.bit_length() - 1
+            recovered.add(tuple(sorted((i, j))))
+            return
+        # Query one child A that does not contain i. If i is in exactly one
+        # child, use the other. If i is outside both, use left.
+        if node_mask &amp; (1 &lt;&lt; i):
+            A, other = (right, left) if left[0] &amp; (1 &lt;&lt; i) else (left, right)
+        else:
+            A, other = left, right
+        a = A[0]
+        queried.add(a)
+        queried.add(a | (1 &lt;&lt; i))
+        contrasts += 1
+        # Exact class oracle returns the true number of i&#x27;s two cycle-neighbors
+        # in A; inferred count in other is parent count minus this count.
+        c_a = sum(tuple(sorted((i, j))) in cyc for j in range(n) if (a &gt;&gt; j) &amp; 1)
+        c_other = k - c_a
+        assert 0 &lt;= c_a &lt;= 2 and 0 &lt;= c_other &lt;= 2
+        if c_a:
+            recurse(i, a, A[1], A[2], c_a)
+        if c_other:
+            recurse(i, other[0], other[1], other[2], c_other)
+
+    # cycle edge order has degree 2 at every vertex
+    for i in range(n):
+        recurse(i, V, tr[1], tr[2], 2)
+    true_edges = edges_from_order(order)
+    if recovered != true_edges:
+        raise AssertionError((sorted(true_edges - recovered), sorted(recovered - true_edges)))
+    return {
+        &quot;n&quot;: n,
+        &quot;unique_energy_masks_total&quot;: len(queried),
+        &quot;bootstrap_seed_masks&quot;: len({0, V, V ^ 1} | {1 &lt;&lt; j for j in range(n)}),
+        &quot;unique_masks_after_seed&quot;: len(queried - ({0, V, V ^ 1} | {1 &lt;&lt; j for j in range(n)})),
+        &quot;pairwise_baseline_unique_masks&quot;: 1 + n + n*(n-1)//2,
+        &quot;contrast_calls&quot;: contrasts,
+        &quot;positive_tree_nodes_visited&quot;: active_nodes,
+        &quot;recovered_edges&quot;: len(recovered),
+    }
+
+def run():
+    n = N
+    rng = random.Random(20261014)
+    results = []
+    for _ in range(5000):
+        order = list(range(n))
+        rng.shuffle(order)
+        results.append(learn(n, order))
+    counts = [x[&quot;unique_energy_masks_total&quot;] for x in results]
+    contrast_counts = [x[&quot;contrast_calls&quot;] for x in results]
+    sorted_counts = sorted(counts)
+    hist = Counter(counts)
+    # Include a few reproducible examples at both extrema and median.
+    examples = []
+    for label, val in [(&quot;min&quot;, sorted_counts[0]), (&quot;p10&quot;, sorted_counts[len(counts)//10]),
+                       (&quot;median&quot;, sorted_counts[len(counts)//2]),
+                       (&quot;p90&quot;, sorted_counts[9*len(counts)//10]), (&quot;max&quot;, sorted_counts[-1])]:
+        idx = counts.index(val)
+        order = list(range(n))
+        # Regenerate the indexed shuffled permutation deterministically.
+        rr = random.Random(20261014)
+        for _ in range(idx+1):
+            order = list(range(n)); rr.shuffle(order)
+        examples.append({&quot;label&quot;:label,&quot;order&quot;:order,**results[idx]})
+    out = {
+       &quot;description&quot;:&quot;5,000 independently randomized labelings of a 24-cycle; balanced coordinate tree [0,24), unique oracle weight bitmasks cached globally; exact counts only.&quot;,
+       &quot;seed&quot;:20261014,&quot;samples&quot;:len(counts),&quot;pairwise_baseline_unique_masks&quot;:301,
+       &quot;tree_unique_energy_masks&quot;:{&quot;min&quot;:min(counts),&quot;p10&quot;:sorted_counts[len(counts)//10],&quot;median&quot;:sorted_counts[len(counts)//2],&quot;mean&quot;:sum(counts)/len(counts),&quot;p90&quot;:sorted_counts[9*len(counts)//10],&quot;max&quot;:max(counts),&quot;below_301&quot;:sum(c&lt;301 for c in counts),&quot;at_301&quot;:sum(c==301 for c in counts),&quot;above_301&quot;:sum(c&gt;301 for c in counts),&quot;histogram&quot;:{str(k):v for k,v in sorted(hist.items())}},
+       &quot;contrast_calls&quot;:{&quot;min&quot;:min(contrast_counts),&quot;median&quot;:sorted(contrast_counts)[len(contrast_counts)//2],&quot;max&quot;:max(contrast_counts)},
+       &quot;examples&quot;:examples,
+       &quot;audit_notes&quot;:[&quot;The seed uses {empty,V,all n singletons,V\\{0}} (n+3 distinct masks for n&gt;2); seed overlap is counted by unique masks.&quot;,&quot;Each contrast adds W(A) and W(A+i), with all exact mask overlaps cached across all vertices.&quot;,&quot;The learned graph is checked against the planted cycle for every sample.&quot;]
+    }
+    dest = Path(__file__).parent / &quot;replay&quot; / &quot;query_tree_audit.json&quot;
+    dest.write_text(json.dumps(out, indent=2)+&quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+if __name__ == &quot;__main__&quot;: run()
+</pre></body></html>

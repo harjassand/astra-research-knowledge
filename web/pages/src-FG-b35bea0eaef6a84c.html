@@ -1,0 +1,46 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — heat_scalar.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — heat_scalar.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/package/quartic/exploration/heat_scalar.py">Original file</a></p><pre>import numpy as np, sympy as sp, scipy.linalg as la,itertools,os
+BASE=os.path.dirname(__file__)
+def build():
+ z=np.load(BASE+&#x27;/heat_matrices.npz&#x27;);a=sp.symbols(&#x27;a b c d&#x27;);h=sp.symbols(&#x27;h0:6&#x27;);x=[a[0],a[2]];y=[a[1],a[3]];hs=[[h[i],h[3+i]] for i in range(3)]
+ pairsA=list(itertools.combinations_with_replacement(range(4),2));pairsH=list(itertools.combinations_with_replacement(range(6),2))
+ def ex(pair,n):
+  ans=[0]*n
+  for i in pair:ans[i]+=1
+  return tuple(ans)
+ mon=[ex(p,4)+ex(q,6) for p in pairsA for q in pairsH];idx={e:i for i,e in enumerate(mon)}
+ def vec(f):
+  v=np.zeros(210)
+  for e,c in sp.Poly(sp.expand(f),*(a+h)).terms():v[idx[e]]=c
+  return v
+ vals=[v[0]*hh[0]+v[1]*hh[1] for v in [x,y] for hh in hs]+[v[0]*hh[1]-v[1]*hh[0] for v in [x,y] for hh in hs]
+ ij=np.array(list(itertools.combinations_with_replacement(range(12),2)));T=np.stack([vec(vals[i]*vals[j])*(1 if i==j else np.sqrt(2)) for i,j in ij],axis=1)
+ B=z[&#x27;P&#x27;]@np.c_[T,z[&#x27;E&#x27;][:,2]-z[&#x27;E&#x27;][:,3]]
+ U,s,R=la.svd(B,full_matrices=False);rank=(s&gt;1e-9).sum()
+ np.savez(BASE+&#x27;/scalar_matrices.npz&#x27;,T=T,U=U[:,:rank],s=s[:rank],R=R[:rank],ij=ij)
+ print(&#x27;scalar rank&#x27;,rank)
+def solve(p,maxiter=10000,tol=1e-8):
+ z=np.load(BASE+&#x27;/heat_matrices.npz&#x27;);v=np.load(BASE+&#x27;/scalar_matrices.npz&#x27;);i,j=v[&#x27;ij&#x27;].T;sf=np.where(i==j,1,np.sqrt(2));R=v[&#x27;R&#x27;]
+ def sm(g):
+  G=np.zeros((12,12));G[i,j]=g[:78]/sf;G[j,i]=g[:78]/sf;return G
+ def sv(G):return G[i,j]*sf
+ b=z[&#x27;P&#x27;]@z[&#x27;E&#x27;]@p;g0=R.T@((v[&#x27;U&#x27;].T@b)/v[&#x27;s&#x27;])
+ consistency=np.linalg.norm(b-v[&#x27;U&#x27;]@(v[&#x27;U&#x27;].T@b))
+ def aff(g):return g+g0-R.T@(R@g)
+ def psd(g):
+  val,V=la.eigh(sm(g),check_finite=False);return np.r_[sv((V*np.maximum(val,0))@V.T),max(g[-1],0)]
+ x=g0.copy()
+ for k in range(maxiter):
+  y=psd(x);w=aff(2*y-x);x+=w-y
+  if k%100==0 or k==maxiter-1:
+   gg=aff(y);res=la.norm(gg-y)
+   if res&lt;tol:break
+ G=sm(gg)
+ return G,gg[-1],[k,float(la.eigvalsh(G)[0]),float(res),float(consistency)]
+if __name__==&#x27;__main__&#x27;:
+ if not os.path.exists(BASE+&#x27;/scalar_matrices.npz&#x27;):build()
+ p=np.array([1,1,3.5,.5,0,0,-2.9,-2.9,0]);G,d,diag=solve(p)
+ print(&#x27;Fstar&#x27;,diag,d);np.savez(BASE+&#x27;/scalar_Fstar.npz&#x27;,G=G,d=d,p=p)
+ for i,v in enumerate(np.load(BASE+&#x27;/c4_heat_trials.npz&#x27;,allow_pickle=True)[&#x27;results&#x27;]):
+  G,d,diag=solve(v[&#x27;p&#x27;],3000)
+  print(i,diag,d,flush=True)
+</pre></html>

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — collective_sector.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/package/escape/collective_sector.py">Original bytes</a></p><pre>&quot;&quot;&quot;Two-dimensional acquired slow-mode closure plus energy-discovered defects.
+Uses no tensor-rank hypothesis or full-state array. All final contractions are rational.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from functools import lru_cache
+import time,json
+import numpy as np
+import scipy.sparse as ss
+import scipy.sparse.linalg as sla
+
+class CollectiveRing:
+    def __init__(self,n:int,t:F,nu:F=F(1),kappa:F=F(1)):
+        if n&lt;4 or t&lt;1 or nu&lt;=0 or kappa&lt;=0:raise ValueError(&#x27;invalid model&#x27;)
+        self.n=n;self.t=F(t);self.nu=F(nu);self.kappa=F(kappa)
+        self.eta=(self.t**2-1)/(self.t**2+1)
+        self.lam=self.nu*(1-self.eta)
+        self.gamma=self.nu*((1-self.eta)+4*self.eta/F(n*n))
+        u=(self.t-1)/(self.t+1)
+        self.s=self.t/F(n)*(1-u**n)/(1+u**n)
+        self.Z=(self.t+1)**n+(self.t-1)**n
+        self.da=(1/self.gamma+1/(self.gamma+self.kappa))/2
+        self.db=(1/(self.gamma+self.kappa)-1/self.gamma)/2
+        # J is diagonal, so W=(J^{-1}+H)^{-1}. J may have a zero entry
+        # at t=1; use (I+JH)^{-1}J to cover that case as well.
+        j0=-self.gamma;j1=(self.lam-self.gamma)/self.s
+        h00=self.da;h01=self.db*self.s;h11=self.da*self.s
+        a=1+j0*h00;b=j0*h01;c=j1*h01;d=1+j1*h11
+        det=a*d-b*c
+        self.W00=d*j0/det;self.W01=-b*j1/det;self.W11=a*j1/det
+        assert self.W01==-c*j0/det
+    def states(self):
+        n=self.n;states={0,(1&lt;&lt;n)-1}
+        for start in range(n):
+            mask=0
+            for length in range(1,n):
+                mask|=1&lt;&lt;((start+length-1)%n);states.add(mask)
+        return sorted(states)
+    @lru_cache(None)
+    def wallcount(self,x):
+        rot=((x&lt;&lt;1)&amp;((1&lt;&lt;self.n)-1)) | (x&gt;&gt;(self.n-1))
+        return (x^rot).bit_count()
+    @lru_cache(None)
+    def prob(self,x):return self.t**(self.n-self.wallcount(x))/self.Z
+    def rate(self,x,i):
+        n=self.n;s=1 if (x&gt;&gt;i)&amp;1 else -1
+        a=1 if (x&gt;&gt;((i-1)%n))&amp;1 else -1
+        b=1 if (x&gt;&gt;((i+1)%n))&amp;1 else -1
+        return self.nu*(1-self.eta*s*F(a+b,2))/2
+    def certificate(self,v):
+        Kv={}
+        for x,vx in v.items():
+            diag=self.kappa*int(bool(x&amp;1))
+            for i in range(self.n):
+                rt=self.rate(x,i);diag+=rt;y=x^(1&lt;&lt;i)
+                Kv[y]=Kv.get(y,F(0))-self.rate(y,i)*vx
+            Kv[x]=Kv.get(x,F(0))+diag*vx
+        dr={x:-val for x,val in Kv.items() if val}
+        src=sum(self.prob(x)*vx for x,vx in v.items())
+        energy=sum(self.prob(x)*vx*Kv[x] for x,vx in v.items())
+        lower=2*src-energy
+        R0=self.da;z0=self.da;z1=self.db*self.s
+        for x,dx in dr.items():
+            wt=self.prob(x)/(self.gamma+self.kappa*int(bool(x&amp;1)))
+            R0+=wt*(2*dx+dx*dx)
+            z0+=wt*dx;z1+=wt*dx*F(2*x.bit_count()-self.n,self.n)
+        error=R0-(self.W00*z0*z0+2*self.W01*z0*z1+self.W11*z1*z1)
+        if error&lt;0:raise AssertionError(&#x27;negative error&#x27;)
+        return lower,lower+error,len(dr)
+    def run(self,bits=32):
+        started=time.perf_counter();states=self.states();indices={s:i for i,s in enumerate(states)}
+        rows=[];cols=[];vals=[];N=len(states)
+        for row,x in enumerate(states):
+            diag=float(self.kappa*int(bool(x&amp;1)))
+            for i in range(self.n):
+                rate=float(self.rate(x,i));diag+=rate;y=x^(1&lt;&lt;i)
+                if y in indices:rows.append(row);cols.append(indices[y]);vals.append(-rate)
+            rows.append(row);cols.append(row);vals.append(diag)
+        K=ss.csr_matrix((vals,(rows,cols)),shape=(N,N))
+        v0=sla.spsolve(K,np.ones(N))
+        v={s:F(round(float(v0[i])*2**bits),2**bits) for i,s in enumerate(states)}
+        proposed=time.perf_counter();lo,hi,RN=self.certificate(v);ended=time.perf_counter()
+        return {&#x27;n&#x27;:self.n,&#x27;t&#x27;:str(self.t),&#x27;nu&#x27;:str(self.nu),&#x27;kappa&#x27;:str(self.kappa),
+                &#x27;tau_lo&#x27;:float(lo),&#x27;tau_hi&#x27;:float(hi),&#x27;ratio&#x27;:float(hi/lo),
+                &#x27;closed_lo&#x27;:float(2*lo-2/self.kappa),&#x27;closed_hi&#x27;:float(2*hi-2/self.kappa),
+                &#x27;low_states&#x27;:len(states),&#x27;residual_neighborhood&#x27;:RN,&#x27;full_states&#x27;:str(1&lt;&lt;self.n),
+                &#x27;lambda_slow&#x27;:str(self.lam),&#x27;gamma_complement&#x27;:str(self.gamma),
+                &#x27;proposal_s&#x27;:proposed-started,&#x27;certification_s&#x27;:ended-proposed,&#x27;run_s&#x27;:ended-started,
+                &#x27;lower_exact&#x27;:str(lo),&#x27;upper_exact&#x27;:str(hi),&#x27;witness&#x27;:{str(k):str(v) for k,v in v.items()},
+                &#x27;bits&#x27;:bits,&#x27;omitted_mass&#x27;:str(1-sum(self.prob(x) for x in states))}
+
+if __name__==&#x27;__main__&#x27;:
+    import sys
+    n=int(sys.argv[1]);t=F(sys.argv[2]);dest=sys.argv[3]
+    start=time.perf_counter();R=CollectiveRing(n,t);out=R.run();out[&#x27;total_s&#x27;]=time.perf_counter()-start
+    json.dump(out,open(dest,&#x27;w&#x27;))
+    print(json.dumps({k:v for k,v in out.items() if k not in [&#x27;witness&#x27;,&#x27;lower_exact&#x27;,&#x27;upper_exact&#x27;]}))
+</pre></body></html>

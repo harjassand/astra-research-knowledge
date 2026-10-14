@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FG evidence — collect_replay_receipt.py</title><style>body{margin:40px auto;max-width:1100px;padding:0 24px;font:16px/1.6 system-ui;color:#17212b}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#175a86}</style><h1>FG evidence — collect_replay_receipt.py</h1><p>Scoped source or internal synthesis evidence. External correctness,novelty and physical capability remain UNKNOWN.</p><p><a href="../../updates/FG/synthesis/compact/derived/collect_replay_receipt.py">Original file</a></p><pre>&quot;&quot;&quot;Collect already executed replay evidence; no research execution or source edits.&quot;&quot;&quot;
+from pathlib import Path
+import hashlib,json,platform,shutil,sys
+import numpy,scipy,sympy
+sys.set_int_max_str_digits(0)
+OWN=Path(__file__).resolve().parent.parent
+SRC=OWN.parent/&#x27;FG-sources&#x27;/&#x27;compact&#x27;
+COPY=OWN/&#x27;replay_source&#x27;
+OUT=OWN/&#x27;derived&#x27;/&#x27;replay_results&#x27;;OUT.mkdir(exist_ok=True)
+def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+witnesses=[]
+for stem,kind in [(&#x27;n128&#x27;,&#x27;discrete&#x27;),(&#x27;continuous128&#x27;,&#x27;continuous&#x27;),(&#x27;pilot8&#x27;,&#x27;discrete&#x27;),(&#x27;rarity1e6&#x27;,&#x27;discrete&#x27;),(&#x27;audit_continuum3&#x27;,&#x27;continuous&#x27;),(&#x27;continuum_eps1000_p5&#x27;,&#x27;continuous&#x27;)]:
+    name=stem+&#x27;.certificate.json&#x27;;old=json.loads((SRC/name).read_text());fresh=json.loads((COPY/name).read_text())
+    input_suffix=&#x27;.dyadic.txt&#x27; if kind==&#x27;discrete&#x27; else &#x27;.continuum.txt&#x27;
+    raw_suffix=&#x27;.exact_raw.txt&#x27; if kind==&#x27;discrete&#x27; else &#x27;.continuum_raw.txt&#x27;
+    raw={a:int(b) for a,b in (ln.split() for ln in (COPY/(stem+raw_suffix)).read_text().splitlines())}
+    files=[]
+    for name in [name,stem+input_suffix,stem+raw_suffix]:
+        shutil.copyfile(COPY/name,OUT/name);files.append({&#x27;path&#x27;:&#x27;derived/replay_results/&#x27;+name,&#x27;sha256&#x27;:sha(OUT/name),&#x27;bytes&#x27;:(OUT/name).stat().st_size})
+    witnesses.append({&#x27;witness&#x27;:stem,&#x27;kind&#x27;:kind,&#x27;lower&#x27;:fresh[&#x27;lower&#x27;],&#x27;upper&#x27;:fresh[&#x27;upper&#x27;],&#x27;ratio_upper&#x27;:fresh[&#x27;ratio_upper&#x27;],
+        &#x27;matches_canonical_bounds&#x27;:{k:old[k]==fresh[k] for k in [&#x27;lower&#x27;,&#x27;upper&#x27;,&#x27;ratio_upper&#x27;]},
+        &#x27;input_bytes_equal_source&#x27;:(SRC/(stem+input_suffix)).read_bytes()==(COPY/(stem+input_suffix)).read_bytes(),
+        &#x27;integer_raw_output_bytes_equal_source&#x27;:(SRC/(stem+raw_suffix)).read_bytes()==(COPY/(stem+raw_suffix)).read_bytes(),
+        &#x27;maximum_raw_integer_bit_length&#x27;:max(abs(x).bit_length() for x in raw.values()),
+        &#x27;total_validation_seconds&#x27;:fresh[&#x27;total_validation_seconds&#x27;],&#x27;core_parameters&#x27;:fresh[&#x27;core_parameters&#x27;],
+        &#x27;residual_sq&#x27;:fresh[&#x27;residual_sq&#x27;],&#x27;files&#x27;:files})
+for name in [&#x27;audit_exact_results.json&#x27;,&#x27;energy_envelope_audit_results.json&#x27;,&#x27;conditional_envelope_results.json&#x27;,&#x27;conditional_reference_results.json&#x27;,&#x27;bath_completion_results.json&#x27;,&#x27;window_fresh.json&#x27;]:
+    shutil.copyfile(COPY/name,OUT/name)
+windows=json.loads((COPY/&#x27;window_fresh.json&#x27;).read_text())
+windowrows=[{&#x27;width&#x27;:x[&#x27;w&#x27;],&#x27;states&#x27;:x[&#x27;lower&#x27;][&#x27;states&#x27;],&#x27;ratio&#x27;:x[&#x27;ratio&#x27;],
+    &#x27;combined_construction_solve_exact_check_seconds&#x27;:x[&#x27;lower&#x27;][&#x27;total_seconds&#x27;]+x[&#x27;upper&#x27;][&#x27;total_seconds&#x27;],
+    &#x27;scope&#x27;:&#x27;Single-run fresh local window solve;not directly hardware matched to the source Linux tensor optimizer timing.&#x27;} for x in windows]
+logs=[]
+for p in sorted((OWN/&#x27;logs&#x27;).glob(&#x27;*&#x27;)):
+    b=p.read_bytes();logs.append({&#x27;path&#x27;:&#x27;logs/&#x27;+p.name,&#x27;sha256&#x27;:sha(p),&#x27;bytes&#x27;:len(b),&#x27;lines&#x27;:len(b.splitlines())})
+small=json.loads((COPY/&#x27;audit_exact_results.json&#x27;).read_text());energy=json.loads((COPY/&#x27;energy_envelope_audit_results.json&#x27;).read_text())
+sourcehash=json.loads((OWN/&#x27;SOURCE_MANIFEST_AUDIT.json&#x27;).read_text())
+receipt={&#x27;date&#x27;:&#x27;2026-10-14&#x27;,&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;scope&#x27;:&#x27;Locally rebuilt exact backend and saved witness replay;not fresh large proposal optimization,external review,or a physical benchmark.&#x27;,
+    &#x27;capital_main_revision&#x27;:&#x27;ace0cfc4437fe91c20ccd24d69e0ee4bb335e871&#x27;,
+    &#x27;capital_read_checkout_revision&#x27;:&#x27;865a399dc8a1119a9cd5119b7ea68181f0e2d34b&#x27;,
+    &#x27;source_handling&#x27;:&#x27;Source originals unmodified;historical prompts/results DATA;user-selected opening mission retained as task direction.&#x27;,
+    &#x27;source_manifest&#x27;:{&#x27;status&#x27;:sourcehash[&#x27;status&#x27;],&#x27;files&#x27;:sourcehash[&#x27;files&#x27;],&#x27;mismatches&#x27;:sourcehash[&#x27;mismatches&#x27;],&#x27;receipt&#x27;:&#x27;SOURCE_MANIFEST_AUDIT.json&#x27;},
+    &#x27;environment&#x27;:{&#x27;python&#x27;:platform.python_version(),&#x27;python_executable&#x27;:sys.executable,&#x27;numpy&#x27;:numpy.__version__,&#x27;scipy&#x27;:scipy.__version__,&#x27;sympy&#x27;:sympy.__version__,
+        &#x27;platform&#x27;:platform.platform(),&#x27;compiler&#x27;:&#x27;Apple clang 17.0.0 (clang-1700.6.3.2)&#x27;,&#x27;gmp&#x27;:&#x27;6.3.0&#x27;,&#x27;threads&#x27;:&#x27;OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1&#x27;,
+        &#x27;dependency_use&#x27;:&#x27;Read/reused existing owned FE venv;no package changes.&#x27;},
+    &#x27;binary_boundary&#x27;:{&#x27;supplied&#x27;:&#x27;Linux x86-64 ELF&#x27;,&#x27;locally_built&#x27;:&#x27;Mach-O ARM64&#x27;,&#x27;supplied_binaries_copied_or_executed&#x27;:False,
+        &#x27;pickle_loaded&#x27;:False,&#x27;npz_allow_pickle&#x27;:False,
+        &#x27;build_commands&#x27;:[&#x27;clang++ -O3 -std=c++17 exact_contract.cpp -o exact_contract -I/opt/homebrew/Cellar/gmp/6.3.0/include -L/opt/homebrew/Cellar/gmp/6.3.0/lib -lgmpxx -lgmp&#x27;,
+            &#x27;clang++ -O3 -std=c++17 exact_continuum.cpp -o exact_continuum -I/opt/homebrew/Cellar/gmp/6.3.0/include -L/opt/homebrew/Cellar/gmp/6.3.0/lib -lgmpxx -lgmp&#x27;],
+        &#x27;local_executable_sha256&#x27;:{n:sha(COPY/n) for n in [&#x27;exact_contract&#x27;,&#x27;exact_continuum&#x27;]},
+        &#x27;source_cpp_sha256&#x27;:{n:sha(SRC/n) for n in [&#x27;exact_contract.cpp&#x27;,&#x27;exact_continuum.cpp&#x27;]}},
+    &#x27;witness_replays&#x27;:witnesses,
+    &#x27;source_algebra&#x27;:small,&#x27;source_energy_envelope&#x27;:energy,
+    &#x27;nonconstant_closure&#x27;:{&#x27;cases&#x27;:6,&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;results&#x27;:&#x27;derived/replay_results/conditional_envelope_results.json&#x27;},
+    &#x27;small_hidden_bath_references&#x27;:{&#x27;nonconstant_cases&#x27;:6,&#x27;uniform_cases&#x27;:8,&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;results&#x27;:[&#x27;derived/replay_results/conditional_reference_results.json&#x27;,&#x27;derived/replay_results/bath_completion_results.json&#x27;],
+        &#x27;scope&#x27;:&#x27;Only small references explicitly constructed;large bath-count rows are uniform theorem applications.&#x27;},
+    &#x27;independent_stdlib_checks&#x27;:{&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;assertions&#x27;:674,&#x27;script&#x27;:&#x27;derived/source_schur_checks.py&#x27;,&#x27;results&#x27;:&#x27;derived/source_schur_check_results.json&#x27;,
+        &#x27;scope&#x27;:&#x27;24 physical networks, 8 patch checks, a zero-error physical example, 18 window brackets, and a 256-coefficient direct discrete tensor reference.&#x27;},
+    &#x27;window_baseline_fresh&#x27;:windowrows,
+    &#x27;commands_completed_exit_zero&#x27;:[&#x27;exact_check.py n128 --degree 2&#x27;,&#x27;certify_continuum.py continuous128&#x27;,&#x27;exact_check.py pilot8 --degree 8&#x27;,&#x27;exact_check.py rarity1e6 --degree 2&#x27;,&#x27;certify_continuum.py audit_continuum3&#x27;,&#x27;certify_continuum.py continuum_eps1000_p5&#x27;,&#x27;audit_exact.py&#x27;,&#x27;energy_envelope_audit.py&#x27;,&#x27;conditional_envelope.py&#x27;,&#x27;conditional_reference.py&#x27;,&#x27;bath_completion.py&#x27;,&#x27;window_baseline.py --widths 8,10,12&#x27;,&#x27;source_schur_checks.py --discrete-prefix pilot8&#x27;],
+    &#x27;numeric_and_scientific_limits&#x27;:[&#x27;Current inputs are finite, with no object arrays; all discrete k values are positive integers. A general API must reject nonintegral k instead of silently truncating it.&#x27;,
+        &#x27;Saved floating optimizer proposals were validated; large optimization was not rerun and its cost is not free.&#x27;,
+        &#x27;The severe gate ratio 22.032697893698 and broad dominant-trap closure remain failures of the precision target.&#x27;,
+        &#x27;The continuum residual includes actual differential-operator leakage; Galerkin convergence alone is not a certificate.&#x27;,
+        &#x27;No WE/TAMMBER/AIMMD head-to-head, calibrated molecule, physical energy benchmark, formal proof, or external validation was performed.&#x27;],
+    &#x27;logs&#x27;:logs}
+(OWN/&#x27;REPLAY_RECEIPT.json&#x27;).write_text(json.dumps(receipt,indent=2))
+print(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;saved_witnesses&#x27;:len(witnesses),&#x27;all_bound_strings_match&#x27;:all(all(x[&#x27;matches_canonical_bounds&#x27;].values()) for x in witnesses),&#x27;source_assertions&#x27;:small[&#x27;exact_assertions&#x27;],&#x27;independent_assertions&#x27;:674},indent=2))
+</pre></html>

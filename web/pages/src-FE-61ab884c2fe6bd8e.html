@@ -1,0 +1,69 @@
+<!doctype html><meta charset="utf-8"><title>FE evidence — acquire_exact_heat.py</title><p>Source or internal evidence;external correctness,priority and physical capability UNKNOWN.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Acquire a rational closed heat certificate near a retained numerical point.
+
+All mathematical acceptance checks are exact; rounded floating values choose
+only free variables in an exact affine solution. Acquisition is not required
+to verify the resulting portable JSON certificate.
+&quot;&quot;&quot;
+from pathlib import Path
+import json
+import runpy
+import time
+import numpy as np
+import sympy as S
+
+OUT=Path(__file__).parent
+tick=time.monotonic()
+# Reconstruct the exact polynomial interface; the bounded exploration is cheap.
+ns=runpy.run_path(str(OUT/&#x27;search_closed_heat.py&#x27;))
+O=ns[&#x27;O&#x27;];N=ns[&#x27;N&#x27;];D=S.Matrix.hstack(*(O*N).T.nullspace()).T
+bmon=ns[&#x27;bmon&#x27;];ij=ns[&#x27;ij&#x27;];coeff=ns[&#x27;coeff&#x27;];n=ns[&#x27;n&#x27;]
+P=S.Matrix.hstack(*[coeff(bmon[i]*bmon[j])*(1 if i==j else 2) for i,j in zip(*ij)])
+Ef=coeff(ns[&#x27;diss&#x27;](ns[&#x27;F&#x27;]));Ed=coeff(ns[&#x27;diss&#x27;](ns[&#x27;q&#x27;]**2))
+T=(D*P).row_join(D*Ed);rhs=D*Ef
+rref,pivots=T.row_join(rhs).rref()
+assert len(pivots)==T.rows and all(p&lt;T.cols for p in pivots)
+free=[j for j in range(T.cols) if j not in pivots]
+print(&#x27;exact affine rank&#x27;,len(pivots),&#x27;free&#x27;,len(free),flush=True)
+candidate=np.load(OUT/&#x27;heat_candidate_0.npz&#x27;)
+floating=np.r_[candidate[&#x27;gram&#x27;][ij],candidate[&#x27;gamma&#x27;]]
+for denominator in [1000,10000,100000]:
+    vals=S.zeros(T.cols,1)
+    for j in free: vals[j]=S.Rational(round(floating[j]*denominator),denominator)
+    for i,j in enumerate(pivots): vals[j]=rref[i,-1]-sum(rref[i,k]*vals[k] for k in free)
+    assert T*vals==rhs
+    QQ=S.zeros(n)
+    for k,(i,j) in enumerate(zip(*ij)):QQ[i,j]=vals[k];QQ[j,i]=vals[k]
+    gamma=vals[-1]
+    try:
+        LL,DD=QQ.LDLdecomposition(hermitian=False)
+    except Exception:
+        continue
+    diag=list(DD.diagonal())
+    if gamma&lt;0 or not all(v&gt;0 for v in diag):continue
+    gap=P*vals[:-1,0]+gamma*Ed-Ef
+    omega=(O*N).gauss_jordan_solve(gap)[0]
+    fullomega=N*omega
+    assert O*fullomega==gap
+    assert ns[&#x27;C&#x27;]*fullomega==S.zeros(16,1)
+    assert LL*DD*LL.T==QQ
+    cert={&#x27;schema&#x27;:&#x27;astra-exact-quartic-closed-heat/1&#x27;,
+          &#x27;scope&#x27;:&#x27;Fstar only; identity diffusion; closed homogeneous-quadratic 2-form; exact rational bilinear Gram&#x27;,
+          &#x27;matrix_entry_order&#x27;:[&#x27;a&#x27;,&#x27;b&#x27;,&#x27;c&#x27;,&#x27;d&#x27;],
+          &#x27;jet_order&#x27;:[&#x27;phi1_xx&#x27;,&#x27;phi1_xy&#x27;,&#x27;phi1_yy&#x27;,&#x27;phi2_xx&#x27;,&#x27;phi2_xy&#x27;,&#x27;phi2_yy&#x27;],
+          &#x27;bilinear_order&#x27;:&#x27;A outer jet, row major&#x27;,
+          &#x27;omega_pair_order&#x27;:ns[&#x27;formpairs&#x27;],
+          &#x27;quadratic_coefficient_order&#x27;:ns[&#x27;xpairs&#x27;],
+          &#x27;gamma&#x27;:str(gamma),
+          &#x27;gram&#x27;:[[str(v) for v in row] for row in QQ.tolist()],
+          &#x27;omega_coefficients&#x27;:[[str(v) for v in fullomega[10*i:10*i+10,0]] for i in range(6)],
+          &#x27;ldl_diagonal&#x27;:[str(v) for v in diag],
+          &#x27;acceptance&#x27;:&#x27;exact polynomial identity, exact closedness, exact rational positive LDL diagonal&#x27;,
+          &#x27;free_variable_rounding_denominator&#x27;:denominator,
+          &#x27;historical_novelty&#x27;:&#x27;UNKNOWN&#x27;,
+          &#x27;external_review&#x27;:&#x27;UNKNOWN&#x27;}
+    (OUT/&#x27;FSTAR_CLOSED_HEAT_CERTIFICATE.json&#x27;).write_text(json.dumps(cert,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:&#x27;EXACT_PASS&#x27;,&#x27;gamma&#x27;:str(gamma),&#x27;rounding_denominator&#x27;:denominator,&#x27;ldl_pivots&#x27;:len(diag),&#x27;min_float_eigenvalue&#x27;:float(np.linalg.eigvalsh(np.array(QQ,float))[0]),&#x27;seconds&#x27;:time.monotonic()-tick}),flush=True)
+    break
+else:raise ArithmeticError(&#x27;No exact positive certificate acquired from bounded rationalization.&#x27;)
+</pre>
