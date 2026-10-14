@@ -1,0 +1,359 @@
+# Strict heat certificates control full critical-trace storage
+
+Research date: 15 October 2026. Worker: external_machinery.
+
+## Result and limits
+
+A valid transfer was obtained for an already certified energy. If a homogeneous quartic `F` has the strict certificate that `F-epsilon |A|^4` is quasiconvex, its normalized incoming-action storage is finite and locally Lipschitz in the **strong** critical trace topology `W^(3/4,4)(T;R^m)`, modulo constants. The statement covers every transverse frequency, every compatible strip, every affine background, and paths with moving transverse means. A quantitative bound controls the error caused by changing a trace. The proof uses a fixed bounded trace extension and the strict bulk certificate; it does not assume compactness of a finite profile library.
+
+For N794's `Fstar`, the existing rational closed heat certificate supplies `epsilon=1/12000`. At zero background one may use the explicit constants
+
+    |Fstar(A)| <= (113/40)|A|^4,
+    |DFstar(A)| <= (173/10)|A|^3.
+
+This yields an explicit locally Lipschitz modulus with the factor `67800^(1/4)` below. The coefficient cube in N794 also satisfies the abstract result, with its recorded smaller strict margin.
+
+There is a sharp qualification. An exact two-piece entry strip for this same strictly certified, non-polyconvex `Fstar` has action `-7/120`. Its concentrated copies force the storage to be neither weakly lower nor weakly upper semicontinuous at zero in the critical trace space. Thus strong continuity and weak discontinuity coexist even for a strict heat-certified example. No finite Fourier projection can approximate such a storage uniformly on a bounded critical-trace ball.
+
+The abstract incoming-action construction was already present in the supplied obstruction packet. The additional result here is its duration-independent coercivity and quantitative strong regularity obtained from an actual strict heat certificate, together with the exact `Fstar` concentration witness. This is a scoped repair of the topology/closure interface, **not** a new quasiconvexity proof for an unknown energy, a finite algorithm for the value, an explicit quartic Fourier kernel, or a universal certificate for the full nine-coefficient cone. Historical novelty is UNKNOWN. Scientific external review is UNKNOWN.
+
+## 1. Source pin and capital actually inspected
+
+The Astra checkout is pinned at
+
+    00631610750c708263d5cf6d812ebbb8edc77335
+
+in `/Users/harjas/Documents/ChatGPT/ultra/work/astra-capital-compensation-exchange`.
+`AGENTS.md`, `00_START_HERE.txt`, the current portions of N794, N812 and N819, and `agent/COMPOSITION.txt` were read. The decisive reused proof is N794's `updates/FE/synthesis/quartic/QUARTIC_AUDIT_AND_PROOF.md`, lines 77-158. Its exact verifier was replayed and passed its declared finite algebraic scope. This replay is not external mathematical certification.
+
+The incoming `UNIVERSAL_PROFILE_OBSTRUCTIONS.md` was read in full. Its local-density rigidity, trace concentration, and failed Poisson rules are retained. N812's structured families and N819's one-frequency storage are not promoted to arbitrary profiles. They are not premises of the theorem below.
+
+OpenAI Math's current main was retrieved and pinned at
+
+    1581d4cbdd69a0faf34b2089614fe2a814316a6a.
+
+The latest commit adds only a PR-lock workflow beyond `fd4aeeb2...`. The complete `preprints/` tree was acquired without truncation (13,223 entries). The initially requested full recursive root tree was truncated, and is explicitly not treated as complete coverage. Selective proof reading, rather than title matching, is recorded in `LITERATURE_RECEIPTS.md`. No OpenAI Math theorem is a premise of the positive trace transfer.
+
+## 2. Exact contract and removal of the affine mean term
+
+Use normalized transverse averaging on `T=R/(2 pi Z)`. Let `F:R^(m x 2)->R` be a homogeneous quartic polynomial. Let
+
+    H(A)=|A|^4,
+    F-epsilon H be quasiconvex for some epsilon>0.           (2.1)
+
+Quasiconvexity is global at every affine matrix, with all zero-boundary perturbations. Polynomial growth passes it to `W^(1,4)` tests and, by periodic extension or tiling/cutoff, to periodic compatible tests. No rotational invariance is required for this theorem.
+
+Fix `B` and define the relative integrand
+
+    f_B(A)=F(B+A)-F(B)-DF(B):A.                             (2.2)
+
+For a finite strip `Phi in W^(1,4)([0,T0] x T;R^m)`, periodic in y and with endpoint values understood as Sobolev traces, put
+
+    J_B(Phi)=integral_0^T0 E_y f_B(D Phi) dx.               (2.3)
+
+All incoming paths are allowed: `T0>0`, `Phi(0,. )=0`, and `Phi(T0,. )=U`. Their transverse means may move along the strip. Define
+
+    p_B(U)=inf {J_B(Phi): Phi is such an incoming path}.    (2.4)
+
+The infimum is over these `W^(1,4)` strips and finite widths, with no width upper bound and no asserted minimizer. This definition is necessary for rough critical traces; a smooth-only incoming class would be empty for a general `U in W^(3/4,4)`. Finiteness and continuity will be proved, not assumed.
+
+For smooth endpoint data, this infimum agrees with the infimum over smooth strips with those exact endpoints. At a fixed finite width, subtract a smooth extension of the boundary data, approximate the resulting zero-trace function in `W^(1,4)` by smooth functions vanishing on the two x faces and periodic in y, and restore the extension. Polynomial growth makes the actions converge. The same argument applies to strips between two smooth traces. No smoothing of a rough trace while claiming its endpoint is unchanged is used.
+
+The adjusted value is invariant under addition of an output constant. To see this, prepend a ramp from zero to a constant `c`, then translate any incoming path by `c`. The ramp of width `L` has gradient `(c/L|0)` and adjusted action
+
+    L f_B((c/L|0)) = O_B(|c|^2/L+|c|^3/L^2+|c|^4/L^3),
+
+which tends to zero. Thus `p_B(U+c)<=p_B(U)`; applying the same argument with `-c` gives equality. This argument retains paths with moving means rather than projecting them away.
+
+The storage for the **original** action is therefore
+
+    P_B(U)=F_1(B).E_y U+p_B(U-E_y U),                      (2.5)
+
+where `F_1(B)` is the first-column derivative. Omitting this affine term at nonzero `B` would be wrong. Indeed,
+
+    integral DF(B):D Phi = F_1(B).(E_y W-E_y U)
+
+on a strip from `U` to `W`; the second-column integral vanishes.
+
+## 3. An explicit bounded trace extension
+
+Let `X` be the mean-zero subspace of `W^(3/4,4)(T;R^m)`. Fix one bounded linear extension
+
+    E:X -> W^(1,4)([-1,0] x T;R^m),
+    (EU)(-1,. )=0, (EU)(0,. )=U.                          (3.1)
+
+Write
+
+    e_p(U)=||D(EU)||_(L^p([-1,0] x T)), p=2,4.             (3.2)
+
+The measure uses normalized y averaging, so `e_2<=e_4` on this unit slab. The norm `e_4` is equivalent to the usual norm on `X`, with fixed extension/trace constants. All constants below refer to this supplied choice of extension; no claim of optimal constants is made.
+
+A concrete construction is useful. Set `t=-x`. Choose a smooth periodic mollifier `eta_t`, obtained by periodizing a compactly supported real-line mollifier at scale `t`, and a smooth cutoff `chi` with `chi(0)=1`, `chi(1)=0`, identically one near zero. Put
+
+    (EU)(-t,y)=chi(t)(eta_t*U)(y).                         (3.3)
+
+The zero integral of differentiated kernels gives, for the derivative terms near `t=0`,
+
+    ||D(eta_t*U)||_4^4
+      <= C t^(-5) integral_(|h|<=t) ||U(.+h)-U||_4^4 dh.
+
+After integrating in `t`, Tonelli gives a bound by
+
+    C integral_(|h|<=1) ||U(.+h)-U||_4^4 / |h|^4 dh,
+
+which is the critical Slobodeckij seminorm (`1+4*(3/4)=4`). The cutoff terms are bounded by `C||U||_4^4`, controlled by the same norm on mean-zero profiles. This proves the bounded extension estimate directly. The usual trace estimate supplies the reverse norm bound. The extension has no finite frequency cutoff and keeps all interactions in the bulk action.
+
+## 4. Strict quasiconvexity gives duration-independent coercivity
+
+The elementary quartic remainder satisfies
+
+    H(B+A)-H(B)-DH(B):A
+      >= (1/4)(|B|^2|A|^2+|A|^4).                        (4.1)
+
+For a direct proof, normalize `|A|=1`, write `B=t A+Bperp` with `Bperp:A=0`, and put `s^2=|Bperp|^2`. The left side is
+
+    6t^2+2s^2+4t+1.
+
+Subtracting the right side gives
+
+    (23/4)(t+8/23)^2+(7/4)s^2+5/92 >=0.                 (4.2)
+
+Restoring homogeneity proves (4.1). At `B=0` the exact remainder is `H(A)`, and this sharper fact is used later.
+
+Because `F` is a quartic polynomial, choose finite constants `C0,C1` such that
+
+    |f_B(A)| <= C0(|B|^2|A|^2+|A|^4),                    (4.3)
+    |D f_B(A)| <= C1(|B|^2|A|+|A|^3).                    (4.4)
+
+These bounds require no positivity of `F`. For example if `||D^2F(A)||<=C2|A|^2`, Taylor's formula permits `C0=C2`, `C1=2C2`.
+
+Take any incoming path `Phi` ending at a mean-zero `U`. Follow it with the reversed fixed extension `RU` from `U` to zero. The concatenated potential is continuous, belongs to `W^(1,4)`, and has equal zero profiles at its two ends; it may be extended periodically in x. No matching of first derivatives across the seam is needed for `W^(1,4)` compatibility.
+
+Applying (2.1), subtracting the zero total linear term, and using (4.1) yields
+
+    J_B(Phi)+J_B(RU)
+      >= (epsilon/4) integral_closed
+                 (|B|^2|D Phi_closed|^2+|D Phi_closed|^4).
+
+Define
+
+    C_B(U)=|B|^2 e_2(U)^2+e_4(U)^4.                      (4.5)
+
+Reflection in x does not change the norm of the extension gradient; no reflection invariance of `F` is asserted. Bound the return action by (4.3). Dropping its nonnegative coercive energy gives
+
+    J_B(Phi) >= (epsilon/4)[|B|^2||D Phi||_2^2
+                                      +||D Phi||_4^4]
+                            -C0 C_B(U).                 (4.6)
+
+The original width of `Phi` does not occur in this estimate. This is the extra closure lemma missing from mere abstract incoming-action finiteness.
+
+The fixed incoming extension also gives an upper bound. Consequently
+
+    -C0 C_B(U) <= p_B(U) <= C0 C_B(U).                   (4.7)
+
+In particular `p_B` is finite. For `U=0`, quasiconvexity gives nonnegative closed incoming action, while the zero path has zero action, so `p_B(0)=0`.
+
+If `Phi_eta` has action at most `p_B(U)+eta`, then
+
+    |B|^2||D Phi_eta||_2^2+||D Phi_eta||_4^4
+       <= (8 C0/epsilon) C_B(U)+4 eta/epsilon.             (4.8)
+
+This controls minimizing sequences even when their widths vary. It is not a compactness or existence-of-minimizer assertion on the union of all widths.
+
+## 5. Quantitative strong critical-trace regularity
+
+Let `U,W` be mean-zero profiles and `delta=W-U`. Pad the start of a near-minimizing incoming path to `U` by a zero strip until its width is at least one. Add the translate of `E(delta)` on its final unit slab, extended by zero before that slab. The modified path ends at `W` and is exactly compatible; the zero value of `E(delta)` at its left end prevents a seam jump.
+
+For any two gradient fields `A,Z`, (4.4) and the fundamental theorem of calculus give
+
+    |integral [f_B(A+Z)-f_B(A)]|
+      <= C1[|B|^2 (||A||_2+||Z||_2)||Z||_2
+                     +(||A||_4+||Z||_4)^3||Z||_4].       (5.1)
+
+The integrals in (5.1) may be restricted to the terminal unit slab; bounding the old gradient by its full-strip norm only enlarges the right side. Let
+
+    K_B(U)=(8 C0/epsilon) C_B(U),
+    K=max{K_B(U),K_B(W)}.
+
+Apply (4.8), let `eta` tend to zero, and then exchange `U,W`. One obtains
+
+    |p_B(W)-p_B(U)|
+      <= C1[|B| sqrt(K) e_2(delta)+|B|^2 e_2(delta)^2
+                            +(K^(1/4)+e_4(delta))^3 e_4(delta)].  (5.2)
+
+Since `e_2,e_4` are continuous on `X`, (5.2) proves local Lipschitz continuity of `p_B` on every bounded strong critical-trace ball, for each fixed `B`. Equation (2.5) gives the corresponding result including profile means. Differentiability is not asserted.
+
+At `B=0` suppose separately that `|F(A)|<=M|A|^4` and `|DF(A)|<=K1|A|^3`. Then (4.6) improves to
+
+    J_0(Phi)>=epsilon||D Phi||_4^4-M e_4(U)^4.
+
+A near minimizer therefore has
+
+    ||D Phi_eta||_4^4 <= (2M/epsilon)e_4(U)^4+eta/epsilon,
+
+and the cleaner modulus is
+
+    |p_0(W)-p_0(U)|
+      <= K1[(2M/epsilon)^(1/4) max{e_4(U),e_4(W)}
+                                             +e_4(W-U)]^3 e_4(W-U). (5.3)
+
+## 6. Domination and what was supplied rather than solved
+
+Concatenate an arbitrarily good incoming path to `U` with any compatible strip from `U` to `W`. Taking the incoming infimum gives
+
+    p_B(W)-p_B(U)<=J_B(Phi).                              (6.1)
+
+Restoring the affine mean term in (2.5) gives the required original inequality
+
+    P_B(W)-P_B(U)
+       <= integral [F(B+D Phi)-F(B)].                    (6.2)
+
+This holds for arbitrary `W^(1,4)` compatible strips, hence for all smooth ones, including genuinely resonant mixed-frequency profiles. There is no single-frequency restriction.
+
+Any other normalized dominating storage is at most the incoming-action value pointwise. This maximality is elementary dynamic programming. It is not a construction of a closed Fourier formula, and evaluation of the infimum remains an infinite-dimensional nonconvex variational problem. No complexity or guaranteed numerical acquisition claim follows.
+
+The crucial positive input (2.1) must be obtained independently. For N794 it is supplied by its exact closed heat certificate. Assuming it for a new full-cone integrand would assume a stronger form of the desired conclusion. This transfer cannot be used circularly to settle the unresolved full cone.
+
+## 7. Application to the certified non-polyconvex Fstar
+
+Write `A=(x|y)`, `u=|x|^2`, `v=|y|^2`, `w=x.y`, `q=det A`, and `s=u+v`. The retained energy is
+
+    Fstar=u^2+v^2+4w^2+(7/2)q^2-(29/10)q(u+v).           (7.1)
+
+N794's exact 24-by-24 heat Gram has margin `rho=1/500`, with the compatible-jet estimate in the source. It certifies
+
+    Fstar-(rho/24)H = Fstar-(1/12000)H is quasiconvex.     (7.2)
+
+This is stronger than merely remembering the recorded Jensen-gap constant `1/36000`; the latter also includes the elementary quartic-remainder factor `1/3`. Confusing these two constants would unnecessarily weaken the trace transfer.
+
+For the growth bound, use `uv=w^2+q^2` to write
+
+    Fstar=s^2+2w^2+(3/2)q^2-(29/10)q s.
+
+Set `t=q/s`, so `-1/2<=t<=1/2`. The lower bound follows from `w^2>=0`:
+
+    Fstar/s^2 >= 1+(3/2)t^2-(29/10)t >= -3/40.
+
+The upper bound follows from `w^2<=s^2/4-q^2`:
+
+    Fstar/s^2 <= 3/2-(1/2)t^2-(29/10)t <= 113/40.
+
+Hence `M=113/40` suffices. Differentiating the five terms in (7.1), using `|w|,|q|<=s/2` and `|cof A|=|A|`, gives respectively the norm bounds `4,4,7/2,29/5` times `|A|^3` (the first bound groups `u^2+v^2`). Thus `K1=173/10` suffices.
+
+Equations (5.3) and (7.2) give
+
+    |p_0(W)-p_0(U)|
+      <= (173/10)[67800^(1/4) max{e_4(U),e_4(W)}
+                                          +e_4(W-U)]^3 e_4(W-U). (7.3)
+
+This constant is deliberately conservative. It is exact and independent of profile bandwidth or strip width. It controls trace perturbations, not the computational error of solving the variational infimum.
+
+The N794 coefficient cube has a recorded heat Gram margin at least `1/1000`, so the same argument uses `epsilon=1/24000`, with polynomial growth constants for its individual coefficients or uniform compact-cube bounds. No new cube quasiconvexity theorem is claimed here.
+
+## 8. Exact Fstar entry and critical concentration
+
+Let `Uplus(y)=(cos y,sin y)` and put `Phi(x,y)=r(x)Uplus(y)`. Then `w=0`, `u=(r')^2`, `v=r^2`, `q=r'r`, and
+
+    E_y Fstar(D Phi)
+      =(r')^4+r^4+(7/2)(r'r)^2
+                          -(29/10)r'r[(r')^2+r^2].       (8.1)
+
+Choose the following continuous, piecewise smooth radius:
+
+    r(x)=x/2,                      0<=x<=1,
+    r(x)=exp(x-1)/2,               1<=x<=1+log 2.
+
+The derivative agrees at the join (`r'=1/2` from both sides). The incoming action on the first piece is
+
+    23/1920.
+
+On the second piece, `r'=r`, so `D Phi=r R_y` and `Fstar(I)=-3/10`. Its action is
+
+    -(3/10) integral r^4 dx = -9/128.
+
+The total is exactly
+
+    23/1920-9/128 = -7/120.                              (8.2)
+
+The piecewise field is already admissible in `W^(1,4)`. Smooth approximations preserve a strictly negative action; the exact `W^(1,4)` statement is retained instead of silently assigning (8.2) to an unsupplied globally smooth interpolation.
+
+Simultaneous reversal of x and y negates the gradient. Homogeneous quartics are even under total negation. Thus there is an exit strip from `Uminus(y)=Uplus(-y)` to zero with the same exact negative action. This argument does not require reflection invariance of `Fstar`.
+
+For positive integer `N`, set
+
+    U_N^plus(y)=N^(-3/4)Uplus(Ny),
+    U_N^minus(y)=N^(-3/4)Uminus(Ny).
+
+Apply the same scaling to the strips: `Phi_N(x,y)=N^(-3/4)Phi(Nx,Ny)`, whose width is `(1+log 2)/N`. The gradient gains `N^(1/4)`, the energy gains `N`, and the width loses `N`. Hence the directed actions stay exactly `-7/120` at `B=0`.
+
+Every normalized dominating storage for `Fstar` therefore satisfies
+
+    P_0(U_N^plus)<=-7/120,
+    P_0(U_N^minus)>= 7/120.                              (8.3)
+
+Both sequences are bounded and weakly converge to zero in `W^(3/4,4)`: their critical norms stay bounded, their `L^4` norms tend to zero, and reflexivity plus the unique distributional limit identifies every weak subsequential limit as zero. For `s<3/4`, their `W^(s,4)` norms tend to zero. The signed bounds in (8.3) prove the failure of weak lower and weak upper semicontinuity, and of strong continuity at every subcritical topology.
+
+At a fixed nonzero `B`, the quartic expansion of the adjusted action has degree-four contribution (8.2), cubic contribution `O_B(N^(-1/4))`, and quadratic contribution `O_B(N^(-1/2))`. In this circular construction all odd transverse moments vanish, so the cubic contribution is actually zero. The remaining correction tends to zero. Thus the two-sided weak-continuity obstruction persists for every fixed affine background. This claim needs no passage of an unknown minimizing sequence to the limit; it uses explicit admissible strips.
+
+The coexistence of (7.3) and (8.3) is the precise strongest repair: a nonlocal storage exists and is regular in the strong critical trace norm, but weak compactness of traces cannot supply its continuity.
+
+## 9. What finite approximation can and cannot inherit
+
+Let `S_M` be a smooth Fourier cutoff converging strongly to the identity in `X`. Equation (5.2) gives a concrete bound on `|p_B(S_M U)-p_B(U)|` in terms of the **actual critical tail** `e_p(U-S_M U)`. For each fixed trace that tail tends to zero. An additional stronger Sobolev/Besov regularity budget gives the usual quantitative decay of the tail and hence a bandwidth selection rule.
+
+No uniform cutoff follows from a bounded critical norm alone. For `N` above a finite Fourier measurement cutoff, both profiles in (8.3) have the same measured data as zero. Their storage values have opposite signs separated by at least `7/60`. Any function of those measurements has uniform approximation error at least `7/120` on a bounded critical ball containing the two sequences. Continuity of the approximating function is not needed for this argument.
+
+This distinction charges the missing input: a per-profile critical tail bound or stronger regularity must be supplied or acquired. Finite profile positivity, stronger compute alone, and a weakly convergent bounded sequence do not provide it. Even with tail control, computing the finite- or infinite-dimensional variational value with certified optimality is a separate unresolved computational step.
+
+Spatial scaling deserves care. At `B=0`, amplitude homogeneity `p_0(aU)=a^4 p_0(U)` is exact because scalar multiplication is invertible on the whole path class. A spatial dilation changing the torus period also gives exact covariance. On one fixed torus, the map `U(y)->U(Ny)` only immediately gives the one-sided bound from replicated competitors; an arbitrary minimizing extension could break the smaller period. No unjustified equality under fixed-torus frequency replication is used above.
+
+## 10. A decisive obstruction to a naive Hardy-BMO transfer
+
+The primary CLMS Jacobian theorem gives a Hardy-space gain for determinants of Sobolev gradients. Applying Hardy-BMO duality to the quartic orientation term would suggest
+
+    |integral |D phi|^2 det D phi|
+      <= C ||det D phi||_(H^1) || |D phi|^2 ||_(BMO).
+
+That estimate itself is valid for the indicated smooth inputs. The attempted closure
+
+    ||det D phi||_(H^1) || |D phi|^2 ||_(BMO)
+                         <= C ||D phi||_4^4              (10.1)
+
+is false, even for smooth compactly supported planar potentials.
+
+Choose two smooth compactly supported vector potentials `q,psi` with disjoint supports after translation, with `det Dq` nonzero and `g=|D psi|^2` nonconstant. Put the support of `q` away from the origin and set
+
+    phi_r(x)=q(x)+r^(1/2) psi(x/r),  0<r<<1.
+
+The two gradients have disjoint support, and
+
+    ||D phi_r||_4^4=||Dq||_4^4+||D psi||_4^4,
+
+independent of `r`. On a ball of radius proportional to `r` around the origin, the mean oscillation of `|D phi_r|^2=r^(-1)g(x/r)` is at least `c/r`. Meanwhile
+
+    ||det D phi_r||_(H^1) >= c'||det D phi_r||_1
+                             >= c'||det Dq||_1 >0.
+
+The product in (10.1) therefore diverges at least as `1/r`, while its proposed right side is constant. Each input is a legal smooth compactly supported gradient and its determinant is in `H^1` by the inspected primary theorem.
+
+This refutes the named global norm-product closure, not compensated compactness, the quartic integral estimate, or quasiconvexity. The original quartic integral still has its elementary pointwise bound. A repair must preserve local scale matching between determinant and weight, or use an actual exact-form/heat cancellation. The primary Hardy gain does not supply the sharp signed estimate automatically.
+
+## 11. Bridge ledger
+
+1. **PROVEN LOGICAL DEPENDENCY, internal reconstruction:** N794 strict heat certificate -> finite, strongly locally Lipschitz full critical-trace storage for its certified `Fstar` and coefficient cube. The independent supplied input is the strict quasiconvex margin; the new proof is Sections 2-7. No nonconvex optimization cost is hidden as a solved operation.
+
+2. **REFUTED TRANSFER:** finite weak/Fourier data -> universal uniformly accurate storage on a bounded critical-trace ball. Section 8 supplies exact compatible negative entry/exit strips; Section 9 supplies the measurement collision.
+
+3. **REFUTED TRANSFER:** the global CLMS `H^1` times BMO norm product can be bounded by the quartic gradient energy. Section 10 supplies smooth compactly supported scaled counterexamples. The surviving route needs genuinely local matched-scale compensation.
+
+4. **REFUTED TRANSFER, narrowly named recipe:** represent `Fstar` as a positive sum of nonnegative Gram-trace energies of linear matrix images, such as the OpenAI heat paper's `tr[(R*R)^(3/2)]` or quartic Schatten versions, with no subtractive compensation. The represented function would be pointwise nonnegative, while `Fstar(I)=-3/10`. For quartic linear Schatten norms it would additionally be convex. General signed or nonlinear representations are not excluded.
+
+5. **INCOMPATIBLE ASSUMPTIONS:** directly apply the OpenAI two-field tree energy to arbitrary profile traces. Its proof needs nonnegative square-superharmonic fields with a common nonnegative defect and a tight inequality at each node. No compatible construction of those fields from an arbitrary quartic gradient was supplied. The elementary tree proof was inspected; it is not evidence that the missing profile representation exists.
+
+6. **INCOMPATIBLE ASSUMPTIONS:** directly invoke Matthes-McCann-Savare flow interchange on the profile action from rank-one convexity. Its estimate assumes an auxiliary EVI flow and actual minimizing-movement optimality. Convexity in profile velocity alone supplies neither assumption. The explicit closed heat identity does supply the necessary integrated sign for the certified energies; no general rank-one-convex sign theorem is inferred.
+
+## 12. Verification scope
+
+`verify_transfer.py` uses exact SymPy arithmetic to check the quartic formulas, both growth envelopes as polynomial squares, the critical background remainder completion, the exact negative entry/exit action, the strict margin conversion and constant `67800`, and the relevant scaling exponents. It also replays the existing source verifier and records its declared scope separately. These checks do not formalize the trace-extension estimate, gluing proof, strong-continuity proof, or Hardy-BMO counterexample; those analytic arguments are supplied above.
+
+The positive theorem is conditional only on the stated strict quasiconvex input. For the named source energy, the source's exact certificate and heat implication discharge that input internally. External correctness and historical novelty are UNKNOWN. No source repository was edited.

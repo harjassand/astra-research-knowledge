@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>verify_universal_obstructions.py [updates/FQ/package/universal]</title><body><p>FQ preserved source or supplied internal evidence; externally unreviewed. <a href="../../updates/FQ/package/universal/verify_universal_obstructions.py">Exact bytes</a></p><pre>&quot;&quot;&quot;Exact finite checks for UNIVERSAL_PROFILE_OBSTRUCTIONS.md.
+
+Run with Python 3 and SymPy. No optimization results, prior verifier output,
+or downloaded manuscripts are inputs. These checks do not formalize the
+high-frequency localization, Sobolev weak-convergence, or convex-duality proofs.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from itertools import product
+import sympy as s
+
+ROOT = Path(__file__).resolve().parent
+REPORT: dict[str, object] = {
+    &quot;status&quot;: &quot;running&quot;,
+    &quot;scope&quot;: &quot;exact finite algebra only; analytic proofs are in the note&quot;,
+    &quot;groups&quot;: [],
+}
+
+def zero(expr: s.Expr) -&gt; None:
+    assert s.simplify(s.expand(expr)) == 0, s.simplify(expr)
+
+def passed(name: str, **data: object) -&gt; None:
+    item = {&quot;name&quot;: name, &quot;passed&quot;: True, **data}
+    REPORT[&quot;groups&quot;].append(item)
+    print(f&quot;PASS {len(REPORT[&#x27;groups&#x27;])}: {name}&quot;, flush=True)
+
+def exponents(n: int, degree: int):
+    for ex in product(range(degree + 1), repeat=n):
+        if sum(ex) == degree:
+            yield ex
+
+def mono(xs, ex):
+    return s.prod(x**e for x, e in zip(xs, ex))
+
+# 1. Column identity, including every homogeneous planar quartic monomial.
+a, b, c, d = x = s.symbols(&quot;a b c d&quot;, real=True)
+p1, p2, q1, q2 = s.symbols(&quot;p1 p2 q1 q2&quot;, real=True)
+P = s.Matrix([p1, 0, p2, 0])
+Q = s.Matrix([0, q1, 0, q2])
+X = s.Matrix(x)
+count = 0
+for ex in exponents(4, 4):
+    f = mono(x, ex)
+    df = s.Matrix([s.diff(f, xi) for xi in x])
+    shifted = lambda vec: f.subs(dict(zip(x, vec)), simultaneous=True)
+    dfq = df.subs(dict(zip(x, X + Q)), simultaneous=True)
+    R1 = shifted(X + Q + P) - shifted(X + Q) - dfq.dot(P)
+    R2 = shifted(X + Q) - f - df.dot(Q)
+    zero(shifted(X + P + Q) - f - R1 - R2 - dfq.dot(P) - df.dot(Q))
+    count += 1
+assert count == 35
+passed(&quot;two-column circulation bookkeeping&quot;, homogeneous_monomials=count)
+
+# 2. Euler derivative: the second-jet coefficient really is -p_qq.
+z = s.symbols(&quot;z1 z2&quot;, real=True)
+q = s.symbols(&quot;q1 q2&quot;, real=True)
+h = s.symbols(&quot;h1 h2&quot;, real=True)
+v = s.symbols(&quot;v1 v2&quot;, real=True)
+w = s.symbols(&quot;w1 w2&quot;, real=True)
+xs = z + q
+count = 0
+for deg in range(5):
+    for ex in exponents(4, deg):
+        p = mono(xs, ex)
+        first = sum(s.diff(p,z[i])*v[i]+s.diff(p,q[i])*w[i] for i in range(2))
+        flux = sum(s.diff(p,q[i])*v[i] for i in range(2))
+        total_derivative = sum(s.diff(flux,z[i])*q[i]+s.diff(flux,q[i])*h[i]+s.diff(flux,v[i])*w[i] for i in range(2))
+        euler = [s.diff(p,z[i])-sum(s.diff(p,q[i],z[j])*q[j]+s.diff(p,q[i],q[j])*h[j] for j in range(2)) for i in range(2)]
+        zero(first-total_derivative-sum(euler[i]*v[i] for i in range(2)))
+        for i in range(2):
+            for j in range(2):
+                zero(s.diff(euler[i],h[j])+s.diff(p,q[i],q[j]))
+        count += 1
+assert count == 70
+kap, f1, f2 = s.symbols(&quot;kap f1 f2&quot;, real=True)
+p = f1*z[0]+f2*z[1]+kap*(z[0]*q[1]-z[1]*q[0])/2
+euler = [s.diff(p,z[i])-sum(s.diff(p,q[i],z[j])*q[j] for j in range(2)) for i in range(2)]
+zero(euler[0]-f1-kap*q[1]); zero(euler[1]-f2+kap*q[0])
+passed(&quot;local first-jet Euler derivative and oriented area variation&quot;, monomials=count)
+
+# 3. Determinant-affine support transforms into an affine lift correctly.
+B = s.Matrix(2,2,s.symbols(&quot;B0:4&quot;,real=True))
+Y = s.Matrix(2,2,s.symbols(&quot;Y0:4&quot;,real=True))
+cof = s.Matrix([[B[1,1],-B[1,0]],[-B[0,1],B[0,0]]])
+zero((B+Y).det()-B.det()-s.trace(cof.T*Y)-Y.det())
+passed(&quot;minor-support lift algebra&quot;)
+
+# 4. Independently verify the Dacorogna-Marcellini endpoint ROC quadratic.
+norm2 = sum(t*t for t in x)
+det = a*d-b*c
+DM = norm2**2 - 4/s.sqrt(3)*norm2*det
+acoustic = s.diff(DM,a,2)
+squares = 12*(a-d/s.sqrt(3))**2 + 2*(1+1/s.sqrt(3))*(b+c)**2 + 2*(1-1/s.sqrt(3))*(b-c)**2
+zero(acoustic-squares)
+DM_I = s.simplify(DM.subs({a:1,b:0,c:0,d:1}))
+assert DM_I &lt; 0
+passed(&quot;Dacorogna-Marcellini rank-one acoustic squares&quot;, value_at_identity=str(DM_I))
+
+# 5. Negative entry/return strip and scale-invariant trace obstruction.
+t = s.symbols(&quot;t&quot;, real=True)
+r = t/2
+energy = (s.Rational(1,4)+r*r)**2 - 4/s.sqrt(3)*(s.Rational(1,4)+r*r)*(r/2)
+action = s.simplify(s.integrate(energy,(t,0,2)))
+zero(action-(s.Rational(103,120)-s.sqrt(3)/2))
+assert s.Rational(3,4)-s.Rational(103,120)**2 == s.Rational(191,14400)
+zero(DM.subs({xi:-xi for xi in x},simultaneous=True)-DM)
+trace_exponent=s.symbols(&quot;trace_exponent&quot;,real=True)
+scale_exp=4*(1-trace_exponent)-1
+zero(scale_exp.subs(trace_exponent,s.Rational(3,4)))
+passed(&quot;negative compatible entry and reversed exit; critical scaling&quot;,
+       action=str(action),positive_squared_sign_margin=&quot;191/14400&quot;,trace_power=&quot;3/4&quot;)
+
+# 6. General spiral construction: derivative columns and determinant sign.
+al, be, n = s.symbols(&quot;alpha beta n&quot;,real=True)
+v0 = s.Matrix(s.symbols(&quot;v01 v02&quot;,real=True))
+J = s.Matrix([[0,-1],[1,0]])
+Aspiral = s.Matrix.hstack(al*v0+be*J*v0,n*J*v0)
+zero(Aspiral.det()-al*n*v0.dot(v0))
+passed(&quot;rotation-exponential compatible negative-entry algebra&quot;)
+
+# 7. Perspective convexity identity and the exact duration stationarity equation.
+tau=s.symbols(&quot;tau&quot;,positive=True)
+w0,p0=s.symbols(&quot;w0 p0&quot;,real=True)
+co=s.symbols(&quot;f0:5&quot;,real=True)
+xscalar=s.symbols(&quot;z&quot;,real=True)
+f=sum(co[j]*xscalar**j for j in range(5))
+W=tau*f.subs(xscalar,w0+p0/tau)
+zero(s.diff(W,tau,2)-p0**2/tau**3*s.diff(f,xscalar,2).subs(xscalar,w0+p0/tau))
+ed=s.symbols(&quot;a0:5&quot;,real=True)
+W=sum(ed[j]*tau**(1-j) for j in range(5))
+zero(tau**4*s.diff(W,tau)-(ed[0]*tau**4-ed[2]*tau**2-2*ed[3]*tau-3*ed[4]))
+passed(&quot;perspective timing and quartic stationarity&quot;)
+
+# 8. Exact failure of the fixed Poisson storage on a convex quartic.
+rho,lam,coef,vel = s.symbols(&quot;rho lam coef vel&quot;,real=True)
+Frho=(a*a+c*c+rho*rho*(b*b+d*d)-2*rho*det)**2
+odd=s.expand((Frho-Frho.subs({c:-c,d:-d},simultaneous=True))/2)
+zero(odd+4*rho*det*(a*a+c*c+rho*rho*(b*b+d*d)))
+res=(vel-rho)**4+2*coef*rho*(lam*lam+rho*rho)*vel
+explicit=s.factor(res.subs({rho:s.Rational(1,4),lam:1,coef:1,vel:-s.Rational(1,12)}))
+assert explicit == -s.Rational(331,10368)
+zero(res.subs(vel,rho)-2*coef*rho*rho*(lam*lam+rho*rho))
+zero(s.expand(res.subs(vel,-rho/3)).coeff(rho,2)+s.Rational(2,3)*coef*lam**2)
+passed(&quot;fixed Poisson storage fails for an explicitly convex quartic&quot;,residual=str(explicit))
+
+# 9. A multi-frequency failure for the DM endpoint, all exact Laurent algebra.
+zz,rr=s.symbols(&quot;zz rr&quot;)
+ii=s.I
+cs=lambda k:(zz**k+zz**(-k))/2
+sn=lambda k:(zz**k-zz**(-k))/(2*ii)
+dy=lambda f:s.expand(ii*zz*s.diff(f,zz))
+dx=lambda f:s.expand(rr*s.diff(f,rr))
+mean=lambda f:s.expand(f).coeff(zz,0)
+def half_integral(poly):
+    terms=s.Poly(mean(poly),rr).terms()
+    assert all(ex[0]&gt;0 for ex,_ in terms)
+    return s.simplify(sum(c/s.Integer(ex[0]) for ex,c in terms))
+ff=rr*cs(1)-s.Rational(1,5)*rr**2*sn(2)-s.Rational(1,6)*rr**3*cs(3)
+hh=-s.Rational(3,8)+s.Rational(7,6)*rr*sn(1)+s.Rational(1,10)*rr**2*cs(2)-s.Rational(1,2)*rr**3*sn(3)
+fx,fy,hx,hy=dx(ff),dy(ff),dx(hh),dy(hh)
+dI=half_integral((fx*hy-hx*fy)*(fx*fx+fy*fy))
+assert dI == s.Rational(265631,360000)
+p=fy.subs(rr,1); vv=hh.subs(rr,1)
+n4=s.simplify(mean((vv*vv+p*p)**2))
+L=s.simplify(mean((vv*vv+p*p)**2+4/s.sqrt(3)*vv*p*(vv*vv+p*p)))
+DP=-2/s.sqrt(3)*dI
+res=s.simplify(L-DP)
+aa=s.Rational(550762363,69120000);bb=s.Rational(6118187,1296000)
+zero(res-aa+bb*s.sqrt(3))
+assert aa&gt;0 and bb&gt;0 and 3*bb*bb-aa*aa&gt;0
+assert n4==aa
+passed(&quot;coupled-frequency failure of DM Poisson candidate&quot;,integral=str(dI),residual=str(res),norm_fourth=str(n4),ratio_decimal=str(s.N(res/n4,18)))
+
+# 10. G has an exact global rank-one-convexity certificate independent of searches.
+u=a*a+c*c;v=b*b+d*d
+G=3*(u+v-2*det)**2+s.Rational(35,24)*u*u+det*det-s.Rational(5,2)*det*u
+M11=s.hessian(s.diff(G,a,2),x)/2
+M12=s.hessian(s.diff(G,a,b),x)/2
+M22=s.hessian(s.diff(G,b,2),x)/2
+K=s.zeros(4)
+for (i,j),val in zip([(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)], [11,s.Rational(91,6),0,0,11,s.Rational(41,3)]):
+    K[i,j]=val;K[j,i]=-val
+Gram=M11.row_join(M12+K).col_join((M12-K).row_join(M22))
+minors=[Gram[:j,:j].det() for j in range(1,7)]
+assert minors==[s.Rational(107,2),642,s.Rational(1605,8),s.Rational(8445,16),s.Rational(2815,8),s.Rational(26865,4)]
+C=Gram[:6,:6];E=Gram[:6,6:];D=Gram[6:,6:]
+assert D-E.T*C.inv()*E==s.zeros(2)
+ss,tt=s.symbols(&quot;ss tt&quot;,real=True)
+xx=s.Matrix(x); bil=ss*xx; bil=bil.col_join(tt*xx)
+rankdir=s.Matrix([ss,tt,0,0])
+zero((bil.T*Gram*bil)[0]-(rankdir.T*s.hessian(G,x)*rankdir)[0])
+rotder=s.diff(G,a)*(-c)+s.diff(G,b)*(-d)+s.diff(G,c)*a+s.diff(G,d)*b
+zero(rotder)
+assert G.subs({a:1,b:0,c:0,d:1})==-s.Rational(1,24)
+passed(&quot;independent rational acoustic certificate for G&quot;,rank=6,leading_minors=[str(z) for z in minors])
+
+REPORT[&quot;status&quot;]=&quot;all_checks_passed&quot;
+REPORT[&quot;group_count&quot;]=len(REPORT[&quot;groups&quot;])
+(ROOT/&quot;universal_verification.json&quot;).write_text(json.dumps(REPORT,indent=2)+&quot;\n&quot;)
+print(f&quot;ALL {REPORT[&#x27;group_count&#x27;]} GROUPS PASSED&quot;,flush=True)
+</pre></body></html>
