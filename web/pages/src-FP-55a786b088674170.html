@@ -1,0 +1,51 @@
+<!doctype html><meta charset="utf-8"><title>FP selected campaign snapshot — repair/repair_review_math.py</title><pre>&quot;&quot;&quot;Exact first-step review of the proposed two-template repair CTMC.
+
+Run: python3 repair_review_math.py
+This is a hypothetical state model, not fitted enzyme kinetics.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+import json
+
+
+def mean_patch_lifetime(damage, repair, eligible):
+    &quot;&quot;&quot;0 -&gt; R at 2*lambda*p, 0 -&gt; I at 2*lambda*(1-p).
+
+    R -&gt; 0 at mu, R -&gt; F at lambda; I -&gt; F at lambda.
+    F is absorbing. I represents a permanently ineligible single-copy lesion.
+    &quot;&quot;&quot;
+    lam, mu, p = F(damage), F(repair), F(eligible)
+    assert lam &gt; 0 and mu &gt;= 0 and 0 &lt;= p &lt;= 1
+    return ((3 - 2 * p) * mu + 3 * lam) / (2 * lam * ((1 - p) * mu + lam))
+
+
+def fast_repair_limit(damage, eligible):
+    lam, p = F(damage), F(eligible)
+    assert lam &gt; 0 and 0 &lt;= p &lt;= 1
+    return None if p == 1 else (3 - 2 * p) / (2 * lam * (1 - p))
+
+
+def check():
+    lam, mu = F(1), F(1000)
+    cases = [F(1), F(999, 1000), F(99, 100), F(9, 10), F(0)]
+    assert mean_patch_lifetime(lam, mu, F(1)) == (mu + 3 * lam) / (2 * lam * lam)
+    assert mean_patch_lifetime(lam, mu, F(0)) == F(3, 2) / lam
+    out = []
+    for p in cases:
+        value = mean_patch_lifetime(lam, mu, p)
+        limit = fast_repair_limit(lam, p)
+        if limit is not None:
+            assert value &lt;= limit
+        out.append({
+            &quot;damage_rate&quot;: str(lam),
+            &quot;repair_rate&quot;: str(mu),
+            &quot;eligible_fraction&quot;: str(p),
+            &quot;mean_patch_lifetime&quot;: str(value),
+            &quot;infinite_repair_rate_limit&quot;: &quot;unbounded&quot; if limit is None else str(limit),
+        })
+    return out
+
+
+if __name__ == &quot;__main__&quot;:
+    print(json.dumps(check(), indent=2))
+</pre>

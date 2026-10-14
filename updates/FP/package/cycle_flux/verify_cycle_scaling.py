@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+"""Exact rational checks for the scoped cycle-scaling construction.
+
+This checks finite examples only. The general statements are proved in REPORT.md.
+"""
+
+from fractions import Fraction as F
+
+
+def rref(matrix):
+    a = [list(map(F, row)) for row in matrix]
+    if not a:
+        return a, []
+    rows, cols = len(a), len(a[0])
+    pivots = []
+    i = 0
+    for j in range(cols):
+        pivot = next((k for k in range(i, rows) if a[k][j]), None)
+        if pivot is None:
+            continue
+        a[i], a[pivot] = a[pivot], a[i]
+        d = a[i][j]
+        a[i] = [x / d for x in a[i]]
+        for k in range(rows):
+            if k != i and a[k][j]:
+                d = a[k][j]
+                a[k] = [x - d * y for x, y in zip(a[k], a[i])]
+        pivots.append(j)
+        i += 1
+        if i == rows:
+            break
+    return a, pivots
+
+
+def kernel(matrix):
+    a, pivots = rref(matrix)
+    if not a:
+        raise ValueError("At least one row is needed")
+    cols = len(a[0])
+    out = []
+    for free in range(cols):
+        if free in pivots:
+            continue
+        v = [F(0) for _ in range(cols)]
+        v[free] = F(1)
+        for row, pivot in enumerate(pivots):
+            v[pivot] = -a[row][free]
+        out.append(v)
+    return out
+
+
+def matvec(matrix, vector):
+    return [sum((F(x) * y for x, y in zip(row, vector)), F(0)) for row in matrix]
+
+
+def universal_scalings(S):
+    k = kernel(S)
+    constraints = []
+    for vector in k:
+        for row in S:
+            constraints.append([F(s) * v for s, v in zip(row, vector)])
+    return kernel(constraints), k
+
+
+def main():
+    independent = [[1, -1, 0, 0], [0, 0, 1, -1]]
+    joined = [[1, -1, 0, 0, -1], [0, 0, 1, -1, 1]]
+    independent_scalings, independent_currents = universal_scalings(independent)
+    joined_scalings, joined_currents = universal_scalings(joined)
+    assert len(independent_currents) == 2
+    assert len(independent_scalings) == 2
+    assert len(joined_currents) == 3
+    assert len(joined_scalings) == 1
+
+    # A=4, P=Q=1 are chemostats; B=C=2 at baseline.
+    # Elementary reversible reactions: A<->B, B<->P, A<->C, C<->Q.
+    z0 = [F(2), F(2)]
+    z1 = [F(3), F(3, 2)]
+    gates0 = [F(1, 2), F(1), F(1, 2), F(1)]
+    raw0 = [F(4) - z0[0], z0[0] - F(1), F(4) - z0[1], z0[1] - F(1)]
+    raw1 = [F(4) - z1[0], z1[0] - F(1), F(4) - z1[1], z1[1] - F(1)]
+    j0 = [e * v for e, v in zip(gates0, raw0)]
+    assert j0 == [F(1)] * 4
+    assert matvec(independent, j0) == [F(0), F(0)]
+    rho = [a / b for a, b in zip(raw0, raw1)]
+    assert rho == [F(2), F(1, 2), F(4, 5), F(2)]
+    B1 = sum((gates0[i] * rho[i] for i in (0, 1)), F(0))
+    B2 = sum((gates0[i] * rho[i] for i in (2, 3)), F(0))
+    E = sum(gates0, F(0))
+    target_ratio_multiplier = F(3)
+    gamma2 = E / (target_ratio_multiplier * B1 + B2)
+    gamma1 = target_ratio_multiplier * gamma2
+    assert (B1, B2, E, gamma1, gamma2) == (F(3, 2), F(12, 5), F(3), F(30, 23), F(10, 23))
+    gates1 = [gates0[i] * rho[i] * (gamma1 if i < 2 else gamma2) for i in range(4)]
+    j1 = [e * v for e, v in zip(gates1, raw1)]
+    assert gates1 == [F(30, 23), F(15, 23), F(4, 23), F(20, 23)]
+    assert j1 == [F(30, 23), F(30, 23), F(10, 23), F(10, 23)]
+    assert sum(gates1, F(0)) == E
+    assert matvec(independent, j1) == [F(0), F(0)]
+
+    # An unmodelled B<->C exchange is dormant at baseline and active at the target.
+    eps = F(1, 100)
+    assert eps * (z0[0] - z0[1]) == 0
+    hidden_target_flux = eps * (z1[0] - z1[1])
+    hidden_residual = matvec(joined, j1 + [hidden_target_flux])
+    assert hidden_target_flux == F(3, 200)
+    assert hidden_residual == [F(-3, 200), F(3, 200)]
+
+    print("independent scaling basis:", independent_scalings)
+    print("joined scaling basis:", joined_scalings)
+    print("baseline current:", j0)
+    print("relocation factors:", rho)
+    print("new gates:", gates1)
+    print("new current:", j1)
+    print("total gate budget:", sum(gates1, F(0)))
+    print("hidden reaction target residual:", hidden_residual)
+
+
+if __name__ == "__main__":
+    main()

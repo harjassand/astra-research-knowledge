@@ -1,0 +1,21 @@
+# Root review of retained mathematics
+
+Status: same-team internal reconstruction and review, not external expert validation or priority clearance.
+
+## s02 hidden reactive gateway
+
+Read the complete worker proof and exact fixture. The coupling argument covers arbitrary adaptive classical local-row queries and random stopping: before a hidden terminal J is queried, the H0 and HJ transcripts coincide. Averaging J uniformly gives P_HJ(E) <= P_0(E) + E_0[|S| 1_(E^c)]/N. The requested disjoint accuracy intervals imply E_0|S| >= N/3. With a per-execution cap q<=N, retaining the indicator gives q>=N/2. The matching expected-cost randomized strategy must choose its N/2 inspected candidates UNIFORMLY at random on the two-thirds branch; a fixed subset would fail on an excluded J. The proof supports the narrow oracle claim. It does not establish a new nucleation algorithm, a lower bound with a supplied analytic generator, a quantum oracle lower bound of N, or novelty.
+
+## s05 remote susceptibility
+
+Reconstructed the tridiagonal entries from the positive local annihilation terms: interior diagonal 2, off diagonal -1, terminal diagonal (m-1)/m+e. The one-excitation determinant is me. The trailing minor is 1/m+(m-1)e, yielding chi=(m-1)/m+1/(m^2 e). Uniqueness of the full ground follows because the terminal lowering operator and then every previous lowering operator annihilate any zero-energy vector. The source-moment walk argument needs 2m-1 factors to visit the remote diagonal and return. Evolution-only distinguishability cost Omega(1/e) follows under the stated fixed-control access model. Exact supplied rows instead permit the O(m) recurrence. This is an acquisition warning, not a hard exact-input computational family or a successful gap-free capability.
+
+## s06 circuitwise relocation
+
+Read the complete theorem and fixture. A support-minimal null vector has one-dimensional kernel on its support; otherwise a linear combination cancelling one coordinate contradicts minimality. A diagonal map preserving the full kernel must therefore scale all coordinates on each circuit equally. Decomposing any null vector into support-minimal null vectors proves sufficiency, with unconstrained scales on columns absent from every circuit. Physical positive-current claims require the stated spanning or positive-interior condition; arbitrary signed kernel vectors are not automatically attainable chemistry. The target residual from a dormant exchange is an exact load-bearing failure of support acquisition. The result supplies no settling, stability, uncertainty, actuator, or competitor advantage theorem. Its mathematical relation to standard linear-matroid decomposition makes novelty UNKNOWN.
+
+## root repair
+
+Root derived the two-copy patch reliability model and route-erasure limit. Both are conditional exact models of familiar redundancy/information principles. No measured damage/repair hazards, original polymerase mechanism, random whole-frame repair, mechanical function or energy advantage has been acquired. The local unique-template condition specifies an intended completion; it does not establish a physical implementation. Worker follow-up reviews are preserved separately.
+
+Selected executable calculations are replayed from disposable copies with command, exit status and output hashes recorded. Those receipts establish successful finite execution only. They do not independently validate every step of an all-parameter proof, literature claim, physical input, or scientific novelty.
