@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — defect_sector.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/package/escape/defect_sector.py">Original bytes</a></p><pre>&quot;&quot;&quot;Energy-discovered defect states plus exact all-state source certification.
+Only zero/two-wall states and their one-flip neighborhood are listed.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from functools import lru_cache
+import json,time
+import numpy as np
+import scipy.sparse as ss
+import scipy.sparse.linalg as sla
+import sympy as sp
+from refine_sector import RefinedRing
+from probe_moments import sf,ff
+
+class DefectRing(RefinedRing):
+    def states(self):
+        n=self.n;S={0,(1&lt;&lt;n)-1}
+        for start in range(n):
+            mask=0
+            for length in range(1,n):
+                mask|=1&lt;&lt;((start+length-1)%n);S.add(mask)
+        return sorted(S)
+    @lru_cache(None)
+    def wallcount(self,x):
+        n=self.n
+        rot=((x&lt;&lt;1)&amp;((1&lt;&lt;n)-1)) | (x&gt;&gt;(n-1))
+        return (x^rot).bit_count()
+    def prob(self,x):
+        n=self.n;t=self.t
+        return t**(n-self.wallcount(x))/((t+1)**n+(t-1)**n)
+    def rate(self,x,i):
+        n=self.n;s=1 if (x&gt;&gt;i)&amp;1 else -1
+        a=1 if (x&gt;&gt;((i-1)%n))&amp;1 else -1
+        b=1 if (x&gt;&gt;((i+1)%n))&amp;1 else -1
+        return self.nu*(1-self.eta*s*F(a+b,2))/2
+    def run(self,bits=32):
+        start=time.perf_counter();self.setup();setup=time.perf_counter()
+        states=self.states();indices={s:i for i,s in enumerate(states)}
+        rows=[];cols=[];vals=[];N=len(states)
+        for row,x in enumerate(states):
+            diag=float(self.kappa*((x&amp;1)!=0))
+            for i in range(self.n):
+                rate=float(self.rate(x,i));diag+=rate;y=x^(1&lt;&lt;i)
+                if y in indices:rows.append(row);cols.append(indices[y]);vals.append(-rate)
+            rows.append(row);cols.append(row);vals.append(diag)
+        K=ss.csr_matrix((vals,(rows,cols)),shape=(N,N))
+        v0=sla.spsolve(K,np.ones(N))
+        v={s:F(round(float(v0[i])*2**bits),2**bits) for i,s in enumerate(states)}
+        proposed=time.perf_counter()
+        # Exact K v with v=0 on the unrepresented states. Detailed balance
+        # permits collecting incoming changes from the known local moves.
+        Kv={}
+        for x,vx in v.items():
+            diag=self.kappa*int(bool(x&amp;1))
+            for i in range(self.n):
+                rate=self.rate(x,i);diag+=rate;y=x^(1&lt;&lt;i)
+                Kv[y]=Kv.get(y,F(0))-self.rate(y,i)*vx
+            Kv[x]=Kv.get(x,F(0))+diag*vx
+        # r=1+delta_r where delta_r=-Kv, supported on a polynomial neighborhood.
+        dr={x:-v for x,v in Kv.items() if v}
+        # Exact variational lower.
+        src=sum(self.prob(x)*vx for x,vx in v.items())
+        energy=sum(self.prob(x)*vx*Kv[x] for x,vx in v.items())
+        lower=2*src-energy
+        # Whole-space r^2/D and &lt;B,r/D&gt;, including the entire unlisted source 1.
+        R0=self.da
+        z=[self.da]+[self.db*self.corr(1^(1&lt;&lt;i)) for i in range(self.n)]
+        for x,dx in dr.items():
+            invD=1/(self.gamma+self.kappa*int(bool(x&amp;1)))
+            wt=self.prob(x)*invD
+            R0+=wt*(2*dx+dx*dx)
+            z[0]+=wt*dx
+            for i in range(self.n):z[i+1]+=wt*dx*(1 if (x&gt;&gt;i)&amp;1 else -1)
+        zs=sp.Matrix([sf(a) for a in z])
+        error=R0-ff((zs.T*self.W*zs)[0])
+        if error&lt;0:raise AssertionError(&#x27;negative error&#x27;)
+        upper=lower+error
+        ended=time.perf_counter()
+        return {&#x27;n&#x27;:self.n,&#x27;t&#x27;:str(self.t),&#x27;nu&#x27;:str(self.nu),&#x27;kappa&#x27;:str(self.kappa),
+                &#x27;tau_lo&#x27;:float(lower),&#x27;tau_hi&#x27;:float(upper),&#x27;ratio&#x27;:float(upper/lower),
+                &#x27;closed_lo&#x27;:float(2*lower-2/self.kappa),&#x27;closed_hi&#x27;:float(2*upper-2/self.kappa),
+                &#x27;low_states&#x27;:len(states),&#x27;residual_neighborhood&#x27;:len(dr),&#x27;full_states&#x27;:str(1&lt;&lt;self.n),
+                &#x27;setup_s&#x27;:setup-start,&#x27;proposal_s&#x27;:proposed-setup,&#x27;certification_s&#x27;:ended-proposed,&#x27;total_s&#x27;:ended-start,
+                &#x27;lower_exact&#x27;:str(lower),&#x27;upper_exact&#x27;:str(upper),&#x27;witness&#x27;:{str(k):str(v) for k,v in v.items()},
+                &#x27;bits&#x27;:bits,&#x27;omitted_mass&#x27;:str(1-sum(self.prob(x) for x in states))}
+if __name__==&#x27;__main__&#x27;:
+    import sys
+    R=DefectRing(int(sys.argv[1]),F(sys.argv[2]));out=R.run();json.dump(out,open(sys.argv[3],&#x27;w&#x27;))
+    print(json.dumps({k:v for k,v in out.items() if k not in [&#x27;witness&#x27;,&#x27;lower_exact&#x27;,&#x27;upper_exact&#x27;]}))
+</pre></body></html>

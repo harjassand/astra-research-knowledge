@@ -1,0 +1,41 @@
+# Source and workspace read ledger
+
+Audit date: 2026-10-14 UTC. All source/repository files below were opened read-only. All authored files and the verifier replay are inside this owned work directory.
+
+## Incoming full-cone source package
+
+| File | SHA-256 | Reading depth and use |
+|---|---|---|
+| ../FH-sources/quartic/ASTRA_FULL_CONE_RIGIDITY.md | 9a5142d0ca9b221b56543242276e298799e51ef1d2bb82edaf8af43d6bd8271d | All 528 lines read. Theorem A and Finsler/cubic lemmas, invariant normal forms and Theorems B/C, fixed-linear-flow Theorem D, multiple-quadric limitation, failures, scope, and references. |
+| ../FH-sources/quartic/verify_rigidity.py | c04d8135cc681f5043a42ff99baed598a6827f055bc3169f3434f511173b4a28 | All 199 lines read before execution. It imports stdlib and SymPy, no optimizer or exploratory data, and writes exact_checks.json beside itself. It was copied unchanged to this directory before replay. |
+| ../FH-sources/quartic/README.md | ab7c1f11f56091cfce222b57808a38a23c9aa58361aad3863bdae709b46cadbf | All 30 lines read. Explicit limits: full nine-coefficient ROC⇒QC is unproved; exact singular faces handled, near-singular limits and positive-definite sector unresolved. |
+| ../FH-sources/quartic/MANIFEST_SHA256.json | 53e277a9bd7a22107d456d9d104c6fcc5bf6579aaaa70ec9e01bb2ba373e0cb3 | Entire manifest read; used to compare supplied source hashes and identify the verifier's recorded output hashes. |
+| ../FH-sources/quartic_PASTED_SOURCE.txt | 17ce3adb43048991972a661fbf5cc051809126850adb9706b3923acbafef8515 | Read selected portions (opening mission/context and final result/scope sections, including lines 1–160 and 411–543); treated as historical source data, not governing instructions. |
+
+The source note's SHA matches its manifest entry. The unchanged verifier copy and regenerated exact_checks.json also match their supplied source hashes after replay. The supplied verification logs were not used as proof of a fresh replay.
+
+## Astra repository and current capital context
+
+Repository path: ../astra-capital/. It was inspected read-only. Current checkout was clean at PR83 head 74a1ab09ba75324bc3d2a14f05ce6196f43ffd77 on research/capital-synthesis-active-certificates-20261014. The named main baseline resolves to ace0cfc4437fe91c20ccd24d69e0ee4bb335e871 (origin/main, commit “Integrate collision, equilibrium-design and phonon research with scoped synthesis (#82)”).
+
+| File | SHA-256 | Reading depth and use |
+|---|---|---|
+| ../astra-capital/00_START_HERE.txt | 4a91985ece91557af12ba5c216e7fe17cf5dd000596e9a0c73b0b6705498f360 | All 8 lines read first. Followed its pin/provenance/unknown-status requirements. |
+| ../astra-capital/frontier/dossiers/N740.txt | 80c40e2e625798e286110745db0d25191e70cafe7b2b57c670f6b810d0ecd356 | Current opening, scoped scientific claim, current N794 semantic notice, and Q4/open-gate language read. |
+| ../astra-capital/frontier/dossiers/N794.txt | d46adf277076d18d5cd9bef695005fa8b3590ef4874cb5f8f4eba212d2b93063 | Current opening and scoped nine-coefficient/full-cone gate read; retained Fstar certificate and distinction from global full-cone claim checked. |
+| ../astra-capital/frontier/dossiers/N797.txt | 36dd81fb2edf3cd3181cc94268fe4d463c1bfedbfef85151e73405b9b1181978 | Current opening, H_L and scalar/tensor scope, review/capability open gates, and full-nine/general Morrey scope read. |
+| ../astra-capital/agent/SEMANTIC_NOTICES.jsonl | 7e0d3243c16df8084f68f4acbd1d4ac273d94fff519eedb134136080a36c41d2 | Read the relevant N740-to-N794 Fstar notice and N794-to-N797 tensor notice only; file hash identifies the complete append-only source. |
+| ../astra-capital/agent/COMPOSITION.txt | b31cf8c3344df112b66840455244ff9c4b4f590d44713582027f82b50c83c46b | All 31 lines read. Used the five bridge states and preserved source/destination assumptions, unreviewed status, and candidate/refuted distinctions. |
+| ../astra-capital/state/CONTINUITY.md | 040c4ac42162802bd2fb4f9e8069e6ca034ccbee63cffc7b43f4c745dac0b297 | All 40 lines read. Handoff/publication instructions noted; no repository publication was authorized or performed. |
+| ../astra-capital/updates/FG/package/quartic/ASTRA_SHARP_QUARTIC_THEOREM.md | 6cd5cd449f07ecefb2956bb37ef42fba74795334e8ef058522b8a1af9e4dcd79 | All 615 lines read in sections. Reconstructed prior sharp one-parameter theorem and exact heat/two-form certificate; kept its full-cone limitation. |
+| ../astra-capital/updates/FG/synthesis/quartic_critic/REPORT.txt | 3f99cda089d2a11e0e4402e11b65d0e0ff21ce3c654a010b024c3f6937ad051 | All 259 lines read. Used for independent audit scope and continuity with N794. |
+| ../astra-capital/updates/FG/synthesis/quartic/ADJACENT_THEOREM.md | 35a88dd514f635761f634521ed137e488b1ce1671e6874727a48a149ff8a4d08 | All 269 lines read. Reconstructed adjacent sharp family and tensor closed-heat certificate scope. |
+| ../astra-capital/updates/FG/synthesis/quartic_critic/adjacent/ADJACENT_REPORT.txt | 842c334e63ed99d7234c2883a314d6a066e692457be58eeac0eb8128d7e02c60 | Relevant proof/audit sections read, including scalar obstruction, tensor bypass, and explicit representation boundary; not treated as a general QC counterexample. |
+
+The selected N740/N794/N797 records remain source_derived_unreviewed. N740's nonclosedness is limited to its specified Burkholder/symmetrized certificate; N794's Fstar result is closed internally; N797's tensor certificate bypasses a scalar-only representation obstruction. The incoming full-cone result is distinct and does not amend those source records.
+
+## Owned scratch and replay
+
+The verifier was copied to source_replay/verify_rigidity.py before execution. Source and copy SHA-256 both equal c04d8135cc681f5043a42ff99baed598a6827f055bc3169f3434f511173b4a28. The replay ran with Python 3.14.3 and SymPy 1.14.0; all 12 grouped checks passed. Detailed start-time, output hashes, and limits are in REPLAY_RECEIPT.md.
+
+No source or repository bytes were changed. No PR, commit, publication, or external message was made.

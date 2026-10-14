@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — acquisition.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/package/escape/acquisition.py">Original bytes</a></p><pre>&quot;&quot;&quot;Energy interrogation with an explicit global pairwise model-class premise.
+The graph/interaction coefficient is not supplied to the learner. Point probes
+cannot themselves establish absence of higher-order terms; that is a premise.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations
+import random,time,json,math
+from collective_sector import CollectiveRing
+
+class WeightOracle:
+    def __init__(self,n,t,r=F(1),seed=17):
+        order=list(range(n));random.Random(seed).shuffle(order)
+        self.n=n;self._edges=[(order[i],order[(i+1)%n]) for i in range(n)]
+        self._t=F(t);self._r=F(r);self.queries=[]
+    def __call__(self,mask):
+        # An exact Boltzmann-weight API is used to keep the synthetic algebra rational.
+        # A physical energy oracle returns -log(weight) with finite error instead.
+        matches=sum(((mask&gt;&gt;i)&amp;1)==((mask&gt;&gt;j)&amp;1) for i,j in self._edges)
+        ans=self._r**mask.bit_count()*self._t**matches
+        self.queries.append({&#x27;mask&#x27;:str(mask),&#x27;weight&#x27;:str(ans)})
+        return ans
+
+def acquire(n,oracle):
+    w0=oracle(0); singles=[oracle(1&lt;&lt;i) for i in range(n)]
+    adj=[[] for _ in range(n)];edge_square=[]
+    for i,j in combinations(range(n),2):
+        ratio=oracle((1&lt;&lt;i)|(1&lt;&lt;j))*w0/(singles[i]*singles[j])
+        if ratio!=1:
+            if ratio&lt;1:raise ValueError(&#x27;not a ferromagnetic interaction&#x27;)
+            adj[i].append(j);adj[j].append(i);edge_square.append(ratio)
+    if not edge_square or len(set(edge_square))!=1 or any(len(a)!=2 for a in adj):
+        raise ValueError(&#x27;outside uniform cycle class&#x27;)
+    sq=edge_square[0];a=math.isqrt(sq.numerator);b=math.isqrt(sq.denominator)
+    if a*a!=sq.numerator or b*b!=sq.denominator:raise ValueError(&#x27;nonrational coupling: interval implementation required&#x27;)
+    t=F(a,b); rset={w*t*t/w0 for w in singles}
+    if len(rset)!=1:raise ValueError(&#x27;nonuniform site field&#x27;)
+    r=rset.pop()
+    order=[0,adj[0][0]]
+    while len(order)&lt;n:
+        new=next(x for x in adj[order[-1]] if x!=order[-2])
+        if new in order:raise ValueError(&#x27;disconnected cycles&#x27;)
+        order.append(new)
+    if 0 not in adj[order[-1]]:raise ValueError(&#x27;not a cycle&#x27;)
+    return {&#x27;n&#x27;:n,&#x27;t&#x27;:t,&#x27;r&#x27;:r,&#x27;order&#x27;:order,&#x27;edges&#x27;:sum(len(a) for a in adj)//2}
+
+def run_acquired(n,t,r=F(1),nu=F(1),kappa=F(1),seed=17):
+    start=time.perf_counter();O=WeightOracle(n,F(t),F(r),seed);law=acquire(n,O);acq=time.perf_counter()
+    if law[&#x27;r&#x27;]!=1:raise ValueError(&#x27;hard-trap spectral certificate requires spin-reversal symmetry&#x27;)
+    R=CollectiveRing(n,law[&#x27;t&#x27;],nu,kappa);out=R.run();end=time.perf_counter()
+    out[&#x27;energy_queries&#x27;]=len(O.queries);out[&#x27;energy_query_seconds&#x27;]=acq-start
+    out[&#x27;end_to_end_seconds&#x27;]=end-start;out[&#x27;inferred_order&#x27;]=law[&#x27;order&#x27;];out[&#x27;query_transcript&#x27;]=O.queries
+    out[&#x27;model_class_premise&#x27;]=&#x27;globally pairwise, uniform ferromagnetic cycle with uniform field; heat-bath microscopic generator&#x27;
+    return out
+if __name__==&#x27;__main__&#x27;:
+    import sys
+    out=run_acquired(int(sys.argv[1]),F(sys.argv[2]));json.dump(out,open(sys.argv[3],&#x27;w&#x27;))
+    print(json.dumps({k:v for k,v in out.items() if k not in [&#x27;query_transcript&#x27;,&#x27;witness&#x27;,&#x27;lower_exact&#x27;,&#x27;upper_exact&#x27;,&#x27;inferred_order&#x27;]}))
+</pre></body></html>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — comparators.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/package/escape/comparators.py">Original bytes</a></p><pre>&quot;&quot;&quot;Matched exact sparse and attractive-coupling local-window comparators.&quot;&quot;&quot;
+from fractions import Fraction as F
+import time,json
+import numpy as np
+import scipy.sparse as ss
+import scipy.sparse.linalg as sla
+from probe_moments import Ring
+
+def window(n,t,w,boundary,nu=F(1),kappa=F(1)):
+    if not 1&lt;=w&lt;=n-2:raise ValueError(&#x27;window must leave at least two exterior sites&#x27;)
+    start=time.perf_counter();law=Ring(n,F(1),F(t),nu,kappa);P=law.marginal(w);N=1&lt;&lt;w;center=w//2
+    rows=[];cols=[];vals=[];rates=[];diags=[]
+    for x in range(N):
+        local=[];diag=kappa*((x&gt;&gt;center)&amp;1)
+        for i in range(w):
+            a=((x&gt;&gt;(i-1))&amp;1) if i else boundary
+            b=(x&gt;&gt;i)&amp;1
+            c=((x&gt;&gt;(i+1))&amp;1) if i&lt;w-1 else boundary
+            rt=law.q[(a,b,c)];local.append(rt);diag+=rt
+            rows.append(x);cols.append(x^(1&lt;&lt;i));vals.append(-float(rt))
+        rates.append(local);diags.append(diag)
+        rows.append(x);cols.append(x);vals.append(float(diag))
+    K=ss.csr_matrix((vals,(rows,cols)),shape=(N,N));v=sla.spsolve(K,np.ones(N));solve=time.perf_counter()
+    vv=[F(float(a)) for a in v]
+    residual=[diags[x]*vv[x]-sum(rates[x][i]*vv[x^(1&lt;&lt;i)] for i in range(w))-1 for x in range(N)]
+    delta=max(abs(a) for a in residual)
+    if delta&gt;=1 or min(vv)&lt;=0:raise ArithmeticError(&#x27;failed residual certificate&#x27;)
+    mean=sum(p*a for p,a in zip(P,vv));lo=mean/(1+delta);hi=mean/(1-delta)
+    end=time.perf_counter()
+    return {&#x27;n&#x27;:n,&#x27;t&#x27;:str(t),&#x27;window&#x27;:w,&#x27;boundary&#x27;:boundary,&#x27;states&#x27;:N,&#x27;lo&#x27;:float(lo),&#x27;hi&#x27;:float(hi),
+            &#x27;lo_exact&#x27;:str(lo),&#x27;hi_exact&#x27;:str(hi),&#x27;delta&#x27;:float(delta),&#x27;solve_s&#x27;:solve-start,&#x27;verify_s&#x27;:end-solve,&#x27;total_s&#x27;:end-start}
+
+def full(n,t,nu=F(1),kappa=F(1)):
+    start=time.perf_counter();law=Ring(n,F(1),F(t),nu,kappa);P=law.marginal(n);N=1&lt;&lt;n
+    rows=[];cols=[];vals=[];rates=[];diags=[]
+    for x in range(N):
+        local=[];diag=kappa*(x&amp;1)
+        for i in range(n):
+            rt=law.q[((x&gt;&gt;((i-1)%n))&amp;1,(x&gt;&gt;i)&amp;1,(x&gt;&gt;((i+1)%n))&amp;1)];local.append(rt);diag+=rt
+            rows.append(x);cols.append(x^(1&lt;&lt;i));vals.append(-float(rt))
+        rates.append(local);diags.append(diag)
+        rows.append(x);cols.append(x);vals.append(float(diag))
+    K=ss.csr_matrix((vals,(rows,cols)),shape=(N,N));v=sla.spsolve(K,np.ones(N));solved=time.perf_counter()
+    vv=[F(float(a)) for a in v]
+    delta=max(abs(diags[x]*vv[x]-sum(rates[x][i]*vv[x^(1&lt;&lt;i)] for i in range(n))-1) for x in range(N))
+    if delta&gt;=1 or min(vv)&lt;=0:raise ArithmeticError(&#x27;failed residual certificate&#x27;)
+    mean=sum(p*a for p,a in zip(P,vv));lo=mean/(1+delta);hi=mean/(1-delta)
+    end=time.perf_counter()
+    return {&#x27;n&#x27;:n,&#x27;t&#x27;:str(t),&#x27;states&#x27;:N,&#x27;lo&#x27;:float(lo),&#x27;hi&#x27;:float(hi),&#x27;lo_exact&#x27;:str(lo),&#x27;hi_exact&#x27;:str(hi),
+            &#x27;delta&#x27;:float(delta),&#x27;solve_s&#x27;:solved-start,&#x27;verify_s&#x27;:end-solved,&#x27;total_s&#x27;:end-start}
+
+if __name__==&#x27;__main__&#x27;:
+    import sys
+    dest=sys.argv[1];out={&#x27;windows&#x27;:[],&#x27;full&#x27;:[]}
+    for w in [3,5,7,9,11]:
+        a=window(24,F(1000),w,1);b=window(24,F(1000),w,0)
+        row={&#x27;window&#x27;:w,&#x27;lower&#x27;:a,&#x27;upper&#x27;:b,&#x27;ratio&#x27;:b[&#x27;hi&#x27;]/a[&#x27;lo&#x27;]};out[&#x27;windows&#x27;].append(row)
+        print(&#x27;window&#x27;,w,a[&#x27;lo&#x27;],b[&#x27;hi&#x27;],row[&#x27;ratio&#x27;],a[&#x27;total_s&#x27;]+b[&#x27;total_s&#x27;],flush=True)
+    for n in [6,8,10,12]:
+        row=full(n,F(1000));out[&#x27;full&#x27;].append(row);print(&#x27;full&#x27;,n,row[&#x27;lo&#x27;],row[&#x27;hi&#x27;],row[&#x27;total_s&#x27;],flush=True)
+    json.dump(out,open(dest,&#x27;w&#x27;))
+</pre></body></html>

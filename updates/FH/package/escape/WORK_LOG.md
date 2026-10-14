@@ -1,0 +1,9 @@
+# Execution scope and failures
+
+The exploration began with exact local inverse-response moments, then single-spin spectral closure, polynomial and preconditioned trials, and finally defect-supported source responses. A repeated-Fraction implementation exceeded one 200-second tool limit during an eight-step refinement. It was replaced by common-denominator contractions, and the completed result is retained. That timed-out work is not represented as zero-cost or as a successful run. The final two-dimensional closure is a separate simplification of the spectral certificate, not a claim that the response has two coefficients.
+
+Single-process timings vary across executions. `experiments.json` is the final parameter sweep; `audit_results.json` is a later verifier replay. The script time does not include literature retrieval, development, exploratory failures, tool orchestration or physical calibration. No total energy use was measured.
+
+The original local-moment implementation contained an exploratory canonical-gap fallback without a completed proof. It was removed before packaging; every reported moment result used a stronger positive Dobrushin bound and is unchanged. The final defect certificates use neither that fallback nor the local-moment code's gap.
+
+The initial dimension table's n=8 residual-neighborhood count was checked against the JSON and corrected to 194. No numerical endpoint was changed by this formatting correction.

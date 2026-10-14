@@ -1,0 +1,87 @@
+"""Independent finite-state audits. Explicit enumeration is confined to tests."""
+from fractions import Fraction as F
+from itertools import product
+import json,time,glob
+import numpy as np
+import sympy as sp
+from collective_sector import CollectiveRing
+from acquisition import WeightOracle,acquire
+from probe_moments import Ring,sf,ff
+from comparators import full
+
+checks=0
+
+def assert_psd(M):
+    global checks
+    # Exact semidefinite Schur elimination, allowing exact zero pivots.
+    A=[list(row) for row in M.tolist()];n=len(A)
+    for k in range(n):
+        pivot=A[k][k];assert pivot>=0;checks+=1
+        if pivot==0:
+            assert all(A[k][j]==0 for j in range(k,n));checks+=1;continue
+        for i in range(k+1,n):
+            for j in range(i,n):
+                A[i][j]-=A[i][k]*A[k][j]/pivot;A[j][i]=A[i][j]
+    return True
+
+def finite_audit(n,t):
+    global checks
+    R=CollectiveRing(n,F(t));N=1<<n
+    P=sp.diag(*[sf(R.prob(x)) for x in range(N)])
+    L=sp.zeros(N)
+    for x in range(N):
+        for i in range(n):
+            rt=sf(R.rate(x,i));L[x,x]+=rt;L[x,x^(1<<i)]-=rt
+            assert R.prob(x)*R.rate(x,i)==R.prob(x^(1<<i))*R.rate(x^(1<<i),i);checks+=1
+    one=sp.ones(N,1);mag=sp.Matrix([sf(F(2*x.bit_count()-n,n)) for x in range(N)])
+    assert L*one==sp.zeros(N,1);assert L*mag==sf(R.lam)*mag;checks+=2
+    assert (mag.T*P*mag)[0]==sf(R.s);checks+=1
+    B=one.row_join(mag);J=sp.diag(-sf(R.gamma),sf((R.lam-R.gamma)/R.s))
+    Lminor=sf(R.gamma)*sp.eye(N)+B*J*B.T*P
+    diff=P*(L-Lminor)
+    assert diff==diff.T;checks+=1
+    if n<=5:assert_psd(diff)
+    else:
+        pd=np.sqrt(np.array([float(R.prob(x)) for x in range(N)]))
+        D=np.array(L-Lminor,dtype=float)*pd[:,None]/pd[None,:]
+        assert np.linalg.eigvalsh((D+D.T)/2)[0]>-1e-10;checks+=1
+    kap=sp.diag(*[x&1 for x in range(N)])
+    C=Lminor+kap;K=L+kap
+    # Woodbury exact full-space check on arbitrary rational trial residuals.
+    Dinv=sp.diag(*[sf(1/(R.gamma+F(x&1))) for x in range(N)])
+    W=sp.Matrix([[sf(R.W00),sf(R.W01)],[sf(R.W01),sf(R.W11)]])
+    inv=Dinv-Dinv*B*W*B.T*P*Dinv
+    assert C*inv==sp.eye(N);checks+=N*N
+    if n<=5:
+        true=(one.T*P*K.inv(method='DM')*one)[0]
+        out=R.run();assert F(out['lower_exact'])<=ff(true)<=F(out['upper_exact']);checks+=1
+    return {'n':n,'t':str(t),'states':N}
+
+def run():
+    global checks
+    start=time.perf_counter();rows=[]
+    for n,t in [(4,F(1)),(4,F(2)),(4,F(100)),(5,F(10)),(6,F(100))]:
+        rows.append(finite_audit(n,t))
+    for n in [8,16,24]:
+        for seed in [1,17,42]:
+            for t in [F(3,2),F(1000)]:
+                O=WeightOracle(n,t,F(1,9),seed);a=acquire(n,O)
+                assert a['t']==t and a['r']==F(1,9);checks+=2
+                expected={tuple(sorted(e)) for e in O._edges}
+                got={tuple(sorted((a['order'][i],a['order'][(i+1)%n]))) for i in range(n)}
+                assert expected==got;checks+=1
+    references=[]
+    for n in [6,8,10,12]:
+        R=CollectiveRing(n,F(1000));out=R.run();ref=full(n,F(1000))
+        assert F(out['lower_exact'])<=F(ref['hi_exact']) and F(ref['lo_exact'])<=F(out['upper_exact']);checks+=2
+        references.append({'n':n,'candidate_lo':out['tau_lo'],'candidate_hi':out['tau_hi'],
+                           'reference_lo':ref['lo'],'reference_hi':ref['hi'],'candidate_s':out['run_s'],'reference_s':ref['total_s']})
+    replays=[]
+    for path in sorted(glob.glob('/mnt/data/astra_source_escape/acquired_*.json')):
+        out=json.load(open(path));R=CollectiveRing(out['n'],F(out['t']),F(out['nu']),F(out['kappa']))
+        lo,hi,_=R.certificate({int(k):F(v) for k,v in out['witness'].items()})
+        assert lo==F(out['lower_exact']) and hi==F(out['upper_exact']);checks+=2
+        replays.append({'path':path,'replayed':True})
+    return {'assertions':checks,'finite_checks':rows,'reference_checks':references,'replays':replays,'seconds':time.perf_counter()-start}
+if __name__=='__main__':
+    out=run();json.dump(out,open('/mnt/data/astra_source_escape/audit_results.json','w'));print(json.dumps(out))

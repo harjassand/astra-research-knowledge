@@ -1,0 +1,193 @@
+# Conditional quantitative nullspace stability
+
+## Status and scope
+
+This is a quantitative consequence of the one-indefinite-quadric closure proof. It controls one cubic component of the affine-background coupling when a fixed Finsler remainder has a spectral gap. It does not control the complete Schur remainder, give constants uniform over varying quartics or Finsler decompositions, or settle limits of nearly singular gradients. The reduced-constraint illustration below is not asserted to arise from any quartic or compatible gradient.
+
+## The estimate
+
+Let $V$ be a finite-dimensional Euclidean space, $q(x)=x^{T}Qx$ an indefinite quadratic form, and $F:V\to\mathbb R$ a homogeneous quartic such that
+
+$$
+D^{2}F(Z)[R,R]\ge 0\qquad (Z\in V,\ q(R)=0).
+$$
+
+Let $X\sim\nu$ have finite fourth moment and $\mathbb E q(X)=0$. Set
+
+$$
+H=\mathbb E D^{2}F(X),\qquad b=\mathbb E DF(X),\qquad
+m_2=\mathbb E|X|^2,\quad m_4=\mathbb E|X|^4.
+$$
+
+Fix a direction $A\in V$ and one specific non-strict Finsler decomposition
+
+$$
+Q_A(X):=D^{2}F(A)[X,X]=P(X)+\lambda q(X),\qquad P\succeq0.
+$$
+
+Write $U=\ker P$, $\delta=A^{T}HA$, and let $C_A(X)=DF(X)[A]$. Let $T_A$ be the symmetric trilinear polarization with $C_A(x)=T_A[x,x,x]$, and put
+
+$$
+\kappa=\sup_{|u|=|v|=|w|=1}|T_A[u,v,w]|.
+$$
+
+The exact input from nullspace closure can be recovered as follows. The indefinite non-strict Finsler lemma says that if a quadratic form $Q_0$ is nonnegative on $\{q=0\}$, then $Q_0=P+\lambda q$ for some $P\succeq0$. One short proof compares $Q_0(x)/q(x)$ for $q(x)>0$ and $Q_0(y)/q(y)$ for $q(y)<0$: restricting to their span and testing the two null lines gives $Q_0(y)/q(y)\le Q_0(x)/q(x)$. Hence the supremum over the negative cone is at most the infimum over the positive cone; any intermediate $\lambda$ works. Here $Q_0=Q_A$, since the hypothesis applies to every $q$-null direction.
+
+Quartic reciprocity gives $D^2F(A)[X,X]=D^2F(X)[A,A]$, so
+
+$$
+\delta=A^THA=\mathbb E Q_A(X)=\mathbb E P(X),
+$$
+
+using $\mathbb E q(X)=0$. If $R\in U$ and $q(R)=0$, then $Q_A(R)=0$. The polynomial $t\mapsto D^2F(A+tY)[R,R]$ is nonnegative for all real $t$ and vanishes at $0$, so its derivative at $0$ vanishes. With $C_A(X)=DF(X)[A]$, quartic tensor symmetry gives
+
+$$
+D^2 C_A(Y)[R,R]=D^3F(A)[Y,R,R]=0\qquad(Y\in V).
+\tag{Q0}
+$$
+
+When $q|_U$ is indefinite, each quadratic form $R\mapsto D^2C_A(Y)[R,R]$ on $U$ vanishes on the null cone and therefore is a multiple $\ell(Y)q|_U$. The null-cone fact follows by diagonalizing $q|_U$: tests on opposite-sign coordinate pairs identify the nonzero diagonal and mixed coefficients; tests involving its radical force all radical coefficients to vanish. The scalar $\ell$ is linear. In diagonal coordinates, for each $k$ choose $i\ne k$ with $q_{ii}\ne0$, possible because the form is indefinite. Symmetry of the cubic tensor gives
+
+$$
+\ell(e_k)q_{ii}=D^2C_A(e_k)[e_i,e_i]
+=D^2C_A(e_i)[e_k,e_i]=\ell(e_i)q_{ki}=0.
+$$
+
+Thus $D^2C_A|_U=0$ and homogeneity gives $C_A|_U=0$. When $q|_U$ is semidefinite, (Q0) remains valid for every $R\in U_0=\ker(q|_U)$; this is the second-order vanishing used below.
+
+If $P\ne0$, let $\sigma>0$ be its smallest positive eigenvalue and $r=\delta/\sigma$. Then
+
+$$
+\mathbb E\operatorname{dist}(X,U)^2\le r.
+\tag{Q1}
+$$
+
+Indeed, quartic reciprocity and the balanced moment give
+
+$$
+\delta=D^{2}F(A):\mathbb E(XX^T)=\mathbb E Q_A(X)=\mathbb E P(X),
+$$
+
+and $P(x)\ge\sigma\operatorname{dist}(x,U)^2$. If $P=0$, then $U=V$, $q|_U$ is indefinite, and the exact measure-free closure says $C_A\equiv0$; there is no approximate estimate to prove.
+
+### Case 1: $q|_U$ is indefinite
+
+The exact cubic-closure lemma in the source proof gives $C_A|_U=0$, including when this restricted form has a radical. For $x=u+v$ with $u\in U$, $v\perp U$, multilinear expansion yields
+
+$$
+|C_A(x)|\le\kappa(3|u|^2|v|+3|u||v|^2+|v|^3)
+\le 7\kappa |x|^2\operatorname{dist}(x,U).
+$$
+
+Consequently,
+
+$$
+|b\cdot A|=|\mathbb E C_A(X)|
+\le 7\kappa\sqrt{m_4 r}
+=7\kappa\sqrt{m_4\delta/\sigma}.
+\tag{Q2}
+$$
+
+### Case 2: $q|_U$ is semidefinite
+
+Let $U_0=\ker(q|_U)$, the radical of the restricted form, and $U_1=U\cap U_0^\perp$. If $U_1\ne\{0\}$, define
+
+$$
+\mu=\min_{u\in U_1,\ |u|=1}|q(u)|>0.
+$$
+
+Let $u=\operatorname{proj}_U X$, $v=X-u$, and $u_1=\operatorname{proj}_{U_1}u$. From (Q1), $\mathbb E|v|^2\le r$. Since $q(u)=q(u_1)$ has one sign,
+
+$$
+\begin{aligned}
+\mu\,\mathbb E|u_1|^2
+&\le |\mathbb E q(u)|\\
+&=|\mathbb E(q(u)-q(X))|\\
+&\le \|Q\|\left(2\mathbb E(|X||v|)+\mathbb E|v|^2\right)\\
+&\le \|Q\|(2\sqrt{m_2r}+r).
+\end{aligned}
+$$
+
+Thus, with $s=\mathbb E\operatorname{dist}(X,U_0)^2$,
+
+$$
+s\le r+\frac{\|Q\|}{\mu}(2\sqrt{m_2r}+r).
+\tag{Q3}
+$$
+
+If $U_1=\{0\}$, take $U_0=U$ and $s\le r$, with no $\mu$-term.
+
+For every $R\in U_0$, $q(R)=0$ and $R\in\ker P$. The zero-at-the-minimum argument from Theorem A therefore gives
+
+$$
+D^2 C_A(Y)[R,R]=0\qquad(Y\in V,\ R\in U_0).
+\tag{Q4}
+$$
+
+Polarize $C_A=T_A[\cdot,\cdot,\cdot]$. For $z=\operatorname{proj}_{U_0}x$ and $w=x-z$, (Q4) implies $C_A(z)=0$ and $DC_A(z)[w]=0$. Hence
+
+$$
+|C_A(x)|=|3T_A[z,w,w]+T_A[w,w,w]|
+\le4\kappa |x|\operatorname{dist}(x,U_0)^2.
+$$
+
+Cauchy–Schwarz and $\operatorname{dist}(X,U_0)\le|X|$ now give
+
+$$
+|b\cdot A|\le4\kappa\sqrt{m_4s}.
+\tag{Q5}
+$$
+
+For $0\le r\le1$, (Q3) makes $s=O(\sqrt r)$, with explicit coefficient
+
+$$
+s\le\left[1+\frac{\|Q\|}{\mu}(1+2\sqrt{m_2})\right]\sqrt r.
+$$
+
+Thus a fourth-moment bound alone gives $|b\cdot A|=O(r^{1/4})$ in the semidefinite case. If $|X|\le R_0$ almost surely, the pointwise estimate instead gives $|b\cdot A|\le4\kappa R_0s=O(\sqrt r)$. In the indefinite case bounded support gives $|b\cdot A|\le7\kappa R_0^2\sqrt r$.
+
+All constants are conditional on the fixed decomposition and direction. They can deteriorate if $\sigma$, $\mu$, or $\kappa^{-1}$ degenerate; $m_2,m_4$ are law-dependent. The statement is therefore a local stability modulus for a fixed certificate, not a uniform near-face theorem.
+
+## Reduced-constraint illustration (not a quartic sharpness example)
+
+The following tuple illustrates that the balanced-moment and cubic-vanishing constraints used in the estimate, viewed without their quartic integration relation, do not by themselves improve the fourth-moment exponent. It is not a sharpness example for Theorem A or for planar rank-one-convex quartics. For an actual quartic, the data must also obey the reciprocity/integration identity $D_A C_A(X)=Q_A(X)$, where $C_A(X)=DF(X)[A]$ and $Q_A(X)=D^2F(A)[X,X]$. In this tuple, for any direction $A=(a_r,a_w,a_v,a_s)$, $D_A C=a_rw^2+2a_wr w$ has no $v^2$ term, whereas $P+\lambda q$ has $v^2$ coefficient $1$ for every $\lambda$; hence this identity fails for every choice of direction and multiplier. The tuple is not the jet of a quartic. Thus optimality of the exponent under full quartic compatibility, and in particular in the planar ROC cone, remains unknown.
+
+Consider $V=\mathbb R^4$ with coordinates $(r,w,v,s)$,
+
+$$
+q=w^2+2rv-s^2,\qquad P=v^2+s^2,\qquad U=\ker P=\{v=s=0\},\qquad C(r,w,v,s)=rw^2.
+$$
+
+Here $q$ has signature $(2,2)$, $q|_U=w^2$ is semidefinite with radical $U_0=\mathbb R e_r$, and $D^2C(Y)[R,R]=0$ for every $Y$ and every $q$-null $R\in U$: such an $R$ is a multiple of $e_r$, and $C$ is affine in $r$. Set the reduced quadratic remainder data to $P=v^2+s^2$ and $Q=P$ (so $Q=P+0q$). Although $C$ obeys the indicated restricted cubic-vanishing identity, this separate choice of $Q$ and $C$ is not integrable as $D^2F(A)[\cdot,\cdot]$ and $DF(\cdot)[A]$ for a common quartic $F$ and direction $A$.
+
+For $0<\varepsilon\le1/2$, put $p=\varepsilon^4$, and use the two-atom law
+
+$$
+X_1=(\varepsilon^{-1},\varepsilon^{-1},0,0),\quad \mathbb P(X_1)=p,
+\qquad
+X_2=\left(1,0,-\frac{\varepsilon^2}{2(1-\varepsilon^4)},0\right),\quad \mathbb P(X_2)=1-p.
+$$
+
+Direct arithmetic gives
+
+$$
+\mathbb E q(X)=0,\qquad \delta=\mathbb E P(X)=\frac{\varepsilon^4}{4(1-\varepsilon^4)},\qquad
+\mathbb E C(X)=\varepsilon,
+$$
+
+For $p=\varepsilon^4$ and $v_2=-p^{1/2}/(2(1-p))$, direct expansion gives
+$$
+\mathbb E|X|^4-5
+=p\left[-1+\frac{1}{2(1-p)}+\frac{p}{16(1-p)^3}\right].
+$$
+For $0<p\le1/16$, the two positive terms in brackets are bounded by
+$$
+\frac{1}{2(1-p)}+\frac{p}{16(1-p)^3}
+\le \frac{8}{15}+\frac{16}{3375}
+=\frac{1816}{3375}<1,
+$$
+so $\mathbb E|X|^4<5$. In particular, this is a uniform fourth-moment bound for the entire sequence. Therefore $(\mathbb E C)^4/\delta=4(1-\varepsilon^4)\to4$. This shows only that the reduced balance and vanishing constraints, without quartic integration, cannot force an $O(\delta^\alpha)$ bound with $\alpha>1/4$. It gives no sharpness result for full quartic data: the optimal exponent under $D_A C_A=Q_A$ is unknown, as is sharpness among planar ROC quartics. The two-atom law is not centered and is not asserted to be the law of a compatible gradient; it is only a finite-law illustration of the reduced constraints.
+
+## Independent exact check
+
+The file independent_quant_checks.py uses only Python Fraction arithmetic to check five rational instances of the reduced-constraint illustration, including the balanced-q identity, the exact $\delta$ and cubic expectation, the exact fourth-moment excess formula and its uniform rational upper bound, and the limiting scaling ratio. Its output is frozen in independent_quant_checks.json. This checks the illustration's arithmetic, not the analytic theorem or a quartic-compatible realization.

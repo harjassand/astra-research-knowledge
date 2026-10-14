@@ -1,0 +1,18 @@
+# Initial independent verdict (before worker artifacts)
+
+Date: 2026-10-14. Scope: source note `work/FH-sources/quartic/ASTRA_FULL_CONE_RIGIDITY.md`, its pasted companion, and pinned-capital context. This is a preliminary proof read, not a completed external or novelty review.
+
+The main singular-face arguments currently appear internally coherent. I have not found a countermodel to Claims A–D in the analytic read. In particular:
+
+- The non-strict Finsler step uses genuine indefiniteness of the determinant quadratic form. Opposite-sign vectors span a nondegenerate indefinite plane; null-cone positivity orders the ratios on its positive and negative regions. The radical case in the quadratic null-cone lemma is handled by varying radical coordinates. The equality propagation in A is plausible: zero averaged quadratic remainder confines the moment law to `ker P_A`, and nonnegative rank-one second variations force the mixed third derivative to vanish there. The cubic tensor symmetry then removes the indefinite-restriction case; a semidefinite restriction plus zero quadratic mean forces support into its null cone.
+- The rank-gap reduction in B is plausible: for a kernel vector `A`, the PSD averaged Hessian gives a nonnegative remainder `P_A`; determinant balance and `tr(P_A C)=0` imply `ran C subset ker P_A`. Rank `C>=3` leaves `rank P_A<=1`. The nine-dimensional invariant classification appears to cover both rank-one and invertible distinguished backgrounds, including orientation-odd coefficients.
+- The Fourier Jensen step in C appears valid. A two-dimensional matrix subspace with indefinite determinant has exactly two rank-one lines; a compatible Fourier mode has one fixed input direction, so its real and imaginary parts cannot occupy the two distinct lines. Any occurring line direction is an integer frequency direction, and two independent integer phases push Haar measure to product Haar measure. Sequential rank-one Jensen then applies. The exceptional class has an explicit polyconvex Jensen proof.
+- The fixed linear diffusion obstruction in D appears sound in structure: universal dissipation is preserved by finite-group conjugation and coefficient averaging, which reduces any strongly parabolic constant system to a positive scalar multiple of the Laplacian. The supplied compatible potential is the decisive arithmetic item still to reconstruct independently.
+
+The boundary is explicit and material: the results handle exactly singular averaged Hessians (plus arbitrary law nullspace closure in A). They do not establish rank-one convexity implies quasiconvexity on the full nine-coefficient cone. The positive-definite averaged-Hessian sector and quantitative limits of nearly singular sequences remain open. No sequence/Young-measure conclusion follows from pointwise support on an exact singular face.
+
+Pending at this preliminary stage: fresh exact checks of the nine-invariant normal forms, resonant gradient, and heat increase; exact literature access ledger; comparison with the relevant N740/N794/N797 proofs; and a bounded countermodel search. This file predates any reading of FH-quartic worker artifacts.
+
+## Post-verification update — 2026-10-14
+
+The independent exact checks, capital comparison, and primary-source access ledger are complete. The fresh checker passes 12 groups, including the exact heat example and the parent-requested near-singular sequences. No proof-breaking error or countermodel was found on the note's stated scope. See `REPORT.md` for the completed verdict and explicit limitations. FH-quartic worker artifacts remain unread.

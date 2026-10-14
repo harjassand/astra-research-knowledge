@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — validate_operation.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/synthesis/spectral/replay/producer_copy/validate_operation.py">Original bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce ASTRA static-matched spectral-substitution reference calculations.
+
+No output is experimental data or a prediction of superconducting performance.
+Optical reference: planar hBN/vacuum, not a fitted kappa-ET heterostructure.
+Requires Python 3.10+, NumPy, SciPy. Run: python validate_operation.py
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from pathlib import Path
+import numpy as np
+from scipy.integrate import simpson, quad_vec
+from scipy.linalg import eigh
+from optical_model import rp, eps, A, B
+
+OUT = Path(__file__).resolve().parent
+LOG: list[str] = []
+
+def check(condition: bool, name: str) -&gt; None:
+    if not condition:
+        raise AssertionError(name)
+    LOG.append(&#x27;PASS: &#x27;+name)
+
+def covariance(K: np.ndarray, masses: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;Ground-state displacement covariance in units hbar=1.&quot;&quot;&quot;
+    if np.min(masses) &lt;= 0:
+        raise ValueError(&#x27;Masses must be positive&#x27;)
+    mhi=np.diag(masses**-0.5)
+    lam, v=eigh(mhi@K@mhi)
+    if np.min(lam) &lt;= 0:
+        raise ValueError(&#x27;Stiffness must be strictly positive definite&#x27;)
+    return 0.5*mhi@(v*(lam**-0.5))@v.T@mhi
+
+def layer_moments(seq: np.ndarray, vals: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;Exact integrals of piecewise-constant scalar coefficient times z^0,z^1,z^2.
+    Unit-width layers, origin at geometric midplane; caps would add equal terms.
+    &quot;&quot;&quot;
+    edges=np.arange(len(seq)+1,dtype=float)-len(seq)/2
+    return np.array([np.sum(vals[seq]*(edges[1:]**(n+1)-edges[:-1]**(n+1))/(n+1)) for n in range(3)])
+
+def witness(nu: float, z_nm: float, loss: float=1, n_q: int=10000, ideal: bool=False) -&gt; tuple[float,float]:
+    &quot;&quot;&quot;Evanescent quasistatic dipole-kernel proxy integral q^2 exp(-2qz) Im rp dq.
+    Not full radiative LDOS, not the target-material interaction kernel.
+    q starts above the vacuum light line over the studied spectral window.
+    &quot;&quot;&quot;
+    q=np.geomspace(1.2e6,1e9,n_q)
+    weight=q*q*np.exp(-2*q*z_nm*1e-9)
+    ia=simpson(weight*rp(nu,q,A,loss=loss,ideal=ideal).imag,x=q)
+    ib=simpson(weight*rp(nu,q,B,loss=loss,ideal=ideal).imag,x=q)
+    return float(ia),float(ib)
+
+def main() -&gt; None:
+    results: dict[str,object] = {&#x27;status&#x27;:&#x27;Internally executed reference models; NOT laboratory data; NOT a superconductivity forecast.&#x27;}
+    signs=1-2*A
+    moments=[int(np.sum(signs*np.arange(8)**n)) for n in range(4)]
+    check(moments[:3]==[0,0,0], &#x27;equal isotope moments through degree two&#x27;)
+    check(np.array_equal(B,A[::-1]), &#x27;complement equals physical layer-order reversal&#x27;)
+    results[&#x27;signed_discrete_moments&#x27;]=moments
+    for vals in [np.array([299.,281.]),np.array([2.1,3.7]),np.array([-4.3,9.1])]:
+        ma=layer_moments(A,vals);mb=layer_moments(B,vals)
+        check(np.allclose(ma,mb,rtol=1e-12,atol=1e-12),&#x27;linear-laminate moment equality for &#x27;+str(vals.tolist()))
+    # A deliberately unbalanced alternative fails the bending-extension matching test.
+    naive=np.array([0,0,0,0,1,1,1,1])
+    check(abs(layer_moments(naive,np.array([299.,281.]))[1]-layer_moments(naive[::-1],np.array([299.,281.]))[1])&gt;1,
+          &#x27;counterexample: equal inventory alone does not match extension-bending coupling&#x27;)
+
+    qs=np.geomspace(1.2e6,4e8,801)
+    err=float(np.max(abs(rp(0,qs,A,ideal=True)-rp(0,qs,B,ideal=True))))
+    check(err&lt;1e-12,&#x27;identical finite-q static reflection in ideal mass-scaled dielectric model&#x27;)
+    emp_rel=float(np.max(abs(rp(0,qs,A)-rp(0,qs,B)))/np.max(abs(rp(0,qs,A))))
+    results[&#x27;ideal_static_reflection_error&#x27;]=err
+    results[&#x27;empirical_reference_max_DC_relative_difference_on_grid&#x27;]=emp_rel
+    nus=np.linspace(1380.,1580.,121)
+    qa=np.geomspace(1.2e6,2e8,101)
+    responses=[rp(nus[:,None],qa[None,:],s) for s in [A,B]]
+    check(min(float(x.imag.min()) for x in responses)&gt;-1e-10,&#x27;nonnegative evanescent Im rp on optical test grid&#x27;)
+    h8=rp(nus,2e7,np.zeros(8,dtype=int),layer_nm=10)
+    h1=rp(nus,2e7,np.zeros(1,dtype=int),layer_nm=80)
+    check(np.allclose(h8,h1,rtol=1e-9,atol=1e-9),&#x27;homogeneous-layer subdivision invariance&#x27;)
+    check(np.max(abs(rp(nus,2e7,A)-rp(nus,2e7,B)))&gt;0.1,&#x27;finite-frequency contrast survives static and elastic moment matching&#x27;)
+
+    rows=[]
+    for loss in [1.,3.,6.]:
+        for z in [10.,20.,40.,80.]:
+            ia,ib=witness(1470,z,loss)
+            rows.append({&#x27;loss_multiplier&#x27;:loss,&#x27;z_nm&#x27;:z,&#x27;kernel_A_per_m3&#x27;:ia,&#x27;kernel_B_per_m3&#x27;:ib,&#x27;difference_over_mean&#x27;:2*(ia-ib)/(ia+ib)})
+    results[&#x27;witness_1470cm-1&#x27;]=rows
+    low=witness(1470,20,n_q=10000)
+    high=witness(1470,20,n_q=20000)
+    conv=float(max(abs(np.array(low)/np.array(high)-1)))
+    check(conv&lt;1e-6,&#x27;witness q-grid convergence (10000 vs 20000 points)&#x27;)
+    results[&#x27;witness_relative_quadrature_change&#x27;]=conv
+    results[&#x27;fixed_q_51_per_um_1470cm-1&#x27;]={&#x27;Im_r_A&#x27;:float(rp(1470,51e6,A).imag),&#x27;Im_r_B&#x27;:float(rp(1470,51e6,B).imag)}
+    # Imaging witness vs equilibrium imaginary-frequency response: different objects.
+    xis=np.geomspace(.01,1e5,160);qimag=np.geomspace(1e6,4e8,200)
+    xa=rp(1j*xis[:,None],qimag[None,:],A,ideal=True)
+    xb=rp(1j*xis[:,None],qimag[None,:],B,ideal=True)
+    rel=np.abs(xa-xb)/np.maximum(np.abs((xa+xb)/2),1e-30)
+    i,j=np.unravel_index(np.argmax(rel),rel.shape)
+    results[&#x27;imaginary_frequency_grid&#x27;]={&#x27;max_fractional_difference&#x27;:float(rel[i,j]),&#x27;xi_cm-1&#x27;:float(xis[i]),&#x27;q_per_m&#x27;:float(qimag[j])}
+    # Optical witness finite-bandwidth check, independent of unknown target response.
+    ns=np.linspace(1430,1510,81)
+    va=[];vb=[]
+    for nu in ns:
+        ia,ib=witness(float(nu),20,n_q=5000)
+        va.append(ia);vb.append(ib)
+    w=np.exp(-0.5*((ns-1470)/10)**2)
+    ia=simpson(np.array(va)*w,x=ns);ib=simpson(np.array(vb)*w,x=ns)
+    results[&#x27;Gaussian_spectral_witness_sigma_10cm-1_at_20nm&#x27;]={&#x27;difference_over_mean&#x27;:float(2*(ia-ib)/(ia+ib)),&#x27;integration_interval_cm-1&#x27;:[1430,1510]}
+
+    # Pure-mass harmonic bounds: no phenomenological gain or linewidth used here.
+    rng=np.random.default_rng(8142026)
+    worstlow=1.;worsthigh=1.
+    r=1.1
+    ma=np.r_[20.,10.+A];mb=np.r_[20.,10.+B]
+    for trial in range(60):
+        ortho,_=np.linalg.qr(rng.normal(size=(9,9)))
+        eigenvalues=np.geomspace(1,10**rng.uniform(1,5),9)
+        K=(ortho*eigenvalues)@ortho.T
+        ca=covariance(K,ma);cb=covariance(K,mb)
+        ev=eigh(cb,ca,eigvals_only=True)
+        check(float(ev.min())&gt;=r**-0.5-1e-8 and float(ev.max())&lt;=r**0.5+1e-8,
+              &#x27;harmonic covariance Loewner bound case &#x27;+str(trial))
+        worstlow=min(worstlow,float(ev.min()));worsthigh=max(worsthigh,float(ev.max()))
+    K=np.diag(np.ones(9)*4)-np.diag(np.ones(8),1)-np.diag(np.ones(8),-1)
+    cint,err_int=quad_vec(lambda xi:np.linalg.inv(K+xi*xi*np.diag(ma))/np.pi,0,np.inf,epsabs=1e-11,epsrel=1e-11)
+    check(np.allclose(cint,covariance(K,ma),rtol=1e-9,atol=1e-10),&#x27;covariance integral identity checked against normal modes&#x27;)
+    check(np.allclose(covariance(K,ma*r),covariance(K,ma)/np.sqrt(r),rtol=1e-10),&#x27;uniform mass-scaling equality saturates covariance bound&#x27;)
+    results[&#x27;harmonic_covariance&#x27;]={&#x27;mass_ratio_bound&#x27;:r,&#x27;lower_factor&#x27;:r**-0.5,&#x27;upper_factor&#x27;:r**0.5,&#x27;random_case_extrema&#x27;:[worstlow,worsthigh],&#x27;integral_error_estimate&#x27;:float(err_int),&#x27;scope&#x27;:&#x27;Common positive stiffness matrix, harmonic displacement covariance. Not a bound on Tc or nonlinear electron response.&#x27;}
+    # MFM numbers are a conditional design budget, not measured new-system noise.
+    k=2.8;f0=77000.;target=2.
+    hz_per_pN_per_um=f0/(2*k)*1e-6
+    costs=[]
+    for sd in [.5,2.,10.]:
+        n=int(np.ceil((5*sd/target)**2))
+        costs.append({&#x27;independent_pair_sd_pN_per_um&#x27;:sd,&#x27;pairs_5sigma&#x27;:n,&#x27;hours_at_assumed_8min_per_pair&#x27;:n*8/60})
+    results[&#x27;MFM_planning&#x27;]={&#x27;k_N_per_m&#x27;:k,&#x27;f0_Hz&#x27;:f0,&#x27;Hz_per_pN_per_um&#x27;:hz_per_pN_per_um,&#x27;target_pN_per_um&#x27;:target,&#x27;target_Hz&#x27;:target*hz_per_pN_per_um,&#x27;required_standard_error_Hz&#x27;:target*hz_per_pN_per_um/5,&#x27;costs&#x27;:costs,&#x27;caveat&#x27;:&#x27;sigma_pair and acquisition time are assumed examples; independent material pairs, not image pixels.&#x27;}
+
+    spectrum=np.column_stack([nus,responses[0][:,30].real,responses[0][:,30].imag,responses[1][:,30].real,responses[1][:,30].imag])
+    np.savetxt(OUT/&#x27;reference_spectrum.csv&#x27;,spectrum,delimiter=&#x27;,&#x27;,header=&#x27;wavenumber_cm-1,Re_rA,Im_rA,Re_rB,Im_rB&#x27;,comments=&#x27;&#x27;)
+    (OUT/&#x27;results.json&#x27;).write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+    (OUT/&#x27;validation_log.txt&#x27;).write_text(&#x27;\n&#x27;.join(LOG)+&#x27;\n&#x27;)
+    print(&#x27;\n&#x27;.join(LOG[:12]))
+    print(f&#x27;{len(LOG)} assertions passed. Results: {OUT / &quot;results.json&quot;}&#x27;)
+    print(json.dumps({key:results[key] for key in [&#x27;ideal_static_reflection_error&#x27;,&#x27;empirical_reference_max_DC_relative_difference_on_grid&#x27;,&#x27;witness_relative_quadrature_change&#x27;,&#x27;imaginary_frequency_grid&#x27;,&#x27;Gaussian_spectral_witness_sigma_10cm-1_at_20nm&#x27;,&#x27;MFM_planning&#x27;]},indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre></body></html>

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>FH evidence — independent_checks.py</title><body><p>FH scoped source/internal evidence;externally unreviewed. <a href="../../updates/FH/synthesis/escape/independent_checks.py">Original bytes</a></p><pre>&quot;&quot;&quot;Independent exact finite checks and acquisition-class countermodels.
+
+The original source files are imported only for a final exact cross-check of
+its compact certificate and query inference. Full-state generators, stationary
+weights, relaxation minorants, residuals, and rational solves are rebuilt here.
+&quot;&quot;&quot;
+from __future__ import annotations
+import itertools, json, sys, time
+from fractions import Fraction as F
+from pathlib import Path
+
+ROOT=Path(__file__).resolve().parent
+SOURCE=ROOT/&#x27;source_snapshot&#x27;/&#x27;escape&#x27;
+OUT=ROOT/&#x27;replay&#x27;
+OUT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0,str(SOURCE))
+from collective_sector import CollectiveRing
+from acquisition import acquire
+
+
+def wallcount(x,n):
+    return sum(((x&gt;&gt;i)&amp;1) != ((x&gt;&gt;((i+1)%n))&amp;1) for i in range(n))
+
+def weights_for(n,t,exception=None):
+    t=F(t)
+    out=[t**(n-wallcount(x,n)) for x in range(1&lt;&lt;n)]
+    if exception is not None:
+        mask,factor=exception
+        out[mask] *= F(factor)
+    return out
+
+def transition_matrix(n,t,nu=F(1),kappa=F(1),weights=None,slow_bit0=F(1)):
+    t=F(t); nu=F(nu); kappa=F(kappa)
+    if weights is None: weights=weights_for(n,t)
+    N=1&lt;&lt;n
+    K=[[F(0) for _ in range(N)] for _ in range(N)]
+    for x in range(N):
+        K[x][x] += kappa*int(bool(x&amp;1))
+        for i in range(n):
+            y=x^(1&lt;&lt;i)
+            prefactor=slow_bit0 if i==0 else F(1)
+            q=nu*prefactor*weights[y]/(weights[x]+weights[y])
+            K[x][x]+=q
+            K[x][y]-=q
+    Z=sum(weights)
+    pi=[w/Z for w in weights]
+    return K,pi
+
+def mean_from_generator(K,pi):
+    sol=solve_fraction(K,[F(1)]*len(K))
+    return sum(p*v for p,v in zip(pi,sol))
+
+def solve_fraction(A,b):
+    &quot;&quot;&quot;Exact Gauss-Jordan solve over Q; caller owns the matrix copy.&quot;&quot;&quot;
+    n=len(A)
+    M=[list(map(F,row))+[F(rhs)] for row,rhs in zip(A,b)]
+    for col in range(n):
+        pivot=next((r for r in range(col,n) if M[r][col]),None)
+        if pivot is None: raise ArithmeticError(&#x27;singular exact system&#x27;)
+        if pivot!=col: M[col],M[pivot]=M[pivot],M[col]
+        d=M[col][col]
+        M[col]=[x/d for x in M[col]]
+        for r in range(n):
+            if r==col: continue
+            a=M[r][col]
+            if a: M[r]=[u-a*v for u,v in zip(M[r],M[col])]
+    return [M[i][-1] for i in range(n)]
+
+def exact_psd(A):
+    &quot;&quot;&quot;Exact symmetric Schur/LDL elimination, including zero pivots.&quot;&quot;&quot;
+    M=[list(map(F,row)) for row in A]
+    n=len(M)
+    for k in range(n):
+        p=M[k][k]
+        if p&lt;0: return False,k,p
+        if p==0:
+            if any(M[k][j] for j in range(k,n)): return False,k,p
+            continue
+        for i in range(k+1,n):
+            for j in range(i,n):
+                M[i][j]-=M[i][k]*M[k][j]/p
+                M[j][i]=M[i][j]
+    return True,n,F(0)
+
+def source_model_matrices(n,t,nu=F(1),kappa=F(1)):
+    t=F(t);nu=F(nu);kappa=F(kappa)
+    K,pi=transition_matrix(n,t,nu,kappa)
+    N=1&lt;&lt;n
+    eta=(t*t-1)/(t*t+1)
+    lam=nu*(1-eta)
+    gamma=nu*((1-eta)+F(4)*eta/F(n*n))
+    mags=[F(2*x.bit_count()-n,n) for x in range(N)]
+    s=sum(p*m*m for p,m in zip(pi,mags))
+    C=[[F(0) for _ in range(N)] for _ in range(N)]
+    for x in range(N):
+        C[x][x]+=gamma+kappa*int(bool(x&amp;1))
+        for y in range(N):
+            C[x][y]+=-gamma*pi[y]+(lam-gamma)*mags[x]*mags[y]*pi[y]/s
+    weighted_gap=[[pi[x]*(K[x][y]-C[x][y]) for y in range(N)] for x in range(N)]
+    assert all(weighted_gap[i][j]==weighted_gap[j][i] for i in range(N) for j in range(N))
+    return K,C,pi,mags,lam,gamma,s,weighted_gap
+
+def independent_residual_trial(n,t):
+    K,C,pi,mags,lam,gamma,s,W=source_model_matrices(n,t)
+    N=1&lt;&lt;n
+    ok,piv,p=exact_psd(W)
+    if not ok: raise AssertionError(f&#x27;complement minorant failed at pivot {piv}: {p}&#x27;)
+    S=[x for x in range(N) if wallcount(x,n)&lt;=2]
+    v=[F(int(x in S)) for x in range(N)]
+    Kv=[sum(K[x][y]*v[y] for y in range(N)) for x in range(N)]
+    r=[F(1)-Kv[x] for x in range(N)]
+    source=sum(pi[x]*v[x] for x in range(N))
+    energy=sum(pi[x]*v[x]*Kv[x] for x in range(N))
+    lower=2*source-energy
+    z=solve_fraction(C,r)
+    error=sum(pi[x]*r[x]*z[x] for x in range(N))
+    tau=mean_from_generator(K,pi)
+    upper=lower+error
+    if not (lower&lt;=tau&lt;=upper): raise AssertionError(&#x27;independent full-source interval failed&#x27;)
+    neighborhood=set(S)
+    for x in S:
+        neighborhood.update(x^(1&lt;&lt;i) for i in range(n))
+    if any(r[x]!=1 for x in range(N) if x not in neighborhood):
+        raise AssertionError(&#x27;omitted source residual is not one outside local neighborhood&#x27;)
+    compact=CollectiveRing(n,F(t)).certificate({x:F(1) for x in S})
+    if compact[0]!=lower or compact[1]!=upper:
+        raise AssertionError(&#x27;compact certificate differs from full exact C inverse&#x27;)
+    return {
+        &#x27;n&#x27;:n,&#x27;t&#x27;:str(t),&#x27;states&#x27;:N,&#x27;minorant_psd_exact&#x27;:ok,
+        &#x27;slow_lambda&#x27;:str(lam),&#x27;complement_gamma&#x27;:str(gamma),
+        &#x27;trial_states&#x27;:len(S),&#x27;residual_neighborhood&#x27;:len(neighborhood),
+        &#x27;residual_exactly_one_outside_neighborhood&#x27;:True,
+        &#x27;tau_exact&#x27;:str(tau),&#x27;lower_exact&#x27;:str(lower),&#x27;upper_exact&#x27;:str(upper),
+        &#x27;residual_error_exact&#x27;:str(error),&#x27;full_exact_interval_contains_tau&#x27;:lower&lt;=tau&lt;=upper,
+        &#x27;compact_formula_matches_full_exact_C_solve&#x27;:True,
+    }
+
+def class_countermodels():
+    n=6;t=F(2);trap=sum(1&lt;&lt;i for i in (1,2,3));factor=F(1000)
+    base=weights_for(n,t)
+    hidden=weights_for(n,t,(trap,factor))
+    probes=[0]+[1&lt;&lt;i for i in range(n)]+[sum(1&lt;&lt;i for i in pair) for pair in itertools.combinations(range(n),2)]
+    if any(base[x]!=hidden[x] for x in probes): raise AssertionError(&#x27;countermodel changes a queried point&#x27;)
+    q_seen=[]
+    def oracle(mask):
+        q_seen.append(mask)
+        return hidden[mask]
+    inferred=acquire(n,oracle)
+    if inferred[&#x27;t&#x27;]!=t or inferred[&#x27;r&#x27;]!=1 or len(q_seen)!=1+n+n*(n-1)//2:
+        raise AssertionError(&#x27;pairwise acquisition did not return the indistinguishable baseline&#x27;)
+    K0,pi0=transition_matrix(n,t,weights=base)
+    Kh,pih=transition_matrix(n,t,weights=hidden)
+    tau0=mean_from_generator(K0,pi0)
+    tauh=mean_from_generator(Kh,pih)
+    cert=CollectiveRing(n,t).run()
+    # Independent detailed-balance check for the high-order hidden well.
+    reversible=all(hidden[x]*Kh[x][x^(1&lt;&lt;i)]==hidden[x^(1&lt;&lt;i)]*Kh[x^(1&lt;&lt;i)][x]
+                   for x in range(1&lt;&lt;n) for i in range(n))
+    return {
+        &#x27;n&#x27;:n,&#x27;t&#x27;:str(t),&#x27;trap_mask&#x27;:trap,&#x27;hidden_weight_multiplier&#x27;:str(factor),
+        &#x27;queried_points&#x27;:len(probes),&#x27;acquisition_queries&#x27;:len(q_seen),
+        &#x27;all_empty_single_pair_queries_identical&#x27;:True,
+        &#x27;inferred_t&#x27;:str(inferred[&#x27;t&#x27;]),&#x27;inferred_field_r&#x27;:str(inferred[&#x27;r&#x27;]),
+        &#x27;inferred_cycle_edges&#x27;:inferred[&#x27;edges&#x27;],&#x27;hidden_model_reversible_exact&#x27;:reversible,
+        &#x27;baseline_tau_exact&#x27;:str(tau0),&#x27;hidden_tau_exact&#x27;:str(tauh),
+        &#x27;hidden_over_baseline&#x27;:float(tauh/tau0),
+        &#x27;baseline_certificate_lo&#x27;:cert[&#x27;lower_exact&#x27;],&#x27;baseline_certificate_hi&#x27;:cert[&#x27;upper_exact&#x27;],
+        &#x27;hidden_mean_exceeds_baseline_certificate&#x27;:tauh&gt;F(cert[&#x27;upper_exact&#x27;]),
+        &#x27;hidden_mean_over_baseline_certificate_hi&#x27;:float(tauh/F(cert[&#x27;upper_exact&#x27;])),
+    }
+
+def tree_query_run(n, weights, order):
+    &quot;&quot;&quot;Exact transcript for the proposed shared balanced-tree degree-two learner.&quot;&quot;&quot;
+    V=(1&lt;&lt;n)-1
+    edges={tuple(sorted((order[j],order[(j+1)%n]))) for j in range(n)}
+    cache={};new_queries=[];contrasts=[];recovered=set()
+    def W(mask):
+        if mask not in cache:
+            cache[mask]=weights[mask];new_queries.append(mask)
+        return cache[mask]
+    for mask in [0,V,*[1&lt;&lt;j for j in range(n)],V^1]: W(mask)
+    root=W(V)*W(0)/(W(V^1)*W(1))
+    a=root.numerator;b=root.denominator
+    sqn=__import__(&#x27;math&#x27;).isqrt(a);sqd=__import__(&#x27;math&#x27;).isqrt(b)
+    if sqn*sqn!=a or sqd*sqd!=b: raise AssertionError(&#x27;root calibration not rational square&#x27;)
+    q=F(sqn,sqd)
+    def build(lo,hi):
+        if hi-lo==1:return (1&lt;&lt;lo,None,None)
+        mid=(lo+hi)//2;L=build(lo,mid);R=build(mid,hi)
+        return (L[0]|R[0],L,R)
+    T=build(0,n)
+    def rec(i,node,L,R,k):
+        if L is None:
+            if node.bit_count()!=1 or k!=1:raise AssertionError(&#x27;invalid positive leaf&#x27;)
+            j=node.bit_length()-1;recovered.add(tuple(sorted((i,j))));return
+        if node&amp;(1&lt;&lt;i): A,B=(R,L) if L[0]&amp;(1&lt;&lt;i) else (L,R)
+        else:A,B=L,R
+        a=A[0]
+        ratio=W(a|(1&lt;&lt;i))*W(0)/(W(a)*W(1&lt;&lt;i))
+        candidates=[m for m in (0,1,2) if ratio==q**m]
+        if len(candidates)!=1:raise AssertionError(&#x27;ratio not uniquely decodable&#x27;)
+        ka=candidates[0];kb=k-ka
+        if kb&lt;0 or kb&gt;2:raise AssertionError(&#x27;inconsistent inferred count&#x27;)
+        contrasts.append((i,a,str(ratio),ka,kb))
+        if ka:rec(i,a,A[1],A[2],ka)
+        if kb:rec(i,B[0],B[1],B[2],kb)
+    for i in range(n):rec(i,V,T[1],T[2],2)
+    if recovered!=edges:raise AssertionError(&#x27;tree learner failed to recover graph&#x27;)
+    return {&#x27;q&#x27;:str(q),&#x27;cache_masks&#x27;:sorted(cache),&#x27;new_query_order&#x27;:new_queries,
+            &#x27;contrasts&#x27;:contrasts,&#x27;edges&#x27;:sorted(edges),&#x27;recovered&#x27;:sorted(recovered)}
+
+def tree_class_countermodel():
+    n=6;t=F(2);order=list(range(n));base=weights_for(n,t)
+    learned=tree_query_run(n,base,order)
+    queried=set(learned[&#x27;cache_masks&#x27;])
+    candidates=[x for x in range(1&lt;&lt;n) if x.bit_count()&gt;=3 and x not in queried]
+    if 14 not in candidates:raise AssertionError(&#x27;selected trap configuration is not an unqueried higher-order state&#x27;)
+    # This previously constructed trap state also defeats the pairwise probe
+    # set; check it against the strictly richer adaptive tree transcript too.
+    hidden_mask=14;factor=F(1000)
+    hidden=weights_for(n,t,(hidden_mask,factor))
+    hidden_run=tree_query_run(n,hidden,order)
+    if learned[&#x27;new_query_order&#x27;]!=hidden_run[&#x27;new_query_order&#x27;] or learned[&#x27;contrasts&#x27;]!=hidden_run[&#x27;contrasts&#x27;]:
+        raise AssertionError(&#x27;hidden unqueried term changed adaptive tree transcript&#x27;)
+    K0,pi0=transition_matrix(n,t,weights=base)
+    Kh,pih=transition_matrix(n,t,weights=hidden)
+    tau0=mean_from_generator(K0,pi0);tauh=mean_from_generator(Kh,pih)
+    cert=CollectiveRing(n,t).run()
+    reversible=all(hidden[x]*Kh[x][x^(1&lt;&lt;i)]==hidden[x^(1&lt;&lt;i)]*Kh[x^(1&lt;&lt;i)][x]
+                   for x in range(1&lt;&lt;n) for i in range(n))
+    return {&#x27;n&#x27;:n,&#x27;t&#x27;:str(t),&#x27;cycle_order&#x27;:order,&#x27;tree_energy_queries_unique&#x27;:len(queried),
+      &#x27;pairwise_baseline_queries&#x27;:1+n+n*(n-1)//2,&#x27;unqueried_higher_order_mask&#x27;:hidden_mask,
+      &#x27;hidden_weight_multiplier&#x27;:str(factor),&#x27;same_adaptive_tree_query_sequence&#x27;:True,
+      &#x27;same_decoded_cycle_and_q&#x27;:True,&#x27;hidden_model_reversible_exact&#x27;:reversible,
+      &#x27;baseline_tau_exact&#x27;:str(tau0),&#x27;hidden_tau_exact&#x27;:str(tauh),
+      &#x27;hidden_over_baseline&#x27;:float(tauh/tau0),
+      &#x27;baseline_certificate_hi&#x27;:cert[&#x27;upper_exact&#x27;],
+      &#x27;hidden_mean_exceeds_baseline_certificate&#x27;:tauh&gt;F(cert[&#x27;upper_exact&#x27;]),
+      &#x27;hidden_mean_over_baseline_certificate_hi&#x27;:float(tauh/F(cert[&#x27;upper_exact&#x27;]))}
+
+def clock_countermodel():
+    n=6;t=F(2);N=1&lt;&lt;n;speed=F(1,1000)
+    base=weights_for(n,t)
+    K,pi=transition_matrix(n,t,weights=base,slow_bit0=speed)
+    # For every closed state the target-bit opening intensity is &lt;= speed*nu.
+    # Initial equilibrium gives exactly half the mass to x_0=0 by spin flip.
+    lower=F(1,2)/speed
+    return {&#x27;n&#x27;:n,&#x27;t&#x27;:str(t),&#x27;same_energy_law_and_queries&#x27;:True,
+            &#x27;heatbath_clock_assumed_by_certificate&#x27;:&#x27;uniform nu=1&#x27;,
+            &#x27;countermodel_clock&#x27;:&#x27;target-coordinate attempt prefactor nu_0=1/1000; all other nu_i=1&#x27;,
+            &#x27;equilibrium_mass_target_closed&#x27;:str(sum(pi[x] for x in range(N) if not x&amp;1)),
+            &#x27;rigorous_mean_lower_from_closed_initial_sector&#x27;:str(lower),
+            &#x27;argument&#x27;:&#x27;while x0=0, its opening intensity is at most 1/1000, so expected time to first opening is at least 1000; the equilibrium-closed half contributes at least 500 to the full mean.&#x27;}
+
+def run_all():
+    start=time.perf_counter()
+    finite=[independent_residual_trial(4,F(2)),independent_residual_trial(5,F(10))]
+    models=class_countermodels()
+    tree_model=tree_class_countermodel()
+    clock=clock_countermodel()
+    return {&#x27;finite_exact_checks&#x27;:finite,&#x27;higher_order_energy_countermodel&#x27;:models,
+            &#x27;shared_tree_higher_order_countermodel&#x27;:tree_model,
+            &#x27;clock_countermodel&#x27;:clock,&#x27;seconds&#x27;:time.perf_counter()-start,
+            &#x27;scope&#x27;:&#x27;Exact finite implementation checks and scoped countermodels; no external validation.&#x27;}
+
+if __name__==&#x27;__main__&#x27;:
+    out=run_all()
+    (OUT/&#x27;independent_checks.json&#x27;).write_text(json.dumps(out,indent=2,sort_keys=True)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2,sort_keys=True))
+</pre></body></html>
