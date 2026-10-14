@@ -1,0 +1,11 @@
+# Reading and replaying the evidence
+
+REPORT.md gives the conclusion and exact status boundaries; INDEX.json lists all 32 worker reports; CLAIM_LEDGER.json distinguishes the retained conditional results from the failed capability claim.
+
+The complete local EVIDENCE.zip contains acquired source data/binaries, authored investigations, scripts, derived outputs and versioned root replay receipts. AUTHORED_EVIDENCE.zip is a separate publication packet containing authored reports/code/outputs and source/hash locators. Its raw primary-source data/binaries are deliberately omitted; original bytes remain in the complete local archive. Source URLs and read/acquisition limits are in the corresponding worker reports. The two packets have different manifests and scopes.
+
+After extracting either packet into a new directory, run `python3 root/verify_package.py` to check the corresponding manifest. This verifies byte integrity only. Most finite mathematical fixtures use Python's standard library and can be run directly in their worker directories. NumPy, SymPy, and openpyxl are needed by some numerical/data scripts. The battery and lineage data audits need the recorded raw data files; the complete packet includes them, while an authored-only extraction requires reacquisition from the recorded primary-source route. Do not substitute different input versions silently.
+
+The root's replay_selected.py and collect_and_manifest.py are preserved execution helpers from this workspace, including original source locations. Their original scratch-directory creation is exclusive and is not intended to overwrite prior receipts. For a new scientific replay, copy a worker directory to a fresh location and run its script there. Preserve the new stdout, stderr and dependency versions separately. REPLAY_RECEIPTS_v0004.json records 27 distinct successful calculations over 29 attempts, including two initial missing-openpyxl failures and the successful bundled-runtime retries. Transient duplicate package copies used for those runs are omitted from the archive; source scripts/data and output/error receipts are retained.
+
+These instructions and receipts do not establish an all-step proof, historical novelty, physical validation, or mission success. Those remain scoped exactly as in REPORT.md.

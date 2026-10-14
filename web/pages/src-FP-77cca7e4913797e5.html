@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><title>FP selected campaign snapshot — repair/repair_model.py</title><pre>&quot;&quot;&quot;Exact finite-state reliability formulas; hypothetical rates, not measurements.&quot;&quot;&quot;
+import json, math
+from pathlib import Path
+
+def survival(t, damage, repair):
+    a = repair + 3 * damage
+    gap = math.sqrt(a*a - 8*damage*damage)
+    slow = (-a+gap)/2
+    fast = (-a-gap)/2
+    # S(0)=1 and S&#x27;(0)=0 because two separate failures are needed.
+    return (-fast*math.exp(slow*t)+slow*math.exp(fast*t))/gap
+
+def main():
+    assert abs(survival(2, 1, 0) - (2*math.exp(-2)-math.exp(-4))) &lt; 1e-14
+    rows=[]
+    for ratio in [0,1,10,100,1000]:
+        s=survival(1,1,ratio)
+        rows.append({&quot;repair_over_damage&quot;:ratio,
+                     &quot;mean_patch_lifetime_in_damage_units&quot;:(ratio+3)/2,
+                     &quot;patch_survival_at_one_damage_time&quot;:s,
+                     &quot;100_patch_frame_survival&quot;:s**100})
+    ambiguity=[]
+    for k in range(1,11):
+        targets=list(range(2**k))
+        # Any fixed output distribution sums to one over disjoint correct targets.
+        uniform_guess=[1/len(targets)]*len(targets)
+        assert abs(sum(uniform_guess)/len(targets)-2**(-k)) &lt; 1e-15
+        ambiguity.append({&quot;erased_routing_bits&quot;:k,&quot;average_success_upper&quot;:2**(-k)})
+    out={&quot;status&quot;:&quot;synthetic exact-formula checks only; not enzyme kinetics or physical validation&quot;,
+         &quot;formula&quot;:&quot;mean_absorption=(mu+3lambda)/(2lambda^2)&quot;,
+         &quot;hypothetical_rates&quot;:True,&quot;reliability&quot;:rows,&quot;routing_ambiguity&quot;:ambiguity}
+    p=Path(__file__).with_name(&quot;repair_model_results.json&quot;)
+    p.write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+    print(json.dumps(out,indent=2))
+
+if __name__ == &quot;__main__&quot;: main()
+</pre>
