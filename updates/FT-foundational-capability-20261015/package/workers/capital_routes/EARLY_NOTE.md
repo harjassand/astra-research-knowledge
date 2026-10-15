@@ -1,0 +1,11 @@
+# Capital scout: early decision note
+
+Capital pin: `25fc24509a59aabee340b36b588c9e59a144253d`. The matching scientific-power report (SHA-256 `f0bd29f979dc77e1cb1682c3b21b98200151b668ca49e3e70235e0542422d3bf`) makes the recent manufacturing and bounded-instability leads poor places to spend another round. I also screened the current N830–N832 dossiers and did not reuse their critical-storage, exchange-routing, or optical/electromechanical routes.
+
+Three distinct candidates survive for review, all still `source_derived_unreviewed`:
+
+1. **N702, conditional single-particle void acceptance:** signed affine-field measurements can isolate the polarizability trace of one fixed finite conductor; an imported electrostatic inequality then turns a covered upper bound on trace-to-mass into a shape-independent upper bound on *closed* void fraction. This is the clearest physical measurement operation. The per-particle material/response margins, sub-percent measurement coverage, and independent ground truth are not acquired.
+2. **N610, exact local stationary-output sampler:** a rank-absorbing backward algorithm claims exact joint samples at selected sites/times in a finite-depth layered affine random system, with expected oracle work polynomial in requested outputs for fixed depth rather than in full system size. It is a distinct computational primitive; its adaptive proof and perfect-sampling prior-art gate remain open.
+3. **N739, one-port exact-null Hamiltonian certificate:** a one-qubit Ramsey-style measurement gives a polynomial one-sided certificate for exact local-trajectory agreement, while a matched tolerant task has a superpolynomial lower bound for reflected isospectral chains under bounded local access. This is useful as a certification boundary, not as a robust approximate simulator.
+
+I screened out N732 as a lead because its headline high-frequency response barrier would overlap the explicitly excluded instability direction; its positive finite-shell inverse is a separate, known-prior possibility but pays potentially severe conditioning and still lacks a certified evaluator. None of the three candidates below reuses sacrificial clearance, the previous snapshot statistic, or DNA-repair work. See `REPORT.md` for exact source pins, proof ranges, acquisition contracts, and decisive next gates.

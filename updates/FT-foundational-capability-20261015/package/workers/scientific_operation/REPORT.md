@@ -1,0 +1,195 @@
+# Scientific operation: optical focusing from a saturation-dependent loss bucket
+
+15 October 2026, Australia/Brisbane. Independent continuing inventor: `scientific_operation`.
+
+**Disposition: a narrow conditional measurement construction, not a demonstrated new capability. Novelty and practical advantage are UNKNOWN.** A total photon-loss flag can measure and help optimize total extinction. It cannot identify which internal sink received the energy. A temporary, specimen-specific nonlinear state can supply additional information, but only if its response is acquired and the readout isolates it. The strongest proposed mutation here is an energy-detector-only feedback measurement of a thin saturable absorber behind a static diffuser. The mathematical construction survives at two finite illumination powers. Its transfer to a useful physical specimen remains open.
+
+The initial biological trapping scout was discontinued when the parent reassigned this worker to a non-biological instrumentation problem. No biological construction is promoted or incorporated here. This worker did not read the other current invention workers. One limited literature helper independently checked the exact optical overlap after this candidate was constructed; its report is in `literature_audit/REPORT.md`.
+
+## 1. What is being proposed, and why it might matter
+
+Send a controllable coherent wave through a static scattering layer to a thin, homogeneous saturable absorber. For each trial wavefront, illuminate at two known powers, retaining the launched-energy monitor and **all accessible outgoing energy**, including reflected and transmitted channels. Compute the difference between the two normalized missing-energy fractions. Use that one scalar to update the incident wavefront.
+
+The temporary intermediate state is ground-state depletion in the absorber. It reduces the fractional absorption most strongly in bright speckles. Under the explicitly stated model below, the two-power loss deficit is a convex concentration functional: its maximum places the delivered power in one target-plane mode. The feedback detector does not have to image or recover the phase of that mode.
+
+This would be useful only where a reversible saturable absorber can be installed or is already present, where output energy can be closed accurately, and where eliminating interferometric field readout saves more than the added optimization exposures cost. The output is a focus **somewhere in the selected absorber plane**, not a chosen buried location, a volumetric map, or an identified absorption pathway.
+
+The operative ingredients have strong prior art. [Cui, Kahraman and Wang (2025)](https://doi.org/10.1038/s41467-025-63095-w) experimentally use a saturable absorber and high/low illumination to form a focus, with holographic field subtraction and phase conjugation. [Katz et al. (2014)](https://doi.org/10.1364/OPTICA.1.000170) experimentally obtain focusing with a single integrating detector measuring nonlinear fluorescence. These are the serious comparators. Changing their feedback signal to a missing-energy difference is a proposed implementation variant; it does not establish a new focusing principle.
+
+## 2. Exact input, output and resource contract
+
+| Item | Required interface or promised output |
+|---|---|
+| Specimen | Static, non-biological optical diffuser followed by a thin homogeneous saturable-absorber layer; negligible reflection and no return of target light into the diffuser. A lossless phase diffuser is the initial qualification object. |
+| Wave control | A normalized complex input vector `u` in `C^N`, with independently calibrated amplitude and phase. Phase-only control is a stricter reachable set and is not granted the theorem's full-simplex maximum. |
+| Acquired material response | Absorption fraction `beta/(1+I/I_s)` over the admitted intensity range; recovery time, history dependence, photobleaching, heating, and any nonlinear refraction measured independently. A fitted law is an input with uncertainty, not inferred from the focusing theorem. |
+| Delivery | An acquired reason that total target-plane power is the same for the admitted wavefronts. Launched-power normalization alone does not provide this. |
+| Readout | Launched and complete outgoing energy, with detector response linear across both powers, a common mode-independent efficiency, and quantified drift. Heralded single-photon nonarrival can measure linear loss, but the saturation protocol requires a driven material population; no single-photon quantum advantage is asserted. |
+| Temporary state | Reversible absorber depletion during each exposure; a measured reset interval between trials. The absorber must return to the same state before the next power/wavefront comparison. |
+| Measured output | A scalar loss deficit `D(u)` with an uncertainty interval. |
+| Conditional control output | A wavefront maximizing this scalar; in the ideal full-control model it focuses in one target mode. Finite/noisy optimization has no general convergence certificate here. |
+| Not supplied by the output | Which microscopic site lost a photon, target versus parasitic dissipation in an arbitrary medium, a preselected focus position, unknown specimen response, or whole-system performance superiority. |
+
+Preparation includes the target layer, diffuser, modulator calibration, power-ratio calibration, complete collection, detector linearity and material-response acquisition. A score evaluation costs two exposures plus reset and monitoring. A central finite-difference gradient on `2N` real control coordinates costs `4N` scalar evaluations, hence `8N` exposures, before line search, repetitions or validation. Computation is ordinary linear algebra and scalar optimization. No advantage follows from omitting the hidden transmission matrix from the optimizer while charging none of the experiments that implicitly learn its useful directions.
+
+All sample absorption, rejected input light, modulator inefficiency, illumination power, material reset, source stabilization, detector noise, failed wavefronts and final verification are charged. The proposed experiment has not acquired these costs. Financial cost, inference energy and actual model-token usage are UNKNOWN. No purchase, paid compute job, lab experiment or outside message was performed.
+
+## 3. What a generic loss flag actually acquires
+
+Let `S` be the accessible complex scattering matrix of a passive, linear, memoryless specimen at a fixed frequency. For a single incident photon in normalized mode `u`, the probability of no photon in the complete accessible output is
+
+\[
+ p_E(u)=u^\dagger A u,\qquad A=I-S^\dagger S\succeq0.
+\]
+
+If detection misses modes, `S` is the detected submatrix and `A` is extinction from that interface, not necessarily material absorption. This distinction remains even when each missing event is retained rather than discarded.
+
+Controlled superpositions can recover `A` using `N^2` exact scalar settings: the basis vectors acquire `A_jj`; `(e_j+e_k)/sqrt(2)` acquires the real cross term and `(e_j+i e_k)/sqrt(2)` acquires its imaginary cross term. Subtracting the known diagonals gives the entries, with the imaginary sign determined by the chosen phase convention. Finite precision requires repetitions and calibration. The principal eigenvector of `A` maximizes total loss. This is elementary quadratic-form tomography and established coherent absorption control, not a new mathematical capability.
+
+[Roger et al. (2015)](https://doi.org/10.1038/ncomms8031) experimentally controlled single-photon coherent absorption in a thin metamaterial. The experiment and its [supporting data](https://doi.org/10.5258/SOTON/376630) establish that this physical class is obtainable. They do not provide a loss-site flag for an unknown general scattering sample. Much stronger intensity-informed control already exists: [Sol et al. (2024)](https://doi.org/10.1038/s41467-024-46916-2) demonstrate coherent absorption control in a programmable microwave environment from a calibrated physical model, including phaseless calibration. The comparator may retain that model, all measurements and all controls.
+
+### Exact location obstruction, including adaptive external control
+
+For a one-photon density matrix `rho`, consider the flagged accessible instrument
+
+\[
+\rho\longmapsto
+  S\rho S^\dagger\otimes|S_f\rangle\langle S_f|
+ +\operatorname{tr}(A\rho)|\mathrm{vac}\rangle\langle\mathrm{vac}|
+       \otimes|E_f\rangle\langle E_f|.
+\]
+
+Any decomposition `A=A_T+A_P` into positive semidefinite target and parasitic loss operators can have this same accessible instrument. The unobserved environment carries the sink label. Reassigning that label while preserving the total loss operator does not change the accessible output.
+
+A particularly simple passive realization has `S=(3/5)I_2` and total loss `A=(16/25)I_2`. In world 0 the loss from input mode 1 heats the target and the loss from mode 2 heats a parasitic sink. World 1 interchanges the two sinks. The outgoing fields and total-loss flags are identical for every input. For a common input with mode-1 population `p`, target energies are `(16/25)p` and `(16/25)(1-p)`. No common choice exceeds half the available target optimum in both worlds.
+
+With `k` identically attenuated modes and an unknown target-sink assignment, at least one world receives at most `1/k` of its target-optimal energy. Randomization does not improve the worst-world bound: expected mode populations still sum to one.
+
+The equality survives arbitrary external ancillas, temporary external storage, external adaptive measurements, feedback and repeated passes **provided both worlds implement the same accessible instrument at every admitted control setting and reset**. Induct on the adaptive history, or compose identical channels with the same control maps. For a vacuum-environment pure-loss extension, changing the environment's sink labels also leaves the complete accessible optical channel unchanged for arbitrary photon inputs. This is an operational indistinguishability argument, not a new quantum-metrology theorem or a no-go for physical calorimetry/nonlinear perturbations. Those additional interfaces can break the equivalence.
+
+## 4. Why a temporary loss tag is not automatically enough
+
+A tempting repair is to increase absorption at the desired target and identify the resulting change in total loss as the target's absorbed power. Internal fields can redistribute, invalidating that subtraction even in a one-mode passive resonator.
+
+For an on-resonance, one-port resonator with external coupling `e`, background internal loss `b` and added target loss `t`, the standard energy-balance model gives
+
+\[
+ A_{\mathrm{tot}}(t)=\frac{4e(b+t)}{(e+b+t)^2},\qquad
+ A_T(t)=\frac{4et}{(e+b+t)^2}.
+\]
+
+Choose `e=1,b=2`, and change `t` from 0 to 1. Total absorption falls from `8/9` to `3/4`, a change of `-5/36`, while the new target absorbs `1/4` of incident power. A positive target sink has produced a negative total-loss signal because it reduces the stored field and background dissipation.
+
+The infinitesimal version also fails. At `e=b=1`,
+
+\[
+ A_{\mathrm{tot}}(t)=1-\frac{t^2}{(2+t)^2},\qquad
+ A_T(t)=\frac{4t}{(2+t)^2}.
+\]
+
+At zero tag strength the total-loss derivative is zero while the target-absorption derivative is one. Taking a weaker perturbation does not fix the missing attribution. A model that separately acquires all coupling/loss parameters can interpret the perturbation, but then that acquisition is the load-bearing information. A selective photothermal, photoacoustic or electrical readout can supply a real target channel; these are established competitors, not free labels assigned to missing photons.
+
+## 5. A two-finite-power construction that does acquire a useful control objective
+
+The proposed narrow operation deliberately excludes the resonator failure. Suppose a fixed linear target-plane map `T` is unitary on `N` equal-area modes, `||u||=1`, and
+
+\[
+ x_j=|(Tu)_j|^2,\qquad x_j\ge0,\quad\sum_jx_j=1.
+\]
+
+After this map, a thin target acts once as an ideal intensity mask with local absorption fraction `beta/(1+q x_j)`. Here `q` is the known total illumination power divided by the saturation power of one mode. There is no feedback of the mask on `T`, no nonlinear refraction, no multiple traversal and no spatial dependence of `beta` or saturation power. Complete output collection has a common efficiency `eta>0`. The normalized missing-energy fraction is
+
+\[
+ \ell_q(u)=1-\eta+\eta\beta\sum_j\frac{x_j}{1+q x_j}.
+\]
+
+At two strictly positive powers `0<a<b`, define
+
+\[
+ D_{a,b}(u)=\ell_a(u)-\ell_b(u)
+ =\eta\beta\sum_jg_{a,b}(x_j),\quad
+ g_{a,b}(x)=\frac{x}{1+ax}-\frac{x}{1+bx}.
+\]
+
+Thus a common mode-independent detector inefficiency cancels the offset and multiplies the objective by a positive constant. This is not immunity to power-dependent detector response, drift, collection changes or nonlinear parasitic material.
+
+### Finite-power theorem
+
+If
+
+\[
+ (ab)^{1/3}\bigl(a^{1/3}+b^{1/3}\bigr)\le1,
+\]
+
+then `g` is convex on `[0,1]` and strictly convex away from any equality endpoint. Consequently
+
+\[
+ \eta\beta\left[\frac1{1+a/N}-\frac1{1+b/N}\right]
+ \le D_{a,b}(u)
+ \le\eta\beta\left[\frac1{1+a}-\frac1{1+b}\right].
+\]
+
+The lower bound is attained by equal target intensities; the upper bound is attained only by a single occupied target mode, modulo degenerate zero-scale cases. Full unitary control makes each such vector physically reachable in the ideal model via `u=T^dagger e_j`.
+
+**Proof.**
+
+\[
+ g''(x)=2\left[\frac{b}{(1+bx)^3}-\frac{a}{(1+ax)^3}\right].
+\]
+
+For `b>a>0`, taking positive cube roots shows `g''(x)>=0` precisely when
+
+\[
+ x\le\frac1{(ab)^{1/3}(a^{1/3}+b^{1/3})}.
+\]
+
+The premise therefore gives convexity throughout the simplex coordinate range. Jensen gives the uniform lower bound. For the upper bound, convexity and `g(0)=0` imply `g(x)<=x g(1)`; summing uses `sum x=1`. Strict convexity gives the equality statement. No kinetic model of the diffuser or complex output measurement is required once the stated input-output law has actually been acquired.
+
+The construction uses finite powers rather than an unobservable zero-power limit. At `a=0.1,b=1`, the convexity quantity is approximately `0.67960235`. With `N=16`, the predicted deficit is `0.05261235 eta beta` for uniform illumination and `0.40909091 eta beta` for a one-mode focus. These are model values, not detector readings.
+
+### Important failures of the focusing interpretation
+
+1. **Variable delivery.** Even in the generous zero-low-power limit, a two-mode diffuse field `(1/2,1/2,0)` gives deficit `beta/3` at high-power parameter one. A sharp but weakly delivered field `(0,0,1/10)` gives `beta/110`. The scalar rewards the diffuse field by `110/3`. These are reachable columns of a passive linear map with orthogonal outputs. Fixed target delivery is essential to a normalized-concentration claim.
+2. **Restricted control.** A unitary `T` does not imply a phase-only modulator can reach `T^dagger e_j`. Neither the global bound nor a successful full-complex-control simulation certifies a real modulator's focus.
+3. **Power scheduling.** At two high saturated powers the convexity condition can fail. The deficit can then prefer several modes. For example, `a=100,b=200` gives one-mode deficit about `0.0049259 eta beta`, while two equal modes give about `0.0097069 eta beta`. The temporary state must be driven in the admitted range.
+4. **Collection and field redistribution.** Incomplete collection can convert an output-direction change into apparent loss. Multiple scattering through the nonlinear layer can change `T` between powers. The additive mask law then fails; the resonator calculation is an explicit warning.
+5. **History and target identity.** Photobleaching, heating, oxygen effects, depletion recovery and other nonlinear materials can create a deficit unrelated to the intended response. A scalar maximum does not identify a chosen physical location within a homogeneous layer.
+
+The general issue of nonlinear feedback and a limited number of controlled modes is already treated in [Osnabrugge, Amitonova and Vellekoop (2019)](https://doi.org/10.1364/OE.27.011673). The finite-power formula above is a conditional calculation for this proposed readout, with priority UNKNOWN.
+
+## 6. What was executed locally
+
+`verify_operation.py` verifies the rational resonator and variable-delivery falsifiers, checks unitary fixtures, and runs a noiseless finite-difference scalar-oracle optimizer. It does not expose `T` to the optimizer, but `T` is supplied to the synthetic oracle and used for validation. This is an interface simulation, not acquired scientific data.
+
+Run:
+
+```sh
+python3 research/2026-10-15-foundational-capability-v1/workers/scientific_operation/verify_operation.py
+```
+
+The recorded Python 3.14.3 / NumPy 2.5.3 execution passed. At `a=0.1,b=1,beta=0.01`, the 8-mode and 16-mode fixtures reached the proved maximum to floating-point accuracy, with a largest target intensity fraction approximately one. They used respectively 561 and 911 scalar evaluations, corresponding to 1,122 and 1,822 ideal exposures. Reset, repeats, noise and calibration were not simulated. The runtime is recorded in `verification_results.json`; it is not an experiment duration or model-inference clock. An initial import probe found SciPy unavailable; the final script uses NumPy only.
+
+The Southampton primary dataset was actually retrieved into `sources/`, with URLs, byte counts and SHA-256 receipts in `sources/ACQUISITION.json`. Its files have no column headers in the retrieved text. I did not assign port, herald, timing or coincidence semantics by guessing, and did not claim an independent reconstruction of the published absorption curve. This is acquired source evidence of an existing experiment, not a new measurement result.
+
+## 7. Decisive coupled experiment and matched comparator
+
+The smallest useful qualification specimen is a stable phase diffuser, a homogeneous thin non-biological absorber, and an integrating output collector. The candidate is not admitted to an arbitrary buried absorbing volume.
+
+Before optimizing, independently measure the layer's power-dependent absorption, reversible recovery and parasitic nonlinear phase/scattering. Measure the admitted wavefront set's delivered power with the target removed or an independently calibrated witness plane, and test complete energy collection. These measurements are charged; they are also the missing-variable gate. If target-plane delivery varies materially and cannot be normalized without removing the claimed instrumentation saving, the simple focus guarantee is rejected.
+
+Then randomize low/high order and wavefront order, include blank layer and nonsaturating controls, and interleave recovery/drift checks. Compare a predeclared set of wavefronts using both the bucket and an independent target-plane image used only for validation. The first coupled pass criterion is that the bucket ranks **normalized target concentration**, rather than throughput, clipping, history or heating, within predeclared propagated uncertainty. A split held-out set is required; a fit to the same acquired wavefronts is insufficient.
+
+Only after that gate, run the feedback loop and compare at identical target material, modulator degrees of freedom, aperture, reset/fidelity requirement and total illumination budget against: (i) optimized scalar nonlinear feedback, including the existing integrating-detector method; (ii) iTRAN's field-based iteration on the same absorber; and (iii) direct transmission-matrix measurement followed by ordinary focusing if the validation plane is available. The comparator retains the same known material response and all prior measurements. Record total acquisition, sample absorbed energy, unsuccessful inputs, reset, wall time, calibration and detector hardware. Hardware simplicity alone is not an end-to-end advantage.
+
+A successful result would establish a narrow loss-bucket implementation of nonlinear optical focusing under qualified conditions. It would still not establish historical priority, general buried-target access, or a civilization-scale capability. The current evidence does not meet even that narrow experimental endpoint.
+
+## 8. Sources, provenance and status
+
+- [Roger et al., *Nature Communications* 6, 7031 (2015)](https://doi.org/10.1038/ncomms8031): primary single-photon coherent absorption experiment. [Dataset DOI](https://doi.org/10.5258/SOTON/376630), acquired locally; header/normalization mapping not reconstructed.
+- [Sol et al., *Nature Communications* 15, 2841 (2024)](https://doi.org/10.1038/s41467-024-46916-2): primary programmable-wave absorption comparator, including intensity-informed model calibration. No source code was obtained; the paper states author-request availability.
+- [Cui, Kahraman and Wang, *Nature Communications* 16, 7807 (2025)](https://doi.org/10.1038/s41467-025-63095-w): direct absorber and temporary-state comparator. Full evidence and implementation distinctions are summarized once in the literature audit.
+- [Katz et al., *Optica* 1, 170–174 (2014)](https://doi.org/10.1364/OPTICA.1.000170): experimentally demonstrated scalar nonlinear bucket focusing comparator.
+- [Osnabrugge, Amitonova and Vellekoop, *Optics Express* 27, 11673–11688 (2019)](https://doi.org/10.1364/OE.27.011673): general nonlinear feedback and finite-control analysis.
+- [Lai et al., *Nature Photonics* 9, 126–132 (2015)](https://doi.org/10.1038/nphoton.2014.322): primary nonlinear photoacoustic feedback comparator, relevant if a target-specific energy channel is available.
+
+The elementary calculations, no-go construction and scripts are internally reasoned and locally replayed; no independent theorem audit or formal verification was performed. The source literature establishes prior experiments only in their own specimens and apparatus. Material qualification, full information acquisition, physical reproduction, practical superiority and exact narrow priority remain UNKNOWN. **No qualifying new scientific capability has been demonstrated by this worker.**

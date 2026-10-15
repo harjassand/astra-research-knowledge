@@ -1,0 +1,182 @@
+# Isotope-enrichment bound: independent quantifier audit
+
+**Date:** 2026-10-15
+**Scope:** Analytic audit of the one-site stochastic model stated in the task. This file makes no experimental or novelty claim. It uses only that model; no empirical literature result is needed for the counterexamples below.
+
+## Result
+
+The proposed differential inequality is correct when every attempted site receives the same **deterministic, pathwise cumulative fluence** $D$, all final occupied sites are counted, the bath composition is fixed at $p$, and the isotope-dependent cross-sections are fixed. Refill decisions may depend on occupancy and past observations, provided each refill draw remains an independent Bernoulli-$p$ draw. In that regime the optimal model-level comparator is immediate refill, and
+
+\[
+q\le f(D):=q_*-(q_*-p)e^{-bD},\qquad
+b=p\sigma_L+(1-p)\sigma_H,\quad
+q_*=\frac{p\sigma_L}{b}.
+\]
+
+The statement does **not** hold for merely bounded fluence when the stopping dose may depend on observed survival/ejection. It also does not bound an output conditioned on surviving or being accepted. Occupancy history is isotope-unlabelled but statistically informative about isotope identity. A finite, all-sites-filled counterexample below exceeds both $q_*$ and $f(D_{\max})$ under a pathwise cap $D_{\max}$. Thus “isotope-blind policy” alone is not the needed quantifier.
+
+The lower bound on mean refills is sound for unconditioned full output under the stated refill law. The fixed-cross-section ratio ceiling $q_*/p$ is conditional on the fixed-dose regime; survival-conditioned screening can exceed it, with corresponding yield or resource costs.
+
+## Fixed-dose proof, including vacancy/history-adaptive refill
+
+Assume $0<p<1$, $b>0$, constant $\sigma_H,\sigma_L$ with $\sigma_L\ge\sigma_H\ge0$, and use cumulative incident fluence $u\in[0,D]$ as the independent variable. Let $H,L,V$ be the probabilities (or ensemble fractions) for heavy, light, and vacant; let $O=H+L=1-V\le1$. Set
+
+\[
+z=(1-p)H-pL.
+\]
+
+During exposure per unit fluence,
+
+\[
+\frac{dH}{du}=-\sigma_HH,\qquad \frac{dL}{du}=-\sigma_LL,
+\]
+
+so direct substitution gives
+
+\[
+\frac{dz}{du}=p(1-p)(\sigma_L-\sigma_H)O-bz=:cO-bz.
+\]
+
+A refill changes $z$ by $1-p$ with probability $p$, and by $-p$ with probability $1-p$; its conditional expected change is zero. This remains true if the decision to refill is predictable from vacancy/history, because the fresh bath draw is independent of that history and still has heavy probability $p$. Consequently the expected refill jumps contribute zero drift. Along fixed cumulative dose,
+
+\[
+\frac{d\mathbb E z}{du}=c\mathbb E O-b\mathbb E z\le c-b\mathbb E z.
+\]
+
+Initially $H=p,L=1-p$, hence $z(0)=0$. Grönwall's inequality gives
+
+\[
+\mathbb E z(D)\le \frac{c}{b}(1-e^{-bD})=(q_*-p)(1-e^{-bD}).
+\]
+
+If every attempted site is occupied at output and all attempts are included, then $H+L=1$ at output and $z=H-p$; thus $q=\mathbb E H=p+\mathbb E z\le f(D)$. The upper bound is attained in this abstract model if each vacancy is refilled immediately: then $O=1$ throughout exposure and the differential inequality is equality. This attainment assumes zero-latency, zero-fluence refill control; it is a model comparator, not evidence that a material implements it.
+
+The argument is naturally stated for a deterministic cumulative-dose horizon $D$ for each trajectory. An adaptive choice of wall-clock beam-on times is harmless if every trajectory still accumulates exactly $D$: constant cross-sections make dose the hazard clock. A common open-loop dose schedule is a special case. If a dose horizon $S$ is exogenous and independent of the site's isotope/ejection history, condition on $S$ to obtain $q\le\mathbb E f(S)\le f(\mathbb E S)$, since $f$ is increasing and concave; in particular, $S\le D_{\max}$ implies $q\le f(D_{\max})$. These extensions do not cover outcome-dependent $S$.
+
+For $b=0$ there is no ejection and $q=p$; the formula for $q_*$ is undefined and must not be used. If $\sigma_L=\sigma_H$ and $b>0$, then $c=0$ and $q\le p$, with equality under refill.
+
+## Bounded adaptive stopping counterexample (all sites output full)
+
+Take $p=1/2,\sigma_H=1,\sigma_L=2$, with fluence units chosen so the rates are $1$ and $2$. Then $b=3/2$, $q_*=2/3$, and $f(D)=2/3-(1/6)e^{-3D/2}$.
+
+Use this isotope-unlabelled policy on one site:
+
+1. Expose the initially occupied site until its first ejection or until dose $d=1$, whichever comes first.
+2. If it survives to dose 1, stop and output it.
+3. If it ejects first, refill immediately from the bath, then expose for another $B=2$ dose with immediate refill after each further ejection, and output the occupied site.
+
+The policy reads only occupancy/ejection history, never isotope identity. Every path ends occupied. A survivor path receives total dose 1. An ejection path receives $\tau+2\le3$, so the pathwise cap is $D_{\max}=3$. The model requires an observable ejection/survival event and the same ideal immediate-refill operation used to attain the fixed-dose comparator.
+
+The first screen's survival probability and heavy fraction conditional on survival are
+
+\[
+s=\frac12(e^{-1}+e^{-2})=0.2516073622\ldots,\qquad
+q_1=\frac{e^{-1}}{e^{-1}+e^{-2}}=\frac{e}{e+1}=0.7310585786\ldots.
+\]
+
+After an ejection, the new bath draw and ideal $B=2$ phase have heavy fraction
+
+\[
+q_B=f(2)=\frac23-\frac16e^{-3}=0.6583688219\ldots.
+\]
+
+Therefore the unconditional, fully occupied output fraction is
+
+\[
+q_{\rm out}=s q_1+(1-s)q_B=0.6766580999\ldots.
+\]
+
+This is greater than $q_*=0.6666666667\ldots$, and also greater than the claimed bounded-dose value $f(3)=0.6648151672\ldots$. It even exceeds $f(\mathbb E D_{\rm path})$: here
+
+\[
+\mathbb E D_{\rm path}=m(1)+(1-s)2=2.0290117342\ldots,\qquad
+f(\mathbb E D_{\rm path})=0.6587221798\ldots,
+\]
+
+where $m(d)=\frac12(1-e^{-d})+\frac14(1-e^{-2d})$ is the expected dose consumed by the first screen before ejection or cutoff. This is a counterexample to both a pathwise-max-dose and an expected-dose substitution into $f$ under history-adaptive stopping. It is not a counterexample to the fixed deterministic-dose theorem: the realized horizon is correlated with the ejection history.
+
+For completeness, in the $B=2$ phase the post-refill waiting times form a renewal process with cycle-time density $\frac12e^{-t}+e^{-2t}$. Its expected ejection count by dose $t$ is $M(t)=\frac43t+\frac19(1-e^{-3t/2})$. Hence this policy uses, in expectation,
+
+\[
+(1-s)(1+M(2))=2.8231210455\ldots
+\]
+
+refill draws per attempted output: one after the first screen ejection, plus all later phase ejections. It has no failed/empty final outputs in the ideal model. The maximum dose is 3, expected dose is about 2.029, and mean refill count is about 2.823; comparing only its maximum dose to a fixed-dose policy conceals the outcome-dependent allocation.
+
+The key statistical point is exact: “the controller does not read an isotope label” is weaker than “the controller's dose horizon is independent of isotope.” An ejection or survival is evidence about isotope whenever $\sigma_H\ne\sigma_L$.
+
+## Direct survivor postselection and renewal costs
+
+Even with fixed screen dose $d$, conditioning the reported output on survival changes the target. Without refill during the screen,
+
+\[
+s(d)=p e^{-\sigma_Hd}+(1-p)e^{-\sigma_Ld},\qquad
+q_{\rm surv}(d)=\frac{p e^{-\sigma_Hd}}{s(d)}.
+\]
+
+For the numerical parameters above and $d=1$, $s(d)=0.25160736\ldots$ and $q_{\rm surv}=0.73105858\ldots$, above both $q_*$ and $f(1)=0.62947831\ldots$. The accepted fraction is only $s(d)$. For $\sigma_L>\sigma_H$, the conditional odds are
+
+\[
+\frac{q_{\rm surv}}{1-q_{\rm surv}}=\frac{p}{1-p}e^{(\sigma_L-\sigma_H)d},
+\]
+
+so $q_{\rm surv}\to1$ as $d\to\infty$, while the survival yield falls to zero when $\sigma_H>0$. If all attempted sites receive dose $d$, expected dose per accepted output is $d/s(d)$; if the beam is stopped upon ejection, it is $m(d)/s(d)$, where
+
+\[
+m(d)=p\frac{1-e^{-\sigma_Hd}}{\sigma_H}+(1-p)\frac{1-e^{-\sigma_Ld}}{\sigma_L}
+\]
+
+with a zero-rate term interpreted as its limit $pd$ or $(1-p)d$. Postselection is therefore a real enrichment operation in the model, but it changes output yield and input cost. A theorem for all-attempt full output does not constrain the conditional composition of selected survivors.
+
+A no-discard renewal version repeats the same screen: stop an attempt at ejection or dose $d$; after ejection, refill and start another attempt; stop and output once an attempt survives $d$. Each attempt succeeds with probability $s(d)>0$, independently after a fresh bath draw. Thus
+
+\[
+\mathbb E[\text{attempts/output}]=\frac1{s(d)},\quad
+\mathbb E[\text{refills/output}]=\frac{1-s(d)}{s(d)},\quad
+\mathbb E[\text{fluence/output}]=\frac{m(d)}{s(d)},
+\]
+
+and the final heavy fraction is $q_{\rm surv}(d)$. The output succeeds almost surely, but the number of attempts and maximum pathwise fluence have unbounded support. At the numerical point $d=1$, these are about 3.9744 attempts, 2.9744 refills, and 2.1153 fluence per output, for $q=0.7311$. For a cap of $M$ attempts, the success/accepted fraction is $1-(1-s)^M$; a report must state whether failed sites are discarded, refilled to count as lower-purity output, or replaced by additional attempts.
+
+As a high-purity asymptotic, if $\sigma_H>0$ and $\Delta=\sigma_L-\sigma_H>0$, attaining $q_{\rm surv}\ge1-\epsilon$ requires
+
+\[
+d\ge \frac1\Delta\log\frac{(1-p)(1-\epsilon)}{p\epsilon}.
+\]
+
+For small $\epsilon$, $s(d)\sim p e^{-\sigma_Hd}$, so attempts/output grow on the order of $\epsilon^{-\sigma_H/\Delta}$; the yield/resource cost cannot be omitted. If $\sigma_H=0<\sigma_L$, the survival yield tends to $p$, and the dose per output still grows logarithmically; in that case $q_*=1$ already.
+
+## Refill-count bound and ratio ceiling
+
+For unconditioned full output, let $N$ be the number of bath refill draws and $E_H$ the number of heavy ejections. The heavy balance is
+
+\[
+H_{\rm final}=H_{\rm initial}+N_H-E_H.
+\]
+
+If refill decisions are based on past information and each fresh draw has heavy probability $p$, then $\mathbb E N_H=p\mathbb E N$ (for finite expected $N$; the infinite case makes the lower bound trivial). Since $E_H\ge0$,
+
+\[
+\mathbb E N\ge \frac{q-p}{p}.
+\]
+
+This applies to the unconditional full-output process, including the bounded adaptive counterexample. It does not apply to a composition conditioned on acceptance without accounting for rejected attempts. In the renewal screen, expected refills per accepted output are $(1-s)/s$, and the expected heavy refill draws are $p/s\ge q_{\rm surv}$, as required by the balance.
+
+Under fixed cross-sections and deterministic fixed dose, the asymptotic ceiling is
+
+\[
+\frac{q}{p}\le\frac{q_*}{p}=\frac{\sigma_L}{p\sigma_L+(1-p)\sigma_H}\quad(b>0).
+\]
+
+This is not a universal ratio ceiling for the broader model class: the adaptive all-full example already has $q>q_*$, and survivor conditioning approaches the absolute ceiling $q/p\le1/p$. For the fixed-dose model, $q_*\to1$ as $\sigma_H\to0<\sigma_L$, so the relative ceiling tends to $1/p$.
+
+## Scope corrections for heterogeneous and varying conditions
+
+- **Per-site deterministic doses:** If each site $i$ gets fixed $D_i$, is included in output, and has the same $p,\sigma_H,\sigma_L$, then $q_i\le f(D_i)$. For an unselected population, concavity of $f$ gives mean heavy fraction at most $f(\text{mean }D_i)$. This does not by itself prove a bound when dose allocation among sites is chosen adaptively from observed outcomes; the $D_i$ are then endogenous and correlated with states.
+- **Open-loop random dose:** If the dose is drawn independently of all isotope/ejection histories, conditioning on it preserves the theorem; a maximum cap $D_{\max}$ gives $q\le f(D_{\max})$, and a mean-dose cap gives $q\le f(\mathbb E D)$. A random stopping time chosen from survival/ejection history is a different case.
+- **Energy-varying cross-sections:** For a history-independent energy schedule with $\sigma_H(u),\sigma_L(u)$, define $b(u)=p\sigma_L(u)+(1-p)\sigma_H(u)$, $c(u)=p(1-p)(\sigma_L(u)-\sigma_H(u))$. Under immediate refill, $z(D)=\int_0^D c(u)e^{-\int_u^D b(v)\,dv}\,du$; without immediate refill this is an upper bound. There is generally no single $q_*$ without fixing the energy. If all allowed energies satisfy the same ordering and have $b(u)>0$, the fixed-dose model has $q\le\sup_u[p\sigma_L(u)/b(u)]$; with a setting having $\sigma_H=0<\sigma_L$, this ceiling is 1. If energy choice or bath $p$ changes with observed survival, this fixed-schedule conclusion does not apply.
+- **Conditioned samples:** Any claim for a selected subset must specify the acceptance event and report survival/acceptance fraction, attempts, dose, refills, and replacement policy. A probability fraction over accepted sites is not the same observable as heavy fraction over every attempted site.
+
+## Audit conclusion
+
+The theorem is a valid and useful **fixed per-site dose, unconditioned full-output** bound, with immediate refill as the ideal same-model comparator. The crucial correction is to replace “any refill schedule / any bounded fluence / arbitrary final occupied output” with explicit quantifiers on deterministic dose and inclusion. Bounded outcome-dependent stopping and survivor acceptance are mathematically distinct operations that use survival as information. They can exceed the claimed $q_*$ and $f(D_{\max})$ without observing isotope labels; their input costs and output yield must be carried along. None of the calculations establishes that a real material can observe vacancies or refill with the assumed latency, probability, and selectivity.
