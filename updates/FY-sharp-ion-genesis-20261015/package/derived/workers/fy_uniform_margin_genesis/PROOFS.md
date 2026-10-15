@@ -1,0 +1,370 @@
+# Independent sharp-negative uniform-margin research
+
+15 October 2026. Worker fy_uniform_margin_genesis. The full all-affine
+fourth-order margin remains **UNRESOLVED**. External mathematical correctness,
+formal verification and historical priority remain UNKNOWN. No new output
+from other construction workers was used in these deductions. A later
+analytic audit supplied the R² polynomial-mode repair recorded below. All new files
+are confined to this worker directory; W and its Git/source files are read only.
+
+## 1. Exact contract and inherited premises
+
+For fixed real r<-2, use row-major coordinates
+
+    A=[[a,b],[c,d]], u=a²+c², v=b²+d², j=ad-bc,
+    H=((a-d)²+(b+c)²)²,
+    α=3r/[8(r+2)]>0, β=r(r-1)/6>0,
+    J(A)=αH+βu²+j²+r u j.
+
+The target is one γ_r>0 such that, for every affine B and compatible
+compact/zero-boundary/periodic perturbation in the inherited domain classes,
+
+    Gap_B(φ):=∫[J(B+Dφ)-J(B)] ≥ γ_r ∫|Dφ|⁴.
+
+Source W is /Users/harjas/Documents/ChatGPT/ultra/work/astra-sharp-ion-20261015
+at b32943eeb62d0d79929a9e572a344219a785ebf9. Read W/AGENTS.md,
+00_START_HERE.txt, N867/N876 dossiers, universal sharp certificate/report,
+analytic QC audit, N876 PROOFS.md and its additive clarification.
+
+N867 supplies all-background QC and ROC. Its fixed diffusion is
+
+    L=d1∂xx+d2∂yy,
+    d1=(2r+1)/(r-1)>0, d2=-3/(r-1)>0.
+
+For A_t=B+D exp(tL)φ, the nonnegative corrected density is
+
+    D_r(A,z)=ell(A,z)^T S_r ell(A,z), S_r>0,
+    ell=C_r^T(A⊗z),
+    z=(ψ1,xx,ψ1,xy,ψ1,yy,ψ2,xx,ψ2,xy,ψ2,yy).
+
+Its time integral is Gap_B(φ). The certificate JSON SHA-256 is
+f45149312e694f6080a179b77d322aceabf0d7c2a55ed60c5e102037e55f6ee7.
+N876 strict individual gaps and angular positivity are supplied partial
+results, not a uniform-margin premise.
+
+The inherited rank-one Bregman lemma is
+
+    J(B+R)-J(B)-DJ(B):R ≥ J(R)/3 ≥ (α/3)|R|⁴
+
+for every rank-one R and every B. For a convex quartic line
+at⁴+bt³+ct²+dt+e, convexity gives c≥3b²/(8a); completing the square gives
+a+b+c≥a/3. Also J(x⊗ξ)≥α|x⊗ξ|⁴.
+
+## 2. New all-affine margin for triangular rank-two gradients
+
+**Theorem T.** On any rectangular torus, if φ is periodic W1,4 and φ2,x=0,
+then for every affine B,
+
+    Gap_B(φ) ≥ (α/24)∫|Dφ|⁴,
+    α/24=r/[64(r+2)]>1/64.
+
+The constant is independent of B and the side lengths, and the gradient
+may have rank two on a positive-measure set.
+
+**Proof.** Write φ=(f(x,y),g(y)), let f̄(y)=average_x f, and set
+
+    m(y)=[[0,f̄'(y)],[0,g'(y)]],
+    w(x,y)=[[f_x,f_y-f̄'(y)],[0,0]],  Dφ=m+w.
+
+At fixed y, w has fixed target e1, rank at most one, and zero x average.
+Apply the rank-one Bregman lemma at background B+m(y) and integrate in x.
+Its linear term vanishes. Then apply the same lemma to m at background B
+and integrate in y; m has rank at most one and zero y average. Hence
+
+    Gap_B(φ) ≥ (α/3)∫(|w|⁴+|m|⁴)
+             ≥ (α/24)∫|w+m|⁴.
+
+The final step is |w+m|⁴≤8(|w|⁴+|m|⁴). Strong approximation proves W1,4.
+The proof also permits a fixed target component depending on just one
+rectangular coordinate, after target rotation and/or coordinate choice.
+No right-rotation symmetry of J is required, because its rank-one bound
+holds in every rank-one direction. For compactly supported maps an exactly
+x-independent component vanishes, so the genuinely new rank-two content
+here is periodic.
+
+**Finite-depth extension.** A rank-one martingale splitting tree of depth
+at most N, starting from B and ending at A, satisfies
+
+    E J(A)-J(B) ≥ (α/3)Σ_k E|ΔA_k|⁴
+                ≥ α/(3N³) E|A-B|⁴.
+
+Apply the Bregman inequality conditionally, sum, and use
+|Σ_k ΔA_k|⁴≤N³Σ_k|ΔA_k|⁴. This excludes bounded-depth laminate zero-margin
+sequences, but the bound deteriorates with N. Infinite hierarchy and a
+representation of an abstract splitting law by an exact map are separate.
+
+## 3. New positive quadratic entropy in the reduced Gram support
+
+Define
+
+    k=-(2r+1)/3>1, κ=(10r+8)/(3r),
+    Q(A)=v+k u-κ j.
+
+Q is positive definite, since the two 2-by-2 quadratic blocks have positive
+diagonals and
+
+    4k-κ²=-8(r+2)²(3r+2)/(9r²)>0.
+
+With zero-based reduced-row numbering, exact polynomial identities give
+
+    ∂x Q(Dψ)=2(5r+4)(ell1-ell6)/(3r)
+              -2(2r+1)ell3/3+2ell10,
+    ∂y Q(Dψ)=2(5r+4)(ell2-ell7)/(3r)
+              -2(2r+1)ell4/3+2ell11.
+
+Thus for each fixed r there is c_r>0 with
+
+    D_r(Dψ,D²ψ) ≥ c_r |∇Q(Dψ)|².
+
+Among homogeneous scalar quadratic polynomials P(A), Q is unique up to
+scale with both directional derivatives in the constant span of ell. The
+exact restriction matrix has a 9-by-9 minor
+
+    -16r(r+2)/[(r+1)³(2r+1)]≠0,
+
+and the displayed Q lies in its nullspace. This is uniqueness within that
+specified constant-coefficient quadratic-observable class.
+
+**Countermodel to scalar-entropy coercivity.** On a torus take
+φ(y)=(sin y,-cos y), so A=(cos y,sin y)⊗e2. Then u=j=0, v=Q(A)=1,
+A_t=e^(-d2 t)A and ∇Q(A_t)=0 for all t, although J(A)=α and ∫|A|⁴>0.
+Consequently the scalar estimate alone cannot yield the target. The other
+orientation rows are essential. This is not a counterexample to the margin.
+
+The exact heat balance explains the missing term:
+
+    ∂t Q(A_t)=LQ(A_t)-2d1Q(∂xA_t)-2d2Q(∂yA_t).
+
+Q can decay through this negative source while being spatially constant.
+
+## 4. Directional quadratic metric fluxes
+
+The reduced support also contains
+
+    ∂x[v+(2r+1)²u/(9(r+1))]
+       =2(2r+1)²ell3/[9(r+1)]+2ell10,
+    ∂x[j+r(2r+1)u/(6(r+1))]
+       =-ell1+r(2r+1)ell3/[3(r+1)]+ell6,
+    ∂y[v+(r+1)u]=2(r+1)ell4+2ell11,
+    ∂y[j+r u/2]=-ell2+r ell4+ell7.
+
+These four span the intersection with derivatives of the left-invariant
+quadratics u,v,s=ab+cd,j; no s derivative appears in that intersection.
+The x-null and y-null metric directions, normalized by u=1, are
+
+    e_x=(1,-(2r+1)²/[9(r+1)],-r(2r+1)/[6(r+1)]),
+    e_y=(1,-r-1,-r/2).
+
+Both lie strictly outside the realizable cone u,v≥0, j²≤uv:
+
+    (uv-j²)(e_x)=-(2r+1)²(r+2)²/[36(r+1)²]<0,
+    (uv-j²)(e_y)=-(r+2)²/4<0.
+
+This cone separation is not a Korn theorem. Derivatives of a cone-valued
+field need not lie in the cone, and the quadratic metric loses orientation.
+The rotating rank-one countermodel above has constant metric as well.
+
+## 5. Mixed-Hessian interpolation: analytic mechanism
+
+**Lemma H.** For smooth periodic scalar f on a rectangular torus, or for
+a scalar distribution f on R² with D²f∈L4 and f_xx∈L2,
+
+    ||f_xy||_(8/3)² ≤ C ||f_xx||_2 ||f_yy||_4.          (H)
+
+The periodic constant is independent of side lengths. Approximation extends
+the conclusion when the right side is finite.
+
+**Proof.** Remove Fourier modes on the coordinate axes, which contribute
+nothing to f_xy. Put g=f_yy and T=|D_x|/|D_y| on the remaining modes.
+Then T²g=f_xx up to its harmless axis projection; f_xy differs from Tg by
+the two coordinate Hilbert transforms and a sign. The imaginary powers
+
+    T^(it)=|D_x|^(it)|D_y|^(-it)
+
+are bounded on each Lp, 1<p<∞, with at most polynomial growth in |t|. In
+one dimension the Marcinkiewicz criterion applies because |m(ξ)|=1 and
+|ξm'(ξ)|=|t| on each half-axis. Tensor the coordinate estimates. Periodic
+transference, or the periodic one-dimensional multiplier theorem and
+tensoring, gives constants independent of periods. Axis projections are
+bounded on the needed Lp spaces.
+
+Apply the three-lines interpolation argument to T^(2z)g, damped by a
+Gaussian in z to control the boundary operator growth. At Re z=0 use L4
+and at Re z=1 use L2 on T²g. At z=1/2,
+
+    1/p=(1/2)(1/4)+(1/2)(1/2)=3/8.
+
+This yields ||Tg||_(8/3)≤C||g||4^(1/2)||T²g||2^(1/2). Hilbert-transform
+boundedness proves (H). First work with finitely many modes, or Fourier
+support away from the axes, then pass by smooth rectangular Fourier cutoffs
+(uniformly bounded on the stated Lp spaces) and Fatou. This is an
+analytic argument; the symbolic checker does not certify it.
+
+**Audit repair, 15 October 2026.** The first saved wording on R² required
+only f_xx∈L2 and f_yy∈L4. That wording was too weak: f(x,y)=xy has zero
+pure second derivatives and a nonzero constant mixed derivative. The present
+R² statement includes D²f∈L4, which excludes that polynomial mode and is
+already supplied by q̃ in Proposition C. The independent analytic auditor
+identified this statement defect; it does not alter the torus statement
+or the C/U application. No audit output supplies a new construction premise.
+
+## 6. New cubic spectral estimate at a contact ray
+
+Let q=Dφ=[[p,b],[c,z]] have zero mean. Define
+
+    S=(r+1)p+z,
+    m(q)=∫[S²+r(r+2)c²/3],
+    n(q)=||p||4+||c||4+||z||4,
+    K(q)=∫J(q), ellc(q)=∫DJ(q):I.
+
+Exact polarization and (r+2)∫det q=0 give
+
+    Gap_(tI)(φ)=t²m(q)+t ellc(q)+K(q),
+    ellc(q)=∫{2pS²+[-2bc+r c²-(r+2)p²]S
+                    -r(r+2)p(p²+c²)/3}.              (C)
+
+**Proposition C.** For fixed r, a finite C_r exists such that
+
+    |ellc(q)| ≤ C_r sqrt(m(q)) ||q||4 n(q).            (C1)
+
+This holds on rectangular tori and for compact zero-extended maps on R².
+
+**Proof.** Every term in (C) except ∫p³ is bounded directly by Hölder,
+using ||S||2+||c||2≤C_r sqrt(m), ||S||4≤C_r n(q). For example
+|∫pS²|≤||S||2||p||4||S||4 and
+|∫Sbc|≤||S||2||b||4||c||4.
+
+To handle p³ solve Δw=S and set
+
+    η1=w_x/(r+1), η2=w_y, e=Dη, q̃=q-e.
+
+On a torus S has zero mean; take the mean-zero inverse. On R² use the
+homogeneous Fourier inverse; only Dη is needed. Riesz-transform estimates
+give ||e||2≤C_r||S||2, ||e||4≤C_r||S||4, and
+(r+1)q̃11+q̃22=0. Put k0=-(r+1)>1. Compatibility gives a scalar Hessian
+potential representation
+
+    q̃=[[f_xy,f_yy],[k0 f_xx,k0 f_xy]].
+
+For periodic maps the closed one-form (φ̃2/k0)dx+φ̃1dy has zero periods
+after subtracting component means. The distributional Fourier argument
+gives the same representation on R². Lemma H and Hölder imply
+
+    ∫|q̃11|³ ≤ ||q̃11||4 ||q̃11||_(8/3)²
+       ≤ C_r ||q̃11||4 ||q̃21||2 ||q̃12||4
+       ≤ C_r sqrt(m)(||p||4+||S||4)(||b||4+||S||4).
+
+Also
+
+    |∫p³-∫q̃11³|
+       ≤ C||e11||2(||q̃11||4²+||e11||4²)
+       ≤ C_r sqrt(m)(||p||4²+||S||4²).
+
+These estimates prove (C1); approximation passes to W1,4 data.
+
+## 7. Growing exact contact backgrounds require concentration
+
+**Theorem U.** Let q_n be compatible gradients on one fixed rectangular
+torus, or compact gradients supported in one fixed bounded set of R².
+Assume ||q_n||4=1, the fourth-power densities |q_n|⁴ are uniformly
+integrable, and |t_n|→∞. Then
+
+    liminf_n Gap_(t_n I)(φ_n) ≥ α>0.                  (U)
+
+**Proof.** On a subsequence of gaps bounded above, (C1), bounded K and
+n(q_n)≤C imply
+
+    Gap_(t_nI)≥t_n²m_n-C_r|t_n|sqrt(m_n)-C_r.
+
+Thus m_n→0. The determinant null identity, with k0=-(r+1)>0, gives
+
+    0=∫(pz-bc)=∫[pS+k0p²-bc],
+    k0||p||2²≤||b||2||c||2+||p||2||S||2.
+
+The fixed finite-measure support and L4 normalization bound all L2 norms.
+Therefore p_n,c_n,z_n→0 in L2. Uniform integrability of |q_n|⁴ upgrades
+these convergences to L4. Hence n(q_n)→0, ∫|b_n|⁴→1, and K(q_n)→α.
+When m_n>0,
+
+    ellc(q_n)²/m_n≤C_r n(q_n)²→0,
+    Gap_(t_nI)≥K(q_n)-ellc(q_n)²/(4m_n)→α.
+
+When m_n=0, the determinant identity gives p_n=c_n=z_n=0 and the gap is
+exactly α. Subsequences tending to infinity satisfy (U) automatically.
+This proves U. The same proof shows that if m(q_n)→0 under the other
+hypotheses then inf_t Gap_(tI)(φ_n)→α.
+
+Target rotation transfers the exclusion to conformal contact rays tR.
+The fixed elliptic quarter-turn symmetry J(AK_r)=h²J(A),
+K_r=[[0,h],[1,0]], h=(2r+1)/3, transfers exclusion of zero ratio to the
+other exact contact family after a fixed input-coordinate change. Norm
+equivalence factors must be included; the numerical bound α is not asserted
+after that change.
+
+Uniform integrability is essential to this proof. Concentration, domain
+vanishing after normalization, and background directions approaching
+contacts with unbounded transverse offsets remain open. Theorem U is a
+single-contact-ray result, not full four-dimensional affine minimization.
+
+## 8. Exact fixed-profile soft-shear blowup
+
+For fixed smooth periodic u,v in (X,y), take
+
+    B_T=T I,
+    φ_T(x,y)=(u(x/T,y),T^(-1)v(x/T,y)),
+    q_T=[[p/T,b],[c/T²,z/T]],
+    p=u_X, b=u_y, c=v_X, z=v_y.
+
+Using cell averages, the exact Laurent coefficient of the relative energy
+has limit
+
+    αb⁴+[(r+1)p+z]²+(r+2)(pz-bc).
+
+The last term averages to zero since pz-bc=det D_(X,y)(u,v). The denominator
+average tends to average b⁴. If average b⁴>0 the limiting ratio is
+
+    α+average[((r+1)p+z)²]/average[b⁴] ≥ α.
+
+This excludes that fixed-profile anisotropic soft-shear mechanism. Varying
+profiles without uniform bounds are outside this limit calculation.
+
+## 9. Exact concentration identity: the surviving obstruction
+
+Let φ be any fixed compactly supported smooth map, q=Dφ, and B0 any affine
+matrix. For a>0 define
+
+    φ_a(x)=a^(-1)φ(a²(x-x0)),
+    q_a(x)=a q(a²(x-x0)), B_a=a B0.
+
+Quartic homogeneity and the two-dimensional Jacobian a^(-4) give exactly
+
+    ∫|q_a|⁴=∫|q|⁴,
+    Gap_(B_a)(φ_a)=Gap_(B0)(φ).
+
+For a→∞ the fourth-power densities concentrate at x0 and fail uniform
+integrability whenever q is nonzero. Taking B0=I embeds the full fixed-I
+margin problem into growing exact contact backgrounds without uniform
+integrability. Thus Theorem U cannot remove that hypothesis without a
+substantive additional argument. This identity is a countermodel to a
+compactness shortcut, not a zero-margin sequence: the fixed ratio is
+positive for each nonzero φ by the inherited strictness theorem.
+
+## 10. Remaining gate and provenance boundary
+
+The full all-affine uniform margin is UNRESOLVED; no exact zero-margin
+sequence is constructed. The rigorous new partial routes are T, bounded
+splitting depth, C/U, and the fixed-profile shear limit. Q and the metric
+fluxes are exact new structure with explicit countermodels to overextending
+them. Exact checks certify their stated algebra only; the analytic proofs
+above require mathematical review and external correctness remains UNKNOWN.
+
+The surviving routes include fourth-power concentration, contact-approaching
+affine directions with transverse offsets, and two-dimensional infinite
+hierarchy. A full profile decomposition must preserve compatibility, affine
+offsets and the quartic residual and account for every bubble. Strictness,
+angular positivity and finite Fourier minima cannot replace these obligations.
+
+No sharp-J N866 storage transfer, priority claim, physical capability claim,
+or source/Git write follows from this worker report. The independent analytic
+auditor subsequently supports only T, C1 and U after the local R² repair;
+the other sections and the unrestricted target are not thereby adjudicated.
