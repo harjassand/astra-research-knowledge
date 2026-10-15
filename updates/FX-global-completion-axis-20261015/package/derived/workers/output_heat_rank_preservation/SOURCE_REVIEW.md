@@ -1,0 +1,13 @@
+# Provenance and limited primary-source review
+
+The immutable local source inspected was `../../sources/global_compatible_positivity/RESEARCH_REPORT.md`, Theorem D and Section 8, together with its `DETERMINANT_HEAT_OBSTRUCTION.json`, `SOURCES_AND_REVIEW.md`, and manifest. Its scope is common componentwise heat with an arbitrary positive-definite constant input diffusion. It already starts from a rank-one-gradient map and correctly distinguishes the heat limitation from quasiconvexity. The root proposed the fixed local jet extending this obstruction to constant output-matrix generators. This worker independently differentiated that jet and developed the tangency classification, compact negative-dissipation argument, adaptive first-jet formula, and square-dimensional extension.
+
+The output-matrix proof does not assume a concurrent worker result, a source status label, an uninspected Gram matrix, or a numerical simulation. Its hypotheses and operator convention are written in ANALYTIC_PROOF.md. Local source hashes are pinned in SOURCE_PINS.json. The task supplied the integration checkout baseline `ab5118e70a7e6a0dd39e75dd563d3a3f50b06b25`; that checkout was not used as a proof premise and was not edited.
+
+One directly relevant external primary paper was reopened on 15 October 2026:
+
+- Giuseppe Bruno and Federico Pasqualotto, [*Quasiconvexity for the Dacorogna–Marcellini Energy*, arXiv:2608.06367v1](https://arxiv.org/html/2608.06367v1). Inspected Sections 2–3 and Appendix A. Sections 2–3 study componentwise heat and an integral-null exact-form correction. Appendix A treats a nonnegative determinant-square addition through polyconvexity separately from the heat argument. This is relevant methodological context, not a premise of the new coefficient calculation or the classification proof.
+
+The bounded search also included the phrases "parabolic systems preservation rank of gradient determinant squared heat flow quasiconvexity" and "invariant manifolds parabolic system linear diffusion curve image preservation second fundamental form". No exact earlier statement of the classification was established by this search. That is not evidence of novelty. Classical invariant-set, differential-relation, diffusion-chain-rule, or geometric-PDE results may imply these short arguments. Historical priority and independent external correctness review remain unresolved.
+
+The verifier establishes exact symbolic identities and the finite coefficient-system rank only. The report separately supplies the compact cutoff, strict integral positivity, integration by parts, semigroup passage, and all-dimensions argument. No result is promoted to a quasiconvexity counterexample, a physical operation, or a practical capability.

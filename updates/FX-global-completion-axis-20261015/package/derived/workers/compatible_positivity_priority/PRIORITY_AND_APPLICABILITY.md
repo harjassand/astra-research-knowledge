@@ -1,0 +1,209 @@
+# Independent primary-literature and exact-applicability audit
+
+15 October 2026. **Historical priority: UNKNOWN.**
+
+The strongest acquired predecessor is Iwaniec--Kristensen (2005), rather
+than an acoustic-SOS result. It already proves finite anticonformal-power
+QC completion under strict LH hypotheses. It also implies completion
+from strict LH only on nonzero conformal backgrounds, by a preliminary
+H addition. Thus a new full-space theorem confined to the strict regime,
+or merely to the closure of the completion projection, would be a useful
+receiving corollary of established mathematics, not new QC machinery.
+
+The supplied shear-contact theorem is on a genuinely different receiving
+boundary: all its H-completions retain the zero D2F(I)[e12,e12]=0. The
+strict-LH theorem cannot be applied to those coefficients at any finite
+alpha. This audit acquired no primary theorem directly implying the
+stated exact degenerate shear-face projection. That is a bounded
+applicability finding, not historical novelty clearance.
+
+## Conclusions by claim
+
+| Claim | What established results supply | Remaining scope |
+|---|---|---|
+| Finite H completion with strict conformal acoustic positivity | Direct elementary corollary of IK2005 Theorem 3.1 and Lemma 4.1 | No new general QC theorem in this strict regime |
+| Closure of the full projected ROC/QC completion cones | Both closures equal nonnegative conformal acoustic restriction, by the same theorem plus epsilon | Exact nonclosed boundary membership remains open |
+| Full left-SO(2) quartic acoustic SDP | Classical two-factor biform SOS; reconstructed from a fully read matrix-factorization proof | ROC only; no QC or compatible-heat implication |
+| At most five real acoustic bilinear squares | Hanselka--Sinn Corollary 2.8 applied to a 4x4 quadratic matrix polynomial | No rational factor or rational PSD solution guaranteed |
+| Degenerate shear-contact finite H projection | Not directly received by the acquired strict-LH, two-sided-isotropy or multiwell theorems | Supplied boundary proof needs its own correctness review; historical priority unknown |
+| Fixed heat incompleteness for det squared | Supplied explicit example is elementary and its mechanism extends to all smooth nonlinear convex determinant functions | No historical-first claim; no exclusion of other flows or separate Jensen channels |
+| Arbitrary invertible acoustic-contact normal form | Necessary critical-contact space has dimension four for every normalized trace/skew type | Its ROC and QC intersections still require analysis |
+
+## The consequential primary predecessor
+
+I read the original publisher PDF of Iwaniec--Kristensen, *A construction
+of quasiconvex functions*, including Theorem 3.1, its Taylor/Fourier proof,
+Lemma 4.1, the anticonformal examples and the ensuing Dacorogna--Marcellini
+application. Their integrated p-gap is weaker than uniform quadratic
+ellipticity and is explicitly valid for powers of linear projections
+whose kernels contain no rank-one matrices. This is exactly the useful
+distinction between H's integrated fourth-order coercivity and its zero
+quadratic curvature at conformal backgrounds.
+
+The detailed receiving proof is in `CLASSICAL_FINITE_COMPLETION_COROLLARY.md`.
+It first adds cH to turn strict conformal LH into global strict LH, then
+uses their theorem. It also proves the exact closure statement and derives
+the conformal restriction's 4x4/one-skew SDP. These deductions are based on
+the primary theorem, not on uninspected titles or on a numerical Gram fit.
+
+Source: https://www.rivmat.unipr.it/fulltext/2005-4s/pdf/03.pdf
+
+## The acoustic SDP is inherited mathematics
+
+For a left-invariant quartic, target rotation reduces acoustic testing to
+e1 tensor (n,m). Its LH form is quadratic in x=vec A and in (n,m). Let its
+three symmetric 4x4 coefficient matrices be M11,M12,M22. ROC is equivalent
+to
+
+    exists skew K:
+    [[M11,M12+K],[M12-K,M22]] >=0.
+
+The six skew entries are precisely the Gram freedom: x^T K x=0. The
+worker verifier regenerates this identity from the nine invariant basis
+polynomials. Existence of such a Gram matrix is the classical substantive
+step, not a new invariant-quartic positivity theorem.
+
+The original three-page Calderon 1973 proof was not acquired: the primary
+publisher PDF attempt returned HTTP 403. Its abstract was inspected, but
+the argument below does not pretend that abstract access is proof access.
+
+I instead read the full Rosenblum proof reproduced by Dritschel--Rovnyak,
+Theorem 2.1 and Lemmas 2.3-2.4. Here is the exact receiving reconstruction.
+For M(n,m)=n^2M11+2nmM12+m^2M22, put n=cos theta,m=sin theta and z=e^(2i theta).
+This is a nonnegative degree-one Laurent matrix polynomial in z. The
+matrix Fejer--Riesz theorem factors it as (P0+P1z)^*(P0+P1z). Multiplication
+by e^(-i theta) rewrites the factor as
+
+    (P0+P1) cos theta + i(P1-P0) sin theta.
+
+Taking real and imaginary parts gives real bilinear squares; homogeneity
+extends from the unit circle to every (n,m). This reconstructs the needed
+two-factor SOS theorem from a fully available proof. The Toeplitz proof
+uses a shift on the closure of the square-root range, and finite Laurent
+bandwidth makes its backward powers vanish on a dense set, establishing
+the polynomial factor. It handles semidefinite, not merely definite,
+matrix polynomials.
+
+Source: https://uva.theopenscholar.com/files/james-rovnyak/files/p71.pdf
+
+An optional stronger representation follows from Hanselka--Sinn's
+Corollary 2.8, whose proof and preceding pole-cancellation theorem were
+read in the MPI preprint: every real PSD n-by-n univariate matrix
+polynomial has an (n+1)-by-n real polynomial factor Q. Apply it to
+M(t,1), n=4. Since each diagonal entry is a sum of squares of polynomials
+and has degree at most two, each entry of Q has degree at most one.
+Homogenizing yields at most five acoustic bilinear squares. Their proof
+passes through rational quadratic-form equivalence and cancellation of
+poles; that external algebraic theorem is not verified by our Python
+script. The real representation does not guarantee a rational factor.
+
+Source: https://files-www.mis.mpg.de/mpi-typo3/preprints/2017/preprint2017_43.pdf
+
+None of these acoustic representations integrates a quartic Jensen gap.
+The corrected compatible-heat density has factors of dimensions four and
+six, and the determinant example shows that enlarging an SOS ansatz
+cannot universally repair the chosen flow.
+
+## Other strong results checked against the receiving hypotheses
+
+Bruno--Pasqualotto (2026), Theorem 2 and Appendix A, requires both left
+and right SO(2) invariance. I read Lemma 3's heat implication, the exact-form
+construction, the diagonal reduction and Appendix A's boundary-square
+identity. The source treats the entire three-coefficient two-sided
+quartic cone, adding a determinant-square remainder by polyconvexity
+separately. It already supplies the heat/exact-form strategy. It does
+not state a one-sided nine-coefficient theorem or the degenerate
+anisotropic shear projection. The previous C4-normalization addendum
+was read: transformed C4 symmetry is weaker than right SO(2), and must
+not be dismissed using the untransformed family.
+
+Source: https://arxiv.org/html/2608.06367v1
+
+Yin--Zhang (2022), Theorem 3 and proof, constructs computable QC lower
+bounds for specified quadratic multiwell energies near wells in an
+elliptic subspace. Its proof splits a compensated-convex transform into
+a convex term and a rank-one-convex quadratic term. It is useful alternative
+integral positivity machinery, but it changes the density to a lower bound
+and does not supply finite H completion of an arbitrary prescribed
+homogeneous quartic.
+
+Source: https://www.aimspress.com/aimspress-data/era/2022/5/PDF/era-30-05-082.pdf
+
+Guerra--Kristensen (2022) requires nonnegativity, positive homogeneity and
+two-sided isotropy; its automatic result is at conformal backgrounds.
+The proof's Baker--Ericksen comparison requires that receiving symmetry.
+It is not an all-background theorem for merely left-invariant quartics.
+
+Source: https://ora.ox.ac.uk/objects/uuid%3A2cd79e51-0709-4403-8069-02569cc7e9fe/files/s3r074w15d
+
+Krynski (2008) proves that three-point minor-preserving Jensen inequalities
+(his 2-convexity) imply all finite minor-preserving Jensen inequalities;
+with a convex lower bound they characterize PC. I read the decomposition
+proof, not only the abstract. The theorem offers a smaller PC support
+receiving target, but does not equate rank-one tests with QC or supply the
+current quartic completion.
+
+Source: https://www.impan.pl/shop/en/publication/transaction/download/product/85639
+
+Fantuzzi et al. (2026), Proposition 2.4, proves that the classical PC quartic
+|A|^2(|A|^2-2det A) has no convex polynomial lift in (A,det A). I read its
+weighted-degree argument and final negative 2x2 Hessian minor. This is a
+concrete warning against identifying quartic PC with convex polynomial
+lifts, or assuming a fixed lifted-SOS SDP decides all PC. Their first-order
+support SOS and moment hierarchies are sufficient/computational machinery
+with explicit scope; infeasibility at a chosen degree is inconclusive.
+
+Source: https://arxiv.org/html/2604.11124v1
+
+## Independent deductions and their limits
+
+`ORBIT_COMPLETION_NONINHERITANCE.md` closes a receiving loophole left by
+sharp-ray exclusion alone. The common shear contact forces every source
+limit in the specified positive isotropic-orbit-plus-convex cone to be PC.
+The alpha-independent determinant-support cubic then excludes every finite
+curved P_(alpha,r), q>0, from that CLOSED positive inheritance route. This
+uses the incoming orbit bound and compact-base argument, together with
+independently regenerated contact and support identities.
+
+`GENERAL_INVERTIBLE_CONTACT_NORMAL_FORM.md` supplies an exact receiving
+normal form beyond trace-free contacts. Every real normalized type
+R=e1 tensor (t,1) has a four-dimensional critical-contact space with one
+polynomial basis N(t). Two universally positive minors prove rank without
+sampling, including t=0. The missing projective pure-stretch type also
+has dimension four. This is a tractable new calculation in this audit;
+it is not presented as historically new or as an ROC/QC classification.
+
+`NONLINEAR_MINOR_HEAT_OBSTRUCTION.md` uses a constant-Jacobian composition
+of shears. Heat instantly creates Jacobian variance. Every C2 convex
+nonaffine g therefore has g(det Dv) increase for some smooth compatible
+map. This extends the supplied det-square obstruction without requiring a
+finite Fourier search or a new variational principle. Its novelty remains
+unknown. The determinant-Jensen proof of QC is unaffected.
+
+## Provenance and verification
+
+All inspected third-party PDFs, extracted text and selected rendered
+formula pages are in `sources/`. JSON acquisition receipts preserve URL,
+timestamp, status, final URL, content type, byte size and SHA256 when
+available. Failed acquisitions remain explicit. Download success is not
+license clearance and acquired fulltexts are not authored results.
+
+The independent script reports **20 exact checks PASS**. It checks the
+two acoustic Gram identities, the conformal image rank and invisible H,
+the universal contact system/basis/minors, the pure/shear specializations,
+H rank-one curvature, the orbit contact and PC-support cubic, and the
+compatible Jacobian heat identities. It
+does not check historical priority, external theorem proofs mechanically,
+the supplied universal heat certificate, or QC of any raw boundary fibre.
+
+Read-only inputs were the two assigned source reports and the previous
+contact-face priority, C4, symmetry and orbit addenda. No current
+construction-worker result is a mathematical premise. Only this assigned
+worker directory was written; no W checkout, source input or GitHub edit
+was performed.
+
+Bounded search nonfinding does not prove nonexistence of earlier
+derivations. The appropriate receiving conclusion is: **strict completion
+and projection closure are classical; the supplied exact degenerate
+projection is not subsumed by an acquired theorem; historical priority
+remains unknown.**
