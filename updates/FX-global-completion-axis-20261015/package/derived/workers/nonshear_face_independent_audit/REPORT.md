@@ -1,0 +1,265 @@
+# Independent audit: left-SO(2) quartic contact face
+
+Status: the **existential completion theorem is correct**, with the qualification that the asserted four-dimensional contact face requires rank-one convexity (or quasiconvexity) in addition to the displayed contact equality. Contact alone does not imply the asserted span. The universal sufficiency proof below uses an explicitly stated, standard L4 constant-coefficient elliptic estimate, and no strict Legendre-Hadamard theorem at the degenerate contact.
+
+This audit was derived from the parent task's candidate polynomial. The construction worker's report and verifier were not read. The checkout was verified at `ab5118e70a7e6a0dd39e75dd563d3a3f50b06b25`. No source, checkout, or GitHub content was changed. Historical novelty was not investigated.
+
+## Exact statement and quantifiers
+
+Write `A = [[a,b],[c,d]]`, `v=b²+d²`, `w=ab+cd`, `j=ad-bc`, and
+
+`H(A)=((a-d)²+(b+c)²)²`,
+
+`F_alpha(A)=alpha H(A)+k w(A)²+ell v(A)j(A)+m v(A)²`.
+
+The coefficients are real and alpha is a real constant independent of the background matrix and the test function. Define
+
+`L=ell+2m`, `D=2km-k ell-ell²`.
+
+Then the following statements are equivalent:
+
+1. Some finite alpha makes F_alpha rank-one convex on all real 2-by-2 matrices.
+2. Some finite alpha makes F_alpha quasiconvex at every real 2-by-2 background.
+3. Either `k=ell=0, m>=0`, or `k>0, L>0, D>0`.
+
+In the strict case, every sufficiently large nonnegative alpha works. This is an equivalence of **existence** statements; it does not assert that every individual alpha giving rank-one convexity must also give quasiconvexity.
+
+Quasiconvexity means the usual inequality for every bounded open test domain and every smooth compactly supported vector test function. The proof also extends to W^{1,4}_0 tests by density where that formulation is appropriate.
+
+## 1. Derivation of the invariant contact face
+
+Let `u=a²+c²`. The real homogeneous left-SO(2)-invariant quartics have the nine-element basis
+
+`u², uv, v², uw, vw, w², uj, vj, wj`.
+
+Completeness follows by putting `z=a+ic`, `y=b+id`: a rotation multiplies both by the same unit complex number. An invariant quartic has two holomorphic and two antiholomorphic factors, hence is a Hermitian form on `(z², zy, y²)`, a nine-real-dimensional space. Equivalently, use the four quadratic invariants and the sole quadratic relation `uv=w²+j²`. The verifier checks independence of the displayed basis.
+
+Give the basis coefficients the names `x0,...,x8`. For a rank-one convex C² polynomial, the acoustic function
+
+`h(A,p,q)=D²F(A)[p tensor q,p tensor q]`
+
+is everywhere nonnegative. If the contact `h(I,e1,e1)=0` holds, all first derivatives of h in A, p, and q vanish there. The contact and its stationary equations include
+
+```
+12x0+2x1+6x6=0,
+24x0+6x6=0,
+6x3+2x8=0,
+2x3=0,
+4x1+6x6=0,
+3x3+x4+2x8=0,
+2x3+x8=0.
+```
+
+They have rank five, with solution
+
+`x0=-x6/4, x1=-3x6/2, x3=x4=x8=0`,
+
+and free coefficients `x2,x5,x6,x7`. The identity
+
+`H=u²+v²+6uv-4uj-4vj-4w²`
+
+therefore gives exactly the asserted span. Its parameters are `alpha=-x6/4`, `k=x5+4alpha`, `ell=x7+4alpha`, `m=x2-alpha`.
+
+The literal statement with contact alone is false: `u²-6uv` has `D²F(I)[e11,e11]=0`, but is outside this span. Its third a derivative at I is 24, violating the acoustic stationarity needed for rank-one convexity. This qualification should remain in any theorem title or hypothesis.
+
+For quasiconvex polynomials the same necessity follows without any unproved implication: second variation gives nonnegative integral quadratic forms, and cutoff high-frequency tests `phi_n=p chi sin(n q.x)/n` give the Legendre-Hadamard inequality. Nonnegative rank-one second derivatives at every background are equivalent to convexity on every rank-one line.
+
+## 2. Necessary closed parameter cone
+
+Put `G=k w²+ell vj+m v²`. The quadratic Taylor coefficient of G at I, after subtracting `3ell det Z`, is
+
+`Q(Z)=(k+ell+2m)b²+2(k+ell)bc+k c²+3L d²`.
+
+There is no a term. The completion H has zero quadratic and cubic Taylor coefficients at I.
+
+On rank-one Z, the determinant subtraction vanishes. For every `d!=0`, any choice of b,c,d occurs in a rank-one matrix by choosing `a=bc/d`. Thus acoustic nonnegativity forces Q nonnegative for all b,c,d, by continuity also at d=0. Its 2-by-2 b,c block has determinant D. Consequently:
+
+* If `k=0`, positivity forces `ell=0` and `m>=0`.
+* If `k>0`, positivity forces `L>=0` and `D>=0`.
+* Negative k is impossible.
+
+These are necessary conditions for every finite alpha.
+
+## 3. Exact exclusion of both non-convex boundaries
+
+### L=0
+
+At `A=I+t e11`, in the rank-one direction e22, the exact acoustic value is
+
+`D²F_alpha(A)[e22,e22]=6ell t+12alpha t²`.
+
+If `ell!=0`, choose t of the opposite sign and sufficiently small magnitude. This is negative for every finite alpha. An explicit choice is `t=-sign(ell) epsilon`, with
+
+`0<epsilon<=min(1, |ell|/[4(|alpha|+1)])`.
+
+If ell=0, L=0 forces m=0. With k>0 this is a D=0 case and is excluded next.
+
+### D=0 with k>0
+
+Set `m=(k ell+ell²)/(2k)` and take
+
+```
+A_epsilon = [[1,-epsilon²],[0,1]],
+Z_epsilon = [[1,k epsilon],[-(k+ell)epsilon,-k(k+ell)epsilon²]].
+```
+
+The direction is exactly rank one for every epsilon. Exact expansion gives
+
+`D²F_alpha(A_epsilon)[Z_epsilon,Z_epsilon]`
+
+`= -4k² epsilon³+c4 epsilon⁴+c5 epsilon⁵+c6 epsilon⁶+c8 epsilon⁸`,
+
+where
+
+```
+c4=4alpha+2k+6k ell(2k+ell)(k+ell)²,
+c5=4k(k+ell)(-k²+3k ell+3ell²),
+c6=4alpha(2k²+2k ell+3ell²)+10k ell(k+ell),
+c8=4alpha k²(k+ell)²+2k ell(k+ell)³.
+```
+
+The negative cubic coefficient is independent of alpha. Every finite completion fails. This can be made a completely explicit witness: put `S_c=|c4|+|c5|+|c6|+|c8|` and choose
+
+`epsilon=min(1/2,k²/(S_c+1))`.
+
+The remainder has absolute value at most `S_c epsilon⁴`, so the acoustic value is at most `-3k² epsilon³<0`. This argument covers the endpoints with L=0 as well.
+
+No grid search or asymptotic numerical diagnosis is involved in either exclusion.
+
+## 4. Universal sufficiency in the strict cone
+
+Assume `k>0,L>0,D>0`. Set
+
+`mu=min(3L,D/(2k+L))>0`,
+
+`S=|k|+|ell|+|m|`, `M=24S`, `B=M²/mu+3M/2`.
+
+The transverse quadratic form satisfies `Q(Z)>=mu |PZ|²`, where `PZ=(b,c,d)`. Indeed the b,c block has positive determinant D, trace `2k+L`, and smallest eigenvalue at least `D/(2k+L)`.
+
+### Explicit analytic input
+
+For smooth compactly supported `phi=(phi1,phi2)` on the plane and `Z=grad phi`, put
+
+`TZ=(phi1_x-phi2_y,phi1_y+phi2_x)`.
+
+There exists a finite universal K such that
+
+`integral |Z|⁴ <= K integral |TZ|⁴`.
+
+This is the standard constant-coefficient L4 elliptic estimate for the Cauchy-Riemann operator, used only as an estimate on gradient test functions. To identify the dependency exactly, write `f=phi1+i phi2`; then `TZ=2 barpartial f`, `partial f=Beurling(barpartial f)`, and the Beurling transform is bounded on L4. If C_B is any finite L4 operator bound, one may take `K=((C_B²+1)/2)²`. Boundedness here is the usual Calderon-Zygmund theorem for the Fourier multiplier of the Beurling transform; no optimal norm or conjectural sharp estimate is required. Zero extension makes K independent of the test domain.
+
+There is also the exact L2 identity
+
+`integral |TZ|²=integral |Z|²`,
+
+because `|TZ|²=|Z|²-2det Z` and the determinant has zero integral for compactly supported gradient tests.
+
+This is the only non-algebraic analytic ingredient in the sufficiency argument. It is not a strict-Legendre-Hadamard-to-quasiconvexity assertion.
+
+### Canonical decomposition of every background
+
+Every A decomposes orthogonally as a conformal matrix plus an anti-conformal matrix. By left rotation invariance, rotate the conformal part to obtain
+
+`A=rI+U`, `r>=0`, `U=[[s,t],[t,-s]]`.
+
+A left rotation of `grad phi` is still a gradient of an admissible vector test function. Also `TA=TU`, `|TA|²=2|U|²`. Thus this reduction covers every background, including singular backgrounds and zero conformal part.
+
+### Bounds on the entire Taylor remainder of G
+
+The cubic coefficient of G at I is
+
+```
+C(Z)=a[(2k+ell)b²+2kbc+3ell d²]
+     +d[(ell+4m)b²+2(k-ell)bc+2k c²+(ell+4m)d²].
+```
+
+Every monomial contains at least two transverse coordinates. Its coefficient absolute sum is at most 8S. Therefore
+
+`|C(Z)|<=M |PZ| |Z|²`,
+
+`|DC(Z)[U]|<=M |U| |PZ| |Z|`.
+
+For quadratic invariants with operator norms at most one, direct product expansion gives
+
+`|(1/2)D²G(U)[Z,Z]|<=6S |U|² |Z|²`,
+
+`|(1/6)D³G(U)[Z,Z,Z]|<=4S |U| |Z|³`,
+
+`|G(Z)|<=S |Z|⁴`.
+
+The verifier checks the exact polarization identities. Specifically, the quadratic coefficient at rI+U is
+
+`r²[Q(Z)+3ell det Z]+r DC(Z)[U]+(1/2)D²G(U)[Z,Z]`,
+
+and its cubic coefficient is `r C(Z)+(1/6)D³G(U)[Z,Z,Z]`.
+
+After integration, the determinant term vanishes. Put
+
+`E2=integral |Z|²`, `E4=integral |Z|⁴`, `T2=integral |PZ|²`.
+
+Cauchy-Schwarz and Young give
+
+`M r|U| sqrt(T2 E2) <= (mu/4)r²T2+(M²/mu)|U|²E2`,
+
+`M r sqrt(T2 E4) <= (mu/4)r²T2+(M²/mu)E4`,
+
+`M |U| integral |Z|³ <= (M/2)(|U|²E2+E4)`.
+
+Consequently the complete integrated G Taylor remainder is bounded below by
+
+`(mu/2)r²T2-B|U|²E2-B E4`.
+
+This estimate includes all quadratic, cubic, and quartic terms; no omitted higher-order remainder exists for a quartic.
+
+### Positive completion remainder
+
+For `x=TA`, `y=TZ`, and `s=|x|²,r_y=|y|²,h=x.y`, the exact Bregman remainder of `|x|⁴` is
+
+`R=2s r_y+4h²+4h r_y+r_y²`.
+
+The identities
+
+`R-2s r_y=4(h+r_y/2)²`,
+
+`R-r_y²/3=2(s r_y-h²)+6(h+r_y/3)²`
+
+show that
+
+`R >= s r_y+r_y²/6`.
+
+Using the L2 identity and the L4 elliptic estimate above, the integrated H remainder is therefore at least
+
+`2|U|²E2+E4/(6K)`.
+
+Combining both complete remainders proves
+
+```
+integral [F_alpha(A+grad phi)-F_alpha(A)-DF_alpha(A):grad phi]
+ >= (mu/2)r²T2+(2alpha-B)|U|²E2+(alpha/(6K)-B)E4.
+```
+
+The linear term integrates to zero. Thus **every**
+
+`alpha>=max(B/2,6KB)`
+
+gives quasiconvexity at **every** background for **every** admissible test function. This is a uniform analytical argument, not a finite check.
+
+For completeness, a direct rank-one second-derivative bound also follows from the same estimates. For rank-one Z, `|TZ|²=|Z|²` and
+
+`(1/2)D²F_alpha(A)[Z,Z]`
+
+`>=(mu/2)r²|PZ|²+[4alpha-M-M²/(2mu)]|U|²|Z|²`.
+
+Thus `alpha>=(M+M²/(2mu))/4` already guarantees global rank-one convexity. The separate bounds do not assert equality of the two optimal alpha thresholds.
+
+## 5. Convex exceptional branch and conclusion
+
+If `k=ell=0,m>=0`, choose alpha=0. Then `F_0=m(b²+d²)²` is convex, hence rank-one convex and quasiconvex. Choosing any nonnegative alpha preserves convexity because H is the fourth power of the Euclidean norm of a linear map.
+
+Sections 2 and 3 exhaust all necessary cases, and Sections 4 and 5 establish both existence statements. The exact projected theorem is therefore proved, subject to the explicit hypothesis correction in Section 1 and the standard L4 elliptic estimate stated in Section 4.
+
+## Verification and scope receipt
+
+Run `R/.venv/bin/python R/workers/nonshear_face_independent_audit/verify.py`. It checks the invariant identities, basis independence, acoustic constraint rank, Taylor coefficients, boundary witnesses, completion square identities, and mixed Taylor polarizations exactly in SymPy. `verification.json` records the identities, and `receipt.json` hashes the verifier, report, and result. These checks verify algebraic identities; the preceding universal argument establishes the asserted mathematical implication.
+
+Read scope: parent assignment and candidate polynomial; pinned checkout AGENTS.md and 00_START_HERE.txt; memory registry lines 1-50 for existing provenance and scope guidance. No construction report, supplied report, or external novelty source was read. No external correctness certification, optimal-alpha classification, or historical novelty conclusion is claimed.

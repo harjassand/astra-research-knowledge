@@ -1,0 +1,301 @@
+# Output-matrix heat cannot preserve determinant-square energy
+
+Date: 15 October 2026. Status: analytic reconstruction with exact symbolic checks; no independent external review, proof-assistant formalization, or historical-priority clearance.
+
+The source package proves an obstruction for common componentwise heat with any positive constant input diffusion. The root proposed the output-matrix extension below. This worker independently reconstructed it, checked the indices and factor, and proved the classification and adaptive corollaries. The extension changes the quantified class of generators; it does not produce a non-quasiconvex energy.
+
+## 1. Operator convention and assumptions
+
+For a map u: R^2 -> R^2, write A_{alpha k}=partial_k u_alpha. Let
+
+\[
+ (Lu)_\alpha=\sum_{\beta=1}^2\sum_{i,j=1}^2
+ C^{ij}_{\alpha\beta}\,\partial_i\partial_j u_\beta,
+ \qquad C^{ij}=C^{ji}\in\mathbb R^{2\times2}.
+ \tag{1}
+\]
+
+The i,j sum is over ordered pairs. Thus the mixed term is 2 C^{12} partial_1 partial_2 u. No symmetry in the output indices alpha,beta is imposed. Spatial antisymmetric coefficients would cancel from L and are discarded without loss.
+
+The strong-parabolicity hypothesis used here is the coercive real Legendre–Hadamard inequality
+
+\[
+ \sum_{\alpha,\beta,i,j}
+ a_\alpha C^{ij}_{\alpha\beta}a_\beta\xi_i\xi_j
+ \geq\lambda |a|^2|\xi|^2
+ \quad(a,\xi\in\mathbb R^2),\qquad\lambda>0.
+ \tag{2}
+\]
+
+In particular, a=e_2 and xi=e_1 give C^{11}_{22} >= lambda > 0. This implication uses the stated coercive convention. A weaker convention requiring only symbol eigenvalues to have positive real parts is not substituted for (2).
+
+We work on R^2 with smooth compact initial data and the constant-coefficient parabolic solution, or on a fixed flat two-dimensional torus with smooth periodic data. No boundary-condition assertion is needed.
+
+## 2. A single initial map for every generator in (2)
+
+Choose a real f in C_c^infinity(R^2) equal to
+
+\[
+ f(x_1,x_2)=x_1+x_1x_2
+ \tag{3}
+\]
+
+on a neighborhood of 0. Such an f is obtained by multiplying (3) by any smooth compact cutoff equal to one near 0. Define
+
+\[
+ u^0=(f,f^2).
+ \tag{4}
+\]
+
+Its two gradient rows are Df and 2f Df, so det Du^0=0 identically, including the cutoff region. Thus
+
+\[
+ E(u^0):=\int_{\mathbb R^2}(\det Du^0)^2=0.
+ \tag{5}
+\]
+
+At 0, f=0, Df=e_1, f_{12}=f_{21}=1, f_{11}=f_{22}=0, and D^3 f=0. Consequently
+
+\[
+ Du^0(0)=\begin{pmatrix}1&0\\0&0\end{pmatrix}.
+ \tag{6}
+\]
+
+For g=f^2, the product rule gives
+
+\[
+ g_{ijk}=2(f_{ij}f_k+f_{ik}f_j+f_{jk}f_i+f f_{ijk}).
+ \tag{7}
+\]
+
+In particular g_{112}(0)=4, g_{122}(0)=g_{222}(0)=0. The gradient of the determinant at (6), viewed as a matrix, is E_{22}. If u_t=Lu and J(t,x)=det Du(t,x), then
+
+\[
+ \begin{aligned}
+ \partial_t J(0,0)
+ &=\partial_2(Lu^0)_2(0)\\
+ &=\sum_{\beta,i,j}C^{ij}_{2\beta}u^0_{\beta,ij2}(0)\\
+ &=4C^{11}_{22}>0.
+ \end{aligned}
+ \tag{8}
+\]
+
+Every other coefficient cancels because the corresponding third jet is zero. In particular the factor is 4, not 2 or 8. Mixed spatial coefficients do not enter (8).
+
+The same construction fits in a coordinate ball of any prescribed flat torus; extend the compact patch periodically. Thus a change of the lattice is unnecessary for this output-matrix obstruction.
+
+## 3. Energy growth and the analytic passage
+
+For completeness, constant C satisfying (2) has symbol
+
+\[
+ B(\xi)=\sum_{i,j}C^{ij}\xi_i\xi_j.
+\]
+
+Its symmetric part is at least lambda |xi|^2 I. For the Fourier ODE z_t=-B(xi)z, the Euclidean energy estimate gives
+
+\[
+ \|e^{-tB(\xi)}\|\leq e^{-\lambda t|\xi|^2}.
+\]
+
+The same estimate for complex z follows by applying (2) to its real and imaginary parts. The Fourier formula defines the usual unique smooth solution for the smooth compact datum. Differentiating the matrix exponential in xi, or using the periodic Fourier series, gives the needed smooth spatial and time differentiation up to t=0. On R^2 the compact initial datum is Schwartz, and these differentiated solutions remain Schwartz on bounded time intervals. These elementary semigroup arguments are analytic obligations, not proof-assistant-verified statements in this package.
+
+Set
+
+\[
+ h(x)=\partial_t J(0,x)=\operatorname{cof}Du^0(x):D(Lu^0)(x).
+\]
+
+This is a smooth compact function, and (8) makes it nonzero on an open neighborhood of 0. Therefore
+
+\[
+ K:=\int h^2>0.
+\]
+
+Differentiating E(t)=integral J(t,x)^2 at zero gives
+
+\[
+ E(0)=E'(0)=0,\qquad E''(0)=2K>0,
+ \tag{9}
+\]
+
+and consequently
+
+\[
+ E(t)=Kt^2+o(t^2),\qquad E'(t)=2Kt+o(t)>0
+ \quad\hbox{for all sufficiently small }t>0.
+ \tag{10}
+\]
+
+The initial first energy derivative vanishes. Strict increase occurs at positive times; it is not an assertion that E'(0)>0. The cutoff is handled exactly through the row dependence in (4), rather than through an asymptotic cutoff error estimate.
+
+## 4. No universally integral-null repair of the same dissipation
+
+Let F(A)=(det A)^2 and H_{alpha ki}=partial_i partial_k v_alpha. For the operator (1), define the generalized dissipation density
+
+\[
+ Q_C(A,H)=\sum_{\alpha,\beta,\gamma,k,\ell,i,j}
+ F_{A_{\alpha k}A_{\gamma\ell}}(A)
+ C^{ij}_{\alpha\beta}
+ H_{\gamma\ell i}H_{\beta k j}.
+ \tag{11}
+\]
+
+This indexing remains valid without output symmetry. One integration by parts gives, for every smooth compact v (or a smooth periodic v),
+
+\[
+ G_C(v):=\int DF(Dv):D(Lv)=-\int Q_C(Dv,D^2v).
+ \tag{12}
+\]
+
+It is possible to obtain a strictly negative integrated dissipation without appealing to existence of a PDE solution. Put w=Lu^0 and v_s=u^0+s w. These maps are smooth and compact. Since det Du^0=0, DF(Du^0)=0 pointwise. Differentiation in s of the left side of (12) yields
+
+\[
+ G_C(u^0)=0,\qquad
+ \left.\frac{d}{ds}G_C(v_s)\right|_{s=0}
+ =2\int[\operatorname{cof}Du^0:Dw]^2=2K>0.
+ \tag{13}
+\]
+
+The term involving D(Lw) disappears because DF(Du^0)=0. Therefore, for all sufficiently small s>0,
+
+\[
+ \int Q_C(Dv_s,D^2v_s)=-2Ks+O(s^2)<0.
+ \tag{14}
+\]
+
+All integrands here have common compact support and depend polynomially on s, so the differentiation is elementary. This is an actual compatible compact test map, not an arbitrary incompatible second jet and not a numerical heat simulation.
+
+For each fixed C, suppose an integrable correction N[v](x) has integral zero for every admissible compatible v and Q_C(Dv,D^2v)+N[v] >= 0 pointwise for every such v. Integrating at v_s contradicts (14). This excludes every correction retaining those two properties for this same dissipation, including unrestricted non-SOS corrections. It does not exclude a different flow, a changed Lyapunov quantity, a separate minor-Jensen inequality, or additional state variables.
+
+## 5. Classification of constant second-order operators tangent to every rank-one gradient
+
+This classification does not need parabolicity. Say that the homogeneous constant second-order operator (1) is universally tangent to rank-one gradients if
+
+\[
+ \left.\frac{d}{dt}\det D(v+tLv)\right|_{t=0}=0
+ \tag{15}
+\]
+
+at every point for every smooth compact v with rank Dv <= 1. Every classical flow preserving rank Dv <= 1 for all such initial maps must satisfy (15).
+
+Take arbitrary a,b in R^2 and
+
+\[
+ v=a f+\tfrac12 b f^2.
+ \tag{16}
+\]
+
+This is a compact curve-image map with rank Dv <= 1. At a point where f=0, Df=e_1, and D^3 f=0, its determinant velocity is
+
+\[
+ 2\det\bigl(a,C^{11}b\,f_{12}+C^{12}b\,f_{22}\bigr).
+ \tag{17}
+\]
+
+The following three local polynomials for f, extended with a compact cutoff, isolate the coefficients:
+
+| f near 0 | determinant velocity at 0 |
+| --- | --- |
+| x_1+x_1x_2 | 2 det(a,C^{11}b) |
+| x_1+x_2^2/2 | 2 det(a,C^{12}b) |
+| x_2+x_1x_2 | -2 det(a,C^{22}b) |
+
+If (15) holds, each displayed determinant is zero for all a,b. For a fixed matrix M, the condition det(a,Mb)=0 for all a,b implies M=0: choose a=e_1 to kill the second row of M, and a=e_2 to kill its first row. Thus C^{11}=C^{12}=C^{22}=0. Conversely, L=0 preserves every map.
+
+Hence the zero differential operator is the only homogeneous constant second-order operator on planar vector maps that preserves every rank-one gradient, even infinitesimally. The qualification "every" is essential; many nonzero diffusions preserve special affine-image maps or maps depending on only one fixed input coordinate. No lower-order terms are included in this classification.
+
+The exact verifier independently expands (16) for the three jets. The coefficient equations have rank 12 in the 12 spatial-symmetric constant coefficients, with only the zero solution.
+
+This gives a stronger dissipation corollary without a parabolic hypothesis. For every nonzero L in (1), the classification supplies some compact curve-image datum (16) with h=cof Dv:D(Lv) nonzero at a point. Equations (12)–(14), applied to that datum, then give a compact compatible map with strictly negative integrated Q_C. Therefore
+
+\[
+ \bigl[\ \int Q_C(Dv,D^2v)\geq0\ \hbox{for every smooth compact }v\ \bigr]
+ \quad\Longleftrightarrow\quad L=0.
+ \tag{17a}
+\]
+
+Every nonzero homogeneous constant second-order operator consequently fails an integral-null pointwise repair for this determinant-square dissipation. If such an operator has a classically differentiable evolution on its witness datum, that evolution also fails universal determinant-square monotonicity: its initially zero determinant becomes nonzero. No existence claim is made for nonparabolic operators. The coercively strongly parabolic subclass has the additional common datum (4) and the unconditional semigroup conclusion of Section 3.
+
+## 6. Smooth autonomous state-adaptive principal flows also fail near zero
+
+Consider the nondivergence-form principal flow
+
+\[
+ u_{\alpha,t}=\sum_{\beta,i,j}
+ C^{ij}_{\alpha\beta}(u,Du)u_{\beta,ij},
+ \qquad C^{ij}=C^{ji},
+ \tag{18}
+\]
+
+where C is C^1 near (u,A)=(0,0), and C(0,0) satisfies (2). Gradient-only adaptation C(A) is included. This corollary assumes a classical solution exists with the initial spatial/time differentiation used below, and with finite determinant-square energy. It is not a local-wellposedness theorem for arbitrary C^1 coefficients. A smooth periodic formulation avoids any decay assumption.
+
+Use u^{0,epsilon}=epsilon(f,f^2) with epsilon>0. At 0,
+
+\[
+ u^{0,\epsilon}=0,\quad
+ A_\epsilon=Du^{0,\epsilon}=\epsilon E_{11},\quad
+ \partial_2u^{0,\epsilon}=0,\quad
+ \partial_2Du^{0,\epsilon}=\epsilon E_{11}.
+ \tag{19}
+\]
+
+The nonzero initial Hessian entries relevant to differentiating the second output equation are u_{1,12}=u_{1,21}=epsilon and u_{2,11}=2epsilon. Its relevant third derivative is u_{2,112}=4epsilon. Applying the chain rule gives the exact formula
+
+\[
+ \boxed{
+ \begin{aligned}
+ \partial_t\det Du(0,0)
+ ={}&4\epsilon^2 C^{11}_{22}(0,A_\epsilon)\\
+ &+2\epsilon^3\partial_{A_{11}}
+ [C^{12}_{21}+C^{11}_{22}](0,A_\epsilon).
+ \end{aligned}}
+ \tag{20}
+\]
+
+The derivative in the u argument contributes zero because partial_2 u^{0,epsilon}(0)=0. The coefficient functions in (20), and their A derivatives, are evaluated at (0,A_epsilon), not at zero. By C^1 regularity,
+
+\[
+ \partial_t\det Du(0,0)
+ =4\epsilon^2 C^{11}_{22}(0,0)+O(\epsilon^3)>0
+ \tag{21}
+\]
+
+for sufficiently small epsilon. Initially the determinant is identically zero, so any classical solution with this derivative has positive determinant-square energy at sufficiently small positive times. Universal nonincrease is impossible. With additional regularity justifying two energy derivatives, the same positive second-derivative argument as (9) applies.
+
+This statement does not cover explicit x-dependent coefficients with this same fixed datum: differentiating such coefficients introduces terms of order epsilon^2. It also does not cover a divergence-form expression by merely replacing C, since differentiating its flux creates other terms. It makes no claim about lower-order compensation, singular or degenerate coefficients, nonlocal rules, or auxiliary variables. Such mechanisms need separate analysis.
+
+## 7. Square dimensions n >= 2
+
+The constant-coefficient determinant-square obstruction has a direct dimensional extension. Let u: R^n -> R^n and let C satisfy the n-dimensional version of (1)–(2). Choose compact smooth f,g_3,...,g_n with local values
+
+\[
+ f=x_1+x_1x_2,\qquad g_k=x_k\ (k\geq3),
+\]
+
+and define u^0=(f,f^2,g_3,...,g_n). Its first two gradient rows are dependent everywhere, so det Du^0=0. At 0,
+
+\[
+ Du^0=\operatorname{diag}(1,0,1,\ldots,1),\qquad
+ \operatorname{cof}Du^0=E_{22}.
+\]
+
+All third derivatives of f and g_k vanish there. Among the third derivatives entering partial_2(Lu^0)_2, only (f^2)_{112}=4 is nonzero. Thus the velocity remains exactly 4 C^{11}_{22}>0. The energy and compact-test arguments (9)–(14) apply without changing their leading formulas. The n=2,3,4 symbolic checks in the verifier are consistency checks; this cofactor argument proves the statement for every integer n>=2.
+
+## 8. Quasiconvexity and precise scope
+
+F(A)=(det A)^2 remains polyconvex: it is the convex function z -> z^2 of the determinant minor. Its planar quasiconvexity can also be seen directly. For smooth zero-boundary perturbations phi on a bounded domain and any constant B,
+
+\[
+ \int\det(B+D\phi)=|\Omega|\det B,
+\]
+
+because the linear-gradient term and the determinant null-Lagrangian term integrate to zero. Jensen's inequality then gives
+
+\[
+ \int(\det(B+D\phi))^2\geq|\Omega|(\det B)^2.
+\]
+
+Density extends the statement to the usual W_0^{1,4} perturbations. Consequently the output-matrix heat obstruction is a limitation of a proposed universal operation. It is not a quasiconvexity violation, not a Morrey counterexample, not an equality-of-cones theorem, and not a physical or practical capability claim.
+
+The independent identities and arguments establish their stated mathematical scope. Historical priority is unresolved. In particular, these short chain-rule and tangency arguments may be implicit in earlier invariant-set or geometric-PDE literature; the limited primary-source review recorded in SOURCE_REVIEW.md does not clear novelty.
