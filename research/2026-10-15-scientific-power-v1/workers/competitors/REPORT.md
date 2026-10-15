@@ -1,0 +1,99 @@
+# Strongest established comparators for charge-to-conductance safety bounds
+
+15 October 2026. **Status: comparator audit complete; the candidate's matched utility and novelty remain unresolved.**
+
+The closest operational predecessor is not a model that reconstructs dendrite morphology. It is a separator-integrated third terminal that directly senses a dendrite touching a conductor placed partway through the separator. That device reported a roughly 3 V warning transition while the cell remained electrically operational, at about half separator penetration. The strongest passive mitigation comparator is a Janus separator that intercepts dendrites and raises short resistance, reducing current and temperature without requiring any warning algorithm. An on-board pulse-probe method is also a serious inference comparator: it estimates soft-short resistance from a small number of action-dependent electrical probes. These methods already bypass the need to identify a hidden growth mechanism in different ways.
+
+The proposed volume argument could add a *sufficient bound* if all downstream metal and all ways of forming or moving metal are controlled. Its useful threshold may be extremely small. With a clearly labeled Li-metal example, a 24 µm slab, and the established 200 Ω soft-short range, the charge budget that would make the proposed bulk-metal conductance bound rule out that resistance is only about **0.55 pAh**. This is not a matched evaluation of the candidate, whose actual material, gap, source inventory and reserve are not yet specified. It shows why the actual `Q_res`, existing downstream metal, and protective decision threshold must be supplied before calling the bound useful.
+
+## Candidate interface and comparison target
+
+The candidate reported by the lead is a geometry-independent Ohmic upper bound for metal spanning a slab of minimum separation `d`:
+
+```text
+G_metal <= sigma_max * V_metal / d^2
+V_metal <= V0 + M * Q_res / (F * rho)
+```
+
+Combining them gives a conditional bound on conductance. To rule out a short with target conductance `G*=1/R*`, the total metal volume allowance must satisfy
+
+```text
+V0 + M Q_res/(F rho) < G_* d^2 / sigma_max.
+```
+
+This would avoid fitting or reconstructing hidden morphology, but it does not itself detect a fault, break an internal circuit, or bound total thermal runaway. The certificate must count pre-existing metal beyond the guard (`V0`), all charge-driven deposition, mechanical transport, chemical reduction and currents closed locally inside the isolated region. Net current is not enough: equal deposition at one surface patch and dissolution at another can leave net charge and total metal volume unchanged while a tip advances toward the opposite electrode. A physical cutset must therefore close *all* formation and transport terms, not only charger current. This is the countermodel in the [campaign physical accounting note](../../root/PHYSICAL_ACCOUNTING.md).
+
+Even a correct `G` bound needs an electrical source and heat model to imply a hazard bound. For a Thevenin source `U,R`, the total source power is `U^2 G/(1+R G)`; a low-resistance bridge can move heating into the cell rather than dissipate it in the bridge. Joule heating can also initiate self-sustaining exothermic chemistry, outside a metal-conductance-only claim. The [UL safety analysis](https://code-authorities.ul.com/wp-content/uploads/2016/02/Safety_Issues_for_Lithium_Ion_Batteries1.pdf) describes that progression and notes that built-in protection devices cannot mitigate every internal cell fault. A defensible claim must state whether it bounds bridge conductance, cell electrical power, temperature rise, or runaway probability; these are distinct outputs.
+
+## Closest direct comparator: third-terminal separator sensing
+
+Wu et al. placed a conductive copper sheet between two conventional porous polymer separators and wired it to a third terminal. When an advancing lithium dendrite first contacted the copper plane, the copper-to-lithium voltage fell sharply; this occurs before the dendrite spans the full separator. It is a physical threshold sensor, so it needs no hidden morphology estimate or battery model to identify that particular event. The authors say its position can be tuned to 25%, 50%, 75%, or another separator penetration fraction by changing the two separator thicknesses. [Primary source: Wu et al., *Nature Communications* 5, 5193 (2014)](https://www.nature.com/articles/ncomms6193).
+
+The paper's accelerated Li/Li pouch-cell demonstration used a galvanostatic current of 4.0 mA/cm². At about 3.5 h, the treated cell's `V_Cu-Li` collapsed from about 3,000 mV to near 0, while its full-cell potential changed from about 500 mV to 250 mV and remained nonzero. The authors identify this as roughly 50% separator penetration. A separate conventional-separator control shorted at about 6.5 h. The applied charge-throughput scales are therefore 14 mAh/cm² at the alarm and 26 mAh/cm² at the control short. These are gross imposed throughputs in accelerated symmetric Li-metal cells, not measured dendrite charge. Since the alarm and failure timings are from different cells, their 3 h difference is **not** an experimentally demonstrated rescue window for one cell.
+
+The source gives a sufficiently complete physical recipe to make this a strong end-to-end comparator:
+
+- Commercial 12 µm Teklon Gold LP microporous polyethylene separator; magnetron sputter a nominal 50 nm copper layer for 5 min at a 150 W setting, 5 mTorr, and 15 sccm argon. No added heating was used because the separator is heat-sensitive.
+- Sandwich the Cu-coated separator between a second conventional separator, assemble lithium foil electrodes into a pouch in an argon glovebox, add 1 M LiPF₆ in 1:1 ethylene carbonate/diethyl carbonate, and attach copper-foil leads to both electrodes and the sensing layer.
+- Measure the extra `V_Cu-Li` channel alongside cell voltage using an MTI eight-channel battery tester while charging at 4 mA/cm². The paper also reports sheet-resistance checks of coated separator coupons with silver-paste contacts and a multimeter.
+
+For the two 12 µm layers, the nominal separator stack is about 24.05 µm including the 50 nm Cu. Relative to one 12 µm separator this adds about 12.05 µm of polymer; the Cu itself is about 0.21% of the stack thickness. If the remaining electrode-stack thickness is H, the added separator-volume fraction is 12.05 µm/H; H is not reported, so this is **not** a measured whole-cell energy-density penalty. The paper suggests thinner polymer layers could be used but does not demonstrate a production-scale roll-to-roll process, full-cell energy density, yield, cost, embedded electronics, terminal sampling precision, response latency, or post-alarm safe shutdown. Its text proposes taking a flagged cell offline, but it does not report a controlled cutoff/rescue experiment. The 150 W × 5 min process setting is a nominal **45 kJ setpoint-time integral**; it excludes pump, gas, facility and yield costs, and is not a metered manufacturing-energy result.
+
+This is the closest comparator if the candidate is pitched as “no morphology identification required”: the existing device already gives a direct, geometry-triggered warning. A candidate bound would need to show a concrete additional decision—such as certifying a safe residual short conductance for a failure mode that can bypass the embedded plane—at lower full-system cost or with stronger coverage. It must be compared with the sensor plus an explicit charger/BMS cutoff, not just with morphology reconstruction.
+
+## Strongest passive mitigation: Janus resistive separator
+
+Gonzalez et al. use a dendrite-intercepting composite instead of an early warning. One separator side is electrically insulating; the other is partially electronically conductive (PEC) and tuned with carbon nanotubes. A filament contacting the PEC layer forms a higher-resistance internal path, so the cell can self-discharge gradually instead of entering a sudden low-resistance short. This operates without a detector, a morphology estimator, or a fast external actuator. [Primary source: Gonzalez et al., *Advanced Materials* 32 (2020), 1906836](https://doi.org/10.1002/adma.201906836), [full article PDF](https://liugroup.ucsd.edu/wp-content/uploads/2020/02/Gonzalez_et_al-2020-Advanced_Materials.pdf).
+
+The physical evidence is unusually informative about both benefit and cost. In Li/NMC532 coin cells at 2 mA/cm² (about 1.2 C), the ordinary separator failed suddenly around cycle 59. The Janus cell began its gradual shorting around cycle 60, with charge required rising from 138 mAh/g at cycle 50 to 165 at cycle 60, 317 at cycle 75, and 564 at cycle 84. By cycle 85, its self-discharge exceeded the 2 mA/cm² applied charge current, so the cell could not reach the charge cutoff. This is a managed failure with time for a BMS to flag replacement, not permanent capacity preservation.
+
+In a separate Li-metal/NMC532 pouch demonstration with about 28 cm² active area (about 70 mAh cathode capacity at the reported 2.5 mAh/cm²), abusive 4.5 V potentiostatic charging produced a near-1 A initial current and a short at about 250 s. The conventional-separator cell's short current approached 2 A and its external surface temperature rose by more than 20 °C; the Janus cell showed almost no current increase or surface-temperature rise. The thermocouple was outside the pouch at the negative tab. The article's fitted/simulated current curves and measured currents should not be conflated.
+
+The manufacturing recipe was laboratory solution casting rather than commercial separator production: PVDF-HFP and silica in a 3:2 base blend; CNTs ultrasonically dispersed in acetone; dibutyl phthalate plasticizer; two days of mixing at 60 °C in a sealed vessel; doctor-blade casting; diethyl-ether extraction; and coating a 5 wt% CNT PEC layer on a dry insulating gel layer. The finished separator was under 35 µm thick. The authors explicitly describe PVDF-HFP/SiO₂ as a proof-of-concept platform that is less common in contemporary commercial production, with tensile strength around 5 MPa versus over 100 MPa for polyolefin separators. They call for material/process optimization for commercial Celgard-like separators. CNT/electrolyte reaction appears above 4 V versus Li/Li⁺ and passivates after repeated sweeps in their tests. Scale yield, manufacturing energy, cost, commercial Li-ion performance, and long-term service are not established.
+
+This is the strongest “no hidden mechanism needed” safety comparator for a hazard-reduction claim. It directly controls the consequence by limiting short current. A proposed conductance certificate should therefore be assessed against measured Janus current/temperature under the same fault and capacity, while accounting for the Janus design's self-discharge and energy penalty.
+
+## Direct short inference, morphology assays, and shutdown
+
+**Action-dependent BMS identification.** Bharathraj et al. use electrochemically chosen current probes at selected states of charge and compare the maximum pulse current sustainable before a voltage cutoff against a reduced-order electrochemical-thermal model. The paper reports detection/estimation up to 200 Ω, greater than 98% accuracy when SOH is at least 90%, and 4–5 data points with a model under 30 kB and about 1 ms calculation time. Experiments are described as proof-of-concept tests on commercial mobile batteries. This estimates short resistance and can separate a short from aging; it does not need a dendrite morphology image. The authors say pulse duration is short enough for negligible charge leakage and SOC disturbance. [Primary source: Bharathraj et al., *Journal of Power Sources* 520 (2022), 230830](https://doi.org/10.1016/j.jpowsour.2021.230830).
+
+This is not a free passive readout: it requires current/voltage sensing, preselected SOC probe points, temperature and state estimates, an onboard electrochemical-thermal model, and a controllable pulse source. A later paper from the same research line warns that the high-amplitude probe currents may exceed the power-management IC limits in some devices and that the method needs an onboard electrochemical-thermal model to set the pulse. [Bharathraj et al., *iScience* 26 (2023), 106636](https://doi.org/10.1016/j.isci.2023.106636). Exact universal pulse energy, monitoring cadence, and large-format EV/grid validation are not available in the inspected article record. At 4 V, 200 Ω corresponds to a 20 mA internal current and 80 mW of electrical power; this is a scale illustration, not a reported cell result.
+
+**Direct morphology/volume assay.** Operando or post-cycle tomography can test whether a claimed metal-volume bound matches physical deposits, but it is not a low-cost runtime substitute. Vanpeene et al. report a purpose-built Li cell with isotope-enriched lithium-6, natural Li, deuterated electrolyte, a PTFE cell case and argon-glovebox assembly. Four cells were assembled, but damaged assemblies left only one used for the final neutron imaging comparison. The cell was cycled at 8.4 µA; neutron tomography used 2,600 projections at 25 s each, or about 18 h, with 7.4 µm voxel size. Synchrotron X-ray tomography reached 0.64 µm voxels and laboratory X-ray 2.0 µm. Segmented deposit volumes were 0.14±0.01 mm³ (synchrotron), 0.15±0.02 mm³ (lab X-ray), and 0.48±0.10 mm³ (neutron); the authors attribute the 3.4× neutron discrepancy to resolution/partial-volume error. Thus “measure volume directly” is a useful validation assay, but its precision and sample-acquisition cost must be reported. [Primary source: Vanpeene et al., *Frontiers in Energy Research* 9 (2021), 657712](https://doi.org/10.3389/fenrg.2021.657712).
+
+**Current interruption and thermal shutdown.** Standard PTC/CID/BMS protection is a necessary baseline but should not be treated as an internal short interrupter: UL describes PTC response to unusually high heat/external shocks and CID pressure-triggered disconnection during gas-producing overcharge; its safety analysis states that built-in devices opening the external load cannot mitigate all internal cell faults. A pack contactor can remove external charge/load, but the local chemical cell source remains across an already formed internal bridge. The strongest physical in-cell baseline is the conventional shutdown separator, which closes ionic pores around 130 °C; an 18650-cell study reports a later impedance reduction at about 155 °C when its PP support melts, a 25 °C gap. This is a high-temperature mitigation, not a soft-short decision signal. [UL mechanism explainer](https://ul.org/research-updates/what-keeps-lithium-ion-batteries-safe/); [primary 18650 study](https://www.sciencedirect.com/science/article/pii/S0378775307014449).
+
+## Worked charge crossover (illustration, not a candidate result)
+
+Use the bulk Li resistivity entry at 293 K in the [NIST evaluated resistivity table](https://srd.nist.gov/jpcrdreprint/1.555598.pdf): rho_e = 9.28e-8 ohm m, so sigma = 1.078e7 S/m. For density rho = 534 kg/m^3, molar mass M = 6.94e-3 kg/mol, Faraday constant F = 96485.33 C/mol, and **illustrative** gap d = 24 µm, the strict all-charge-plates-Li assumption gives the following when V0 = 0:
+
+```text
+Qcrit = (F rho / M) * (d^2 / (sigma Rcrit))
+```
+
+The exact arithmetic is reproducible with [charge_crossover.py](charge_crossover.py):
+
+| Resistance to rule out | Target conductance | Maximum metal volume from the bound | Corresponding charge | Interpretation at 4 V |
+|---:|---:|---:|---:|---|
+| 200 Ω | 5 mS | 2.67×10⁻¹⁹ m³ | 1.98 nC = 0.551 pAh | 20 mA, 80 mW short |
+| 1 Ω | 1 S | 5.35×10⁻¹⁷ m³ | 0.397 µC = 110 pAh = 0.110 nAh | 4 A, 16 W short |
+
+For a hypothetical 1 cm² path plated at the 2014 study's 4 mA/cm², those charge amounts would be supplied in about 0.50 µs and 99 µs respectively if every coulomb plated Li. That is a conservative source-budget interpretation, not an estimate of measured dendrite efficiency. The 200 Ω number is useful as a low-resistance scale because the pulse-probe comparator reports coverage up to that range. A 70 mAh pouch cathode has about 1.3e11 times more capacity than 0.551 pAh; this is **not** a direct comparison unless the candidate's `Q_res` is actually the full charge accessible to its downstream region. The essential matched question is whether a complete, measurable cutset can reduce all post-guard inventory and charge to the required scale while preserving useful battery operation.
+
+## Strongest-comparator judgment and decisive matched test
+
+The current evidence supports three distinct incumbents rather than one weak comparator:
+
+1. **Third-terminal threshold sensor + charger cutoff** is the closest early warning comparator. It directly observes physical progress at a known plane and gives a strong voltage transition before full penetration. It still needs a protected feedthrough, monitoring electronics and a verified cutoff response.
+2. **Janus separator** is the closest passive hazard comparator. It lowers internal-short current and temperature without estimating hidden state, with gradual energy loss and an unproven commercial materials/process transfer.
+3. **Pulse-probe BMS** is the closest decision-focused inference comparator. It estimates a short from action-dependent electrical response with low compute/memory, but needs high-amplitude probes, a cell model and a supported current driver.
+
+Tomography is the strongest lab ground truth for the candidate's volume premise, but the examined neutron route has hour-scale acquisition and a resolution-dependent volume discrepancy. Standard CID/PTC/fuse/contactor protection is not a decisive internal-bridge comparator by itself, although a direct early sensor plus a fast external cutoff is.
+
+The candidate's novelty is **UNKNOWN**. A narrow claim worth testing would be a quantitatively useful, source-complete upper bound on internal metallic conductance from a measured guard-reserve ledger, when that bound covers faults missed by the direct terminal and is cheaper or more reliable than pulse-probe identification. It should not be described broadly as first hidden-mechanism-free safety: direct contact sensing and passive conductive interception already exist.
+
+The decisive matched trial should use the same chemistry, area, separator gap, charge profile, fault induction, temperature and initial capacity across (a) conventional separator + pulse probe + charger cutoff, (b) a third-terminal separator + cutoff, (c) Janus mitigation, and (d) the proposed reserve-volume certificate. Measure gross and signed local charge, pre/post metal volume by tomography and destructive cross-section, bridge resistance/conductance, external and internal temperature, cell energy lost, alarm/cutoff latency, and all sensor/model/material inputs. Use deliberate soft shorts and non-dendrite defects to test whether a lithium-dendrite-specific guard generalizes. A passing certificate must predict conservative electrical hazard bounds against direct current/temperature measurements, while charging all formation and transport terms. Until `d`, `sigma_max`, `V0`, `Q_res`, source closure and a safe `G*` are pinned, the only justified status is **conditional mathematical interface; practical value not established**.
+
+## Source record and scope
+
+All external technical claims above are tied to primary experimental papers, NIST, UL, or the original standard-safety organization. The one limitation borrowed from the 2023 pulse-method paper is the authors' own follow-up statement about PMIC pulse limits and onboard electrochemical-thermal modeling. No new laboratory outcomes, performance wins, or manufacturing yields were produced here. The charge crossover is a calculation; it is neither experiment nor novelty evidence.
