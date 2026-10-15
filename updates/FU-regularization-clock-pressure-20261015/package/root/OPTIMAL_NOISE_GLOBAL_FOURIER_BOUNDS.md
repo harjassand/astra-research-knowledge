@@ -1,0 +1,48 @@
+# Explicit global Fourier conditioning for the optimal Pauli noise
+
+Root deduction, 2026-10-15, after reading the sharp-variance construction and the separate zero-free observation. Internal analytic proof; historical priority and external review unknown. It concerns a scalar convolution operator, not additional quantum information.
+
+Let h(s)=1 on [0,2] and, for s>2, let
+
+    2(s-1)h'(s)+h(s)+h(s-2)=0,
+    2(s-1)h(s)=integral_(s-2)^s h(u)du.
+
+The positive renewal construction has h decreasing to zero, factorial tails, and all exponential moments. Put K=integral_1^infinity h, c=1/(4K+2). The corresponding radial scalar-noise radius law is 2c s h(s)ds. Its real characteristic multiplier is
+
+    phi(k)=(2c/k^2) integral_2^infinity [-h'(s)](1-cos(ks))ds, k!=0,
+    phi(0)=1.
+
+This follows from the radial Fourier formula phi(k)=(2c/k)integral h(s)sin(ks)ds and integration by parts. The derivative measure -h' has mass one and has strictly positive density for every s>2. Thus phi(k)>0 for every real k, and the Riemann-Lebesgue lemma gives phi(k)~2c/k^2 as |k| tends to infinity.
+
+Here are explicit global constants, requiring no numerical quadrature of K:
+
+    [3/(2080 sqrt(2))]/(1+k^2) <= phi(k) <= 2/(1+k^2), all real k.
+
+## Proof of the constants
+
+For j>=1 the maximum of h on [2+2j,4+2j] is bounded by its previous block maximum divided by 2j+1. The first block maximum is at most one. Hence
+
+    K <= 1+2 sum_(j>=0) 1/(2j+1)!!
+      <= 1+2[1+(1/3)/(1-1/5)] = 23/6.
+
+Consequently c>=3/52. The construction's elementary K>3/2 also gives c<1/8.
+
+On [2,3], h(s)=2/sqrt(s-1)-1, so -h'(s)=(s-1)^(-3/2)>=1/(2sqrt(2)). Write I(k)=integral_2^3[1-cos(ks)]ds. If |k|>=4, I(k)>=1-2/|k|>=1/2, and therefore phi(k)>=c/(2sqrt(2)k^2).
+
+For 0<|k|<=4, the exact expression is I(k)=1-cos(5k/2)sinc(k/2). Since 0<=sinc(k/2) and |k/2|<=2, the alternating Taylor bound gives
+
+    1-sinc(k/2) >= (k/2)^2/10 = k^2/40.
+
+Therefore I(k)>=k^2/40 and phi(k)>=c/(40sqrt(2)). These two bounds imply the displayed global lower bound using c>=3/52; k=0 follows by continuity.
+
+The upper bound follows from phi<=1 and phi<=4c/k^2<1/(2k^2). Use the former when |k|<=1 and the latter when |k|>=1 to obtain phi(k)<=2/(1+k^2).
+
+## Exact representation consequence and decision boundary
+
+For the three-dimensional radial noise nu, phihat(t)=phi(|t|). On the standard L2 Sobolev scale, convolution by nu is a bounded isomorphism H^s(R^3) -> H^(s+2)(R^3), for every real s. The inverse multiplier has order two, with explicit bound
+
+    1/phi(|t|) <= (2080 sqrt(2)/3)(1+|t|^2).
+
+Thus a frequency cutoff K incurs at most quadratic amplitude amplification, and squared statistical amplification at most proportional to (1+K^2)^2. Sampling, precision, bandwidth bias, and finite-bit preparation remain paid. This does not turn an unobserved response into acquired data.
+
+For the quantum reporting contract the same optimal measurement is Blackwell equivalent to ordinary covariant spin measurement: recover the direction from X/|X|. The Bloch state can already be estimated with bounded direction-based decoders. Polynomial raw Fourier inversion is therefore a mathematical conditioning improvement over the supplied Dickman law's zeros, and an exact convolution property; no quantum-information or end-to-end computational advantage is claimed.

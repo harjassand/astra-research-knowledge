@@ -1,0 +1,329 @@
+# Rare-branch acquisition defeats a purely scalar clock repair
+
+Date: 2026-10-15. Status: **PROVED HERE, NOT EXTERNALLY REVIEWED** for the stated mathematical results; **NOT_ACHIEVED** for a new acquisition-inclusive scientific operation. Historical priority of the sharp scalar-mixture constant is **UNKNOWN**. The information argument uses established change-of-measure methods.
+
+The result is a sharp obstruction with a matching acquisition baseline. A three-state CTMC whose mean-clock reduction loses its rare survival tail cannot be repaired, at bounded relative sampling variance, by any mixture of scalar Esscher tilts. Its best possible relative second moment is asymptotic to `1/(2p)`. When its rare branch weight must be acquired from native experiments, arbitrary adaptive resets, splitting, censoring, and common-rate clock changes still require order `p^-1 epsilon^-2 log(1/delta)` gateway observations. This remains true if every downstream conditional clock is supplied exactly. Independent control of individual outgoing channels changes the oracle; an exact dose-information identity below specifies that escape.
+
+## 1. Exact scientific quantity and three different interfaces
+
+The scientific decision is whether a finite system remains unabsorbed beyond a deadline. The states are source `s`, trap `r`, and absorbing target `a`, with generator
+
+\[
+Q_p=\begin{pmatrix}
+-1&p&1-p\\
+0&-M^{-1}&M^{-1}\\
+0&0&0
+\end{pmatrix},\qquad M>1.
+\]
+
+Starting at `s`, the absorption time is
+
+\[
+T=X+JY,\qquad X\sim\operatorname{Exp}(1),\quad
+J\sim\operatorname{Bernoulli}(p),\quad Y\sim\operatorname{Exp}(1/M),
+\]
+
+with independent variables. The deadline is `M`. The exact survival probability is
+
+\[
+h_M(p)=\Pr_p(T>M)
+=e^{-M}+p\,d_M,\qquad
+d_M=\frac{M}{M-1}(e^{-1}-e^{-M}). \tag{1}
+\]
+
+The parent source supplied this family, the mean-clock surrogate `T_hat=(1+pM)X`, and the common-`X` coupling identity
+
+\[
+\mathbb E[(T-\widehat T)^2]=2pM^2.
+\]
+
+For `p=M^-3`, the squared clock certificate is `2/M`, while `h_M(p)~p/e` and the surrogate tail is exponentially smaller. This inherited counterexample is not claimed as this worker's invention.
+
+The interface distinction is essential:
+
+1. **Supplied generator.** Both `p` and `M` are given. Equation (1), or the positive semigroup `(1,0) exp(M Q_transient) (1,1)^T`, computes the answer. There is no statistical acquisition problem. The promise `p=M^-3` together with a known `M` also supplies `p` and belongs here.
+2. **Native experimental acquisition.** `M`, all state labels, the graph, and every downstream law are given; the actual `p` is unknown. For the lower bound it is enough that `p` could be either `p0=M^-3` or a nearby larger value. Native experiments, resets, and common-rate time changes are allowed. This is a deliberately favorable observation model: state detection and reset cost are idealized away. The lower bound counts total observations/exposure, not parallel elapsed time or energy.
+3. **Exact scalar tilt oracle.** One may sample the law with density proportional to `exp(theta T)` and evaluate the exact likelihood ratio. This is a stronger, mathematical sampling interface. Section 2 concerns the variance of ordinary likelihood-ratio estimators under this interface, not the information complexity of learning `p` from it. Indeed, an exact tilt normalizer at one nonzero `theta` already determines `p` in this family.
+
+Conflating interfaces 1–3 would manufacture an advantage or an impossibility. They are kept separate throughout.
+
+## 2. Sharp obstruction for every mixture of scalar Esscher tilts
+
+Write `P=P_M` for the law at `p=M^-3`. For `theta<1/M`, define
+
+\[
+Z(\theta)=\mathbb E_P e^{\theta T}
+=\frac{1-p+p/(1-M\theta)}{1-\theta},\qquad
+\frac{dQ_\theta}{dP}=\frac{e^{\theta T}}{Z(\theta)}.
+\]
+
+An arbitrary probability measure `pi` on `(-infinity,1/M)` defines a mixture `Q_pi=integral Q_theta pi(dtheta)`. Its likelihood ratio relative to `P` is
+
+\[
+g_\pi(t)=\frac{dQ_\pi}{dP}(t)
+=\int \frac{e^{\theta t}}{Z(\theta)}\,\pi(d\theta).
+\]
+
+For the ordinary unbiased estimator `W_pi=1{T>M}/g_pi(T)`, let
+
+\[
+R_M(\pi)=\frac{\mathbb E_{Q_\pi}W_\pi^2}{h_M(p)^2}.
+\]
+
+**Theorem 1.** For `M>=2` and `p=M^-3`, every such mixture satisfies
+
+\[
+R_M(\pi)\ge
+L_M:=\frac{(1-p)B_M(1/M)}{h_M(p)^2}, \tag{2}
+\]
+
+where `B_M(theta)=E_P[e^{-theta T}1{T>M}]`. Moreover,
+
+\[
+\boxed{\lim_{M\to\infty}p\inf_\pi R_M(\pi)=\frac12.} \tag{3}
+\]
+
+The infimum permits mixtures that change with `M`. A single scalar tilt approaches the same constant, so mixtures do not improve the asymptotic order or this leading constant.
+
+**Proof.** For `0<=theta<1/M`, `Z(theta)>=1`, hence
+
+\[
+e^{\theta t}/Z(\theta)\le e^{t/M}.
+\]
+
+For `theta<=0`, the direct branch alone gives `Z(theta)>=(1-p)/(1-theta)`. If `t>=M>=1`, then
+
+\[
+\log(1-\theta)+\theta t\le-\theta+\theta t\le0,
+\]
+
+so `e^{theta t}/Z(theta)<=1/(1-p)`. Averaging both cases yields the pointwise envelope
+
+\[
+g_\pi(t)\le\frac{e^{t/M}}{1-p},\qquad t\ge M. \tag{4}
+\]
+
+Consequently,
+
+\[
+\mathbb E_{Q_\pi}W_\pi^2
+=\mathbb E_P\frac{1\{T>M\}}{g_\pi(T)}
+\ge(1-p)\mathbb E_P[e^{-T/M}1\{T>M\}],
+\]
+
+which proves (2). An elementary integration gives, with `a=M theta>-1` and `c_M=M/(M-1)`,
+
+\[
+B_M(a/M)
+=p c_M\frac{e^{-(1+a)}}{1+a}
+ +(1-pc_M)\frac{e^{-M-a}}{1+a/M}. \tag{5}
+\]
+
+Thus `B_M(1/M)~p e^-2/2` and `h_M(p)~p/e`, establishing `liminf p inf_pi R_M(pi)>=1/2`.
+
+For the upper bound choose `a_M=1-sqrt(p)` and `theta_M=a_M/M`. Then `Z(theta_M)->1` and, by (5), `B_M(theta_M)/p->e^-2/2`. For a single tilt,
+
+\[
+R_M(\theta_M)=Z(\theta_M)B_M(\theta_M)/h_M(p)^2,
+\]
+
+so `p R_M(theta_M)->1/2`. This proves (3). ∎
+
+The mechanism is local: on the important moderate tail `T` of order `M`, every scalar tilt can amplify the original density only by a constant. Moving the tilt close to its pole can make very long trajectories common, but it cannot assign enough mass to this moderate-tail contribution.
+
+**Adaptive version, with an exact scope.** At each of a fixed number `n` of rounds, let a policy choose any mixture from the previous data and generate one likelihood-ratio sample `W_i`. Conditional on the previous data, `E[W_i]=h_M(p)` and `E[W_i^2]>=h_M(p)^2 L_M`. The centered samples are martingale differences, so
+
+\[
+\frac{\operatorname{Var}(n^{-1}\sum_{i=1}^n W_i)}{h_M(p)^2}
+\ge\frac{L_M-1}{n}. \tag{6}
+\]
+
+This covers adaptive mixtures and ordinary unbiased likelihood-ratio averages. It does not assert a bound on arbitrary control variates, analytic integration, arbitrary stopping-and-reweighting schemes, or algorithms extracting parameters from an exact normalizer. A single tilt with `theta<=-1/M` has infinite second moment; the mixture bound does not need to exclude such components.
+
+**Known stronger baseline.** If `p` is supplied, take `J` under a proposal with probability `1/2`, keeping the conditional clocks unchanged. Its relative second moment is
+
+\[
+R_M^{\rm branch}=
+\frac{2(1-p)^2e^{-M}+2p^2\Pr(X+Y>M)}{h_M(p)^2}\longrightarrow2e.
+\]
+
+This is ordinary stratified/state-dependent importance sampling. It defeats scalar tilts on the supplied model, but equation (1) is stronger still. Neither is a new operation.
+
+## 3. Exact acquisition lower bound with adaptive exploration
+
+The native oracle permits any finite or countable collection of replicas; arbitrary adaptive resets; starts at either transient state; cloning and resampling of observed states; full continuous observation; and censoring/stopping based on all observations. Each future native departure from `s` is fresh. A control may multiply both outgoing rates from `s` by the same predictable nonnegative factor `c(t)`. It may change downstream clocks arbitrarily in a way independent of the unknown `p`. Internal randomization is independent of `p`. Controls are nonexplosive and the expected source-departure count below is finite; infinite expectation already satisfies the lower bound.
+
+The oracle may additionally provide, without charge, all conditional trajectory samples or exact answers given `J=0` or `J=1`. Those laws do not depend on `p`. It may not provide a source committor, a branch likelihood/weight oracle, or independently alter the two source channel rates: those are different interfaces.
+
+Let `N` be the total number of actual departures from `s` across all replicas before the decision. Copies of an already observed departure are not fresh observations. Let `P_p^H` denote the complete transcript law, including the random stopping time and every intervention.
+
+**Theorem 2.** For any `p0,p1` in `(0,1)`,
+
+\[
+D(P_{p_0}^H\Vert P_{p_1}^H)
+=\mathbb E_{p_0}N\;\operatorname{kl}(p_0,p_1), \tag{7}
+\]
+
+where `kl` is binary relative entropy. Any decision with error at most `delta<1/2` under both alternatives therefore satisfies
+
+\[
+\boxed{\mathbb E_{p_0}N\ge
+\frac{\operatorname{kl}(1-\delta,\delta)}{\operatorname{kl}(p_0,p_1)}.} \tag{8}
+\]
+
+**Proof.** Conditional on the current history, the total source hazard is `c(t)`, independent of `p`. A source departure has mark `J~Bernoulli(p)`, independent of its waiting time conditional on the policy. Everything after the mark, including the extra conditional oracle, is `p`-independent. Every observed time, censoring event, reset, clone, and intervention therefore cancels from the likelihood ratio between the alternatives. Only fresh source marks remain:
+
+\[
+\log\frac{dP_{p_0}^H}{dP_{p_1}^H}
+=\sum_{i=1}^N\left[J_i\log\frac{p_0}{p_1}
+ +(1-J_i)\log\frac{1-p_0}{1-p_1}\right]. \tag{9}
+\]
+
+Conditional expectation of each fresh increment is `kl(p0,p1)`. Taking expectation, with localization if necessary, proves (7). Let `E` be the event that the decision chooses `p0`. Data processing gives transcript KL at least `kl(P_p0(E),P_p1(E))`. The error assumptions imply `P_p0(E)>=1-delta` and `P_p1(E)<=delta`, so this is at least `kl(1-delta,delta)`. Equation (8) follows. ∎
+
+This proof is the standard sequential change-of-measure argument specialized to an experimental CTMC oracle. It is not a new information inequality. Its useful content here is the exact identification of which allowed operations cancel and which source observations must be charged.
+
+**Relative tail estimation.** Let `M>=8`, `p0=M^-3`, `0<epsilon<=1/4`, and `p1=(1+4epsilon)p0`. An estimator that is within relative error `epsilon` of `h_M(p)` with probability at least `1-delta` under each alternative must satisfy
+
+\[
+\boxed{\mathbb E_{p_0}N\ge
+\frac{\operatorname{kl}(1-\delta,\delta)}{32\,\epsilon^2p_0}.} \tag{10}
+\]
+
+To see that a successful estimate distinguishes the alternatives, write `r=e^-M/(p0 d_M)`. For `M>=8`,
+
+\[
+r=\frac{(M-1)M^2}{e^{M-1}-1}<\frac12.
+\]
+
+The expression decreases on this range, and at `M=8` the inequality follows from `e^7>897`; a finite rational partial sum verifies the last inequality. Hence
+
+\[
+\frac{h_M(p_1)}{h_M(p_0)}=1+\frac{4\epsilon}{1+r}
+>\frac{1+\epsilon}{1-\epsilon},
+\]
+
+so their relative-error intervals are disjoint. Finally,
+
+\[
+\operatorname{kl}(p_0,p_1)
+\le\frac{(p_1-p_0)^2}{p_1(1-p_1)}
+\le32\epsilon^2p_0,
+\]
+
+using the elementary KL-to-chi-square bound and `p1<=1/2`. This proves (10).
+
+**Matching same-data baseline.** Observe `n` source departure marks and take their mean `p_hat`; then output `h_hat=e^-M+d_M p_hat`. If the parameter is promised to be at least `p0`, the standard multiplicative Bernoulli bound gives success probability at least `1-delta` for
+
+\[
+n\ge\frac{3}{p_0\epsilon^2}\log\frac2\delta.
+\]
+
+Indeed relative accuracy for `p` implies relative accuracy for `h_M(p)`. Thus the total acquisition order in (10) is already attained by ordinary counting followed by the exact conditional-clock formula. All downstream data were free to the proposed adaptive method, yet it cannot improve this order on the oracle class.
+
+For the simple twofold-risk decision `p0=p`, `p1=2p`,
+
+\[
+\operatorname{kl}(p,2p)\sim(1-\log2)p.
+\]
+
+At `delta=.05`, (8) is asymptotically `E_p N>=8.636046/p`. An absence of rare observations does not certify absence of the channel. At a fixed budget `n`, testing `p=0` against `p>0` with both errors at most `delta` requires `(1-p)^n<=2delta`, hence `n>=log(1/(2delta))/[-log(1-p)]`. On an all-zero sample the familiar exact one-sided upper confidence endpoint is `1-delta^(1/n)`.
+
+## 4. Exact escape condition for channel-selective interventions
+
+An apparatus that can independently change the two source hazards has more information access than a clock change. Let its predictable multipliers be `u_0(t)` on the direct channel and `u_1(t)` on the trap channel. The hazards are
+
+\[
+\lambda_0=(1-p)u_0,\qquad \lambda_1=p u_1.
+\]
+
+Let `A_j=E_p integral 1{source} u_j(t) dt`, summed over all replicas. These are dimensionless integrated multiplier exposures. They are a specified accounting quantity, not an asserted energy or monetary cost. For `d_Pois(x,y)=x log(x/y)-x+y`, the full-transcript identity is
+
+\[
+D(P_p^H\Vert P_{p'}^H)
+=A_1d_{\rm Pois}(p,p')+A_0d_{\rm Pois}(1-p,1-p'). \tag{11}
+\]
+
+This follows directly from the jump-process likelihood: each observed channel contributes the log ratio of its hazards; the no-jump likelihood contributes the difference of integrated total hazards. Taking expectation converts each channel count into its compensator. Resets and downstream observations again cancel.
+
+For `p'=(1+eta)p`, `0<eta<=1`, and `p<=1/4`,
+
+\[
+d_{\rm Pois}(p,p')=p[\eta-\log(1+\eta)]\le\tfrac12p\eta^2,
+\]
+
+\[
+d_{\rm Pois}(1-p,1-p')\le
+\frac{\eta^2p^2}{2(1-p')}\le\eta^2p^2.
+\]
+
+Therefore every `delta`-correct decision obeys the dose tradeoff
+
+\[
+\boxed{\frac12p A_1+p^2 A_0
+\ge\frac{\operatorname{kl}(1-\delta,\delta)}{\eta^2}.} \tag{12}
+\]
+
+For a common clock `u0=u1=c`, the sum of the two Poisson divergences equals Bernoulli KL; expected total source exposure is `E N`, recovering (7). For independently boosted channels, high `u1` can reduce elapsed time or the number of experimental resets. Equation (12) does not rule out a real advantage if such control is physically available and cheap in the relevant resource. It says exactly what must be measured: the calibrated channel response, multiplier exposure, control preparation, and their actual costs. Treating arbitrary selective amplification as a free clock operation changes the problem.
+
+Even a free perfect sampler conditioned on taking the trap branch supplies no information about its native weight: its law is independent of `p`. Conversely an exact source committor or an exact normalizer is already a weight oracle. For example, at a nonzero `theta`,
+
+\[
+p=\big[(1-\theta)Z(\theta)-1\big]\frac{1-M\theta}{M\theta}.
+\]
+
+Any proposal relying on such an oracle must charge its acquisition and precision.
+
+## 5. Computation and full comparison
+
+Run `python3 check_rare_branch.py` in this directory. The script uses only Python's standard library, exact fractions, and 80-digit Decimal arithmetic. It writes `RESULTS.json`. Executed checks passed:
+
+- 141 exact rational moment/coupling/auxiliary identities;
+- 441 pointwise scalar-tilt and mixture-envelope checks;
+- 12 exhaustive adaptive stopping-tree KL identities;
+- 27 controlled-dose identities/inequalities;
+- 5 independent positive uniformization comparisons with the exact tail formula.
+
+The positive uniformization check has an analytic Poisson-series truncation bound. Decimal rounding is not interval-certified. These computations support the implementation and illustrate the proven limits; the proofs above carry the general quantifiers.
+
+| `M` | `p * R` for the numerically optimal scalar tilt | `p * L_M`, valid for every mixture | `p * E N` lower bound, twofold decision, `delta=.05` |
+|---:|---:|---:|---:|
+| 30 | 0.5073911263 | 0.4833154319 | 8.6355248718 |
+| 100 | 0.5012212734 | 0.4949995050 | 8.6360319845 |
+| 1000 | 0.5000387176 | 0.4994999995 | 8.6360460424 |
+| 10000 | 0.5000012247 | 0.4999500000 | 8.6360460565 |
+
+| Method/interface | Acquisition charged | Operation after acquisition | Conclusion on this model |
+|---|---|---|---|
+| Supplied exact generator | Already supplied `p,M` | Closed formula or positive matrix exponential | Exact tail; strongest baseline |
+| Scalar Esscher mixtures | Tilt sampler and exact weights supplied | Ordinary likelihood-ratio sampling | Best relative second moment asymptotic to `1/(2p)` |
+| Branch importance sampling / Doob conditioning | Branch weights or source value supplied | Bounded or zero relative variance possible | Established baseline; no new operation |
+| Native adaptive exploration plus conditional clocks | Unknown branch weight measured from native gateway departures | Arbitrary downstream learning or exact downstream oracle | Cannot beat order `p^-1 epsilon^-2 log(1/delta)` total acquisition |
+| Direct counting plus conditional formula | Same unknown weight and same native data | One scalar estimate and equation (1) | Matches the acquisition lower bound in order |
+| Independent selective forcing | A distinct calibrated control interface | Can make rare departures frequent | Must use the exposure identity (11) and actual apparatus costs |
+
+Memory for the matching estimator is constant apart from integer counters; arithmetic precision must resolve `p` to the requested relative accuracy. Counting cost is charged across parallel replicas. Perfect labels, supplied `M`, free resets, and free downstream answers strengthen the lower bound by favoring the adaptive competitor. No assertion about unavoidable energy, serial wall time, quantum access, a particular physical apparatus, or all possible rare-event methods follows from this model.
+
+## 6. Prior art and disposition
+
+The primary-source checks below were made on 2026-10-15. This is a targeted comparator audit, not exhaustive novelty clearance.
+
+| Primary source | Relevant established capability | Consequence for the proposal |
+|---|---|---|
+| [De Boer, L'Ecuyer, Rubino and Tuffin, *Estimating the Probability of a Rare Event over a Finite Time Horizon* (2007)](https://www.informs-sim.org/wsc07papers/048.pdf) | CTMC zero-variance changes of measure and approximations with bounded relative error in a specified small-rate family; the paper explicitly identifies the need for the exact future-value function. | A conditional clock or source committor alone is not a new method. Supplied-rate forcing and failure biasing are mandatory comparators. |
+| [Grace, Kroese and Sandmann, *Automated State-Dependent Importance Sampling for Markov Jump Processes via Sampling from the Zero-Variance Distribution* (2018)](https://www.cambridge.org/core/journals/journal-of-applied-probability/article/automated-statedependent-importance-sampling-for-markov-jump-processes-via-sampling-from-the-zerovariance-distribution/0131DF516A1999B801D5674086EDB969) | Adaptive state-dependent importance sampling using MCMC approximations to the zero-variance distribution. | Adaptive proposal learning from paths is already established; it cannot be relabeled an invention here. |
+| [*Adaptive Multilevel Splitting: Historical Perspective and Recent Results* (2019)](https://pubs.aip.org/aip/cha/article-abstract/29/4/043108/1027309/Adaptive-multilevel-splitting-Historical) | Splitting variants, a central limit theorem, and the role of the reaction coordinate. | Native splitting is within Theorem 2 when each new source departure is counted. The theorem is not a general criticism of splitting on richer models. |
+| [Lucente, Rolland, Herbert and Bouchet, *Coupling Rare Event Algorithms with Data-Based Learned Committor Functions Using the Analogue Markov Chain*](https://arxiv.org/abs/2110.05050) | Learning committors from data and using them as splitting scores. | Learning a committor before applying a clock operation is not, by itself, a novelty claim. The new question must concern acquisition at matched total cost. |
+| [Kaufmann, Cappe and Garivier, *On the Complexity of Best-Arm Identification in Multi-Armed Bandit Models* (2016), Lemma 1](https://www.jmlr.org/papers/volume17/kaufman16a/kaufman16a.pdf) | Adaptive stopped-transcript change-of-measure lower bounds using expected sample counts and KL. | Theorem 2 is an explicit CTMC-oracle specialization of this standard method; a general new information principle is not claimed. |
+| [Pantazis and Katsoulakis, *A Relative Entropy Rate Method for Path Space Sensitivity Analysis of Stationary Complex Stochastic Dynamics*](https://arxiv.org/abs/1210.7264), and [Pantazis et al., biochemical jump-process pathwise information (2013)](https://link.springer.com/article/10.1186/1471-2105-14-311) | Path-space relative entropy and information from changes in jump-process rates. | Equation (11) uses the established path-likelihood method, specialized here to adaptive interventions and two channel exposures. |
+| [*Uniformization: Basics, Extensions and Applications*](https://www.sciencedirect.com/science/article/pii/S0166531617301451) | Positive Poisson-series computation for CTMC transition laws. | A positive matrix exponential is a strong supplied-generator baseline, and the executable check includes it. |
+
+The sharp asymptotic constant `1/2` for the entire convex mixture class in Theorem 1 was derived in this run. Its historical priority and independent correctness are unreviewed. The acquisition theorem is a proved application of established information tools, not a novel positive operation. The original rare-tail failure family is inherited from the supplied clock text.
+
+**Decision:** retain the sharp mixture obstruction and the explicit experimental-oracle lower bound. Do not promote an adaptive committor-plus-clock recipe on this oracle to an acquisition-inclusive advantage. The next viable positive experiment must supply a physically calibrated, selectively informative access route with complete costs, or a justified structural promise that lets channel weights be inferred without native rare observations. Its comparator must receive that same access and promise. On a supplied finite generator, compare first with direct positive-semigroup computation and established state-dependent importance sampling.
+
+## Provenance
+
+- Parent source: `../../sources/clock_pasted.txt`, source lines 306–344; recorded SHA-256 `460208a1a8acb52fdd1ddb410ed0fc0958d4924d629a25782806de462d8ed7eb` in the parent's `SOURCE_MANIFEST.json`.
+- This worker did not use another worker's derivation, edit the capital checkout, publish, or create a GitHub change.
+- A lightweight memory check guided the requirement to charge acquisition and compare rare-event methods and deterministic integration. It supplied no theorem used as unverified evidence here.

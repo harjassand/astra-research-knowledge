@@ -1,0 +1,90 @@
+# Exact comparison and independently derived operations
+
+Audit date: 2026-10-15. Worker: priority_machinery_v3. Status: source inspection and internal mathematical reconstruction; historical priority UNKNOWN. The incoming full audit ZIP was not supplied. No source files, other workers' files, worktree files, Git refs, or GitHub conversations were modified.
+
+The subsequent parent-coordinated comparison and endpoint strengthening are in [COORDINATED_PRIORITY_ADDENDUM.md](COORDINATED_PRIORITY_ADDENDUM.md) and [SPECTRAL_WIDTH_ENDPOINT_TRANSFER.md](SPECTRAL_WIDTH_ENDPOINT_TRANSFER.md). The original Dickman primary comparison further narrows the special-Pauli tail claim in [DICKMAN_ENDPOINT_PRIOR_ART.md](DICKMAN_ENDPOINT_PRIOR_ART.md).
+
+## Finding
+
+The exact all-exponential compact-distribution criterion is supported by a complete retained-tilt argument in the pinned PR94 proof. That proof already treats Banach cones and arbitrary unital C*-algebras, so an infinite-Hilbert-space statement is not merely a proposed extrapolation from its finite-matrix special case. I found no defect in Sections 1-6 during this independent inspection. This is internal reasoning, not external or formal certification.
+
+The broad operation of repairing signs by positive convolution is old. A stronger historical correction is needed: even a smooth, symmetric, all-exponential scalar regularizer is already obtainable in a substantial known one-dimensional endpoint class. One-sidedness and atomicity of the published multiplier are removable by elementary postconvolution; see [the corollary](KNOWN_ENDPOINT_ZERO_FREE_COROLLARY.md).
+
+I also derived a valid geometric transfer: the universal radial theorem can be stated using maximal directional spectral width D, independently of scalar offsets, with sufficient coefficient c<1/D and sharp class supremum 1/D for m>=2. The full all-point proof is in [SPECTRAL_WIDTH_TRANSFER.md](SPECTRAL_WIDTH_TRANSFER.md). It uses the known joint numerical-range support operation and the retained-tilt error estimate. It is not a historical-priority finding or a practical quantum capability.
+
+## Pinned claim and load-bearing proof operation
+
+The exact source is PR94 commit `df8e6dac844f1832e79cea6cd40d0915307b12bb`, file `updates/FT-foundational-capability-v2-20261015/package/workers/mathematical_invention/PROOF.md`; the local immutable copy has SHA-256 `c88d6cbde888f0cfcdeded8b572843063443391916324c9e9157a873a36fbe51`.
+
+For a compact finite-order E-valued distribution T, a proper closed convex cone C with nonempty interior, and T(1)=e in its interior, it proves equivalence of:
+
+1. L_T(g) belongs to the cone interior at every finite real g.
+2. A scalar all-exponential probability noise makes T*nu a positive distribution.
+3. Such a noise can have a smooth, strictly positive, radial, strictly log-concave density with exponentially weighted integrability of all derivatives.
+
+For B(H)_sa the cone interior consists exactly of positive boundedly invertible operators. Positivity on every nonzero vector is weaker and insufficient in infinite dimension.
+
+The proof is not just a formal Laplace-transform division. Necessity uses compactly supported positive exponential tests, establishes a norm limit, and obtains an interior positive contribution from a finite cutoff. Sufficiency retains L_T(grad V) and controls the logarithmic remainder. The adaptive slope is selected from the compact-tilt margin function mu(t); it is unbounded but can grow arbitrarily slowly. That is the operation an antecedent would have to supply, replace, or subsume to imply the full criterion. The arbitrary-margin example and fixed-kernel failures in Sections 7-9 are not premises of this equivalence.
+
+The supplied universal quantum theorem has the special transform L_W(g)=exp(A(g)). Standard Weyl compact support plus this positive exponential margin and the all-point remainder estimate imply the construction. The numerical examples do not prove that estimate. The sharp upper tail obstruction additionally uses tilted positive moment matrices for a Pauli pair. Neither the scalar quotient theorem nor the general Weyl representation alone supplies that obstruction.
+
+## Primary source comparisons
+
+### Diamond-Essen, 1978: decisive unread ancestor
+
+H. G. Diamond and M. Essen, [Functions with non-negative convolutions](https://doi.org/10.1016/0022-247X(78)90091-4), JMAA 63(2), 463-489, is directly about positive convolution multipliers. The publisher's record labels it open archive. Original theorem text was not acquired: the article and PDF endpoints returned HTTP 403; the unkeyed Elsevier endpoints returned HTTP 429. Crossref metadata and primary citations verify its identity. OpenAlex and author-site searches were used only to locate accessible copies, not as theorem evidence.
+
+Consequently its exact input class, transform criterion, tail constraints, common-kernel quantifiers, and distribution/operator extensions remain unread. Katkova-Vishnyakova's description of its subject is secondary evidence about Diamond-Essen, not a substitute for the theorem. This gap prevents scalar priority clearance. It does not demonstrate that the present criterion is new or that Diamond-Essen contains it.
+
+### Katkova-Vishnyakova, 2001: actual all-exponential overlap
+
+[A Continual Analogue of a Theorem by M. Fekete and G. Polya](https://doi.org/10.1023/A:1009847605313), Theorems 1-2, treats continuous scalar functions with positive bilateral Laplace transform and positivity in endpoint neighborhoods. Its Poisson-lattice multiplier has every exponential moment. Theorem 1 includes compact smooth inputs that vanish at their support edges, provided the sign assumptions hold near those edges; requiring nonzero boundary values from Theorem 2 would understate this overlap. The final remark limits their fixed lattice multiplier for arbitrary signed measures. It does not rule out other multipliers.
+
+Reflection and Gaussian postconvolution give an everywhere positive smooth even regularizer with zero-free characteristic function; this is proved separately. Thus smoothness and one-dimensional radiality alone do not distinguish the candidate. The acquired theorem does not supply arbitrary compact finite-order distributions, arbitrary-dimensional cone values, strict log-concavity of the noise, or the universal quantum tail threshold.
+
+### Mattner and Ruzsa-Szekely: ordinary moments, broader input class
+
+Mattner's original [What are cumulants?](https://doi.org/10.4171/DM/69), Section 2.5, printed pp. 615-617, was read from the original PDF and visually checked. It constructs characteristic-function quotients with probabilities having all ordinary moments, credits Ruzsa-Szekely, and uses a geometric convolution series. Pomatto-Strack-Tamuz [Appendix A, Lemma 1](https://arxiv.org/abs/1807.06927) directly states the signed-measure version and its moment-preserving proof. All ordinary moments are not all exponential moments; a geometric series fails when its tilted ratio reaches one.
+
+An exact separation is T=2 delta_0-delta_1. It has mass one and compact support, so the older moment theorem applies, but L_T(log 3)=-1. No all-exponential scalar noise can make it positive, because the positive output Laplace transform would equal the strictly positive scalar noise transform times -1. This shows why the older theorem cannot imply the all-exponential claim for all its inputs. It does not settle its restricted consequences for Laplace-positive inputs.
+
+### Anderson and the generalized Weyl/Wigner distribution
+
+Anderson's [1969 paper](https://doi.org/10.1016/0022-1236(69)90013-5) and [1970 continuation](https://doi.org/10.1016/0022-1236(70)90050-9) were located; their original fulltexts were not acquired. The 1970 publisher abstract states a support-connectedness result and finite-dimensional impossibility of an unsmoothed measure unless the tuple commutes. This does not prohibit positive convolution and cannot be used as either anticipation or a no-go theorem for the noisy claim. Full comparison remains open.
+
+Schwonnek-Werner's acquired [2018 v1 fulltext](https://arxiv.org/abs/1802.08343v1), Property 1, supplies support in the mixed-state joint numerical range. Its proof uses a norm exponential bound and Paley-Wiener-Schwartz. The all-linear-marginal distribution, Weyl ordering, and support mechanism are inherited. The infinite-dimensional version of the support argument used in my transfer is independently written out; no norm compactness of density operators is assumed.
+
+### Husimi and quantum operator convolution: a necessary qualification
+
+Standard canonical Husimi smoothing already has a fixed state-independent scalar Gaussian multiplier and correct noisy linear quadrature marginals. It is therefore inaccurate to claim that this contract by itself distinguishes the construction from all Husimi theory.
+
+Sabbagh-Movilla Miangolarra-Georgiou's acquired [2025 paper](https://arxiv.org/abs/2505.00245), Eq. (1b), explicitly gives that canonical convolution. Its arbitrary-observable Eq. (2a)-(2b) instead uses a general Weyl-symbol kernel and a generally state-dependent denominator. That particular generalization does not automatically define the linear state-independent scalar-convolution POVM required here.
+
+Luef-Skrettingland's acquired [Convolutions for localization operators](https://arxiv.org/abs/1705.03253), Sections 3-4, develops Werner's function-operator and operator-operator convolutions using a projective time-frequency representation. Positive trace-class probe states give familiar positive phase-space distributions and the trace product gives normalization. An arbitrary bounded self-adjoint tuple need not generate that representation. These operations therefore do not directly supply its scalar regularizer, arbitrary-margin criterion, or radial tail theorem. Werner's 1984 original article was located but not acquired in full.
+
+## Selective current-capital and OpenAI/math check
+
+The initial read-only remote main checks returned Astra `0c789ca775808e23e57138b56a393ad1e58cb15c` and OpenAI/math `1581d4cbdd69a0faf34b2089614fe2a814316a6a`. These are observations from the initial pass; the shared worktree HEAD subsequently changed outside this worker. PR94 is a separate draft source, not a main-branch theorem. Its N853/N855 dossiers route the criterion and Pauli compiler but label them unreviewed. The current N712 route concerns thermal-information readout costs; no sensing or Fisher-information transfer was inferred from adjacency.
+
+I acquired and read the relevant statements and positive-density proof in OpenAI/math's [complete Crouzeix structural manuscript](https://github.com/openai/math/blob/1581d4cbdd69a0faf34b2089614fe2a814316a6a/preprints/The-complete-Crouzeix-theorem-September-23-2026/build/main.tex), lines 106-147 and 265-357. It represents holomorphic functions of one operator after similarity by a common positive boundary density. The density formula is the standard contraction-resolvent construction; the source itself credits Delyon-Delyon and dilation theory.
+
+This does not represent the mixed adjoint expressions needed for exp(i sum t_j A_j). Taking A=A_1+iA_2 gives holomorphic powers of A, not the spectral powers of every Re(e^{-i theta}A). Similarity also does not supply a scalar probability multiplier for the original tuple. The missing bridge is exact mixed-moment/scalar-convolution preservation, not a norm-bound constant. No new operation was forced from this source. The sharp constant-two part was not independently reconstructed or compiled.
+
+The source README expressly describes mixed verification status. The acquired StructuralCrouzeix comparator ends in a sorry challenge template; that observation is not a verdict on the separate Lean library. No formal-verification claim is made here.
+
+## What is and is not established by this investigation
+
+Internally established:
+
+- Exact theorem-to-theorem overlap and non-implication boundaries for the acquired sources.
+- A complete shift-invariant spectral-width transfer, including all-H support/cutoff estimates and Pauli class sharpness.
+- A stronger smooth even zero-free scalar consequence of the known endpoint theorem, which further narrows novelty.
+
+Still UNKNOWN or absent:
+
+- Exact Diamond-Essen and Anderson fulltext comparison, and historical priority for the full compact cone-valued criterion and sharp radial theorem.
+- Independent external correctness review and formal proof of the candidate or this worker's transfer.
+- The incoming audit ZIP and its original universal theorem proof artifacts.
+- A general constructive low-cost measurement/compiler, stable inverse, favorable sample or variance comparison, or new physical capability.
+
+The strongest defensible conclusion is a mathematically substantive internally reconstructed criterion with substantial older scalar and quantum antecedents, plus the modest width-based strengthening above. This investigation does not clear exceptional originality or significance.

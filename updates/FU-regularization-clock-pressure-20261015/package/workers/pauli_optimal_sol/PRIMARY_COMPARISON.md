@@ -1,0 +1,13 @@
+# Primary-source comparison
+
+This is a scoped comparison, not historical clearance.
+
+1. René Schwonnek and Reinhard F. Werner, *The Wigner distribution of n arbitrary observables*, J. Math. Phys. 61, 082103 (2020), [full primary text](https://arxiv.org/html/1802.08342). Section II defines the unique all-linear-marginal distribution via the operator exponential. Section IV.1 explicitly computes the Pauli triple distribution, including its spherical derivative singularity. The scalar convolution used for visualization is discussed in Section II.4. These components predate the present construction. The inspected statements do not supply the positive scalar-noise plateau law or its covariance optimization.
+
+2. G. M. D'Ariano, C. Macchiavello and M. F. Sacchi, *Joint measurements via quantum cloning*, J. Opt. B 3, 44 (2001), submitted 2000, [full primary text](https://arxiv.org/html/quant-ph/0007062). Section II.2, equations (13)-(17), compares joint spin measurements with the spin-coherent POVM and its usual unbiased report. This supports the ordinary covariant-spin comparator. It optimizes a broader measurement-uncertainty objective, not the exact common scalar-convolution reporting contract. The HTML conversion has an inconsistent received-date field; the arXiv abstract/submission record identifies the 2000 submission.
+
+3. Chinmoy Bhattacharjee and Larry Goldstein, *Dickman approximation in simulation, summations and perpetuities*, [full primary text](https://arxiv.org/html/1706.08192), version 6, 2018. The generalized Dickman fixed point and recursion are prior machinery, as are differential-delay descriptions and simulation bounds. After the change s=1+2u, the present tail equation is `u F'(u)=−(F(u)+F(u−1))/2`, the θ=1/2 generalized Dickman density equation. The plateau initial history includes negative u down to −1/2, so it is not justified to identify the entire new law with the usual nonnegative Dickman perpetuity without an additional argument.
+
+The downloaded HTML sources and SHA256 acquisition receipts are in `sources/`. Targeted searches for Dickman plus joint measurement/Wigner, positive Pauli convolution, and state-independent spin convolution did not locate an exact matching scalar-noise covariance theorem. A negative search result does not establish novelty. Generalized Dickman delay-equation literature and older Weyl-functional-calculus/convolution-positivity literature remain relevant antecedents.
+
+The 2018 paper *Dominant and subdominant positive solutions to generalized Dickman equation*, publisher URL https://www.sciencedirect.com/science/article/abs/pii/S0096300318302716, was located by search, but its full text was not inspected. It should not be cited as an excluded ancestor.
