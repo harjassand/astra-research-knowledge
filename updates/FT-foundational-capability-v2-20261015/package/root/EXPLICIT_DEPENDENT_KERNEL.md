@@ -1,0 +1,130 @@
+# A concrete dependent kernel where every smooth product kernel fails
+
+Root construction, 15 October 2026. Independently reconstructed by the
+consequence investigator. Internal analytic proof; priority unresolved.
+
+Consider the constant-coefficient operation
+
+    Qp = p + partial_x² partial_y² p.
+
+Its real Laplace symbol is P(g)=1+g_x²g_y², strictly positive and already a
+sum of squares. Positivity of a polynomial symbol alone does not make its
+operation preserve positive densities. We construct one correlated density
+for which Qp is positive, while proving that no strictly positive smooth
+product density with all exponential moments can do so.
+
+## Explicit construction and all-point bound
+
+Set L=5, s=x²+y², t=1+s/L², ell=log t, and
+
+    h(s)=(L/2) sqrt(t) log t,
+    p(x,y)=Z^(-1) exp[-h(x²+y²)].
+
+This is a smooth radial probability density. Its Hessian potential has
+tangential eigenvalue (ell+2)/(2L sqrt(t)) and radial eigenvalue
+(2t+ell)/(2L t^(3/2)), both strictly positive. Thus p is strictly
+log-concave. Its potential divided by r tends to infinity, giving every
+exponential moment; all finite derivatives also have those weighted integrals.
+
+The derivatives of h are
+
+    h1=(ell+2)/(4L sqrt(t)),
+    h2=-ell/(8L³ t^(3/2)),
+    h3=(3ell-2)/(16L^5 t^(5/2)),
+    h4=(16-15ell)/(32L^7 t^(7/2)).
+
+Let
+
+    A2=h1²-h2,
+    A3=-h1³+3h1h2-h3,
+    A4=h1^4-6h1²h2+3h2²+4h1h3-h4.
+
+Differentiation gives the exact identity
+
+    (Qp)/p=1+4A2+8s A3+16x²y² A4.
+
+Here A2 is nonnegative. In A4 its first three displayed terms are
+nonnegative because h2<=0. Bound only the remaining negative terms.
+The elementary inequalities, for ell>=0 and t>=1, are
+
+    (ell+2)^3 exp(-ell/2) <= 216/e²,
+    ell(ell+2)exp(-ell) <= 2,
+    (3ell-2)_+ exp(-3ell/2) <= 1,
+    (t-1)²/t³ <= 4/27,
+    (ell+2)(2-3ell)_+ <= 4,
+    (t-1)²/t^(7/2) <= 1,
+    (16-15ell)_+ <= 16.
+
+Using s=L²(t-1) and 16x²y²<=4s² yields
+
+    (Qp)/p >= 1-B_L,
+    B_L=27/(e²L)+(3/2+4/27)/L²+5/(2L³).
+
+At L=5, B_L=0.8167364554036346...<1, so
+
+    Qp >= 0.1832635445963654... p > 0  everywhere.
+
+All derivatives decay sufficiently for integration by parts. Therefore
+integral Qp=integral p=1: Qp is another probability density. This is an
+explicit instance of the general Laplace-positive convolution criterion,
+without an unspecified scale or a remotely tested numerical tail.
+
+Integration over either coordinate annihilates the mixed derivative, so Qp
+has exactly the same two univariate marginals as p. Its mean and covariance
+are also unchanged, while integration by parts gives
+
+    E_Qp[X²Y²] = E_p[X²Y²] + 4.
+
+The operation therefore modifies dependence invisible to the coordinate
+laws and covariance. This is an exact identity for these normalized
+dimensionless variables, not a physical noise source already acquired.
+
+## Why every smooth product alternative fails
+
+Suppose p(x,y)=f(x)g(y), with f,g strictly positive C² probability densities
+having every exponential moment. A positive integrable C² function cannot
+be convex everywhere; choose y0 with g''(y0)<0. If Qp>=0 everywhere, then
+
+    f''(x)/f(x) <= K := -g(y0)/g''(y0)  for every x.
+
+Let H=Kf-f''>=0. For growing smooth compact cutoffs chi_R increasing to one,
+integration by parts gives, for each real a,
+
+    limit_R integral e^(ax) chi_R(x) H(x) dx
+       = (K-a²) integral e^(ax) f(x) dx.
+
+To justify the limit, move both derivatives onto exp(ax)chi_R.
+Cutoff derivative terms vanish by exponential integrability of f; no
+integrability of f'' is assumed. Every left integral is nonnegative, while
+the right side is negative when a²>K. This is a contradiction.
+
+In particular, for the isotropic Gaussian p_beta proportional to
+exp[-beta(x²+y²)/2],
+
+    (Qp_beta)(x,0)/p_beta(x,0)=1+beta²-beta³x²,
+
+which becomes negative for every beta>0. Increasing Gaussian width moves
+the failure into a more remote region and never removes it.
+
+Arbitrary nondegenerate correlated Gaussians fail as well. Write their
+precision matrix as A, put u=(A(z-mu))_1 and v=(A(z-mu))_2. Then
+
+    (Qp)/p = 1+u²v²-A22 u²-A11 v²-4A12 uv+A11 A22+2A12².
+
+Along v=0 with |u| tending to infinity, this tends to minus infinity.
+Invertibility of A guarantees that this line of points exists.
+
+## Meaning and limits
+
+Dependence changes exact positivity even for the elementary strictly positive
+scalar SOS symbol 1+g_x²g_y². The representation succeeds using correlated
+radial noise; every positive smooth product of all-exponential-moment factors
+fails. This is a scalar differential-operation example, distinct from the
+input's noncommuting quantum-observable example.
+
+It is not a positivity-preserving semigroup, an efficient sampler for every
+signed distribution, or a solution to the decision problem for polynomial
+positivity. The known general positive-multiplier/convolution literature is
+close; historical priority for this exact construction is UNKNOWN. Numerical
+checks verify calculus and finite instances, while the all-point conclusion
+rests on the displayed inequalities.
