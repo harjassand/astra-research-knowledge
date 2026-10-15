@@ -1,0 +1,67 @@
+# Astra: nitrogen-assisted chemical-axis writing
+
+Date: 15 October 2026.
+
+**Status: unvalidated physical-operation hypothesis. No experiment performed; no discovery of a new physical capability established. Historical novelty unresolved.**
+
+## Proposed operation
+
+Reorient the preferred chemical-order axis of immobilized FeNi domains by applying directional mechanical loading while a temporary nitrogen-rich phase forms; remove the load, extract nitrogen, and retain a different chemical-order-axis distribution in the final metal. The stronger test is to write one axis and then a different axis in the same immobilized material through another chemical cycle.
+
+This is not a proposal simply to magnetize a metal. The proposed persistent output is a changed direction of the Fe/Ni layering, not only a changed spin direction. Nor is nitrogen insertion/topotactic extraction itself new. Epitaxial precursor-to-metal orientation transfer is also established prior work. Direct stress-assisted FeNi ordering has prior art. The narrower unresolved claim concerns chemical reorientation of fixed material without epitaxial templating or mechanical rotation of whole particles.
+
+## What the investigation did
+
+Screened metal purification, low-temperature ceramic forming, phonon control of ionic motion, and rare-earth-free magnetic materials. Examined primary publications, accessible supplementary diffraction figures and a calculated intensity table, and manufacturer magnetic specifications. Consulted Astra repository navigation and searched for tetrataenite/FeNi after opportunity selection; these targeted connector searches returned no matches, not a proof that the repository contains no related work.
+
+No raw instrument data were acquired. The directly inspected supplementary table contains calculated powder intensities, not new or raw observations. Some full manuscripts were inaccessible. Container downloads failed; that failure is preserved in `sources/download_log.json`. Source URLs below permit later retrieval. No source PDF is bundled.
+
+## Central missing interface
+
+The unknown is a retained, stress-dependent chemical-axis response after nitrogen removal, in the same immobilized specimen and processing regime.
+
+A tetragonal metric does not prove ferroelastic switching. Reported reconstructive/interface-mediated precursor formation does not justify assuming a simple coherent three-variant martensitic transformation. In particular, the calculation does not substitute a lattice axial ratio for a transformation-strain tensor, an activation volume, a critical-nucleus size, or a switching barrier.
+
+To leading order at fixed applied stress, a physically possible selection term is
+
+    delta_g_ij = delta_g_ij(0) - sigma : (epsilon*_i - epsilon*_j).
+
+The actual orientation correspondence and interfacial kinetics remain missing. Hydrostatic pressure alone cannot select among equally dilatational orientations; a directional intervention is necessary. Directional loading need not be sufficient.
+
+## Decisive experiment, not a device design
+
+Use a non-epitaxial immobilized-island specimen as a causal test platform. Demonstrate load transfer into the reacting crystallites rather than assuming that substrate strain equals particle stress. Follow the same marked material through initial alloy, precursor formation, unloading, nitrogen extraction and post-treatment characterization.
+
+Compare orthogonal loading directions during precursor formation, matched chemistry without loading, and loading applied only to final metal. Include a nitrogen-free thermal/loading control where the phase permits a meaningful comparison. Report ordered-phase fraction, degree of order, particle motion, damage and texture separately; do not let changing phase fraction masquerade as axis selection.
+
+Measure the chemical-axis orientation tensor Q=<n n^T>, weighted by ordered-phase volume, before and after extraction. With D=Q_xx-Q_yy, the contrast D(x-loaded)-D(y-loaded) must persist after unloading and chemical reset. A factorial nitrogen-by-loading interaction is useful, but is not by itself proof of historical novelty. Where a control lacks an ordered phase, Q is undefined; report that absence rather than manufacturing a zero texture. An unnormalized phase/order-weighted tensor can be reported separately.
+
+A repeated x-to-y rewrite in the same marked material would strengthen the causal claim. Whole-particle rotation, shape anisotropy, residual stress, oxide or nitride contamination, altered phase fractions, grain growth and conventional direct stress annealing must be distinguished.
+
+No claim of a useful magnet follows until the same product retains its texture, phase purity, density, coercivity and full second-quadrant magnetic curve. A small reversible magnetic signal is failure of the proposed persistent operation.
+
+## Computations
+
+`analyse.py` uses Python 3.10+ and the standard library. Run:
+
+    python analyse.py --output results.json
+
+The program reproduces unit conversions, an explicitly cross-publication cell-volume reference calculation, a diffraction-texture confound, laboratory gas throughflow, stoichiometric inventory fractions, and idealized upper envelopes for magnetic energy product.
+
+For a monotone descending polarization curve J(H), put h=-H>=0. If J(-h)<=Br and h<=HcJ, then
+
+    -B H <= h (Br - mu0 h).
+    h_star = min(HcJ, Br/(2 mu0)).
+    (BH)_max <= h_star (Br - mu0 h_star).
+
+This follows from B=J+mu0 H. It is an upper envelope, not an achieved or forecast magnetic loop. The magnetic examples assume Js=1.5 T and specified remanence/density factors. These are hypothetical scenarios, not properties assembled from different specimens and declared to coexist.
+
+At the reported 2.3 kOe field scale, the hypothetical Br=1.5 T scenario has an envelope of about 232 kJ/m3, below the inspected NdFeB comparator specifications. Lower active volume reduces this further. This is a limitation of a texture-only claim at that fixed coercivity, not a universal impossibility result for FeNi. Orientation changes may also alter coercivity; that effect must be measured rather than held fixed and then implicitly claimed.
+
+The numerical grid checks in the program test an inequality on constructed monotone functions. They do NOT validate the proposed physical operation or establish an experimentally useful magnetic material.
+
+## Accounting and disposition
+
+No net-energy, cost, bulk-throughput or manufacturing-yield estimate is justified. Nitrogen inventory and laboratory gas flow must not be called net reagent consumption. Removal-induced shrinkage does not by itself densify a body. A final magnet cannot borrow the precursor's favorable processing behavior, an unrelated film's anisotropy and another powder's coercivity as if they were one demonstrated regime.
+
+The result is worth preserving as a sharply defined, falsifiable materials-control question. The stand-alone case for extraordinary technological impact is not established. Do not build downstream manufacturing hardware around favorable assumed stress response or density. A successful axis-writing experiment is a physical-operation milestone, not proof of superior magnet technology.
