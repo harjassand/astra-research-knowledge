@@ -1,0 +1,54 @@
+# A precise renewal-to-lifetime connection
+
+15 October2026, version0002. Root-derived conditional consequence of the actual PR92 isotope operation and FT complete-damage network, after independent audit identified an initial-versus-retained isotope qualification missing in v0001. Original v0001 is preserved beside this file. Sources inspected at PR92 head5eb2441c93011d4fefb819b6f751f33537427dc3 and FT head92d9269715fd02a465f87c1fbe511620c386144e. This uses standard competing-hazard/renewal mathematics; no historical novelty, experimental interface or physical advantage is claimed. It does not change the original no-damage source theorem. The fixed screening horizon requires the renewal derivation below; it does not inherit the earlier no-hard-horizon CTMC well-cancellation theorem.
+
+## Model and complete output
+
+Each fresh trial draws isotope H with probability p∈(0,1), otherwise L. Its target ejection rate per fluence is σ_i, with σ_L>σ_H≥0. Add an independent irreversible collateral-damage hazard λ>0 per fluence, common to both isotopes. Expose until the first target ejection, collateral damage, or a fixed screening dose d. Accept only if neither event occurs before d. On target ejection alone, perform an instantaneous independent fresh refill and restart. Damage terminates that initial site without accepted output. All trials/costs and failed sites remain counted. Refill damage/time and history-dependent rates are excluded explicitly, not assumed acquired.
+
+For each isotope, competing exponentials give
+
+    a_i=exp[−(σ_i+λ)d],
+    b_i=σ_i(1−a_i)/(σ_i+λ),
+    c_i=λ(1−a_i)/(σ_i+λ).
+
+Here a_i,b_i,c_i are acceptance, restart and damage probabilities and sum to1. Let a,b,c be their p/(1−p) mixtures. Trials renew only on restart b. Thus
+
+    Y=P(accepted site before damage)=a/(1−b)=a/(a+c),
+    q=P(H|accepted)=p a_H/a,
+    E[attempts]=1/(a+c),
+    E[total dose]=[p(1−a_H)/(σ_H+λ)+(1−p)(1−a_L)/(σ_L+λ)]/(a+c).
+
+The last equation follows from the renewal reward recursion, including dose from damaged and ejected attempts. It does not multiply an independent duration by a correlated event count. Expected heavy accepted output per initial site is Yq; expected fresh feed draws include the initial draw and equal the attempt count under the declared instantaneous refill model.
+
+For common λ, its factor cancels from q, so the original ideal purity formula survives exactly:
+
+    q(d)=p e^{−σ_H d}/[p e^{−σ_H d}+(1−p)e^{−σ_L d}].
+
+But a=e^{−λd}a_0, while c→pλ/(σ_H+λ)+(1−p)λ/(σ_L+λ)>0 as d→∞. Consequently q(d)→1 and Y(d)→0. This holds even at σ_H=0 because λ>0. Arbitrarily high purity therefore does not retain the original every-initial-site output guarantee once this damage channel is admitted. The finite no-damage source law is correct on its own assumptions. A single protective hop, isotope purity alone or a completed-site-only yield cannot certify net accepted production.
+
+For λ>0 the displayed dose also satisfies the exact check λ E[total dose]=1−Y, since collateral termination has intensity λ while the site is exposed. This provides a cross-check of the complete endpoint ledger. Conditional cost per accepted output is E[total dose]/Y and E[attempts]/Y=1/a, rather than either initial-site average alone.
+
+## What a physically acquired survival flag must certify
+
+Let a measured flag A accept a trial. First assume H/L denotes the isotope retained at acceptance, or that same-atom survival has been independently qualified. Suppose an independently calibrated simultaneous bound gives P(A|H)≥h=(s_H−ε_H)_+ and P(A|L)≤l=min{1,s_L+ε_L}, where s_i are the declared true usable-survival probabilities and ε includes readout/model errors. When acceptance also requires collateral survival, s_i must be exp[−(σ_i+λ)d], not exp[−σ_i d]. With fresh independent trial reset and the same fixed kernel on each restart, Bayes' rule and monotonicity give
+
+    P(H|A)≥p h/[p h+(1−p)l],
+
+provided the denominator is positive and the process actually has a positive acceptance probability. If H/L only labels the initial isotope and hidden exchange is possible, this formula certifies only the initial isotope; it is not a final-heavy guarantee. A separate simultaneous bound on accepted-but-identity-changed probability mass, P(A and identity changed)≤δ_ex per attempted trial, instead gives the sharp safe lower bound
+
+    P(final H|A)≥(p h−δ_ex)_+/[p h+(1−p)l].
+
+One subtracts at most δ_ex from the accepted-initial-heavy numerator, then minimizes over the allowed initial-heavy acceptance and initial-light acceptance probabilities. Fresh reset and a stationary independent trial kernel are needed to pass this conditional output law through repeated attempts. Without the acquired identity bound, occupancy images and initial-isotope calibration alone do not certify retained isotope purity.
+
+Conditional error coverage and drift across attempted trials must be paid; a bound from an altered calibration specimen is not automatically transferred. If identity is already qualified, ε_H=0 and the uncapped s_L+ε_L≤1 bound is used, certifying target q requires
+
+    ε_L≤p(1−q)s_H/[q(1−p)]−s_L.
+
+With heavy false negatives replace s_H by h. If identity is bounded only through δ_ex, additionally subtract δ_ex/[q(1−p)] from the displayed allowable ε_L. A negative right-hand side means this bound cannot certify the target. At natural-feed small p and high target q, the required missed-event/identity allowance can scale as p(1−q); image occupancy alone is not the required observation. Additive calibration errors do not inherit common-λ cancellation automatically. This is a sufficient covered posterior criterion under the specified model, not a universal information lower bound or a free detector calibration.
+
+The formula does not resolve same-atom return, hidden replacement, correlated isotope-dependent refill, persistent specimen types, nonstationary cross sections or neighbor-damage/healing. Those failures change the admitted kernel and require a different acquired model, as the independent hidden-type and full-damage countermodels already show.
+
+## Receiving-branch handoff
+
+Acquire a jointly covered same-atom flag and all important target/neighbor/irreversible hazards under one frozen exposure/refill protocol. Use the common-hazard formula as an initial falsifiable model, then replace it if measured history or damage rejects it. Compare all initial sites and full accepted purity/lattice/device endpoints, with failed sites, feed/dose/readout/reset costs, against optimized isotope growth/exchange and direct isotope identification/selection. The support-body and continuation-weighted saddle machinery transfers only if the actual attachment, same host regime and channel responses are acquired; it does not mechanically grant control over isotope ejection or healing. No new physical capability is established.

@@ -1,0 +1,73 @@
+"""Reanalysis of public, experimentally measured iPAC objective traces.
+
+Values below were transcribed from the public Zenodo CSV text returned by
+web retrieval, not from a downloaded archive. They are third-party empirical
+observations, NOT data from a test of the proposed port-completion method.
+Source: Guillamon, Zenodo 17314682, version 1 (10 October 2025).
+"""
+from pathlib import Path
+import json
+import numpy as np
+
+ROOT=Path(__file__).resolve().parent
+SOURCES={
+ 'CPA':'https://zenodo.org/records/17314682/files/fig2CPA(in-situ).csv?download=1',
+ 'TMT':'https://zenodo.org/records/17314682/files/fig2TMT(in-situ).csv?download=1',
+ 'Invisibility':'https://zenodo.org/records/17314682/files/fig2Invis(in-situ).csv?download=1'
+}
+DATA={
+ 'CPA':[
+ .41790366488268493,.4221840701758093,.4349384669568619,.47686423391484434,
+ .9585096590649262,.3388297774349892,.5542097288034914,.9191412782535582,
+ .9603317056345357,.9619950394747608,.9659369550648392,.8998556736350989,
+ .9716858409811876,.9722668962929361,.9773282483589268,.7353650738333941,
+ .9705113603586415,.978846494868066,.9806521850906544,.9919598477537678,
+ .39394877400341943,.9795569731270781,.9946711155831636,.944155673492326,
+ .9973107601702523,.9977902817026982,.9911787443385337,.9981111517491307,
+ .9979395775604819,.9981304427328949],
+ 'TMT':[
+ .3997650708491149,.6403928118890019,.3754431285464388,.637865169159152,
+ .6431386501479495,.6450240256043605,.6622913237192498,.6295856309800734,
+ .6853303869048731,.8417842482996017,.8232561613458163,.846464571508788,
+ .8347299061974653,.8561076215911364,.8720348915889056,.8731139006142735,
+ .872483247091178,.8730473537356442,.8731482573187769,.8731515563912966,
+ .8731665767345637,.873115893864116,.8730709286387957,.873081996500969,
+ .8730921388515245,.8730148905064727,.8730625099221704,.8730480351668811,
+ .8730463544316542,.8730323725963569,.8730752743216028,.8730473333376901,
+ .8730586000393132,.873081798548066,.8731048224614301,.8731069138769209,
+ .873132385680706,.873096085152631,.8731364456034135,.8730945170484933,
+ .873093035930464],
+ 'Invisibility':[
+ 2.6505772581223934,.08586986496249807,.5798122024141459,.231824441435468,
+ .012386939926155752,.00599256706032762,.17639129389771246,.0015139009541424537,
+ .0012831130489115463,.0002997141800823661,.025952281622803032,.0004949478199204576,
+ .0002872203943377139,.00026584624058846693,.0001492847324645831,.002539715366592533,
+ 6.916691221459678e-5,.038399571294511686,.0005776945518613345,5.323224401217526e-5,
+ 1.3605004431430784e-5,8.277004180734239e-5,1.109328911834653e-5,1.0741580958747764e-5,
+ 1.1665582956771473e-5,1.0847930810431482e-5,1.0479270556221618e-5,1.0475699552668367e-5,
+ 1.7449134637017367e-5,1.7415652268824244e-5,1.7100552244291335e-5,1.724601180870135e-5,
+ 1.8093618665037766e-5,1.741816943864712e-5,1.7726362257906512e-5,1.7782244596341493e-5,
+ 1.6796726156290744e-5,1.6641488738687232e-5,1.6596981591795566e-5]
+}
+
+def main():
+ result={'status':'Third-party experimental data; proposed extension NOT validated',
+         'sources':SOURCES,'objective_traces':DATA,'summaries':{}}
+ for name,seq in DATA.items():
+  a=np.array(seq);maximize=name!='Invisibility'
+  j=int(np.argmax(a) if maximize else np.argmin(a))
+  result['summaries'][name]={'logged_rows':len(a),'first':float(a[0]),
+    'last':float(a[-1]),'best':float(a[j]),'best_row_1indexed':j+1,
+    'final_over_initial':float(a[-1]/a[0])}
+ late=np.array(DATA['TMT'][-8:])
+ result['TMT_near_fixed_control_rows_34_to_41']={
+     'n':len(late),'mean':float(late.mean()),'sample_sd':float(late.std(ddof=1)),
+     'range':float(late.max()-late.min()),
+     'interpretation':'Descriptive variability only. Neither independent samples '
+       'nor a stationary unbiased noise model has been established. This is not '
+       'a calibration of local voltage/phase or port-response measurement noise.'}
+ result['invisibility_last_over_best']=float(DATA['Invisibility'][-1]/min(DATA['Invisibility']))
+ (ROOT/'empirical_results.json').write_text(json.dumps(result,indent=2))
+ print(json.dumps({k:v for k,v in result.items() if k!='objective_traces'},indent=2))
+
+if __name__=='__main__':main()

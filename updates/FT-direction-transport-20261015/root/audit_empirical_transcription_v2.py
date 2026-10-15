@@ -1,0 +1,10 @@
+from pathlib import Path
+import json,hashlib,csv,importlib.util
+R=Path(__file__).resolve().parents[1];p=R/'sources/closure/empirical_analysis.py';spec=importlib.util.spec_from_file_location('producer_empirical',p);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);items=[]
+for key,name,md5 in [('CPA','fig2CPA(in-situ).csv','9024841d1f015c294ccaa52b89bc57ed'),('TMT','fig2TMT(in-situ).csv','99cce4f39f6fd0b6691b6e4bcb8f713d'),('Invisibility','fig2Invis(in-situ).csv','869fb11199cef5354f5d6bd7854531cc')]:
+ f=R/'acquired/empirical'/name;b=f.read_bytes();assert hashlib.md5(b).hexdigest()==md5
+ rows=list(csv.reader(b.decode().splitlines()));values=[float(x[1]) for x in rows[1:] if x];expected=m.DATA[key];assert values[:len(expected)]==expected
+ omitted=values[len(expected):];assert omitted==([] if key!='Invisibility' else [1.7068097484292658e-5])
+ items.append(dict(objective=key,path=str(f.relative_to(R)),source_md5=md5,sha256=hashlib.sha256(b).hexdigest(),raw_rows=len(values),transcribed_rows=len(expected),all_transcribed_values_match_prefix=True,omitted_final_values=omitted,raw_first=values[0],raw_last=values[-1],raw_best=min(values) if key=='Invisibility' else max(values),raw_final_over_best=values[-1]/(min(values) if key=='Invisibility' else max(values)),column=rows[0][1]))
+r=dict(status='TRANSCRIBED_PREFIX_MATCHES; ONE FINAL RAW ROW OMITTED',scope='All110 transcribed values match the primary CSV prefix, but raw invisibility has40 rows, not39. Raw final1.7068097484292658e-5 replaces the producer39th-row endpoint1.6596981591795566e-5 for full-log descriptions. This is a source-data correction, not validation of port-completion physics or noise.',files=items,source_script_sha256=hashlib.sha256(p.read_bytes()).hexdigest(),script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),prior_failure='audit_empirical_transcription.py exact full-row equality failed and is retained with EMPIRICAL_TRANSCRIPTION_FIRST_FAILURE.json')
+(R/'root/EMPIRICAL_TRANSCRIPTION_AUDIT.json').write_text(json.dumps(r,indent=2)+'\n');print(json.dumps(r,indent=2))

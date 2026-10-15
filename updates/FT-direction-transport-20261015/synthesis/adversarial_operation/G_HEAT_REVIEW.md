@@ -1,0 +1,119 @@
+# Exact compensated heat certificate for G: independent analytic reconstruction
+
+Date: 2026-10-15. This review reconstructs a newly routed specific-polynomial proof, including an independent exact verifier. It is an internal mathematical result and scoped same-team review. External correctness, historical novelty and physical capability remain UNKNOWN. No full left-invariant quartic-cone implication is inferred.
+
+Certificate read: `workers/nonlinear_qc/G_EXACT_HEAT_CERTIFICATE.json`, SHA256 **4004e6144335150a5b3569dfb7b4d0b836f2776497c271e7f31b2faf52830000**. The producer verifier was read to interpret its conventions; it was not imported or executed. The independently authored `verify_G_certificate_adversarial.py` reconstructs the certificate directly from JSON with Fraction arithmetic and SymPy polynomial identities; all five check groups pass. No acquisition/search/numerical candidate is a proof premise.
+
+## 1. Exact statement and matrix convention
+
+For A=[[a,b],[c,d]], set u=a²+c², v=b²+d² and j=ad−bc. The specific homogeneous quartic is
+
+    G(A)=3(u+v−2j)²+(35/24)u²+j²−(5/2)ju.
+
+The certificate supplies a global polynomial identity and PSD rational Gram implying that G is quasiconvex: for every B∈R²ˣ², bounded domain Ω, and φ∈W0¹,⁴(Ω;R²),
+
+    ∫Ω G(B+Dφ) ≥ |Ω|G(B).
+
+Here W0¹,⁴ is the closure of compactly supported smooth functions. A Lipschitz boundary is sufficient but is not needed for the zero-extension argument with this definition. Smooth compact affine-Dirichlet tests in particular satisfy the ordinary quasiconvexity inequality.
+
+## 2. What exact algebra was checked
+
+The certificate orders the matrix entries as (a,b,c,d), and the compatible second jets as
+
+    h=(φ1_xx,φ1_xy,φ1_yy,φ2_xx,φ2_xy,φ2_yy).
+
+Thus, for A=B+Dφ,
+
+    A_x=(h₀,h₁,h₃,h₄), A_y=(h₁,h₂,h₄,h₅).
+
+The repeated mixed derivatives are essential; arbitrary unrelated first jets of a matrix field would not supply this identity. Let Z have entries A_i h_k with the A index outermost. The exact identity is
+
+    ZᵀQZ = d₁ D²G(A)[A_x,A_x] + d₂ D²G(A)[A_y,A_y]
+               + Ω_A(A_x,A_y),
+    d₁=4897/5000, d₂=5103/5000.
+
+Both diffusion coefficients are positive. Every coefficient of the complete polynomial difference was checked to vanish, with the correct displayed **plus** sign of Ω. The full rational24×24 Q equals basis·R·basisᵀ at all576 entries. Exact Fraction LDL reconstruction gives18 strictly positive pivots for the18×18 R, so Q is PSD. This checks positivity algebraically rather than on sampled A or jets.
+
+Ω is a two-form on matrix space R⁴, written Ω=Σ_(i<j) Ω_ij(A)dA_i∧dA_j with homogeneous quadratic coefficient polynomials. All four closedness identities were independently checked:
+
+    ∂iΩ_jk − ∂jΩ_ik + ∂kΩ_ij=0,  i<j<k.
+
+The independently formed polynomial one-form α has
+
+    α_i(A)=(1/4)Σ_j A_j Ω_ji(A).
+
+All six coefficient identities dα=Ω were also checked. This explicit primitive avoids any topological or local-patch qualification. In geometric terms, Cartan's formula gives d(i_EΩ)=4Ω: the coefficient degree2 plus two-form degree2 gives the factor4. Using degree2 alone would give an incorrect factor.
+
+## 3. Why the correction integrates to zero, including nonzero B
+
+For a smooth periodic φ, the matrix field A=B+Dφ is periodic even though Bx+φ itself has an affine part. Pullback commutes with exterior differentiation:
+
+    Ω_A(A_x,A_y) dx∧dy = A*Ω = d(A*α).
+
+A*α is a globally defined periodic one-form. Its integral derivative vanishes on the torus, so
+
+    ∫ Ω_A(A_x,A_y)=0.
+
+This holds for every constant B. It does not assume a zero-background test, a zero mean for φ, a null target phase, or pointwise vanishing of the correction. The global primitive is important: no potential singularity or chart boundary is crossed by the matrix field.
+
+Integrating the algebraic identity therefore gives
+
+    ∫ [d₁D²G(A)[A_x,A_x]+d₂D²G(A)[A_y,A_y]] = ∫ZᵀQZ ≥0.
+
+## 4. Heat monotonicity and long-time limit
+
+Evolve each real component of φ on the torus by the fixed linear anisotropic heat equation
+
+    ∂tφ=d₁φ_xx+d₂φ_yy.
+
+This evolution is globally well defined for smooth periodic initial data and remains a gradient-compatible map. Since B is constant, A_t=d₁A_xx+d₂A_yy. Differentiating E(t)=∫G(A(t)) and integrating by parts on the torus gives
+
+    E′(t)=−∫ [d₁D²G(A)[A_x,A_x]+d₂D²G(A)[A_y,A_y]]
+          =−∫ZᵀQZ ≤0.
+
+The derivative sign is consistent with the certificate's plus Ω: its integral is zero. G need not be globally convex or nonnegative pointwise. The heat flow is a prescribed linear comparison, not the nonlinear gradient flow of G, so no global coercivity or nonlinear-flow existence assumption is hidden here.
+
+Because d₁,d₂>0, all nonconstant Fourier modes of φ decay. Thus Dφ(t)→0 uniformly for smooth input and E(t)→|T²|G(B). Monotonicity yields E(0)≥|T²|G(B) for every smooth periodic φ and every B.
+
+## 5. Rough tests and affine Dirichlet boundaries
+
+Periodic smooth density gives the same inequality for φ∈W1,4(T²). Indeed quartic growth gives
+
+    ∥G(A_n)−G(A)∥₁ ≤ C(∥A_n∥₄+∥A∥₄)³∥A_n−A∥₄,
+
+so strong W1,4 approximation passes the energy exactly. One may also start the heat flow at positive time and use strong heat-semigroup continuity at t=0; no initial Hessian integrability beyond W1,4 is required.
+
+For a bounded Ω and φ∈W0¹,⁴(Ω), extend φ by zero to a larger periodic rectangle containing Ω strictly inside it. This is a W1,4 periodic map because W0¹,⁴ is defined by compact-support approximation. Its gradient is zero almost everywhere outside Ω. Applying the periodic inequality on the larger rectangle cancels the outside contribution |rectangle\Ω|G(B), leaving the claimed Ω inequality.
+
+The intermediate heat flow need not preserve φ=0 on the original Ω boundary. It is run on the enlarged torus, and only the initial extension and final affine field are compared. Directly imposing the original Dirichlet boundary during the same proof would need separate boundary control; the zero-extension proof avoids that unjustified step.
+
+## 6. Exact nonpolyconvexity, with a valid lifted barycenter
+
+Let I=diag(1,1) and J=diag(1,−1). Direct evaluation gives
+
+    G(I)=−1/24, G(J)=1271/24.
+
+Use the following **four** atoms:
+
+    +36I, −36I, each with probability1/2594;
+    +J, −J, each with probability648/1297.
+
+Their total probability is1, their mean matrix is0, and their mean determinant is0, since determinant is even under sign reversal in dimension2 and det(36I)=1296, det(J)=−1. Homogeneity gives their mean G as
+
+    [36⁴(−1/24)+36²(1271/24)]/(1+36²)=−1350/1297<0=G(0).
+
+If G(A)=g(A,detA) with convex g, Jensen at the lifted mean (0,0) would force0≤−1350/1297, a contradiction. Thus G is not polyconvex. The symmetrized four-atom law is essential; the two unsymmetrized atoms alone do not have the required matrix/determinant barycenter.
+
+This law is not claimed to be a compatible gradient Young measure. Its impossibility under the newly proved quasiconvexity inequality is not a contradiction: polyconvex Jensen tests a larger unconstrained lifted class.
+
+## 7. Scope and continuation
+
+The finite rational certificate plus the complete analytic argument supply an internally exact all-background quasiconvexity proof for this **specific G**, and a finite lifted Jensen witness supplies its nonpolyconvexity. They do not prove the unrestricted rank-one-convex⇒quasiconvex implication or the full nine-coefficient left-invariant cone. Historical priority requires separate primary-literature work; no novelty conclusion was inferred from the certificate search.
+
+The actual scalar-minimized Schur countermodel for the same G remains consistent: nonconvex reduced curvature and finite decreases above a positive affine gap can coexist with global quasiconvexity. Internally, another negative compatible G gap search would now contradict this pinned certificate rather than address an open G obligation. The broader cone and physical acquisition tasks remain separate.
+
+## 8. Authored proof subsequently read
+
+After the independent reconstruction above, the authored `G_QUASICONVEXITY_PROOF.md` was supplied and read in full at SHA256 **b76043d537db24553f564b4652dc83d89f8fccb44d7eb04b641e616535075a1b**. Its real-space heat proof is also valid: E(t)=∫R²[G(B+Dφ_t)−G(B)−DG(B):Dφ_t] is finite; φ_t and the pullback primitive are Schwartz for t>0; the anisotropic heat L1→Lp decay for p=2,3,4 and quartic Taylor growth give E(t)→0. Strong continuity recovers E(0), and compact perturbations have zero integrated linear term. Its periodic and W0¹,⁴ passages agree with the proof above.
+
+The acoustic-boundary scope is substantive: G(I+te12)=−1/24+3t⁴. Since |I+te12|⁴=4+4t²+t⁴, G−ε|A|⁴ has rank-one second derivative−8ε at(I,e12) for every ε>0. Thus no strict quartic quasiconvex-subtraction margin follows, and prior theorems requiring that independent strict premise cannot be transferred merely from this new quasiconvexity result.
