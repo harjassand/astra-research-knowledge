@@ -66,3 +66,6 @@ The proposed route uses a low-transverse-energy slice in the last H units, a mea
 “We obtain an explicit horizon-truncation estimate for the constrained storage values associated with G. The proof quantitatively implements standard cyclodissipative concatenation and turnpike slicing, with a separate treatment of the neutral mean mode.”
 
 Avoid claiming a new general turnpike principle or a finite evaluation algorithm. A horizon cutoff alone does not discretize the remaining infinite-dimensional variational problem, particularly given the supplied report’s finite-Fourier obstruction.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

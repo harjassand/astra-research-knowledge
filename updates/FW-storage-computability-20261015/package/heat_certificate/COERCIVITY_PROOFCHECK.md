@@ -8,7 +8,7 @@
 
 This holds for W¹,⁴₀ perturbations on bounded Lipschitz domains, periodic W¹,⁴ perturbations on every rectangle, and zero-endpoint W¹,⁴ perturbations on finite-width periodic strips. The constant is independent of the periods and strip width. It does not assert quasiconvexity of G−γ|A|⁴ or a quadratic uniform-convexity estimate.
 
-This review reads §§1–3 of `/workspace/shared/new_capital_operations/SOURCE_QC_REPORT.md`, uses the original Heat18 certificate already independently replayed, and inspects the external theorem directly. It does not use the author's numerical results or execute their scripts. The new `coercivity_replay.py` reuses only the polynomial/matrix routines and base checks in this review's own `replay.py`; it deliberately stops before the original receipt writer. Previously delivered checker files are preserved.
+This review reads §§1–3 of [source coercivity report](../storage_horizon/SOURCE_QC_REPORT.md), uses the original Heat18 certificate already independently replayed, and inspects the external theorem directly. It does not use the author's numerical results or execute their scripts. The new `coercivity_replay.py` reuses only the polynomial/matrix routines and base checks in this review's own `replay.py`; it deliberately stops before the original receipt writer.
 
 ## 1. Exact subtraction, checked independently
 
@@ -99,3 +99,6 @@ Combining the two inequalities yields
 The checker independently verifies each rational constant, including κ, 625/4, and γ. Run `python coercivity_replay.py` from any directory; it reads the preserved certificate, uses only this review's code and Python's standard library, and writes `coercivity_receipt.json`. No author script, package install, remote execution, or source-worktree write is involved.
 
 The remaining dependencies are standard Sobolev density/gluing, heat smoothing, periodic averaging, and the stated primary-source Beurling theorem. They have been matched to the required hypotheses above. This closes the requested γ-coercivity dependency; it does not independently validate every later storage or topology claim in the source report.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

@@ -86,3 +86,6 @@ The unadjusted action differs from the adjusted action by the exact endpoint aff
 The endpoint extension budget M still needs certification. Numerical constants at the cut do not provide a universal numerical endpoint-extension constant that was never supplied. The theorem gives a horizon once that budget is known, or uniformly on a ball with a certified common budget.
 
 Finally, effectiveness is not practicality. With B=0 and extension gradient L4 norm one, E_*=600,000,000. The stated sufficient horizons of roughly 3.13e19 for error 0.01 and 6.73e20 for error 0.001 are consistent with the exact formula and are astronomically large. This removes the duration-truncation obstruction in principle. It neither supplies effective spatial discretization or global optimization nor contradicts the source's uniform finite-Fourier observation obstruction.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

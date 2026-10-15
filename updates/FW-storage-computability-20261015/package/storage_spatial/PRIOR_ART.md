@@ -1,6 +1,6 @@
 # Primary-source comparison: effective storage approximation
 
-15 October 2026. Comparison with `THEOREM.md` and `FINITE_HORIZON_STORAGE.md`. This is a targeted literature comparison, not a historical novelty or priority determination. No source code was installed or executed for this research.
+15 October 2026. Comparison with `THEOREM.md` and [finite-horizon proof](../storage_horizon/FINITE_HORIZON_STORAGE.md). This is a targeted literature comparison, not a historical novelty or priority determination. No source code was installed or executed for this research.
 
 ## Conclusion
 
@@ -89,3 +89,6 @@ This is a uniform one-sided action approximation of relevant near-minimizers, no
 - Qualitative Gamma convergence, density and compactness cannot be used as effective error moduli without additional argument or represented data.
 - The finite-horizon truncation theorem and spatial reduction perform separate jobs. The former does not eliminate the latter's necessity.
 - The safest historical conclusion is that these primary sources establish much of the surrounding machinery, while their stated theorems do not directly supply this particular buffered exterior-subtraction certificate. Search absence establishes no novelty or priority.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

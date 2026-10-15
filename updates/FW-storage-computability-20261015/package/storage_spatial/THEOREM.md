@@ -1,6 +1,6 @@
 # Buffered global-heat finite-dimensionalization of storage
 
-Internal deduction, 15 October 2026. Conditional on the exact G global periodic anisotropic heat monotonicity and coercivity stated in SOURCE_QC_REPORT.md. No attainment or interior gradient-tail budget is used. A separate same-team challenge checked the estimates and interval directions; this is not external review.
+Internal deduction, 15 October 2026. Conditional on the exact G global periodic anisotropic heat monotonicity and coercivity stated in [source coercivity report](../storage_horizon/SOURCE_QC_REPORT.md). No attainment or interior gradient-tail budget is used. A separate same-team challenge checked the estimates and interval directions; this is not external review.
 
 ## Main operation
 
@@ -122,15 +122,15 @@ The result is effective, not computationally practical: P, 1/s, K, and the grid 
 
 Mean-zero U is not necessary for this fixed-endpoint proof. No quotient endpoint or quasi-periodic heat argument is needed. The stronger horizon bound for free endpoint means could be added separately, but is not presently a premise.
 
-The local analytic Heat18 proof was read at ../critical_storage_construction/G_QUASICONVEXITY_PROOF.md, especially §§3–4. It explicitly covers G itself and torus heat, though its header has an older repository pin. The independent same-team Fraction-only reconstruction in ../heat_monotonicity_verification/PROOFCHECK.md verifies all 210 identity coefficients, Q=C S C^T, rank 18, closedness, primitive, and all 18 positive LDL pivots. The byte-hash difference is a terminal-newline difference, as reconciled there. The present spatial deduction does not execute downloaded code, and external review remains unknown. The certified exact diffusion ratio is used throughout; arbitrary separately chosen diffusivities are not asserted.
+The local analytic Heat18 proof was read at [existing Heat18 proof](../../../../updates/FT-direction-transport-20261015/synthesis/nonlinear_qc/G_QUASICONVEXITY_PROOF.md), especially §§3–4. It explicitly covers G itself and torus heat, though its header has an older repository pin. The independent same-team Fraction-only reconstruction in [Heat18 proof audit](../heat_certificate/PROOFCHECK.md) verifies all 210 identity coefficients, Q=C S C^T, rank 18, closedness, primitive, and all 18 positive LDL pivots. The byte-hash difference is a terminal-newline difference, as reconciled there. The present spatial deduction does not execute downloaded code, and external review remains unknown. The certified exact diffusion ratio is used throughout; arbitrary separately chosen diffusivities are not asserted.
 
 
-The separate same-team audit is ../storage_spatial_audit/INDEPENDENT_HEAT_AUDIT.md. It checks the kernel normalization, all displayed error bounds, exterior cancellation, coefficient radius, and the directions of the final two-sided interval. It identifies no substantive obstruction.
+The separate same-team audit is [spatial audit](../spatial_audit/INDEPENDENT_HEAT_AUDIT.md). It checks the kernel normalization, all displayed error bounds, exterior cancellation, coefficient radius, and the directions of the final two-sided interval. It identifies no substantive obstruction.
 
 ## Terminating selection procedure
 
 Given target interval width epsilon>0:
-1. Obtain a certified horizon gap hN<epsilon/4 using FINITE_HORIZON_STORAGE.md and take N>=1. Use an independently known full-endpoint entry budget to set R for finite-horizon near-minimizers.
+1. Obtain a certified horizon gap hN<epsilon/4 using [the finite-horizon proof](../storage_horizon/FINITE_HORIZON_STORAGE.md) and take N>=1. Use an independently known full-endpoint entry budget to set R for finite-horizon near-minimizers.
 2. Choose rational delta in (0,1] with delta Cpad<epsilon/16 (if Cpad=0 any sufficiently small rational delta works). Construct W and all displayed budgets.
 3. Search dyadic s decreasing to zero until Eext+DIF_L(Rtot,h0)<epsilon/8, using outward numerical enclosures of the Gaussian sums. Termination follows from q(s,delta,P)->0 and e0,e1->0.
 4. Search integer K increasing until DIF_L(Rtot+h0,t0)<epsilon/16. Gaussian tails give a terminating certified test. Then spatial_error<epsilon/4.
@@ -141,3 +141,6 @@ All strict tests can use harmless slack and monotonically tightened certified up
 ## Concrete cost instantiation
 
 `RESOURCE_RECEIPT.md` instantiates the construction at U=(cos y,sin y), B=0, target enclosure width 0.01. Its newly written Fraction-only checker passes 33 inequalities. A sufficient selection uses N=10^22, delta=10^-6, s=10^-40, K=10^44 and coefficient-grid spacing 10^-640. The real dimension is approximately 8×10^88, with sufficient grid cardinality having base-10 logarithm less than approximately 5.296×10^91 (the exact bound is in the receipt). No grid objectives or storage values were computed. This explicit exhaustive construction is overwhelmingly impractical; its cost is not a lower bound on other algorithms.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

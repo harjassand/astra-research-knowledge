@@ -1,6 +1,6 @@
 # Astra storage computability: exact handoff
 
-15 October 2026. New deductions built from the main-repository PR96 proof at a6190a1083f688a7e4bf64adbc5244ef150ff2c4. Mathematical capability only; no physical technology, historical-priority clearance or external expert review is established. No canonical research files were changed.
+15 October 2026. New deductions built from the main-repository PR96 proof at a6190a1083f688a7e4bf64adbc5244ef150ff2c4. Mathematical capability only; no physical technology, historical-priority clearance or external expert review is established.
 
 ## Capability
 
@@ -24,7 +24,7 @@ The construction uses global periodic heat monotonicity. It never assumes that h
 
 - Full horizon and spatial proofs, including constants and all finite/infinite-domain distinctions.
 - Separate proof challenges of the horizon surgery and buffered heat argument.
-- A newly written Fraction-only checker reconstructs the underlying Heat18 certificate: 210 polynomial coefficients, closedness, primitive, Gram factorization and 18 positive LDL pivots. Root replay passed. The apparent source-hash discrepancy is exactly one extra terminal newline.
+- A newly written Fraction-only checker reconstructs the underlying Heat18 certificate: 210 polynomial coefficients, closedness, primitive, Gram factorization and 18 positive LDL pivots. Source-reported replay passed. The apparent source-hash discrepancy is exactly one extra terminal newline.
 - A separate exact resource checker passes 33 inequalities for a concrete sufficient parameter choice at target width 0.01.
 
 These are proofs and computational receipts, not independent experimental validation. Audit labels alone are not evidence; the supporting arguments and arithmetic are included.
@@ -56,10 +56,14 @@ The decisive next test is a nontrivial storage interval from a fully executed, m
 ## Contents and replay
 
 - heat_certificate/replay.py: exact finite certificate replay (standard library only).
+- heat_certificate/coercivity_replay.py: exact rank-two subtraction, rotation average and gamma constants (standard library only).
 - storage_spatial/verify_resource_bounds.py: exact sufficient-parameter accounting (standard library only).
 - storage_horizon/FINITE_HORIZON_STORAGE.md and HORIZON_AUDIT.md.
 - storage_spatial/THEOREM.md and spatial_audit/INDEPENDENT_HEAT_AUDIT.md.
 - Primary-source comparisons and pinned receiving proofs.
 - storage_horizon/ROBUST_STORAGE_SIGN.md: separate finite sign certificate under a paid endpoint-tail envelope; it does not evaluate storage.
 
-Run the two replay scripts from their own directories if their local file lookups require it. No downloaded author executables, compiled binaries or private assistant notes are included.
+Run all three scripts with Python 3 from any working directory; each resolves its inputs relative to its own file. They write the named receipt beside the script. The integration validator replays them in a temporary copy and compares the receipts. No third-party executable is required.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

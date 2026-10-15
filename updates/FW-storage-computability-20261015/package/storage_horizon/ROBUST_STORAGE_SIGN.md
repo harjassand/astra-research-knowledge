@@ -1,6 +1,6 @@
 # A bounded operation unlocked by the PR96 proof
 
-Pin: harjassand/astra-research-knowledge a6190a1083f688a7e4bf64adbc5244ef150ff2c4. PR95 is a separate OPEN DRAFT (head b83009076c11422c1777cfa8049f6bb12cf1e47e), not merged capital at this pin.
+Pin: harjassand/astra-research-knowledge a6190a1083f688a7e4bf64adbc5244ef150ff2c4.
 
 ## Result first
 
@@ -24,7 +24,7 @@ updates/FU-regularization-clock-pressure-20261015/package/workers/capital_method
 Receiving check:
 updates/FU-regularization-clock-pressure-20261015/package/workers/capital_method/ANISOTROPIC_RECEIVING_AUDIT.md
 
-These exact analytic texts were read, including the gluing/mean treatment and the complete final 481-line author report. The underlying 1668-line Heat18 certificate was not independently reverified in this task. The source team reports exact algebra checks; their report is not an external mathematical review.
+These exact analytic texts were read, including the gluing/mean treatment and the complete final 481-line author report. The underlying 1668-line Heat18 certificate was not independently reverified during the original sign derivation. The source team reports exact algebra checks; their report is not an external mathematical review.
 
 ## 1. Finite decision from explicit paths, not a finite value solver
 
@@ -98,4 +98,6 @@ A useful next bounded construction is an interval Fourier certificate on synthet
 - No arbitrary-duration optimizer, certified horizon truncation, or general finite value algorithm follows from coercivity or Lipschitz continuity.
 - Strong continuity alone does not supply an effective modulus; this source DOES supply a modulus, but the generic trace-extension constant needs specification. The construction above avoids that constant by proving a concrete spectral extension bound.
 - No physical energy model, external correctness or novelty clearance is supplied.
-- No canonical repository changes, outreach, source code execution from downloads, or spending occurred. This local derivation and rational arithmetic are the only produced artifact.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

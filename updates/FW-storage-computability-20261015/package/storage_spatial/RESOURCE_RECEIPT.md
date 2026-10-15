@@ -98,3 +98,6 @@ If the full grid were eventually evaluated with interval width at most 0.001 per
 `verify_resource_bounds.py` is newly written standard-library Fraction/integer arithmetic. It checks the constants, exponent majorants, horizon fourth-power inequality, coefficient radius, all final error comparisons, dimension, and cardinality bound. The analytic Gaussian inequalities are proved above; the checker checks their rational numerical instantiation, not their formal analytic proof.
 
 These choices intentionally leave wide slack and are not optimized. They demonstrate that the spatial closure is effective rather than merely a density argument. They also make clear that this particular certified exhaustive construction is not a usable numerical storage solver at accuracy 0.01.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

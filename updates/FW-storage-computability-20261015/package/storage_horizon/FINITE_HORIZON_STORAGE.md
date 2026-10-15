@@ -131,7 +131,6 @@ The extension must preserve zero mean, as the source mollifier extension does. T
 - No nonzero profile is assumed to have zero stationary cost.
 - The theorem supplies a computable horizon from a certified endpoint extension budget and tolerance, and therefore removes one previously stated obstruction to value evaluation.
 - It does not certify global optimization over W^(1,4) at that horizon, give an effective spatial discretization error on the whole critical ball, or defeat the finite-Fourier observation counterexamples.
-- No canonical files, external systems, or source proofs were modified.
 
 ## Numerical scale: effectiveness is not practicality
 
@@ -145,7 +144,7 @@ These conservative bounds are astronomically large. They establish quantitative 
 
 ## Stronger computational representation: free terminal mean
 
-The following is a different finite problem, proposed by the coordinating agent and checked here. It gives a substantially better horizon approximation to the same infinite-horizon value.
+The following is a different finite problem, stated and checked here. It gives a substantially better horizon approximation to the same infinite-horizon value.
 
 Let U be a centered representative and define
 
@@ -195,3 +194,6 @@ For the original unadjusted required supply at an actual known endpoint U_actual
 DG(B):(m_actual|0)+q_B^N([U_actual]).
 
 The affine term is evaluated at the specified physical mean. It must NOT be optimized over the free d in q_B^N, because that would define a different quantity and can destroy the lower bound. The finite surrogate uses the adjusted density f_B throughout.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

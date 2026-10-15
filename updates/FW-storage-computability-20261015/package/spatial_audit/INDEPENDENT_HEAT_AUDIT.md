@@ -81,3 +81,6 @@ For rough critical endpoints the algorithm needs a finite-Fourier approximation 
 5. Claim an unrestricted-storage algorithm, not a fixed-horizon algorithm, unless separately proving compression or a fixed-horizon boundary treatment.
 
 No minimum-attainment, convexity of G, weak compactness of minimizing traces, or uniform endpoint finite-observation principle is required or justified.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.

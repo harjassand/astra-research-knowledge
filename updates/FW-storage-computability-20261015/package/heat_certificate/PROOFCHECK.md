@@ -6,7 +6,7 @@
 
 The certified operator is L = (4897/5000)∂xx + (5103/5000)∂yy. The result also holds for a common positive scalar multiple of this operator. This certificate does **not** by itself establish monotonicity for arbitrary independently chosen diffusion coefficients, or for a heat flow with nonperiodic boundary conditions on a bounded domain.
 
-Inputs: `../critical_storage_construction/G_QUASICONVEXITY_PROOF.md` and its local JSON certificate. The proof reports repository pin b7cada92d2eb304578be5ed974f1e44b10a89928; this review verifies the supplied local proof and certificate, not provenance against a remote repository. `certificate_as_received.json` preserves the original bytes. `replay.py` is the new checker and `receipt.json` its output. No source author scripts were executed.
+Inputs: [existing Heat18 proof](../../../../updates/FT-direction-transport-20261015/synthesis/nonlinear_qc/G_QUASICONVEXITY_PROOF.md) and its local JSON certificate. The proof reports repository pin b7cada92d2eb304578be5ed974f1e44b10a89928; this review verifies the supplied local proof and certificate, not provenance against a remote repository. `certificate_as_received.json` preserves the original bytes. `replay.py` is the new checker and `receipt.json` its output. No source author scripts were executed.
 
 ## 1. G and its derivatives
 
@@ -93,3 +93,6 @@ which is exactly the hash quoted by the proof. Both supplied local copies have t
 ## Reproduction and limits
 
 Run `python replay.py` from any directory. It uses only Python's standard library, reads the certificate, and writes `receipt.json` next to itself. All arithmetic affecting acceptance is exact. The analytic argument above is a written mathematical check, not a formal proof-assistant verification. No claim of historical novelty, external peer review, arbitrary anisotropy, or validity of a separate storage construction is made. The specific load-bearing global Heat18 monotonicity statement on periodic-gradient fields is established by the verified certificate and the explicit integration argument.
+
+
+Integration evidence status: `source_derived_unreviewed`. Audit verdicts and primary-source reading statements above are attributed to the supplied research, not new external review. This intake replays only its three own exact verification scripts. The conclusion applies to the particular certified Heat18 quartic G, not the full quartic cone, PR97’s newly exposed ROC ray, or general Morrey questions.
