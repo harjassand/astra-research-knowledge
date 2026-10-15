@@ -1,0 +1,169 @@
+# Independent audit: finite-horizon irrational phase probability
+
+Date: 2026-10-15. Scope: the proposed theorem and proof supplied in the audit request, plus a bounded primary-literature comparison. No other campaign worker outputs were read. This audit does not certify novelty or a physical clock application.
+
+**Verdict.** The two proposed bounds prove the claimed asymptotic statement after specifying **fixed `0 < epsilon < 1/4`**. The resolvent argument is valid for arbitrary row-stochastic matrices, including nonnormal and reducible matrices. The upper construction is valid after making its shift orientation and chord weights explicit. If zero error is included, the cube-root statement is false: the exact state complexity is between `T` and `T+1`.
+
+Let `alpha in (0,1)` satisfy `||q alpha|| >= kappa/q` for every integer `q >= 1`, with `kappa > 0`, and put `z = exp(2 pi i alpha)`. Let `n_min(T,epsilon)` be the least positive integer `n` for which there are an `n x n` row-stochastic matrix `P`, a probability vector `mu`, and `f in [0,1]^n` such that
+
+\[
+\max_{0\leq k\leq T}\left|\mu^\top P^k f-\frac{1+\cos(2\pi\alpha k)}2\right|\leq\epsilon.
+\]
+
+Here `T` is an integer, and the model parameters may depend on `T` and `epsilon`. The result is `n_min(T,epsilon) = Theta_{alpha,epsilon}(T^{1/3})` as `T -> infinity`, for each fixed positive `epsilon < 1/4`.
+
+## 1. Resolvent lower bound
+
+For any unit-modulus `z` define
+
+\[
+\delta_n(z)=\min_{1\leq q\leq n}|1-z^q|.
+\]
+
+Assume `delta_n(z)>0`. Normalize any complex vector `v` by `||v||_infinity=1`, choose `i` with `|v_i|=1`, and set `eta=||(zI-P)v||_infinity`. Telescoping and `||P||_infinity=1` give
+
+\[
+|(P^t v)_i-z^t v_i|\leq t\eta.
+\]
+
+For the Markov chain started at `i`, positivity is used in the following step:
+
+\[
+\begin{aligned}
+\mathbb E_i |v(X_t)-z^t v_i|^2
+&=\mathbb E_i|v(X_t)|^2+1
+ -2\operatorname{Re}\bigl(\overline{z^t v_i}(P^t v)_i\bigr)\\
+&\leq 2t\eta.
+\end{aligned}
+\]
+
+Thus, for each `t=0,...,n`, some coordinate `j_t` satisfies `|v_{j_t}-z^t v_i| <= sqrt(2t eta)`. Among these `n+1` coordinates, two coincide, at distinct times `s,t`. Consequently
+
+\[
+\delta_n(z)\leq |1-z^{t-s}|
+\leq \sqrt{2t\eta}+\sqrt{2s\eta}
+\leq \sqrt{8n\eta}.
+\]
+
+Therefore `||(zI-P)v||_infinity >= delta_n(z)^2/(8n)` for every normalized `v`. This proves injectivity and hence invertibility in finite dimension, as well as
+
+\[
+\|(zI-P)^{-1}\|_\infty\leq\frac{8n}{\delta_n(z)^2}.
+\]
+
+There is no need to assume an eigenbasis or invoke a spectral-gap estimate. The coordinate choices need not come from one sample path; the pigeonhole argument only uses their values and their number.
+
+Set `h=2f-1` and `a_k=mu^top P^k h = 2g_k-1`. The finite Fourier sum obeys
+
+\[
+\left|\sum_{k=0}^T z^{-k}a_k\right|
+\leq 2\|(zI-P)^{-1}\|_\infty
+\leq\frac{16n}{\delta_n(z)^2}.
+\]
+
+The factor two follows from the finite geometric-series identity and `||P^{T+1}||_infinity=1`; `||mu||_1=1` and `||h||_infinity<=1`. Approximation of the target gives the complementary estimate
+
+\[
+\left|\sum_{k=0}^T z^{-k}a_k\right|
+\geq (T+1)(1/2-2\epsilon)-\frac{1}{|1-z^2|}.
+\]
+
+Finally, `|1-z^q|=2 sin(pi ||q alpha||) >= 4||q alpha|| >= 4 kappa/n` for `1<=q<=n`. Therefore the exact audited inequality is
+
+\[
+\boxed{n^3\geq\kappa^2\left[(T+1)(1/2-2\epsilon)-|1-z^2|^{-1}\right].}
+\]
+
+For small `T`, the right side may be nonpositive; the asymptotic lower bound holds because `epsilon<1/4` and `z^2 != 1`.
+
+## 2. Matching upper construction
+
+Take a continued-fraction convergent `p/N` with `N>=3`. Define
+
+\[
+\Delta=2\pi/N,\quad d=2\pi|\alpha-p/N|<2\pi/N^2<\Delta,
+\quad s=\operatorname{sign}(\alpha-p/N).
+\]
+
+Use the row-shift convention `(S^a v)_j=v_{j+a mod N}`. Let
+
+\[
+c=\frac{\sin(\Delta-d)}{\sin d+\sin(\Delta-d)},\qquad
+P=cS^p+(1-c)S^{p+s}.
+\]
+
+Both weights lie in `(0,1)`. For `v_j=exp(2 pi i j/N)`, the eigenvalue is
+
+\[
+\lambda=c e^{2\pi i p/N}+(1-c)e^{2\pi i(p+s)/N}=rz,
+\qquad
+r=\frac{\cos(\Delta/2)}{\cos(\Delta/2-d)}\in(0,1).
+\]
+
+The expression is valid for either sign of the convergent error. Since `N>=3`, the denominator is at least `cos(Delta/2)>=1/2`, and
+
+\[
+1-r
+=\frac{2\sin(d/2)\sin((\Delta-d)/2)}{\cos(\Delta/2-d)}
+\leq d(\Delta-d)\leq d\Delta<4\pi^2/N^3.
+\]
+
+With `mu=e_0` and `f_j=(1+cos(2 pi j/N))/2`,
+
+\[
+g_k=\frac{1+r^k\cos(2\pi\alpha k)}2,
+\qquad |g_k-p_k|\leq\frac{k(1-r)}2<\frac{2\pi^2T}{N^3}.
+\]
+
+For `T>=1`, take the first convergent denominator `N >= L=(2 pi^2 T/epsilon)^{1/3}`; here `L>3`. Bad approximability supplies the required bounded denominator ratios directly: for successive convergents `p_m/q_m`,
+
+\[
+\kappa/q_m\leq\|q_m\alpha\|
+\leq|q_m\alpha-p_m|<1/q_{m+1},
+\]
+
+so `q_{m+1}<q_m/kappa`. Minimality of the chosen denominator gives `N<L/kappa`. Hence
+
+\[
+n_{\min}(T,\epsilon)<\kappa^{-1}(2\pi^2T/\epsilon)^{1/3},
+\]
+
+which establishes the matching upper exponent. The stochastic matrix is in fact doubly stochastic.
+
+## 3. Zero-error boundary
+
+For irrational `alpha` and integer `T>=1`,
+
+\[
+T\leq n_{\min}(T,0)\leq T+1.
+\]
+
+For the lower bound, suppose an exact realization has `n<=T-1`, and let `chi_P` be its real characteristic polynomial. Cayley-Hamilton gives the order-`n` recurrence on the target prefix at both `k=0` and `k=1`. Since `P` is stochastic, `chi_P(1)=0`. Expanding the target into its three frequencies reduces the two recurrence equations to
+
+\[
+\operatorname{Re}\chi_P(z)=0,\qquad
+\operatorname{Re}\bigl(z\chi_P(z)\bigr)=0.
+\]
+
+As `z` is nonreal, these force `chi_P(z)=0`. This contradicts the resolvent lemma, since irrationality gives `delta_n(z)>0`. For the upper bound, a deterministic path on states `0,...,T`, absorbing at `T`, with readouts `f_j=p_j` realizes the whole prefix. Thus zero-error complexity is linear, not cube-root.
+
+## 4. Exact scope of the quantum comparison
+
+The qubit construction is exact: prepare `|+>`, iterate `U=diag(1,z)`, and make the terminal measurement `|+><+|`. Its acceptance probability is `p_k`. The audited comparison concerns one terminal readout after `k` updates (or separate experiments for different `k`), arbitrary real model parameters, and number of internal states. It does not establish a repeated non-disturbing readout process, a joint output law, or an autonomous physical ticking clock. Parameter precision and implementation costs are outside this state-count theorem.
+
+## 5. Bounded primary-art comparison
+
+The following primary sources were opened and compared with the actual claim. No exact match for the finite-horizon uniform-error `Theta(T^{1/3})` statement was located in this search. That is a bounded-search outcome, **not** a novelty certificate.
+
+| Source | Verified overlap | Difference from the audited statement |
+| --- | --- | --- |
+| [Benvenuti and Farina, *A Tutorial on the Positive Realization Problem* (2004), Example 4 and Theorem 15](https://sites.math.rutgers.edu/~sussmann/papers/res-farina-tutorial-positive-realization.pdf) | Example 4 uses the exact sequence `1+cos[(k-1) phi]` and proves that irrational `phi/pi` precludes any finite positive realization. Theorem 15 uses Karpelevich regions for realization-order lower bounds. | Establishes the infinite-horizon obstruction and the existing realization framework, not the finite-prefix uniform-approximation exponent. The cosine obstruction itself is established prior art. |
+| [Gainutdinova and Yakaryilmaz, *Unary probabilistic and quantum automata on promise problems* (2015), Section 3](https://arxiv.org/html/1502.01462) | Uses an irrational planar rotation in a two-state measure-once QFA with acceptance probability `cos^2(k phi)`; proves a corresponding promise problem has no bounded-error PFA solution. | Qualitative infinite-input separation with a promise. The same qubit mechanism and finite-state classical obstruction are prior art; the paper does not give the audited finite-horizon cube-root bound. |
+| [Johnson and Paparella, *A matricial view of the Karpelevic Theorem* (2017)](https://arxiv.org/abs/1611.06970) | Gives explicit stochastic realizations of eigenvalue-region boundary arcs, and discusses polygons formed from roots of unity. | The upper construction belongs to established stochastic eigenvalue geometry. This source concerns feasible eigenvalues, rather than uniform finite-prefix output approximation for arbitrary nonnormal realizations. |
+| [Chen and Wu, *On the Simulation Cost of Quantum Finite Automata* (2026), Definitions 1–3 and Proposition 4](https://arxiv.org/html/2605.10682) | Studies quantitative PFA simulation of quantum automata; its stated constant-dimensional conversion is relevant to checking an apparent contrary simulation claim. | Its “exact simulation” preserves a strict-cutpoint language, not acceptance probabilities. It does not contradict the audited lower bound and does not supply this approximation theorem. No broader correctness audit of that paper was performed. |
+
+Searches also returned Woods et al., [*Quantum Clocks are More Accurate Than Classical Ones* (2022)](https://doi.org/10.1103/PRXQuantum.3.010319), and Budroni et al., [*Ticking-clock performance enhanced by nonclassical temporal correlations* (2021)](https://link.aps.org/doi/10.1103/PhysRevResearch.3.033051). Their inspected abstracts/model descriptions concern tick-time accuracy and sequential-output clock models; those are different tasks and figures of merit. They are comparators, not evidence of this exponent.
+
+Representative exact and topic searches actually executed included: `irrational rotation state complexity`; `positive realization irrational approximate`; `finite horizon positive realization`; `stochastic matrices approximate eigenvectors`; `Karpelevich resolvent`; `Karpelevich Diophantine`; `cosine Markov cube root`; `irrational stochastic n^3`; `finite automata T^{1/3}`; and arXiv-restricted searches for finite-horizon qubit simulation and stochastic approximation. Several search results were irrelevant. The audit retains no novelty upgrade from the absence of a match.
+
+**Audit status:** the supplied positive-error mathematical theorem is supported by the checked proof, subject to the explicit scope above. Zero error is a separate linear regime. Exact overlap/novelty remains unestablished.
