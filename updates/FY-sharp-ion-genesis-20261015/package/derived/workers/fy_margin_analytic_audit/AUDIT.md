@@ -1,0 +1,103 @@
+# Independent analytic audit: triangular margin and contact-ray compactness
+
+Date: 2026-10-15. Auditor: `fy_margin_analytic_audit`.
+Source W: `/Users/harjas/Documents/ChatGPT/ultra/work/astra-sharp-ion-20261015`.
+Verified source HEAD: `b32943eeb62d0d79929a9e572a344219a785ebf9`.
+Status: independent internal analytic reconstruction; external correctness,
+formal verification, and historical priority remain UNKNOWN.
+
+## Verdict
+
+The triangular-gradient all-affine fourth-order bound is valid with the
+stated constant `alpha(r)/24` on every rectangular torus. The contact-ray
+cubic estimate and the uniform-integrability exclusion are also valid in
+the corrected analytic domain below. They do not prove the general
+all-affine uniform margin.
+
+One local statement needed repair: on R2, the mixed-Hessian lemma cannot
+assume only `f_xx in L2` and `f_yy in L4`. The smooth function `f=xy` has
+both pure derivatives zero and `f_xy=1`. Requiring `D2f in L4`, or the
+equivalent homogeneous class that excludes polynomial mixed terms, repairs
+the claim. The potential used in the cubic argument already has all its
+Hessian entries in L4, so this correction does not break that argument.
+The constructor was notified before this audit was saved. The repaired
+wording and smooth-cutoff passage were subsequently read in the current
+candidate file and are accepted by this audit.
+
+## Findings
+
+1. **Triangular theorem T: supported.** At fixed y, subtracting the x
+   conditional mean leaves a rank-one matrix with fixed target. The mean
+   matrix is rank one with fixed input direction. The two linear Bregman
+   terms cancel at the correct conditional levels. The background in the
+   first step may depend on y because it is fixed during the x integration.
+   No Jensen inequality for general rank-two increments is inserted.
+   The estimate `|w+m|^4 <= 8(|w|^4+|m|^4)` gives exactly `alpha/24`.
+
+2. **Mixed-Hessian torus estimate: supported.** The analytic family
+   `|Dx|^(2z)|Dy|^(2(1-z)) f` has L4 bounds at Re z=0 and L2 bounds at
+   Re z=1. The resulting midpoint exponent is 8/3. Coordinate-axis modes
+   must be removed explicitly; their removal is a bounded conditional
+   expectation projection and does not change `f_xy`. Gaussian damping
+   controls the polynomial imaginary-power norm growth. Two bounded
+   sign/Hilbert multipliers recover `f_xy`. See the complete scalar
+   three-lines argument in `PROOFS.md`.
+
+3. **Whole-plane mixed-Hessian estimate: supported after the domain
+   repair above.** Smooth rectangular Fourier cutoffs give a uniformly
+   bounded approximation. Arbitrary sharp Fourier truncations are not an
+   adequate unexplained replacement. In the downstream application the
+   full Hessian is in L4 and the polynomial ambiguity is absent.
+
+4. **Cubic estimate C1: supported.** With
+   `m=integral(S^2+r(r+2)c^2/3)` and
+   `n=||p||4+||c||4+||z||4`, the exact estimate is
+   `|ell| <= C_r sqrt(m) ||q||4 n` on the fixed torus, and on the whole
+   plane for compact zero-extended gradients. Removing S by the bounded
+   elliptic right inverse preserves compatibility. The mixed-Hessian
+   estimate controls the otherwise problematic cubic `integral p^3`.
+   The perturbation of that cubic is charged at its L2 times L4-squared
+   rate. Merely proving `ell -> 0` would not suffice.
+
+5. **Theorem U: supported.** On one fixed rectangular torus, or for
+   compact gradients supported in one fixed bounded set, normalized L4
+   gradients with uniformly integrable fourth-power densities satisfy
+   `liminf Gap_(t_n I) >= alpha(r)` when `|t_n| -> infinity`. This bound
+   is sharp within that asymptotic scope: a normalized pure y shear has
+   gap exactly alpha at every t. Bounded-gap subsequences first satisfy
+   `m=O(|t|^-2)`. The determinant identity then gives convergence of
+   p,c,z to zero in L2; uniform integrability upgrades it to L4. C1 gives
+   `ell^2/m -> 0`, which is precisely the rate required when completing
+   the affine scalar square.
+
+6. **No unrestricted conclusion.** No estimate here controls arbitrary
+   unbounded affine directions with transverse offsets, fourth-power
+   concentration, or the full affine-minimized residual. Theorem T has a
+   compatibility restriction; Theorem U has both a contact-ray and a
+   uniform-integrability restriction. The general N876 margin gate and
+   sharp-J storage transfer remain open.
+
+## Reading and independence
+
+Read W/AGENTS.md, W/00_START_HERE.txt, the current N867/N876 dossiers,
+N876 `sharp_boundary_coercivity/PROOFS.md` sections 1-2 and 6-9, and the
+candidate `fy_uniform_margin_genesis/PROOFS.md` once it became available.
+The triangular conditional proof, exact cubic expansion, and the
+analytic-family interpolation were reconstructed before that candidate
+file was read. The candidate's determinant identity was then checked and
+used to simplify the compactness presentation.
+
+This audit covers candidate sections 2 and 5-7. It does not adjudicate the
+additional quadratic entropy, metric flux, contact-family symmetry, or
+novelty claims in other sections.
+
+`verify_exact.py` checks the quartic expansion, determinant correction,
+cubic re-expression, scalar rank-one completion, and a sharp pure-shear
+example. Its receipt certifies those algebraic identities only. It does
+not mechanically certify interpolation, the multiplier premises,
+uniform-integrability convergence, or the general analytic proof.
+The independent run passed all eight exact identities under Python 3.14.3
+and SymPy 1.14.0; see `EXACT_RECEIPT.json`.
+
+All new writes are confined to this audit directory. No W source or Git
+write, source publication, or storage/capability claim was made.

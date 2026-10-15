@@ -1,0 +1,303 @@
+# Species-resolved control under hidden ion storage
+
+Status: independently derived conditional mathematics and exact synthetic countermodels. No new membrane measurements, physical demonstration, historical novelty, throughput advantage, or mission achievement established.
+
+Workspace read-only pin: `b32943eeb62d0d79929a9e572a344219a785ebf9` at `/Users/harjas/Documents/ChatGPT/ultra/work/astra-sharp-ion-20261015`.
+
+Scope: adversarial investigation of the supplied `physical_report.txt`, especially time-sharing, electrode inventories, drift, hysteresis, storage, reset, and species-resolved decisions. No other new worker's results were read. No worktree/source/Git changes were made by this worker.
+
+## 1. Findings that survive the adversary
+
+The two-program algebra in the supplied report is correct under its explicit neutral, additive, same-regime hypotheses. Its physical premise remains unacquired. Three sharper statements are available:
+
+1. Bulk solution electroneutrality does not establish neutral membrane flux when external electrode reactions compensate charge. For a generic measured three-species flux, cancelling chloride and cancelling total cation transport are two constraints. Two programs need antiparallel *two-dimensional nuisance vectors*. Opposed chloride transport alone is insufficient.
+2. With both reservoir inventories measured and the total hidden Li/Na inventory bounded by `B`, hidden storage can mimic at most `B/2` of the signed exchange coordinate in one unreset episode. This coefficient is sharp. Measuring only the receiver gives a `B` bound. Repeating oscillations within a bounded excursion does not defeat storage; accumulating isolated output with every make-up/reset flow accounted does.
+3. A complete species/inventory feasibility set gives a sharp, obtainable decision operation in the declared conservation-and-capacity model. Current-only observations cannot resolve the Li/Na exchange direction. Established ion chromatography, elemental analysis, and reaction-specific coulometry already supply the relevant measurement principles. There is an information gain over current-only inference, but no demonstrated advantage over an equally informed mass-balance/linear-program comparator.
+
+A separate exact smooth hysteresis model reproduces the nominal steady responses `(4,2,6)` and `(-1,-2,-3)`, restores its hidden state after every composite cycle, and makes the predicted exchange vanish. Thus a restored terminal state does not, by itself, establish additive switching transport.
+
+## 2. Physical source anchors and their scope
+
+Grossman et al.'s primary preprint explicitly interprets the output current as compensation for unequal K and Cl membrane fluxes via Ag/AgCl reactions. It uses shared Pt counter and Ag/AgCl quasi-reference electrodes; the active membrane has 40 nm pores, 50 micrometre thickness and 0.159 square centimetre exposed area. Appendix A calculates ON-minus-OFF electrical output from late windows rather than integrating a full material cycle. Appendix E reports transients whose decay can exceed the ON duration; degradation required multiple samples. These are source-reported electrical results and experimental cautions, not evidence of measured Li/Na countertransport. [Grossman et al., arXiv HTML v1, sections II, III.2, III.4 and appendices A, B, E](https://arxiv.org/html/2511.20174v1).
+
+The primary Kautz et al. record reports capacitive ratchet pumping and ratchet-driven deionization. The inspected abstract does not establish a Li/Na exchange operation. [Kautz et al., Nature Materials](https://www.nature.com/articles/s41563-026-02511-y), [author manuscript record](https://arxiv.org/abs/2309.00951).
+
+Herman et al. had already proposed same-charge sorting by frequency-dependent reversal, and Herman and Segev modeled ambipolar ratchet pumping. These establish close theoretical prior art. [Selective ratchet model](https://arxiv.org/abs/2202.01429), [ambipolar model](https://arxiv.org/abs/2402.09096).
+
+For an existing species-resolved comparator, Patel et al. measured mixed-salt receiver concentrations with ion chromatography and ICP-MS, computed species flux from concentration change, used steady portions after 60 minutes, and repeated flux experiments in triplicate. Their reported nondetections of Na/Mg are detection-limited findings, not mathematical infinite selectivity. Their solid-state membrane is a different substrate, so its performance is not transferred into this proposal. [Patel et al., Science Advances, methods and results](https://pmc.ncbi.nlm.nih.gov/articles/PMC11870030/).
+
+NIST describes coulometry as measuring substance through reaction-specific electrical charge. Known stoichiometry and controlled interfering reactions are part of the inference. It is an established comparator for electrode/chloride accounting. [NIST primary assay program](https://www.nist.gov/programs-projects/evaluation-independent-high-precision-assay-procedures-high-purity-primary).
+
+Periodic control can produce geometric pump contributions even in models with a recurrent internal state; such mechanisms have extensive prior art. The explicit model below is an independent countermodel, not a novelty claim about geometric pumping. [Sinitsyn and Nemenman, primary geometric pump paper](https://arxiv.org/abs/0705.2057).
+
+## 3. Fix the output and the system boundary
+
+Use `J=(J_Li,J_Na,J_Cl)` for the integrated species transfer across a specified central membrane cut, positive left to right. Use `d_L,d_R` for measured changes of the *external reservoir* inventories after accounting for sampling, volume change and known feed/removal streams. Those are different quantities when the membrane, electrodes, tubing or auxiliary compartments change inventory.
+
+The target membrane transfer is `q e`, where `e=(1,-1,0)` and `q>0`. Let
+
+`A(J)=J_Li+J_Na`, `C(J)=J_Cl`, `X(J)=(J_Li-J_Na)/2`.
+
+Then `J=(A/2+X,A/2-X,C)` and the ideal target is `A=C=0`, `X=q`. The charge coordinate is `z.J=A-C` with `z=(1,1,-1)`. A collected-product target uses reservoir changes instead. It must also specify the final electrode and auxiliary inventories, product isolation, waste and reset.
+
+The same-system inventory must include Li, Na and Cl in both reservoirs; the two membrane halves; pore liquid and adsorption sites; contacts; bridges and reference leakage; dead volumes; every sample and wash; and every collected product. Charge balance additionally includes every other mobile ion and every electrode reaction. pH is an activity measurement, so it cannot by itself bound total proton reaction extent in an unknown buffered/speciating matrix. An elemental assay and ionic-species assay answer different questions; use the former to close conserved Li/Na atoms and the latter to qualify the actual ionic output.
+
+## 4. Exact electrode countermodel
+
+Let `xi_R` be the net Ag oxidation extent at the right output electrode, in moles, for
+
+`Ag + Cl^- -> AgCl + electron`.
+
+For ideal paired Ag/AgCl output electrodes, `xi_L=-xi_R`. Ignoring storage here only to isolate the electrode issue,
+
+`d_R=(J_Li,J_Na,J_Cl-xi_R)`, `d_L=-d_R`.
+
+Electroneutrality of the right reservoir gives
+
+`xi_R=J_Cl-J_Li-J_Na=-z.J`.
+
+Consequently, the reservoirs can remain neutral while `z.J` is nonzero. For arbitrary `q>0` and `alpha`, take
+
+`J=(q,-q,-alpha)`, `xi_R=-alpha`, `xi_L=alpha`.
+
+The measured reservoir output is exactly `(q,-q,0)` on the right and its negative on the left. Chloride nevertheless traverses the membrane and the electrode AgCl inventories change. Counting only reservoir chloride would falsely certify a restored, chloride-silent membrane operation. Coulometry with validated Faradaic stoichiometry can identify this particular electrode extent. Other reactions require their own bounds.
+
+The supplied report already proposes removing the output shunt and requalifying the new configuration. That is a necessary experiment, not a completed inference. Removing the shunt changes the boundary-value problem. The source electrical response cannot simply be imported into the revised apparatus. All remaining current-carrying control ports also need inventory/charge accounting. This report does not assert that an unmeasured side reaction occurred in the published apparatus.
+
+If every nonreservoir charge store is bounded and every Faradaic/leakage path is excluded or accounted, a long integrated zero-net-electrode-charge cycle can enforce neutral *average* membrane transport. Finite-time bounds retain the possible change of stored charge. This supplies a possible route to the source premise; bulk electroneutrality alone supplies none.
+
+## 5. The exact two-program achievable condition
+
+Assume measured integrated responses or repeatable rates `r_1,r_2` concatenate additively. Define the nuisance vector
+
+`b_j=(A(r_j),C(r_j))`.
+
+There is a normalized two-program mixture with the desired nuisance cancellation exactly when
+
+`0` lies in the line segment joining `b_1` and `b_2`,
+
+and the corresponding mixture has positive `X`. If both nuisance vectors are nonzero, they must be antiparallel: their determinant is zero and their dot product is negative. If one is zero, that program may already perform the operation. If both are zero, choose by exchange and cost.
+
+Proof: nuisance cancellation is precisely `lambda b_1+(1-lambda)b_2=0` for `0<=lambda<=1`; the remaining free coordinate is `X`. This is both necessary and sufficient in the stated additive model.
+
+The supplied construction assumes `A=C=S` for each acquired response. Its nuisance vectors therefore lie on one line. For `S_1>0>S_2`,
+
+`lambda=-S_2/(S_1-S_2)`,
+
+`Xbar=(S_1 X_2-S_2 X_1)/(S_1-S_2)`.
+
+The synthetic response pair `(4,2,6)` and `(-1,-2,-3)` gives `lambda=1/3`, `Xbar=2/3`. This algebra survives.
+
+A sharp neutrality challenge is `(4,2,6)` and `(-1,-2,-4)`. Cancelling chloride uses `lambda=2/5` and yields `(1,-2/5,0)`, whose total cation transfer is `3/5`. Cancelling total cation transfer uses `lambda=1/3` and leaves chloride `-2/3`. The nuisance determinant is `-6`, so no two-program weight satisfies both constraints.
+
+This does not refute the source's explicitly neutral theorem. It identifies the extra acquisition obligation created by external electrodes.
+
+## 6. An exact restored-state hysteresis countermodel
+
+Let `h` be a bounded structural/loading coordinate, `0<=h<=1`, and set `kappa=ln(2)`. Under program A, `hdot=-kappa h`. Under program B, `hdot=kappa(1-h)`. Define instantaneous fluxes
+
+`r_A(h)= (4,2,6) + (7/3)e hdot`,
+
+`r_B(h)= (-1,-2,-3) - (7/3)e hdot`.
+
+Each steady-state response is exactly the source's nominal vector. Every instantaneous flux is neutral because `z.e=0`. Run A for one time unit and B for two. In the unique periodic state,
+
+`h_start=6/7`, `h_after_A=3/7`, `h_after_B=6/7`.
+
+The baseline integrated response is `(2,-2,0)=2e`. The A correction integrates to `-e`; the B correction also integrates to `-e`. The actual complete-cycle response is exactly zero. The hidden state returns exactly after every cycle. Neither cation must reverse within an individual block: on this periodic path both cations remain forward under A and backward under B.
+
+This is a finite, smooth, bounded constitutive countermodel. It is compatible with the acquired steady response library and charge conservation. It is not a fitted model of AAO, and no claim is made that those exact coefficients describe a real membrane. Its purpose is logical: steady measurements, even on one specimen, and an apparently restored endpoint do not identify switching transport. The term multiplying `hdot` depends on the program, so its cycle integral is not an endpoint storage difference.
+
+The strongest ways around this countermodel are to measure the full frozen composite directly, or to acquire response bounds for complete macroprograms including their reset from a controlled common state. A purely mass-balanced endpoint does not establish a constitutive memoryless state.
+
+## 7. Sharp storage-robust identified set
+
+Split all hidden stores at the same left/right cut. Let `s_L,s_R` contain stored species amounts and let `(s_L,s_R)` belong to an independently justified compact convex capacity set `K` at both endpoints. For now exclude external species sources; they are added below. Conservation gives
+
+`d_L=-J-(s_L,T-s_L,0)`,
+
+`d_R= J-(s_R,T-s_R,0)`.
+
+The exact identified set is
+
+`T(d)={J : there exist s_0,s_T in K satisfying both equations}`.
+
+For simultaneous measurement-error set `E` and allowed external/reaction contributions `A_ext`, replace `d` by every corrected pair `d_measured-e-a`, with `e in E`, `a in A_ext`. This is a linear feasibility/projection problem when the sets are polytopes. It retains joint inventory correlations and charge/stoichiometric constraints. Independent marginal intervals may be unnecessarily loose; assuming correlations away can be invalid.
+
+This set is sharp in the declared model class: every feasible endpoint pair and `J` has a conservation-compatible hidden explanation. For convex `K`, linear interpolation stays within capacity; nonnegative observed reservoir endpoints permit a nonnegative interpolated reservoir path. Additional independently established kinetic, electrostatic or rate restrictions can shrink the set. Conservation alone cannot.
+
+There is also a closed form for the cation-simplex capacity set used below. For a candidate two-cation crossing vector `J`, stack the required hidden changes as
+
+`v(J)=(-J-d_L, J-d_R)`.
+
+Let `v_+=max(v,0)` and `v_-=max(-v,0)` coordinatewise. The *minimum* total hidden cation capacity needed for this explanation is exactly
+
+`B_required(J;d)=max(sum v_+,sum v_-)= (||v||_1+|sum v|)/2`.
+
+Necessity: positive hidden changes need at least that much final inventory, and negative changes need at least that much initial inventory. Sufficiency: choose `s_0=v_-`, `s_T=v_+`. Therefore the complete endpoint identified set for cations is exactly `{J:B_required(J;d)<=B}`. This retains both reservoirs and all cation-sum residuals, and is sharper than applying separate marginal error allowances. Chloride and auxiliary constraints are appended independently or in a joint capacity polytope.
+
+### 7.1 Both reservoirs give a sharp `B/2` exchange bound
+
+Suppose the total hidden Li/Na inventory across both halves is at most `B`:
+
+`K_B={s>=0 : s_L,Li+s_L,Na+s_R,Li+s_R,Na<=B}`.
+
+Define the observable antisymmetric exchange coordinate
+
+`Qobs=(d_R,Li-d_R,Na-d_L,Li+d_L,Na)/4`.
+
+The true crossing exchange is `X(J)=(J_Li-J_Na)/2`. Substitution gives
+
+`Qobs-X(J)=a.(s_T-s_0)`,
+
+where `a=(1,-1,-1,1)/4` for hidden-coordinate order `(L Li,L Na,R Li,R Na)`.
+
+On `K_B`, `a.s` ranges from `-B/4` to `B/4`. Therefore
+
+`|Qobs-X(J)| <= B/2`.
+
+If the simultaneous assay/external correction radius for `Qobs` is `eta`,
+
+`X(J) >= Qhat - eta - B/2`.
+
+This certifies positive net crossing exchange whenever `Qhat>eta+B/2`, without a model of the storage dynamics or waveform response. It certifies the exchange coordinate only; separate identified bounds on `A(J)` and `C(J)` are still required for pure exchange. If `|A(J)|<=a_tol`, each desired cation direction has a lower bound `Qhat-eta-B/2-a_tol/2`.
+
+### 7.2 Exact storage countermodel and optimality
+
+Let `q=B/2`. Initially store `q` Na on the left and `q` Li on the right. Finally store `q` Li on the left and `q` Na on the right. No species crosses the central cut: `J=0`. Local release/uptake gives
+
+`d_R=(q,-q,0)`, `d_L=(-q,q,0)`.
+
+All visible reservoirs stay neutral, all currents can be zero, the device's *global* Li total and Na total are each unchanged, and its total cation loading is unchanged. Nevertheless the side-resolved hidden inventory changes. Thus neither global elemental restoration nor a zero-current trace excludes the false positive. A fixed set of exchange sites switching Li/Na occupancy is a conservation-compatible physical interpretation of this synthetic model.
+
+Every `0<=q<=B/2` can be mimicked this way. The bound and the strict detection threshold are consequently minimax sharp in this model. The source's proposed `25 nmol` output can be mimicked by a synthetic `50 nmol` hidden cation inventory. No assertion is made about the actual capacity of the proposed membrane. With an exchange-coordinate error radius `2.5 nmol`, an independently justified `B<45 nmol` is sufficient to prove *some* positive net crossing exchange from a measured `25 nmol` signal. Larger desired lower bounds require larger cumulative output or smaller error/capacity bounds.
+
+For exactly balanced endpoint data `d_R=q e`, `d_L=-q e`, the identified projection on true crossing exchange is exactly `[q-B/2,q+B/2]`. For a candidate pure exchange `J=x e`, the preceding formula gives `B_required=2|q-x|`; every point of that interval is attained. The support bound is consequently sharp even after using the full balanced endpoint data.
+
+Using only a receiver exchange coordinate gives coefficients `(1,-1)/2` on receiver storage. The corresponding width is `B`, so both-reservoir accounting improves the worst-case constant by a factor of two under the common total-capacity contract.
+
+### 7.3 General support function and finite repetition
+
+For any observable `Y=u.J+f(s_T)-f(s_0)+error` and storage set `K`, the sharp storage allowance is the width
+
+`width_K(f)=max_K f-min_K f`.
+
+Use this width rather than a guessed per-cycle storage loss. Across repeated cycles without unaccounted reloading, endpoint differences telescope. If total elapsed time is `T`,
+
+`average crossing exchange >= (Qhat_total-eta_total-B/2)/T`.
+
+If `N` runs each deliver observed exchange `q` and each has a deterministic worst-case error `epsilon`, an output threshold is `N(q-epsilon)>B/2`. For `q>epsilon`, the smallest guaranteed integer `N` is `floor[B/(2(q-epsilon))]+1`. Correlated calibration biases do not shrink as `sqrt(N)` without a justified stochastic contract.
+
+For a scalar storage-only null `y_k=s_0-s_k`, `0<=s_k<=B`, the complete noiseless time trace is feasible exactly when `max_k y_k-min_k y_k<=B`, with the initial `y_0=0` included. Proof: choose `s_0` in the nonempty intersection of intervals `[y_k,y_k+B]`. A large *total variation* inside this range can be storage cycling. Cumulative isolated product with all replenishment/return flows accounted is the useful quantity.
+
+The full four-cation trace has a stronger exact null test. Let `d_k` be the cumulative corrected reservoir changes in order `(L Li,L Na,R Li,R Na)`, with `d_0=0`. Under the null of **no crossing at any time**, `s_k=s_0-d_k`. Set `m_i=max_k d_k,i`. The minimum hidden capacity explaining the entire trace is
+
+`B_required,trace=sum_i m_i - min_k sum_i d_k,i`.
+
+Proof: nonnegative stores require `s_0>=m` coordinatewise. Choosing `s_0=m` minimizes every total stored inventory, whose maximum over times is the displayed expression. This is necessary and sufficient; it does not require additive waveforms, stationary rates or a known storage kinetics. With uncertainty, minimize this requirement over the simultaneous data/source uncertainty set; only a minimum exceeding `B` excludes every storage-only explanation.
+
+For an exactly balanced exchange trace `d_k=(-q_k,q_k,q_k,-q_k)`, this simplifies to `2(max q_k-min q_k)`. A held trace reaching both `+q` and `-q` from the same accounted initial system therefore requires `4q` hidden capacity under the no-crossing null, compared with `2q` for a single one-sided excursion. This is a potentially useful finite experiment, although it proves passage across the cut rather than uphill work, retained output, or repeatable device restoration. It must not be confused with simply summing the absolute amounts in arbitrarily many repeated excursions.
+
+Replenishing a store from the feed between outputs can be a real adsorption/regeneration pump. Its incoming material, work, wash and chemical consumption must be counted; it is no longer an explanation by depletion of one fixed initial inventory. Resetting the enriched reservoirs erases the claimed output unless product isolation is included.
+
+## 8. Current-only impossibility and a species-resolved decision
+
+An ideal current channel measures `z.J`. Since `z.e=0`, `J`, `J+q e`, and `J-q e` produce the same integrated current for arbitrary `q` permitted by inventories. The statement holds pointwise for whole current traces. A prescribed voltage waveform or measured input work does not generally identify the missing species direction. Complete work and free-energy accounting can impose thermodynamic bounds, including excluding an uphill closed-cycle output at zero available work; this does not ordinarily give a unique species flux.
+
+Even exact chloride transport does not suffice: the source's two neutral response vectors and the alternative pair `(3,3,6)`, `(-3/2,-3/2,-3)` have identical current and chloride values program by program. The former produces exchange at the nominated weight; the latter produces zero. One additional independent cation measurement resolves this ambiguity when every other charge/source term has been bounded.
+
+More generally a linear target `u.J` is identifiable from exact measurements `M J` on an allowed linear tangent space `V` if and only if `u` annihilates `ker(M) intersect V`. The necessity follows by moving along an invisible direction; sufficiency follows because the target is constant on every measurement fiber. Storage and reaction uncertainty enlarge those fibers to the feasibility set above.
+
+An obtainable decision rule is therefore:
+
+1. Build a simultaneous confidence/uncertainty set for corrected Li, Na and Cl inventory changes on both sides and for all allowed electrode/source terms.
+2. Intersect it with the full mass/charge/stoichiometric equations and conservative hidden-capacity set.
+3. Return INVALID if no physical explanation in the declared model exists. Return CERTIFIED only if **every** feasible `J` satisfies the predeclared output specification, for example `J_Li>=q_min`, `J_Na<=-q_min`, `|J_Cl|<=delta`, and the separate auxiliary restoration obligation. Return EXCLUDED if every feasible `J` misses the target, and UNKNOWN otherwise.
+
+This rule is optimal relative to those inputs and assumptions: a feasible contrary explanation is an exact countermodel to certification. It is implementable with standard assays and linear optimization. It makes no universal prediction outside the acquired operating envelope.
+
+Current plus one cation and chloride can have full rank for the three-ion flux if electrode stoichiometry, all other charged species, and stored charge are known. Three independent species assays avoid using current as the sole charge-closure premise. Elemental ICP provides useful redundancy against ionic speciation and contamination. If the incumbent receives the same uncertainty sets, it obtains the same mass-balance certificate.
+
+### Optional isotope control, with a necessary limitation
+
+An enriched Li isotope on one side can identify source-origin Li atoms or net isotope transfer when initial isotope inventory in all other stores is bounded. Conservation alone gives `net marked-isotope crossing >= marked receiver gain - hidden marked inventory - error`, after external paths are excluded. Li isotope labeling with ICP-MS has been used to trace redistribution in electrochemical cells. [Diehl et al., RSC Advances](https://pubs.rsc.org/en/content/articlehtml/2019/ra/c9ra02312g).
+
+This does **not** prove positive net total Li transfer: marked Li can move forward while unmarked Li moves back. Isotope fractionation also precludes simply dividing by the feed label fraction without a calibrated bound; isotope-dependent diffusion/migration has been measured. [Primary Li-isotope diffusion/migration study](https://doi.org/10.1016/j.seppur.2019.05.094). Include isotope-resolved inventories as extra constraints in the same identified set. Treat this as a pathway control, with added reagent and analytical costs, rather than a shortcut around product and reset accounting.
+
+## 9. Strongest positive prediction theorem with bounded switching/drift
+
+Here is a usable finite-error extension of the source algebra. It is explicitly conditional on acquisition of the bounds.
+
+Suppose each neutral reference program has salt/exchange coordinates in rectangles
+
+`S_1 in [a_1,b_1]`, `X_1 in [c_1,d_1]`,
+
+`S_2 in [a_2,b_2]`, `X_2 in [c_2,d_2]`,
+
+with `0<a_1<=b_1` and `a_2<=b_2<0`. Let every complete operation of duration `T` and frozen weight `lambda` differ from its weighted reference responses by at most `E_S` salt and `E_X` exchange in integrated units. These allowances must include acquired switching transport, state/concentration drift, reset, external source uncertainty and the relevant storage widths. Then
+
+`S_total in T[lambda a_1+(1-lambda)a_2, lambda b_1+(1-lambda)b_2] + [-E_S,E_S]`,
+
+`X_total >= T[lambda c_1+(1-lambda)c_2]-E_X`.
+
+Thus the frozen program is certified to meet `|S_total|<=delta` and `X_total>=q_min` if the displayed worst-case bounds meet those thresholds. Proof is interval optimization of an affine functional, so these bounds are sharp for independent rectangular uncertainty and independent additive residual allowances. Joint uncertainty should use its actual polytope and can give tighter bounds.
+
+There is generally no fixed weight that makes salt *exactly zero* for every uncertain response. The weight minimizing worst-case salt residual is obtained by cancelling the interval midpoints. If `m_j=(a_j+b_j)/2` and `w_j=(b_j-a_j)/2`, then
+
+`lambda_star=-m_2/(m_1-m_2)`,
+
+`min_lambda max |Sbar|=lambda_star w_1+(1-lambda_star)w_2`.
+
+Proof: the lower salt endpoint is strictly increasing with weight, and so is the upper endpoint. The worst-case radius is the maximum of a decreasing negative-lower-endpoint branch and an increasing upper-endpoint branch. The optimum is their intersection, where the midpoint vanishes.
+
+With allowed mean salt tolerance `delta_bar`, the exact feasible weight interval is
+
+`max(0,(-delta_bar-a_2)/(a_1-a_2)) <= lambda <= min(1,(delta_bar-b_2)/(b_1-b_2))`.
+
+An empty interval is a robust rejection, even if nominal cancellation is perfect. For example, `S_1 in [5,7]`, `S_2 in [-4,-2]` has `lambda_star=1/3` and unavoidable worst-case salt residual `1`. A tolerance below `1` cannot be certified by any fixed two-program weight from those inputs.
+
+This theorem covers drift only when its bound is independently justified over the actual validation episode. A finite calibration library alone supplies no deterministic bound on arbitrary future degradation or unseen hysteresis. Direct measurement of the complete held-out composite can establish its realized output without assuming the library is uniformly valid.
+
+## 10. A decisive obtainable experiment
+
+The following experiment is worthwhile only as acquisition of a scoped physical operation.
+
+* Define the full material/electrical cut, fixed feed and output specification, sampling corrections, all current-carrying terminals, and a conservative same-specimen/qualified-population capacity bound before validation. The capacity must cover pore liquid, adsorbed material, electrodes, bridges and dead volumes. Geometry times bulk concentration accounts only for a specified pore-liquid model; it is not a bound on enriched or adsorbed storage.
+* Qualify cation and anion assays in the actual matrix, with blanks, recovery, standard additions and simultaneous inventory uncertainty. Count total Li/Na atoms independently where practical. Independently qualify electrode reaction extents/coulombic efficiency; do not infer complete chemistry solely from absence of a current peak.
+* Acquire candidate A/B responses on one membrane in the same electrolyte and activity range, using repeated interleaved references and randomized order. Include A-to-B and B-to-A composite trials. Freeze the complete composite and its predicted uncertainty before held-out validation. A measured nonzero nominal determinant earns this experiment but cannot replace it.
+* Assay both reservoirs after the full composite, all reset/wash streams, and isolated product fractions. Use the full identified set. If exact restoration cannot be measured, accumulate accountable retained output beyond `B/2+eta` in exchange coordinate and retain separate cation-sum/chloride bounds. No `B` measurement means this capacity-robust conclusion remains UNKNOWN.
+* Validate both exchange directions from matched initial reservoir states. For uphill operation, begin with the relevant pre-existing Li/Na activity gradient; reversal after enrichment can otherwise be downhill relaxation. Record the activity/free-energy change of the isolated products.
+* Measure work at every electrical port and include counter-electrode chemistry, hydraulics, isolation, wash, replacement and reset. Repeat across the claimed activity range and lifetime before asserting a process advantage.
+
+Randomization can expose drift; it does not manufacture a missing uniform bound. Repeated endpoints can establish repeated performance; they do not prove all microscopic states or all future cycles are identical.
+
+## 11. Work and reset accounting
+
+For a complete isothermal operation with all device/electrode/auxiliary states restored and all chemical feeds accounted, external supplied work must cover the retained product free-energy increase. Before restoration, a decrease of hidden chemical/electrode free energy can supply some or all of that increase. A bound on stored *moles* does not bound stored free energy unless the relevant chemical potentials, charge/potential range and reaction states are also bounded.
+
+Electrical work is the sum over current-carrying ports of `integral V_p I_p dt` with a consistent circuit reference and complete port accounting. Zero mean current, zero net transferred charge, or zero mean applied voltage does not imply zero work. A capacitor or driven interface can return to its initial charge while the cycle integral of `V dQ` remains positive. Apparatus control losses are additional costs.
+
+For equal-valence cation exchange, electrostatic terms cancel from the exchange chemical affinity. This makes the target charge-silent, not work-free. The source's ideal mixing-free-energy arithmetic is an appropriate reversible comparator under its dilute ideal-reservoir assumptions. It gives no operating efficiency without complete measured work and restored inventories.
+
+Distinguish three separate resets: elemental/spatial inventory restoration; recurrent constitutive response; and free-energy restoration. The storage countermodel passes global elemental restoration but fails side-resolved restoration. The hysteresis countermodel passes hidden-state recurrence but fails the proposed additive output. Neither result closes the energetic obligation.
+
+## 12. Comparator and stop rule
+
+| Observation/operation | What it can decide under its explicit premises | Main cost/limitation |
+| --- | --- | --- |
+| Output current alone | Charge coordinate and some electrode extents | Invisible same-valence exchange direction; side reactions/storage require accounting |
+| Reaction-specific coulometry plus chemical inventory | Electrode/chloride stoichiometry and corrected flux coordinates | Requires validated reaction identity and efficiency |
+| Cation/anion chromatography with volume/sample correction | Species-resolved reservoir output | Matrix calibration, assay time, destructive sampling, dead volume and storage closure |
+| IC plus elemental analysis | Output plus conserved-element checks | Additional analytical cost; total element does not itself identify ionic speciation |
+| Full inventory/capacity feasibility set | Sharp CERTIFIED/EXCLUDED/UNKNOWN decision in declared model | Capacity and uncertainty sets must be acquired |
+| Isotope-resolved assay | Source/pathway constraints and isotope transfer | Fractionation, isotope preparation and assay costs; net total flux still needs closure |
+
+The species-resolved decision strictly improves identifiability over current-only inference for this target. Established measurements already furnish the same type of information, so this is not presently a new analytical capability. The proposed *physical* control operation remains worth a bounded experiment if compatible opposed responses and sufficient uncertainty margins can be acquired.
+
+Stop or redesign if the complete composite fails the direct species test; if auxiliary consumption explains the retained output; if accountable cumulative exchange never exceeds the storage/error allowance; if the required salt tolerance is impossible over the acquired uncertainty set; or if an equally informed standard separator/assay meets the useful output with lower complete cost. A library-wide collinearity result is a stop for that additive library only, because nonlinear switching can create or remove transport outside its convex hull.
+
+## 13. Evidence and limitations
+
+`verify_exact.py` uses exact rational arithmetic for the neutral construction, the nonneutral two-constraint counterexample, the restored hysteresis endpoints/integrated corrections, current-null countermodel, hidden-storage construction/support width, robust weight interval and finite repetition threshold. It also compares the minimum endpoint-capacity formula against exhaustive integer-simplex endpoint pairs and checks the common-initial-state trace formula. Its receipt is `EXACT_RESULTS.json`. These checks establish the stated synthetic identities and finite optimization fixtures only.
+
+No real species-response data were acquired or fitted. The capacity `B`, assay uncertainty sets, switching/drift bounds, kinetic validity, electrochemical side-reaction bounds, product isolation and complete work remain physical acquisition obligations. Historical priority of the derived bound and protocol has not been established. The inspected primary records establish close prior art and measurement feasibility, without supplying the missing same-regime responses.

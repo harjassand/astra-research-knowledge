@@ -1,0 +1,389 @@
+# Exact finite-distortion projection from the acoustic Gram range
+
+15 October 2026. Internal analytic derivation and exact algebra checks.
+Pinned input checkout: `b32943eeb62d0d79929a9e572a344219a785ebf9`.
+External correctness and historical novelty: **UNKNOWN**.
+
+The global acoustic lift and the conformal-LH closure theorem below are
+inherited/classical. They already appear in the pinned FX priority package.
+The additional receiving result here is an explicit necessary-and-sufficient
+five-variable **range test for finite ROC completion**, together with its
+boundary reductions. This report does not infer QC from an acoustic SOS.
+
+## 1. Ambient space and the inherited exact global lift
+
+Let `V` be the nine-dimensional space of real homogeneous left-SO(2)
+invariant quartics on real 2-by-2 matrices. For
+
+\[
+A=\begin{pmatrix}a&b\\c&d\end{pmatrix},\quad
+u=a^2+c^2,\ v=b^2+d^2,\ w=ab+cd,\ j=ad-bc,
+\]
+
+write the unique representation
+
+\[
+F=f_0u^2+f_1v^2+f_2uv+f_3w^2+f_4uw+f_5vw+f_6uj+f_7vj+f_8wj.
+\]
+
+Left rotation of the target vector shows that rank-one convexity is
+equivalent to nonnegativity, for every `A,p,q`, of
+
+\[
+\mathcal A_F(A,p,q)=\tfrac12D^2F(A)[e_1\otimes(p,q),e_1\otimes(p,q)].
+\]
+
+This is quadratic in `x=(a,b,c,d)` and in `(p,q)`:
+
+\[
+\mathcal A_F=x^T(p^2M_{11}+2pqM_{12}+q^2M_{22})x.
+\]
+
+The actual matrices, with the half-Hessian normalization fixed, are
+
+\[
+M_{11}=\begin{pmatrix}
+6f_0&3f_4/2&0&3f_6/2\\
+3f_4/2&f_2+f_3&-f_6/2&f_8/2\\
+0&-f_6/2&2f_0&f_4/2\\
+3f_6/2&f_8/2&f_4/2&f_2
+\end{pmatrix},
+\]
+
+\[
+M_{12}=\begin{pmatrix}
+3f_4/2&f_2+f_3&-f_6/2&f_8/2\\
+f_2+f_3&3f_5/2&-f_8/2&f_7/2\\
+-f_6/2&-f_8/2&f_4/2&f_3/2\\
+f_8/2&f_7/2&f_3/2&f_5/2
+\end{pmatrix},
+\]
+
+\[
+M_{22}=\begin{pmatrix}
+f_2+f_3&3f_5/2&-f_8/2&f_7/2\\
+3f_5/2&6f_1&-3f_7/2&0\\
+-f_8/2&-3f_7/2&f_2&f_5/2\\
+f_7/2&0&f_5/2&2f_1
+\end{pmatrix}.
+\]
+
+The classical two-factor biquadratic theorem gives the exact equivalence
+
+\[
+F\in\mathrm{ROC}
+\iff \exists S=-S^T:\quad
+\begin{pmatrix}M_{11}&M_{12}+S\\M_{12}-S&M_{22}\end{pmatrix}\succeq0.
+\tag{1}
+\]
+
+There are six auxiliary real numbers, the entries of the skew 4-by-4 `S`.
+They are all the Gram freedom: the pure `p^2` and `q^2` blocks are fixed,
+and the symmetric part of the mixed block is fixed. A PSD Gram factor gives
+at most eight real bilinear acoustic squares. This is an exact ROC
+certificate, not an integrand Jensen-gap certificate.
+
+The classical substantive implication can be received from matrix
+Fejer-Riesz factorization. On `p=cos(theta), q=sin(theta)`, the matrix
+polynomial is a nonnegative degree-one Laurent polynomial in
+`z=exp(2i theta)`. Factor it as `(P0+P1 z)^*(P0+P1 z)`. Multiplication by
+`exp(-i theta)` makes the factor linear in `cos(theta),sin(theta)`;
+real and imaginary parts give real bilinear squares. Homogeneity supplies
+all `(p,q)`. The semidefinite factorization proof was actually inspected in
+Dritschel--Rovnyak, Theorem 2.1 and Lemmas 2.3--2.4, printed pp.4--6:
+https://uva.theopenscholar.com/files/james-rovnyak/files/p71.pdf .
+The original Calderon 1973 proof was not acquired here; the publisher
+endpoint returned 403. Its primary abstract alone is not treated as proof.
+
+## 2. Direct LMI versus lift
+
+The pinned FW proof establishes that every `J_r`, `r>0` or `r<-2`, is a
+nonexposed extreme ray of this exact nine-dimensional ROC cone. Its
+smallest exposed face is `cone{J_r,j^2}`.
+
+Every face of a spectrahedron is exposed: for a relative-interior point,
+the common matrix kernel determines its minimal face, and pairing the LMI
+with the orthogonal projector onto that kernel exposes the face. Therefore
+the nonexposed rays rule out a direct finite LMI in the nine coefficients.
+Finite intersections of direct LMIs also combine into one block-diagonal
+LMI and are ruled out. They do not rule out the projection of an LMI with
+auxiliary variables. Equation (1) explicitly provides such a lift.
+
+## 3. Coordinates exposing the finite-H completion obstruction
+
+Set
+
+\[
+A=\begin{pmatrix}h+s&t-k\\t+k&h-s\end{pmatrix},\qquad
+T=\begin{pmatrix}1&0&1&0\\0&-1&0&1\\0&1&0&1\\1&0&-1&0\end{pmatrix}.
+\]
+
+Thus `x=T(h,k,s,t)^T`, `T^TT=2I`. The first two coordinates are conformal;
+the last two are anticonformal. First conjugate the three `M` matrices by
+`T`. The most general mixed-block skew matrix in these coordinates is
+
+\[
+S=\begin{pmatrix}
+0&z&r&s_0\\-z&0&t_0&u_0\\
+-r&-t_0&0&v_0\\-s_0&-u_0&-v_0&0
+\end{pmatrix}.
+\]
+
+Reorder the eight monomials into
+
+\[
+U=(ph,pk,qh,qk),\qquad V=(ps,pt,qs,qt).
+\]
+
+The Gram in (1) becomes
+
+\[
+\mathscr G_F=\begin{pmatrix}C_F(z)&B_F(r,s_0,t_0,u_0)\\
+B_F(r,s_0,t_0,u_0)^T&D_F(v_0)\end{pmatrix}.
+\tag{2}
+\]
+
+All entries of all three blocks are exported in `EXACT_ALGEBRA.json`; the
+coordinate construction above specifies them without any fitting. The
+parts that matter to finite completion are
+
+\[
+C_F(z)=\begin{pmatrix}
+6f_0+f_2+3f_6&-f_4-f_8/2&3f_4/2+f_5/2+f_8&-f_2-f_3/2-f_6/2-f_7/2+z\\
+-f_4-f_8/2&2f_0+f_2+f_3+f_6&-f_2-f_3/2-f_6/2-f_7/2-z&f_4/2+3f_5/2+f_8\\
+3f_4/2+f_5/2+f_8&-f_2-f_3/2-f_6/2-f_7/2-z&2f_1+f_2+f_3+f_7&-f_5-f_8/2\\
+-f_2-f_3/2-f_6/2-f_7/2+z&f_4/2+3f_5/2+f_8&-f_5-f_8/2&6f_1+f_2+3f_7
+\end{pmatrix},
+\]
+
+and, writing `B0=B_F(0,0,0,0)`,
+
+\[
+B_F=B_0+\begin{pmatrix}0&M\\-M&0\end{pmatrix},\quad
+M=\begin{pmatrix}r&s_0\\t_0&u_0\end{pmatrix},
+\]
+
+\[
+B_0=\begin{pmatrix}
+6f_0-f_2&2f_4+f_8/2&3f_4/2-f_5/2&f_2+3f_3/2-f_6/2+f_7/2\\
+-2f_4+f_8/2&2f_0-f_2-f_3&-f_2-3f_3/2-f_6/2+f_7/2&f_4/2-3f_5/2\\
+3f_4/2-f_5/2&f_2+3f_3/2-f_6/2+f_7/2&-2f_1+f_2+f_3&2f_5-f_8/2\\
+-f_2-3f_3/2-f_6/2+f_7/2&f_4/2-3f_5/2&-2f_5-f_8/2&-6f_1+f_2
+\end{pmatrix}.
+\]
+
+For `H=(u+v-2j)^2`, the `C` and `B` blocks vanish. A positive definite
+Gram on `V` is obtained by setting its anti skew to `+8`:
+
+\[
+D_H=\begin{pmatrix}24&0&0&16\\0&8&0&0\\0&0&8&0\\16&0&0&24\end{pmatrix},
+\qquad \operatorname{spec}(D_H)=\{8,8,8,40\}.
+\tag{3}
+\]
+
+Using zero skew instead would give a singular Gram, which is unsuitable
+for the absorption argument below. This choice of Gram is essential.
+
+## 4. Exact full finite-ROC-completion theorem
+
+**Theorem.** For every `F in V`, the following are equivalent:
+
+1. Some finite real `alpha` makes `F+alpha H` rank-one convex everywhere.
+2. There exist real `z,r,s0,t0,u0` such that
+
+\[
+C_F(z)\succeq0,\qquad
+\ker C_F(z)\subseteq\ker B_F(r,s_0,t_0,u_0)^T.
+\tag{4}
+\]
+
+Equivalently, `range B_F` is contained in `range C_F`. This is well defined
+on `V/span{H}`. It decides exact finite membership, including boundary
+points missing from the closure.
+
+**Necessity.** Apply the exact lift (1) to a finite ROC completion, then
+use (2). Adding `alpha H` changes neither `C` nor `B`. Every PSD block
+matrix satisfies the kernel condition: a null vector in its upper block
+is a null vector in the entire PSD matrix.
+
+**Sufficiency.** Choose the five parameters in (4), and set `v0=0` in `D`.
+The kernel condition permits the generalized Schur complement. With
+`C^dagger` the Moore--Penrose inverse, set
+
+\[
+E=B^TC^\dagger B-D_F(0).
+\]
+
+For every sufficiently large finite `alpha`,
+
+\[
+D_F(0)+\alpha D_H-B^TC^\dagger B\succeq0
+\]
+
+because `D_H` is positive definite. Then (2), with the `alpha D_H` addition,
+is PSD and certifies `F+alpha H` by (1). For example,
+
+\[
+\alpha\ge\frac18\sum_{i,j}|E_{ij}|
+\tag{5}
+\]
+
+is a completely explicit sufficient bound. The sixth anti skew affects
+only the finite lower block and is therefore unnecessary for **existence**.
+It must still be optimized if one wants the sharp original coefficient.
+
+For fixed five parameters, (5) can be replaced by the exact maximum
+eigenvalue of `D_H^(-1/2) E D_H^(-1/2)`. Optimizing over all six skew
+parameters gives the original sharp ROC floor. Fixing `v0=0` does not
+claim to give that sharp floor.
+
+## 5. The nonstrict boundary has one local scalar, then linear algebra
+
+Define `Z_F={z:C_F(z)>=0}`. Its derivative is the fixed invertible matrix
+
+\[
+J=C_F'(z)=\begin{pmatrix}0&0&0&1\\0&0&-1&0\\0&-1&0&0\\1&0&0&0\end{pmatrix},
+\qquad J^2=I.
+\]
+
+If `Z_F` contains two different points, their midpoint has positive
+definite `C`: any null vector there would also be a null vector at both
+endpoints, hence would be killed by `J`, impossible. Thus exactly one of
+the following occurs:
+
+- `Z_F` is empty: no finite ROC or QC completion.
+- Some `C_F(z)` is positive definite: the inherited strict conformal-LH
+  completion theorem gives a finite QC completion.
+- `Z_F` is a singleton, its matrix is singular: test only the linear system
+  `N^T B_F=0`, where the columns of `N` span that uniquely determined kernel.
+
+Conversely a positive definite feasible matrix has a small feasible open
+interval around its scalar. No interval of singular feasible matrices is
+possible. This does not assert that the unique scalar or a Gram factor is
+rational for rational inputs. Exact algebraic operations/root isolation,
+rather than tolerance-based PSD tests, are appropriate for a general
+rational-input implementation.
+
+The four mixed unknowns occur linearly. If the kernel contains a vector
+`n=(n0,n1,n2,n3)` whose reshaped increment
+
+\[
+X_n=\begin{pmatrix}n_0&n_2\\-n_1&-n_3\end{pmatrix}
+\]
+
+has nonzero determinant, the four equations `n^TB=0` uniquely determine
+all four mixed unknowns: the determinant of that linear map is
+`-(det X_n)^2`. The remaining kernel vectors then give explicit consistency
+conditions. This removes any continuous mixed-parameter search in these
+degenerate strata.
+
+### Rank-three local Gram: two acoustic stationarity equations suffice
+
+If the singular local Gram has rank three, let `n` span its kernel.
+One must have `n^TJn=0`: otherwise one sign of a sufficiently small scalar
+perturbation makes the kernel direction positive, and the Schur complement
+makes the whole matrix positive definite, contradicting uniqueness.
+Since `n^TJn=-2det X_n`, the increment is rank one.
+
+Write `n=(eta1 xi1,eta2 xi1,eta1 xi2,eta2 xi2)`. The mixed-variable image is
+
+\[
+n^T(B-B_0)=(-\xi_2\eta^TM,\ \xi_1\eta^TM).
+\]
+
+For `n^TB0=(q1,q2,q3,q4)`, consistency is exactly
+
+\[
+\xi_1q_1+\xi_2q_3=0,\qquad
+\xi_1q_2+\xi_2q_4=0.
+\tag{6}
+\]
+
+These are precisely the two derivatives of the acoustic polynomial in
+the anticonformal background directions at its conformal contact.
+Conformal derivatives already vanish by nonnegativity of the local
+biform. Hence this entire rank-three local stratum has the exact
+equivalence: finite ROC completion iff acoustic stationarity at its sole
+local null line.
+
+Moreover the existing degenerate-flat QC compiler applies here. The
+local quadratic support has a rank-one kernel line, and (6) gives
+`T(I,R,R,E)=0` for every background direction after target normalization.
+Thus finite ROC and finite QC completion agree on this stratum. This is
+a receiving consequence of that compiler, not new QC positivity machinery.
+
+If `C=0`, the equations `C=0,B=0` have a one-dimensional coefficient
+solution, exactly `span{H}`; this is checked by rank 13 in the 14 variables
+`f0,...,f8,z,r,s0,t0,u0`. Its projected class is zero.
+
+## 6. Exact boundary examples and limits of the flat compiler
+
+For `F=w^2`, PSD of `C` forces `z=1/2`, and its kernel is spanned by
+`e0,e3,(0,1,1,0)`. The first two kernel-vector equations force
+
+\[
+r=0,\quad s_0=-3/2,\quad t_0=-3/2,\quad u_0=0.
+\]
+
+The third equation then has residual `(0,2,-2,0)`, so it is inconsistent.
+This proves **no finite H completion** of `w^2` is ROC. The obstruction
+is a range failure, even though the local conformal acoustic form is
+nonnegative.
+
+For `F_epsilon=w^2+epsilon v^2`, `epsilon>0`, the same unique scalar is
+`z=1/2`; the local Gram has rank three and kernel `e0`. Its range system
+is consistent. The verifier constructs an exact certificate at
+`epsilon=1/2`, with `alpha=15/8`. The inherited nonshear theorem gives
+finite QC completion for **every** `epsilon>0`, since its `L=D=2epsilon`
+are positive. These classes converge to the excluded `w^2` class.
+Consequently both the full ROC and QC H-projections are nonclosed.
+This example and the closure theorem are inherited; the residual makes
+the finite-membership obstruction directly checkable in the new interface.
+
+For the known sharp shear core
+
+\[
+G_r=\frac{r(r-1)}6u^2+j^2+ruj,\quad r>0\text{ or }r<-2,
+\]
+
+the unique local scalar is `z=-(r+1)/2`; the Gram has rank two, with kernel
+spanned by `(0,0,1,0)` and `(1,0,0,r+1)`. Its range system has the solution
+
+\[
+r_{\rm aux}=u_0=0,\quad s_0=-(r+1)/2,\quad
+t_0=\frac{r^2-2r-1}{2(r+1)}.
+\]
+
+This is a higher-kernel boundary admitted by the full range predicate.
+The prior compiler's cubic-flat hypothesis is not a necessary condition
+for finite ROC or finite QC completion in general. A simple exact example
+is `j^2`: its unique minor-corrected local quadratic is `(tr X)^2`, with
+kernel the trace-zero matrices. Its cubic Taylor coefficient is
+`2 tr(X) det(X)`. At `Z=diag(1,-1)`, the derivative of that cubic in the
+direction `I` is `-4`, so the paired-kernel cubic-flat condition fails.
+Nevertheless `j^2` is polyconvex and satisfies the full range test. Failure
+of the earlier sufficient predicate must therefore remain unresolved.
+
+## 7. Scope and the remaining QC obligation
+
+Equations (1)--(6) give an exact characterization of the **full finite
+ROC H-projection**, including its nonclosed boundary, in fixed dimension.
+The previously proved closure is the conformal-LH cone. This result
+does not by itself prove finite ROC/QC equality at all of that boundary,
+or equality of sharp coefficients. The separate file
+`CONDITIONAL_CONTACT_GLUE.md` verifies how a complete generic-contact
+finite-QC theorem would close the projection implication.
+
+`verify.py` regenerates the coefficient matrices and all receiving
+identities, checks the positive H Gram, the boundary contradiction, the
+exact admitted example, the sharp shear range solution, the rank-zero
+classification, and the flat-compiler limitation. It reports 28 exact
+check groups PASS. These algebraic checks do not mechanically verify the
+external matrix factorization theorem, the written Schur argument,
+all-background QC analysis, or historical priority.
+
+Only this worker directory was written. No source input, W checkout or
+Git state was edited. No other current worker output was used as a proof
+premise. The incoming report, pinned FW structural proof, pinned FX
+nonshear and general-compiler proofs, and pinned FX priority/classical
+receiving files were inspected and retain their original provenance.
