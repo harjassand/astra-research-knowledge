@@ -1,0 +1,69 @@
+# Final proof, source and continuation qualifications
+
+16 October 2026. These notes supplement the preserved synthesis and adjudication.
+
+* The shear dual operator is understood on the mean-zero L4 space with values in
+  its dual; pointwise representatives of its derivative are equivalent modulo
+  constants. A general Hessian-potential representation of a W1,4 vector field
+  requires a W2,4 potential. The constructor's explicit smooth fixtures satisfy
+  that requirement. The separate shear audit records these qualifications and
+  accepts the final Q>0 addendum. The universal outer inequality remains open.
+* The signed-GKSL audit accepts the complex/singular Choi-range theorem, its
+  constants and structured catalog scope. Its eight finite examples include
+  arbitrarily small missing-product directions defeating every proposal rate.
+  No theorem for all surrounding arbitrary generators follows from catalog
+  sparsity. Its independent report is SIGNED_GRAM_AUDIT.md.
+* Exact current-capital comparison pins OpenAI/math at
+  1581d4cbdd69a0faf34b2089614fe2a814316a6a. Actual lift/completeness proofs were
+  inspected; no missing compatible-gradient or memory-probability theorem was
+  obtained. The reciprocal witness cannot extend to feasible order three, since
+  the source's degree-six certificate forces its cut nonnegative. An external
+  unconstrained positive-moment extension argument therefore does not transfer
+  to this constrained hierarchy. No all-level SOS/nonliftability claim is made.
+* Live GitHub audit at Astra main 3dde9ce74d829a93388e64032d27351b36dd2221 leaves
+  PR84/85/87/88 as conflicting drafts. PR95 is a clean 594-path draft with no
+  recorded review decision/checks and only selective scientific review. It is
+  not cleared for merger. PR88's canonical science already entered via merged
+  PR89 under FR/N830--832, so its stale FQ/N822--824 intake is not fresh missing
+  science. Preserve their heads and intellectual trajectories; do not force
+  merge or rewrite them. Final publication must recheck live main and new PR.
+* The root selected 29 authored located quantum-capital files, 312380 bytes,
+  separately from 47 supplied originals. The selected subset does not include
+  all 58 files mentioned in a preserved predecessor snapshot, or external
+  fulltexts. Named unbundled imports and acquisition failures stay explicit.
+* The input round used 20 distinct Sol Max workers and one Luna Max identity
+  worker. One Sol assignment is integration tooling, not scientific discovery.
+  Follow-ups do not increase distinct count. No token/cost/peak-concurrency
+  denominator is invented. The accessible reports preserve exact attempts,
+  negative evidence, role boundaries and same-team status.
+
+Highest-value independent handoffs, with no change to another active branch:
+
+1. **Theoretical Pro:** prove the unchanged r=1 scalar stress-cost inequality
+   (conformal worker Eq.22), or certify a primal minimum below 2 and reconstruct
+   its compatible map. The shear worker Eq.16 is an alternative exact source
+   criterion, quantified only at Q>0. More convenient restricted profiles are
+   not the target. Singular calibration is already established internally.
+2. **External memory reviewer:** audit the entire asynchronous universal-event
+   chain, especially whole-slab support, stopped-torus lifting and accumulated
+   homology, under exact LSS/HT hypotheses. A successful quantum lift cannot
+   repair a missing classical certificate. Useful constants and architecture
+   require separate engineering work.
+3. **Computational Pro:** construct a certified compressed finite-horizon
+   interior representation for the actual eight-site generator with the new
+   <1e-9 overflow budget. Certify numerical residual/roundoff and compare
+   complete acquisition, memory and runtime against matched FSP/tensor/splitting
+   baselines. Exact small-chain eventual instability is not this experiment.
+4. **OPF branch:** evaluate the cut on the identical recovered case with every
+   electrical constraint and verified dual bounds. The universal order-two
+   separator establishes a hierarchy fact; it supplies no selected-case
+   runtime or gap improvement against strengthened incumbents.
+5. **Natural Sciences Pro:** randomize pulse/sham before admitting a fresh
+   carbon-labelled cohort, impose common feed/read/chase conditions, and close
+   its complete fate with calibrated exposure and missing-tag allowances.
+   Distinguish altered fresh-feed processing from electronic-state identity.
+   Acquire switching work for the same optimum waveform and compare paid useful
+   product, solvent, reset, feed and lifetime with the corrected Wang regimes.
+
+These handoffs are optional independent investigations. No branch is messaged,
+retasked, or scientifically promoted by their publication.

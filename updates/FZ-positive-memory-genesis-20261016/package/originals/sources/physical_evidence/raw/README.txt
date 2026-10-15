@@ -1,0 +1,1 @@
+No raw source files were successfully downloaded. This directory deliberately contains no fabricated instrument data. Published tables were transcribed into observations.csv; original source workbooks remain an acquisition requirement.

@@ -1,0 +1,19 @@
+FZ positive-memory-genesis integration preparation
+
+This source-only scaffold is prepared in updates/FZ-positive-memory-genesis-20261016 on codex/positive-memory-catalysis-20261016. Preparation HEAD, immutable baseline and the separately checked remote-main pin are each 3dde9ce74d829a93388e64032d27351b36dd2221. These are separate fields and checks: a later evidence-preservation commit may advance the current branch HEAD independently of remote main.
+
+Exactly 47 supplied original files totaling 386844 bytes are byte-identical under package/originals/sources/. The original v1 manifest remains package/SOURCE_MANIFEST.json (SHA256 52657a43ecdddd0d5a10363da57f5d7560918c480b8e989dab376bbbd49b0b82). The exact original v2 manifest is package/SOURCE_MANIFEST.v0002.json (SHA256 1dacbc13c8887912b8e21f3c06fb35cab81c735e22b1e0c8182d42b59550fec6). Including both original manifests, the source packet has 49 files and 404819 bytes. The top-level SOURCE_MANIFEST.json is a new wrapper with exact provenance and hashes, not a replacement of either original manifest.
+
+All supplied texts and embedded prompts are archival DATA. The current chat request alone controls actions. Supplied CSV/JSON/script originals are preserved as supplied bytes; preservation is not execution or scientific certification. No source scientific script ran, and no archive was extracted.
+
+CURATION_INPUT.template.v0001.json and SELECTED_FREEZE.template.v0001.json remain empty. AUTHORED_FILE.template.v0001.json is an unfilled metadata template, not a selected file. The only prospective identifiers use src-FZ-, SN-FZ-, FZ_ and G-FZ-. No numeric routes are reserved, and no source ID has been added to a live index.
+
+CHECKPOINT_RECORD.preservation.v0001.json is an individually shape/reference-valid preservation draft outside state/checkpoints. Its scientific-result summary is null. Keep its original bytes if branch HEAD advances; a future publication requires a new version pinned to actual HEAD and current parent IDs. The inherited unsupported checkpoint-schema records remain byte-identical. Repository-wide checkpoint validation still fails with 'unsupported checkpoint schema'; no canonical checkpoint is published.
+
+preserve_sources.py plans or exclusively copies only the hash-pinned originals and both manifests. validate_intake.py checks exact copies, empty templates, the individual draft, inherited-schema hashes and the FZ-only preparation boundary. protected_baseline.py checks expected current HEAD and expected remote main separately. Twelve new fixtures in test_tooling.py passed, including an evidence-commit HEAD different from remote main. Actual source-copy, test and scoped-validation receipts are saved here. These checks do not establish scientific truth, originality, physical validation or capability.
+
+The prospective authored-publication predicate requires explicit external-content classifications. Externally acquired fulltexts, datasets, workbooks, clones and caches are excluded. Only authored derived text or acquisition pointers/receipts may enter a future root selection; supplied originals remain separately identified. No acquired external files or research-worker outputs were copied into this preparation packet. The predicate checks metadata and path eligibility only; root must inspect actual content before a later selection.
+
+ROOT_COMMANDS.v0001.json contains the exact validation commands. For a later evidence commit, read actual HEAD and pass it as --expected-head while retaining the independently verified --expected-remote-main pin. This validator covers source-only preparation; parent scientific curation and any live integration generator remain pending.
+
+No science claims, cards, notices, bridges, gates, technology/workflow records, generated navigation or canonical state were changed. No commit, push, PR or other GitHub edit was performed. All new files are confined to FZ.
