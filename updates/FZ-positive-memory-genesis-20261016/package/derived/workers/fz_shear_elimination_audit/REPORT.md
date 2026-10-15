@@ -1,0 +1,467 @@
+# Independent direct proof and adversarial audit: nonlinear acoustic-shear elimination
+
+Status: **the elimination theorem and the stated partial positive results are valid, with the explicit degeneracy and dual-space qualifications below. The universal source inequality is unproved. No sharp positive quasiconvexity theorem or negative Jensen map is established.**
+
+The audited source is the frozen `SOURCE_REPORT_PINNED.md`, SHA-256
+`ada8d5aa1aafb3873facc5bd35e3544dd04b2287db78867bca96b08d17011b6f`.
+It is the 621-line report captured after the source changed from an earlier
+535-line version during reading. A subsequently supplied final addendum was
+also frozen as `SOURCE_ADDENDUM_PINNED.md`, SHA-256
+`27f199e4e61543e889dc67d0740a0022da5c465f5436c2786fbaa8f29b477699`.
+It supplies the denominator qualification independently identified below.
+The final part of this audit also checks the revised separable SOS and
+nonseparable fixture. No source verifier or other worker report was read
+or imported. All writes are in this audit directory. External novelty and
+literature claims are outside this audit.
+
+## 1. Precise theorem reconstructed
+
+Use normalized measure on the square torus \(\mathbb T^2\) of period \(2\pi\).
+For a matrix \(V=\begin{pmatrix}a&b\\c&d\end{pmatrix}\), put
+
+\[
+J(V)=\tfrac18((a-d)^2+(b+c)^2)^2+(ad-bc)^2+(a^2+c^2)(ad-bc).
+\]
+
+Let
+\(\psi\in W^{1,4}_{\rm per}(\mathbb T^2;\mathbb R^2)\) satisfy
+\(\langle\psi_1\rangle_x=0\) almost everywhere in \(y\). Put \(V=D\psi\),
+\(e=2a+d\), \(q=e^2+c^2\), and define the scalar and one-dimensional
+sources exactly as follows:
+
+\[
+\begin{aligned}
+A&=\langle J(V)\rangle,& Q&=\langle e^2+c^2\rangle,\\
+C&=\langle (a^2+c^2)(a+d)+2e(ad-bc)\rangle,\\
+P(y)&=\langle\tfrac32(b+c)^2+\tfrac12(a-d)^2+2c^2\rangle_x,\\
+M(y)&=\langle ce\rangle_x,& N(y)&=\langle\partial_bJ(V)\rangle_x.
+\end{aligned}
+\]
+
+Then every \(h\in H:=L^4_0(\mathbb T)\) and every \(s\in\mathbb R\)
+give a compatible periodic gradient \(D\phi=V+h(y)e_{12}\), and its exact
+Jensen energy at \(sI\) is
+
+\[
+E_\psi(h,s)=A+\langle h^4/8+Ph^2/2+Nh\rangle
+ -2s\langle Mh\rangle+Cs+Qs^2.                 \tag{A1}
+\]
+
+If \(V\ne0\) as an \(L^4\) field, then \(Q>0\), and (A1) is a continuous,
+coercive, strictly convex functional on \(H\times\mathbb R\). It attains a
+unique minimum. With \(R_P(z)\) the unique real solution of
+\(t^3/2+Pt=z\), the minimizing pair is characterized by
+
+\[
+h=R_P(\lambda-N+2sM),\quad \langle h\rangle=0,
+\quad 2Qs+C-2\langle Mh\rangle=0.              \tag{A2}
+\]
+
+Define the conjugate **on the mean-zero space** by
+
+\[
+T_\psi(h)=\langle h^4/8+Ph^2/2\rangle
+ -\langle Mh\rangle^2/Q,
+\quad T_\psi^*(f)=\sup_{h\in H}\{\langle fh\rangle-T_\psi(h)\}.
+\]
+
+Then
+
+\[
+\Delta(\psi)=\min_{h\in H,s\in\mathbb R}E_\psi(h,s)
+=A-C^2/(4Q)-T_\psi^*(-N-(C/Q)M).               \tag{A3}
+\]
+
+The corrected universal criterion is (A3) nonnegative for **every such
+\(\psi\) with \(Q>0\)**, together with the automatic \(Q=0\) case below.
+This is equivalent to quasiconvexity of \(J\) at \(I\). This is an exact
+reduction and equivalence, not a proof that the criterion holds.
+
+## 2. Compatibility and polynomial expansion
+
+For any \(\phi\in W^{1,4}_{\rm per}\), the conditional average
+\(m(y)=\langle\phi_1(\cdot,y)\rangle_x\) belongs to
+\(W^{1,4}_{\rm per}(\mathbb T)\), with
+\(m'=\langle\partial_y\phi_1\rangle_x\). Thus
+\(\psi=(\phi_1-m,\phi_2)\) has the required gauge and
+\(h=m'\in H\). Conversely any \(h\in H\) has a periodic
+\(W^{1,4}\) primitive \(m\), and \(\phi=\psi+(m,0)\) is admissible.
+Consequently the decomposition covers **all** periodic \(W^{1,4}\) maps;
+no orientation, injectivity, finite Fourier support, or amplitude condition
+has been inserted.
+
+In this gauge \(\langle b\rangle_x=0\) weakly because
+\(\langle\psi_1\rangle_x=0\), and \(\langle c\rangle_x=0\) by periodicity
+of \(\psi_2\). Direct polynomial expansion gives
+
+\[
+\begin{aligned}
+J(V+he_{12})&=J(V)+h\partial_bJ(V)+\tfrac12p(V)h^2
+ +\tfrac12(b+c)h^3+h^4/8,\\
+C(V+he_{12})&=C(V)-2hce,\\
+J(sI+V)-J(sI)&=J(V)+sC(V)+s^2(q(V)+3\det V)
+ +s^3(5a+3d),
+\end{aligned}
+\]
+
+where \(p(V)=\tfrac32(b+c)^2+\tfrac12(a-d)^2+2c^2\).
+The cubic shear term vanishes after averaging in \(x\). The derivative
+means and \(\langle\det D\phi\rangle\) vanish; the latter follows from
+integration by parts for smooth periodic maps and strong \(W^{1,4}\)
+density for general maps. Alternatively its shear correction is
+\(-\langle hc\rangle=0\). These identities prove (A1).
+
+Every term survives strong approximation: derivatives converge in \(L^4\),
+quadratic products in \(L^2\), cubic products in \(L^{4/3}\), and quartic
+products in \(L^1\). Conditional expectation is bounded in these spaces.
+In particular \(P,M\in L^2(\mathbb T)\), \(N\in L^{4/3}(\mathbb T)\), and
+all pairings in (A1) are finite by Hölder. The report's statement about
+passing the algebra from smooth maps is analytically sound.
+
+## 3. Convexity, existence, uniqueness, and the degenerate case
+
+The exact quadratic identity is
+
+\[
+s^2(e^2+c^2)-2shce+h^2p(V)/2
+=(se-hc)^2+s^2c^2+3h^2(b+c)^2/4+h^2(a-d)^2/4.       \tag{A4}
+\]
+
+The right side is a sum of squares of linear expressions in \((h,s)\).
+Together with \(\langle h^4\rangle/8\), this proves joint convexity. The
+fourth-power term is strictly convex whenever the two \(h\) values differ
+on a set of positive measure. If the \(h\) values agree and \(s\) differs,
+strictness follows from \(Q>0\). Thus the full functional is strictly
+convex in the nondegenerate case, not merely separately convex.
+
+Writing \(m_h=\langle Mh\rangle\), Young and Hölder give
+
+\[
+-2sm_h\ge-Qs^2/2-(2/Q)\|M\|_{4/3}^2\|h\|_4^2.
+\]
+
+Dropping the nonnegative \(Ph^2\) term and absorbing this quadratic term,
+the linear \(Nh\) term, and \(Cs\), yields
+
+\[
+E_\psi(h,s)\ge \|h\|_4^4/16+Qs^2/4-K_\psi
+\]
+
+for a finite constant depending on the fixed \(\psi\). Hence bounded
+sublevel sets are bounded in the reflexive space \(H\times\mathbb R\).
+Weak lower semicontinuity follows either from continuous convexity or
+directly from (A4): for example multiplication
+\(h(y)\mapsto h(y)c(x,y)\) is bounded \(L^4_y\to L^2_{xy}\), and each
+square is the squared norm of a bounded linear map. The linear terms are
+weakly continuous. The direct method therefore supplies a minimizer;
+strict convexity supplies uniqueness.
+
+If \(Q=0\), then \(c=0\) and \(2a+d=0\) almost everywhere.
+The first identity makes \(\psi_2\) depend only on \(y\), so \(d=d(y)\).
+Since \(\langle a\rangle_x=0\), horizontal averaging gives \(d=0\), hence
+\(a=0\). Now \(\psi_1\) is independent of \(x\), and its imposed horizontal
+mean zero gives \(\psi_1=0\), so \(b=0\). Thus **\(V=0\)**; \(\psi_2\) may
+still be a constant, which does not affect gradients. The energy is then
+\(\langle h^4\rangle/8\), its minimum is zero, and the minimizing \(s\) is
+arbitrary. In particular the unique-pair claim must not be extended to
+this case. The source does correctly restrict uniqueness to \(V\ne0\).
+
+**Literal correction, now supplied by the final addendum:** source Eq. (16), and any formula with
+\(1/Q\), is defined only for \(Q>0\). Its phrase “every compatible psi”
+needs this restriction or an explicit piecewise convention
+\(\Delta=0\) when \(Q=0\). This is a removable degeneracy, not a failure
+of the elimination theorem.
+
+## 4. Mean constraint, dual signs, and the operator domain
+
+For \(P\ge0\), \(g_P(t)=t^4/8+Pt^2/2\) has strictly increasing derivative
+\(t^3/2+Pt\), including at \(P=0\). Its inverse obeys
+
+\[
+|R_P(z)|^3\le2|z|,\qquad
+g_P^*(z)=3R_P(z)^4/8+P R_P(z)^2/2.
+\]
+
+Thus the root profile belongs to \(L^4\) whenever its source belongs to
+\(L^{4/3}\). Also
+\(0\le g_P^*(z)\le(3/8)(2|z|)^{4/3}\), so its integral is finite even for
+unbounded measurable \(P\). There is no hidden boundedness assumption on
+the compatible background and no root singularity that leaves the
+Sobolev admissible class.
+
+Fix \(s\), and write \(F_s(\lambda)=\langle
+g_P^*(\lambda-N+2sM)\rangle\). Its derivative is
+\(\langle R_P(\lambda-N+2sM)\rangle\); dominated convergence on bounded
+\(\lambda\) intervals is justified by the root bound above. This derivative
+is continuous and strictly increasing. It tends to \(+\infty\) and
+\(-\infty\) at the two ends: pointwise the root has these limits, and
+monotone convergence applied to its difference from one fixed integrable
+root proves the corresponding limits of its average. There is therefore
+exactly one real \(\lambda_s\) that enforces \(\langle h\rangle=0\), and it
+uniquely minimizes \(F_s\).
+
+For all mean-zero \(h\), Fenchel's inequality gives
+
+\[
+\langle g_P(h)+(N-2sM)h\rangle
+\ge-\langle g_P^*(\lambda-N+2sM)\rangle.
+\]
+
+At the root with \(\lambda=\lambda_s\), equality holds. Therefore
+
+\[
+\inf_{h\in H}E_\psi(h,s)=A+Cs+Qs^2-\min_\lambda F_s(\lambda).
+\]
+
+The **minus sign before the minimum is correct**. Replacing the minimum
+by a maximum, omitting \(\lambda\), or simply centering \(N\) would change
+the constrained problem. The derivative in \(s\) supplies the last
+equation of (A2); the derivative in \(h\) annihilates the codimension-one
+mean-zero subspace exactly when it is an almost-everywhere constant.
+Thus (A2) is both necessary and sufficient for the unique optimum.
+
+Eliminating \(s\) explicitly gives
+
+\[
+s=m_h/Q-C/(2Q),\qquad
+E_{\min s}=A-C^2/(4Q)+T_\psi(h)+\langle(N+(C/Q)M)h\rangle.
+\]
+
+This proves the argument \(-N-(C/Q)M\) in (A3). By minimizing (A4) in
+\(s\), the quadratic part of \(T\) is nonnegative; hence \(T\) is strictly
+convex, coercive, and its conjugate is finite and attained for all
+\(L^{4/3}\) sources.
+
+**Dual-space qualification:** on \(H=L^4_0\), dual sources are equivalence
+classes in \(L^{4/3}/\mathbb R\); adding a constant to \(f\) does not change
+\(T^*(f)\). The formula
+\(Kh=Ph-(2/Q)M\langle Mh\rangle\) represents a bounded operator
+\(H\to H^*\), and its quadratic form is nonnegative. It is not generally
+an endomorphism of \(L^4_0\), nor must its displayed representative have
+zero mean. Interpreted as a quadratic form and a dual-space map, the
+source's operator formula is correct. This qualification prevents an
+unjustified spectral or coercivity claim about \(K\) alone.
+
+## 5. Exact equivalence with quasiconvexity at I and valid negative reconstruction
+
+The invariant identity
+
+\[
+J(V)=(u+v)^2/8+3j^2/2+(u-v)j/2,
+\quad u=a^2+c^2,\quad v=b^2+d^2,
+\]
+
+combined with \((u-v)^2+4j^2\le(u+v)^2\), proves
+\(J(V)\ge\kappa|V|^4\), where \(\kappa=(5-\sqrt{13})/16>0\).
+The smaller eigenvalue of \(\begin{psmallmatrix}0&1\\1&3\end{psmallmatrix}\)
+is \((3-\sqrt{13})/2\), giving this constant exactly. This verifies the
+source's coercivity rather than relying on its receipt.
+
+If quasiconvexity at \(I\) holds, then for every real \(s\ne0\) and every
+compatible \(\phi\), fourth-degree homogeneity gives
+
+\[
+\langle J(sI+D\phi)-J(sI)\rangle
+=s^4\langle J(I+D(\phi/s))-J(I)\rangle\ge0.
+\]
+
+This works for **negative** \(s\) as well. At \(s=0\), pointwise coercivity
+gives nonnegativity. Consequently every inner minimum is nonnegative,
+which is the corrected source inequality. Conversely, if all those inner
+minima are nonnegative, the exhaustive decomposition in Section 2 gives
+nonnegativity of every periodic test at \(s=1\), hence quasiconvexity at
+\(I\).
+
+The periodic and zero-boundary formulations agree here. For one direction,
+a \(W^{1,4}_0\) test on a bounded Lipschitz domain extends by zero; after
+an isotropic rescaling of both its domain and amplitude, its gradient is
+unchanged and it fits in a torus cell. Its zero extension is a periodic
+test, and the Jensen difference outside its support is zero. For the other
+direction, first approximate a periodic \(W^{1,4}\) test strongly by a
+smooth periodic test. Tile this test on an integer-period square of side
+\(L\) and multiply by a cutoff which is one except in a fixed-width
+boundary strip and zero near the boundary. The smooth test and its
+derivatives are bounded; the cutoff derivative is bounded independently
+of \(L\). Thus the boundary-strip Jensen contribution is \(O(L)\), while
+the bulk contribution is the periodic mean times \(L^2\). Divide by area
+and let \(L\to\infty\). Scaling the square and amplitude preserves the
+affine background. Polynomial \(4\)-growth and strong density then cover
+the \(W^{1,4}\) class and the usual smooth or Lipschitz test definitions.
+
+If a particular \(\psi\) has \(\Delta(\psi)<0\), the attained minimizer
+\((h_*,s_*)\) is a genuine admissible Sobolev pair. Choose a periodic
+primitive \(m_*\) satisfying \(m_*'=h_*\), and set
+\(\phi=\psi+(m_*,0)\). Necessarily \(s_*\ne0\), since at zero background
+coercivity makes every energy nonnegative. Then \(\phi/s_*\) is a
+compatible periodic \(W^{1,4}\) map with negative Jensen energy at \(I\).
+Smooth approximation preserves a strict negative gap, and the cutoff
+argument supplies a zero-boundary counterexample. Therefore a rigorously
+negative value has the exact variational meaning claimed. No such value
+is supplied by this audit.
+
+There is also a useful scaling consistency check: for real \(t\ne0\),
+\(A,C,Q,P,M,N\) scale respectively as \(t^4,t^3,t^2,t^2,t^2,t^3\),
+\(R_{t^2P}(t^3z)=tR_P(z)\), and \(\Delta(t\psi)=t^4\Delta(\psi)\).
+Neither affine-scalar optimization nor negative scalar rescaling changes
+the integrand coefficient.
+
+## 6. Opposite determinant-sign contact
+
+At \(D=\operatorname{diag}(1,-1)\), remove the vertical mean of \(\phi_2\)
+and write \(D\phi=D\psi+h(x)e_{21}\), with
+\(\langle\psi_2\rangle_y=0\) and \(\langle h\rangle_x=0\). Then
+\(\langle b\rangle_y=\langle c\rangle_y=0\). Put \(f=a-2d\),
+\(Q_D=\langle f^2+b^2\rangle\),
+\(M_D=-\langle bf\rangle_y\),
+\(P_D=\langle(a+d)^2/2+3(c-b)^2/2+2b^2\rangle_y\),
+\(N_D=\langle\partial_cJ\rangle_y\), and
+\(C_D=\langle\partial_aJ-\partial_dJ\rangle\).
+
+Independent expansion gives
+
+\[
+\begin{aligned}
+J(sD+V)-J(sD)&=J(V)+sC_D(V)
+ +s^2(f^2+b^2-3\det V)+s^3(3a-5d),\\
+C_D(V+he_{21})-C_D(V)&=2hbf=-2h(-bf).
+\end{aligned}
+\]
+
+The cubic shear coefficient is \((c-b)/2\), and its vertical average
+vanishes. Thus the cross term is \(-2s\langle M_Dh\rangle\), with exactly
+the source's sign. Its positive quadratic identity is
+
+\[
+s^2(f^2+b^2)+2shbf+h^2P_D(V)/2
+=(sf+hb)^2+s^2b^2+3h^2(c-b)^2/4+h^2(a+d)^2/4.
+\]
+
+All the previous function-space, conjugate, uniqueness, mean-constraint,
+and localization arguments transfer with the variables interchanged.
+If \(Q_D=0\), then \(b=0\) and \(a=2d\); averaging vertically gives
+\(a=0\), hence \(d=0\), and the gauge gives \(\psi_2=0\), so \(c=0\).
+Thus again \(V=0\), with arbitrary scalar minimizers. The resulting
+universal criterion is equivalent to quasiconvexity at \(D\), separately
+from the criterion at \(I\). No argument here identifies these two
+unproved inequalities or treats every full-rank background.
+
+The rank-one Hessian stated in the source was also independently
+differentiated: it equals the displayed \(G(z)\); its leading block has
+determinant one and its Schur complement is the displayed positive
+semidefinite matrix with determinant \(9z^4/16\). Left \(SO(2)\) invariance
+and continuity cover all rank-one directions. This validates rank-one
+convexity at the stated coefficient, without inferring quasiconvexity.
+
+## 7. Revised source: rigorous positive partial theorem and its limitation
+
+For smooth periodic real \(F,G\), \(\langle F\rangle=0\), set
+\(\psi=(-G'F/2,GF')\). Then \(d=-2a\), \(M=0\),
+\(Q=\langle c^2\rangle\), and one-dimensional integration by parts gives
+
+\[
+C=\tfrac18\langle(F')^3\rangle\langle(G')^3\rangle
+ =2\langle abc\rangle=2\langle a(b+h)c\rangle.
+\]
+
+The last equality holds for every \(h(y)\), because
+\(\langle ac\rangle_x=-(GG'/2)\langle F'F''\rangle_x=0\).
+The independently checked sum of squares is
+
+\[
+8\{J(a,b,c,-2a)-9a^2b^2/4\}
+=97(a^2+30bc/97)^2+2a^2c^2
+ +(b^2+2bc-c^2)^2+(264/97)b^2c^2.
+\]
+
+Writing \(A(h)=\langle J(V+he_{12})\rangle\), Cauchy–Schwarz gives
+\(C^2\le4\langle a^2(b+h)^2\rangle Q\le(16/9)A(h)Q\).
+Therefore for all scalar backgrounds and all mean-zero \(L^4\) shears,
+
+\[
+E_\psi(h,s)=A(h)+Cs+Qs^2\ge A(h)-C^2/(4Q)
+\ge(5/9)A(h)\ge0.                              \tag{A5}
+\]
+
+The \(Q=0\) case is automatic as above. No parity or Fourier assumption
+on \(G\) is needed. This is a meaningful positive partial theorem, valid
+after the entire nonlinear shear and scalar optimization; it is not an
+all-background or all-compatible-map theorem.
+
+For completeness, the full gauged compatible \(e=0\) class has a periodic
+\(W^{2,4}\) potential representation \(\psi=(-\theta_y/2,\theta_x)\), up
+to map constants, with \(\langle\theta\rangle_x=0\). Indeed the one-form
+\(\psi_2\,dx-2\psi_1\,dy\) is closed by \(e=0\); its periods vanish after
+subtracting the constant horizontal mean of \(\psi_2\), while the other
+period is independent of \(x\) by the closedness equation and vanishes by
+the horizontal gauge. Its potential is periodic, its second
+derivatives are in \(L^4\), and its horizontal mean is constant. This
+supplies the function-space details omitted in the source. A general
+ungauged horizontal-mean potential can instead be absorbed into the
+already eliminated shear.
+
+For nonseparable \(\theta\), the cubic identity in (A5) fails: the exact
+difference is
+
+\[
+C_\theta-2\langle abc\rangle
+=\tfrac18\langle\theta_{xy}^3+4\theta_{xy}\theta_{xx}^2
+ -4\theta_{xx}\theta_{xy}\theta_{yy}\rangle.
+\]
+
+The three-wave fixture \(\theta=U\cos x+V\cos(x+y)+T\cos(2x+y)\) has
+\(C=-3TUV/2\), whereas \(2\langle abc\rangle=-3TUV/8\). This is a valid
+compatible witness against extending the separable cancellation. Its
+reported \(P,N,Q,A\) formulas pass exact Laurent constant-term extraction.
+In particular \(P=P_0+P_1\cos y\), \(N=N_0+N_1\cos y\). When
+\(P_1N_1\ne0\), the root with \(\lambda=N_0\) is not mean zero: pairing
+\(\cos y=z\) and \(-z\) compares equal forcing magnitudes at unequal
+positive \(P\). The mean has sign \(P_1N_1\), so the required correction
+\(\ell=\lambda-N_0\) has the opposite sign. The source's active-mean-
+constraint claim is correct.
+
+The fixture is nevertheless analytically positive. With
+\(B=U^2/2+9V^2/8+21T^2/2\), coercivity and Jensen give
+\(A(h)\ge\kappa B^2\) for every shear. Meanwhile
+
+\[
+C^2/(4Q)=\frac{9T^2U^2V^2}{8(16T^2+U^2+V^2)}
+\le(3/139)B^2.
+\]
+
+The coefficient argument in the source checks exactly: the polynomial
+\((16z+x+y)(x/2+9y/8+21z/2)^2\) has nonnegative coefficients and its
+\(xyz\) coefficient is \(417/8\). Thus
+\(\Delta_\theta\ge(\kappa-3/139)B^2>0\) for nonzero parameters. These
+finite exact formulas do not control arbitrary nonseparable potentials.
+
+Finally, the two-axis shear energy is
+\(3(H^4+K^4)/64+7H^2K^2/16\); its Hessian at \((1,1)\) has eigenvalue
+\(-5/16\). It is a sound obstruction to combining the two eliminations
+into one joint convex problem, and its positive energy is not a
+quasiconvexity counterexample.
+
+## 8. Audit verdict and receipt scope
+
+No substantive algebraic or analytic failure was found in the reconstructed
+elimination, attained minimizer, exact dual criterion, negative
+reconstruction, opposite determinant contact, separable \(5/9\) theorem,
+or positive three-wave fixture. Required clarifications are the explicit
+\(Q>0\) qualification for quotients, nonuniqueness of the scalar in the
+degenerate case, and interpreting \(K\) and \(T^*\) in the correct
+mean-zero dual space. The potential representation should state
+\(\theta\in W^{2,4}\) when the original map is only \(W^{1,4}\). The final
+source addendum explicitly supplies both denominator conditions and the
+separate zero-defect case, so that quantifier issue is resolved in the
+combined report-plus-addendum statement.
+
+`exact_checks.py` is an independent four-group finite identity check and
+does not read the source verifier. `EXACT_CHECKS_RECEIPT.json` records 30
+passing checks, including both contact expansions, the joint square
+identities, scalar/conjugate signs, rank-one Hessian, separable SOS, and
+the nonseparable fixture moments and rational bound. The analytic claims
+are justified by the direct proofs above, not by the finite receipt.
+
+The remaining decisive obligation is exactly the corrected universal
+source inequality (source Eq. (16)), and its separate \(D\) counterpart.
+Neither is proved or violated here. The general full-rank and other-\(r\)
+positive sharp problem remains unresolved.

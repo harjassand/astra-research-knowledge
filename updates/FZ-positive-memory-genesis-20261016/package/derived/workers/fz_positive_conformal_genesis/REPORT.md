@@ -1,0 +1,557 @@
+# The unchanged conformal core: an exact nonlinear stress projection
+
+Research date: 16 October 2026, Australia/Brisbane.
+
+**Status: the universal inequality is unresolved.** This work does not prove
+\(C_3^2\leq4A_4Q_2\) for every periodic gradient and does not supply a violation
+of that inequality. It supplies a different exact operation: eliminate one
+scalar potential by a globally convex compatible minimization, and express
+the result as a nonlinear projection of its stress onto divergence-free
+fields. The resulting scalar stress-cost inequality is equivalent to the
+original conformal problem, with no extra distortion coefficient and no
+loss in the admissible class. A quantitative triangular theorem, an exact
+failure of the simple cofactor-stress choice, and a rational compatible
+Fourier diagnostic are proved below.
+
+The Fourier diagnostic has
+\(C_3^2/(4A_4Q_2)=0.693155287785\ldots>2/3\), so the stronger estimate
+\(C_3^2\leq(8/3)A_4Q_2\) is false. Its actual optimized Jensen energy is
+positive. It is **not** a counterexample to the requested estimate.
+
+The generic tools used here—convex scalar minimization, Fenchel duality,
+divergence-free stress, and Bregman divergence—are classical. The precise
+family formulas and diagnostics have been reconstructed in this worker.
+Historical priority and external mathematical review remain UNKNOWN.
+
+## 1. Contract and notation
+
+Work on \(\mathbb T^2=(\mathbb R/2\pi\mathbb Z)^2\), with normalized average
+\(\langle\cdot\rangle\). Every function is periodic, and additive constants
+of scalar potentials are fixed by zero mean. The admissible class is
+\(W^{1,4}(\mathbb T^2;\mathbb R^2)\). Smooth functions are enough for the
+algebra; strong Sobolev approximation gives every stated integral result.
+No orientation, injectivity, pointwise bound, Fourier cutoff, or smallness
+assumption is imposed unless explicitly stated.
+
+For
+\[
+A=\begin{pmatrix}a&b\\c&d\end{pmatrix},\qquad
+u=a^2+c^2,\quad v=b^2+d^2,\quad S=u+v,\quad
+\delta=u-v,\quad j=ad-bc,
+\]
+retain exactly
+\[
+J(A)=\frac18\big((a-d)^2+(b+c)^2\big)^2+j^2+uj.
+\tag{1}
+\]
+There is no completion term. Useful exact identities are
+\[
+J=\frac18S^2+\frac32j^2+\frac12\delta j
+ =\frac1{12}S^2+\frac16uv+
+ \frac32\left(j+\frac\delta6\right)^2
+ \geq\frac1{12}|A|^4.
+\tag{2}
+\]
+
+For a perturbation \(\phi\), write its derivatives as in the task, and put
+\[
+A_4=\langle J(D\phi)\rangle,\quad
+Q_2=\langle(2a+d)^2+c^2\rangle,
+\]
+\[
+C_3=\langle2j(2a+d)+u(a+d)\rangle.
+\tag{3}
+\]
+The pointwise expansion, before discarding any terms, is
+\[
+J(sI+D\phi)-2s^4
+=J(D\phi)+s\,[2j(2a+d)+u(a+d)]
+ +s^2[(2a+d)^2+c^2+3j]+s^3(5a+3d).
+\tag{4}
+\]
+The means of all derivatives and of the determinant vanish. Therefore
+\[
+\langle J(sI+D\phi)-J(sI)\rangle=A_4+sC_3+s^2Q_2.
+\tag{5}
+\]
+This reproduces the supplied reduction, rather than claiming it as a new
+general moment theorem. In particular, the universal conformal inequality
+is equivalent to quasiconvexity at \(I\): homogeneity transfers the latter
+to every nonzero \(sI\), and (2) handles \(s=0\).
+
+## 2. Independent rank-one convexity certificate
+
+This proof is included so that the row operation does not rest on a
+numerically sampled Hessian or an imported sharp-core assertion.
+
+For the rank-one direction \(R=e_2\otimes(m,n)\), one has
+\[
+\frac12D^2J(A)[R,R]=(a,b,c,d)M(m,n)(a,b,c,d)^T,
+\]
+where
+\[
+M=\frac14\begin{pmatrix}
+m^2+7n^2&-6mn&2mn&m^2-3n^2\\
+-6mn&7m^2+n^2&-3m^2+n^2&2mn\\
+2mn&-3m^2+n^2&3m^2+n^2&2mn\\
+m^2-3n^2&2mn&2mn&m^2+3n^2
+\end{pmatrix}.
+\tag{6}
+\]
+For \((m,n)\ne(0,0)\), its leading \(2\times2\) block \(C\) is positive
+definite: its first diagonal entry is positive and
+\[
+\det C=\frac7{16}(m^2+n^2)^2>0.
+\]
+The Schur complement is
+\[
+\frac1{7(m^2+n^2)^2}
+\begin{pmatrix}
+3m^2(m^4+3m^2n^2+4n^4)&6mn(m^4+m^2n^2+n^4)\\
+6mn(m^4+m^2n^2+n^4)&3n^2(4m^4+3m^2n^2+n^4)
+\end{pmatrix}.
+\tag{7}
+\]
+Its diagonal entries are nonnegative and its determinant is
+\[
+\frac{9m^4n^4}{7(m^2+n^2)^2}\geq0.
+\]
+Thus the Schur complement and \(M\) are positive semidefinite, including
+the coordinate directions \(m=0\) or \(n=0\). The zero direction is trivial.
+Left \(SO(2)\) invariance of (1) rotates an arbitrary nonzero output vector
+to a multiple of \(e_2\). This proves the Legendre–Hadamard inequality in
+every rank-one direction, hence rank-one convexity of this polynomial.
+
+In particular, \(J\) is convex in each row separately. This is the crucial
+convexity used below; it is not joint convexity of \(J\).
+
+## 3. A quantitative fourth-order row inequality
+
+Let \(h(t)\) be a convex quartic with leading coefficient \(\gamma>0\):
+\[
+h(t)=h(0)+h'(0)t+At^2+Bt^3+\gamma t^4.
+\]
+Since \(h''(t)\geq0\) on the entire real line,
+\[
+A\geq\frac{3B^2}{8\gamma}.
+\]
+Consequently
+\[
+h(1)-h(0)-h'(0)
+\geq\gamma+B+\frac{3B^2}{8\gamma}
+=\frac\gamma3+
+  \frac3{8\gamma}\left(B+\frac{4\gamma}3\right)^2
+\geq\frac\gamma3.
+\tag{8}
+\]
+For a row variation \(R\), the leading coefficient is
+\(J(R)=|R|^4/8\), since \(R\) has rank at most one. Applying (8), and
+handling \(R=0\) separately, gives the global pointwise inequality
+\[
+\boxed{J(A+R)-J(A)-DJ(A):R\geq\frac1{24}|R|^4}
+\quad\text{whenever }R\text{ has only one nonzero row}.
+\tag{9}
+\]
+The background \(A\) and the row increment are arbitrary. The constant is
+not asserted optimal. This inequality is derived from the entire convex
+quartic on the row line, not from its Hessian only at the given background.
+
+## 4. Exact compatible component minimization
+
+Fix an arbitrary scalar periodic \(f\in W^{1,4}\), and put
+\[
+P=e_1+Df.
+\]
+For a row vector \(q\in\mathbb R^2\), define
+\[
+\psi_P(q)=J\!\begin{pmatrix}P\\q\end{pmatrix}.
+\]
+Consider
+\[
+M(P)=\min_{g\in W^{1,4}_{\rm per},\,\langle g\rangle=0}
+       \left\langle\psi_P(e_2+Dg)\right\rangle.
+\tag{10}
+\]
+This is a scalar convex variational problem, although the original
+two-component problem is not jointly convex.
+
+**Existence.** Equation (2) bounds the functional below by
+\(\langle|e_2+Dg|^4\rangle/12\). Together with the zero mean and Poincaré's
+inequality, this bounds a minimizing sequence in \(W^{1,4}\). Reflexivity
+gives a weakly convergent subsequence. The integrand is measurable in the
+fixed field \(P\), continuous and convex in \(q\), with quartic growth.
+Its integral is weakly lower semicontinuous. One can see the latter by
+writing the convex integrand as its supremum of affine supporting functions
+in \(q\); the resulting integral functional is convex and strongly
+continuous on \(L^4\), hence weakly lower semicontinuous. The limit therefore
+attains (10).
+
+**Uniqueness and actual decrease.** If \(g_P\) is the minimizer, first
+variation against any periodic \(\eta\in W^{1,4}\) gives
+\[
+\left\langle \sigma_P\cdot D\eta\right\rangle=0,
+\qquad \sigma_P=\partial_q\psi_P(e_2+Dg_P).
+\tag{11}
+\]
+The derivative has cubic growth and is in \(L^{4/3}\), so these pairings are
+well defined. Integrate (9) with the second-row increment
+\(D(g-g_P)\). The linear term vanishes by (11), giving
+\[
+\boxed{\left\langle J\!\begin{pmatrix}P\\e_2+Dg\end{pmatrix}\right\rangle
+\geq M(P)+\frac1{24}\langle|D(g-g_P)|^4\rangle.}
+\tag{12}
+\]
+This proves uniqueness of the gradient and, after fixing the mean, of the
+potential. Replacing \(g\) by \(g_P\) is thus a compatible operation that
+decreases the **actual unchanged energy**, with a rigorous quantitative
+receipt. It is not arbitrary projection onto a prescribed gradient set.
+
+For reference, write \(\kappa=3j+\delta/2\). The stress in (11) is explicitly
+\[
+\boxed{\partial_q\psi_P(q)=
+\left((S/2+j)c-\kappa b,\ (S/2-j)d+\kappa a\right).}
+\tag{13}
+\]
+Equation (11) says precisely that this stress is divergence-free in the
+distributional sense. Alternating the two component minimizations is a
+legitimate energy-decreasing search operation, but convergence to a global
+two-component minimum is **not** proved or assumed.
+
+## 5. An attained divergence-free dual calibration
+
+Let \(\psi_P^*\) denote the ordinary pointwise Fenchel conjugate in \(q\):
+\[
+\psi_P^*(\sigma)=\sup_{q\in\mathbb R^2}
+       \{\sigma\cdot q-\psi_P(q)\}.
+\]
+Let
+\[
+Z=\{\sigma\in L^{4/3}(\mathbb T^2;\mathbb R^2):
+                         \operatorname{div}\sigma=0\}.
+\]
+No mean is prescribed for \(\sigma\). For \(P\in L^4\) and
+\(\sigma\in L^{4/3}\), the conjugate is integrable: (2) gives an upper bound
+by a constant times \(|\sigma|^{4/3}\), while the trial \(q=0\) gives a
+lower bound by \(-J(P,0)\).
+
+Fenchel's inequality and periodic integration by parts give, for every
+\(\sigma\in Z\),
+\[
+\left\langle\psi_P(e_2+Dg)\right\rangle
+\geq\left\langle\sigma\cdot e_2-\psi_P^*(\sigma)\right\rangle.
+\tag{14}
+\]
+At \(g=g_P\), choose \(\sigma=\sigma_P\) from (11). It belongs to \(Z\),
+and Fenchel's inequality is an equality at almost every point. Hence
+\[
+\boxed{M(P)=\max_{\sigma\in Z}
+ \left\langle\sigma\cdot e_2-\psi_P^*(\sigma)\right\rangle.}
+\tag{15}
+\]
+This proves strong duality and attainment directly from the scalar
+minimizer; no unverified minimax exchange is being used. Equality forces
+\(\sigma=\partial_q\psi_P(e_2+Dg_P)\), so the dual optimizer is unique too.
+Conversely its unique pointwise conjugate maximizer recovers
+\(e_2+Dg_P\). This is an exact variational operation; no finite iteration
+count, uniform conditioning estimate, or exact finite-precision solver is
+claimed.
+
+It follows that the target inequality is equivalent to the following
+uniform nonlinear calibration statement:
+\[
+\boxed{\forall f\in W^{1,4}_{\rm per},\quad
+\max_{\sigma\in Z}
+ \left\langle\sigma_2-\psi_{e_1+Df}^*(\sigma)\right\rangle\geq2.}
+\tag{16}
+\]
+The spatially varying stress may depend on the whole first potential.
+This avoids the ordinary fixed minor supporting-plane restriction. Equation
+(16) is an exact new working representation of the same unresolved gate;
+strong duality does **not** prove its uniform lower bound.
+
+## 6. The exact stress-projection cost
+
+Set \(a=f_x\), \(b=f_y\), and use the reference second row \(e_2\). Its
+stress is the explicit polynomial field
+\[
+\tau_P=\partial_q\psi_P(e_2)=
+\left(
+-b(3+4a+a^2/2-b^2/2),\
+3+7a+5a^2+a^3/2-ab^2/2
+\right).
+\tag{17}
+\]
+Define the nonnegative conjugate Bregman cost
+\[
+\mathcal B_P(\sigma,\tau_P)
+=\psi_P^*(\sigma)-\psi_P^*(\tau_P)-e_2\cdot(\sigma-\tau_P).
+\tag{18}
+\]
+Its nonnegativity follows from Fenchel's inequality with reference row
+\(e_2\); no smooth Hessian or positive-definiteness assumption is required.
+The identity \(\psi_P^*(\tau_P)=\tau_P\cdot e_2-\psi_P(e_2)\) and (15) give
+\[
+\boxed{M(P)=\langle\psi_P(e_2)\rangle
+ -\min_{\sigma\in Z}\langle\mathcal B_P(\sigma,\tau_P)\rangle.}
+\tag{19}
+\]
+Thus the operation is a nonlinear, attained projection of the reference
+stress onto divergence-free fields, in the exact conjugate Bregman cost.
+It preserves the scalar gradient problem by (10)-(15).
+
+The available reference surplus is fully explicit:
+\[
+\langle\psi_P(e_2)\rangle-2
+=\left\langle4a^2+a^3+\frac18(a^2+b^2)^2\right\rangle.
+\tag{20}
+\]
+There is the pointwise identity
+\[
+4a^2+a^3+\frac18(a^2+b^2)^2
+=a^2+\frac1{24}(a^2+b^2)^2
+ +\frac1{12}a^2(a+6)^2
+ +\frac1{12}(2a^2b^2+b^4).
+\tag{21}
+\]
+The exact unresolved scalar inequality can therefore be written
+\[
+\boxed{\min_{\sigma\in Z}\langle\mathcal B_{e_1+Df}(\sigma,\tau_{e_1+Df})\rangle
+\leq\left\langle4f_x^2+f_x^3+
+                 \frac18|Df|^4\right\rangle
+\quad\text{for every periodic }f\in W^{1,4}.}
+\tag{22}
+\]
+This is equivalent to (16), not a stronger sufficient substitute.
+
+A coarser usable certificate follows from (9). For any \(\sigma\in Z\),
+\[
+M(P)\geq\langle\psi_P(e_2)\rangle
+-\frac34\,6^{1/3}\|\tau_P-\sigma\|_{4/3}^{4/3}.
+\tag{23}
+\]
+Indeed apply (9) with second-row increment \(Dg\), discard the pairing of
+\(\sigma\) with \(Dg\), use Hölder, and minimize
+\(t^4/24-\|\tau_P-\sigma\|_{4/3}t\) over \(t\geq0\). This bound is
+generally too coarse near a small perturbation because it discards the
+quadratic row curvature. It is an a posteriori sufficient estimate, not
+claimed equivalent to (22), and no sharp norm estimate is imported.
+
+## 7. An exact triangular theorem and a nonconstant successful stress
+
+Suppose only the first component is unidirectional:
+\[
+\phi=(h(x),g(x,y)),\qquad
+h\in W^{1,4}_{\rm per}(\mathbb T),\quad
+g\in W^{1,4}_{\rm per}(\mathbb T^2).
+\]
+For arbitrary \(s\in\mathbb R\), fix \(P=(s+h',0)\) and reference second
+row \((0,s)\). Its stress has first coordinate zero and second coordinate
+depending only on \(x\). Hence it is divergence-free. Convexity in the
+second row and (9) show that \(g=0\) is the exact scalar minimizer and
+\[
+\langle J(sI+D\phi)\rangle
+\geq\langle J(\operatorname{diag}(s+h',s))\rangle
+ +\frac1{24}\langle|Dg|^4\rangle.
+\]
+The remaining one-dimensional energy is
+\[
+\langle J(\operatorname{diag}(s+a,s))-2s^4\rangle
+=\langle4s^2a^2+sa^3+a^4/8\rangle,
+\quad a=h',\quad\langle a\rangle=0.
+\]
+The exact pointwise identity
+\[
+4s^2a^2+sa^3+a^4/8
+=s^2a^2+a^4/24+a^2(a+6s)^2/12
+\]
+proves
+\[
+\boxed{\langle J(sI+D(h(x),g(x,y)))-J(sI)\rangle
+\geq s^2\langle|h'|^2\rangle
+ +\frac1{24}\langle|h'|^4+|Dg|^4\rangle.}
+\tag{24}
+\]
+This controls the full second-component gradient class at these tests.
+It does not restrict \(g\) to one dimension. It preserves the original
+coefficient \(1/8\).
+
+At \(s=1\), the successful stress for arbitrary \(h\) is explicitly
+\[
+\sigma_*(x)=
+\left(0,3+7a(x)+5a(x)^2+\frac12a(x)^3\right).
+\tag{25}
+\]
+The qualitative triangular result is not a new resolution of Morrey's
+problem: Harris–Kirchheim–Lin prove a broader laminate theorem for
+upper-triangular gradient Young measures. Lower-triangular matrices are
+equivalent by fixed invertible row/column permutations. Here (24) is a
+direct quantitative specialization and (25) exhibits the stress operation.
+[Primary source: Harris–Kirchheim–Lin, arXiv:1708.07849](https://arxiv.org/abs/1708.07849).
+
+## 8. A genuinely compatible first row defeats the simple cofactor stress
+
+The uniform choice \(\sigma=3R_\perp P\), where
+\(R_\perp(p_1,p_2)=(-p_2,p_1)\), is always divergence-free when
+\(P=e_1+Df\). It is the stress version of the forced determinant slope.
+It cannot prove (16), even for a smooth first row covered by (24).
+
+Take
+\[
+f(x,y)=\varepsilon\left(\sin x+\frac14\sin2x\right),
+\quad\varepsilon=\frac1{32},\qquad
+a=\varepsilon(\cos x+\tfrac12\cos2x),\quad P=(1+a,0).
+\]
+Then \(\sigma_0=(0,3(1+a))\in Z\). The pointwise trial row
+\(q=(0,1-2a)\) is allowed in the conjugate calculation. Direct polynomial
+expansion gives
+\[
+\psi_P(q)-\sigma_0\cdot q
+=-1+2a-a^3+\frac{97}{8}a^4.
+\]
+The exact moments of the unscaled trigonometric profile are
+\[
+\langle(\cos x+\tfrac12\cos2x)^2\rangle=\frac58,\quad
+\langle(\cos x+\tfrac12\cos2x)^3\rangle=\frac38,\quad
+\langle(\cos x+\tfrac12\cos2x)^4\rangle=\frac{99}{128}.
+\]
+Since the conjugate is a supremum, the dual value for this stress satisfies
+\[
+\boxed{\left\langle\sigma_{0,2}-\psi_P^*(\sigma_0)\right\rangle
+\leq2-\frac{2685}{1073741824}<2.}
+\tag{26}
+\]
+In contrast, the exact compatible minimum for the same first row is
+\[
+\boxed{M(P)=2+\frac{2633827}{1073741824}>2,}
+\tag{27}
+\]
+attained by \(g=0\), with stress (25).
+
+The pointwise trial row \(q=(0,1-2a(x))\) is **not** a compatible second
+row: its second entry depends on \(x\), while its first entry is zero.
+Equations (26)-(27) are a failure of a particular valid lower calibration,
+not a negative compatible energy. They show concretely why one must solve
+the spatial stress correction rather than hold the determinant slope
+fixed. The first row itself is an actual smooth periodic gradient, and it
+even has \(1+a>0\); no fold hypothesis is responsible for this failure.
+
+## 9. Exact compatible Fourier diagnostic
+
+`EXACT_FOURIER_DIAGNOSTIC.json` specifies the entire smooth potential:
+150 nonzero component/mode records, each with integer wavevector and
+rational sine/cosine coefficients of denominator 1000. The potential is
+defined by those records, so compatibility is automatic and is also checked
+coefficient by coefficient.
+
+Gaussian-integer Fourier convolution gives exactly
+\[
+A_4=\frac{48716473823719}{64000000000000},\qquad
+C_3=\frac{208019743}{125000000},\qquad
+Q_2=\frac{82013}{62500},
+\]
+\[
+\frac{C_3^2}{4A_4Q_2}
+=\frac{2769421662578307136}{3995384167704666347}
+=0.693155287785337\ldots.
+\tag{28}
+\]
+In particular
+\[
+C_3^2-\frac83A_4Q_2
+=\frac{158748326162794357}{1500000000000000000}>0.
+\tag{29}
+\]
+The actual optimized scalar background and Jensen energy are
+\[
+s_*=-\frac{208019743}{328052000},\qquad
+A_4-\frac{C_3^2}{4Q_2}
+=\frac{1225962505126359211}{5248832000000000000}
+=0.23356863110237844\ldots>0.
+\tag{30}
+\]
+The verifier independently evaluates \(J(s_*I+D\phi)-2s_*^4\) at that
+actual rational background, without relying only on the discriminant
+formula. It agrees exactly with (30). The mean gradient and mean determinant
+are exactly zero. Two algebraically different formulas for both \(J\) and
+the cubic moment agree exactly.
+
+The numerical precursor used a finite compatible Fourier basis of
+bandwidth six and a grid of size 25, followed by rational rounding of the
+**potential** coefficients. Six bandwidth-three and three bandwidth-six
+local Adam runs were completed. They are diagnostics, not bounds on either
+finite search space. The rounded witness and all final integrals use exact
+Fourier arithmetic; the optimizer need not be correct for (28)-(30) to hold.
+The result excludes a tempting stronger cubic bound. It provides no evidence
+that the requested sharp constant four fails.
+
+## 10. Other routes and precise failure scope
+
+1. A pointwise estimate \(C(A)^2\leq4J(A)Q(A)\) fails on the supplied
+   incompatible direction \(\operatorname{diag}(1,-2)\), where \(Q=0\) and
+   \(C\ne0\). No pointwise minor support was sought as a substitute.
+2. A guessed universal ratio at most one half is already contradicted by
+   the saved Fourier diagnostic. The bound at most two thirds is now
+   contradicted exactly by (29). Rank-one-line or simple-wave calculations
+   cannot be promoted to all compatible gradients.
+3. Holding a fixed cofactor stress fails by (26), despite the same first row
+   having the exact positive minimum (27). A nonlinear stress correction is
+   necessary for this architecture.
+4. Partial hodograph and inverse-map ideas introduce orientation or
+   monotonicity hypotheses. No such restriction was used to claim the full
+   test class. The supplied coefficient-completion results were not reused.
+5. An exploratory two-level diagonal-laminate moment optimization
+   produced ratios around 0.773. No actual finite compatible map, exact
+   optimum, or universal bound was certified for that calculation; it is
+   not used in any theorem, receipt, or counterexample claim here.
+6. The norm estimate (23) is deliberately separated from the exact cost
+   (22). Its quartic-only curvature bound loses the quadratic information
+   near the affine state and does not currently prove the desired constant.
+
+## 11. Primary comparison and inherited boundaries
+
+Bruno–Pasqualotto's Theorem 2 assumes a degree-four homogeneous polynomial
+invariant under both left and right \(SO(2)\) multiplication. This \(J\) has
+only the left invariance, so that theorem supplies no direct implication.
+The present operation uses scalar convex duality rather than their
+componentwise heat and exact-form construction.
+[Primary theorem](https://arxiv.org/html/2608.06367v1).
+
+Agazzi et al. prove a different all-background quasiconvexity statement for
+a piecewise isotropic integrand using scalar-potential projection onto a
+fixed convex gradient constraint. Its Lemma 4 requires a nonempty compact
+convex set, a prescribed affine gradient in that set, and a periodic scalar
+potential. That projection lemma does not assert energy decrease for the
+quartic (1). No sharp Beurling constant or claimed full Morrey resolution is
+imported here.
+[Primary preliminary version](https://arxiv.org/html/2609.28311v1).
+
+The fixed pin and supplied calibration reports are data identifying the
+problem and its previously established boundaries. This worker makes no
+claim about repository publication, outside acceptance, or priority of the
+calibration in those reports. The mathematical arguments above do not use
+their negative-sector theorem or finite distortion-completion theorem.
+
+## 12. Exact continuation
+
+The decisive next operation is now explicit: for arbitrary
+\(P=e_1+Df\), project the polynomial stress (17) onto divergence-free fields
+in the conjugate cost (18), and prove that its minimal cost is no more than
+the scalar surplus (20). This is equation (22), with all quantifiers and
+cost terms retained.
+
+For a positive result, the proof must hold for every periodic
+\(f\in W^{1,4}\), with no derivative bound, sign condition, or finite spatial
+resolution. The resulting dual bound would prove the exact conformal
+inequality for \(r=1\); it would still not prove the complete positive
+parameter family or every nonconformal affine background.
+
+For a negative result, first find a first potential for which the **exact
+convex scalar minimum** (10) is below two, then reconstruct its compatible
+second potential and evaluate the full energy rigorously. A dual value
+below two alone is a failed lower certificate, as (26)-(27) demonstrate.
+Conversely an approximate primal value below two would be a candidate only
+after its actual gradient and energy are independently verified.
+
+`verify_exact.py` passes 24 exact algebra/diagnostic groups. These checks
+establish their listed algebra and the specified map's moments. They do
+not establish (22), external correctness review, or historical priority.

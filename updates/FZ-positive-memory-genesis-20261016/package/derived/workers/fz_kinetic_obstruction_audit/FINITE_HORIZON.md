@@ -1,0 +1,170 @@
+# What survives at a finite physical deadline
+
+The packet's actual eight-site output is first entry into B={max n_i≤15} by T=1. Its infinite-variance theorems concern eventual success before failure on separate finite-state networks. The distinction changes both the moment theorem and the explicit-path work law. The packet states this distinction in `PROOFS.md` §§1,9; this audit makes the remaining finite-horizon statements explicit.
+
+## 1. Exact finite-horizon law for clock-reweighted likelihood sampling
+
+For the finite networks and supported, finite proposal rates of the packet, let W_T be the likelihood-ratio success estimator, zero unless B is hit by T. With M,b as reconstructed in `RECONSTRUCTED_PROOFS.md`,
+
+\[
+\mathbb E_Q W_T^2=\int_0^T e^{Mt}b\,dt.
+\]
+
+Every coordinate is finite for every finite T. If M is irreducible, b>0, and α is its Perron spectral abscissa, positive Perron-vector bounds give the exact-order alternatives, for a fixed model as T→∞:
+
+\[
+\mathbb E_Q W_T^2=\begin{cases}
+\Theta(e^{\alpha T}),&\alpha>0,\\
+\Theta(T),&\alpha=0,\\
+-M^{-1}b+o(1),&\alpha<0.
+\end{cases}
+\]
+
+The comparison bounds in the reconstruction are stronger than an order statement and apply at each finite T. In the state-independent-escape countermodels, the true success-by-deadline probability is p_T=p(1-e^{-κT}); normalized second moment is this matrix integral divided by p²(1-e^{-κT})². Its variance is the second moment minus p_T². No infinite second moment is implied at T=1.
+
+For the packet's two-state numerical illustration κ=10^{-6}, δ=10^{-2}, α≈3.99040304×10^{-4}. Thus e^{αT}≈1.00039912 at T=1. Eventual divergence does not itself show a large likelihood-growth factor on that timescale. `audit_checks.json` evaluates the exact truncated formula, separately for each starting state, using 70-digit arithmetic; those values are numerical illustrations, not interval certificates.
+
+There is a second source of large normalized moment at small κ which should not be confused with committor-error growth. At δ=0, the exact *eventual* committor proposal has W_T=p on a proposal hit by T, and zero otherwise. Therefore
+
+\[
+\frac{\mathbb E_Q W_T^2}{p_T^2}=\frac1{1-e^{-\kappa T}}\sim\frac1{\kappa T}.
+\]
+
+Even a perfect eventual committor leaves deadline rarity when κT≪1. For fixed T and fixed δ in the two-state CT example, b/p²=κa and M→M_0 as κ↓0, so more generally
+
+\[
+\frac{\mathbb E_Q W_T^2}{p_T^2}
+=\frac{[\int_0^T e^{M_0t}a\,dt]_i}{\kappa T^2}+O(1).
+\]
+
+The coefficient is finite and positive. The 1/κ divergence in this normalization is already present at δ=0; it is not evidence of infinite variance at finite horizon.
+
+The exact deadline committor in these easy networks is instead
+
+\[
+h_T(i,t)=p(1-e^{-\kappa(T-t)}).
+\]
+
+Its time-inhomogeneous Doob transform leaves internal rates unchanged and gives success rate κ/(1-e^{-κ(T-t)}). It generates success by T almost surely and has constant likelihood output p_T. Its exit rate is unbounded near T, so it lies outside a blanket assumption of uniformly bounded proposal rates, but its estimator is perfectly well defined. This is another reason to keep the stated rate assumptions explicit. More generally, finite state plus finite horizon alone does not control moments of arbitrary singular time-dependent proposals.
+
+## 2. Clock-preserving routing at a deadline
+
+Clock removal for an eventual hitting probability cannot simply be reused without preserving or integrating the deadline. One valid implementation is to retain the original holding-time law while changing only embedded routing.
+
+Allow internal total rate λ: q_ij=λS_ij, original total rate q=λ+κ, and let ε=κ/λ. Normalize the approximate Doob routing as in the packet. Generate Exp(q) waiting times under the proposal, using that routing. Then its transient second-moment CT operator and source are exactly
+
+\[
+M_{\rm clk}=q(K^{\varepsilon,\delta}-I),\qquad
+b_{{\rm clk},i}=\frac{\kappa p^2[\lambda(Sa)_i+\kappa]}{q}.
+\]
+
+Its spectral abscissa is α_clk=q(ρ(K^{ε,δ})-1). Therefore the same finite-horizon matrix-integral law and growth alternatives hold. At small ε,δ,
+
+\[
+\alpha_{\rm clk}=-\kappa+\lambda\sigma_S^2(f)\delta^2
++O(\kappa^2/\lambda+\kappa|\delta|+\lambda|\delta|^3).
+\]
+
+This gives the honest additional scale needed to infer substantial finite-horizon likelihood inflation: the positive growth rate times T must be large. Merely knowing it is positive is insufficient. For the triangle's κ=10^{-6}, δ=10^{-2} and λ=2, α_clk≈9.90075×10^{-5}, so e^{α_clk}≈1.00009901 at T=1. This is a newly specified clock-preserving deadline estimator, not an estimator executed in the packet.
+
+## 3. Exact deadline integration over the original clocks
+
+There is a stronger Rao–Blackwellized variant when the original total rate q is constant, as it is in the countermodels. Sample a complete eventual-success embedded trajectory under the proposal. If its total number of jumps, including the success exit, is N=n+1, its original elapsed time is Gamma(n+1,q). Replace the sampled deadline indicator by its conditional probability
+
+\[
+F_{n+1}(qT)=\Pr\{\operatorname{Poisson}(qT)\ge n+1\}.
+\]
+
+The resulting estimator is W_emb F_N(qT), with exact second moment
+
+\[
+m_i^{\rm RB}(T)=\sum_{n\ge0}(K^n b_{\rm emb})_i F_{n+1}(qT)^2,
+\qquad b_{{\rm emb},i}=\frac{\kappa p^2[\lambda(Sa)_i+\kappa]}{q^2}.
+\]
+
+It is finite for every finite T, for every finite K: the Poisson-tail factors suppress the large-n path contributions. For irreducible K with Perron root ρ and positive source, Perron-vector comparisons reduce its order to the scalar
+
+\[
+H_\rho(x)=\sum_{n\ge0}\rho^n\Pr\{\operatorname{Poisson}(x)\ge n+1\}^2.
+\]
+
+Take independent X,Y∼Poisson(x). Tail summation gives, for ρ≠1,
+
+\[
+H_\rho(x)=\frac{\mathbb E\rho^{\min(X,Y)}-1}{\rho-1};
+\qquad H_1(x)=\mathbb E\min(X,Y).
+\]
+
+For ρ>1 write r=√ρ>1. Exponential tilting of both Poisson variables gives the exact identity
+
+\[
+\mathbb E\rho^{\min(X,Y)}
+=e^{2x(r-1)}\mathbb E_{X',Y'\,\text{iid Poisson}(rx)}r^{-|X'-Y'|}.
+\]
+
+For each fixed integer d, the difference mass satisfies Pr(X'-Y'=d)∼1/√(4πrx). One direct proof uses its Fourier representation (2π)^{-1}∫_{-π}^{π} exp[2rx(cos θ-1)]exp(-idθ)dθ and Laplace expansion at zero. Its absolute value is at most the mass at zero, which is O(x^{-1/2}); this bounds the summands uniformly after multiplication by √x. Since ∑_d r^{-|d|}=(r+1)/(r-1), dominated convergence therefore proves
+
+\[
+H_\rho(x)\sim
+\frac{e^{2x(\sqrt\rho-1)}}{(\sqrt\rho-1)^2\sqrt{4\pi\sqrt\rho\,x}}
+\quad(\rho>1).
+\]
+
+For ρ=1, H_1(x)=x-(1/2)E|X-Y|∼x; for ρ<1, dominated convergence gives H_ρ(x)→1/(1-ρ). Thus the strongest order statement for this specific integrated-clock estimator, for a fixed model as T→∞, is
+
+\[
+m_i^{\rm RB}(T)=\begin{cases}
+\Theta(T^{-1/2}e^{2q(\sqrt\rho-1)T}),&\rho>1,\\
+\Theta(T),&\rho=1,\\
+[(I-K)^{-1}b_{\rm emb}]_i+o(1),&\rho<1.
+\end{cases}
+\]
+
+Clock integration improves the exponent from q(ρ-1) to 2q(√ρ-1) in the unstable case. It does not remove all asymptotic growth. This variant still samples a complete eventual-success skeleton, so its expected skeleton length can remain of order λ/κ even at a short physical deadline; integrating the clock is not the same as stopping skeleton generation at the deadline.
+
+## 4. A valid finite-horizon family obstruction, with a different parameter limit
+
+Fix S,a satisfying the general branching hypothesis, so ρ_0=ρ(K^{0,a})>1. Fix κ>0 and T>0, and now let the *internal rate* λ→∞. Positive Perron vectors and source coefficients converge after the explicit source scaling above. For the clock-preserving routing estimator,
+
+\[
+\lim_{\lambda\to\infty}\frac1{\lambda T}
+\log\frac{\mathbb E W_T^2}{p_T^2}=\rho_0-1>0.
+\]
+
+For the fully integrated-clock estimator,
+
+\[
+\lim_{\lambda\to\infty}\frac1{\lambda T}
+\log\frac{\mathbb E (W_{\rm emb}F_N(qT))^2}{p_T^2}
+=2(\sqrt{\rho_0}-1)>0.
+\]
+
+Polynomial source/prefactor factors do not change these exponential rates. Hence there is no uniform finite-horizon second-moment guarantee for this proposal family over unrestricted internal rate scales, even after exact deadline-clock integration. This is a mathematically honest fixed-deadline obstruction. It uses an additional large-λ family; the packet's small-κ example at its fixed rate and T=1 does not itself establish it. No such family or coefficient has been identified for the eight-site experiment. The exact deadline Doob transform and the block contraction below still solve these deliberately easy diagnostic networks.
+
+## 5. The deadline-specific explicit-path work law
+
+Let P*_T be the original path law conditioned on success by T. The Cauchy–Schwarz inequality must now use p_T and P*_T, not the eventual p and P*. Under the state-independent-escape models, τ conditioned on success by T is Exp(κ) truncated to [0,T]. Given τ, internal jump count is Poisson(λτ), independent of the success mark, so total explicit jump cost is
+
+\[
+N=1+\operatorname{Poisson}(\lambda\tau),\qquad
+\mathbb E_{P^*_T}N=1+\lambda\left[\frac1\kappa-\frac{T}{e^{\kappa T}-1}\right].
+\]
+
+For κ↓0 with λ,T fixed, τ converges to Uniform(0,T) and this mean converges to 1+λT/2. It does not grow as 1/κ. The exact finite-deadline proposal can therefore generate full conditioned trajectories at bounded expected jump cost in that limit.
+
+For λ→∞ at fixed κ,T, square-root uniform integrability gives
+
+\[
+(\mathbb E_{P^*_T}\sqrt N)^2
+\sim\lambda\left(\mathbb E[\sqrt\tau\mid\tau\le T]\right)^2
+=\frac{\lambda\,\gamma(3/2,\kappa T)^2}
+{\kappa(1-e^{-\kappa T})^2}.
+\]
+
+When κT≪1 and λT≫1 this becomes (4/9)λT. When the horizon is long compared with the escape scale, the eventual geometric cost law is recovered in its appropriate joint limit. A claim of unavoidable 1/κ work at a fixed short deadline would be false.
+
+## 6. Consequence for the packet's implemented estimator
+
+The eight-site code uses fixed-level splitting, original physical dynamics and retained elapsed time. Its final estimate is a product of fractions in [0,1]. Thus it has finite second moment and variance at most 1/4 in the ideal algorithm, irrespective of the unbounded population state space, provided execution terminates. Its high relative dispersion can coexist with this bound because its mean is extremely small. The preceding likelihood-moment results do not diagnose its variance or efficiency.
+
+The small diagnostic networks also have an exact strongest incumbent. Their success exit column is κp·1 and Q_CC=G-κI, G1=0, so the joint success-exit density is κp e^{-κt}·1 and its Laplace transform is κp/(s+κ)·1. Integrating to T gives p_T immediately. No primitive internal trajectory is required to return that probability. The audit retains a proposal-family obstruction, not intrinsic hardness, a calibrated scientific capability, or an impossibility theorem for analytic contraction.

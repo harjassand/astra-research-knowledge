@@ -1,0 +1,429 @@
+# Independent exact audit: reciprocal lower cut at order two
+
+**Verdict: the supplied candidate is a legal counterexample to universal
+unaugmented full real order-two containment under the algebraic hypotheses
+explicitly displayed in `reciprocal_report.txt`.** The whole truncated
+functional passes, including its singular full moment matrix, all eight
+original voltage-bound localizers, and every required equality multiplier.
+The exact violated value is `-897/10000`.
+
+This conclusion concerns those algebraic hypotheses. The final version also passes the separate connected passive-network embedding proved in Section 11. No selected PGLib model, prescribed interior power injections, branch/generator limits, or stronger incumbent formulation was checked.
+External correctness review and literature priority are UNKNOWN.
+
+## 1. Inputs, independence, and scope
+
+This final audit pins the report, the frozen EXACT_COUNTEREXAMPLE.json, the frozen producer verify_counterexample.py, and PASSIVE_EMBEDDING.json. The producer checker is never imported or executed. The initial `rationalize_order2.py` was also read before the
+producer finalized the candidate, but is never imported or executed. For moment
+positivity the verifier uses only the rational table as witness data, not the producer's
+status, positivity pivots, search output, numerical solution, or rounding recipe.
+`verify_exact.py` regenerates all substantive artifacts in this audit directory.
+`HASH_RECEIPT.json` pins the inputs and generated outputs.
+
+The independently checked arithmetic is integer/Fraction arithmetic. Positivity
+uses fraction-free Bareiss determinants and Sylvester's criterion. This is a
+saved, replayable mathematical certificate with software trust, not a
+proof-assistant proof or external review.
+
+## 2. The exact problem instance
+
+Use four complex voltage coordinates `V=(x,y,u,v)`, with all imaginary
+coordinates zero in the embedded functional. Select the fixed-injection buses
+`i=1,j=2` and linear rows `B_i=(0,0,1,0)`, `B_j=(0,0,0,1)`. Thus the currents
+`J_i=B_i V=u` and `J_j=B_j V=v` are linear functions of the original voltage
+coordinates; they are not additional independent current variables.
+
+The fixed-power equations are `conj(x)u-1=0` and `conj(y)v-1=0`. On the real
+subspace they are `xu=1` and `yv=1`. All four original voltage-coordinate bounds
+are included:
+
+* `1 <= |x|^2 <= 4` and `1 <= |y|^2 <= 4`;
+* `1/64 <= |u|^2 <= 64` and `1/64 <= |v|^2 <= 64`.
+
+The source's displayed containment hypotheses constrain `B_i,B_j` only by their
+linearity in the voltages. The selector rows satisfy that requirement. This
+selector construction itself does not rely on any physical admittance
+realization. For the final version, Section 11 separately verifies a connected
+passive realization after changing original voltage coordinates and boxes.
+Neither construction certifies the selected PGLib case.
+
+For `alpha=1`, `beta=-1`, the source definitions give `z=u-v`, `q=y-x`, and
+`a_i a_j=1`. Therefore the lower reciprocal cut is
+`f=(y-x)^2-(u-v)^2 >= 0` on this real subspace.
+
+## 3. Complete normalized truncated functional
+
+For every `a,b,c,d >= 0` with `a+b+c+d <= 4`, define
+
+`L(x^a y^b u^c v^d)=m[a-c,b-d]`, with `m[k,l]=m[l,k]`.
+
+The complete defining table for sorted labels `k<=l` is:
+
+| k | l | m[k,l] |
+|---:|---:|---:|
+| -4 | 0 | `169351/100000` |
+| -3 | -1 | `3673/3125` |
+| -3 | 0 | `0` |
+| -3 | 1 | `12333/50000` |
+| -2 | -2 | `67919/50000` |
+| -2 | -1 | `0` |
+| -2 | 0 | `62079/100000` |
+| -2 | 1 | `0` |
+| -2 | 2 | `117263/100000` |
+| -1 | -1 | `3041/6250` |
+| -1 | 0 | `0` |
+| -1 | 1 | `44861/50000` |
+| -1 | 2 | `0` |
+| -1 | 3 | `23061/12500` |
+| 0 | 0 | `1` |
+| 0 | 1 | `0` |
+| 0 | 2 | `25717/12500` |
+| 0 | 3 | `0` |
+| 0 | 4 | `271389/50000` |
+| 1 | 1 | `98399/50000` |
+| 1 | 2 | `0` |
+| 1 | 3 | `523571/100000` |
+| 2 | 2 | `33349/6250` |
+
+Every label arising from a degree-at-most-four monomial is covered. In
+particular, `L(1)=1`. All odd-total-degree monomials vanish, and swapping
+`x<->y,u<->v` preserves the functional. The audit explicitly enumerates and
+saves all 70 original real moments in `REBUILT_MOMENT_FUNCTIONAL.json`.
+
+## 4. Every equality multiplier through total degree four
+
+Multiplication by `xu` leaves `(a-c,b-d)` unchanged, as does multiplication by
+`yv`. Thus for each monomial `t` of degree at most two,
+
+`L(t(xu-1))=0` and `L(t(yv-1))=0`.
+
+The 15 such monomials span all permissible multipliers for quadratic equalities
+at order two. The verifier separately evaluates all 30 identities from the
+full degree-four table and saves their exact zero residuals. Linearity then
+establishes the identities for every polynomial multiplier of degree at most
+two, including every equality combination of total degree at most four.
+
+## 5. Full 15-by-15 moment positivity
+
+The full degree-at-most-two basis, in the audit's independently generated
+graded lexicographic order, is
+
+`(1, v, u, y, x, v^2, u v, u^2, y v, y u, y^2, x v, x u, x y, x^2)`.
+
+Reducing these monomials by `xu=yv=1` leaves the 13 distinct representatives
+
+`(1, v^2, u v, u^2, y u, y^2, x v, x y, x^2, v, u, y, x)`.
+
+Let `C` be the 13-by-15 one-hot matrix assigning each original monomial to its
+representative, and let `Q` be the corresponding 13-by-13 Gram matrix. Every
+entry is reconstructed from the full original moment table, and the audit
+checks the exact identity `M_2=C^T Q C` entry by entry. The matrix `C` has row
+rank 13 since every representative occurs in the original basis.
+
+The first nine quotient representatives have even degree; the final four have
+odd degree. Since every odd moment vanishes, `Q` is the direct sum of a 9-by-9
+even block and a 4-by-4 odd block. Every leading principal determinant of each
+block is strictly positive, with exact values reproduced below. Sylvester's
+criterion proves both blocks positive definite, so `Q` is positive definite and
+`M_2` is positive semidefinite of rank 13. Its two-dimensional kernel is exactly
+the coefficient span of `xu-1` and `yv-1`.
+
+This argument proves positivity for every square of a polynomial of degree at
+most two, not just selected submatrices or the cut value.
+
+## 6. Every original voltage-bound localizer
+
+Use the complete degree-at-most-one basis `(1,v,u,y,x)`. For each of the eight
+quadratic bound polynomials
+
+`x^2-1, 4-x^2, y^2-1, 4-y^2, u^2-1/64, 64-u^2, v^2-1/64, 64-v^2`,
+
+the verifier reconstructs the entire 5-by-5 localizing matrix with entries
+`L(g*b_r*b_s)`. All five leading principal determinants of each matrix are
+strictly positive. Thus all eight localizers are positive definite of rank five
+and `L(g*p^2)>=0` for every linear polynomial `p`. The exact matrices and all
+determinant certificates are saved and displayed below.
+
+The verifier also explicitly expands and evaluates all 36 unordered scalar
+pair-products, including self-products, of these eight quadratic bound
+polynomials. Every degree-four value is nonnegative, and the full complex
+modulus-bound products have the same exact values. These additional scalar
+voltage-bound preordering constraints therefore do not remove the witness.
+All 36 exact evaluations are saved in `REBUILT_MOMENT_FUNCTIONAL.json`.
+
+## 7. Full complex embedding
+
+Write the eight real coordinates as
+`(xr,xi,yr,yi,ur,ui,vr,vi)`. Define a degree-at-most-four moment to be zero
+whenever an imaginary coordinate occurs; otherwise use the corresponding real
+moment above. This defines all 495 moments explicitly and has `L_C(1)=1`.
+
+The complete complex-as-real order-two matrix has size 45. Its rows containing
+an imaginary coordinate are zero; its remaining principal matrix is exactly
+the full real 15-by-15 matrix. An explicit coordinate projection therefore gives
+`M_2^C=P^T M_2 P`, proving PSD and rank 13.
+
+Each modulus-square voltage localizer has size nine. Its imaginary-coordinate
+rows are zero and its remaining principal matrix is the corresponding real
+5-by-5 localizer, so all eight are PSD of rank five.
+
+The real part of `conj(x)u-1` is `xr*ur+xi*ui-1`, and its imaginary part is
+`xr*ui-xi*ur`; the analogous formulas hold for `y,v`. The real parts reduce to
+the previously verified identities, and every imaginary term vanishes. The
+verifier explicitly evaluates all four real equality components against all 45
+degree-at-most-two monomial multipliers: 180 exact zero checks. Hence the
+embedding meets the full complex-voltage order-two constraints.
+
+## 8. Exact cut violation and consistency with other source claims
+
+Expanding the cut directly in the original variables gives
+
+`L(f)=L(x^2)+L(y^2)-2L(xy)-L(u^2)-L(v^2)+2L(uv)`
+
+`=2*(25717/12500 - 98399/50000`
+`     - 62079/100000 + 3041/6250)`
+
+`=-897/10000 < 0`.
+
+Thus a normalized feasible order-two truncated functional violates the claimed
+universal lower containment. This is a rigorous algebraic separation witness,
+not a physically feasible voltage vector. It has no representing positive
+measure supported on the stated feasible voltage set. Unrestricted truncated
+representability on all of `R^4` is not decided here.
+Indeed, at every actual real point satisfying `xu=yv=1` and `x^2,y^2>=1`,
+
+`f=(x-y)^2*(1-1/(x^2*y^2))>=0`.
+
+The witness does not satisfy the source's *augmented* order-two relaxation. The
+valid current upper bound `u^2<=1` has, for the linear test polynomial `p=u`,
+
+`L((1-u^2)u^2)=-13409/12500 < 0`.
+
+The valid scalar current bounds `L(u^2),L(v^2)<=1` do hold, emphasizing the
+distinction between scalar bounds and all their localizing constraints. There
+is no contradiction with the source's upper-cut, order-three, or augmented
+order-two containment statements. No independence from complete QC/RLT/OBBT or
+any specified sparse implementation is established.
+
+## 9. Exact positivity certificates
+
+Each list below consists of the leading principal determinants in order, using
+the bases and blocks already specified. For the eight localizers the basis is
+`(1,v,u,y,x)`. The verifier clears a common positive denominator and computes
+integer determinants by exact fraction-free elimination; the displayed reduced
+fractions are the resulting exact determinants. All comparisons to zero use
+integers, not floating-point approximations.
+
+### quotient_moment_even_block
+
+1. `1` > 0
+2. `13081297759/10000000000` > 0
+3. `352291130379217/500000000000000` > 0
+4. `8656990361429731017/25000000000000000000` > 0
+5. `16553607362146476557663/5000000000000000000000000` > 0
+6. `3689114429545930774536819133/1000000000000000000000000000000` > 0
+7. `9880831133227511311025547829/1562500000000000000000000000000000` > 0
+8. `1569825224239624046873027814829/78125000000000000000000000000000000000` > 0
+9. `1964138068365800451400880500616291/31250000000000000000000000000000000000000000` > 0
+### quotient_moment_odd_block
+
+1. `62079/100000` > 0
+2. `297279181/2000000000` > 0
+3. `14594902439411/250000000000000` > 0
+4. `6150901641968647/5000000000000000000` > 0
+### x_lower
+
+1. `13217/12500` > 0
+2. `45585433/78125000` > 0
+3. `1342239574859/31250000000000` > 0
+4. `2642632423689841/390625000000000000` > 0
+5. `5483186536622473957/312500000000000000000000` > 0
+### x_upper
+
+1. `24283/12500` > 0
+2. `3182359999/1250000000` > 0
+3. `25596792692219/15625000000000` > 0
+4. `36927874992706313/3125000000000000000` > 0
+5. `6002723615438866183/39062500000000000000000` > 0
+### y_lower
+
+1. `13217/12500` > 0
+2. `501201857/1250000000` > 0
+3. `1342239574859/31250000000000` > 0
+4. `7841860336428069/3125000000000000000` > 0
+5. `5483186536622473957/312500000000000000000000` > 0
+### y_upper
+
+1. `24283/12500` > 0
+2. `900389357/312500000` > 0
+3. `25596792692219/15625000000000` > 0
+4. `21015994541813733/781250000000000000` > 0
+5. `6002723615438866183/39062500000000000000000` > 0
+### u_lower
+
+1. `121033/200000` > 0
+2. `1044702754249/1280000000000` > 0
+3. `4497770715895105033/8192000000000000000` > 0
+4. `5345243962209264177066277/13107200000000000000000000` > 0
+5. `316852721078431765480408202619/83886080000000000000000000000000` > 0
+### u_upper
+
+1. `6337921/100000` > 0
+2. `12159992271889/5000000000` > 0
+3. `17799875808884932553/500000000000000` > 0
+4. `77544952727813454236840561/100000000000000000000` > 0
+5. `10343940737290961197726767267687/10000000000000000000000000` > 0
+### v_lower
+
+1. `121033/200000` > 0
+2. `260859641141/256000000000` > 0
+3. `4497770715895105033/8192000000000000000` > 0
+4. `5362587964331877347796981/13107200000000000000000000` > 0
+5. `316852721078431765480408202619/83886080000000000000000000000000` > 0
+### v_upper
+
+1. `6337921/100000` > 0
+2. `4821516359461/2000000000` > 0
+3. `17799875808884932553/500000000000000` > 0
+4. `38697673859182779478828239/50000000000000000000` > 0
+5. `10343940737290961197726767267687/10000000000000000000000000` > 0
+
+## 10. Replay and limits
+
+Run `python3 verify_exact.py` from this directory, or use its absolute path. It
+reconstructs all moments, every matrix, the congruence identities, determinant
+certificates, equality checks, exact cut value, this proof, and the hash receipt.
+No optimization solver or third-party Python package is required.
+
+The certificate resolves the algebraic universal-containment question under the
+reported hypotheses. It establishes no runtime advantage, external novelty,
+selected-case strengthening against an unexecuted incumbent, experimental
+physical validation, or new optimization capability. Those claims remain
+outside this audit; external correctness and priority remain UNKNOWN.
+The final version's separately checked passive embedding is specified below.
+
+
+## 11. Independently verified connected passive-network embedding
+
+The final witness additionally has an exact passive embedding. Set `w=x-u`,
+`t=y-v`, and use the four complex voltage coordinates `(x,y,w,t)` on the path
+`x--w--t--y`, each edge having unit positive real admittance. Its complete
+admittance matrix is
+
+```text
+Y = [[ 1,  0, -1,  0],
+     [ 0,  1,  0, -1],
+     [-1,  0,  2, -1],
+     [ 0, -1, -1,  2]].
+```
+
+The verifier reconstructs `Y` as the sum of the three edge-incidence outer
+products. Consequently `V*Y V=|x-w|^2+|w-t|^2+|t-y|^2>=0`, so the network is
+passive. The graph is connected and a principal 3-by-3 minor is exactly one;
+`Y` has rank three. Its endpoint currents are `x-w=u` and `y-t=v`, exactly the
+required current rows. Set both endpoint fixed powers to one. The endpoint
+equalities are then `conj(x)*(x-w)=1` and `conj(y)*(y-t)=1`.
+
+The linear voltage transformation `(x,y,u,v)->(x,y,x-u,y-v)` is invertible and
+is its own inverse. The verifier expands every original degree-at-most-four
+monomial after this substitution. It explicitly builds the 15-by-15 induced
+degree-two coefficient map `A`, checks `det(A)=1`, and verifies every entry of
+`M2_passive=A^T M2_original A`. Hence the whole transformed moment matrix is
+PSD of rank 13.
+
+All original voltage-coordinate bounds for this constructed passive network are
+included: `1<=|x|^2,|y|^2<=4` and
+`1/10000<=|w|^2,|t|^2<=100`. The verifier reconstructs all eight 5-by-5
+localizers in the new original-voltage basis `(1,t,w,y,x)` and proves each PD
+using exact Sylvester determinants. It separately checks all 30 real endpoint
+equality multipliers. It also reconstructs the full 45-by-45 complex-as-real
+moment matrix, every 9-by-9 modulus-bound localizer, all 495 moments, and all 180
+real/imaginary endpoint equality multiplier tests. They all pass. Exact
+transformed matrices and certificates are in `PASSIVE_EMBEDDING_AUDIT.json`.
+
+The audit additionally expands all 36 unordered scalar pair-products, including
+self-products, of the eight original network voltage-bound polynomials. Every
+degree-four moment value is nonnegative. It separately checks the full complex
+modulus-bound products and obtains the same exact values. Thus adding these
+degree-four scalar voltage-bound preordering products also preserves the
+witness. All 36 exact values are saved in the passive embedding audit. This
+additional statement concerns only these specified products.
+
+The passive-network cut is
+
+`(y-x)^2-((x-w)-(y-t))^2`,
+
+and its reconstructed moment value is exactly `-897/10000`.
+
+The algebraic feasible set is nonempty: the distinct exact voltage point
+`(x,y,w,t)=(3/2,3/2,5/6,5/6)` meets these boxes and the endpoint fixed powers.
+Its interior real injections are `-5/9,-5/9`; its total resistive loss is `8/9`.
+That actual feasible point is separate from the truncated witness, which has no
+representing positive measure supported on this feasible set. Unrestricted
+representability on all real voltage space is not decided by this audit.
+
+This strengthens the algebraic separation: it persists for a connected passive
+network with broad positive voltage boxes and two endpoint fixed-power
+equations. It still does not certify a full OPF with separately prescribed
+interior bus injections, generator limits, branch-angle or thermal limits, or
+the selected PGLib instance. No such additional constraints are silently
+included in the conclusion. External correctness review and priority remain
+UNKNOWN.
+
+The transformed localizer determinants, in the basis `(1,t,w,y,x)`, are:
+
+### Passive x_lower
+
+1. `13217/12500` > 0
+2. `56687713/31250000` > 0
+3. `6522747456367/125000000000000` > 0
+4. `2635317224260483/156250000000000000` > 0
+5. `5483186536622473957/312500000000000000000000` > 0
+### Passive x_upper
+
+1. `24283/12500` > 0
+2. `154852691/250000000` > 0
+3. `6017817940883/125000000000000` > 0
+4. `6723455749321241/12500000000000000000` > 0
+5. `6002723615438866183/39062500000000000000000` > 0
+### Passive y_lower
+
+1. `13217/12500` > 0
+2. `2160860547/1250000000` > 0
+3. `6522747456367/125000000000000` > 0
+4. `46385737878270007/12500000000000000000` > 0
+5. `5483186536622473957/312500000000000000000000` > 0
+### Passive y_upper
+
+1. `24283/12500` > 0
+2. `485101491/625000000` > 0
+3. `6017817940883/125000000000000` > 0
+4. `43198346824245193/3125000000000000000` > 0
+5. `6002723615438866183/39062500000000000000000` > 0
+### Passive w_lower
+
+1. `13561/20000` > 0
+2. `6310780008157/4000000000000` > 0
+3. `14398882875892468313/160000000000000000000` > 0
+4. `48652025758372201717044669239/500000000000000000000000000000` > 0
+5. `17177637238324092248565759236287149967/1000000000000000000000000000000000000000` > 0
+### Passive w_upper
+
+1. `1986437/20000` > 0
+2. `3252200615711/500000000` > 0
+3. `4556277151248863591/200000000000000` > 0
+4. `15110301689459181198334859/20000000000000000000` > 0
+5. `20819583405637228691980585084561/2000000000000000000000000` > 0
+### Passive t_lower
+
+1. `13561/20000` > 0
+2. `6532665090157/4000000000000` > 0
+3. `14398882875892468313/160000000000000000000` > 0
+4. `49885699991024129764487002989/500000000000000000000000000000` > 0
+5. `17177637238324092248565759236287149967/1000000000000000000000000000000000000000` > 0
+### Passive t_upper
+
+1. `1986437/20000` > 0
+2. `12992551421747/2000000000` > 0
+3. `4556277151248863591/200000000000000` > 0
+4. `15033247649402643723332913/20000000000000000000` > 0
+5. `20819583405637228691980585084561/2000000000000000000000000` > 0

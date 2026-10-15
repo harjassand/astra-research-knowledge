@@ -1,0 +1,472 @@
+# Independent probability and topology reconstruction
+
+16 October 2026. Worker `fz_memory_probability_audit`. This worker used no
+delegation. Producer inputs and the pinned knowledge checkout were read only.
+The finite diagnostic program and all outputs are confined to this directory.
+
+**Assessment:** I find a complete conditional deduction of the stated
+probability and accumulated-homology estimate from the two named probability
+imports. I found no quantified counterexample to the canonical construction.
+This is neither an independent proof of LSS/HT nor external validation of the
+memory theorem. Original LSS theorem pages remain inaccessible. The finite
+checks below exercise implementations of the adapters; they prove no universal
+noise threshold. Earlier investigator agreement and status labels were not
+used as premises.
+
+## Source identity and actual access
+
+`SOURCE_PINS.json` records the actual bytes examined. The expected checkout
+revision is `3dde9ce74d829a93388e64032d27351b36dd2221`, and the checked HEAD
+matches it. All 58 entries of the producer's `SOURCE_SNAPSHOT.json` match their
+current source bytes. The canonical original is
+`research/2026-10-15-autonomous-frontier-v2/THEOREM_AND_PROOF.md`.
+
+I read that original, the producer's `lead/PRINCIPAL_RECONSTRUCTION.md`, the
+incoming `sources/quantum_memory_report.txt`, and the targeted envelope,
+cluster-import and replay/topology reports. The latter are source arguments
+to reconstruct, not correctness oracles. The two primary-source interfaces
+are as follows.
+
+* [HT, arXiv:2212.08437v2](https://arxiv.org/html/2212.08437v2): Section 2.4
+  defines the relevant local, attractive, synchronous CA with iid deaths.
+  Definition 9.1 and the diameter convention use Euclidean distance.
+  Corollary 9.5 gives, for each fixed positive connectivity radius and
+  attractive eroder, constants `a>0,p0>0` with
+  `P(diam A_(x,t)>=ell)<=p^(a(ell+1))` for `0<p<=p0`, in the upper-invariant
+  spacetime trajectory. I checked the primary HTML and visually inspected
+  PDF pages 7, 23 and 25. A fresh PDF retrieval matches the producer's v2
+  PDF hash. Its proof invokes Toom contours; that substantial theorem is
+  imported here rather than reproved.
+* [LSS, DOI 10.1214/aop/1024404279](https://doi.org/10.1214/aop/1024404279):
+  the [primary abstract reproduced in Liggett's bibliography](https://celebratio.org/Liggett_T/article/840/)
+  confirms domination of a product law under a sufficiently high
+  outside-neighborhood conditional one probability, with dominated density
+  tending to one. The exact external premise used here is the qualitative
+  fixed-range lattice consequence: for fixed `d,q` and every `p>0`, some
+  `delta_*(d,q,p)>0` makes any `q`-dependent binary bad field with uniform
+  marginals at most `delta_*` stochastically dominated by iid Bernoulli(`p`).
+  No theorem number or original proof-page inspection is claimed.
+
+`SOURCE_RETRIEVAL.json` contains fresh HTTP receipts and saved responses.
+Euclid returned Incapsula HTML; an IMS issue URL returned a bot challenge;
+the author's DVI endpoint returned 404; JSTOR returned HTML rather than the
+article. These responses were preserved and no challenge was solved. Thus
+LSS remains an explicit standard theorem import with an access boundary.
+That boundary is not evidence that the mathematical premise is false.
+
+## 1. Exact pathwise envelope
+
+Work in one CSS sector and write `eta=1` for infected vertices. A face
+proposal sets all its corners to one, even if the actual Pauli event cancels
+existing syndrome. At a correction proposal at `v`, simultaneously evaluate
+from the old state
+
+```
+eta'_v = eta_v AND (OR_i eta_(v-e_i)),
+eta'_(v+e_i+e_j) = eta_(v+e_i+e_j)
+                   OR (eta_v AND eta_(v+e_i) AND eta_(v+e_j)).
+```
+
+Every expression is monotone. If the physical syndrome has an incoming edge
+at `v`, both `v` and an immediate predecessor are infected, so the envelope
+does not erase that physical vertex. Otherwise even degree implies an even
+outgoing set. A legal sweep pairs all outgoing edges, removes every incident
+syndrome edge at `v`, and writes one or two positively based faces. Each
+possibly new opposite corner has the three old occupied source vertices
+appearing in the displayed AND. In the four-outgoing case the two opposite
+corners are distinct and both are covered. Other physical vertices persist
+under the envelope's retention terms. Monotonicity upgrades this comparison
+from the exact support to every larger old envelope.
+
+Induction over the primitive event sequence gives inclusion of actual
+syndrome support for arbitrary continual fault histories. On a finite torus
+there are almost surely finitely many proposals in each finite time interval.
+The infinite graphical version is well defined by the ordered-path estimate
+below; it is not necessary to order every event in the entire infinite space.
+
+The old-state convention is essential. At the lower-left corner of the
+perimeter of a two-by-two square, correction creates the interior diagonal
+vertex. Erasing the center before evaluating the upper additions misses that
+vertex. The finite script reproduces this failure of a different update map.
+
+## 2. Permanent clearance and strict ordered clocks
+
+Without births, each healthy coordinate halfspace `x_i>=0` is invariant:
+every proposed infection into it has at least one required source still in
+that halfspace. The healthy lower halfspace `h(x)<=-b`, where `h=sum_i x_i`,
+is invariant because upper additions read strictly lower heights.
+
+For a target above the lower plane define a certificate on its finite
+predecessor cone:
+
+```
+T_x=0 if h(x)<=-b,
+S_x=max_i T_(x-e_i),
+T_x=the first clock ring at x after S_x.
+```
+
+Inductively, all four predecessors are permanently healthy at `S_x`. Any
+upper addition into `x` has an immediate predecessor among its sources;
+therefore the own-site ring clears `x` permanently in this no-birth reference.
+First clearance of an arbitrary configuration would not have this property.
+
+Reveal clock streams by increasing height. `S_x` depends only on strict
+predecessor streams, independent of the stream at `x`. Consequently
+`E_x=T_x-S_x` is an independent Exp(`kappa`) variable. This argument proves
+independence of the certificate services, not independence of selected actual
+clearance times. A target of rank `r=h(x)+b` has at most `4^r` directed
+predecessor paths, each containing `r` services. Chernoff at `kappa/2` gives
+
+```
+P(T_x>t) <= 8^r exp(-kappa*t/2).
+```
+
+For `x` in a side-`b` target cell, `r<5b`. A current-slab implementation
+initializes the lower plane as certified and scans only rings before the slab
+endpoint. A site is certified when all its predecessors are already certified.
+Unfinished certificates are assigned infinity. Thus the failure flag uses no
+clock mark beyond this slab.
+
+For a backward dependency of one output coordinate `w`, the choices are its
+own ring, reading `w,w-e_i`, or one of six rings at `w-e_i-e_j`, reading
+`w,w-e_i,w-e_j,w-e_i-e_j`. There are at most `5+6*4=29` event/input choices;
+35 is a safe overcount. One step moves at most one infinity-norm unit and
+two `l1` units. All inputs are old, so a backward dependency visits strictly
+earlier arrival times. A stream can recur, but one arrival cannot recur.
+
+For a specified length-`m` structural word, the factorial moment measure of
+the Poisson streams gives expected number of strictly ordered arrival tuples
+`(kappa*Delta)^m/m!`, including repeated locations. The simplex provides the
+factorial. Ordinary powers of a Poisson count would be incorrect here.
+The event includes arbitrary terminal time anywhere in the whole slab, so it
+does not require an additional observation-time union bound.
+
+## 3. Uniform forcing with fixed dependence before growing b
+
+Set `C>10 log(8)`, fix
+`R>=ceil(280 e C)+10`, and put `Delta=Cb/kappa`. Coarse cells have side `b`.
+Use healthy bits and the rule
+
+```
+A_i={a: ||a||_infinity<=R, a_i>=0}, i=1,...,4,
+A_5={a: ||a||_infinity<=R, sum_i a_i<=-1},
+phi(zeta)=OR_j AND_(a in A_j) zeta_a.
+```
+
+For each cell and slab declare `B=1` if there is a birth meeting its
+radius-`R+2` guard, a lower-plane target certificate remains unfinished, or
+any length-`m` ordered backward dependency from a target vertex, where
+`m=floor(Rb/2)`. The first `m` clock centers lie in a fixed coarse guard.
+The certificate cones do also. Face bases can lie one fine unit outside
+the birth guard, giving a common primitive guard of coarse radius `R+3`.
+Every flag is defined independently of the actual input and its history.
+
+Suppose one forcing set is healthy at the initial sample. In the protected
+input guard, compare the actual input with the corresponding healthy
+halfspace reference. For the oblique alternative, `x=bz+r`, `r_i>=0`, and
+`h(x)<=-b` imply `sum_i z_i<=-1`, which is exactly the needed coverage.
+If comparison ever fails at a target, monotonicity lets us trace a violating
+old input backwards. Either it has an `m`-step prefix, reaches a guarded
+birth, or reaches the initial slice within the guard. A good flag excludes
+all three possibilities. The reference then keeps or clears the target as
+required. This proves the same forcing conclusion for every initial state
+and every exterior history, using one state-independent good event.
+
+The marginal estimate is
+
+```
+delta <= 2 b^4 exp((5 log(8)-C/2)b)
+       + b^4 (35 kappa Delta)^m/m!
+       + 6 sigma (((2R+5)b+3)^4) Delta.
+```
+
+The enlarged last expression is sufficient. For a vertex box of side `N`,
+the exact number of faces meeting it is `6 N^2(N+1)^2`, below `6(N+3)^4`.
+The older expression `6(2Rb+3)^4` is genuinely insufficient under its original
+guard convention, but the canonical theorem does not use it.
+
+For `b>=4`, `m>=Rb/4`, and the choice of `R` gives
+`35 e C b/m<1/2`. Thus the middle term is at most `b^4 2^(-m)`. Both clock
+terms tend to zero as the fixed `b` is increased.
+
+The rule is an attractive eroder. If the zero set is finite, a zero output
+has a zero parent in every `A_j`, and subsequent zero sets remain finite
+by locality. Its four coordinate maxima cannot increase. Its minimum height
+increases by at least one per round. It becomes empty within
+`1+sum_i max_i(Z_0)-min h(Z_0)` rounds. This proves the actual coarse rule's
+eroder property, rather than inferring it from microscopic island erosion.
+
+Fix `C,R` and hence `phi`, `k=4R+4`, and `q=R+3` first. Obtain a fixed small
+iid death tolerance `p` from HT, then obtain `delta_*` from LSS for the fixed
+dependence graph. Only now choose `b` so each clock contribution is at most
+`delta_*/3`. Finally choose
+
+```
+sigma/kappa <= delta_*/[18 C b (((2R+5)b+3)^4)].
+```
+
+This is positive and independent of size and storage horizon. The dependence
+graph does not grow when `b` grows: guards use coarse coordinates. Choosing
+`p` or `delta_*` before specifying the fixed rule/range would not justify this
+quantifier order.
+
+## 4. Entire infinite trajectory comparison
+
+Group the primitive streams by their coarse base cell. Different packets
+are independent, and slabs have independent increments. A flag at `z` is
+independent of the sigma field generated by all flags at distance greater
+than `2q`, because its packet support is disjoint from their entire union.
+This is stronger than pairwise independence. The graph connecting sites at
+infinity distance at most `2q` has degree at most `(4q+1)^4-1`.
+
+Therefore the outside-neighborhood conditional healthy probability is the
+unconditional one and is at least `1-delta_*`. LSS supplies a one-slab
+coupling `B<=Xi` with iid Bernoulli(`p`) deaths `Xi`. Independent copies of
+this coupling in all slabs preserve an iid spacetime death field. Equivalently
+one can disintegrate the coupling conditional on the native `B` to retain the
+original primitive process. A coupling only of individual time marginals
+would not suffice.
+
+Define native `theta` and iid-death `omega` from all healthy bits by the same
+rule. Attractiveness gives `theta>=omega` simultaneously at all sites and
+times. Independently of future deaths, sample an initial state from the
+upper invariant law of that same iid-death rule, and drive it with the same
+future `Xi`. The resulting stationary trajectory `bar_omega` satisfies
+
+```
+theta(x,n) >= omega(x,n) >= bar_omega(x,n), all x and n>=0.
+```
+
+Hence the entire cold zero history is contained in the stationary zero
+history. A stationary two-sided extension, or restriction of its trajectory
+to nonnegative times, gives the relevant anchored bound uniformly in the
+deterministic anchor time. This is the needed path inclusion for a spacetime
+cluster event. There is no assumption that the native evolving state itself
+has finite dependence or is dominated by a nearly all-one product state.
+
+## 5. Finite torus: stop, localize, and replay a fixed witness
+
+Run native `theta` on `(Z/MZ)^4` from all ones. Reveal zeros in chronological
+layers, in a fixed order within each layer. Let `ell=M/128` and stop at the
+first insertion `p=(x,n)` creating a Euclidean `k`-connected spacetime
+component of diameter at least `ell`. Before insertion all components have
+diameter below `ell`. Every component joined by `p` has a vertex within `k`
+of it. Therefore the entire new component lies within distance `ell+k` of
+`p`, even when arbitrarily many old components merge.
+
+A nonforced zero has a zero parent in every DNF forcing set. Each parent is
+in an older, fully revealed layer and is within distance
+`sqrt(4R^2+1)<k`; it is consequently in the same stopped component. Necessary
+zero ancestry is closed and decreases time until it reaches forced nodes.
+Unrevealed same-layer zeros cannot be parents. Layer zero contains no zeros.
+
+Now fix a prospective anchor `p` before any randomness is sampled. Copy the
+primitive packets in the deterministic spatial infinity-norm patch of radius
+`ell+k+q+2` about `x`, for slabs `0,...,n-1`, into an infinite lattice; extend
+outside independently. For sufficiently large `M`,
+
+```
+ell+k+q+2 < M/4,
+```
+
+so the patch lifts injectively and its local primitive offsets agree with
+those on the torus. Distinct copied packets still have their ordinary product
+law. No law is conditioned on `p` actually being a first crossing anchor.
+
+Define a local event `W_p`: there exists a finite `k`-connected witness
+containing `p`, in the inner patch and layers `1,...,n`, with anchor-to-point
+distance at least `ell/2`, such that each node is forced or has a witness
+parent from every DNF forcing set. The actual first-crossing component is
+such a witness. Induction in time replays every witness zero in infinite
+native `theta`. Extra exterior zeros only help. The lift preserves `k` edges:
+coordinate differences of two inner points have magnitude below `M/2`, so
+no periodic image changes their shortest displacement.
+
+For this deterministic anchor, the infinite comparison and HT imply
+
+```
+P(first crossing occurs at p) <= P(W_p)
+                             <= p_death^(a(ell/2+1)).
+```
+
+Writing `beta=a log(1/p_death)/256`, a union over at most `N M^4` insertion
+anchors yields
+
+```
+P(coarse escape through layer N) <= N M^4 exp(-beta M).
+```
+
+The fixed-anchor law is the central point. An adaptive choice of a favorable
+packet would be biased: selecting the first one from two Bernoulli(1/2)
+bits yields a selected one with probability 3/4. No such selection-law
+assertion is used here. Nor is an all-time stationary torus estimate used.
+Eventual absorption on a fixed finite torus is consistent with the bound's
+linear dependence on `N`.
+
+## 6. Whole-slab cover, including transient defects
+
+If a target is occupied at any time in slab `n` and its flag is good, trace an
+occupied old input backwards. A self-retention term supplies the old self;
+an upper addition supplies occupied old sources. An `m`-step trace or a
+guarded birth would contradict goodness. Thus it reaches an initially
+occupied site within coarse radius `R`. Initial cell infection implies a
+`theta_n` zero, since the healthy-cell field dominates `theta`.
+
+If the flag is bad, its target is a zero at comparison layer `n+1`, even if
+the physical syndrome disappears before that endpoint. Hence all infected
+fine vertices in the entire slab have representative zeros at layer `n` or
+`n+1` within coarse radius `R`. Two adjacent fine vertices' representatives
+are at Euclidean spacetime distance at most
+
+```
+sqrt(4(2R+1)^2+1) < 4R+4 = k.
+```
+
+A connected physical syndrome component therefore maps into one coarse zero
+component. For fine ambient torus infinity diameter `D`, the latter's diameter
+is at least `D/b-1-2R`. With `D=L/32`, `L=bM`, this exceeds `M/128` once
+`M>(128/3)(2R+1)`. The argument covers every time in a slab and pre-jump
+limits. It includes a fault and its cancellation both occurring between two
+healthy sample slices, because the birth flag still forces a future proxy
+zero. The proxy is used for event inclusion, not as a predictable compensator.
+
+## 7. A fixed decoder controls the whole accumulated chain
+
+All chains are over `F_2`. Keep `E`, the sum of every physical error and
+correction face so far, and let `s=partial E`. Each vertex-connected component
+of `s` is separately a 1-cycle. If its ambient torus infinity diameter is
+below `rho=L/8`, lift it by short coordinate displacements from an anchor.
+All lifted pair differences are below `2rho<L/2`, so edges lift to actual
+unit edges. This lift is unique up to period translation.
+
+Fill the cycle deterministically inside its coordinate hull by axial prism
+contraction. Projecting one coordinate to the hull's lower face has a chain
+homotopy `partial P_i+P_i partial=id+projection_i`. Successive projections
+produce a 2-chain with the required boundary and never leave the hull.
+The filling depends only on that component. Define `D(s)` as the sum of these
+fillings whenever all components are small; choose a fixed global filling on
+other attainable syndromes. A global filling exists for attainable syndromes
+because they are boundaries of accumulated errors. An arbitrary whole-syndrome
+fallback would not prove a more localized hazard statement in the presence of
+large remote components, but the present first-escape proof does not need one.
+
+Consider one physical event `F`, a noise face or a legal one/two-face sweep.
+Its vertices lie in one unit coordinate cube. Suppose every pre-event
+syndrome component has diameter below `r=L/32`. Every old component touching
+that cube lifts within a common box of coordinate width at most `2r+1`.
+All affected new components are made from these old components and the
+changed local edges, so they remain in that box. This includes merging,
+splitting, cancellation, appearance and complete disappearance. For large
+`L`, `2r+1<rho` and the box is embedded and contractible.
+
+Unaffected components are identical before and after the event and their
+component-local fillings cancel. Every remaining term in
+
+```
+K=F+D(s)+D(s+partial F)
+```
+
+is in the common box, and `partial K=0`. Since this box has zero second
+homology, `K` is the boundary of a cubical 3-chain and hence a toric-code
+stabilizer. Therefore the decoded class
+
+```
+H(E)=[E+D(partial E)]
+```
+
+has zero increment at this event. Induction from `E=0` preserves `H(E)=0`
+for every finite history before coarse escape. A vanished syndrome does not
+delete any historical face from `E`.
+
+A width-one winding ribbon is an exact noiseless sweep fixed point, but its
+syndrome components have ambient diameter `floor(L/2)`, already beyond the
+small-component event. A hidden full logical membrane plus one small hole
+has small current syndrome yet nonzero decoded class; canceling the hole
+preserves that class. This is a counterexample to discarding history, not
+to the eventwise invariant proved above. The finite script checks both facts.
+
+## 8. The all-T estimate and its precise scope
+
+Take `N=ceil(T/Delta)+1`, covering the entire final physical slab. Union the
+two CSS escape probabilities; their correlation from Y faults is irrelevant
+to this union bound. Thus the probability of any decoded homology change
+before `T` is at most `2 N M^4 exp(-beta M)`.
+
+The independent quantum obligation is an exact input-independent mixture of
+Pauli trajectories for the stipulated syndrome-conditioned Pauli generator,
+including two-face jumps and arbitrary reference entanglement. If that
+obligation holds, every history in the good event decodes to a stabilizer,
+and the unhalved diamond error is at most twice the bad-history probability.
+No finite codeword test replaces this quantum obligation in this worker.
+
+Since `Cb>=1`, `N<=2(1+kappa T)`. Substituting `M=L/b` gives, for example,
+fixed constants `c=beta/b` and `A=8/b^4` for the conservative bounds displayed
+here; harmless prefactors from equivalent tail conventions can be absorbed
+in `A`. The universal channel bound 2 supplies
+
+```
+||Dec_L exp(T L_total) Enc_L-Id||_diamond
+ <= min(2, A L^4 (1+kappa T) exp(-cL)), every T>=0,
+```
+
+for the compatible sufficiently large sizes `L=bM`. The same fixed decoder
+works for all times. The statement quantifies over each deterministic `T`;
+the history event inside its proof already controls all earlier times.
+The linearly growing right side permits eventual failure at a fixed size.
+
+## 9. Finite diagnostics and limits
+
+Run `python3 independent_diagnostics.py` in this directory. It uses only the
+standard library and rewrites only `DIAGNOSTICS.json`. The implementation was
+written afresh from the maps, conditional ordered-arrival identity, zero-parent
+contract and cubical prism formula. Several fixture families deliberately
+overlap the producer's declared tests; fresh implementation is not independent
+invention of those fixtures.
+
+The saved run checks 32,768 Boolean envelope inputs and 245,760 monotonicity
+covers; all 128 even local center-star patterns; 210 clock interleavings and
+all 81 length-four words; and 256 four-dimensional finite eroder seeds.
+The local star diagnostic does not claim those truncated stars are global
+cycles; the universal proof uses only their center parity.
+
+The toy replay enumerates 4,657 histories with at most two primitive marks on
+a 32-site one-dimensional torus over three slabs. It finds 384 first escapes,
+31 involving seams and 96 with unrevealed same-layer zeros. Each closed witness
+replays under both extreme exterior primitive extensions. A further 4,096
+shared-future comparisons check entire-path inclusion for arbitrary lower
+initial configurations. This is a test of the deterministic adapter, not a
+simulation of the canonical `R,b` or an upper-invariant measure calculation.
+
+At `L=128`, cubical diagnostics check 13,056 single-face and 3,120 accepted
+sweep transitions, including 16 two-face moves. The 928 nonzero closed
+transition differences all have zero homology, evaluated by six dual-cut
+cocycles. Ordinary and seam locations, a hidden historical membrane, and
+winding fixed ribbons are included. These finite facts do not prove the
+asymptotic cluster bound. `DIAGNOSTICS.json` explicitly records
+`universal_stability_established_by_diagnostics: false`.
+
+## 10. Stronger theorem opportunity
+
+An immediate substantive extension of this probability proof is **uniform
+stability under fixed spatially inhomogeneous correction rates**, detailed in
+`HETEROGENEOUS_RATES.md`. For every fixed ratio bound `K`, arbitrary vertex
+rates in `[kappa_min,K*kappa_min]` admit the same form of estimate, uniformly
+over their arrangement, at a positive small uniform Pauli noise rate.
+It follows by using `kappa_min` for clearance and `kappa_max` for fast chains;
+it needs no depolarizing floor or change of the sweep action. This addresses
+rate calibration only within the exact syndrome-conditioned Pauli class.
+It does not yield coherent-error tolerance or missing/failed correction sites.
+No historical novelty for this extension is claimed.
+
+The highest-value unresolved probability improvement is a quantitatively
+effective contour/forcing construction: replace the huge generic guard and
+fixed-radius cluster constants with explicit small witnesses and a useful
+noise threshold. Neither the present import nor the finite diagnostics gives
+that. A claim of `exp(cL^2)` lifetime would also require a new argument:
+code distance alone cannot upgrade this diameter-based `exp(cL)` result,
+and macroscopic winding seeds show why such an upgrade needs scrutiny.
+
+The exact proof chain thus survives this worker's reconstruction conditionally
+on its stated imports and separate quantum reduction. External mathematical
+review, numerical usefulness, originality, noisy preparation/readout and a
+costed physical realization remain unresolved.
