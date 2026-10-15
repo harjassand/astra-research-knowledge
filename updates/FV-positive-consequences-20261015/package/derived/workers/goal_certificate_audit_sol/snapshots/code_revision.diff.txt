@@ -1,0 +1,217 @@
+--- /Users/harjas/Documents/ChatGPT/ultra/research/2026-10-15-positive-consequences-real-capabilities-v1/workers/goal_certificate_audit_sol/snapshots/initial_terminal_mass_certificate.py	2026-10-15 16:47:51
++++ /Users/harjas/Documents/ChatGPT/ultra/research/2026-10-15-positive-consequences-real-capabilities-v1/workers/goal_certificate_audit_sol/snapshots/repaired_terminal_mass_certificate.py	2026-10-15 16:55:14
+@@ -156,6 +156,11 @@
+ 
+ 
+ def root_tree(g: Graph, tree):
++    tree = np.asarray(tree)
++    if tree.ndim != 1 or len(tree) != g.n - 1 or len(np.unique(tree)) != len(tree):
++        raise ValueError("Routing witness must contain n-1 distinct edge IDs")
++    if np.any(tree < 0) or np.any(tree >= len(g.c)):
++        raise ValueError("Routing witness contains an invalid edge ID")
+     adj = [[] for _ in range(g.n)]
+     for e in tree:
+         i, j = int(g.u[e]), int(g.v[e])
+@@ -273,6 +278,97 @@
+                 status="longdouble_diagnostic_not_rounding_certified")
+ 
+ 
++def forest_partition(g, edges):
++    d = DSU(g.n)
++    for e in edges:
++        d.join(int(g.u[e]), int(g.v[e]), protect=False)
++    roots = np.array([d.find(i) for i in range(g.n)])
++    return np.unique(roots, return_inverse=True)[1]
++
++
++def refinement_scores(g, x, y, tree, blocks):
++    typ = np.longdouble
++    x, y, c = x.astype(typ), y.astype(typ), g.c.astype(typ)
++    ra = np.zeros(g.n, dtype=typ)
++    ra[g.s] = 1
++    rb = g.w.astype(typ).copy()
++    rb[g.t] = 0
++    for pot, res in ((x, ra), (y, rb)):
++        f = c * (pot[g.u] - pot[g.v])
++        np.add.at(res, g.u, -f)
++        np.add.at(res, g.v, f)
++    parent, pedge, order = root_tree(g, tree)
++    ea, eb = np.zeros(len(c), dtype=typ), np.zeros(len(c), dtype=typ)
++    for i in reversed(order[1:]):
++        e = pedge[i]
++        ea[e], eb[e] = ra[i] * ra[i] / c[e], rb[i] * rb[i] / c[e]
++        ra[parent[i]] += ra[i]
++        rb[parent[i]] += rb[i]
++    bids, sizes = blocks
++    a = np.bincount(bids, weights=ea.astype(float), minlength=len(sizes)).astype(typ)
++    b = np.bincount(bids, weights=eb.astype(float), minlength=len(sizes)).astype(typ)
++    score = np.zeros(len(c), dtype=typ)
++    for e in tree:
++        bid = bids[e]
++        if sizes[bid] > 1 and a[bid] > 0 and b[bid] > 0:
++            score[e] = (np.sqrt(b[bid] / a[bid]) * ea[e]
++                        + np.sqrt(a[bid] / b[bid]) * eb[e]) / 4
++    return score
++
++
++def adaptive_reduction(g, start_k=20, max_k=10000, tol=.01, prec=80, certify=True, witness_path=None):
++    """A posteriori forest refinement; scores are heuristic, certificate is not.
++
++    Split only previously contracted forest edges. Scores are the derivatives
++    of the blockwise product budget with respect to the two edge energies.
++    Retain every original intercluster edge and all masses after each split.
++    """
++    begun = time.perf_counter()
++    part, tree, contractions = select_partition(g, start_k)
++    contracted = set(tree[:contractions].tolist())
++    bstart = time.perf_counter()
++    blocks = cycle_blocks(g)
++    block_seconds = time.perf_counter() - bstart
++    rows = []
++    accepted = False
++    while True:
++        tstart = time.perf_counter()
++        x, y, info = trial_solve(g, part)
++        diag = diagnostic_certificate(g, x, y, tree, blocks)
++        rows.append(dict(**info, diagnostic=diag, iteration_seconds=time.perf_counter() - tstart))
++        width = diag["relative_width"]
++        if width is not None and width <= tol:
++            accepted = True
++            break
++        k = info["core_states"]
++        if k >= max_k or not contracted:
++            break
++        scores = refinement_scores(g, x, y, tree, blocks)
++        candidates = np.asarray(sorted(contracted), dtype=np.int64)
++        batch = min(max_k - k, max(20, k), len(candidates))
++        chosen = candidates[np.argsort(-scores[candidates], kind="stable")[:batch]]
++        contracted.difference_update(chosen.tolist())
++        part = forest_partition(g, sorted(contracted))
++    diagnostic_acceptance = accepted
++    cert = interval_certificate(g, x, y, tree, prec, blocks) if certify else None
++    if cert:
++        accepted = cert["relative_width"] is not None and D(cert["relative_width"]) <= D(str(tol))
++    else:
++        accepted = False
++    witness = None
++    if witness_path:
++        np.savez_compressed(witness_path, x=x, y=y, tree=tree, partition=part,
++                            u=g.u, v=g.v, c=g.c, w=g.w,
++                            source=np.array(g.s), target=np.array(g.t), n=np.array(g.n))
++        witness = dict(path=str(witness_path), sha256=file_sha(witness_path),
++                       coefficient_scope="trial_binary64_coefficients_only;coefficient_bands_must_be_reloaded_from_source_for_decimal_model_certificate")
++    return dict(iterations=rows, certificate=cert, accepted=accepted,
++                diagnostic_acceptance=diagnostic_acceptance, witness=witness,
++                block_preprocessing_seconds=block_seconds,
++                total_seconds=time.perf_counter() - begun,
++                acceptance_scope="relative_directional_mean_interval_width", tolerance=tol)
++
++
+ class Intervals:
+     def __init__(self, prec=80):
+         self.lo = decimal.Context(prec=prec, rounding=decimal.ROUND_FLOOR,
+@@ -320,11 +416,22 @@
+     Optional input bands allow uniform certification over model coefficients.
+     """
+     tstart = time.perf_counter()
++    x, y = np.asarray(x), np.asarray(y)
++    if x.shape != (g.n,) or y.shape != (g.n,) or not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
++        raise ValueError("Trial potentials must be finite vectors of length n")
++    if x[g.t] != 0 or y[g.t] != 0:
++        raise ValueError("Both trial potentials must be exactly grounded at the target")
++    if np.any(g.c <= 0) or np.any(g.w <= 0) or not np.all(np.isfinite(g.c)) or not np.all(np.isfinite(g.w)):
++        raise ValueError("Positive finite graph coefficients required")
+     iv = Intervals(prec)
+     zero = (D(0), D(0))
+     xx, yy = [iv.exact(z) for z in x], [iv.exact(z) for z in y]
+     cc = g.c_bounds if g.c_bounds is not None else [iv.exact(z) for z in g.c]
+     ww = g.w_bounds if g.w_bounds is not None else [iv.exact(z) for z in g.w]
++    if len(cc) != len(g.c) or len(ww) != g.n:
++        raise ValueError("Coefficient band count does not match graph")
++    if any(not (a.is_finite() and b.is_finite() and D(0) < a <= b) for a, b in cc + ww):
++        raise ValueError("Coefficient bands must have positive finite ordered endpoints")
+     ra = [zero for _ in range(g.n)]
+     ra[g.s] = (D(1), D(1))
+     rb = list(ww)
+@@ -340,7 +447,13 @@
+         if i != g.t:
+             t0 = iv.add(t0, iv.mul(xx[i], rb[i]))
+     parent, pedge, order = root_tree(g, tree)
+-    edgeblock, sizes = cycle_blocks(g) if blocks is None else blocks
++    canonical_blocks = cycle_blocks(g)
++    if blocks is not None:
++        # An arbitrary edge grouping can turn a cycle into fake bridges and
++        # produce a false zero-width certificate. Never trust a caller's cache.
++        if not (np.array_equal(blocks[0], canonical_blocks[0]) and np.array_equal(blocks[1], canonical_blocks[1])):
++            raise ValueError("Cached edge blocks do not match the actual graph")
++    edgeblock, sizes = canonical_blocks
+     ea, eb = [D(0) for _ in sizes], [D(0) for _ in sizes]
+     jj = [zero for _ in sizes]
+     for i in reversed(order[1:]):
+@@ -517,6 +630,33 @@
+     return h.hexdigest()
+ 
+ 
++def two_pi_band(prec=80):
++    """Exact alternating-series bounds from Machin's identity, no stored pi."""
++    eps = F(1, 10 ** (prec + 8))
++    def atan_band(den):
++        total, n = F(0), 0
++        while True:
++            term = F(1, (2 * n + 1) * den ** (2 * n + 1))
++            if term < eps:
++                return (total, total + term) if n % 2 == 0 else (total - term, total)
++            total += term if n % 2 == 0 else -term
++            n += 1
++    al, ah = atan_band(5)
++    bl, bh = atan_band(239)
++    lower, upper = 2 * (16 * al - 4 * bh), 2 * (16 * ah - 4 * bl)
++    iv = Intervals(prec)
++    return (iv.lo.divide(D(lower.numerator), D(lower.denominator)),
++            iv.hi.divide(D(upper.numerator), D(upper.denominator)))
++
++
++def htst_time_interval(cert, prec=80):
++    iv = Intervals(prec)
++    scaled = iv.mul((D(cert["lower"]), D(cert["upper"])), two_pi_band(prec))
++    return dict(lower=str(scaled[0]), upper=str(scaled[1]),
++                units="reduced_Lennard_Jones_HTST_time",
++                two_pi_enclosure="Machin_alternating_series_with_exact_Fraction_remainders")
++
++
+ def load_lj38(path, temp="0.2", intervals=False, prec=80, source_id=1, target_id=2):
+     """Read full public decimal model; no unstated funnel labels or truncation."""
+     start = time.perf_counter()
+@@ -599,6 +739,9 @@
+     ap.add_argument("--no-certify", action="store_true")
+     ap.add_argument("--precision", type=int, default=80)
+     ap.add_argument("--full-baseline", action="store_true")
++    ap.add_argument("--adaptive", action="store_true")
++    ap.add_argument("--max-k", type=int, default=10000)
++    ap.add_argument("--witness")
+     args = ap.parse_args()
+     started = time.perf_counter()
+     if args.mode == "checks":
+@@ -609,13 +752,21 @@
+         else:
+             g, receipt = load_lj38(args.path, args.temperature, args.interval_model, args.precision, args.source_id, args.target_id)
+         result = dict(input=receipt, states=g.n, edges=len(g.c),
+-                      reductions=run_reductions(g, [int(k) for k in args.ks.split(",")], not args.no_certify, args.precision))
++                      reductions=[] if args.adaptive else run_reductions(g, [int(k) for k in args.ks.split(",")], not args.no_certify, args.precision))
++        if args.adaptive:
++            result["adaptive"] = adaptive_reduction(g, max_k=args.max_k, prec=args.precision, certify=not args.no_certify, witness_path=args.witness)
++            if args.mode == "lj38" and result["adaptive"]["certificate"]:
++                result["adaptive"]["htst_time_interval"] = htst_time_interval(result["adaptive"]["certificate"], args.precision)
+         if args.full_baseline:
+             start = time.perf_counter()
+             try:
+                 x, y, info = trial_solve(g)
+                 result["full_equilibrated_sparse_baseline"] = dict(**info, total_seconds=time.perf_counter() - start,
+                     status="approximate_float64_direct_solve_not_automatically_certified")
++                if not args.no_certify:
++                    _, tree, _ = select_partition(g, g.n)
++                    result["full_equilibrated_sparse_baseline"]["certificate"] = interval_certificate(g, x, y, tree, args.precision)
++                    result["full_equilibrated_sparse_baseline"]["total_seconds_with_certificate"] = time.perf_counter() - start
+             except Exception as exc:
+                 result["full_equilibrated_sparse_baseline"] = dict(error=repr(exc), total_seconds=time.perf_counter() - start)
+     result["wall_seconds"] = time.perf_counter() - started
