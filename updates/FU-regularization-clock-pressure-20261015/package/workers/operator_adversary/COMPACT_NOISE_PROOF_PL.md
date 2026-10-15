@@ -1,0 +1,176 @@
+# Compact scalar noise is possible exactly for commuting bounded observables
+
+Date: 2026-10-15. Status: independent internal analytic proof, frozen before reading the parallel Astra proof. No claim of historical novelty, external certification, formal verification, or measurement advantage is made. No finite spectral compression is used.
+
+## Statement
+
+Let `A_1,...,A_m` be bounded self-adjoint operators on an arbitrary complex Hilbert space `H`, possibly nonseparable. The following are equivalent:
+
+1. The operators commute pairwise.
+2. There is a compactly supported scalar Borel probability law `nu` on `R^m` and a normalized positive weakly countably additive operator measure `M` such that, for every real `t`,
+
+   `M_hat(t)=nu_hat(t)exp(i sum_j t_j A_j)`.
+
+In condition 2, `nu` can even be required to have a nonnegative smooth compactly supported scalar probability density. The same equivalence holds when condition 2 is phrased as positivity of the distributional convolution `W_A*nu`, with `W_A` the all-linear-marginal Weyl distribution; a positive normalized weak POVM is then obtained in the usual way.
+
+The converse obstruction is stronger in a pairwise form:
+
+**Bounded-direction theorem.** Suppose bounded self-adjoint `A,B` admit a normalized positive weak POVM `M` on `R^2` and a scalar probability law `nu` satisfying
+
+`M_hat(t_1,t_2)=nu_hat(t_1,t_2)exp(i[t_1A+t_2B])`.
+
+Assume only that `Z_B` is bounded `nu`-almost surely and that `E exp(s Z_A)<infinity` for every real `s`. Then `[A,B]=0`. Dependence between the two noise coordinates is allowed. Compact support of the full law is sufficient but unnecessary for this pairwise conclusion.
+
+## 1. The positive marginal identity supplies actual moments
+
+For a unit vector `v`, let `mu_v(E)=<v,M(E)v>`, a probability measure. For any real direction `u=(u_1,u_2)`, the characteristic function of `u.X` is
+
+`nu_hat(tu)<v,exp(it[u_1A+u_2B])v>`.
+
+Both factors are characteristic functions of positive probability laws: the projection `u.Z` of the scalar noise and the spectral law of the bounded self-adjoint `u_1A+u_2B` in vector state `v`. Uniqueness of scalar characteristic functions therefore identifies the law of `u.X` with their convolution.
+
+In particular, assume `|Z_B|<=C` almost surely. The scalar spectral law of `B` is supported in `[-||B||,||B||]`, so for every vector state
+
+`|X_B|<=D:=||B||+C` almost surely.
+
+Thus the operator measure assigns zero to the complement of that strip: every quadratic form is zero there. This statement is valid for weak POVMs and makes no assertion of norm countable additivity.
+
+For any real `s,t`, boundedness of `Z_B` gives
+
+`m_nu(s,t):=E exp(sZ_A+tZ_B) <= exp(|t|C)E exp(sZ_A)<infinity`.
+
+Use the same positive projected-law identity in the direction `(s,t)` to evaluate the actual scalar Laplace integrals. It gives the bounded positive weak integral
+
+`Q(s,t):=integral exp(sx_A+tx_B)M(dx)=m_nu(s,t)exp(sA+tB)`.  (1)
+
+Uniform boundedness over unit vectors follows from the right side, bounded by `m_nu(s,t)exp(||sA+tB||)`. The identity is obtained from positive convolution laws, without continuation of a distributional test to an unbounded exponential.
+
+For fixed `s`, differentiation with respect to `t` at zero is justified in operator norm. On the strip `|x_B|<=D`, the Taylor remainder for `exp(tx_B)` is uniformly bounded by a constant times `t^2D^2 exp(|t|D)`. Integrate this scalar remainder against the positive weight `exp(sx_A)M(dx)` and use its bounded total operator `Q(s,0)`. The resulting operator-norm remainder tends to zero after division by `t`. The scalar noise derivative is justified in the same way with `|Z_B|<=C`.
+
+No assumption on a finite eigenbasis, trace-class faithful state, or separable Hilbert space is present in this argument.
+
+## 2. Compact transverse noise uniformly bounds the first tilted operator moment
+
+For real `s`, put
+
+`C_s=m_nu(s,0)^(-1/2)exp(-sA/2)`.
+
+This is a bounded positive invertible operator for every finite `s`. Define the positive tilted operator measure
+
+`N_s(dx)=exp(sx_A) C_s M(dx) C_s`.
+
+Its weak total is `I` by (1). For each measurable set its integral is bounded between zero and `I`, so this construction is legal for weakly countably additive POVMs even if `x_A` is unbounded. Its support remains inside `|x_B|<=D`.
+
+Consequently its bounded first transverse moment satisfies
+
+`-D I <= integral x_B N_s(dx) <= D I`.  (2)
+
+Write
+
+`kappa_B(s)=partial_t log m_nu(s,t)|_{t=0}`,
+
+`J(s)=exp(-sA/2) [partial_t exp(sA+tB)|_{t=0}] exp(-sA/2)`.
+
+Differentiating (1) and conjugating gives
+
+`integral x_B N_s(dx)=kappa_B(s)I+J(s)`.  (3)
+
+The scalar term is the mean of `Z_B` under the probability tilt proportional to `exp(sZ_A)`, so `|kappa_B(s)|<=C`. Combining (2)-(3),
+
+`sup_{s in R}||J(s)|| <= ||B||+2C < infinity`.  (4)
+
+This first-moment bound is stronger and simpler than estimating the negative part of the tilted variance defect. It avoids the need to choose a top spectral eigenvector in infinite dimension.
+
+The bounded-operator Duhamel formula rewrites the same operator as
+
+`J(s)=integral_{-1/2}^{1/2} exp(-usA) B exp(usA)du`.  (5)
+
+The formula involves the full original operators throughout. Compressing `exp(sA+tB)` to a finite-dimensional subspace would not in general preserve its exponential form and is not used.
+
+## 3. An elementary two-axis entire-function lemma
+
+**Lemma.** Let a scalar entire function `f` obey `|f(z)|<=C_0 exp(a|z|)` for some finite constants. If it is bounded by `M` on both the real and imaginary axes, then it is constant.
+
+**Proof.** It suffices to bound `f` on the first quadrant, and then rotate the argument by multiples of `pi/2`. Use the branch of `z^(3/2)` with argument in `[0,3pi/4]` in that quadrant. For `epsilon>0`, set
+
+`f_epsilon(z)=f(z)exp[-epsilon exp(-3pi i/8)z^(3/2)]`.
+
+If `z=r exp(i theta)`, `0<=theta<=pi/2`, then
+
+`Re[exp(-3pi i/8)z^(3/2)] = r^(3/2)cos[(3/2)(theta-pi/4)]`
+
+` >= r^(3/2)cos(3pi/8)>0`.
+
+Thus the damping factor has modulus at most one on both boundary rays. On the circular arc of a quadrant disk of radius `r`,
+
+`|f_epsilon(z)|<=C_0 exp[ar-epsilon cos(3pi/8)r^(3/2)]`.
+
+For all sufficiently large radii this is at most `M` (the case `M=0` is immediate by the identity theorem). The function is analytic inside the quadrant disk and continuous on its boundary, including the origin as a boundary corner. The maximum modulus principle gives `|f_epsilon(z)|<=M` throughout. For each fixed interior point, send `epsilon` to zero to get `|f(z)|<=M`.
+
+Apply the same proof to `f(i^jz)` for `j=1,2,3`. Therefore `f` is bounded on the whole complex plane, and Liouville's theorem makes it constant. This is the elementary quadrant Phragmen-Lindelof argument; no stronger growth theorem is assumed. QED.
+
+## 4. Uniform boundedness forces commutation on arbitrary Hilbert spaces
+
+Extend (5) to complex `z`:
+
+`J(z)=integral_{-1/2}^{1/2} exp(-uzA) B exp(uzA)du`.
+
+The integrand is norm analytic in `z` and continuous in the compact integration variable, so this is an entire `B(H)`-valued function. Since `A` is self-adjoint,
+
+`||J(z)|| <= ||B|| exp(||A|| |Re z|) <= ||B||exp(||A|||z|)`.  (6)
+
+On the imaginary axis the exponentials in each integrand are mutually adjoint unitaries. Consequently
+
+`sup_{t in R}||J(it)||<=||B||`.  (7)
+
+On the real axis (4) supplies the other uniform bound. For arbitrary unit vectors `v,w`, the scalar entire function `<v,J(z)w>` therefore satisfies the preceding lemma, with common bounds independent of `v,w`. It is constant. Matrix coefficients separate bounded operators, so
+
+`J(z)=J(0)=B` for every complex `z`.  (8)
+
+Expand the bounded-operator exponential conjugation in norm. If `ad_A(B)=[A,B]`, then
+
+`exp(-uzA)B exp(uzA)=sum_{n>=0}(-uz)^n ad_A^n(B)/n!`.
+
+Integration over `u in [-1/2,1/2]` gives
+
+`J(z)=B+(z^2/24)[A,[A,B]]+O(z^4)`.
+
+Equation (8) forces `[A,[A,B]]=0`. Let `C=[A,B]`. The full unitary orbit is now exactly
+
+`exp(itA)B exp(-itA)=B+itC`.
+
+The left side has norm `||B||` for every real `t`, so `|t|||C||<=2||B||`. Sending `|t|` to infinity yields `C=0`. This proves the bounded-direction theorem on arbitrary Hilbert spaces.
+
+For compact scalar noise in an `m`-tuple, every coordinate projection of the noise is bounded and has all exponential moments. Apply the pairwise theorem to each pair of coordinates to obtain pairwise commutation.
+
+## 5. The commuting converse, including smooth compact scalar noise
+
+If the bounded self-adjoint tuple commutes pairwise, its spectral projections commute and there is a joint projection-valued measure `P` on a compact subset of `R^m`, with
+
+`integral exp(it.x)P(dx)=exp(i sum t_j A_j)`.
+
+Choose any scalar compact probability law `nu` and let `M=P*nu`. Positivity, weak countable additivity, normalization, and the required characteristic multiplier identity follow immediately by positive scalar convolution of the joint PVM. Thus a compact scalar regularizer exists.
+
+If a scalar density is desired, choose a nonnegative `C_c^infinity` bump density `p` of total mass one. Then
+
+`M(x)=integral p(x-y)P(dy)`
+
+is positive, norm continuous, compactly supported, and norm integrable. Norm continuity follows from uniform continuity of `p` and contractivity of bounded spectral integration. A continuous map from `R^m` has separable range, so this norm-integrable density is Bochner integrable regardless of separability of `H`.
+
+This completes both directions of the equivalence. It does not say that the raw Wigner distribution becomes a joint sharp measurement for noncommuting observables; the obstruction applies to any compact scalar noise satisfying the full characteristic multiplier identity.
+
+## 6. Consequences and limitations
+
+- For an all-exponential scalar noise law realizing the exact contract, every direction `u` in which `u.Z` is bounded has `A(u)` commuting with every `A(v)`. This follows by applying the bounded-direction theorem after a linear change of coordinates.
+- If a tuple contains a noncommuting pair, its exact positive scalar-convolution representation must have unbounded scalar noise and unbounded joint output. Indeed, bounded output coordinate marginals would force the corresponding positive scalar noise marginals to be bounded: their convolution with bounded spectral laws cannot hide an unbounded support.
+- A bounded classical decoder can still be useful. For example, recovering the direction of the qubit output and reporting `3n` is consistent with this theorem because that new bounded report no longer satisfies the exact all-linear scalar-convolution identity. This is a contract distinction, not information loss.
+- The theorem assumes state-independent scalar convolution and positivity as an operator measure, hence validity for every state. It does not prohibit bounded-output joint POVMs with noisy coordinate marginals under weaker contracts, nor positivity for a single selected state.
+- No approximate commutation estimate, finite-range approximation accuracy, optimal tails, or implementation efficiency is claimed here. The proof is qualitative and exact.
+
+## 7. Independence and source boundary
+
+The root supplied the conjecture and a finite-dimensional diagonal second-moment argument. This proof independently replaced that argument by uniform first tilted moments, then a two-axis entire-function lemma. It was written and frozen before reading the parallel Astra spectral-gap proof. Root's later message reported that another worker found a separate first-moment/Sylvester route; no details of that worker's saved proof were used in this file beyond recognizing the shared first-moment starting point.
+
+Classical ingredients are uniqueness of characteristic functions, the spectral theorem for bounded self-adjoint operators, bounded Duhamel differentiation, the maximum modulus principle, Liouville's theorem, and the commuting joint spectral theorem. The preceding text gives the only less immediate complex-analysis step explicitly.
+
+Primary literature inspection found the noiseless finite-dimensional positivity/commutativity statement in [Schwonnek and Werner, Proposition 2](https://arxiv.org/html/1802.08342#S3.SS2), and the inherited compact-support statement in its Proposition 1. Those statements do not themselves assert the compact-scalar-noise theorem above. Exact historical priority of this extension remains UNKNOWN; bounded-coordinate joint-measurement results with weaker marginal requirements must not be confused with the all-linear multiplier contract.

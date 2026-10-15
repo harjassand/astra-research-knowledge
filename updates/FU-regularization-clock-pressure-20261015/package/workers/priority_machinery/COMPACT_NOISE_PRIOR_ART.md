@@ -1,0 +1,136 @@
+# Compact scalar noise rigidity is a corollary of known spectral-order machinery
+
+Date: 2026-10-15. This is the separate follow-up requested by the parent. Earlier files and snapshots remain frozen. Status: internally proved theorem-to-theorem transfer from acquired original primary theorems, valid for arbitrary Hilbert-space dimension. The historical priority of its formulation as a compact-smearing theorem remains **UNKNOWN**; no first-result claim is made.
+
+## Result and exact noise contract
+
+Let A_1,...,A_m be bounded selfadjoint operators on a Hilbert space H, with m finite. There exists a compactly supported scalar probability measure nu such that the operator distribution with Fourier transform
+
+\[
+\widehat M(t)=\widehat\nu(t)\exp\!\left(i\sum_jt_jA_j\right)
+\tag{1}
+\]
+
+is positive if and only if the A_j commute pairwise. Equivalently, a normalized positive operator-valued joint law with all linear marginals equal to the corresponding spectral law plus the same scalar vector noise can use compactly supported noise exactly for commuting tuples.
+
+Here positivity is operator positivity, uniformly over states; this does not assert a one-state compact-noise theorem. The scalar law must be a probability and the Fourier multiplier contract must hold in every direction. The result is not an obstruction to other joint measurements or to finite-outcome approximations.
+
+The sufficiency is immediate from the joint spectral measure, taking nu=delta_0 (or convolving it with any compact probability). Necessity below uses the actual Theorem7 of Uchiyama1993. It bypasses finite spectral levels and does not infer anything from a finite-dimensional compression of the operators.
+
+## Acquired primary operation
+
+M. Uchiyama, [*Commutativity of selfadjoint operators*](https://msp.org/pjm/1993/161-2/pjm-v161-n2-p10-s.pdf), Pacific Journal of Mathematics 161(2) (1993), 385–392, Theorem7, printed389/PDF6. Saved bytes SHA-256:
+
+`3fd0fe097881cc1c174bff4194ea71a96cd284584ef6e719b295496d9b09738c`.
+
+The actual theorem states: if A is selfadjoint, X is bounded and nonnegative, and some real a>=||X|| satisfies
+
+\[
+e^{tA}\preceq e^{t(A+\epsilon X)}
+\preceq e^{t(A+\epsilon aI)}\qquad(t,\epsilon>0),
+\tag{2}
+\]
+
+then XA is contained in AX. For bounded A this means commutation. This source's order symbol is ordinary quadratic-form/Loewner order, not just a norm bound. Theorem7 and proof were extracted and visually checked. Proposition5 and Theorem6, printed388–389/PDF5–6, identify all-positive-time exponential order with spectral-projection order; those pages were also read.
+
+For a second direct check, M. Uchiyama, [*Spectral order, real analytic waves and commutativity of selfadjoint operators*](https://acta.hu/download.phtml?id=2363), Acta Sci. Math. (Szeged)62 (1996), 259–269, Theorem1, printed261/PDF3, has the stronger one-sided criterion: for bounded selfadjoint A,B, spectral order A<=_sp A+s_n B along any positive sequence s_n tending to zero forces AB=BA. Its proof and the all-exponential-order equivalence were read on PDF1–4, and Theorem1 was visually checked. Saved SHA-256:
+
+`0fdd6b321e2854e76374798e4d3e53aa1276ea345850ead257fab2e3fd875fcc`.
+
+No novel spectral-order theorem is needed for the transfer.
+
+## Derivation of the exact hypotheses from compact noise
+
+It suffices to treat any coordinate pair A,B, pushing M and nu onto those two coordinates. Write z=(z_A,z_B) for the scalar noise. Choose N>=0 with |z_B|<=N almost surely and put
+
+\[
+L=\|B\|+N,\qquad C=L+N=\|B\|+2N.
+\tag{3}
+\]
+
+The B-coordinate marginal of M is the spectral measure of B convolved with the scalar B-noise marginal, by (1) on that axis and uniqueness of Fourier transforms. It is therefore supported in [-L,L]. Operator positivity implies that M itself gives zero mass to the complement of this strip: its positive mass there equals the zero mass of that marginal. The same argument in every coordinate makes M compactly supported, since m is finite. It also gives normalization M(1)=I directly. This reasoning applies to weak POVMs; norm-countable additivity is not assumed.
+
+Compactness makes every Laplace transform finite, and compact convolution gives the exact identity
+
+\[
+\mathcal L_M(r,s)=m_\nu(r,s)e^{rA+sB},\qquad
+m_\nu(r,s)=\int e^{rz_A+sz_B}\nu(dz)>0.
+\tag{4}
+\]
+
+One can obtain (4) either from the compact-distribution convolution identity or by entire extension of (1), now that both laws have compact support.
+
+Since |x_B|<=L on the positive output law, positive integration gives
+
+\[
+e^{-L|s|}\mathcal L_M(r,0)
+\preceq\mathcal L_M(r,s)
+\preceq e^{L|s|}\mathcal L_M(r,0)
+\quad(r,s\in\mathbb R).
+\tag{5}
+\]
+
+The scalar noise itself satisfies
+
+\[
+e^{-N|s|}m_\nu(r,0)
+\le m_\nu(r,s)\le e^{N|s|}m_\nu(r,0).
+\tag{6}
+\]
+
+Combining (4)–(6) and dividing only by strictly positive scalar numbers yields the *operator-order* bounds
+
+\[
+\boxed{e^{-C|s|}e^{rA}
+\preceq e^{rA+sB}
+\preceq e^{C|s|}e^{rA}}
+\qquad(r,s\in\mathbb R).
+\tag{7}
+\]
+
+The constant is independent of the base tilt r. A norm bound would not replace (7).
+
+Set X=B+CI, which is nonnegative because C>=||B||. For t,epsilon>0, use r=t and s=t epsilon in (7), then multiply by the scalar e^(Ct epsilon), to obtain
+
+\[
+e^{tA}\preceq e^{t(A+\epsilon X)}
+\preceq e^{t(A+2C\epsilon I)}
+\preceq e^{t(A+a\epsilon I)},
+\tag{8}
+\]
+
+where a=2C+1 satisfies a>||X|| (since ||X||<=||B||+C<=2C). Thus every hypothesis of the actual 1993 Theorem7 holds. It follows that AX=XA, hence AB=BA. Applying this to every pair proves the necessity in (1), for arbitrary H.
+
+Alternatively, the lower half of (8), exponential-order/spectral-order equivalence, and the 1996 Theorem1 with epsilon_n=1/n give the same conclusion. This alternate route confirms that finite spectrum, eigenvectors, a trace, or finite-dimensional approximations play no role.
+
+## What the known operation is doing
+
+Uchiyama's proof uses the spectral families E,F of A,A+epsilon X. Bounds (2) imply
+
+\[
+E(\lambda-\epsilon a)\preceq F_\epsilon(\lambda)\preceq E(\lambda).
+\]
+
+Invariance of F_epsilon(lambda+epsilon a)H under A+epsilon X gives
+
+\[
+X E(\lambda)H\subseteq E(\lambda+\epsilon a)H.
+\]
+
+Right continuity as epsilon decreases to zero makes E(lambda)H invariant under X. Selfadjointness then gives commutation with every spectral projection and with A. This is the inherited proof operation, not an independent commutativity theorem.
+
+## Closest Weyl predecessors and their exact boundaries
+
+1. **Schwonnek–Werner, acquired long fulltext Property2, PDF3.** Finite-dimensional A_j and one full-rank state rho: the *unsmoothed* W_rho is positive iff the tuple commutes. Its proof forces support onto exact spectral hyperplanes via sharp marginals. Smearing broadens those marginals, so that proof does not itself settle compact scalar noise. The short companion has the same Proposition2. Both originals were already acquired; this follow-up reads their positivity passages directly.
+2. **Anderson1970, original fulltext still unread.** Its publisher abstract and Ricker1997's historical discussion give the finite-dimensional unsmoothed order-zero/measure iff commutation result. These do not establish a compact-smearing theorem. Anderson's actual full theorem remains a priority gate; no claim of novelty is drawn from failure to acquire it.
+3. **Ricker1997, original acquired and read, Theorem1 and proof, printed321–325.** It proves for a pair of two-by-two selfadjoint matrices that the unsmoothed Weyl distribution has order zero iff they commute; an off-diagonal entry is a derivative of an elliptic projected-sphere measure. Convolution by a compact smooth kernel can lower the distribution order, so order-zero rigidity alone cannot be applied to W_A*nu. The paper explicitly attributes the arbitrary finite-dimensional result to Anderson1970 Theorem2 and gives Ricker1993 as another proof. Saved SHA-256 `d813b58c2e80da1ffc9cc302277daaaa2b20fdde0402207c21fc0e2fc21ddc1c`; [original PDF](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/5A76976E0E79512BA984C72593CB6460/S0004972700033980a.pdf/div-class-title-the-weyl-functional-calculus-and-two-by-two-selfadjoint-matrices-div.pdf).
+4. **Greiner–Ricker1995, original acquired, introductory pp109–113 visually read.** This studies support versus a joint approximate-point spectrum, including compact selfadjoint operators. Here “compact” modifies the *operators*, not the scalar noise. Its introduction says that countable Weyl support characterizes commutation in that operator class, and that the support/spectrum equality fails to characterize arbitrary bounded tuples. Those support statements do not yield the smearing contract. [Original PDF](https://matwbn.icm.edu.pl/ksiazki/sm/sm112/sm11222.pdf), SHA-256 `fad715d11701498d5e3f3033331ab46ad5f645ff835c03323970990af9ed7e7c`; complete later proofs not read here.
+5. **Ricker–Vath2002, original acquired, PDF1–4 read.** Its positive-power anticommutator criterion and Weyl polynomial recurrences give another all-H commutativity operation. It is not needed once Uchiyama's exact exponential-order theorem is available. [Primary PDF](https://www.irishmathsoc.org/bull48/R4804.pdf), SHA-256 `7227a65c66d682bbf9a682283e3e170eeee75b810faa51eca8f55f5c54f1f50a`.
+
+Canonical Weyl-representation positive operator convolution and canonical Husimi smoothing also do not establish this bounded arbitrary-tuple compact-noise criterion. Their Gaussian/trace-class-probe operations have different hypotheses; no inference is made from their generic positivity statements.
+
+## Acquisitions and unresolved priority
+
+The files `COMPACT_NOISE_ACQUISITION_RECEIPTS_01.json` through `_04.json`, `COMPACT_NOISE_READ_RANGES.json`, and `COMPACT_NOISE_SOURCE_MANIFEST.json` identify saved bytes, MIME, pages, failures, and read ranges. The Springer PDF requests for Ricker1993/1995 returned200 HTML subscription pages, not original PDFs. An initial guessed Studia PDF (`sm11221.pdf`, misleading saved name `greiner_ricker_1995.pdf`) was identified visually as DeBlasi–Myjak's farthest-distance paper, and is expressly excluded from mathematical premises; the correct Greiner–Ricker PDF is `sm11222.pdf` saved with `_actual`.
+
+The acquired texts support a definite conclusion: the arbitrary-H rigidity statement follows by a short transfer from Uchiyama1993 Theorem7. They do **not** clear first publication of the compact-noise formulation. Anderson's unread original theorem and the broader Weyl/measurement literature remain historical-priority gates. The result should be described as a corollary of a known exponential-order commutativity theorem, with the scalar-noise-to-order reduction shown explicitly.

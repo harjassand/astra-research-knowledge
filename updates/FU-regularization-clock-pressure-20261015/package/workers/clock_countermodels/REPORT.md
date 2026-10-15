@@ -1,0 +1,37 @@
+# Cause-specific clock certificates and a tail-information obstruction
+
+15 October 2026. Independent worker result. Repository input pin: `0c789ca775808e23e57138b56a393ad1e58cb15c`. The pasted producer clock report was read as data. Its full ZIP and original LJ38 implementation were unavailable, so this is an independent mathematical audit and extension, not a producer replay. Historical originality, external proof assessment, physical validity and end-to-end advantage remain UNKNOWN.
+
+The supplied stopped-clock identity, exact retained-state marginal, decreasing supermodularity, and signed additive-observable covariance all survive independent proof for finite absorbing, cyclic, nonreversible CTMCs. Initial support must be retained; the target must be stopped; the original occupation weights are fixed as retained sets change. `PROOFS.md`, Sections 1–4, gives the arguments. Exact fixtures compare the covariance with a separately computed full-generator Markov reward second moment, rather than comparing two rearrangements of the same formula.
+
+The decision-relevant continuation is **time and occupation conditional on a specified absorption cause**. It uses the standard endpoint Doob transform, then applies the reduction to that conditioned generator. For cause committor `c`, initial cause probability `p=mu c`, discarded Green matrix `G`, and original occupations `eta`, the conditional clock correction and error are
+
+    alpha_r^c=1+(Q_RI G c_I)_r/c_r,
+    V_c=(2/p) sum_(i in I) eta_i (G c_I)_i.
+
+The signed conditional reward covariance is
+
+    C_c(f,g)=(1/p) sum_(i in I) eta_i
+        [f_i(G(c_I g_I))_i+g_i(G(c_I f_I))_i].
+
+Zero-committor states are excluded before division. For joint late/cause risk, a conditional reduced survival curve supplies the rigorous band
+
+    p [S_c^hat(t+e)-V_c/e^2]_+
+        <= P(T>t, X_T in C)
+        <= p min(1,S_c^hat(t-e)+V_c/e^2).
+
+Endpoint rarity cancels from the relative timing error, provided the conditional survival being requested is not itself too small and `p` is accurate. The same construction gives finite-halfspace bands for joint time/exposure events using directional covariance. Computing the reduced survival or joint reward law remains necessary.
+
+There is an exact limitation: the trace `K` commutes with endpoint conditioning, but the ordinary mean-clock correction generally does not. Among all common row clocks applied to the fixed trace, preserving every cause-conditioned mean for every retained initial state is possible **if and only if** every cause-specific `alpha^c` agrees on its positive support. A source branching to a mean-2 trap leading to cause C and a mean-4 trap leading to cause D, with branch probabilities 1/4 and 3/4, has conditional clock corrections 3 and 5. Its ordinary correction 9/2 preserves the overall mean but cannot preserve both conditional means.
+
+A sharper synthetic example makes the endpoint operation useful. Let the C branch probability be `10^-6`, its trap mean `.01`, and the D trap mean `1000`. At deadline one, the true C-conditional survival is approximately `.3715953951`; ordinary reduction gives `.9990014968`, whereas cause-conditioned reduction gives `.3715399031`. The conditional certificate is `.0002`. With tolerance `.1`, the joint risk is enclosed by `[3.1651622609e-7, 4.3020874738e-7]`, containing the true `3.7159539512e-7`. The enclosure is also checked by exact rational Taylor intervals in `rare_deadline_rational_certificate.json`. No rates in this example are acquired physical measurements.
+
+The stronger information obstruction in `PROOFS.md`, Section 7, is not merely that small Wasserstein distance permits poor relative tails. For any fixed number of moments, one can construct absorbing CTMCs with **exactly the same reduced model, clock correction, clock certificate and those moments**, while late survival probabilities differ by an unbounded ratio. The certificate can be fixed as small as desired. An explicit second-moment family has `alpha=51/50` and `V=7/7500` for every member; at deadline 100 the checked survival ratio is about `8.16e33`, and at deadline 1000 it is about `5.92e422`. Exact moment/reduction equality is rational; these survival decimals illustrate an analytical asymptotic proof. A relative tail certificate therefore needs information beyond that finite summary, such as resolved excursion transforms or justified restrictions on slow low-weight components. A supplied full generator is not subject to this information obstruction.
+
+The bounded exact checks pass on six cyclic directed rational generators over all 96 retained sets: 192 retained-state marginal identities, 144 supermodularity inequalities, 576 signed covariance comparisons, 192 cause-conditioned clock/mean cases, and 1,152 conditioned signed covariance comparisons. Five exact same-summary tail fixtures and the two cause countermodels also pass. These are implementation checks, not external proof validation.
+
+The operation composes established conditioning, graph transformation and Markov reward machinery. Primary references and exact retrieval receipts are in `REFERENCES.md` and the two primary receipt JSON files. A priority claim is not supported by this bounded search. Full-model phase-type matrix exponentials, exact frequency-dependent Schur elimination, Markov-renewal excursion kernels, and exact kinetic path sampling remain matched given-generator competitors. The work does not demonstrate a faster complete scientific computation. Dense/sparse factorization, fill, state selection, cause/reward solves, conditioning, precision, distribution evaluation, and rare-channel acquisition are charged in `PROOFS.md`, Section 9.
+
+The actual FT transport/damage proof was read. Its eventual jump-yield row-time-change theorem explicitly excludes deadline and occupation objectives. No actuator law or physical material response is transferred here. Damage must first be an acquired, specified absorbing cause in this same generator; under an intervention the entire changed generator, all competing damage channels, reward definitions and preparation law must satisfy the chosen model. Missing rates or a missing rare branch cannot be repaired by algebraic conditioning.
+
+Disposition: retain the independently derived conditional clock/covariance and common-clock obstruction as unreviewed mathematical capital. The surviving leverage is target-specific certification and an exact information gate. Foundational novelty, real scientific acquisition, physical validation, and demonstrated end-to-end superiority are NOT_ACHIEVED.
