@@ -1,0 +1,39 @@
+# Pinned selective PR and duplicate audit
+
+15 October 2026. Main `846f185763ed3a27310fad4ce9471ba324d1e5f4`; read-only GitHub metadata snapshot and hypothetical `git merge-tree` in an isolated scratch object store. No original branch or worktree was merged, edited or reset. State is time-sensitive; recheck before a later integration.
+
+## Exact reservations
+
+| PR | Pinned head | Namespace / cards | Current state |
+|---|---|---|---|
+| 84 | `5ddabf53324159aa6c88e4fef3b75bc7b8b6c4ff` | FM, FN; N815, N816 | open draft, CONFLICTING |
+| 85 | `5611ad3fc9aa31b6bd09738d1831020ca4235e49` | FP; N817, N818 | open draft, CONFLICTING |
+| 87 | `a69ae39e8a23cc4d5b337bfa01ef2bd5ccbb7a0c` | FQ; N822 matched-clock three-snapshot | open draft, CONFLICTING |
+| 88 | `4201df05f180ecc25ef9c41a9cc53ad41fa8165b` | FQ; N822 compensation, N823 exchange, N824 retained control | open draft, CONFLICTING |
+
+Exact card slugs, checkpoint paths and bridge paths are in `NAMESPACE_RESERVATIONS.json`. Main already contains FR-capital-mining-20261015 and N830–832. Its highest card number at this pin is 832; that is a snapshot, not a reservation for a new intake. FM/FN/FP/FQ must also be treated as reserved by the open drafts. PR 87 and 88 have a genuine FQ/N822 semantic collision. Within updates/FQ they change the same six paths: BRIDGES.json, CLAIMS.json, SCOPED_NOTICES.json, SYNTHESIS.md, VALIDATION_RECEIPT.json and validate.py. Their dossier/connection N822 paths also collide, as do shared registries. The complete literal changed-file overlap is recorded, not reduced to the six package paths.
+
+Merged #83 has merge commit `1c45f77e32d6fbd72483aed5014061c7bda4f372`; #86 has `00631610750c708263d5cf6d812ebbb8edc77335`; #89 has the pinned current main. #89's source head was `e5bf5814bcf3709db4f2e8b7849a01e4476e4647`. These commits establish integration ancestry and provenance only.
+
+## Actual conflicts against current main
+
+- PR 84 has 31 content-conflict paths, primarily concurrent CURRENT/RECENT and access/concept registries, claim/gate lists, generated indexes, branch state and web catalogs.
+- PR 85 has 25 content-conflict paths of that kind, additionally semantic notices and bridge_candidates.json.
+- PR 87 has 16 content-conflict paths in shared intake/claim/gate/index/bridge/branch state. Its scientific FQ package has no literal update-file conflict with current FR; that does not erase its separate collision with PR 88.
+- PR 88 has 43 content-conflict paths plus two add/add technology-record conflicts. It predates canonical FR integration and carries overlapping scientific content under its old FQ/N822–824 names. The add/add records are `T-phase-selective-retained-polarity/v0002.json` and `T-task-matched-conditional-exchange/v0001.json`.
+
+The two technology records were inspected field by field. The first differs in canonical N832 versus provisional N824 references and FR versus FQ evidence paths. The second chiefly differs in FR versus FQ evidence/handoff references. The referenced derivation hashes match. These are provenance/name collisions around incorporated capital, not two independent physical demonstrations. The retained exact field comparison is `merge_conflicts/PR88_TECHNOLOGY_RECORD_DIFFERENCES.json`. All hypothetical merge outputs are saved beneath `merge_conflicts/`; no conflict was resolved by choosing one branch wholesale.
+
+## Duplicate and stale scientific claims
+
+The incoming universal directory contains 33 files, each byte-identical to its current `updates/FR-capital-mining-20261015/package/universal/` counterpart. `UNIVERSAL_DUPLICATE_AUDIT.json` records per-file hashes and targets. Reintaking it may preserve a source receipt but cannot count as independent mathematical evidence, a new theorem, or a second acquisition.
+
+The source phase packet explicitly preserves the no-go for smooth local storage and the negative critical-trace action. Its new amplitude operation is distinct from universal transverse storage, so this is a valid change of task rather than a contradiction. The packet itself does not prove all-phase positivity or general planar quasiconvexity. Existing current notices for Fstar/G positive-orbit failure and approximate heralded conditional exchange remain necessary; neither is repaired by the new amplitude or calibration argument.
+
+The late PR87 theorem and its correlated-clock/detector-contract audit were selectively reconstructed in the earlier frozen capital-mining investigation at the unchanged PR87 head. Current main preserves that selected evidence under FR; it does not contain PR87's full branch ancestry. The present wave rereads new relevant proofs and current notices, freshly pins all PR heads, and recomputes current conflicts. It does not claim a full second review of every old PR proof.
+
+## Scientific read scope
+
+New-source phase/Picone arguments, closure model/LP code and physical narrative were actually read. Current N812 global proof and prior comparator, N819 scope, N830 nonlocal compensation/critical trace, N831 scoped heralded correction, and N832 joint electromechanical response were selectively read at the current pin. They support the transfer/failure analysis in `PROOFS.md`, not a title-based catalog. The exact files, hashes, sections and prior-review provenance are listed in `SOURCE_READ_LEDGER.json`.
+
+Conflicted branches are left untouched. A later authorized integration should add only distinct new evidence under unreserved names, preserving the original checkpoints and the FR canonical corrections. Recompute reservations and mergeability immediately before any publication.

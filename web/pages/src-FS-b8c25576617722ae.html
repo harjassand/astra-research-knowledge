@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>closure_audit.py [updates/FS-phase-closure-20261015/package/closure]</title><body><p>FS preserved source or supplied internal evidence; externally unreviewed. <a href="../../updates/FS-phase-closure-20261015/package/closure/closure_audit.py">Exact bytes</a></p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproducible synthetic audit of decision-level thermal-emulation certificates.
+
+This is an analytical toy model, NOT experimental validation or a validated
+reactor simulator. No input data are downloaded. The heterogeneous counterexample
+uses deliberately chosen positive Arrhenius kinetics, not a fit to Rh data.
+
+Run: python closure_audit.py --output-dir results
+Dependencies: numpy, scipy. Python &gt;=3.10.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import csv
+import itertools
+import json
+from pathlib import Path
+import numpy as np
+from scipy.optimize import linprog
+
+RGAS = 8.314462618  # J mol^-1 K^-1
+
+def gain(temperature: np.ndarray | float, barrier: float = 80000.0,
+         reference: float = 573.0) -&gt; np.ndarray:
+    t = np.asarray(temperature, dtype=float)
+    if np.any(t &lt;= 0):
+        raise ValueError(&#x27;Absolute temperatures must be positive.&#x27;)
+    return np.exp(barrier / RGAS * (1.0 / reference - 1.0 / t))
+
+def lp_distance(library: np.ndarray, fractions: np.ndarray,
+                target: np.ndarray) -&gt; tuple[float, np.ndarray]:
+    &quot;&quot;&quot;L-infinity distance to a weighted Minkowski sum of local finite hulls.
+
+    library has dimensions (populations, modes, output_channels). Nonnegative
+    lambda weights for each population sum to its fixed catalyst fraction.
+    Fractions may equally describe pre-calibrated disjoint reactor modules.
+    &quot;&quot;&quot;
+    n, k, d = library.shape
+    if fractions.shape != (n,) or target.shape != (d,):
+        raise ValueError(&#x27;Incompatible shapes.&#x27;)
+    if not np.isclose(fractions.sum(), 1.0) or np.any(fractions &lt; 0):
+        raise ValueError(&#x27;Fractions must be nonnegative and sum to one.&#x27;)
+    matrix = library.reshape(n*k, d).T
+    objective = np.r_[np.zeros(n*k), 1.0]
+    equalities = np.zeros((n, n*k+1))
+    for i in range(n):
+        equalities[i, i*k:(i+1)*k] = 1.0
+    inequalities = np.vstack([np.c_[matrix, -np.ones(d)],
+                              np.c_[-matrix, -np.ones(d)]])
+    result = linprog(objective, A_ub=inequalities,
+                     b_ub=np.r_[target, -target],
+                     A_eq=equalities, b_eq=fractions,
+                     bounds=[(0, None)]*(n*k+1), method=&#x27;highs&#x27;)
+    if not result.success:
+        raise RuntimeError(f&#x27;LP failed: {result.message}&#x27;)
+    return float(result.fun), result.x[:-1].reshape(n, k)
+
+def main(output_dir: Path) -&gt; None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    rng = np.random.default_rng(20261015)
+    temperatures = np.linspace(523., 623., 101)
+    f = (.60-.02)/(.98-.02)
+    fractions = np.array([f, 1-f])
+    selectors = np.array([[.98, .02], [.02, .98]])
+    library = gain(temperatures)[None, :, None] * selectors[:, None, :]
+    uniform = np.einsum(&#x27;i,ikd-&gt;kd&#x27;, fractions, library)
+    s_dark = uniform[:,0]/uniform.sum(axis=1)
+    assert np.max(np.abs(s_dark-.60)) &lt; 1e-12
+
+    # The same two populations, but differential (entirely thermal) heating.
+    target = fractions[0]*library[0,-1] + fractions[1]*library[1,0]
+    s_target = float(target[0]/target.sum())
+    naive_q = (s_target-.60)/.40
+    naive_distance, _ = lp_distance(uniform[None, :, :], np.ones(1), target)
+    repaired_distance, _ = lp_distance(library, fractions, target)
+    assert naive_distance &gt; .1 and repaired_distance &lt; 1e-9
+
+    # A common homogeneous calibration is sound for homogeneous mixtures.
+    mixtures = rng.dirichlet(np.ones(len(temperatures)), size=10000)
+    bulk_mixed = mixtures @ uniform
+    bulk_s = bulk_mixed[:,0]/bulk_mixed.sum(axis=1)
+    assert np.max(np.abs(bulk_s-.60)) &lt; 1e-12
+
+    # Exercise local-hull feasibility with arbitrary distributions, including sparse ones.
+    max_distance = 0.
+    for _ in range(100):
+        weights = rng.dirichlet(np.full(len(temperatures), .08), size=2)
+        sample = np.einsum(&#x27;i,ik,ikd-&gt;d&#x27;, fractions, weights, library)
+        distance, _ = lp_distance(library, fractions, sample)
+        max_distance = max(max_distance, distance)
+    assert max_distance &lt; 1e-8
+
+    # Check the support-function bound (an exact elementary theorem, numerically exercised).
+    support_max_violation = -float(&#x27;inf&#x27;)
+    for _ in range(1000):
+        w = rng.normal(size=2)
+        weights = rng.dirichlet(np.ones(len(temperatures)), size=2)
+        sample = np.einsum(&#x27;i,ik,ikd-&gt;d&#x27;, fractions, weights, library)
+        support = np.sum(fractions*np.max(library @ w, axis=1))
+        support_max_violation = max(support_max_violation, float(w @ sample-support))
+    assert support_max_violation &lt; 1e-8
+
+    # A constant linear cross-sensitive detector preserves the forward convex model.
+    detector = np.array([[1.0,.12], [.08,.90], [.70,.20]])
+    detector_library = library @ detector.T
+    detector_target = detector @ target
+    detector_distance, _ = lp_distance(detector_library, fractions, detector_target)
+    assert detector_distance &lt; 1e-8
+
+    # Artificial signal injection tests discrimination, not a physical light mechanism.
+    injected = target + np.array([.5, 0.])
+    injection_distance, _ = lp_distance(library, fractions, injected)
+    assert injection_distance &gt; .05
+    methane_excess = float(injected[0]-np.max(uniform[:,0]))
+    assert methane_excess &gt; 0
+
+    # A tiny finite-array resource allocation check. The LP is an OUTER relaxation:
+    # its time-sharing solution is not asserted to be physically replayable.
+    tsmall = np.linspace(523.,623.,5)
+    mode_cost = (tsmall-523.)/100.  # dimensionless synthetic cost, NOT measured watts
+    libsmall = gain(tsmall)[None,:,None]*selectors[:,None,:]
+    budget = .75
+    score = np.array([1., -.2])
+    mode_score = libsmall @ score
+    objective = -(fractions[:,None]*mode_score).reshape(-1)
+    Aeq = np.zeros((2,10)); Aeq[0,:5]=1.; Aeq[1,5:]=1.
+    allocation = linprog(objective,
+        A_ub=np.tile(mode_cost,2)[None,:], b_ub=[budget],
+        A_eq=Aeq,b_eq=np.ones(2), bounds=[(0,None)]*10,method=&#x27;highs&#x27;)
+    assert allocation.success
+    lp_score = -float(allocation.fun)
+    deterministic = []
+    for i,j in itertools.product(range(5),repeat=2):
+        cost = mode_cost[i]+mode_cost[j]
+        if cost &lt;= budget+1e-12:
+            y = fractions[0]*libsmall[0,i]+fractions[1]*libsmall[1,j]
+            deterministic.append(float(score@y))
+    best_discrete = max(deterministic)
+    assert lp_score+1e-10 &gt;= best_discrete
+    beta = -float(allocation.ineqlin.marginals[0])
+    alpha = np.max(fractions[:,None]*mode_score-beta*mode_cost[None,:], axis=1)
+    dual_value = float(beta*budget+alpha.sum())
+    assert abs(dual_value-lp_score) &lt; 1e-9
+    nonzero_modes = int(np.count_nonzero(allocation.x &gt; 1e-9))
+    assert nonzero_modes &lt;= 3  # 2 normalizations + 1 active resource budget
+
+    # Calculations from two published scalar enhancement numbers. Not raw-data reanalysis.
+    # Zhang et al., Nature Communications 8,14542 (2017), doi:10.1038/ncomms14542.
+    equivalent_temperatures = []
+    for temperature, enhancement in [(623.,7.41),(523.,24.4)]:
+        equivalent = 1/(1/temperature-RGAS/78600.*np.log(enhancement))
+        equivalent_temperatures.append({
+            &#x27;reported_temperature_K&#x27;:temperature,
+            &#x27;reported_methane_enhancement&#x27;:enhancement,
+            &#x27;assumed_fixed_activation_energy_J_mol&#x27;:78600.,
+            &#x27;calculated_uniform_thermal_equivalent_K&#x27;:float(equivalent),
+            &#x27;calculated_shift_K&#x27;:float(equivalent-temperature),
+            &#x27;scope&#x27;:&#x27;Arrhenius extrapolation only; not evidence this temperature occurred.&#x27;})
+
+    results = {
+        &#x27;status&#x27;:&#x27;synthetic audit only; no empirical validation or novelty certification&#x27;,
+        &#x27;seed&#x27;:20261015,
+        &#x27;counterexample&#x27;:{
+            &#x27;activation_energy_J_mol&#x27;:80000., &#x27;reference_temperature_K&#x27;:573.,
+            &#x27;methane_selectivity_A&#x27;:.98, &#x27;methane_selectivity_B&#x27;:.02,
+            &#x27;fraction_A&#x27;:float(f), &#x27;fraction_B&#x27;:float(1-f),
+            &#x27;uniform_dark_methane_selectivity&#x27;:.6,
+            &#x27;differential_temperature_A_K&#x27;:623., &#x27;differential_temperature_B_K&#x27;:523.,
+            &#x27;rates_methane_CO_reference_units&#x27;:target.tolist(),
+            &#x27;differential_heating_methane_selectivity&#x27;:s_target,
+            &#x27;invalid_bulk_outside_fraction_lower_bound&#x27;:float(naive_q),
+            &#x27;distance_to_invalid_bulk_hull&#x27;:naive_distance,
+            &#x27;distance_to_local_hull&#x27;:repaired_distance},
+        &#x27;checks&#x27;:{
+            &#x27;homogeneous_mixtures_checked&#x27;:10000,
+            &#x27;homogeneous_selectivity_max_absolute_error&#x27;:float(np.max(np.abs(bulk_s-.60))),
+            &#x27;local_hull_LPs_checked&#x27;:100,
+            &#x27;local_hull_max_Linf_distance&#x27;:max_distance,
+            &#x27;support_inequalities_checked&#x27;:1000,
+            &#x27;largest_support_bound_violation&#x27;:support_max_violation,
+            &#x27;linear_detector_Linf_distance&#x27;:detector_distance},
+        &#x27;artificial_positive_control&#x27;:{
+            &#x27;injected_methane_reference_units&#x27;:.5,
+            &#x27;distance_to_local_hull&#x27;:injection_distance,
+            &#x27;methane_excess_above_all_modes&#x27;:methane_excess,
+            &#x27;scope&#x27;:&#x27;algebraic sensor-input injection, not an obtainable photocatalytic process&#x27;},
+        &#x27;finite_array_resource_relaxation&#x27;:{
+            &#x27;modes_per_population&#x27;:5, &#x27;budget_arbitrary_units&#x27;:budget,
+            &#x27;best_deterministic_score&#x27;:best_discrete,
+            &#x27;relaxed_upper_bound&#x27;:lp_score,
+            &#x27;nonzero_LP_modes&#x27;:nonzero_modes,
+            &#x27;dual_resource_multiplier&#x27;:beta,
+            &#x27;dual_value&#x27;:dual_value,
+            &#x27;duality_gap&#x27;:abs(dual_value-lp_score),
+            &#x27;mode_weights&#x27;:allocation.x.reshape(2,5).tolist(),
+            &#x27;scope&#x27;:&#x27;Resource costs are synthetic. Convex mixing not assumed experimentally free.&#x27;},
+        &#x27;published_scalar_calculations&#x27;:equivalent_temperatures,
+        &#x27;all_assertions_passed&#x27;:True}
+    (output_dir/&#x27;results.json&#x27;).write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+    with (output_dir/&#x27;synthetic_dark_library.csv&#x27;).open(&#x27;w&#x27;,newline=&#x27;&#x27;) as fh:
+        writer=csv.writer(fh)
+        writer.writerow([&#x27;population&#x27;,&#x27;temperature_K&#x27;,&#x27;fraction&#x27;,&#x27;methane_rate_reference_units&#x27;,&#x27;CO_rate_reference_units&#x27;])
+        for pop in range(2):
+            for k,t in enumerate(temperatures):
+                writer.writerow([pop,float(t),float(fractions[pop]),*map(float,library[pop,k])])
+    print(json.dumps(results,indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--output-dir&#x27;,type=Path,default=Path(&#x27;results&#x27;))
+    main(parser.parse_args().output_dir)
+</pre></body></html>

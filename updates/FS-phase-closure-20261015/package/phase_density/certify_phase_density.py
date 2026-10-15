@@ -1,0 +1,153 @@
+"""Rigorous interval certificate for one coupled phase, for ALL amplitudes.
+The numerical search is NOT an input: rounded rational coefficients are read
+from phase_density_certificate.json and all transcendental enclosures below
+are constructed from rational Machin and Taylor bounds. Basic floating-point
+interval operations are rounded outward with numpy.nextafter (IEEE float64).
+This script is not a proof-assistant verification of NumPy or hardware.
+"""
+from fractions import Fraction as Q
+from pathlib import Path
+import math, json, time
+import numpy as np
+import sympy as sp
+ROOT=Path(__file__).resolve().parent
+neg=np.float64(-np.inf);pos=np.float64(np.inf)
+def down(x):return np.nextafter(x,neg)
+def up(x):return np.nextafter(x,pos)
+def encl(q):
+ q=Q(q);v=float(q);fv=Q.from_float(v)
+ return (np.nextafter(v,neg) if fv>q else v, np.nextafter(v,pos) if fv<q else v)
+class I:
+ __array_priority__=1000
+ def __init__(self,lo,hi=None): self.lo=np.asarray(lo,dtype=float);self.hi=np.asarray(lo if hi is None else hi,dtype=float)
+ @classmethod
+ def rat(cls,q):return cls(*encl(q))
+ def __add__(self,b):
+  b=asI(b);return I(down(self.lo+b.lo),up(self.hi+b.hi))
+ __radd__=__add__
+ def __neg__(self):return I(-self.hi,-self.lo)
+ def __sub__(self,b):return self+-asI(b)
+ def __rsub__(self,b):return asI(b)+-self
+ def __mul__(self,b):
+  b=asI(b);vv=[self.lo*b.lo,self.lo*b.hi,self.hi*b.lo,self.hi*b.hi]
+  return I(down(np.minimum.reduce(vv)),up(np.maximum.reduce(vv)))
+ __rmul__=__mul__
+ def inv(self):
+  if np.any((self.lo<=0)&(self.hi>=0)):raise ArithmeticError('interval division crosses zero')
+  return I(down(1/self.hi),up(1/self.lo))
+ def __truediv__(self,b):return self*asI(b).inv()
+ def __rtruediv__(self,b):return asI(b)*self.inv()
+ def __pow__(self,n):
+  if n==0:return I(1)
+  if n<0:return self.inv()**(-n)
+  if n%2==0:
+   l=np.minimum(self.lo**2,self.hi**2);l=np.where((self.lo<=0)&(self.hi>=0),0,l)
+   sq=I(np.maximum(0,down(l)),up(np.maximum(self.lo**2,self.hi**2)))
+   return sq**(n//2) if n!=2 else sq
+  return self*(self**(n-1))
+def asI(x):
+ if isinstance(x,I):return x
+ return I.rat(x) if isinstance(x,Q) else I(x)
+
+def arctan_bounds(m,n=64):
+ s=sum((Q((-1)**j,(2*j+1)*m**(2*j+1)) for j in range(n)),Q(0));nxt=Q(1,(2*n+1)*m**(2*n+1))
+ return s,s+nxt
+
+def trig_table(N):
+ a,b=arctan_bounds(5);c,d=arctan_bounds(239)
+ plo,phi=16*a-4*d,16*b-4*c
+ p=Q('3.141592653589793238462643383279502884197169399375105820974944')
+ eps=Q(1,10**60)
+ assert p<=plo<=phi<=p+eps
+ table=[]
+ for k in range(N//2+1):
+  z=p*k/N
+  partial=sum(((-1)**j*z**(2*j+1)/math.factorial(2*j+1) for j in range(17)),Q(0))
+  rem=z**35/math.factorial(35)+eps
+  table.append((encl(partial-rem)[0],encl(partial+rem)[1]))
+ sl=np.empty(2*N);sh=np.empty(2*N)
+ for k in range(2*N):
+  sgn=1 if k<=N else -1
+  kk=k if k<=N else k-N
+  kk=min(kk,N-kk)
+  lo,hi=table[kk]
+  sl[k],sh[k]=(lo,hi) if sgn==1 else (-hi,-lo)
+ cl=np.roll(sl,-N//2);ch=np.roll(sh,-N//2)
+ return sl,sh,cl,ch,phi
+
+def poly_setup():
+ aa,bb,cc,dd=xx=sp.symbols('a b c d')
+ u=aa*aa+cc*cc;v=bb*bb+dd*dd;q=aa*dd-bb*cc
+ f=3*(u+v-2*q)**2+sp.Rational(35,24)*u*u+q*q-sp.Rational(5,2)*q*u
+ expr=[f]+[sp.diff(f,x) for x in xx[:2]]+[sp.diff(f,xx[i],xx[j]) for i in range(2) for j in range(4)]
+ return [[(ex,Q(int(co.p),int(co.q))) for ex,co in sp.Poly(e,xx).terms()] for e in expr]
+
+def cert(N=1024,batch=8):
+ data=json.loads((ROOT/'phase_density_certificate.json').read_text())
+ rho_coeff=[Q(s) for s in data['rho_coefficients']]
+ phase=[(i,j,Q(A),Q(B)) for i,j,A,B in data['phase']]
+ sl,sh,cl,ch,phi=trig_table(N); polys=poly_setup()
+ y=np.arange(N)[None,:];minrho=1e100;ming=1e100;maxg=-1e100;flo=0.;fhi=0.;sigsumlo=0.;sigsumhi=0.
+ for start in range(0,N,batch):
+  x=np.arange(start,min(start+batch,N))[:,None]
+  shape=(len(x),N)
+  def trig(i,j):
+   idx=(2*(i*x+j*y)+i+j)%(2*N)
+   rad=encl(phi*(abs(i)+abs(j))/N)[1]
+   sn=I(np.maximum(-1,down(sl[idx]-rad)),np.minimum(1,up(sh[idx]+rad)))
+   cs=I(np.maximum(-1,down(cl[idx]-rad)),np.minimum(1,up(ch[idx]+rad)))
+   return cs,sn
+  rr=[I(np.ones(shape))]+[I(np.zeros(shape)) for _ in range(5)]
+  inds=[(0,0),(1,0),(0,1),(2,0),(1,1),(0,2)]
+  for (i,j),(A,B) in zip(data['modes'],zip(rho_coeff[::2],rho_coeff[1::2])):
+   cs,sn=trig(i,j)
+   cycle=[(cs,sn),(-sn,cs),(-cs,-sn),(sn,-cs)]
+   for h,(dx,dy) in enumerate(inds):
+    fac=i**dx*j**dy
+    if fac:
+     u,v=cycle[(dx+dy)%4];rr[h]=rr[h]+fac*(I.rat(A)*u+I.rat(B)*v)
+  kk=[I(np.zeros(shape)),I(np.ones(shape))]+[I(np.zeros(shape)) for _ in range(3)]
+  kinds=[(1,0),(0,1),(2,0),(1,1),(0,2)]
+  for i,j,A,B in phase:
+   cs,sn=trig(i,j);cycle=[(cs,sn),(-sn,cs),(-cs,-sn),(sn,-cs)]
+   for h,(dx,dy) in enumerate(kinds):
+    fac=i**dx*j**dy
+    if fac:
+     u,v=cycle[(dx+dy)%4];kk[h]=kk[h]+fac*(I.rat(A)*u+I.rat(B)*v)
+  r,rx,ry,rxx,rxy,ryy=rr;kx,ky,kxx,kxy,kyy=kk
+  minrho=min(minrho,float(r.lo.min()))
+  if np.any(r.lo<=0):raise ArithmeticError(f'density not yet certified positive at {N=}')
+  a=rx/(4*r);b=ry/(4*r)
+  inputs=[a,b,kx,ky];powers=[[z**j for j in range(5)] for z in inputs]
+  outs=[]
+  for terms in polys:
+   val=I(np.zeros(shape))
+   for ex,coef in terms:
+    vv=I.rat(coef)
+    for k,e in enumerate(ex):
+     if e:vv=vv*powers[k][e]
+    val=val+vv
+   outs.append(val)
+  f,ja,jb=outs[:3];hh=outs[3:]
+  ax=(rxx/r-rx*rx/(r*r))/4;bx=(rxy/r-rx*ry/(r*r))/4;by=(ryy/r-ry*ry/(r*r))/4
+  div=hh[0]*ax+hh[1]*bx+hh[2]*kxx+hh[3]*kxy+hh[4]*bx+hh[5]*by+hh[6]*kxy+hh[7]*kyy
+  g=f-a*ja-b*jb-div/4
+  ming=min(ming,float(g.lo.min()));maxg=max(maxg,float(g.hi.max()))
+  # Enclose integral by summing extrema over equal-volume cells.
+  # Positive and negative terms summed with conservative n*eps error.
+  energy=r*f
+  el=float(np.sum(energy.lo,dtype=np.longdouble));eh=float(np.sum(energy.hi,dtype=np.longdouble))
+  nterm=energy.lo.size; gamma=2*nterm*np.finfo(float).eps/(1-2*nterm*np.finfo(float).eps)
+  er=gamma*(float(np.sum(np.abs(energy.lo),dtype=np.longdouble))+float(np.sum(np.abs(energy.hi),dtype=np.longdouble))+1)
+  flo=float(down(flo+el-er));fhi=float(up(fhi+eh+er))
+ result={'N':N,'cells':N*N,'density_lower':minrho,'dual_residual_lower':ming,'dual_residual_upper':maxg,
+ 'energy_lower':float(down(flo/(N*N))),'energy_upper':float(up(fhi/(N*N))),
+ 'trigonometry':'Machin rational bounds; degree-33 sine polynomial with explicit rational remainder; Lipschitz cell enclosures',
+ 'interval_arithmetic':'IEEE float64 basic operations rounded outward by nextafter; cumulative integration given explicit conservative padding',
+ 'status':'positive continuum dual certificate' if ming>0 else 'inconclusive interval bound'}
+ (ROOT/f'phase_density_intervals_{N}.json').write_text(json.dumps(result,indent=2))
+ print(json.dumps(result,indent=2),flush=True)
+ return result
+if __name__=='__main__':
+ import sys
+ cert(int(sys.argv[1]) if len(sys.argv)>1 else 1024)

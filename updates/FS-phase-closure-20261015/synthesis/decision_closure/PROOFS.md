@@ -1,0 +1,355 @@
+# Decision closure with stored inventory and joint calibration moments
+
+Internal derivations by decision_closure, 2026-10-15. Source repository pin:
+`846f185763ed3a27310fad4ce9471ba324d1e5f4`.
+
+No laboratory measurements, independently validated reactor model or historical
+novelty claim is supplied. Dissipativity, generalized moment duality, support
+optimization and optimal linear-estimator allocation are established methods.
+The contribution here is the explicit combined contract, exact model bound,
+counterexample and reproducible decision/cost calculation.
+
+## 1. A dynamic class missed by steady-mode convex closure
+
+Consider a normalized stored reactive inventory x in (0,1), constant positive
+adsorption coefficient a, and positive conversion coefficient b(t):
+
+\[
+ \dot x=a(1-x)-b(t)x,\qquad r(t)=b(t)x.                       \tag{1}
+\]
+
+There are two declared dark modes, b0<b1, with
+\(b(t)=b_0+D u(t)\), D=b1-b0 and u(t) in {0,1}. The normalized metered
+running cost is u; an affine nonzero base cost can be restored. Assume a
+hot-duty budget \(\int_0^T u\,dt\le fT\). Define
+\(\bar b=b_0+Df\) and
+
+\[
+ C(f)=\frac{a\bar b}{a+\bar b}.                              \tag{2}
+\]
+
+**Theorem 1.** Every measurable, possibly state-dependent or randomized
+switching schedule satisfies, pathwise conditional on its control realization,
+
+\[
+ \int_0^T r\,dt\le T C(f)+V_p(x(0))-V_p(x(T)),\qquad
+ V_p(x)=x-p\log x,\quad p=\left(\frac{a}{a+\bar b}\right)^2.   \tag{3}
+\]
+
+For cyclic inventory x(T)=x(0), the average is at most C(f). This bound is
+sharp for the ideal binary class with arbitrarily fast, cost-free switching:
+periodic schedules with duty f approach C(f). The limit is a relaxed-control
+supremum, not an experimentally acquired waveform. If a constant intermediate
+b=bar b is available at the same full cost, it already attains this value.
+
+**Proof.** For every p>0,
+
+\[
+ r-pb+\dot V_p=a(1-x)(1-p/x),\qquad
+ a(1-\sqrt p)^2-a(1-x)(1-p/x)
+ =a\frac{(x-\sqrt p)^2}{x}\ge0.                             \tag{4}
+\]
+
+Integrate, use \(\int b\le T\bar b\), and minimize
+\(p\bar b+a(1-\sqrt p)^2\). Its minimizer is the p in (3) and its value
+is (2). For binary periods h with fixed duty f, the exact segment flow is
+\(x_{out}=a/(a+b)+(x_{in}-a/(a+b))e^{-(a+b)t}\). The periodic state converges
+to a/(a+bar b) as h tends to zero, so the mean reward converges to C(f). QED.
+
+An independent derivation follows from
+\(\dot {\log x}=a/x-a-b\) and the balance
+\(r=a(1-x)-\dot x\). Under cyclic endpoints,
+\(\overline{1/x}=1+\bar b_{actual}/a\). Jensen gives
+\(\bar x\ge a/(a+\bar b_{actual})\), proving the same bound.
+
+**Exact steady-library failure.** A static mixture of the two steady outputs
+has upper value
+\(S(f)=(1-f)ab_0/(a+b_0)+fab_1/(a+b_1)\), strictly below C(f) for 0<f<1.
+For a=1, b0=.1, b1=10, f=.5, S=.5 and C=101/121≈.834710744. Purely dark
+inventory storage explains the difference. This is a counterexample to
+extending a steady-mode library to dynamic controls, not a new catalytic
+phenomenon or a fit to a cited experiment.
+
+Positive constant a can represent the declared adsorption-limited model;
+mode-dependent b may be thermally activated. The theorem does not assert
+that arbitrary real catalysts have constant a or a single inventory.
+
+### Endpoints, model residuals, switching and settling
+
+Equation (3) keeps initial and terminal inventory. With acquired
+x_min<=x(t)<=1 the boundary can be bounded by the range of V_p. An empty
+initial state makes log x singular: start the certificate only after a paid
+loading interval with a positive inventory lower bound, or handle that prefix
+separately. It is invalid to silently set the inventory term to zero.
+
+If the actual state and readout obey
+\(\dot x=a(1-x)-bx+d(t)\) and \(\tilde r=bx+z(t)\), the right side of (3)
+increases by
+
+\[
+ \int_0^T\left[L_p|d(t)|+z_+(t)\right]dt,\quad
+ L_p=\max_{x\in[x_{min},1]}|1-p/x|.                          \tag{5}
+\]
+
+This follows by inserting the residuals in (4). These must be uniform
+physical/model-error bounds on the admitted histories, not fit residuals
+at a few calibration traces. A detector with a common positive scale g and
+constant background d0 yields measured integral at most g times (3),(5)
+plus d0 T. Shared uncertainty in g,d0 must stay coupled across all traces.
+
+For per-transition cost kappa, actual resource is hot exposure plus kappa
+times transition count, along with any base, settling, gas and reset costs.
+Dropping those positive costs preserves an outer bound but destroys
+achievability/sharpness for the physical class. A finite synthetic example
+with period .1, duty .48 and kappa=.001 has total normalized cost .5 and
+average reward .828254532 under the ideal instantaneous mode dynamics.
+Neither kappa nor the waveform is a laboratory measurement.
+
+## 2. Two transient histories identify the restricted joint model
+
+Start from acquired empty inventory x(0)=0. With the same positive detector
+scale g, same background d0 and constant mode j, the detector rate is
+
+\[
+ y_j(t)=d_0+A_j(1-e^{-k_jt}),\quad
+ k_j=a+b_j,\quad A_j=gab_j/k_j.                              \tag{6}
+\]
+
+Suppose the two fitted poles are distinct, k0!=k1, and the resulting physical
+parameters are positive. Then the exact joint inverse is
+
+\[
+ P=\frac{k_1A_1-k_0A_0}{k_1-k_0}=ga,\quad
+ a=k_0-\frac{k_0A_0}{P},\quad b_j=k_j-a,\quad g=P/a.          \tag{7}
+\]
+
+The common offset is the empty-state rate. A fixed unknown site inventory
+can be absorbed into g, so the detector-space decision needs neither
+microscopic site count nor an independent spectral inversion. The formulas
+follow by multiplying (6)'s amplitude by k_j and subtracting.
+
+This is elementary transient kinetic identification, not a new physical
+measurement. It is a real conditional compression: two complete transient
+families replace enumeration of all binary histories in the supplied model.
+Poles that coincide, a vanishing contrast P, uncertain empty preparation,
+drifting/nonlinear detector response or heterogeneous sums of exponentials
+invalidate the exact inverse. Finite precision near a degenerate pole
+difference is amplified. Joint confidence sets for (k0,k1,A0,A1,d0), pushed
+through (7), retain the shared scale and correlations; independent extremizing
+of every recovered parameter generally loses information.
+
+### An unknown common linear detector filter can cancel
+
+There is a stronger restricted acquisition interface than fitting an
+instantaneous detector. Suppose both empty-start transients pass through
+the SAME causal stable linear filter H, with a common acquired/removed
+background and zero detector initial memory. For positive Laplace argument s,
+
+\[
+ Y_j(s)=H(s)\frac{ab_j}{s(s+k_j)},\qquad
+ Q(s):=\frac{Y_1(s)}{Y_0(s)}
+ =r\frac{s+k_0}{s+k_1},\quad r=b_1/b_0.                     \tag{7a}
+\]
+
+No detector deconvolution, gain or bandwidth is required for this ratio.
+Three distinct positive arguments with nonzero denominator identify a
+nonconstant degree-(1,1) rational function exactly. Indeed, agreement at
+three points makes the cross-multiplied quadratic difference identically
+zero; distinct k0,k1 exclude pole cancellation. The parameters can be found
+linearly from \(Q_l k_1-s_lr-z=-Q_ls_l\), where z=r k0. Then
+
+\[
+ a=(rk_0-k_1)/(r-1),\qquad b_j=k_j-a.                       \tag{7b}
+\]
+
+This is an elementary common-filter system-identification cancellation,
+not a claim of historical novelty. It removes an explicit detector-bandwidth
+acquisition requirement for the restricted kinetic parameters. It does not
+identify H(0), chemical product calibration or finite-window detector
+storage. Those remain separate for the absolute utility/resource decision.
+Finite positive-shift responses cannot simply supply a DC/tail certificate.
+
+In noisy data the three-point linear fit also requires a lower bound on its
+smallest singular value; distinct exact sample arguments do not imply good
+conditioning. The ratio denominators and this bound must be included in the
+joint compatible-data set. Timestamped nonnegative signal/count bins can
+bound each exponential weight between its two bin-edge values, charging
+time resolution and dead-time error without assuming an arbitrarily smooth
+waveform. Measurement filtering must actually be common to both modes.
+
+For an acquired uniform rate bound |y(t)-d0|<=Ymax, truncating the Laplace
+integral at L costs at most \(Ymax e^{-sL}/s\). Sampling error and ratio
+denominator lower bounds are additional conditioning costs. An unacquired
+arbitrarily long detector tail cannot be inferred absent that rate/domain
+control. Mode-dependent filters, unequal detector initial memory, background
+drift or a collapsed kinetic contrast invalidate (7a).
+
+## 3. Joint heterogeneity without identifying every latent type
+
+Let Theta be an acquired compact kinetic class. A type theta carries its
+whole tuple (a,b0,b1,q,e), where q>=0 is the selected positive score weight
+and e>0 the incremental resource weight. No independence is imposed between
+these coordinates. A probability measure mu describes fixed populations.
+Each inventory follows (1); interpopulation reaction/transport coupling is
+absent or included in an acquired residual bound. This does not cover
+unrestricted interacting heterogeneous reactors.
+
+For type theta define C_theta(f) by (2). Permit arbitrary per-type duties
+0<=f<=1, even if they cannot be separately controlled in the real reactor.
+This is an outer control class. For long-time cyclic operation its best
+score with budget B is bounded by the following moment program:
+
+\[
+ U(B,m)=\sup_{\nu\in\mathcal P(\Theta\times[0,1])}
+ \int q_\theta C_\theta(f)\,d\nu,
+\]
+\[
+ \int\phi_l(\theta)d\nu=m_l\;(l=1,\dots,m),\qquad
+ \int e_\theta f\,d\nu\le B.                                \tag{8}
+\]
+
+Here phi_l is the detector response to an ACTUALLY executed complete
+calibration history on the same population; it is not a separately
+supplied marginal of each hidden rate. For a two-mode pulse history,
+successive exact segment flows and integrals give phi_l(theta). A cold-hot
+history depends jointly on b0 and b1 through its retained inventory and can
+therefore constrain their hidden pairing. Its mean is the observable m_l,
+without assigning a type label to any particle.
+
+For beta>=0 let
+
+\[
+ h_\beta(\theta)=\max_{f\in[0,1]}
+ [q_\theta C_\theta(f)-\beta e_\theta f].                    \tag{9}
+\]
+
+**Theorem 2 (sharp joint-moment closure).** Any coefficients satisfying
+
+\[
+ \lambda_0+\sum_l\lambda_l\phi_l(\theta)\ge h_\beta(\theta)
+ \quad\text{for every admitted theta}                       \tag{10}
+\]
+
+give the upper bound
+
+\[
+ U(B,m)\le \beta B+\lambda_0+\lambda^T m.                   \tag{11}
+\]
+
+When m lies in the relative interior of the attainable moment set and the
+resource constraint has a strictly feasible measure, the infimum of (11)
+over (10) equals (8), by generalized moment/conic duality. For finite type
+and duty libraries this is ordinary LP strong duality without an interior
+qualification. The continuum theorem uses the stated compactness,
+continuity and constraint qualification; no generic dual attainment is
+asserted on unexamined boundary moment sets.
+
+**Proof of validity.** From (9),(10),
+\(q C(f)\le\beta e f+\lambda_0+\lambda\cdot\phi\) pointwise. Integrate
+against the SAME joint measure nu for all calibrations and the target,
+then apply (8). Sharpness follows from the standard separating-hyperplane
+dual of this linear program over probability measures. QED.
+
+The maximizer in (9) is analytic for beta>0:
+
+\[
+ f_* = \operatorname{clip}_{[0,1]}
+ \frac{a\sqrt{qD/(\beta e)}-a-b_0}{D}.                       \tag{12}
+\]
+
+For beta=0 and q>0 choose f=1. This follows by differentiating C; it also
+provides an exact one-dimensional separation oracle for column generation
+over a supplied finite Theta. That optimization machinery is established
+support-function methodology, not a novel acquisition oracle.
+
+Where an extreme optimizing measure is available, m calibration equalities
+and one active resource inequality admit an optimizer on at most m+2
+type-duty atoms under the standard moment-set extreme-point conditions.
+In a finite LP this is its basic-feasible-solution count. Sparse latent
+extremizers do NOT mean those types were observed or that only m+2 physical
+calibrations suffice to certify the parameter domain.
+
+Equation (8) is sharp for its relaxed type-addressable control class. It is
+not a claim to physically implement independent hidden-type temperatures,
+nor to attain the bound with actual switching costs. Finite endpoint and
+model-error allowances from (3),(5) must be added before a finite-device
+decision. If the real reactor lies in the admitted class, those outer
+relaxations remain conservative even when they are not realizable.
+
+### Detector, nuisance and correlated measurement uncertainty
+
+If m belongs to an acquired joint confidence set M, (11) becomes
+\(\beta B+\lambda_0+h_M(\lambda)\), where h_M is its support function.
+For \(M=\hat m+\{v:v^T\Sigma^{-1}v\le\rho^2\}\),
+
+\[
+ h_M(\lambda)=\lambda^T\hat m+
+ \rho\sqrt{\lambda^T\Sigma\lambda}.                        \tag{13}
+\]
+
+The upper bound inherits the set's actual simultaneous coverage; an assumed
+covariance or a solver tolerance is not a confidence certificate.
+
+Common detector nuisance eta, e.g. one gain g>0 and background d0 shared by
+all histories, is a single variable. For integrated calibrations with known
+durations t_l and common gain/offset, measured means obey
+\(y_l=g\int\phi_l d\mu+d_0t_l\). Condition on the SAME eta in every row and
+the challenge, optimize its compatible measure program, then take the
+supremum over eta. In general \(\sup_\eta\inf_{\beta,\lambda}\) cannot be
+silently replaced by independently chosen nuisance per mode/type or by an
+equality with \(\inf\sup\). The latter can be a looser safe upper bound.
+Action-dependent drift requires its own joint set; arbitrary drift destroys
+the shared-background identification.
+
+## 4. Sparse task geometry must include calibration precision cost
+
+Fix a valid witness (beta,lambda0,lambda) using discovery data, then acquire
+independent confirmatory full-history blocks. Suppose mean estimate l has
+independent sub-Gaussian variance proxy sigma_l^2/n_l, and each complete
+block costs c_l. For total continuous allocation cost C=Σ c_l n_l,
+
+\[
+ \inf_{n_l>0,\;\sum c_ln_l=C}
+ \sum_l\frac{\lambda_l^2\sigma_l^2}{n_l}
+ =\frac{(\sum_l|\lambda_l|\sigma_l\sqrt{c_l})^2}{C}.         \tag{14}
+\]
+
+**Proof.** Cauchy-Schwarz lower-bounds the product of cost and variance by
+the squared numerator. Equality holds for
+\(n_l\propto|\lambda_l|\sigma_l/\sqrt{c_l}\). Zero-coefficient histories
+need no confirmatory allocation for this fixed witness. Round upward to
+whole blocks and charge the resulting cost. QED.
+
+An upper tail allowance at failure probability delta is therefore
+\(\sqrt{2\log(1/\delta)/C}\sum_l|\lambda_l|\sigma_l\sqrt{c_l}\).
+Correlated same-block estimates instead use their full covariance geometry
+(13). Witness selection on confirmatory data requires uniform confidence
+coverage or another valid adaptive argument; it is not covered by the fixed
+witness formula.
+
+Decision-optimal calibration minimizes the upper decision bound PLUS its
+precision and systematic allowances at the available cost. It need not
+minimize the noiseless upper bound. This is standard optimal experimental
+design applied to the closure witness.
+
+## 5. Exact obstruction to assumption-free sparse joint closure
+
+Let there be M legal complete joint control histories, each with a bounded
+score J(u) in [0,1] and the same admitted resource cost. Without structural
+restrictions, fewer than M exact score queries cannot deterministically
+certify max_u J(u)<1: reply zero to every query; an unqueried history can
+have score one while agreeing with every observation. For a uniformly placed
+one-history spike, any method making k distinct exact queries finds it with
+probability at most k/M. A uniformly valid upper certificate below one with
+failure at most delta consequently needs k>=(1-delta)M in this experiment
+family if it outputs that certificate whenever all queried responses are
+zero. A method can instead decline to certify; it has then not resolved
+the all-zero decision. Adaptive querying does not help along that transcript.
+
+This is a finite experimental-information obstruction, not a claim that all
+catalysts realize arbitrary response tables. A bounded degree, known kinetic
+class, certified smoothness/monotonicity, bounded memory or another acquired
+physical envelope may remove it. A sparse fit to observed histories does
+not by itself acquire such an envelope. In particular, calibration of
+separate module or rate marginals cannot assume away unmeasured correlated
+responses and control-dependent detector nuisances.
