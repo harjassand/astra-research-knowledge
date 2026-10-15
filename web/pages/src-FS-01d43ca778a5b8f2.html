@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>fullcone_poisson.py [updates/FS-phase-closure-20261015/package/universal/exploration]</title><body><p>FS preserved source or supplied internal evidence; externally unreviewed. <a href="../../updates/FS-phase-closure-20261015/package/universal/exploration/fullcone_poisson.py">Exact bytes</a></p><pre>import os,sys,json,math
+os.environ[&#x27;OMP_NUM_THREADS&#x27;]=&#x27;1&#x27;
+import numpy as np,torch
+from poisson_candidate import Basis
+from acoustic_barrier import solve,matrix
+
+torch.set_default_dtype(torch.float64);torch.set_num_threads(1)
+def mon(z,w):
+ z,w=torch.broadcast_tensors(z,w)
+ u=z.abs()**2;v=w.abs()**2;prod=z.conj()*w;q=prod.imag;dot=prod.real
+ return torch.stack([u*u,v*v,u*v,dot*dot,u*dot,v*dot,q*u,q*v,q*dot],dim=-1)
+class Full(Basis):
+ def tensor_storage(self,cr):
+  c=torch.view_as_complex(cr.contiguous())
+  vx=((self.E*self.ns.abs()[None,:])*c[None,:])@self.B
+  py=((self.E*(1j*self.ns)[None,:])*c[None,:])@self.B
+  return .5*(mon(vx,py).mean(-2)*self.wt[:,None]).sum(0)
+ def deficit(self,cr,vr,pc,coef):
+  c=torch.view_as_complex(cr.contiguous());v=torch.view_as_complex(vr.contiguous())
+  py=(1j*self.ns*c)@self.B;vx=v@self.Bv
+  p=torch.tensor(pc)
+  st=self.tensor_storage(cr)
+  P=coef*(st[6:]*p[6:]).sum()
+  g=torch.autograd.grad(P,cr,create_graph=True)[0]
+  dp=(g*vr[[i for i,n in enumerate(self.nv.tolist()) if n]]).sum()
+  n4=((vx.abs()**2+py.abs()**2)**2).mean()
+  L=(mon(vx,py)*p).sum(-1).mean()
+  return (L-dp)/n4,n4
+ def dvec(self,cr,vr,coef):
+  c=torch.view_as_complex(cr.contiguous());v=torch.view_as_complex(vr.contiguous())
+  py=(1j*self.ns*c)@self.B;vx=v@self.Bv
+  d=mon(vx,py).mean(0)
+  st=self.tensor_storage(cr)
+  ids=[i for i,n in enumerate(self.nv.tolist()) if n]
+  corr=[]
+  for i in range(6,9):
+   g=torch.autograd.grad(st[i],cr,retain_graph=True)[0]
+   corr.append((g*vr[ids]).sum())
+  d=d-torch.cat([torch.zeros(6),coef*torch.stack(corr)])
+  n4=((vx.abs()**2+py.abs()**2)**2).mean()
+  return (d/n4).detach().numpy()
+
+def run(coef=1.5,seed=0,N=3,rounds=5,steps=400):
+ torch.manual_seed(seed);bs=Full(N)
+ cr=torch.randn(2*N,2,requires_grad=True);vr=torch.randn(2*N+1,2,requires_grad=True)
+ hist=[];pc=np.array([1,1,2,0,0,0,-4/math.sqrt(3),-4/math.sqrt(3),0.])/48
+ for r in range(rounds):
+  if r: 
+   d=bs.dvec(cr,vr,coef);cert,value,eig=solve(d)
+   pc=cert[:9]
+  opt=torch.optim.Adam([cr,vr],lr=.025)
+  for k in range(steps):
+   opt.zero_grad(); loss,_=bs.deficit(cr,vr,pc,coef)
+   loss.backward();opt.step()
+  d=bs.dvec(cr,vr,coef);cert,value,eig=solve(d)
+  hist.append(dict(round=r,deficit=value,eig=eig,coef=coef,pc=cert[:9].tolist(),K=cert[9:].tolist(),u=cr.detach().tolist(),v=vr.detach().tolist(),N=N))
+  print(seed,r,value,eig,flush=True)
+ return hist
+if __name__==&#x27;__main__&#x27;:
+ import argparse
+ a=argparse.ArgumentParser();a.add_argument(&#x27;--coef&#x27;,type=float,default=1.5);a.add_argument(&#x27;--seed&#x27;,type=int,default=0);a.add_argument(&#x27;--N&#x27;,type=int,default=3);a.add_argument(&#x27;--rounds&#x27;,type=int,default=5);a.add_argument(&#x27;--steps&#x27;,type=int,default=300);a=a.parse_args()
+ out=run(a.coef,a.seed,a.N,a.rounds,a.steps)
+ json.dump(out,open(f&#x27;/mnt/data/ASTRA_Universal_Compensation/exploration/fullcone_c{a.coef}_s{a.seed}.json&#x27;,&#x27;w&#x27;),indent=2)
+</pre></body></html>

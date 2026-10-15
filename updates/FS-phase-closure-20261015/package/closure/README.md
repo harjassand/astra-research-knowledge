@@ -1,0 +1,121 @@
+# Astra scientific closure audit: thermal emulation versus mechanism identification
+
+Date: 15 October 2026.
+
+## Status
+
+This package contains a synthetic counterexample, elementary mathematical certificates, and an executable audit. It does **not** contain new laboratory measurements, a validated reactor simulator, empirical validation of a new intervention, or a novelty/priority certification. The central counterexample is to the bulk-calibration proposal developed in this investigation, not a claim that a particular published catalyst has the specified hidden populations.
+
+The strongest surviving proposal is **decision-level comparison with an experimentally acquired, spatially resolved dark-control library**. It is not a universal hot-carrier detector. Physical superiority and superiority to established experimental design remain unestablished.
+
+## Reproduce
+
+With Python >=3.10, NumPy and SciPy installed:
+
+```sh
+python closure_audit.py --output-dir results
+```
+
+The supplied execution used NumPy 2.3.5 and SciPy 1.17.0. The seed is 20261015. All assertions passed. The script writes `results/results.json` and the explicitly synthetic `results/synthetic_dark_library.csv`. `execution_log.txt` records the executed output. Results are in arbitrary reference-rate units unless explicitly marked kelvin or joules per mole.
+
+## 1. Bulk thermal-mixture certificate and its missing hypothesis
+
+For a homogeneous local response vector r(T), arbitrary mixtures of local temperatures have output R = integral r(T) d(mu)(T), with nonnegative catalyst-exposure measure mu. For normalized product fractions the weights are **turnover weights**, not catalyst-volume weights. Consequently, if every local thermal response has methane selectivity at most s*, every such mixture also has selectivity at most s*.
+
+The step from a **bulk uniform-temperature calibration** to a **local-response bound** is invalid for unknown heterogeneous catalysts. The correct set for fixed populations i with fractions f_i and independent local-temperature distributions is
+
+    K_local = sum_i f_i conv{ r_i(T) },
+
+not merely
+
+    K_bulk = conv{ sum_i f_i r_i(T) }.
+
+The inclusion K_bulk subset K_local can be strict. Common-temperature calibration uses the same temperature distribution for every population. Selective heating can correlate temperature with population identity.
+
+## 2. Fully explicit positive-Arrhenius counterexample
+
+Choose two populations with fixed product selectors A=(0.98,0.02) and B=(0.02,0.98), representing methane and carbon monoxide. Both have total rate multiplier
+
+    g(T) = exp[(80000/Rgas)(1/573 - 1/T)].
+
+Use fractions f_A=29/48 and f_B=19/48. At every common temperature, the bulk methane selectivity is exactly 0.60. Thus every mixture of these uniform-temperature calibrations also has selectivity 0.60.
+
+Heat A to 623 K and B to 523 K. This is entirely thermal. The calculated output is
+
+    methane = 2.2801888621,
+    CO      = 0.1244032258,
+    methane selectivity = 0.9482643121.
+
+The bulk certificate would falsely exclude this thermal state. A putative outside-library fraction (S-0.60)/(1-0.60) would falsely suggest at least 0.8706607802 unexplained turnover. The local-population hull includes the point exactly.
+
+The parameters are chosen, not inferred from experimental Rh data. Purely positive ordinary kinetics are sufficient for the logical counterexample. It neither establishes that this mechanism occurred in published work nor rules out actual nonthermal chemistry there.
+
+## 3. Surviving finite-library decision certificate
+
+Let i index a **physically accessible, independently calibrated reactor module**, not an invisible chemical site label. For module i and tested dark control mode j, acquire actual product vector r_ij and resource cost c_ij. Fix a decision score w before the confirmatory experiment and define J_ij=w dot r_ij.
+
+For independent modules and a fixed total cost budget B, every deterministic selection of one measured mode per module lies in the relaxation
+
+    max sum_ij lambda_ij J_ij
+    subject to lambda_ij >= 0,
+               sum_j lambda_ij = 1 for each module i,
+               sum_ij lambda_ij c_ij <= B.
+
+Its dual is
+
+    U_D(B) = inf_(beta>=0) [beta B + sum_i max_j(J_ij - beta c_ij)].
+
+Proof: J_ij <= alpha_i + beta c_ij for alpha_i=max_j(J_ij-beta c_ij). Multiply by lambda_ij, sum, and use the normalization and resource constraint. Equality of primal and dual is the usual finite linear-programming duality, not a new mathematical result.
+
+An independently measured illuminated score whose lower confidence bound exceeds a valid conservative upper bound U_D certifies superiority to this **specified finite dark-control class**. It does not identify the microscopic mechanism or establish superiority to untested continuous temperatures, pulsed thermal protocols, different reactors, or different catalysts.
+
+An interior point of the relaxation is **not** a physically established dark emulator. Time sharing can incur settling, start-up, gas inventory, and catalyst-memory costs. An optimal relaxed mixture must be experimentally replayed before being claimed achievable. Alternatively, retain it only as a conservative upper bound. The supplied discrete example has best deterministic score 1.1758352513 versus relaxed bound 1.7175876888, showing that the relaxation gap can be substantial.
+
+## 4. Measurement uncertainty and forward detector model
+
+For a fixed linear detector model y=A r+b, an affine image of a convex set remains convex. Thus discrimination can be conducted in detector space without assuming exact spectral inversion. The detector matrix and background must, however, be common between calibration and challenge, or their possible changes must be included in the uncertainty set. Quantitative chemical utility still requires calibrated product response.
+
+For simultaneous bounds J_ij <= Jhat_ij+eJ_ij and c_ij >= max(0,chat_ij-ec_ij), substitute the upper score and lower resource bounds into the dual. Add a separately justified upper bound for residual intermodule coupling, drift, and detector-model error. Compare against an independent lower confidence bound for the illuminated score. Selecting a witness adaptively requires either simultaneous confidence coverage or separate discovery and confirmatory data.
+
+No such experimental uncertainty bounds have been acquired in this package. A numerical tolerance from the solver is not an instrument uncertainty bound.
+
+## 5. Physical acquisition contract for the proposed experiment
+
+Use independently fed, electrically heated, optically accessible modules with fixed catalyst inventories. Meter each inlet and sample each outlet separately and when pooled, using matched flow restrictions so sampling does not change pressure or residence time. Keep the same catalyst mounted throughout its dark and illuminated comparisons. Separate channels avoid assuming independence of particles in a shared reacting bed.
+
+Calibrate products with reference mixtures; use chromatography to check mass-spectrometric channel assignments and cross-sensitivity. Establish carbon balance and response to water, CO2 background, detector saturation, and baseline drift. Record actual wall-plug electrical power for heaters and illumination, gas handling, common overhead, and thermal settling. H2 consumption and hydrogen-production cost cannot be omitted from an energy-system claim.
+
+Acquire a finite dark library with repeated randomized blocks, bracketed by reference modes. Test held-out multimodule configurations against the predicted sum of isolated outputs. A failed additivity check invalidates the reduced calibration model; it does not establish new physics. Continuous-temperature claims require an independently justified envelope between grid points. Dynamic policies require direct calibration over complete histories, including transient products and resource costs. Neither extrapolation is supplied here.
+
+For n modules, K modes, and r independent replicate blocks, the base calibration burden is nKr mode-block exposures, plus blanks, detector calibrations, additivity checks, drift checks, and confirmatory optical/dark challenges. Total elapsed exposure is the sum of measured settling and sampling times. Repeated detector readings in one steady block do not constitute independent catalyst replicates.
+
+The finite-library decision does not require inaccessible site-type labels or perfect illuminated temperature reconstruction. A universal thermal-only causal claim would require substantially more physical coverage; this protocol does not provide it.
+
+## 6. Executed checks
+
+- 10,000 homogeneous mixtures preserve the valid homogeneous selectivity bound.
+- 100 randomly generated local-mixture cases are feasible in the corrected local hull.
+- 1,000 support-function inequalities were exercised without violations.
+- A fixed three-channel cross-sensitive linear detector preserves the corrected hull membership.
+- The exact thermal counterexample is outside the incorrect bulk hull and inside the corrected hull.
+- An artificial methane signal injection is excluded by the corrected finite hull. This is only an algebraic positive control, not an implemented photocatalytic mechanism.
+- The resource-constrained LP upper-bounds an exhaustive finite deterministic-mode comparison, and its primal/dual gap is checked.
+
+Finite checks support implementation consistency, not general physical correctness, historical novelty, or a model-versus-model capability claim.
+
+## 7. Published evidence used, and its limits
+
+Zhang et al. (2017) report CO2 hydrogenation product selectivity and methane enhancement factors. Two scalar calculations in the script use the reported factors 7.41 at 623 K and 24.4 at 523 K, with the reported dark methane activation energy 78.6 kJ/mol. Under a fixed Arrhenius law they correspond to uniform temperatures 717.73 K and 635.28 K. These are hypothetical thermal-equivalent temperatures, partly outside the measured fit range, not evidence that such temperatures occurred. No uncertainty propagation or reconstruction of published raw measurements is performed.
+
+That article states that supporting data are available from corresponding authors on request. No raw laboratory dataset was obtained in this run.
+
+Primary sources and experimental precedents:
+
+1. Zhang et al. Product selectivity in plasmonic photocatalysis for carbon dioxide hydrogenation. Nature Communications 8,14542 (2017). https://doi.org/10.1038/ncomms14542
+2. Sivan, Un and Dubi. Thermal effects—an alternative mechanism for plasmonic-assisted photocatalysis. arXiv:1902.03169v2. https://arxiv.org/html/1902.03169v2
+3. Baffou et al. Simple experimental procedures to distinguish photothermal from hot-carrier processes in plasmonics. Light: Science & Applications 9,108 (2020). https://doi.org/10.1038/s41377-020-00345-0
+4. Miyar et al. Disentangling Plasmonic Enhancement of Electronic and Thermal Effects in Catalysis Using In Operando X-ray Diffraction. ACS Catalysis 15,2359–2366 (2025). https://doi.org/10.1021/acscatal.4c06841
+5. Li, Liu and Everitt. Untangling Thermal and Nonthermal Effects in Plasmonic Photocatalysis. In Plasmonic Catalysis,191–230 (2021). https://doi.org/10.1002/9783527826971.ch7
+6. Quiram et al. Integrated Microreactor System for Gas-Phase Catalytic Reactions. 3. Microreactor System Design and System Automation. Industrial & Engineering Chemistry Research 46,8319–8335 (2007). https://doi.org/10.1021/ie0702577
+
+The proposed combination has no established priority here. In the homogeneous two-product case the witness is simply the existing selectivity comparison. Independent reactor arrays, temperature-profile experiments, and operando lattice thermometry are substantial prior competitors. No matched-cost superiority to them has been demonstrated.

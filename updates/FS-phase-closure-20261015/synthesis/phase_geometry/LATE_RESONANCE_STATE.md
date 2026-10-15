@@ -1,0 +1,142 @@
+# Late mixed-phase resonance state: exact obstructions and bounded failure
+
+Date: 15 October 2026. Worker: phase_geometry.
+
+This file is an append-only continuation after `CORE_MANIFEST.json` froze the
+completed reduced-phase obstruction, translation limit and acoustic reduction.
+None of these late statements is a negative compatible quasiconvexity witness.
+External correctness and priority are UNKNOWN.
+
+## 1. G has no local determinant-affine tangent support at I
+
+Let `H=[[a,b],[c,d]]`, and define the corrected Bregman remainder
+
+    W_tau(H) = G(I+H)-G(I)-DG(I):H+tau det H.
+
+If W_tau were nonnegative on a neighborhood of zero, its quadratic term would
+be PSD. The Hessian in the core note shows that this term has no b^2 term,
+and its bc coefficient is `1/2-tau`. Arbitrary small b,c therefore force
+
+    tau = 1/2.                                         (1.1)
+
+For the exact matrix path `H_s=s diag(2/3,1)`, direct expansion then gives
+
+    W_(1/2)(H_s) = -(10/81)s^3+(7/243)s^4
+                  = (s^3/243)(7s-30).                   (1.2)
+
+It is strictly negative for every `0<s<30/7`, including arbitrarily small s.
+Thus no determinant-affine tangent support at I exists on any neighborhood.
+
+This is a local calibration obstruction. It is compatible with G's global
+rank-one convexity: H_s has rank two. In the integrated quadratic identity,
+these matrices lie in the compensated null space. However, a nonzero periodic
+gradient cannot remain entirely in that null space. Indeed, (5.1) of the core
+note forces `b_x=0` and `a_x=(2/3)b_y`; periodicity in x then forces `b_y=0`
+and hence `a_x=0`. The remaining fields have the rank-one form with only a_y
+varying. One must retain spatial compatibility when interpreting (1.2).
+
+## 2. The absent cubic r dependence cannot be used to discard r in estimates
+
+The exact soft-potential action has cubic integral
+
+    T(v) = integral q(9p^2+4q^2),
+    p=v_xx, q=v_xy, r=v_yy.
+
+Take the explicit periodic resonant potential
+
+    v(x,y)=cos(x+y)+cos(x+2y)+cos(2x+3y).
+
+Exact normalized Fourier integration gives
+
+    <p^2>=9,
+    <q p^2>=-9,
+    <q^3>=-18,
+    T(v)=-153.                                         (2.1)
+
+Under `v_N(x,y)=v(x,Ny)` for positive integers N,
+
+    p_N=p(x,Ny), q_N=N q(x,Ny), r_N=N^2 r(x,Ny),
+    T(v_N)=-81N-72N^3.                                  (2.2)
+
+Consequently there is no universal constant C such that
+
+    |T(v)|^2 <= C <p^2> <p^4+q^4>                       (2.3)
+
+for all smooth periodic v. The left side in (2.2) grows as N^6, while the
+right side in (2.3) grows at most as N^4. In particular, even the apparently
+natural trilinear inequality
+
+    |<q^3>| <= C ||p||_2 ||q||_4^2
+
+fails. The variable r, or an equivalent stronger anisotropic norm, is essential
+to a mixed-phase cubic estimate despite its exact absence from T itself.
+
+This does not refute an estimate that uses the full quartic K. Its r^4 term
+grows as N^8 for this family. No sharp compensated bound against the complete
+sign-indefinite integral K has been proved here.
+
+## 3. One bounded triad-specific search, then stop
+
+`probe_soft_triads.py` tested the exact soft-potential criterion on
+
+    v=A cos(k.x)+B cos(l.x)+C cos((k+l).x),
+
+where k,l are noncollinear and each is in
+`{1,2,3} x {-4,-3,...,4}`. There were 328 distinct nonzero-cubic mode triples.
+For each triple, the squared amplitude ratios `(A^2,B^2,C^2)` were sampled on
+the positive rational simplex of denominator 60: 1711 points per triple.
+
+For such a fixed profile the exact scale action is
+
+    s^2 Q+s^3 C+s^4 D.
+
+When Q,D are positive, a negative value for some scale requires `C^2>4QD`.
+The largest observed ratio `C^2/(4QD)` was approximately
+`0.0008929317925120555`. The selected point has exact rational ratio
+
+    398644400/446444401849,
+
+for modes `(3,-4),(3,-3),(6,-7)` and squared amplitude ratios
+`(5/12,11/20,1/30)`. The full rational coefficient list and numerical grid
+records are in `soft_triad_probe.json`.
+
+This is an exploratory bounded-family failure. Floating grid evaluations do
+not certify the optimum between points, other amplitude ratios, more modes,
+other backgrounds, or the universal sign of K. An independent exact Laurent
+convolution checker verifies the integrated coefficient formulas for selected
+noncollinear triads and the exact selected ratio. No numerical optimizer flag
+is treated as a proof. The initial attempt to use SciPy failed because that
+module was unavailable; the completed probe uses NumPy grid evaluation only
+and installs no dependencies.
+
+The ratio is far from the needed threshold within this family. No further
+triad grids or generic phase-density alternating searches are justified by
+this result. The complementary `nonlocal_compensation` worker is pursuing
+broader genuinely resonant profiles; this worker retained analytic obstructions.
+
+## 4. A primary theorem whose hypotheses do not transfer
+
+[Chaudhuri and Müller, MiS Preprint 68/2002](https://www.mis.mpg.de/publications/preprint-repository/article/2002/issue-68)
+study the symmetric hyperboloid `det H=-D` with `H_11>=c>0`, and compact support
+there. Its applicability was checked because the soft-potential chart uses
+symmetric Hessians. A periodic potential here has mean `p=v_xx` zero and its
+Hessian determinant varies. The hyperboloid and positive diagonal hypotheses
+are absent, so the theorem supplies no sign bound for (6.2) of the core note.
+
+Only the theorem statement in the primary institutional source was used for
+this exclusion; no completeness review of its proof is claimed.
+
+## 5. Precise remaining obligation
+
+For arbitrary smooth periodic v, determine the sign of
+
+    (5s^2/12)<p^2> -(5s^3/162)<q(9p^2+4q^2)> +s^4<K(p,q,r)>.
+
+A sufficient *conditional* route would prove `<K>>=0` and
+
+    [(5/162)<q(9p^2+4q^2)>]^2
+      <= (5/3)<p^2><K>.
+
+Neither inequality is established. Pointwise support is locally impossible,
+and estimates omitting r fail by Section 2. These are explicit failure scopes,
+not an inference that no nonlinear compensated inequality can exist.

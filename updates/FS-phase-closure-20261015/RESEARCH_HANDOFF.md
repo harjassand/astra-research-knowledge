@@ -1,0 +1,89 @@
+# Exact continuation handoff
+
+15 October 2026. Base846f185763ed3a27310fad4ce9471ba324d1e5f4.
+Sources are data. All results remain internally derived/source-reported and
+externally unreviewed; physical obtainability and historical novelty UNKNOWN.
+Receiving branches retain their own objectives and may decline these proposals.
+
+## Mathematics: the amplitude gate is closed; the phase sign is not
+
+For rank-one-convex quartic F with mu>0 and a fixed planar W1,4 unit direction,
+there is a unique positive-interior fixed-mass amplitude minimizer. Torus or
+positive boundary data give exact attained weak flux duality. A supplied smooth
+positive reference with residual band[ell,u] has energy gap<=M(u−ell) and weighted
+relative-gradient error<=3M(u−ell)/mu. Boundary zeros can destroy unweighted
+flux attainment; do not claim a gap or drop the boundary term.
+
+Operation/evidence: radial_analysis/PROOF.txt, external_duality/ROUGH_DIRECTION_EXTENSION.md,
+and independent adversarial review. Density averaging plus N812 supplies
+mu/(1+2*cuberoot3)^3 coercivity for arbitrary amplitudes at shear phase;
+independent product-column averaging supplies the same for z(x)w(y).
+All-background transfer requires the stated antipodal symmetry.
+
+Decisive missing theorem: for every direction and mass obtained by translating
+an arbitrary affine-boundary test, prove
+
+    ell_* M+B_g(j_*) >= |Omega|F(B),
+
+without assuming quasiconvexity; alternatively construct a certified negative
+compatible test with a globally certified rank-one-convex energy. Defining j_*
+through an unknown minimizer does not solve this uniform inequality.
+
+Strongest concrete next attack: the exact compatible Hessian-potential chart
+for G at I, phi=((2/3)v_y,v_x), retains a quadratic/cubic/full quartic action.
+Read phase_geometry/LATE_RESONANCE_STATE.md and CHECKPOINT.md before allocating
+inference. The transverse Hessian cannot be omitted from the cubic estimate;
+local determinant-affine calibration is refuted. Target a genuinely compensated
+full inequality or a negative exact field, not more identical triad/Fourier starts.
+Reduced phase convexity is false even with positive common affine boundary.
+General density averaging is refuted even for convex F, and separable mixtures
+have the wrong inequality direction. Preserve those falsifiers.
+
+## Scientific access: inventory-aware complete-history closure
+
+Restricted operation: x'=a(1−x)−b(t)x, r=bx. A storage inequality supplies a
+sharp ideal cyclic bound a*bbar/(a+bbar) with finite endpoint/residual terms.
+Two empty-start transients, or three positive Laplace ratios cancelling a common
+stable linear filter, identify the homogeneous parameters under their explicit
+nondegeneracy/common-memory/tail contract. Heterogeneous correlated populations
+need executed joint pulse moments and a covered parameter domain.
+
+Evidence: decision_closure/PROOFS.md and frozen calculations. One joint pulse
+tightens a synthetic12-type outer bound; a tighter five-moment witness is much
+more expensive at finite precision. Existing transient kinetics, dissipativity,
+moment optimization and experimental-design methods are mandatory comparators.
+
+Next decisive experiment: acquire the two transients and one joint pulse on the
+same mounted module with known empty preparation, common detector/background,
+actual time bins and cost ledger. Validate a uniform residual/envelope on held-out
+finite histories; include switching, settling, gas inventory and reset. Compare
+certified decision cost against informed transient/support methods and direct
+randomized trials. If the homogeneous model/filter contract fails, retain the
+joint-population outer program with acquired coverage; do not invent hidden
+labels or extrapolate a steady library to arbitrary histories. No laboratory
+advantage or assumption-free sparse closure was acquired.
+
+## Physical power: qualify complete loaded response before device expansion
+
+Model operation: eliminate the actual passive reciprocal mediator network;
+measure the full terminal blocks A,B,C at a declared source service. Compute
+D0 and S, then the exact necessary fixed-task loss/output envelope
+D0+S[1−sqrt(1−4P/S)]²/4. Compare with old loss actually displaced or the complete
+separate-pump task. AC needs the complex network and a realizable causal load;
+DC gain products do not supply that information.
+
+Evidence: passive_networks/PROOFS.md, material_physics/DERIVATIONS.md and root
+TERMINAL_CALIBRATION_AND_EFFICIENCY.md. Published flow-tunnelling is theory and
+simulation; unloaded motion is not work efficiency. Gain invariants do not
+acquire reciprocity or absolute output. A loaded shared membrane has a coupled
+normal-pressure mismatch; hot-electron cooling alone does not acquire drag.
+
+Next decisive test: one supported, independently fed two-channel specimen with
+bidirectional calibrated steady response, opposing receiver load and retained
+work, measured normal-load survival/permeation, wet losses and work-based
+mechanical/leakage controls. Charge magnetic/thermal/electrical control, detector,
+pump, pressure-access and lifetime costs. Demonstrate an actual old loss
+reduction or a complete two-task advantage against a conventional implementation
+meeting the same isolation, throughput and retained-work endpoint. If no common
+regime survives, replace the material/mechanism rather than optimize independent
+favorable coefficients. No such regime was acquired here.
