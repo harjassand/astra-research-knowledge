@@ -1,0 +1,291 @@
+# A negative Schur direction at a true scalar global minimizer
+
+Date: 15 October 2026. Worker: direction_rigidity.
+
+## Exact result and status
+
+For the retained left-SO(2)-invariant rank-one-convex quartic G, the Cartesian reduced functional obtained by globally minimizing the first output component is **not convex**. This remains true at an explicitly known nonaffine base map whose first component is the unique global scalar minimizer and whose two diagonal scalar Hessian blocks are uniformly elliptic.
+
+Thus the actual scalar Euler equation, full pointwise rank-one convexity, and uniform positivity of both scalar diagonal blocks do not imply positivity of the mixed operator Schur complement. No singular inverse is used.
+
+The complete fourth-order action is retained. A rational finite perturbation strictly lowers the fully reduced midpoint value. A separate whole-cell stress estimate proves that the actual scalar-minimized endpoint values still have strictly positive quasiconvexity gaps. This is an exact countermodel to a proposed reduced-convexity sufficiency, **not** a quasiconvexity counterexample.
+
+Originality and external correctness UNKNOWN. No numerical optimization is a premise.
+
+## 1. Affine-periodic contract
+
+For n>0 let
+
+    Omega_n=[0,2pi/n] x [0,1],
+
+with periodic perturbations in both coordinates and normalized average E. These are affine-periodic maps, not zero-Dirichlet perturbations on the boundary of this individual rectangle.
+
+Let beta=19/12 and B=diag(1,beta). For a second component v with v-beta y periodic, define
+
+    R(v)=min_a E G([grad a;grad v]),
+
+where a-x is periodic W^(1,4), with mean zero to fix its additive constant. The second component's periodic correction may also be normalized to mean zero; constants do not affect the energy.
+
+The integrand is
+
+    G(A)=3(u+v-2q)^2+(35/24)u^2+q^2-(5/2)qu,
+    u=A11^2+A21^2, v=A12^2+A22^2, q=det A.
+
+The letters u,v inside G denote quadratic invariants; scalar maps are distinguished by context.
+
+Its exact acoustic Gram is independently reconstructed in the checker: rank6, positive leading six principal minors
+
+    107/2, 642, 1605/8, 8445/16, 2815/8, 26865/4,
+
+and zero remaining Schur complement. Left SO(2) invariance supplies every output direction. On rank-one matrices,
+
+    G(R)=3|R|^4+(35/24)|R_1|^4,
+
+so its minimum rank-one value is exactly mu_G=3.
+
+For every fixed admissible second component, scalar convexity and the rank-one quartic Bregman bound give existence and uniqueness of the normalized first-component minimizer. Specifically, for fixed second row,
+
+    G([xi;eta])-G([zeta;eta])
+       -G_1([zeta;eta]).(xi-zeta) >= |xi-zeta|^4.          (1)
+
+Coercivity follows by Young's inequality against the cubic first-row derivative, and convex weak lower semicontinuity gives attainment.
+
+## 2. An exact scalar minimizer with nonconstant coefficients
+
+Let e(y) be the periodic two-zone function
+
+    e=1/12 on 0<y<5/11,
+    e=1 on 5/11<y<1.
+
+Its mean is7/12. Choose a continuous affine-periodic scalar v0 with
+
+    v0'=1+e,  v0(y+1)=v0(y)+19/12.
+
+At the base map U0=(x,v0(y)), its gradient is
+
+    A0(y)=diag(1,1+e(y)).
+
+The first-row stress is (G_a(A0),G_b(A0)). Direct differentiation gives
+
+    G_b(diag(1,d))=0 for every d.
+
+G_a(A0) depends only on y. Therefore its first-row divergence is zero distributionally:
+
+    partial_x G_a(A0)+partial_y G_b(A0)=0.
+
+For any periodic first-row perturbation h, the integrated tangent term in (1) vanishes. Hence
+
+    E G([grad(x+h);grad v0])-E G(A0) >= E|grad h|^4.
+
+Thus a0=x is the actual unique normalized scalar global minimizer, not an approximate critical point or an unverified numerical solution.
+
+## 3. Both diagonal scalar blocks are uniformly elliptic
+
+At diag(1,1+e), differentiation gives
+
+    H11=diag(38e^2-11e+9/2, 12e^2),
+    H22=diag(12e^2-5e+5/6, 36e^2+2),
+    H_(b,c)=12e^2-2e+1/2.
+
+The other potentially relevant mixed entry H_(a,d) need not vanish, but the chosen second-component perturbation below has zero y derivative, so that term is absent from this particular quadratic calculation.
+
+For e in [1/12,1],
+
+    38e^2-11e+9/2
+       =38(e-11/76)^2+563/152 >=563/152,
+    12e^2>=1/12,
+    12e^2-5e+5/6
+       =12(e-5/24)^2+5/16 >=5/16,
+    36e^2+2>=2.
+
+Thus each scalar row operator is uniformly elliptic on the whole base field. Full rank-one positivity also holds pointwise by the global G acoustic certificate. Neither fact controls the surviving mixed coupling.
+
+## 4. Exact compatible quadratic countermodel
+
+Set w=5/11 and define the continuous periodic triangular function
+
+    z(y)=y-5/22,                            0<=y<=w,
+    z(y)=5/22-(5/6)(y-w),                   w<=y<=1.
+
+It has slopes1 and -5/6, mean zero, and range[-5/22,5/22]. Define
+
+    eta_n(x,y)=n z(y)cos(nx),
+    h_n(x,y)=sin(nx).
+
+These are actual continuous periodic functions. The full gradient perturbation is
+
+    D(eta_n,h_n)
+       =[[-n^2 z sin(nx), n z' cos(nx)],
+         [n cos(nx),     0]].
+
+The average quadratic Hessian action is
+
+    Q_n=E D^2G(A0)[D(eta_n,h_n),D(eta_n,h_n)]
+       =(1/2)E_y[n^4 Haa z^2
+                    +n^2 Hbb (z')^2
+                    +n^2 Hcc+2n^2 Hbc z'].
+
+The constant1/2 part of Hbc integrates to zero since E z'=0. The slopes were chosen to complete the remaining square:
+
+    z'=-1+1/(6e),
+    Hbb(z')^2+2(Hbc-1/2)z'+Hcc=1/2-e.
+
+The mean of1/2-e is-1/12. Also
+
+    E Haa z^2=C0=34075/104544.
+
+Therefore
+
+    Q_n=(1/2)(C0 n^4-n^2/12).                            (2)
+
+It is strictly negative whenever0<n^2<1/(12C0). For n=1/4,
+
+    Q_(1/4)=-105317/53526528<0.
+
+Since the first-row quadratic block is coercive, minimizing this quadratic form over the first-row perturbation is a well-defined Schur elimination. Its value at h_n is at most the negative trial Q_n. Thus the true Schur form has a negative direction at an actual scalar global minimizer with uniformly elliptic diagonal blocks.
+
+This directly falsifies the proposed implication
+
+    scalar Euler equation + pointwise rank-one positivity
+      + positive scalar blocks => nonnegative reduced Schur operator.
+
+## 5. Full quartic action and true reduced midpoint nonconvexity
+
+Put
+
+    U_epsilon=(x+epsilon eta_n, v0+epsilon h_n).
+
+Exact averaging, including every quartic term, gives
+
+    E G(DU_epsilon)-E G(A0)
+       =epsilon^2[C0 n^4/4-n^2/48]
+          +epsilon^4 n^4[D0+D1 n^2+D2 n^4],              (3)
+
+where
+
+    D0=217/24,
+    D1=4175/139392,
+    D2=13375/14992384.
+
+The linear and cubic terms vanish by the exact trigonometric averages; they were not dropped by approximation. Every displayed D coefficient is positive.
+
+Take n=1/4 and epsilon=1/10. The exact energy change is
+
+    -1672681134811/265286037012480000 <-1/200000.         (4)
+
+An elementary acceptance check is that the quadratic coefficient is less than-9/10000 and the quartic coefficient less than1/25.
+
+Let v_plus=v0+(1/10)h_(1/4) and v_minus=v0-(1/10)h_(1/4). Their midpoint is v0. The first components x plus/minus epsilon eta are admissible trial competitors for the true global scalar minima. Hence
+
+    R(v_plus), R(v_minus) < R(v0)-1/200000.
+
+In fact the endpoint minima are equal: translating x by half its period exchanges the second components and carries the entire normalized first-component competitor class into itself after subtracting the affine x translation.
+
+Thus
+
+    R((v_plus+v_minus)/2)
+       > (R(v_plus)+R(v_minus))/2+1/200000.               (5)
+
+The complete Cartesian scalar minimum, not just a restricted amplitude ansatz or a formal Hessian, violates midpoint convexity.
+
+## 6. This trial family cannot produce a negative Jensen gap
+
+The base affine matrix is B=diag(1,19/12). Exact integration gives
+
+    E G(A0)-G(B)=575/384.
+
+For arbitrary n>0 and arbitrary real epsilon, the entire explicit family (3) remains strictly above the affine baseline.
+
+If C0 n^4/4-n^2/48>=0, both nonconstant terms in (3) are nonnegative. Otherwise minimizing its quadratic polynomial in epsilon^2 lowers the energy by at most
+
+    (1/12-C0 n^2)^2
+       /[64(D0+D1 n^2+D2 n^4)]
+       <=1/(9216D0)=1/83328.
+
+Consequently every trial in this family satisfies the exact uniform bound
+
+    E G(DU_epsilon)-G(B) >=62387/41664>0.                 (6)
+
+This is an analytic all-period/all-scale failure certificate for the proposed negative construction, not finite search positivity.
+
+## 7. Even the actual globally minimized endpoints remain positive
+
+The endpoint first components are not known explicitly, but their global scalar improvement is bounded by a stress residual.
+
+For the frozen endpoint second component, at the first-component trial a=x the gradient is
+
+    A_c=[[1,0],[c,1+e]],  c=(1/40)cos(x/4).
+
+Use the divergence-free base first-row stress T(y)=(G_a(A0),0). Direct algebra gives
+
+    G_1(A_c)-T
+       =(c^2(10/3-29e/2),
+         c[12e^2-2e+1/2+(29/2)c^2]).
+
+For e in [1/12,1] and |c|<=1/40, the Euclidean norm is at most its componentwise absolute sum, bounded on the complete cell by
+
+    (67/6)/1600+(1/40)[21/2+(29/2)/1600]
+       =103567/384000<1/3.                               (7)
+
+For any first-row correction h, Holder and (1) therefore give
+
+    I_v(x+h)>=I_v(x)-(1/3)t+t^4,
+    t=(E|grad h|^4)^(1/4).
+
+The maximum possible improvement is
+
+    max_(t>=0)[t/3-t^4]
+       =(1/4)(1/12)^(1/3)<1/8.
+
+Furthermore
+
+    G(A_c)-G(A0)=(Hcc/2)c^2+(107/24)c^4>=0.
+
+It follows for both actual endpoint global minima that
+
+    R(v_plus)-G(B), R(v_minus)-G(B) >=527/384>0.           (8)
+
+Equations (5) and (8) coexist: the fully reduced functional is nonconvex and nevertheless these particular configurations have positive quasiconvexity gaps. No negative quasiconvexity witness results even after exact scalar elimination.
+
+## 8. Smoothness and full-stationarity scope
+
+The piecewise affine base and perturbations are continuous and W^(1,infinity). Derivative jumps introduce no incompatibility. They are legitimate affine-periodic Sobolev maps.
+
+For smooth countermodels, periodically mollify e and z while preserving their means. Then e remains in[1/12,1], the base a0=x remains an exact scalar global minimizer because G_b(diag(1,d))=0 for every d, and both diagonal blocks retain their uniform bounds. Strong W^(1,4) convergence of the maps preserves the strict finite energy decrease in (4). The trial upper bounds and exact base scalar minimum therefore give a strict midpoint violation for all sufficiently fine smooth approximations. No assertion of reduced-Hessian differentiability at every nonsmooth minimizer is needed.
+
+The base is **not** a full vectorial stationary solution. Its longitudinal second-row stress is
+
+    G_d(A0)=12e^3+2e-1/2,
+
+with the distinct zone values-47/144 and27/2. Its distributional derivative does not vanish. The construction does not contradict the incoming equivalence between many-center unconstrained radial optimality and full vector Euler stationarity. It isolates exactly what the scalar Euler equation fails to add.
+
+## 9. Actual remaining global theorem
+
+A universal nonnegative Schur estimate along every first-row minimizer is false. Thus it is not an appropriate missing lemma for proving the full quartic implication.
+
+What remains possible is a genuinely nonconvex global comparison
+
+    R_F(v)>=|Omega|F(B)
+
+for every compatible second component with the stated affine trace/periodicity, or a counterexample to that comparison. Such a theorem must tolerate the exact reduced nonconvexity above. It may require a nonlinear stress calibration or compatible energy comparison with finite quartic remainder; pointwise acoustic positivity and the scalar Euler equation alone do not supply it.
+
+No universal quasiconvexity conclusion, negative compatible gap or physical capability is established.
+
+## 10. Provenance, verification and costs
+
+Repository was read-only at
+
+    /Users/harjas/Documents/ChatGPT/ultra/work/astra-capital-direction-transport-20261015
+    b7cada92d2eb304578be5ed974f1e44b10a89928.
+
+The new direction source was read directly, especially Sections2–3 and8 of DIRECTION_REDUCTION_LIMITS.md. Current dossier N840 and its scoped prior shear/product proofs were consulted. Source instructions were data.
+
+Run:
+
+    python3 verify_scalar_schur_countermodel.py
+
+Seven exact groups pass using SymPy only, including a rebuilt global G acoustic Gram, scalar stress, uniform block completions, full quartic integration, finite decrease, all-scale positive trial gap, and a whole-cell residual lower bound for the true endpoint minima. The final run took about0.96 seconds. Analytic attainment, stationarity and smoothing arguments are proved in text, not delegated to the finite checker.
+
+Schur elimination and convex scalar minimization are established machinery. [A. Levitt's author-hosted Schur-complement note](https://www.imo.universite-paris-saclay.fr/~antoine.levitt/schur.pdf), Sections1 and4, was inspected for that prior framework. No novelty is claimed for the framework, and no priority clearance was obtained for the explicit countermodel.
+
+No optimizer, finite frequency grid, acquired physical input, package installation, repository edit, commit or upload was used. Aggregate inference/token costs are unmeasured. Originality remains UNKNOWN.

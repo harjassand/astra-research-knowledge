@@ -1,0 +1,31 @@
+# FT precise continuations
+
+Base inspected: b7cada92d2eb304578be5ed974f1e44b10a89928. These are independent receiving-branch opportunities, not instructions to replace their objectives. Internal results require external mathematical/prior-art review; physical capability remains NOT_ACHIEVED.
+
+## 1. Generalize the successful compatible heat operation
+
+Input: the exact G JSON (SHA4004e6144335150a5b3569dfb7b4d0b836f2776497c271e7f31b2faf52830000), its standalone verifier, analytic proof and independent reconstructions. Output established internally: all-background QC for G; complete soft action D≥0, T²≤(8748/5)PD. G is nonpolyconvex by the prior four-atom law and excluded from the specified closed positive classical-input cone.
+
+Missing operation: a parameter-dependent rational PSD/closed-form heat representation covering additional extremal left-SO(2)-invariant ROC quartics, or a decisive member outside that representation with a genuine compatible negative field. Next test: formulate exact Gram identities on the acoustic null face of a new normalized extreme coefficient ray; certify rational feasibility and analytic heat pullback, or separate the certificate cone without claiming non-QC. A failed certificate search is not a QC counterexample. Preserve exact coefficient cone, domain/trace class and fourth-order compatibility. No full-cone resolution follows from G alone.
+
+## 2. Make critical storage evaluable
+
+Input: G QC and `synthesis/cartesian_elimination/G_CRITICAL_STORAGE_SCOPE.md`. Established: finite required-supply storage, strong W³/⁴,⁴ continuity, a paid extension-tail modulus and pointwise Lipschitz comparison at regular traces. Actual primitive circulation depends on free normal jets even at U=0; strict subtraction G−ε|A|⁴ fails ROC.
+
+Missing operation: eliminate/optimize normal jets in a heat-based boundary functional, or obtain certified primal/dual bounds converging to required supply with known cost. Next test: on a declared finite Fourier trace family construct a dominating profile-only functional, prove its continuum extension and supply a posteriori error bounds. Do not substitute the negative action of an arbitrary return extension: the explicit |A|⁴ two-width example refutes that shortcut. Do not import strict coercivity or rough-ball uniform Lipschitz bounds.
+
+## 3. Acquire decisions on their actual legal support
+
+Input: root forward finite-PSD certificate, Gaussian independent task-error audit, and Virtual VNA diagonal-load quotient. Established: conditional task sufficiency/error formulas; whole-state reciprocity is unnecessary for the declared diagonal task but remains unidentified.
+
+Missing physical interfaces: actual legal mixed/toggle injection, globally valid loading family, coherent readout/pair observability, joint drift/noise bounds and complete cost ledger. Next test: acquire these on one specimen, freeze the pilot candidate, then validate held-out finite controls against direct forward interventions and the cheapest equally informed classical baseline. The 64-state supplied fixture has no port/control-span coverage; obtain the missing directions rather than treating its sensors as actuators. Single decisions must compare with one direct tangent/finite trial. Rank or low residual on fitted data does not certify support or generalization.
+
+## 4. Optimize full accepted output with legal mechanical interventions
+
+Input: the attainable Q body for actual attachment U, the exact three-sign rank-two example, and continuation-weighted saddle formula for a complete absorbing rate network. Established: legal PSD sign feasibility and local all-channel lifetime sensitivity under fixed event rewards/prefactors; well terms alone change clocks but not cumulative event yield in that model.
+
+Missing information: useful and every important damaging saddle response, environment-dependent prefactors, persistent heterogeneity/history, empty-state damage and state-dependent Hessians, all in the same physical regime. Next test: directly acquire rate/continuation sensitivities under baseline, rank-one, rank-two and random legal matched supports, report joint uncertainty and preparation/reset burden, and compare net accepted transfers before failure as well as throughput. A protective occupied hop or faster transport is insufficient. The exact hidden-mixture ±9/7, empty-damage and same-well/opposite-barrier constructions are admission falsifiers. No hBN/RNA cross-material analogy supplies these measurements.
+
+## Integration resumption
+
+Use the final publication, replay and Git receipts rather than assuming this handoff is already merged. Preserve the23 original files and old source claims. The raw invisibility endpoint omission and PR90's distinct-factor nonreciprocal update have append-only correction notices. Leave the four conflicting draft histories independent. The three inherited unsupported checkpoint schemas remain an explicit global validation failure; individually valid FT publication is narrower.

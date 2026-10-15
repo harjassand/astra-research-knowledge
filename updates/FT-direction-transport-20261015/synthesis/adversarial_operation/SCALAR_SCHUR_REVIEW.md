@@ -1,0 +1,65 @@
+# Actual scalar minimization and negative Schur direction: independent reconstruction
+
+Date: 2026-10-15. Reviewed `workers/direction_rigidity/SCALAR_EULER_SCHUR_COUNTERMODEL.md`, SHA256 **849205f9691527138c221af47e2d0393efe14f3c7d53213782b52694e142f403**. This is a scoped same-team analytic review, not external certification or historical novelty assessment. No numerical optimizer or frequency grid is a proof premise.
+
+The result survives independent reconstruction: for the retained G, the globally first-row-minimized value can be nonconvex at a genuine scalar global minimizer even when both diagonal scalar Hessian blocks are uniformly elliptic. The finite action proof avoids needing a C² optimizer branch on W1,4. The explicit endpoint minima retain strictly positive affine Jensen gaps; this is consistent with the newly supplied all-background G quasiconvexity certificate.
+
+## 1. Exact scalar global minimizer
+
+On the affine-periodic rectangle [0,2π/n]×[0,1], take a₀=x and v₀′=1+e(y), with e=1/12 on length5/11 and e=1 on length6/11. Their mean gives the exact affine background B=diag(1,19/12).
+
+For every d, the first-row stress of G at diag(1,d) has second component G_b=0; its first component depends only on d(y). Consequently its first-row divergence is zero **distributionally**, including the interface jump: the y-normal stress component is exactly zero. The periodic tangent integral vanishes for every admissible first-row variation.
+
+Rank-one convexity and μ=3 give the first-row Bregman remainder |∇h|⁴. Hence
+
+    E G([∇(x+h);∇v₀])−E G(A₀)≥E|∇h|⁴.
+
+After fixing the additive constant by mean zero, a₀ is the unique actual global scalar minimizer. No second-row stationarity is assumed. Its failure of full stationarity is explicit: G_d has different zone values−47/144 and27/2.
+
+## 2. Compatible negative quadratic form
+
+The first-row Hessian block is diag(38e²−11e+9/2,12e²) and the second-row block is diag(12e²−5e+5/6,36e²+2). Completing squares gives uniform positive lower bounds563/152,1/12,5/16,2 on their diagonal entries throughout e∈[1/12,1]. Thus both scalar elliptic quadratic operators are legitimate on periodic mean-zero H¹; there is no singular inverse in the quadratic Schur elimination.
+
+For the periodic triangle z with slopes1 and−5/6, the identity z′=−1+1/(6e) holds zonewise and E z′=0. Choose η=nz(y)cos(nx) and h=sin(nx). Then h_y=0, and
+
+    D(η,h)=[[-n²z sin(nx), nz′cos(nx)], [ncos(nx),0]].
+
+The only mixed term needed is H_bc=12e²−2e+1/2. Its constant1/2 part integrates to zero. Direct completion gives
+
+    H_bb(z′)²+2(H_bc−1/2)z′+H_cc=1/2−e.
+
+Its y-average is−1/12. The triangle's weighted second moment is C₀=34075/104544. Therefore
+
+    Q_n=(C₀n⁴−n²/12)/2,
+    Q_(1/4)=−105317/53526528<0.
+
+Minimizing the quadratic form over the first-row variation only decreases this negative trial value. This disproves the proposed sufficiency of scalar Euler stationarity plus pointwise acoustic positivity plus positive diagonal scalar blocks for a nonnegative Schur form.
+
+Precision boundary: this well-defined quadratic Schur form is not automatically a theorem that the entire reduced map is C² in a Banach W1,4 neighborhood. Uniform H¹ ellipticity alone does not supply the required W1,4 optimizer differentiability. The source makes its actual value-nonconvexity claim by finite competitors, so it does not need that additional premise.
+
+## 3. Finite action, not an omitted quartic term
+
+The source's full exact expansion is
+
+    ΔE=ε²(C₀n⁴/4−n²/48)+ε⁴n⁴(D₀+D₁n²+D₂n⁴),
+    D₀=217/24, D₁=4175/139392, D₂=13375/14992384.
+
+The first and third coefficients vanish by exact trigonometric parity, rather than being discarded. At n=1/4, ε=1/10 this gives−1672681134811/265286037012480000<−1/200000. Both endpoint second components therefore admit first-row competitors strictly below the exact base scalar minimum. Their midpoint is v₀, so the **true global scalar-eliminated value** violates midpoint convexity. Equality of endpoint minima also follows from a half-period x translation, with the affine first-component shift subtracted to preserve its normalized competitor class; equality is not needed for the strict two-sided trial argument.
+
+The maps are genuine W1,∞ affine-periodic maps. Periodic mollification preserves mean e and the range[1/12,1], and preserves the exact base first-row stationarity. Strong W1,4 energy continuity preserves the strict finite decrease for sufficiently fine smoothing. It is not a zero-Dirichlet counterexample on this individual rectangle.
+
+## 4. Why all the stated affine gaps stay positive
+
+The base affine gap is575/384. For a negative quadratic coefficient, minimizing the full quartic polynomial over ε² lowers it by at most
+
+    (1/12−C₀n²)²/[64(D₀+D₁n²+D₂n⁴)]≤1/83328.
+
+Thus every member of the explicit all-period/all-scale trial family has affine gap at least62387/41664>0. This is an analytic family bound, not a finite-grid observation.
+
+For the actual global endpoint minima, use a=x, for which the second row is (c,1+e), |c|≤1/40. Relative to the divergence-free base first-row stress, the exact residual is
+
+    (c²(10/3−29e/2), c[12e²−2e+1/2+(29/2)c²]).
+
+Its Euclidean norm is bounded by the componentwise sum103567/384000<1/3 on the complete cell. For any first-row correction with t=(E|∇h|⁴)¹/⁴, its possible improvement is at most max(t/3−t⁴)=(1/4)(1/12)¹/³<1/8. The energy at a=x is no smaller than the base, because its difference is (H_cc/2)c²+(107/24)c⁴≥0. Hence the actual endpoint global minima have affine gaps at least575/384−1/8=527/384>0.
+
+These positive lower bounds and the strict reduced midpoint violation are fully compatible. In light of the separate exact G heat certificate, the instance's global Jensen sign is now internally proved; the countermodel still demonstrates why a universal convex reduced-value or positive-Schur route cannot be the proof mechanism.

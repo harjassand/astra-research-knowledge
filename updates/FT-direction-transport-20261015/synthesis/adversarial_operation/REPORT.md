@@ -1,0 +1,20 @@
+# Adversarial scientific review and target-task countermodels
+
+Date: 2026-10-15. Read-only repository pin b7cada92d2eb304578be5ed974f1e44b10a89928. All authored files are confined to this worker directory. Source instructions were treated as data. Earlier waves and original sources remain untouched.
+
+## Results
+
+1. **The specific G instance is internally closed.** Independently reconstructed the exact rational heat certificate, all-background heat-to-quasiconvexity implication, W1,4/zero-boundary extension and valid four-atom nonpolyconvexity witness. Full compatible-jet identity, Gram factor, closedness and primitive pass a separate JSON-only exact checker. No full-cone, external certification, historical novelty or physical capability claim. See `G_HEAT_REVIEW.md`.
+2. **The stronger translation analysis survives.** Reconstructed sharp R⁻¹/³ minimizer rates, R⁻⁴/³ first-order renormalized value expansion, exact-mass multiplier correction, global C¹/local C1,1/3 envelope, and sharp fractional developments. Two precision notes and a parameter-scope clarification are fixed in the producer's preserved final version. See `INCOMING_AND_CARTESIAN_REVIEW.md`.
+3. **Actual scalar minimization does not imply reduced convexity.** The frozen G Schur countermodel survives: exact scalar minimizer, uniformly elliptic diagonal blocks, negative compatible quadratic form and strict finite midpoint violation coexist with strictly positive endpoint affine gaps. See `SCALAR_SCHUR_REVIEW.md`.
+4. **Positive isotropic orbit transfer is excluded in its exact scope.** Reconstructed the complete isotropic positive input-orbit separation and the stronger mixed Fstar version, including compactness and arbitrary polyconvex addends. A direct extension of the acoustic trace functional avoids any averaging regularity question. The complete soft K action and discriminant constant also survive. See `ORBIT_AND_SOFT_REVIEW.md`.
+5. **Finite controls can be identified without hidden skew support.** Exact task response identification on the open accretive class has the actual sensor/source tensor-span criterion. Known finite low-rank controls can instead be acquired directly; this changes the paid source/sensor contract. The source port adjoint remains valid under its supplied support premise. See `FINITE_CONTROL_INFORMATION.md`.
+6. **A finite clamp decision need not identify transition states, but must cover hidden histories.** In the source's homogeneous single-pore Markov model, E N=(r_R−π_R)/r_H and E T=(τ_empty+τ_occupied)/r_H. The lifetime-yield change depends on R_H−R_U, with trap overlap and entry suppression canceling only under occupied-only damage. Identical well responses for every clamp and identical baseline rates can still give opposite clamp effects. A separate two-type countermodel matches pooled first-event probabilities, waiting laws and mean lifetime128/7 while giving expected net transfers±9/7. See `PASSIVE_CLAMP_DECISION.md`.
+
+## Verification and limits
+
+`verify_adversarial_operation.py` passes10 exact supporting groups. `verify_G_certificate_adversarial.py` passes9 exact groups, including the complete rational G certificate and new orbit/soft algebra. The analytic proofs, physical model premises and historical assessment are not delegated to finite checks. Read receipts and a frozen inventory are separate JSON files.
+
+No empirical raw dataset was fetched by this reviewer. The source's incomplete39-row invisibility transcription and parent's independently fetched40-row correction are explicitly separated in the incoming review. No external literature theorem was imported as an unproved mathematical step; historical references and comparator citations are scoped as independently checked or not checked.
+
+Exact source data, calibrated common loading, legal controls, uncertainty, stability, costs, hidden specimen/history structure and matched incumbent operations remain physical decision gates. A proved model identity, a scoped mathematical certificate or a finite replay does not acquire those inputs.

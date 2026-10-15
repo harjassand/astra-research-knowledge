@@ -1,0 +1,272 @@
+# Task-restricted completion and validation of a physical adjoint
+
+Date 2026-10-15. Internal mathematical derivations and synthetic checks.
+Source pin `b7cada92d2eb304578be5ed974f1e44b10a89928`. No laboratory evidence,
+historical novelty or independent mathematical review is asserted.
+
+The proposed operation is a physical use of established dot-product testing
+and independent Gaussian residual validation. It can acquire task-specific
+accuracy without acquiring a global nonreciprocity support certificate.
+It does require additional injection access on the relevant control-force
+space, and its amplitude/precision costs cannot be hidden in a profile count.
+
+## 1. Incoming construction reconstructed
+
+At one fixed loaded real linear operating point, write Ax=b, J=F(x,p),
+c=F_x and lambda=A^{-T}c. A parameter direction d has tangent force
+f_d=b'_d-A'_d x and first derivative F'_d+f_d^T lambda.
+
+Under the supplied port hypothesis A=R+PKP^T with R symmetric, acquire
+Y=A^{-1}P, z=A^{-1}c, H=P^T Y. For invertible A and H, the incoming estimate is
+
+\[
+ \alpha=H^{-1}P^Tz,\quad
+ \beta=H^{-1}(H^T-H)\alpha,\quad
+ \hat\lambda=z+Y\beta.                                    \tag{1}
+\]
+
+Put D0=K^T-K. Then A^T=A+P D0 P^T and the low-rank inverse identity gives
+H^T=(I+H D0)^{-1}H. Inverting this identity shows
+D=H^{-T}-H^{-1}=D0. Thus A^T=A+PDP^T, and (1) solves the adjoint.
+The acquisition uses b, k port profiles and c, with the same A and calibrated
+source/sensor loading. Only rows needed for port solves and control forces
+need be stored. The interior need not be reconstructed, but the port support
+premise is not supplied by this acquisition.
+
+The exact source pair A±=I±e2 e4^T, b=e1, c=e2, P=[e3,e5], v=e1-e4 has
+identical full responses to all protocol profiles. Its conductance update
+has J±(p)=∓p/(1+2p), so the control decision differs. The symmetric part has
+minimum eigenvalue 1/2. This falsifies support certification, not (1) under
+its actual hypothesis. The source empirical trace reanalysis concerns an
+established reciprocal baseline, not an experiment on (1).
+
+## 2. Exact target equivalence and a bounded-defect alternative
+
+Let T be the acquired span of the tangent forces of interest, and let Q have
+orthonormal columns spanning T in declared, calibrated source units. A
+candidate need only supply a vector a_hat=Q^T lambda_hat, not a full hidden
+field. It is exactly adequate for every selected tangent force iff
+
+\[
+ Q^T(\lambda_{hat}-A^{-T}c)=0.                              \tag{2}
+\]
+
+Global reciprocity and global adjoint equality are unnecessary. One chosen
+force f can be evaluated exactly by injecting f and measuring c^T A^{-1}f;
+this is the strongest immediate one-action comparator.
+
+There is also a useful exact formula for an imperfect port model. Form the
+measured D in (1) and define M=A+PDP^T. For arbitrary A and invertible H,
+the algebra of (1) gives M lambda_hat=c even when the global support
+hypothesis fails. This follows by the same low-rank inverse identity; it
+does not make M=A^T. Put E=A^T-M. D and E are skew-symmetric. Then
+
+\[
+ \lambda-\lambda_{hat}=-A^{-T}E\lambda_{hat},\qquad
+ f^T(\lambda-\lambda_{hat})
+ =-(A^{-1}f)^T E\lambda_{hat}.                             \tag{3}
+\]
+
+Thus equality for the selected task holds iff E lambda_hat is orthogonal
+to A^{-1}T. The stronger E lambda_hat=0 suffices for this objective's full
+adjoint, even with arbitrary nonreciprocity elsewhere.
+
+If a uniform coercivity A_s=(A+A^T)/2>=mI has been acquired, a target residual
+bound ||E lambda_hat||<=tau gives
+
+\[
+ |f^T(\lambda-\lambda_{hat})|\le||f||\,\tau/m.              \tag{4}
+\]
+
+A global ||E||<=epsilon instead gives tau<=epsilon||lambda_hat||. It is
+stronger than necessary. A source-work measurement can bound the latter
+norm without full interior sensing: with h=A lambda_hat, obtainable as the
+known digital source combination c+P beta,
+\(||\lambda_{hat}||^2<=h^T\lambda_{hat}/m\). Readout at h's support or
+one additional synthesized profile is required. No small set of ordinary
+forward probes automatically acquires epsilon, tau or m. Noisy port data
+also require a residual allowance; Section 3 validates the actual computed
+candidate directly and avoids relying on exact port reconstruction.
+
+## 3. A physical Gaussian audit with capped sources
+
+Fix the plant A, objective c, force basis Q and candidate a_hat using only
+data acquired BEFORE validation. Let
+
+\[
+ g=a_{hat}-Q^TA^{-T}c\in\mathbb R^r.                        \tag{5}
+\]
+
+Draw q independent standard Gaussian xi_i in R^r. For any known positive
+scaling L_i, inject u_i=Q xi_i/L_i and measure m_i=c^T A^{-1}u_i. Form
+
+\[
+ D_i=L_i(a_{hat}^T\xi_i/L_i-m_i)=\xi_i^Tg.                  \tag{6}
+\]
+
+Choose, for example, L_i=max(1,||xi_i||/Amax). Then every actual source has
+Euclidean amplitude at most Amax. Additional per-channel caps can be included
+in L_i. The Gaussian vectors are NOT clipped or resampled: known scaling is
+undone in (6), so their exact Gaussian law remains available.
+
+Suppose the actually reconstructed vector D_hat obeys
+||D_hat-D||<=epsilon_D on an acquired simultaneous measurement event. Noise
+may be correlated between profiles, depend on xi or be deterministic. Let
+t_{q,delta} be the lower delta quantile of chi-square_q. Then
+
+\[
+ U=\frac{||D_{hat}||+\epsilon_D}{\sqrt{t_{q,\delta}}}
+ \quad\text{satisfies}\quad ||g||\le U                     \tag{7}
+\]
+
+with probability at least 1-delta, additionally minus the failure probability
+of the measurement event.
+
+**Proof.** For fixed g!=0, Σ(xi_i^Tg)^2/||g||² has exactly chi-square_q law.
+With probability 1-delta it is at least t. Therefore ||g||<=||D||/sqrt(t).
+The measurement triangle inequality proves (7). For g=0 the result is
+automatic. QED.
+
+For every force f=Qv, including one chosen AFTER the audit,
+
+\[
+ c^TA^{-1}f\in[a_{hat}^Tv-U||v||,\;a_{hat}^Tv+U||v||].     \tag{8}
+\]
+
+All these intervals hold on the same norm event; no action-count union bound
+is needed. Add known explicit F'_d and its own measurement error separately.
+A positive lower derivative certifies a first-order direction, not an
+unqualified finite-step gain. A finite step needs its actual resolvent,
+curvature or randomized action verification.
+
+This is a pointwise frequentist certificate for each plant/candidate fixed
+before the random audit, uniform in the stated confidence level. It is not
+a deterministic bound for every alternative plant chosen after seeing the
+random vectors. The response fiber can still contain such alternatives.
+Changing lambda_hat, Q or the model using the validation data invalidates
+the independence argument unless fresh validation or a suitable simultaneous
+procedure is used. Changing the plant during the profile block is likewise
+outside the theorem.
+
+For a finite list of P pilot-fixed candidates, reuse the same q actual
+forward profiles, compute D_hat for each candidate and use delta/P in (7).
+A union bound then permits selection among all P. This is the established
+independent-sketch cross-validation principle, physically applied to a
+task-specific adjoint; it is not a new generic validation theorem.
+
+### The actual physical and precision costs
+
+If each unscaled scalar discrepancy is bounded by epsilon0, then
+epsilon_D<=epsilon0 sqrt(Σ L_i²). All gain, readout, source mismatch and
+same-operator drift errors must be included in that acquired allowance.
+Metering a small current error alone does not bound its output consequence
+without a relevant transfer/coercivity bound.
+
+For the amplitude cap above, E[L_i²] is between r/Amax² and 1+r/Amax².
+Thus the noise term in (7) scales approximately as
+epsilon0 sqrt(r)/Amax for fixed q/confidence. A small profile count does
+not imply dimension-independent precision. If independent repeats have
+sub-Gaussian proxy sigma², a union bound can supply
+epsilon0=sigma sqrt(2 log(2q/delta_m)/n). Requiring the noise part of (7)
+to be at most eta is ensured by
+
+\[
+ n\ge\frac{2\sigma^2\log(2q/\delta_m)\sum_iL_i^2}
+               {\eta^2t_{q,\delta}}.                      \tag{9}
+\]
+
+This is the cost of this certificate, not a universal lower bound for an
+easy selected action. Its rank-dependent repeat cost is real. Without
+normalization, E Σ||Qxi_i||²=qr, so amplitude/energy grows instead.
+For acquired A_s>=mI, settled electrical source power obeys
+u^T A^{-1}u<=||u||²/m; actual settling time, current-driver losses and
+readout energy must also be counted. Dynamic stability is not certified
+by a noisy static fit alone.
+
+The added injections use the control-force support Q, not merely the original
+k nonreciprocal ports. Sensors at control vertices do not supply this
+injection capability. Signed/multiplexed drivers must be permanently loaded
+or equivalently calibrated so all profiles see the same A. If a balanced
+plus/minus perturbation around baseline is required, q scalar probes can
+cost 2q settled profiles and finite-amplitude errors must be bounded.
+
+## 4. Direct completion of only the unresolved action geometry
+
+Suppose exact native directional probes already determine a projection
+g_U of g on a subspace U in the force-coordinate space. With an acquired
+norm bound ||g||<=eta, the remaining component in Uperp has norm at most
+rho=sqrt(eta²-||g_U||²). The exact compatible scalar interval for v is
+
+\[
+ a_{hat}^Tv-v_U^Tg_U\;\pm\;rho||v_{Uperp}||.               \tag{10}
+\]
+
+It is sharp in the vector-ball information class: choose the remaining
+component parallel or antiparallel to v_Uperp. Section 5 realizes small balls
+of task errors on directions orthogonal to the already queried source span
+within uniformly stable rank-two response alternatives. Extra structural
+constraints may narrow the vector-ball class for a particular device.
+
+With noisy direct probes, retain their joint slabs or ellipsoid intersected
+with the norm ball and optimize the target functional over that intersection.
+Plugging a noisy point projection into rho does not give a valid sharp bound.
+An empty intersection rejects the assumed joint information; do not silently
+clamp a negative squared radius to zero.
+
+An audit can instead be confined to Uperp, acquiring its residual norm
+directly by (7). This avoids paying for already completed directions.
+If a decision interval does not separate, probe a critical candidate force
+directly, update U, and audit again only if needed. With fresh Gaussian
+randomness each stage and failure allowances summing to delta, the conditional
+argument and a union bound remain valid. This is a specialization of active
+linear experimental design, not a claim to a new best-arm algorithm.
+
+One native tangent probe can settle one proposed action exactly in the
+ideal linear setting. Random validation is potentially useful when many
+subsequent actions must share one coarse accuracy certificate, not when
+that single-probe comparator already resolves the decision more cheaply.
+
+## 5. Unknown low nonreciprocity rank does not provide its support
+
+Let V be the span of all queried source profiles, with c in V, and let
+d be a unit vector in Vperp. Normalize c_hat=c/||c||. For 0<a<=1 define
+
+\[
+ A_\pm=I\pm a\,c_{hat}d^T,\qquad
+ A_\pm^{-1}=I\mp a\,c_{hat}d^T.                            \tag{11}
+\]
+
+Both identities follow because d^Tc_hat=0. Every full forward response
+to a source in V is identical, namely that source itself. Nevertheless
+
+\[
+ c^TA_\pm^{-1}f=c^Tf\mp a||c||d^Tf.                       \tag{12}
+\]
+
+Both symmetric parts have minimum eigenvalue 1-a/2>=1/2, both operator
+norms and inverse norms are at most 1+a, and both skew defects have rank two.
+Thus unknown rank-two nonreciprocity can hide a decision-relevant direction
+even with known uniform coercivity, norm bounds and complete readout.
+Taking d along the unqueried projection of f gives interval half-width
+a||c|| dist(f,V), which is attained by the two signs.
+
+For an adaptive deterministic exact algorithm, answer each probe with its
+identity response. If the final query span fails to cover an intended force,
+choose d in its unqueried projection; both fixed plants (11) reproduce the
+entire adaptive transcript. Consequently exact all-direction acquisition
+needs the missing target span in this restricted stable rank-two family.
+Low rank alone cannot discover the orientation/support.
+
+For c=e2, b=e1, d=e4 and conductance vector v=e1-e4, both baseline states
+remain b. At p=0 the conductance gradients have opposite signs, scaled by a.
+This connects the general family to the source's physical-control example.
+No claim is made that every arbitrary dense skew matrix is a resistor-only
+network; the class includes a bounded active directed coupling. It is an
+admissible stable linear alternative to an unverified port restriction.
+
+This deterministic indistinguishability result does not contradict Section
+3: a fixed plant has only delta probability of evading an independent norm
+audit; an adversarial plant selected after seeing the random probes is a
+different quantifier. Additional acquired sparsity/support structure may
+allow compressed sensing, but physical mixed injection cost and the
+structural promise must both be paid.

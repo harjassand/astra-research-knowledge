@@ -1,0 +1,65 @@
+# Complete soft-action consequence and positive isotropic-orbit separation
+
+Date: 2026-10-15. These two newly supplied arguments were reconstructed after the exact G heat proof. They are internal scoped mathematical results, not external validation or historical priority clearance.
+
+## 1. Complete compatible cubic-quartic action
+
+Read `workers/nonlinear_qc/SOFT_COMPENSATION_COROLLARY.md` in full at SHA2564e0039d21a57ab3127b457a1612af8c74f3fab425a4b186522bd4028eb5b8221.
+
+For a real periodic potential v, p=v_xx, q=v_xy, r=v_yy, the vector perturbation φ_s=((2s/3)v_y,sv_x) is genuinely compatible. Direct quartic expansion gives the source's full K, including every r term. Periodicity gives E q=0 and E(pr)=E(q²); the latter follows by two integrations by parts or Fourier coefficients. Therefore all-background G quasiconvexity implies
+
+    (5/12)P−(5/162)Ts+Ds²≥0 for every real s,
+    P=E p², T=E[q(9p²+4q²)], D=E K.
+
+A globally nonnegative real quadratic has D≥0 and discriminant≤0, giving exactly T²≤(8748/5)PD. If P=0 or D=0 its linear coefficient must vanish; no division by zero is needed. The full s²-multiplied action is then nonnegative. Strong W²,⁴ approximation passes all terms; W0²,⁴ first derivatives give the required zero-boundary vector perturbation.
+
+The pointwise negative K(1,0,−3/2)=−1/24 is consistent: those arbitrary pointwise Hessian triples are not a standalone compatible periodic law. The proof uses full compatible K integration, and does not repair any false estimate discarding v_yy. No critical objection was found.
+
+## 2. Closed positive input-orbit cone
+
+Read `workers/nonlinear_qc/ISOTROPIC_ORBIT_SEPARATOR.md` in full. Its analytic compactness separation is valid on its stated generator class. It does **not** exclude arbitrary quasiconvex generators or arbitrary synthesis operations, and does not prove historical novelty.
+
+Every both-left-and-right SO2-invariant quartic has the form F=a|A|⁴+b|A|²detA+c(detA)². The proof uses only elementary necessary rank-one inequalities, so no external classification theorem is a hidden premise. Rank-one values force a≥0; the shear probe at equal singular values and either determinant sign gives |b|≤4a; the e11 acoustic tests at diag(1,±1) give c≥−8a+3|b|.
+
+If a=0, F=c(detA)² is polyconvex. If c≥4a, the exact decomposition into nonnegative multiples of (|A|²±2detA)² and (detA)² is polyconvex. The first two terms are convex quartics because |A|²±2detA are nonnegative squared norms of linear Cauchy-Riemann combinations. Constant input pullbacks preserve polyconvexity, including singular inputs.
+
+All remaining generators normalize to a=1 and compact (b,c)∈[−4,4]×[−8,4], restricted to the closed rank-one-convex subset K. Normalize every nonzero input S to |S|=1. If its rows are p,q, the nonnegative shear probe is
+
+    ℓ=8(p·q)²+[4|S|²+2b detS]|q|²
+       ≥8(p·q)²+(4−|b|)|q|².
+
+For |b|<4, a null probe forces q=0 and the pullback is the convex quartic |Ae1|⁴|p|⁴. At |b|=4, the rank-one necessary inequality plus c≤4 forces c=4; the generator is itself convex (|A|²±2detA)². Thus every shear-null normalized generator is convex, including parameter endpoints. A false uniform positive shear margin near those endpoints is not assumed.
+
+Suppose coefficientwise-convergent positive sums H_n=Σw_ni F_i(·S_i)+P_n tend to G, with homogeneous polyconvex quartic P_n. Evaluations at E11,E12 give |p|⁴+|q|⁴≥1/2 for each normalized generator. P_n is nonnegative on rank-one matrices. Hence Σw_ni≤2[H_n(E11)+H_n(E12)] is uniformly bounded.
+
+Also ℓ(P_n)≥0, ℓ(each generator)≥0, and ℓ(G)=0. Thus orbit-weighted probe sums tend to zero. On the compact normalized parameter space, the minimum probe outside any neighborhood of its zero set is positive. Consequently weighted mass outside that neighborhood tends to zero.
+
+Now use the fixed four-atom lifted-zero-barycenter law ν from the G proof. Its Jensen functional is continuous on the compact parameter space and nonnegative at every convex shear-null generator. Given δ>0, continuity gives a zero-set neighborhood on which it is at least−δ; outside, it has a finite negative bound but vanishing mass. The uniformly bounded total mass gives liminf Eν(orbit sum)≥−δM. Let δ→0 to obtain a nonnegative liminf. Polyconvex P_n also has EνP_n≥P_n(0)=0. Coefficient convergence would therefore force EνG≥0, contradicting−1350/1297.
+
+No limit of the possibly unbounded coefficient vectors of P_n is needed. The mass bound applies only to normalized orbit weights, and the law handles P_n directly. This is the decisive closure step. The argument excludes the **coefficientwise closed positive input-transform cone** of the complete declared isotropic quartic class plus homogeneous polyconvex quartics; it does not turn that comparison into a general novelty theorem.
+
+## 3. Stronger mixed isotropic/Fstar cone: direct arbitrary-PC proof
+
+The separately supplied `workers/direction_rigidity/ISOTROPIC_TRANSFER_OBSTRUCTION.md` was read in full. Its stronger exclusion additionally allows positive input orbits of the pinned Fstar. The source is frozen at its own recorded pre-heat status; its last paragraph describing the G sign obligation as open is superseded by the separate exact G heat proof. Its cone-exclusion theorem is unaffected.
+
+The acoustic normalization is valid. In the nine-dimensional left-SO2-invariant quartic basis, the two quadratic forms D²p(A)[E11,E11] and D²p(A)[E12,E12] are PSD whenever p is rank-one convex. Their matrices jointly recover all nine coefficients. Their trace sum Λ is strictly positive at every nonzero invariant rank-one-convex polynomial. Thus the section Λ=1 is closed and bounded: each PSD entry is bounded by its trace, and coefficient recovery bounds every coordinate.
+
+The enlarged transformed-isotropic parameterization is
+
+    h=σ_U²+β(detA)σ_U+γ(detA)²,
+    σ_U=U11u+2U12w+U22v, U≥0, |β|≤4√detU.
+
+It is closed on the Λ-normalized section. Bounded coefficients bound U11²,U22², then |U12| by positivity; the β inequality bounds β, and the uv coefficient bounds γ. Limits retain positivity, the β bound, rank-one convexity and Λ=1. Scaling by Λ preserves this family via U→U/√Λ, β→β/√Λ, γ→γ/Λ.
+
+Its target shear functional is ℓ(h)=8U12²+(4trU+2β)U22. Both summands are nonnegative by the parameter bound and arithmetic-geometric mean. If U22=0, then U12=β=0 and a separate acoustic test forces γ≥0, so h=U11²u²+γ(detA)² is polyconvex. If U22>0 and ℓ=0, equality forces U=tI, β=−4t; the e11 acoustic test at I forces γ≥4t², so h=t²(|A|²−2detA)²+(γ−4t²)(detA)² is polyconvex. These exhaust the null face; loose necessary β bounds alone would not suffice without the extra γ tests.
+
+For Fstar, the independently reconstructed pinned acoustic Gram gives D²Fstar(A)[a⊗b,a⊗b]≥|A|²|a|²|b|²/16. All eight leading minors of its shifted Gram were checked exactly. The normalized unit-input orbit is compact and nonzero, and ℓ=0 forces the second input row to vanish. Its remaining atom is a nonnegative multiple of |Ae1|⁴, hence convex. Therefore the compact union of normalized isotropic and Fstar atoms has a polyconvex shear-null face.
+
+**Arbitrary polyconvex addends do not require an averaging hypothesis.** Define Λ on *every* homogeneous quartic polynomial p, with no symmetry, as the sum of traces of the quadratic-form matrices of D²p(A)[E11,E11] and D²p(A)[E12,E12]. It is a linear coefficient functional. Rank-one convexity makes both quadratic-form matrices PSD, hence Λ(p)≥0. This extension agrees with the source's Λ on invariant atoms. Consequently, for H_n=Σc_ni k_ni+P_n, Λ(k)=1 and arbitrary homogeneous polyconvex P_n,
+
+    Σc_ni≤Λ(H_n)=O(1),
+    Σc_niℓ(k_ni)≤ℓ(H_n)→ℓ(G)=0.
+
+The compact concentration and fixed lifted Jensen-law argument of Section2 now applies directly. Every P_n has nonnegative lifted Jensen functional, and the compact null-face atoms are polyconvex. Thus G lies outside the closed positive mixed isotropic/Fstar orbit cone plus arbitrary homogeneous polyconvex quartics. No symmetry or compactness of P_n, and no closure of the polyconvex cone, is required.
+
+The source's averaging argument is also legal if used: a convex lifted representation of a finite polyconvex polynomial is finite and continuous on all R⁵. Indeed every (A,z) is the midpoint of two determinant lifts of A±H with detH=z−detA, since the determinant's cross terms cancel. Its convex domain therefore contains all R⁵. Haar averages over rotations of the lifted representation are well defined and convex. The direct Λ extension is shorter and avoids needing that representation-regularity explanation.

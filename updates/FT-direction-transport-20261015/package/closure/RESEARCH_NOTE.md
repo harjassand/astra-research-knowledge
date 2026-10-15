@@ -1,0 +1,185 @@
+# ASTRA Scientific Closure: Forward-only port completion of an adjoint
+
+Date: 15 October 2026 (Australia/Brisbane)
+
+## Scientific status
+
+This investigation produced an exact conditional linear-algebra construction, synthetic tests, and a reanalysis of published objective traces. It did NOT establish a fundamentally new scientific operation, integrated physical validation of the construction, superiority to the strongest available methods, or an exceptionally consequential technological advance. Historical novelty is unknown; the mathematics combines established adjoint sensitivity, Schur complements, and low-rank inverse updates. No independent review has occurred.
+
+The candidate operation is useful only when all nonreciprocity is confined to a small, physically known set of accessible ports. The experiment does not certify that assumption. Unknown reciprocal background components are allowed. Unknown control derivatives are not supplied for free.
+
+## Decision
+
+At a fixed operating point, choose local settings of a physical linear network to improve a measurable objective. This is a local control decision, not a guarantee of global optimization or finite-step improvement. The interest is acquiring many sensitivities without reconstructing every hidden component or physically building the transpose network.
+
+Strong alternatives must be tried first: randomized comparisons of available settings; two-sided random-direction estimators; multiplexed perturbations; direct forward tangent-source measurements for a few candidate directions; ordinary reciprocal physical adjoints; and applicable same-hardware transformations for nonreciprocal systems. A cheaper exact full gradient need not outperform an inexpensive approximate direction on the actual decision.
+
+## Exact contract
+
+All matrices below are real. At fixed p, let
+
+    A(p) x = b(p),     J(p) = F(x(p), p),     c = gradient_x F.
+
+Assume A is invertible and that, after ordering k accessible port coordinates first,
+
+    A = [[B, E],
+         [E.T, C]],      C = C.T,      C invertible.
+
+Thus all asymmetry is confined to the port block B. Equivalently A = R + P K P.T, with R symmetric and P a coordinate-injection matrix. Strict positivity of (A + A.T)/2 is one sufficient condition ensuring the relevant inverses. It is not an automatically obtained experimental certificate.
+
+The operation requires the same loaded operator A for all source profiles, calibrated signed injections at the ports and at the support of c, calibrated sensors at the ports and the supports of the local control derivatives, and known derivatives A_pj and b_pj. The interior reciprocal matrix C and the nonreciprocal block K need not be identified.
+
+For a conductance control on an edge v_j = e_i - e_l, A_pj = v_j v_j.T. For other controls, this derivative must be acquired or justified in the actual loaded operating regime.
+
+## Acquired measurements and estimator
+
+Apply the k+2 source profiles b, P e_1, ..., P e_k, c to the unmodified network. Measure the necessary components of
+
+    x = A^-1 b,     Y = A^-1 P,     z = A^-1 c,
+    H = P.T Y,      q = P.T z.
+
+Only sensor rows of Y and z need be stored. The full-state notation is for proving the result, not a requirement for interior sensing.
+
+Solve two k-dimensional systems:
+
+    alpha = solve(H, q)
+    beta  = solve(H, (H.T - H) alpha)
+    lambda = z + Y beta.
+
+Then lambda = A^-T c exactly under the stated assumptions. In one expression,
+
+    lambda = z + Y H^-1 (H.T - H) H^-1 P.T z.
+
+The estimator should use solves rather than explicit inverses. The reference implementation additionally forms an inverse only for a diagnostic of the inferred transpose defect, not for constructing lambda.
+
+The gradient is
+
+    dJ/dp_j = F_pj + lambda.T (b_pj - A_pj x).
+
+For the conductance edge example with no explicit objective or source dependence,
+
+    dJ/dp_j = -(v_j.T x)(v_j.T lambda).
+
+The same adjoint can be generated as a physical field by applying c + P beta once more. That optional physical synthesis costs an additional settled profile; the digitally combined estimator does not need it.
+
+## Proof
+
+The measured port response is the inverse Schur complement:
+
+    H = (B - E C^-1 E.T)^-1.
+
+Set S = H^-1. For z = A^-1 c, elimination of the hidden coordinates gives
+
+    S z_P = c_P - E C^-1 c_Q = t.
+
+For the adjoint solution, the hidden block and cross-couplings are unchanged, while the port Schur complement is transposed:
+
+    S.T lambda_P = t.
+
+Therefore lambda_P = H.T H^-1 z_P. The desired change in port field is
+
+    delta_P = (H.T - H) H^-1 z_P.
+
+A port injection P beta produces port response H beta. Choosing beta = H^-1 delta_P realizes the needed change. The change of the hidden field is -C^-1 E.T delta_P for both systems. Hence lambda = z + Y beta on every coordinate, including the sensed subset.
+
+Equivalently, the measured matrix determines the loaded transpose defect
+
+    D = H^-T - H^-1 = B.T - B,
+    A.T = A + P D P.T.
+
+Woodbury gives the alternative formula
+
+    lambda = z - Y (I + D H)^-1 D P.T z.
+
+These are equivalent algebraic descriptions, not claims of new matrix identities.
+
+## Exact failure of support certification
+
+Let b=e1, c=e2, P=[e3,e5], v=e1-e4, and
+
+    A_plus  = I + e2 e4.T,
+    A_minus = I - e2 e4.T.
+
+Both have positive definite symmetric part with smallest eigenvalue 1/2. Every response to b, c, and the columns of P is identical between the two systems, even with complete five-state readout. The protocol observes H=I and no reciprocity defect.
+
+But
+
+    A_plus^-T c  = e2 - e4,
+    A_minus^-T c = e2 + e4.
+
+For the admissible added conductance p vv.T,
+
+    J_plus(p)  = -p/(1+2p),
+    J_minus(p) = +p/(1+2p),   p >= 0.
+
+An increase helps one system and hurts the other. The protocol's support-assumed derivative is zero for both; the actual derivatives at zero are -1 and +1. This is NOT a counterexample to the theorem: both systems violate the declared port support. It proves that the specified acquisitions cannot certify that support on an unrestricted class of stable linear alternatives. An additional probe at e4, or a direct action comparison, separates the pair.
+
+## Synthetic tests actually executed
+
+`closure_experiment.py` builds 64-state grounded resistor-network matrices with four accessible nonreciprocal port coordinates, 30 conductance controls, and 17 sensed coordinates. Forty-seven state coordinates are hidden from the estimator. The plant simulator and reference calculation know the full A; the estimator receives only measured response rows.
+
+There are 100 noiseless seeds, 50 seeds at each of three assumed Gaussian noise levels, and 50 seeds with an unmodelled nonreciprocal coupling outside the declared ports. Source-profile noise is independent additive Gaussian noise scaled to the root-mean-square sensed field of each profile. This is a chosen simulation noise model, NOT one calibrated from the published experiment.
+
+Results from the two-solve estimator:
+
+| Test | Median relative gradient error | Maximum |
+|---|---:|---:|
+| Exact, 100 networks | 7.59e-16 | 2.54e-15 |
+| 0.1% RMS field noise, 50 networks | 1.348% | 4.640% |
+| 1% RMS field noise, 50 networks | 13.413% | 46.241% |
+| Missed hidden nonreciprocity, noiseless, 50 networks | 4.038% | 30.247% |
+
+The naive reciprocal adjoint has median error 19.63% on the exact 100-network sample. A separate three-state construction has the same baseline fields but opposite true gradients, with the naive reciprocal estimate getting the sign wrong in both cases. All formulas, seed-level records, and counterexamples are retained in the JSON output. Finite tests check implementation, not the full theorem or physical realizability.
+
+Acquisition count in this test is 6 settled profiles and 102 scalar field readings. Coordinate central differences for 30 parameters require 60 objective readings. The difference in source-profile count is not a demonstrated tenfold speedup: the observables and instrumentation differ, and random-direction/multiplexed methods are stronger practical baselines than complete coordinate finite differences.
+
+## Published empirical data actually reanalysed
+
+Public experimental objective columns were read through the Zenodo CSV text interface and manually transcribed into `empirical_analysis.py`. The script documents the source URLs. A raw ZIP download was not obtained. These are measurements by the original researchers, not experiments performed here.
+
+Dataset: John Guillamon, Zenodo record 17314682, version 1, 10 October 2025, DOI 10.5281/zenodo.17314682. Associated work: Guillamon, Wang, Lin, Kottos, *In-situ Physical Adjoint Computing in multiple-scattering electromagnetic environments for wave control*, arXiv:2503.21107; Nature Communications 16, 11466 (2025), DOI 10.1038/s41467-025-66385-5.
+
+| Objective | Logged rows | First | Last | Best |
+|---|---:|---:|---:|---:|
+| Absorption, maximize | 30 | 0.4179037 | 0.9981304 | 0.9981304 |
+| Targeted transmission, maximize | 41 | 0.3997651 | 0.8730930 | 0.8731666 |
+| Invisibility error, minimize | 39 | 2.6505773 | 1.6596982e-5 | 1.0475700e-5 |
+
+The final invisibility error is about 1.584 times the best observed error; best-so-far and last observation are not interchangeable. The near-fixed-control tail of the targeted-transmission trace has sample standard deviation about 1.93e-5 over eight rows. This is descriptive objective variability, not a calibrated voltage/phase error model, proof of stationarity, or an estimate of the joint errors in H and Y.
+
+These data support the established reciprocal physical-adjoint baseline. They do not test the local nonreciprocal extension. In the reciprocal limit H.T=H, the proposed correction vanishes. The associated physical experiment tunes three controls; the larger 190-bond case is simulation, not a 190-control hardware experiment.
+
+## Physical acquisition and resource obligations
+
+A proposed first realization is a low-voltage, low-frequency linear circuit with a deliberately confined nonreciprocal module, permanently connected current injection channels, and buffered voltage readout. Its exterior should be reciprocal by construction. That is a credible experimental route, not a completed implementation.
+
+All profiles must preserve source impedances, sensor loading, temperature, control state, and the linear operating regime. The complete profile set should be repeated/interleaved as a block to characterize joint drift and correlated calibration errors. Independent calibration of marginal noise levels is insufficient. Source normalization, saturation limits, settling time, and readout energy must be measured.
+
+For s sensed coordinates, the uncompressed protocol has (k+2)s scalar readings per operating point, O(sk) stored response values, and O(k^3) small-matrix processing. H generally changes when controls change. Small algebraic rank without known accessible port support does not supply this protocol.
+
+A complex frequency-domain extension needs coherent phase readout and the correct real-objective complex derivative conventions. Arbitrary nonlinear, chaotic, or time-dependent systems are not covered by the stated theorem. Real devices also require dynamic stability checks beyond a static matrix representation.
+
+## Competitive and novelty assessment
+
+Ordinary physical adjoints already provide gradients through an unknown reciprocal background. Published multiplexed-gradient methods and their integrated-photonic implementations offer experimentally relevant alternatives. In 2026, *Unifying Physical Backpropagation* describes nonreciprocal classes using intertwining conditions, and *In-situ Time-domain Physical Adjoint Optimization of Complex Wave Dynamics* reports an RLC experiment. Consequently, neither 'physical gradients without a full model' nor 'nonreciprocal gradients without universal hardware reversal' can be claimed here as a new broad principle.
+
+Targeted searches did not establish priority for this particular measured-port composition. Absence of an exact-title match does not establish novelty. The defensible status is a conditional construction assembled from established machinery, with integrated physical and competitive advantage untested.
+
+## Decisive experiment
+
+Use the same stable linear circuit, controllable settings, measurement budget, and objective to compare port completion with randomized finite-action tests, a tuned random-direction or multiplexed estimator, and a physical-adjoint transformation where applicable. Randomize/interleave comparison blocks; blind component values; measure time, source energy, sensor/readout cost, and attained objective. Add hidden nonreciprocity as a deliberate falsification control. Evaluate held-out actual control updates, not only gradient alignment.
+
+Success would be superior decision quality at matched physical cost in a regime that matters. Agreement with a simulator alone is not sufficient. No such success has been established in this investigation.
+
+## Sources
+
+- Astra repository, examined revision 846f185763ed3a27310fad4ce9471ba324d1e5f4; N820 dossier. Existing isotope-history results and causal boundaries were used to avoid reopening a duplicate route.
+- Guillamon et al., arXiv:2503.21107v1; DOI 10.1038/s41467-025-66385-5.
+- Guillamon data, DOI 10.5281/zenodo.17314682; three in-situ Fig. 2 CSVs.
+- Bösch, Gediz, Wanjura, Türeci, *Unifying Physical Backpropagation*, arXiv:2608.11585v2, revised 23 September 2026.
+- Kwon, Suntharalingam, Bulus-Rossini, Kottos, *In-situ Time-domain Physical Adjoint Optimization of Complex Wave Dynamics*, arXiv:2608.19456, 19 August 2026. Abstract-level experimental report used.
+- Guo et al., *Fully analog end-to-end online training with real-time adaptibility on integrated photonic platform*, arXiv:2506.18041, 22 June 2025.
+- McCaughan et al., *Multiplexed gradient descent*, arXiv:2303.03986; APL Machine Learning 1, 026118 (2023), DOI 10.1063/5.0157645.
+- Li et al., *Circuit Theory of Time Domain Adjoint Sensitivity*, IEEE TCAD 42(7), 2303 (2023), DOI 10.1109/TCAD.2023.3260163.
+- Nikolova, Bandler, Bakr, *Adjoint Techniques for Sensitivity Analysis in High-Frequency Structure CAD*, IEEE TMTT 52(1), 403–419 (2004), DOI 10.1109/TMTT.2003.820905.
+- Hager, *Updating the Inverse of a Matrix*, SIAM Review 31(2), 221–239 (1989), DOI 10.1137/1031049.
