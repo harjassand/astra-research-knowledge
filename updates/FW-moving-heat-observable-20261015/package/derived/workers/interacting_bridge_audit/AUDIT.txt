@@ -1,0 +1,292 @@
+INDEPENDENT AUDIT OF COLLECTIVE COUNT REFERENCE AND LOCAL REJECTION
+15 October 2026. Internal mathematical audit; historical novelty and physical
+validation remain unestablished. Source agreement is not the audit criterion.
+
+Verdict
+-------
+The restricted probability theorem is correct. A supplied count-dependent
+collective reference plus residual rate factors between 1 and 1+beta/n gives
+a full stopped likelihood cap exp(beta), including macroscopic k<=n. A local
+Poisson-mark rejection construction also avoids summing all residual hazards.
+It produces the exact target event-conditioned law in an ideal continuous
+randomness model, with expected at most exp(beta) proposals. A finite count
+truncation is approximate and must be charged. No general bit-complexity,
+physical acquisition, novelty, or superiority claim follows.
+
+The saved finite-error worker implementation was reviewed in its narrower
+n=k=400, T=1/5, beta=2 rational fixture. Its tail, hazard update, clock coupling,
+and quantization budgets are mathematically consistent. Independent small-state
+reconstruction and counterexample diagnostics are in independent_checks.py
+and independent_results.json. These are checks of a proof, not substitutes for
+the proof or external review.
+
+1. Exact theorem and the missing assumptions that matter
+------------------------------------------------------
+Let 1<=k<=n, T>0, b_s>0 for s=0,...,k-1, and c=beta/n with beta>=0. On a
+set x of size s<k, an intact component i has target rate
+
+  a_i(x) = b_s/(n-s) * (1+eta_i(x)),   0<=eta_i(x)<=c.
+
+All rates and residuals are supplied mathematical inputs. They may be arbitrary
+functions of x, but must be exactly queryable or come with an explicit numerical
+error contract. There are no repairs or unbounded extra real jumps. Let A be
+{tau_k<=T}. Under P0 each next label is uniform among intact components and the
+count holding time at s is Exp(b_s), independently of all labels. Put h=P0(A)>0
+and Q0=P0(.|A), on paths stopped at tau_k.
+
+For a successful stopped path with prefix states x_s, failed labels i_s and
+holding times Delta_s, write bar_eta(x_s) for the alive-label average. Then
+
+  L = product_s(1+eta_i_s(x_s))
+      * exp[-sum_s b_s bar_eta(x_s) Delta_s].
+
+This is the complete dP/dP0 on stopped paths. No survival factor after tau_k is
+appropriate. Let M=(1+c)^k<=exp(beta). The holding exponent is nonnegative,
+so 0<L<=M.
+
+The bound p=P(A)>=h does NOT require monotone b_s or an attractive set coupling.
+Draw unit exponentials E_s independently. At each target prefix choose its next
+label using the target mark law and use holding E_s/A(x_s), where
+A(x_s)=b_s(1+bar_eta(x_s))>=b_s. The reference count holding times E_s/b_s are
+independent exponentials with the required reference count law. Thus the target
+sum of k holdings is pathwise no larger. This works even when b_s decrease or
+oscillate sharply.
+
+Consequently Y=hL is unbiased for p. With mu=E_Q0 L=p/h>=1 and L^2<=ML,
+
+  E[Y^2]/p^2 = E[L^2]/mu^2 <= M/mu <= M <= exp(beta).
+
+The same inequalities provide h<=p<=Mh. Thus a constant-factor deterministic
+probability approximation already accompanies the strong-efficiency theorem.
+Refining that interval remains meaningful; the interval itself is not a new
+precision capability.
+
+2. Local rejection without an aggregate-rate oracle
+---------------------------------------------------
+For each proposal from Q0:
+
+  (a) Independently accept every real jump with probability
+      (1+eta_i_s(x_s))/(1+c).
+  (b) In holding interval s draw N_s~Pois(c*b_s*Delta_s). For each mark choose
+      a uniform intact label i and reject the proposal with probability
+      eta_i(x_s)/c. The beta=0 case accepts everything without these marks.
+
+For a fixed path, the probability that no mark rejects in interval s is
+
+  exp[-c*b_s*Delta_s * average_alive(eta_i/c)]
+  = exp[-b_s*bar_eta(x_s)*Delta_s].
+
+The overall acceptance probability given the path is L/M. Therefore the
+unconditional proposal acceptance is a=p/(Mh)>=1/M, and an accepted path has
+law P(.|A). Repeating independent proposals needs mean 1/a<=M trials.
+The scalar estimator Mh*I_accept is unbiased and has relative second moment
+1/a<=M. It has larger variance than hL whenever L is not effectively binary;
+its attraction is local-query access and target conditional path production.
+
+Per proposal, there are at most k real-jump residual queries and expected at
+most c*sum_s b_s*Delta_s<=c*B*T mark queries, where B=max_s b_s. Early rejection
+can only reduce this. Thus expected local queries are <=k+beta*B*T/n. Each
+eta query's own runtime/precision is charged separately. If eta is supplied by
+a dense pair matrix, its read/preprocessing or local summation cost is not a
+unit-cost physical oracle. No claim of unconditional sublinear acquisition of
+an arbitrary residual law is justified.
+
+3. Positive uniformization: a stronger conditioned tail bound
+------------------------------------------------------------
+Uniformize the absorbing count chain at B>=max_s b_s. Its discrete transition
+matrix has R_s,s=1-b_s/B, R_s,s+1=b_s/B and R_k,k=1. Define
+
+  v_0(s)=1{s=k},
+  v_m(s)=(1-b_s/B)v_(m-1)(s)+(b_s/B)v_(m-1)(s+1).
+
+The conditional augmented event count has law
+
+  P(N=m|A) = exp(-BT)*(BT)^m/m! * v_m(0) / h.
+
+Given N, the discrete count bridge uses ordinary conditional probabilities
+from v, and the N Poisson epochs are uniform order statistics. Assign uniform
+distinct labels only at real upward steps. This is the standard endpoint-
+conditioned uniformization construction specialized to a bidiagonal count
+chain, not a new bridge principle.
+
+There is a sharper tail certificate than the unconditional bound divided by h.
+Conditional on a real stopped path that satisfies A, virtual events before
+tau_k have intensity B-b_s on stage s, and those after absorption have rate B.
+Hence
+
+  N | real stopped path = k + Pois(BT - sum_s b_s*Delta_s).
+
+The Poisson parameter lies in [0,BT]. It follows that
+
+  N | A <=st k+Pois(BT),     E[N|A]<=k+BT.
+
+For J=k+j, the removed conditioned mass is <=P(Pois(BT)>j). Choose this last
+tail <=delta. The bridge conditioned additionally on N<=J has TV distance
+at most delta from Q0. Moreover its positive partial h_J obeys
+
+  h_J <= h <= h_J/(1-delta).
+
+This is a relative enclosure without knowing h beforehand. Conservative
+j=O(BT+log(1/delta)) suffices; dependence on log(1/h) is not necessary for
+this pure-birth absorbing structure. The recurrence costs O(kJ) arithmetic
+and storage. The discrete bridge is O(J), and ordered uniform epochs can be
+drawn in O(J) real arithmetic using normalized independent exponential
+spacings. The worker's actual implementation sorts its epochs and therefore
+uses O(J log J) time for that step.
+
+A finite J cannot be called exact: the conditional Poisson tail is positive.
+An exact adaptive/lazy construction has unbounded support and needs a separate
+expected random-bit/precision analysis. Ideal real arithmetic is a legitimate
+mathematical statement, but it is not a finite-bit implementation theorem.
+For rational b_s/B and BT, the finite categorical weights have a common
+exp(-BT) factor that cancels; exact rational categorical sampling is available,
+with the rational bitlength and random integer generation charged.
+
+4. Conditioned approximation and finite clocks
+---------------------------------------------
+Suppose a genuinely continuous/lazy bridge approximation Qhat0 has TV distance
+<=delta from Q0. Apply the same exact rejection kernel to both. Their joint
+proposal/acceptance laws have TV<=delta, and |ahat-a|<=delta. If delta<1/M,
+then ahat>0 and expected approximate-proposal repetitions are at most
+
+  M/(1-M*delta).
+
+The accepted output laws have TV<=delta/max(a,ahat)<=M*delta. One proof uses
+the Jordan positive/negative masses of the two success-restricted measures;
+each is <=delta, and renormalization divides by at least max(a,ahat).
+The estimate Mh*I has relative expectation error <=M*delta. If h is replaced
+by hhat with relative error <=rho, the total relative bias is at most
+
+  rho + (1+rho)*M*delta.
+
+Any further rejection-kernel approximation error can be added to delta if it
+is controlled in joint-law TV uniformly over the proposal path.
+
+Finite-grid times are singular relative to continuous times, so their full
+path TV is one. They require a functional coupling or a lazy real output. In
+the worker's constant-total-rate fixture the count-tail TV is valid, while the
+64-bit midpoint clocks are handled by a weight coupling. Sorting is a
+contraction in maximum coordinate error. Since labels are sampled independently
+of ordered times, no label-order mismatch is introduced by close epochs.
+
+For a fixed label order and matched count, if all k times move by <=epsilon,
+and extra total hazards are between 0 and D, the holding exponent changes by
+at most 2kD*epsilon and the likelihood by at most M*2kD*epsilon. This supplies
+a scalar expectation-bias budget, not a full continuous-path TV guarantee.
+
+5. A runtime counterexample for arbitrary supplied b_s
+-----------------------------------------------------
+For k=2, T=1, b_0=epsilon and b_1=1/epsilon, with epsilon->0,
+
+  h = P(Exp(epsilon)+Exp(1/epsilon)<=1) ~ epsilon,
+  B*T=1/epsilon ~ 1/h.
+
+The input rates have O(log(1/epsilon)) bitlength when epsilon=2^-m, but
+uniformization uses Theta(BT) augmented steps at the proposed cost scale.
+Thus the statement has no explicit rare-event rejection factor; it is NOT
+uniformly polynomial in input bitlength and log(1/h) over arbitrary rates.
+Stiffness can itself reproduce inverse-rarity cost. Constant b_s=n in the
+worker fixture avoids this obstruction. A claim about arbitrary b_s must
+retain the charged BT dependence or use a different stiff-aware bridge.
+
+6. Strong matched baseline: permutation conditional Monte Carlo
+--------------------------------------------------------------
+For any fixed label prefix pi, let x_s be its preceding sets, let
+A_s=sum_alive a_i(x_s), and let H(A_0,...,A_(k-1);T) be the probability that
+independent exponential holdings with these rates sum to at most T. With pi
+uniform among ordered distinct k-label prefixes, define
+
+  Z(pi) = product_s [(1+eta_pi_s(x_s))/(1+bar_eta(x_s))]
+          * H(A_0,...,A_(k-1);T).
+
+Then E Z=p. More specifically Z=E[hL|pi] under Q0, because the reference count
+bridge is independent of its uniform labels. Therefore
+
+  Var(Z) <= Var(hL),   0<=Z/h<=M.
+
+This is a genuine equally informed conditional Monte Carlo / permutation
+baseline whenever aggregate hazards are available at comparable cost. For
+dense pair residuals, the worker already computes aggregate hazards along each
+prefix; a positive k-state holding-time calculation is O(kJ_A). At k=Theta(n)
+and reference total rates Theta(n), this is O(n^2), the same arithmetic order
+as the worker's dense per-path likelihood calculation. Constants and precision
+still matter, and no measured superiority in either direction is established.
+For arbitrary local residual-query access, CMC must pay its aggregate queries;
+it must not be supplied an unearned aggregate oracle.
+
+The accessible count-reference Doob transform has rates
+b_s*h_(s+1)(T-t)/h_s(T-t), where h_s is its count continuation probability.
+Uniformization and this transform describe the same conditioned reference.
+The exact TARGET Doob transform requires h(x,T-t) for the interacting set
+model; granting that unavailable function to a baseline for free is unfair.
+Conversely, rebranding the count-reference Doob/conditioning construction as
+an unprovided primitive would understate existing methods.
+
+7. Worker code audit at the saved fixed fixture
+-----------------------------------------------
+Reviewed source: ../failure_capital_genesis/collective_bridge_certificate.py.
+Reviewed output: ../failure_capital_genesis/collective_n400_confirm5000.json.
+Model: a_i(x)=n/(n-|x|)*(1+beta*sum_failed wi[i,j]/(65521*n^2)), with exact
+modular integer wi, n=k=400, T=1/5, beta=2.
+
+The reference total count rate is n. Its event probability is a Poisson upper
+tail with mu=80. Relative excess-count weights
+mu^d*k!/(k+d)! permit an exact rational truncated categorical. The geometric
+tail bound used after D is valid because subsequent ratios decrease. The
+reported D=41, conditional tail <=4.851e-31, cap C<2.707008 and scalar numerical
+bias <2.329e-10 are consistent with the source.
+
+The update S+=column_sum_i-sum_prior_rows(wi[j,i])-sum_prior_cols(wi[i,j])
+is the correct update of sum_alive_i,sum_failed_j wi[i,j]. Int64 aggregate
+operations are guarded by n^2*65521<2^63. The holding exponent uses S before
+each event, and the denominator lcm(n-s) exactly represents n/(n-s).
+
+The confidence interval is a fixed-N empirical Bernstein statement under
+independent fair bits, widened by the finite arithmetic bias. A seeded Python
+PRNG is a reproducibility aid; it does not establish that premise. The code's
+512-bit fixed exponential scale is fixture-specific: exp(-nT) eventually has
+zero lower endpoint for increasing nT. This script is not a uniform family
+bit-complexity theorem. The ideal mathematical RSM bound applies to hL; the
+implemented rounded variable carries the separate certified bias contract.
+
+8. Supplied rates and the acquisition gate
+------------------------------------------
+Strong relative efficiency estimates a supplied nominal model. It does not
+acquire b_s or certify the residual bound on all physically reachable states.
+An arbitrary table of eta_i(x) has exponential input; a local oracle is an
+explicit access-model assumption. A dense pair model has n^2 supplied values.
+
+In the Poisson-tail reference h(mu)=P(Pois(mu)>=k),
+
+  d log h / d log mu = mu*P(Pois(mu)=k-1)/h(mu).
+
+For k much larger than mu this is approximately k-mu. A small common relative
+rate error can therefore produce O(k) times larger relative probability error.
+At k=400, mu=80, a one-percent relative probability target calls for common-rate
+calibration roughly at the few-times-10^-5 scale in the local sensitivity
+approximation, in addition to residual/model-discrepancy and channel coverage.
+This is a sensitivity observation, not a bound on an acquired material model.
+
+9. Primary prior-art anchors and status
+--------------------------------------
+Hobolth and Stone (2009), Simulation from endpoint-conditioned, continuous-time
+Markov chains on a finite state space, Sections 2.3 and 4, explicitly give the
+conditional Poisson count, conditional discrete bridge and uniform epoch
+algorithm, and discuss costs/instances where no one sampler dominates:
+https://arxiv.org/pdf/0910.1683
+
+Cancela, L'Ecuyer, Rubino and Tuffin (2010), Combination of Conditional Monte
+Carlo and Approximate Zero-Variance Importance Sampling for Network Reliability
+Estimation, gives the relevant conditioning/approximate-zero-variance tradition:
+https://www.informs-sim.org/wsc10papers/116.pdf
+
+Rao and Teh (2013), Fast MCMC Sampling for Markov Jump Processes and Extensions,
+uses uniformization and hidden-state forward/backward sampling for a broader
+posterior setting; it is an MCMC method, not an iid guarantee for this candidate:
+https://jmlr.org/papers/volume14/rao13a/rao13a.pdf
+
+The exact macroscopic residual scaling and local marked rejection theorem can
+be recorded as a proved restricted construction after correcting the access
+and finite-error statements. Its historical novelty and practical advantage
+remain UNKNOWN. No physical or mission-level achievement is established by
+this audit.

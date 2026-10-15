@@ -1,0 +1,81 @@
+# Original pulse acquisition and a conditional 92-cell transfer gate
+
+15 October 2026. Status: **original data acquired; conditional model transfer rejected; measured-current physical validation remains unperformed.** No new scientific capability, novelty, or incumbent superiority is claimed.
+
+The original [Zenodo 8369275](https://zenodo.org/records/8369275) measurement files are now available locally with verified upstream MD5 checksums. They reveal a useful conditional test that cannot be repaired by choosing a better positive relaxation spectrum: all 92 cells have a larger charge-pulse rise than discharge-pulse fall, whereas equal opposite pulses in the common stationary positive-RC model, initialized at zero relaxation, require the opposite ordering after accounting for the earlier pulse's memory. The mismatch survives the recorded switching brackets and the full observed pre-pulse baseline range.
+
+For cell 001 the resulting lower bound on the **voltage-increment prediction discrepancy** is 1.512182 mV at at least one endpoint. This is an analytic continuum implication for the stated contract, with exact rational evaluation of the acquired timestamps and voltages. It is not a physical noise confidence bound: the actual current waveform, absolute amplitude, and initial relaxation state are not in this public record.
+
+## Acquired inputs and the remaining interface
+
+| Original file | Bytes | Published MD5 verified |
+|---|---:|---|
+| impedance.mat | 121,318 | 73d6c64790063f076f24b47d4781a1c7 |
+| pocv.mat | 3,988,206 | 6193e6355e9d845f77b4decf691afa38 |
+| pulse.mat | 2,107,509 | 035611fc459b22e26daf64423145fe01 |
+
+The total acquired original measurement data is 6,217,033 bytes. `results/acquisition_audit.json` records SHA256 digests, original keys, and conditions; `sources/zenodo_record_8369275.json` preserves the retrieved primary metadata. The supplied cell-001 EIS CSV matches the original MAT row exactly, so the former transcription limitation is resolved for this input.
+
+The record supplies time/voltage pulse arrays of shape 2214×92, EIS arrays of shape 92×70, and 5000-point charge/discharge POCV curves. The pulse MAT contains exactly `neg_time`, `neg_voltage`, `pos_time`, and `pos_voltage`. There is **no current trace and no per-cell capacity/current calibration**. Rectangular exports have up to two zero-padding rows in some cells; these are removed explicitly before analyzing a trace. The correspondence of cell indices across the MATs is assumed from the shared dataset structure; independent cell identifiers were not provided.
+
+The primary metadata states 25 °C, 50% SOC, 250 mA EIS, and 0.5C ten-second pulses. EIS follows four hours of rest; pulse testing follows two hours, with charge preceding discharge and a relaxation period between them. These protocol settings do not certify identical initial relaxation or an acquired current waveform. The capacity used to set SOC is described, but its numerical values and the exact C-rate-to-ampere conversion are absent from the listed data files. The associated paper's abstract and record were read; its complete methods were not recovered, and no calibration is silently supplied from a nominal battery capacity.
+
+## Reconstructed timing and the OCV target
+
+Cell 001's positive switching brackets are [9.000700,9.127108] s and [19.030008,19.285088] s. Its negative brackets are [9.000900,9.127708] s and [19.028308,19.154816] s. These brackets come from voltage changes, not measured current. A waveform at t=0→10 s would be incorrect. The fitting code assumes a ten-second rectangle ending 0.001 s after the last repeated pulse-voltage sample; that assumption lies inside the recorded brackets for all 184 traces. The analytic gate uses the whole bracket intersection with the ten-second command rather than that point estimate.
+
+Cell 001's baseline-referenced endpoint charge rise is 101.566553 mV and discharge fall is 97.511530 mV, a 4.055023 mV difference. Across all 92 cells the difference is positive: minimum 3.971100, median 4.264832, maximum 4.606009 mV.
+
+The original Q_T is the total incremental response to forcing, including its capacitive term. Subtracting forced SOC/OCV motion from the measured pulse while leaving its corresponding κ/(iω) term inside the EIS model would double-correct the target. One may instead split an independently calibrated equilibrium OCV contribution from **both** domains; the required calibration was not acquired here. Under the additional assumption that the C-rate capacity equals the SOC-reference capacity, ten seconds at 0.5C changes SOC by 0.001388889. The supplied POCV branches then give a charge secant of 1.039–1.244 mV for cell 001. These are sensitivity values, not a certified OCV subtraction: the two POCV branches at half SOC differ by 65.85 mV and were measured under C/20 current.
+
+## The paired-pulse continuum gate
+
+For the supplied positive-RC-plus-capacitor class, excluding switching impulses,
+
+Q(t)=R∞+κt+∫(1−exp(−t/τ))dμ(τ), with R∞,κ,μ≥0.
+
+Q is nonnegative, increasing, and concave for t>0. Therefore
+
+Q(t₊) ≤ max(1,t₊/t₋) Q(t₋).
+
+After a positive ten-second pulse, its relaxation contribution is a positive sum of decaying exponentials plus a constant capacitive shift. During the later negative pulse that earlier memory decreases. Its decay **adds** to the observed discharge fall when the latter is referenced to a pre-discharge baseline. Consequently, for equal positive and negative current magnitudes, zero initial relaxation before the first pulse, and one common stationary response,
+
+charge rise ≤ max(1,t₊/t₋) × discharge fall.
+
+The current amplitude cancels. The entire relaxation continuum is covered; no time-constant grid or finite slow-mode cutoff enters this argument. The exact time ratio allowed by cell 001's sample brackets is 1.009869385. Choosing the charge baseline to minimize its rise and the discharge baseline to maximize its fall still leaves a 3.039289 mV violation. If each modeled endpoint **increment** differs from the measured increment by at most e, this requires e≥3.039289/(1+1.009869385)=1.512182 mV.
+
+All 92 cells fail this conditional gate. Their per-endpoint increment-discrepancy floors are minimum/median/maximum 1.077329/1.622747/2.027710 mV. Exact rational values and every per-cell bracket are saved in `results/paired_gate.json`; `results/paired_endpoints_all_92.csv` is a flat readable table.
+
+The contract is consequential. Two hours of rest does not establish zero initial relaxation when arbitrarily slow modes are allowed. Unknown initial-mode amplitudes, unequal actual currents, finite ramps, state-dependent response, hysteresis, and material/temperature differences can invalidate the gate's premises. The test does not select a cause among them and does not diagnose the cell as non-passive. It decisively prevents using the narrower EIS-only mathematics as an established finite-amplitude voltage guarantee without those interfaces.
+
+The original full-band ordering rejection also survives independent acquisition. For cell 001, Re Z(10000 Hz)=38.03 mΩ exceeds Re Z(5484 Hz)=37.00 mΩ, forcing a uniform real-component error of at least 0.515 mΩ for every positive-RC model. All 92 spectra have a positive ordering violation. Exact rational receipts are in `results/fullband_ordering.json`. The restricted 58-frequency 0.1 mΩ experiment remains a modeling choice, not a certificate for the full 70-frequency physical response.
+
+## Matched joint-domain and actual incumbent calculations
+
+`code/joint_lp.py` uses the original compactified positive-RC representation, both endpoints, unrestricted series-inductance coefficient, EIS components within 0.1 mΩ, and selected pulse samples. It fits a common unknown inverse current amplitude ρ=1/I. For a fixed voltage budget e, the constraints |B x−ρΔV|≤ρe are linear. The known preceding positive-pulse memory is included in discharge predictions. Pulse samples during the pulse and log-spaced relaxation samples more than 0.3 s after switching are used; transition samples are not represented as acquired ideal-current observations.
+
+At 1202 compact nodes, the exploratory minimum pulse budget is 0.446949 mV for charge alone, 2.303786 mV for discharge with known charge memory, and 2.509406 mV for both. The both-pulse result changes by only 0.000087 mV from 502 nodes. These finite-grid optima are not continuum infeasibility certificates. The independent paired gate supplies the continuum rejection. No pulse budget is a calibrated upper bound on physical discrepancy.
+
+The [original hybrid-drt](https://github.com/jdhuang-csm/hybrid-drt/tree/e01dba1bf5f02fa6b63c82169c0652a5a695344d) was acquired and **executed**, rather than represented by NNLS. Source pin: e01dba1bf5f02fa6b63c82169c0652a5a695344d. Its required [Mittag-Leffler dependency](https://github.com/jdhuang-csm/mittag-leffler/tree/6e875fa3e124d25420fd791e4e742d67599d94a7) was acquired at 6e875fa3e124d25420fd791e4e742d67599d94a7. No upstream source changes were made.
+
+The runs use 121 Gaussian basis functions over 12 decades, an explicit capacitor and inductance, nonnegative hierarchical fitting, and the restricted EIS frequencies. The positive-training LP supplies an inferred amplitude of 1.619796 A. The negative pulse's voltage samples are held out of fitting, but are used to establish its baseline and switching bracket alignment; this is not a blinded prospective prediction or measured-current validation.
+
+| Executed upstream fit | Charge fit max error with fitted baseline, mV | Held-out discharge max error, mV | EIS max component error, mΩ |
+|---|---:|---:|---:|
+| EIS-only | 5.3915 | 4.9130 | 0.3084 |
+| Charge + EIS, constant baseline/no cross-domain offset | 0.7279 | 3.9277 | 0.1739 |
+| Charge + EIS, linear baseline/upstream cross-domain offset | 0.4983 | 3.9964 | 0.1678 |
+
+The flexible fit converged in 80 iterations. Extrapolating its fitted linear baseline into the negative trace gives 4.0155 mV maximum held-out error. These are hierarchical probabilistic fits; their EIS residuals exceed the deterministic 0.1 mΩ box. They are not certified feasible same-box countermodels, and the comparison establishes no solver superiority. Allowing signed spectra, nonlinear material models, or independently measured initial-state modes would enlarge the model and require a new physical contract. The conditional gate applies to every method within its stated common-state positive-RC class.
+
+A wrapper failure is preserved: asking the upstream predictor for a window with no pre-first-step sample causes its ohmic-current centering to average an empty set and return NaNs. The wrapper now prepends a zero-current prehistory sample, discards its prediction, and explicitly aligns the supplied step times for the cross-domain offset. The source implementation is unchanged. `results/hybrid_baseline_failed_single_sample.json` records the discarded run; final prediction arrays are finite.
+
+Joint target sensitivity queries also confront the EIS-only long-horizon obstruction. With a **chosen**, unvalidated 2.6 mV discrepancy budget on both pulse traces, two positive finite-grid witnesses give Q_1000=124.32 and 360.32 mΩ, opposite sides of 200 mΩ. At 3 mV the witnessed values are 109.42 and 430.62 mΩ. These are inner numerical feasible witnesses, not continuum outer intervals. Charge-only fitting at 0.5 mV instead yields grid extrema 243.28–299.85 mΩ, illustrating how a reassuring single-direction fit can lead to a different apparent decision. The opposing-pulse discrepancy and missing calibration have to be resolved before either result is operational.
+
+## Receipt, costs, and decision
+
+The conditional joint LP replay recorded about 99.1 seconds for six 24-step feasibility bisections, excluding upstream acquisition and package setup. A target-query replay recorded its own time in `results/joint_target_queries.json`. Baseline fit-core times exclude imports, lookup construction, acquisition, and installation; no end-to-end speed or memory advantage is claimed. The acquired scientific data plus upstream source archives remain under 40 MB; dependency download traffic was not measured as a unified acquisition cost. No instrument acquisition, rest, reset, calibration, or hardware test was performed.
+
+`results/check_results.json` passes raw checksum verification, all 184 switching-contract checks, stable pulse-kernel versus independent step-superposition checks, positive LP-mass/residual checks, finite upstream predictions, and the 92 exact paired-gate evaluations. This receipt establishes computational integrity within the stated premises, not physical validation.
+
+The retained new operation is a cheap, amplitude-independent **paired-pulse transfer gate** with a continuum proof and a real 92-cell evaluation. It is decision-relevant because it rejects promoting the narrow EIS certificate before more spectrum reconstruction or solver tuning. Its historical novelty is unestablished. The missing capability remains calibrated matched current/time/voltage acquisition plus initial-state/unforced-trajectory control and an independently supported discrepancy budget. The correct disposition is **retain the gate and acquired data; do not promote a physically validated response operation or a foundational breakthrough.**

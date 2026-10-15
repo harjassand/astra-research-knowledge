@@ -1,0 +1,59 @@
+# Exact root-artifact analytic review
+
+Date: 2026-10-15. Same-team auditor: nonlinear_flow_audit.
+No external correctness or historical-priority review is claimed.
+
+## Nonlinear tangent obstruction
+
+Reviewed root/NONLINEAR_TANGENT_OBSTRUCTION.md initially at SHA-256
+`155e54f5cbf0d911f08a27d9a305c31aa7fe64a7d36bad0f823a3cd8603e5d0b`.
+The tangent theorem and its coefficientwise Peano scaling were correct.
+The one substantive wording repair was to specify a homogeneous quartic
+polynomial when invoking the polynomial constant-density classification.
+The tangent limit alone would also work for C2 homogeneous degree-four
+functions, but the polynomial conversion claim needed that restriction.
+The root also clarified that N is a quadratic polynomial in the Hessian.
+
+Re-read the corrected artifact at SHA-256
+`45c1dcc0a5fac8954848cfdad4efa83dccd587700be89fcd2f20faae216b2ba6`.
+It incorporated both wording repairs and the explicit d eta_C bridge from
+this auditor. The full proof, including the coefficientwise second-order
+Peano expansion, was sound under its hypotheses. A Peano little-o remainder
+is uniform after scaling A=tA0 over bounded A0, so passage through the null
+integral is valid without assuming C2 regularity away from zero.
+
+The final notation improvement was incorporated and checked: on the whole
+space with nonzero affine background, the root now uses relative energy
+integral [F(B+Dphi)-F(B)] and its first variation, since the unrenormalized
+energy integral can be infinite. This does not change the derivative proof.
+The complete corrected artifact's SHA-256 is
+`4e1921182fe58e297dd143e75619254e584773d913bd4a26f4e807daa9c91fc8`.
+No required scientific or wording correction remains for that version.
+
+The root correctly leaves lower-order terms outside its stated operation.
+This auditor's independent AUDIT.md Section 6 gives a further optional
+principal-density extension to lower-order terms, with its additional
+all-Hessian-jet positivity assumption made explicit.
+
+## Cross-role conditional sampler check
+
+Reviewed root/MARKED_CONDITIONAL_SAMPLER.md initially at SHA-256
+`0c95b5d0e953966b6a081fb5b71e2604367b8de5fd7c37a92b95c637d214d7b1`.
+The likelihood cap, pathwise event dominance, marked Poisson thinning,
+conditional rejection law, query bound, and second-moment comparison were
+correct. Independence of successive trials justifies the expected total
+query bound even though a trial's query cost may correlate with acceptance.
+
+Two precision clarifications were sent and incorporated. Conditioning on
+an auxiliary cutoff gives the augmented target law conditioned on that
+cutoff; projection cannot increase total variation. A stopped uniformization
+has virtual mean sum_s(B-b_s)Delta_s, whereas a uniformization continued
+through T additionally has independent mean B(T-tau_k). Both are bounded by
+BT, so k+Poisson(BT) remains a valid stochastic count bound.
+
+Re-read the updated precision section at SHA-256
+`cb39423ffcd1b9557f753ca89e8830c5ffbf1a8ed1d0ca21ecf481a69b420168`.
+The changes were correct. No substantive sampler counterexample was found.
+This was an analytic cross-check; no finite-bit bridge implementation was
+executed, and this audit establishes neither implementation accuracy nor
+practical advantage over equally informed alternatives.
