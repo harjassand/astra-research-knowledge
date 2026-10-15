@@ -1,0 +1,224 @@
+# Independent audit of the determinant-support multiplier obstruction
+
+Date: 2026-10-15. Status: **internal analytic reconstruction and exact algebra pass**. This is not external validation or a historical-priority claim. The earlier `smooth_null_classification` proof files are preserved.
+
+## 1. Result and exact scope
+
+For the quartic
+
+\[
+ F=u^2+v^2+\frac{166}{3}uv-\frac{460}{9}w^2
+       -\frac{52}{9}q(u-v),
+\]
+
+where `A=(a,b,c,d)` is row-major and
+
+\[
+ u=a^2+c^2,\quad v=b^2+d^2,\quad w=ab+cd,\quad q=ad-bc,
+\]
+
+there is no supporting determinant multiplier `λ(A)` admitting a second-order Peano coefficient expansion at `A=0` and satisfying
+
+\[
+ F(A+H)-F(A)-DF(A):H-\lambda(A)\det H\ge0
+ \quad\text{for every }A,H\in\mathbb R^{2\times2}.
+ \tag{1}
+\]
+
+Consequently there is no C² selection at zero, no polynomial selection of any degree, no convex polynomial lift `G(A,s)` with `G(A,det A)=F(A)`, and neither of the two SOS-polyconvex certificates defined in the source identified in Section 7.
+
+**Ordinary polyconvexity and quasiconvexity remain UNKNOWN.** No theorem converting arbitrary polyconvexity of this quartic into a second-order Peano multiplier selection was proved or located in this audit. The two matrix perturbation tests below are not a compatible gradient law and do not establish failure of quasiconvexity.
+
+## 2. Scaling and the exact regularity requirement
+
+The support inequality at `H=εK`, divided by `ε²` and passed to the limit, gives
+
+\[
+ \tfrac12D^2F(A)[K,K]-\lambda(A)\det K\ge0.
+ \tag{2}
+\]
+
+Take `K=I` and `K=diag(1,-1)`. Their determinants have opposite signs, so
+
+\[
+ -\tfrac12D^2F(A)[\operatorname{diag}(1,-1),\operatorname{diag}(1,-1)]
+ \le\lambda(A)\le\tfrac12D^2F(A)[I,I].
+ \tag{3}
+\]
+
+Both bounds are homogeneous quadratic polynomials in `A`. Thus every support selection, regardless of its regularity, satisfies `|λ(A)|≤C|A|²`. In particular its value and any first-order Peano jet at zero vanish.
+
+Suppose now
+
+\[
+ \lambda(A)=\lambda_0+\ell(A)+\lambda_2(A)+o(|A|^2)
+\]
+
+with `λ₂` a homogeneous quadratic polynomial. The bound forces `λ₀=ℓ=0`. Substitute `A=tA₀,H=tH₀` in (1). Quartic homogeneity gives
+
+\[
+ t^4\{F(A_0+H_0)-F(A_0)-DF(A_0):H_0\}
+ -t^2\lambda(tA_0)\det H_0\ge0.
+\]
+
+Dividing by `t⁴` and passing to zero proves (1) globally with `λ₂`. This is the complete scaling argument; it does not assume that the original selection is homogeneous. C² on a neighborhood is more than needed: the second-order Peano expansion at the single origin suffices.
+
+There is also a direct argument for polynomial selections. The global bound (3) forces any polynomial selection to have degree at most two; the bound at zero eliminates its constant and linear terms. Therefore no increase in polynomial degree can evade the obstruction.
+
+## 3. Averaging and contact criticality
+
+The quartic is invariant under left target rotations and under swapping its two input columns. Target rotations preserve determinant; a column swap reverses determinant. Therefore a feasible quadratic selection can first be averaged over target rotations and then replaced by half its difference under the column swap. Both operations preserve (1).
+
+The rotation-invariant quadratic polynomials are spanned by `u,v,w,q`. Swap antisymmetry leaves precisely
+
+\[
+ \lambda_2=\alpha q+\beta r,\qquad r=u-v.
+ \tag{4}
+\]
+
+The independent exact script verifies this by imposing the infinitesimal rotation equation and swap equation on all ten quadratic coefficients; their joint rank is eight.
+
+Use the contact polynomial and background
+
+\[
+ P(k)=17k^4-314k^2+17,
+\]
+
+\[
+ A(k)=(203-17k^2,\ k(85k^2-1551),\ 2k(944-51k^2),\ 134),
+ \qquad R(k)=(1,k,0,0).
+\]
+
+For every real root of `P`, exact polynomial reduction verifies
+
+\[
+ D^2F(A(k))[R(k),R(k)]=0,\quad\det R(k)=0,
+\]
+
+\[
+ q(A(k))=185744-11024k^2\ne0,
+ \qquad r(A(k))=\frac6{13}q(A(k)),
+\]
+
+and the full matrix-vector identity
+
+\[
+ D^2F(A(k))R(k)=\frac{3968}{39}q(A(k))\,\operatorname{cof}R(k).
+ \tag{5}
+\]
+
+Here vectors are row-major and `cof R=(0,0,-k,1)`. The support Hessian from (2) is positive semidefinite and vanishes on `R`; hence it annihilates `R`. Using (4)–(5) gives
+
+\[
+ \boxed{\alpha+\frac6{13}\beta=\frac{3968}{39}.}
+ \tag{6}
+\]
+
+The script verifies that `P` has four real roots and that `gcd(P,q(A(k)))=1`; no approximate root substitution or division by an unchecked zero is used.
+
+## 4. The two cuts are valid necessary support inequalities
+
+For any fixed matrices `A,V`, exact quartic expansion gives
+
+\[
+ F(A+tV)-F(A)-tDF(A):V-\lambda(A)t^2q(V)
+ =t^2\left[F(V)t^2+(DF(V):A)t
+ +\tfrac12D^2F(A)[V,V]-\lambda(A)q(V)\right].
+\]
+
+If `F(V)>0`, nonnegativity for all real `t` requires the quadratic discriminant condition
+
+\[
+ 2F(V)D^2F(A)[V,V]-(DF(V):A)^2
+ -4\lambda(A)F(V)q(V)\ge0.
+ \tag{7}
+\]
+
+Substitute (4) and eliminate `α` by (6). At
+
+\[
+ A=(-6,-3,-1,6),\quad V=(1,-2,0,1),
+\]
+
+the left side of (7) is
+
+\[
+ U(\beta)=-\frac{14560}{3}\beta-\frac{1142144}{27},
+ \qquad F(V)=\frac{364}{3}>0.
+\]
+
+Thus `β≤-35692/4095`. At
+
+\[
+ A=(2,0,0,1),\quad V=(3,0,0,-2),
+\]
+
+it is
+
+\[
+ L(\beta)=\frac{1465992}{13}\beta+\frac{957266072}{1053},
+ \qquad F(V)=\frac{6787}{3}>0.
+\]
+
+Thus `β≥-119658259/14843169`. The lower bound exceeds the upper bound by
+
+\[
+ \frac{4420201927}{6753641895}>0.
+\]
+
+A single exact positive-combination certificate is
+
+\[
+ \boxed{549747\,U(\beta)+23660\,L(\beta)
+       =-\frac{141446461664}{81}<0.}
+\]
+
+This contradicts `U,L≥0` and excludes every quadratic polynomial support selection. Sections 2–3 then exclude every selection with a second-order Peano jet.
+
+## 5. Precisely what follows for polyconvex certificates
+
+If a convex polynomial `G(A,s)` represented `F(A)=G(A,q(A))`, convexity of `G` would give a support inequality with the polynomial selection
+
+\[
+ \lambda(A)=\partial_sG(A,q(A)).
+\]
+
+The chain rule supplies the matrix support slope `DF(A)-λ(A)cof A`, and the exact determinant identity
+
+\[
+ q(A+H)-q(A)-\operatorname{cof}A:H=q(H)
+\]
+
+reduces its support inequality to (1). This is impossible. The same reasoning excludes any convex lift whose determinant derivative composed with the minor graph has a second-order Peano expansion, including a C³ convex lift near the lifted origin that supports all graph points.
+
+For SOS polyconvexity in the first-order sense, let the polynomial support map on the five minors be `(P(A),λ(A))`. A nonnegative support residual vanishes at `H=0`; its derivative there must vanish. Hence necessarily
+
+\[
+ P(A)=DF(A)-\lambda(A)\operatorname{cof}A.
+\]
+
+Its residual is exactly (1), with polynomial `λ`. Thus the exclusion is stronger than any fixed-degree SOS infeasibility: it rules out all polynomial support maps whose residual is globally nonnegative, with SOS as a subclass. Lifted SOS polyconvexity is excluded because its lift is a convex polynomial.
+
+Avoid the phrase “F is not a polyconvex polynomial.” It would assert ordinary non-polyconvexity of this polynomial. The established conclusion is “F has no convex polynomial lift” and “F is not SOS polyconvex under the cited definitions.”
+
+## 6. Why ordinary polyconvexity is still unresolved
+
+For finite smooth `F` on two-by-two matrices, ordinary polyconvexity is equivalent to the existence of some scalar support selection satisfying (1), with no regularity assumption on that selection.
+
+To see the forward implication directly, let `G` be a convex representation on lifted `(A,s)` space. It is finite everywhere: every `(A,s)` is the midpoint of two minor-graph points `(A±H,q(A±H))`, choosing `q(H)=s-q(A)`. Thus a convex subgradient exists at every graph point. Differentiating the graph restriction in both signs identifies its matrix component as `DF(A)-λcof A` and yields (1). Conversely, the supremum of the affine lifted supports in (1) is a convex representation agreeing with `F` on the minor graph.
+
+Let `K(A)` be the set of all allowed scalar values at `A`. Under the unresolved hypothesis that `F` is polyconvex, it is a nonempty compact interval, bounded by (3), and
+
+\[
+ K(tA)=t^2K(A),\quad K(RA)=K(A),\quad K(AS)=-K(A),
+\]
+
+for nonzero real `t`, target rotations `R`, and the column swap `S`. Its midpoint would therefore give an even, degree-two homogeneous, equivariant support selection. It would be `O(|A|²)` and consequently differentiable at zero with derivative zero. That does not supply a quadratic polynomial second-order expansion: a homogeneous selection can have nonpolynomial angular dependence.
+
+This audit supplies neither a theorem forcing that missing expansion nor a polyconvex counterexample specifically showing its failure in the homogeneous two-by-two quartic class. Accordingly it does not turn the proved polynomial-support exclusion into an ordinary non-polyconvexity proof.
+
+## 7. Primary comparison and checks
+
+Fantuzzi, Henrion, Kružík, Murali, and Weis, *Polyconvexity with Moments and Sums of Squares*, arXiv:2604.11124v1: Proposition 2.3 gives the unrestricted first-order support characterization. Definitions 2.4–2.5 impose polynomial lifts or polynomial SOS support maps; these are the classes excluded here. Remark 2.1 leaves the polyconvexity/SOS-polyconvexity gap open for two-by-two quartics. Proposition 2.4 separately illustrates that ordinary polyconvexity need not imply a convex polynomial lift. None of those statements supplies the missing second-order multiplier-selection theorem. [Primary full text](https://arxiv.org/html/2604.11124v1).
+
+Run `python3 check_pc_multiplier.py`. The standalone script reconstructs the quartic, symmetries, averaged coefficient dimension, contact identities, line expansion, two rational cuts, strict gap, positive-combination contradiction, and quadratic size bounds. It imports no author proof script and uses no floating point arithmetic or optimization result. `EXACT_AUDIT.json` records the exact values. `RECEIPT.json` records source and output hashes and verifies preservation of the earlier worker outputs. These checks corroborate the analytic argument; they are not external validation.

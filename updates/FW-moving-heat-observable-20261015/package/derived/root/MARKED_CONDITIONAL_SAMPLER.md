@@ -1,0 +1,125 @@
+# Conditional rare-event sampling with local rate queries
+
+Root construction, 15 October 2026, pin33c1ff7ebd9411e9b8b4b0f951f62e36e631cb5d.
+Status: mathematical construction; separate same-team adversarial audit is
+underway. Historical novelty and practical advantage over the strongest
+equally informed rare-event methods UNKNOWN.
+
+## Supplied information and task
+
+Consider an irreversible set-valued failure CTMC on subsets x of n labelled
+components. Stop on the kth failure, 1<=k<=n; let E={tau_k<=T}. Its rates are
+
+    a_i(x) = b_s/(n-s) * (1+eta_i(x)), s=|x|, i notin x,
+    b_s>0, 0<=eta_i(x)<=beta/n, beta>=0.
+
+The b_s and eta rate oracle are supplied. A rate query has its actual
+implementation cost; arbitrary eta tables can have exponential encoding.
+No physical acquisition of these rates is implied. Let P0 be the reference
+process with eta=0, h=P0(E)>0, and B=max_{s<k} b_s. Its failure order is a
+uniform random permutation and its interarrival times are independent
+Exp(b_s). Assume an exact draw from Q0=P0(.|E) is available for the existence
+statement. A finite-error implementation must separately certify this draw.
+
+The task is to draw from the full target conditional path law Q=P(.|E),
+including failure labels and times, and optionally estimate p=P(E).
+
+## Likelihood cap and event dominance
+
+For a stopped reference path (x_s,i_s,Delta_s), s=0,...,k-1, write
+
+    DeltaA_s = b_s/(n-s) sum_{i alive} eta_i(x_s),
+    L = product_s(1+eta_{i_s}(x_s))
+          * exp(-sum_s DeltaA_s Delta_s),
+    M=(1+beta/n)^k <= exp(beta).
+
+Then 0<L<=M and dP/dP0=L on stopped paths. Also p>=h: couple each target
+holding time E_s/A(x_s) with the reference E_s/b_s using fresh independent
+unit exponentials E_s. Since A(x_s)>=b_s at each count s, the target kth
+arrival is no later. The reference E_s remain independent despite the
+target labels. This does not require b_s to increase with s.
+
+Consequently, under Q0, E[L]=p/h and
+
+    a := E_Q0[L/M]=p/(M h) >= 1/M.
+
+## An exact acceptance test without aggregate-rate evaluation
+
+Given a Q0 path, independently do the following.
+
+1. At each jump query eta_{i_s}(x_s), accepting that factor with probability
+   (1+eta_{i_s}(x_s))/(1+beta/n).
+2. During each holding interval, draw N_s~Poisson((beta/n)b_s Delta_s).
+   At each mark choose a uniformly random alive label i, query eta_i(x_s),
+   and kill the proposal with probability n eta_i(x_s)/beta.
+3. Accept only if every jump factor passes and no mark kills it. Repeat
+   with a fresh Q0 path upon rejection. For beta=0, accept directly.
+
+Poisson thinning gives conditional no-kill probability
+
+    exp[-(beta/n)b_s Delta_s * mean_alive(n eta_i/beta)]
+      = exp(-DeltaA_s Delta_s).
+
+Thus the total conditional acceptance probability is exactly L/M. The
+accepted path density is Q0(dpath)L/(M a)=P(dpath|E). It is an exact
+conditional sampler in the exact-real/reference-sampler model. It is not
+a finite-bit exact sampler merely because these probability laws exist.
+
+The acceptance probability is at least exp(-beta); expected proposal count
+is at most M. Per proposal there are at most k jump queries and expected
+at most beta BT/n mark queries, since sum Delta_s<=T. Early rejection can
+only reduce this cost. Excluding bridge acquisition/preparation, the expected
+number of local rate queries per accepted sample is bounded by
+
+    M (k+beta BT/n).
+
+This query bound does not require the aggregate sum over all alive labels.
+If an eta query itself sums s dense pair interactions, its arithmetic cost
+is O(s); charging that yields up to O(k²) jump arithmetic, rather than
+pretending the local oracle is free. Random-label access and exact Poisson,
+Bernoulli, bridge and exponential primitives have separate costs.
+
+## Probability estimation and equally informed comparison
+
+For one proposal and its acceptance indicator Y, MhY is unbiased for p and
+has relative second moment M h/p<=M. Averaging independent indicators gives
+relative variance at most (M-1)/N (or the looser M/N), independent of rarity
+when beta is bounded. This assumes h is known exactly; relative error in h
+must be propagated when it is computed.
+
+An equally informed method that computes L exactly and uses hL instead has
+the same upper second-moment bound and never more variance: Bernoulliizing
+is an extra randomization. The possible advantage of marks is avoiding
+aggregate-rate evaluation, not a new statistical dominance principle.
+If dense aggregates are already cheaply maintained, direct weighting may
+be preferable. Classical Doob bridges, Feynman–Kac killing, rejection
+sampling and Poisson estimators are antecedents; no historical originality
+is asserted for those ingredients or their use in this construction.
+
+## Precision and exactness boundaries
+
+A fixed finite uniformization cutoff is not the exact Q0 sampler. If a
+reference implementation samples Q0 conditioned on a retained auxiliary
+event of probability at least 1-delta under Q0, then marked rejection gives
+the augmented target law conditioned on that event. Its omitted target mass is at most M delta,
+because dQ/dQ0=L/(p/h)<=M. The resulting total-variation error is at most
+M delta, and projection to real paths cannot increase this bound. An arbitrary TV
+approximation requires its own kernel/acceptance perturbation calculation.
+
+For a count pure-birth uniformization at B, after conditioning on the real
+stopped reference path, the number of virtual events before tau_k is Poisson with mean
+sum_s(B-b_s)Delta_s<=BT. For an implementation uniformized through T,
+add the independent virtual count with mean B(T-tau_k); the total mean
+is still at most BT. Hence the augmented event count is stochastically
+bounded by k+Poisson(BT), even after conditioning on E. A relative tail
+cutoff can therefore be controlled without paying 1/h or log(1/h): choose
+J>=k with P(Poisson(BT)>J-k)<=delta. Preparation still pays the count-DP
+and numerical-precision costs. This observation is subject to the separate
+bridge auditor's check and must be implemented rather than inferred from
+an optimizer flag.
+
+If eta can be negative, if beta grows, if rate uncertainty invalidates the
+nonnegative envelope, or if the physical task requires unacquired rates,
+the stated guarantees do not transfer. This is a restricted supplied-model
+operation, not a universal solution of interacting reliability or acquired
+physical failure prediction.

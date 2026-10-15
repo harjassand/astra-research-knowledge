@@ -1,0 +1,213 @@
+# A collective reference for complete irreversible failure
+
+15 October 2026. New task-specific composition and replay; historical priority and external correctness review are not established. The general change-of-measure, bridge, and Poisson rejection machinery is classical. This result is for a supplied stochastic model, not acquired material dynamics.
+
+## Outcome
+
+The strongest survivor is a restricted complete-failure operation. Absorb a known count-dependent common acceleration into a tractable reference, rather than charging that acceleration to a product of likelihood defects. If the remaining per-component relative defect is nonnegative and at most O(1/n), the full n-failure likelihood has a constant cap. This gives both a rare-probability estimator and, using the root's Poisson rejection transfer, a conditional rare-failure path sampler with a constant expected number of reference proposals.
+
+The delivered numerical certificate uses all 400 failures, a nonexchangeable dense residual matrix, and no interacting-state enumeration. Its fixed 5,000-sample conditional 95% interval is
+
+    [8.99838076992853449e-143, 9.06776307414514006e-143].
+
+Halfwidth divided by the lower endpoint is below 0.003856. Exact rational endpoints, sufficient integer statistics, and numerical bias appear in `collective_n400_confirm5000.json`.
+
+This is NOT the supplied rho=2/distinct-baseline-rate complete-failure fixture, and NOT the supplied thermal-avalanche target. It is a newly declared model family addressing a narrower gate left open in the interacting source.
+
+## 1. General model and ideal theorem
+
+Let x be the set of failed components, s=|x|<k<=n, and i not in x. Supply positive reference total birth rates b_s and nonnegative local rate defects satisfying
+
+    a_i(x) = b_s/(n-s) [1+eta_i(x)],
+    0 <= eta_i(x) <= c_s.
+
+Every transition fails one component irreversibly; stop at the kth failure. There are no recovery events, mechanical multi-component jumps, or hidden channels. Let A={tau_k<=T}, p=P(A). The reference P0 has component rates b_s/(n-s), so its count is a k-phase pure-birth chain and its event labels form a uniform random permutation independent of count waiting times. Put h=P0(A)>0, Q=P0(.|A), and C=product_(s<k)(1+c_s).
+
+For a stopped successful reference path with event labels i_(s+1), pre-event states x_s and holding times Delta_s, define
+
+    dA_s = b_s/(n-s) sum_(i notin x_s) eta_i(x_s),
+    L = product_(s<k) [1+eta_i_(s+1)(x_s)]
+        exp[-sum_(s<k) dA_s Delta_s].
+
+Then
+
+    p = h E_Q L,      0<L<=C,      h<=p<=min(1,Ch),
+    E_Q[(hL)^2]/p^2 <= C.
+
+Proof. Competing exponential-clock path densities give exactly the displayed jump factors AND holding exponent. There is no factor after the kth failure, since both measures stop there. Nonnegative defects make the exponent nonpositive and give the cap. Conditional on any current state of size s, target total rate is at least b_s. Couple successive true holding times to E_s/A(x_s) and reference times to E_s/b_s using independent Exp(1) variables E_s. The true waiting sum is no larger, irrespective of the event-label history, so p>=h. Write mu=E_Q L=p/h>=1. Since L²<=CL, E_Q L²/mu²<=C/mu<=C. This argument needs no monotonicity of b_s and no state-space solve for the target.
+
+If c_s<=beta/n, C<=(1+beta/n)^k<=e^beta for every k<=n. Thus relative sampling variance is uniformly bounded even at complete failure. If eta_i=sum_failed w_ij and 0<=w_ij<=beta/n², take c_s=beta*s/n²; then C<=exp[beta*k*(k-1)/(2n²)]<=e^(beta/2).
+
+The useful structural premise is a small residual relative to a known collective reference. Arbitrary heterogeneous baseline rates or arbitrary O(1/n) residual pair couplings do not satisfy it. An O(1) defect on each of n jumps generally produces an exponential cap. This is not a method for learning a good reference from unobserved dynamics.
+
+## 2. Reference acquisition and its finite-tail distinction
+
+For general b_s, uniformize the reference count chain with B>=max_s b_s. Let P have forward probability b_s/B and self probability 1-b_s/B before absorption, with absorbing self probability one at k. If a_j=(P^j)_(0,k), then
+
+    h=e^(-BT) sum_(j>=k) (BT)^j a_j/j!.
+
+The positive recurrence acquires a_j for j<=J in O(kJ) arithmetic. Given the uniformization count j and absorption at step j, backward discrete conditional probabilities sample the skeleton. Ordered independent Uniform(0,T) event times are independent of that skeleton. Remove self loops and retain uniform distinct failure labels to obtain the reference bridge.
+
+A fixed finite J does NOT give an exact bridge. With generic Poisson bounds it suffices to bound the omitted mass relative to h. A sharper observation supplied by the independent bridge auditor avoids an h factor: conditional on a stopped real reference path, the number of virtual events through T is Poisson with mean
+
+    BT - sum_(s<k) b_s Delta_s <= BT.
+
+There are exactly k real transitions. Consequently
+
+    N | A <=st k + Poisson(BT).
+
+Truncating N at k plus a Poisson upper quantile therefore gives conditional TV at most delta, with no 1/h cost. This statement includes virtual absorbing-state events after tau_k. It concerns arithmetic work with BT explicitly charged, not polynomial work in the binary encoding of an arbitrarily large BT. Finite precision and exact discrete comparisons still need budgeting. The general exact-tail fallback is not implemented here.
+
+The delivered fixture uses b_s=n. Its bridge is simpler: N~Poisson(mu=nT) conditioned on N>=k; sample N uniform event times and stop at the kth. For d=N-k, conditional unnormalized weights are the exact rational values
+
+    t_d=mu^d k!/(k+d)!.
+
+The leading tiny factor e^-mu mu^k/k! cancels from the conditional count law. For a truncation through d=D with mu<k+D+2,
+
+    sum_(d>D) t_d <= t_(D+1)/(1-mu/(k+D+2)).
+
+The code normalizes t_0,...,t_D exactly, samples this rational categorical law with integer rejection, and explicitly charges the tail divided by the retained sum. For n=k=400,T=1/5, D=41 gives conditional TV at most 4.851e-31. No call waits for a Poisson(80) draw to exceed 399.
+
+## 3. Root's local-query conditional-path rejection operation
+
+For an ideal Q path, independently accept its kth jump skeleton with probability
+
+    product_s [1+eta_i_(s+1)(x_s)]/(1+c_s).
+
+For each interval, draw a Poisson number of marks of mean b_s c_s Delta_s. At each mark choose an intact component uniformly; reject with probability eta_i(x_s)/c_s. Ignore c_s=0 intervals. The probability of no rejecting mark on interval s is
+
+    exp[-b_s c_s Delta_s * (sum_alive eta_i)/((n-s)c_s)]
+      = exp[-dA_s Delta_s].
+
+Therefore total acceptance given the proposed path is L/C. Its unconditional acceptance is p/(Ch)>=1/C. The accepted path law is exactly P(.|A), and the expected number of ideal reference proposals is at most C. Expected local defect queries per proposal are bounded by
+
+    k + T max_s(b_s c_s).
+
+With c_s<=beta/n and b_s<=B this is at most k+beta BT/n. Early rejection only reduces the work. A constant expected number of proposals does not make each local eta query free: in a supplied dense pair-interaction model it can require s entries at stage s. Nor does this operation remove the cost of acquiring/reading the reference and residual model.
+
+This Poisson representation of an exponential path-integral accept factor is established machinery; the task-specific application and its query accounting are the addition here. See the primary Beskos–Papaspiliopoulos–Roberts paper listed below, Theorem 1 and EA1. The exact statement in this section assumes an exact continuous reference bridge and exact coins. The delivered probe instead uses the explicitly truncated dyadic-time bridge below.
+
+## 4. Exact rational replay family
+
+For n=400, k=n, beta=2, T=1/5 and m=65521, define
+
+    wi[i,j] = 0 for i=j,
+    wi[i,j] = (7919(i+1)+104729(j+1)+97(i+1)(j+1)) mod m otherwise,
+    eta_i(x) = beta sum_(j in x) wi[i,j]/(m n²),
+    a_i(x) = n/(n-|x|) [1+eta_i(x)].
+
+All inputs are rational. The known common acceleration n/(n-s) is the rho=1 equal-load-sharing time change. It produces a constant total reference rate n, while the residual destroys count lumping of the target. The source's complete-failure identity already identifies the homogeneous rho=1 baseline as a gamma/sum problem; that baseline alone is not newly solved here.
+
+The exact int64 matrix is generated explicitly, using O(n²) operations and 160,000 entries (1,280,000 bytes). Its nonidentical column sums show that different one-failure states have different total target hazards, so the target count cannot in general be its own Markov state. The SHA256 of its little-endian int64 encoding is recorded in the result. This is a compactly declared synthetic input family, not a measured or inferred dense interaction matrix.
+
+## 5. Numerical bias certificate
+
+The implementation's reference count law is the exactly sampled rational finite truncation just described. Given that count, each event time uses a 64-bit midpoint uniform, then exact integer sorting. Couple it to the continuous uniform in the same cell. The sorted first k times differ by at most
+
+    eta_time = T/2^65.
+
+Event identities are drawn as an independent uniform permutation and assigned to ordered times. There is no component-clock ordering error and no near-tie union bound. Event times remain in [0,T], so every proposal reaches k by the deadline. This time grid has TV distance one from the continuous time law; the argument is a functional coupling.
+
+For the fixture, 0<=dA_s<=beta*s/n<=M=beta(k-1)/n. Hence changing every event time by at most eta_time changes the holding exponent by at most 2k M eta_time. Jump factors are unchanged. Since exp(-x) is 1-Lipschitz for x>=0, likelihood error is at most C*2k*M*eta_time.
+
+All loads, jump factors and holding exponents are rational. The holding exponent is accumulated as one integer numerator with a common lcm(n,n-1,...,n-k+1) denominator. Matrix sums use int64 values and the code proves their attained absolute magnitudes are below 2^63; ordinary integer indexing/summation correctness is an explicit arithmetic premise.
+
+`expneg` reduces an exact nonnegative argument by powers of two to [0,1/2], brackets each alternating Taylor term through degree 80 with integer floor/ceiling, adds a degree-81 remainder enclosure, and repeatedly squares intervals. This encloses exp(-x) without a system exp or log. The uniform remainder at x<=1/2 is at most (1/2)^81/81!, with the fixed-point floor/ceiling errors included termwise. At holding arguments H<=M*T<.4 the interval is far narrower than 2^-180 after multiplication by J<=C; the code checks that width on every returned path. For exp(-80) the range-reduction/squaring interval is retained explicitly in h. No floating transcendental value enters a claimed endpoint.
+
+Choose a midpoint likelihood from its interval, clip within [0,C], then quantize downward to multiples of 2^-32. If Z is that implemented value and L an ideal Q likelihood,
+
+    |E Z-E L| <= C*(conditional_count_TV+2k M eta_time)
+                   +2^-180+2^-32 =: b_num.
+
+For this fixed fixture b_num<=2.328307e-10. The source script's seeded generator is only a reproducibility mechanism. Statistical coverage additionally assumes independent fair bits and exact Python integer/Fraction operations.
+
+The local-query Poisson probe samples Poisson marks by retrospective integer interval comparisons against their CDF. Each Poisson mean is rational for the dyadic bridge. Rational jump/rejection probabilities use exact integer coins. Thus those coins do not add an approximation budget. The proposal is still a truncated dyadic bridge, so its output must not be called an exact continuous target path.
+
+For a conditional-path coupling, under the fixture's time-independent eta functions the ideal and finite proposals can have identical labels, with max time discrepancy eta_time, except with probability at most conditional_count_TV. Couple accept coins with mismatch probability at most 2kM eta_time. Repeating until ideal acceptance and using E[trials]<=C bounds the chance of any such mismatch before acceptance by C*(conditional_count_TV+2kM eta_time). This gives a rational-time path coupling, not continuous-path TV. A downstream sharp time threshold still needs its own boundary-mass budget.
+
+## 6. Fixed-sample inference and results
+
+For N fixed before sampling, exact dyadic sufficient statistics give the sample mean zbar and unbiased sample variance S². Maurer–Pontil Theorem 4, applied to Z/C and 1-Z/C with a union bound, gives the 95% radius
+
+    R = sqrt[2 S² log(80)/N] + 7 C log(80)/(3(N-1)).
+
+The program replaces log(80) by 4383/1000, proving exp(4383/1000)>80 with an exact positive Taylor partial sum, and rounds the square root upward by integer isqrt. If [h_lo,h_hi] encloses h, report
+
+    [ h_lo max(1,zbar-R-b_num), h_hi min(C,zbar+R+b_num) ].
+
+Coverage is conditional on the iid-bit and arithmetic premises. It is neither an optional-stopping confidence sequence nor proof of those premises.
+
+The 100-path seed-2026101502 pilot was used for runtime assessment only. The production run fixed N=5000 and used seed 2026101503; no pilot observations are pooled. Production results:
+
+| quantity | value |
+|---|---:|
+| h | 6.0617008117825981461e-143 |
+| C | 2.707007311539490519 |
+| returned mean | 1.490187688656384125 |
+| sample variance | 1.9518436457299156e-5 |
+| empirical Bernstein radius | 0.005723006095833872 |
+| preparation | 0.02041 seconds |
+| sampling plus aggregation | 36.22710 seconds |
+| relative halfwidth/lower | 0.003855267 upper |
+
+Three independent definition-based small full-generator positive-uniformization checks (n=4,5,6) give exact rational target-CDF enclosures inside their respective fresh 3,000-sample intervals; see `small_generator_audit.json`. Those small enumerations validate implementation consistency, not the theorem or the large target by enumeration.
+
+The local-query probe fixed 2,000 proposals with seed 2026101504. It accepted 1,126 (0.563), versus the ideal lower bound 1/C=0.3694116361. It took 6.1190 seconds, used 344.6855 local eta queries and 63,549.834 interaction-entry reads per proposal on average, in addition to matrix preparation. This is a computational diagnostic of the already stated operation, not an independently certified continuous-path sample or a speedup benchmark.
+
+Reproduce with Python 3 and NumPy:
+
+    python3 collective_bridge_certificate.py --N 5000 --seed 2026101503 --out collective_n400_confirm5000.json
+    python3 poisson_accept_probe.py --N 2000 --seed 2026101504 --out poisson_accept_n400_2000.json
+    python3 small_generator_audit.py
+
+## 7. Costs and strongest matched comparators
+
+For an explicit dense residual matrix, O(n²) input/generation and storage are paid. The certificate precomputes column sums in O(n²); each full-path likelihood uses two prior-failure row/column sums at each event, totaling O(k²) integer work, plus uniform/permutation construction, sorting O((k+D)log(k+D)), rational jump arithmetic, and an interval exponential. Arithmetic and random-bit precision are visible in code; this fixed b_s=n family's work does not use 1/p. Arbitrary huge encoded rates/horizons can make BT huge, so the general uniformization construction is not strongly polynomial in binary input length. The independent auditor's decisive example is k=2,T=1,b_0=epsilon,b_1=1/epsilon: h is asymptotic to epsilon while BT=1/epsilon. Stiffness then reproduces inverse-rarity cost even though event rejection was removed. The 512-bit exponential scale in this particular script is also fixture-specific; exp(-nT) eventually has a zero lower fixed-point endpoint as nT increases. No uniform finite-bit family theorem is claimed for this implementation.
+
+The strongest probability comparator is classical permutation Monte Carlo / conditional holding-time integration, not plain passive sampling or the exponential interacting-state generator. In this family, sample a uniform failure permutation and integrate its conditional holding likelihood. Equivalently, if A_s is the true total rate on that permutation, compute the hypoexponential CDF of sum_s Exp(A_s) and multiply by the permutation likelihood
+
+    product_s (1+eta_i_(s+1))/(A_s/b_s).
+
+This is a Rao–Blackwellization of the current time-sampling estimator and has no greater variance in its uniform-permutation form. Positive uniformization/convolution avoids signed-exponential cancellation. Its extra probability-integration cost, precision, and reusable structure determine the actual comparison. No optimized matched implementation has been benchmarked here, so there is no demonstrated advantage over that incumbent. Tuned splitting, weighted ensemble and approximate-zero-variance reliability methods also remain relevant.
+
+For conditional failure PATH output, integration alone does not return the path; the local Poisson rejection operation is an exact ideal reference-to-target transfer with a constant expected proposal count. Bounded-likelihood rejection and Poisson exponential-integral coins are established, so this new instantiated contract is still not a historical-priority or general technology claim.
+
+Parameter acquisition is wholly outside the demonstrated operation. If an unobserved catastrophic channel changes the event law, neither the cap nor this replay certifies physical survival. Generator adequacy, defect bounds, relevant failure criterion, measurements and calibration must be supplied independently.
+
+The calibration precision can itself be consequential. For the reference Poisson tail h(mu), d log h/d log mu = mu*P(Pois(mu)=k-1)/h(mu). At k=400,mu=80 this is about 320, so even a common-rate error can be amplified by hundreds in relative tail probability. This is a supplied-model sensitivity observation, not an acquired error budget.
+
+## 8. Other joins tested and rejected
+
+**One-level avalanche boundary conditioning.** The supplied event B_m={K(d/psi(m))<m} contains {tau<=d}. Its positive backward DP also supplies exact real-arithmetic conditional Bernoulli survival bits; truncated/shifted independent exponentials then sample P(.|B_m). The unbiased estimator is P(B_m)1(tau<=d), with relative second moment P(B_m)/p. There is no guarantee this ratio is small.
+
+The independent floating probe found 0/10,000 actual deadline failures for n100,d=.1 despite P(B_m)≈3.53226e-14, and 0/10,000 for n400,d=.3 despite P(B_m)≈7.68304e-26. Minimum sampled lifetimes were .18997 and .93076 respectively. Those are not certified acceptance upper limits, but they decisively fail to demonstrate useful relative efficiency. No zero estimate is claimed to equal p. This route needs a much sharper bridge/necessary event and competes directly with classical reliability conditioning/splitting.
+
+**Complete-failure profile cap into avalanche failure.** Mechanical deletion enlarges the early-failure event. A likelihood cap proved only on all-thermal complete failure need not hold there. The complete-failure convex survival profile cannot be silently substituted for avalanche K(u).
+
+**Native positive stationary clock into irreversible interacting failure.** The native-clock theorem requires independent finite reversible modules, stationary product initialization and a single joint target. Irreversible failure with common feedback meets none of those module assumptions. There is no direct spectral plug-in operation. Its deterministic relative rate-rounding sandwich does imply a useful but classical concavity corollary for its OWN stationary hitting contract: a positive exponential-mixture CDF G obeys G(rt)<=rG(t), so H<=H_R<=rH implies F_R(t)<=F_H(t)<=rF_R(t). Absolute residual mixture-mass errors can still destroy relative tiny-tail guarantees. This corollary was not pursued as the main capability.
+
+## 9. Source, duplicate and prior-art record
+
+Capital pin: `33c1ff7ebd9411e9b8b4b0f951f62e36e631cb5d`.
+
+Actual decisive source reads:
+
+- Interacting `theory/CONDITIONED_REFERENCE.md`, especially Sections 3–8 and 10–12; `core/sampler.py` and `core/CONTRACT.md`. Section 12 ALREADY handles k=alpha*n<n for a common multiplier under bounded baseline exposure; do not claim this is the first macroscopic-threshold result. It explicitly leaves full k=n outside that certificate. Its Section 8 states the collective-reference gate addressed here in a restricted family.
+- Complete failure `SURVIVAL_REPRESENTATION_AND_CAP.txt`, `REPORT.md`: independent-lifetime time change and the finite-bias rare-event certificate; these do not solve the new interacting residual target.
+- Avalanche `failure_source_benchmark/verify_avalanche_clock.py`, `ASSESSMENT.md`, `avalanche_boundary_dp/DERIVATION.md`, `LARGE_CERTIFICATE.md`, `boundary_dp.py`, and `avalanche_rare_bound/REPORT.md`: exact static/mechanical common clock, positive boundary DP and model upper bounds.
+- Positive clock `THEOREM.md`, `NATIVE_SPECTRAL_CONSTRUCTION.md`, `NATIVE_ACQUISITION_AUDIT.md`, `COMPACT_LAW_AUDIT.md`: supplied-generator reversible spectral acquisition and positive-mixture compression, with stationarity/independence gates preserved.
+- FU `clock_conditioned_check_sol/REPORT.txt`, `clock_countermodels/PROOFS.md`: cause conditioning does not protect arbitrary late tails; full-generator and permutation/phase-type competitors remain available. FT transport deadline exclusions agree with that separation. FV's terminal-response sparsification is a different supplied-network contract.
+
+Exact source-file hashing against 1,107 distinct FT/FU/FV hashes found zero byte duplicates; `FT_FU_FV_byte_comparison.json` records this. That is not a semantic novelty claim. The source-identity auditor reported that avalanche `LARGE_SHA256.txt` disagrees with the archived `large_result_400_author.json` digest even though ZIP/extracted bytes agree; this work does not rely on that embedded digest as validation.
+
+Primary external sources inspected live:
+
+1. [Hobolth–Stone, endpoint-conditioned CTMC simulation](https://arxiv.org/pdf/0910.1683), Section 2.3/Algorithm 5: conditioned uniformization and ordered uniform times are established. Their comparison also emphasizes initialization and virtual-event costs.
+2. [Beskos–Papaspiliopoulos–Roberts, retrospective exact diffusion simulation](https://www.homepages.ucl.ac.uk/~ucakabe/papers/Bernoulli_06.pdf), Theorem 1 and EA1: no-Poisson-points exponential path-integral acceptance and finite queried skeletons are established. This source is a diffusion result; the CTMC application here is an elementary thinning transfer, not its theorem applied without translation.
+3. [Cancela–L'Ecuyer–Rubino–Tuffin, WSC 2010](https://www.informs-sim.org/wsc10papers/116.pdf), Sections 2–3/Proposition 1: conditional necessary-event sampling with approximate zero variance and bounded relative error is close reliability prior art. The supplied interacting source already identifies this overlap. The alternate author's-host URL returned an access page; the publisher proceedings URL was then retrieved and its actual conditional sampler and Proposition 1 proof read. That proof's product constant can grow with the fixed graph's link count; the dimension-uniform residual cap here is a scoped distinction, not historical priority.
+4. [Maurer–Pontil, empirical Bernstein bounds](https://www.cs.mcgill.ca/~colt2009/papers/012.pdf), Theorem 4: the fixed-N confidence bound used above.
+5. [Hiemer et al., thermal fiber-bundle model](https://arxiv.org/html/2508.13367v1): avalanche benchmark is a declared theoretical model; it does not calibrate our new residual process.
+
+The mathematical and numerical additions are reviewable saved artifacts. They do not establish historical novelty, dominance over equally informed reliability methods, calibrated physical prediction, or the parent mission's claimed breakthrough.
+
+An independent internal reconstruction is saved in `../interacting_bridge_audit/AUDIT.txt` and its `independent_results.json`. That audit agrees with the likelihood, marked rejection, fixed-fixture tail/hazard/time/quantization budgets and small reconstruction, while retaining the general stiffness and permutation-comparator gates. It is internal review, not external verification.
