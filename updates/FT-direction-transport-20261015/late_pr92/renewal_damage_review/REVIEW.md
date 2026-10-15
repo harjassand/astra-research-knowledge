@@ -1,0 +1,94 @@
+# Renewal screening with irreversible collateral damage
+
+15 October 2026. Independent same-team audit of the PR92 source at audit-worktree HEAD `5eb2441c93011d4fefb819b6f751f33537427dc3`. Standard renewal/Bayes machinery; no priority, experiment, material bound or practical advantage claimed. The source's no-collateral construction remains a different, explicitly ideal contract.
+
+## Contract and exact renewal equations
+
+Each new attempt draws isotope H with probability p and L otherwise, independently of all preceding trials. For 0<p<1 and sigma_L>sigma_H>=0, target ejection has constant rate sigma_i per fluence. Independent irreversible collateral damage has common constant rate lambda>0 per fluence. The attempt ends at the first target ejection, collateral event or dose d. Only target ejection permits a fresh independent refill/restart; collateral damage irreversibly terminates the initial site without accepted output. Surviving d accepts and permanently protects the site. Rates, geometry, chemistry and feed remain unchanged across attempts. Target and collateral events must be distinguishable.
+
+Let s_i=sigma_i+lambda. An attempt of type i has probabilities
+
+    a_i=exp(-s_i d),
+    b_i=(sigma_i/s_i)(1-a_i),
+    c_i=(lambda/s_i)(1-a_i),
+
+for acceptance, restart and irreversible loss. Mixtures use weights p and 1-p. Put
+
+    m=sum_i p_i (1-a_i)/s_i.
+
+This is the one-attempt mean dose, obtained by integrating its no-event survival probability. With Y the accepted-site probability and Dbar the mean total dose from one initial site, first-step recursion gives
+
+    Y=a+bY=a/(a+c),
+    Dbar=m+bDbar=m/(a+c),
+    E[attempts]=1/(a+c),    E[refills]=b/(a+c).
+
+Accepted-heavy probability is p*a_H/(a+c). Therefore the heavy fraction **among accepted sites** is
+
+    q=p*a_H/a
+     =p*exp(-sigma_H d)/[p*exp(-sigma_H d)+(1-p)*exp(-sigma_L d)].
+
+The common collateral factor cancels from this conditional purity, not from site yield or resources. Dose and attempt outcome are correlated; the recursion does not assume independence of those quantities.
+
+## Stronger loss/resource identity and the high-purity limit
+
+Because c=lambda*m,
+
+    boxed: 1-Y=lambda*Dbar.
+
+The bounded mean dose Dbar<=1/lambda includes sites lost to damage. It is not a bounded cost per accepted output. When all initial sites, including failures, are charged, aggregate resources per accepted site are
+
+    dose/accepted = Dbar/Y = m/a,
+    attempts/accepted = 1/a,
+    refills/accepted = b/a.
+
+These are ratios of aggregate expectations, not E[dose | accepted] or E[attempts | accepted]. Indeed P(N=n,accepted)=b^(n-1)*a, so P(N=n|accepted)=(a+c)*b^(n-1). The terminal-label distribution is independent of the geometric attempt count, giving E[attempts | accepted]=1/(a+c). The final accepted trial always receives dose d; conditional accepted dose is at least d.
+
+As d tends to infinity, q tends to 1, a tends to zero, c tends to the positive constant lambda*[p/(sigma_H+lambda)+(1-p)/(sigma_L+lambda)], and consequently Y tends to zero while Dbar tends to 1/lambda. **sigma_H>0 is unnecessary:** common positive collateral damage collapses yield even if the heavy target's ejection cross section is zero.
+
+For q in (p,1), d=log[q(1-p)/(p(1-q))]/Delta_sigma, with Delta_sigma=sigma_L-sigma_H. Exactly,
+
+    a(q)=(p/q)*[p(1-q)/(q(1-p))]^r,
+    r=(sigma_H+lambda)/Delta_sigma>0.
+
+Thus Y decays proportionally to (1-q)^r near unit purity and charged dose/attempts per accepted output diverge proportionally to (1-q)^(-r). The prefactors depend on the stated rates. This is a model trade-off, not a universal irradiation/material law.
+
+For at most M attempts,
+
+    Y_M=a*(1-b^M)/(a+c),
+    loss_M=c*(1-b^M)/(a+c),    unresolved_M=b^M,
+    E[attempts_M]=(1-b^M)/(a+c),
+    E[dose_M]=m*(1-b^M)/(a+c).
+
+Accepted composition remains q. The unresolved/failed sites and any final vacancy refill remain charged separately. A wall-clock deadline, time-based damage or costs, dose-dependent rates, simultaneous events, healing after collateral damage, hidden replacement, isotope-dependent collateral hazard, correlated refill or subsequent exposure of accepted sites require a different model.
+
+## Exact posterior certificate and the identity condition
+
+Let X be the fresh isotope draw with prior P(X=H)=p. First suppose each accepted output retains X; independently qualified same-atom survival suffices. Let a measured acceptance event A have P(A|X=H)>=l=(s_H-epsilon_H)_+ and P(A|X=L)<=u=s_L+epsilon_L, optionally capped at 1. Equivalently, calibration may directly supply accepted final-H/final-L probability-mass bounds p*l and (1-p)*u. Conditional rates given a final isotope with a different prior cannot simply reuse p. These s_i are nominal probabilities for the exact acceptance event. For usable survival under the collateral model, nominal s_i=exp[-(sigma_i+lambda)d]; target-only survival probabilities omit a loss that must otherwise be charged into the error model.
+
+For positive denominator, Bayes and monotonicity give the rectangular-uncertainty certificate, sharp when the probability bounds are capped to their feasible range:
+
+    q_A >= p*l/[p*l+(1-p)*u].
+
+If u=0 and acceptance has positive probability, q_A=1; the zero-denominator case is not evaluated as 0/0. With uncapped u and a target q in (0,1), this lower bound reaches q exactly when
+
+    epsilon_L <= p(1-q)/(q(1-p))*l-s_L.
+
+A negative right side means this uncertainty box cannot certify the target with any nonnegative epsilon_L. It is not proof that the actual purity fails. At a dose chosen to attain exactly q in the ideal model, there is no error margin; overscreening or better calibrated errors are needed, and overscreening worsens collateral yield. The allowed light false-acceptance precision scales as p(1-q)*l, not merely 1-q. Additive measurement errors do not inherit cancellation of a common survival factor for free.
+
+For iid labelled-light calibration trials with zero observed false accepts, a one-sided error bound epsilon at confidence 1-delta needs n>=log(delta)/log(1-epsilon). The source-central-value planning illustration in `results.json` requires roughly 45,500 such independent trials for a 95% light-error bound alone; heavy, identity, drift and simultaneous coverage remain additional. This is a calibration-resource screen, not an acquired detector specification.
+
+**Hidden exchange caveat.** Bounds on P(A|initial H/L) alone certify the initial isotope, not the final isotope after a missed ejection/refill. Let a0=p*l, b0=(1-p)*u, and additionally bound total probability mass of accepted trials whose isotope identity changed by delta_ex. A bound on any accepted atom exchange also suffices conservatively. Then a sharp safe final-isotope bound is
+
+    q_final >= (a0-delta_ex)_+/(a0+b0),
+
+for positive denominator. To certify target q using this bound requires delta_ex<=(1-q)*a0-q*b0 when the right side is nonnegative. Equivalently, a calibrated conditional accepted-exchange error can be subtracted from the initial-isotope posterior lower bound. The extra condition cannot be replaced by an apparently filled lattice image. The countermodel behind this caveat concerns joint-label identifiability, not a claimed physical exchange process in a named material.
+
+## Strongest comparator under the same information
+
+Under the exact model above, after each fresh refill all old trial histories are independent of the new isotope. Its posterior odds after uninterrupted no-event fluence x are [p/(1-p)]*exp(Delta_sigma*x). To accept each site with a **pointwise posterior** at least q requires x>=d(q). No other allowed observation supplies isotope information.
+
+Among protocols with this same event channel, ejection-only resets, fixed rates and pointwise-purity contract, acceptance on the first attainment of d(q), with restart on target ejection, maximizes acceptance probability. Before d(q) acceptance is inadmissible; after d(q) delaying acceptance can only expose an already eligible site to further failure or reset. Coupling any such protocol to the same event trajectory shows every output it accepts had a first eligible crossing at which the threshold policy could already accept. Randomization or old ejection histories cannot beat that acceptance probability. This is a restricted baseline result, not a theorem for an aggregate-purity constraint, additional isotope observations, changed feed, caps, throughput deadlines, evolving sites or alternative physical operations.
+
+A blind common-dose ceiling is therefore not an equally informed comparator to renewal screening. Direct isotope identification/selection must be charged for its measurement and damage, rather than granted as an oracle. Isotope-specified growth/feed, exchange/regrowth and local writing must match the same post-device endpoint, retained lattice/function, failed-site accounting, dose/time/vacuum/feed/readout/reset and conditioning costs. PR92 names these incumbents; this audit acquired no endpoint-matched cost or capability comparison.
+
+The connection to the transport_damage theorem is the full-damage accounting discipline: add all terminal damage channels before evaluating accepted lifetime reward. The fixed screening deadline requires the renewal proof above; it is not an application of the earlier CTMC well-response cancellation, which explicitly excludes hard horizons. A favorable conditional survivor composition can coexist with vanishing accepted-site probability. The conditional-purity formula alone is not the operational endpoint.
