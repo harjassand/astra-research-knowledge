@@ -1,0 +1,56 @@
+# Acquisition, cost, uncertainty, and regime contract
+
+16 October 2026. Proposed trial only. All prices, facility access, assay run times, useful wash inventories, and replacement endpoints remain unacquired.
+
+## Paid physical resources
+
+| Resource | Source/design scale | Accounting rule |
+|---|---|---|
+| LFPC working electrodes | Source flow-cell area 6.16 cm2; actual full-electrode mass measured per specimen | Include active material, carbon, binder, current collector, conditioning, failures, and replacements. Do not use generic EC-Lab 7000 mg template metadata. |
+| Feed | Source benchmark 200 mL reservoir; pulse optimization 1 mM Li + 1 M Na | One closed batch contains 0.2 mmol Li and 200 mmol Na. Refresh/reuse and isotope origin are explicitly recorded; recirculation is not fresh input. Figure 5A uses a different feed ratio. |
+| Capture | Published P4–8 four-second-on/eight-second-rest incumbent | Record realized current, voltage, elapsed time, endpoints, and all charge. Preserve dose- and clock-matched questions separately if capture schedules later change. |
+| Wash | Source specifies 15 min DI flush | At a declared single-pass 3 mL/min, nominal 45 mL and fifteen 3 mL fractions. The actual source wash flow, return/disposal path, dead volume, mixing, and collected volume must first be measured. |
+| Recovery | Source 100 mL, 10 mM LiCl receiver and 30 min release at 0.6 V | Seed is 1 mmol Li. Measure actual baseline, volume, dilution, samples, and terminal contents. Seed is not recovered source product. |
+| Initial conditioning | Source delithiation at 1.0 V for 2 h | Pay time/energy/reagents; collect conditioning liquid and bound residual electrode isotope inventories. Do not assume completion from elapsed time. |
+| Isotope tracer | Optional matched-molar enriched-feed trial | Charge purchased stock, verified isotope composition, contamination controls, recovery/disposal, and calibration. Do not count an isotope-market premium as lithium-separation output value. |
+| Collector/diverter | One-way outlet, equal backpressure, isolated bottles | Include purchase/amortization, valve electricity, tubing, dead volume, washing, labor, pressure characterization, and any effect on subsequent cycles. |
+| Assays | First pooled screen, then fifteen fractions only if informative | ICP-OES/elemental assay may suffice initially. Isotope assay needs calibrated ICP-MS or equivalent with isotope mass discrimination, blanks, dilution, matrix matching, digestion, recovery checks, and simultaneous error coverage. |
+| Product finishing | Only what the declared product contract needs | If a dilute fraction needs evaporation, precipitation, ED, or other purification, perform it and charge its energy, consumables, time, loss, and waste. A bottle of dilute Li is not automatically the desired product. |
+| Lifetime validation | Independent full electrodes to declared endpoint/cap | Per-cycle samples are not independent life replicates. Include terminal product, residual electrode inventory, dissolution, failed batches, fouling, and replacement. |
+
+The manuscript's nominal uptake/wash/release durations are not the realized duration of the decoded Figure 4c pulse run. No capture-time equality was presumed. The new operation is downstream so the proposed direct within-run comparison can share the same realized capture history, provided the hydraulic isolation premise holds.
+
+## Cheapest decisive acquisition order
+
+1. Establish actual flow topology and current baseline disposition. Collect one pooled transition stream plus volume/blank records. Measure total Li, Na, other relevant cations, Fe and P. Its total-Li upper bound can reject the route before a fine series.
+2. Check whether ordinary complete-Li inventory already gives a useful origin bound. If it does, stop adding tracer complexity.
+3. When source origin changes the decision, purchase a matched-molar isotope pilot and acquire complete nonfeed marker budgets. Prefer the wash pool before opening the recovery receiver so its large Li seed is physically excluded by topology.
+4. Collect the fifteen fractions, apply simultaneous uncertainty, freeze one suffix choice, then perform held-out runs. Assay cost scales with actual independent runs and sample preparation, not just fifteen numbers.
+5. Continue full electrode histories only if the finite pool passes source-yield, quality, concentration, and net-cost margins. A cycle cap is reported as finite horizon unless the life endpoint was reached.
+
+## Isotope purity and feasibility
+
+The primary 2026 tracer paper demonstrates use of 94.8% 6Li solution and ICP-MS in LixFePO4. It does not qualify this flow-cell measurement or prove that isotope labeling leaves its kinetics unchanged.
+
+A [supplier listing for 7LiCl](https://www.sigmaaldrich.com/CA/en/product/aldrich/601489) specifies 99 atom% 7Li. This is evidence that such stock is catalogued, not an Australian procurement quote or availability confirmation. No purchase or outreach occurred. The design does not require higher 7Li purity. Optional 7Li-enriched conditioning/receiver stock can reduce the nonfeed 6Li budget, but its altered isotope composition and full acquisition cost must be retained. Actual lot assay supersedes nominal purity. Avoid assuming the 7Li preparation in the 2026 paper is isotope pure: its measured6Li fraction was 6.7%.
+
+Marker feasibility requires the observed selected-pool 6Li lower bound to exceed all accessible nonfeed 6Li upper inventory by a decision-relevant margin. If it does not, origin remains UNKNOWN. A stronger label does not replace the nonfeed budget.
+
+## Assay and error budget
+
+The actual released workbooks give elemental optical-emission wavelength channels, not isotope counts. New isotope assays must address mass bias/drift, Na matrix effects, interferences, blank carryover, stock purity, concentration/volume/dilution errors, incomplete dissolution, sample removals, detector calibration, and interval correlations. The entire selected-pool and initial-budget region must have simultaneous coverage.
+
+A low 6Li impurity percentage in a large seed/store can exceed all new wash lithium. Topology and direct inventory matter more than a nominal enrichment claim. Incomplete quenching is another reason not to interpret washed/digested particles as instantaneous seconds-scale states.
+
+## Experimental regime and transfer limits
+
+Start in the source binary pulse-optimization regime 1 mM Li/1 M Na, actual LFPC formulation and temperature. Maintain oxygen/pH/flow/age records. Compare candidate and baseline using the same enriched feed before any transfer to natural-isotope feed. Use paired natural-isotope validation to support transfer; no isotope-independent kinetics assumption is granted.
+
+The data do not transfer response functions among the commercial LFPC cell, the 2024 morphology series, the 2026 tracer powders, or the 2020 TiO2-coated electrode. Simulated brines and seawater are different feed contracts. A claim for natural seawater, geothermal brine, or a purified salt needs that actual regime and output qualification.
+
+## Success and stopping
+
+Success is a measured, isolated source-Li increment at the required concentration/purity with a positive declared utility margin versus the P4–8 and equally informed fractionation baseline, over the declared finite horizon or measured life endpoint. No such pass exists.
+
+Stop when all-wash total-Li upper bound is below the worthwhile margin, every suffix has insufficient upper utility, complete inventories cannot be bounded within the error budget, isotope composition changes the relevant performance without a valid transfer, or the conventional same-information route matches the result at lower full cost. Assay precision alone cannot repair missing physical inputs.
+

@@ -1,0 +1,72 @@
+# Exact weak-loop predecessor for the mean-action frontier
+
+16 October 2026. Bounded follow-up requested after core completion. This addendum distinguishes an actually inspected primary precursor from the new universal receiving quantifier. It changes the originality assessment of the weak-herald construction and its constant; it does not refute the candidate universal theorem.
+
+## 1. Decisive primary source
+
+Wang Fang and Chris Heunen, Weakly Measured Loops for Quantum Amplitude Amplification: Oracle Savings and Adaptive Search with Unknown Target Probability, arXiv:2609.39621v1, submitted 30 September 2026 at 12:32:33 UTC:
+
+https://arxiv.org/abs/2609.39621v1
+
+Actual acquired PDF SHA256:
+
+    7c7a3503792e414cea81350b4b50c605baa5776d7c789ac5d77a18716b758382
+
+The actual proof was read, rather than promoting its abstract. Section 2, equation (5), uses the complete weak measurement
+
+    M0=P0+sqrt(1-kappa)P1,       M1=sqrt(kappa)P1.
+
+Section 3.1, equations (10)-(13), chooses a checkpoint angle alpha and a failure angle beta, repeats the same checkpoint after no click, and obtains an expected continuous rotation cost
+
+    E(alpha,beta)=alpha
+       +cos^2(alpha)(alpha-beta)/(cos^2(beta)-cos^2(alpha)).   (P1)
+
+Its two-case calculus proof establishes a strict lower bound pi/4+1/2 for this family; alpha=pi/4 and beta tending up to alpha approaches that infimum. Algorithm 1 and Theorem 3.1, pp. 12-13, give the exact nearby discrete Grover loop and an expected oracle-count bound with this leading constant after normalization. The source explicitly describes its continuum optimality as restricted to the natural one-checkpoint family. It does not assert a universal theorem for all complete parity-preserving instruments on arbitrary bath/reference systems.
+
+## 2. Exact identification with the candidate construction
+
+In gf_causal_genesis/MEAN_ACTION_FRONTIER.md, set alpha=pi/4, kappa=epsilon and
+
+    beta=arctan sqrt(1-epsilon).
+
+The success and failure maps are exactly the same channels with the same recorded outcomes. Moreover
+
+    cos^2(beta)=1/(2-epsilon),
+    cos^2(beta)-1/2=epsilon/[2(2-epsilon)].
+
+Substituting in (P1) gives exactly
+
+    E=pi/4+(2-epsilon)/epsilon
+                  [pi/4-arctan sqrt(1-epsilon)],             (P2)
+
+which is the candidate's A_infinity(epsilon), including its infimum
+
+    k_star=(pi+2)/4.
+
+Thus this is an actual same-protocol, same-cost predecessor, not a vague measurement-assisted-control resemblance. The weak-loop family, its pi/4 checkpoint, and its limiting constant must be credited as established in this primary source. A finite truncation and activation construction is a receiving adaptation, not evidence that the continuous weak-loop mechanism was first invented here.
+
+The source counts one preparation call and two A/A-dagger calls per Grover rotation. One rotation changes the angle by 2 theta. Hence its oracle constant pi/4+1/2, its Grover-iteration constant pi/8+1/4, and the candidate's continuous odd-action constant k_star are consistent after the specified normalization. Weak detector calls remain separate resources; neither result turns them into a free laboratory operation.
+
+## 3. What is stronger in the candidate statement
+
+The candidate lower bound uses a concave population potential: arcsin(sqrt(p)) up to p=1/2 and its tangent linear continuation afterward, normalized to have value one at p=1. A complete parity-preserving instrument preserves mean p, so Jensen prevents it from increasing expected potential. The odd-Hamiltonian population-speed bound controls its evolution, and a complete causal tree yields
+
+    success probability <= expected odd action/k_star.
+
+If correct under its exact stated measurability/limit contract, this is stronger than optimizing (P1): it covers all complete adaptive parity-preserving instruments, mixed states, arbitrary bath/reference, causal stopping, and finite-prefix limits. The inspected Fang-Heunen source supplies the sharp witness and constant but not this universal concave-potential proof or that full quantifier.
+
+Consequently the defensible source-relative claim is a universal lower-bound/receiving extension for an already established sharp weak-loop mechanism. Historical priority of that stronger quantifier is UNKNOWN; this bounded search did not settle all quantum-control optimality literature. No priority claim should attach to k_star or the weak-herald family itself.
+
+## 4. Earlier exact instrument-level antecedent
+
+Ari Mizel, Critically damped quantum search, arXiv:0810.0470v1 (2008), published PRL 102, 150501 (2009), equation (2) and its subsequent ancilla-measurement construction:
+
+https://arxiv.org/abs/0810.0470
+
+The source couples an external spin conditional on the marked subspace, measures it to detect success, and continues the quantum search after failure without restarting. Taking the indicated ancilla matrix element gives no-click P0+cos(phi)P1 and click sin(phi)P1, the same weak instrument with epsilon=sin^2(phi). Its critically damped/search-robustness objective does not supply the specific optimized k_star frontier. The weak-instrument/no-restart idea therefore has an earlier primary predecessor even before the exact Fang-Heunen constant.
+
+## 5. Status and preservation
+
+Full PDFs and extracted texts are under acquired_excluded_from_publication. MEAN_ACTION_PRIMARY_ACQUISITION.json records exact acquisition identities and timestamps. The September source is a current preprint; its publication and inspected proof do not establish external verification or priority beyond the demonstrated earlier written mechanism. No acquired code was executed, no physical experiment was run, and no broader search was continued after this decisive match.
+
+The original fixed-schedule private-tester theorem remains separate. State-dependent weak heralding and mean action are a different interface. The source predecessor neither qualifies the packet's physical refresh node nor restores tensor products of separately averaged mean-resource factors.

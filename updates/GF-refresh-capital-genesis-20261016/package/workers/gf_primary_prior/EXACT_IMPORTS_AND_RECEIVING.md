@@ -1,0 +1,164 @@
+# Exact primary imports and refresh receiving boundaries
+
+16 October 2026. Independently reconstructed arguments under stated finite-dimensional contracts. This is internal mathematical work. Primary-paper publication, source claims, finite examples, Git merges, and this reconstruction are distinct evidence types. Resource usage is UNKNOWN unless separately measured; no aggregate inference usage was inferred.
+
+## 1. What Gutoski-Watrous actually proves
+
+The primary PDF is Gutoski and Watrous, Toward a General Theory of Quantum Games (22 June 2007), Theorem 9, printed p. 13, proof and Lemma 12 p. 14:
+
+https://cs.uwaterloo.ca/~watrous/Papers/GeneralTheoryQuantumGames.pdf
+
+For a positive outcome operator T of a finite interactive strategy, its maximum forcing probability is the least p such that T<=pR for a deterministic strategy R of the same type. The analogous co-strategy assertion is included. The source proves this by duality of positive downward strategy sets under polarity, established inductively from partial-trace recursion. The decisive proof was read, including the support-function/gauge identity at the end of p. 14. It is not merely an abstract-based attribution.
+
+Here is the exact receiving corollary. Suppose finitely many independent testers have local positive acceptance operators T_i and deterministic majorants R_i with T_i<=p_iR_i. Pad no-op rounds so all testers have the same message chronology. For prefixes,
+
+    Tr_(Y_i,k) R_i,k=I_(X_i,k) tensor R_i,k-1,
+    R_i,0=1.
+
+After regrouping tensor factors by round, R_k=tensor_i R_i,k satisfies the same equation with joint inputs/outputs. Therefore tensor_i R_i is a deterministic joint tester. Positivity gives
+
+    tensor_i T_i <= (product_i p_i) tensor_i R_i.
+
+Pairing with any joint prover co-strategy S gives acceptance probability at most product_i p_i, because pairing(tensor_i R_i,S)=1. No independence of prover operations, outcomes, or bath states is used. Independent tester initialization and private local operations ARE used. Shared initial tester entanglement would destroy this factorization.
+
+Molina and Watrous, Hedging bets with correlated quantum strategies (2011), Section 4, pp. 7-9, gives the nearest explicit one-round parallel all-outcome proof:
+
+https://arxiv.org/abs/1104.1140
+
+It tensors positive dual solutions to prove exact maximum-output multiplicativity, while minimum-output multiplicativity can fail. The multiround source actually required here is GW2007. Neither positive all-pass tensorization nor a purported resolution of quantum hedging is new in this refresh application.
+
+## 2. The private tester embedding must be proved independently
+
+Tester i holds a private parity qubit A_i initialized good. At every prescribed global control opportunity it makes a fresh |0> message M_i, copies A_i into M_i by CNOT, lets the joint prover act on all messages and shared memory B, then applies the same CNOT and discards the returned message. Its charged operations are only fixed X_i rotations; its prescribed own measurements and their records remain private.
+
+For a parity-diagonal D=sum_s |s><s|_A tensor D_s, a prover applying sum_s |s><s|_M tensor D_s returns every message to |0> after uncomputation. This implements D EXACTLY, including on coherent or entangled inputs. It adds no physical pinch.
+
+For an arbitrary prover isometry U, the one-coordinate operation before discarding its message is
+
+    |a>_A |psi>_E -> |a>_A (X_M^a tensor I)U(|a>_M|psi>_E).
+
+It is block diagonal in private A. Every induced Kraus operator remains block diagonal. Enlarging the prover therefore does not give it an uncharged parity flip, even when it retains coherent garbage or correlates every round. This direct algebra is the reason the tester value can still be bounded.
+
+Between its own records the private parity begins in a definite sector. A parity-preserving isometry preserves the angle to that sector. An X rotation of angle theta changes that subspace angle by at most theta. Equivalently, along a norm-bounded odd Hermitian drive the odd probability x satisfies |x'|<=2j sqrt(x(1-x)); integrating gives arcsin(sqrt(x))<=integral j up to pi/2. Thus an own gap of total fixed rotation angle a has mismatch probability at most sin^2(min(a,pi/2)), for arbitrary prover memory/reference. This provides an elementary geometric alternative to the supplied Bernstein entire-function lemma for the local tester.
+
+If its successive own-gap bounds are s_k, then conditioning only on its actual past private record shows no-mismatch probability at least product_k(1-s_k). Either terminal flip or history-OR acceptance is therefore at most
+
+    Q=1-product_k cos^2(min(a_k,pi/2)).
+
+No conditioning on another coordinate's future acceptance is legitimate or needed.
+
+### Unchanged-action simulation of arbitrary odd contractions
+
+Pad joint parity sectors to a common finite dimension and extend operators by zero, so original data and probabilities embed isometrically. In a fixed other-parity block, an own-odd Hermitian contraction is
+
+    H=[0 K; K* 0],       ||K||<=1.
+
+Choose a unitary extension W of the polar partial isometry and write K=WP, 0<=P<=I. The operators
+
+    U_+=W(P+i sqrt(I-P^2)),
+    U_-=W(P-i sqrt(I-P^2))
+
+are unitary and average to K. Consequently H is the average of two diagonal conjugates of X. The Lie product approximation to exp(-i theta H) uses alternating conjugates of X with angle theta/(2n), repeated n times. Total own charged angle is EXACTLY theta for every approximant. Every conjugation preserves all parities. This is a comparison construction; none of these free prover operations becomes an authorized physical control.
+
+For merely integrable V_i(t), partition time at all actual pinch nodes and let b_I=integral_I sum_i j_i. Both the true cell propagator and the exponential of its integrated generator have the same first Dyson term, and their discrepancy is at most 2(exp(b_I)-1-b_I). Summing cell errors gives a bound tending to zero when max_I b_I tends to zero. Split each cell exponential by coordinates and then by the two unitary conjugates above, choosing Trotter precision so the total additional error tends to zero. Each own-gap action sum is unchanged at every stage. Actual pinches are inserted only at their own original nodes.
+
+This proves the exact mathematical receiving boundary from physical finite integrable parity dynamics to independent testers. Standard polar decomposition and product formulas are prior tools. No primary source inspected here supplied this entire private-register/message/unchanged-own-action construction as an already packaged theorem. That negative search observation is not historical novelty evidence.
+
+### Close query-simulation predecessor
+
+Cleve, Gottesman, Mosca, Somma, Yonge-Mallo (2009), Section II.A, equations (8)-(14):
+
+https://arxiv.org/abs/0811.4428
+
+Its primary proof already Trotter-splits continuous query evolution with an integrable driving Hamiltonian while preserving total fractional query time exactly, though the number of fractional gates grows with precision and driving action. Berry et al. (2014), Theorem 3.1, explicitly states same-T continuous/fractional-query equivalence for arbitrary precision:
+
+https://arxiv.org/abs/1312.1414
+
+These are close predecessors for preservation of a charged action through approximation. They have a fixed input-query oracle and input-independent driving operations; they do not by themselves construct the above protected parity testers. Their discrete-query simulations have overhead and auxiliary procedures, which must not be imported as an unchanged physical action budget. The refresh argument does not require those discrete simulation algorithms.
+
+## 3. Stronger asynchronous history event closes the earlier GD gate
+
+Under the same fixed/exogenous broad parity contract, choose each tester's acceptance decision to be 'at least one own recorded mismatch' instead of its terminal bit. This is a local positive effect on that tester's private record. The singleton proof still gives Q_i. Applying Section 1 after Section 2 yields
+
+    effect(every selected coordinate has some own recorded mismatch)
+       <=(product_i Q_i) P_initial.                       (H)
+
+The endpoint-all-flipped event is a subevent. This closes the STRONGER asynchronous history-event gate left open by GD#106, not only the terminal event, without inserting union-clock pinches.
+
+Sharpness over the arbitrary-finite-sector uncertainty class is explicit. For coordinate i, use a good vector |0> and one bad sink |k> per own gap. In gap k drive only |0><k|+|k><0| up to the capped angle. Earlier sinks are untouched. The prescribed own pinch removes coherence between the remaining good vector and each newly populated sink. The no-mismatch branch has mass product cos^2(a_ik), and every other branch remains bad. Tensor these constructions with their actual staggered schedules. Both the terminal and history-OR events attain product_i Q_i. This is not attainment in every separately fixed small physical bath.
+
+## 4. Optimal local channel majorant and its exact factor
+
+For channels N,T on the SAME complete local-system/persistent-bath boundary, set e=half ||N-T||_diamond. Watrous (2009), Section 4, pp. 14-15, proves the channel-discrimination SDP
+
+    e=min ||Tr_out Z||_infinity,
+    Z>=0, Z>=J(N-T).
+
+https://cs.uwaterloo.ca/~watrous/Papers/SDPforCBnorms.pdf
+
+The primary proof derives its factor one-half from discriminating two output states and identifies primal feasible operators with conjugated Choi tests. Here is the exact import. An optimum Z gives CP maps Phi_+,Phi_- with Choi matrices Z and Z-J(N-T). Since N-T is trace annihilating, these CP maps have the same input effect A<=eI. Add to both any CP map with effect eI-A. Dividing by e produces channels E_+,E_- such that
+
+    N-T=e(E_+-E_-),       N<=_CP T+eE_+.
+
+For e=0, N=T. Conversely any channel majorant of that form forces ||N-T||_diamond<=2e. Thus the least normalized additive CP-majorant coefficient is EXACTLY half diamond distance. No bath-dimension factor occurs. The construction stays on the same local boundary, which is why its locality can be retained.
+
+Gutoski (2010/2012), Section 4, SDP (2), Theorem 3 and its proof, gives normalized causal +/- majorants for a multiround Hermitian strategy operator:
+
+https://arxiv.org/abs/1008.4636
+
+For a difference of deterministic strategies the homogeneous prefix equations ensure that the corresponding plus/minus objects can be normalized strategies. A complete portwise strategy comparison can therefore replace a one-node channel comparison. Closing intermediate ports and bounding the resulting terminal channel distance is not the same assumption.
+
+## 5. Why local errors go inside the product
+
+Assume an independently proved ideal tester embedding, and an actual local slot
+
+    N_ik<=_CP a_ik T_ik+b_ik E_ik,
+
+where all maps have the same typed boundary; E is a channel on own reservation D_i plus persistent B and identity on every other active full reservation. Every surviving tester's action envelopes remain uniform under any allowed bath state. Reference private environments remain inaccessible.
+
+Traverse the circuit chronology. Expand only slots of still-retained parents. On an ideal branch multiply by a_ik. At its first E branch multiply by b_ik, drop that parent's acceptance constraint, and release its ENTIRE private tester, labels, records and garbage to the prover. Keep its later ACTUAL normalized N maps without further expansion. Disjoint full reservations allow its physical data to be reconstructed and simulated on the prover side, without accessing any surviving private parity.
+
+For each expansion term, the surviving testers are unchanged independent ideal testers; the released systems and changed bath merely enlarge their joint prover. Its success probability is at most the product of their f_i values. Parent i contributes either
+
+    (product_k a_ik) f_i,
+
+or, for first error at k,
+
+    b_ik product_(ell<k) a_iell.
+
+Summing all first-error choices, even when different parents' slots interleave, factors into
+
+    product_i [(product_k a_ik)f_i
+                +sum_k b_ik product_(ell<k) a_iell].       (E)
+
+For generic channel error a=1,b=e, this is product_i(f_i+sum_k e_ik). Drop target constraints with factors >=1 before applying the proof to obtain coordinatewise min(1,...) caps. This is a positive circuit comparison, not a probability law for actual error flags.
+
+The argument also applies to history-OR acceptance or any private local acceptance effect with a certified ideal tester value. It does not treat a defect touching several live reservations as several independent local errors.
+
+## 6. Closest stopped-fault and finite-pulse predecessors
+
+Terhal and Burkard (2005), Lemma 5, pp. 12-13, explicitly stops expansion after designated faults and appends the remaining full unitary:
+
+https://arxiv.org/abs/quant-ph/0402104
+
+Its bath restrictions are stronger than an arbitrary shared bath. AGP (2006), Section 11.1, definition/equation (59), and Section 11.2 Lemma 7, supplies the stronger shared-bath antecedent:
+
+https://arxiv.org/abs/quant-ph/0504218
+
+It bounds the operator norm of the SUM of coherent fault paths with faults at a designated set and arbitrary unrestricted faults elsewhere. Its local Hamiltonian model permits an arbitrary bath Hamiltonian; noncommuting bath actions require an ordering, not bath independence. Its stopped-expansion bookkeeping and setwise products are established. These are coherent amplitude bounds, not the particular positive tester endpoint-effect bound (E). Squaring an individual coherent amplitude bound without its record assumptions does not yield the present f_i probabilities.
+
+Ng, Lidar, Preskill (2011), Sections II.B, III.B, V, VI.C and IX:
+
+https://preskill.caltech.edu/pubs/preskill-2011-dynamical-decoupling.pdf
+
+The source analyzes finite-width controls, toggling frames, Magnus remainders and Eulerian cancellation. Its local-bath assumption makes simultaneous locations act on distinct commuting baths, allowing per-location protected-gate analysis. Section IX explicitly discusses the extension problem when locations share bath variables. These exact prerequisites differ from the refresh theorem's unrestricted shared B plus a local channel/port boundary. Finite-pulse analysis is not new; a theorem with the stronger locality premise cannot silently qualify arbitrary shared-bath gadgets.
+
+## 7. Decisive limits
+
+Reduced memory calibration can hide a common rare bath catastrophe: one persistent bit of mass e can flip every parent's parity, giving all-bad probability e instead of e^n, while each reduced marginal is e-close. The complete joint controlled channel is distance one, so it violates the actual uniform contract. Likewise a single e-weight error touching all live reservations is a hyperedge error and cannot receive n local e factors.
+
+An additive CP upper majorant supplies no ideal physical subchannel. Distinct unitary Choi rays have no nonzero common positive minorant. A syndrome-invisible logical rotation can be arbitrarily diamond-close to identity while all exact syndrome records remain good. Exact support transfer therefore additionally needs the propagated full error-footprint condition, exact trusted endpoints, and the actual common decoder, or a separately proved qualified good/fault refinement.
+
+Finite pulse paths matter. A baseline preserving endpoint stabilizers need not commute with intermediate control paths, so compiled Pauli endpoints do not make its intervening action free. A residual-action bound must include path-noncommuting drift, leakage, persistent controller/bath couplings and full propagated influence. A terminal whole-system diamond estimate does not alone recover the primitive locality used in (E).
+
+Historical novelty of the private-tester/unchanged-action/erasure combination and of the exact Schur variational formula is UNKNOWN after this bounded search. Primary ingredients were found and read; no precise earlier packaged theorem was established. No hardware regime, useful threshold, external validation, or technology advantage follows from this audit.

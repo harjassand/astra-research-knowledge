@@ -1,0 +1,82 @@
+# Lithium recovery transition: a finite physical opportunity and a rest-control no-go
+
+16 October 2026. Independent capability-first worker. Read-only knowledge checkout: `/Users/harjas/Documents/ChatGPT/ultra/work/astra-positive-memory-20261016`, supplied pin `f937563cbc5d2249b8e0dd96bcbd3b8f78eb85c6` (no Git command used to verify it). Original handoff files were read without modification. No peer-worker output, external contact, install, hardware job, or nested delegation was used.
+
+## Decision
+
+**The supplied measurements do not identify a new species-aware rest controller or a lifetime-yield winner.** The strongest actionable opportunity found is to collect and characterize the presently unaccounted feed-to-rinse-to-recovery liquid, then retain only qualified fractions. The proposed capture schedule is the published P4–8 incumbent. This shifts the target from inventing another pulse shape to obtaining additional isolated source lithium at the recovery boundary.
+
+The physical change is modest: an outlet fraction collector or equal-backpressure diverter, isolated collection bottles, complete liquid accounting, and offline elemental/isotopic assays. A conserved isotope budget can identify a lower bound on new source lithium even when isotope fractionation is not assumed absent. No such run or useful wash-fraction yield is present in the acquired records. The primitive and fractionation methods have prior art; historical originality and practical advantage of this combination remain **UNKNOWN**.
+
+## Primary-source findings that change the opportunity
+
+The [2026 ACS paper](https://doi.org/10.1021/acssuschemeng.6c04447), Experimental §2.4 and Results §§3.3–3.4, specifies a 15-minute DI-water flush between capture and release into a LiCl receiver. It already optimizes four-second pulses across 1, 4, 8, and 12-second rests, selects P4–8, and tests reverse-pulse operation without a noticeable improvement over pulse/rest. Its discussion treats the reduction at twelve seconds as a possible mechanism. It reports better own-initial retention after ten cycles. The paper does not provide a complete wash-stream inventory or its disposition. These observations make wash collection a separate intervention and prevent presenting longer rest or reverse pulses as a new primitive. Fulltext locators: acquired ACS Markdown lines 413–455, 553–585.
+
+The [2024 Nature Communications paper](https://doi.org/10.1038/s41467-024-49191-3), Fig. 5 and Methods, establishes strong dependence on particle morphology, initial lithiation, and non-Faradaic Li/Na exchange. Its exchange protocol includes substantial pre/post washing and particle digestion. It supports acquiring actual species inventories; it does not supply a response law for the present commercial LFPC electrode during seconds-long rests. The acquired handoff records that the relevant time series starts at 0.25 hours. No short-time extrapolation was made here. Fulltext locators: acquired 2024 Markdown lines 290–306, 366–386.
+
+A newly located [2026 Nature Communications paper](https://doi.org/10.1038/s41467-026-73937-w), “Crossover dynamics of non-Fickian ionic diffusion in solids,” already measures 6Li/7Li and Li/Na tracer exchange in LixFePO4. It distinguishes non-Faradaic tracer transport from applied-field electrochemical response. It uses approximately 94.8% 6Li tracer solution and ICP-MS measurements of particles, with washing and digestion. Isotope tracing in this material is therefore established prior art. Neither its fitted rates nor its particle preparations qualify the pulse or wash response of the supplied LFPC cell. Fulltext locators: acquired 2026 tracer Markdown lines 280–288, 320–332, 380–420.
+
+The [2020 Joule paper](https://doi.org/10.1016/j.joule.2020.05.017), pp. 4–6 and 9 of the author PDF, already demonstrates pulse/rest and pulse/rest/reverse/rest with TiO2-coated FePO4. Its methods explicitly limit intercalation capacity during cycling and use a different receiver/counterelectrode configuration. This supplies a prior-art and regime comparator, not a matched performance ranking against the ACS carbon-coated flow cell. [Author-hosted PDF](https://web.stanford.edu/group/cui_group/papers/Chong_Cui_Chu_JOULE_2020.pdf).
+
+## What the real supplied data establish
+
+A narrow independent read of the unmodified Figure 5A processing workbook reproduces the ten-cycle formula sums: CC 12.7700421941 and pulse 10.2573839662, ratio 0.8032380638. The conversion in the actual cells is concentration difference times 0.1/0.158. Own-initial retention is computed from cycle ten divided by cycle one. The raw workbook identifies wavelength channels, including Li 670.780 and Na 589.592, in ppm. These records are elemental optical-emission results, not isotope-resolved trajectories. Released dilution, sampling, liquid inventory, and denominator ambiguities remain.
+
+The supplied Figure 4c decode reports negative recorded doses of 2.8721481114 mAh CC and 1.3868437016 mAh P4–8. This worker did not independently re-decode the binaries. The files have different preparation and duration. Figure 4c and Figure 5A are different experiments and were never divided or joined into a Faradaic efficiency estimate here.
+
+Thus the valid existing finite decision is to reject a claim of demonstrated ten-cycle cumulative-yield superiority from retention alone. Absolute source-lithium yield, a matched pulse/rest causal effect, the missing wash inventory, and an electrode-life endpoint are not identifiable from these records. Differential conversion factors could change even the ten-cycle quantitative ordering. Instrument readings are not independent electrodes.
+
+## Proposed operation: source-certified retention of transition fractions
+
+Keep the entire upstream P4–8 capture, electrode, feed, flow, temperature, oxygen condition, and release protocol fixed. Add a collector downstream of a physically one-way outlet. Collect the transition stream separately before connecting the LiCl recovery receiver. Confirm the actual flushing configuration first: the paper does not establish whether all nominal wash liquid is single-pass or recirculated.
+
+For a declared single-pass 3 mL/min, 15-minute wash, collect fifteen one-minute fractions. This is 45 mL total, **a design calculation conditional on that flow configuration**, not a verified source volume. The candidate policy family consists of sixteen suffix choices: retain fractions k through 15 for k=1,...,15, or retain none. For the first test, both comparator and candidate collect identical fractions, and the keep/dispose decision occurs only after the bottles are sealed. This shares the realized upstream history exactly within the trial. Keep these additional pools isolated from the ordinary receiver until product qualification is complete. Collect and assay the ordinary receiver, remaining feed, all other washes/samples, and final electrode inventory as well.
+
+Start with a cheap pooled wash screen. If an uncertainty-qualified upper bound on all wash lithium is below the minimum worthwhile recovery margin, reject every retention policy before purchasing a fine time series or isotope run. If a complete ordinary-Li inventory bound already identifies enough source lithium, isotope labeling has no justified additional role.
+
+If origin remains decision-relevant, use 6Li-enriched feed at the same **molar** Li/Na concentrations as the comparator, assay the feed's actual isotope composition, and acquire a bound on every nonfeed 6Li inventory that can reach the collector. The receiver seed can be excluded from this wash bound only by an actual closed valve/no-backflow boundary before its connection. Residual electrode Li, conditioning liquid, tubing, membrane, additives, contamination, and previous-cycle inventory remain charged. Measure conditioning effluent and use a conservative initial-inventory bound to avoid assuming complete delithiation. The isotope identity is a source marker, not a claim that Li isotopes have identical kinetics.
+
+The key measurement is total 6Li atoms in each physically isolated pool. The certified pool is the actual deliverable inventory after destructive assay aliquots and all storage/finishing losses, with validated bottle mixing and uncertainty propagated. For isotope i, if z_i is that pool's measured inventory, a_i is the total source-feed input inventory, and b_i bounds all nonfeed input inventory, then source-origin product f_i lies in
+
+```
+max(0, z_i - b_i) <= f_i <= min(z_i, a_i).
+```
+
+Summing over 6Li and 7Li bounds source-origin Li. This is a conservation-only statement: it allows arbitrary isotope fractionation, exchange, trapping, and release. It requires complete origin budgets and simultaneous assay uncertainty. The proof, sharpness scope, and uncertainty extension are in PROOFS.md. It does not recover a kinetic trajectory or distinguish lattice release from displaced feed holdup.
+
+A paired nonintercalating/zero-uptake blank and measured holdup are necessary to attribute wash lithium to the electrode. For the narrower useful-output claim, qualified source lithium can be counted regardless of that microscopic path, but the same product specifications and full hydraulic costs apply. Carryover with the original feed Li/Na ratio is not selective recovery.
+
+## Finite pass and stop rules
+
+Before measurements, fix product concentration, actual all-cation purity, Fe/P impurity limits, allowed volume, delivered-source-Li margin, and cost/time limits. Define whether product is an isolated solution or a further purified salt. Precipitation, evaporation, additional separation, or recycle must be actually performed and paid if required by that contract.
+
+For each suffix A, use the joint confidence region to compute a lower bound L_A on source Li, lower chemical purity, lower source-Li concentration L_A/V_A, and upper impurity/cost bounds. A retained pool qualifies only if all limits pass. Select among the sixteen policies using simultaneous uncertainty so that choosing a cut does not invalidate coverage. Freeze the selected routing rule for held-out runs.
+
+The direct within-run comparator sends the same already collected stream to its declared baseline disposition, including disposal if that is the explicit trial baseline. Selecting sealed bottles cannot change upstream chemistry. A later inline implementation additionally needs equal backpressure, no return flow, and isolated reservoirs. Qualify collector hydrodynamics against the published cell before claiming direct transfer to that original apparatus. If a routing implementation changes cell inputs, use randomized independent electrodes and full-history arms instead.
+
+For the economic decision, lower-bound additional source-Li value minus upper-bound collection, assay, purification, storage, and disposal costs. A positive atom count alone does not establish worthwhile operation. If every suffix has insufficient upper utility, stop. If bounds overlap the margin, report UNKNOWN or acquire the next decision-changing assay. Do not keep fitting unobserved kinetics.
+
+For electrode-life claims, follow independent full electrodes until the declared capacity/replacement endpoint. Charge conditioning, failed batches, terminal inventory, all replacement mass, and elapsed time. A cycle cap reached before failure supports only a finite-horizon claim. If the downstream isolation is valid, upstream electrode evolution is common by design; otherwise it must be compared experimentally. The sixteen-cut certificate addresses only this routing family, not an optimal adaptive rest/cutoff policy.
+
+## Comparator and novelty boundary
+
+1. **Same-device incumbent:** published P4–8 with the same realized capture history and ordinary release. CC remains useful as a secondary comparison, but it is weaker than the optimized pulse incumbent.
+2. **Same-information incumbent:** conventional fraction collection, mass balance, isotope tracing, and an ordinary threshold/cut search receive the same samples and budgets. They can implement the same finite selection. No algorithmic or acquisition-cost advantage over them is established.
+3. **Material alternatives:** the 2024 morphology-optimized FePO4 particles and the 2020 TiO2/reverse-pulse route motivate later material trials. Their feed, preparation, mass normalization, receiver, and durability contracts differ, so the reported numbers cannot rank whole technologies here.
+4. **Quantum-control alternative:** the supplied physical-qualification packet offers a bounded physical-Pauli route, but has no measured whole-module residual, correctable footprint, or privacy certificate. It is a different target operation. Neither channel tomography nor a refresh theorem supplies the lithium response. The lithium transition test has a finite collected chemical output as its endpoint, with no arbitrary-bath qualification claim.
+
+The contribution of this worker is a concrete target, source-origin conservation certificate, and acquisition order for an unmeasured transition stream. Tracer exchange, fraction collection, and finite robust selection are established methods. No claim of historical novelty, superior electrode life, new physical mechanism, or practical separation breakthrough is supported.
+
+## Complete cost and uncertainty contract
+
+COST_CONTRACT.md records the resources and unresolved prices. The decisive premises are actual volumes/dilutions, isotope calibration and initial budgets, complete flow topology, statistically independent electrodes, and product usability. No numerical pass margin has been manufactured. No hardware run or purchase occurred.
+
+## Evidence and reproduction
+
+- `source_readback.json`: own read-only source-cell extraction and manifest/hash checks.
+- `check_conservation.py` / `conservation_checks.json`: exact finite checks of the conservation statement, not a chemistry simulation.
+- `acquisition_manifest.json`: URLs, retrieved text types, local hashes, and excluded fulltexts.
+- `acquired_excluded_from_publication/`: acquired primary article text/PDF only. Exclude this directory from public publication bundles. Analytical outputs outside it are newly authored and contain short source summaries and exact source locators.
+
+**Status:** rest-controller/lifetime superiority NOT_ESTABLISHED; transition-retention hardware NOT_RUN; source-marker theorem CONDITIONAL_CONSERVATION_RESULT; historical originality UNKNOWN; worthwhile new operation UNKNOWN.
+
