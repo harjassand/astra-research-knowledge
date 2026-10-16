@@ -1,0 +1,11 @@
+# Primary-art comparison
+
+Read on 2026-10-16 using the live primary texts below. This is a bounded comparison, not exhaustive priority clearance.
+
+- [Viola–Knill, Random decoupling schemes for quantum dynamical control and error suppression](https://arxiv.org/html/quant-ph/0511120), published PRL 94, 060502 (2005). The setting and Theorems 1–2 already treat tracked random group controls, arbitrary time-dependent bounded interactions, and quantum environments. The discrete implementation uses equally spaced random pulses. The appendix derives the mean error estimate. Thus random DD, bath retention, and inverse tracking are established ingredients.
+- [Santos–Viola, Dynamical control of qubit coherence: Random versus deterministic schemes](https://arxiv.org/html/quant-ph/0511121), Sections II and III.1. Section II's R protocol explicitly chooses a pulse or identity with equal probability at each prescribed slot and includes an initial random slot. Section III distinguishes physical and logical frames and encodes signs by cumulative toggle parity. This is a direct protocol precedent for the root-supplied receiving lead; it must not be called a new control operation.
+- [Wang, Continuous-Process Randomized Compilation for Quantum Process Tensors, v2](https://arxiv.org/html/2610.01521v2), Sections III.2, IV.1–2, V.2 and Appendix I/J. Fixed refresh uses independent node frames while retaining one environment. Finite-duration transparency requires a pointwise covariance condition. Its static-bath retained-record benchmark has error 1−cos^(2K)(gh) on K equal cells. That familiar survival expression is not itself new. The present fixed-slot theorem adds the stated uniform norm-envelope endpoint minimax and finite sink-bath saturation construction to this packet's interface. Historical priority of that precise theorem remains UNKNOWN.
+
+The selected-subset operator effect and support-subset tails are more specific objects than old mean state-error, error-history diagonalization, or complete-record convergence claims. No prior mean-error theorem is silently substituted for those interfaces. Conversely, the local interface improvement does not justify a new-DD or new-hardware claim.
+
+No device parameters, experimental apparatus, paid compute, external review, or controller-isolation qualification were acquired.
