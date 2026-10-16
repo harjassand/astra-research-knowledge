@@ -1,0 +1,63 @@
+# Physical qualification and strongest-incumbent decision
+
+16 October 2026. Worker gf_physical_adversary. Read-only knowledge reference: `/Users/harjas/Documents/ChatGPT/ultra/work/astra-positive-memory-20261016`, requested pin `f937563cbc5d2249b8e0dd96bcbd3b8f78eb85c6`. No Git operation was used to verify or change that pin. Original supplied packets and the reference worktree were not edited. No installation, hardware job, spend, outreach or nested agent was used.
+
+**Decision: NO EXISTING INSPECTED MODULE QUALIFIES THE COMPLETE CONTRACT. A RESTRICTED, ACQUIRABLE FINITE-HORIZON CONTRACT EXISTS; NO NEW PHYSICAL CAPABILITY OR ADVANTAGE IS ESTABLISHED.**
+
+The missing bridge is not resolved by gathering more repetitions of ordinary gate fidelity. The full arbitrary-bath norm and permanent seed privacy are not identifiable from a fixed initialized-bath, finite-horizon experiment. The positive result of this audit is an exact criterion specifying which continuation can be identified, an explicit sample allocation, a constructive bounded-boundary Hamiltonian acquisition procedure, and a charged leakage/energy extension. These are mathematical design results, not performed refresh calibration.
+
+## 1. The four promises have to coexist in one operating point
+
+The actual module needs: (i) a joint residual against a specified common bath evolution; (ii) a fresh private sample and no later returning carrier over the claimed continuation; (iii) harmful action throughout the entire finite physical pulse path; and (iv) a full propagated data footprint correctable by the receiver's fixed recovery. Individual papers below supply pieces. None of the inspected experiments supplies these four promises together for the proposed pulse, its simultaneous neighbors, its bath initialization and its recovery deadline.
+
+The supplied finite-pulse witness is valid and sharply scoped: two physical parallel Z rotations can expose the supposedly harmless XX-preserving drift and yield averaged bad probability 2/9 while the original coarse-odd action is zero. It falsifies that zero-cost compilation. Eulerian/DCG analyses already charge the whole path; the witness does not defeat those constructions.
+
+## 2. The incumbent comparison is stronger than a first-order audit
+
+| Primary result actually inspected | Its usable guarantee and the precise receiving limit |
+|---|---|
+| [Viola-Knill random DD](https://arxiv.org/pdf/quant-ph/0511120), Theorems 1-2, manuscript pp. 3-4 and proof pp. 7-8 | Uniform independent random group controls give worst-case ensemble error O(T Delta_t lambda^2) in its small-error regime. Open-system coupling is bounded; pure bath evolution is removed. Random control and rigorous shared-environment suppression are established. The objective is a known random trajectory in the logical frame, not an undiscardable record-free dephasing module. |
+| [Viola-Knill Eulerian DD](https://arxiv.org/pdf/quant-ph/0208056), p. 2 Eqs. (7)-(9), theorem and proof | The full continuous pulse path enters the average. Controls in the group algebra implement exact group symmetrization of that leading average. There is a finite cycle time and higher-order remainder; the theorem is not exact cancellation of every finite-duration evolution. It directly answers endpoint-equivalent path pitfalls. |
+| [Khodjasteh-Viola DCG](https://arxiv.org/pdf/0906.0525), Secs. II A, III C and IV A-B | Bounded controls, relations between gate implementations, and balance pairs construct corrected nontrivial gates. The black-box no-go does not prohibit corrected gates; it prevents an arbitrary-error-per-gate composition claim. Gate error is considered modulo pure-bath terms, so a common-bath hidden-channel certificate requires an extra argument. |
+| [Concatenated DCG](https://arxiv.org/pdf/0908.1526), pp. 2-3, Eqs. (3)-(4) | Arbitrary specified perturbative order is possible with duration and switching costs. The displayed error bound is modulo pure-bath dynamics and has an unspecified O(1) constant, so it is not itself a numerical privacy residual. For a single-qubit Pauli decoupling group the first construction uses 20 primitive-duration units; higher orders lengthen further. |
+| [Ng-Lidar-Preskill DD plus fault tolerance](https://arxiv.org/pdf/0911.3202), Eqs. (39)-(43), (51), (82); Secs. VI C, VII A and IX | **This is a direct full-joint module competitor.** Eq. (40) compares the actual propagator to the specified common unperturbed bath unitary. Eq. (51)/Table I bounds the entire Magnus remainder for (beta+J)T<=0.54; Eq. (82) gives an eight-pulse finite-width Eulerian bound with no leading width term for the memory cycle. A nontrivial appended gate adds its own finite-width contribution. Its circuit assembly uses the local-bath assumption. Section IX explicitly treats intensive quasi-local bounds for a single location and leaves correlated multi-location DD assembly open. |
+| [Aharonov-Kitaev-Preskill local non-Markovian fault paths](https://preskill.caltech.edu/pubs/preskill-2006-long-range.pdf), Eqs. (7)-(9), (24) | Eq. (9) bounds the norm of the sum of all paths faulting at every specified location, with faults elsewhere unrestricted. The bath Hamiltonian is unrestricted; spatial coupling and action costs remain. This is already a useful shared-bath fault-tolerance certificate. It does not assume physical bath reset or supply the sharp parity endpoint value. |
+
+The packet should retain both sides of the Ng comparison. Its full-joint **single-module** estimate does not require independent bath inputs. Its convenient **circuit-level per-location** assembly has an additional local-bath assumption. Rejecting the module bound merely because the bath is shared would understate the incumbent. Conversely its Sec. IX discussion is not a completed unrestricted correlated-circuit theorem.
+
+For private branches b with equal duration T, common H_B and physical target S^b, an established joint bound
+
+    ||U_b - (S^b tensor exp(-i H_B T))|| <= eta_b
+
+immediately gives half-diamond refresh residual <=sum_b p_b eta_b. Ng's specified-bath comparison has exactly this form when its actual assumptions are met. No new DD construction is required by the refresh theorem. Equal timing, emitted physical waveforms, privacy and support still have to be qualified.
+
+The converse shortcut fails: modulo-pure-bath error zero is insufficient. The exact U_0=I tensor I, U_1=Z tensor X witness in the proof file has perfect reduced gates, but copies the seed to the bath and differs from the desired joint refresh by trace distance at least 1/2. This is a failure of importing the weaker certificate, not a refutation of DCGs.
+
+## 3. Actual experiment conditions
+
+- [Ware et al. PFR](https://arxiv.org/pdf/1803.01818), pp. 2, 4-5: 1,000 independently randomized variants per original GST circuit, one shot each; Paulis are fused into Cliffords with two 50 ns physical pulses and phase updates. The supplied source/compiler audit finds a terminal I/Z ambiguity at a fixed physical reference. The physical control history must therefore be checked. These aggregated GST probabilities do not identify a standalone inserted refresh.
+- [Winick et al.](https://arxiv.org/html/2212.07500v1), Secs. III B-C and IV: easy-gate error independence is load-bearing in the non-Markovian tailoring theorem. One bit of parity information leaked to the environment can restore coherent accumulation. Final twirling is postprocessed. These conditions support the privacy audit; they do not make privacy automatic.
+- [White et al.](https://arxiv.org/html/2312.08454v2), Secs. III B-C and IV: one-qubit 18-step through four-qubit four-step IBM demonstrations use 10^7 shots, 512 per characterization setting, with 800 ns waits. Process/control spillage and correlations are modeled. Optimized gate diamonds are forecasts, and the self-consistent model has gauge/undercomplete-instrument limitations. This is a serious characterization incumbent, not a performed refresh with a worst-case confidence radius.
+- [Giarmatzi et al. current v3](https://arxiv.org/pdf/2308.00750v3), pp. 3-5 and 8: 324 measure/prepare protocols characterize initialized-bath idle evolution. The current text says interactions during tomography operations and dynamics below the mid-circuit measurement timescale are not captured. Its reported bootstrap incorporates sampling and modeled readout error but excludes hardware systematic error. Current publication is *Quantum* 9, 1952 (2025); the supplied audit's v2/2024 source remains a distinct frozen version. No module pulse was present in those observations.
+- [Hellings et al.](https://arxiv.org/pdf/2503.04610), pp. 1-7: actual flux-frequency calibration and predistortion work over nanoseconds to tens of microseconds under an approximately linear time-invariant transfer model. This is a viable physical phase-control component. It does not measure the bath operator norm, seed return or the correctable footprint.
+
+No raw records were inferred from paper figures. The supplied packet's static public-data inspection was read as supplied evidence; its archived repository acquisitions were not present as source files in this extracted packet. This worker independently acquired primary manuscripts, not a new hardware dataset. No lithium data were opened because it would not test any of these channel, privacy or footprint hypotheses.
+
+## 4. Exact positive result and decisive falsification
+
+`ACQUISITION_IDENTIFICATION_PROOFS.md` proves:
+
+1. A target continuation effect F is identifiable exactly when the measurement-map nullspace, restricted to the physical affine process space, is contained in ker F. Otherwise two positive causal processes agree on every measured probability but disagree on the target. This gives a concrete experiment-design rank test, not a request for unspecified more data.
+2. Finite binary counts and calibration bounds give a simultaneous target confidence radius. The optimal continuous shot allocation for the stated Hoeffding/L1 certificate is n_k proportional to |c_k|^(2/3), with N=log(2K/alpha)(sum |c_k|^(2/3))^3/(2 epsilon^2).
+3. A finite complete Hamiltonian model can acquire coefficient confidence intervals from short-time Pauli derivative measurements. It pays a coarse norm bound, SPAM/timing error and finite-difference truncation. A retained-energy block with leakage coupling gamma and initial outside weight nu gives residual <=sum p_b(delta_b+gamma_b)+2sqrt(nu). This avoids assuming a finite norm for the entire infinite bath, but narrows the input class explicitly.
+4. A local operator-span test certifies the declared footprint, provided no bath-mediated influence leaves it before recovery. This is separate from the residual.
+
+The strongest measurable application is either a trusted complete small module with all relevant bath ports accessible, or the complete bounded-horizon initialized-bath process for the final encoded memory experiment. The latter directly certifies its tested logical output; it does not certify an arbitrary-bath local dilation or scalable lifetime.
+
+## 5. Stop/go decision
+
+**STOP hardware/advantage promotion.** There is no performed proposed module, numerical complete residual, privacy qualification or complete footprint at a common operating point. Existing DD/DCG/RC and local fault-path methods receive all newly acquired calibration and control information in the comparator.
+
+**GO only for a concrete restricted pilot** if its boundary, maximum recovery time, sample design, systematic budget, seed no-return architecture and incumbent sequences are fixed first. Run an uncorrected physical I/S branch, a software-frame negative control, protected I/S from established DD/DCG constructions, and the bare memory under the same amplitude, wall time, geometry and calibration. The endpoint logical process and all acquisition/reset/control costs decide usefulness. A nullspace failure or a demonstrated incumbent win is a redesign/stop signal.
+
+Mathematical synthesis: internal derivations saved. Primary proof scope: directly inspected at listed ranges. Historical novelty: UNKNOWN. Numerical hardware qualification: NOT ESTABLISHED. Practical memory advantage and mission achievement: NOT ESTABLISHED.

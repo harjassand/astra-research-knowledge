@@ -1,0 +1,165 @@
+# Exact two-gap endpoint optimization for a specified Schur refresh
+
+Date: 2026-10-16. Original mathematical extension of the supplied singleton and label-interface proofs. This is a full-joint-channel theorem, not a qualification of a physical device or of measured reduced-state coherence. The product conclusion retains the inherited causal-tester theorem and unchanged-action simulation as prerequisites.
+
+## 1. Contract and exact value
+
+Let P_0,...,P_K resolve identity, with P_0 good and K>=1 bad sectors. A single fixed node is
+
+T_C(X) = sum_{j,k=0}^K C_{jk} P_j X P_k,
+
+where C is Hermitian positive semidefinite and C_jj=1. The node has an inaccessible discarded environment, and its stipulated action includes every persistent bath/reference. Gap controls obey the same coarse good/bad-odd action contract as the supplied proofs; their baselines may preserve only coarse parity.
+
+Write C=[[1,c†],[c,B]], p=sin²(min(a,pi/2)), q=sin²(min(b,pi/2)), Q=p+q-pq, and h=sqrt(pq(1-p)(1-q)). Then the sharp endpoint-bad supremum over sufficiently rich finite sector dimensions is
+
+F_C(p,q) = Q + max_{z in C^K, ||z||_1<=1} [2h Re(c†z) - pq z†Bz].                 (1)
+
+The maximum is attained. This is maximization of a concave quadratic over a compact convex complex l1 ball, equivalently convex minimization. No invertibility or reality assumption on C is needed.
+
+The precise conjugation matters: with the physics inner product conjugate-linear in its first argument, projected output products and the equality witness below produce conjugate(z), rather than z, before applying C. Omitting this conjugation gives the wrong channel dependence for complex C.
+
+## 2. Upper bound
+
+Purify the initial state and all allowed parity-preserving gap operations. Before the node write
+
+psi = sqrt(1-w) u + sqrt(w) sum_j alpha_j e_j,
+
+where u is normalized good, the e_j are orthonormal bad vectors in sector j, sum_j |alpha_j|²=1, and w<=p by the inherited one-gap sine bound. Zero sector components can simply be omitted.
+
+Purify the second gap into an isometry U. Put A=P_0 Uu, r=||A||², and M=P_0 U restricted to the whole bad input space. The uniform one-gap bound in both entering parities implies r>=1-q and ||M||<=sqrt(q).
+
+For r>0 let e=A/sqrt(r), t_j=<e,Me_j>, and
+
+y_j = -conjugate(alpha_j t_j).
+
+Cauchy-Schwarz and the operator bound give
+
+||y||_1 <= (sum|alpha_j|²)^(1/2) (sum|t_j|²)^(1/2) <= sqrt(q).
+
+Project the final good output onto the line spanned by e. The discarded orthogonal good contribution is nonnegative: the node's bad block is positive semidefinite, and its compression to that orthogonal output space is positive. The good input and its cross terms have no component there. Consequently final good probability is at least
+
+H_w(r,y) = (1-w)r + w y†By - 2 sqrt(w(1-w)r) Re(c†y).                     (2)
+
+This expression is nonnegative for every r>=0 and y, by positivity of C.
+
+For 0<=q<1, set y=sqrt(r)x. Then
+
+H_w(r,y) = r g_w(x),
+g_w(x) = (1-w) + w x†Bx - 2sqrt(w(1-w)) Re(c†x) >= 0,
+
+where g_w(x) is the C-quadratic form on (sqrt(1-w), -sqrt(w)x). The permitted x ball has radius sqrt(q/r). As r increases, this ball shrinks, so its minimum of g_w is nondecreasing and remains nonnegative. Multiplication by the increasing nonnegative r preserves monotonicity. Therefore the relaxed minimum of (2), with 1-q<=r<=1 and ||y||_1<=sqrt(q), occurs at r=1-q.
+
+Set y=sqrt(q)z. Subtracting this minimized survival from one yields exactly (1) with w in place of p.
+
+To justify w<=p, the relaxed domain in (r,y) expands as q increases; hence its minimized survival decreases and F_C(w,q) increases. Formula (1) is symmetric in w and q. Thus F_C is also nondecreasing in w, proving F_C(w,q)<=F_C(p,q). This argument does not assume that every relaxed (r,y) is a unitary compression.
+
+Endpoints follow directly or by continuity: F_C(0,q)=q, F_C(p,0)=p, and F_C=1 if either argument is one. At q=1 the upper bound 1 is immediate, avoiding division by r. Formula (1) has the same values since z=0 is feasible and B is positive.
+
+## 3. Equality witness for every feasible z
+
+Take a normalized good state u, one bad vector e_j in each fine sector, and an extra bad sink s orthogonal to them in any existing bad sector. For L=||z||_1>0 set
+
+v_j = sqrt(|z_j|/L),
+w_j = sqrt(L|z_j|) exp(i arg(z_j)),
+v = sum_j v_j e_j,
+w_vec = sum_j w_j e_j + sqrt(1-L²)s.
+
+Zero coordinates contribute zero. Both v and w_vec are normalized, and v_j conjugate(w_j)=conjugate(z_j). For L=0 take v=e_1 and w_vec=s.
+
+Drive the Hermitian norm-one odd generator |u><v|+|v><u| to angle arcsin(sqrt(p)) before the actual node, and |u><w_vec|+|w_vec><u| to angle arcsin(sqrt(q)) afterward. The first state is sqrt(1-p)u-i sqrt(p)v. Direct multiplication gives final good probability
+
+(1-p)(1-q) + pq z†Bz - 2h Re(c†z).
+
+Thus the endpoint-bad probability is the objective in (1). Choose a maximizing z. K+2 total dimensions suffice generically; when L=1 the sink is unnecessary. Fixed insufficient sector dimensions still obey the upper bound, but need not attain it. Budgets beyond pi/2 are upper bounds and the controls can stop at the capped angle.
+
+## 4. Singular B and the unconstrained case
+
+For 0<p,q<1 put t=h/(pq). Positivity of C implies c belongs to Ran(B) and c†B^+c<=1. Completing the square shows that all unrestricted maximizers are
+
+z=t B^+c+n, n in ker(B),
+
+with improvement (1-p)(1-q)c†B^+c. The unrestricted value is the constrained value if and only if at least one of these maximizers has l1 norm at most one. In particular ||t B^+c||_1<=1 suffices, but is not asserted necessary when B is singular. The compact optimization (1) always covers singular cases without inverses.
+
+## 5. Actual independent binary-generator dephasing
+
+Suppose m commuting binary generators define the full joint sector labels j in {0,1}^m, with good label 0, and independent generator coherence multipliers eta_a. For real eta_a in [-1,1], their actual joint Schur channel has
+
+C_jk = product_a eta_a^((j xor k)_a),
+C = tensor_a [[1,eta_a],[eta_a,1]].
+
+This is generally not the scalar identity/full-fine-pinch mixture. If every |eta_a|<1, C and B are invertible. Let D=product_a(1-eta_a²). The inverse of this tensor matrix has
+
+(C^-1)_j0 = (-1)^|j| product_{a:j_a=1} eta_a / D,
+(C^-1)_00 = 1/D.
+
+Block inversion therefore gives
+
+beta_j := (B^-1 c)_j = (-1)^(|j|+1) product_{a:j_a=1} eta_a,
+c†B^-1c = 1-D,
+||beta||_1 = product_a(1+|eta_a|)-1.
+
+For the customary nonnegative multipliers, the absolute values may be dropped. Whenever
+
+sqrt((1-p)(1-q)/(pq)) [product_a(1+|eta_a|)-1] <= 1,
+
+formula (1) reduces exactly to
+
+F_C(p,q) = 1 - (1-p)(1-q) product_a(1-eta_a²).                           (3)
+
+Otherwise the constrained quadratic optimization (1) remains necessary; (3) is only its unconstrained upper bound. Multipliers of absolute value one are still covered by (1), not by the inverse argument.
+
+The alternating weight-two coefficients are genuine. At p=q=1/2, m=2 and eta_1=eta_2=1/3, the feasible optimizer is z=(1/3,1/3,-1/9), with l1 norm 7/9 and F=65/81. For eta_1=1/3, eta_2=0 the maximum good/bad coherence is the same 1/3 but F=7/9. Hence that scalar maximum alone does not determine the sharp value.
+
+## 6. Auxiliary-label embedding and conditional coordinate product
+
+The supplied label-interface reduction extends exactly. For each coordinate i require its fine projectors to commute with every coarse parity, a prescribed chronological order of actual nodes, and independent inaccessible node environments. Let J have K labels, ell(0)=0 and ell(j)=j-1 for bad j, and W=sum_j P_j tensor S_ell(j). Define local tester projectors R_0=P_good tensor I_J and R_j=P_bad tensor |j-1><j-1|. Use the tester-local channel
+
+L_C(X)=sum_jk C_jk R_j X R_k.
+
+On the encoded subspace J=|0>, one has, block by block,
+
+W† R_j W (X tensor |0><0|) W† R_k W = P_j X P_k tensor |0><0|.
+
+Summing with coefficients C_jk proves exact encode/L_C/decode identity, including arbitrary references, and resets J. The same coherent-copy implementation of W and W† preserves all coarse parities and adds no odd action. Extend the fine resolution to all padded dimensions as in the supplied audit; do not zero-pad every bad projector.
+
+For an arbitrary prover, J need not arrive honestly initialized. Nevertheless the local tester's P_good tensor I_J and K bad label blocks form precisely a fine resolution to which Sections 1–2 apply, with arbitrary incoming reference correlations and parity-preserving interventions. The tester's discarded node environment remains private. Thus its arbitrary-strategy value is at most F_C.
+
+The inherited unchanged-action binary tester simulation and causal positive-domination product theorem now imply the coordinate endpoint-all-bad upper bound product_i F_{C_i}(p_i,q_i). Tensor independent equality witnesses shows uniform sharpness over unrestricted finite models with adequate independent sector dimensions. Sharpness for every prescribed overlapping projector family is not claimed. This closes the generator-wise channel case under the listed full-channel, commutation, privacy, and ordering assumptions; it does not establish syndrome-history/support completion or qualify arbitrary marginal decoherence observations.
+
+Fine projectors of different coordinates need not mutually commute, provided each commutes with every coarse parity and nodes are applied in their specified order. If an interaction picture removes the coarse baseline, conjugate every fine projector at its actual node; C stays fixed but the projectors generally move. Correlated simultaneous channels given only by marginals, environment access, noncommuting coarse/fine resolutions, and uncontrolled node schedules remain outside this argument.
+
+## 7. Representation and computation cost
+
+For explicitly supplied C, (1) has K complex variables, equivalently 2K real variables, with K magnitude epigraph constraints and one sum constraint. It is a convex quadratic/conic formulation; a generic exact value is not asserted to be a rational number or to admit a closed-form radical expression. Dense C storage and a dense objective evaluation cost O(K²), and a dense inverse/factorization costs O(K³) arithmetic when appropriate. Numerical conic optimization requires a requested tolerance and conditioning/bit-size control; these are not suppressed into a constant-cost oracle.
+
+For m binary generators the full sector count is K=2^m-1, so this general explicit formulation is exponential in m. Constructing the entire dense C has O(4^m) entries. The tensor formula represents the channel with m parameters; the test for (3) and its value take O(m) arithmetic, while explicitly listing all beta entries costs O(m 2^m) by the direct formula, or O(2^m) with subset-product recursion. No polynomial-in-m algorithm for the constrained regime is claimed.
+
+## 8. Bounded independent checks
+
+check_exact.py uses only preinstalled SymPy and exact arithmetic. It builds and applies both finite-dimensional rotation matrices and the actual Schur channel, then checks equality with (1). check_results.json records:
+
+- two nonzero 1/3 multipliers: exact F=65/81;
+- same maximum coherence but one zero multiplier: exact F=7/9;
+- complex rank-one singular C from d=(1,i,1), p=q=1/4, z=(i,1)/2: exact F=3/4;
+- a nonsingular complex channel and a nonoptimal feasible complex z: direct channel and objective agree exactly.
+
+These are algebraic consistency checks, not a solver campaign, external validation, or a replacement for the proof.
+
+
+## 9. Feasible lower bounds and explicit global upper certificates
+
+For alpha=pq and f(z)=2h Re(c†z)-alpha z†Bz, concavity implies, for every v in C^K (not necessarily feasible),
+
+max_{||z||_1<=1} f(z) <= alpha v†Bv + 2||h c-alpha Bv||_infinity.           (4)
+
+Indeed the tangent at v is alpha v†Bv+2 Re[(h c-alpha Bv)†z], and the dual of the complex l1 norm is the complex infinity norm. Every feasible z supplies the lower bound f(z). Matching (4) with that lower bound certifies exact optimality, and their difference gives an explicit value gap for approximate candidates without trusting a solver's status.
+
+Root's exact constrained example has m=2, eta_1=eta_2=1/4 and p=q=1/4. With ordering (01,10,11),
+
+B=[[1,1/16,1/4],[1/16,1,1/4],[1/4,1/4,1]], c=(1/4,1/4,1/16),
+z=(1/2,1/2,0), z†Bz=17/32,
+hc-alpha Bz=(7,7,-2)/512.
+
+The feasible objective and tangent upper bound are both 31/512, proving F=255/512. The inherited retained-full-pinch mixture bound is 294/512, so this is a strict improvement. Here the full-pinch component has probability (3/4)^2 and the remaining component is bounded coherently; that mixture is an upper certificate, not the stipulated actual channel.
+
+An additional interior check with eta_1=eta_2=1/10 and p=q=1/4 has optimizer l1 norm 63/100 and exact F=71791/160000. Both examples have been added to the exact direct-channel script and results.
