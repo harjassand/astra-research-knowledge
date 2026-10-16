@@ -1,0 +1,253 @@
+STRONG EQUALLY INFORMED COMPARATOR: CERNAK JACS 2026 CHEMISTRY ASSAY
+Status: real source/data interface acquired; exact assay comparison NOT_EXECUTED.
+No invented/synthetic mixture truth is used. No new physical operation established.
+
+The current source itself already resolves the coeluting 3/13 mixture using
+authentic-standard, multichannel UV calibration and two-component least squares.
+A scalar mass-only comparator would artificially weaken the incumbent. A fair
+comparison must give existing methods every authentic standard, calibration,
+measurement channel, replicate, matrix sample, and processing budget supplied to
+the proposed operation.
+
+PINNED SOURCES
+Article: Das et al., JACS 2026, DOI 10.1021/jacs.6c05959.
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC13339639/
+Code commit: 449db5a012aca0cb24181ddcbb51d3fad6c2f98e
+  https://github.com/cernak-lab/cernakHTE/tree/449db5a012aca0cb24181ddcbb51d3fad6c2f98e/spectral_deconvolution
+JACS SI, not the older preprint SI:
+  https://acs.figshare.com/articles/journal_contribution/32718736
+  https://ndownloader.figshare.com/files/65650732
+  SHA256 07ebd48c5e6648562d0381eb2cb64f7596d29214fb50c6183bf2505b550f33b8
+  7,450,297 bytes; publisher MD5 matches 653b2bd22993e1a98f9332847884081e.
+SI pp34,40,41,42 rendered and visually inspected. No plot digitization is treated
+as exact numeric calibration or independent truth.
+
+OBSERVED EXACT INTERFACE
+The source code (SHA256 980806cc113608a03878054a519e9ef1ef486a020893771505b3680269d56b40)
+extracts UV channels in the inclusive 255-305 nm window. Actual channel count and
+grid must be read from MZML; assuming 51 independent channels is not justified.
+It applies asymmetric least-squares baseline correction (lambda 1e5, p .005,
+10 iterations), then independently fits Gaussian peaks at each wavelength.
+Product window is 1.0-1.5 min, initial center 1.14; caffeine window .3-.6 min,
+initial center .48. Caffeine normalization is specifically its 270 nm peak area.
+The supplied is_nm argument is ignored in the function body, so the actual
+normalizer stays 270 nm. Instrument-specific pure calibrations are pivoted by
+wavelength from .pkl tables with columns nm and ext_coef. The two columns are
+CF3_DP_<INSTRUMENT> and CF3_SP_<INSTRUMENT>. Each integrated spectrum y is fit as
+y = A c, c=(desired,side), using scipy least_squares without nonnegativity bounds.
+The residual covariance calculation uses s^2 (J'J)^-1 and marginal t widths.
+
+SI40 restricts the reported spectral procedure to mixtures above Product/IS .2,
+described there as 20% combined assay yield. Lower-signal mixtures generally gave
+large fit errors. Authentic 3 and 13 standards and distinct UV shapes resolve this
+specific pair; this is not arbitrary structure identification. S17 plots fitted
+outcomes and error bars, including negative estimates; it is not a table of
+independently known mixture concentrations.
+
+STRONGER CONVENTIONAL BASELINE AND DERIVATION
+Let A have the two authentic-standard response columns on the acquired grid; y
+is the measured normalized mixture. Let Sigma be covariance determined from
+measurement replicates, and N contain any predeclared baseline/interference
+directions. Include all channels already acquired by the proposed operation.
+The conventional objective is
+  min_{c>=0,b} (y-Ac-Nb)' Sigma^-1 (y-Ac-Nb).
+For positive-definite Sigma, whiten with its Cholesky factor and project out the
+whitened N columns. This gives ordinary NNLS on two residualized columns. With
+two analytes, enumerate the four possible active sets: neither, desired only,
+side only, both. For each, solve its small least-squares problem and retain the
+feasible solution with the smallest objective. This is the global optimum of
+the specified convex problem. No new chemical information is created.
+
+Compute singular values of the whitened, residualized A. A zero smallest singular
+value is nonidentifiability. A small value means large concentration uncertainty.
+If the columns are proportional and the compounds coelute exactly, y contains
+only one response-weighted combination of concentrations. Positivity, a better
+optimizer, or a language model does not recover the absent independent contrast.
+Likewise an unmodeled interferent lying in span(A,N) need not leave a residual.
+
+Correlated noise matters. Every wavelength is divided by the same caffeine peak
+area, so denominator noise induces cross-wavelength covariance. Baseline fitting,
+spectral detector resolution, and peak fitting add further dependencies. Diagonal
+weights are acceptable only if supported by the acquired covariance. Ordinary
+independent-wavelength t widths do not establish empirical coverage.
+
+For a fixed correct A and Gaussian noise with KNOWN Sigma, the nonnegative set
+  {c: SSE(c)-SSE(c_hat) <= chi2_2(.95)=5.991464547107979}
+has at least 95% joint coverage. After nuisance projection the unconstrained
+least-squares improvement at the true c is chi-square with two degrees of
+freedom; constrained SSE is at least unconstrained SSE, yielding the conservative
+bound. Coordinate projections are obtained by fixing one c and profiling the
+other (its one-variable minimizer is clamped at zero). This is a CONDITIONAL
+statement. It does not cover estimated A, estimated Sigma, wrong nuisance
+models, contamination, detector drift, nonlinear matrix effects, or dilution
+error. conditional_gls_nnls.py implements this conventional component and an
+optional measured-data comparison. It is not the full calibrated assay.
+
+The full strongest practical comparator must additionally use actual calibration
+replicates and instrument/day variation, jointly propagate standard preparation,
+pure-spectrum, peak integration, internal-standard and dilution uncertainty,
+and verify the resulting intervals against held-out independently quantified
+mixtures. An errors-in-variables/hierarchical likelihood or calibration-plus-
+measurement resampling is conventional. Any bootstrap needs its own assumptions;
+calling intervals calibrated requires observed held-out coverage, not their name.
+An independently established limiting-reagent budget can add concentration
+upper bounds or a two-product sum constraint to this convex fit. It requires
+reconciled amounts, dilution and stoichiometry; clipping source yields above100%
+does not resolve an uncertain normalization or establish an accurate assay.
+
+If raw time-by-wavelength arrays exist, the comparator should also fit the full
+matrix instead of discarding temporal information into independent Gaussian
+areas. Authentic-spectrum nonnegative curve resolution can estimate component
+elution profiles and integrate them. Constrained MCR-ALS / PARAFAC2 are existing
+alternatives for partial coelution, shifted peaks, background and batch structure.
+Any rank, shape, shared-spectrum, and peak-number assumptions must be selected
+without seeing test truth. If matrix response differs, measured multivariate
+standard additions are an incumbent control, with their injections/preparation
+charged. Standard addition does not separate two exactly indistinguishable
+initial analytes merely by adding known amounts: independent response contrast
+or a physical separation/selective intervention remains necessary.
+
+Actual fair selection: fit source OLS, weighted NNLS, and applicable full-matrix
+methods on identical acquired information. Choose/tune within the calibration
+set. Freeze preprocessing, rejection rules, units and calibration; then compare
+correct-product concentration error, side-product error, false structure calls,
+interval coverage and width, failure/abstention rate, and all costs on blind
+mixtures. Include pure endpoints, near-zero minority isomer, low total amount,
+varied ratios and the same reaction matrices. A producer's fitted concentrations
+or recipe-derived predictions cannot serve as independent assay truth.
+
+WHAT WAS ACTUALLY ACQUIRED / WHAT IS MISSING
+Acquired: exact code and notebook, exact JACS SI, publisher receipt, and shared
+public ORD parquet (5,088,296 bytes, SHA256
+31b7c4762145e5dad973050373cd967bdd85caf3a9858767c83a17fed6c4af36).
+chemistry_search audits the 50,688 actual records. Its authentic/internal-standard
+flags are producer claims about the assay; they do not expose calibration arrays
+or create independent mixture truth. The incumbent worker does not duplicate
+that parser or promote those labels as its own validation.
+
+Unavailable: calibration .pkl numeric contents/uncertainty, calibration MZML/RAW,
+reaction MZML grids and peak arrays, spectral_deconvolution_data.csv manifest,
+independent mixture truth, and run-specific dilution/instrument metadata. Current
+public GitHub tree contains only code/notebook in this folder. Notebook collection
+bfd43535-052a-46bb-911a-b1cdfb1e92d7 names
+  /spectral_deconvolution/matrix_completion/spectral_deconvolution_data.csv
+  /spectral_deconvolution/matrix_completion/calibration_data/
+and transfers MZML paths listed in the CSV. The JACS article points instead to
+collection 1e0ff2e8-9139-4f7e-97a7-4954714bd34d. Both unauthenticated metadata
+lookups returned AuthenticationFailed (No credentials supplied). Root also saw
+the current article link redirect to Globus login. No credentials were extracted
+or guessed. No raw-data acquisition is claimed.
+
+NUMERICAL COMPARISON OUTCOME
+NOT_EXECUTED_MISSING_MEASURED_INPUTS. No chemical spectra or known mixture truth
+were available to run the stronger comparator. No improvement, calibrated
+coverage, practical advantage, or new enabling capability was demonstrated.
+The executable comparator explicitly refuses a scientific benchmark without
+measured inputs and a documented independent-truth contract. Self-declared
+provenance remains subject to review; a metadata field alone does not prove truth.
+
+UNIT / OUTPUT-CONTRACT GATES
+Code lines200-204 writes concentration estimates and concentration-scale t widths;
+lines210-212 divides DP,SP,DP+SP by max_yield, leaving error_DP,error_SP unchanged.
+Thus those exported error widths need an explicit downstream conversion before
+being interpreted in the normalized point-value units. This is a code interface
+finding; downstream files were not acquired, so it does not prove published
+uncertainties or ORD labels were processed incorrectly.
+
+The default max_yield is .2/4/30*1000=1.6666667 with a comment specifying mM;
+the notebook passes1.666. SI32's stock/aliquot/calibration concentration wording
+and SI14-15's reaction/dilution recipe require reconciliation against actual
+calibration metadata. If .0679 M stock is directly diluted5uL to1000uL, the
+concentration is .3395mM, while the SI text lists .339uM. It also mentions an
+aliquot dilution without its size, so a missing additional dilution is possible.
+Do not silently repair units or infer a published yield error. Preserve the
+raw files, exact run args, concentration definitions and dilution history first.
+
+ACTUAL AND INFERRED COSTS (NOT JUST FIT TIME)
+Measured download: exact JACS SI6.802s,7,450,297B; publisher metadata access1.3s
+and0.8s-scale local extraction/rendering. The shared ORD receipt reports3.335s
+network download5,088,296B. These are this session's file acquisition costs, not
+wet-lab acquisition costs or inference telemetry. Raw transfer bytes/time UNKNOWN.
+
+SI documents1uL reactions,18h incubation, nitrogen glovebox, OT-2 and Mosquito
+preparation,3uL caffeine quench and transfer to four384-well analytical plates.
+For insoluble bases it adds2h vacuum centrifugation plus18h desiccation. Purified
+authentic standards have their own0.5mmol synthesis,18h reaction, chromatography,
+NMR identity checks, weighing and preparation. Actual labor, capital, energy,
+consumables and all-in money costs remain UNKNOWN.
+
+The LC method is2 or8min,0.8mL/min,0.1uL injected,45C column,20Hz PDA,
+210-400nm stated detector range with1.2nm resolution. A2min chromatogram implies
+at least2instrument-min and1.6mL mobile phase per injection, before unknown
+overhead. Across50,688 injections the idealized floor is1,689.6instrument-hours
+(70.4instrument-days) and81.1008L solvent. If every injection used8min, this
+would be6,758.4hours and324.4032L. The actual2/8min mix, parallel instrument
+schedule, conditioning, blanks, maintenance, failed runs and repeat injections
+were not acquired. These bounds are arithmetic consequences of documented
+method durations, not measured campaign elapsed time.
+
+The SI's four compounds x five levels x two instruments implies40 calibration
+injections if each combination was measured once; at2min this is80instrument-min
+and64mL mobile phase, excluding all replicate/truth/blank injections. Restricting
+to the3/13 pair gives20 such injections,40min and32mL. This is a conditional
+count from the stated design; actual calibration manifests are missing.
+
+Once spectra and calibration are supplied, the two-variable fit is small:
+diagonal weighting costs O(m) per mixture after preprocessing; a shared dense
+covariance factorization costs O(m^3), whitening O(m^2) per mixture. Full temporal
+processing, RAW conversion, baseline fitting, Gaussian fits, covariance acquisition,
+calibration fitting and truth acquisition must be charged separately. Source
+baseline correction constructs a dense identity/difference matrix over time
+before converting it to sparse format, so preprocessing can exceed the tiny
+two-variable solve. No end-to-end runtime/memory/energy comparison was measured.
+
+NOVELTY OVERLAP: PRIMARY SOURCES
+1. The exact Cernak code/SI already covers authentic-standard UV decomposition.
+   Positivity, weights, uncertainty propagation and batch calibration are fair
+   incumbent improvements, not an invented assay operation.
+2. Tamai, Noda, Yamamoto, J Chromatogr A1704(2023)464136,
+   DOI10.1016/j.chroma.2023.464136, already combines MCR-ALS with Bayesian
+   uncertainty for coeluted HPLC-PDA peaks.
+   https://www.sciencedirect.com/science/article/pii/S002196732300362X
+3. Johnsen, Amigo, Skov, Bro, J Chemometrics28(2014)71-82,
+   DOI10.1002/cem.2575, treats overlapping chromatographic peaks, background,
+   elution shifts and component number with PARAFAC2 on real GC-MS datasets.
+   https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/10.1002/cem.2575
+4. Pere-Trepat, Lacorte, Tauler, Anal Chim Acta595(2007)228-237,
+   DOI10.1016/j.aca.2007.04.011, compares external, internal-standard and
+   standard-addition calibration for MCR quantification of coeluted LC-MS
+   compounds in complex matrices.
+   https://www.cid.csic.es/homes/rtaqam/Roma%20Tauler_archivos/c2007/ACA_calibratge_emma.pdf
+5. Sojdak et al., ACS Cent Sci11(2025)272-278,
+   DOI10.1021/acscentsci.4c01765, already encodes C-H regioisomers with
+   site-distinct partial deuterium labels, predicts isotope-distribution columns
+   using substrate1H NMR, and obtains unseparated product ratios by OLS/NNLS.
+   It compares against protio/TWC ratios and considers isotope effects. This
+   establishes a serious overlap boundary for a proposed isotope-code operation;
+   its general application to the specific Cernak aryne pair is not established.
+   https://pmc.ncbi.nlm.nih.gov/articles/PMC11868960/
+6. Corens et al., J Chromatogr A1056(2004)67-75, PMID15595534, uses
+   LC-MS/chemiluminescent nitrogen detection with a caffeine calibration to
+   quantify known-formula nitrogen-containing compounds without their own
+   primary standard. The paper reports reduced response for N=N and N-N species.
+   https://pubmed.ncbi.nlm.nih.gov/15595534/
+7. Maduskar et al., Lab Chip15(2015)440-447, DOI10.1039/C4LC01180E, describes
+   a GC quantitative carbon detector using combustion and methanation into a
+   common methane reporter; the authors report greater than99.9% conversion
+   within an operating regime. This is prior art for common-reporter quantitation.
+   https://pubs.rsc.org/en/content/articlelanding/2015/lc/c4lc01180e
+
+Items6-7 were independently checked against primary article abstracts after
+a01_assay_operation identified them. These detectors do not alone distinguish
+the present same-formula isomers: equal elemental counts and complete coelution
+produce the same reporter contrast. LC separation, selective chemistry, isotope
+encoding or another independently established identity channel is still needed.
+Quantitative NMR or independently optimized chromatography with authentic
+standards can supply stronger truth on appropriate sample amounts. Their scale,
+recovery, aliquot identity, detector response, run time and preparation must be
+charged; no such measurements were acquired here.
+
+A candidate must identify a physical information/response interface outside
+these existing operations, then show that it can be acquired and calibrated at
+matched full cost. Naming a new optimization rule, QR decomposition, robust
+interval or adaptive wavelength set does not by itself cross that gate.
