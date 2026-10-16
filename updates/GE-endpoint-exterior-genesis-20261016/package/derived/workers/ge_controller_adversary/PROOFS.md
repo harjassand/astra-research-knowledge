@@ -1,0 +1,77 @@
+# Independent receiving proofs and exact extensions
+
+16 October 2026. Inputs are the supplied convergence campaign C. All constructions here are finite, internal receiving mathematics. No external validation, priority, physical implementation, or threshold is asserted. `exact_receiving_checks.py` is independently written; supplied code was read as data and was not executed.
+
+## 1. Crossed-counter distance four and the two-fault ghost
+
+Use the s01 even/odd crossed 2×2 tilings, even q≥8, and its parity-oriented `Valid` predicate. Let h be an integer surface reached by the ideal atomic gate/counter rule. If h_v=k, the three other members of v's current tile have heights k−1 or k, while those in its previous tile have heights k or k+1. The atomic increment of a uniform ready tile preserves this assertion, including at neighboring sites outside that tile. This is a statement about reachable h, not about an arbitrary locally valid residue field.
+
+An unchanged member of the current tile restricts any candidate residue at v to {k−1,k}. An unchanged member of the previous tile restricts it to {k,k+1}. Their intersection is k modulo q. This remains true when the unchanged member has either allowed height: the parity in `Valid` fixes which neighboring pair is permitted. The modulus prevents the three residues from aliasing.
+
+Suppose a globally valid t differs from h mod q on a nonempty set S of at most four sites. A changed site cannot have an unchanged member in each of its two incident tiles, by the intersection argument. Thus one entire incident tile lies in S. Since that tile has four sites, S is exactly that tile P. At each changed site the opposite tile is unchanged except at that site. Its candidate value must therefore change by +1 if P is the current tile, or −1 if P is the previous tile. If P were mixed in h, lower members would decrease and upper members would increase, leaving values three apart, forbidden by `Valid`. Hence P is uniform and t is exactly its one-step advance or rollback. This proves the distance-four classification without a finite-size extrapolation.
+
+Before the first collective B, at most two primitive counter changes leave at most two sites different from the ghost h. Every dirty site has an invalid incident tile: both incident tiles still contain unchanged members, so global validity of both would pin that site. A gate touching a dirty site is blocked. Every accepted gate consequently has the ghost's actual heights and extends its reachable ideal execution. Every effective singleton R must restore the ghost value, because each tile incident to its proposed write still has an unchanged member. These statements survive separated fault times and arbitrary accepted exterior gates. If the first fault is repaired before the second, restart the single-fault argument.
+
+If the two dirty sites do not share a tile, both correct singleton repairs are available. If their shared tile is valid, restoring either site preserves it: the two unchanged values fix either a single allowed oriented pair or a subset of one. If the shared tile is invalid and no R is available, restoring both to h is a valid B candidate.
+
+For an off-target B tile Q containing only dirty site v, R(v) would be available unless the other dirty site lies in v's opposite tile. In that exceptional case all possibly invalid tiles, including those incident to the outside dirty site, lie in Q's radius-two tile moat. A successful candidate would be globally valid and differ from h on at most four sites. Its support contains an outside dirty site and at most three sites of Q; no full tile other than Q can be formed because opposite tiling tiles intersect Q in at most one site. The distance-four classification excludes it. Thus B cannot write an off-target endpoint.
+
+After an R only one dirty site remains. After a B the field is globally valid, and the distance-four lemma classifies its difference from h. At most two effective repair events therefore retire the episode; a rate-one effective repair remains available at every pre-retirement state. This gives an Erlang-two domination for local counter retirement when no further faults occur. It does not give macro-operation completion or free data storage while waiting.
+
+A +1 endpoint replaces one intended local gate by identity. A −1 endpoint repeats the previous local gate when it catches up. At initial integer height zero it instead inserts K_(q−1) before the initialized circuit and must be charged to a preparation/boundary port. The gate need not be invertible. Correct gates afterward can spread the resulting data error; they are not new primitive faults. Quantum correction still needs a named receiving decoder and footprint bound. The two-program-copy tie and three-counter `(1,2,3)` trap remain separate failures of broader service claims.
+
+## 2. Explicit 26-branch qutrit decoder
+
+Let V:C²→(C³)^⊗5 embed the standard [[5,1,3]] code in the qubit sectors, and P=VV†. Take the 16 errors E_m consisting of identity and each one-site X,Y,Z, restricted to these sectors. Take ten leakage maps L_(i,s)=|perp><s|_i, for i=1,…,5 and s=0,1. Distance three and the stabilizer syndromes give
+
+    V† E_m† E_n V = delta_mn I,
+    V† L_(i,s)† L_(j,t) V = (1/2) delta_ij delta_st I,
+    V† E_m† L_(i,s) V = 0.
+
+For i=j the leakage equation is the code's locally maximally mixed qubit property. For i≠j, the two leakage positions have orthogonal qutrit occupancy sectors. No floating-point step is needed.
+
+Define W_m=E_m P and W_(i,s)=sqrt(2)L_(i,s)P. These are partial isometries from the code with mutually orthogonal images; W_a†W_b=delta_ab P. Their 26 image projectors Pi_a=W_a W_a† have rank two, so Pi_good=Σ_a Pi_a has rank 52 inside dimension 243. The prescribed recovery has Kraus operators W_a†, and for an orthonormal basis u_j of the 191-dimensional complement, additional operators |0_L><u_j|. Their adjoint products sum to Pi_good+(I−Pi_good)=I. This is a fixed CPTP recovery on every qutrit sector.
+
+Every one-site qutrit map restricted to code input is spanned by the supplied 31 maps I and |r><s|_i with r=0,1,perp and s=0,1. The 26 errors above span the same restricted images. Consequently each recovery branch sends every allowed error image F V to a scalar multiple of V. Tensoring with an untouched reference gives exact correction, including coherent leakage and arbitrary CP instruments. The scalar is independent of the encoded state.
+
+The exact 31×31 Gram matrix has eigenvalues 7/2 once, 1/2 twenty-five times, and 0 five times. The null relations are I−|0><0|_i−|1><1|_i on code input. The unique large eigenmode is the shared identity direction; the remaining 25 directions are the 15 Pauli and ten leakage errors. This supplies a closed-form replacement for the producer's Gram eigendecomposition; it is a standard-QEC specialization, not a novelty claim.
+
+The independent exact check confirms all 961 scalar cross-Grams and all 806 products of the 26 decoder branches with the 31 supplied error images. It also confirms the cyclic Clifford's stated stabilizer products and its code preservation. Logical C X and X C have relative unitary −iY, hence trace zero. Their superoperator Frobenius distance is sqrt(8); their diamond distance is 2. The producer's reported 2.828 norm is the former norm, not a diamond-distance estimate.
+
+## 3. One-use A/B clearing and a conditional stronger safety statement
+
+Before the s03 terminal T, each B_i is initially vacuum and has no incoming live owner. Compose every local gate and fault Kraus operator on A_i⊗B_i into N_h for a given controller history h. Tracing B at T gives A-only Kraus maps
+
+    F_(h,b) = <b|_B N_h |perp>_B.
+
+They act on one A qutrit. If all other tracks execute their intended C_j X_j, then after commuting the disjoint tracks the preterminal map is F_(h,b) u_i† U V, where u_i=C_i X_i and U=⊗_j u_j. The qutrit extension u_i is unitary. Thus F_(h,b)u_i† is an arbitrary one-site qutrit error after the intended encoded U. Section 2 corrects it with the same prescribed decoder for every history and reference state.
+
+This yields a useful stronger conditional safety statement: arbitrarily many local quantum/control operations on the same A_i/B_i pair, including arbitrary skip/repeat/reorder words, remain correctable at an accepting T, provided all other tracks are correct, no live incoming B port is erased, and T's one-use authorization and ideal CPTP action remain as specified. There is no gate-edit-count bound in this statement. It is not a service assertion under repeated faults and does not permit damage to two different code sites. The producer's stated finite one-fault and same-tile fork classes imply these premises; additional general fault histories need a separate controller proof.
+
+Clearing B is justified only before the one-use transfer. A legitimate incoming B packet would be erased. A post-T B fault is outside the first-accept channel and is corrected only by the separately named final decoder at observation. Old G/H/E act on A and cannot touch the B output. Indefinite reuse changes ownership and needs a new receiver/drain theorem.
+
+## 4. Timed continuous-trajectory closure
+
+The supplied finite closure theorem is sound for its finite Kraus-edge model. In the motivating generator Σ_alpha lambda_alpha(Phi_alpha−id), each Phi_alpha is CPTP and rates are exogenous constants. In a quantum-jump representation, the total no-jump generator is a scalar −(Σ_alpha lambda_alpha)I/2, so omitting scalar waiting factors does not change the path-map span.
+
+A general Lindbladian instrument need not have this property. Suppose a finite classical state q has quantum no-jump generator
+
+    G_q = −i H_q − (1/2) Σ_(e,a outgoing q) L_(e,a)† L_(e,a).
+
+Between jumps a trajectory includes exp(t G_q). To cover every finite timed accepted history, add the zero-fault-cost closure operation A→G_q A at every state, alongside A→L_(e,a)A on edges. The same insertion bound |Q|(f+1)Dk holds.
+
+Proof: Cayley–Hamilton makes exp(tG_q) a complex linear combination of I,G_q,…,G_q^(D−1), hence closure under G_q includes every waiting interval. Conversely, the complex linear span of {exp(tG_q)A:t≥0} contains every G_q^n A: any linear functional annihilating all the exponential images annihilates all derivatives at t=0. In finite dimension this characterizes the span. Alternating this argument with jumps proves equality with the span of all finite timed path maps. A computational basis can still be formed over a computable field containing the entries of V,G,L; the exponential coefficients need not belong to that field. Apply the same prescribed-decoder or scalar-Gram criteria to this saturated span.
+
+When enforcing a fault budget, G_q must retain loss from all physical outgoing jumps, including forbidden over-budget fault jumps; otherwise even the subinstrument's weights are wrong. Safety and weights remain separate. If Hamiltonian evolution coherently changes an allegedly classical control register, that register must instead be included in the quantum state space or otherwise justified as classical.
+
+Exact negative control: take an unencoded qubit, H=Z while waiting, and accepting jump L=I at rate one. A jump-only graph has accepting span {I} and passes a prescribed identity decoder. The actual accepted channel, with almost-sure acceptance, is
+
+    T(rho) = integral_0^infinity exp(−t) exp(−iZt) rho exp(iZt) dt.
+
+Its off-diagonal multiplier is 1/(1+2i)=(1−2i)/5, not one. On |+> the unhalved trace distance from identity output is 2/sqrt(5). Adding G=−I/2−iZ makes the closure span contain Z and correctly rejects identity execution. This is a decisive counterexample to exporting a jump-only checker to an omitted-Hamiltonian model; it does not falsify either supplied paper's displayed constant-rate Poisson-CPTP generator or the campaign's stated finite graph theorem.
+
+## 5. Safety, CPTP receiving conditions, and service
+
+The exact closure algorithm returns a safety predicate. Empty accepting spans satisfy it vacuously. A decoder family consisting of zero matrices also satisfies every scalar-branch identity, but is not CPTP. The root contract explicitly requires an actual CPTP decoder and separately proves service/acceptance. The l02 demonstration verifies its 16-branch decoder's completeness and solves absorption only for its displayed scalar-unitary graph, so these observations do not falsify that demonstration.
+
+For receiving other graphs, enforce: complete state and edge data; nonnegative integer fault costs; first-accept terminal semantics; actual decoder completeness; inclusion of all boundary/idle channels; and explicit accepted effect/absorption for the augmented fault-budget graph if a trace-preserving claim is made. `graph_tp_check` skips every no-outgoing state, including a nonaccepting deadlock, and is not a liveness check. `reachable_spaces` does not itself stop at accepting vertices, so the documented first-accept precondition must be checked by a caller. `one_site_absorption_probabilities` does not incorporate the fault budget. These are exposed API preconditions, not new physical repairs.

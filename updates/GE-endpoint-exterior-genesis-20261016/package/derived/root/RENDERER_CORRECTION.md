@@ -1,0 +1,1 @@
+The worker GE renderer left one numeric-ID regex at the prior GD range N898–N902 despite its GE route set. Root copied the tools to root/overlay_tools and changed that single regex to N903–N907. Original worker tool bytes are preserved. This is metadata implementation correction, not a scientific claim.
