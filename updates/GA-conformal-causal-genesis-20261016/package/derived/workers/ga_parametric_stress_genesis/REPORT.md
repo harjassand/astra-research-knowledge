@@ -1,0 +1,84 @@
+# All-positive-parameter nonlinear row-stress calibration
+
+The surviving separated-first-potential theorem extends to **every (r>0)** for the unchanged integrand (J_r), with an exact rational certificate and an explicit positive energy gap. The first potential may have both arbitrary profiles (f(x,y)=F(x)+H(y)); the second potential (g(x,y)) remains unrestricted within periodic (W^{1,4}). This is a restricted conformal Jensen theorem. Unrestricted quasiconvexity and historical priority remain unresolved.
+
+Write (a=f_x,b=f_y,c=g_x,d=g_y), and let averages be normalized on the square torus. For every real (s), the theorem gives
+
+\[
+\begin{aligned}
+\langle J_r(sI+D(f,g))\rangle-J_r(sI)
+&\ge \frac{5r}{4096(r+2)}\langle|D(f,g)|^4\rangle\\
+&\quad+\frac{rs^2}{512(r+2)}\langle a^2+c^2+d^2\rangle.
+\end{aligned}
+\]
+
+Here (J_r(sI)=(r+2)(r+3)s^4/6). Equality forces a constant map. Applying the inequality for every (s) to each fixed separated field also proves the original discriminant inequality (C_r^2\le4A_rQ_r) for that field, with all original coefficients retained.
+
+## The all-(r) construction
+
+The fixed polynomial stress is
+
+\[
+\begin{aligned}
+S_1(b)&=-(r+2)s^2b+\frac{7r}{6(r+2)}b^3,\\
+S_2(a)&=(r+2)s^3+\left(\frac{5r}{2}+2\right)s^2a
+       +\frac{7r}{4}sa^2+\frac{r(4r+3)}{12(r+2)}a^3.
+\end{aligned}
+\]
+
+For
+
+\[
+G=J_r(sI+A)-\frac{(r+2)(r+3)}6s^4
+-\frac{(r+2)(2r+3)}3s^3a-S_1(b)c-S_2(a)d,
+\]
+
+the certificate proves the single parametric identity
+
+\[
+(r+2)G=z_0^TQ_0z_0+r z_1^TQ_1z_1.
+\]
+
+The vectors have dimensions 10 and 16; their entries are explicit quadratic polynomials in (a,b,c,d,s), multiplied by at most one factor of (r). The matrices are constant rational matrices. Four disjoint blocks of sizes 6, 4, 10, and 6 are positive definite by exact LDL elimination. A further 16 rational pivots prove (Q_1\ge I/512). The thirteen unweighted quadratic monomials in (z_1) have squared sum at least (5|A|^4/8+s^2(a^2+c^2+d^2)), giving the displayed quantitative gap.
+
+For separated (f), (S_1(f_y)) depends only on (y) and (S_2(f_x)) only on (x). Their divergence vanishes, so the stress pairs to zero with every periodic (Dg). The remaining first-row tangent integrates to zero. The same argument works directly for (W^{1,4}) maps: the stress lies in (L^{4/3}), and smooth test functions are dense in (W^{1,4}). The complete basis, algebraic identity, and analytic proof are in [ALL_R_THEOREM_PROOF.txt](ALL_R_THEOREM_PROOF.txt).
+
+## A failed continuation was replaced
+
+The natural general-(r) continuation of the original (r=1) cubic-decoupling coefficients fails pointwise. Its exact residual at ((a,b,c,d,s)=(1,3,1,1,1)) is
+
+\[
+G_{\rm nat}(r)=\frac{10r^3-2r^2+115r-24}{3(r+2)},
+\qquad G_{\rm nat}(1/10)=-\frac{139}{70}.
+\]
+
+This is failure of that stress ansatz. It supplies no compatible negative Jensen field. The saved derivation reconstructs its quadratic and cubic coefficients and the rational witness. The successful stress moves all four nonlinear/lower-order coefficients and uses the exact determinant-square anchor (G_{0,s}=(ad-bc+s(a+d))^2).
+
+## Stress conservation and the prior-art boundary
+
+The proof also applies whenever (operatorname{div}(S_1(f_y),S_2(f_x))=0) in distributions. For smooth (f), this is
+
+\[
+\frac r{4(r+2)}
+\bigl[6(r+2)s^2+14(r+2)sf_x+(4r+3)f_x^2+14f_y^2\bigr]f_{xy}=0.
+\]
+
+The proof file constructs exact nonseparated Lipschitz examples (f=sF(2x+y)) with two derivative values and equal normal stress flux. They demonstrate membership in this conservation class and inherit the explicit quantitative margin. Their qualitative Jensen inequality already follows from the triangular-measure theorem of Harris, Kirchheim and Lin, after fixed input/output transformations and affine translation. They are not claimed as a new qualitative Jensen class. [Harris–Kirchheim–Lin, *Two-by-two upper triangular matrices and Morrey's conjecture*, Theorem 2.4](https://arxiv.org/abs/1708.07849v2).
+
+The inspected triangular theorem does not directly admit the entire two-profile class. For example, the gradient distribution of (f=\sin x+\sin y, g=\sin x\sin y) has covariance (operatorname{diag}(1/2,1/2,1/4,1/4)), so its affine span is four-dimensional. An invertible fixed matrix transformation cannot put it into a triangular support hyperplane. This only blocks that support hypothesis; it does not establish that the measure is nonlaminate. A broader existing theorem covering the full two-profile class has neither been established nor excluded here. Priority remains unknown.
+
+For an unrestricted smooth (f), the same certificate leaves the explicit mixed-derivative defect
+
+\[
+-\langle g\,K_{r,s}(f_x,f_y)f_{xy}\rangle,
+\]
+
+in addition to the positive margin. Its sign is not controlled. This identifies the remaining gate rather than proving general quasiconvexity.
+
+## Exact verification and publication contents
+
+`python3 verify_all_r.py` reconstructs the integrand, checks the full parametric polynomial identity and rational LDL pivots, proves the (1/512) floor, and checks the divergence, determinant anchor, natural-ansatz witness, and nonseparated flux algebra. It passes using exact arithmetic. The receiving auditor independently reconstructed all 62 coefficients with standard-library `Fraction` polynomial arithmetic and checked the Gram matrices, the exact (1/512) floor, the (5/8) moment identity, and the analytic integration proof; all passed. Its separate report preserves the distributional jump conditions and the background-dependent quantifiers of the nonseparated examples.
+
+[PUBLICATION_MANIFEST.json](PUBLICATION_MANIFEST.json) is an explicit allowlist for this worker's publication files, with SHA-256 hashes. It includes this report, full proof, exact certificate, verifier and receipt, failed-ansatz derivation and exact witness, the all-parameter construction derivation, and construction/rationalization scripts. Numerical NPZ files, exploratory scratch scripts, and acquired external paper full texts are excluded. Construction scripts may regenerate numerical scratch; the exact verifier needs none of it.
+
+The source packet and Git state were not modified. Internal exact algebra, receiving review, historical priority, external validation, and unrestricted quasiconvexity are separate statuses.

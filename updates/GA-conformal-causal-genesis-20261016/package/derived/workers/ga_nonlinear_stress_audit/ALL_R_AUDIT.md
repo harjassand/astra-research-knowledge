@@ -1,0 +1,298 @@
+# Receiving audit of the all-positive-parameter stress certificate
+
+Date: 16 October 2026. Verdict: **PASS for the stated stress-conservation
+Jensen theorem for every r>0**, including the all-r separated-potential
+corollary and the specified nonseparated two-state example. The unrestricted
+conformal quasiconvexity problem remains **OPEN**. Historical priority and
+external mathematical certification remain **UNKNOWN**.
+
+This is a separate audit. The four original r=1 audit files are preserved.
+No numerical feasibility output or producer verification result is used as
+a proof premise. `all_r_exact_audit.py` independently reconstructs the frozen
+integrand after clearing the denominator r+2, compares all polynomial
+coefficients, and performs exact rational matrix elimination. It uses only
+Python's standard library and the receiving audit's unmodified matrix
+routines from `exact_audit.py`. All **36 exact check groups pass**.
+
+## 1. Exact result endorsed
+
+For A=[[a,b],[c,d]], retain
+
+\[
+u=a^2+c^2,\quad v=b^2+d^2,\quad j=ad-bc,
+\]
+
+\[
+J_r(A)=\frac{3r}{8(r+2)}(u+v-2j)^2
++\frac{r(r-1)}6u^2+j^2+ruj.
+\]
+
+Fix any r>0 and any real s. Define
+
+\[
+\begin{split}
+S_1(b)&=-(r+2)s^2b+\frac{7r}{6(r+2)}b^3,\\
+S_2(a)&=(r+2)s^3+\left(\frac52r+2\right)s^2a
++\frac74rs a^2+\frac{r(4r+3)}{12(r+2)}a^3.
+\end{split}
+\]
+
+For periodic real f,g in W^{1,4}(T^2), assume exactly
+
+\[
+\boxed{\operatorname{div}(S_1(f_y),S_2(f_x))=0
+\quad\text{in distributions}.}
+\tag{1}
+\]
+
+Then, with normalized averages and V=D(f,g),
+
+\[
+\boxed{\left\langle J_r(sI+V)-J_r(sI)\right\rangle
+\ge\frac{5r}{4096(r+2)}\langle|V|^4\rangle
++\frac{rs^2}{512(r+2)}\langle f_x^2+g_x^2+g_y^2\rangle.}
+\tag{2}
+\]
+
+The first constant is strictly positive for each r>0, so equality of the
+Jensen energy with zero forces V=0 almost everywhere. There is no condition
+on g beyond periodic W^{1,4}. The hypothesis (1) is a condition on f at the
+chosen r and s; it cannot be omitted.
+
+In particular f=F(x)+H(y), with arbitrary periodic W^{1,4}(T) profiles,
+satisfies (1) for every r>0 and every real s. Therefore (2) applies to every
+fixed separated first potential, arbitrary g, all positive r, and all scalar
+backgrounds. The original all-s quadratic/discriminant conclusion
+C_r^2<=4A_rQ_r follows on precisely this fixed-field separated class.
+
+The new parametric stresses differ from the earlier r=1 stresses even at
+r=1. Their Gram matrices and floors must not be interchanged. The earlier
+r=1 bound remains valid and stronger there; this audit endorses the displayed
+new constants as a uniform formula over all r>0, without an optimality claim.
+
+## 2. Independent reconstruction of all parameter dependence
+
+Set k=r+2. The audit reconstructed the polynomial
+
+\[
+kJ_r(A)=\frac{3r}{8}(u+v-2j)^2
++\frac{r(r-1)k}{6}u^2+kj^2+rkuj.
+\tag{3}
+\]
+
+Only k is used to clear variable denominators, and k>0 on the claimed
+domain. No coefficient sign is inferred from a numerical parameter grid.
+The exact full conformal Taylor identity is
+
+\[
+\begin{split}
+J_r(sI+V)={}&\frac{(r+2)(r+3)}6s^4
++\frac{(r+2)(2r+3)}3s^3a+(r+2)s^3d\\
+&+s^2\left(((r+1)a+d)^2+\frac{r(r+2)}3c^2+(r+2)j\right)\\
+&+s\left(r\left(d+\frac{2r+1}{3}a\right)(a^2+c^2)
++2j((r+1)a+d)\right)+J_r(V).
+\end{split}
+\tag{4}
+\]
+
+Define the residual G by subtracting the constant background, first-row
+tangent, and the entire second-row stress pairing:
+
+\[
+G=J_r(sI+V)-\frac{(r+2)(r+3)}6s^4
+-\frac{(r+2)(2r+3)}3s^3a-S_1(b)c-S_2(a)d.
+\tag{5}
+\]
+
+The cleared residual kG has exactly 62 nonzero coefficients in
+(r,a,b,c,d,s), is quartic in (a,b,c,d,s), and has degree at most three in r.
+All coefficients of (3)-(5) were reconstructed independently and compared
+exactly. In particular no s^3 or s^4 terms remain in G. At r=0 the
+identity reduces to G=(ad-bc+s(a+d))^2, a useful algebraic anchor; the
+strict theorem is stated for r>0.
+
+## 3. Constant rational Gram identity and its stronger floor
+
+Let h=ad-bc+s(a+d), and use
+
+\[
+z_0=(h,rcs,rcd,rc^2,rbc,ras,rad,rac,rab,ra^2)^T,
+\]
+
+\[
+\begin{split}
+z_1=(&ds,d^2,cs,cd,c^2,bd,bc,b^2,as,ad,ac,ab,a^2,\\
+&r(a^2+2as+c^2),ras,rcs)^T.
+\end{split}
+\]
+
+The input certificate's constant rational Q0 (10 by 10) and Q1 (16 by 16)
+satisfy the exact polynomial identity
+
+\[
+\boxed{kG=z_0^TQ_0z_0+r z_1^TQ_1z_1.}
+\tag{6}
+\]
+
+The receiving verifier parsed the basis with a restricted arithmetic grammar,
+multiplied (6) independently, and checked equality of all coefficients. It
+did not execute producer source or sample r. Both Q0 and Q1 are positive
+definite by full exact LDL elimination and reconstruction. The four declared
+blocks of sizes 6,4,10,6 have exact zero cross entries; their leading minors
+and all 26 stored pivots were independently reproduced as a second check.
+
+The final stronger claim Q1-I/512 positive definite was also independently
+verified by **16 exact positive LDL pivots**, followed by exact matrix
+reconstruction. Thus, since r>0 and k>0,
+
+\[
+G\ge\frac{r}{512(r+2)}|z_1|^2
+\ge\frac{r}{512(r+2)}\{M_4+s^2(a^2+c^2+d^2)\}.
+\tag{7}
+\]
+
+Here the first 13 entries include all ten quadratic gradient monomials plus
+sa,sc,sd. The remaining three entries contribute nonnegative squares. For
+the four gradient entries v_i=(a,b,c,d), the stronger monomial estimate is
+the exact square identity
+
+\[
+\boxed{M_4-\frac58|V|^4
+=\frac18\sum_{i<j}(v_i^2-v_j^2)^2\ge0.}
+\tag{8}
+\]
+
+Equations (7)-(8) prove the pointwise constants used in (2). The audit first
+verified a weaker receiving-side 1/4096 floor, then checked the final 1/512
+floor when the constructor's proof arrived. Only the stronger final floor is
+used in this report. Its exact receiving decomposition is saved in
+`ALL_R_INDEPENDENT_LDL_CERTIFICATE.json`.
+
+## 4. Null pairing and Sobolev proof
+
+For fixed r,s, the stress belongs to L^{4/3} whenever Df belongs to L^4.
+The distributional hypothesis (1) says its pairing with every smooth
+periodic scalar gradient is zero. Approximate g strongly in W^{1,4} by
+smooth periodic functions. Holder then gives
+
+\[
+\langle S_1(f_y)g_x+S_2(f_x)g_y\rangle=0.
+\]
+
+Also <f_x>=0. The pointwise identity (5) and lower bound (7) are
+integrable for the stated Sobolev class. Integrating them proves (2).
+This proof does not require approximating f while preserving (1).
+
+For separated f, S_1(f_y) depends only on y and S_2(f_x) only on x,
+so (1) follows directly in distributions, or by periodic slicing. If smooth
+approximation is preferred, convolve F,H in their separate variables and g
+in two variables. Strong L^4 convergence of gradients implies convergence
+of all quartic integrals, while cubic stresses converge strongly in L^{4/3}.
+No endpoint multiplication of distributions, weak compactness, concentration
+exclusion, or missing density hypothesis is used.
+
+For smooth arbitrary f, the exact divergence is
+
+\[
+\operatorname{div}S=
+\frac{r}{4(r+2)}\left[6(r+2)s^2+14(r+2)sf_x
++(4r+3)f_x^2+14f_y^2\right]f_{xy}.
+\tag{9}
+\]
+
+The receiving verifier independently checked this cleared-denominator chain
+rule. For rough f, (1) is the primary formulation: the product in (9) need
+not be defined. For unrestricted smooth f,g, (5) leaves the unresolved
+signed source pairing -<g div S>; its sign has not been controlled.
+
+## 5. Receiving audit of the nonseparated two-state example
+
+Fix r>0 and **fix a nonzero background s**. Put
+
+\[
+t_+=1/4,\qquad
+t_- =\frac{-(92r+181)+\sqrt{912r^2+6024r+8373}}
+{8(8r+13)}.
+\]
+
+The discriminant is positive for r>0. The exact identity
+
+\[
+(92r+181)^2-(912r^2+6024r+8373)
+=4(8r+13)(236r+469)>0
+\]
+
+shows t_-<0<t_+. Choose the fractions
+
+\[
+\theta=\frac{-t_-}{t_+-t_-},\qquad
+1-\theta=\frac{t_+}{t_+-t_-}.
+\]
+
+Both lie strictly between zero and one, and their weighted mean derivative
+is zero. Therefore there is a continuous periodic piecewise affine,
+nonconstant Lipschitz F whose derivative equals t_+ and t_- on intervals
+with these fractions. Set f(x,y)=sF(2x+y). Integer wave vector (2,1)
+ensures periodicity on the same square torus. The mixed derivative
+2sF'' is a nonzero distribution, so f is not of the separated form
+F1(x)+H1(y).
+
+The distributional stress calculation must use normal flux, not a formal
+product with the jump measure F''. For t=F'(2x+y), the exact normal flux is
+
+\[
+2S_1(st)+S_2(2st)=s^3\left((r+2)+3rt+7rt^2
++\frac{r(8r+13)}{3(r+2)}t^3\right).
+\]
+
+Writing N_r(t)=(r+2)^2+3r(r+2)t+7r(r+2)t^2
++r(8r+13)t^3/3, the receiving exact factorization is
+
+\[
+N_r(t)-N_r(1/4)=\frac r{48}(t-1/4)
+\left[16(8r+13)t^2+4(92r+181)t+236r+469\right].
+\tag{10}
+\]
+
+The displayed t_- is a root of the bracket. The audit independently
+checked its discriminant and the cleared radical-root equation. Therefore
+the normal flux equals the same constant in both gradient states. Across
+each interface with normal (2,1), the jump satisfies
+2[S_1]+[S_2]=0. Within each phase the stress is constant. It follows that
+div S=0 as a distribution, including all interfaces and the periodic seam.
+The stress is bounded, so the Sobolev null pairing from section 4 applies
+to every periodic W^{1,4} g, and (2) follows.
+
+This is a valid explicit witness that the stress-conservation class extends
+beyond separated first potentials. The witness is one-phase in its first
+potential. It supplies no historical novelty or qualitative superiority
+claim over classical theorems covering one-phase/triangular classes.
+That comparator question is separate from this exact audit.
+
+The family depends on the fixed background through f=sF(2x+y). One must
+not use it to infer an all-s discriminant inequality for a single fixed
+nonseparated field. Nor does it show that arbitrary one-phase fields satisfy
+this particular stress-conservation law.
+
+## 6. Reproduction and limits
+
+Run `PYTHONDONTWRITEBYTECODE=1 python3 all_r_exact_audit.py`. It writes the
+receiving worker's own `ALL_R_AUDIT_RECEIPT.json` and
+`ALL_R_INDEPENDENT_LDL_CERTIFICATE.json` and leaves producer artifacts alone.
+The input certificate SHA-256 is
+`356aafc4f9378584c10308b84d19b51a0f9a6a53dfc67ae6af124c9c41db7bef`.
+The receipt pins the constructor proof, frozen source report, verifier, and
+receiving matrix library by hash.
+
+Audited producer files are
+`../ga_parametric_stress_genesis/ALL_R_STRESS_EXACT_CERTIFICATE.json` and
+`../ga_parametric_stress_genesis/ALL_R_THEOREM_PROOF.txt`. Their claimed
+algebraic identity, floor, distributional conservation argument, separated
+corollary, and explicit jump example are correct at the audited versions.
+The receiving receipt verifies finite exact algebra and matrices; the written
+analytic proof is not machine formalization or independent external review.
+
+The advancement endorsed here is a quantitative internal theorem on its
+explicit conservation class for the unchanged integrand and every r>0.
+It does not remove the conservation hypothesis, establish all-gradient QC,
+settle historical originality, or establish a physical capability.
