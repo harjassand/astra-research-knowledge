@@ -1,0 +1,84 @@
+# A self-contained conservative fixed-guard domination lemma
+
+16 October 2026. Authored reconstruction of standard LSS masking machinery, prompted by the accessible primary proof in Temmel, arXiv:1105.1683v3, Proposition 18. This is an internal analytic proof, not historical novelty or external certification.
+
+## Exact statement
+
+Let G=(V,E) be a countable graph with maximum degree at most the finite integer D. Write N[v] for v and its neighbors. Suppose Y is a {0,1}-valued random field with
+
+    P(Y_v=1 | sigma(Y_w : w outside N[v])) >= 1-q   a.s.       (A)
+
+for every v. No stationarity, positive association, identical exact marginals, or independence between neighbors is assumed. If
+
+    0 < q <= 2^(-(D+1)),
+    t=q^(1/(D+1)),   alpha=r=1-t,
+
+then
+
+    Y stochastically dominates iid Bernoulli(r alpha)
+      = iid Bernoulli((1-q^(1/(D+1)))^2).                    (B)
+
+At q=0, Y is identically one almost surely, so every Bernoulli density at most one is dominated. In particular, for every desired rho<1, the sufficient tolerance
+
+    q <= min(2^(-(D+1)), (1-sqrt(rho))^(D+1))                (C)
+
+gives domination by iid Bernoulli(rho). The constants are deliberately conservative; optimal LSS constants are not asserted.
+
+## Proof, including the conditioning step
+
+Take independent X_v~Bernoulli(r), independent of all Y, and put Z_v=X_v Y_v. We prove by induction over finite |W| that for every v outside W and every pattern s on W of positive Z-probability,
+
+    P(Y_v=1 | Z_W=s) >= alpha.                              (I)
+
+For W empty, (A) gives P(Y_v=1)>=1-q>=1-t=alpha. Assume (I) for all smaller sets and fix W,v,s. Partition
+
+    N0={w in W intersect N(v):s_w=0},
+    N1={w in W intersect N(v):s_w=1},
+    M=W outside N(v),    l=|N0|, m=|N1|.
+
+Here v is outside W, so M is outside N[v], and l+m<=D. Conditioning on Z_N1=1 forces X_N1=1 and Y_N1=1. The independent factor r^m cancels between the numerator and denominator of the conditional probability of Y_v=0. Consequently
+
+    P(Y_v=0 | Z_W=s)
+      = P(Y_v=0,Z_N0=0,Y_N1=1,Z_M=s_M)
+        / P(Z_N0=0,Y_N1=1,Z_M=s_M)
+      <= P(Y_v=0,Z_M=s_M)
+         / [(1-r)^l P(Y_N1=1,Z_M=s_M)].                     (1)
+
+The denominator inequality holds because X_N0=0 is sufficient for Z_N0=0 and X_N0 is independent of (Y_N1,Z_M). The weak-dependency assumption and the independent masks on M imply
+
+    P(Y_v=0 | Z_M=s_M) <= q.                                (2)
+
+Indeed Z_M is a function of Y outside N[v] and independent masks; average the conditional bound (A) over those variables. No nearby Y or future event has been conditioned on in (2).
+
+Order N1 as w1,...,wm. The chain rule gives
+
+    P(Y_N1=1 | Z_M=s_M)
+      = product_j P(Y_wj=1 | Y_w1=...=Y_w(j-1)=1,Z_M=s_M).
+
+In each factor replace the previous Y=1 conditions by previous Z=1 conditions. This is an equality: the corresponding independent X masks contribute the same positive factor r^(j-1) to numerator and denominator. The conditioning set M union {w1,...,w(j-1)} has size strictly less than |W|, so induction gives every factor at least alpha. Thus the displayed product is at least alpha^m. This also proves the relevant denominators positive. From (1)-(2),
+
+    P(Y_v=0 | Z_W=s) <= q / [(1-r)^l alpha^m]
+      <= q / t^D = t.                                      (3)
+
+The second inequality uses 1-r=t, alpha=1-t>=t, l+m<=D, and t<=1/2. This proves (I). If N1 is empty, its conditional product is one and the same argument applies. Zero-probability conditioning patterns are omitted.
+
+Because X_v is independent of Y and of Z_W,
+
+    P(Z_v=1 | Z_W=s)
+      = r P(Y_v=1 | Z_W=s) >= r alpha.                      (4)
+
+Enumerate the countable vertices. Generate the law of Z sequentially from its conditional probabilities and independent uniform random variables U_n. At step n, let Z_vn=1 when U_n is at most its conditional one-probability. Let B_vn=1 when U_n<=r alpha. Then B is iid Bernoulli(r alpha) and (4) implies Z>=B at every step almost surely. This establishes stochastic domination by Z. The original masking coupling gives Y>=Z, so transitivity gives domination by Y as well; the couplings can explicitly be glued using the conditional law of Y given Z. Equivalently, first establish finite-coordinate stochastic domination and then use consistency/compactness on the countable product. This proves (B). The boundary q=0 and the implication (C) were established above. QED.
+
+## Literal receiving map to the supplied fixed guards
+
+For each slab n, set Y_z=1-B_(z,n), where B is the source's native bad flag. Build G by joining two coarse centers whenever their deterministic primitive dependency sets can overlap. The flag must be measurable from the *entire declared fixed primitive set*, including all relevant owner locations for proposal supports meeting the guard. If those sets are contained in coarse infinity-radius g balls, joining all pairs with infinity-distance <=2g gives a sufficient maximum degree D<=(4g+1)^4-1 on Z^4. g must include any support/owner displacement; body count alone does not define it.
+
+Disjoint primitive sets are independent. Therefore the flag at z is independent of the joint sigma-field of flags at all nonneighbors, and its uniform marginal P(B_z,n=1)<=q gives (A). Fresh disjoint slab increments make the fields independent between slabs. Choose the masks and sequential couplings independently per slab: the dominated Bernoulli fields are then iid in both space and slab index. Their complements give iid deaths with the desired small density.
+
+This argument requires the source to prove its three flag bounds uniformly over every permitted input and exterior history from those fixed primitives. The lemma does not establish those microscopic estimates, the uniform forcing inequality, the attractive eroder property, stopped finite-torus replay, whole-slab support cover, or accumulated-homology argument. It supplies only the exact domination import once those promises hold. In particular it gives no domination theorem for an adaptively selected guard or a state-dependent clock law.
+
+## Primary reading receipt and scope
+
+Temmel, *Shearer's measure and stochastic domination of product measures*, arXiv:1105.1683v3 (26 April 2012), Eq. (4) on PDF p.5 defines exactly (A); Proposition 18 and its complete proof on pp.14-16 perform the independent-mask conditional-probability argument. His mask is chosen conservatively for a different general theorem; the proof above explicitly selects r and alpha to obtain the high-density bounded-degree corollary. Appendix 8.3, Theorem 28 on p.26, attributes the sharper bounded-degree result to Liggett-Schonmann-Stacey Theorem 1.3. The original LSS publisher endpoints again returned challenge HTML; no claim is made to have read its original theorem pages.
+
+Primary URLs: https://arxiv.org/pdf/1105.1683v3 ; https://arxiv.org/html/1105.1683v3 ; original attribution https://doi.org/10.1214/aop/1024404279 . Exact acquired PDF and extraction hashes are in SOURCES.json; full text stays under acquired_excluded_from_publication/.
