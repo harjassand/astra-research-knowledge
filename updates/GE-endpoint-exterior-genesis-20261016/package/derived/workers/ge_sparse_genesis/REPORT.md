@@ -1,0 +1,187 @@
+# Executed arbitrary-graph certificate with no time quadrature
+
+The receiving endpoint certificate can be enclosed by a finite sequence of
+**positive real resolvent actions** on the actual killed pair graph. An exact
+Erlang convolution identity and monotonicity of B(T)/T turn those actions
+directly into a rigorous upper bound. Every shifted solve is checked by exact
+integer residuals. There is no scalar rational-approximation remainder, sampled
+defect integral, dense matrix power bank, or adaptive time quadrature.
+
+This removes the receiving numerical precision/quadrature bottleneck on its
+exact 20-site input, and the same implementation accepts branching graphs.
+It does not establish a new sampler, historical priority, superiority over
+carefully validated rational Krylov/CRAM, graph-uniform scaling, or a scientific
+application. Erlangization and positive resolvents are established methods;
+the tested composition applies them to the receiving two-sided full-endpoint
+TV certificate.
+
+## Exact mathematical contract
+
+The supplied model is finite undirected interchange with state-independent
+symmetric nonnegative integer rates, a deterministic initial labeling and
+endpoint horizon 1. The output bound is uniform over initial permutations
+and all color projections. Configuration-dependent physics, biased rates,
+trajectories, currents and rare-event relative accuracy remain outside the
+receiving contract.
+
+For the receiving Duhamel value
+
+    B(T)=sum_e |r_e-q_e| integral_0^T S_r,e(u)S_q,e(T-u) du,
+
+the normalized b(T)=B(T)/T is nonnegative and nonincreasing. For integer k>=2,
+s>0, G~Gamma(k,s), and P_a=s(sI+H_a)^(-1), the exact identity is
+
+    E[b(G)] = 1/(k-1) sum_{j=1}^{k-1} sum_e |r_e-q_e|
+                     [P_r^j1]_e [P_q^(k-j)1]_e.
+
+Therefore B(1)<=E[b(G)]/P(G<=1). The denominator has a positive rational lower
+bound using a finite Taylor lower sum for exp(s). This is a direct upper
+certificate, so no unproved global scalar CRAM error or signed cancellation
+remainder is needed. The full proof, convergence statement and limits are in
+[PROOF.md](PROOF.md).
+
+Each solve uses A=sI+H. For integer grid denominator Q and proposed vector z_j,
+the checker recomputes R_j=||s z_(j-1)-A z_j||_infinity exactly. The M-matrix
+principle gives the accumulated action error E_j=sum_{ell<=j}R_ell/(sQ).
+The positive product sum charges these component errors with the exact rate
+differences. Fixed-point sparse LDL is only a proposer; its rounded factors
+are not certificate premises.
+
+## Bounded executed results
+
+All three final cases use k=16,s=20, 15 real shifted actions per generator,
+and two factorizations. These are complete one-run receipts on the current
+macOS Python 3.14.3 environment, using only the standard library.
+
+| Case | Pair states | Finite r-to-q TV upper | Full averaged sampler TV upper | Generation plus witness delivery | Independent witness check |
+|---|---:|---:|---:|---:|---:|
+| Exact receiving 20-site path | 190 | 0.047342153940 | 0.047342154184 | 0.057945 s | 0.009958 s |
+| Six-site branching star in the fast block | 15 | 0.006721262748 | 0.006962262748 | 0.002372 s | 0.001634 s |
+| Same branching topology, original rates all one | 15 | 3.099446494745 | Uncertified | 0.002511 s | 0.001561 s |
+
+Decimals here are rounded display values; exact integer ratios determine
+acceptance. The source tolerance is 1/20. The upper bound above three is a
+valid but unhelpful certificate and is preserved as a failed acceleration.
+The branching fixture is a bounded correctness check of the algorithm's
+structural scope, not another claimed favorable scaling or real workload.
+
+The source20 case uses sites 0,...,19, original path rates 10^0,...,10^18,
+and comparison rates [1,10] followed by seventeen copies of 10^20. Thus it
+is the receiving input, horizon, fast block and tolerance without alteration.
+Its 205-bit grid has maximum cumulative action error below 3.667e-40.
+Both 190-state killed matrices have 874 sparse nonzeros. Each natural-order
+factor has 2,317 stored entries and 14,877 Schur updates; the largest fixed
+factor integer occupies 274 bits. There are zero survival queries and zero
+quadrature intervals. The run delivers 5,700 complete solve-witness integers
+in a 362,343-byte JSON receipt, rather than hiding certificate output cost.
+The entire bounded suite used 26,558,464 bytes peak process RSS.
+
+The full source20 sampler bound adds the unchanged receiving classical tail
+262441/10^20 and its exact n=20 finite-bit sampler error. Those two values
+were read as data; no source packet script was executed. The fast four-star
+check uses the receiving Aldous gap theorem and the elementary one-walker
+star spectrum: gap W, so delta(t)<=min(1,A exp(-Wt)) with A=sqrt(23)/2<e.
+Then integral delta<=2/W and delta(1)<=1/W, giving the exact tail
+[1+10(10+2)*2]/W=241/10^6. The same n=6 retained-rate-[1,10] sampler's
+exact finite-bit error is added. The ideal sampler mechanism is unchanged:
+uniform fast-block label selection at retained events and a final uniform
+shuffle. The proof assumes independent fair input bits.
+
+## Failures and the solved bottleneck
+
+The first independent version used exact rational sparse LDL and rational
+triangular solves. On the source20 input with k=8,s=16 it cost 18.521 seconds
+and produced upper bound 0.115042163665, failing tolerance. Factors reached
+7,051/12,057-bit rational numerators/denominators. That receipt is retained as
+`source20_shape8.json`. The matching initial branch check passed 0.016540.
+
+Fixed-point sparse factors remove that arithmetic bottleneck. Their errors
+are paid through the exact original-matrix residuals, so no conditioning
+claim is inferred from their apparent numerical stability. The final k=16,
+s=20 choice also reduces the Erlang time bias enough to pass the source
+tolerance. This is a concrete successful certificate on the previously
+problematic stiff input; it is not a claim that the same parameters suffice
+for all inputs.
+
+The receiving exterior receipt reports 3.626535 seconds, 194,000 stored
+one-walker integer power entries and 74 time intervals. Its exact full
+endpoint bound is about 0.046565375, which is sharper than the new bound.
+The present certificate meets the same 0.05 tolerance with a different
+positive representation and zero quadrature. These timings come from
+different environments: the acquired source code was not executed here,
+and no measured cross-machine speed ratio is claimed. The earlier dense
+pair timeout is background evidence, not the strongest incumbent.
+
+## Strong incumbent and novelty boundary
+
+Real shifted solves, method-of-stages/Erlangization, sparse LDL, M-matrix
+residual bounds, rational Krylov and standard Markov averaging are serious
+existing methods. Primary publisher metadata/abstracts confirm that
+[Erlangization/random-clock transient analysis is established](https://doi.org/10.1080/15326349.2022.2081206),
+and [phase-type method of stages is classical](https://doi.org/10.1137/1.9780898719734.ch2).
+Only metadata/abstracts were used in this bounded literature check; no
+third-party full text or executable implementation was acquired or run.
+
+The source double-precision CRAM failures do not refute high-precision CRAM.
+They demonstrate that raw floating sparse solves were inadequate on that
+input. This execution supplies the missing finite-bit residual pipeline
+using positive real shifts. A well implemented validated rational Krylov or
+CRAM solver may be faster, sharper or more general. It was not compared
+here and cannot be declared beaten. An equally informed incumbent can use
+the same Erlang identity; there is no exclusive architectural advantage.
+Priority for the exact convolution composition remains UNKNOWN.
+
+## All costs and remaining limits
+
+Let z be the killed-pair nonzero count, F the factor entry count, U the
+number of sparse Schur updates, k the Erlang shape, m the changed physical
+edge count, and p the fixed precision. Pair construction is charged and
+uses O(n times physical-edge count) work. The fixed proposer performs U
+integer products/divisions on each graph, then O(kF) triangular arithmetic
+and O(kz) exact residual arithmetic. Product sums use O(km) exact rational
+operations. The cap probability adds O(M) rational recurrence work. Every
+integer multiplication/division has its finite-bit cost; no unbounded
+integer unit-cost model is assumed.
+
+Live action vectors require O(d p) bits; needed edge histories O(km p)
+bits, and factors O(F(p+B)) bits for rate bit length B in the present
+implementation. The delivered independent witness is intentionally larger,
+O(kd p) bits; JSON serialization, file size and checker time are in the
+receipt. In the worst graph natural-order fill can be dense, F=O(d^2) and
+U=O(d^3). Thus pair-state and fill costs remain. Reordering, iterative
+validated solves and other rational methods can improve that separately.
+
+The final p rule charges both rate magnitude and sum of changed-rate
+weights. It is a proposal rule, not a universal stability theorem; exact
+residuals decide acceptance. The Erlang shape required for a tight bound
+can grow, and no graph-uniform polynomial rate-bit complexity is asserted.
+The operation only certifies the receiving Duhamel value; it does not repair
+a loose Duhamel bound or guarantee a useful acceleration on every graph.
+
+Certificate setup and checking can be amortized over repeated endpoint
+samples at the fixed graph/rates/horizon/partition/tolerance. Each sample
+still pays the standard retained-event simulation, random draws and full
+O(n) label output/shuffle cost. The receiving n=20 finite-bit sampler's
+worst-case bit cap remains 20,384 and its ideal retained-attempt mean 11;
+the certificate introduces no new sampler speed claim. Against any direct
+or averaged method with per-sample time C, break-even requires comparing
+setup plus K times sample cost, including the comparator's own setup and
+the same full-output contract. No measured amortization advantage over the
+strongest validated incumbent was established.
+
+## Reproduction and integrity
+
+Run `python3 -B run_checks.py` in this directory. It writes complete integer
+witnesses and an independent checker result. The suite passed eight exact
+rational reference graphs and 408 component enclosures, including zero
+rates/disconnected graphs and a 10^15 rate. It rejected three invalid inputs
+and an intentionally corrupted witness. The checker reconstructs the pair
+generator independently by edge actions and imports no proposer code.
+
+`bounded_check_receipt.json` retains timings, hashes, output costs and all
+three verdicts. `full_sampler_compositions.json` retains exact final TV
+sums. `source20_certified.json`, `branch6_certified.json` and the explicitly
+failed `ungapped6_certified.json` retain all solve witnesses and residuals.
+Source originals, the pinned knowledge checkout and other research were
+read-only. No acquired executable code, external messages, Git operations,
+subagents, package installations or third-party full texts were used.

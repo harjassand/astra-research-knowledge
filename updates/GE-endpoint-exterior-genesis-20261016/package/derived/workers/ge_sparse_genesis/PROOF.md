@@ -1,0 +1,174 @@
+# Quadrature-free positive resolvent certificate
+
+Status: an independently derived, implemented finite-bit enclosure of the
+**existing receiving Duhamel bound**. This is not a new interchange sampler,
+new sparse solver, physical workload, or historical-priority claim.
+
+## Exact input and output
+
+Let a finite undirected graph have explicitly supplied nonnegative symmetric
+integer exchange rates r and q. Zero rates and disconnected graphs are allowed.
+Normalize the endpoint horizon to T=1, as in the receiving packet; rational
+original rates/horizon can instead be cleared by a common denominator.
+Let H_r,H_q be the receiving killed unordered-pair generators and
+S_a,e(t)=[exp(-t H_a)1]_e. Define delta_e=|r_e-q_e| and
+
+    B(T)=sum_e delta_e integral_0^T S_r,e(u)S_q,e(T-u) du.
+
+The receiving theorem states that B(T) bounds the full permutation endpoint
+TV, uniformly over initial permutations, and therefore every color projection.
+This note does not replace that theorem or extend its physical model.
+
+The output below is an upper enclosure of B(1). It needs neither a path order,
+an exterior-square identity, a graph mixing-gap estimate, nor survival values
+at time quadrature nodes. It uses the actual killed pair graph, so the state
+dimension is d=n(n-1)/2 and sparse factor fill can remain a bottleneck.
+
+## 1. Monotonicity with the correct normalization
+
+H has nonpositive off-diagonal entries and H1>=0. Its semigroup is positive
+substochastic. In particular
+
+    d/dt exp(-tH)1 = -exp(-tH)H1 <= 0.
+
+Thus each S_e is nonnegative, at most one, and nonincreasing. Substitution
+u=Tv gives
+
+    b(T):=B(T)/T
+         =sum_e delta_e integral_0^1 S_r,e(Tv)S_q,e(T(1-v)) dv.
+
+Every integrand is nonincreasing in T, including the endpoints v=0,1.
+Consequently b(T) is nonnegative and nonincreasing. B(T) itself need not be
+nonincreasing, and using that stronger assertion would be invalid.
+
+For any independent nonnegative random time G, with p=P(G<=T)>0,
+
+    E[b(G)] >= E[b(G) 1_{G<=T}] >= p b(T),
+    B(T) <= T E[b(G)]/p.                                      (A)
+
+There is no discarded right-tail term: the contribution on G>T is
+nonnegative and is retained in E[b(G)]. The price is division by p.
+
+## 2. Exact Erlang identity
+
+Fix integer k>=2 and real s>0. Put
+
+    P_a=s(sI+H_a)^(-1),    G~Gamma(shape=k, rate=s).
+
+For j>=1, P_a^j 1=E[S_a(E_j)], where E_j is the sum of j independent
+rate-s exponentials. For fixed j in 1,...,k-1, E_j and E_k-E_j are
+independent, so the expectation of their survival product factors.
+Conditional on E_k=t, E_j/t has the Beta(j,k-j) density. Averaging these
+k-1 beta densities gives the constant density one, because
+
+    (1/(k-1)) sum_{j=1}^{k-1}
+      (k-1)!/((j-1)!(k-j-1)!) v^(j-1)(1-v)^(k-j-1) = 1.
+
+Hence the exact identity is
+
+    E[b(G)] = (1/(k-1)) sum_{j=1}^{k-1} sum_e delta_e
+                 [P_r^j 1]_e [P_q^(k-j) 1]_e.                 (B)
+
+Equivalently, Laplace-transform B and differentiate k-2 times: the
+factorials cancel to 1/(k-1), and each product contains k resolvent factors.
+This independent derivation checks the normalization and direction.
+
+Combining (A) and (B), at T=1,
+
+    B(1) <= 1/(p(k-1)) sum_{j=1}^{k-1} sum_e delta_e
+                       [P_r^j 1]_e [P_q^(k-j) 1]_e.           (C)
+
+This proof needs only killed Markov positivity. The implementation's
+symmetric LDL proposer, and the receiving interchange theorem, retain their
+respective symmetry contracts. A nonreversible extension of the solver or
+endpoint theorem is not asserted.
+
+## 3. A rational cap probability, with its cost charged
+
+The implemented s is a positive integer. With x=sT=s,
+
+    p=1-exp(-x) sum_{ell=0}^{k-1} x^ell/ell!.
+
+For M>=k-1, the positive Taylor lower sum L_M=sum_{ell=0}^M x^ell/ell!
+satisfies exp(x)>=L_M, so
+
+    p >= p_lower := 1-(sum_{ell=0}^{k-1}x^ell/ell!)/L_M.
+
+The program rejects nonpositive p_lower. It chooses
+M=max(4k,ceil(2x)); the executed k=16,s=20 case uses M=64 and
+p_lower>0.84348686536. Every term, sum and division is exact rational.
+No unbounded random clock is sampled by this deterministic certificate.
+The cost is O(M) rational recurrence operations, plus their bit cost.
+
+## 4. Finite-bit solve enclosures independent of the proposer
+
+A=sI+H is an M-matrix and A1>=s1. Thus A^(-1)>=0 and
+
+    ||A^(-1)||_infinity <= 1/s,   P=sA^(-1) is substochastic.
+
+Let Q=2^p_bits. Start with z_0=Q1 and accept any integer proposal z_j
+for the next resolvent action only through the exact integer residual
+
+    R_j=||s z_(j-1)-A z_j||_infinity.
+
+All H entries and z entries are integers, so this norm is evaluated exactly
+against the original sparse H. Define E_0=0 and
+
+    E_j=E_(j-1)+R_j/(sQ).
+
+If v_j=P^j1, substochastic contraction and the residual identity give
+
+    ||v_j-z_j/Q||_infinity <= E_j.
+
+Therefore each needed component is enclosed by
+
+    max(0,z_j[e]/Q-E_j) <= v_j[e]
+                         <= min(1,z_j[e]/Q+E_j).
+
+The two upper component enclosures, exact delta_e, formula (C), and
+p_lower give an exact rational upper bound. This charges rate-change weights
+in the final exact sum; tiny survival values are not silently rounded to zero.
+
+The proposer is sparse fixed-point LDL with natural ordering. Its factors
+are deliberately approximate and are not themselves proof premises. A
+nonpositive rounded pivot rejects the proposal; a poor solve increases the
+independent residual enclosure and can prevent certification. The checker
+does not import the proposer, reconstructs H by physical-edge actions rather
+than walker-neighbor actions, and recomputes every residual from delivered
+integer vectors. Even an incorrect LDL routine cannot create an accepted
+small bound unless its returned vectors satisfy these exact residual tests.
+
+The current precision rule is
+
+    p_bits=max(64,bitlength(Lambda)+bitlength(sum delta)+60+bitlength(k)),
+
+where Lambda=max diagonal over both H. This is a conservative proposal rule,
+not a universal guarantee on rounded LDL stability or useful B(1). Every
+acceptance still uses the observed exact residuals. Exact rational LDL is
+also retained as a slower independent proposer. If exact solves are rounded
+down to the Q grid, their residual is at most (s+2Lambda)/Q in real units,
+which supplies an explicit guaranteed finite precision for that fallback.
+
+## 5. Convergence and the boundary of the claim
+
+The operation has no scalar rational-approximation remainder left uncharged:
+the Erlang identity and monotonicity turn a finite positive rational expression
+directly into an upper bound. Choosing k=m^4 and s=m^4+m^3 makes G converge
+in probability to 1 from the left, while Chebyshev gives
+P(G>1)<=k/(s-k)^2=1/m^2. Continuity and boundedness of b then give
+E[b(G)]/P(G<=1) -> b(1). Thus with exact or sufficiently certified solves,
+the upper bound converges to the receiving Duhamel value.
+
+This is not a graph-uniform complexity bound or a claim that k=16 suffices
+for all graphs. If the receiving bound has no slack below the target, this
+method can correctly remain UNKNOWN even when the true endpoint TV is small.
+The observed ungapped six-site comparison has upper bound above three and
+does not certify the proposed averaging. B(1)>1 remains a valid, unhelpful
+upper bound; the receipt preserves it rather than relabeling it success.
+
+The operation does not refute high-precision CRAM, rational Krylov, general
+validated exponential action, or standard Markov averaging. Real positive
+resolvents and Erlangization are classical methods. The contribution here is
+the exact positive convolution identity applied to this receiving TV
+certificate, and its executable finite-bit witness pipeline. Priority for
+that composition has not been established.

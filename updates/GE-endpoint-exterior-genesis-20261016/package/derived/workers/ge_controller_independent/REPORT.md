@@ -1,0 +1,28 @@
+# Independent repeated-controller result
+
+16 October 2026. **A restricted fixed-cell recycler is internally proved; the general noisy autonomous controller remains open.**
+
+The construction uses five tracks of the [[5,1,3]] code, with two qutrit banks and a phase 0,1,2 per track. Phase 0 applies X and moves A to B; phase 1 applies the cyclic Clifford C and moves B to A; phase 2 waits. A commit, enabled when every phase is 2, explicitly corrects the code, clears B, and resets every phase to 0. The same banks then execute the next noncommuting C_L X_L word. There is no one-use terminal flag or fresh physical output rail.
+
+All maps and rates are time independent. The result is a repeated U^n transaction process at marked commit cuts. At a deterministic physical time its commit count is random; it is not an identity-memory theorem. Monitoring/readout of those output events is not implemented.
+
+The new interface is a **total cyclic phase/bank rule with a code-correctable history shadow**. A wrong local phase may select the wrong source, erase a real share, repeat a gate, or authorize a wrong local reset. Those effects remain on one track. The receiver does not guess whether a local noncommuting operation occurred. Its specified 26-error recovery corrects the resulting arbitrary qubit-to-qutrit map on that track, including vacancy leakage and A/B entanglement, with an arbitrary reference. A commit canonically retires both bank garbage and the complete old phase authorization.
+
+The [self-contained specification and proof](SPEC_PROOF.md) establishes:
+
+- Exact repeated logical output immediately after each commit if arbitrary finite faults in that epoch occupy at most one track; faults include both banks, the phase, and local faulty-reset actions.
+- Clean retirement from every one of the 243 phase vectors and every quantum input, with quantum output unrestricted beyond the correctable radius. The service time is dominated by max_i Gamma(2,lambda)+Exp(kappa), independently of data and disjoint exterior cells.
+- An explicit recovery at every asynchronous phase vector, which can run concurrently without changing any phase or blocking service. It recovers the code in the known partial-gate frame and clears unselected banks.
+- Under exogenous onsite Poisson faults of total rate rho, a sufficient bad-epoch bound beta <= min(1,(rho*m)^2), where m is the clean mean-service bound. It gives an inclusive CP/diamond bound beta^|J| for every deterministic set J of chronological epochs, and output distance at most 2 min(1,n beta) after n commits. All faults during waiting and reset belong to an epoch.
+
+At unit gate/commit rates the exact worst clean mean is 51929339/10800000 = 4.8082721296. The [self-authored diagnostic](check_recycler.py) checks all 243 phase states, 3,645 phase substitutions, the rational service formula, the 26 orthogonal error images (a 52-dimensional correctable span), all 243 partial-gate frames, 200 arbitrary one-track maps, and the CPTP identity for each local destructive transfer. [RESULTS.json](RESULTS.json) records the passing finite diagnostics. The proof is algebraic; floating-point residuals are only sanity checks.
+
+A clean n-commit run accepts 10n local moves and n commits using the same ten qutrit banks. Its expected unit-rate duration is n m; optional recovery and reset proposal counts are respectively mu n m and 5 nu n m in the clean model. Every physical wait contributes fault exposure. Reservoir/reset work, calibration, dissipator engineering, hardware noise correlations and readout costs remain UNKNOWN.
+
+This is more restricted than a coupled-lattice controller. Cells cannot interact through this theorem, and the program is a fixed periodic logical word. Arbitrary finite unions of whole cells retire independently; a growing damaged domain crossing interacting cells is not addressed. The construction changes representation and eliminates the surface consistency problem in that restricted receiver, rather than extending the crossed-surface repair table to higher fault order.
+
+The key physical limitation is explicit: commit and the optional phase-indexed recovery are ideal fixed five-site CPTP jumps. Their code projector, error isometries and total maps are given in the proof; they are not unspecified decoder oracles. But a noisy decomposition into smaller gates, ancillas, measurements and resets has not been built. A single syndrome-ancilla fault can spread to two data tracks in a naive circuit. The diagnostic supplies the concrete Z_3 Z_4 -> logical -Y falsifier. Treating a growing encoded recovery as one jump would assume the missing compiler. See [FALSIFIERS.md](FALSIFIERS.md).
+
+The supplied s03 construction already contained the five-qubit code and the genuinely noncommuting X,C word. The independent contribution here is repeated total local phase/bank movement, consumption and regeneration of the full phase authorization at each commit, and the explicit recovery for arbitrary partial phases. The finite result removes a real one-use/reuse interface at bottom scale under the stated generator model. It does not establish a recursive threshold, historical novelty, physical implementation, practical capability, or the mission result.
+
+Source inputs were treated as data: the current C/REPORT.md, s02's precise occupied-port and recombination constructions, s03's finite discharge construction, and the selected s06 bank-clear/failure audits. The supplied W revision was adb0a306e9bfdc33b9fbd105efb58baed0cc021e; it was not independently reverified because this assignment prohibits Git. No source scripts were executed, acquired code installed, external account contacted, or files outside this worker directory mutated.
