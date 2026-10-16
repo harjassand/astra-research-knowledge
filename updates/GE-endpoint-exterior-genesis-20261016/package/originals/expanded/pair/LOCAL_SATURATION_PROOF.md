@@ -1,0 +1,150 @@
+# Graph-local rate saturation for symmetric interchange
+
+## Status and scope
+
+This is a newly derived mathematical refinement and an exact-finite-state computational check of the supplied N727 proof candidate. It is not a literature-novelty claim, a measurement on a material, a benchmark against an implemented competitor, or a formal verification. All numerical graphs below are synthetic, explicitly supplied-rate models.
+
+Pinned starting source: [N727 derived PDF text](https://github.com/harjassand/astra-research-knowledge/blob/2688d7a383502df4fc1e64001d04bb76e6ec05e5/updates/EI/package/interchange_rate_saturation/DERIVED_PDF_TEXT.txt). The retrieved text labels itself a derived extraction rather than original manuscript bytes. It establishes the adjacent-discrepancy coupling, inversion identity, and Duhamel route being refined here. A local copy is `source_N727.txt`.
+
+Assumptions throughout:
+
+- A finite undirected physical graph with nonnegative, configuration-independent symmetric exchange rates.
+- Continuous-time interchange of distinguishable labels, started at any deterministic permutation. Multicolor occupancy and exclusion follow by projection.
+- The target is the full endpoint distribution in total variation. No claim about microscopic trajectories, currents, rare-event relative accuracy, biased rates, or configuration-dependent rates.
+- Time is rescaled to horizon 1: r_e=T*w_e. All rates, boundary hazards b, and caps K below are in these dimensionless units. A dimensionless cap K means physical cap K/T when T>0.
+
+## 1. Local stopped coupling and improved constant
+
+Fix an edge e={u,v} of current rate w>0, and choose a physical vertex set C containing u,v. It suffices to take the connected component of u in the positive-rate induced graph on C. Write s=|C| and
+
+c_C = s(s-1)/4.
+
+For x in C let d_out(x)=sum_{y outside C} r_xy, and define
+
+b_C = max_{x != y in C} [d_out(x)+d_out(y)].
+
+Equivalently b_C is the sum of the two largest external weighted degrees. Unweighted boundary degree is not sufficient.
+
+Use N727's two-discrepancy coupling. Initially only the two labels at u,v are interchanged. Common edge clocks preserve matching labels; an edge joining the two discrepancy positions uses independent clocks in the two marginals, so either clock coalesces the copies. Every marginal still has each physical transposition at its prescribed rate. Until meeting, discrepancy locations have the law of two independent continuous-time walks killed on collision.
+
+For the internal process with boundary edges suppressed, quotient the ordered discrepancy positions by interchange of the two positions. Its transient states are unordered pairs {x,y}, at most M=binomial(s,2) states. A move {x,y}->{z,y} has rate r_xz and the reverse has the same rate. Killing from {x,y} has rate 2*r_xy. Thus its killed generator H is symmetric, positive definite on the reachable domain, with nonpositive off-diagonals and direct killing 2w at z={u,v}.
+
+Let G=H^{-1}. Symmetry and the discrete maximum principle give 0<=G(z,a)<=G(z,z), and direct conductance to the absorbing state gives G(z,z)<=1/(2w). Hence
+
+E_z[tau_C] <= M/(2w) = c_C/w.
+
+This improves the ordered-pair n^2/2 constant by using the valid symmetric unordered-pair quotient. If only M_reach transient pairs are reachable, c_C=M_reach/2 is also valid. No lower bound on any other internal rate is used.
+
+Expose external discrepancy moves until the first such move. While both discrepancies remain in C their total exit hazard is at most b_C. Therefore
+
+P(exit before internal meeting) <= b_C * E[tau_C].
+
+Coupling fails by time t only if internal meeting has not happened by t or exit occurred before meeting. Markov's inequality yields the uniform edge-start bound
+
+a_e(t) := sup_sigma TV(P_t(sigma,.), P_t(sigma*tau_e,.))
+        <= min{1, (c_C/w)*(1/t+b_C)}.                 (L1)
+
+Events involving only matched labels, including other boundary crossings, do not stop the coupling and do not enter b_C. Stopping is an analysis device: it does not alter either interchange marginal.
+
+## 2. Why both smoothing factors remain valid
+
+The physical generator has not been localized or projected. The set C appears only in a bound on its coupling. Thus all group identities in N727 remain available without modification.
+
+Represent a permutation as positions -> labels, so updates multiply on the right by tau_e. With A_e=I-T_e, L=sum r_e*A_e and P_t=exp(-tL), the convolution law and symmetry imply p_t(g)=p_t(g^{-1}). Inversion changes a right endpoint gradient into a left starting-state gradient. Consequently
+
+||delta_sigma P_t A_e||_1 <= 2*a_e(t),
+||A_e P_t f||_infinity <= 2*a_e(t)*||f||_infinity.
+
+Since A_e^2=2*A_e, Duhamel differentiation of a single edge rate gives
+
+||d(delta_sigma P_1)/dw||_TV <= integral_0^1 a_e(t)*a_e(1-t) dt.       (L2)
+
+This is not an appeal to equality of arbitrary endpoint and starting gradients. It specifically uses group convolution and inversion. For exclusion, apply the final full-permutation bound and contract TV under the color projection; a direct group claim on occupancy states is unnecessary.
+
+## 3. Explicit heterogeneous-cluster cap theorem
+
+For q=c/w<=1/2 and b=b_C, set f_q(t)=min(1,q/t). Then
+
+min(1,q/t+qb) <= f_q(t)+qb.
+
+The two elementary integrals are
+
+integral_0^1 f_q(t) dt = q*(1+log(1/q)),
+integral_0^1 f_q(t)f_q(1-t) dt = 2*q*H_binary(q)
+                                      <= 2*q^2*(1+log(1/q)).
+
+The last inequality uses -(1-q)log(1-q)<=q. Expanding the product in (L2) therefore gives
+
+||d(delta_sigma P_1)/dw||_TV
+  <= (c^2/w^2)*[b^2 + 2*(1+b)*(1+log(w/c))].           (L3)
+
+Integrating from K to any W>=K gives, for K>=2c,
+
+TV(Law_W(X_1), Law_K(X_1))
+ <= B_local(K;c,b)
+ := (c^2/K)*[b^2 + 2*(1+b)*(2+log(K/c))].             (L4)
+
+The right side is the integral to infinity, so it is uniform in W and in all other internal rates, however large or heterogeneous. The bound can of course be truncated at 1.
+
+To cap a set F of edges, choose a potentially different C_e for each, let c_e and b_e be as above, and use an edge-specific cap K_e>=2c_e. Use the original rates for every b_e, which upper-bound boundary hazards throughout sequential capping. Then
+
+TV(original endpoint, capped endpoint) <= sum_{e in F} B_local(K_e;c_e,b_e).    (L5)
+
+Only edges actually changed belong in F. Edges not changed incur no error. The caps need not be equal. No scale gap is assumed. A cluster whose boundary contains other very fast edges may give a poor b_e; localizing is not free.
+
+For C=all vertices, b=0 and c=n(n-1)/4. This also sharpens the global N727 constant and its additive logarithmic constant, independently of localization.
+
+## 4. Sharper special case: fast dimers and homogeneous cliques
+
+For C equal to a single edge's two endpoints, the restricted discrepancy pair is fixed. Meeting hazard is 2w and external exit hazard is exactly b. The exact stopped-coupling envelope is
+
+a_w(t) <= b/(2w+b) + [2w/(2w+b)]*exp[-(2w+b)*t].        (E1)
+
+More generally, (E1) is valid inside a complete cluster when every internal physical edge has a common rate w. Every internal discrepancy pair then has meeting hazard 2w, and exit hazard is at most b. This claim does not extend unchanged to an arbitrary sparse cluster or to changing a single edge while other clique edges are held at smaller rates.
+
+For lambda=2w+b, (E1) gives
+
+integral_0^1 a_w(t)a_w(1-t)dt
+ <= b^2/lambda^2 + 4*b*w/lambda^3*(1-exp(-lambda))
+                         + 4*w^2/lambda^2*exp(-lambda).
+
+Dropping favorable factors before integrating w from K to infinity yields
+
+B_exp(K;b)
+ = b^2/[2*(2K+b)] + b/(2K+b) - b^2/[2*(2K+b)^2]
+                         + (1/2)*exp[-(2K+b)]
+ = b*(b+2)/[2*(2K+b)] - b^2/[2*(2K+b)^2]
+                         + (1/2)*exp[-(2K+b)]             (E2)
+ <= b*(b+2)/(4K) + (1/2)*exp(-2K).
+
+For disjoint fast dimers, sum (E2) over the changed dimers. For homogeneous complete clusters, vary the common internal rate of a cluster simultaneously from W to K. Duhamel differentiation is a sum over its internal edges. Each term has the same local envelope, so multiply (E2) by the number of those edges and sum over clusters. Different clusters may have different common original rates and caps.
+
+This sharper result needs a stronger within-cluster shape assumption than (L4). In particular, its attractive numerical costs must not be attributed to the general heterogeneous-cluster theorem. It also does not demonstrate superiority to exact dimer parity methods, stochastic averaging, MCAMC, or an established basin solver.
+
+## 5. Operational interpretation and limitations
+
+Given the rates and selected clusters, computing c and b requires only physical-graph information, not configuration enumeration. A uniformization simulation of the capped generator has expected candidate event count Lambda=sum_e min(r_e,K_e). It still returns a full configuration. Lambda is a useful operation count, not a wall-clock runtime benchmark. A bounded-error implementation must also budget random-arithmetic and Poisson-truncation error; an endpoint-cap budget of .05 alone is not an entire .05 sampler guarantee if other approximations are added.
+
+The theorem does not provide cluster discovery for free, does not certify that supplied material rates are correct, and does not learn a slow boundary from short observations. Boundary rates must be known or conservatively bounded. Fast-edge lower bounds alone do not supply those boundary upper bounds.
+
+An arbitrary small-configuration exact solver is used below solely to audit full endpoint TV. Its enumerated state space is not proposed as the scalable algorithm. The infinite-fast reference is independently computed by orthogonal projection onto fast-component permutation/occupancy orbits, evolving the projected slow generator, and lifting back.
+
+## 6. Independent elementary averaging certificate
+
+The clean-gap comparator is an exact boundary-event chain that uniformly shuffles each fast component conditional on its current multiset of labels. It can be implemented with ordinary shuffles; no exponentially large basin must be enumerated. Its full endpoint law equals the orthogonal fast-orbit projection used in the numerical check.
+
+Let delta_i(t) uniformly bound component i's distance from conditional uniform equilibrium after internal evolution for time t, and let Gamma_i be the total rate of boundary attempts touching that component. Couple at boundary epochs touching it and at the final endpoint. For Poisson renewal gaps, the expected sum of delta_i over those gaps is exactly
+
+exp(-Gamma_i)*delta_i(1)
+ + 2*Gamma_i*integral_0^1 exp(-Gamma_i*s)*delta_i(s) ds
+ + Gamma_i^2*integral_0^1 (1-s)*exp(-Gamma_i*s)*delta_i(s) ds.
+
+Therefore the full endpoint TV is bounded by the sum over components of
+
+delta_i(1) + Gamma_i*(Gamma_i+2)*integral_0^1 delta_i(s) ds.       (A1)
+
+For a homogeneous clique of size s and internal rate W, a permutation can be decomposed into at most s-1 arbitrary transpositions. Each discrepancy transposition couples by time t with failure exp(-2Wt), since every pair is an edge. Averaging the resulting diameter bound over the stationary uniform law gives delta_i(t)<=(s-1)*exp(-2Wt). For a dimer the exact bound is delta_i(t)=(1/2)*exp(-2Wt).
+
+These bounds make the three clean-gap test graphs easy for rigorous averaging. The resulting (A1) certificates are 1.20e-5 (matching), 1.32e-5 (two K4s), and 8.80e-6 (two triangles), all well below .05. Boundary attempt counts for the entire graph are only 1, .2, and .2. This comparator is decisively cheaper in event count than even the specialized homogeneous-clique caps on these examples.
+
+For a general cluster one can bound delta_i(t) by (s_i-1) times the largest survival probability of the internal killed physical-pair chain, with arbitrary starting pairs. That chain has only binomial(s_i,2) states. This also means that using a physical-pair certificate is not, by itself, an advantage unique to rate capping.
