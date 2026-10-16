@@ -1,0 +1,9 @@
+The incoming cubic compensation result left the sharp constant unresolved. This integration preserves the original inputs and adds an exact nonlinear-stress certificate proving conformal Jensen positivity for every unchanged J_r, r>0, when the first potential is F(x)+H(y) and the second is arbitrary periodic W1,4. It also records the complete weighted polynomial/strict near-kernel classifications, quantitative concentration and diffuse clouds, and an exact countermodel showing that periodic catalytic averages do not bound single-pulse responses or conditioning horizons.
+
+All four new claims N885–N888 remain source_derived_unreviewed. Full positive-core quasiconvexity, historical originality, external verification and new physical capability remain open. Original and derived artifacts are separate commits; 57 incoming originals (including a byte-identical physical-report pair) and 137 selected authored artifacts are hash-preserved. Source/receiving proofs and primary predecessors are explicit.
+
+Validation:
+- Twelve published-layout exact replay scripts pass, including separate Fraction-based r1/all-r certificate audits; original producer verifiers pass 21/24/10 finite groups.
+- Public access build/check and seven access fixtures pass; source-access issues: zero. Technology and workflow validation pass with the immutable base f80a8f15137575133ad2c9af975513b32e8fa93e.
+- Global checkpoint publication remains blocked by three unchanged inherited unsupported-schema records. The new draft validates individually and stays outside the immutable checkpoint tree. The exact paths/hashes are in CHECKPOINT_VALIDATION.v0001.json.
+- Historical cards, source bytes, checkpoint records and prior technology/workflow versions are unchanged. Conflicted open drafts and independently unreviewed PR95 remain untouched.
