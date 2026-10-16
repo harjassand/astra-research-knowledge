@@ -1,0 +1,156 @@
+# Adversarial mathematical interface audit of the Dots memory packets
+
+Date: 2026-10-16. Status: **FROZEN analytic audit, externally unreviewed**. Worker `gb_memory_audit`. No other workers were inspected or spawned; no Git/worktree sources were edited. Only this assigned output directory was written. Parent communications supplied two additional candidate statements; both were reconstructed independently from those statements and the literal original source hypotheses.
+
+## Main findings
+
+The inspected quantum interfaces are mathematically consistent under their exact assumptions. I found no counterexample satisfying the completed-corrector, common-dilation/deletion, full-reservation, protected-resource, uniform-full-joint-effect and fixed-decoder contracts. Their restrictions are substantive, and the exact falsifiers below prevent extending the conclusions by informal words such as local, twirled, measured, or coherent-small.
+
+The strongest positive result is an additional proof of the previously OPEN source endpoint-product question. The source finite-rate report bounds products by an inflated positive majorant. Re-expressing each exact dephaser as Poisson complete pinches, and bounding actual latent mismatch histories by deletion-null mixed derivatives, proves the uninflated product
+
+\[
+ \Pi_s\Phi_t^*(F_{s,S})\Pi_s
+ \le\prod_{i\in S}\min\{1,\epsilon_i(t)\}\Pi_s,
+ \quad
+ \epsilon_i(t)=\frac{J_i^2}{\gamma_i}
+ \left[t-\frac{1-e^{-2\gamma_it}}{2\gamma_i}\right].
+\]
+
+This holds for the literal source conditions `[H0,Z_i]=0`, `{V_i,Z_i}=0`, `[V_i,Z_j]=0` for `j!=i`, `||V_i||<=J_i`, independent exact dephasers, and initial joint sector `Pi_s`, with arbitrary finite shared bath/reference. It does not by itself solve the memory's continuously corrected physical-noise problem. See [the complete independent proof](AUDIT_POISSON_PINCH.md).
+
+The improvement DOES reach the already qualified private-refresh memory operation. A normalized virtual-seed Stinespring lift converts each selected odd Fourier bit into a virtual parity endpoint flip with the exact source dephaser. It therefore replaces `mB` by `m epsilon` in the homogeneous existing budget, retaining `p_eff=min(1,a_ref^2,m epsilon)` and all prior geometry, covariance, support and completion premises. No new physical syndrome measurements are required. The action/epsilon minimum has a mixed derivative proof; it is not assumed from two unrelated bounds. See [the explicit receiving-interface audit](AUDIT_FOURIER_EPSILON_BRIDGE.md).
+
+The parent-supplied full-group variant also passes: independent `lambda_i(D_Gi-Id)` with actual exact entry/exit pinches supplies history bad flags of strength
+
+\[
+ p_i=\min\left\{1,\frac{2J_i^2}{\lambda_i}
+ \left[\tau_i-\frac{1-e^{-\lambda_i\tau_i}}{\lambda_i}\right]\right\}.
+\]
+
+A parent is bad if ANY successive latent complete-pinch labels differ, even when the final syndrome returns. This supports the prior memory certificate only with its additional full-footprint, clean support and common-decoder assumptions.
+
+The parent-supplied exposure optimization is correct for deterministic nonnegative action/intensity profiles and finite total exposure. The exact best uncapped Poisson certificate at action `a` and exposure `Lambda` is `2a^2/(Lambda+2)`, attained by the endpoint-atom/uniform exposure measure. Ideal deterministic `N` action-balanced cuts give the strictly smaller `a^2/(N+1)` at `Lambda=N>0`. These optimize a sufficient upper bound, not the physical error. See [the independent optimization audit and cap qualifications](AUDIT_EXPOSURE_OPTIMUM.md).
+
+## 1. Source scope and reading depth
+
+Started from the assigned worktree's `AGENTS.md`, `00_START_HERE.txt` and current N881 dossier, then read the decisive quantum, support, conditioning, composition and obstruction texts across all six supplied directories:
+
+| Packet | Mathematical interface audited | Result |
+|---|---|---|
+| `coherent_memory_packet_2026-10-15` | Completed proposals, joint stabilizer characters, bath filtering, universal Pauli span, same decoder, TNI completion | Pass conditional on its universal classical certificate and exact channel premises |
+| `measurement_memory_handoff_2026-10-15` | Genuine/unread syndrome labels, fresh latent record dilation, partial pinching, whole-footprint detection obstruction | Pass under exact full-joint boundary channels and no reservoir return; generic detector closure remains blocked |
+| `finite_duration_syndrome_addendum_2026-10-15` | Bath-independent correction serialization, skipped-start saturation, pending prefixes, measured sandwich | Pass with gatewise bath independence and charged complete reservations |
+| `qualified_correction_core_addendum_2026-10-15` | Fixed noisy Clifford cores, full quantum-support frames, fine syndrome refinement, protected records, full-interval bad gadgets | Pass with actual covariance, fresh per-attempt resources and a fixed padded schedule |
+| `finite_rate_joint_syndrome_2026-10-15` | Positive endpoint effects, telegraph/Dyson majorant, private-sign Fourier lift, refresh averaging | Existing results pass; supplied OPEN epsilon-product receives the additional internal proof above |
+| `overlapping_weak_pulses_2026-10-15` | Global subset effects, termwise memory-only rearrangement, correlated-death contours, TNI selection | Pass with disjoint full memory reservations; shared noncommuting bath alone is allowed |
+
+This is a selective load-bearing audit, not a claim to have reconstructed every original classical forcing lemma or all prior literature. The full files actually used and their hashes are in `source_manifest.json`. The assignment's BASE revision is `61389569d6c53b439764f0d148b35b7fa6083eec`. The later original-source PRESERVATION commit is `19965c2120dc0c440072dc746821aabdc1dcd8b6`, which a read-only HEAD query observed during this audit; this observation is not presented as a promise about current HEAD after integration. The parent was notified. These provenance roles remain distinct, and neither navigation revision is used as a mathematical premise.
+
+## 2. Arbitrary persistent bath and one fixed decoder
+
+For a fixed schedule with one universal certificate, expand every supported fault Kraus operator as `sum_P P tensor B_P`. Keep the bath coefficients in chronological order. Completed correction projectors are scalar or zero on every full-code Pauli orbit `E V_code`; the specified correction Pauli moves that orbit to the next admitted history.
+
+The required decoder identity is
+
+`D_s E V_code = c_(s,E) I_logical`
+
+for EVERY admitted history with the SAME complete decoder. It is stronger than saying each error has its own inverse. Coherent sums, syndrome degeneracy, initially entangled logical/bath/reference inputs, and retained bath coefficients then remain harmless: every good recovered Kraus operator is `I_logical tensor B_alpha` before forming density matrices. This is an operator-span statement; no reduced-system Pauli-mixture substitution is made.
+
+The full-code condition matters. The component-local recovery must be completed on all physical syndrome sectors. A decoder defined only on one logical codeword or a proper logical subspace cannot be asserted CPTP on the whole physical Hilbert space without an extension. The inspected packet states the full-code convention and fallback filling.
+
+The accumulated-homology proof also has the right invariant. Small instantaneous syndrome is insufficient as a static condition; the needed argument is that every bounded local transition changes `E+D(partial E)` by a boundary in one common contractible box. Starting from exact code initialization, induction over the whole supported history then preserves logical homology. The fixed component fillings make unaffected components cancel. The earlier support proof and the bounded-event/topological size assumptions remain dependencies.
+
+## 3. Completed and original correctors are different models
+
+For active Kraus operators `Q_j Pi_j`, add the inactive projector `Pi_0` to obtain a CPTP proposal `C`. Then
+
+`kappa(C-Id) = kappa sum_j D[Q_j Pi_j] + kappa D[Pi_0]`.
+
+This is a changed generator on syndrome coherences. In the exact one-qubit witness `J=|0><1|`, the active dissipator sends `|0><1|` to `-|0><1|/2`; the completed generator sends it to `-|0><1|`. The added term can vanish on definite-syndrome Pauli-orbit density operators while remaining nonzero on coherences. Thus the original Pauli-trajectory theorem and completed coherent-fault theorem can coexist, but their robustness conclusions cannot be identified.
+
+Fine syndrome extraction gives another distinction. Splitting a coarse branch `Pi_j` into `R_s` implements `C_ref=C D_R`, generally dephasing additional coherences. On every encoded Pauli orbit exactly one `R_s` survives and gives the same sweep transition, which is enough for the universal-history proof. It does not establish equality of full-input channels.
+
+## 4. Global subset effects survive noncommuting bath overlap
+
+The source subset lemma assumes one common dilation
+
+`H_g=H0+sum_i V_(i,g_i)`
+
+with independent private seeds and no other selected-seed dependence after any deletion/interpolation. Apply commuting `L2` mean-zero projections `Q_i` to the seed variables. Multivariate fundamental calculus removes every boundary term independent of a selected seed. Each mixed derivative inserts each selected interaction once. The permutation simplices partition the insertion-time cube; unitarity bounds their total by `product_i a_i`, with no factorial penalty. Parseval gives the positive effect
+
+`sum_(all selected chi_i nonzero) K_chi^dagger K_chi <= product_i a_i^2 I`.
+
+The shared bath never factorizes and its factors are not rearranged. The finite-rate private-sign variant is also sound: each selected Fourier projection forces odd insertions on ket and bra, and the independent telegraph average has a nonnegative paired-gap kernel. The virtual-seed-qubit interpretation correctly removes any requirement that the PHYSICAL baseline preserve a parity, but still requires actual additive dependence on the private signs and paths.
+
+The finite-rate refresh average must stay INSIDE the quantum effect. Conditioning on a rare no-refresh realization loses the rate improvement. Geometry, clean selection and completion cannot inspect those selected private clock histories.
+
+## 5. Support locality is termwise and global
+
+The valid rearrangement moves only memory Pauli factors of a clean pulse to its completion across operations disjoint from its ENTIRE reserved memory/frame/ancilla support. Bath factors keep their original chronology. The selected character fixes that pulse's net patch Pauli. Detection completeness and no local logical make equal-character representatives differ by a code stabilizer, scalar on every encoded Pauli orbit.
+
+This proves a support expansion of each full-horizon Fourier Kraus operator. It does not serialize joint pulse channels or supply an online local character instrument. The exact shared-bath echo is consistent with this proof: its joint bad effect obeys the product action bound, although the later bad character conditional on the earlier one approaches one. A controller cannot use global Fourier labels as if they were observed at completions.
+
+Only clean, fully completed wrappers may enter the selected Fourier set. Pending prefixes remain arbitrary charged local operations. For noisy correction cores, any nonzero elementary character charges the entire parent interval, including its omitted correction at start. The atomic auxiliary update `sat_S composed with F` dominates the unchanged old support; inserting an actual ideal correction into an arbitrary bad channel would be invalid.
+
+The fixed-core compiler qualification passes. Full-Pauli conjugation on the whole gate data-plus-ancilla support isolates identity at zero character. A compiler-following drive error can instead stay entirely in the zero Fourier coefficient. Fresh per-attempt ancillas, stable protected classical records, fixed padded slots, completed wrappers, exact/qualified reset and readout are necessary for zero-character correctness; reduced isolated gate calibration does not imply them.
+
+## 6. Positive record selection and correlated contours
+
+Global Fourier labels and latent measurement records are legitimate indices of a complete Kraus representation even when physically unread. A fixed input-independent predicate selects a CP trace-nonincreasing good map. If the same decoder corrects every Pauli term in each selected record, then `Good=Id_logical tensor Lambda_g`. Its CP complement has effect `I_logical tensor D`, and an input-uniform bad-effect bound gives `0<=D<=epsilon I`. Adding any CP bath map with effect `D` completes `Lambda_g` to CPTP and yields diamond distance at most `2 epsilon`.
+
+No individual good branch is normalized. A bath filter can have a rank-one Choi support and no nonzero CPTP minorant, while the TNI-good-map argument still works. A small bad probability for only one calibrated bath state is insufficient for the joint-input diamond claim.
+
+The local-stochastic bridge accepts all-subset probabilities, not iid domination. Conditional on full exogenous geometry/noise, one witness parent per separated coarse packet gives `product_v(A_v+p K_v)`; independent primitive packets average this to `(d0+p mu)^|J|`. A fixed coloring yields `q=(d0+p mu)^(1/Q)`. Distinct-parent counting and local terminal windows are essential.
+
+For disjoint contour supports, sink sets are disjoint. Their simultaneous occurrence requires all distinct sinks to be deaths, so the all-subset bound gives `q^(sum sink count)` without independence of actual contour events. Exponential shape/chain counts then sum. I checked the relevant primary statements: [Hartarsky–Toninelli, Section 9 and Lemma 9.15](https://arxiv.org/html/2212.08437v2) provides deterministic disjoint-chain extraction and the iid proof location where its probabilistic factorization is replaced; [Swart–Szabo–Toninelli, Theorem 7 and Lemmas 13–14](https://arxiv.org/html/2202.10999v1) provides contour existence, edge/sink control and exponential enumeration. I did not reprove those deep contour theorems. This is a conditional extension of their deterministic machinery, not an application of the iid corollary to correlated deaths.
+
+The zero-exterior torus lift preserves local-stochastic subset bounds: copied native sites are injective and every outside death flag is zero. The deterministic closed ancestry witness then replays without a fictional independent extension of globally correlated quantum marks. The full microscopic forcing/whole-slab certificate remains separately required.
+
+## 7. Strong exact falsifiers and the repair they require
+
+All figures below use self-authored exact SymPy calculations in `check_interfaces.py`; none was imported from source scripts.
+
+| Invalid relaxation | Exact witness | Required repair |
+|---|---|---|
+| Derive chronological conditional smallness from weak crossing shared-bath pulses | Two disjoint-memory echo pulses with bath `X`/`Z`; later-bad given earlier-bad is `9801/10201`, above even action-square upper bound `1600/9801` | Global subset effects and support histories, or actual justified channel serialization |
+| Allow two selected frames to overlap on one error term and still multiply singleton budgets | `U_(f1,f2)=c I-i s(-1)^(f1+f2)P`; joint nonzero effect `400/10201` exceeds action-product bound `160000/96059601` | Group the term/frames as one charged parent, or enforce additive distinct-seed/disjoint-reservation structure |
+| Ignore cross-detectability with positive dephasing | `H=theta X1 X2`, gamma values `1/10`; actual all-flip probability at `t=1` is at least `320/10201`, above the false singleton-product upper bound `160000/96059601` | One-parity-per-interaction premise or a proved multi-check/group budget |
+| Transfer completed dynamics to the original active generator | Inactive/active coherence damping rates `-1` versus `-1/2` | Keep separate generator-specific ledgers and proofs |
+| Replace uniform full-joint calibration by a favorable fixed bath | Controlled `I`/`X` from bath state: calibration bath has zero error, another bath gives error probability one | Uniform joint operator/effect bound, acquired on the stated domain |
+| Permit discarded measurement reservoir return | A second CNOT undoes the first apparent unread measurement; interleaved bath `Z` induces data `Z` | Fresh isolated reservoirs or a new full process-level channel proof |
+| Let syndrome records be mutable bath subsystems | Record-only rotation invisible to quantum-data frames selects wrong feedforward with probability `400/10201` | Stable protected records, or charge and decode record faults explicitly |
+| Declare final zero syndrome a good history | In the genuine five-qubit code, the zero-syndrome Kraus action is `c^3 I_L+i s^3 X_L`, with logical coefficient `8000/1030301` | Track every block mismatch or supply another full support-history certificate |
+| Close the same zero-good-support certificate over all detector data | If measured checks lie wholly in `D` and every `D` Pauli centralizer is a code stabilizer, symplectic ranks force `D` to be a fixed pure stabilizer factor | Restrict a justified noise footprint, allow charged detector faults, or use a broader spacetime certificate |
+
+These falsify the relaxations, not the literal audited conditional theorems. The last rank argument was reconstructed analytically from the packet; no patch-specific search is needed.
+
+## 8. Additional positive capital and remaining gates
+
+The new Poisson proof strengthens the supplied endpoint theorem internally, the full-group version creates a positive history flag compatible with the existing support bridge, and the virtual-seed lift supplies the sharper `m epsilon` budget to the actual qualified private-refresh operation. Each requires its exact premises. The lift's mathematical full-pinch intensity is `lambda=2 gamma`; its latent pinch count is not the actual frame-update count. These constructions do not make arbitrary sweep correction dynamics preserve monitored sectors, make uncontrolled continuous noise bounded, or supply arbitrary noisy detectors.
+
+The exposure optimizer has an actual finite control realization: constant action, no damping on two endpoint stretches of length `tau/(Lambda+2)`, and middle intensity `(Lambda+2)/tau`. It requires `lambda_max tau>=Lambda+2` when `Lambda>0`. If action/intensity are both capped and variable, the interior proportional-action cap also counts; the separate audit gives the exact sufficient piecewise condition. At fixed expected cut count, deterministic action-balanced pinches beat the Poisson certificate, so no matched-resource storage advantage has been shown.
+
+Open gates retained:
+
+- External mathematical review of the complete memory theorem, named contour imports, microscopic forcing, stopped torus and whole-slab/homology composition.
+- Acquired implementation of exact/qualified full-joint pinching, ideal frames, actual fixed-core covariance, fresh resets, protected records, fixed supports/timing and no hidden tails.
+- Paid rate/intensity/action/reservation budgets, all incidence, physical geometry and 3D routing, preparation, final decoder, energy, reset and controller resources.
+- Useful numerical thresholds and a same-information, same-resource memory comparison. The sufficient inequality's failure is not a device impossibility proof.
+- No generic continuous arbitrary-bath extension of the original active corrector; no leakage, generic noisy-controller, adaptive stopping-time or all-times coherent-homology theorem.
+- Historical priority and technological significance. The sharp source question is resolved internally under its exact assumptions; broad novelty and device capability remain UNKNOWN.
+
+## 9. Tests, replay and frozen outputs
+
+Run from this directory with `python3` (tested Python 3.14.3, SymPy 1.14.0, NumPy recorded in the receipt):
+
+```
+python3 check_interfaces.py
+python3 check_poisson_pinch.py
+python3 check_exposure_optimum.py
+```
+
+The first and third are exact algebra. The middle verifies the scalar gap identity exactly, then uses a scaled Taylor action for finite quantum/classical effect generators: 12 history inequalities, 12 endpoint-product inequalities, and 12 latent-dilation/actual-generator equalities. It includes an arbitrary syndrome-preserving shared-bath baseline and terms dependent on another parity. The least history slack is about `2.07e-5`; equality tolerance is `3e-12`. These are finite consistency tests, not lifetime experiments or a proof substitute. Initial attempts to use SciPy found it unavailable; no package was installed, and the successful independent calculation uses NumPy with explicit bounded Taylor truncation.
+
+Saved analytic documents: `REPORT.md`, `AUDIT_POISSON_PINCH.md`, `AUDIT_EXPOSURE_OPTIMUM.md`, `AUDIT_FOURIER_EPSILON_BRIDGE.md`. Saved scripts and results: `check_interfaces.py`, `exact_results.json`, `check_poisson_pinch.py`, `poisson_pinch_results.json`, `check_exposure_optimum.py`, `exposure_optimum_results.json`. Source pins, environment/replay receipt and file hashes are in `source_manifest.json`, `RECEIPT.json`, `FROZEN_MANIFEST.json` and `SHA256SUMS`.
+
+File hashes and successful replay establish only the stated evidence integrity and finite algebra scope. All scientific results remain internally derived/reconstructed and externally unreviewed.

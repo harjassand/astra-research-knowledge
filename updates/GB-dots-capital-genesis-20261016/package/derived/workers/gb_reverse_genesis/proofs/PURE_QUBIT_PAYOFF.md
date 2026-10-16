@@ -1,0 +1,190 @@
+# Exact pure-qubit deficiency and the payoff cost of a maximal threshold
+
+Author: worker gb_reverse_genesis, 16 October 2026. Status: internal derivation and exact example checks; external correctness and historical novelty UNKNOWN. Approximate simulation / deficiency and diamond-norm decision bounds are standard machinery, credited in ../SOURCES.md. This note derives a specific exact family and a quantitative resource consequence.
+
+## 1. One channel family, three quantities
+
+Let 0<a<1, b=sqrt(1-a^2), c=a^2, and let the two classical inputs i=+1,-1 prepare
+
+    sigma_i=(I+b Z+i a X)/2.
+
+Both outputs are pure. They are distinct and have trace-norm distance 2a. Let E_q reveal i with probability q and otherwise erase it. In this note c<=q<1; thus ordinary reference-free binary-MMSE domination holds.
+
+The exact complete, unrestricted-reference SLD/MMSE erasure threshold is C=1 by the common-support theorem in SINGULAR_CQ.md. Nevertheless the target's largest possible absolute binary-MMSE advantage is only Theta(c) as a tends to zero at fixed q. Its exact distance from physical simulations of E_q is also Theta(c).
+
+More precisely, with the diamond norm WITHOUT a factor 1/2,
+
+    delta_*(a,q) := min_{D CPTP} ||T_a-D E_q||_diamond
+      = sqrt[q^2+2(1-q)(1-b)]-q.                           (1)
+
+For every binary-label encoding, arbitrary prior and arbitrary finite reference,
+
+    MMSE(E_q)-MMSE(T_a) <= min{1, 2 delta_*(a,q)}.           (2)
+
+If Gamma(a,q) is the supremum of that advantage over all such encodings, then
+
+    c/(1-c) (1-sqrt(q))^2
+      <= Gamma(a,q)
+      <= min{1, 2[sqrt(q^2+2(1-q)(1-sqrt(1-c)))-q]}.        (3)
+
+The lower expression is an achieved supremum within an explicit two-level-reference family; faithful preparations approach it. No equality to the globally optimal encoding is asserted. For fixed 0<q<1 and c tending to zero, the lower and upper bounds are respectively
+
+    c(1-sqrt(q))^2+O(c^2),
+    c(1-q)/q+O(c^2).
+
+Thus (3), unlike the threshold C=1, has a meaningful absolute payoff scale.
+
+## 2. Exact physical simulator and its optimality
+
+Write s=1-q, r_i=(i a,0,b), and
+
+    L=sqrt[a^2+(b-s)^2]=sqrt[q^2+2s(1-b)].
+
+Upon erasure, prepare omega=|0><0|, with Bloch vector (0,0,1). Upon reveal i, prepare the pure state tau_i with Bloch vector
+
+    (i a,0,b-s)/L.
+
+The simulated output has Bloch vector
+
+    r_i'=s(0,0,1)+(q/L)(i a,0,b-s).
+
+It is a physical CPTP postprocessing of the classical source. Its output error is
+
+    ||sigma_i-s omega-q tau_i||_1
+      = ||r_i-r_i'||_2=L-q=delta_*.
+
+For CQ maps the diamond norm equals the maximum column trace norm. An elementary proof is to pinch the input into its classical blocks and use the trace-norm triangle inequality; a single basis-state input attains the maximum. Consequently arbitrary reference dimension does not change this error.
+
+The simulator is optimal among physical postprocessings for c<=q. Any decoder is described by states omega,tau_+,tau_- on the three source outputs. Average it with the symmetry that conjugates Q by Z and exchanges + and -. Convexity of maximum column trace norm does not increase its error. The common erase state may therefore be taken with Bloch vector (0,0,z), -1<=z<=1, and the two reveal states are related by Z.
+
+For a fixed z, the reachable simulated Bloch vectors fill a ball of radius q centered at (0,0,s z). The minimum error for either target output is
+
+    max{0, sqrt[a^2+(b-s z)^2]-q}.
+
+Because c<=q<1,
+
+    b=sqrt(1-c)>=sqrt(1-q)>1-q=s,
+
+the displayed distance is minimized at z=1. Its minimum is L-q>0, establishing (1). This is an exact geometric specialization of established quantum-deficiency theory, not a new theory of statistical comparison.
+
+## 3. All-reference binary-risk bound
+
+For binary labels ell in {-1,+1}, estimates may be clipped to [-1,1] pointwise. Their squared losses lie in [0,4]. Let the target's optimal clipped measurement and scores be fixed. Apply the same receiver after the physical simulator from Section 2.
+
+For any input/reference encoding, the two joint label/output/reference states differ in trace norm by at most delta_*. A loss operator 0<=L_loss<=4I consequently has risk difference at most
+
+    2 ||rho-rho'||_1 <= 2 delta_*.
+
+The source's optimum can only improve upon that simulated receiver. This proves (2). The extra bound one follows from the prior-mean estimate and Var(ell)<=1. This proof permits unequal reference marginals and any finite reference dimension. It does not assume the particular family in the next section.
+
+Rationalizing the square root yields the explicit bound
+
+    delta_* = 2(1-q)(1-b)/(L+q)
+            <= (1-q)(1-b)/q.                               (4)
+
+In particular no additional reference dimension can turn this family into a fixed nonvanishing binary-MMSE payoff as a tends to zero.
+
+## 4. A matching-order faithful qubit-reference family
+
+Use the two-input encoding from the supplied Bell addendum, generalized from equal X/Z components to a,b. For reference dimension two take
+
+    B_i=diag(1,delta)/2,
+    H_i=i X/2,
+    rho_(ell,i)=(B_i+ell t H_i)/(1+delta),
+
+where delta>0 and t^2<delta. The two classical-input/reference states are normalized, faithful and separable across the classical/reference cut. Their reference marginals are identical, so the erased branch hides the label.
+
+The raw input SLD cost is 4/(1+delta). The target raw baseline and tangent are
+
+    A_raw=((I+b Z)/2) tensor diag(1,delta),
+    J_raw=(a/2) X tensor X.
+
+Solving the two offdiagonal Sylvester equations gives the exact target/input SLD ratio
+
+    R(delta)=c/[1-b^2 x],
+    x=((1-delta)/(1+delta))^2.
+
+Thus the finite normalized MMSE advantage is exactly
+
+    Delta=4t^2/(1+delta)^2 [c/(1-b^2 x)-q].                 (5)
+
+The target optimum uses a fixed Bell measurement basis. Its two score magnitudes are
+
+    t a/(lambda_+ +delta lambda_-),
+    t a/(lambda_- +delta lambda_+),
+    lambda_+=(1+b)/2, lambda_-=(1-b)/2.
+
+The source optimum reports zero on erase, and measures X on the reference upon reveal, multiplying its outcome by i 2t/(1+delta). These are exact optimal receivers for this encoding, not a claim that the encoding is globally optimal.
+
+At the rank-deficient limit t^2=delta, (5) becomes
+
+    F(x)=(1-x)[c/(1-b^2 x)-q].
+
+For c<=q<c/(1-b^2), differentiation after y=1-b^2 x gives the maximum
+
+    [sqrt(c)-sqrt(q(1-b^2))]^2/b^2,
+    y_*=sqrt[c(1-b^2)/q].                                  (6)
+
+For the pure family 1-b^2=c, this is exactly c/(1-c)(1-sqrt(q))^2. The maximizing x lies strictly between zero and one. Taking t^2=kappa delta with any 0<kappa<1 keeps the preparation faithful and gives exactly kappa times this value. Letting kappa tend to one proves the lower bound in (3).
+
+The condition on the optimization branch matters. Over the same Bell encoding family, for ALL 0<=q<1 the pure-output supremum is piecewise:
+
+    c-q,                              0<=q<=c^2=a^4,
+    c/(1-c)(1-sqrt(q))^2,             c^2<=q<1.             (7)
+
+Indeed its derivative in y is [c^2/y^2-q]/(1-c), and y ranges from c to one. When q<c^2 the stationary point is outside that interval and the maximum is the endpoint y=1 (x=0, delta=1). The two formulas agree at q=c^2. Formula (3) uses c<=q, so it always lies in the second branch. Applying the second branch down to q=0 would be incorrect.
+
+For completeness the ordinary reference-free SLD coefficient is c. With scalar input baseline (p,1-p), real tangent (h,-h), z=2p-1 and a possibly mixed pair with a^2+b^2<=1, direct qubit SLD calculation gives the ratio
+
+    a^2(1-z^2)(1-b^2)/(1-b^2-a^2 z^2) <= a^2.
+
+Equality holds at p=1/2. At the pure endpoint the ratio is c for every 0<p<1. This establishes ordinary erasure-MMSE domination when q>=c; it is not obtained by substituting an RLD coefficient.
+
+## 5. Explicit exact finite fixture
+
+Take
+
+    a=3/5, b=4/5, c=9/25,
+    q=625/1681=(25/41)^2,
+    delta=1/9, t=3/10.
+
+Here c<q<1, t^2<delta, x=16/25, R=25/41=sqrt(q), and t^2/delta=81/100. Direct exact Sylvester solutions give
+
+    source optimum MMSE = 5995/6724,
+    target optimum MMSE = 3371/4100,
+    Delta=2916/42025 > 0.
+
+The source and target risks are also supplied in ../checks/results.json. The check reconstructs states, proves all input blocks positive, solves the 4x4 target SLD independently, and evaluates the fixed Bell receiver and source optimum. No laboratory realization or preparation/receiver calibration has occurred.
+
+## 6. Statistical distinguishability cost
+
+There is a genuine physically simulable alternative T'=D E_q at distance delta_*. An audit that must distinguish the ideal target T_a from this alternative receives no free oracle revealing exact purity.
+
+After n possibly adaptive calls with arbitrary finite quantum memory, a telescoping replacement of one call at a time and trace-norm contractivity give
+
+    ||rho_final(T_a)-rho_final(T')||_1 <= n delta_*.
+
+With equal priors, every discrimination strategy has success probability at most
+
+    1/2+n delta_*/4.
+
+Thus success at least 3/4 requires n>=1/delta_*=Omega(1/c) at fixed q. This is a worst-case discrimination cost for ruling out a specific source-simulable channel, not a universal lower bound on every experiment under extra model promises or an imposed calibration prior.
+
+The achieved family also admits an ideal IID evaluation bound of matching order. At its optimal x with t^2=kappa delta, the explained variances satisfy
+
+    G_source+G_target = kappa c(1-q)/(1-c),
+    Delta=kappa c(1-sqrt(q))^2/(1-c).
+
+For an optimal clipped score Y and ell in {-1,+1}, loss=(Y-ell)^2 and
+
+    Var(loss) <= E[(loss-1)^2] <= 9 E[Y^2] = 9 G.
+
+The independent-arm Bernstein bound with centered single-arm losses bounded by four therefore supplies O(1/c) trials per arm for a fixed nonzero-confidence ordering guarantee. This is a sufficient ideal-model count, not a minimum. It excludes calibration, receiver fitting, correlated drift, detection loss and reset/preparation costs.
+
+The preparation itself becomes ill-conditioned at the useful optimum: delta=Theta(c), t^2=kappa delta, and the smaller conditional-reference eigenvalue is Theta((1-kappa)c). One target Bell sector has probability Theta(c) while carrying a score of order one. Exact purity, the eigenvalue floor and rare-sector calibration cannot be obtained at no information cost.
+
+## 7. What is new in scope, and what remains unknown
+
+The supplied packet already proves the equal-component mixed-state Bell family and warns that threshold separation need not create a large risk gap. The exact optimal physical-simulation error (1), dimension-independent pure-family bound (3), and explicit source-simulable discrimination alternative are the candidate additions here. They use established Blackwell/Le Cam / quantum deficiency and diamond-norm techniques. Historical novelty of these particular elementary formulas has not been established.
+
+The useful conclusion is quantitative: the singular threshold remains one while the best absolute binary-MMSE gain is Theta(a^2), and excluding a physically simulable alternative takes Omega(a^-2) uses without an extra model promise. This does not establish a new primitive, an implemented device, a practical advantage, a channel capacity result, or global optimality of the Bell encoding.
