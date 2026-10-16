@@ -1,0 +1,244 @@
+# Independent challenge: PR105 N895 homogeneous positivity tube
+
+Date: 2026-10-16. Target commit supplied for the audit: `2688d7a383502df4fc1e64001d04bb76e6ec05e5`, path `updates/GC-peak-stability-genesis-20261016/package/derived/workers/gc_nonsep_genesis/PROOF.md`.
+
+The locally supplied proof has SHA-256 `c45c95d4f1ecd8f3957aacdcb65ae06d96c7aec1d662eb7b935983dd879d505f`. This audit uses that complete text, independently written algebra, and primary analytic papers. No producer executable, claimed internal audit, or producer receipt was used as evidence. No canonical files were changed.
+
+Provenance clarification from the root receiving check: the locally acquired text is 13,607 bytes and contains one extra trailing newline introduced during acquisition. Removing exactly its final byte gives 13,606 bytes with SHA-256 `c564e52914d70ba14000e1abadb17ac7432b04d19fd62cb0bfb159b6c8713b36`, matching the pinned source card. The mathematical content is unchanged. Local files and checker hashes retain the acquired text, including that final newline.
+
+## Verdict
+
+**No mathematical defect found in the theorem or stated constants.** The exact expansion, correction signs, orthogonality, six perturbation rows, absolute cubic estimate, quartic bound, absorption, Sobolev limit, degenerate acoustic case, and r=1 example all pass.
+
+The actual advance over the previous local receiving proof is a quantitative homogeneous tube with a constant depending only on r, including every nonconstant vertical profile. The previous receiving proof required a nonzero horizontal seed and gave a shape-dependent radius. The new theorem is therefore stronger in a concrete way. Its tools are classical/prior compensation and stability tools; neither unrestricted conformal quasiconvexity nor historical originality follows.
+
+A useful boundary can be sharpened: **the existence of any all-background, all-second-potential ball around a constant first potential is equivalent to the unrestricted Jensen statement**, by homogeneity. This is an equivalence, not a counterexample or a proof that such a ball does not exist.
+
+## 1. Exact algebra and the inherited reserve
+
+For the integrand stated in the target, direct symbolic reconstruction gives
+
+\[
+J_r(sI+V)-J_r(sI)
+=\frac{r+2}{3}\big((2r+3)a+3d\big)s^3
++\big(U^2+\kappa c^2+(r+2)j\big)s^2+P(V)s+J_r(V),
+\]
+
+where \(U=(r+1)a+d\), \(\kappa=r(r+2)/3\), and
+
+\[
+P=2aU^2-(r+2)a^2U+rc^2U-2bcU-\kappa a^3-\kappa ac^2.
+\]
+
+The mean derivatives and mean determinant vanish for periodic gradients. Hence the stated integrated quadratic polynomial in s is exact. In particular, the quadratic null-Lagrangian coefficient is r+2; no term was silently discarded pointwise.
+
+I independently reconstructed the earlier separated certificate from its rational matrix data. The local data file has SHA-256 `33e871b92862ec9f40a4a022b95c3f4832d7052fcd2694c0c8861e9cc2c84af2`. Fresh checks establish:
+
+- the exact polynomial Gram identity, with manually reconstructed polynomial vectors and stresses;
+- exact LDL reconstruction and strictly positive rational pivots for Q0 and Q1;
+- exact LDL reconstruction and strictly positive pivots for Q1−I/512.
+
+The quartic monomials in the second vector satisfy the exact identity
+
+\[
+\sum_i x_i^4+\sum_{i<j}x_i^2x_j^2-\frac58\Big(\sum_i x_i^2\Big)^2
+=\frac18\sum_{i<j}(x_i^2-x_j^2)^2\ge0.
+\]
+
+This independently recovers the claimed reserve constants
+\(\alpha=5r/[4096(r+2)]\) and \(\beta=r/[512(r+2)]\), including the coefficient on \(s^2(a_0^2+c_0^2+d_0^2)\). The separated stress integrates to zero without requiring derivatives of rough nonlinear coefficients to be multiplied as distributions: smooth approximation and the L^{4/3} stress/L4 gradient pairing suffice.
+
+## 2. Acoustic projection: signs and regularity
+
+Write \(D=n^2+\kappa m^2\) temporarily. The Fourier symbols, suppressing the common factor i, are
+
+\[
+p=(r+1)mn\widehat\eta/D,\quad
+k=(r+1)m^2n\widehat\eta/D,\quad
+e=(r+1)\kappa m^3\widehat\eta/D.
+\]
+
+Thus \(ne-\kappa mk=0\), exactly the sign needed for
+\(e_y-\kappa k_x=0\). With \(g_0=g+p\), the acoustic vector is
+\((U,c)=(U_0+e,c_0-k)\). Therefore its cross term is
+\(2\langle U_0e-\kappa c_0k\rangle\), not the opposite-sign pairing.
+
+The g0 part vanishes by the differential identity. The a0 part vanishes because e has zero y-average. Consequently
+
+\[
+\mathcal A(f,g)=\mathcal A(f_0,g_0)+\langle e^2+\kappa k^2\rangle
+\]
+
+has no error or loss. Direct symbolic computation of the squared symbols gives the stated residual
+
+\[
+\mathcal R=(r+1)^2\sum_{m,n}\frac{\kappa m^2}{n^2+\kappa m^2}|\widehat{\eta_x}|^2.
+\]
+
+The ratio yielding C_a is also correct. For m nonzero its square is
+
+\[
+\frac{n^2+\kappa m^2}{(r+1)^2\kappa(m^2+n^2)}
+\le\frac{\max(1,\kappa^{-1})}{(r+1)^2}.
+\]
+
+The m=0 contribution vanishes. Horizontal Fourier modes of U0 are precisely \((r+1)a_0\), so the a0 L2 bound is legitimate, even for rough profiles and even when a0 vanishes identically.
+
+The derivative multipliers applied to A=eta_x are `(r+1)n²/D` for p_y and `(r+1)mn/D` for p_x. The cited diagonal/cross Riesz bounds therefore give the stated L4 constants. They also imply p is W^{1,4}; its mean is fixed to zero and periodic Poincare supplies its function norm. All symbols have the requisite real-valued symmetry.
+
+## 3. Primary analytic input and absolute cubic lemma
+
+The external input is correctly cited and applicable. [Bañuelos–Baudoin, Section 4.2 and Theorem 4.1(i)](https://arxiv.org/pdf/1109.5751) treats second-order Riesz combinations for a bi-invariant metric on a compact-type Lie group. Any positive constant metric on the torus qualifies. At p=4 the bound is 3 times the matrix operator norm; the symmetric cross matrix has norm 1/2. The constant is independent of the anisotropy. Constants/zero frequency are annihilated, and normalized Haar measure introduces no factor.
+
+For the cubic estimate, I independently obtain:
+
+- \(\|A_\tau\|_4\le(3/2)\tau\|B\|_4\), with no missing cross-matrix factor;
+- \(\|A-A_1\|_2\le\|R_xA\|_2\);
+- \(\|A_\tau-A_{\tau/2}\|_2\le3\|R_xA\|_2/(4\tau)\).
+
+The ratio used for the last bound is exactly
+
+\[
+\frac{3v\sqrt{1+\tau^2v^2}}{\tau(1+v^2)(1+4v^2)}.
+\]
+
+The bound follows from tau≤1, \(4v\le1+4v^2\), and \(\sqrt{1+v^2}\ge1\). Both coordinate axes are harmless: dyadic differences vanish there; the initial horizontal-axis difference is controlled by R_x.
+
+Hölder on the difference of absolute cubes yields initial constant \(1+K+K^2\) and scale constant \(21K^2\tau/16\), K=3/2. Summing the geometric scales gives exactly
+
+\[
+1+K+K^2+21K^2/8=341/32<11.
+\]
+
+The terminal L3 cube tends to zero by the L4 bound O(tau). Thus the estimate genuinely controls the integral of the absolute cube, and needs neither a cutoff nor mixed-frequency support. The canonical split is needed later for the a0²A cancellation, not for this lemma itself.
+
+## 4. All six perturbation rows
+
+Let q=\(\sqrt{\mathcal A(f,g)}\), t=\(\|Dg_0\|_4\). The following decompositions independently recover every entry of the table. All norms are the norms stated in the target.
+
+1. **2aU².** Use
+   \(aU^2-a_0U_0^2=AU^2+a_0e(U+U_0)\).
+   The first term costs \(\varepsilon q((r+1)R+t+L_e\varepsilon)\); the second costs \(2L_eR\varepsilon q\). Including the coefficient 2 gives exactly the stated R, t, epsilon entries.
+
+2. **−(r+2)a²U.** Use
+   \(a^2U-a_0^2U_0=A(a+a_0)U+a_0^2e\).
+   The last integral is zero by the y-slice average. The first costs \(\varepsilon(2R+\varepsilon)q\), giving the row without a t coefficient.
+
+3. **rc²U.** Use
+   \(c^2U-c_0^2U_0=-k(c+c_0)U+c_0^2e\).
+   The bounds are \(L_c\varepsilon(2t+L_c\varepsilon)q\) and \(L_e\varepsilon t q/\sqrt\kappa\), respectively.
+
+4. **−2bcU.** Use
+   \(bcU-b_0c_0U_0=BcU-b_0kU+b_0c_0e\).
+   The costs are \(\varepsilon q(t+L_c\varepsilon)\), \(RL_c\varepsilon q\), and \(RL_e\varepsilon q/\sqrt\kappa\), before the coefficient 2.
+
+5. **−kappa a³.** The integral of \(3a_0^2A\) is zero. The remaining mixed square costs \(3q\varepsilon^2/(r+1)\), and the absolute cubic costs \(11C_aq\varepsilon^2\). This is precisely the listed row.
+
+6. **−kappa ac².** Use
+   \(ac^2-a_0c_0^2=Ac^2-a_0k(c+c_0)\).
+   The costs are \(\varepsilon q(t+L_c\varepsilon)/\sqrt\kappa\) and \(2RL_c\varepsilon q/\sqrt\kappa\). Multiplication by kappa gives the listed coefficients.
+
+Fresh symbolic sums recover C_R, C_t, and C_epsilon exactly. Taking their maximum bounds their positive linear combination as used.
+
+## 5. Quartic bound and absorption
+
+The derivative bound L_J is valid term by term. The four pieces cost respectively
+\(6r/(r+2)\), \(2r(r+1)/3\), 1, and 2r, using the Euclidean/Frobenius derivative norm. There is no untracked component-count factor.
+
+The segment bound uses \(\|V-V_0\|_4\le(1+L)\varepsilon\). Under D delta≤1,
+
+\[
+R(2R+t)^3\le8(R+t)^4\le64(R^4+t^4),
+\]
+
+which justifies the conservative quartic loss. Under delta≤1, \(R+t+\varepsilon\le2(R+t)\). Young's inequality then gives exactly the mixed loss written in the target, with
+\(\varepsilon^2(R+t)^2\le8\delta^2(R^4+t^4)\).
+
+Also \(\mathcal A_0\le K_0(\|a_0\|_2^2+\|Dg_0\|_2^2)\). Since beta<1/512 and K0>2, mu<1/1024<1. The full positive residual can therefore be reduced to mu times that residual. This check matters: without mu≤1 the proof's addition of the residual would not be justified.
+
+Each final delta restriction pays at most alpha/4, leaving the claimed alpha/2 and mu/2 margins. Subtracting those margins and minimizing in s gives the discriminant estimate. Its A=0 branch uses an affine nonnegative polynomial and takes no undefined quotient.
+
+At r=1, independently recovered constants are
+
+\[
+\kappa=1,\quad \alpha=5/12288,\quad \mu=1/12288,
+\quad L=9,\ D=10,\ L_e=11,\ C_a=1/2,
+\]
+\[
+C_t=34,\ C_R=112,\ C_\varepsilon=C_P=140,\quad L_J=19/3.
+\]
+
+The quartic delta threshold is exactly 1/39,845,888. Thus 1/40,000,000 passes; the squared cubic restriction also passes by rational comparison. The example's epsilon⁴/R⁴=4·10^−32 is strictly below delta⁴.
+
+## 6. Degenerate vertical case, open ball, and Sobolev extension
+
+The acoustic kernel can be completely identified. If A(f,g)=0, then g_x=0 and (r+1)f_x+g_y=0. Averaging the latter in x gives g_y=0, and hence f_x=0. Therefore g is constant and f is a vertical profile. Conversely those pairs have zero acoustic energy.
+
+On this kernel the exact energy is
+
+\[
+E_r(f,g,s)=\frac{3r}{8(r+2)}\langle|H'|^4\rangle,
+\]
+
+independent of s. It is strictly positive for nonconstant H. Thus the newly included vertical centers are not a hidden contradiction or an unhandled discriminant singularity.
+
+For a general perturbation of a vertical center, the old fixed-background quadratic floor would vanish as the perturbation vanishes. The new proof avoids dividing by that floor: the troublesome cubic remainder is itself bounded by q and is absorbed into q². This is the substantive technical repair.
+
+The stated actual-ball corollary checks exactly. With zeta=f−h0, epsilon≤3\|Dzeta\|4 and R≥\|Dh0\|4−2\|Dzeta\|4. Radius delta\|Dh0\|4/5 and delta≤1 imply epsilon≤delta R and R>0.
+
+Strong periodic smoothing commutes with all relevant Fourier/coordinate projections. The multiplier maps are bounded at the fixed positive metric parameters. Products converge in the required Lp spaces, quadratic integrals converge, and the quartic functional is continuous under strong L4 gradient convergence. One should pass the *unabsorbed* estimates to the limit and then impose the norm condition, exactly as the target says; it is unnecessary to insist that every smooth approximant preserve a borderline norm inequality. No orientation or higher-regularity assumption appears.
+
+## 7. Prior triangular result: premise independently checked
+
+[Harris–Kirchheim–Lin, Theorem 2.4](https://arxiv.org/pdf/1708.07849v2) implies the qualitative Jensen inequality for gradient measures supported in a triangular subspace, applied to a rank-one convex integrand. For f=F(x), row-and-column exchange makes the gradient upper triangular. For f=H(y), row exchange does. Apply the translated/composed integrand for the background sI. Smooth periodic gradients give compact support; strong W^{1,4} approximation and quartic continuity extend the conclusion.
+
+To avoid merely assuming the required rank-one convexity of J_r, I checked it directly. Left SO(2) invariance reduces every nonzero rank-one direction to \(H=\begin{pmatrix}h_1&h_2\\0&0\end{pmatrix}\). Its second directional derivative is a quadratic form in (a,b,c,d). The leading principal minors of that quadratic-form matrix are
+
+\[
+\Delta_1=\frac{r((2r+1)^2h_1^2+3h_2^2)}{2(r+2)},
+\]
+\[
+\Delta_2=\frac{3r^2}{4(r+2)^2}
+\left(((2r+1)h_1^2-3h_2^2)^2+12r(r+2)h_1^2h_2^2\right),
+\]
+\[
+\Delta_3=\frac{3h_2^2r^2}{2(r+2)^2}
+\left(((r+1)(2r+1)h_1^2-3h_2^2)^2+3r(5r+4)h_1^2h_2^2\right),
+\]
+\[
+\Delta_4=9h_1^4h_2^4r^4.
+\]
+
+These are strictly positive for r>0 and h1h2 nonzero; continuity gives positive semidefiniteness on the coordinate axes. This proves rank-one convexity and validates the comparison without an additional unverified premise. It is a receiving verification, not a novelty claim.
+
+HKL supplies neither the explicit strict reserve nor the relative mixed-mode tube. A generic mixed f need not satisfy any fixed rank-one linear constraint that could make its gradient support triangular under invertible left/right transformations. Special mixed examples can still have additional structure; no universal impossibility of reduction is asserted.
+
+The target's assertion that a prior Astra N885 estimate already implies the qualitative compensation estimate was not independently checked because that underlying text was not part of this assignment. It is unnecessary for the theorem: the target gives a complete independent receiving proof of the estimate. Historical originality remains unestablished.
+
+## 8. Sharp scope boundary from homogeneity
+
+Fix r>0. Consider the proposition that some rho>0 satisfies
+
+\[
+\|Df\|_4<\rho\quad\Longrightarrow\quad E_r(f,g,s)\ge0
+\quad\text{for every periodic }g\text{ and every real }s.
+\]
+
+For an arbitrary triple (f,g,s), choose lambda>0 with lambda\|Df\|4<rho. Quartic homogeneity gives
+
+\[
+E_r(\lambda f,\lambda g,\lambda s)=\lambda^4E_r(f,g,s).
+\]
+
+The proposition therefore implies unrestricted conformal Jensen. The converse is immediate. Adding a constant to f changes no gradient, so the same equivalence holds around every constant potential.
+
+Accordingly, the target's exclusion of zero-centered balls is more than the vanishing of its particular reserve: crossing that boundary would resolve the entire unrestricted statement. This does not rule out that statement or assert a negative compatible field.
+
+## Files and reproducibility
+
+- `independent_checks.py`: standalone receiving symbolic/rational checks, including the inherited certificate, all new algebra, constants, and rank-one-convexity minors.
+- `CHECKS.json`: successful exact-check output with hashes and all fresh LDL pivots.
+- `riesz_cubic_prior_art_audit.md`: independent primary-source and dyadic details. Its conditional wording on rank-one convexity is resolved by Section 7 above.
+- `AUDIT.md`: this full analytic receiving audit.
+
+Run the checker with the existing Python/SymPy installation. It reads only the rational certificate data and proof hash, and executes no supplied producer program.

@@ -1,0 +1,442 @@
+# Fixed local compilers beyond Pauli expansions, and an exact structured minimax
+
+16 October 2026. Worker `gd_compiler_genesis`. All assertions below are conditional mathematical statements. The source worktree and supplied originals were read only. Historical priority, external correctness and physical qualification are not established.
+
+## 1. Contract and notation
+
+For a square operator on a finite-dimensional patch, write
+
+\[
+\mathcal D[A](\rho)=A\rho A^\dagger-\tfrac12\{A^\dagger A,\rho\}.
+\]
+
+A *fixed local compiler* consists of an actually installed Lindblad floor \(F\), and positive proposal rates \(\lambda_e\), selected before the unknown error coefficients are selected. For every allowed error \(E\), the exact equality is
+
+\[
+F+E=\sum_e\lambda_e(\Phi_{e,E}-\mathrm{Id}),\qquad \Phi_{e,E}\text{ CPTP}.
+\]
+
+The proposal channel may depend on the realized coefficients. The clock rates, floor and support envelope do not. Such channels can be an alternative mathematical unravelling; the apparatus need not synthesize the coefficient-dependent Kraus representation if it implements the generator on the left. Implementing the fixed floor remains a real requirement. An arbitrary unknown operator direction is not inferred from an operator-norm bound.
+
+Two new results are established here:
+
+* A specified finite dictionary of local correction/error operators has a fixed compiler with no Pauli coefficient-conversion factor. For one jump replacement on a fixed patch, its sufficient rate is \(4a\epsilon+\epsilon^2\), with \(a\) a known bound on the nominal jump norm and \(\epsilon\) a supplied coefficient envelope in the known dictionary. The PSD piece charges the whole error-dictionary support union; the earlier \(4a\epsilon+2\epsilon^2\) bound preserves individual pair union supports.
+* A collision-free Pauli correlation/product-drift model has an exact total minimax rate against **every fixed CPTP baseline**, not merely against the particular diagonal floor family.
+
+Neither result supplies the dictionary, coefficient bounds, positive floors, geometric architecture or useful memory threshold physically.
+
+## 2. A direct five-Kraus compiler for arbitrary unitary pairs
+
+Let \(U,V\) be any two fixed unitaries on a patch. They need not be Hermitian, orthogonal or traceless. Let \(|z|\le M\), \(M>0\), and define
+
+\[
+\begin{split}
+E_z(\rho)={}&zU\rho V^\dagger+\bar zV\rho U^\dagger\\
+&-\tfrac12\{zV^\dagger U+\bar zU^\dagger V,\rho\}.
+\end{split}
+\]
+
+Set \(R=V^\dagger U\) and install the fixed floor
+
+\[
+F_{UV}=M(\mathcal D[U]+\mathcal D[V])
+       +\tfrac M2(\mathcal D[R]+\mathcal D[R^\dagger]). \tag{2.1}
+\]
+
+Write \(z=t e^{i\theta}\), with an arbitrary phase at \(t=0\). Define unnormalized Kraus operators
+
+\[
+\begin{aligned}
+K_+&=\sqrt{(M+t)/2}\,(U+e^{-i\theta}V),\\
+K_-&=\sqrt{(M-t)/2}\,(U-e^{-i\theta}V),\\
+B_1&=\sqrt{M/2}\,R-\bar z/\sqrt{2M}\,I,\\
+B_2&=\sqrt{M/2}\,R^\dagger-z/\sqrt{2M}\,I,\\
+B_0&=\sqrt{M-|z|^2/M}\,I.
+\end{aligned} \tag{2.2}
+\]
+
+Then
+
+\[
+\sum_{K\in\{K_+,K_-,B_1,B_2,B_0\}}K^\dagger K=4MI, \tag{2.3}
+\]
+
+and
+
+\[
+F_{UV}+E_z=4M(\Phi_z-\mathrm{Id}),\quad
+\Phi_z(\rho)=\frac1{4M}\sum_KK\rho K^\dagger. \tag{2.4}
+\]
+
+Every operator is supported on \(\operatorname{supp}U\cup\operatorname{supp}V\).
+
+**Proof.** The two endpoint Kraus operators give the positive coefficient block
+\(\left(\begin{smallmatrix}M&z\\\bar z&M\end{smallmatrix}\right)\) on \((U,V)\). Their rate operator is
+
+\[
+K_+^\dagger K_++K_-^\dagger K_-=2MI+zR+\bar zR^\dagger.
+\]
+
+The two product Kraus operators give
+
+\[
+B_1^\dagger B_1+B_2^\dagger B_2
+=\left(M+\frac{|z|^2}{M}\right)I-zR-\bar zR^\dagger.
+\]
+
+This proves (2.3) after adding \(B_0\). No basis independence or Choi-support assumption is involved. To check the generator, use the identity
+
+\[
+\mathcal D[A+\alpha I]-\mathcal D[A]
+=\tfrac12[\bar\alpha A-\alpha A^\dagger,\rho]. \tag{2.5}
+\]
+
+For \(B_1,B_2\), the sum of \(\bar\alpha A\) is
+\(-\tfrac12(zR+\bar zR^\dagger)\), which is Hermitian. Their Hamiltonian gauge shifts therefore cancel exactly. Their dissipators are precisely the product floor in (2.1). The endpoint dissipators give \(M(\mathcal D[U]+\mathcal D[V])+E_z\). Identity Kraus terms have zero dissipator. Equation (2.3) converts their total dissipator to the channel difference (2.4). This proof includes nontraceless unitaries and all identity components directly.
+
+The rate \(4M\) is a sufficient rate for arbitrary unitary pairs, not a claimed optimum for every pair: coincident or highly dependent unitaries can have cheaper representations. If a product is identity, its dissipator vanishes; retaining its clock is conservative.
+
+Explicitly, normalized vectorization gives \(J(\Phi_z)=(4M)^{-1}\sum_K|K\rangle\langle K|\ge0\). Equation (2.3) gives \(\operatorname{Tr}_{\rm out}J(\Phi_z)=I/d\). Thus both complete positivity and trace preservation are established directly, without an appeal to an unproved range condition.
+
+## 3. A general fixed unitary dictionary
+
+Fix local unitaries \(U_1,\ldots,U_N\), possibly redundant. For a Hermitian coefficient matrix \(C\), define
+
+\[
+E_C(\rho)=\sum_{ab}C_{ab}
+\left(U_a\rho U_b^\dagger-\tfrac12\{U_b^\dagger U_a,\rho\}\right).
+\]
+
+Suppose fixed symmetric bounds \(|C_{ab}|\le M_{ab}\), \(M_{ab}\ge0\), are supplied. Install
+
+\[
+\begin{split}
+F_M={}&\sum_aM_{aa}\mathcal D[U_a]\\
+&+\sum_{a<b}M_{ab}(\mathcal D[U_a]+\mathcal D[U_b])\\
+&+\frac12\sum_{a<b}M_{ab}
+ (\mathcal D[U_b^\dagger U_a]+\mathcal D[U_a^\dagger U_b]).
+\end{split} \tag{3.1}
+\]
+
+There are independent fixed-rate local streams totaling
+
+\[
+\Lambda=2\sum_{ab}M_{ab}, \tag{3.2}
+\]
+
+where the ordered sum counts offdiagonal entries twice. Every offdiagonal stream has at most five Kraus operators and union support. A diagonal stream has rate \(2M_{aa}\) and unnormalized Kraus operators
+\(\sqrt{M_{aa}+C_{aa}}\,U_a\), \(\sqrt{M_{aa}-C_{aa}}\,I\).
+Equations (2.1)–(2.4) handle each unordered pair. This proves the theorem by adding generators. Overlapping channels need not commute. Zero-bound terms are omitted.
+
+The physical sum of installed unitary-kick floor rates is
+
+\[
+\Gamma_F=\sum_aM_{aa}+3\sum_{a<b}M_{ab}
+\le\tfrac32\sum_{ab}M_{ab}. \tag{3.3}
+\]
+
+These rates, as well as the larger proposal rates, must be charged. At most \(N(N+1)/2\) streams and \(N^2\) floor-unitary labels are needed before merging duplicate/identity terms. These are dictionary-size bounds, not gate-complexity bounds.
+
+## 4. Two fixed local unitaries for each known operator
+
+Let \(A\) be a **known square finite-dimensional operator**, with a known bound \(a\ge\|A\|\), \(a>0\). Write its polar decomposition as \(A/a=UP\), where \(P=|A|/a\). A finite square partial isometry extends to a unitary \(U\): the initial and final complements have the same dimension. Choose one such extension once. Let
+
+\[
+V=P+i\sqrt{I-P^2}.
+\]
+
+Since \(P\) commutes with its square-root function, \(V\) is unitary and \((V+V^\dagger)/2=P\). Consequently
+
+\[
+A=\tfrac a2(UV+UV^\dagger). \tag{4.1}
+\]
+
+This is a fixed two-unitary dictionary whose coefficient one-norm is \(a\). If \(A\) acts on a patch \(X\), compute the polar extension and functional calculus in \(\mathcal B(\mathcal H_X)\) and extend both unitaries by identity elsewhere. Their support stays in \(X\). Rank deficiency is harmless in finite dimension. Zero operators can be omitted.
+
+This elementary lemma is not claimed historically new. The root investigator communicated its sharper polar form during this task; this worker independently checked the formula, rank-deficient cases and its use in Sections 2–5. It replaces this worker's initially considered four-unitary real/imaginary decomposition.
+
+Dense matrix construction costs polynomial time in the local dimension \(d_X\), e.g. order \(d_X^3\) arithmetic for a polar/spectral decomposition and order \(d_X^2\) storage. For \(k\) qubits those quantities can be exponential in \(k\). Gate synthesis, positive floor realization, calibration and resets are additional resources. Equation (4.1) removes a **coefficient-rate** blowup from a Pauli conversion; it does not make arbitrary local operators easy hardware.
+
+## 5. Robust correction-element replacement without Pauli expansion
+
+Let \(J\) be a fixed nominal local jump. Let \(A_1,\ldots,A_m\) be a fixed known local error dictionary. The allowed perturbed jump is
+
+\[
+J'=J+\Delta,\qquad \Delta=\sum_{r=1}^m\delta_rA_r,
+\qquad |\delta_r|\le d_r. \tag{5.1}
+\]
+
+Take known bounds \(a\ge\|J\|\), \(a_r\ge\|A_r\|\), and define
+
+\[
+\epsilon=\sum_rd_ra_r. \tag{5.2}
+\]
+
+The fixed promise is the dictionary and coefficient bounds in (5.1), not just \(\|\Delta\|\le\epsilon\). Apply (4.1) separately to \(J\) and each \(A_r\), retaining separate labels if unitaries repeat. This gives at most \(N=2(m+1)\) unitary labels. Let \(n\) be the coefficient vector of \(J\), and \(d\) that of \(\Delta\). Fixed nonnegative component envelopes \(v\) can be chosen with
+
+\[
+|d_b|\le v_b,\quad \|n\|_1=a,\quad\sum_bv_b=\epsilon.
+\]
+
+The signed replacement error has the exact coefficient matrix
+
+\[
+\mathcal D[J+\Delta]-\mathcal D[J]=E_C,
+\quad C=nd^\dagger+dn^\dagger+dd^\dagger. \tag{5.3}
+\]
+
+No traceless gauge conversion is needed. An a priori entrywise bound is
+
+\[
+M_{ab}=|n_a|v_b+v_a|n_b|+v_av_b. \tag{5.4}
+\]
+
+It is real symmetric and depends only on the prescribed dictionary and bounds. Summing gives
+
+\[
+\sum_{ab}M_{ab}=2a\epsilon+\epsilon^2. \tag{5.5}
+\]
+
+Applying Sections 2–3 to the entire signed coefficient matrix already gives a fixed local compiler with rate \(4a\epsilon+2\epsilon^2\), floor rate at most \(3a\epsilon+\tfrac32\epsilon^2\), and individual pair-union supports. A stronger rate is available when the whole error dictionary lives on one bounded patch. Keep the positive term \(dd^\dagger\) intact instead of treating its entries as independently signed.
+
+For the cross coefficient matrix \(nd^\dagger+dn^\dagger\), use the fixed bounds
+
+\[
+M^{\rm cross}_{ab}=|n_a|v_b+v_a|n_b|.
+\]
+
+Sections 2–3 then supply fixed pair clocks of total rate \(4a\epsilon\) and a fixed floor \(F_{\rm cross}\) of rate at most \(3a\epsilon\). Here is a separate exact construction for \(\mathcal D[\Delta]\).
+
+For every \(a<b\) with \(m_{ab}=v_av_b>0\), put \(R_{ab}=U_b^\dagger U_a\), and install the fixed positive floor
+
+\[
+F_+=\tfrac12\sum_{a<b}v_av_b
+ \left(\mathcal D[R_{ab}]+\mathcal D[R_{ab}^\dagger]\right). \tag{5.6a}
+\]
+
+For realized coefficients set \(z_{ab}=d_a\bar d_b\) and use the two product Kraus operators \(B_1,B_2\) from (2.2) with bound \(m_{ab}\), together with **one Kraus operator \(\Delta\)**. Their total rate operator is scalar:
+
+\[
+\begin{split}
+\Delta^\dagger\Delta+\sum_{a<b}(B_{1,ab}^\dagger B_{1,ab}+B_{2,ab}^\dagger B_{2,ab})
+&=\ell_+(d)I,\\
+\ell_+(d)&=\sum_a|d_a|^2+
+\sum_{a<b:m_{ab}>0}\left(m_{ab}+\frac{|d_ad_b|^2}{m_{ab}}\right)\\
+&\le\sum_av_a^2+2\sum_{a<b}v_av_b=\epsilon^2.
+\end{split} \tag{5.6b}
+\]
+
+The non-scalar cross terms in \(\Delta^\dagger\Delta\) cancel the negative product terms computed in Section 2. The two product identity shifts again have zero combined Hamiltonian contribution. Therefore their total dissipator is exactly \(\mathcal D[\Delta]+F_+\). Add the identity Kraus \(\sqrt{\epsilon^2-\ell_+(d)}I\). After division by \(\epsilon\), this is a CPTP channel at the **fixed** rate \(\epsilon^2\). Its Choi matrix is the positive sum of the corresponding normalized Kraus-vector projectors, and its partial trace is \(I/d\) by (5.6b) plus the identity padding. This explicitly proves CP and TP.
+
+The fixed floor rate in (5.6a) is
+\(\sum_{a<b}v_av_b\le\epsilon^2/2\). Adding the cross clocks proves the improved fixed-patch bound
+
+\[
+\boxed{\Lambda\le4a\epsilon+\epsilon^2,\qquad
+\Gamma_F\le3a\epsilon+\tfrac12\epsilon^2.} \tag{5.6}
+\]
+
+All floors and all stream rates are fixed before the \(\delta_r\) are selected. The full matrix \(C\) may be indefinite; this theorem does not replace it by positive error rates. The \(\epsilon^2\) channel contains \(\Delta\), so its support is the union of **all** allowed error-atom supports. That union must be one admissible bounded receiving patch. If that union is too large, use the earlier pairwise construction and rate \(4a\epsilon+2\epsilon^2\) instead. The improved rate is sufficient, with no general optimum claim for the restricted rank-difference family (5.3).
+
+**Zero cases.** If \(\epsilon=0\), every allowed \(\Delta\) is zero: omit the replacement-error floor and all its clocks. If \(a=0\), \(J=0\), omit its unitary dictionary and the cross clocks; (5.6a)–(5.6b) alone give rate \(\epsilon^2\). Whenever \(v_a=0\), \(d_a=0\), and every division by \(m_{ab}=0\) is omitted. When the realized \(\Delta=0\) but \(\epsilon>0\), the fixed floor remains installed and the padding stays nonnegative; no floor is silently removed after error selection.
+
+For several replacements \(J_j\mapsto J_j+\Delta_j\), do this separately and add rates:
+
+\[
+\Lambda_{\rm total}\le\sum_j(4a_j\epsilon_j+\epsilon_j^2). \tag{5.7}
+\]
+
+This keeps per-jump bounded patches instead of diagonally factoring a global Gram matrix across jumps. If the nominal jump and all error atoms for index \(j\) live in one fixed patch \(X_j\), every stream stays in \(X_j\). The refined PSD clock charges the whole error union; the pairwise alternative charges the separate nominal/error and error/error unions.
+
+### An explicit correction projector
+
+For a known projector \(\Pi\) and known local unitary \(Q\), take \(J=\sqrt\kappa Q\Pi\). No polar calculation is needed:
+
+\[
+Q\Pi=\tfrac12\left(Q[\Pi+i(I-\Pi)]
+                     +Q[\Pi-i(I-\Pi)]\right). \tag{5.8}
+\]
+
+Both bracketed operators are unitary. Error atoms of the form \(Q_r\Pi_r\) have the same explicit representation, even if their Pauli expansions are dense. For \(\Delta=\sqrt\kappa\sum_r\delta_rA_r\), \(\|A_r\|\le1\), \(\sum_r d_r\le\eta\), (5.6) gives
+
+\[
+\Lambda\le\kappa(4\eta+\eta^2). \tag{5.9}
+\]
+
+Thus \(t\) affected jumps with this promise fit a proposal budget \(\nu\) if
+
+\[
+\eta\le\sqrt{4+\frac\nu{t\kappa}}-2. \tag{5.10}
+\]
+
+This rate condition is independent of the correction patch Hilbert dimension and of the number of stabilizer factors inside each **specified** projector. Controlled-projector phase implementation and the size/geometry of the patch remain charged. One arbitrary unknown \(k\)-qubit operator error is not one known dictionary atom.
+
+### Exact minimax for one affine Pauli jump replacement
+
+There is a sharp actual-replacement subfamily, not just a surrounding signed coefficient box. Let \(J=aP\), \(\Delta=\delta Q\), \(|\delta|\le\epsilon\), with \(a,\epsilon\ge0\) and distinct nonidentity Hermitian Paulis \(P,Q\). Let \(QP=\omega R\). Against every fixed CPTP baseline, the exact uniform rate is
+
+\[
+\Lambda_{\rm affine}(a,\epsilon)=
+\begin{cases}
+4a\epsilon,&0\le\epsilon\le a,\\
+(a+\epsilon)^2,&\epsilon\ge a.
+\end{cases} \tag{5.11}
+\]
+
+For \(a,\epsilon>0\), put \(M=a\epsilon\). An attaining fixed physical floor is
+
+\[
+F=\alpha\mathcal D[P]+\beta\mathcal D[Q]+M\mathcal D[R],\quad
+(\alpha,\beta)=
+\begin{cases}
+(M,M-\epsilon^2),&\epsilon\le a,\\
+(a^2,0),&\epsilon\ge a.
+\end{cases} \tag{5.12}
+\]
+
+All coefficients are nonnegative. Let \(z=a\bar\delta\), \(t=|\delta|^2\), and \(c=\operatorname{Re}(z\omega)\). Four unnormalized Kraus operators at rate (5.11) are
+
+\[
+\begin{aligned}
+A_1&=\sqrt\alpha P+\bar z/\sqrt\alpha Q,\\
+A_2&=\sqrt{\beta+t-|z|^2/\alpha}\,Q,\\
+A_R&=\sqrt M R-c/\sqrt M I,\\
+A_0&=\sqrt{\Lambda_{\rm affine}-\alpha-\beta-t-M-c^2/M}\,I.
+\end{aligned} \tag{5.13}
+\]
+
+The noise-block determinant is nonnegative for \(0\le t\le\epsilon^2\). For the first regime it is \(M(M-\epsilon^2)(1-t/\epsilon^2)\); for the second it is zero. Also \(c^2\le a^2t\), and the maximum required scalar rate in (5.13) occurs at \(t=\epsilon^2\), where it is exactly (5.11). Thus (5.13) has real nonnegative square roots, gives the desired dissipator, and has scalar Kraus rate \(\Lambda_{\rm affine}\). If \(a=0\), use \(\epsilon^2\) as a channel clock for \(|\delta|^2\mathcal D[Q]\), with no floor; if \(\epsilon=0\), omit all clocks.
+
+For the lower bound, the actual replacement family is invariant under Pauli conjugation, so twirl any fixed robust baseline. Write \(A,p,q,r\) for its rate-scaled Choi diagonal entries on \((I,P,Q,R)\). At \(|\delta|=\epsilon\), the vertex block forces
+\(p(q+\epsilon^2)\ge M^2\). A phase with \(c=M\) makes the identity/product block force \(A\ge\epsilon^2+M^2/r\). Consequently
+
+\[
+\lambda\ge\epsilon^2+2M+
+\min_{p,q\ge0:\ p(q+\epsilon^2)\ge M^2}(p+q).
+\]
+
+The final minimum is \(2M-\epsilon^2\) when \(\epsilon\le a\), attained at \((p,q)=(M,M-\epsilon^2)\), and is \(a^2\) when \(\epsilon\ge a\), attained at \((a^2,0)\). Substitution proves (5.11). Any trace outside the catalog is nonnegative and cannot evade this bound.
+
+In particular, the general coefficient-dictionary bound (5.6) has the optimal worst-case linear constant \(4\) as \(\epsilon/a\to0\), and is within additive \(\epsilon^2\) of the exact small-error rate in this subfamily. No optimality claim for all nonunitary correction dictionaries follows from this example.
+
+## 6. Exact edge-plus-product-drift uniform rate
+
+Let \(P,Q\) be distinct nonidentity Hermitian Paulis, and choose a Hermitian Pauli \(R\) and phase \(\omega\in\{\pm1,\pm i\}\) with \(QP=\omega R\). Assume \(|z|\le M\), \(|h|\le u\), with \(h\) real. The error is
+
+\[
+E_{z,h}=E_z-i[hR,\cdot],
+\]
+
+using the edge definition in Section 2 with \(U=P,V=Q\). Put
+
+\[
+\gamma=\sqrt{M^2+u^2},\quad
+F=M(\mathcal D[P]+\mathcal D[Q])+\gamma\mathcal D[R],\quad
+\Lambda_*=2M+2\gamma. \tag{6.1}
+\]
+
+Let \(a=\operatorname{Re}(z\omega)\). Retain the two endpoint Kraus operators from (2.2), and replace the three product/identity operators there by
+
+\[
+K_R=\sqrt\gamma R+\frac{-a+ih}{\sqrt\gamma}I,
+\qquad K_0=\sqrt{\gamma-(a^2+h^2)/\gamma}\,I. \tag{6.2}
+\]
+
+The quantity under the final square root is nonnegative. The four Kraus operators obey
+
+\[
+\sum K^\dagger K=\Lambda_*I,\qquad
+F+E_{z,h}=\Lambda_*(\Phi_{z,h}-\mathrm{Id}). \tag{6.3}
+\]
+
+Indeed the endpoint rate operator is \(2MI+2aR\). The \(K_R\) rate operator is \((\gamma+(a^2+h^2)/\gamma)I-2aR\). Its identity shift contributes exactly \(-i[hR,\cdot]\), by (2.5), and the remaining identity Kraus supplies the fixed-rate padding. This proves exactness for commuting and anticommuting Paulis, including singular boundary endpoint blocks.
+
+This joint floor improves the separate rate \(4M+2u\) to \(2M+2\sqrt{M^2+u^2}\). If either bound is zero the formula has the expected one-term limit; if both are zero omit the stream. For \(M=0,u>0\) just use the known single-Pauli Hamiltonian compiler with rate \(2u\).
+
+### Optimality among all fixed CPTP baselines for one edge
+
+For any Hermitian \(H\) and positive \(B\) satisfying \(B\pm H\ge0\),
+
+\[
+\operatorname{Tr}B\ge\|H\|_1. \tag{6.4}
+\]
+
+To prove this, let \(\Pi_+,\Pi_-\) be the positive/negative spectral projections of \(H\). Compress \(B-H\ge0\) to \(\Pi_+\), and \(B+H\ge0\) to \(\Pi_-\), then add the two trace bounds. The remaining trace of \(B\) is nonnegative.
+
+Use normalized Choi matrices, so \(\operatorname{Tr}J(N)=1\) for a channel. Set \(z=M\bar\omega\), \(h=u\). In the orthonormal basis \((|I\rangle,|R\rangle,|P\rangle,|Q\rangle)\), the error Choi matrix has two offdiagonal blocks, with eigenvalues
+
+\[
+\{+\gamma,-\gamma,+M,-M\}. \tag{6.5}
+\]
+
+The family contains this error and its negative. If \(N+E/\lambda\) is CPTP for every allowed \(E\), put \(B=\lambda J(N)\), \(H=J(E)\). Equation (6.4) forces \(\lambda\ge2M+2\gamma\). Construction (6.1) attains equality. This lower bound allows every fixed CPTP baseline, arbitrary Kraus descriptions and arbitrary finite collections of same-system CPTP clocks whose total rate is \(\lambda\).
+
+## 7. Exact aggregate minimax for a collision-free pair catalog
+
+Take distinct nonidentity Hermitian Paulis \(P_v\) and a simple graph of allowed coefficient pairs. For each edge \(e=(v,w)\), choose \(P_wP_v=\omega_eR_e\). Assume the labels
+
+\[
+\{P_v\}_v\cup\{R_e\}_e
+\]
+
+are pairwise distinct and none is identity. This is the **collision-free** hypothesis. No commutation or Pauli-linear-independence assumption is required. Each edge has independent promises \(|z_e|\le M_e\), \(|h_e|\le u_e\), and the total error is the sum of its edge correlation and product Hamiltonian terms. Then
+
+\[
+\boxed{\inf_{\substack{N\ \mathrm{CPTP}\ \mathrm{fixed}}}
+\{\lambda:N+E/\lambda\ \mathrm{CPTP\ for\ every\ allowed}\ E\}
+=\sum_e\left(2M_e+2\sqrt{M_e^2+u_e^2}\right).} \tag{7.1}
+\]
+
+The infimum is attained by the fixed Lindblad floor and independent union-supported four-Kraus clocks of Section 6. Its floor rate is
+\(2\sum_eM_e+\sum_e\sqrt{M_e^2+u_e^2}\).
+
+**Proof of the lower bound.** Conjugation by any Pauli \(W\) multiplies \(P_v\) by a sign \(\chi_v\), and \(R_e\) by \(\chi_v\chi_w\). The coefficient family is invariant under
+\((z_e,h_e)\mapsto(\chi_v\chi_w z_e,\chi_v\chi_w h_e)\).
+Therefore any robust baseline can be Pauli-twirled while retaining the same rate and robust property. Twirling diagonalizes its Choi matrix in the full orthonormal Pauli-vector basis. This statement follows directly from the distinct Pauli conjugation characters; it does not assume that the channel itself is a Pauli channel before twirling.
+
+Let \(B=\lambda J(N_{\rm twirl})\). In its catalog principal block write the nonnegative diagonal entries as \(a\) for \(I\), \(x_v\) for vertices and \(y_e\) for products. Other diagonal entries, if any, are nonnegative and contribute to \(\lambda=\operatorname{Tr}B\).
+
+The vertex principal block after adding the error is
+\(\operatorname{diag}(x_v)+C(z)\). Choose all \(z_e=-M_e\), which is allowed regardless of the phases \(\omega_e\). Positivity on the all-ones vector yields
+
+\[
+\sum_vx_v\ge2\sum_eM_e. \tag{7.2}
+\]
+
+The identity/product principal block is a star with offdiagonal entries
+\(b_e=-\operatorname{Re}(\omega_ez_e)-ih_e\). Choose simultaneously \(z_e=M_e\bar\omega_e\), \(h_e=u_e\), so \(|b_e|=\gamma_e=\sqrt{M_e^2+u_e^2}\). Positivity forces \(y_e>0\) whenever \(\gamma_e>0\), and completing the square gives
+
+\[
+a\ge\sum_{e:\gamma_e>0}\frac{\gamma_e^2}{y_e}.
+\]
+
+Hence
+
+\[
+a+\sum_ey_e\ge\sum_e\left(y_e+\frac{\gamma_e^2}{y_e}\right)
+\ge2\sum_e\gamma_e. \tag{7.3}
+\]
+
+Adding (7.2)–(7.3) and the nonnegative outside trace proves the lower bound in (7.1). The two chosen coefficient selections need not coincide; one robust baseline must satisfy both necessary compressions. The collision-free hypothesis keeps the two sets of diagonal entries separate. Section 6 proves attainment and preserves locality.
+
+When \(u_e=0\), (7.1) is exactly \(4\sum_eM_e\). Thus the supplied pairwise \(4M\) rule cannot be improved uniformly by globally optimizing floors or merging CPTP clocks for this class. When products collide with each other or original labels, the construction remains a valid upper bound, but this additive lower proof does not apply. No optimality claim is made for that case, for restricted correlated coefficient subsets, or for continuous-between-event architectures.
+
+## 8. Receiving capability and incidence
+
+For a completed ideal correction generator \(G_{\rm ideal}=\sum_v\kappa_v(\mathcal C_v-\mathrm{Id})\), suppose its implemented jumps are replaced by the fixed-dictionary affine errors of Section 5. After installing the exact floors, the actual generator has the exact decomposition
+
+\[
+G_{\rm actual}+F=G_{\rm ideal}+\sum_e\lambda_e(\Phi_e-\mathrm{Id}). \tag{8.1}
+\]
+
+The rates are fixed before error selection. The existing N881 receiving theorem can use (8.1) **only conditional on** its universal location-only simultaneous Pauli-history certificate, completed correctors, fixed decoder, supported CPTP Kraus-span hypothesis, and the required sparse schedule bound for the true support envelope. This work does not establish those classical/topological probability premises.
+
+For any receiving guard \(g\), the relevant charged quantity is
+
+\[
+\nu_g=\sum_{e:X_e\cap g\ne\varnothing}\lambda_e, \tag{8.2}
+\]
+
+where \(X_e\) is the actual proposal support. A sufficient replacement-error condition is the sum of the bounds in (5.7) over every source patch intersecting the guard, with any conservative extra envelope enlargement counted. Bounded patch diameter, bounded incident sums and uniformity in system size are separate hypotheses. A small dictionary or small Pauli weight alone does not establish them.
+
+The fixed dictionary version adds an interface for projector/correction-element errors which can have dense Pauli expansions while retaining a small prescribed operator dictionary. It does not cover arbitrary norm-bounded unknown patch errors, continuous unknown shared-bath Hamiltonians controlled only by memory floors, imperfect added floors without further promises, unacquired finite-width controllers, or hardware outside the stated support model. Physical acquisition and useful constants remain open.
