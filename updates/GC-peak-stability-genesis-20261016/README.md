@@ -1,0 +1,14 @@
+# GC — Peak control and compatible-positivity genesis
+
+Main inspected: `9dbe934e5475f415c2d160a6c0715534aafa546b`. Source preservation: `ac0cb9dd6178fc89b97d127f880b264cbceaf411`. Scientific proofs: `9cef7e1c090d0ec0ed7c1c53307f795a5ca6270a`.
+
+[Decision-grade scientific synthesis](package/derived/root/SCIENTIFIC_SYNTHESIS.md) separates internal mathematics, exact finite checks, primary precedents and missing physical/computational operations. No extraordinary technological breakthrough, external verification or historical novelty is asserted.
+
+- [Homogeneous positivity theorem](package/derived/workers/gc_nonsep_genesis/PROOF.md) and [receiving audit](package/derived/workers/gc_nonsep_adversary/A0_RECEIVING_AUDIT.md): mixed neighborhood around every nonconstant separated anchor, including pure vertical profiles; unrestricted quasiconvexity remains open.
+- [Exact ideal singleton minimax](package/derived/workers/gc_peak_genesis/FIXED_REFRESH_MINIMAX.md) and [control audit](package/derived/workers/gc_control_adversary/REPORT.md): finite bath saturation, exact resource contract and finite-action counterexample; physical controller unacquired.
+- [Actual first-slab target proof](package/derived/root/STOPPED_TARGET_FIRST_SLAB.md) and [backward receiving proof](package/derived/workers/gc_kinetic_goal/PROOFS.txt): scalar/state failure distinction, exact terminal-space and pair-closure obstructions; original deadline-one solve unacquired.
+- [Catalysis proofs and finite causal estimand](package/derived/workers/gc_catalysis_genesis/PROOFS.md): conditional positive-mode falsifier and fresh-cohort test; no acquired material mechanism or common exposure.
+
+[Source publication](package/SOURCE_PUBLICATION.json) preserves all four exact ZIPs and all 82 member bytes, including the three archive-only NPZs. [Derived manifest](package/DERIVED_MANIFEST.v0001.json) pins authored proofs, code and receipts; acquired external full texts are excluded. [Public replay](PUBLIC_REPLAY.v0001.json) passed eight bounded receiving checks and exact source identity. Run `python3 package/derived/root/replay_public_evidence.py --strict-public-layout --receipt /tmp/gc-replay.json` from this directory, with installed NumPy/SymPy; temporary rehydration leaves originals unchanged. Producer environment failures and the stale embedded source hash remain explicit.
+
+[Validation](VALIDATION.v0001.json) records actual projection/schema/fixture/append-only outcomes. [New checkpoint validation](CHECKPOINT_VALIDATION.v0002.json) passes individually; global canonical publication remains blocked by three inherited unsupported schemas preserved byte-for-byte. The older ultra branch is not retasked. New routes N894–N897, eight open gates, ten paired interfaces, four reciprocal notices, three opportunity records and one workflow observation retain `source_derived_unreviewed` and UNKNOWN external status.

@@ -1,0 +1,122 @@
+# Peak control, compatible positivity and goal-specific kinetic certificates
+
+2026-10-16. Internal research, externally unreviewed. Astra main inspected at **9dbe934e5475f415c2d160a6c0715534aafa546b**. This report adjudicates four current supplied archives and selective actual earlier proofs/PRs. Source bytes, internal proof reconstruction, finite diagnostics, acquired literature and physical evidence remain distinct.
+
+**No extraordinary technological discovery or experimentally acquired new operation survived this round.** Two substantive internal mathematical results did: a homogeneous positivity tube including a previously excluded degeneracy, and exact ideal singleton minimax control with an attaining bath. A direct certificate for the actual kinetic first-slab output also establishes a useful correction to full-state rejection logic. Historical originality and independent external correctness are unresolved.
+
+## 1. Inputs and current capital
+
+The actual inputs are four distinct ZIPs, not three independent reports inferred from a prompt. `../../SOURCE_PUBLICATION.json` preserves four exact archives and all 82member identities. Seventy-nine members are expanded; three large immutable NPZs remain recoverable inside the original kinetic ZIP. All archives and member hashes were checked independently. No missing older ZIP is needed.
+
+- `Astra_shared_bath_peak_cap_2026-10-16.zip`: constrained exponential-kernel certificate optimization, plus audits of the prior sharp product and kinetic quotient.
+- `Astra_nonseparated_stability_2026-10-16.zip`: a local unchanged-integrand Jensen theorem around separated first potentials with nonzero horizontal derivative, its explicit constants and Gram evidence.
+- `Astra_catalysis_equal_duty_test_2026-10-16.zip`: actual duration-grid evidence testing the shared scalar witness, with source-definition and acquisition caveats.
+- `schlogl_first_slab_diagnostic_packet.zip`: three immutable short tensor trajectories, physical-state/residual rejection witnesses, reference implementations and literal target/sink definitions.
+
+The kinetic embedded `verification/SOURCE_MANIFEST.sha256` contains a stale `REPORT.md` digest. Original bytes and the mismatch are preserved. Our fresh supplied/publication manifests cover the current bytes; no source manifest was repaired. Producer replay has an explicit macOS address-space-limit issue, and the catalysis producer checker requires locally absent openpyxl. Independent scoped reconstructions have their own receipts.
+
+Selected existing mathematical capital actually read includes N885 cubic compensation, N888 all-r separated reserve, N880 exact conformal polynomial/mixed-source obstruction, N890 sharp shared-bath effects and N883/N893 actual kinetic overflow/total-count obstructions. Prior dossiers were navigation into proofs, not proof authority. Source pins/hashes and reading depth are in the workers' source receipts.
+
+Current overlapping open PRs were checked: #84,#85,#87,#88 are conflicted drafts; #95 is a mergeable draft at b83009076c11422c1777cfa8049f6bb12cf1e47e, but the inspected acquisition HOLD/assay/quantum bounds do not supply any missing present interface. Its full594-path intake was not cleared. All remain unmerged. Recently merged #102,#103,#104 were inspected through decisive actual capital and source overlaps, not their titles alone.
+
+## 2. Foundational result: a homogeneous compatible-positivity neighborhood
+
+For fixed r>0, keep the exact unchanged quartic J_r and scalar conformal background sI. Write Pi f=F(x)+H(y) for the coordinate-average projection, R=||D Pi f||4>0, and epsilon=||D(f-Pi f)||4. There is an explicit positive delta_r depending only on r such that
+
+    epsilon <= delta_r R
+
+implies Jensen positivity for **every real s and every periodic W1,4 second potential g**. No frequency cutoff, derivative bound, profile-concentration promise or nonzero F' is imposed. Every nonconstant separated center h0 consequently has an actual gradient-L4 ball of radius delta_r||Dh0||4/5. The delta_r can be chosen uniformly on compact r intervals inside (0,infinity).
+
+At r=1, delta=1/40000000 is an exactly verified sufficient relative cone radius. For example, sin(y)+10^-8 sin(x+y) is admitted. The radius is tiny; neither an optimal nor an order-one radius is claimed.
+
+The new operation is an exact compatible acoustic projection: a scalar Fourier correction to g preserves the acoustic quadratic as the sum of its separated anchor and a nonnegative mixed residual. The inherited strict quartic reserve and an explicit absolute cubic compensation estimate then absorb homogeneous perturbation losses without dividing by ||F'||2. It gives a quartic reserve and a restricted discriminant margin, not only a finite-family check.
+
+**Decisive evidence:** [complete analytic proof](../workers/gc_nonsep_genesis/PROOF.md), [independent receiving audit](../workers/gc_nonsep_adversary/A0_RECEIVING_AUDIT.md), [root reconstruction](ROOT_NONSEP_RECEIVING_AUDIT.md). Proof SHA256 c564e52914d70ba14000e1abadb17ac7432b04d19fd62cb0bfb159b6c8713b36. Exact verification passed 21 groups and 4,992bounded rational diagnostics; the separate audit passed 62 exact/rational assertions and 48 finite Fourier diagnostics. The analytic proof, not the finite diagnostics, establishes the universal statement internally.
+
+The qualitative cubic estimate is already available from N885; the classical anisotropic second-order Riesz bound is [Bañuelos–Baudoin, Theorem4.1(i)](https://arxiv.org/abs/1109.5751). [Harris–Kirchheim–Lin, Theorem2.4](https://arxiv.org/abs/1708.07849) covers qualitative one-profile triangular-support cases. It does not by its stated support hypothesis imply this mixed tube. No exhaustive priority clearance was obtained.
+
+**Correction and surviving obstruction:** same-g fixed-fraction domination fails in every gradient-L4 ball at a pure vertical anchor, as shown by an exact positive counterfamily. The projection theorem survives because it uses a corrected compatible g0 and retains the actual acoustic residual. A neighborhood of a constant first potential would imply the unrestricted scalar-conformal problem by homogeneity; that central problem remains open. All-affine quasiconvexity is also unproved.
+
+**Investment:** continue this branch only toward a scale-invariant mixed-source/discriminant estimate that extends beyond the separated tube, or a genuine negative compatible field. External analytic/priority review is justified now. More finite Fourier examples alone do not justify a breakthrough claim.
+
+## 3. Exact ideal minimax control and the resource contract
+
+The incoming peak-rate certificate optimizer reconstructs. For constant action J over duration T, lambda<=L and integral lambda=Lambda, the active cap yields a pushforward measure with density d=J/L and equal endpoint masses q=(JT-d Lambda)/2. The zero/maximal/zero schedule attains the exact constrained certificate. Feasibility, zero cases and cap transition are separate. The uncapped endpoint-block/interior optimizer is exact older capacitary/execution mathematics: [Obizhaeva–Wang2013](https://web.mit.edu/wangj/www/pap/ObizhaevaWang13.pdf) and [Alfonsi–Schied](https://arxiv.org/abs/1201.2756). Cap-active formula priority remains UNKNOWN.
+
+The deeper new internal result is an **exact singleton minimax theorem** for public fixed refresh slots, independent fair private toggles, an initial private seed and exact final tracked inverse. Let the time-dependent parity-changing term have a known integrable norm envelope j(t), total action a, and let N slots divide it into N+1 gaps. Over the admitted arbitrary finite-bath Hamiltonians, the optimal placement is equal action, with exact worst-case final odd-character effect
+
+    Q_N(a)=1-cos^(2(N+1))(min(a/(N+1),pi/2)).
+
+A subspace-angle argument bounds the all-good branch. A finite sink bath of dimension N+2 attains the complement by retaining every first flip in a fresh orthogonal channel. The Hamiltonian may depend on public slots but never on the private bits. Exact saturation is not established for a separately imposed smaller bath dimension.
+
+The shared-bath all-subset receiving theorem retains the product of squared-action gap budgets. **The singleton sine improvement has not been multiplied over arbitrary selected parents.** Closing that finite-action joint bound is a precise remaining theorem.
+
+The implementation protocol is established random dynamical decoupling from 2005, including fair pulse-or-identity slots and tracked frames: [Viola–Knill](https://arxiv.org/abs/quant-ph/0511120). The exact model minimax statement and original-Walsh/support receiving/resource reconstruction are the added work; they do not invent random DD. Independent noncommuting shared-bath/Walsh calculations corroborate the receiving algebra.
+
+Internal actual toggles are at most N and average N/2. At equal mean internal actual flips n, N=2n gives a fixed-grid squared-action certificate a²/(2n+1), compared with uncapped Poisson a²/(n+1). Fresh random bits/slots, initial/final wrappers, finite-width action, control fidelity/support, timing and reset are additional costs. A latent Poisson pinch rate lambda is twice the actual frame-flip rate gamma.
+
+For Poisson control and a=JT<pi, a constant JX adversary yields sinc²(a)C_lambda<=p_lambda<=C_lambda. Hence sinc²(a)C_star<=inf_lambda sup_H p<=C_star: asymptotic actual minimax sharpness at weak action. For constant envelope, a<=pi/4 and integer N>=1, the fixed-grid actual minimax upper Q_N<=a²/(N+1) is strictly below the Poisson actual minimax lower sinc²(a)*2a²/(N+2), at matched mean internal flips N/2. The elementary strict inequality uses sinc²(a)>=8/pi²>3/4>=(N+2)/(2(N+1)). This strengthens a certificate-only comparison inside these two ideal control classes. Instantaneous grid slots are not an admissible bounded continuous dephasing rate; finite controller bandwidth and costs remain unpaid. This is not exact finite-a error optimization. A rigorous known-H counterexample at a=3.1 gives certificate-optimal actual error0.3089 versus0.002714 for a competing allowed schedule; analytic separating bounds are >0.1814 versus<0.0275. A known constant drive also admits an ideal echo under a different information contract.
+
+**Decisive evidence:** [exact minimax proof](../workers/gc_peak_genesis/FIXED_REFRESH_MINIMAX.md), [peak/Poisson proof](../workers/gc_peak_genesis/PEAK_AND_POISSON_MINIMAX.md), [independent control audit](../workers/gc_control_adversary/REPORT.md), [root reconstruction](IDEAL_REFRESH_MINIMAX_RECONSTRUCTION.md).
+
+**Investment:** externally review the exact singleton result; attack the all-subset finite-action bound or qualify one complete physical controller with paid errors/support. Park claims of a practical memory threshold until that receiving process exists. More ideal count improvements do not acquire it.
+
+## 4. Actual kinetic output: successful local certificate, unavailable continuation
+
+The original and weighted saved first-slab paths have independently reconstructed actual augmented-state L1 error lower bounds 0.1380019503 and 1.509585413e-4. The constrained path has an integrated full-residual lower bound 1.491853366e-5, which rejects its sufficient forward certificate but does not lower-bound its actual state error. These are different failure statements.
+
+For the actual unbounded eight-site process and the actual cap 162 stopped process, root independently proved
+
+    P(first hit all counts<=15 by h=10^-4) <10^-65.
+
+Before a coordinate reaches134, each upward intensity is bounded by b(133)+3D133. Reaching 134 from 50 needs 84 up-jumps. Without such an exit, the target needs at least 280 reaction deaths; diffusion preserves total count. Stopped Poisson domination and an exact rational Chernoff calculation give the stronger root bound 4.221480587e-68. The separate adversary obtains 5.020404778e-68. Both are actual-output bounds, not replacement-model simulations, and charge every localization exit.
+
+Exact contractions of immutable dyadic paths give first-slab target outputs:
+
+- original 5.553737834073413e-10;
+- weighted 1.165618095459188e-87;
+- constrained identically zero throughout its polynomial.
+
+Consequently weighted/constrained scalar errors are <10^-65 even though their complete forward certificates fail. The original scalar error exceeds the chosen cap-subtracted 2.430931573e-10 inside allowance, while remaining below 10^-9. A full-state/residual failure does not imply a comparable actual-output failure. **These trajectories still cannot be advanced to time one with the present certificates.** Their inaccurate continuation state can later reach the target.
+
+**Decisive evidence:** [root stopped-process proof](STOPPED_TARGET_FIRST_SLAB.md), [root exact fractions](FIRST_SLAB_TARGET_CERTIFICATE.json), [independent target proof/actual-state counterexample](../workers/gc_kinetic_adversary/PROOFS.txt), [immutable-array check](../workers/gc_kinetic_adversary/actual_target_checks.json).
+
+A same-total pair of actual continuation states has backward success probabilities separated by >0.0100215 at remaining time 10^-4. Thus a total-count-only backward approximation has uniform error >.00501076 at that scope. This is not an initial 50^8 full-horizon impossibility result; spatial information remains available.
+
+The promising receiving alternative is a certified backward resolvent/Erlang representation. A positive Markov resolvent has infinity-norm at most1/r, so an approximate backward TT sequence can use a Frobenius residual directly as an infinity upper bound, without the 163^4 factor 705,911,761 needed to convert a forward Frobenius residual to full L1. This changes the certificate norm; it does not prove affordable ranks, time-sandwich precision or an acquired full eight-site solution. The unchanged three forward trial spaces also fail as backward terminal receivers, with exact sup-error lower bounds 1/2, 2/3 and 1; new target-native spaces are required. A bounded two-site implementation checks the resolvent operation. Its four-pair uncapped closure is already too loose: after deterministic-time conversion and explicit subtraction of the original overflow allowance per pair, its upper-comparator value is >0.926220394293. That number is not a lower bound on the original probability. The actual deadline-one target remains UNKNOWN.
+
+Full physical-L1 recurrence certification is already present in Vo–Sidje 2017; stopped moment/adjoint output certificates are established primary alternatives. A sign inconsistency in [Backenköhler–Bortolussi–Wolf](https://arxiv.org/abs/1910.12562), Eq. (23) versus Eq. (18), was traced to the terminal measure: the m=k=0 conservation equation is y10+y20=1. Do not copy the assembled negative sign blindly. This correction concerns the display, not rejection of the method.
+
+**Investment:** a fresh backward spatial/TT construction, with one acquired exact-generator resolvent residual and a useful deterministic-deadline sandwich, is worth a bounded continuation. Stop repeating the rejected full-forward enrichments or total-count-only envelopes. Certification cost and equally informed FSP/tensor/splitting remain the comparator.
+
+## 5. Catalysis: stronger falsifier, no acquired mechanism
+
+The actual duty 10duration grid reconstructs b/Ain as0.5969013,0.3387702,0.2526331,0.2276909over periods 0.011, 0.11, 1.1, 11 s. Under shared fixed rates and comparable actual exposures, the N887 scalar family predicts the opposite sign. The new internal extension proves that every nonnegative parallel mixture of those suppression modes preserves the wrong sign; arbitrarily slow positive modes cannot rescue that class.
+
+This does not invalidate N887's original two-static-endpoints plus one-waveform nonidentification theorem. It adds information outside that observation contract. Nonlinear/signed/interacting modes or waveform-dependent input laws are not excluded. A three-configuration fixed-rate sequential mechanism reverses the trend, but its quantitative descriptive fit is poor (seven-point RMSE 0.1019; other 23 points 0.4455) and is not promoted as a catalyst explanation.
+
+No measured uncertainty licenses statistical rejection. Deterministic sensitivity thresholds are sizeable for the whole duty 10span (±44.7749% independent relative b error or ±8.0611 percentage-point X/S boxes), but these are not acquired error bounds. Freshly acquired publisher electrical records for the10 s/1 s condition show terminal overshoot and charging: signed sampled Q 0.0189584 C versus absolute 0.3340684 C. Dense actual reacting-surface exposure is not measured across the duration grid. Equal commanded duty does not establish equal physical rates/exposure.
+
+A proposed scheduled-pulse omission experiment randomizes current treatment given recorded history, then admits fresh tagged carbon at a common fixed clock and reads/chases under a common policy. Its bounded inverse-probability/martingale contrast identifies an average finite effect over reached histories without assuming a global reset horizon. Missing cohort fate, isotope background, treatment-dependent exposure failures, complete switching work and useful ethylene gain are charged. None of those controls was acquired or executed. [Lim et al. 2021](https://doi.org/10.1021/jacsau.1c00044) already reports dynamic-to-static withdrawal in another regime, so generic withdrawal-test novelty is rejected.
+
+**Evidence:** [proofs and causal estimand](../workers/gc_catalysis_genesis/PROOFS.md), [source/electrical caveats](../workers/gc_catalysis_genesis/SOURCE_NOTES.md), [complete costs and next test](../workers/gc_catalysis_genesis/COSTS_AND_OPERATION.md).
+
+**Investment:** redirect mechanism invention toward an acquired randomized finite fresh-cohort/common-read operation. Park further scalar positive-mode fitting. A significant useful product response with matched actual exposure and full cohort/work accounting would change that decision; a lower periodic ethane mean alone would not.
+
+## 6. Research-method evidence and resources
+
+Eight Sol Max workers performed complementary invention, proof reconstruction, adversarial receiving, target-specific exact checks, physical mechanism/acquisition and primary-prior work. Two Luna Max workers performed identity/replay and renderer support, with later bounded public-replay/sidecar follow-ups. `WORKER_DEPLOYMENT.json` records actual dispatch roles. Aggregate inference tokens, immutable model versions, spend and peak simultaneous execution were not exposed; elapsed time is not a thinking-token receipt.
+
+The strongest evidence of compounding is specific: N888's separated reserve plus N885 compensation admits a compatible projection that removes a genuine degeneracy; N890's positive process representation enables exact ideal minimax questions; a failed kinetic trajectory can be reassessed in the scientifically relevant scalar norm. The strongest contrary evidence is equally specific: no actual eight-site time-one computation, physical joint controller or coupled reacting-surface operation has been acquired, despite many useful representations. Further free slow modes, finite tests or ideal certificates would not close those gates.
+
+These are observations about this research trajectory. They are not a matched comparison proving sustained context, a prompt, model, worker count or additional test-time inference superior. Agreement among workers is internal corroboration, not independent external verification. The epistemic-closure hypothesis remains a research hypothesis; this round demonstrates limited mathematical compounding and repeated acquisition boundaries, not general closure.
+
+The selected OpenAI Math family 082 mixed trace proof was read at exact pin1581d4cbdd69a0faf34b2089614fe2a814316a6a. Its symmetric matrix-energy/trace argument is a candidate for coupled cubic budgets, but no receiving representation with the unchanged sharp quartic/defect constants was constructed. No theorem transfer is claimed.
+
+## 7. Preservation and handoffs
+
+The reviewable scientific claims/proofs are separate from the exact original archive preservation commit and generated indexes. New routes N894–N897 keep source_derived_unreviewed, with scoped reciprocal notices and five-state paired composition records. No old card, proof, source or checkpoint is overwritten. The canonical ultra branch's older objective is not retasked.
+
+Precise continuations are: (1) extend the acoustic projection/discriminant beyond a relative separated tube or find a negative compatible field; (2) prove/refute the finite-action all-subset product while retaining true shared-bath effects; (3) acquire a useful exact-generator backward spatial residual/time sandwich for the original kinetic target; (4) measure a randomized fresh-cohort pulse effect with matched actual exposure, retained failures and complete useful-product/work bounds. Each preserves the receiving branch's intellectual independence.
+
+A new checkpoint draft is individually validated, but canonical publication remains blocked by three inherited unsupported checkpoint schemas, preserved unchanged. Repository validation and exact resulting Git/main hashes are recorded separately in integration receipts. Successful preservation or merge does not change any scientific evidence status.

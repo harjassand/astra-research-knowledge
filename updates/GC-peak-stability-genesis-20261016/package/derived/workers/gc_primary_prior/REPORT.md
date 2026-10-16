@@ -1,0 +1,96 @@
+# Primary proofs, capital interfaces, and priority boundaries
+
+Date: 2026-10-16. Status: **FROZEN_SCOPE_COMPARISON**.
+
+The cap-inactive exponential-kernel optimizer is exact prior mathematics. The incoming cap-active formula is a correct-looking particular constrained-energy specialization whose precise historical priority is **UNKNOWN**. The nonseparated tube is a quantitative continuity consequence of the supplied strict separated reserve; its scope is every scalar conformal background, with a fixed parameter and seed, and it does not settle the general mixed-source problem. For the kinetic task, classical output-specific stopped-process or adjoint certificates are legitimate competitors to a full-forward state certificate. A failed full-state tensor candidate does not reject them. No target probability, full-horizon solve, hardware interface, or advantage is established by this investigation.
+
+## 1. Contract, pins, and reading boundary
+
+The receiving task concerns four supplied archives, extracted under this round's `originals/`: shared-bath peak-cap optimization, nonseparated Jensen stability, catalysis equal-duty tests, and the eight-site Schlögl first-slab diagnostic packet. Their mathematical and scientific outputs remain distinct.
+
+Capital checkout: `/Users/harjas/Documents/ChatGPT/ultra/work/astra-positive-memory-20261016`, verified HEAD `9dbe934e5475f415c2d160a6c0715534aafa546b`. I began with `AGENTS.md` and `00_START_HERE.txt`, read N888, N890, N893, N887 and the relevant N880 context, then read the decisive all-r stress, mixed-source, Poisson-kernel cost, selected-endpoint, and total-count obstruction proofs. Exact source paths/hashes and the actual reading depth are in `SOURCES.json` and the receipts directory. Navigation metadata is not used as a theorem premise.
+
+Fresh read-only GitHub acquisition confirms:
+
+- [PR #95](https://github.com/harjassand/astra-research-knowledge/pull/95) is open and draft, with head `b83009076c11422c1777cfa8049f6bb12cf1e47e` and title “Preserve enabling-capability HOLD and restricted operator bounds.” Actual selected scientific objects were read through `git show` at that immutable head; this is not an audit of every item in the PR.
+- [openai/math](https://github.com/openai/math/tree/1581d4cbdd69a0faf34b2089614fe2a814316a6a) main is still `1581d4cbdd69a0faf34b2089614fe2a814316a6a`, committed 2026-10-12T21:55:24Z. The pinned README describes mixed verification status. Catalogue screening and one actual finite-dimensional proof were inspected; no Lean replay or whole-repository proof audit was performed.
+
+Newly acquired publisher/author/repository full texts, extracted text, and rendered pages are local reading material under `acquired_excluded_from_publication/`. They are excluded from the authored/publication manifest. Acquired source code was read as text and never executed. Failed or redirected downloads are recorded, including false-PDF HTML responses relabeled as `.failed_html`.
+
+## 2. Exponential-kernel energy: exact older optimizer, narrower constrained addition
+
+The incoming mathematical optimization is
+
+\[
+E(\mu)=\iint_{[0,\Lambda]^2}e^{-|u-v|}\,d\mu(u)d\mu(v),\qquad
+\mu([0,\Lambda])=a=J\tau,
+\]
+
+with the pushed-forward peak-cap constraint \(\mu\ge d\,du\), \(d=J/L\). This lower density bound follows from monotone absolutely continuous substitution for \(u'(t)=\lambda(t)\le L\); plateaus are allowed. It is not the usual upper trading-rate constraint.
+
+**Primary proof actually read.** [Obizhaeva-Wang, final 2013 author-hosted PDF](https://web.mit.edu/wangj/www/pap/ObizhaevaWang13.pdf), Proposition 3, Eq. (31), and Appendix A.3-A.7, gives equal endpoint block trades and a constant interior rate under exponential transient impact. The verification proof uses a quadratic value function, a Riccati equation, and nonnegative variational-inequality remainder terms. [Alfonsi-Schied v4](https://arxiv.org/pdf/1201.2756v4), Eq. (2), Theorem 2, Example 1, and Lemma 7 with its complete proof, directly identifies the same capacitary measure for the energy with kernel \(e^{-\rho|t-s|}\). The proof turns the cost-plus-value derivative into a square; the exponential case solves its Riccati system explicitly. Decisive pages were rendered and visually inspected.
+
+**Exact comparison, independently reconstructed here.** Set \(\rho=1\), interval length \(T=\Lambda\), and scale the older unit-mass measure by \(a\). Both sources give precisely
+
+\[
+\mu_*={a\over\Lambda+2}(du+\delta_0+\delta_\Lambda),\qquad
+E(\mu_*)={2a^2\over\Lambda+2}.
+\]
+
+The factor-of-two difference from Alfonsi-Schied's energy convention is explicit: their objective includes \(1/2\), the incoming certificate does not. Thus neither the uncapped optimizer nor its endpoint atoms should be described as newly invented.
+
+The incoming active-cap solution has \(q=(a-d\Lambda)/2\in[0,d]\) and
+
+\[
+\mu_*=d\,du+q(\delta_0+\delta_\Lambda).
+\]
+
+Its potential is \(2d+(q-d)(e^{-v}+e^{-(\Lambda-v)})\), minimized at the endpoints. Every feasible residual measure \(\nu=\mu-d\,du\) is nonnegative with mass \(2q\); placing it at the potential minima satisfies the first-order energy condition. Positive definiteness of the exponential kernel then proves global optimality. The supplied zero/maximal-rate/zero schedule realizes this measure. This is a straightforward constrained convex-energy argument, with a source-relative closure of the previous cap-infeasible gap. The inspected older sources solve the unconstrained problem; they do not state this lower-density constrained formula. That bounded nonmatch is not historical novelty clearance.
+
+Retain feasibility \(0\le\Lambda\le L\tau\), separate \(J=0\), \(L=0\), and \(\Lambda=0\), and the transition \(L\tau=\Lambda+2\). All conclusions optimize a sufficient effect certificate. They are not physical-error lower bounds or device-performance results. N890's distinction between latent pinch intensity \(2\gamma\), actual frame updates, and qualified hardware costs still applies. The deterministic same-pinch incumbent from capital still has the smaller uncapped certificate at the same expected internal count, when that actual primitive is available.
+
+## 3. Nonseparated tube: the useful result and exact nontransfers
+
+The supplied note fixes \(r>0\) and a separated seed \(f_0=F(x)+H(y)\) with \(R=\|Df_0\|_4\) and \(A=\|f_{0,x}\|_2>0\). It proves a positive radius in \(\|D(f-f_0)\|_4\) such that Jensen holds for every real \(s\) at background \(sI\), and every periodic \(g\in W^{1,4}\). The radius depends on \(r,f_0\). It is not all-affine quasiconvexity, not one radius for all \(r\), and not a statement about every seed with \(A=0\).
+
+Its mechanism is ordinary coercive openness, applied carefully to a noncompact family of backgrounds and second potentials. The exact integrated polynomial is \(s^2\langle B\rangle+s\langle P\rangle+\langle Q\rangle\). The separated theorem supplies a strictly positive lower bound controlling \(1+\|Dg\|_4^4+s^2(1+\|Dg\|_2^2)\). First-row polynomial continuity controls the perturbation by the same weight. Keeping the acoustic term is what makes the comparison uniform over \(s,g\); pointwise continuity alone would not justify that uniform quantifier.
+
+**Closest primary proof actually read.** [Harris-Kirchheim-Lin v2](https://arxiv.org/pdf/1708.07849v2), Theorem 2.4 and its full three-part proof on pages 3-5, projects triangular gradient measures to a diagonal class, lifts finite rank-one splittings, and passes to compact measures by disintegration and approximation. It gives the qualitative Jensen conclusion for every rank-one convex integrand in the one-profile triangular cases. It assumes exact support in that matrix subspace; an L4 neighborhood can have full four-dimensional support and does not satisfy that premise.
+
+The capital's full-affine-span two-profile example also prevents placing the entire seed class into one fixed triangular hyperplane by an invertible matrix change. This does not prove that the example is nonlaminate. Neither the older theorem nor ordinary slice Jensen supplies the new two-profile quantitative reserve, and the tube does not supply a general-field mixed-source bound. The particular conservation shortcut at three distinct scalar backgrounds forces \(f_{xy}=0\) by a distribution-valued Vandermonde argument; this is a limitation of that shortcut, not a no-go result for other Jensen methods.
+
+The correct attribution is a quantitative local robustness consequence of the internally proved separated reserve, using standard polynomial continuity and Hölder estimates. Exact priority of the particular seed-uniform formula/radius remains UNKNOWN. Bounded searches are insufficient to establish the absence of broader historical consequences.
+
+## 4. Kinetic output certificates and a primary-source correction
+
+The unchanged finite process has counts 0-162 at eight sites, all ten open 2x4 edges, all-50 initialization, frozen target \(B=\{\max_i n_i\le15\}\), and a separate true-overflow sink. The incoming first slab has length \(10^{-4}\). Its rejected full-forward candidates and the horizon-one overflow budget are preserved. A certified scalar first-slab output would not automatically provide an accurate state for the next slab or solve the deadline-one problem.
+
+**Tensor incumbent, actual proof read.** [Vo-Sidje 2017 author-uploaded full text](https://www.researchgate.net/publication/318233496_An_adaptive_solution_to_the_chemical_master_equation_using_tensors), Eqs. (21)-(30), forms the stochastic transition \(P=I+G/\theta\), stacks the approximate powers, and expresses their error as propagated recurrence residuals. Stochastic ℓ1 contractivity gives \(\|\widehat w_m-w_m\|_1\le\sum_j\|r_j\|_1\). This is a genuine full physical norm bound, not only FSP leakage or a reduced/Frobenius stopping tolerance. The proof was read in the primary web extraction; the separate byte download failed with HTTP 403. The supplied packet's audit correctly exposes the remaining full-residual-norm and rounding obligations.
+
+**Reachability incumbent, actual derivation read.** [Backenköhler-Bortolussi-Wolf v2](https://arxiv.org/pdf/1910.12562v2), Sections 4-5.5, derives time-weighted stopped-martingale identities, occupation/exit measures, and moment relaxations whose objective can be \(\Pr(\tau<T)\) directly. It avoids requiring the entire transient distribution. The source explicitly limits computed guarantees by SDP numerical accuracy and discusses conditioning. The unchanged finite chain satisfies boundedness needed for ordinary optional sampling; no unbounded-process moment assumption is imported for free.
+
+There is a printed sign inconsistency, confirmed in both PDF and HTML: Eq. (18) contains a **positive** terminal-measure term, whereas Eq. (23) prints \(-y_{2m}'T^k\). For \(m=k=0\), the correct conservation identity is \(y_{10}+y_{20}=1\). The preceding derivation therefore fixes the sign. This does not defeat the stopped-process method, but the assembled display must not be copied literally.
+
+`GOAL_CERTIFICATE_INTERFACE.md` gives a short independent finite-chain reconstruction of the exact adjoint error identity and super/subsolution output bounds, with their actual computational obligations. It is standard comparison machinery, not a new operation or a target-specific successful certificate. A verified spatial/TT or stopped local witness can be useful even when the saved forward approximation fails. N893 excludes one globally nonnegative total-count-only envelope class at deadline one; it does not exclude arbitrary configuration-dependent or short-horizon certificates.
+
+For a candidate generated with approximate operators, weights, time solves, or compression, the *final* certificate must refer to the exact generator and physical output, include all sinks and joins, and enclose its own residual evaluation. A small solver tolerance or mass check cannot replace this. Exact rational feasible dual witnesses or outward enclosures can certify an SDP result; an unverified solver objective cannot. No affordable rank, runtime, or certification advantage follows from an operator MPO alone.
+
+## 5. Catalysis and actual PR #95 overlap
+
+The supplied catalysis audit appropriately restricts N887's scalar countermodel to two static endpoints plus one waveform mean. Its equal-duty duration grid is additional information: under fixed shared positive rates and comparable actual exposure, the scalar family predicts the opposite period trend from the supplied point values. Missing uncertainty and waveform-dependent electrical exposure prevent promoting this to a statistical physical-model rejection. Neither this nor PR #95 acquires a productive-reactor recovery horizon or a complete hidden-state inventory.
+
+At the freshly verified PR #95 head I read its root report/ledger, the actual transfer-calibration proof and two-world counterexample, the tensor-interface proof, and the restricted rank-two proof construction. The chemical result shows identical observed channels/totals can hide different target amounts; it concerns same-sample structural quantitation. It reinforces the need for acquired distinguishing observations but provides no productive-reactor decay rate or causal intervention here. The Werner-map co-Choi/Schur bounds concern different operators and restricted reference states; the word “tensor” does not give a stochastic TT error certificate. Their positivity does not produce the present quartic gradient inequality, exponential-kernel constraint, dephasing generator, or reachability bound.
+
+The overlap is an evidence/admission discipline and reusable ordinary algebra, not a supplied missing scientific interface. No forced composition is justified. This conclusion concerns the inspected actual artifacts, not an exhaustive absence claim across the entire PR.
+
+## 6. One OpenAI Math proof inspected, no completed transfer
+
+The sole selected mechanism was family 082's [mixed trace proof](https://github.com/openai/math/blob/1581d4cbdd69a0faf34b2089614fe2a814316a6a/preprints/An-L3-bound-for-the-dyadic-triangular-Hilbert-form-October-5-2026/build/sections/03-trace.tex) and its [matrix-energy prerequisite](https://github.com/openai/math/blob/1581d4cbdd69a0faf34b2089614fe2a814316a6a/preprints/An-L3-bound-for-the-dyadic-triangular-Hilbert-form-October-5-2026/build/sections/02-matrix.tex). Both complete files were read at the fresh immutable pin. The proof places three row-star Gram costs on one symmetric block matrix, compares supported Hessians of \(\operatorname{tr}(P^{3/2})\), partitions cubic eigenbasis triples including repeated indices, and bounds the cyclic trace by \(5/3\) times those costs. Singular supports are handled explicitly. This is a concrete positive coupling argument; no statement about the full triangular-Hilbert theorem or its formal verification is certified here.
+
+It is relevant only as a possible design mechanism for retaining coupled cubic interactions against a Gram budget. A valid transfer still needs an exact representation of the receiving mixed cubic, defect and quartic reserve; compatible gradients must map into the required contractions, and the endpoint budget must meet the *unchanged sharp constant*. Neither the supplied tube nor the trace lemma constructs that representation. The source's finite \(5/3\) trace constant, degree-three matrix energy, and dyadic geometry cannot simply be substituted for the target's quartic/defect discriminant. No OpenAI Math result is used as a premise to close any receiving gate.
+
+## 7. Frozen disposition
+
+Retain the incoming constrained cap and local tube as scoped internal mathematical capital after their dedicated audits. Attribute the uncapped optimizer to the exact older capacitary/execution literature. Retain the goal-output certificate interface as a classical matched alternative to full-state approximation, with exact feasibility/error evaluation still unpaid. Preserve the scalar catalysis countermodel's restricted interface and the new equal-duty challenge separately.
+
+Historical priority, external correctness, physical validation, practical advantage, and the deadline-one rare-event output remain separate UNKNOWN/OPEN statuses. This investigation made no edits to inputs or the pinned checkout, sent no external messages, executed no acquired code, and performed no laboratory intervention or state solve. Source acquisition, proof reading, and a frozen report do not establish a mission result.

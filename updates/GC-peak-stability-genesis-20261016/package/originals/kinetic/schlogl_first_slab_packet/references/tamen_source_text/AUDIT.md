@@ -1,0 +1,45 @@
+# Strongest matched tensor-time baseline acquisition
+
+## Decision
+
+Migrate the approximation engine from fixed-rank Lie gates plus linear endpoint interpolation to conservation-enriched adaptive state-time AMEn with retained Chebyshev temporal cores. This is justified as acquisition of a materially stronger incumbent, not as evidence that the eight-site first-hit problem is solved. Do not spend further effort repairing mass by scalar renormalization or inventing polynomial dense output independently of this incumbent. Keep the independent weighted-residual verifier; the acquired solver does not replace it.
+
+Acquired read-only author source: https://github.com/dolgov/tamen/tree/2179572837184fad0d1dfbb7f4837c011142e7e7 . Files and SHA256 hashes are recorded in manifest.json. No downloaded source was executed and no package installed. The requested Bath software URL redirected to Bath's homepage when opened; search indexing still identifies its tAMEn link, and the paper itself independently links this author repository.
+
+## Primary-paper findings
+
+Dolgov's conservation paper uses co-kernel enrichment: append C with A* C=0 to the Galerkin basis, so the reduced operator has zero invariant rows. AMEn adds approximate residual directions and adapts ranks. The final temporal-core solve is the reduced ODE; terminating there retains the invariant directions. Chebyshev collocation yields spectral-in-time approximation, whereas a doubled-grid reduced residual guides adaptive slabs. These are equations (3), (21), (22), and Algorithm 1. Machine-precision invariants are empirical/numerical, not interval guarantees. Source: https://arxiv.org/html/1403.8085 .
+
+The earlier simultaneous state-time CME paper uses AMEn on global Crank–Nicolson systems, with QTT/QTT-Tucker compression of state and time. It explicitly leaves solution ranks and iteration counts unpredictable. Its observable comparison finds relative errors up to 250 times the tensor tolerance in one example. Thus its tolerance is not an observable enclosure. This predecessor establishes the baseline lineage, while tAMEn supplies the conservation/spectral features needed here. Source: https://arxiv.org/html/1311.3143 , sections 3.3, 5.1, and 6.2. Neither inspected paper supplies a directly reusable certified dual-weighted first-hit-output algorithm.
+
+## Actual source behavior, beyond the abstract
+
+The following observations come from the acquired MIT-licensed MATLAB implementation, not a proposed reimplementation.
+
+- tamen.m takes an initial space-time TT with time last, extracts the last time snapshot as the incoming state, and returns every accepted slab's complete space-time TT and node vector. Preserve these, not merely its optional final snapshot.
+- Set opts.time_scheme='cheb'. opts.obs accepts invariant vectors as TT cores. Pass total mass of the FULL success-plus-overflow augmented state. Total continuation mass alone is not invariant. The success indicator itself is not a co-kernel vector and must not be misdeclared as an invariant.
+- amenany_sweep.m truncates spatial cores, then enriches with residual and auxiliary invariant vectors, then QR-orthogonalizes. This order matters: a subsequent unconstrained rounding can destroy conservation.
+- The temporal reduced system is assembled densely and solved directly (tamen.m lines 343–401). Its dimension is temporal node count times the final spatial rank. This is a real bottleneck even when operator MPO ranks are small.
+- opts.correct_2_norm defaults true, but it rescales the projected incoming state in the complement of invariant directions; it does not force a CME solution's Euclidean norm to stay constant in time. It preserves the mass components while changing other projected initial components. Certification must charge the actual left-boundary error. Consider disabling it for a transparent certified wrapper, then compare approximation quality; no blanket claim that this improves accuracy.
+- Default trunc_norm='fro' controls local core changes/truncation; 'res' uses local projected linear-system residuals. Neither is the full continuous-time l1 defect. Residual enrichment itself uses an approximate residual of limited kickrank; that object cannot silently serve as the certification residual.
+- Actual time_resid is the relative Frobenius residual of an integration-preconditioned doubled-node REDUCED time system: norm(AT2*xt-yt)/norm(yt). It is not the unprojected derivative defect. time_error_damp defaults 100. The next-step formula includes a 0.5 safety factor and growth cap 2.
+- Acceptance exits on sweep limit opts.nswp as well as on the selected convergence indicator (line 456); absent rejection it registers the slab. A wrapper must explicitly distinguish exhausted sweeps from successful convergence.
+- chebdiff.m omits the left endpoint, incorporating it through a Dirichlet condition. extract_snapshot.m and cheb2_interpolant.m perform barycentric polynomial interpolation using ONLY those retained nodes, with weights adjusted for the absent endpoint. Thus the exported degree-(J-1) polynomial need not reproduce the incoming state at the left endpoint. Charge its initial/join mismatch, or export a deliberate degree-J interpolant including the incoming state and differentiate that exact chosen trajectory. Never assume the collocation equation certifies either polynomial between nodes.
+- Barycentric interpolation has partition of unity, so constant nodal mass remains constant between nodes in exact arithmetic. Floating arithmetic still requires enclosure. Positivity is not imposed by these routines, and mass conservation does not establish rare-event accuracy.
+
+Source links: [tamen.m](https://github.com/dolgov/tamen/blob/2179572837184fad0d1dfbb7f4837c011142e7e7/tamen.m), [sweep](https://github.com/dolgov/tamen/blob/2179572837184fad0d1dfbb7f4837c011142e7e7/amenany_sweep.m), [snapshot](https://github.com/dolgov/tamen/blob/2179572837184fad0d1dfbb7f4837c011142e7e7/extract_snapshot.m), [interpolant](https://github.com/dolgov/tamen/blob/2179572837184fad0d1dfbb7f4837c011142e7e7/cheb2_interpolant.m).
+
+## Concrete baseline contract
+
+1. Use the exact acquired eight-site generator, initial all50, horizon 1, counts 0–162, first-hit success and first-overflow absorbing sinks. The direct-sum grid-plus-two-scalars representation needs an explicit adapter to tAMEn's tensor-product storage, or a block extension of the reduced solves. Check its column conservation before solving; do not replace absorption by reflecting/suppressed outward reactions.
+2. Supply the augmented mass vector as opts.obs. Retain adaptive residual enrichment and allow rank growth beyond 16. Record all spatial ranks, final spatial/time rank, number of nodes, slab boundaries, sweeps, local solver status, and actual memory/runtime. A rank/resource cap is a stop with unresolved accuracy, not an accuracy guarantee.
+3. Export an explicit polynomial for every accepted slab plus its exact chosen initial data. Preserve all core coefficients needed to differentiate it and reconstruct endpoints. Do not apply uncontrolled final rounding, positivity clipping, or mass normalization.
+4. Use convergence sweeps and degree/tolerance comparisons as diagnostics only. Check full operator-action residual independently; reduced residuals miss projection error outside the retained spatial span.
+5. Feed those polynomials into the existing weighted-residual interface. Form the full uncompressed residual sum or bound every compression error; include temporal cross terms, initial mismatch, slab jumps, and rounding errors. Obtain an outward-rounded integral bound, not samples. Include success and overflow scalar residuals.
+6. Return the success coordinate with a rigorous absolute radius from that verifier; add the independently proved overflow budget once. For a probability around 3.8e-8, merely achieving 1e-5 mass accuracy or an uncalibrated 1e-8 tensor tolerance is insufficient. The reported ~7.57e-10 overflow budget is already a nonzero floor in the uncapped comparison.
+
+## The missing operation
+
+The missing operation remains production and rigorous verification of a sufficiently accurate, affordable continuous-time trajectory for this exact augmented first-hit system. The acquired code provides a substantially better candidate generator and complete time representation. It supplies neither the required small full-state weighted defect nor a certified output interval, and it does not prove low state ranks for this event. Operator rank ≤16 only controls one factor in solver cost.
+
+A dual/committor route would require a separately verified backward approximation and a rigorous remainder bound, not merely an approximate dual-weighted residual. No directly reusable certified implementation for that step was established in this targeted acquisition, so it is not included in the baseline contract. The immediate justified migration is tAMEn candidate generation plus the independent forward weighted-residual verifier.

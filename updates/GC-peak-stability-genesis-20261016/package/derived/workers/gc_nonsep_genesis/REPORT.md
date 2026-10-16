@@ -1,0 +1,94 @@
+# Homogeneous nonseparable stability of the unchanged conformal Jensen core
+
+Date: 2026-10-16. Internal unreviewed result. Assigned Astra source pin: `9dbe934e5475f415c2d160a6c0715534aafa546b`.
+
+## Result
+
+There is a substantive extension beyond the supplied local stability theorem. For every fixed \(r>0\), an explicit \(\delta_r>0\) depending only on \(r\) gives
+
+\[
+\|D(f-\Pi f)\|_4\le\delta_r\|D\Pi f\|_4,
+\qquad \|D\Pi f\|_4>0
+\]
+
+as a sufficient condition for unchanged \(J_r\) conformal Jensen for **every** scalar background \(s\) and **every** compatible periodic \(W^{1,4}\) second potential \(g\). Here \(\Pi f\) is the canonical coordinate-separated part of \(f\).
+
+This is a homogeneous cone around the entire nonzero separated space. In particular, every nonconstant \(F(x)+H(y)\) has an actual gradient-\(L^4\) ball of radius
+
+\[
+\frac{\delta_r}{5}\|D(F+H)\|_4.
+\]
+
+It includes the previously missing \(F'=0\) branch \(f_0=H(y)\), allows arbitrary profile concentrations and amplitudes, and imposes no Fourier cutoff or derivative bound. The radius scales linearly with the center's gradient norm. It is positive uniformly over \(r\) in any fixed compact interval inside \((0,\infty)\).
+
+The proof supplies a positive quartic reserve and a stronger restricted cubic discriminant bound. The quantitative constants remain conservative: at \(r=1\), \(\delta=1/40{,}000{,}000\) is an exact sufficient cone radius. No order-one radius is asserted.
+
+## Why this does more than alter constants
+
+| supplied stability input | new theorem |
+|---|---|
+| requires \(\|f_{0x}\|_2>0\) | covers every nonconstant separated center, including \(f_{0x}=0\) |
+| radius depends on both amplitude and \(\|f_{0x}\|_2\) through an absolute continuity bound | a relative radius depending only on \(r\), times \(\|Df_0\|_4\) |
+| treats the acoustic variation by a continuity estimate | preserves it exactly through a compatible orthogonal projection |
+| positive Jensen conclusion in that local class | positive Jensen conclusion and an explicit discriminant margin in the new class |
+
+The new class includes genuinely nonseparated first potentials. For example, at \(r=1\),
+
+\[
+f(x,y)=\sin y+10^{-8}\sin(x+y)
+\]
+
+is admitted for every real \(s\) and arbitrary \(g\in W^{1,4}\). The example is illustrative; the theorem admits all perturbations in the cone, not a finite family.
+
+## Load-bearing proof
+
+`PROOF.md` is complete and gives the exact constants.
+
+1. Split \(f=f_0+\eta\) by coordinate averaging. The mixed residual \(\eta\) has zero average on every coordinate slice.
+2. Correct the second potential by the explicit scalar Fourier multiplier
+   \(\widehat p=(r+1)mn\widehat\eta/(n^2+\kappa m^2)\), with \(\kappa=r(r+2)/3\). Setting \(g_0=g+p\) preserves compatibility and gives the exact nonnegative acoustic split
+   \(\mathcal A(f,g)=\mathcal A(f_0,g_0)+\mathcal R(\eta)\).
+3. Rewrite the cubic coefficient as six monomials in the acoustic variables. Only \(a^3\) lacks an acoustic factor. Its first variation vanishes under the canonical split; the remaining terms are controlled by the residual acoustic norm and a classical cubic compensation estimate.
+4. Retain the inherited separated theorem's quartic reserve. The cubic perturbation has size
+   \(C_r\varepsilon(R+\|Dg_0\|_4+\varepsilon)\sqrt{\mathcal A}\). Quartic continuity has its homogeneous scale. Young's inequality absorbs both errors when \(\varepsilon\le\delta_rR\).
+
+This gives
+
+\[
+E_r(f,g,s)\ge\frac\alpha2Z+\frac\mu2s^2\mathcal A,
+\qquad Z=R^4+\|Dg_0\|_4^4,
+\]
+
+and, writing the exact energy polynomial as \(s^2\mathcal A+s\mathcal P+\mathcal Q\),
+
+\[
+\mathcal P^2\le4(1-\mu/2)\mathcal A(\mathcal Q-\alpha Z/2).
+\]
+
+The degenerate acoustic case is handled without division: then \(\mathcal P=0\).
+
+## Prior capital and classical comparison
+
+The all-positive-\(r\) separated reserve is inherited from the pinned N888 decisive proof and independently checked supplied rational certificate. The exact conformal polynomial and the open general-field source/stress-cost gate are inherited from the pinned N880 decisive report. The general qualitative cubic compensation estimate is already a consequence of pinned N885 `CORE_THEOREM_v1.md` at \(m=3,p=2,s=4,\alpha=1\). It is explicitly credited, not promoted as a new generic theorem.
+
+The only acquired analytic input is the classical second-order Riesz bound, [Bañuelos–Baudoin, Theorem 4.1(i)](https://arxiv.org/pdf/1109.5751). The proof includes a short independent explicit construction of the needed cubic estimate with constant less than 11, using that prior bound. The inherited finite-bound classification did not itself supply the new relative stability transfer.
+
+[Harris–Kirchheim–Lin, Theorem 2.4](https://arxiv.org/pdf/1708.07849v2), read directly with its three-part proof, covers triangular-support gradient measures and hence qualitative one-profile cases. This new theorem permits mixed first-potential perturbations and makes no triangular-support assumption. The prior result is not dismissed: there may be other classical implications, and no exhaustive priority clearance is claimed.
+
+Two narrow literature queries about separated quasiconvex stability and conformal quartic stability were inspected. No exact theorem for this family and this tube was identified by that bounded search. That is not evidence of historical novelty.
+
+## Exact checks and provenance
+
+Run `python3 check_exact.py` in this directory. The checker uses the supplied JSON only as rational data, reconstructs all polynomial expressions itself, and runs no producer program. It records 21 exact check groups, including:
+
+- the original all-\(r\) Gram identity and exact positive LDL pivots;
+- the conformal expansion, acoustic cubic rewrite, compatible projection identity, and six cubic perturbation decompositions;
+- the exact dyadic multiplier identity and rational telescoping constant;
+- 4,992 explicitly bounded rational frequency/scale cases;
+- the \(r=1\) constants, all absorption inequalities, final quartic margin, and illustrative nonseparated map.
+
+`CHECK_RECEIPT.json` distinguishes these algebra/finite checks from the analytic theorem. `SOURCES.json` records input hashes, the exact Astra pin, all decisive source hashes, and the primary citations. Source and repository inputs were not edited. No other current worker output was read. No subagents were spawned.
+
+## Remaining boundary
+
+The new theorem is restricted to a positive relative neighborhood of the separated space. It does not prove the all-compatible mixed-source inequality, find a negative compatible field, prove unrestricted conformal or all-affine quasiconvexity, or change the sharp integrand. It supplies no neighborhood of the constant first potential, because that center has no quartic reserve. External correctness, formal verification, historical originality, and practical/hardware advantage remain UNKNOWN.
