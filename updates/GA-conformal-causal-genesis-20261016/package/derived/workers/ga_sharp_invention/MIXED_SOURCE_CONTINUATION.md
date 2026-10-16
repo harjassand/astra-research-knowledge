@@ -1,0 +1,108 @@
+# Exact remaining mixed source and concentration ledger
+
+This is unfinished continuation of the proved separated-coordinate theorem.
+It does not claim an all-gradient sharp bound.
+
+For smooth periodic or compactly supported `(f,g)`, let
+
+\[
+a=f_x,\ b=f_y,\ c=g_x,\ d=g_y,
+\quad \sigma=(-3s^2b+b^3/2,\ 3s^3+7s^2a+5sa^2+a^3/2).
+\]
+
+The exact rational pointwise certificate in `REPORT.md` gives
+
+\[
+E_s:=\langle J(sI+D\phi)-2s^4\rangle
+=\langle G_s\rangle+\langle\sigma\cdot Dg\rangle
+=\langle G_s\rangle-X_s,
+\]
+
+where
+
+\[
+X_s=\left\langle g\left(4s^2+10sf_x+
+                            \frac32|Df|^2\right)f_{xy}\right\rangle.
+\]
+
+Thus **a compatible negative map at a nonzero background necessarily has**
+
+\[
+\boxed{X_s>\langle G_s\rangle\ge\frac1{128}
+\langle M_4+s^2(a^2+c^2+d^2)\rangle.}
+\]
+
+The exact source-versus-`G` inequality is equivalent to the unchanged Jensen
+question, while the inequality with the smaller explicit floor is only a
+necessary condition for a negative map. It must not be promoted to a sufficient
+condition. In particular it is false that `X_s` is universally bounded by the
+small floor: take `f=sin(x+y)`, `g=-f`. Then
+
+\[
+X_s=2s^2+3/8,\qquad E_s=s^2+3/4>0,
+\qquad \langle G_s\rangle=3s^2+9/8.
+\]
+
+Here `<M_4>=15/4` and `<a^2+c^2+d^2>=3/2`, so `X_s` already exceeds
+`(<M_4>+s^2<a^2+c^2+d^2>)/128` at `s=0`. This compatible, rank-one-valued
+example prevents an invalid use of the certificate's small reserve. It is
+not a counterexample to the target.
+
+## The source retains compact concentration exactly
+
+For any fixed smooth compact datum on the plane and any `epsilon>0`, set
+
+\[
+\phi_\epsilon(x)=\epsilon^{1/2}\phi((x-x_0)/\epsilon),
+\qquad s_\epsilon=\epsilon^{-1/2}s.
+\]
+
+Then derivatives of `phi` scale as `epsilon^{-1/2}` and `f_xy` as
+`epsilon^{-3/2}`. The polynomial coefficient of `f_xy` in `X` scales as
+`epsilon^{-1}` and `g` as `epsilon^{1/2}`. Multiplication by the planar area
+factor therefore gives exactly
+
+\[
+X_{s_\epsilon}(\phi_\epsilon)=X_s(\phi),
+\quad \int G_{s_\epsilon}(D\phi_\epsilon)=\int G_s(D\phi),
+\quad E_{s_\epsilon}(\phi_\epsilon)=E_s(\phi).
+\]
+
+The explicit floor `int M_4+s^2 int(a^2+c^2+d^2)` is also invariant. Thus this
+remaining source formulation does not erase the concentration mechanism.
+For torus localization, place the compact support inside the cell. No claim
+is made that concentrating an arbitrary datum keeps the first potential
+separated; the source formulation is the general-field continuation.
+
+## Why a derivative-only universal local correction is insufficient
+
+Suppose a `C^1` stress law `S(a,b)` satisfies
+
+\[
+\operatorname{div}S(Df)=0
+\]
+
+for every smooth scalar `f`. Prescribing the Hessian jet independently at a
+point gives
+
+\[
+\partial_aS_1=0,\quad\partial_bS_2=0,
+\quad\partial_bS_1+\partial_aS_2=0.
+\]
+
+Hence
+
+\[
+\boxed{S(a,b)=(-\lambda b+u,\lambda a+v)}
+\]
+
+for constants `lambda,u,v`. This elementary classification is classical
+null-stress/Piola reasoning. A local law using only the first gradient cannot
+be both nonlinear and universally divergence-free. The proved stress bypasses
+that restriction for separated first gradients, for which each of its entries
+has the correct independent coordinate dependence. For a full theorem one
+needs a nonlocal correction, dependence on the potentials/other derivatives,
+or a direct signed cancellation controlling `X_s` by the exact `G_s`.
+
+No one of those three operations is proved here. The next sharp obligation is
+precisely `X_s<=<G_s>` for all compatible maps, with concentration retained.
