@@ -1,0 +1,78 @@
+# Quantum output erasure and ordinary complete estimation order
+
+## Statement and definitions
+
+Let the classical-input quantum-output channel prepare faithful density matrices sigma_i on a d-dimensional output. Let E_q reveal the classical input with probability q and otherwise erase it. With arbitrary finite untouched quantum references, its exact reveal threshold for ordinary, unsmoothed complete SLD and binary quadratic-MMSE dominance is
+
+C = 1 - min_(p in Delta_m) Tr[(sum_i p_i sigma_i^-1)^-1].
+
+Thus q >= C is necessary and sufficient for E_q to have no larger optimal squared-error risk for every binary encoding. It is also sufficient for every real-valued ensemble with finite second moment. “Ordinary, unsmoothed complete” describes order without Hermitian smoothing while still permitting arbitrary references. It does not mean reference-free order.
+
+For a joint Hermitian output/reference observable A, define Phi_sigma(A)=Tr_output[(sigma tensor I)A]. This is a Hermitian reference observable.
+
+The SLD form is g_B(H)=Tr[H L_B^-1(H)], L_B(X)=(BX+XB)/2. For centered labels its quadratic-risk dictionary and general-POVM reduction are proved in CLASSICAL_OPERATIONAL.md, Section 3. The RLD radius is defined in CQ_THEOREM.md. The proof below equates these unrestricted erasure thresholds; it does not identify SLD and RLD metrics or their fixed-reference-dimension coefficients.
+
+## Independently reconstructed scope
+
+The theorem in CQ_THEOREM.md has been independently reconstructed for faithful prepared states. The harmonic dual, small complex SDP, operator upper bound, physical Hermitian frame lower bound, sufficient reference dimension min(m,d²)−1, and tensor-product consequence are valid. This is an internally established mathematical result; external review and historical priority remain open. Singular prepared states remain outside this theorem.
+
+The same threshold C also characterizes complete SLD / quadratic-MMSE erasure dominance. A strict failure has a witness with reference dimension at most min(m,d²), using one coherent flag in addition to the vector witness. These are sufficient dimensions, not minimality claims.
+
+## Radius audit
+
+For Hermitian U, f_i(U)=1−2Tr U+Tr U σ_i^−1 U. For M_p=Σp_iσ_i^−1, the stationarity equation M_pU+UM_p=2I has unique solution U=M_p^−1. Coercive convex minimax therefore gives C=1−min_p Tr M_p^−1. The density-constrained quadratic problem has optimizer ω=M_p^−1/Tr M_p^−1 for fixed p; compact minimax gives K=1/(1−C).
+
+Weighted Cauchy applied to A_i=σ_i⊗R_i and B_i=(σ_i−U)⊗Z_i, with ΣZ_i=0, directly proves the operator upper bound after partial trace. The block Schur complement of ⊕σ_i with respect to span(s)⊕s^⊥ gives W*A_H^−1W=Σp_iσ_i−M_p^−1. The physical frame choice H_i=h_i v_iv_i* gives Z_i=√p_i v_i w*, w*=s*diag(h)P; its trace ratio equals the vector ratio. Common scalar shifts of h enforce trace-zero tangent without changing w. Supported tangents and faithful baseline regularization justify the limit.
+
+The exposed-face argument is sound: gradient −M_*^−2 is nonzero, so either the reciprocal-state convex hull is lower-dimensional already, or its minimizing exposed face has affine dimension at most d²−1. Caratheodory yields at most d² active states. Column-vectorization uses I_d⊗σ_i, as stated.
+
+## Purification proof of the operator variance inequality
+
+Let σ>0 and ω be density matrices. Put Δ=ω−σ and χ=Tr Δσ^−1Δ. Use column vectorization, v=vec√σ and w=vec(Δσ^−1/2). Then ||v||²=1, <w,v>=0, ||w||²=χ. In particular, √σ(Δσ^−1/2)*=Δ. This orientation matters for noncommuting σ,ω.
+
+For a joint Hermitian observable A on output Q and reference R, insert an auxiliary copy of Q, let Atilde act trivially on it, and define V=v⊗I_R and W=w⊗I_R (with tensor factors reordered consistently). Then
+
+V*Atilde V=Φ_σ(A),
+W*Atilde V=Φ_Δ(A),
+WW* ≤ χ(I−VV*).
+
+The middle expression is Hermitian because Δ and A are Hermitian. Consequently
+
+[Φ_ω(A)−Φ_σ(A)]²
+=V*Atilde WW*Atilde V
+≤χ[Φ_σ(A²)−Φ_σ(A)²].
+
+This is an operator inequality, not merely a scalar variance bound.
+
+## Observable compilation and sufficiency
+
+Let 0<q<1, s=1−q, choose a radius center ω with max_i χ_i≤q/s, and write M_i=Φ_σi(A), B_0=Φ_ω(A), B_i=(M_i−sB_0)/q. These B_i are Hermitian reference observables on the reveal branches, with B_0 on the erase branch.
+
+For every input i, qB_i+sB_0=M_i and
+
+qB_i²+sB_0²=M_i²+(s/q)(M_i−B_0)² ≤ Φ_σi(A²).
+
+The identity holds without commutation assumptions. Thus, for every cq input and untouched reference, the compiled source observable preserves the mean and has no greater second moment. It improves every squared-error risk associated with that target observable. Optimization proves MMSE dominance; the variational SLD formula proves SLD dominance. Signed coefficients here specify observables, not a positive physical channel simulation. q=1 is immediate; q=0 occurs only for a constant prepared-state family and is handled by its common state.
+
+## Necessity with a single coherent flag
+
+Take a faithful vector RLD witness R_i>0, ΣR_i=I_r, Σz_i=0, with E=Σz_i*R_i^−1z_i and target N=Tr B*A^−1B>qE, where A=Σσ_i⊗R_i and B=Σσ_i⊗z_i. Pick a_i>0 with Σa_i=1. On reference C⊕C^r use baseline and tangent
+
+Rtilde_i=diag(δa_i,R_i),
+Htilde_i=[[0,z_i*],[z_i,0]].
+
+Their total tangent is zero. The input SLD metric is exactly 4Σz_i*(R_i+δa_i I)^−1z_i, tending to 4E. Erasure multiplies it by q because the erased tangent vanishes.
+
+The cq output baseline is diag(δσ_a,A), σ_a=Σa_iσ_i, and tangent has lower-left block B. Its SLD lower-left block X solves A X+δXσ_a=2B. Therefore X→2A^−1B and the output metric 2Re Tr B*X tends to 4N. Strict violation persists at finite positive δ.
+
+Normalize all blocks by n=r+δ. For sufficiently small t>0, rho_±=⊕_i(Rtilde_i±tHtilde_i)/n are faithful normalized states with identical reference marginal. Their balanced binary MMSE equals 1−t² g_raw/n. Hence the strict target SLD advantage is an exact finite binary-MMSE advantage as well. The added reference is one dimension, not a doubling. With the active-support bound this gives reference at most min(m,d²).
+
+## Independent exact test
+
+`../checks/check_cq_radius.py` independently constructs σ_i=(I+(3/5)Pauli_i)/2, obtains C=3/11 and ω=[[3/5,(1−i)/10],[(1+i)/10,2/5]], and checks each χ_i=3/8 exactly. For a rational-complex noncommuting 4×4 joint Hermitian observable it verifies the operator variance inequality and threshold compiled second-moment domination by exact 2×2 principal minors. All checks pass. The general proof above does not rely on this numerical/example check.
+
+## Attribution and operational boundary
+
+Complete variance-dominating signed lifts and their observable-estimation interpretation are established machinery, credited to Zhu–Wang and Hirche in PRIOR_ART.md. Quantum left radii, radius minimax, and arithmetic–harmonic objectives also have established precedents. The separate identification with ordinary, unsmoothed complete order is proved above, rather than inferred from a general Hermitian-smoothed converse. No historical-priority claim is made.
+
+The input encodings are separable classical-quantum states. The compiler requires joint access to the output/reference observable or its source-side compiled observable. It is not a physical postprocessing simulation of arbitrary output distributions and does not establish a capacity or hardware-performance claim.

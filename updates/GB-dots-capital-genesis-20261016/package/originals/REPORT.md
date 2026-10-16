@@ -1,0 +1,87 @@
+# Downloads/Dots input identity and provenance audit
+
+- Source: `/Users/harjas/Downloads/Dots`
+- Hashing interval: 2026-10-16T02:44:56+00:00 to 2026-10-16T02:44:59+00:00 UTC
+- Frozen inventory: 1,272 regular files, 193 nested directories, 141,827,662 bytes
+- ZIP archives: 33; archive-member records: 1473
+- Canonical manifest SHA-256: `171273615b4e5fd6a5f03031dbd5a56e94780292ad02ffae48c7610f33a00aa0`
+
+All original regular files were SHA-256 hashed by streaming. Archive members were streamed for SHA-256 and ZIP CRC checks; no archive was extracted and no source script was executed. ZIP member paths were checked without writing them to disk. Directory identity means the same relative regular-file paths, sizes, and SHA-256 values; filesystem metadata, empty-directory differences, and symlink targets are outside that comparison.
+
+## Identity findings
+
+- 8 groups of ZIP path aliases are byte-identical. Their stored member trees are identical too.
+- 6 top-level extracted packet directory alias groups match exactly. There are 44 matching directory groups total when nested subdirectories are included.
+- 298 groups of individual files share identical size and SHA-256 across the input tree.
+- 50 ZIP-to-extracted-directory comparisons are exact. No same-name candidate pair differed.
+- 2 nested ZIPs have no separately extracted directory match.
+
+## Representative extracted packet directories
+
+Duplicate groups use a suffix-free path when available; all aliases are retained in the frozen manifest.
+
+- `Astra_qubit_reference_Bell_addendum_2026-10-15`; aliases: `Astra_qubit_reference_Bell_addendum_2026-10-15 (1)`.
+- `autonomous_correction_decision_2026-10-15`; aliases: `autonomous_correction_decision_2026-10-15 2`.
+- `finite_rate_joint_syndrome_2026-10-15`; aliases: `finite_rate_joint_syndrome_2026-10-15 2`.
+- `measured_randomizer_benchmark_2026-10-15`; aliases: `measured_randomizer_benchmark_2026-10-15 2`.
+- `measurement_memory_handoff_2026-10-15`; aliases: `measurement_memory_handoff_2026-10-15 2`.
+- `randomizer_control_cost_2026-10-15`; aliases: `randomizer_control_cost_2026-10-15 2`, `randomizer_control_cost_2026-10-15 3`.
+- `Astra_measured_POVM_research_packet_2026-10-15`; no identical top-level directory alias detected.
+- `Astra_quantum_reference_resource_2026-10-15 (1)`; no identical top-level directory alias detected.
+- `Astra_reverse_radius_erasure_2026-10-15`; no identical top-level directory alias detected.
+- `STM_incremental_information_pilot_2026-10-16`; no identical top-level directory alias detected.
+- `astra_conformal_compatibility_20261016`; no identical top-level directory alias detected.
+- `astra_kinetic_investigation`; no identical top-level directory alias detected.
+- `astra_physical_evidence`; no identical top-level directory alias detected.
+- `coherent_memory_packet_2026-10-15`; no identical top-level directory alias detected.
+- `finite_duration_syndrome_addendum_2026-10-15`; no identical top-level directory alias detected.
+- `kinetic_obstruction_packet_v2`; no identical top-level directory alias detected.
+- `matched_memory_benchmark_packet_2026-10-15`; no identical top-level directory alias detected.
+- `overlapping_weak_pulses_2026-10-15`; no identical top-level directory alias detected.
+- `qualified_correction_core_addendum_2026-10-15`; no identical top-level directory alias detected.
+- `willow_empirical_evaluator_2026-10-15`; no identical top-level directory alias detected.
+
+## ZIP packet representatives
+
+Each row groups archives with the same member tree after removing a single common wrapper directory when present. Exact extracted directory paths are listed when found.
+- `astra_conformal_compatibility_20261016.zip`; extracted: `astra_conformal_compatibility_20261016`.
+- `astra_conformal_compatibility_20261016/inputs/astra_positive_core_calibration_20261016.zip`; no exact extracted directory found.
+- `astra_conformal_compatibility_20261016/inputs/astra_sharp_compatible_frontier_20261015.zip`; no exact extracted directory found.
+- `astra_kinetic_investigation.zip`; extracted: `astra_kinetic_investigation`.
+- `Astra_measured_POVM_research_packet_2026-10-15.zip`; extracted: `Astra_measured_POVM_research_packet_2026-10-15`.
+- `astra_physical_evidence_checkpoint.zip`; extracted: `astra_physical_evidence`.
+- `Astra_quantum_reference_resource_2026-10-15.zip` aliases: `Astra_quantum_reference_resource_2026-10-15 (1).zip`; extracted: `Astra_quantum_reference_resource_2026-10-15 (1)`.
+- `Astra_qubit_reference_Bell_addendum_2026-10-15.zip` aliases: `Astra_qubit_reference_Bell_addendum_2026-10-15 (1).zip`; extracted: `Astra_qubit_reference_Bell_addendum_2026-10-15`, `Astra_qubit_reference_Bell_addendum_2026-10-15 (1)`.
+- `Astra_reverse_radius_erasure_2026-10-15.zip`; extracted: `Astra_reverse_radius_erasure_2026-10-15`.
+- `autonomous_correction_decision_2026-10-15.zip` aliases: `autonomous_correction_decision_2026-10-15 (1).zip`; extracted: `autonomous_correction_decision_2026-10-15`, `autonomous_correction_decision_2026-10-15 2`.
+- `autonomous_correction_decision_2026-10-15/autonomous_correction_evaluator/qec_data.zip` aliases: `autonomous_correction_decision_2026-10-15 2/autonomous_correction_evaluator/qec_data.zip`; extracted: `autonomous_correction_decision_2026-10-15 2/autonomous_correction_evaluator/QEC data`, `autonomous_correction_decision_2026-10-15/autonomous_correction_evaluator/QEC data`.
+- `coherent_memory_packet_2026-10-15.zip`; extracted: `coherent_memory_packet_2026-10-15`.
+- `finite_duration_syndrome_addendum_2026-10-15.zip`; extracted: `finite_duration_syndrome_addendum_2026-10-15`.
+- `finite_rate_joint_syndrome_2026-10-15.zip` aliases: `finite_rate_joint_syndrome_2026-10-15 (1).zip`; extracted: `finite_rate_joint_syndrome_2026-10-15`, `finite_rate_joint_syndrome_2026-10-15 2`.
+- `kinetic_static_product_obstruction_v2_2026-10-15.zip`; extracted: `kinetic_obstruction_packet_v2`.
+- `matched_memory_benchmark_packet_2026-10-15.zip`; extracted: `matched_memory_benchmark_packet_2026-10-15`.
+- `measured_randomizer_benchmark_2026-10-15.zip` aliases: `measured_randomizer_benchmark_2026-10-15 (1).zip`; extracted: `measured_randomizer_benchmark_2026-10-15`, `measured_randomizer_benchmark_2026-10-15 2`.
+- `measurement_memory_handoff_2026-10-15.zip` aliases: `measurement_memory_handoff_2026-10-15 (1).zip`, `measurement_memory_handoff_2026-10-15 (2).zip`; extracted: `measurement_memory_handoff_2026-10-15`, `measurement_memory_handoff_2026-10-15 2`.
+- `overlapping_weak_pulses_2026-10-15.zip`; extracted: `overlapping_weak_pulses_2026-10-15`.
+- `qualified_correction_core_addendum_2026-10-15.zip`; extracted: `qualified_correction_core_addendum_2026-10-15`.
+- `randomizer_control_cost_2026-10-15.zip` aliases: `randomizer_control_cost_2026-10-15 (1).zip`, `randomizer_control_cost_2026-10-15 (2).zip`; extracted: `randomizer_control_cost_2026-10-15`, `randomizer_control_cost_2026-10-15 2`, `randomizer_control_cost_2026-10-15 3`.
+- `STM_incremental_information_pilot_2026-10-16.zip`; extracted: `STM_incremental_information_pilot_2026-10-16`.
+- `willow_empirical_evaluator_2026-10-15.zip`; extracted: `willow_empirical_evaluator_2026-10-15`.
+
+## Earlier exact copies in GA and FZ
+
+Only files in the two named update roots with a basename present in Downloads/Dots were hashed. 153 candidate worktree files were checked; 96 worktree files have exact size and SHA-256 matches to supplied files (54 in GA and 42 in FZ).
+The exact path-to-source relations are in `PACKET_IDENTITY.json`. A further 57 same-basename candidates had no exact hash match; these are recorded as name-only candidates and are not treated as copies.
+
+## Discrepancies and exceptions
+
+- ZIP read errors: 0; unsafe member paths: 0; duplicate normalized member paths: 0.
+- Unstable file reads: 0.
+- Two nested archives under `astra_conformal_compatibility_20261016/inputs/` lack a separately extracted directory counterpart; exact paths are in `PACKET_REPRESENTATIVES.json`.
+
+## Machine files
+
+- `FROZEN_MANIFEST.json`: original relative paths, byte sizes, SHA-256 values, and canonical manifest digest.
+- `PACKET_REPRESENTATIVES.json`: unique packet directory/archive representatives and aliases, plus older exact-copy relations.
+- `PACKET_IDENTITY.json`: full file, directory, ZIP, member, discrepancy, and comparison records.
+- `ZIP_MEMBERS.jsonl`: per-member stream SHA-256 and path safety/read outcomes.

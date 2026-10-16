@@ -1,0 +1,41 @@
+# STM incremental-information pilot: compact result and verification packet
+
+## Result
+
+The frozen pilot returned **NO-GO** on its single held-out evaluation: adding full current features increased macro-episode endpoint error from 0.217981 nm (action/history plus radial d) to 0.223225 nm. The requested-endpoint baseline was best at 0.149674 nm. All six predeclared screening gates failed. Supplementary balanced accuracy improved from 0.543434 to 0.576768; it cannot rescue the primary endpoint.
+
+Start with `stm_prediction_run/RESULT.md` and the dated `stm_prediction_firewall_audit/measurement_interface/REPORT.md` addendum. In nine diagnostic scans, large forward/back disagreement was mainly a systematic horizontal registration shift, not calibrated random endpoint uncertainty. A constant common midpoint bias cancels in displacement and reset-relative goals; time-varying midpoint bias remains unidentified. The documented dummy template makes relative coordinates no justified repair. The frozen result and targets are unchanged. All numbers concern recorded image-localization labels on the compatible serialized-new-image subset. Interpretation immediately before physical scans remains conditional on documented logger timing/freshness. No scan-savings, physical-safety, deployment or causal claim follows.
+
+The test set has been used and is permanently burned. This packet verifies arithmetic on the **same released records**. It is not a new experiment, new held-out evaluation, independent dataset replication, model selection opportunity or permission to retune.
+
+## Portable verification
+
+Requires Python 3 and NumPy. The original environment used Python 3.12, NumPy 2.3.5, SciPy 1.17.0 and scikit-learn 1.8.0; this arithmetic verifier uses no SciPy/scikit-learn, production evaluator, predictor, fitted model, author program or hardware interface. No software is installed by the packet.
+
+From any working directory, with this packet extracted:
+
+```sh
+python /path/to/STM_incremental_information_pilot_2026-10-16/verify_portable.py --output /tmp/stm_same_record_verification.json
+```
+
+Choose a new output filename outside the packet. Verification refuses overwriting output. The original absolute-path frozen locks are unchanged: explicit relative-path mappings in `portable_manifest.json` relocate included dependencies. Each included artifact's byte count and SHA256 are checked; omitted model/raw bytes are explicitly identified as not reverified by this packet. The root-reviewed lock, predictions, original result and label-digest bindings are checked before arithmetic. Counts, all prescribed endpoint metrics, episode pairs, fixed chronology blocks, support/classification, residual envelopes and NO-GO conditions are independently recomputed. The production entry points are preserved for audit only; do not run them.
+
+## Contents and intentional omissions
+
+- `stm_prediction_run/`: unchanged predictions, canonical result, released labels, all sanitized input/routing/label tables, fit lock/schema, stage locks/markers, audit/acquisition provenance, reports, original code and synthetic test records
+- `stm_prediction_protocol/`: original preregistration, v1.1 amendment and authoritative split manifest
+- `stm_prediction_firewall_audit/`: independent pre-access reviews, original independent arithmetic program, check JSON/log and audit report
+- `stm_reader_audit/`: hardened inert parser and security test/audit evidence
+- `stm_control_logs/`: repository provenance, selected static source text, license, inventory and qualification/diagnostic summaries
+- `stm_current_inference_prior_art/`: prior-art report
+- Root `verify_portable.py` and `portable_manifest.json`: portable same-record arithmetic and explicit path/hash/omission manifest
+
+The 210,440,337-byte selected raw episode set, burned raw diagnostic arrays, full paper HTML and approximately 41 MB of numeric fitted-tree snapshots are intentionally omitted. Their hashes/provenance are retained; their bytes cannot be independently reverified from this compact packet. All eleven frozen prediction arrays are included, so fitted trees are unnecessary for metric arithmetic. No missing artifact is silently treated as verified.
+
+Original files, including reports whose wording is later qualified, are preserved byte-for-byte. Consult any separately dated provenance-interpretation addendum included with this packet before interpreting forward/back disagreement as noise or random uncertainty. Numerical reproducibility does not establish historical physical freshness, scan-direction alignment or hardware calibration.
+
+## Integrity and scope
+
+Validate the ZIP SHA256 supplied alongside this packet before trusting its contents. The portable manifest covers every bundled regular file except itself (to avoid a self-hash cycle). This is provenance checking, not a digital signature or external time-stamped registration. No raw pickle/NPY object loading occurs. The independent arithmetic audit found 3,910 matching checks on the original full workspace; portable checking reports its own count and omissions transparently.
+
+For a larger independently held-out study, a new plan and genuinely independent data are required. No expansion, acquisition, refit or physical action is authorized by this packet.

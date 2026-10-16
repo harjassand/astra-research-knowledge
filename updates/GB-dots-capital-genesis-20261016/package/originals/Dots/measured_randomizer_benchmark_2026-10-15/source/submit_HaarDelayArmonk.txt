@@ -1,0 +1,1114 @@
+# Generating sequences on the fly on submission
+
+import numpy as np
+import datetime
+import time
+import edd.experiments as edde
+from edd.backend import IBMQBackend
+from edd.circuit import IBMQDdCircuit
+from edd.pulse import IBMQDdSchedule
+from edd.data import IBMQData
+import edd.workflow as wf
+
+from matplotlib import rc
+rc("text", usetex=False)
+
+# Submission Settings
+
+basis = "g_basis"
+# qubits on which to encode and to apply DD on
+qubit = 0
+encoding_qubits = qubit
+dd_qubits = qubit
+
+#sched_settings = [offset, sym, delay, d_label, basis, encoding_qubits, dd_qubits]
+
+backend_name = 'armonk'
+# deprecated way to load in backend when my account info was hard-coded
+#backend = IBMQBackend(f'ibmq_{backend_name}', "Nic")
+# use this with your own info...
+backend = IBMQBackend(name, hub, group, project, token) 
+max_time = 5 # in micro seconds
+
+def ns_time_to_dt(phys_time, dt):
+    '''converts time from physical (ns) to dt normalized time'''
+    return (phys_time * 1e-9) / dt
+
+backend.backend.remaining_jobs_count()
+
+def add_seq(sched, seq, qubit, delay, sym, reps):
+    if "uddx" in seq:
+        seq_method = "add_uddx"
+        ord_n = int(seq[4:])
+        getattr(sched, seq_method)(ord_n, qubit, reps, delay, sym)
+    elif "qdd" in seq:
+        seq_method = "add_qdd"
+        _, ord_n, ord_m = seq.split("_")
+        ord_n = int(ord_n)
+        ord_m = int(ord_m)
+        getattr(sched, seq_method)(ord_n, ord_m, qubit, reps, delay, sym)
+    elif "ur" in seq and "x" not in seq and "y" not in seq:
+        seq_method = "add_ur"
+        ord_n = int(seq[2:])
+        getattr(sched, seq_method)(ord_n, qubit, reps, delay, sym)
+    else:
+        getattr(sched, f"add_{seq}")(qubit, reps, delay, sym)
+        
+    return sched
+
+def find_largest_delays(seq, sched):
+    """
+    Find the largest asymmetric and symmetric delays
+    for a given sequence. That is, the delay
+    that can only fit a single repetition of
+    the sequence.
+    """
+    # first find d_asym
+    d_asym = int(ns_time_to_dt(max_time * 1000, sched.dt))
+    # confine d_asym to a reasonably sized interval
+    lower = 0
+    upper = d_asym
+    found_interval = False
+    while found_interval is False:
+        sched.reset()
+        add_seq(sched, seq, qubit, d_asym, False, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            upper = d_asym
+            d_asym = int(d_asym / 2)
+        else:
+            found_interval = True
+            lower = d_asym
+    # find smallest d_asym that works
+    for d_asym in range(lower, upper + 1):
+        sched.reset()
+        add_seq(sched, seq, qubit, d_asym, False, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            break
+    d_asym -= 1
+    
+    # now find d_sym using same methodology 
+    d_sym = int(ns_time_to_dt(max_time * 1000, sched.dt))
+    # confine d_sym to a reasonably sized interval
+    lower = 0
+    upper = d_sym
+    found_interval = False
+    while found_interval is False:
+        sched.reset()
+        add_seq(sched, seq, qubit, d_sym, True, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            upper = d_sym
+            d_sym = int(d_sym / 2)
+        else:
+            found_interval = True
+            lower = d_sym
+    # find smallest d_sym that works
+    for d_sym in range(lower, upper + 1):
+        sched.reset()
+        add_seq(sched, seq, qubit, d_sym, True, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            break
+    d_sym -= 1
+    
+            
+    return d_asym, d_sym
+
+current_seqs = ['qdd_1_3']
+max_asym_delay = {}
+max_sym_delay = {}
+sched = IBMQDdSchedule(backend, "g_basis")
+for seq in current_seqs:
+    if seq != "free":
+        d_asym, d_sym = find_largest_delays(seq, sched)
+        max_asym_delay[seq] = d_asym
+        max_sym_delay[seq] = d_sym
+    else:
+        max_asym_delay["free"] = 0
+        max_sym_delay["free"] = 0
+
+max_asym_delay
+
+max_sym_delay
+
+max_asym_delay = {'ur20': 847, 'purex': 10930, 'xy4': 5305, 'qdd_1_3': 1719}
+max_sym_delay = {'ur20': 402, 'purex': 5465, 'xy4': 2652, 'qdd_1_3': 859}
+
+sched = IBMQDdSchedule(backend, "g_basis")
+list_of_seqs = ['qdd_1_3']
+delay = 859
+sym = True
+satisfies_time = []
+for seq in list_of_seqs:
+    sched.reset()
+    add_seq(sched, seq, qubit, delay, sym, 1)
+    T = sched.get_phys_time() / 1000
+    print(T)
+    if T <= max_time:
+        satisfies_time.append(seq)
+        
+satisfies_time
+
+# manual add 75 micro second delays since it takes too long
+max_asym_delay = {'ur20': 17426, 'purex': 168430, 'xy4': 84055, 'free': 0, 'qdd_1_7': 18991}
+max_sym_delay = {'ur20': 8277, 'purex': 84215, 'xy4': 42027, 'free': 0, 'qdd_1_7': 9495}
+
+## Generate list of best sequences below maximum allotted time
+
+def add_seq(sched, seq, qubit, delay, sym, reps):
+    if "uddx" in seq:
+        seq_method = "add_uddx"
+        ord_n = int(seq[4:])
+        getattr(sched, seq_method)(ord_n, qubit, reps, delay, sym)
+    elif "qdd" in seq:
+        seq_method = "add_qdd"
+        _, ord_n, ord_m = seq.split("_")
+        ord_n = int(ord_n)
+        ord_m = int(ord_m)
+        getattr(sched, seq_method)(ord_n, ord_m, qubit, reps, delay, sym)
+    elif "ur" in seq and "x" not in seq and "y" not in seq:
+        seq_method = "add_ur"
+        ord_n = int(seq[2:])
+        getattr(sched, seq_method)(ord_n, qubit, reps, delay, sym)
+    else:
+        getattr(sched, f"add_{seq}")(qubit, reps, delay, sym)
+        
+    return sched
+
+sched = IBMQDdSchedule(backend, "g_basis")
+list_of_seqs = []
+satisfies_time = []
+for seq in list_of_seqs:
+    sched.reset()
+    add_seq(sched, seq, qubit, 0, True, 1)
+    T = sched.get_phys_time() / 1000
+    if T <= max_time:
+        satisfies_time.append(seq)
+        
+satisfies_time
+
+list_of_short_seqs = ["ur20", "qdd_1_3", "purex", "xy4"]
+len(list_of_short_seqs)
+
+## Compute the largest allowed delay for each sequence (i.e. where only 1 repetition fits)
+
+def find_largest_delays(seq, sched):
+    """
+    Find the largest asymmetric and symmetric delays
+    for a given sequence. That is, the delay
+    that can only fit a single repetition of
+    the sequence.
+    """
+    # first find d_asym
+    d_asym = int(ns_time_to_dt(max_time * 1000, sched.dt))
+    # confine d_asym to a reasonably sized interval
+    lower = 0
+    upper = d_asym
+    found_interval = False
+    while found_interval is False:
+        sched.reset()
+        add_seq(sched, seq, qubit, d_asym, False, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            upper = d_asym
+            d_asym = int(d_asym / 2)
+        else:
+            found_interval = True
+            lower = d_asym
+    # find smallest d_asym that works
+    for d_asym in range(lower, upper + 1):
+        sched.reset()
+        add_seq(sched, seq, qubit, d_asym, False, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            break
+    d_asym -= 1
+    
+    # now find d_sym using same methodology 
+    d_sym = int(ns_time_to_dt(max_time * 1000, sched.dt))
+    # confine d_sym to a reasonably sized interval
+    lower = 0
+    upper = d_sym
+    found_interval = False
+    while found_interval is False:
+        sched.reset()
+        add_seq(sched, seq, qubit, d_sym, True, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            upper = d_sym
+            d_sym = int(d_sym / 2)
+        else:
+            found_interval = True
+            lower = d_sym
+    # find smallest d_sym that works
+    for d_sym in range(lower, upper + 1):
+        sched.reset()
+        add_seq(sched, seq, qubit, d_sym, True, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            break
+    d_sym -= 1
+    
+            
+    return d_asym, d_sym
+
+list_of_short_seqs = ["ur20", "qdd_1_3", "purex", "xy4"]
+
+max_asym_delay = {}
+max_sym_delay = {}
+sched = IBMQDdSchedule(backend, "g_basis")
+for seq in list_of_short_seqs:
+    d_asym, d_sym = find_largest_delays(seq, sched)
+    max_asym_delay[seq] = d_asym
+    max_sym_delay[seq] = d_sym
+    
+asym_delays = {}
+sym_delays = {}
+num_delays = 8
+
+for seq in list_of_short_seqs:
+    max_dasym = max_asym_delay[seq]
+    delays = [int(x) for x in np.linspace(0, max_dasym, num_delays)]
+    asym_delays[seq] = delays
+    
+    max_dsym = max_sym_delay[seq]
+    delays = [int(x) for x in np.linspace(0, max_dsym, num_delays)]
+    sym_delays[seq] = delays
+
+max_asym_delay
+
+max_sym_delay
+
+# Load in Haar random U3 parameters and choose how many states to test
+
+# load in Haar random states and choose how many to use
+haar_u3_params = np.load("../../u3_list.npy")
+N = 25
+
+## Compute delay list for each sequence/ symmetry
+
+asym_delays = {}
+sym_delays = {}
+num_delays = 8
+
+for seq in list_of_short_seqs:
+    max_dasym = max_asym_delay[seq]
+    delays = [int(x) for x in np.linspace(0, max_dasym, num_delays)]
+    asym_delays[seq] = delays
+    
+    max_dsym = max_sym_delay[seq]
+    delays = [int(x) for x in np.linspace(0, max_dsym, num_delays)]
+    sym_delays[seq] = delays
+
+# Functions to Create all the schedules to submit
+
+def generate_schedules(seq, backend, basis, delays, qubit, sym, nHaar):
+    """
+    Generates schedules for [seq] that all last for max_time
+    but have different pulse delays.
+    """
+    sched = IBMQDdSchedule(backend, basis)
+    sched_list = []
+    for d in delays:
+        sched.reset()
+        add_seq(sched, seq, qubit, d, sym, 1)
+        T = sched.get_phys_time() / 1000
+        max_reps = int(np.floor(max_time / T))
+        T_diff = int(np.ceil(ns_time_to_dt((max_time - max_reps * T) * 1000, sched.dt)))
+
+        for n in range(nHaar):
+            u3_params = haar_u3_params[n]
+            name = f"seq_{seq}_delay_{d}_state_{n}"
+            seq_sched = IBMQDdSchedule(backend, basis, name=name)
+            seq_sched.add_u3(qubit, *u3_params[0])
+            add_seq(seq_sched, seq, qubit, d, sym, max_reps)
+            sched.add_pause(qubit, T_diff)
+            seq_sched.add_u3(qubit, *u3_params[1])
+            seq_sched.diagnose_acquire_constraint(qubit)
+            seq_sched.add_measurement(qubit, 0)
+            sched_list.append(seq_sched)
+
+    return sched_list
+
+# Submit the jobs and save as dictionary
+
+now = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+backend_fname = backend_name + "_" + now
+backend.save_backend_props(backend_fname + "_haarJob_properties.txt")
+
+asym_job_dict = {}
+asym_failures = []
+
+sym_job_dict = {}
+sym_failures = []
+
+for seq in list_of_short_seqs:
+    if seq == "xy4":
+        basis = "c_basis"
+    else:
+        basis = "g_basis"
+    print(f"Trying to submit {seq}")
+    # try asymmetric job 1
+    try:
+        sym = False
+        delays = asym_delays[seq][0:4]
+        scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+        job_id = f"sym_{sym}_seq_{seq}_job_1"
+        job = backend.submit_job(scheds, job_id, num_shots=8192)
+        asym_job_dict[job_id] = job
+        print("Asym1 Success")
+    except:
+        asym_failures.append(seq)
+        print("Asym1 Failure")
+    # try asymmetric job 2
+    try:
+        sym = False
+        delays = asym_delays[seq][4:8]
+        scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+        job_id = f"sym_{sym}_seq_{seq}_job_2"
+        job = backend.submit_job(scheds, job_id, num_shots=8192)
+        asym_job_dict[job_id] = job
+        print("Asym2 Success")
+    except:
+        asym_failures.append(seq)
+        print("Asym2 Failure")
+    # try symmetric job 1
+    try:
+        sym = True
+        delays = sym_delays[seq][0:4]
+        scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+        job_id = f"sym_{sym}_seq_{seq}_job_1"
+        job = backend.submit_job(scheds, job_id, num_shots=8192)
+        sym_job_dict[job_id] = job
+        print("Sym1 Success")
+    except:
+        sym_failures.append(seq)
+        print("Sym1 Failure")
+    # try symmetric job 2
+    try:
+        sym = True
+        delays = sym_delays[seq][4:8]
+        scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+        job_id = f"sym_{sym}_seq_{seq}_job_2"
+        job = backend.submit_job(scheds, job_id, num_shots=8192)
+        sym_job_dict[job_id] = job
+        print("Sym2 Success")
+    except:
+        sym_failures.append(seq)
+        print("Sym2 Failure")
+
+### Wrangle and Save asymmetric results
+
+# Retrieve Jobs and Wrangle Data
+
+### Wrangle and Save symmetric results
+
+asym_results = {}
+asym_not_finished = []
+for seq in list_of_short_seqs:
+    try:
+        key = f"sym_False_seq_{seq}_job_1"
+        result = asym_job_dict[key].result()
+        asym_results[f"{seq}_job_1"] = result
+        key = f"sym_False_seq_{seq}_job_2"
+        result = asym_job_dict[key].result()
+        asym_results[f"{seq}_job_2"] = result
+    except:
+        asym_not_finished.append(seq)
+        
+# save the raw results
+for seq, result in asym_results.items():
+    data = IBMQData(result)
+    fname = backend_fname + "_" + seq + "_asym_rawData"
+    data.save_raw_data(fname)
+
+sym_results = {}
+sym_not_finished = []
+for seq in list_of_short_seqs:
+    try:
+        key = f"sym_True_seq_{seq}_job_1"
+        result = sym_job_dict[key].result()
+        sym_results[f"{seq}_job_1"] = result
+        key = f"sym_True_seq_{seq}_job_2"
+        result = sym_job_dict[key].result()
+        sym_results[f"{seq}_job_2"] = result
+    except:
+        sym_not_finished.append(seq)
+        
+# save the raw results
+for key, result in sym_results.items():
+    data = IBMQData(result)
+    fname = backend_fname + "_" + key + "_sym_rawData"
+    data.save_raw_data(fname)
+
+## Put in a loop so don't have to check continuously
+
+current_seqs = ['free', 'purex']
+
+for j in range(1):
+    print(f"Loop count: {j}")
+    now = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    backend_fname = backend_name + "_" + now
+    backend.save_backend_props(backend_fname + "_haarJob_properties.txt")
+
+    asym_job_dict = {}
+    asym_failures = []
+    sym_job_dict = {}
+    sym_failures = []
+    for seq in list_of_short_seqs:
+        if seq == "xy4":
+            basis = "c_basis"
+        else:
+            basis = "g_basis"
+        print(f"Trying to submit {seq}")
+        # try asymmetric job 1
+        try:
+            sym = False
+            delays = asym_delays[seq][0:4]
+            scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+            job_id = f"sym_{sym}_seq_{seq}_job_1"
+            job = backend.submit_job(scheds, job_id, num_shots=8192)
+            asym_job_dict[job_id] = job
+            print("Asym1 Success")
+        except:
+            asym_failures.append(seq)
+            print("Asym1 Failure")
+        # try asymmetric job 2
+        try:
+            sym = False
+            delays = asym_delays[seq][4:8]
+            scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+            job_id = f"sym_{sym}_seq_{seq}_job_2"
+            job = backend.submit_job(scheds, job_id, num_shots=8192)
+            asym_job_dict[job_id] = job
+            print("Asym2 Success")
+        except:
+            asym_failures.append(seq)
+            print("Asym2 Failure")
+        # try symmetric job 1
+        try:
+            sym = True
+            delays = sym_delays[seq][0:4]
+            scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+            job_id = f"sym_{sym}_seq_{seq}_job_1"
+            job = backend.submit_job(scheds, job_id, num_shots=8192)
+            sym_job_dict[job_id] = job
+            print("Sym1 Success")
+        except:
+            sym_failures.append(seq)
+            print("Sym1 Failure")
+        # try symmetric job 2
+        try:
+            sym = True
+            delays = sym_delays[seq][4:8]
+            scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+            job_id = f"sym_{sym}_seq_{seq}_job_2"
+            job = backend.submit_job(scheds, job_id, num_shots=8192)
+            sym_job_dict[job_id] = job
+            print("Sym2 Success")
+        except:
+            sym_failures.append(seq)
+            print("Sym2 Failure")
+            
+    time.sleep(60 * 30)
+            
+    retrieved = False
+    while retrieved is False:
+        asym_results = {}
+        asym_not_finished = []
+        for seq in current_seqs:
+            try:
+                key = f"sym_False_seq_{seq}_job_1"
+                result = asym_job_dict[key].result()
+                asym_results[f"{seq}_job_1"] = result
+                key = f"sym_False_seq_{seq}_job_2"
+                result = asym_job_dict[key].result()
+                asym_results[f"{seq}_job_2"] = result
+            except:
+                asym_not_finished.append(seq)
+                
+        if asym_not_finished == []:
+            retrieved = True
+        else:
+            time.sleep(60 * 30)
+            
+    # save the raw results
+    for seq, result in asym_results.items():
+        data = IBMQData(result)
+        fname = backend_fname + "_" + seq + "_asym_rawData"
+        data.save_raw_data(fname)
+        
+    retrieved = False
+    while retrieved is False:
+        sym_results = {}
+        sym_not_finished = []
+        try:
+        key = f"sym_True_seq_{seq}_job_1"
+        result = sym_job_dict[key].result()
+        sym_results[f"{seq}_job_1"] = result
+        key = f"sym_True_seq_{seq}_job_2"
+        result = sym_job_dict[key].result()
+        sym_results[f"{seq}_job_2"] = result
+    except:
+        sym_not_finished.append(seq)
+                
+        if sym_not_finished == []:
+            retrieved = True
+        else:
+            time.sleep(60 * 30)
+            
+    # save the raw results
+    for seq, result in sym_results.items():
+        data = IBMQData(result)
+        fname = backend_fname + "_" + seq + "_sym_rawData"
+        data.save_raw_data(fname)
+
+## A self contained way to change desired sequences and duration then run
+
+def find_largest_delays(seq, sched):
+    """
+    Find the largest asymmetric and symmetric delays
+    for a given sequence. That is, the delay
+    that can only fit a single repetition of
+    the sequence.
+    """
+    # first find d_asym
+    d_asym = int(ns_time_to_dt(max_time * 1000, sched.dt))
+    # confine d_asym to a reasonably sized interval
+    lower = 0
+    upper = d_asym
+    found_interval = False
+    while found_interval is False:
+        sched.reset()
+        add_seq(sched, seq, qubit, d_asym, False, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            upper = d_asym
+            d_asym = int(d_asym / 2)
+        else:
+            found_interval = True
+            lower = d_asym
+    # find smallest d_asym that works
+    for d_asym in range(lower, upper + 1):
+        sched.reset()
+        add_seq(sched, seq, qubit, d_asym, False, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            break
+    d_asym -= 1
+    
+    # now find d_sym using same methodology 
+    d_sym = int(ns_time_to_dt(max_time * 1000, sched.dt))
+    # confine d_sym to a reasonably sized interval
+    lower = 0
+    upper = d_sym
+    found_interval = False
+    while found_interval is False:
+        sched.reset()
+        add_seq(sched, seq, qubit, d_sym, True, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            upper = d_sym
+            d_sym = int(d_sym / 2)
+        else:
+            found_interval = True
+            lower = d_sym
+    # find smallest d_sym that works
+    for d_sym in range(lower, upper + 1):
+        sched.reset()
+        add_seq(sched, seq, qubit, d_sym, True, 1)
+        T = sched.get_phys_time() / 1000
+        if T > max_time:
+            break
+    d_sym -= 1
+    
+            
+    return d_asym, d_sym
+
+current_seqs = []
+max_asym_delay = {}
+max_sym_delay = {}
+sched = IBMQDdSchedule(backend, "g_basis")
+for seq in current_seqs:
+    if seq != "free":
+        d_asym, d_sym = find_largest_delays(seq, sched)
+        max_asym_delay[seq] = d_asym
+        max_sym_delay[seq] = d_sym
+    else:
+        max_asym_delay["free"] = 0
+        max_sym_delay["free"] = 0
+
+def generate_schedules(seq, backend, basis, delays, qubit, sym, nHaar):
+    """
+    Generates schedules for [seq] that all last for max_time
+    but have different pulse delays.
+    """
+    sched = IBMQDdSchedule(backend, basis)
+    sched_list = []
+    for d in delays:
+        sched.reset()
+        add_seq(sched, seq, qubit, d, sym, 1)
+        T = sched.get_phys_time() / 1000
+        max_reps = int(np.floor(max_time / T))
+        T_diff = int(np.ceil(ns_time_to_dt((max_time - max_reps * T) * 1000, sched.dt)))
+
+        for n in range(nHaar):
+            u3_params = haar_u3_params[n]
+            name = f"seq_{seq}_delay_{d}_state_{n}"
+            seq_sched = IBMQDdSchedule(backend, basis, name=name)
+            seq_sched.add_u3(qubit, *u3_params[0])
+            add_seq(seq_sched, seq, qubit, d, sym, max_reps)
+            sched.add_pause(qubit, T_diff)
+            seq_sched.add_u3(qubit, *u3_params[1])
+            seq_sched.diagnose_acquire_constraint(qubit)
+            seq_sched.add_measurement(qubit, 0)
+            sched_list.append(seq_sched)
+
+    return sched_list
+
+# load in backend again
+backend = IBMQBackend(f'ibmq_{backend_name}', "Vinay")
+# set max time in micro-seconds
+max_time = 5
+time_label = "short"
+# which sequences to explore
+current_seqs = ["ur20", "qdd_1_3", "purex", "xy4"]
+# load in Haar random states and choose how many to use
+haar_u3_params = np.load("../../u3_list.npy")
+N = 25
+# number of delay points
+num_delays = 8
+
+if max_time == 75:
+    # dictionary of max delays for 75 \mu s since takes to long to generate by looking
+    max_asym_delay = {'ur20': 17426, 'purex': 168430, 'xy4': 84055, 'free': 0, 'qdd_1_7': 18991}
+    max_sym_delay = {'ur20': 8277, 'purex': 84215, 'xy4': 42027, 'free': 0, 'qdd_1_7': 9495}
+else:
+    max_asym_delay = {'ur20': 847, 'purex': 10930, 'xy4': 5305, 'qdd_1_3': 1719}
+    max_sym_delay = {'ur20': 402, 'purex': 5465, 'xy4': 2652, 'qdd_1_3': 859}
+    
+asym_delays = {}
+sym_delays = {}
+for seq in current_seqs:
+    if seq != "free":
+        max_dasym = max_asym_delay[seq]
+        delays = [int(x) for x in np.linspace(0, max_dasym, num_delays)]
+        asym_delays[seq] = delays
+        max_dsym = max_sym_delay[seq]
+        delays = [int(x) for x in np.linspace(0, max_dsym, num_delays)]
+        sym_delays[seq] = delays
+    else:
+        asym_delays["free"] = [0]
+        sym_delays["free"] = [0]
+        
+        
+for j in range(1):
+    print(f"Loop count: {j}")
+    # load in backend and get calibration data
+    backend = IBMQBackend(f'ibmq_{backend_name}', "Vinay")
+    now = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    backend_fname = backend_name + "_" + now
+    backend.save_backend_props(backend_fname + "_haarJob_properties.txt")
+
+    # submit jobs
+    asym_job_dict = {}
+    asym_failures = []
+    sym_job_dict = {}
+    sym_failures = []
+    for seq in current_seqs:
+        if seq == "xy4":
+            basis = "c_basis"
+        else:
+            basis = "g_basis"
+        print(f"Trying to submit {seq}")
+        # if sequence is free evolution do special thing
+        if seq == "free":
+            # try asymmetric job
+            try:
+                sym = False
+                delays = asym_delays[seq]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_1"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                asym_job_dict[job_id] = job
+                print("Asym Success")
+            except:
+                asym_failures.append(seq)
+                print("Asym1 Failure")
+            # try symmetric job
+            try:
+                sym = True
+                delays = sym_delays[seq]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_1"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                sym_job_dict[job_id] = job
+                print("Sym Success")
+            except:
+                sym_failures.append(seq)
+                print("Sym Failure")
+        # otherwise, do normal thing
+        else:
+            # try asymmetric job 1
+            try:
+                sym = False
+                delays = asym_delays[seq][0:4]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_1"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                asym_job_dict[job_id] = job
+                print("Asym1 Success")
+            except:
+                asym_failures.append(seq)
+                print("Asym1 Failure")
+            # try asymmetric job 2
+            try:
+                sym = False
+                delays = asym_delays[seq][4:8]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_2"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                asym_job_dict[job_id] = job
+                print("Asym2 Success")
+            except:
+                asym_failures.append(seq)
+                print("Asym2 Failure")
+            # try symmetric job 1
+            try:
+                sym = True
+                delays = sym_delays[seq][0:4]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_1"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                sym_job_dict[job_id] = job
+                print("Sym1 Success")
+            except:
+                sym_failures.append(seq)
+                print("Sym1 Failure")
+            # try symmetric job 2
+            try:
+                sym = True
+                delays = sym_delays[seq][4:8]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_2"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                sym_job_dict[job_id] = job
+                print("Sym2 Success")
+            except:
+                sym_failures.append(seq)
+                print("Sym2 Failure")
+            
+    time.sleep(60 * 6)
+
+    # load in data and save it
+    retrieved = 0
+    while retrieved < 2:
+        asym_results = {}
+        asym_not_finished = []
+        for seq in current_seqs:
+            try:
+                key = f"sym_False_seq_{seq}_job_1"
+                result = asym_job_dict[key].result()
+                asym_results[f"{seq}_job_1"] = result
+                if seq != "free":
+                    key = f"sym_False_seq_{seq}_job_2"
+                    result = asym_job_dict[key].result()
+                    asym_results[f"{seq}_job_2"] = result
+            except:
+                asym_not_finished.append(seq)
+
+        if asym_not_finished == []:
+            retrieved = 2
+        else:
+            retrieved += 1
+            time.sleep(60 * 6)
+
+    # save the raw results
+    for key, result in asym_results.items():
+        data = IBMQData(result)
+        fname = backend_fname + "_" + key + f"_asym_tLab_{time_label}_rawData"
+        data.save_raw_data(fname)
+
+    retrieved = 0
+    while retrieved < 2:
+        sym_results = {}
+        sym_not_finished = []
+        for seq in current_seqs:
+            try:
+                key = f"sym_True_seq_{seq}_job_1"
+                result = sym_job_dict[key].result()
+                sym_results[f"{seq}_job_1"] = result
+                if seq != "free":
+                    key = f"sym_True_seq_{seq}_job_2"
+                    result = sym_job_dict[key].result()
+                    sym_results[f"{seq}_job_2"] = result
+            except:
+                sym_not_finished.append(seq)
+
+        if sym_not_finished == []:
+            retrieved = 2
+        else:
+            retrieved += 1
+            time.sleep(60 * 6)
+
+    # save the raw results
+    for key, result in sym_results.items():
+        data = IBMQData(result)
+        fname = backend_fname + "_" + key + f"_sym_tLab_{time_label}_rawData"
+        data.save_raw_data(fname)
+
+# load in backend again
+backend = IBMQBackend(f'ibmq_{backend_name}', "Vinay")
+# set max time in micro-seconds
+max_time = 75
+time_label = "long"
+# choose sequences to explore
+#current_seqs = ['qdd_1_7', 'purex', 'xy4', 'free', 'ur20']
+current_seqs = ['xy4', 'purex', 'ur20', 'free']
+# load in Haar random states and choose how many to use
+haar_u3_params = np.load("../../u3_list.npy")
+N = 25
+# number of delay points
+num_delays = 8
+
+if max_time == 75:
+    # dictionary of max delays for 75 \mu s since takes to long to generate by looking
+    max_asym_delay = {'ur20': 17426, 'purex': 168430, 'xy4': 84055, 'free': 0, 'qdd_1_7': 18991}
+    max_sym_delay = {'ur20': 8277, 'purex': 84215, 'xy4': 42027, 'free': 0, 'qdd_1_7': 9495}
+else:
+    max_asym_delay = {}
+    max_sym_delay = {}
+    sched = IBMQDdSchedule(backend, "g_basis")
+    for seq in current_seqs:
+        if seq != "free":
+            d_asym, d_sym = find_largest_delays(seq, sched)
+            max_asym_delay[seq] = d_asym
+            max_sym_delay[seq] = d_sym
+        else:
+            max_asym_delay["free"] = 0
+            max_sym_delay["free"] = 0
+    
+asym_delays = {}
+sym_delays = {}
+for seq in current_seqs:
+    if seq != "free":
+        max_dasym = max_asym_delay[seq]
+        delays = [int(x) for x in np.linspace(0, max_dasym, num_delays)]
+        asym_delays[seq] = delays
+        max_dsym = max_sym_delay[seq]
+        delays = [int(x) for x in np.linspace(0, max_dsym, num_delays)]
+        sym_delays[seq] = delays
+    else:
+        asym_delays["free"] = [0]
+        sym_delays["free"] = [0]
+        
+        
+for j in range(2):
+    print(f"Loop count: {j}")
+    # load in backend and get calibration data
+    backend = IBMQBackend(f'ibmq_{backend_name}', "Vinay")
+    now = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    backend_fname = backend_name + "_" + now
+    backend.save_backend_props(backend_fname + "_haarJob_properties.txt")
+
+    # submit jobs
+    asym_job_dict = {}
+    asym_failures = []
+    sym_job_dict = {}
+    sym_failures = []
+    for seq in current_seqs:
+        if seq == "xy4":
+            basis = "c_basis"
+        else:
+            basis = "g_basis"
+        print(f"Trying to submit {seq}")
+        # if sequence is free evolution do special thing
+        if seq == "free":
+            # try asymmetric job
+            try:
+                sym = False
+                delays = asym_delays[seq]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_1"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                asym_job_dict[job_id] = job
+                print("Asym Success")
+            except:
+                asym_failures.append(seq)
+                print("Asym1 Failure")
+            # try symmetric job
+            try:
+                sym = True
+                delays = sym_delays[seq]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_1"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                sym_job_dict[job_id] = job
+                print("Sym Success")
+            except:
+                sym_failures.append(seq)
+                print("Sym Failure")
+        # otherwise, do normal thing
+        else:
+            # try asymmetric job 1
+            try:
+                sym = False
+                delays = asym_delays[seq][0:4]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_1"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                asym_job_dict[job_id] = job
+                print("Asym1 Success")
+            except:
+                asym_failures.append(seq)
+                print("Asym1 Failure")
+            # try asymmetric job 2
+            try:
+                sym = False
+                delays = asym_delays[seq][4:8]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_2"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                asym_job_dict[job_id] = job
+                print("Asym2 Success")
+            except:
+                asym_failures.append(seq)
+                print("Asym2 Failure")
+            # try symmetric job 1
+            try:
+                sym = True
+                delays = sym_delays[seq][0:4]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_1"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                sym_job_dict[job_id] = job
+                print("Sym1 Success")
+            except:
+                sym_failures.append(seq)
+                print("Sym1 Failure")
+            # try symmetric job 2
+            try:
+                sym = True
+                delays = sym_delays[seq][4:8]
+                scheds = generate_schedules(seq, backend, basis, delays, qubit, sym, N)
+                job_id = f"sym_{sym}_seq_{seq}_job_2"
+                job = backend.submit_job(scheds, job_id, num_shots=8192)
+                sym_job_dict[job_id] = job
+                print("Sym2 Success")
+            except:
+                sym_failures.append(seq)
+                print("Sym2 Failure")
+            
+    time.sleep(60 * 5)
+
+    # load in data and save it
+    retrieved = 0
+    while retrieved < 2:
+        asym_results = {}
+        asym_not_finished = []
+        for seq in current_seqs:
+            try:
+                key = f"sym_False_seq_{seq}_job_1"
+                result = asym_job_dict[key].result()
+                asym_results[f"{seq}_job_1"] = result
+                if seq != "free":
+                    key = f"sym_False_seq_{seq}_job_2"
+                    result = asym_job_dict[key].result()
+                    asym_results[f"{seq}_job_2"] = result
+            except:
+                asym_not_finished.append(seq)
+
+        if asym_not_finished == []:
+            retrieved = 2
+        else:
+            retrieved += 1
+            time.sleep(60 * 6)
+
+    # save the raw results
+    for key, result in asym_results.items():
+        data = IBMQData(result)
+        fname = backend_fname + "_" + key + f"_asym_tLab_{time_label}_rawData"
+        data.save_raw_data(fname)
+
+    retrieved = 0
+    while retrieved < 2:
+        sym_results = {}
+        sym_not_finished = []
+        for seq in current_seqs:
+            try:
+                key = f"sym_True_seq_{seq}_job_1"
+                result = sym_job_dict[key].result()
+                sym_results[f"{seq}_job_1"] = result
+                if seq != "free":
+                    key = f"sym_True_seq_{seq}_job_2"
+                    result = sym_job_dict[key].result()
+                    sym_results[f"{seq}_job_2"] = result
+            except:
+                sym_not_finished.append(seq)
+
+        if sym_not_finished == []:
+            retrieved = 2
+        else:
+            retrieved += 1
+            time.sleep(60 * 6)
+
+    # save the raw results
+    for key, result in sym_results.items():
+        data = IBMQData(result)
+        fname = backend_fname + "_" + key + f"_sym_tLab_{time_label}_rawData"
+        data.save_raw_data(fname)
+
+# load in data and save it
+asym_results = {}
+asym_not_finished = []
+for seq in ["ur20", "qdd_1_3", "purex", "xy4"]:
+    try:
+        key = f"sym_False_seq_{seq}_job_1"
+        print(f"Trying to extract result of seq: {seq}")
+        result = asym_job_dict[key].result()
+        asym_results[f"{seq}_job_1"] = result
+        if seq != "free":
+            key = f"sym_False_seq_{seq}_job_2"
+            result = asym_job_dict[key].result()
+            asym_results[f"{seq}_job_2"] = result
+    except:
+        print(f"seq: {seq} failed.")
+        asym_not_finished.append(seq)
+
+# save the raw results
+for key, result in asym_results.items():
+    data = IBMQData(result)
+    fname = backend_fname + "_" + key + f"_asym_tLab_{time_label}_rawData"
+    data.save_raw_data(fname)
+
+sym_results = {}
+sym_not_finished = []
+for seq in ["ur20", "qdd_1_3", "purex", "xy4"]:
+    try:
+        key = f"sym_True_seq_{seq}_job_1"
+        print(f"Trying to extract result of seq: {seq}")
+        result = sym_job_dict[key].result()
+        sym_results[f"{seq}_job_1"] = result
+        if seq != "free":
+            key = f"sym_True_seq_{seq}_job_2"
+            result = sym_job_dict[key].result()
+            sym_results[f"{seq}_job_2"] = result
+    except:
+        print(f"seq: {seq} failed.")
+        sym_not_finished.append(seq)
+
+# save the raw results
+for key, result in sym_results.items():
+    data = IBMQData(result)
+    fname = backend_fname + "_" + key + f"_sym_tLab_{time_label}_rawData"
+    data.save_raw_data(fname)
+
+## Cancelling a job (just in case)
+
+backend.backend.remaining_jobs_count()
+
+for j in range(9):
+    backend.backend.active_jobs()[0].cancel()
+

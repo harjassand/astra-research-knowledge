@@ -1,0 +1,116 @@
+# Joint endpoint parity subset: finite-rate product majorant
+
+## Outcome
+We did not prove or disprove the exact proposed sharp product p(-- )≤ε₁(T)ε₂(T), where ε_i=(J_i²/γ_i)[T−(1−e^(−2γ_iT))/(2γ_i)]. A bounded exact-matrix search found no violation in 1,200 truly single-data-qubit couplings to a common two-dimensional bath, and another 2,400 instances allowing diagonal dependence on the other data parity. These negative searches are not a theorem.
+
+We did prove a nearby, explicit finite-rate product theorem:
+
+p(all selected parities flip at the endpoint) ≤ ∏_i min(1,q_i⁺(T)),
+
+q_i⁺(T) = {e^(−γ_iT)[cosh(κ_iT)+(γ_i/κ_i)sinh(κ_iT)]−1}/2,
+κ_i=√(γ_i²+4J_i²).
+
+In particular,
+
+q_i⁺(T) ≤ [exp(2J_i²T/γ_i)−1]/2,
+q_i⁺(T) ≤ ε_i(T) exp(2J_i²T/γ_i).
+
+This supplies a dephasing-improved subset factor with the right leading J_i²T/γ_i scaling, uniform in shared-bath dimension and state. It does not assert the exact ε-product. The same proof handles bounded groups of checks with explicit conservative finite-rate constants, below.
+
+## Hypotheses and meaning
+Consider commuting parity involutions Z_i and a joint finite-dimensional system including all bath and reference degrees of freedom. Initial state is supported in a recorded joint syndrome, relabeled all-plus. Evolve with
+
+ρ̇=−i[H₀(t)+Σ_i V_i(t),ρ]+Σ_i γ_i(Z_iρZ_i−ρ),
+
+with [H₀(t),Z_i]=0 for every selected i; {V_i(t),Z_i}=0; [V_i(t),Z_j]=0 for j≠i; and ||V_i(t)||∞≤J_i. Thus V_i flips only its own selected parity. Bath operators need not commute, and V_i can depend diagonally on the other data parities. Truly disjoint data support X_i⊗B_i+Y_i⊗C_i is a special case. The bound J_i applies to the norm of this whole term, not separately to two components unless their norms have already been combined safely.
+
+Time-dependent H₀ and V_i are allowed with well-defined propagators. Terms commuting with all selected checks can be put into H₀, however large their norms. Unselected single-parity-flip terms commute with all remaining selected checks, so can also be absorbed when applying the theorem to a smaller selected subset. Other commuting-check dephasing can be conditioned on a random-unitary unraveling and then averaged; it does not change the proof.
+
+The event is the outcome of an actual final joint parity measurement, relative to the actually prepared/measured initial syndrome. No intermediate fault history, correction, decoder, or memory lifetime is asserted. Shared-bath correlations alone do not obstruct this slightly inflated product majorant.
+
+## Proof by positive block-norm comparison
+Let a,b range over joint parity bitstrings, Π_a be their projectors, and ρ_ab=Π_aρΠ_b. Each block is an operator between two syndrome subspaces. Write x_ab=||ρ_ab||₁. The H₀ evolution acts as left/right multiplication by unitary block propagators, preserving this trace norm. Dephasing damps a block at rate
+
+d_ab=2Σ_i γ_i 1[a_i≠b_i].
+
+The commutator with V_i couples ρ_ab only to ρ_(a⊕i),b and ρ_a,(b⊕i). Each coefficient block of V_i has norm at most J_i. Duhamel's formula followed by the triangle inequality gives
+
+x_ab(t)≤e^(−d_ab t)x_ab(0)+Σ_i J_i∫₀ᵗ e^(−d_ab(t−s))[x_(a⊕i),b(s)+x_a,(b⊕i)(s)]ds.
+
+This inequality is valid even when coefficient blocks depend on every other syndrome or on the same persistent bath. Positivity of the scalar kernels and iteration/finite-dimensional comparison imply x(t)≤e^(Mt)x(0) entrywise. M is a Metzler matrix, a Kronecker sum of local 4×4 matrices. In the local density-block ordering (00,01,10,11),
+
+M_i = [[0,J_i,J_i,0],
+       [J_i,−2γ_i,0,J_i],
+       [J_i,0,−2γ_i,J_i],
+       [0,J_i,J_i,0]].
+
+Since the initial joint state is supported on all-plus, x(0) has only its all-(00) component nonzero, with value1. Therefore the all-flipped diagonal block is bounded by
+
+x_(11…1),(11…1)(T) ≤ ∏_i (e^(M_iT))_(11),(00).
+
+A diagonal density block is positive; its trace norm is exactly its probability. This proves the desired product with q_i⁺=(e^(M_iT))_(11),(00).
+
+For one local comparison, let a=u00, b=u01=u10, d=u11. Then a'=d'=2Jb, b'=J(a+d)−2γb, with a(0)=1,b(0)=d(0)=0. Set z=a+d; a−d=1 and
+
+z''+2γz'−4J²z=0, z(0)=1,z'(0)=0.
+
+Thus d=(z−1)/2 equals the claimed q⁺. This is a positive majorant, not the exact physical channel: the sign in front of 4J² is opposite to the physical damped-Rabi equation. It deliberately discards cancellations.
+
+### Simplified rate bound
+z is positive and increasing. Its integral equation gives
+
+z'(t)=4J²∫₀ᵗ e^(−2γ(t−s))z(s)ds ≤ (2J²/γ)z(t).
+
+Hence z(t)≤exp(2J²t/γ) and q⁺≤[exp(2J²t/γ)−1]/2. Using z(s)≤exp(2J²t/γ) directly in the double integral for q⁺ gives q⁺≤ε(t)exp(2J²t/γ). In particular q⁺ has the same leading quadratic transient ε(t)=J²t²+O(t³) and agrees with ε to leading order in J² for fixed γ,t. For J²t/γ≪1 it supplies a controlled small inflation, not an exact replacement by ε.
+
+To cap each q⁺ at1, apply the uncapped theorem only to the subset whose q⁺<1, absorbing all other V terms into H₀. The original all-flip event is contained in the reduced event. This gives ∏min(1,q⁺). This argument does NOT license replacing individual q⁺ factors by the smaller one-parity ε factors. Separate valid bounds can be combined by taking their minimum, e.g. min(∏q⁺,min_i ε_i,1).
+
+### Relation to the independent Dyson derivation
+A separate derivation using independent telegraph signs for the dephasing gives the same simplified exponential bound. Each selected species must occur an odd number on each amplitude branch; its combined even insertion-time telegraph moment is a nonnegative paired-gap exponential. Summing odd ket/bra shuffles and bounding paired-gap integrals yields [exp(2J_i²T/γ_i)−1]/2 per species. The block comparison proof above avoids combinatorial bookkeeping and improves the short-time transient; both are compatible with noncommuting bath operators because only operator norms are used.
+
+## Extension to bounded groups of checks
+Partition selected checks into groups i, with k_i commuting binary checks and at most d_i=2^(k_i) syndrome labels. Require that V_i can change syndromes only within its own group and commutes with every check in other selected groups. H₀ preserves every selected syndrome. There must be no retained interaction changing two selected groups at once. Physical separation is sufficient only if it really guarantees this support condition for every relevant Hamiltonian term.
+
+Absorb each V_i's syndrome-diagonal blocks into H₀. Suppose every remaining off-diagonal syndrome transition block has norm≤J_i. A bound ||V_i||≤J_i before diagonal removal suffices for these blockwise bounds; no claim is needed that diagonal removal preserves the whole operator norm. If multiple terms are grouped, a conservative sum of their norms can be used.
+
+Each local density block is now labeled (a,b) with d_i² possibilities. Its damping is 2Σ_{j in group i}γ_j 1[a_j≠b_j], at least2γ_i on a≠b, where γ_i is the group's minimum check rate. Use the nonnegative comparison generator with coefficient J_i for any off-diagonal ket or bra label change. The full comparison is still a Kronecker sum of local generators, despite shared-bath couplings or diagonal dependence on other groups. Therefore
+
+Pr(each selected group ends in a syndrome different from its initial one) ≤ ∏_i q_group,i(T),
+
+q_group,i(T)=Σ_(a≠a₀) (e^(M_iT))_(a,a),(a₀,a₀).
+
+These finite matrices give exact computable majorants for each fixed-size group.
+
+### Explicit finite-rate grouped bound
+For one group, let A(t) be the sum of all diagonal comparison entries and B(t) the sum of all off-diagonal entries. With uniform bound J and d labels,
+
+A'=2JB,
+B'≤2(d−1)JA+[2(d−2)J−2γ]B,
+A(0)=1, B(0)=0.
+
+There are two diagonal targets from each off-diagonal density block, and 2(d−2) off-diagonal targets; each diagonal source has 2(d−1) off-diagonal targets. These counts yield the displayed inequalities. Put β=2γ−2(d−2)J. For β>0, a scalar cooperative comparison gives
+
+A(t)≤e^(−βt/2)[cosh(ωt)+(β/(2ω))sinh(ωt)],
+ω=√(β²/4+4(d−1)J²).
+
+The changed-syndrome majorant obeys q_group≤A−1, since the initial diagonal comparison component stays at least1. Consequently
+
+q_group(T)≤exp[4(d−1)J²T/β]−1.
+
+At short time the scalar bound is 2(d−1)J²T²+O(T³). If γ≥2(d−2)J, β≥γ, giving the simple upper bound exp[4(d−1)J²T/γ]−1. For fixed k and small J²T/γ this is O(C(k)J²T/γ), rather than exp(JT). Constants are deliberately conservative; for k=1 use the sharper exact q⁺ above. The grouped scalar formula is an upper bound on an upper bound and is not a physical transition rate. As above, per-group factors can be capped at1 by dropping groups from the selected event when the support hypotheses remain valid.
+
+This grouped extension can bound joint endpoint syndrome changes in a set of selected guard regions whose interaction supports do not connect two guards. It does not by itself provide all-subset bounds for arbitrary overlapping stabilizers or prove a memory threshold.
+
+## Uniform endpoint effect and limitations
+Because the proof holds for every initial bath/reference state within the recorded initial syndrome, the final-event Heisenberg effect restricted to that syndrome is bounded by the product majorant times its identity projector. This is a genuine endpoint CP-measurement statement. It may be iterated over actual, chronologically separated measured intervals using conditional states and the tower property when the same hypotheses hold in every interval.
+
+It does not supply a positive independent-fault decomposition inside an unmeasured interval, bounds on every intermediate history, or compatibility with corrections that change the stated Hamiltonian decomposition. Terms that flip two selected regions invalidate the factorization and can cause correlated flips at second order. Terms preserving all selected checks can still damage logical information within a syndrome sector. No hardware feasibility claim follows from assuming ideal independent dephasing.
+
+## Numerical checks
+`search.py`: deterministic seed761207, 1,200 constant-Hamiltonian instances with a common bath of dimension2, V₁ and V₂ having genuinely disjoint data support. General complex bath transition operators include both X and Y components, normalized so ||V_i||=J_i. Half the H₀ choices are bath-only; half have arbitrary diagonal data-dependent bath blocks. The adversarial initial bath state is optimized exactly as the largest eigenvalue of the pulled-back final-- effect restricted to initial++. Maximum p/(ε₁ε₂)=0.928631; no violation found. This is limited numerical evidence only.
+
+`check_majorant.py`: seed213121, 2,400 additional constant-Hamiltonian instances allow each parity-flip transition to depend on the other parity. Maximum p/(ε₁ε₂)=0.811935, and maximum p/(q₁⁺q₂⁺)=0.802666. Direct matrix exponentials verify the local q⁺ formula to1.7e−16. Saved representative maximizers and all summary parameters permit reproduction. Combined search CPU cost was under6 seconds. All computations use our own matrix construction and installed NumPy/SciPy; no experimental outcomes or author code were used.
+
+The exact sharp ε-product remains an open question in this bounded investigation. The positive-majorant and grouped bounds above are proven independently of the searches.
+
+`group_check.py` additionally verifies12 exact positive-majorant matrix exponentials for k=1,2,3 and four durations. It checks the A/B differential counting inequalities, the scalar transient bound and the simplified exponential bound; all pass. This is a direct elementary comparison argument, with no claim of novelty relative to existing non-Markovian fault-path or strong-damping literature.
