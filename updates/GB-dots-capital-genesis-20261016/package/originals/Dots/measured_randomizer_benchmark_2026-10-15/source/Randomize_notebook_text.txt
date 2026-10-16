@@ -1,0 +1,128 @@
+# Create randomized experiments
+
+So we start by creating the list of experiments `pygsti` wants to run for a given germ power. This is for the standard $X_{90}$, $Y_{90}$, $I$ gate set.
+
+germ_power = 1024
+L = string(germ_power);
+
+run(`python ../scripts/rand/gen-gst-list.py --maxlength $L`)
+
+This produces a list of the circuits to run:
+
+run(`head gst-1q-1024.txt`)
+
+## Convert to CSV
+
+It will be much easier to manipulate the gate strings if they are numbers. So we convert them here to CSV.
+
+function clean(m::Void)
+    return ""
+end
+
+function clean(m::SubString)
+    return m
+end
+
+"""
+Parses a GST experiment sequence. The first argument is a string describing the
+    experiment sequence, while the second argument is a dictionary mapping gate
+    labels to integers corresponding to indices in a pulse library. The output is
+    an array of integers corresponding to indices in a pulse library.
+
+    Experiment sequences have the following format. Gates are denoted by string 
+    matching the regular expression "G[^G]+", e.g., 
+
+       "G1", "Ga", or "G\$"
+
+    A gate sequence matches a sequence of gates as defined above,  e.g., 
+
+       "G1GbG#GaG%Gg" 
+
+    An experiment sequence matches a sequence of gates, potentially followed by 
+    a sequence power, i.e., a gate sequence in parenthesis followed by a carret
+    and a non-negative integer (indicating repetition), followed
+    by at most another gate sequence, e.g.,
+  
+       "(GaG1G\$)^4"
+
+       "G1Gb(GcG]\$)^4G5G10"
+
+       "G1Gb(GcG\$)^4"
+
+       "(GcG\$)^4G5G10"
+
+       "G1GbG5G10"
+    
+
+"""
+function parse_gst(str, dict)
+    function parse_count(str)
+        count = r"\^([0-9]*).*"
+        if length(str)>1 && str[1] == '^'
+            parse(Int,match(count,str).captures[1])
+        else
+            1
+        end
+    end
+
+    if contains("{}",str)
+        return [dict["{}"]]
+    else
+        # split on parenthesis
+        parts = split(str,['(',')'])
+        # check if there is repetition (in the form of "^N")
+        counts = map(parse_count,parts)
+        counts = vcat(counts[2:end],[counts[1]])
+        # extract subsequence strings
+        clean_parts = [ match(r"(\^[0-9]*|)((G[^G]+)*)",part).captures[2] for part in parts ] 
+        # map subsequences to arrays of gate labels
+        clean_arr = map(s->split(s,'G'),clean_parts)
+        # discard empty sequences
+        nontrivial_arr = Vector{Int}[]
+        nontrivial_counts = Int[]
+        for (index,item) in enumerate(clean_arr)
+            if length(item) > 1
+                push!(nontrivial_arr, map(s->dict[s],item[2:end]))
+                push!(nontrivial_counts, counts[index])
+            end
+        end
+        return vcat([repmat(nontrivial_arr[i], nontrivial_counts[i]) for i in 1:length(nontrivial_arr)]...)
+    end
+end
+
+function parse_gst_file(file_name)
+    file = open(file_name)
+    lines   = readlines(file)
+    close(file)
+    gst_list = []
+    for line in lines
+        # note the number match our mapping to each gate's enumeration 
+        # in our set of Cliffords
+        number_list = parse_gst(line, Dict("x"=>2,"y"=>5,"i"=>1,"{}"=>0))
+        push!(gst_list, number_list)
+    end
+    gst_list
+end
+
+gsts = parse_gst_file("gst-1q-1024.txt");
+
+open("gst-1q-1024.csv", "w") do io
+    for row in gsts
+        write(io, string(row)[2:end-1] * "\n")
+    end
+end;
+
+run(`head gst-1q-1024.csv`)
+
+## Randomize
+
+We use the `randomize.jl` script to create $N$ randomizations in csv. Here we generate only 10 randomizations, but for the experiments described in the paper a total of 1000 randomizations were generated, and each sequence on those 1000 randomized experiments was measured only once for each of the 7 experimental runs. The unrandomized experiments were measured 1000 times.
+
+n_rand = 10
+@time run(`../../julia-0.6.3/bin/julia ../scripts/rand/randomize.jl gst-1q-1024.csv $n_rand`)
+
+We verify the effect of the randomization, after applying the inversion gate, is either an effective $I$ or effective $Z$ gate. This means it won't effect the measurement outcomes because we measure in the computational basis by construction.
+
+# should print out all I and Z for the effect of the randomization in each of the -rxx.csv files
+@time run(`../../julia-0.6.3/bin/julia ../scripts/rand/verify.jl gst-1q-1024.csv`)
+

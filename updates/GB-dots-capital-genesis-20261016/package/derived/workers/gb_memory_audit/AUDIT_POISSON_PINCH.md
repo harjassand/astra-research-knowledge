@@ -1,0 +1,177 @@
+# Independent adversarial audit: Poisson full-pinch history effects and the source epsilon-product
+
+Date: 2026-10-16. Author: assigned interface-audit worker. Status: independent analytic reconstruction under the exact hypotheses below; externally unreviewed. This proof was constructed from the parent-supplied statement before reading any other worker's candidate. No novelty, device, asymptotic-memory, or formal-certification claim follows.
+
+## 1. Decisive result
+
+The source `finite_rate_joint_syndrome_2026-10-15/joint/REPORT.md`, Outcome and final paragraph, explicitly leaves open the product of the one-parity factors
+
+\[
+ \epsilon_i(t)=\frac{J_i^2}{\gamma_i}
+ \left[t-\frac{1-e^{-2\gamma_i t}}{2\gamma_i}\right].
+\]
+
+That product follows under the literal source one-parity-per-interaction hypotheses. An alternative positive Kraus representation of the SAME dephasing dynamics proves a stronger history event, and avoids the exponential inflation in its double-Dyson majorant. The source's existing majorant remains valid; this is an additional proof, not an inconsistency in it.
+
+The mechanism also proves the parent-supplied full-group version: for independent continuous generators `lambda_i (D_Gi - Id)`, exact entering/exiting pinches, and clean sector-preserving backgrounds,
+
+\[
+ F_S^{\rm history}\le
+ \left(\prod_{i\in S}p_i\right)I,
+ \qquad
+ p_i=\min\left\{1,\;\frac{2J_i^2}{\lambda_i}
+ \left[\tau_i-\frac{1-e^{-\lambda_i\tau_i}}{\lambda_i}\right]\right\}.
+ \tag{1}
+\]
+
+`History bad` means at least one syndrome change between ANY successive latent complete-pinch records within that parent, including the exact endpoints. It is stronger than final syndrome mismatch. The cut records are labels in a legitimate global Kraus representation, not promised controller outputs.
+
+## 2. Exact source hypotheses and conclusion
+
+The source statement in `independent/INDEPENDENT_ENDPOINT_SUBSET_PROOF.md`, Section 1 (A), is
+
+\[
+ [H_0(t),Z_i]=0,\quad \{V_i(t),Z_i\}=0,\quad
+ [V_i(t),Z_j]=0\ (j\ne i),\quad \|V_i(t)\|\le J_i,
+ \tag{2}
+\]
+
+with commuting Hermitian involutions `Z_i`, independent exact dephasers `gamma_i(Ad Z_i - Id)`, and initial joint sector `Pi_s`. Time-dependent self-adjoint Hamiltonians and an arbitrary finite persistent bath/reference are allowed. The coefficients are the given Hamiltonian operators; they do not read a chosen latent unraveling's internal cut records or change their definition when perturbations are deleted.
+
+Let `Phi_t` be that ACTUAL channel and `F_(s,S)` the genuine final projector onto parities opposite `s_i` for every selected `i`. Then
+
+\[
+ \Pi_s\Phi_t^*(F_{s,S})\Pi_s
+ \le \left(\prod_{i\in S}\min\{1,\epsilon_i(t)\}\right)\Pi_s.
+ \tag{3}
+\]
+
+The result is uniform over every joint bath/reference state in `Pi_s`. Checks need not have disjoint memory supports for this endpoint statement: condition (2), rather than geometric wording, ensures the required sector preservation. This does not license a spatial support/history certificate for overlapping detector footprints.
+
+For a subset of indices, all unselected `V_j` commute with retained checks and can be included in the baseline. Other commuting dephasers preserve those checks. Capping factors at one is justified by dropping the constraints with uncapped factor above one and applying the proof to the retained subset.
+
+## 3. Exact equality of the dephasing generator and Poisson pinches
+
+For one involution,
+
+\[
+ D_{Z_i}=\tfrac12(\mathrm{Id}+\operatorname{Ad}Z_i),\qquad
+ \gamma_i(\operatorname{Ad}Z_i-\mathrm{Id})
+ =2\gamma_i(D_{Z_i}-\mathrm{Id}).
+ \tag{4}
+\]
+
+The right side is an independent rate `lambda_i=2 gamma_i` Poisson process applying the complete channel `D_Zi`. Between jumps the full Hamiltonian acts. Conditioning on these jump times, applying `D_Zi` at each time, and averaging solves exactly the same simultaneous Hamiltonian-plus-dephasing master equation. This is a standard exact jump expansion of a bounded CPTP generator. It is not insertion of an extra physical intermediate measurement into an unperturbed channel.
+
+Resolve each pinching through its canonical fresh-environment isometry
+
+\[
+ W_i=\sum_r P_{i,r}\otimes|r\rangle_{E}.
+\]
+
+Every occurrence has its own environment. Those record registers are thereafter untouched. Their resolution gives a COMPLETE Kraus representation of the actual channel. For the source theorem the input is already in a known sector; the entering pinching is redundant on that domain. The final pinching is the actual final measurement specified by the source. For a full-input measured-parent theorem, actual entering and final channels must instead be supplied.
+
+For general `D_G`, the same Poisson representation is exact for `lambda(D_G-Id)`. It is a specific full-group damping assumption. Independent generator-wise dephasing for rank greater than one is NOT automatically that generator.
+
+## 4. Conditional cut patterns and deletion-nullness
+
+Fix a finite horizon and cut patterns `eta_i`. They have finitely many cuts almost surely. Together with the exact endpoints they partition parent interval `I_i` into blocks `B_(i,l)`. Give each block an independent REAL interpolation parameter `z_(i,l)` multiplying its entire own interaction `V_i(t)` within that block. All other operations and cut records use one fixed dilation, unchanged under interpolation.
+
+Let `Q_(i,l)` be the fixed diagonal final-record projector asserting that the block's exiting syndrome differs from its entering syndrome. All these `Q` commute, including adjacent blocks sharing one syndrome label.
+
+Deleting `V_i` during block `B_(i,l)` leaves its check sector invariant for EVERY value of all other interpolation parameters. Under (2), every other Hamiltonian term and every other pinching commutes with `Z_i`. For the full-group parent version, impose that same sector-preserving property for the complete `G_i` during this block. Hence, as a whole-input operator identity,
+
+\[
+ Q_{i,l}U_{z_{i,l}=0}W_{\rm enter}=0.
+ \tag{5}
+\]
+
+Prior bath correlations and earlier mismatches do not invalidate this identity: the entering record refers to the ACTUAL entering sector of this block. No normalized conditioning on an earlier syndrome or a rare branch is used.
+
+This is the decisive hypothesis. Generic corrections that change `Z_i`, cross-detecting interactions, mutable old records, or uncharged cut-driven feedback can violate it.
+
+## 5. Joint block effects without bath factorization
+
+For a set `C` of distinct blocks put `Q_C=prod_(c in C) Q_c`. Multivariate fundamental calculus and (5) remove every boundary term missing a selected perturbation:
+
+\[
+ Q_C U_{\mathbf1}W_{\rm enter}
+ =Q_C\int_{[0,1]^C}\partial_C U_z W_{\rm enter}\,dz.
+ \tag{6}
+\]
+
+Each mixed derivative inserts each selected block interaction once. The chronological permutation simplices partition the product of its insertion-time intervals. Unitary propagators and fixed isometric measurement dilations have norm one, so
+
+\[
+ \|\partial_C U_z\|\le\prod_{c\in C}a_c,
+ \qquad a_c=\int_{B_c}\|V_i(u)\|du\le J_i|B_c|.
+\]
+
+There is no factorial loss. Bath operators remain in chronological order; no product of reduced channels or bath states is introduced. For every joint input vector this gives the positive event effect
+
+\[
+ F_C(\eta)\le\left(\prod_{c\in C}a_c^2\right)I.
+ \tag{7}
+\]
+
+The finite-dimensional case has convergent Dyson/Duhamel expansions. The unbounded Poisson number of cuts causes no convergence problem: each conditioned pattern is finite and the bounds are at most products of `J_i^2 tau_i^2`, independent of the number of cuts.
+
+## 6. Parent OR flags and the exact Poisson average
+
+Let `b_i=OR_l Q_(i,l)`. By a positive commuting-projector union bound, choose one mismatched block from each selected parent. Blocks from distinct parents are distinct interaction labels. Equations (6)-(7) give
+
+\[
+ F_S^{\rm history}(\eta)
+ \le\prod_{i\in S}\left[J_i^2\sum_l|B_{i,l}|^2\right]I.
+ \tag{8}
+\]
+
+This is uniform conditional on the cut patterns, but the finite-rate improvement requires averaging them. Independent Poisson partitions factorize the SCALAR right side, regardless of quantum shared-bath correlations. For a rate `lambda` partition of an interval of length `tau`,
+
+\[
+ \begin{aligned}
+ \mathbb E\sum_l |B_l|^2
+ &=\int_0^\tau\int_0^\tau
+       \Pr(u,v\text{ belong to the same block})\,du\,dv\\
+ &=\int_0^\tau\int_0^\tau e^{-\lambda|u-v|}\,du\,dv\\
+ &=\frac{2}{\lambda}\left[\tau-
+       \frac{1-e^{-\lambda\tau}}{\lambda}\right].
+ \end{aligned}
+ \tag{9}
+\]
+
+The diagonal has measure zero. Equivalently, conditional on `N=n` cuts, normalized spacings are Dirichlet and the expected square sum is `2 tau^2/(n+2)`. The Poisson average gives (9). Combining (8)-(9), then capping factors by dropping constraints, proves (1). Substituting `lambda_i=2 gamma_i` proves (3).
+
+The source final all-flips event is contained in this history event: a parity initially `s_i` and finally different must have at least one successive-label mismatch, independent of how many times it returned in between. Pullback preserves this positive event inclusion. Thus (3) is a statement about the original actual endpoint measurement, not merely the chosen latent histories.
+
+The zero-rate limit is `J_i^2 tau_i^2`; the large-rate leading factor is `2 J_i^2 tau_i/lambda_i`. The formula is exact as a SUFFICIENT BOUND, not the exact physical error probability or an optimality result.
+
+## 7. Spatial-memory transfer requires more than (3)
+
+For a clean reserved parent with error footprint `A_i`, the full-group version can supply a memory history flag if
+
+`Pauli(A_i) intersect Centralizer(G_i) subset phase times S_code`.
+
+Fix all latent cut outcomes and expand each block in memory Paulis, with bath coefficients kept in physical order. A block with unchanged measured label selects net Paulis centralizing `G_i`; the footprint condition makes each a stabilizer, acting as a scalar on every encoded Pauli orbit. If every block of a parent is good, it adds no support. If any block mismatches, charge the WHOLE parent patch and interval, not just its final syndrome.
+
+The prior geometry, exact corrections first, clean full reservations, omitted-start saturation where needed, one universal support certificate, one fixed decoder, local-stochastic contour estimate, and TNI good-map completion remain separate premises. They are not proved by the endpoint theorem.
+
+In particular a zero FINAL syndrome does not make a good parent: the supplied five-qubit example and our independent exact check have a nonzero logical Kraus term with zero syndrome. The history OR flag repairs that inference inside the qualified full-footprint parent model, but does not make arbitrary continuously corrected memories fit it.
+
+## 8. Adversarial boundaries and falsifiers
+
+1. **Cross-detectability:** `H=J X_1 X_2` flips both selected `Z` parities in one interaction. With positive dephasing the all-flip probability begins at `J^2 t^2`, while a falsely assigned product of singleton factors begins at `J^4 t^4`. This violates (2), and deleting only one alleged label cannot remove the other channel of sector change. The exact rational no-jump certificate is in `check_interfaces.py`.
+2. **Baseline sector change:** a correction or feedback gate in the undeleted baseline that changes `G_i` creates a mismatch even after deleting that block's `V_i`. Equation (5) fails. Stabilizer covariance alone does not imply preservation of each monitored syndrome.
+3. **Cut/record-driven uncharged control:** an apparatus that reads a cut or syndrome and subsequently flips another selected parity changes the stipulated fixed model. The source Hamiltonian does not have that dependence. For the broader construction it must be in the common deletion-stable dilation and separately charged; independence of the Poisson rates alone is insufficient.
+4. **Correlated cut patterns:** the correct scalar bound is `E product_i [J_i^2 sum gap_i^2]`, which need not factor into marginal expectations. Shared bath is permitted; shared correlated classical cut clocks require a different scalar argument.
+5. **Conditional no-cut histories:** on the no-cut pattern the action budget is `J_i^2 tau_i^2`, not (1). Geometry, selection, and completion must not preferentially select particular private cut patterns while retaining the unconditioned bound.
+6. **Environment return:** if a pinching reservoir later reinteracts, the canonical record may be erased or fed back. Equality to the stated Markov generator is then unestablished. A two-CNOT exact witness restores coherence after an apparently dephasing first boundary.
+7. **Multi-generator cost:** a continuous full-group `lambda(D_G-Id)` is not a gratis replacement for `sum_a gamma_a(Ad S_a-Id)`. Its damping and full-footprint support must actually be supplied. The fixed-factor rank obstruction in the measurement packet still prevents blind closure over all detector data.
+
+## 9. Independent checks and final audit status
+
+`check_poisson_pinch.py` independently verifies the Poisson-gap identity symbolically and the first seven conditional-cut coefficients. It then evolves an actual quantum/classical HISTORY-record generator. Three regimes use crossing, disjoint-memory parents sharing anticommuting bath couplings; a fourth uses source-admissible parity-dependent interactions and a noncommuting syndrome-preserving baseline. All three nonempty parent subsets are tested in every regime: twelve full-joint-input HISTORY inequalities and twelve initial-sector sharp ENDPOINT-product inequalities pass. Twelve separate comparisons of the latent record dilation with the actual bare Lindblad endpoint agree within the recorded numerical tolerance. The least history-bound slack is about `2.07e-5`. These finite calculations support the proof and do not replace it.
+
+`check_interfaces.py` independently verifies the crossing conditional obstruction, spatial-overlap product-sign obstruction, active/completed generator distinction, TNI bath filtering, calibration-bath failure, reservoir return, mutable-record failure, and a genuine five-qubit zero-endpoint logical branch.
+
+**Audit verdict:** no internal mathematical obstruction found to (1) or to the sharper source endpoint product (3) under the exact stated premises. The analytic proof closes that previously supplied OPEN endpoint-product question internally. Whole-memory, physical acquisition, numerical thresholds, generic noisy detectors/controllers, arbitrary continuous bath coupling, historical priority, and external correctness remain separately unresolved.

@@ -1,0 +1,106 @@
+# Bounded measurement-interface audit
+
+2026-10-16 UTC. Existing pinned source and the three already-burned diagnostics only. No new download, author-code execution, model, changed target, production evaluation or rescoring.
+
+## Finding
+
+The diagnostics provide strong evidence that large forward/backward coordinate gaps are dominated by an **uncorrected horizontal registration shift between scan directions**, rather than being direct estimates of random endpoint-localization uncertainty. There is no evidence supporting a simple image reversal, tenfold unit conversion or common offset arithmetic mistake as the explanation in these diagnostics. Hardware cause and absolute midpoint calibration remain unidentified.
+
+Crucially, **a 0.58 nm forward/backward gap does not establish 0.58 nm displacement-label uncertainty**. A constant midpoint bias cancels between measurements and may also cancel against the reset-defined goal. Diagnostics 1500 and 2920 show nearly constant direction gaps despite their large size. Diagnostic 0 contains unstable and edge-localization cases, so a constant correction cannot be assumed universally. No correction is proposed or applied.
+
+These findings explain a plausible interface mechanism behind the entirely high-disagreement stratum, but only nine diagnostic scans were examined. They do not establish that every held-out scan has the same mechanism or bias. The prior 100/100 result is retained exactly, with no outcome exclusion.
+
+## Exact pinned source evidence
+
+Repository commit: ace9ca3f9be401bb9c8146d0bfc2882e87141f7e. All five source artifacts below were checked against their recorded provenance sizes and SHA-256; all matched. Source was read as text, not imported/executed.
+
+1. `AMRL/Environment/createc_control.py`, lines 125–132: forward image from scandata(1, 4), backward from scandata(257, 4); lengths convert Angstrom to nm with 0.1; both images return with the same offset and length pair. There is no explicit flip, shift or registration in this extraction path. Hardware/API orientation semantics are not independently documented here.
+2. `AMRL/Environment/Env_new.py`, lines 209–223: same offset/length/template parameters passed separately to the forward and backward localization calls; directional coordinates saved separately; arithmetic midpoint of forward/backward absolute and relative coordinates is used. No alignment step intervenes.
+3. `get_atom_coordinate.py`, lines 176–178: pixel origin is (offset_x − length_x/2, offset_y), with numerical nm/pixel scaling. Because offset is shared, adding it cannot itself produce the directional difference. Row/column dimensions are ordered unusually for general rectangular images, but every inspected diagnostic is square 128 × 128 with equal x/y extent, so that dimensional issue cannot explain these observed gaps.
+4. `get_atom_coordinate.py`, lines 227–241: template matching yields a template bottom-left; absolute atom position is obtained directly from atom pixels, and relative coordinate equals absolute atom coordinate minus the matched template coordinate. No template-based image registration or subtraction is applied to absolute atom coordinates. With a template, line 234 selects the first returned atom detection; edge/object selection remains relevant.
+5. `get_atom_coordinate.py`, lines 46–57: the chosen top/bottom strip controls template search; its maximum match gives the template position. Source notebook cell 4, lines 4–7 (zero-based JSON cell index 4), explicitly permits a small dummy template if no anchor is used and sets top_left = (0, 0), w = h = 3. Cell 6 line 7 sets template_max_y = 3; line 30 uses bottom = False. The text export has these at lines 20–23, 32, 55. This is published configuration, not proof of the historical archive's exact runtime settings. It explains why template-relative coordinates cannot be assumed to represent a robust common anchor.
+6. `Env_new.py`, lines 29, 227–241: correct_drift defaults to False. Its optional block compares successive mean template coordinates and changes the controller offset only beyond 0.5 nm; it does not align the two direction images. The published constructor call does not override the default.
+7. `Env_new.py`, lines 266–275: a single requested displacement dr is added separately to reset absolute and reset relative coordinates to define the two goals. They therefore share the reset localization's origin in their respective coordinate systems.
+8. `episode_memory.py`, lines 51–53, 81–86, 110–112: logger stores image/info object references, with start/end dictionary additions. `Env_new.py`, lines 218–223 assigns fresh localization arrays and a computed midpoint. Reference reuse explains persistent image aliases across unscanned transitions; it does not numerically manufacture a stable x difference between two freshly localized scan directions. Prior compatibility checks confirm means and reused-coordinate consistency; this is not a physical scan-freshness proof.
+9. `createc_control.py`, lines 252–259: manipulation coordinate conversion uses the same x-offset-minus-half-width and y-offset origins, with an explicit factor 10 for nm-to-Angstrom conversion. No one-sided forward/backward scale change appears in the inspected path.
+
+Public source locator format: https://github.com/SINGROUP/Atom_manipulation_with_RL/blob/ace9ca3f9be401bb9c8146d0bfc2882e87141f7e/AMRL/Environment/Env_new.py#L209-L223 (substitute the listed filenames and line ranges). This audit used the already-acquired exact source, without fetching links.
+
+## Diagnostic numerical evidence
+
+Each entry is one reset or serialized-new scan; repeated reused images are omitted. Full values, including absolute coordinates, inferred pixels, image correlations and frames, are in diagnostic_values.json.
+
+Forward-minus-backward differences (dx, dy) in nm and absolute norm:
+
+- Episode 0 reset: (+0.435984, +0.013310), norm 0.436187
+- Episode 0 transition 0: (+0.683816, +0.008182), norm 0.683865
+- Episode 0 transition 1: (+0.682430, +0.008709), norm 0.682486
+- Episode 0 transition 3: (−0.146480, +0.049052), norm 0.154475
+- Episode 1500 reset: (+0.570876, +0.004502), norm 0.570894
+- Episode 1500 transition 0: (+0.569617, +0.006708), norm 0.569657
+- Episode 1500 transition 1: (+0.570031, +0.007218), norm 0.570076
+- Episode 2920 reset: (+0.584553, +0.005549), norm 0.584580
+- Episode 2920 transition 0: (+0.580297, +0.007070), norm 0.580341
+
+All diagnostic grids are 128 × 128. Episode 0 extent is 10.02716 nm square, pixel scale 0.0783371875 nm. Episodes 1500/2920 extent is 6.95578 nm square, pixel scale 0.05434203125 nm. Offsets and extents are unchanged within each diagnostic. The large gaps are mainly x and correspond to approximately 10.5–10.8 pixels in 1500/2920, rather than an nm/Angstrom mismatch.
+
+### Independent image correspondence check
+
+Original diagnostic-only script check_image_registration.py fits and subtracts a plane from each image, then compares overlapping pixels by Pearson correlation on a fixed integer grid dx = −20 to 20, dy = −3 to 3. This is descriptive image correspondence, not target repair, and does not prove which direction is calibrated correctly. Results in diagnostic_image_registration.json:
+
+- Episode 0 reset: best shift (+6, 0) pixels; correlation 0.2350718 → 0.9613635.
+- Episode 0 transitions 0, 1, 3: best shift (+9, 0) pixels; correlations 0.1033930 → 0.9678068, 0.1003007 → 0.9673055, 0.1328163 → 0.9754205.
+- Episode 1500 reset/0/1: best shift (+10, 0) pixels; correlations −0.0630884 → 0.9620855, −0.0661074 → 0.9617172, −0.0656051 → 0.9621830.
+- Episode 2920 reset/0: best shift (+10, 0) pixels; correlations 0.1025138 → 0.9548027, 0.1052715 → 0.9555744.
+
+Positive shift means forward-image features lie to the right of corresponding backward-image features. All nine raw-image correlations are also higher without horizontal/vertical/double flips than with those flips. Together, the observations support translation rather than wholesale image reversal. No fitted/interpolated subpixel target is produced.
+
+Episode 0 transition 3 is an important exception: whole-image correspondence still favors a +9 pixel shift, but the stored atom localization difference is −1.87 pixels. The forward inferred atom x is 0.466 pixels and backward x 2.335 pixels, near the left boundary. Thus global registration does not reconcile that stored atom pair. Edge truncation/detection/object correspondence is plausible, but exact detector failure or true atom motion is not established. It would be wrong to impose one correction across all records.
+
+### Template-relative comparison
+
+Relative disagreement norms do not consistently cancel the absolute shift:
+
+- Episode 0 reset/0/1/3: 9.914793, 9.927608, 7.419433, 8.627424 nm, versus absolute 0.436187, 0.683865, 0.682486, 0.154475 nm.
+- Episode 1500 reset/0/1: 0.244865, 3.234332, 4.972862 nm, versus approximately 0.570 nm absolute.
+- Episode 2920 reset/0: 1.073646, 0.852037 nm, versus approximately 0.58 nm absolute.
+
+The exact identity is relative_f − relative_b = (absolute_f − absolute_b) − (template_f − template_b). Inferred template differences are overwhelmingly horizontal and vary greatly: episode 1500 x differences 0.326052, 3.803942, 5.542887 nm, rather than the stable approximately 0.570 nm atom-direction difference. Episode 0 template x differences −9.478800, −9.243788, −6.736998, −8.773765 nm. These observations are consistent with an unstable/nonphysical template match such as the documented tiny placeholder. They do not authorize switching targets to relative coordinates, which could worsen provenance.
+
+## Exact displacement/goal-bias distinction
+
+Let true physical position be x_t, directional coordinates f_t = x_t + a_{f,t} and backward b_t = x_t + a_{b,t}. Define the recorded midpoint p_t = (f_t + b_t)/2 = x_t + c_t, with c_t = (a_{f,t} + a_{b,t})/2. The observed directional gap h_t = f_t − b_t identifies a_{f,t} − a_{b,t}; it does **not** identify the midpoint bias c_t.
+
+For last measured anchor s and next measured endpoint t:
+
+recorded displacement p_t − p_s = (x_t − x_s) + (c_t − c_s).
+
+Therefore any constant common midpoint bias cancels exactly. Large h_t alone supplies neither c_t nor c_t−c_s, and is not an endpoint/displacement error bar.
+
+The separate directional displacement difference is exactly:
+
+(f_t − f_s) − (b_t − b_s) = h_t − h_s.
+
+The recorded midpoint displacement differs from either directional displacement by one-half of that vector, with opposite signs. This is identifiable numerical directional consistency, not a bound on true displacement error. A common drift/error affecting both directions could still remain completely invisible to h.
+
+Observed adjacent-measurement norms of h_t−h_s (nm):
+
+- Episode 1500: 0.00254008 then 0.00065612; midpoint-vs-direction discrepancies 0.00127004 and 0.00032806 nm.
+- Episode 2920: 0.00451964; midpoint-vs-direction discrepancy 0.00225982 nm.
+- Episode 0: 0.24788496, 0.00148270, 0.82989134; midpoint-vs-direction discrepancies 0.12394248, 0.00074135, 0.41494567 nm.
+
+These values are in directional_displacement_stability.json. Thus 1500/2920 exhibit strong directional displacement consistency despite large absolute disagreement; 0 does not consistently do so. This diagnostic pattern is not extrapolated to unexamined held-out direction arrays.
+
+For reset 0 and requested dr, recorded goal g = p_0 + dr. Then:
+
+p_t − g = [x_t − (x_0 + dr)] + [c_t − c_0].
+
+Again a constant midpoint bias cancels. However, if 'physical goal' means a separately calibrated absolute hardware coordinate rather than the intended displacement from true reset position, that physical interpretation requires additional calibration not present here. The archive's goal construction alone does not supply it.
+
+## Consequence for credibility
+
+The audit makes the measurement-interface limitation more specific. High raw forward/backward disagreement appears largely compatible with unaligned scan-direction registration; it should not be described as independent random localization noise, a 0.58 nm physical endpoint uncertainty, or automatic invalidation of relative displacement labels. Averaging and reset-relative goals can cancel stable biases.
+
+Conversely, calibrated physical site coordinates and midpoint bias/drift remain unverified. Scan-direction hysteresis, lag, timing, hardware coordinate calibration and possible atom motion between passes cannot be distinguished from these files alone. The episode 0 edge inconsistency shows that stable global translation is not sufficient for every localization. Tiny-template relative coordinates do not solve the problem. No historical executable, hardware calibration or independent ground-truth location is available in this bounded audit.
+
+The completed numerical result remains a valid reconstruction of recorded image-localization labels under the frozen protocol, with the recorded-scan proxy and conditional physical interpretation. This investigation does not change the negative screening decision or justify rescoring. Any future physical inference study needs documented scan-direction registration/calibration and checks of differential localization stability, independently validated rather than retrofitted to this burned test.
