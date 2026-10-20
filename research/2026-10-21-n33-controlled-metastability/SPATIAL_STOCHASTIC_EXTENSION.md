@@ -16,6 +16,8 @@ For each chemical species s separately, allow predictable particle migration wâ†
 sum_{w != z} m^s_{zw} = sum_{w != z} m^s_{wz} = d_z^s <= 1/4.
 The directed graphs may differ completely across s and change arbitrarily over time; connectivity, lower migration-rate bounds and dwell times are NOT required. Balance guarantees the physically mass-conserving transport mean field is sum_w m^s_{zw}(X_{w,s}-X_{z,s}); merely bounding directed in/out separately without balance is not an allowed substitution.
 
+The process is the standard elementary-channel pure-jump construction: each jump fires exactly one specified chemical reaction or one specified species migration, with those predictable channel compensators and no additional simultaneous compound shocks. Marginal intensities of a differently correlated multi-jump process would not give this generator.
+
 ## Theorem S1: stochastic spatial safety (derived this investigation)
 
 For any n>=1, integer V>=100, finite T>=0, and all such predictable rate and transport controls,
