@@ -1,0 +1,20 @@
+"""Arithmetic-only finalization of preserved outputs after the frozen resource stop.
+Does not open h5ad, rerun models, complete draws, or calculate inferential p-values.
+"""
+import csv,json,hashlib,time,sys
+from pathlib import Path
+import numpy as np
+ROOT=Path(__file__).resolve().parents[1]
+def main():
+ t=time.perf_counter();out=ROOT/'results';p=json.loads((out/'POINT_RESULT.json').read_text());d=json.loads((out/'DESIGN_MAP.json').read_text());r=json.loads((out/'RESOURCE_RECEIPT.json').read_text());outer=json.loads((out/'OUTER_RESOURCE_RECEIPT.json').read_text());rows=[];summary=[]
+ for kind,dirs in p['point'].items():
+  for z,v in enumerate(dirs):
+   mean={key:float(np.mean(v[key])) for key in ('gain','ordinary_mse','transfer_mse','additive_mse')}
+   s={'representation':kind,'direction':f'{z+1}->{2-z}',**mean,'positive_family_gains':int(np.sum(np.array(v['gain'])>0)),'families':len(v['gain']),'ordinary_error_reduction_vs_raw_additive':1-mean['ordinary_mse']/mean['additive_mse'],'transfer_relative_error_change_vs_ordinary':mean['transfer_mse']/mean['ordinary_mse']-1,'source_selected_lambda':[.01,.1,1,10,100][v['lambda_index']],'projected_singleton_rank_counts':{str(x):v['rank'].count(x) for x in set(v['rank'])},'nonnegative_weight_boundary_count':int(np.sum(np.array(v['beta'])==0)),'weight_range':[float(np.min(v['beta'])),float(np.max(v['beta']))],'clipped_ordinary_entries':v['clipped_ordinary_entries'],'clipped_transfer_entries':v['clipped_transfer_entries'],'total_prediction_entries':105*21052,'single_gram_min_eigenvalue_range':[float(np.min(np.array(v['single_gram_eigenvalues'])[:,0])),float(np.max(np.array(v['single_gram_eigenvalues'])[:,0]))]};summary.append(s)
+   for i,f in enumerate(p['families']):
+    rows.append({'family':f,'representation':kind,'direction':s['direction'],**{k:v[k][i] for k in ('gain','ordinary_mse','transfer_mse','additive_mse')},'beta_A':v['beta'][i][0],'beta_B':v['beta'][i][1],'projector_span_rank':v['rank'][i],'singleton_gram_eigen_min':v['single_gram_eigenvalues'][i][0],'singleton_gram_eigen_max':v['single_gram_eigenvalues'][i][1]})
+ with (out/'ALL_FAMILY_SCORES.csv').open('w',newline='') as f:w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
+ result={'status':'STOP_RESOURCE_CAP_NO_ROBUST_GUIDE_SIGNAL_ESTABLISHED','design_admissible':True,'eligible_families':105,'excluded_families':53,'matching_control_cells':7,'point_calculation_complete':True,'point_summary':summary,'bootstrap_completed':r['completed'],'bootstrap_requested':r['requested'],'inference_status':'NOT_COMPUTED:7/399 draws insufficient; no complete intervals, null p-values or Monte Carlo upper bounds','frozen_positive_gate':'NOT_MET:both primary log point gains negative; uncertainty also incomplete','leave_one_control_out_status':'NOT_PERFORMED:resource stop preceded this step; all7 omissions remain uncomputed','intrinsic_gene_interaction_status':'NOT_IDENTIFIED without exclusions on array/context-specific implementation effects','absolute_RNA_interaction_status':'NOT_IDENTIFIED from library-normalized composition','culture_generalization_status':'NOT_ESTABLISHED;HTO/lane do not supply independent cultures','current_calibrated_PRESAGE_comparison':'NOT_PERFORMED;no method headroom or superiority claim','continuation_decision':'STOP_THIS_ALLOCATION. Preserve admissible descriptive comparison, representation disagreement, resource failure and exact design ambiguity. No predictor/new dataset/reprocessing branch; evaluator retains further allocation.','resource_body':r,'resource_entire_command':outer,'finalization_scope':'Arithmetic on preserved POINT_RESULT and resource receipts only; no h5ad read or model rerun'}
+ (out/'RESULT.json').write_text(json.dumps(result,indent=2)+'\n')
+ (out/'FINALIZATION_RECEIPT.json').write_text(json.dumps({'wall_s':time.perf_counter()-t,'source_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'input':'POINT_RESULT.json + DESIGN_MAP.json + resource receipts','no_new_RNA_read':True,'no_new_inferential_calculation':True},indent=2)+'\n');print(json.dumps(result,indent=2))
+if __name__=='__main__':main()

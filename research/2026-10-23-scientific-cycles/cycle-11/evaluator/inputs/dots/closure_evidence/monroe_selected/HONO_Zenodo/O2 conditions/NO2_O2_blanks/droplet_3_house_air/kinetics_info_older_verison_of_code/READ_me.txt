@@ -1,0 +1,1 @@
+This droplet wasn't run with a newer, more user friendly of the code that ran just the relevant kinetics fit, but all the possible fits. Refer to Rate constants.csv column A for the relevant slope. 

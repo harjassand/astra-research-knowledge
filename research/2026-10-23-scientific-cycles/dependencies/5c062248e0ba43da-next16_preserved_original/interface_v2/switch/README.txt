@@ -1,0 +1,19 @@
+DIRECT LC CHARGE-EXCHANGE SWITCH: CONCRETE NOMINAL SCREEN
+Actual inputs and replay: direct_pair.json; direct_pair.py (numpy/scipy). J2dt18000 and margin.02674J/m2/pair-half are the root's current requested engine inputs, not material/device constants. Refresh them after changing the complete trajectory. Area is perbank A; total engine footprint2A. m14 equal series patches perbank preserve each patch's local FE voltage/field; their electrical terminal difference is320.6V.
+
+PRIMARY SOURCE
+https://www.infineon.com/assets/row/public/documents/24/49/infineon-gs66516t-datasheet-en.pdf
+GS66516T Rev210727, tablespp3/4 and Figs7/8/12 visually inspected in Chrome. Ron25milliohm typical/32max at25C;65typ at150C. Qoss134nC,Eoss17uJ,Coss126pF at400V. Gate14.2nC,6V,320uA typical bias. Leakage4uAtyp/100max at650V25C,800uAtyp150C. These are not measured320V/65C engine losses. Fig12 gives~1.45xRon at65C, so36milliohm is an approximate nominal, not a guaranteed bound. No downloaded PDF bytes: direct download was blocked by a WAF; browser reading succeeded. The machine-readable source anchors are actual small readable inputs.
+
+ONE PHYSICAL CIRCUIT
+Join bank A+ through L then drainQ1; sourceQ1=sourceQ2; drainQ2 joins bank B+. Their low terminals are common. Gates are driven relative to common floating source. Both gatedON conduct through2Ron; either bank can supply the other. InOFF, one device blocks nearly the full terminal voltage; the companion's reverse channel clamps its source only a few volts above the lower drain. Equalhalfvoltage allocation is invalid.
+
+FUNDAMENTAL OFF RESPONSE
+A zero-current main-LC endpoint still has nonzero bank voltage difference. Opening both gates inserts nonlinear Coss into that SAME L. In the frozenbank approximation, conserved OFFenergy is .5LI^2+Eoss(v)-VinQoss(v). Turningpoint solvesEoss(v)=VinQoss(v). A positive decreasing C(v) fitted to the three vendor400V anchors givesEoss(320.6)=13.164uJ,Q=123.324nC and turningvoltage1007V. AtA=.002m2,L=.1173H, weakseriesdamping.072ohm,650V is crossed in11.92us. Model prediction above rating is a failure indication, NOT a survival claim.
+
+A passively settled OFFstate must dissipate VinQ-Eoss; the next hardON dissipatesEoss. Combined commutation costsVinQ=39.538uJ/half in this nominal model. Including only gate charge/bias, even favorable25C Ron yields optimized.02828J/m2half; warm65C nominal yields.03394, above.02674. Leak, wire, coil, material, buffer and controller losses would add. Thus this simply settled twoFET implementation fails its declared budget. This is not a universal semiconductor bound or exclusion of an energyrecovering commutator.
+
+CONDITIONAL JOINT REQUIREMENT FOR A BETTER COMMUTATOR
+If an actual additional operation recovers the OFFcommutation energy and leaves only oneEoss hardON cost, fixedA=.0018m2,m14, warmRon36milliohm, coil+wire10milliohm and actualOFFleak4uA would leave only.678mW total controller PLUS all unallocated FE/buffer loss. For controller.5mW the same joint condition requires OFFleak<=4.74uA, with zerootherloss. These are requirements, not assigned performance. Gate320uA andwarmRon must also be qualified together. The4uA reference is25C/650V typical, not an admissible engine prediction. Additional commutator FETs and magnetic loss must fit this same allowance.
+
+A synchronous lowervoltage OFF-ring return was considered but not qualified: it would require allowing bounded RF ring throughout thermalhold, then closing at its reset phase only when the next intended mainexchange begins. It is not a static thermalhold selector and has no established lowloss guarantee. Actual coil selfcapacitance, core/Coss losses, leakage, rail buffers and slow thermal forcing would all alter it. Root owns whether that alternative warrants another fullcycle calculation.

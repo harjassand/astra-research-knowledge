@@ -1,0 +1,105 @@
+INDEPENDENT REVIEW OF THE POST-B3 BOUNDED PERTURBATION DIAGNOSTIC
+2026-10-21
+Reviewer: /root/post_b3_foundations
+
+DECISION
+
+The code and metadata implement the declared split and comparison correctly. The shared-reference diagnostic exposes a real mathematical source of inflated agreement. The recorded disjoint-arm result is a positive cross-half contrast on this assay's log-normalized scale. It does not establish independent biological replication, a statistically calibrated interaction discovery, predictive headroom over current methods, or a new predictor.
+
+Two wording corrections are necessary:
+(1) Prefer "positive cross-half contrast survives on this fixed split" to "measurable biological/interaction signal survives", unless "signal" is explicitly descriptive and conditional on this transformation/assay.
+(2) "No predictor improvement" is too broad: the ordinary shrunken-additive baseline actually has lower recorded held-out MSE than naive additive and control in both directions. What remains unestablished is a new predictor, biological generalization or improvement over the strongest applicable current method.
+
+EVIDENCE READ AND CHECKED
+
+Read PREREGISTRATION.txt, all of run_trial.py and RESULT.json (all per-pair rows processed for the metadata check, numerical summary inspected). Reconstructed only the condition labels and RNG split from the actual H5AD metadata. Did not load expression values or rerun normalization, contrasts, fitting or the full assay. The producer's expression-level results are source-reported numerical evidence, not a fresh independent replay here.
+
+TRIAL_REVIEW_METADATA.json records the actual check:
+- 30,707 cells, 21,052 matrix columns, 187 condition labels.
+- 158 pairs; each pair, both singleton conditions and control are four distinct labels.
+- For every pair, the union of its four arm-0 cell sets is disjoint from the union of its four arm-1 cell sets.
+- All reported half counts match the metadata reconstruction.
+- The source hash-name rule gives exactly 69 development pairs and 89 test pairs.
+- Every cell is assigned once, with no omission or duplicate assignment.
+
+CONTRACT AUDIT
+
+The random assignment is made from sorted condition names and cell indices with seed 20261021, before loading expression values. Every condition is partitioned into floor(N/2) and ceil(N/2) cells. Using a single RNG sequentially is ordinary reproducible sampling; the code never uses a response to choose a half. Four-arm disjointness holds within every pair and across the two global halves. Different pairs intentionally reuse some single/control cells within each half, so the pairs are not independent statistical units.
+
+All 21,052 supplied gene columns enter every inner product and error average. There is no variable-gene selection, outcome-selected feature mask or per-pair gene filtering in this implementation. This does not authenticate the upstream creation/filtering of the supplied count matrix, and "all genes" means all supplied columns.
+
+The cell transform is exactly counts/row-total times 10,000 followed by natural log1p. Implicit zero entries remain zero. It is per-cell, so target-half measurements are not used to estimate normalization factors for source-half cells. A zero-total cell would stop the run.
+
+For direction h -> 1-h, lambda is fitted using only source-half development-pair means and source-half singleton/control means, then clipped to the predetermined [0,2]. Predictions use that same source half's singleton/control means. Scoring uses opposite-half pair means only for the 89 test pairs. The reverse direction follows the same fixed pair partition and does not fit on test-pair labels. Thus target test-pair outcomes do not tune lambda.
+
+This is held-out-combination evaluation among measured single perturbations, not leave-gene-out extrapolation. Development and test predictions share measured single/control inputs, as allowed by the contract. The two directions are complementary uses of the same assay, not two independent experiments. The code agrees with the written preregistration; this audit cannot independently certify when the author first saw expression values, beyond the supplied record.
+
+WHY SHARED REFERENCES INFLATE CROSS-HALF AGREEMENT
+
+Let G denote the number of gene coordinates after the fixed per-cell transform. For condition g in {ab,a,b,c}, write its true within-assay mean as mu_g, cell covariance as Sigma_g, total count as N_g and split means as mu_hat_g0, mu_hat_g1. Define
+
+theta = mu_ab - mu_a - mu_b + mu_c.
+
+Under independent cell sampling within/across conditions, conditional on the assay regime, the disjoint-arm residual is
+
+r_h = theta + e_ab,h - e_a,h - e_b,h + e_c,h.
+
+The two noise terms use disjoint observations, so
+
+E[r_0^T r_1]/G = ||theta||^2/G.
+
+No diagonal-only gene independence is required: the inner-product bias is determined by traces of full covariance matrices. Cross-gene correlation matters for uncertainty, which this diagnostic does not quantify.
+
+With the same count-weighted pooled singleton/control means reused in both halves,
+
+s_h = theta + e_ab,h + z,
+z = -e_a,pool - e_b,pool + e_c,pool.
+
+Then, under the same sampling model,
+
+E[s_0^T s_1]/G
+ = ||theta||^2/G
+ + tr(Sigma_a/N_a + Sigma_b/N_b + Sigma_c/N_c)/G.
+
+The additional term is nonnegative. Identical single/control estimation errors appear in both residual estimates and masquerade as repeatable contrast. This is a noise-reuse effect even when theta=0. It is not a theorem that the realized difference must be positive for every split or pair, nor a universal formula for the expectation of the nonlinear cosine statistic.
+
+There is a useful fixed-assay version that needs no claim of biological replication. Condition on every observed transformed cell vector and average only over uniform random balanced partitions within labels. Let mu_bar_g be the fixed pooled mean and S_g the unbiased finite-sample covariance (denominator N_g-1). Complementary sample means satisfy
+
+Cov_split(mu_hat_g0, mu_hat_g1) = -S_g/N_g,
+
+including unequal half sizes. Let theta_bar be the pooled four-arm contrast. Then
+
+E_split[r_0^T r_1]
+ = ||theta_bar||^2 - sum_g tr(S_g)/N_g,
+
+whereas pooled-reference residuals satisfy
+
+E_split[s_0^T s_1]
+ = ||theta_bar||^2 - tr(S_ab)/N_ab.
+
+Their expected difference is exactly
+
+tr(S_a)/N_a + tr(S_b)/N_b + tr(S_c)/N_c.
+
+This makes the interpretation precise: disjointness removes reuse of single/control cell-sampling error; it does not manufacture independent biological information. The fixed seed supplies one realized partition, not an estimate of a sampling distribution.
+
+RECORDED RESULTS AND THEIR LIMITS
+
+The recorded mean cross-half inner product per gene increases from 0.00145645894 with disjoint arms to 0.00413565151 with shared references: a difference of 0.00267919257 and a ratio of approximately 2.8395. Median cosine increases from 0.19731164 to 0.80483317. These descriptive results match the qualitative inflation mechanism. The observed amount is not an independently estimated noise bias or confidence interval.
+
+All 158 disjoint-arm pair inner products are positive. This is noteworthy within this realization but not 158 independent replications: every pair shares the control estimate and many share singleton estimates. There is no valid binomial-sign inference from this count. Common assay effects, guide effects and transformed-scale structure can persist in both halves.
+
+The fitted ordinary shrinkage factors are 0.35710 and 0.37044. On their respective held-out halves, MSE falls from 0.00829275 to 0.00355424 and from 0.00801707 to 0.00344240 relative to unscaled additive prediction, approximately 57.14% and 57.06%. It also beats control-only under this recorded all-gene loss. This is a real descriptive baseline comparison, but not a discovery of shrinkage, an external benchmark win, statistical uncertainty calibration or a new architecture. No PRESAGE/current-method comparison was executed here.
+
+NORMALIZATION, SHARED ARMS AND BIOLOGICAL SCOPE
+
+Per-cell total normalization is compositional and log1p is nonlinear. An additive relation on another expression/absolute-molecule scale need not remain additive after this transform. Conversely, a nonzero theta on this scale does not by itself identify a mechanistic genetic interaction. Unequal knockdown efficiencies, guide mixtures, cellular state shifts and assay structure can also contribute. The experiment tests the declared representation, not a representation-independent epistasis theorem.
+
+Shared controls and singletons induce dependence across pair contrasts and across development/test features. That is permitted for predicting new combinations from measured single effects, but restricts uncertainty and transfer claims. Errors of the same underlying assay or intervention can be common to both cell halves even though the cell indices are disjoint.
+
+The protocol evidence supplied by the metabolism investigator identifies HTO labels as subpools of the same THP-1 experiment and alternative guide sequences as technical replicates; it does not establish independent culture/transduction replicates. This review did not re-audit that primary protocol. The present split therefore supports cell-sampling diagnostics within an assay only. It cannot justify a cross-biological-replicate validation claim.
+
+FINAL SCOPED CONCLUSION
+
+The trial establishes an executed validation pitfall and an outcome-independent way to avoid that specific reuse of reference-estimation noise. A positive transformed-scale cross-half contrast remains, while a strong ordinary shrinkage comparison already substantially improves the naive baseline under the fixed loss. Neither fact establishes useful headroom over current methods or biological generalization. The intended narrow meta-research conclusion is justified with the wording qualifications above. No new assay, predictor search or additional test is recommended by this review.
+

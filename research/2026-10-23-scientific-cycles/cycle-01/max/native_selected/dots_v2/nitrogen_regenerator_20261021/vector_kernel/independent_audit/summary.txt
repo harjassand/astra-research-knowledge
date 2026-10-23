@@ -1,0 +1,28 @@
+Independent numerical audit of vector_kernel/kernel.py
+
+Pinned implementation SHA-256: 8c38cbb146cf209d9e5bec6ddc895ca97039ca747380d4182b72a3a8d0cf4bd7
+Reference: original paper_model.gas_model(), Cantera 3.2.0 from source deps.
+Scope: 63 bounded states. No BVP, parameter sweep, implementation changes, or universal certificate.
+Thread controls: OPENBLAS_NUM_THREADS=1, OMP_NUM_THREADS=1, MKL_NUM_THREADS=1.
+
+States: mixed compositions at endpoints, off-knots, 1000 K +/- one ULP, 2200 K boundary; all six pure species at 200/1000/3500 K; traces from 1e-12 to minimum positive float; six TP-equilibrium compositions and NO perturbations of +/-1e-10. Full labels and quantitative results are in report.json.
+
+Outcome: no material discrepancy in evaluate(). Stoichiometric matrices and molecular weights match exactly; atomic stoichiometry is exactly conserved. Third-body defaults/efficiencies and Lindemann falloff agree. Rate progress units are kmol/m3/s, mass production kg/m3/s, species enthalpies J/kg, cp J/kg/K, density kg/m3, viscosity Pa*s, conductivity W/m/K.
+
+Maximum relative errors: density 4.27e-16; cp 5.17e-16; viscosity 5.34e-11; conductivity 8.65e-11. For gross flux > 1e-250, maximum net-rate error divided by gross flux was 1.76e-13; analogous species mass-source error was 1.44e-13. Fifteen malformed/off-domain inputs were rejected. Non-strict negative composition handling matched explicit clipping and normalization.
+
+Concrete caveat: direct public thermochemistry() and pure_transport() calls do not enforce the documented temperature/nonfinite contract; 199 K and 3501 K silently extrapolate, and NaN returns nonfinite output. evaluate() enforces these guards correctly.
+
+Near-equilibrium net relative errors can be huge despite tiny absolute errors. TP equilibrium construction at 1000+ULP rounded below the NASA branch in Cantera; restoring the requested T gives a small nonzero residual in BOTH implementations. Subnormal traces can retain nonzero log-domain flux after Cantera product underflow. These are documented, not numerical-kernel failures.
+
+Physical scope: N2 NASA below 300 K, transport at 200-300 K, and R6 above 2200 K are source-model extrapolations. Matching Cantera over 200-3500 K does not validate those extrapolations.
+
+HPY and helper-guard recheck
+
+Initial report and summary are preserved as report_initial.json and summary_initial.txt. Guard checks at invalid temperatures now reject correctly. Detailed updated findings are in report_hpy_update.json.
+
+Seventy independent Cantera TP-derived enthalpy states: no-guess unique-root reconstruction error <=3.98e-9 K; nontrivial correct-branch guess reconstruction error <=1.37e-9 K. Positive NO2 splice-gap targets reject by default and report explicit clamp residuals when opted in. Negative-jump overlaps produce two correct roots with ambiguity flags. Out-of-range/nonfinite h and strict/trial-clamp conflict reject normally.
+
+New low-severity input-validation bug: temperature_from_enthalpy(1e9, [1,0,0,0,0,0], strict=True, rtol=np.inf) returns 1000 K without an enthalpy_clamped flag and reports the huge mismatch as a roundoff snap. Finite/nonnegative validation of solver tolerances is needed. Default tolerances showed no actual HPY numerical bug or source-branch mismatch in this bounded audit.
+
+Final resolution: the nonfinite-tolerance defect is fixed. Ten focused validation checks now reject as required, including the original infinity repro, huge finite tolerances, and NASA gap input with huge finite rtol. Five ordinary HP reconstruction checks remain within 0.0 K. The original finding is preserved in report_hpy_update.json; see report_final_resolution.json for final tested hash and details.
