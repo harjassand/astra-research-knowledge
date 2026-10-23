@@ -1,0 +1,22 @@
+# U continuation: noise attribution and current certificates — 23 October 2026
+
+This append-only handoff selects the U continuation report, its published calculation scripts and result files, and the producer's replay receipt. It preserves model boundaries and comparator results. No physical experiment, cooling result, novel device, or practical advantage is established.
+
+## Retained findings
+
+- **Noise attribution has an exact ambiguity in a stated model class.** The source gives two passive proper-complex Gaussian OU models with the same complete observed law under the specified coherent and thermal controls but opposite signs of a bath number current. The construction allows an independent sensor OU component with the plant's drift. It is a scoped no-go for that model class, not a statement about every sensor or every physical instrument.
+- **A current interval preserves uncertainty about the noise split.** Given the source's known plant drift, physical metric, bath matrices and occupations, its attainable interval ranges over allowed assignments of excess diffusion to the physical pump and independent sensor. For positive bath-number weights, a positive lower endpoint is exactly the ordinary conservative raw-covariance current test. The interval adds an identified set and abstention boundary, not a new detection capability. The finite-error statement further assumes independent proper-Gaussian snapshots and calibrated inputs; continuous traces are not covered by that sampling guarantee.
+- **Phase coding has conditional identities and a conventional-receiver boundary.** A physical random-sign intervention gives a positive-lag identity through causal discrete detector memory. Continuous exposure requires a known response or additional invertibility conditions. The report shows that an ordinary phase-switched coherent receiver with the same hardware, samples, calibration and read budget can run the identical decoder. Code-synchronous or upstream noise can imitate the signal unless an independent acquisition constrains it.
+- **The other retained constructions remain bounded.** A uniform-clock destructive-pair Krylov method is population-exact under conditional closure and inherited controllability, with hidden-state and missing-excitation counterexamples. Timestamp regression beats it in the displayed fixtures. A finite two-point obstruction and a corrected integer verifier address a named finite statistical design; neither is an all-dimension algorithm or a physical assay.
+
+## Evidence and limitations
+
+The supplied archive's replay receipt reports 17 portable checks passed, including an expected rejection of a zero-power verifier fixture. Capital verified the archive SHA-256, ZIP CRC, and pinned hashes for the selected files. Capital did not rerun the scientific scripts, reconstruct the proofs independently, or validate a numerical experiment. The replay is source-reported software execution on exact and synthetic fixtures, not scientific certification.
+
+No measured optical-trap trace was acquired; the source report says the Dryad data download was gated. All reported estimator comparisons are synthetic, and the six repeats are descriptive. Number current becomes heat only with a physically justified energy observable. Wall power, pump efficiency, total energy, extraction, and net cooling were not measured. External proof review, novelty, historical priority, and practical advantage remain UNKNOWN.
+
+## Source handling
+
+`source/outputs/ultra_continuation_20261023/` contains the selected report and 16 source scripts/result files, with the report reproduced as a minimally edited copy. The copy removes a paragraph on internal contributor counts/roles and generalizes three agent-specific attributions; the scientific statements, formulas, numbers, and limitations are retained. `source/replay_receipt.json` is copied from the supplied archive. The manifest pins the original archive, each selected member, and each published file.
+
+The original archive remains intact at its supplied location. The release excludes its team roster, internal coordinator handoff, role-attributed producer manifest, `work/` research tree, replay logs, full source clone, raw measured data, primary-paper PDFs, and account/access material. The pinned Astra revision and cited source links are provenance records; this intake did not independently review the full corpus or those sources.
