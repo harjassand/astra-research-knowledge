@@ -1,0 +1,148 @@
+ASTRA-FRESH-20261023 / P2 / bounded independent source-reset audit
+2026-10-23; existing matter worker; no additional allocation
+
+VERDICT: no blocking sign, source-power, area-factor, or terminal-reset error
+found in the corrected coupled model. Both external source voltages are zero
+during the final stage, while internal fields, charge, strain and velocities
+continue to evolve and dissipate. This is a passive terminal circuit within
+the declared synthetic model. It is not a measured device or a generator-
+efficiency model. The archived active-zero-field hold is properly superseded.
+
+Files read:
+  ../coupled_dynamics/coupled_cycle.py
+    SHA256 8c1b703949e8261044038e1b554d3c8c00e7fc2b46c4b5b9ef63f98b216c66cc
+  ../coupled_dynamics/verify_and_plot.py
+    SHA256 9ba24e7a3ba9265aad767a1b37c955b558d72d104cde717c6ef0ae745259ef3b
+Also inspected saved current results/trajectories, direct_field_comparator.py,
+and superseded_active_zero_field_hold/WHY_SUPERSEDED.txt. No root code edited.
+
+1. EXACT DISCRETE PASSIVE IDENTITY
+
+Let D_h=mean(q)+Ch*h and I_h=dot(D_h). The code retains h as a state and adds
+L*Ch*h^2/2 to stored energy. The field port is
+
+  V_h,source=h+Rh*I_h,      P_h=L*V_h,source*I_h.
+
+The piezo port of each cell is
+
+  V_c,j=(z_j-theta*e_j)/Cp,
+  V_z,source,j=V_c,j+Rz*zdot_j,
+  P_z=ell*sum_j V_z,source,j*zdot_j.
+
+Direct differentiation of the discrete material, gradient, elastic, piezo,
+kinetic and field-capacitor energy gives
+
+  Edot=P_h+P_z
+       -zeta*dx*sum(qdot_i^2)
+       -eta*dx*sum(edot_i^2)
+       -Rz*ell*sum(zdot_j^2)
+       -Rh*L*I_h^2.
+
+All terms have the expected positive losses. The material gradient energy
+uses the correct dx factors and natural zero-flux q endpoints. Mechanical
+endpoint masses have the correct half-cell weights, and the bridge forces
+are equal/opposite at each bridge's two nodes. A -h*q term should NOT be added
+to this stored energy: the h coupling is supplied by the electrical work
+port and D_h relation. Adding that Gibbs-potential term would double-count it.
+
+At t>=T the implemented equations give
+
+  Ch*hdot=-h/Rh-mean(qdot),     I_h=-h/Rh,
+  Rz*zdot_j=-V_c,j.
+
+Therefore both source voltages and powers vanish, and Edot equals minus the
+four losses. In particular, h is not forcibly assigned zero at release.
+Its remaining storage and the polarization-induced current are dissipated
+by the actual terminal circuit. Piezo source work likewise remains constant
+while its internal charge/voltage relaxes.
+
+2. NEW INDEPENDENT CHECKS
+
+The existing verification's energy-directional states have h=0. To exercise
+the previously vulnerable field-storage/reset terms at nonzero h, I formed
+the exact discrete energy gradient independently and contracted it with the
+implemented rates at 12 perturbed states: h=-0.2, +0.13, 0; times 1, 8, 18,
+25 at driven T=20; three bridges/four subdivisions; NumPy RNG seed 418035.
+Perturbations about the initial state were q std .03, u std 1e-5, velocity
+std 2e-4, and z std .04. Maximum energy-gradient/power relative discrepancy
+was 3.31e-16. In all three terminal checks, reconstructed field and piezo
+source-voltage residuals were zero at displayed double precision, with
+Edot<0 and -Edot equal to the recorded instantaneous losses.
+
+Saved fast_refined, slow_refined and adiabatic_refined trajectories each have
+exactly constant accumulated field-source and piezo-source work throughout
+their sampled terminal hold. This is additional evidence that the corrected
+terminal accounting is used in the saved results, not only in the source.
+
+Existing Jacobian/energy directional verification and one mesh refinement
+are consistent. Relative heat changes are 0.0159321%, 0.0135675%, and
+0.000362085% for T=2,20,100 respectively. The largest integrated energy
+identity residual divided by FINAL total heat is approximately 0.00205%
+(T=100 refined), still small but larger than its grid-to-grid heat change.
+The reported maximum_scaled_energy_identity_residual uses a larger peak
+circulated-work scale; it must not be described as relative to final heat.
+
+At T=100 refined, final q mean is 0.8660255524 versus B=0.8660254038;
+field h=-2.44e-9; piezo voltage RMS=1.31e-8; total heat=0.0254254219 in
+model energy-per-cross-sectional-area units. T=2 refined instead ends near
+q=0, with final piezo charge approximately one unit away from the intended
+polarized actuator charge. It is a failed useful operation, not a successful
+closed actuator transfer. Finite residuals are reported rather than silently
+discarded, and neither run gives a finite-temperature retention lifetime.
+
+3. NORMALIZATION AND PRECISE RESET SCOPE
+
+The integrated energies, work and heat are PER BAR CROSS-SECTIONAL AREA;
+the synthetic calculation sets that area to one. L factors for the common
+field port and ell factors for individual piezo bridges are consistent.
+Divide by L for mean energy density, or multiply by a specified cross section
+to obtain total energy after restoring physical units. The piezo Rz is the
+cell-normalized resistance R_ohm*Vcell used in the theorem.
+
+Ch and Rh in the field port are coefficients of h^2/2 in energy density and
+I_h^2 in dissipative density. A physical electrode geometry must specify
+their conversion to farads/ohms. For example, if q is polarization, h electric
+field, electrode area Ae and separation d, then Ch is a permittivity and
+Rh=R_ohm*Ae/d. They are not automatically the same normalization as the
+piezo charge-density circuit. The present dimensionless model makes no
+material or SI capacitance/resistance claim.
+
+Successful final h approximately zero resets the background field-capacitor
+storage, and the piezo state returns approximately to its initial value.
+However, total generalized field-electrode charge D_h changes from -B to +B
+with the intended material polarization. The successful saved run has
+D_h,initial=-0.8660254038 and D_h,final=+0.8660255522. This is physically
+consistent and the source work is counted, but a statement that EVERY
+electrode/source charge returns to its initial state would be incorrect.
+The precise claim is zero external source voltages with dynamically relaxed
+internal fields and restored piezo actuation, while the useful material and
+associated screening charge retain the transferred state.
+
+During the driven stages the code prescribes hdot and piezo current, and
+computes the source voltage needed against actual qdot and piezo voltage.
+This is a valid ideal bidirectional work-port model. Driver bandwidth,
+voltage limits, waveform generation, sensing/control overhead, energy-
+recovery efficiency and generator storage are not thereby physically closed.
+There is no free h-source inside the modeled boundary; there is also no
+wall-plug cost claim justified outside that boundary.
+
+4. COMPARATOR AND MINOR IMPLEMENTATION NOTE
+
+The direct-field comparator inherits the same specimen, losses, circuits and
+terminal reset. Its only intended change is a positive sin^2 field pulse
+with amplitude 1.5 times the homogeneous composite negative-well spinodal,
+and passive piezo short throughout. This is one unoptimized pulse family.
+Its cost comparison does not prove superiority over optimized direct writing
+at matched error, time and physical interface constraints. The code states
+that limitation correctly.
+
+The unused sparsity() method has not been updated for the h state: q-row h
+couplings and the terminal h-row dependencies are missing. Current run()
+passes the analytical jacobian() directly and does not use sparsity(), so
+this does NOT affect any audited result. Do not reuse that sparsity mask for
+numerical Jacobian construction without updating it.
+
+No further simulation campaign is needed for this bounded audit. Next work
+should address the declared physical driver/material/noise interface, not
+repeat these already-closed sign and terminal power checks. Actual model,
+token and billing costs UNKNOWN. No new worker or external operation used.
