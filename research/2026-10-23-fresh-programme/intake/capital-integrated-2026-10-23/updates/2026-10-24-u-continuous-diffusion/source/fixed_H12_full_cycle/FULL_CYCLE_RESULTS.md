@@ -1,0 +1,24 @@
+# Fixed-H12 periodic diffusion replay
+
+This is a numerical replay of the exact supplied model and waveform, not a parameter search or a physical experiment. The model source is `../lead/continuous_model.py` (SHA-256 `aba83ee767c3bf476daf89d8359ce4226ac974da5a870e9051ab4cfda174f868`); its frozen specification is `../lead/CONTINUOUS_CONSTRUCTION.txt` (SHA-256 `39dbacd25d2916476b747aa2b1818207435035a9e42e81408998ce6997ffbf3e`). The solver is the dependency-free SG finite-volume flux with positive cyclic backward Euler, using the Thomas plus rank-two cyclic solve in `cyclic_solver.py`. Its small dense reference check has max error `5.55e-16`.
+
+All runs hold `H=12`, `h(t)=0.3 cos(0.01 κt)`, the specified constant force, and `T=μ=1` fixed. Time is represented in slow units `u=κt`: the waveform period is `628.3185307` in `u` and `2,712,579.85698` physical time units. Each run starts from a uniform numerical density and iterates to the periodic state; four warm-up periods sufficed at every listed resolution. This is not a claim that physical preparation is free. The full supplied `f(x)` profile is used at every grid point, including barrier regions.
+
+The table reports work per periodic cycle. `Wh(BE)` is the backward-Euler staircase sum `−Σ Δh <f>old`; `Wh(trap)` is the independently integrated continuous field-port work `−∫ hdot <f> dt`. `WF` is input from the constant-force port; `Q` is heat into the bath; and `Σ` is the edge-flux entropy production. At the periodic state `ΔE` and `ΔS` are numerically zero. `FL(trap)` is the residual `ΔE−(Wh(trap)+WF−Q)`. `S gap` is `ΔS+Q−Σ`; backward Euler has a nonnegative numerical entropy excess, so this should decrease with time refinement rather than be forced to zero.
+
+| Cells | Steps/cycle | `Wh(BE)` | `Wh(trap)` | `WF` | `Q` | `Σ` | `FL(trap)` | `S gap` | Max raw mass drift | Warm-up cycles |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 300 | 1,200 | −0.000707134 | −0.000742762 | 3.747782600 | 3.747075741 | 3.747033642 | 3.59e−5 | 4.21e−5 | 1.89e−9 | 4 |
+| 300 | 2,400 | −0.000726044 | −0.000743856 | 3.747781709 | 3.747055534 | 3.747034857 | 1.77e−5 | 2.07e−5 | 1.12e−9 | 4 |
+| 300 | 4,800 | −0.000735497 | −0.000744403 | 3.747781265 | 3.747045542 | 3.747035465 | 8.68e−6 | 1.01e−5 | 5.36e−10 | 4 |
+| 600 | 2,400 | −0.000726203 | −0.000744017 | 3.740767982 | 3.740041241 | 3.740021040 | 1.73e−5 | 2.02e−5 | 2.70e−9 | 4 |
+| 600 | 4,800 | −0.000735661 | −0.000744568 | 3.740769204 | 3.740032951 | 3.740021827 | 8.32e−6 | 1.11e−5 | 1.71e−9 | 4 |
+| 1,200 | 4,800 | −0.000735701 | −0.000744608 | 3.739017016 | 3.738277715 | 3.738270521 | 5.31e−6 | 7.19e−6 | 6.87e−9 | 4 |
+
+Both field-work estimators have a negative sign at every time and mesh resolution; the BE estimator moves toward the trapezoid value as the step is refined. At the finest listed grid, the field port returns about `7.45e−4` work units per cycle, while the constant-force port supplies about `3.739`; the combined control work is still a net input of about `3.738` per cycle. Thus this replay does not show net work extraction from the two controls. The field-port power is about `−2.745e−10` per physical time unit; force-port input power is about `1.3784e−6`.
+
+Temporal refinement at 300 cells changes `Wh(trap)` by about `5.47e−7` from 2,400 to 4,800 steps (and by about `1.64e−6` from 1,200 to 4,800 steps); both the trapezoid first-law residual and the BE entropy gap decrease under this refinement. At 4,800 steps, `Wh(trap)` changes by about `4.1e−8` between 600 and 1,200 cells, while force input changes by about `1.75e−3` (roughly `0.047%` of `WF`). The field-work sign and magnitude are therefore much more stable than the force/heat ledger, whose spatial convergence remains visible. These finite comparisons are not a certified mesh-error bound.
+
+The implicit solve is followed by a small mass renormalization: raw per-step mass drift reaches `6.9e−9` at 1,200 cells and the recorded maximum projection is the same order; normalized mass error is at machine precision. The maximum single-step BE energy-ledger residual is `1.51e−9` at that resolution, but it accumulates across the cycle: the cycle BE first-law residual is `−3.60e−6`, while the independent trapezoid-work residual is `+5.31e−6`. These gaps are reported, not corrected away. The maximum periodic-start L1 residual is below `2.5e−11` before the final cycle. Entropy gaps fall under temporal refinement (`4.21e−5` to `1.01e−5` on 300 cells); their remaining finite-grid value includes BE's numerical entropy excess.
+
+The first-hit/QSD saddle-rate comparison is omitted: the killed-at-saddle first-hit flux has a factor-of-two convention difference from the committed Kramers rate in the frozen construction. This replay tests the full finite-volume periodic dynamics and inclusive work ledger only. It does not establish a physical mechanism, an experimentally achievable protocol, or a finite-resource advantage.
