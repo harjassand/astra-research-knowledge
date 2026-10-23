@@ -8,3 +8,5 @@ These append-only updates preserve separate evidence scopes. Source hashes and h
 The autonomous CTMC model is separate from the earlier U Gaussian-noise model. No coordinator comparison that was withheld from this release is included.
 
 - [P2 matter operations](2026-10-23-p2-matter-operations/README.md): compatible 1D finite-pitch path theorem, synthetic slow/fast cycles and direct-pulse comparator, plus a typed selective-locking jam. Physical geometry, material feasibility, retention and advantage remain unresolved.
+
+- [U exact nonnormal finite-CTMC escape](2026-10-23-u-exact-autonomous-escape/README.md): cleaner V2 exact certificate with Root-reported rational checks; V1 and its coordinator replay remain pinned as history. The separate N443 finite-matrix projection candidate now has a completed internal audit; external/formal review and priority remain open.
