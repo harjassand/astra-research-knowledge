@@ -47,3 +47,7 @@ The autonomous CTMC model is separate from the earlier U Gaussian-noise model. N
 ## Sparse autonomous CTMC follow-up
 
 - [U sparse autonomous CTMC certificate](2026-10-24-u-sparse-autonomous-escape/README.md): preserves a distinct 235-edge exact certificate with one-way transitions, failed strict off-diagonal positivity, and divergent formal stationary edge entropy; the dense certificate remains unchanged, with no physical or utility claim.
+
+## Programme closeout
+
+- [Astra civilisation programme closeout](2026-10-24-civilisation-programme-closeout/README.md): preserves the final aggregate research report, per-claim ledger, continuation, run status and selected evidence archive. Internally reviewed mathematical results remain scoped; later constructions retain pending statuses; the run is finished, the long-term goal paused and mission `NOT_ACHIEVED`.
