@@ -1,0 +1,31 @@
+# P2 completed return and U cycle/precision addendum — 23 October 2026
+
+This is a separate append-only update after the merged U/N443 integration. It leaves PR #124, the earlier P2 checkpoint, and the exact V2 checkpoint unchanged. The source manifest pins selected source fields and exact copies. Hashes establish transport integrity, not scientific correctness. No scientific scripts, event enumerations, or rounded-matrix arithmetic were run here.
+
+## P2: proposed construction, release/reset, and conditional result
+
+The proposed architecture uses a stable scaffold with separate repair arms. A DNA hairpin in a repair connection's load path is intended to expose a nickase recognition site when relaxed and protect it when loaded. After cleavage, an expendable RNA displacement strand is proposed to separate the cut partners; the RNA is then cleared, arms reassociate, and ligase restores the connection. The source specifies separate phases: ligation while relaxed, mechanical probe, nickase pulse and removal before unloading, partner displacement, RNA clearance before ligase returns, re-ligation, and an inactive hold. This is a proposed operation, not an acquired or validated chemical interface. The selected HTML preserves the source's strand connectivity, recognition-site orientation, sequence proposal, and release/reset logic.
+
+The theoretical result is conditional on the actual geometry and transition assumptions. For completed ideal cycles, the two-state model has transition probabilities `a = p α_L` and `b = (1−p) α_X` only when complete release erases enough partner memory that the same reassociation probability `p` applies from either starting state. Under that condition, nondegenerate reassociation `0 < p < 1` and `α_L > α_X > 0` give a stationary bridge fraction strictly between `p` and 1. If reassociation depends on the initial state, cleavage selectivity alone does not establish enrichment.
+
+The finite-cycle extension adds an incomplete/lost-output state `F`; it does not condition yield on successful completion. The source gives `e_m = 1−(1−ε)^m` and `u_X(m) ≥ max(0, x_m−e_m)`, with a sufficient comparison condition `x_m−p > e_m` under its stated assumptions. Those equations and exact event-enumeration results are producer-reported; no code attachment was visible and Capital did not replay them. They provide no measured rates or yield.
+
+The source withdraws broad novelty for loaded-link turnover and says ordinary programmed crosslinking dominates the simple two-junction application. Its literature comparison is source-reported, not an independent or exhaustive priority review. The surviving candidate is a regenerable covalent repair connection with local load-biased turnover, explicit partner release, restored reactive ends, inactive-period storage, and later reactivation.
+
+### Physical interfaces and remaining invention question
+
+The source identifies failure interfaces explicitly: the hairpin is only a local conformational selector and can misclassify; cleavage does not ensure partner reallocation; tethered partners can rebind at high local concentration; a different partner outside reach cannot be selected by better cleavage; and chemical fuel use does not itself supply the mechanical work assumed in a network model. Uniform reopening removes absorbing locks but does not direct repair, and connecting components can weaken the material. These are scoped model observations, not material measurements.
+
+The remaining question is whether one anchored construct can jointly provide preferential completed release of slack connections, access to different partners, acceptable re-ligation/missing-output/damage rates, retained mechanical benefit after unloading and reagent clearance, and a useful later reconfiguration under a real connection-budget constraint. The source retains this narrow candidate while retiring the broad novelty claims; it does not establish a distinct materials invention or a physical advantage.
+
+The captured P2 HTML is complete through §5 and ends during a displayed equation in §6. Sections 6–7 are therefore retained from the captured text field, and the complete surviving §6 `data-math-source` annotations are pinned separately. The text field is not used as a substitute for the missing HTML markup.
+
+## U: cycle locality and finite precision
+
+Section 12 imports the cyclic variation-diminishing theorem for an irreducible, balanced, time-homogeneous generator supported on a nearest-neighbor cycle. The primary paper's Definition 3 and Theorems 4(3) and 5 confirm that the stated generator class is in scope and that nonzero trajectories eventually have no two adjacent cyclic coordinates simultaneously zero. The paper is [Ben-Avraham et al., arXiv:1807.02779](https://arxiv.org/abs/1807.02779). The source then derives `dim E ≤ 2` for `E = ker(exp(TQ)+αI)` and applies the one-frequency argument to conclude `α ≤ exp(−π)` for an exact returned classical population mode in this model. Capital checked the imported theorem's conditions and statement; it did not reconstruct the full derived corollary. This is not a universal physical-locality, efficiency, or time-dependent-generator theorem.
+
+Section 13 rounds dense V2 to a rational grid and projects to a balanced generator. Root reports exact rational checks, worst-input total-variation bounds of `3.3756371946×10⁻⁸` (strong) and `5.6198665×10⁻⁷` (coarse), and a rounded raw logical gain lower bound of `5.91243628×10⁻⁷` against the exact-return normal/four-state ceiling. These values are source-reported, not freshly replayed here. Rounding **loses exact product return**; the reported bound concerns approximate product return and raw logical gain. It does not establish advantage against all approximate-return competitors or calibrated manufacturability/physical rates.
+
+## Evidence boundary
+
+P2 remains a conditional model; the chemical operation, partner exchange, mechanics, and physical advantage are unvalidated. U remains a source-reported finite-precision mathematical corollary with no fresh arithmetic replay. External review, focused priority, physical calibration, practical advantage, and any materials demonstration remain `UNKNOWN`. The two source scopes are independent and should not be merged into the existing P2 mechanical-operation or U exact-return claims.
