@@ -25,6 +25,10 @@ The autonomous CTMC model is separate from the earlier U Gaussian-noise model. N
 - [Iron-shell pressure and redox models](2026-10-24-iron-shell-model-boundary/README.md): separates fixed-ratio pressure-pulse, shallow Fe/FeO redox-strain and toy eigenstrain models from acquired evidence. The shell-opening mechanism, physical advantage and novelty remain unestablished.
 - [Quantum-mass replay and binary-filter increment](2026-10-24-quantum-mass-increment/README.md): preserves the conditional binary-instrument/whole-coarse analysis and finite algebra fixture as incremental evidence only; it does not reprove the full chain or close the general reconstruction target.
 - [Quantum parity whole-coarse reconstruction](2026-10-24-quantum-parity-whole-coarse/README.md): reviewed together with the frozen predicate-mass theorem and tensor-cap correction. The specified fixed-set family has an exact Bell-pair/two-bit replacement with bounded one-sided masses, while exact conjunctive-mask kernels have a growing lower bound on the maximum mass; this is a sufficient-mass comparison, not an entropy/QRE-error or rate-advantage result.
+## Quantum follow-up
+
+- [U reference filters and the exact weak-live-table boundary](2026-10-24-quantum-reference-filter-boundary/README.md): preserves the conditional common-reference, clipping, moment and commuting routes beside the exact value-one CHSH live-table mass obstruction. The latter blocks only exact table preservation with both masses capped at one; payoff-only repair, actual Jensen gaps and other repetition routes remain open, and the earlier theorem is unchanged.
+
 ## Learning and representation follow-ups
 
 - [Acquired P3 operations and retaining-program comparison](2026-10-24-p3-acquired-operations-return/README.md): the restricted finite-source acquisition predicts 558 never-queried states in its largest case, while the strongest equally informed retaining reconstruction matches the learned programs and paid source-query costs; physical-domain recognition and advantage remain UNKNOWN.
