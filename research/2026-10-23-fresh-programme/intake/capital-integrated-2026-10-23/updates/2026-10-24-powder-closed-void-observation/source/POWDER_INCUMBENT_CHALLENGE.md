@@ -1,0 +1,42 @@
+# Powder closed-void incumbent challenge
+
+## Decision
+
+For the stated endpoint—an upper bound on the **per-particle closed-void fraction** of shape-unknown nominal 30-µm Al/steel powder—the strongest matched operational incumbent is **dispersed-particle X-ray computed tomography (XCT)**. It images each particle's 3-D exterior and resolvable internal pore volume directly, so it does not need a shape model or a bulk-density-to-maximum-particle inference. Published powder XCT workflows report per-particle volume/morphology and internal open/closed porosity, including powder with mean particle size 14 µm; a separate calibrated XCT study reports internal pores 10–30 µm in particles up to 100 µm. [metal-powder XCT workflow](https://pmc.ncbi.nlm.nih.gov/articles/PMC6215023/), [calibrated metallic-powder XCT study](https://doi.org/10.1016/j.measen.2021.100110)
+
+This makes XCT the benchmark for the *accept/reject question*, but not a perfect certificate: voxel-scale segmentation cannot rule out accumulated sub-voxel void volume, and scanning only a sample cannot certify the maximum over unscreened particles without a tail/coverage model. Those are the concrete bottlenecks. A 1% void in a spherical-equivalent 30-µm particle corresponds to about 141 µm³, or one equivalent spherical cavity about 6.5 µm across; smaller unresolved cavities can sum to the same volume. Thus the 1% target is resolvable for a single cavity on a sufficiently fine scan, but not automatically bounded for arbitrary pore populations. The reference record's 1% is a design target, not a measured powder result.
+
+For the narrower observable **same-particle mass plus fluid-excluded volume**, the strongest principle-level comparator is two-fluid resonant buoyant-mass measurement (dual SMR). For one particle measured in fluids with known densities \(\rho_1\ne\rho_2\),
+
+\[
+ b_i=m-\rho_iV_{\rm excl},\qquad
+ V_{\rm excl}=\frac{b_1-b_2}{\rho_2-\rho_1},\qquad
+ m=\frac{\rho_2b_1-\rho_1b_2}{\rho_2-\rho_1}.
+\]
+
+This is shape independent and produces a particle-level \(m,V\) pair. The published dual-SMR work demonstrates the two-fluid calculation on cells and nominal 10-µm beads, not 30-µm conductive metal powder; related large-channel SMR implementations use 15×20-µm internal channels for mammalian cells. The specific bottleneck is physical transport through the demonstrated microchannels: a nominal 30-µm particle cannot traverse that channel geometry. A larger-channel metal-powder instrument would therefore be a new implementation whose stable transfer, resonator range, fluid-density calibration, and unchanged pore-access state still need validation. [dual-SMR primary paper](https://pubs.rsc.org/en/content/articlehtml/2014/lc/c3lc51022k), [SMR channel-size primary paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC5064867/)
+
+## Matched method comparison
+
+| Method | What it actually returns | Fit to the target and decisive limit |
+|---|---|---|
+| **Dispersed-particle XCT** — selected operational incumbent | Per-particle outer geometry and resolved internal pore voxels; can classify visible open/closed pore morphology. | Closest to the maximum closed-void endpoint and unknown-shape condition. Must bound sub-voxel porosity, segmentation bias, and unscanned-tail coverage. Existing powder workflows show particle-wise analysis but do not, by themselves, certify all accepted feedstock. [workflow](https://pmc.ncbi.nlm.nih.gov/articles/PMC6215023/) |
+| **Dual-fluid SMR / resonant buoyant mass** — best direct \(m,V_{\rm excl}\) comparator in principle | Two buoyant-mass readings on the same particle give mass and excluded volume by the equations above. | Strong shape-independent density proxy, but current cited SMR examples are biological/cell-scale and nominal 10-µm beads; 15×20-µm cell channels are too small for the nominal 30-µm particle. Both fluids must leave the same pore-access state, and density/composition bounds remain external inputs. [dual-SMR paper](https://pubs.rsc.org/en/content/articlehtml/2014/lc/c3lc51022k) |
+| **Tilted MagLev** | Density inferred from equilibrium position under gravitational and magnetic forces; not separate mass and volume. | Demonstrated on an Al sphere and Al/Cu powders, and can extend the range for low-permeability materials. The Al sphere result was 2.7±0.1 g cm⁻³; non-spherical repeatability depended strongly on geometry, while powder was brought into a narrow band after agitation. That does not establish a one-sided 1%-void certificate for an unknown-shape individual. The paper's stated class is diamagnetic/weakly paramagnetic; unspecified steel susceptibility is outside the validated premise. [primary tilted-MagLev paper](https://doi.org/10.1021/jacs.5b10936) |
+| **Isopycnic gradient / centrifugation** | Equilibrium band/position gives density relative to a calibrated gradient, not separate mass and volume. | Potentially useful for sorting a density interval, but available cited metal-particle evidence uses glass standards and Be particles and reports values about 5% below air-pycnometry results; it does not validate 30-µm steel powder or a maximum closed-void fraction. [primary sodium-metatungstate study](https://doi.org/10.1016/0021-8502(91)90029-H) |
+| **Helium pycnometry** | Lot/sample skeletal density from sample mass and gas-displaced volume. | A genuine powder incumbent: active ASTM B923-23 explicitly covers metal-powder skeletal density. It is a bulk average, not a per-particle tail or maximum. Helium-accessible pores are traversed; gas-inaccessible pores contribute to measured skeletal volume, so accessibility and outgassing determine the operational pore class. NIST's powder-characterization work notes that measuring tens-of-micrometre particles individually by ordinary mass/volume methods would be difficult and slow. [ASTM B923-23](https://store.astm.org/standards/b923), [NIST metal-powder study](https://pmc.ncbi.nlm.nih.gov/articles/PMC4487284/) |
+| **Destructive pore-opening controls** | A before/after change in fluid- or gas-excluded volume after a pore is opened; paired with mass retention and microscopy/CT, it tests whether the original signal included inaccessible cavities. | Valuable validation control, not a screening incumbent: opening destroys the intact-particle geometry, fragments may be lost, and sectioning can miss off-centre pores or smear small ones. The powder-XCT method paper documents these sectioning limitations. [powder-XCT workflow](https://pmc.ncbi.nlm.nih.gov/articles/PMC6215023/) |
+
+## Acceptance criterion for the comparison
+
+Use the same blinded, individually indexed Al and steel particles for the candidate mass/excluded-volume reading and XCT; preserve each particle's raw two-fluid or image data. Freeze composition-specific solid-density bounds, pore-access rules, XCT segmentation/voxel uncertainty, and the one-sided coverage rule before unblinding. For each particle report
+
+\[
+ \phi_U=\max\!\left(0,1-\frac{m_L}{\rho_{s,\max}V_U}\right),
+\]
+
+where \(m_L\) is a conservative lower bound on metallic mass, \(\rho_{s,\max}\) is the allowed composition-specific upper bound on solid density, and \(V_U\) is an upper bound on the relevant external or fluid-excluded volume. Do not use one generic steel density for unknown grades or silently count oxide/coating mass as dense metal. If the measured fluid enters connected open pores, its excluded volume is smaller than the full exterior envelope; under the stated same-solid-density model this makes the resulting void fraction conservative for closed-void fraction relative to the full envelope, but pore access must be stable across both fluids. A held-out particle with reference closed-void fraction above 1% that the frozen rule accepts is a failure; a pass also reports dense-particle accepted yield. Bulk pycnometry may support the lot mean, while destructive opening/sectioning checks selected indexed cases; neither substitutes for per-particle coverage.
+
+## Evidence boundary
+
+The pinned record (`T-powder-closed-void`, revision `0451552424b4679fa9a73faf5849ea5a4af21cf6`) calls the matched per-particle certificate `UNKNOWN`, records no experimental measurements, and lists XCT/radiography among source-reported comparators. This audit selects a comparator for a future blinded challenge only; it establishes neither a usable instrument nor experimental/physical performance for the proposed acquisition route.
