@@ -1,0 +1,373 @@
+Continue Astra's experimental-capability development.\
+You have verified an active IQM Starter account with 30 free credits and authenticated control metadata for real quantum processors. No hardware job has yet been performed.\
+Your next mission is to identify whether these actual controls permit a consequential, prospective scientific experiment.\
+Investigate a specific physical question for which the available gate operations, resonator controls or higher-level transmon transitions can distinguish competing predictions.\
+Compare against the strongest established quantum measurement and characterization methods. Do not treat executing ordinary calibration circuits as an original scientific discovery.\
+Develop the smallest credible prospective experiment, including circuits, state preparation, controls, measurement outcomes, known device limitations, expected statistical power, time and credit cost.\
+If the available controls cannot establish an important new result, preserve the access without consuming credits and investigate a more useful experimental route.\
+Use Sol Max investigators for independent mechanism analysis and adversarial verification where useful.\
+Provide one concrete experimental decision: an exact bounded protocol worth approval, or evidence that this equipment cannot presently support a sufficiently consequential test.\
+Do not build a new platform or repeat the completed account setup.\
+\
+\
+\
+\
+\
+\
+\
+14:10\
+\
+\
+\
+\
+\
+\
+Worked for 18m 6s\
+\
+\
+I’ll test a few specific physical hypotheses against the controls we actually have, then challenge the strongest candidate against established methods. I’ll preserve the credits while preparing one bounded protocol or a clear decision that the present interface is insufficient.\
+\
+\
+\
+\
+Loaded a tool, read files, ran commands\
+\
+\
+\
+Resonator physical question, Qutrit physical question and 4 more started working\
+\
+Searched the web for site.iqm.tech prx_12 qutrit measurement 1 2 transition ...\
+\
+\
+\
+One earlier limitation needs narrowing: binary readout can, in principle, recover all three transmon populations using the available premeasurement swaps. The missing evidence is the accuracy of those swaps and their readout response.\
+Simple resonator storage and echo are already established experiments. I’m focusing the remaining analysis on history-dependent errors and whether an intervention could improve useful performance against an equally informed baseline.\
+\
+\
+\
+\
+Searched the web\
+\
+\
+\
+Measurement prior art challenge and Qutrit physical question finished\
+\
+Ran cat > .astra-local/iqm-prospective-decision-20261020/check_decision.py <<'PY'\
+\#!/usr/bin/env python3\
+"""Offline identifiability and prospective power checks; no network or SDK client.\
+\
+These are mathematical fixtures, not device measurements, novelty evidence or\
+predictions of IQM accuracy. All source research and acquired metadata are read-only.\
+"""\
+from fractions import Fraction as F\
+from math import ceil, log, sqrt\
+import json\
+\
+\
+def determinant(a):\
+&#x20;   return (a[0][0]\*(a[1][1]\*a[2][2]-a[1][2]\*a[2][1])\
+&#x20;           -a[0][1]\*(a[1][0]\*a[2][2]-a[1][2]\*a[2][0])\
+&#x20;           +a[0][2]\*(a[1][0]\*a[2][1]-a[1][1]\*a[2][0]))\
+\
+\
+def inverse(a):\
+&#x20;   aug = [list(row)+[F(i==j) for j in range(3)] for i,row in enumerate(a)]\
+&#x20;   for col in range(3):\
+&#x20;       pivot = next(i for i in range(col,3) if aug[i][col])\
+&#x20;       aug[col],aug[pivot] = aug[pivot],aug[col]\
+&#x20;       z = aug[col][col]\
+&#x20;       aug[col] = [v/z for v in aug[col]]\
+&#x20;       for i in range(3):\
+&#x20;           if i != col:\
+&#x20;               z = aug[i][col]\
+&#x20;               aug[i] = [v-z\*w for v,w in zip(aug[i],aug[col])]\
+&#x20;   return [row[3:] for row in aug]\
+\
+\
+def mv(a,v):\
+&#x20;   return [sum(x\*y for x,y in zip(row,v)) for row in a]\
+\
+\
+def effect_probability(effect,rho):\
+&#x20;   return sum(effect[i][j]\*rho[j][i] for i in range(3) for j in range(3))\
+\
+\
+def diagonal(v):\
+&#x20;   return [[v[i] if i==j else F(0) for j in range(3)] for i in range(3)]\
+\
+\
+def shots_per_arm(delta,alpha=0.05,power=0.90,comparisons=1):\
+&#x20;   \# Two independent groups, N bounded Bernoulli trials each.\
+&#x20;   \# Hoeffding: one-sided P(Dhat-D >= t) <= exp(-N\*t\*t).\
+&#x20;   \# Bonferroni familywise alpha; fixed design, no optional stopping.\
+&#x20;   beta=1-power\
+&#x20;   return ceil((sqrt(log(comparisons/alpha))+sqrt(log(1/beta)))\*\*2/delta\*\*2)\
+\
+\
+def main():\
+&#x20;   \# Ordinary binary readout cannot distinguish levels 1 and 2 directly.\
+&#x20;   e = [F(0),F(1),F(1)]\
+&#x20;   a = [e,[e[2],e[0],e[1]],[e[1],e[2],e[0]]]\
+&#x20;   expected_det=sum(e)\*(sum(v\*v for v in e)-e[0]\*e[1]-e[1]\*e[2]-e[2]\*e[0])\
+&#x20;   assert determinant(a)==expected_det==2\
+&#x20;   p=[F(1,5),F(3,10),F(1,2)]\
+&#x20;   q=mv(a,p)\
+&#x20;   assert mv(inverse(a),q)==p\
+&#x20;   assert determinant([[F(1,2)]\*3 for \_ in range(3)])==0\
+&#x20;   \# Every permuted diagonal effect sees only populations. Two distinct\
+&#x20;   \# coherences can therefore fake a history-dependent future on a closed qutrit.\
+&#x20;   plus=[[F(1,2),F(0),F(1,2)],[F(0)]\*3,[F(1,2),F(0),F(1,2)]]\
+&#x20;   minus=[[F(1,2),F(0),F(-1,2)],[F(0)]\*3,[F(-1,2),F(0),F(1,2)]]\
+&#x20;   pop_readouts=[]\
+&#x20;   for row in a:\
+&#x20;       left=effect_probability(diagonal(row),plus)\
+&#x20;       right=effect_probability(diagonal(row),minus)\
+&#x20;       assert left==right\
+&#x20;       pop_readouts.append(str(left))\
+&#x20;   \# Common terminal rotated projective measurement: E=|+02><+02|.\
+&#x20;   future_plus=effect_probability(plus,plus)\
+&#x20;   future_minus=effect_probability(plus,minus)\
+&#x20;   assert future_plus==1 and future_minus==0\
+&#x20;   power=[]\
+&#x20;   for delta in [0.1,0.05,0.01]:\
+&#x20;       n=shots_per_arm(delta)\
+&#x20;       power.append({'raw_probability_difference':delta,'independent_shots_per_arm':n,\
+&#x20;                     'total_shots':2\*n,'alpha_one_sided':0.05,'power_lower_bound':0.9,\
+&#x20;                     'max_20000_shot_circuits_per_arm':ceil(n/20000)})\
+&#x20;   result={'scope':'Exact finite mathematical checks and conditional power only; no new physical data.',\
+&#x20;     'population_mapping':{'readout_e':['0','1','1'],'analysis_gate_orders':['identity','X01 then X12','X12 then X01'],\
+&#x20;        'response_matrix':[[str(v) for v in row] for row in a],\
+&#x20;        'determinant':str(determinant(a)), 'example_population':[str(v) for v in p],\
+&#x20;        'example_measured_probabilities':[str(v) for v in q],'exact_reconstruction':True,\
+&#x20;        'premises':'Known swaps and stable diagonal response on a three-level system. These premises are not independently verified on IQM.'},\
+&#x20;     'population_equality_counterexample':{'states':'(|0> +/- |2>)/sqrt(2); no environment',\
+&#x20;        'three_identical_readout_probabilities':pop_readouts,\
+&#x20;        'common_future_effect':'|+02><+02|','future_probabilities':[str(future_plus),str(future_minus)],\
+&#x20;        'conclusion':'Matching all populations alone does not establish a common full state or a causal break; future differences need not establish environmental memory.'},\
+&#x20;     'power':power,'power_limitations':'Independent fixed-design Bernoulli trials; no SPAM/drift/mapping penalty. Full controls and tomography add shots. Does not guarantee IQM physical signal or power.',\
+&#x20;     'cost':'T_billed = T_compile + T_execution + any billed overhead; saved public compiler formula for execution is only a lower bound. No verified upper bound follows from these shot counts.',\
+&#x20;     'hardware_jobs':0,'network_calls':0}\
+&#x20;   print(json.dumps(result,indent=2))\
+\
+if \_\_name\_\_=='\_\_main\_\_':\
+&#x20;   main()\
+PY\
+python3 .astra-local/iqm-prospective-decision-20261020/check_decision.py > .astra-local/iqm-prospective-decision-20261020/checks.json\
+\
+\
+\
+\
+Causal witness adversary, Alternative useful instrument and Resonator physical question finished\
+\
+Read files, ran commands\
+\
+\
+\
+The strongest resonator candidate fails a useful test: ordinary amplitude and phase damping predict its apparent coherence recovery after postselection. Its flag rate and accepted coherence also match the Pauli-twirled model exactly, so those observables cannot distinguish the proposed mechanisms.\
+The higher-level transmon leakage experiment closely matches IQM’s published PALEA method. I’m finishing offline circuit validation and checking one coherent-optics fallback. The decision is leaning toward preserving the credits.\
+\
+\
+\
+\
+Searched the web for [https://www.uni-jena.de/279620/e-learning-woche-2023](https://www.uni-jena.de/279620/e-learning-woche-2023)\
+\
+\
+\
+Qutrit physical question finished\
+\
+Edited a file, ran commands\
+\
+\
+\
+Flag useful capability challenge started working\
+\
+Searched the web\
+\
+\
+\
+The SDK accepts the exact flag circuit offline, and the negative controls are rejected. Circuit construction is therefore working; this still establishes no device performance or billed-time bound.\
+I’m making one final challenge to the rejection: a known flag mechanism could be worth testing if it delivers a useful physical improvement. That comparison must count rejected shots, extra gates and elapsed time—not just the quality of accepted results.\
+\
+\
+\
+\
+Read files, ran a command\
+\
+\
+\
+Prospective cost contract finished\
+\
+Read files\
+\
+\
+\
+Resonator physical question finished\
+\
+The engineering challenge found a worthwhile distinction: flags could help correct logical errors, even though they do not reveal a new damping mechanism. I’m retaining that as the strongest QPU lead.\
+It is not ready for approval yet. The available calibration does not establish whether the benefit survives the added gates, and a long inserted wait would make the comparison artificially easy. Current scheduling and billing information also leave the complete cost unresolved.\
+\
+\
+\
+\
+Ran python3 - <<'PY'\
+from pathlib import Path\
+import hashlib,json\
+p=Path('.astra-local/iqm-prospective-decision-20261020')\
+for f in ['cost_contract/offline_validate.py','check_decision.py','resonator/flag_incumbent.py']:\
+&#x20;q=p/f; print(f,q.stat().st_size,hashlib.sha256(q.read_bytes()).hexdigest())\
+old=Path('.astra-local/iqm-starter-access-20261020')\
+manifest=json.loads((old/'SHA256.json').read_text())\
+for name,info in manifest['files'].items():\
+&#x20;assert hashlib.sha256((old/name).read_bytes()).hexdigest()==info['sha256'],name\
+print('All 30 prior account/access evidence files unchanged.')\
+PY\
+\
+\
+\
+\
+Flag useful capability challenge finished\
+\
+Read files, ran commands\
+\
+\
+\
+The scientific decision is complete: preserve the credits and retain the flag-correction proposal as a conditional engineering lead. It still lacks a justified native-operation benefit forecast and a complete credit bound.\
+I’m preserving the exact circuits, model counterexamples and offline validation through the existing private handoff workflow. The coherent-optics fallback remains unqualified too: its controls are visible, but fresh, attributable measurements have not been established.\
+\
+\
+\
+\
+Ran python3 - <<'PY'\
+from pathlib import Path\
+import datetime,hashlib,json,subprocess\
+p=Path('.astra-local/iqm-prospective-decision-20261020')\
+r=json.loads((p/'PRIVATE_REVIEW\.json').read_text())\
+assert r['publication']['disclosure']=='private'\
+assert r['publication']['verification']['experiment']['state']=='UNKNOWN'\
+assert r['publication']['verification']['advantage']['state']=='UNKNOWN'\
+for ref in r['evidence_refs']:\
+&#x20;assert hashlib.sha256(Path(ref['path']).read_bytes()).hexdigest()==ref['sha256'],ref['id']\
+assert hashlib.sha256((p/'cost_contract/offline_validate.py').read_bytes()).hexdigest()=='f73a6a213aaf9a9ee5b9435ec16f45766c0ee5bd7821d4a1654868ff136530f9'\
+assert not (p/'cost_contract/.venv').exists()\
+status=subprocess.check_output(['git','status','--porcelain']).decode()\
+assert not status.strip(),status\
+files={str(f.relative_to(p)):{'bytes':f.stat().st_size,'sha256':hashlib.sha256(f.read_bytes()).hexdigest()} for f in sorted(p.rglob('\*')) if f.is_file() and f.name!='VALIDATION.json'}\
+receipt={'validated_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'scope':'Private decision and exact offline fixtures. No physical acquisition, actual QPU job or scientific capability established.','private_draft_hashes_match':len(r['evidence_refs']),'prior_account_evidence_files_verified_unchanged':30,'tracked_repository_clean':True,'hardware_jobs':0,'qpu_credits_consumed_by_this_work':0,'publication_executed':False,'actual_checks':{'parent_exact_replay':'mapped binary population inversion; closed-qutrit state confound; conditional Hoeffding counts','parent_kraus_replay':'flag rate/coherence agree for amplitude-phase damping and Pauli twirl; conditional Z differs','separate_sdk_worker':'iqm-client35.0.3: seven positive circuits accepted; three deliberate errors rejected; no client or outgoing connect/DNS event','retained_harness_limitation':'One blocked local IPv6 bind during SDK import; initial all-sockets assertion failed and is documented.'},'files':files}\
+(p/'VALIDATION.json').write_text(json.dumps(receipt,indent=2)+'\n')\
+print(json.dumps({'private_evidence_references_verified':len(r['evidence_refs']),'files':len(files),'total_bytes':sum(x['bytes'] for x in files.values()),'tracked_tree':'clean','physical_jobs':0,'qpu_credits_used':0},indent=2))\
+PY\
+\
+\
+\
+\
+\
+\
+\
+Decision: preserve all 30 IQM credits. No run is presently ready for approval.\
+The strongest retained question is whether resonator flags improve corrected logical information per unit time, accounting for rejected shots and extra gates. That could establish useful capability even though the mechanism is known. Vigneau’s physical experiments used unflagged detection; its resonator-flag comparison was simulated. Vigneau et al.\
+Seven Sol Max investigations established several decisive points:\
+\- Postselected coherence is insufficient: ordinary damping predicts the apparent recovery. The proposed flag rate and coherence also match the Pauli-twirled model exactly.\
+\- Higher-level transmon measurements are feasible in principle: calibrated swaps can recover three populations from binary readout. However, matching populations does not establish identical states or environmental memory. The tempting coherent-leakage experiment closely follows established PALEA.\
+\- Circuit construction works: seven SDK fixtures passed and three deliberate errors were rejected offline. This establishes neither hardware performance nor execution cost.\
+I retained a concrete 384,000-shot engineering packet, including training, held-out tests and stronger unflagged comparisons. It remains contingent: actual timing and joint error channels do not yet support a net-benefit forecast, and total credit consumption lacks a verified bound.\
+The [private decision and reproducible code]\(/Users/harjas/Documents/ChatGPT/ultra/work/astra-continuity-20261019/.astra-local/iqm-prospective-decision-20261020/DECISION.txt) preserve those findings through the existing workflow.\
+I also investigated Jena’s public Michelson interferometer. Its coherent-path controls are promising; fresh, attributable physical measurements remain unverified. No equipment was operated or private research disclosed.20 October 2026 — PRIVATE prospective experimental decision\
+Repository snapshot: 65633ec33f253deb1e8e01dd47fa91803c1916ac\
+\
+DECISION: PRESERVE THE 30 IQM CREDITS. No consequential experiment is currently\
+ready for approval under the acquired control and cost contract. This rejects\
+the investigated candidates at their present evidence level, not the possibility\
+of original science on these processors. No account setup was repeated; no\
+hardware/mock job, credential, remote compilation or private upload occurred.\
+\
+The strongest retained physical question is useful engineering: can resonator\
+hook flags improve corrected logical information per unit time, at matched\
+accepted error and yield, against the best equally informed unflagged decoder?\
+A known mechanism can support a new useful implementation. It need not produce\
+an unexplained deviation from standard quantum theory to matter.\
+\
+The first proposed flag observable does not answer that question. Prepare four\
+qubits in +; MOVE QB1 into COMPR1; apply CZ to flag QB5 and data QB3; request a\
+wait; apply CZ to QB4 and flag QB5; MOVE back; measure flag/source in X and data\
+in Z. This uses two MOVE, four CZ, six PRX and four terminal measured qubits.\
+The exact native word, including a barrier variant, passed SDK validation.\
+For ordinary amplitude/phase damping with survival eta and coherence c,\
+&#x20;P(flag+)=(1+eta)/2, conditional graph coherence=2c/(1+eta).\
+The Pauli-twirled channel gives precisely the same two observables. Measuring\
+conditional Z distinguishes their nonunital part, which is already ordinary T1\
+physics. Postselection has not identified a new mechanism. Our independent\
+Kraus replay confirms these scoped identities, not all-outcome equivalence.\
+\
+Provider COMPR1 T1=6.690 us and T2=1.913 us imply model-only coherence 0.593 after\
+one microsecond; accepted coherence is 0.637 at yield 0.931, with the same 0.593\
+success-weighted coherence. The best controllable qubit's Ramsey forecast is\
+0.963. These omit gate, readout and drift errors and are not physical comparisons.\
+This rejects a claimed storage gain, not every use of flags during parity checks.\
+Renger already measured resonator storage/Ramsey; Vigneau physically demonstrated\
+unflagged repeated [[4,2,2]] detection and simulated its flag extension [1,2].\
+\
+Two investigators independently challenged the engineering alternative. A\
+single-parity packet can compare flagged, shortest unflagged, duration-matched\
+unflagged and repeated unflagged extraction, with full-record decoding and\
+flag-information ablation. The retained packet has 24 inputs, 96 circuits/job,\
+1,000 shots/circuit, four jobs: 384,000 shots, including training and held-out\
+batches. Eight X-product inputs check information preservation; sixteen Z-product\
+inputs check the parity truth table. A full [[4,2,2]] cycle additionally needs\
+logical-basis inputs and a same-contract superdense challenger. No packet was run.\
+\
+The approval gate remains open: actual compiled dangerous-window duration,\
+flag-specific harmful error channels, joint readout/leakage and drift, a justified\
+net-benefit/power forecast, and a bound on billed time. Average CZ fidelity is\
+not a logical fault probability. An inserted long wait can manufacture an easy\
+comparison; the primary test must use native operation. A 384,000-shot cap does\
+not bound credits. The detailed contingent packet is in\
+resonator/ENGINEERING_CHALLENGE.txt; it is not an approval-ready protocol.\
+\
+Higher-level transmon control also needs a narrower conclusion. Binary output\
+CAN reconstruct three populations using calibrated cyclic permutations. The\
+response matrix has determinant 2 even for ideal binary response (0,1,1).\
+PRX_12 plus calibrated analysis can also support coherence tomography. Missing\
+ternary single-shot output is therefore not a general impossibility. However,\
+matching all populations does not establish a common state: |+02> and |-02>\
+have identical populations and all such diagonal readouts, yet a common later\
+measurement distinguishes them perfectly on an isolated qutrit. Apparent\
+history dependence can consequently arise without an environment. The exact\
+fixture passed independently. PALEA and ELEA already provide the tempting\
+coherent-leakage experiment [3,4]; this is no new discovery milestone.\
+\
+Seven Sol Max investigations covered distinct obligations. The actual SDK\
+35.0.3 accepted seven positive circuit fixtures and rejected three deliberate\
+errors, using saved architectures without a client or network connection.\
+Those checks establish syntax/calibrated-locus compatibility only. The retained\
+validation script pins its 49 dependencies. The original blocked local IPv6\
+capability probe and earlier harness failure remain documented. Source review\
+found no pre-job enforced credit cap/charged-time upper bound in that client;\
+compiler execution-time output is explicitly a LOWER bound. Thirty credits are\
+only nominally 60 Garnet or 100 Sirius billed seconds. Physical timing, job\
+acceptance and complete cost are UNKNOWN. Statistical planning code gives\
+conservative sufficient IID counts, not a prediction of an unknown effect.\
+\
+Generic unknown-bath entanglement does not supply an easier discovery route:\
+full-system setting isolation remains unbounded, and established unitary-only\
+witnesses/self-consistent process characterization already have hardware\
+predecessors [5,6]. This is not a rejection of those trusted-instrument methods.\
+\
+One concrete fallback was investigated: Jena XR TwinLab's public Michelson\
+interferometer [7]. Operator sources and deployed controls support path/tilt\
+adjustment, arm blockers and camera readout. Fresh physical response, attributable\
+control, calibrated displacement and timed linear-camera measurements are\
+unverified. No connection or actuation occurred. It removes the RGB apparatus's\
+lack of coherent path control at the interface level; no consequential original\
+optical mechanism is yet qualified. Details: alternate_route/RESULT.txt.\
+\
+All preceding access/evidence files remain unchanged. This selected private\
+handoff uses the existing publication workflow; there is no public Git update\
+or new coordination system. Experiment, advantage and novelty remain unestablished.\
+\
+[1] [https://arxiv.org/html/2503.10903v3](https://arxiv.org/html/2503.10903v3)\
+[2] [https://arxiv.org/html/2503.12869v3](https://arxiv.org/html/2503.12869v3)\
+[3] [https://arxiv.org/abs/2508.16437](https://arxiv.org/abs/2508.16437)\
+[4] [https://arxiv.org/abs/2607.01422](https://arxiv.org/abs/2607.01422)\
+[5] [https://quantum-journal.org/papers/q-2025-04-08-1695/](https://quantum-journal.org/papers/q-2025-04-08-1695/)\
+[6] [https://arxiv.org/html/2312.08454v2](https://arxiv.org/html/2312.08454v2)\
+[7] [https://www.uni-jena.de/279620/e-learning-woche-2023#XRTwinLab](https://www.uni-jena.de/279620/e-learning-woche-2023#XRTwinLab)\

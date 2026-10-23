@@ -1,0 +1,480 @@
+%% Main body.
+
+\section{Introduction}
+\label{sec:intro}
+
+
+Since the earliest work on the subject, mathematical reasoning has been a cornerstone of research in Artificial Intelligence (AI)~\citep{turing1939ordinal,newell1956logic}.
+%
+Recent work on applications of Large Language Models (LLMs) to solving mathematical conjectures has shown striking success, and we now have seen many instances of LLMs solving problems that have eluded human mathematicians~\citep{novikov2025alphaevolve,sothanaphan2026erdos728,alexeev2026shortproofs,alexeev2026shortproofsii,alon2026unitdistance,chen2026moonshine,oum2026cycledoublecover,huang2026sumproduct, openai2026navierstokes}.
+%
+Though LLM-based theorem provers can often make errors, they are particularly strong and reliable when their outputs are verified by a proof assistant such as Lean~4~\citep{moura2021lean4,mathlib2020,yang2023leandojo,xin2024deepseekprover,hubert2024alphaproof,ren2025deepseekproverv2}.
+%
+However, a common critique of applications of LLMs to solving mathematical conjectures is that they often only appear to solve problems that lie within the ``convex hull'' of existing mathematics.
+
+
+Our long-term goal is to build systems capable of \emph{autonomous mathematical discovery}.
+%
+Such a system should be able to engage in \emph{open-ended} reasoning. Starting from a set of initial premises, the system should be able to formulate new questions, decide which are worth pursuing, construct and verify their proofs, and build on this knowledge~\citep{barkeshli2026structure}.
+%
+A fundamental challenge to achieving such a system is the question of interestingness of the mathematical statement.
+%
+The version of mathematics that was created by human intuition over thousands of years has proven to be an ``unreasonably effective'' tool to approaching real world problems~\citep{wigner1960unreasonable}. In contrast, arbitrarily adding trivial statements, or even nontrivial but \emph{uninteresting} statements, is unlikely to lead to the same success that mathematics has achieved in the past.
+
+
+
+{
+\begin{quote}
+    { \emph{``Science is built up with facts, as a house is with stones. But a collection of facts is no more a science than a heap of stones is a house.''}} -- \emph{Science and Hypothesis,} \cite{poincare1905science}
+\end{quote}
+}
+
+
+We can reason by analogy with Borges's ``Library of Babel''~\citep{borges1962library,litt2026babel}.
+%
+Borges's library holds every book that can be written, and therefore holds every truth in it; it is nonetheless useless, since no reader could find meaning within its nearly infinite shelves.
+%
+The space of all true mathematical statements has the same character, whereas mathematics, as it has been created by humans, does not.
+%
+Extrapolating outside the ``convex hull'' of mathematics, therefore, requires both the ability to navigate the space of possible deductions and a notion of value that distinguishes a discovery from a merely valid statement.
+
+%
+We seek a system that can begin with the mathematics that is already known, and recursively produce new mathematical results.
+%
+Any such autonomous system needs a quantitative object to optimize.
+%
+Prior work has often focused on ``Intrinsic Motivation'' \citep{poesia2024minimo, tsoukalas2025fermat}.
+%
+We take a different view, one in which there are inherent aspects of mathematics that can quantify the quality of a mathematical statement, its {\em interestingness}.
+%
+Prior work has found that LLMs do not robustly capture the same notions of interestingness, and the same diversity in those notions, as humans do~\citep{mishra2025matter}.
+%
+In the present work, we consider two complementary sources of value. On one hand, a theorem may be \emph{intrinsically interesting}, if it is easy to state but very difficult to prove.
+%
+Alternatively, a theorem could be \emph{useful} because of its relation to the surrounding body of mathematics.
+%
+A useful theorem is a reusable abstraction that -  once added to a body of mathematics -  compresses later proofs by making them easier to derive.
+
+A fundamental primitive required to understand or estimate either of the above quantities is the difficulty to prove a theorem $T$, conditioned on a set of premises $P$ which are already available, which we will term $V(T|P)$.
+%
+Proof assistants \citep{moura2021lean4} allow a way to quantify the difficulty of a proof, in terms of the number of lines of code required to formally prove it. 
+%
+Lean~4's library \Mathlib provides a large dependency graph of machine-checked definitions, theorems, and proofs~\citep{mathlib2020}, which we can utilize to learn to model the conditional proof difficulty $V(T\mid P)$, mathematical interestingness and utility, and autonomous mathematical discovery. 
+%
+We make the following primary contributions.
+
+\paragraph{Contributions.} 
+\begin{enumerate}[leftmargin=1.4em]
+  \item We formalize proof difficulty as the computational cost of deriving a target theorem from a given mathematical context in Lean 4. We post-train a 27B parameter LLM to predict the difficulty of a proof given a set of premises, and show that this predictor outperforms frontier LLMs.
+
+  \item We motivate and define a notion of a theorem's \emph{interestingness} as the ratio between the length of the proof and the length of the statement of the theorem. We also define a notion of \emph{utility} based on the amount a theorem is able to compress a set of theorems and their proofs, and show that utility strongly correlates with interestingness.
+
+  \item With our notion of \emph{interestingness}, we are able to show that we can post-train a language model to produce more interesting theorems, and we find that this quadruples the mean interestingness, as measured by the length of the real proof divided by the length of the statement. This training procedure also reduces the fraction of generated statements judged substantially or fully contained in \Mathlib from $91.9\%$ to $30.6\%$, showcasing the creation of more out-of-distribution math.
+  
+  \item We showcase our method in a specific setting where we apply our interestingness metric as an inference-time pruning algorithm to perform recursive mathematical discovery, and find nontrivial statements that are not present in \Mathlib.
+
+\end{enumerate}
+
+\section{Modeling the Conditional Proof Difficulty}
+\label{sec:difficulty}
+
+We ultimately want to train a model that can predict the difficulty of a proof without needing to write the proof beforehand. 
+%
+We model this difficulty as a function of both the target theorem and the premises available in the local context. 
+%
+We define the estimator of the difficulty of proving a theorem $T$ given premises $P$ as the value $V(T \mid P)$.
+%
+Such a premise-conditioned value function should satisfy certain properties.
+%
+For any codebase $\mathcal D$ of theorems and proofs stated in a formal language like Lean 4, we will denote by $C_\mathcal D(T|P)$ the ground truth number of lines of code in the codebase to prove theorem $T$ given premises $P$.
+%
+For any such codebase, this quantity is not necessarily defined for all choices of $T,P$, as some theorems may have multiple proofs, so we will define $V$ as satisfying the following conditions:
+
+\begin{definition}[Conditional-value axioms]
+\label{def:axioms}
+A conditional proof computational-cost $V$ is \emph{faithful} on $\mathcal D$ if for all
+targets $T \in \mathcal D$, lemmas $L \in \mathcal D$, and premise sets $P,Q \subset \mathcal D$, such that $P \subseteq Q$, the property (A1) below holds whenever $C_\mathcal D$ is well defined and (A2)--(A3) always hold:
+\begin{align}
+  \text{\textup{(A1) grounding:}}\quad
+    &V(T\mid P)=  C_\mathcal D(T\mid P), \label{eq:grounding}\\
+  \text{\textup{(A2) premise monotonicity:}}\quad
+    &V(T\mid Q)\;\leq\;V(T\mid P), \label{eq:monotonicity}\\
+  \text{\textup{(A3) composition:}}\quad
+    &V(T\mid P)\;\leq\;V(L\mid P)+V(T\mid P\cup\{L\}).
+    \label{eq:composition}
+\end{align}
+\end{definition}
+%
+Axioms (A2)--(A3) hold for the ideal shortest proof.
+%
+We would expect to see equality in (A3) if a lemma $L$ is required as an intermediate step towards proving the theorem from the premises, giving us the following Bellman-type relation:
+%
+\begin{equation}
+  V(T\mid P) = V(L\mid P)+V(T\mid P\cup\{L\}).
+  \label{eq:bellman}
+\end{equation}
+We will use these properties to inform the training objective in the following sections.
+
+\subsection{Generating a Dataset}
+\label{sec:data}
+We use \Mathlib~\citep{moura2021lean4,mathlib2020} as a ground truth library from which we generate our training data.
+%
+For each theorem we extract its rendered type, the local definitions required to state it, the proof source, and the premises required for the proof.
+%
+If we were to naïvely train on the dependency graph of \Mathlib we would not get a useful predictor, as the library is built in a very atomized way.
+%
+But we still need to assign a label to each theorem $T$.
+%
+For instance, the median proof length in \Mathlib is $3$ lines of code, and the median number of times any particular premise is used is $1$.
+%
+To remedy this, we employ a technique we call \textbf{premise expansion}. 
+%
+We call a statement $L$ a premise of $T$ if it is \emph{directly} used in the proof of $T$, and we will write $P$ or $P(T)$ to denote the set of premises of $T$.
+%
+In this case, one \emph{expansion step} will remove $L$ from the set of premises of $T$, and add , $P(L)$, the premises of $L$ to the premises of $T$. So the new set of premises of $T$ is $P(T) \cup P(L) \backslash L$. We then add the number of lines of code in the proof of $L$ to the label of $T$.
+%
+Iterating moves the visible frontier backward through the dependency Directed Acyclic Graph (DAG)(Appendix~\ref{app:extraction}), creating a richer dataset of theorem, premises, proof triplets. We end up with around 100k data points which we use in the next section.
+%
+We evaluate on a withheld evaluation set coming from the same construction. 
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/difficulty_results.pdf}
+  \caption{\textbf{The trained value is substantially better calibrated on held-out samples from \Mathlib.}
+  The left panel groups examples by observed proof length, points give the mean observed and mean predicted proof lines, and shaded bands the interquartile range of predictions within each bin. The dashed line represents what we would expect from an optimal predictor. Note that all models underestimate proof length with increased length. The right plots report matched MAE and Spearman $\rho$ on all 4,615 validation prompts.}
+  \label{fig:difficulty-results}
+\end{figure}
+
+\subsection{Modeling the Conditional Proof Length}
+\label{sec:learning}
+
+We want to train a model $V_\theta$ that can predict the difficulty of proving a theorem $T$ conditioned on a set of premises $P$. 
+%
+We fine-tune Qwen3.6-27B~\citep{qwen2026qwen36} with group relative policy optimization (GRPO)~\citep{shao2024deepseekmath, miles2026} on the dataset from Section~\ref{sec:data} for 350 steps.
+%
+Full definitions and specific details on the training setup are relegated to Appendix~\ref{app:optimization}.
+%
+We create a reward that is designed to satisfy the desiderata in Definition \ref{def:axioms}.
+%
+We design $\mathcal L_{\rm truth}$ to satisfy \eqref{eq:grounding}. If $L$ is a lemma used to go from $P$ to $T$, in order to satisfy \eqref{eq:bellman}, we introduce $\mathcal L_{\rm Bellman}$. To satisfy \eqref{eq:monotonicity}, we add $\mathcal L_{\rm drop}$, where $Q \subsetneq P$. Our final reward is,
+\begin{align*}
+    \mathcal R = &- |\log V_\theta(T|P) - \log C_\mathcal D(T|P)| 
+        && (\mathcal L_{\rm truth}) \\
+    &- |\log V_\theta(T|P) - \log( V_\theta(L|P) + V_\theta(T|P\cup\{L\}))| 
+        && (\mathcal L_{\rm Bellman}) \\
+    &- \max \{0, \log V(T|P) - \log V(T|P \backslash Q) \} 
+        && (\mathcal L_{\rm drop})
+\end{align*}
+
+%
+\label{sec:difficulty-results}
+We evaluate models on a held-out validation set of 4,615 labeled validation prompts. All models receive identical definitions, premises, target, and output instruction.  We report mean absolute error (MAE) and Spearman rank correlation, computing both only over parsed non-negative answers (Appendix~\ref{app:evaluation}).
+%
+Figure~\ref{fig:difficulty-results} showcases performance of our trained model over GPT-5.5 ~\citep{openai2026gpt55systemcard} and Claude Opus 4.6 ~\citep{anthropic2026claudeopus46systemcard}. 
+%
+We find that while all three models tend to underestimate the difficulty of proofs, ours is substantially more accurate and better calibrated than the others.
+%
+
+\section{Interestingness-Driven Mathematical Discovery}
+\label{sec:structure}
+
+A human mathematician may find a mathematical conjecture valuable for many reasons.
+%
+They could be interested in a statement because of historical or social factors, like for instance that several famous mathematicians before them tried and failed to find a proof of a statement.
+%
+They could also study statements that are related to the physical world. These are factors which are extrinsic to the field of math, and rely on its relation to the world outside it. 
+%
+As such, these factors are not something that we could model in search of a quantitative definition of the interestingness of a statement; they lie outside the scope of our present objective.
+
+%
+We instead focus on structural properties that can be measured directly in a formal mathematical library.
+%
+In particular, statements that are simple to express but difficult to prove often align with human intuitions about mathematical interestingness.
+%
+Motivated by this observation, we define an intrinsic notion of interestingness that combines statement length with conditional proof difficulty. 
+%
+This quantity is not intended to capture every source of mathematical value, but to provide a concrete objective for guiding mathematical discovery.
+%
+We separately consider a theorem's utility, which measures its value to subsequent mathematical developments.
+
+In Section \ref{sec:interestingness} we define and study the \emph{interestingness} of a mathematical statement.
+%
+In Section \ref{sec:utility} we examine the \emph{utility} of a mathematical statement and show its relation to the interestingness.
+%
+We then show in Section~\ref{sec:conjecturing} that interestingness is a concrete metric that can be optimized, via training and at inference-time.
+
+\subsection{The Intrinsic Interestingness of a Mathematical Statement}
+\label{sec:interestingness}
+
+In this section, we attempt to define a notion of the interestingness of a mathematical statement or conjecture that aims to capture an \emph{intrinsic} property of the mathematical result, ignoring any relation to the outside world, or to other parts of the mathematical literature.
+%
+We claim that a statement $T$ is \emph{interesting} given a set of premises $P$ if it is easy to state, and has a long and incompressible proof.
+%
+To compute this, we can take a ratio between the length of a proof given some premises in terms of lines of code, and the number of characters of Lean 4 needed to state a theorem given some set of definitions one already has access to.
+%
+For instance, one would expect that a theorem in probability theory is easy to state for a reader who already has a measure-theoretic vocabulary and enormously difficult for a reader given access to only statements in algebraic geometry.
+%
+We recall the following quote by Pólya on the nature of aesthetics in math,
+
+{
+\begin{quote}
+    { \emph{``The elegance of a mathematical theorem is directly proportional to the number of independent ideas one can see in the theorem and inversely proportional to the effort it takes to see them.''}} -- \emph{Mathematical Discovery, } \cite{polya1981mathematical}
+\end{quote}
+}
+
+Formally, for any Lean declaration $X$, let $S(X)$ denote the number of characters in its statement, and let $C(X)$ be the set of all definitions required to state $X$, including whatever definitions are needed to state those definitions, recursively.
+%
+So $C(X)$ will contain all the definitions required to formally state $X$ from the axioms.
+%
+We will then define the conditional description length as
+\begin{equation}
+  L(T\mid P)\;=\;S(T)+\!\!\sum_{d\in C(T)\setminus C(P)}\!\!S(d).
+  \label{eq:conditional-length}
+\end{equation}
+
+In this way, the term $L(T|P)$ counts the description length of all the definitions needed to state the theorem $T$, given  access to all the definitions used in the premises $P$.
+%
+We then formally define the conditional interestingness\footnote{We use a factor of 100 in the definition here so that the Interestingness has a mean \~1, as in Figure~\ref{fig:interestingness-model-free} and Figure ~\ref{fig:forward-interestingness}.} of a statement as 
+\begin{equation}
+  I(T\mid P)\;=\;100\;\frac{V(T\mid P)}{L(T\mid P)}.
+  \label{eq:interestingness}
+\end{equation}
+
+We choose this definition to quantify the intrinsic difficulty of a mathematical statement as it is trivially possible to construct arbitrarily difficult statements, if we do not normalize by the description length of the statement. For instance, suppose we had a fixed set of premises $P$ and a set of theorems $\{T_1, T_2, \ldots\}$ that are all entirely unrelated and have a fixed proof length. Then the ``theorem'' $\hat T_n = T_1 \wedge T_2 \wedge \cdots \wedge T_n$ would have difficulty $V(\hat T_n | P) = O(n)$, whereas the interestingness is $I(\hat T_n | P) = O(1)$.
+
+ In the special case where we consider the empty set of premises, we can create an absolute scale of the interestingness of a mathematical statement $I_0(T) =I(T|\varnothing)$\footnote{This corresponds to the notion of ``interest'' from \cite{aksenov2026compression}.}.
+%
+With no premises, the denominator is the target's own vocabulary length, $L(T\mid\varnothing)=S(T)+\sum_{d\in C(T)}S(d)$.
+%
+As we no longer require conditioning on a set of premises, the numerator can now be deterministically computed from a library such as \Mathlib, as we can just unroll the proof as written via premise expansion.
+%
+The result (Figure~\ref{fig:interestingness-model-free}) serves as a useful verification for the construction of our metric on existing statements of \Mathlib.
+%
+We can see in the bottom decile simple algebraic relations, like for instance the identity that $1^n = 1$, and in the upper quartiles we see results such as special cases of Fermat's Last Theorem, which happen to require very little machinery to state but are tough to prove.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/interestingness_model_free.pdf}
+  \caption{\textbf{Quantifying the interestingness of a statement.}
+  Here we show the distribution of interestingness $I_0$, as defined in Section~\ref{sec:interestingness}, of all statements from \Mathlib.
+  %Interestingness here is computed deterministically by taking the ratio between the total length of the proof of each statement, and the total length of the statement and definitions required to state it.
+  The resulting ordering is intuitive, with basic algebraic identities at the bottom, analysis in the middle because its definitional prerequisites are enormous, and theorems that are famously easy to state but hard to prove, like Fermat's Last Theorem for exponent 3, at the top.}
+  \label{fig:interestingness-model-free}
+\end{figure}
+
+\subsection{Intrinsic Interestingness Correlates with Extrinsic Utility}
+\label{sec:utility}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/u0_utility_vs_i0_interestingness.pdf}
+  \caption{\textbf{Utility and interestingness are correlated.}
+  Each point is a \Mathlib theorem. Utility $U_0$, defined in Section~\ref{sec:utility}, is the number of lines of code saved across the library when the theorem is admitted as a premise, while interestingness $I_0$, defined in Section~\ref{sec:interestingness}, is the ratio between a theorem's proof length and description length.
+  Excluding the declarations with $U_0=0$  gives a Spearman $\rho=0.756$.
+  }
+  \label{fig:utility-vs-interestingness}
+\end{figure}
+
+We will define the \emph{utility} of a theorem to answer the following question: If we had access to this statement for free, how much would it compress the rest of the mathematical library?
+%
+Concretely, we compare two libraries: one in which $T$ is available as a premise, and one in which it is not, so that every statement relying on $T$ must re-derive it from scratch.
+%
+The utility of $T$ is the number of lines of code saved by the first library relative to the second.
+%
+If we let $D(T)$ be the set of theorems and lemmas that cite / use $T$ directly, then $\lvert D(T)\rvert$ would be the number of direct users of a theorem.
+%
+So we can define
+\begin{equation}
+  U_0(T)
+    = \lvert D(T)\rvert\, \cdot V(T|\varnothing).
+  \label{eq:utility-zero}
+\end{equation}
+
+Despite $U_0$ being an \emph{extrinsic} measure, depending on a theorem's relation to the broader mathematical theory surrounding it, and $I_0$ being an \emph{intrinsic} measure depending only on a theorem and its proof, we find that they are strongly correlated.
+%
+In Figure~\ref{fig:utility-vs-interestingness}, we see a strong positive correlation between $U_0$ and $I_0$ on \Mathlib, giving a Spearman correlation of $0.756$ if we disregard statements with no downstream users.
+%
+%
+While some statements have high interestingness but low utility, few statements, if any, have high graph utility without high interestingness.
+%
+Interestingness is therefore a practical surrogate for the quality of a mathematical statement as it can be computed or estimated at proposal time, whereas utility is observable only after placing a theorem in a body of work and seeing its descendants. We recall the following quote of Thurston. 
+{
+\begin{quote}
+    { \emph{``Our aesthetic instincts draw us to mathematics of a certain depth and connectivity. The very depth and beauty of the patterns makes them likely to be manifested, in unexpected ways, in other parts of mathematics, science, and the world.''}} --  \emph{Mathematical Education, }\cite{thurston2005mathematicaleducation}
+\end{quote}
+}
+
+\subsection{Optimizing for Interestingness}
+\label{sec:conjecturing}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/ground_truth_kde_and_radar.pdf}
+  \caption{\textbf{Training shifts generated theorems toward higher ground-truth
+  interestingness.}  Our trained 27B model is consistently able to produce more interesting statements, with 20 statements per coarse area.
+  %
+  Left: kernel densities estimator (KDE; a method that smooths
+the observed histogram with a kernel to give a continuous density estimate) fitted in $\log_{10}$-interestingness space over all 160 outcomes per model.
+  %
+  Right: mean ground-truth interestingness by mathematical area over the same complete cohort, shown on a logarithmic radial scale from 0.5 to 20.  Colors identify the same models in both panels.}
+  \label{fig:forward-interestingness}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/mathlib_containment_stacked.pdf}
+  \caption{\textbf{Interestingness training reduces overlap with existing
+  \Mathlib content.} For each model we take the 160 statements from Figure~\ref{fig:forward-interestingness}, and judge to what degree each statement is contained within \Mathlib. Appendix~\ref{app:containment} gives the rubric, prompt, and protocol.}
+  \label{fig:mathlib-containment}
+\end{figure}
+
+The preceding construction turns the task of creating new, interesting, mathematics into an optimizable objective.
+%
+Given a mathematical context of prior lemmas and premises $P$, a conjecturing model, or \emph{conjecturer}, should be able to propose a statement $T$ which is cheap to express in the vocabulary of $P$ but requires a difficult proof.
+%
+With the use of our estimator $V_\theta$ we trained in Section~\ref{sec:difficulty}, we can obtain an estimate of the conditional interestingness, which we can use as a reward signal to train a model to produce more interesting conjectures.
+%
+From the \Mathlib training split we randomly select $10{,}000$ sets of premises. Each set $P$ contains at least 16 premises, with the median containing $77$. Appendix~\ref{app:forward-training} details the sampling procedure.
+%
+The model is conditioned on the available premises and definitions and emits a standalone Lean proposition. For a valid and nontrivial proposal, the training reward is,
+\begin{equation}
+  R(T,P)=0.25+\log\!\left(1+\frac{V_\theta(T\mid P)}{L(T\mid P)}\right)
+  =0.25+\log\!\left(1+\frac{I_\theta(T\mid P)}{100}\right).
+  \label{eq:conjecture-reward}
+\end{equation}
+Here $V_\theta$ is a frozen proof line count predictor and $L$ is the conditional description length from Equation~\ref{eq:conditional-length}.
+%
+The logarithm controls the influence of outliers while preserving the ordering induced by interestingness.
+%
+Parse failures receive reward $-0.5$, Lean-invalid or statements that don't relate to the premises at all receive $-0.25$, and statements which are able to be proven with simple proof automation tactics\footnote{For instance,  \texttt{assumption}, \texttt{rfl}, \texttt{simp}, \texttt{tauto}, and \texttt{simp\_all.}} receive zero. 
+%
+The constant term $0.25$ appears in the reward to provide a baseline reward for valid, relevant, and non-trivial statements.
+%
+Appendix~\ref{app:forward-training} describes elaboration, relevance, and triviality checks in full.
+
+We evaluate Qwen3.6-27B~\citep{qwen2026qwen36}, trained with $75$ GRPO steps with the reward from \eqref{eq:conjecture-reward}, against the corresponding base model and Claude 4.6 on a held-out validation set from eight coarse mathematical areas in \Mathlib.
+%
+For each conjecturer and area, we repeatedly sample premises and generate candidate theorem statements, then ask a Claude Code with Opus 4.6 proving agent for an exact proof or a tightly constrained marginal repair.
+%
+Having a proof of each of these statements allows us to verify that they are correct, and to compute the ground-truth proof length, allowing us to get a ground-truth estimate of the interestingness. 
+%
+We retain $20$ proven statements per model and area, across 8 areas of mathematics, resulting in $160$ total statements per model. 
+%
+We showcase the ground-truth interestingness scores in Figure~\ref{fig:forward-interestingness};  full details are available in Appendix~\ref{app:forward-eval}.
+
+We find that training produces a large shift in ground-truth verified interestingness (Figure~\ref{fig:forward-interestingness}).
+%
+Pooled across areas, mean $I(\cdot \mid P)$ rises from $1.76$ for the Qwen 3.6 27B base model, to $7.58$ for our trained model.
+%
+The trained model's mean is higher than the base model's in all eight areas, with area-level ratios ranging from $2.10\times$ in combinatorics to $8.72\times$ in number theory.
+%
+The trained model similarly beats Claude Opus 4.6 (prompted to generate interesting theorems) in all areas. 
+
+The shift is also not explained merely by reproducing existing \Mathlib declarations (Figure~\ref{fig:mathlib-containment}).
+%
+With the conjecturer and subject area hidden, an LLM-as-a-Judge (in this case Claude Opus 4.6) rates each verified statement on the five-level containment rubric described in the caption.
+%
+Only $30.6\%$ of statements from the trained model are substantially or fully contained (scores 4--5), compared with $91.9\%$ for Base and $92.5\%$ for Claude.
+%
+Together, Figures~\ref{fig:forward-interestingness} and~\ref{fig:mathlib-containment} show that optimizing conditional interestingness moves the conjecturer toward statements with longer verified proofs relative to their descriptions and substantially less overlap with the existing library.
+
+\subsection{Inference-Time Optimization for Theory Creation}
+\label{sec:fwd}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/forward_dependency_graph.pdf}
+  \caption{\textbf{Iterative forward discovery builds a reusable theorem graph.}
+  Here we showcase a result from our iterative forward discovery algorithm introduced in Section \ref{sec:fwd}. 
+  %
+  Green shade encodes $\log_{10}$ total interestingness relative to $P_0$ on a per-figure scale.
+  %
+  The red lines trace the ancestry of the most interesting theorem introduced in $P_6$. More such graphs can be found in Figure \ref{fig:forward-dependency-graphs} in Appendix \ref{app:forward-eval}.}
+  \label{fig:forward-dependency-graph}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/forward_pruning_summary.pdf}
+  \caption{\textbf{Interestingness pruning is the most effective inference-time pruning criterion.} Left three panels: LLM judge scores over all 6 rounds for cohort quality and diversity (Table~\ref{tab:forward-pruning-judge}) and the share of four-way comparisons in which each rule's statement is ranked most interesting (Table~\ref{tab:forward-pruning-interest-judge}). Right: running mean of the verified interestingness of each set $P_n$ through $P_6$. More experiments are available in Appendix~\ref{app:inference-pruning}.}
+  \label{fig:forward-pruning-summary}
+\end{figure}
+
+In the previous section, we showed that we can successfully train a conjecturer to generate more interesting individual conjectures. 
+%
+But our ultimate goal is not just to generate individual interesting theorems, but to iteratively build a body of interesting theorems, where one round's discoveries become the premises for the next round. 
+%
+We showcase here how we can use our metric of interestingness to achieve this at inference-time, without updating the weights of the model.
+%
+We evaluate an iterative theorem-discovery procedure, and we showcase that optimizing for interestingness gives us the strongest results across several metrics.
+%
+We want to have a system that starts from a set of premises $P_0$, and then adds verified theorems to create an iterated increasing set of premises $P_0 \subset P_1 \subset \cdots \subset P_N$.
+%
+At each iteration $n$, the conjecturer, here Claude 4.6, receives 20 premises, five of which are sampled from $P_{n-1} \backslash P_{n-2}$, and the rest from $P_{n-1}$. 
+%
+It generates 400 candidate statements. 
+%
+A Claude 4.6 based semantic filter removes equivalent conjectures and enforces diversity across theorem families. 
+%
+The surviving statements are then proved independently with Claude Code in Lean. 
+%
+Successfully verified statements are ranked by the interestingness as computed from the ground-truth proof, and the ten highest scoring results are ``promoted'' and added to the next set of premises $P_i$.
+%
+Appendix~\ref{app:inference-pruning} compares this rule against retaining every verified statement, promoting ten statements uniformly at random, and promoting the ten statements with the longest verified proofs; interestingness pruning yields the highest running mean of promoted-statement interestingness and the highest quality, diversity, and ``most interesting'' judgments (Figure~\ref{fig:forward-pruning-summary}).
+%
+We use the verified proof length here rather than $V_\theta$ because every candidate has already been proved at this stage, so the exact value of $V$ is available; the learned estimator is needed only where proving every candidate is too time-consuming, as in the reinforcement-learning setting of Section~\ref{sec:conjecturing}.
+%
+We showcase an experiment where $P_0$ is a set of premises from graph theory here in Figure~\ref{fig:forward-dependency-graph}; Appendix Figure~\ref{fig:forward-dependency-graphs} showcases the result of picking premises from Algebra, Measure / Probability Theory, and Number Theory.
+
+The promotion rule at the end of each round is the only place where interestingness enters the loop, so we isolate its effect by holding the conjecturer, the semantic filter, and the proving agent fixed and varying only how the verified statements are pruned.
+%
+We compare four rules: retaining every verified statement, promoting ten uniformly at random, promoting the ten statements with the longest verified proofs, and promoting the ten with the highest ground-truth interestingness.
+%
+Each rule is run for 6 rounds from the same $P_0$, drawing on premises from graph theory, and we evaluate the resulting trajectories in two ways.
+%
+We aim to quantify the quality and diversity of the samples from each of the runs, which we are able to do by using an LLM-as-a-judge. 
+%
+The judge (Claude 4.6) is never told which promotion rule produced the statements it evaluates.
+%
+First, for each rule and round, it rates the cohort of ten promoted statements for quality and diversity on a 1--5 scale (Table~\ref{tab:forward-pruning-judge}).
+%
+Second, it is shown four statements at a time, one from each rule, and ranks them by how mathematically interesting they are (Table~\ref{tab:forward-pruning-interest-judge}).
+%
+We also track the running mean of the verified interestingness of the sets $P_n$, and we find that interestingness pruning is the strongest promotion rule on each of these metrics, as displayed in Figure~\ref{fig:forward-pruning-summary}.
+%
+Notably, pruning by raw proof length alone performs worse, indicating that the gain comes from the ratio defined in \eqref{eq:interestingness} rather than from simply favoring long proofs.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\label{sec:limitations}
+%
+Current LLM-based mathematics systems prove or solve human-posed problems; they do not decide which problems are worth posing.
+%
+Our work takes a step toward changing this by defining a simple notion of interestingness.
+%
+Crucially, our metric emerges from the structure of the proofs, and requires no human judgment of what constitutes interesting mathematics.
+%
+Our results show that this metric is already sufficient to steer a language model toward non-trivial, out-of-distribution conjectures.
+%
+Beyond individual conjectures, our iterative discovery procedure demonstrates that a system can build on its own outputs across rounds, with each round's most interesting theorems becoming premises for the next.
+%
+Together, these results offer a proof of concept that interesting self-expanding mathematical libraries, grown without human intervention beyond the initial premises, are feasible.
+
+We identify the following limitations with our specific methodology in this paper.
+%
+Proof length in terms of lines of code can be a stylistic artifact, as automation tactics, such as \texttt{aesop} and \texttt{grind}, often trade proof length for runtime.
+%
+Alternative notions such as the ``Levin complexity'' might provide a richer signal in light of this \citep{livitanyi2008}.
+%
+Our definition also isolates some aspects of mathematical value, and one may object that much of what makes a theorem interesting is that it connects previously unrelated objects or unifies disjoint subfields.
+%
+Our definition of utility captures a weak form of this, but future work could try to quantify this notion more precisely.
+%
+
+Future work should aim towards extending our notions of discovery beyond just theorem statements to also allow for the creation of new and useful definitions, something we do not consider in this paper. 
+%
+Additionally, one could investigate training a model to estimate the proof difficulty in an online fashion, where as you expand your set of premises $P_0$, you are also updating your predictions of the proof length based on the ground truth outputs of your proving agent. 
+%
+Our results showed that LLMs are capable of creating a self-expanding mathematical library, which can have a high quality and diversity of theorems, but it is not yet clear if the new theorems are also useful for proving future results. 
+%
+Future work should look into the mechanisms for diversity and de-duplication that are required for long-running discovery systems.

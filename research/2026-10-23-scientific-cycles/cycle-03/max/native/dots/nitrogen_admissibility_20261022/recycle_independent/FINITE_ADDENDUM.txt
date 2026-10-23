@@ -1,0 +1,104 @@
+Finite entrainment: read-only equation, endpoint, and saved-state check
+2026-10-21 UTC
+
+No equation defect was found. No heater, mixer, cooler, or recycle trajectory
+was reintegrated for this independent check. The check extracts only prop()
+and enthalpy() from the actual finite_mixing.py AST; importing the full module
+would rerun its module-scope heater, so that import is deliberately avoided.
+
+1. Exact variable-mass, constant-pressure derivation
+
+Let x=t/tau, species masses mi, total m=sum mi, Y=mi/m, and rho=P/(Rmix T).
+Let wi be the volumetric mass-production rate (kg/m3/s), R=0.85 the final
+entrained mass per kg initial hot gas, and Yr the returned composition.
+Constant entrainment per normalized time gives
+  dmi/dx = R Yr,i + tau (m/rho) wi.
+Mass conservation of chemistry implies dm/dx=R. The pressure work associated
+with expansion is included by using total enthalpy H=sum mi hi(T), rather
+than internal energy. Adiabatic entrainment at 300 K requires
+  dH/dx = R hr,
+  dH/dx = sum hi dmi/dx + m cp dT/dx.
+Consequently
+  dT/dx = [R(hr-sum hi Yr,i)-tau(m/rho) sum hi wi]/(m cp),
+which is precisely the implemented expression. Reaction formation enthalpy
+is present through hi. There is no additional reaction-heat term to add.
+
+This is a perfectly homogeneous, constant-pressure, variable-mass material
+model. Momentum/kinetic energy, inlet jets, entrainment hardware, spatial
+segregation, pressure drop and wall contact are not resolved. A modeled bulk
+exit temperature below 1700 K does not bound hot filaments or local wall
+exposure in an actual quench.
+
+2. Narrow adapter/native check
+
+A strictly positive saved state at normalized progress 0.5009201 from the
+tighter 100-us path has T=2039.263631 K. At that state, actual prop() compared
+with native_corrected Cantera 3.2.0 gives:
+- maximum species enthalpy difference: 2.33e-10 J/kg;
+- relative cp error: 3.60e-16;
+- density error: zero at reported precision;
+- maximum volumetric mass-source error: 4.44e-16 kg/m3/s;
+- maximum source error / gross species flux: 1.55e-15.
+
+This checks the narrow private-method adapter at one positive state. It is
+not chemical model validation or a stable-public-API claim. The helper source
+was not changed. The preserved six-independent-species cooler guard failure
+and five-independent-species repair remain separate execution history.
+
+3. Saved 100-us trajectory checks
+
+The tighter saved path has 258 accepted mixing samples and 688 cooler samples.
+Its maximum absolute mixing energy balance residual, evaluated independently
+at every saved mixing sample, is 0.000318453 J/kg fresh. The endpoint residual
+is 0.000318413 J/kg. In contrast, the approximately 1e-8 J/kg final external
+ledger residual in finite_result/boundary_result is algebraically generated
+from common endpoint expressions; it is not a stronger independent trajectory
+energy check.
+
+At all saved cooler samples, signed heat removal is positive. The range of
+(dQremoved/dt) per kg fresh is 1.8697e7 to 7.2170e8 J/(kg fresh s), including
+chemistry. Every saved cumulative removed-heat increment is positive. The
+minimum sampled counterflow temperature approach is -2.27e-13 K, roundoff at
+the zero-approach hot endpoint; no sample is below -1e-7 K. These observations
+resolve the previously open sampled sign question for this one trajectory,
+not between-node continuum behavior, passive exchanger area, or equipment.
+The zero-approach preheat remains an infinite-area limit.
+
+4. Meaning of the finite sweep
+
+The parent's saved R=0.85 cases give:
+- 10 us: Tmix=1666.459 K, net NOx=1.03050330 mol/kg fresh,
+  ideal heater heat=1.499454 MJ/mol NOx.
+- 100 us: Tmix=1682.496 K, net NOx=1.02786599 mol/kg fresh,
+  ideal heater heat=1.484016 MJ/mol NOx.
+- 300 us: Tmix=1703.097 K, net NOx=1.02265390 mol/kg fresh.
+- 500 us: Tmix=1713.228 K, net NOx=1.01811735 mol/kg fresh.
+- 1 ms: Tmix=1722.423 K, net NOx=1.00870868 mol/kg fresh.
+- 10 ms: Tmix=1728.619 K, net NOx=0.92959733 mol/kg fresh.
+
+Only the first two listed points pass the modeled 1700 K exit-temperature
+condition. They still do not admit surfaces or a finite plant. The 300-us and
+slower rows cannot be treated as cold-wall <=1700 K constructions without an
+additional qualified quench step. Their reported heat quotients are not such
+an admission.
+
+The 100-us and 300-us observations straddle 1700 K in this model. They are not
+a proof of a unique crossing, a global maximum allowable mixing time, or a
+physical mixing requirement. The tolerance comparison at 100 us (rtol2e-8 to
+2e-9) changes Tmix by 3.14e-7 K and NOx by 2.83e-10 mol/kg, a narrow repeatability
+check, not a formal global error bound.
+
+The finite cases show no energy advantage over the ideal same-cap once-through
+reference of 1.459056 MJ/mol. Over this small tested set, longer entrainment
+also reduces product NOx. The nonmonotonic heat quotient arises because some
+chemical heat release raises Tmix and permits more feed preheat; it is not
+new net energy. Increasing Tmix ultimately crosses the imposed inlet cap.
+The appropriate conclusion is a bounded diagnostic result and a parked
+physical-superiority claim, not a universal no-go theorem or justification
+for an unbounded parameter search.
+
+Independent files: check_finite_saved.py and finite_saved_checks.json. They
+record source/trajectory hashes, the exact positive state, raw compared
+sources, and all stated saved-node diagnostics. Existing parent data were
+read only. The check used the already installed local Cantera dependency tree;
+no package installation or external search was required.

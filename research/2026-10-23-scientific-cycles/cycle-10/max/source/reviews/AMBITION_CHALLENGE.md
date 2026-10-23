@@ -1,0 +1,42 @@
+# Ambition challenge: autonomous science and the amplification claim
+
+**Assessment:** both branches warrant sustained foundational attention on the evidence of their actual structural results. That judgment does not depend on showing recursive intelligence amplification. The evaluator should resist both reducing difficult theory to a succession of quickly checked constants and renaming every successful scientific move “representation invention.” This is an assessment of significance, not a scientific allocation decision or a prescription for either owner.
+
+## Pro1: the logarithm is a meaningful boundary, with a limited consequence
+
+Cycle9 changed the admissible positive input family and improved the attainable same-bath communication excess from a cubic bound to a nearly quadratic one. The fixed physical channel, initializer-independent coding sequence, pointwise all-normal-initializer guarantee and full-diamond criterion make that cumulative result substantial within its model. The positive-part construction overcame a proved obstruction to the old affine family; it was not merely a better constant in the same positivity estimate. [P1, 137–244, 342–579; prior review §2]
+
+The contemplated logarithm removal is likewise more than constant polishing. It asks whether a genuinely positive input can retain the necessary entropy and full inward bath drift at fixed accumulated scale (bk=r_0), where (b=\beta^2), rather than the presently shorter (k\asymp1/[b\log(1/b)]). A successful bound would give a quadratic attainable excess. A decisive obstruction for this actual repair family would also change the science. The missing object is the **signed bath-operator response and charge cost of the nonlinear positive correction**. Its small reference-weighted mass alone is insufficient: the present generic (k\epsilon) bound overwhelms the drift margin at fixed (bk). Calling the correction a better representation does not establish the required operator estimate. [P1, 663–689; P2, 96–108]
+
+Its significance must remain proportionate. Removing a sufficient-method logarithm would not establish a sharp capacity law, assisted/unassisted equality, a general converse, or an efficient encoder. An obstruction to this family would not be a capacity converse. Efficient state preparation, useful finite blocklength and an operational compiler remain absent; current dimensions and inherited constants make those separate scientific demands. Narrowing would occur if increasingly elaborate estimates improved only prefactors while leaving these structural questions unchanged, with no independent mathematical or operational consequence. Neither that risk nor unknown practical usefulness makes the foundational question valueless. [P1, 581–658; P2, 108–118]
+
+## Ultra: a pooled theorem could change the feasible output, but must say how
+
+The universal loss law and fixed-(L) strong converse are already structural achievements. They close the unchanged useful uniform-(r), pointwise per-queue pure-profile target even under arbitrary joint quantum channels and unlimited independent apparatus. Closure is scientific progress; a better representation cannot make that same target feasible. The owned pooled/encoded question explicitly changes the output contract. [U1, 411–429]
+
+A substantive pooled theorem could determine how much accessible entanglement remains useful when individual inventory preservation is replaced by a collective output, while the actual inaccessible clocks and complete retained memory remain in the global error criterion. That distinguishes a restriction imposed by the per-queue target from a more general operational limitation. But **“some positive pooled output exists” is too weak**: the existing receiver already keeps the first actual Bell pair of every queue. Relabelling that retained stock would not advance the frontier. A meaningful new statement needs a declared rate, limit regime and target, beyond an already available consequence. [U1, 34–49, 423–429; U2]
+
+Still missing are the actual clock-compatible joint-memory decoupling/rate proof and a comparison under the same new target, access, aid, disposal rights and total initial supply. Standard distillation language does not discharge those conditions. A correct pooled theorem may be valuable even if equally informed ordinary stock can execute it, but then it establishes a receiving capability, not a stock-preparation advantage. Paid aid, catalytic return, recurrence and formation are separate claims. Sharper constants in the resolved profile law have lower apparent foundational reach unless they change a concrete resource regime or scientific conclusion. [U3, 3–49]
+
+## The evaluator's universal representation cure is unsupported
+
+“Representation” can describe a positive input family, a bounded witness, a quotient, a proof interface or a changed output target. Grouping these under one word is a taxonomy, not a causal account of invention. Pro1 needed source-specific operator structure and a new positivity argument. Ultra needed a collective converse and explicit resource accounting; some of its strongest progress ruled out a desired capability. These mechanisms cannot be replaced by a generic instruction to find a better representation. Pro1 explicitly records that the evaluator's optional anisotropic result was unused. [P1, 674–689; U1, 411–438]
+
+The completed Markov check adds a narrow warning. Conventional exact refinement works on its 32-state recipient, but an old compression can preserve the final marginal exactly while corrupting first-hit and return histories. No donor-derived learned transformer was imported. That is evidence about interface validity, not an acquired ability to invent. It should not become a miniature capability benchmark used to judge autonomous science. [M1]
+
+The records do support **concrete proof feedback** as useful: explicit counterexamples exposed false endpoint substitutions, missing pinching or independence assumptions, and illegal clock comparisons. They do not show that a system learned a better conjecture-selection, model-induction or discovery policy from this feedback, or that such learning improved a distinct consequential investigation against a strong ordinary control. A stronger self-improvement claim still needs that prospective causal bridge, with ordinary domain knowledge, reconstruction and review costs allowed. Repeatedly collecting valid compositions cannot supply it. [P1, 311–422, 668–689; U4; prior review §§5–6]
+
+The defensible ambition is therefore twofold: allow the owners to pursue structural science on its own merits, and keep the general amplification claim open rather than awarding it for cumulative mathematics. Neither science should be redirected to manufacture a convenient evaluator success. No new calculation or frontier solution was attempted for this note.
+
+## Exact source pointers
+
+Line numbers refer to the preserved Cycle9 source, not to rendered summaries.
+
+- **P1:** [SPECTRAL_CLIPPING_CAPACITY.tex](sandbox:/workspace/scratch/f2e6b9408a0a/work/cycle10_20261023/inputs/pro1/Astra_Amplification_Cycle9_PRO1_20261022/SPECTRAL_CLIPPING_CAPACITY.tex). Governing theorem 137–180; positivity obstruction 182–244; limitations and next question 581–689.
+- **P2:** [CONTINUATION.md](sandbox:/workspace/scratch/f2e6b9408a0a/work/cycle10_20261023/inputs/pro1/Astra_Amplification_Cycle9_PRO1_20261022/CONTINUATION.md), 96–118.
+- **U1:** [PROOF.txt](sandbox:/workspace/scratch/f2e6b9408a0a/work/cycle10_20261023/inputs/ultra/PROOF.txt), 14–59 and 411–438.
+- **U2:** [OUTPUT_INTERFACE.txt](sandbox:/workspace/scratch/f2e6b9408a0a/work/cycle10_20261023/inputs/ultra/OUTPUT_INTERFACE.txt), target, global-error and implementation paragraphs.
+- **U3:** [COMPARATOR.txt](sandbox:/workspace/scratch/f2e6b9408a0a/work/cycle10_20261023/inputs/ultra/COMPARATOR.txt), 3–49.
+- **U4:** [FAILURES_AND_DECISION.txt](sandbox:/workspace/scratch/f2e6b9408a0a/work/cycle10_20261023/inputs/ultra/FAILURES_AND_DECISION.txt), failures 1–8.
+- **M1:** [Markov REPORT.md](sandbox:/workspace/scratch/f2e6b9408a0a/work/cycle10_20261023/meta_transfer/markov_query/REPORT.md), “Consequence for the meta hypothesis.”
+- **Prior review:** [quantum_capital.md](sandbox:/workspace/scratch/f2e6b9408a0a/work/cycle10_20261023/reviews/quantum_capital.md), scoped independent source assessment and its limits. Historical priority and external certification remain unestablished; this note makes no fresh novelty claim.

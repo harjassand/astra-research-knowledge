@@ -1,0 +1,215 @@
+diff --git a/tests/test_edit_tool.py b/tests/test_edit_tool.py
+index f0782c6..ba8a993 100644
+--- a/tests/test_edit_tool.py
++++ b/tests/test_edit_tool.py
+@@ -83,3 +83,77 @@ class TestEditorTool:
+         """Test various invalid commands."""
+         result = tool_function(command, str(sample_file))
+         assert "Error" in result
++
++    def test_edit_range_valid(self, sample_file):
++        """Test editing a valid range of lines."""
++        result = tool_function(
++            "edit_range",
++            str(sample_file),
++            start_line=2,
++            end_line=4,
++            replacement_text="new line 2\nnew line 3"
++        )
++        assert "Lines 2-4 in" in result
++        content = sample_file.read_text()
++        assert content == "line 1\nnew line 2\nnew line 3\nline 5\n"
++
++    def test_edit_range_single_line(self, sample_file):
++        """Test editing a single line."""
++        result = tool_function(
++            "edit_range",
++            str(sample_file),
++            start_line=3,
++            end_line=3,
++            replacement_text="new line 3"
++        )
++        assert "Lines 3-3 in" in result
++        content = sample_file.read_text()
++        assert content == "line 1\nline 2\nnew line 3\nline 4\nline 5\n"
++
++    def test_edit_range_with_multiline_replacement(self, sample_file):
++        """Test replacing a single line with multiple lines."""
++        result = tool_function(
++            "edit_range",
++            str(sample_file),
++            start_line=2,
++            end_line=2,
++            replacement_text="new line 2a\nnew line 2b\nnew line 2c"
++        )
++        assert "Lines 2-2 in" in result
++        content = sample_file.read_text()
++        assert content == "line 1\nnew line 2a\nnew line 2b\nnew line 2c\nline 3\nline 4\nline 5\n"
++
++    def test_edit_range_invalid_line_numbers(self, sample_file):
++        """Test edit_range with invalid line numbers."""
++        # Test start line less than 1
++        result = tool_function(
++            "edit_range",
++            str(sample_file),
++            start_line=0,
++            end_line=2,
++            replacement_text="new text"
++        )
++        assert "Error" in result
++        assert "out of range" in result
++
++        # Test end line greater than file length
++        result = tool_function(
++            "edit_range",
++            str(sample_file),
++            start_line=1,
++            end_line=10,
++            replacement_text="new text"
++        )
++        assert "Error" in result
++        assert "out of range" in result
++
++        # Test end line less than start line
++        result = tool_function(
++            "edit_range",
++            str(sample_file),
++            start_line=3,
++            end_line=2,
++            replacement_text="new text"
++        )
++        assert "Error" in result
++        assert "must be greater than or equal to start line" in result
+\ No newline at end of file
+diff --git a/tools/edit.py b/tools/edit.py
+index 59137ee..066e1ef 100644
+--- a/tools/edit.py
++++ b/tools/edit.py
+@@ -10,14 +10,14 @@ def tool_info():
+ * The `create` command cannot be used if the specified `path` already exists as a file.\n
+ * If a `command` generates a long output, it will be truncated and marked with `<response clipped>`.\n
+ * The `edit` command overwrites the entire file with the provided `file_text`.\n
+-* No partial/line-range edits or partial viewing are supported.""",
++* The `edit_range` command modifies a specific block of the file, taking start_line, end_line, and replacement_text.""",
+         "input_schema": {
+             "type": "object",
+             "properties": {
+                 "command": {
+                     "type": "string",
+-                    "enum": ["view", "create", "edit"],
+-                    "description": "The command to run: `view`, `create`, or `edit`."
++                    "enum": ["view", "create", "edit", "edit_range"],
++                    "description": "The command to run: `view`, `create`, `edit`, or `edit_range`."
+                 },
+                 "path": {
+                     "description": "Absolute path to file or directory, e.g. `/repo/file.py` or `/repo`.",
+@@ -26,6 +26,18 @@ def tool_info():
+                 "file_text": {
+                     "description": "Required parameter of `create` or `edit` command, containing the content for the entire file.",
+                     "type": "string"
++                },
++                "start_line": {
++                    "description": "Starting line number for edit_range command (1-based).",
++                    "type": "integer"
++                },
++                "end_line": {
++                    "description": "Ending line number for edit_range command (1-based, inclusive).",
++                    "type": "integer"
++                },
++                "replacement_text": {
++                    "description": "The text to replace the specified line range with in edit_range command.",
++                    "type": "string"
+                 }
+             },
+             "required": ["command", "path"]
+@@ -43,7 +55,7 @@ def validate_path(path: str, command: str) -> Path:
+     Validate the file path for each command:
+       - 'view': path may be a file or directory; must exist.
+       - 'create': path must not exist (for new file creation).
+-      - 'edit': path must exist (for overwriting).
++      - 'edit' or 'edit_range': path must exist (for overwriting).
+     """
+     path_obj = Path(path)
+ 
+@@ -61,7 +73,7 @@ def validate_path(path: str, command: str) -> Path:
+         # Path must not exist
+         if path_obj.exists():
+             raise ValueError(f"Cannot create new file; {path} already exists.")
+-    elif command == "edit":
++    elif command in ["edit", "edit_range"]:
+         # Path must exist and must be a file
+         if not path_obj.exists():
+             raise ValueError(f"The file {path} does not exist.")
+@@ -119,12 +131,52 @@ def view_path(path_obj: Path) -> str:
+     content = read_file(path_obj)
+     return format_output(content, str(path_obj))
+ 
+-def tool_function(command: str, path: str, file_text: str = None) -> str:
++def edit_range_in_file(path_obj: Path, start_line: int, end_line: int, replacement_text: str) -> str:
++    """Edit a specific range of lines in a file."""
++    try:
++        # Read all lines from the file
++        content = read_file(path_obj)
++        lines = content.splitlines()
++
++        # Validate line numbers
++        if start_line < 1 or start_line > len(lines) + 1:
++            raise ValueError(f"Start line {start_line} is out of range (1-{len(lines)+1})")
++        if end_line < start_line:
++            raise ValueError(f"End line {end_line} must be greater than or equal to start line {start_line}")
++        if end_line > len(lines):
++            raise ValueError(f"End line {end_line} is out of range (1-{len(lines)})")
++
++        # Convert to 0-based indexing for list operations
++        start_idx = start_line - 1
++        end_idx = end_line
++
++        # Split replacement text into lines
++        replacement_lines = replacement_text.splitlines()
++
++        # Create the new content by replacing the specified range
++        new_lines = lines[:start_idx] + replacement_lines + lines[end_idx:]
++        new_content = "\n".join(new_lines)
++
++        # Add final newline if original content had one
++        if content.endswith("\n"):
++            new_content += "\n"
++
++        # Write the modified content back to the file
++        write_file(path_obj, new_content)
++        return f"Lines {start_line}-{end_line} in {path_obj} have been replaced."
++
++    except Exception as e:
++        raise ValueError(f"Failed to edit line range: {e}")
++
++def tool_function(command: str, path: str, file_text: str = None,
++                 start_line: int = None, end_line: int = None,
++                 replacement_text: str = None) -> str:
+     """
+     Main tool function that handles:
+       - 'view'  : View the entire file or directory listing
+       - 'create': Create a new file with the given file_text
+       - 'edit'  : Overwrite an existing file with file_text
++      - 'edit_range': Edit a specific range of lines in a file
+     """
+     try:
+         path_obj = validate_path(path, command)
+@@ -144,6 +196,11 @@ def tool_function(command: str, path: str, file_text: str = None) -> str:
+             write_file(path_obj, file_text)
+             return f"File at {path} has been overwritten with new content."
+ 
++        elif command == "edit_range":
++            if any(x is None for x in [start_line, end_line, replacement_text]):
++                raise ValueError("'edit_range' requires start_line, end_line, and replacement_text parameters.")
++            return edit_range_in_file(path_obj, start_line, end_line, replacement_text)
++
+         else:
+             raise ValueError(f"Unknown command: {command}")
+ 
+@@ -152,4 +209,4 @@ def tool_function(command: str, path: str, file_text: str = None) -> str:
+ 
+ if __name__ == "__main__":
+     # Example usage
+-    print(tool_function("view", "/home/ubuntu/jz/dgm/coding_agent.py"))
++    print(tool_function("view", "/home/ubuntu/jz/dgm/coding_agent.py"))
+\ No newline at end of file

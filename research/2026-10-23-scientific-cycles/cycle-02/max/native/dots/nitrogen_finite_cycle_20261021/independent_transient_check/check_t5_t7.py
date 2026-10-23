@@ -1,0 +1,6 @@
+"""Independent full-field matching-phase check, immutable saved endpoints only."""
+from pathlib import Path
+import numpy as np, json,hashlib,time,resource
+r=Path(__file__).resolve().parents[1];start=time.monotonic();a=r/'reacting_inventory_raw_T8_blow_4.npz';b=r/'reacting_inventory_raw_T8_blow_6.npz';za=np.load(a);zb=np.load(b);s=zb['state'][:,-1];o=za['state'][:,-1];M=25;H=12;N=12;v=np.full(M,.4*.1/N);v[H]=.1;d=s-o;q=d[:6*M].reshape(6,M)
+z={'source_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in [a,b]},'times_s':[float(za['t'][-1]),float(zb['t'][-1])],'solid_reset_max_K':float(np.max(abs(d[7*M:7*M+2*N]))*1000),'species_density_reset_max_by_species_kg_m3':np.max(abs(q),axis=1).tolist(),'gas_U_reset_max_J_m3':float(np.max(abs(d[6*M:7*M]))*1e6),'header_species_density_reset_by_species_kg_m3':q[:,H].tolist(),'header_U_reset_J_m3':float(d[6*M+H]*1e6),'solid_energy_change_MJ_m2':float(2.5e6*.1/N*1000*d[7*M:7*M+2*N].sum()/1e6),'gas_energy_change_MJ_m2':float(d[6*M:7*M]@v),'heater_positive_MJ_m2':float(d[-9]),'export_NOx_mol_m2':float(d[-4]),'wall_seconds':time.monotonic()-start,'peak_RSS_KiB_Linux':resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}
+(r/'independent_transient_check/t5_t7.json').write_text(json.dumps(z,indent=2)+'\n');print(json.dumps(z,indent=2))

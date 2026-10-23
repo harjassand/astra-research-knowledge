@@ -1,0 +1,620 @@
+% !TeX root = main.tex
+%% Appendix.
+
+%% Appendix-only table of contents.  The main body has already written its
+%% entries to main.toc, so instead of reusing that file we mirror every
+%% contents line produced from here on into a second file (main.atoc) and
+%% typeset that one.  Everything stays local to this file.
+\makeatletter
+\let\apx@addcontentsline\addcontentsline
+\renewcommand{\addcontentsline}[3]{%
+  \apx@addcontentsline{#1}{#2}{#3}%
+  \def\apx@type{#1}\def\apx@toc{toc}%
+  \ifx\apx@type\apx@toc \apx@addcontentsline{atoc}{#2}{#3}\fi
+}
+\section*{\contentsname}
+\@starttoc{atoc}
+\makeatother
+\newpage
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Language models for formal theorem proving.}
+Language models can generate formal proof steps~\citep{polu2020generative},
+with subsequent systems adding tree search and reinforcement
+learning~\citep{lample2022hypertree,gloeckle2024abel}, library retrieval
+~\citep{yang2023leandojo}, synthetic data~\citep{xin2024deepseekprover}, subgoal
+decomposition, and test-time search
+~\citep{hubert2024alphaproof,ren2025deepseekproverv2,lin2025goedelprover,
+wang2025kimina}. These methods primarily optimize completion of a fixed target
+under a particular prover and budget, whereas we aim to explore open-ended reasoning. 
+
+\paragraph{Autoformalization and formal libraries at scale.}
+LLM autoformalization has progressed from statement-level translation
+~\citep{wu2022autoformalization} and paired datasets
+~\citep{azerbayev2023proofnet,ying2024lean} to large Lean developments from
+mathematical textbooks~\citep{urban2026130klinesformaltopology,
+wang2026m2fautomatedformalizationmathematical,gloeckle2026automatic}.
+\textsc{AutoformBot} and \Atlas further demonstrate coordination and
+verification across 26 books~\citep{rammal2026atlas}. Recent work has also
+begun formalizing research-level results, such as the De Giorgi--Nash--Moser
+theory for elliptic PDEs~\citep{armstrong2026degiorgi}. These results establish
+the scalability of formal-library construction while exposing planning
+problems from missing infrastructure and long-range dependencies.
+
+\paragraph{Automated mathematical discovery and conjecturing.}
+AM and Graffiti pioneered automatic concept and conjecture generation
+~\citep{lenat1977am,fajtlowicz1988graffiti}, and interestingness itself became
+an explicit research problem~\citep{colton2000interestingness}.
+Graffiti's successors, notably TxGraffiti~\citep{davila2024txgraffiti}, have
+produced conjectures that led to multiple published papers over a decade of
+human--machine collaboration~\citep{davila2025txgraffiti10years}; however,
+these systems operate on graph invariants and their heuristic filters are
+intrinsically tied to that domain.
+\citet{bengio2024aimathematician} propose an information-theoretic view
+of mathematical interestingness, suggesting that valuable frameworks have small
+description length while being close to many provable statements; our
+definition can be seen as a computable, formal-library-grounded instantiation
+of this principle.
+More recent systems jointly learn conjecturing and proof in small axiomatic
+domains~\citep{poesia2024minimo} or learn interestingness objectives for theory
+formation~\citep{tsoukalas2025fermat}. Proposals for autonomous discovery add
+novelty assessment, result selection, and closed-loop knowledge growth
+~\citep{barkeshli2026structure}. Our objective supplies such a signal at formal-
+library scale, grounding intrinsic interestingness in verified proof length and
+relating it to a theorem's extrinsic utility. This separates the ability to
+generate valid statements from the harder problem of selecting discoveries.
+
+\paragraph{Description length and mathematical compression.}
+Kolmogorov complexity measures shortest description length
+~\citep{solomonoff1964,kolmogorov1965,livitanyi2008}, while proof length and
+statement description length are distinct finite-corpus proxies. Resource-bounded
+information~\citep{xu2020usable,blier2018description} and recent views of
+mathematics as a proof hypergraph compressed by useful abstractions
+~\citep{barkeshli2026structure,aksenov2026compression} motivate our
+library-grounded quantities. Interestingness compares proof and description
+length, while utility measures downstream proof compression; both are relative
+to the available mathematical context. They are computable, finite-corpus
+proxies rather than claims about uncomputable description complexity.
+
+\section{Training the Difficulty Model \texorpdfstring{$V_\theta$}{V-theta}}
+\label{app:difficulty-model}
+
+\subsection{Data}
+\label{app:extraction}
+
+\subsubsection{Source corpus}
+
+From our extraction of \Mathlib, we get 113,547 declarations. For each declaration we record the fully qualified name, rendered type, and file path; the file-local definitions required to interpret the target and premises; the project-local theorem declarations referenced by the accepted proof; the source proof span and its non-blank physical line count; and the dependency metadata used to change which premises are visible.
+
+From each theorem we build a group and are able to compute our reward within such a group. Fix a root theorem $T$, let
+$P$ be the premises currently visible to the model, and let $c$ be the
+materialized computational-cost of that pair: the number of proof lines needed
+to derive $T$ from $P$. Write $D$ for the file-local definitions shipped with
+the prompt and $\Deps(\cdot)$, for the extracted dependencies of a declaration. Sample a cited lemma uniformly from the
+theorem declarations among the visible premises,
+\[
+  L \sim \mathrm{Unif}\bigl(P)
+\]
+Let $\ell$ be the proof cost of $L$. Now expand it: replacing $L$ by its
+own dependencies gives the expanded premise set $P^{-}$, and dropping each of
+its premises independently gives the thinned premise set $P^{.8}$,
+\[
+  P^{-} = \bigl(P \setminus \{L\}\bigr) \cup \Deps(L),
+  \qquad
+  P^{.8} = \{\, p \in P^{-} : u_p < 0.8 \,\},
+  \quad u_p \sim \mathrm{Unif}[0,1].
+\]
+A proof from $P^{-}$ can no longer cite $L$ and must derive it, so it costs
+$c+\ell$. Writing $D_{\rm pre}$ for the definitions visible before the
+expansion and $D(L)$ for those of $L$ alone, the edge emits six prompts
+$(\text{target}\mid\text{definitions},\,\text{premises})$ together with their
+observed computational-cost labels.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{0.42\linewidth}@{}}
+\toprule
+Role & Prompt $\mapsto$ Label & Meaning \\
+\midrule
+\role{base}             & $(T \mid D,\, P^{-}) \mapsto c+\ell$ & Predict the difficulty of proving $T$ when $L$ is not among the given premises; one would have to prove $L$ along the way, so the answer grows by its $\ell$ lines. \\
+\role{remaining\_keep}  & $(T \mid D,\, P^{-}\cup\{L\}) \mapsto c$ & Predict the difficulty of proving $T$ when $L$ is handed back as a premise; it can be cited directly, so the answer returns to $c$. \\
+\role{remaining\_remove}& $(T \mid D_{\rm pre},\, P) \mapsto c$ & Predict the difficulty of proving $T$ from the premises available before $L$ was expanded; the answer is again $c$, reached from a different set of premises. \\
+\role{lemma\_context}   & $(L \mid D,\, P^{-}) \mapsto \ell$ & Predict the difficulty of proving $L$ itself from the premises the \role{base} row was given; this is exactly the $\ell$ lines that \role{base} had to add. \\
+\role{lemma\_native}    & $(L \mid D(L),\, \Deps(L)) \mapsto \ell$ & Predict the difficulty of proving the same $L$ from the premises it was actually proved from in \Mathlib; the answer must again be $\ell$. \\
+\role{base\_drop}       & $(T \mid D,\, P^{.8}) \mapsto \varnothing$ & Predict the difficulty of proving $T$ after each premise is dropped at random; it carries no label, since removing premises cannot make a proof shorter, and feeds only the one-sided penalty. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+All six rows remain adjacent during reward construction, so that the reward can be evaluated within a group without any cross-batch bookkeeping.  Roots, not individual prompt rows, determine the data
+split, so variants of one theorem never straddle the train/validation boundary.
+
+For each root, generation starts from $P=\Deps(T)$ and
+$c=\Nlines(T)$ and runs three deterministically seeded random expansion walks.
+After an edge is emitted, the walk continues from $(P^-,c+\ell)$. Each walk
+reservoir-samples at most three eligible edges, stops after 300 expansion
+attempts or once the visible premise set reaches 150 premises, and excludes prompts above
+60,000 characters. The walks and reservoirs use seed 31; validation roots are
+randomly selected with probability $p=0.01$.
+
+The final dataset contains 18,318 training groups (109,908 prompts) and 923
+validation groups (5,538 prompts).  Grounded labels have mean 92.3, median 49,
+90th percentile 245, and maximum 500 proof lines.  
+
+\subsubsection{Prompt}
+
+Every model receives the same instruction template.  The frontier-model
+evaluations permit free-form reasoning but require the final integer after
+\texttt{\#\#\#\#}; training uses identical semantic content.
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize,frame=single]
+You are given Lean definitions, premises, and a target theorem statement.
+Estimate the proof difficulty: the total number of proof lines required to
+derive the target theorem from these premises.
+
+The definitions are file-local definitions that the statement and premises
+depend on. Use them only to understand what the statement means -- do NOT
+judge difficulty based on them, and do not count them as proof lines.
+
+Pay attention to exactly which premises are available. Do not infer
+difficulty from the number of premises alone.
+
+Do not draft the proof. Just estimate the difficulty from the dependency
+structure. Give a concise estimate, then put the final answer on its own line:
+
+#### <integer>
+
+Definitions:
+[numbered Lean declarations]
+
+Premises:
+[numbered Lean hypotheses]
+
+Target theorem:
+theorem target : [rendered type] := by
+
+What is the total proof difficulty (number of proof lines)?
+\end{lstlisting}
+
+Hypothesis names are normalized positionally to \texttt{h1}, \texttt{h2}, and so
+on; the target is renamed \texttt{target}; and any proof body after
+\texttt{:= by} is stripped.  The model sees file-local definitions first, then
+premises, then the target.
+
+\subsection{Model and Optimization}
+\label{app:optimization}
+
+\subsubsection{Training objective}
+
+Write $m(x)=\lgp{x}$, let $v_{rj}$ be sampled completion $j$ for role $r$,
+and let $\bar v_r$ be the mean of the parsed completions for that role within
+the batch; we abbreviate the six role means of \role{base},
+\role{remaining\_keep}, \role{remaining\_remove}, \role{lemma\_context},
+\role{lemma\_native}, and \role{base\_drop} as $\bar v_{\rm base}$,
+$\bar v_{\rm keep}$, $\bar v_{\rm rem}$, $\bar v_{\rm ctx}$,
+$\bar v_{\rm nat}$, and $\bar v_{\rm drop}$. Algorithm~\ref{alg:reward} gives
+the per-completion reward used before GRPO normalization. Define the
+Bellman residual $a(x;y,z)=|m(x)-m(y+z)|$ and the agreement residual
+$q(x,y)=|m(x)-m(y)|$.
+
+\begin{algorithm}[t]
+\caption{\textsc{TrainingReward} --- exact per-completion reward.}
+\label{alg:reward}
+\begin{algorithmic}[1]
+\Require completion $v=v_{rj}$ of role $r$; role means $\bar v_{\rm base}$,
+  $\bar v_{\rm keep}$, $\bar v_{\rm rem}$, $\bar v_{\rm ctx}$,
+  $\bar v_{\rm nat}$, $\bar v_{\rm drop}$; label $c_r$
+\Ensure reward $\mathcal{R}_{rj}$
+\If{$v$ does not contain exactly one \texttt{</think>} followed by exactly one
+  terminal \texttt{\#\#\#\# non-negative-integer}}
+  \State \Return $-2000$
+\EndIf
+\State $e_{\rm truth}\gets 0$ if $r=\role{base\_drop}$, else $q(v,c_r)$
+\If{$r=\role{base}$}
+  \State $e_{\rm add}\gets\tfrac14\bigl[
+    a(v;\bar v_{\rm keep},\bar v_{\rm ctx})+a(v;\bar v_{\rm keep},\bar v_{\rm nat})$
+  \Statex \hspace{5.9em}$
+    +\,a(v;\bar v_{\rm rem},\bar v_{\rm ctx})+a(v;\bar v_{\rm rem},\bar v_{\rm nat})\bigr]$
+  \State $e_{\rm drop}\gets[\,m(v)-m(\bar v_{\rm drop})\,]_+$
+\ElsIf{$r=\role{remaining\_keep}$ or $r=\role{remaining\_remove}$}
+  \State $e_{\rm add}\gets\tfrac12\bigl[
+    a(\bar v_{\rm base};v,\bar v_{\rm ctx})+a(\bar v_{\rm base};v,\bar v_{\rm nat})
+    \bigr];\quad e_{\rm drop}\gets0$
+\ElsIf{$r=\role{lemma\_context}$}
+  \State $e_{\rm add}\gets\tfrac13\bigl[
+    a(\bar v_{\rm base};\bar v_{\rm keep},v)+a(\bar v_{\rm base};\bar v_{\rm rem},v)
+    +q(v,\bar v_{\rm nat})\bigr];\quad e_{\rm drop}\gets0$
+\ElsIf{$r=\role{lemma\_native}$}
+  \State $e_{\rm add}\gets\tfrac13\bigl[
+    a(\bar v_{\rm base};\bar v_{\rm keep},v)+a(\bar v_{\rm base};\bar v_{\rm rem},v)
+    +q(v,\bar v_{\rm ctx})\bigr];\quad e_{\rm drop}\gets0$
+\Else \Comment{$r=\role{base\_drop}$}
+  \State $e_{\rm add}\gets0;\quad
+    e_{\rm drop}\gets[\,m(\bar v_{\rm base})-m(v)\,]_+$
+\EndIf
+\State \Return $-0.50e_{\rm truth}-0.35e_{\rm add}-0.15e_{\rm drop}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Hyperparameters}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{\qquad}ll@{}}
+\toprule
+Parameter & Value & Parameter & Value \\
+\midrule
+Base model & Qwen3.6-27B & Global batch & 384 samples \\
+Rollout batch & 48 prompts & Samples per prompt & 8 \\
+Rollout temperature & 1.0 & Context limit & 131,072 \\
+Prompt limit & 65,536 & Response limit & 8,192 \\
+Optimizer & Adam & Learning rate & $10^{-6}$, constant \\
+$\beta_1,\beta_2$ & $0.9,\,0.98$ & Weight decay & 0.1 \\
+GRPO clip & $0.20\,/\,0.28$ & KL coefficient & 0.01 \\
+Steps & 350 & Policy loss & per token \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Evaluation Protocols}
+\label{app:evaluation}
+
+Evaluation is performed with greedy decoding and an 8,192-token response cap, to match training.
+MAE, median absolute error, log-space $R^2$,
+and Spearman $\rho$ are computed over all valid outputs. Every row from Claude and the trained model $V_\theta$ is successfully parsed, whereas GPT-5.5 produced 6 invalid outputs across all 4,615 prompts.
+
+Calibration points in Figure~\ref{fig:difficulty-results} divide $[0,450]$ proof lines into five equal-width 90-line bins.
+Within each observed-difficulty bin the marker gives the mean observed label against the mean prediction, and the shaded band spans the 25th--75th percentiles of predictions. 
+Binning is used only for the plot on the left of Figure~\ref{fig:difficulty-results}; every aggregate metric on the right is computed on unbinned rows.
+
+\section{Training a Conjecturing Model}
+\label{app:conjecturing}
+
+\subsection{Conjecturing Model Training}
+\label{app:forward-training}
+
+\subsubsection{Data construction}
+
+The theorem-proposal data are reconstructed from the \role{base\_drop} rows of the corpus from \ref{app:extraction}, and only the premises are used here.
+Premises are renamed positionally, and contexts with fewer than 16 premises or more than 12,288 tokens are removed. 
+From this we randomly select 10,000 sets of premises for training and an additional 512 for validation, each set containing a median of 77 premises.
+The model sees definitions and premise statements but never the source theorem or its proof. 
+Section~\ref{app:proposal-prompt} gives the verbatim system and user templates.
+
+\subsubsection{Compilation, relevance, and triviality}
+
+A response must contain exactly one nonempty expression between
+\texttt{<<<STATEMENT>>>} and \texttt{<<<END>>>}. Pantograph~\citep{aniva2025pantograph} compiles the expression as the type of a standalone theorem against the \Mathlib
+environment, to ensure it is syntactically valid. We only allow for the model to produce theorems and reject declarations, definitions, proof commands,
+\texttt{:=}, and \texttt{sorry}; parse failures receive $-0.5$ and expressions
+that fail compilations receive $-0.25$.
+
+For a compiled type, the global definition graph computes
+$L(T\mid P)$ by subtracting the vocabulary exposed by the supplied premises.
+The proposal must share at least one non-generic identifier with a
+premise/definition context; failure receives $-0.25$. Direct premise restatements (as measured by token-level similarity) are marked trivial. Other candidates are tested for triviality using \texttt{assumption}, \texttt{rfl}, \texttt{simp}, \texttt{tauto},
+and \texttt{simp\_all}; a candidate closed by any one receives reward of $0$. Only valid,
+relevant, nontrivial statements are sent to the $V_\theta$ LLM to judge the difficulty, and they then receive reward according to Equation~\ref{eq:conjecture-reward}.
+
+\subsubsection{Optimization configuration}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{\qquad}ll@{}}
+\toprule
+Parameter & Value & Parameter & Value \\
+\midrule
+Initialization & Qwen3.6-27B & Steps & 75 \\
+Samples per prompt & 8 & Rollout temperature & 1.0 \\
+Global / rollout batch & 192 / 24 & Context / prompt limit & 12,800 / 12,288 \\
+Response limit & 512 & Planned updates & 100 \\
+Optimizer & Adam & Learning rate & $10^{-6}$, constant \\
+$\beta_1,\beta_2$ & $0.9,0.98$ & Weight decay & 0.1 \\
+GRPO clip & $0.20/0.28$ & KL penalty & $0$ \\
+Save / evaluation interval & 5 / 25 & Policy loss & per token \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Theorem-proposal prompt}
+
+Bracketed fields such as \texttt{[NUMBERED PREMISES]} are populated mechanically
+with the corresponding Lean declarations; they are not additional instructions.
+
+\input{prompt_theorem_proposal}
+
+\subsection{Conjecturing Model Evaluation}
+\label{app:forward-eval}
+
+\subsubsection{Balanced verified cohort}
+
+The eight strata we select premises from are Algebra, Analysis, Number Theory, Measure/Probability, Geometry/Topology, Combinatorics, Category/Algebraic Geometry, and Foundations.
+For each group, we sample theorems from each of the three models we evaluate (Claude, the trained conjecturing model, and the base model), and pass it to a Claude Code with Claude Opus 4.6 as a proof agent. We repeat until we have 20 distinct theorems from each area.
+
+The proving agent first attempts the statement byte-for-byte. If that fails, a separate
+marginal-repair pass may add a necessary hypothesis, correct an index or bound,
+or narrowly weaken a conclusion. A repair is accepted only if it compiles,
+preserves the counts of $\forall,\exists,\leftrightarrow,\land,\lor,\neg$, passes
+anti-vacuity checks, and has a token-set Jaccard similarity at least $0.70$, to disallow the statement becoming irrelevant or too easy.
+We recompute proof lines and conditional length from the final compiled declaration and compiled proof, so the reported score is ground-truth interestingness under the proving pipeline rather
+than the difficulty model's training reward.
+
+\subsubsection{Mathlib containment}
+\label{app:containment}
+
+Claude Opus 4.6 at temperature 0
+independently judges all 480 verified statements with proposer, area, and model
+hidden. Each prompt includes the final statement, verified proof body, and
+referenced \Mathlib declarations as non-exhaustive evidence. The proof scaffold
+is pinned to \Mathlib revision
+\texttt{905b95...}. Scores range from 1 (not contained) to 5 (an exact or trivially equivalent named
+declaration exists); score 4 denotes a few-line wrapper or immediate
+specialization. The judge must name a concrete declaration for score 5 and
+returns structured JSON. Figure~\ref{fig:mathlib-containment} reports all of the recorded
+statements per model.  The complete rubric and judge prompt are provided in
+Section~\ref{app:containment-prompt}.
+
+\subsubsection{Mathlib-containment rubric and judge prompt}
+
+\input{prompt_containment_judge}
+
+\newcommand{\genexheading}{\subsection}
+\input{generated_examples_appendix}
+
+
+\section{Inference-Time Pruning Ablation}
+\label{app:inference-pruning}
+
+In this experiment, we aim to isolate the effect of the promotion rule in the recursive discovery loop of
+Section~\ref{sec:fwd}. All four trajectories we study start from the set of 80 premises $P_0$ from graph theory, and share the same Claude Opus 4.6 conjecturer model, and Claude Code based proving procedure. 
+Each initial generation pass proposes 400 statements. Every prompt contains 20 premises: five sampled from the immediately preceding set $P_n \backslash P_{n-1}$ and 15 from the initial pool and older promoted rounds $P_{n-1}$.
+
+These statements are proved independently in Lean. We compare four post-verification promotion rules: \emph{no pruning} retains every verified novel statement; \emph{random} retains ten uniformly at random; \emph{proof length} retains the ten statements with the longest verified proofs; and \emph{interestingness} retains the ten statements with the largest ratio
+\begin{equation}
+  \widehat I_{\rm ver}(T\mid P)
+    =100\,\frac{\text{lines in the accepted proof of }T}
+                    {\text{characters in the normalized statement of }T}.
+  \label{eq:verified-forward-interestingness}
+\end{equation}
+
+\subsection{Comparison across promotion policies}
+
+All policies share the same initial premises and differ only in which verified statements are promoted. Table~\ref{tab:forward-pruning-primary} compares the statements promoted over
+the ten rounds. Mean interestingness is computed within each round and then
+averaged across rounds, giving every round equal weight.
+
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{@{}lrrrr@{}}
+    \toprule
+    Promotion rule  & Mean $\widehat I_{\rm ver}$ & Median $\widehat I_{\rm ver}$ & Mean proof lines \\
+    \midrule
+    No pruning       & 1.313 & 1.114 & 3.80 \\
+    Random           & 1.556 & 1.175 & 4.39 \\
+    Proof length     & 3.259 & 2.480 & \textbf{11.48} \\
+    Interestingness  & \textbf{3.899} & \textbf{3.380} & 7.41 \\
+    \bottomrule
+  \end{tabular}
+  \caption{\textbf{Quality of the promoted statements}}
+  \label{tab:forward-pruning-primary}
+\end{table}
+
+Unsurprisingly, interestingness pruning produces the highest mean and median interestingness,
+while proof-length pruning produces the longest proofs.
+A direct advantage on promoted interestingness is partly expected because one
+policy selects on that quantity. We therefore separately evaluate every unique
+candidate successfully proved in Lean \emph{before} the current round's
+promotion rule is applied. Table~\ref{tab:forward-pruning-candidates} reports
+their number, mean and median interestingness, and mean proof length across all
+ten rounds, using the same aggregation as
+Table~\ref{tab:forward-pruning-primary}.
+
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{@{}lrrrr@{}}
+    \toprule
+    Promotion rule  & Mean $\widehat I_{\rm ver}$ & Median $\widehat I_{\rm ver}$ & Mean proof lines \\
+    \midrule
+    No pruning      & 1.313 & 1.114 & 3.80 \\
+    Random          & 1.461 & 1.271 & 3.74 \\
+    Proof length    & 1.694 & 1.167 & \textbf{5.46} \\
+    Interestingness & \textbf{2.332} & \textbf{1.754} & 4.56 \\
+    \bottomrule
+  \end{tabular}
+  \caption{\textbf{Verified candidates before selection.}}
+  \label{tab:forward-pruning-candidates}
+\end{table}
+
+
+The judge sees four statements at a time, one from each policy, and ranks them by mathematical interestingness. Policy names, proofs, and scores are hidden. We evaluate 100 such groups, and show the results below.
+
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{@{}lrrr@{}}
+    \toprule
+    Promotion rule & Ranked first & Ranked in top two & Mean rank $\downarrow$ \\
+    \midrule
+    No pruning      & 13\% & 34\% & 2.89 \\
+    Random          & 8\%  & 29\% & 2.95 \\
+    Proof length    & 19\% & 64\% & 2.36 \\
+    Interestingness & \textbf{60\%} & \textbf{73\%} & \textbf{1.80} \\
+    \bottomrule
+  \end{tabular}
+  \caption{\textbf{Direct policy-blinded judgment of mathematical
+  interestingness.}}
+  \label{tab:forward-pruning-interest-judge}
+\end{table}
+
+The judge also evaluates ten groups of ten statements promoted by each policy in each round as a group. Policy names and scores are hidden. The judge rates the group's overall quality and diversity and identifies repeated theorem families.
+For no pruning, which retains more than ten statements, we select ten at random.
+
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{@{}lrrrr@{}}
+    \toprule
+    Promotion rule & Quality (1--5) & Diversity (1--5) & Families per ten & Redundant \\
+    \midrule
+    No pruning      & $2.50\pm0.53$ & $1.30\pm0.48$ & $2.60\pm0.97$ & $50.0\%\pm26.7\%$ \\
+    Random          & $2.40\pm0.52$ & $1.20\pm0.42$ & $2.90\pm0.99$ & $53.0\%\pm18.9\%$ \\
+    Proof length    & $2.60\pm0.52$ & $1.30\pm0.48$ & $2.90\pm0.74$ & $50.0\%\pm18.3\%$ \\
+    Interestingness & $\mathbf{3.40\pm0.52}$ & $\mathbf{2.10\pm0.32}$ & $\mathbf{3.50\pm0.71}$ & $\mathbf{28.0\%\pm7.9\%}$ \\
+    \bottomrule
+  \end{tabular}
+  \caption{\textbf{Policy-blinded cohort judgment.} Entries are mean $\pm$
+  sample standard deviation across the ten round-level cohorts for each
+  promotion rule.}
+  \label{tab:forward-pruning-judge}
+\end{table}
+
+\subsection{Judge prompts}
+
+The complete judge instruction is deliberately short and uses a broad notion
+of what a mathematician might appreciate:
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize,breaklines=true]
+You are a mathematician comparing four formally verified theorem statements.
+
+Rank them from most to least mathematically interesting. Use a broad notion of interestingness: a mathematician might appreciate a statement because it is nontrivial, surprising, elegant, conceptually illuminating, potentially useful or reusable, connects ideas, or opens further questions. Judge the mathematical content, not notation, verbosity, statement length, or guessed proof length.
+
+[A]
+<THEOREM>
+
+[B]
+<THEOREM>
+
+[C]
+<THEOREM>
+
+[D]
+<THEOREM>
+
+Return exactly one JSON object and no Markdown:
+{"ranking":["A","B","C","D"],"rationale":"one or two sentences","confidence":"high|medium|low"}
+\end{lstlisting}
+
+The complete cohort-judge prompt is:
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize,breaklines=true]
+You are an impartial expert judge of a collection of ten verified Lean 4 theorem statements.
+
+The statements are all correct. Judge the collection itself, without guessing its source or generation method.
+
+Rate two dimensions from 1 to 5.
+
+MATHEMATICAL QUALITY
+5: Mostly nontrivial, coherent, potentially reusable results that express substantive mathematical content.
+4: Generally meaningful results with some routine or overly specialized items.
+3: Mixed quality; several useful statements but substantial routine conjunctions, wrappers, or narrow variants.
+2: Mostly shallow, over-specialized, or mechanically assembled statements.
+1: Almost entirely trivial, incoherent, vacuous, or unhelpful statements.
+
+SEMANTIC DIVERSITY
+5: Many genuinely distinct theorem families or mathematical ideas, with little redundancy.
+4: Several distinct families and only limited repetition.
+3: A meaningful mixture, but multiple statements repeat the same core pattern.
+2: Dominated by one or two narrow families with superficial variations.
+1: Nearly all statements are equivalent, nested variants, or routine repackagings.
+
+Group statements by their substantive conclusion and proof idea, not merely surface syntax. A stronger/weaker variant or conjunction of the same core facts should normally stay in the same family.
+
+<statements>
+[1]
+<THEOREM>
+...
+[10]
+<THEOREM>
+</statements>
+
+Return exactly one JSON object and no Markdown:
+{
+  "quality_score": <integer 1-5>,
+  "diversity_score": <integer 1-5>,
+  "distinct_families": <integer 1-10>,
+  "redundant_statement_indices": [<zero or more integers 1-10>],
+  "family_assignments": [{"indices": [<integers>], "family": "<short label>"}],
+  "rationale": "<concise explanation>",
+  "confidence": "<high | medium | low>"
+}
+\end{lstlisting}
+\clearpage
+
+\section{Additional Figures}
+
+\subsection{Cross-area interestingness matrix}
+\label{app:interestingness}
+
+The displayed matrix uses ten targets from each of 12 areas.  Starting from one
+area-conditioned premise frontier per column, we apply three synchronous
+expansion rounds: every current extracted theorem premise is replaced by all
+original theorem premises used in its proof, unavailable declarations remain
+terminals, and each resulting frontier is deduplicated.  Fresh $V_\theta$
+predictions are obtained for all 1,440 target--condition pairs.
+Each target's score is divided by its same-area score before cell medians are
+formed.  Only 28 off-diagonal 95\% confidence intervals exclude one.
+Across the 132 off-diagonal cell medians, the median is $0.520$ and 73.5\% are
+below one. 
+We see here that, as we might expect, a definition-heavy field such as measure theory becomes much less interesting when it is not given premises from analytic areas. 
+We find also that some areas, such as algebra, become more interesting when supplied with premises from other fields.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/area_matrix.pdf}
+  \caption{\textbf{Full cross-area interestingness matrix.} Each cell is the
+  median target-wise ratio for the row area under premises from the column area
+  versus the same-area premise condition. All premise frontiers are
+  synchronously expanded through three rounds before new predictions are obtained. We select ten targets per area (120
+  total); four row areas contribute nine ratios after each excludes one
+  non-positive same-area score. Asterisks mark 95\% confidence intervals that exclude one.}
+  \label{fig:area-matrix-full}
+\end{figure}
+
+\clearpage
+
+\subsection{Iterative discovery graphs}
+
+Figure \ref{fig:forward-dependency-graphs} provides more iterative discovery graphs.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[b]{\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/forward_dependency_graph_algebra.pdf}
+    \caption{Algebra. For monic $q$ and $r$, reducing $p r$ modulo $q r$
+    equals reducing $p$ modulo $q$ and then multiplying by $r$.}
+  \end{subfigure}
+
+  \medskip
+  \begin{subfigure}[b]{\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/forward_dependency_graph_measure_probability.pdf}
+    \caption{Measure/probability. If $\mu$ is absolutely continuous with
+    respect to $\nu$, then under the stated measurability conditions, the sum
+    of the pushforwards of $c\mu$ and $\mu$ is absolutely continuous with
+    respect to $(c+1)$ times the pushforward of $\nu$.}
+  \end{subfigure}
+
+  \medskip
+  \begin{subfigure}[b]{\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/forward_dependency_graph_number_theory.pdf}
+    \caption{Number theory. Applying a real invertible $2\times2$ matrix to a
+    nonreal complex number and then applying its inverse restores the imaginary
+    part.}
+  \end{subfigure}
+  \caption{\textbf{Iterative forward-discovery graphs through $P_6$.}
+  Each panel shows 30 of the 240 initial premises in $P_0$, always retaining
+  every initial premise used by a displayed proof. Gray lines record explicit
+  dependencies in accepted Lean proofs; coral marks the ancestry of the
+  theorem with the highest total $P_0$-relative interestingness among the
+  statements introduced in $P_6$. Green encodes $\log_{10} I_{P_0}$ with a
+  separate scale in each panel. Each subcaption reports the selected statement.}
+  \label{fig:forward-dependency-graphs}
+\end{figure}
+
+
