@@ -1,4 +1,4 @@
-# Selected capital updates — 23 October 2026
+# Selected capital updates — 23–24 October 2026
 
 These append-only updates preserve separate evidence scopes. Source hashes and historical versions are recorded in each local manifest.
 
@@ -11,3 +11,9 @@ The autonomous CTMC model is separate from the earlier U Gaussian-noise model. N
 
 - [U exact nonnormal finite-CTMC escape](2026-10-23-u-exact-autonomous-escape/README.md): cleaner V2 exact certificate with Root-reported rational checks; V1 and its coordinator replay remain pinned as history. The separate N443 finite-matrix projection candidate now has a completed internal audit; external/formal review and priority remain open.
 - [P2 completed return and U cycle/precision addendum](2026-10-23-p2-return-u-cycle-precision/README.md): proposed load-sensitive covalent repair operation with explicit release/reset, physical failure interfaces and retained invention question; conditional incomplete-cycle bounds and withdrawn broad novelty. Separate U nearest-neighbor cycle corollary and rounded V2 gain, with exact product return lost. Imported theorem applicability checked; supplied event enumeration and rounded arithmetic were not replayed.
+
+## 24 October selected additions
+
+- [PFAS capture, rinse and wet-resin electron-beam hypothesis](2026-10-24-pfas-bound-resin-eb/README.md): source-bounded candidate process, transferred aqueous parent-loss calculations, whole-fluorine/material/energy accounting and incumbent set. Bound-resin fluoride yield and spent-material burden remain unacquired; no physical advantage is established.
+- [Passive repair under uncertain contact time](2026-10-24-polymer-contact-uncertainty/README.md): conditional preset-hazard tail bound and creep consequence, with sensing, lock, wait and unload alternatives kept outside its premises. No material law or physical operation is acquired.
+- [Collective scattering observation map and data boundary](2026-10-24-collective-scattering-map/README.md): conditional four-index observation map and Figshare data-interface audit. The selected data do not contain raw detector frames or q-resolved speckle information; no raw-data reanalysis or novelty claim is made.
