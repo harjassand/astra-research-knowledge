@@ -61,3 +61,9 @@ At each substantive integration checkpoint, update the packet's `README.md` with
 - **Continuation:** warm continuation, fresh instance, independent fork, compact handoff or bounded help, with the concrete reason.
 
 Continue through all cleared packets available at the checkpoint. Do not treat the first packet, a readiness note, an internal check, or the PR itself as completion of the research objective.
+
+## Later authorization and integration | 23 October 2026
+
+The preceding receipt-state section records the position before a later direct human instruction. On 23 October, Harjas instructed Capital to integrate the fresh programme’s selected results into GitHub after noting that Ultra had finished and the two Pro results should have been integrated. This later authorization is scoped to the selected Ultra, P1, P3, and Dots scientific evidence in `intake/capital-integrated-2026-10-23/`; the earlier `PRIVATE_NOT_CLEARED_FOR_PUBLICATION` labels remain accurate historical receipt states. Whole delivery archives, account-level usage receipts, coordination-only notes, and unrelated private context are omitted.
+
+The selected handoff keeps claim scopes, resource boundaries, failures, review depth, and unresolved gates separate. A later Dots status about conflicting ferrite data was relayed to Capital but could not be directly inspected in this review, so the thermochemical arithmetic remains conditional and no physical exclusion is claimed. This intake does not update canonical claim authority or imply scientific validation.
