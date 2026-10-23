@@ -45,6 +45,7 @@ The autonomous CTMC model is separate from the earlier U Gaussian-noise model. N
 - [Iron one-port graph access](2026-10-24-iron-six-run-graph-access/README.md): retains six exact fixed-contract crop computations and a graph-level permeability-ranking failure, with pore polarity, external access, phase labels, kinetics and physical redox interpretation unresolved.
 - [Closed-void powder observation boundary](2026-10-24-powder-closed-void-observation/README.md): preserves the conditional 2673 kg/m^3 ideal-Al density cut and XCT/two-fluid observation limits; no material upper bound, per-grain certificate or apparatus is acquired.
 - [PFAS reverse-release no-go](2026-10-24-pfas-reverse-release-no-go/README.md): a finite parent-only release trace cannot uniformly distinguish very slow retained parent from conversion; closed fluorine accounting remains the stronger fate comparator.
+- [U kinetic binary-port passive equivalence and atomic return](2026-10-24-u-kinetic-binary-port/README.md): preserves the finite triangle/reversible-star passive-law match, geometric work profile and conditional atomic-return test beside the unresolved general source-clock Gibbs-tilt derivation, current-version audit-pin mismatch and excluded actuator cost. No physical experiment or advantage is established; N713 remains unchanged.
 
 ## Sparse autonomous CTMC follow-up
 
