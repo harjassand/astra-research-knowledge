@@ -1,0 +1,168 @@
+SHOT-ONLY HIDDEN-MEMORY PREDICTIVE BENCHMARK
+============================================
+
+Purpose and scope
+-----------------
+This is a reproducible synthetic benchmark for learning a finite predictive
+operation from intervention/outcome episodes. It is deliberately a small,
+known-family problem: it tests whether the learner can acquire a hidden-state
+predictor through shots, discover a model distinction that is invisible to
+all length-two experiments, and use that model on held-out adaptive sequences.
+It does not claim an algorithmic advantage over HMM/spectral methods, or any
+physical experimental validation.
+
+The executable is support_benchmark.py; its fixed-seed output is
+SUPPORT_BENCHMARK_RESULTS.json. The hidden server is auditable in that source,
+but the fitting function receives only the episode-query interface:
+
+    query([a_0, ..., a_{L-1}]) -> [y_0, ..., y_{L-1}]
+
+Each query starts a fresh episode and returns only the requested preparation
+bits and reported Z outcomes. No latent state, unitary, transition table,
+true parameter, exact expectation, or probability oracle is provided to the
+fitter. This is an interface-level information boundary, not a security
+sandbox: a blinded deployment would have to put the server in a separate
+process and keep its source/configuration out of the learner's filesystem.
+
+Finite two-qubit process
+-----------------------
+Each shot prepares a fresh system qubit S in |a>, while the memory qubit M
+persists within an episode. It starts each episode in |0>. There are two
+candidate collisions, both genuine two-qubit unitaries:
+
+    parity:   U = SWAP CNOT(M -> S),  |a,m> -> |m,a XOR m>
+    overwrite: U = SWAP,              |a,m> -> |m,a>
+
+After the collision, measure S in Z and report the bit with independent
+classical readout-flip probability p. Then apply an independent X flip to M
+with probability delta. Thus, with m_t the memory bit before shot t,
+
+    y_t = m_t XOR r_t,      r_t ~ Bernoulli(p)
+
+    m_(t+1) = m_t XOR a_t XOR e_t       (parity)
+    m_(t+1) = a_t XOR e_t               (overwrite)
+    e_t ~ Bernoulli(delta).
+
+The report flips and memory flips are independent. The true server fixture is
+parity with p=0.08 and delta=0.04; these are auditor-side values only. The
+learner is told the reset/action/outcome protocol and the candidate family
+(parity or overwrite with unknown p and delta), but not which member or the
+parameter values. This explicit family assumption is the source of finite
+identifiability; this is not unrestricted process discovery.
+
+Information, controls, and cost ledger
+--------------------------------------
+
+| Item | Benchmark contract |
+|---|---|
+| Input/control | Choose a binary preparation a_t for each new system qubit; choices may depend on previous reported outcomes. |
+| Observable | One binary Z report y_t per collision, including the specified independent readout flip. |
+| Hidden | Memory M, which unitary is active, p, and delta. No timestamps are supplied; only episode order and action labels are visible. |
+| Training interventions | 2,000 episodes [0,0], 2,000 episodes [1,0], and 2,000 episodes [1,0,0]. The latter is the first distinguishing probe. |
+| Training cost | 6,000 memory resets and 14,000 input preparations/collisions/readouts. One episode reset includes preparation of M=|0>; no reset energy or duration is invented. |
+| Diagnostic conditioning | For the matched-state check only, retain episodes with first report y_1=0. Counts are retained and reported; the model fit uses all shot outcomes and does not use this selection. |
+| Held-out evaluation | 2,000 fresh resets; 20 shots per episode; 40,000 actions/collisions/readouts under a fixed adaptive rule. |
+| Total evaluated budget | 8,000 resets and 54,000 actions/collisions/readouts. |
+| Learner storage/runtime | O(1) sufficient statistics for fitting; O(1) predictive state and parameters for each next-action update; O(total shots) query/evaluation work. |
+| Wall-clock/energy | Not specified by this digital collision model. Counts are reported; physical reset, control, and readout costs remain unmeasured. |
+
+The held-out policy is a_0=1 and, for t>0,
+
+    a_t = y_(t-1) XOR (t mod 2).
+
+Predictive operation acquired from shots
+----------------------------------------
+The learner estimates p from the first outcome in each reset episode. Let r_0
+and r_1 be the measured second-outcome rates for action strings [0,0] and
+[1,0]. Then it estimates delta from
+
+    d_0 = (r_0 - p_hat)/(1 - 2 p_hat)
+    d_1 = (1 - r_1 - p_hat)/(1 - 2 p_hat),
+
+using their average clipped to [0, 0.49]. It compares the observed third
+outcome rate for [1,0,0] against the two candidate probabilities by binomial
+log likelihood and selects the larger. No exact expectation is queried.
+
+The acquired predictive state is the scalar b_t=P(m_t=1 | past actions and
+reports). Its one-step readout prediction is
+
+    P(y_t=1 | history) = p_hat + (1 - 2 p_hat)b_t.
+
+Update b_t by Bayes' rule after y_t, then apply the candidate memory transition.
+For parity, b_(t+1)=delta_hat+(1-2 delta_hat) b_post if a_t=0, and
+delta_hat+(1-2 delta_hat)(1-b_post) if a_t=1. For overwrite,
+b_(t+1)=delta_hat+(1-2 delta_hat)a_t. These are finite operations with one
+real predictive coordinate, two fitted parameters, and a two-valued model
+choice.
+
+Decisive structural checks
+--------------------------
+1. The two candidate processes have exactly identical joint outcome laws for
+   every length-two action sequence. The code enumerates all such action and
+   outcome strings using exact rational arithmetic and obtains maximum
+   difference 0.
+
+2. Conditioning on the first reported outcome y_1=0 gives the same current
+   measured system state (|0>) in both groups. With the same next action 0,
+   the next-report rates differ because the hidden memory retained the earlier
+   action. For the rational fixture p=2/25 and delta=1/25,
+
+       P(y_2=1 | a_0=0, y_1=0, a_1=0) = 71/625,
+       P(y_2=1 | a_0=1, y_1=0, a_1=0) = 554/625,
+       difference = 483/625 = 0.7728.
+
+   The first report is 0 with probability 23/25 in either group. The sampled
+   retained counts are 1,845 and 1,842, respectively.
+
+3. The first separating string is [1,0,0]. For that string, exact rational
+   probabilities of the third report being 1 are 13,367/15,625 for parity
+   and 71/625 for overwrite. This explains why a length-two process tensor
+   alone cannot identify the continuation and why one length-three
+   intervention repairs this particular alias within the declared family.
+
+Fixed-seed result
+-----------------
+The shot-only fit returns p_hat=0.08033, delta_hat=0.03952, and selects
+parity. Its third-report training rate is 0.851; fitted candidate rates are
+0.85595 (parity) and 0.11350 (overwrite), with log likelihoods -842.14 and
+-3739.37. The matched-state empirical next-report difference is 0.77217,
+with normal 95% interval [0.75166, 0.79268] using the retained sample counts.
+
+On 2,000 held-out adaptive episodes of length 20, the predictive-state Brier
+score is 0.116822 and log loss is 0.391400 nats. A rank-two controlled HMM
+forward filter fitted with the same shot estimates produces the same
+predictions to <9e-16 and ties these scores. This is the correct conventional
+baseline: writing the same two-state posterior as a predictive state does not
+create an advantage over an equally informed HMM/spectral realization.
+
+The challenger and its limit
+----------------------------
+An exact finite-history/process-tensor fit is also a valid baseline for the
+interventions actually sampled. It does not supply a unique horizon-20
+continuation from a length-three table unless a finite-state/rank or other
+structural extension is assumed. Here that assumption is explicitly supplied
+as the two-rule, two-state family. Conversely, the fitted family does not
+prove that a general hidden process has finite predictive rank.
+
+Acceptance criteria for a replay
+-------------------------------
+The benchmark passes only if all of the following hold:
+
+* The learner's fitting entry point receives requested actions and returned
+  reports only; no true p, delta, memory bit, unitary identity, or expected
+  probability is an argument or data field.
+* Exact checks retain zero law difference through horizon two and identify
+  [1,0,0] as a separating probe with the rational rates above.
+* With the fixed seed and shot budget, the fit selects parity, both parameter
+  estimates lie within 0.02 of their hidden fixture values, and the matched
+  state 95% interval excludes zero.
+* On held-out adaptive shots, the scalar predictive-state and rank-two HMM
+  predictions agree to 1e-12. Their Brier/log-loss difference must therefore
+  be negligible; no PSR-over-HMM superiority is claimed.
+* Resets, shots, retained conditioning counts, runtime order, and memory order
+  remain explicit. No unmeasured preparation time, energy, or hardware cost is
+  reported.
+
+Current result meets these software/model acceptance checks. It is one
+fixed-seed synthetic run, not repeated-seed statistical characterization,
+not a blinded interface audit, and not a laboratory result.

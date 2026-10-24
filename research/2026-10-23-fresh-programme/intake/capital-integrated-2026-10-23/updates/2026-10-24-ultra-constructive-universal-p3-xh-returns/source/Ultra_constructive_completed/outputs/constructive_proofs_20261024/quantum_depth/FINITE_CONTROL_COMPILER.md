@@ -1,0 +1,336 @@
+# Bounded shared-bath windows to a finite-control fault-path interface
+
+Owned derivation, 24 October 2026. This extends the initial `OWNED_OPENING.txt`.
+Status: proposed analytic theorem, under direct root/Sol and bounded-support
+review. No external correctness, priority, physical acquisition or threshold
+advantage is claimed. The primary randomized-compiling principle is established
+ancestry, not a new invention. The proposed quantitative addition is the joint
+operator subset bound and its finite noisy-control fault-path interface.
+
+## 1. Declared physical operation
+
+A circuit layer has disjoint finite memory patches A_i and a common persistent
+finite-dimensional bath B. The bath can carry all previous measurement records,
+quantum memory and initial entanglement with the data/reference. A finite layer
+has a prefix-control slab, a native interaction/gate slab, and a suffix-control
+slab. Independent, uniform Pauli keys P_i are freshly generated for this layer.
+The intended prefix applies P_i. The intended suffix undoes it, or implements
+G_i P_i^dagger G_i^dagger around a known ideal Clifford G_i on the SAME patch.
+Any known ideal gate is removed in its interaction frame below.
+
+During the middle slab, H(t)=H_B(t)+sum_i H_i(t), with H_i on A_i tensor B and
+eta_i=integral ||H_i(t)||dt/hbar. These are simultaneous interactions; neither
+bath reset nor absence of bath-mediated correlations is assumed.
+
+The intended finite controls act within their own A_i. In their control frame,
+the full unwanted Hamiltonian in the prefix/suffix slabs is
+H_B(t)+sum_i x_i K_i(P_i,t), where x_i=1 physically and
+alpha_i=integral_prefix+suffix ||K_i(P_i,t)||dt/hbar uniformly over P_i.
+K_i can be arbitrary and key dependent, including a bath-only component, but
+may depend on its OWN current key, not another site's current secret key.
+All couplings involving A_i during these slabs are included in K_i; no
+unaccounted always-on idle term remains there. The ideal control itself has
+finite strength/duration. Errors from its calibration and native bath exposure
+are charged in alpha_i. Outside these explicitly specified interactions, only
+bath-only dynamics is allowed. Arbitrary overlapping many-body noise is not
+being renamed disjoint-patch noise.
+
+The key is physical: a software Pauli-frame rename alone does not conjugate a
+native idle coupling. The controller needs local random bits, finite control
+waveforms, timing and key isolation. Keys can be discarded/reset after their
+before/after use; no later operation may read a supposedly averaged key except
+through already included bath/controller records. The twirled error label is
+not the stored random-key label.
+
+## 2. Ideal-control microscopic subset theorem
+
+For a window unitary U expand in normalized memory Paulis:
+
+    U=sum_Q Q tensor B_Q, B_Q=Tr_M(Q^dagger U)/dim(M).
+
+Fresh Pauli conjugation gives the exact JOINT map
+
+    E_0(rho)=sum_Q (Q tensor B_Q)rho(Q tensor B_Q^dagger).
+
+This is an operator-valued Pauli instrument on memory+bath. It need not define
+a memory-only Pauli channel on arbitrary initially correlated inputs.
+
+For any selected set S of disjoint patches define
+F_S=sum_{Q:Q_i!=I for every i in S} B_Q^dagger B_Q. Then
+
+    F_S <= product_{i in S} eta_i^2 I_B.                 (1)
+
+Proof. E_i is the normalized partial-trace expectation removing A_i and
+Delta_S=product_{i in S}(I-E_i). Keep ALL interactions outside S on as common
+background. Let U_T keep only the selected H_i with i in T subset S. If a
+selected H_i is absent, that evolution is identity on A_i in the ideal frame,
+so Delta_S U_T=0. Consequently Delta_S U=Delta_S V_S where
+V_S=sum_{T subset S}(-1)^{|S|-|T|}U_T.
+
+Introduce strength parameters lambda_i in [0,1] for selected interactions.
+V_S is the integral of the mixed derivative partial_S U_lambda. Duhamel's
+mixed derivative inserts each selected H_i once. The |S|! orderings partition
+the time cube; all intervening propagators are unitary. Therefore
+
+    ||V_S|| <= product_{i in S} eta_i.
+
+There is no volume factor, factorial or small-bath-Hamiltonian assumption.
+The E_i are commuting orthogonal projections for the B-valued inner product
+<X,Y>=E_all(X^dagger Y), although I-E_i is not generally an operator-norm
+contraction. Thus
+
+    F_S=E_all[(Delta_S U)^dagger Delta_S U]
+       <=E_all[V_S^dagger V_S]<=||V_S||^2 I_B.
+
+This proves (1), including time-dependent noncommuting bath operators.
+For one patch it is the conditional-expectation variance identity relative to
+any bath-only reference unitary, rather than a Choi-floor argument.
+
+Fresh independent keys per layer and the uniform operator effect (1) imply
+local-stochastic spacetime subset probabilities by causal composition. No
+claim of independent errors or exogenous Poisson locations is required. A
+future syndrome postselection can change conditional fault probabilities;
+the bound is uniform over causal pasts, not over future selected records.
+
+## 3. Finite noisy keys: fault PATHS, not fictitious positive probabilities
+
+Finite key-dependent control errors generally prevent an exact Pauli mixture.
+They must not be assigned the squared idle probability. We instead derive a
+signed local fault expansion whose selected-set DIAMOND NORM is bounded.
+
+Treat E(x) as the physical key-averaged channel family with control strengths
+x. R_i sets x_i=0 in that family; this is a proof counterfactual, not a hardware
+switch. With x_i=0, the ideal local Pauli controls commute past all other-site
+controls and the partial key average is an exact Pauli twirl on A_i. Let P0_i
+extract its identity-Pauli Kraus block, and put G_i=P0_i R_i. This extraction
+acts on the Kraus/Choi coefficient family, not as an experimentally supplied
+superoperation on arbitrary unknown black-box channels.
+
+Explicitly, after setting x_i=0, expand each Kraus operator as sum_Q Q_i tensor
+B_Q. P0_i keeps only the I,I Pauli coefficient block, with Kraus I_i tensor
+B_I. Equivalently it is a linear Choi compression onto the identity-Pauli
+vector on A_i,out A_i,in on both sides, followed by the identity embedding.
+It is Kraus representation independent but is not a generic trace-preserving
+CP superchannel or a physically furnished operation on an unknown process.
+
+For distinct sites the G_i commute and are idempotent: setting distinct
+control parameters to zero and selecting distinct identity Pauli coefficients
+commute. Define an exact, generally non-CP expansion
+
+    N_F=product_{i in F}(I-G_i) product_{i notin F}G_i E(1),
+    E(1)=sum_F N_F.                                     (2)
+
+The noise map N_F is supported on A_F tensor B; all other memory factors are
+identity on both the ket and bra. Its bath coefficients can be noncommuting.
+The useful bound is on the sum of fault paths CONTAINING a selected set S:
+
+    ||sum_{F containing S}N_F||_diamond
+           <=product_{i in S}(eta_i^2+2 alpha_i).        (3)
+
+Proof of the proposed finite-control step. Expand
+I-G_i=(I-R_i)+(I-P0_i)R_i. A choice C subset S selects control finite
+differences, and T=S\C selects nonidentity Pauli coefficients while controls
+on T are off. All controls outside S remain physically ON as background.
+The C finite differences integrate mixed derivatives with respect to x_C.
+Differentiate the selected CP Kraus sum. Leibniz assigns each element of C
+to the left or right amplitude, giving 2^{|C|} terms.
+
+For a partition C=L disjoint-union R, the bath-valued squared coefficient norm
+of the left derivative, projected nonidentity on every T, is at most
+product_{j in T}eta_j^2 product_{i in L}alpha_i^2. This follows by the SAME
+mixed Duhamel/conditional-expectation proof, now differentiating the selected
+control Hamiltonians as well. Native interactions on T must be present for a
+nonidentity T coefficient; all other interactions and physical controls stay
+in the unitary background. The right derivative has the corresponding R
+bound. For the cross map sum_Q A_Q(.)B_Q^dagger, Stinespring's operator bound
+is ||sum A_Q^dagger A_Q||^{1/2}||sum B_Q^dagger B_Q||^{1/2}, also after an
+arbitrary reference extension. Thus each partition contributes at most
+product_T eta_j^2 product_C alpha_i. Integration over the unit strength cube
+and the 2^{|C|} partitions give product_T eta_j^2 product_C(2alpha_i).
+Summing over C gives (3).
+
+To spell out the crucial norm and avoid tracing unrandomized memory: expand
+ONLY on T, not on all memory. For a left derivative write
+
+ partial_L U=sum_{Q_T} Q_T tensor A_(Q_T,L),
+ A_(Q_T,L) acting on A_(outside T) tensor B.
+
+Let E_T be normalized trace over just A_T. Then
+
+ sum_(Q_T nonidentity on every T) A_(Q_T,L)^dagger A_(Q_T,L)
+ = E_T[(Delta_T partial_L U)^dagger(Delta_T partial_L U)]
+ <= (product_T eta_j^2)(product_L alpha_i^2) I_(outside T,B).
+
+The equality is partial-Pauli Parseval. For the inequality, leave every
+unselected interaction and control ON, differentiate in L, and use a mixed
+finite difference in the native H_j for j in T. The combined derivative has
+one insertion for each T and L parameter; its unitary segment norm is bounded
+by product_T eta_j product_L alpha_i. Delta_T is orthogonal for the E_T-valued
+inner product. This is an operator bound on ALL untraced outside memory plus
+bath. In the cross-map bound use actual Kraus amplitudes
+Q_T tensor A_(Q_T,L), so sum_K K^dagger K is I_T tensor the displayed operator.
+This gives the FULL input-space Stinespring norm and its diamond extension.
+No reduced bath-state norm or average over outside data replaces it.
+
+One must verify the locality/commutation premise above rather than importing
+it from an arbitrary gate-dependent black-box noise model. Direct broadcast
+of another site's current key into K_i violates that premise and can destroy
+the partial twirl. Bath propagation from previous interactions is allowed;
+its unitary norm does not enlarge the derivative bound. Shared clock/control
+failures affecting many patches must be separate large-support fault locations.
+
+In the one-patch case (3) has a simple independent check. Let E_0 be ideal
+twirled idle noise, E_0=Id_A tensor B_I(.)B_I^dagger+E_bad. Then E_bad is CP
+with norm <=eta^2. Duhamel bounds the real control-channel difference by
+||E-E_0||_diamond<=2alpha, including arbitrary key dependence. Therefore
+the single fault map E_bad+(E-E_0) has norm <=eta^2+2alpha, supported on A B.
+The multipatch argument supplies the missing selected-set product, rather
+than a global sum-of-errors bound proportional to device size.
+
+For rectangular pi controls of angular rate Omega, two pulse slabs of duration
+t_p=pi/Omega and unwanted local coupling bound h_p give alpha<=2h_p t_p/hbar.
+The useful per-location strength is consequently
+
+    q <= (h tau/hbar)^2+4pi h_p/(hbar Omega),             (4)
+
+plus any further preparation/readout/reset/control contributions. Achieving a
+quadratic idle regime requires a PAID control rate roughly
+Omega >= 4pi h_p hbar/(h^2 tau^2), not free instantaneous random gates. Measured
+calibration errors and shared controller faults must be included, not hidden
+in the native h. Equation (4) is a declared control budget, not a hardware
+performance number or a universal optimization over all control methods.
+
+## 4. A receiver that does not assume ideal completed correction
+
+For a fixed known circuit, compose the local fault expansions of its layers,
+including the actual syndrome ancillas, checks, readouts, conditional Paulis,
+preparation and reset. Fresh keys and uniform bounds over past classical
+settings give the usual selected-fault-path norm condition with strengths q.
+Unspecified locations are resummed into the FULL physical CPTP evolution,
+whose diamond norm is one; they are not bounded by a product (1+q)^volume.
+Adaptive controller records can be included in B, provided each causal branch
+has the stated current-key locality and norm bound.
+
+A standard fault-tolerant circuit receiver with a deterministic correctable
+support/malignant-set certificate can receive this condition. The same fixed
+decoder must correct the operator span of all good histories, as in N881's
+persistent-bath algebra. If a circuit proof gives a bad fault-path sum of norm
+at most beta, its recovered map is within 2beta of logical identity after bath
+trace, uniformly on joint logical-bath-reference inputs. This statement also
+works when the good fault-path map is not CP: good pieces are Id_L tensor
+Lambda_good by left/right Pauli expansion; define a CPTP comparison bath map
+from the TOTAL recovered channel by feeding the logical maximally mixed state
+and tracing its output. Subtracting this map cancels all good pieces; the bad
+map and its bath marginal each have norm at most beta.
+
+This is the conventional circuit fault-path receiving obligation, not a new
+threshold proof for every code. N881's independent-Poisson/LSS/HT probability
+estimate does NOT automatically transfer. Its exact good-history operator
+factorization is reusable; its asynchronous probability theorem still needs
+a local-stochastic witness-count adapter, or one should use an established
+repeated-syndrome circuit instead. The strongest matched standard alternative
+is ordinary circuit QEC under non-Markovian local noise, with RC and finite
+Clifford gates; it is not an inferior Pauli-only caricature.
+
+An actual completed sweep-channel circuit is explicit but costly. Choose FULL
+inactive-pattern splitting. For eight commuting incident weight-six checks
+S_e define Pi_s=product_e[I+(-1)^{s_e}S_e]/2 and Q_s the prescribed one/two-face
+correction on the seven active patterns, identity otherwise. The instrument
+K_s=Q_s Pi_s is complete. A reusable parity ancilla measures the eight checks
+with 48 two-qubit gates and eight measurement/reset rounds, then at most two
+conditional Paulis. There are 24 DATA sites but 25 peak quantum sites including
+the ancilla. This realizes the full-split completion, not a lumped inactive
+projector. Measuring and forgetting all inactive labels changes coherences.
+
+Every parity gate/readout/reset is a fault location. Gate scheduling must use
+nonoverlapping patches; a deterministic colored implementation is a different
+product channel from independent Poisson correctors and cannot inherit their
+generator theorem without proof. A hardware receiver can instead use standard
+surface-code repeated syndrome circuits, avoiding an unsupported 4D placement.
+
+Fresh/reset ancillas require an explicit supply. For example swap in a qubit
+with state (1-epsilon)|0><0|+epsilon|1><1|, independently prepared, and route the
+old ancilla to a cold reset queue. The ideal replacement-channel distance is
+2epsilon; SWAP gates, residual correlations, readout and reset throughput are
+additional fault/control resources. Calling this an ideal reservoir would
+hide the preparation assumption. A physical native or reset interface is not
+acquired by this derivation.
+
+## 5. Primary ancestry and remaining positive question
+
+Winick et al., https://arxiv.org/html/2212.07500 Theorem 3, already proves
+non-Markovian RC noise tailoring with a persistent ancilla and gate-independent
+easy-gate errors. It explicitly discusses harmful key leakage. Its use of
+"local stochastic" is a bath-conditioned Pauli action, not the microscopic
+subset-product effect (1). Its abstract mechanism is not new here.
+
+Liu, Xiao, Cai, https://arxiv.org/html/2412.11220v2, translates Pauli twirling
+through Choi channels to arbitrary-time Pauli processes and combines it with
+single-shot-QEC ancestry. That framework supplies a strong conventional
+representation/receiver and must be credited. A Pauli process can have large
+classical temporal/spatial correlations; the small microscopic strength and
+actual finite key/corrector operation still have to be supplied.
+
+Aharonov, Kitaev, Preskill, PRL96 050504 (2006), supplies a stronger interaction
+locality class and non-Markovian fault-path threshold from Hamiltonian norms;
+its native small parameter is amplitude rather than the randomized quadratic
+idle strength. No advantage is inferred without charging (4), all circuit
+locations and the same architecture. Kam et al., arXiv2603.05474v1 is a current
+spatiotemporal-Pauli-process comparator; source retrieval/review is ongoing.
+
+The positive question is whether (1)–(3), proved with a clean physical locality
+contract and all operations charged, give a useful microscopic compiler for
+existing fault-tolerant circuits or a genuine receiving extension of an older
+autonomous-memory theorem. The finite-control derivation is the present
+load-bearing construction. No universal computation threshold, practical
+memory lifetime, physical experiment or historical novelty follows merely
+from writing it. Its next decisive checks are the projection/derivative proof,
+a finite shared-bath counterexample search, and a receiver whose actual
+preparation/gates/readout/reset satisfy the contract.
+
+## 6. Subsequent checks and explicit standard receiving calculation
+
+The bounded algebra review independently confirms (3), including all outside
+controls ON, only identity outside F, and signed fault paths rather than CP
+fault probabilities. This is exposed internal review, not an external proof.
+
+`check_finite_control.py` uses two memory qubits sharing one bath qubit,
+noncommuting native H_i and bath Hamiltonian, and actual rectangular pi/inverse
+pi pulses of duration .001. It averages 16 Pauli keys and computes the Choi
+coefficient projections explicitly. Native norms (.03,.04) and dwell .8 give
+q=(.000696,.001184). The CP-Jordan diamond upper bounds for selected faults
+{1},{2},{1,2} are .00032149,.00069682,2.8726e-8, below analytic bounds
+.000696,.001184,8.24064e-7. Expansion error is below 4e-20. Selected fault maps
+have negative Choi eigenvalues as expected. These finite checks are neither
+the general proof, an exact diamond SDP nor hardware data.
+
+The primary Aliferis–Gottesman–Preskill paper,
+https://arxiv.org/html/quant-ph/0504218v3 Sec.11, supplies the relevant exact
+counting identity. If E(S) is the sum of paths containing S and
+||E(S)||<=q^{|S|}, the sum B_s of paths with at least s faults among A gadget
+locations is
+
+ B_s=sum_(r=s)^A (-1)^(r-s) binom(r-1,s-1) sum_(|S|=r) E(S),
+ ||B_s||<=binom(A,s)q^s(1+q)^(A-s).                     (5)
+
+This inclusion-exclusion identity uses linearity and a submultiplicative norm;
+it therefore applies to the compiler's diamond-norm superoperator paths.
+All A are ACTUAL gadget locations, including preparation/readout/reset/keys.
+It introduces no factor exponential in computation volume. The usual exRec
+truncation/overlap and deterministic good-implies-correct proof still has to
+hold for the receiver family; (5) does not supply it for an arbitrary circuit.
+
+Given such a correctly constructed family, s>=2 and fixed maximal gadget size
+A yield the familiar recursion q_(l+1)<=C binom(A,s)q_l^s at small enough q_0.
+The resulting polylogarithmic-overhead threshold is the established receiver's
+consequence, not a new optimized threshold calculation. In particular, the
+primary source's numerical INDEPENDENT STOCHASTIC threshold is not a number
+for this q. AGP explicitly notes that its verified/postselected ancillas need
+a separate local-noise estimate; select a family whose preparation analysis
+actually supplies it, or do that estimate. It cannot be assumed from a nice
+syndrome picture.
+
+An arbitrary unknown unencoded input also has injection/encoding error; a
+larger code does not retroactively remove that error. Fault-tolerant algorithm
+state preparations are the standard receiver interface. Once an encoded input
+is supplied, the joint logical-bath-reference norm statements apply.

@@ -1,0 +1,208 @@
+COUNT-ONLY LEARNER / QUANTUM SHOT PLANT AUDIT
+==============================================
+
+Scope
+-----
+Read-only audit of finite_predictive_learner.py and quantum_shot_plant.py.
+The key distinction is between a rank certificate and an operationally useful
+prediction certificate. No source edits were made. A local synthetic count
+replay was used only to check the matrix orientation and repeated-controller
+semantics; it is not laboratory data and did not feed exact probabilities to
+the learner.
+
+Passes
+------
+
+1. The learner has no import of quantum_shot_plant.py or evaluator API. Its
+   input is only the settings metadata and integer outcome-count vectors
+   (finite_predictive_learner.py:14-19). The plant's exact joint-probability
+   method is marked evaluator-only and is not referenced by the learner
+   (quantum_shot_plant.py:149-157). This is a module/API boundary, not a Python
+   security boundary: an orchestrator must pass only serialized counts and
+   avoid exposing the plant object to an untrusted learner.
+
+2. Prefix pooling is correct for the plant's fixed-word, independent-reset
+   protocol. For a requested action prefix, CountOracle sums outcome counts
+   from every setting with that prefix and masks only the requested outcome
+   positions (finite_predictive_learner.py:28-53). The simulator returns
+   multinomial counts for one fixed word, resets to the same initial memory
+   state for each represented shot, and charges each reset/intervention
+   (quantum_shot_plant.py:51-67). Leaf enumeration order is lexicographic in
+   outcome bits and matches the big-endian decoding at learner line 47. Thus
+   pooling across longer words is valid when their shared-prefix actions were
+   fixed in advance and every represented shot was a fresh reset. That
+   independence/fixed-word provenance is a necessary input contract; integer
+   counts alone cannot establish it for a different data source.
+
+3. The confidence pool is conservative but correctly sized: for each length
+   n it covers 4^n action words times 3^n binary-outcome/wildcard patterns,
+   then uses a two-sided Hoeffding radius and a union bound
+   (finite_predictive_learner.py:21-25, 52). This protects the later
+   data-dependent basis choice because the cylinder-event bounds are
+   simultaneous. For its current basis/search, maximum_length must be at
+   least 3; the plant count interface produces the needed fixed words.
+
+4. The architecture bound 4 is sound for a persistent qubit: the real
+   Hermitian operator space has dimension at most four. The learner's
+   `rank_4_certified_given_architecture_bound` flag is correctly conditional
+   on its Neumann test when it returns normally (lines 105-133). Passing that
+   test plus the supplied upper bound certifies exact rank 4 for the selected
+   true H; a numerical rank estimate alone would not.
+
+5. The insertion orientation is correct. With H[f,p]=P(f after p) and
+   H_z[f,p]=P(f after z after p), the represented left-acting operator is
+   B_z=H_z H^{-1}; code uses `hz @ inv` (lines 89-95). In the simulator,
+   K_(a,o)=<measurement eigenstate o| U |preparation a> is formed by
+   contracting the system output/input indices and leaving memory indices
+   (quantum_shot_plant.py:34-46). The Z, X and Y bases/preparations are
+   internally consistent. The operation order in the two-state controller
+   uses the resulting column-coordinate convention correctly.
+
+6. The causal repair is correctly placed and accounted for. In these
+   coordinates the trace row is e_0^T, so each instrument must obey
+   e_0^T(B_(a,0)+B_(a,1))=e_0^T. The code changes only row 0 of branch 1 to
+   impose that identity (finite_predictive_learner.py:96-102), then adds the
+   matrix infinity norm of the repair to that branch's error bound
+   (lines 118-125). A replay's repair was at floating-point roundoff.
+
+7. The two-state controller resolvent has the correct block structure. Its
+   continuation matrix Q maps old controller state to the new observed
+   outcome state; the success branch is (controller=1, outcome=0). With an
+   independent abort coin before each primitive, success is
+   gamma A_s(I-gamma Q)^(-1)E, abort is
+   a M(I-gamma Q)^(-1)E, and expected primitive calls are
+   gamma 1^T(I-gamma Q)^(-1)E (finite_predictive_learner.py:138-165).
+   The simulator reinitializes only the classical controller after the first
+   success-or-abort stage and carries each quantum memory state into the
+   second stage (quantum_shot_plant.py:121-132). A 50,000-shot-per-word
+   count replay at abort probability 0.1 gave predicted vs simulated single
+   success 0.60165 vs 0.59980 and repeated success 0.42516 vs 0.42110; the
+   corresponding repeated-success-plus-test probabilities were 0.19454 vs
+   0.19328. This supports the orientation and reuse logic for this fixture,
+   but remains a finite synthetic check.
+
+Actionable defects and limits
+-----------------------------
+
+A. The learner does not gate use of a fitted model on its own rank/error
+   certificate. It calls `np.linalg.inv(h)` before checking a margin
+   (lines 82-87), returns `rank_4_certified_given_architecture_bound=False`
+   when the Neumann product is at least one (lines 115-134), but
+   `compile_pattern_controller` immediately consumes `model['B']` without
+   checking that flag or a required prediction-error tolerance (lines
+   138-165). Therefore an uncertified or nearly singular empirical basis can
+   still be turned into a controller and reported as an operation. Add a
+   fail-closed certification gate before compilation; if inversion itself
+   fails, return an explicit `uncertified` result rather than a raw exception.
+
+B. The current global statistical bound can certify rank 4 while giving no
+   useful operation accuracy. In a fixed-seed replay of all 84 action words
+   of lengths 1-3 with 2,000 fresh shots per word (168,000 resets and 456,000
+   primitive action/readout calls), rank 4 passed the Neumann
+   test (product 0.7528), yet the reported primitive-instrument quotient error
+   upper bound was about 3.67e3. At 50,000 shots per word (4.2 million
+   resets and 11.4 million primitive calls) it was still about 74.1. These
+   values are valid as loose upper bounds, but they do not certify useful
+   prediction or controller performance. The current certificate
+   field name can be mistaken for a practical learner success; the decisive
+   acceptance condition must include a task-level propagated error threshold
+   for the compiled operation, not merely a full-rank flag. The existing
+   controller outputs are point estimates only and do not propagate the
+   branch/initial-state intervals through the resolvent.
+
+C. The resolvent path assumes valid control inputs and a convergent estimated
+   continuation series, but checks neither. `abort_probability` is not
+   constrained to [0,1]; `predict_controller` divides by success and abort
+   probabilities without checking for zero (lines 168-181). More
+   consequentially, the compiler reports `rho(gamma Q)` and the resolvent
+   condition number but does not require `rho(gamma Q)<1`, nonnegative
+   terminal probabilities, or finite normalized success/abort outputs
+   (lines 156-165). For an exact physical model, positive abort probability
+   makes the series converge; a signed noisy fit need not preserve that
+   property. Reject out-of-range abort inputs and refuse to interpret an
+   algebraic inverse as the episode sum unless the fitted model passes the
+   corresponding convergence/probability gate and the statistical error
+   bound is small enough.
+
+D. The simulator's 10,000-cycle cap is a nonzero-tail operational limit
+   (quantum_shot_plant.py:99-119). With abort probability a>0, a crude upper
+   bound on remaining alive after the cap is (1-a)^10000; at a=0.01 this is
+   negligible, while at a=1e-4 it is about 0.368. The code raises on cap
+   exhaustion rather than silently truncating, which is safe, but the caller
+   is not given a tail bound or validated parameter range. At a=0 it can fail
+   whenever the pattern does not terminate. Report the cap-tail bound against
+   the actual shot count and require positive abort probability, or replace
+   the cap with an exact geometric-tail sampler.
+
+E. `reset_word_experiment` updates the cumulative reset/action counters
+   correctly, but its returned record omits `word`, `repeats`,
+   `continuation_action`, and total primitive calls
+   (quantum_shot_plant.py:134-147). A caller can reconstruct the cost only if
+   it separately retains the invocation arguments; the returned result alone
+   is not a complete action/outcome ledger. `controller_experiment` labels its
+   call count as “before test” (line 89), so its final continuation cost is
+   excluded from that field, although the global intervention counter does
+   include it. Return the missing metadata or make the caller's accounting
+   contract explicit.
+
+F. The basis search is only for a saturated rank-4 process. It always picks
+   four rows/columns and inverts them; an architecture rank upper bound of
+   four does not imply the observed rank is four. Lower-rank processes are not
+   handled as a reduced-rank realization. For this generic qubit fixture the
+   intended rank is four, but the accepted input contract should say
+   “rank-4 sought; lower-rank cases return unsupported/uncertified,” rather
+   than suggesting general inference from an upper bound alone.
+
+Targeted direct-macro addendum
+------------------------------
+
+The capped count generator and the fixed-input intervals in
+`run_direct_macro.py` pass this bounded check. `macro_counts` samples each
+episode from a fresh initial state, applies the external abort coin before
+each controller primitive, retains memory on abort or the 128-call cap, then
+applies the requested future action. Its recorded length is the number of
+controller calls, so `sampled_macro_native_calls + shots*(preparation length
++ final-test indicator)` is the correct native-call ledger. For the recorded
+run, the 12 settings contain 2.4 million episodes and 6,364,413 adaptive
+calls; adding preparation and final-test calls gives 10,564,413. With
+`gamma=0.85`, the probability mass that can differ from the unbounded
+controller after 128 calls is at most `gamma**128 = 9.23895e-10`.
+
+The macro event pool of 32 is correctly counted for the selected four-row,
+four-column basis: 24 branch/outcome events for the three nonempty tests and
+8 branch-mass events for the empty test row. Reuse of samples across these
+events does not invalidate the union bound. The fixed-input success estimate
+may pool across the three future-action settings because that action occurs
+only after success or abort; the event is action-independent. The joint
+success/test interval is a binomial interval with the declared cap-tail
+addition. Conditional on the observed success count, the test outcomes are
+binomial; the extra `2*tail/p_lower` term safely converts the capped
+conditional ratio to the unbounded one when `p_lower>0`. The reported 99%
+intervals therefore remain supported for this fixed initial preparation and
+fixed future test. They do not validate an all-input operator claim.
+
+The quotient-error calculation in both `direct_macro_learner.py` and the
+earlier `finite_predictive_learner.py` is valid. For `B = H_z H^{-1}` and
+`Bhat = Hhat_z Hhat^{-1}`, the exact identity is
+`(Bhat-B)H = (Hhat_z-H_z) - Bhat(Hhat-H)`. It gives
+`||Bhat-B||_infinity <= (dz + ||Bhat||_infinity*dH) * ||H^{-1}||_infinity`,
+which is exactly the implemented bound when `jbar` bounds the true inverse;
+row repair is separately charged. I reconstructed the macro matrices and
+checked this identity on representative perturbations inside the saved
+confidence rectangles; numerical residuals were below `1.5e-15`. The saved
+branch-coordinate bounds `0.2957` and `0.3085`, and joint quotient bound
+`16.18`, are therefore valid but vacuous for operational accuracy. The
+fixed-input intervals above are estimated directly from counts and do not
+use this matrix quotient calculation. The comment that the basis was
+fixed using “independent pilot data” is inaccurate for this runner: the
+selected basis and calibration counts come from the same saved pilot
+acquisition. This does not break event coverage here because the pilot uses
+a simultaneous union bound over all candidate cylinders before selection;
+retain that full-coverage premise if the data flow changes.
+
+The count-only boundary, prefix pooling under fresh resets, operator
+orientation, causal row repair, and reused-memory simulator semantics pass
+the checked interfaces. Macro count/cap accounting and the stated
+fixed-input intervals also pass. The reusable quotient-error certificate is valid for the saved run but
+remains vacuous as an all-input accuracy claim. The supported result is the narrow
+fixed-input interval, not a certified general predictive operation.

@@ -1,0 +1,308 @@
+# SUPPORT RECOVERY RESOURCES — cubic-phase kernel and sparse output-Pauli errors
+
+## Scope and verdict
+
+Consider a known diagonal third-level kernel
+
+\[
+U_f|x\rangle=(-1)^{f(x)}|x\rangle,
+\qquad f:\mathbb F_2^n\to\mathbb F_2,\quad \deg f\le 3,
+\]
+
+available exactly once as a physical black-box operation, followed by a noise
+channel whose Kraus operators lie in a specified sparse span of output Paulis.
+The proposed operation is coherent pre/post Pauli checks that read a syndrome
+and correct the known output Pauli error without a second kernel query.
+
+The correction interface is established: it is a specialization of general
+Pauli-check sandwiching / commutation-derived channel filtering, not a new
+one-query error-correction primitive. The useful narrower result is a
+structure-aware compiler for the prechecks. A literal monomial expansion gives
+the claimed \(O(n^2)\) non-Clifford gates per check, but this is not tight:
+quadratic-form reduction lowers the controlled-phase count to at most
+\(\lfloor n/2\rfloor\) CCZ gates per check, while the associated CNOT basis
+change still costs \(O(n^2)\) Clifford gates in the worst case. For
+\(r=O(\log n)\) checks the conservative total is therefore
+\(O(n\log n)\) CCZ-equivalents plus \(O(n^2\log n)\) Clifford two-qubit gates,
+in addition to ancillas, measurement, and the one noisy-kernel call.
+
+This can be a resource niche versus a *literal* clean dense-CCZ expansion,
+but it is not yet an advantage over an equally informed fault-tolerant
+compiler. There is no general \(\Theta(n^3)\) gate-synthesis lower bound from
+having \(\binom n3\) cubic monomials. More decisively, local faults inside a
+termwise kernel need not remain in the assumed sparse output-Pauli span.
+Consequently the favorable one-query result is conditional on a genuine
+post-kernel Pauli-channel interface, not on circuit locality alone.
+
+## Exact precheck algebra
+
+Write an output Pauli as \(Q_{a,b}=X^aZ^b\), with \(a,b\in\mathbb F_2^n\).
+Its backward image is
+
+\[
+U_f^\dagger Q_{a,b}U_f|x\rangle
+ =(-1)^{q_{a,b}(x)}|x+a\rangle,
+\qquad
+q_{a,b}(x)=f(x+a)+f(x)+b\cdot x.
+\]
+
+Thus \(U_f^\dagger Q_{a,b}U_f=X^aD_{q_{a,b}}\), using the convention
+\(X^aD_q|x\rangle=(-1)^{q(x)}|x+a\rangle\). Since the first difference of a
+cubic Boolean polynomial is quadratic, \(q_{a,b}\) has degree at most two.
+For Hermitian Pauli conventions that include a known phase on \(X^aZ^b\),
+that phase is tracked as a known control phase; it does not change the gate
+counts.
+For a cubic monomial,
+
+\[
+\Delta_a(x_ix_jx_k)=
+a_i x_jx_k+a_jx_ix_k+a_kx_ix_j
++a_ia_jx_k+a_ia_kx_j+a_ja_kx_i+a_ia_ja_k.
+\]
+
+If \(c_{ijk}\) is the coefficient of \(x_ix_jx_k\), the coefficient of
+\(x_ix_j\) in the derivative's quadratic part is
+\(\sum_{k\notin\{i,j\}} c_{ijk}a_k\) (with indices symmetrized). Hence the
+direct ANF contains at most \(\binom n2\) quadratic terms, \(O(n)\) linear
+terms, and a constant.
+
+For one syndrome control bit \(s\), the direct implementation of the
+controlled precheck uses at most:
+
+| Operation | Direct ANF count per check |
+|---|---:|
+| Controlled quadratic monomial \((-1)^{s x_ix_j}\) | \(\binom n2\) CCZ gates |
+| Controlled linear phase \((-1)^{s x_i}\) | at most \(n\) CZ gates |
+| Conditional shift \(|x\rangle\mapsto|x+a\rangle\) | \(|a|\le n\) CNOT gates |
+| Constant conditional phase | at most one Z on the control |
+| Output postcheck \(Q_{a,b}\) | \(O(n)\) controlled Pauli gates |
+
+The direct count is a valid upper bound, not an optimal CCZ count.
+
+### Quadratic-form reduction
+
+Define the polar form
+
+\[
+B_q(u,v)=q(u+v)+q(u)+q(v)+q(0).
+\]
+
+It is alternating over \(\mathbb F_2\), so its rank is \(2s\). A symplectic
+basis for its nondegenerate part, followed by a basis of its radical, gives an
+invertible linear coordinate change \(y=Mx\) under which
+
+\[
+q(M^{-1}y)=\sum_{j=1}^{s} y_{2j-1}y_{2j}+\ell(y)+c.
+\]
+
+The difference between the transformed quadratic polynomial and the displayed
+pair terms has zero polar form, hence is linear plus a constant. Apply the
+linear reversible circuit for \(M\), the controlled phase gates, and \(M^{-1}\)
+to implement \(D_q\) in the controlled branch. This uses exactly \(s\le
+\lfloor n/2\rfloor\) CCZ gates for the quadratic part, at most \(n\) CZ gates
+for \(\ell\), and \(O(n^2)\) CNOT gates for the two basis transforms. The
+controlled shift adds at most \(n\) more CNOTs. The same bound applies even
+when the syndrome control is in superposition: the unconditional basis change
+and inverse cancel in the control-zero branch.
+
+Accordingly, for checks \(Q_1,\ldots,Q_r\), the exact, auditable upper bounds
+are
+
+\[
+N_{\rm CCZ}\le \sum_{j=1}^r\frac{\operatorname{rank}(B_{q_j})}{2}
+\le r\lfloor n/2\rfloor,
+\qquad N_{\rm Clifford}=O(rn^2).
+\]
+
+If CCZ is priced by its standard exact Clifford+T realization, the T-count
+bound is seven times the CCZ subtotal; device-specific CCZ factories and
+fault-tolerant overhead are additional. The literal ANF compiler instead has
+\(N_{\rm CCZ}\le r\binom n2\). Both are polynomial and correct, but only the
+rank-reduced count reflects the best simple construction.
+
+## Syndrome count and what is actually corrected
+
+For the single-qubit Pauli set
+\(\mathcal E_1=\{I,X_i,Y_i,Z_i:1\le i\le n\}\), every correctable error
+must have a distinct syndrome, so any deterministic syndrome readout obeys
+
+\[
+r\ge\lceil\log_2(3n+1)\rceil.
+\]
+
+An \(O(\log n)\)-check construction exists. For example, take
+\(r=2m\) with \(n\le(4^m-1)/3\), select \(n\) distinct two-dimensional
+subspaces in \(\mathbb F_2^{2m}\) whose nonzero vectors are disjoint, and
+assign the three nonzero vectors in each subspace to the site’s \(X,Y,Z\)
+syndromes. A full spread realizes the bound when its size suffices. This uses
+\(r\le\log_2(3n)+2\) checks. For an arbitrary specified finite error set of
+size \(M\), random binary check rows separate all errors with positive
+probability using \(r=O(\log M)\); the simple union bound gives a conservative
+\(r>2\log_2(M+1)\).
+
+For each check \(Q_j\), use its backward image \(P_j=U_f^\dagger Q_jU_f\)
+before the kernel and \(Q_j^\dagger\) after it. Fix a check order and reverse
+the order of the post-products: for control string \(s\), use
+\(P_r^{s_r}\cdots P_1^{s_1}\) before the kernel and
+\(Q_1^{-s_1}\cdots Q_r^{-s_r}\) after it. This cancels the ideal branch even
+when the \(Q_j\)'s do not commute. In a controlled branch,
+\(Q_j^\dagger U_fP_j=U_f\). If an output Pauli \(E\) occurs after the
+kernel, the branch acquires the sign determined by whether \(E\) commutes
+with \(Q_j\). Measuring all \(r\) control bits therefore produces the
+symplectic syndrome of \(E\). When the supported errors have distinct
+syndromes, apply the corresponding \(E^\dagger\) correction. This also works
+for Kraus operators that are coherent linear combinations of the supported
+Paulis: the syndrome measurement projects each branch onto one supported
+Pauli, and the known correction leaves \(U_f\) on the data. If multiple
+supported errors share a syndrome, the scheme needs the usual
+Knill–Laflamme/degeneracy condition; “few Paulis” alone does not imply
+correctability.
+
+For \(r=2m=O(\log n)\) single-qubit-error checks, the check-stage resource is
+therefore at most \(O(n\log n)\) CCZ-equivalents and \(O(n^2\log n)\) Clifford
+two-qubit gates, with \(O(\log n)\) syndrome ancillas, plus a one-call noisy
+\(U_f\). If the full noise set is larger, substitute its actual check count.
+Ancilla preparation/readout/reset, control errors, latency, and decoding are
+not zero-cost and are not included in these gate counts.
+
+## Matched incumbents and fair cost boundary
+
+1. **Pauli Check Sandwiching (PCS).** Gonzales et al. explicitly allow a
+   general check pair \(C_1,C_2\) satisfying \(C_2UC_1=U\) for arbitrary
+   target \(U\); choosing \(C_2=Q^\dagger\),
+   \(C_1=U^\dagger Q U\) is exactly this construction. Their protocol
+   postselects the check outcome to remove anticommuting output errors. The
+   paper distinguishes this general version from its efficient version,
+   which restricts checks to Pauli operators and therefore applies directly
+   when \(U\) is Clifford. Its Section III-E reports that the general checks
+   may be more complicated to synthesize. The derivative/rank compiler here
+   is a family-specific resource refinement of that known freedom, not a new
+   check principle. Turning separate postselections into a full syndrome and
+   deterministic correction is standard syndrome-based recovery under the
+   assumed known error set.
+
+2. **Coherent Pauli Checks and quantum filters.** van den Berg et al. give
+   the coherent one-ancilla, two-sided check for Clifford payloads and include
+   noise in the check circuit. Das et al. give a one-query channel-filter
+   framework; for Clifford \(C\), their precheck is the conjugated Pauli
+   \(C^\dagger Q C\), and their Pauli-filter scheme corrects arbitrary noise
+   with \(2n\) clean ancillas. They also show partial purification for
+   non-Clifford T and CCZ gates. Thus the one-query filter premise, the
+   conjugated-precheck algebra, and the Clifford/non-Clifford distinction
+   are already explicit in the incumbent. The potential delta is solely a
+   compact compiler for this cubic Boolean family and a carefully chosen
+   sparse error set; compare its exact gates against a fully synthesized
+   filter rather than counting a general controlled unitary as one gate.
+
+3. **Fault-tolerant code/spacetime implementations.** These target a
+   circuit-level noise model, where faults may occur at many locations and
+   syndrome extraction is repeated around the implemented logical operation.
+   They pay encoded-gate, ancilla, measurement, and spacetime-volume overhead,
+   but they can address internal faults that invalidate an output-Pauli-only
+   promise. This is a different interface from one post-kernel channel. A
+   fair comparison must either (a) hold the kernel fixed as an atomic channel
+   with certified output-Pauli noise, or (b) compare complete circuit-level
+   fault-tolerant implementations including the kernel and check circuitry.
+   Comparing the check layer to the literal \(\binom n3\)-CCZ expansion while
+   ignoring check faults is a favorable upper-bound comparison, not a matched
+   hardware benchmark.
+
+4. **Gate teleportation / injection.** Teleporting a known \(U_f\) through a
+   Choi or magic resource state is a standard alternative. If a clean verified
+   resource is supplied, its preparation/factory cost is outside the
+   one-noisy-kernel contract and must be charged. If the one available noisy
+   kernel prepares that state, a post-kernel Pauli fault is transferred into
+   the resource and then onto the teleported output; it has not been removed.
+   Clifford-hierarchy byproduct correction is available, but it does not
+   distinguish the unknown sparse output fault for free. Injection is not a
+   lower-cost comparator unless the resource-state and verification budgets
+   are stated.
+
+### No unsupported \(\Theta(n^3)\) optimality claim
+
+If every cubic monomial is implemented literally as its own CCZ, then the
+kernel uses exactly \(\binom n3=\Theta(n^3)\) CCZs. That is a fair count for
+that direct ANF implementation. It is not a proven lower bound for exact
+Clifford+CCZ synthesis: CNOT basis changes can combine terms, and structured
+cubic tensors can have compact decompositions. A general lower bound must
+specify the gate set, ancillas, allowed parity computation, and whether
+non-diagonal intermediate gates are allowed. No such lower bound is used
+here. The only unconditional lower bound recorded above is the syndrome-bit
+count for the specified error family.
+
+## Circuit-level fault-spread counterexample
+
+Take the fully dense phase
+
+\[
+f(x)=\sum_{1\le i<j<k\le n}x_ix_jx_k,
+\]
+
+implemented by its literal commuting CCZ list. Order first the CCZs whose
+triples do not contain qubit 1, then the CCZs whose triples do contain qubit
+1, and insert a single physical \(X_1\) fault between those two gate blocks.
+The suffix phase is \(g(x)=x_1\sum_{2\le i<j\le n}x_ix_j\); the relative output
+operator is
+
+\[
+U_fX_1U_f^\dagger|x\rangle
+=(-1)^{f(x)+f(x+e_1)}|x+e_1\rangle
+=X_1\prod_{2\le i<j\le n}\mathrm{CZ}_{ij}|x\rangle.
+\]
+
+The quadratic phase on the last line contains \(\binom{n-1}{2}\) pair terms.
+For \(n\ge4\), this relative error is a non-Pauli Clifford operator, not one
+of the assumed sparse output Paulis. It is a legal internal single-location
+fault in this literal circuit model. A fault later in the list similarly
+acquires the derivative of the remaining cubic suffix. Therefore the
+one-query correction theorem is conditional on noise that truly occurs
+*after* the entire physical kernel and lies in the advertised Pauli span.
+Locality of primitive gate faults does not establish that condition.
+
+## Decisive comparison gate
+
+The candidate remains worth a matched resource test only if its contract
+provides all of the following:
+
+- a single physical kernel invocation with output noise certified to be in a
+  known sparse Pauli span;
+- trusted, fault-tolerant controlled-Clifford prechecks, including their
+  \(O(n^2)\) CNOT basis changes per check, and controlled output-Pauli checks;
+- an explicit syndrome set that separates the entire Kraus support and an
+  error-correction rule for coherent Kraus superpositions;
+- an all-in cost comparison against (i) general PCS/QF compiled using the
+  same cubic structure, (ii) verified gate injection if resource states are
+  available, and (iii) circuit-level QEC when the noise is internal;
+- no assertion that literal \(\Theta(n^3)\) monomial count proves an optimal
+  clean-gate lower bound.
+
+Without a demonstrated post-kernel Pauli interface and a fully charged
+compiler comparison, classify the result as **known one-query syndrome
+recovery with an improved algebraic precheck upper bound**, not as a new
+fault-tolerant kernel or established hardware advantage.
+
+## Provenance and primary sources
+
+This was a warm, independent resource audit; earlier work in this folder
+already considered one-query quantum kernels, coherent checks, and the
+source-derived N753 polynomial compiler. Those older Astra materials are
+context, not proof premises. The N681 replica-programmed-operation source
+was used to keep the channel-access boundary explicit; N753 is marked
+source-derived/unreviewed and is not treated as independent validation.
+
+- Gonzales et al., *Quantum Error Mitigation by Pauli Check Sandwiching*,
+  arXiv:2206.00215v3, especially Sec. III-A and III-E:
+  https://arxiv.org/html/2206.00215
+- van den Berg et al., *Single-shot error mitigation by coherent Pauli
+  checks*, arXiv:2212.03937, Secs. 1–2:
+  https://arxiv.org/html/2212.03937
+- Das et al., *Purification and correction of quantum channels by
+  commutation-derived quantum filters*, arXiv:2407.20173v2, especially
+  Secs. II.3 and III.3–III.5:
+  https://arxiv.org/html/2407.20173v2
+- Gottesman and Chuang, *Quantum Teleportation is a Universal Computational
+  Primitive*, arXiv:quant-ph/9908010:
+  https://arxiv.org/abs/quant-ph/9908010
+- Warm Astra capital context: `work/astra-capital/updates/DL/package/replica_programmed_quantum_operations/Pasted text.txt`;
+  `work/astra-capital/frontier/dossiers/N753.txt`.
+

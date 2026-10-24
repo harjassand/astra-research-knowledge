@@ -1,0 +1,86 @@
+# Spectral predictive-state learning: operational source review
+
+## Decision
+
+There is a usable, established positive route for learning a **controlled predictive model** from observed action/outcome sequences: collect history/test joint moments, identify a well-conditioned low-rank basis by SVD, and recover action/outcome observable operators up to similarity. Boots, Siddiqi, and Gordon give the controlled PSR/TPSR construction directly from action-observation traces. It does not require latent-state labels or supplied Kraus operators.
+
+That route does not by itself produce a stochastic or completely-positive model. Finite-sample linear operators can give negative event probabilities, and the controlled PSR paper proves consistency, not a finite-sample adaptive-policy guarantee. If a CP quantum realization is required, HQMM likelihood fitting supplies a distinct positivity-preserving, Kraus-constrained route from sequence samples; it is not a spectral theorem, and the cited HQMM learner is for output sequences rather than controlled interventions. The right positive use is therefore: learn and validate the observable predictive model first; use a CP-constrained fit only when the physical quantum realization matters, and treat it as a separate constrained estimation problem.
+
+## Exact operator construction
+
+Let actions $a\in\mathcal A$ be interventions and outcomes $o\in\mathcal O$. A finite linear predictive realization has state vector $x_h\in\mathbb R^r$, initial vector $b_1$, evaluation row $b_\infty^T$, and an unnormalized operator $B_{a,o}\in\mathbb R^{r\times r}$ for each action/outcome. With the convention that the first event acts first,
+
+\[
+p(o_{1:L}\Vert a_{1:L})
+ =b_\infty^T B_{a_L,o_L}\cdots B_{a_1,o_1}b_1,
+\qquad
+x_{t+1}=\frac{B_{a_t,o_t}x_t}{b_\infty^TB_{a_t,o_t}x_t}.
+\]
+
+For a normalized predictive state, $b_\infty^Tx_h=1$, the one-step prediction is $p(o\mid h,a)=b_\infty^TB_{a,o}x_h$. The normalization identities are $b_\infty^T\sum_o B_{a,o}=b_\infty^T$ for every action $a$, on the reachable predictive space. Operators need not be entrywise nonnegative in this coordinate system.
+
+The data objects in Boots et al. are observable. In word notation, $H_{u,v}=p(uv)$; when a minimal finite linear realization exists, the infinite Hankel matrix has rank $r$. Choose a finite test family $T$ (future action/outcome experiments) and a mutually exclusive, exhaustive history partition $H$, sampled under a declared history law $\omega$. Let $P_{T,H}[i,j]$ be the probability that test $i$'s outcome sequence occurs after history cell $h_j$, with its test actions intervened; let $P_H[j]=\Pr(H=h_j)$. For each $a,o$, let $P_{T,ao,H}$ record the corresponding joint probability with the immediate $a,o$ step before the future test. Under a finite PSR of linear dimension $r$,
+
+\[
+P_{T,H}=R S\,\mathrm{diag}(P_H),\qquad
+P_{T,ao,H}=R M_{ao}S\,\mathrm{diag}(P_H),
+\]
+
+so these matrices have rank at most $r$. If $U$ spans the rank-$r$ left singular subspace of $P_{T,H}$ and $U^TR$ is invertible, one observable coordinate system is
+
+\[
+b_1=U^TP_{T,H}\mathbf1,\quad
+b_\infty^T=P_H^T(U^TP_{T,H})^+,\quad
+B_{ao}=U^TP_{T,ao,H}(U^TP_{T,H})^+.
+\]
+
+This recovers the operators up to a similarity transform, which preserves every sequence probability. It is the useful mechanism: latent state discovery is replaced by estimating probabilities of observable tests and factoring a low-rank moment matrix.
+
+## What has to be acquired
+
+The basis is not supplied by the spectral theorem. A working acquisition protocol needs:
+
+1. **A defined history law and execution interface.** Boots et al. sample histories $h\sim\omega$, then execute selected action sequences and record outcomes. With reset, one can reset and run a fixed exploration policy to generate the required histories. Without reset, their suffix-history construction cuts one long trace into pseudo-starts; its paper explicitly says the resulting moments are only approximate because interventions alter subsequent history distributions.
+2. **History and action coverage.** Each history cell that supports a needed predictive direction must occur with positive, adequately sampled probability; each action whose operator is to be learned must be intervened after the relevant cells. An action never tried after a predictive context is not identified there. Rare history cells incur inverse-frequency cost. A passive log is adequate only if its behavior policy supplies the required support and the action-selection process is correctly accounted for.
+3. **A rank/conditioning margin.** Exact closure asks for σ_r(P_{T,H})>0, but stable finite-data inversion needs that singular value separated from empirical moment error. Tiny σ_r makes pseudoinverses and operator estimates unstable. A finite rank plateau is not a global closure certificate unless there is a known dimension cap or other structural promise. The older Astra acquisition note records the same distinction: finite rank is an existence statement; basis discovery, coverage, and conditioning are separate acquisition obligations.
+4. **A validation target.** On held-out sequences, compare conditional next-outcome distributions and fixed predeclared adaptive policies against the process. Exact operators imply exact policy predictions because every policy branch is generated by the same action-conditioned kernels. For approximate models, if one has the strong bound $\sup_{h,a}\mathrm{TV}(p(\cdot\mid h,a),\hat p(\cdot\mid h,a))\le\epsilon$ over all reachable histories/actions, coupling gives length-$L$ trajectory TV at most $L\epsilon$, even for an adaptive policy. The PSR learning results cited here do not furnish that uniform bound from ordinary trajectory data. Distribution-weighted training accuracy cannot silently be promoted to arbitrary-policy accuracy.
+
+For a simple resettable finite-action pilot, the usable recipe is: freeze exploration law $\omega$, candidate $T,H$, and policy family; collect separate exploration and validation episodes; estimate $P_H,P_{T,H},P_{T,ao,H}$ by empirical frequencies; use SVD with a predeclared rank cutoff and report the retained singular values; compute the displayed operators; then evaluate the held-out conditional predictions under the same action interventions and under the declared policies. Every matrix moment, episode, reset, and test action is observable and countable. If a required cell/action has low frequency or the singular gap is absent, return “not identified at this budget” rather than extrapolate.
+
+## Quantum/HQMM realization boundary
+
+An $n$-dimensional HQMM with action-indexed instruments would use CP, trace-nonincreasing maps $\mathcal E_{a,o}$ with $\sum_o\mathcal E_{a,o}$ trace-preserving for each chosen action. In Kraus form,
+
+\[
+\mathcal E_{a,o}(\rho)=\sum_w K_{a,o,w}\rho K_{a,o,w}^\dagger,
+\qquad
+\sum_{o,w}K_{a,o,w}^\dagger K_{a,o,w}=I,
+\]
+
+and $p(o_{1:L}\Vert a_{1:L})=\operatorname{tr}[\mathcal E_{a_L,o_L}\circ\cdots\circ\mathcal E_{a_1,o_1}(\rho_0)]$. Vectorizing density matrices gives $n^2$-dimensional linear operators; hence any such process has Hankel rank at most $n^2$. This supplies a useful rank-based dimension lower bound $n\ge\lceil\sqrt r\rceil$, not a certificate that a particular rank-$r$ observable model has a CP realization.
+
+Adhikary et al. (AISTATS 2020) give a constructive validity constraint: in Liouville form, require each outcome map's Choi matrix PSD and the sum channel TP, with a PSD trace-one initial state. In Kraus form, the equivalent TP constraint is the stacked matrix condition \(\kappa^\dagger\kappa=I\); their algorithm optimizes sequence likelihood while keeping \(\kappa\) on the Stiefel manifold. This produces valid HQMM parameters by construction, rather than relying on a post-hoc positivity check of signed spectral operators. The paper's result is a constrained learning algorithm and experiments, not a global-optimum/sample-complexity theorem. Its model is indexed by outputs, not external actions; an action-controlled extension would require separate Kraus families and the TP constraint for every action, plus actual intervention coverage. It does **not** take latent Kraus operators as input: the sequence dataset is the likelihood input. It also does not make the learned latent memory physically present in the data-generating system.
+
+Therefore the safe combined use is limited: use the PSR spectral fit to estimate predictive rank, obtain a small sequence-prediction model, and initialize or choose the size of an action-indexed CP fit. Then assess the CP fit independently on held-out action/outcome sequences. Do not infer that the spectral basis transforms into Kraus operators; CP realization can fail or require a larger model, and fitting the constrained likelihood may find only a local solution.
+
+## Primary papers and exact scope
+
+**Boots, Siddiqi & Gordon, “Closing the Learning-Planning Loop with Predictive State Representations,” arXiv:0912.2385 (2009; IJRR 30(7), 2011).** Author preprint: https://arxiv.org/abs/0912.2385 ; journal DOI: https://doi.org/10.1177/0278364911404092 . Sections 2–4, especially Eqs. (3b–c), (5)–(8), give the action-intervention/test moments, low-rank factorization, learned observable operators, and sequential prediction. The paper states asymptotic consistency up to similarity when finite-rank moments are sampled and the required factor is invertible. It describes reset/history-law acquisition and the approximate no-reset suffix-history alternative. It does not give a uniform finite-sample lower singular-value guarantee or arbitrary adaptive-policy bound. This is the closest exact match to controlled action/outcome sampling.
+
+**Hsu, Kakade & Zhang, “A Spectral Algorithm for Learning Hidden Markov Models,” arXiv:0811.4413v6 (2012).** Primary paper: https://arxiv.org/abs/0811.4413 . The definitions of $P_1,P_{2,1},P_{3,x,1}$, Lemma 3, Algorithm 1, and Theorems 6–7 give concrete observable operators and finite-sample guarantees. For $m$ hidden states, positive initial mass, and full-column-rank transition/emission matrices, the learner estimates observable singleton/pair/triple moments from $N$ independent output-sequence prefixes; Theorem 6 bounds length-$t$ joint $L_1$ error by $\epsilon$ with sample size polynomial in $t,1/\epsilon,1/\sigma_m(O),1/\sigma_m(P_{2,1})$ (and the output-tail term $n_0$). Theorem 7 gives a time-uniform **history-averaged conditional KL** bound only with the stronger uniform transition-emission positivity condition $A_x[i,j]\ge\alpha>0$ and observation informativeness parameter $\gamma=\inf_{\|v\|_1=1}\|Ov\|_1>0$. These are uncontrolled HMM results; they do not cover chosen action interventions. The authors explicitly connect their SVD/CCA step to subspace ID, while noting classical subspace-ID noise assumptions do not directly fit hidden-state-dependent categorical emissions.
+
+**Adhikary, Srinivasan, Gordon & Boots, “Expressiveness and Learning of Hidden Quantum Markov Models,” AISTATS 2020.** Primary paper/PDF: https://proceedings.mlr.press/v108/adhikary20a.html ; PDF: https://proceedings.mlr.press/v108/adhikary20a/adhikary20a.pdf . Definitions 5–6 and Theorem 1 specify the CP/TP/PSD realization; Section 3 constrains Kraus parameters by a Stiefel condition, and Section 4 reports sequence-likelihood training. This is the positivity-preserving comparator, not a spectral identification theorem; its empirical optimizer does not certify global recovery and the stated observations are not controlled actions.
+
+## Strong system-identification comparator
+
+The closest classical realization comparator is Ho & Kalman, “Effective construction of linear state-variable models from input/output functions” (1966), DOI https://doi.org/10.1524/auto.1966.14.112.545 ; NASA record https://ntrs.nasa.gov/citations/19670049337 . For an LTI system $x_{t+1}=Ax_t+Bu_t,\ y_t=Cx_t+Du_t$, its Markov parameters $G_j=CA^{j-1}B$ form a block Hankel matrix $H_0=\mathcal O\mathcal C$, where $\mathcal O=[C;CA;\ldots]$ and $\mathcal C=[B,AB,\ldots]$. Under reachability and observability, rank is state dimension; a shifted Hankel factorization gives $A$ up to similarity, with $B,C$ from the factors. In noisy experiments, standard subspace identification additionally needs suitable input excitation and noise/model assumptions.
+
+That is a very strong comparator for linear systems with numeric input/output responses and persistently exciting controls. It is not a direct drop-in for stochastic action/outcome data: those data naturally estimate probabilities of future events, with outcome-dependent transition operators and no additive, state-independent measurement noise assumption. Boots et al.'s controlled PSR method is the precise bridge: its factorization has the same subspace-realization shape, but its entries are actual intervention-conditioned event probabilities.
+
+## Source routes and prior-work exposure
+
+Useful synonyms for further primary-source checks: **controlled PSR**, **TPSR**, **action-observation test**, **indicative event/history partition**, **system-dynamics matrix**, **OOM / observable operator model**, **weighted automaton**, **observable HMM representation**, **HQMM / Liouville-HQMM / Kraus-HQMM**, **Ho–Kalman realization**, and **subspace identification**. These terms identify related tools but not identical acquisition guarantees or validity constraints.
+
+Read-only Astra materials checked for prior-route overlap: `work/foundational_wave/luna_hidden_state/finite_hankel_acquisition_contracts.md` and `work/astra-capital/frontier/review_cards/N189-noiseless-predictive-feature-acquisition.txt`. They already record finite Hankel closure versus basis acquisition, reset/test access, rank and singular-margin limits, and the explicit plateau counterexample. This review adds no new claim of novelty or a general learner beyond those source-bounded routes. Per instruction, fresh ammonia material and active P1/P3/XH constructions were not inspected.
+
+Firecrawl was attempted once for primary research retrieval but returned an insufficient-credits error before running; no retries were made. The primary paper pages/preprints above were then read via native web retrieval. No paid/source-provider access or external contacts were used.
