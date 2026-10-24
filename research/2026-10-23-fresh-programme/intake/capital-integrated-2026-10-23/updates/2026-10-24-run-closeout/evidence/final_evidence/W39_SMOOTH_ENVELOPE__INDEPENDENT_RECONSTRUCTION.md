@@ -1,0 +1,514 @@
+# Independent actual-quantum smooth-envelope reconstruction
+
+W39,24 October2026. Exact main source:
+`cbd968c585a332e49547f9a74b3b1e014ce2b3d36f695dfb7c46c8b327646399`.
+Mandatory growing-shift/Hessian detail:
+`2c08cb95c0655d623563bf7c21c32fd50897fb3f2130e9ba4ee1c7454e1c4870`.
+The fixed-shift clarification is separately bound at a4bf3343....
+No producer diagnostic script/output, W49 narrower review, peer verdict
+or root preferred proof was read. Underlying producer proof prerequisites
+and the explicit resource/acquisition sidecars were read as sources,
+then reconstructed below. The pre-diagnostic proof c362c01e... and a new
+standalone checker preserve the order of work.
+
+**Verdict: no blocking defect found in the exact smooth-envelope,
+actual-heated, independent one-mode thermal-mixture theorem, with the
+mandatory detail.** The proof is source-first and gain-fixed. It neither
+settles the unheated/general finite-energy amplifier EPnI nor supplies
+a finite useful heat/acquisition threshold.
+
+## 1. Exact source class and the scales that must be separated
+
+Past a fixed temperature cutoff, the probability density is
+
+    f_R(r)=r^-2[ell(ln r)+E(ln r)],
+    |E(x)|<=K ell(x)/x^2.
+
+The bounded body can have atoms or other probability measure components.
+There are no unbounded atoms after the density cutoff. The principal
+ell is positive C2, integrable, nonincreasing on a half-line, with
+0<=-ell'<=K ell/x and |ell''|<=K ell/x^2. The error E is merely
+measurable; its derivative is never available. After enlarging the
+bounded cutoff if needed, f_R is between ell/(2r^2) and C ell/r^2.
+
+For fixed source define a=ER and M(x)=integral_x^infinity ell(u)du.
+The probability and mean tails are finite. The claimed defect scale is
+
+    ell(l)/T, l=ln T,
+
+whereas its LEADING term is M(l)/T. Since M(l)>=c l ell(l), an error
+only o(M(l)/T) would not determine the needed second term or the
+two-source entropy sign. All estimates below are at the smaller scale.
+
+## 2. Uniform shifts, including the growing NEGATIVE cutoff shift
+
+Integrating the logarithmic derivative yields, for y>=x large,
+
+    ell(y)>=ell(x)(y/x)^-K, ell(y)<=ell(x).
+
+In particular ell(x)>=c x^-K and |ln ell(x)|=O(ln x). Integrating
+over[x,2x] gives M(x)>=2^-K x ell(x), while M is bounded above by
+its finite tail integral. These constants are source dependent.
+
+More generally, uniformly for |b|<=C ln x and large x, the interval
+between x and x+b lies above x/2. The same logarithmic derivative
+bound makes ell there comparable to ell(x), with ratio1+O(|b|/x).
+Integrating once more gives
+
+    ell(x+b)=ell(x)+O(ell(x)|b|/x),
+    M(x+b)=M(x)-b ell(x)+O(ell(x)b^2/x).                  (R1)
+
+This proves the mandatory positive growing-shift formula. It ALSO
+justifies ell(l-2ln l)=ell(l)[1+O(ln l/l)], needed in the medium
+temperature probability cutoff. That latter application is not obtained
+by pretending the fixed-b constants in S7 apply to variable b.
+
+The elementary tails used later are
+
+    P(R>delta t)=O(ell(l)/t),
+    E[R;R>delta t]=O(M(l)),
+    E[R^2;R<=delta t]=O(t ell(l)), l=ln t,                (R2)
+
+for fixed delta>0. For the second line the density error integrates to
+at most K integral_l^infinity ell(u)/u^2 du<=K ell(l)/l. For the third,
+below sqrt(t) use sqrt(t) ER; above it use ell(l/2)<=2^Kell(l).
+The exponentially large t beats every fixed polynomial of l. These
+proofs do not assume a second moment of R.
+
+For physical temperatures R,r both large, derivative control also
+implies, for any fixed epsilon>0,
+
+    ell(ln R)/ell(ln r)
+       <=C_epsilon max((R/r)^epsilon,(R/r)^-epsilon).    (R3)
+
+For R<r use (ln r/ln R)^K and polynomial-versus-exponential domination
+in z=ln(r/R); for R>=r monotonicity suffices. This is a proved
+physical-scale bound, not an imported unspecified regular-variation
+oracle.
+
+## 3. The actual classical radial experiment has finite KL
+
+For heat t>0 the exact positive coherent-radius densities are
+
+    h_t(r)=E[(t+R)^-1 exp(-r/(t+R))],
+    q_t(r)=(t+a)^-1 exp(-r/(t+a)).
+
+Their common uniform phase cancels in the two-dimensional classical
+KL. Convexity of relative entropy against q_t gives
+
+    D_cl(h_t||q_t)<=ln(t+a)-E ln(t+R)<=ln(1+a/t).
+
+Every term is finite because ER is finite and log(t+R)<=log t+R/t.
+Thus the nonnegative Phi(h,q)=hln(h/q)-h+q is a valid global integrand.
+No difference of infinite differential entropies is being rearranged.
+
+Set y=r/t, H_t=t h_t(ty), Q_t=t q_t(ty), and
+k_x(y)=(1+x)^-1 exp[-y/(1+x)]. For a fixed0<delta<1, its second
+x derivative on[0,delta] is bounded by C(1+y)^2 exp(-cy),
+c=1/(1+delta)>1/2. Expand only on R<=delta t. Centering against the
+FULL mean retains -E[R;R>delta t]k'_0/t and the missing mass term.
+R2 controls the second remainder and these missing moments. The
+reference's own O(t^-2) Taylor error is smaller by the polynomial
+lower bound for ell.
+
+For R>delta t, put R=tx. The principal envelope is bounded by
+C_delta ell(l) for every x>=delta, and the density kernel integral
+is bounded by C ell(l)/t times integral_delta^infinity
+x^-3 exp(-c_delta y/x)dx. Hence uniformly over y>=0,
+
+    |H_t-Q_t|<=A+B,
+    A=C M(l)(1+y)^2 exp(-cy)/t,
+    B=C ell(l)(1+y)^-2/t.                               (R4)
+
+The omitted first moment could not be centered away at zero: M(l)
+is much larger than ell(l). That term is present in R4.
+
+## 4. No missing pre-crossover entropy at the second scale
+
+Take exactly
+
+    Y=l-ln ell(l)+2ln l, X=tY, x=ln X.
+
+Then Y=l+O(ln l), exp(-Y)=ell(l)/(t l^2), and
+x-l=ln Y=ln l+O(ln l/l). Since Q_t>=c0 exp(-y), the scalar inequality
+Phi(H,Q)<=(H-Q)^2/Q and R4 give
+
+    integral_0^Y Phi(H_t,Q_t)dy
+       <=C M(l)^2/t^2+C ell(l)^2 exp(Y)/[t^2(1+Y)^4]
+       =O(M(l)^2/t^2)+O(ell(l)/(t l^2))
+       =o(ell(l)/t).                                    (R5)
+
+The A integral converges because2c>1. The B integral needs its
+(1+Y)^-4 factor; discarding it would not prove the asserted error.
+It follows by splitting at Y/2. This use of a quadratic bound is
+LOCAL. Neither global classical nor thermal quantum chi-squared is
+asserted finite.
+
+## 5. Remote removal of heat at the required precision
+
+For r>0 define h0(r)=E[R^-1 exp(-r/R);R>0]. It is a remote comparison
+function only, possibly subnormalized when R has an atom at0. Restrict
+to R in[r,2r] to get both h_t,h0>=c r^-2ell(ln r) for r>=X.
+The upper bounds h_t<=1/t and h0<=1/(er) are uniform. Moreover r/t>=ln r
+for all r>=X eventually: it holds at X and the difference increases
+when r>t. Therefore the derivative ln(h/q_t) of Phi in h is bounded
+in absolute value by C r/t on the whole segment between h_t and h0.
+The remote replacement error is at most
+
+    C integral_X^infinity (r/t)|h_t(r)-h0(r)|dr.           (R6)
+
+Split the temperature into three actual ranges.
+
+SMALL R<=t/l^2: the heated kernel is at most
+t^-1 exp[-r/(t(1+l^-2))]. Its weighted integral is
+O(Y exp[-Y/(1+l^-2)])=O(ell(l)/(t l)). The unheated kernel is at most
+(l^2/t)exp(-r l^2/t) and smaller. This uses all body/zero-atom mass;
+no bounded-temperature part is discarded.
+
+MEDIUM t/l^2<R<=delta t: direct tail integration and R1 give probability
+O(t^-1 l^2ell(l)). For r>=X>delta t, the unheated kernel increases
+with its temperature up to delta t, so both kernels have a uniform
+C_delta t^-1 exp(-c r/t) bound. Its R6 contribution is
+O(t^-1 l^2ell(l)Y exp(-cY))=o(ell(l)/t). This proves the moving-cutoff
+bound without applying a fixed-delta estimate outside its regime.
+
+LARGE R>delta t: differentiating K_R(r)=R^-1e^-r/R and integrating
+from R to R+t gives
+
+    |K_(R+t)-K_R|
+       <=C_delta t R^-2(1+r/R)exp(-c_delta r/R).
+
+Multiply by the actual density bound, set R=rv, and apply R3. The
+remaining v^-4(1+1/v) exponential kernel is integrable with the two
+small v-powers. This gives |h_t^large-h0^large|<=C t r^-3ell(ln r).
+Its R6 contribution is <=C integral_X^infinity r^-2ell(ln r)dr
+<=C ell(ln X)/X=O(ell(l)/(t l)). Combined with R5 this justifies
+remote heat removal to o(ell(l)/t), not merely to o(M(l)/t).
+
+No inverse physical heat channel or global strong norm was used.
+
+## 6. Mellin correction with a merely measurable density error
+
+For the continuous tail of h0, set z=r/R, v=ln r. Its exact kernel is
+
+    r^-2 integral z e^-z[ell(v-ln z)+E(v-ln z)]dz.
+
+In r^-1/2<=z<=r^1/2 the argument lies in[v/2,3v/2]. R1-type
+comparability and the second derivative bound justify Taylor to first
+order, with remainder C ell(v)(ln z)^2/v^2. The bounded E contributes
+only C ell(v)/v^2 without differentiating E. For z<r^-1/2 monotonicity
+gives O(ell(v)/r) inside the bracket; for z>sqrt(r), exponential decay
+dominates the polynomial lower bound for ell(v). The fixed bounded
+temperature body has an exponentially small remote kernel.
+
+Using integral z e^-z=1 and integral z e^-z ln z=1-gamma_E therefore gives
+
+    h0(r)=r^-2[ell(v)-(1-gamma_E)ell'(v)
+                                      +O(ell(v)/v^2)].   (R7)
+
+The MINUS sign in front of ell' matters. Since ell'<=0, this is a
+positive density correction. No smoothness or favorable frequency of E
+has been silently assumed.
+
+## 7. Entire remote entropy, including its first moment
+
+Integrating R7 at x=ln X gives
+
+    I1=integral_X^infinity r h0(r)dr
+       =M(x)+(1-gamma_E)ell(x)+O(ell(x)/x),
+    I0=integral_X^infinity h0(r)dr~ell(x)/X,
+    Ilog=integral_X^infinity h0(r)ln r dr~x ell(x)/X.
+
+For I1 integrate -ell' exactly; its error integrates to <=ell(x)/x.
+For I0,Ilog use r=Xu and dominated convergence with u^-2 and
+u^-2(1+ln u), with ell(x+ln u)/ell(x)<=1. In particular
+
+    l I0-2Ilog=-ell(l)/t+o(ell(l)/t).                    (R8)
+
+Also ln h0=-2ln r+ln ell(ln r)+O(1/ln r). The log-envelope integral is
+O(ell(x)ln x/X), smaller than ell(l)/t. Constant I0 terms and the
+O(1/ln r) term are smaller still. The reference's remote mass is
+exp[-X/(t+a)]=O(exp(-Y))=O(ell(l)/(t l^2)). The exact remote
+decomposition is
+
+    I1/(t+a)+ln(t+a)I0+integral h0lnh0-I0+integral q_t.
+
+Replacing t+a by t costs at most C M(l)/t^2=o(ell(l)/t). By R1 and
+the explicit GROWING b=x-l=ln l+o(1),
+
+    M(x)=M(l)-ell(l)ln l+o(ell(l)),
+    ell(x)=ell(l)+o(ell(l)).
+
+The ell(l)/t coefficient is (1-gamma_E)-1=-gamma_E. Together with
+R5--R8 this proves the FULL classical expansion
+
+    D_cl(h_t||q_t)
+       =[M(l)-ell(l)(ln l+gamma_E)]/t+o(ell(l)/t).       (R9)
+
+Neither remote mass nor remote radial energy has been thrown away.
+
+## 8. An explicit actual-quantum squeeze, not a radial substitution
+
+These thermal mixtures are number diagonal. Their actual photon
+probabilities are
+
+    p_n(t)=E[(t+R)^n/(t+R+1)^(n+1)].
+
+Their von Neumann entropy is exactly the Shannon entropy of this
+normal photon law, and their relative entropy to theta_(t+a) is its
+KL to the matching geometric distribution. This is not generally
+the radial KL in R9.
+
+The two DPI directions can be independently seen as explicit stochastic
+maps. First radial coherent preparation maps r to Poisson(n|r), giving
+
+    p_n(t)=integral h_t(r)e^-r r^n/n! dr.
+
+The same map sends q_t to the matching thermal geometric law. Conversely
+the heterodyne radial kernel given n is Gamma(n+1,1), with density
+e^-r r^n/n!. Acting on a single thermal geometric law of mean m gives
+the exponential radial law of mean m+1; linearity gives h_(t+1),q_(t+1)
+for the mixtures and reference. Classical/normal data processing thus
+gives the actual normal-state sandwich
+
+    D_cl(h_(t+1)||q_(t+1))
+       <=D(H_t rho_R||theta_(t+a))<=D_cl(h_t||q_t).       (R10)
+
+No acquired temperature/photon/amplitude record is supplied to a party.
+These kernels are mathematical channels used to bound the entropy of
+the unflagged state.
+
+Let A(l)=M(l)-ell(l)(ln l+gamma_E). Then
+A'=-ell-ell'(ln l+gamma_E)-ell/l. The envelope assumptions and
+M>=c l ell give |A|+|A'|<=C M(l). Hence A(ln t)/t changes by
+O(M(l)/t^2)=o(ell(l)/t) under t->t+1. The two little-o scales in
+R10 are equivalent after that shift. R9--R10 prove S4 for the ACTUAL
+quantum relative entropy.
+
+Finite energy makes each entropy finite and gives the exact identity
+D=g(t+a)-S(H_t rho_R), since the logarithm of a faithful thermal state
+is affine in number. The state entropy is also >=g(t) by concavity
+over theta_(t+R). These facts justify the scalar entropy segment later.
+
+## 9. Independent sum closure at the SMALLER error scale
+
+Scaling by c>0 gives principal envelope c ell(x-ln c), with its
+integral c M(x-ln c). It remains in the same smooth class with
+adjusted fixed constants. Now let U,V be INDEPENDENT such laws.
+For large r split the convolution at h=r/(ln r)^2 and r-h.
+
+At the first endpoint, for0<=u<=h the smooth principal part of f_V(r-u)
+differs from r^-2ell_V(ln r) by relative O(h/r). Each merely measurable
+E value is bounded separately by C ell_V/(ln r)^2; no derivative or
+O(1/r) modulus of E is asserted. The missing endpoint probability is
+O(ell_U(ln h)/h)=o((ln r)^-2), and the other endpoint is symmetric.
+On the middle interval one argument is >=r/2, giving the bound
+
+    C r^-2[ell_U(ln r)P(V>h)+ell_V(ln r)P(U>h)].
+
+This is O(r^-2(ell_U+ell_V)/(ln r)^2), in fact smaller. Componentwise
+bounds suffice even if ell_U/ell_V has no limit or is unbounded on
+subsequences. Body atoms/singular parts are integrated against their
+probability measures at the endpoints; their mutual sums stay bounded.
+
+Thus U+V has principal envelope ell_U+ell_V with an allowed measurable
+O((ell_U+ell_V)/x^2) error. A fixed added temperature changes the smooth
+principal factor relatively by O(1/r), but its TOTAL density error is
+only asserted at O(1/(ln r)^2). This is the exact distinction preserved
+by the fixed-shift clarification. The error class is strong enough:
+its integrated first-moment error is O(ell(l)/l)=o(ell(l)), as R7--R9
+need, without pretending it is O(1/r).
+
+## 10. The amplifier output is the actual unflagged mixture
+
+For independent thermal inputs, the Bogoliubov relation is
+c=sqrt(G)a+sqrt(lambda)b^dagger, lambda=G-1. Its centered Gaussian
+characteristic function shows the output is thermal with mean
+G n_A+lambda(n_B+1); mean alone would not suffice to infer that fact
+for arbitrary non-Gaussian inputs. This transformation is also explicit
+in the primary [De Palma--Mari--Giovannetti amplifier qEPI paper,
+Eq6](https://arxiv.org/pdf/1402.0404).
+
+Apply it conditionally only as a mathematical integral identity to
+theta_(T+R_A) tensor theta_(T+R_B). Linearity and independence give
+the ACTUAL output
+
+    E theta_(sT+W),
+    W=lambda+G R_A+lambda R_B, s=2G-1.
+
+It is unflagged; no temperature record assists its entropy. Section9
+therefore applies with
+
+    ell_W(x)=G ell_A(x-ln G)+lambda ell_B(x-ln lambda),
+    M_W(x)=G M_A(x-ln G)+lambda M_B(x-ln lambda).         (R11)
+
+These are exact definitions of the principal envelope/integral, while
+the actual density has the already controlled residual. The spontaneous
+creation-port +lambda is included as a fixed shift, not omitted.
+
+## 11. All two-source cancellations and scalar Taylor costs
+
+Let d_A,d_B,d_C be the ACTUAL entropy defects relative to their
+matching thermal means. Put theta=G/s,phi=lambda/s. The thermal
+entropy target F(u,v)=g(Gg^-1(u)+lambda[g^-1(v)+1]) matches the output
+thermal entropy EXACTLY. Its first derivatives at the matching means
+are theta+O(T^-1),phi+O(T^-1). On the entropy segment,
+g^-1(u) lies in[T,T+a_A],g^-1(v) in[T,T+a_B], since the heated
+entropy is at least g(T).
+
+The mandatory detail's Hessian formulas follow by differentiating
+g'=ln(1+1/n),g''=-1/[n(n+1)]. Terms such as
+G^2g''(c)/g'(a)^2-Gg'(c)g''(a)/g'(a)^3 are uniformly bounded when
+a,b,c are all of order T at fixed source/G. Therefore finite Taylor
+gives gap
+
+    theta d_A+phi d_B-d_C
+                   +O((d_A+d_B)/T)+O((d_A+d_B)^2).      (R12)
+
+The classical convexity bound and R10 give0<=d_i<=a_i/T. Both scalar
+errors are O(T^-2)=o((ell_A(l)+ell_B(l))/T), using the polynomial
+lower bounds; no common envelope index or relative-order density norm
+is inserted.
+
+Apply S4 at T for the inputs and at sT for W. Each output M term
+has argument
+
+    ln(sT)-ln G=l-ln theta,
+    ln(sT)-ln lambda=l-ln phi.
+
+For each source i separately,
+M_i(l-ln theta_i)=M_i(l)+ell_i(l)ln theta_i+O(ell_i(l)/l),
+ell_i(l-ln theta_i)=ell_i(l)[1+O(1/l)], and
+ln(l+ln s)=ln l+O(1/l). In weighted input minus output defects,
+the M_i(l), ln l and gamma_E terms ALL cancel. The remainder is
+componentwise little-o of each ell_i/T, so adding them requires no
+limiting ratio. R12 therefore becomes exactly
+
+    [-theta ell_A(l)ln theta-phi ell_B(l)ln phi]/T
+                          +o((ell_A(l)+ell_B(l))/T).    (R13)
+
+At fixed G>1, both coefficients are strictly positive; their minimum
+bounds the leading term below by a positive constant times the sum.
+Thus eventual strict inequality holds for every sufficiently large
+finite T at that fixed source pair. It is not a subsequence statement,
+and not uniform as G approaches1 or the sources/tail coefficients vary.
+
+Ordinary qEPI is an established different bound, not an assumed proof
+of R13's exact entropy-photon target. Its amplifier form is stated in
+the same primary paper and [multi-input extension](https://arxiv.org/pdf/1408.6410).
+No generic qEPI/regular-variation/DPI novelty is attributed to this audit
+or inferred for the candidate from its internal derivation.
+
+## 12. Near-critical examples and global chi-squared divergence
+
+For q>1, the density1/[r^2ln r(lnln r)^q] on r>=exp(e), completed
+by an atom at0, is normalized since its tail mass is <exp(-e)/e.
+Its mean is exactly1/(q-1), envelope1/[x(ln x)^q] and
+M(x)=(ln x)^(1-q)/(q-1). Differentiation gives the displayed S2
+bounds; fixed finite constants exist for each q. These tails are
+heavier than r^-2(ln r)^-p for EVERY fixed p>1. Thus the class is not
+silently reduced to the earlier common-power subclass.
+
+More generally, eventual f_R>=ell/(2r^2) and ell(x)>=c x^-K force
+ER^(1+eta)=infinity for every eta>0. Conditional Jensen for the
+thermal photon law gives the same divergence for number moments
+after EVERY finite heat. Finite chi-squared against a faithful thermal
+reference would imply every polynomial photon moment finite by
+Cauchy--Schwarz against its geometric moments, a contradiction.
+The vacuum reference is excluded by support immediately. The mandatory
+detail's chi-squared claim is therefore correct; R5 was local for a
+substantive reason, not just a stylistic choice.
+
+## 13. Uniformity and acquisition cannot be inferred from finite energy
+
+I separately reconstructed the supplied acquisition-scope example.
+Add an epsilon-scaled q=2 tail to a fixed half-vacuum/half-mean1
+thermal core, with probabilities normalized as in the source sidecar.
+Energy<=3/2, common K=14 and common tail start exp(e) hold for every
+positive epsilon. At any fixed finite T, the heated core differs from
+its same-mean thermal reference by strict convexity of the vacuum
+probability. Its entropy defect D0(T)>0. Binary-mixture entropy bounds
+and finite fixed means give D_epsilon(T)->D0(T), whereas the explicit
+tail main term is epsilon times a finite function. The relative
+remainder normalized by epsilon ell_0(l)/T diverges at that fixed T.
+
+This rules out a source-uniform relative-asymptotic threshold from
+just those common bounds. It is NOT a negative EPnI gap and does not
+rule out a uniform EPnI theorem by a different argument. For r copies,
+trace distance<=r epsilon m and channel contractivity prohibit a
+fixed finite experiment from uniformly detecting all positive tail
+coefficients with no lower bound on epsilon. No precise infinite-tail
+certificate, mean, independence premise or useful heat threshold was
+actually acquired from data.
+
+## 14. New diagnostics and what they do not prove
+
+The new standalone code reads no producer diagnostics or narrower
+review. It checks150 EXACT Poisson-to-geometric coefficients,150
+EXACT geometric-to-Gamma series coefficients, and108 EXACT actual
+amplifier temperature identities. These help distinguish the actual
+photon channel from a radial entropy substitution.
+
+Separate60-digit quadrature controls cover36 Mellin cases,45 growing/
+negative shifts,3 discontinuous measurable-error cases,60 two-source
+cancellations, and12 actual independent-sum/fixed-shift density cases.
+The envelope pairs include different critical indices, different powers,
+and ell±=x^-2exp[±(ln x)sin(lnln x)/4]. Their ratio tends to0 and
+infinity along alternating subsequences while each obeys the premises.
+At l=10^6 the largest normalized principal cancellation error was
+8.89e-6. These are controls of the analytic principal expansions, not
+direct numerical certificates for actual two-port entropy at huge heat.
+
+Twelve additional ACTUAL photon-law entropy calculations use q=1.05,
+1.5,2,4 and T=4,16,64. They sum the genuine geometric-mixture p_n
+through8192, then use its monotone continuous-n entropy extension:
+integral_(N+1)^infinity f<=sum_(n>N) f(n)<=integral_N^infinity f,
+where f=-p(n)ln p(n) is decreasing because p(n)<=1/(T+1)<1/e.
+The omitted large continuous-n tail has an analytic mean-based entropy
+bound, and the omitted log-temperature tail has an analytic binary-
+mixture entropy bound. Quadrature is repeated at two orders. The
+resulting quantum entropy intervals lie inside separately evaluated
+classical D_t+1,D_t bounds, with refinement discrepancy1.96e-14.
+
+These calculations retain floating quadrature bias as UNcertified;
+the analytic cutoff formulas do not turn them into interval arithmetic
+certificates. No physical states, unknown-source samples or entropy
+measurements were acquired. In particular moderate-T diagnostics do
+not furnish the theorem's eventually-positive T threshold.
+
+Negative controls detect the wrong Mellin derivative sign and the invalid
+O(1/r) shift modulus for an allowed oscillating log-squared density
+error. The analytic reconstruction separately retains the full mean tail.
+Generic finite
+examples cannot prove the all-source asymptotics; Sections1--13 above
+provide that reconstruction.
+
+## 15. Physical/source/prior boundary and final conclusion
+
+The theorem inserts REAL H_T, adding T photons to EACH input before
+the amplifier, whose gain/pump and retained/discarded modes have their
+own unacquired costs. H1 is heterodyne/prepare by its characteristic
+function; H_T is entanglement breaking for T>=1. These particular
+inputs were already positive unflagged thermal/coherent mixtures.
+No original unheated entanglement resource or free ensemble record
+is preserved by the proof.
+
+The smooth supplied principal envelope, small measurable error, bounded
+body, finite mean and independent source preparations are essential
+premises. Arbitrary irregular finite-energy states or unbounded atomic
+tails are not covered. Source factories, tail/mean/independence
+acquisition, actual heat/pump/reset/precision, entropy measurement and
+practical threshold remain unacquired. The no-uniform-relative-threshold
+example explains why these cannot be silently supplied by a finite
+experiment.
+
+No blocking analytic defect found after complete independent
+reconstruction of cbd968c5 together with mandatory2c08cb95 and fixed-
+shift scope. Proof validity is an INTERNAL cold reconstruction, not
+external acceptance, formal verification or a priority result.
+General independent-input UNHEATED finite-energy amplifier EPnI remains
+NOT_ACHIEVED by this packet. Exact class-specific priority UNKNOWN;
+physical validation NOT_PERFORMED; practical value UNKNOWN; mission
+NOT_ACHIEVED. The worker is draining after this frozen review; no
+additional branch or assignment is opened.
+

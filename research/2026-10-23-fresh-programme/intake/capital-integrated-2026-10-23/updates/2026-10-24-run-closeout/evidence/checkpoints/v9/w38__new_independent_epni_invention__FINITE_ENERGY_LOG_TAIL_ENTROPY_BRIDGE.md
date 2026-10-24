@@ -1,0 +1,289 @@
+# A second-order entropy bridge with no photon moment above one
+
+23 October 2026. W38. NEW independent candidate; full fresh criticism
+pending. No earlier proof or receipt is changed. General UNHEATED
+finite-energy independent-input amplifier EPnI remains NOT_ACHIEVED.
+
+## 1. Exact proposed class, asymptotic, and two-port consequence
+
+Let R>=0 have arbitrary probability law on a bounded interval and an
+eventually continuous density with the precise tail
+
+    f_R(r)=C r^-2 (ln r)^(-p)
+                     [1+d/(ln r)+o(1/ln r)],
+    C>0, p>1, d real.                                  L1
+
+Its mean a is finite, but ER^(1+epsilon)=infinity for EVERY epsilon>0.
+Let rho_R=E tau_R be the actual unflagged one-mode thermal mixture. It
+therefore has finite mean photon number and no finite photon moment above
+one. Write l=ln T and gamma_E for Euler's constant. The proposed actual
+normal quantum relative-entropy expansion is
+
+    D(H_T rho_R||tau_(T+a))
+      =C/T *{l^(1-p)/(p-1)
+                -l^-p[ln l+gamma_E-d/p]}
+          +o(T^-1 l^-p).                              L2
+
+The SECOND term matters. For two independent sources of this class with
+the SAME p>1, arbitrary C_A,C_B>0 and d_A,d_B, fixed G>1, lambda=G-1,
+s=2G-1, theta=G/s and phi=lambda/s, the proposed actual entropy-form EPnI
+gap is
+
+    [-theta C_A ln theta-phi C_B ln phi]
+                         /[T(ln T)^p]
+        +o(T^-1(ln T)^-p)>0 eventually.                L3
+
+The leading l^(1-p)/T terms cancel. No assumption of any finite higher
+photon moment, relative L2 norm or exponential tail is hidden in L2/L3.
+The precise supplied tail law is stronger than arbitrary finite energy.
+Actual equal input heat T remains part of the result, with fixed sources
+and gain before T grows.
+
+## 2. Exact radial representation and notation
+
+As in the separate thermal-mixture notes, the coherent amplitude at heat
+t has squared-radius density
+
+    h_t(r)=E[(t+R)^(-1) exp(-r/(t+R))],
+    q_t(r)=(t+a)^(-1) exp(-r/(t+a)).
+
+An atom at R=0 is permitted. For r>0 define h_0(r) by the same mixture
+with t=0, assigning the R=0 atom zero density away from the origin. It is
+ONLY a remote-tail comparison density; it need not integrate to one.
+
+Set y=r/t, H_t(y)=t h_t(ty), Q_t(y)=t q_t(ty). For normalized heated
+densities their classical KL is the integral of
+
+    Phi(h,q)=h ln(h/q)-h+q>=0.
+
+Finite a bounds this KL by convexity of Gaussian comparisons. No global
+chi-squared or difference of infinite entropies is used. Below l denotes
+ln t, and set
+
+    Y=l+(p+2)ln l, X=tY.                               L4
+
+Thus ln X=l+ln l+o(1), while exp(Y)=t l^(p+2).
+
+## 3. All pre-crossover entropy is smaller than the required second term
+
+Fix delta in(0,1), with c=1/(1+delta)>1/2. Split R at delta t. L1 gives
+
+    P(R>delta t)=O(t^-1 l^-p),
+    E[R 1_(R>delta t)]=O(l^(1-p)),
+    E[R^2 1_(R<=delta t)]=O(t l^-p).
+
+The last bound follows by integrating the truncated second moment of L1;
+its contribution below any fixed cutoff is harmless. Expand
+k_x(y)=(1+x)^(-1)e^(-y/(1+x)) through its FIRST order on 0<=x<=delta.
+The second derivative is bounded by C(1+y)^2e^-cy. Centering against the
+matching full mean a retains the omitted first-moment correction; it is
+not silently set to zero. The resulting global density error is
+
+    |H_t-Q_t|<=A_t+B_t,
+    A_t=C0 t^-1 l^(1-p)(1+y)^2 e^-cy,
+    B_t=C0 t^-1 l^-p(1+y)^-2.                         L5
+
+For the tail bound B_t, use f_R(v)<=C0 v^-2 l^-p for v>delta t, rescale
+v=tx, and integrate x^-3 exp[-c_delta y/x]. This has the stated y^-2
+decay for y>=1; its total integral bounds y<=1. The reference Taylor
+remainder O(t^-2) is smaller than the displayed A_t for fixed p.
+
+Because Q_t>=c0e^-y, the pointwise inequality Phi(h,q)<=(h-q)^2/q gives
+
+    integral_0^Y Phi(H_t,Q_t)dy
+       <=C t^-2 l^(2-2p)
+          +C t^-2 l^(-2p) e^Y/(1+Y)^4
+       =O(t^-2 l^(2-2p))+O(t^-1 l^(-p-2))
+       =o(t^-1 l^-p).                                 L6
+
+Here integral_0^Y e^y/(1+y)^4 dy<=C e^Y/(1+Y)^4 for large Y, by
+splitting at Y/2. The polynomial factor CANNOT be discarded in this
+borderline estimate. This argument is locally quadratic only; the actual
+source's global chi-squared remains unrestricted.
+
+## 4. Remote heat removal with a controlled entropy error
+
+On r>=X both h_t and h_0 have uniform lower bounds
+c1 r^-2(ln r)^-p, by restricting their defining temperature integral to
+R in[r,2r] and using L1. They are bounded above by a constant times1/t:
+for h_t this follows from R>=0, while h_0(r)<=1/(e r) for r>0 because
+the kernel v^-1e^-r/v is maximized at v=r. The same bounds hold on the
+segment joining them. Since r/t>=ln r for all r>=X and large t,
+
+    |ln(h/q_t)|<=C2 r/t
+
+on that segment. The mean-value theorem for Phi in its first argument
+therefore reduces the entropy replacement error to
+
+    C2 integral_X^infinity (r/t)|h_t(r)-h_0(r)|dr.       L7
+
+Split R into three temperature ranges.
+
+SMALL: R<=t/l^2. The heated kernel is at most
+t^-1exp[-r/(t(1+l^-2))]. The unheated kernel is at most
+(l^2/t)exp[-r l^2/t] for r>=X. The weighted integral L7 of the first is
+O(Y e^-Y)=O(t^-1 l^(-p-1)); the second is still smaller.
+
+MEDIUM: t/l^2<R<=delta t. Its probability is O(t^-1 l^(2-p)). The
+heated kernel is at most t^-1e^-cr/t and the unheated kernel at most
+(delta t)^-1e^-r/(delta t). L7 is therefore
+O(t^-1 l^(2-p)Y e^-cY)=o(t^-1 l^-p).
+
+LARGE: R>delta t. Differentiating the Gaussian variance kernel and using
+R<=R+u<=(1+1/delta)R for 0<=u<=t gives
+
+    |K_(R+t)(r)-K_R(r)|
+      <=C_delta t R^-2(1+r/R)exp[-c_delta r/R].
+
+Integrating L1 yields the uniform bound
+
+    |large_temperature_density_difference|
+       <=C_delta t r^-3(ln r)^-p, r>=X.               L8
+
+To justify the logarithmic weight uniformly, for every fixed epsilon>0
+and R,r>=e one has
+[(ln R)/(ln r)]^-p<=C_epsilon max((R/r)^epsilon,(R/r)^-epsilon).
+For R<=r this follows by writing ln r=ln R+z and bounding
+(1+z)^p by C_epsilon e^(epsilon z); for R>=r it is immediate. After
+R=rv this leaves an integrable v-power times exp(-c_delta/v). Choose
+epsilon<1. L8's weighted integral is
+O(X^-1(ln X)^-p)=O(t^-1 l^(-p-1)).
+
+Combining the three ranges proves
+
+    integral_X^infinity Phi(h_t,q_t)dr
+       =integral_X^infinity Phi(h_0,q_t)dr
+                              +o(t^-1 l^-p).          L9
+
+No unrestricted inverse heat channel or global entropy norm appears here.
+
+## 5. Unheated Mellin coefficient and the exact two-term integral
+
+The positive change of variables z=r/R in the continuous remote part
+gives, from L1,
+
+    h_0(r)=C r^-2 (ln r)^-p
+             [1+e/(ln r)+o(1/ln r)],
+    e=d+p(1-gamma_E).                                  L10
+
+Indeed the leading integrals are integral z e^-z dz=1 and
+integral z e^-z ln z dz=Gamma'(2)=1-gamma_E. Expanding
+[ln(r/z)]^-p gives +p ln z/ln r. The body of the temperature law has
+exponentially small remote kernel. For the tail expansion one can split
+z into [r^-epsilon,r^epsilon] and its two complements, use the displayed
+logarithmic weight bound to dominate z near zero, and the e^-z factor at
+infinity. Shrink epsilon after taking large r, or use a growing log-window
+and the finite integrals of z e^-z(ln z)^2. The o(1/ln R) term in L1 is
+uniform once R exceeds a fixed cutoff. These give a genuine o(1/ln r)
+integrated error, not an assumed formal expansion under a heavy tail.
+
+Let x=ln X=l+ln l+o(1). Direct positive tail integration of L10 gives
+
+    I1=integral_X^infinity r h_0(r)dr
+       =C x^(1-p)/(p-1)+C e x^-p/p+o(x^-p),
+    I0=integral_X^infinity h_0(r)dr
+       ~C X^-1 x^-p,
+    Ilog=integral_X^infinity h_0(r)ln r dr
+       ~C X^-1 x^(1-p).
+
+The classical remote entropy integral decomposes exactly as
+
+    I1/(t+a)+integral_X^infinity h_0[ln h_0+ln(t+a)]dr
+                           -I0+integral_X^infinity q_t dr.
+
+Its last two terms are o(t^-1 l^-p): I0=O(t^-1 l^(-p-1)), and the
+Gaussian tail is e^[-X/(t+a)]=O(t^-1 l^(-p-2)). For the logarithmic
+integral, ln h_0=ln C-2ln r-p ln ln r+O(1/ln r). The ln ln r and constant
+pieces have order o(t^-1 l^-p). The remaining part is
+
+    (ln t)I0-2Ilog
+       =-C t^-1 l^-p+o(t^-1 l^-p),
+
+because (l-2x)/Y->-1. Finally
+
+    x^(1-p)/(p-1)
+       =l^(1-p)/(p-1)-l^-p ln l+o(l^-p).
+
+Substituting e/p-1=d/p-gamma_E yields the complete classical expansion
+in L2. L6 and L9 show that no uncounted core/transition contribution has
+the size of its second term.
+
+## 6. Normal quantum transfer and the two-port cancellation
+
+The actual H_T rho_R is coherent preparation of h_T, while its heterodyne
+law is h_(T+1). The matching thermal reference has q_T and q_(T+1).
+Normal DPI therefore sandwiches its quantum D between the two classical
+quantities. The explicit first two terms in L2 change by
+O(T^-2 (ln T)^(1-p)) under a one-unit time shift, smaller than
+T^-1(ln T)^-p. Both classical remainders are little-o at that scale.
+This proves the quantum L2, without requiring differentiability of an
+unbounded quantum logarithm or a free classical measurement record.
+
+For two independent laws with the same p, scaling R by c>0 changes the
+tail parameters to
+
+    C'=cC, d'=d+p ln c.
+
+Convolution adds C and its weighted second coefficient Cd. To check the
+second-order claim directly, split at h(r)=r/(ln r)^2. In the region
+X<=h(r), the other density at r-X has its two-term expansion uniformly,
+with relative argument error O(1/(ln r)^2). The omitted first-law mass is
+O((ln r)^(2-p)/r)=o(1/ln r). The opposite endpoint is treated identically.
+On the remaining middle, split once more at r/2; the large argument has
+its O(r^-2(ln r)^-p) bound, while the other variable is in a tail of the
+same o(1/ln r) mass. The middle is therefore o of the second-order
+density scale. Bounded atoms in the temperature body are included by
+integrating against its probability law; their pairwise sums stay bounded.
+A fixed temperature shift changes the relative tail only by O(1/r), also
+smaller than1/ln r.
+
+The actual amplifier output is E tau_(sT+W), with
+W=lambda+G R_A+lambda R_B. Its parameters are consequently
+
+    C_W=G C_A+lambda C_B,
+    C_W d_W=G C_A(d_A+p ln G)
+                       +lambda C_B(d_B+p ln lambda).   L11
+
+Use L2 at noise sT for W and at T for the inputs. If F(l)=l^(1-p)/(p-1),
+then F(l+ln s)=F(l)-(ln s)l^-p+o(l^-p). The common F term, the
+ln l+gamma_E terms, and the weighted original d_i terms CANCEL in
+theta d_input,A+phi d_input,B-d_output. The remaining coefficient is
+
+    (ln s)(theta C_A+phi C_B)
+            -theta C_A ln G-phi C_B ln lambda
+       =-theta C_A ln theta-phi C_B ln phi>0.
+
+The matching references are thermal, so their Gaussian EPnI baseline is
+exactly zero. The entropy-target derivatives are theta,phi+O(1/T), and
+its Hessian is bounded as in independently reconstructed d0e95b06...
+Sections3,5/W17 receipt52e1a998.... Their derivative error and the square
+of the entropy defects are both o(T^-1(ln T)^-p). This proves the stated
+candidate L3 for every sufficiently large finite T at the fixed sources.
+
+## 7. Explicit source and current boundaries
+
+For example take tail density 1/[r^2(ln r)^p] on r>=e, p>1, and put
+all remaining probability at R=0. Its tail probability is
+J_p=integral_1^infinity e^-y y^-p dy<e^-1, so this is a normalized positive
+law. Its mean is exactly1/(p-1). Its photon moment1+epsilon is infinite
+for every epsilon>0: conditional thermal moments of that order dominate
+R^(1+epsilon) by Jensen. It has C=1,d=0 and supplies an explicit finite-
+energy family outside every earlier finite-high-moment premise.
+
+This note does not prove the result for arbitrary slowly varying tails,
+unequal logarithmic exponents between the ports, or general finite-energy
+states. Its two-term tail certificate is supplied, not inferred from finite
+data. No source-uniform or useful acquired threshold is given. Real H_T
+changes each input and adds T photons; the states here are already classical
+unflagged thermal/coherent mixtures. Temperature/amplitude records, source
+factories, pumping, calibration, precision, entropy acquisition, disposal
+and reset have not been acquired or implemented. No apparatus or public
+claim was produced.
+
+Full fresh criticism is required, especially for L5's retained mean-tail
+term, the polynomial factor in L6, the uniform three-scale heat-removal
+argument, L10's second logarithmic Mellin coefficient, and L11's
+second-order convolution. Generic Mellin/regular-variation/DPI tools and
+classical entropy asymptotics have prior literature. Exact historical
+priority remains UNKNOWN; internal derivation is not external acceptance.
+General UNHEATED finite-energy independent-input EPnI is NOT_ACHIEVED.

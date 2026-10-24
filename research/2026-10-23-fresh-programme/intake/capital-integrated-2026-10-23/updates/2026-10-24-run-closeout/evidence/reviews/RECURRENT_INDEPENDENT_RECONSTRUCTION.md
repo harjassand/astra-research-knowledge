@@ -1,0 +1,298 @@
+# Fresh recurrent-device capacity audit
+
+23 October 2026. Worker w38. All completed inventory work is preserved.
+The recurrent device and weighted-transfer mechanism were reconstructed from
+the pinned source before the peer proof was read. No peer agreement is a
+premise of this audit.
+
+Audited versions:
+
+- w49 original `PROOF.txt` / preserved `PROOF_V1.txt`, SHA256
+  `61b13a8edc80e6184dfb27b7b52ee58ad7a5c73d72a403732cb29ac63ddcda3c`.
+- w49 integrated `PROOF_V3.txt`, SHA256
+  `8292a91a01ec9e5627ef277b9a71903da41ec248e29db6af2ac11c46075504f4`.
+
+Source revision: `e606bfc587c76bdcae8b8fa3ec33e721efa2fbac`.
+Governing device file:
+`work/astra/research/2026-10-23-scientific-cycles/cycle-11/pro1/ENTROPY_DRIFT_AND_DEPTH_COST.tex`,
+SHA256 `3b2ed30a984831cdaece06f60c0ef7e770dca7e8d76dbc8e448fcb10823007a3`.
+The actual source's finite-error code contract and the Cycle10 homogeneous
+increment proof were read directly. The inherited lower coding theorem is
+not re-proved or executed by this upper-bound audit.
+
+## 1. Device, covariance and Choi blocks
+
+The bath basis is (s,w), s=0,1 and w a finite binary-color word. L=|w|.
+S_j prepends j; R exchanges the two vacuum seeds and is zero elsewhere.
+The port is a qutrit, with charge q=diag(0,1,1), and
+
+    U=[[R,S_1,S_2],[S_1*,0,0],[S_2*,0,0]],
+    V=sqrt(a)U+i sqrt(b)I, a=1-b, b=beta^2,
+    W_N=V_(N,E)...V_(1,E).
+
+U is a self-adjoint involution. Depth plus total port charge is conserved,
+including the original root exchange R. All calls use one bath; no reset,
+return condition or finite final-depth condition is added.
+
+Let sigma_H be uniform on the r_H=2^(H+1) bath states of depth H.
+The supplied initializer is exactly
+
+    tau_pi=sum_(H>=0) p_H sigma_H, p_H=(2/3)3^(-H).
+
+For a fixed shell the input/output channel N_H is charge covariant because
+[sigma_H,L]=0. For the unnormalized Choi matrix J_H,
+
+    [J_H,-Q_A^T+Q_B]=0.
+
+Let Delta_B pinch the N+1 total output-charge sectors. Then
+
+    J_H <= (N+1)Delta_B(J_H),
+    Delta_B(J_H)=sum_(q,o) J_(H;q,o).                        (R1)
+
+The latter are the embedded Choi matrices of
+
+    X -> P_o N_H(P_q X P_q) P_o.
+
+Output pinching sets o=o', and covariance forces q=q'. This preserves
+control of coherent inputs through a polynomial CP-order loss. It does
+not assume that a reliable code remains reliable after physical pinching.
+
+## 2. Common Kraus representation and the purifier factor
+
+Purify sigma_H in an untouched F_H of dimension r_H. Apply W_N to that
+purification and the UNNORMALIZED vector sum_(i in charge q)|i>_R|i>_A,
+and project the output onto charge o. This produces one pure, generally
+unnormalized vector Xi_(H;q,o).
+
+Its reductions J_(H;q,o) on R B and Omega_(H;q,o) on E F_H have identical
+nonzero spectra. Thus
+
+    ||J_(H;q,o)|| = ||Omega_(H;q,o)||.
+
+For a positive X on E tensor C^r, finite-factor pinching gives
+
+    X <= r (Tr_F X) tensor I_F.
+
+This is valid even for infinite-dimensional E. Consequently
+
+    ||J_(H;q,o)|| <= r_H ||omega_(H;q,o)||,
+    omega_(H;q,o)=Tr_F Omega_(H;q,o).                       (R2)
+
+There is no normalization by dim(P_q). The physical input in omega is
+P_q, not P_q/d_q. The r_H purifier factor is necessary. All bath paths
+from this fixed shell in N calls have depth at most H+N, so the individual
+calculation is finite without changing the infinite device.
+
+Conservation also gives exact final bath support
+
+    omega_(H;q,o) supported at l=H+q-o,
+    J_(H;q,o)=0 if l<0.                                   (R3)
+
+## 3. Weighted CP transfer, without a classical-noise premise
+
+The port matrix elements of V are
+
+    K_00=sqrt(a)R+i sqrt(b)I,
+    K_j0=sqrt(a)S_j*, K_0j=sqrt(a)S_j,
+    K_jj=i sqrt(b)I, j=1,2.
+
+For t>0 define the normal CP map
+
+    M_t(X)=sum_(i,o) t^(q_i+q_o) K_oi X K_oi*.
+
+This finite Kraus formula acts on bounded bath operators as well as on
+trace-class ones. Exact sequential expansion on the same evolving bath
+gives
+
+    M_t^N(sigma_H)=sum_(q,o)t^(q+o)omega_(H;q,o).            (R4)
+
+Every summand is positive. No coherent history has been deleted, and no
+physical U/I mixture is assumed. Each K_00 retains its R/I interference.
+
+For the positive bounded operator psi=2^(-L/2), the interference in
+K_00 psi K_00* cancels because psi commutes with R. Direct evaluation gives
+the particularly useful exact operator identity
+
+    M_t(psi)=g_b(t)psi+a(1-sqrt(2)t)P_0,
+    g_b(t)=2sqrt(2)(1-b)t+b(1+2t^2).                        (R5)
+
+At nonroot vertices the two outward and one inward neighbors contribute
+2sqrt(2)t psi. At either root the actual central exchange and two outward
+edges contribute 1+sqrt(2)t. Therefore M_t(psi)<=g_b(t)psi whenever
+t>=1/sqrt(2). This is an operator inequality, so no diagonality assertion
+about individual omega_(H;q,o) is needed.
+
+Since sigma_H<=psi/[r_H psi(H)], positivity and iteration give
+
+    M_t^N(sigma_H)<=g_b(t)^N psi/[r_H psi(H)].                (R6)
+
+From (R3)-(R4), compress this bound to the fixed final depth and combine
+with (R2). The exact Choi-block domination is
+
+    J_(H;q,o) <= s_(H;q,o) I_(A_q) tensor I_(B_o),
+    s_(H;q,o)=g_b(t)^N t^(-(q+o))2^(-(q-o)/2),               (R7)
+
+when H+q-o>=0. The r_H in (R2) cancels the initial 1/r_H in (R6), rather
+than being omitted. This is the load-bearing treatment of the mixed shell
+and its complete purifier.
+
+The earlier v1 uses the valid positive exact eigenfunction
+(1+(1-1/sqrt(2))L)2^(-L/2), producing a slightly weaker prefactor. The
+simple supersolution above is sufficient and yields a cleaner operator proof.
+
+## 4. Global CP domination
+
+For t>=1/sqrt(2), every nonzero block has q-o>=-H. Hence
+
+    s_(H;q,o)
+      =g_b(t)^N t^(-2o)(t sqrt(2))^(-(q-o))
+      <=g_b(t)^N(t sqrt(2))^H t^(-2o).                     (R8)
+
+The bound is now independent of input charge q. Let
+
+    B_t=sum_o t^(-2o)P_o,
+    Tr B_t=(1+2/t^2)^N.
+
+Sum the orthogonal input charge identities in (R7), extending zero blocks
+by positive terms, and use (R1). This proves the GLOBAL Choi and CP orders
+
+    J_H <=(N+1)g_b(t)^N(t sqrt(2))^H I_A tensor B_t,
+    N_H <=_CP (N+1)g_b(t)^N(t sqrt(2))^H [X->Tr(X)B_t].     (R9)
+
+This avoids paying a separate sum over q after bounding each logical
+reference block. It is the sharper global CP step supplied during this audit.
+
+For 1<=t<3/sqrt(2), average the positive CP order over the actual initializer.
+The scalar sum is exactly
+
+    sum_H p_H(t sqrt(2))^H=2/(3-t sqrt(2)).
+
+The channels have finite input/output spaces; their Choi mixture converges
+in trace norm. The dominating scalar sum is finite. Thus
+
+    N_N^(tau_pi) <=_CP A_N(t) R_(zeta_t),
+    A_N(t)=2(N+1)h_b(t)^N/(3-t sqrt(2)),
+    h_b(t)=g_b(t)(1+2/t^2), zeta_t=B_t/Tr B_t.               (R10)
+
+This analytic initializer decomposition does not measure H or dephase the
+actual complementary purifier. It bounds the output channel by linearity;
+the actual complete purifier is retained again in the leakage identity below.
+
+At t=sqrt(2),
+
+    g_b=4+b, h_b=8+2b,
+    zeta_t=diag(1/2,1/4,1/4)^tensor N,
+    A_N=2(N+1)(8+2b)^N.                                   (R11)
+
+## 5. Arbitrary CPTP encoders and the K-squared factor
+
+For an arbitrary CPTP encoder of a logical K-dimensional system, let
+omega_RA=(id_R tensor encoder)(Phi_K). Its untouched logical reference
+is exactly I_R/K, including when the encoder retains or discards local
+ancillas. Apply (R10) and any fixed CPTP decoder D:
+
+    decoded omega <= A_N(t) (I_R/K) tensor D(zeta_t).
+
+Because Tr D(zeta_t)=1,
+
+    Tr Phi_K[(I_R/K)tensor D(zeta_t)] = 1/K^2.
+
+Therefore the entanglement fidelity obeys
+
+    F_N<=min{1,A_N(t)/K^2}.                                (R12)
+
+Both factors K are essential and justified: one comes from the uniform
+logical reference and one from Bell overlap. The proof never replaces the
+actual logical reference by a purification of the physical input. It does
+not require an isometric encoder, memoryless calls, small bath entropy or
+bounded bath depth. No failure branch or outcome is postselected away.
+
+## 6. All-input information and the actual complete complement
+
+For any finite reference R and any physical input rho_RA, (R10) implies
+
+    omega_RB <= A_N(t) rho_R tensor zeta_t.
+
+Log monotonicity on supports gives
+
+    D_2(omega_RB || rho_R tensor zeta_t)<=log_2 A_N(t).
+
+The relative entropy equals I(R:B)+D_2(omega_B||zeta_t), so
+
+    I(R:B)<=log_2 A_N(t).                                  (R13)
+
+If R purifies the physical input rho, then
+
+    Ic=I(R:B)-S_2(rho) <=log_2 A_N(t)-S_2(rho),
+    Ic<=S_2(rho)
+
+by Araki-Lieb. Consequently Ic<=log_2 A_N(t)/2 for EVERY input. With the
+actual initial bath purifier F0, the full R B E F0 state is pure and
+
+    I(R:E F0)=2S_2(rho)-I(R:B)
+       >=[2S_2(rho)-log_2 A_N(t)]_+.                        (R14)
+
+All entropies in these statements are finite: R and B are finite and the
+reduction E F0 has Schmidt rank at most dim(R)dim(B). Individual E or F0
+dimensions need not be finite. Pure push has S_2(rho)=0 and therefore
+does not contradict this reference-sensitive lower bound.
+
+## 7. Capacity, strong converse and fixed normal extensions
+
+For t=sqrt(2), if log_2 K_N/N >= C_up(b)+delta, where
+
+    C_up(b)=.5 log_2(8+2b)
+           =1.5+.5 log_2(1+b/4),
+
+then (R12) gives F_N<=2(N+1)2^(-2delta N)->0. Reliable full-diamond
+transmission requires F_N->1. Thus the unrestricted no-feedback upper rate
+is C_up(b), and rates above this upper ceiling have an exponential fidelity
+strong converse for the actual tau_pi.
+
+For an arbitrary fixed normal independent tau, choose the finite coordinate
+projection P_(<=M) and tau_M=P_(<=M) tau P_(<=M). Since tau_M<=P_(<=M)
+and tau_pi has strictly positive diagonal entries on these coordinates,
+tau_M<=c_M tau_pi for some finite c_M independent of N. A code's Bell
+overlap is a positive initializer-linear functional bounded by Tr on positive
+operators. Hence
+
+    F_N(tau)<=c_M F_N(tau_pi)+||tau-tau_M||_1.
+
+First take N->infinity with M fixed; then M->infinity. Normality implies
+the trace-norm tail tends to zero, even for coherent tau or infinite mean
+depth. The same ceiling and pointwise strong-converse limit therefore hold
+for every fixed normal initializer. There is no uniform all-normal tail
+modulus or exponential estimate for an arbitrary heavy-tailed initializer.
+
+Equivalently one may use tau_M<=sum_(H<=M)r_H sigma_H and the already
+proved shell bounds. No covariance hypothesis is imposed on coherent tau;
+it is needed only for the comparison shells, where it is true.
+
+The inherited source claims a lower 1.5+(ln2)/2^20 beta^2 for small beta,
+with one initializer-independent code reliable pointwise for every normal
+tau. IF that lower theorem is valid, combining it with this independent
+upper closes the unrestricted excess order to Theta(beta^2). The exact
+coefficient, feedback capacity and implementation efficiency remain open.
+
+## 8. Audit verdict, finite evidence and status
+
+No material objection was found in w49 v1 or integrated v3 at the hashes
+above. In particular the common Kraus representation, unnormalized Choi
+input, r_H factor, charge pinching, coherent histories, K^2 denominator,
+actual root, exact initializer sum and fixed-normal extension are valid.
+
+`check_recurrent.py` independently evaluates coherent complex path amplitudes
+of the actual V, then forms Choi and common-purifier Gram matrices. Thirty
+cases cover N=1,2,3; initial depths H=0,1,2; and beta=0,.1,sqrt(.3),1.
+It checks spectra, charge supports, the purifier inequality, weighted
+transfer, the simple root supersolution and direct global CP PSD order.
+For the full CP matrices N<=2; N=3 uses charge-block matrices. Every path
+reachable in N calls is present, so no artificial top reflection is used.
+These are complex-double finite admissions, not a universal proof or a
+quantum code execution. Raw results are in `recurrent_raw_checks.json`.
+
+The new result is device-specific mathematical work using established Choi,
+pinching, CP-order, entropy and Bell-test methods. Targeted primary reading
+does not establish historical priority. External proof acceptance, practical
+hardware implementation, efficient coding and technological advantage remain
+unestablished. The mission is not certified by this internal audit.

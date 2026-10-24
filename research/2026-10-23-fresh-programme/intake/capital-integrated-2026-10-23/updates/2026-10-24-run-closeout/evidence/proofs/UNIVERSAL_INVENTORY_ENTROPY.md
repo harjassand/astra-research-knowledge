@@ -1,0 +1,153 @@
+# Every growing-entropy prior has leading inventory-loss coefficient one
+
+W18 independent continuation, 23 October 2026. Built after root's alignment-mixture proof by replacing its full-grid partitions with support-only partitions and then choosing classes by surprisal scale. Internal proof candidate; fresh review requested. Historical novelty and external correctness UNKNOWN.
+
+## Governing source and limits
+
+Use the unchanged pinned Cycle11 Ultra source and complete residual/output contract in PROOF.md Section1, with fixed finite D,L>=2, known p on K in {1,...,L}, zeros permitted. Let
+
+rho_p=sum_k p_k sigma_k,
+sigma_k=Phi_D^k tensor nu_D^(L-k),
+B=EK lnD, H=H(K), C_p=H(K|Y)<=c(D^-2),
+S(rho_p)=2(L-EK)lnD+H-C_p.
+
+The actual K clocks, old memory and mathematical Bell label Y remain inaccessible. No entangled aid, shared initial inventory record or physical offset is supplied. First take r iid complete queues to infinity at each fixed source; only afterwards vary priors and L. Nothing below specifies a receiver or modifies the actual source.
+
+For t>=2 let zeta_t=(I+t Phi_t)/[t(t+1)], a separable full-rank isotropic boundary state. A pure t-level pair contributes ln t to cross entropy against zeta_t; white noise contributes 2ln t+A_t, where
+
+A_t=(1-t^-2)ln(t+1)-ln t, 0<A_t<=1/t.
+
+Empty blocks are omitted and contribute zero.
+
+## 1. General support-class alignment lemma
+
+Partition the positive support of p into finitely many nonempty classes S_t. T=t is the deterministic class of K. For each class choose any integer g_t>=1, and let S=K mod g_T. Write a=(t,s) and w_a=Pr(T=t,S=s). Ignore w_a=0. Let
+
+S_a={k in S_t:k mod g_t=s}={b_1<...<b_m}.
+
+Define a partition of the ORIGINAL sites by endpoints
+
+0,b_1,b_2,...,b_m,L,
+
+removing a repeated final endpoint when b_m=L. Its nonempty segment lengths are b_1, b_2-b_1,...,b_m-b_(m-1), L-b_m. On every length-h segment put zeta_(D^h), after local register identification. Let their product be tau_a; it is a fixed separable full-rank state on the original registers. Finally set
+
+tau=sum_(a:w_a>0) w_a tau_a.
+
+For an actual component sigma_k, choose its a=(T(k),k modg_T). Then k is one of these partition endpoints. Every earlier segment is entirely Bell and every later segment is entirely white. The initial segment is never white, because k>=b_1. Every white segment between successive support endpoints has length a positive multiple of g_t, hence at least g_t. There is only one possible final white segment, of arbitrary positive length and thus dimension at least D.
+
+Writing m_t=|S_t|, this proves the per-component cross-entropy bound
+
+-Tr(sigma_k ln tau_a)
+ <=(2L-k)lnD + m_t D^(-g_t)+1/D.                              (1)
+
+The count m_t is a safe overestimate: the exact inter-atom contribution contains only later endpoints in this same residue subclass, and a final-tail term A_(D^(L-b_m)). The first pure segment may be arbitrarily long and has no excess penalty. This is why the bound is independent of support diameter.
+
+Operator monotonicity of log and tau>=w_a tau_a give
+
+-Tr(sigma_k ln tau)<=-ln w_a-Tr(sigma_k ln tau_a).
+
+Average in the ACTUAL p and subtract the actual source entropy. The general finite-dimensional comparator inequality is
+
+D(rho_p||tau)
+ <= B-H+C_p+H(T,S)+E[m_T D^(-g_T)]+1/D.                       (2)
+
+The more precise version replaces the last two tail terms by the expected exact sum of A_t over white segments. This is a proof that a SINGLE fixed tau has the stated relative entropy. Neither T nor S is prepared or observed; selecting a comparison term per k is only an operator bound on tau.
+
+Choose
+
+g_t=max{1,ceil(log_D m_t)}.
+
+Then D^(g_t)>=m_t, and
+
+D(rho_p||tau)<=B-H+C_p+H(T)+E[ln g_T]+1+1/D.                  (3)
+
+This also handles singleton classes: g_t=1 and their residue entropy is zero. Finite support means all mixtures, partitions and registers remain finite. Their descriptions may be enormous; no construction efficiency is claimed.
+
+## 2. Surprisal-scale classes bound the alignment cost by log entropy
+
+For each positive atom set
+
+a_k=1-ln p_k>=1,
+T(k)=floor(log_2 a_k) in {0,1,...}.
+
+Thus 2^t<=1-ln p_k<2^(t+1) on class t, so
+
+p_k>exp(1-2^(t+1)),
+m_t<exp(2^(t+1)-1).
+
+Consequently the integer choice in (3) satisfies
+
+g_t<=1+(ln m_t)/(ln D)
+    <=2^t (1+2/lnD),
+ln g_t<=t ln2+C_D^(grid),
+C_D^(grid)=ln(1+2/lnD).                                      (4)
+
+The bound remains valid for m_t=1 because g_t=1. Also
+
+E[2^T]<=E[1-ln p_K]=1+H.                                    (5)
+
+Introduce an AUXILIARY MATHEMATICAL integer V, conditionally uniform on the disjoint sets
+
+V|T=t uniform on {2^t,2^t+1,...,2^(t+1)-1}.
+
+This dither is only an entropy proof device, not physical randomness. T=floor(log_2 V), so
+
+H(V)=H(T)+E[T]ln2.
+
+Its conditional mean is (3*2^t-1)/2, hence
+
+E[V-1]=(3/2)(E[2^T]-1)<=(3/2)H.                             (6)
+
+For a nonnegative integer with mean at most m, maximum entropy is the geometric entropy
+
+h_geom(m)=(m+1)ln(m+1)-m ln m, h_geom(0)=0.
+
+Therefore
+
+H(T)+E[T]ln2<=h_geom(3H/2).                                 (7)
+
+Combining (3),(4),(7) establishes the explicit UNIVERSAL comparator bound
+
+D(rho_p||tau)
+ <= B-H+C_p+h_geom(3H/2)+ln(1+2/lnD)+1+1/D.                  (8)
+
+Every term is finite. For H>0,
+h_geom(3H/2)<=ln(1+3H/2)+1<=ln(H+1)+ln(3/2)+1.
+
+Thus a coarser display is
+
+D(rho_p||tau)<=B-H+ln(H+1)+C_D,                              (9)
+C_D=c(D^-2)+ln(1+2/lnD)+2+1/D+ln(3/2).
+
+The constant is explicit and deliberately not optimized. The exact useful bound is (2) with its actually computed class/residue entropy and tail term, retaining C_p or its geometric ceiling. Equation (9) does not pretend that finite H small corrections are sharp.
+
+## 3. Finite-error operational consequence and all-prior leading law
+
+Apply the SAME arbitrary admitted TP finite LOCC receiver to rho_p^r and tau^r with the same independent local product apparatus. Tau is separable, so its finite Bell output overlap is <=1/N. Actual complete-output error epsilon<1/2 implies actual Bell overlap >=1-epsilon. Relative entropy data processing and the binary Bell test give
+
+(1-epsilon)lnN<=r D(rho_p||tau)+h2(epsilon).                   (10)
+
+In particular the right side may use either exact bound (2), explicit (8), or coarse (9). Every branch keeps the same rank N and all failures are included. No source-class postselection, clock access or supplied record has entered. Normal local workspaces are handled directly by separability preservation to a finite output or the pinned finite-tree compression at fixed N.
+
+At the fixed-source reliable limit, R(p)<=min{B,D(rho_p||tau)}. The inherited original-D receiver gives R(p)>=B-H-kappa_D with its full actual-residual lift. Hence
+
+max{0,H-C_p-h_geom(3H/2)-ln(1+2/lnD)-1-1/D}
+ <= Delta=B-R(p) <= H+kappa_D,                               (11)
+
+and in the simpler form
+
+max{0,H-ln(H+1)-C_D} <= Delta <= H+kappa_D.                    (12)
+
+For EVERY family of finite priors with fixed original D and H(K)->infinity,
+
+Delta/H -> 1.                                               (13)
+
+There is no support-diameter, spacing, residue-concentration or H/lnlnL condition. This strengthens the earlier sparse and root contiguous-uniform leading-coefficient results. It leaves an additive O_D(ln H) converse gap versus O_D(1) receiver gap. It does not establish Delta>=H-O_D(1), an efficient receiver, source formation, a physical device, novelty or mission achievement. Near H=0 the displayed lower bound is simply zero; the existing rare-atom counterexample Delta/H->0 remains consistent.
+
+## 4. Costs, decisive falsifiers and provenance
+
+Supplied: the pinned source law and a known explicit finite prior p. Acquired: this derivation and finite exact/scalar checks only. No experimental input, additional access or initial resource is assumed. The proof representation may have one comparator per positive class/residue pair, each with as many blocks as that subclass has atoms. If a prior list is explicit, class assignment requires logarithms and integer decisions on p_k, sorting positions is inherited or O(m log m), and partition descriptions use O(m) total endpoint occurrences. Exact threshold equality in floor(log_2(1-ln p_k)) may require certified arithmetic; the theorem is an existence proof, and one may choose either neighboring valid class under a padded convention with adjusted constants if numerical implementation is desired. No finite-bit implementation or polynomial quantum operation follows.
+
+The entropy proof auxiliary V has enormous support in a tiny-probability class. It is never constructed, sampled, supplied or stored; its sole role is to bound H(T)+E[T]ln2 analytically. Every actual comparator is still finite because the source support is finite.
+
+Falsifiers: (i) a selected K is not a partition boundary; (ii) a white inter-atom segment has length below g_t; (iii) source entropy or cross entropy misses a block; (iv) log domination is invalid; (v) entropy of dyadic dither or its mean is miscomputed; (vi) the original-D lower receiver cannot handle this prior. Fresh review is requested specifically on these points. Standard isotropic separability and relative-entropy testing are established methods; source-specific historical novelty remains UNKNOWN.

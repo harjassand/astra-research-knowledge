@@ -1,0 +1,133 @@
+# Fresh W26 audit of the original-face-once output-line compiler
+
+23 October2026. Verdict: PASS for the exact theorem scope below; no
+mathematical gap found. This is a fresh critic's reconstruction after
+receiving the mechanism and reading the full frozen W43 proof. It is not
+a claim that W26 independently invented the output-line mechanism.
+External expert acceptance and priority remain UNKNOWN.
+
+## Frozen target and scope
+
+Reviewed W43 `direction_compiler/OUTPUT_LINE_COMPILER.md`, SHA256
+`d7b59df8e0d3c9b878122d09c42c98b717665de2111bd6c1770d544a8036736d`.
+The producer proof/source/receipts were not edited or executed.
+
+The theorem covers finite actual continuous P1 maps with rank<=1 on
+every positive physical source simplex: affine-periodic on any flat
+n-torus, or full affine Dirichlet trace on the entire boundary of a
+bounded polyhedral domain, including all holes. Every original physical
+simplex occurs exactly once, with its original positive normalized volume.
+All finite input/output dimensions are covered. A common matrix shift
+may be added back; the ACTUAL translated gradients may have rank2.
+It does not cover arbitrary rank2 fields or arbitrary abstract
+determinant-balanced atomic laws.
+
+## Load-bearing analytical checks
+
+1. Every nonzero face gradient F has a unique input covector after
+   fixing ONE normalization of its one-dimensional output range L.
+   Opposite vectors normalize to the same line. Zero gradients form a
+   separate harmless group. Source connectivity of a group is unnecessary.
+
+2. Across a common source facet, the Hadamard tangential trace identity
+   holds for ALL tangents. For different output lines the common trace
+   lies in their zero intersection, so BOTH scalar tangential traces
+   vanish. For the same line the fixed normalization gives equality.
+   This justifies zero-extension of each scalar covector over every
+   other output group. Its distributional first derivative has only
+   facet terms; no extra codimension2 measure is created at a junction.
+   Vanishing antisymmetric normal/tangential coefficients prove the
+   scalar covector field is closed, not merely elementwise curl-free.
+
+3. On R^n a bounded closed covector has a global locally Lipschitz
+   primitive. Here it may be constructed from the continuous affine
+   local potentials by path integration; the distributional closedness
+   and simple connectivity supply consistency. For a periodic field,
+   primitive increments under lattice translations are constants.
+   Subtracting the unique affine period covector gives a periodic
+   Lipschitz P1 potential. Its gradient mean is zero by paired-boundary
+   flux cancellation, valid for skew lattices as well as a square one.
+
+4. Distinct scalar group fields have disjoint supports. Every pairwise
+   column minor is therefore zero pointwise. The null-minor identity
+   equates its physical average with the same minor of their means:
+   linear gradient terms average0, and the quadratic term is a divergence.
+   For P1 potentials, facet fluxes cancel because the potentials are
+   continuous and gradient jumps are normal; periodic boundary fluxes
+   cancel in pairs. Thus all nonzero mean INPUT covectors are proportional.
+   This remains true in all n by applying every column pair, and n=1 is
+   immediate. No unproved smoothness, target graph, or monodromy step is
+   being substituted for this argument.
+
+5. For Dirichlet data, extending by the SAME affine map across the whole
+   complement, including every hole, preserves continuity, rank<=1 and
+   the facet argument. Every group except the affine boundary line is
+   compactly supported and closed in ALL R^n. For n>=2 its global
+   primitive is constant outside a sufficiently large ball, since that
+   exterior is connected. Subtracting the constant makes the primitive
+   compactly supported. Distributional integration by parts then gives
+   zero integral of its gradient. Constants in bounded holes do not
+   affect this conclusion. For n=1 every jump is rank<=1 directly.
+   Thus every nonboundary-line group mean is0, with no simple-connectivity
+   requirement on the source domain.
+
+6. The OUTER mean law is proved rank-one compatible before substitution:
+   common input line periodically, common boundary output line for
+   Dirichlet data. Internally all faces of a group have one common output
+   line. Any binary averaging is legal in each part. Substitution uses
+   matching physical masses/means. The groups partition the ORIGINAL
+   physical simplices, proving exactly F leaves and F-1 splits, with no
+   hidden face repetitions, geometric cuts or terminal replacements.
+   Every state is a convex combination of the original ACTUAL gradients;
+   adding the common matrix shift preserves this fact and all jumps.
+
+All six steps hold for the universal stated quantifiers. The finite
+checks below are diagnostic support and implementation criticism, not
+a substitute for those arguments.
+
+## Independent physical replay
+
+Own stdlib-only `independent.py` imports NO producer code. It reads only
+the six frozen actual X/U/F/tree fixture JSON files. Independent
+permutation determinants and Cramer's rule reconstruct all physical
+simplex gradients/volumes in source dimensions2 and3, rather than using
+the producer's Gaussian-elimination inverse. It reconstructs the rank1
+residual field, actual translated field, output lines, scalar currents,
+all source facet classes including skew periodic pairing, and every
+zero-extended scalar tangential trace.
+
+For four affine-periodic fixtures and two annular fixtures in output
+dimensions2/4, all1008 physical simplices and1002 binary jumps PASS:
+each original physical simplex occurs exactly once with its actual
+normalized volume, every row/column minor of every actual jump is0,
+every root is0 after the common translation, and every state stays
+within the actual terminal maximum norm. There are428 ACTUAL rank2
+faces, so the translation corollary is exercised. The scalar extension
+checks include both sides of each unlike-line facet and all32 affine
+hole/outer boundary facets in each annular input. Every pair of periodic
+scalar current means is exactly proportional; every nonboundary-line
+Dirichlet current is exactly0. Recorded runtime about2.32s.
+
+Every input byte hash and detailed control count is recorded in
+`receipt.json`. Raw inputs are supplied mathematical fixtures, not
+physical observations. No producer main was run, so pinned receipts
+and elapsed-time fields are unchanged.
+
+## Consequence and limits
+
+This strengthens the previously reviewed graph-cover compiler from
+finite physical cell occurrences to EXACT original-face-once. In the
+two-output descended condition det(Du)=D:Du with singular D, subtract
+C=cof(D). Then det(Du-C)=det(D)=0 and the shifted affine boundary has
+rank<=1. Therefore the singular-D branch of W26's earlier projection
+classification has F leaves on ANY admitted source mesh, including13
+on N9, rather than the older coarse1118 occurrence bound. The frozen
+older sources remain valid and byte-identical; this is a separately
+attributed sharpening from W43/root's output-line mechanism.
+
+For nonsingular D the translated residual determinant is nonzero, so
+this theorem does not apply; the earlier N9 three-root20/22/20 trees
+remain separate and require repeated physical atoms. No generic N9
+six-free-vector theorem or Morrey resolution follows. Classical
+Hadamard/closed-form/null-Lagrangian ingredients and rank1-factorization
+prior are retained in the producer source. No novelty claim is made.

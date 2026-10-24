@@ -1,0 +1,437 @@
+# Paid compact-program transport and memory-aware reuse: final candidate
+
+W67, 24 October 2026. This is the final current analysis under the user's
+instruction to finish existing work and drain workers. **Fresh criticism
+is pending.** It is not covered by W49's completed source/band/native/joint
+review835ccc6e. Earlier frozen programs, rows, proofs and reviews are
+unchanged. No apparatus, table, good code, phase list or forward message
+was executed. Priority UNKNOWN; practical advantage NOT_ESTABLISHED;
+physical validation NOT_PERFORMED; mission NOT_ACHIEVED.
+
+The proposed route uses a paid classical prefix to send a source table
+and ideal recipe randomness once. It regenerates native phases locally
+and repeats a more accurate version of the complete joint code. The
+error proof uses an ideal-past/actual-future hybrid. It assumes neither
+independent failures nor a fresh physical word between code blocks.
+The selected exact guards pass, but compact-recipe sufficiency, the
+two-party completion binding and the full asymptotic resource argument
+below still need independent criticism. An equally informed ordinary
+baseline is entitled to the same transport and compilation operations.
+
+## P1. Contract and reviewed input
+
+The physical device is the exact, fixed recurrent family of the pinned
+corpus e606bfc587c76bdcae8b8fa3ec33e721efa2fbac. Write b=beta^2 and
+a=1-b. Both parties know a rational public endpoint 0<b0<=1/65536,
+and actual fixed b belongs to [b0,4b0]. No party receives an actual b
+label, bath inverse, bath measurement or feedback wire. Alice has the
+known local coherent finite-gate/source/compiler operations, Bob has
+the corresponding local operations, and the initial word state has the
+same supplied tail promise as the reviewed construction. The selected
+rows use its geometric-tail example. The initial physical bath state is
+independent of the unknown quantum message as required there. This is
+not a uniform finite-onset statement over every normal word state.
+
+Frozen source0dcf43ab and integrationacad93ee give a fixed reference
+source using k=floor[1/(10b0)], with G=1/74400, Kappa=1/96000 and
+c_chi=1/100000. Its source entropy, full actual-parameter inward operator
+drift, continuum/common-KL event and native access were separately read
+and reconstructed by W49 at review835ccc6e. Their block finite policy
+at error z_b, confidence eta_b has logical width ell and full forward
+cost N, including leading and terminal zeros, with
+
+    ell/N >= 3/2+G/(16k).                           (P1)
+
+The primitive50adce51, also covered by that review, compares the
+VACUUM-WORD input channel on logical L and physical seed S jointly to
+
+    id_L tensor Phi_(P,theta) tensor |vac><vac|,
+
+in diamond norm at most z_b, for every joint L,S,reference input. One
+fixed Phi is used for a fixed program P and actual theta. It is generally
+a phase-changing seed Schur channel, not seed identity. The same good
+program event is uniform on the supplied band and on all these inputs.
+Bad program seeds give total CPTP circuits, without a code guarantee.
+
+W49's verdict assumes public program INSTALLATION. It does not establish
+any assertion in P2--P9 about paid program transport or repeated use.
+Root supplied the source-parameter proposal; W56/source/access and
+generic concentration, design, functional-calculus and recovery work
+retain their prior attribution. No general recovery novelty is claimed.
+
+## P2. A finite description shorter than the native output lists
+
+Let C be the fixed upper number of source-table cells, E=2kt, and let
+B_cdf and B_stat be the explicit integers in the copied block policy.
+All reference parameters, cell labels/order, algorithm versions, caps,
+error targets, number of uses and scalar-policy search are public fixed
+protocol information before any unknown message. They have finite
+descriptions and their local computation is paid. They are not an
+arbitrary message-dependent advice string.
+
+For each table cell Alice sends:
+
+* its exact finite normalized dyadic sampling weight integer, in
+  0..2^B_cdf, using B_cdf+1 bits;
+* its chosen logical width ell_i, using B_stat bits;
+* its retained-cell flag, using one bit.
+
+Indeed C>kt and eta_b<=1 imply
+B_stat=ceil log2(64C/eta_b)+1 >= ceil log2(E+1). Every ell_i<=E fits.
+The integers sum to 2^B_cdf on a successful valid table. This describes
+the EXACT rounded cell sampler, rather than a real-valued probability
+oracle. Bob does not need Alice's raw trial records or the unnormalized
+probability estimates. The cell's positive filter A_(q,j), charge
+embedding and fixed conservative gap depend on public reference data;
+the selected K_i=2^ell_i and sampler law are the only table-dependent
+data needed thereafter. Retention/width correctness is a random-program
+event, not something Bob certifies.
+
+The charged bound is therefore
+
+    L_table=C(B_cdf+B_stat+2).
+
+Alice additionally sends all finite IDEAL recipe randomness counted in
+the policy: capped cell-sequence seeds, inner design/twirl seeds, the
+outer design seed and fixed pure-prefix bits. The two width attempts
+are capped; no rejection loop is transmitted implicitly. Let their sum
+be L_seed. Pad the entire representation to the public cap
+
+    L=1+L_table+L_seed.                              (P2)
+
+The extra bit records the bounded program-construction success/default
+choice. A bounded parser checks sizes, weight sum, flag and width ranges,
+charge/rank legality and the already fixed caps. Invalid data select a
+fixed default CPTP operation. Neither a corrupted table nor a bad random
+frame can trigger unbounded search or an uncharged operation. Quantum
+offline sampling trials and their classical processing occur once;
+unrecorded local preparation work is discarded before the message.
+
+Native angle/phase arrays, scalar coefficient arrays and emitted gate
+lists are NOT transported. Each side computes them from this finite
+ideal description at the prescribed operational accuracy. This is an
+algorithmic compression argument, not compression of unknown quantum
+data, a pseudorandom replacement for design seeds or a certified good
+seed. All local construction and output lengths remain charged in P7.
+
+## P3. Why local native completions may differ
+
+The exact good-cell isometry is defined by the unique polar expression
+
+    C_i=A_i V_i(V_i^* A_i^2 V_i)^(-1/2),
+
+with the fixed ideal seed V_i and positive A_i. Thus its phase/frame
+convention is the same at both parties. The good parent isometry C is
+also fixed by the ideal recipe and public pure-prefix bits.
+
+Alice's actual native unitary U_A need only approximate C on its known
+logical input embedding R. Bob constructs U_B, retains its own gate
+description and uses that same U_B, inverse and controls consistently
+inside his digital receiver. The already reviewed completion lemma
+gives a comparison unitary U_0B with U_0B R=C and
+||U_B-U_0B||<=9||U_B R-C||. It is a comparison object, never an oracle.
+
+Compare Alice's actual physical input U_A R directly to C once. Compare
+every Bob occurrence of U_B to U_0B globally. The ideal row amplitudes
+on the code use U_0B R=C and hence match the sender's target, irrespective
+of Alice's action on the unused orthogonal complement. The existing
+whole-encoder allocation I=Q_outer+1 pays one sender embedding error
+and Q_outer receiver global substitutions. Both parties must retain
+operator-norm relative phase accuracy; an arbitrary global phase of a
+controlled subroutine is not discarded. Both squared signal-to-isometry
+tolerances and the factors9 are still required.
+
+Consequently Alice need not transmit her realized native gate list or
+the unobservable choice of completion outside R. This would be false if
+Bob used an unrelated approximate frame on R or used different stored
+unitaries and inverses in the same receiver. The exact finite fixture in
+check_paid_bootstrap.py verifies different full completions sharing the
+same input columns; it is a diagnostic of this algebra, not a full code.
+
+## P4. Actual-device classical transport with no feedback
+
+Assume WORD vacuum, with arbitrary physical seed/reference. Encode a
+classical bit as colour c=1 or2. Input c, then r zeros. Bob measures
+these r+1 received ports in the basis {0,1,2}. Write
+
+    U_root=alpha R_seed+i beta I, alpha^2=a, beta^2=b.
+
+This unitary retains the actual coherent root phase. The complete
+instrument has the following Kraus operators on the seed, together with
+the stated output word:
+
+    c in the first output: i beta U_root^r, WORD vacuum;
+    first c at zero j: alpha^2(i beta)^(j-1)U_root^(r-j),
+                      1<=j<=r, WORD vacuum;
+    all outputs zero: alpha(i beta)^r I, WORD c.    (P3)
+
+Terms with the same root output/word are added before measurement;
+there is no classical mixture of identity and involution histories.
+Each Kraus Gram is a SCALAR multiple of I_seed. The record probabilities
+are b, a^2 b^(j-1), and a b^r respectively, independent of any seed or
+seed/reference entanglement. They sum to1. Every success record contains
+exactly one c and returns WORD to vacuum. Failure has probability a b^r.
+
+Send all L padded bits on this fixed schedule. Before the first failure
+the next bit starts at WORD vacuum, so the all-success probability is
+(1-a b^r)^L and
+
+    p_fail <=L b_max^r <=L 2^(-14r), b_max=4b0.    (P4)
+
+Choose
+
+    r=max(1,ceil[ceil log2(64L/z)/14]),
+    N_boot=L(1+r).
+
+Then p_fail<=z/64. On the all-success event Bob receives exactly P and
+the normalized retained-seed map is a single CPTP channel independent
+of the quantum message. This follows from scalar, input-independent
+success probability, not input-dependent postselection. Discarding
+success records gives the corresponding mixture of root unitaries.
+
+The actual complete prefix instrument is (1-p_fail) times that good
+channel plus a positive failure instrument. Replacing it by its
+normalized good channel costs at most2p_fail<=z/32 in joint diamond
+norm, including the bath and any reference. On bad records Bob may
+choose a bounded default decoder; no guarantee of reset is made there.
+Alice receives no flag and follows the same finite schedule. The error
+component is retained in this comparison, not selected away physically.
+
+These are classical PROGRAM bits prepared before the unknown quantum
+message. No unknown logical message is copied, probed or retransmitted.
+The supplied coarse interval is used only for a uniform reset bound;
+neither Alice nor Bob needs an estimate of actual b.
+
+## P5. One global initializer, then a complete joint hybrid
+
+First pay ONE initial zero prefix using the supplied tail cutoff.
+For the selected geometric promise set
+
+    B_init=ceil log2(2^24/z^2), A_init=B_init+8,
+    N_init=16(A_init+B_init+4).
+
+The reviewed initializer estimate 4sqrt(2^-A_init+2^-B_init) is at most
+z/64 (the rational inequality 16(1+2^-8)/2^24<1/64^2 suffices).
+Local preparation/instrument error receives a further z/64, giving
+z/32 for the complete initial comparison. A general tail replaces
+A_init by a supplied cutoff with the same tolerance, and its forward,
+description and acquisition costs must be included. There is no
+uniform polynomial finite tail modulus for all normal states.
+
+After the classical program prefix, split ONE arbitrary quantum input
+space into B logical factors L_1..L_B. Its state may be entangled across
+every factor, the seed and an external reference. Encode each factor
+once with the same P. This is one large code, not repeated trials of
+the same unknown message. Keep every leading zero already charged in
+N: at vacuum it is a seed unitary, so it can be folded into Phi. Append
+the already charged terminal zeros in each block.
+
+Let M_j be the actual complete jth block CPTP map, including the receiver.
+For proof only extend its ideal target N_j to all word inputs by
+discarding/resetting the word and applying id_(L_j) tensor Phi. This
+comparison reset is not an actual operation. The exact identity
+
+    M_B...M_1-N_B...N_1
+      =sum_j M_B...M_(j+1)(M_j-N_j)N_(j-1)...N_1  (P5)
+
+uses IDEAL maps before the replaced block and ACTUAL maps afterwards.
+Each difference is evaluated at WORD vacuum. Its input on current
+logical factor, retained seed, previous/future factors and reference
+may otherwise be arbitrary, as required by the joint primitive. Every
+subsequent actual map contracts the complete trace norm, including any
+persistent bad-word component. Thus
+
+    ||whole actual-ideal||_diamond <=B z_b.         (P6)
+
+No actual-past vacuum, fresh product bath, iid failure, local stochastic
+law or outer-code theorem is inserted. A permanent bad-memory flag can
+still produce probability p rather than p^r of a fault burst; the
+negative control in50ad remains valid. Here its full effect is covered
+by the charged hybrid sum. The one program Good event is reused, so
+there is NO factor B on the probability of selecting a bad program.
+
+Choose z_b=z/(8B), eta_b=eta/2 and generate P at THESE targets before
+sending it. The ideal final target is identity on all logical factors,
+a composition of the seed channels, and WORD vacuum. P6 costs z/8.
+
+## P6. Noncircular finite policy and rate
+
+For each candidate B=2^j, first compute the complete block guard policy
+at z_b=z/(8B), eta_b=eta/2, including ALL changed outer moments, sign
+queries and repeated native accuracy. Refine t by powers of2 if an
+inner h<=K or denominator guard fails. Only then compute the actual
+compact program cap L inP2, bootstrap r inP4 and all forward calls
+
+    N_total=N_init+L(1+r)+B N.
+
+Accept the first exact successful guard
+
+    B ell >=[3/2+G/(32k)] N_total.                 (P7)
+
+The scalar search computes counts only. It does NOT create and discard
+an enormous table or code on every unsuccessful candidate. The actual
+quantum table, seeds, coefficients and native code are generated once
+after the policy is fixed. All finite words and descriptions are padded
+to fixed public caps; no stopping-time information is a free wire.
+
+Why this may amortize despite the B z_b sum must be stated carefully.
+The TRANSMITTED cap, rather than all local native output, has a polynomial
+bound in k, log B, log(1/z), log(1/eta) and source bit length. This is a
+specific property of the displayed block policy, not a consequence of
+a generic polynomial-in-z_b^-1 compiler:
+
+* Bq=48+4B_R+4ceil log2(1/z_b) is logarithmic in B; the table, ideal
+  design moment-accuracy bits and fair-bit seeds depend on Bq as a bit
+  count, not on the inverse operational native accuracy.
+* The body cutoff is [5eps s+O(log s+log B+log(1/z)+log(1/eta)+log k)]/t_L,
+  with t_L=Kappa/(8k^2). The only linear-in-s flush slope is
+  640eps k^2/Kappa. Since eps<=G Kappa/(2^30 k^6), even multiplying by
+  the rate target<2 leaves less than tG/8. The logical slope before
+  this loss is at least3tG/8. Remaining losses are logarithmic in s
+  and B. Exact doubling therefore finds s polynomial in k,t,log B,
+  log(1/z),log(1/eta), with fixed G,Kappa,c_chi constants.
+* The inner finite guards need t=O(log k+log log(s/eta_b)), with fixed
+  large constants, because their rank exponent is linear in kt while
+  the required design-order bits grow logarithmically. Dyadic t
+  refinement and s doubling preserve the preceding polynomial bound.
+* Each ideal Pauli-design seed length is a polynomial in its width,
+  moment order and ideal design-accuracy BIT count. The table has
+  C=(kt+1)(2w+1) cells, and B_cdf,B_stat have the same logarithmic
+  dependence. The explicit capped seed formula consequently is also
+  polynomial in the listed inputs. No Q_outer/Q_inner-sized phase
+  output is included in this TRANSMITTED assertion.
+
+For fixed margin constants write X=max(2,k,z^-1,eta^-1,L_b,A_tail),
+including any additional paid tail-input size. These observations give
+effective fixed-degree bounds N<=poly(X,1+log B) and
+N_boot<=poly(X,1+log B). P1 leaves at least G N/(32k) margin per block
+above the lower target inP7. A sufficiently large B polynomial in X
+therefore dominates the prefix cost. For example a fixed-degree bound
+C X^d(1+log B)^d is dominated by B G/(32k) at B equal to a sufficiently
+large fixed power of X, after increasing its constant for small X.
+The exact dyadic search has at most polynomial stopping value and can
+find it before any quantum program construction. This establishes a
+candidate EFFECTIVE polynomial route; no modest degree or usable
+constant is asserted. The logarithmic-cap and local-compiler separation
+are load-bearing proof obligations for fresh criticism.
+
+Since k<=1/(10b0), the target excess G/(32k) is at least
+b_actual/952320 on the entire actual band. This is half the reviewed
+public-installed-program finite lower bound. All prefix and repeated
+body/terminal forward calls are included inP7.
+
+## P7. Complete error and cost charges
+
+For computational-basis preparation and readout charge at most16 local
+instrument operations per forward prefix call. Require JOINT instrument
+diamond accuracy z/(1024N_boot) on each bootstrap operation. Their
+telescope costs z/64. Similarly charge the initial prefix's local
+instruments to z/64, separately from its mathematical z/64 bound.
+These are demands on the supplied local gate model, not measured
+calibration results or a fault-tolerance theorem for actual hardware.
+Conservatively the total joint error is at most
+
+    z/32 + 2p_fail + z/64 + B z_b <=13z/64<z.       (P8)
+
+The program failure target is eta_b=eta/2<=eta ONCE, for the same
+uniform good program reused throughout. Tables, widths and random
+frames are not certified after generation. On any excluded program
+event the finite protocol is still total CPTP. The native operations
+have separately deterministic approximation demands in this model.
+
+All local work remains paid: quantum table sampling and source copies,
+both parties' scalar/phase/coefficient computation with intermediate
+precision, design/twirl seeds, reversible coordinates, every source/log
+QPE circuit, all repeated inner and outer polar calls, parsing, storage,
+native description output and the actual B block applications. Native
+P_access(k,t,L_b,xi_A^-1) retains its huge precision dependence; N1--N6
+and both consistent completions apply at the NEW z_b. In particular
+local native and phase work can be polynomial in B itself, not log B.
+Once the accepted B is polynomial in the declared numerical inputs,
+z_b^-1=8B/z and all these formal bounds remain joint-polynomial. This
+does not make their degree, constants, output volume or time useful.
+
+Bob can measure the known prefix ports when received or defer all
+operations to the end: his operations on already received ports commute
+with future physical interactions on disjoint ports and the bath. Alice
+uses no returned information and can compile before starting. This
+avoids requiring an uncharged physical-device pause while Bob compiles.
+Bob must store the outputs; at most O(N_total) message/output qubits and
+their qubit-time through the full paid local computation are charged.
+Prescribed finite-gate storage/idle accuracy must also be allocated in
+the existing complete native envelope, rather than assuming a noiseless
+physical memory. The abstract coherent local-gate contract supplies
+these operations; no real memory/noise model has been established.
+
+No energy, wall-time, engineering or device-availability bound is known.
+There is no dominance claim against an equally informed conventional
+constructor using these same established operations. A classical-only
+compiler, deterministic certified good program, unknown location of the
+public band, drifting parameter, or unknown finite tail modulus remains
+outside this contract. The sender no-signalling obstruction eb6d888c
+still applies if one tries to infer the band location without a reverse
+wire; the robust source avoids that inference only inside its supplied
+interval.
+
+## P8. Selected exact records and falsifiers
+
+certify_paid_program_reuse.py imports only the explicitly hashed own
+copy reuse_block_policy.py. It is a producer, not an independent audit.
+The selected exact Fraction/integer guard output is
+PAID_PROGRAM_REUSE_GUARDS.json, SHA256
+c9bb72986bc497631b385684f3c6f4c77b0e0c81084409461ddb49e4537c23b6.
+All three cases have z=.001, eta=.01, no t refinement beyond the original
+sufficient t, and a negative exact guard at the immediately preceding
+candidate. They are sufficient counts, not executed codes:
+
+| beta0 | k | first accepted B | bits in integer L | r | bits in integer N_total |
+|---|---:|---:|---:|---:|---:|
+|1/256|6553|2^375|449|34|485|
+|1/1024|104857|2^415|497|37|537|
+|1/4096|1677721|2^458|549|41|593|
+
+The fourth column is the BIT LENGTH of the integer NUMBER OF PROGRAM
+BITS. In the first case L itself is about2^448 bits, not449 bits. These
+numbers rule out interpreting formal polynomiality as practical gain.
+The source/table experiments, ideal seed and all native lists at these
+sizes have not been generated, transported or applied.
+
+check_paid_bootstrap.py independently within this author's work derives
+the actual sparse-word instrument by rational matrix multiplication,
+adding same-record root amplitudes before measurement. At one exact
+Pythagorean amplitude pair it checks8 colour/zero-length cases and46
+instrument branches, seed-independent Gram matrices and coherent root
+units. It also checks the different-completion algebra and separate
+initial native subbudget. It imports no device simulator or producer.
+This finite calculation complements P3's general formula; it does not
+prove a giant full protocol. Raw PAID_BOOTSTRAP_EXACT.json has SHA256
+fdd30c07bd0e457df90819b94ff779537833de92b3bbdb54ff5ca025093562fd.
+
+Decisive falsifiers are: additional table-dependent quantum/phase data
+needed beyond P2; failure of Bob's own completion comparison in P3;
+non-scalar actual classical-prefix success probabilities in P3; loss of
+the full joint/reference quantifier in P5; a transmitted cap that grows
+as a power of B rather than log B; failure of t/s guard refinement to
+have the claimed effective bound; hidden native/storage/phase work
+excluded from P7; or a physical contract that cannot supply its stated
+local coherent operations. The no-import scalar replay is a consistency
+check only and does not replace fresh proof criticism.
+
+## P9. Final status and exact next gate
+
+The reviewed result remains the installed-public-program factor-two
+beta-band compiler plus complete joint seed/vacuum primitive, at the
+explicit exact-family/local-gate/supplied-tail contract. Its complete
+review835ccc6e does NOT cover this file. The new paid-program route has
+a concrete actual-device bootstrap, complete-memory hybrid, bounded
+recipe representation and exact selected resource checks; it remains
+an UNREVIEWED CONSTRUCTION CANDIDATE. Its confidence/error/rate and
+resource closure must be read together, not inferred from B epsilon
+alone. No local-stochastic outer-code theorem is asserted or required
+by this candidate route.
+
+The next gate, only if the user later resumes this branch, is fresh
+adversarial reading of P2/P3/P6/P7 with the actual finite interfaces and
+selected raw records. A defect should be frozen at its exact scope.
+No worker is being assigned or spawned now. All current work ends at
+this honest checkpoint; mission remains NOT_ACHIEVED.

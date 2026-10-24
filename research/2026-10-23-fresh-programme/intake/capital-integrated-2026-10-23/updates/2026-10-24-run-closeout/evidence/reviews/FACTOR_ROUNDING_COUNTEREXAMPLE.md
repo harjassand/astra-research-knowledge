@@ -1,0 +1,83 @@
+# Completed owner-proof audit: factor-input obstruction
+
+The frozen `OWNER_PROOF_SNAPSHOT.md`, SHA256
+`0d37905136fbcc8cab5f14a6ffb1fa1cfae1befbd242be7dcfab7ad7eb982b8c`,
+passes this independent internal proof review. Its exact contract is:
+for d>=4, m=d-1, N=md, two explicit unital input factors each isomorphic
+to M_d have full cb commutator defect at most 2delta_d->0, where
+`delta_d=2(1-m^2/d^2)`, but every exactly commuting pair of fixed-trace
+conditional expectations onto arbitrary unital target subalgebras of
+the same M_N has maximum ordinary induced repair distance at least
+`(1-delta_d)/2->1/2`.
+
+The controlled-Weyl construction and its full-map cb check were
+independently reconstructed before reading the owner's finished file.
+Root subsequently supplied the stronger arbitrary-target dimension
+proof, which I checked independently. Both derivations and attribution
+are retained in `INDEPENDENT_DERIVATION.md`.
+
+All decisive points pass:
+
+- U is a product of controlled X, environment Fourier and controlled Z
+  unitaries. Its block phases and the factor 1/m^2 in the reduced
+  channel are correct. There are exactly m^2 distinct retained Weyls.
+- The reduced channel's cb and diamond gaps from depolarizing are
+  both delta_d. The proof correctly treats the inverse-Weyl adjoint
+  separately; it does not assume the subset channel is self-adjoint.
+- The full products on M_N factor through the reduced channel and its
+  adjoint with completely contractive exterior maps. Restriction/lift
+  supplies equality of their full cb product gaps. Consequently the
+  full cb commutator bound <=2delta_d is justified, rather than inferred
+  merely from behavior on the factor range.
+- Individual map proximity below one preserves the vector dimensions
+  d^2 of arbitrary target ranges. This does not imply that those
+  ranges are factors, and the finished proof does not make that error.
+- Exact commutation makes FG an idempotent with intersection range.
+  The norm estimate ||FG-E_0||<=2epsilon+delta_d and rank stability
+  force a scalar intersection when 2epsilon+delta_d<1.
+- For complex tau-Hilbert–Schmidt bases of quasiorthogonal C,D, the
+  products c_i d_j are orthonormal: cyclicity moves d_j* to the right,
+  and algebra closure permits the quasiorthogonality factorization.
+  Therefore dim(C)dim(D)<=N^2. This contradicts d^4>m^2d^2 for the
+  preserved target dimensions, without a target factor assumption.
+
+I also independently proved a direct algebra-distance consequence,
+subsequently included in section 4b of this frozen owner version:
+if target algebras are mutually kappa-near the inputs in operator norm,
+then kappa<(1-delta_d)/4 forces scalar intersection by applying the
+near-inclusion estimates to a trace-zero unit element in the target
+intersection. Dimension preservation and the same product-basis bound
+then contradict each other. Thus their algebra repair gap is at least
+`(1-delta_d)/4->1/4`. See the retained independent derivation.
+
+The exact dimension-product bound is classical: Weiner, *On orthogonal
+systems of matrix algebras*, LAA 433 (2010), §2.3 p.524, lists it as a
+necessary condition and proves it by product orthonormal bases in
+equation (15). The independently retained primary PDF is
+`work/workers/w50_fresh_rounding_critic/raw_primary/weiner_laaproof.pdf`,
+SHA256
+`69b8c7ffdff390ee0bcc6b2d4051ea2c2b1bc4b1bd4d952870d5f2df9dcdd76c`.
+The older approximate-quasiorthogonality literature is relevant context;
+no historical priority of this combined cb stability counterexample
+has been established by this audit.
+
+This removes the earlier binary construction's factor-input boundary.
+Each input has central weight one, but minimal matrix-projection trace
+1/d tends to zero. It does not address fixed factor size, fixed index,
+or a different ambient allowance. The robust intersection theorem
+remains consistent because the products approach the scalar expectation.
+RWW v1 §6.3 contains no factor-input exception; its informal question's
+dimension-uniform interpretation is refuted under the stated contract.
+
+Retained diagnostics check m=2,3,4,8 reduced channels and Bell-sign
+complete-norm witnesses, plus actual lifted full-map amplification
+attainment at m=2,3,4. Exact dimension/bound fractions are checked
+through m=1,000,000. The largest residual is below 3e-15. No physical
+large system was constructed. Finite tests supplement the universal
+proof and are not external validation.
+
+No mathematical correction was identified. Historical priority,
+experimental validity, practical advantage and mission success remain
+UNKNOWN / not established. The new input family is an exact supplied
+Weyl/Fourier rule with charged representation, precision and physical
+implementation costs.
