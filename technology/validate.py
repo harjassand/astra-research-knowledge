@@ -101,6 +101,8 @@ def validate(record, root=ROOT):
         need("scaling" in record, "scaling stage requires a scaling assessment")
     role_map = routes(root)
     status_rows = [json.loads(row) for row in (root / "frontier/CURRENT_CLAIM_STATUS.jsonl").read_text().splitlines() if row.strip()]
+    for path in sorted((root / "frontier/CURRENT_CLAIM_STATUS.d").glob("*.jsonl")):
+        status_rows.extend(json.loads(row) for row in path.read_text().splitlines() if row.strip())
     cards = {r["card_id"] for r in status_rows}
     cards |= {route_id(r) for r in cards}
     proof_gates = {json.loads(row)["gate_id"] for row in (root / "frontier/OPEN_PROOF_GATES.jsonl").read_text().splitlines() if row.strip()}

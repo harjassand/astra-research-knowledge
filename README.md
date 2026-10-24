@@ -1,4 +1,4 @@
-> Current agent access begins at `00_START_HERE.txt`; generated inventory/authority is `agent/CURRENT.txt`. The architecture and counts below retain earlier snapshot context. Use scoped frontier notices and published checkpoint heads for current reuse/activity, rather than historical statistics or restart instructions.
+> Current access: [scientific problem/mechanism search](knowledge/), [public CLI and exact source packets](knowledge/README.md), and `00_START_HERE.txt`. Current normalized authority and coverage: `knowledge/current/manifest.json`. The catalog, architecture and counts below retain earlier snapshot context; `agent/CURRENT.txt` is the frozen v5 inventory. Scoped completed internal audits are sufficient for scientific acceptance at their actual version, not physical/device/advantage evidence.
 
 # Astra Research Knowledge
 
