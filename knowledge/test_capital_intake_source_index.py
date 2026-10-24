@@ -29,6 +29,15 @@ def walk_references(value):
             yield from walk_references(child)
 
 
+def current_unit_entries():
+    records = (json.loads(line) for line in (ROOT / "knowledge/current/records.jsonl").read_text().splitlines())
+    return [
+        (record, ROOT / record["authority"])
+        for record in records
+        if record.get("authority", "").startswith("knowledge/units/")
+    ]
+
+
 class CapitalIntakeSourceIndex(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -62,9 +71,8 @@ class CapitalIntakeSourceIndex(unittest.TestCase):
             Path("indexes/claims.d/2026-10-25-dots-ultra.jsonl"),
             Path("frontier/CURRENT_CLAIM_STATUS.d/2026-10-25-dots-ultra.jsonl"),
             Path("agent/SEMANTIC_NOTICES.d/2026-10-25-dots-ultra.jsonl"),
-            Path("knowledge/units/U675-saturated-reference-filter/v0002.json"),
-            Path("knowledge/units/U966-conditional-sld-order-interface/v0002.json"),
         ]
+        inputs.extend(Path(record["authority"]) for record, _ in current_unit_entries())
         status_shard = ROOT / inputs[1]
         for line in status_shard.read_text().splitlines():
             status = json.loads(line)
@@ -93,21 +101,29 @@ class CapitalIntakeSourceIndex(unittest.TestCase):
                 self.assertIsNotNone(row, f"{claim['id']}: {source_path}")
                 self.assertEqual(source_id, row["source_id"], f"{claim['id']}: {source_path}")
 
-    def test_a966_review_binds_exact_current_unit_versions(self):
-        review = json.loads((ROOT / "knowledge/reviews/A966-filter-unit-receiving-use-20261025.json").read_text())
-        subjects = {subject["id"]: subject["content_version"] for subject in review["subjects"]}
-        current = {record["id"]: record for record in (
-            json.loads(line) for line in (ROOT / "knowledge/current/records.jsonl").read_text().splitlines()
-        )}
-        for unit_id in ("U675-saturated-reference-filter", "U966-conditional-sld-order-interface"):
-            self.assertEqual(subjects[unit_id], current[unit_id]["content_version"])
-            self.assertTrue(any(item["id"] == review["id"] for item in current[unit_id]["review_overlays"]))
+    def test_scoped_current_unit_acceptance_has_exact_version_overlay(self):
+        for record, authority in current_unit_entries():
+            unit = json.loads(authority.read_text())
+            self.assertEqual(unit["id"], record["id"])
+            self.assertEqual(unit["version"], record["version"])
+            overlays = record.get("review_overlays", [])
+            for overlay in overlays:
+                self.assertTrue(any(
+                    subject["id"] == record["id"] and subject["content_version"] == record["content_version"]
+                    for subject in overlay.get("subjects", [])
+                ), f"stale review overlay applied to {record['id']}")
+            if unit.get("review", {}).get("acceptance") == "extracted_with_version_bound_scoped_acceptance":
+                self.assertTrue(any(
+                    overlay.get("decision") == "accepted_internally_verified"
+                    and any(subject["id"] == record["id"] and subject["content_version"] == record["content_version"]
+                            for subject in overlay.get("subjects", []))
+                    for overlay in overlays
+                ), f"scoped acceptance is not bound to current version of {record['id']}")
 
     def test_receiving_contract_separates_conditional_baseline_from_c_one_exception(self):
-        units = [
-            json.loads((ROOT / "knowledge/units/U675-saturated-reference-filter/v0002.json").read_text()),
-            json.loads((ROOT / "knowledge/units/U966-conditional-sld-order-interface/v0002.json").read_text()),
-        ]
+        target_ids = {"U675-saturated-reference-filter", "U966-conditional-sld-order-interface"}
+        units = [json.loads(path.read_text()) for record, path in current_unit_entries() if record["id"] in target_ids]
+        self.assertEqual({unit["id"] for unit in units}, target_ids)
         for unit in units:
             text = " ".join(unit["contract"]["assumptions"] + [unit["body"], unit["contract"]["obstruction"]])
             self.assertIn("different reference marginals", text)
