@@ -169,6 +169,10 @@ with the unit as labeled parent-context notices, not automatic transitive
 invalidation. N684's units preserve the scoped N675 prerequisite context.
 
 The current publication gate preserves existing checkpoint tests and source
+technology gates; normalization reuses the native technology validator so
+metadata cannot turn a derivation into an unsupported experiment/prototype.
+Its result-ID checks include current status shards, not only the frozen base.
+The current publication gate also preserves existing checkpoint tests and source
 manifest verification, checks the actual PR base, protects old source/version
 bytes and runs the new normalization tests. Original scientific scripts were
 not replayed. Build/test success is implementation evidence; the scientific

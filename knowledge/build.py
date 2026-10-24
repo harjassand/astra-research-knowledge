@@ -275,9 +275,15 @@ def build(root=ROOT):
         technology = inputs.json(name)
         if not technology.get("fixture"):
             technology_versions[technology["id"]].append((name, technology))
+    if technology_versions:
+        from technology.validate import validate as validate_technology
+        for name in ("technology/validate.py", "technology/contracts.py", "technology/schema.json",
+                     "technology/routes.tsv", "frontier/OPEN_PROOF_GATES.jsonl"):
+            inputs.read(name)
     for identifier, versions in sorted(technology_versions.items()):
         versions.sort(key=lambda item: item[1]["version"])
         name, technology = versions[-1]
+        validate_technology(technology, root=root)
         refs = references(technology["refs"])
         if not refs:
             raise ValueError("Technology missing support: " + identifier)

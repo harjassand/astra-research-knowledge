@@ -75,6 +75,7 @@ def main():
         run("state/publish_checkpoint.py", "self-test")
         run("-m", "unittest", "discover", "-s", "state", "-p", "test_*.py")
         run("-m", "unittest", "discover", "-s", "knowledge", "-p", "test_*.py")
+        run("-m", "unittest", "discover", "-s", "technology", "-p", "test_*.py")
         run("knowledge/build.py", "check")
         print("Current publication, historical evidence, deterministic intake and generated-view checks passed. Scientific usefulness is assessed separately.")
     except (OSError, ValueError, KeyError, TypeError, checkpoints.Invalid, subprocess.CalledProcessError) as error:

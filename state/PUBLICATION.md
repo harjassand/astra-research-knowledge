@@ -14,7 +14,9 @@ into your working space and fill its short fields. Existing branch IDs are in
 A branch is a publication route, not an instruction to adopt another agenda.
 
 ```sh
-python3 state/check_v5.py --base-revision <full-current-main-SHA> --fetch-sources
+python3 knowledge/build.py build
+python3 knowledge/build.py check
+python3 state/check_current.py --base-revision <full-current-main-SHA> --fetch-sources
 python3 state/publish_result.py draft /path/to/selection.json --output .astra-local/review.json
 python3 state/publish_result.py publish .astra-local/review.json
 ```

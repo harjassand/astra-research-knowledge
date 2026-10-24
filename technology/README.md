@@ -109,7 +109,7 @@ From the repository root, using Python 3.10+ and only the standard library:
 python3 technology/validate.py validate --include-fixtures --immutable-base <full-PR-base-SHA>
 python3 technology/validate.py route --card N654
 python3 technology/validate.py route --role theoretical-pro --include-fixtures
-python3 frontier/retrieve.py technology N654
+python3 knowledge/retrieve.py search "technological capability or engineering obstruction"
 python3 technology/fixtures/contraction/demo.py --check
 python3 -m unittest discover -s technology -p 'test_*.py'
 ```
