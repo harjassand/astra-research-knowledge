@@ -126,6 +126,15 @@ class Fixture(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "card/status/catalog bytes disagree"):
             build(self.root)
 
+    def test_dangling_correction_or_dependency_is_an_ingestion_failure(self):
+        for relation in ("material_updates", "depends_on"):
+            with self.subTest(relation=relation):
+                self.status[relation] = [{"target": "N9999-absent", "scope": "consequential scoped correction or requirement"}]
+                self.statuses()
+                with self.assertRaisesRegex(ValueError, "Dangling numeric result identity"):
+                    build(self.root)
+                self.status[relation] = []
+
     def test_prior_review_cannot_accept_a_revised_version(self):
         unit = self.unit()
         self.compile()

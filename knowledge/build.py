@@ -67,7 +67,11 @@ def build(root=ROOT):
     def canonical(identifier):
         if identifier in claims:
             return identifier
-        return short_ids.get(route_id(Path(identifier).stem), {}).get("id")
+        stem = Path(identifier).stem
+        resolved = short_ids.get(route_id(stem), {}).get("id")
+        if resolved is None and re.match(r"^[NL]\d+(?:-|$)", stem):
+            raise ValueError("Dangling numeric result identity: " + identifier)
+        return resolved
 
     aliases = inputs.json("indexes/query_aliases.json")
     for name in discovered["indexes/query_aliases.d"]:

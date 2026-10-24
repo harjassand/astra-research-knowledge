@@ -159,6 +159,11 @@ correction propagation and distinct transfer states. Local readers refuse
 stale views. Web catalog/posting/packet reads verify the search snapshot hashes
 and report unavailable or mixed datasets as access failures.
 
+Post-PR adversarial review found that a malformed numeric correction/dependency
+target could be retained without being routed to any result. No such dangling
+reference exists in the current corpus. A rejecting identity check and a
+regression test now prevent that intake failure from being silently published.
+
 The current publication gate preserves existing checkpoint tests and source
 manifest verification, checks the actual PR base, protects old source/version
 bytes and runs the new normalization tests. Original scientific scripts were
