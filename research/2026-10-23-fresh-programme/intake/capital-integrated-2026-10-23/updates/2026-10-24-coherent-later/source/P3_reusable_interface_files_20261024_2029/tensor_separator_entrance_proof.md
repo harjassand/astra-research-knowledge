@@ -1,0 +1,352 @@
+# A positive representation of correlated reaction entrances
+
+New Pro3 construction in this continuation. The central probabilistic
+conditioning idea has close CTBN/Rao–Blackwellized filtering antecedents. The
+candidate scientific operation here is a source-obtainable event/entrance
+kernel with positive measure enclosures, explicit conditional error, and a
+controller-history truncation contract. No historical-priority claim is made.
+
+## 1. Autonomous separator contract
+
+Let C be a finite autonomous controller with generator Q_C. Conditional on its
+trajectory, blocks X_1,...,X_n evolve independently with finite generators
+Q_i(C_t). A selected reaction j has nonnegative hazard h_j(C_t,X_{r(j)}(t));
+all variables in its guard apart from C belong to one block. Put
+
+    D_i(c)=diag(sum_{j:r(j)=i} h_j(c,.)), A_i(c)=Q_i(c)-D_i(c).
+
+The initial law is a supplied finite positive mixture of products conditional
+on the controller's initial state. All local matrices are obtainable without
+constructing the product state space. Event resets are separately specified
+Markov kernels; a reset local to C and the firing block preserves the mixture
+representation after summing over the finitely many controller destinations.
+
+Given a controller path c_0,...,c_k with dwell times d_0,...,d_k up to t, define
+
+    v_i=mu_i exp(d_0 A_i(c_0)) ... exp(d_k A_i(c_k)).
+
+The unnormalized no-event law is tensor_i v_i. The unnormalized pre-event
+entrance law for mark j at t is obtained by replacing row v_{r(j)} with
+v_{r(j)} diag(h_j(c_k,.)); then apply its reset. Integrating these nonnegative
+product measures against the controller-path law gives the exact entrance law.
+
+This does NOT assert that the survival-conditioned blocks are independent.
+Their dependence is the mixture over the common latent controller history.
+If controller transition rates read a block's hidden state, autonomous-path
+conditioning is no longer available under this contract.
+
+### Finite controller-history certificate
+
+Choose nu>=max_c -Q_C(c,c) and write R=I+Q_C/nu. Uniformization represents the
+controller by a rate-nu Poisson process and transitions R at its proposal times.
+Condition this proposal process on N_T<=K. The resulting finite positive mixture
+of controller paths defines a proper approximate first-event/entrance law.
+Coupling by the unconditioned path or decomposing its probability law gives
+
+    TV(P_true,P_conditioned) <= Pr(Poisson(nu T)>K).
+
+The bound holds jointly for event time, mark, and post-event hidden state,
+including no event before T. It is independent of local switching and reaction
+rates. Numerical integration over the at-most-K controller times is a separate
+cost and needs its own certificate; a Poisson-tail bound does not certify a
+quadrature rule. Tensor contractions and path/state sums can still become
+large. This is an output-sensitive construction, not a general polynomial
+complexity claim.
+
+## 2. An exactly one-dimensional entrance operation
+
+Take C initially 0, with its single transition 0->1 at gamma>0 and no reverse
+transition before the first reaction. Blocks have the same silent generator
+Q_i in both controller states, start at stationary rows mu_i, and their
+selected hazards are disabled when C=0. In C=1 they have total killing D_i.
+
+Write A_i=Q_i-D_i and v_i(u)=mu_i exp(u A_i). If the first reaction occurs at
+time t, the unknown open age u lies in (0,t). Its controller density factor is
+
+    w_t(u)=gamma exp[-gamma(t-u)].
+
+For mark j firing in block r, the exact unnormalized entrance measure is
+
+    M_j(t)= integral_0^t w_t(u)
+               [tensor_{i!=r} v_i(u)]
+               tensor [v_r(u) diag(h_j) R_j] du.
+
+R_j may describe a local reset; if no reset is needed, set R_j=I. The controller
+state after the event is specified separately (e.g. reset to 0). Each matrix
+factor has nonnegative entries, so this is a positive mixture of products.
+Its total mass f_j(t) is the first-event density. Normalizing gives the hidden
+state law conditional on observing this event time and mark, in the usual
+regular-conditional density sense.
+
+## 3. Computable pointwise measure bounds
+
+Stationarity gives
+
+    v_i'(u)=mu_i A_i exp(u A_i)=-mu_i D_i exp(u A_i)<=0
+
+componentwise. The event/reset row also decreases because diag(h_j)R_j is
+nonnegative. Meanwhile w_t(u) increases.
+
+For a cell [a,b], obtain a lower product measure by taking w_t(a), every block
+row at b, and multiplying by (b-a). Obtain an upper product measure by taking
+w_t(b), every row at a, and multiplying by (b-a). Summing cells gives
+
+    M_lower <= M_j(t) <= M_upper
+
+componentwise on the full product configuration space. Endpoint matrix
+exponentials must themselves have outward numerical enclosures. The bounds
+do not require enumerating any product configurations.
+
+Let L and U be the total masses of these two product mixtures, with L>0. The
+normalized lower mixture is a computable correlated entrance distribution,
+and
+
+    TV(M_j(t)/f_j(t), M_lower/L) <= 1-L/U.
+
+Proof: M_lower is a submeasure of M_j(t), so the latter's normalized law is a
+mixture of M_lower/L with remaining weight 1-L/f_j(t)<=1-L/U. This preserves
+the correlations represented by the mixture; replacing it by the product of
+its marginals is a different approximation without this certificate.
+
+For nonstationary product initial rows, the exact one-dimensional integrand is
+rho_i exp[Q_i(t-u)] exp[A_i u]. Monotonicity need not hold. Positive product
+enclosures remain possible using interval propagation or componentwise
+Lipschitz bounds, e.g. ||Q_i||_infinity+||A_i||_infinity for the row derivative.
+Finite positive mixtures are processed termwise. Their representation size
+and conditioning error must be retained rather than assumed bounded.
+
+### A dimension-independent conditional mixture-rank bound
+
+The one-opening stationary class also admits a first-order approximation bound
+that does not involve derivatives of the silent generators. Write
+
+    M(u)=[tensor_i v_i(u)] J_j,  m(u)=||M(u)||_1,
+    g(u)=w_t(u) M(u),  m(0)=m0=mu_r h_j.
+
+The local reset is a Markov kernel, so it preserves the marked row's mass.
+M(u) is coordinatewise decreasing, m(u) is nonnegative and decreasing, and
+w_t(u) increases from gamma exp(-gamma t) to gamma. Consequently the total
+variation in L1 of the vector-valued integrand is bounded by
+
+    Var_L1(g;[0,t])
+      <= integral_0^t w_t(u) [-m'(u)] du
+         + integral_0^t w_t'(u) m(u) du
+      <= gamma [m0-m(t)] + gamma m0 [1-exp(-gamma t)]
+      <= 2 gamma m0.
+
+For a cell of width at most h, integration of the norm of the difference
+between g(u) and its midpoint value is at most (h/2) times that cell's L1
+variation. Summing cells therefore gives the full-measure error bound
+
+    ||M_j(t)-M_midpoint||_1 <= h gamma m0.
+
+Every midpoint term is a positive product measure. If f_j(t)>=fmin>0,
+normalization obeys TV<=delta/f_j(t)<=delta/fmin as well as TV<=delta/m for
+the approximate mass m. Thus N uniform cells, with
+
+    N >= t gamma m0 / (epsilon fmin),
+
+suffice for a positive mixture of at most N products with conditional TV error
+epsilon, when local factors are evaluated exactly. A concrete positive lower
+bound is fmin=t gamma exp(-gamma t) m(t) whenever m0>0; it is computable from
+local killed propagators. Endpoint lower quadrature often gives a substantially
+sharper fmin. Finite local matrices ensure m(t)>0 when m0>0.
+
+An adaptive obtaining rule avoids relying on a potentially pessimistic initial
+lower bound. Double N, evaluate the positive midpoint mixture mass m, and stop
+when delta/m<=epsilon, with delta=t gamma m0/N. Since m>=f_j(t)-delta, this
+stopping rule must succeed once
+
+    delta <= epsilon f_j(t)/(1+epsilon).
+
+Thus, apart from the factor of two from doubling and separately prescribed
+rounding margins, obtaining needs O(t gamma m0(1+epsilon)/(epsilon f_j(t)))
+mixture terms. The bound depends on the actual conditioning density, rather
+than on a loose analytic lower bound that might decay unnecessarily quickly
+with the number of blocks. In numerical execution use a certified lower mass
+and include the complete measure evaluation error in delta.
+
+This is a class-wide compactness and obtaining bound conditional on the event
+density, not an unconditional low-rank assertion. The number of sites, their
+local state dimensions, and their silent rates do not appear in the displayed
+rank bound except through the supplied event-density lower bound. Evaluating
+each term still requires all relevant local propagators. Rare conditioning
+can make the required rank large. For finite-precision execution add the full
+measure evaluation error to h gamma m0; assigning half the error budget to
+each gives the same bound with a factor of two in N. Positive Gauss quadrature
+below offers a much sharper implemented certificate on the concrete examples.
+
+## 4. A strict correlation consequence
+
+For binary blocks, let their silent rates be alpha_i:0->1 and beta_i:1->0, and
+their open-state reaction hazards be kappa_i 1_{X_i=1}. After observing mark j,
+the other blocks are conditionally independent given u, with active probability
+
+    p_i(u)=v_i(u,1)/(v_i(u,0)+v_i(u,1)).
+
+It solves
+
+    p_i'=alpha_i(1-p_i)-beta_i p_i-kappa_i p_i(1-p_i),
+    p_i(0)=alpha_i/(alpha_i+beta_i).
+
+With all rates positive, p_i decreases strictly toward its smaller fixed point.
+The posterior density of u is positive over (0,t). Therefore for two nonfiring
+blocks i,l,
+
+    Cov(X_i,X_l | t,j)=Cov[p_i(U),p_l(U) | t,j] > 0.
+
+Strict positivity follows from the covariance identity using two independent
+copies of U and the strict common monotonicity. Thus the product of marginal
+entrance laws underestimates the immediate hazard of a later AND reaction by
+its rate constant times this covariance. This is a concrete downstream query
+for which retaining the latent-history mixture changes the prediction.
+
+## 5. Implementation and scope
+
+### Positive high-order quadrature improves the representation size
+
+The endpoint enclosures are a safe fallback but their first-order convergence
+can require many mixture terms. A positive four-point Gauss rule gives a much
+smaller correlated mixture with a signed L1 error bound.
+
+For stationary product input let A be the Kronecker sum of killed local A_i,
+mu the product row, and J_j the nonnegative marked event/reset operator. The
+full entrance integrand is
+
+    g(u)=gamma exp[-gamma(t-u)] mu exp(Au) J_j.
+
+Its eighth derivative is
+
+    g^(8)(u)=gamma exp[-gamma(t-u)] mu(A+gamma I)^8 exp(Au)J_j.
+
+Let b_i,r=||mu_i A_i^r||_1, computed by local rational matrix multiplication.
+Multinomial convolution of these local bounds and gamma^r gives B_8 satisfying
+
+    ||mu(A+gamma I)^8||_1 <= B_8.
+
+Since exp(Au) is substochastic and the row sums of J_j are at most kappa_j,
+
+    sup_{0<=u<=t} ||g^(8)(u)||_1 <= gamma kappa_j B_8.
+
+Four-point Gauss quadrature on cells of width h has a nonnegative eighth-order
+Peano kernel. Its scalar integral is h^9 (4!)^4/[9(8!)^3]. Positivity permits
+summing the coordinate errors inside the common kernel before taking a norm,
+so the full vector L1 remainder, for t/h cells, obeys
+
+    delta_quad <= t h^8 (4!)^4/[9(8!)^3] gamma kappa_j B_8.
+
+All Gauss weights are positive. Thus the approximate entrance law remains a
+positive product mixture with four terms per cell. Interval bounds on the
+nodes, weights, exponentials and products give a separate delta_round. The
+implemented mixture chooses the lower endpoint product at each node; its
+exact unnormalized L1 error is at most delta=delta_quad+delta_round.
+
+If m is this approximate mixture's mass, then normalization gives
+
+    TV(M_j(t)/f_j(t), M_approx/m) <= delta/m.
+
+Indeed, add and subtract M_j(t)/m, use |m-f_j(t)|<=delta, and divide the L1
+bound by two. A computed lower bound on m supplies an executable certificate.
+Unlike the endpoint method, this argument does not assert that the quadrature
+mixture is a submeasure of the exact entrance law.
+
+For arbitrary product input rho_i, a usable local derivative bound for
+v_i(u)=rho_i exp[Q_i(t-u)]exp[A_i u] is
+
+    ||v_i^(d)(u)||_1 <=
+      sum_{r=0}^d binom(d,r) ||rho_i Q_i^r||_1 ||A_i^(d-r)||_infinity.
+
+This follows by differentiating the two factors and using their stochastic/
+substochastic contraction. The same multinomial and positive quadrature
+construction therefore extends to nonstationary product components and finite
+positive mixtures. It pays for mixture rank and conditional normalization.
+
+The high-order implementation is tensor_gauss_entrance.py, which retains the
+earlier endpoint code and outputs for comparison. Its certificates cover the
+entire hidden entrance distribution at the specified event time and mark.
+They are not claims of a uniform bound over all possible event times unless
+that additional time integration or uniformization is performed.
+
+tensor_separator_entrance.py obtains positive product lower/upper mixtures by
+adaptive dyadic subdivision, with 45-digit directed-Decimal arithmetic. Its
+two-state killed propagator is evaluated using its two real eigenvalues with
+outward exponential/square-root enclosures. The interval class is imported from
+the existing, available pro3_gate_experiment.py; this dependency is explicit.
+
+The small expanded reference is a floating-point consistency check. The
+measure and posterior certificates come from the positive endpoint bounds,
+not from agreement with that reference. This is a supplied mathematical rule
+family, not an experimentally fitted or validated biological mechanism.
+
+## 6. Reuse of the acquired correlated entrance
+
+The 24-site positive Gauss entrance is serialized in
+tensor_correlated_entrance_24sites.json as normalized EXACT rational mixture
+weights w_r and local Bernoulli probabilities p_ri. Their sum and probability
+constraints are checked by rational arithmetic. The mathematical probability
+law is therefore completely specified, not just a numerical execution report.
+tensor_reuse_entrance.py loads and validates this retained object when it is
+present; it rebuilds the entrance only if the saved object is absent. Invalid
+retained data raise an error. Loading checks exact normalization, probability
+ranges, local rates and the recorded reset contract without repeating the
+acquisition integration or independently re-proving the stored certificate.
+
+After the observed event the controller stays open and the firing site resets
+to 0. Let rho_ri=(1-p_ri,p_ri). The next-event survival probability from the
+acquired law is exactly
+
+    S_hat(s)=sum_r w_r product_i [rho_ri exp(A_i s) 1].
+
+The analogous mark density replaces the firing block's final 1 by its hazard
+column. Products and sums are evaluated with outward interval arithmetic.
+Forward evolution and event observation form a Markov kernel, so the original
+entrance TV error epsilon transfers to the entire next-event law without
+amplification. This statement applies before conditioning on another record.
+The elapsed time s starts at the exactly observed first-event timestamp t.
+If that timestamp is only known to lie in a bin, predictions at an absolute
+deadline must also retain or integrate its uncertainty; a convenient chosen
+bin origin does not identify the physical event time.
+
+Given a subsequent exact time/mark record, each component is updated by its
+local killed propagators and the marked reset. Its weight is multiplied by
+its record likelihood. The number of product components need not grow for
+these additive local hazards and local resets. Bayesian normalization can
+amplify approximation error when the observed record is unlikely and must be
+certified separately.
+
+The comparison model replaces the acquired posterior by the product of its
+marginals. It has the same instantaneous total reaction rate but generally a
+different next-event-time law. Indeed if H=sum_i kappa_i X_i, then
+
+    S(s)=1-E[H]s + (E[H^2]-E[QH])s^2/2 + O(s^3).
+
+Both E[H] and E[QH] depend only on marginals. Their difference is therefore
+
+    S_correlated(s)-S_product(s)
+        =s^2 sum_{i<l} kappa_i kappa_l Cov(X_i,X_l)+O(s^3).
+
+The shared hidden opening time creates positive covariances, so losing the
+correlations changes a later reaction prediction even when no new AND gate is
+introduced. tensor_reuse_entrance.py executes this next-event calculation and
+records both numerical interval error and the propagated entrance certificate.
+For a comparison to the product of the TRUE source marginals, it additionally
+allows n*epsilon error by the standard product coupling bound. The independent
+model is a deliberate comparison, never used as a certificate for the
+correlated action.
+
+## Primary comparison pointers
+
+* Celikkaya and Shelton, 2014, Time-Ordered Products for Continuous-Time Markov
+  Processes: https://proceedings.mlr.press/v32/celikkaya14.pdf . Independent
+  propagation plus time-ordered corrections is established. Besides their
+  signed expansion, page 5 explicitly describes a positive alternative with
+  substochastic A and nonnegative B. Positivity alone is therefore not a
+  distinction. The candidate contribution here is the checked reaction
+  interface, a source-computable full correlated entrance error certificate,
+  conditional mixture-rank bounds, and retained entrance reuse for subsequent
+  event queries; priority for that combination has not been established.
+* Xu and Shelton, JAIR 2010, Intrusion Detection using Continuous Time Bayesian
+  Networks: https://arxiv.org/pdf/1401.3851 . Section 4.2 conditions on an
+  autonomous parent trajectory and exactly marginalizes independent hidden
+  submodels using Rao–Blackwellized particle filtering. Conditional separation
+  itself is an incumbent, not a novelty claim here.

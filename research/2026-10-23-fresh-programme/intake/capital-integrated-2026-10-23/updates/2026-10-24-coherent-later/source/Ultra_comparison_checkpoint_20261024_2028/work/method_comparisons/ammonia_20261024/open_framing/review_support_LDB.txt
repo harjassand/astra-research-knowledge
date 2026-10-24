@@ -1,0 +1,174 @@
+# Independent exact check: detailed balance, ring current, and conditional costs
+
+Scope: this is an independent algebra/unit audit of the requested three-state
+ring, gate-work/LDB statements, and conditional numerical conversions. It does
+not supply a Mo-to-Ru rate, a physical gate, or process-performance evidence.
+The ring formula below applies to a time-homogeneous reversible three-state
+Markov chain at fixed controls/reservoirs.
+
+## 1. Exact three-state ring
+
+Use states 0, 1, 2, forward edge i -> i+1 (mod 3) at rate u_i, and reverse
+edge i+1 -> i at rate w_i. Directed matrix-tree weights for stationary trees
+rooted at states 0, 1, 2 are respectively
+
+    tau_0 = w_0 u_2 + u_1 u_2 + w_0 w_1,
+    tau_1 = u_0 w_1 + w_2 w_1 + u_0 u_2,
+    tau_2 = w_2 u_1 + u_0 u_1 + w_0 w_2.
+
+Each term is one of the three directed in-trees into its root. Thus
+pi_i=tau_i/D, D=tau_0+tau_1+tau_2>0. The current on edge 0 is
+
+    J = u_0 pi_0 - w_0 pi_1
+      = (u_0 tau_0 - w_0 tau_1)/D
+      = (u_0 u_1 u_2 - w_0 w_1 w_2)/D.
+
+The same current flows on all three edges by stationary probability
+conservation. Expanding D gives exactly the nine positive terms in
+cycle_gate_checks.py. Therefore sign(J) is the sign of the total cycle
+affinity A=ln[(u_0u_1u_2)/(w_0w_1w_2)].
+
+For the file's illustrative rates
+
+    u=(100, 0.1 epsilon, 100),  w=(1, 10 epsilon, 1)   [s^-1],
+
+the middle-edge ratio is u_1/w_1=0.01. With no chemical/work exchange on that
+edge, LDB assigns it generalized uphill free energy
+Delta G_1^gen = -kBT ln(0.01)=kBT ln(100). The other ratios are 100 and 100,
+so total affinity remains ln(100)>0 and forward stationary current is
+positive. Direct expansion gives
+
+    D = 10101 + 1040.1 epsilon,
+    J = 990 epsilon / (10101 + 1040.1 epsilon) s^-1.
+
+Numerically, J(1)=0.0888601664 s^-1 and
+J(10^-6)=9.80100879e-8 s^-1. As epsilon -> 0,
+
+    J/epsilon -> 990/10101 = 0.0980101 s^-1.
+
+Scaling both directions of that edge by epsilon preserves its LDB ratio and
+the cycle affinity but makes throughput vanish linearly. This is the precise
+thermodynamic/kinetic separation illustrated by the code. Any one edge can be
+the uphill edge after cyclic relabeling, provided the other edge ratios leave
+positive net affinity. The artificial rates are a mathematical witness, not
+an acquired material model.
+
+## 2. Gate-work signs and LDB boundary
+
+At fixed occupation n, changing a control parameter from gate 0 to gate 1
+does work ON the machine
+
+    W_on(n)=F_1(n)-F_0(n),
+    W_reset(n)=F_0(n)-F_1(n) for 1 -> 0.
+
+If the A gate is switched on while A-bound nitrogen is present and reset only
+after A is empty, the net is
+
+    [F(AN,1)-F(AN,0)] + [F(A,0)-F(A,1)] = b_A1-b_A0,
+
+because the empty-gate baseline cancels and the same nitrogen chemical
+potential appears in both binding free energies. Likewise, if a bound B
+intermediate is switched from receive to release gate and reset after release,
+the corresponding net is b_B,release-b_B,receive. Positive values are work
+input under the support note's convention. The example values therefore give
+
+    chemistry: [-1.00, -0.10, -0.07] eV/N; sum = -1.17 eV/N,
+    gate work: [+0.60, +0.40] eV/N; sum = +1.00 eV/N,
+    total: -0.17 eV/N,
+
+so the asserted ledger identity and signs check. If empty-gate energies differ
+without cancellation, or switching occurs at other occupancies, the bare
+binding-shift formula must be amended to use the full F_g(n) values. Do not
+charge the same regeneration both as reservoir fuel and as external work.
+
+For an elementary reversible chemical/thermal jump at fixed gate setting,
+the stated convention
+
+    Delta G_e^gen = F_y-F_x - sum_r(mu_r nu_r) - w_e,
+    ln(k_xy/k_yx) = -beta Delta G_e^gen
+
+has the correct sign: incoming reservoir matter and positive work on the
+machine favor the forward rate ratio. Here nu_r is positive into the system.
+An autonomous stochastic redox/ligand gate can be included as ordinary
+microstates and must itself obey LDB, with every chemical reservoir included.
+
+A deterministic time-dependent gate switch is different: it is parameter
+work F(x,lambda_after)-F(x,lambda_before), not a stochastic edge with a
+k_forward/k_reverse ratio. LDB can be used for reaction jumps at each fixed
+instantaneous control setting. For a fully specified forward protocol and its
+time-reversed protocol, a completed path obeys the usual stochastic first-law
+accounting; with a closed internal state, the sum of jump log-rate ratios is
+beta times (net incoming-reservoir chemical potential + work delivered by
+the protocol), provided the work and all reservoir exchanges are included.
+Thus the cycle relation in support_detailed_balance.txt is sound as a
+pathwise thermodynamic accounting identity under that convention, but it is
+not an intrinsic stationary affinity for a periodically controlled network.
+If switching is triggered by a measurement/feedback decision, controller
+work and the measurement/feedback information ledger also need a model.
+
+Consequently the three-state tree/current formula is valid for a fixed,
+time-homogeneous rate ring. It cannot be directly assigned to a periodically
+switched gate or interpreted as a stationary current there; those require a
+periodic-state or full driven-path calculation. The fixed-rate numerical
+example does not establish the behavior of a controller-driven material.
+
+## 3. Eyring target and measured-rate arithmetic
+
+Using the script's target values, the product flux is
+
+    r_NH3 = FE*j/(3F)
+          = 3.38566142e-7 mol s^-1 cm^-2
+          = 1.21883811 mmol h^-1 cm^-2.
+
+At the explicitly illustrative density 10^15 modules cm^-2 this is
+203.8893 turnovers s^-1 per module. For a unimolecular Eyring-limited step
+with transmission coefficient kappa=1, k=(kBT/h)exp(-DeltaG‡°/kBT). For a
+bimolecular step with a 1 M standard state and an ideal 20 mM partner,
+
+    k_pseudo = (kBT/h) a_B exp(-DeltaG‡°/kBT),  a_B=0.020.
+
+Hence the largest compatible standard-state barrier is
+
+    DeltaG‡°_max = kBT ln[(kBT/h) a_B / k_target].
+
+The activity factor is required; omitting it overstates the allowed barrier
+by kBT ln(1/0.02), about 0.1005 eV at 298.15 K. Independent evaluation gives:
+
+| T (K) | unimolecular max (eV) | bimolecular standard max at 20 mM (eV) |
+|---:|---:|---:|
+| 298.15 | 0.62022 | 0.51971 |
+| 400 | 0.84222 | 0.70737 |
+| 573 | 1.22423 | 1.03106 |
+
+These are optimistic ceilings because transmission coefficient 1 is assumed;
+they inherit the chosen site inventory and current/FE target. The separate
+Woo/Mn exchange figures in the script convert correctly: 5600 M^-1s^-1 at
+0.020 M -> 112 s^-1; 0.010 M^-1s^-1 at 0.020 M -> 2.0e-4 s^-1. This audit
+checks those unit conversions conditional on the quoted literature inputs;
+it does not independently re-audit the source experiments. The two values
+belong to different Mn exchange reactions and cannot be substituted for a
+Mo-to-B transfer rate.
+
+## 4. Energy and attrition conversions
+
+Using the script's NH3 molar mass 17.03052 g/mol and constants:
+
+- 1 tonne NH3 = 58,718.113 mol. One eV per NH3 is 5.66544 GJ/t or
+  1.57373 MWh/t. At three electrons per NH3, an extra 1 V is 16.9963 GJ/t.
+- A 450 nm photon is 2.755204 eV; one incident photon per NH3 is
+  15.6094 GJ/t or 4.33595 MWh/t before LED, coupling, or quantum-yield losses.
+- Stoichiometric 1.5 mol H2 per NH3 is 177.553 kg H2/t. At the explicitly
+  assumed 50 kWh/kg, that is 8.87765 MWh/t.
+- For 2.5 mol ideal H2 returned from low to high pressure per NH3,
+  T=323.15 K and p_high/p_low=1000 give
+  2.5 RT ln(1000)=46.3997 kJ/mol NH3 = 2.72450 GJ/t = 0.756807 MWh/t.
+  This verifies the reversible ideal-gas work conversion, not the physical
+  need for that pressure swing or real compressor energy.
+- 300 h at one completed turnover per second is N=1,080,000 turnovers.
+  Under independent irreversible loss probability q each turnover, retaining
+  half the initial inventory requires (1-q)^N=1/2, hence
+  q=1-exp[ln(1/2)/N]=6.41803e-7 per turnover.
+
+These conversions are internally consistent. They are conditional
+bookkeeping/target checks and do not constitute acquired process performance,
+measured selectivity, or a physical lifetime result.

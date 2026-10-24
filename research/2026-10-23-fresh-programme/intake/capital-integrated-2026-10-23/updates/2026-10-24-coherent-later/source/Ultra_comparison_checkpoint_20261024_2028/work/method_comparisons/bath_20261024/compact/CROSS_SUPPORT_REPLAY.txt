@@ -1,0 +1,65 @@
+CROSS-ARM WARM REPLAY AUDIT — 2026-10-24
+
+Purpose and boundary
+
+After the root released the warm output, I independently audited and reran its two-native-port numerical example. This checks the supplied linear-Gaussian model and arithmetic only; it is not a physical validation, device estimate, or priority result. I did not modify the warm files.
+
+Files actually read
+
+- work/method_comparisons/bath_20261024/warm/replay_multiport.py
+- work/method_comparisons/bath_20261024/warm/REPLAY_RESULTS.json
+- Section 7 of work/method_comparisons/bath_20261024/warm/SCIENTIFIC_CHECKPOINT.txt
+- My compact arm's work/method_comparisons/bath_20261024/compact/support_bandwidth.txt
+- Earlier in this compact arm: NEXT_CONSTRUCTION.txt, COMPACT_HANDOFF.txt, NEXT_QUESTION.txt, and RETAINED_PRECOMPARISON_PROOF.txt in the bath_20261024 directory.
+
+No external paper or other warm-arm file was opened for this replay. Rerun output is saved separately at work/method_comparisons/bath_20261024/compact/CROSS_WARM_REPLAY_SUPPORT.json.
+
+Backward output covariance derivation
+
+Use mechanical quadrature order R=(Q_A,P_A,Q_B,P_B), and native input/output order (A1_Q,A1_P,A2_Q,A2_P,B1_Q,B1_P,B2_Q,B2_P). The code's 4x8 C has sqrt(gamma_j)I_2 in each local port block, so C C^T=gamma I_4. Its state and output equations are
+
+    dR = A R dt + C dW,             dY = dW - C^T R dt.
+
+For Z_k=integral k(t)^T dY(t), variation of constants gives the initial-state coefficient a=-J(0) and the input-noise kernel b(t)=k(t)-C^T J(t), where
+
+    J'(t) = -C k(t) - A^T J(t),      J(T)=0.
+
+The implementation integrates exactly this backward adjoint equation. The sign and C^T placement in b follow by substituting R(t)=exp(At)R(0)+integral_0^t exp(A(t-u))C dW(u) into Z_k. The covariance is
+
+    G = a^T V_0 a + integral b(t)^T V_in b(t) dt.
+
+For the supplied independent thermal inputs, V_in is diagonal in the declared port order, with entries (1000.5,1000.5,500.5,500.5,1000.5,1000.5,500.5,500.5). The code constructs exactly that ordering via repeat/tile. The initial mechanics are assigned isotropic V_0=1000.5 I_4. This accounts for output correlations through the same backward kernel rather than replacing the output covariance by a stationary or independent-port approximation.
+
+For a quadrature displacement w=(w_Q,w_P), the Weyl functional is exp(i(w_P Q-w_Q P)); its real coefficient is k=(w_P,-w_Q). The `residual_kernel` assignment `kernel[:,0::2]=disp[:,1::2]`, `kernel[:,1::2]=-disp[:,0::2]` has this sign and order. Its A/B and own/cross blocks agree with the declared port order. For a normalized bright row h=sqrt(gamma_j/gamma), alpha=h dot sqrt(gamma_j)=sqrt(gamma), so gain one removes the entire own displacement vector; cross displacement remains in the opposite oscillator's native outputs. For a port-1-only homodyne, the remaining own vector is the uncaptured port-2 response. The label `perfect_port1_only_port2_absent` means port 2 is not observed; it remains in the model as a hot damping port.
+
+Numerics and refinement
+
+The run command was `python3 .../warm/replay_multiport.py --intervals 8192 --output .../compact/CROSS_WARM_REPLAY_SUPPORT.json`. It does not overwrite the warm results file. The adjoint is stepped backward with RK4 and a linearly interpolated k over each step; Simpson's rule integrates the final smooth covariance kernel. Since the forcing is interpolated from grid values, the combined scheme is not entitled to global fourth-order convergence solely from the RK4 name. Observed G differences are consistent with second-order convergence and already below double-precision significance for the displayed observables:
+
+- 2048 versus 4096 intervals (warm result): full-capture G difference 2.67e-13; port-1-only 6.87e-13; no-readout hot 1.69e-12; cold comparator 8.36e-16.
+- 4096 versus 8192 intervals (independent compact rerun): respectively 6.67e-14, 1.66e-13, 4.16e-13, and 2.01e-16.
+
+The exact temporal-mode portion reports Fourier coefficients and Parseval norms for its chosen pulse, including derivative-energy ratio 204/41 and a fourth-integration-by-parts tail bound min(1,619.768662894/B^7). These are exact/specified waveform facts. Correction after reading warm Section 7: the example's scalar `eta_bandwidth=1/(1+derivative_ratio/B^2)` is exact for the explicitly constructed passive quantum filter and inverse-adjoint matched LO, not a Jensen surrogate for forward-mode power transmission. For causal `H_B(omega)=B/(B-i omega)`, the specified normalized LO is `g=(f-f'/B)/sqrt(J)`, with `J=1+||f'||^2/B^2` for normalized compactly supported `f`; then `H_B^dagger g=f/sqrt(J)`, so the selected native-mode amplitude is `sqrt(eta_bandwidth)=1/sqrt(J)` and the complementary port contributes vacuum. Jensen would describe a different LO/observable and does not apply to this selected-mode construction. The engineering availability of the shaped LO, detector, carrier and filter hierarchy remains unacquired. Finite-window truncation and electronics noise also remain costs.
+
+Phase and spin-state audit
+
+The pulse constructs d=L_gamma u, e=-kappa u and f=(L_gamma^2-kappa^2)u. Its sampled phase entries obey `raw + fb = logical` within the code's 2e-12 check; the independently rerun fixed-gate outputs preserve the same values as the 4096 calculation to displayed precision. The full-bright feedback case is set to theta=-pi/4 by choosing u0^2 from the same `logical` integral. The other cases use raw or partial-feedback phase, so their phases are not algebraically identical, although the supplied gamma makes the differences tiny:
+
+- full capture: theta=-pi/4;
+- port-1-only: theta - (-pi/4)=4.04e-9 rad;
+- no readout and cold-input/no-readout: theta - (-pi/4)=1.01e-8 rad.
+
+The spin matrix uses rho_(s,z)=exp(i theta(s_A s_B-z_A z_B)-Delta s^T G Delta s/2)/4. Its partial-transpose reshape/transposition swaps the B row/column indices, and the reported negativity is the sum of negative PT eigenvalue magnitudes. I independently recomputed fidelity against one common target exp[-i(pi/4)Z_A Z_B]|++>, rather than relying only on the script's per-case `same_phase` target. At 8192 intervals the results are:
+
+| Supplied case | Negativity | Fidelity to common -pi/4 target | Minimum rho eigenvalue |
+|---|---:|---:|---:|
+| Full native bright collection, hybrid taps, effective detector/filter loss | 0.40686619997024 | 0.90686619997024 | 0.00227574533676 |
+| Port 1 read, hot port 2 unobserved | 0 | 0.25000096366881 | 0.24999903633305 |
+| Hot native outputs, no readout | 0 | 0.25 | 0.25 |
+| Vacuum inputs and vacuum mechanics, no output readout | 0.46793318230654 | 0.96793317945436 | 0.00026127960367 |
+
+The density matrices are positive in these fixtures, and the full-capture model remains entangling while the hot one-port and no-readout models are separable. The phase correction to a common target changes no displayed conclusion. The code's `same_phase` fidelity is computed against each case's own theta; the common-target check above removes that comparison ambiguity.
+
+Interpretation limits
+
+The replay supports only the conditional construction: if both native outputs can be coherently combined into the bright mode and a mode-matched homodyne record is available, the supplied thermal model leaves a small residual cross-output dephasing and retains entanglement in this chosen pulse. The one-port comparison leaves the second native thermal channel in the covariance and loses the supplied entanglement. The cold comparator is a vacuum-input/vacuum-mechanics model, not a measured or costed alternative. The full capture/hybrid collection, scalar efficiency, bath occupations, mechanical variance, calibration, and coupling scales are supplied dimensionless settings. Native port access, real filter transfer, precision, resource costs and practical advantage remain unestablished.
