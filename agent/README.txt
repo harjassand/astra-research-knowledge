@@ -1,8 +1,9 @@
 ASTRA AGENT ACCESS
-Always-on: 00_START_HERE.txt. Optional survey: 01_CORE.txt. Read only task-relevant protocols.
-WEB: agent/concepts.txt or legacy agent/topics.txt -> relevant frontier/dossiers_v5/<route-ID>.txt -> exact proof range/source. Use one fetched Git revision for all reads. agent/ACCESS.txt explains locators, source versions and fallback. No local execution, search server, paid APIs or private database is required.
-LOCAL PUBLIC CHECKOUT: frontier/retrieve_v5.py routes, dossier, connections, packet, status, notice, lemmas, gates, changes. frontier/build_access_v5.py rebuilds/checks the current projection with Python stdlib. The earlier v1-v4 access snapshots remain unchanged as checkpoint-pinned historical evidence.
-FULL PRIVATE SNAPSHOT ONLY: original tools/knowledge.py and catalog/frontier source builders require the full source indexes/SQLite. agent/local-tools contains historical tool copies, not an executable public retrieval service.
-SHARED CONTINUITY: state/branches.tsv -> task-relevant branch view. state/PUBLICATION.md is the short selected-event route; research and preliminary work remain independent. state/CONTINUITY.md retains the detailed immutable publication/concurrent-head interface. Dated records do not establish current worker activity.
-MATHEMATICAL TRANSFER: agent/COMPOSITION.txt; existing graph types and representation contracts remain authoritative scoped records. No topic or lexical hit establishes compatible assumptions.
-CURRENT INVENTORY/AUTHORITY: agent/CURRENT.txt. agent/manifest.json points to the current dated v5 manifest. Earlier dated and unversioned manifests remain immutable checkpoint-pinned historical evidence. Older reports/receipts apply only to their stated snapshot. Scientific status is never upgraded by generation.
+Start at 00_START_HERE.txt; optional broad orientation: 01_CORE.txt.
+CURRENT SEARCH: python3 knowledge/retrieve.py search "scientific task"; static web: knowledge/index.html.
+KNOWN ROUTE: knowledge/current/packets/<route-ID>.json; N/L numeric prefixes, full other IDs. Read exact source, conditions, costs, notices and scoped review, then follow reusable-unit/source links.
+NORMALIZATION: knowledge/INTAKE.md; python3 knowledge/build.py build, then check. Canonical representation: knowledge/current/records.jsonl. Current inventory/freshness: knowledge/current/manifest.json and coverage.json. No private database or new producer form.
+TRANSFERS: agent/COMPOSITION.txt and knowledge/retrieve.py bridge; adjacency/word overlap is not compatibility.
+ACCEPTANCE: substantive completed internal audit at its actual scope/version is sufficient. Physical evidence, working devices, novelty and practical advantage remain separately evidenced.
+HISTORY: v1-v5 readers/dossiers/manifests and agent/CURRENT.txt remain frozen historical snapshots, not current intake routes. Full private snapshot tools are not required for public access.
+CONTINUITY: state/branches.tsv -> published checkpoint; state/PUBLICATION.md. Dated records do not establish current activity.
