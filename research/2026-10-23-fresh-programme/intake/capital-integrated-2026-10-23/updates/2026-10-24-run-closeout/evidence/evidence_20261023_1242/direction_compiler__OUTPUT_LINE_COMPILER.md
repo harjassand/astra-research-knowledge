@@ -1,0 +1,238 @@
+# An original-face-once compiler for finite rank-one gradient fields
+
+23 October2026. Internal analytic theorem; independent external expert
+acceptance and novelty are UNKNOWN. W43 and root independently converged
+on the output-line grouping mechanism before sharing their derivations.
+The statement and proof below are W43's reconstruction. Root's separate
+reconstruction is corroboration of that convergence, not a new critic
+who developed the mechanism only after reading this proof. W26's fresh
+conceptual review found no junction or boundary-extension flaw.
+
+This strengthens the earlier graph and covering compilers: no physical
+face needs to be split, and no target graph has to be acquired. All older
+frozen graph proofs and receipts remain unchanged.
+
+## Theorems and scope
+
+Let n,m>=1. All source triangulations below are admitted finite straight
+simplicial triangulations with positive physical n-volumes. All maps are
+continuous and piecewise affine. A finite binary laminate is represented
+by positive leaf weights and binary barycentric splits with rank-at-most-
+one differences; equal matrices may be coalesced or split at rank zero.
+
+**Affine-periodic theorem.** Suppose v:R^n->R^m is affine-periodic on a
+flat n-torus lattice Lambda: v(x+tau)=v(x)+M tau for every lattice period.
+Suppose rank Dv<=1 on every physical simplex in one period. Its exact
+normalized physical gradient law has a finite binary tree rooted at M,
+with EVERY ORIGINAL PHYSICAL SIMPLEX OCCURRING EXACTLY ONCE. Thus F
+positive leaves suffice. In particular rank M<=1 (also a null-minor
+necessity). The periodic case has M=0.
+
+**Affine Dirichlet theorem, including holes.** Let Omega be any bounded
+polyhedral domain, with a finite triangulation as above, and let
+v=Ax+b on its ENTIRE boundary, with rank A<=1. If rank Dv<=1 on every
+simplex, the complete original physical law has an F-leaf binary tree
+rooted at A. Convexity and simple connectivity of Omega are unnecessary;
+all boundary components carry the displayed affine trace.
+
+**Matrix-translation corollary.** A common constant matrix C may be added
+to every gradient and every state in either theorem. Jumps, weights and
+the once-only physical marginals are preserved. Equivalently, if an
+actual affine-periodic or affine-Dirichlet map u has
+
+    rank(Du-C)<=1 on EVERY physical simplex,
+
+and the corresponding shifted boundary mean has rank<=1, its ORIGINAL
+law is finite with F leaves, rooted at the original mean. For affine
+Dirichlet data the shifted mean rank condition also follows from the
+standard boundary null-minor identity, since all shifted terminal
+minors vanish. No arbitrary matching quotient is involved.
+
+## 1. Finite output-line groups and scalar fields
+
+Write F=Dv. Ignore rank-zero faces temporarily. There are finitely many
+distinct one-dimensional output ranges L=range(F_i). For each choose a
+single nonzero vector V_L spanning L, with one selected nonzero component
+normalized to one. On a face in group L there is a unique input covector
+rho_i such that F_i=V_L outer rho_i.
+
+Define rho_L to equal rho_i on those physical faces and zero on every
+other face. These finite piecewise-constant scalar covector fields have
+mutually disjoint supports up to interfaces. Physical faces of rank zero
+have F_i=0 and will be retained as a separate zero group. The groups are
+by OUTPUT LINE, so opposite vector orientations belong to the same group.
+Disconnected pieces and different target edges with parallel output
+directions belong to one group as well; no geometric adjacency is assumed.
+
+## 2. The zero-extended scalar fields are closed
+
+Take two neighboring physical simplices and a vector t tangent to their
+common facet. Continuity of v gives the Hadamard trace identity
+
+    F_left t = F_right t.                             (1)
+
+If their nonzero output lines coincide with L, the one fixed normalization
+V_L makes the scalar tangential traces agree. If the output lines differ,
+the common vector in (1) belongs to two distinct one-dimensional linear
+subspaces, whose intersection is {0}. Both sides are therefore zero.
+The same conclusion holds if one gradient is zero. Thus, for EVERY L,
+the tangential trace of rho_L agrees across EVERY source facet, including
+where that field has been set to zero.
+
+For precision, the distributional curl components of a finite piecewise-
+constant covector field are sums over facets of
+
+    ([rho_l] nu_k - [rho_k] nu_l) H^(n-1)|facet.
+
+Matching tangential traces mean each jump is parallel to the facet
+normal nu, so these coefficients vanish. First distributional derivatives
+have no additional codimension-two junction terms. Consequently every
+rho_L is closed. This is the load-bearing fact; it relies on actual
+gradient compatibility (1), not merely an abstract rank-one adjacency
+graph or determinant balance of an arbitrary atomic measure.
+
+## 3. Closed periodic fields have parallel averages
+
+In the affine-periodic case F and every rho_L are periodic. Lift to R^n.
+The closed field has a global locally Lipschitz P1 scalar primitive H_L.
+One can construct it by integrating local affine primitives along paths;
+the distributional closedness above gives invariance under local
+deformations, and simple connectivity of R^n gives path independence.
+
+The difference H_L(x+tau_j)-H_L(x) is a constant p_Lj. Subtract the affine
+function with those periods to obtain a continuous periodic P1 function
+phi_L. Hence
+
+    rho_L = a_L + Dphi_L,
+    a_L = average(rho_L).                             (2)
+
+The equality of the affine part and the physical average follows by
+paired-boundary cancellation of a periodic gradient. On a skew torus,
+the affine covector is sum_j p_Lj xi_j, where xi_j is the dual Cartesian
+lattice basis. Nothing assumes a square period cell.
+
+For two distinct groups L,K, the fields rho_L,rho_K have disjoint
+positive-volume supports. Every two-column minor of their two-row matrix
+vanishes pointwise. Applying the periodic null-minor identity to (2)
+therefore gives
+
+    minor(a_L,a_K) = average minor(rho_L,rho_K) = 0.    (3)
+
+This identity is elementary: expand the minor, integrate its linear
+gradient terms to zero, and write the quadratic term in coordinates r,s
+as D_r(phi_L D_s phi_K)-D_s(phi_L D_r phi_K). Integrating on each P1 cell
+cancels internal traces and periodic paired boundaries. It holds for
+Lipschitz P1 functions; no unproved smoothness is used. An invertible
+affine domain change reduces any lattice to the standard torus and
+preserves matrix rank.
+
+All nonzero average covectors a_L thus span one common input line.
+Choose a covector J spanning it; write a_L=c_L J. If all averages vanish,
+take J=0. The coefficients may have either sign or be zero. For n=1 all
+input covectors already belong to one line, so the same conclusion is
+immediate without minors.
+
+## 4. Compact closed fields have zero integral: the boundary proof
+
+In the Dirichlet case extend v by the SAME affine map Ax+b to the entire
+complement of Omega, including every bounded hole. The full-boundary
+trace makes this extension continuous and locally Lipschitz. Its exterior
+gradient is A. All gradients of the extended map still have rank<=1.
+The finite grouping argument in Section2 applies across outer and inner
+boundary facets as well as original interior facets.
+
+If A is nonzero, let L0=range(A). For each L!=L0, the resulting rho_L is
+closed and compactly supported in the closure of Omega. If A=0, this is
+true for EVERY nonzero output-line group. On R^n, n>=2, a compactly
+supported closed L-infinity covector field has integral zero. Indeed,
+it is the gradient of a global Lipschitz scalar H. Outside a sufficiently
+large ball the gradient vanishes. That exterior is connected, so H is
+one constant there. Subtract the constant: H now has compact support.
+The integral of each component of DH is zero by distributional
+integration by parts (use a smooth test function equal to one on a ball
+containing the support). Thus
+
+    integral_Omega rho_L = 0   for every L!=L0.        (4)
+
+Possible different primitive constants in bounded holes do not change
+this conclusion: the primitive itself is defined on the filled whole
+space, and its derivative is zero in the holes. No simple-connectivity
+assumption about Omega entered the proof. If n=1 every m-by-1 jump has
+rank at most one, so the F-leaf theorem is trivial directly.
+
+Equation (4) makes every non-base output group mean zero. All gradients
+of the base group, if present, already have output line L0. The zero
+means and this base group are consequently pairwise rank-one connected.
+The overall mean is A, by integrating the full affine boundary trace,
+with all inner boundary normals included. If A=0 all packet means are
+zero. This proves the boundary interface required for the tree.
+
+## 5. Compile the original faces and preserve every mass
+
+Let w_i>0 be the actual normalized physical simplex volumes. For each
+group let w_L=sum_(i in L) w_i. Its actual conditional mean in the
+affine-periodic case is
+
+    M_L = V_L outer (a_L/w_L)
+        = ((c_L/w_L)V_L) outer J.                     (5)
+
+All group means, together with the zero group, share the common input
+covector J. Thus any binary averaging of them with their actual masses
+is legal. In the Dirichlet case Section4 gives a common output line for
+the outer law instead. The correct outer tree is proved positive before
+any packet mean is substituted.
+
+Within a group, each original face gradient is V_L outer rho_i; every
+positive binary weighted mean remains in this same output line.
+Consequently every internal difference has rank at most one. Compile
+all faces of that group at their TRUE conditional weights. Insert its
+tree at the matching outer mean with the matching total physical mass.
+Every ancestor and every jump is preserved. The zero group is compiled
+by rank-zero averaging.
+
+Each original face is in exactly one group and is used exactly once.
+There are precisely F positive leaves and F-1 binary merges (or one leaf
+if F=1). Original masses are never changed or allocated to a second
+physical occurrence. Terminal matrices may coincide, but this is no
+obstacle and they can be coalesced if desired. All intermediate states
+are convex combinations of original matrices. Adding a common matrix C
+to the entire tree preserves its jumps and marginals.
+
+## 6. Independent implementation, scope and prior
+
+`face_once.py` is standard-library Fraction arithmetic and imports no
+producer module. It directly reconstructs physical gradients from actual
+nodal data in input dimensions2 and3 and output dimensions2 and4.
+New structured affine-periodic fixtures have nonzero rank-one means;
+subtracting those means gives actual periodic maps with rank-two faces,
+to which the translated theorem applies. New annular fixtures have two
+boundary components with the same affine trace and nontrivial off-line
+groups. Every source facet's tangential trace and scalar-group closedness
+are checked exactly, including all paired periodic facets and hole
+boundary facets. All original marginals, face-once counts, all tree
+minors and roots are checked. Old adversarial graph fixtures are also
+recompiled once per ORIGINAL face, without altering any older receipt.
+
+The universal quantifiers follow from this analytic proof, not those
+finite controls. Root's separately written convergent reconstruction is
+`work/root/RANK_ONE_OUTPUT_GROUP_RECONSTRUCTION.md`, SHA
+87915da6ee94958e9f09c57fe20aec4d02fefb0c5cc080eed714f6c6e7ed61d0.
+It independently checks a32-face affine-periodic fixture and all48
+facets. W26 separately criticized the codimension-two junction and hole
+extension steps and found no flaw. External expert acceptance remains
+UNKNOWN.
+
+Hadamard compatibility, closed-form primitives and null Lagrangians are
+classical. Ball--Currie--Olver, Journal of Functional Analysis41(1981),
+135--174, Theorem3.4 and printed p150 give the relevant minor/divergence
+identity: https://www-users.cse.umn.edu/~olver/e_/bco.pdf . Primary bytes
+are retained in the preceding periodic audit. Esmayli--Hajlasz and
+Goldstein--Hajlasz provide prior general rank-one metric-tree
+factorization context, but no tree theorem is needed by this proof.
+A limited targeted primary literature search did not settle priority
+for this exact F-leaf conclusion. Novelty remains UNKNOWN.
+
+This does NOT prove that any abstract determinant-balanced measure of
+rank-one matrices is a laminate: actual distributional compatibility is
+essential. It does not cover arbitrary rank-two gradient fields or six
+free N9 two-output vectors. The latter and Morrey remain open here.

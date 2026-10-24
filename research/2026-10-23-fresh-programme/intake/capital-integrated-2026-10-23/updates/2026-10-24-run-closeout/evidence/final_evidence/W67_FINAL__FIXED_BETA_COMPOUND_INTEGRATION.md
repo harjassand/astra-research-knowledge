@@ -1,0 +1,254 @@
+# Candidate finite compiler for a supplied factor-two-beta compound band
+
+W67, 24 October 2026. NEW integration delta; independent review pending.
+It combines the new source extension0dcf43ab with the previously reviewed
+known-parameter encoder/native architecture. It preserves all earlier
+proofs, rows and scope-bound reviews. The new source theorem and the
+uniform compound event are not inferred from the old review verdict.
+
+## C1. Contract and proposed implication
+
+Supply a rational b0 in(0,1/65536], the exact recurrent interaction family,
+target error z, confidence eta, a finite initial-state tail promise and
+the local finite universal-gate model. The actual fixed unknown gain
+obeys beta in[sqrt(b0),2sqrt(b0)]. One quantum-generated CLASSICAL public
+program is constructed using only b0. It specifies one fixed encoder and
+one deterministic total CPTP receiver, rather than choosing a source or
+decoder after an unknown-gain measurement.
+
+The proposed implication has joint-polynomial onset and local compiler/
+operation cost in beta0^-1, inverse accuracy/confidence, parameter bits
+and the explicit initializer cutoff. It has sufficient finite forward
+rate at least
+
+    3/2 + beta_actual^2/476160,
+
+at arbitrary logical/reference diamond error<=z, except with the charged
+program-failure probability<=eta, SIMULTANEOUSLY across the supplied
+band. Three selected scalar rows are given below. This remains a new
+conditional candidate until its source and integrated delta are reviewed.
+
+Public program installation remains an explicit supplied interface.
+The quantum table, seeds, descriptions and output bits are charged, but
+transporting them through the same forward device is a separate variant.
+There is no deterministic classical table constructor, certified seed,
+actual apparatus calibration or free feedback/forward message here.
+
+## C2. Source substitution is reference-only
+
+Use the newly proved parameter choice k=floor(1/(10b0)), SAME clipped/
+complete-pattern normalized source, and half regularization. The exact
+source extension0dcf43ab gives
+
+    G=1/74400, Kappa=1/96000, c=1/100000,
+    S(rho_*)>=3k/2+G,
+    D_b(rho_*)<=-Kappa I for EVERY b in[b0,4b0],
+    rho_*=sigma M_*, M_*>=I/2, [rho_*,Q]=0,
+    Tr sigma(M_*-I)^2<=c.                           (C2)
+
+The table, relative functions and charge coordinates use this ONE
+analytic source at b0. They do not depend on the actual unknown b.
+Their normalizations and known local Hamiltonian/word simulator have
+the same form as the reviewed d814 binding: M_B=1+(4/25)b0 k(k-1),
+T_max<=2 and acquired alpha_*=(1+16M_B)/2. Positivity D>=I and the
+regularized floor1/2 are unchanged. Source state trace approximation
+and uniform relative-operator/log approximation remain distinct paid
+tasks. An approximate density is not divided by sigma.
+
+The source extension explicitly reconstructs the changed moment tails,
+congruence error, weighted second/fourth norms and all-eigenvalue entropy.
+It does not apply the old V4 theorem outside its stated k choice. All
+actual-b full-operator causal/all-coherence premises retain the nonlocal
+colours, root qualification and both static sectors.
+
+## C3. One encoder ensemble independent of the actual parameter
+
+Regenerate the mesoblock policy G1--G7 and every M8 guard with(C2).
+In particular B0=ceil log2[2^30 k^6/(G Kappa)], eps=2^-B0,
+w=ceil(2ct)+1 and t is doubled until the three finite entropy/window
+guards hold. Table estimation, finite normalized cell law, exact left
+twirl, relative frame moment and both bounded width attempts are the
+same algorithms at the NEW numerical inputs. Frame seeds are generated
+after width selection. The public prefix is fixed before the message.
+
+On all-Good, the ideal parent C is a pure charge-preserving isometry on
+a COMMON logical domain, and its unconditional indicator domination is
+
+    E_program[1_allGood C(I/D)C^*] <= F rho_*^(st),
+    ln F<=5eps*s+2eta_w.                            (C3)
+
+The events and rho_* here are independent of the actual device gain.
+The estimated source law, finite fair-bit rounding and two-attempt
+conditioning are paid once. On bad programs the finite circuit remains
+total CPTP or emits an explicit pre-message compiler-failure flag;
+purity and correctness are not asserted there.
+
+## C4. Uniform actual-root source tail and common parent event
+
+For every b in[b0,4b0],(C2) and the charge selection rule give the
+actual-root dual Lyapunov bound with
+
+    t_L=Kappa/(8k^2), C_tail=6/(Kappa*t_L).
+
+The root remainder exp(2kt_L)P_(depth<k) is retained. Iterating product
+source INPUT blocks does not make the evolving bath iid. By(C3), the
+good-program average overflow past H is bounded in each static sector
+by F(1+C_tail)exp(-t_L H), uniformly in b.
+
+Put n_body=kst, choose power-of-two R>=16n_body and set
+
+    Bq=48+4 log2 R+4 ceil log2(1/z), q=2^-Bq,
+    Bgrid=Bq+log2 R+5,
+    H=ceil{[5eps*s+2eta_w+ceil log2(1+C_tail)+Bq
+                 +ceil log2(1/eta_parent)+Bgrid+12]/t_L},
+    n_flush=16(H+Bq+6).                             (C4)
+
+The angular band has length<1. Cover it by a deterministic ANALYSIS
+grid of spacing q/(16R) and at most2^Bgrid points. With
+eta_p=2^-ceil(log2(1/eta_parent)), the averaged body overflow at each
+point/sector is at most eta_p*q/(4096*2^Bgrid). This follows using
+e>2 AFTER cancelling ln F and the C_tail bound. Two-sector Markov at
+q/4 and the grid union cost at most eta_p/512, within eta_parent.
+
+At each accepted grid point the mean body overflow is<=q/4. The actual
+zero-port absorbing-root descent has a>=1-b>=1/2, so its counted flush
+failure is<=q/4. All terminal OUTPUTS remain available to the receiver.
+If flush<=body, T=body+flush<=2body and the final bad-word mean effect
+for this fixed C has Lipschitz constant<=2T<=R/4. Interpolation adds
+at mostq/64. Therefore the SAME parent has mean final-word deficit<=q
+throughout the entire band, outside the charged common event.
+
+No parameter point is experimentally sampled or explicitly evaluated.
+The analysis grid contributes a log-cardinality to H, not a hidden
+physical query or numerical integration oracle. Without this step,
+pointwise source bounds alone would not prove a common random program.
+
+## C5. One receiver and uniform native comparison
+
+Use the reviewed finite Fourier/common-cross-Gram row receiver with
+the NEW parent and actual T. The exact vacuum-word family is Laurent
+degree T in its DIGITAL angle, with both static sectors included. The
+parent is held FIXED across every Fourier sample. The local simulator
+and stored adjoints are known model circuits; the actual bath/unitary
+is never controlled or inverted. Actual coefficient norm squared is
+2T+1<=R, not1. Padded invalid rows are explicit reversible reject flags.
+
+The outer high-design event controls the full finite error span in
+operator norm. It is therefore already simultaneous for all actual
+angles; no additional band grid enters this design or its native gates.
+With omega=128R sqrt(q), the old full TP cutoff receiver uses the safe
+bound u<=2q+Romega; C4 actually provides the stronger meanq. All
+arbitrary logical/reference, seed/sector and root contracts are unchanged.
+
+For Qouter row calls, full-domain factoring repeats the ENTIRE parent
+I=Qouter+1 times. Set Delta_parent=z/(4096I) and
+Delta_inner=Delta_parent/(8s). The two consistent GLOBAL unitary
+comparisons of d814 are retained: first the function isometry and its
+stored inverse/controls; then the polar encoder with SQUARED signal
+tolerance. They supply no inaccessible exact-completion circuit and
+never invert CPTP legalization.
+
+At each retained cell use the recalculated conservative majority query
+bound Qinner. With BDelta=ceil log2(1/Delta_inner),
+
+    Bsig=2BDelta+32, delta_sig=2^-Bsig,
+    xi_A=delta_sig/(4096 Qinner),
+    T_PE=nextpow2 ceil[(40 R_domain/xi_A)^2],
+    delta_L=xi_A R_domain/(1024 T_PE),
+    delta_B=delta_L/(16t M_B),
+    each log error=delta_L/(2t).                    (C5)
+
+The exact replay checks 648delta_sig<Delta_inner^2 and both source
+error terms. Noncommuting source perturbations use Duhamel through
+the actual QPE circuit, not a scalar operator-Lipschitz claim. The
+same fixed compiled circuit is compared uniformly for every physical
+b because each intervening actual device operation has norm1. Native
+error is not multiplied by the number of analysis-grid points.
+
+## C6. Finite rows and explicit precision requirements
+
+The producer checks all G/M8/F6 source, width, denominator, moment,
+row-count, actual-root, sampler, sign, repeated-encoder and rate guards.
+The new arithmetic replay separately verifies the continuum budget,
+source/operator/function precision and full error/confidence sums.
+
+| Public beta0 | k | t | Total actual forward calls |
+|---|---:|---:|---:|
+|1/256|6553|268435456|1038364297911949092360274699855152|
+|1/1024|104857|268435456|4253505247620206602058055301606780464|
+|1/4096|1677721|536870912|34844901911191638228224445498652269950960|
+
+At z=.001, eta=.01, the full-function isometry accuracy requirements
+are respectively11492,11560,22370 bits. Required T_PE powers are
+23056,23193,44816. Corresponding B-operator accuracy bits are
+34565,34774,67210. These are REQUIRED sufficient accuracies of the
+explicit finite constructions, not measured control precision or
+whole native gate counts. The source/query/phase counts are huge.
+
+The conservative end-to-end error sum remains
+
+    3z/32+z/32+z/4+z/2048 =769z/2048 <z.
+
+The initial term uses the supplied geometric tail in the examples.
+For general supplied cutoff A use736cebd and add all its actual prefix
+calls before re-solving the rate. The safe program-failure sum is
+
+    eta_table+eta_w^2+s eta_frame+eta_parent+eta_outer<eta.
+
+The current grid failure is much smaller than eta_parent. At the three
+selected rows the conservative failure sum is10701/10240000<.01.
+
+## C7. Rate, complete resource accounting and information flow
+
+After counting initial, body and terminal calls, every selected row has
+
+    ell_code >= [3/2+G/(16k)]*(initial+body+flush).
+
+Because k<=1/(10b0) and actual b<=4b0, the excess is at least
+b_actual/476160. Exact doubling of s reaches these guards with
+polynomial stopping value: the added Bgrid is logarithmic in s and
+inverse error; eps still makes the linear flush slope smaller than the
+source entropy margin. For extreme confidence the earlier explicit
+h<=K guard can require increasing t; this remains polynomial.
+
+Complete quantum/local cost is the same EXPANDED composition as d814,
+at C2--C5, including I*s whole inner encoders, every Qinner nested
+source/log/filter/design/rank call, Qouter finite digital row calls,
+native controls, adjoints, signal phases and full program emission.
+Both stable phase-generation classical costs and their intermediate
+precision are additional. Source experiments, measurement resets,
+probability-table output, all seeds, scalar arithmetic and storage
+are separately counted. P_access depends on xi_A^-1 and T_PE; a raw
+Qinner or its bit length cannot replace this total. No quartic m^5
+native envelope is transferred after changing the source encoder.
+
+For fixed source margins, t,w,Bmu are logarithmic in k and the named
+confidence parameters; all numerical inverse fractions and explicit
+source/function tolerances are fixed polynomials in the numerical
+inputs. This is a formal joint-polynomial construction, with enormous
+constants/exponents, not a useful resource claim. Arbitrary normal
+initializers without a supplied modulus retain only pointwise limits.
+
+The code uses no actual-b estimate. CALIBRATION_INFORMATION_FLOW.md
+still correctly prevents a sender from learning one through forward-
+only returned-to-Bob probes. The present construction avoids that
+particular need by fixing one robust source from supplied coarse data.
+The public location and public-program distribution remain information
+inputs. Unknown location, an unbounded interval down to0, time-varying
+apparatus and unbounded systematic native errors are outside the claim.
+
+## C8. Evidence boundary
+
+The integrated known-b construction d814 plus736cebd has W39's full
+co-informed review a447a4d5 and reconstruction cd1c9d90, with no blocker
+in that exact scope. W49 separately reconstructed ideal M6--M16 and
+the old finite guard policy. Those reviews are not extended by fiat to
+the present source/continuum/row delta. New independent criticism is
+required before reporting this compound compiler as reviewed.
+
+The arithmetic scripts execute rational guards, not a giant source,
+table, design, good seed, phase list or native encoder/receiver. The
+model-specific representation comparison with exponential-k Schur onset
+does not lower-bound equally informed alternatives. Generic methods
+are established prior. Practical advantage NOT_ESTABLISHED; physical
+NOT_PERFORMED; priority UNKNOWN; mission NOT_ACHIEVED.

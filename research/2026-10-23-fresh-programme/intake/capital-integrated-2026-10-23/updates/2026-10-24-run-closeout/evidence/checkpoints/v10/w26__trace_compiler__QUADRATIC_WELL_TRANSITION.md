@@ -1,0 +1,351 @@
+# A quadratic-well transition bound and a global quotient separator
+
+24 October 2026. Internal analytic proof; fresh independent criticism is
+pending. This is a FIVE-output PAIR QUOTIENT result. It is neither an
+actual-gradient-law counterexample nor a two-output Morrey result.
+Historical novelty and external correctness remain UNKNOWN.
+
+The exact-support argument in the frozen PAIR_MEAN_PROJECTION_REPAIR.md
+does not by itself control auxiliary atoms or limits. The proof below
+changes the operation: it estimates a conditional auxiliary SECOND MOMENT
+on a finite rank-one tree, uniformly over its order and terminal norms.
+It then constructs a globally continuous rank-one-convex separator for
+that particular quotient. No inference from the old closed-type trap is
+used, and no approximation theorem for laminates is required.
+
+## 1. General transition theorem
+
+Use the Frobenius norm on a real matrix space. Let q be a fixed matrix and
+
+    F(X) = B(X-q,X-q),
+
+where B is a symmetric bilinear form with
+
+    |B(Y,Z)| <= C |Y| |Z|,       C>0,
+    B(H,H)=0 whenever rank H<=1.                         (5)
+
+Thus F is globally rank-one affine, not only affine on selected jumps.
+Let a finite positive binary rank-one tree have terminal random matrix T.
+Partition its terminal OCCURRENCES into classes W,O,E. Matrix values in
+different classes need not be distinct. Assume
+
+    on W: |T-q| <= rho;
+    on O: |T-q| <= R and F(T)>=delta;
+    on E: no norm restriction,
+
+where R,delta>0. Put
+
+    eta=delta/(16 C R^2),
+    0<eta<=1/16,       0<=rho<=R eta^4.
+
+Write p_W,p_O for the total probabilities of W,O. If p_O>eta, then
+
+    E[ |T-q|^2 1_E ] >= R^2 eta^8 p_W.                 (6)
+
+There is NO bound on the number of leaves, depth, terminal gradients,
+intermediate gradients, positive real split fractions or repeated atoms.
+Every tree in this statement is finite. The unbounded-order consequence
+comes from the uniform estimate, not from treating an infinite tree as
+finite. The constants are deliberately conservative.
+
+### Conditional quadratic conservation
+
+At every node v let M_v be its conditional terminal mean. By induction
+up the subtree, global rank-one affinity gives
+
+    F(M_v)=E[F(T)|v].                                  (7)
+
+For this induction the parent is the specified positive weighted mean of
+its children, and their difference has rank at most one. In particular,
+parent minus either child also has rank at most one. Equation (7) is an
+identity for arbitrary real masses; no rational-mass restriction enters.
+
+Set, conditionally at v,
+
+    r_v=P(O|v),
+    e_v=E[ |T-q|^2 1_E |v ]/R^2.
+
+Call v clean if e_v<=eta^8. Cauchy--Schwarz on the E class and (7) imply
+at every clean node
+
+    |M_v-q| <= rho+R r_v+R sqrt(e_v)
+             <=R(r_v+2 eta^4),                        (8)
+
+    F(M_v) >=delta r_v-C rho^2-C R^2 e_v
+             >=C R^2(16 eta r_v-2 eta^8).              (9)
+
+The factor P(E|v) in Cauchy--Schwarz was bounded by one; a small auxiliary
+PROBABILITY has not been silently substituted for a small second moment.
+
+### A forbidden interval for the conditional O mass
+
+A clean node cannot have eta^2<=r_v<=eta. Indeed (5),(8) give
+
+    F(M_v) <=C R^2(r_v+2 eta^4)^2
+             <2 C R^2 eta r_v,
+
+whereas (9) gives
+
+    F(M_v)>15 C R^2 eta r_v.
+
+For completeness, divide the first upper bound by C R^2 eta r_v.
+Its ratio is at most 1+4 eta^3+4 eta^5<2. The lower ratio is at least
+16-2 eta^5>15. These follow for every 0<eta<=1/16, not just for the
+specific rational eta used later.
+
+### A clean rank-one edge cannot jump across the interval
+
+Suppose a clean parent A has r_A>eta and a clean child B has r_B<eta^2.
+Here A,B denote their matrix means as well as their nodes. From (8),
+
+    |B-q|<=R(eta^2+2 eta^4)<2 R eta^2,
+    |A-B|<=R(1+eta^2+4 eta^4)<2R.
+
+The second bound uses r_A<=1; it does NOT assume bounded terminal E atoms.
+Because rank(A-B)<=1, (5) gives the exact expansion
+
+    F(A)=F(B)+2 B(B-q,A-B).
+
+Consequently
+
+    F(A)<C R^2(4 eta^4+8 eta^2)<9 C R^2 eta^2.
+
+But (9) at A gives
+
+    F(A)>C R^2(16 eta^2-2 eta^8)>15 C R^2 eta^2,
+
+a contradiction. The two remaining elementary inequalities are
+8+4 eta^2<9 and 16-2 eta^6>15.
+
+### The first bad-node frontier
+
+Every root-to-W-leaf path contains a node with e_v>eta^8. Otherwise its
+conditional O probabilities start at p_O>eta and end at zero. The
+forbidden interval forces a parent above eta immediately followed by a
+child below eta^2, which the preceding paragraph excludes.
+
+Take on each such path its FIRST node with e_v>eta^8. The distinct first
+nodes form an antichain: their terminal subtrees are disjoint. If pi_v
+is the unconditional mass of such a node, their union covers every W
+terminal, so sum_v pi_v>=p_W. Therefore
+
+    E[ |T-q|^2 1_E ]
+       >=sum_v pi_v R^2 e_v
+       >=R^2 eta^8 sum_v pi_v
+       >=R^2 eta^8 p_W.
+
+This proves (6), including the case when the root itself is the first
+bad node. Zero-rank jumps and repeated terminal values cause no exception.
+
+## 2. Exact canonical five-output quotient and constants
+
+The raw triangle positions are
+
+    x0=(0,0), x1=(10,0), x2=(0,10), x3=(2,4),
+    x4=(4,2), x5=(6,2), x6=(4,4), x8=(3,4).
+
+The eleven physical faces, in order, are
+
+    014,023,034,126,145,156,348,458,568,238,268,
+
+of areas 10,10,6,10,2,2,1,2,1,3,3. Their sum is 50.
+Take the canonical five interior hat functions, in row order 3,4,5,6,8.
+Their gradients are the actual five-by-two matrices. Keep the first nine
+as H0,...,H8 and replace the last two by their physical area mean q=H9.
+The resulting ten-atom quotient law mu has weights
+
+    (1/5,1/5,3/25,1/5,1/25,1/25,1/50,1/25,1/50,3/25)
+
+and mean zero. Thus p:=mu({q})=3/25. The original eleven-face law is a
+different law and keeps its positive finite-tree theorem.
+
+For row-pair order 01,02,03,04,12,13,14,23,24,34 put
+
+    omega=(-4,76,8,0,132,0,-66,0,-270,-132),
+    F(A)=sum_(a<b) omega_ab det((A-q)_(rows a,b)).       (10)
+
+Then F(q)=0, F(H3)=21 and F(Hi)=10 for all other i<9.
+Every two-row determinant has a symmetric polarization bounded by
+|Y||Z| (in fact |Y||Z|/2 suffices), so C=sum|omega|=688 is valid in (5).
+All of these assertions hold on ALL matrices, not just the ten atoms.
+Exact raw reconstruction also gives
+
+    max_i |Hi-q|^2=317/72 < (9/4)^2,
+    F(0)=sum_i mu_i F(Hi)=11.
+
+The last identity records why F ITSELF is not a Jensen separator.
+
+Choose
+
+    R0=9/4, R=3, delta=5, r0=1/1000,
+    eta=5/99072, rho=3 eta^4.                         (11)
+
+On the union O of the closed r0 balls around H0,...,H8, one has
+|A-q|<=R and
+
+    F(A)>=10-C(2R0*r0+r0^2)>5=delta.
+
+Let W be the closed radius-rho ball about q, and E the complement of
+W union O. The sets W,O are disjoint, because F<=C rho^2<delta on W.
+Theorem (6) applies to these classes for EVERY finite binary tree, even
+when it has terminal atoms arbitrarily far from the physical support.
+
+In particular, no sequence of finite rank-one trees can converge weakly
+to mu while its squared gradient norms are uniformly integrable. Indeed
+p_W tends to 3/25 and p_O tends to 22/25. The auxiliary second moment on
+E tends to zero: on a fixed compact set E is separated from all ten
+limiting atoms, while the unbounded part is controlled by uniform
+integrability. This contradicts (6). This is a controlled-limit exclusion,
+not merely failure of one exact-support tree grammar.
+
+### An explicit bounded-gradient auxiliary-mass gap
+
+For an exact completion nu=(1-epsilon)mu+epsilon sigma, classify the
+designated original q mass as W, the other designated original masses
+as O, and ALL auxiliary occurrences as E. Labels allow an auxiliary atom
+to coincide with a physical atom. Now rho=0, delta=10 is valid. If all
+auxiliary atoms obey |A-q|<=R, with ANY prescribed R>=3, put
+
+    eta_R=10/(16*688*R^2).
+
+For epsilon<=1/2, p_O>=11/25>eta_R, and (6) implies
+
+    epsilon >= [(3/25) eta_R^8]/[1+(3/25) eta_R^8].    (12)
+
+For epsilon>1/2 the same lower bound is automatic. Thus (12) holds for
+every epsilon, uniformly over all finite tree orders. At R=3 its lower
+bound is at least 2^(-110). Without a gradient
+bound the valid conclusion is instead
+
+    epsilon integral |A-q|^2 d sigma
+       >=R^2 eta_R^8 (1-epsilon)(3/25),               (13)
+
+provided epsilon<=1/2 and R>=3 refers only to a bound on the physical O
+atoms. A uniform second-moment BOUND alone need not make the left side
+vanish. Uniform integrability does. No unbounded-concentration exclusion
+is asserted.
+
+## 3. A global continuous rank-one-convex separator
+
+Let K={H0,...,H9}, h(A)=dist(A,K)^2, and define on the ENTIRE matrix space
+
+    f(A)=inf { integral h(T) d nu(T):
+               nu is any finite positive binary rank-one tree at A }.
+                                                               (14)
+
+Single-leaf trees are allowed. Therefore 0<=f<=h<infinity everywhere.
+If rank(A-B)<=1, concatenate arbitrarily near-minimizing finite trees
+at A and B below the first split tA+(1-t)B. Letting their errors tend to
+zero proves
+
+    f(tA+(1-t)B)<=t f(A)+(1-t)f(B),    0<=t<=1.
+
+Hence f is globally rank-one convex. It is continuous: coordinate matrix
+directions have rank one, so f is separately convex; on every larger
+coordinate box it is bounded below by zero and above by the continuous
+function h. One-variable convex secant bounds on that larger box give
+a uniform Lipschitz bound in each coordinate on the interior smaller
+box; a coordinate-by-coordinate telescoping bound gives local Lipschitz
+continuity. This proves the all-matrices property directly, without
+assuming that a projected or locally tested witness is rank-one convex.
+
+Every f(Hi)=0. It remains to prove a positive, quantitative f(0), rather
+than merely referring to a formal separating-envelope definition.
+
+### An exact affine well coordinate
+
+There is an affine functional ell with ell(q)=1, ell(Hi)=0 for i<9,
+ell(0)=p=3/25. Its constant is 3/25 and its ten row-major linear
+coefficients are
+
+    (-6/25,-52/125,-23/125,-6/25,-19/25,
+      -6/125,298/125,-268/125,-86/125,0).
+
+The squared Euclidean norm of this coefficient vector is
+
+    L^2=182118/15625.                                 (15)
+
+The raw verifier solves all ten interpolation equations exactly; no
+sampling of matrices substitutes for them.
+
+### A positive analytic lower bound at zero
+
+Take ANY finite tree at zero and put z=E h(T). Let pi(T) be one nearest
+atom of K, with ties resolved in a fixed manner. Barycenter zero and
+Cauchy--Schwarz give
+
+    |P(pi(T)=q)-p|=|E ell(pi(T))-E ell(T)|<=L sqrt(z).
+
+Markov's inequality gives
+
+    p_W>=p-L sqrt(z)-z/rho^2,
+    p_O>=1-p-L sqrt(z)-z/r0^2.                        (16)
+
+Let m=min(p,1-p)=3/25 and set
+
+    D=2+2R0^2/rho^2,
+    gamma=min { m^2/(16L^2), m rho^2/4,
+                R^2 eta^8 p/(4D) }.                 (17)
+
+If z<=gamma, (16), rho<r0 and (17) imply p_W>=p/2 and
+p_O>=(1-p)/2>eta. Thus (6) gives
+
+    E[ |T-q|^2 1_E ]>=R^2 eta^8 p/2.                 (18)
+
+But E is outside the radius-rho neighborhood of EVERY atom of K. Also
+|T-q|^2<=2h(T)+2R0^2 by comparison with pi(T). Consequently
+
+    E[ |T-q|^2 1_E ]
+       <=2z+2R0^2 P(E)<=Dz<=R^2 eta^8 p/4,            (19)
+
+contradicting (18). Therefore every such tree costs more than gamma,
+and f(0)>=gamma>0. The supplied exact arithmetic verifies
+
+    f(0)>=gamma>=2^(-231).
+
+The envelope need not be numerically evaluated to obtain this guarantee.
+
+Combining (14)--(19) proves an ACTUAL GLOBAL CONTINUOUS RANK-ONE-CONVEX
+Jensen witness for the quotient:
+
+    integral f d mu-f(0)=-f(0)<=-gamma<0.             (20)
+
+The witness is specified by a variational formula with an analytic gap,
+not by an elementary closed expression or an efficient evaluation
+algorithm. Its existence and all-matrices rank-one convexity are proved
+here; no finite solver is the justification for those properties.
+
+## 4. Projection, physical scope, literature and costs
+
+The frozen universal Plucker identity still prevents the strict well
+(10) from descending to TWO outputs. Omega has skew rank four, whereas
+a two-output determinant gives a decomposable two-form of rank at most
+two. This new nonlinear envelope has not been shown to descend either.
+There is no implicit implication that its restriction under an arbitrary
+inverse projection defines a rank-one-convex function on two-by-two
+matrices. Generic actual two-output termination remains OPEN.
+
+The original eleven physical hat-gradient atoms have a positive finite
+tree by the preserved five-interior theorem. Only the law obtained by
+forcing its selected physical pair to their mean is separated in (20).
+No actual affine-boundary gradient-law Jensen violation, quasiconvexity
+status of f, solution of Morrey, or new high-output precedent is claimed.
+
+The general theme is classical incompatibility and transition cost.
+[Ball--James, Incompatible sets of gradients and metastability](https://arxiv.org/abs/1407.5929) develops gradient-Young-measure
+incompatibility and transition-layer estimates. The present note proves
+its finite-tree conditional estimate directly, without identifying its
+well classes with the stronger gradient incompatibility hypotheses of
+that paper. [Harris, Upper semicontinuity of the lamination hull](https://numdam.org/articles/10.1051/cocv/2017033/) gives explicit reasons
+to keep lamination hulls and rank-one-convex hulls distinct. These primary
+sources inform scope; neither establishes novelty of this special bound.
+The classical Sverak high-output counterexamples remain relevant prior.
+
+The raw verifier uses only Python stdlib exact rational arithmetic. It
+reconstructs the source gradients and weights, every well value, the
+affine coordinate, the norm bound, and every numerical inequality in
+(11),(15),(17). The analytic proof, not the finite replay, quantifies all
+real trees. The physical input is a constructed mathematical mesh, not an
+acquired displacement field. Full search, reasoning and optimal-envelope
+evaluation costs remain UNKNOWN. No publication, outreach or equipment
+operation occurred. Previously frozen proof bytes are unchanged.
