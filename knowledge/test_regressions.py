@@ -9,9 +9,12 @@ class CorpusRegressions(unittest.TestCase):
     def setUpClass(cls):
         cls.library = Library()
 
-    def test_exposed_relative_entropy_query_routes_n675(self):
+    def test_exposed_relative_entropy_query_distinguishes_n675_from_n966(self):
         response = self.library.search("Compare quantum measurements by relative entropy for every pair of input states and any untouched auxiliary quantum system.")
-        self.assertTrue(response["results"][0]["id"].startswith("N675-"))
+        self.assertEqual([item["id"] for item in response["results"][:2]], [
+            "N675-complete-quantum-channel-information-order-undecidability",
+            "N966-quantum-channel-conditional-sld-order",
+        ])
 
     def test_named_compiler_and_late_units_are_linked(self):
         response = self.library.search("ordered-word inverse-Jordan compiler")
