@@ -16,6 +16,12 @@ It loads a small catalog and only query-term posting shards, not the archive.
 No private SQLite database, embedding service, model call or paid dependency is
 required. The stable facade is `knowledge/retrieve.py`; v1–v5 remain historical
 snapshots, not current intake endpoints. Pin the Git commit actually fetched.
+Each browser search refreshes the manifest and keeps its catalog, shards and
+verified packet in one dataset version. Projection requests bypass HTTP caches
+and include their expected hash. If publication overtakes an old result, search
+again rather than using a mixed packet. Raw `current/` URLs can advance; use a
+commit-pinned raw GitHub base for historical evidence. Optional Node.js fixtures
+exercise browser cache/update races when running the knowledge test suite.
 A web-only reader can fetch `knowledge/current/packets/N675.json` directly from
 the pinned raw GitHub base. Without executable search or a known ID, use
 `knowledge/current/browse/index.txt` and one topic TSV (for example

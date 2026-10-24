@@ -4,31 +4,53 @@ const stop = new Set(('a an the and or but if then as at by for from in into of 
 const tokenize = text => (text.normalize('NFKC').toLowerCase().replaceAll('_', ' ').match(/[\p{L}\p{N}]+/gu) || []).filter(word => word.length > 1 && !stop.has(word));
 const bytes = new TextEncoder();
 const sha = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes.encode(text)))].map(value => value.toString(16).padStart(2, '0')).join('');
-const searchManifest = fetch('current/search_manifest.json', {cache: 'no-store'}).then(response => { if (!response.ok) throw Error('Search manifest unavailable'); return response.json(); });
-const readJSON = async path => {
-  const manifest = await searchManifest;
-  const response = await fetch(path);
-  if (!response.ok) throw Error(`${path} unavailable`);
-  const text = await response.text();
-  if (await sha(text) !== manifest.outputs[`knowledge/${path}`]) throw Error(`Mixed or changed dataset: ${path}`);
-  return JSON.parse(text);
+const createDataset = manifest => {
+  const expectedHash = path => {
+    const expected = manifest.outputs?.[`knowledge/${path}`];
+    if (!/^[0-9a-f]{64}$/.test(expected || '')) throw Error(`Unregistered dataset file: ${path}`);
+    return expected;
+  };
+  const url = path => `${path}?sha256=${expectedHash(path)}`;
+  const readJSON = async path => {
+    const response = await fetch(url(path), {cache: 'no-store'});
+    if (!response.ok) throw Error(`${path} unavailable`);
+    const text = await response.text();
+    if (await sha(text) !== expectedHash(path)) throw Error(`Mixed or changed dataset: ${path}. Search again for the current version.`);
+    return JSON.parse(text);
+  };
+  let catalog;
+  const readCatalog = () => {
+    if (!catalog) catalog = readJSON('current/catalog.json').catch(error => { catalog = undefined; throw error; });
+    return catalog;
+  };
+  const shards = new Map();
+  const loadShard = (shard, folder = 'postings') => {
+    const key = `${folder}/${shard}`;
+    if (!shards.has(key)) shards.set(key, readJSON(`current/${key}.json`).catch(error => { shards.delete(key); throw error; }));
+    return shards.get(key);
+  };
+  return {manifest, url, readJSON, readCatalog, loadShard};
 };
-const catalog = readJSON('current/catalog.json');
-const shards = new Map();
-const loadShard = (shard, folder = 'postings') => {
-  const key = `${folder}/${shard}`;
-  if (!shards.has(key)) shards.set(key, readJSON(`current/${key}.json`));
-  return shards.get(key);
+let activeDataset;
+const loadDataset = async () => {
+  const response = await fetch('current/search_manifest.json', {cache: 'no-store'});
+  if (!response.ok) throw Error('Search manifest unavailable');
+  const manifest = await response.json();
+  if (!/^[0-9a-f]{64}$/.test(manifest.input_version || '')) throw Error('Search manifest version invalid');
+  if (!activeDataset || activeDataset.manifest.input_version !== manifest.input_version) activeDataset = createDataset(manifest);
+  return activeDataset;
 };
 let generation = 0;
 document.querySelector('#search').addEventListener('submit', async event => {
   event.preventDefault();
   const request = ++generation;
+  const query = document.querySelector('#query').value;
   results.replaceChildren();
   status.textContent = 'Searching cited content and operation contracts…';
   try {
-    const data = await catalog;
-    const original = new Set(tokenize(document.querySelector('#query').value));
+    const dataset = await loadDataset();
+    const data = await dataset.readCatalog();
+    const original = new Set(tokenize(query));
     const terms = new Map([...original].map(term => [term, 1]));
     const expanded = [];
     for (const concept of data.concepts) {
@@ -40,10 +62,10 @@ document.querySelector('#search').addEventListener('submit', async event => {
     const lexicalScores = new Map();
     for (const [term, weight] of terms) {
       const shard = (await sha(term)).slice(0, 2);
-      const postings = data.shards.includes(shard) ? await loadShard(shard) : {};
+      const postings = data.shards.includes(shard) ? await dataset.loadShard(shard) : {};
       for (const [index, score] of postings[term] || []) scores.set(index, (scores.get(index) || 0) + weight * score);
       if (original.has(term) && data.lexical_shards.includes(shard)) {
-        const lexical = await loadShard(shard, 'lexical');
+        const lexical = await dataset.loadShard(shard, 'lexical');
         for (const [index, score] of lexical[term] || []) lexicalScores.set(index, (lexicalScores.get(index) || 0) + score);
       }
     }
@@ -67,7 +89,7 @@ document.querySelector('#search').addEventListener('submit', async event => {
         selected.push({...match, score: lexicalWinner[1], safety: true});
       }
     }
-    const manifest = await searchManifest;
+    const manifest = dataset.manifest;
     status.textContent = `${selected.length} ranked candidates, not applicability verdicts. Dataset ${manifest.input_version.slice(0, 12)}. ${expanded.length ? 'Expanded terms: ' + [...new Set(expanded)].join(', ') : ''}`;
     for (const candidate of selected) {
       const article = document.createElement('article');
@@ -75,7 +97,8 @@ document.querySelector('#search').addEventListener('submit', async event => {
       heading.textContent = candidate.title;
       const link = document.createElement('a');
       const short = candidate.record_id.replace(/^([NL]\d+)-.*$/, '$1');
-      link.href = `current/packets/${encodeURIComponent(short)}.json`;
+      const packetPath = `current/packets/${encodeURIComponent(short)}.json`;
+      link.href = dataset.url(packetPath);
       link.textContent = `${candidate.record_id} — exact packet, conditions, notices and sources`;
       const note = document.createElement('p');
       note.className = 'note';
@@ -85,7 +108,7 @@ document.querySelector('#search').addEventListener('submit', async event => {
       expand.addEventListener('click', async () => {
         expand.disabled = true;
         try {
-          const packet = await readJSON(`current/packets/${encodeURIComponent(short)}.json`);
+          const packet = await dataset.readJSON(packetPath);
           const text = document.createElement('pre');
           text.textContent = JSON.stringify({statement: packet.statement, contract: packet.contract, review: packet.review_overlays.length ? packet.review_overlays : packet.review, notices: packet.notices, evidence: packet.evidence}, null, 2);
           article.append(text);
