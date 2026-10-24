@@ -103,6 +103,21 @@ class CapitalIntakeSourceIndex(unittest.TestCase):
             self.assertEqual(subjects[unit_id], current[unit_id]["content_version"])
             self.assertTrue(any(item["id"] == review["id"] for item in current[unit_id]["review_overlays"]))
 
+    def test_receiving_contract_separates_conditional_baseline_from_c_one_exception(self):
+        units = [
+            json.loads((ROOT / "knowledge/units/U675-saturated-reference-filter/v0002.json").read_text()),
+            json.loads((ROOT / "knowledge/units/U966-conditional-sld-order-interface/v0002.json").read_text()),
+        ]
+        for unit in units:
+            text = " ".join(unit["contract"]["assumptions"] + [unit["body"], unit["contract"]["obstruction"]])
+            self.assertIn("different reference marginals", text)
+            self.assertIn("c=1", text)
+            self.assertIn("does not make the reference marginals equal", text.lower())
+        aliases = json.loads((ROOT / "indexes/query_aliases.json").read_text())
+        n675_alias = aliases["N675-complete-quantum-channel-information-order-undecidability"].lower()
+        self.assertNotIn("compare quantum measurements by relative entropy for every pair of input states", n675_alias)
+        self.assertIn("complete relative entropy order for all input state pairs", n675_alias)
+
 
 if __name__ == "__main__":
     unittest.main()
