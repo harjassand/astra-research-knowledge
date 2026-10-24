@@ -163,6 +163,10 @@ Post-PR adversarial review found that a malformed numeric correction/dependency
 target could be retained without being routed to any result. No such dangling
 reference exists in the current corpus. A rejecting identity check and a
 regression test now prevent that intake failure from being silently published.
+The same review found that extracted units inherited direct parent notices but
+omitted their parent's explicit prerequisite alerts. Those alerts now travel
+with the unit as labeled parent-context notices, not automatic transitive
+invalidation. N684's units preserve the scoped N675 prerequisite context.
 
 The current publication gate preserves existing checkpoint tests and source
 manifest verification, checks the actual PR base, protects old source/version

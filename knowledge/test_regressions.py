@@ -44,6 +44,15 @@ class CorpusRegressions(unittest.TestCase):
         self.assertIn("stable", source["text"])
         self.assertIn("does not survive", source["text"])
 
+    def test_extracted_unit_keeps_parent_prerequisite_notice_context(self):
+        parent = self.library.resolve("N684")
+        unit = self.library.resolve("U684-zero-rate-helper")
+        expected = {notice["dependency"] for notice in parent["notices"] if "dependency" in notice}
+        inherited = {notice["dependency"] for notice in unit["notices"] if "dependency" in notice}
+        self.assertTrue(expected)
+        self.assertEqual(expected, inherited)
+        self.assertTrue(all(notice.get("context_only_notice") for notice in unit["notices"]))
+
 
 if __name__ == "__main__":
     unittest.main()

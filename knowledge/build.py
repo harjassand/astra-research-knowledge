@@ -206,6 +206,12 @@ def build(root=ROOT):
                 if window_end == end:
                     break
 
+    result_records = {record["id"]: record for record in records}
+
+    def parent_notices(parents):
+        return [dict(notice, parent_context_card=parent, context_only_notice=True)
+                for parent in parents for notice in result_records[parent]["notices"]]
+
     atlas = inputs.rows("literature/LEMMA_ATLAS.jsonl")
     unique(atlas, "id")
     for lemma in atlas:
@@ -232,7 +238,7 @@ def build(root=ROOT):
             "body": flatten(lemma["proof_mechanism"]), "aliases": lemma["search_terms"],
             "evidence": refs, "dependencies": lemma["depends_on"],
             "relationships": {"potential_uses": lemma["potential_uses"], "generalisations": lemma["generalisations"]},
-            "notices": [notice for parent in parents for notice in by_card[parent]], "review": lemma["review"],
+            "notices": parent_notices(parents), "review": lemma["review"],
             "authority": path})
 
     unit_versions = defaultdict(list)
@@ -259,7 +265,7 @@ def build(root=ROOT):
                     raise ValueError("Missing contract field " + field + ": " + identifier)
         name, unit = versions[-1]
         record = dict(unit, parents=parents, authority=name, evidence=refs,
-                      notices=[notice for parent in parents for notice in by_card[parent]],
+                      notices=parent_notices(parents),
                       history=[{"path": path, "sha256": inputs.hashes[path], "version": value["version"]}
                                for path, value in versions])
         records.append(record)
@@ -286,7 +292,7 @@ def build(root=ROOT):
                 "costs": native_contract.get("resources", "UNKNOWN; no physical cost conversion inferred"),
                 "units": capability["target"]["unit"], "obstruction": capability["limitation"], "field_details": native_contract},
             "body": flatten({key: technology.get(key, []) for key in ("assessment", "failures", "handoffs", "bridges", "next_obligation")}),
-            "evidence": refs, "notices": [notice for parent in parents for notice in by_card[parent]],
+            "evidence": refs, "notices": parent_notices(parents),
             "review": {"stage": technology["stage"], "disposition": technology["disposition"],
                        "acceptance": "development gate, not automatic scientific acceptance"}, "authority": name,
             "version": technology["version"], "history": [{"path": path, "sha256": inputs.hashes[path]} for path, _ in versions]})
