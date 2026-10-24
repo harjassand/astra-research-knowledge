@@ -8,6 +8,14 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# Remove grammatical glue from lexical task routing so common title words such
+# as "under" and "and" do not outrank specific problem vocabulary. Keep
+# negation and mathematical qualifiers because they can change a claim's scope.
+ROUTE_STOPWORDS = frozenset(
+    "a an the and or but if then as at by for from in into of on to with under "
+    "this that these those is are was were be been being do does did can could "
+    "should would will may might".split()
+)
 
 
 def rows(path):
@@ -125,7 +133,7 @@ def task_routes(query, limit):
     if limit < 0:
         raise ValueError('limit must be non-negative')
     aliases = json.loads((ROOT / 'indexes/query_aliases.json').read_text())
-    terms = set(re.findall(r'\w+', query.lower()))
+    terms = set(re.findall(r'\w+', query.lower())) - ROUTE_STOPWORDS
     records = rows('indexes/claims.jsonl')
     scored = []
     for row in records:

@@ -68,6 +68,54 @@ class PublicAccessTests(unittest.TestCase):
             self.assertTrue(json.loads(result.stdout)['card_id'].startswith('N654-'))
             self.assertFalse((root / 'technology').exists())
 
+    def test_problem_level_routes_find_scoped_source_predecessors(self):
+        cases = [
+            ('predict interacting quantum systems under continuous measurement and feedback', ('N928', 'N927')),
+            ('simulate the observed photon-counting history of an interacting open bosonic lattice with adaptive controls', ('N928',)),
+            ('positive classical prediction of a lossy quantum optical experiment starting from arbitrary initial states', ('N928',)),
+            ('acquire compact models from reaction rules and reuse them for new predictions', ('N930',)),
+            ('derive the smallest exact linear set of observables needed to predict a stochastic chemical reaction network', ('N930',)),
+            ('reduce a supplied polynomial reaction network while preserving stochastic trajectories of chosen readouts', ('N930',)),
+        ]
+        for query, expected in cases:
+            with self.subTest(query=query):
+                routes = retrieve.task_routes(query, 5)['routes']
+                ids = [row['id'] for row in routes]
+                for card_id in expected:
+                    self.assertTrue(any(row.startswith(card_id + '-') for row in ids), ids)
+
+    def test_pasted_closeout_result_families_remain_retrievable(self):
+        # This summary is already preserved byte-for-byte in the closeout intake.
+        # These paraphrases keep its major result families reachable as metadata.
+        cases = [
+            ('quadratic communication gain for recurrent quantum memory at small coupling', 'N914'),
+            ('inaccessible Bell-pair inventory has an entropy cost', 'N915'),
+            ('two adaptive actions identify hidden-star connectivity', 'N916'),
+            ('finite-energy heavy-tail quantum amplifier entropy after added heat', 'N917'),
+            ('small commutator but no nearby exact commuting repair for conditional expectations', 'N918'),
+            ('quadratic range avoidance acquires a codimension-five flat with NP queries', 'N919'),
+            ('rank-one gradient compiler uses each original face once', 'N920'),
+            ('a five-output quadratic well has a finite laminate-tree barrier', 'N921'),
+            ('fixed quantum code covers a factor-two band of unknown gain', 'N923'),
+            ('pay to install a public quantum program and reuse code memory', 'N924'),
+            ('physical historical searches exposed reset costs and baseline failures', 'N925'),
+        ]
+        for query, expected in cases:
+            with self.subTest(query=query):
+                ids = [row['id'] for row in retrieve.task_routes(query, 5)['routes']]
+                self.assertTrue(any(row.startswith(expected + '-') for row in ids), ids)
+
+    def test_unrelated_controls_keep_their_existing_routes(self):
+        controls = [
+            ('local biological signals control multicellular organization', 'N433'),
+            ('programmable selective chemical transformations reusable catalysis', 'L04'),
+        ]
+        for query, expected in controls:
+            with self.subTest(query=query):
+                ids = [row['id'] for row in retrieve.task_routes(query, 5)['routes']]
+                self.assertTrue(any(row.startswith(expected + '-') for row in ids), ids)
+                self.assertFalse(any(row.startswith(('N928-', 'N930-')) for row in ids), ids)
+
     def test_packet_budget_fails_without_partial_output(self):
         content = 'forall ε>0: κόστος\n'.encode()
         with patch.object(retrieve, 'access_manifest', return_value={}), patch.object(retrieve, 'resolve', return_value={'card_id': 'N01'}), patch.object(retrieve, 'view', return_value=content), patch.object(sys, 'argv', ['retrieve', 'packet', 'N01', '--max-bytes', str(len(content) - 1)]):
