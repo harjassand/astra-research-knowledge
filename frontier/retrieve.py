@@ -23,6 +23,22 @@ def rows(path):
     return [json.loads(line) for line in p.read_text().splitlines() if line.strip()] if p.exists() else []
 
 
+def semantic_notices():
+    """Read the frozen v1 notice log plus append-safe, dated notice shards."""
+    records = rows('agent/SEMANTIC_NOTICES.jsonl')
+    folder = ROOT / 'agent/SEMANTIC_NOTICES.d'
+    shards = sorted(p for p in folder.glob('*.jsonl') if p.is_file()) if folder.is_dir() else []
+    if shards:
+        # The projection manifest pins every shard. Refuse to serve a stale notice.
+        access_manifest()
+        for path in shards:
+            records.extend(rows(path.relative_to(ROOT).as_posix()))
+    identifiers = [r['notice_id'] for r in records]
+    if len(set(identifiers)) != len(identifiers):
+        raise ValueError('Duplicate semantic notice identifier')
+    return records
+
+
 def resolve(identifier, records=None):
     records = records if records is not None else rows('frontier/CURRENT_CLAIM_STATUS.jsonl')
     key = Path(identifier).stem
@@ -58,9 +74,11 @@ def notice(identifier):
         corrections = [compact(u) for u in dependent.get('material_updates', [])]
         if corrections:
             dependency_alerts.append({'dependency': dependent['card_id'], 'scope': dep.get('scope', 'explicit dependency') if isinstance(dep, dict) else 'explicit dependency', 'updates': corrections, 'evidence_in': 'frontier/cards/' + dependent['card_id'] + '.json'})
+    current_notices = [n for n in semantic_notices() if row['card_id'] in n.get('card_ids', [])]
     return {'card_id': row['card_id'], 'reported_claim_status': row['claim_status'],
             'proof_availability': row['proof_availability'].get('classification', 'unclassified'),
             'material_updates': updates, 'dependency_alerts': dependency_alerts,
+            'semantic_notices': current_notices,
             'status_path': 'frontier/cards/' + row['card_id'] + '.json',
             'evidence_scope': 'Full hash-pinned evidence and relations in status_path; no correction is silently truncated.',
             'external_correctness': 'unverified; newer claims do not certify older ones'}
@@ -77,7 +95,7 @@ def document_alerts(source_id):
     for claim in rows('indexes/claims.jsonl'):
         if source_id in claim.get('source_ids', []):
             value = notice(claim['id'])
-            if value.get('material_updates') or value.get('dependency_alerts'):
+            if value.get('material_updates') or value.get('dependency_alerts') or value.get('semantic_notices'):
                 alerts.append(value)
     return alerts
 
@@ -109,12 +127,12 @@ def access_manifest():
     """Fail closed on stale generated evidence without needing the private snapshot."""
     path = ROOT / 'agent/access_manifest.json'
     if not path.is_file():
-        raise ValueError('Public access views absent; run frontier/build_access.py build')
+        raise ValueError('Public access views absent; run frontier/build_access_v2.py build')
     manifest = json.loads(path.read_text())
     for name, expected in manifest['inputs'].items():
         target = ROOT / name
         if not target.is_file() or hashlib.sha256(target.read_bytes()).hexdigest() != expected:
-            raise ValueError('Public access inputs changed: ' + name + '; regenerate with frontier/build_access.py build')
+            raise ValueError('Public access inputs changed: ' + name + '; regenerate with frontier/build_access_v2.py build')
     return manifest
 
 
@@ -133,6 +151,7 @@ def task_routes(query, limit):
     if limit < 0:
         raise ValueError('limit must be non-negative')
     aliases = json.loads((ROOT / 'indexes/query_aliases.json').read_text())
+    notices = semantic_notices()
     terms = set(re.findall(r'\w+', query.lower())) - ROUTE_STOPWORDS
     records = rows('indexes/claims.jsonl')
     scored = []
@@ -150,6 +169,7 @@ def task_routes(query, limit):
         routes.append({'id': row['id'], 'title': row['title'], 'status': status['claim_status'],
                        'dossier': 'frontier/dossiers/' + route_id(row['id']) + '.txt',
                        'material_notice_count': len(status['material_updates']),
+                       'semantic_notice_count': sum(row['id'] in n.get('card_ids', []) for n in notices),
                        'contrasting_blockers': status['contrasting_blockers']})
     return {'policy': 'Lexical routing only. Read the dossier, paired interfaces and decisive proof before composing claims.', 'routes': routes}
 
@@ -169,7 +189,7 @@ def changes(since):
         after = {r[key]: r for r in rows(path)}
         output[label] = {'added': sorted(after.keys() - before.keys()), 'removed': sorted(before.keys() - after.keys()),
                          'changed': sorted(k for k in before.keys() & after.keys() if before[k] != after[k])}
-    result = subprocess.run(['git', 'diff', '--name-only', since, '--', 'state/checkpoints', 'agent/SEMANTIC_NOTICES.jsonl', 'mechanisms/bridge_candidates.json'], cwd=ROOT, capture_output=True, text=True, check=True)
+    result = subprocess.run(['git', 'diff', '--name-only', since, '--', 'state/checkpoints', 'agent/SEMANTIC_NOTICES.jsonl', 'agent/SEMANTIC_NOTICES.d', 'mechanisms/bridge_candidates.json'], cwd=ROOT, capture_output=True, text=True, check=True)
     output['handoffs_or_semantic_records'] = result.stdout.splitlines()
     return output
 

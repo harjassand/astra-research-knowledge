@@ -86,6 +86,61 @@ class PublicAccessTests(unittest.TestCase):
                 for card_id in expected:
                     self.assertTrue(any(row.startswith(card_id + '-') for row in ids), ids)
 
+    def test_coherent_later_cards_are_retrievable_by_their_distinct_scopes(self):
+        cases = [
+            ('replenishing thermal hot bath bosons port-labelled records', 'N934'),
+            ('signed cross spectrum mixed Hessian direct force', 'N935'),
+            ('organometallic stored primary alkyl partner tertiary radical', 'N936'),
+            ('finite reaction gates next event censored no event', 'N937'),
+            ('correlated post-event entrance mixture 73 rules 24 components', 'N938'),
+            ('local bath feedback residual cross response cold receiver no advantage', 'N939'),
+            ('toy reaction transport signalling synthetic network', 'N940'),
+            ('classical replenished field full spatial resolution Hermite', 'N941'),
+            ('Mo Ru nitrido transfer per nitrogen hydrogen paired turnovers', 'N942'),
+            ('alkaline nitrite nitrate H2 fresh hydrogen ammonia process', 'N943'),
+            ('nonflat cyclic clock qutrit static sum counterflow N>=4 d>=2', 'N944'),
+        ]
+        for query, expected in cases:
+            with self.subTest(query=query):
+                routes = retrieve.task_routes(query, 12)['routes']
+                ids = [row['id'] for row in routes]
+                self.assertTrue(any(row.startswith(expected + '-') for row in ids), ids)
+
+    def test_coherent_later_semantic_notices_reach_normal_reader(self):
+        hot = retrieve.notice('N934')
+        hot_notice_ids = {n['notice_id'] for n in hot['semantic_notices']}
+        self.assertIn('SN-COHERENT-N934-p1-hot-bath-20261024', hot_notice_ids)
+        self.assertIn('SN-COHERENT-N941-p1-classical-field-20261024', hot_notice_ids)
+        hot_scope = next(n for n in hot['semantic_notices'] if n['notice_id'] == 'SN-COHERENT-N934-p1-hot-bath-20261024')
+        self.assertIn('N927-p1-weak-bath-positive-predictor-prior', hot_scope['card_ids'])
+
+        # These two older sidecars are pinned by immutable checkpoints; the
+        # current shard must still expose the new scoped distinction in reads.
+        force = retrieve.notice('N931')
+        self.assertIn('SN-COHERENT-N935-p2-cross-force-20261024', [n['notice_id'] for n in force['semantic_notices']])
+        partner = retrieve.notice('N932')
+        self.assertIn('SN-COHERENT-N936-xh1-partner-memory-20261024', [n['notice_id'] for n in partner['semantic_notices']])
+
+        classical = retrieve.notice('N941')
+        self.assertEqual(classical['semantic_notices'][0]['notice_id'], 'SN-COHERENT-N941-p1-classical-field-20261024')
+        self.assertEqual({u['target'] for u in classical['material_updates']}, {
+            'N927-p1-weak-bath-positive-predictor-prior',
+            'N928-p1-ordinary-loss-husimi-record-law',
+            'N934-p1-replenishing-quantum-hot-bath',
+        })
+
+        p3 = retrieve.notice('N938')
+        self.assertIn('SN-COHERENT-N938-p3-correlated-entrance-20261024', [n['notice_id'] for n in p3['semantic_notices']])
+        dossier = retrieve.view('N938').decode()
+        self.assertIn('3.774e-9', dossier)
+        self.assertIn('Rare-event conditioning needs a nonzero denominator lower bound.', dossier)
+
+    def test_checkpoint_pinned_builder_and_frozen_notice_log_remain_unchanged(self):
+        self.assertEqual(build.digest((retrieve.ROOT / 'frontier/build_access.py').read_bytes()),
+                         '77bbfe292b9117129a212382475307d43da55ad6846c22bd07b744209da8625c')
+        self.assertEqual(build.digest((retrieve.ROOT / 'agent/SEMANTIC_NOTICES.jsonl').read_bytes()),
+                         'c19e7a935f69e1c049cade4f2030c2140cf70bc02c867f8348d6916dbd92215b')
+
     def test_pasted_closeout_result_families_remain_retrievable(self):
         # This summary is already preserved byte-for-byte in the closeout intake.
         # These are routing fixtures, not independent validation or a benchmark.
