@@ -1,0 +1,18 @@
+# What the local certificate changes, and what it does not
+
+The island proof does not trade one small global dimension promise for another. Its guarded local response and finite future causal interface can be valid while the exterior has arbitrary hidden dimension, memory and unpredictable boundary trajectories. The coupling recursion prices the exterior-parent influence at one. Hidden global directions need not be recognized, sampled or excluded. This is stronger than certifying a truncated observed Hankel minor and then asserting completeness.
+
+It does replace that promise by a substantive local physical one: the stated native parent bits suffice for each trained response, the selected pulses/readout hold are legal, and no omitted input bypasses that causal interface. The data do not certify those assumptions against arbitrary hidden memory. The protocol has no claim for a specimen merely presumed to fit a local model.
+
+Even the finite private fixture can have exponentially large global probability-Hankel rank. Consider n native bits, informative independent QND readout with error e<1/2, and a legal full-field update giving every configuration positive probability mu(x). The latter exists in the fixture because its per-site good mode has all response probabilities strictly between zero and one; the unknown good mode vector need not be given to the learner to establish this class example. Let Q be the invertible n-bit read-likelihood matrix, the tensor product of [[1-e,e],[e,1-e]]. Prefixes read the n bits with outcome o, and future tests read them again with outcome v. Their joint-probability Hankel block is
+
+    H_(o,v) = sum_x mu(x) Q_(x,o) Q_(x,v)
+            = Q^T diag(mu) Q,
+
+which has rank 2^n. These exponentially many outcomes/tests are a mathematical rank witness, not experiments granted or executed by our learner. The actual learned guard uses 15 sites, 17 parent/collar cells and 240 local rows in a 1,001-cell fixture; it does not estimate that global block.
+
+Reference semantics are equally important. The certificate is a uniform diameter of a *finite local experiment procedure*. Any actual anchor field/history with a specified exterior law can be a comparison reference. It need not be known or repeatedly preparable. This establishes reproducibility to a declared resolution, not a learner-known exact sample distribution. The executed scorer uses the actual source's initial zero field as its private anchor, with the declared guard procedure and unchanged zero exterior. The learner never receives this field or a reset to it.
+
+Different mode schedules or preparation depths can define different anchor-reference laws. Their individual preparation diameters can be compared as reproducibility certificates, but a common numerical sampling-error allowance alone does not make them a fixed-target comparison. The exact same-data local-table controller uses the same selected modes/depth and therefore has the same target and ties. A separately supplied external initializer followed by that same procedure also has the same target; its precision-matched sample count is stated in the checkpoint.
+
+For identical selected mode vectors with a shorter k no longer than a chosen reference's depth K, the final k reference rounds are an admissible instance of the k-round procedure. Uniformity therefore also bounds the shorter procedure against that longer reference by its own k-round bound. General different-mode comparisons require a target-matching argument or an explicit change of target. The alternative-schedule calculations are labelled as own-reference calculations and are not an algorithmic advantage claim.
