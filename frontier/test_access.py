@@ -69,13 +69,15 @@ class PublicAccessTests(unittest.TestCase):
             self.assertFalse((root / 'technology').exists())
 
     def test_problem_level_routes_find_scoped_source_predecessors(self):
+        # Development fixtures from supplied diagnostics and scientific sources;
+        # they are not independent or held-out validation questions.
         cases = [
             ('predict interacting quantum systems under continuous measurement and feedback', ('N928', 'N927')),
-            ('simulate the observed photon-counting history of an interacting open bosonic lattice with adaptive controls', ('N928',)),
-            ('positive classical prediction of a lossy quantum optical experiment starting from arbitrary initial states', ('N928',)),
+            ('ordinary equal pure loss with a calibrated sparse observation and a finite feedback record', ('N928',)),
+            ('weak-bath predictor with scaled rates, coherent hopping, density interactions and a complete feedback record', ('N927',)),
             ('acquire compact models from reaction rules and reuse them for new predictions', ('N930',)),
-            ('derive the smallest exact linear set of observables needed to predict a stochastic chemical reaction network', ('N930',)),
-            ('reduce a supplied polynomial reaction network while preserving stochastic trajectories of chosen readouts', ('N930',)),
+            ('least rational-linear observable lumping for a nonexplosive polynomial-propensity chemical master equation', ('N930',)),
+            ('explicit sparse rational propensities on an integer-jump network yield a reduced generator for supplied observables', ('N930',)),
         ]
         for query, expected in cases:
             with self.subTest(query=query):
@@ -86,7 +88,7 @@ class PublicAccessTests(unittest.TestCase):
 
     def test_pasted_closeout_result_families_remain_retrievable(self):
         # This summary is already preserved byte-for-byte in the closeout intake.
-        # These paraphrases keep its major result families reachable as metadata.
+        # These are routing fixtures, not independent validation or a benchmark.
         cases = [
             ('quadratic communication gain for recurrent quantum memory at small coupling', 'N914'),
             ('inaccessible Bell-pair inventory has an entropy cost', 'N915'),
@@ -105,10 +107,10 @@ class PublicAccessTests(unittest.TestCase):
                 ids = [row['id'] for row in retrieve.task_routes(query, 5)['routes']]
                 self.assertTrue(any(row.startswith(expected + '-') for row in ids), ids)
 
-    def test_unrelated_controls_keep_their_existing_routes(self):
+    def test_unrelated_named_result_controls_do_not_route_to_p1_or_p3(self):
         controls = [
-            ('local biological signals control multicellular organization', 'N433'),
-            ('programmable selective chemical transformations reusable catalysis', 'L04'),
+            ('rank-one gradient laminate compiler uses each original face once', 'N920'),
+            ('small commutator conditional expectations have no exact commuting repair', 'N918'),
         ]
         for query, expected in controls:
             with self.subTest(query=query):
