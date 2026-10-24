@@ -1,0 +1,17 @@
+# Focused prior check: two-moment thermal-spectrum optimum
+
+Read against [`PHONON_OPTIMUM.md`](../PHONON_OPTIMUM.md). The claimed result is stronger than local-resonance precedent: it uses two exact resources of the full bulk passband indicator, then a scalar Bose-weighted dual that certifies one finite side-resonator spectrum as a global minimizer over the stated class, including arbitrary finite passive internal networks and backbone mass \(m\ge m_{\min}\). The scalar certificate's hinge is the regularized \(d\omega/\omega\) comparison with the rigid-chain cutoff, together with the fixed \(\int 2\omega\chi\,d\omega\) moment.
+
+## Closest sum-rule/network prior located
+
+Mo et al., “Energy-based sum rules for one-dimensional Lorentz resonator systems: Explicit bounds on band-limited absorption and transmission loss,” *Mechanical Systems and Signal Processing* 258 (2026), article 114719, DOI [10.1016/j.ymssp.2026.114719](https://www.sciencedirect.com/science/article/pii/S0888327026008769).
+
+The primary publisher text describes passive, causal, linear time-invariant 1D acoustic resonator systems under plane-wave incidence with a scalar impedance description. The authors construct a Herglotz function from the acoustic radiation ratio and derive two parent integral identities: an inertial identity tied to effective dynamic mass/high-frequency behavior, and a compliance identity tied to effective static stiffness/low-frequency behavior. Hölder inequalities then yield band-limited average bounds on absorption and transmission loss; the paper discusses parallel and cascaded Lorentz resonators, membranes and shunted loudspeakers. The indexed primary text explicitly characterizes the identities as energy-based, complementary to conventional logarithmic acoustic sum rules.
+
+**Exact overlap:** this is direct precedent for using passivity/causality and moment-like spectral identities to bound broadband performance of passive resonator systems, with resonator synthesis/design examples. It is the nearest proof-architecture overlap found in this bounded check. It should be treated as a substantive adjacent prior when positioning any claim about two resource moments and a global resonator optimum.
+
+**Boundary of overlap:** the acoustic paper's observable is a scattering/radiation ratio and its objective is band-limited mean absorption or transmission loss. It does not treat a periodic bulk phonon spectrum as a union-of-passbands indicator, a Bose Planck weight, the trace/log-determinant identities for \(D(q)=D_0+4K\sin^2(q/2)vv^{\mathsf T}\), or a global finite-temperature thermal-conductance optimum at fixed total cell mass and fixed longitudinal \(K\). Its effective-mass/stiffness identities are not the same as the candidate's exact \(\int 2\omega\chi\) and regularized \(\int (\chi-\mathbf1_{[0,\Omega_r]})/\omega\) constraints.
+
+## Positioning consequence
+
+The strongest source-backed statement is **formal overlap, no direct subsumption established**. The new result must be presented as a bulk phonon/Bose-weighted specialization with an exact spectral indicator dual and an all-finite-network extremizer; do not present “sum-rule optimization of passive resonators” itself as unprecedented. This is a one-source nearest-prior check, not a priority search or novelty finding. The source was inspected through the publisher's primary-page abstract and indexed section text; this note does not attribute uninspected equation numbers or claim the acoustic paper contains the candidate's logarithmic identity.

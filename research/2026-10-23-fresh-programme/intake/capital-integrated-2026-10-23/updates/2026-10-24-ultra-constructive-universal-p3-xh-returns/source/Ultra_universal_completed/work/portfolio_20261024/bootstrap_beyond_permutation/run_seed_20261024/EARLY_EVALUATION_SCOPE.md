@@ -1,0 +1,9 @@
+# Early evaluation scope correction
+
+This first run used `sense`, `two_a_then_sense`, and `feedback` after acquiring the reset. The first two control sequences were also calibration settings (the target preparation differed). They must be treated as controls rather than previously unmeasured programs. The broad `all_three_new_program...` summary key and `previously_uncalibrated_program` labels in the preserved JSONs overstate that first evaluation's holdout scope. The calibration counts, acquired dyadic weight and finite-data reset certificate remain valid.
+
+The replay configuration is the runner's `--program-set legacy_controls` with seed 20261024. The source module now supports a separate genuinely unmeasured program set. The completed second evaluation reuses these exact acquired counts, changes no learned weight, and adds no calibration initializer. Its programs are three-a-then-sense, b-a-b-then-sense, and observation-dependent feedback. Both length-four fixed sequences were declared before that evaluation and were absent from the length-at-most-three calibration library.
+
+This first run spent 450,000 calibration initializers, 1,050,000 calibration primitive actions, 60,000 later reset invocations, 200,000 later primitive actions, and 960,000 reset selection bits. The subsequent evaluation adds its separately reported future costs. Do not count the shared calibration twice or omit these early controls from total research expenditure.
+
+The early fixture JSONs include replay seeds. They are evaluation/audit metadata, not records released through a real private reset interface. The corrected future-count interface excludes the private seed. No Python run establishes physical key isolation or entropy disposal; the theorem's private-controller contract remains explicit.

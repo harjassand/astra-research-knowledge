@@ -1,0 +1,173 @@
+PROBABILISTIC SUPPORT AUDIT: PREFIX-FIBRE MEDIAN AND QUADRATIC CUBE SELF-CORRECTION
+2026-10-24
+
+Scope
+-----
+This audits only the finite-fibre median label and the randomized recovery of the
+D_n interpolation values per output coordinate in FIRST_CONSTRUCTION.md. It
+assumes the stated promised-class invariant: Q is a bijection whose coordinates
+have degree at most two, and each already acquired prefix F is exact. It does
+not establish recognition of that promise or compare whole-algorithm novelty.
+
+1. Exact finite-N error, with replacement ties included
+-------------------------------------------------------
+Let N=2^d be the size of a fixed prefix fibre, d>=1, and put K=2m+1. Give its
+objects ranks 0,...,N-1 in oracle order. Since Q is a bijection, the next Q bit
+is 0 on ranks i<N/2 and 1 on i>=N/2. Draw K iid objects Y_j uniformly WITH
+replacement in the fibre, let J be the rank of their sample median (multiplicity
+is retained), and label x by L(x)=1{x is strictly above the median object}.
+
+Conditioned on x having rank i, the number of sample draws strictly below x is
+Bin(K,i/N). Thus ties to x are handled as follows: for upper-half x, median=x
+also labels 0 and is an error, exactly as captured by the event that at most m
+draws are strictly below x. The exact averaged error is
+
+ e_{N,K} = (1/N) [ sum_{i=0}^{N/2-1} P{Bin(K,i/N)>=m+1}
+                    + sum_{i=N/2}^{N-1} P{Bin(K,i/N)<=m} ].                 (1)
+
+Equivalently, condition on median rank J. The predicted-one ranks are
+J+1,...,N-1, while the true-one ranks are N/2,...,N-1. Their symmetric
+difference has size |J+1-N/2|, so
+
+ e_{N,K}= E |J+1-N/2| / N.                                                  (2)
+
+This identity explicitly counts sample ties and strict target/median ties; it
+does not assume a continuous sample or distinct Y_j.
+
+For a clean uniform bound, couple each discrete draw to U_j~Unif[0,1) by
+Y_j=floor(N U_j). Monotonicity gives J=floor(N U_(m+1)), where U_(m+1) is the
+continuous sample median. Hence
+
+ |(J+1)/N - 1/2| <= |U_(m+1)-1/2| + 1/N.
+
+The order statistic is Beta(m+1,m+1), with mean 1/2 and variance
+1/[4(K+2)]. Cauchy-Schwarz therefore yields, for every even N>=2,
+
+ e_{N,K} <= 1/(2 sqrt(K+2)) + 1/N.                                         (3)
+
+The 1/N term is a valid grid/tie correction; the bound need not be sharp. A
+nonvanishing exact-sample tie effect explains why small fibres should be treated
+separately: for N=2, (2) gives e_{2,K}=1/4 for every odd K. Increasing K alone
+does not fix that fibre because the median remains the upper object with
+probability 1/2, and the strict comparison then misses it.
+
+2. Small fibres and explicit constants
+--------------------------------------
+For N<64, enumerate the queried prefix fibre, sort its N distinct objects by
+the oracle comparator, and label x exactly by whether its position is >=N/2.
+This uses the actual finite midpoint, so e=0; repeated sample points and median
+ties disappear. The learned prefix gives the fibre description, and the stated
+polar-rank algorithm enumerates it with O(poly(n)(2^{r_t}+N)) field work per
+fibre, where r_t<=b.
+
+For all remaining fibres choose K=1023 (m=511). With N>=64, (3) gives
+
+ e <= 1/(2 sqrt(1025)) + 1/64 = 0.0312423762... < 1/28,
+ 7e < 0.218697 < 1/4.                                                       (4)
+
+Numerical check of (1): e_{64,1023} ~= 0.013521256, below the conservative
+0.031242376 bound. Also e_{2,1023}=0.25, confirming the need for exact small-
+fibre handling. These figures are sanity checks; (1)-(4) are the proof.
+
+3. One quadratic self-correction run
+------------------------------------
+For a Boolean polynomial f of degree <=2, the third additive derivative is
+zero:
+
+  XOR_{S subset {a,b,c}} f(x + sum_{v in S} v) = 0.
+
+Therefore f(x) is the XOR of the seven labels at the nonempty vertices. Choose
+a,b,c independently uniformly in F_2^n. For each fixed nonempty S, the sum
+of its selected independent offsets is uniform, so x+sum_{v in S}v is uniform
+for every fixed x. Applying the median routine with fresh samples at each
+vertex gives each of the seven labels marginal error probability at most e.
+The seven labels are dependent because they share offsets; independence is not
+needed. A union bound gives per-run estimate error q<=7e<1/4 by (4).
+
+Repeat a complete run with fresh offsets and fresh median samples. Conditional
+on the learned prefix being exact, different runs are independent even though
+the seven labels within one run are dependent. Hoeffding gives
+
+  P[majority wrong] <= exp(-2R(1/2-q)^2) <= exp(-R/8),                      (5)
+
+for odd R, since q<=1/4. Do not use seven independent-label Chernoff inside a
+single cube; (5) applies across fresh complete experiments only.
+
+4. Failure allocation under adaptive stages
+--------------------------------------------
+Each degree-two output coordinate is determined by the D_n=1+n+binom(n,2)
+values at 0, e_i, e_i+e_j. Let M=n D_n be the total number of such requested
+values for all n output coordinates. Set per-value failure budget delta_c=delta/M
+and choose
+
+  R = the smallest odd integer >= 8 ln(M/delta).                            (6)
+
+Then (5) bounds each majority failure by delta/M. Coordinates are acquired
+sequentially, and the next prefix sampler depends on previous recovered
+coordinates. Independence across stages is not asserted. Instead, condition on
+no earlier coefficient/value error: the current exact prefix is then valid,
+and the per-value error bound is uniform in that prefix and in the requested
+x. A union bound on the first erroneous value gives total failure <=delta.
+After a value error, later conditional guarantees need not hold, but the global
+failure event has already occurred.
+
+5. Charged comparator count
+---------------------------
+For each one-run cube estimate, seven approximate labels are requested. For
+N>=64, each label draws K=1023 exact uniform points from its prefix fibre,
+selects their median, and compares x against that median. A deterministic
+linear-comparison median-selection algorithm uses at most cK comparator calls
+for an absolute constant c; the final x-versus-median comparison costs one
+more. Thus each coefficient-value request uses at most
+
+  7 R (cK+1) = O(R K)
+
+oracle comparisons. For N<64, exact sorting of each queried fibre costs
+O(N log N) comparisons per approximate label, a uniform constant because N<64;
+indeed the label is then exact and repetitions can be skipped. The worst-case
+comparison total over all output coordinates is consequently
+
+  O(M R K) = O(n D_n * K * ln(M/delta))
+  = O(n^3 ln(n^3/delta))
+
+for the fixed K=1023, with a constant depending on the selection routine.
+Sorting the K median samples instead costs O(K log K) per label; it is also a
+constant here, but linear selection gives the cleaner bound. Prefix-fibre
+sampling/linear algebra is an additional paid field-operation cost, not an
+oracle-comparison cost; it is poly(n) times 2^{r_t} overhead and can be
+exponential in the supplied rank bound b.
+
+6. Separate cached-median variant (not used in the K=1023 proof above)
+-----------------------------------------------------------------------
+The executable's cached-threshold variant has a distinct valid independence
+argument. For eps=1/64, conceptually preassign an independent K-sample median
+to each prefix at each stage (fewer than 2^n total), independently of every
+correction-offset tape. Hoeffding and a union bound make all medians eps-close
+to their fibre midpoint except with probability at most
+2^(n+1) exp(-2K eps^2); lazy generation on first encounter preserves this joint
+law. On that simultaneous event the deterministic quantile bound gives one
+fixed label function uniform error <= eps+1/128=3/128. A fresh seven-offset
+cube then errs with probability <=21/128. Conditional on the entire cached
+median collection, fresh offset trials are independent even if their labels
+and comparisons are retained, so majority error is <=exp(-2R(43/128)^2).
+Choosing odd K,R with
+
+  2^(n+1) exp(-2K(1/64)^2) <= delta/2,
+  n D_n exp(-2R(43/128)^2) <= delta/2
+
+and union-bounding gives total failure <=delta. This is a separate cached
+implementation with K=O(n+log(1/delta)) median preparation on encountered
+prefixes; it does not replace or alter Sections 1-5's independent fresh-sample
+K=1023 analysis. In particular, its validity comes from conditioning on all
+cached medians before exposing the fresh offset tapes, not from asserting that
+reused labels are independent.
+
+Conclusion
+----------
+The median error claim is valid with the stated conservative finite-grid term.
+The only subtle probability issue is discrete tie mass, most visible at N=2;
+exact sorting of short fibres repairs it. Cube self-correction needs only
+marginal uniformity plus a within-run union bound; independent repetitions are
+valid only when the whole offset-and-sampling experiment is refreshed. The
+sequential adaptive acquisition guarantee follows from a uniform conditional
+bound and first-error union bound, not unconditional independence of stages.

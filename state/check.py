@@ -52,8 +52,8 @@ def main():
         run(root, "state/publish_checkpoint.py", "validate", "--immutable-base", args.base_revision)
         run(root, "state/publish_checkpoint.py", "self-test")
         run(root, "-m", "unittest", "discover", "-s", "state", "-p", "test_*.py")
-        run(root, "-m", "unittest", "discover", "-s", "frontier", "-p", "test_access.py")
-        run(root, "frontier/build_access_v2.py", "check")
+        run(root, "-m", "unittest", "discover", "-s", "frontier", "-p", "test_access_v3.py")
+        run(root, "frontier/build_access_v3.py", "check")
         print("Publication structure, evidence integrity, append-only history and generated access checks passed. "
               "Historical exceptions remain explicitly limited; scientific correctness is not certified.")
     except (checkpoints.Invalid, OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as error:
