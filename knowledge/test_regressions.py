@@ -106,16 +106,22 @@ class CorpusRegressions(unittest.TestCase):
         result = subprocess.run(shlex.split(pointers["read_local"]), cwd=ROOT,
                                 text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertLessEqual(len(result.stdout.encode('utf-8')), 32768)
         response = json.loads(result.stdout)
         self.assertEqual(len(response["packets"]), 1)
         packet = response["packets"][0]
         self.assertEqual(packet["id"], entry["id"])
         accepted = next(review for review in packet["review_overlays"]
-                        if review["id"] == "A997-p3-operator-law-procedure-source-review-v2")
+                        if review['decision'] == 'accepted_internally_verified'
+                        and any(subject['id'] == packet['id'] and subject['content_version'] == packet['content_version']
+                                for subject in review['subjects']))
         self.assertEqual(accepted["decision"], "accepted_internally_verified")
         self.assertTrue(any(subject["id"] == packet["id"]
                             and subject["content_version"] == packet["content_version"]
                             for subject in accepted["subjects"]))
+        if accepted['id'] != 'A997-p3-operator-law-procedure-source-review-v2':
+            self.assertTrue(any(review['id'] == 'A997-p3-operator-law-procedure-source-review-v2'
+                                for review in packet['historical_reviews']))
 
 
 if __name__ == "__main__":

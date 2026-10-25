@@ -110,8 +110,18 @@ document.querySelector('#search').addEventListener('submit', async event => {
         try {
           const packet = await dataset.readJSON(packetPath);
           const text = document.createElement('pre');
-          text.textContent = JSON.stringify({statement: packet.statement, contract: packet.contract, review: packet.review_overlays.length ? packet.review_overlays : packet.review, notices: packet.notices, evidence: packet.evidence}, null, 2);
+          const contract = {...packet.contract};
+          if (contract.provides?.length === 1 && contract.provides[0] === packet.statement) delete contract.provides;
+          const reviews = packet.review_overlays.map(({id, decision, reviewer, scope, remaining_gaps, authority}) =>
+            ({id, decision, reviewer, scope, remaining_gaps, authority}));
+          text.textContent = JSON.stringify({statement: packet.statement, contract, review: reviews.length ? reviews : packet.review, notices: packet.notices, evidence: packet.evidence}, null, 2);
           article.append(text);
+          for (const review of reviews) {
+            const fullReview = document.createElement('a');
+            fullReview.href = '../' + review.authority;
+            fullReview.textContent = `Full scoped review: ${review.id}`;
+            article.append(fullReview);
+          }
           for (const reference of packet.evidence) {
             const source = document.createElement('a');
             source.href = '../' + (reference.read_path || reference.path).split('/').map(encodeURIComponent).join('/');
