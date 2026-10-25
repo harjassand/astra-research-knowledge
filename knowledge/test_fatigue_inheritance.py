@@ -47,9 +47,10 @@ class FatigueInheritance(unittest.TestCase):
     def test_scoped_acceptance_keeps_traction_topology_and_clock_limits(self):
         for identifier in ['N1021',*UNITS]:
             r=self.library.resolve(identifier)
-            review=next(v for v in r['review_overlays'] if v['id']=='A1035-interface-work-fatigue')
+            expected='A1036-periodic-seam-correction' if identifier in ['N1021',UNITS[1]] else 'A1035-interface-work-fatigue'
+            review=next(v for v in r['review_overlays'] if v['id']==expected)
             self.assertIn({'id':r['id'],'content_version':r['content_version']},review['subjects'])
-            self.assertIn('without execution',review['scope'])
+            self.assertIn('without execution' if expected.startswith('A1035') else 'No original scientific script',review['scope'])
             self.assertEqual(review['physical_measurement'],'not established')
         self.assertIn('does not bound actual n',self.library.resolve(UNITS[0])['statement'])
         self.assertIn('including initial block establishment',self.library.resolve(UNITS[1])['statement'])
@@ -61,6 +62,66 @@ class FatigueInheritance(unittest.TestCase):
             p=subprocess.run([sys.executable,'knowledge/retrieve.py','packet',identifier],cwd=ROOT,capture_output=True)
             self.assertEqual(p.returncode,0,p.stderr)
             self.assertLessEqual(len(p.stdout),32768)
-            self.assertIn(b'A1035-interface-work-fatigue',p.stdout)
+            packet=json.loads(p.stdout)['packets'][0]
+            expected='A1036-periodic-seam-correction' if identifier in ['N1021',UNITS[1]] else 'A1035-interface-work-fatigue'
+            self.assertTrue(any(v['id']==expected for v in packet['review_overlays']))
+
+    def test_periodic_reset_contract_counts_and_excluded_partition(self):
+        record=self.library.resolve(UNITS[1])
+        self.assertEqual(record['statement'],record['contract']['provides'][0])
+        # Check the scheduling restriction in every exposed contract location.
+        for text in [record['statement'],*record['contract']['provides'],' '.join(record['contract']['requires'])]:
+            self.assertIn('periodic',text.lower())
+            self.assertIn('ONLY',text)
+            self.assertIn('m_j=k for j<q',text)
+            self.assertIn('m_q=n-k*(q-1)',text)
+            self.assertIn('1<=k<=n',text)
+            self.assertIn('Arbitrary partitions with blocks at most k are outside this contract',text)
+        # Arithmetic oracle for the narrowed schedule, not a new partition model.
+        def periodic(n,k):
+            self.assertTrue(isinstance(n,int) and isinstance(k,int) and 1<=k<=n)
+            q=(n+k-1)//k
+            blocks=(k,)*(q-1)+(n-k*(q-1),)
+            return blocks,q,sum(m*(m+1)//2 for m in blocks)
+        self.assertEqual(periodic(6,3),((3,3),2,12))
+        self.assertEqual(periodic(7,3),((3,3,1),3,13))
+        for n in range(1,8):
+            self.assertEqual(periodic(n,1),((1,)*n,n,n))
+            self.assertEqual(periodic(n,n),((n,),1,n*(n+1)//2))
+        excluded=(3,2,1)
+        self.assertEqual(sum(excluded),6)
+        self.assertTrue(all(m<=3 for m in excluded))  # v1 admitted this wrong schedule.
+        self.assertNotEqual(excluded,periodic(6,3)[0])
+        self.assertNotEqual(len(excluded),periodic(6,3)[1])
+        self.assertIn('outside the periodic contract',record['body'])
+        self.assertIn('including initial block establishment',record['statement'])
+        self.assertIn('not the exact finite-n optimum',record['body'])
+
+    def test_periodic_successor_rejection_and_notice_propagate(self):
+        unit=self.library.resolve(UNITS[1])
+        old_path=ROOT/f'knowledge/units/{UNITS[1]}/v0001.json'
+        old=old_path.read_bytes()
+        self.assertEqual(hashlib.sha256(old).hexdigest(),'dbfc1cebc5d92db25763fd7e73aece1e94c6a46560260d40bb6b673574d87906')
+        self.assertEqual(hashlib.sha256((ROOT/'knowledge/reviews/A1035-interface-work-fatigue.json').read_bytes()).hexdigest(),
+                         '884b5efe3116db143f30ec59f631e38b11160b40b6394d6c144a2017231c412d')
+        successor=json.loads((ROOT/f'knowledge/units/{UNITS[1]}/v0002.json').read_bytes())
+        self.assertEqual(successor['previous'],hashlib.sha256(old).hexdigest())
+        self.assertEqual(unit['version'],2)
+        self.assertEqual([r['version'] for r in unit['history']],[1,2])
+        self.assertTrue(unit['authority'].endswith('v0002.json'))
+        self.assertIn('partition n repairs into blocks m_j<=k',json.loads(old)['statement'])
+        rejected=next(r for r in unit['historical_reviews'] if r['id']=='A1036-v1-schedule-rejection')
+        self.assertEqual(rejected['decision'],'rejected')
+        self.assertIn('HISTORICAL VERSION ONLY',rejected['applicability'])
+        self.assertTrue(any(r['id']=='A1035-interface-work-fatigue' for r in unit['historical_reviews']))
+        for identifier in ['N1021',*UNITS]:
+            record=self.library.resolve(identifier)
+            notice=next(v for v in record['notices'] if v.get('notice_id')=='SN-U1021-PERIODIC-RESET-20261026')
+            self.assertFalse(notice['whole_claim_invalidated'])
+            self.assertTrue(notice['replacement_authority'].endswith('v0002.json'))
+            self.assertIn('has3 and is excluded',notice['clarification'])
+        bridge=self.library.bridge('N1017','N1021')
+        self.assertEqual(bridge['state'],'NO SUPPORTED CONNECTION')
+        self.assertTrue(any(v.get('notice_id')=='SN-U1021-PERIODIC-RESET-20261026' for v in bridge['notices']))
 
 if __name__=='__main__':unittest.main()
