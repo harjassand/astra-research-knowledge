@@ -54,7 +54,7 @@ class MechanofluidicBounds(unittest.TestCase):
     def test_notice_and_version_bound_acceptance_keep_earlier_scope(self):
         for identifier in ['N1022',ENERGY,FORCE,*OLD]:
             record=self.library.resolve(identifier)
-            expected='A1038-mechanical-comparator' if identifier in OLD else 'A1039-mechanofluidic-bounds'
+            expected='A1040-growth-overview-continuity' if identifier=='N1022' else ('A1038-mechanical-comparator' if identifier in OLD else 'A1039-mechanofluidic-bounds')
             review=next(r for r in record['review_overlays'] if r['id']==expected)
             self.assertIn({'id':record['id'],'content_version':record['content_version']},review['subjects'])
             self.assertEqual(review['working_device'],'not established')
@@ -73,5 +73,12 @@ class MechanofluidicBounds(unittest.TestCase):
             r=subprocess.run([sys.executable,'knowledge/retrieve.py','packet',identifier],cwd=ROOT,capture_output=True)
             self.assertEqual(r.returncode,0,r.stderr)
             self.assertLessEqual(len(r.stdout),32768)
+
+    def test_existing_delayed_maturation_remains_retrievable_after_intake(self):
+        # Prior exposed research-use context, not a held-out benchmark.
+        query='Growth overshoots even after feedstock switched off. What state must the controller track?'
+        results=self.library.search(query,method='lexical')['results']
+        supported={'N1022-mechanical-comparator-and-growth-interface','U1022-nutrient-closure-and-precursor-stock'}
+        self.assertTrue(supported.intersection(row['id'] for row in results))
 
 if __name__=='__main__':unittest.main()
