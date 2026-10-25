@@ -1,0 +1,5 @@
+# Sharp precision and native-transfer intake
+
+- P3_return_1842 -> N1018 and five units: signed-spectrum minimax precision, exact-interval task support, two-forward reduction, finite-history Hessian ambiguity and scalar-readout/future-reuse tradeoff. N997 and its earlier interfaces remain unchanged.
+- Ten received scientific files preserve their bytes. Completed internal review accepts the conditional written proofs at exact versions; code was fully statically read and selected numerical certificate/failure fields inspected, without scientific replay. Four raw result JSONs remain producer reports; full numerical matrices and every result are not independently verified.
+- B1018 records the documented nonlinear-action-to-symmetric-decoder UPPER-certificate interface, not native nonlinear minimax sharpness. Blockers remain actual prior/symmetry/smoothness/error acquisition, real-direction and scalar-detector capabilities, physical costs and future-task objectives. The other four supplied returns remain outside this bounded batch.
