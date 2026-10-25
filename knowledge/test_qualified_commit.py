@@ -47,7 +47,8 @@ class QualifiedCommit(unittest.TestCase):
     def test_acceptance_does_not_promote_missing_numeric_implementations(self):
         for identifier in ['N1020',*UNITS]:
             record=self.library.resolve(identifier)
-            review=next(r for r in record['review_overlays'] if r['id']=='A1034-qualified-chemical-commit')
+            expected='A1037-escrow-hydrolysis' if identifier=='N1020' else 'A1034-qualified-chemical-commit'
+            review=next(r for r in record['review_overlays'] if r['id']==expected)
             self.assertIn({'id':record['id'],'content_version':record['content_version']},review['subjects'])
             self.assertIn('unavailable',review['scope'])
             self.assertEqual(review['physical_measurement'],'not established')
