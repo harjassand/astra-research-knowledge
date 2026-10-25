@@ -45,6 +45,19 @@ def sections(text):
     return {key: "\n".join(value).strip() for key, value in result.items()}
 
 
+def packet_review(review, packet_evidence):
+    """Reference review citations through the packet evidence array when complete."""
+    result = dict(review)
+    refs = [compact_ref(reference) for reference in evidence_refs(review.get("evidence", []))]
+    positions = {encoded(reference): index for index, reference in enumerate(packet_evidence)}
+    keys = [encoded(reference) for reference in refs]
+    if refs and all(key in positions for key in keys):
+        result.pop("evidence", None)
+        result["evidence_ref_field"] = "evidence"
+        result["evidence_ref_indices"] = [positions[key] for key in keys]
+    return result
+
+
 def build(root=ROOT):
     root = Path(root)
     inputs = Inputs(root)
@@ -387,6 +400,10 @@ def build(root=ROOT):
     for record in records:
         packet = dict(record)
         packet.pop("body", None)
+        packet["review_overlays"] = [packet_review(review, packet["evidence"])
+                                     for review in record.get("review_overlays", [])]
+        packet["historical_reviews"] = [packet_review(review, packet["evidence"])
+                                        for review in record.get("historical_reviews", [])]
         packet["related_units"] = [{"id": child["id"], "title": child["title"], "kind": child["kind"],
                                      "packet": "knowledge/current/packets/" + route_id(child["id"]) + ".json"}
                                     for child in records if record["id"] in child.get("parents", [])]

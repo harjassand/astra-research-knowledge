@@ -2,6 +2,8 @@
 
 This selected P3 intake preserves the thirteen cleared originals byte-for-byte in `source/original/`; `source/INDEX.json` records each size and SHA-256 and points to the dispatcher receipt. The attached 24 October campaign summary and its detailed report are already preserved separately in `2026-10-24-run-closeout`; this update is a distinct new source intake.
 
+The result and reusable-unit routes include the complete circuit-DAG proof and cost passage at `acquired_operator_calculus.md:408–443`, covering the four-term product, filtered-degree induction, equal-normal-form rank test, module-query count, informed retaining-Krylov comparator, and stored-width limits.
+
 ## Conditional construction
 
 Under a fixed exact-rational linear vector-action and transpose-action interface, a bounded word/rank/circuit search can acquire either (a) a quadratic rank-one-defect law such as `AB = q BA + c I + U V^T`, verified on fresh inputs, or (b) a small faithful operator algebra whose closure is freshly checked. Retaining the acquired factors and bounded-degree left/right defect modules supports all-input corrected procedures and their validity domains for new programs, without new native calls for synthesis. If uniqueness, closure, or the declared bounds fail, the result is `UNKNOWN` or the representation switch specified by the source; the generic control excludes a nonzero rank-one law only in its tested quadratic library.

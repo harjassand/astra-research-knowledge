@@ -40,7 +40,10 @@ contract. Source windows expose mechanisms buried below a title without
 inventing a theorem from a paragraph. Windows are explicitly not complete proofs.
 Packets keep actual review scope, corrections, prerequisite alerts and source
 routes; large packets fail their explicit byte budget instead of truncating a
-correction. Raw scientific sources and old authorities remain unchanged.
+correction. When a review cites sources already listed in that packet, its
+`evidence_ref_indices` point to the exact zero-based entries in the packet's
+`evidence` array; the full review and its evidence remain at the review's
+`authority` path. Raw scientific sources and old authorities remain unchanged.
 
 Search combines full statements, contracts, card content, exact cited source
 windows and curator-owned scientific concept expansions. Expansions are shown,
