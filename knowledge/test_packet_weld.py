@@ -53,7 +53,12 @@ class PacketWeld(unittest.TestCase):
     def test_current_acceptance_keeps_physical_and_cross_interface_gaps(self):
         for identifier in ['N1016', 'N1017', *SUPPORT]:
             record = self.library.resolve(identifier)
-            review_id = 'A1029-packet-assembly' if record['id'].startswith(('N1016', 'U1016')) else 'A1030-cellulose-weld'
+            if record['id'].startswith(('N1016', 'U1016')):
+                review_id = 'A1029-packet-assembly'
+            elif record['id'].startswith('N1017'):
+                review_id = 'A1031-preanchored-weld'
+            else:
+                review_id = 'A1030-cellulose-weld'
             review = next(r for r in record['review_overlays'] if r['id'] == review_id)
             self.assertIn({'id': record['id'], 'content_version': record['content_version']}, review['subjects'])
             self.assertEqual(review['physical_measurement'], 'not established')
