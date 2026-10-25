@@ -1,0 +1,9 @@
+# Selected audited quantum coherence and entropy receivers
+
+Current routes: `python3 knowledge/retrieve.py packet N1005`, `packet N1006`. N993–N995 remain the existing binary transfer/fixed-prior/trine family; no duplicate card is minted for those results. The0722rank-one theorem, exact named audit and governing filter/diagonal interfaces remain separate from1028operator/physical receivers.
+
+The ten named1028theorem/audit notes are preserved with only directly governing mathematical dependencies and source diagnostic code; the code is not executed. The source audits' completed internal acceptance is sufficient at their actual scope. The receiving author reconstructed the central transport/complement/shifted-interval/duality mechanisms and checked named audit scope, rather than claiming an independent whole-archive audit or a new replay of every imported scalar certificate. Four other changed historical scientific files in the frozen archives are outside this extraction; no old acceptance is assigned to their changed bytes. Both original frozen archives remain preserved by the dispatcher.
+
+Important incompatible transfers: equal trace does not imply a higher-rank operator cap; a singular support is not automatically an affine-projector spectrum; noncommuting marginal coherences cannot be discarded for free; arbitrary density matrices do not follow from the union of these classes. General WH3 remains open. A mathematical testing measure/filter/resolvent is not an acquired measurement or physical decoder.
+
+All current packets use existing normalization via `knowledge/INTAKE.md`. Source-index bytes establish identity, while actual statements/conditions and scoped reviews establish scientific use. Public default routes and source passages are checked, then the focused PR is reviewed and merged after required checks. No new model service, producer form or private SQLite database.
