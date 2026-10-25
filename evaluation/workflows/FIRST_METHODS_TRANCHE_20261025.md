@@ -1,0 +1,7 @@
+# First completed Astra methods tranche
+
+The [current N1008 packet](../../knowledge/current/packets/N1008.json) and its [explicit curator extraction](../../research/2026-10-23-fresh-programme/intake/capital-integrated-2026-10-23/updates/2026-10-25-completed-science-six/source/methods/method-tranche-extract.md) preserve the completed first report's useful observations and limits. The separately preserved original report is pinned by hash and size. Raw private conversations, exact trial responses and missing allocation code are not published or reconstructed.
+
+The reported prompt pilot has **12 response starts on three retrospective cases**, six per condition. The requested trial configuration was GPT-6 Luna Max, with GPT-6.1 Sol Max investigators/scorers; immutable served versions are unavailable. Label-blind scoring, shared ambient context, cued bottlenecks, ceiling effects, incomplete total-cost parity and unexecuted proposed actions prevent a causal efficacy conclusion. This is an observational report, not a sealed matched evaluation.
+
+The retained design distinction is whether a representation preserves the same useful output with weaker premises, creates a different useful operation, or improves a proxy while damaging the next required task. Selected synthetic allocation counterexamples motivate further tests but supply no programme-wide allocation rule. No new reporting form, model trial, worker or automation is introduced by this intake; later active methods research is outside this tranche.

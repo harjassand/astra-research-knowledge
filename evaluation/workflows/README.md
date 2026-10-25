@@ -6,6 +6,10 @@ when measurable, its decisive advance or failure, and its scientific status.
 It does not execute a model, label unseen tasks, rank prompts or certify outcomes.
 Historical ledgers and [`PROTOCOL.md`](../PROTOCOL.md) remain unchanged authorities.
 
+The [first completed methods tranche](FIRST_METHODS_TRANCHE_20261025.md) is a
+descriptive report with an explicit sample and comparison limits. Its curator
+extraction adds no reporting requirement or sealed-evaluation claim.
+
 Copy [`WORKFLOW_TRACE.json`](../templates/WORKFLOW_TRACE.json), preserve cleared
 exact initiating prompt and output bytes, and store a new versioned record in
 `evaluation/workflows/records/RW-<stable-id>/v0001.json`. Hash-pin earlier versions

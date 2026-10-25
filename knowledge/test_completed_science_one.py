@@ -82,7 +82,9 @@ class CompletedScienceOne(unittest.TestCase):
         self.assertIn('not conditional accepted error', p1['contract']['assumptions'])
         self.assertIn('model-average', p1['statement'])
         current = self.library.resolve('N996')
-        self.assertEqual(current['content_version'], 'c7472731bde4c18a0fe478c0699d25e2245b387076c97e77e1325dfa044dfbd3')
+        self.assertTrue(any(r['id'] == 'A997-p3-operator-law-procedure-source-review-v2' for r in current['historical_reviews']))
+        original_unit = self.library.resolve('U996-acquired-operator-law-defect-procedure')
+        self.assertEqual(original_unit['content_version'], 'a54633dc125a7b8960d07c6e68c487cae32cf88a6077de3a387b7e4176eb12c2')
 
 
 if __name__ == '__main__':
