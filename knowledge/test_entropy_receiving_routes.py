@@ -1,9 +1,10 @@
 """Protect proof-route identity where hashes alone can select the wrong branch."""
 import json
+import os
 import subprocess
 import sys
 import unittest
-from knowledge.model import ROOT, encoded
+from knowledge.model import ROOT
 
 
 class EntropyReceivingRoutes(unittest.TestCase):
@@ -11,8 +12,27 @@ class EntropyReceivingRoutes(unittest.TestCase):
         for identifier in ['N993', 'N994', 'N995']:
             result = subprocess.run([sys.executable, 'knowledge/retrieve.py', 'packet', identifier], cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            # The advertised budget is for encoded JSON, before CLI pretty printing.
-            self.assertLessEqual(len(encoded(json.loads(result.stdout))), 32768)
+            self.assertLessEqual(len(result.stdout.encode("utf-8")), 32768)
+
+    def test_final_output_budget_includes_revision_and_terminal_newline(self):
+        command = [sys.executable, 'knowledge/retrieve.py', 'packet', 'N994']
+        result = subprocess.run(command, cwd=ROOT, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        size = len(result.stdout)
+        exact = subprocess.run(command + ['--max-bytes', str(size)], cwd=ROOT, capture_output=True)
+        self.assertEqual(exact.returncode, 0, exact.stderr)
+        self.assertEqual(len(exact.stdout), size)
+        short = subprocess.run(command + ['--max-bytes', str(size-1)], cwd=ROOT, capture_output=True)
+        self.assertNotEqual(short.returncode, 0)
+        self.assertEqual(short.stdout, b'')
+        self.assertIn(b'byte budget', short.stderr)
+
+    def test_packet_wire_encoding_is_utf8_even_with_ascii_stdout_configuration(self):
+        command = [sys.executable, 'knowledge/retrieve.py', 'packet', 'N993']
+        normal = subprocess.run(command, cwd=ROOT, capture_output=True, check=True)
+        configured = subprocess.run(command, cwd=ROOT, env={**os.environ, 'PYTHONIOENCODING': 'ascii'}, capture_output=True, check=True)
+        self.assertEqual(configured.stdout, normal.stdout)
+        json.loads(configured.stdout.decode('utf-8'))
 
     def test_receiver_routes_contain_the_actual_complement_and_interval_arguments(self):
         unit = json.loads((ROOT / 'knowledge/units/U1006-complement-index-and-shifted-interval-payment/v0001.json').read_text())

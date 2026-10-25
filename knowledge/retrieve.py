@@ -179,7 +179,14 @@ def main():
             result = library.manifest["counts"]
         revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True)
         result["checkout_revision"] = revision.stdout.strip() if revision.returncode == 0 else "UNKNOWN"
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        if args.command in ("packet", "source"):
+            # Bound the actual UTF-8 output, including revision and terminal LF.
+            output = encoded(result)
+            if len(output) > args.max_bytes:
+                raise ValueError("Complete output exceeds byte budget; no history or corrections were truncated.")
+            sys.stdout.buffer.write(output)
+        else:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
     except (OSError, ValueError, KeyError, TypeError) as error:
         print("ERROR: " + str(error), file=sys.stderr)
         return 1
