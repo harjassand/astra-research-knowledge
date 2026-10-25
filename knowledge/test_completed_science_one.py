@@ -58,7 +58,14 @@ class CompletedScienceOne(unittest.TestCase):
             self.assertEqual(review['decision'], 'accepted_internally_verified')
             self.assertIn('not replayed', review['scope'])
             for subject in review['subjects']:
-                self.assertEqual(self.library.resolve(subject['id'])['content_version'], subject['content_version'])
+                current = self.library.resolve(subject['id'])
+                matching = [r for r in current['review_overlays'] if r['id'] == review['id']]
+                if current['content_version'] == subject['content_version']:
+                    self.assertTrue(matching)
+                else:
+                    self.assertFalse(matching, 'Old acceptance must not transfer to revised bytes')
+                    self.assertTrue(any(r['id'] == review['id'] and 'HISTORICAL VERSION ONLY' in r['applicability'] for r in current['historical_reviews']))
+                    self.assertTrue(any(r['decision'] == 'accepted_internally_verified' for r in current['review_overlays']))
         source = ROOT / UPDATE / 'source/ultra/ROOT_THREE_GAP_BOUNDED_ASSAY_DRAFT.md'
         audit = (ROOT / UPDATE / 'source/ultra/ROOT_WHOLE_REVIEW.md').read_text().splitlines()
         self.assertIn(hashlib.sha256(source.read_bytes()).hexdigest(), '\n'.join(audit[805:836]))
@@ -68,7 +75,9 @@ class CompletedScienceOne(unittest.TestCase):
         self.assertIn('unrestricted rational completion', p3['statement'])
         self.assertIn('randomized bounded-error', p3['contract']['assumptions'])
         p2 = self.library.resolve('N998')
-        self.assertIn('not a full long-time Floquet', p2['contract']['assumptions'])
+        self.assertIn('not an interval-certified integrated', p2['contract']['assumptions'])
+        original_unit = self.library.resolve('U998-divided-source-code-isometry')
+        self.assertIn('not a full long-time Floquet', ' '.join(original_unit['contract']['assumptions']))
         p1 = self.library.resolve('N1000')
         self.assertIn('not conditional accepted error', p1['contract']['assumptions'])
         self.assertIn('model-average', p1['statement'])
