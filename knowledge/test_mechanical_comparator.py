@@ -75,11 +75,12 @@ class MechanicalComparator(unittest.TestCase):
             self.assertEqual(hashlib.sha256((ROOT/UPDATE/row['path']).read_bytes()).hexdigest(),row['sha256'])
         for identifier in ['N1022',*UNITS]:
             record=self.library.resolve(identifier)
-            review=next(r for r in record['review_overlays'] if r['id']=='A1038-mechanical-comparator')
+            expected='A1040-growth-overview-continuity' if identifier=='N1022' else 'A1038-mechanical-comparator'
+            review=next(r for r in record['review_overlays'] if r['id']==expected)
             self.assertIn({'id':record['id'],'content_version':record['content_version']},review['subjects'])
             self.assertEqual(review['decision'],'accepted_internally_verified')
             self.assertEqual(review['working_device'],'not established')
-            self.assertIn('No scientific code',review['scope'])
+            self.assertIn('source-exposed author',review['scope'])
             result=subprocess.run([sys.executable,'knowledge/retrieve.py','packet',identifier],cwd=ROOT,capture_output=True)
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertLessEqual(len(result.stdout),32768)
