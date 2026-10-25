@@ -1,0 +1,5 @@
+# Two-register escrow: hydrolysis and recovery
+
+- Frozen XH1_return_2138 note, complete response and address CSV -> updated existing N1020 plus two reusable conditional mechanisms: hydrolysis/selectivity cancellation and damaged/delayed donor replacement. Earlier four units and their A1034 acceptance remain unchanged.
+- Completed source-exposed author review accepts the written first-step and renewal arguments at exact versions, retaining active root loss dA. Four named scripts remain unavailable; no scientific code, barcode-distance scan or thermodynamic calculation was replayed. The CSV has 256 rows; reported sequence defects, kinetic tables and cited experiments remain source reports.
+- Physical PNA thioester shielding, low unwanted aminolysis, same-buffer switching, site-qualified rooted advancement and harmless registered recovery remain unacquired. No integrated manufacturer, measurement or advantage is established. The other three supplied snapshots are outside this bounded batch.
