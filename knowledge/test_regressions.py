@@ -1,5 +1,6 @@
 """Exposed diagnostics and actual current-packet checks, not held-out evaluation."""
 import json
+import shlex
 import subprocess
 import sys
 import unittest
@@ -88,6 +89,33 @@ class CorpusRegressions(unittest.TestCase):
                 self.assertEqual(source["source"]["lines"], [408, 443])
                 self.assertIn("Induction on a program DAG proves native correctness", source["text"])
                 self.assertEqual(packet["evidence"][0]["lines"], [408, 443])
+
+    def test_p3_advertised_catalogue_route_returns_the_accepted_packet(self):
+        catalog_path = ROOT / "indexes/agent_catalog.d/2026-10-25-p3-operator-law-procedure.json"
+        catalog = json.loads(catalog_path.read_text())
+        entry = next(item for item in catalog["claims"]
+                     if item["id"] == "N996-p3-acquired-operator-law-procedure")
+        pointers = entry["pointers"]
+        self.assertEqual(pointers["card_web"], pointers["card_local"])
+        self.assertTrue(pointers["card_web"].endswith(".txt"))
+        self.assertTrue((ROOT / pointers["card_web"]).is_file())
+        self.assertNotIn("frontier/dossiers_v5/N996.txt", pointers["read_web"])
+        for path in pointers["read_web"]:
+            self.assertTrue((ROOT / path).is_file(), path)
+
+        result = subprocess.run(shlex.split(pointers["read_local"]), cwd=ROOT,
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        response = json.loads(result.stdout)
+        self.assertEqual(len(response["packets"]), 1)
+        packet = response["packets"][0]
+        self.assertEqual(packet["id"], entry["id"])
+        accepted = next(review for review in packet["review_overlays"]
+                        if review["id"] == "A997-p3-operator-law-procedure-source-review-v2")
+        self.assertEqual(accepted["decision"], "accepted_internally_verified")
+        self.assertTrue(any(subject["id"] == packet["id"]
+                            and subject["content_version"] == packet["content_version"]
+                            for subject in accepted["subjects"]))
 
 
 if __name__ == "__main__":
