@@ -31,6 +31,7 @@ class CooperativeFootprints(unittest.TestCase):
         self.assertIn('no chemical prerequisites',source['text'])
         record=self.library.resolve(UNITS[1])
         self.assertIn('no prerequisites',record['contract']['requires'][0])
+        self.assertIn('i!=j',record['contract']['requires'][0])
         self.assertIn('outgoing edges',record['body'])
         self.assertIn('cooperative blocking sets require',record['body'])
         # An edge0->1 requires1 before0; adding prerequisite0 before1
@@ -38,6 +39,20 @@ class CooperativeFootprints(unittest.TestCase):
         from itertools import permutations
         feasible=[order for order in permutations(range(2)) if order.index(1)<order.index(0) and order.index(0)<order.index(1)]
         self.assertEqual(feasible,[])
+
+    def test_self_footprints_are_not_strict_precedence_constraints(self):
+        # Before a one-site first reaction, its own product is absent.
+        self.assertFalse({0}.issubset(set()))
+        # A literal graph self-loop is a directed cycle requiring FVS size1;
+        # chemical release count is0, so it must be omitted from that graph.
+        record=self.library.resolve(UNITS[1])
+        self.assertEqual(record['version'],2)
+        self.assertIn('omit self arcs',record['body'])
+        source=self.library.source(UNITS[1],2)
+        self.assertEqual(source['source']['lines'],[143,154])
+        self.assertIn('if i!=j',source['text'])
+        prior=ROOT/'knowledge/units'/UNITS[1]/'v0001.json'
+        self.assertEqual(record['previous'],hashlib.sha256(prior.read_bytes()).hexdigest())
 
     def test_feasibility_does_not_import_blind_execution(self):
         from itertools import permutations
@@ -89,11 +104,12 @@ class CooperativeFootprints(unittest.TestCase):
             self.assertEqual(hashlib.sha256((ROOT/UPDATE/row['path']).read_bytes()).hexdigest(),row['sha256'])
         for identifier in ['N1024',*UNITS]:
             record=self.library.resolve(identifier)
-            review=next(r for r in record['review_overlays'] if r['id']=='A1042-cooperative-footprints')
+            review_id='A1043-cooperative-distinct-site-scope' if identifier in ['N1024',UNITS[1]] else 'A1042-cooperative-footprints'
+            review=next(r for r in record['review_overlays'] if r['id']==review_id)
             self.assertIn({'id':record['id'],'content_version':record['content_version']},review['subjects'])
             self.assertEqual(review['decision'],'accepted_internally_verified')
             self.assertEqual(review['working_device'],'not established')
-            self.assertIn('No source scientific code',review['scope'])
+            self.assertRegex(review['scope'],r'No source scientific code|no producer scientific program')
             result=subprocess.run([sys.executable,'knowledge/retrieve.py','packet',identifier],cwd=ROOT,capture_output=True)
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertLessEqual(len(result.stdout),32768)
