@@ -120,11 +120,13 @@ class RadiativeCurrentRoutes(unittest.TestCase):
  def test_actual_default_parent_commands_preserve_scope(self):
   import json,subprocess,sys
   root=Path(__file__).resolve().parents[1]
-  for name,notices in [('N1055',1),('N1056',0),('N1057',2)]:
+  # Later intakes may add notices; the original scoped corrections must survive.
+  required={'N1055':{'SN-N1055-TRACKED-INVERSE-PHASE-20261027'},'N1056':set(),'N1057':{'SN-N1057-PHYSICAL-EMITTER-COUNT-20261027','SN-N1057-SOURCE-NULL-NOT-LOCAL-TRANSFER-20261027'}}
+  for name,notices in required.items():
    p=subprocess.run([sys.executable,'knowledge/retrieve.py','packet',name],cwd=root,capture_output=True)
    self.assertEqual(p.returncode,0,p.stderr.decode());self.assertLessEqual(len(p.stdout),32768)
    packet=json.loads(p.stdout)['packets'][0]
-   self.assertEqual(len(packet['notices']),notices)
+   self.assertLessEqual(notices,{n['notice_id']for n in packet['notices']})
    self.assertTrue(packet['evidence'] and packet['source_excerpts'] and packet['review_overlays'])
 
 if __name__=='__main__':unittest.main()
