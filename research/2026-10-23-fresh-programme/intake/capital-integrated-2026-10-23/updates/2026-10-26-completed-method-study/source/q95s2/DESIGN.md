@@ -1,0 +1,13 @@
+# Stage 2 design frozen before generating new cases
+
+The first construction will be attacked through indefinite adaptive stopping and through the possibility that ordinary sequential inference already supplies the proposed positive operation. Stage 1 remains unchanged.
+
+Mathematical stress: extend the finite-horizon lower bound to any procedure that may stop at an unbounded random time. Require a declared false-solid probability uniformly over every positive Maxwell relaxation rate. Determine whether a finite-time solid declaration can nevertheless have useful power under a permanent spring. This is a full-domain proof, not an empirical extrapolation.
+
+Positive construction: infer a time-uniform *upper* bound on equilibrium modulus using a step, a common calibrated Gaussian stress readout, and positivity of the relaxation spectrum. No rate floor, fitted component count, or spectral support will be supplied to the method. The method will not claim to certify exact zero equilibrium modulus or a positive lower bound.
+
+Conventional comparison: use established Gaussian mixture confidence sequences, then give a stronger ordinary incumbent permission to restart those sequences and select late windows with a valid error allocation. Both methods receive exactly the same observations and readout times. A finite list of Gaussian tail windows with weighted simultaneous correction will also be available as an ordinary comparator. The result will not be called novel if it is an instantiation of known confidence-sequence machinery.
+
+Withheld evaluation will be generated only after this design file is written, by a separately seeded generator. Seed 2951026. Use 24 discrete spectra with equilibrium modulus cycling through 0, 0.1, 0.3 and 0.8; draw 1 to 32 positive modes over rates 1e-6 to 1e2 and nonnegative Dirichlet weights. Add analytic continuous-spectrum cases with gamma Laplace responses and a few deliberately adversarial very slow modes. Detector density 0.02, normalized peak strain 1, nominal failure 0.05, 64 geometric observation times from 1e-3 to 1e6. Each method sees integrated stress increments, with exact mean integrals and independent Brownian noise increments. No parameter may be retuned after looking at these cases. Use 2,000 Monte Carlo paths per case. Report simultaneous coverage, upper-bound excess, and first valid certificate below 0.2. Noncompletion by the maximum horizon remains noncompletion; do not replace it with a favorable time.
+
+The confidence proofs, rather than held-out coverage alone, supply the domain-wide guarantees. The finite sampling horizon is not a general bound on experiment duration. Record all comparison outcomes, including when the ordinary incumbent wins. All data are synthetic.
