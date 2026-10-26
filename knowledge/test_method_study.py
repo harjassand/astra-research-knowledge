@@ -96,10 +96,11 @@ class CompletedMethodStudy(unittest.TestCase):
                        if r['id'].split('-')[0] in
                        {f'{prefix}{n}' for prefix in ['N', 'U'] for n in range(1034, 1041)}]
         self.assertEqual(len(identifiers), 21)
-        for identifier in identifiers:
+        for identifier in identifiers + ['N965', 'N970', 'N676', 'N967']:
             self.library.packet([identifier])
         for identifier in ['U1038-free-umegaki-comparison-formula',
-                           'U1038-post-exposure-numerator-span-cutoff']:
+                           'U1038-post-exposure-numerator-span-cutoff',
+                           'N965', 'N970', 'N676', 'N967']:
             result = subprocess.run([sys.executable, 'knowledge/retrieve.py', 'packet', identifier],
                                     cwd=ROOT, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)

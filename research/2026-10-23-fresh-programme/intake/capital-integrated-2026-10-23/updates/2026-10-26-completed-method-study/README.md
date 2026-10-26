@@ -25,4 +25,4 @@ The next substantive retrieval improvement is to decompose broad scientific task
 
 Validation uses the unchanged Capital contract, the six additional knowledge regressions, workflow/evaluation validation, exact prior-version preservation, a repeated idempotent build, actual bounded packet/source/bridge reads and the existing full publication gate. These transport/interface checks complement the original completed scientific audits; they do not establish novelty, physical performance or prompting advantage.
 
-All new packets fit the default32768-byte CLI budget. The pre-existing complete N676 packet needs the documented explicit `packet N676 --max-bytes 65536`; its decisive source window and current bridge remain bounded. Its original semantic version is preserved.
+All new packets and existing bridge endpoints fit the default32768-byte CLI budget. Bridge references retain governing path, exact hash, range, supporting passage and scope without repeated source identifiers/read-path fields. Full source identities remain in the canonical records and source index. Existing endpoint budgets are regression-tested; original semantic versions are preserved.
