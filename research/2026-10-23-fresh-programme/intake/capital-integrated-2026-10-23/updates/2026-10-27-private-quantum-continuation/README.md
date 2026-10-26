@@ -1,0 +1,20 @@
+# Assigned quantum-control continuation
+
+| Frozen root | Integrated mathematical scope | Retained boundary |
+| --- | --- | --- |
+| P1_return_1308_20261026 | N1052: palindrome/private flag effects and active-channel obstruction | Actual norm/regularity/frame/key/code assumptions; no ideal-gate branch from small channel distance |
+| P1_return_1401_20261026 | N1053: complete Clifford resource/direct frames, six-setting test and remote nondemolition obstruction | Fresh Bell/terminal operations; destructive tests spend candidates; established verification ancestry |
+| P1_return_1438_20261026 | N1053: private deferred Clifford ledger and task-relative score audit | Final coarse decoder and private records; no unchangedT extension; directQin comparator |
+| P1_return_1515_20261026 | N1054: magic injection/pinch, weak-instrument source and effect-qualified audit | Binary injection bit versus private key; full instrument notPOVM; no fault tolerance |
+| P1_return_1717_20261026 | N1054: square-character harmonicCP order/wholeT port; N1052 derived idle-flag refinement | Full conditional joint key law/retirement; residual arbitrary; reconstructed local test is curator work |
+
+All10 scientific originals139405B are preserved unchanged. All producer code/results/log archives remain unacquired and their numerical/small-ensemble claims are not replayed. The completed curator review supplies actual analytic reconstruction and explicit derivative five-setting/biased-flag compositions. These are source-backed knowledge integrations, not archival receipts. No physical hardware, source calibration, historical priority, practical advantage or mission completion.
+
+Current scope corrections: the harmonic inverse formula requires a COMPLETE SQUARE key/character table|G|=d; arbitrary larger groups/subsets differ. The single-qubit magic injection outcome m is one binary bit despite source line81 wording. Coarse sector-diagonal test-instrument equality requires the corresponding averaging/retirement; effect-only safety can retain actual labels and CP updates if its trace effect remains valid. Existing N1004/N1023/N1041/N1047 reviews/versions remain unchanged; no unrelated N951 acceptance is manufactured.
+
+Read actual proofs under source/segments,clifford,deferred,magic,biased and the [completed review/reconstructions](source/curator/QUANTUM_CONTINUATION_REVIEW.txt); [source index](source/INDEX.json). The same knowledge/INTAKE.md build/check/idempotence/source-route/review/authorized-publication path applies. No forms, worker, architecture, source request or private database. The other10 P2/chemistry/Ultra roots of this assigned set remain unfinished until separately assessed; this slice does not exhaust them.
+
+
+Exposed source-informed comparison: twelve defined family top5 questions plus one unsupported hardware request. Both structured and full-card lexical retrieval find12/12 expected families. Structured direct-unit access is7/12; lexical indexes cards, so unit rates are not comparable. Echo, biased keys, task-only comparison, weak-instrument preparation and the derived harmonic-flag question return the family without the intended unit. Unsupported hardware searches still return conditional candidates. These failures are retained in validation/research-use.json; no rank/alias tuning, held-out/global recall or scientific/physical advantage claim.
+
+Actual exposed research-use route: asking whether a tiny full-channel gate error guarantees an exact ideal-unitary subbranch returns U1052-active-channel-not-ideal-branch first. Its actual source150–189 contains the Kraus-span obstruction and the distinct physical protocol boundaries. Both methods find the family; the structured unit route supplies the precise premise preventing a false import into exact fault accounting. Another available explicit construction is the curator-derived five-setting test and matched harmonic-to-idle composition; their proof routes lead to the actual derivation, not an unavailable netlist.
