@@ -1,0 +1,13 @@
+# Inverse-sector learning and constrained operations
+
+P3_return_0409 contributes N1028, four reusable units, two scoped transfers and A1047. Thirteen original files179395B, including the archive and byte-matching package, remain unchanged. Existing normalization/INTAKE.md is used; no producer form or architecture change.
+
+Accepted scope: the supplied shifted-Lipschitz inverse equivalence and complete joint family, scalar sparse certificate argument, saturation/noise/finite-contract limits and constrained projected-VI construction. Eight acquired focused certificates were independently recomputed from recorded pairs. Four original research suites/verifier were read, not run; their whole-suite replay and numerical gains remain source reports. No real physical source or advantage over equally informed classical retention is acquired.
+
+Resource clarification:103 bits is local to six spatial selected certificates. Focused certificates reach326 bits; the stored final inverse-radius denominator has582 bits. Saved VI final estimates and true errors equal the domain-only baseline; only some certificate radii improve, and an informed baseline can tie. Preserve all learner, cycle, setter/reference and comparator calls.
+
+Blockers: actual local/global sector/stability/noise warranty, exact joint constrained-VI family, physical advantage and priority remain unresolved. P2_return_0409 is outside this batch, not exhausted. Mission NOT_ACHIEVED.
+
+Exposed research-use comparison: eight questions were written after reading this source, with structured and full-card lexical top5 outputs retained before/after, not held out. Both methods retrieve N1028 first for forward-only inverse questions without energy. Structured search retrieves the finite-contract obstruction first. The nearby-force, unnamed sparse-support, fixed-dose VI and global103-bit questions miss the new result in their top5; lexical sparse-support finds the parent third. The almost-tangent question retrieves the parent mechanism rather than the saturation unit in structured search; its packet still offers the exact related-unit/source route. Unsupported measured-source/architecture-advantage requests remain unsupported, and candidates are not automatic abstention. No ranking or aliases were tuned to these probes.
+
+A usable supported route is inverse question -> N1028 -> U1028-inverse-residual-consistency -> its sharp relative-source witness, or the constrained-VI unit/explicit mismatch bridge. This gives a correct conditional premise and prevents projecting an inverse into an asserted VI solution; it does not establish physical advantage. Direct unnamed-mechanism retrieval still needs improvement. This comparison is this learning slice only, not a corpus recall estimate.
