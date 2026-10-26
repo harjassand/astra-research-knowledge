@@ -7,6 +7,8 @@ Collective flag dephasing cancels under code-preserving generators. Differential
 The existing Capital contract is unchanged: author existing formats, knowledge/build.py build and check, relevant publication checks, exact packet/source/bridge reads, idempotent rebuild, reviewed PR/authorized merge and remote-byte checks. No researcher forms, producer-idle gate, new workers or architecture change. Other seven frozen roots remain outside this selected batch, not exhausted. Mission NOT_ACHIEVED.
 
 
+The SU2 unit currentv2 explicitly prices three total flags and a separately supplied singlet-controlled target port. The six-plus-two data/output-code gate count belongs only to the two-spin collective-Z design. Unitv1 and its original A1061 audit remain unchanged; A1062 accepts the same mathematics with the clarified current resource interface. The original card and two-spin units retain their original acceptance.
+
 ## Research use and limits
 
 Seven source-informed exposed questions compare the unchanged structured route and full-content card lexical baseline: six strict new-parent relevance probes and one unsupported measured-device request. The new N1041 parent appears in top5 for6/6 structured queries and3/6 lexical queries. This selected exposed slice establishes no held-out or corpus-wide ranking/advantage claim. No ranker or query-specific aliases were tuned.

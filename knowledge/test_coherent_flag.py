@@ -128,8 +128,10 @@ class CoherentFlag(unittest.TestCase):
   for identifier,lines,phrase in [(IDS[0],[13,58],'Kraus by Kraus'),(IDS[1],[60,110],'single full-Stinespring'),(IDS[2],[133,171],'27-dimensional physical-Hamiltonian space')]:
    source=self.library.source(identifier);self.assertEqual(source['source']['lines'],lines);self.assertTrue(source['source']['path'].endswith(PROOF));self.assertIn(phrase,source['text'])
   for identifier in ['N1041',*IDS]:
-   record=self.library.resolve(identifier);review=next(r for r in record['review_overlays']if r['id']=='A1061-coherent-check-flag');self.assertEqual(review['decision'],'accepted_internally_verified');self.assertIn({'id':record['id'],'content_version':record['content_version']},review['subjects']);self.assertEqual(review['physical_measurement'],'not established')
+   record=self.library.resolve(identifier);review_id='A1062-coherent-flag-control-resources'if identifier==IDS[2]else'A1061-coherent-check-flag';review=next(r for r in record['review_overlays']if r['id']==review_id);self.assertEqual(review['decision'],'accepted_internally_verified');self.assertIn({'id':record['id'],'content_version':record['content_version']},review['subjects']);self.assertEqual(review['physical_measurement'],'not established')
    self.assertTrue(any(n['notice_id']=='SN-N1041-NOISE-AND-EVIDENCE-SCOPE-20261026'and not n['whole_claim_invalidated']for n in record['notices']))
+  v1=ROOT/'knowledge/units'/IDS[2]/'v0001.json';v2=json.loads((v1.parent/'v0002.json').read_bytes());self.assertEqual(v2['previous'],hashlib.sha256(v1.read_bytes()).hexdigest())
+  self.assertIn('Three total physical flag spins',v2['contract']['costs'][0]);self.assertIn('does not transfer',v2['contract']['costs'][0])
 
  def test_complete_call_bridge_and_existing_endpoint_default_budgets(self):
   transfer=self.library.bridge(IDS[0],OLD)['transfers'][0];self.assertEqual(transfer['state'],'ESTABLISHED COMPATIBLE INTERFACE')
