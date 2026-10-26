@@ -81,7 +81,10 @@ class CompletedMethodStudy(unittest.TestCase):
     def test_acceptance_remains_version_bound_and_physical_gaps_survive(self):
         for number in range(1034, 1041):
             record = self.library.resolve(f'N{number}')
-            review = next(r for r in record['review_overlays'] if r['id'] == f'A{number+20}-method-study')
+            # N1038 now has a separately audited executable 3x3 extension;
+            # A1058 remains historical on the parent and current on old units.
+            audit = 'A1063-global-channel-evaluator' if number == 1038 else f'A{number+20}-method-study'
+            review = next(r for r in record['review_overlays'] if r['id'] == audit)
             self.assertEqual(review['decision'], 'accepted_internally_verified')
             self.assertIn({'id': record['id'], 'content_version': record['content_version']}, review['subjects'])
             self.assertEqual(review['working_device'], 'not established')
@@ -95,7 +98,8 @@ class CompletedMethodStudy(unittest.TestCase):
         identifiers = [r['id'] for r in self.library.records.values()
                        if r['id'].split('-')[0] in
                        {f'{prefix}{n}' for prefix in ['N', 'U'] for n in range(1034, 1041)}]
-        self.assertEqual(len(identifiers), 21)
+        # Three newly extracted N1038 mechanisms extend the original 21.
+        self.assertEqual(len(identifiers), 24)
         for identifier in identifiers + ['N965', 'N970', 'N676', 'N967']:
             self.library.packet([identifier])
         for identifier in ['U1038-free-umegaki-comparison-formula',
