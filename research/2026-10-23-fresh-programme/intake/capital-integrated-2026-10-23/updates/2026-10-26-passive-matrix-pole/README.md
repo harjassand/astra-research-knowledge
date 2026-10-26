@@ -1,0 +1,5 @@
+# Passive matrix-pole control: analytic scope
+
+- P2_return_0149 -> N1026/four reusable units: passive local jet compiler, scalar-moment obstruction, strict energy-form/charge-memory implication and whole-kernel delay-retuning limit. Two originals34192B preserved unchanged; earlier scientific versions remain intact.
+- Completed source-exposed author audit accepts the conditional written analytic arguments. Governing current interval/matrix/memory/delay scripts and result files were not acquired; no producer code, numeric suite or new primary-paper audit run. Reported sub-1-percent bands, applied signs, Schur margin and tolerance grids are not independently certified.
+- Local zero jets, a positive internal energy form, asymptotic stationary scattering and a physical finite-time gate are different claims. Actual spectral controls/extra radiation/large shift/source handling remain unacquired; homogeneous single-impurity capacity two remains OPEN. Other four supplied roots are outside this bounded batch. Mission NOT_ACHIEVED.
