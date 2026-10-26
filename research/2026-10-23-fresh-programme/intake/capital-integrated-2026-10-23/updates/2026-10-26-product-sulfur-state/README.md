@@ -1,0 +1,5 @@
+# Retained-product sulfur state: conditional intake
+
+- XH1_return_0123 -> N1025/four reusable units: product-state-dependent donor renewal/detours, reversible-mask survival under irreversible trapping, postcapture chemical discrimination, and finite route comparison. Three raw originals are preserved unchanged; earlier scientific versions remain intact.
+- Completed source-exposed author audit accepts the stated conditional analytic models and interface limitations. Full response/note/code read statically; no producer program, CTMC/Gillespie/gamma/numeric suite or new primary-paper audit run. No separate current JSON/log acquired; numerical thresholds/crossovers and component literature remain source reports.
+- Consumed nitrogen does not establish the whole-product self-inactivation required by U1024 retry. Retained-product accessibility, wrong-transfer chemistry, competent loss/reversal, selective cap/demask, registration and guide ejection remain unacquired. Prior unfinished-only exposure models and older schedule-cost obligations are not invalidated or closed. Other three supplied roots are outside this bounded batch. Mission NOT_ACHIEVED.
