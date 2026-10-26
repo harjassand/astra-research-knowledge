@@ -44,6 +44,11 @@ class FragmentFusion(unittest.TestCase):
         record=self.library.resolve(UNITS[0]);self.assertIn('TOTAL NEW PRODUCT',record['body'])
         self.assertIn('exp(kappa*(L-1))',record['body'])
         self.assertIn('verified-correct',record['contract']['assumptions'][0])
+        self.assertIn('expected consumed resource',record['statement'])
+        self.assertIn('unbounded retry support',record['statement'])
+        self.assertEqual(record['version'],2)
+        current=json.loads((ROOT/'knowledge/units'/UNITS[0]/'v0002.json').read_bytes())
+        self.assertEqual(current['previous'],hashlib.sha256((ROOT/'knowledge/units'/UNITS[0]/'v0001.json').read_bytes()).hexdigest())
         self.assertTrue(any(n['notice_id']==NOTICE for n in record['notices']))
         source=self.library.source(UNITS[0],2)
         self.assertEqual(source['source']['lines'],[147,156]);self.assertIn('n=2',source['text']);self.assertIn('n*=2',source['text'])
@@ -112,7 +117,7 @@ class FragmentFusion(unittest.TestCase):
 
     def test_versions_default_commands_and_actual_proof_ranges(self):
         for identifier in ['N1029',*UNITS]:
-            record=self.library.resolve(identifier);review=next(r for r in record['review_overlays']if r['id']=='A1048-fragment-fusion')
+            record=self.library.resolve(identifier);review=next(r for r in record['review_overlays']if r['id']==('A1049-fragment-fusion-expectation'if identifier in ['N1029',UNITS[0]]else'A1048-fragment-fusion'))
             self.assertIn({'id':record['id'],'content_version':record['content_version']},review['subjects']);self.assertEqual(review['decision'],'accepted_internally_verified');self.assertEqual(review['working_device'],'not established')
         for a,b in [(1,2),(2,0)]:
             bridge=self.library.bridge(UNITS[a],UNITS[b])['transfers'][0]
