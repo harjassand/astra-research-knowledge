@@ -147,4 +147,12 @@ class QuantumControls(unittest.TestCase):
   self.assertIn('contrast-optimal',l.source('U1054-magic-tester-and-effect-qualified-audit')['text'])
   p=Path(__file__).resolve().parents[1]/'research/2026-10-23-fresh-programme/intake/capital-integrated-2026-10-23/updates/2026-10-27-private-quantum-continuation/source/INDEX.json';rows=json.loads(p.read_text())['files'];original=[r for r in rows if r['kind']=='frozen_original'];self.assertEqual((len(original),sum(r['bytes']for r in original)),(10,139405))
 
+ def test_actual_default_magic_packet_retains_budget_and_corrections(self):
+  import json,subprocess,sys
+  from pathlib import Path
+  root=Path(__file__).resolve().parents[1]
+  p=subprocess.run([sys.executable,'knowledge/retrieve.py','packet','N1054'],cwd=root,capture_output=True)
+  self.assertEqual(p.returncode,0,p.stderr.decode());self.assertLessEqual(len(p.stdout),32768)
+  r=json.loads(p.stdout)['packets'][0];self.assertEqual(len(r['notices']),3);self.assertTrue(r['evidence']);self.assertTrue(r['source_excerpts']);self.assertTrue(r['review_overlays'])
+
 if __name__=='__main__':unittest.main()
