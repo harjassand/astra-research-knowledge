@@ -1,0 +1,5 @@
+# Role-sealed quantum service: conditional outcome
+
+- Frozen P1_return_2345 -> N1023 and four reusable units: whole-input role hiding, complete coarse-memory substitution, mismatch-tolerant virtual-fault budgeting, and fine-record/last-gate failures. Prior source/unit/card versions remain unchanged.
+- Completed source-exposed author audit accepts the stated conditional analytic identities and witnesses at exact versions. All five scripts, five JSONs, full proof/copy and combined log were statically read; no source suite executed. Residuals and ninety-trajectory figures remain source reports, not independent corroboration or hardware acquisition. The online reference uses a two-level bath and known-Z scores.
+- Actual matched private controls/port, protected storage/output isolation, physical record retirement and uniform full-memory calibration remain unacquired. Standard prior methods and equally informed conventional controllers remain comparators; no new physical or priority advantage is claimed. Four other supplied roots remain outside this bounded batch. Mission NOT_ACHIEVED.
