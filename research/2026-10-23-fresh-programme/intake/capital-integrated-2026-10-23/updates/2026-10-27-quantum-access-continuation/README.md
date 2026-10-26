@@ -1,0 +1,18 @@
+# Private quantum-control access continuation
+
+| Assigned frozen root | Current representation | Actual limits |
+| --- | --- | --- |
+| P1_return_1805_20261026 | N1062 whole-run tape contraction and approximate/exact boundary | Native-only; missing detailed extractor proof, code/results; budget and numerical totals remain source reports |
+| P1_return_1929_20261026 | N1062 fresh delayed flags, matched tests, pre-gateT, DFS/clean-event leakage | Acquired governing proof; full physical isolation/control/retirement and producer numerical archives absent |
+| P1_return_2011_20261026 | N1063 exact known-site recovery, single-spin privacy, heralded detection, quadratic estimate and sequential-contact failure | Acquired governing proof; union-of-access, known location, trusted syndrome/recovery and rejected payload costs are explicit |
+| P1_return_2101_20261026 | N1064 mobile epochs, generic detectable-checkpoint error budget and corrected-frame ledger boundary | Native plus labelled analytic reconstruction; explicit eight-spin code/optimality/netlists/numerical archives not acquired |
+
+Six original scientific native/proof documents are unchanged. The completed [internal review](source/curator/QUANTUM_ACCESS_REVIEW.txt) reconstructs the selected exact mathematics, not the missing numerical runs or a device. Detailed unavailable objects are not repeatedly requested or guessed. Source citations lead to actual governing equations and the separate reconstruction. The classical private-RNG and established QEC/deferred-measurement methods remain strong ordinary comparators; no priority, practical advantage or mission completion is claimed.
+
+Current refinements preserve exact versus approximate CP semantics; complete memory versus present-output correctness; pre-gateT placement; full-call versus instantaneous access; clean-event quartic versus general channel quadratic error; and initial-code versus every-ledger-frame detectability. Earlier accepted N1052–N1054 and immutable unit versions remain unchanged.
+
+These four roots have substantive dispositions. The other17 assigned P2/P3/Ultra/chemistry roots remain unfinished. Existing knowledge/INTAKE.md normalization, actual default packet/source inspection, idempotence, review and authorized publication apply without new forms, services, architecture, workers or researcher contact.
+
+Exposed research-use evaluation: fourteen defined source-informed default-top5 family questions give structured12/14 versus full-card lexical12/14; structured direct-unit access6/14. The tiny quantum-leak/exact-substate query misses the new family in structured search; the collective-dephasing query misses both lanes. Other unit misses and the unsupported acquired-service request are retained in validation/research-use.json. These are exposed queries after reading the sources, not held-out material, corpus recall or answer correctness. No alias/ranker change was made.
+
+A realistic research-use question asks whether a persistent bath may move to another control spin after each recovery. Structured retrieval returns U1064-mobile-epoch-composition first; lexical reaches the correct parent family second. The unit's actual native source1–40 contains the epochwise recovery equation; the acquired2011 proof49–104 and labelled review explain its recovered Kraus identity. The reusable premise is that a known correctable access region may change AFTER each trustworthy recovery without resetting the bath. It enables a conditional schedule/model with adaptive retained syndrome records. It does not discharge the physical syndrome-meter or full access/timing/error budget. This is a usable explicit premise and narrower source route, not evidence of a hardware or general retrieval advantage.
