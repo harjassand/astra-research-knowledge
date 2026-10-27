@@ -109,6 +109,21 @@ class SnapshotMembershipTests(unittest.TestCase):
         self.write("research/new/source/INDEX.json", b"not JSON\n")
         self.assert_refuses_requests("invalid public source index")
 
+    def test_completed_intake_requires_restart_and_exposes_the_new_correction(self):
+        from knowledge.test_mcp_adapter import complete
+
+        self.add_intake("correction", staged=False)
+        self.compile()
+        self.git("add", ".")
+        self.commit()
+        self.assert_refuses_requests("snapshot changed")
+        fresh = ResearchAdapter(self.root)
+        packet = complete(fresh, "N1-fixture")
+        self.assertEqual([n["notice_id"] for n in packet["notices"]], ["new-correction"])
+        self.assertNotEqual(fresh.version, self.adapter.version)
+        with self.assertRaisesRegex(ValueError, "stale snapshot handle"):
+            fresh.fetch(self.source_handle)
+
 
 if __name__ == "__main__":
     unittest.main()
