@@ -4,6 +4,71 @@ const stop = new Set(('a an the and or but if then as at by for from in into of 
 const tokenize = text => (text.normalize('NFKC').toLowerCase().replaceAll('_', ' ').match(/[\p{L}\p{N}]+/gu) || []).filter(word => word.length > 1 && !stop.has(word));
 const bytes = new TextEncoder();
 const sha = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes.encode(text)))].map(value => value.toString(16).padStart(2, '0')).join('');
+const packetButton = (dataset, container, packetPath, label = 'Read compact packet', ancestors = new Set()) => {
+  const button = document.createElement('button');
+  button.textContent = label;
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const packet = await dataset.readJSON(packetPath);
+      const section = document.createElement('section');
+      const heading = document.createElement('h3');
+      heading.textContent = packet.title;
+      const text = document.createElement('pre');
+      const contract = {...packet.contract};
+      if (contract.provides?.length === 1 && contract.provides[0] === packet.statement) delete contract.provides;
+      const reviews = packet.review_overlays.map(({id, decision, reviewer, scope, remaining_gaps, authority}) =>
+        ({id, decision, reviewer, scope, remaining_gaps, authority}));
+      const notices = packet.notices.map(({notice_id, status, clarification, whole_claim_invalidated, affected_units, context_only_notice, parent_context_card}) =>
+        ({notice_id, status, clarification, whole_claim_invalidated, affected_units, context_only_notice, parent_context_card}));
+      text.textContent = JSON.stringify({statement: packet.statement, contract, review: reviews.length ? reviews : packet.review, notices}, null, 2);
+      const fullPacket = document.createElement('a');
+      fullPacket.href = dataset.url(packetPath);
+      fullPacket.textContent = 'Complete packet, exact evidence and version identities';
+      section.append(heading, fullPacket, text);
+      for (const review of reviews) {
+        const fullReview = document.createElement('a');
+        fullReview.href = '../' + review.authority;
+        fullReview.textContent = `Full scoped review: ${review.id}`;
+        section.append(fullReview);
+      }
+      for (const reference of packet.evidence) {
+        const source = document.createElement('a');
+        source.href = '../' + (reference.read_path || reference.path).split('/').map(encodeURIComponent).join('/');
+        source.textContent = `Read source: ${reference.path} — lines ${JSON.stringify(reference.lines)}, SHA ${reference.sha256}`;
+        const paragraph = document.createElement('p');
+        paragraph.append(source);
+        section.append(paragraph);
+      }
+      const seen = new Set([...ancestors, packet.id]);
+      for (const unit of packet.related_units || []) {
+        if (seen.has(unit.id)) continue;
+        const paragraph = document.createElement('div');
+        paragraph.append(packetButton(dataset, paragraph, unit.packet.replace(/^knowledge\//, ''), `Read intermediate operation: ${unit.title}`, seen));
+        section.append(paragraph);
+      }
+      for (const transfer of packet.transfers || []) {
+        const paragraph = document.createElement('div');
+        const state = document.createElement('strong');
+        state.textContent = `${transfer.state}: `;
+        paragraph.append(state, document.createTextNode(transfer.scope));
+        const obligation = document.createElement('p');
+        obligation.textContent = transfer.remaining_obligations;
+        const other = transfer.from === packet.id ? transfer.to : transfer.from;
+        if (!seen.has(other)) {
+          const short = other.replace(/^([NL]\d+)-.*$/, '$1');
+          paragraph.append(packetButton(dataset, paragraph, `current/packets/${encodeURIComponent(short)}.json`, `Read connected operation: ${other}`, seen));
+        }
+        const full = document.createElement('a');
+        full.href = '../' + transfer.authority;
+        full.textContent = `Full version-bound connection: ${transfer.id}`;
+        section.append(paragraph, obligation, full);
+      }
+      container.append(section);
+    } catch (error) { button.textContent = error.message; button.disabled = false; }
+  });
+  return button;
+};
 const createDataset = manifest => {
   const expectedHash = path => {
     const expected = manifest.outputs?.[`knowledge/${path}`];
@@ -103,35 +168,7 @@ document.querySelector('#search').addEventListener('submit', async event => {
       const note = document.createElement('p');
       note.className = 'note';
       note.textContent = `${candidate.kind}; ${candidate.safety ? 'full-card lexical safety lane, independent score scale' : 'content/contract lane'}; score ${candidate.score.toFixed(2)}. Similar wording does not establish composition.`;
-      const expand = document.createElement('button');
-      expand.textContent = 'Read compact packet';
-      expand.addEventListener('click', async () => {
-        expand.disabled = true;
-        try {
-          const packet = await dataset.readJSON(packetPath);
-          const text = document.createElement('pre');
-          const contract = {...packet.contract};
-          if (contract.provides?.length === 1 && contract.provides[0] === packet.statement) delete contract.provides;
-          const reviews = packet.review_overlays.map(({id, decision, reviewer, scope, remaining_gaps, authority}) =>
-            ({id, decision, reviewer, scope, remaining_gaps, authority}));
-          text.textContent = JSON.stringify({statement: packet.statement, contract, review: reviews.length ? reviews : packet.review, notices: packet.notices, evidence: packet.evidence}, null, 2);
-          article.append(text);
-          for (const review of reviews) {
-            const fullReview = document.createElement('a');
-            fullReview.href = '../' + review.authority;
-            fullReview.textContent = `Full scoped review: ${review.id}`;
-            article.append(fullReview);
-          }
-          for (const reference of packet.evidence) {
-            const source = document.createElement('a');
-            source.href = '../' + (reference.read_path || reference.path).split('/').map(encodeURIComponent).join('/');
-            source.textContent = `Read source: ${reference.path} — lines ${JSON.stringify(reference.lines)}, SHA ${reference.sha256}`;
-            const paragraph = document.createElement('p');
-            paragraph.append(source);
-            article.append(paragraph);
-          }
-        } catch (error) { expand.textContent = error.message; expand.disabled = false; }
-      });
+      const expand = packetButton(dataset, article, packetPath);
       article.append(heading, link, note, expand);
       results.append(article);
     }
