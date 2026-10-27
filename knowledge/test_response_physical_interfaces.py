@@ -114,9 +114,34 @@ class ResponsePhysicalInterfaces(unittest.TestCase):
             self.assertEqual(review['physical_measurement'], 'not established')
             self.assertEqual(review['working_device'], 'not established')
             for subject in review['subjects']:
-                self.assertEqual(subject['content_version'], self.records[subject['id']]['content_version'])
+                record = self.records[subject['id']]
+                if subject['content_version'] == record['content_version']:
+                    self.assertTrue(any(r['id'] == review['id'] for r in record['review_overlays']))
+                else:
+                    self.assertFalse(any(r['id'] == review['id'] for r in record['review_overlays']))
+                    self.assertTrue(any(r['id'] == review['id'] for r in record['historical_reviews']))
+                    self.assertTrue(any(r['decision'] == 'accepted_internally_verified' and
+                                        {'id': record['id'], 'content_version': record['content_version']} in r['subjects']
+                                        for r in record['review_overlays']))
             found += 1
         self.assertEqual(found, 4)
+
+    def test_acquisition_counts_do_not_bleed_between_operations(self):
+        revised = [r for r in self.records.values() if r['id'].startswith(('U1089-', 'U1090-'))]
+        self.assertEqual(len(revised), 8)
+        for record in revised:
+            self.assertNotIn('510', record['contract']['units'])
+            self.assertGreaterEqual(record['version'], 2)
+            original = ROOT / 'knowledge/units' / record['id'] / 'v0001.json'
+            revised = json.loads(original.with_name('v0002.json').read_text())
+            self.assertEqual(revised['previous'], hashlib.sha256(original.read_bytes()).hexdigest())
+            self.assertEqual([r['version'] for r in record['history'][:2]], [1, 2])
+        pair_cost = ' '.join(self.records['U1089-one-task-directed-scalar-probe']['contract']['costs'])
+        audit_cost = ' '.join(self.records['U1090-scalar-curvature-audit']['contract']['costs'])
+        self.assertIn('14 paid historical', pair_cost)
+        self.assertIn('one paid pair reaction', pair_cost)
+        self.assertIn('n+1 live scalar preparations (129', audit_cost)
+        self.assertIn('no510-reading prerequisite', audit_cost)
 
 
 if __name__ == '__main__':

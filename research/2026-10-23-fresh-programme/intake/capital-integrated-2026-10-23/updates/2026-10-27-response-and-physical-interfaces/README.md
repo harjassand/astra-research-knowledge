@@ -72,3 +72,18 @@ They do not execute producer research programmes. During an unpublished unit
 revision, normalization explicitly failed with `Stale transfer endpoint version`
 until its own new overlays were regenerated, demonstrating the existing stop
 rather than serving stale views. Original source/claim history is preserved.
+
+## Live-packet cost clarification
+
+The deployed check caught a presentation error: a shared unit-normalization
+string mentioned510 paid readings even on the separate nonlinear audit and
+14-reading decision fixture. V2 removes that inherited sentence and gives each
+operation its actual acquisition contract: supplied sound enclosures for the
+PSD theorems,14 retained plus one pair reaction for the two-action fixture,
+and n+1 live preparations for the matrix-concave audit (129 at128 controls),
+plus all proposal, screening, calibration, reset and refinement costs. Larger-
+dose pooling retains its distinct null-predictor and changed-dose permissions.
+The510/932 executions remain unacquired source reports. Mathematical statements,
+original source bytes and all eight v1 units/reviews remain recoverable; two
+new scoped reviews bind current v2 meanings and transfer endpoints. A ninth
+regression checks this acquisition-count separation and the immutable chains.
