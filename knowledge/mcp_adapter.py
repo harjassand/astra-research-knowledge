@@ -13,6 +13,7 @@ import re
 import subprocess
 from urllib.parse import quote
 
+from knowledge.build import inventory
 from knowledge.evidence import search as evidence_search
 from knowledge.model import Inputs, compact_ref, digest, encoded, evidence_refs, flatten, route_id, scientific_text
 from knowledge.operations import statement_view
@@ -60,6 +61,10 @@ class ResearchAdapter:
         # build/check/commit; old handles must never silently resolve to new data.
         if self.git("rev-parse", "HEAD").strip() != self.revision or (self.root / "knowledge/current/manifest.json").read_bytes() != self.manifest_bytes:
             raise ValueError("Corpus snapshot changed; restart the server and search again")
+        # New staged/untracked authoring paths are not in frozen_paths. Use
+        # the normalizer's filesystem inventory, including source indexes.
+        if inventory(self.root) != self.library.manifest["discovery"]:
+            raise ValueError("Corpus discovery membership changed; finish intake and restart the server")
         if self.frozen_paths.intersection(self.git("diff", "--name-only", "-z", "HEAD").split("\0")):
             raise ValueError("Corpus snapshot has uncommitted source/view edits; finish intake and restart")
 
