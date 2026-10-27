@@ -155,3 +155,13 @@ intake is byte-idempotent. Operation views and the evidence lane are generated b
 that same command; Capital supplies no extra scientist form. A declared selected
 original with missing bytes/hash/length fails ingestion even if metadata-only.
 Unregistered raw archives and withheld sources are not silently published.
+## Navigate through a shared scientific operation
+
+After search, `python3 knowledge/retrieve.py peers <returned-ID>` follows
+version-bound providers of a documented consumer input. The named quantity,
+units, qualification and actual source remain explicit. This can reveal a
+useful premise in another representation without asserting a transfer between
+the providers. Use `--offset` and `--limit` for the complete candidate list;
+`bridge` retains its separate supported/unsupported conclusion. The initial
+curated slice is described in
+[`2026-10-28-task-bound-interfaces`](../research/2026-10-28-task-bound-interfaces/README.md).

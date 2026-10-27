@@ -15,6 +15,7 @@ if __package__ in (None, ""):
 from knowledge.model import (ROOT, Inputs, compact_ref, digest, encoded, evidence_refs,
                              field_index, flatten, local, route_id, scientific_text, unique)
 from knowledge.evidence import source_indexes
+from knowledge.interfaces import compile_navigation, packet_navigation
 
 MANIFEST = "knowledge/current/manifest.json"
 DISCOVERY = {
@@ -65,7 +66,7 @@ def build(root=ROOT):
     discovered = inventory(root)
     for name in ("knowledge/model.py", "knowledge/build.py", "knowledge/retrieve.py",
                  "knowledge/search.js", "knowledge/index.html", "knowledge/README.md",
-                 "knowledge/INTAKE.md", "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/evidence.py",
+                 "knowledge/INTAKE.md", "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/evidence.py", "knowledge/interfaces.py",
                  "knowledge/requirements-agent.txt", "knowledge/runtime/manifest.json",
                  "00_START_HERE.txt", "AGENTS.md", "agent/ACCESS.txt"):
         inputs.read(name)
@@ -373,6 +374,15 @@ def build(root=ROOT):
             raise ValueError("Transfer must retain scope/obligations")
         transfers.append(dict(transfer, authority=name))
 
+    # Reviewed output-to-input bindings share one named consumer slot. Store
+    # each binding once and source/parent routes separately, with linear size.
+    # This derived navigation does not change scientific content versions or
+    # create provider-to-provider transfers.
+    navigation = compile_navigation(records, transfers)
+    for record in records:
+        if record["id"] in navigation:
+            record["interface_navigation"] = navigation[record["id"]]
+
     documents = []
     for record in sorted(records, key=lambda item: item["id"]):
         documents.append({key: record[key] for key in ("id", "kind", "parents", "title", "statement", "contract", "body", "notices")}
@@ -449,6 +459,8 @@ def build(root=ROOT):
             packet["source_excerpts"].append({"source": ref, "text": passage[:2400], "text_selection": selection,
                                               "excerpt_truncated": len(passage) > 2400})
         packet["transfers"] = [transfer for transfer in transfers if record["id"] in (transfer["from"], transfer["to"])]
+        if "interface_navigation" in packet:
+            packet["interface_navigation"] = packet_navigation(packet["interface_navigation"], packet["transfers"])
         def default_output_size():
             return len(encoded({"packets": [packet], "input_version": "0" * 64, "checkout_revision": "0" * 40}))
         new_excerpt = packet.pop("scientific_card_excerpt", None)

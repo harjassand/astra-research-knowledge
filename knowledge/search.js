@@ -58,6 +58,12 @@ const packetButton = (dataset, container, packetPath, label = 'Read compact pack
         paragraph.append(state, document.createTextNode(transfer.scope));
         const obligation = document.createElement('p');
         obligation.textContent = transfer.remaining_obligations;
+        if (transfer.slot_binding) {
+          const binding = document.createElement('pre');
+          binding.textContent = JSON.stringify({mapped_input: transfer.slot_binding,
+            scope: 'This provider feeds its own qualified quantity to the named consumer. Other providers keep their own assumptions and units.'}, null, 2);
+          paragraph.append(binding);
+        }
         const other = transfer.from === packet.id ? transfer.to : transfer.from;
         if (!seen.has(other)) {
           const short = other.replace(/^([NL]\d+)-.*$/, '$1');

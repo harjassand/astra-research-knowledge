@@ -148,6 +148,9 @@ class ResearchAdapter:
                 "content_version": record["content_version"], "kind": record["kind"],
                 "operation_preview": preview, "preview_scope": "Partial candidate preview; fetch complete conditions/corrections before reuse",
                 "current_notice_count": len(record["notices"]), "candidate_only": True}})
+            navigation = self.interface_view(identifier, preview=True)
+            if navigation["routes"] or navigation["total_candidates"]:
+                records[-1]["metadata"]["shared_consumer_navigation"] = navigation
         sources, seen = [], set()
         for hit in evidence_search(self.library, query, limit=20)["results"]:
             ref = hit["source"]
@@ -166,6 +169,30 @@ class ResearchAdapter:
 
     def reference_view(self, ref):
         return {"source": ref, "url": self.source_url(ref), "citation_locator": self.source_locator(ref), "fetch_id": self.register(ref)}
+
+    def interface_view(self, identifier, preview=False):
+        navigation = self.library.peers(identifier, limit=3 if preview else 8)
+        navigation["routes"] = [dict(route,
+            provider_fetch_id=self.handle("record", route["provider"]),
+            consumer_fetch_id=self.handle("record", route["consumer"]))
+            for route in navigation["routes"]]
+        navigation["consumers"] = [dict(route,
+            consumer_fetch_id=self.handle("record", route["consumer"]))
+            for route in navigation["consumers"]]
+        for item in navigation["candidates"]:
+            item["fetch_id"] = self.handle("record", item["provider"])
+            item["consumer_fetch_id"] = self.handle("record", item["consumer"])
+            if preview:
+                # Keep the named quantity and qualification visible. Full
+                # bindings and all provider conditions remain fetchable.
+                binding = {}
+                for key, value in item["binding"].items():
+                    text = flatten(value)
+                    binding[key] = {"text": text[:160],
+                                    "omitted_characters": max(0, len(text) - 160)}
+                item["binding"] = binding
+        navigation["continuation"] = "Fetch the named consumer for its complete provider bindings; fetch each provider and governing source before reuse. A common consumer does not establish a transfer between providers."
+        return navigation
 
     def record_payload(self, record):
         packet = self.library.packet([record["id"]], max_bytes=16 * 1024 * 1024)["packets"][0]
@@ -190,6 +217,12 @@ class ResearchAdapter:
             "review_and_correction_sources": list(context_routes.values()),
             "related_units": [dict(unit, fetch_id=self.handle("record", unit["id"])) for unit in packet["related_units"]],
             "transfers": packet.get("transfers", []),
+            "shared_consumer_navigation": self.interface_view(record["id"], preview=True),
+            "consumer_bindings": [dict(item,
+                provider_fetch_id=self.handle("record", item["provider"]),
+                consumer_fetch_id=self.handle("record", item["consumer"]))
+                for item in packet.get("interface_navigation", {}).get("bindings", [])],
+            "consumer_binding_scope": "Complete mappings appear once in transfers[*].slot_binding; consumer_bindings references those same exact-version transfers. Peer previews require fetching the named provider and consumer.",
             "historical_versions": [dict(v, fetch_id=self.register(dict(v, lines=None)), url=self.url(v["path"])) for v in record.get("history", [])],
             "full_packet_url": self.record_url(record["id"])}
 

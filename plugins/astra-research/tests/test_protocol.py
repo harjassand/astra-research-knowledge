@@ -105,6 +105,31 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                 process.kill()
                 process.wait(timeout=5)
 
+    async def test_real_stdio_exposed_task_miss_reaches_exact_witnesses_through_typed_routes(self):
+        params = StdioServerParameters(command=sys.executable,
+            args=[str(PLUGIN / "server.py"), "--root", str(ROOT)])
+        async with Client(params, read_timeout_seconds=60) as client:
+            result = await client.call_tool("search", {"query":
+                "An extra measurement sharply narrows the uncertainty of a hidden model parameter. "
+                "Could it still be worthless for the particular signed combination I need to decide? "
+                "I want a worked exact example rather than a general slogan."})
+            self.assertFalse(result.is_error, result.content)
+            navigation = next(r["metadata"]["shared_consumer_navigation"]
+                for r in result.structured_content["results"]
+                if r.get("metadata", {}).get("shared_consumer_navigation", {}).get("total_candidates"))
+            self.assertEqual(navigation["relation"], "COMMON CONSUMER; NAVIGATION ONLY")
+            route = (navigation["routes"] or navigation["consumers"])[0]
+            consumer = await full_fetch(client, route["consumer_fetch_id"])
+            target = next(b for b in consumer["consumer_bindings"]
+                if b["provider"] == "U1069-signed-task-dual-and-no-value-observation")
+            mapping = next(t for t in consumer["transfers"] if t["id"] == target["binding_ref"]["id"])
+            self.assertEqual(mapping["slot_binding"]["lower"], "63/1024")
+            self.assertEqual(mapping["slot_binding"]["upper"], "33/512")
+            packet = await full_fetch(client, target["provider_fetch_id"])
+            source = await full_fetch(client, packet["evidence"][0]["fetch_id"])
+            self.assertIn("both signed-task extremizers", source["text"])
+            self.assertIn("q_-(x)", source["text"])
+
 
 if __name__ == "__main__":
     unittest.main()
