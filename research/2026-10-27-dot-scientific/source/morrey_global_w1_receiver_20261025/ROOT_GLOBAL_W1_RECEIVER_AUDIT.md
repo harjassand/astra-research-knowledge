@@ -1,0 +1,13 @@
+# Root independent audit: positive-accuracy global W1 receiver
+
+2026-10-25,13:58UTC. PASS for GLOBAL_W1_NEAREST_PAID_LAW.md, conditional on the separately audited global Lipschitz reward oracle. This is an end-to-end positive-accuracy computation theorem, not an executed small-error unrestricted optimization.
+
+Independently checked the exact axis-chord variance F(y), gradient bound4sqrt3<7 and squared-distance receiving F(y)+|y-z|²≤8h. Interior roots are distinct, branch probabilities positive and barycentric, and the coordinate direction is null. Completion is at interior leaves, not boundary-root refinement.
+
+Cube tensor-hat quantization, rounded shortest-path metric and Lipschitz lifting are correct. Nodes outside E remain transport auxiliaries only. Euclidean distances are below every rounded path, and the direct edge gives additive gamma; diameter is below4. A lifted potential has coordinate slopes at most1+gamma/h, hence Euclidean Lipschitz constant below2(1+gamma/h). The torus covering bound sqrt6*pi/M<10/M is valid using nearest-node equal-mass cells. Rational probability receiving pays total missing mass and L1 error, not just coordinate intervals.
+
+Primal W1 upper in(10) follows from actual source coupling, the rational transport plan, column total variation and final physical-law quantization. The McShane minimum is genuinely Euclidean1-Lipschitz even if the grid potential is only Lipschitz in rounded metric. At nodes its discrepancy is between−gamma and0; averaging quantizer weights gives g_v≤f_v+2h. Thus P+2h is an actual global boundary majorant, and the lower bound is not a restricted LP dual. Positive lower values would be genuine source separation.
+
+Pricing separation follows from the certified global B−A gap and column error. Each added rational column is separated from every prior column in L1 by a fixed positive amount; finite simplex packing proves finite termination without assuming objective progress. The proposed budgets give width at most9epsilon/16, leaving strict positive slack. Exact rational LP feasibility and duality are required. The author's rejection of an infeasible solver output is appropriate; unverified solver success is not a proof premise.
+
+Independently reran run_receiving_checks.py: PASS. This includes actual level2 finite paid law, exact5/48 cubic reward, finite intermediary transport, normalization error and finite-test pricing. The executed global original-source certificate is only the already obtained[0,.39] at epsilon=.4. Coarse test parameters are explicitly not useful accuracy settings. No new nearest-source upper or small-epsilon global optimizer execution is certified by these tests. Higher-level lower-search runs are separate records, not replayed by this audit.

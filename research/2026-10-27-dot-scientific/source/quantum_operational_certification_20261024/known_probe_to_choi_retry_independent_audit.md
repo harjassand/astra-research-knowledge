@@ -1,0 +1,13 @@
+# Independent fresh-known-probe to mixed-Choi retry reduction
+
+PASS, 27 October 2026, strictly for the classically specified freshly prepared query class in the statement. It does not simulate a query entangled with existing unknown quantum memory.
+
+For a normalized Choi state, the reference marginal is I3/3 independently of the channel. The rho^T effect therefore succeeds with probability1/3 and yields E(rho)/3 before normalization. For a known fresh joint pure probe, its coefficient matrix F has Tr F^*F=1 and F^*F<=I, so it is a valid heralded local filter. Direct expansion of the Choi vector gives exactly(id tensor E)(Ppsi)/3. Purifying a known mixed fresh probe and later discarding the fresh purification system preserves this conclusion.
+
+Conditional on every classical history and one fixed unknown channel, the next program is fresh and uncorrelated with retained memory. A failed local filter consumes only this fresh copy/reference and has constant probability2/3 independent of the unknown channel and datum. It neither disturbs retained unknown quantum memory nor changes the intended known probe. Retrying is therefore valid; each success resumes the original strategy with the exact joint output. The constant conditional success probability gives independent Bernoulli trial indicators, even when probe descriptions depend on prior classical measurements and successful outputs are stored collectively.
+
+For N=ceil(6n+24ln(1/epsilon)), binomial mean N/3>=2n. The lower-tail Chernoff bound at half the mean is exp(-N/24)<=epsilon. Padding an early-ending strategy to its deterministic query cap is harmless. Coupling the capped and exact retry process differs only on a positive abort branch of trace<=epsilon uniformly over every input/reference, giving complete unhalved error<=2epsilon. No postselection amplification of an unknown input occurs.
+
+At original complete error p/8 and epsilon=p/32, the simulated Choi learner has error<=3p/16<p/4. The all-real-p Choi lower therefore applies. Combining its n_Choi>=9r²/(32768p²) with the ceiling cap yields the stated conservative necessary bound n>=3r²/(65536p²)-4ln(32/p)-1/6. This gives the joint quadratic exponents asymptotically for this fresh-known-probe class, with the explicit logarithmic subtraction retained.
+
+A new known entangled reference is allowed because it is part of the disposable/repreparable probe. Entanglement with retained unknown memory or the unknown datum is excluded, except classical history dependence. The filter does not purify the channel program or supply environment access. The general coherent-adaptive lower gap remains open.
