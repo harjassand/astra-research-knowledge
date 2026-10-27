@@ -80,10 +80,18 @@ string mentioned510 paid readings even on the separate nonlinear audit and
 14-reading decision fixture. V2 removes that inherited sentence and gives each
 operation its actual acquisition contract: supplied sound enclosures for the
 PSD theorems,14 retained plus one pair reaction for the two-action fixture,
-and n+1 live preparations for the matrix-concave audit (129 at128 controls),
+and n+1 scalar reaction values for the matrix-concave audit (129 at128 controls),
 plus all proposal, screening, calibration, reset and refinement costs. Larger-
 dose pooling retains its distinct null-predictor and changed-dose permissions.
 The510/932 executions remain unacquired source reports. Mathematical statements,
 original source bytes and all eight v1 units/reviews remain recoverable; two
-new scoped reviews bind current v2 meanings and transfer endpoints. A ninth
-regression checks this acquisition-count separation and the immutable chains.
+new scoped reviews bind current v2 meanings and transfer endpoints. Two further
+regressions check acquisition-count separation, immutable chains and reuse of
+the same reaction values under changed linear prices (ten focused tests total).
+
+The n+1 audit count is the number of required scalar values, not necessarily
+n+1 new preparations: matching already-paid valid observations may be reused
+under the same stable source/reset/calibration contract. Charge each newly
+queried point once. Missing audit points still need a live source; this is no
+general post-expiry capability. This also preserves the governing source
+price-change example where an existing audit is entirely cached.

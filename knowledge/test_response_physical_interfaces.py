@@ -140,8 +140,29 @@ class ResponsePhysicalInterfaces(unittest.TestCase):
         audit_cost = ' '.join(self.records['U1090-scalar-curvature-audit']['contract']['costs'])
         self.assertIn('14 paid historical', pair_cost)
         self.assertIn('one paid pair reaction', pair_cost)
-        self.assertIn('n+1 live scalar preparations (129', audit_cost)
-        self.assertIn('no510-reading prerequisite', audit_cost)
+        self.assertIn('n+1 scalar reaction values (129', audit_cost)
+        self.assertIn('already-paid valid value at the same dose point', audit_cost)
+        self.assertIn('charge each newly queried point once', audit_cost)
+        self.assertIn('No510-reading prerequisite', audit_cost)
+
+    def test_cached_reactions_support_new_linear_prices_without_double_charge(self):
+        # Two exact stored values of Z for Q=2+u, not a live/source-aware oracle.
+        x, h = F(1, 10), F(1, 100)
+        stored = {x: 1/(2+x), x+h: 1/(2+x+h)}
+        base_lower = (stored[x]-stored[x+h])/h
+        intervals = []
+        for price in [F(0), F(1, 4)]:
+            lower = base_lower-price
+            upper = lower+F(1, 4)*h/2
+            truth = 1/(2+x)**2-price
+            self.assertLessEqual(lower, truth)
+            self.assertLessEqual(truth, upper)
+            intervals.append((lower, upper))
+        self.assertEqual(tuple(z-F(1, 4) for z in intervals[0]), intervals[1])
+        self.assertEqual(len(stored), 2)
+        unit = self.records['U1090-scalar-curvature-audit']
+        self.assertIn('query missing points', unit['body'])
+        self.assertIn('same source/dose/reset/calibration', unit['contract']['requires'][0])
 
 
 if __name__ == '__main__':
