@@ -62,8 +62,9 @@ record/gauge/slack conditions are supplied; word similarity cannot substitute
 for them.
 
 The eight old neural calls took3.984–5.391 seconds on this host; the new calls
-took8.839–11.001 seconds and ranked253–382 views. Timing includes relevance work
-and is a local observation, not a universal latency benchmark. The added CPU
+took8.839–11.001 seconds and ranked253–382 views. Method timing starts after the library is loaded and excludes corpus loading
+and initial freshness validation. Cold CLI/server startup is additional. These
+are local observations, not a universal or end-to-end latency benchmark. The added CPU
 cost is real. Many winning source/operation texts still hit the model token
 limit, which is disclosed per result; full packets and proof passages remain
 available. No trained model, service, default portable route or source changed.
@@ -78,8 +79,8 @@ in the bounded search. This success is not held-out evidence.
 
 G06 remains a direct neural miss: generic hidden-parameter information can be
 worthless for a signed task. Its target is present in the candidate set and is
-not token-truncated, yet the model ranks it poorly. The pre-existing N744
-common-consumer navigation still supplies a path to U1069 and its exact
+not token-truncated, yet the model ranks it poorly. The optional-neural MCP menu also returns N768; its pre-existing
+common-consumer navigation supplies a path to U1069 and its exact
 primal/dual example, with the source-qualified mapping and no provider-to-
 provider equivalence. No query alias, score override or ID-specific fix was
 added. The next substantive retrieval improvement is better selection of
@@ -107,3 +108,9 @@ A later matched-contract-dimension development pilot also failed to recover G06
 and added CPU work (11.787 seconds on that run). It is recorded in
 REJECTED_DIMENSION_PILOT.json and was not shipped. It used the already-exposed
 problem after Q01-Q10 were known; it is not another held-out comparison.
+
+A route-review error was caught before merge: an earlier draft named N744 as
+the common-consumer starting card. N744 has no such link. The actually returned
+MCP N768 result exposes the qualified U1069 provider through U1125.
+ROUTE_REVIEW_FINDING.json retains the mistake and its corrected scope. A direct
+neural-only top-five miss is still a miss; the MCP menu has additional lanes.
