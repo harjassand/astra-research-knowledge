@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 import json
 from pathlib import Path
 
-from knowledge.model import compact_ref, digest, encoded, field_index, local, scientific_text
+from knowledge.model import compact_ref, digest, encoded, evidence_refs, field_index, local, scientific_text
 
 
 def source_indexes(root):
@@ -30,17 +30,19 @@ def source_indexes(root):
     return found
 
 
-def projection(root, inputs, records, index_paths):
+def projection(root, inputs, records, index_paths, transfers=()):
     artifacts = {}
 
-    def add(ref, record=None, declaration=None, exclusion=None):
+    def add(ref, record=None, declaration=None, exclusion=None, role="record_citation"):
         key = (ref["path"], ref["sha256"], ref.get("read_path"))
         identifier = "A-" + digest(encoded(key))[:24]
         item = artifacts.setdefault(identifier, {"id": identifier, "source": {k: v for k, v in ref.items() if k not in ("lines", "quote", "range_scope", "locator_scope")},
-            "cited_by": [], "declarations": [], "ranges": [], "exclusions": [],
+            "cited_by": [], "citation_roles": [], "declarations": [], "ranges": [], "exclusions": [],
             "scope": "Evidence navigation only. A citation/coarchive is not a logical dependency or scientific acceptance."})
         if record and record not in item["cited_by"]:
             item["cited_by"].append(record)
+        if record and {"record_id": record, "role": role} not in item["citation_roles"]:
+            item["citation_roles"].append({"record_id": record, "role": role})
         if declaration:
             item["declarations"].append(declaration)
         if exclusion:
@@ -50,8 +52,17 @@ def projection(root, inputs, records, index_paths):
         return item
 
     for record in records:
-        for ref in record["evidence"]:
-            add(compact_ref(ref), record=record["id"], exclusion="binary; original artifact route only" if ref.get("lines") is None else None)
+        # Audits, corrections, historical reviews and relationship support are
+        # registered citations too. Never silently omit them from discovery.
+        for field, value in record.items():
+            for ref in evidence_refs(value):
+                add(compact_ref(ref), record=record["id"], role=field,
+                    exclusion="binary; original artifact route only" if ref.get("lines") is None else None)
+    for transfer in transfers:
+        for endpoint in ("from", "to"):
+            for ref in evidence_refs(transfer.get("evidence", [])):
+                add(compact_ref(ref), record=transfer[endpoint], role="transfer: " + transfer["state"],
+                    exclusion="binary; original artifact route only" if ref.get("lines") is None else None)
     for name in index_paths:
         index = inputs.json(name)
         parent = Path(name).parent.parent if index.get("schema") == "astra.intake-source-index.v1" else Path(name).parent
@@ -127,7 +138,7 @@ def projection(root, inputs, records, index_paths):
                 "evidence_windows": len(documents), "text_windows": sum(d["source"].get("lines") is not None for d in documents),
                 "metadata_documents": sum(d["source"].get("lines") is None for d in documents), "selected_source_indexes": len(index_paths),
                 "exclusion_mentions": dict(Counter(x for v in artifacts.values() for x in v["exclusions"])),
-                "denominator": "Distinct (public path, SHA256, read_path) keys in current record evidence plus explicit entries in recognized selected-public-source indexes. Aliases may share bytes; counts are not distinct discoveries.",
+                "denominator": "Distinct (public path, SHA256, read_path) keys in all nested current-record citations (including current/historical reviews, corrections and relationships), version-bound transfer evidence, and explicit selected-public-source-index entries. Citation roles stay separate; aliases may share bytes. Counts are not distinct discoveries.",
                 "unassessed": "Unregistered archives, other source-index formats, private/withheld work, scientific completeness and unextracted reusable mechanisms. Metadata-only exclusions retain explicit reasons."}
     return outputs, coverage
 
@@ -182,6 +193,7 @@ def search(library, query, limit=5, method="field"):
         artifact = artifacts[doc["artifact_id"]]
         results.append({**doc, "score": round(scores[index], 5), "ranking_text_truncated": truncated.get(index, False),
                         "cited_by": artifact["cited_by"], "declarations": artifact["declarations"],
+                        "citation_roles": artifact.get("citation_roles", []),
                         "next": ["source", doc["id"]] if doc["source"].get("lines") else {"original_public_path": doc["source"]["path"]},
                         "exclusions": artifact["exclusions"], "scope": artifact["scope"]})
         if len(results) == limit:

@@ -476,7 +476,7 @@ def build(root=ROOT):
         "eligible_mechanism_denominator": "UNKNOWN", "scientific_acceptance": "Only explicit version-bound substantive review overlays confer acceptance; extraction and hashing do not.",
     }
     from knowledge.evidence import projection
-    evidence_outputs, evidence_coverage = projection(root, inputs, records, discovered["selected_public_source_indexes"])
+    evidence_outputs, evidence_coverage = projection(root, inputs, records, discovered["selected_public_source_indexes"], transfers)
     outputs.update(evidence_outputs)
     coverage["evidence_navigation"] = evidence_coverage
     outputs["knowledge/current/coverage.json"] = encoded(coverage)

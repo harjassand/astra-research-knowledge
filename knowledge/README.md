@@ -59,12 +59,14 @@ role. `card ID --start N --end M` reads the actual checked card bytes with curre
 notices/reviews; it does not substitute a card for its proof. Original canonical
 records/status labels remain unchanged, and excerpts confer no new acceptance.
 
-`evidence` is a separate discovery lane over all current record evidence ranges
+`evidence` is a separate discovery lane over all nested current-record citations
+(including current/historical reviews, corrections and relationship support),
+version-bound transfer evidence,
 and explicit entries of recognized selected-public-source indexes. E-id reads
 return the exact matching range plus citation context/current notices. They can
 expose code, data, reviews or an uncited original without manufacturing a lemma
 or acceptance. `current/evidence/artifacts.jsonl` gives source hashes, ranges,
-citing records, declaring index and exclusion reasons; `documents.jsonl` and
+citing records and citation roles, declaring index and exclusion reasons; `documents.jsonl` and
 sharded postings are public deterministic projections. External/binary containers,
 scoped derived extractions and operational artifacts are not silently expanded.
 Raw sources remain separate. Metadata-only artifacts have original public paths.

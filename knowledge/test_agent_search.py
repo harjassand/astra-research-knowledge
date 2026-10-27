@@ -73,6 +73,18 @@ class OperationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "byte budget"):
             self.library.card(record["id"], max_bytes=10)
 
+    def test_completed_internal_amplifier_review_is_current_at_actual_version(self):
+        record = self.library.resolve("N557")
+        accepted = next(r for r in record["review_overlays"] if r["id"] == "A557-completed-internal-cfdb")
+        self.assertEqual(accepted["decision"], "accepted_internally_verified")
+        self.assertEqual(accepted["subjects"][0]["content_version"], record["content_version"])
+        proof = ROOT / "updates/BY/package/astra_ultra_campaign/amplifier_proof_candidate.tex"
+        self.assertEqual(digest(proof.read_bytes()), "cfdbb6a0ca85861788d39c8843ce7533a641633c4cabab8070ac09b9d41d170d")
+        self.assertIn("W49", accepted["remaining_gaps"][1])
+        self.assertIn("external", accepted["scope"].lower())
+        self.assertTrue(any(n.get("notice_id") == "SN-N557-COMPLETED-INTERNAL-REVIEW-RECOGNIZED-20261027" for n in record["notices"]))
+        self.assertEqual(self.library.resolve("U675-ordered-word-compiler")["review_overlays"], [])
+
     def test_optional_card_previews_do_not_break_existing_default_packets(self):
         from knowledge.model import encoded
         for identifier in ("N574", "N552", "N727", "N330", "N166"):
@@ -84,9 +96,14 @@ class OperationTests(unittest.TestCase):
     def test_every_current_citation_has_evidence_navigation(self):
         artifacts = [json.loads(line) for line in (ROOT / "knowledge/current/evidence/artifacts.jsonl").read_bytes().splitlines()]
         memberships = {(a["source"]["path"], a["source"]["sha256"], identifier) for a in artifacts for identifier in a["cited_by"]}
+        from knowledge.model import evidence_refs
         for record in self.library.records.values():
-            for ref in record["evidence"]:
+            for ref in evidence_refs(record):
                 self.assertIn((ref["path"], ref["sha256"], record["id"]), memberships)
+        for transfer in self.library.transfers:
+            for ref in evidence_refs(transfer["evidence"]):
+                for endpoint in ("from", "to"):
+                    self.assertIn((ref["path"], ref["sha256"], transfer[endpoint]), memberships)
 
     def test_search_window_never_inherits_an_anchor_outside_its_range(self):
         inputs = Inputs(ROOT)

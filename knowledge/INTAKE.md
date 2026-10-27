@@ -10,6 +10,12 @@ followed. Index admission gives evidence discoverability, not scientific
 acceptance. Scoped extractions retain their cited-range boundary. See
 `knowledge/current/coverage.json` for the exact admitted denominator/exclusions.
 
+Current/historical review, correction and transfer citations enter that same
+evidence view with their actual roles; indexing never inherits acceptance.
+Read actual completed internal reviews and their reviewed-artifact versions;
+external/formal next-gate boilerplate is not a prerequisite to scoped internal
+acceptance. Keep genuine gaps and conflicting later source assessments visible.
+
 1. Start from current merged main in your own intake checkout. Preserve original
    source bytes and stable result identities. Keep raw originals separate from
    derived text. Use existing claim/status/catalog/alias/notice shards; do not ask
