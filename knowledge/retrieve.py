@@ -16,6 +16,15 @@ from knowledge.model import (ROOT, Inputs, digest, encoded, query_terms,
 from knowledge.operations import statement_view
 
 
+def bounded_reference(reference, start, end, passage):
+    result = dict(reference, lines=[start, end])
+    if result.get("quote") and result["quote"] not in passage:
+        # The packet retains the original governing citation. A narrower read
+        # must not claim its parent's anchor occurs in the returned passage.
+        result.pop("quote")
+    return result
+
+
 class Library:
     def __init__(self, root=ROOT, validate=True):
         self.root = Path(root)
@@ -148,10 +157,11 @@ class Library:
             if not lower <= start <= end <= upper:
                 raise ValueError("Read must remain within the cited inclusive source range")
             passage = "".join(text.splitlines(keepends=True)[start - 1:end])
+            bounded = bounded_reference(ref, start, end, passage)
             passage, selector = scientific_text(passage)
             artifact = next(json.loads(line) for line in (folder / "artifacts.jsonl").read_bytes().splitlines()
                             if json.loads(line)["id"] == selected["artifact_id"])
-            value = {"id": identifier, "source": dict(ref, lines=[start, end]), "text": passage,
+            value = {"id": identifier, "source": bounded, "text": passage,
                      "text_selection": selector, "artifact": artifact,
                      "notices": [dict(notice, citation_context=record_id) for record_id in artifact["cited_by"]
                                  for notice in self.records[record_id]["notices"]],
@@ -174,12 +184,13 @@ class Library:
         if not lower <= start <= end <= upper:
             raise ValueError("Read must remain within the cited inclusive source range")
         passage = "".join(text.splitlines(keepends=True)[start - 1:end])
+        bounded = bounded_reference(reference, start, end, passage)
         selected_text, selection = scientific_text(passage)
         if selection.startswith(("JSON /answer/", "notebook cell sources")):
             passage = selected_text
         else:
             selection = "unchanged governing UTF8 passage"
-        value = {"id": record["id"], "source": dict(reference, lines=[start, end]), "text": passage,
+        value = {"id": record["id"], "source": bounded, "text": passage,
                  "text_selection": selection,
                  "notices": record["notices"], "review_overlays": record["review_overlays"],
                  "scope": "Exact governing passage or explicitly selected stored text value; raw source/hash remains authoritative. An extraction is not an independent proof."}

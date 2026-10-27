@@ -1,0 +1,803 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=24mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype,amsmath,amssymb,amsthm,booktabs,array}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[colorlinks=true,linkcolor=MidnightBlue,urlcolor=MidnightBlue,citecolor=MidnightBlue]{hyperref}
+\usepackage{enumitem}
+\setlist{itemsep=3pt,topsep=5pt}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{remark}\newtheorem{remark}[theorem]{Remark}
+\newcommand{\F}{\mathbb F}\newcommand{\Z}{\mathbb Z}\newcommand{\Q}{\mathbb Q}
+\newcommand{\bits}{\{0,1\}}\newcommand{\poly}{\operatorname{poly}}
+\newcommand{\rank}{\operatorname{rank}}\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\off}{\operatorname{off}}\newcommand{\col}{\operatorname{col}}
+\newcommand{\wt}{\operatorname{wt}}
+\title{Acquiring exact phase representations\\from dense quadratic data\\
+\large Unknown symmetric diagonal completions, sparse errors, and exact counting}
+\author{Astra P3 research}\date{27 October 2026}
+\begin{document}\maketitle
+\begin{abstract}
+We give a deterministic representation compiler for a raw alternating
+binary matrix. Suppose its off-diagonal entries agree, except for at
+most $M$ unordered pairs, with an unknown symmetric matrix of rank at
+most $r$. Neither that matrix, its diagonal, its column space, nor the
+error locations are supplied. The compiler deletes
+$O(\sqrt{rM}+r)$ original coordinates and acquires an exact symmetric
+rank-at-most-$r$ completion of the remaining matrix, with at most $M$
+off-diagonal errors. Its time is subexponential in the original dimension
+whenever $r=o(n)$ and $rM=o(n^2)$; its space is polynomial. It acquires a
+column code, deletes supports of short codewords until decoding is
+unique, and independently validates the result.
+
+A fourth-root quadratic refinement converts the acquired completion into
+at most $2^r$ exactly weighted unary modifications. Combined with the
+previous constructive local-phase theorem, conditional on the pinned
+OpenAI counting manuscript, this computes a dense quadratic phase
+perturbed by $m$ fixed-locality phases in
+$\poly(L+n)2^{o(n)}$ time and polynomial space if, additionally,
+$\log(2+(m+M)/n)=o(\log n)$. In particular, $M=O(n)$ admits
+every $r=o(n)$. The acquisition theorem itself is unconditional.
+All representation, arithmetic, reconstruction, and description-size
+costs are charged. Executable finite validators check the new compiler
+and exact identities; they do not implement the asymptotic
+replacement-form solver. Prior exact and approximate matrix algorithms
+are compared, including the already-solved error-free diagonal case.
+\end{abstract}
+
+\section{Input model and the two results}
+All matrix operations until explicitly stated otherwise are over $\F_2$.
+A symmetric matrix is \emph{alternating} if its diagonal is zero. Write
+$\off(D)=D+\diag(D_{11},\ldots,D_{nn})$. For an alternating matrix $S$,
+let $e(S)=|\{(i,j):i<j,\ S_{ij}=1\}|$, counting unordered edges once.
+For an alternating $B$, put
+\[
+q_B(x)=\sum_{i<j}B_{ij}x_ix_j\pmod2.
+\]
+The matrix is explicitly given, with at most $n^2$ entries. In the
+phase problem, $L$ includes this matrix and every index and entry of
+every local phase table. Polynomial input-reading and matrix costs
+are charged separately from the exponent in $n$.
+
+\begin{theorem}[Acquisition from a raw matrix]\label{thm:acquire}
+Let $B$ be an alternating $n$ by $n$ matrix, $n\ge1$. Let $0\le r\le n$,
+$0\le M\le\binom n2$, and let $1\le\delta\le n$ be an integer. Define
+\[
+A_n(t)=\sum_{j=0}^{\min(n,\lfloor t\rfloor)}\binom nj,\qquad
+s_0=\min\!\left(n,\left\lfloor\frac{2M}{\delta}\right\rfloor+r\delta\right),
+\quad
+s=\min\!\left(n,\left\lfloor\frac{2M}{\delta}\right\rfloor+3r\delta\right).
+\]
+There is a deterministic algorithm with time
+\begin{equation}\label{eq:acqtime}
+\poly(n) A_n(r)A_n(s_0)2^r
+\end{equation}
+and polynomial space which returns either failure or a verified
+representation
+\[
+R=[n]\setminus E,\quad
+B[R,R]=\off(C)+S',\quad
+C=C^\top,\quad \rank C\le r,\quad e(S')\le M,\quad |E|\le s.
+\]
+If there exists a symmetric matrix $D$ such that
+\[
+\rank D\le r,\qquad B=\off(D)+S,\qquad e(S)\le M,
+\]
+the algorithm necessarily returns a representation. The matrices
+$D,S$ and their existence witness are not inputs.
+\end{theorem}
+
+This is an exact representation search, not a decision procedure
+for the original full-matrix rank-editing promise: an accepted
+retained representation can exist even when that promise is false.
+Its identity is always checked. No incoherence, bound on the original
+maximum error degree, or graph decomposition is assumed.
+
+For $r>0$, choose
+\begin{equation}\label{eq:radius}
+\delta=\max\left(1,\left\lceil\sqrt{2M/(3r)}\right\rceil\right).
+\end{equation}
+Then $s\le 2\sqrt{6rM}+3r$. For $r=0$, directly test $e(B)\le M$
+and take $C=0,E=\varnothing$. The usual binomial-sum bound gives
+\[
+\log_2 A_n(t)=O\!\left(t\log_2(en/t)\right)\quad(1\le t\le n/2).
+\]
+Thus \eqref{eq:acqtime} is $2^{o(n)}\poly(n)$ if
+$r=o(n)$ and $rM=o(n^2)$. Enumerating ordered tuples and
+using $n^r$ instead would lose this whole parameter regime.
+
+\begin{theorem}[Dense quadratic backgrounds with acquired structure]
+\label{thm:count}
+Fix integers $k,b\ge1$. Let $\zeta$ be a primitive $2^b$-th root of
+unity. The input consists of $B$ as above and $m$ explicit
+tables $f_j:\bits^{I_j}\to\Z/2^b\Z$, with $|I_j|\le k$. Let
+\[
+Z=\sum_{x\in\bits^n}(-1)^{q_B(x)}
+       \zeta^{\sum_{j=1}^m f_j(x|_{I_j})}.
+\]
+Conditional on the local-phase theorem in Section~\ref{sec:phase},
+and hence on the specified replacement-form results in
+\cite{governing}, there is an exact deterministic algorithm of bit
+time $\poly_{k,b}(L+n)2^{o(n)}$ and polynomial space on every family
+admitting the promise of Theorem~\ref{thm:acquire} with
+\begin{equation}\label{eq:favorable}
+r=o(n),\qquad rM=o(n^2),\qquad
+\log(2+(m+M)/n)=o(\log n).
+\end{equation}
+The rank and error budgets can be discovered by dovetailing; the
+representation and diagonal are never supplied. In particular,
+$M=O(n)$ permits every $r=o(n)$.
+\end{theorem}
+
+This does not give a subexponential algorithm for an arbitrary dense
+quadratic background plus nonlinear phases. The favorable guarantee
+depends on an intrinsic rank-and-sparsity property, but its useful
+representation is constructed and checked.
+
+\section{Finding clean information without knowing the errors}
+\label{sec:clean}
+\begin{lemma}[An unknown clean-column witness]\label{lem:clean}
+Under the promise of Theorem~\ref{thm:acquire}, there are sets
+$I,E_0\subseteq[n]$ with $|I|\le r$, $|E_0|\le s_0$, such that
+for $R_0=[n]\setminus E_0$,
+\[
+B[R_0,I]=D[R_0,I],\qquad
+\col(D[R_0,R_0])\subseteq\col(B[R_0,I]).
+\]
+Every column of $(B+D)[R_0,R_0]$ has weight at most $\delta$.
+\end{lemma}
+\begin{proof}
+In the hidden error graph let $H=\{i:\deg_S(i)\ge\delta\}$.
+Its degree sum is at most $2M$, so
+$|H|\le\lfloor2M/\delta\rfloor$. Put $V=[n]\setminus H$.
+Choose column indices $I\subseteq V$ forming a basis for
+$\col(D[V,V])$; there are at most $r$.
+Let $J$ be the union of the $S$-neighbors of $I$ within $V$ and
+set $E_0=H\cup J\cup I$. Every vertex in $V$ has error degree
+at most $\delta-1$, so $|J\cup I|\le r(\delta-1)+r=r\delta$.
+There are no off-diagonal errors between $R_0$ and $I$, and
+deleting $I$ removes the unknown diagonal discrepancy from these
+columns. Restricting the basis relations on $V$ proves the
+column-space inclusion. Remaining off-diagonal errors have
+column weight at most $\delta-1$; the unknown diagonal adds
+at most one discrepancy per column.
+\end{proof}
+
+The basis indices in $I$ may lie in the deleted set; this
+construction deliberately deletes them. The algorithm must keep
+reading the corresponding \emph{external columns of the original
+matrix}. Requiring the basis indices to survive is invalid.
+Also the acquired column code may be a proper supercode of the
+true retained column space, because principal restriction can
+reduce the latter rank. Equality is not required.
+
+\section{Short codewords turn erasures into unique decoding}
+\label{sec:prune}
+Enumerate all unordered $I\subseteq[n]$ with $|I|\le r$ and
+$E_0\subseteq[n]$ with $|E_0|\le s_0$. For each pair, start with
+$R=[n]\setminus E_0$ and compute independent generators for
+$\mathcal C_R=\col(B[R,I])\subseteq\F_2^R$.
+This step sees only $B,I,E_0$ and never accesses the hidden
+matrices used in Lemma~\ref{lem:clean}.
+
+\begin{lemma}[Distance by deleting supports]\label{lem:prune}
+By deleting at most $2r\delta$ further coordinates, one can make
+every nonzero word of the restricted code have weight greater
+than $2\delta$. This takes $\poly(n)2^r$ time and polynomial
+space. Any sequence of qualifying deletions works.
+\end{lemma}
+\begin{proof}
+Enumerate codewords using the current independent generators.
+If a nonzero word has weight at most $2\delta$, delete its
+support and restrict the generators to the surviving coordinates.
+This restriction map has a nonzero kernel, namely the chosen
+word, so its code dimension strictly decreases. Recompute a
+basis and repeat. There are at most $r$ rounds, each deleting at
+most $2\delta$ coordinates. At most $2^r$ words are scanned per
+round. Generate them one at a time; storing all words would
+violate the polynomial-space claim.
+\end{proof}
+
+For the witness in Lemma~\ref{lem:clean}, inclusion of the true
+remaining column space in the code survives every restriction.
+Each observed remaining column is still within distance $\delta$
+of its true column. At termination the code has minimum nonzero
+distance greater than $2\delta$, so that true column is its unique
+codeword within distance $\delta$.
+
+Decode each column of $B[R,R]$ by scanning the codewords. Reject
+if any column has no nearby word. Let $C$ be the decoded matrix.
+Independently verify symmetry, rank at most $r$, and that
+$S'=B[R,R]+\off(C)$ has at most $M$ unordered edges. The empty
+code is allowed; its only word is zero. A wrong seed can fail
+these checks or give a different valid representation, but
+cannot give a false accepted identity.
+
+The correct witness decodes to $D[R,R]$ and passes. The deletion
+bound is $|E|\le\min(n,s_0+2r\delta)=s$.
+Each candidate takes $\poly(n)2^r$ time and
+polynomial space, including decoding, Gaussian elimination,
+and verification. Multiplying by the two unordered-subset counts
+proves Theorem~\ref{thm:acquire}. No $2^{\Theta(r^2)}$ search
+over inner symmetric coefficient matrices is present.
+
+\section{The diagonal becomes unary fourth-root phases}
+\label{sec:refinement}
+For even $n$ the alternating matrix $J_n+I_n$ has full rank,
+but the symmetric completion $J_n$ has rank one. Thus allowing
+the unknown diagonal broadens the former alternating-rank
+promise. Diagonal completion alone is established machinery;
+Section~\ref{sec:comparison} states the relevant prior algorithm.
+
+Let the acquired code have $d\le r$ independent columns, in a
+full-column-rank matrix $U\in\F_2^{R\times d}$. Its space
+contains $\col(C)$. Obtain a left inverse $L_U$ by Gaussian
+elimination and set $K=L_U C L_U^\top$. Then $K=K^\top$ and
+$C=UKU^\top$. These identities are directly checked,
+including when $\rank C<d$.
+
+For a symmetric binary matrix $T$, define the $\Z/4\Z$-valued
+quadratic refinement
+\begin{equation}\label{eq:q4}
+Q_T(z)=\sum_jT_{jj}z_j+2\sum_{j<\ell}T_{j\ell}z_jz_\ell\pmod4.
+\end{equation}
+Its polar form under Boolean addition is
+\[
+Q_T(x+y)-Q_T(x)-Q_T(y)=2x^\top T y\pmod4.
+\]
+\begin{lemma}[Exact correction under substitution]\label{lem:refine}
+Let $u_i$ be row $i$ of $U$. Define
+$\ell_i=(C_{ii}-Q_K(u_i))/2\pmod2$. The numerator is even and
+\[
+Q_C(y)=Q_K(U^\top y)+2\ell^\top y\pmod4.
+\]
+Consequently
+\begin{equation}\label{eq:signrefine}
+(-1)^{q_{\off(C)}(y)}
+=i^{Q_K(U^\top y)}
+ (-1)^{\ell^\top y}\prod_{j\in R}i^{-C_{jj}y_j}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+The two refinements have the same polar form because $C=UKU^\top$.
+Their difference is a homomorphism from the elementary abelian
+$2$-group $\F_2^R$ to $\Z/4\Z$, so its values are in $\{0,2\}$.
+Evaluation on coordinate vectors gives the correction.
+Equivalently $Q_K(u_i)\bmod2=u_i^\top K u_i=C_{ii}$, which
+verifies the division by two. Subtracting the diagonal term
+from \eqref{eq:q4} proves \eqref{eq:signrefine}.
+\end{proof}
+
+Even for an alternating completion, Boolean substitution need
+not preserve the quadratic polynomial without a unary correction.
+For rows of $U$ equal to $(1,1),(1,0),(0,1)$ and
+$K=\left(\begin{smallmatrix}0&1\\1&0\end{smallmatrix}\right)$,
+the substituted binary quadratic contains an extra $y_1$.
+Dropping this correction changes exact answers.
+
+For $a\in\F_2^d$ put
+$G_K(a)=\sum_{z\in\F_2^d}i^{Q_K(z)}(-1)^{a^\top z}\in\Z[i]$.
+Boolean Fourier inversion gives
+\begin{equation}\label{eq:fourier}
+i^{Q_K(U^\top y)}
+=2^{-d}\sum_{a\in\F_2^d}G_K(a)(-1)^{(Ua)^\top y}.
+\end{equation}
+This replaces the completion by at most $2^r$ exactly weighted
+families of unary phases. Recompute and stream the coefficients;
+do not retain an exponentially large Fourier table.
+
+\begin{lemma}[Polynomial-cost coefficients]\label{lem:gauss}
+Each $G_K(a)$ can be computed in polynomial time and space using
+Gaussian integers with $O(d)$ bits.
+\end{lemma}
+\begin{proof}
+Write the exponent modulo four as
+$\sum_j\alpha_jz_j+2\sum_{j<\ell}\beta_{j\ell}z_jz_\ell$,
+where $\alpha_j=K_{jj}+2a_j$. If $\alpha_j$ is odd, let
+$L(z)=\bigoplus_{\ell\ne j:\beta_{j\ell}=1}z_\ell$. Then
+\[
+1+i^{\alpha_j}(-1)^{L(z)}
+=(1+i^{\alpha_j})i^{-\alpha_j L(z)}.
+\]
+Modulo four, a Boolean parity is the sum of its variables minus
+twice their pairwise products. The remaining exponent stays
+quadratic: subtract $\alpha_j$ from each neighbor's unary
+coefficient and toggle each pair of neighbors' quadratic
+coefficients. Multiply an accumulated Gaussian integer by
+$1+i^{\alpha_j}$ and eliminate $z_j$. After at most $d$ steps,
+all unary coefficients are even. The remaining sum is an
+ordinary binary quadratic Gauss sum, evaluated by eliminating
+coupled variable pairs and checking the remaining linear form.
+This takes polynomially many field and integer operations.
+All partial factors and sums have $O(d)$ bits.
+\end{proof}
+
+\section{The constructive local-phase dependency}\label{sec:phase}
+The only non-elementary counting dependency is the companion
+local-phase construction \cite{phase}. It applies to $u$ tables
+of fixed locality $\kappa$ and fixed $2$-power root order on
+$n$ independent Boolean inputs, with unrestricted interaction
+graph. Its exact phase sum takes
+$\poly_{\kappa,b}(L+n)2^{F(n,u)}$ time and polynomial space,
+where $F(n,u)=o(n)$ if $\log(2+u/n)=o(\log n)$. More explicitly,
+set
+\[
+h=\log_2(2+\kappa u/n)+O_{\kappa,b}(\log\log n),
+\qquad a=h/\log_2n.
+\]
+In the useful range $a\to0$, one may take
+\begin{equation}\label{eq:phaseexp}
+F(n,u)=O_{\kappa,b}\!\left(
+n\sqrt a\, [\log_2(2/a)]^{3/2}\right).
+\end{equation}
+Outside its guarded useful range the solver enumerates original
+inputs. The companion proof gives explicit guards and parameters.
+
+This dependency does not assume small shared summaries.
+Multilinearly interpolate each phase-valued table $\zeta^{f_j}$ to $G_j$ over cyclotomic
+integers. For $\pi=\zeta-1$, each coefficient of $G_j-1$
+belongs to $(\pi)$. At root order $2^b$, put $d_0=2^{b-1}$;
+then $\pi^{d_0}\in2\Z[\zeta]$. The retained product
+\[
+\prod_j(1+V(G_j-1))
+\quad\hbox{in}\quad
+\Q(\zeta)[V]/(V^{d_0(n+2)})
+\]
+has incidence degree $O_{\kappa,b}(n)$ independently of $u$,
+and omitted orders vanish modulo $2^{n+2}$. Each coordinate
+of the exact original sum lies between $-2^n$ and $2^n$,
+so those residues determine it.
+
+High-incidence variables are branched on at cost $2^{o(n)}$;
+remaining incidence is $n^{o(1)}$. Lemma 4.7 of
+\cite{governing} manufactures occurrence-specific replacement
+forms, variable groups, and shared integer measurement matrices.
+Proposition 3.4 reconstructs the retained polynomial from its
+$O(n)$ incidence-degree budget. Density-sensitive choices
+give \eqref{eq:phaseexp}; rational bit costs are controlled
+as required in Appendix B of the source. Apply the
+coefficient-sum map in $V$ only \emph{after} exact
+reconstruction: setting $V=1$ is not a homomorphism on this
+truncated algebra.
+
+The new compiler therefore does not invoke an unspecified
+arbitrary-weight sum oracle or divide modular residues.
+It obtains every exact inner cyclotomic integer before the
+divisions below.
+
+\section{Original-input reconstruction and complete costs}
+\label{sec:cost}
+Apply Theorem~\ref{thm:acquire}. For each assignment $e$ to
+$E$, write $x=(e,y)$ with $y$ ranging over the remaining
+original variables. Dense quadratic interactions incident
+to $E$ become a known constant and unary phases computed
+from $B$. Restrict every original table by the same assignment;
+locality cannot increase. The sparse matrix $S'$ adds at most
+$M$ quadratic tables.
+
+Use \eqref{eq:signrefine} and \eqref{eq:fourier} for $C$.
+For each $a\in\F_2^d$, the inner sum contains the restricted
+original tables, the $M$ sparse quadratic tables, and at most
+$|R|$ unary tables, combining all diagonal, substitution,
+character, and branch corrections. Set $b'=\max(b,2)$ and
+embed the original phases into the $2^{b'}$-th roots.
+Locality is fixed at $\kappa=\max(k,2)$ and the root order
+is fixed.
+
+To use the original $n$ uniformly in the quantitative bound,
+pad each inner problem with $|E|$ unused Boolean variables.
+Let $T_{e,a}$ be its \emph{exact} sum, including the branch's
+constant phase. It is $2^{|E|}$ times the unpadded sum, so
+\begin{equation}\label{eq:finalreconstruction}
+Z=\sum_{e\in\F_2^E}
+  2^{-(d+|E|)}\sum_{a\in\F_2^d}G_K(a)T_{e,a}.
+\end{equation}
+The unpadded finite validator instead divides by $2^d$.
+Assignments to $E$ are disjoint original-input branches,
+with no averaging over them.
+
+Each inner coordinate is bounded by $2^n$ and reconstructed
+with the original precision $n+2$ before forming a numerator.
+The Gaussian coefficients have coordinates bounded by $2^d$.
+A streamed numerator has $O(n+r)$ bits per coordinate.
+The denominator in \eqref{eq:finalreconstruction} divides
+every coordinate exactly in the fixed integral cyclotomic
+basis. Only then is the quotient added to the outer
+accumulator. Divisibility can be checked.
+
+Writing $u=m+M+O(n)$, the full bound is
+\begin{equation}\label{eq:total}
+\poly_{k,b}(L+n)
+\left[
+A_n(r)A_n(s_0)2^r+
+2^{s+r+F(n,u)}
+\right].
+\end{equation}
+Acquisition is paid once, so it is added to the counter work.
+The coefficient computations, table transformations, and exact
+arithmetic are included. Input storage, polynomially many
+matrices, one branch, one codeword, one Gaussian coefficient,
+one inner-solver state, and exact accumulators suffice.
+This proves polynomial space and Theorem~\ref{thm:count}.
+
+\paragraph{No supplied favorable budgets.}
+Dovetail the full acquisition-and-counting pipelines over
+$r\in[0,n]$, $M\in[0,\binom n2]$, $\delta\in[1,n]$,
+and direct enumeration. There are polynomially many
+polynomial-space states. All accepted outputs are exact,
+and the first completed answer takes at most polynomial
+overhead relative to the best successful budget. An
+uncontrolled sequential search would not prove this claim.
+
+\section{A program-level consequence with all states charged}
+\label{sec:program}
+Consider a Boolean straight-line program of description size $L$
+with $n$ independent inputs, arbitrary affine operations over
+$\F_2$, $t$ two-input AND operations, and one requested output
+bit. Eliminate affine intermediate states by symbolic linear
+propagation. Introduce a formal result bit $u_j$ for each AND,
+so its operands become computed affine forms
+$a_j(x,u_{<j}),b_j(x,u_{<j})$. The output is an affine form
+$o(x,u)$. This costs polynomial time in $L+n+t$ using vectors
+of length $n+t+1$, without enumerating input assignments.
+
+Introduce operand bits $v_j,w_j$, character bits
+$\alpha_j,\beta_j,\lambda_j$, and one output character $\mu$.
+For a requested value $\tau$, character orthogonality gives
+\begin{align}
+\#\{x:o(x)=\tau\}
+&=2^{-(3t+1)}
+ \sum_{x,u,v,w,\alpha,\beta,\lambda,\mu}
+ (-1)^{P_{\rm prog}},\label{eq:program}\\
+P_{\rm prog}
+&=\sum_{j=1}^t
+ \bigl[\alpha_j(v_j+a_j)+\beta_j(w_j+b_j)
+       +\lambda_j(u_j+v_jw_j)\bigr]
+ +\mu(o+\tau).\nonumber
+\end{align}
+There are exactly $N=n+6t+1$ free phase variables and exactly
+$t$ cubic monomials $\lambda_jv_jw_j$. Everything else is
+quadratic or unary. Construct the raw quadratic matrix by
+expanding the computed affine forms, in polynomial time.
+Each character enforces one constraint with a factor two;
+acyclicity makes all gate and operand bits unique for each
+$x$. This proves the exact normalization.
+
+If $t=O(n)$ and this \emph{computed} $N$-dimensional matrix
+admits the conditions of Theorem~\ref{thm:count}, the requested
+count takes $\poly(L+n)2^{o(n)}$ time and polynomial space,
+even with many more affine intermediate states than inputs.
+The final division by $2^{3t+1}$ occurs after the exact phase
+sum. Those conditions are not guaranteed for every program.
+The useful representation is acquired from the raw computed
+matrix, and the cost is measured against the original inputs.
+
+\section{Comparison, decisive failures, and finite execution}
+\label{sec:comparison}
+\paragraph{A genuine exact prior competitor.}
+Fomin, Golovach, and Panolan \cite{fgp}, Theorem 6, solve full
+binary GF(2) rank-$r$ approximation within $k_0$ changed entries
+in time $2^{O(r\sqrt{k_0\log(rk_0)})}n^2$.
+For an alternating completion $k_0=2M$; with an unknown
+diagonal one can use $k_0=2M+n$. Their output need not be
+symmetric, but a polynomial support-cover repair deletes
+$O(\sqrt{rk_0}+r)$ coordinates and makes it symmetric.
+The retained residual has at most $k_0/2$ unordered
+off-diagonal errors, still $O(M+n)$. The accompanying
+audit proves and executes this repair.
+
+For $M=O(n)$ the displayed exact bound guarantees
+subexponential acquisition, for example, when
+$r=o(\sqrt{n/\log n})$. It does not imply the whole
+$r=o(n)$ regime of \eqref{eq:total}. Our output task is
+weaker than full-matrix editing because it allows an acquired
+coordinate deletion. This is not an unqualified improvement
+to their full rigidity algorithm or a claim of first priority.
+
+The GF(2) bicriteria algorithm of Velingker et al.\
+\cite{velingker} has time
+$2^{\poly(r/\varepsilon)}\poly(n)$ and output rank
+$O(r\log n/\varepsilon)$. Its approximation error can be
+retained as exact sparse phases; the label approximate
+does not disqualify it. Its stated dependencies do not
+supply the full sublinear-rank guarantee here. Basis-column
+and codeword enumeration also have relevant ancestry in
+incidence-matrix recovery \cite{incidence}; that result uses
+a different residual class and $(mn)^{O(r)}$ time.
+
+\paragraph{The error-free diagonal case is already solved.}
+Kogan \cite{kogan}, Theorem 2 and Remark 3, constructs a
+diagonal completion of rank at most twice the minimum
+in $O(n^4)$ time. It already suffices for subexponential
+latent expansion when $M=0$ and the minimum rank is $o(n)$.
+That algorithm belongs in an equally informed portfolio.
+The complete-graph example above illustrates scope, not
+newness. The substantive acquisition result here combines
+unknown sparse \emph{off-diagonal} corruption with low rank
+and an unknown diagonal, while preserving a sparse residual.
+
+\paragraph{Why deleting to low rank is inadequate.}
+Take a perfect-matching adjacency matrix $S$ and an
+alternating $D$ of rank $r$. Then
+$\rank(D+S)\ge n-r$. Deleting $s$ coordinates can reduce
+rank by at most $2s$, so making the raw retained matrix
+rank at most $r$ requires $s\ge(n-2r)/2$.
+Even free diagonal completion does not cure the example:
+each matching block with any diagonal has rank at least one,
+so $\min_v\rank(D+S+\diag v)\ge n/2-r$.
+The present compiler keeps the sparse residual and counts it
+exactly, avoiding that linear deletion or completion rank.
+
+\paragraph{What failed, and what repaired it.}
+Searching for an inner coefficient matrix costs
+$2^{\Theta(r^2)}$ and loses large sublinear ranks; distance
+pruning removes that search. Requiring an alternating
+low-rank component excludes useful diagonal completions;
+the fourth-root refinement incorporates them. Requiring
+pivot coordinates to survive, or dropping the unary
+substitution correction, gives incorrect algorithms.
+Executable audits include these counterexamples.
+
+These repairs do not remove the general dense quadratic
+obstruction. A separated-variable representation of
+$(-1)^{x^\top By}$ has rational matrix rank
+$2^{\rank_{\F_2} B}$, so generic full cross-rank requires
+exponentially many terms in that architecture. Eliminating
+a Gaussian block can also densify nonlinear interactions:
+\[
+\sum_{u,v\in\F_2^t}
+(-1)^{u^\top Av+u^\top f(x)+v^\top g(x)}
+=2^t(-1)^{g(x)^\top A^{-1}f(x)}
+\]
+for invertible $A$. Local quadratic $f,g$ can yield
+$\Theta(t^2)$ quartic terms. These are limitations of the
+examined mechanisms, not lower bounds on all algorithms.
+Pure quadratic sums, without a nonlinear or non-Clifford
+local foreground, are already handled by Gaussian elimination.
+
+\paragraph{Executed finite evidence.}
+The root program \texttt{diagonal\_completion\_compiler.py}
+receives only the raw matrix and search budgets. Hidden
+matrices generate fixtures but are not passed to search.
+It passed 16,933 exact fourth-root Gaussian checks, 5,088
+refinement identities, and nine acquired mixed counts at
+phase orders 2, 4, and 8. The raw searches produced:
+\begin{center}
+\begin{tabular}{rrrrrr}
+\toprule
+$n$ & raw rank & deleted & completion rank & residual edges & seeds tested\\
+\midrule
+8 & 8 & 1 & 1 & 0 & 11\\
+12 & 8 & 1 & 1 & 3 & 99\\
+14 & 10 & 1 & 2 & 1 & 465\\
+\bottomrule
+\end{tabular}
+\end{center}
+Independent checks additionally include eight complete raw
+full-rank searches through $n=32$, 36 exact phase sums,
+1,659 refinement identities, and 48 radical/magnitude
+checks of Gaussian sums in dimensions 24, 40, and 64.
+The alternating implementation and separate validators
+exercise concentrated error stars, short-word puncturing,
+proper column supercodes, erased external pivots, empty codes,
+and invalid-certificate rejection.
+
+The known $O(n^4)$ diagonal-completion algorithm was also
+implemented and checked against exact optimum for all 1,100
+simple graphs through five vertices. On the three raw
+matrices in the table it returns completion ranks 2, 5,
+and 6, without sparse residuals or deletions. These are
+different representations, not a speed comparison.
+The raw program compiler passed eight exact preimage-count
+checks, including a 10,001-instruction program with two
+original inputs and one AND, producing nine phase variables.
+
+The finite inner backend enumerates assignments. These
+executions validate acquisition and exact reconstruction;
+they neither execute the asymptotic phase solver nor show
+a practical speed advantage. The asymptotic result is the
+proved composition \eqref{eq:total}, conditional on the
+specified source results.
+
+\section{A strict family with exponential balanced-cut rank}
+\label{sec:strict}
+The larger rank range is not merely a redundant way to
+describe a smaller-rank or small-width family.
+
+\begin{lemma}[Support cover with a free diagonal]\label{lem:cover}
+If a symmetric binary matrix $T$ has rank $q$ and at most
+$W$ off-diagonal edges, one can find $E$ with
+$T[R,R]=0$, $R=[n]\setminus E$, and
+\[
+|E|\le\left\lfloor\frac{2W}{\tau}\right\rfloor+q\tau
+\quad\hbox{for every integer }\tau\ge1.
+\]
+In particular $|E|\le 2\sqrt{2qW}+q$ for $q>0$.
+\end{lemma}
+\begin{proof}
+Delete vertices of off-diagonal degree at least $\tau$.
+Every remaining row has support size at most $\tau$,
+including its possible diagonal entry. Choose actual
+rows forming a basis, and delete the union of their
+supports. It contains every nonzero column, since every
+row is a linear combination of these basis rows.
+There are at most $q$ basis rows. Optimize with
+$\tau=\max(1,\lceil\sqrt{2W/q}\rceil)$; if $q=0$,
+the matrix is zero.
+\end{proof}
+
+\begin{proposition}[A family outside the simpler conditions]
+\label{prop:strict}
+Fix $0<\alpha<1$ and let
+$r=2\lfloor n^\alpha/2\rfloor$. There are Boolean cubic
+polynomials $p_n=P_n+q_{B_n}$ with $n/3$ disjoint cubic
+monomials in $P_n$, and raw quadratic descriptions of
+$\Theta(n^2)$ entries, such that:
+\begin{enumerate}
+\item $B_n=A_n+S_n$, with $A_n$ alternating of rank $r$
+and $e(S_n)=O(n)$, so Theorem~\ref{thm:count} applies
+without receiving this decomposition.
+\item $B_n$ has $\Omega(n^2)$ edges and every balanced
+original-coordinate cut has binary cut rank $\Omega(n)$.
+The full phase $(-1)^{p_n}$ has matrix flattening rank
+$2^{\Omega(n)}$ over $\Q$ or $\mathbb C$ across every
+such cut.
+\item No symmetric component of rank below $r$, even
+with arbitrary diagonal, approximates its off-diagonal
+matrix within $n^{1+o(1)}$ edge errors. In particular,
+it cannot be reclassified into the smaller
+$n^{o(1)}$-rank, near-linear-error regime by choosing
+another decomposition.
+\end{enumerate}
+These are separations between representation conditions,
+not general counting lower bounds.
+\end{proposition}
+\begin{proof}
+Let $J_r$ be the standard invertible alternating matrix,
+and choose $U\in\F_2^{n\times r}$ whose column code has
+minimum distance at least $n/4$ and for which
+$A=UJ_rU^\top$ has $\Omega(n^2)$ edges.
+Such a choice exists: for independent uniformly random
+rows of $U$, the distance fails with probability at most
+$(2^r-1)e^{-n/8}=o(1)$. To check density without assuming
+independent matrix entries, write $t=2^{-r}$,
+$N=\binom n2$, and $W=e(A)$. A direct covariance
+calculation gives
+\[
+\mathbb EW=N(1-t)/2,\qquad
+\operatorname{Var}W=
+N(1-t^2)/4+\tfrac32\binom n3 t(1-t).
+\]
+Chebyshev's inequality gives
+$\Pr(W<N/4)=O(n^{-2}+t/n)=o(1)$.
+Both desired events therefore hold simultaneously.
+Positive code distance implies $\rank A=r$.
+
+Take $S$ from a simple constant-degree expander family,
+with maximum degree $D$ and positive constant edge
+expansion $h$; such explicit families are available
+from \cite{expander}. Loops can be discarded and
+bounded parallel multiplicities collapsed without
+losing constant expansion. Work at sizes divisible by
+three. Choose a partition into triples with only
+$O(1)$ edges of $S$ internal to triples: a uniform
+random partition has expected internal count
+$2e(S)/(n-1)=O(1)$, so such a partition exists.
+Let $P$ be the sum of the triples' cubic monomials.
+
+For any cut with both parts of size at least $n/3$,
+there are at least $hn/3$ crossing expander edges.
+Discard the $O(1)$ edges within triples. Greedily
+choose an induced crossing matching, never using
+two vertices from the same triple. Selecting an
+edge invalidates at most $O(D^2+D)$ remaining edges,
+so the matching has $\ell=\Omega(n)$ edges.
+Its cross submatrix of $S$ is $I_\ell$; hence the
+corresponding submatrix of $B$ has rank at least
+$\ell-\rank A=\Omega(n)$.
+
+In the full phase flattening, fix every variable
+outside these matching endpoints to zero. All cubic
+monomials vanish because each triple retains at most
+one variable. Quadratic terms confined to a side
+only multiply rows or columns by signs. The remaining
+cross character matrix has rank
+$2^{\rank(I_\ell+A_{\rm cross})}\ge2^{\ell-r}$.
+For completeness, a character matrix
+$((-1)^{x^\top Hy})_{x,y}$ has exactly
+$2^{\rank H}$ distinct orthogonal row characters.
+This proves the claimed flattening rank.
+Adding $O(n)$ sparse edges to dense $A$ preserves
+$\Omega(n^2)$ edge density.
+
+Finally suppose a symmetric $D'$ has rank $r'<r$
+and off-diagonal error $M'=n^{1+o(1)}$ from $B$.
+Then $T=A+D'$ has rank at most $r+r'$ and at most
+$e(S)+M'$ off-diagonal edges. Lemma~\ref{lem:cover}
+deletes only
+$O(\sqrt{r(e(S)+M')}+r)=o(n)$ coordinates to make
+$T[R,R]=0$. Removing fewer than the code distance
+leaves $U_R$ of full column rank, so
+$\rank A[R,R]=r$. But $A[R,R]=D'[R,R]$ has rank
+at most $r'<r$, a contradiction.
+\end{proof}
+
+The cubic third-derivative tensor in this family is a
+direct sum of three-dimensional volume forms. Its
+primitive centroid blocks are those triples: a
+centroid map cannot mix two blocks by nondegeneracy,
+and the centroid of one volume form is scalar.
+There are $\Omega(n^2)$ nonzero quadratic couplings
+between the blocks, since each block pair contains
+at most nine edges. Within-block changes of basis
+cannot turn a nonzero cross matrix into zero.
+Thus the preceding acquired-cubic-block method's
+near-linear coupling criterion also fails here.
+
+The support-cover proof was checked on every symmetric
+matrix through dimension five: 168,146 threshold checks.
+Separate programs checked 2,799 finite balanced cuts,
+2,211 restricted full-phase character-rank identities,
+and all 8,192 rank-zero/rank-one symmetric competitors
+for a finite rank-two fixture. A larger exact certificate
+has $n=4,098$, core rank six, code distance 1,993,
+16,377 sparse edges, and 4,146,143 observed edges.
+Any rank-below-six symmetric competitor with at most
+$4n$ edge errors would imply a support cover of at
+most 1,698 vertices, contradicting that distance.
+The larger sampled sparse graph is not claimed to
+be an expander; its certificate concerns rigidity only.
+
+\begin{thebibliography}{9}
+\bibitem{governing}
+OpenAI. \emph{The Exponential Time Hypothesis is False}.
+25 October 2026. Pinned commit
+\texttt{7ef5c0cc5ca4b0e072b7a050fca09ab24bc6fa3a}.
+\href{https://github.com/openai/math/blob/7ef5c0cc5ca4b0e072b7a050fca09ab24bc6fa3a/preprints/The-Exponential-Time-Hypothesis-is-False-October-25-2026/paper.pdf}{Governing PDF}.
+Dependencies: Definition 3.1, Proposition 3.4, Lemma 4.7,
+and Appendix B. The relevant applications and appendices
+were read before formulating the companion phase construction.
+
+\bibitem{phase}
+Astra P3. \emph{Constructive phase representations:
+Exact counting beyond the number of intermediate states}.
+27 October 2026. Companion proof and finite validators,
+included with the source files for this note. This is an
+internal derived theorem conditional on \cite{governing},
+not an independently published source.
+
+\bibitem{fgp}
+Fedor V. Fomin, Petr A. Golovach, and Fahad Panolan.
+\emph{Parameterized low-rank binary matrix approximation}.
+Data Mining and Knowledge Discovery 34 (2020), 478--532.
+Theorem 6.
+\url{https://fedorvf.github.io/articles/2020/2020f.pdf}.
+
+\bibitem{velingker}
+Ameya Velingker, Maximilian Votsch, David P. Woodruff, and
+Samson Zhou. \emph{Fast $(1+\varepsilon)$-Approximation
+Algorithms for Binary Matrix Factorization}. ICML 2023.
+\url{https://proceedings.mlr.press/v202/velingker23a/velingker23a.pdf}.
+
+\bibitem{kogan}
+Eugene Kogan. \emph{On the rank of $\Z_2$-matrices with free
+entries on the diagonal}. 2021.
+\url{https://arxiv.org/pdf/2104.10668}.
+
+\bibitem{incidence}
+Fedor V. Fomin, Petr A. Golovach, Pranabendu Misra, and
+M. S. Ramanujan. \emph{On the Complexity of Recovering
+Incidence Matrices}. ESA 2020, 50:1--50:20.
+\url{https://doi.org/10.4230/LIPIcs.ESA.2020.50}.
+
+\bibitem{expander}
+Omer Reingold, Salil Vadhan, and Avi Wigderson.
+\emph{Entropy waves, the zig-zag graph product, and new
+constant-degree expanders}. Annals of Mathematics
+155 (2002), 157--187.
+\url{https://annals.math.princeton.edu/2002/155-1/p04}.
+\end{thebibliography}
+\end{document}
