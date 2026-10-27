@@ -42,13 +42,19 @@ class P3ConstructiveCountingIntake(unittest.TestCase):
                     self.assertEqual(original.read(member), (source / name).read_bytes(), name)
         self.assertIn("FULL_NATIVE_COPY.md", entries)
 
-    def test_summary_only_local_algebra_does_not_inherit_other_audits(self):
+    def test_local_algebra_acquisition_preserves_earlier_summary_and_independent_scopes(self):
         record = self.library.resolve("N1122")
         authority = json.loads((ROOT / record["authority"]).read_bytes())
-        self.assertEqual(authority["proof_availability"]["located_proof_sources"], [])
-        self.assertFalse(record["review_overlays"])
-        self.assertEqual(record["review"]["reported_status"], "source_reported_unreviewed")
-        self.assertTrue(all(ref["path"].endswith("FULL_NATIVE_COPY.md") for ref in record["evidence"]))
+        historical = ROOT / "research/2026-10-28-p3-local-algebra/history/N1122-summary-only-status.json"
+        old = json.loads(historical.read_bytes())
+        self.assertEqual(old["proof_availability"]["located_proof_sources"], [])
+        self.assertEqual(old["claim_status"], "source_reported_unreviewed")
+        self.assertTrue(authority["proof_availability"]["located_proof_sources"])
+        self.assertTrue(record["review_overlays"])
+        self.assertTrue(all(review["id"].startswith("A1122-local-algebra-")
+                            for review in record["review_overlays"]))
+        self.assertTrue(any(n.get("status") == "governing_source_gap_resolved_at_current_version"
+                            for n in record["notices"]))
         field = self.library.resolve("N1121")
         self.assertTrue(field["review_overlays"])
         self.assertFalse(field["dependencies"], "The field theorem must not inherit the phase theorem's ETH import")

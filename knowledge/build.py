@@ -465,6 +465,15 @@ def build(root=ROOT):
                 packet["scientific_card_reader"] = ["card", record["id"]]
                 if default_output_size() > 32768:
                     packet.pop("scientific_card_reader")
+        # Newly acquired proofs and completed reviews can push navigation
+        # excerpts beyond the default packet budget. Keep every condition,
+        # correction, review and source locator; omit only optional excerpt
+        # text, with an explicit route to the complete supporting passage.
+        for excerpt in reversed(packet["source_excerpts"]):
+            if default_output_size() <= 32768:
+                break
+            if excerpt.pop("text", None) is not None:
+                excerpt["text_omitted"] = "Read this exact source range; navigation text omitted to preserve the default complete-packet budget."
         outputs["knowledge/current/packets/" + route_id(record["id"]) + ".json"] = encoded(packet)
     coverage = {
         "records_by_kind": dict(Counter(record["kind"] for record in records)),
