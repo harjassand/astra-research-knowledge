@@ -62,7 +62,7 @@ canonical-regulator/prepared-sector moment premises. It does not supply the
 missing cold-heat or KMS/NESS preparation theorem, an acquired infinite-bath
 parity measurement, or a working device.
 
-The first attempt selected a packet reference covering the operator discussion
+The first attempt selected a packet reference at lines 14–228 covering the operator discussion
 and incorrectly expected the introductory cold-heat sentence inside that
 narrower range. Its assertion failed. The second attempt fetched the distinct
 returned evidence window containing both the representation and the limitation;
@@ -74,7 +74,7 @@ exclusive discovery or an established time saving.
 
 ## Implementation checks and deployment boundary
 
-Eight adapter regression checks cover every current record's capsule/public
+Nine adapter regression checks cover every current record's capsule/public
 routes, exact proof reading, all notices/reviews, source-alias deduplication,
 bounded lossless continuation, old versions with current correction context,
 stale/invalid handles and explicit optional-runtime fallback. Three further
@@ -88,6 +88,20 @@ import was removed because the current SDK uses its own HTTP dependency.
 The all-record check also found 46 technology packets without a dependency
 list; their capsule now explicitly preserves UNKNOWN rather than inventing
 an empty dependency set or failing the read.
+Internal review also identified a version-routing bug: choosing a public
+citation because the original filename exists can point at newer incompatible
+bytes. Citation locators now require matching artifact bytes or the exact
+hash-matched HTML pre block, including when that block is not the first one.
+They expose both the actual public artifact hash and the governing text hash;
+extracted-text line numbers are not presented as HTML-file line anchors.
+The actual nested-record audit covers 7,001 distinct (path, source hash,
+read_path) source versions: 1,195 use a public fallback because the original
+path is absent, and none currently has an existing mismatched original. The
+changed-original case is therefore an explicit regression fixture, not a claim
+that 1,195 current citations were wrong. CRLF in historical HTML pre blocks is
+preserved byte-for-byte; normalizing it would reject genuine source support.
+Capsules expose fetchable current/historical review and correction-source
+routes separately from the governing proof routes, without blending their roles.
 Large capsules are deliberately multipart, with byte coordinates and a full
 payload hash. Tests concatenate all pages; no current correction is omitted
 to meet a budget. Invalid IDs produce explicit tool errors. Tests do not run

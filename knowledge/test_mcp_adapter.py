@@ -1,6 +1,7 @@
 """Transport-free regressions for version/source/correction failure modes."""
 import json
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -35,6 +36,8 @@ class AdapterTests(unittest.TestCase):
             self.assertEqual(packet["review_overlays"], record["review_overlays"])
             self.assertEqual(packet["contract"], record["contract"])
             self.assertEqual(packet["content_version"], record["content_version"])
+            if record["review_overlays"]:
+                self.assertTrue(any("current_review" in r["roles"] for r in packet["review_and_correction_sources"]))
 
     def test_pagination_is_bounded_lossless_and_never_silently_complete(self):
         with patch.object(self.adapter, "page_bytes", 1024):
@@ -64,6 +67,24 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(len(sources), len({(s["path"], s["sha256"]) for s in sources}))
         self.assertTrue(all(self.adapter.revision in r["url"] for r in found["results"]))
 
+    def test_citation_follows_matching_old_pre_block_when_original_path_has_newer_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            old = "An older scoped construction.\r\nA second line.\r\n"
+            (root / "proof.tex").write_text("A newer incompatible construction.\n")
+            (root / "old.html").write_bytes(("<pre>A wrong first block</pre><pre>" + old + "</pre>").encode())
+            adapter = ResearchAdapter.__new__(ResearchAdapter)
+            adapter.root, adapter.paths, adapter.revision = root, {"proof.tex", "old.html"}, "f" * 40
+            adapter.locators, adapter.artifact_data = {}, {}
+            ref = {"path": "proof.tex", "read_path": "old.html", "sha256": digest(old.encode()), "lines": [1, 2]}
+            locator = adapter.source_locator(ref)
+            self.assertEqual(locator["artifact_path"], "old.html")
+            self.assertNotIn("#L", locator["url"])
+            self.assertEqual(locator["artifact_sha256"], digest((root / "old.html").read_bytes()))
+            self.assertEqual(locator["source_text_sha256"], digest(old.encode()))
+            with self.assertRaisesRegex(ValueError, "No hash-matched"):
+                adapter.source_url(dict(ref, sha256="0" * 64))
+
     def test_historical_unit_version_is_retrievable_with_current_correction_context(self):
         record = next(r for r in self.adapter.library.records.values() if len(r.get("history", [])) > 1 and r["notices"])
         previous = record["history"][0]
@@ -92,6 +113,11 @@ class AdapterTests(unittest.TestCase):
                 packet = self.adapter.record_payload(record)
                 self.assertEqual(packet["content_version"], record["content_version"])
                 self.assertTrue(packet["full_packet_url"].startswith("https://github.com/"))
+                if record["id"].startswith("T-"):
+                    original = self.adapter.library.packet([record["id"]], max_bytes=16 * 1024 * 1024)["packets"][0]
+                    if "dependencies" not in original:
+                        self.assertIsInstance(packet["dependencies"], str)
+                        self.assertTrue(packet["dependencies"].startswith("UNKNOWN"))
 
     def test_portable_server_needs_no_neural_dependencies_and_explicit_fallback(self):
         def absent(*args, **kwargs):

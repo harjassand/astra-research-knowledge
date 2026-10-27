@@ -53,7 +53,9 @@ version-bound reviews, evidence routes, reusable units, recorded transfers and
 historical unit routes. Source handles read their actual declared bytes/range;
 binary artifacts return an original route without an invented proof passage.
 Hash-matched HTML extractions retain their extracted-text coordinates without
-misleading HTML-file line anchors. Historical documents retain their historical
+misleading HTML-file line anchors. Citation routes match bytes, not merely an
+existing filename; locators distinguish the public artifact hash from a
+contained text hash. Historical documents retain their historical
 status alongside current context; current acceptance is not copied onto them.
 
 Each fetch returns `id`, `title`, `text`, nonempty citation `url`, and metadata.

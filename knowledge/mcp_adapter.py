@@ -5,8 +5,11 @@ No transport, model dependency, corpus copy, source execution or publication.
 from __future__ import annotations
 
 from collections import defaultdict
+import hashlib
+import html
 import json
 from pathlib import Path
+import re
 import subprocess
 from urllib.parse import quote
 
@@ -32,8 +35,9 @@ class ResearchAdapter:
             raise ValueError("Serve a committed corpus snapshot; generated views differ from HEAD")
         self.version = self.library.manifest["input_version"]
         self.frozen_paths = set(self.library.manifest["inputs"]) | set(self.library.manifest["outputs"])
-        self.paths = set(self.git("ls-tree", "-r", "--name-only", "HEAD").splitlines())
+        self.paths = set(self.git("ls-tree", "-r", "--name-only", "-z", "HEAD").split("\0")) - {""}
         self.references, self.contexts = {}, defaultdict(set)
+        self.locators, self.artifact_data = {}, {}
         for record in self.library.records.values():
             for reference in evidence_refs(record):
                 self.register(reference)
@@ -74,12 +78,39 @@ class ResearchAdapter:
         fragment = "#L%d-L%d" % tuple(lines) if lines else ""
         return PUBLIC + self.revision + "/" + quote(path, safe="/") + fragment
 
+    def source_locator(self, ref):
+        key = (ref["path"], ref["sha256"], ref.get("read_path"), tuple(ref.get("lines") or ()))
+        if key in self.locators:
+            return self.locators[key]
+        for name in dict.fromkeys((ref["path"], ref.get("read_path", ""))):
+            if name not in self.paths:
+                continue
+            if name not in self.artifact_data:
+                with (self.root / name).open("rb") as stream:
+                    actual = hashlib.file_digest(stream, "sha256").hexdigest()
+                self.artifact_data[name] = {"sha256": actual}
+            cached = self.artifact_data[name]
+            actual = cached["sha256"]
+            selector = None
+            if actual == ref["sha256"]:
+                selector = "exact artifact bytes; inclusive text lines where supplied"
+                url = self.url(name, ref.get("lines"))
+            elif name.endswith(".html"):
+                if "pre_hashes" not in cached:
+                    blocks = re.findall(r"<pre(?:\s[^>]*)?>(.*?)</pre>", (self.root / name).read_bytes().decode("utf-8"), re.S)
+                    cached["pre_hashes"] = {digest(html.unescape(block).encode()) for block in blocks}
+                if ref["sha256"] in cached["pre_hashes"]:
+                    selector = "HTML pre block matching source text SHA256; extracted-text lines are not HTML-file lines"
+                    url = self.url(name)
+            if selector:
+                value = {"url": url, "artifact_path": name, "artifact_sha256": actual,
+                         "source_text_sha256": ref["sha256"], "selector": selector}
+                self.locators[key] = value
+                return value
+        raise ValueError("No hash-matched committed public citation artifact: " + ref["path"])
+
     def source_url(self, ref):
-        # A hash-matched HTML pre block has extracted-text line numbers, not
-        # HTML-file line numbers. Do not attach a misleading native line anchor.
-        if ref["path"] in self.paths:
-            return self.url(ref["path"], ref.get("lines"))
-        return self.url(ref.get("read_path", ""))
+        return self.source_locator(ref)["url"]
 
     def record_url(self, identifier):
         return self.url("knowledge/current/packets/" + route_id(identifier) + ".json")
@@ -125,7 +156,7 @@ class ResearchAdapter:
                 continue
             seen.add(key)
             sources.append({"id": self.register(ref), "title": hit["title"],
-                "url": self.source_url(ref), "metadata": {"source": ref,
+                "url": self.source_url(ref), "metadata": {"source": ref, "citation_locator": self.source_locator(ref),
                 "record_context": sorted(self.contexts[key]), "candidate_only": True}})
             if len(sources) == 3:
                 break
@@ -134,10 +165,19 @@ class ResearchAdapter:
             "scope": "Candidate menu only. Fetch conditions, current corrections and governing passages before reuse; absence is not impossibility."}}
 
     def reference_view(self, ref):
-        return {"source": ref, "url": self.source_url(ref), "fetch_id": self.register(ref)}
+        return {"source": ref, "url": self.source_url(ref), "citation_locator": self.source_locator(ref), "fetch_id": self.register(ref)}
 
     def record_payload(self, record):
         packet = self.library.packet([record["id"]], max_bytes=16 * 1024 * 1024)["packets"][0]
+        context_routes = {}
+        for role, value in (("current_review", record["review_overlays"]),
+                            ("current_notice", record["notices"]),
+                            ("historical_review", packet["historical_reviews"])):
+            for ref in evidence_refs(value):
+                identifier = self.register(ref)
+                route = context_routes.setdefault(identifier, dict(self.reference_view(ref), roles=[]))
+                if role not in route["roles"]:
+                    route["roles"].append(role)
         return {"scope": "Current operation capsule. Historical reported labels do not override current version-bound reviews. Conditions do not establish acquired inputs, measurements, devices, novelty or advantage.",
             "id": record["id"], "content_version": record["content_version"],
             **statement_view(record, self.library.operation_frames[record["id"]]),
@@ -147,6 +187,7 @@ class ResearchAdapter:
             "dependencies": packet.get("dependencies", "UNKNOWN; this packet has no explicit dependency list"),
             "parents": record["parents"],
             "evidence": [self.reference_view(ref) for ref in record["evidence"]],
+            "review_and_correction_sources": list(context_routes.values()),
             "related_units": [dict(unit, fetch_id=self.handle("record", unit["id"])) for unit in packet["related_units"]],
             "transfers": packet.get("transfers", []),
             "historical_versions": [dict(v, fetch_id=self.register(dict(v, lines=None)), url=self.url(v["path"])) for v in record.get("history", [])],
@@ -164,7 +205,7 @@ class ResearchAdapter:
                         text = raw.decode("utf-8")
                     except UnicodeError:
                         return {"scope": "Binary original only; no inferred proof passage or acceptance.",
-                            "source": ref, "url": self.source_url(ref), "current_context": current_context}
+                            "source": ref, "url": self.source_url(ref), "citation_locator": self.source_locator(ref), "current_context": current_context}
                 else:
                     text, _ = Inputs(self.root).source(ref)
             else:
@@ -177,6 +218,7 @@ class ResearchAdapter:
             passage, selection = scientific_text(passage)
         return {"scope": "Exact declared source version. Current context notices remain applicable to reuse; coarchive and citation do not confer acceptance. A historical unit document retains its historical status and does not inherit the current review.",
             "source": ref, "text_selection": selection, "text": passage,
+            "citation_locator": self.source_locator(ref),
             "current_context": current_context,
             "full_source_url": self.source_url(ref), "extracted_text_lines": [start, end]}
 
