@@ -1,6 +1,7 @@
 """Requests must reject newly discovered intake before serving a frozen snapshot."""
 import subprocess
 import unittest
+from unittest.mock import patch
 
 from knowledge import test_knowledge as fixtures
 from knowledge.build import inventory
@@ -48,8 +49,10 @@ class SnapshotMembershipTests(unittest.TestCase):
             "continuation": lambda: self.adapter.fetch(self.continuation),
         }
         for name, request in requests.items():
-            with self.subTest(request=name), self.assertRaisesRegex(ValueError, message):
-                request()
+            with self.subTest(request=name):
+                with self.assertRaisesRegex(ValueError, message) as error:
+                    request()
+                self.assertNotIn(str(self.root), str(error.exception))
 
     def intake_value(self, kind):
         if kind == "review":
@@ -107,7 +110,9 @@ class SnapshotMembershipTests(unittest.TestCase):
 
     def test_malformed_new_public_index_fails_closed(self):
         self.write("research/new/source/INDEX.json", b"not JSON\n")
-        self.assert_refuses_requests("invalid public source index")
+        self.assert_refuses_requests("discovery cannot be validated")
+        with patch("knowledge.mcp_adapter.inventory", side_effect=OSError(str(self.root))):
+            self.assert_refuses_requests("discovery cannot be validated")
 
     def test_completed_intake_requires_restart_and_exposes_the_new_correction(self):
         from knowledge.test_mcp_adapter import complete

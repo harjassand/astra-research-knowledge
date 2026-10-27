@@ -63,7 +63,11 @@ class ResearchAdapter:
             raise ValueError("Corpus snapshot changed; restart the server and search again")
         # New staged/untracked authoring paths are not in frozen_paths. Use
         # the normalizer's filesystem inventory, including source indexes.
-        if inventory(self.root) != self.library.manifest["discovery"]:
+        try:
+            discovery = inventory(self.root)
+        except (OSError, ValueError):
+            raise ValueError("Corpus discovery cannot be validated; finish intake and restart the server") from None
+        if discovery != self.library.manifest["discovery"]:
             raise ValueError("Corpus discovery membership changed; finish intake and restart the server")
         if self.frozen_paths.intersection(self.git("diff", "--name-only", "-z", "HEAD").split("\0")):
             raise ValueError("Corpus snapshot has uncommitted source/view edits; finish intake and restart")

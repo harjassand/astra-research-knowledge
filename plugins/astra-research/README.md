@@ -81,7 +81,8 @@ Every search/fetch request, including continuation pages, also compares the
 normalizer's current filesystem discovery inventory with the captured manifest.
 New staged or untracked reviews, correction shards and other discovered intake
 files therefore fail closed before the old snapshot is served. Unrelated notes
-outside that inventory do not become an intake gate. Keep researcher-facing
+outside that inventory do not become an intake gate. Invalid or unreadable
+discovery also refuses service, without returning a host-local path. Keep researcher-facing
 backends on an immutable committed checkout; finish normal intake and restart
 the backend before serving its new snapshot. These request-boundary guards do
 not establish a public HTTPS endpoint or native Pro readiness.
