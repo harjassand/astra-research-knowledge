@@ -49,7 +49,7 @@ def main():
             assert '1437-line bbe' in notice['clarification']
             outcome = 'Historical positive review applies to b91; does not accept current bbe. Exact historical subject remains unlocated in bounded search.'
         else:
-            source = library.source(target, evidence_index=evidence_index, start=start, end=end)
+            source = library.source(target, evidence_index=evidence_index, start=start, end=end, max_bytes=131072)
             ref, text = source['source'], source['text']
             if identifier == 'I01':
                 assert '2(d-1)' in text and 'trace preservation and unitality are not required' in text
@@ -70,7 +70,7 @@ def main():
                 outcome = 'Reaggregate supplied descriptive records; no causal/equal-compute discovery advantage or complete public rescoring. Eight bodies public, four withheld.'
         observations.append({'case': identifier, 'menu': menu, 'via': via, 'target': target,
                              'source': ref, 'outcome': outcome,
-                             'scope': 'Owner source-informed passage inspection, not blind autonomous-agent success or a producer program replay'})
+                             'scope': 'Owner source-informed passage inspection with an explicit131072-byte deep-source budget; complete default packets are checked separately. Not blind autonomous-agent success or a producer program replay'})
     output = {'input_version': current['input_version'], 'observations': observations,
               'ranking_failure_retained': 'I06 neural baseline foundN33first; expanded-corpus neural top5 miss. Portable reachesN33third. No ranking change was tuned into this source-backfill evaluation.'}
     (BASE / 'SOURCE_USE_ASSESSMENTS.json').write_text(json.dumps(output, indent=2) + '\n')

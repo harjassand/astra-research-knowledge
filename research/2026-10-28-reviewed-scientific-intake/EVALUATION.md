@@ -69,3 +69,8 @@ Local tool-input strings are explicit omission markers; numeric values and
 mathematical conditions remain. The method subset is31 unchanged originals plus
 8 selections/derivatives, with26 full original files private-retained. Earlier
 public commits may remain reachable; this is not erasure or a credentials claim.
+
+The full corrected pilot numeric-source read needs an explicit larger CLI budget;
+inspect_source_routes.py uses131072 bytes for deeper sources. Its initially stale
+report was detected by the real SDK route check and regenerated. Default packets
+are checked separately; MCP source fetch uses complete24KB paging.
