@@ -29,7 +29,11 @@ current certificate ledger, stored-field reassembly, arithmetic plan, full K96
 Gram and outward all-strata sums, tree-completable posterior neighborhood,
 independent guarded-chart and shear algebra, fixed-hull bulk ceiling, compatible
 box overlap and exact heat-kernel constants. The full K96 sum returns
-`N <= 0.004714574814154892`. This is the certified negative-stress upper bound,
+`N <= U141`, the exact `global_negative_mass_upper` rational in the received
+ledger. The source's `0.004714574814154892` is a rounded display; exact rational
+comparison gives the safe outward bound `N < 0.004714574814154893`. The replay
+records the exact source field/hash and verifies this decimal enclosure.
+This is the certified negative-stress upper bound,
 not a W1, affinity, PSD-membership or Morrey solution.
 
 The adopted negative-stress certificate and the optional compatible-box credit

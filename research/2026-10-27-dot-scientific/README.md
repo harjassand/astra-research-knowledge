@@ -27,9 +27,12 @@ finite-error tradeoffs, physical promises, consumed training, rejected branches
 and confidence costs. A programmed filter or shared bank is not free reusable
 access. Monte Carlo controllers and search output remain diagnostics.
 
-The adopted Morrey certificate is
-`N <= 0.004714574814154892`, a negative-stress upper bound for an exact
-30-law root and 986 guarded moment blocks. It does not establish W1 improvement,
+The adopted Morrey certificate is `N <= U141`, where `U141` is the exact
+`global_negative_mass_upper` rational in the received full-Gram ledger.
+Its source display `0.004714574814154892` is rounded:
+`U141 = 0.004714574814154892155761449539...`. A conservative outward decimal
+bound is `N < 0.004714574814154893`. This is a negative-stress upper bound for an
+exact 30-law root and 986 guarded moment blocks. It does not establish W1 improvement,
 affinity improvement, PSD/source membership, an ordering of true negative masses,
 or a Morrey solution. Same-law AC, paid W1 and affinity results have separate
 records and hypotheses. Higher-rank, singular and actual-source support

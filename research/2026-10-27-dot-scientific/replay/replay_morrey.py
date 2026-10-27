@@ -247,10 +247,22 @@ def main():
     with (output / "scientific_replay.log").open("w") as log, contextlib.redirect_stdout(log):
         report = replay(source_root, output / "fields")
     report["scope"] = "Stored moments and current exact root/ledger/Gram arithmetic plus stated compact same-law algebra; no fresh moment acquisition, original law/DAG reconstruction, optimizer or Morrey solution."
+    ledger_path = source_root / ADOPTED / "received_full_Gram_candidate.json"
+    exact_upper = Fraction(json.loads(ledger_path.read_text())["global_negative_mass_upper"])
+    rounded_display = "0.004714574814154892"
+    outward_decimal = "0.004714574814154893"
+    assert exact_upper < Fraction(outward_decimal)
+    assert abs(exact_upper - Fraction(rounded_display)) < Fraction(1, 2 * 10**18)
+    assert (exact_upper.numerator * 10**18 + exact_upper.denominator - 1) // exact_upper.denominator == 4714574814154893
     report["adopted_negative_stress_certificate"] = {
         "source_status": "Original version-bound independently received adopted141 certificate",
         "replay_status": "Exact stored-field hashes, root and ledger arithmetic, and fullK96 Gram/outward sums reproduced",
-        "negative_stress_upper": "0.004714574814154892",
+        "exact_upper_authority": {"path": ADOPTED + "received_full_Gram_candidate.json",
+                                  "field": "global_negative_mass_upper", "sha256": sha(ledger_path)},
+        "source_rounded_display": rounded_display,
+        "safe_outward_decimal_upper": outward_decimal,
+        "bound_relation": "N <= exact U141 < safe_outward_decimal_upper; source_rounded_display is approximate",
+        "outward_decimal_verified_by_exact_rational_comparison": True,
         "optional_overlap_credit_applied": False,
         "scope": "Certified negative-stress upper only; no W1, affinity, PSD membership or Morrey solution."}
     report["optional_same_law_overlap"] = {

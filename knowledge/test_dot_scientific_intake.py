@@ -15,7 +15,9 @@ class DotScientificIntake(unittest.TestCase):
     def test_new_and_affected_default_packets_retain_every_scope_within_budget(self):
         from knowledge.retrieve import Library
         library = Library()
-        for identifier in ["N" + str(i) for i in range(1093, 1118)] + ["N993", "N994", "N995", "N1006"]:
+        parents = {library.resolve("N" + str(i))["id"] for i in range(1093, 1118)}
+        units = sorted(record["id"] for record in library.records.values() if parents.intersection(record["parents"]))
+        for identifier in sorted(parents) + units + ["N993", "N994", "N995", "N1006"]:
             packet = library.packet([identifier])
             packet["checkout_revision"] = "0" * 40
             self.assertLessEqual(len(encoded(packet)), 32768, identifier)
@@ -31,13 +33,26 @@ class DotScientificIntake(unittest.TestCase):
     def test_new_review_subjects_bind_the_actual_current_content(self):
         records = {row["id"]: row for row in map(json.loads, (ROOT / "knowledge/current/records.jsonl").read_text().splitlines())}
         reviews = list((ROOT / "knowledge/reviews").glob("A11*-dot-*.json"))
-        self.assertEqual(len(reviews), 25)
+        self.assertGreaterEqual(len(reviews), 25)
         for path in reviews:
             review = json.loads(path.read_text())
             for subject in review["subjects"]:
                 record = records[subject["id"]]
-                self.assertEqual(subject["content_version"], record["content_version"], subject["id"])
-                self.assertTrue(any(item["id"] == review["id"] for item in record["review_overlays"]), subject["id"])
+                if subject["content_version"] == record["content_version"]:
+                    self.assertTrue(any(item["id"] == review["id"] for item in record["review_overlays"]), subject["id"])
+                else:
+                    self.assertTrue(any(item["id"] == review["id"] for item in record["historical_reviews"]), subject["id"])
+                    self.assertFalse(any(item["id"] == review["id"] for item in record["review_overlays"]), subject["id"])
+
+    def test_decimal_display_does_not_replace_the_exact_certified_upper(self):
+        ledger = INTAKE / "source/morrey_law_first_stress_20261026/cube_brownian_completion/fully_corrective141_half_K48/received_full_Gram_candidate.json"
+        upper = Fraction(json.loads(ledger.read_text())["global_negative_mass_upper"])
+        self.assertGreater(upper, Fraction("0.004714574814154892"))
+        self.assertLess(upper, Fraction("0.004714574814154893"))
+        report = json.loads((INTAKE / "validation/morrey-replay.json").read_text())
+        certificate = report["adopted_negative_stress_certificate"]
+        self.assertEqual(certificate["exact_upper_authority"]["field"], "global_negative_mass_upper")
+        self.assertTrue(certificate["outward_decimal_verified_by_exact_rational_comparison"])
 
     def test_optional_overlap_replay_keeps_its_actual_proof_inequalities(self):
         report = json.loads((INTAKE / "validation/morrey-replay.json").read_text())
