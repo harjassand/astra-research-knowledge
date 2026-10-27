@@ -47,16 +47,22 @@ def sections(text):
     return {key: "\n".join(value).strip() for key, value in result.items()}
 
 
-def packet_review(review, packet_evidence):
+def packet_review(review, packet_evidence, preserve_annotations=False):
     """Reference review citations through the packet evidence array when complete."""
     result = dict(review)
-    refs = [compact_ref(reference) for reference in evidence_refs(review.get("evidence", []))]
+    originals = list(evidence_refs(review.get("evidence", [])))
+    refs = [compact_ref(reference) for reference in originals]
     positions = {encoded(reference): index for index, reference in enumerate(packet_evidence)}
     keys = [encoded(reference) for reference in refs]
     if refs and all(key in positions for key in keys):
         result.pop("evidence", None)
         result["evidence_ref_field"] = "evidence"
         result["evidence_ref_indices"] = [positions[key] for key in keys]
+        if preserve_annotations:
+            annotations = [{key: value for key, value in original.items()
+                            if key not in compact_ref(original)} for original in originals]
+            if any(annotations):
+                result["evidence_ref_annotations"] = annotations
     return result
 
 
@@ -486,6 +492,18 @@ def build(root=ROOT):
                 break
             if excerpt.pop("text", None) is not None:
                 excerpt["text_omitted"] = "Read this exact source range; navigation text omitted to preserve the default complete-packet budget."
+        if default_output_size() > 32768:
+            # Every locator is already retained in evidence. Empty optional
+            # excerpt wrappers need not duplicate those complete references.
+            packet["source_excerpts"] = []
+            packet["source_excerpt_scope"] = "Optional excerpts omitted for budget; read complete evidence."
+        if default_output_size() > 32768 and packet["review"].get("gaps"):
+            # Preserve each actual gap and all historical source annotations;
+            # only exact duplicate citations use the existing index convention.
+            # Copy the review so canonical records remain unchanged.
+            packet["review"] = dict(packet["review"], gaps=[
+                packet_review(gap, packet["evidence"], preserve_annotations=True)
+                if isinstance(gap, dict) else gap for gap in packet["review"]["gaps"]])
         outputs["knowledge/current/packets/" + route_id(record["id"]) + ".json"] = encoded(packet)
     coverage = {
         "records_by_kind": dict(Counter(record["kind"] for record in records)),

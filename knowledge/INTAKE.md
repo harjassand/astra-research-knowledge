@@ -81,3 +81,9 @@ providers or inherited acceptance is generated. All qualifications, costs,
 corrections and field-specific acquisition obligations remain. These optional
 annotations are intake-agent work for selected useful interfaces, not a new
 researcher form or a requirement to classify every source.
+
+Large packets may omit optional navigation excerpts whose complete locators
+already occur in `evidence`. Exact duplicate legacy gap citations can use the
+existing `evidence_ref_indices` convention; `evidence_ref_annotations` retains
+any original per-source metadata. The actual gap scope and every correction,
+condition and review remain. Conflicting references are kept separately.

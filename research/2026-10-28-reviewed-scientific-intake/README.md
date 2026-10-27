@@ -1,7 +1,8 @@
 # Reviewed scientific evidence backfill
 
-This intake integrates the curator's completed batches 02 then 03 from frozen
-source commit d41f7874ed2c74cad1ef983d02d651ce58b03caa. The scientific scope reviews
+This intake integrates the curator's completed source batches02,03,04,05 and
+06 together with required06a, in ordered commits from public main8d51d607.
+The source commits and actual review/gate contexts are listed in SOURCE_BATCHES.json. The scientific scope reviews
 are retained verbatim here. They preceded the changed public-source selection,
 which has its own owner review and current-base publication checks. No worker
 was launched and the curator checkout was not edited.
@@ -29,10 +30,14 @@ b91 is unlocated in the bounded search, and that review does not automatically
 accept the whole current manuscript. This records exact acceptance and the
 remaining transfer obligation without imposing external review.
 
-Adaptive learning/frontier proof originals and their source reviews are
-admitted as frozen scientific evidence. File admission does not make every
-source a fully extracted or accepted reusable unit. The curator's unfinished
-batch04 is outside this intake; no global completeness claim is made.
+The compiled slice adds77 stable current records:13 result cards and64 reusable
+units, with historical unit versions and exact scoped reviews retained. It
+includes Gaussian-law/acquisition interfaces, count-certified predictive
+models, local resonance/control results, conditional hopping transport,
+readout boundaries and a scoped quartic obstruction. SOURCE_SCOPE.md records
+the load-bearing qualifications. File admission does not make every source
+a fully extracted or accepted reusable unit. The curator's later batch07 is
+outside this frozen boundary; no global completeness claim is made.
 
 Use knowledge/INTAKE.md for every subsequent new or revised source. Source
 indexes, immutable units, review overlays and existing notices use the same
