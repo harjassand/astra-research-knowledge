@@ -130,6 +130,44 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("both signed-task extremizers", source["text"])
             self.assertIn("q_-(x)", source["text"])
 
+    async def test_real_stdio_refuses_new_intake_and_separate_head_change(self):
+        from knowledge.model import encoded
+        from knowledge.test_mcp_snapshot_membership import SnapshotMembershipTests
+
+        for kind, staged in (("review", False), ("review", True),
+                             ("correction", False), ("correction", True), ("head", False)):
+            with self.subTest(kind=kind, staged=staged):
+                fixture = SnapshotMembershipTests()
+                try:
+                    fixture.setUp()
+                    params = StdioServerParameters(command=sys.executable,
+                        args=[str(PLUGIN / "server.py"), "--root", str(fixture.root)])
+                    async with Client(params, read_timeout_seconds=60) as client:
+                        first = await client.call_tool("fetch", {"id": "U1-fixture"})
+                        self.assertFalse(first.is_error, first.content)
+                        continuation = first.structured_content["metadata"]["next_id"]
+                        self.assertIsNotNone(continuation)
+                        source = await client.call_tool("fetch", {"id": fixture.source_handle})
+                        self.assertFalse(source.is_error, source.content)
+                        if kind == "head":
+                            fixture.commit("--allow-empty")
+                            expected = "snapshot changed"
+                        else:
+                            name, value = fixture.intake_value(kind)
+                            fixture.write(name, encoded(value))
+                            if staged:
+                                fixture.git("add", name)
+                            expected = "discovery membership changed"
+                        for tool, arguments in (("search", {"query": "finite source"}),
+                                                ("fetch", {"id": "N1-fixture"}),
+                                                ("fetch", {"id": fixture.source_handle}),
+                                                ("fetch", {"id": continuation})):
+                            result = await client.call_tool(tool, arguments)
+                            self.assertTrue(result.is_error, result.content)
+                            self.assertIn(expected, " ".join(getattr(c, "text", "") for c in result.content))
+                finally:
+                    fixture.doCleanups()
+
 
 if __name__ == "__main__":
     unittest.main()
