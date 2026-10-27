@@ -14,6 +14,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from knowledge.model import (ROOT, Inputs, compact_ref, digest, encoded, evidence_refs,
                              field_index, flatten, local, route_id, scientific_text, unique)
+from knowledge.evidence import source_indexes
 
 MANIFEST = "knowledge/current/manifest.json"
 DISCOVERY = {
@@ -27,7 +28,7 @@ DISCOVERY = {
 
 def inventory(root):
     return {folder: sorted(path.relative_to(root).as_posix() for path in (root / folder).glob(pattern)
-                           if path.is_file()) for folder, pattern in DISCOVERY.items()}
+                           if path.is_file()) for folder, pattern in DISCOVERY.items()} | {"selected_public_source_indexes": source_indexes(root)}
 
 
 def sections(text):
@@ -64,8 +65,13 @@ def build(root=ROOT):
     discovered = inventory(root)
     for name in ("knowledge/model.py", "knowledge/build.py", "knowledge/retrieve.py",
                  "knowledge/search.js", "knowledge/index.html", "knowledge/README.md",
-                 "knowledge/INTAKE.md", "00_START_HERE.txt", "AGENTS.md", "agent/ACCESS.txt"):
+                 "knowledge/INTAKE.md", "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/evidence.py",
+                 "knowledge/requirements-agent.txt", "knowledge/runtime/manifest.json",
+                 "00_START_HERE.txt", "AGENTS.md", "agent/ACCESS.txt"):
         inputs.read(name)
+    for name, expected in inputs.json("knowledge/runtime/manifest.json")["files"].items():
+        if digest(inputs.read("knowledge/runtime/" + name)) != expected:
+            raise ValueError("INGESTION FAILED: pinned retrieval model bytes changed: " + name)
     concepts = inputs.json("knowledge/concepts.json")
     claims = unique(inputs.rows("indexes/claims.jsonl", "indexes/claims.d"), "id")
     statuses = unique(inputs.rows("frontier/CURRENT_CLAIM_STATUS.jsonl", "frontier/CURRENT_CLAIM_STATUS.d"), "card_id")
@@ -194,7 +200,7 @@ def build(root=ROOT):
         }
         records.append(record)
         proof = status["proof_availability"]
-        retrieval_refs = proof.get("located_proof_sources", []) or proof.get("available_evidence_sources", [])
+        retrieval_refs = proof.get("located_proof_sources", []) + proof.get("available_evidence_sources", [])
         for reference in references(retrieval_refs):
             text, passage = inputs.source(reference)
             searchable, selector = scientific_text(passage)
@@ -211,6 +217,10 @@ def build(root=ROOT):
                 window_end = min(end, window_start + 79)
                 window = "".join(lines[window_start - 1:window_end])
                 source_ref = dict(reference, lines=[window_start, window_end])
+                if source_ref.get("quote") and source_ref["quote"] not in window:
+                    # The governing range was validated above. A search window
+                    # must not claim that its parent's anchor occurs inside it.
+                    source_ref.pop("quote")
                 source_id = "S-" + digest(encoded({"parent": identifier, "source": source_ref}))[:24]
                 sources.append({"id": source_id, "kind": "source_window", "record_id": identifier,
                                 "parents": [identifier], "title": reference.get("range_scope", claim["title"]),
@@ -367,7 +377,12 @@ def build(root=ROOT):
     for record in sorted(records, key=lambda item: item["id"]):
         documents.append({key: record[key] for key in ("id", "kind", "parents", "title", "statement", "contract", "body", "notices")}
                          | {"record_id": record["id"], "aliases": record.get("aliases", "")})
-    documents.extend(sorted(unique(sources, "id").values(), key=lambda item: item["id"]))
+    source_documents = {}
+    for source in sources:
+        if source["id"] in source_documents and source_documents[source["id"]] != source:
+            raise ValueError("Conflicting source-window identity: " + source["id"])
+        source_documents[source["id"]] = source
+    documents.extend(sorted(source_documents.values(), key=lambda item: item["id"]))
     postings = field_index(documents)
     result_documents = [document for document in documents if document["kind"] == "result"]
     lexical = field_index([{"body": document["body"]} for document in result_documents])
@@ -381,6 +396,9 @@ def build(root=ROOT):
             "id", "kind", "record_id", "parents", "title", "evidence", "scope", "text_selection") if key in document}) for document in documents),
         "knowledge/current/transfers.json": encoded(transfers),
     }
+    from knowledge.operations import operation_frame
+    outputs["knowledge/current/operations.jsonl"] = b"".join(
+        encoded(operation_frame(record)) for record in sorted(records, key=lambda item: item["id"]))
     shards = defaultdict(dict)
     for term, entries in postings.items():
         shards[digest(term.encode())[:2]][term] = entries
@@ -420,13 +438,17 @@ def build(root=ROOT):
         outputs["knowledge/current/packets/" + route_id(record["id"]) + ".json"] = encoded(packet)
     coverage = {
         "records_by_kind": dict(Counter(record["kind"] for record in records)),
-        "source_windows": len(sources),
+        "source_windows": len(source_documents),
         "recoverable_exact_source_versions": len({(path, version) for path, version, _ in inputs.sources}),
         "distinct_source_text_hashes": len({version for _, version, _ in inputs.sources}),
         "topics": dict(Counter(topic for record in records for topic in record.get("topics", []))),
-        "scope": "All registered current result cards, existing atlas entries, selected reusable units and latest public technology records. Only cited ranges searched; unregistered raw archives and withheld material are not silently ingested.",
+        "scope": "Scientific lane: all registered current cards, atlas entries, selected reusable units and latest technology, including located proof AND available evidence ranges. Separate evidence lane: current record evidence ranges and explicit selected-public-source-index entries, with exclusions and no inferred acceptance. Unregistered archives/withheld material remain unassessed.",
         "eligible_mechanism_denominator": "UNKNOWN", "scientific_acceptance": "Only explicit version-bound substantive review overlays confer acceptance; extraction and hashing do not.",
     }
+    from knowledge.evidence import projection
+    evidence_outputs, evidence_coverage = projection(root, inputs, records, discovered["selected_public_source_indexes"])
+    outputs.update(evidence_outputs)
+    coverage["evidence_navigation"] = evidence_coverage
     outputs["knowledge/current/coverage.json"] = encoded(coverage)
     topic_records = defaultdict(dict)
     topic_names = defaultdict(set)
@@ -452,7 +474,8 @@ def build(root=ROOT):
     outputs["knowledge/current/browse/index.txt"] = ("\n".join(browse) + "\n").encode()
     outputs["knowledge/current/search_manifest.json"] = encoded({"input_version": digest(encoded(inputs.hashes)),
         "outputs": {name: digest(data) for name, data in outputs.items() if name.startswith((
-            "knowledge/current/catalog", "knowledge/current/postings/", "knowledge/current/lexical/", "knowledge/current/packets/"))}})
+            "knowledge/current/catalog", "knowledge/current/postings/", "knowledge/current/lexical/", "knowledge/current/packets/",
+            "knowledge/current/operations", "knowledge/current/evidence/"))}})
     manifest = {"schema": "astra.knowledge-manifest.v1", "inputs": dict(sorted(inputs.hashes.items())),
                 "discovery": discovered, "outputs": {name: digest(data) for name, data in sorted(outputs.items())},
                 "counts": coverage, "input_version": digest(encoded(inputs.hashes))}

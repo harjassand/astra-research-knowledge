@@ -23,6 +23,7 @@ class Library:
         self.documents = self.rows("documents.jsonl")
         self.catalog = json.loads((self.root / "knowledge/current/catalog.json").read_bytes())
         self.transfers = json.loads((self.root / "knowledge/current/transfers.json").read_bytes())
+        self.operation_frames = {row["id"]: row for row in self.rows("operations.jsonl")}
 
     def rows(self, name):
         return [json.loads(line) for line in (self.root / "knowledge/current" / name).read_bytes().splitlines() if line.strip()]
@@ -35,7 +36,12 @@ class Library:
             raise ValueError("Unknown or ambiguous ID: " + identifier)
         return selected[0]
 
-    def search(self, query, limit=5, method="structured", kind=None):
+    def search(self, query, limit=5, method="structured", kind=None, **facets):
+        if method == "agent":
+            from knowledge.agent_search import search
+            return search(self, query, limit, kind, **facets)
+        if any(facets.values()):
+            raise ValueError("Object/operation/premise facets require --method agent; do not silently ignore assumptions")
         if not 1 <= limit <= 50:
             raise ValueError("limit must be in 1..50")
         if method == "lexical":
@@ -98,6 +104,32 @@ class Library:
         return value
 
     def source(self, identifier, evidence_index=0, start=None, end=None, max_bytes=32768):
+        if identifier.startswith("E-"):
+            folder = self.root / "knowledge/current/evidence"
+            selected = next((json.loads(line) for line in (folder / "documents.jsonl").read_bytes().splitlines()
+                             if json.loads(line)["id"] == identifier), None)
+            if selected is None or evidence_index != 0:
+                raise ValueError("Unknown evidence window or index")
+            ref = selected["source"]
+            if ref.get("lines") is None:
+                raise ValueError("Metadata-only artifact has no inferred supporting passage; read its original public path: " + ref["path"])
+            text, _ = Inputs(self.root).source(ref)
+            lower, upper = ref["lines"]
+            start, end = lower if start is None else start, upper if end is None else end
+            if not lower <= start <= end <= upper:
+                raise ValueError("Read must remain within the cited inclusive source range")
+            passage = "".join(text.splitlines(keepends=True)[start - 1:end])
+            passage, selector = scientific_text(passage)
+            artifact = next(json.loads(line) for line in (folder / "artifacts.jsonl").read_bytes().splitlines()
+                            if json.loads(line)["id"] == selected["artifact_id"])
+            value = {"id": identifier, "source": dict(ref, lines=[start, end]), "text": passage,
+                     "text_selection": selector, "artifact": artifact,
+                     "notices": [dict(notice, citation_context=record_id) for record_id in artifact["cited_by"]
+                                 for notice in self.records[record_id]["notices"]],
+                     "scope": "Evidence navigation only; citations and coarchive do not confer acceptance. Inspect cited_by packets and their current conditions/corrections."}
+            if len(encoded(value)) > max_bytes:
+                raise ValueError("Source read exceeds byte budget; select --start/--end or increase --max-bytes")
+            return value
         selected = next((document for document in self.documents if document["id"] == identifier and document["kind"] == "source_window"), None)
         record = self.resolve(selected["record_id"] if selected else identifier)
         references = selected["evidence"] if selected else record["evidence"]
@@ -149,8 +181,12 @@ def main():
     search = sub.add_parser("search", help="describe a task, operation, obstruction or analogy")
     search.add_argument("query")
     search.add_argument("--limit", type=int, default=5)
-    search.add_argument("--method", choices=("structured", "field", "lexical"), default="structured")
+    search.add_argument("--method", choices=("agent", "structured", "field", "lexical"), default="structured")
     search.add_argument("--kind")
+    search.add_argument("--object", dest="object_text", default="", help="scientific object/representation to rank")
+    search.add_argument("--operation", default="", help="capability or reduction to rank")
+    search.add_argument("--available", action="append", default=[], help="supplied premise to inspect, never automatically discharged")
+    search.add_argument("--unavailable", action="append", default=[], help="unavailable premise to flag, not silently filter away")
     packet = sub.add_parser("packet")
     packet.add_argument("ids", nargs="+")
     packet.add_argument("--max-bytes", type=int, default=32768)
@@ -164,17 +200,26 @@ def main():
     bridge.add_argument("source")
     bridge.add_argument("destination")
     sub.add_parser("coverage")
+    evidence = sub.add_parser("evidence", help="search all registered evidence ranges and selected public originals; no acceptance inferred")
+    evidence.add_argument("query")
+    evidence.add_argument("--method", choices=("field", "agent"), default="field")
+    evidence.add_argument("--limit", type=int, default=5)
     args = parser.parse_args()
     try:
         library = Library()
         if args.command == "search":
-            result = library.search(args.query, args.limit, args.method, args.kind)
+            result = library.search(args.query, args.limit, args.method, args.kind,
+                                    object_text=args.object_text, operation=args.operation,
+                                    available=args.available, unavailable=args.unavailable)
         elif args.command == "packet":
             result = library.packet(args.ids, args.max_bytes)
         elif args.command == "source":
             result = library.source(args.id, args.evidence, args.start, args.end, args.max_bytes)
         elif args.command == "bridge":
             result = library.bridge(args.source, args.destination)
+        elif args.command == "evidence":
+            from knowledge.evidence import search as search_evidence
+            result = search_evidence(library, args.query, args.limit, args.method)
         else:
             result = library.manifest["counts"]
         revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True)

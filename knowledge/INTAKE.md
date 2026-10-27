@@ -1,5 +1,15 @@
 # Capital integration contract
 
+The same build/check now generates lossless operation views and evidence
+navigation from existing record citations and recognized selected-public-source
+indexes (`astra.intake-source-index.v1` or `selected_frozen_source_index`). Keep
+using those existing formats; no producer form or neural inference is required
+for intake. Their explicit public entries must retain exact SHA256/byte length;
+missing declared originals fail ingestion. Private `origin` paths are never
+followed. Index admission gives evidence discoverability, not scientific
+acceptance. Scoped extractions retain their cited-range boundary. See
+`knowledge/current/coverage.json` for the exact admitted denominator/exclusions.
+
 1. Start from current merged main in your own intake checkout. Preserve original
    source bytes and stable result identities. Keep raw originals separate from
    derived text. Use existing claim/status/catalog/alias/notice shards; do not ask
