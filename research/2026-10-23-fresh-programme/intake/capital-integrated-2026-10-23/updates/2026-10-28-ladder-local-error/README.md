@@ -1,0 +1,11 @@
+# Same-end ladder: dressed local-error response and local poles
+
+This is an additive continuation of `N1080-same-end-symmetry-filtered-hardcore-pair` under the exact Hamiltonian in the supplied base packet. It does not identify that model with earlier SSH or non-RWA spring models. The original N1080 cards, units and reviews retain their versions.
+
+`R1080-dressed-error-response-and-local-poles` supplies the result map. Its six separately scoped units give the dressed odd density and loose positivity certificate; fixed-g visible local outgoing pole; ordered eighth-order detuning linewidth; coherent first-rung compensation; explicit all-fixed-sector nonnegativity box; and exact local Feshbach responses. Retrieve these identifiers through the normal knowledge packet interface. Completed actual reviews bind the normalized content versions.
+
+`source/INDEX.json` verifies 133 unchanged selected science originals: the 132 declared files plus the source manifest itself. `source/originals/README.md` and `SOURCE_POSITION_LINEAGE.json` navigate the four duplicate density derivations and complementary later extensions. Code, results, failed low-order diagnostics, independent reviewer checks and corrections are retained. Several original scripts contain legacy absolute output paths; this intake did not execute them.
+
+The primary c74 pole construction is complete at its stated local mathematical scope. The c31 alternative is accepted with the unchanged original plus `C16_CORRECTION.md`: a minus derivative sign and a Schur-inverse domain qualifier. The c86 exact response formulas are valid consequences, not another pole discovery or a necessary repair. Actual pole coefficients include the derivative of their denominator.
+
+The positive interval bound rho>4e-16 is distinct from the ordinary approximate 2.12750672e-8 decimal. The approximate 90.67 control benefit is a leading ordered-limit linewidth coefficient reduction using an additional actuator. Its positive residual, finite-g numerical differences, stronger direct-memory-retuning competitor and bath-loss scaling remain visible. The finite stability box is not a pole-radius box. No numerical detuning tolerance, survival law, inclusive gate-error certificate, acquired control/device, physical advantage or priority claim follows.

@@ -1,0 +1,22 @@
+# P2 local symmetry-breaking response, resonance and compensation
+
+Completed source-bound scientific intake for the existing Astra Capital owner. This directory contains the scientific constructions and actual internal reviews; the surrounding study protocols, model/policy maps and coordination notes are private and excluded. `SOURCE_FILES.json` records unchanged copied source bytes. `C16_CORRECTION.md` accompanies the original solo pole proof and must remain bound to it.
+
+This is one related physical-model family with complementary extensions, not nine independent breakthroughs. Find the existing canonical card/unit for the same-end, two-rail, hard-core ladder supplied in `base_packet`. Do not overwrite a different SSH or positive-spring non-RWA Hamiltonian as if their assumptions were identical. Maintain actual canonical cards/versions/units and useful scoped relations, rather than merely archiving these sources or creating a card per duplicate derivation.
+
+## Scientific components
+
+* `constructions/r11,r24,r37,r48`: four full derivations of the finite strictly positive dressed-source odd hard-core density at g=1/5. All four received two independent substantive internal reviews, in `reviews/review_a/REVIEW.md` and `reviews/review_b/REVIEW.md`. The approximate 2.12750672e-8 density is not interval certified. Both complete endpoint spectral atoms and continua matter.
+* `constructions/q58`: positivity proof plus exact-rational interval certificate, including rho>4e-16. Both `reviews/review_*/policy_followup/REVIEW.md` accept this scope. This return does not itself prove the resonance implication.
+* `constructions/q23`: the local continued-resolvent pole, ordered small-error/weak-coupling linewidth asymptotic, coherent first-rung compensating control, strict residual and stated stability box. The same two source-informed follow-up reviews accept these mathematical claims. About 90.67 is a reduction in a leading asymptotic error coefficient with an additional control, not device fidelity or practical advantage. Direct memory retuning is the stronger ordinary repair when available.
+* `constructions/c74`: full bounded-deformation and hard-core-compression proof of a visible local outgoing pole at fixed g=1/5, including a possible coincident harmonic-atom cancellation, actual physical-response matching and an even fourth-order remainder. `reviews/pole/REVIEW.md` accepts it at that scope with no substantive blocker.
+* `constructions/c31` with `C16_CORRECTION.md`: alternative local pole construction and exact energy/atom-sum separation certificate. The same review accepts the conclusion with the displayed derivative correction and inverse-domain clarification. Preserve the correction rather than silently calling the original error-free.
+* `constructions/c86`: valid exact local Feshbach response formulas, explicit cancellation algebra and independent finite-Fock diagnostics. `reviews/pole/INTEGRATOR_REVIEW.md` accepts these as consequences of the already complete c74 handoff, not a further pole theorem or necessary repair. Coarse wrong-sign numerical failures are retained.
+
+The initial model reviews were independent at their start; the policy follow-ups reused their technical context. The pole reviewer began fresh with the supplied science and later reviewed the integrator warm. Neutral labels did not provide perfect blindness. Their available reasoning summaries describe choices; the mathematical arguments and independent checks carry acceptance.
+
+## Scope and unresolved interfaces
+
+These internally reviewed theorems concern declared ideal Hamiltonians and local analytic continuations. Norm-defined positive detuning radii have not been evaluated into usable numerical tolerances. Tight interval density decimals, a finite-duration gate certificate, a survival law, calibrated realizable controls, advantage over the strongest equally informed practical comparator and historical priority remain separate obligations. Retain the positive mathematics without upgrading it to an acquired device or civilisation-level achievement.
+
+Producer code and reviewer checks are copied unchanged; some scripts contain legacy absolute work paths. Execute only owned copies with output paths adapted, not originals or shared source locations. Root's initial independent finite-Fock and continuum replay record is `reviews/coordinator/RESULTS.json`; it checks those mathematical/numerical interfaces, not hardware.

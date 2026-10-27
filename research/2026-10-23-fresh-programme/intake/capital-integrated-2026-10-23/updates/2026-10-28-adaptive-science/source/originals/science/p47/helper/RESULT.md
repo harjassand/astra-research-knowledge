@@ -1,0 +1,9 @@
+# Helper result
+
+The load-bearing analytic interface is complete in PROOF.md. A three-endpoint compliance dual R=g+lambda/w+a w+nu/w³ certifies global optimality over every finite positive internal network whenever nu<0, a>=0 and either a>0 or lambda>0. The proof handles arbitrary lambda, the exact a=0 edge, zero series coefficients, every positive frequency, finite networks of unbounded order, all pass bands, and the correct compliance-inequality sign. A self-contained Descartes lemma and the entire-series coefficient pattern bound R to three positive roots counting multiplicities. The candidate's exact three endpoints then exhaust every possible zero and enforce the required negative intervals.
+
+At the target the exact positive network is masses (1,1), K=1, k=4, with endpoints (sqrt(5)-1,sqrt(8),sqrt(5)+1). Independent 70-digit floating checks give lambda=-0.5911370..., a=0.03957890..., nu=-0.35127688..., strictly inside the theorem's coefficient region. Parent-owned rigorous enclosures are needed to turn these floating signs into a fully certified numerical instance. No grid is used for the analytic sign conclusion.
+
+The same theorem includes heavier allowed backbone allocations; the extra trace and compliance moment terms retain the correct inequality signs. Exploratory diagnostics locate an a=0 point at r=5.2868332183026286..., C=0.0715548005413910..., with lambda>0 and nu<0. At r=6, a<0. Those values are recorded by reproducible boundary_diagnostic.py and boundary_diagnostic.txt; they are diagnostics, not a proof of boundary uniqueness. Parent owns the further frontier construction.
+
+Prior overlap: the positive star realization and exact two spectral moments/compliance moment are supplied F/C/A machinery. The additional construction here is the all-frequency root bound and compliance-dual theorem. Historical novelty, physical device feasibility, contacts/material budgets and practical advantage remain unestablished.
