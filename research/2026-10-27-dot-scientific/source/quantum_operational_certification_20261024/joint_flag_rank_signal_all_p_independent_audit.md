@@ -1,0 +1,9 @@
+# Independent all-real-p joint Choi lower corollary
+
+PASS, 27 October 2026. For every integer r>=1 and real0<p<=1 the explicit diluted orthogonal-reset subclass requires n>=9r²/(32768p²) normalized Choi programs at relative complete error<=p/4.
+
+D=floor(r/p) satisfies r<=D<=r/p and D>=r/(2p). Thus p'=r/D is a valid success probability with p'>=p and c=p/p' lies in[1/2,1]. Applying the known replacement/embedding channel with keep probability c to the canonical output gives exactly the proposed family, preserving rank-r uniform success and making the combined reset orthogonal to that code. The added orthogonal sector is a direct-sum reset block; homogeneous deficit remains exactly zero.
+
+The same known CPTP map applied separately to each canonical normalized Choi output and the independent datum exactly simulates the diluted experiment with no U-dependent operation and no extra program samples. Hence any learner's accessible label information after dilution is bounded above by that of the canonical n-program/data ensemble. The received input-dependent conditional-Fano argument lower-bounds it by p/4, not p'/4. Combining with1024rn/(9D³) gives n>=9pD³/(4096r)=9cD²/4096. The two elementary floor bounds then yield9r²/(32768p²). The comparison direction is therefore correct and does not pretend the diluted learner inverts the undiluted channel at success p'.
+
+The source is explicit in output dimension3D+1, with a removable zero-weight extra block at p=1. Conditional IID and independent datum remain for one fixed U. Together with the received rank-bounded soft-threshold upper at p0 on the same worst-case scale, this matches fixed-relative-accuracy rank/signal exponents in full-Choi-copy access up to logarithmic factors. No quadratic adaptive physical-query lower, optimal constant, accuracy exponent or reusable decoder claim follows.

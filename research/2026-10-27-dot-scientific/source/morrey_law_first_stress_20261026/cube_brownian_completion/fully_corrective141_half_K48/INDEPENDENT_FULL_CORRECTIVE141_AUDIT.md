@@ -1,0 +1,9 @@
+# Independent full corrective141 receipt
+
+PASS. New fullK96 certificate N<=0.004714574814154892, improving adopted138's upper by0.00021703420613713986. Exact30-law2^80 raw S3 root,209781 orbit-proxy rows,W1<=5.147572769688163e-15,986 guarded moment blocks.
+
+The entire normalized root/proxy/arithmetic and full-Gram receivers were replayed without modifying frozen outputs. Physical component identities, endpoint interface and witness hashes, exact probabilities, source cancellation, all three strata, own Gram fees,48/4 coefficient transfer payments, numerical/face payments, actual-proxy allowance and inherited source/early allowance were independently assembled and checked. The sum matches the received scalar upper and the previous138 comparison exactly. New fine law was independently received in full, including every node, complete chord and fullK96 endpoint price.
+
+All stored fields were independently reassembled from guarded moments. Volume and edge arrays match bit for bit. Face reassembly differs by at most2.710505431213761e-19 (below2^-58), a floating arithmetic discrepancy far below the declared effective field envelope2^-29; this is not claimed to be an exact face-array match. The field code, basis/rounding budgets and frozen output hashes are checked; the proof uses the guarded arithmetic envelope, not bit reproducibility. The whole endpoint moment-acquisition loop was not rerun: its source inputs,986-block ledger, code and declared guards were received, and all downstream fields reassembled.
+
+Tiny discovery weights are explicitly relocated before defining the new exact root; there is no pruning inside any component law. No stationary baseline is present. This certifies a new upper for the signed stress of this actual source-exact root, not a true-negative-mass ordering, PSD, membership, Morrey solution, W1/affinity improvement, or exact-cubic-equality source.

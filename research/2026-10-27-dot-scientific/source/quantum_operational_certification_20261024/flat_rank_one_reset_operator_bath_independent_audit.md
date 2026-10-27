@@ -1,0 +1,11 @@
+# Independent noncommuting operator-bath assembly
+
+PASS, 27 October 2026. This receives the structured lift Z=T tensor U+I tensor V for arbitrary PSD, possibly noncommuting/singular U,V, where T is the received flat-main/arbitrary-rank-one two-level-reset source. It does not receive arbitrary nonflat-main/reset pairs.
+
+Every scalar white translate T+tI is genuinely in the received whole family: a0 becomes a0+t while b and the projector remain fixed, so a0+t>=0 and a0+t+b>=0. Its deficit h(t) is nonnegative on the entire half-line, not just at the original endpoint. Applying the exact common-resolvent positive spectral-mixture identity with bath C=U,B=V therefore gives the displayed formula and total measure mass TrU. The original source is preserved; no physical flagged-mixture assertion is required.
+
+For completeness, the load-bearing lifting step counts positive eigenvalues of U/z-V-sI, giving integrated spectral count Tr(U/z-V)_+. Its convex right derivative is bounded by TrU and tends to TrU at infinity. The common determinant function is O(z²) at zero and O(1+log z) at infinity, which gives absolute endpoint integrability and the stated Stieltjes integration by parts. Thus no unreceived arbitrary matrix-clock substitution is being imported.
+
+If Y0 is nonzero, scalar strictness holds for every finite t>=0. Any positive measure of nonzero total mass then has strictly positive h integral, even if its support is unbounded. If U=0 the source is reset-only and has zero deficit. If Y0=0, only h(0) vanishes. The positive measure is then supported at zero exactly when q'(0+)=TrU. First-order perturbation of -V gives q'(0+)=Tr(PkerV U), valid for singular matrices and noncommuting U,V. Equality forces Tr(PsuppV U)=0; positivity eliminates its off-diagonal blocks and makes this equivalent to UV=0. Conversely orthogonal support gives q(t)=tTrU and only the zero atom. This establishes the complete stated equality cases.
+
+The physical marginal is exactly [(r+TrY0)TrU+3rTrV]I3. Division by that coefficient gives the unnormalized TP Choi operator (trace3), and division by three times it gives a normalized Choi state. The nonflat main I_r tensor U is allowed, but the reset remains the specific coupled sum Y0 tensor U+I tensor V. No arbitrary C,Y generalization or instrument-order conclusion follows.
