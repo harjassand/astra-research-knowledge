@@ -105,6 +105,27 @@ class OperationTests(unittest.TestCase):
                 for endpoint in ("from", "to"):
                     self.assertIn((ref["path"], ref["sha256"], transfer[endpoint]), memberships)
 
+    def test_every_scientific_selection_is_admitted_with_exact_public_bytes(self):
+        artifacts = self.library.rows("evidence/artifacts.jsonl")
+        members = {(a["source"]["path"], a["source"]["sha256"]): a for a in artifacts}
+        routes = json.loads((ROOT / "knowledge/current/coverage.json").read_bytes())["evidence_navigation"]["source_index_routes"]
+        for name in source_indexes(ROOT):
+            index = json.loads((ROOT / name).read_bytes())
+            if index.get("schema") != "astra.scientific-source-selection.v1":
+                continue
+            coverage = next(r for r in routes if r["index"] == name)
+            self.assertEqual(coverage["declared_originals"], len(index["files"]))
+            contexts = 0
+            for entry in index["files"]:
+                path = (Path(name).parent / entry["repository_path"]).as_posix()
+                data = (ROOT / path).read_bytes()
+                self.assertEqual((len(data), digest(data)), (entry["bytes"], entry["sha256"]))
+                artifact = members[(path, entry["sha256"])]
+                self.assertTrue(any(d["index"] == name for d in artifact["declarations"]))
+                contexts += bool(artifact["cited_by"])
+            self.assertEqual(coverage["with_record_context"], contexts)
+            self.assertEqual(coverage["without_record_context"], len(index["files"]) - contexts)
+
     def test_search_window_never_inherits_an_anchor_outside_its_range(self):
         inputs = Inputs(ROOT)
         for document in self.library.documents:
@@ -123,6 +144,77 @@ class OperationTests(unittest.TestCase):
 
 
 class AdmissionTests(unittest.TestCase):
+    def test_scientific_selection_uses_public_repository_path_not_original_location(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / "research/selection"
+            (folder / "source").mkdir(parents=True)
+            proof = folder / "source/proof.md"
+            proof.write_text("An exact conditional construction.\n")
+            index = folder / "SOURCE_INDEX.json"
+            index.write_text(json.dumps({"schema": "astra.scientific-source-selection.v1", "files": [{
+                "repository_path": "source/proof.md", "original_path": "/private/unavailable/proof.md",
+                "bytes": proof.stat().st_size, "sha256": digest(proof.read_bytes())}]}))
+            names = source_indexes(root)
+            self.assertEqual(names, ["research/selection/SOURCE_INDEX.json"])
+            outputs, coverage = projection(root, Inputs(root), [], names)
+            artifacts = [json.loads(line) for line in outputs["knowledge/current/evidence/artifacts.jsonl"].splitlines()]
+            self.assertEqual(artifacts[0]["source"]["path"], "research/selection/source/proof.md")
+            self.assertEqual(coverage["source_index_routes"][0]["without_record_context"], 1)
+            self.assertEqual(coverage["source_index_routes"][0]["record_routes"], [])
+            self.assertFalse(artifacts[0]["cited_by"])
+            self.assertNotIn("review", artifacts[0], "Source registration cannot create scientific acceptance")
+            proof.write_text("Changed without an updated source declaration.\n")
+            with self.assertRaisesRegex(ValueError, "INGESTION FAILED"):
+                projection(root, Inputs(root), [], source_indexes(root))
+
+    def test_root_source_index_cannot_disappear_after_malformed_or_unsupported_revision(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / "research/selection"
+            folder.mkdir(parents=True)
+            index = folder / "SOURCE_INDEX.json"
+            for value in ("{broken", "[]", '{"schema":"unknown-source-format"}'):
+                index.write_text(value)
+                with self.subTest(value=value), self.assertRaisesRegex(ValueError, "INGESTION FAILED"):
+                    source_indexes(root)
+            index.write_text(json.dumps({"schema": "astra.scientific-source-selection.v1", "files": [{
+                "original_path": "proof.md", "bytes": 1, "sha256": "0" * 64}]}))
+            with self.assertRaisesRegex(ValueError, "INGESTION FAILED"):
+                projection(root, Inputs(root), [], source_indexes(root))
+
+    def test_selected_original_keeps_correction_context_across_a_read_path_alias(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / "research/selection"
+            (folder / "source").mkdir(parents=True)
+            proof = folder / "source/proof.md"
+            proof.write_text("An exact conditional construction.\nAn unsupported strengthening.\n")
+            name = "research/selection/source/proof.md"
+            reference = {"path": name, "read_path": name, "sha256": digest(proof.read_bytes()),
+                         "lines": [1, 1], "quote": "An exact conditional construction."}
+            record = {"id": "R1", "evidence": [reference], "notices": [{"clarification": "The strengthening is unsupported."}]}
+            index = folder / "SOURCE_INDEX.json"
+            index.write_text(json.dumps({"schema": "astra.scientific-source-selection.v1", "files": [{
+                "repository_path": "source/proof.md", "bytes": proof.stat().st_size, "sha256": reference["sha256"]}]}))
+            outputs, coverage = projection(root, Inputs(root), [record], source_indexes(root))
+            for name, data in outputs.items():
+                destination = root / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(data)
+            artifacts = [json.loads(line) for line in outputs["knowledge/current/evidence/artifacts.jsonl"].splitlines()]
+            declared = next(a for a in artifacts if a["declarations"])
+            self.assertEqual(declared["cited_by"], ["R1"])
+            self.assertIn("actual citation range", declared["citation_roles"][0]["role"])
+            docs = [json.loads(line) for line in outputs["knowledge/current/evidence/documents.jsonl"].splitlines()]
+            document = next(d for d in docs if d["artifact_id"] == declared["id"])
+            library = Library.__new__(Library)
+            library.root, library.records = root, {"R1": record}
+            read = library.source(document["id"])
+            self.assertEqual(read["notices"][0]["clarification"], "The strengthening is unsupported.")
+            self.assertEqual(read["artifact"]["scope"], declared["scope"])
+            self.assertEqual(coverage["source_index_routes"][0]["with_record_context"], 1)
+
     def test_valid_json_with_missing_entry_list_cannot_empty_the_view(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

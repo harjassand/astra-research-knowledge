@@ -12,26 +12,30 @@ from knowledge.model import compact_ref, digest, encoded, evidence_refs, field_i
 
 def source_indexes(root):
     found = []
-    for path in sorted((root / "research").rglob("INDEX.json")):
+    candidates = {path for name in ("INDEX.json", "SOURCE_INDEX.json")
+                  for path in (root / "research").rglob(name)}
+    for path in sorted(candidates):
+        public_declaration = path.parent.name == "source" or path.name == "SOURCE_INDEX.json"
         try:
             value = json.loads(path.read_bytes())
         except (ValueError, UnicodeError) as error:
-            if path.parent.name == "source":
+            if public_declaration:
                 raise ValueError("INGESTION FAILED: invalid public source index: " + str(path)) from error
             continue
         if not isinstance(value, dict):
-            if path.parent.name == "source":
+            if public_declaration:
                 raise ValueError("INGESTION FAILED: public source index must be an object: " + str(path))
             continue
-        if value.get("schema") == "astra.intake-source-index.v1" or value.get("record_type") == "selected_frozen_source_index":
+        if value.get("schema") in ("astra.intake-source-index.v1", "astra.scientific-source-selection.v1") or value.get("record_type") == "selected_frozen_source_index":
             found.append(path.relative_to(root).as_posix())
-        elif path.parent.name == "source":
+        elif public_declaration:
             raise ValueError("INGESTION FAILED: unsupported public source-index schema: " + str(path))
     return found
 
 
 def projection(root, inputs, records, index_paths, transfers=()):
     artifacts = {}
+    declarations = []
 
     def add(ref, record=None, declaration=None, exclusion=None, role="record_citation"):
         key = (ref["path"], ref["sha256"], ref.get("read_path"))
@@ -65,18 +69,22 @@ def projection(root, inputs, records, index_paths, transfers=()):
                     exclusion="binary; original artifact route only" if ref.get("lines") is None else None)
     for name in index_paths:
         index = inputs.json(name)
-        parent = Path(name).parent.parent if index.get("schema") == "astra.intake-source-index.v1" else Path(name).parent
-        entries = index.get("files") if index.get("schema") == "astra.intake-source-index.v1" else index.get("originals")
+        schema = index.get("schema")
+        parent = Path(name).parent.parent if schema == "astra.intake-source-index.v1" else Path(name).parent
+        entries = index.get("files") if schema in ("astra.intake-source-index.v1", "astra.scientific-source-selection.v1") else index.get("originals")
+        path_field = "repository_path" if schema == "astra.scientific-source-selection.v1" else "path"
         if not isinstance(entries, list) or not entries:
             raise ValueError("INGESTION FAILED: selected source index requires a nonempty explicit entry list: " + name)
+        declared_versions = []
         for entry in entries:
-            if not isinstance(entry, dict) or not {"path", "sha256", "bytes"} <= entry.keys() or type(entry["bytes"]) is not int or entry["bytes"] < 0:
+            if not isinstance(entry, dict) or not {path_field, "sha256", "bytes"} <= entry.keys() or type(entry["bytes"]) is not int or entry["bytes"] < 0:
                 raise ValueError("INGESTION FAILED: selected source entry lacks path/hash/byte support: " + name)
-            path = (parent / entry["path"]).as_posix()
+            path = (parent / entry[path_field]).as_posix()
             data = inputs.read(path)
             if len(data) != entry["bytes"] or digest(data) != entry["sha256"]:
                 raise ValueError("INGESTION FAILED: declared public original missing/mismatched: " + path)
             ref = {"path": path, "sha256": entry["sha256"], "lines": None}
+            declared_versions.append((path, entry["sha256"]))
             reason = None
             kind = entry.get("kind", "frozen_original")
             # Selected extraction/index scopes must not be widened to a full
@@ -97,6 +105,32 @@ def projection(root, inputs, records, index_paths, transfers=()):
                 except UnicodeError:
                     reason = "binary; metadata only"
             add(ref, declaration={"index": name, "index_sha256": inputs.hashes[name], "kind": kind}, exclusion=reason)
+        declarations.append((name, declared_versions))
+
+    # A declaration may use the original path while an existing citation also
+    # supplies a read_path. Link identical source versions for correction/context
+    # navigation without widening any citation's statement-support range.
+    contexts = defaultdict(set)
+    for item in artifacts.values():
+        key = (item["source"]["path"], item["source"]["sha256"])
+        contexts[key].update(item["cited_by"])
+    for item in artifacts.values():
+        if not item["declarations"]:
+            continue
+        key = (item["source"]["path"], item["source"]["sha256"])
+        for record_id in sorted(contexts[key] - set(item["cited_by"])):
+            item["cited_by"].append(record_id)
+            item["citation_roles"].append({"record_id": record_id, "role": "same_source_version_context; inspect the record's actual citation range"})
+
+    index_coverage = []
+    for name, versions in declarations:
+        routes = sorted(set().union(*(contexts[version] for version in versions)))
+        index_coverage.append({"index": name, "index_sha256": inputs.hashes[name],
+            "declared_originals": len(versions),
+            "with_record_context": sum(bool(contexts[version]) for version in versions),
+            "without_record_context": sum(not contexts[version] for version in versions),
+            "record_routes": routes,
+            "semantic_coverage": "Existing source-version citation contexts only; not a complete result census. Uncited originals require semantic reconciliation, not a new theorem per file."})
     documents = []
     for item in artifacts.values():
         merged = []
@@ -137,6 +171,7 @@ def projection(root, inputs, records, index_paths, transfers=()):
     coverage = {"artifacts": len(artifacts), "searchable_artifacts": sum(bool(v["ranges"]) for v in artifacts.values()),
                 "evidence_windows": len(documents), "text_windows": sum(d["source"].get("lines") is not None for d in documents),
                 "metadata_documents": sum(d["source"].get("lines") is None for d in documents), "selected_source_indexes": len(index_paths),
+                "source_index_routes": index_coverage,
                 "exclusion_mentions": dict(Counter(x for v in artifacts.values() for x in v["exclusions"])),
                 "denominator": "Distinct (public path, SHA256, read_path) keys in all nested current-record citations (including current/historical reviews, corrections and relationships), version-bound transfer evidence, and explicit selected-public-source-index entries. Citation roles stay separate; aliases may share bytes. Counts are not distinct discoveries.",
                 "unassessed": "Unregistered archives, other source-index formats, private/withheld work, scientific completeness and unextracted reusable mechanisms. Metadata-only exclusions retain explicit reasons."}
