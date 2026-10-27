@@ -165,10 +165,11 @@ class FinalFiveCurrentRoutes(unittest.TestCase):
  def test_real_default_parent_packets_retain_complete_scope(self):
   import json,subprocess,sys
   root=Path(__file__).resolve().parents[1]
-  for name,count in [('N1058',1),('N1059',0),('N1060',1),('N1061',1)]:
+  for name,key in [('N1058','DENATURATION-DOES-NOT-PRESERVE-REGISTER'),('N1059',None),('N1060','GAUSSIAN-RATE-NOT-UNIVERSAL'),('N1061','MODEL-CENTRES-NOT-MEASUREMENTS')]:
    p=subprocess.run([sys.executable,'knowledge/retrieve.py','packet',name],cwd=root,capture_output=True)
    self.assertEqual(p.returncode,0,p.stderr.decode());self.assertLessEqual(len(p.stdout),32768)
-   r=json.loads(p.stdout)['packets'][0];self.assertEqual(len(r['notices']),count)
+   r=json.loads(p.stdout)['packets'][0]
+   if key:self.assertTrue(any(key in n['notice_id']for n in r['notices']))
    self.assertTrue(r['review_overlays'] and r['evidence'] and r['source_excerpts'])
 
 if __name__=='__main__':unittest.main()

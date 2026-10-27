@@ -1,0 +1,36 @@
+--- b7b68_reader.py
++++ final_reader.py
+@@ -176,24 +176,26 @@
+     return {'status':'CONDITIONAL_LOWER_BOUND','reasons':[],'affinity_lower':str(Alo),'affinity_squared_lower':str(A2),'radius_squared_lower':str(r2),'geometry':detail,'inequality':'Amax^2>=36*rlo_squared/(1-rlo_squared) since pi>3; affinity_lower^2<=affinity_squared_lower'}
+ 
+ def certify(stream):
+-    it=iter(stream);digest=hashlib.sha256();bytecount=0
++    it=iter(stream);digest=hashlib.sha256();bytecount=0;EOF=object()
+     def line():
+         nonlocal bytecount
+-        raw=next(it,None)
+-        if raw is None:return None
+-        if isinstance(raw,str):raw=raw.encode('utf-8')
++        raw=next(it,EOF)
++        if raw is EOF:return EOF
++        if isinstance(raw,str):
++            try:raw=raw.encode('utf-8')
++            except UnicodeError as e:raise InputError(f'invalid UTF-8 text line: {e}') from None
+         require(isinstance(raw,bytes),'stream must yield bytes/text lines');digest.update(raw);bytecount+=len(raw);return raw
+-    first=line();require(first is not None,'missing header');h=parse_header(parse_json(first,'line1'))
++    first=line();require(first is not EOF,'missing header');h=parse_header(parse_json(first,'line1'))
+     sums=[F(0)]*8;squares=[F(0)]*8;clipped=0;photons=[[0,0] for _ in range(3)];max_counts=[0,0]
+     for i in range(h['N']):
+-        raw=line();require(raw is not None,f'missing block: expected{h["N"]}, received{i}')
++        raw=line();require(raw is not EOF,f'missing block: expected{h["N"]}, received{i}')
+         f,counts,totals,cut=block(parse_json(raw,f'line{i+2}'),i,h['cutoffs'])
+         for j in range(8):sums[j]+=f[j];squares[j]+=f[j]**2
+         clipped+=int(cut)
+         for r in range(3):
+             for ch in range(2):photons[r][ch]+=counts[r][ch]
+         max_counts=[max(max_counts[ch],totals[ch]) for ch in range(2)]
+-    require(line() is None,f'extra data after fixed N={h["N"]}; no prefix certificate')
++    require(line() is EOF,f'extra data after fixed N={h["N"]}; no prefix certificate')
+     conf=confidence(h,sums,squares);hat=list(map(F,conf['empirical_means']))
+     result=affinity_geometry([(hat[0],hat[1]),(hat[2],hat[3])],list(map(F,conf['mean_disk_radii'])),(hat[6],hat[7]),F(conf['offdiagonal_disk_radius']),[hat[4],hat[5]],list(map(F,conf['diagonal_total_radii'])),h['sqrt_bits'])
+     total=F(h['alpha_stat'])+sum(map(F,h['alpha_other_total'].values()))
