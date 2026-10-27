@@ -116,3 +116,47 @@ def premise_check(frame, available=(), unavailable=()):
                            "state": "INSPECT POTENTIAL CONFLICT" if role == "unavailable" and spans else "NOT DISCHARGED"})
     return {"checks": checks, "compatibility": "NOT ESTABLISHED",
             "scope": "Literal premise triage only, including possible negated mentions. Available facts are not verified and no requirement is automatically discharged. Inspect full conditions, units, notices and governing source; use bridge for documented transfers."}
+
+
+def exact_excerpt(value, query, budget):
+    """Select bounded relevance fragments; never replace the complete field."""
+    text = flatten(value)
+    if len(text) <= budget:
+        return text
+    clauses = [x for x in re.split(r"(?<=[.;\n])\s+", text) if x]
+    wanted = set(tokens(query))
+    scored = sorted(enumerate(clauses),
+                    key=lambda pair: (-len(wanted & set(tokens(pair[1]))), pair[0]))
+    chosen, used = [], 0
+    for index, clause in scored:
+        take = clause[:max(0, budget - used)]
+        if take:
+            chosen.append((index, take))
+            used += len(take) + 1
+        if used >= budget:
+            break
+    return " ".join(text for _, text in sorted(chosen))
+
+
+def qualified_views(record, frame, task):
+    """Current, source-local relevance views; never inferred premises.
+
+    Fields and notice prose stay separate from the statement/source views.
+    Complete contracts, units and corrections remain in the operation packet.
+    """
+    header = record["title"] + "\n"
+    names = ("requires", "returns", "conditions", "costs", "units", "obstruction")
+    fields = [(name, frame[name]) for name in names]
+    if any(not flatten(value).startswith(("UNKNOWN", "source-local;")) for _, value in fields):
+        text = header + "\n".join(name + ": " + exact_excerpt(value, task, 192)
+                                    for name, value in fields)
+        yield "qualified_operation", text, None
+    notices = record.get("notices", [])
+    if notices:
+        def notice_text(notice):
+            return flatten({key: value for key, value in notice.items()
+                            if key not in ("source_refs", "card_ids", "schema_version", "notice_id")})
+        wanted = set(tokens(task))
+        index, notice = max(enumerate(notices), key=lambda pair: (
+            len(wanted & set(tokens(notice_text(pair[1])))), -pair[0]))
+        yield "current_notice", header + exact_excerpt(notice_text(notice), task, 1400), index

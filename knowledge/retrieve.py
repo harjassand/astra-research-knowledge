@@ -12,7 +12,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from knowledge.build import check
 from knowledge.model import (ROOT, Inputs, digest, encoded, query_terms,
-                             route_id, scientific_text, score_query, tokens)
+                             route_id, scientific_text, score_query, tokens, evidence_refs)
 from knowledge.operations import statement_view
 
 
@@ -145,7 +145,9 @@ class Library:
             raise ValueError("Card read exceeds byte budget; select --start/--end or increase --max-bytes. No corrections truncated.")
         return value
 
-    def source(self, identifier, evidence_index=0, start=None, end=None, max_bytes=32768):
+    def source(self, identifier, evidence_index=0, start=None, end=None, max_bytes=32768, notice=None):
+        if notice is not None and identifier.startswith("E-"):
+            raise ValueError("A current notice source requires its record ID")
         if identifier.startswith("E-"):
             folder = self.root / "knowledge/current/evidence"
             selected = next((json.loads(line) for line in (folder / "documents.jsonl").read_bytes().splitlines()
@@ -176,6 +178,13 @@ class Library:
         selected = next((document for document in self.documents if document["id"] == identifier and document["kind"] == "source_window"), None)
         record = self.resolve(selected["record_id"] if selected else identifier)
         references = selected["evidence"] if selected else record["evidence"]
+        if notice is not None:
+            if selected:
+                raise ValueError("A current notice source requires its record ID")
+            matches = [value for value in record["notices"] if value.get("notice_id") == notice]
+            if len(matches) != 1:
+                raise ValueError("Unknown or ambiguous current notice for this record")
+            references = list(evidence_refs(matches[0]))
         if not 0 <= evidence_index < len(references):
             raise ValueError("Unknown evidence index")
         reference = references[evidence_index]
@@ -198,6 +207,8 @@ class Library:
                  "text_selection": selection,
                  "notices": record["notices"], "review_overlays": record["review_overlays"],
                  "scope": "Exact governing passage or explicitly selected stored text value; raw source/hash remains authoritative. An extraction is not an independent proof."}
+        if notice is not None:
+            value["current_notice_id"] = notice
         if len(encoded(value)) > max_bytes:
             raise ValueError("Source read exceeds byte budget; select --start/--end or increase --max-bytes")
         return value
@@ -246,6 +257,7 @@ def main():
     source = sub.add_parser("source")
     source.add_argument("id")
     source.add_argument("--evidence", type=int, default=0)
+    source.add_argument("--notice", help="read a source from this exact current notice; --evidence indexes its citations rather than the record citations")
     source.add_argument("--start", type=int)
     source.add_argument("--end", type=int)
     source.add_argument("--max-bytes", type=int, default=32768)
@@ -273,7 +285,7 @@ def main():
         elif args.command == "card":
             result = library.card(args.id, args.start, args.end, args.max_bytes)
         elif args.command == "source":
-            result = library.source(args.id, args.evidence, args.start, args.end, args.max_bytes)
+            result = library.source(args.id, args.evidence, args.start, args.end, args.max_bytes, notice=args.notice)
         elif args.command == "bridge":
             result = library.bridge(args.source, args.destination)
         elif args.command == "peers":
