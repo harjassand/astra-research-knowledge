@@ -85,6 +85,9 @@ integrity and these transport checks must pass at the reviewed PR head.
 Initial local failures were corrected before publication: related units live
 in generated packets and are objects, not strings; an obsolete `httpx` test
 import was removed because the current SDK uses its own HTTP dependency.
+The all-record check also found 46 technology packets without a dependency
+list; their capsule now explicitly preserves UNKNOWN rather than inventing
+an empty dependency set or failing the read.
 Large capsules are deliberately multipart, with byte coordinates and a full
 payload hash. Tests concatenate all pages; no current correction is omitted
 to meet a budget. Invalid IDs produce explicit tool errors. Tests do not run
