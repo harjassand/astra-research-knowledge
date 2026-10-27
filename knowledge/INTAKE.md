@@ -2,7 +2,11 @@
 
 The same build/check now generates lossless operation views and evidence
 navigation from existing record citations and recognized selected-public-source
-indexes (`astra.intake-source-index.v1` or `selected_frozen_source_index`). Keep
+indexes (`astra.intake-source-index.v1`, `selected_frozen_source_index`, or
+`astra.scientific-source-selection.v1`). The last format uses its explicit
+`repository_path` relative to the index directory; `original_path` is provenance
+and is never followed. Both `INDEX.json` and `SOURCE_INDEX.json` declarations
+are discovered. Keep
 using those existing formats; no producer form or neural inference is required
 for intake. Their explicit public entries must retain exact SHA256/byte length;
 missing declared originals fail ingestion. Private `origin` paths are never
@@ -12,6 +16,11 @@ acceptance. Scoped extractions retain their cited-range boundary. See
 
 Current/historical review, correction and transfer citations enter that same
 evidence view with their actual roles; indexing never inherits acceptance.
+`coverage.json` lists each admitted index, exact original count and existing
+source-version record contexts. Uncited originals remain a semantic-curation
+gap; a file count is not result completeness. Original/read-path aliases at the
+same path and byte hash share correction context without widening statement
+support or conferring acceptance.
 Read actual completed internal reviews and their reviewed-artifact versions;
 external/formal next-gate boilerplate is not a prerequisite to scoped internal
 acceptance. Keep genuine gaps and conflicting later source assessments visible.
