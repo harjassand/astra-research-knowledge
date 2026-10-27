@@ -80,3 +80,23 @@ current records, operation views, retrieval/evidence projections and freshness
 proofs from ordinary authoritative intake formats. New and revised source/index
 material, correction propagation, exact version review and repeated idempotence
 are tested by compilation/reader fixtures without extra producer bookkeeping. The compiler does not execute original research programs.
+
+## Latest-main integration verification
+
+A concurrent ordinary scientific intake merged as PR240 at
+`638676072` while this PR was being reviewed. Only 261 generated-view files
+conflicted; no authoritative source/code input conflicted. Those projections
+were rebuilt from the combined authoritative inputs, without editing the
+incoming scientific source/card/unit/review files. Every one of the latest
+main's 1,894 scientific content versions is unchanged. The integrated dataset is
+`055d572fc03186b88105977483d02360f8fc6016d5edfe7114e3a2c49928bf6d`: 1,166 results, 235 atlas lemmas, 447 other reusable
+units and 46 technology records. It has 24,734 scientific windows and 8,061
+registered artifact keys (8,018 with text ranges), with 19,637 evidence text
+windows and 43 metadata-only documents. The 37 targeted checks and full
+byte-reproducible build/check pass on this combined intake.
+
+This is an actual ordinary-intake integration demonstration using an independently
+merged new/revised scientific intake and the same one-command normalization
+path. No producer form, source repackaging or programme-wide idle gate was used.
+The earlier frozen evaluations remain pinned to their original corpora; they
+are not retroactively claimed as fresh scores on this enlarged dataset.

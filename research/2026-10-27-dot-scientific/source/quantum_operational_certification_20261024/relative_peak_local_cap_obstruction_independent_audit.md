@@ -1,0 +1,11 @@
+# Independent receipt: physical relative-peak local-cap obstruction
+
+27 October 2026. PASS for the explicit peak3/2 example and repaired near-unit family. Both exact scripts replayed nonmutating. These are failures of a proposed source-to-local-variance implication, not entropy or actual-anchor negativity.
+
+For A=Pphi tensor U+(I-Pphi) tensor V, the actual physical conditional expectation is I9 tensor(U+8V)/9: E(Pphi)=I9/9. The exact2x2 minors show U,V positive, I-V positive and U's sole unit eigenvalue is its first. Thus A is a faithful effect with unique top vector Phi tensor e1. The peak3/2 test is paid on BOTH sectors: U<=1.5B reduces to8V-5U>=0, and the complement inequality follows from U+2V>=0. The computed a=1/1125,b=962/1265625 violate both stated caps. The auxiliary local gap(6/5)a-(36/25)b is negative even though the auxiliary itself is positive. No inference about the true top score follows.
+
+The repaired parametric family correctly pays the previously omitted complement sector for k<9/8. Its c,d satisfy0<c<1<d; both V-cU and dU-V have the exact positive determinants displayed. I-V has determinant t²(1-p²-Kt²), and U22=h t²<1. The stipulated strict small-t bounds therefore make V a faithful strict effect, U a faithful effect with a unique unit eigenvalue, and both peak sectors valid. V's positivity also follows directly from V-cU>0. Every k>1 is covered by first choosing a smaller k in(1,9/8) if necessary.
+
+The top ratio is exactly8(p²+t²)/9. With p=99/100 it exceeds1089/1250>5/6; allowing p closer to1 defeats every fixed cap(n-1)/n for n<9. The exact rational k=1001/1000 sample explicitly verifies BOTH peak-sector matrices, not just the Pphi sector. The earlier one-sector trial is correctly marked invalid and superseded.
+
+Scope is physical dimension3/reference dimension6 with potentially extreme reference conditioning. No reference-dimension3 counterexample, negative VALUE, failure of the abstract local-cap theorem, or contradiction to the relative-marginal BKM region is established. The family itself remains inside the separately VALUE-paid operator-valued isotropic class. The conclusion is that arbitrarily tight one-sided relative peak does not by itself license these n<9 local variance transfers in arbitrary reference dimension.

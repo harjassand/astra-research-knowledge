@@ -297,3 +297,22 @@ with the current accepted review/notices. Thirty-seven targeted operation,
 source, intake, runtime and fixture checks pass locally. The full required
 publication check on the actual PR head is a separate merge gate; its current
 result is visible on [PR241](https://github.com/harjassand/astra-research-knowledge/pull/241).
+
+## Concurrent published intake adopted before merge
+
+PR240 merged at `638676072` during review. The upgrade subsequently regenerates
+all views from that latest main plus the scoped N557 recognition, preserving
+every incoming source/card/unit/review file and all 1,894 scientific content
+versions. Only generated files conflicted. Current combined dataset:
+`055d572fc03186b88105977483d02360f8fc6016d5edfe7114e3a2c49928bf6d`; 1,166 results, 235 lemmas, 447 other reusable units
+and 46 technology records. Coverage is 24,734 scientific windows, 8,061 artifact
+keys, 8,018 artifacts with text ranges, 19,637 evidence text windows, 43 metadata
+documents and the same 53 explicit selected-public-source indexes. The artifact
+denominator remains the all-nested-citation/transfer/selected-original definition
+above, not distinct discoveries or private archive completeness.
+
+The 37 source/intake/runtime/fixture checks and byte-reproducible full build/check
+pass on this integrated material. This directly demonstrates ordinary new/revised
+intake following the existing canonical path. Frozen comparison tables above
+keep their actual versions and are not silently relabelled fresh on a later
+corpus. Final required CI and the anchored internal review are on PR241.

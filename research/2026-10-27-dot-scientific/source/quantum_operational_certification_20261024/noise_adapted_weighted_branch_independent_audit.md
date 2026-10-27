@@ -1,0 +1,13 @@
+# Independent receipt: weighted retained-data classifier branches
+
+27 October 2026. PASS for noise_adapted_weighted_classifier_branch_lemma.md as a single-label repeated-classifier asset, not a full nine-label learned receiver.
+
+The exact source decomposition is D=H_-+pPhi-lambda P, TrH_-=2+lambda<=3. CQ cap k controls each ancillary block trace by k times its negative eigenvalue. The previous local cone estimate contributes at most24924delta²k to both the new CQ cap and p-remainder trace, plusdelta²k from R0. Control attenuation is NOT treated as Loewner decreasing: its signed CQ absolute-value bound has trace<=52delta²TrR_i, since0<=c<=1 and1-c<=26delta². Thus the total local signed-error cap24924+1+52=24977 fits25000. Positive local domination also fits the claimed growth bound.
+
+For a common positive majorant Q+pR, actual CP suffixes preserve both signs and admit a new cone majorant. k+t grows by at mostexp(50000sumdelta²). Telescoping with ideal prefixes is legitimate because those prefixes preserve the CQ cap for input H_-; no arbitrary actual prefix is falsely assumed CQ. Sum of local budgets is bounded by50000Htot exp(50000Htot), so e=100000Htot exp(50000Htot) is conservative. Discarding ancillas turns the CQ cap into the operator bound eH_-, proving equation(1) branchwise. This does not assert a single simultaneous remainder shared by all branches.
+
+Accepted repetition uses positivity and trace-nonincreasingness to propagate beta^L H_- while charging every arbitrary p-remainder only by its trace; equation(2) has the correct geometric sum. Coherent compute/uncompute gives a complete retained-data binary instrument error u<=L(4sqrt eta+256h). Splitting D into H_- and the signed rank-one terms pPhi-lambdaP gives equation(4) with2pu; this is a trace-norm accepted-map bound, not just acceptance probability.
+
+For rejection, the ideal finite circuit acts diagonally on H_- with rejection factor1-a(lambda)^L, so its error is bounded byeta^L H_-. The whole-circuit local telescope gives eL, and H_-<=D+pP transfers the bound to kappa D plus a positive p-remainder. The signed rank-one errors admit an absolute-value majorant of trace<=2u, proving equation(5). Exact Q D Q-D has the stated formula and trace norm<=4p, so equation(6) follows. These retained-data weighted errors, not a coarse arbitrary-reset trace bound, are the usable multi-label interface.
+
+Choosing total squared time sufficiently small compared with xi, per-classifier eta sufficiently small compared with(xi/L)^2, and logarithmic L achieves the stated asymptotic budgets without an extra inverse-p factor. The file does not yet specify a final full receiver allocation or prove its multi-label ideal/actual comparison. Those remain separate obligations.

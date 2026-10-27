@@ -1,0 +1,11 @@
+# Independent determinant-one covariance shear receipt
+
+PASS, 27 October 2026, for the reusable algebra and the exact negative-helper source point only. No global stopped shear controller or Monte Carlo occupation estimate is received.
+
+An independent symbolic reconstruction from the already source-received eight frontier points verifies the global and left-child q-defect polynomials, divisibility of the right-child defect by p6-3p7, every sibling null difference, all source constraint values, the rank-four constraint gradient, its displayed tangent kernel and identity free rows. The supplied half-Hessian matrices match those polynomials exactly. The conditional tangent form has rank2 and negative product of its nonzero eigenvalues, so it is genuinely indefinite at the source, not an optimizer inference.
+
+For symmetric hc with nonzero eigenvalues a>0>b, Kb=I-Tr(hc)hc/Tr(hc²) has nontrivial eigenvalues b(b-a)/(a²+b²) and a(a-b)/(a²+b²), both positive, and unit kernel eigenvalues. More generally any independently guarded SPD Kb with Tr(hc Kb)=0 suffices. Given hc d=0, d^T h0 d=0 and u=h0d nonzero, du=u^T Kb u>0. The proposed w=-Tr(h0 Kb)u/(2du) obeys w^T d=0, so B=I+d w^T has determinant1 and inverse I-dw^T. Congruence preserves strict positivity. The conditional trace is unchanged because hc d=0, while the global trace equals L+2w^T Kb u+(w^T Kb w)d^T h0 d=0. Normalizing by the positive trace preserves both constraints.
+
+The exact receiver was replayed nonmutating and matched every frozen field. It verifies the actual source d and tangent relation, positive denominator, determinant1, both trace identities, normalized K>I/65536 and RR^T>I/64 by exact principal minors. The old numerical covariance proposal is not a premise of this shear proof.
+
+Any future feedback use must still guard probability floors, chart pivot, Tr(hc²), u^T Kb u, normalized covariance and mean rank on a stopped domain; pointwise algebra alone does not pay that global controller. The censored simulation is not received. The already received small-frontier support ceiling independently limits all finite-bulk credit here to3.365935e-5, so this receipt does not reopen that quantitative mechanism or change N.

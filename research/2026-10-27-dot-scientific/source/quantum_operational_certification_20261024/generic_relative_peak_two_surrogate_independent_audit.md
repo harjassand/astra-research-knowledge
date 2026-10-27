@@ -1,0 +1,3 @@
+# Independent generic peak2 surrogate obstruction
+
+PASS, 27 October 2026. The diagonal pair X=(2,14), tau=(1,15) is faithful, equal trace16, and X<=2tau. Direct scalar substitution gives J=2log(32/25)-14log(3481/3360). The exact rational atanh series with positive geometric tail was independently inspected and nonmutating replay matched the frozen intervals, whose upper endpoint is below -1/1000. This refutes only universal generic equal-trace order calibration at peak2. It is not an actual qutrit marginal pair, is not a negative physical entropy deficit, and does not bar a physical peak2 extension using extra source structure or Jensen-defect payment.
