@@ -1,0 +1,9 @@
+# Independent result
+
+The binding-cap point is solved within the declared model: the positive network with masses (1,1), intercell spring 1 and internal spring 4 globally minimizes the full Bose-weighted ballistic conductance over every legal finite positive internal network with m=1, M=2, theta=1/2 and CM compliance at most 1/4. Extra internal modes cannot improve this point.
+
+`PROOF.md` gives the exact endpoint matrices, the compliance and trace/log identities, a self-contained power-series zero-count lemma, the all-frequency dual signs, and the global comparison. `certify_dual.py` executes an exact-Fraction interval enclosure of the three dual multipliers; its retained output is `CERTIFIED_MULTIPLIERS.txt`. It proves lambda<0, mu>0, eta>0. The frequency grid in `check_dual.py` was only exploratory and is not the universal certificate.
+
+This is a genuine compliance-constrained extension of the supplied unconstrained theorem, with an exact ordinary one-pendant comparator that already attains the constrained optimum. The proof reuses the governing moment identities and classical spectral/positive-network framework. Historical novelty is not established; no physical device, material performance or practical advantage follows from this scalar harmonic intrinsic-conductance result.
+
+The same three-root theorem holds for every candidate with positive compliance and nonnegative trace multipliers (at zero trace multiplier, a positive log multiplier supplies the tail). Numerical continuation shows a transition under tighter caps: the fitted trace multiplier turns negative. A promising connected frontier then uses a very stiff side branch to form a heavier effective backbone while charging its actual mass, stiffness and compliance. The parent owns and is executing that construction. A negative fitted multiplier by itself is not an improvement certificate.
