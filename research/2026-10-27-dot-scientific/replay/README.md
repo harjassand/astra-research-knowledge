@@ -76,3 +76,13 @@ receipts; it does not reconstruct those omitted source policies.
 `pooled_full_structure.npz` is retained as the current pooled-law fixture, but
 its full original-law structure/flow generation was not rerun. The nine
 historical unmatched receipt hashes remain explicitly unverified.
+
+Check directed decimal presentations independently with Python's exact fractions:
+
+```sh
+python3 research/2026-10-27-dot-scientific/replay/verify_decimal_enclosures.py
+```
+
+This verifies eight selected bounds against their hash-bound receipt fields.
+Rounded source displays are retained as provenance; the exact rational and the
+reported safe outward decimal govern an inequality or interval endpoint.

@@ -53,6 +53,18 @@ class DotScientificIntake(unittest.TestCase):
         certificate = report["adopted_negative_stress_certificate"]
         self.assertEqual(certificate["exact_upper_authority"]["field"], "global_negative_mass_upper")
         self.assertTrue(certificate["outward_decimal_verified_by_exact_rational_comparison"])
+        enclosures = json.loads((INTAKE / "validation/decimal-enclosures.json").read_text())
+        self.assertEqual(enclosures["checked_enclosures"], 8)
+        for row in enclosures["rows"]:
+            value = json.loads((INTAKE / row["source"]).read_text())
+            for key in row["field"]:
+                value = value[key]
+            exact, decimal = Fraction(value), Fraction(row["safe_decimal_enclosure"])
+            self.assertEqual(exact, Fraction(row["exact_rational"]))
+            if row["bound_direction"] == "upper":
+                self.assertGreaterEqual(decimal, exact)
+            else:
+                self.assertLessEqual(decimal, exact)
 
     def test_optional_overlap_replay_keeps_its_actual_proof_inequalities(self):
         report = json.loads((INTAKE / "validation/morrey-replay.json").read_text())

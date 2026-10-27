@@ -103,7 +103,29 @@ does not establish its sign. Every changed field and actual certificate margin
 is recorded in [morrey-replay.json](validation/morrey-replay.json). This optional
 credit is **not subtracted** from the adopted negative-stress bound.
 
+Other computed decimal displays use the same exact-receipt rule. The same-law
+W1 certificate's `0.06718566499649657` is approximate; its exact upper is below
+`0.06718566499649658` and the received strict threshold `0.0672`. The first
+affinity law has the safe outward interval
+`[0.8893041904600857, 0.8978776135719108]`; its original displayed lower endpoint
+`0.8893041904600858` rounded inward. The second law's displayed interval is
+already outward. [verify_decimal_enclosures.py](replay/verify_decimal_enclosures.py)
+checks eight selected enclosures directly against the unchanged source fractions;
+[decimal-enclosures.json](validation/decimal-enclosures.json) records their
+field selectors, hashes, exact fractions and directed decimal bounds. The
+overlap lower bound and fixed-hull upper display already have the safe direction.
+
 Repository build/test results establish ingestion and retrieval integrity.
 Scientific audits and scoped replays establish only their stated mathematical
 or computational claims. Physical measurements, working devices, practical
 advantage and historical priority require separate evidence.
+
+The [consolidated numeric audit](curation/NUMERIC_DISPLAY_AUDIT.json) covers all
+25 new families, 58 latest units, four affected historical families and their
+five current units. It distinguishes exact analytic constants, certified
+computed endpoints, rounded source displays, diagnostics and unreceived claims.
+The four entropy operation-domain qualifications preserve zero original sources
+as separate trivial entropy cases. The support-change output near
+`2.22222222222` remains a finite NumPy diagnostic; no exact `20/9` certificate
+is claimed. All identified presentation/domain corrections are recorded there;
+frozen sources and prior immutable unit/review versions remain available.

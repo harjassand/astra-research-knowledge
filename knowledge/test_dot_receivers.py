@@ -48,6 +48,20 @@ class DotReceiverBoundaries(unittest.TestCase):
         self.assertIn('linear_candidate=2.25',changed)
         self.assertIn('2400',rows['rare_spectral_filter_check.py']['stdout'])
 
+    def test_support_change_display_stays_a_finite_diagnostic(self):
+        parent=next((ROOT/'cards').glob('N1107-*.txt')).read_text()
+        self.assertIn('approximately2.22222222222',parent)
+        self.assertIn('not a certified enclosure',parent)
+        self.assertNotIn('gives20/9',parent)
+        notices=[json.loads(line) for line in (ROOT/'agent/SEMANTIC_NOTICES.d/2026-10-27-dot-receivers.jsonl').read_text().splitlines()]
+        old=next(n for n in notices if n['notice_id']=='S1107-dot-diagnostics-and-failed-extrapolation')
+        correction=next(n for n in notices if n['notice_id']=='S1107-dot-support-diagnostic-numeric-correction')
+        self.assertIn('returns20/9',old['clarification'])
+        self.assertEqual(correction['correction_of_notice_id'],old['notice_id'])
+        self.assertIn('no exact20/9 certificate',correction['clarification'])
+        review=json.loads((ROOT/'knowledge/reviews/A1152-dot-receiver-support-diagnostic.json').read_text())
+        self.assertEqual([s['id'] for s in review['subjects']],['N1107-program-access-support-and-transported-projection-obstructions'])
+
     def test_overlap_is_not_an_entropy_transfer(self):
         unit=json.loads((ROOT/'knowledge/units/U1103-paired-parity-overlap-charge/v0001.json').read_text())
         self.assertIn('No beta-from-Delta inference',unit['statement'])
