@@ -95,6 +95,10 @@ class Library:
                 results[-1]["next"]["card"] = ["card", record["id"]]
             if document["kind"] == "source_window":
                 results[-1]["next"]["source"] = ["source", document["id"]]
+            navigation = self.peers(record["id"], limit=6)
+            if navigation["routes"] or navigation["total_candidates"]:
+                results[-1]["interface_navigation"] = navigation
+                results[-1]["next"]["peers"] = ["peers", record["id"]]
             if len(results) == limit:
                 break
         if method == "structured" and limit > 1:
@@ -214,6 +218,10 @@ class Library:
                 "remaining_obligations": "No version-bound source-supported bridge is recorded. Similar words, shared fields and matching type names are insufficient.",
                 "notices": source_record["notices"] + destination_record["notices"]}
 
+    def peers(self, identifier, offset=0, limit=8):
+        from knowledge.interfaces import peers
+        return peers(self.records, self.resolve(identifier)["id"], offset=offset, limit=limit)
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -244,6 +252,10 @@ def main():
     bridge = sub.add_parser("bridge")
     bridge.add_argument("source")
     bridge.add_argument("destination")
+    peers = sub.add_parser("peers", help="navigate separately qualified providers of a documented common consumer; no provider-to-provider transfer")
+    peers.add_argument("id")
+    peers.add_argument("--offset", type=int, default=0)
+    peers.add_argument("--limit", type=int, default=8)
     sub.add_parser("coverage")
     evidence = sub.add_parser("evidence", help="search all registered evidence ranges and selected public originals; no acceptance inferred")
     evidence.add_argument("query")
@@ -264,6 +276,8 @@ def main():
             result = library.source(args.id, args.evidence, args.start, args.end, args.max_bytes)
         elif args.command == "bridge":
             result = library.bridge(args.source, args.destination)
+        elif args.command == "peers":
+            result = library.peers(args.id, args.offset, args.limit)
         elif args.command == "evidence":
             from knowledge.evidence import search as search_evidence
             result = search_evidence(library, args.query, args.limit, args.method)

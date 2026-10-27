@@ -64,3 +64,20 @@ publication. Conflicting assertions remain separate, scoped notices; neither
 chronology nor indexing resolves the science. Source revisions, historic cards,
 old manifests and previous versions remain available. Producer research does
 not wait for a programme-wide idle gate.
+## Optional named consumer inputs
+
+A curated reusable unit may declare `contract.input_slots`, each with an `id`,
+description and `required_binding_fields` (including `units` and
+`qualification`). A version-bound `ESTABLISHED COMPATIBLE INTERFACE` transfer
+may add `slot_binding`: the declared slot plus its explicit field values.
+The transfer still needs its actual supporting proof passage and remaining
+obligations. Other transfer states cannot silently become typed providers.
+
+The ordinary build generates `interface_navigation` in canonical records:
+bindings once on the consumer and routes on the exact provider and its parent.
+Missing fields, unknown/ambiguous slots and stale endpoint versions fail
+ingestion. Common-consumer peers are navigation candidates; no transfer between
+providers or inherited acceptance is generated. All qualifications, costs,
+corrections and field-specific acquisition obligations remain. These optional
+annotations are intake-agent work for selected useful interfaces, not a new
+researcher form or a requirement to classify every source.

@@ -175,6 +175,10 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
                 break
         item["within_family"] = alternatives
         item["family_navigation_scope"] = "Up to three separately ranked units; the family packet lists all units. Shared family is navigation, not compatibility or inherited acceptance."
+        navigation = library.peers(item["id"], limit=6)
+        if navigation["routes"] or navigation["total_candidates"]:
+            item["interface_navigation"] = navigation
+            item["next"]["peers"] = ["peers", item["id"]]
     return {"query": query, "object": object_text, "operation": operation, "method": "agent",
             "expansions": expansions, "candidate_records": len(candidates), "ranked_views": len(views),
             "candidate_budget": 192, "family_expansion_budget": 24, "candidate_generators": ["field_BM25_with_visible_expansions", "matched_content_BM25_without_expansion"],

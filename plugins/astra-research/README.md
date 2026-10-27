@@ -97,3 +97,11 @@ and uses the [official MCP Python SDK](https://github.com/modelcontextprotocol/p
 The short skill routes scientific premise discovery; it adds no researcher
 reporting form. Search coverage remains the admitted corpus, not all Astra
 research, and no general superiority to other search systems is claimed.
+## Qualified interface navigation
+
+Search menus can include bounded `shared_consumer_navigation` previews and
+fetch IDs. These are separately qualified providers of one explicit scientific
+operation, not transfers between the providers. Fetch the named consumer for
+its full bindings and each selected provider for all conditions, current
+corrections and governing proof. Ordinary fetch pagination retains the entire
+payload. No extra tool, account permission, service or database is introduced.
