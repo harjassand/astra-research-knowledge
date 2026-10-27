@@ -12,6 +12,25 @@ INTAKE = ROOT / "research/2026-10-27-dot-scientific"
 
 
 class DotScientificIntake(unittest.TestCase):
+    def test_lifted_bath_normalisation_uses_the_actual_marginal(self):
+        source = (INTAKE / "source/quantum_operational_certification_20261024/nonflat_two_mode_operator_bath_corollary.md").read_text()
+        self.assertIn("(TrC+TrY₀)TrU+6TrV", source)
+        unit = json.loads((ROOT / "knowledge/units/U1097-nonflat-two-mode-structured-bath-lift/v0003.json").read_text())
+        text = json.dumps(unit, ensure_ascii=False).replace(" ", "")
+        self.assertRegex(text, r"(?:lambda|λ)>0")
+        # Scalar baths are valid finite PSD baths. T=(base_trace/6)I18
+        # belongs to the displayed C=0, scalar-white reset family.
+        for base_trace, trace_u, trace_v in [(0, 1, 1), (6, 2, 0), (6, 0, 0)]:
+            diagonal = Fraction(base_trace, 6) * trace_u + trace_v
+            marginal = [sum([diagonal] * 6) for _ in range(3)]
+            coefficient = base_trace * trace_u + 6 * trace_v
+            self.assertEqual(marginal, [coefficient] * 3)
+            if coefficient:
+                self.assertEqual(18 * diagonal / coefficient, 3)
+                self.assertEqual(18 * diagonal / (3 * coefficient), 1)
+            else:
+                self.assertEqual(diagonal, 0)
+
     def test_new_and_affected_default_packets_retain_every_scope_within_budget(self):
         from knowledge.retrieve import Library
         library = Library()
