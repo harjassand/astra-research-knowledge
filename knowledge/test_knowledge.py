@@ -17,8 +17,12 @@ class Fixture(unittest.TestCase):
         self.root = Path(self.temporary.name)
         for name in ("knowledge/model.py", "knowledge/build.py", "knowledge/retrieve.py", "knowledge/search.js",
                      "knowledge/index.html", "knowledge/README.md", "knowledge/INTAKE.md", "knowledge/concepts.json",
+                     "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/evidence.py",
+                     "knowledge/requirements-agent.txt", "knowledge/runtime/manifest.json",
                      "00_START_HERE.txt", "AGENTS.md", "agent/ACCESS.txt"):
             self.write(name, (ROOT / name).read_bytes())
+        for name in json.loads((ROOT / "knowledge/runtime/manifest.json").read_bytes())["files"]:
+            self.write("knowledge/runtime/" + name, (ROOT / "knowledge/runtime" / name).read_bytes())
         self.write("source.txt", b"A finite source statement.\nAssume independent noise.\nThe bound has units seconds.\n")
         self.source = {"path": "source.txt", "sha256": digest((self.root / "source.txt").read_bytes()),
                        "lines": [1, 3], "quote": "Assume independent noise."}

@@ -19,6 +19,10 @@ def source_indexes(root):
             if path.parent.name == "source":
                 raise ValueError("INGESTION FAILED: invalid public source index: " + str(path)) from error
             continue
+        if not isinstance(value, dict):
+            if path.parent.name == "source":
+                raise ValueError("INGESTION FAILED: public source index must be an object: " + str(path))
+            continue
         if value.get("schema") == "astra.intake-source-index.v1" or value.get("record_type") == "selected_frozen_source_index":
             found.append(path.relative_to(root).as_posix())
         elif path.parent.name == "source":
@@ -51,7 +55,12 @@ def projection(root, inputs, records, index_paths):
     for name in index_paths:
         index = inputs.json(name)
         parent = Path(name).parent.parent if index.get("schema") == "astra.intake-source-index.v1" else Path(name).parent
-        for entry in index.get("files", index.get("originals", [])):
+        entries = index.get("files") if index.get("schema") == "astra.intake-source-index.v1" else index.get("originals")
+        if not isinstance(entries, list) or not entries:
+            raise ValueError("INGESTION FAILED: selected source index requires a nonempty explicit entry list: " + name)
+        for entry in entries:
+            if not isinstance(entry, dict) or not {"path", "sha256", "bytes"} <= entry.keys() or type(entry["bytes"]) is not int or entry["bytes"] < 0:
+                raise ValueError("INGESTION FAILED: selected source entry lacks path/hash/byte support: " + name)
             path = (parent / entry["path"]).as_posix()
             data = inputs.read(path)
             if len(data) != entry["bytes"] or digest(data) != entry["sha256"]:
@@ -115,7 +124,8 @@ def projection(root, inputs, records, index_paths):
     for shard, values in shards.items():
         outputs["knowledge/current/evidence/postings/" + shard + ".json"] = encoded(values)
     coverage = {"artifacts": len(artifacts), "searchable_artifacts": sum(bool(v["ranges"]) for v in artifacts.values()),
-                "evidence_windows": len(documents), "selected_source_indexes": len(index_paths),
+                "evidence_windows": len(documents), "text_windows": sum(d["source"].get("lines") is not None for d in documents),
+                "metadata_documents": sum(d["source"].get("lines") is None for d in documents), "selected_source_indexes": len(index_paths),
                 "exclusion_mentions": dict(Counter(x for v in artifacts.values() for x in v["exclusions"])),
                 "denominator": "Distinct (public path, SHA256, read_path) keys in current record evidence plus explicit entries in recognized selected-public-source indexes. Aliases may share bytes; counts are not distinct discoveries.",
                 "unassessed": "Unregistered archives, other source-index formats, private/withheld work, scientific completeness and unextracted reusable mechanisms. Metadata-only exclusions retain explicit reasons."}
@@ -136,7 +146,16 @@ def search(library, query, limit=5, method="field"):
         if path.is_file():
             postings.update(json.loads(path.read_bytes()))
     ranked, scores, _ = score_query(postings, terms)
-    ranked = ranked[:80]
+    candidates, seen = [], set()
+    for index in ranked:
+        artifact = docs[index]["artifact_id"]
+        if artifact in seen:
+            continue
+        seen.add(artifact)
+        candidates.append(index)
+        if len(candidates) == 80:
+            break
+    ranked = candidates
     truncated = {}
     if method == "agent":
         from knowledge.agent_search import Reranker

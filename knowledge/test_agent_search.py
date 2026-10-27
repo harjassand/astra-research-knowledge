@@ -35,6 +35,52 @@ class OperationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "require --method agent"):
             self.library.search("a task", available=["calibration"])
 
+    def test_historical_status_is_not_the_only_visible_scientific_text(self):
+        record = self.library.resolve("N557")
+        from knowledge.operations import historical_summary
+        self.assertTrue(historical_summary(record))
+        frame = self.library.operation_frames[record["id"]]
+        excerpt = frame["scientific_excerpt"]
+        self.assertEqual(excerpt["role"], "claim")
+        card = self.library.card(record["id"], *excerpt["lines"])
+        self.assertEqual(card["text"].rstrip("\n"), excerpt["text"])
+        self.assertIn("independent", excerpt["text"])
+        self.assertTrue(any(p["role"] == "interface" for p in frame["card_roles"]))
+        self.assertEqual(frame["requires"], record["contract"]["requires"])
+        self.assertEqual(card["review_overlays"], record["review_overlays"])
+        from knowledge.operations import statement_view
+        view = statement_view(record, frame)
+        self.assertFalse(view["statement"].startswith("status="))
+        self.assertEqual(view["historical_reported_status"], record["statement"])
+        self.assertEqual(view["statement_origin"]["lines"], excerpt["lines"])
+        packet = self.library.packet([record["id"]], max_bytes=262144)["packets"][0]
+        self.assertEqual(packet["scientific_card_excerpt"]["text"], excerpt["text"])
+        source = packet["scientific_card_excerpt"]["source"]
+        raw = (ROOT / source["path"]).read_bytes()
+        self.assertEqual(digest(raw), source["sha256"])
+        for record in self.library.records.values():
+            frame = self.library.operation_frames[record["id"]]
+            if frame.get("scientific_excerpt"):
+                selected = frame["scientific_excerpt"]
+                lines = record["body"].splitlines(keepends=True)
+                expected = "".join(lines[selected["lines"][0] - 1:selected["lines"][1]]).rstrip("\r\n")
+                self.assertEqual(expected, selected["text"])
+
+    def test_card_reader_preserves_current_notices_and_never_cuts_them(self):
+        record = self.library.resolve("N684")
+        read = self.library.card(record["id"], start=1, end=2)
+        self.assertEqual(read["notices"], record["notices"])
+        with self.assertRaisesRegex(ValueError, "byte budget"):
+            self.library.card(record["id"], max_bytes=10)
+
+    def test_optional_card_previews_do_not_break_existing_default_packets(self):
+        from knowledge.model import encoded
+        for identifier in ("N574", "N552", "N727", "N330", "N166"):
+            packet = self.library.packet([identifier])
+            packet["checkout_revision"] = "f" * 40
+            self.assertLessEqual(len(encoded(packet)), 32768)
+            self.assertEqual(packet["packets"][0]["notices"], self.library.resolve(identifier)["notices"])
+
     def test_every_current_citation_has_evidence_navigation(self):
         artifacts = [json.loads(line) for line in (ROOT / "knowledge/current/evidence/artifacts.jsonl").read_bytes().splitlines()]
         memberships = {(a["source"]["path"], a["source"]["sha256"], identifier) for a in artifacts for identifier in a["cited_by"]}
@@ -60,6 +106,34 @@ class OperationTests(unittest.TestCase):
 
 
 class AdmissionTests(unittest.TestCase):
+    def test_valid_json_with_missing_entry_list_cannot_empty_the_view(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / "research/update/source"
+            folder.mkdir(parents=True)
+            index = folder / "INDEX.json"
+            index.write_text("[]")
+            with self.assertRaisesRegex(ValueError, "INGESTION FAILED"):
+                source_indexes(root)
+            index.write_text(json.dumps({"record_type": "selected_frozen_source_index"}))
+            with self.assertRaisesRegex(ValueError, "INGESTION FAILED"):
+                projection(root, Inputs(root), [], source_indexes(root))
+
+    def test_evidence_budget_counts_artifacts_not_windows_of_one_long_source(self):
+        from types import SimpleNamespace
+        from knowledge.model import encoded
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / "knowledge/current/evidence"
+            (folder / "postings").mkdir(parents=True)
+            artifacts = [{"id": key, "cited_by": [], "declarations": [], "exclusions": [], "scope": "navigation"} for key in ("A1", "A2")]
+            documents = [{"id": "E-" + str(i), "artifact_id": "A1" if i < 85 else "A2", "source": {"path": "source.txt", "lines": [1, 1]}, "title": "needle"} for i in range(86)]
+            (folder / "artifacts.jsonl").write_bytes(b"".join(encoded(a) for a in artifacts))
+            (folder / "documents.jsonl").write_bytes(b"".join(encoded(d) for d in documents))
+            (folder / "postings" / (digest(b"needle")[:2] + ".json")).write_bytes(encoded({"needle": [[i, 100 - i] for i in range(86)]}))
+            result = evidence_search(SimpleNamespace(root=root), "needle", limit=2)
+            self.assertEqual([r["artifact_id"] for r in result["results"]], ["A1", "A2"])
+
     def test_malformed_index_cannot_silently_remove_evidence_coverage(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

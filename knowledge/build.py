@@ -399,7 +399,7 @@ def build(root=ROOT):
             "id", "kind", "record_id", "parents", "title", "evidence", "scope", "text_selection") if key in document}) for document in documents),
         "knowledge/current/transfers.json": encoded(transfers),
     }
-    from knowledge.operations import operation_frame
+    from knowledge.operations import operation_frame, historical_summary
     outputs["knowledge/current/operations.jsonl"] = b"".join(
         encoded(operation_frame(record)) for record in sorted(records, key=lambda item: item["id"]))
     shards = defaultdict(dict)
@@ -426,6 +426,12 @@ def build(root=ROOT):
     for record in records:
         packet = dict(record)
         packet.pop("body", None)
+        frame = operation_frame(record)
+        if historical_summary(record) and frame.get("scientific_excerpt"):
+            packet["scientific_card_excerpt"] = dict(frame["scientific_excerpt"],
+                source={"path": claims[record["id"]]["path"], "sha256": digest(record["body"].encode()),
+                        "lines": frame["scientific_excerpt"]["lines"]},
+                scope="Verbatim historical card excerpt, not a governing proof or new acceptance. Current reviews, conditions and corrections still govern; canonical historical statement remains unchanged.")
         packet["review_overlays"] = [packet_review(review, packet["evidence"])
                                      for review in record.get("review_overlays", [])]
         packet["historical_reviews"] = [packet_review(review, packet["evidence"])
@@ -443,6 +449,22 @@ def build(root=ROOT):
             packet["source_excerpts"].append({"source": ref, "text": passage[:2400], "text_selection": selection,
                                               "excerpt_truncated": len(passage) > 2400})
         packet["transfers"] = [transfer for transfer in transfers if record["id"] in (transfer["from"], transfer["to"])]
+        def default_output_size():
+            return len(encoded({"packets": [packet], "input_version": "0" * 64, "checkout_revision": "0" * 40}))
+        new_excerpt = packet.pop("scientific_card_excerpt", None)
+        prior_fits_default = default_output_size() <= 32768
+        if new_excerpt:
+            packet["scientific_card_excerpt"] = new_excerpt
+        if new_excerpt and prior_fits_default and default_output_size() > 32768:
+            # Optional new navigation must not break a previously usable
+            # complete packet. Never remove review, corrections or conditions.
+            packet["scientific_card_excerpt"].pop("text")
+            packet["scientific_card_excerpt"]["text_omitted"] = "Read the exact card range; excerpt text omitted here to preserve the default complete-packet budget."
+            if default_output_size() > 32768:
+                packet.pop("scientific_card_excerpt")
+                packet["scientific_card_reader"] = ["card", record["id"]]
+                if default_output_size() > 32768:
+                    packet.pop("scientific_card_reader")
         outputs["knowledge/current/packets/" + route_id(record["id"]) + ".json"] = encoded(packet)
     coverage = {
         "records_by_kind": dict(Counter(record["kind"] for record in records)),

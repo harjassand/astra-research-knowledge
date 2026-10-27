@@ -21,7 +21,11 @@ const packetButton = (dataset, container, packetPath, label = 'Read compact pack
         ({id, decision, reviewer, scope, remaining_gaps, authority}));
       const notices = packet.notices.map(({notice_id, status, clarification, whole_claim_invalidated, affected_units, context_only_notice, parent_context_card}) =>
         ({notice_id, status, clarification, whole_claim_invalidated, affected_units, context_only_notice, parent_context_card}));
-      text.textContent = JSON.stringify({statement: packet.statement, contract, review: reviews.length ? reviews : packet.review, notices}, null, 2);
+      text.textContent = JSON.stringify({statement: packet.scientific_card_excerpt?.text ?? packet.statement,
+        statement_scope: packet.scientific_card_excerpt?.scope,
+        card_source: packet.scientific_card_excerpt?.source,
+        historical_reported_status: packet.scientific_card_excerpt ? packet.statement : undefined,
+        contract, review: reviews.length ? reviews : packet.review, notices}, null, 2);
       const fullPacket = document.createElement('a');
       fullPacket.href = dataset.url(packetPath);
       fullPacket.textContent = 'Complete packet, exact evidence and version identities';

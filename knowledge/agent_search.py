@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 from knowledge.model import digest, flatten, query_terms, score_query, tokens
-from knowledge.operations import premise_check
+from knowledge.operations import premise_check, statement_view, historical_summary
 
 RUNTIME = Path(__file__).parent / "runtime"
 
@@ -98,7 +98,8 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
     views, pairs = [], []
     for identifier in candidates:
         record, frame = records[identifier], frames[identifier]
-        text = record["title"] + "\n" + flatten(record["statement"])
+        scientific = frame.get("scientific_excerpt", {}).get("text") if historical_summary(record) else None
+        text = record["title"] + "\n" + (scientific or flatten(record["statement"]))
         if record["kind"] != "result":
             text += "\n" + record["body"]
         views.append((identifier, "operation", None))
@@ -141,6 +142,7 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
         if index is not None:
             item["source_match"] = documents[index]["evidence"]
             item["next"]["source"] = ["source", documents[index]["id"]]
+        item.update(statement_view(record, frame))
         results.append(item)
         if len(results) == limit:
             break
@@ -156,6 +158,9 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
             "next": {"packet": ["packet", record["id"]], "family_packet": ["packet", record["id"]],
                      "source_selection": "Inspect packet.evidence scopes and choose --evidence INDEX; no first citation is presumed to prove the entire statement."}}]
     for item in results:
+        if records[item["id"]]["kind"] == "result":
+            item["next"]["card"] = ["card", item["id"]]
+            item["historical_status_is_not_statement"] = historical_summary(records[item["id"]])
         group = family(records[item["id"]])
         alternatives, selected = [], {item["id"]}
         for j in sorted(range(len(views)), key=lambda j: (-values[j], j)):

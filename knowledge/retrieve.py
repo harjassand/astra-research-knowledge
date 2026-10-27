@@ -13,6 +13,7 @@ if __package__ in (None, ""):
 from knowledge.build import check
 from knowledge.model import (ROOT, Inputs, digest, encoded, query_terms,
                              route_id, scientific_text, score_query, tokens)
+from knowledge.operations import statement_view
 
 
 class Library:
@@ -77,7 +78,14 @@ class Library:
                 "statement": record["statement"], "contract": record["contract"],
                 "review_overlays": record["review_overlays"], "reported_review": record["review"],
                 "notice_count": len(record["notices"]),
-                "packet": "knowledge/current/packets/" + route_id(record["id"]) + ".json"})
+                "packet": "knowledge/current/packets/" + route_id(record["id"]) + ".json"}
+                | statement_view(record, self.operation_frames[record["id"]]))
+            results[-1]["next"] = {"packet": ["packet", record["id"]],
+                "source_selection": "Read packet.evidence scopes and choose --evidence INDEX; the first citation need not prove the entire statement."}
+            if record["kind"] == "result":
+                results[-1]["next"]["card"] = ["card", record["id"]]
+            if document["kind"] == "source_window":
+                results[-1]["next"]["source"] = ["source", document["id"]]
             if len(results) == limit:
                 break
         if method == "structured" and limit > 1:
@@ -101,6 +109,27 @@ class Library:
         value = {"packets": packets, "input_version": self.manifest.get("input_version")}
         if len(encoded(value)) > max_bytes:
             raise ValueError("Complete packet exceeds byte budget; choose fewer IDs or explicitly increase --max-bytes. No corrections were truncated.")
+        return value
+
+    def card(self, identifier, start=None, end=None, max_bytes=32768):
+        record = self.resolve(identifier)
+        if record["kind"] != "result":
+            raise ValueError("Card reader requires a result ID; use packet/source for a reusable unit")
+        status = json.loads((self.root / record["authority"]).read_bytes())
+        path = status["card_path"]
+        data = Inputs(self.root).read(path)
+        if digest(data) != status["card_sha256"] or data.decode() != record["body"]:
+            raise ValueError("Stale or wrong card mapping")
+        lines = data.decode().splitlines(keepends=True)
+        start, end = 1 if start is None else start, len(lines) if end is None else end
+        if not 1 <= start <= end <= len(lines):
+            raise ValueError("Invalid card range")
+        value = {"id": record["id"], "source": {"path": path, "sha256": digest(data), "lines": [start, end]},
+                 "text": "".join(lines[start - 1:end]), "notices": record["notices"],
+                 "review_overlays": record["review_overlays"], "reported_review": record["review"],
+                 "scope": "Exact card text including its historical reported labels. This is not the governing proof; follow packet.evidence scopes and current version-bound reviews before reuse."}
+        if len(encoded(value)) > max_bytes:
+            raise ValueError("Card read exceeds byte budget; select --start/--end or increase --max-bytes. No corrections truncated.")
         return value
 
     def source(self, identifier, evidence_index=0, start=None, end=None, max_bytes=32768):
@@ -190,6 +219,11 @@ def main():
     packet = sub.add_parser("packet")
     packet.add_argument("ids", nargs="+")
     packet.add_argument("--max-bytes", type=int, default=32768)
+    card = sub.add_parser("card", help="read a bounded exact scientific card, retaining current corrections/reviews")
+    card.add_argument("id")
+    card.add_argument("--start", type=int)
+    card.add_argument("--end", type=int)
+    card.add_argument("--max-bytes", type=int, default=32768)
     source = sub.add_parser("source")
     source.add_argument("id")
     source.add_argument("--evidence", type=int, default=0)
@@ -213,6 +247,8 @@ def main():
                                     available=args.available, unavailable=args.unavailable)
         elif args.command == "packet":
             result = library.packet(args.ids, args.max_bytes)
+        elif args.command == "card":
+            result = library.card(args.id, args.start, args.end, args.max_bytes)
         elif args.command == "source":
             result = library.source(args.id, args.evidence, args.start, args.end, args.max_bytes)
         elif args.command == "bridge":
@@ -224,7 +260,7 @@ def main():
             result = library.manifest["counts"]
         revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True)
         result["checkout_revision"] = revision.stdout.strip() if revision.returncode == 0 else "UNKNOWN"
-        if args.command in ("packet", "source"):
+        if args.command in ("packet", "source", "card"):
             # Bound the actual UTF-8 output, including revision and terminal LF.
             output = encoded(result)
             if len(output) > args.max_bytes:

@@ -3,18 +3,26 @@
 Describe the problem rather than guessing a card ID:
 
 ```
+python3 knowledge/retrieve.py search "your scientific task" --method content
 python3 knowledge/retrieve.py search "a single experiment distinguishing action choices" --method agent
 python3 knowledge/retrieve.py search "certify a proposed intervention" --method agent --object "nonlinear conductance matrix" --unavailable "calibration" --available "scalar reaction intervals"
 python3 knowledge/retrieve.py evidence "hidden actuator above an untested dose" --method agent
 python3 knowledge/retrieve.py search "Compare quantum measurements by relative entropy with an untouched auxiliary quantum system"
 python3 knowledge/retrieve.py search "persistent intermediates from successive dilute reactant arrivals"
 python3 knowledge/retrieve.py packet N675
+python3 knowledge/retrieve.py card N557
 python3 knowledge/retrieve.py source N675 --evidence 0 --start 2 --end 80
 python3 knowledge/retrieve.py bridge <source-unit-ID> <destination-unit-ID>
 python3 knowledge/retrieve.py coverage
 ```
 
-`--method agent` is the recommended local agent route. Once per environment,
+Start with fast portable `--method content`; cross-check `structured` when the
+problem is poorly named or source/field weighting may matter. `--method agent`
+adds semantic relevance, within-family navigation and explicit premise triage.
+It is a complement: fresh evaluation retained cases where either lexical or
+structured search beat the model, and a case every method missed. See
+[the source-use comparison](evaluations/2026-10-27-agent-retrieval/README.md).
+For the optional local agent runtime, once per environment,
 install the free optional CPU runtime with `python3.13 -m venv .astra-local/agent`
 then `.astra-local/agent/bin/pip install -r knowledge/requirements-agent.txt`;
 run the commands with `.astra-local/agent/bin/python`. Python 3.12/3.13 are the
@@ -43,6 +51,13 @@ ranked units from its family and the family packet route, so grouping cannot
 silently hide all intermediate constructions. This menu confers no compatibility.
 `--method content` exposes the independent matched-content BM25 baseline over
 the same complete record/source content without field weights or expansions.
+
+Older canonical summaries sometimes contain only a historical status. Operation
+views also expose verbatim scientific card excerpts and labelled claim/interface/
+assumption/cost passages with exact card lines. Unlabelled text has no inferred
+role. `card ID --start N --end M` reads the actual checked card bytes with current
+notices/reviews; it does not substitute a card for its proof. Original canonical
+records/status labels remain unchanged, and excerpts confer no new acceptance.
 
 `evidence` is a separate discovery lane over all current record evidence ranges
 and explicit entries of recognized selected-public-source indexes. E-id reads
