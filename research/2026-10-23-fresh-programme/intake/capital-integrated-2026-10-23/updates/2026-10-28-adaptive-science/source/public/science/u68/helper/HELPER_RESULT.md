@@ -358,7 +358,7 @@ Indeed \(P_t(P_{\eta^2}1_A)\) has convolution variance \(1-e^{-2t}+\eta^2\). Her
 Owned code: affine_hermite_check.py. It uses only the standard library.
 
 ~~~
-python3 /Users/harjas/Documents/ChatGPT/coordination/work/astra-adaptive-orchestration-20261027/u68/helper/affine_hermite_check.py
+Public script reference (not an executed invocation): research/2026-10-23-fresh-programme/intake/capital-integrated-2026-10-23/updates/2026-10-28-adaptive-science/source/originals/science/u68/helper/affine_hermite_check.py
 ~~~
 
 At \(\lambda=3/5,a=4/5\), exact rational checks pass at degrees \(0,1,2,5,10,25,50,100\). They verify (3)–(5) and the scalar full-source-adjoint identities in every bidegree. Log-sums evaluate (5), (8), and test (6), (11), through degree 10000. Full output: affine_hermite_results.json.

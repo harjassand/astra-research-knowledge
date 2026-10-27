@@ -7,7 +7,7 @@ from itertools import combinations, combinations_with_replacement, product
 from pathlib import Path
 import json, hashlib
 
-BASE=Path('/Users/harjas/Documents/ChatGPT/coordination/work/astra-opportunity-retrieval-20261027/ultra')
+BASE=Path(__file__).resolve().parents[2]/'originals'
 cert_path=BASE/'principal/EXACT_HEAT_SEPARATOR.json'
 raw=cert_path.read_bytes(); cert=json.loads(raw)
 xpairs=list(combinations_with_replacement(range(4),2))
@@ -160,5 +160,6 @@ report={
  'acoustic_ldl_diagonal':[str(t) for t in AD],
  'scope':'Excludes all identity-diffusion closed homogeneous-quadratic-two-form bilinear-SOS certificates for F-gamma det^2, gamma>=0; symmetry then excludes all constant-SPD spatial diffusion certificates in the same class. Does not establish QC failure.'
 }
-(BASE/'helper/INDEPENDENT_HEAT_SEPARATOR_CHECK.json').write_text(json.dumps(report,indent=2)+'\n')
+with (Path.cwd()/'INDEPENDENT_HEAT_SEPARATOR_CHECK.portable.json').open('x',encoding='utf-8') as output:
+ output.write(json.dumps(report,indent=2)+'\n')
 print(json.dumps({k:v for k,v in report.items() if k!='coefficient_convention'},indent=2))

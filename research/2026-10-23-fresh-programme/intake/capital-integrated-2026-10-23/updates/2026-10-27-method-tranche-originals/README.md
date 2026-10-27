@@ -1,7 +1,7 @@
 # Completed Astra method research: selected public evidence
 
 This is a source-bound public subset of the completed October 25 study. It keeps
-33 unchanged scientific originals and six explicitly derived selections under
+31 unchanged scientific originals and eight explicitly derived selections under
 source/. All 57 original method files remain frozen privately at curator source
 commit d41f7874ed2c74cad1ef983d02d651ce58b03caa; none was rewritten. PUBLIC_SELECTION.json
 lists exact original hashes, inclusion decisions and selected line ranges.
@@ -22,7 +22,7 @@ supports reaggregation, not complete public rescoring or a full experiment rerun
 The original report's reproduction instructions and historical checks refer
 to the complete private freeze. Its absent collector/validator must not be
 advertised as a working public command. Use the owner selection check below.
-Historical v1 and its reviews remain; v2 and the new owner review state the
+Historical v1/v2 and their reviews remain; v3 and the new owner review state the
 actual public availability. An audit of supplied arithmetic is not score truth,
 provider authentication, experimental independence or efficacy.
 
@@ -50,3 +50,10 @@ This verifies selection integrity and independently reaggregates the public
 numeric records. Then follow knowledge/INTAKE.md's ordinary build/check path.
 No causal discovery-rate, general method/model winner, strict compute parity,
 measured device or practical advantage follows from this completed study.
+
+Current public copies omit local origins and recorded tool-input strings.
+SOURCE_SELECTIONS and original-source manifests are not required for execution:
+the actual public source index retains relative paths and hashes. Explicit
+portability derivatives carry their original full SHA256 and relative original
+identity in the existing index. Earlier public commit bytes may remain reachable;
+this correction does not establish erasure or credentials exposure.

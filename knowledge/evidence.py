@@ -33,6 +33,48 @@ def source_indexes(root):
     return found
 
 
+def public_derivatives(inputs, index_paths):
+    """Read explicit public-copy provenance; never open an original_path.
+
+    This does not alias source identities or confer acceptance. Only historical
+    citations may use these routes, with their original identity kept visible.
+    Current citations must bind the derivative's actual bytes themselves.
+    """
+    derivatives = {}
+    for name in index_paths:
+        index = inputs.json(name)
+        schema = index.get("schema")
+        parent = Path(name).parent.parent if schema == "astra.intake-source-index.v1" else Path(name).parent
+        entries = index.get("files", index.get("originals", []))
+        if not isinstance(entries, list):
+            raise ValueError("INGESTION FAILED: selected source index requires a nonempty explicit entry list: " + name)
+        field = "repository_path" if schema == "astra.scientific-source-selection.v1" else "path"
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise ValueError("INGESTION FAILED: selected source entry lacks path/hash/byte support: " + name)
+            if entry.get("kind") != "public_path_portability_derivative":
+                continue
+            original, version = entry.get("original_path"), entry.get("original_sha256")
+            if not isinstance(original, str) or not original or Path(original).is_absolute() or ".." in Path(original).parts:
+                raise ValueError("INGESTION FAILED: derivative original identity must be repository-relative")
+            if not isinstance(version, str) or len(version) != 64 or any(c not in "0123456789abcdef" for c in version):
+                raise ValueError("INGESTION FAILED: derivative requires original source SHA256")
+            if not {field, "bytes", "sha256"} <= entry.keys() or type(entry["bytes"]) is not int or entry["bytes"] < 0:
+                raise ValueError("INGESTION FAILED: selected source entry lacks path/hash/byte support: " + name)
+            path = (parent / entry[field]).as_posix()
+            data = inputs.read(path)
+            if len(data) != entry["bytes"] or digest(data) != entry["sha256"]:
+                raise ValueError("INGESTION FAILED: public derivative bytes missing/mismatched: " + path)
+            ref = {"path": path, "read_path": path, "sha256": entry["sha256"],
+                   "original_sha256": version,
+                   "locator_scope": "Explicit public path-portability derivative; original full bytes privately preserved, not claimed identical to this artifact"}
+            key = (original, version)
+            if key in derivatives and derivatives[key] != ref:
+                raise ValueError("INGESTION FAILED: ambiguous historical public derivative: " + original)
+            derivatives[key] = ref
+    return derivatives
+
+
 def projection(root, inputs, records, index_paths, transfers=()):
     artifacts = {}
     declarations = []
@@ -87,6 +129,9 @@ def projection(root, inputs, records, index_paths, transfers=()):
             declared_versions.append((path, entry["sha256"]))
             reason = None
             kind = entry.get("kind", "frozen_original")
+            if kind == "public_path_portability_derivative":
+                ref["original_sha256"] = entry["original_sha256"]
+                ref["locator_scope"] = "Explicit public path-portability derivative; original full bytes privately preserved, not claimed identical to this artifact"
             # Selected extraction/index scopes must not be widened to a full
             # transcript or external publication by an automatic adapter.
             if "derived_non_authoritative" in kind or "curator_extract" in kind:
@@ -104,7 +149,11 @@ def projection(root, inputs, records, index_paths, transfers=()):
                         reason = "empty original; metadata only"
                 except UnicodeError:
                     reason = "binary; metadata only"
-            add(ref, declaration={"index": name, "index_sha256": inputs.hashes[name], "kind": kind}, exclusion=reason)
+            declaration = {"index": name, "index_sha256": inputs.hashes[name], "kind": kind}
+            if kind == "public_path_portability_derivative":
+                declaration.update(original_path=entry["original_path"], original_sha256=entry["original_sha256"],
+                                   scope=entry.get("scope", "Explicit public derivative; inspect original/current source identities"))
+            add(ref, declaration=declaration, exclusion=reason)
         declarations.append((name, declared_versions))
 
     # A declaration may use the original path while an existing citation also

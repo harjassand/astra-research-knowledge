@@ -87,3 +87,23 @@ already occur in `evidence`. Exact duplicate legacy gap citations can use the
 existing `evidence_ref_indices` convention; `evidence_ref_annotations` retains
 any original per-source metadata. The actual gap scope and every correction,
 condition and review remain. Conflicting references are kept separately.
+
+For an explicitly identified public path-portability derivative, use the existing
+source-index entry with its actual public path/hash/bytes and `kind` set to
+`public_path_portability_derivative`; `original_path` is a repository-relative
+original identity and `original_sha256` its full hash. Originals stay privately
+frozen. Those provenance locations are never opened. Current support must bind
+the actual public derivative. An older immutable unit/review may show an explicit
+public-copy route only when this exact original identity is declared and its old
+quoted scientific range still validates there. Both source identities remain
+visible; this neither asserts old full-byte availability nor confers acceptance.
+Missing current support, undeclared historical support, wrong hashes, changed
+quotations and ambiguous copy mappings fail ingestion. Rebind actual new units
+and current scoped reviews through the normal build/check path.
+
+Before any public push, commit the reviewed candidate locally and run
+`python3 state/check_current.py --base-revision <actual-PR-base-SHA> --preflight-only`.
+This checks unchanged historical evidence and newly added literal local-source
+locators before a draft can expose them. It does not run the full suite or
+accept science. The existing full current-base gate and actual source-use
+verification remain required before merge; producer research continues.

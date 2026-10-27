@@ -21,7 +21,7 @@ included or claimed in this source-backfill comparison.
 | I02 prescribed scalar acoustic/optical bands | Content/agent already found N946 before this intake. Its newly explicit inverse unit now leads directly to the actual positive-star construction at v3:227-283. This is a reusable intermediate route, not new parent recall or new passive-synthesis priority. |
 | I03 finite stiffness versus spectral infimum | Portable/content now return the exact compliance optimum-or-escape unit first. Its proof distinguishes finite original-m attainment from a moment-exact sequence spending divergent stiffness; the heavier effective backbone is not a legal original-m attainer. |
 | I04 exact finite20.02 spring budget | Content returns the five-root unit first. Following evidence2 reads the actual p47 cap20.02 nested-root proof, full optical bands and infinite tail. Evidence0 instead governs cap24; the rational20.0199 feasible cell is separate. This source-branch check prevents a plausible but wrong citation. |
-| I05 discovery-rate and public rescoring | Agent returns current pilot v2 first; portable returns its R1008 parent first. The records support descriptive reaggregation and explicit public omissions, not causal efficacy, equal total compute or complete public rescoring. |
+| I05 discovery-rate and public rescoring | Agent returns current pilot v3 first; portable returns its R1008 parent first. The records support descriptive reaggregation and explicit public omissions, not causal efficacy, equal total compute or complete public rescoring. |
 | I06 permanence review version | Portable still reaches N33, now third, and its actual notice/source distinguishes positive1152-line b91 review from available1437-line bbe. The expanded-corpus neural top5 MISSES N33, whereas its baseline ranked N33 first. Full-content top5 also misses it; structured reaches it second. This regression is retained for a separate general qualification/correction-ranking investigation. |
 
 inspect_source_routes.py requires every expected target to occur in the returned
@@ -57,3 +57,15 @@ commit guards were kept. Every current correction, contract, scope and original
 legacy source annotation remains; only optional navigation wrappers and exact
 duplicate citations are factored to keep the parent usable at the default
 budget. A build passing is not the scientific-use evidence above.
+
+Current publication correction: the b6 comparison and its earlier receipts are
+retained in history/pre-portability-b6/. The current results/source-use files
+were regenerated against the corrected source identities and current manifest.
+The correction ports14 identified public copies and excludes2 unneeded local-
+origin manifests;614 public original/excerpt files remain byte-identical to the
+frozen curator inputs. Seven Gaussian units and the pilot have immutable next
+versions for their changed support, with actual new correspondence reviews.
+Local tool-input strings are explicit omission markers; numeric values and
+mathematical conditions remain. The method subset is31 unchanged originals plus
+8 selections/derivatives, with26 full original files private-retained. Earlier
+public commits may remain reachable; this is not erasure or a credentials claim.

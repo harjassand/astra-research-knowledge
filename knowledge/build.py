@@ -70,6 +70,8 @@ def build(root=ROOT):
     root = Path(root)
     inputs = Inputs(root)
     discovered = inventory(root)
+    from knowledge.evidence import public_derivatives
+    historical_derivatives = public_derivatives(inputs, discovered["selected_public_source_indexes"])
     for name in ("knowledge/model.py", "knowledge/build.py", "knowledge/retrieve.py",
                  "knowledge/search.js", "knowledge/index.html", "knowledge/README.md",
                  "knowledge/INTAKE.md", "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/evidence.py", "knowledge/interfaces.py",
@@ -137,7 +139,7 @@ def build(root=ROOT):
     support = {}
     sources = []
 
-    def references(values):
+    def references(values, historical=False, source_derivatives=None):
         result = {}
         for reference in evidence_refs(values):
             ref = compact_ref(reference)
@@ -152,6 +154,20 @@ def build(root=ROOT):
                 ref["locator_scope"] = "binary artifact only; no statement or text passage inferred"
                 result[encoded(ref)] = ref
                 continue
+            except ValueError as error:
+                replacement = historical_derivatives.get((ref["path"], ref["sha256"]))
+                if not historical or replacement is None or "required source bytes missing/mismatched" not in str(error):
+                    raise
+                original = ref
+                ref = dict(ref, **replacement)
+                # Exact old range/quotation must still exist in the declared
+                # public derivative. This is not verification of old full bytes.
+                text, _ = inputs.source(ref)
+                if source_derivatives is not None:
+                    source_derivatives.append({
+                        "original_path": original["path"], "original_sha256": original["sha256"],
+                        "original_lines": original.get("lines"), "public_derivative": ref,
+                        "scope": "Historical original identity preserved; quoted scientific range available in explicit public derivative. Original full bytes are privately preserved, not acquired from this current tree."})
             if ref.get("lines") is None:
                 ref["lines"] = [1, len(text.splitlines())]
                 ref["locator_scope"] = "whole file; original record supplied no statement-specific lines"
@@ -277,10 +293,15 @@ def build(root=ROOT):
         unit_versions[unit["id"]].append((name, unit))
     for identifier, versions in sorted(unit_versions.items()):
         versions.sort(key=lambda item: item[1]["version"])
+        version_derivatives = {}
         for index, (name, unit) in enumerate(versions):
             if unit["version"] != index + 1 or unit.get("previous") != (None if index == 0 else inputs.hashes[versions[index - 1][0]]):
                 raise ValueError("Broken immutable unit version chain: " + identifier)
-            refs = references(unit["evidence"])
+            notes = []
+            refs = references(unit["evidence"], historical=index < len(versions) - 1,
+                              source_derivatives=notes)
+            if notes:
+                version_derivatives[name] = notes
             parents = [canonical(parent) for parent in unit["parents"]]
             if None in parents or not parents or not refs:
                 raise ValueError("Unresolved unit parent/support: " + identifier)
@@ -297,6 +318,7 @@ def build(root=ROOT):
         record = dict(unit, parents=parents, authority=name, evidence=refs,
                       notices=parent_notices(parents),
                       history=[{"path": path, "sha256": inputs.hashes[path], "version": value["version"]}
+                               | ({"source_derivatives": version_derivatives[path]} if path in version_derivatives else {})
                                for path, value in versions])
         records.append(record)
 
@@ -342,7 +364,16 @@ def build(root=ROOT):
         record["historical_reviews"] = []
     for name in discovered["knowledge/reviews"]:
         review = inputs.json(name)
-        review_evidence = references(review["evidence"])
+        historical_only = bool(review.get("subjects")) and all(
+            subject.get("id") in current and subject.get("content_version") != current[subject["id"]]["content_version"]
+            for subject in review["subjects"])
+        review_derivatives = []
+        review_evidence = references(review["evidence"], historical=historical_only,
+                                     source_derivatives=review_derivatives)
+        if review_derivatives:
+            # Preserve the authoring review bytes and subjects. Its historical
+            # projection states which public copy now supplies the quotation.
+            review = dict(review, evidence=review_evidence, source_derivatives=review_derivatives)
         if not review.get("subjects") or not review.get("scope") or not review_evidence:
             raise ValueError("Acceptance requires subjects, actual scope and substantive audit evidence")
         if review["decision"] not in ("accepted_internally_verified", "rejected", "open"):

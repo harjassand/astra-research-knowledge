@@ -3,6 +3,7 @@
 import argparse
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -17,6 +18,24 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def run(*arguments):
     subprocess.run([sys.executable, *arguments], cwd=ROOT, check=True)
+
+
+def public_path_portability(base, root=ROOT):
+    """Reject newly published literal host locators; not a secret/content audit."""
+    patch = subprocess.check_output([
+        "git", "diff", "--no-ext-diff", "--unified=0", base, "--",
+        "research", "knowledge", "cards", "frontier", "indexes", "agent"], cwd=root).decode("utf-8", "replace")
+    marker = re.compile(r"/(?:Users|home)/[^/\s'\"<>]+/|file:[/]{2}")
+    path, affected = None, set()
+    for line in patch.splitlines():
+        if line.startswith("+++ b/"):
+            path = line[6:]
+        elif line.startswith("+") and not line.startswith("+++") and marker.search(line[1:]):
+            affected.add(path)
+    if affected:
+        raise ValueError("New public text contains host-specific local locators: "
+                         + ", ".join(sorted(affected))
+                         + ". Preserve originals privately and use explicit public derivatives/relative references.")
 
 
 def historical_integrity(base):
@@ -50,12 +69,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-revision", required=True)
     parser.add_argument("--fetch-sources", action="store_true")
+    parser.add_argument("--preflight-only", action="store_true",
+                        help="Check historical/public-source scope before any push; full tests remain required before merge")
     args = parser.parse_args()
     try:
         checkpoints.require(bool(checkpoints.REVISION.fullmatch(args.base_revision)), "base-revision must be a full commit ID")
         checkpoints.git(ROOT, "cat-file", "-e", args.base_revision + "^{commit}")
         checkpoints.git(ROOT, "merge-base", "--is-ancestor", args.base_revision, "HEAD")
         historical_integrity(args.base_revision)
+        public_path_portability(args.base_revision)
+        if args.preflight_only:
+            print("Historical/public-source preflight passed. Full publication and scientific-use checks remain required.")
+            return 0
         tracked = set(subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0"))
         for path in sorted((ROOT / "state/checkpoints").glob("*/*.json")):
             record = json.loads(path.read_bytes())

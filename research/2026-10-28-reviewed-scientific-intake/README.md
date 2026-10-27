@@ -3,7 +3,8 @@
 This intake integrates the curator's completed source batches02,03,04,05 and
 06 together with required06a, in ordered commits from public main8d51d607.
 The source commits and actual review/gate contexts are listed in SOURCE_BATCHES.json. The scientific scope reviews
-are retained verbatim here. They preceded the changed public-source selection,
+are retained here; the batch05 public copy explicitly ports its source-root
+locator, with the complete original privately preserved. They preceded the changed public-source selection,
 which has its own owner review and current-base publication checks. No worker
 was launched and the curator checkout was not edited.
 
@@ -16,11 +17,11 @@ descriptive evidence; no measured device, generally winning research method,
 historical priority or practical advantage follows.
 
 The method source subset is explicitly partial. Its PUBLIC_SELECTION.json
-records 33 unchanged originals, six separately identified selections and 24
+records 31 unchanged originals, eight separately identified selections/derivatives and 26
 private-retained originals from a 57-file freeze. All twelve numeric starts and
 both score corpora support reaggregation; eight response bodies are public.
 Four protected construction bodies and combined task payloads are withheld.
-Historical v1/reviews remain; current v2 states the changed availability. The
+Historical v1/v2 and reviews remain; current v3 states the changed availability. The
 original complete-package validator is not a current public command. Run
 `python3 research/2026-10-28-reviewed-scientific-intake/verify_selection.py`.
 
@@ -43,3 +44,15 @@ Use knowledge/INTAKE.md for every subsequent new or revised source. Source
 indexes, immutable units, review overlays and existing notices use the same
 build/check path; a missing declared source fails ingestion. No new producer
 reporting form is introduced.
+
+PORTABILITY_REVIEW.md and PUBLIC_SOURCE_CORRESPONDENCE.json describe the current
+source correction. Fourteen public copies are explicit derivatives; two unneeded
+local-origin manifests are excluded. Scientific statements and numeric values
+remain; old unit/review bytes and identities are preserved. Source indexes keep
+actual public paths/hashes and relative original identities. Earlier public
+commits may remain reachable; no erasure or credential-exposure claim is made.
+
+The current byte check distinguishes614 unchanged public original/excerpt files
+from14 explicit portable derivatives. The pre-correction626-file receipt and
+evaluation are retained under history/pre-portability-b6/. The scope of the
+scientific results has not grown because of this metadata correction.

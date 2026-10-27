@@ -76,6 +76,6 @@ finite-device fidelity or hardware advantage is claimed.
 Reproduce the executed work with:
 
 ```sh
-/usr/local/bin/python3 /Users/harjas/Documents/ChatGPT/coordination/work/astra-policy-terra-20261027/c86/supplied_contour_check.py
-/usr/local/bin/python3 /Users/harjas/Documents/ChatGPT/coordination/work/astra-policy-terra-20261027/c86/integration_check.py
+Public script reference (original local invocation omitted): research/2026-10-23-fresh-programme/intake/capital-integrated-2026-10-23/updates/2026-10-28-ladder-local-error/source/originals/constructions/c86/supplied_contour_check.py
+Public script reference (original local invocation omitted): research/2026-10-23-fresh-programme/intake/capital-integrated-2026-10-23/updates/2026-10-28-ladder-local-error/source/originals/constructions/c86/integration_check.py
 ```

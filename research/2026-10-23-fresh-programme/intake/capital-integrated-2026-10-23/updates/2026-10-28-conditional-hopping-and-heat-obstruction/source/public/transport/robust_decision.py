@@ -6,8 +6,8 @@ from pathlib import Path
 from fractions import Fraction as F
 from collections import defaultdict
 import numpy as np,json,math,time
-OUT=Path(__file__).parent
-SRC=Path('/Users/harjas/Documents/ChatGPT/coordination/work/astra-opportunity-retrieval-20261027/published_repo/updates/EX/package/frontier_residual/recovered/astra_frontier_residual_response')
+OUT=Path.cwd()
+SRC=next(parent for parent in Path(__file__).resolve().parents if (parent/'knowledge/build.py').is_file())/'updates/EX/package/frontier_residual/recovered/astra_frontier_residual_response'
 
 def canon(x,z):
  u=x|z
@@ -125,4 +125,5 @@ if __name__=='__main__':
   c=epsilon*upper['c_upper'];up=upper['nominal_D_upper']+4*(2*upper['residual_inverse_norm']*c+c*c)
   row={'epsilon':str(epsilon),'D_high_lower':str(low),'D_low_upper':str(up),'improvement_lower':str(low-up),'float_improvement_lower':float(low-up),'all_size_scope':'actual thermodynamic D; source transfer premises plus new conditional-hop theorem','min_ring_size':min_ring_size};rows.append(row);print(json.dumps({k:v for k,v in row.items() if k!='D_high_lower' and k!='D_low_upper' and k!='improvement_lower'}),flush=True)
  out={'decision':'V=3/2 versus V=0, U=4,d=2; four independent conditional hopping amplitudes in [1-epsilon,1+epsilon]','lower_constants':{k:str(v) for k,v in lower.items()},'upper_constants':{k:str(v) for k,v in upper.items()},'bounds':rows,'source_witnesses':['results/anchors/V1half.npz','results/anchors/V0.npz'],'min_ring_size':min_ring_size,'method':'full ordinary translation Pauli algebra, exact source replay, all20 population-block identities, rational norm-square arithmetic and upward square roots; no optimizer'}
- (OUT/'ROBUST_INTERACTING_DECISION.json').write_text(json.dumps(out,indent=2)+'\n')
+ with (OUT/'ROBUST_INTERACTING_DECISION.portable.json').open('x',encoding='utf-8') as output:
+   output.write(json.dumps(out,indent=2)+'\n')

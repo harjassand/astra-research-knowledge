@@ -60,7 +60,7 @@ resolvent inequalities; their numerical sizes are not certified.
 Run:
 
 ```sh
-/usr/local/bin/python3 /Users/harjas/Documents/ChatGPT/coordination/work/astra-policy-terra-20261027/c74/contour_check.py
+Public script reference (original local invocation omitted): research/2026-10-23-fresh-programme/intake/capital-integrated-2026-10-23/updates/2026-10-28-ladder-local-error/source/originals/constructions/c74/contour_check.py
 ```
 
 The script evaluates the continuum momentum deformation by Gauss-Legendre

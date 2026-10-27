@@ -20,14 +20,22 @@ class ReviewedScientificIntake(unittest.TestCase):
         self.assertEqual(result["numeric_starts"], 12)
         self.assertEqual(result["public_response_bodies"], 8)
 
+    def test_public_copies_are_explicit_portable_artifacts_not_private_reads(self):
+        check = runpy.run_path(str(ROOT / "research/2026-10-28-reviewed-scientific-intake/verify_public_copies.py"))
+        result = check["verify"]()
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["explicit_public_derivatives"], 14)
+        self.assertEqual(result["private_originals_opened"], 0)
+
     def test_changed_public_availability_has_its_own_exact_review(self):
         record = self.adapter.library.resolve("U1008-cued-prompt-pilot-evidence")
-        self.assertEqual(record["version"], 2)
+        self.assertEqual(record["version"], 3)
         self.assertIn("withheld", str(record["contract"]))
         self.assertIn("Complete public rescoring is unavailable", str(record["review_overlays"]))
         current = {r["id"] for r in record["review_overlays"]}
         historical = {r["id"] for r in record["historical_reviews"]}
-        self.assertIn("A1008-public-selection-arithmetic", current)
+        self.assertIn("A1008-public-source-correspondence-v3", current)
+        self.assertIn("A1008-public-selection-arithmetic", historical)
         self.assertNotIn("A1008-descriptive-pilot-arithmetic", current)
         self.assertIn("A1008-descriptive-pilot-arithmetic", historical)
 

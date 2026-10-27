@@ -18,7 +18,7 @@ def verify():
     ledger = load(METHOD / 'PUBLIC_SELECTION.json')
     index = load(METHOD / 'source/INDEX.json')
     assert len(index['files']) == 39
-    assert sum(e['kind'] == 'frozen_original' for e in index['files']) == 33
+    assert sum(e['kind'] == 'frozen_original' for e in index['files']) == 31
     declared = set()
     for entry in index['files']:
         path = METHOD / entry['path']
@@ -28,7 +28,7 @@ def verify():
         declared.add(path.relative_to(ROOT).as_posix())
     assert len(ledger['original_files']) == 57
     assert Counter(e['selection'] for e in ledger['original_files']) == {
-        'unchanged_public_original': 33, 'private_original_retained': 24}
+        'unchanged_public_original': 31, 'private_original_retained': 26}
     for entry in ledger['original_files']:
         path = ROOT / entry['path']
         if entry['selection'] == 'private_original_retained':
@@ -37,7 +37,7 @@ def verify():
         else:
             assert entry['path'] in declared
             assert hashlib.sha256(path.read_bytes()).hexdigest() == entry['sha256']
-    pilot = load(METHOD / 'source/selected/pilot_numeric_records.json')
+    pilot = load(METHOD / 'source/selected/pilot_numeric_records_public.json')
     rows = pilot['records']
     ids = {r['response_id'] for r in rows}
     assert len(rows) == len(ids) == 12
@@ -83,8 +83,8 @@ def verify():
     assert '/Users/' not in transfer.read_text()
     assert 'future_protocol' not in load(transfer)
     return {'scope': 'Selection integrity and supplied descriptive arithmetic only; no execution authentication, score truth, theorem replay or efficacy',
-            'public_method_sources': 39, 'unchanged_originals': 33,
-            'private_retained_originals': 24, 'numeric_starts': 12,
+            'public_method_sources': 39, 'unchanged_originals': 31,
+            'private_retained_originals': 26, 'numeric_starts': 12,
             'public_response_bodies': 8, 'selected_trajectory_passages': 28,
             'score_means': score_totals, 'usage': usage,
             'input_plus_output': 847499, 'passed': True}

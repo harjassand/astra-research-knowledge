@@ -5,8 +5,9 @@ from pathlib import Path
 from math import factorial,isqrt
 from decimal import Decimal,localcontext,ROUND_FLOOR,ROUND_CEILING
 import json,hashlib
-BASE=Path('/Users/harjas/Documents/ChatGPT/coordination/work/astra-opportunity-retrieval-20261027')
-T=BASE/'ultra/transport';S=BASE/'published_repo/updates/EX/package/frontier_residual/recovered/astra_frontier_residual_response/results'
+BASE=Path(__file__).resolve().parents[2]/'originals'
+REPO=next(parent for parent in Path(__file__).resolve().parents if (parent/'knowledge/build.py').is_file())
+T=BASE/'transport';S=REPO/'updates/EX/package/frontier_residual/recovered/astra_frontier_residual_response/results'
 def read(p):return json.loads(p.read_text())
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def qlist(r,k):return [F(x) for x in r[k]]
@@ -112,5 +113,6 @@ with localcontext() as ctx:
   rounding=ROUND_CEILING if k in ['chosen_gradient_upper','outside_upper','global_regret_upper'] else ROUND_FLOOR
   display[k]={'decimal':str(decimal),'outward_21dp':str(decimal.quantize(Decimal('0.000000000000000000001'),rounding=rounding))}
 report={'status':'EXACT_FORMULA_AND_640_CELL_PASS','verification_scope':'Independent rational reconstruction from stored norm bounds and pinned source polynomial/anchor records; no principal module import or heavy Pauli/norm regeneration','global_certificate_sha256':sha(cert_path),'raw_norm_summary_sha256':sha(T/'CENTRAL_HOPPING_NORM_BOUNDS.json'),'upper_anchor_summary_sha256':sha(T/'GLOBAL_HOPPING_UPPER_ANCHORS.json'),'source_central_witness_sha256':raw_record['source_witness_sha256'],'source_polynomial_derivative_factorials':'EXACT_PASS','all_five_source_residual_derivatives_and_upper_norm_squares':'EXACT_PASS','local_radius':str(r),'seven_source_anchor_polynomials_and_endpoints':'EXACT_PASS','continuous_complement_cells_checked':640,'coverage':'[0,31/16] union [39/16,3], exact 1/256 cells','near_control_rows_exactly_checked':near_rows,'display':display,'finite_ring_minimum':47,'scope':'Uniform global regret over V in [0,3] in the specified four-amplitude box; inherited actual thermodynamic D; no physical acquisition or independent heavy norm regeneration.'}
-(BASE/'ultra/helper/GLOBAL_HOPPING_INDEPENDENT_CHECK.json').write_text(json.dumps(report,indent=2)+'\n')
+with (Path.cwd()/'GLOBAL_HOPPING_INDEPENDENT_CHECK.portable.json').open('x',encoding='utf-8') as output:
+ output.write(json.dumps(report,indent=2)+'\n')
 print(json.dumps({k:v for k,v in report.items() if k!='near_control_rows_exactly_checked'},indent=2))
