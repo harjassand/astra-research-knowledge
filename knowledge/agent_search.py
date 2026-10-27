@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 from knowledge.model import digest, flatten, query_terms, score_query, tokens
-from knowledge.operations import premise_check, statement_view, historical_summary
+from knowledge.operations import premise_check, statement_view, historical_summary, qualified_views
 
 RUNTIME = Path(__file__).parent / "runtime"
 
@@ -95,7 +95,7 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
             candidates.append(record["id"])
     candidates = candidates[:192]
     frames = library.operation_frames
-    views, pairs = [], []
+    views, pairs, qualification_context = [], [], {}
     for identifier in candidates:
         record, frame = records[identifier], frames[identifier]
         scientific = frame.get("scientific_excerpt", {}).get("text") if historical_summary(record) else None
@@ -104,6 +104,10 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
             text += "\n" + record["body"]
         views.append((identifier, "operation", None))
         pairs.append((task, text))
+        for role, qualified, notice_index in qualified_views(record, frame, task):
+            qualification_context[len(views)] = notice_index
+            views.append((identifier, role, None))
+            pairs.append((task, qualified))
     # Source passages supply buried constructions; keep their score/route
     # separate from a synthesized card. Never redirect them to evidence[0].
     for identifier, index in seeds.items():
@@ -139,6 +143,19 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
                 "next": {"packet": ["packet", identifier], "family_packet": ["packet", group],
                          "source_selection": "Inspect packet.evidence scopes and choose --evidence INDEX; different citations may support different subclaims. No first citation is presumed to prove the entire statement."},
                 "packet": "knowledge/current/packets/" + identifier.split("-", 1)[0] + ".json" if record["kind"] == "result" else "knowledge/current/packets/" + identifier + ".json"}
+        if view in ("qualified_operation", "current_notice"):
+            item["ranking_view_scope"] = "Relevance-only excerpts of actual current fields; not a proof, complete field or applicability decision. Fetch the complete packet and selected governing source."
+        if view == "current_notice":
+            notice_index = qualification_context[j]
+            notice = record["notices"][notice_index]
+            notice_id = notice.get("notice_id")
+            from knowledge.model import evidence_refs
+            refs = list(evidence_refs(notice))
+            item["notice_match"] = {"notice_index": notice_index, "notice_id": notice_id,
+                                    "source_count": len(refs),
+                                    "scope": "Selected current notice; source indices refer only to this notice, not record.evidence. Inspect the complete notice before choosing a citation."}
+            if notice_id and refs:
+                item["next"]["notice_source"] = ["source", identifier, "--notice", notice_id, "--evidence", "0"]
         if index is not None:
             item["source_match"] = documents[index]["evidence"]
             item["next"]["source"] = ["source", documents[index]["id"]]
@@ -182,6 +199,8 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
     return {"query": query, "object": object_text, "operation": operation, "method": "agent",
             "expansions": expansions, "candidate_records": len(candidates), "ranked_views": len(views),
             "candidate_budget": 192, "family_expansion_budget": 24, "candidate_generators": ["field_BM25_with_visible_expansions", "matched_content_BM25_without_expansion"],
+            "ranking_views": ["operation", "source_passage", "qualified_operation", "current_notice"],
+            "qualification_view_scope": "One bounded current contract view and at most one query-selected current-notice view per candidate. Same model and candidate cap; fields/units stay source-local. Available/unavailable declarations are inspection-only, never positive ranking terms.",
             "model_revision": library.reranker.version,
             "scope": "Relevance candidates, not answers or applicability probabilities. Read next.packet (including corrections/history) and next.source before reuse. Empty/low-scoring results do not establish impossibility. No automatic composition.",
             "results": results}

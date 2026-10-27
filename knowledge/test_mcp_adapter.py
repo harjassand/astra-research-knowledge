@@ -130,6 +130,21 @@ class AdapterTests(unittest.TestCase):
             self.assertIn("Agent runtime missing", result["metadata"]["fallback"])
             self.assertTrue(result["results"])
 
+    def test_notice_identity_survives_later_portable_lane_hits(self):
+        identifier = "N33-endotactic-permanence"
+        match = {"notice_id": "SN-N33-REVIEW-SUBJECT-LINEAGE-20261027", "source_count": 2}
+
+        def lane(*args, **kwargs):
+            hit = {"id": identifier}
+            if kwargs.get("method") == "agent":
+                hit["notice_match"] = match
+            return {"results": [hit]}
+
+        with patch.object(self.adapter, "method", "agent"), patch.object(self.adapter.library, "search", side_effect=lane):
+            found = self.adapter.search("version lineage of completed permanence review")
+        record = next(hit for hit in found["results"] if hit["metadata"].get("record_id") == identifier)
+        self.assertEqual(record["metadata"]["matching_current_notice"], match)
+
 
 if __name__ == "__main__":
     unittest.main()

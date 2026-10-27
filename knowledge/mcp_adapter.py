@@ -119,10 +119,12 @@ class ResearchAdapter:
         self.current()
         if not isinstance(query, str) or not query.strip() or len(query) > 10000:
             raise ValueError("query must contain 1..10000 characters")
-        fallback, lanes = None, []
+        fallback, lanes, notice_matches = None, [], {}
         if self.method == "agent":
             try:
-                lanes.append(self.library.search(query, method="agent", limit=8)["results"])
+                lane = self.library.search(query, method="agent", limit=8)["results"]
+                lanes.append(lane)
+                notice_matches = {hit["id"]: hit["notice_match"] for hit in lane if "notice_match" in hit}
             except ValueError as error:
                 if "Agent runtime missing" not in str(error):
                     raise
@@ -148,6 +150,8 @@ class ResearchAdapter:
                 "content_version": record["content_version"], "kind": record["kind"],
                 "operation_preview": preview, "preview_scope": "Partial candidate preview; fetch complete conditions/corrections before reuse",
                 "current_notice_count": len(record["notices"]), "candidate_only": True}})
+            if identifier in notice_matches:
+                records[-1]["metadata"]["matching_current_notice"] = notice_matches[identifier]
             navigation = self.interface_view(identifier, preview=True)
             if navigation["routes"] or navigation["total_candidates"]:
                 records[-1]["metadata"]["shared_consumer_navigation"] = navigation

@@ -22,6 +22,21 @@ adds semantic relevance, within-family navigation and explicit premise triage.
 It is a complement: fresh evaluation retained cases where either lexical or
 structured search beat the model, and a case every method missed. See
 [the source-use comparison](evaluations/2026-10-27-agent-retrieval/README.md).
+Agent ranking also compares separate bounded views of each candidate's actual
+requirements, returned capability, conditions, costs, units and obstruction, and
+one query-selected current notice. These excerpts rank relevance only; complete
+fields stay in the packet and supplied/unavailable facts never become positive
+ranking terms or discharged assumptions. Notice matches expose `next.notice_source`:
+`source <record-ID> --notice <notice-ID> --evidence <index>` reads that notice's
+actual citation, independently of the record's evidence array. The ordinary
+source range/hash checks, complete corrections and byte budget still apply.
+
+The [qualification-view comparison](evaluations/2026-10-28-qualification-views/README.md)
+retains eight source-informed scientific-use problems, the exposed version-review
+regression, lexical comparators, extra navigation steps and measured CPU costs.
+This changes the optional neural lane; portable CLI/web/MCP retrieval remains
+available without that runtime or a private database.
+
 For the optional local agent runtime, once per environment,
 install the free optional CPU runtime with `python3.13 -m venv .astra-local/agent`
 then `.astra-local/agent/bin/pip install -r knowledge/requirements-agent.txt`;
