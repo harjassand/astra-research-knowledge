@@ -384,6 +384,9 @@ def build(root=ROOT):
         source_documents[source["id"]] = source
     documents.extend(sorted(source_documents.values(), key=lambda item: item["id"]))
     postings = field_index(documents)
+    content_lexical = field_index([{"body": document["title"] + " " + document["body"]
+        if document["kind"] == "source_window" else flatten({key: document.get(key, "")
+        for key in ("title", "statement", "contract", "body", "aliases", "notices")})} for document in documents])
     result_documents = [document for document in documents if document["kind"] == "result"]
     lexical = field_index([{"body": document["body"]} for document in result_documents])
     document_indexes = {document["id"]: index for index, document in enumerate(documents)}
@@ -404,6 +407,11 @@ def build(root=ROOT):
         shards[digest(term.encode())[:2]][term] = entries
     for shard, values in sorted(shards.items()):
         outputs["knowledge/current/postings/" + shard + ".json"] = encoded(values)
+    content_shards = defaultdict(dict)
+    for term, entries in content_lexical.items():
+        content_shards[digest(term.encode())[:2]][term] = entries
+    for shard, values in sorted(content_shards.items()):
+        outputs["knowledge/current/content/" + shard + ".json"] = encoded(values)
     lexical_shards = defaultdict(dict)
     for term, entries in lexical.items():
         lexical_shards[digest(term.encode())[:2]][term] = entries
@@ -475,7 +483,7 @@ def build(root=ROOT):
     outputs["knowledge/current/search_manifest.json"] = encoded({"input_version": digest(encoded(inputs.hashes)),
         "outputs": {name: digest(data) for name, data in outputs.items() if name.startswith((
             "knowledge/current/catalog", "knowledge/current/postings/", "knowledge/current/lexical/", "knowledge/current/packets/",
-            "knowledge/current/operations", "knowledge/current/evidence/"))}})
+            "knowledge/current/operations", "knowledge/current/evidence/", "knowledge/current/content/"))}})
     manifest = {"schema": "astra.knowledge-manifest.v1", "inputs": dict(sorted(inputs.hashes.items())),
                 "discovery": discovered, "outputs": {name: digest(data) for name, data in sorted(outputs.items())},
                 "counts": coverage, "input_version": digest(encoded(inputs.hashes))}

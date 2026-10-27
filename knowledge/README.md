@@ -23,7 +23,7 @@ ship in `knowledge/runtime/`; inference makes no network requests. Missing or
 changed model/runtime bytes fail explicitly. Build/intake and the portable
 `structured`, `field`, `lexical` and web routes need only the standard library.
 
-Agent search seeds lexical candidates, expands reusable units of promising
+Agent search interleaves independent field and matched-content BM25 candidates, expands reusable units of promising
 families before grouping, then ranks operation/statement and exact source views
 with a local cross-encoder. It retains an independent full-card lexical safety
 slot. Ranking text has a 512-token model limit, reported per hit; source and
@@ -35,8 +35,14 @@ conditions, units and costs needing inspection. This is conservative literal
 premise triage, including negated mentions; it neither discharges a requirement
 nor decides logical compatibility. Assumption declarations do not positively
 boost ranking. `next.packet` and `next.source` are executable argument arrays
-for the stable facade. Follow both before using a premise. A winning source
-view routes to its actual S-id, never an arbitrary first citation.
+for the stable facade. Read the packet before using a premise. A winning source
+view routes to its actual S-id, never an arbitrary first citation. Operation
+views require selecting the packet's actual evidence scope/index; one citation
+may support only part of a statement. Each hit also shows up to three separately
+ranked units from its family and the family packet route, so grouping cannot
+silently hide all intermediate constructions. This menu confers no compatibility.
+`--method content` exposes the independent matched-content BM25 baseline over
+the same complete record/source content without field weights or expansions.
 
 `evidence` is a separate discovery lane over all current record evidence ranges
 and explicit entries of recognized selected-public-source indexes. E-id reads

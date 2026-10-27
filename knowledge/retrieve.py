@@ -44,13 +44,13 @@ class Library:
             raise ValueError("Object/operation/premise facets require --method agent; do not silently ignore assumptions")
         if not 1 <= limit <= 50:
             raise ValueError("limit must be in 1..50")
-        if method == "lexical":
+        if method in ("lexical", "content"):
             terms, expansions = {term: 1.0 for term in tokens(query)}, []
         else:
             terms, expansions = query_terms(query, self.catalog["concepts"])
         documents = self.documents
         postings = {}
-        folder = "lexical" if method == "lexical" else "postings"
+        folder = method if method in ("lexical", "content") else "postings"
         for shard in sorted({digest(term.encode())[:2] for term in terms}):
             path = self.root / "knowledge/current" / folder / (shard + ".json")
             if path.is_file():
@@ -181,7 +181,7 @@ def main():
     search = sub.add_parser("search", help="describe a task, operation, obstruction or analogy")
     search.add_argument("query")
     search.add_argument("--limit", type=int, default=5)
-    search.add_argument("--method", choices=("agent", "structured", "field", "lexical"), default="structured")
+    search.add_argument("--method", choices=("agent", "content", "structured", "field", "lexical"), default="structured")
     search.add_argument("--kind")
     search.add_argument("--object", dest="object_text", default="", help="scientific object/representation to rank")
     search.add_argument("--operation", default="", help="capability or reduction to rank")

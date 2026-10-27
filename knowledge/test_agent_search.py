@@ -129,3 +129,18 @@ class LocalRuntimeTests(unittest.TestCase):
     def test_named_compiler_still_first_with_neural_ranking(self):
         response = self.library.search("ordered-word inverse-Jordan compiler", method="agent")
         self.assertEqual(response["results"][0]["id"], "U675-ordered-word-compiler")
+
+    def test_content_candidates_recover_retry_passage_without_id_ranking_rules(self):
+        response = self.library.search("When a monomer fails to incorporate I retry the same synthesis step. The light pulse also occasionally unlocks later addresses. How should retry frequency enter the eventual correct-chain yield?", method="agent")
+        self.assertTrue(any(r["id"] == "U1083-fresh-retry-downstream-exposure" for r in response["results"]))
+        self.assertIn("matched_content_BM25_without_expansion", response["candidate_generators"])
+
+    def test_family_menu_exposes_alternative_construction_and_no_guessed_source(self):
+        response = self.library.search("I need two jointly valid samples from a tagged permutation experiment. A witness is not supplied and I cannot invert the permutation. Could a shared random seed and forward evaluations generate the whole joint object instead?", method="agent")
+        hits = response["results"]
+        ids = {r["id"] for r in hits} | {u["id"] for r in hits for u in r["within_family"]}
+        self.assertIn("U1015-forward-joint-cover", ids)
+        for hit in hits:
+            self.assertIn("source_selection", hit["next"])
+            if hit.get("ranking_view") == "operation":
+                self.assertNotIn("source", hit["next"])
