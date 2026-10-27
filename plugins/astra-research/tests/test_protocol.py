@@ -101,6 +101,9 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             process.terminate()
             try:
                 process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
 
     async def test_real_stdio_exposed_task_miss_reaches_exact_witnesses_through_typed_routes(self):
         params = StdioServerParameters(command=sys.executable,
@@ -126,9 +129,6 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             source = await full_fetch(client, packet["evidence"][0]["fetch_id"])
             self.assertIn("both signed-task extremizers", source["text"])
             self.assertIn("q_-(x)", source["text"])
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
 
 
 if __name__ == "__main__":
