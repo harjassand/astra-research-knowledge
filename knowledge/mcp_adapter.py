@@ -218,7 +218,10 @@ class ResearchAdapter:
             "related_units": [dict(unit, fetch_id=self.handle("record", unit["id"])) for unit in packet["related_units"]],
             "transfers": packet.get("transfers", []),
             "shared_consumer_navigation": self.interface_view(record["id"], preview=True),
-            "consumer_bindings": packet.get("interface_navigation", {}).get("bindings", []),
+            "consumer_bindings": [dict(item,
+                provider_fetch_id=self.handle("record", item["provider"]),
+                consumer_fetch_id=self.handle("record", item["consumer"]))
+                for item in packet.get("interface_navigation", {}).get("bindings", [])],
             "consumer_binding_scope": "Complete mappings appear once in transfers[*].slot_binding; consumer_bindings references those same exact-version transfers. Peer previews require fetching the named provider and consumer.",
             "historical_versions": [dict(v, fetch_id=self.register(dict(v, lines=None)), url=self.url(v["path"])) for v in record.get("history", [])],
             "full_packet_url": self.record_url(record["id"])}
