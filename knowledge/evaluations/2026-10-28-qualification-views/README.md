@@ -102,3 +102,8 @@ repeated citations and overlapping field labels are not distinct discoveries.
 The count of all potentially reusable mechanisms is UNKNOWN; this is not a
 census of all Astra research or a Google-superiority claim. Protected or
 unadmitted work is not silently promoted by retrieval.
+
+A later matched-contract-dimension development pilot also failed to recover G06
+and added CPU work (11.787 seconds on that run). It is recorded in
+REJECTED_DIMENSION_PILOT.json and was not shipped. It used the already-exposed
+problem after Q01-Q10 were known; it is not another held-out comparison.
