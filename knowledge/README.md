@@ -3,13 +3,75 @@
 Describe the problem rather than guessing a card ID:
 
 ```
+python3 knowledge/retrieve.py search "your scientific task" --method content
+python3 knowledge/retrieve.py search "a single experiment distinguishing action choices" --method agent
+python3 knowledge/retrieve.py search "certify a proposed intervention" --method agent --object "nonlinear conductance matrix" --unavailable "calibration" --available "scalar reaction intervals"
+python3 knowledge/retrieve.py evidence "hidden actuator above an untested dose" --method agent
 python3 knowledge/retrieve.py search "Compare quantum measurements by relative entropy with an untouched auxiliary quantum system"
 python3 knowledge/retrieve.py search "persistent intermediates from successive dilute reactant arrivals"
 python3 knowledge/retrieve.py packet N675
+python3 knowledge/retrieve.py card N557
 python3 knowledge/retrieve.py source N675 --evidence 0 --start 2 --end 80
 python3 knowledge/retrieve.py bridge <source-unit-ID> <destination-unit-ID>
 python3 knowledge/retrieve.py coverage
 ```
+
+Start with fast portable `--method content`; cross-check `structured` when the
+problem is poorly named or source/field weighting may matter. `--method agent`
+adds semantic relevance, within-family navigation and explicit premise triage.
+It is a complement: fresh evaluation retained cases where either lexical or
+structured search beat the model, and a case every method missed. See
+[the source-use comparison](evaluations/2026-10-27-agent-retrieval/README.md).
+For the optional local agent runtime, once per environment,
+install the free optional CPU runtime with `python3.13 -m venv .astra-local/agent`
+then `.astra-local/agent/bin/pip install -r knowledge/requirements-agent.txt`;
+run the commands with `.astra-local/agent/bin/python`. Python 3.12/3.13 are the
+supported dependency targets. The pinned Apache-2.0 relevance model and tokenizer
+ship in `knowledge/runtime/`; inference makes no network requests. Missing or
+changed model/runtime bytes fail explicitly. Build/intake and the portable
+`structured`, `field`, `lexical` and web routes need only the standard library.
+
+Agent search interleaves independent field and matched-content BM25 candidates, expands reusable units of promising
+families before grouping, then ranks operation/statement and exact source views
+with a local cross-encoder. It retains an independent full-card lexical safety
+slot. Ranking text has a 512-token model limit, reported per hit; source and
+packet reads retain their actual byte budgets and are never silently truncated.
+Scores are relevance logits, not probabilities of truth or applicability.
+`--object` and `--operation` add scientific object/capability descriptions.
+Repeat `--available` and `--unavailable` to surface verbatim requirements,
+conditions, units and costs needing inspection. This is conservative literal
+premise triage, including negated mentions; it neither discharges a requirement
+nor decides logical compatibility. Assumption declarations do not positively
+boost ranking. `next.packet` and `next.source` are executable argument arrays
+for the stable facade. Read the packet before using a premise. A winning source
+view routes to its actual S-id, never an arbitrary first citation. Operation
+views require selecting the packet's actual evidence scope/index; one citation
+may support only part of a statement. Each hit also shows up to three separately
+ranked units from its family and the family packet route, so grouping cannot
+silently hide all intermediate constructions. This menu confers no compatibility.
+`--method content` exposes the independent matched-content BM25 baseline over
+the same complete record/source content without field weights or expansions.
+
+Older canonical summaries sometimes contain only a historical status. Operation
+views also expose verbatim scientific card excerpts and labelled claim/interface/
+assumption/cost passages with exact card lines. Unlabelled text has no inferred
+role. `card ID --start N --end M` reads the actual checked card bytes with current
+notices/reviews; it does not substitute a card for its proof. Original canonical
+records/status labels remain unchanged, and excerpts confer no new acceptance.
+
+`evidence` is a separate discovery lane over all nested current-record citations
+(including current/historical reviews, corrections and relationship support),
+version-bound transfer evidence,
+and explicit entries of recognized selected-public-source indexes. E-id reads
+return the exact matching range plus citation context/current notices. They can
+expose code, data, reviews or an uncited original without manufacturing a lemma
+or acceptance. `current/evidence/artifacts.jsonl` gives source hashes, ranges,
+citing records and citation roles, declaring index and exclusion reasons; `documents.jsonl` and
+sharded postings are public deterministic projections. External/binary containers,
+scoped derived extractions and operational artifacts are not silently expanded.
+Raw sources remain separate. Metadata-only artifacts have original public paths.
+Other source-index formats and unregistered/withheld archives remain unassessed;
+this is not a claim that every existing research artifact has been reviewed.
 
 The same precomputed field-BM25 postings power [static web search](index.html).
 It loads a small catalog and only query-term posting shards, not the archive.
@@ -89,5 +151,7 @@ wrong hashes, absent quote anchors, wrong-card current-unit mappings and
 conflicting identities fail explicitly. A prior-version audit remains visible
 as historical and cannot confer acceptance on a revised result. Search refuses stale
 inputs, new unprocessed shards or changed output bytes. Repeating unchanged
-intake is byte-idempotent. Only cited ranges of registered material are searched;
-unregistered raw archives and withheld sources are not silently published.
+intake is byte-idempotent. Operation views and the evidence lane are generated by
+that same command; Capital supplies no extra scientist form. A declared selected
+original with missing bytes/hash/length fails ingestion even if metadata-only.
+Unregistered raw archives and withheld sources are not silently published.

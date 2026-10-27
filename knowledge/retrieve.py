@@ -13,6 +13,7 @@ if __package__ in (None, ""):
 from knowledge.build import check
 from knowledge.model import (ROOT, Inputs, digest, encoded, query_terms,
                              route_id, scientific_text, score_query, tokens)
+from knowledge.operations import statement_view
 
 
 class Library:
@@ -23,6 +24,7 @@ class Library:
         self.documents = self.rows("documents.jsonl")
         self.catalog = json.loads((self.root / "knowledge/current/catalog.json").read_bytes())
         self.transfers = json.loads((self.root / "knowledge/current/transfers.json").read_bytes())
+        self.operation_frames = {row["id"]: row for row in self.rows("operations.jsonl")}
 
     def rows(self, name):
         return [json.loads(line) for line in (self.root / "knowledge/current" / name).read_bytes().splitlines() if line.strip()]
@@ -35,16 +37,21 @@ class Library:
             raise ValueError("Unknown or ambiguous ID: " + identifier)
         return selected[0]
 
-    def search(self, query, limit=5, method="structured", kind=None):
+    def search(self, query, limit=5, method="structured", kind=None, **facets):
+        if method == "agent":
+            from knowledge.agent_search import search
+            return search(self, query, limit, kind, **facets)
+        if any(facets.values()):
+            raise ValueError("Object/operation/premise facets require --method agent; do not silently ignore assumptions")
         if not 1 <= limit <= 50:
             raise ValueError("limit must be in 1..50")
-        if method == "lexical":
+        if method in ("lexical", "content"):
             terms, expansions = {term: 1.0 for term in tokens(query)}, []
         else:
             terms, expansions = query_terms(query, self.catalog["concepts"])
         documents = self.documents
         postings = {}
-        folder = "lexical" if method == "lexical" else "postings"
+        folder = method if method in ("lexical", "content") else "postings"
         for shard in sorted({digest(term.encode())[:2] for term in terms}):
             path = self.root / "knowledge/current" / folder / (shard + ".json")
             if path.is_file():
@@ -71,7 +78,14 @@ class Library:
                 "statement": record["statement"], "contract": record["contract"],
                 "review_overlays": record["review_overlays"], "reported_review": record["review"],
                 "notice_count": len(record["notices"]),
-                "packet": "knowledge/current/packets/" + route_id(record["id"]) + ".json"})
+                "packet": "knowledge/current/packets/" + route_id(record["id"]) + ".json"}
+                | statement_view(record, self.operation_frames[record["id"]]))
+            results[-1]["next"] = {"packet": ["packet", record["id"]],
+                "source_selection": "Read packet.evidence scopes and choose --evidence INDEX; the first citation need not prove the entire statement."}
+            if record["kind"] == "result":
+                results[-1]["next"]["card"] = ["card", record["id"]]
+            if document["kind"] == "source_window":
+                results[-1]["next"]["source"] = ["source", document["id"]]
             if len(results) == limit:
                 break
         if method == "structured" and limit > 1:
@@ -97,7 +111,54 @@ class Library:
             raise ValueError("Complete packet exceeds byte budget; choose fewer IDs or explicitly increase --max-bytes. No corrections were truncated.")
         return value
 
+    def card(self, identifier, start=None, end=None, max_bytes=32768):
+        record = self.resolve(identifier)
+        if record["kind"] != "result":
+            raise ValueError("Card reader requires a result ID; use packet/source for a reusable unit")
+        status = json.loads((self.root / record["authority"]).read_bytes())
+        path = status["card_path"]
+        data = Inputs(self.root).read(path)
+        if digest(data) != status["card_sha256"] or data.decode() != record["body"]:
+            raise ValueError("Stale or wrong card mapping")
+        lines = data.decode().splitlines(keepends=True)
+        start, end = 1 if start is None else start, len(lines) if end is None else end
+        if not 1 <= start <= end <= len(lines):
+            raise ValueError("Invalid card range")
+        value = {"id": record["id"], "source": {"path": path, "sha256": digest(data), "lines": [start, end]},
+                 "text": "".join(lines[start - 1:end]), "notices": record["notices"],
+                 "review_overlays": record["review_overlays"], "reported_review": record["review"],
+                 "scope": "Exact card text including its historical reported labels. This is not the governing proof; follow packet.evidence scopes and current version-bound reviews before reuse."}
+        if len(encoded(value)) > max_bytes:
+            raise ValueError("Card read exceeds byte budget; select --start/--end or increase --max-bytes. No corrections truncated.")
+        return value
+
     def source(self, identifier, evidence_index=0, start=None, end=None, max_bytes=32768):
+        if identifier.startswith("E-"):
+            folder = self.root / "knowledge/current/evidence"
+            selected = next((json.loads(line) for line in (folder / "documents.jsonl").read_bytes().splitlines()
+                             if json.loads(line)["id"] == identifier), None)
+            if selected is None or evidence_index != 0:
+                raise ValueError("Unknown evidence window or index")
+            ref = selected["source"]
+            if ref.get("lines") is None:
+                raise ValueError("Metadata-only artifact has no inferred supporting passage; read its original public path: " + ref["path"])
+            text, _ = Inputs(self.root).source(ref)
+            lower, upper = ref["lines"]
+            start, end = lower if start is None else start, upper if end is None else end
+            if not lower <= start <= end <= upper:
+                raise ValueError("Read must remain within the cited inclusive source range")
+            passage = "".join(text.splitlines(keepends=True)[start - 1:end])
+            passage, selector = scientific_text(passage)
+            artifact = next(json.loads(line) for line in (folder / "artifacts.jsonl").read_bytes().splitlines()
+                            if json.loads(line)["id"] == selected["artifact_id"])
+            value = {"id": identifier, "source": dict(ref, lines=[start, end]), "text": passage,
+                     "text_selection": selector, "artifact": artifact,
+                     "notices": [dict(notice, citation_context=record_id) for record_id in artifact["cited_by"]
+                                 for notice in self.records[record_id]["notices"]],
+                     "scope": "Evidence navigation only; citations and coarchive do not confer acceptance. Inspect cited_by packets and their current conditions/corrections."}
+            if len(encoded(value)) > max_bytes:
+                raise ValueError("Source read exceeds byte budget; select --start/--end or increase --max-bytes")
+            return value
         selected = next((document for document in self.documents if document["id"] == identifier and document["kind"] == "source_window"), None)
         record = self.resolve(selected["record_id"] if selected else identifier)
         references = selected["evidence"] if selected else record["evidence"]
@@ -149,11 +210,20 @@ def main():
     search = sub.add_parser("search", help="describe a task, operation, obstruction or analogy")
     search.add_argument("query")
     search.add_argument("--limit", type=int, default=5)
-    search.add_argument("--method", choices=("structured", "field", "lexical"), default="structured")
+    search.add_argument("--method", choices=("agent", "content", "structured", "field", "lexical"), default="structured")
     search.add_argument("--kind")
+    search.add_argument("--object", dest="object_text", default="", help="scientific object/representation to rank")
+    search.add_argument("--operation", default="", help="capability or reduction to rank")
+    search.add_argument("--available", action="append", default=[], help="supplied premise to inspect, never automatically discharged")
+    search.add_argument("--unavailable", action="append", default=[], help="unavailable premise to flag, not silently filter away")
     packet = sub.add_parser("packet")
     packet.add_argument("ids", nargs="+")
     packet.add_argument("--max-bytes", type=int, default=32768)
+    card = sub.add_parser("card", help="read a bounded exact scientific card, retaining current corrections/reviews")
+    card.add_argument("id")
+    card.add_argument("--start", type=int)
+    card.add_argument("--end", type=int)
+    card.add_argument("--max-bytes", type=int, default=32768)
     source = sub.add_parser("source")
     source.add_argument("id")
     source.add_argument("--evidence", type=int, default=0)
@@ -164,22 +234,33 @@ def main():
     bridge.add_argument("source")
     bridge.add_argument("destination")
     sub.add_parser("coverage")
+    evidence = sub.add_parser("evidence", help="search all registered evidence ranges and selected public originals; no acceptance inferred")
+    evidence.add_argument("query")
+    evidence.add_argument("--method", choices=("field", "agent"), default="field")
+    evidence.add_argument("--limit", type=int, default=5)
     args = parser.parse_args()
     try:
         library = Library()
         if args.command == "search":
-            result = library.search(args.query, args.limit, args.method, args.kind)
+            result = library.search(args.query, args.limit, args.method, args.kind,
+                                    object_text=args.object_text, operation=args.operation,
+                                    available=args.available, unavailable=args.unavailable)
         elif args.command == "packet":
             result = library.packet(args.ids, args.max_bytes)
+        elif args.command == "card":
+            result = library.card(args.id, args.start, args.end, args.max_bytes)
         elif args.command == "source":
             result = library.source(args.id, args.evidence, args.start, args.end, args.max_bytes)
         elif args.command == "bridge":
             result = library.bridge(args.source, args.destination)
+        elif args.command == "evidence":
+            from knowledge.evidence import search as search_evidence
+            result = search_evidence(library, args.query, args.limit, args.method)
         else:
             result = library.manifest["counts"]
         revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True)
         result["checkout_revision"] = revision.stdout.strip() if revision.returncode == 0 else "UNKNOWN"
-        if args.command in ("packet", "source"):
+        if args.command in ("packet", "source", "card"):
             # Bound the actual UTF-8 output, including revision and terminal LF.
             output = encoded(result)
             if len(output) > args.max_bytes:
