@@ -15,7 +15,7 @@ class WebCacheRegressions(unittest.TestCase):
         result = subprocess.run([NODE, str(ROOT / "knowledge/test_web_cache.cjs")], cwd=ROOT,
                                 capture_output=True, text=True, timeout=45)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("3 static web cache/epoch scenarios passed", result.stdout)
+        self.assertIn("4 static web cache/epoch/interface scenarios passed", result.stdout)
 
 
 if __name__ == "__main__":
