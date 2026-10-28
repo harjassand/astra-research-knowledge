@@ -576,6 +576,7 @@ def build(root=ROOT):
     outputs["knowledge/current/release.json"] = encoded({
         "schema": "astra.public-corpus-release.v1", "input_version": digest(encoded(inputs.hashes)),
         "manifest": "knowledge/current/manifest.json", "records": len(records),
+        "source_context_layout": "linked-current-capsules-v1",
         "scope": "Complete ordinary build/check projection. Input identity covers cards, units, sources, corrections and runtime readers; indexing confers no scientific acceptance."})
     outputs["knowledge/current/search_manifest.json"] = encoded({"input_version": digest(encoded(inputs.hashes)),
         "outputs": {name: digest(data) for name, data in outputs.items() if name.startswith((

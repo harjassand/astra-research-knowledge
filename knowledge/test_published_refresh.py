@@ -163,6 +163,26 @@ class PublishedRefreshTests(unittest.TestCase):
         self.assertEqual(pages[0]["metadata"]["freshness"]["status"], "historical_snapshot")
         self.assertTrue(pages[0]["metadata"]["freshness"]["required_current_context_ids"])
 
+    def test_known_history_pages_share_ttl_but_unknown_newer_handle_forces_check(self):
+        with patch.object(self.reader,'read_release',wraps=self.reader.read_release) as checks:
+            self.reader.search('finite source')
+            self.assertEqual(checks.call_count,1)
+            # A newer server can issue this handle before our cached TTL expires.
+            self.version=self.b.version;self.now=1
+            current,_=complete(self.reader,self.b.handle('current','U2-new-subresult'))
+            self.assertEqual(current['id'],'U2-new-subresult')
+            self.assertEqual(checks.call_count,2)
+            old,pages=complete(self.reader,self.a.handle('record','U1-fixture'))
+            self.assertGreater(len(pages),1)
+            self.assertEqual(checks.call_count,2)
+            self.assertEqual(old,self.a.record_payload(self.a.library.resolve('U1-fixture')))
+            self.assertTrue(all(p['metadata']['freshness']['status']=='historical_snapshot'for p in pages))
+            self.assertTrue(all(self.b.handle('current','U1-fixture')in
+                p['metadata']['freshness']['required_current_context_ids']for p in pages))
+            self.now=32
+            self.reader.fetch(pages[0]['id'])
+            self.assertEqual(checks.call_count,3)
+
     def test_direct_record_ids_resolve_current_and_cached_runtime_is_checked(self):
         self.update()
         packet, pages = complete(self.reader, "U2-new-subresult")

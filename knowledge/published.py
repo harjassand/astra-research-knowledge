@@ -382,9 +382,11 @@ class PublishedAdapter:
             if len(parts) not in (4, 5) or parts[0] != "astra" or not re.fullmatch(r"[0-9a-f]{64}", parts[1]):
                 raise ValueError("Invalid version-bound Astra handle")
             version = parts[1]
-            if version != self.active.version:
+            if version != self.active.version and version not in self.adapters:
                 # A handle may have come from another, newer server process.
-                # Resolve current correction context before labelling it old.
+                # Check an unknown version before labelling it old. A retained
+                # historical continuation follows the ordinary30-second TTL;
+                # it must not force another network check on every page.
                 self.last_check = None
             self.refresh()
             adapter = self.adapters.get(version)
