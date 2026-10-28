@@ -5,7 +5,7 @@ import unittest
 from knowledge.mcp_adapter import ResearchAdapter
 from knowledge.model import ROOT
 from knowledge.build import packet_review
-from knowledge.test_mcp_adapter import complete
+from knowledge.test_mcp_adapter import complete, expand_current_references
 
 
 class ReviewedScientificIntake(unittest.TestCase):
@@ -48,8 +48,12 @@ class ReviewedScientificIntake(unittest.TestCase):
         fetched = complete(self.adapter, self.adapter.register(dict(prior, lines=None)))
         self.assertEqual(fetched["text"].encode(), (ROOT / prior["path"]).read_bytes())
         context = next(c for c in fetched["current_context"] if c["id"] == record["id"])
-        self.assertEqual(context["notices"], record["notices"])
-        self.assertIn("READOUT-VARIANCE-BUDGET-SUFFICIENCY-CORRECTION", str(context["notices"]))
+        self.assertEqual(context["content_version"], record["content_version"])
+        self.assertEqual(context["notice_count"], len(record["notices"]))
+        current = complete(self.adapter, context["fetch_id"])
+        notices = expand_current_references(current, current["notices"])
+        self.assertEqual(notices, record["notices"])
+        self.assertIn("READOUT-VARIANCE-BUDGET-SUFFICIENCY-CORRECTION", str(notices))
         self.assertIn("A712-state-accuracy-sufficient-budget-v2", str(record["review_overlays"]))
         self.assertIn("A712-preparation-and-local-refresh-boundaries", str(record["historical_reviews"]))
 
