@@ -1,0 +1,13 @@
+# Independent receipt: the known Pauli-kernel dictionary benchmark
+
+28 October 2026. RECEIVED within the supplied/previously paid flag/Pauli-frame promise. Source SHA256 `70b4643eeaf49e62684ed18f8269302021e285a1100d864f5155a3a1490c1cc9`.
+
+I independently checked the loss-state probabilities lambda_ga=(w_g−p_ga)/3, their physical one-copy Bell/flag measurement, and the full-CPTP optimum sum_g(w_g−max_a p_ga). Twirling each known Pauli block makes the achieved entanglement fidelity a convex combination of the Pauli weights, so the claimed correction is globally optimal for that scoped source, not only within an artificially restricted decoder dictionary.
+
+The received scalar positive design is applied to4G fixed known directions, each with ten encoder features. No output Hilbert-space rank argument is used to infer that dictionary. From individual root-sensitive errors, Cauchy gives sqrt(3Gt ell)+3Gt simultaneously for every correction policy; minimization uses four comparisons per flag rather than enumerating4^G policies. Young with gamma/8 yields the claimed21Gt/gamma additive term. The fixed-optimal-decoder quadratic stationarity net transfer, bad-record budget and finite-operation debit leave the stated relative guarantee.
+
+The finite scalar cap40960/t is consistent with the governing256L stage constant, finite slack leverage L=4d=40, and sum inverse dyadic scales less than4/t. This is an imported statistical/compiler composition, not a new independent proof of those already received mechanisms. All sampled events and the same retained frame/controls are paid; no observed flag is refunded.
+
+The generic Section4 invariant is also correct: the fixed anchors bound the fitted4-by4 matrix norm by22, a chord net h<=t/1000 extends the tested probability errors, and Young produces the two actual LMI cuts on B_v(H). These cuts store information in the feasible prediction class; they do not identify a Choi completion or turn a learned component into a Loewner lower bound. The identity sum_v B_v=I for an orthonormal basis does NOT justify an O(k) count of arbitrary new superposition tests. The manuscript explicitly leaves that generic step open.
+
+A separate exact-Fraction checker verifies64 Pauli probability/comparator cases and five risk budgets, and checks the finite cap coefficient. The author's finite physical/decision checks were read, not used as independent proof. This is a mathematical receiving receipt, not an actual full-cap experiment, hardware execution, unknown-algebra acquisition or universal quantum advantage. The strongest equally informed conventional learner may use exactly the same dictionary design.

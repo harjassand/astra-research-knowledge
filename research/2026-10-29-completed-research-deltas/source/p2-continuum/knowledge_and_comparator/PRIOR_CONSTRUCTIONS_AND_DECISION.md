@@ -1,0 +1,45 @@
+# Current sources, strong comparators, and the useful new bridge
+
+28 October 2026. Decision support for the P2 successor research chat.
+
+## Scientific recommendation
+
+The coherent-packet route is justified as a reusable **certified instrument** if it actually combines full nonlinear sine/Weyl action, continuum overlap evaluation, a residual bound for every input superposition and external reference, and physical detector kernels. Coherent packets and Schrödinger residual norms are established techniques. A proposal containing only those two ingredients would not remove a new obstruction. The valuable bridge is evaluation of a complete source-output-record channel with separated errors and explicitly supplied detector collection data.
+
+The detector interface itself exposes a missing input: the scalar local phase density cannot determine the measured outgoing port. `DETECTOR_KERNEL_INTERFACE.md` derives the additional positive kernels sufficient to construct all record maps. `detector_kernel_check.py` independently compares that construction to an explicit two-mode Fock implementation, including noncommuting pulled-back detector effects and correlated records. This is a conditional theorem and numerical diagnostic, not a certified detector for the baseline or notch circuit.
+
+## Close coherent-state work
+
+1. **Gheeraert, Bera and Florens (2017), New Journal of Physics 19, 023036.** [Full primary paper](https://arxiv.org/pdf/1601.01545), version 2. This is a particularly close predecessor: superpositions of multimode coherent states describe ultrastrong waveguide spontaneous emission. The authors compute the squared Schrödinger defect `||(i∂t−H)Ψ||²` and use its decrease with packet count as a convergence diagnostic. Their algorithm has an `Ncs^6` contribution and only helps when packet count stays modest. Their numerical model discretizes modes, uses a spin-boson Hamiltonian and treats pure unitary dynamics. This supports using coherent states and residuals, while precluding a claim to invent either.
+
+2. **Bera, Baranger and Florens (2016), Physical Review A 93, 033847.** [Primary preprint](https://arxiv.org/abs/1601.00531). A single coherent configuration can give incorrect quench relaxation and spurious bath correlations. Comparison against numerical renormalization group diagnoses the failure. The relevant lesson is constructive: increase the representation and measure the residual; do not mistake a convenient low-packet truncation for physical irreversibility.
+
+3. **Martinazzo and Burghardt (2020), Physical Review Letters 124, 150601.** [Primary paper](https://arxiv.org/abs/1907.00841). Local-in-time variational error and adaptive manifold enlargement are developed explicitly. An integrated defect-to-state bound is inherited mathematics. The P2 channel/reference extension and numerical enclosure must be presented as the new bridge, if completed.
+
+4. **VariDavy research implementation.** [Repository](https://github.com/Mantas-Jakucionis/VariDavy), observed main commit `341b4c287d3551a9ec13071be270efe910e1d840`. Read `README.md`, `mD2_Model.jl`, `Propagators.jl`, and `State.jl`. The Julia code implements multi-Davydov D2 dynamics and coherent Gram norms. `Propagators.jl` handles nearly coalescent coherent displacements by thresholded grouping and solves a coupled derivative system using GMRES with LU preconditioning. This demonstrates that linear-system conditioning is a real implementation issue, not merely a formal caveat. Such thresholding would need explicit Gram-norm charging in a certificate. No repository code was executed or imported into the P2 implementation.
+
+## Strong structured-bath solvers
+
+5. **Riva et al. (2026), First-principles study of dispersive readout in circuit QED.** [Primary full text](https://arxiv.org/html/2604.11722v1). The retrieved page labels the version as v1, submitted 13 April 2026, while its document header says 24 August 2026; preserve that discrepancy. TEDOPA chain mapping and MPSDynamics.jl simulate a driven two-level source, readout oscillator and structured bath without Born, Markov or rotating-wave approximations. The paper reports drive-dependent decay changes sensitive to a notch filter. Its supplement explicitly charges finite time steps, oscillator dimensions, chain length and MPS bond dimension. Checks vary numerical parameters and monitor occupation/commutator diagnostics; they are not full-input diamond certificates. This is a strong implementation alternative and a physical warning against transplanting an unpumped notch estimate to driven measurement.
+
+6. **Vadimov, Xu, Stockburger, Ankerhold and Möttönen (2025), Physical Review Research 7, 013317.** [Primary publication](https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.7.013317). The nonlinear circuit elements are kept while linear circuit components are eliminated into a minimally extended auxiliary-mode description. Time-averaged observables and measurement quasiprobabilities are included. This is an important competing general framework. The abstract and primary metadata were read; the full technical proof and implementation were not evaluated here. No claim of certified inferiority or incompatibility is made.
+
+## Strong erasure-compatible gate alternatives
+
+7. **D-Wave Quantum Inc. (2026), Nature 656, 47–53.** [Version of record](https://doi.org/10.1038/s41586-026-10822-y); [retrieved primary arXiv text](https://arxiv.org/html/2503.10935v2). SWS preserves total excitation in its governing reduced gate model, so vacuum disables later gates and a loss during a gate induces partial conditional phase on the surviving partner. This supports delayed checks. The version-of-record Methods must govern its QEC claims; the arXiv HTML has its own date/header mismatch and less complete methods. The supplied P2 comparator ledger already retains this correctly. A new P2 instrument is not an advantage over SWS merely because it permits delayed processing. Complete costs and compatible error channels must decide.
+
+8. **Tsunoda, Teoh et al. (2023), PRX Quantum 4, 020354.** [Primary paper](https://doi.org/10.1103/PRXQuantum.4.020354). Error-detectable bosonic entangling gates combine programmable beam splitting and a dispersive ancilla. Appendix G gives error closure, a weaker and more useful condition than exact error transparency, and applies it to photon loss. Appendix I preserves the distinction between detected single faults and double faults that can remain unflagged. This is good machinery for a future actual-cosine loss-propagation attack. It is not a completed transfer to that Hamiltonian.
+
+## Current Astra intake and corrections
+
+The public fallback was successfully fetched with the GitHub connector at commit `44b7e51f36b6dd4759a0227f23cc6b11671b1583`. Exact returned UTF-8 packet files N1127, N1128 and N1133–N1135 are under `current/`. Their metadata and original source content versions are retained. Earlier TinyFish markdown extractions are preserved separately and are not authoritative bytes.
+
+The complete `OWNER_MATHEMATICAL_REVIEW.md` and `NUMERICAL_BOUND_CLARIFICATION.md` were fetched and their SHA256 values match the packet's cited originals. The first gives the accepted no-jump-to-complete-channel conditional bound and the off-code exposure criterion `BP=bP`, which cannot be replaced by `PBP=bP`. The second corrects the printed N1127 symbolic-bound decimal without changing its accepted positivity theorem.
+
+N1128 retains current scope corrections: the historical memory-detuning source's missing local pole theorem is not a present absence because later R1080 supplies its scoped proof; its older amplitude linewidth coefficient differs by a factor two from the later population coefficient. No use of those linewidth numbers is needed for the chosen attack. N1133–N1135 continue to distinguish source-reported matched gates/ground-only/parallel models from acquired proofs. Nothing retrieved upgrades the missing original gate programs or latest physical-bath ZIP to present files.
+
+Accepted quantum-channel undecidability is not reopened. The proposed instrument is conditional finite-time evaluation with a certificate when its residual can be bounded; it claims neither uniform efficiency nor a universal decision procedure.
+
+## Decisive next scientific checks
+
+The new bridge should be assessed on a noncommuting source example, including vacuum and one-photon source inputs, with all reference cross terms retained. Test a deliberately under-resolved packet family and show that the certificate detects its error. Compare an accessible case to direct Fock propagation. For detector outcomes, test actual joint kernels against an incorrect independent-port approximation and show the difference. Retain the physical output-transfer requirement as an explicit input. Do not claim the baseline or notch circuit solved until its actual pulse, spectrum, initial state and observer are used with quantified residual, continuum quadrature and arithmetic errors.
