@@ -1,61 +1,52 @@
-# Programme acceptance and ordinary update comparison
+# Current programme authority and source-preserving intake
 
-This is a source-informed update test, not a held-out ranking comparison.
-N675 and the ordered-word compiler were exposed diagnostics in the original
-retrieval assignment. Four new phrasings were frozen privately before this
-update; source knowledge informed their design. No ranker, alias, embedding,
-runtime module or implementation fixture was changed for them.
+Four source-informed problems were frozen before this update. N675 and its
+compiler were exposed diagnostics in the original assignment;these are not
+held-out questions. No alias,ranking rule or runtime module changes.
+BEFORE_RANKS.json retains the earlier public repair-candidate corpus results.
 
-The practical change is usable authority. The previous current N675 assessment
-called the result an unreviewed source claim and required external proof
-validation. Harjas's explicit standing instruction accepts the result, including
-its stated internal dependencies, for programme work. The update records that
-actual basis and its precise scope. It performs no new proof audit. The exact
-earlier card/status/catalog, both original unit versions and original PDF/text
-remain available. The N676 conjugated-coordinate correction remains visible.
+The initial PR candidate replaced the old card/status while preserving copies
+elsewhere. Full CI correctly rejected it:two immutable checkpoints pin those
+original paths and hashes. The originals and all five authoring paths are now
+restored exactly. No checkpoint,validator or hash pin changes. FAILED_CANDIDATE_*
+retains that candidate's local source/rank observations;they are not a successful
+publication or automatic-refresh demonstration.
 
-## Before publication
+The corrected intake retains the already-exposed v0002 bytes and appends two
+v0003 support successors with unchanged mathematical statements,requirements,
+provisions,assumptions,costs and units. A new full-scope unit exposes actual
+Theorem1.2 and its reference obstruction. The human instruction is current
+programme authority,not a new proof audit or an added mathematical premise.
+The current notice explicitly supersedes historical intake labels/external-
+review requests for programme correctness. Original PDF/text and the real
+N676 conjugated-coordinate correction remain. No N661,fixed-dimensional,
+restricted-marginal,efficiency,novelty,measurement,device or advantage promotion.
 
-| Problem | Full-content lexical first result | Agent first result | Usable premise or limitation |
+| Problem | Content first | Agent first | Usable premise or limitation |
 | --- | --- | --- | --- |
-| A01 ordered matrix words with a strict supplied gap | U675 compiler | U675 compiler | Conditional finite rational inverse-Jordan construction; actual normalized domain and positive gap required. The same-reference negative witness transfers; no efficient witness oracle follows. |
-| A02 noncommuting baselines and an exact recurrence penalty | N675 parent | U675 edge penalty | The actual square identity supports the recurrence without assuming B commutes with D. The parent is also a usable route to the compiler; parent/unit ID differences alone are not utility failures. |
-| A03 computable failure-reference cutoff for generic positive measurements | N675 | N675 | Programme-accepted complete-order classification and no total computable sufficient failure-reference cutoff at the stated variable-dimensional rational-complex positive-POVM scope. |
-| A04 fixed-qubit/equal-reference-marginal extension | N675 | N143; N675 fifth | Retained agent prioritization failure. N143's actual first source is a supplied self-compatible unital self-adjoint channel/EB comparison; it does not support this decision-complexity inference. Full-content N675 first supplies the relevant exclusions. |
+| A01 strict-gap ordered-word reduction | U675 compiler | U675 compiler | Actual Lemma7.1 requires the supplied positive gap and actual Jordan domain;no efficient witness oracle. |
+| A02 noncommuting recurrence penalty | N675 parent | U675 edge | Actual square identity does not assume B commutes with D;parent/unit ID differences alone are not utility failures. |
+| A03 generic measurement order/reference cutoff | N675 | New full-scope unit | Clean programme-accepted Theorem1.2 interface and complete quantifiers;no external re-audit prerequisite. |
+| A04 fixed-qubit/equal-marginal extension | U966 conditional interface | N143 unrelated comparison | Retained neural first-result failure. U966 distinguishes conditional and equal-reference Umegaki order;follow N675 exclusions before answering. |
 
-Read the actual returned compiler passage (Lemma7.1 and exact edge identity),
-the source's scope section and N143's first governing comparison passage.
-The compiler requires a strict supplied gap; mere nonnegativity is excluded.
-The edge identity uses 0<B<D and Z=D^(-1/2)BD^(-1/2). The generic theorem
-does not settle fixed input dimension, restricted-marginal variants, an
-efficient decision test or a physical device. Earlier intake wording is
-historical evidence, not a current external-validation prerequisite.
+A01/A02 constructions were already usable before this update. The gain is
+current explicit authority,a reusable full-theorem premise and source/version
+integrity. A03 can support programme reasoning about the generic complete-order
+obstruction;it does not rule out fixed-dimensional algorithms or build a device.
+A04 remains a ranking failure,not a proof of impossibility. These source-informed
+cases isolate no causal ranker component or general ranking improvement.
 
-## After normalization
+The corrected corpus has2,079records:two prior unit content versions change and
+one unit is added. All other2,076prior content versions,including N675 itself,
+and runtime code remain identical. Actual returned ranges were read for the
+compiler,edge identity,Theorem1.2 and conditional-interface distinction. The
+human authority is selected by exact source identity and checked heading/message
+content,not notice-array position. No acquired scientific code or new N675 proof
+audit ran.
 
-A01, A02 and A03 have the same five result IDs in each method. A04 moved
-N675 from fifth to first in agent ranking; full-content search now returns
-the separately qualified U966 conditional-order interface first and N675
-second. Read U966's actual source: it explicitly does not identify the
-conditional coefficient with complete equal-reference Umegaki order. Thus
-it cannot supply the requested hardness extension. Follow N675's exact scope
-passage before answering. The old N143 first-result failure remains in
-BEFORE_RANKS.json; it has not been erased.
-
-The data update changed three current content versions: N675 and two native
-unit successors. All other 2,075 versions and runtime code are identical.
-The added current authority/scope context can affect relevance, but this
-comparison isolates no causal ranking component and establishes no general
-ranking improvement. No query-specific alias or ranking rule was added. The private before-comparison
-used the reviewed PR256 engineering candidate; its 2,078 scientific records
-were byte-identical to PR255 merged main. Final publication uses the actual merged PR256 base
-fb960ac7b07b766d5703c43efbee8cd9d4492718.
-Original source text and every mathematical unit input/cost condition remain.
-Three focused regressions check the actual named authority passage, immutable
-unit/source history and the retained scope/correction. Build/check passed.
-
-Actual installed automatic refresh, public-byte verification and full
-actual-base CI remain publication closeout work. A private staging/index
-check is not a substitute. These local tests do not claim that all research
-is integrated or all queries succeed. Prior P3 P08 agent top-five miss and
-unextracted/unacquired corpus material remain outside this update.
+Build/check,identical repeated manifest,four focused regressions and full
+validation of270schema checkpoints plus3pinned legacy navigation records pass.
+Full actual-base CI,public-byte verification and actual installed automatic
+refresh remain closeout work. No completed automatic refresh is claimed here.
+The prior P3 P08 agent top-five miss and unintegrated/unacquired corpus queues
+remain outside this update.
