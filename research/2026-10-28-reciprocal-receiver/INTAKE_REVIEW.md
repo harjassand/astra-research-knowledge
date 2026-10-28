@@ -42,9 +42,14 @@ The ordinary build/check passed. An initial private staging self-index error
 failed ingestion explicitly and was corrected before any push;no stale view
 was published. All2036 prior scientific content versions are unchanged.
 
-Eight source-informed questions and actual source-use review retain parent
-routes,the wrong-sibling C07 miss,literal-negation triage limitations and valid
-baseline analogies. No held-out/general-superiority claim. All eleven current
+Eight source-informed questions and actual source-use review retain primary
+parent routes,the wrong-primary-sibling C07 miss,literal-negation triage
+limitations and valid baseline analogies. A later review caught that the four
+non-exact primaries already supply each exact target as their first
+within_family action. Those actual actions and proofs were followed;the public
+traces/assessment now include them. The first-alternative routes also existed
+for prior PR251 S01/S07;their frozen trace addendum preserves that fact. No
+ranker or canonical scientific content was changed by this evaluation repair. No held-out/general-superiority claim. All eleven current
 packets fit the default byte budget before the final normal-freshness CLI check.
 Repeat/idempotence,committed actual-base preflight,exact-head PR review,full CI,
 merge and anonymous/deployed public proof-route verification remain publication

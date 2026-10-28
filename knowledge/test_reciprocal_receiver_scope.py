@@ -41,4 +41,14 @@ class ReciprocalReceiverScope(unittest.TestCase):
     self.assertIn('fixed',t['slot_binding']['object']);self.assertIn('simultaneous',t['slot_binding']['qualification']);self.assertEqual(t['slot_binding']['slot'],'uniform_scalar_power')
    else:self.assertEqual(t['state'],'INCOMPATIBLE ASSUMPTIONS');self.assertNotIn('slot_binding',t)
   consumer=self.records['U1129-pivot-all-input-gram'];self.assertEqual(len(consumer['interface_navigation']['bindings']),2)
+ def test_evaluation_keeps_actual_intermediate_packet_actions(self):
+  value=json.loads((ROOT/BASE/'evaluation/CURRENT_RESULTS.json').read_bytes())
+  for row in value['results']:
+   first=next(m for m in row['methods']if m['method']=='agent')['results'][0]
+   self.assertIn('within_family',first)
+   if first['id']!=row['case']['target']:
+    self.assertEqual(first['within_family'][0]['next'],['packet',row['case']['target']])
+  prior=json.loads((ROOT/BASE/'evaluation/PR251_NAVIGATION_ADDENDUM.json').read_bytes())
+  self.assertEqual([c['case']['id']for c in prior['cases']],['S01','S07'])
+  for row in prior['cases']:self.assertEqual(row['within_family'][0]['next'],['packet',row['case']['target']])
 if __name__=='__main__':unittest.main()

@@ -17,7 +17,7 @@ def main():
    row=dict(method=method,seconds=round(time.monotonic()-started,3),exact_target_rank=next((i for i,h in enumerate(hits,1)if h['id']==case['target']),None),family_rank=next((i for i,h in enumerate(hits,1)if rank(h)),None))
    compact=[]
    for h in hits:
-    item={k:v for k,v in h.items()if k in('id','title','kind','score','relevance_logit','ranking_view','ranking_text_truncated','source_match','next','packet','premise_check','notice_count','review_decisions')};compact.append(item)
+    item={k:v for k,v in h.items()if k in('id','title','kind','score','relevance_logit','ranking_view','ranking_text_truncated','source_match','next','packet','premise_check','notice_count','review_decisions','within_family','family_navigation_scope')};compact.append(item)
    rows.append(dict(row,results=compact));raw.append(dict(row,results=hits))
   public.append(dict(case=case,methods=rows));full.append(dict(case=case,methods=raw));print(case['id'],[(m['method'],m['family_rank'],m['exact_target_rank'])for m in rows],flush=True)
  manifest=json.loads((lib.root/'knowledge/current/manifest.json').read_bytes());common=dict(exposure=spec['exposure'],input_version=manifest['input_version'],scope='All candidate identities/order and route/triage metadata retained publicly; full responses separately frozen. Timing excludes corpus loading/freshness startup; no applicability or proof decision from rank.')
