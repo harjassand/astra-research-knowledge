@@ -1,0 +1,9 @@
+# Independent all-p known-flag compilation lower audit
+
+27 October2026. PASS, local post-cutoff; distinct hard subclass, not replacement of the full-ambient-reset source.
+
+The known fixed erasure sector is orthogonal to the known success ambient K and its occurrence probability is the input/source-independent constant1-p. Both branches preserve the same calibration-memory marginal. This holds after arbitrary source-dependent coherent adaptive preparation. Therefore conditional entropy is exactly h(p)+p(log r+S(Q|M,U)); unconditional entropy is h(p)+p S(B_success|M), at most h(p)+p log(s-1). In the exact mutual-information increment the nonnegative I(U:Q|M) is subtracted. Combining with conditional input entropy>=-log3 gives p log(3(s-1)/r) per charged call, without an extra unknown-reset or support entropy. Data processing preserves the cap at deployment.
+
+On K, the previously received centered gradient argument applies with ambient dimension s-1 and an overall signal factor p. Centering removes the fixed reset and all common accepted-label effects. Uniform complete error p/4 bounds classical correct probability below by7p/8 and acceptance above by9p/8, giving the witness at leastp/2. The scalar gradient2p^2/r and heatflow rate s-1 yield required information(s-1)r/32; the retained-m-dimensional complete version gives(s-1)r/(64m). The p factors cancel only in this information requirement, not in the physical-query budget. The resulting stated all-p bounds are correct.
+
+This revealed-reset subclass is contained in the broad unknown-orthogonal-reset model, so it establishes a worst-case lower for that class, even when the learner is supplied p and the flag. It is not a lower for every reset, an online/query-after-datum bound, an expected-call statement or an unrestricted retained-quantum-memory result. The s>=3r+1 restriction and separate p1 minimal-ambient case are preserved. No floating computation is used.

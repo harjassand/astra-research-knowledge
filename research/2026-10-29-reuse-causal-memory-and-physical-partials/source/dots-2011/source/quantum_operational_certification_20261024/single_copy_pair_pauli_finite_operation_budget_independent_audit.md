@@ -1,0 +1,25 @@
+# Independent finite-operation pair-Pauli audit
+
+27 October 2026. PASS as a constructive finite-operation/error-budget theorem, not an implemented benchmark or efficient collective-Keyl construction.
+
+## Statistical slack and known arithmetic
+Certified basis residualu/100 changes the prior-good[.75,1.25](rho+uI) comparison to[.74,1.26]; good histories still pass eigenvalue guards. Pilot deviation1/20 has Bernstein denominator<=25D²/u and exponent n_u u/(10000D²), paid by the stated16384 count. Rotating the RAW sample average back and rounding byu/100 gives relative error .063+.01=.073<1/8. Thus no numerical whitening inverse is performed and the acquired pilot induction closes with a first-failure budget.
+
+At final stage, G residualt/100 gives[.865,1.135](A+tI), safely below5/4. Contrast deviation sqrt(t)/2 is paid by2048D²/t log(8D/beta): its denominator is at most312D²+20D<=332D², so its exponent exceeds the needed logarithm. The algorithm again stores the raw contrast; Sylvester inverse reconstruction cancels exactly on its empirical mean. Known raw roundingt/100 gives ||Z||²<=5t/16 and ||R||<=(sqrt5/2+.01)t. Exact localization costs at most20+4(sqrt5/2+.01)<25 in units rt; robust localization costs80+4(sqrt5/2+.01)<85 plus3L_*. Thus all old conservative downstream constants remain safe.
+
+## Gap-free basis and bit workload
+The basis need only approximate the Hermitian matrix in operator norm; no eigenvector-gap guarantee is required. With offdiagonal Frobenius normR and matrix norm boundB, choosing an entry at least half the maximum gives an exact Jacobi squared-residual decrease at leastR²/(2D²). A rotation errorxi changes that squared residual by at most8xi B². While R>=eps, choosing xi<=eps²/(64D²B²) preserves decrease at leastR²/(4D²). Finite interval entry selection and a target residual smaller than the final acceptance tolerance give a known O(D²log(B/eps)) cap, including degeneracies. Accumulated matrix approximation/diagonal rounding is separately included in the final residual certificate. Rotations must be represented as actual unitary two-level operations (e.g. finitely specified angles/normalized parameters), not arbitrary rounded nonunitary entry matrices.
+
+Raw samples and averages have O(D) norm on every history. Thus inverse-polynomial residual tolerances, known step caps, interval evaluation of specified rotations and rational accumulation need only polynomially many bits/operations in the stated parameters. The statement is an existence/constructive complexity argument, not a supplied executable finite-Jacobi implementation.
+
+## Circuit and adaptive error accounting
+I directly checked the primary compiler descriptions: Barenco et al., https://arxiv.org/abs/quant-ph/9503016 , supplies one-qubit/controlled-gate decompositions; Dawson–Nielsen, https://arxiv.org/abs/quant-ph/0505030 , supplies finite-universal-set approximation with polylogarithmic accuracy overhead. Choose a standard suitable universal set with inverse gates or their exact representations. These imports are for known rotations, not unknown source gates.
+
+Per-gate operator error beta/(32 N_cap G_max) gives per-trial unitary-channel error at most beta/(16N_cap). The separate finite matching/settings/probe-label sampling variation budget can be met with the displayed logarithmic random-bit count. On matched classical histories the next target operation agrees, so ordinary adaptive hybrid coupling bounds full transcript variation within the stated beta/4 budget. It requires no continuous eigenbasis selection in history. Adding statistical beta/2 remains below beta; arithmetic certificates are deterministic. Source CPTP maps do not amplify known preparation errors.
+
+## Concrete deployment and validation
+Physical-space Hhat diagonalization with residualzeta<=t/100 yields an ACTUAL rank<=r positive-index projector. Comparing both trace-r effects against the approximating diagonal matrix gives score gap<=2r zeta<rt, independent of spectral gaps. The nine projective tests can be performed by basis rotation, index flag and unrotation after rejection. Circuit approximation is charged as complete deployment error, not hidden in statistical accuracy.
+
+At t=nu²p0/(10^9r), ideal delta<=142rt. Adding xi_dep<=nu²p0/10^7 changes mismatch and acceptance by at most that amount. Consequently q<=(324*142/10^9+4/(3*10^7))nu²<nu²/6144 and a>=3p/4, preserving the learned-throughput completeness margin. Compiled holdout operations need their own allocated transcript confidence budget (split the target confidence appropriately); they test the actual fixed compiled decoder. No free precision or source-query multiplication is assumed.
+
+The resulting bit/gate workload is polynomial in ambientD,N_cap,1/t,input description and log(1/beta), not in logD alone and not a practical-speed claim. Quantum storage is single-output plus known local/work registers. This does not implement general collective Keyl POVMs or transfer the exact-Haar averaged nu^-1 symmetry result to a discrete implementation without its separate rotation-distribution budget.

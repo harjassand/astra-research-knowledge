@@ -1,0 +1,20 @@
+# Independent acquired Sylvester-filtered fast utility theorem audit
+
+27 October2026. PASS, local post-cutoff. This receipt binds ONLY the corrected actual-labelled4Y_T-6Y_omega source, not the superseded unavailable-J-copy draft.
+
+## Primary covariance and known filtering
+The PSW full second-moment formula was independently opened and received in the regularized-relative acquisition chain. For Hermitian tests, its negative corrections contract to Tr(PXPX)>=0, giving the stated real quadratic-form domination. More importantly I independently derived the FILTERED MATRIX variance, not an entrywise inference. In the known G eigenbasis, E E_ij E_jk has positive terms rho_ik and delta_ik rho_jj, negative rho_ij rho_jk, and negative P_ik P_jj corrections. Multiplication by k_ij k_jk yields exactly: rho Schur the positive row-Gram of k; a positive diagonal sum; minus(T_G rho)^2; and minus P Schur a Gram weighted by P_jj. The latter are PSD before their minus sign even when P,rho,G do not commute. This justifies discarding every correction in operator order.
+
+The pilot on ACTUAL T=A/4 at regularizationt/4 gives(7/8)(A+tI)<=G<=(9/8)(A+tI). Successful histories pass tI/2<=G<=6I, since A has trace4 and t<=1. Both available states are dominated by2G. Schur order bounds the first positive covariance term by diag2g_i sum k_ij^2<=2dI; the second likewise by2dI. The white term is at most d^2/[4n^2 lambda_minG]. Thus equation4 is valid as a full noncommuting matrix bound.
+
+Each contrast sample uses independent T and omega batches. Their centered matrix cross expectations vanish by independence and zero means, so coefficients4 and-6 contribute16+36=52, not a single-state variance. At n0=ceil4096d/t and lambda_minG>=t/2, this is strictly below tI. H=4T-6omega is the actual acquired contrast; there is NO physical Choi copy. Positivity of the known Sylvester integral and-A<=H<=A give||T_GH||<4 on a successful pilot, without assuming H positive.
+
+## Fully acquired localization of the filtered mean
+Conditional on any successful past, G and the current center C_j are fixed classical matrices and new batches remain independent. The variance plus squared radius gives E Z^2<=2R_j^2 I. Pointwise spectral clipping at64R_j has bias<=R_j/32, centered variance<=2R_j^2 and centered norm<=128R_j. Bernstein at deviationR_j/4 has exponent at least3k/1216>=k/406. The chosen2048 logarithmic batch count more than pays beta_final/J_* at each stage. The error is at most9R_j/32<R_j/2, so the radius induction closes until R_J<=sqrtt. This argument uses a union bound over the FIRST failing stage; it assumes nothing about later estimates after a failure and does not treat bad training as detected.
+
+The conditional copy cap is deterministic on all paths: two batches per sample, J_* stages, k samples, n0 copies, plus the independently received T-only pilot. All whitening/filtering/recentering is classical processing of observed matrices. There is no source eigenbasis oracle, physical whitening, least flag eigenvalue, or unreceived empirical-process bound.
+
+## Actual operational risk and scope
+Hhat=sqrtG C_final+C_final sqrtG estimates the ACTUAL H, with Hermitian Sylvester error E0 of norm<=sqrtt. The separately independently audited deterministic localization applies with c=9/8, yielding(72+8sqrt(9/8))rt<140rt; SDP objective tolerance adds2delta. The feasible optimizer may have high rank, but has trace<=r and defines a complete accepted-plus-erased decoder. No conditional-success normalization is used.
+
+Allocating beta/2 to pilot and beta/2 to the contrast induction proves the whole success event and the stated O((d/t) log(d/(beta t)) log(16/t)) source cap, explicitly counting both physically available states. Choosing t proportional to target risk/r gives the nu^-2 exact-orthogonal-source utility-training rate after the already received complete loss conversion. This is not yet a fast robust overlap theorem: [A,Pi]=0 and A<=2|H| are used in localization and cannot be silently transferred to entropy-near models. No gate-complexity or novelty claim is received.

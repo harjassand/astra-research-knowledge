@@ -1,0 +1,11 @@
+# Relation to prior Astra task-effect machinery
+
+2026-10-28. Comparison companion to learned_subsystem_complete_cp_domination_20261028.md; no theorem receipt transferred by this note.
+
+Fresh Astra plugin revision2bdc6a88e7ce0966ba259728267c3d318f70e009, input3f1956f46332eed174f6d5940c3e71bb05a716cee126c67f155c03e84f48d9ee: fetched N1004 current capsule, governing ACQUIRED_BOUNDARY_EFFECTS_AND_TASK_RENEWAL.txt lines79–214 (artifact5c2b3ededb7fd3701f701c134436d4958b398f35d2e184357cb7574f991d010b) and focused review lines1–66 (artifactc0886ea5684827bf92a579e0a37081c28f44e7d847a09fe3e2ce9eb83ad86fbd). Exact selected passages and locators are retained in astra_task_effects_cp_comparison_20261028.json.
+
+The prior machinery already proves complete Pauli-twirl identities, positive task effects, state-uniform bad-effect envelopes, specified-fault-set bounds without memory reset, and same-total-environment-channel output comparison. It also carefully separates effects from continuing memory updates and requires isolated logical outputs for its fixed-product/backward-hybrid result. These are established Astra capital, not new discoveries claimed here.
+
+The new attempted transfer has a different load-bearing interface: the learned receiver acts on an emitted gauge which is fully discarded. Its Pauli-resolved gauge effect therefore specifies the complete contraction of that gauge even when it is entangled with retained memory. The all-gauge identity-effect lower bound yields CP domination by the PARTICULAR true-extraction complete map, not only a small logical bad probability relative to an unspecified actual clean bath map. This is what would permit arbitrary common-controller composition without moving errors through output feedback. Acquisition of the bound comes from the on-site/approximate-algebra learner, not supplied upstream access to a calibrated boundary mode.
+
+No generic inference from scalar bad-effect probabilities to arbitrary full instruments is made. Retaining emitted gauge/decoder records or exposing retired keys changes the interface. Current receipt scope must be checked separately. No priority, fault-tolerance threshold, acquired hardware or practical advantage is asserted.
