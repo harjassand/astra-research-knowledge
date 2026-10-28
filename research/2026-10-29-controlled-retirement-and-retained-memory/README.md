@@ -1,0 +1,5 @@
+# Controlled retirement,retained-memory learning and partial-output conditioning
+
+Selected delivered sources and reusable contracts preserve actual producer receiving and candidate states. No acquired scientific code is executed or imported by intake. The negative floating learner pilot and stronger conventional vacuum-retirement comparison remain prominent. P2 upstream originals and P3 proof/code/review originals remain unacquired;only exposed source evidence is claimed. The Dots seed bootstrap receiving applies to the unchanged earlier source version;earlier candidate headers and correction histories remain.
+
+Raw joint-core acquisition,support-aware Choi repair and balanced rank-one anchor mechanisms retain their frozen pending/candidate statuses. Scalar transcript laws,virtual CP lifts,actual joint payload channels,terminal-only effects and future-decoder claims are distinct interfaces. Source indexes expose all selected originals as evidence navigation without conferring acceptance or complete semantic extraction.

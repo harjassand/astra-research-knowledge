@@ -1,0 +1,176 @@
+# Astra P1 successor: experimental certification of operation composition
+
+29 October 2026, Brisbane. The central question is whether finite experiments can acquire
+a reusable representation of operation composition and certify it against an
+unknown, possibly infinite hidden source. This package contains ordinary
+proofs, executable constructions, failures, exact receipts and scoped internal
+reviews. It does not claim laboratory validation or that the civilisation-scale
+mission has already been achieved.
+
+The predecessor's finite-rank scalar acquisition, static control and reuse
+limits are retained at their actual scope. Reading counts never supply
+instrument precision. Gram realization, Galerkin compression, residual model
+reduction, energy estimates, dilation and renewal algebra are established
+ingredients. The contribution developed here is their finite experimental
+acquisition-to-program certificate with explicit source and observation access.
+
+## Start with the strongest construction
+
+- COARSE_SWITCHING_THEORY.md: new source-preserving coarse-interface route.
+  Common reversible preparation and live/absorbed observations acquire an
+  all-switching tail and a complete prefix cover. The same data certify a
+  two-state approximation to an infinite source with infinite mean lifetime.
+- ABSORBING_BOUNDARY_THEORY.md: finite censored boundary observations acquire
+  local inverse-dissipation forms without a strict global source norm cap.
+  Irreversible absorption must be distinguishable from a live hidden excursion.
+- ABSORBING_BOUNDARY_EXTENSIONS.md: complete calibration cost, a reachable
+  norm-one family separating weighted and unweighted certificates, and explicit
+  sensitivity to loss-sensor errors.
+- CAPITAL_SCIENCE.md: scientific synthesis, actual addition and limitations.
+
+The coarse construction executes 1,086,180 source applications/reports and
+540,672 fresh preparations. Its 84-node cover closes by length 7 and certifies
+every finite switching word to absolute survival error 1/16. An ordinary
+positive two-state moment realization passes that cover, giving every-word
+error <=.062335817204 with no further source queries. Hidden rank remains
+unbounded. The source's centered inverse forms diverge for finite word
+features and strictly stable coefficient maps, so this route reaches a case
+outside that weighted certificate's finite-form premises.
+
+This is a complementary interface and objective, not a general replacement
+for boundary transport certification. It requires common reversible
+preparation and certifies unconditional total survival. It does not certify
+relative tail errors, normalized conditional states or lifetime moments.
+Weak-Poincare theory, prefix estimation and positive realization are credited
+explicitly. Generic acquisition may still require exponentially many contexts.
+
+The next executed strong comparator, ADAPTIVE_COARSE_COMPARISON.md, improves
+the same all-word absolute survival task using familiar adaptive prefix
+estimation. Independent fresh acquisition costs 458,449 source steps/reports
+and 255,220 preparations, yielding a 38-node cover of maximum depth 5.
+Its small terminal midpoint predictions are valid for absolute error; they
+do not certify relative tails, lifetime moments or the separate two-state
+matrix proposal. No earlier data or lifetime pilot is used by this comparator.
+
+COARSE_INTERFACE_LIMIT.md makes that last obstruction precise: even four
+operations with a known strict gap can require exponentially many informative
+preparations for simultaneous prediction of all short words. The complementary
+conditional upper theorem in
+branches/scalar/ADAPTIVE_PREFIX_COVER_COST_REVIEW.md charges the number and
+depths of actually necessary small-survival contexts, with almost-sure
+termination and unconditional expected costs when such a finite cover exists.
+
+The main executed source has three preparable boundary states, two noncommuting
+operations and countably infinitely many reachable slow states. Its norm is
+exactly one. The learner receives categorical records and the source class,
+without hidden rank, hidden transition matrices or a strict source norm cap.
+
+Twelve million logical trials cost 12,036,469 primitive steps and categorical
+observations and 1,758,723 preparations with exact boundary reuse. The acquired
+point model has absolute error <=.0399059846 for every finite future word.
+The stronger same-data positive interval route has dynamic remainder
+<=.001112504539 and certifies a transport difference between two unused
+20-step programs in [.1080212656,.1337115038]. That difference includes
+parameter uncertainty. Joint failure is below .001.
+
+A fresh direct test of that one pair costs 400,000 steps and 20,000 endpoint
+observations. It is much cheaper for a single known comparison. The reusable
+certificate must earn its value across subsequent programs. The direct
+execution reports 13,715 preparations; saved counts independently certify
+the upper 13,717. The main acquisition preparation count is exactly replayed.
+
+The infinite-dimensional form proof and acquisition/statistical replay are
+separate completed reviews. Frozen code and receipt hashes appear in
+branches/dynamics/ABSORBING_BOUNDARY_ACQUISITION_REVIEW.md. The main executable
+is core/absorbing_boundary_compiler.py; results and raw counts are under results.
+
+## Earlier constructions retained
+
+THEORY.md derives signed output correction from reciprocal scalar echoes,
+without a hidden-rank promise. A principal synthetic fixture uses 18 source
+readings, two standards and 50 primitive applications at raw error 1e-10;
+its all-word bound is below .000939.
+
+BLOCK_THEORY.md acquires adjoints of non-selfadjoint blocks by reversing the
+primitive sequence. Its certificate covers the declared block language.
+
+DISSIPATION_THEORY.md gives the uniform second-order source-form theorem and
+finite echo acquisition under a strict source cap. The g=.001 fixture uses
+37 source readings, two standards and 342 applications at raw error 1e-14.
+The same-record refined bound is .001069081794 versus about 1 for the earlier
+unweighted certificate. This is not a physical speedup claim.
+
+MARKOV_RESIDUAL_THEORY.md replaces subtractive moment estimation with positive
+events under a stronger nonintrusive membership interface. Four million logical
+trials cost 6,452,016 primitive steps and 4,587,663 bit observations. Corrected
+preparation upper: 299,681, not four million. The same-count refined all-word
+bound is .0919031664. The first-return comparator and its complete ledgers
+appear in branches/dynamics/RENEWAL_ACQUISITION.md.
+
+The earlier three-boundary, strict-cap construction is preserved under
+branches/physical/MULTIBOUNDARY_POSITIVE_EVENT_COMPILER.md. It makes operation
+order meaningful before the subsequent removal of that global cap.
+
+## Decisive failures and cost limits
+
+The Clifford branch separates frozen responses from order-sensitive words.
+RELATIVE_RESIDUAL_FAILURE.md rejects a tempting primitive-relative criterion.
+ADAPTIVE_EXPERIMENT_COST.md proves an all-design physical-execution lower
+bound with a matching direct strategy. POSITIVE_RESIDUAL_INTERFACE.md explains
+why an exact positive flag requires stronger access than full-support endpoint
+observations. The complete g^-3 calibration theorem and matching full-state
+lower bound are in branches/scalar/CALIBRATION_COST_THEOREM_REVIEW.md.
+
+CORRECTIONS_AND_SCOPE.md collects material interpretation corrections. Reviews
+count at their actual scope; their hashes do not cover later refinements.
+Accepted Astra quantum-channel undecidability was not routinely re-audited.
+Secondary Clifford, passive-memory and finite-excursion SLD constructions
+remain under branches with their own assumptions and limitations.
+
+The next interface attack is preserved in COARSE_BOUNDARY_OBSTRUCTION.md.
+Two strictly contracting sources give identical coarse first-return records
+but later responses differ by more than .48. A real conditional refresh
+operation creates exact closure for a changed language; treating a coarse
+label as an unperformed reset is rejected.
+COARSE_MEMORY_ACQUISITION.md then constructs a source-preserving memory
+witness. Its paid pilot selects longer probes and reduces the executed
+source cost from 63,499,098 to 522,817 steps on the same example, while
+certifying a need for at least two features. It is not a hidden-rank upper
+bound or a completed all-word model for the coarse interface.
+
+SURVIVAL_BASELINE.md records the stronger ordinary single-action comparator:
+4,000 censored lifetime preparations and 62,181,306 actual source steps give
+a DKW all-length survival band of radius 1/32. No rank closure is needed for
+that task. Exact single-action laws still leave mixed responses unidentified;
+the two-state counterexample is in
+branches/physical/COARSE_SINGLE_ACTION_SWITCHING_OBSTRUCTION.md.
+The later coarse switching construction closes the absolute-error model
+obligation under its additional common-preparation premise.
+
+## Reproduction
+
+The principal code uses Python 3, NumPy 2.3.5 and SciPy 1.17.0. The separate
+passive-memory branch documents its optional mpmath dependency. Dependencies
+and third-party source downloads are excluded from this package.
+
+Run the main acquisition from the package directory with:
+
+    python3 core/absorbing_boundary_compiler.py
+
+To recompute from saved observations without new trajectories:
+
+    python3 core/absorbing_boundary_compiler.py --replay
+    python3 branches/dynamics/replay_absorbing_boundary_review.py
+    python3 core/absorbing_sensor_robustness.py
+    python3 core/absorbing_slow_family.py
+    python3 core/coarse_switching_cover.py --replay
+    python3 core/coarse_compressed_model.py
+    python3 core/coarse_echo_comparison.py
+    python3 core/adaptive_coarse_cover.py --replay
+    python3 branches/dynamics/replay_coarse_switching_cover_review.py
+
+Other core/run_*.py files reproduce the preceding constructions. Some reruns
+replace their corresponding result files; preserved review hashes refer to
+the supplied versions. SOURCE_NOTES.md records selected Astra retrieval,
+the current primary comparisons, and the live connector refresh failure.
+The original handoff and complete prior archives remain separately preserved.
