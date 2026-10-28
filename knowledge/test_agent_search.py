@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 from knowledge.evidence import projection, source_indexes, search as evidence_search
-from knowledge.model import Inputs, ROOT, digest
+from knowledge.model import Inputs, ROOT, digest, scientific_text
 from knowledge.operations import operation_frame, premise_check
 from knowledge.retrieve import Library
 
@@ -140,7 +140,36 @@ class OperationTests(unittest.TestCase):
         self.assertEqual(read["artifact"]["cited_by"], result["cited_by"])
         raw, _ = Inputs(ROOT).source(result["source"])
         start, end = result["source"]["lines"]
-        self.assertEqual(read["text"], "".join(raw.splitlines(keepends=True)[start - 1:end]))
+        expected, selection = scientific_text("".join(raw.splitlines(keepends=True)[start - 1:end]))
+        self.assertEqual(read["text"], expected)
+        self.assertEqual(read["text_selection"], selection)
+
+
+class EvidenceSourceReadTests(unittest.TestCase):
+    def test_json_answer_projection_keeps_exact_raw_source_identity(self):
+        # New intake can legitimately rank a JSON source first. Its selected
+        # scientific text and original byte identity are different contracts.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            text = "Actual conditional construction.\nRequires the declared gap.\n"
+            raw = json.dumps({"answer": {"text": text}, "metadata": "Original transport metadata."}, indent=2) + "\n"
+            (root / "proof.json").write_text(raw)
+            ref = {"path": "proof.json", "sha256": digest(raw.encode()),
+                   "lines": [1, len(raw.splitlines())], "quote": "Actual conditional construction."}
+            folder = root / "knowledge/current/evidence"
+            folder.mkdir(parents=True)
+            (folder / "documents.jsonl").write_text(json.dumps({
+                "id": "E-fixture", "source": ref, "artifact_id": "A-fixture"}) + "\n")
+            (folder / "artifacts.jsonl").write_text(json.dumps({
+                "id": "A-fixture", "source": ref, "cited_by": []}) + "\n")
+            library = Library.__new__(Library)
+            library.root, library.records = root, {}
+            read = library.source("E-fixture")
+            self.assertEqual(read["text"], text)
+            self.assertEqual(read["text_selection"], "JSON /answer/text; raw JSON remains authoritative")
+            self.assertEqual(read["source"], ref)
+            self.assertEqual(digest((root / ref["path"]).read_bytes()), ref["sha256"])
+            self.assertNotIn("Original transport metadata", read["text"])
 
 
 class AdmissionTests(unittest.TestCase):
