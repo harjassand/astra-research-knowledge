@@ -1,0 +1,13 @@
+# Coordinator checks and interpretation
+
+All five scientific reports were read, together with the final source-use review. The first four have independently replayed checks and the legacy case has bounded theorem/review/arithmetic checks. A successful replay supports that implementation/argument scope, not historical novelty, physical advantage or an entire research programme.
+
+I additionally read the completed child-turn action records through the app's thread tool. Available command counts were10/29/13/24 for the four constructors and2 for the web-only case. There was no observed memory-registry, private study-answer or grading-file read in those records. Apparent EXPECTED_SCOPES matches in the ordinary G searches were explicit exclusion globs, not reads. The two web-only shell commands read its assigned task and checked its own finished report; its scientific source reads were public network tool calls. This is a bounded action-record check, not an audit of every hidden runtime input or historical network body. Initial delegated prompts were not exposed as user messages by that app view. The supplied task files/protocol and actual exposure disclosures remain the reproducible study materials here; no private reasoning or account logs are published.
+
+Generic Astra/product summaries were present in the constructors' startup context, including some topic cues. No parent research history or expected answer IDs were supplied. This qualifies the meaning of cold-start and prevents a claim of completely blank context or matched hidden information.
+
+The live web page was inspected independently through a temporary background browser. It displayed dataset055d572fc031. One broad repricing query returned conditional neighbouring constructions; reading one packet exposed its stronger prerequisites and a current cost correction. This is an informed navigation observation, not a blind retrieval trial or an expected-ID failure. The constructor-specific live searches and exact-source uses are reported separately.
+
+I verified the different metadata predicates directly: the current suffix pattern has641 files, of which634 have the exact census basenames and seven have variant names. The variant appendix preserves this distinction and the original frozen634 census. None of these file counts is a number of scientific results or proof of global publication completeness.
+
+The study recommends stronger dedicated semantic curation and a small access wrapper around the deployed core. It does not recommend replacing the library, reopening completed internal audits by default, changing the research portfolio to these fixtures, expanding Pro experiments or contacting Dots. The Capital delivery hold remains active.
