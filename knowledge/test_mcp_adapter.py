@@ -145,6 +145,48 @@ class AdapterTests(unittest.TestCase):
         record = next(hit for hit in found["results"] if hit["metadata"].get("record_id") == identifier)
         self.assertEqual(record["metadata"]["matching_current_notice"], match)
 
+    def test_existing_identifiers_route_before_ranked_candidates_without_aliases(self):
+        for query, expected in (("N33", "N33-endotactic-permanence"),
+                ("N33-endotactic-permanence", "N33-endotactic-permanence"),
+                ("n33 current audit review source version correction", "N33-endotactic-permanence"),
+                ("N684 governing assumptions", self.adapter.library.resolve("N684")["id"])):
+            with self.subTest(query=query):
+                result = self.adapter.search(query)
+                self.assertEqual(result["results"][0]["metadata"]["record_id"], expected)
+                self.assertIn(expected, result["metadata"]["exact_identifier_matches"])
+                capsule = complete(self.adapter, result["results"][0]["id"])
+                self.assertEqual(capsule["content_version"], self.adapter.library.records[expected]["content_version"])
+
+    def test_multiple_ids_and_ambiguous_unit_prefix_do_not_blend_records(self):
+        result = self.adapter.search("N33 versus N557")
+        identifiers = [r["metadata"].get("record_id") for r in result["results"][:2]]
+        self.assertEqual(identifiers, [self.adapter.library.resolve(i)["id"] for i in ("N33", "N557")])
+        self.assertEqual(self.adapter.search("U1130")["metadata"]["exact_identifier_matches"], [])
+
+    def test_current_scope_is_lossless_for_conditions_notices_reviews_and_gaps(self):
+        record = self.adapter.library.resolve("N557")
+        original = self.adapter.record_payload(record)
+        current = complete(self.adapter, self.adapter.handle("current", record["id"]))
+        refs = {r["fetch_id"]: r["source"] for r in current["evidence"]}
+        refs.update({r["fetch_id"]: r["source"] for r in current["review_and_correction_sources"] if "source" in r})
+        def expand(value):
+            if isinstance(value, list):
+                return [expand(v) for v in value]
+            if isinstance(value, dict):
+                if "source_fetch_id" in value:
+                    return dict(refs[value["source_fetch_id"]], **value.get("source_ref_annotations", {}))
+                return {k: expand(v) for k, v in value.items()}
+            return value
+        for field in ("notices", "review_overlays", "transfers"):
+            self.assertEqual(expand(current[field]), original[field])
+        self.assertEqual(expand(current["source_reported_gaps"]), original["reported_review"]["gaps"])
+        self.assertEqual(current["contract"], original["contract"])
+        self.assertLess(len(encoded(current)), len(encoded(original)))
+        history = complete(self.adapter, current["history"]["fetch_id"])
+        for field in ("reported_review", "historical_reviews", "historical_versions"):
+            self.assertEqual(history[field], original[field])
+        self.assertEqual(history["current_scope_fetch_id"], self.adapter.handle("current", record["id"]))
+
 
 if __name__ == "__main__":
     unittest.main()

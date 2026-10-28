@@ -6,6 +6,7 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
+import tempfile
 import unittest
 
 import jsonschema
@@ -167,6 +168,57 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                             self.assertIn(expected, " ".join(getattr(c, "text", "") for c in result.content))
                 finally:
                     fixture.doCleanups()
+
+    async def test_real_published_stdio_advances_after_ordinary_reviewed_intake(self):
+        from knowledge.test_published_refresh import PublishedRefreshTests
+        from knowledge.published import RELEASE_SCHEMA
+        from knowledge.model import encoded
+        # Reuse the synthetic ordinary-intake fixture, not a producer program.
+        class Versions(PublishedRefreshTests):
+            pass
+        Versions.setUpClass()
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                folder = Path(folder); bare = folder / "origin.git"
+                subprocess.run(["git", "clone", "--bare", str(Versions.root), str(bare)], check=True,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                Versions.git(Versions.old, "remote", "add", "origin", str(bare))
+                Versions.git(Versions.old, "fetch", "origin", "main")
+                marker = folder / "release.json"
+                marker.write_bytes(encoded({"schema": RELEASE_SCHEMA, "input_version": Versions.a.version}))
+                bootstrap = """import functools,importlib.util,json,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+import knowledge.published as published
+published.read_release=lambda:json.loads(Path(sys.argv[3]).read_bytes())
+published.GitSnapshots=functools.partial(published.GitSnapshots,repository_url=sys.argv[5])
+spec=importlib.util.spec_from_file_location('astra_test_server',Path(sys.argv[1])/'plugins/astra-research/server.py')
+module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module;spec.loader.exec_module(module)
+module.create_server(sys.argv[2],published=True,cache=Path(sys.argv[4]),poll_seconds=0).run(transport='stdio')
+"""
+                params = StdioServerParameters(command=sys.executable, args=["-c", bootstrap, str(ROOT),
+                    str(Versions.old), str(marker), str(folder / "cache"), str(bare)])
+                async with Client(params, read_timeout_seconds=60) as client:
+                    await self.assert_tools(client)
+                    old = await client.call_tool("search", {"query": "N1"})
+                    self.assertFalse(old.is_error, old.content)
+                    self.assertEqual(old.structured_content["metadata"]["input_version"], Versions.a.version)
+                    old_handle = old.structured_content["results"][0]["id"]
+                    marker.write_bytes(encoded({"schema": RELEASE_SCHEMA, "input_version": Versions.b.version}))
+                    new = await client.call_tool("search", {"query": "U2-new-subresult"})
+                    self.assertFalse(new.is_error, new.content)
+                    self.assertEqual(new.structured_content["metadata"]["input_version"], Versions.b.version)
+                    packet = await full_fetch(client, new.structured_content["results"][0]["id"])
+                    self.assertEqual(packet["notices"][0]["notice_id"], "SN-correlated")
+                    self.assertEqual(packet["review_overlays"][0]["decision"], "accepted_internally_verified")
+                    source = await full_fetch(client, packet["evidence"][0]["fetch_id"])
+                    self.assertIn("Correlated noise needs an additional bound", source["text"])
+                    retained = await client.call_tool("fetch", {"id": old_handle})
+                    self.assertFalse(retained.is_error, retained.content)
+                    self.assertEqual(retained.structured_content["metadata"]["freshness"]["status"], "historical_snapshot")
+                Versions.git(Versions.old, "remote", "remove", "origin")
+        finally:
+            Versions.tearDownClass()
 
 
 if __name__ == "__main__":

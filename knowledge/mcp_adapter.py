@@ -39,6 +39,12 @@ class ResearchAdapter:
         self.paths = set(self.git("ls-tree", "-r", "--name-only", "-z", "HEAD").split("\0")) - {""}
         self.references, self.contexts = {}, defaultdict(set)
         self.locators, self.artifact_data = {}, {}
+        self.identities = defaultdict(set)
+        for record in self.library.records.values():
+            self.identities[record["id"].casefold()].add(record["id"])
+            prefix = record["id"].split("-", 1)[0]
+            if re.fullmatch(r"[A-Za-z]+\d+", prefix):
+                self.identities[prefix.casefold()].add(record["id"])
         for record in self.library.records.values():
             for reference in evidence_refs(record):
                 self.register(reference)
@@ -128,6 +134,13 @@ class ResearchAdapter:
         self.current()
         if not isinstance(query, str) or not query.strip() or len(query) > 10000:
             raise ValueError("query must contain 1..10000 characters")
+        exact = []
+        for token in re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]*", query):
+            matches = self.identities.get(token.casefold(), set())
+            if len(matches) == 1:
+                identifier = next(iter(matches))
+                if identifier not in exact:
+                    exact.append(identifier)
         fallback, lanes, notice_matches = None, [], {}
         if self.method == "agent":
             try:
@@ -148,13 +161,14 @@ class ResearchAdapter:
                 scores[hit["id"]] += 1 / (60 + rank)
                 hits[hit["id"]] = hit
         records = []
-        for identifier in sorted(hits, key=lambda i: (-scores[i], i))[:5]:
+        selected = list(dict.fromkeys(exact + sorted(hits, key=lambda i: (-scores[i], i))))[:5]
+        for identifier in selected:
             record = self.library.records[identifier]
             preview = {}
             for field in ("requires", "provides", "assumptions", "costs", "obstruction"):
                 text = flatten(record["contract"].get(field, "UNKNOWN"))
                 preview[field] = {"text": text[:200], "omitted_characters": max(0, len(text) - 200)}
-            records.append({"id": self.handle("record", identifier), "title": record["title"],
+            records.append({"id": self.handle("current", identifier), "title": record["title"],
                 "url": self.record_url(identifier), "metadata": {"record_id": identifier,
                 "content_version": record["content_version"], "kind": record["kind"],
                 "operation_preview": preview, "preview_scope": "Partial candidate preview; fetch complete conditions/corrections before reuse",
@@ -178,6 +192,8 @@ class ResearchAdapter:
                 break
         return {"results": records + sources, "metadata": {"input_version": self.version,
             "revision": self.revision, "method": self.method, "fallback": fallback,
+            "exact_identifier_matches": exact[:5], "omitted_identifier_matches": max(0, len(exact) - 5),
+            "identifier_scope": "Existing canonical IDs and unambiguous numeric prefixes; no topical alias, acceptance or applicability inferred.",
             "scope": "Candidate menu only. Fetch conditions, current corrections and governing passages before reuse; absence is not impossibility."}}
 
     def reference_view(self, ref):
@@ -268,6 +284,65 @@ class ResearchAdapter:
             "current_context": current_context,
             "full_source_url": self.source_url(ref), "extracted_text_lines": [start, end]}
 
+    def history_payload(self, record):
+        original = self.record_payload(record)
+        return {"scope": "Source-reported assessment and historical versions. These labels do not override current version-bound acceptance. Fetch the linked current scope before reuse.",
+            "id": record["id"], "content_version": record["content_version"],
+            "current_scope_fetch_id": self.handle("current", record["id"]),
+            "reported_review": original["reported_review"],
+            "historical_reviews": original["historical_reviews"],
+            "historical_versions": original["historical_versions"],
+            "full_packet_url": original["full_packet_url"]}
+
+    def current_payload(self, record):
+        # Keep the legacy record/source codecs unchanged: an old continuation
+        # must not acquire different bytes merely because the reader upgraded.
+        original = self.record_payload(record)
+        result = {key: value for key, value in original.items()
+                  if key not in ("reported_review", "historical_reviews", "historical_versions")}
+        def locator_link(view):
+            # The complete hash-matched selector remains on the source fetch.
+            # Avoid printing its URL/path/hash a second time in every capsule.
+            return {key: value for key, value in view.items() if key != "citation_locator"}
+        result["evidence"] = [locator_link(entry) for entry in result["evidence"]]
+        routes = {}
+        primary = {entry["fetch_id"]: i for i, entry in enumerate(result["evidence"])}
+        for route in original["review_and_correction_sources"]:
+            roles = [r for r in route["roles"] if r != "historical_review"]
+            if roles:
+                routes[route["fetch_id"]] = dict(locator_link(self.reference_view(compact_ref(route["source"]))), roles=roles)
+
+        def references(value, role):
+            if isinstance(value, list):
+                return [references(item, role) for item in value]
+            if isinstance(value, dict):
+                if isinstance(value.get("path"), str) and isinstance(value.get("sha256"), str):
+                    ref = compact_ref(value); handle = self.register(ref)
+                    if handle not in primary:
+                        route = routes.setdefault(handle, dict(locator_link(self.reference_view(ref)), roles=[]))
+                        if role not in route["roles"]:
+                            route["roles"].append(role)
+                    annotations = {key: data for key, data in value.items() if key not in ref}
+                    return {"source_fetch_id": handle, **({"source_ref_annotations": annotations} if annotations else {})}
+                return {key: references(data, role) for key, data in value.items()}
+            return value
+
+        result["notices"] = references(original["notices"], "current_notice")
+        result["review_overlays"] = references(original["review_overlays"], "current_review")
+        result["transfers"] = references(original["transfers"], "documented_transfer")
+        result["source_reported_gaps"] = references(original["reported_review"].get("gaps", []), "source_reported_gap")
+        result["review_and_correction_sources"] = [
+            {"fetch_id": identifier, "evidence_ref_field": "evidence", "evidence_ref_index": primary[identifier],
+             "roles": route["roles"]} if identifier in primary else route
+            for identifier, route in routes.items()]
+        result["history"] = {"fetch_id": self.handle("history", record["id"]),
+            "scope": "Original source-reported status/validation and historical versions; conditions are not discharged by moving status labels."}
+        result["related_units"] = [dict(unit, fetch_id=self.handle("current", unit["id"])) for unit in result["related_units"]]
+        result["scope"] = "Current scientific scope. All current conditions, source-reported gaps, corrections and version-bound reviews remain. Original source-reported status/validation and history are linked separately; no scientific qualification is discharged by this view."
+        result["reference_scope"] = "source_fetch_id replaces a duplicate citation only. Source specifications and public routes are in evidence or review_and_correction_sources; the complete artifact selector stays on its source fetch. source_ref_annotations retains all original per-citation annotations. Read every correction and governing passage before reuse."
+        result["citation_locator_scope"] = "Source fetches retain the complete artifact hash/selector, including HTML pre-block distinctions. This view omits only the duplicated locator; each source and hash-matched public URL remain."
+        return result
+
     def fetch(self, identifier):
         self.current()
         if not isinstance(identifier, str):
@@ -283,6 +358,10 @@ class ResearchAdapter:
         if kind == "record":
             record = self.library.resolve(value)
             payload, title, url = self.record_payload(record), record["title"], self.record_url(record["id"])
+        elif kind in ("current", "history"):
+            record = self.library.resolve(value)
+            payload = self.current_payload(record) if kind == "current" else self.history_payload(record)
+            title, url = record["title"], self.record_url(record["id"])
         elif kind == "source" and value in self.references:
             ref = self.references[value]
             payload, title, url = self.source_payload(ref), Path(ref["path"]).name, self.source_url(ref)
@@ -297,6 +376,7 @@ class ResearchAdapter:
         more = end < len(raw)
         return {"id": identifier, "title": title, "text": raw[offset:end].decode("utf-8"), "url": url,
             "metadata": {"input_version": self.version, "revision": self.revision,
+                "payload_view": kind,
                 "payload_sha256": digest(raw), "payload_bytes": len(raw), "byte_range": [offset, end],
                 "encoding": "UTF8 JSON; concatenate text pages before parsing a multipart payload",
                 "partial": offset > 0 or more, "next_id": base_id + ":" + str(end) if more else None,

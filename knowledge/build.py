@@ -75,6 +75,7 @@ def build(root=ROOT):
     for name in ("knowledge/model.py", "knowledge/build.py", "knowledge/retrieve.py",
                  "knowledge/search.js", "knowledge/index.html", "knowledge/README.md",
                  "knowledge/INTAKE.md", "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/evidence.py", "knowledge/interfaces.py",
+                 "knowledge/mcp_adapter.py", "knowledge/published.py", "plugins/astra-research/server.py",
                  "knowledge/requirements-agent.txt", "knowledge/runtime/manifest.json",
                  "00_START_HERE.txt", "AGENTS.md", "agent/ACCESS.txt"):
         inputs.read(name)
@@ -572,6 +573,10 @@ def build(root=ROOT):
         outputs[path] = ("\n".join(rows) + "\n").encode()
         browse.append("\t".join([" / ".join(sorted(topic_names[slug])), str(len(selected)), path]))
     outputs["knowledge/current/browse/index.txt"] = ("\n".join(browse) + "\n").encode()
+    outputs["knowledge/current/release.json"] = encoded({
+        "schema": "astra.public-corpus-release.v1", "input_version": digest(encoded(inputs.hashes)),
+        "manifest": "knowledge/current/manifest.json", "records": len(records),
+        "scope": "Complete ordinary build/check projection. Input identity covers cards, units, sources, corrections and runtime readers; indexing confers no scientific acceptance."})
     outputs["knowledge/current/search_manifest.json"] = encoded({"input_version": digest(encoded(inputs.hashes)),
         "outputs": {name: digest(data) for name, data in outputs.items() if name.startswith((
             "knowledge/current/catalog", "knowledge/current/postings/", "knowledge/current/lexical/", "knowledge/current/packets/",
