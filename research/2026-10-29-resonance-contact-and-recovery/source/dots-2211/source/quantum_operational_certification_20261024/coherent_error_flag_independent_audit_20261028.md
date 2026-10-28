@@ -1,0 +1,11 @@
+# Independent review: coherent error flags versus complete CP domination
+
+2026-10-28. Reviewer producer-workspace/review_trace_class_synthesis. Received at the nondegenerate scope 0<p<1 and 0<b=s²<1. Strict determinant negativity needs c*s nonzero; at b=0 or b=1 the strict inequality must not be read literally. This endpoint qualification does not affect the small nonzero error obstruction.
+
+I independently expanded the native isometry into its I/Z logical components after the learned inverse and fresh private Pauli frame. The exact full Choi average has two orthogonal Bell sectors and the memory vectors stated in the source. In the identity sector, subtracting c² times the exact reference gives determinant -c²s²p(1-p), so positivity, hence complete CP domination, fails. More generally any positive subtraction of a noncollinear rank-one reference from the rank-one learned block has a negative direction. No reduced-channel test repairs that complete-map failure.
+
+The two difference blocks are D and -D. Their total half trace norm is ||D||_1. Since det(D)=-b p(1-p)<0, its eigenvalues have opposite signs; trace(D)²-4det(D)=b[b(1-2p)²+4p(1-p)], proving the formula. Tracing retained memory leaves opposite scalar Pauli weight differences of magnitude b|1-2p|; the reduced Pauli-channel half-diamond distance is that magnitude. At p=1/2, complete Bell/memory distance is sqrt(b) while reduced channels coincide exactly.
+
+The independent exact script builds the complete 8-by-8 normalized Choi average from all four physical Pauli conjugations for nine algebraic cases, rather than importing author code. It checks the entire difference, negative determinant and squared distance identity. Analytic reasoning, not the finite test grid, establishes the quantified result.
+
+This is a boundary of a specified complete-Pauli-mixture premise. It does not invalidate the received theorem under that premise, prove generic learning impossibility or assert the hidden memory is accessible at actual future ports. Observability of the retained correlation requires its own operational premise. No hardware, acquired calibration, source calls or novel-priority claim is received. Original source unchanged; this receipt supplies the explicit strict-inequality endpoint qualification.
