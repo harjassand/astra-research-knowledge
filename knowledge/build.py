@@ -66,6 +66,21 @@ def packet_review(review, packet_evidence, preserve_annotations=False):
     return result
 
 
+def packet_excerpt(reference, passage, selection):
+    """Keep navigation from re-publishing a legacy host-local locator.
+
+    Original bytes, source identity and the complete source route are untouched.
+    Never silently rewrite scientific evidence while rendering a packet.
+    """
+    excerpt = {"source": reference, "text_selection": selection,
+               "excerpt_truncated": len(passage) > 2400}
+    if re.search(r"/(?:Users|home)/[^/\s'\"<>]+/|file:[/]{2}", passage[:2400]):
+        excerpt["text_omitted"] = "Read this exact source range; optional navigation text omitted because the historical source contains host-local locators. Original evidence remains unchanged."
+    else:
+        excerpt["text"] = passage[:2400]
+    return excerpt
+
+
 def build(root=ROOT):
     root = Path(root)
     inputs = Inputs(root)
@@ -494,8 +509,7 @@ def build(root=ROOT):
                 continue
             _, passage = inputs.source(ref)
             passage, selection = scientific_text(passage)
-            packet["source_excerpts"].append({"source": ref, "text": passage[:2400], "text_selection": selection,
-                                              "excerpt_truncated": len(passage) > 2400})
+            packet["source_excerpts"].append(packet_excerpt(ref, passage, selection))
         packet["transfers"] = [transfer for transfer in transfers if record["id"] in (transfer["from"], transfer["to"])]
         if "interface_navigation" in packet:
             packet["interface_navigation"] = packet_navigation(packet["interface_navigation"], packet["transfers"])
