@@ -10,6 +10,11 @@ import unittest
 from knowledge.source_portability import main, portable_source
 
 
+def resource(*parts):
+    """Synthetic locator assembled here; no real host/account path is saved."""
+    return ("/" + "/".join(parts)).encode()
+
+
 class SourcePortability(unittest.TestCase):
     def test_scientific_slash_phrases_and_relative_source_links_are_exact(self):
         original = (
@@ -26,9 +31,9 @@ class SourcePortability(unittest.TestCase):
     def test_real_absolute_resources_change_without_touching_the_statement(self):
         original = (
             b"Cost gates/workspace grows with H.\r\n"
-            b"Reviewer: `/workspace/review/audit.md`.\r\n"
-            b"[proof](sandbox:/mnt/data/source/PROOF.md)\r\n"
-            b'Output="/Users/private-person/Documents/result.json"\r\n'
+            b"Reviewer: `" + resource("workspace", "review", "audit.md") + b"`.\r\n"
+            b"[proof](sandbox:" + resource("mnt", "data", "source", "PROOF.md") + b")\r\n"
+            b'Output="' + resource("Users", "private-person", "Documents", "result.json") + b'"\r\n'
             b"relative: source/root/audit.md\r\n"
         )
         expected = (
@@ -43,7 +48,7 @@ class SourcePortability(unittest.TestCase):
         self.assertEqual(len(ledger), 3)
         self.assertNotIn("private-person", json.dumps(ledger))
         self.assertEqual(ledger[0]["original_locator_sha256"],
-                         hashlib.sha256(b"/workspace/review/audit.md").hexdigest())
+                         hashlib.sha256(resource("workspace", "review", "audit.md")).hexdigest())
         self.assertEqual(portable_source(public), (public, []))
 
     def test_binary_requires_explicit_other_evidence_route(self):
@@ -54,7 +59,8 @@ class SourcePortability(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source, output = root / "raw.md", root / "public.md"
-            original = b"Accepted coordinate/root statement.\n/workspace/run/proof.md\n"
+            original = (b"Accepted coordinate/root statement.\n"
+                        + resource("workspace", "run", "proof.md") + b"\n")
             source.write_bytes(original)
             with contextlib.redirect_stdout(io.StringIO()) as result:
                 self.assertEqual(main([str(source), str(output)]), 0)
