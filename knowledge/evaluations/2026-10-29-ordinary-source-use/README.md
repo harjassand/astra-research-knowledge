@@ -33,6 +33,16 @@ copies to the current correction. It changes no scientific content version;
 the frozen rankings retain their actual earlier identity. Current final source
 and correction routes are checked separately before publication.
 
+Actual installed historical-handle use then exposed a reader defect: the
+9,110-byte old RAW proof payload remained exactly unchanged, but its freshness
+metadata named no correction first introduced by a newer record. The reader
+looked only at historical citing records. The repair also consults current
+contexts for the same path **and** source hash, preserving the old payload and
+all existing contexts. A regression reproduces the omission before the fix;
+another rejects a different-hash branch at the same path. These checks do not
+infer compatible science or acceptance from shared source context. This reader
+change requires reviewed deployment and a repeat of the same live old handle.
+
 Several concrete research-use outcomes matter more than a hit total:
 
 * For replacing coherent bosonic retention while keeping an entangled reference
