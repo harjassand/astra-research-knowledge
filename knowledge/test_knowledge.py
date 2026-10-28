@@ -18,6 +18,7 @@ class Fixture(unittest.TestCase):
         for name in ("knowledge/model.py", "knowledge/build.py", "knowledge/retrieve.py", "knowledge/search.js",
                      "knowledge/index.html", "knowledge/README.md", "knowledge/INTAKE.md", "knowledge/concepts.json",
                      "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/evidence.py", "knowledge/interfaces.py",
+                     "knowledge/mcp_adapter.py", "knowledge/published.py", "plugins/astra-research/server.py",
                      "knowledge/requirements-agent.txt", "knowledge/runtime/manifest.json",
                      "00_START_HERE.txt", "AGENTS.md", "agent/ACCESS.txt"):
             self.write(name, (ROOT / name).read_bytes())

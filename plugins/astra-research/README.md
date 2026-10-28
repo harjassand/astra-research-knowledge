@@ -5,6 +5,10 @@ The backend reuses canonical records, lexical/structured retrieval, evidence
 navigation, operation capsules, reviews and corrections. It neither runs
 scientific programs nor writes intake, branches or research state.
 
+The portable command now enables published-corpus refresh on requests. See
+[keeping the installed corpus current](PUBLISHED_CORPUS.md) for the exact
+ordinary-intake contract, bounded cache, failure behavior and deployment check.
+
 ## Local backend
 
 Use a committed checkout of this public repository, Python 3.12/3.13 and the
@@ -47,7 +51,11 @@ the scores as a scientific verdict. `--method agent` optionally enables the
 existing local neural ranking backend; a missing runtime is explicitly
 reported in search metadata and falls back to portable retrieval.
 
-`fetch(id)` accepts a returned handle or a known current result/unit ID. Record
+`fetch(id)` accepts a returned handle or a known current result/unit ID. Search
+returns compact current-scope handles with linked source-reported history.
+Duplicate citations use source-fetch references while retaining their original
+annotations; conditions, corrections, review scopes and genuine gaps remain.
+Legacy record/source handles keep their existing payload codecs. Record
 capsules contain the actual statement, conditions/costs, full current notices,
 version-bound reviews, evidence routes, reusable units, recorded transfers and
 historical unit routes. Source handles read their actual declared bytes/range;
@@ -71,11 +79,12 @@ actual governing passage before using a premise.
 
 Handles bind the corpus input version; metadata also carries the Git revision,
 record content version or source hash, and commit-pinned citation URLs. A
-snapshot change or uncommitted corpus edit fails explicitly. Serve an immutable
-committed backend checkout, then restart after ordinary intake has run the
-existing `knowledge/build.py build`, `check`, review and commit path. A stale
-handle fails instead of silently resolving to a changed result. Older published
-snapshots remain available through their pinned Git versions.
+snapshot change or uncommitted corpus edit fails explicitly. Static mode serves
+one immutable committed checkout. Published mode checks the public release and
+adopts a separately validated immutable snapshot after ordinary build/check,
+review and merge, without a restart for scientific intake. Old handles keep
+their version; historical responses name current correction-context handles.
+Older published sources also remain available through pinned Git versions.
 
 Every search/fetch request, including continuation pages, also compares the
 normalizer's current filesystem discovery inventory with the captured manifest.
@@ -83,8 +92,8 @@ New staged or untracked reviews, correction shards and other discovered intake
 files therefore fail closed before the old snapshot is served. Unrelated notes
 outside that inventory do not become an intake gate. Invalid or unreadable
 discovery also refuses service, without returning a host-local path. Keep researcher-facing
-backends on an immutable committed checkout; finish normal intake and restart
-the backend before serving its new snapshot. These request-boundary guards do
+backends on immutable committed snapshots; finish normal intake before published
+mode can adopt its new release. These request-boundary guards do
 not establish a public HTTPS endpoint or native Pro readiness.
 
 ## Validation and current limits

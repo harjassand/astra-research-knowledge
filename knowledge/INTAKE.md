@@ -107,3 +107,18 @@ This checks unchanged historical evidence and newly added literal local-source
 locators before a draft can expose them. It does not run the full suite or
 accept science. The existing full current-base gate and actual source-use
 verification remain required before merge; producer research continues.
+
+The same build now generates the small `knowledge/current/release.json`.
+Published-mode plugin servers check that public input identity on requests
+(cached checks expire after30 seconds), stage a separate immutable Git snapshot,
+and validate every declared input/output hash and discovery membership before
+switching readers. No scheduled automation, producer form or private database
+is required. Cards, units, revised sources, accepted subresults and corrections
+all reach this release through the same ordinary build/check/merge path.
+An inaccessible or invalid new release produces an explicit stale/refresh
+failure, not results labelled current from an old corpus. Old handles retain
+their exact snapshot and point to current correction contexts before reuse.
+After merge, verify actual installed search, all fetch continuation pages and
+the decisive governing passage against the published input version; CLI and
+Pages alone are insufficient. A change to runtime reader code requires the
+reviewed runtime deployment, rather than silently parsing it with older code.
