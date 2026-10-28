@@ -282,6 +282,54 @@ class PublishedRefreshTests(unittest.TestCase):
             else:
                 self.git(self.old, "remote", "set-url", "origin", prior)
 
+    def test_same_input_revision_binding_survives_other_server_restart_and_eviction(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder=Path(temporary);bare=folder/'origin.git';cache=folder/'cache';doc=folder/'doc-only'
+            subprocess.run(['git','clone','--bare',str(self.root),str(bare)],check=True,
+                           stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            prior=self.git(self.old,'remote','get-url','origin') if 'origin' in self.git(self.old,'remote').splitlines() else None
+            self.git(self.old,'remote','add' if prior is None else 'set-url','origin',str(bare))
+            try:
+                self.git(self.old,'fetch','origin','main')
+                provider=GitSnapshots(self.old,cache,repository_url=str(bare))
+                first_root=provider.stage(self.b.version)
+                first=ResearchAdapter(first_root,page_bytes=1024)
+                provider.remember(first,owned=True)
+                head=subprocess.check_output(['git','-C',str(self.root),'-c','user.name=Fixture',
+                    '-c','user.email=fixture@example.invalid','commit-tree',self.git(self.root,'rev-parse','HEAD^{tree}'),
+                    '-p',self.b.revision,'-m','same-input published revision'],text=True).strip()
+                self.git(self.old,'push','origin',head+':refs/heads/main')
+                self.git(self.old,'fetch','origin','main')
+                self.git(self.old,'worktree','add','--detach',str(doc),head)
+                later=ResearchAdapter(doc,page_bytes=1024)
+                self.assertEqual(later.version,first.version)
+                handle=first.handle('record','U1-fixture')
+                expected,expected_pages=complete(first,handle)
+                self.assertGreater(len(expected_pages),1)
+                provider.remember(later)
+                self.assertEqual(provider.versions[first.version]['revision'],first.revision)
+                self.assertEqual(self.git(self.old,'rev-parse','refs/astra/served/'+first.version),first.revision)
+                provider.prune([self.old,doc])
+                self.assertFalse(first_root.exists())
+                # The permanent ref also prevents rebinding while rebuilding
+                # this entry after the local registry itself is lost.
+                provider.registry_path.unlink()
+                restarted=PublishedAdapter(doc,page_bytes=1024,
+                    snapshots=GitSnapshots(doc,cache,repository_url=str(bare)),
+                    release_reader=lambda:{'schema':RELEASE_SCHEMA,'input_version':first.version,'published_revision':head},
+                    poll_seconds=0)
+                actual,actual_pages=complete(restarted,handle)
+                self.assertEqual(actual,expected)
+                self.assertEqual([p['text']for p in actual_pages],[p['text']for p in expected_pages])
+                self.assertEqual(actual_pages[0]['metadata']['payload_sha256'],expected_pages[0]['metadata']['payload_sha256'])
+                self.assertEqual(restarted.active.revision,first.revision)
+                self.assertEqual(actual_pages[0]['metadata']['freshness']['published_revision'],head)
+                self.git(self.old,'worktree','remove',str(first_root))
+            finally:
+                if doc.exists():self.git(self.old,'worktree','remove',str(doc))
+                if prior is None:self.git(self.old,'remote','remove','origin')
+                else:self.git(self.old,'remote','set-url','origin',prior)
+
 
 if __name__ == "__main__":
     unittest.main()

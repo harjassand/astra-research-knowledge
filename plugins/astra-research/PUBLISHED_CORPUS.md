@@ -36,6 +36,13 @@ is forcibly removed. Historical responses are labelled historical and name
 the current correction-context handles; source bytes are never rebound to a
 new version. Legacy record/source codecs remain unchanged for existing page
 chains. New search results offer a compact `current` view and linked `history`.
+The first served Git revision for an input identity is permanent in the shared
+cache and retained ref. A later documentation-only revision with identical
+inputs cannot rebind its URLs/page bytes, including after another server starts
+or the historical cache is reconstructed. The separately observed public main
+revision remains visible in freshness metadata. Keep this registry/cache across
+server restarts. Future format changes must use distinct handle kinds/codecs;
+existing `record`, `source`, `current` and `history` page chains retain their bytes.
 
 Current views retain all contracts, notices, current reviews and source-reported
 gaps. Duplicate citations become source-fetch references with their original

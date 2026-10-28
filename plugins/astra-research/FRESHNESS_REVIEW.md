@@ -30,6 +30,17 @@ reuse. Reader code must match the reviewed runtime, and bootstrap snapshots
 must belong to published main history. This is a data refresh, not a scheduler,
 research-worker pool, private database or scientific-code execution path.
 
+Subsequent PR review found a real continuation failure: two published commits
+can share the same input identity, while revision-pinned URLs change their
+payload bytes. Re-registering the later revision overwrote the retained binding.
+The corrected code permanently retains the first served revision/ref, recovers
+a registry entry from that ref if necessary, and makes another server bootstrap
+at the canonical retained snapshot. A real Git regression publishes an identical
+tree at a later commit, re-registers it, evicts the cache and starts another
+server. All old page bytes and payload hashes remain identical; freshness still
+names the later observed public revision separately. This is a completed review
+finding and correction, not a claim that the original head passed it.
+
 ## Identifier and scope presentation
 
 Canonical identifiers and unambiguous numeric prefixes are routed before

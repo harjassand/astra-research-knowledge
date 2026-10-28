@@ -123,9 +123,30 @@ class GitSnapshots:
             self.git(self.root, "merge-base", "--is-ancestor", adapter.revision, "origin/main")
         except ValueError as error:
             raise ValueError("Serve only snapshots from published main history; fetch main before deployment") from error
-        self.versions[adapter.version] = {"revision": adapter.revision,
-            "path": str(adapter.root), "owned": owned}
-        self.git(self.root, "update-ref", "refs/astra/served/" + adapter.version, adapter.revision)
+        name = "refs/astra/served/" + adapter.version
+        known = self.versions.get(adapter.version)
+        if known:
+            if self.git(self.root, "rev-parse", "--verify", name) != known["revision"]:
+                raise ValueError("Retained corpus revision binding changed")
+            # Equal inputs can occur at several published Git revisions. Their
+            # payloads contain pinned URLs, so a served handle must keep its
+            # first binding even when another server bootstraps at a later one.
+            return
+        try:
+            bound = self.git(self.root, "rev-parse", "--verify", name)
+        except ValueError:
+            bound = None
+        if bound:
+            manifest = json.loads(self.git(self.root, "show", bound + ":knowledge/current/manifest.json"))
+            if manifest.get("input_version") != adapter.version:
+                raise ValueError("Retained corpus ref has a different input identity")
+            path = adapter.root if bound == adapter.revision else self.cache / bound
+            self.versions[adapter.version] = {"revision": bound,
+                "path": str(path), "owned": owned if bound == adapter.revision else True}
+        else:
+            self.versions[adapter.version] = {"revision": adapter.revision,
+                "path": str(adapter.root), "owned": owned}
+            self.git(self.root, "update-ref", name, adapter.revision, "")
         with tempfile.NamedTemporaryFile(dir=self.cache, delete=False) as stream:
             stream.write(encoded(self.versions)); temporary = Path(stream.name)
         temporary.replace(self.registry_path)
@@ -211,6 +232,9 @@ class PublishedAdapter:
         self.transaction = getattr(self.snapshots, "transaction", nullcontext)
         with self.transaction():
             self.snapshots.remember(self.active, owned=False)
+            canonical = self.snapshots.stage(self.active.version, historical=True)
+            if Path(canonical).resolve() != self.active.root:
+                self.active = self.factory(canonical)
         self.adapters = OrderedDict([(self.active.version, self.active)])
         self.read_release = release_reader or read_release
         self.clock, self.poll_seconds = clock or time.monotonic, poll_seconds
