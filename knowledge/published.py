@@ -17,6 +17,7 @@ import tempfile
 import threading
 import time
 import urllib.request
+import uuid
 
 from knowledge.mcp_adapter import ResearchAdapter
 from knowledge.model import digest, encoded
@@ -110,13 +111,47 @@ class GitSnapshots:
                     fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
     def git(self, root, *args, input=None):
+        # A cold sparse materialization can touch many thousands of files.
+        # Keep network/metadata operations bounded separately from that work.
+        budget = 120 if args[0] == "checkout" else 45
         try:
             result = subprocess.run(["git", "-C", str(root), *args], input=input,
-                                    text=True, capture_output=True, timeout=45, check=True)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+                                    text=True, capture_output=True, timeout=budget, check=True)
+        except subprocess.TimeoutExpired as error:
+            raise ValueError("Published Git operation timed out: " + args[0]
+                             + " (budget " + str(budget) + " seconds)") from error
+        except subprocess.CalledProcessError as error:
             # Git can include host paths in stderr. Keep tool errors portable.
-            raise ValueError("Published Git operation failed: " + args[0]) from error
+            raise ValueError("Published Git operation failed: " + args[0]
+                             + " (exit " + str(error.returncode) + ")") from error
         return result.stdout.strip()
+
+    def materialized(self, path, revision, version):
+        """HEAD alone is set even by worktree add --no-checkout."""
+        marker = Path(path) / "knowledge/current/manifest.json"
+        try:
+            return (marker.is_file() and json.loads(marker.read_bytes()).get("input_version") == version
+                    and self.git(path, "write-tree") == self.git(path, "rev-parse", revision + "^{tree}"))
+        except (OSError, ValueError):
+            return False
+
+    def quarantine(self, path, revision):
+        """Preserve an owned,unpublished partial copy without force or deletion."""
+        path = Path(path).resolve()
+        if (path.parent != self.cache or path == self.root
+                or not (path.name == revision or path.name.startswith(".staging-" + revision + "-"))
+                or self.git(path, "rev-parse", "HEAD") != revision):
+            raise ValueError("Cannot quarantine a snapshot outside owned staging")
+        common = lambda p: (Path(p) if Path(p).is_absolute() else path / p).resolve()
+        source_common = self.git(self.root, "rev-parse", "--git-common-dir")
+        source_common = (Path(source_common) if Path(source_common).is_absolute() else self.root / source_common).resolve()
+        if common(self.git(path, "rev-parse", "--git-common-dir")) != source_common:
+            raise ValueError("Cannot quarantine an unrelated Git checkout")
+        folder = self.cache / "failed-staging"
+        folder.mkdir(exist_ok=True)
+        target = folder / (revision + "-" + uuid.uuid4().hex[:12])
+        self.git(self.root, "worktree", "move", str(path), str(target))
+        return target
 
     def remember(self, adapter, owned=False):
         try:
@@ -159,6 +194,8 @@ class GitSnapshots:
             if prior.exists():
                 if self.git(prior, "rev-parse", "HEAD") != revision:
                     raise ValueError("Retained snapshot revision changed")
+                if not self.materialized(prior, revision, version):
+                    raise ValueError("Retained snapshot is incomplete or its index changed; preserve it and restore its original supported bytes")
                 if historical:
                     return prior
         else:
@@ -177,11 +214,22 @@ class GitSnapshots:
                 raise ValueError("Published release does not match its committed manifest")
             if any(manifest["inputs"].get(name) != expected for name, expected in self.software.items()):
                 raise ValueError("Published runtime code changed; deploy the reviewed server before serving this release")
+        if known and prior.exists():
+            return prior
         target = self.cache / revision
         if target.exists():
             if self.git(target, "rev-parse", "HEAD") != revision:
                 raise ValueError("Snapshot cache path is occupied by a different revision")
-            return target
+            if self.materialized(target, revision, version):
+                return target
+            # Recover the exact failure left by an interrupted older stager.
+            # This version was never registered/served. Keep all bytes/index
+            # evidence,then retry at a fresh path rather than reuse partial data.
+            if known:
+                raise ValueError("Retained snapshot is incomplete; no replacement is silently published")
+            if any(p.name != ".git" for p in target.iterdir()):
+                raise ValueError("Unregistered incomplete cache contains files; preserve it for inspection before retrying")
+            self.quarantine(target, revision)
         paths = set(manifest["inputs"]) | set(manifest["outputs"]) | {
             "knowledge/current/manifest.json", "knowledge/mcp_adapter.py", "knowledge/published.py",
             "plugins/astra-research/server.py", ".gitignore"}
@@ -192,17 +240,23 @@ class GitSnapshots:
                     or any(ord(c) < 32 for c in name)):
                 raise ValueError("Nonportable path in published manifest")
             patterns.append("/" + re.sub(r"([\\*?\[\]])", r"\\\1", name))
-        self.git(self.root, "worktree", "add", "--detach", "--no-checkout", str(target), revision)
+        staging = self.cache / (".staging-" + revision + "-" + uuid.uuid4().hex[:12])
+        self.git(self.root, "worktree", "add", "--detach", "--no-checkout", str(staging), revision)
         try:
-            self.git(target, "sparse-checkout", "set", "--no-cone", "--stdin", input="\n".join(patterns) + "\n")
-            self.git(target, "checkout", "--detach", revision)
-        except ValueError:
-            # Only this newly created, unpublished cache is eligible for cleanup.
+            self.git(staging, "sparse-checkout", "set", "--no-cone", "--stdin", input="\n".join(patterns) + "\n")
+            self.git(staging, "checkout", "--detach", revision)
+            if not self.materialized(staging, revision, version):
+                raise ValueError("Sparse snapshot did not materialize its committed manifest and index")
+            self.git(self.root, "worktree", "move", str(staging), str(target))
+        except ValueError as error:
+            # Never expose this directory as the revision cache. Preserve even
+            # partial/untracked data for diagnosis; no force/reset/source copy.
             try:
-                self.git(self.root, "worktree", "remove", str(target))
+                if staging.exists():
+                    self.quarantine(staging, revision)
             except ValueError:
-                pass
-            raise
+                raise ValueError(str(error) + "; incomplete owned staging retained; quarantine could not finish") from error
+            raise ValueError(str(error) + "; incomplete owned staging retained for diagnosis; retry the request") from error
         return target
 
     def prune(self, retained):
@@ -276,7 +330,7 @@ class PublishedAdapter:
                 "served_input_version": self.active.version, "published_input_version": self.expected,
                 "published_revision": self.published_revision,
                 "checked_at": self.checked_at, "blocker": str(error),
-                "action": "Restore published-source access or deploy the reviewed runtime, then retry. The prior snapshot is retained; it is not certified current."})) from error
+                "action": "Retry if owned staging was interrupted; otherwise restore published-source support/access or deploy the reviewed runtime as the blocker requires. The prior snapshot is retained; it is not certified current."})) from error
         self.last_check = now
         self.checked_at = started
 

@@ -330,6 +330,100 @@ class PublishedRefreshTests(unittest.TestCase):
                 if prior is None:self.git(self.old,'remote','remove','origin')
                 else:self.git(self.old,'remote','set-url','origin',prior)
 
+    def test_interrupted_materialization_is_preserved_and_next_request_recovers(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder=Path(temporary);bare=folder/'origin.git';cache=folder/'cache'
+            subprocess.run(['git','clone','--bare',str(self.root),str(bare)],check=True,
+                           stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            self.git(self.old,'remote','add','origin',str(bare))
+            class InterruptOnce(GitSnapshots):
+                interrupted=False
+                def git(provider,root,*args,input=None):
+                    if args[0]=='checkout' and not provider.interrupted:
+                        provider.interrupted=True
+                        (Path(root)/'partial-note.txt').write_text('preserve this interrupted fragment')
+                        metadata=Path(super().git(root,'rev-parse','--git-dir'))
+                        (metadata/'index.lock').write_bytes(b'')
+                        raise ValueError('Published Git operation timed out: checkout (budget 120 seconds)')
+                    return super().git(root,*args,input=input)
+            try:
+                self.git(self.old,'fetch','origin','main')
+                provider=InterruptOnce(self.old,cache,repository_url=str(bare))
+                reader=PublishedAdapter(self.old,snapshots=provider,poll_seconds=0,
+                    release_reader=lambda:{'schema':RELEASE_SCHEMA,'input_version':self.b.version})
+                with self.assertRaisesRegex(ValueError,'published_refresh_failed'):
+                    reader.search('U2-new-subresult')
+                self.assertEqual(reader.active.version,self.a.version)
+                self.assertFalse((cache/self.b.revision).exists())
+                retained=list((cache/'failed-staging').iterdir())
+                self.assertEqual(len(retained),1)
+                self.assertEqual((retained[0]/'partial-note.txt').read_text(),'preserve this interrupted fragment')
+                self.assertEqual(self.git(retained[0],'rev-parse','HEAD'),self.b.revision)
+                found=reader.search('U2-new-subresult')
+                self.assertEqual(found['metadata']['input_version'],self.b.version)
+                packet,_=complete(reader,found['results'][0]['id'])
+                self.assertEqual(packet['notices'][0]['notice_id'],'SN-correlated')
+                self.assertEqual(packet['review_overlays'][0]['decision'],'accepted_internally_verified')
+                for path in [reader.active.root,*retained]:
+                    # Only temporary,explicitly injected test artifacts.
+                    self.git(self.old,'worktree','remove','--force',str(path))
+            finally:
+                self.git(self.old,'remote','remove','origin')
+
+    def test_legacy_partial_cache_is_quarantined_but_served_edits_are_not_replaced(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder=Path(temporary);bare=folder/'origin.git';cache=folder/'cache'
+            subprocess.run(['git','clone','--bare',str(self.root),str(bare)],check=True,
+                           stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            self.git(self.old,'remote','add','origin',str(bare))
+            try:
+                self.git(self.old,'fetch','origin','main')
+                provider=GitSnapshots(self.old,cache,repository_url=str(bare))
+                target=cache/self.b.revision
+                self.git(self.old,'worktree','add','--detach','--no-checkout',str(target),self.b.revision)
+                (target/'partial-note.txt').write_text('legacy partial bytes')
+                metadata=Path(self.git(target,'rev-parse','--git-dir'))
+                (metadata/'index.lock').write_bytes(b'')
+                with self.assertRaisesRegex(ValueError,'Unregistered incomplete cache contains files'):
+                    provider.stage(self.b.version)
+                self.assertEqual((target/'partial-note.txt').read_text(),'legacy partial bytes')
+                # Remove only this explicitly authored test note. The observed
+                # production legacy failure had .git alone and an empty lock.
+                (target/'partial-note.txt').unlink()
+                result=provider.stage(self.b.version)
+                self.assertEqual(result,target.resolve())
+                self.assertTrue(provider.materialized(result,self.b.revision,self.b.version))
+                adapter=ResearchAdapter(result)
+                provider.remember(adapter,owned=True)
+                retained=list((cache/'failed-staging').iterdir())
+                self.assertTrue((retained[0]/'.git').is_file())
+                self.git(result,'rm','--cached','source-v2.txt')
+                with self.assertRaisesRegex(ValueError,'Retained snapshot is incomplete'):
+                    provider.stage(self.b.version,historical=True)
+                self.assertTrue((result/'source-v2.txt').exists())
+                self.assertEqual(len(list((cache/'failed-staging').iterdir())),1)
+                for path in [result,*retained]:
+                    self.git(self.old,'worktree','remove','--force',str(path))
+            finally:
+                self.git(self.old,'remote','remove','origin')
+
+    def test_materialization_budget_and_portable_failure_reason(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch('knowledge.published.subprocess.run',return_value=SimpleNamespace(stdout='https://github.com/harjassand/astra-research-knowledge.git')):
+                provider=GitSnapshots(self.old,Path(temporary),software={})
+            with patch('knowledge.published.subprocess.run',return_value=SimpleNamespace(stdout=''))as called:
+                provider.git(self.old,'checkout','--detach',self.b.revision)
+                self.assertEqual(called.call_args.kwargs['timeout'],120)
+                provider.git(self.old,'fetch','origin','main')
+                self.assertEqual(called.call_args.kwargs['timeout'],45)
+            with patch('knowledge.published.subprocess.run',side_effect=subprocess.TimeoutExpired('git',120)):
+                with self.assertRaisesRegex(ValueError,'timed out: checkout.*120 seconds'):
+                    provider.git(self.old,'checkout','--detach',self.b.revision)
+            with patch('knowledge.published.subprocess.run',side_effect=subprocess.CalledProcessError(128,'git',stderr='private host detail')):
+                with self.assertRaisesRegex(ValueError,'failed: checkout.*exit 128')as error:
+                    provider.git(self.old,'checkout','--detach',self.b.revision)
+                self.assertNotIn('private host detail',str(error.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

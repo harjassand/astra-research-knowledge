@@ -92,3 +92,54 @@ search/fetch, and another ordinary scientific intake remain separate release
 checks. A local SDK result alone does not close those obligations. Source
 claims retain their original scope, and the earlier P08 neural omission stays
 reported; this maintenance does not establish general search superiority.
+
+## Follow-up: actual ordinary intake exposed incomplete staging
+
+PR254 merged at f788641875d27a121169d91e625244b6267a27fb after 597 tests.
+Installed verification then found two connections to the same tunnel: the
+new managed published reader and an older already-loaded Astra LaunchAgent
+using a static profile. The existing job's command was corrected through its
+existing supervisor,its prior memory-only environment restored,and the managed
+duplicate stopped. No job,permission,key or scheduled automation was added.
+Ten consecutive installed queries across check expiry returned the current
+input and correct N33/N1130 records. Actual N557 current/history/legacy reads
+preserved all 12 notices and exact old payload bytes;the old receiver source
+payload and its decisive passage were also checked. Those observations close
+the mixed-route defect,not the subsequent data-refresh obligation.
+
+The real ordinary P2 intake PR255 merged at 44b7e51f36b6dd4759a0227f23cc6b11671b1583
+after 600 tests. Its first installed refresh failed closed at Git checkout.
+The directory had HEAD at the new commit,but only a `.git` file,no manifest
+or records,no index,and an empty `index.lock`. The next installed request
+accepted that directory on HEAD alone and then reported missing knowledge.
+Both actual failures are retained;successful publication did not close them.
+
+An independent private materialization control on that exact published commit
+succeeded with the previous algorithm in about 16 seconds. The original Git
+exception category was hidden by the generic portable error,so a checkout
+timeout is consistent with the observation but is not established as its
+unique cause. This change therefore fixes failure atomicity and recovery,
+distinguishes timeout/exit diagnostics,and gives cold materialization a
+separate explicit budget rather than declaring the underlying I/O infallible.
+
+New staging remains at a unique unpublished path until its committed manifest
+and complete index materialize. Failed owned copies are moved without force
+to retained failure storage. The exact empty legacy-cache condition can be
+recovered;unknown files and previously served index edits remain explicit
+blockers. A known-good source/index is never forcibly reset to hide a failure.
+
+Thirteen refresh regressions pass,including injected checkout interruption,
+retention of partial bytes,index-lock preservation,request-only recovery,
+legacy empty-cache recovery,and refusal to replace unknown/served edits.
+The injected interruption is a controlled regression,not a claim to reproduce
+the original timing failure. A separate private control recreated the actual
+large-commit empty-cache condition,quarantined it,and validated every normal
+input/output hash and discovery membership for 2,078 records in about 22 seconds.
+It read the actual accepted channel-proof passage and propagated N1127 notice.
+That component control explicitly used the release's pinned software hashes;
+production's runtime guard is unchanged. It is not a live-service update.
+
+The corrected runtime still requires full exact-head checks,reviewed deployment,
+actual installed source use,and a subsequent ordinary data update before the
+automatic-intake closeout can be claimed. The P2 mathematical/scientific scopes
+and all existing source bytes remain unchanged by this staging repair.
