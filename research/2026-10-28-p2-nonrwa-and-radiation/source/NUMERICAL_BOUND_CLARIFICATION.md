@@ -1,0 +1,40 @@
+# Non-RWA symbolic bound and its printed decimal endpoint
+
+Completed owner exact-arithmetic clarification,2026-10-28. The original source
+bytes remain unchanged. This addresses evaluation of the displayed symbolic
+bound,not the actual unknown exact coefficient or a measured device.
+
+For t=1,W=12,a=4-2sqrt(3),the governing upper expression is
+
+    U=2a^2/12=0.04786451314966055059347642265100702148...
+
+The source's printed endpoint is0.0478644803898. It differs from that expression
+by approximately3.275986055e-8 and is not an outward evaluation of U. This does
+not prove that the printed smaller endpoint fails to bound the actual C4:
+the negative square remainder might still make that smaller bound true.
+It means the displayed symbolic estimate alone does not certify that printed
+endpoint. Use the exact formula or the conservative enclosure below.
+
+The exact rational bracket
+
+    1.7320508075688772 < sqrt(3) < 1.7320508075688773
+
+is verified by squaring its positive endpoints. Propagating it through
+a=4-2sqrt(3) and the source's symbolic lower/upper expressions gives,with
+directed decimal rounding,
+
+    0.04741441026900211 <= C4 <= 0.04786451314966059.
+
+This encloses the consequence of the accepted symbolic theorem. It does not
+certify a tighter quadrature decimal. The same rational bracket gives a
+strict lower bound0.4940170149387837 for the W=8 limiting positivity bracket;
+the proof for W>8 therefore remains positive. The source's nearby printed
+shorthand is not used as a numerical equality certificate.
+
+`../verify_math_controls.py` reproduces the rational bracketing and directed
+rounding in `../evaluation/MATH_CONTROLS.json`. It is an owner reconstruction,
+not an acquired producer program or replay of the source's unavailable JSON.
+No finite-g radius,experimental tolerance,measurement or practical advantage
+is inferred. All unit versions retain the exact symbolic inequality; this
+current notice prevents a printed summary being silently promoted to an
+outward numerical certificate.
