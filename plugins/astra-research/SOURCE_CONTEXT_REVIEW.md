@@ -45,3 +45,11 @@ verified public links. Actual installed source use must read the linked current
 qualification,complete source passage and old handle continuations. The earlier
 ordinary-intake automatic refresh must close before this reviewed runtime
 deployment;neither private component checks nor readiness is that proof.
+
+The subsequent ordinary PR257 intake was actually served by the unchanged
+installed service after public merge. The first App request timed out after
+120,556ms while the backend completed;the retry returned the current corpus in
+7,567ms. Its theorem/authority passages,compiler history and exact old handle
+were read and verified without backend copying,restart or native prefill.
+Cold first-request timeout remains a limitation;this source-context format
+change addresses the measured large-response failure.
