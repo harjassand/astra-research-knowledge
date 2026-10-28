@@ -27,6 +27,20 @@ programs are never executed. Missing support, invalid outputs, failed network
 checks, busy cache or unsupported runtime code produce an explicit failure;
 old results are not returned as current after a failed refresh.
 
+Materialization uses a unique owned staging worktree. Its committed manifest
+and complete index must exist before Git moves it to the revision cache; the
+normal full library checks still precede active-reader switching. HEAD alone
+is insufficient because `worktree add --no-checkout` sets HEAD before files
+exist. Interrupted owned staging is retained under `failed-staging` without
+force or deletion. A later request retries at a fresh path. An empty legacy
+partial cache can be quarantined automatically; unknown files or edits to a
+previously served snapshot cause an explicit blocker and remain untouched.
+Network/metadata Git operations retain 45-second limits; a cold checkout has
+an explicit 120-second budget. Timeout and nonzero-exit errors are distinct,
+without exposing private Git stderr or host paths. These are request costs,
+not background jobs. Retained failed copies require deliberate inspection;
+the active-reader cache bound does not silently delete failure evidence.
+
 The cache retains at most two active readers per server plus its bootstrap
 snapshot. Clean cache copies may be evicted; every served version retains a
 Git ref and registry entry and can be reconstructed for an old handle. A
