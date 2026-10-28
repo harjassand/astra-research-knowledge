@@ -122,3 +122,13 @@ After merge, verify actual installed search, all fetch continuation pages and
 the decisive governing passage against the published input version; CLI and
 Pages alone are insufficient. A change to runtime reader code requires the
 reviewed runtime deployment, rather than silently parsing it with older code.
+
+The release also declares the source context layout automatically. In the
+linked layout, a source response preserves its exact passage, artifact selector
+and every citing record's version/notice count/current-capsule route. Before
+reusing a result, fetch that result's current capsule and every continuation:
+its complete conditions, corrections, gaps and scoped review remain there.
+Same-artifact citation context is navigation, not a transfer. Older releases
+retain their original inline source payloads and handle bytes. Curators add no
+layout fields or source notices by hand; the ordinary build/check sets this
+snapshot format along with the release.

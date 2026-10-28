@@ -1,5 +1,16 @@
 # Keeping the installed corpus current
 
+The generated release selects the source context layout for that immutable
+snapshot. `linked-current-capsules-v1` returns the exact source passage and
+artifact selector, with all same-artifact citing record versions, notice counts
+and current-capsule handles. Follow the capsule for each result used as a
+premise, including every continuation, to read its complete conditions,
+corrections, gaps and scoped reviews. Shared artifact citation is navigation;
+it confers no scientific transfer or acceptance. This avoids repeating the
+same large notices across every source context. Older snapshots without the
+marker retain their complete original inline source payloads and handle bytes.
+No new curator field, researcher form or transport dependency is required.
+
 Ordinary Capital intake still uses `python3 knowledge/build.py build` and
 `check`, followed by the reviewed actual-base publication path. The build now
 also generates `knowledge/current/release.json`. It covers the same input

@@ -20,6 +20,21 @@ from knowledge.operations import statement_view
 from knowledge.retrieve import Library
 
 PUBLIC = "https://github.com/harjassand/astra-research-knowledge/blob/"
+INLINE_SOURCE_CONTEXT = "inline-context-v1"
+LINKED_SOURCE_CONTEXT = "linked-current-capsules-v1"
+
+
+def source_context_layout(root, manifest):
+    # Only a normalizer-declared,validated output can select a new layout.
+    # Pre-marker snapshots (and every old source handle) retain their bytes.
+    name = "knowledge/current/release.json"
+    if name not in manifest["outputs"]:
+        return INLINE_SOURCE_CONTEXT
+    marker = json.loads((Path(root) / name).read_bytes())
+    layout = marker.get("source_context_layout", INLINE_SOURCE_CONTEXT)
+    if layout not in (INLINE_SOURCE_CONTEXT, LINKED_SOURCE_CONTEXT):
+        raise ValueError("Unsupported published source context layout; deploy its reviewed reader")
+    return layout
 
 
 class ResearchAdapter:
@@ -35,6 +50,7 @@ class ResearchAdapter:
         if json.loads(committed) != json.loads(self.manifest_bytes):
             raise ValueError("Serve a committed corpus snapshot; generated views differ from HEAD")
         self.version = self.library.manifest["input_version"]
+        self.source_context_layout = source_context_layout(self.root, self.library.manifest)
         self.frozen_paths = set(self.library.manifest["inputs"]) | set(self.library.manifest["outputs"])
         self.paths = set(self.git("ls-tree", "-r", "--name-only", "-z", "HEAD").split("\0")) - {""}
         self.references, self.contexts = {}, defaultdict(set)
@@ -259,6 +275,14 @@ class ResearchAdapter:
         contexts = [self.library.records[i] for i in sorted(self.contexts[(ref["path"], ref["sha256"])])]
         current_context = [{"id": r["id"], "content_version": r["content_version"],
             "notices": r["notices"], "fetch_id": self.handle("record", r["id"])} for r in contexts]
+        context_scope = {}
+        if self.source_context_layout == LINKED_SOURCE_CONTEXT:
+            current_context = [{"id": r["id"], "content_version": r["content_version"],
+                "notice_count": len(r["notices"]), "fetch_id": self.handle("current", r["id"])} for r in contexts]
+            context_scope = {
+                "current_context_layout": LINKED_SOURCE_CONTEXT,
+                "current_context_scope": "These records cite the same artifact; this is navigation, not a claim-specific proof or acceptance transfer. notice_count counts outer current notice entries, including inherited wrappers.",
+                "required_context_action": "Before reusing a result from this source, fetch that result's linked current capsule and every continuation. Its complete conditions, current corrections, source-reported gaps and scoped reviews remain there. This source response links those notices instead of repeating them for every citing record."}
         if ref.get("lines") is None:
             if (self.root / ref["path"]).is_file():
                 raw = Inputs(self.root).read(ref["path"])
@@ -267,7 +291,7 @@ class ResearchAdapter:
                         text = raw.decode("utf-8")
                     except UnicodeError:
                         return {"scope": "Binary original only; no inferred proof passage or acceptance.",
-                            "source": ref, "url": self.source_url(ref), "citation_locator": self.source_locator(ref), "current_context": current_context}
+                            "source": ref, "url": self.source_url(ref), "citation_locator": self.source_locator(ref), "current_context": current_context, **context_scope}
                 else:
                     text, _ = Inputs(self.root).source(ref)
             else:
@@ -282,6 +306,7 @@ class ResearchAdapter:
             "source": ref, "text_selection": selection, "text": passage,
             "citation_locator": self.source_locator(ref),
             "current_context": current_context,
+            **context_scope,
             "full_source_url": self.source_url(ref), "extracted_text_lines": [start, end]}
 
     def history_payload(self, record):

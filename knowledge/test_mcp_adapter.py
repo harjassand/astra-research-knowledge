@@ -23,6 +23,20 @@ def complete(adapter, identifier):
     return json.loads(raw)
 
 
+def expand_current_references(capsule, value):
+    routes = {r["fetch_id"]: r["source"] for r in capsule["evidence"]}
+    routes.update({r["fetch_id"]: r["source"] for r in capsule["review_and_correction_sources"] if "source" in r})
+    def expand(item):
+        if isinstance(item, list):
+            return [expand(v) for v in item]
+        if isinstance(item, dict):
+            if "source_fetch_id" in item:
+                return dict(routes[item["source_fetch_id"]], **item.get("source_ref_annotations", {}))
+            return {k: expand(v) for k, v in item.items()}
+        return item
+    return expand(value)
+
+
 class AdapterTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -92,7 +106,11 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(value["text"].encode(), (ROOT / previous["path"]).read_bytes())
         self.assertEqual(digest(value["text"].encode()), previous["sha256"])
         context = next(c for c in value["current_context"] if c["id"] == record["id"])
-        self.assertEqual(context["notices"], record["notices"])
+        self.assertEqual(context["notice_count"], len(record["notices"]))
+        current = complete(self.adapter, context["fetch_id"])
+        self.assertEqual(expand_current_references(current, current["notices"]), record["notices"])
+        self.assertEqual(current["contract"], record["contract"])
+        self.assertIn("Before reusing", value["required_context_action"])
         self.assertIn("does not inherit", value["scope"])
 
     def test_invalid_and_stale_handles_fail_instead_of_following_paths(self):
