@@ -20,3 +20,18 @@ A useful premise is the rough-bath fixed-packet method: finite phase mass does n
 A useful abstention is the memory-recovery task: the terminal-test lemma gives an additive Bell-loss comparison only after the actual terminal test library has been acquired. The predictive count fixture did not acquire it. The cards, current successor notice and both source passages keep that missing interface visible; no established compatible transfer was inserted.
 
 The three retrieval methods differ in ranking, and these eight checks do not demonstrate universal superiority or corpus completeness. Earlier failures and first-request cold-refresh timeout remain recorded in the existing evaluation/runtime documents. Public/installed availability is checked after reviewed merge.
+
+
+The source-portability repair was subsequently checked at input
+`2dde18ffe626f298d6ccc81122a4b7e99f604e3e314f8e1679a6465f431e5b10`.
+The same8exposed/source-informed probes were rerun without ranking-code changes;
+each intended family remains within the first2candidates for all3methods.
+All27actual unit passages resolve,and the3new immutable unitv2routes use the
+faithful current source.26corrected artifacts exactly match reconstruction from
+the original delivered bytes using the bounded locator utility. All26exposed
+source predecessors,27v1units,19producer review files and14card bodies remain
+byte-identical. The2079prior scientific content versions remain unchanged.
+The earlier broad locator matcher failed this source-text check despite green
+CI;the4new regressions prevent those actual scientific/relative-link corruptions.
+This is source correspondence and retrieval verification,not a new scientific
+audit or held-out ranking result. See `SOURCE_PORTABILITY_CORRECTION.json`.
