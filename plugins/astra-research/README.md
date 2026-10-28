@@ -45,8 +45,10 @@ Do not replace a tested local route with a fabricated public URL.
 ## Retrieval and evidence contract
 
 `search(query)` returns at most five record candidates and three deduplicated
-source-version candidates. It merges ranks from existing structured and
-full-content lexical lanes and searches admitted evidence, without treating
+source-version candidates. It merges ranks by scientific family from existing
+structured and full-content lexical lanes, retains each independent lane leader,
+and avoids duplicate parent/unit family slots unless explicitly requested by ID.
+It searches admitted evidence, without treating
 the scores as a scientific verdict. `--method agent` optionally enables the
 existing local neural ranking backend; a missing runtime is explicitly
 reported in search metadata and falls back to portable retrieval.

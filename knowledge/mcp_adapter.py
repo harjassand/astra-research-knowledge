@@ -24,6 +24,46 @@ INLINE_SOURCE_CONTEXT = "inline-context-v1"
 LINKED_SOURCE_CONTEXT = "linked-current-capsules-v1"
 
 
+def record_menu(lanes, exact, records, limit=5):
+    """Fuse support for a scientific family while retaining independent leaders.
+
+    Different methods can find a parent and a buried unit of the same result.
+    Those are one retrieval opportunity, not competing half-votes or two menu
+    slots. Exact user-requested identities remain first, including siblings.
+    """
+    family = lambda identifier: (records[identifier].get("parents") or [identifier])[0]
+    scores, member_scores, best_rank = defaultdict(float), defaultdict(float), {}
+    members, leaders = defaultdict(set), []
+    for lane in lanes:
+        seen = set()
+        for rank, hit in enumerate(lane, 1):
+            identifier = hit["id"]
+            group = family(identifier)
+            if group in seen:
+                continue
+            seen.add(group)
+            scores[group] += 1 / (60 + rank)
+            member_scores[identifier] += 1 / (60 + rank)
+            best_rank[identifier] = min(rank, best_rank.get(identifier, rank))
+            members[group].add(identifier)
+            if rank == 1 and group not in leaders:
+                leaders.append(group)
+    prefix = list(dict.fromkeys(exact))[:limit]
+    represented = {family(identifier) for identifier in prefix}
+    order = sorted(scores, key=lambda group: (-scores[group], group))
+    remaining = limit - len(prefix)
+    chosen = [group for group in leaders if group not in represented][:remaining]
+    for group in order:
+        if group not in represented and group not in chosen and len(chosen) < remaining:
+            chosen.append(group)
+    chosen.sort(key=lambda group: (-scores[group], group))
+    for group in chosen:
+        prefix.append(min(members[group], key=lambda identifier: (
+            -member_scores[identifier], best_rank[identifier],
+            records[identifier].get("kind") == "result", identifier)))
+    return prefix
+
+
 def source_context_layout(root, manifest):
     # Only a normalizer-declared,validated output can select a new layout.
     # Pre-marker snapshots (and every old source handle) retain their bytes.
@@ -157,11 +197,12 @@ class ResearchAdapter:
                 identifier = next(iter(matches))
                 if identifier not in exact:
                     exact.append(identifier)
-        fallback, lanes, notice_matches = None, [], {}
+        fallback, lanes, lane_names, notice_matches = None, [], [], {}
         if self.method == "agent":
             try:
                 lane = self.library.search(query, method="agent", limit=8)["results"]
                 lanes.append(lane)
+                lane_names.append("agent")
                 notice_matches = {hit["id"]: hit["notice_match"] for hit in lane if "notice_match" in hit}
             except ValueError as error:
                 if "Agent runtime missing" not in str(error):
@@ -169,15 +210,10 @@ class ResearchAdapter:
                 fallback = str(error)
         for method in ("structured", "content"):
             lanes.append(self.library.search(query, method=method, limit=8)["results"])
-        # Reciprocal ranks merge independent candidate lanes without comparing
-        # incompatible score scales. This is candidate retrieval, not a proof.
-        scores, hits = defaultdict(float), {}
-        for lane in lanes:
-            for rank, hit in enumerate(lane, 1):
-                scores[hit["id"]] += 1 / (60 + rank)
-                hits[hit["id"]] = hit
+            lane_names.append(method)
         records = []
-        selected = list(dict.fromkeys(exact + sorted(hits, key=lambda i: (-scores[i], i))))[:5]
+        selected = record_menu(lanes, exact, self.library.records)
+        family = lambda identifier: (self.library.records[identifier]["parents"] or [identifier])[0]
         for identifier in selected:
             record = self.library.records[identifier]
             preview = {}
@@ -189,6 +225,10 @@ class ResearchAdapter:
                 "content_version": record["content_version"], "kind": record["kind"],
                 "operation_preview": preview, "preview_scope": "Partial candidate preview; fetch complete conditions/corrections before reuse",
                 "current_notice_count": len(record["notices"]), "candidate_only": True}})
+            records[-1]["metadata"]["retrieval_lanes"] = [name for name, lane in zip(lane_names, lanes)
+                if any(family(hit["id"]) == family(identifier) for hit in lane)]
+            records[-1]["metadata"]["independent_leader_lanes"] = [name for name, lane in zip(lane_names, lanes)
+                if lane and family(lane[0]["id"]) == family(identifier)]
             if identifier in notice_matches:
                 records[-1]["metadata"]["matching_current_notice"] = notice_matches[identifier]
             navigation = self.interface_view(identifier, preview=True)
@@ -210,6 +250,7 @@ class ResearchAdapter:
             "revision": self.revision, "method": self.method, "fallback": fallback,
             "exact_identifier_matches": exact[:5], "omitted_identifier_matches": max(0, len(exact) - 5),
             "identifier_scope": "Existing canonical IDs and unambiguous numeric prefixes; no topical alias, acceptance or applicability inferred.",
+            "record_menu_scope": "Family rank fusion retains independent method leaders and avoids duplicate family slots. Exact requested IDs remain first. Family membership is navigation, not compatible composition or inherited acceptance.",
             "scope": "Candidate menu only. Fetch conditions, current corrections and governing passages before reuse; absence is not impossibility."}}
 
     def reference_view(self, ref):
