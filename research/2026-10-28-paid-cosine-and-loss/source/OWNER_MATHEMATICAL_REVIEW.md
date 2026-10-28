@@ -1,0 +1,92 @@
+# Completed conditional mathematical review and evidence boundary
+
+The acquired material is one complete rendered response, SHA256
+`c9be4bb94fa3cceaa8c2106d454117748ec5a1e05d394e115505743c04f8260e`.
+Its linked proof, program, certificate and review files were not acquired.
+Their reported internal audits cannot be version-matched here. The numerical
+gate, preparation, dispersive-parallel and comparator claims remain attributed
+source reports. This does not withdraw the distinct acquired N1127/N1128
+mathematical scopes. The following two elementary but reusable mathematical
+interfaces were derived and reviewed in full by the intake owner; acceptance
+is limited to their actual statements. No producer code was run or imported.
+
+## A. Full-output channel from no-jump norm and survival bounds
+
+Let H be the finite logical input space, K the complete output space, W:H->K
+an isometry, and E a completely positive trace-preserving channel on H with
+E(rho)=A rho A* + J(rho), where J is completely positive. Assume
+||A-W|| <= delta and A*A >= s I, with 0<=s<=1. Then
+
+    (1/2) || E - (rho -> W rho W*) ||_diamond <= delta + (1-s)/2.
+
+All outputs and arbitrary reference systems are retained. In particular this
+does not condition on observing no jump or discard leakage.
+
+Proof. Trace preservation gives J*(I)=I-A*A, so A*A<=I and ||A||<=1.
+For any trace-class X on H tensor an arbitrary reference, write
+
+    (A tensor I)X(A* tensor I) - (W tensor I)X(W* tensor I)
+      = ((A-W) tensor I)X(A* tensor I)
+        + (W tensor I)X((A-W)* tensor I).
+
+The ideal property of trace norm bounds this by 2 delta ||X||_1.
+For a CP map its diamond norm is ||J*(I)||: a Stinespring factorization
+J(X)=Tr_env(V X V*) gives the upper bound ||V||^2=||J*(I)||,
+and a maximizing positive input attains it. This argument also covers a
+trace-class output using a Stinespring dilation. Hence ||J||_diamond<=1-s.
+The triangle inequality and division by two prove the claim.
+
+Checks of scope. A high no-jump overlap or entanglement fidelity alone is
+not the operator-norm premise. A survival bound alone does not control phase
+error. For A=sqrt(s)W and J=(1-s)F this formula is conservative and valid;
+for A=W it reduces correctly to zero. The proof assumes a genuinely CP/TP
+full-output decomposition. It supplies no values of delta or s for the
+reported oscillator gate and does not acquire the missing certificate.
+
+## B. Scalar compression does not imply no-jump transparency
+
+Let P be an orthogonal code projection, U(T) unitary, and suppose a bounded
+first-order expansion on the code is
+
+    K_gamma(T)P = U(T)(I - gamma B/2)P + O(gamma^2),
+
+in operator norm, with fixed self-adjoint B. There exists a scalar
+c_gamma=1-gamma b/2+O(gamma^2) with
+K_gamma(T)P=c_gamma U(T)P+O(gamma^2) if and only if BP=bP.
+The complete condition is equivalent to PBP=bP AND (I-P)BP=0.
+
+Proof. Multiply by U(T)*, subtract the two expansions, divide by gamma and
+take gamma->0. Necessity is (B-bI)P=0. Substitution proves sufficiency.
+The two orthogonal output components give the stated equivalent conditions.
+
+Concrete positive counterexample: in R^3 let P=diag(1,1,0) and
+
+    B = [[1,0,1/2], [0,1,0], [1/2,0,1]].
+
+B has eigenvalues 1/2,1,3/2, so it is positive. PBP=P, but
+(I-P)BP sends e1 to e3/2. The no-jump expansion therefore has an
+out-of-code order-gamma component despite equal scalar code compression.
+Even a constant positive exposure B of this form already demonstrates the
+algebraic failure. This does not establish that a particular hardware pulse
+realizes B, nor justify an unbounded-generator expansion without its domain
+and remainder estimates.
+
+## C. Source-report and model reconciliation
+
+The six-control isochronous finite gate, the ground-inductor dispersive
+diagnostic, and the later interaction-picture parallel claim are different
+models. Do not transfer the reported finite gate bound to the dispersive
+architecture. Both quoted preparation certificates have different parameter
+and noise promises. The rejected 445-interval artifact and claimed corrected
+560-interval artifact remain separate; neither artifact was acquired here.
+The corrected SWS/positive-hump comparison is a tested-family negative result,
+not a global optimal-control lower bound or a bound for a different cosine
+Hamiltonian. Literature links rendered only as domain labels are not precise
+acquired primary references. Source-reported mathematical audit claims are
+neither dismissed as intrinsically inadequate nor relabelled as acquired.
+
+Acceptance: A and B are completed internally verified conditional mathematics
+at this document's exact source version. The numerical gate certificates,
+preparation, parallel theorem and physical comparisons remain source-reported.
+No physical measurement, working device, practical advantage or novelty is
+established by this intake.
