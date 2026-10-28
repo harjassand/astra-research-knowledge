@@ -1,0 +1,5 @@
+# Atomic interfaces,finite magnetic constructions and contact-aware acquisition
+
+These selected older completed returns backfill substantive physics/materials mechanisms. Original byte manifests are checked;code is inert and not imported or executed. The bounded canonical portability utility preserves scientific slash notation and relative source links. Completed internal mathematical acceptance is preserved exactly for the uniform-bias exit theorem,the embedded reference tube geometry and the contact/compliance decision. Distinct numerical continuations and finite-coil/particle claims do not inherit those scopes.
+
+Fluence is not damage;native calibration is not changed-state calibration;electronics latency need not be blind;field-line exit is not particle loss;sampled coil accuracy is not topology;operator contact coercivity is not an ultrasound average;certificate success is not physical component qualification. Source assumptions,costs,ordinary comparators and retained failures remain explicit.

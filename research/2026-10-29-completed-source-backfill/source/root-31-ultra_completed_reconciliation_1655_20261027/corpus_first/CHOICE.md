@@ -1,0 +1,13 @@
+# Independent choice: finite classical closure of quantum observation processes
+
+Recorded before exchanging developing choices with the other sol8 route.
+
+The target is to determine when a finite quantum instrument can be replaced by an exact finite classical hidden-state generator for every transcript and every adaptive choice from a finite control alphabet. Quantum processes can require infinite exact classical memory even with a two-dimensional quantum memory; a practical boundary between finite classical and intrinsically quantum memory is consequential before any simulation advantage is claimed.
+
+Starting operation: the accepted CP/two-copositive arbitrary-word cutoff supplies an entanglement-breaking map after L=2(d-1) conditional branches, including different branches, without a mixing rate or full-rank stationary state. The already accepted u32 positive predictive construction instead assumes a state library/topology. The proposed bridge is to manufacture one common finite invariant positive cone from the finite-word entanglement-breaking property, then compile its nonnegative transitions. An individual block's measure-and-prepare representation alone does not establish closure under individual branches; that is the first obligation.
+
+Constructive attack: prove the common-cone/clock construction with explicit finite bounds and controlled-instrument normalization; acquire an exact positive realization for a rational PPT-entangled conditional map plus a reset outcome, using numerical search only to propose rational decompositions and exact arithmetic to check them. Then investigate whether the word theorem permits acquisition with useful resource bounds, or whether ordinary positive-realization methods already supply the same result. An exact finite representation does not imply an efficient classical simulator or a finite-data identification guarantee.
+
+Strong ordinary comparators: finite polyhedral invariant-cone criteria for positive realization; standard blocking/unblocking of hidden-state generators; current PPT composition results (including stronger low-dimensional cutoffs); separable-Choi/Holevo decompositions and general semialgebraic search; HMM/observable-operator identification under explicit conditioning and finite-horizon error norms. Current literature will be checked before novelty or a learning capability is promoted.
+
+No fusion target is inherited. Frozen earlier calculations are input only. The shared source-access contract and published revision 63867607218adef378d727987fd92aa7dc42eb5c govern scientific provenance, not scientific conclusions.
