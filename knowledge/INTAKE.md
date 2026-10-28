@@ -30,6 +30,11 @@ acceptance. Keep genuine gaps and conflicting later source assessments visible.
    derived text. Use existing claim/status/catalog/alias/notice shards; do not ask
    scientific producers for another form. Register new or revised support in the
    existing scoped frontier status sidecar and aggregate/shard together.
+   If an immutable checkpoint pins a card/status path and hash, preserve the
+   original at that path; archived copies elsewhere do not satisfy the pin.
+   Carry a current change through immutable units and an explicit current
+   authority/correction notice. Historical source labels remain history, and
+   the current scoped premise must be clear without rewriting the checkpoint.
 2. Read the decisive source passage and any substantive completed internal audit.
    Preserve quantifiers, supplied/acquired access, units, error and cost model.
    Record actual conditional internal acceptance at the reviewed source version

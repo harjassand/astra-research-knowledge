@@ -399,10 +399,13 @@ class ResearchAdapter:
         while end < len(raw) and raw[end] & 0xC0 == 0x80:
             end -= 1
         more = end < len(raw)
+        complete_action = (payload["required_context_action"] if kind == "source"
+            and self.source_context_layout == LINKED_SOURCE_CONTEXT else
+            "Read evidence fetch routes for the governing proof; a capsule is not the proof.")
         return {"id": identifier, "title": title, "text": raw[offset:end].decode("utf-8"), "url": url,
             "metadata": {"input_version": self.version, "revision": self.revision,
                 "payload_view": kind,
                 "payload_sha256": digest(raw), "payload_bytes": len(raw), "byte_range": [offset, end],
                 "encoding": "UTF8 JSON; concatenate text pages before parsing a multipart payload",
                 "partial": offset > 0 or more, "next_id": base_id + ":" + str(end) if more else None,
-                "required_action": "Read every continuation before treating conditions/corrections as complete." if offset or more else "Read evidence fetch routes for the governing proof; a capsule is not the proof."}}
+                "required_action": "Read every continuation before treating conditions/corrections as complete." if offset or more else complete_action}}

@@ -73,6 +73,9 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("Suffix closure", actual)
         self.assertEqual(value["source"]["sha256"], reference["sha256"])
         self.assertIn(record["id"], [c["id"] for c in value["current_context"]])
+        first = self.adapter.fetch(self.adapter.register(reference))
+        if first["metadata"]["next_id"] is None:
+            self.assertEqual(first["metadata"]["required_action"],value["required_context_action"])
 
     def test_search_menus_are_small_and_deduplicate_source_path_aliases(self):
         found = self.adapter.search("negative spectral trace mass bounded Hessian paid closure")
