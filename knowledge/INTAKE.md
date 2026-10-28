@@ -106,6 +106,17 @@ Missing current support, undeclared historical support, wrong hashes, changed
 quotations and ambiguous copy mappings fail ingestion. Rebind actual new units
 and current scoped reviews through the normal build/check path.
 
+When a selected UTF-8 original needs resource-locator portability, use
+`python3 -m knowledge.source_portability RAW NEW_PUBLIC_DERIVATIVE` (or its
+`portable_source` function in the curator's byte-mapping script). It leaves
+originals and existing outputs intact and emits the existing hash/replacement
+metadata. Register the result in the same source index above. Relative source
+links and scientific slash notation such as `gates/workspace` are preserved;
+do not apply a broad filesystem-prefix regex to scientific prose. A correction
+to an exposed derivative gets a new route and immutable unit/review bindings;
+retain the predecessor and identify its transport scope. This adds no producer
+form, scientific review or automatic acceptance.
+
 Before any public push, commit the reviewed candidate locally and run
 `python3 state/check_current.py --base-revision <actual-PR-base-SHA> --preflight-only`.
 This checks unchanged historical evidence and newly added literal local-source

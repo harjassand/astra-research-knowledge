@@ -1,0 +1,11 @@
+# Root receiving: finite-payload private-framed deployment
+
+28 October2026. PASS at source SHA256 `cee0f8d6755f6a50ed8e21e7aea94da42703e1ffca4d5ef38e4f427df693c518`. Governing framed-comparator source read at SHA256 `718c8658211d88a135ff8aea28be652bed14dc16e025f518ca0e4c4b35db9708`; accepted product-SDP/frame foundations retain their precise scope.
+
+The full collective recovery comparator is justified by the positive recovery SDP product identity for each predetermined encoder list. Maximizing each use gives a_*^M; Bell-test lower bound and private input/output Pauli framing attain exactly2(1-a_*^M), including arbitrary key-dependent collective decoder competitors. No across-use encoding or coding-rate comparison is introduced.
+
+The learner's shared calibration history must remain inside E[f_h^M]. Averaging channels first and raising Ef_h to M would be incorrect. Pointwise physical feasibility gives0<=f_h<=a_*. The two stated power inequalities, with endpoint continuity, turn the averaged local risk at(gamma/2,epsilon/(4M)) into the stated relative COMPLETE block error. Independently checked2200 exact Fraction power inequalities for M1..20 and a in{.1,...,1}, includingf0 andf=a; zero source calls. The general argument is the finite geometric sum, not numerical extrapolation.
+
+The source horizon is N_cal+M before records; same ideal common frame persists throughout. One must use the local exact-reference proof with its finite query statistics, then apply a SINGLE complete-process discrepancy ledger to all M payload controls and the full frame. The note makes this distinction explicitly. Private/discarded keys, private calibration transcript, fresh independent source resets, no payload feedback and one source use per logical qubit are substantive. No conditional guarantee for an exposed history follows.
+
+The parameter substitution gives the stated M-multiplied calibration source bound plus M payload calls. It is a finite deployment composition, not a new learning primitive or a proof of quantum capacity. The clipped-GLS candidate is not imported before receiving. No source experiment, hardware performance, public-record security or practical runtime is certified by this receipt.

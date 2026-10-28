@@ -53,3 +53,28 @@ installed service after public merge. The first App request timed out after
 were read and verified without backend copying,restart or native prefill.
 Cold first-request timeout remains a limitation;this source-context format
 change addresses the measured large-response failure.
+
+## Merged installed verification
+
+PR258 merged at `2bdc6a88e7ce0966ba259728267c3d318f70e009` after the
+full actual-base publication gate passed612tests. Its first CI run caught an
+older inline-notice test; the corrected test follows and verifies the complete
+linked current capsule. The failed run remains recorded.
+
+Actual App fetch on the deployed existing service returned the same1,667-byte
+proof and selector in one13,781-byte source payload, with all35exact current
+context routes. The linked U1133 capsule retained its complete conditions,
+notices and scoped review. The actual old PR256 handle was fetched through all
+13pages:305,775bytes, SHA256
+`bd2e66e731c8eb2344d72f5531218a7d24fb72c14127f5c23720054bffef331e`,
+byte-for-byte and payload-identical to the prior receipt. No historical source
+was rewritten or promoted by the new format.
+
+The first post-deployment search timed out. The same query retry returned the
+correct current U1133 first in8,672ms; this is not a cold-latency improvement.
+Both existing native configurations subsequently served the current accepted
+programme interface. Their first check encountered explicit cache contention;
+its failure is retained and the retry passed without a configuration change.
+Anonymous pinned files and the live Pages release matched the merged version.
+This is source-navigation and transport evidence, not a new scientific audit,
+ranking-generalization result or device/advantage claim.
