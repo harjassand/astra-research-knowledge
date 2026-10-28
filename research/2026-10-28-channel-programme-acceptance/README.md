@@ -1,0 +1,3 @@
+# N675 current programme acceptance
+
+Harjas's explicit standing instruction makes the actual N675 result and its stated internal dependencies correct and accepted for programme work. This data-only update records that authority;it performs no new proof audit and supplies no external-validation prerequisite. Original PDF/extraction and exact earlier card/status/catalog wording remain preserved. Current scientific scope and all mathematical input/cost conditions remain. Novelty,formal certification,physical measurement and practical advantage are separate evidence questions. No N661 or restricted/fixed-dimensional result is promoted.
