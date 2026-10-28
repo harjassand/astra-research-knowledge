@@ -4,6 +4,18 @@ const stop = new Set(('a an the and or but if then as at by for from in into of 
 const tokenize = text => (text.normalize('NFKC').toLowerCase().replaceAll('_', ' ').match(/[\p{L}\p{N}]+/gu) || []).filter(word => word.length > 1 && !stop.has(word));
 const bytes = new TextEncoder();
 const sha = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes.encode(text)))].map(value => value.toString(16).padStart(2, '0')).join('');
+const lookupIdentifier = (records, query) => {
+  const id = query.normalize('NFKC').trim().toLowerCase();
+  const exact = records.filter(record => record.record_id.toLowerCase() === id);
+  if (exact.length) return {matches: exact, mode: 'exact'};
+  const numeric = id.match(/^([a-z]+)\d+(?:-[a-z0-9]+)*$/);
+  // Recognize numeric ID families from this dataset. Natural scientific queries
+  // keep their ranking route; arbitrary slug prefixes are not aliases.
+  if (!numeric || !records.some(record => record.record_id.toLowerCase().match(/^([a-z]+)\d+/)?.[1] === numeric[1])) return;
+  const matches = records.filter(record => record.record_id.toLowerCase().startsWith(id + '-'));
+  if (id.includes('-')) return {matches: [], mode: 'missing'};
+  return {matches, mode: matches.length > 1 ? 'ambiguous' : matches.length ? 'prefix' : 'missing'};
+};
 const packetButton = (dataset, container, packetPath, label = 'Read compact packet', ancestors = new Set()) => {
   const button = document.createElement('button');
   button.textContent = label;
@@ -125,47 +137,54 @@ document.querySelector('#search').addEventListener('submit', async event => {
   try {
     const dataset = await loadDataset();
     const data = await dataset.readCatalog();
-    const original = new Set(tokenize(query));
-    const terms = new Map([...original].map(term => [term, 1]));
+    const identifier = lookupIdentifier(data.records, query);
+    const selected = [];
     const expanded = [];
-    for (const concept of data.concepts) {
-      if (concept.phrases.some(phrase => { const trigger = tokenize(phrase); return trigger.length && trigger.every(term => original.has(term)); })) {
-        for (const term of tokenize(concept.terms.join(' '))) if (!terms.has(term)) { terms.set(term, .35); expanded.push(term); }
+    if (identifier) {
+      for (const match of identifier.matches) selected.push({...match, identifier: true});
+    } else {
+      const original = new Set(tokenize(query));
+      const terms = new Map([...original].map(term => [term, 1]));
+      for (const concept of data.concepts) {
+        if (concept.phrases.some(phrase => { const trigger = tokenize(phrase); return trigger.length && trigger.every(term => original.has(term)); })) {
+          for (const term of tokenize(concept.terms.join(' '))) if (!terms.has(term)) { terms.set(term, .35); expanded.push(term); }
+        }
       }
-    }
-    const scores = new Map();
-    const lexicalScores = new Map();
-    for (const [term, weight] of terms) {
-      const shard = (await sha(term)).slice(0, 2);
-      const postings = data.shards.includes(shard) ? await dataset.loadShard(shard) : {};
-      for (const [index, score] of postings[term] || []) scores.set(index, (scores.get(index) || 0) + weight * score);
-      if (original.has(term) && data.lexical_shards.includes(shard)) {
-        const lexical = await dataset.loadShard(shard, 'lexical');
-        for (const [index, score] of lexical[term] || []) lexicalScores.set(index, (lexicalScores.get(index) || 0) + score);
+      const scores = new Map();
+      const lexicalScores = new Map();
+      for (const [term, weight] of terms) {
+        const shard = (await sha(term)).slice(0, 2);
+        const postings = data.shards.includes(shard) ? await dataset.loadShard(shard) : {};
+        for (const [index, score] of postings[term] || []) scores.set(index, (scores.get(index) || 0) + weight * score);
+        if (original.has(term) && data.lexical_shards.includes(shard)) {
+          const lexical = await dataset.loadShard(shard, 'lexical');
+          for (const [index, score] of lexical[term] || []) lexicalScores.set(index, (lexicalScores.get(index) || 0) + score);
+        }
+      }
+      if (request !== generation) return;
+      const seen = new Set();
+      for (const [index, score] of [...scores].sort((left, right) => right[1] - left[1] || left[0] - right[0])) {
+        const [recordIndex, isSource] = data.documents[index];
+        const match = {...data.records[recordIndex], kind: isSource ? 'source_window' : data.records[recordIndex].kind};
+        const group = match.parents[0] || match.record_id;
+        if (seen.has(group)) continue;
+        seen.add(group);
+        selected.push({...match, score});
+        if (selected.length === 5) break;
+      }
+      const lexicalWinner = [...lexicalScores].sort((left, right) => right[1] - left[1] || left[0] - right[0])[0];
+      if (lexicalWinner) {
+        const match = data.records[data.documents[lexicalWinner[0]][0]];
+        if (!seen.has(match.record_id)) {
+          if (selected.length === 5) selected.pop();
+          selected.push({...match, score: lexicalWinner[1], safety: true});
+        }
       }
     }
     if (request !== generation) return;
-    const seen = new Set();
-    const selected = [];
-    for (const [index, score] of [...scores].sort((left, right) => right[1] - left[1] || left[0] - right[0])) {
-      const [recordIndex, isSource] = data.documents[index];
-      const match = {...data.records[recordIndex], kind: isSource ? 'source_window' : data.records[recordIndex].kind};
-      const group = match.parents[0] || match.record_id;
-      if (seen.has(group)) continue;
-      seen.add(group);
-      selected.push({...match, score});
-      if (selected.length === 5) break;
-    }
-    const lexicalWinner = [...lexicalScores].sort((left, right) => right[1] - left[1] || left[0] - right[0])[0];
-    if (lexicalWinner) {
-      const match = data.records[data.documents[lexicalWinner[0]][0]];
-      if (!seen.has(match.record_id)) {
-        if (selected.length === 5) selected.pop();
-        selected.push({...match, score: lexicalWinner[1], safety: true});
-      }
-    }
     const manifest = dataset.manifest;
-    status.textContent = `${selected.length} ranked candidates, not applicability verdicts. Dataset ${manifest.input_version.slice(0, 12)}. ${expanded.length ? 'Expanded terms: ' + [...new Set(expanded)].join(', ') : ''}`;
+    const outcome = !identifier ? `${selected.length} ranked candidates` : identifier.mode === 'missing' ? 'No current record matches this identifier' : identifier.mode === 'ambiguous' ? `${selected.length} records share this identifier prefix; select a full ID below` : `${selected.length} identifier match`;
+    status.textContent = `${outcome}, not applicability verdicts. Dataset ${manifest.input_version.slice(0, 12)}. ${expanded.length ? 'Expanded terms: ' + [...new Set(expanded)].join(', ') : ''}`;
     for (const candidate of selected) {
       const article = document.createElement('article');
       const heading = document.createElement('h2');
@@ -177,7 +196,7 @@ document.querySelector('#search').addEventListener('submit', async event => {
       link.textContent = `${candidate.record_id} — exact packet, conditions, notices and sources`;
       const note = document.createElement('p');
       note.className = 'note';
-      note.textContent = `${candidate.kind}; ${candidate.safety ? 'full-card lexical safety lane, independent score scale' : 'content/contract lane'}; score ${candidate.score.toFixed(2)}. Similar wording does not establish composition.`;
+      note.textContent = `${candidate.kind}; ${candidate.identifier ? 'identifier lookup' : `${candidate.safety ? 'full-card lexical safety lane, independent score scale' : 'content/contract lane'}; score ${candidate.score.toFixed(2)}`}. Similar wording does not establish composition.`;
       const expand = packetButton(dataset, article, packetPath);
       article.append(heading, link, note, expand);
       results.append(article);

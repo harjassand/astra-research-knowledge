@@ -61,8 +61,8 @@ function harness(initial, cached = initial) {
   return {
     elements, requests,
     setEpoch: next => { server = next; },
-    submit: async () => {
-      elements.query.value = 'mechanism';
+    submit: async (query = 'mechanism') => {
+      elements.query.value = query;
       await elements.search.listeners.get('submit')({preventDefault() {}});
     },
     pauseNext: path => {
@@ -176,10 +176,65 @@ async function intermediateCorrectionRoute() {
   assert.ok(browser.requests.filter(request => request.url.includes('/packets/')).every(request => /\?sha256=[0-9a-f]{64}$/.test(request.url)));
 }
 
+async function identifierRoutes() {
+  const records = [
+    {record_id: 'N120-parent', title: 'Broad high-scoring parent', kind: 'result', parents: []},
+    ...Array.from({length: 7}, (_, index) => ({record_id: `U120-step-${index}`, title: `Buried step ${index}`,
+      kind: 'mechanism', parents: ['N120-parent']})),
+    {record_id: 'LA012-conditioned', title: 'Atlas premise', kind: 'lemma', parents: ['N120-parent']},
+    {record_id: 'P-checks', title: 'Named protocol', kind: 'protocol', parents: []},
+  ];
+  const current = epoch('identifier-routes', 1);
+  current.files['current/catalog.json'] = JSON.stringify({concepts: [], shards: [shard], lexical_shards: [],
+    documents: records.map((_, index) => [index, false]), records});
+  current.files[`current/postings/${shard}.json`] = JSON.stringify({mechanism: [[0, 100], [1, 1]]});
+  for (const record of records) {
+    const route = record.record_id.replace(/^([NL]\d+)-.*$/, '$1');
+    current.files[`current/packets/${route}.json`] = JSON.stringify({id: record.record_id, title: record.title,
+      statement: `Exact ${record.record_id} premise`, contract: {assumptions: 'Supplied interface required'},
+      review_overlays: [], review: {}, notices: [{notice_id: 'SN-scope', clarification: 'No acquired device evidence.'}], evidence: []});
+  }
+  current.manifest.outputs = Object.fromEntries(Object.entries(current.files).map(([path, text]) => [`knowledge/${path}`, hash(text)]));
+  const browser = harness(current);
+  const ids = () => browser.elements.results.children.map(article => article.children.find(element => element.tag === 'a').textContent.split(' — ')[0]);
+  await browser.submit();
+  assert.equal(heading(browser), 'Broad high-scoring parent');
+  await browser.submit('  u120-STEP-0  ');
+  assert.deepEqual(ids(), ['U120-step-0']);
+  assert.match(browser.elements.status.textContent, /1 identifier match/);
+  await button(browser).listeners.get('click')();
+  assert.ok(descendants(browser.elements.results).some(element => element.tag === 'pre' && element.textContent.includes('Exact U120-step-0 premise') && element.textContent.includes('No acquired device evidence.')));
+  await browser.submit('U120');
+  assert.equal(ids().length, 7); // Ambiguity is not silently cut to five ranked hits.
+  assert.deepEqual(ids(), records.slice(1, 8).map(record => record.record_id));
+  assert.match(browser.elements.status.textContent, /7 records share this identifier prefix/);
+  for (const missing of ['U999', 'U120-step', 'U120-step-99']) {
+    await browser.submit(missing);
+    assert.equal(browser.elements.results.children.length, 0);
+    assert.match(browser.elements.status.textContent, /No current record matches this identifier/);
+  }
+  await browser.submit('n120');
+  assert.deepEqual(ids(), ['N120-parent']);
+  assert.match(browser.elements.results.children[0].children.find(element => element.tag === 'a').href, /\/N120.json\?sha256=/);
+  await browser.submit('la012');
+  assert.deepEqual(ids(), ['LA012-conditioned']);
+  await browser.submit('p-checks');
+  assert.deepEqual(ids(), ['P-checks']);
+  await browser.submit('T2 relaxation mechanism');
+  assert.equal(heading(browser), 'Broad high-scoring parent');
+  // Exact lookup still uses the current manifest and packet byte guards.
+  await browser.submit('U120-step-0');
+  current.files['current/packets/U120-step-0.json'] += ' ';
+  await button(browser).listeners.get('click')();
+  assert.match(button(browser).textContent, /Mixed or changed dataset/);
+  assert.ok(browser.requests.every(request => request.cache === 'no-store'));
+}
+
 (async () => {
   await updateWithoutReload();
   await rejectAndRecover();
   await olderRequestCannotPublish();
   await intermediateCorrectionRoute();
-  process.stdout.write('4 static web cache/epoch/interface scenarios passed\n');
+  await identifierRoutes();
+  process.stdout.write('5 static web cache/epoch/interface/identifier scenarios passed\n');
 })().catch(error => { process.stderr.write(error.stack + '\n'); process.exitCode = 1; });
