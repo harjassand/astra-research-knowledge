@@ -1,0 +1,8 @@
+# Current test label is not decoder side information
+2026-10-29. Governing clarification to the general-k reference-free validation addendum.
+
+The classical Clifford test seed C and preparation/measurement metadata are retained only by the trusted test harness. The candidate training/controller/source receives the quantum test payload but NOT this current label, nor an equivalent classical description, before its logical output has been fixed. The source remains the same fixed memoryless CPTP map. Candidate parameters and fresh training policy are independent of the current test seed. After the output is fixed, the harness may use C to apply C† and read out zero.
+
+This is necessary for a single linear channel M to govern all test states. If the candidate receives the label, it can discard its input and simply prepare |psi>, passing every pure-state test while not transmitting an unknown service state. That input-aware strategy is explicitly excluded. No encryption of the quantum test state against its legitimate physical distinguishability is asserted; only the extra classical label is withheld. Reference-free decoder TRAINING input labels can be used by its tomography algorithm; those are distinct from the current held-out payload-test label.
+
+The parent Bell test did not require this pure-state-label condition because its retained reference cannot be synthesized from classical test metadata. Root's separate tetrahedral qubit implementation uses a different finite test design; this addendum concerns general k=2^ell with Clifford-state sampling and bounded sampler-abort handling.

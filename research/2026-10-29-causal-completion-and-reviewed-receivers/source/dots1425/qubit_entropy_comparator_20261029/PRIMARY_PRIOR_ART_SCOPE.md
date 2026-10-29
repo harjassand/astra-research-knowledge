@@ -1,0 +1,13 @@
+# Primary-source scope correction, 2026-10-29
+
+Mandatory companion to the base, phase, and thermal packets. Their mathematics remains unchanged. No historical novelty is established by independent derivation or receiving acceptance.
+
+1. Hirche, *Quantum Doeblin coefficients*, arXiv:2405.00105v2, Corollary III.1 and Proposition III.3 (read directly): CP domination by a replacement channel is equivalent to a positive channel-mixture decomposition and bounds relative-entropy contraction. Our thermal branch uses ΦΔ rather than a replacement channel, but CP minorization followed by convexity and data processing is established machinery, not a new mechanism. https://arxiv.org/html/2405.00105v2
+
+2. Gao–Junge–LaRacuente–Li, *Complete positivity order and relative entropy decay*, Forum Math. Sigma 13:e31 (2025), Lemma 2.3 and its proof, and the ensuing entropy-contraction argument (read directly): CP/positivity order quantitatively controls entropy decay. Their hypotheses and constants differ from our explicit Pauli decomposition; this is nevertheless governing prior context against claiming a new general order-to-entropy principle. https://doi.org/10.1017/fms.2024.117
+
+3. Gao–Zhao, arXiv:2608.19685v1, §§3.3–3.4 and 4.2 (read directly): conditional-expectation entropy contraction has complete formulations, exact tensorization, and reference-stable dephasing/coherence applications. Our product extension must not be advertised as the discovery of complete entropy tensorization. The displayed general index bound is not our sharp binary a² formula, but that comparison alone establishes no novelty. https://arxiv.org/html/2608.19685v1
+
+4. Münch–Wirth–Zhang, arXiv:2401.05179v1, Corollary 3.17 and Remarks 3.8/preceding discussion (read directly): commuting projection-jump generators have curvature lower bounds. For one projection p, its generator is id−Δ, and the statement persists for p⊗I. This strongly overlaps the sharp binary-dephasing mechanism; translating the curvature-to-MLSI convention gives the familiar a² decay. Our elementary resolvent proof remains independently usable, but no new binary-dephasing contraction or tensorization claim is made. https://arxiv.org/html/2401.05179v1
+
+The scoped construction retained for Astra is the explicit compatibility-to-comparator chain, its stated stationary-prior Holevo consequence, and the checked nonunital thermal CP coefficient. Whether these combinations are historically new has not been established. They do not resolve unrestricted N371 or remove the barycenter penalty. The thermal proof does not assume coherence contraction by η; such contraction fails with quantum references near the zero-temperature excited boundary.
