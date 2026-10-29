@@ -87,6 +87,35 @@ class CurrentScopeNavigation(unittest.TestCase):
         self.assertEqual(capsule["id"], route["id"])
         self.assertIn("causal", json.dumps(capsule))
 
+    def test_candidate_expansion_is_one_hop_and_seed_priority_obeys_cap(self):
+        from knowledge.agent_search import current_scope_candidates
+        record, rows = self.fixture()
+        rows["U2-later"] = {"id": "U2-later", "title": "Later still", "content_version": "d" * 64}
+        rows["U1-target"]["notices"] = [{"notice_id": "SN-next", "current_scope_unit": "U2-later", "source_refs": ["actual"]}]
+        candidates, paths = current_scope_candidates(rows, ["N1-old"])
+        self.assertEqual(candidates, ["N1-old", "U1-target"])
+        self.assertNotIn("U2-later", paths)
+        self.assertEqual(paths["U1-target"]["from_record"], "N1-old")
+        self.assertEqual(paths["U1-target"]["content_version"], "a" * 64)
+        self.assertEqual(current_scope_candidates(rows, ["N1-old"], budget=1), (["N1-old"], {}))
+        self.assertEqual(current_scope_candidates(rows, ["N1-old", "U1-target"], budget=2), (["N1-old", "U1-target"], {}))
+
+    def test_candidate_expansion_does_not_add_untyped_analogies(self):
+        from knowledge.agent_search import current_scope_candidates
+        record, rows = self.fixture()
+        record["notices"] = [{"notice_id": "SN-no-edge", "clarification": "Same object and operation", "card_ids": ["U1-target"]}]
+        self.assertEqual(current_scope_candidates(rows, ["N1-old", "N1-old"]), (["N1-old"], {}))
+
+    def test_candidate_expansion_preserves_requested_record_kind(self):
+        from knowledge.agent_search import current_scope_candidates
+        record, rows = self.fixture()
+        record["kind"] = "result"
+        rows["U1-target"]["kind"] = "proof_mechanism"
+        self.assertEqual(current_scope_candidates(rows, ["N1-old"], kind="result"), (["N1-old"], {}))
+        candidates, paths = current_scope_candidates(rows, ["N1-old"])
+        self.assertEqual(candidates, ["N1-old", "U1-target"])
+        self.assertEqual(paths["U1-target"]["content_version"], "a" * 64)
+
 
 if __name__ == "__main__":
     unittest.main()
