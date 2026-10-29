@@ -1,0 +1,8 @@
+# Governing resource correction and final review v3
+2026-10-29. This correction governs earlier drafts/reviews in this directory. Mathematical acceptance is unchanged; the comparator is strengthened.
+
+Root correctly identified that ordinary logical Pauli pads in the original protocol are applied BEFORE the encoder and removed AFTER the decoder on bare k logical qubits. They cost O(k) single-qubit gates and2k private bits. No expensive encoded logical-Pauli synthesis is necessary. Physical permutation randomization instead adds SWAP/routing operations and Theta(n log n) naive key bits. It is not a generic control-cost improvement and should not be described as avoiding a difficult Pauli compiler.
+
+The defensible proved gain is different: actual randomization of the physical code orbit removes the d/K witness penalty. The explicit n6 reflection example separates that changed operation from simply deleting a constant in a fixed-code bound. Already-encoded-only control interfaces could give a different comparison, but that is a separate restricted premise, not the existing architecture.
+
+I read the exact v2→v3 diff of PHYSICAL_PERMUTATION_TWIRL_v3.md. It preserves all reviewed theorem, correlated-memory, private-key, same-memory-filter and retired-decoder-record statements, and corrects the cost comparison as above. Version3 is accepted at stated mathematical scope. It supersedes v2 as the governing author source. This correction also overrides any wording in my GOVERNING_DRAFT_v1/v2 that might imply costly logical-Pauli compilation. Those drafts remain developmental notes, not canonical resource claims.

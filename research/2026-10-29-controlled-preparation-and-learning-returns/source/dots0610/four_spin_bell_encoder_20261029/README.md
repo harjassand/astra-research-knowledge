@@ -1,0 +1,13 @@
+# Independent execution: eight-CNOT four-spin Bell-label encoder
+
+2026-10-29. Root supplied the analytic construction; this package independently implements and checks it. Run `OPENBLAS_NUM_THREADS=1 python check_bell_encoder.py`. NumPy only. `received_qr_compiler.py` is an unchanged helper/source copy from the preceding generic QR construction; only primitive matrix utilities and the specified target columns are imported.
+
+Order is `q3 q2 q1 q0`; logical input q0, other three bits zero. Pair-label registers A=(a=q0,b=q1), B=(a=q2,b=q3). Start with X on A's two bits. Apply negative-controlled Ry on b conditioned on a=0, angle −2 asin sqrt(2/3). Then apply negative-controlled Ry on a conditioned on b=0, angle π/2. Apply Z to both A bits. Copy a,b to B with two CNOTs. Apply H then CNOT to each pair to map label (a,b) to (|0,b>+(−1)^a|1,b xor1>)/sqrt2. Each negative-controlled Ry is explicitly decomposed into two CNOTs, two half-angle Ry and two X control conjugations.
+
+This produces exactly the requested two singlet columns (at tested numerical precision): ψ0=singlet⊗singlet, and ψ1=(|0011>+|1100>−(|0101>+|0110>+|1001>+|1010>)/2)/sqrt3. Before the Bell transforms, input logical zero yields labels11,11; input logical one yields the three labels00,00 minus01,01 minus10,10 with equal magnitude1/sqrt3. This explains the analytic identity and sign convention.
+
+**Per encoder: 8 CNOT +14 single-qubit gates; four-qubit peak; no work ancilla.** Decoder inverse has the same count, plus measurement/reset. Appending a learned tensor product local frame adds four supplied one-qubit gates per direction. Connectivity, precision, preparation, storage, readout/reset and fault tolerance are not free or proved achieved.
+
+The full completed unitary differs from the earlier generic QR unitary but the two code columns agree. To retain the exact earlier canonical decoder, apply inverse then measure q1,q2,q3; if nonzero, reset q0 to zero. Plain inverse plus discard is not the canonical leakage reset. The explicit reset Kraus operators are verified TP and compared against E†ρE+|0><0|Tr[(I−EE†)ρ] on100 arbitrary physical/reference entangled states. All16 inverse columns and100 coherent logical/reference recovery cases are checked. Largest residual is below1.9e−15. These are floating consistency checks of analytic ideal identities, not interval-certified hardware accuracy.
+
+`results.json` and `bell_circuit.npz` contain counts, residuals and complete chronological circuit. The earlier `producer-workspace/four_spin_encoder_compiler_20261029` remains a valid generic construction, but its500-CNOT/one-work-qubit implementation cost is superseded for these target states. No gate-optimality or historical novelty is claimed.
