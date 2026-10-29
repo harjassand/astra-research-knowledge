@@ -48,6 +48,15 @@ class MemoryInformationIntakeTests(unittest.TestCase):
                 self.assertEqual(review['physical_measurement'], 'not established')
                 accepted.append(record['id'])
         self.assertEqual(len(accepted), 16)
+        for record in self.library.records.values():
+            if record['id'].startswith('U1228-'):
+                original=ROOT/'knowledge/units'/record['id']/'v0001.json'
+                revised=json.loads((original.parent/'v0002.json').read_bytes())
+                self.assertEqual(revised['previous'],digest(original.read_bytes()))
+                self.assertEqual(revised['statement'],json.loads(original.read_bytes())['statement'])
+                self.assertIn('distinct original receipt was not identified',json.loads(original.read_bytes())['body'])
+                self.assertNotIn('distinct original receipt was not identified',record['body'])
+                self.assertIn('one available whole-chain review plus supplement',record['body'])
         provisional = self.library.resolve('U1226-smooth-clock-extension-proposal')
         self.assertEqual(provisional['review_overlays'], [])
         self.assertIn('provisional', provisional['review']['acceptance'])
