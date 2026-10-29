@@ -467,6 +467,89 @@ class PublishedRefreshTests(unittest.TestCase):
             finally:
                 self.git(self.old,'remote','remove','origin')
 
+    def test_reuses_only_unchanged_sources_and_keeps_independent_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary); bare = folder / "origin.git"; cache = folder / "cache"
+            subprocess.run(["git", "clone", "--bare", str(self.root), str(bare)], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.git(self.old, "remote", "add", "origin", str(bare))
+            source = self.old / self.fixture.source["path"]
+            before = source.read_bytes()
+            result = None
+            try:
+                provider = GitSnapshots(self.old, cache, repository_url=str(bare))
+                original_git = provider.git
+                checked_out = set()
+                def track(root, *args, **kwargs):
+                    if args[0] == "checkout-index":
+                        checked_out.update(kwargs["input"].split(b"\0"))
+                    return original_git(root, *args, **kwargs)
+                with patch.object(provider, "git", side_effect=track):
+                    result = provider.stage(self.b.version)
+                self.assertNotIn(self.fixture.source["path"].encode(), checked_out)
+                self.assertIn(b"source-v2.txt", checked_out)
+                self.assertEqual(ResearchAdapter(result).version, self.b.version)
+                copied = result / self.fixture.source["path"]
+                self.assertFalse(source.samefile(copied))
+                source.write_bytes(b"An unrelated edit to the retained working copy.")
+                self.assertEqual(copied.read_bytes(), before)
+            finally:
+                source.write_bytes(before)
+                if result and result.exists():
+                    self.git(self.old, "worktree", "remove", str(result))
+                self.git(self.old, "remote", "remove", "origin")
+
+    def test_modified_cached_source_fails_closed_and_keeps_both_copies(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary); bare = folder / "origin.git"; cache = folder / "cache"
+            subprocess.run(["git", "clone", "--bare", str(self.root), str(bare)], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.git(self.old, "remote", "add", "origin", str(bare))
+            source = self.old / self.fixture.source["path"]
+            before = source.read_bytes()
+            altered = b"Preserve this edited historical fixture."
+            try:
+                provider = GitSnapshots(self.old, cache, repository_url=str(bare))
+                source.write_bytes(altered)
+                with self.assertRaisesRegex(ValueError, "Cached snapshot bytes differ"):
+                    provider.stage(self.b.version)
+                self.assertEqual(source.read_bytes(), altered)
+                self.assertFalse((cache / self.b.revision).exists())
+                retained = list((cache / "failed-staging").iterdir())
+                self.assertEqual(len(retained), 1)
+                self.assertEqual((retained[0] / self.fixture.source["path"]).read_bytes(), altered)
+            finally:
+                source.write_bytes(before)
+                # Only explicitly created disposable fixture worktrees.
+                for marker in cache.rglob(".git"):
+                    if marker.is_file():
+                        self.git(self.old, "worktree", "remove", "--force", str(marker.parent))
+                self.git(self.old, "remote", "remove", "origin")
+
+    def test_reuse_keeps_committed_mode_without_changing_cached_source_mode(self):
+        import os
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary); bare = folder / "origin.git"; cache = folder / "cache"
+            subprocess.run(["git", "clone", "--bare", str(self.root), str(bare)], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.git(self.old, "remote", "add", "origin", str(bare))
+            source = self.old / self.fixture.source["path"]
+            old_mode = source.stat().st_mode & 0o777
+            result = None
+            try:
+                source.chmod(old_mode | 0o111)
+                provider = GitSnapshots(self.old, cache, repository_url=str(bare))
+                result = provider.stage(self.b.version)
+                self.assertEqual((result / self.fixture.source["path"]).stat().st_mode & 0o777, 0o644)
+                self.assertEqual(source.stat().st_mode & 0o777, old_mode | 0o111)
+                self.assertEqual(ResearchAdapter(result).version, self.b.version)
+            finally:
+                source.chmod(old_mode)
+                if result and result.exists():
+                    self.git(self.old, "worktree", "remove", str(result))
+                self.git(self.old, "remote", "remove", "origin")
+
+
     def test_materialization_budget_and_portable_failure_reason(self):
         with tempfile.TemporaryDirectory() as temporary:
             with patch('knowledge.published.subprocess.run',return_value=SimpleNamespace(stdout='https://github.com/harjassand/astra-research-knowledge.git')):

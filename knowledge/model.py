@@ -20,6 +20,8 @@ TRANSFER_STATES = {
     "PROVEN LOGICAL DEPENDENCY", "ESTABLISHED COMPATIBLE INTERFACE",
     "CANDIDATE CONNECTION", "INCOMPATIBLE ASSUMPTIONS", "REFUTED TRANSFER",
 }
+LEGACY_SOURCE_TEXT = "untyped-notebook-cells-v1"
+TYPED_SOURCE_TEXT = "typed-notebook-cells-v2"
 
 
 def encoded(value):
@@ -45,7 +47,23 @@ def flatten(value):
     return str(value) if value is not None else ""
 
 
-def scientific_text(text):
+def source_text_layout(root, manifest):
+    """Only a validated snapshot output can select a newer source projection."""
+    name = "knowledge/current/release.json"
+    if name not in manifest.get("outputs", {}):
+        return LEGACY_SOURCE_TEXT
+    data = local(Path(root), name).read_bytes()
+    if digest(data) != manifest["outputs"][name]:
+        raise ValueError("Stale source text layout marker")
+    layout = json.loads(data).get("source_text_layout", LEGACY_SOURCE_TEXT)
+    if layout not in (LEGACY_SOURCE_TEXT, TYPED_SOURCE_TEXT):
+        raise ValueError("Unsupported source text layout; deploy its reviewed reader")
+    return layout
+
+
+def scientific_text(text, *, layout=TYPED_SOURCE_TEXT):
+    if layout not in (LEGACY_SOURCE_TEXT, TYPED_SOURCE_TEXT):
+        raise ValueError("Unsupported source text layout")
     try:
         value = json.loads(text)
     except (ValueError, TypeError):
@@ -63,7 +81,11 @@ def scientific_text(text):
         and isinstance(cell.get("source"), (str, list))
         for cell in cells
     )
-    if notebook_cells and (cells or value.get("nbformat") == 4):
+    if layout == LEGACY_SOURCE_TEXT:
+        # Historical handles retain the exact old projection, including its
+        # empty-cell behavior. Current ingestion always emits the typed marker.
+        notebook_cells = isinstance(cells, list)
+    if notebook_cells and (layout == LEGACY_SOURCE_TEXT or cells or value.get("nbformat") == 4):
         return "\n\n".join("".join(cell.get("source", [])) for cell in value["cells"]), "notebook cell sources; outputs not indexed"
     def clean(item):
         if isinstance(item, dict):

@@ -58,3 +58,23 @@ The known ordered-word inverse-Jordan compiler and G06 no-value-observation
 diagnostics also remain in the primary five and reached their exact units and
 governing passages. They are exposed regressions and are not part of the six
 fresh positive discovery tasks. See exposed_diagnostics.json.
+
+Owner review additionally caught a historical-rendering risk in the ingestion
+fix. The normalizer now emits a source-text codec marker automatically; missing
+markers retain the original JSON decoder, including exact legacy payload bytes.
+Fourteen focused source/codec tests pass. The published materializer also copies
+only unchanged committed paths with identical declared hashes, validates each
+copied stream, keeps separate files and committed modes, and leaves changed
+paths to literal Git checkout. Seventeen existing refresh/history tests and
+three cache-corruption/independence/mode regressions pass.
+
+Two actual App refresh attempts after PR268 timed out and retained partial
+snapshots. The private cold-materialization comparison stages that same real
+new source corpus with 21,820 reused files and 2,379 Git checkout paths in
+11.7 seconds; full snapshot validation takes total20.5 seconds and the
+agent query finishes at48.6 seconds. These are observed timings, not a
+controlled universal performance guarantee or production prefill. Actual
+installed readiness remains a required post-merge verification. See
+cold_materialization.json. Reader-only repairs do not change the evaluated
+scientific records, operation frames or vector bytes; their equality is
+checked separately before binding the final runtime release.

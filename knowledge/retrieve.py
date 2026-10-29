@@ -11,7 +11,7 @@ import sys
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from knowledge.build import check
-from knowledge.model import (ROOT, Inputs, digest, encoded, query_terms,
+from knowledge.model import (ROOT, Inputs, LEGACY_SOURCE_TEXT, digest, encoded, query_terms, source_text_layout,
                              route_id, scientific_text, score_query, tokens, evidence_refs)
 from knowledge.operations import statement_view, consumer_contract
 
@@ -29,6 +29,7 @@ class Library:
     def __init__(self, root=ROOT, validate=True):
         self.root = Path(root)
         self.manifest = check(self.root, regenerate=False) if validate else {}
+        self.source_text_layout = source_text_layout(self.root, self.manifest)
         self.records = {row["id"]: row for row in self.rows("records.jsonl")}
         self.documents = self.rows("documents.jsonl")
         self.catalog = json.loads((self.root / "knowledge/current/catalog.json").read_bytes())
@@ -170,7 +171,7 @@ class Library:
                 raise ValueError("Read must remain within the cited inclusive source range")
             passage = "".join(text.splitlines(keepends=True)[start - 1:end])
             bounded = bounded_reference(ref, start, end, passage)
-            passage, selector = scientific_text(passage)
+            passage, selector = scientific_text(passage, layout=getattr(self, "source_text_layout", LEGACY_SOURCE_TEXT))
             artifact = next(json.loads(line) for line in (folder / "artifacts.jsonl").read_bytes().splitlines()
                             if json.loads(line)["id"] == selected["artifact_id"])
             value = {"id": identifier, "source": bounded, "text": passage,
@@ -204,7 +205,7 @@ class Library:
             raise ValueError("Read must remain within the cited inclusive source range")
         passage = "".join(text.splitlines(keepends=True)[start - 1:end])
         bounded = bounded_reference(reference, start, end, passage)
-        selected_text, selection = scientific_text(passage)
+        selected_text, selection = scientific_text(passage, layout=getattr(self, "source_text_layout", LEGACY_SOURCE_TEXT))
         if selection.startswith(("JSON /answer/", "notebook cell sources")):
             passage = selected_text
         else:

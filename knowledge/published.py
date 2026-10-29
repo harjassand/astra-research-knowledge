@@ -8,10 +8,12 @@ from __future__ import annotations
 from collections import OrderedDict
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import stat
 import subprocess
 import tempfile
 import threading
@@ -245,15 +247,28 @@ class GitSnapshots:
             # manifest paths. NUL streams preserve whitespace, metacharacters
             # and unselected non-UTF8 names without glob matching every path.
             self.git(staging, "read-tree", "--no-sparse-checkout", revision)
-            tracked = self.git(staging, "ls-files", "-z", binary=True)
-            members = set(tracked.split(b"\0")) - {b""}
+            entries = self.git(staging, "ls-files", "--stage", "-z", binary=True)
+            modes = {}
+            for entry in entries.split(b"\0"):
+                if entry:
+                    header, name = entry.split(b"\t", 1)
+                    mode, _, index_stage = header.split()
+                    if index_stage != b"0":
+                        raise ValueError("Published index contains an unresolved entry")
+                    modes[name] = mode
+            members = set(modes)
+            tracked = b"\0".join(sorted(members)) + b"\0"
             if not {name.encode("utf-8") for name in required} <= members:
                 raise ValueError("Required published manifest paths are absent from its committed tree")
             selected = b"\0".join(sorted(name.encode("utf-8") for name in paths
                                         if name.encode("utf-8") in members)) + b"\0"
             self.git(staging, "update-index", "--skip-worktree", "-z", "--stdin", input=tracked, binary=True)
             self.git(staging, "update-index", "--no-skip-worktree", "-z", "--stdin", input=selected, binary=True)
-            self.git(staging, "checkout-index", "-z", "--stdin", input=selected, binary=True)
+            reused = self.reuse_files(staging, revision, manifest, modes)
+            remaining = [name for name in selected.split(b"\0") if name and name not in reused]
+            if remaining:
+                pending = b"\0".join(remaining) + b"\0"
+                self.git(staging, "checkout-index", "-z", "--stdin", input=pending, binary=True)
             if not self.materialized(staging, revision, version):
                 raise ValueError("Sparse snapshot did not materialize its committed manifest and index")
             self.git(self.root, "worktree", "move", str(staging), str(target))
@@ -267,6 +282,58 @@ class GitSnapshots:
                 raise ValueError(str(error) + "; incomplete owned staging retained; quarantine could not finish") from error
             raise ValueError(str(error) + "; incomplete owned staging retained for diagnosis; retry the request") from error
         return target
+
+    def reuse_files(self, staging, revision, manifest, modes):
+        """Copy unchanged committed bytes, never hardlink mutable worktrees.
+
+        New/changed paths still use Git. Every reused stream is checked against
+        the new manifest; ResearchAdapter validates the entire finished snapshot
+        before any active reader can switch. No source or prior snapshot changes.
+        """
+        previous = json.loads(self.git(self.root, "show", "HEAD:knowledge/current/manifest.json"))
+        prior = previous["inputs"] | previous["outputs"]
+        expected = manifest["inputs"] | manifest["outputs"]
+        changed = set(self.git(self.root, "diff", "--name-only", "-z", "HEAD", revision,
+                               "--", binary=True).split(b"\0"))
+        reused = set()
+        directories = {staging}
+        source_directories = {self.root}
+        try:
+            for name, checksum in sorted(expected.items()):
+                raw_name = name.encode("utf-8")
+                if (raw_name in changed or raw_name not in modes or prior.get(name) != checksum
+                        or modes[raw_name] not in (b"100644", b"100755")):
+                    continue
+                source = self.root / name
+                if source.parent not in source_directories:
+                    if source.parent.resolve() != source.parent:
+                        continue
+                    source_directories.add(source.parent)
+                try:
+                    source_stat = source.lstat()
+                except FileNotFoundError:
+                    continue
+                if not stat.S_ISREG(source_stat.st_mode):
+                    continue
+                target = staging / name
+                if target.parent not in directories:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    directories.add(target.parent)
+                # Independent files preserve history even if either working
+                # copy is later edited. Stream validation avoids trusting cache
+                # timestamps, sizes, path identity or an unverified old byte.
+                observed = hashlib.sha256()
+                with source.open("rb") as original, target.open("xb") as output:
+                    while chunk := original.read(1024 * 1024):
+                        output.write(chunk)
+                        observed.update(chunk)
+                if observed.hexdigest() != checksum:
+                    raise ValueError("Cached snapshot bytes differ from the committed source; preserve and repair them")
+                target.chmod(0o755 if modes[raw_name] == b"100755" else 0o644)
+                reused.add(raw_name)
+        except OSError as error:
+            raise ValueError("Published snapshot copy failed; incomplete owned staging retained") from error
+        return reused
 
     def prune(self, retained):
         retained = {Path(path).resolve() for path in retained} | {self.root}
