@@ -221,9 +221,19 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
     selected = record_menu(lanes, [], library.records, limit=limit)
     names = ["semantic", "rerank", "structured", "content"]
     family = lambda identifier: (library.records[identifier]["parents"] or [identifier])[0]
+    cross_by_id = {hit["id"]: hit for hit in cross["results"]}
+    dense_by_id = {hit["id"]: hit for hit in dense["results"]}
     results = []
     for identifier in selected:
-        item = dict(next(hit for lane in lanes for hit in lane if hit["id"] == identifier))
+        # Fusion selects identities, not a source branch. Preserve the exact
+        # selected record's cross-encoder qualification/source navigation,
+        # especially --notice routes; record.evidence[0] is not a substitute.
+        item = dict(cross_by_id.get(identifier) or next(
+            hit for lane in lanes for hit in lane if hit["id"] == identifier))
+        if identifier in dense_by_id:
+            semantic = dense_by_id[identifier]
+            item["semantic_match"] = {key: semantic[key] for key in
+                                      ("ranking_view", "relevance_cosine", "content_version")}
         record, frame = library.records[identifier], library.operation_frames[identifier]
         item["operation_frame"] = frame
         item["premise_check"] = library.contextual_index.condition_candidates(frame, available, unavailable)
