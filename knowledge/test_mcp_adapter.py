@@ -100,7 +100,9 @@ class AdapterTests(unittest.TestCase):
             self.assertIsNotNone(first["metadata"]["next_id"])
             self.assertIn("continuation", first["metadata"]["required_action"])
             packet = complete(self.adapter, "N557")
-            self.assertEqual(packet["notices"], self.adapter.library.resolve("N557")["notices"])
+            self.assertEqual(citation_path_defaults(expand_consumer_notice_links(
+                packet["notices"], self.adapter.library.records)),
+                citation_path_defaults(self.adapter.library.resolve("N557")["notices"]))
             with self.assertRaises(ValueError):
                 self.adapter.fetch(first["id"] + ":99999999")
 
