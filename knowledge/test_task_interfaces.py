@@ -1,9 +1,11 @@
 """Protect actual proof routes, quantifiers and non-transfer in the curated slice."""
 import json
+import copy
 import unittest
 
 from knowledge.model import Inputs, ROOT, encoded
 from knowledge.retrieve import Library
+from knowledge.build import packet_transfer_references
 
 
 CONSUMER = "U1125-qualified-task-bound-consumer"
@@ -73,12 +75,67 @@ class TaskBoundInterfaces(unittest.TestCase):
         packet = value["packets"][0]
         transfers = {t["id"]: t for t in packet["transfers"]}
         canonical = self.library.resolve(CONSUMER)
-        self.assertEqual(len(packet["interface_navigation"]["bindings"]), 6)
+        self.assertEqual(len(packet["interface_navigation"]["bindings"]),
+                         len(canonical["interface_navigation"]["bindings"]))
         for item, complete in zip(packet["interface_navigation"]["bindings"], canonical["interface_navigation"]["bindings"]):
             ref = item["binding_ref"]
             self.assertEqual(transfers[ref["id"]][ref["mapping_field"]], complete["binding"])
         self.assertEqual(packet["contract"], canonical["contract"])
         self.assertEqual(packet["notices"], canonical["notices"])
+        original_transfers = {t["id"]: t for t in self.library.transfers}
+        for transfer in packet["transfers"]:
+            expanded = dict(transfer)
+            evidence = []
+            for source in transfer.get("evidence", []):
+                if "evidence_ref_pointer" not in source:
+                    evidence.append(source)
+                    continue
+                target = packet
+                for token in source["evidence_ref_pointer"].split("/")[1:]:
+                    token = token.replace("~1", "/").replace("~0", "~")
+                    target = target[int(token)] if isinstance(target, list) else target[token]
+                evidence.append(target)
+            expanded["evidence"] = evidence
+            for field in ("evidence_ref_indices", "evidence_ref_field", "evidence_ref_annotations"):
+                expanded.pop(field, None)
+            self.assertEqual(expanded, original_transfers[transfer["id"]])
+
+
+class PacketEvidenceReferenceTests(unittest.TestCase):
+    def test_mixed_citations_keep_order_annotations_and_conflicting_locators(self):
+        shared = {"path": "proof.txt", "sha256": "1" * 64, "lines": [4, 9],
+                  "quote": "The conditional construction", "range_scope": "Declared input and output"}
+        distinct = dict(shared, lines=[11, 15], quote="A different branch")
+        annotated = dict(shared, source_id="same-bytes-different-role", status="provider qualification remains")
+        original = {"id": "B-source-to-target", "scope": "Actual source-specific transfer",
+                    "slot_binding": {"units": "seconds", "qualification": "Supplied finite source"},
+                    "evidence": [distinct, annotated, shared]}
+        before = copy.deepcopy(original)
+        packet = {"evidence": [shared], "review_overlays": [{"evidence": [annotated]}], "transfers": [original]}
+        compact = packet_transfer_references(packet)[0]
+        self.assertEqual(original, before)
+        self.assertEqual(compact["evidence"][0], distinct)
+        self.assertEqual(compact["scope"], original["scope"])
+        self.assertEqual(compact["slot_binding"], original["slot_binding"])
+        restored = []
+        for item in compact["evidence"]:
+            if "evidence_ref_pointer" not in item:
+                restored.append(item)
+            else:
+                target = packet
+                for token in item["evidence_ref_pointer"].split("/")[1:]:
+                    token = token.replace("~1", "/").replace("~0", "~")
+                    target = target[int(token)] if isinstance(target, list) else target[token]
+                restored.append(target)
+        self.assertEqual(restored, original["evidence"])
+
+    def test_different_scientific_ranges_and_qualifications_stay_inline(self):
+        source = {"path": "proof.txt", "sha256": "1" * 64, "lines": [4, 9],
+                  "quote": "Actual statement", "range_scope": "Input qualifier"}
+        for field, value in [("lines", [11, 12]), ("sha256", "2" * 64),
+                             ("quote", "Different assertion"), ("range_scope", "Different output qualifier")]:
+            transfer = {"evidence": [dict(source, **{field: value})]}
+            self.assertEqual(packet_transfer_references({"evidence": [source], "transfers": [transfer]})[0], transfer)
 
 
 if __name__ == "__main__":

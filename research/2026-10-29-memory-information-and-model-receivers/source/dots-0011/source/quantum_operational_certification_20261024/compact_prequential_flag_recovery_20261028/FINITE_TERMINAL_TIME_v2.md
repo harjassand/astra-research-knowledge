@@ -1,0 +1,4 @@
+# Finite exact terminal-time sampling
+2026-10-29. Clarifies the implementation branch of CONSTRUCTION_v1 and TERMINAL_RESOURCE_TELEPORT_v1; governing versions preserved.
+
+For the stated exact bounded fair-bit implementation, choose N to be a power of4 as already offered in Section2. Then sqrt N and the learning step are rational, and uniform T in1,...,N uses exactly log2 N fair bits. Round any required analytic horizon up to the next power of4, increasing the cap by less than a factor4. More general horizons require explicitly charged capped rejection/approximate uniform sampling and its total operational discrepancy; exact uniform sampling from arbitrary N is not freely achievable with a fixed bounded number of fair bits. All executed N64 and N1024 fixtures already meet the power-of4 restriction. The meta-selector likewise states N a power of4.

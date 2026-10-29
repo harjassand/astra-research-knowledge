@@ -1,0 +1,8 @@
+# Operational error-support consequence of a small flag
+2026-10-28. Immediate corollary of received compact recovery Section 5; no new acquisition claim.
+
+For a Pauli+flag source with r-dimensional accessible flag, full-CPTP recovery fidelity is bounded by the sum of the r largest Pauli-label priors. Therefore if that recovery fidelity is at least 1-epsilon, some set S of at most r error labels has total prior probability at least 1-epsilon. This is a smooth-support statement forced by high full-payload recoverability, not an extra tree, known-feature, sparse-prior or source-spectrum promise supplied to the learner.
+
+The omitted epsilon tail can still be spread over exponentially many errors and contribute order epsilon log A to Shannon entropy. No full-distribution reconstruction or exact low Shannon entropy conclusion follows. For a generic coherent source, the same statement concerns the Pauli-correction-class fidelity and Bell-block priors, not the unconstrained coherent decoder oracle.
+
+The number of physical POVM outcomes need not be r even though the near-perfect source's dominant prior support is at most r. The received tetrahedral qubit fixture already shows that the general r^2 bound is sharp at r=2: four equally likely tetrahedral pure flag states have optimal effects tau_i/2 and score1/2. Complementary slackness with dual I/4 forces each nonzero optimal effect onto its corresponding rank-one state, and affine independence fixes all four coefficients to1/2. Thus all four effects are necessary for that exact optimum. This is conventional state-discrimination geometry, not a novel discrimination result or a high-fidelity fixture.

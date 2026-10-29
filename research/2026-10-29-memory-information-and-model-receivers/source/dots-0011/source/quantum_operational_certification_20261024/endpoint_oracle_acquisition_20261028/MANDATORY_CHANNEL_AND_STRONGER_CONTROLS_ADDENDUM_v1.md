@@ -1,0 +1,11 @@
+# Endpoint comparator scope: mandatory channel and remaining alternatives
+
+28 October2026. Scope addendum; original programs, counts and findings remain unchanged.
+
+This endpoint package inherits `../clocked_flagged_storage_20261028/MANDATORY_CHANNEL_SCOPE_ADDENDUM_v1.md`. The meaningful task is repeated **mandatory native channel/link traversal with local correction intervals**, not unrestricted passive storage on freely interchangeable qubits. Local ancillas cannot carry the quantum information around the required data link; no noiseless quantum side channel or pre-shared-entanglement bypass is supplied. Otherwise an equally resourced competitor might simply store in a less-noisy ancilla, defeating the interpretation of the comparison.
+
+The source-informed full-CPTP endpoint oracle optimizes the terminal decoder of the **specified single-carrier endpoint dynamics**. It does not optimize all intermediate control schedules, choice of storage register, multiple carriers, entanglement assistance, or an ancillary quantum memory. Its exact formula is therefore a strong terminal-decoder comparator, not a universal ceiling on all equally resourced strategies. A standard flagged-code method given the same ports, processors, clock and acquisition records can implement the coded pipeline itself.
+
+The budgeted direct endpoint learner is also not the strongest conceivable finite-budget conventional learner. An equally informed alternative can estimate the per-use Bloch channel from ordinary local Pauli settings and predict a horizon-specific terminal correction by channel composition. That avoids paying T native uses per endpoint-calibration shot, but propagates local estimation errors through T steps. Direct endpoint fitting measures accumulated effects without that extrapolation, at the explicitly higher time/use cost. This package has not compared every such estimator or established minimax acquisition optimality.
+
+For the same reason, the observed coded-versus-single-carrier differences are not evidence of a novel code, general passive-memory lifetime improvement, or unconditional superiority over ordinary adaptive control. They are scoped calculations for mandatory link uses, declared clocked background noise, fixed or explicitly learned controls, and separately visible acquisition/injection/readout interfaces.

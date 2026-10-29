@@ -1,0 +1,2 @@
+# Author test serialization correction
+2026-10-29. The v1 test reached its final JSON serialization after all 200 inequalities passed, but numpy.bool_ in zero_root was not JSON serializable. V2 changes that field to built-in bool and replays the same deterministic fixtures. No theorem or test calculation changed; prior root independent receipt remains authoritative at its pinned scope. This is a same-seed replay, not a new independent scientific sample bank.

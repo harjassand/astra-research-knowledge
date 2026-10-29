@@ -1,0 +1,37 @@
+# Independent review: classical record dependence and qubit receiver choice
+
+28 October 2026. Accepted at the mathematical and acquisition-theorem scopes specified below. The actual endpoint SDP values remain source-informed floating diagnostics, not acquired or physically compiled receivers. No historical novelty determination is made.
+
+## Objective, receiver premium and exact record norm
+
+For a trace-decreasing qubit instrument branch M_s=[[a,b^T],[c,T]] and CPTP receiver [[1,0],[t,R]], multiplying transfer matrices gives branch Bell-fidelity contribution (a+b dot t+Tr RT)/4. The Choi objective coefficient 1/8 is correct for the unnormalized Choi convention with output partial trace I. Treating the normalized conditional branch as a linear TP map would discard the load-bearing b dot t term; the manuscript does not make that error.
+
+The spin-flip construction is CP despite spin flip alone not being CP: if D has Kraus K_l, its double spin flip has Kraus Y K_l* Y. Completeness follows from the transpose of sum K_l†K_l=I. Its affine parameters are (−t,R), so averaging produces a physical unital receiver with the same R. A unital qubit channel is a convex combination of unitaries, as shown by proper-rotation signed SVD followed by the Pauli tetrahedron CP constraints. Thus its linear score is bounded by the best single unitary score. The remaining translation term is at most ||b|| since D(I/2) has Bloch length at most one. Summing proves premium<=L/4, L=sum_s||b_s||. Positivity of effects and TP imply L<=1. These arguments establish the factors analytically; the numerical SDP is not used as proof.
+
+The exact record diamond norm is also correct. For B_s=b_s dot sigma and arbitrary reference input X, the s-block map is partial_trace_input[(B_s tensor I)X]. Its induced complete trace norm is at most ||B_s||_infinity by trace-norm multiplication and the complete trace-norm contraction of partial trace. Summing classical blocks gives the upper bound L. On normalized Bell input every block is B_s^T/2. A traceless qubit Hermitian B_s has eigenvalues ±||b_s||, so each block has trace norm ||b_s||. The same Bell input attains all blocks at once. This proves the unhalved diamond identity, including arbitrary reference systems, not merely ordinary-input distinguishability.
+
+The fixed-POVM sharpness claim is valid for every qubit POVM: E_s(rho)=Tr(F_s rho)I/2 is CP and has that record. Unitaries leave its output mixed, giving F_e=1/4; branch resets in b_s directions attain (1+L)/4. The zero-b_s case permits any reset state. This is an attained extremal receiver-choice identity, not a claim that each instrument attains its cap or that the extremizer preserves quantum coherence.
+
+## Closest-constant and higher-dimensional addenda
+
+For any constant record distribution q, Bell input gives block trace norms max(|a_s−q_s|,||b_s||), hence a lower bound at least L. The already proved q=a construction attains L. The closest-constant addendum therefore correctly upgrades the fixed-reference definition to the distance from the complete set of constant classical record channels on the same alphabet. It does not assert uniqueness.
+
+The higher-dimensional boundary is sound. The Werner–Holevo channel's antisymmetric Kraus operators are TP/unital. Independent exact checks on all matrix units at d=3,5,7 verify its formula and composition. For unitary U, U conjugate(U) has conjugate-paired spectrum, determinant one and, in odd dimension, at least one +1 eigenvalue; therefore its trace is at least 2−d. The real skew-block witness attains that value. At d=3 the explicit unital CPTP recovery yields 1/3 versus the best unitary's 2/9, despite a constant single-outcome record. This disproves a universal extension beyond qubits. It is a NONUNITARY/unital counterexample, not evidence that nonunitality is necessary in higher dimension. Full-CPTP optimality is neither needed nor asserted. The measure-and-prepare expression at d=3 correctly explains why this witness is not useful coherent storage.
+
+## Ordinary-data acquisition and concentration
+
+The four proposed unnormalized moment estimators are unbiased under independent uniform input axis/sign and output axis sampling of one frozen instrument. The reviewer independently exhausts all settings/outcomes on a noncommuting six-effect rational POVM fixture; all 96 moment entries match exactly. No rare-branch conditional normalization or inverse probability is hidden.
+
+One combined record has squared norm 100. Independence implies expected norm error at most 10/sqrt(N). Changing one observation changes this norm error by at most 20/N. McDiarmid gives exactly the stated 10[1+sqrt(2 log(1/beta))]/sqrt(N) radius. The full qubit receiver transfer Frobenius norm is at most two, because it equals the unnormalized Choi Hilbert-Schmidt norm and that positive Choi has trace two. Cauchy-Schwarz across S branches gives score error sqrt(S)eta/2, and the two uniform errors plus empirical optimization defect give regret sqrt(S)eta+zeta. The factor and branch dependence are correct. The bound can be loose; it does not prove efficient acquisition at the particular tiny physical-pipeline premium.
+
+A certified empirical optimization defect requires actual feasible primal/dual bounds or must remain an explicit assumption. A solver success label is insufficient. The theorem concerns ideal selected receiver maps; fresh whole-operation testing after actual noisy compilation is a separate obligation. The reset-only support-function regret bound ||bhat−b||/2 is correct and does not claim preservation of the erased branch's coherence.
+
+## Independent executable challenges and actual diagnostic
+
+The exact fixture has L=13/20 and attained premium13/80. Independent binary/complex checks include 120 arbitrary Kraus instruments, random CPTP receivers, spin-flip affine equality, Bell norm attainment and general nonpositive/non-Hermitian trace-class inputs with a four-dimensional reference. They supplement the analytic proof rather than approximate a diamond optimization. The saved actual 16-branch objectives have the correct Choi orientation and repaired primal TP/CP residuals. Recomputing their effect vectors gives L/4=9.505683474412754e−7.
+
+The endpoint-instrument source was inspected: it exposes the physical terminal measurements before the last conditional correction, preserves all sixteen outcomes and recombines with the old corrections to the received full pipeline. This review uses that frozen numerical instrument for the small-L diagnostic; it does not claim a separately acquired instrument or an independently outward-rounded source channel. The author SDP primal/dual values are not independently promoted to exact optima by this receipt. Their agreement within tolerance is consistent with the analytic cap and does not demonstrate a nonunital advantage.
+
+## Operational scope
+
+Accepted: trace-decreasing branch objective; sharp qubit premium bound; exact diamond distance and closest-constant identity; fixed-record attainment; higher-dimensional failure; unnormalized acquisition theorem and explicit assumptions. The output dimension and retained classical record interface are load-bearing. This is not a bath-memory decoupling theorem, autonomous controller discovery, postselected fidelity claim, hardware operation, or new recovery optimizer. It explains when nonunital branch operations can matter and how to estimate the needed quantities, while exposing an actual instance where pursuing them has almost no possible benefit.

@@ -1,0 +1,1 @@
+Version1 completed all fixed-plan training and fresh holdout sampling, then failed only when converting the large exact binomial-tail integer to text for its digest. The raw count files are intact. Version2 performs no new sampling, reads those files, enables large-integer serialization and computes the same exact-tail recurrence. No target, sample, seed or policy was changed.

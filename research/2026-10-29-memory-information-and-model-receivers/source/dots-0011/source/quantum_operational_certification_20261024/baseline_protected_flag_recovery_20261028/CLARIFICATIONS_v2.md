@@ -1,0 +1,8 @@
+# Baseline and common-pipeline representation clarifications
+2026-10-29. Governs META_SELECTOR_v1; its original text remains preserved.
+
+For baseline-initialized COMPRESSED OGD, require the supplied baseline B to have a polynomial-size explicit rational effect list, with s_B named nonzero Pauli labels and actual flag measurement/compilation access. Seed the known-label dictionary with those labels and leave all other effects at zero. Subsequent newly observed labels split from that zero/common default as usual. The finite projected representation then has at most N+s_B+1 blocks, not necessarily N+1. An arbitrary implementable baseline may instead be used only as the meta expert, provided its actual measurement cost is paid, while the OGD learner starts uniformly; that variant uses the9/4 statistical coefficient. An exponentially described baseline is not magically a compact learner initialization. Identity correction is the s_B=1 safe example used by the declared fixture.
+
+Any coherent preconditioner is frozen as part of the COMMON physical pipeline BEFORE the Bell-label measurement and before defining sigma_x, for every role and candidate. It must retain the named accessible small flag. A candidate-specific arbitrary coherent decoder applied after Bell-label acquisition is not a flag POVM and does not share the loss bit y=1[z!=x]. The two candidate experts here are flag/Pauli receivers on the same actual preconditioned source, not two unrelated coherent frames.
+
+The HIGH_ORACLE_PLAN_v1 timestamp 00:02Z is a planned minute label rather than the exact creation clock; its parameters were written before sampling (at approximately00:01Z). No sampling result informed those parameters. The plan and this correction are retained.
