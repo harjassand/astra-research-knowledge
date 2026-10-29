@@ -112,6 +112,16 @@ newly oversized record and no regression among2655previously usable defaults.
 N675andN676remain32673and32274bytes, including version/revision and newline.
 Unchanged oversized historical packets are not claimed newly compact.
 
+The required remote check also caught four archived `.pyc` originals that the
+manifest required but Git ignore rules had omitted from publication. Their exact
+bytes were already preserved in the raw archive and local source tree. They are
+now explicitly staged as evidence, without execution or source/view changes.
+Publication preflight now rejects any required input or generated view absent
+from the Git index, and any required unstaged version. Five actual-Git regression
+cases cover ignored originals, explicit staging, changed views, unrelated scratch
+and malformed manifests. The actual merged-base ancestry failure is retained
+separately; incorporating that merge commit changed no tree bytes.
+
 ## Scope, reproduction and remaining work
 
 The corpus remains mathematically weighted. The closing slice covers thermal/
