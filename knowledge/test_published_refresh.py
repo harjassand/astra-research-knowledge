@@ -398,14 +398,14 @@ class PublishedRefreshTests(unittest.TestCase):
             self.git(self.old,'remote','add','origin',str(bare))
             class InterruptOnce(GitSnapshots):
                 interrupted=False
-                def git(provider,root,*args,input=None):
-                    if args[0]=='checkout' and not provider.interrupted:
+                def git(provider,root,*args,input=None,binary=False):
+                    if args[0]=='checkout-index' and not provider.interrupted:
                         provider.interrupted=True
                         (Path(root)/'partial-note.txt').write_text('preserve this interrupted fragment')
                         metadata=Path(super().git(root,'rev-parse','--git-dir'))
                         (metadata/'index.lock').write_bytes(b'')
-                        raise ValueError('Published Git operation timed out: checkout (budget 120 seconds)')
-                    return super().git(root,*args,input=input)
+                        raise ValueError('Published Git operation timed out: checkout-index (budget 120 seconds)')
+                    return super().git(root,*args,input=input,binary=binary)
             try:
                 self.git(self.old,'fetch','origin','main')
                 provider=InterruptOnce(self.old,cache,repository_url=str(bare))
@@ -474,6 +474,9 @@ class PublishedRefreshTests(unittest.TestCase):
             with patch('knowledge.published.subprocess.run',return_value=SimpleNamespace(stdout=''))as called:
                 provider.git(self.old,'checkout','--detach',self.b.revision)
                 self.assertEqual(called.call_args.kwargs['timeout'],120)
+                provider.git(self.old,'checkout-index','-z','--stdin',input=b'proof.txt\0',binary=True)
+                self.assertEqual(called.call_args.kwargs['timeout'],120)
+                self.assertFalse(called.call_args.kwargs['text'])
                 provider.git(self.old,'fetch','origin','main')
                 self.assertEqual(called.call_args.kwargs['timeout'],45)
             with patch('knowledge.published.subprocess.run',side_effect=subprocess.TimeoutExpired('git',120)):
@@ -483,6 +486,50 @@ class PublishedRefreshTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'failed: checkout.*exit 128')as error:
                     provider.git(self.old,'checkout','--detach',self.b.revision)
                 self.assertNotIn('private host detail',str(error.exception))
+
+    def test_literal_snapshot_paths_keep_metacharacters_and_unrelated_source_work(self):
+        from knowledge.build import build, publish, check
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary); doc = folder / 'literal-source'; bare = folder / 'origin.git'
+            self.git(self.old, 'worktree', 'add', '--detach', str(doc), self.b.revision)
+            paths = ['source/ leading name.txt', 'source/nested/[literal]*?.txt', 'source/Unicode/λ.txt']
+            entries = []
+            for number, name in enumerate(paths):
+                data = ('A literal fixture source ' + str(number) + '.\n').encode()
+                target = doc / 'research/literal' / name
+                target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(data)
+                entries.append({'path': name, 'sha256': digest(data), 'bytes': len(data),
+                                'kind': 'original_scientific_source'})
+            (doc / 'research/literal/source/INDEX.json').write_bytes(encoded({
+                'schema': 'astra.intake-source-index.v1', 'files': entries}))
+            (doc / ' leading unselected.txt').write_bytes(b'Keep its committed index entry, not its working copy.')
+            outputs, manifest = build(doc); publish(doc, outputs)
+            self.git(doc, 'add', '.')
+            self.git(doc, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+                     'commit', '-qm', 'Literal scientific source paths')
+            revision = self.git(doc, 'rev-parse', 'HEAD')
+            note = doc / 'UNRELATED_NOTE'; note.write_bytes(b'Unrelated source checkout work remains.')
+            subprocess.run(['git', 'clone', '--bare', str(self.root), str(bare)], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.git(doc, 'push', str(bare), 'HEAD:refs/heads/main')
+            self.git(self.old, 'remote', 'add', 'origin', str(bare))
+            result = None
+            try:
+                provider = GitSnapshots(self.old, folder / 'cache', repository_url=str(bare))
+                result = provider.stage(manifest['input_version'])
+                self.assertEqual(check(result, regenerate=False), manifest)
+                for name in paths:
+                    target = Path('research/literal') / name
+                    self.assertEqual((result / target).read_bytes(), (doc / target).read_bytes())
+                self.assertFalse((result / ' leading unselected.txt').exists())
+                self.assertEqual(self.git(result, 'write-tree'), self.git(doc, 'rev-parse', revision + '^{tree}'))
+                self.assertEqual(self.git(result, 'status', '--porcelain'), '')
+                self.assertEqual(note.read_bytes(), b'Unrelated source checkout work remains.')
+            finally:
+                if result and result.exists(): self.git(self.old, 'worktree', 'remove', str(result))
+                self.git(self.old, 'remote', 'remove', 'origin')
+                # Only the explicitly created fixture note in its disposable worktree.
+                self.git(self.old, 'worktree', 'remove', '--force', str(doc))
 
 
 if __name__ == "__main__":

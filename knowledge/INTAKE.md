@@ -120,6 +120,10 @@ locators or qualifications stay separate. Unique provider citations remain
 inline. Every mapping, condition and correction is retained; shared citation
 storage confers no acceptance or additional statement support. Canonical
 transfers stay complete.
+In compact MCP capsules, resolve the same packet-root JSON Pointer, then follow
+the target source view's `source_fetch_id` or `fetch_id`. Source fetch retains
+the complete original selector and annotations; pointer reuse changes neither
+source identity nor statement support.
 
 For an explicitly identified public path-portability derivative, use the existing
 source-index entry with its actual public path/hash/bytes and `kind` set to

@@ -32,6 +32,8 @@ class InputContractCorrectionTests(unittest.TestCase):
                          {k:v for k,v in before["contract"].items()if k!="requires"})
         self.assertEqual(statement_view(record, operation_frame(record))["statement"], visible)
         self.assertFalse(statement_view(record, operation_frame(record))["acceptance"])
+        self.assertEqual(operation_frame(record)["consumer_origin"]["authority_notice"], "SN-input")
+        self.assertEqual(record["current_consumer"]["source_correction_notice"], "SN-input")
         expected = copy.deepcopy(record);compile_current_consumers([record]);self.assertEqual(record, expected)
         record["notices"] = [];compile_current_consumers([record]);self.assertNotIn("current_consumer", record)
 
