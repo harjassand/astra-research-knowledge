@@ -16,7 +16,8 @@ from urllib.parse import quote
 from knowledge.build import inventory
 from knowledge.evidence import search as evidence_search
 from knowledge.model import Inputs, compact_ref, digest, encoded, evidence_refs, flatten, route_id, scientific_text
-from knowledge.operations import statement_view
+from knowledge.operations import (statement_view, consumer_contract, acceptance_view,
+                                  CURRENT_CONSUMER_LAYOUT)
 from knowledge.retrieve import Library
 
 PUBLIC = "https://github.com/harjassand/astra-research-knowledge/blob/"
@@ -77,6 +78,16 @@ def source_context_layout(root, manifest):
     return layout
 
 
+def consumer_view_layout(root, manifest):
+    name = "knowledge/current/release.json"
+    if name not in manifest["outputs"]:
+        return None
+    layout = json.loads((Path(root) / name).read_bytes()).get("consumer_view_layout")
+    if layout not in (None, CURRENT_CONSUMER_LAYOUT):
+        raise ValueError("Unsupported current consumer layout; deploy its reviewed reader")
+    return layout
+
+
 class ResearchAdapter:
     def __init__(self, root, method="portable", page_bytes=24000):
         if method not in ("portable", "agent") or not 1024 <= page_bytes <= 32768:
@@ -91,6 +102,7 @@ class ResearchAdapter:
             raise ValueError("Serve a committed corpus snapshot; generated views differ from HEAD")
         self.version = self.library.manifest["input_version"]
         self.source_context_layout = source_context_layout(self.root, self.library.manifest)
+        self.consumer_view_layout = consumer_view_layout(self.root, self.library.manifest)
         self.frozen_paths = set(self.library.manifest["inputs"]) | set(self.library.manifest["outputs"])
         self.paths = set(self.git("ls-tree", "-r", "--name-only", "-z", "HEAD").split("\0")) - {""}
         self.references, self.contexts = {}, defaultdict(set)
@@ -218,7 +230,7 @@ class ResearchAdapter:
             record = self.library.records[identifier]
             preview = {}
             for field in ("requires", "provides", "assumptions", "costs", "obstruction"):
-                text = flatten(record["contract"].get(field, "UNKNOWN"))
+                text = flatten(consumer_contract(record).get(field, "UNKNOWN"))
                 preview[field] = {"text": text[:200], "omitted_characters": max(0, len(text) - 200)}
             records.append({"id": self.handle("current", identifier), "title": record["title"],
                 "url": self.record_url(identifier), "metadata": {"record_id": identifier,
@@ -227,6 +239,8 @@ class ResearchAdapter:
                 "current_notice_count": len(record["notices"]), "candidate_only": True}})
             records[-1]["metadata"]["retrieval_lanes"] = [name for name, lane in zip(lane_names, lanes)
                 if any(family(hit["id"]) == family(identifier) for hit in lane)]
+            if record.get("current_acceptance"):
+                records[-1]["metadata"]["acceptance"] = acceptance_view(record, preview=True)
             records[-1]["metadata"]["independent_leader_lanes"] = [name for name, lane in zip(lane_names, lanes)
                 if lane and family(lane[0]["id"]) == family(identifier)]
             if identifier in notice_matches:
@@ -258,16 +272,18 @@ class ResearchAdapter:
 
     def interface_view(self, identifier, preview=False):
         navigation = self.library.peers(identifier, limit=3 if preview else 8)
+        # Old handles keep their original record-view routes/payload bytes.
+        route_kind = "current" if getattr(self, "consumer_view_layout", None) else "record"
         navigation["routes"] = [dict(route,
-            provider_fetch_id=self.handle("record", route["provider"]),
-            consumer_fetch_id=self.handle("record", route["consumer"]))
+            provider_fetch_id=self.handle(route_kind, route["provider"]),
+            consumer_fetch_id=self.handle(route_kind, route["consumer"]))
             for route in navigation["routes"]]
         navigation["consumers"] = [dict(route,
-            consumer_fetch_id=self.handle("record", route["consumer"]))
+            consumer_fetch_id=self.handle(route_kind, route["consumer"]))
             for route in navigation["consumers"]]
         for item in navigation["candidates"]:
-            item["fetch_id"] = self.handle("record", item["provider"])
-            item["consumer_fetch_id"] = self.handle("record", item["consumer"])
+            item["fetch_id"] = self.handle(route_kind, item["provider"])
+            item["consumer_fetch_id"] = self.handle(route_kind, item["consumer"])
             if preview:
                 # Keep the named quantity and qualification visible. Full
                 # bindings and all provider conditions remain fetchable.
@@ -282,6 +298,7 @@ class ResearchAdapter:
 
     def record_payload(self, record):
         packet = self.library.packet([record["id"]], max_bytes=16 * 1024 * 1024)["packets"][0]
+        route_kind = "current" if getattr(self, "consumer_view_layout", None) else "record"
         context_routes = {}
         for role, value in (("current_review", record["review_overlays"]),
                             ("current_notice", record["notices"]),
@@ -294,8 +311,8 @@ class ResearchAdapter:
         return {"scope": "Current operation capsule. Historical reported labels do not override current version-bound reviews. Conditions do not establish acquired inputs, measurements, devices, novelty or advantage.",
             "id": record["id"], "content_version": record["content_version"],
             **statement_view(record, self.library.operation_frames[record["id"]]),
-            "contract": record["contract"], "review_overlays": record["review_overlays"],
-            "notices": record["notices"], "reported_review": record["review"],
+            "contract": consumer_contract(record), "review_overlays": record["review_overlays"],
+            "notices": packet["notices"], "reported_review": record["review"],
             "historical_reviews": packet["historical_reviews"],
             "dependencies": packet.get("dependencies", "UNKNOWN; this packet has no explicit dependency list"),
             "parents": record["parents"],
@@ -305,8 +322,8 @@ class ResearchAdapter:
             "transfers": packet.get("transfers", []),
             "shared_consumer_navigation": self.interface_view(record["id"], preview=True),
             "consumer_bindings": [dict(item,
-                provider_fetch_id=self.handle("record", item["provider"]),
-                consumer_fetch_id=self.handle("record", item["consumer"]))
+                provider_fetch_id=self.handle(route_kind, item["provider"]),
+                consumer_fetch_id=self.handle(route_kind, item["consumer"]))
                 for item in packet.get("interface_navigation", {}).get("bindings", [])],
             "consumer_binding_scope": "Complete mappings appear once in transfers[*].slot_binding; consumer_bindings references those same exact-version transfers. Peer previews require fetching the named provider and consumer.",
             "historical_versions": [dict(v, fetch_id=self.register(dict(v, lines=None)), url=self.url(v["path"])) for v in record.get("history", [])],
@@ -397,6 +414,10 @@ class ResearchAdapter:
         result["review_overlays"] = references(original["review_overlays"], "current_review")
         result["transfers"] = references(original["transfers"], "documented_transfer")
         result["source_reported_gaps"] = references(original["reported_review"].get("gaps", []), "source_reported_gap")
+        if any(item.get("legacy_status_fields_are_historical") for item in record.get("current_acceptance", [])):
+            result.pop("source_reported_gaps")
+            result["historical_source_assessment"] = {"fetch_id": self.handle("history", record["id"]),
+                "scope": "Earlier review/status and validation prerequisites are superseded for programme correctness by the explicit current human acceptance. Full original assessment and evidence remain at this history route; current scientific conditions remain in the contract."}
         result["review_and_correction_sources"] = [
             {"fetch_id": identifier, "evidence_ref_field": "evidence", "evidence_ref_index": primary[identifier],
              "roles": route["roles"]} if identifier in primary else route

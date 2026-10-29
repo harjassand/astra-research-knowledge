@@ -99,6 +99,8 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
     for identifier in candidates:
         record, frame = records[identifier], frames[identifier]
         scientific = frame.get("scientific_excerpt", {}).get("text") if historical_summary(record) else None
+        if record.get("current_consumer"):
+            scientific = record["current_consumer"]["statement"]
         text = record["title"] + "\n" + (scientific or flatten(record["statement"]))
         if record["kind"] != "result":
             text += "\n" + record["body"]

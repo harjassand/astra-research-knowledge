@@ -6,6 +6,8 @@ import unittest
 from unittest.mock import patch
 
 from knowledge.mcp_adapter import ResearchAdapter
+from knowledge.operations import consumer_contract
+from knowledge.model import route_id
 from knowledge.model import ROOT, digest, encoded, Inputs
 
 
@@ -37,18 +39,40 @@ def expand_current_references(capsule, value):
     return expand(value)
 
 
+def expand_consumer_notice_links(value, records):
+    """Follow each compact projection to its actual complete current contract."""
+    if isinstance(value, list):
+        return [expand_consumer_notice_links(item, records) for item in value]
+    if not isinstance(value, dict):
+        return value
+    result = {}
+    for key, item in value.items():
+        if key != "consumer_views":
+            result[key] = expand_consumer_notice_links(item, records)
+            continue
+        views = []
+        for link in item:
+            target = records[link["subject"]["id"]]
+            assert link["current_packet"] == "knowledge/current/packets/" + route_id(target["id"]) + ".json"
+            current = target["current_consumer"]
+            assert current["subject"] == link["subject"]
+            views.append({field: current[field] for field in ("subject", "statement", "contract", "scope")})
+        result[key] = views
+    return result
+
+
 class AdapterTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.adapter = ResearchAdapter(ROOT)
 
     def test_record_capsule_retains_all_current_corrections_and_review_scope(self):
-        for identifier in ("N557", "N684", "N1121"):
+        for identifier in ("N557", "N675", "N684", "N1121"):
             record = self.adapter.library.resolve(identifier)
             packet = complete(self.adapter, identifier)
-            self.assertEqual(packet["notices"], record["notices"])
+            self.assertEqual(expand_consumer_notice_links(packet["notices"], self.adapter.library.records), record["notices"])
             self.assertEqual(packet["review_overlays"], record["review_overlays"])
-            self.assertEqual(packet["contract"], record["contract"])
+            self.assertEqual(packet["contract"], consumer_contract(record))
             self.assertEqual(packet["content_version"], record["content_version"])
             if record["review_overlays"]:
                 self.assertTrue(any("current_review" in r["roles"] for r in packet["review_and_correction_sources"]))
@@ -111,7 +135,7 @@ class AdapterTests(unittest.TestCase):
         context = next(c for c in value["current_context"] if c["id"] == record["id"])
         self.assertEqual(context["notice_count"], len(record["notices"]))
         current = complete(self.adapter, context["fetch_id"])
-        self.assertEqual(expand_current_references(current, current["notices"]), record["notices"])
+        self.assertEqual(expand_consumer_notice_links(expand_current_references(current, current["notices"]), self.adapter.library.records), record["notices"])
         self.assertEqual(current["contract"], record["contract"])
         self.assertIn("Before reusing", value["required_context_action"])
         self.assertIn("does not inherit", value["scope"])

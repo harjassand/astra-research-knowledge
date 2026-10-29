@@ -1,0 +1,11 @@
+# Current acceptance and compact navigation
+
+This is a technical presentation and navigation correction. The original N675 card/status, standing human acceptance and all2,372 scientific content versions are unchanged. Its current preview and contract now carry the already accepted exact scope, including all four source claims. Fixed input dimension, restricted POVM classes, equal-reference-marginal order, efficient witnesses, novelty and physical capability are not inferred. N661 is not promoted. No new scientific audit occurred.
+
+The version-bound current view preserves the complete contract and sources, while earlier review requests remain on history routes. New shared-consumer navigation uses the compact current route. Releases without the new layout marker retain their exact historical record/source payload bytes; three real old payloads were compared byte for byte across readers.
+
+The exposed G06 signed-moment problem still misses its source family in the primary five. It remains discoverable through the returned common-consumer navigation without a rewritten query. On this same input, the provider current capsule is27,168 bytes versus36,219 for its legacy record capsule; both still take two default pages. The current consumer takes two pages rather than the previously observed three. All contract, transfer, notice, review and source conditions were checked after expanding citation references. This is navigation improvement, not a direct-ranking repair.
+
+The usable premise remains the exact positive-moment family and signed functional: acquiring the third moment narrows a separate fourth-moment interval while leaving both attained task extrema and the sharp task interval intact. It does not imply zero Bayesian value or irrelevance to another objective. The returned governing proof was read.
+
+N675 and G06 are exposed diagnostics with substantial prior context. The nine problems from the previous intake are now regression problems; neither set is blind or held out. The comparison records lexical, full-content, structured and portable results without changing model weights, aliases or ranking policy. Runtime deployment and actual installed/public checks follow reviewed merge. Cold ordinary corpus refresh can still exceed the request timeout; this change does not claim to repair that latency.

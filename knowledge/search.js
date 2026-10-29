@@ -33,11 +33,17 @@ const packetButton = (dataset, container, packetPath, label = 'Read compact pack
         ({id, decision, reviewer, scope, remaining_gaps, authority}));
       const notices = packet.notices.map(({notice_id, status, clarification, whole_claim_invalidated, affected_units, context_only_notice, parent_context_card}) =>
         ({notice_id, status, clarification, whole_claim_invalidated, affected_units, context_only_notice, parent_context_card}));
-      text.textContent = JSON.stringify({statement: packet.scientific_card_excerpt?.text ?? packet.statement,
-        statement_scope: packet.scientific_card_excerpt?.scope,
+      const acceptance = packet.current_acceptance;
+      const historicalReview = acceptance?.some(item => item.legacy_status_fields_are_historical);
+      text.textContent = JSON.stringify({acceptance,
+        statement: packet.current_consumer ? packet.statement : packet.scientific_card_excerpt?.text ?? packet.statement,
+        statement_scope: packet.current_consumer?.scope ?? packet.scientific_card_excerpt?.scope,
         card_source: packet.scientific_card_excerpt?.source,
-        historical_reported_status: packet.scientific_card_excerpt ? packet.statement : undefined,
-        contract, review: reviews.length ? reviews : packet.review, notices}, null, 2);
+        historical_reported_status: !packet.current_consumer && packet.scientific_card_excerpt ? packet.statement : undefined,
+        contract, review: reviews.length ? reviews : historicalReview ? {
+          context: 'Original source assessment is historical; current human acceptance governs programme correctness. This is not a new audit.',
+          authority: packet.authority, history: packet.history
+        } : packet.review, notices}, null, 2);
       const fullPacket = document.createElement('a');
       fullPacket.href = dataset.url(packetPath);
       fullPacket.textContent = 'Complete packet, exact evidence and version identities';
@@ -198,7 +204,15 @@ document.querySelector('#search').addEventListener('submit', async event => {
       note.className = 'note';
       note.textContent = `${candidate.kind}; ${candidate.identifier ? 'identifier lookup' : `${candidate.safety ? 'full-card lexical safety lane, independent score scale' : 'content/contract lane'}; score ${candidate.score.toFixed(2)}`}. Similar wording does not establish composition.`;
       const expand = packetButton(dataset, article, packetPath);
-      article.append(heading, link, note, expand);
+      article.append(heading, link);
+      if (candidate.acceptance?.length) {
+        const acceptance = document.createElement('p');
+        const label = document.createElement('strong');
+        label.textContent = candidate.acceptance.map(item => `${item.status}: standing human acceptance at the named version and scope; no new audit.`).join(' ');
+        acceptance.append(label);
+        article.append(acceptance);
+      }
+      article.append(note, expand);
       results.append(article);
     }
   } catch (error) { if (request === generation) status.textContent = `Access failure: ${error.message}. Use the pinned raw packet route in README.md.`; }
