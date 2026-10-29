@@ -1,0 +1,13 @@
+# Primary context and priority boundary
+
+2026-10-29. Limited primary-source check, not an exhaustive novelty review.
+
+1. **Known tree baseline.** The accepted `energy_redundancy_classicality_20261029/GOVERNING.md`, its `PRIOR_ART_AND_SHARPNESS.md`, and the matching receiving review already derive fixed-dimensional residual-to-EB error of order `b log(1/b)` by binary-tree iteration and a true channel de Finetti theorem. Their mandatory Knott–Tufarelli–Piani–Adesso prior-art qualification is preserved. That tree mechanism was briefly rediscovered during this construction and deliberately not claimed as new. The present candidate uses a bounded qubit affine deficit factor instead, yielding linear dependence on b and then square-root dependence on Holevo loss.
+
+2. **Qubit EB geometry is established machinery.** Directly read Mary Beth Ruskai, *Qubit Entanglement Breaking Channels*, arXiv:quant-ph/0302032v3, Sections 1–3, especially Theorems 1, 3 and 5. https://arxiv.org/pdf/quant-ph/0302032v3 . The paper gives the qubit measure/prepare structure and necessary Bloch singular-value sum bound. This is relevant to the separate sharpness witness and prevents treating that norm bound as an original ingredient. Our comparator is explicitly a two-outcome classical-to-quantum preparation map; no general classification theorem is needed to prove its EB property.
+
+3. **Approximate broadcasting has substantial prior literature.** Directly read the introduction, statement context and preliminary sections of Xie–Fang–Wang–Duan, *Approximate broadcasting of quantum correlations*, Physical Review A 96, 022302 (2017), DOI10.1103/PhysRevA.96.022302. Primary PDF: https://www.kunfang.info/pdfs/XFWD17-PRA.pdf . That work studies state/correlation broadcasting fidelities by semidefinite programs and asymptotic relationships to discord. This limited read does not establish whether the exact uniform linear qubit residual factorization has appeared previously. No priority claim is supported.
+
+4. **Recovery is an accepted dependency, not a reopened conjecture.** The governing proof uses the already-received actual-prior universal averaged rotated-Petz theorem and CPTP support completion from the earlier packets, ultimately Junge–Renner–Sutter–Wilde–Winter, arXiv:1509.07127v3. It does not use an unrotated-Petz Umegaki remainder, discard a barycenter penalty in a fixed-prior entropy argument, or presume arbitrary correlated-barycenter factorization.
+
+5. **Invalid route remains invalid.** `eb_resolvent_actual_prior_20261029/TNI_ORDERING_OBSTRUCTION.md` is unchanged. No state-dependent left resolvent has been normalized or asserted TP. The new proof builds its comparator by an ordinary projective measurement and two proved-positive prepared states.

@@ -1,0 +1,8 @@
+# Objective-specific classification and current status
+2026-10-29. Additive qualification.
+
+The one-dimensional/"classical" versus two-dimensional/"quantum" terminology classifies IRREDUCIBLE RESPONSE-ALGEBRA COMPONENTS and the recovery action attaining the maximally mixed entanglement-fidelity optimum. It is not a classification of the original channel's entanglement-breaking status, quantum capacity, all information orders, or complete input-output state. N(I/2) and its cross/multiplicity coherences can matter decisively for those other questions even though they drop out of this particular decoder objective. No such broader background-independence claim is made.
+
+Root's independent information_support_recovery_20261029/OBJECTIVE_SPECIFIC_BACKGROUND_BOUNDARY.md provides an explicit same-response, different-entanglement-status warning. That warning is consistent with and required when interpreting the present objective-specific algebraic result.
+
+Current status: new abstract extension PENDING independent receiving. Ten small dense channel cases have been executed: quantum response with arbitrary full-rank replacer backgrounds and input-dependent classical trine outcomes, plus an explicit generic noncentral channel outside the promise. They use ideal intrinsic records and evaluate the physical two-axis extraction or one-axis output, not a finite QPE/controller hardware run. The first attempt to serialize the otherwise passing numerical cases encountered a NumPy integer JSON type error; the serializer was corrected and the complete script reran successfully. Earlier narrower streaming and operator-Gram receipts do not automatically accept this extension.
