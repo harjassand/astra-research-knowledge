@@ -61,6 +61,21 @@ def expand_consumer_notice_links(value, records):
     return result
 
 
+def citation_path_defaults(value):
+    """Compare complete selectors with the existing read_path == path default.
+
+    No range, hash, quote, qualification or different extraction path is erased.
+    """
+    if isinstance(value, list):
+        return [citation_path_defaults(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    result = {key: citation_path_defaults(item) for key, item in value.items()}
+    if {"path", "sha256", "lines"} <= result.keys():
+        result.setdefault("read_path", result["path"])
+    return result
+
+
 class AdapterTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -70,7 +85,8 @@ class AdapterTests(unittest.TestCase):
         for identifier in ("N557", "N675", "N684", "N1121"):
             record = self.adapter.library.resolve(identifier)
             packet = complete(self.adapter, identifier)
-            self.assertEqual(expand_consumer_notice_links(packet["notices"], self.adapter.library.records), record["notices"])
+            self.assertEqual(citation_path_defaults(expand_consumer_notice_links(
+                packet["notices"], self.adapter.library.records)), citation_path_defaults(record["notices"]))
             self.assertEqual(packet["review_overlays"], record["review_overlays"])
             self.assertEqual(packet["contract"], consumer_contract(record))
             self.assertEqual(packet["content_version"], record["content_version"])
@@ -181,7 +197,7 @@ class AdapterTests(unittest.TestCase):
                 handle = target.get("source_fetch_id", target.get("fetch_id"))
                 self.assertTrue(handle)
                 source = complete(self.adapter, handle)
-                self.assertEqual(source["source"], compact_ref(original))
+                self.assertEqual(citation_path_defaults(source["source"]), citation_path_defaults(compact_ref(original)))
                 self.assertTrue(source["text"])
 
     def test_portable_server_needs_no_neural_dependencies_and_explicit_fallback(self):
