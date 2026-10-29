@@ -6,6 +6,39 @@ from knowledge.model import digest, flatten, tokens, route_id
 CURRENT_CONSUMER_LAYOUT = "explicit-current-acceptance-v1"
 
 
+def current_scope_navigation(record, records, limit=6):
+    """Expose only explicit curator-authored outlinks, with current identities.
+
+    This is evidence navigation. It neither infers scientific applicability nor
+    copies the target's acceptance onto the search candidate or its neighbours.
+    """
+    if not isinstance(limit, int) or not 1 <= limit <= 50:
+        raise ValueError("Current-scope navigation limit must be in 1..50")
+    routes, seen = [], set()
+    for outer in record.get("notices", []):
+        notice = outer.get("notice", outer)
+        identifier = notice.get("current_scope_unit")
+        if identifier is None:
+            continue
+        if not isinstance(identifier, str) or identifier not in records:
+            raise ValueError("Unknown explicit current-scope target: " + str(identifier))
+        if not notice.get("notice_id") or not notice.get("source_refs"):
+            raise ValueError("Current-scope navigation requires its authority notice and support")
+        if identifier == record["id"]:
+            continue
+        key = (notice["notice_id"], identifier)
+        if key in seen:
+            continue
+        seen.add(key)
+        target = records[identifier]
+        routes.append({"id": identifier, "content_version": target["content_version"],
+                       "title": target["title"], "authority_notice": notice["notice_id"],
+                       "packet": "knowledge/current/packets/" + route_id(identifier) + ".json"})
+    return {"routes": routes[:limit], "total_routes": len(routes),
+            "omitted_routes": max(0, len(routes) - limit),
+            "scope": "Explicit current-scope notice navigation only; no compatibility, acceptance transfer or discharged premise. Fetch the target's complete conditions and actual sources."}
+
+
 def compile_current_consumers(records):
     """Project explicit, version-bound authority without rewriting its sources.
 

@@ -47,16 +47,20 @@ def sections(text):
     return {key: "\n".join(value).strip() for key, value in result.items()}
 
 
-def packet_review(review, packet_evidence, preserve_annotations=False):
+def packet_review(review, packet_evidence, preserve_annotations=False, evidence_field="evidence"):
     """Reference review citations through the packet evidence array when complete."""
     result = dict(review)
-    originals = list(evidence_refs(review.get("evidence", [])))
+    original_field = review.get(evidence_field, [])
+    originals = list(evidence_refs(original_field))
+    # Do not replace a mixed annotation/container with only its nested refs.
+    if not isinstance(original_field, list) or originals != original_field:
+        return result
     refs = [compact_ref(reference) for reference in originals]
     positions = {encoded(reference): index for index, reference in enumerate(packet_evidence)}
     keys = [encoded(reference) for reference in refs]
     if refs and all(key in positions for key in keys):
-        result.pop("evidence", None)
-        result["evidence_ref_field"] = "evidence"
+        result.pop(evidence_field, None)
+        result["evidence_ref_field"] = evidence_field
         result["evidence_ref_indices"] = [positions[key] for key in keys]
         if preserve_annotations:
             annotations = [{key: value for key, value in original.items()
@@ -88,6 +92,57 @@ def packet_transfer_references(packet):
         if encoded(reference) in pointers else reference
         for reference in transfer.get("evidence", [])])
         for transfer in packet["transfers"]]
+
+
+def packet_shared_citations(packet):
+    """Share identical complete citations through existing packet-root pointers.
+
+    Origins are limited to fields retained by both full and compact MCP views.
+    Primary evidence remains inline and in its original order. Different ranges,
+    quotes or qualifications never share a pointer.
+    """
+    origins = {}
+    def index(value, pointer):
+        if isinstance(value, dict):
+            if {"path", "sha256", "lines"} <= value.keys():
+                origins.setdefault(encoded(value), pointer)
+                return
+            for key, child in value.items():
+                index(child, pointer + "/" + key.replace("~", "~0").replace("/", "~1"))
+        elif isinstance(value, list):
+            for number, child in enumerate(value):
+                index(child, pointer + "/" + str(number))
+    for field in ("evidence", "notices", "review_overlays", "transfers"):
+        index(packet.get(field, []), "/" + field)
+    def replace(value, pointer):
+        if isinstance(value, dict):
+            if {"path", "sha256", "lines"} <= value.keys():
+                origin = origins.get(encoded(value))
+                return {"evidence_ref_pointer": origin} if origin and origin != pointer else dict(value)
+            return {key: replace(child, pointer + "/" + key.replace("~", "~0").replace("/", "~1"))
+                    for key, child in value.items()}
+        if isinstance(value, list):
+            return [replace(child, pointer + "/" + str(number)) for number, child in enumerate(value)]
+        return value
+    result = dict(packet)
+    # Never put a pointer into a history-only payload that lacks its origin.
+    # Keep notice/review capsule structures byte-for-byte as before. They can
+    # supply complete origins without themselves becoming references.
+    for field in ("transfers", "relationships", "review", "current_acceptance"):
+        if field in result:
+            result[field] = replace(result[field], "/" + field)
+    return result
+
+
+def packet_default_read_paths(value):
+    """Omit only a citation's redundant read_path == path, an existing default."""
+    if isinstance(value, list):
+        return [packet_default_read_paths(child) for child in value]
+    if not isinstance(value, dict):
+        return value
+    return {key: packet_default_read_paths(child) for key, child in value.items()
+            if not (key == "read_path" and {"path", "sha256", "lines"} <= value.keys()
+                    and child == value["path"])}
 
 
 def packet_excerpt(reference, passage, selection):
@@ -465,6 +520,12 @@ def build(root=ROOT):
     from knowledge.operations import (compile_current_consumers, consumer_contract,
                                       acceptance_view, consumer_notice_view, CURRENT_CONSUMER_LAYOUT)
     compile_current_consumers(records)
+    # A broken declared current-scope outlink is an ingestion failure, rather
+    # than stale or silently missing guidance in later agent search menus.
+    from knowledge.operations import current_scope_navigation
+    current_records = {record["id"]: record for record in records}
+    for record in records:
+        current_scope_navigation(record, current_records)
 
     documents = []
     for record in sorted(records, key=lambda item: item["id"]):
@@ -592,13 +653,27 @@ def build(root=ROOT):
                 packet_review(gap, packet["evidence"], preserve_annotations=True)
                 if isinstance(gap, dict) else gap for gap in packet["review"]["gaps"]])
         if default_output_size() > 32768:
-            original_transfers = packet["transfers"]
-            packet["transfers"] = packet_transfer_references(packet)
-            if packet["transfers"] != original_transfers:
+            validation = packet["review"].get("validation", {})
+            if isinstance(validation, dict) and validation.get("reported_status_evidence"):
+                packet["review"] = dict(packet["review"], validation=packet_review(
+                    validation, packet["evidence"], preserve_annotations=True,
+                    evidence_field="reported_status_evidence"))
+        if default_output_size() > 32768:
+            shared = packet_shared_citations(packet)
+            if shared != packet:
+                packet = shared
                 packet["evidence_reference_scope"] = (
-                    "Transfer evidence_ref_pointer is a JSON Pointer within this complete packet, replacing "
-                    "an identical complete citation only. Every unique source, mapping, condition and correction "
-                    "remains; citation reuse confers no acceptance or statement support.")
+                    "evidence_ref_pointer resolves within this complete packet to an identical full citation. "
+                    "Every source qualification, mapping, condition and correction remains; reuse confers no acceptance.")
+        if default_output_size() > 32768:
+            # These projected fields do not replace the native capsule's
+            # scientific citation. A missing read_path already means path;
+            # different extraction/HTML branches remain explicit.
+            if not packet["source_excerpts"]:
+                packet.pop("source_excerpt_scope", None)
+            for field in ("evidence", "notices", "relationships", "review", "current_acceptance"):
+                if field in packet:
+                    packet[field] = packet_default_read_paths(packet[field])
         outputs["knowledge/current/packets/" + route_id(record["id"]) + ".json"] = encoded(packet)
     coverage = {
         "records_by_kind": dict(Counter(record["kind"] for record in records)),

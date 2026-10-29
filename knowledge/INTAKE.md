@@ -1,5 +1,20 @@
 # Capital integration contract
 
+An existing semantic notice may name `current_scope_unit` for a later scoped
+construction. The same ordinary build validates that exact target and required
+notice support; an unknown target fails ingestion. CLI/native search exposes
+these explicit outlinks with the current target content version. Native routes
+include a snapshot-bound fetch handle. Bounded previews state total/omitted
+routes; fetch the candidate's complete notices for the rest. Each outlink is
+evidence navigation, with no inferred compatible transfer, acceptance or premise.
+No new producer metadata or reporting step is required.
+Agent reranking also considers one hop over these explicit outlinks from its
+ordinary lexical seeds, before family siblings, within the same192-record cap.
+Targets compete under the unchanged relevance model using their own statements,
+conditions and corrections. Neither a route nor a high score establishes a
+compatible transfer. No edge is inferred from wording, and no multi-hop crawl
+or additional model endpoint is introduced.
+
 The same build/check now generates lossless operation views and evidence
 navigation from existing record citations and recognized selected-public-source
 indexes (`astra.intake-source-index.v1`, `selected_frozen_source_index`, or
@@ -127,6 +142,15 @@ locators or qualifications stay separate. Unique provider citations remain
 inline. Every mapping, condition and correction is retained; shared citation
 storage confers no acceptance or additional statement support. Canonical
 transfers stay complete.
+The same pointer convention may share identical citations in transfer, review
+and relationship metadata. Origins remain in evidence, notices, current reviews
+or transfers, so both full packets and compact MCP capsules retain the target.
+Primary evidence order and every distinct range, quote and qualification remain.
+Named validation `reported_status_evidence` may use the existing
+`evidence_ref_field`/`evidence_ref_indices` convention; annotations remain attached.
+A missing `read_path` defaults to `path`; only identical duplicate paths may be
+omitted, never a different extraction/HTML branch.
+
 In compact MCP capsules, resolve the same packet-root JSON Pointer, then follow
 the target source view's `source_fetch_id` or `fetch_id`. Source fetch retains
 the complete original selector and annotations; pointer reuse changes neither

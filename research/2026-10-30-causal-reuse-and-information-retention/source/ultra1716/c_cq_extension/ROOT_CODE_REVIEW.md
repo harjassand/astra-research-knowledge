@@ -1,0 +1,15 @@
+# Whole intake of the exact mixed-retention compiler and SAME-source receipt
+
+30 October 2026. ACCEPTED at the displayed rational-matrix operation and actual same0,+ execution scope. Sources read-only: root_cq_retention/compile_retention.py, SAME_BINARY_SOURCE.json and SAME_BINARY_SOURCE_RESULT.json. Their hashes are bound in ROOT_CODE_RECEIPT.json. This code review complements ROOT_RETENTION_REVIEW.md; it does not rerun a model, a solver or the producer.
+
+I read the complete compiler, its native matrix encoding, exact16-entry extraction receipt and finite rejected-factor construction. No consequential software-contract or mathematical issue was found at that scope.
+
+The complex rational parser and exact Hermitian/trace checks admit density matrices. The PSD routine is a rational Schur/LDL elimination: a positive pivot updates the remaining Hermitian block, and a zero pivot must have a zero active row. All signs are exact; no eigenvalue threshold is used. Kernel bases yield orthogonal projectors V(V*V)^-1V*. The total common-kernel projector is nested in each competing-mixture kernel, so their difference is exactly Pi_i within the total support. Hermiticity, idempotence, cross annihilation and0<=r_i<=1 are explicitly checked.
+
+When rmin>0, every complex left/right extraction entry is verified from full traces; the counter counts2*n^3=16 on the actual binary source. No unjustified entrywise PSD order or simultaneous-POVM normalization occurs. If a weight vanishes, the universal theorem gives infinite inverse cost and the compiler can still construct a finite rejected factor.
+
+The finite floors use the exact pseudoinverse identity (A+Pker)^-1-Pker. Since both matrices passed to floor_positive have positive trace, Tr(A^+) is nonzero; min(1,1/Tr A^+) is a valid rational lower floor for all positive eigenvalues. The chosen h enforces epsilon<=ab/8, and k=max(h,floor(c*h/(1-c*rmin))+1) pays the STRICT gap. For the actual source it returns a=1/4,b=1,h=5,k=31 and exact q=(1/2147483648,2147483647/2147483648), p=e0, for rejected factor3/2. Section7's bound gives c*Dout<=30.75 log2<31 log2=Din, so no numerical logarithm is needed.
+
+The source checksum matches the receipt; the real rational0,+ preparations are exactly the same ones used by C/B. The actual0.00405s after-import timing and zero matrix-log/root/solver/reference-query counts are consistent with the literal code. I did not rerun it and do not claim a second independent numerical acquisition. Arbitrary rational mixed/complex states are the algorithmic contract; this receipt executes only the supplied binary real source. Large k is explicitly charged and yields a dyadic recipe rather than silently materializing an exponential denominator. No polynomial-short-witness claim follows.
+
+This is a concrete coefficient AND finite-rejection operation under exact supplied-state supports. It supplies no physical state estimation/calibration, quantum experiment, fixed-support robustness, recovery instrument, privacy/guessing/capacity or unchanged multi-use factor. Those source/operational limits are preserved.

@@ -14,6 +14,35 @@ from knowledge.operations import premise_check, statement_view, historical_summa
 RUNTIME = Path(__file__).parent / "runtime"
 
 
+def current_scope_candidates(records, seeds, budget=192, kind=None):
+    """One query-independent hop over actual curator-authored scope outlinks.
+
+    Seeds retain priority and the fixed overall reranking cap. New targets are
+    scored normally with their own scientific statements and qualifications;
+    this navigation supplies neither applicability nor acceptance.
+    """
+    from knowledge.operations import current_scope_navigation
+    if not isinstance(budget, int) or not 1 <= budget <= 192:
+        raise ValueError("Current-scope candidate budget must be in 1..192")
+    candidates = list(dict.fromkeys(seeds))[:budget]
+    paths, seen = {}, set(candidates)
+    for identifier in tuple(candidates):
+        if identifier not in records:
+            raise ValueError("Unknown candidate seed: " + identifier)
+        navigation = current_scope_navigation(records[identifier], records, limit=50)
+        for route in navigation["routes"]:
+            target = route["id"]
+            if kind and records[target]["kind"] != kind:
+                continue
+            if target in seen or len(candidates) >= budget:
+                continue
+            seen.add(target)
+            candidates.append(target)
+            paths[target] = dict(route, from_record=identifier,
+                scope="Explicit current-scope candidate route only; normal relevance scoring applies. No scientific compatibility or acceptance transfer.")
+    return candidates, paths
+
+
 class Reranker:
     def __init__(self):
         try:
@@ -88,10 +117,10 @@ def rerank(library, query, limit=5, kind=None, object_text="", operation="", ava
             break
     # Expand siblings BEFORE grouping results: an unmentioned intermediate can
     # be relevant even when the broad parent has only a moderately ranked hit.
-    candidates = list(seeds)
+    candidates, current_scope_paths = current_scope_candidates(records, seeds, kind=kind)
     siblings = sorted(records.values(), key=lambda r: (families.index(family(r)) if family(r) in families else len(families), r["kind"] == "result", r["id"]))
     for record in siblings:
-        if family(record) in families[:24] and (not kind or record["kind"] == kind) and record["id"] not in seeds:
+        if family(record) in families[:24] and (not kind or record["kind"] == kind) and record["id"] not in candidates:
             candidates.append(record["id"])
     candidates = candidates[:192]
     frames = library.operation_frames
@@ -162,6 +191,8 @@ def rerank(library, query, limit=5, kind=None, object_text="", operation="", ava
             item["source_match"] = documents[index]["evidence"]
             item["next"]["source"] = ["source", documents[index]["id"]]
         item.update(statement_view(record, frame))
+        if identifier in current_scope_paths:
+            item["current_scope_candidate"] = current_scope_paths[identifier]
         results.append(item)
         if len(results) == limit:
             break
@@ -200,7 +231,8 @@ def rerank(library, query, limit=5, kind=None, object_text="", operation="", ava
             item["next"]["peers"] = ["peers", item["id"]]
     return {"query": query, "object": object_text, "operation": operation, "method": "agent",
             "expansions": expansions, "candidate_records": len(candidates), "ranked_views": len(views),
-            "candidate_budget": 192, "family_expansion_budget": 24, "candidate_generators": ["field_BM25_with_visible_expansions", "matched_content_BM25_without_expansion"],
+            "candidate_budget": 192, "family_expansion_budget": 24, "candidate_generators": ["field_BM25_with_visible_expansions", "matched_content_BM25_without_expansion", "one_hop_explicit_current_scope_outlinks"],
+            "current_scope_candidate_count": len(current_scope_paths),
             "ranking_views": ["operation", "source_passage", "qualified_operation", "current_notice"],
             "qualification_view_scope": "One bounded current contract view and at most one query-selected current-notice view per candidate. Same model and candidate cap; fields/units stay source-local. Available/unavailable declarations are inspection-only, never positive ranking terms.",
             "model_revision": library.reranker.version,
