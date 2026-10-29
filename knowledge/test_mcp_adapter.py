@@ -166,7 +166,7 @@ class AdapterTests(unittest.TestCase):
 
     def test_portable_server_needs_no_neural_dependencies_and_explicit_fallback(self):
         def absent(*args, **kwargs):
-            if kwargs.get("method") == "agent":
+            if kwargs.get("method") == "rerank":
                 raise ValueError("Agent runtime missing. Portable search remains available.")
             return original(*args, **kwargs)
         original = self.adapter.library.search
@@ -181,7 +181,7 @@ class AdapterTests(unittest.TestCase):
 
         def lane(*args, **kwargs):
             hit = {"id": identifier}
-            if kwargs.get("method") == "agent":
+            if kwargs.get("method") == "rerank":
                 hit["notice_match"] = match
             return {"results": [hit]}
 

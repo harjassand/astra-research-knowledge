@@ -612,6 +612,8 @@ def build(root=ROOT):
     from knowledge.evidence import projection
     evidence_outputs, evidence_coverage = projection(root, inputs, records, discovered["selected_public_source_indexes"], transfers)
     outputs.update(evidence_outputs)
+    from knowledge.contextual_search import projection as contextual_projection
+    outputs.update(contextual_projection(root, inputs, records))
     coverage["evidence_navigation"] = evidence_coverage
     outputs["knowledge/current/coverage.json"] = encoded(coverage)
     topic_records = defaultdict(dict)

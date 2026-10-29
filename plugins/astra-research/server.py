@@ -34,7 +34,7 @@ class FetchResponse(TypedDict):
     metadata: dict[str, Any]
 
 
-def create_server(root, method="portable", page_bytes=24000, published=False, cache=None, poll_seconds=30):
+def create_server(root, method="agent", page_bytes=24000, published=False, cache=None, poll_seconds=30):
     root = Path(root).resolve()
     if not (root / "knowledge/current/manifest.json").is_file():
         raise ValueError("Set ASTRA_RESEARCH_ROOT or --root to a committed astra-research-knowledge checkout")
@@ -76,7 +76,7 @@ def main():
     parser.add_argument("--transport", choices=("stdio", "streamable-http"), default="stdio")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
-    parser.add_argument("--method", choices=("portable", "agent"), default="portable")
+    parser.add_argument("--method", choices=("portable", "agent"), default="agent")
     parser.add_argument("--published-main", action="store_true",
                         help="Check the public release on requests and validate immutable data snapshots")
     parser.add_argument("--cache-dir", type=Path)

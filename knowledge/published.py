@@ -26,7 +26,7 @@ RELEASE_URL = "https://raw.githubusercontent.com/harjassand/astra-research-knowl
 RELEASE_SCHEMA = "astra.public-corpus-release.v1"
 REPOSITORY_URL = "https://github.com/harjassand/astra-research-knowledge.git"
 SOFTWARE = ("knowledge/model.py", "knowledge/build.py", "knowledge/retrieve.py",
-            "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/evidence.py",
+            "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/contextual_search.py", "knowledge/evidence.py",
             "knowledge/interfaces.py", "knowledge/mcp_adapter.py", "knowledge/published.py",
             "plugins/astra-research/server.py")
 

@@ -5,6 +5,7 @@ Describe the problem rather than guessing a card ID:
 ```
 python3 knowledge/retrieve.py search "your scientific task" --method content
 python3 knowledge/retrieve.py search "a single experiment distinguishing action choices" --method agent
+python3 knowledge/retrieve.py search "a reduction from hidden moments to a decision bound" --method semantic
 python3 knowledge/retrieve.py search "certify a proposed intervention" --method agent --object "nonlinear conductance matrix" --unavailable "calibration" --available "scalar reaction intervals"
 python3 knowledge/retrieve.py evidence "hidden actuator above an untested dose" --method agent
 python3 knowledge/retrieve.py search "Compare quantum measurements by relative entropy with an untouched auxiliary quantum system"
@@ -41,31 +42,44 @@ For the optional local agent runtime, once per environment,
 install the free optional CPU runtime with `python3.13 -m venv .astra-local/agent`
 then `.astra-local/agent/bin/pip install -r knowledge/requirements-agent.txt`;
 run the commands with `.astra-local/agent/bin/python`. Python 3.12/3.13 are the
-supported dependency targets. The pinned Apache-2.0 relevance model and tokenizer
+supported dependency targets. The pinned Apache-2.0 cross-encoder and MIT BGE contextual encoder/tokenizers
 ship in `knowledge/runtime/`; inference makes no network requests. Missing or
-changed model/runtime bytes fail explicitly. Build/intake and the portable
-`structured`, `field`, `lexical` and web routes need only the standard library.
+changed model/runtime bytes fail explicitly. Fully built portable `structured`,
+`content`, `field`, `lexical` and web reading need only the standard library.
+Ordinary intake uses that same local CPU runtime only for missing/changed
+semantic text vectors; unchanged-vector build/check remains stdlib. No service,
+private database or researcher form is added.
 
-Agent search interleaves independent field and matched-content BM25 candidates, expands reusable units of promising
-families before grouping, then ranks operation/statement and exact source views
-with a local cross-encoder. It retains an independent full-card lexical safety
-slot. Ranking text has a 512-token model limit, reported per hit; source and
-packet reads retain their actual byte budgets and are never silently truncated.
-Scores are relevance logits, not probabilities of truth or applicability.
-`--object` and `--operation` add scientific object/capability descriptions.
-Repeat `--available` and `--unavailable` to surface verbatim requirements,
-conditions, units and costs needing inspection. This is conservative literal
-premise triage, including negated mentions; it neither discharges a requirement
-nor decides logical compatibility. Assumption declarations do not positively
-boost ranking. `next.packet` and `next.source` are executable argument arrays
-for the stable facade. Read the packet before using a premise. A winning source
-view routes to its actual S-id, never an arbitrary first citation. Operation
-views require selecting the packet's actual evidence scope/index; one citation
-may support only part of a statement. Each hit also shows up to three separately
-ranked units from its family and the family packet route, so grouping cannot
-silently hide all intermediate constructions. This menu confers no compatibility.
-`--method content` exposes the independent matched-content BM25 baseline over
-the same complete record/source content without field weights or expansions.
+Agent search fuses four independent family ranks: contextual operation/condition
+vectors, the existing source-aware cross-encoder, structured BM25 and matched
+full-content BM25. It retains each method's leading family without combining
+cosines and logits. `--method semantic` exposes the contextual lane alone;
+`--method content` is the independent full-content lexical baseline. The
+contextual encoder uses two deterministic current views per canonical record,
+CLS pooling and unit normalization, with a512-token limit per view. Costs,
+units, complete conditions, notices and governing passages remain in packets.
+The public model artifact uses float16 weight storage restored to the original
+float32 graph; provenance, license and exact offline reproduction are in
+`runtime/contextual/` and `store_contextual_weights.py`. The evaluated int8
+alternative lost a chronological-memory case and was not selected.
+
+`--object` and `--operation` describe the scientific object and capability.
+Repeat the existing `--available` and `--unavailable` flags to inspect literal
+and semantically related verbatim conditions, costs and units. These facts are
+inspection inputs, never positive ranking terms; no cosine threshold discharges
+a premise, establishes a conflict or validates a supplied fact. Negations,
+quantifiers and unit compatibility still require the complete source. Only
+explicit source-supported version-bound bridges establish composition.
+
+`next.packet` and `next.source` are executable argument arrays. A winning
+source-passage view routes to its actual S-id, never an arbitrary first
+citation. For operation/semantic views choose the packet's actual evidence
+scope/index; one citation may support only part of a statement. Family packets
+retain all units and up to three separately ranked alternatives are shown in
+agent results. Family membership itself confers no compatibility or acceptance.
+The MCP server defaults to the agent fusion and explicitly falls back to
+portable routes if local inference is unavailable; `--method portable` remains
+available. The static web search continues to use public BM25 projections.
 
 Older canonical summaries sometimes contain only a historical status. Operation
 views also expose verbatim scientific card excerpts and labelled claim/interface/
