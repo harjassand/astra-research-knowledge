@@ -107,4 +107,7 @@ routes and validate their scientific premise and navigation cost across fields,
 while retaining source discovery. A larger index, a matching phrase, a positive
 hit count or a successful build does not establish that improvement. The corpus
 is curated and mathematically weighted; its eligible-mechanism denominator is
-unknown. It is not a complete inventory of all science or a Google benchmark.
+unknown. At the frozen input it has 2,372 current records, 14,365 declared
+artifact keys, 32,856 evidence windows and 85 selected source indexes. Artifact
+keys distinguish public path/hash/read-path combinations; they are not distinct
+discoveries, and overlapping topic labels do not measure field completeness. It is not a complete inventory of all science or a Google benchmark.
