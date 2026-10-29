@@ -49,7 +49,7 @@ class Reranker:
         return scores, truncated
 
 
-def search(library, query, limit=5, kind=None, object_text="", operation="", available=(), unavailable=()):
+def rerank(library, query, limit=5, kind=None, object_text="", operation="", available=(), unavailable=()):
     if not 1 <= limit <= 50:
         raise ValueError("limit must be in 1..50")
     # Assumption declarations are inspection inputs, not positive ranking terms:
@@ -206,3 +206,62 @@ def search(library, query, limit=5, kind=None, object_text="", operation="", ava
             "model_revision": library.reranker.version,
             "scope": "Relevance candidates, not answers or applicability probabilities. Read next.packet (including corrections/history) and next.source before reuse. Empty/low-scoring results do not establish impossibility. No automatic composition.",
             "results": results}
+
+
+def search(library, query, limit=5, kind=None, object_text="", operation="", available=(), unavailable=()):
+    """Keep contextual, cross-encoder and content leaders on independent scales."""
+    from knowledge.mcp_adapter import record_menu
+    from knowledge.contextual_search import search as contextual_search
+    task = "\n".join(text for text in (query, object_text, operation) if text)
+    cross = rerank(library, query, max(8, limit), kind, object_text, operation)
+    dense = contextual_search(library, query, max(8, limit), kind, object_text, operation)
+    lanes = [dense["results"], cross["results"],
+             library.search(task, limit=max(8, limit), method="structured", kind=kind)["results"],
+             library.search(task, limit=max(8, limit), method="content", kind=kind)["results"]]
+    selected = record_menu(lanes, [], library.records, limit=limit)
+    names = ["semantic", "rerank", "structured", "content"]
+    family = lambda identifier: (library.records[identifier]["parents"] or [identifier])[0]
+    cross_by_id = {hit["id"]: hit for hit in cross["results"]}
+    dense_by_id = {hit["id"]: hit for hit in dense["results"]}
+    results = []
+    for identifier in selected:
+        # Fusion selects identities, not a source branch. Preserve the exact
+        # selected record's cross-encoder qualification/source navigation,
+        # especially --notice routes; record.evidence[0] is not a substitute.
+        item = dict(cross_by_id.get(identifier) or next(
+            hit for lane in lanes for hit in lane if hit["id"] == identifier))
+        if identifier in dense_by_id:
+            semantic = dense_by_id[identifier]
+            item["semantic_match"] = {key: semantic[key] for key in
+                                      ("ranking_view", "relevance_cosine", "content_version")}
+        record, frame = library.records[identifier], library.operation_frames[identifier]
+        item["operation_frame"] = frame
+        item["premise_check"] = library.contextual_index.condition_candidates(frame, available, unavailable)
+        item["retrieval_lanes"] = [name for name, lane in zip(names, lanes)
+                                   if any(family(hit["id"]) == family(identifier) for hit in lane)]
+        item["independent_leader_lanes"] = [name for name, lane in zip(names, lanes)
+                                            if lane and family(lane[0]["id"]) == family(identifier)]
+        siblings = []
+        for hit in cross["results"]:
+            if family(hit["id"]) != family(identifier):
+                continue
+            siblings.extend([hit] + hit.get("within_family", []))
+        seen = {identifier}
+        item["within_family"] = []
+        for sibling in siblings:
+            sid = sibling["id"]
+            if sid in seen or library.records[sid]["kind"] == "result":
+                continue
+            seen.add(sid)
+            item["within_family"].append({"id": sid, "title": library.records[sid]["title"],
+                                         "content_version": library.records[sid]["content_version"],
+                                         "next": ["packet", sid]})
+            if len(item["within_family"]) == 3:
+                break
+        item["family_navigation_scope"] = "Separately ranked units; shared family is navigation, not compatible composition or inherited acceptance. Family packet retains all units."
+        item.update(statement_view(record, frame))
+        results.append(item)
+    return {**cross, "method": "agent", "results": results,
+            "candidate_generators": cross["candidate_generators"] + ["contextual_current_operations"],
+            "contextual_model_version": dense["model_version"],
+            "fusion_scope": "Independent semantic/cross-encoder/structured/content family ranks, retaining method leaders. Scores are not combined across scales; no proof or assumption discharge is inferred."}

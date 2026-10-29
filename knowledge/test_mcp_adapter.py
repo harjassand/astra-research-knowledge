@@ -164,9 +164,29 @@ class AdapterTests(unittest.TestCase):
                         self.assertIsInstance(packet["dependencies"], str)
                         self.assertTrue(packet["dependencies"].startswith("UNKNOWN"))
 
+    def test_shared_transfer_citations_resolve_to_the_exact_current_source(self):
+        from knowledge.model import compact_ref
+        capsule = complete(self.adapter, self.adapter.handle("current", "U1125-qualified-task-bound-consumer"))
+        canonical = {item["id"]: item for item in self.adapter.library.transfers}
+        for transfer in capsule["transfers"]:
+            expected = canonical[transfer["id"]]["evidence"]
+            self.assertEqual(len(transfer["evidence"]), len(expected))
+            for reference, original in zip(transfer["evidence"], expected):
+                target = reference
+                if "evidence_ref_pointer" in reference:
+                    target = capsule
+                    for token in reference["evidence_ref_pointer"].split("/")[1:]:
+                        token = token.replace("~1", "/").replace("~0", "~")
+                        target = target[int(token)] if isinstance(target, list) else target[token]
+                handle = target.get("source_fetch_id", target.get("fetch_id"))
+                self.assertTrue(handle)
+                source = complete(self.adapter, handle)
+                self.assertEqual(source["source"], compact_ref(original))
+                self.assertTrue(source["text"])
+
     def test_portable_server_needs_no_neural_dependencies_and_explicit_fallback(self):
         def absent(*args, **kwargs):
-            if kwargs.get("method") == "agent":
+            if kwargs.get("method") == "rerank":
                 raise ValueError("Agent runtime missing. Portable search remains available.")
             return original(*args, **kwargs)
         original = self.adapter.library.search
@@ -181,7 +201,7 @@ class AdapterTests(unittest.TestCase):
 
         def lane(*args, **kwargs):
             hit = {"id": identifier}
-            if kwargs.get("method") == "agent":
+            if kwargs.get("method") == "rerank":
                 hit["notice_match"] = match
             return {"results": [hit]}
 

@@ -612,6 +612,8 @@ def build(root=ROOT):
     from knowledge.evidence import projection
     evidence_outputs, evidence_coverage = projection(root, inputs, records, discovered["selected_public_source_indexes"], transfers)
     outputs.update(evidence_outputs)
+    from knowledge.contextual_search import projection as contextual_projection, VECTORS
+    outputs.update(contextual_projection(root, inputs, records))
     coverage["evidence_navigation"] = evidence_coverage
     outputs["knowledge/current/coverage.json"] = encoded(coverage)
     topic_records = defaultdict(dict)
@@ -636,19 +638,21 @@ def build(root=ROOT):
         outputs[path] = ("\n".join(rows) + "\n").encode()
         browse.append("\t".join([" / ".join(sorted(topic_names[slug])), str(len(selected)), path]))
     outputs["knowledge/current/browse/index.txt"] = ("\n".join(browse) + "\n").encode()
+    input_version = digest(encoded({"authoring_inputs": inputs.hashes,
+                                    "contextual_vectors_sha256": digest(outputs[VECTORS])}))
     outputs["knowledge/current/release.json"] = encoded({
-        "schema": "astra.public-corpus-release.v1", "input_version": digest(encoded(inputs.hashes)),
+        "schema": "astra.public-corpus-release.v1", "input_version": input_version,
         "manifest": "knowledge/current/manifest.json", "records": len(records),
         "source_context_layout": "linked-current-capsules-v1",
         "consumer_view_layout": CURRENT_CONSUMER_LAYOUT,
-        "scope": "Complete ordinary build/check projection. Input identity covers cards, units, sources, corrections and runtime readers; indexing confers no scientific acceptance."})
-    outputs["knowledge/current/search_manifest.json"] = encoded({"input_version": digest(encoded(inputs.hashes)),
+        "scope": "Complete ordinary build/check projection. Corpus identity covers cards, units, sources, corrections, runtime readers and exact contextual vector bytes; indexing confers no scientific acceptance."})
+    outputs["knowledge/current/search_manifest.json"] = encoded({"input_version": input_version,
         "outputs": {name: digest(data) for name, data in outputs.items() if name.startswith((
             "knowledge/current/catalog", "knowledge/current/postings/", "knowledge/current/lexical/", "knowledge/current/packets/",
             "knowledge/current/operations", "knowledge/current/evidence/", "knowledge/current/content/"))}})
     manifest = {"schema": "astra.knowledge-manifest.v1", "inputs": dict(sorted(inputs.hashes.items())),
                 "discovery": discovered, "outputs": {name: digest(data) for name, data in sorted(outputs.items())},
-                "counts": coverage, "input_version": digest(encoded(inputs.hashes))}
+                "counts": coverage, "input_version": input_version}
     outputs[MANIFEST] = encoded(manifest)
     return outputs, manifest
 

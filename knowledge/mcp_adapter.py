@@ -212,14 +212,21 @@ class ResearchAdapter:
         fallback, lanes, lane_names, notice_matches = None, [], [], {}
         if self.method == "agent":
             try:
-                lane = self.library.search(query, method="agent", limit=8)["results"]
+                lanes.append(self.library.search(query, method="semantic", limit=8)["results"])
+                lane_names.append("semantic")
+            except ValueError as error:
+                if not str(error).startswith(("Contextual runtime missing", "Contextual index unavailable")):
+                    raise
+                fallback = str(error)
+            try:
+                lane = self.library.search(query, method="rerank", limit=8)["results"]
                 lanes.append(lane)
-                lane_names.append("agent")
+                lane_names.append("rerank")
                 notice_matches = {hit["id"]: hit["notice_match"] for hit in lane if "notice_match" in hit}
             except ValueError as error:
                 if "Agent runtime missing" not in str(error):
                     raise
-                fallback = str(error)
+                fallback = "; ".join(item for item in (fallback, str(error)) if item)
         for method in ("structured", "content"):
             lanes.append(self.library.search(query, method=method, limit=8)["results"])
             lane_names.append(method)

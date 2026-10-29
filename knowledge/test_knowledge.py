@@ -22,6 +22,10 @@ class Fixture(unittest.TestCase):
                      "knowledge/requirements-agent.txt", "knowledge/runtime/manifest.json",
                      "00_START_HERE.txt", "AGENTS.md", "agent/ACCESS.txt"):
             self.write(name, (ROOT / name).read_bytes())
+        self.write("knowledge/contextual_search.py", (ROOT / "knowledge/contextual_search.py").read_bytes())
+        self.write("knowledge/runtime/contextual/manifest.json", (ROOT / "knowledge/runtime/contextual/manifest.json").read_bytes())
+        for name in json.loads((ROOT / "knowledge/runtime/contextual/manifest.json").read_bytes())["files"]:
+            self.write("knowledge/runtime/contextual/" + name, (ROOT / "knowledge/runtime/contextual" / name).read_bytes())
         for name in json.loads((ROOT / "knowledge/runtime/manifest.json").read_bytes())["files"]:
             self.write("knowledge/runtime/" + name, (ROOT / "knowledge/runtime" / name).read_bytes())
         self.write("source.txt", b"A finite source statement.\nAssume independent noise.\nThe bound has units seconds.\n")
@@ -67,6 +71,29 @@ class Fixture(unittest.TestCase):
         second, _ = self.compile()
         self.assertEqual(first, second)
         check(self.root)
+
+    def test_different_numeric_relevance_artifacts_cannot_share_corpus_identity(self):
+        from array import array
+        from unittest.mock import patch
+        from knowledge.contextual_search import projection, VECTORS, INDEX, DIMENSIONS
+        first, initial = self.compile()
+
+        def alternate(*args, **kwargs):
+            outputs = projection(*args, **kwargs)
+            values = array("f"); values.frombytes(outputs[VECTORS])
+            for i in range(DIMENSIONS):
+                values[i] = -values[i]  # another finite unit vector, same scientific inputs
+            outputs[VECTORS] = values.tobytes()
+            index = json.loads(outputs[INDEX])
+            index["vectors_sha256"] = digest(outputs[VECTORS])
+            outputs[INDEX] = encoded(index)
+            return outputs
+
+        with patch("knowledge.contextual_search.projection", side_effect=alternate):
+            second, revised = self.compile()
+        self.assertEqual(initial["inputs"], revised["inputs"])
+        self.assertEqual(first["knowledge/current/records.jsonl"], second["knowledge/current/records.jsonl"])
+        self.assertNotEqual(initial["input_version"], revised["input_version"])
 
     def test_missing_support_fails_before_publication(self):
         self.compile()

@@ -1,0 +1,29 @@
+# Contextual scientific operations and literal snapshots
+
+This comparison uses the same2,450 canonical scientific records as the preceding source boundary. Scientific statements, contracts, operations, proof documents, transfers and evidence remain byte-identical to source headc436d09c9a964f517d89a3c7e1aa0f5ba0157f26. The rank engine was evaluated atff2f83c4c7cf336f504c350f901e8402cf09ea23; later provenance/version/staging changes retain all769 ranking posting/vector artifacts byte-identically. Dataset IDs in the local evaluation identify that experiment; live handles are obtained by searching the current deployed corpus.
+
+Twenty positive source-informed problems were frozen outside implementation fixtures, with two exposed regressions and two unsupported promotions separate. The owner had read source menus/contracts and used results to compare architecture/storage choices. These are not blind, independent or held-out evidence.
+
+| Method | Intended scientific family in primary five, denominator20 |
+| --- | ---: |
+| Full-card lexical BM25 |17 |
+| Matched full-content BM25 |20 |
+| Structured BM25 |20 |
+| Previous source-aware cross-encoder/agent routes |20 |
+| Integrated contextual/rerank/structured/content agent |20 |
+
+The exposed G06 signed-task failure, absent in previous primary menus, is now in slot5 in both integrated MCP and agent CLI. The named ordered-word inverse-Jordan compiler remains first. The graded-syndrome regression is in slot1. On30 positive previously exposed problems from the older suites, the independent-lane prototype finds30; previous cross-encoder29, content26, structured21 and contextual alone28. Two intentionally unsupported older cases are excluded from that denominator. The first private aggregate included them; its original is retained, and per-case queries/ranks are unchanged.
+
+The contextual lane uses two generated current operation/condition views per canonical record, with publisher CLS pooling, unit normalization and512-token views. The publisher float model and selected float16 weight-storage conversion each find20/20 positive families. A dynamic int8 alternative loses the chronological-bank family to rank21 and is not selected. No query aliases, fitted fusion weights or inferred composition are added. Keeping independent method leaders matters: the contextual lane alone misses two older constructions that the other lanes recover. Similarity scores locate candidates and condition passages; source support and compatibility remain separate.
+
+Six concrete source routes were followed through complete capsules/continuations, exact source selectors and actual passages. The signed-task construction returns sharp63/1024 and33/512 bounds with explicit primal/dual witnesses; its extra g3 reading leaves both task extremizers intact. This supplies a usable reason to stop a generic-uncertainty experiment for that specified future task. The matching consumer retains its own units and warranted-input obligations; no provider-to-provider transfer is inferred.
+
+The memory-design example distinguishes each supplied Hamiltonian's own stationary Gaussian controller/thermal encoder from one nominal controller selected before unknown globally energy-neutral and nominal-state-balanced errors. The returned proofs state those different stationary states and costs. They do not supply arbitrary charged-error robustness or an acquired bath. The accepted-payload example obtains id_payload tensor a memory filter with subnormalized error, rather than a scalar normalized success channel. Resolved-port entropy completion retains exact finite attainment versus closure, including the actual duration-ratio condition. Source hashes were checked and decisive passages read; hashes alone were not the criterion.
+
+Both unsupported requests return related candidates. Their full conditions were inspected and do not acquire the requested charged-error device or new memory-noise calibration. This is not a corpus-wide absence proof. Scientific mechanism coverage remains selective;2,450 records and4,900 contextual views do not define a denominator of all useful science.
+
+Integration tests first caught a real dictionary-order mismatch between pre-serialization structured lemma fields and canonical JSON transport. Build/check alone had passed, while the reader failed closed. Canonicalizing view inputs and adding the transport regression repaired it; the failure is retained in the technical review. Current input provenance, corrections and source identities remain exact. Corpus identity also includes exact vector bytes, preventing different numerical projections from sharing one served version.
+
+The same ordinary build/check generates complete current membership and only infers missing text/model/protocol vectors. Required support/model/cached-output failures are explicit. No producer program, science experiment, scientific audit, new service/key/permission/automation or reporting form is introduced. Existing free local CPU dependencies suffice; portable CLI/web remain available without inference or private SQLite.
+
+The private alternating snapshot comparison materialized the same22,363 required paths at merged main3882c05cc803ff107b4d89f4010090ed41c3a392. Both runs per method passed every normal input/output/discovery hash check and complete-index-tree verification. Pattern materialization took23.14/24.36seconds; literal-index materialization17.94/7.24seconds, with validation times separately retained. Shared Git objects/OS caches and ambient activity limit timing interpretation. No deployed cache was prefilled. A separate actual old-handle reconstruction took99.75seconds on another snapshot; that is an observed latency limitation, not a controlled before/after comparison. Literal-path, interruption/quarantine, history and source-update regressions cover the production change.

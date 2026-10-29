@@ -26,7 +26,7 @@ RELEASE_URL = "https://raw.githubusercontent.com/harjassand/astra-research-knowl
 RELEASE_SCHEMA = "astra.public-corpus-release.v1"
 REPOSITORY_URL = "https://github.com/harjassand/astra-research-knowledge.git"
 SOFTWARE = ("knowledge/model.py", "knowledge/build.py", "knowledge/retrieve.py",
-            "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/evidence.py",
+            "knowledge/operations.py", "knowledge/agent_search.py", "knowledge/contextual_search.py", "knowledge/evidence.py",
             "knowledge/interfaces.py", "knowledge/mcp_adapter.py", "knowledge/published.py",
             "plugins/astra-research/server.py")
 
@@ -110,13 +110,13 @@ class GitSnapshots:
                     import fcntl
                     fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
-    def git(self, root, *args, input=None):
+    def git(self, root, *args, input=None, binary=False):
         # A cold sparse materialization can touch many thousands of files.
         # Keep network/metadata operations bounded separately from that work.
-        budget = 120 if args[0] == "checkout" else 45
+        budget = 120 if args[0] in ("checkout", "checkout-index") else 45
         try:
             result = subprocess.run(["git", "-C", str(root), *args], input=input,
-                                    text=True, capture_output=True, timeout=budget, check=True)
+                                    text=not binary, capture_output=True, timeout=budget, check=True)
         except subprocess.TimeoutExpired as error:
             raise ValueError("Published Git operation timed out: " + args[0]
                              + " (budget " + str(budget) + " seconds)") from error
@@ -124,7 +124,7 @@ class GitSnapshots:
             # Git can include host paths in stderr. Keep tool errors portable.
             raise ValueError("Published Git operation failed: " + args[0]
                              + " (exit " + str(error.returncode) + ")") from error
-        return result.stdout.strip()
+        return result.stdout if binary else result.stdout.strip()
 
     def materialized(self, path, revision, version):
         """HEAD alone is set even by worktree add --no-checkout."""
@@ -230,21 +230,30 @@ class GitSnapshots:
             if any(p.name != ".git" for p in target.iterdir()):
                 raise ValueError("Unregistered incomplete cache contains files; preserve it for inspection before retrying")
             self.quarantine(target, revision)
-        paths = set(manifest["inputs"]) | set(manifest["outputs"]) | {
-            "knowledge/current/manifest.json", "knowledge/mcp_adapter.py", "knowledge/published.py",
+        required = set(manifest["inputs"]) | set(manifest["outputs"]) | {"knowledge/current/manifest.json"}
+        paths = required | {"knowledge/mcp_adapter.py", "knowledge/published.py",
             "plugins/astra-research/server.py", ".gitignore"}
-        patterns = []
         for name in sorted(paths):
             parsed = PurePosixPath(name)
             if (parsed.is_absolute() or ".." in parsed.parts or ".git" in parsed.parts
                     or any(ord(c) < 32 for c in name)):
                 raise ValueError("Nonportable path in published manifest")
-            patterns.append("/" + re.sub(r"([\\*?\[\]])", r"\\\1", name))
         staging = self.cache / (".staging-" + revision + "-" + uuid.uuid4().hex[:12])
         self.git(self.root, "worktree", "add", "--detach", "--no-checkout", str(staging), revision)
         try:
-            self.git(staging, "sparse-checkout", "set", "--no-cone", "--stdin", input="\n".join(patterns) + "\n")
-            self.git(staging, "checkout", "--detach", revision)
+            # Keep the complete committed index, but materialize only exact
+            # manifest paths. NUL streams preserve whitespace, metacharacters
+            # and unselected non-UTF8 names without glob matching every path.
+            self.git(staging, "read-tree", "--no-sparse-checkout", revision)
+            tracked = self.git(staging, "ls-files", "-z", binary=True)
+            members = set(tracked.split(b"\0")) - {b""}
+            if not {name.encode("utf-8") for name in required} <= members:
+                raise ValueError("Required published manifest paths are absent from its committed tree")
+            selected = b"\0".join(sorted(name.encode("utf-8") for name in paths
+                                        if name.encode("utf-8") in members)) + b"\0"
+            self.git(staging, "update-index", "--skip-worktree", "-z", "--stdin", input=tracked, binary=True)
+            self.git(staging, "update-index", "--no-skip-worktree", "-z", "--stdin", input=selected, binary=True)
+            self.git(staging, "checkout-index", "-z", "--stdin", input=selected, binary=True)
             if not self.materialized(staging, revision, version):
                 raise ValueError("Sparse snapshot did not materialize its committed manifest and index")
             self.git(self.root, "worktree", "move", str(staging), str(target))

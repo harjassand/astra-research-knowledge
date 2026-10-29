@@ -47,9 +47,15 @@ class Library:
         return selected[0]
 
     def search(self, query, limit=5, method="structured", kind=None, **facets):
+        if method == "semantic":
+            from knowledge.contextual_search import search
+            return search(self, query, limit, kind, **facets)
         if method == "agent":
             from knowledge.agent_search import search
             return search(self, query, limit, kind, **facets)
+        if method == "rerank":
+            from knowledge.agent_search import rerank
+            return rerank(self, query, limit, kind, **facets)
         if any(facets.values()):
             raise ValueError("Object/operation/premise facets require --method agent; do not silently ignore assumptions")
         if not 1 <= limit <= 50:
@@ -240,7 +246,7 @@ def main():
     search = sub.add_parser("search", help="describe a task, operation, obstruction or analogy")
     search.add_argument("query")
     search.add_argument("--limit", type=int, default=5)
-    search.add_argument("--method", choices=("agent", "content", "structured", "field", "lexical"), default="structured")
+    search.add_argument("--method", choices=("semantic", "agent", "content", "structured", "field", "lexical"), default="structured")
     search.add_argument("--kind")
     search.add_argument("--object", dest="object_text", default="", help="scientific object/representation to rank")
     search.add_argument("--operation", default="", help="capability or reduction to rank")
