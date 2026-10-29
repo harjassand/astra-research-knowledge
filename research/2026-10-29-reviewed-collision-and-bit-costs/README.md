@@ -1,0 +1,3 @@
+# Actual collision reviews and explicit mean-bit scope
+
+Later0804 sources update two current cards and immutable unit versions, preserving earlier pending reviews, recursion failures and proof/source versions. The normalized hard-sphere theorem now has its actual parent mathematical acceptance; the finite-bin Maxwell receiver has its repaired explicit-stack review and elementary-interval mean-work construction. Particular-library expected CPU work, physical acquisition and practical advantage remain distinct. Finite-rate syndrome-history reduction retains its reported review scope and the unacquired SAME-controller classical persistence gate. No source programs or scientific experiments were run in intake.

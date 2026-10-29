@@ -1,0 +1,3 @@
+# Scoped reservoir and certified empirical controls
+
+Actual0824 source cut. The finite-rate Poisson reduction now has its pinned parent whole review; offline classical persistence remains open. Reservoir acceptance follows the actual review scope and does not automatically cover later unpinned edits. Exact empirical quartic certificates, same-bank guarded model comparisons and a coherent Gram instrument retain their actual source/input/output/cost boundaries and ordinary controls. Working boson/kinetic source documents are indexed without invented acceptance. No producer program, mathematical replay, novelty investigation or new scientific sign-off was performed.
