@@ -133,6 +133,7 @@ def compile_input_contract_corrections(records):
         visible_statement = statement_view(record, operation_frame(record))["statement"]
         record["current_consumer"] = {
             "subject": notice["subject"], "source_correction_notice": notice["notice_id"],
+            "authority_notice": notice["notice_id"],
             "statement": visible_statement,
             "contract": dict(record["contract"], requires=notice["value"]),
             "scope": notice["clarification"],
