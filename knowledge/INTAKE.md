@@ -87,6 +87,13 @@ membership through ordinary intake. All original source/support checks run
 before this projection. Fully built portable CLI/web reading remains stdlib.
 The512-token view limit is a relevance limit; complete assumptions, costs,
 units, corrections and governing sources remain in the current packet.
+The ordinary release also declares its source text projection automatically.
+New releases distinguish notebook-shaped cells from detector or scientific JSON
+cells. Historical snapshots without that marker retain their original decoder
+and source payload bytes. Unknown or stale markers fail explicitly. No producer
+annotation or extra intake step is required; a reader-code change still needs
+its reviewed deployment before the new release can be served.
+
 ## Optional named consumer inputs
 
 A curated reusable unit may declare `contract.input_slots`, each with an `id`,

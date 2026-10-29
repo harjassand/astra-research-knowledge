@@ -15,7 +15,7 @@ from urllib.parse import quote
 
 from knowledge.build import inventory
 from knowledge.evidence import search as evidence_search
-from knowledge.model import Inputs, compact_ref, digest, encoded, evidence_refs, flatten, route_id, scientific_text
+from knowledge.model import Inputs, LEGACY_SOURCE_TEXT, compact_ref, digest, encoded, evidence_refs, flatten, route_id, scientific_text
 from knowledge.operations import (statement_view, consumer_contract, acceptance_view,
                                   CURRENT_CONSUMER_LAYOUT)
 from knowledge.retrieve import Library
@@ -101,6 +101,7 @@ class ResearchAdapter:
         if json.loads(committed) != json.loads(self.manifest_bytes):
             raise ValueError("Serve a committed corpus snapshot; generated views differ from HEAD")
         self.version = self.library.manifest["input_version"]
+        self.source_text_layout = self.library.source_text_layout
         self.source_context_layout = source_context_layout(self.root, self.library.manifest)
         self.consumer_view_layout = consumer_view_layout(self.root, self.library.manifest)
         self.frozen_paths = set(self.library.manifest["inputs"]) | set(self.library.manifest["outputs"])
@@ -366,7 +367,7 @@ class ResearchAdapter:
         else:
             _, passage = Inputs(self.root).source(ref)
             start, end = ref["lines"]
-            passage, selection = scientific_text(passage)
+            passage, selection = scientific_text(passage, layout=getattr(self, "source_text_layout", LEGACY_SOURCE_TEXT))
         return {"scope": "Exact declared source version. Current context notices remain applicable to reuse; coarchive and citation do not confer acceptance. A historical unit document retains its historical status and does not inherit the current review.",
             "source": ref, "text_selection": selection, "text": passage,
             "citation_locator": self.source_locator(ref),

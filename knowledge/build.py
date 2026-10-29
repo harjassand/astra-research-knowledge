@@ -12,7 +12,7 @@ import tempfile
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from knowledge.model import (ROOT, Inputs, compact_ref, digest, encoded, evidence_refs,
+from knowledge.model import (ROOT, Inputs, TYPED_SOURCE_TEXT, compact_ref, digest, encoded, evidence_refs,
                              field_index, flatten, local, route_id, scientific_text, unique)
 from knowledge.evidence import source_indexes
 from knowledge.interfaces import compile_navigation, packet_navigation
@@ -644,6 +644,7 @@ def build(root=ROOT):
         "schema": "astra.public-corpus-release.v1", "input_version": input_version,
         "manifest": "knowledge/current/manifest.json", "records": len(records),
         "source_context_layout": "linked-current-capsules-v1",
+        "source_text_layout": TYPED_SOURCE_TEXT,
         "consumer_view_layout": CURRENT_CONSUMER_LAYOUT,
         "scope": "Complete ordinary build/check projection. Corpus identity covers cards, units, sources, corrections, runtime readers and exact contextual vector bytes; indexing confers no scientific acceptance."})
     outputs["knowledge/current/search_manifest.json"] = encoded({"input_version": input_version,
