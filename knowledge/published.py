@@ -351,7 +351,12 @@ class PublishedAdapter:
                 identifiers = [parts[3]]
             else:
                 ref = adapter.references.get(parts[3])
-                identifiers = sorted(adapter.contexts.get((ref["path"], ref["sha256"]), [])) if ref else []
+                # An original can first acquire a correction/citing record in
+                # a later intake. Keep its old payload, but also name current
+                # contexts for that exact artifact identity, never another hash.
+                key = (ref["path"], ref["sha256"]) if ref else None
+                identifiers = sorted(set(adapter.contexts.get(key, [])) |
+                                     set(self.active.contexts.get(key, []))) if ref else []
             for identifier in identifiers:
                 if identifier in self.active.library.records:
                     current_contexts.append(self.active.handle("current", identifier))

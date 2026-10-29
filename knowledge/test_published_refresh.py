@@ -50,6 +50,15 @@ class PublishedRefreshTests(unittest.TestCase):
         unit = cls.fixture.unit()
         unit["statement"] = "A finite source statement. " * 100
         cls.fixture.write("knowledge/units/U1-fixture/v0001.json", encoded(unit))
+        orphan = b"An earlier finite statement has an obsolete extension.\nThe old passage remains unchanged.\nIts correction arrived later.\n"
+        cls.orphan_source = {"path": "research/late-context/source/orphan.txt",
+                             "sha256": digest(orphan), "lines": [1, 3],
+                             "quote": "obsolete extension"}
+        cls.fixture.write(cls.orphan_source["path"], orphan)
+        cls.fixture.write("research/late-context/source/INDEX.json", encoded({
+            "schema": "astra.intake-source-index.v1", "files": [{
+                "path": "source/orphan.txt", "sha256": digest(orphan),
+                "bytes": len(orphan), "kind": "original_scientific_source"}]}))
         cls.fixture.compile()
         cls.git(cls.root, "init", "-q")
         cls.git(cls.root, "add", ".")
@@ -77,7 +86,8 @@ class PublishedRefreshTests(unittest.TestCase):
         added = dict(revised, id="U2-new-subresult", version=1, previous=None, title="New conditional subresult")
         cls.fixture.write("knowledge/units/U2-new-subresult/v0001.json", encoded(added))
         notice = {"notice_id": "SN-correlated", "card_ids": ["N1-fixture"],
-                  "clarification": "Do not assume independent noise in the revised source.", "source_refs": [source]}
+                  "clarification": "Do not assume independent noise in the revised source.",
+                  "source_refs": [source, cls.orphan_source]}
         cls.fixture.write("agent/SEMANTIC_NOTICES.d/revised.jsonl", encoded(notice))
         cls.fixture.compile()
         from knowledge.retrieve import Library
@@ -162,6 +172,36 @@ class PublishedRefreshTests(unittest.TestCase):
         self.assertEqual(source["source"]["sha256"], self.fixture.source["sha256"])
         self.assertEqual(pages[0]["metadata"]["freshness"]["status"], "historical_snapshot")
         self.assertTrue(pages[0]["metadata"]["freshness"]["required_current_context_ids"])
+
+    def test_old_uncited_source_names_correction_first_added_by_new_record(self):
+        key = (self.orphan_source["path"], self.orphan_source["sha256"])
+        self.assertFalse(self.a.contexts[key])
+        handle = next(self.a.handle("source", ident) for ident, ref in self.a.references.items()
+                      if (ref["path"], ref["sha256"]) == key)
+        _, before = complete(self.reader, handle)
+        self.update()
+        source, after = complete(self.reader, handle)
+        self.assertEqual("".join(p["text"] for p in before), "".join(p["text"] for p in after))
+        self.assertEqual(source["source"]["sha256"], self.orphan_source["sha256"])
+        for page in after:
+            freshness = page["metadata"]["freshness"]
+            self.assertEqual(freshness["status"], "historical_snapshot")
+            self.assertIn(self.b.handle("current", "U2-new-subresult"),
+                          freshness["required_current_context_ids"])
+
+    def test_historical_source_context_does_not_cross_a_different_branch_hash(self):
+        key = (self.orphan_source["path"], self.orphan_source["sha256"])
+        handle = next(self.a.handle("source", ident) for ident, ref in self.a.references.items()
+                      if (ref["path"], ref["sha256"]) == key)
+        self.update()
+        self.reader.search("new conditional subresult")
+        contexts = dict(self.reader.active.contexts)
+        contexts.pop(key, None)
+        contexts[(key[0], "0" * 64)] = {"U2-new-subresult"}
+        with patch.object(self.reader.active, "contexts", contexts):
+            _, pages = complete(self.reader, handle)
+        self.assertTrue(all(not p["metadata"]["freshness"]["required_current_context_ids"]
+                            for p in pages))
 
     def test_known_history_pages_share_ttl_but_unknown_newer_handle_forces_check(self):
         with patch.object(self.reader,'read_release',wraps=self.reader.read_release) as checks:
