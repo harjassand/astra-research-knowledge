@@ -436,10 +436,19 @@ def build(root=ROOT):
         if record["id"] in navigation:
             record["interface_navigation"] = navigation[record["id"]]
 
+    # Current authority is a version-bound projection, not a new source claim,
+    # review or scientific content identity. Preserve the original contract.
+    from knowledge.operations import (compile_current_consumers, consumer_contract,
+                                      acceptance_view, consumer_notice_view, CURRENT_CONSUMER_LAYOUT)
+    compile_current_consumers(records)
+
     documents = []
     for record in sorted(records, key=lambda item: item["id"]):
         documents.append({key: record[key] for key in ("id", "kind", "parents", "title", "statement", "contract", "body", "notices")}
                          | {"record_id": record["id"], "aliases": record.get("aliases", "")})
+        if record.get("current_consumer"):
+            documents[-1].update(statement=record["current_consumer"]["statement"],
+                                 contract=consumer_contract(record))
     source_documents = {}
     for source in sources:
         if source["id"] in source_documents and source_documents[source["id"]] != source:
@@ -481,6 +490,7 @@ def build(root=ROOT):
     for shard, values in sorted(lexical_shards.items()):
         outputs["knowledge/current/lexical/" + shard + ".json"] = encoded(values)
     catalog_records = [{"record_id": record["id"], "title": record["title"], "kind": record["kind"], "parents": record["parents"]}
+                       | ({"acceptance": acceptance_view(record, preview=True)} if record.get("current_acceptance") else {})
                        for record in sorted(records, key=lambda item: item["id"])]
     record_indexes = {record["record_id"]: index for index, record in enumerate(catalog_records)}
     catalog = [[record_indexes[document["record_id"]], int(document["kind"] == "source_window")] for document in documents]
@@ -489,6 +499,13 @@ def build(root=ROOT):
     for record in records:
         packet = dict(record)
         packet.pop("body", None)
+        packet["notices"] = consumer_notice_view(record["notices"])
+        if record.get("current_consumer"):
+            packet["contract"] = consumer_contract(record)
+            packet["statement"] = record["current_consumer"]["statement"]
+            packet["current_consumer"] = {key: value for key, value in record["current_consumer"].items()
+                                           if key not in ("statement", "contract")}
+            packet["source_reported_contract_route"] = ["card", record["id"]]
         frame = operation_frame(record)
         if historical_summary(record) and frame.get("scientific_excerpt"):
             packet["scientific_card_excerpt"] = dict(frame["scientific_excerpt"],
@@ -558,7 +575,7 @@ def build(root=ROOT):
         "distinct_source_text_hashes": len({version for _, version, _ in inputs.sources}),
         "topics": dict(Counter(topic for record in records for topic in record.get("topics", []))),
         "scope": "Scientific lane: all registered current cards, atlas entries, selected reusable units and latest technology, including located proof AND available evidence ranges. Separate evidence lane: current record evidence ranges and explicit selected-public-source-index entries, with exclusions and no inferred acceptance. Unregistered archives/withheld material remain unassessed.",
-        "eligible_mechanism_denominator": "UNKNOWN", "scientific_acceptance": "Only explicit version-bound substantive review overlays confer acceptance; extraction and hashing do not.",
+        "eligible_mechanism_denominator": "UNKNOWN", "scientific_acceptance": "Actual version-bound substantive reviews and explicit standing human acceptance retain their stated scope; extraction and hashing confer neither.",
     }
     from knowledge.evidence import projection
     evidence_outputs, evidence_coverage = projection(root, inputs, records, discovered["selected_public_source_indexes"], transfers)
@@ -591,6 +608,7 @@ def build(root=ROOT):
         "schema": "astra.public-corpus-release.v1", "input_version": digest(encoded(inputs.hashes)),
         "manifest": "knowledge/current/manifest.json", "records": len(records),
         "source_context_layout": "linked-current-capsules-v1",
+        "consumer_view_layout": CURRENT_CONSUMER_LAYOUT,
         "scope": "Complete ordinary build/check projection. Input identity covers cards, units, sources, corrections and runtime readers; indexing confers no scientific acceptance."})
     outputs["knowledge/current/search_manifest.json"] = encoded({"input_version": digest(encoded(inputs.hashes)),
         "outputs": {name: digest(data) for name, data in outputs.items() if name.startswith((

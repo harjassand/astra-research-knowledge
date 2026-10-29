@@ -13,7 +13,7 @@ if __package__ in (None, ""):
 from knowledge.build import check
 from knowledge.model import (ROOT, Inputs, digest, encoded, query_terms,
                              route_id, scientific_text, score_query, tokens, evidence_refs)
-from knowledge.operations import statement_view
+from knowledge.operations import statement_view, consumer_contract
 
 
 def bounded_reference(reference, start, end, passage):
@@ -84,7 +84,7 @@ class Library:
                 "match_scope": "candidate only; not an applicability verdict",
                 "matched_document": document["id"],
                 "source_match": document.get("evidence", []) if document.get("kind") == "source_window" else [],
-                "statement": record["statement"], "contract": record["contract"],
+                "statement": record["statement"], "contract": consumer_contract(record),
                 "review_overlays": record["review_overlays"], "reported_review": record["review"],
                 "notice_count": len(record["notices"]),
                 "packet": "knowledge/current/packets/" + route_id(record["id"]) + ".json"}

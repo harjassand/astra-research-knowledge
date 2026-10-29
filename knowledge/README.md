@@ -180,3 +180,11 @@ the providers. Use `--offset` and `--limit` for the complete candidate list;
 `bridge` retains its separate supported/unsupported conclusion. The initial
 curated slice is described in
 [`2026-10-28-task-bound-interfaces`](../research/2026-10-28-task-bound-interfaces/README.md).
+
+Explicit current acceptance appears before historical review labels in current
+consumer views and search previews. A curator projection is bound to the existing
+authority and exact accepted scientific versions; it is not a new audit. Source
+contracts and historical assessments remain available, while the generated
+current consumer retains actual scientific assumptions, costs and scope. See
+[the intake contract](INTAKE.md#current-consumer-authority). New interface links
+prefer compact current capsules; older version handles preserve their bytes.

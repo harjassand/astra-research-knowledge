@@ -230,11 +230,42 @@ async function identifierRoutes() {
   assert.ok(browser.requests.every(request => request.cache === 'no-store'));
 }
 
+async function currentAuthorityPriority() {
+  const current = epoch('current-authority', 1);
+  const acceptance = [{status: 'CORRECT_AND_ACCEPTED', kind: 'human_acceptance_instruction',
+    subject: {id: 'U-fixture', content_version: 'a'.repeat(64)}, new_audit: false,
+    legacy_status_fields_are_historical: true, scope: 'The same finite conditional source.'}];
+  const catalog = JSON.parse(current.files['current/catalog.json']);
+  catalog.records[0].acceptance = acceptance;
+  current.files['current/catalog.json'] = JSON.stringify(catalog);
+  const packet = JSON.parse(current.files['current/packets/U-fixture.json']);
+  packet.current_acceptance = acceptance;
+  packet.current_consumer = {scope: 'Current accepted scope; original source retained.'};
+  packet.statement = 'The same accepted conditional premise';
+  packet.scientific_card_excerpt = {text: 'Historical unreviewed source claim', scope: 'Historical'};
+  packet.contract = {requires: 'Actual finite input', assumptions: 'Independent noise remains required', units: 'seconds'};
+  packet.review = {acceptance: 'historical_unreviewed'};
+  current.files['current/packets/U-fixture.json'] = JSON.stringify(packet);
+  current.manifest.outputs = Object.fromEntries(Object.entries(current.files).map(([path, text]) => [`knowledge/${path}`, hash(text)]));
+  const browser = harness(current);
+  await browser.submit();
+  assert(descendants(browser.elements.results).some(e => e.tag === 'strong' && e.textContent.includes('CORRECT_AND_ACCEPTED')));
+  await button(browser).listeners.get('click')();
+  const rendered = JSON.parse(descendants(browser.elements.results).find(e => e.tag === 'pre').textContent);
+  assert.equal(rendered.statement, packet.statement);
+  assert.equal(rendered.acceptance[0].new_audit, false);
+  assert.equal(rendered.contract.assumptions, 'Independent noise remains required');
+  assert(!rendered.historical_reported_status);
+  assert(!rendered.review.acceptance);
+  assert.match(rendered.review.context, /not a new audit/);
+}
+
 (async () => {
   await updateWithoutReload();
   await rejectAndRecover();
   await olderRequestCannotPublish();
   await intermediateCorrectionRoute();
   await identifierRoutes();
-  process.stdout.write('5 static web cache/epoch/interface/identifier scenarios passed\n');
+  await currentAuthorityPriority();
+  process.stdout.write('6 static web cache/epoch/interface/identifier/authority scenarios passed\n');
 })().catch(error => { process.stderr.write(error.stack + '\n'); process.exitCode = 1; });

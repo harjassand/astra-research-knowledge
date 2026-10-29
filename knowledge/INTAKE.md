@@ -148,3 +148,28 @@ Same-artifact citation context is navigation, not a transfer. Older releases
 retain their original inline source payloads and handle bytes. Curators add no
 layout fields or source notices by hand; the ordinary build/check sets this
 snapshot format along with the release.
+
+## Current consumer authority
+
+An existing explicit standing human acceptance can have a curator-owned
+`current_consumer_projection` notice. It names the existing `authority_notice_id`
+and optional `consumer_views`, each with the exact accepted subject/content
+version, a scoped current statement and the full scientific contract. This is
+not another acceptance or audit. Preserve the original acceptance notice,
+checkpoint card/status, source bytes and genuinely open scientific conditions.
+Do not remove qualification by matching words such as "unreviewed".
+
+The same build validates the authority, actual support and exact versions, then
+generates `current_acceptance` and, where explicitly supplied, `current_consumer`
+in the canonical record. The source-reported contract/content identity stays
+unchanged. CLI, web, operation previews and current MCP capsules use the same
+current consumer contract; original assessments remain at history/source routes.
+Unknown authority, a stale subject, incomplete support or conflicting current
+contracts fails ingestion. Context-only and unaccepted subjects do not inherit
+acceptance. This is an intake-curator exception route, not a producer form or a
+requirement to restate every result.
+
+The release's `consumer_view_layout` marker selects compact current-capsule
+links in new interface navigation. Old snapshots without that marker keep their
+original routes and payload bytes under a newer reader. Changing this runtime
+requires reviewed deployment; a data-only intake uses the ordinary refresh path.

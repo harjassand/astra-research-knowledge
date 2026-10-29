@@ -1,7 +1,123 @@
 """Lossless operation views and conservative premise inspection; no inferred proofs."""
 import re
 
-from knowledge.model import digest, flatten, tokens
+from knowledge.model import digest, flatten, tokens, route_id
+
+CURRENT_CONSUMER_LAYOUT = "explicit-current-acceptance-v1"
+
+
+def compile_current_consumers(records):
+    """Project explicit, version-bound authority without rewriting its sources.
+
+    A curator may restate a current consumer contract in the same acceptance
+    notice. No prose classifier guesses which historical qualifications to
+    delete; the full original record and its scientific identity remain intact.
+    """
+    by_id = {record["id"]: record for record in records}
+    projections, known_authorities = {}, set()
+    for record in records:
+        for outer in record.get("notices", []):
+            notice = outer.get("notice", outer)
+            if (notice.get("kind") == "human_acceptance_instruction"
+                    and notice.get("current_programme_status") == "CORRECT_AND_ACCEPTED"):
+                known_authorities.add(notice["notice_id"])
+            if notice.get("kind") == "current_consumer_projection":
+                item = {key: notice.get(key) for key in ("notice_id", "authority_notice_id", "consumer_views")}
+                if item["notice_id"] in projections and projections[item["notice_id"]] != item:
+                    raise ValueError("INGESTION FAILED: conflicting consumer projection notice")
+                projections[item["notice_id"]] = item
+    for item in projections.values():
+        if item["authority_notice_id"] not in known_authorities or not item["consumer_views"]:
+            raise ValueError("INGESTION FAILED: consumer projection has no existing current authority/views")
+    for record in records:
+        record.pop("current_acceptance", None)
+        record.pop("current_consumer", None)
+        authorities, selected = {}, None
+        for outer in record.get("notices", []):
+            notice = outer.get("notice", outer)
+            if notice.get("kind") == "current_consumer_projection":
+                continue
+            views = notice.get("consumer_views", [])
+            if (notice.get("kind") != "human_acceptance_instruction"
+                    or notice.get("current_programme_status") != "CORRECT_AND_ACCEPTED"):
+                if views:
+                    raise ValueError("INGESTION FAILED: consumer view needs explicit current acceptance")
+                continue
+            views = views + [view for item in projections.values()
+                             if item["authority_notice_id"] == notice["notice_id"]
+                             for view in item["consumer_views"]]
+            subjects = {subject["id"]: subject["content_version"]
+                        for subject in notice.get("accepted_subjects", [])}
+            for view in views:
+                subject = view.get("subject", {})
+                if subject.get("id") not in by_id or subjects.get(subject.get("id")) != subject.get("content_version"):
+                    raise ValueError("INGESTION FAILED: consumer view has no accepted subject/version")
+                if by_id[subject["id"]]["content_version"] != subject["content_version"]:
+                    raise ValueError("INGESTION FAILED: stale current consumer subject/version")
+            if subjects.get(record["id"]) != record["content_version"]:
+                continue
+            if not notice.get("source_refs") or not notice.get("clarification"):
+                raise ValueError("INGESTION FAILED: current acceptance needs its actual source and scope")
+            authority = {"notice_id": notice["notice_id"], "kind": notice["kind"],
+                "status": notice["current_programme_status"], "new_audit": notice.get("new_audit", False),
+                "subject": {"id": record["id"], "content_version": record["content_version"]},
+                "scope": notice["clarification"], "source_refs": notice["source_refs"],
+                "legacy_status_fields_are_historical": bool(notice.get("legacy_status_fields_are_historical"))}
+            authorities[notice["notice_id"]] = authority
+            for view in views:
+                subject = view.get("subject", {})
+                if subject.get("id") not in by_id or subjects.get(subject.get("id")) != subject.get("content_version"):
+                    raise ValueError("INGESTION FAILED: consumer view has no accepted subject/version")
+                if by_id[subject["id"]]["content_version"] != subject["content_version"]:
+                    raise ValueError("INGESTION FAILED: stale current consumer subject/version")
+                if subject["id"] != record["id"]:
+                    continue
+                contract = view.get("contract", {})
+                if (not view.get("statement") or not view.get("scope")
+                        or any(not contract.get(field) for field in
+                               ("requires", "provides", "assumptions", "costs", "units", "obstruction"))):
+                    raise ValueError("INGESTION FAILED: incomplete current consumer statement/contract/scope")
+                value = {"subject": subject, "authority_notice": notice["notice_id"],
+                         "statement": view["statement"], "contract": contract, "scope": view["scope"],
+                         "original_contract_context": "Preserved source-reported contract; superseded review/status wording is historical. Original scientific conditions and authority remain available at the record's source/history routes."}
+                if selected is not None and selected != value:
+                    raise ValueError("INGESTION FAILED: conflicting current consumer views")
+                selected = value
+        if authorities:
+            record["current_acceptance"] = list(authorities.values())
+        if selected:
+            record["current_consumer"] = selected
+
+
+def consumer_contract(record):
+    return record.get("current_consumer", {}).get("contract", record["contract"])
+
+
+def consumer_notice_view(value):
+    """Link an authoring restatement once; keep every notice and source scope."""
+    if isinstance(value, list):
+        return [consumer_notice_view(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    return {key: ([{"subject": view["subject"], "current_packet":
+                    "knowledge/current/packets/" + route_id(view["subject"]["id"]) + ".json",
+                    "scope": "Explicit current consumer restatement appears once in that packet; original notice authoring bytes remain in manifest inputs."}
+                   for view in data] if key == "consumer_views" else consumer_notice_view(data))
+            for key, data in value.items()}
+
+
+def acceptance_view(record, preview=False):
+    """Compact preview; the complete authority and exact sources stay in packets."""
+    result = [{key: value for key, value in authority.items()
+             if key in ("notice_id", "kind", "status", "new_audit", "subject", "scope",
+                        "legacy_status_fields_are_historical")}
+            for authority in record.get("current_acceptance", [])]
+    if preview:
+        for item in result:
+            text = item["scope"]
+            item["scope"] = text[:240]
+            item["scope_omitted_characters"] = max(0, len(text) - 240)
+    return result
 
 CARD_LABEL = re.compile(r"(?i)^\s*(?:source-reported\s+)?(exact claim|claim|theorem|interface(?: and assumptions)?|assumptions|boundaries|boundary|costs?(?: and information boundary)?|proof spine|proof|construction|next obligation|evidence|references)\s*(?:\([^\n]*?\))?\s*(?:\||:|\.|$)")
 
@@ -46,10 +162,10 @@ def card_sections(record):
 
 
 def operation_frame(record):
-    contract = record["contract"]
+    contract = consumer_contract(record)
     frame = {
         "id": record["id"], "content_version": record["content_version"],
-        "operation": record["title"], "statement": record["statement"],
+        "operation": record["title"], "statement": record.get("current_consumer", {}).get("statement", record["statement"]),
         "construction": record["body"] if record["kind"] != "result" else "Read the card and cited construction",
         "requires": contract.get("requires", "UNKNOWN"),
         "returns": contract.get("provides", "UNKNOWN"),
@@ -58,6 +174,12 @@ def operation_frame(record):
         "obstruction": contract.get("obstruction", "UNKNOWN"),
         "scope": "Verbatim normalized fields. Objects/types remain source-local; this view does not infer an interface or acceptance.",
     }
+    if record.get("current_acceptance"):
+        frame["acceptance"] = acceptance_view(record)
+    if record.get("current_consumer"):
+        frame["scope"] = "Explicit version-bound current consumer projection; its original source contract is preserved separately. No new audit or scientific scope inferred."
+        frame["consumer_origin"] = {key: value for key, value in record["current_consumer"].items()
+                                    if key not in ("statement", "contract")}
     passages = card_sections(record)
     if passages:
         labelled = [p for p in passages if p["role"] in ("claim", "exact claim", "theorem")]
@@ -83,13 +205,25 @@ def historical_summary(record):
 
 
 def statement_view(record, frame):
+    if record.get("current_consumer"):
+        return {"statement": record["current_consumer"]["statement"],
+                "acceptance": acceptance_view(record),
+                "statement_origin": {"kind": "explicit_current_consumer",
+                    **{key: value for key, value in record["current_consumer"].items()
+                       if key not in ("statement", "contract")}}}
     excerpt = frame.get("scientific_excerpt")
     if historical_summary(record) and excerpt:
-        return {"statement": excerpt["text"], "statement_origin": {"kind": "verbatim_card_excerpt",
+        result = {"statement": excerpt["text"], "statement_origin": {"kind": "verbatim_card_excerpt",
                     "role": excerpt["role"], "lines": excerpt["lines"], "reference": frame["card_reference"],
                     "scope": "An unlabelled excerpt has no inferred theorem role; current proof/review/conditions govern."},
                 "historical_reported_status": record["statement"]}
-    return {"statement": record["statement"], "statement_origin": {"kind": "canonical_statement"}}
+        if record.get("current_acceptance"):
+            result["acceptance"] = acceptance_view(record)
+        return result
+    result = {"statement": record["statement"], "statement_origin": {"kind": "canonical_statement"}}
+    if record.get("current_acceptance"):
+        result["acceptance"] = acceptance_view(record)
+    return result
 
 
 def premise_check(frame, available=(), unavailable=()):
