@@ -54,7 +54,16 @@ def scientific_text(text):
         for key in ("text", "innerText"):
             if isinstance(value["answer"].get(key), str):
                 return value["answer"][key], "JSON /answer/" + key + "; raw JSON remains authoritative"
-    if isinstance(value, dict) and isinstance(value.get("cells"), list):
+    cells = value.get("cells") if isinstance(value, dict) else None
+    # Detector partitions and other scientific JSON also use the name "cells".
+    # Only notebook-shaped cells may discard the surrounding values/outputs.
+    notebook_cells = isinstance(cells, list) and all(
+        isinstance(cell, dict)
+        and cell.get("cell_type") in ("code", "markdown", "raw")
+        and isinstance(cell.get("source"), (str, list))
+        for cell in cells
+    )
+    if notebook_cells and (cells or value.get("nbformat") == 4):
         return "\n\n".join("".join(cell.get("source", [])) for cell in value["cells"]), "notebook cell sources; outputs not indexed"
     def clean(item):
         if isinstance(item, dict):

@@ -1,0 +1,9 @@
+## Exactly which record is reset
+
+The probability mixture S is a **nonselective preparation**. Its contract supplies a fresh private random key independent of the input process and past learner history. The reset controller does not release its chosen word, key, reset readouts, or any other component-dependent record to the next experiment. The reset finishes at a common public time. The physical apparatus must isolate/dispose of those records and must charge randomness, control, record handling and elapsed time. The source code is a statistical fixture; it is not a demonstrated entropy source, constant-time hardware implementation or thermodynamic erasure mechanism.
+
+For the executed library below, a and b are genuine legal actions of equal duration one. No idle or padding is assumed. Fixed B-bit selection is part of the isolated controller contract. Retaining the sampled word can invalidate the conclusion completely: the half identity/half swap mixture resets a hidden binary state marginally, but the pair (word, future state test) still reveals the input state. If the continuation can condition on the word or a timing leak, conditional reset of every supported word is required instead. Equation (1) deliberately concerns the accessible future interface after nonselective preparation.
+
+## What subsequent learning receives
+
+Let rho_star=S(rho0), an actual physical preparation whose hidden description and future event probabilities need not be known. Equation (2) bounds future-event differences between S applied to any reachable conditional input and rho_star. This acquires a new reproducible preparation for a **new task initialized at rho_star**. It does not substitute for rho0 in a task requiring the original initial distribution. That requires an additional target-matching certificate, not supplied here.
