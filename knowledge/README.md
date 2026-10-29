@@ -41,8 +41,8 @@ available without that runtime or a private database.
 For the optional local agent runtime, once per environment,
 install the free optional CPU runtime with `python3.13 -m venv .astra-local/agent`
 then `.astra-local/agent/bin/pip install -r knowledge/requirements-agent.txt`;
-run the commands with `.astra-local/agent/bin/python`. Python 3.12/3.13 are the
-supported dependency targets. The pinned Apache-2.0 cross-encoder and MIT BGE contextual encoder/tokenizers
+run the commands with `.astra-local/agent/bin/python`. Python3.12/3.13/3.14 have matching pinned CPU wheels; local checks use3.13
+and the existing deployed reader uses3.14. The pinned Apache-2.0 cross-encoder and MIT BGE contextual encoder/tokenizers
 ship in `knowledge/runtime/`; inference makes no network requests. Missing or
 changed model/runtime bytes fail explicitly. Fully built portable `structured`,
 `content`, `field`, `lexical` and web reading need only the standard library.
