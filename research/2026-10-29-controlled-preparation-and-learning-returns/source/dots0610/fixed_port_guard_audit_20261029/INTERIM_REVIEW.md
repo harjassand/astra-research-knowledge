@@ -1,0 +1,21 @@
+# Independent fixed-port concatenated-code review (in progress)
+
+The four saved stabilizer instances pass an independently organized exhaustive verifier (lexicographic support combinations and base-three labels, rather than author recursive traversal). Counts are96,10296,1143264,130354980 for lengths32,48,64,80, with zero nonidentity normalizer elements of weight below claimed distances2,3,4,5. The test excludes even low-weight stabilizers, stronger than distance alone and sufficient for nondegenerate unique-syndrome decoding. All stored radius-r correction-table entries and compiler canonical span were recomputed. See `independent_results.json`. Large-state Hilbert matrices were not constructed; the distance work is exact GF2 arithmetic and exhaustive finite enumeration.
+
+## Genuine interface defect found
+
+Original `check_phase_decoder.py` directly uses the dense reshaped syndrome index as the table key. Dense matrix ordering labels qubit0 most-significant; table keys instead pack measured qubit j at2^j. The chosen five-qubit perfect-code table happens invariant under bit reversal, hiding the defect. The retained `check_order.py` applies local Clifford gates to this valid distance3 code and finds a table that is not invariant. Direct lookup then produces incorrect recovery for correctable errors, while reversing the syndrome bits fixes every case. `order_counterexample.json` preserves the failure. This is a decoder readout-packing defect, not failure of the large saved codes or of the stabilizer synthesis theorem. Author was notified and is correcting/expanding checks. Do not regard the old symmetric dense fixture alone as a general interface validation.
+
+## Uniform sampling law
+
+At stage j, previous span S has dimension j. Its symplectic orthogonal has dimension2n−j. Independent fair coefficients on any basis sample it uniformly. Rejecting S leaves a uniform vector in S-perp minus S. Rejection probability is2^(2j−2n), independent of S. Therefore a fixed per-stage finite rejection cap has a success probability depending only on j, so conditioning on successful completion preserves the uniform isotropic-subspace distribution. Symplectic transitivity, or equal counts of ordered isotropic flags per subspace, establishes uniformity. For any fixed nonzero vector e, the probability e lies in the normalizer is exactly (2^(n+k)−1)/(2^(2n)−1): all nonzero e have the same probability and each normalizer has2^(n+k)−1 nonzero elements. A union bound over low-weight nonzero e is valid. Seeded execution is reproducible pseudorandomness, not evidence of physical fair-bit acquisition. Finite sampler/construction exhaustion must be declared failure, not infinite free resampling.
+
+## Clifford and correction scope
+
+The old compiler's phase-free span reduction is sufficient to specify a code only when signs are fixed by the actual circuit U: code=U†(|0>^(n−k) tensor logical). It does not justify declaring all originally listed Hermitian generators positive without accounting for induced signs. The present code correctly declares circuit-induced signs. H,S,CNOT,SWAP conjugations in i^phase X^x Z^z convention are phase-consistent. Decoder correction uses the inverse of the transformed logical representative; absent syndromes need a specified default action. Measured syndrome packing must be fixed as above. Correctable logical phases are global per syndrome and do not compromise QEC, but cannot be omitted in matrix tests.
+
+## Resource and domain limits
+
+Current C++ verifier stores syndromes in128 bits: valid only when n−k≤128. Current maximum75 is safe. A mathematical arbitrary-h construction needs a wider-bit implementation, or a declared finite execution range; executable evidence does not extend silently. Construction checks sum_{w<d} C(n,w)3^w possibilities and decoding tables sum_{w≤r} C(n,w)3^w. With n=16h,d=h and B exponential in h this is polynomial in B but can have an enormous degree/cost. No free code-existence oracle, efficient practical decoder at arbitrary h, hardware memory or capacity claim is established.
+
+General concatenated guard proof and final frozen author packet still pending; this interim note does not accept an unseen theorem.

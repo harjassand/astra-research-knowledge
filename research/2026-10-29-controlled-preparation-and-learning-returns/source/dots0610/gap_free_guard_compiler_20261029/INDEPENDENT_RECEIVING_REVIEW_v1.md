@@ -1,0 +1,24 @@
+# Independent receiving review: gap-free three-role operation
+2026-10-29. Reviewer sharpen_noreset_acquisition_certificate.
+
+Accepted at the actual theorem scope: `gap_free_encoder_attack_20261029/THREE_ROLE_GUARDED_READINESS_v3.md`, SHA256034fcf692037d0bde23bbc2a3c9a774c5deac7bd4375c46979861a511f567bbf, conditional on its separately reviewed online learner/star-transfer dependencies and the received orbit/memory and arbitrary-error outer-code theorems. This is an independent operational receiving review, NOT self-acceptance of my companion derivation.
+
+I independently derived the same three-role composition before comparing the author's v3. The companion `THREE_ROLE_COMPILER_v1.md` preserves that derivation and more detailed interface checks; it need not become a competing canonical theorem.
+
+## New operational checks
+1. On an actual history, source memory may be correlated with unprocessed outer payload. Orbit bad-effect identity I_symbol tensor H_bad and coarse-memory closure make its virtual bad probability depend only on the actual memory marginal, exactly the marginal defining the sacrificial probe channel. No independent-payload assumption is inserted into the expected-count transfer.
+2. The candidate is sampled before the independent role. Weights change only on actual learning records. Validation stopping can affect histories without being fed to the experts. External leakage of a fresh candidate before the current channel is chosen would invalidate readiness, even if role privacy survived. Arbitrary quantum response through a fixed channel is allowed.
+3. Learning rounds may change memory but are neutral in the two competing fault/failure counters. The hazard inequality is conditional and remains valid after such rounds. Thus the model-free negative-binomial bound survives thinning; no iid process is introduced.
+4. After actual stopping, the mathematical identity-channel extension has all candidate losses0. For the shifted rational learner, identical artificial feedback87/180 on all candidates (importance weighted on hypothetical learning roles) gives zero unshifted loss, common weight factors and unchanged normalized weights. This explicitly validates the stopped potential argument without future source calls or observations.
+5. Expected validation failures alone, plus a shortage bound for hypothetical independent service coins, suffice for readiness. Expected virtual faults are optional and are NOT an extra required readiness deduction. Finite cap completion must precede cap rejection on the final allowed service call; author v3 does so.
+6. Bounded exact samplers should be coupled to the ideal unlimited-sampler process. A union bound on abort events is valid; conditioning on prior sampler survival does not magically leave the ideal candidate law untouched. Finite control-channel errors need a separately proved compositional budget.
+7. Current complete-source boundary, retirement of keys/outer-decoder trash, no later source access to processed carriers, and the paid quantum buffers remain necessary. The primitive permits coherent arbitrary-memory errors, not merely sampled Pauli faults.
+8. A resource-first wrapper remains available from the separately reviewed finite first-success theorem: fresh encoded Bell resources, no unknown payload before readiness, and finite error allocation. It requires clean reference storage and teleportation and does not permit unlimited fixed-error retries.
+
+## Exact parameter cross-check
+`check_parameters.py/.json` independently uses rational quantities for the roles, cap, fair-coin soundness exponent, finite net covering parameter, dyadic learning rate and loss/Markov upper bounds. It bounds ln M by bit_length(M), rather than silently computing a trusted floating logarithm. It verifies the exposure ratio1/72 exactly. h80 gives validation-abort upper bound0.0506945; h60 still gives21.5671 and therefore no nontrivial certificate. This is arithmetic evidence for the finite inequalities, NOT an execution of those huge expert nets or quantum codes.
+
+## Crucial interpretation
+The displayed rate uses n=4log2B and is a scalable FAMILY of source ports. It is NOT a capacity theorem or constant-rate asymptotic for one fixed-n physical port. Controls, source-excitation-free structural promise, endpoint storage and exact arithmetic costs are not omitted resources. The high-rate Schur-subcode/full-path comparator shares the polynomial learning-transfer order. A direct simple-block gap-free transfer with equally good rate is not proved here, but no impossibility is asserted.
+
+The core v1 learner, quadratic-net v2 and v3 operational theorem have an additional independent review in `gap_free_encoder_audit_20261029/CORE_REVIEW_RECEIPT.json`; this receiving review focuses new checking on the three-role composition and its physical interpretation, not a claim to have independently rerun all core numerical fixtures.

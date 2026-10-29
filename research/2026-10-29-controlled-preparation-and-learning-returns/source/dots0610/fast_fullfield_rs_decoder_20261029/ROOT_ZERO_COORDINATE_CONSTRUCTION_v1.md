@@ -1,0 +1,17 @@
+# Exact bounded-distance decoding at all field points, including zero
+2026-10-29. Root construction, implementation/review pending. Berlekamp–Massey, Chien search, RS syndrome decoding and amplitude interpolation are established algorithms; the purpose is closing this programme's full-field outer-code implementation without a dense B-by-B Berlekamp–Welch solve.
+
+For B=q=2^h distinct evaluation points alpha in GF(q), ordinary RS_(q−2t) has parity checks S_j=sum_alpha alpha^j e_alpha, j=0,...,2t−1, with0^0=1. Nonzero error locations give an exponential sequence. An error atalpha0 contributes only S0, so it must not be silently lost by using reciprocal-locator roots.
+
+Decode two explicitly verified cases:
+A. Assume e0=0. Run Berlekamp–Massey on the2t syndromes starting atS0. If its minimal recurrence has degreev<=t, locate its nonzero roots/inverse locations consistently, solve thev amplitudes, and verify all2t input syndromes and weight<=t. If valid, return it.
+B. Allow e0≠0. Then there are at mostt−1 nonzero error locations. Run Berlekamp–Massey on S1,...,S_(2t−1). This is a sequence with locationsalpha_i≠0 and weights e_i alpha_i; it has at least2(t−1) samples. Recover at mostt−1 such locations and amplitudes, dividing byalpha_i when using shifted weights. Set e0=S0−sum_(alpha≠0)e_alpha. Verify all2t syndromes and total support<=t. If valid, return it.
+If neither verifies, return a declared total fallback/failure flag. Do not loop forever or silently accept an unverified candidate. Thet=0 case is handled separately.
+
+For any true weight<=t vector, caseA succeeds if e0=0; otherwise caseB succeeds. Minimum distance2t+1 implies uniqueness of a weight<=t representative for a syndrome, so a verified candidate from eithercase is correct whenever the correction promise holds. No success is promised above the radius; the controller's proof already isolates those events.
+
+Withv<=t, BM costs O(t²) field operations, Chien search O(qt), and a simple exact v-by-v Vandermonde amplitude solve O(t³). These are sufficient algorithmic bounds, not an optimal decoder claim. Field log/exp tables of size O(q), built from an actually verified primitive element, make nonzero multiplication/inversion exact lookup operations. Building tables and validating the defining irreducible polynomial are part of the classical computation. A faster Forney step could replace the cubic amplitude solve, but is not required for a correct finite construction.
+
+The quantum compiler uses normalized degree-ordered subspace polynomials rather than monomials. Syndrome coefficients must be converted to the above power sums with the explicit triangular basis transform (or the already proved H R^T relation for X checks). The first2t novel basis polynomials span exactly degree<2t, so the conversion is finite and invertible. Fourier readouts are binary character bits in a trace-dual coordinate convention; failing to convert these bits is not a harmless relabelling. Both X and Z correction streams must be checked against the actually compiled inverse encoder and its measured registers.
+
+The decoder is classical and follows quantum syndrome measurement. Correcting every Pauli with support<=t is sufficient for coherent/system-memory errors by the CSS code's Knill–Laflamme property; a classical timing benchmark is not itself a quantum simulation. Required finite executions include supports containing0, all-zero error, boundaryv=t, and malformed/above-radius syndromes using the total fallback.

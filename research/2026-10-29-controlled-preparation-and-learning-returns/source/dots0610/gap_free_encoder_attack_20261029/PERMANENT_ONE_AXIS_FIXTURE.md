@@ -1,0 +1,8 @@
+# Deliberately nonidentifiable one-axis fixture
+2026-10-29. Executed diagnostic, not a proof of asymptotic rate.
+
+`check_gap_free_one_axis.py` uses the same actual four-spin product-input/product-output probe simulation and retained coherent bath as the earlier fixture, but after an identity prefix the source permanently uses only the hidden collective J_z interaction plus a bath-local X term. It never switches to X/Y collective excitation. The 60,000-round execution made29,916 sampled probe calls and30,084 averaged-orbit service calls. Its cumulative chosen star loss per call was0.179191 versus the uniform-candidate comparator0.694622; mean service bad weight0.140768. Maximum transfer residual was1.25e−15, numerical roundoff.
+
+This source genuinely does not identify a full relative frame: arbitrary independent physical rotations about each site's hidden local z axis commute with the source Hamiltonian. Conjugating the hidden frame by these rotations leaves the complete joint source operations unchanged. Thus a continuous family of different relative frames gives zero task loss, not merely a finite data shortage. The controller can learn useful protection without resolving this ambiguity.
+
+The executable uses floating signed exponential weights and a27-element rational-quaternion net containing the true rotations. It does not execute the exact integer arithmetic proof, the three-role validation guard, physical random permutation routing or outer CSS correction. Services use the exactly averaged private-orbit interface. The companion JSON records every tenth-horizon cumulative metric. This is separate from, and does not overwrite, the previous changing-axis 20k and200k fixtures.

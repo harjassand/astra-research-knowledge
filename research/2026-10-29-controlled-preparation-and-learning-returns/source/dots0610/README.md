@@ -1,0 +1,65 @@
+# Astra scientific delta: gap-free learning and a fixed four-spin-port architecture
+
+29 October 2026, 06:10 UTC snapshot. No Capital integration or publication is asserted. Continues the delivered 04:15-labelled package of 29 October 2026 (sent 04:14 UTC), SHA256 ea6d077d3bb9b85aeaaf821f9432709b36db4a42132fbe3c7177011fbeef5bd3. Original scientific sources, failures and version-bound reviews are preserved.
+
+## Main accepted mathematical result
+
+The gap-free encoder construction learns a protection-relevant task loss from shared product-Pauli probes without reconstructing the complete environment, identifying every local frame parameter, or assuming a positive excitation gap. Its readiness guarantee requires one fixed unknown locally rotated collective algebra for the full joint source-memory operations. It does not assume memory resets. The new star-loss transfer, quadratic net approximation, finite rational learner and three-role stopped protocol have completed substantive independent reviews at their stated mathematical scope.
+
+Governing sequence: gap_free_encoder_attack_20261029/GAP_FREE_ONLINE_THEOREM_v1.md, QUADRATIC_NET_AND_FINITE_ARITHMETIC_v2.md, and THREE_ROLE_GUARDED_READINESS_v3.md. Version 2 supersedes v1's linear net approximation and nonexact exponential update. CORE_REVIEW_RECEIPT.json in gap_free_encoder_audit_20261029 binds reviewed versions. gap_free_guard_compiler_20261029 provides a separate operational receiving review and exact parameter checks, not a conflicting canonical theorem.
+
+The controller interleaves learning, validation and service under private current settings. Actual physical permutation control provides the required good/bad joint-memory decomposition. The guard can retain accepted-subnormalized correctness even when the structural model is false; in that case it may always reject. High acceptance/readiness is a separate family-conditional guarantee. Neither accepted correctness nor a small observed test count is a normalized rare-success guarantee or a prediction of future arbitrary noise.
+
+The present constants are enormous. The conservative exact parameter check is still vacuous at h=60; at h=80 it gives a validation-abort upper bound about 0.0507 for B=2^h. The displayed 1/72 source-exposure ratio belongs to a scalable family of ports n=4 log2 B. It is not a capacity result for one fixed-size port, and does not include quantum gate time, calibration, storage or the immense classical expert-net cost. Executed small retained-memory and permanent-one-axis fixtures are diagnostics, not executions of these astronomical constructions.
+
+## Fixed-port constructive closure and robust extension
+
+The separately reviewed fixed_port_concatenated_guard_20261029 now keeps the source port at FOUR spins as the block length grows. An explicit random-stabilizer inner construction and full-field outer concatenation supply actual Clifford circuits and total decoders, rather than assuming an asymptotically good code. The saved 80-qubit inner example excludes 130,354,980 low-weight Pauli labels and has 2,118 native decoder gates. The GF32 concatenated fixture has 2,560 native service slots, 80 logical payload qubits and guaranteed correction of 12 native faults. These are exact algorithmic/code checks, not a high-yield physical experiment.
+
+The fixed-port source-exposure ratio is 1/1152, separately from the variable-port 1/72 example above. The conservative readiness theorem remains vacuous for the executed small fixture and becomes nonvacuous only at astronomical sizes (the stated h50 calculation gives validation-abort bound about 0.0465). It is neither ordinary unassisted capacity nor a practical end-to-end quantum throughput claim. The equally informed full-path two-MUB/Pauli alternative uses the same learner and concatenated code with the same asymptotic orders. Independent review corrected a dense syndrome tensor-index/table-packing mismatch; the original failing counterexample and corrected scrambled-code check are preserved.
+
+The accepted robust_gapfree_oracle_20261029 extension admits a fixed comparator with nonzero symmetry defect measured on the ACTUAL learner-induced source histories. It is not competition with the best recovery or the counterfactual trajectory of another controller. Constant small defect yields the stated positive readiness floor; vanishing defect permits readiness tending to one under the compatible construction. Joint coherent perturbations and arbitrary CPTP contamination have separate sufficient budgets. Current v4 and second_receiving/RECEIPT_v2.json govern the scoped claims. The finite-sampler scheduling clarification retains a post-role-abort counterexample and a neutral prefetch correction. The fixed-port robust corollary is additive, not an overwrite of the earlier theorem.
+
+## Positive physical feedback: stronger theory, limited execution
+
+The accepted positive_probe_gapfree_attack_20261029 uses a genuine nonnegative Bell-sign-change bit instead of a signed loss estimate. Established small-loss linear-bandit machinery, combined with a rational rotation net and a full-dimensional radial action body, yields an oracle-relative gap-free loss bound. Its separately reviewed finite rational kernel v3 closes FINITE COMPUTABILITY using exact finite-law covariance, certified quadrature and preflattened capped sampling.
+
+This does NOT establish polynomial classical runtime, manageable constants, a full 35-dimensional controller execution, complete new readiness integration or hardware advantage. The small exact two-dimensional kernel and certified one-dimensional exponential examples test limited components only. A terminating quadrature proof may still be computationally astronomical. Both ORACLE_REVIEW_RECEIPT_v2.json and FINITE_KERNEL_REVIEW_RECEIPT_v3.json are included. The physical lemma in BERNOULLI_SMALL_LOSS_BRIDGE_DRAFT.md remains a governing dependency despite its filename; only the later unthickened/oracle and v3-draft treatments are superseded. Conventional controllers can use the same positive feedback.
+
+## Budgeted drifting-frame extension
+
+The new drifting_gapfree_encoder_20261029/TRACKING_CORE_DRAFT.md is governed by BUDGETED_CORE_REVIEW_RECEIPT.json despite its draft filename. It supplies a finite fixed-share learner comparing against predictable frame paths along actual source histories under a DECLARED deterministic variation envelope. Entropy tuning gives the stated sublinear-variation guarantee; the inherited arbitrary-memory transfer and guard conventions remain required. It is not evidence that arbitrary drift can be tracked, nor a counterfactual-policy comparison. The unknown-budget master is separately accepted by drifting_gapfree_encoder_audit_20261029/second_receiving/REVIEW_RECEIPT.json at predictable actual-history and deterministic-envelope scope. Its exact finite kernels were independently checked; the 60,000-round physical fixture was not independently rerun. Neither hindsight comparison nor policy regret follows.
+
+## Strong alternatives and useful obstructions
+
+An equally informed high-rate singlet subcode with ordinary full-path logical tests attains the same polynomial transfer order within a constant. This is retained explicitly in gap_free_encoder_audit_20261029/HIGH_RATE_FULLPATH_COMPARATOR.md. The construction is not the first or unique route to polynomial conditional protection.
+
+Cheap product four-spin block matching and six-state tests are also independently accepted. Their coefficients remain 2 and 1.5 under arbitrary correlated global noise when the failure event is ANY block failure, not the mean failed-block fraction. Their simple Pauli closure and encoder costs make them serious competing interfaces. Good-encoder acquisition remains a separate obligation. The direct-small-code obstruction proves that the same unweighted star losses cannot polynomially control every fixed small code without further assumptions; it is not a general learning or small-code impossibility theorem.
+
+Earlier policy/prefix simulations, matrix-confidence results and exact rational margins are preserved. They show both actual finite improvements and the weakness of conservative confidence bounds. Structured completeness with an occupation gap remains a valid earlier theorem, now complemented rather than silently invalidated by the gap-free route. Its huge finite costs and the high-rate full-path alternative remain visible.
+
+## Executed architecture components and corrections
+
+- Physical permutation averaging supplies good/bad completely positive memory maps for proper moving subcodes, with a multiplicity-one condition and retired private keys. It is NOT a generic control-cost advantage: endpoint logical Pauli gates are cheap when encoding/decoding are already paid.
+- The explicit full-field additive-FFT outer compiler generates the B=2048 transform on 22,528 data qubits with 651,264 CNOTs and 115 all-to-all disjoint layers per transform. These replace a dense sufficient recipe, not the old B=2047 code itself. Routing, readout and storage remain additional resources.
+- The exact full-field classical decoder completes the measured-syndrome-to-correction interface using established BM/Chien/Forney methods with explicit zero-coordinate handling. A successful decoder flag does NOT certify the true error weight; preserved above-radius aliasing counterexamples explain why the guard is still needed. Timing results are host measurements, not quantum hardware latency guarantees.
+- The reviewed four-spin Bell encoder uses eight CNOTs, fourteen single-qubit gates and no workspace qubits. It supersedes the earlier conservative QR cost, not that earlier construction's correctness. The small original QR proof/checks remain for provenance.
+- Gauge correction must precede conditional leakage reset. Canonical reset and exposed record boundaries matter for channel comparison.
+- Stable isolated-control calibration claims do not extend automatically to controls sharing hidden source memory. The v3 counterexample and its review preserve that boundary rather than concealing it behind per-gate average calibration.
+- Resource-first finite first-success wrappers defer unknown payload until protected resource readiness, but still require clean references, storage and teleportation. Finite error allocation cannot be replaced by unlimited fixed-error retries.
+
+The FFT/decoder/encoder improvements benefit matching and conventional guards alike. No hardware demonstration, complete fault-tolerant endpoint, practical total-resource superiority, historical-priority clearance or unrestricted unknown-noise capacity is claimed.
+
+## Status and dependencies
+
+Each accepted claim is governed by its current exact-byte receipt, not a stale author-pending header. Original review versions and correction notes are retained. Two superseded historical files are stored under historical_hash_matched_20261029: the author reversed known additive edits and recovered bytes matching the old receipt hashes exactly. They are historical evidence, not current governing versions. spectral_defect_orbit_20261029 and matching_exchange_verification_20261029 retain exploratory or limited-scope calculations; they are not silently promoted to accepted major theorems. The budgeted drifting-frame core is now independently accepted at predictable actual-history tracking scope, with a declared deterministic variation envelope. Its draft filename remains preserved. The unknown-budget master has its own second-receiving exact-byte receipt; its acceptance is not inferred from the budgeted receipt. The new coherent-commutator attack is excluded from this snapshot.
+
+Source files duplicated only for replay are stored once. ALIASES.json identifies exact-byte copies. Run restore_aliases.py in a writable extracted copy before ordinary execution. It reconstructs copies only after verifying their hashes and never overwrites different bytes. This preserves source/receipt identity while avoiding duplicated circuit arrays and data banks.
+
+For scripts containing historical absolute workspace paths, run:
+
+    python run_portable.py topic_directory/program.py
+
+The helper makes a temporary copy, restores aliases, and replaces only the literal historical workspace prefix in temporary Python copies. It records every path relocation; original scientific files and receipt hashes remain unchanged. NumPy, SciPy and SymPy are required as imported. Some tests are expensive: million-call learning and full circuit generation are deliberate reproducibility workloads, not required merely to inspect results. Full logical-guard/outer proofs in the earlier packages remain explicit dependencies; included source/cache inputs are for exact reproducibility, not new learner access to evaluator-only bath data.
+
+No personal/account information, unrelated assignments, private memory notes or conversation dumps belong in this package. No Capital integration or publication is asserted. Research continues beyond this snapshot.

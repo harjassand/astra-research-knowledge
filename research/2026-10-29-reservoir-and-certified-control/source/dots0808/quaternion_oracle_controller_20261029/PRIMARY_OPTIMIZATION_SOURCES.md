@@ -1,0 +1,8 @@
+# Optimization attribution and primary sources actually read
+2026-10-29. The Gram/SOS method and perturbed-leader online optimization are established machinery, not newly invented algorithms here.
+
+- Parrilo, *Semidefinite programming relaxations for semialgebraic problems*, author manuscript: https://www.mit.edu/~6.454/www_fall_2001/cmcaram/parrilo.pdf . Section3.2, Theorem3.3 and Remark3.4 were retrieved and read. They describe polynomial coefficient matching as an affine Gram space, its PSD feasibility interpretation, and restriction to degree-half monomials for homogeneous forms. They also explicitly distinguish nonnegativity from SOS. Our small rational identity/LDL checks specialize this established method; the non-SOS obstruction is proved directly in the governing note.
+
+- Kalai and Vempala, *Efficient algorithms for online decision problems*, JCSS71,291–307(2005): https://web.stanford.edu/class/cs369/files/Kalai-Vempala-JCSS-2005.pdf . Theorem1.1 and section3 were retrieved; page8 explicitly discusses fresh perturbations against an adaptive adversary. Offline optimization converted into online control is established prior art. The present proof separately derives its approximate-oracle bias, finite-bit rounding and current quantum-probe independence rather than borrowing an exact-oracle guarantee without paying those interfaces.
+
+Historical novelty of the quantum feedback/controller composition remains unestablished. The proposed opening is a small executed certified optimizer for actual acquired banks, not a new general SOS or FTPL theorem. Equal-information conventional recovery/testing architectures may use the same controller.

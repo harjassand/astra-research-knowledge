@@ -1,0 +1,36 @@
+# Independent additive-FFT CSS compiler review
+2026-10-29. Receiving mathematical and executable review by challenge_matching_test_architecture.
+
+## Decision and actual scope
+Accepted at the scope of an ideal explicit reversible compiler, correct CSS syndrome interface and conditional quantum error-correction mechanism. This is a concrete reduction of Astra's previous sufficient quantum-transform cost, not a new FFT, first quantum Reed–Solomon encoder, practical quantum advantage, or a completed fault-tolerant hardware architecture. The compiler applies equally to conventional and matching-based guards.
+
+The separately hashed receipt identifies the governing author README, root construction, programs and data. The author README resolves the preliminary root note's pending implementation obligations and makes the phase/readout convention explicit.
+
+## Independent mathematical check
+The normalized subspace polynomial t_j is constant on cosets of W_j and shifts by one on beta_j. The degree of product basis b_i is exactly i; hence every initial segment spans the corresponding Reed–Solomon polynomial space. Thus choosing this basis does not change either nested code. The coefficient-first butterfly followed by recursive evaluations is correct. Its two updates use the UPDATED a and are invertible in characteristic two. Reversing all CNOTs is its exact inverse.
+
+For the full field, the derivative of x^q-x is one and the dual RS weights are one. The degree sum of a vector in RS_{2t} and one in RS_{B-2t} is at most B-2, so their evaluation inner product vanishes. Dimension counting identifies the dual exactly. The CSS parameters are [[B,B-4t,2t+1]]_q for the nonempty payload cases used here.
+
+With the author's ROW convention T, encoded computational labels are cT. Decoded Pauli labels are eT^{-1} and fT^T with phase pairing Tr(fx). Measuring first 2t plus registers gives the phase syndrome Hf^T after CLASSICAL trace-dual conversion of binary X-basis results. Measuring the last 2t zero registers gives e'_last; multiplication by HR^T gives the X syndrome He^T. HR^T is invertible because R complements C and H=C-perpendicular. Both conversions are necessary and are implemented. The middle registers are not measured.
+
+A weight-at-most-t physical Pauli has unique syndromes among such errors, because differences have weight at most 2t and C has minimum distance 2t+1. The syndrome-only classical decoder and decoded-coordinate correction therefore implement the CSS recovery. Knill–Laflamme extends this to the linear span of correctable errors, including arbitrary coherent errors on at most t symbols and a correlated reference/environment; a stochastic Pauli assumption is unnecessary. This extension does not certify additional errors from noisy encoding, buffer storage or the recovery circuit.
+
+## Independent executed evidence
+The complete author main program was copied to a separate replay directory and executed. Parsed JSON matches compiler_checks.json exactly. All circuit arrays for h=3,4,5,6,8,11 match bitwise. This includes 548 small-code Pauli/syndrome/total-decoder checks, binary phase propagation, forward/inverse checks and the stated direct-evaluation tests. Large-h tests are not exhaustive matrix enumeration; general correctness relies on the proof.
+
+A genuinely separate direct-polynomial GF8 implementation constructs the [[8,4,3]]_8 encoder, with a 12-qubit logical payload entangled with a reference. It applies a seeded coherent unitary jointly to one 8-level physical symbol and a retained bath qubit at positions 0,3,7. Actual sparse amplitudes pass through inverse encoding, ancilla Fourier measurement and correction. Wrong logical weight is zero and the largest reference/bath factorization residual is below 4.2e-16. All 24 binary coefficient basis vectors also tie this independent matrix to the author's actual CNOT compiler. This diagnostic is a floating simulation supporting, not replacing, the exact argument. Its reported syndrome-key count includes zero-amplitude numerical branches and is not a count of physically nonzero outcomes.
+
+## Gate counts, parallelism and outstanding implementation requirements
+There are Bh/2 butterflies. A constant multiply-add uses at most h^2 CNOTs and the second update h, proving B h^2(h+1)/2 per transform. At B=2048,h=11 the compiled transform has 651,264 CNOTs, versus the sufficient bound 1,486,848, on 22,528 qubits. Encoder plus inverse uses 1,302,528 CNOTs.
+
+The parallel schedule places a source bit j/target bit k edge in layer k-j modulo h. Each layer has no repeated source or target; source and target registers are disjoint. The multiply-add gates commute, so this reordering is valid. Butterflies at equal recursion depth are disjoint. The h stages therefore have depth at most h(h+1)=132. The actual saved circuit has 115 nonempty layers per transform. This is all-to-all CNOT depth, not a routed local-device result. Scheduling needs no additional quantum ancilla.
+
+Add preparation, 2th Hadamards at each relevant endpoint, measurements, correction, routing, latency, storage and classical decoding. The large classical decoder is not benchmarked; generic dense interpolation may dominate. The approximately 3e-9 primitive half-diamond budget from (1/256)/1,302,528 is only a conservative sufficient hybrid bound, not a threshold or achieved calibration. The original 1/128 guard plus 1/256 CNOT allocation is 3/256 before all other errors. No complete physical error budget is closed.
+
+The saved uint16 wire arrays are safe for every tested size, including h11. Generic serialization must be changed or bounded for h>=13, where wire labels exceed 65535. This does not invalidate the mathematical general construction or current files.
+
+## Nearby policies and numerical scope
+B2048 is a different block from B2047. Nearby rows retain frozen policies, recompute J=22528, and explicitly do not claim policy re-optimization or unchanged fixtures. Their probability calculations are conditional source-known floating CP-map evaluations. The analytic finite-cap and negative-binomial formulas are appropriate, but printed floating upper/lower endpoints are not rigorous directed-rounded numerical enclosures; nearly identical endpoints should not be read as exact certification. No numerical superiority over equal-resource conventional tests follows: the six-state route still has the strongest listed throughput.
+
+## Strong conventional baseline and attribution
+Lin–Chung–Han, arXiv:1404.3458, establishes the normalized degree-filtered subspace-polynomial basis and additive evaluation recursion used here. Grassl–Geiselmann–Beth, quant-ph/9910059, already provides quantum RS Fourier encoding/decoding and trace-dual bases. These primary papers were read during review. Patel–Markov–Hayes, quant-ph/0302002, supplies O(N^2/log N) generic binary linear reversible synthesis, stronger than naive dense Gaussian elimination. Thus the old >500-million sufficient gate bound is not an optimal conventional baseline, and no PMH circuit benchmark was executed here. Recent classical additive-FFT refinements also exist; practical optimality is unestablished. The defensible gain is this explicit implemented structured circuit versus Astra's earlier recipe, with all methods given access to the same encoder construction.
