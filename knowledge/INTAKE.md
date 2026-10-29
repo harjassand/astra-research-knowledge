@@ -1,5 +1,18 @@
 # Capital integration contract
 
+After the reviewed main merge is verified, run
+`python3 knowledge/pages.py publish --revision <actual-merge-SHA>`.
+This derives the bounded Pages view from that exact canonical manifest and
+advances only the owned `codex/astra-pages` publication branch. Verify the
+existing Pages deployment, its `publication.json` source revision/input version,
+and actual packet/source use before declaring public release complete.
+The native reader continues to refresh from main. Proofs, reviews, full source
+archives and frozen interfaces remain public at immutable GitHub source URLs;
+the browser view copies every current packet and its search views byte-for-byte.
+No producer metadata or form is added. The one-time existing Pages source
+selector and reproduction/safety details are in `knowledge/PAGES.md`; this
+reuses the existing publisher without adding a workflow, schedule or permissions.
+
 An existing semantic notice may name `current_scope_unit` for a later scoped
 construction. The same ordinary build validates that exact target and required
 notice support; an unknown target fails ingestion. CLI/native search exposes

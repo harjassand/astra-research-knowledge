@@ -50,13 +50,13 @@ const packetButton = (dataset, container, packetPath, label = 'Read compact pack
       section.append(heading, fullPacket, text);
       for (const review of reviews) {
         const fullReview = document.createElement('a');
-        fullReview.href = '../' + review.authority;
+        fullReview.href = dataset.sourceURL(review.authority);
         fullReview.textContent = `Full scoped review: ${review.id}`;
         section.append(fullReview);
       }
       for (const reference of packet.evidence) {
         const source = document.createElement('a');
-        source.href = '../' + (reference.read_path || reference.path).split('/').map(encodeURIComponent).join('/');
+        source.href = dataset.sourceURL(reference.read_path || reference.path);
         source.textContent = `Read source: ${reference.path} — lines ${JSON.stringify(reference.lines)}, SHA ${reference.sha256}`;
         const paragraph = document.createElement('p');
         paragraph.append(source);
@@ -88,7 +88,7 @@ const packetButton = (dataset, container, packetPath, label = 'Read compact pack
           paragraph.append(packetButton(dataset, paragraph, `current/packets/${encodeURIComponent(short)}.json`, `Read connected operation: ${other}`, seen));
         }
         const full = document.createElement('a');
-        full.href = '../' + transfer.authority;
+        full.href = dataset.sourceURL(transfer.authority);
         full.textContent = `Full version-bound connection: ${transfer.id}`;
         section.append(paragraph, obligation, full);
       }
@@ -97,7 +97,7 @@ const packetButton = (dataset, container, packetPath, label = 'Read compact pack
   });
   return button;
 };
-const createDataset = manifest => {
+const createDataset = (manifest, publication = null) => {
   const expectedHash = path => {
     const expected = manifest.outputs?.[`knowledge/${path}`];
     if (!/^[0-9a-f]{64}$/.test(expected || '')) throw Error(`Unregistered dataset file: ${path}`);
@@ -122,15 +122,24 @@ const createDataset = manifest => {
     if (!shards.has(key)) shards.set(key, readJSON(`current/${key}.json`).catch(error => { shards.delete(key); throw error; }));
     return shards.get(key);
   };
-  return {manifest, url, readJSON, readCatalog, loadShard};
+  const sourceURL = path => {
+    if (typeof path !== 'string' || !path || path.startsWith('/') || path.includes('\\') || path.split('/').some(part => !part || part === '.' || part === '..')) throw Error('Invalid source route');
+    const encoded = path.split('/').map(encodeURIComponent).join('/');
+    return publication ? `https://raw.githubusercontent.com/harjassand/astra-research-knowledge/${publication.source_revision}/${encoded}` : '../' + encoded;
+  };
+  return {manifest, publication, url, readJSON, readCatalog, loadShard, sourceURL};
 };
 let activeDataset;
 const loadDataset = async () => {
   const response = await fetch('current/search_manifest.json', {cache: 'no-store'});
   if (!response.ok) throw Error('Search manifest unavailable');
-  const manifest = await response.json();
+  const text = await response.text();
+  const manifest = JSON.parse(text);
   if (!/^[0-9a-f]{64}$/.test(manifest.input_version || '')) throw Error('Search manifest version invalid');
-  if (!activeDataset || activeDataset.manifest.input_version !== manifest.input_version) activeDataset = createDataset(manifest);
+  const marker = document.querySelector('#publication');
+  const publication = marker ? JSON.parse(marker.textContent) : null;
+  if (publication && (publication.schema !== 'astra.pages-view.v1' || !/^[0-9a-f]{40}$/.test(publication.source_revision || '') || publication.input_version !== manifest.input_version || publication.search_manifest_sha256 !== await sha(text))) throw Error('Publication changed or its source version is invalid. Reload this page.');
+  if (!activeDataset || activeDataset.manifest.input_version !== manifest.input_version || activeDataset.publication?.source_revision !== publication?.source_revision) activeDataset = createDataset(manifest, publication);
   return activeDataset;
 };
 let generation = 0;

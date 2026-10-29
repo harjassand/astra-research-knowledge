@@ -60,6 +60,7 @@ function harness(initial, cached = initial) {
   vm.runInNewContext(script, {document, fetch, TextEncoder, crypto: webcrypto});
   return {
     elements, requests,
+    setPublication: value => { elements.publication = value ? Object.assign(new Element('script'), {textContent: JSON.stringify(value)}) : undefined; },
     setEpoch: next => { server = next; },
     submit: async (query = 'mechanism') => {
       elements.query.value = query;
@@ -260,6 +261,40 @@ async function currentAuthorityPriority() {
   assert.match(rendered.review.context, /not a new audit/);
 }
 
+async function pinnedPublicationSources() {
+  const current = epoch('pinned-publication', 1);
+  const packet = JSON.parse(current.files['current/packets/U-fixture.json']);
+  packet.evidence = [{path: 'research/physical proof.md', read_path: 'research/physical proof.md', lines: [3, 12], sha256: 'c'.repeat(64)}];
+  packet.review_overlays = [{id: 'A-scope', decision: 'accepted_internally_verified', scope: 'Conditional source scope', authority: 'knowledge/reviews/A-scope.json'}];
+  current.files['current/packets/U-fixture.json'] = JSON.stringify(packet);
+  current.manifest.outputs['knowledge/current/packets/U-fixture.json'] = hash(current.files['current/packets/U-fixture.json']);
+  const publication = {schema: 'astra.pages-view.v1', source_revision: 'a'.repeat(40),
+    input_version: current.manifest.input_version, search_manifest_sha256: hash(JSON.stringify(current.manifest))};
+  const browser = harness(current);
+  browser.setPublication(publication);
+  await browser.submit();
+  await button(browser).listeners.get('click')();
+  let links = descendants(browser.elements.results).filter(e => e.tag === 'a');
+  assert.ok(links.some(e => e.href === 'https://raw.githubusercontent.com/harjassand/astra-research-knowledge/' + 'a'.repeat(40) + '/research/physical%20proof.md'));
+  assert.ok(links.some(e => e.href.endsWith('/knowledge/reviews/A-scope.json')));
+  browser.setPublication({...publication, input_version: '0'.repeat(64)});
+  await browser.submit();
+  assert.match(browser.elements.status.textContent, /Publication changed/);
+  assert.equal(browser.elements.results.children.length, 0);
+  browser.setPublication({...publication, search_manifest_sha256: '0'.repeat(64)});
+  await browser.submit();
+  assert.match(browser.elements.status.textContent, /Publication changed/);
+  browser.setPublication({...publication, source_revision: 'b'.repeat(40)});
+  await browser.submit();
+  await button(browser).listeners.get('click')();
+  links = descendants(browser.elements.results).filter(e => e.tag === 'a');
+  assert.ok(links.some(e => e.href.includes('/' + 'b'.repeat(40) + '/research/physical%20proof.md')));
+  // The old full-repository site remains readable during the publisher migration.
+  const legacy = harness(current);
+  await legacy.submit(); await button(legacy).listeners.get('click')();
+  assert.ok(descendants(legacy.elements.results).some(e => e.tag === 'a' && e.href === '../research/physical%20proof.md'));
+}
+
 (async () => {
   await updateWithoutReload();
   await rejectAndRecover();
@@ -267,5 +302,6 @@ async function currentAuthorityPriority() {
   await intermediateCorrectionRoute();
   await identifierRoutes();
   await currentAuthorityPriority();
-  process.stdout.write('6 static web cache/epoch/interface/identifier/authority scenarios passed\n');
+  await pinnedPublicationSources();
+  process.stdout.write('7 static web cache/epoch/interface/identifier/authority/publication scenarios passed\n');
 })().catch(error => { process.stderr.write(error.stack + '\n'); process.exitCode = 1; });
