@@ -5,8 +5,8 @@ construction. The same ordinary build validates that exact target and required
 notice support; an unknown target fails ingestion. CLI/native search exposes
 these explicit outlinks with the current target content version. Native routes
 include a snapshot-bound fetch handle. Bounded previews state total/omitted
-routes; fetch the candidate's complete notices for the rest. This navigation
-neither changes ranking nor infers a compatible transfer, acceptance or premise.
+routes; fetch the candidate's complete notices for the rest. Each outlink is
+evidence navigation, with no inferred compatible transfer, acceptance or premise.
 No new producer metadata or reporting step is required.
 Agent reranking also considers one hop over these explicit outlinks from its
 ordinary lexical seeds, before family siblings, within the same192-record cap.
