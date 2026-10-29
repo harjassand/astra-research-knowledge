@@ -29,6 +29,9 @@ def scientific_views(records):
     """Deterministic projections of authoritative current fields; no manual tags."""
     rows = []
     for record in sorted(records, key=lambda item: item["id"]):
+        # Canonical JSON transport sorts dictionary keys. Structured theorem
+        # fields must have the same text order before and after publication.
+        record = json.loads(encoded(record))
         frame = operation_frame(record)
         statement = statement_view(record, frame)["statement"]
         for role, fields in (

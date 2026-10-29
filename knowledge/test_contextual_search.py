@@ -88,6 +88,16 @@ class IncrementalContextualTests(unittest.TestCase):
         self.assertTrue(all("A measured input." not in row["text"] for row in rows))
         self.assertEqual(item["review_overlays"], [])
 
+    def test_structured_statement_views_survive_canonical_json_transport(self):
+        item = record()
+        item["statement"] = {"quantifiers": "For every supplied finite object.",
+                             "claim": "One common construction returns the bound.",
+                             "assumptions": "The given resource is paid."}
+        before = copy.deepcopy(item)
+        transported = json.loads(encoded(item))
+        self.assertEqual(scientific_views([item]), scientific_views([transported]))
+        self.assertEqual(item, before)
+
     def test_corrupt_prior_vector_cannot_be_reused_or_published_silently(self):
         self.compile([record()])
         path = self.root / VECTORS
