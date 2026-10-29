@@ -72,6 +72,29 @@ class Fixture(unittest.TestCase):
         self.assertEqual(first, second)
         check(self.root)
 
+    def test_different_numeric_relevance_artifacts_cannot_share_corpus_identity(self):
+        from array import array
+        from unittest.mock import patch
+        from knowledge.contextual_search import projection, VECTORS, INDEX, DIMENSIONS
+        first, initial = self.compile()
+
+        def alternate(*args, **kwargs):
+            outputs = projection(*args, **kwargs)
+            values = array("f"); values.frombytes(outputs[VECTORS])
+            for i in range(DIMENSIONS):
+                values[i] = -values[i]  # another finite unit vector, same scientific inputs
+            outputs[VECTORS] = values.tobytes()
+            index = json.loads(outputs[INDEX])
+            index["vectors_sha256"] = digest(outputs[VECTORS])
+            outputs[INDEX] = encoded(index)
+            return outputs
+
+        with patch("knowledge.contextual_search.projection", side_effect=alternate):
+            second, revised = self.compile()
+        self.assertEqual(initial["inputs"], revised["inputs"])
+        self.assertEqual(first["knowledge/current/records.jsonl"], second["knowledge/current/records.jsonl"])
+        self.assertNotEqual(initial["input_version"], revised["input_version"])
+
     def test_missing_support_fails_before_publication(self):
         self.compile()
         prior = (self.root / "knowledge/current/manifest.json").read_bytes()
