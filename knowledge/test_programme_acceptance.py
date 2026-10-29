@@ -90,7 +90,16 @@ class ProgrammeAcceptanceTests(unittest.TestCase):
             self.assertTrue(pins)
             for ref in pins:
                 self.assertEqual(hashlib.sha256((ROOT/ref['path']).read_bytes()).hexdigest(),ref['sha256'])
-        proof=self.library.source(FULL,0)
+        definition=self.library.source(FULL,0)
+        self.assertIn('Definition 1.1.',definition['text'])
+        self.assertIn('no restriction requiring equal reference marginals',definition['text'])
+        # The operation definition is now the first citation. Preserve the
+        # actual classification theorem route as a separate scoped premise;
+        # neither citation is presumed to prove every part of the unit.
+        record=self.library.resolve(FULL)
+        theorem_index=next(i for i,ref in enumerate(record['evidence'])
+                           if ref.get('quote')=='Theorem 1.2 (Main theorem).')
+        proof=self.library.source(FULL,theorem_index)
         self.assertIn('Theorem 1.2 (Main theorem).',proof['text'])
         self.assertIn('no restriction requiring equal reference marginals',proof['text'])
 
