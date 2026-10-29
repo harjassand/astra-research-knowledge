@@ -1,0 +1,16 @@
+# Additive scope: variable learner runtime before a protected role boundary
+2026-10-29. NEW receiving review requested separately from frozen core.
+
+The frozen prequential theorem retains stronger controller/source privacy assumptions inherited from FTPL. Its direct martingale proof can use a weaker, explicitly ordered boundary:
+
+1. From the actual past, run any causal finite learner. It may use variable runtime, rejected internal candidates, deterministic or random heuristics, and a candidate-dependent pre-role abort. No current quantum service/probe role is sampled yet.
+2. If it aborts, reject the quantum block. Otherwise fix a valid current frame C_t. Runtime and even C_t may be public to the source. Any source-memory evolution during computation is included in the actual current memory. At this point the source's next common joint CPTP operation is fixed (possibly depending on the public frame/runtime/history).
+3. ONLY THEN sample the fresh private LEARN/SERVICE role and its required input/settings or endpoint pad keys. These current private choices must not leak to the source except through interaction with the prescribed quantum input under the already fixed common map. The source cannot choose a different operation after obtaining the role/measurement settings.
+
+Conditional on the completed pre-role history, current frame, actual memory and fixed map, the same native product-bank expectation and the same any-map star-to-raw-loss inequality hold pointwise. The direct difference delta(C_t)-I_LEARN delta_hat(C_t)/p is centered regardless of the distribution that produced C_t or any publicly observable earlier runtime. Candidate-dependent aborted branches have no source call and are identically zero in the stopped process. No conditional uniform oracle-perturbation law or neutral success probability is needed. The service-fault martingale and all-input CP/QEC lift therefore remain valid.
+
+This removes FIXED LEARNER COMPUTATION CLOCK and SECRET CANDIDATE as requirements for this specific accepted-operation soundness theorem. It does NOT remove role/key privacy, trusted endpoint operations, storage or the common-map process boundary. If role-specific preparation/control timing discloses LEARN versus SERVICE before source interaction, the proof fails. A physically implementable way to protect that boundary remains required. Timing/source evolution is not assumed absent; it is included before the protected boundary and may make all candidates bad, causing rejection.
+
+No wall-clock runtime, resource cap or positive-yield result is inferred. For finite execution one may impose a predetermined computation cap and abort before drawing the role. Arbitrary candidate-dependent abort can destroy all completeness guarantees. This is not a repair of FTPL regret under adversarial candidate-dependent clocks; those learning theorems retain their original privacy/distribution assumptions.
+
+For the fully general map dependence above, the prequential counter must evaluate the CURRENT frame selected before role sampling. A final post-data frame still cannot be substituted into old samples. The root obstacle is protected role/input-setting order, not optimization exactness.

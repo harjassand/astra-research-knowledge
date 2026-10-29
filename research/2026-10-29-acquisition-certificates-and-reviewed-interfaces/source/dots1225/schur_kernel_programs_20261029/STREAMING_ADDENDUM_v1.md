@@ -1,0 +1,13 @@
+# Streaming record processing and bounded protected memory
+
+Additive to GOVERNING_v1.md; receiving review requested.
+
+One need not retain all N nine-level records in physical tensor-product storage. Start with the trivial representation. For each newly obtained minus record, apply the standard fundamental CG transform to the current representation register and that fresh record, measure the new partition and keep its representation register. The previous partition is classical. Multiplicity/path information may be measured or discarded; it is not needed for the kernel program. This is the usual sequential construction of the Schur transform with its multiplicity path dephased.
+
+For an arbitrary memory-bearing source, these measurements can change the conditional bath state and hence the next record. The correctness claim is therefore proved inductively on the ACTUAL history, not by replacing the process with iid samples. The current representation remains in the zero-last-coordinate-weight subspace for the same unknown W, and each fresh record is in W by the full-joint common-frame promise. The CG step preserves total nonnegative last-coordinate weight. Thus every new measured representation again satisfies the support invariant. The final rectangle decoder still yields pure programs decoupled from the actual bath.
+
+For the memoryless iid example, early measurement of the Schur multiplicity path does not change the final Schur partition distribution: path and final partition labels are compatible, and future iid record preparation is independent. The exact finite-call count bounds therefore apply to this streaming implementation as well.
+
+A U(d) GT representation register uses d(d−1)/2 integer entries bounded by N, with the partition stored classically. Protected representation storage is consequently at most36*ceil(log2(N+1)) qubits for d9, up to register-validity/workspace and source-acquisition ancillas. This is O(log N) at fixed d, with a LARGE dimension-dependent constant, not a claim of tiny hardware. Classical partition/path storage and processing are charged. The fresh record and CG workspace are additional resources.
+
+At the end, inverse-CG peeling uses the compressed representation. After rectangle-to-symmetric-dual conversion, inverse symmetric Schur steps can emit only the needed number of program copies; unused symmetric program representation can be discarded. Since the ideal surviving state is a tensor power of one pure program, this does not corrupt the emitted copies. A full native circuit, exact workspace/gate counts and calibration/noise accounting remain unresolved. Standard approximate CG compilation gives a paid ideal-model route, not a laboratory clock or fault-tolerance proof.

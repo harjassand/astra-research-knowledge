@@ -1,0 +1,6 @@
+# Rational finite schedule
+`exact_schedule.py` uses exact Fraction arithmetic and rounds both the quality bound and expected-cost bound UP to an80-bit dyadic grid after each recurrence. Since the error recurrence increases with input error, and D_9(e) decreases on e<8/9, this preserves both upper bounds. It rejects a precision too coarse to resolve the promised gap or the target rather than silently claiming convergence. The supplied nine parameter cases all pass. This is a finite controller schedule, not a native quantum execution.
+
+For eta_U=1/100, target R-program error1/10000, ten levels suffice; each capped attempt uses at most709476 ordinary source calls. Seven fresh attempts use at most4966332 calls and abort with probability at most1/128. Every successful public history has error at most1/10000. For target1/1000000 the corresponding total cap is635799115 calls. These conservative constants are plainly not evidence of practicality.
+
+The earlier Decimal evaluation is a convenience diagnostic only; exact_schedule.json supplies rational bounds and integer caps. Transduction, additional programs, PBT, controls and protected-memory costs are extra. Schedules assume the promised eta upper bound is valid; a statistical failure probability for acquiring that bound must be added separately.

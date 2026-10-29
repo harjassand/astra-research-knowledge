@@ -1,0 +1,5 @@
+# Direct normalized-ideal execution attempt — 2026-10-29 08:19 UTC
+
+Two exact SymPy F5B experiments on the accepted perturbed Choi–Lam input were launched: four-variable normalized critical equations, and five-variable version with explicit inverse-norm saturation. Neither produced a grevlex basis before interruption after roughly7minutes. During simultaneous runs, otherwise small shell/test calls stalled for tens of seconds; a peer's complementary modular quotient route reported the same contention. Both processes were deliberately interrupted with exit130 to release resources. Logs and source are retained. No global certificate or basis is claimed; this is not evidence against finite termination or the accepted fixed-parameter bit theorem.
+
+The source input is ../quaternion_algebraic_completion_20261029/input.json. The earlier three-variable chart ideal and its exact global certificates remain accepted and unchanged. The complementary modular multiplication/CRT implementation in ../quartic_value_polynomial_20261029 is now the active extraction attack; no duplicate heavy direct Groebner run is planned until that result is assessed.

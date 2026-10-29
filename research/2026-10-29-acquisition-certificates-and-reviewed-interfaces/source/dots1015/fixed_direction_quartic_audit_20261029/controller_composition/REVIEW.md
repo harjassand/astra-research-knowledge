@@ -1,0 +1,12 @@
+# Deterministic-bit FTPL composition: independent receiving review
+2026-10-29. Reviewer sharpen_noreset_acquisition_certificate.
+
+ACCEPTED at theoretical fixed-template scope. The new receipt for the deterministic good-direction optimizer was checked against its actual governing source. The previously accepted FTPL/expected-bit composition dependencies were also checked; this review does not reopen their internal algebraic proofs or claim an implemented optimizer.
+
+The strengthening is a valid composition: fixed rational p makes every query and tolerance O(log(T+2))-bit data, and the certified fixed direction has fixed rational description. Adding any of the6973 prescribed shifts grows these bit lengths only by a fixed additive constant and ordinary rational arithmetic. The number of attempted good-condition tests is bounded by a fixed constant, and the accepted template theorem supplies deterministic polynomial-bit work at every such input. Therefore the per-query bound is worst-case mathematical poly(log(T+2)), not merely an expected retry bound. This removes the optimizer retry tail; it does not remove the finite midpoint randomness required by FTPL.
+
+The global additive optimization contract is unchanged, so the finite-difference regret proof and720sqrt(35T/p)+720 fixed-comparator bound are unchanged. Expectation still ranges over the controller's FTPL/role/probe randomness and actual source history. No pointwise deterministic regret guarantee or drifting-comparator theorem is inferred.
+
+A uniform public bit-size bound can in principle parameterize a mathematical worst-case work schedule for a supplied deterministic implementation. The document correctly stops short of supplying that implementation, its numerical constants, a practical clock/buffering mechanism or gate/control calibration. Those are necessary before claiming an operational latency/privacy advantage. Feedback counters, temporary algebraic workspace and current candidate representation remain different resources; the claim is not that the entire controller occupies only35 small counters. Equally informed conventional baselines may reuse the optimizer.
+
+`check_trial_sizes.py/.json` independently enumerates all6973 distinct rational shift parameters for several horizons through2^256, verifies the coefficient-l1 perturbation budget exactly, and checks representative coefficient bit lengths. It does NOT execute6973 optimizer trials or the missing universal template. This is exact arithmetic evidence for the composition, not a solver-performance benchmark.

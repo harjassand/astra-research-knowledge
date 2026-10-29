@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from knowledge.mcp_adapter import ResearchAdapter
 from knowledge.model import digest, encoded
@@ -467,6 +467,59 @@ class PublishedRefreshTests(unittest.TestCase):
             finally:
                 self.git(self.old,'remote','remove','origin')
 
+    def test_actual_partial_clone_batches_missing_selected_blobs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary); bare = folder / "origin.git"
+            partial, cache = folder / "partial", folder / "cache"
+            subprocess.run(["git", "clone", "--bare", str(self.root), str(bare)], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.git(bare, "config", "uploadpack.allowFilter", "true")
+            self.git(bare, "config", "uploadpack.allowAnySHA1InWant", "true")
+            # The complete committed index must retain this object identity,
+            # but sparse publication must never fetch/materialize its bytes.
+            seed = folder / "seed"
+            subprocess.run(["git", "clone", str(bare), str(seed)], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            (seed / "unselected.bin").write_bytes(b"Unselected source container.\n" * 1000)
+            self.git(seed, "add", "unselected.bin")
+            self.git(seed, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                     "commit", "-qm", "retain unselected fixture object")
+            unselected = self.git(seed, "rev-parse", "HEAD:unselected.bin")
+            self.git(seed, "push", "origin", "HEAD:refs/heads/main")
+            url = bare.as_uri()
+            subprocess.run(["git", "clone", "--filter=blob:none", "--no-checkout", url, str(partial)],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.git(partial, "checkout", "--detach", self.a.revision)
+            self.assertEqual(self.git(partial, "config", "--get", "remote.origin.promisor"), "true")
+            provider = GitSnapshots(partial, cache, repository_url=url)
+            original = provider.git; batches = []
+            def track(root, *args, **kwargs):
+                if "fetch" in args and "--stdin" in args:
+                    # The release's branch fetch may update FETCH_HEAD; the
+                    # blob transport must not alter it or request a refspec.
+                    head = (partial / ".git/FETCH_HEAD").read_bytes()
+                    requested = kwargs["input"].splitlines()
+                    self.assertGreater(len(requested), 1)
+                    self.assertTrue(all(len(oid) == 40 and b":" not in oid for oid in requested))
+                    batches.append(requested)
+                    result = original(root, *args, **kwargs)
+                    self.assertEqual((partial / ".git/FETCH_HEAD").read_bytes(), head)
+                    return result
+                return original(root, *args, **kwargs)
+            with patch.object(provider, "git", side_effect=track):
+                result = provider.stage(self.b.version)
+            self.assertEqual(len(batches), 1)
+            self.assertEqual(ResearchAdapter(result).version, self.b.version)
+            self.assertEqual(ResearchAdapter(result).search("revised finite")["metadata"]["input_version"],
+                             self.b.version)
+            self.assertEqual((result / "source-v2.txt").read_bytes(), (self.root / "source-v2.txt").read_bytes())
+            self.assertEqual((partial / self.fixture.source["path"]).read_bytes(),
+                             (self.old / self.fixture.source["path"]).read_bytes())
+            self.assertFalse((result / "unselected.bin").exists())
+            remaining = subprocess.check_output(["git", "-C", str(result), "rev-list", "--objects",
+                "--missing=print", "--no-object-names", "--stdin"], input=(unselected + "\n").encode())
+            self.assertEqual(remaining.strip(), ("?" + unselected).encode())
+
     def test_reuses_only_unchanged_sources_and_keeps_independent_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary); bare = folder / "origin.git"; cache = folder / "cache"
@@ -613,6 +666,58 @@ class PublishedRefreshTests(unittest.TestCase):
                 self.git(self.old, 'remote', 'remove', 'origin')
                 # Only the explicitly created fixture note in its disposable worktree.
                 self.git(self.old, 'worktree', 'remove', '--force', str(doc))
+
+
+class SelectedBlobTransportTests(unittest.TestCase):
+    a, b = b"a" * 40, b"b" * 40
+
+    def provider(self, replies):
+        provider = GitSnapshots.__new__(GitSnapshots)
+        provider.git = Mock(side_effect=replies)
+        return provider
+
+    def test_complete_objects_need_no_remote_call(self):
+        provider = self.provider([self.a + b"\n" + self.b + b"\n"])
+        provider.prefetch_blobs(Path("unused"), {self.a, self.b})
+        self.assertEqual(provider.git.call_count, 1)
+
+    def test_only_missing_selected_ids_enter_one_no_ref_fetch(self):
+        before = self.a + b"\n?" + self.b + b"\n"
+        after = self.a + b"\n" + self.b + b"\n"
+        provider = self.provider([before, "true", b"", after])
+        provider.prefetch_blobs(Path("unused"), {self.a, self.b})
+        args, kwargs = provider.git.call_args_list[2]
+        self.assertEqual(kwargs["input"], self.b + b"\n")
+        self.assertIn("--no-write-fetch-head", args)
+        self.assertIn("--no-auto-maintenance", args)
+        self.assertIn("origin", args)
+        self.assertEqual(args[1:4], ("-c", "fetch.negotiationAlgorithm=noop", "fetch"))
+        self.assertEqual(provider.git.call_count, 4)
+
+    def test_nonpromisor_missing_object_is_not_silently_repaired(self):
+        provider = self.provider([b"?" + self.a + b"\n", "false"])
+        with self.assertRaisesRegex(ValueError, "outside a promisor"):
+            provider.prefetch_blobs(Path("unused"), {self.a})
+        self.assertEqual(provider.git.call_count, 2)
+
+    def test_incomplete_remote_response_fails_before_checkout(self):
+        missing = b"?" + self.a + b"\n"
+        provider = self.provider([missing, "true", b"", missing])
+        with self.assertRaisesRegex(ValueError, "remain missing"):
+            provider.prefetch_blobs(Path("unused"), {self.a})
+
+    def test_invalid_oid_cannot_become_a_fetch_refspec(self):
+        provider = self.provider([])
+        with self.assertRaisesRegex(ValueError, "Invalid selected"):
+            provider.prefetch_blobs(Path("unused"), {b"main:refs/heads/changed"})
+        provider.git.assert_not_called()
+
+    def test_inventory_must_cover_exactly_the_requested_objects(self):
+        for inventory in (b"", self.b + b"\n"):
+            provider = self.provider([inventory])
+            with self.assertRaisesRegex(ValueError, "Unexpected.*inventory"):
+                provider.prefetch_blobs(Path("unused"), {self.a})
+            self.assertEqual(provider.git.call_count, 1)
 
 
 if __name__ == "__main__":

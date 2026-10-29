@@ -1,0 +1,3 @@
+# Mandatory priority correction companion
+
+Read the primary manuscript arXiv:2610.06737v1, Algorithm2, Theorem5 and Eq35: https://arxiv.org/html/2610.06737v1 . These directly contain the fresh-copy growth algorithm, discard-on-failure rule and identical minimum-eigenvalue hazard. The author PRIOR_ART_CORRECTION.md is correct and mandatory with the earlier receipt. The earlier review’s statement that the hazard was independently checked describes validation, not originality. The generic algorithm and hazard are prior work, not an Astra discovery. The retained-memory interface transfer and finite source-call specialization have no established novelty claim. The earlier exact mathematical acceptance remains unchanged.

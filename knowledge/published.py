@@ -115,16 +115,17 @@ class GitSnapshots:
     def git(self, root, *args, input=None, binary=False):
         # A cold sparse materialization can touch many thousands of files.
         # Keep network/metadata operations bounded separately from that work.
-        budget = 120 if args[0] in ("checkout", "checkout-index") else 45
+        command = args[2] if args[:2] == ("-c", "fetch.negotiationAlgorithm=noop") else args[0]
+        budget = 120 if command in ("checkout", "checkout-index") else 45
         try:
             result = subprocess.run(["git", "-C", str(root), *args], input=input,
                                     text=not binary, capture_output=True, timeout=budget, check=True)
         except subprocess.TimeoutExpired as error:
-            raise ValueError("Published Git operation timed out: " + args[0]
+            raise ValueError("Published Git operation timed out: " + command
                              + " (budget " + str(budget) + " seconds)") from error
         except subprocess.CalledProcessError as error:
             # Git can include host paths in stderr. Keep tool errors portable.
-            raise ValueError("Published Git operation failed: " + args[0]
+            raise ValueError("Published Git operation failed: " + command
                              + " (exit " + str(error.returncode) + ")") from error
         return result.stdout if binary else result.stdout.strip()
 
@@ -133,7 +134,12 @@ class GitSnapshots:
         marker = Path(path) / "knowledge/current/manifest.json"
         try:
             return (marker.is_file() and json.loads(marker.read_bytes()).get("input_version") == version
-                    and self.git(path, "write-tree") == self.git(path, "rev-parse", revision + "^{tree}"))
+                    # The full index includes deliberately unmaterialized
+                    # promisor blobs. Verify its exact tree without fetching
+                    # every unrelated historical object. Finished selected
+                    # bytes are independently checked by ResearchAdapter.
+                    and self.git(path, "write-tree", "--missing-ok")
+                    == self.git(path, "rev-parse", revision + "^{tree}"))
         except (OSError, ValueError):
             return False
 
@@ -248,14 +254,15 @@ class GitSnapshots:
             # and unselected non-UTF8 names without glob matching every path.
             self.git(staging, "read-tree", "--no-sparse-checkout", revision)
             entries = self.git(staging, "ls-files", "--stage", "-z", binary=True)
-            modes = {}
+            modes, blobs = {}, {}
             for entry in entries.split(b"\0"):
                 if entry:
                     header, name = entry.split(b"\t", 1)
-                    mode, _, index_stage = header.split()
+                    mode, blob, index_stage = header.split()
                     if index_stage != b"0":
                         raise ValueError("Published index contains an unresolved entry")
                     modes[name] = mode
+                    blobs[name] = blob
             members = set(modes)
             tracked = b"\0".join(sorted(members)) + b"\0"
             if not {name.encode("utf-8") for name in required} <= members:
@@ -267,8 +274,14 @@ class GitSnapshots:
             reused = self.reuse_files(staging, revision, manifest, modes)
             remaining = [name for name in selected.split(b"\0") if name and name not in reused]
             if remaining:
+                self.prefetch_blobs(staging, {blobs[name] for name in remaining})
                 pending = b"\0".join(remaining) + b"\0"
                 self.git(staging, "checkout-index", "-z", "--stdin", input=pending, binary=True)
+            # Reused independent files have no checkout-created index stat
+            # cache. Refresh it while staging is private, so later read-only
+            # diff checks do not resolve promised blobs one at a time (or hit
+            # the observed Git2.50 cold-index failure). No content is staged.
+            self.git(staging, "update-index", "--refresh")
             if not self.materialized(staging, revision, version):
                 raise ValueError("Sparse snapshot did not materialize its committed manifest and index")
             self.git(self.root, "worktree", "move", str(staging), str(target))
@@ -283,6 +296,43 @@ class GitSnapshots:
             raise ValueError(str(error) + "; incomplete owned staging retained for diagnosis; retry the request") from error
         return target
 
+    def prefetch_blobs(self, staging, objects):
+        """Fetch only absent selected blobs together in a partial clone.
+
+        checkout-index faults missing objects in individually. A normal full
+        clone hid this cost in an earlier benchmark. Inventory explicitly
+        without lazy fetching, then use the already validated origin once.
+        No ref, FETCH_HEAD, filter configuration, old file or history changes.
+        """
+        if not objects:
+            return
+        if any(not re.fullmatch(rb"[0-9a-f]{40}", oid) for oid in objects):
+            raise ValueError("Invalid selected published blob identity")
+        requested = b"\n".join(sorted(objects)) + b"\n"
+
+        def missing():
+            lines = self.git(staging, "rev-list", "--objects", "--missing=print",
+                             "--no-object-names", "--stdin", input=requested, binary=True).splitlines()
+            if {line.removeprefix(b"?") for line in lines} != objects:
+                raise ValueError("Unexpected published blob inventory")
+            return {line[1:] for line in lines if line.startswith(b"?")}
+
+        absent = missing()
+        if not absent:
+            return
+        # A corrupt ordinary clone is not silently repaired as a partial one.
+        if self.git(staging, "config", "--bool", "--get", "remote.origin.promisor") != "true":
+            raise ValueError("Selected published blobs are missing outside a promisor clone")
+        # Match Git's own promisor fetch: negotiate no commit graph for direct
+        # blob wants. Ordinary negotiation can fail with promised old blobs in
+        # an otherwise valid shallow clone. This is a per-command option only.
+        self.git(staging, "-c", "fetch.negotiationAlgorithm=noop", "fetch", "origin",
+                 "--no-tags", "--no-write-fetch-head",
+                 "--no-auto-maintenance", "--recurse-submodules=no", "--filter=blob:none",
+                 "--stdin", input=b"\n".join(sorted(absent)) + b"\n", binary=True)
+        if missing():
+            raise ValueError("Selected published blobs remain missing after batch fetch")
+
     def reuse_files(self, staging, revision, manifest, modes):
         """Copy unchanged committed bytes, never hardlink mutable worktrees.
 
@@ -293,7 +343,7 @@ class GitSnapshots:
         previous = json.loads(self.git(self.root, "show", "HEAD:knowledge/current/manifest.json"))
         prior = previous["inputs"] | previous["outputs"]
         expected = manifest["inputs"] | manifest["outputs"]
-        changed = set(self.git(self.root, "diff", "--name-only", "-z", "HEAD", revision,
+        changed = set(self.git(self.root, "diff", "--name-only", "-z", "--no-renames", "HEAD", revision,
                                "--", binary=True).split(b"\0"))
         reused = set()
         directories = {staging}

@@ -1,0 +1,11 @@
+# Same-bank certification without certified optimization
+
+The new prequential route evaluates each product probe at the frame chosen BEFORE that same probe. Its conditional unbiasedness directly bounds cumulative actual selected loss. The accepted all-input acquisition-only CP/QEC construction then certifies the accepted subnormalized quantum operation. No FTPL rule, exact optimizer, objective gap certificate or retrospective fit is required for soundness. Favorable learning behavior still matters for acceptance.
+
+`GOVERNING_DRAFT.md` is the new proof awaiting independent receiving review. `check_prequential.py` checks 7776 exact native probe records, 3186 adaptive centering states, stopping, and a counterexample to choosing the frame after seeing the probe. `exact_threshold.py` implements rational decision arithmetic; `check_threshold.py` tests its numerical/public-parameter contract. Supplied counter provenance and physical code/control implementation remain outside this evaluator.
+
+`evaluate_live_prequential.py` independently checks 114 scalar estimates against raw records from the frozen author's 120-call THREE-role simulation. At k=20 its bound is 14417.12, better than the retrospective formula's 1934950.82 but still worse than trivial360. No outer code or payload was present; no two-role acquisition-only instrument was executed. It is not evidence of quantum acceptance or useful yield. The hypothetical large-horizon passing arithmetic test is similarly not acquired data.
+
+Exact rational evaluation of current rotations can be upper-rounded on a public dyadic grid; no optimization certificates are needed. Physical clocks, private sampling, storage, controls, SPAM and outer-code execution remain paid and trusted or separately budgeted. Strong conventional adaptive learners can use the identical certificate; no historical novelty, orbit-specific advantage, capacity or practical speed claim is established.
+
+This is additive. Previously accepted retrospective and variable-gap results remain intact, but they are no longer necessary dependencies for this route's accepted-operation soundness. Source-interface, raw-loss transfer and all-input CP/QEC proofs remain required.

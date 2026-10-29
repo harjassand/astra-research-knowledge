@@ -1,0 +1,4 @@
+# Additive diagnostic correction: trivial star-loss ceiling
+2026-10-29. The general arbitrary-source defect lies in [0,2], not [0,1]. Therefore the universally trivial cumulative ceiling at m=3,T=120 is 2mT=720, not 3T=360 as stated in the earlier diagnostic README/output. Both reported confidence bounds (retrospective ~1,934,951 and prequential ~14,417) remain far above the corrected ceiling, so the no-certification conclusion is unchanged.
+
+No governing concentration coefficient changes: observable v1 explicitly uses [0,2], retrospective v2 already uses range m(2+45/p), and the new prequential proof conditions on the current frame and uses only the native-estimator interval width45m/p. Original frozen diagnostic bytes are retained for provenance; their trivial_loss_bound/reason text is superseded by this correction.

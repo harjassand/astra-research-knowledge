@@ -1,0 +1,2 @@
+# Choi register convention correction
+2026-10-29. Additive correction to frozen GOVERNING.md, section on trace-distance program error. With J(E)=(id_A tensor E_B)(Phi_AB), the pure-input filtering identity used in the proof is (A_reference tensor I_input)|Phi>, not (I tensor A)|Phi> in the stated register order. The reference filter commutes with E and has operator norm squared at most d. The resulting half-diamond bound d eta is unchanged. This corrects only the explanatory filtering convention, not the theorem or executed tests.
