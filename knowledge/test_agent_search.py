@@ -1,4 +1,5 @@
 """Failure-mode checks; exposed examples are not fresh evaluation."""
+import copy
 import importlib.util
 import json
 from pathlib import Path
@@ -19,8 +20,17 @@ class OperationTests(unittest.TestCase):
     def test_frames_bind_exact_current_content_without_converting_units(self):
         for record in self.library.records.values():
             frame = self.library.operation_frames[record["id"]]
+            original_contract = copy.deepcopy(record["contract"])
             self.assertEqual(frame, operation_frame(record))
-            self.assertEqual(frame["units"], record["contract"].get("units", "UNKNOWN"))
+            current = record.get("current_consumer")
+            if current:
+                self.assertEqual(frame["consumer_origin"]["subject"],
+                                 {"id": record["id"], "content_version": record["content_version"]})
+                self.assertEqual(frame["consumer_origin"]["authority_notice"], current["authority_notice"])
+                self.assertEqual(frame["units"], current["contract"]["units"])
+            else:
+                self.assertEqual(frame["units"], original_contract.get("units", "UNKNOWN"))
+            self.assertEqual(record["contract"], original_contract)
 
     def test_supplied_facts_do_not_discharge_premises_or_negation(self):
         frame = {"requires": "A calibrated scalar reading without reconstruction.",
