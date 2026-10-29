@@ -17,7 +17,7 @@ from knowledge.build import inventory
 from knowledge.evidence import search as evidence_search
 from knowledge.model import Inputs, LEGACY_SOURCE_TEXT, compact_ref, digest, encoded, evidence_refs, flatten, route_id, scientific_text
 from knowledge.operations import (statement_view, consumer_contract, acceptance_view,
-                                  CURRENT_CONSUMER_LAYOUT)
+                                  CURRENT_CONSUMER_LAYOUT, current_scope_navigation)
 from knowledge.retrieve import Library
 
 PUBLIC = "https://github.com/harjassand/astra-research-knowledge/blob/"
@@ -253,6 +253,12 @@ class ResearchAdapter:
                 if lane and family(lane[0]["id"]) == family(identifier)]
             if identifier in notice_matches:
                 records[-1]["metadata"]["matching_current_notice"] = notice_matches[identifier]
+            current_scope = current_scope_navigation(record, self.library.records, limit=3)
+            if current_scope["total_routes"]:
+                for route in current_scope["routes"]:
+                    route["fetch_id"] = self.handle("current", route["id"])
+                    route["url"] = self.record_url(route["id"])
+                records[-1]["metadata"]["current_scope_navigation"] = current_scope
             navigation = self.interface_view(identifier, preview=True)
             if navigation["routes"] or navigation["total_candidates"]:
                 records[-1]["metadata"]["shared_consumer_navigation"] = navigation

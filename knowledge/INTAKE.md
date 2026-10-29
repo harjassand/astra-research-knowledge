@@ -1,5 +1,14 @@
 # Capital integration contract
 
+An existing semantic notice may name `current_scope_unit` for a later scoped
+construction. The same ordinary build validates that exact target and required
+notice support; an unknown target fails ingestion. CLI/native search exposes
+these explicit outlinks with the current target content version. Native routes
+include a snapshot-bound fetch handle. Bounded previews state total/omitted
+routes; fetch the candidate's complete notices for the rest. This navigation
+neither changes ranking nor infers a compatible transfer, acceptance or premise.
+No new producer metadata or reporting step is required.
+
 The same build/check now generates lossless operation views and evidence
 navigation from existing record citations and recognized selected-public-source
 indexes (`astra.intake-source-index.v1`, `selected_frozen_source_index`, or

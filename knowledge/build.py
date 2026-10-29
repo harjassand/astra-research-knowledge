@@ -520,6 +520,12 @@ def build(root=ROOT):
     from knowledge.operations import (compile_current_consumers, consumer_contract,
                                       acceptance_view, consumer_notice_view, CURRENT_CONSUMER_LAYOUT)
     compile_current_consumers(records)
+    # A broken declared current-scope outlink is an ingestion failure, rather
+    # than stale or silently missing guidance in later agent search menus.
+    from knowledge.operations import current_scope_navigation
+    current_records = {record["id"]: record for record in records}
+    for record in records:
+        current_scope_navigation(record, current_records)
 
     documents = []
     for record in sorted(records, key=lambda item: item["id"]):
