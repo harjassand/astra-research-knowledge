@@ -102,6 +102,20 @@ unit. Deeper portable menus find G06 only at family 38, requiring an eighth
 five-item page. None is shipped as a validated repair or claimed as a first-page
 improvement. No query alias, weight or model changed in this intake.
 
+The subsequent [actual installed navigation check](actual-exposed-navigation.json)
+changes the end-to-end diagnosis without changing the direct-rank result. At
+published input`5788b3479627421d3a67e1e6fced19f66323e94e01ccdaf4bf094a14547aa8b9`
+(PR261), the same exposed G06 query returns U1069 inside N768/U1000's existing
+common-consumer navigation. Following that returned handle gives the exact
+unit, two full capsule pages and its actual source: the g3 reading narrows g4's
+separate interval eightfold while preserving both attained signed-task endpoint
+witnesses. Three consumer pages and the anonymous exact adapter proof confirm
+the version-bound scalar-enclosure interface. This used one search, six MCP
+fetches and one anonymous source read, with no query rewrite or new alias.
+Shared-consumer navigation is not a transfer between providers, and unchanged
+robust task range does not imply zero Bayesian value. Direct five-record ranking
+still misses; the existing functional navigation recovers a correct usable premise.
+
 The next retrieval improvement should expose alternative operation/functional
 routes and validate their scientific premise and navigation cost across fields,
 while retaining source discovery. A larger index, a matching phrase, a positive
