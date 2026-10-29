@@ -127,6 +127,15 @@ locators or qualifications stay separate. Unique provider citations remain
 inline. Every mapping, condition and correction is retained; shared citation
 storage confers no acceptance or additional statement support. Canonical
 transfers stay complete.
+The same pointer convention may share identical citations in transfer, review
+and relationship metadata. Origins remain in evidence, notices, current reviews
+or transfers, so both full packets and compact MCP capsules retain the target.
+Primary evidence order and every distinct range, quote and qualification remain.
+Named validation `reported_status_evidence` may use the existing
+`evidence_ref_field`/`evidence_ref_indices` convention; annotations remain attached.
+A missing `read_path` defaults to `path`; only identical duplicate paths may be
+omitted, never a different extraction/HTML branch.
+
 In compact MCP capsules, resolve the same packet-root JSON Pointer, then follow
 the target source view's `source_fetch_id` or `fetch_id`. Source fetch retains
 the complete original selector and annotations; pointer reuse changes neither
