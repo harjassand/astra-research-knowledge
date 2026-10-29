@@ -1,0 +1,1 @@
+The first checker completed all numerical assertions but JSON serialization rejected a NumPy Boolean. Version2 changes only conversion of that Boolean to Python bool; same seed and mathematical checks. No source samples involved.

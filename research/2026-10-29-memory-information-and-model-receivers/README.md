@@ -1,0 +1,5 @@
+# Memory, information and model receivers
+
+New acquired source deltas use the same ordinary canonical intake. N1221 molecular kernels/added-noise scope, N1222 coded causal memory, N1223 reported acquired fiber compiler, N1224 compact recovery and stronger conventional alternatives, N1225 entropy/reversal information, N1226 explicitly provisional smooth-well draft, N1227 graded records/reusable causal service, N1228 uniform recursive check soundness, and N1229 structured complete channel order retain their separate governing contracts and actual review availability.
+
+Original science programs remain inert. No new scientific re-audit, proof replay, physical experiment, source export or producer form was requested. Current selected public sources and exact path-portability identities are in PUBLIC_SELECTION.json; raw originals and numeric data are preserved separately. Rendered previews are explicitly labeled and do not acquire missing originals. The P1 predictive predecessor is already public in PR263; earlier Dots archives and unchanged dependencies remain immutable. No mechanism count is claimed complete.

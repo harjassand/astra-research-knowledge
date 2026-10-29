@@ -1,0 +1,31 @@
+# Independent review: locally acquired collective Pauli oracle certificate
+
+28 October2026. **Accepted at the promised stationary tree-Markov Pauli-source, trusted physical-SPAM, and exploratory simulated-data scope in GOVERNING_TREE_CERTIFICATE_v2.md.** Version4's stopping-safe reanalysis is the operative statistical certificate; version3's narrower fixed-N number is only a preserved diagnostic. No acquisition of the tree promise, non-Pauli extension, hardware result, new graphical inference principle or uniform sample-complexity advantage is established.
+
+## Global objective
+
+For a d=2^n dimensional Pauli channel and arbitrary CPTP recovery Kraus operators K_a, define q_x=sum_a|Tr(K_a P_x)|²/d². Pauli Parseval and trace preservation give q_x>=0 and sum_x q_x=1. The exact entanglement-fidelity Kraus formula gives F_e(R N)=sum_x p_x q_x<=max_x p_x. Applying the mode Pauli attains equality. This proof includes every CPTP collective recovery, not only product or unitary decoders. Independent random four-dimensional Kraus tests verify the normalization to4.44e−16; those tests supplement, rather than replace, the exact proof.
+
+## Local records and uncertainty
+
+The estimator's conditional mean is checked for every one-site error label and every target label. Uniformly choosing one of three axes yields the indicator mean; independent site axis choices give the pair indicator mean even when the underlying Pauli errors are arbitrarily correlated spatially. One- and two-site estimators both have range[-1/2,1], so range length3/2 and Hoeffding exponent8N delta²/9 are correct. There are4n+16(n−1) simultaneous coefficients. No independence between coefficients of the same call is required; independent identically distributed COMPLETE calls are required.
+
+The reviewer regenerated every one of4,194,304 version3 source/probe/readout records with exact integer categorical sampling, rebuilding sufficient sums through a separate Fourier-feature calculation rather than importing the author implementation. All144 saved coefficient sums match exactly. Version2 is demonstrably the first2^20 rows of this same stream, not fresh validation. Source parameters and hidden error labels are confined to generation and post hoc diagnostics; the proposal and guards consume only saved ordinary-data sums.
+
+Version4 uses delta=7/2000. Exact rational exponential-series checking verifies pointwise failure <=.001/[N(N+1)]. The union over all positive integer N of these allocated probabilities is .001, establishing the displayed stopping-safe boundary. A wider rational radius preserves the event. This corrects the unqualified fixed-N interpretation after the earlier guard failure. The final certificate has simultaneous failure budget .001, not the displayed4.21e−18 pointwise diagnostic. It remains a simulated PRNG execution of a mathematically specified experiment, not physical observations or external preregistration.
+
+## Division-free structure and dynamic programming
+
+For the supplied rooted-tree factorization, Q(x)=D p(x) follows by direct substitution when all marginals are positive. Continuity of the finite polynomial expression extends it to zero probabilities. On the simultaneous coefficient event, monotonicity of nonnegative factors gives L(x)<=Q(x)<=U(x) for all words at once. A strict unique-mode guard makes Q(xhat)>0, hence D=sum_x Q(x)>0; only the proof then divides by D. The decision does not need a supplied numerical marginal floor.
+
+This does NOT guarantee readiness at zero support. If a parent node has any zero marginal state, D=0 and all cleared scores vanish, so this particular strict guard must abstain. Near-zero marginals or nearly tied global modes can make sample requirements arbitrarily large. No uniform polynomial sample bound follows from polynomial-time dynamic programming.
+
+The independent checker verifies the polynomial identity on a branching four-node tree, not only a chain. For the recorded chain, an independently implemented backward-suffix maximum with competitors partitioned by their first differing coordinate reproduces the exact rational lower and competing upper scores. Version4's lower/upper ratio is approximately1.54413, so the cleared guard passes. The separate ratio guard correctly reverses denominator endpoints, checks positive acquired lower denominators, and gives F_e>=.6154218914520113. The actual source mode probability .6640666162340642 is a diagnostic, not learner input.
+
+The supplied tree and Pauli frame are assumptions. The strictly positive three-qubit counterexample is independently reconstructed: every one- and two-site marginal agrees exactly, all local Bloch contractions are positive, but unique global modes differ. Its fidelity gap is1379/100000. A further uniform four-symbol parity fixture supplies another exact ambiguity. Hence local data do not establish global factorization; the source promise cannot be replaced by good-looking pair marginals or local oracle certificates.
+
+## Costs, significance and unresolved operation
+
+The final bank has33,554,432 physical-qubit exposures, preparations and readouts. Across all executed generator versions the ledger is6,291,456 full rows and50,331,648 qubit exposures; reused version2 rows are not additional independent evidence. Version4 draws no new data. A general accepted output uses at most n single-qubit Pauli corrections; this particular fixture selects I^8, so it certifies that doing nothing is globally optimal rather than demonstrating a nontrivial applied corrective pulse. Global fidelity remains well below a high-quality memory target.
+
+Flammia–Wallman, *Efficient estimation of Pauli channels*, arXiv1907.12976v3, primary record checked at https://arxiv.org/abs/1907.12976 , already develops efficient structured Pauli-channel estimation. Ordinary graphical inference is the equally informed comparator. This review accepts the explicit conditional certificate and recorded computation, not historical novelty or superiority over that literature. The new load-bearing scope is an acquired full-CPTP global-oracle statement within a promised physical channel family; arbitrary hidden higher-order correlations, learned unknown frames, retained temporal memory, imperfect SPAM and noncommuting gauge structure remain outside it.

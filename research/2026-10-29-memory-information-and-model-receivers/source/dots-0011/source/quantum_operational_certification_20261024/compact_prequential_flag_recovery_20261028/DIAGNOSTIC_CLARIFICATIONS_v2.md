@@ -1,0 +1,10 @@
+# Diagnostic scope and identity-warm-start replay
+2026-10-28. Governs interpretation of QUANTUM_MEMORY_DIAGNOSTIC_README_v1; earlier sources preserved.
+
+A nonzero commutator between successive conditional memory states only proves those particular simulated states lack a common diagonalizing basis. It does NOT certify irreducible quantum memory from observed records or rule out a classical hidden-state model reproducing the records. The fixture is explicitly implemented as a coherent retained-qubit-memory process; this is a property of its supplied simulator mechanism, not an acquired quantum-memory witness.
+
+`quantum_memory_warmstart_v1.py` repeats the identical source seeds and instruments but initializes the decoder at identity correction, instead of uniform Pauli guessing. Its actual records are byte-for-byte identical to `quantum_memory_records_v1.npy`; the replay is NOT another independent source bank. Recomputed calls count as 192 simulated calls again but add zero distinct acquisition records. The updated path-average learned scores are .33783, .36403 and .34184, still worse than the supplied fixed identity .44759. The original negative result is retained, not superseded by a claim of practical advantage.
+
+The received regret constant assumes the uniform initialization and initial distance squared <=r. An arbitrary identity-POVM initialization instead has distance squared <=2r and requires the corresponding larger constant; this warm-start replay does not silently inherit the displayed (9/8) coefficient. With the same step and projection allowances, the analogous bound is at most (13/8)r^2/sqrt N. This remains a loose expectation theorem, not a score certificate for these three paths.
+
+The generic projection routine used in the diagnostic remains floating, and no exact finite objective-slack certificate or physical quantum hardware was executed. The unpruned receiver is evaluated analytically. The separate exact rational compact-pruning tests do not turn this floating controller into a certified device.

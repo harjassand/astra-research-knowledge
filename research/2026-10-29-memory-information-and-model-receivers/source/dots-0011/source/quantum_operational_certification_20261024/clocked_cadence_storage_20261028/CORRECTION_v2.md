@@ -1,0 +1,1 @@
+Version1 computation completed but JSON serialization failed because a NumPy Boolean was not converted to a Python bool. Its script and failure log are preserved. Version2 changes only that serialization cast and writes results_v2.json. No scientific model, policy grid or outcomes were changed.

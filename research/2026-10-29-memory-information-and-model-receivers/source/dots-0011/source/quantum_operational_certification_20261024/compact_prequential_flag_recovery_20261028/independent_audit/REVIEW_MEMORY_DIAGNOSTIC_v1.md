@@ -1,0 +1,12 @@
+# Scoped independent diagnostic review
+28 October 2026. This is separate from the governing theorem receipt.
+
+Inspected quantum_memory_fixture_v1.py and its imported numerical projection routine. Replayed the complete author program in a temporary directory: all 192 stored simulated records and the complete result JSON reproduced exactly. Original author files were not rewritten. Independently formed the full Bell-and-flag measurement Kraus operators from the reference/data/memory/flag Hilbert space to the retained memory, for eight fresh mixed memory states and all 16 Bell labels and seven flag setting/outcome possibilities. All 896 contractions agree with the author's memory-after formula to 8.34e-17. The earlier independent mechanism checker separately verifies teleportation on arbitrary matrix units and mixed resources.
+
+The learner update uses only observed label, flag setting and outcome; simulator memory and conditional Bell blocks are used to generate the quantum process and evaluate scores, not fed into its gradient update. A private terminal index is sampled before the trajectory; evaluating a resource at that prefix does not use future data. Continuing the simulated all-probe trajectory afterward is an analysis diagnostic, not an operational repeated-payload claim.
+
+The numerical projection is not the certified rational finite solver in the theorem; near-PSD floating iterates and normalized/clipped sampling probabilities belong to this floating model. No exact operational implementation bound is inferred. The comparisons with fixed identity are honestly unfavorable to the learned receiver and are path averages, not expected-occupation optimal values or confidence statements. The 0.5625 worst-case excess is vacuous for a useful high-fidelity conclusion at this horizon.
+
+The nonzero commutator between successive conditional memory density matrices shows absence of a common diagonal basis for those states. It is **not** a witness excluding all classical hidden-state reproductions or proving a quantum-memory advantage. The actual supplied simulator is explicitly a coherent qubit-memory model, which is sufficient for the intended proof diagnostic.
+
+Received scope: deterministic floating record reproduction, the explicit instrument contractions, and the stated negative pathwise comparison. Excluded: hardware, new physical acquisition, exact projection certification, high-confidence performance, irreducible nonclassical-memory witness, oracle superiority, or multiple-service guarantee.
