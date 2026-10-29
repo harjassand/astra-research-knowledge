@@ -66,6 +66,30 @@ def packet_review(review, packet_evidence, preserve_annotations=False):
     return result
 
 
+
+def packet_transfer_references(packet):
+    """Share only identical complete citations already elsewhere in this packet."""
+    pointers = {}
+    def visit(value, pointer=""):
+        if isinstance(value, dict):
+            if {"path", "sha256", "lines"} <= value.keys():
+                pointers.setdefault(encoded(value), pointer)
+                return
+            for key, child in value.items():
+                if not pointer and key == "transfers":
+                    continue
+                visit(child, pointer + "/" + key.replace("~", "~0").replace("/", "~1"))
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                visit(child, pointer + "/" + str(index))
+    visit(packet)
+    return [dict(transfer, evidence=[
+        {"evidence_ref_pointer": pointers[encoded(reference)]}
+        if encoded(reference) in pointers else reference
+        for reference in transfer.get("evidence", [])])
+        for transfer in packet["transfers"]]
+
+
 def packet_excerpt(reference, passage, selection):
     """Keep navigation from re-publishing a legacy host-local locator.
 
@@ -567,6 +591,14 @@ def build(root=ROOT):
             packet["review"] = dict(packet["review"], gaps=[
                 packet_review(gap, packet["evidence"], preserve_annotations=True)
                 if isinstance(gap, dict) else gap for gap in packet["review"]["gaps"]])
+        if default_output_size() > 32768:
+            original_transfers = packet["transfers"]
+            packet["transfers"] = packet_transfer_references(packet)
+            if packet["transfers"] != original_transfers:
+                packet["evidence_reference_scope"] = (
+                    "Transfer evidence_ref_pointer is a JSON Pointer within this complete packet, replacing "
+                    "an identical complete citation only. Every unique source, mapping, condition and correction "
+                    "remains; citation reuse confers no acceptance or statement support.")
         outputs["knowledge/current/packets/" + route_id(record["id"]) + ".json"] = encoded(packet)
     coverage = {
         "records_by_kind": dict(Counter(record["kind"] for record in records)),

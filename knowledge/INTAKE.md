@@ -93,6 +93,16 @@ existing `evidence_ref_indices` convention; `evidence_ref_annotations` retains
 any original per-source metadata. The actual gap scope and every correction,
 condition and review remain. Conflicting references are kept separately.
 
+If complete transfer mappings overflow the default packet, an identical full
+citation already retained elsewhere in that packet may be represented by
+`evidence_ref_pointer`, a standard JSON Pointer resolved against the ROOT
+packet. Resolve it in place in the evidence list, retaining order. The pointed
+object includes every original quote, source scope and annotation; different
+locators or qualifications stay separate. Unique provider citations remain
+inline. Every mapping, condition and correction is retained; shared citation
+storage confers no acceptance or additional statement support. Canonical
+transfers stay complete.
+
 For an explicitly identified public path-portability derivative, use the existing
 source-index entry with its actual public path/hash/bytes and `kind` set to
 `public_path_portability_derivative`; `original_path` is a repository-relative
