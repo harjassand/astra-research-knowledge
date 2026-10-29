@@ -87,6 +87,58 @@ def compile_current_consumers(records):
             record["current_acceptance"] = list(authorities.values())
         if selected:
             record["current_consumer"] = selected
+    compile_input_contract_corrections(records)
+
+
+def compile_input_contract_corrections(records):
+    """Repair a cited input-field transcription while preserving pinned history.
+
+    This permits only an explicit requires correction at an exact version. It
+    cannot change a statement, output, review, acceptance or other conditions.
+    Source hashes/ranges/quotes are checked by the ordinary build input reader.
+    """
+    by_id = {record["id"]: record for record in records}
+    corrections = {}
+    for record in records:
+        for outer in record.get("notices", []):
+            notice = outer.get("notice", outer)
+            if notice.get("kind") != "source_input_contract_correction":
+                continue
+            notice = {key: notice.get(key) for key in
+                      ("notice_id", "subject", "field", "value", "clarification", "source_refs")}
+            subject = notice.get("subject", {})
+            target = by_id.get(subject.get("id"))
+            sources = notice.get("source_refs") or []
+            supported = any(isinstance(ref, dict) and ref.get("path")
+                            and isinstance(ref.get("sha256"), str)
+                            and re.fullmatch(r"[0-9a-f]{64}", ref["sha256"])
+                            and isinstance(ref.get("lines"), list) and len(ref["lines"]) == 2
+                            and ref.get("quote") for ref in sources)
+            value = notice.get("value")
+            valid_value = isinstance(value, str) or (isinstance(value, list)
+                            and all(isinstance(item, str) for item in value))
+            if (target is None or subject.get("content_version") != target["content_version"]
+                    or not notice.get("notice_id") or notice.get("field") != "requires"
+                    or not valid_value or not flatten(value).strip()
+                    or not supported or not notice.get("clarification")):
+                raise ValueError("INGESTION FAILED: input correction needs exact subject, requires and source support")
+            key = subject["id"]
+            if key in corrections and corrections[key] != notice:
+                raise ValueError("INGESTION FAILED: conflicting source input corrections")
+            corrections[key] = notice
+    for identifier, notice in corrections.items():
+        record = by_id[identifier]
+        if record.get("current_consumer"):
+            raise ValueError("INGESTION FAILED: input correction conflicts with another current consumer view")
+        visible_statement = statement_view(record, operation_frame(record))["statement"]
+        record["current_consumer"] = {
+            "subject": notice["subject"], "source_correction_notice": notice["notice_id"],
+            "authority_notice": notice["notice_id"],
+            "statement": visible_statement,
+            "contract": dict(record["contract"], requires=notice["value"]),
+            "scope": notice["clarification"],
+            "original_contract_context": "Pinned source-reported input field remains in the original record/history. This source-supported input transcription correction changes no output, condition, scientific identity, review or acceptance.",
+        }
 
 
 def consumer_contract(record):

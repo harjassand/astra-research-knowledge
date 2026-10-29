@@ -1,0 +1,8 @@
+# Governing Schur compiler source passage checked
+2026-10-29. Supplements v1's abstract-only source note.
+
+Read full HTML of Bacon–Chuang–Harrow, arXiv:quant-ph/0407082v4, https://arxiv.org/html/quant-ph/0407082v4 . In the qubit circuit section (web extraction lines 67–82), the construction explicitly uses sequential spin-1/2 Clebsch–Gordan additions and retains each ±1/2 coupling-path label. Controlled rotation coefficients depend on the intermediate J,m labels and are computed reversibly. Cascading the steps gives the required coherent Schur transform, not merely a total-spin measurement. This directly matches v4's Dyck-path labels; reversing the circuit maps the valid spin-zero path superposition to physical qubits. The approximation precision must be allocated across the cascade and charged to the final channel error. We rely only on d=2, not any later high-dimensional Schur speedup.
+
+The primary source itself also discusses reversible multiplicity-index conversion (lines 61–62). Our explicit Dyck recurrence is a concrete qubit/singlet instantiation, not a claimed invention of coherent ranking or Schur encoding.
+
+Other primary navigation checked: Gulácsi–Kattemölle–Burkard, arXiv:2502.09706 (2025), https://arxiv.org/abs/2502.09706 ; ordinary single-qubit operations can reveal spatially correlated relaxation/dephasing. Demkowicz-Dobrzanski–Kolenderski–Banaszek, PRA76 022302 (2007), https://arxiv.org/abs/quant-ph/0703193 ; varying rotations modeled by SU(2) diffusion break exact collectivity. These abstract-level comparisons motivate honest local-operation and symmetry-breaking baselines; their detailed results are not used as theorem premises.

@@ -183,3 +183,14 @@ The release's `consumer_view_layout` marker selects compact current-capsule
 links in new interface navigation. Old snapshots without that marker keep their
 original routes and payload bytes under a newer reader. Changing this runtime
 requires reviewed deployment; a data-only intake uses the ordinary refresh path.
+
+If a checkpoint-pinned catalog transcribed an output as an input, a curator can
+add a `source_input_contract_correction` semantic notice. It names the exact
+`subject` id/content version, `field: requires`, corrected `value`, explanation
+and actual `source_refs` with path/hash/lines/quote. The ordinary build derives
+only that current input field and preserves the pinned catalog, original
+contract, statement, conditions, output, scientific identity and review. It
+does not confer acceptance. Missing support, stale versions, conflicting
+corrections or another current consumer view fail ingestion. A changed
+scientific claim uses an immutable scientific revision, rather than this
+input-transcription exception. This remains curator work, not a producer form.
