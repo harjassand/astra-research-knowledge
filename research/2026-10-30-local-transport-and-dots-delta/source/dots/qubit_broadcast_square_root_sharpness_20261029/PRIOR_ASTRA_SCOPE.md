@@ -1,0 +1,4 @@
+# Existing Astra exponent obstruction
+2026-10-29. The returning classicality investigator reread current N371 governing sources (repo harjassand/astra-research-knowledge, pinned revision d5366275, HTML routes d-5f6386197dd232a0 and d-fe3fa46d60aa1856). Those already contain a six-state qubit POWER_EXPONENT_OBSTRUCTION: e=r/3 and delta=(5/18)r^2+O(r^4), giving exponent at most1/2 and constant at least sqrt(2/5).
+
+The present four-state example is a simpler independent exact check, not the first Astra exponent obstruction. It does not supersede the older, stronger constant lower bound. Root has received this source report but has not yet personally read those exact HTML source bytes; retain that distinction. The new substantive closure, if received, is the uniform nonunital all-prior qubit upper bound, not discovery of the square-root lower exponent.

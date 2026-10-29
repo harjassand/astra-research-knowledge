@@ -1,0 +1,5 @@
+# Closing source cut: local transport, conditional reductions and source gaps
+
+Received stable originals through2040/2041, plus normally visible1957/2020reports. Raw archives preserve every predecessor byte; current public originals or explicit resource-path derivatives and exact aliases are indexed through the ordinary pipeline. No producer form, scientific replay/reproof, novelty investigation, new sign-off, paid service or automation was added.
+
+Completed actual internal reviews are accepted only at their exact mathematical/model/version scopes. The source-gap record explicitly stops complete proof-chain admission for14omitted targets/nine distinct byte versions. P3proof/code/review originals and the new direct-recovery receiving challenge remain unacquired. Proposed graph-state/noisy-data and preliminary foundational extensions are not promoted. Ordinary comparators, actual force/flow interfaces, conditional counting imports, gauge/record/encoding distinctions and every physical cost remain. No laboratory measurement, apparatus, certified arbitrary-genus implementation or practical advantage is invented.

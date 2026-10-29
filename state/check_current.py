@@ -16,6 +16,29 @@ from state import publish_result
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def publication_membership(root=ROOT):
+    """A local build must not depend on evidence absent from the Git index."""
+    manifest_path = "knowledge/current/manifest.json"
+    manifest = json.loads((root / manifest_path).read_bytes())
+    if not all(isinstance(manifest.get(key), dict) for key in ("inputs", "outputs")):
+        raise ValueError("Invalid knowledge manifest publication membership")
+    required = set(manifest["inputs"]) | set(manifest["outputs"]) | {manifest_path}
+    tracked = set(subprocess.check_output(["git", "ls-files", "-z"], cwd=root).decode().split("\0"))
+    missing = sorted(required - tracked)
+    if missing:
+        raise ValueError("INGESTION FAILED: required knowledge inputs/views are absent from the Git publication index: "
+                         + ", ".join(missing[:8])
+                         + ("; additional paths: " + str(len(missing) - 8) if len(missing) > 8 else "")
+                         + ". Stage their exact declared bytes, including ignored original artifacts.")
+    unstaged = set(subprocess.check_output([
+        "git", "diff", "--no-ext-diff", "--name-only", "-z"], cwd=root).decode().split("\0"))
+    changed = sorted(required & unstaged)
+    if changed:
+        raise ValueError("INGESTION FAILED: required knowledge inputs/views differ from the Git publication index: "
+                         + ", ".join(changed[:8])
+                         + ". Stage the built source/view versions before publication preflight.")
+
+
 def run(*arguments):
     subprocess.run([sys.executable, *arguments], cwd=ROOT, check=True)
 
@@ -78,6 +101,7 @@ def main():
         checkpoints.git(ROOT, "merge-base", "--is-ancestor", args.base_revision, "HEAD")
         historical_integrity(args.base_revision)
         public_path_portability(args.base_revision)
+        publication_membership()
         if args.preflight_only:
             print("Historical/public-source preflight passed. Full publication and scientific-use checks remain required.")
             return 0
