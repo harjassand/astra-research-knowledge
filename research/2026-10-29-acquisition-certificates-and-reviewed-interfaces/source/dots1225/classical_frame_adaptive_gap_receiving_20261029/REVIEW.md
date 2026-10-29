@@ -1,0 +1,10 @@
+# Independent receiving review: gap-adaptive classical frame calibration
+2026-10-29. ACCEPTED with the mandatory termination/abort companion.
+
+The45 entry estimators each have interval length1, including the off-diagonal signed outcomes after division by2. Hoeffding and union bound give the claimed stage confidence; delta_l=delta/[l(l+1)] sums to delta. The max-row-sum operator bound9e is conservative and valid. Shared prefix data would also permit the union-bound argument; fresh stage banks used here suffice.
+
+Under the promised fixed IID real isotropic family, the true bottom eigengap is g. Weyl yields |Delta_hat-g|<=2E, hence max(0,Delta_hat-2E)<=g and >=g-4E on the stage event. Replacing the unknown g by this observed lower bound in the original eigenvector/sign/SO3 projection certificate is therefore safe even at the data-selected stopping stage. The epsilon<=1/2 restriction ensures the local determinant-sign condition. The stopping sufficient condition E<=g epsilon/(2sqrt3+4epsilon) is algebraically correct. The geometric fresh-bank record count is below twice the last-stage count.
+
+The unlimited-stage averaged returned-channel claim requires almost-sure termination. The companion now proves it by summable stage failures and Borel–Cantelli, followed by E_l->0. This does not assert finite expected cost. A finite cap instead gives a JOINT bad-return bound; conditioning divides by actual return probability and default-on-abort incurs its probability. The companion correctly distinguishes these cases and counts the calibration failure event only once across K reused gates.
+
+Independent checks:45 exact rational gap-extreme cases and telescoping failure allocation;120 random symmetric-perturbation/frame projections; author30 synthetic adaptive runs reproduced exactly. All numerical eigensolvers are floating diagnostics. A rigorously certified finite-arithmetic eigengap implementation remains unimplemented; exact arithmetic/verified enclosures are explicit assumptions. No physical data, unpromised model test, frame drift robustness, practical optimality or hardware advantage is established.

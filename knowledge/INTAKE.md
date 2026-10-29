@@ -223,3 +223,5 @@ does not confer acceptance. Missing support, stale versions, conflicting
 corrections or another current consumer view fail ingestion. A changed
 scientific claim uses an immutable scientific revision, rather than this
 input-transcription exception. This remains curator work, not a producer form.
+
+Published readers also support ordinary partial Git clones. Refresh inventories only the selected missing blob identities and fetches them together from the existing validated origin, without changing refs or FETCH_HEAD. The complete committed index is checked without fetching unselected blob contents; every selected source/view still undergoes normal full validation before activation. Independent copied files receive a private staging stat refresh before later read-only snapshot checks. Failed owned stages remain quarantined for diagnosis; they are never registered as served versions. This is part of the same automatic intake path, with no new source metadata, job, key or configuration. Reader-code changes still require reviewed deployment.
