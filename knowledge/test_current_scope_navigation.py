@@ -72,7 +72,7 @@ class CurrentScopeNavigation(unittest.TestCase):
 
     def test_actual_native_menu_route_fetches_current_target_capsule(self):
         from knowledge.mcp_adapter import ResearchAdapter
-        adapter = ResearchAdapter(ROOT, method="structured")
+        adapter = ResearchAdapter(ROOT, method="portable")
         result = adapter.search("N1296")
         hit = next(x for x in result["results"] if x["metadata"].get("record_id", "").startswith("N1296-"))
         routes = hit["metadata"]["current_scope_navigation"]["routes"]
