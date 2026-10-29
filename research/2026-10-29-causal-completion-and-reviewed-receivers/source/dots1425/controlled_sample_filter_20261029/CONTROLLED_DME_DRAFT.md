@@ -1,0 +1,12 @@
+# Controlled sample-based evolution without a source inverse
+2026-10-29. Author derivation supporting a pending noisy-support filter. Not yet independently received.
+
+Given fresh IID copies of a D-dimensional state tau, let C be a control qubit, B a target, S the known SWAP on target/sample, and H=|1><1|_C tensor S. One step embeds a fresh sample tau, applies exp(-isH), and traces the sample. The first derivative at s=0 is exactly -i[|1><1| tensor tau,·], including arbitrary external references and control coherence. Thus it matches the desired controlled evolution exp(-is |1><1| tensor tau) to first order.
+
+Both commutator generators have diamond norm at most2, since their Hamiltonians have operator norm at most1. The sample embedding and partial trace are channels. The exponential-series remainder therefore gives local diamond error at most2(exp(2|s|)-1-2|s|)<=4e²s²<32s² for |s|<=1. Using n fresh samples with s=t/n and telescoping channels yields diamond error at most32t²/n, provided n>=|t|. Choosing n>=max{ceil|t|,ceil(32t²/delta)} gives error at most delta. This is a deliberately conservative bound, not an optimal constant or novel simulation method.
+
+The controlled partial-SWAP is a known-control operation: compute SWAP parity into a clean flag, apply a known conditional phase, and uncompute. This uses two controlled register SWAPs plus known phase gates, with O(log D) bit-swap controls. Neither controlled access to the source, a source inverse, nor a purification/block-encoding oracle is assumed. Each tau copy can be acquired by one forward call N(I/k) in the memoryless setting. Sample/control noise is additional.
+
+For a sequence of controlled evolutions with times t_j, let T=sum_j|t_j|. Allocate n_j>=max{ceil|t_j|,ceil(32|t_j|T/delta)} fresh samples for operation j. The sum of simulation diamond errors is at most delta and total copies at most O(T²/delta+T+number_of_operations). This applies to finite phase estimation, without treating repeated samples as reusable.
+
+Prior method and freshness: Kimmel et al., arXiv:1608.00281, studies sample-based simulation and controlled versions. Go et al., arXiv:2412.02134v3 (2025), repairs an incompleteness in earlier nonasymptotic analysis and gives a sharper ordinary-DME bound. The direct Taylor estimate above supplies its own conservative controlled-channel error contract; no unverified old constant is imported.

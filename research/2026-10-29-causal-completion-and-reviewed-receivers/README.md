@@ -1,0 +1,5 @@
+# Causal completion, paid physical interfaces and actual completed reviews
+
+Finite received cut through1453UTC, preserving exact received raw archives separately and original public source bytes or explicit resource-locator derivatives. Current pending states are superseded only by actual completed version-bound reviews. The experimental-learning archive backfills predecessor proof originals without pretending an older ZIP was acquired. P3 sources remain normally displayed working reports, with proof/code/review-original gaps; formula transcription is explicitly a text projection. The ongoing Schur lift and optimal_inaccurate proposal remain developing. No producer programme, scientific test, new scientific audit, novelty screen or source export was executed for intake.
+
+Use the existing `knowledge/INTAKE.md` path: author existing cards/immutable units, source index, notices and actual scoped review overlays; build/check once, bind current content versions, then build/check again. Missing required support or stale endpoint bindings fail the intake. Source code/data are inert evidence. No new producer form is required.
