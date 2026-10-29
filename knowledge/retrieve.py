@@ -48,6 +48,18 @@ class Library:
         return selected[0]
 
     def search(self, query, limit=5, method="structured", kind=None, **facets):
+        result = self._search(query, limit, method, kind, **facets)
+        from knowledge.operations import current_scope_navigation
+        for hit in result["results"]:
+            record = self.records.get(hit["id"])
+            if record is None:
+                continue
+            navigation = current_scope_navigation(record, self.records)
+            if navigation["total_routes"]:
+                hit["current_scope_navigation"] = navigation
+        return result
+
+    def _search(self, query, limit=5, method="structured", kind=None, **facets):
         if method == "semantic":
             from knowledge.contextual_search import search
             return search(self, query, limit, kind, **facets)

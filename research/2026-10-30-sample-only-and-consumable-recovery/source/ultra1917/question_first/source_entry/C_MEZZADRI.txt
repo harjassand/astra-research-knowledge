@@ -1,0 +1,2617 @@
+
+ 
+ 
+ How to generate random matrices from the classical compact groups 
+ 
+ 
+ 
+   
+ 
+  // Restore the saved color scheme preference, or
+  // enact the browser preference if "automatic", 
+  // without expecting DOM load to have completed.
+  //
+  // Also restore any saved readingmode and ToC display preferences.
+  function initializeReadingPreferences() {
+    let saved_theme = localStorage.getItem("ar5iv_theme") || "automatic";
+    if (saved_theme === "automatic") {
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        saved_theme = "dark";
+      }
+    }
+    if (saved_theme == "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+
+    const tocDisplay = localStorage.getItem('arxiv_html_paper_toc_display');
+    if (tocDisplay) {
+      document.documentElement.setAttribute("data-toc-display", tocDisplay);
+    }
+    const readingMode = localStorage.getItem('arxiv_html_paper_reading_mode');
+    if (readingMode) {
+      document.documentElement.setAttribute("data-reading-mode", readingMode);
+    }
+  }
+  // Run as soon as JS starts, to minimize repainting
+  initializeReadingPreferences();
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  /* Reading mode hides the chrome and the empty .arxiv-html-header marker: the pinned JS reads
+     the marker's display to know which way to toggle. The marker draws no box. */
+  .arxiv-html-header { display: contents; }
+  html[data-reading-mode="enabled"] :is(.arxiv-html-site-chrome, .arxiv-html-header, .ds-site-footer) { display: none; }
+  /* The paper controls' icons are blocks, so they sit centred (the pinned JS shows the theme
+     icon by making its span a block). */
+  .arxiv-html-site-chrome .ds-site-header-tools svg { display: block; width: 18px; height: 18px; flex-shrink: 0; fill: currentColor; }
+  /* ar5iv dims every image in dark mode and puts it on a white wash, for paper figures;
+     arXiv's own render as they are (the logo on the bar, the funder logos on their white
+     chips). Important: ar5iv's dark rules are unlayered, as specific as
+     :root:not([data-theme]) img:not(.ltx_no_dark_filter). */
+  :is(.ds-site-header, .ds-site-footer) img { filter: none !important; }
+  .ds-site-header img { background-color: transparent !important; }
+
+  /* Wide (the theme's 1280px): the theme lays the body out as a grid whose full-width top rows
+     were the band's and its sticky reader bar's. The band takes the first and scrolls away; the
+     header, the paper's bar (no site navigation, the paper's controls), takes the second and
+     stays in view, the one sticky bar, with the anchor clearance that requires (DESIGN-POLICIES).
+     The controls show their names. */
+  @media (min-width: 1280px) {
+    html { scroll-padding-top: 80px; }
+    .arxiv-html-site-chrome { display: contents; }
+    .arxiv-html-site-chrome > #ds-announcement { grid-area: announce; }
+    .arxiv-html-site-chrome > .ds-site-header { grid-area: header; position: sticky; top: 0; z-index: 3; }
+    .arxiv-html-site-chrome .tool-icon { display: none; }
+  }
+  /* Narrow: the header scrolls away, and the controls show icons (names kept for screen
+     readers; Why HTML? goes). The theme's contents panel is fixed below where its old sticky
+     bar was, and hidden only once the reader has closed it, so until then it is an invisible box
+     over the header and the paper: it shows only while open, under the chrome, in its place in
+     the page. The paper's footer (build logs, reporting instructions) keeps the text's side
+     inset; the theme gives it none, so it met the screen edges. */
+  @media (max-width: 1279px) {
+    .arxiv-html-site-chrome .tool-wide { display: none; }
+    .arxiv-html-site-chrome .tool-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    html:not([data-toc-display="block"]) .ltx_page_navbar { display: none; }
+    .ltx_page_navbar { position: absolute; top: auto; }
+    .arxiv-html-footer { padding-inline: 1rem; }
+  }
+ 
+ 
+ Skip to main content 
+ 
+   
+     
+       Report GitHub Issue 
+       × 
+     
+
+     
+       Title: 
+       
+
+       Content selection saved. Describe the issue below: 
+
+       Description: 
+       
+     
+
+     
+       Submit without GitHub 
+       Submit in GitHub 
+     
+   
+ 
+ 
+ 
+ 
+ 
+   
+   
+     
+   
+   
+     
+       
+     
+   
+      Why HTML? 
+     
+       Report Issue 
+          
+       Back to Abstract 
+     
+     
+       Download PDF 
+          
+       Contents 
+     
+     
+       Reading mode 
+     
+     
+       Colour theme 
+     
+ 
+ 
+ 
+ 
+ Abstract 
+ 1  Introduction 
+ 2  Some examples and motivations 
+ 3  Haar measure and invariance 
+ 4  The QR decomposition and a numerical experiment 
+ 5  A correct and efficient algorithm 
+ 6  The unitary symplectic group  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N) 
+ 7  Householder reflections 
+ 8  A group theoretical interpretation 
+ References 
+ 
+ 
+ 
+ 
+   
+    License: Assumed arXiv.org perpetual non-exclusive license
+   
+   
+arXiv:math-ph/0609050v2 [math-ph] 27 Feb 2007 
+ 
+ 
+ How to generate random matrices from the classical compact
+groups 
+ 
+ 
+ Francesco Mezzadri
+ 
+
+ Abstract 
+    
+ We discuss how to generate random unitary matrices from the
+classical compact groups  U ⁡ ( N ) \mathrm{U}(N) ,  O ⁡ ( N ) \mathrm{O}(N)  and  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N)  with probability
+distributions given by the respective invariant measures. The
+algorithm is straightforward to implement using standard linear algebra
+packages. This approach extends to the Dyson circular ensembles too.
+This article is based on a lecture given by the author at the summer
+school on Number Theory and Random Matrix Theory held at the
+University of Rochester in June 2006. The exposition is addressed
+to a general mathematical audience. 
+  
+ 
+ 
+ 1  Introduction 
+
+ 
+ Since Random Matrix Theory (RMT) was introduced by
+Wishart  [ 17 ]  in 1928, it has found applications in a variety
+of areas of physics, pure and applied mathematics, probability,
+statistics and engineering. Few examples — far from being exhaustive
+— include: analytic number theory, combinatorics, graph theory,
+multivariate statistics, nuclear physics, quantum chaos, quantum
+information, statistical mechanics, structural dynamics and wireless
+telecommunications. The main reasons for the ever growing success of
+RMT are mainly two. Firstly, in the limit of large matrix dimension
+the statistical correlations of the spectra of a family, or ensemble,
+of matrices are independent of the probability distribution that
+defines the ensemble, but depend only on the invariant properties of
+such a distribution. As a consequence random matrices turn out to be
+very accurate models for a large number of mathematical and physical
+problems. Secondly, RMT techniques allow analytical computations to an
+extent that is often impossible to achieve in the contexts that they
+are modelling. This predictive ability of RMT is particularly powerful
+whenever in the original problem there are not any natural parameters
+to average over. 
+ 
+ 
+ Although the advantage of using RMT lies in the possibility of
+computing explicit mathematical and physical quantities
+analytically, it is sometimes necessary to resort to numerical
+simulations. The purpose of this article is twofold. Firstly, we
+provide the reader with a simple method for generating random
+matrices from the classical compact groups that most
+mathematicians — not necessarily familiar with computer
+programming — should be able to implement in a code of only few
+lines. This is achieved in section  5 . Secondly, we
+discuss in detail the main ideas, which turn out be fairly general
+and quite interesting, behind this algorithm. 
+ 
+ 
+ An  N × N N\times N  unitary matrix  U = ( u j ​ k ) U=(u_{jk})  is defined by the relation
+ U ∗ ​ U = U ​ U ∗ = I U^{*}U=UU^{*}=I , which in terms of the matrix elements reads 
+ 
+
+ 
+ 
+ ∑ k = 1 N u j ​ k ∗ ​ u k ​ l = ∑ k = 1 N u ¯ k ​ j ​ u k ​ l = δ j ​ l and ∑ k = 1 N u j ​ k ​ u k ​ l ∗ = ∑ k = 1 N u ¯ j ​ k ​ u l ​ k = δ j ​ l , \sum_{k=1}^{N}u^{*}_{jk}u_{kl}=\sum_{k=1}^{N}\overline{u}_{kj}u_{kl}=\delta_{jl}\quad\text{and}\quad\sum_{k=1}^{N}u_{jk}u^{*}_{kl}=\sum_{k=1}^{N}\overline{u}_{jk}u_{lk}=\delta_{jl}, 
+ 
+ (1.1) 
+ 
+ where  U ∗ = ( u j ​ k ∗ ) U^{*}=(u^{*}_{jk})  is the conjugate transpose of  U U ,  i.e.  u j ​ k ∗ = u ¯ k ​ j u^{*}_{jk}=\overline{u}_{kj} . In this article we will use the
+symbol  ¯ \bar{}  to denote complex conjugation, in order to
+distinguish it from  ∗ , which is reserved to the conjugate
+transpose of a matrix. The constraints ( 1.1 ) simply state
+that the columns (rows) of a unitary matrix form an orthonormal
+basis in  ℂ N \mathbb{C}^{N} . The set  U ⁡ ( N ) \mathrm{U}(N)  of unitary matrices forms a
+compact Lie group whose real dimension is  N 2 N^{2} ; it is then made
+into a probability space by assigning as a distribution the unique
+measure invariant under group multiplication, known as  Haar
+measure.  Such a probability space is often referred to as
+Circular Unitary Ensemble (CUE). 
+ 
+ 
+ Usually the correct ensemble to model a particular situation depends
+on the symmetries of the problem. Ensembles of unitary matrices are
+constructed in two steps: we first identify a subset  𝖴 ⊂ U ⁡ ( N ) \mathsf{U}\subset\mathrm{U}(N)  by imposing further restrictions on  U U ; then we assign to
+ 𝖴 \mathsf{U}  a probability measure with the appropriate invariant
+properties. As well as  U ⁡ ( N ) \mathrm{U}(N) , we will discuss how to generate random
+matrices from the orthogonal  O ⁡ ( N ) \mathrm{O}(N)  and unitary symplectic  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N) 
+groups with probability distributions given by the respective unique
+invariant measures. We shall also consider the two remaining
+ ​ D ​ y ​ s ​ o ​ n ​ c ​ i ​ r ​ c ​ u ​ l ​ a ​ r ​ e ​ n ​ s ​ e ​ m ​ b ​ l ​ e ​ s \emph{Dysoncircularensembles}   [ 2 ] , namely the Circular
+Orthogonal Ensemble (COE) and Circular Symplectic Ensemble (CSE).
+Other symmetric spaces appear in the applications  [ 18 ] , but we
+will not concern ourselves with them. 
+ 
+ 
+ Writing an algorithm to generate random unitary matrices which is both
+correct and numerically stable presents some pitfalls. The reason
+is that the conditions ( 1.1 ) imply that the matrix elements
+are not independent and thus are statistically correlated. The main
+ideas discussed in this article are centred around the QR
+decomposition and go back to Wedderburn  [ 16 ] ,
+Heiberger  [ 5 ]  (corrected by Tanner and Thisted  [ 15 ] ),
+Stewart  [ 14 ]  and Diaconis and Shahshahani  [ 1 ] .
+However, the technical literature may be difficult to access for a
+reader without a background in numerical analysis or statistics, while
+the implementation of such techniques is elementary. Another method
+discussed in the literature involves an explicit representation of the
+matrix elements of  U U  in terms of  N 2 N^{2}  independent parameters (Euler
+angles)  [ 19 ] , but it does not seem to be equally efficient or
+convenient. 
+ 
+ 
+ 
+ 2  Some examples and motivations 
+
+ 
+ Before discussing how to generate random matrices it is helpful to
+give few examples that show how they appear in the applications. 
+ 
+ 
+ In quantum mechanics all the information about an isolated physical
+system at a given time  t 0 t_{0}  is contained in a state vector  ψ 0 \psi_{0} 
+belonging to a Hilbert space  ℋ \mathcal{H}  — in general infinite
+dimensional. The time evolution of  ψ 0 \psi_{0} ,  i.e.  its dynamics, is
+determined by a unitary operator  U U . In other words, at a time  t > t 0 t>t_{0} ,  ψ 0 \psi_{0}  has evolved into 
+ 
+
+ 
+ 
+ ψ = U ​ ψ 0 . \psi=U\psi_{0}. 
+ 
+ (2.1) 
+ 
+ The fact that  U U  is unitary guarantees that
+ ‖ ψ ‖ = ‖ ψ 0 ‖ = 1 \left\lVert\psi\right\rVert=\left\lVert\psi_{0}\right\rVert=1 , which is required by the probabilistic
+interpretation of quantum mechanics. 
+ 
+ 
+ If the dynamics is complicated — as in heavy nuclei or in
+quantum systems whose classical limits are characterized by a
+chaotic dynamics
+— writing down an explicit expression for  U U  may be hopeless.
+Therefore, we can attempt to replace  U U  by a random operator and
+check if the predictions that we obtain are consistent with the
+empirical observations. It is also reasonable to simplify the problem
+even further and replace  U U  by a random unitary matrix of finite, but
+large, dimension. Then the main question is: What are the matrix
+space and the probability distribution that best model our system? 
+ 
+ 
+ In physics the symmetries of a problem are often known a priori, even
+if the details of the dynamics remain obscure. Now, suppose that our
+system is invariant under time reversal but does not have any other
+symmetry. From general considerations (see Mehta  [ 9 ]  p. 36)
+we know that  U U  is always conjugate by a unitary transformation to a
+symmetric matrix. Therefore, we can always choose  U U  so that 
+ 
+
+ 
+ 
+ U = U t , U=U^{t}, 
+ 
+ (2.2) 
+ 
+ where  U t U^{t}  denotes the transpose of  U U . Since there are not
+other symmetries in the problem, this is the only constraint that
+we can impose. Therefore, the appropriate matrices that model
+this physical system should be symmetric. Let us denote by
+ 𝖮 \mathsf{O}  the set of unitary symmeytric matrices. If  U ∈ 𝖮 U\in\mathsf{O}  it can be proved (see Meta  [ 9 ]  p. 499) that
+it admits the representation 
+ 
+
+ 
+ 
+ U = W ​ W t , W ∈ U ⁡ ( N ) . U=WW^{t},\quad W\in\mathrm{U}(N). 
+ 
+ (2.3) 
+ 
+ This factorization is not unique. Let  O ⁡ ( N ) \mathrm{O}(N)  be the group of real
+matrices  O O  such that  O ​ O t = O t ​ O = I OO^{t}=O^{t}O=I  and set  W ′ = W ​ O W^{\prime}=WO . By
+definition we have 
+ 
+
+ 
+ 
+ U = W ′ ​ W ′ t = W ​ O ​ O t ​ W t = W ​ W t . U=W^{\prime}W^{\prime t}=WOO^{t}W^{t}=WW^{t}. 
+ 
+ (2.4) 
+ 
+ This statement is true also in the opposite direction: if  W ​ W t = W ′ ​ W ′ t WW^{t}=W^{\prime}W^{\prime t}  there exists an  O ∈ O ⁡ ( N ) O\in\mathrm{O}(N)  such that  W ′ = W ​ O W^{\prime}=WO . Therefore,
+ 𝖮 \mathsf{O}  is isomorphic to the left coset space of  O ⁡ ( N ) \mathrm{O}(N)  in  U ⁡ ( N ) \mathrm{U}(N) ,
+ i.e. 
+ 
+
+ 
+ 
+ 𝖮 ≅ U ⁡ ( N ) / O ⁡ ( N ) . \mathsf{O}\cong\mathrm{U}(N)/\mathrm{O}(N). 
+ 
+ (2.5) 
+ 
+ 
+ 
+ Since a measure space with total mass equal to one is a probability
+space, in what follows we shall use the two terminologies
+interchangeably. An ensemble of random matrices is defined by a matrix
+space and a probability measure on it. We have found the former; we
+are left to identify the latter. Haar measure, which will be
+discussed in detail in section  3 , provides a natural
+probability distribution on  U ⁡ ( N ) \mathrm{U}(N) ; ‘natural’ in the sense that it
+equally weighs different regions of  U ⁡ ( N ) \mathrm{U}(N) , thus it behaves like a
+uniform distribution. From the factorization ( 2.3 ) the
+probability distribution on  U ⁡ ( N ) \mathrm{U}(N)  induces a measure on  𝖮 \mathsf{O} .
+As a consequence, if  W W  is Haar distributed the resulting measure on
+ 𝖮 \mathsf{O}  will be uniform too. In section  8  we shall see
+that such a measure is the unique probability distribution induced by
+Haar measure on  𝖮 \mathsf{O} . Therefore, it provides a natural choice
+to model a time reversal invariant quantum system. The space
+ 𝖮 \mathsf{O}  together with this measure is the COE ensemble. 
+ 
+ 
+ If a quantum system does not have any symmetry, then there are no
+restriction to  U ⁡ ( N ) \mathrm{U}(N)  and the natural choice of probability
+distribution is Haar measure. This is the CUE ensemble. If the system
+is invariant under time reversal and has a half-integer spin, then the
+appropriate ensemble is the CSE. The matrix space of the CSE is the
+subset  𝖲 ⊂ U ⁡ ( 2 ​ N ) \mathsf{S}\subset\mathrm{U}(2N)  whose elements admit the
+representation 
+ 
+
+ 
+ 
+ U = − W ​ J ​ W t ​ J , W ∈ U ⁡ ( 2 ​ N ) , U=-WJW^{t}J,\quad W\in\mathrm{U}(2N), 
+ 
+ (2.6) 
+ 
+ where 
+ 
+
+ 
+ 
+ J = ( 0 I N − I N 0 ) . J=\begin{pmatrix}0&I_{N}\\
+-I_{N}&0\end{pmatrix}. 
+ 
+ (2.7) 
+ 
+ From the factorization ( 2.6 ) the probability
+distribution on  U ⁡ ( 2 ​ N ) \mathrm{U}(2N)  induces a measure on
+ 𝖲 \mathsf{S} . As previously, such a measure is fixed by assigning
+Haar measure to  U ⁡ ( 2 ​ N ) \mathrm{U}(2N) . 
+ 
+ 
+ The set  𝖲 \mathsf{S}  is isomorphic to a coset space too. The unitary
+symplectic group  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N)  is the subgroup of  U ⁡ ( 2 ​ N ) \mathrm{U}(2N)  whose
+elements obey the relation 
+ 
+
+ 
+ 
+ S ​ J ​ S t = J . SJS^{t}=J. 
+ 
+ (2.8) 
+ 
+ Therefore, the matrix  U U  in equation ( 2.6 ) does not change
+if we replace  W W  with  W ′ = W ​ S W^{\prime}=WS , where  S ∈ USp ⁡ ( 2 ​ N ) S\in\mathrm{USp}(2N) . Similarly, if  W W 
+and  W ′ W^{\prime}  are such that 
+ 
+
+ 
+ 
+ U = − W ​ J ​ W t ​ J = − W ′ ​ J ​ W ′ t ​ J , W , W ′ ∈ U ⁡ ( 2 ​ N ) , U=-WJW^{t}J=-W^{\prime}JW^{\prime t}J,\quad W,W^{\prime}\in\mathrm{U}(2N), 
+ 
+ (2.9) 
+ 
+ then  W ′ ​ W − 1 ∈ USp ⁡ ( 2 ​ N ) W^{\prime}W^{-1}\in\mathrm{USp}(2N) . Therefore, 
+ 
+
+ 
+ 
+ 𝖲 ≅ U ⁡ ( 2 ​ N ) / USp ⁡ ( 2 ​ N ) . \mathsf{S}\cong\mathrm{U}(2N)/\mathrm{USp}(2N). 
+ 
+ (2.10) 
+ 
+ The probability distribution of the CSE is the unique invariant
+measure induced on the coset space ( 2.10 ) by Haar measure on
+ U ⁡ ( 2 ​ N ) \mathrm{U}(2N) . 
+ 
+ 
+ From equations ( 2.3 ) and ( 2.6 ) all we need to
+generate random matrices in the CUE, COE and CSE ensembles is an
+algorithm whose output is Haar distributed unitary matrices. The
+rest of this article will concentrate on generating random
+matrices from all three classical compact groups  U ⁡ ( N ) \mathrm{U}(N) ,  O ⁡ ( N ) \mathrm{O}(N)  and
+ USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N)  with probability distributions given by the respective
+Haar measures. These groups are not only functional to
+constructing matrices in the COE and CSE, but are also important
+ensembles in their own right. Indeed, the work of
+Montgomery  [ 11 ] , Odlyzko  [ 12 ] , Katz and
+Sarnak  [ 6 ] , Keating and Snaith  [ 7 ,  8 ]  and
+Rubinstein  [ 13 ]  has shown beyond doubt that the local
+statistical properties of the the Riemann zeta function and other
+ L -functions can be modelled by the characteristic
+polynomials of Haar distributed random matrices. Over the last
+few years the predictive power of this approach has brought about
+an impressive progress in analytic number theory that could not
+have been achieved with traditional techniques. (See  [ 10 ] 
+for a collection of review articles in the subject.) 
+ 
+ 
+ 
+ 3  Haar measure and invariance 
+
+ 
+ Since the algorithm the we shall discuss is essentially based on the
+invariant properties of Haar measure, in this section we introduce the
+main concepts that are needed to understand how it works. We,
+nevertheless, begin with another ensemble:  the Ginibre
+ensemble.  Besides being a simpler illustration of the ideas we need,
+generating a matrix in the Ginibre ensemble is the first step toward
+producing a random unitary matrix. 
+ 
+ 
+ The space of matrices for the Ginibre ensemble is
+ GL ⁡ ( N , ℂ ) \mathrm{GL}(N,\mathbb{C}) , the set of all the invertible  N × N N\times N  complex matrices  Z = ( z j ​ k ) Z=(z_{jk}) ; the matrix elements are independent
+identically distributed ( i.i.d. ) standard normal complex random
+variables. In other words, the probability density function
+( p.d.f. ) of  z j ​ k z_{jk}  is 
+ 
+
+ 
+ 
+ p ⁡ ( z j ​ k ) = 1 π ​ e − | z j ​ k | 2 . p(z_{jk})=\frac{1}{\pi}e^{-\left\lvert z_{jk}\right\rvert^{2}}. 
+ 
+ (3.1) 
+ 
+ By definition the matrix entries are statistically independent,
+therefore the joint probability density function ( j.p.d.f. ) for
+the matrix elements is 
+ 
+
+ 
+ 
+ P ( Z ) = 1 π N 2 ∏ j , k = 1 N e − | z j ​ k | 2 = 1 π N 2 exp ( − ∑ j , k = 1 N | z j ​ k | 2 ) = 1 π N 2 exp ( − Tr Z ∗ Z ) . P(Z)=\frac{1}{\pi^{N^{2}}}\prod_{j,k=1}^{N}e^{-\left\lvert z_{jk}\right\rvert^{2}}=\frac{1}{\pi^{N^{2}}}\exp\left(-\sum_{j,k=1}^{N}\left\lvert z_{jk}\right\rvert^{2}\right)=\frac{1}{\pi^{N^{2}}}\exp\left(-\trace Z^{*}Z\right). 
+ 
+ (3.2) 
+ 
+ Since  P ⁡ ( Z ) P(Z)  is a probability density, it is normalized to one,
+ i.e. 
+ 
+
+ 
+ 
+ ∫ ℂ N 2 P ⁡ ( Z ) ​ 𝑑 Z = 1 , \int_{\mathbb{C}^{N^{2}}}P(Z)\,dZ=1, 
+ 
+ (3.3) 
+ 
+ where  d ​ Z = ∏ j , k = 1 N d ​ x j ​ k ​ d ​ y j ​ k dZ=\prod_{j,k=1}^{N}dx_{jk}dy_{jk}  and  z j ​ k = x j ​ k + i ​ y j ​ k z_{jk}=x_{jk}+iy_{jk} . The  j.p.d.f.   P ⁡ ( Z ) P(Z)  contains all the statistical
+information on the Ginibre ensemble. 
+ 
+ 
+ Since  ℂ N × N ≅ ℂ N 2 \mathbb{C}^{N\times N}\cong\mathbb{C}^{N^{2}} , we will use the
+two notations according to what is more appropriate for the context.
+Thus, we can write 
+ 
+
+ 
+ 
+ d ​ μ G ​ ( Z ) = P ⁡ ( Z ) ​ d ​ Z d\mu_{\mathrm{G}}(Z)=P(Z)\,dZ 
+ 
+ (3.4) 
+ 
+ and think of  d ​ μ G d\mu_{\mathrm{G}}  as an infinitesimal volume or measure in
+ ℂ N 2 \mathbb{C}^{N^{2}} .
+If  f : ℂ N × N ⟶ ℂ N × N f:\mathbb{C}^{N\times N}\longrightarrow\mathbb{C}^{N\times N} , we say that  d ​ μ G d\mu_{\mathrm{G}}  is invariant under  f f 
+if 
+ 
+
+ 
+ 
+ d ​ μ G ​ ( f ⁡ ( Z ) ) = d ​ μ G ​ ( Z ) . d\mu_{\mathrm{G}}\bigl(f(Z)\bigr)=d\mu_{\mathrm{G}}(Z). 
+ 
+ (3.5) 
+ 
+ 
+ 
+ Lemma 1 . 
+ 
+ The measure of the Ginibre ensemble is invariant under left and
+right multiplication of  Z Z  by arbitrary unitary matrices, i.e. 
+ 
+
+ 
+ 
+ d ​ μ G ​ ( U ​ Z ) = d ​ μ G ​ ( Z ​ V ) = d ​ μ G ​ ( Z ) , U , V ∈ U ⁡ ( N ) . d\mu_{\mathrm{G}}(UZ)=d\mu_{\mathrm{G}}(ZV)=d\mu_{\mathrm{G}}(Z),\quad U,V\in\mathrm{U}(N). 
+ 
+ (3.6) 
+ 
+ 
+ 
+ 
+ Proof. 
+ 
+ First we need to show that  P ⁡ ( U ​ Z ) = P ⁡ ( Z ) P(UZ)=P(Z) ; then we must prove
+that the Jacobian of the map 
+ 
+
+ 
+ 
+ Z ↦ U ​ Z Z\mapsto UZ 
+ 
+ (3.7) 
+ 
+ (seen as a transformation in  ℂ N 2 \mathbb{C}^{N^{2}} ) is one. Since by
+definition  U ∗ ​ U = I U^{*}U=I , we have 
+ 
+
+ 
+ 
+ P ⁡ ( U ​ Z ) = 1 π N 2 ​ exp ⁡ ( − Tr ⁡ Z ∗ ​ U ∗ ​ U ​ Z ) = 1 π N 2 ​ exp ⁡ ( − Tr ⁡ Z ∗ ​ Z ) = P ⁡ ( Z ) . P(UZ)=\frac{1}{\pi^{N^{2}}}\exp\left(-\trace Z^{*}U^{*}UZ\right)=\frac{1}{\pi^{N^{2}}}\exp\left(-\trace Z^{*}Z\right)=P(Z). 
+ 
+ (3.8) 
+ 
+ Now, the map ( 3.7 ) is isomorphic to 
+ 
+
+ 
+ 
+ X = U ⊕ ⋯ ⊕ U ⏟ N ​ times . X=\underset{N\text{times}}{\underbrace{U\oplus\cdots\oplus U}}. 
+ 
+ (3.9) 
+ 
+ It follows immediately that  X X  is a  N 2 × N 2 N^{2}\times N^{2}  unitary
+matrix, therefore  | det X | = 1 \left\lvert\det X\right\rvert=1 . The proof of right invariance
+is identical.
+∎ 
+ 
+ 
+ 
+ Because the elements of a unitary matrix are not independent,
+writing an explicit formula for the infinitesimal volume element
+of  U ⁡ ( N ) \mathrm{U}(N)  is more complicated than for the Ginibre ensemble. An  N × N N\times N  unitary matrix contains  2 ​ N 2 2N^{2}  real numbers and the
+constraints ( 1.1 ) form a system of  N 2 N^{2}  real equations.
+Therefore,  U ⁡ ( N ) \mathrm{U}(N)  is isomorphic to a  N 2 N^{2} -dimensional manifold
+embedded in  ℝ 2 ​ N 2 \mathbb{R}^{2N^{2}} . Such a manifold is compact and
+has a natural group structure that comes from matrix
+multiplication. Thus, an infinitesimal volume element on  U ⁡ ( N ) \mathrm{U}(N) 
+will have the form 
+ 
+
+ 
+ 
+ d μ ( U ) = m ( α 1 , … , α N 2 ) d α 1 ⋯ d α N 2 , d\mu(U)=m(\alpha_{1},\ldots,\alpha_{N^{2}})d\alpha_{1}\cdots d\alpha_{N^{2}}, 
+ 
+ (3.10) 
+ 
+ where  α 1 , … , α N 2 \alpha_{1},\ldots,\alpha_{N^{2}}  are local coordinates on
+ U ⁡ ( N ) \mathrm{U}(N) . Every compact Lie group has a unique (up to an arbitrary
+constant) left and right invariant measure, known as  Haar
+measure.  In other words, if we denote Haar measure on  U ⁡ ( N ) \mathrm{U}(N)  by
+ d ​ μ H ​ ( U ) d\mu_{\mathrm{H}}(U) , we have 
+ 
+
+ 
+ 
+ d ​ μ H ​ ( V ​ U ) = d ​ μ H ​ ( U ​ W ) = d ​ μ H ​ ( U ) , V , W ∈ U ⁡ ( N ) . d\mu_{\mathrm{H}}(VU)=d\mu_{\mathrm{H}}(UW)=d\mu_{\mathrm{H}}(U),\quad V,W\in\mathrm{U}(N). 
+ 
+ (3.11) 
+ 
+ Although an explicit expression for Haar measure on  U ⁡ ( N ) \mathrm{U}(N)  in terms of
+local coordinates can be written down (see
+Życzkowski and Kus  [ 19 ]  for a formula), we
+will see that in order to generate matrices distributed with Haar
+measure we only need to know that is invariant and unique. 
+ 
+ 
+ Haar measure normalized to one is a natural choice for a probability
+measure on a compact group because, being invariant under group
+multiplication, any region of  U ⁡ ( N ) \mathrm{U}(N)  carries the same weight in a group
+average. It is the analogue of the uniform density on a finite
+interval. In order to understand this point consider the simplest
+example:  U ⁡ ( 1 ) \mathrm{U}(1) . It is the set  { e i ​ θ } \{e^{i\theta}\}  of the
+complex numbers with modulo one, therefore it has the topology of the
+unit circle  𝕊 1 \mathbb{S}^{1} . Since in this case matrix multiplication
+is simply addition  mod  2 ​ π \bmod\>2\pi ,  U ⁡ ( 1 ) \mathrm{U}(1)  is isomorphic to
+the group of translations on  𝕊 1 \mathbb{S}^{1} . A probability density
+function that equally weighs any part of the unit circle is the
+constant density  ρ ⁡ ( θ ) = 1 / ( 2 ​ π ) \rho(\theta)=1/(2\pi) . This is the standard
+Lebesgue measure, which is invariant under translations. Therefore,
+it is the unique Haar measure on  U ⁡ ( 1 ) \mathrm{U}(1) . 
+ 
+ 
+ Note that it is not possible to define an ‘unbiased’ measure on a
+non-compact manifold. For example, we can provide a finite interval
+with a constant  p.d.f.   ρ ⁡ ( x ) \rho(x) , but not the whole real line
+ ℝ \mathbb{R} , since the integral  ∫ − ∞ ∞ ρ ⁡ ( x ) ​ 𝑑 x \int_{-\infty}^{\infty}\rho(x)dx 
+would diverge. 
+ 
+ 
+ 
+ 4  The QR decomposition and a numerical experiment 
+
+ 
+ By definition the columns of a  N × N N\times N  unitary matrix are
+orthonormal vectors in  ℂ N \mathbb{C}^{N} . Thus, if we take an arbitrary
+complex  N × N N\times N  matrix  Z Z  of full rank and apply the Gram-Schmidt
+orthonormalization to its columns, the resulting matrix  Q Q  is
+unitary. It turns out that if the entries of  Z Z  ares  i.i.d. 
+standard complex normal random variables,  i.e.  if  Z Z  belongs to the
+Ginibre ensemble, then  Q Q  is distributed with Haar measure (see
+Eaton  [ 3 ] , p. 234, for a proof). Unfortunately, the
+implementation of this algorithm is numerically unstable. However, we
+may observe that 
+ 
+
+ 
+ 
+ Z = Q ​ R , Z=QR, 
+ 
+ (4.1) 
+ 
+ where  R R  is upper-triangular and invertible. In other words, the
+Gram-Schmidt algorithm realizes the  QR decomposition.  This
+factorization is widely used in numerical analysis to solve linear
+least squares problems and as first step of a particular
+eigenvalue algorithm. Indeed, every linear algebra package has a
+routine that implements it. In most cases, however, the algorithm
+adopted is not the Gram-Schmidt orthonormalization but uses the
+ Householder reflections , which are numerically stable. 
+ 
+ 
+ Because of this simple observation, at first one might be tempted to
+produce a matrix in the Ginibre ensemble and then to use a black box
+QR decomposition routine. Writing such a code is straightforward. For
+example, if we choose the SciPy library in Python, we may implement
+the following function: 
+ 
+ 
+ 
+ 
+ from 
+ scipy import * 
+ 
+ def wrong _ distribution(n): 
+ 
+ 
+ ’’’’’’A Random matrix with the wrong distribution’’’’’’ 
+ 
+ 
+ z = (randn(n,n) + 1j*randn(n,n))/sqrt(2.0) 
+ 
+ 
+ q,r = linalg.qr(z) 
+ 
+ 
+ return q 
+ 
+ 
+ 
+ Unfortunately, the output is not distributed with Haar measure,
+as it was observed by Edelman and Rao  [ 4 ] . It is
+instructive to give an explicit example of this phenomenon. 
+ 
+ 
+ A unitary matrix can always be diagonalized in  U ⁡ ( N ) \mathrm{U}(N) . Therefore,
+its eigenvalues  { e i ​ θ 1 , … , e i ​ θ N } \{e^{i\theta_{1}},\ldots,e^{i\theta_{N}}\}  lie on
+the unit circle. A classical calculation in RMT (see
+Mehta  [ 9 ]  pp. 203–205) consists of computing the
+statistical correlations among the arguments  θ j \theta_{j} . The
+simplest correlation function to determine is the density of the
+eigenvalues  ρ ⁡ ( θ ) \rho(\theta) , or — as sometimes it is called
+— the one-point correlation. Since Haar measure is the analogue of a
+uniform distribution, each set of eigenvalues must have the same
+weight, therefore the normalized eigenvalue density is 
+ 
+
+ 
+ 
+ ρ ⁡ ( θ ) = 1 2 ​ π . \rho(\theta)=\frac{1}{2\pi}. 
+ 
+ (4.2) 
+ 
+ It is important to point out that equation ( 4.2 ) does not
+mean that the eigenvalues are statistically uncorrelated. 
+ 
+ 
+ Testing ( 4.2 ) numerically is very simple. We generated
+ 10,000 10,000  random unitary matrices using
+ wrong _ distribution(n) . The density of the
+eigenvalues of such matrices is clearly not constant
+(figure 1(a)). Figure 1(b) shows the histogram of the spacing
+distribution, which deviates from the theoretical prediction too.
+This statistics is often plotted because it encodes the knowledge of
+all the spectral correlations and is easy to determine empirically.
+For unitary matrices it is defined as follows. Take the arguments of
+the eigenvalues and order them in ascending order: 
+ 
+
+ 
+ 
+ θ 1 ≤ θ 2 ≤ … ≤ θ N . \theta_{1}\leq\theta_{2}\leq\ldots\leq\theta_{N}. 
+ 
+ (4.3) 
+ 
+ The normalised distances, or spacings, between consecutive
+eigenvalues are 
+ 
+
+ 
+ 
+ s j = N 2 ​ π ( θ j + 1 − θ j ) , j = 1 , … , N . s_{j}=\frac{N}{2\pi}(\theta_{j+1}-\theta_{j}),\quad j=1,\ldots,N. 
+ 
+ (4.4) 
+ 
+ The spacing distribution  p ⁡ ( s ) p(s)  is the probability density of  s s .
+(For a discussion on the spacing distribution see
+Mehta  [ 9 ]  p. 118.) 
+ 
+ 
+ It is worth emphasising the QR decomposition is a standard
+routine. The most commonly known mathematical software packages
+like Matlab, Mathematica, Maple, SciPy for Python essentially use
+a combination of algorithms found in LAPACK routines. Changing
+software would not alter the outcome of this numerical experiment. 
+ 
+ 
+ 
+ 
+ 
+               
+                 θ 
+               
+             
+               
+                 
+                   ρ 
+                   
+                     
+                     
+                       ( 
+                       θ 
+                       ) 
+                     
+                   
+                 
+               
+             
+ (a)   Eigenvalue density 
+ 
+ s 
+               
+                 
+                   p 
+                   
+                     
+                     
+                       ( 
+                       s 
+                       ) 
+                     
+                   
+                 
+               
+             
+ (b)   Spacing distribution 
+ 
+ Figure 1:  Empirical histograms of the density of the eigenvalues
+and of the spacing distributions compared with the theoretical curves
+for the CUE. The data are computed from the eigenvalues of
+ten thousand  50 × 50 50\times 50  random unitary matrices obtained from the
+routine  wrong_distribution(n). 
+ 
+ . 
+ 
+ 
+ 
+ 5  A correct and efficient algorithm 
+
+ 
+ What is wrong with standard QR factorization routines? Where do
+they differ from the Gram-Schmidt orthonormalization? Why is the
+probability distribution of the output matrix not Haar measure? 
+ 
+ 
+ The main problem is that QR decomposition is not unique. Indeed, let
+ Z ∈ GL ⁡ ( N , ℂ ) Z\in\mathrm{GL}(N,\mathbb{C})  and suppose that  Z = Q ​ R Z=QR , where  Q Q  is unitary and  R R  is
+invertible and upper-triangular. If 
+ 
+
+ 
+ 
+ Λ = ( e i ​ θ 1 ⋱ e i ​ θ N ) = diag ⁡ ( e i ​ θ 1 , … , e i ​ θ N ) , \Lambda=\begin{pmatrix}e^{i\theta_{1}}&&\\
+&\ddots&\\
+&&e^{i\theta_{N}}\end{pmatrix}=\diag\left(e^{i\theta_{1}},\ldots,e^{i\theta_{N}}\right), 
+ 
+ (5.1) 
+ 
+ then 
+ 
+
+ 
+ 
+ Q ′ = Q ​ Λ and R ′ = Λ − 1 ​ R Q^{\prime}=Q\Lambda\quad\text{and}\quad R^{\prime}=\Lambda^{-1}R 
+ 
+ (5.2) 
+ 
+ are still unitary and upper-triangular respectively. Furthermore, 
+ 
+
+ 
+ 
+ Z = Q ​ R = Q ′ ​ R ′ . Z=QR=Q^{\prime}R^{\prime}. 
+ 
+ (5.3) 
+ 
+ Therefore, the QR decomposition defines a multi-valued map 
+ 
+
+ 
+ 
+ QR : GL ⁡ ( N , ℂ ) ⟶ U ⁡ ( N ) × T ⁡ ( N ) , \mathrm{QR}:\mathrm{GL}(N,\mathbb{C})\longrightarrow\mathrm{U}(N)\times\mathrm{T}(N), 
+ 
+ (5.4) 
+ 
+ where  T ⁡ ( N ) \mathrm{T}(N)  denotes the group of invertible upper-triangular matrices. 
+ 
+ 
+ In order to make the mapping ( 5.4 ) single-valued, we
+need to specify the algorithm that achieves the factorization. In
+most applications such a choice is dictated only by the
+performance and stability of the code. For our purposes, however,
+the subset of 
+ U ⁡ ( N ) × T ⁡ ( N ) \mathrm{U}(N)\times\mathrm{T}(N) , in which the output of
+the QR decomposition is chosen, is fundamental and we need to pay
+particular attention to it. It is convenient from a mathematical
+point of view to introduce a variation of the
+mapping ( 5.4 ), which is not only single-valued but also
+one-to-one. In this way we will not have to refer all the times to
+a specific algorithm. Indeed, the idea is that we should be able
+to alter the output of a QR decomposition routine without even
+knowing the algorithm implemented. 
+ 
+ 
+ We first need 
+ 
+ 
+ Lemma 2 . 
+ 
+ Equation ( 5.3 ) implies ( 5.2 ),
+where  Λ ∈ Λ ⁡ ( N ) \Lambda\in\Lambda(N)  and  Λ ⁡ ( N ) \Lambda(N)  denotes the group of all
+unitary diagonal matrices ( 5.1 ). 
+ 
+ 
+ 
+ Proof. 
+ 
+ Equation ( 5.3 ) can be rearranged as 
+ 
+
+ 
+ 
+ Q − 1 ​ Q ′ = R ​ R ′ − 1 . Q^{-1}Q^{\prime}=RR^{\prime-1}. 
+ 
+ (5.5) 
+ 
+ Since  U ⁡ ( N ) \mathrm{U}(N)  and  T ⁡ ( N ) \mathrm{T}(N)  are groups, both sides of
+equations ( 5.5 ) must belong to  U ⁡ ( N ) ∩ T ⁡ ( N ) \mathrm{U}(N)\cap\mathrm{T}(N) . By
+definition the inverse of a unitary matrix  U U  is its conjugate
+transpose and the inverse of an upper-triangular matrix is
+upper-triangular. Therefore, if a matrix is both unitary and
+upper-triangular it must be diagonal,  i.e.  Λ ⁡ ( N ) = U ⁡ ( N ) ∩ T ⁡ ( N ) \Lambda(N)=\mathrm{U}(N)\cap\mathrm{T}(N) .
+∎ 
+ 
+ 
+ 
+ This lemma suggests that, more naturally, instead of the QR
+factorization ( 5.4 ) we should consider a one-to-one map 
+ 
+
+ 
+ 
+ QR ¯ : GL ⁡ ( N , ℂ ) ⟶ U ⁡ ( N ) × Γ ⁡ ( N ) , \overline{\mathrm{QR}}:\mathrm{GL}(N,\mathbb{C})\longrightarrow\mathrm{U}(N)\times\mathrm{\Gamma}(N), 
+ 
+ (5.6) 
+ 
+ where  Γ ⁡ ( N ) = T ⁡ ( N ) / Λ ⁡ ( N ) \mathrm{\Gamma}(N)=\mathrm{T}(N)/\Lambda(N)  is the right coset space of
+ Λ ⁡ ( N ) \Lambda(N)  in  T ⁡ ( N ) \mathrm{T}(N) . We construct ( 5.6 ) as follows:
+we first define it on a class of representatives of  Γ ⁡ ( N ) \mathrm{\Gamma}(N)  using
+the QR factorization; then we extend it to the whole  Γ ⁡ ( N ) \mathrm{\Gamma}(N) .
+However, since the QR decomposition is not unique, there is a
+certain degree of arbitrariness in this definition. We need to
+find a map under which the measure of the Ginibre ensemble induces
+Haar measure on  U ⁡ ( N ) \mathrm{U}(N) . The main tool to achieve this goal is the
+invariance under group multiplication of Haar measure and its
+uniqueness. Thus, our choice of the
+decomposition ( 5.6 ) must be such that if 
+ 
+
+ 
+ 
+ Z ↦ ( Q , γ ) then U ​ Z ↦ ( U ​ Q , γ ) Z\mapsto(Q,\gamma)\quad\text{then}\quad UZ\mapsto(UQ,\gamma) 
+ 
+ (5.7) 
+ 
+ with the  same   γ ∈ Γ ⁡ ( N ) \gamma\in\Gamma(N)  and for  any   U ∈ U ⁡ ( N ) U\in\mathrm{U}(N) . This property implies that left multiplication of  Z Z 
+by a unitary matrix reduces, after the decomposition, to the left
+action of  U ⁡ ( N ) \mathrm{U}(N)  into itself. But lemma  1  states that 
+ 
+
+ 
+ 
+ d ​ μ G ​ ( U ​ Z ) = d ​ μ G ​ ( Z ) d\mu_{\mathrm{G}}(UZ)=d\mu_{\mathrm{G}}(Z) 
+ 
+ (5.8) 
+ 
+ for any  U ∈ U ⁡ ( N ) U\in\mathrm{U}(N) . As a consequence, if the
+map ( 5.6 ) satisfies ( 5.7 ) the induced measure
+on  U ⁡ ( N ) \mathrm{U}(N)  will be invariant under left multiplication too and
+therefore must be Haar measure. 
+ 
+ 
+ How do we construct the map ( 5.6 )? A class of
+representatives of  Γ ⁡ ( N ) \Gamma(N)  can be chosen by fixing the arguments
+of the elements of the main diagonal of  R ∈ T ⁡ ( N ) R\in\mathrm{T}(N) . Let us impose
+that such elements all be real and strictly positive.
+Using ( 5.2 ) we can uniquely factorize any  Z ∈ GL ⁡ ( N , ℂ ) Z\in\mathrm{GL}(N,\mathbb{C})  so
+that the main diagonal of  R R  has this property. It follows that if
+ Z = Q ​ R Z=QR , then 
+ 
+
+ 
+ 
+ U ​ Z = U ​ Q ​ R , U ∈ U ⁡ ( N ) . UZ=UQR,\quad U\in\mathrm{U}(N). 
+ 
+ (5.9) 
+ 
+ This QR decomposition of  U ​ Z UZ  is unique within the chosen class of
+representatives of  Γ ⁡ ( N ) \mathrm{\Gamma}(N) . Therefore, the resulting
+map ( 5.6 ) obeys ( 5.7 ). Finally, we arrive at 
+ 
+ 
+ Theorem 1 . 
+ 
+ Suppose that the map ( 5.6 ) satisfies
+the hypothesis ( 5.7 ). Then, it decomposes the
+measure ( 3.4 ) of the Ginibre ensemble as 
+ 
+
+ 
+ 
+ d ​ μ G ​ ( Z ) = d ​ μ H ​ ( Q ) × d ​ μ Γ ⁡ ( N ) ​ ( γ ) . d\mu_{\mathrm{G}}(Z)=d\mu_{\mathrm{H}}(Q)\times d\mu_{\mathrm{\Gamma}(N)}(\gamma). 
+ 
+ (5.10) 
+ 
+ 
+ 
+ 
+ Proof. 
+ 
+ We have 
+ 
+ 
+ 
+ 
+ d ​ μ G ​ ( U ​ Z ) \displaystyle d\mu_{\mathrm{G}}(UZ) 
+ = d ​ μ G ​ ( Z ) \displaystyle=d\mu_{\mathrm{G}}(Z) 
+ 
+ by lemma  1 
+ 
+ (5.11a) 
+ 
+ 
+ 
+ = d ​ μ ​ ( U ​ Q , γ ) = d ​ μ ​ ( Q , γ ) \displaystyle=d\mu(UQ,\gamma)=d\mu(Q,\gamma) 
+ 
+ by
+equation ( 5.7 ) 
+ 
+ (5.11b) 
+ 
+ 
+ 
+ = d ​ μ H ​ ( Q ) × d ​ μ Γ ⁡ ( N ) ​ ( γ ) \displaystyle=d\mu_{\mathrm{H}}(Q)\times d\mu_{\Gamma(N)}(\gamma) 
+ 
+ by the uniqueness of Haar
+measure. 
+ 
+ (5.11c) 
+ 
+ ∎ 
+ 
+ 
+ 
+ The choice of the class of representatives that we made coincides
+exactly with outcome of the Gram-Schmidt orthonormalization. The
+output of standard QR decomposition routines are such that if  Z ↦ ( Q , R ) Z\mapsto(Q,R)  then  U ​ Z ↦ ( Q ′ , R ′ ) UZ\mapsto(Q^{\prime},R^{\prime})  with  Q ′ ≠ U ​ Q Q^{\prime}\neq UQ  and  R ′ ≠ R R^{\prime}\neq R . Therefore, the corresponding map ( 5.6 ) does not
+obey ( 5.7 ) and theorem  1  does not hold. 
+ 
+ 
+ We can now give a recipe to create a random unitary matrix with
+distribution given by Haar measure. 
+ 
+ 1.  
+ 
+ Take an  N × N N\times N  complex matrix  Z Z  whose entries are
+complex standard normal random variables. 
+ 
+ 2.  
+ 
+ Feed  Z Z  into  any  QR decomposition routine. Let
+ ( Q , R ) (Q,R) , where  Z = Q ​ R Z=QR , be the output. 
+ 
+ 3.  
+ 
+ Create the following diagonal matrix 
+ 
+
+ 
+ 
+ Λ = ( r 11 | r 11 | ⋱ r N ​ N | r N ​ N | ) , \Lambda=\begin{pmatrix}\frac{r_{11}}{\left\lvert r_{11}\right\rvert}&&\\
+&\ddots&\\
+&&\frac{r_{NN}}{\left\lvert r_{NN}\right\rvert}\end{pmatrix}, 
+ 
+ (5.12) 
+ 
+ where the  r j ​ j ​ s r_{jj}s  are the diagonal elements of  R R . 
+ 
+ 4.  
+ 
+ The diagonal elements of  R ′ = Λ − 1 ​ R R^{\prime}=\Lambda^{-1}R  are
+ always  real and strictly positive, therefore the matrix  Q ′ = Q ​ Λ Q^{\prime}=Q\Lambda  is distributed with Haar measure. 
+ 
+ 
+ The corresponding Python function is: 
+ 
+ 
+ 
+ 
+ from 
+ scipy import * 
+ 
+ def haar _ measure(n): 
+ 
+ 
+ ’’’’’’A Random matrix distributed with Haar measure’’’’’’ 
+ 
+ 
+ z = (randn(n,n) + 1j*randn(n,n))/sqrt(2.0) 
+ 
+ 
+ q,r = linalg.qr(z) 
+ 
+ 
+ d = diagonal(r) 
+ 
+ 
+ ph = d/absolute(d) 
+ 
+ 
+ q = multiply(q,ph,q) 
+ 
+ 
+ return q 
+ 
+ 
+ 
+ If we repeat the numerical experiment discussed in
+section  4  using this routine, we obtain the histograms in
+figure 2, which are consistent with the theoretical predictions. 
+ 
+ 
+ 
+ 
+ 
+               
+                 θ 
+               
+             
+               
+                 
+                   ρ 
+                   
+                     
+                     
+                       ( 
+                       θ 
+                       ) 
+                     
+                   
+                 
+               
+             
+ (a)   Eigenvalue density 
+ 
+ s 
+               
+                 
+                   p 
+                   
+                     
+                     
+                       ( 
+                       s 
+                       ) 
+                     
+                   
+                 
+               
+             
+ (b)   Spacing distribution 
+ 
+ Figure 2:  Empirical histograms of the density of the eigenvalues
+and of the spacing distributions compared with the theoretical
+curves for the CUE. The data are computed from the eigenvalues of
+ten thousand  50 × 50 50\times 50  random unitary matrices output of the
+function  haar_measure(n) . 
+ 
+ 
+ 
+ 6  The unitary symplectic group  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N) 
+
+ 
+ Up to now we have only considered  U ⁡ ( N ) \mathrm{U}(N) . The discussion for  O ⁡ ( N ) \mathrm{O}(N)  is
+identical, except that the input matrix of the QR decomposition
+routine must be real. Unfortunately, however, for  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N)  there are
+not any black box routines that we can use and we must put more effort
+into writing an algorithm. 
+ 
+ 
+ The algebra of unitary symplectic matrices can be rephrased in terms of
+Hamilton’s quaternions; it is convenient for our purposes to
+use this formalism. A quaternion  q ∈ ℍ q\in\mathbb{H}  is a linear
+combination 
+ 
+
+ 
+ 
+ q = a ⋅ 1 + b ​ i 1 + c ​ i 2 + d ​ i 3 , a , b , c , d ∈ ℝ , q=a\cdot 1+bi_{1}+ci_{2}+di_{3},\quad a,b,c,d\in\mathbb{R}, 
+ 
+ (6.1) 
+ 
+ where  1 1  is the identity and  i 1 i_{1} ,  i 2 i_{2} ,  i 3 i_{3}  are the
+quaternion units; they obey the algebra 
+ 
+
+ 
+ 
+ i 1 2 = i 2 2 = i 3 2 = i 1 ​ i 2 ​ i 3 = − 1 . i_{1}^{2}=i_{2}^{2}=i_{3}^{2}=i_{1}i_{2}i_{3}=-1. 
+ 
+ (6.2) 
+ 
+ We can also define the conjugate of  q q , 
+ 
+
+ 
+ 
+ q ¯ = a ⋅ 1 − b ​ i 1 − c ​ i 2 − d ​ i 3 , \overline{q}=a\cdot 1-bi_{1}-ci_{2}-di_{3}, 
+ 
+ (6.3) 
+ 
+ as well the norm 
+ 
+
+ 
+ 
+ ‖ q ‖ 2 = q ​ q ¯ = q ¯ ​ q = a 2 + b 2 + c 2 + d 2 . \left\lVert q\right\rVert^{2}=q\,\overline{q}=\overline{q}\,q=a^{2}+b^{2}+c^{2}+d^{2}. 
+ 
+ (6.4) 
+ 
+ When  c = d = 0 c=d=0 ,  ℍ \mathbb{H}  reduces to  ℂ \mathbb{C}  and  q ¯ \overline{q} 
+is simply the complex conjugate of  q q . 
+ 
+ 
+ In analogy with  ℝ N \mathbb{R}^{N}  and  ℂ N \mathbb{C}^{N}  — provided we are
+careful with the fact that multiplication in  ℍ \mathbb{H}  is not
+commutative — we can study the space  ℍ N \mathbb{H}^{N} . Elements in
+ ℍ N \mathbb{H}^{N}  are  N N -tuples  𝐪 = ( q 1 , … , q N ) \mathbf{q}=(q_{1},\ldots,q_{N}) . The
+bilinear map 
+ 
+
+ 
+ 
+ ⟨ 𝐩 , 𝐪 ⟩ = ∑ j = 1 N p ¯ j ​ q j , 𝐩 , 𝐪 ∈ ℍ N , \left\langle\mathbf{p},\mathbf{q}\right\rangle=\sum_{j=1}^{N}\overline{p}_{j}q_{j},\quad\mathbf{p},\mathbf{q}\in\mathbb{H}^{N}, 
+ 
+ (6.5) 
+ 
+ is the analogue of the usual Hermitian inner product in
+ ℂ N \mathbb{C}^{N}  and the norm of a quaternion vector is simply 
+ 
+
+ 
+ 
+ ‖ 𝐪 ‖ 2 = ⟨ 𝐪 , 𝐪 ⟩ = ∑ j = 1 N ‖ q j ‖ 2 . \left\lVert\mathbf{q}\right\rVert^{2}=\left\langle\mathbf{q},\mathbf{q}\right\rangle=\sum_{j=1}^{N}\left\lVert q_{j}\right\rVert^{2}. 
+ 
+ (6.6) 
+ 
+ Similarly,  GL ⁡ ( N , ℍ ) \mathrm{GL}(N,\mathbb{H})  is the group of all the
+ N × N N\times N  invertible matrices with quaternion elements. 
+ 
+ 
+ The quaternion units admit a representation in terms of the  2 × 2 2\times 2  matrices 
+ 
+ 
+ 
+ 
+ I 2 = ( 1 0 0 1 ) , e 1 = ( i 0 0 − i ) , e 2 = ( 0 1 − 1 0 ) and e 3 = ( 0 i i 0 ) , I_{2}=\begin{pmatrix}1&0\\
+0&1\end{pmatrix},\quad e_{1}=\begin{pmatrix}i&0\\
+0&-i\end{pmatrix},\quad e_{2}=\begin{pmatrix}0&1\\
+-1&0\end{pmatrix}\quad\text{and}\quad e_{3}=\begin{pmatrix}0&i\\
+i&0\end{pmatrix}, 
+ 
+ (6.7a) 
+ where 
+ 
+ 
+ 1 ↦ I 2 , i 1 ↦ e 1 , i 2 ↦ e 2 and i 3 ↦ e 3 . 1\mapsto I_{2},\quad i_{1}\mapsto e_{1},\quad i_{2}\mapsto e_{2}\quad\text{and}\quad i_{3}\mapsto e_{3}. 
+ 
+ (6.7b) 
+ 
+ Thus,  q = a ⋅ 1 + b ​ i 1 + c ​ i 2 + d ​ i 3 q=a\cdot 1+bi_{1}+ci_{2}+di_{3}  is mapped into the
+complex matrix 
+ 
+ 
+ 
+ 
+ A = ( z w − w ¯ z ¯ ) A=\begin{pmatrix}z&w\\
+-\overline{w}&\overline{z}\end{pmatrix} 
+ 
+ (6.8a) 
+ where  z = a + i ​ b z=a+ib  and  w = c + i ​ d w=c+id . In addition 
+ 
+ 
+ q ¯ ↦ A ∗ = ( z ¯ − w w ¯ z ) . \overline{q}\mapsto A^{*}=\begin{pmatrix}\overline{z}&-w\\
+\overline{w}&z\end{pmatrix}. 
+ 
+ (6.8b) 
+ 
+ Equations ( 6.8 ) generalize to an arbitrary  N × N N\times N 
+quaternion matrix  𝒬 \mathcal{Q} , which can be represented in terms of
+a  2 ​ N × 2 ​ N 2N\times 2N  complex matrix  Q Q  using the decomposition 
+ 
+
+ 
+ 
+ 𝒬 ↦ Q = Q 0 ⊗ I 2 + Q 1 ⊗ e 1 + Q 2 ⊗ e 2 + Q 3 ⊗ e 3 , \mathcal{Q}\mapsto Q=Q_{0}\otimes I_{2}+Q_{1}\otimes e_{1}+Q_{2}\otimes e_{2}+Q_{3}\otimes e_{3}, 
+ 
+ (6.9) 
+ 
+ where  Q 0 Q_{0} ,  Q 1 Q_{1} ,  Q 2 Q_{2}  and  Q 3 Q_{3}  are arbitrary  N × N N\times N 
+ real  matrices. Proceeding in the same fashion, if  𝒬 ∈ GL ⁡ ( N , ℍ ) \mathcal{Q}\in\mathrm{GL}(N,\mathbb{H})  we define its conjugate transpose
+ 𝒬 ∗ = ( q j ​ k ∗ ) \mathcal{Q}^{*}=(q^{*}_{jk})  by setting  q j ​ k ∗ = q ¯ k ​ j q^{*}_{jk}=\overline{q}_{kj} . 
+ 
+ 
+ The symplectic group  Sp ⁡ ( N ) \mathrm{Sp}(N)  is the subset of
+ GL ⁡ ( N , ℍ ) \mathrm{GL}(N,\mathbb{H})  whose matrices satisfy the identity
+ 𝒮 ∗ ​ 𝒮 = 𝒮 ​ 𝒮 ∗ = ℐ \mathcal{S}^{*}\mathcal{S}=\mathcal{S}\mathcal{S}^{*}=\mathcal{I} .
+Because of the analogy between  U ⁡ ( N ) \mathrm{U}(N)  and  Sp ⁡ ( N ) \mathrm{Sp}(N) , the latter is
+sometimes called  hyper-unitary group  and is denoted by
+ U ⁡ ( N , ℍ ) \mathrm{U}(N,\mathbb{H}) . The usefulness of the quaternion
+algebra lies in 
+ 
+ 
+ Theorem 2 . 
+ 
+ The groups  Sp ⁡ ( N ) \mathrm{Sp}(N)  and  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N)  are isomorphic, i.e. 
+ 
+
+ 
+ 
+ USp ⁡ ( 2 ​ N ) ≅ Sp ⁡ ( N ) . \mathrm{USp}(2N)\cong\mathrm{Sp}(N). 
+ 
+ (6.10) 
+ 
+ 
+ 
+ 
+ Proof. 
+ 
+ It is convenient to replace the skew-symmetric
+matrix  J J  in the definition ( 2.8 ) with 
+ 
+
+ 
+ 
+ Ω = ( 0 1 − 1 0 ⋱ ⋱ ⋱ ⋱ ⋱ 0 1 − 1 0 ) = I ⊗ e 2 . \Omega=\begin{pmatrix}0&1&&&\\
+-1&0&\ddots&&\\
+&\ddots&\ddots&\ddots&\\
+&&\ddots&0&1\\
+&&&-1&0\\
+\end{pmatrix}=I\otimes e_{2}. 
+ 
+ (6.11) 
+ 
+ This substitution is equivalent to a permutation of the rows and
+columns of  J J , therefore it is simply a conjugation by a unitary
+matrix. 
+ 
+ 
+ We first prove that if  𝒮 ∈ Sp ⁡ ( N ) \mathcal{S}\in\mathrm{Sp}(N) , then its complex
+representation  S S  belongs to  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N) . By
+equation ( 6.9 )  𝒮 ∗ \mathcal{S}^{*}  is mapped to 
+ 
+
+ 
+ 
+ S 0 t ⊗ I 2 − S 1 t ⊗ e 1 − S 2 t ⊗ e 2 − S 3 t ⊗ e 3 = − Ω ​ S t ​ Ω , S_{0}^{t}\otimes I_{2}-S_{1}^{t}\otimes e_{1}-S_{2}^{t}\otimes e_{2}-S^{t}_{3}\otimes e_{3}=-\Omega\,S^{t}\,\Omega, 
+ 
+ (6.12) 
+ 
+ which follows from the identities 
+ 
+
+ 
+ 
+ ( A ⊗ B ) t = A t ⊗ B t and ( A ⊗ B ) ​ ( C ⊗ D ) = A ​ C ⊗ B ​ D , (A\otimes B)^{t}=A^{t}\otimes B^{t}\quad\text{and}\quad(A\otimes B)(C\otimes D)=AC\otimes BD, 
+ 
+ (6.13) 
+ 
+ and from the algebra ( 6.2 ) of the quaternion units.
+As a consequence, 
+ 
+
+ 
+ 
+ 𝒮 ​ 𝒮 ∗ ↦ − S ​ Ω ​ S t ​ Ω = I . \mathcal{SS^{*}}\mapsto-S\,\Omega\,S^{t}\,\Omega=I. 
+ 
+ (6.14) 
+ 
+ Therefore, the matrix  S S  is symplectic. Combining
+equations ( 6.8b ) and ( 6.12 ) gives 
+ 
+
+ 
+ 
+ − Ω ​ S t ​ Ω = S ∗ , -\Omega\,S^{t}\,\Omega=S^{*}, 
+ 
+ (6.15) 
+ 
+ thus  S ∈ USp ⁡ ( 2 ​ N ) S\in\mathrm{USp}(2N) . 
+ 
+ 
+ We now need to show that if  S ∈ USp ⁡ ( 2 ​ N ) S\in\mathrm{USp}(2N)  then it is the
+representation of a matrix  𝒮 ∈ Sp ⁡ ( N ) \mathcal{S}\in\mathrm{Sp}(N) . This statement
+follows if we prove that  S S  admits a decomposition of the
+form ( 6.9 ), where  S 0 S_{0} ,  S 1 S_{1} ,  S 2 S_{2}  and  S 3 S_{3}   N × N N\times N  must be  real  matrices. If this is true, then the
+argument of the first part of the proof can simply be reversed. 
+ 
+ 
+ Let us allow the coefficients  a a ,  b b ,  c c  and  d d  in the
+definition ( 6.1 ) to be complex numbers. The definitions
+of conjugate quaternion ( 6.3 ) and conjugate transpose of a
+quaternion matrix, however, remain the same. The
+matrices ( 6.7a ) form a basis in  ℂ 2 × 2 \mathbb{C}^{2\times 2} .
+Therefore, any  2 × 2 2\times 2  complex matrix can be represented as a
+linear combination of  I 2 I_{2} ,  e 1 e_{1} ,  e 2 e_{2}  and  e 3 e_{3} . Thus, any matrix
+ Q ∈ ℂ 2 ​ N × 2 ​ N Q\in\mathbb{C}^{2N\times 2N}  admits a decomposition of the
+form ( 6.9 ), but now the matrices  Q 0 Q_{0} ,  Q 1 Q_{1} ,  Q 2 Q_{2} 
+and  Q 3 Q_{3}  are allowed to be complex. In other words,  Q Q  is always
+the representation of a quaternion matrix  𝒬 \mathcal{Q} , but in
+general the quaternion units have complex coefficients. The important
+fact that we need to pay attention to is that 
+ 
+
+ 
+ 
+ 𝒬 ∗ ↦ Q ∗ , \mathcal{Q}^{*}\mapsto Q^{*}, 
+ 
+ (6.16) 
+ 
+ if and only if the coefficients of the quaternion units are real
+numbers. This is a straightforward consequence of the
+representation ( 6.8a ). 
+ 
+ 
+ Let  S ∈ USp ⁡ ( 2 ​ N ) S\in\mathrm{USp}(2N)  be the complex representation of the quaternion
+matrix  𝒮 \mathcal{S} , but assume that  𝒮 ∗ \mathcal{S}^{*}  is not mapped
+into  S ∗ S^{*} . It is still true, however, that 
+ 
+
+ 
+ 
+ 𝒮 ∗ ↦ − Ω ​ S t ​ Ω , \mathcal{S}^{*}\mapsto-\Omega\,S^{t}\,\Omega, 
+ 
+ (6.17) 
+ 
+ because equation ( 6.12 ) is only a consequence of matrix
+manipulations. But since  S S  is unitary symplectic  S ∗ = − Ω ​ S t ​ Ω S^{*}=-\Omega\,S^{t}\,\Omega , which is a contradiction.
+∎ 
+ 
+ 
+ 
+ The algebra of  Sp ⁡ ( N ) \mathrm{Sp}(N)  is the generalization to Hamilton’s quaternions
+of the algebra of  U ⁡ ( N ) \mathrm{U}(N) . Therefore, it is not surprising that the
+discussion of section  5  is not affected by replacing
+ GL ⁡ ( N , ℂ ) \mathrm{GL}(N,\mathbb{C})  and  U ⁡ ( N ) \mathrm{U}(N)  with  GL ⁡ ( N , ℍ ) \mathrm{GL}(N,\mathbb{H}) 
+and  Sp ⁡ ( N ) \mathrm{Sp}(N)  respectively. Thus, since  Sp ⁡ ( N ) \mathrm{Sp}(N)  and  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N)  are
+isomorphic,  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N)  and  Sp ⁡ ( N ) \mathrm{Sp}(N)  have the same Haar measure  d ​ μ H d\mu_{\mathrm{H}} . In
+particular, we can introduce the quaternion Ginibre ensemble, which is
+the set  GL ⁡ ( N , ℍ ) \mathrm{GL}(N,\mathbb{H})  equipped with the probability
+density 
+ 
+
+ 
+ 
+ P ( 𝒵 ) = 1 π 2 ​ N 2 exp ( − Tr 𝒵 ∗ 𝒵 ) = 1 π 2 ​ N 2 exp ( − ∑ j , k = 1 N ‖ z j ​ k ‖ 2 ) . P(\mathcal{Z})=\frac{1}{\pi^{2N^{2}}}\exp\left(-\trace\mathcal{Z}^{*}\mathcal{Z}\right)=\frac{1}{\pi^{2N^{2}}}\exp\left(-\sum_{j,k=1}^{N}\left\lVert z_{jk}\right\rVert^{2}\right). 
+ 
+ (6.18) 
+ 
+ 
+ 
+ Quaternion matrices can be factorized by the QR decomposition too:
+for any 
+ 𝒵 ∈ GL ⁡ ( N , ℍ ) \mathcal{Z}\in\mathrm{GL}(N,\mathbb{H})  we
+can always write 
+ 
+
+ 
+ 
+ 𝒵 = 𝒬 ​ ℛ , \mathcal{Z}=\mathcal{Q}\mathcal{R}, 
+ 
+ (6.19) 
+ 
+ where  𝒬 ∈ Sp ⁡ ( N ) \mathcal{Q}\in\mathrm{Sp}(N)  and  ℛ \mathcal{R}  is an invertible and
+upper-triangular quaternion matrix. Now, let 
+ 
+
+ 
+ 
+ Λ ( N , ℍ ) = { Λ ∈ T ( N , ℍ ) | Λ = diag ( q 1 , … , q N ) , ‖ q j ‖ = 1 , j = 1 , … , N } , \Lambda(N,\mathbb{H})=\Bigl\{\Lambda\in\mathrm{T}(N,\mathbb{H})\bigl\lvert\>\Lambda=\diag\left(q_{1},\ldots,q_{N}\right),\quad\left\lVert q_{j}\right\rVert=1,\quad j=1,\ldots,N\Bigr\}, 
+ 
+ (6.20) 
+ 
+ where  T ⁡ ( N , ℍ ) \mathrm{T}(N,\mathbb{H})  is the group of invertible upper-triangular quaternion
+matrices. Furthermore, let  Γ ⁡ ( N , ℍ ) = T ⁡ ( N , ℍ ) / Λ ⁡ ( N , ℍ ) \mathrm{\Gamma}(N,\mathbb{H})=\mathrm{T}(N,\mathbb{H})/\Lambda(N,\mathbb{H})  be the right coset space
+of  Λ ⁡ ( N , ℍ ) \Lambda(N,\mathbb{H})  in  T ⁡ ( N , ℍ ) \mathrm{T}(N,\mathbb{H}) . We have the following 
+ 
+ 
+ Theorem 3 . 
+ 
+ There exists a one-to-one map 
+ 
+
+ 
+ 
+ 𝒬 ​ ℛ : GL ⁡ ( N , ℍ ) ⟶ Sp ⁡ ( N ) × Γ ⁡ ( N , ℍ ) \mathcal{QR}:\mathrm{GL}(N,\mathbb{H})\longrightarrow\mathrm{Sp}(N)\times\Gamma(N,\mathbb{H}) 
+ 
+ (6.21) 
+ 
+ such that 
+ 
+
+ 
+ 
+ 𝒵 ↦ ( 𝒬 , γ ) and 𝒰 ​ 𝒵 ↦ ( 𝒰 ​ 𝒬 , γ ) , \mathcal{Z}\mapsto(\mathcal{Q},\gamma)\quad\text{and}\quad\mathcal{UZ}\mapsto(\mathcal{UQ},\gamma), 
+ 
+ (6.22) 
+ 
+ where  γ = Λ ⁡ ( N , ℍ ) ​ ℛ \gamma=\Lambda(N,\mathbb{H})\mathcal{R} . Furthermore, it factorizes the
+measure  d ​ μ G d\mu_{\mathrm{G}}  of the Ginibre ensemble as 
+ 
+
+ 
+ 
+ d ​ μ G ​ ( 𝒵 ) = d ​ μ H ​ ( 𝒬 ) × d ​ μ Γ ⁡ ( N , ℍ ) ​ ( γ ) . d\mu_{\mathrm{G}}(\mathcal{Z})=d\mu_{\mathrm{H}}(\mathcal{Q})\times d\mu_{\mathrm{\Gamma}(N,\mathbb{H})}(\gamma). 
+ 
+ (6.23) 
+ 
+ 
+ 
+ 
+ We leave proving these generalizations as an exercise for the
+reader. 
+ 
+ 
+ 
+ 7  Householder reflections 
+
+ 
+ Theorem  3  provides us with the theoretical tools to
+generate a random matrix in  USp ⁡ ( 2 ​ N ) \mathrm{USp}(2N) . However, when we implement these
+results in computer code, we need to devise an algorithm whose output
+satisfies the condition ( 6.22 ). The first one that
+comes to one’s mind is the Gram-Schmidt orthonormalization. But given
+that black box routines for quaternion matrices do not exists on the
+market, and that we are forced to write the complete code ourselves,
+we may as well choose one that is numerically stable and which, as it
+turns out, requires the same effort. The most common algorithm that
+achieves the QR decomposition uses the  Householder reflections. 
+For the sake of clarity, we will discuss this method for  O ⁡ ( N ) \mathrm{O}(N) ; the
+generalizations to  U ⁡ ( N ) \mathrm{U}(N)  and  Sp ⁡ ( N ) \mathrm{Sp}(N)  are straightforward. 
+ 
+ 
+ Given an arbitrary vector  𝐯 ∈ ℝ m \mathbf{v}\in\mathbb{R}^{m} , the main
+idea of the Householder reflections is to construct a simple
+orthogonal transformation  H m H_{m}  (dependent on  𝐯 \mathbf{v} ) such
+that 
+ 
+
+ 
+ 
+ H m ​ 𝐯 = ‖ 𝐯 ‖ ​ 𝐞 𝟏 , H_{m}\mathbf{v}=\left\lVert\mathbf{v}\right\rVert\mathbf{e_{1}}, 
+ 
+ (7.1) 
+ 
+ where  𝐞 𝟏 = ( 1 , 0 , … , 0 ) ∈ ℝ m \mathbf{e_{1}}=(1,0,\ldots,0)\in\mathbb{R}^{m} . For any real
+matrix  X = ( x j ​ k ) X=(x_{jk}) ,  H N H_{N}  is determined by replacing  𝐯 \mathbf{v}  in
+equation ( 7.1 ) with the first column of  X X . The product
+ H N ​ X H_{N}X  will have the structure 
+ 
+
+ 
+ 
+ H N ​ X = ( r 11 ∗ ⋯ ∗ 0 ∗ ⋯ ∗ 0 ∗ ⋯ ∗ ) , H_{N}X=\begin{pmatrix}r_{11}&*&\cdots&*\\
+0&*&\cdots&*\\
+\vdots&\vdots&&\vdots\\
+0&*&\cdots&*\end{pmatrix}, 
+ 
+ (7.2) 
+ 
+ where 
+ 
+
+ 
+ 
+ r 11 = ‖ 𝐯 ‖ = ∑ j = 1 N x j ​ 1 2 . r_{11}=\left\lVert\mathbf{v}\right\rVert=\sqrt{\textstyle{\sum_{j=1}^{N}x_{j1}^{2}}}. 
+ 
+ (7.3) 
+ 
+ Then, define the matrix 
+ 
+
+ 
+ 
+ H ~ N − 1 = ( 1 0 0 H N − 1 ) , \tilde{H}_{N-1}=\left(\begin{array}[]{cc}1&0\\
+0&\begin{array}[]{|ccc|}\hline\cr&&\\
+&H_{N-1}&\\
+&&\\
+\hline\cr\end{array}\end{array}\right), 
+ 
+ (7.4) 
+ 
+ where 
+ 
+
+ 
+ 
+ H N − 1 ​ ( 𝐯 ′ ) ​ 𝐯 ′ = ‖ 𝐯 ′ ‖ ​ 𝐞 1 . H_{N-1}(\mathbf{v}^{\prime})\mathbf{v}^{\prime}=\left\lVert\mathbf{v}^{\prime}\right\rVert\mathbf{e}_{1}. 
+ 
+ (7.5) 
+ 
+ In this case  𝐯 ′ \mathbf{v}^{\prime}  is the  ( N − 1 ) (N-1) -dimensional vector
+obtained by dropping the first element of the second column of the
+matrix ( 7.2 ). We proceed in this fashion until the matrix 
+ 
+
+ 
+ 
+ R = H ~ 1 H ~ 2 ⋯ H ~ N − 1 H N X R=\tilde{H}_{1}\tilde{H}_{2}\cdots\tilde{H}_{N-1}H_{N}X 
+ 
+ (7.6) 
+ 
+ is upper-triangular with diagonal entries  r 11 , … , r N ​ N r_{11},\ldots,r_{NN} . The product 
+ 
+
+ 
+ 
+ Q = H N t H ~ N − 1 t ⋯ H ~ 2 t H ~ 1 t Q=H_{N}^{t}\tilde{H}_{N-1}^{t}\cdots\tilde{H}_{2}^{t}\tilde{H}_{1}^{t} 
+ 
+ (7.7) 
+ 
+ is by construction an orthogonal matrix. In
+equations ( 7.6 ) and ( 7.7 )  H ~ m \tilde{H}_{m}  denotes
+the block matrix 
+ 
+
+ 
+ 
+ H ~ m = ( I N − m H m ) , \tilde{H}_{m}=\begin{pmatrix}I_{N-m}&\\
+&H_{m}\end{pmatrix}, 
+ 
+ (7.8) 
+ 
+ where  H m H_{m}  is defined in equation ( 7.1 ). 
+ 
+ 
+ The matrix  H m H_{m}  is constructed using elementary geometry.
+Consider a vector in the plane,  𝐯 = ( x 1 , x 2 ) \mathbf{v}=(x_{1},x_{2}) , and
+assume, for simplicity, that  x 1 > 0 x_{1}>0 . Furthermore, let
+ 𝐮 ^ \mathbf{\hat{u}}  denote the unit vector along the interior
+bisector of the angle  ϕ \phi  that  𝐯 \mathbf{v}  makes with the
+ x 1 x_{1} -axis,  i.e. 
+ 
+
+ 
+ 
+ 𝐮 ^ = 𝐯 + ‖ 𝐯 ‖ ​ 𝐞 1 ∥ 𝐯 + ‖ 𝐯 ‖ 𝐞 1 ∥ , \mathbf{\hat{u}}=\frac{\mathbf{v}+\left\lVert\mathbf{v}\right\rVert\mathbf{e}_{1}}{\bigl\lVert\mathbf{v}+\left\lVert\mathbf{v}\right\rVert\mathbf{e}_{1}\bigr\rVert}, 
+ 
+ (7.9) 
+ 
+ where  𝐞 1 \mathbf{e}_{1}  is the unit vector along the  x 1 x_{1} -axis. The
+reflection of  𝐯 \mathbf{v}  along the direction of
+ 𝐮 ^ \mathbf{\hat{u}}  is  ‖ 𝐯 ‖ ​ 𝐞 1 \left\lVert\mathbf{v}\right\rVert\mathbf{e}_{1}  (see
+figure 3). 
+ 
+ 
+             
+               
+                 
+                 x 
+                 1 
+               
+             
+           
+             
+               
+                 
+                 x 
+                 2 
+               
+             
+           
+             
+               ϕ 
+             
+           
+             
+               v 
+             
+           
+             
+               
+                 ⁢ 
+                 
+                   
+                     
+                     
+                   
+                   
+                     ‖ 
+                     v 
+                     ‖ 
+                   
+                 
+                 
+                   
+                   e 
+                   1 
+                 
+               
+             
+           
+             
+               
+                 ^ 
+                 u 
+               
+             
+           
+ Figure 3:  Householder reflection in  ℝ 2 \mathbb{R}^{2} . 
+ 
+ 
+ Reflections are distance-preserving linear transformations,
+therefore their representations in an orthonormal basis are
+orthogonal matrices. In this simple example it can be constructed
+from elementary linear algebra: 
+ 
+
+ 
+ 
+ H 2 ​ ( 𝐯 ) = − I + 2 ​ 𝐮 ^ ​ 𝐮 ^ t . H_{2}(\mathbf{v})=-I+2\mathbf{\hat{u}}\mathbf{\hat{u}}^{t}. 
+ 
+ (7.10) 
+ 
+ Finally, we obtain 
+ 
+
+ 
+ 
+ H 2 ​ ( 𝐯 ) ​ 𝐯 = ‖ 𝐯 ‖ ​ 𝐞 1 . H_{2}(\mathbf{v})\mathbf{v}=\left\lVert\mathbf{v}\right\rVert\mathbf{e}_{1}. 
+ 
+ (7.11) 
+ 
+ It is worth noting that  H 2 H_{2}  depends only on the direction of
+ 𝐯 \mathbf{v}  and not on its modulus. Thus we can rewrite
+equation ( 7.11 ) as 
+ 
+
+ 
+ 
+ H 2 ​ ( 𝐯 ^ ) ​ 𝐯 ^ = 𝐞 1 , H_{2}(\mathbf{\hat{v}})\mathbf{\hat{v}}=\mathbf{e}_{1}, 
+ 
+ (7.12) 
+ 
+ where  𝐯 ^ = 𝐯 / ‖ 𝐯 ‖ \mathbf{\hat{v}}=\mathbf{v}/\left\lVert\mathbf{v}\right\rVert . 
+ 
+ 
+ The generalization to arbitrary dimensions is straightforward. For
+any vector  𝐯 ∈ ℝ m \mathbf{v}\in\mathbb{R}^{m} , the Householder
+reflection is defined as 
+ 
+
+ 
+ 
+ H m ​ ( 𝐯 ^ ) = ∓ ( I − 2 ​ 𝐮 ^ ​ 𝐮 ^ t ) , H_{m}(\mathbf{\hat{v}})=\mp\left(I-2\mathbf{\hat{u}}\mathbf{\hat{u}}^{t}\right), 
+ 
+ (7.13) 
+ 
+ where 
+ 
+
+ 
+ 
+ 𝐮 ^ = 𝐯 ± ‖ 𝐯 ‖ ​ 𝐞 1 ∥ 𝐯 ± ‖ 𝐯 ‖ 𝐞 1 ∥ . \mathbf{\hat{u}}=\frac{\mathbf{v}\pm\left\lVert\mathbf{v}\right\rVert\mathbf{e}_{1}}{\bigl\lVert\mathbf{v}\pm\left\lVert\mathbf{v}\right\rVert\mathbf{e}_{1}\bigr\rVert}. 
+ 
+ (7.14) 
+ 
+ Furthermore, we have 
+ 
+
+ 
+ 
+ H m ​ ( 𝐯 ^ ) ​ 𝐯 ^ = 𝐞 1 . H_{m}(\mathbf{\hat{v}})\mathbf{\hat{v}}=\mathbf{e}_{1}. 
+ 
+ (7.15) 
+ 
+ 
+ 
+ How do we choose the sign in the right-hand side of
+equation ( 7.14 )? From a mathematical point of view such a
+choice is irrelevant: in both cases  H m ​ ( 𝐯 ^ ) H_{m}(\mathbf{\hat{v}})  maps
+ 𝐯 \mathbf{v}  into a vector whose only component different from
+zero is the first one. However, numerically it can be important.
+The square of the denominator in ( 7.14 ) is 
+ 
+
+ 
+ 
+ ∥ 𝐯 ± ‖ 𝐯 ‖ 𝐞 1 ∥ 2 = 2 ‖ 𝐯 ‖ ( ‖ 𝐯 ‖ ± x 1 ) , \bigl\lVert\mathbf{v}\pm\left\lVert\mathbf{v}\right\rVert\mathbf{e}_{1}\bigr\rVert^{2}=2\left\lVert\mathbf{v}\right\rVert\left(\left\lVert\mathbf{v}\right\rVert\pm x_{1}\right), 
+ 
+ (7.16) 
+ 
+ where  x 1 x_{1}  is the first component of  𝐯 \mathbf{v} . If  x 1 x_{1}  is
+comparable in magnitude to  ‖ 𝐯 ‖ \left\lVert\mathbf{v}\right\rVert  and negative
+(positive) and we choose the plus (minus) sign, then the term 
+ 
+
+ 
+ 
+ ‖ 𝐯 ‖ ± x 1 , \left\lVert\mathbf{v}\right\rVert\pm x_{1}, 
+ 
+ (7.17) 
+ 
+ could very small and cancellations with significant round-off errors
+may occur. Therefore, the Householder transformation to be
+implemented in computer code should be 
+ 
+
+ 
+ 
+ H m ​ ( 𝐯 ^ ) = − sgn ⁡ ( x 1 ) ​ ( I − 2 ​ 𝐮 ^ ​ 𝐮 ^ t ) , H_{m}(\mathbf{\hat{v}})=-\sgn(x_{1})\left(I-2\mathbf{\hat{u}}\mathbf{\hat{u}}^{t}\right), 
+ 
+ (7.18) 
+ 
+ where 
+ 
+
+ 
+ 
+ 𝐮 ^ = 𝐯 ^ + sgn ⁡ ( x 1 ) ​ 𝐞 1 ‖ 𝐯 ^ + sgn ⁡ ( x 1 ) ​ 𝐞 1 ‖ . \mathbf{\hat{u}}=\frac{\mathbf{\hat{v}}+\sgn(x_{1})\mathbf{e}_{1}}{\left\lVert\mathbf{\hat{v}}+\sgn(x_{1})\mathbf{e}_{1}\right\rVert}. 
+ 
+ (7.19) 
+ 
+ 
+ 
+ The additional factor of  sgn ⁡ ( x 1 ) \sgn(x_{1})  in the right-hand side of
+equation ( 7.18 ) assures that there is no ambiguity in the
+sign of the right-hand side of equation ( 7.15 ). In turn,
+it guarantees that all the diagonal elements of the
+upper-triangular matrix  R R  are positive. This is not the
+definition of Householder reflection used in standard QR
+decomposition routines. Usually, 
+ 
+
+ 
+ 
+ H m ′ ​ ( 𝐯 ^ ) = I − 2 ​ 𝐮 ^ ​ 𝐮 ^ t , H^{\prime}_{m}(\mathbf{\hat{v}})=I-2\mathbf{\hat{u}}\mathbf{\hat{u}}^{t}, 
+ 
+ (7.20) 
+ 
+ with the same  𝐮 ^ \mathbf{\hat{u}}  as in ( 7.14 ). Therefore, 
+ 
+
+ 
+ 
+ H m ′ ​ ( 𝐯 ^ ) ​ 𝐯 ^ = ∓ 𝐞 1 . H^{\prime}_{m}(\mathbf{\hat{v}})\mathbf{\hat{v}}=\mp\mathbf{e}_{1}. 
+ 
+ (7.21) 
+ 
+ As a consequence, the signs of the diagonal elements of  R R  are
+random. This is the reason why the output of black box QR
+decomposition routines must be modified in order to obtain
+orthogonal matrices with the correct distribution. 
+ 
+ 
+ Besides being numerically stable, this algorithm has another advantage
+with respect to the Gram-Schmidt orthonormalization. In most
+applications of numerical analysis  Q Q  need not be computed
+explicitly, only  Q ​ 𝐰 Q\mathbf{w}  does, where  𝐰 \mathbf{w}  is a specific
+vector. Generating all the Householder reflections is an  O ⁡ ( N 2 ) O(N^{2}) 
+process and computing  H N ​ 𝐰 H_{N}\mathbf{w}  requires  O ⁡ ( N ) O(N)  operations —
+it just evaluates the scalar product  ( 𝐮 ^ , 𝐰 ) (\mathbf{\hat{u}},\mathbf{w}) .
+Successively multiplying  H N , … , H 1 H_{N},\ldots,H_{1}  into  𝐰 \mathbf{w}  is an
+ O ⁡ ( N 2 ) O(N^{2})  process. Therefore, it takes in total  O ⁡ ( N 2 ) O(N^{2})  operations to
+compute  Q ​ 𝐰 Q\mathbf{w} . Instead, the Gram-Schmidt orthonormalization
+is an  O ⁡ ( N 3 ) O(N^{3})  process. However, if  Q Q  is explicitly needed
+computing the product ( 7.7 ) requires  O ⁡ ( N 3 ) O(N^{3})  operations too. 
+ 
+ 
+ The generalizations to  U ⁡ ( N ) \mathrm{U}(N)  and  Sp ⁡ ( N ) \mathrm{Sp}(N)  are straightforward. The
+only differences are in the definitions of the Householder
+reflections. A suitable choice for  U ⁡ ( N ) \mathrm{U}(N)  is 
+ 
+
+ 
+ 
+ H m ​ ( 𝐯 ^ ) = − e − i ​ θ ​ ( I − 2 ​ 𝐮 ^ ​ 𝐮 ^ ∗ ) . H_{m}(\mathbf{\hat{v}})=-e^{-i\theta}\left(I-2\mathbf{\hat{u}}\mathbf{\hat{u}}^{*}\right). 
+ 
+ (7.22) 
+ 
+ The unit vector  𝐮 ^ \mathbf{\hat{u}}  is 
+ 
+
+ 
+ 
+ 𝐮 ^ = 𝐯 ^ + e i ​ θ ​ 𝐞 1 ‖ 𝐯 ^ + e i ​ θ ​ 𝐞 1 ‖ , \mathbf{\hat{u}}=\frac{\mathbf{\hat{v}}+e^{i\theta}\mathbf{e}_{1}}{\left\lVert\mathbf{\hat{v}}+e^{i\theta}\mathbf{e}_{1}\right\rVert}, 
+ 
+ (7.23) 
+ 
+ where  𝐯 = ( x 1 , … , x m ) ∈ ℂ m \mathbf{v}=(x_{1},\ldots,x_{m})\in\mathbb{C}^{m}  and
+ x 1 = e i ​ θ ​ | x 1 | x_{1}=e^{i\theta}\left\lvert x_{1}\right\rvert . The matrix  H m ​ ( 𝐯 ^ ) H_{m}(\mathbf{\hat{v}})  is
+unitary and 
+ 
+
+ 
+ 
+ H m ​ ( 𝐯 ^ ) ​ 𝐯 ^ = 𝐞 1 . H_{m}(\mathbf{\hat{v}})\mathbf{\hat{v}}=\mathbf{e}_{1}. 
+ 
+ (7.24) 
+ 
+ Note that the introduction of  e i ​ θ e^{i\theta}  in equations ( 7.22 )
+and ( 7.23 ) takes into account both the potential cancellations
+and the correct values of the arguments of the diagonal elements of
+the upper-triangular matrix  R R : equation ( 7.24 ) implies that
+all the  r j ​ j r_{jj} s are real and strictly positive. 
+ 
+ 
+ For  Sp ⁡ ( N ) \mathrm{Sp}(N)  we have 
+ 
+
+ 
+ 
+ H m ​ ( 𝐯 ^ ) = − q ¯ ​ ( I − 2 ​ 𝐮 ^ ​ 𝐮 ^ ∗ ) . H_{m}(\mathbf{\hat{v}})=-\overline{q}\left(I-2\mathbf{\hat{u}}\mathbf{\hat{u}}^{*}\right). 
+ 
+ (7.25) 
+ 
+ with 
+ 
+
+ 
+ 
+ 𝐮 ^ = 𝐯 ^ + q ​ 𝐞 1 ‖ 𝐯 ^ + q ​ 𝐞 1 ‖ , \mathbf{\hat{u}}=\frac{\mathbf{\hat{v}}+q\mathbf{e}_{1}}{\left\lVert\mathbf{\hat{v}}+q\mathbf{e}_{1}\right\rVert}, 
+ 
+ (7.26) 
+ 
+ where  𝐯 = ( x 1 , … , x m ) ∈ ℍ m \mathbf{v}=(x_{1},\ldots,x_{m})\in\mathbb{H}^{m}  and
+ x 1 = q ⁡ ‖ x 1 ‖ x_{1}=q\left\lVert x_{1}\right\rVert . Also in this case 
+ 
+
+ 
+ 
+ H m ​ ( 𝐯 ^ ) ​ 𝐯 ^ = 𝐞 1 . H_{m}(\mathbf{\hat{v}})\mathbf{\hat{v}}=\mathbf{e}_{1}. 
+ 
+ (7.27) 
+ 
+ 
+ 
+ 
+ 8  A group theoretical interpretation 
+
+ 
+ We now know how to generate random matrices from any of the
+classical compact groups  U ⁡ ( N ) \mathrm{U}(N) ,  O ⁡ ( N ) \mathrm{O}(N)  and  Sp ⁡ ( N ) \mathrm{Sp}(N) . In order to
+achieve this goal, we have used little more than linear algebra.
+However simple and convenient this approach is (after all linear
+algebra plays a major role in writing most numerical algorithms),
+it hides a natural group theoretical structure behind the
+Householder reflections, which was uncovered by Diaconis and
+Shahshahani  [ 1 ] . Indeed, generating a random matrix as a
+product of Householder reflections is only one example of a more
+general method that can be applied to any finite or compact Lie
+group. Our purpose in this section is to give a flavour of this
+perspective. For the sake of clarity, as before, we will discuss the
+orthogonal group  O ⁡ ( N ) \mathrm{O}(N) ; the treatment of  U ⁡ ( N ) \mathrm{U}(N)  and  Sp ⁡ ( N ) \mathrm{Sp}(N) 
+is, once again, almost identical. 
+ 
+ 
+ The need of a more general and elegant approach arises also if one
+observes that there is one feature of the QR decomposition that may
+not be entirely satisfactory to a pure mathematician: Why in order to
+generate a random point on a  N ⁡ ( N − 1 ) / 2 N(N-1)/2 -dimensional manifold —  O ⁡ ( N ) \mathrm{O}(N) 
+in this case — do we need to generate  N 2 N^{2}  random numbers? It does
+not look like the most efficient option, even if it is a luxury that
+can be easily afforded on today’s computers. 
+ 
+ 
+ We will first show how the key ideas that we want to describe apply to
+finite groups, as in this setting they are more transparent. Suppose
+that we need to generate a random element  g g  in a finite group
+ Γ N \Gamma_{N} . In this context, if  Γ N \Gamma_{N}  has  p p  elements, uniform
+distribution simply means that the probability of extracting any  g ∈ Γ N g\in\Gamma_{N}  is  1 / p 1/p . In addition, we assume that there exists a
+chain of subgroups of  Γ N \Gamma_{N} : 
+ 
+
+ 
+ 
+ Γ 1 ⊂ Γ 2 ⊂ ⋯ ⊂ Γ N . \Gamma_{1}\subset\Gamma_{2}\subset\cdots\subset\Gamma_{N}. 
+ 
+ (8.1) 
+ 
+ In practical situations it is often easier to generate a random
+element  g ~ \tilde{g}  in a smaller subgroup, say  Γ m − 1 ∈ Γ N \Gamma_{m-1}\in\Gamma_{N} , than in  Γ N \Gamma_{N}  itself; we may also know how to take a
+random representative  g m g_{m}  in the left coset  C m = Γ m / Γ m − 1 C_{m}=\Gamma_{m}/\Gamma_{m-1} . Now, write the decomposition 
+ 
+
+ 
+ 
+ Γ m ≅ C m × Γ m − 1 . \Gamma_{m}\cong C_{m}\times\Gamma_{m-1}. 
+ 
+ (8.2) 
+ 
+ Once we have chosen a set of representatives of  C m C_{m} , an element
+ g ∈ Γ m g\in\Gamma_{m}  is uniquely factorized as  g = g m ​ g ~ g=g_{m}\,\tilde{g} ,
+where  g m ∈ C m g_{m}\in C_{m} . If both  g m g_{m}  and  g ~ \tilde{g}  are uniformly
+distributed in  C m C_{m}  and  Γ m − 1 \Gamma_{m-1}  respectively, then  g g  is
+uniformly distribute in  Γ m \Gamma_{m} . 
+ 
+ 
+ We can apply this algorithm iteratively starting from  Γ 1 \Gamma_{1}  and
+eventually generate a random element in  Γ N \Gamma_{N} . In other words,
+we are given the decomposition 
+ 
+
+ 
+ 
+ Γ N ≅ C N × ⋯ × C 2 × Γ 1 . \Gamma_{N}\cong C_{N}\times\cdots\times C_{2}\times\Gamma_{1}. 
+ 
+ (8.3) 
+ 
+ An element  g ∈ Γ N g\in\Gamma_{N}  has a unique representation as a product 
+ 
+
+ 
+ 
+ g = g N ⋯ g 1 , g=g_{N}\cdots g_{1}, 
+ 
+ (8.4) 
+ 
+ where  g m g_{m}  is a representative in  C m C_{m} . If the  g m g_{m} s are
+uniformly distributed in  C m C_{m}  so is  g g  in  Γ N \Gamma_{N} . This is known
+as the  subgroup algorithm   [ 1 ] . 
+ 
+ 
+ This technique applies to random permutations of  N N  letters. The
+chains of subgroups is 
+ 
+
+ 
+ 
+ { Id } ⊂ S 2 ⊂ ⋯ ⊂ S N , \left\{\mathrm{Id}\right\}\subset S_{2}\subset\cdots\subset S_{N}, 
+ 
+ (8.5) 
+ 
+ where  S m S_{m}  is the  m m -th symmetric group. Other examples include
+generating random positions of Rubik’s cube and random elements in
+ GL ⁡ ( N , 𝔽 p ) \mathrm{GL}(N,\mathbb{F}_{p}) , where  𝔽 p \mathbb{F}_{p}  is a finite field
+with  p p  elements. 
+ 
+ 
+ For  O ⁡ ( N ) \mathrm{O}(N)  the decompositions ( 8.3 )
+and ( 8.4 ) are hidden behind the
+factorization ( 7.7 ) in terms of Householder reflections.
+Indeed, the subgroup algorithm for  O ⁡ ( N ) \mathrm{O}(N)  is contained in 
+ 
+ 
+ Theorem 4 . 
+ 
+ Let  𝐯 ^ 1 , … , 𝐯 ^ N \mathbf{\hat{v}}_{1},\ldots,\mathbf{\hat{v}}_{N}  be uniformly
+distributed on  𝕊 0 , … , 𝕊 N − 1 \mathbb{S}^{0},\ldots,\mathbb{S}^{N-1} 
+respectively, where 
+ 
+
+ 
+ 
+ 𝕊 m − 1 = { 𝐯 ^ m = ( x 1 , … , x m ) ∈ ℝ m | ∑ j = 1 m x j 2 = 1 } \mathbb{S}^{m-1}=\Bigl\{\mathbf{\hat{v}}_{m}=(x_{1},\ldots,x_{m})\in\mathbb{R}^{m}\bigl\lvert\>\textstyle{\sum_{j=1}^{m}x_{j}^{2}=1}\Bigr\} 
+ 
+ (8.6) 
+ 
+ is the unit sphere in  ℝ m \mathbb{R}^{m} . Furthermore, let
+ H m ​ ( 𝐯 ^ ) H_{m}(\mathbf{\hat{v}})  be the  m m -th Householder reflection defined
+in equation ( 7.18 ). The product 
+ 
+
+ 
+ 
+ O = H N ( 𝐯 ^ N ) H N − 1 ( 𝐯 ^ N − 1 ) ⋯ H 2 ( 𝐯 ^ 2 ) H 1 ( 𝐯 ^ 1 ) O=H_{N}(\mathbf{\hat{v}}_{N})H_{N-1}(\mathbf{\hat{v}}_{N-1})\cdots H_{2}(\mathbf{\hat{v}}_{2})H_{1}(\mathbf{\hat{v}}_{1}) 
+ 
+ (8.7) 
+ 
+ is a random orthogonal matrix with distribution given by Haar
+measure on  O ⁡ ( N ) \mathrm{O}(N) . 
+ 
+ 
+ 
+ Proof. 
+ 
+ Suppose we construct  O ∈ O ⁡ ( N ) O\in\mathrm{O}(N)  distributed with Haar measure by
+factorizing a matrix  X X  in the Ginibre ensemble as described in
+section  7 . The random matrix  O O  is the product of
+Householder reflections ( 7.7 ) and each factor
+ H m ​ ( 𝐯 ^ m ) H_{m}(\mathbf{\hat{v}}_{m})  is a function of the unit vector
+ 𝐯 ^ m ∈ 𝕊 m − 1 \mathbf{\hat{v}}_{m}\in\mathbb{S}^{m-1}  only. We need to show that
+such  𝐯 ^ m \mathbf{\hat{v}}_{m} s are independent and uniformly distributed
+in  𝕊 m − 1 \mathbb{S}^{m-1}  for  m = 1 , … , N m=1,\ldots,N . 
+ 
+ 
+ At each step in the construction of the upper-triangular
+matrix ( 7.6 ), the matrix multiplied by the  m m -th
+Householder reflection,  i.e. 
+ 
+
+ 
+ 
+ X m = H m ( 𝐯 ^ m ) ⋯ H N − 1 ( 𝐯 ^ N − 1 ) H N ( 𝐯 ^ N ) X , X_{m}=H_{m}(\mathbf{\hat{v}}_{m})\cdots H_{N-1}(\mathbf{\hat{v}}_{N-1})H_{N}(\mathbf{\hat{v}}_{N})X, 
+ 
+ (8.8) 
+ 
+ is still in the Ginibre ensemble. All its elements are, therefore,
+ i.i.d.  normal random variables. This is a consequence of
+the invariance 
+ 
+
+ 
+ 
+ d ​ μ G ​ ( O ​ X ) = d ​ μ G ​ ( X ) , O ∈ O ⁡ ( N ) , d\mu_{\mathrm{G}}(OX)=d\mu_{\mathrm{G}}(X),\quad O\in\mathrm{O}(N), 
+ 
+ (8.9) 
+ 
+ of the measure of the Ginibre ensemble. Now,  𝐯 ^ m = ( x 1 , … , x m ) \mathbf{\hat{v}}_{m}=(x_{1},\ldots,x_{m})  is constructed by taking the  m m -th dimensional
+vector  𝐯 m \mathbf{v}_{m}  obtained by dropping the first  N − m N-m  elements
+of the  ( N − m + 1 ) (N-m+1) -th column of  X m X_{m} . The components of
+ 𝐯 m \mathbf{v}_{m}  are  i.i.d.  normal random variables. It
+follows that the p.d.f. of  𝐯 m \mathbf{v}_{m}  is 
+ 
+
+ 
+ 
+ P ( 𝐯 m ) = 1 π m / 2 ∏ j = 1 m exp ( − x j 2 ) = 1 π m / 2 exp ( − ∑ j = 1 m x j 2 ) = 1 π m / 2 exp ( − ‖ 𝐯 m ‖ 2 ) . P(\mathbf{v}_{m})=\frac{1}{\pi^{m/2}}\prod_{j=1}^{m}\exp\left(-x_{j}^{2}\right)=\frac{1}{\pi^{m/2}}\exp\left(-\sum_{j=1}^{m}x_{j}^{2}\right)=\frac{1}{\pi^{m/2}}\exp\bigl(-\left\lVert\mathbf{v}_{m}\right\rVert^{2}\bigr). 
+ 
+ (8.10) 
+ 
+ Since  P ⁡ ( 𝐯 m ) P(\mathbf{v}_{m})  depends only on the length of
+ 𝐯 m \mathbf{v}_{m} , and not on any angular variable, the unit vector
+ 𝐯 ^ m = 𝐯 m / ‖ 𝐯 m ‖ \mathbf{\hat{v}}_{m}=\mathbf{v}_{m}/\left\lVert\mathbf{v}_{m}\right\rVert  is uniformly
+distributed in  𝕊 m − 1 \mathbb{S}^{m-1} , and is statistically independent
+of  𝐯 ^ k \mathbf{\hat{v}}_{k}  for  k ≠ m k\neq m .
+∎ 
+ 
+ 
+ 
+ Theorem  4  is more transparent than relying on the QR
+decomposition, which seems only a clever technical trick. If nothing
+else, the counting of the number of degrees of freedom matches. In
+fact, the dimension of the unit sphere  𝕊 m − 1 \mathbb{S}^{m-1}  is  m − 1 m-1 .
+Thus, the total number of independent real parameters is 
+ 
+
+ 
+ 
+ ∑ m = 1 N ( m − 1 ) = N ⁡ ( N − 1 ) 2 . \sum_{m=1}^{N}(m-1)=\frac{N(N-1)}{2}. 
+ 
+ (8.11) 
+ 
+ 
+ 
+ Why is theorem  4  the subgroup algorithm for  O ⁡ ( N ) \mathrm{O}(N) ? As we
+shall see in theorem  5 , the
+factorization ( 8.7 ) is unique — provided that we
+restrict to the definition ( 7.18 ) of the Householder
+reflections. This means that 
+ 
+
+ 
+ 
+ O ( N ) ≅ 𝕊 N − 1 × ⋯ × 𝕊 1 × O ( 1 ) , \mathrm{O}(N)\cong\mathbb{S}^{N-1}\times\cdots\times\mathbb{S}^{1}\times\mathrm{O}(1), 
+ 
+ (8.12) 
+ 
+ where 
+ 
+
+ 
+ 
+ O ⁡ ( 1 ) ≅ 𝕊 0 = { − 1 , 1 } . \mathrm{O}(1)\cong\mathbb{S}^{0}=\{-1,1\}. 
+ 
+ (8.13) 
+ 
+ If we proceed by induction, we obtain 
+ 
+
+ 
+ 
+ O ⁡ ( N ) = 𝕊 N − 1 × O ⁡ ( N − 1 ) . \mathrm{O}(N)=\mathbb{S}^{N-1}\times\mathrm{O}(N-1). 
+ 
+ (8.14) 
+ 
+ Therefore, a matrix  O ∈ O ⁡ ( N ) O\in\mathrm{O}(N)  admits a unique representation as 
+ 
+
+ 
+ 
+ O = H N ​ ( 𝐯 ^ N ) ​ Ω , O=H_{N}(\mathbf{\hat{v}}_{N})\Omega, 
+ 
+ (8.15) 
+ 
+ where 
+ 
+
+ 
+ 
+ Ω = ( 1 0 0 O ~ ) \Omega=\left(\begin{array}[]{cc}1&0\\
+0&\begin{array}[]{|ccc|}\hline\cr&&\\
+&\tilde{O}&\\
+&&\\
+\hline\cr\end{array}\end{array}\right) 
+ 
+ (8.16) 
+ 
+ and  O ~ ∈ O ⁡ ( N − 1 ) \tilde{O}\in\mathrm{O}(N-1) . A consequence of
+theorem  4  is that if  𝐯 ^ N \mathbf{\hat{v}}_{N}  is uniformly
+distributed in  𝕊 N − 1 \mathbb{S}^{N-1}  and  O ~ \tilde{O}  is distributed
+with Haar measure on  O ⁡ ( N − 1 ) \mathrm{O}(N-1) , then  O O  is Haar
+distributed too. The final link with the subgroup algorithm is
+given by 
+ 
+ 
+ Theorem 5 . 
+ 
+ The left coset space of  O ⁡ ( N − 1 ) \mathrm{O}(N-1)  in  O ⁡ ( N ) \mathrm{O}(N)  is
+isomorphic to  𝕊 N − 1 \mathbb{S}^{N-1} , i.e. 
+ 
+
+ 
+ 
+ O ⁡ ( N ) / O ⁡ ( N − 1 ) ≅ 𝕊 N − 1 . \mathrm{O}(N)/\mathrm{O}(N-1)\cong\mathbb{S}^{N-1}. 
+ 
+ (8.17) 
+ 
+ A complete class of representatives is provided by the
+map  1 1 
+                 1 
+                
+                
+               The Householder reflections defined in
+equation ( 7.18 ) are not continuous at  𝐞 1 \mathbf{e}_{1} .
+Indeed, it can be proved that there is no continuous choice of
+coset representatives. In section  7  this distinction was
+superfluous: if  𝐯 \mathbf{v}  is randomly generated, the
+probability that  𝐯 = α ​ 𝐞 1 \mathbf{v}=\alpha\mathbf{e}_{1}  is zero. 
+ H N : 𝕊 N − 1 ⟶ O ⁡ ( N ) H_{N}:\mathbb{S}^{N-1}\longrightarrow\mathrm{O}(N) , 
+ 
+
+ 
+ 
+ H N ​ ( 𝐯 ^ ) = { − sgn ⁡ ( x 1 ) ​ ( I − 2 ​ 𝐮 ^ ​ 𝐮 ^ t ) if   𝐯 ^ ≠ 𝐞 1 , I N if   𝐯 ^ = 𝐞 1 , H_{N}(\mathbf{\hat{v}})=\begin{cases}-\sgn(x_{1})\left(I-2\mathbf{\hat{u}}\mathbf{\hat{u}}^{t}\right)&\text{\emph{if} $\mathbf{\hat{v}}\neq\mathbf{e}_{1}$,}\\
+I_{N}&\text{\emph{if} $\mathbf{\hat{v}}=\mathbf{e}_{1}$,}\end{cases} 
+ 
+ (8.18) 
+ 
+ where 
+ 
+
+ 
+ 
+ 𝐮 ^ = 𝐯 ^ + sgn ⁡ ( x 1 ) ​ 𝐞 1 ‖ 𝐯 ^ + sgn ⁡ ( x 1 ) ​ 𝐞 1 ‖ \mathbf{\hat{u}}=\frac{\mathbf{\hat{v}}+\sgn(x_{1})\mathbf{e}_{1}}{\left\lVert\mathbf{\hat{v}}+\sgn(x_{1})\mathbf{e}_{1}\right\rVert} 
+ 
+ (8.19) 
+ 
+ and  x 1 x_{1}  is the first component of  𝐯 ^ \mathbf{\hat{v}} . 
+ 
+ 
+ 
+ Proof. 
+ 
+ The group of  N × N N\times N  matrices  Ω \Omega  defined in
+equation ( 8.16 ) is isomorphic to  O ⁡ ( N − 1 ) \mathrm{O}(N-1) .
+Since 
+ 
+
+ 
+ 
+ Ω ​ 𝐞 1 = 𝐞 1 , \Omega\mathbf{e}_{1}=\mathbf{e}_{1}, 
+ 
+ (8.20) 
+ 
+ O ⁡ ( N − 1 ) \mathrm{O}(N-1)  can be identified with the subgroup of
+ O ⁡ ( N ) \mathrm{O}(N)  that leave  𝐞 1 \mathbf{e}_{1}  invariant,  i.e. 
+ 
+
+ 
+ 
+ O ( N − 1 ) = { O ∈ O ( N ) | O 𝐞 1 = 𝐞 1 } . \mathrm{O}(N-1)=\bigl\{O\in\mathrm{O}(N)\bigl\lvert\>O\mathbf{e}_{1}=\mathbf{e}_{1}\bigr\}. 
+ 
+ (8.21) 
+ 
+ Now, if two matrices  O O  and  O ′ O^{\prime}  belong to the same
+coset, then 
+ 
+
+ 
+ 
+ O ​ 𝐞 1 = O ′ ​ 𝐞 1 = 𝐯 ^ O\mathbf{e}_{1}=O^{\prime}\mathbf{e}_{1}=\mathbf{\hat{v}} 
+ 
+ (8.22) 
+ 
+ and vice versa. In other words, cosets are specified by where
+ 𝐞 1 \mathbf{e}_{1}  is mapped. Furthermore, since  ‖ O ​ 𝐞 1 ‖ = 1 \left\lVert O\mathbf{e}_{1}\right\rVert=1 ,
+we see that they can be identified with the points in the unit sphere.
+Finally, the map ( 8.18 ) is one-to-one and is such that 
+ 
+
+ 
+ 
+ H N ​ ( 𝐯 ^ ) ​ 𝐞 1 = 𝐯 ^ . H_{N}(\mathbf{\hat{v}})\mathbf{e}_{1}=\mathbf{\hat{v}}. 
+ 
+ (8.23) 
+ 
+ Therefore,  H N H_{N}  spans a complete class of representatives.
+∎ 
+ 
+ 
+ 
+ Incidentally, theorem  4  implies 
+ 
+ 
+ Corollary 1 . 
+ 
+ Let  d ​ μ O ⁡ ( N ) d\mu_{\mathrm{O}(N)}  and  d ​ μ O ⁡ ( N − 1 ) d\mu_{\mathrm{O}(N-1)}  be the Haar measures
+on  O ⁡ ( N ) \mathrm{O}(N)  and  O ⁡ ( N − 1 ) \mathrm{O}(N-1)  respectively. Then 
+ 
+
+ 
+ 
+ d ​ μ O ⁡ ( N ) = d ​ μ 𝕊 N − 1 × d ​ μ O ⁡ ( N − 1 ) , d\mu_{\mathrm{O}(N)}=d\mu_{\mathbb{S}^{N-1}}\times d\mu_{\mathrm{O}(N-1)}, 
+ 
+ (8.24) 
+ 
+ where  d ​ μ 𝕊 N − 1 d\mu_{\mathbb{S}^{N-1}}  is the uniform measure on
+ 𝕊 N − 1 \mathbb{S}^{N-1} . 
+ 
+ 
+ 
+ What is the meaning of  d ​ μ 𝕊 N − 1 d\mu_{\mathbb{S}^{N-1}} ? Given that we are
+dealing with uniform random variables, it is quite natural that we end
+up with the uniform measure. In this case, however, it has a precise
+group theoretical interpretation. Left multiplication of the
+right-hand side of equation ( 8.15 ) by  O ′ ∈ O ⁡ ( N ) O^{\prime}\in\mathrm{O}(N)  induces a
+map on the coset space: 
+ 
+
+ 
+ 
+ O ′ ​ H N ​ ( 𝐯 ^ ) ​ Ω = H N ​ ( 𝐯 ^ ′ ) ​ Ω ′ ​ Ω = H N ​ ( 𝐯 ^ ′ ) ​ Ω ′′ . O^{\prime}H_{N}(\mathbf{\hat{v}})\Omega=H_{N}(\mathbf{\hat{v}}^{\prime})\Omega^{\prime}\Omega=H_{N}(\mathbf{\hat{v}}^{\prime})\Omega^{\prime\prime}. 
+ 
+ (8.25) 
+ 
+ Since the decomposition ( 8.15 ) is unique the transformation
+ 𝐯 ^ ↦ 𝐯 ^ ′ \mathbf{\hat{v}}\mapsto\mathbf{\hat{v}}^{\prime}  is well defined. This map
+can be easily determined. A coset is specified by where
+ 𝐞 1 \mathbf{e}_{1}  is mapped, therefore 
+ 
+
+ 
+ 
+ O ′ ​ H N ​ ( 𝐯 ^ ) ​ 𝐞 1 = O ′ ​ 𝐯 ^ = 𝐯 ^ ′ = H N ​ ( 𝐯 ^ ′ ) ​ 𝐞 1 . O^{\prime}H_{N}(\mathbf{\hat{v}})\mathbf{e}_{1}=O^{\prime}\mathbf{\hat{v}}=\mathbf{\hat{v}}^{\prime}=H_{N}(\mathbf{\hat{v}^{\prime}})\mathbf{e}_{1}. 
+ 
+ (8.26) 
+ 
+ If  𝐯 ^ \mathbf{\hat{v}}  is uniformly distributed on the unit circle
+so is  𝐯 ^ ′ = O ​ 𝐯 ^ \mathbf{\hat{v}}^{\prime}=O\mathbf{\hat{v}} . Thus,
+ d ​ μ 𝕊 N − 1 d\mu_{\mathbb{S}^{N-1}}  is the unique measure on the coset space
+ O ⁡ ( N ) / O ⁡ ( N − 1 ) \mathrm{O}(N)/\mathrm{O}(N-1)  invariant under the left action of  O ⁡ ( N ) \mathrm{O}(N) .
+Its uniqueness follows from that of Haar measure and from the
+factorization ( 8.24 ). 
+ 
+ 
+ Corollary  1  is a particular case of a theorem that
+holds under general hypotheses for topological compact groups.
+Indeed, let  Γ \Gamma  be such a group,  Ξ \Xi  a closed subgroup and
+ C = Γ / Ξ C=\Gamma/\Xi . Furthermore, let  d ​ μ Γ d\mu_{\Gamma} ,  d ​ μ C d\mu_{C}  and
+ d ​ μ X d\mu_{X}  be the respective invariant measures, then 
+ 
+
+ 
+ 
+ d ​ μ Γ = d ​ μ Ξ × d ​ μ C . d\mu_{\Gamma}=d\mu_{\Xi}\times d\mu_{C}. 
+ 
+ (8.27) 
+ 
+ 
+ 
+ 
+ Acknowledgements 
+
+ 
+ This article stems from a lecture that I gave at the summer school on
+Number Theory and Random Matrix Theory held at the University of
+Rochester in June 2006. I would like to the thank the organisers
+David Farmer, Steve Gonek and Chris Hughes for inviting me. I am also
+particularly grateful to Brian Conrey, David Farmer and Chris Hughes
+for the encouragement to write up the content of this lecture. 
+ 
+ 
+ 
+ References 
+
+ 
+      
+ [1] 
+  Diaconis P. and Shahshahani M. The subgroup algorithm
+for generating uniform random variables.  Prob. Eng. Inf. Sc. 
+ 1 , 15–32 (1987).
+
+ 
+      
+ [2] 
+  Dyson F. M. The threefold way. Algebraic structure of
+symmetry groups and ensembles in quantum mechanics.  J. Math.
+Phys.   3 , 1199–1215 (1962).
+
+ 
+      
+ [3] 
+  Eaton M. L.  Multivariate Statistics: A Vector
+Space Approach.  Wiley, New York, 1983.
+
+ 
+      
+ [4] 
+  Edelman A. and Rao N. R. Random matrix theory.
+ Acta Num.   14 , 233–297 (2005).
+
+ 
+      
+ [5] 
+  Heiberger R. M. Algorithm AS127. Generation of random
+orthogonal matrices.  App. Stat.   27 , 199–206 (1978).
+
+ 
+      
+ [6] 
+  Katz N. M. and Sarnak P.  Random matrices,
+Frobenius eigenvalues, and monodromy. Amer. Math. Soc. Colloquium
+Publications, 45.  Amer. Math. Soc., Providence, RI, 1999.
+
+ 
+      
+ [7] 
+  Keating J. P. and Snaith N. C. Random matrix theory
+and  ζ ⁡ ( 1 / 2 + i ​ t ) \zeta(1/2+it) .  Commun. Math. Phys.   214 , 57–89
+(2000).
+
+ 
+      
+ [8] 
+  Keating J. P. and Snaith N. C. Random matrix theory
+and  L -functions at  s = 1 / 2 s=1/2 .  Commun. Math. Phys.   214 , 91–110 (2000).
+
+ 
+      
+ [9] 
+  Mehta M. L.  Random matrices.  Elsevier, San
+Diego, 2004.
+
+ 
+      
+ [10] 
+   Recent perspectives in random matrix theory and
+number theory. LMS Lecture Note Series, 322.  Mezzadri F. and
+Snaith N. C. Eds. Cambridge University Press, Cambridge, 2005.
+
+ 
+      
+ [11] 
+  Montgomery H. L. The pair correlation of zeros of the
+zeta function.  Analytic Number Theory: Proc. Symp. Pure Math.
+(St. Louis, Mo., 1972)  vol. 24, Amer. Math. Soc., Providence,
+1973, pp 181–93.
+
+ 
+      
+ [12] 
+  Odlyzko A. M.  The  10 20 10^{20} -th zero of the
+Riemann zeta function and 70 million of its neighbors,  1989.
+ http://www.dtc.umn.edu/~ odlyzko/unpublished/index.html 
+
+ 
+      
+ [13] 
+  Rubinstein M. Low-lying zeros of  L -functions and
+random matrix theory.  Duke Math. J.   109 , 147–181
+(2001).
+
+ 
+      
+ [14] 
+  Stewart G. W. The efficient generation of random
+orthogonal matrices with an application to condition estimators.
+ SIAM J. Num. Anal.   17 , 403–409 (1980).
+
+ 
+      
+ [15] 
+  Tanner M. A. and Thisted R. A. A remark on AS127.
+Generation of random orthogonal matrices.  App. Stat.   31 , 190–192 (1982).
+
+ 
+      
+ [16] 
+ Wedderburn R. W. M.  Generating random rotations. 
+Research report, Rothamsted Experimental Station (1975).
+
+ 
+      
+ [17] 
+  Wishart J. The generalised product moment distribution
+in samples from a normal multivariate population.  Biometrika 
+ 20A , 32–52 (1928).
+
+ 
+      
+ [18] 
+  Zirnbauer M. R. Riemannian symmetric superspaces and
+their origin in random-matrix theory.  J. Math. Phys.   37 , 4986–5018 (1996).
+
+ 
+      
+ [19] 
+ Życzkowski K. and Kus M. Random unitary matrices.
+ J. Phys. A: Math. Gen.   27 , 4235–4245 (1994).
+
+ 
+    
+ 
+ 
+   
+ 
+ 
+ School of Mathematics 
+ University of Bristol
+ Bristol BS8 1TW, UK 
+ Email:  f.mezzadri@bristol.ac.uk 
+ 
+ 
+ 27 February 2007 
+ 
+ 
+ 
+ 
+ 
+   
+    Experimental support, please
+     view the build logs 
+    for errors. Generated by
+     
+       
+        L
+         A 
+        T
+         E 
+       
+       xml 
+       
+     .
+   
+   
+     Instructions for reporting errors 
+     We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below: 
+     
+       Click the "Report Issue"  ( 
+             
+           )  button, located in the page header. 
+     
+     Tip:  You can select the relevant text first, to include it in your report. 
+     Our team has already identified  the following issues . We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all. 
+     Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a  list of packages that need conversion , and welcome  developer contributions . 
+   
+ 
+   
+     
+       
+        We gratefully acknowledge support from our  major funders ,
+         member institutions ,  ,
+        and all contributors.
+       
+       
+         About   · 
+         Help   · 
+         Contact   · 
+         Subscribe   · 
+         Copyright   · 
+         Privacy   · 
+         Accessibility   · 
+         Operational Status  (opens in new tab) 
+       
+     
+     
+       Major funding support from 
+       
+         
+            (opens in new tab) 
+         
+         
+            (opens in new tab) 
+         
+         
+            (opens in new tab) 
+         
+       
+     
+   
+ 
+   
+     
+       
+     
+   
+ 
+ 

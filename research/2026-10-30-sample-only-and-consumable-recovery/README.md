@@ -1,0 +1,5 @@
+# Sample-only learning and finite recovery acquisition
+
+Final received cut through1917UTC. Original source versions and prior pending drafts remain separate. Actual completed internal reviews are accepted at their exact corrected scopes, with constructive participation disclosed. Source-index membership provides retrieval coverage, not scientific acceptance. No producer reporting form, source replay, new scientific audit, novelty investigation or further sign-off was added.
+
+The included operations separate positive-prefix empirical simulation, unknown-error model selection, nonnegative cutwise approximation, balanced information and its parity obstruction, actual-channel spectral acquisition, growing-rank known controls, finite consumable recovery programs, and separately scoped pre-payload qualification. The P3local-calibration theorem/experiments remain visible-only reports with unavailable originals and floating certification gaps. No physical device, practical advantage, unlimited reusable program or global retrieval superiority is claimed.
