@@ -20,7 +20,8 @@ BRANCH = "codex/astra-pages"
 SCHEMA = "astra.pages-view.v1"
 MAX_BYTES = 500_000_000
 PREFIXES = ("knowledge/current/packets/", "knowledge/current/content/",
-            "knowledge/current/postings/", "knowledge/current/browse/")
+            "knowledge/current/postings/", "knowledge/current/lexical/",
+            "knowledge/current/browse/")
 EXACT = {"knowledge/current/catalog.json", "knowledge/current/search_manifest.json",
          "knowledge/current/coverage.json"}
 SOURCE_FILES = ("knowledge/index.html", "knowledge/search.js", "knowledge/README.md",
@@ -81,6 +82,17 @@ def source_url(revision, path, raw=True):
     return host + REPOSITORY + middle + revision + "/" + quote(path, safe="/")
 
 
+def query_files(catalog):
+    """Both query lanes are required even when an exact-ID lookup needs neither."""
+    required = set()
+    for folder, field in (("postings", "shards"), ("lexical", "lexical_shards")):
+        shards = catalog[field]
+        if not isinstance(shards, list) or any(not isinstance(s, str) or not re.fullmatch("[0-9a-f]{2}", s) for s in shards):
+            raise ValueError("Invalid browser query shard declaration")
+        required.update("knowledge/current/" + folder + "/" + s + ".json" for s in shards)
+    return required
+
+
 def validate_site(output, max_bytes=MAX_BYTES):
     output = Path(output)
     manifest = json.loads((output / "publication.json").read_bytes())
@@ -110,9 +122,12 @@ def validate_site(output, max_bytes=MAX_BYTES):
     if sha(search_raw) != summary["search_manifest_sha256"] or search["input_version"] != summary["input_version"]:
         raise ValueError("Public search manifest and source version disagree")
     for name, metadata in expected.items():
-        if name.startswith(PREFIXES[:3]) or name == "knowledge/current/catalog.json":
+        if name in search["outputs"]:
             if search["outputs"].get(name) != metadata["sha256"]:
                 raise ValueError("Public search file is outside its canonical manifest: " + name)
+    required = query_files(json.loads((output / "knowledge/current/catalog.json").read_bytes()))
+    if not required <= set(expected) or not required <= set(search["outputs"]):
+        raise ValueError("Browser query closure is incomplete")
     routes = json.loads((output / "source-routes.json").read_bytes())
     if routes["source_revision"] != summary["source_revision"]:
         raise ValueError("Archived source routes have the wrong source version")

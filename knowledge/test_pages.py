@@ -32,16 +32,24 @@ class BoundedPages(unittest.TestCase):
             "AGENTS.md": b"Preserve sources and scope.\n",
         }
         packet = {"id": "N1-fixture", "title": "Supplied mechanism", "statement": "Conditional result",
-                  "contract": {}, "evidence": [{"path": "research/original.bin", "sha256": pages.sha(self.inputs["research/original.bin"])}]}
+                  "contract": {}, "review_overlays": [], "notices": [],
+                  "evidence": [{"path": "research/original.bin", "sha256": pages.sha(self.inputs["research/original.bin"])}]}
+        shards = sorted({pages.sha(term.encode())[:2] for term in ("probe", "mechanism")})
         self.outputs = {
             "knowledge/current/records.jsonl": pages.encoded({"id": "N1-fixture"}),
             "knowledge/current/packets/N1.json": pages.encoded(packet),
-            "knowledge/current/catalog.json": pages.encoded({"records": [{"record_id": "N1-fixture"}]}),
+            "knowledge/current/catalog.json": pages.encoded({"records": [{"record_id": "N1-fixture",
+                "parents": [], "title": "Supplied mechanism", "kind": "result"}], "concepts": [],
+                "documents": [[0, 0]], "shards": shards, "lexical_shards": shards}),
             "knowledge/current/content/00.json": b"{}\n",
             "knowledge/current/postings/00.json": b"{}\n",
             "knowledge/current/browse/index.txt": b"N1\n",
             "knowledge/current/coverage.json": b"{}\n",
         }
+        for shard in shards:
+            data = pages.encoded({term: [[0, 2]] for term in ("probe", "mechanism") if pages.sha(term.encode())[:2] == shard})
+            for folder in ("postings", "lexical"):
+                self.outputs["knowledge/current/" + folder + "/" + shard + ".json"] = data
         self.refresh()
         self.revision = self.commit()
         self.output = self.area / "site"
@@ -55,7 +63,8 @@ class BoundedPages(unittest.TestCase):
     def refresh(self):
         for name, data in {**self.inputs, **self.outputs}.items():
             self.put(name, data)
-        search = pages.encoded({"input_version": "a" * 64, "outputs": {p: pages.sha(b) for p, b in self.outputs.items()}})
+        search = pages.encoded({"input_version": "a" * 64, "outputs": {
+            p: pages.sha(b) for p, b in self.outputs.items() if p != "knowledge/current/search_manifest.json"}})
         self.outputs["knowledge/current/search_manifest.json"] = search
         self.put("knowledge/current/search_manifest.json", search)
         self.put("knowledge/current/manifest.json", pages.encoded({"input_version": "a" * 64,
@@ -98,6 +107,23 @@ class BoundedPages(unittest.TestCase):
         self.put("knowledge/current/packets/N1.json", b"uncommitted wrong branch")
         pages.stage(self.revision, self.output, self.root)
         self.assertEqual((self.output / "knowledge/current/packets/N1.json").read_bytes(), self.outputs["knowledge/current/packets/N1.json"])
+
+    def test_actual_staged_natural_query_uses_both_lanes_and_opens_packet(self):
+        pages.stage(self.revision, self.output, self.root)
+        subprocess.run(["node", str(pages.ROOT / "knowledge/test_pages_query.cjs"), str(self.output)], check=True)
+
+    def test_missing_query_shard_fails_even_with_self_consistent_file_hashes(self):
+        pages.stage(self.revision, self.output, self.root)
+        metadata = json.loads((self.output / "publication.json").read_bytes())
+        missing = next(p for p in metadata["files"] if p.startswith("knowledge/current/lexical/"))
+        (self.output / missing).unlink(); del metadata["files"][missing]
+        (self.output / "publication.json").write_bytes(pages.encoded(metadata))
+        with self.assertRaisesRegex(ValueError, "query closure is incomplete"):
+            pages.validate_site(self.output)
+        del self.outputs[missing]
+        self.refresh(); revision = self.commit()
+        with self.assertRaisesRegex(ValueError, "query closure is incomplete"):
+            pages.stage(revision, self.area / "missing-declaration", self.root)
 
     def test_missing_declared_original_fails_even_when_present_only_locally(self):
         self.git("rm", "--cached", "research/original.bin")
