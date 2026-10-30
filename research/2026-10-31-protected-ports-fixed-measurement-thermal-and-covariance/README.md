@@ -1,0 +1,3 @@
+# Protected sources, fixed measurements, thermal retention and covariance boundary
+
+Direct source-bound intake of completed P1/P2/P3 finals and ongoing Ultra partials. Five new cards and22newunitIDs,withthreeexistingUltraunitadvances. Actual shared-context worker reviews/calculations are carried at their scopes; parent-reported unavailable originals remain unavailable. P1 ZIP denied/PDFunknown; P3 visible-only/no-transfer; P2ninefinaloriginals event-verified. No new scientific audit/reproof/code execution/sign-off/novelty investigation,producer contact or routine activity publication. Prior assumptions,costs,failure history and physical/operational boundaries remain.
