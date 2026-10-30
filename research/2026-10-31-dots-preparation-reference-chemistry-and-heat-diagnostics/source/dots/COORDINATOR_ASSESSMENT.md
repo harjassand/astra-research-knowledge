@@ -1,0 +1,51 @@
+# Dots 16:35 checkpoint: preparation, imperfect references and chemical closure
+
+31 October 2026, Brisbane. Assessment of the immutable scientific cutoff16:27:49UTC30October. Dots was not contacted, stopped or otherwise controlled. I inspected the new source manuscripts and substantive internal reviews; this is a coordinator assessment, not a new independent whole-proof audit or experiment.
+
+The preserved archive is [Astra_Research_20261030_1635_UTC_v2.zip](producer-workspace/Astra_Research_20261030_1635_UTC_v2.zip), SHA256`5f3da7fad0af4b82155ec01c4e44fc609526de2cad6075d9ed450ce2bf3e466b`. It declares the matching prior14:35 archive hash. It was already in Downloads; its original download event remains unverified. The v2 README changes scope wording, with the scientific cutoff unchanged. I compared the current package with the preserved predecessor rather than treating every included file as new.
+
+## What changed
+
+| Construction | New earned result | Remaining obligation |
+|---|---|---|
+| Scheduled quantum source | Preparation/error-span guarantees under bounded local quantum noise with a retained common bath; actual replacement resets can supply the initial subset-moment bound | Autonomous scheduling, reliable record capture/retention, physical feedforward and loading of an arbitrary unknown input |
+| Fixed imperfect-reference receiver | Continuous native protection tolerates a sufficiently small fixed density of wrong shared reference coordinates, with one uniformly selected architecture/rate family | The reference bits are fixed inputs; their physical storage and access must still be constructed |
+| Chemical stability | Completed classwise recurrence and exponential invariant-count moments for the four-species family, plus an accepted restricted finite-graph transfer | General weak-reversibility, more general births/face transitions, practical numerical constants and chemical realization |
+
+These add preparation and receiving machinery to the earlier preset-bank transport result. The old router still begins with an already encoded unknown input and ready routing clocks. A known-state/Bell source is not an arbitrary-input encoder. The separate contracts cannot be silently composed into an autonomous computer.
+
+## Quantum: a useful bridge from correlated noise to an existing decoder
+
+The positive-source construction bounds moments of commuting product-defect projectors in an actual positive joint state. Local, centered Hermiticity-preserving noise terms are controlled by bounded body size and per-site incident joint completely bounded norm, with total CPTP evolution. Fixed-depth gates pay finite light-cone factors. This earns subset tails without an exponential prefactor in total source volume or a fictitious classical trajectory for signed quantum noise.
+
+The important second step is deterministic: every coherent combination in the good input subspace must land in the same correctable output span for the actual record, retaining the measured graph and bath. A positive projection and gentle estimate then transport the support bound to the full coherent state. The reviewed alternating-Tanner-graph implementation supplies that record convention and defect dictionary. Its counting addendum is essential: bulk witnesses have O(nT) possible roots, every component of a rooted union must touch a selected root, and duplicated baseline bits must be paid.
+
+This develops an existing source architecture. [Bergamaschi–Liu](https://arxiv.org/html/2411.04405v1) already provide constant-depth preparation and encoded long-range entanglement for CSS LDPC codes under local-stochastic Pauli noise, including decoding qualifications. Dots' relevant increment is the specified coherent/common-bath receiving law and its actual-record interface; it does not newly invent the ATG architecture or establish superiority to all fault-tolerant preparation schemes.
+
+The scheduled source uses O(nT) space; taking T proportional to n costs O(n²). The quantum circuit depth is constant only at fixed graph degree. Classical decoding time and protected waiting are additional resources. Replacement-reset reservoirs, bounded local noise and the scheduled gates remain physical assumptions.
+
+The fixed-reference V2 result is also substantive. It uses the actual sum of local coset distances, not syndrome Hamming weight, and preserves the controller's idempotent algebra. A bounded fixed defect set reduces the active-correction margin by O(d); suitable initial, basin, BUSY-prefix and true-decoder margins retain an exponential protection horizon with retuned constants. One common padded finite controller family is chosen across allowed defect patterns. This does not preserve arbitrary old numerical rates.
+
+The earlier V1 Hamming substitution is rejected, and its failed bytes remain distinct. The accepted object is V2 together with the review's explicit receiving derivation. Its one-axis specialization protects a known logical computational label; it does not preserve arbitrary quantum coherence. Fixed reference records are not automatically safe physical latches.
+
+The rooted classical-port review supplies additional drift, graph and read-comparison calculations. It expressly leaves actual noisy copy/reset, joint multirecord capture, phase exits and compilation of atomic majority into the two-site/onsite-reset hardware open. Thus the record gap is now localized, but remains a scientific construction problem. The reviewed absorbing rail likewise separates completion of output location from correct loading; its empty-input and label-resolved-retirement failures prevent an overbroad handoff claim.
+
+## Chemistry: a completed theorem and a stronger reuse mechanism
+
+Two substantive whole-bundle internal reviews accept the restricted four-species proof, including seventeen frozen source/completion files. The subsequent graph-transfer review accepts its seven-file corrected bundle with the local graph foundations. Original candidate headings and an earlier pending status are historical; the later receipts govern these exact completed objects. No additional external-review gate is imposed here.
+
+The connector is `0 -> A+B -> mA+qB -> 0`, with m=a0+2, a0>=2 and q>m. The extension allows a fixed finite irreducible conversion graph, both positive seed channels, the positive reverse channel and only the specified A-parent birth. Rates and graph are fixed. The graph family is structured deficiency one and need not be complex balanced. The conclusion is nonexplosion, positive recurrence in each closed communicating class and all prescribed exponential total-count invariant moments. This does not by itself assert exponential mixing.
+
+The strongest methodological increment is acquisition of the local feedback inputs from the raw graph, followed by a transfer that tolerates weaker positive decay exponents. A two-edge arrival example disproves the old O(1/M) clock shortcut. Instead of importing that false clock, the new construction uses graph paths, actual occupation/output laws and logarithmic good sets. It retains the physical clock, unbounded phase and output residual through the Green/processor composition. Constants can deteriorate badly with graph distance and rate ratios; polynomial graph work is not a uniform practical certificate bound.
+
+The known [Anderson–Cappelletti–Kim theorem](https://arxiv.org/abs/1904.08967) has additional binary/pure-species-complex assumptions that do not directly cover this literal family. I also examined [Xu's first-order domination theorem, Section4](https://arxiv.org/html/2601.00176v1). Its nonlinear extension requires a first-order endotactic subnetwork and an actual linear-drift domination condition; higher reaction order alone would not exclude it. Here, on the infinite face A=B=D=0 with hidden type population large, all fast/clearing reactions are disabled and only constant immigration acts. Every positive linear count therefore has strictly positive drift there. This rules out the direct global negative-linear-drift proof for this literal model, without excluding other conventional approaches. [Agazzi–Laurence's recent bulk-stability paper](https://arxiv.org/abs/2610.31550) addresses planar bimolecular bulk behavior and still calls for boundary estimates; its abstract does not settle this higher-dimensional high-order boundary problem. These comparisons are not an exhaustive priority verdict.
+
+## Coordination decision and lesson
+
+Keep Dots' current assignment and warm context undisturbed. Integrate the completed, correctly scoped source bundles into actual Capital cards while research continues. Preserve V1 failures, later completion receipts, fixed-reference assumptions and the uncompleted capture/read interface. Capital is not assigned scientific checking.
+
+The useful pattern is more specific than permission to invent: identify the quantity a failed construction lost, replace the representation, acquire the needed input law from the actual model, and compose using that same retained law. The quantum positive-subspace lift and chemical same-episode weighted kernels are two different instances. Targeted challenges caught consequential errors, and the completed repairs changed the proof rather than relabelling the old source. This is a promising method hypothesis, not a controlled causal result or a guarantee of civilisation-level discovery.
+
+The package advances enabling theory and completes a substantial restricted stability result. It still does not supply an autonomous quantum computer, a new chemical technology or a civilisation-level breakthrough. Next quantum evidence should close actual capture/read/composition; next chemical breadth must earn the changed face-transition kernels. No new researcher prompt is released by this assessment.
+
+Governing package members read include the positive-source main/coherent lift/counting addendum and review; fixed-reference V2 and review; rooted-record and receiver-rail reviews; the full chemical closure candidate and both whole-bundle reviews; the parametric transfer main/review; and raw-graph acquisition/cost/failure notes. I did not independently rederive every frozen dependency or replay the package's full code suite.
