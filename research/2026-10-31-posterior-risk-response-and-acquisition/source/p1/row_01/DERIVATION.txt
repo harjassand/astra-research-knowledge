@@ -1,0 +1,388 @@
+EXACT TWO-STEP ADAPTIVE DESIGN FROM A RETAINED READ-ONCE RISK TREE
+Independent derivation and implementation audit, 31 October 2026
+
+Status
+======
+
+The parent's proposed ancestor/sibling formula is correct under the stated
+product-posterior, read-once, direct-source contract. The exact implementation
+returns a globally optimal two-step adaptive policy. The interval version
+returns a concrete policy with a rigorous lower bound on its gain and an
+upper bound on the exact optimum. The independent exhaustive checks below
+found no implementation error.
+
+This is a constructive capability, not an asymptotic separation from equally
+equipped ordinary incremental inference. An ordinary method that retains the
+same one-step risk compiler can enumerate hypothetical first observations,
+update the affected ancestor path, read the best second experiment, and undo
+the update. That method has the same O(n h) bounded-arity arithmetic cost.
+The explicit derivative formula avoids rebuilding full node tables for each
+hypothetical outcome, but no timing win is asserted by this audit.
+
+No outside paper was retrieved or used for this audit. The proof is included
+in full. No historical novelty or priority claim is made.
+
+1. Contract and notation
+=======================
+
+There are L primitive Bernoulli sources with unknown probabilities p_i. The
+current conditional distribution of their probabilities is an independent
+product of Beta(alpha_i,beta_i) laws. Direct source observations have
+likelihood p_i^x(1-p_i)^(1-x). Past source selections may have been adaptive;
+conditional on the complete realized history, the product posterior and
+its exact counts are retained. A policy-selection factor that depends only
+on the observed past is constant in p and cancels from Bayes' rule.
+
+The current target f(p) is represented by a supplied read-once tree. Every
+gate g_v is multiaffine in its children, and separate child subtrees have
+disjoint primitive leaves. The node target, denoted Theta_v, is the resulting
+scalar functional of its primitive probabilities. Its current mean is m_v.
+Bounded truth tables in [0,1] imply Theta_v in [0,1].
+
+The target and observation model stay fixed during the next two observations.
+Loss is squared error in f(p), and the estimator after these observations is
+the posterior mean. The objective is the expected reduction in conditional
+Bayes squared-error risk, equivalently the variance of the final posterior
+mean. This is not a uniform frequentist MSE claim.
+
+At each gate retain the derivatives
+
+    d_v,a  = partial_a g_v(m_children),
+    d_v,ab = partial_a partial_b g_v(m_children), a != b,
+
+and the exact best one-observation gain V_v(1) in its subtree, with an
+attaining primitive leaf. The existing risk compiler constructs these from
+explicit local truth tables. No general decomposition or restoration oracle
+is assumed. This audit needs budget one, not the fixed-budget-two table.
+
+The root outside derivative at v is
+
+    c_v = partial f / partial Theta_v
+
+with the other subtree means held at their current values. It is the product
+of derivatives on the path from v to the root. The root has c_root=1, and
+
+    c_child = c_parent * d_parent,child.
+
+It is independent of the mean m_v itself. All c_v are computed in one paid
+top-down pass. They are not assumed to remain cheap to update after data
+arrive elsewhere in the tree.
+
+2. First observation and repeat gain
+===================================
+
+For a leaf i write a=alpha_i, b=beta_i, s=a+b and m_i=a/s. Its current best
+one-observation learned variance is
+
+    u_i = a b / [s^2 (s+1)^2].
+
+Because f is affine in p_i, the first observation's root gain is
+
+    I_i = c_i^2 u_i.
+
+If the first observation is x in {0,1}, its predictive probability is m_i
+for x=1 and 1-m_i for x=0. The new leaf posterior is Beta(a+x,b+1-x), so
+
+    m_i^x = (a+x)/(s+1),
+    Delta_i^x = m_i^x - m_i = (x-m_i)/(s+1).
+
+The gain from a second observation of that same leaf is
+
+    J_i^x = c_i^2 * (a+x)(b+1-x)
+                         / [(s+1)^2 (s+2)^2].
+
+The outside derivative c_i does not change after observing i, since it is
+independent of the leaf's own parameter. This remains true if c_i=0.
+
+3. Compressing all other second actions into sibling groups
+=========================================================
+
+Fix the first leaf i and its outcome x. Walk upward from i. At an ancestor v,
+let child a contain i, and let b denote any different child. Every primitive
+leaf j in subtree b is untouched by the first observation. Its internal
+posterior, mean derivatives, and best one-call value V_b(1) are unchanged.
+
+Only the mean of child a changes at v. If its mean change is Delta_a^x,
+multiaffinity gives the exact identities
+
+    m_v^x - m_v = d_v,a Delta_a^x,
+
+    partial_b g_v(new means)
+       = d_v,b + d_v,ab Delta_a^x.
+
+The root derivative c_v is independent of the value at v. Consequently,
+the largest conditional root gain from any second observation in subtree b
+is exactly
+
+    J_v,b^x = c_v^2 (d_v,b + d_v,ab Delta_a^x)^2 V_b(1).
+
+The best leaf previously retained for V_b(1) attains this value. The new root
+factor is common to every leaf in b, and it is nonnegative after squaring.
+
+Every second primitive leaf other than i belongs to exactly one such sibling
+subtree: take the lowest common ancestor of i and that leaf. Hence these
+groups, together with the repeat-i option, exhaust all possible second
+actions, without enumerating each pair of primitive sources.
+
+Starting with Delta_i^x, the exact upward recurrence
+
+    Delta_parent^x = d_parent,changed_child Delta_child^x
+
+supplies every required change. No division by a derivative is used.
+This matters: a first observation with zero immediate target gain can still
+make a different second observation valuable. A selector in a balanced mux
+is an explicit example. Algorithms that divide by a zero root sensitivity
+or discard all zero-immediate-gain first actions would fail.
+
+4. Exact optimal adaptive policy
+===============================
+
+The best conditional second-observation gain after x is
+
+    B_i^x = max { J_i^x, J_v,b^x over the sibling groups on i's path }.
+
+The value of starting with i and then choosing its optimal continuation is
+
+    A_i = I_i + (1-m_i) B_i^0 + m_i B_i^1.
+
+This is the conditional total-variance identity, or equivalently the
+orthogonality of the two posterior-mean martingale increments. It does not
+assume that the eventual adaptive observations are an independent product
+experiment. Product independence is used separately at each conditioned
+history, where the direct-source likelihood justifies it.
+
+Finally choose i maximizing A_i and store the attaining second source for
+each outcome. The resulting policy is a triple
+
+    (first source, second source after 0, second source after 1).
+
+This is optimal among all deterministic two-observation adaptive policies.
+Randomized policies cannot improve the optimum: condition on their private
+randomness and average deterministic policy values. Two observations always
+are feasible; a source may be measured twice. A nonnegative-gain model makes
+using at most two rather than exactly two observations equivalent if there
+is no separate cost penalty.
+
+The proof says nothing about an optimal three-step policy, arbitrary horizon,
+or the consistency of repeatedly applying a short-horizon policy. The
+read-once, fixed-current-target, and direct-source conditions are material.
+
+5. Fully paid computational accounting
+======================================
+
+Let N be total nodes, L primitive leaves, h maximum leaf depth and k maximum
+arity. Existing means, derivatives, and best one-step gains take a paid
+O(N) build for fixed k, plus the explicit local truth-table construction.
+The table has 2^k entries; it is not free when k grows. A real observation
+or a target-gate edit affects its ancestor path and retains the existing
+O(h) bounded-arity update cost for that base representation.
+
+One exact adaptive-two-step query then costs
+
+    O(N + sum_{leaf i} sum_{v on path(i)} degree(v))
+        <= O(N + L k h)
+
+arithmetic operations, including the outside-derivative pass, scanning each
+first action, the two conditional outcomes, and recovering the second action.
+Extra working storage is O(N), or O(N+k h) explicitly including a temporary
+path's sibling candidates. A balanced bounded-arity tree gives O(N log N)
+query work. A deep chain can have quadratic total path length.
+
+Exact Fraction bit lengths can grow. These are arithmetic-operation bounds,
+not a unit-cost exact-rational runtime claim. The interval implementation
+offers an explicit numerical regret certificate instead of asserting exact
+selection from binary64 arithmetic.
+
+No O(h) maintenance theorem for the globally optimal adaptive first action
+has been established. Current outside sensitivities can change broadly after
+one observation, and the query deliberately recomputes them. Its entire
+scan is charged each time adaptive-two-step planning is requested.
+
+Strong ordinary comparison
+--------------------------
+
+Retain exactly the same ordinary product posterior and one-step compiler.
+For each possible first source i and each outcome x:
+
+  (a) hypothetically update i and its ancestor path;
+  (b) read the retained root's one-step optimum;
+  (c) restore i's prior counts and recompute the path.
+
+Use total variance to evaluate the two-step gain. This costs O(L h) for
+bounded arity, matching the derivative formula's asymptotic complexity.
+No hypothetical outcome calls a physical source. The exact baseline is
+implemented in the parent's adaptive_planner.py and verified here.
+
+Therefore an n-squared pair scan is not the strongest retained baseline.
+The shared enabling mechanism is the compiled conditional one-step value
+and its cheap hypothetical maintenance. Ordinary adoption of this mechanism
+inherits the capability. The explicit sibling formula provides a direct
+closed-form execution path; a further wall-clock or asymptotic advantage
+requires evidence beyond this audit.
+
+6. Interval certificate
+=======================
+
+The parent code propagates outward binary64 enclosures through the same
+formula. Each subtree's one-step entry has the invariant
+
+    L_b <= gain of its selected leaf <= optimal one-step gain <= U_b.
+
+For a sibling group, its true shared derivative factor and both its selected
+gain and optimum are enclosed by the interval computation. The repeat-leaf
+gain is enclosed directly. Selecting the candidate with greatest lower
+endpoint yields an achievable lower guarantee; taking the greatest upper
+endpoint over all groups bounds the true best second action.
+
+For each possible first source, multiplying by enclosures of its predictive
+outcome probabilities and adding its first-observation gain encloses the
+value of the returned policy and the best policy with that first source.
+Choosing the first source by greatest lower endpoint, and taking the greatest
+upper endpoint over all first sources, proves
+
+    L <= Gain(returned concrete policy) <= A_optimal <= U.
+
+Correlations between interval quantities can widen these enclosures; they
+do not invalidate them. Every true target and future posterior mean lies in
+[0,1], so gain lies in [0,1/4]. Intersecting with that independently proved
+range is sound. The displayed planning-regret bound U-L needs its subtraction
+rounded upward, or needs to be represented as an exact rational difference.
+
+This only covers roundoff for valid finite numeric inputs and the declared
+Bayesian model. It does not cover observation-model misspecification or
+hidden shared primitives. A certificate can be wide and uninformative.
+
+7. Exact independent executable audit
+====================================
+
+Files:
+  check_adaptive_two_step.py
+  checks.json
+
+Run with:
+  python p1_adaptive_two_step_audit/check_adaptive_two_step.py
+
+The reference enumerates every deterministic depth-two policy and all four
+ordered outcome pairs. It multiplies exact sequential predictive probabilities,
+updates the chosen leaf's exact Beta parameters, evaluates the posterior
+target mean directly by truth-table interpolation, and computes the variance
+of that final mean. It does not call derivative transforms, variance_transfer,
+fixed_plan_gain, or the risk dynamic program in its exhaustive reference.
+
+Eight fixtures, each at three posterior states after real count updates:
+  AND, XOR with zero current derivatives, mux with zero selector derivative,
+  four-majority, a mixed nested tree, signed soft gates, three-way parity,
+  and a constant gate. Rational priors include near-boundary probabilities.
+
+Executed results:
+  24 posterior states.
+  993 deterministic depth-two policies independently enumerated.
+  3,972 ordered future outcome pairs independently enumerated.
+  Every first-action value matched a separate implementation of the formula.
+  Every parent exact planner value equaled the exhaustive optimum.
+  Every returned parent exact policy attained that optimum.
+  Every parent reversible-update baseline equaled and attained that optimum.
+  The baseline restored all primitive posterior parameters after its queries.
+  All 24 interval policies satisfied L <= achieved <= optimum <= U.
+  Maximum exact interval width: 41/72057594037927936.
+
+Selected exact results
+----------------------
+
+AND of independent Beta(1,1) probabilities:
+  best fixed-pair gain = 19/1296 = 76/5184;
+  adaptive gain = 77/5184;
+  policy = observe 0, then repeat 0 on failure or observe 1 on success.
+
+Mux target S*A+(1-S)*B with independent Beta(1/2,1/2) probabilities:
+  best fixed-pair gain = 1/32 = 8/256;
+  adaptive gain = 9/256;
+  policy = observe S, then B after 0 or A after 1.
+  S has zero immediate target-mean gain at the symmetric prior, yet is the
+  uniquely best first source in this fixture. The conditional derivative
+  calculation detects its value without dividing by that zero sensitivity.
+
+Three-way parity at independent symmetric Beta(1,1) priors:
+  best fixed-pair gain = 0;
+  best adaptive-two-step gain = 0.
+  Adaptive two-step optimization does not remove higher-order horizon
+  blindness. With fewer than three distinct coordinates observed, an
+  independent untouched symmetric factor makes the conditional target mean
+  constant. This is a meaningful surviving limitation, not a numeric failure.
+
+The source and results are local ordinary proof/code artifacts. No external
+transfer, export, purchase, outreach, or permission change was performed.
+
+8. Requested short audit: finite-feature experiment ordering
+===========================================================
+
+The following broader ordering theorem proposed by the parent is sound. It
+is independent of the adaptive-two-step algorithm, and is recorded here to
+make the scope check explicit.
+
+Let X_1,...,X_n have a fixed common product prior. At coordinate i choose a
+finite real feature vector phi_i(X_i) with E phi_i=0 and Cov(phi_i)=I. These
+features are square-integrable. If the original covariance is singular,
+remove its null directions before whitening. Augment psi_i=(1,phi_i).
+
+A fixed product experiment E generates independent local data D_i, with
+each D_i depending only on X_i. Put
+
+    B_i^E = Cov(E[phi_i(X_i) | D_i]),
+    M_i^E = diag(1,B_i^E).
+
+Total covariance gives 0 <= B_i^E <= I in Loewner order. The posterior mean
+of any tensor-feature target
+
+    f(X) = sum_{j_1,...,j_n} c_{j_1...j_n}
+                            product_i psi_i,j_i(X_i)
+
+is obtained by substituting E[psi_i|D_i] into that expansion. The local
+posterior feature-mean vectors are independent across i and have mean
+(1,0,...,0). Their second-moment matrices are M_i^E. Therefore
+
+    Gain_E(f) = c^T (tensor_product_i M_i^E) c - c_0^2,
+
+where c_0 is the coefficient of the all-constant feature. The current prior
+variance is ||c||^2-c_0^2, because the product basis is orthonormal.
+
+For two fixed product experiments E,F under this SAME prior and SAME feature
+system, the following statements are equivalent:
+
+  (i) B_i^E >= B_i^F for every i in Loewner order.
+  (ii) Gain_E(f) >= Gain_F(f) for every target in the full tensor-feature span.
+
+To prove sufficiency, telescope the difference of the tensor products one
+coordinate at a time. Each summand is a tensor product of positive
+semidefinite factors and one positive semidefinite difference, and hence is
+positive semidefinite. For necessity choose the single-coordinate target
+f(X)=a^T phi_i(X_i); its gain difference is a^T(B_i^E-B_i^F)a for arbitrary a.
+
+The scalar learned-variance fraction rho is the d_i=1 case after normalizing
+the feature by its prior standard deviation. The matrix theorem covers
+nonlinear finite feature classes as well as the raw multiaffine family.
+
+Scope points:
+
+* This is an order for squared-error risk on the declared full target span.
+  It is not Blackwell order or dominance for arbitrary decisions.
+* If a narrower target class is imposed, the single-coordinate test functions
+  needed for necessity must still belong to that class. In particular, one
+  should not silently claim necessity for a bounded subclass when features
+  are unbounded and those test functions are excluded.
+* Local channels must be fixed and independent. Outcome-adaptive channels
+  can correlate the posterior feature means, invalidating the tensor product.
+* Feature construction, whitening, local posterior calculation, and the
+  experiment matrices are paid inputs or computations. This does not supply
+  an oracle for acquiring them cheaply.
+* Matrix-valued experiment profiles need not have a universal maximizer.
+  For a concrete witness, one coordinate X consists of d independent fair
+  signs, phi(X) is the d-vector of those signs, and a budget-k experiment
+  reveals a chosen subset S of k signs. Then B_S is diagonal with ones on S
+  and zeros elsewhere. All binomial(d,k) such profiles are pairwise
+  incomparable in Loewner order. With k near d/2, a complete nondominated
+  profile list is exponential in d. Thus the ordering theorem alone does
+  not imply an efficient general budget-allocation compiler.
+
+No new priority claim is made for the conditional-expectation, orthonormal
+feature, or positive-operator identities used in this short audit.
