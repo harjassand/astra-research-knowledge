@@ -1,0 +1,3 @@
+# Completed rotational polynomial faces and original-face construction
+
+Separate Ultra completion after PR284: one new card, one new conditional principle, and two immutable unit-version advances. The earlier partial card/unit bytes remain. Completed proofs and changed classifier/replay bytes are preserved; byte-identical dependencies reuse existing routes. Every-real parameter scope, genuine kernel exceptions, degenerate quadratics, primary certificate dependency, internal/prior review scope and the unresolved original28-dimensional question remain explicit. No scientific reproof/replay, new independent review, novelty investigation, source retry or producer contact. Biology held; chemistry non-operational.
