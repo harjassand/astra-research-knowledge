@@ -1,0 +1,3 @@
+# Final shared-mode work, visible P3, Dots and completed supplements
+
+Ten new cards, eighteen new units and three immutable v2 advances preserve their distinct scopes. P3 uses only normally visible scientific text. The Dots archive original download provenance is unverified; its actual scoped reviews remain at their named bytes and premises. The frozen comparison and prior scientific versions remain unchanged. Failed proposals, candidate work, non-operational mathematical chemistry, ideal decoders and open universal questions remain explicit. No scientific replay, new audit, sign-off, producer contact, export or reporting protocol.

@@ -1,0 +1,10 @@
+# Seeded-face exit obligation for the dormant test — unfinished
+Status: working derivation only. No global theorem or review claim.
+
+For residual2A'<->A'+D<->C+D, the D=0 killed connector Green is earned separately. Its outgoing seed creates D=1. To connect it to a good region, one must control actual seeded excursions, not assume that D persists or that A instantly equilibrates.
+
+On the C-dominant face C>=N/2, D>=1, and A'<=K=N^gamma, the A'-increasing rate from C+D is >=cND. A'-decreasing rates are <=C[(A')^2+A'D]. The D-loss channel has rate <=CA'D. Thus the up/down ratio is favorable for gamma<1/2. Before A' reaches K, a crude event-count estimate suggests D-loss probability O(K^2/N) and time O(K/N); early clearing only shortens the episode. At A'>=K, the clearing channel competes directly with the2A'->A'+D channel at a fixed rate ratio. A proof must control the remaining A'D losses and changes of the dominant face; declaring a constant clearing chance without these controls would be incomplete. Balancing K^-2 with K^2/N suggests a possible N^-1/2 seeded-time scale at gamma=1/4, after a real restart through the dormant Green kernel. This estimate is not yet proved.
+
+On the D-dominant face, use R=A'+cC with c<1 sufficiently close to1. The linear-in-D channels give positive Q log R of order N when R<=epsilon N: A'D->2A' supplies growth, A'D->CD is only a small negative weighted jump, and CD->A'D is positive. The quadratic2A' channel contributes at most O(R). This earns a local logarithmic growth tendency without assuming a stationary A/C fraction. Converting growth of R into clearing requires a quantitative two-type startup/hazard estimate; A may still be zero when R is carried by C. That transfer is an explicit missing step.
+
+These are two different physical face mechanisms. The need to join their actual exit kernels is precisely the multifacet obligation; replacing either by the other reserve or by a supplied rapid-mixing premise would evade it. The current validated results do not depend on this unfinished test.

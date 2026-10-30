@@ -1,0 +1,4 @@
+# Non-directional cycle falsification check — numerical only
+A sparse killed-resolvent check of residual2A'->2C->2D->2A' with common seed a0=3 tested n=12,24,48,96 and s=4. The maximal clearing-output/incoming inverse-A profile ratios were about378.91,58.44,18.68,6.58; these are compatible with a fixed large constant, not a norm-one claim. The maximal physical T/U stayed around0.305–0.315, confirming that the whole-state scalar gap remains unavailable. Starts with A' growing like sqrt(n) had decreasing ratios, consistent with the good-region barrier.
+
+This is only a falsification attempt, not evidence replacing proof or review. The minimal pure-residual-cycle full network is deficiency-zero, so its recurrence has an ordinary product-form explanation; it is NOT a novel endpoint. Its role is to test the incoming-profile lemma on a graph lacking an immediate A-producing edge from2C. Script and raw JSON are preserved alongside this note.

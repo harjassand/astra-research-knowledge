@@ -1,0 +1,453 @@
+**The strongest result from this allocation is a reusable compilation of feasible-solution knowledge, with a proved law for how much of that knowledge survives conditioning and adaptive computation.**
+
+For an arbitrary raw graph, the construction acquires every Boolean polynomial identity up to a chosen degree \(D\) on its perfect matchings. It does this without enumerating the matchings, counting them, or requiring a planar embedding or a supplied Pfaffian orientation. The acquired information then answers future queries—including queries chosen after seeing earlier answers—with one compilation confidence guarantee.
+
+I also built a broader version: from a raw arithmetic circuit, it acquires all degree-\(D\) Boolean identities of the variable supports of the circuit’s nonzero monomials, without expanding the polynomial. The matching construction adds something substantial to that general result: it reconstructs actual, directly checkable matchings whenever a query needs a counterexample.
+
+The earlier compatibility invariants, boundary construction, original-variable observation order, signed sampling, and compiled-elimination comparisons remain intact. The existing comparator’s contribution of the short rejection certificate also remains credited. This construction develops the earlier insight about keeping a consumer inside a tractable geometry into a precise statement about **which future computations an acquired representation remains complete for**.
+
+## 1. The obstruction I chose
+
+A solver can learn a small collection of facts that perfectly describes the queries it has already encountered. That is much weaker than learning information that remains sufficient after new evidence arrives.
+
+Conditioning creates new facts. A relation that was false on the original feasible set can become true on the remaining solutions. A collection of representative solutions that detects every original linear identity can therefore miss a feasible branch after one observation.
+
+The question I attacked was:
+
+> Can a solver acquire a finite, complete body of query knowledge from a raw implicit problem, then reuse it through future conditioning—with an explicit account of when that completeness expires?
+
+The opening came from characteristic-two algebra. Pant and Singh’s 21 October 2026 preprint reduces testing a proposed Pfaffian orientation to polynomial identity testing and reports a randomized polynomial-time recognition algorithm for general graphs. I reconstructed the relevant algebra and checked it independently in the implementation. :chatgpt-content-reference{index="0"}
+
+Two predecessors changed the direction of the attack. Vazirani and Yannakakis already used bases of matching incidence vectors and linear equations to construct candidate orientations; that prevents presenting direct orientation reconstruction as a new principle. And symbolic Pfaffian combinations are established machinery, with recent lower bounds showing that the required number of terms can grow without bound. :chatgpt-content-reference{index="1"}
+
+I consequently concentrated on acquiring **the entire bounded-degree query theory**, and on proving its behavior under computation. The algebraic enumerator method and representative-family ideas are also established; determinantal sieving provides an important wider account of that machinery. :chatgpt-content-reference{index="2"}
+
+The contribution developed here is the complete acquisition–conditioning–reuse construction and its executable realization. I have not established external priority for the combined theorem.
+
+## 2. The finite object that captures all queries of a given degree
+
+Let \(F\subseteq\{0,1\}^m\) be a feasible set. For a graph, \(x_e=1\) means that edge \(e\) belongs to the matching.
+
+Work over \(\mathbb F_2\), so addition is XOR. For every variable subset \(S\) of size at most \(D\), define
+
+\[
+\phi_S(x)=\prod_{i\in S}x_i.
+\]
+
+Collect these features into a vector \(\phi_D(x)\), and define
+
+\[
+V_D(F)=\operatorname{span}_{\mathbb F_2}
+          \{\phi_D(x):x\in F\},
+\qquad
+R_D(F)=\dim V_D(F).
+\]
+
+A polynomial \(p\) of degree at most \(D\) is a coefficient vector in this feature space. Its values satisfy
+
+\[
+p(x)=\langle p,\phi_D(x)\rangle.
+\]
+
+Consequently, the orthogonal complement \(V_D(F)^\perp\) is exactly the space of all degree-\(D\) identities on \(F\).
+
+This gives two useful representations.
+
+* A **relation-space representation** stores a basis of \(V_D(F)\) and its orthogonal complement.
+* A **witness representation** stores actual feasible points \(W\subseteq F\) whose feature vectors form a basis.
+
+For the second representation,
+
+\[
+\boxed{
+p|_F=0
+\quad\Longleftrightarrow\quad
+p|_W=0
+\qquad
+\text{for every }\deg p\le D.
+}
+\]
+
+Moreover, the minimum possible size of such a witness set is exactly \(R_D(F)\). Fewer points cannot span an \(R_D(F)\)-dimensional space; a basis selected from actual feasible points achieves that size.
+
+This is a complete test set, not a statistical sample. Once its completeness has been acquired, a later query can be chosen adversarially in response to everything previously learned.
+
+The difficult step is obtaining the space from a raw problem. Supplying its basis would simply relocate the original difficulty. The next construction performs that acquisition.
+
+## 3. Acquisition from an arbitrary graph
+
+Let \(G\) have \(N=2n\) vertices and \(m\) edges. Give each edge its own formal variable \(z_e\).
+
+Over a field of characteristic two, the alternating Tutte matrix has Pfaffian
+
+\[
+P_G(z)=\operatorname{Pf}T_G(z)
+      =\sum_{M\in\mathcal M(G)}z^M,
+\qquad
+z^M=\prod_{e\in M}z_e.
+\]
+
+The signs disappear in characteristic two, but distinct matchings retain distinct monomial labels. That distinction is what makes global reasoning possible without computing the integer number of matchings.
+
+For a partial matching \(S\), define
+
+\[
+H_S(z)
+=
+z^S\,\operatorname{Pf}T_{G-V(S)}(z).
+\]
+
+Then
+
+\[
+H_S(z)=\sum_{M\supseteq S}z^M.
+\]
+
+For a Boolean query polynomial \(p=\sum_Sp_S\phi_S\),
+
+\[
+H_p(z)
+=
+\sum_Sp_SH_S(z)
+=
+\sum_{M\in\mathcal M(G)}p(M)z^M.
+\]
+
+Therefore
+
+\[
+\boxed{
+H_p\equiv0
+\quad\Longleftrightarrow\quad
+p(M)=0\text{ for every perfect matching }M.
+}
+\]
+
+The degree of \(H_p\) in the fingerprint variables \(z\) is \(n\), regardless of the query degree \(D\).
+
+For a uniformly random \(\alpha\in K^m\), where \(|K|=q>n\), a false identity satisfies
+
+\[
+\Pr[H_p(\alpha)=0]\le \frac nq.
+\]
+
+This yields an identity tester, but I went further and made it acquire the whole relation space.
+
+### Acquiring the space without extracting every witness
+
+One probe produces the field-valued vector
+
+\[
+H(\alpha)=\bigl(H_S(\alpha)\bigr)_S
+         =\sum_M \alpha^M\phi_D(M).
+\]
+
+Choose a binary basis for the finite field \(K\). Each coordinate bit of \(H(\alpha)\) is an \(\mathbb F_2\)-linear combination of actual matching feature vectors. Thus every binary row extracted from the probe belongs to the true space \(V_D(F)\).
+
+The learner adds those rows to its current span. It stops after \(t\) consecutive probes add no new row.
+
+If the current span is incomplete, some Boolean polynomial \(p\) annihilates that span but does not vanish on all matchings. A probe that fails to increase the span must satisfy \(H_p(\alpha)=0\). While the span remains unchanged, \(t\) such misses have probability at most \((n/q)^t\).
+
+There are at most \(L_D+1\) stopping stages, where \(L_D\) is the number of retained features. Choosing
+
+\[
+(L_D+1)\left(\frac nq\right)^t\le\delta
+\]
+
+makes the probability of an incomplete final space at most \(\delta\).
+
+**This is one failure probability for the compilation. It does not grow with the number of future queries.**
+
+The implementation stores the probe points responsible for rank increases. They are useful later: if a query is not an identity, one stored point has \(H_p(\alpha)\ne0\).
+
+### Reconstructing an actual matching
+
+From such a nonzero evaluation, witness extraction is deterministic.
+
+At an unmatched vertex \(v\), partition the remaining matchings by the edge \(e\) used at \(v\):
+
+\[
+H_p=\sum_{e\ni v}\alpha_e H_{p,e}.
+\]
+
+At least one term is nonzero. Select such an edge, force it, delete its endpoints, and repeat. Feature predicates continue to refer to the full original matching, including already forced edges.
+
+This procedure uses residual Pfaffian evaluations. It does not enumerate matchings or invoke an unimplemented matching oracle. The resulting edge set is checked directly to be a perfect matching, and its query value is checked to be the requested value.
+
+There is also an eager version that extracts one independent matching at every rank increase. On successful acquisition it returns exactly \(R_D(F)\) actual matching witnesses.
+
+That version is more expensive, but it has a useful consumer: future Boolean circuits can be evaluated directly on those matchings without expanding the circuits into monomials.
+
+## 4. The broader acquisition theorem: raw arithmetic circuits
+
+The preceding acquisition principle does not intrinsically require a Pfaffian.
+
+Suppose a raw arithmetic circuit over a characteristic-two field computes
+
+\[
+P(z)=\sum_a c_a z^a.
+\]
+
+Define its feasible objects to be the variable-support vectors of its nonzero monomials:
+
+\[
+F_P=
+\left\{
+\bigl(\mathbf1[a_i>0]\bigr)_{i=1}^m:
+c_a\ne0
+\right\}.
+\]
+
+Powers remain distinct formal monomials. This is the support of the computed polynomial after algebraic cancellation, not the collection of syntactic derivations in the circuit.
+
+For a variable set \(S\), form
+
+\[
+H_S(z)
+=
+\sum_{R\subseteq S}
+P\bigl(z\text{ with every variable in }R\text{ set to }0\bigr).
+\]
+
+A monomial survives this sum precisely when it contains every variable in \(S\). Indeed, if it misses any member of \(S\), it is included an even number of times and cancels. Hence
+
+\[
+H_S(z)
+=
+\sum_a c_a\,\phi_S(\operatorname{supp}a)\,z^a.
+\]
+
+The same field-coordinate acquisition therefore recovers \(V_D(F_P)\).
+
+**No symbolic expansion, multilinearity promise, or coefficient-extraction oracle is required.** The necessary operations are evaluations of the given circuit at points with selected coordinates zeroed.
+
+The implementation computes a conservative formal degree bound \(\Delta\) from the circuit itself:
+
+* a variable has degree one;
+* a constant has degree zero;
+* addition takes the maximum;
+* multiplication adds degrees.
+
+It then uses \(\Delta/q\) in the stopping guarantee. It does not ask an oracle whether cancellations secretly make the circuit simpler.
+
+For all features up to degree \(D\), the zeroed evaluations can be shared. A probe needs at most
+
+\[
+L_D=\sum_{j=0}^{\min(D,m)}\binom mj
+\]
+
+circuit evaluations, followed by the finite-difference combinations and binary elimination.
+
+I implemented this variant and compared its acquired spaces with independent symbolic expansion on 33 circuits. The checks include repeated powers and cancellation, including the distinction between \(x^2+x\), which has nonempty monomial support, and \(x+x\), which computes zero.
+
+The generic implementation supplies the relation space. The concrete, directly verifiable witness decoder described above is supplied for matchings. I have kept those capabilities separate.
+
+## 5. The conditioning theorem
+
+Here is the central closure result.
+
+Suppose \(W\subseteq F\) is complete for all Boolean polynomials of degree at most \(D\). Impose conditions
+
+\[
+g_1(x)=b_1,\ldots,g_k(x)=b_k,
+\]
+
+and let
+
+\[
+s=\sum_{i=1}^k\deg g_i.
+\]
+
+Their Boolean indicator is
+
+\[
+C(x)=\prod_{i=1}^k\bigl(1+g_i(x)+b_i\bigr).
+\]
+
+It equals one exactly on the conditioned feasible set, and its degree is at most \(s\).
+
+### Theorem
+
+If \(s\le D\), then
+
+\[
+\boxed{
+W\cap\{C=1\}
+\text{ is complete for all degree-}(D-s)
+\text{ identities on }
+F\cap\{C=1\}.
+}
+\]
+
+**Proof.** Let \(\deg p\le D-s\), and suppose \(p\) vanishes on the retained witnesses. Then \(Cp\) vanishes on every member of \(W\): either the condition fails, or \(p\) is zero. Since \(\deg(Cp)\le D\), completeness of \(W\) implies that \(Cp\) vanishes on all of \(F\). Wherever \(C=1\), this says \(p=0\). The converse follows from \(W\subseteq F\). \(\square\)
+
+This establishes the entire new low-degree identity space after conditioning, including identities that were not true before.
+
+The relation-space version is equally explicit. Multiplication by \(C\) induces the linear map
+
+\[
+\phi_D(x)\longmapsto C(x)\phi_{D-s}(x).
+\]
+
+Its image on \(V_D(F)\) is exactly
+
+\[
+V_{D-s}\bigl(F\cap\{C=1\}\bigr).
+\]
+
+The implementation constructs that image by actual Boolean polynomial multiplication and binary elimination. It pays for the intermediate monomial widths.
+
+There is an important distinction here:
+
+**An identity already proved on \(F\) survives every restriction. The degree budget is needed to remain complete about all the new identities and feasible branches created by restriction.**
+
+That distinction also explains why a separately compiled counting identity can survive arbitrarily many edge observations even though a degree-two witness catalogue cannot answer arbitrarily deep new queries by itself.
+
+### Adaptive computation
+
+Consider a finite decision program whose input reads are Boolean query circuits. At each node, the next query may depend on previous answers.
+
+If the sum of the query degrees along every execution path is at most \(D\), every path indicator has degree at most \(D\). Therefore:
+
+\[
+\boxed{
+\text{The program has exactly the same reachable transcripts on }W
+\text{ as on }F.
+}
+\]
+
+Running the program on the acquired witnesses discovers every feasible transcript and supplies an original feasible witness for it.
+
+For example, a degree-two catalogue supports any pair of global parity queries chosen after compilation, including choosing the second parity according to the first answer. A degree-four catalogue similarly supports two quadratic queries along a path.
+
+The implementation obtains the path budget from the actual decision DAG and computes query-degree bounds from the actual Boolean circuit syntax. Circuit evaluation on witnesses avoids algebraic-normal-form expansion. A conservative degree bound can reject a circuit whose cancellations would make it fit; no hidden semantic-degree recognizer is assumed.
+
+### Why the budget cannot be removed
+
+Take
+
+\[
+F=\{00,10,01,11\},
+\qquad
+W=\{00,10,01\}.
+\]
+
+The set \(W\) is complete for affine identities on \(F\). After conditioning the first bit to one, the retained witness set contains only \(10\). The actual conditioned domain also contains \(11\). A query asking whether the second bit can be one now receives the wrong answer from that filtered catalogue.
+
+The theorem prevents this mistake: one degree-one condition has consumed the entire degree-one budget.
+
+There is also a size obstruction. A graph consisting of \(r\) independent four-cycles has \(r\) independent matching-choice bits. Its degree-\(D\) restriction space has dimension
+
+\[
+\sum_{j=0}^{\min(D,r)}\binom rj.
+\]
+
+Every universal witness catalogue of this kind needs at least that many members. At \(D=r\), it needs all \(2^r\) choices.
+
+This is a lower bound on this representation, not a lower bound on every possible solver.
+
+## 6. Acquisition, arithmetic, and reuse costs
+
+The construction does not conceal the cost of learning the representation.
+
+For graph matchings, monomials containing incident edges are identically zero and can be omitted. The feature count is
+
+\[
+L_D
+=
+\sum_{j=0}^{\min(D,n)}
+\#\{\text{\(j\)-edge partial matchings of }G\}
+\le
+\sum_{j\le D}\binom mj.
+\]
+
+Thus the construction is polynomial for fixed \(D\), with an \(m^{O(D)}\) dependence. It is not a fixed-parameter algorithm with all dependence on \(D\) confined to a prefactor.
+
+A safe graph-probe implementation computes at most \(L_D\) Pfaffian minors, costing \(O(L_DN^3)\) field operations. At a nonsingular evaluation, complementary-minor identities improve this to one matrix inverse and small Pfaffians:
+
+\[
+O(N^3+L_DD^3).
+\]
+
+Singular evaluations receive an exact direct-minor fallback; they are not silently discarded.
+
+There are at most \((L_D+1)t\) probes. Binary elimination, field bit complexity, feature construction, and storage are additional costs. Eager witness acquisition adds at most \(R_D\) decodings, each using at most \(O(m)\) filtered evaluations.
+
+The prototype uses \(\mathrm{GF}(256)\). Accordingly, its graph constructor restricts \(n<256\), and its generic circuit implementation restricts the computed formal degree to less than 256. The general theorem chooses a larger characteristic-two field when necessary.
+
+For the witness representation, a future circuit query costs its actual evaluation cost on the retained witnesses. For the aggregate representation, multiplying conditioned query polynomials costs the actual intermediate width. These are different ways of spending computation, and both are implemented.
+
+### Demand-driven learning
+
+I also retained a strong conventional alternative: learn only the queries that arrive.
+
+Maintain a span of proved identities and a span of actual counterexample witnesses. A new query is answered from those caches whenever possible. Otherwise, perform the algebraic identity test and either add an identity or reconstruct a new witness.
+
+On the all-correct event, every expensive teacher call increases one of the two dimensions, while the spaces remain orthogonal:
+
+\[
+\dim I+\dim W\le L_D.
+\]
+
+Hence at most \(L_D\) expensive teacher calls are needed over an arbitrary adaptive lifetime. Later queries still incur their representation and bookkeeping costs.
+
+This is a conventional counterexample-guided learning strategy. Its inclusion matters: complete eager compilation should not be the default when a consumer will use only a small portion of the available theory.
+
+## 7. A complete counting and sampling consumer—and its limits
+
+To test whether the learned identities could support more than logical queries, I built a signed Pfaffian consumer.
+
+Fix a vertex order. Let
+
+\[
+q_G(x)=
+\sum_{\substack{e,f\\\text{cross in that order}}}x_ex_f.
+\]
+
+The ordinary Pfaffian gives matching \(M\) the sign \((-1)^{q_G(M)}\).
+
+Using the acquired quadratic relation space, the compiler searches for a quadratic polynomial \(p\) agreeing with \(q_G\) on every matching. Agreement is checked on the acquired witness basis, and the constructor rejects candidates that fail those witnesses.
+
+Write a valid candidate as
+
+\[
+p(x)=c+\ell\cdot x+\sum_{i<j}Q_{ij}x_ix_j.
+\]
+
+If the alternating quadratic matrix has rank \(\rho\), Boolean quadratic elimination expresses it as
+
+\[
+p(x)=c+\ell'\cdot x+
+\sum_{j=1}^{\rho/2}a_j(x)b_j(x).
+\]
+
+Using
+
+\[
+(-1)^{ab}
+=
+\frac{1+(-1)^a+(-1)^b-(-1)^{a+b}}2
+\]
+
+produces an exact sum of at most \(2^\rho\) signed Pfaffians.
+
+The compiler then supports:
+
+* changing nonnegative integer edge weights;
+* arbitrary edge forcing and forbidding;
+* parity observations, with their additional expansion cost;
+* exact weighted unranking into original matchings.
+
+A uniform integer ticket followed by unranking gives the exact weighted distribution. Rational weights can be cleared by a common denominator because every matching contains the same number of edges.
+
+The implementation tracks the crossings between forced and residual edges and retains signs throughout the sum. It never takes absolute values of individual Pfaffian terms.
+
+This consumer uses established symbolic-Pfaffian machinery. The literature already studies linear combinations of Pfaffians and limitations on their size. :chatgpt-content-reference{index="3"}
+
+### A failure that changed the representation
+
+A greedy quadratic normal form was a poor choice.
+
+On \(K_6\), it produced rank six and therefore 64 terms. Searching within the learned equivalence class found a rank-two correction after 21 candidates, reducing the expansion to four terms. On \(K_{4,4}\), the corresponding search found four terms after 27 candidates.
+
+That search has a real exponen
