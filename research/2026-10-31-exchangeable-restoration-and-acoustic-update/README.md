@@ -1,0 +1,3 @@
+# Exchangeable restoration and a newer acoustic snapshot
+
+Two new cards and eight new units, with four immutable acoustic-unit advances, retain the new source scopes and earlier versions. P1 contributes its completed visible proof and exact ordered math, with original executable files unavailable. The parity one-pass correction, worst-source stream bound, protected orientations, acquisition costs and fresh-sketch comparison remain explicit. Ultra supplies a producer proof and reported compression/repair inside an active turn; it remains unaudited and does not solve universal QC. No scientific replay, novelty review, new sign-off, producer contact or access/transfer change.
