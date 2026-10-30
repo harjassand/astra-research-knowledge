@@ -1,0 +1,547 @@
+## The construction: discover where inputs act, and leave the remaining dynamics nonlinear
+
+**I built an exact recognizer for a class of nonlinear Boolean programs whose dependence on their input history can be represented by linear equations.** It discovers the relevant subspace from the original transition circuits, certifies the required identities, and then supports exact counting, reconstruction and uniform sampling of original input sequences at arbitrary finite horizons.
+
+The useful distinction is between a program’s autonomous dynamics and the changes caused by its inputs. The autonomous part can remain nonlinear. The construction learns a subspace containing every possible input-induced change and checks whether evolution within each translate of that subspace is affine.
+
+This produced three completed results:
+
+- **Canonical acquisition:** the recognizer discovers the unique least subspace required by the input effects and the transition dynamics. No basis or coordinate alignment is supplied.
+- **Exact reuse:** after admission, one baseline trajectory and local circuit evaluations turn future input/output constraints into actual binary linear systems.
+- **A matching complexity classification:** global admission is **coNP-complete**, even when the discovered subspace has dimension two. Rejection has a short certificate that can be checked without a solver.
+
+I implemented the recognizer, positive and negative certificate checks, and the original-input consumers. The conventional affine symbolic route was faster on the principal validation examples. The defensible result is therefore a structural acquisition theorem and working construction; practical superiority and external originality of the complete combination remain unestablished.
+
+## 1. Why this became the main direction
+
+The initial route was to acquire rational linear relations among a raw circuit’s residual functions. That route worked: I built an exact compiler that discovered minimum rational cut ranks, retained proofs of the relations, and answered later counting and sampling queries.
+
+However, it exposed two reasons to change the representation.
+
+First, weighted-automaton realization and linear residual spaces are established machinery. Their equivalence and minimization theory already provides much of the mathematical foundation. The substantive missing work was the raw-circuit acquisition and its actual proof cost. :chatgpt-content-reference{index="0"}
+
+Second, a compact representation over one field can be very large over another. In an executed six-bit linear-feedback example, the rational observable space had dimension **64**, while an affine representation over \(\mathbb F_2\), including the constant feature, had dimension **7**. I verified the 63-state nonzero cycle underlying that comparison.
+
+Moving to \(\mathbb F_2\) was not sufficient by itself. The earlier computational work already identified the danger: small binary-field width does not automatically make exact counting easy. A valid consumer needs additional structure.
+
+The stronger opening was to acquire **affine dependence on the original inputs**, while allowing the state-dependent coefficients to be supplied by a nonlinear autonomous trajectory. That avoids learning a complete model of every autonomous state or every future observable.
+
+## 2. The program model and the property being recognized
+
+Consider a finite Boolean program with state
+
+\[
+s\in\mathbb F_2^m,
+\]
+
+one input bit \(a\) per step, transition circuits
+
+\[
+F_0,F_1:\mathbb F_2^m\rightarrow\mathbb F_2^m,
+\]
+
+and an output circuit
+
+\[
+O:\mathbb F_2^m\rightarrow\mathbb F_2^q.
+\]
+
+All additions below are XOR. Products of bits are AND.
+
+Define the immediate input effect
+
+\[
+D(s)=F_1(s)+F_0(s),
+\]
+
+and the directional difference
+
+\[
+\Delta_h G(s)=G(s+h)+G(s).
+\]
+
+The unknown object is a linear subspace
+
+\[
+H\subseteq\mathbb F_2^m.
+\]
+
+A translate \(b+H\) consists of states obtained by adding vectors from \(H\) to \(b\). The construction seeks a subspace satisfying the following identities **for every original state \(s\)**.
+
+### Containment and preservation
+
+\[
+D(s)\in H,
+\tag{1}
+\]
+
+\[
+\Delta_hF_0(s)\in H
+\qquad(h\in H).
+\tag{2}
+\]
+
+Equation (1) says that changing the current input can only change the next state within \(H\). Equation (2) says that two states differing within \(H\) continue to differ within \(H\).
+
+Consequently, the program induces an autonomous evolution on the translates of \(H\): the input cannot change which translate comes next.
+
+### Affine dependence within each translate
+
+\[
+\Delta_hD(s)=0
+\qquad(h\in H),
+\tag{3}
+\]
+
+and
+
+\[
+\Delta_h\Delta_vF_0(s)=0,\qquad
+\Delta_h\Delta_vO(s)=0
+\qquad(h,v\in H).
+\tag{4}
+\]
+
+Equation (3) makes the input effect constant within each translate. Equation (4) makes the transition and outputs affine within each translate.
+
+The coefficients may vary arbitrarily between translates. Thus the program can remain nonlinear globally.
+
+The connection between vanishing second differences and affinity on every coset of a subspace is established Boolean-function theory; it is explicitly characterized, for example, in Proposition 1.3 of Polujan and Pott. :chatgpt-content-reference{index="1"}
+
+## 3. The acquisition theorem
+
+**Theorem.** Given the original circuits \(F_0,F_1,O\), an exact solver can:
+
+1. discover the unique least subspace \(H_*\) satisfying (1)–(2);
+2. determine whether any subspace satisfies all of (1)–(4);
+3. on success, provide a basis and certificates supporting the consumer below;
+4. on rejection, provide a polynomial-size certificate that rules out every subspace in this global translation-based class.
+
+If \(k=\dim H_*\), successful acquisition uses at most
+
+\[
+\boxed{1+3k+\binom{k}{2}}
+\]
+
+solver queries. The implemented fixed schedule uses exactly this number, including trivial queries.
+
+Each query has polynomial size in the original circuit size and \(m\). The number of queries does not depend on the future execution horizon.
+
+**This is a query bound, not a polynomial-time bound on solving the queries.** The coNP-completeness result below shows why that distinction is essential.
+
+### 3.1 Acquiring the subspace from counterexamples
+
+Start with \(H=\{0\}\).
+
+For a vector-valued circuit \(G\), use the query
+
+\[
+\exists s:\ G(s)\notin H.
+\]
+
+This is an ordinary Boolean satisfiability query. If \(Q_H\) is a parity-check matrix for \(H\), then
+
+\[
+G(s)\notin H
+\iff
+Q_HG(s)\ne 0.
+\]
+
+A satisfying state supplies an actual vector \(G(s)\) outside the current span. Add it to the basis and repeat. An unsatisfiability result certifies that the entire image lies in the span.
+
+Apply this operation first to \(D\), and then to the difference circuit for every acquired basis direction:
+
+```text
+H := {0}
+
+Expand H until the entire image of D lies in H.
+
+For each acquired basis direction h,
+including directions acquired later:
+    Expand H until the entire image of Δ_h F₀ lies in H.
+```
+
+Every counterexample increases the dimension. There can be at most \(m\) such increases.
+
+This operation uses the raw circuits directly. It does not require a truth table, an ANF expansion, a supplied invariant subspace or an enumeration of the quotient states.
+
+### 3.2 Why processing a basis is sufficient
+
+The identity
+
+\[
+\Delta_{u+v}F_0(s)
+=
+\Delta_uF_0(s+v)+\Delta_vF_0(s)
+\]
+
+shows that containment for a basis implies containment for every direction in its span.
+
+A completed containment proof also remains valid when the span grows. If an image lies in an earlier subspace, it lies in every later enlargement. Previously processed directions therefore need not be restarted.
+
+### 3.3 Why the acquired subspace is canonical
+
+Let \(K\) be any subspace satisfying (1)–(2).
+
+Every direction acquired from \(D(s)\) must belong to \(K\). Inductively, if an acquired direction \(h\) belongs to \(K\), every direction acquired from \(\Delta_hF_0(s)\) must also belong to \(K\).
+
+Thus every acquired direction is forced into every possible candidate \(K\).
+
+At termination, the acquired subspace satisfies closure itself and is contained in every other closed candidate. It is therefore the **unique least** one. The result is independent of which counterexamples the solver chooses.
+
+This is the central acquisition mechanism: counterexamples reveal pieces of structure that every successful representation must contain.
+
+### 3.4 The exact query count
+
+For final dimension \(k\), the closure stage has:
+
+- \(k\) satisfiable answers, each adding one independent direction;
+- one final unsatisfiable answer for the image of \(D\);
+- one final unsatisfiable answer for each of the \(k\) directional-difference tasks.
+
+That gives \(2k+1\) queries.
+
+Then check (3) on the \(k\) basis directions. Finally, check (4) on each unordered pair of distinct basis directions, combining all transition and output coordinates into one query.
+
+There are no diagonal tests because
+
+\[
+\Delta_h\Delta_hG=0
+\]
+
+automatically over \(\mathbb F_2\).
+
+The total is
+
+\[
+(2k+1)+k+\binom{k}{2}
+=
+\boxed{1+3k+\binom{k}{2}}.
+\]
+
+The pair tests suffice because they make each first difference invariant under every basis translation. Consequently, for a basis matrix \(B=[h_1\ \cdots\ h_k]\),
+
+\[
+G(s+Bz)
+=
+G(s)+\sum_j z_j\Delta_{h_j}G(s).
+\]
+
+That is the required affine law on each translate.
+
+### 3.5 Rejection is complete for this class
+
+Every candidate satisfying closure contains \(H_*\).
+
+If a required first or second difference fails on directions in \(H_*\), it also fails as a required identity on every larger candidate. Enlarging the subspace cannot repair the violation.
+
+Hence the recognizer accepts exactly when some subspace has the stated global properties.
+
+The scope matters: a rejecting state may be unreachable from a particular initial condition. Rejection does not exclude a representation restricted to reachable states, a changing family of subspaces, or nonlinear state coordinates.
+
+## 4. What the learned structure actually lets the solver do
+
+Fix a known initial state \(s_0\). Execute the zero-input baseline
+
+\[
+b_0=s_0,\qquad b_{t+1}=F_0(b_t).
+\]
+
+Let \(B\) contain the learned basis vectors and choose a left inverse \(E\) with
+
+\[
+EB=I_k.
+\]
+
+At each baseline state, compute
+
+\[
+\begin{aligned}
+A_t[:,j]&=E\,\Delta_{h_j}F_0(b_t),\\
+d_t&=E\,D(b_t),\\
+C_t[:,j]&=\Delta_{h_j}O(b_t),\\
+o_t&=O(b_t).
+\end{aligned}
+\]
+
+These are actual circuit evaluations and binary linear algebra. The containment certificates ensure that the vectors to which \(E\) is applied lie in \(H_*\).
+
+For every original input sequence, the exact state and output are then
+
+\[
+\boxed{
+\begin{aligned}
+s_t&=b_t+Bz_t,\\
+z_0&=0,\\
+z_{t+1}&=A_tz_t+d_ta_t,\\
+O(s_t)&=o_t+C_tz_t.
+\end{aligned}}
+\]
+
+The proof is induction. Assuming \(s_t=b_t+Bz_t\), affinity gives
+
+\[
+F_0(s_t)=b_{t+1}+BA_tz_t.
+\]
+
+Constancy of \(D\) within the translate gives
+
+\[
+D(s_t)=Bd_t.
+\]
+
+Since \(F_a=F_0+aD\), the next-state formula follows.
+
+This explains exactly what is avoided. The solver does not need a compact model of every autonomous trajectory. It executes one baseline trajectory and evaluates local differences around it. The certificates ensure that these computations describe every input sequence.
+
+For a horizon \(T\), the work includes roughly \(O(T(k+2))\) vector-circuit evaluations, followed by binary linear algebra. The symbolic forms themselves can contain \(T\) input coefficients, so their bit costs are included. There is no claim of polynomial time in \(\log T\).
+
+### Counting and reconstruction in the original input coordinates
+
+Every output bit at every selected time becomes an affine function of
+
+\[
+a=(a_0,\ldots,a_{T-1}).
+\]
+
+Input-bit assignments, output-bit observations, and parity equations involving inputs and outputs therefore produce an explicit system
+
+\[
+Ma=c
+\]
+
+over the **original input bits**.
+
+If inconsistent, the count is zero. Otherwise,
+
+\[
+\boxed{\#\{\text{consistent original input words}\}
+=2^{T-\operatorname{rank}M}.}
+\]
+
+Gaussian elimination supplies a particular solution \(a_*\) and an independent nullspace basis \(K\). Every solution is uniquely represented as
+
+\[
+a=a_*+Ku.
+\]
+
+This gives a witness, unranking in the chosen free-variable order, and exact uniform sampling by choosing the free bits \(u\) independently and uniformly.
+
+The state-deviation variables introduce no extra multiplicity: each original input word determines one execution.
+
+The implementation also handles mixed equations such as
+
+\[
+a_3+O_0(s_6)+O_1(s_{10})=1.
+\]
+
+These consumers require bit assignments or linear equations. Arbitrary Boolean conditions on the outputs, and arbitrary biased product weights on inputs, are not supplied by Gaussian elimination alone.
+
+## 5. A small failure that explains an essential condition
+
+Consider a one-bit state \(q\):
+
+\[
+F_0(q)=q,\qquad F_1(q)=0,\qquad O(q)=q.
+\]
+
+Input zero preserves the state; input one resets it.
+
+Both transition branches are individually affine. Nevertheless, starting from \(q_0=1\),
+
+\[
+q_2=(1+a_0)(1+a_1).
+\]
+
+The observation \(q_2=0\) admits **three** two-bit input words. A consistent binary linear system cannot have three solutions.
+
+The failure is precisely the input-gain condition:
+
+\[
+D(q)=q,\qquad \Delta_1D=1.
+\]
+
+The input multiplies an unknown state component. Omitting condition (3) would have licensed an incorrect linear consumer.
+
+I ran this example. The recognizer rejected it and returned a verifiable forced-direction trace and violating state.
+
+The earlier rational observable compiler remains a useful alternative here: it learned a dimension-two model and returned the exact count
+
+\[
+2^T-1.
+\]
+
+Thus rejection by the affine recognizer is a structural diagnosis. It does not establish that the original counting problem is difficult.
+
+## 6. Global admission is coNP-complete
+
+The completed complexity result is sharper than a bound on solver calls.
+
+### A short certificate of non-admission
+
+A rejection certificate contains:
+
+1. at most \(m\) independent forced directions;
+2. for each direction, an original state showing that it equals either \(D(s)\), or \(\Delta_hF_0(s)\) for a direction \(h\) in the preceding span;
+3. an original state witnessing a failed gain or second-difference identity on directions in that forced span.
+
+A verifier checks the trace using original circuit evaluation and linear algebra.
+
+Every admissible subspace must contain each direction in the trace. The final violation therefore rules out every admissible candidate.
+
+**No unsatisfiability proofs from the intermediate containment searches are needed to check this rejection certificate.**
+
+I implemented this separate checker. It makes no solver calls.
+
+This puts non-admission in NP, and admission in coNP.
+
+### Hardness already occurs at dimension two
+
+Let \(\phi(z)\) be an arbitrary Boolean circuit. Construct a program on state \((q,r,z)\):
+
+\[
+F_0(q,r,z)
+=
+\bigl(r+qr\phi(z),\ q,\ z\bigr),
+\]
+
+\[
+F_1=F_0+e_q,\qquad O(q,r,z)=q.
+\]
+
+The immediate input effect forces \(e_q\). Also,
+
+\[
+\Delta_{e_q}F_0
+=
+r\phi(z)e_q+e_r,
+\]
+
+which forces \(e_r\). No direction outside their span is generated, so
+
+\[
+H_*=\operatorname{span}(e_q,e_r)
+\]
+
+always has dimension two.
+
+The decisive second difference is
+
+\[
+\Delta_{e_q}\Delta_{e_r}F_0
+=
+\phi(z)e_q.
+\]
+
+All required identities hold exactly when \(\phi\) is identically zero—when \(\phi\) is unsatisfiable.
+
+Therefore,
+
+\[
+\boxed{\text{Global admission is coNP-complete, even for }k=2.}
+\]
+
+This also explains why a small discovered subspace cannot guarantee cheap acquisition. The recognizer may issue only a few queries while one of their proofs is difficult.
+
+There is a useful general lesson in the upper bound. The property initially appears to require guessing a hidden subspace and then proving universal identities. Here the subspace is forced incrementally. Its bounded dimension turns a failed search into a short, independently checkable mathematical explanation.
+
+## 7. What I executed
+
+The implementation uses exact integer and bit arithmetic. Its solver backend is a cached Shannon search over Boolean circuits, with retained branching certificates. It is an actual decision procedure, rather than an unimplemented oracle in the experiments.
+
+### A nonlinear program with a learned four-dimensional subspace
+
+The principal validation program has sixteen state bits: four input-affected bits and twelve autonomous bits. That partition is not passed to the recognizer.
+
+The autonomous update includes nonlinear terms of the form
+
+\[
+z_i'=z_{i+1}+z_{i+2}z_{i+3}.
+\]
+
+The remaining updates include state-dependent routing and input gains, for example
+
+\[
+u_0'=u_1+z_0u_2+z_1+a,
+\]
+
+\[
+u_1'=u_2+z_1u_3+z_0a.
+\]
+
+One observed output is also globally nonlinear:
+
+\[
+O_0=u_0+z_0u_1.
+\]
+
+The recognizer discovered a four-dimensional subspace through actual difference witnesses. It used:
+
+| Operation | Solver queries |
+|---|---:|
+| Acquire the least closed subspace | 9 |
+| Check constancy of the input gain on its translates | 4 |
+| Check transition and output second differences | 6 |
+| **Total** | **19** |
+
+For an 80-step execution, I imposed nine original-input assignments and eight time-stamped output observations. The resulting system had rank 17, giving
+
+\[
+\boxed{2^{63}=9{,}223{,}372{,}036{,}854{,}775{,}808}
+\]
+
+consistent original input words.
+
+Reconstructed samples were executed through the original nonlinear program and checked against the constraints.
+
+For a shorter horizon, I exhaustively executed all 1,024 ten-bit input words. Their complete output traces agreed with the acquired affine forms. Counts and the full reconstructed solution sets also agreed.
+
+These are constructed validation instances, not measurements of an unknown system or evidence of application-level advantage.
+
+### Admission and rejection beyond that example
+
+I checked the recognizer against explicit finite-state semantics on:
+
+- **192 arbitrary three-bit transition programs.** All were rejected. Every rejection certificate passed the separate solver-free checker.
+- **48 admitted three-bit programs**, including nonlinear quotient dynamics and different controlled dimensions.
+- **All 16 possible subspaces of \(\mathbb F_2^3\)** for each of those programs, to compare the recognizer’s result with the defining property directly.
+- **All 16 two-variable truth tables** in the coNP-hardness construction.
+- Mixed input/output parity constraints, inconsistent constraints, and complete short-word reconstruction.
+
+### Coordinate discovery
+
+An invertible affine recoding \(T(s)=Ls+c\) transforms the canonical subspace as
+
+\[
+H_*'=LH_*.
+\]
+
+This follows from the identities
+
+\[
+D'(T(s))=LD(s),
+\qquad
+\Delta_{Lh}F_0'(T(s))=L\Delta_hF_0(s).
+\]
+
+I tested this by mixing the state coordinates and giving the transformed raw circuits to the recognizer. It reacquired the transformed four-dimensional subspace with 19 queries. The recoding was not supplied to the learner.
+
+That is a test of the coordinate-invariance theorem, rather than a separate application claim.
+
+## 8. The conventional construction won the timing comparison
+
+I kept an ordinary route active: syntactic dependency analysis identifies state bits that may depend on inputs; degree bounds certify affinity in those bits; an affine symbolic interpreter then propagates original-input forms through the program and solves the same constraints.
+
+It receives the same raw circuits and conditions.
+
+On the sixteen-bit example, one local execution took approximately:
+
+| Route | Time |
+|---|---:|
+| Semantic subspace acquisition | 6 ms |
+| Subsequent 80-step constrained solve | 25 ms |
+| Conventional certification, symbolic execution and solve | 9 ms |
+
+These are illustrative local timings, not a performance study. The ordinary route won.
+
+After the affine recoding, that particular syntactic recognizer declined, while the semantic recognizer still found the subspace. This establishes a difference in admission power for those implementations. It does no
