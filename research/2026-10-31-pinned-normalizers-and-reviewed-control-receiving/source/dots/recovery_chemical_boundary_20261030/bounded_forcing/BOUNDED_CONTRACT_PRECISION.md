@@ -1,0 +1,3 @@
+# Precision on the abstract sharpness remark
+
+The last paragraph of Section1 in BOUNDED_EXCESS_RAW_CLOSURE uses the abstract converse/sharpness only for a control class in which the bounded remainder channels may ALSO be selected anywhere between zero and their stated per-label bounds. Its upper-bound policy turns those bounded channels off. If the bounded channels are fixed functions of state, only the uniformization SUFFICIENCY argument is asserted; no matching necessity or sharpness follows from that paragraph. The actual raw compiler needs only sufficiency and never turns a physical channel off. Its zero-residual-clock forcing event is an event in the exact rate realization, not a modified reaction law.
