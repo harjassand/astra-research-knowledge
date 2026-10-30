@@ -1,0 +1,31 @@
+## Strongest result
+
+The spin-polarized four-dimensional charge-gauge model now has actual local potential/hopping controls and a capacitive entangler. Balanced leaf capacitances cancel projected logical/gauge cross terms; unequal dark-mode offsets remove a real resonance. Equal offsets have an exact 2/3 leakage-amplitude witness, so making the coupling weak alone cannot repair that construction.
+
+Closing center-to-leaf hopping during the entangling dwell makes a precisely specified central-source algebra commute with the active leaf Hamiltonian. The central reservoir can still exchange particles with the central orbital and evolve arbitrarily fast. This factors its retained dynamics out before applying the active gap argument; it does not pretend an arbitrary reservoir has a protective spectral gap. The result permits correlated logical/gauge/reference histories, including repeated gates by an encoded-input telescoping bound.
+
+The analytic active bound has `r=|delta V|/Delta`, dwell `3 pi hbar/(2|delta V|)` and
+
+`f(r)=r/[3(1-r)] * [4+sqrt(2) pi exp(4r/[3(1-r)])]`.
+
+Its small-r coefficient is 2.8142943. The off-sector norm is **sqrt(2)|delta V|/3**, not `2|delta V|/3`; rendered roots must survive card insertion. A 256-state active calculation checks the action on all 64 encoded input dimensions. The arbitrary-source extension follows from the operator algebra, not extrapolation from a finite simulated bath. It excludes source-induced bright-energy/hopping terms and loading of an unqualified spin/orbital domain. Permutation invariance alone is insufficient.
+
+Finite local pulses/link closure retain the always-present capacitive action. The complete modeled bound adds `|delta V| Taux/(2 hbar)` and the actual noncommuting residual action over the full operation. A fixed residual creates a weak-coupling/time-exposure tradeoff. The quoted `sigma/Delta` near `1.9e-8` for a conservative `1e-3` budget is neither an achieved ratio nor a necessary feasibility threshold. Better acquired controls can improve actual error beyond that coarse sufficient norm bound. No complete device operating region, threshold or experimental advantage has been established.
+
+## Separate full-spinful construction
+
+The original eighty-dimensional gauge has a different route: finite fixed-U all-Fock sorting, an integer-charge parity controlled phase, physical unsorting and a discrete real gate alphabet. This earns a missing interaction instead of assuming a continuously tunable protected logical Hamiltonian. The continuous full-gauge partial-permutation obstruction is preserved; it does not forbid this discrete construction.
+
+A rational interval/Krawczyk calculation certifies a rectangular-pulse root in the ideal Hubbard model; the smooth-ramp example and corrected microscopic-controller example are numerical. Real-computation universality is imported, with initialized inputs/outputs and an extra rebit; it does not physically realify arbitrary unknown complex states. The compiler's 34 parity gates and 68 transpositions have an explicit long clock and accumulated physical errors. Full phase closure includes forward travel, spectator charge and acquired electrostatics. It does not make orbital deformation or calibration free. Informed 16-window retuning repairs one projected contact-model residual at twice the sorter duration; it should replace the uncorrected controller in that fixture, not be reported as a multiband result.
+
+The spinless route removes that particular doublon-clock burden by changing the hardware qualification. It is not the original eighty-state hardware solved under the same resources. Initialization, destructive measurement, detector renewal and leakage correction remain distinct. The spinful neighboring-irrep statement does not automatically transfer a complete leakage-reduction gadget to the spinless entangler.
+
+## Strong comparisons and an overlooked design choice
+
+Read [Hentschel et al., Sections II.1–II.2](https://arxiv.org/html/0705.3923v2). Triangular one-electron charge encodings and electrical gates are established; their two-qubit construction uses interqubit tunneling and charging separation. Their environmental analysis also warns that uniform charge distribution alone does not eliminate decoherence. P2's distinct claim is retained charge-gauge/source compatibility and its supplied capacitance path, not inventing a triangular charge qubit.
+
+Read [Friesen et al., charge-quadrupole construction and coupling discussion](https://arxiv.org/html/1605.01797v3). Their symmetry suppresses uniform electric-field noise and supports composite control/capacitive coupling. That is a serious competing design principle: retaining an arbitrary gauge need not dominate protection against the noise a device actually has. Read [SAGE's explicit exchange mechanism and gate comparison](https://arxiv.org/html/2501.18589). Its approximately 785 ns / 99.8% intrinsic model result uses a different fidelity/domain metric and is not directly comparable with P2's uniform joint-isometry bound. [Rudolph–Grover](https://arxiv.org/abs/quant-ph/0210187) is ancestry for real computation; [Bravyi–DiVincenzo–Loss](https://arxiv.org/abs/1105.0675) for rigorous effective-Hamiltonian methods. No broad historical-priority claim follows from this bounded source check.
+
+The strongest next opening is co-design of encoding, control and the actual source/noise model around useful computation. It may be better to derive/suppress the noncommuting physical terms, improve the operation using acquired structure, or choose a different protection architecture. There is no reason to treat maximal auxiliary-space generality as a mission requirement. This is an allocation judgment, not an unproved assertion that the current architecture cannot work.
+
+**Architectural dependency note:** the downloaded files are flat; `spinless_open_source.py` expects `alternatives/spinless.py`. The sorter and retuner depend on `p2_physical_bridge/orbital_echo.py`, already preserved at `Review_1913_20261030/P2_FINAL_ORIGINALS/orbital_echo.py`. Preserve original bytes and link/normalize the delta's expected hierarchy; do not call the eight flat files a standalone replay package or ask P2 for a new export. This is technical insertion work, not a scientific acceptance gate.

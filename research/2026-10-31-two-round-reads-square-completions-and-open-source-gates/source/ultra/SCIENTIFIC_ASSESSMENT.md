@@ -1,0 +1,19 @@
+## Scientific delta
+
+For the **fixed non-aligned Hopf quartic**, the new theorem classifies every nonzero linear form L and every cubic C for which adding some finite multiple of L² permits global rank-one convexity. Exactly the same pairs admit some finite quasiconvex completion. Nonzero cubics occur on one exceptional scaling/SO(2)/Gamma orbit of L, with a complete two-dimensional nontranslation cubic space. The supplied global sufficient coefficient is `2^92` times the squared coefficient l1 norm.
+
+This is universal over the entire family of rank-one positive-semidefinite quadratic forms on the four matrix entries. It is not limited to one numerically found square. Its algebraic receiving matters: the necessary zero-direction condition factors every possible cubic; reconstructed polynomial identities exclude every other real normalized square; the zero-column exception is separately handled; exact quadratic-field arithmetic constructs the entire exceptional kernel. The heat lift annihilates the full four-dimensional bottom kernel and cancels the moving top null before the analytic global bound. No sampled angles or optimizer status substitute for the universal claim.
+
+The companion covers **all weighted nonnegative diagonal quadratic forms**, organized by sixteen support types, not merely sixteen isolated directions. It also transports to the stated commuting two-output-block family. Necessary finite cuts become complete because a global sufficient heat construction is supplied for every vector in their kernel, not because the finite test set is assumed exhaustive. The common coefficient `2^106/q_min` is a loose existence bound.
+
+Both results concern **existence of some finite completion**. They neither equate optimal ROC/QC coefficient thresholds nor prove that each particular ROC polynomial is QC. Arbitrary cross-term rank-two/rank-three quadratics, general attainable capacity, the 1859 fixture and general Morrey remain open. Rank here is the rank of the quadratic form on matrix entries, not the rank of every tested gradient matrix.
+
+The additional two-mode actual-gradient moment inequality is an outer QC bound. It is not an attainable allocation. The already assessed actual smooth-field capacity discontinuity invalidates the proposed continuity argument at covariance rank loss even with strong convergence and positive gap; it neither supplies nonattainment nor a negative variational gap. The final 1859 replay retains its UNKNOWN QC status.
+
+## Comparison and significance
+
+The earlier isotropic positive stabilizer cannot simply dominate these degenerate penalties; its known generated-cone limitation is relevant. The new kernel-preserving construction therefore extends the supported boundary, rather than just lowering another sufficient coefficient. Polynomial elimination, quadratic-field arithmetic, heat flow and Stokes are machinery; the earned classification and its exact compatible lifts are the scientific contribution.
+
+Read [Bruno–Pasqualotto, Theorem 2 and heat/correction criterion](https://arxiv.org/html/2608.06367). They establish ROC/QC equivalence for homogeneous quartics invariant under both left and right rotations, using heat-flow monotonicity and exact two-form corrections. That is a substantial antecedent for the proof method. It does not directly settle this non-aligned quartic plus cubic and degenerate quadratic completion. No claim of comprehensive historical novelty follows from this bounded comparison. A separate older fourth-degree-programming source did not load; no unseen result was inferred from its title.
+
+This is a complete mathematical boundary piece with reusable machinery. It is not the central full variational theorem or a demonstrated civilisation-level capability. Further cataloguing is justified by the universal consequence it can unlock, rather than by the number of support cases.
