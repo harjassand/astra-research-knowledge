@@ -1,0 +1,3 @@
+# Adaptive cache restoration and restricted resonant-gluing final
+
+Two new cards and six new reusable units, with the earlier triad unit advanced to immutable v0003. P1 is supported by its supplied native prefix and overlapping rendered final tail; no downloadable executable final package was acquired. Ultra retains partial/final overlap bytes, its fixed relative amplitudes, and the distinction between triad-only 5^j and mixed 9^j separation. Unchanged originals are reused. Producer reports, independent review, novelty, physical validation and practical advantage remain separate. No scientific replay or new audit was performed.
