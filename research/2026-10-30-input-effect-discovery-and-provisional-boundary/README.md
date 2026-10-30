@@ -1,0 +1,3 @@
+# Input-effect discovery and provisional quadratic-boundary sources
+
+A separate frozen intake after PR282: three cards and seven reusable source-supported units. P3 is a completed visible-response-only account, with all-state admission, actual solver/proof costs, allowed consumers, predecessor/comparator credit and timing limits. Ultra is still researching: frozen parent statements and exact artifacts remain producer-reported partials, with real parameter exclusions and unresolved QC boundaries. No scientific replay, new review or sign-off, source retry, producer contact or general Morrey/P-versus-NP claim is made. Original PDF/citations are preserved without implying a whole-paper read. Biology remains held and chemistry non-operational.
