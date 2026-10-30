@@ -1,0 +1,3 @@
+# Acoustic-limit partial stages
+
+One card and four current units, with captured v1/v2 history for the local jet/kernel stages first published together. Preserve the exact local rank-eight report, supplied-catalogue17-atom operation, unfinished positive-definite optimal16 claim, rank-three field certificate and failed exact computations separately. Coordinator assessment is not a completed independent proof review. Earlier shared-mode final and failed allocations remain unchanged. No scientific code execution, reproof, new sign-off, novelty assessment, researcher contact or routine monitoring publication.
