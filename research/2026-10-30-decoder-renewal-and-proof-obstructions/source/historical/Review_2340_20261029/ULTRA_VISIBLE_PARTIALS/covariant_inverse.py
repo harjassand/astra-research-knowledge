@@ -1,0 +1,191 @@
+"""Small-Q ALL adaptive fixed-order comb optimization for flat mixed encodings.
+
+Root construction. Haar covariance reduces the complete deterministic comb to
+S_(Q+1) permutation blocks. This is a numerical discovery tool, not a source,
+Haar-sampling, quantum-device or exact-optimality certificate execution.
+"""
+from __future__ import annotations
+import argparse
+from functools import lru_cache
+import itertools
+import json
+from pathlib import Path
+import time
+import numpy as np
+import cvxpy as cp
+
+
+def compose(p,q): return tuple(p[q[i]] for i in range(len(p)))
+def invert(p): return tuple(p.index(i) for i in range(len(p)))
+def cycles(p):
+    seen=set();n=0
+    for i in range(len(p)):
+        if i in seen: continue
+        n+=1;j=i
+        while j not in seen: seen.add(j);j=p[j]
+    return n
+
+
+@lru_cache(None)
+def perms(n): return tuple(itertools.permutations(range(n)))
+
+
+def partitions(n,cap=None):
+    if n==0: yield ();return
+    for first in range(min(n,n if cap is None else cap),1-1,-1):
+        for tail in partitions(n-first,first): yield (first,)+tail
+
+
+@lru_cache(None)
+def tableaux(shape):
+    n=sum(shape)
+    if not n:return ((),)
+    out=[]
+    for row,size in enumerate(shape):
+        if row+1<len(shape) and shape[row+1]>=size:continue
+        shorter=list(shape);shorter[row]-=1
+        while shorter and shorter[-1]==0:shorter.pop()
+        for t in tableaux(tuple(shorter)):out.append(t+((row,size-1),))
+    return tuple(out)
+
+
+@lru_cache(None)
+def representation(shape):
+    tabs=tableaux(shape);n=sum(shape);index={t:i for i,t in enumerate(tabs)}
+    adjacent=[]
+    for j in range(n-1):
+        mat=np.zeros((len(tabs),len(tabs)))
+        for col,t in enumerate(tabs):
+            dist=(t[j+1][1]-t[j+1][0])-(t[j][1]-t[j][0])
+            mat[col,col]=1/dist
+            if abs(dist)>1:
+                swap=list(t);swap[j],swap[j+1]=swap[j+1],swap[j]
+                mat[index[tuple(swap)],col]=np.sqrt(1-1/dist**2)
+        assert np.max(abs(mat@mat-np.eye(len(tabs))))<1e-12
+        adjacent.append(mat)
+    mats=[]
+    for p in perms(n):
+        current=list(p);steps=[]
+        for value in range(n):
+            pos=current.index(value)
+            while pos>value:
+                current[pos-1],current[pos]=current[pos],current[pos-1]
+                steps.append(pos-1);pos-=1
+        mat=np.eye(len(tabs))
+        for j in steps:mat=adjacent[j]@mat
+        mats.append(mat)
+    # Complete multiplication verification at the small admitted sizes.
+    pi={p:i for i,p in enumerate(perms(n))}
+    for i,p in enumerate(perms(n)):
+        for j,q in enumerate(perms(n)):
+            assert np.max(abs(mats[i]@mats[j]-mats[pi[compose(p,q)]]))<1e-10
+    return tuple(mats)
+
+
+def gram(n,dim):
+    pp=perms(n)
+    return np.array([[float(dim**cycles(compose(invert(p),q))) for q in pp] for p in pp])
+
+
+def coefficient_projector(n,dim):
+    g=gram(n,dim)/dim**n
+    values,vectors=np.linalg.eigh(g)
+    v=vectors[:,values>1e-8]
+    return v@v.T
+
+
+def delete(p,j):
+    old=[i for i in range(len(p)) if i!=j];out=[]
+    for i in old:
+        target=p[i]
+        if target==j:target=p[j]
+        out.append(old.index(target))
+    return tuple(out)
+
+
+def trace_matrix(n,j,dim):
+    small={p:i for i,p in enumerate(perms(n-1))}
+    a=np.zeros((len(small),len(perms(n))))
+    for col,p in enumerate(perms(n)):
+        a[small[delete(p,j)],col]=dim if p[j]==j else 1
+    return a
+
+
+def embedding(n):
+    big={p:i for i,p in enumerate(perms(n))}
+    a=np.zeros((len(big),len(perms(n-1))))
+    for j,p in enumerate(perms(n-1)):a[big[p+(n-1,)],j]=1
+    return a
+
+
+def solve(query_count,r,k=2,ambient=None,mode='adaptive'):
+    Q=query_count;l=Q+1;D=max(l,k*r) if ambient is None else ambient
+    if not(Q in (1,2,3) and k>=2 and D>=max(l,k*r)):
+        raise ValueError('admitted experiment Q1--3, physical permutations faithful')
+    start=time.perf_counter();variables={};constraints=[];blocks=[]
+    for n in range(1,l+1):
+        size=len(perms(n));c=cp.Variable((size,size),name=f'c{n}');variables[n]=c
+        iv=[perms(n).index(invert(p)) for p in perms(n)]
+        constraints.append(c==c[np.ix_(iv,iv)])
+        project=coefficient_projector(n,k)
+        constraints.append(c==project@c)
+    if mode=='adaptive':
+        constraints.append(k*variables[1][0,0]==1)
+        for n in range(2,l+1):
+            j=0 if n==l else n-1
+            residual=trace_matrix(n,j,k)@variables[n]-variables[n-1]@embedding(n).T
+            # Equality as OPERATORS; the logical permutation family can be dependent.
+            constraints.append((gram(n-1,k)/k**(n-1))@residual==0)
+    elif mode=='parallel':
+        # All physical output slots are identities in the preprocessing trace.
+        # Source inputs can be arbitrarily entangled; no iid-Choi restriction.
+        rho=cp.Variable(len(perms(Q)),name='parallel_input_coefficients')
+        identity=np.zeros(len(perms(l)));identity[perms(l).index(tuple(range(l)))]=1
+        residual=trace_matrix(l,0,k)@variables[l]-cp.reshape(rho,(len(perms(Q)),1),order='C')@identity[None,:]
+        constraints.append((gram(Q,k)/k**Q)@residual==0)
+        constraints.append(sum(k**cycles(p)*rho[i] for i,p in enumerate(perms(Q)))==1)
+    else:raise ValueError(mode)
+    pp=perms(l);full=variables[l];flat=cp.reshape(full,(len(pp)**2,),order='C')
+    for la in partitions(l):
+        if len(la)>k:continue
+        aa=representation(la)
+        for mu in partitions(l):
+            if len(mu)>D:continue
+            bb=representation(mu);d=aa[0].shape[0]*bb[0].shape[0]
+            design=np.column_stack([np.kron(a,b).reshape(-1) for a in aa for b in bb])
+            raw=cp.reshape(design@flat,(d,d),order='C')
+            block=(raw+raw.T)/2
+            constraints.append(block>>0);blocks.append((la,mu,block))
+    f=np.array([[k**cycles(compose(s,invert(t)))*r**(cycles(t)-l)/k**2 for t in pp] for s in pp])
+    objective=cp.sum(cp.multiply(f,full));problem=cp.Problem(cp.Maximize(objective),constraints)
+    failure=None
+    try:
+        optimum=problem.solve(solver='CLARABEL',tol_gap_abs=1e-9,tol_gap_rel=1e-9,tol_feas=1e-9,max_iter=250)
+    except cp.error.SolverError as err:
+        failure=str(err)
+        optimum=problem.solve(solver='SCS',eps=2e-7,max_iters=100000)
+    result={'Q':Q,'r':r,'k':k,'ambient_D':D,'mode':mode,'status':problem.status,
+            'numerical_Bell_fidelity':float(optimum),
+            'one_query_exact_control':(1+1/r)/k**2,
+            'maximum_constraint_violation':max(float(np.max(c.violation())) for c in constraints),
+            'minimum_block_eigenvalue':min(float(np.linalg.eigvalsh(b.value).min()) for _,_,b in blocks),
+            'full_coefficients':full.value.tolist(),
+            'seconds':time.perf_counter()-start,
+            'solver_stats':{'solver':problem.solver_stats.solver_name,'iterations':problem.solver_stats.num_iters},
+            'initial_solver_failure':failure,
+            'science_scope':'numerical covariant-comb optimization; no exact optimum/advantage certificate',
+            'source_queries_executed':0,'quantum_or_Haar_runs':0}
+    return result
+
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument('--queries',type=int,nargs='+',default=[1,2]);ap.add_argument('--ranks',type=int,nargs='+',default=[1,2,4,8]);ap.add_argument('--mode',choices=['adaptive','parallel'],default='adaptive');ap.add_argument('--output',type=Path,required=True);a=ap.parse_args()
+    results=[]
+    for Q in a.queries:
+        for r in a.ranks:
+            item=solve(Q,r,mode=a.mode);results.append(item)
+            print(json.dumps({k:item[k] for k in ['Q','r','status','numerical_Bell_fidelity','maximum_constraint_violation','seconds']}),flush=True)
+            a.output.write_text(json.dumps({'scope':'root covariant adaptive-comb numerical discovery','results':results},indent=2)+'\n')
+
+
+if __name__=='__main__':main()

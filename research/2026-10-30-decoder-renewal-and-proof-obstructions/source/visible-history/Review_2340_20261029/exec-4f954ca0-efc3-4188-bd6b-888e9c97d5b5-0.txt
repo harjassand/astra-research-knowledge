@@ -1,0 +1,56 @@
+@@ -120,3 +120,3 @@
+ 
+-def solve(query_count,r,k=2,ambient=None):
++def solve(query_count,r,k=2,ambient=None,mode='adaptive'):
+     Q=query_count;l=Q+1;D=max(l,k*r) if ambient is None else ambient
+@@ -131,8 +131,18 @@
+         constraints.append(c==project@c)
+-    constraints.append(k*variables[1][0,0]==1)
+-    for n in range(2,l+1):
+-        j=0 if n==l else n-1
+-        residual=trace_matrix(n,j,k)@variables[n]-variables[n-1]@embedding(n).T
+-        # Equality as OPERATORS; the logical permutation family can be dependent.
+-        constraints.append((gram(n-1,k)/k**(n-1))@residual==0)
++    if mode=='adaptive':
++        constraints.append(k*variables[1][0,0]==1)
++        for n in range(2,l+1):
++            j=0 if n==l else n-1
++            residual=trace_matrix(n,j,k)@variables[n]-variables[n-1]@embedding(n).T
++            # Equality as OPERATORS; the logical permutation family can be dependent.
++            constraints.append((gram(n-1,k)/k**(n-1))@residual==0)
++    elif mode=='parallel':
++        # All physical output slots are identities in the preprocessing trace.
++        # Source inputs can be arbitrarily entangled; no iid-Choi restriction.
++        rho=cp.Variable(len(perms(Q)),name='parallel_input_coefficients')
++        identity=np.zeros(len(perms(l)));identity[perms(l).index(tuple(range(l)))]=1
++        residual=trace_matrix(l,0,k)@variables[l]-cp.reshape(rho,(len(perms(Q)),1),order='C')@identity[None,:]
++        constraints.append((gram(Q,k)/k**Q)@residual==0)
++        constraints.append(sum(k**cycles(p)*rho[i] for i,p in enumerate(perms(Q)))==1)
++    else:raise ValueError(mode)
+     pp=perms(l);full=variables[l];flat=cp.reshape(full,(len(pp)**2,),order='C')
+@@ -150,4 +160,9 @@
+     objective=cp.sum(cp.multiply(f,full));problem=cp.Problem(cp.Maximize(objective),constraints)
+-    optimum=problem.solve(solver='CLARABEL',tol_gap_abs=1e-9,tol_gap_rel=1e-9,tol_feas=1e-9,max_iter=250)
+-    result={'Q':Q,'r':r,'k':k,'ambient_D':D,'status':problem.status,
++    failure=None
++    try:
++        optimum=problem.solve(solver='CLARABEL',tol_gap_abs=1e-9,tol_gap_rel=1e-9,tol_feas=1e-9,max_iter=250)
++    except cp.error.SolverError as err:
++        failure=str(err)
++        optimum=problem.solve(solver='SCS',eps=2e-7,max_iters=100000)
++    result={'Q':Q,'r':r,'k':k,'ambient_D':D,'mode':mode,'status':problem.status,
+             'numerical_Bell_fidelity':float(optimum),
+@@ -159,2 +174,3 @@
+             'solver_stats':{'solver':problem.solver_stats.solver_name,'iterations':problem.solver_stats.num_iters},
++            'initial_solver_failure':failure,
+             'science_scope':'numerical covariant-comb optimization; no exact optimum/advantage certificate',
+@@ -165,3 +181,3 @@
+ def main():
+-    ap=argparse.ArgumentParser();ap.add_argument('--queries',type=int,nargs='+',default=[1,2]);ap.add_argument('--ranks',type=int,nargs='+',default=[1,2,4,8]);ap.add_argument('--output',type=Path,required=True);a=ap.parse_args()
++    ap=argparse.ArgumentParser();ap.add_argument('--queries',type=int,nargs='+',default=[1,2]);ap.add_argument('--ranks',type=int,nargs='+',default=[1,2,4,8]);ap.add_argument('--mode',choices=['adaptive','parallel'],default='adaptive');ap.add_argument('--output',type=Path,required=True);a=ap.parse_args()
+     results=[]
+@@ -169,3 +185,3 @@
+         for r in a.ranks:
+-            item=solve(Q,r);results.append(item)
++            item=solve(Q,r,mode=a.mode);results.append(item)
+             print(json.dumps({k:item[k] for k in ['Q','r','status','numerical_Bell_fidelity','maximum_constraint_violation','seconds']}),flush=True)

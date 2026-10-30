@@ -1,0 +1,762 @@
+"""Exact signed reference-row conversion and a finite opaque-source protocol.
+
+Only the row conversion is executed by the associated consumer.  The optional
+source protocol is a literal implementation contract, not a simulated quantum
+experiment.  The public C compiler is consumed read-only with a byte binding.
+"""
+
+from __future__ import annotations
+
+from fractions import Fraction
+import hashlib
+import importlib.util
+from pathlib import Path
+
+
+COMPILER_PATH = Path(__file__).resolve().parents[1] / "c_classical_decoder" / "pauli_compiler.py"
+COMPILER_SHA256 = "73ee0ca2d52b62680c545b1a01a9dc18687cb1ba1966bf43cf12aa5135473d43"
+
+
+def load_compiler():
+    if hashlib.sha256(COMPILER_PATH.read_bytes()).hexdigest() != COMPILER_SHA256:
+        raise ValueError("the independently supplied compiler bytes changed")
+    spec = importlib.util.spec_from_file_location("shared_exact_pauli_compiler", COMPILER_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+pc = load_compiler()
+
+
+class BinarySpan:
+    """GF(2) row space with exact certificates in the supplied generator order."""
+
+    def __init__(self, rows=()):
+        self.pivots = {}
+        self.rows = []
+        for row in rows:
+            if not self.add(row):
+                raise ValueError("dependent supplied reference rows")
+
+    def reduce(self, row, combination=0):
+        while row:
+            pivot = row.bit_length() - 1
+            if pivot not in self.pivots:
+                break
+            value, certificate = self.pivots[pivot]
+            row ^= value
+            combination ^= certificate
+        return row, combination
+
+    def contains(self, row):
+        return self.reduce(row)[0] == 0
+
+    def add(self, row):
+        residue, combination = self.reduce(row, 1 << len(self.rows))
+        if not residue:
+            return False
+        self.pivots[residue.bit_length() - 1] = residue, combination
+        self.rows.append(row)
+        return True
+
+    def solve(self, row):
+        residue, certificate = self.reduce(row)
+        if residue:
+            raise ValueError("target outside the supplied reference span")
+        check = 0
+        for j, original in enumerate(self.rows):
+            if (certificate >> j) & 1:
+                check ^= original
+        assert check == row
+        return certificate
+
+
+def record_paulis(record):
+    """The sign is carried on the physical half of a canonical joint Pauli."""
+    r = pc.canonical(record["rx"], record["rz"])
+    b = pc.canonical(record["px"], record["pz"], record["negative"])
+    return r, b
+
+
+def canonical_pairs(records, q, n):
+    """Convert arbitrary independent reference labels, including Y, exactly.
+
+    Return physical (X_i,Z_i) pairs and literal mod4 conversion receipts.  No
+    hidden encoding, source state, expectation, or candidate law is an input.
+    """
+    if not (1 <= q <= n) or len(records) != 2 * q:
+        raise ValueError("need exactly2q rows and1<=q<=n")
+    rows = []
+    for record in records:
+        if any(record[key] < 0 for key in ("rx", "rz", "px", "pz")):
+            raise ValueError("negative Pauli mask")
+        if (record["rx"] | record["rz"]) >> q:
+            raise ValueError("reference mask out of range")
+        if (record["px"] | record["pz"]) >> n:
+            raise ValueError("physical mask out of range")
+        rows.append(record_paulis(record))
+    for i, (r, b) in enumerate(rows):
+        for rr, bb in rows[i + 1:]:
+            if pc.symp(r, rr) != pc.symp(b, bb):
+                raise ValueError("supplied signed joint rows do not commute")
+    span = BinarySpan(r[0] | (r[1] << q) for r, _ in rows)
+    flat, receipts = [], []
+    for i in range(q):
+        for kind, target in (("X", 1 << i), ("Z", 1 << (q + i))):
+            combination = span.solve(target)
+            reference, physical = (0, 0, 0), (0, 0, 0)
+            selected = []
+            for j, (r, b) in enumerate(rows):
+                if (combination >> j) & 1:
+                    selected.append(j)
+                    reference = pc.mul(reference, r)
+                    physical = pc.mul(physical, b)
+            assert reference[:2] == ((1 << i, 0) if kind == "X" else (0, 1 << i))
+            # Joint product = (i^ell R_target) tensor B_raw.  Move i^ell to
+            # the physical factor: ADD ell.  Ignoring it or subtracting it is
+            # incorrect when reference products pass through +/-i phases.
+            converted = physical[0], physical[1], (physical[2] + reference[2]) % 4
+            pc.sign(converted)  # Exact Hermiticity admission, including sign.
+            flat.append(converted)
+            receipts.append({"logical": i, "kind": kind,
+                             "selected_rows": selected,
+                             "raw_reference": list(reference),
+                             "raw_physical": list(physical),
+                             "converted_physical": list(converted)})
+    pairs = list(zip(flat[::2], flat[1::2]))
+    for i, a in enumerate(flat):
+        for j, b in enumerate(flat):
+            if pc.symp(a, b) != int(i // 2 == j // 2 and i != j):
+                raise ValueError("converted physical frame is not canonical")
+    return pairs, receipts
+
+
+def compile_records(records, q, n, outputs=None):
+    pairs, receipts = canonical_pairs(records, q, n)
+    gates = pc.compile_pairs(pairs, n, outputs)
+    return {"pairs": pairs, "conversion": receipts, "gates": gates,
+            "compiler_sha256": COMPILER_SHA256}
+
+
+def ceil_fraction(value):
+    value = Fraction(value)
+    return -(-value.numerator // value.denominator)
+
+
+def ceil_log2(value):
+    """Exact nonnegative integer upper bound for ln(value), for value>=1."""
+    value = Fraction(value)
+    if value < 1:
+        raise ValueError("log upper bound requires value>=1")
+    k = max(0, value.numerator.bit_length() - value.denominator.bit_length())
+    if (value.denominator << k) < value.numerator:
+        k += 1
+    assert (value.denominator << k) >= value.numerator
+    return k
+
+
+def acquisition_budget(q, t, tau, delta):
+    """Finite conservative budget; logarithms replaced by exact upper bounds."""
+    tau, delta = Fraction(tau), Fraction(delta)
+    if not (q >= 1 and t >= 0 and 0 < tau <= Fraction(1, 8) and 0 < delta < Fraction(1, 2)):
+        raise ValueError("parameters outside the governing theorem")
+    pstar = Fraction(1, 2 * 4 ** (t + 1))
+    trials = ceil_fraction(2 / pstar * ceil_log2(Fraction(8 * q) / delta))
+    candidates = 2 * q * trials
+    shots = ceil_fraction(Fraction(256) / tau * ceil_log2(Fraction(16 * candidates) / delta))
+    return {"trials_per_stage": trials, "max_candidates": candidates,
+            "shots_per_test": shots, "max_source_calls": candidates * (4 + shots)}
+
+
+def acquire_from_opaque_source(source, q, n, t, tau, delta):
+    """Literal native interface, NOT executed in ROW_EXECUTION.json.
+
+    source.bell_difference() returns (x,z) on q reference then n output bits,
+    using FOUR fresh Bell-input forward calls.  source.measure_pauli(x,z,V)
+    returns the minus count from V fresh actual Choi states, measuring the
+    canonical Hermitian Pauli.  The caller supplies the theorem's distribution
+    error/readout-bias warrants.  There is no state/moment/hidden-encoding API.
+    """
+    budget = acquisition_budget(q, t, tau, delta)
+    tau = Fraction(tau)
+    ref_mask = (1 << q) - 1
+    span, records = BinarySpan(), []
+    calls, candidates, tests = 0, 0, 0
+    for _stage in range(2 * q):
+        for _trial in range(budget["trials_per_stage"]):
+            x, z = source.bell_difference()
+            calls += 4
+            candidates += 1
+            if x < 0 or z < 0 or (x | z) >> (n + q):
+                raise ValueError("source returned an invalid public outcome")
+            rx, rz, px, pz = x & ref_mask, z & ref_mask, x >> q, z >> q
+            label = rx | (rz << q)
+            if span.contains(label):
+                continue
+            shots = budget["shots_per_test"]
+            minus = source.measure_pauli(x, z, shots)
+            calls += shots
+            tests += 1
+            if not isinstance(minus, int) or not 0 <= minus <= shots:
+                raise ValueError("invalid public measurement count")
+            if Fraction(min(minus, shots - minus), shots) > tau / 2:
+                continue
+            record = {"rx": rx, "rz": rz, "px": px, "pz": pz,
+                      "negative": 2 * minus > shots}
+            rr, bb = record_paulis(record)
+            if any(pc.symp(rr, r) != pc.symp(bb, b)
+                   for r, b in map(record_paulis, records)):
+                continue
+            assert span.add(label)
+            records.append(record)
+            break
+        else:
+            return {"status": "ABORT", "records": records,
+                    "source_calls": calls, "candidates": candidates, "tests": tests,
+                    "budget": budget}
+    compiled = compile_records(records, q, n)
+    assert calls <= budget["max_source_calls"]
+    return {"status": "RETURNED", "records": records, **compiled,
+            "source_calls": calls, "candidates": candidates, "tests": tests,
+            "budget": budget}
+"""Execute only exact classical reference-row/Clifford postprocessing.
+
+The public algebraic input is generated from a declared Clifford for the sole
+purpose of a noncanonical phase control.  It is not a Bell-difference source,
+noisy-channel simulator, source acquisition run, or physical gate execution.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+import time
+
+import row_receiver as rr
+
+pc = rr.pc
+
+
+def transpose(a):
+    x, z, p = a
+    return x, z, (p + 2 * (x & z).bit_count()) % 4
+
+
+def public_dense_clifford(n):
+    gates = []
+    for j in range(n):
+        gates.append(("H", j))
+        if j % 3:
+            gates.append(("S", j))
+    for round_index in range(3):
+        for j in range(n - 1):
+            gates.append(("CX", j, j + 1))
+        for j in range(n - 1, 0, -1):
+            gates.append(("CX", j, j - 1))
+        for j in range(n):
+            if (j + round_index) % 2:
+                gates.append(("H", j))
+            else:
+                gates.append(("S", j))
+    return gates
+
+
+def main():
+    started = time.perf_counter()
+    q, n = 2, 32
+    encoding = public_dense_clifford(n)
+    # Independent NONcanonical reference basis.  It contains two Y strings,
+    # two-site support, and raw reference products with phases +/-i.
+    labels = [(3, 1), (2, 3), (1, 0), (0, 1)]
+    records = []
+    for rx, rz in labels:
+        physical = pc.apply(transpose(pc.canonical(rx, rz)), encoding)
+        records.append({"rx": rx, "rz": rz, "px": physical[0],
+                        "pz": physical[1], "negative": pc.sign(physical) < 0})
+    # Only these signed records enter the row converter.  Encoding is kept
+    # outside that API and used later solely as independent algebraic truth.
+    compiled = rr.compile_records(records, q, n)
+    gates = compiled["gates"]
+    original_checks = []
+    for record in records:
+        reference, physical = rr.record_paulis(record)
+        obtained = pc.apply(physical, gates)
+        wanted = transpose(reference)
+        assert obtained == wanted
+        original_checks.append({"obtained": list(obtained), "wanted": list(wanted)})
+    product_checks = 0
+    for mask in range(1 << (2 * q)):
+        reference, physical = (0, 0, 0), (0, 0, 0)
+        for j, record in enumerate(records):
+            if (mask >> j) & 1:
+                r, b = rr.record_paulis(record)
+                reference = pc.mul(reference, r)
+                physical = pc.mul(physical, b)
+        # Transpose reverses multiplication order; comparing the product of
+        # individual transposes retains the true row ordering and phases.
+        expected = (0, 0, 0)
+        for j, record in enumerate(records):
+            if (mask >> j) & 1:
+                expected = pc.mul(expected, transpose(rr.record_paulis(record)[0]))
+        assert pc.apply(physical, gates) == expected
+        product_checks += 1
+    # Complete generator check: D U0 preserves the logical algebra exactly,
+    # and every arbitrary junk Pauli has no support on the logical outputs.
+    combined = encoding + gates
+    tableau = pc.make_tableau(n, combined)
+    generator_checks = 0
+    logical_mask = (1 << q) - 1
+    for j in range(n):
+        for kind, images in (("X", tableau[0]), ("Z", tableau[1])):
+            image = images[j]
+            if j < q:
+                assert image == ((1 << j, 0, 0) if kind == "X" else (0, 1 << j, 0))
+            else:
+                assert not ((image[0] | image[1]) & logical_mask)
+            generator_checks += 1
+    # Ignoring raw reference phase is detected, including non-Hermitian
+    # physical candidates in the +/-i case.  No source is used for this check.
+    wrong_phase_detections = []
+    for item in compiled["conversion"]:
+        raw = tuple(item["raw_physical"])
+        try:
+            pc.sign(raw)
+            bad = pc.apply(raw, gates)
+            target = ((1 << item["logical"], 0, 0) if item["kind"] == "X"
+                      else (0, 1 << item["logical"], 0))
+            detected = bad != target
+            reason = "wrong signed generator" if detected else "not detected"
+        except ValueError:
+            detected, reason = True, "non-Hermitian raw physical factor"
+        if item["raw_reference"][2]:
+            assert detected
+            wrong_phase_detections.append({"logical": item["logical"],
+                                           "kind": item["kind"], "reason": reason})
+    assert any(item["raw_reference"][2] in (1, 3) for item in compiled["conversion"])
+    assert wrong_phase_detections
+    elapsed = time.perf_counter() - started
+    result = {
+        "status": "PASS_EXACT_CLASSICAL_POSTPROCESSING_ONLY",
+        "q": q, "n": n, "signed_input_records": records,
+        "input_provenance": "public deterministic Clifford algebra; no source samples",
+        "encoding_gate_count": len(encoding),
+        "decoder_gate_count": len(gates),
+        "decoder_cx_count": sum(g[0] == "CX" for g in gates),
+        "maximum_input_row_weight": max((r["px"] | r["pz"]).bit_count() for r in records),
+        "conversion": compiled["conversion"], "decoder_gates": gates,
+        "original_row_checks": original_checks,
+        "all_selected_row_products_checked": product_checks,
+        "complete_logical_and_junk_generator_checks": generator_checks,
+        "wrong_phase_negative_controls": wrong_phase_detections,
+        "compiler_path": str(rr.COMPILER_PATH), "compiler_sha256": rr.COMPILER_SHA256,
+        "source_calls": 0, "Bell_difference_shots": 0, "Pauli_validation_shots": 0,
+        "quantum_circuit_or_hardware_executions": 0,
+        "elapsed_seconds_after_imports": elapsed,
+        "not_acquired": ["Bell/source acquisition", "noisy source realization",
+                         "physical controls", "native calibration", "practical advantage"]
+    }
+    for name in ("row_receiver.py", "consume_rows.py"):
+        result.setdefault("consumer_input_hashes", {})[name] = hashlib.sha256(
+            Path(__file__).with_name(name).read_bytes()).hexdigest()
+    path = Path(__file__).with_name("ROW_EXECUTION.json")
+    path.write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps({k: result[k] for k in (
+        "status", "decoder_gate_count", "decoder_cx_count", "maximum_input_row_weight",
+        "all_selected_row_products_checked", "complete_logical_and_junk_generator_checks",
+        "wrong_phase_negative_controls", "elapsed_seconds_after_imports")}))
+
+
+if __name__ == "__main__":
+    main()
+{
+  "status": "PASS_EXACT_CLASSICAL_POSTPROCESSING_ONLY",
+  "q": 2,
+  "n": 32,
+  "signed_input_records": [
+    {
+      "rx": 3,
+      "rz": 1,
+      "px": 1145324614,
+      "pz": 4008636159,
+      "negative": true
+    },
+    {
+      "rx": 2,
+      "rz": 3,
+      "px": 1145324612,
+      "pz": 4008636138,
+      "negative": false
+    },
+    {
+      "rx": 1,
+      "rz": 0,
+      "px": 1145324614,
+      "pz": 4008636139,
+      "negative": false
+    },
+    {
+      "rx": 0,
+      "rz": 1,
+      "px": 0,
+      "pz": 2863311530,
+      "negative": false
+    }
+  ],
+  "input_provenance": "public deterministic Clifford algebra; no source samples",
+  "encoding_gate_count": 335,
+  "decoder_gate_count": 55,
+  "decoder_cx_count": 33,
+  "maximum_input_row_weight": 26,
+  "conversion": [
+    {
+      "logical": 0,
+      "kind": "X",
+      "selected_rows": [
+        2
+      ],
+      "raw_reference": [
+        1,
+        0,
+        0
+      ],
+      "raw_physical": [
+        1145324614,
+        4008636139,
+        0
+      ],
+      "converted_physical": [
+        1145324614,
+        4008636139,
+        0
+      ]
+    },
+    {
+      "logical": 0,
+      "kind": "Z",
+      "selected_rows": [
+        3
+      ],
+      "raw_reference": [
+        0,
+        1,
+        0
+      ],
+      "raw_physical": [
+        0,
+        2863311530,
+        0
+      ],
+      "converted_physical": [
+        0,
+        2863311530,
+        0
+      ]
+    },
+    {
+      "logical": 1,
+      "kind": "X",
+      "selected_rows": [
+        0,
+        2,
+        3
+      ],
+      "raw_reference": [
+        2,
+        0,
+        3
+      ],
+      "raw_physical": [
+        0,
+        2863311550,
+        1
+      ],
+      "converted_physical": [
+        0,
+        2863311550,
+        0
+      ]
+    },
+    {
+      "logical": 1,
+      "kind": "Z",
+      "selected_rows": [
+        0,
+        1,
+        2
+      ],
+      "raw_reference": [
+        0,
+        2,
+        2
+      ],
+      "raw_physical": [
+        1145324612,
+        4008636158,
+        0
+      ],
+      "converted_physical": [
+        1145324612,
+        4008636158,
+        2
+      ]
+    }
+  ],
+  "decoder_gates": [
+    [
+      "SWAP",
+      1,
+      0
+    ],
+    [
+      "CX",
+      3,
+      0
+    ],
+    [
+      "CX",
+      5,
+      0
+    ],
+    [
+      "CX",
+      7,
+      0
+    ],
+    [
+      "CX",
+      9,
+      0
+    ],
+    [
+      "CX",
+      11,
+      0
+    ],
+    [
+      "CX",
+      13,
+      0
+    ],
+    [
+      "CX",
+      15,
+      0
+    ],
+    [
+      "CX",
+      17,
+      0
+    ],
+    [
+      "CX",
+      19,
+      0
+    ],
+    [
+      "CX",
+      21,
+      0
+    ],
+    [
+      "CX",
+      23,
+      0
+    ],
+    [
+      "CX",
+      25,
+      0
+    ],
+    [
+      "CX",
+      27,
+      0
+    ],
+    [
+      "CX",
+      29,
+      0
+    ],
+    [
+      "CX",
+      31,
+      0
+    ],
+    [
+      "SDG",
+      0
+    ],
+    [
+      "H",
+      1
+    ],
+    [
+      "SDG",
+      6
+    ],
+    [
+      "SDG",
+      10
+    ],
+    [
+      "SDG",
+      14
+    ],
+    [
+      "SDG",
+      18
+    ],
+    [
+      "SDG",
+      22
+    ],
+    [
+      "SDG",
+      26
+    ],
+    [
+      "SDG",
+      30
+    ],
+    [
+      "CX",
+      0,
+      1
+    ],
+    [
+      "CX",
+      0,
+      2
+    ],
+    [
+      "CX",
+      0,
+      6
+    ],
+    [
+      "CX",
+      0,
+      10
+    ],
+    [
+      "CX",
+      0,
+      14
+    ],
+    [
+      "CX",
+      0,
+      18
+    ],
+    [
+      "CX",
+      0,
+      22
+    ],
+    [
+      "CX",
+      0,
+      26
+    ],
+    [
+      "CX",
+      0,
+      30
+    ],
+    [
+      "SWAP",
+      2,
+      1
+    ],
+    [
+      "SDG",
+      1
+    ],
+    [
+      "H",
+      1
+    ],
+    [
+      "H",
+      6
+    ],
+    [
+      "H",
+      10
+    ],
+    [
+      "H",
+      14
+    ],
+    [
+      "H",
+      18
+    ],
+    [
+      "H",
+      22
+    ],
+    [
+      "H",
+      26
+    ],
+    [
+      "H",
+      30
+    ],
+    [
+      "CX",
+      4,
+      1
+    ],
+    [
+      "CX",
+      6,
+      1
+    ],
+    [
+      "CX",
+      10,
+      1
+    ],
+    [
+      "CX",
+      14,
+      1
+    ],
+    [
+      "CX",
+      18,
+      1
+    ],
+    [
+      "CX",
+      22,
+      1
+    ],
+    [
+      "CX",
+      26,
+      1
+    ],
+    [
+      "CX",
+      30,
+      1
+    ],
+    [
+      "X",
+      1
+    ],
+    [
+      "H",
+      4
+    ],
+    [
+      "CX",
+      1,
+      4
+    ]
+ 

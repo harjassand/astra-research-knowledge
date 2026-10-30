@@ -1,0 +1,3 @@
+# Decoder, exact renewal and proof-operation boundaries
+
+Separate completed Ultra27 sources and Ultra28 final are reconciled with their preserved earlier snapshots. Canonical cards/units keep actual internal review subjects, prior corrections, known-source/quantum-memory costs, finite executions and remaining imports distinct. Exact recovery bounds do not become general approximate bounds; the recycling theorem retains its architecture; strict quartic epsilon/radius remain unevaluated; source persistence is not acquired. No scientific source/code replay, new scientific sign-off, novelty adjudication or physical capability claim is made.
