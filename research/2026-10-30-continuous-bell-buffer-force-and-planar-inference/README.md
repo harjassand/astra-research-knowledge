@@ -1,0 +1,3 @@
+# Continuous Bell buffer, force instrument, planar inference and scoped recurrence
+
+Separate frozen1235/P2/P3intake after PR285. Four cards/seven reusable units carry actual scoped whole reviews for the native continuous Bell buffer and two mathematical recurrence families; P2/P3remain at their reported root-working/parent-checked scopes. Exact source versions, withdrawn/corrected arguments, prior versions, missing P2files, P3visible-only boundary, costs and adverse comparisons remain explicit. No new scientific audit/reproof/replay,novelty investigation,source retry,producercontact or routine activity publication. Biologyheld,chemistrynonoperational.
