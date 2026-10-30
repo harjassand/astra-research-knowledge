@@ -1,0 +1,12 @@
+# Limited primary-scope check for the proposed general fast-connector family
+2026-10-30. This is NOT novelty clearance and the new global construction remains under review.
+
+The full stoichiometric rank is k+1: the pure fast complexes span k-1 independent conservative composition directions, and the two connector vectors have determinant q-m>0 in the (A,B) plane. Thus k>=2 gives genuinely rank>=3, not a planar projection. The projection to (N,B) is not Markov because activation/clearing rates depend on A.
+
+The non-binary tier criterion in Anderson–Cappelletti–Kim, arXiv:1904.08967v2, does not automatically apply. Let h=q-m and x_n=(nh,0,...,0,B=0). These states are reachable from zero by repeating q immigrations and one clearing. At each x_n only immigration is active, so its top stochastic tier is {0}. Using x∨1, the unique largest A-degree complex is mA+qB, not0. Hence the theorem's required top-stochastic-tier inclusion in the top deterministic tier fails on this explicit reachable boundary sequence. This generalizes the exact failure already checked in the separate frozen-network primary audit.
+
+The ASE/strongly-endotactic large-volume results discussed in producer-workspace/PRIMARY_PRIOR_SCOPE.md do not automatically provide fixed-volume recurrence; the required pure-species degradation hypotheses of the checked fixed-volume theorem are absent here. Planar bulk stability arXiv:2610.31550 and one-dimensional stoichiometric classification arXiv:2012.07954 likewise do not directly cover this full-rank family.
+
+Some members ARE conventional: if the fast complex set consists only of the k pure complexes, full deficiency is |C_fast|-k=0, and weak reversibility gives the standard complex-balanced/product-form regime. Additional mixed complexes can yield positive deficiency and incompatible complex-balance monomials, as the preserved doubled-edge triangle test demonstrates. Therefore no novelty claim should be made for every member merely because the family has arbitrary dimension.
+
+The stopping-time, positive-kernel, Poisson propagation, quantitative fluid approximation, and block-restart tools have established primary precedents (Laurence–Robert arXiv:2310.01949, Athreya–Kolba–Mattingly arXiv:1111.1755, Darling–Norris arXiv:0710.3269). Any potential new content would be the earned accessibility/clearing/reset estimates and their exact uncapped coupling, not those generic methods. A focused fresh arXiv/primary search found no automatic replacement theorem, but that is not an exhaustive equivalence check.

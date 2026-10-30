@@ -1,0 +1,460 @@
+## The construction: acquire a representation together with an order of queries that preserves it
+
+I moved to **exact probabilistic inference in networks of small local factors**. The central obstacle is independent of our earlier representation: even when every factor has only eight entries, loops can make counting, conditioning and sampling expensive. A compact transformed representation may make the partition function easy while leaving the original-variable queries needed for sampling difficult.
+
+I built a mechanism that addresses that second problem:
+
+> **Discover compatible local coordinates, then construct an observation order that keeps every required conditional calculation inside a tractable planar class. The internal coordinates may contain negative values; the sampler still returns exact samples of the original positive distribution.**
+
+The work produced three connected results:
+
+- An explicit invariant for recognizing compatible parity coordinates in the generic ternary case, with actual basis reconstruction from the supplied tables.
+- A broader theorem showing how to close exposed boundaries of planar matchgate networks without expanding their exponentially large boundary tensors.
+- An executed exact counter, weighted unranking procedure and original-variable sampler, alongside a conventional bucket-elimination sampler.
+
+The conventional implementation is faster on the small meshes I tested. I have established the construction and its guarantees, rather than a practical speed advantage or external priority for the combination.
+
+The earlier input-effect subspace, original-input consumers, coNP-complete admission theorem and solver-free rejection checker remain preserved, including the previous comparator’s contribution of the short rejection certificate.
+
+## 1. The problem being solved
+
+Let a plane graph \(G=(V,E)\) carry a binary variable \(x_e\) on each edge. At vertex \(v\), an explicitly supplied table \(f_v\) assigns a weight to the incident edge values. The original distribution is
+
+\[
+W(x)=\prod_{v\in V} f_v(x_{\partial v}),
+\qquad
+Z=\sum_{x\in\{0,1\}^{E}}W(x),
+\qquad
+\pi(x)=\frac{W(x)}{Z}.
+\]
+
+The implemented acquisition procedure starts with ternary factors: each vertex has three incident variables, and each table contains eight rational numbers. Its executed sampling cases have strictly positive original tables.
+
+The desired outputs are quantities in these **original edge variables**:
+
+\[
+Z(x_Q=a)
+=
+\sum_{x:\,x_Q=a} W(x),
+\]
+
+and samples from \(\pi\), or from a supported conditioned distribution.
+
+No hidden spin labels, factor decompositions or change-of-basis matrices are supplied to the learner. The graph’s cyclic edge order is supplied as part of the diagram and checked as a planar embedding.
+
+This is a different information setting from the previous global Boolean-circuit admission problem. Here the learner can inspect every entry of each small local table. That enables local algebraic certificates; it does not make universal identities of arbitrary Boolean circuits easy.
+
+The strong conventional route is variable elimination, retaining the resulting conditional tables for reverse sampling. Its cost depends on the sizes of the intermediate factors. Planar Pfaffian methods provide a different route for suitable models, including graphs of unbounded treewidth. Both approaches have substantial predecessors. :chatgpt-content-reference{index="0"}
+
+## 2. The broader theorem: exposed faces control the cost of readout
+
+A *matchgate signature* is a tensor realizable by weighted perfect matchings in a planar graph. Its coefficients may have signs. Such tensors have a fixed parity: either their even-weight entries or their odd-weight entries vanish. Planar networks assembled from them can be evaluated by Pfaffian methods. This is established machinery, including versions with heterogeneous changes of basis. :chatgpt-content-reference{index="1"}
+
+The question I attacked was:
+
+**After discovering such a representation, can we recover useful probabilities and samples in the original coordinates?**
+
+An invertible change of basis preserves a contraction. It does not turn its internal coefficients into probabilities. Fixing an original edge value generally introduces boundary vectors that mix the two parity sectors. Treating those vectors as ordinary matchgates individually is invalid.
+
+The useful operation is to combine their readouts around a face.
+
+### Boundary closure lemma
+
+Suppose \(r\) exposed ports lie on one face. The readout at port \(i\) is an arbitrary vector
+
+\[
+u_i=(u_i(0),u_i(1)).
+\]
+
+For either parity \(p\in\{0,1\}\), define
+
+\[
+B_p(y_1,\ldots,y_r)
+=
+\mathbf 1\!\left\{
+y_1\oplus\cdots\oplus y_r=p
+\right\}
+\prod_{i=1}^{r}u_i(y_i).
+\]
+
+**\(B_p\) has a planar matchgate realization of size \(O(r)\).**
+
+This statement allows zero, negative and complex coefficients, provided the arithmetic is supported.
+
+The construction is explicit. A chain of ternary parity gates carries a running parity bit. Pin its initial value to zero and its final value to \(p\). For any boundary assignment of the correct parity, the internal running-parity values are uniquely determined. Attach a two-port diagonal weighting gadget at each boundary port.
+
+Consequently:
+
+- The gadget implements the required product of readout weights.
+- Every allowed assignment has multiplicity one.
+- The construction uses linear space.
+- It never writes the \(2^r\)-entry boundary tensor.
+
+I also constructed the underlying small weighted graphs and checked their perfect-matching signatures directly. This is an implemented closure operation, not a name for an unavailable compiler.
+
+An equivalent algebraic identity makes the cancellation visible. For even \(r\), a skew matrix \(A\), and
+
+\[
+J_{ij}=(-1)^{i+j+1}\quad(i<j),
+\]
+
+one has
+
+\[
+\boxed{
+\operatorname{Pf}\!\left(D_b A D_b+D_a J D_a\right)
+=
+\sum_{\substack{S\subseteq[r]\\ |S|\text{ even}}}
+\operatorname{Pf}(A_S)
+\prod_{i\in S}b_i
+\prod_{i\notin S}a_i
+}
+\]
+
+where \(D_a=\operatorname{diag}(a_1,\ldots,a_r)\) and similarly for \(D_b\).
+
+The right side appears to require exponentially many principal Pfaffians. The left side is one Pfaffian. The parity-gadget construction also handles odd parity and avoids reliance on a nonzero reference entry.
+
+### Several exposed faces
+
+Now suppose a connected component has exposed ports on \(k\) faces.
+
+Split the product readout on each face into its even and odd parts. The component’s total boundary parity is fixed by its constituent matchgates. Therefore only
+
+\[
+2^{k-1}
+\]
+
+assignments of face parities can contribute, when \(k\geq1\).
+
+Each contributing assignment gives a fully planar matchgate calculation.
+
+Thus the construction gives an upper bound of
+
+\[
+\boxed{
+2^{k-1}\times
+\text{the cost of a planar matchgate evaluation}.
+}
+\]
+
+This is an algorithmic upper bound, not a lower bound asserting that every method must pay that amount. Different connected components can be evaluated separately.
+
+The relevant parameter is the **number of exposed faces**, rather than the number of exposed ports. A face may contain many readouts.
+
+### An observation order with one exposed face
+
+For an initially closed connected plane graph, an appropriate order is obtainable directly from the graph:
+
+1. Build a spanning tree of the dual graph.
+2. Visit its edges in an order that grows a connected subtree from one dual vertex.
+3. Observe the corresponding original edges first.
+4. Observe the remaining original edges afterward.
+
+During the first stage, deleting the observed edges merges a connected collection of faces into one face. All newly exposed ports lie on that face. The remaining primal graph stays connected.
+
+After the dual spanning tree has been deleted, the remaining primal graph is a tree. Further deletions produce forest components, each with a single face.
+
+Therefore every prefix of this observation order requires **at most one exposed face per component**.
+
+This proves the main consumer result:
+
+> **Given a verified planar matchgate representation of a nonnegative original edge-weight model, one can construct an order supporting exact original-variable sampling with polynomially many polynomial-cost contractions. Positive latent coordinates are unnecessary.**
+
+For rational original weights, clear the local denominators. Every complete assignment then has an integer weight. Exact prefix masses support weighted unranking: draw one uniform integer ticket from the total integer mass and descend through the original-variable prefixes.
+
+The resulting sample has distribution \(W(x)/Z\). No Markov-chain mixing assumption enters the construction.
+
+The general theorem assumes that the compatible representation has actually been obtained. The next part supplies an acquisition mechanism for a substantial, explicitly defined local setting.
+
+## 3. Acquiring compatible coordinates from eight-entry tables
+
+The local starting point is a rank-two tensor decomposition,
+
+\[
+f_v(x_1,x_2,x_3)
+=
+w_{v,0}\prod_{i=1}^{3}U_{v,i}(x_i,0)
++
+w_{v,1}\prod_{i=1}^{3}U_{v,i}(x_i,1).
+\]
+
+This equation is reconstructed from the raw table.
+
+For the nondegenerate case, slice the table along its third index:
+
+\[
+M_0=f_v(:,:,0),\qquad M_1=f_v(:,:,1).
+\]
+
+When \(M_0\) is invertible and \(M_1M_0^{-1}\) has distinct eigenvalues, its eigenvectors recover one factor matrix. The remaining matrices follow from the two slice equations. This is the classical simultaneous-diagonalization approach to tensor decomposition, whose uniqueness properties are essential here. :chatgpt-content-reference{index="2"}
+
+The implementation then rebuilds all eight original entries exactly. A numerically plausible decomposition is insufficient.
+
+### Local decompositions do not automatically fit together
+
+For an edge \(e=vw\), contraction of its original variable produces the two-by-two interaction matrix
+
+\[
+W_e(s,t)
+=
+\sum_{x_e=0}^{1}
+U_{v,e}(x_e,s)\,
+U_{w,e}(x_e,t).
+\]
+
+A network of individually simple tensors can still be difficult. The bases at opposite ends of every edge must be compatible.
+
+For the following criterion, assume:
+
+- Every local rank-two decomposition is nondegenerate, with invertible factor matrices and nonzero coefficients.
+- The relevant entries of every \(W_e\) are nonzero.
+- Arithmetic is performed exactly.
+
+For an edge viewed from endpoint \(v\), define
+
+\[
+\eta_{v,e}
+=
+\frac{W_e(1,0)W_e(1,1)}
+     {W_e(0,0)W_e(0,1)}.
+\]
+
+At the other endpoint, use the corresponding column formula. Define the vertex invariant
+
+\[
+\boxed{
+R_v=
+\left(\frac{w_{v,1}}{w_{v,0}}\right)^2
+\prod_{e\ni v}\eta_{v,e}.
+}
+\]
+
+Rescaling the recovered rank-one factors leaves \(R_v\) unchanged. Exchanging the two components at \(v\) replaces \(R_v\) by its reciprocal. Consequently, the condition \(R_v=1\) does not depend on those decomposition choices.
+
+### Compatibility theorem for the generic ternary case
+
+Over an algebraically closed field of characteristic zero, under the nondegeneracy assumptions above,
+
+\[
+\boxed{
+\text{compatible edge bases making every local tensor parity-homogeneous exist}
+\quad\Longleftrightarrow\quad
+R_v=1\ \text{for every }v.
+}
+\]
+
+For real bases within the real decomposition chart, the required edge square roots must also be real.
+
+For ternary tensors, parity-homogeneous signatures are matchgate signatures. Thus this is a criterion for compatible local matchgate coordinates in this generic setting.
+
+Here is the proof.
+
+A parity operator on a two-dimensional leg is a traceless involution. Pull such operators back into the recovered two-component coordinates.
+
+Uniqueness of the rank-two decomposition forces the three operators at a vertex either to preserve the two rank-one summands or to exchange them consistently. The preserving case cannot give the same parity eigenvalue to both nonzero summands: three traceless diagonal involutions change the relative eigenvalue by \((-1)^3=-1\).
+
+Therefore the operators must exchange the summands. Each has the form
+
+\[
+P_r=
+\begin{pmatrix}
+0&r\\
+r^{-1}&0
+\end{pmatrix}.
+\]
+
+Compatibility across an edge requires
+
+\[
+P_r^{T} W_e P_t=W_e.
+\]
+
+Its entries give
+
+\[
+rt=\frac{W_{11}}{W_{00}},
+\qquad
+\frac{t}{r}=\frac{W_{01}}{W_{10}},
+\]
+
+and hence
+
+\[
+r^2=
+\frac{W_{10}W_{11}}{W_{00}W_{01}}
+=\eta_{v,e}.
+\]
+
+At vertex \(v\), the local tensor has a definite parity exactly when
+
+\[
+\frac{w_{v,1}}{w_{v,0}}
+\prod_{e\ni v}r_{v,e}
+\in\{+1,-1\}.
+\]
+
+Squaring gives \(R_v=1\), proving necessity.
+
+Conversely, choose the edge roots and their compatible partners. If every \(R_v=1\), each vertex is an eigenvector of its product involution. Diagonalizing the involutions produces the parity bases; the edge identities ensure they fit together. This proves sufficiency.
+
+This supplies a direct global compatibility test from local data. It does not inspect all original assignments.
+
+### The bases were actually constructed
+
+The implementation constructs the edge transformations, verifies that the transformations at opposite ends preserve contraction, transforms every local table, and checks its forbidden-parity entries are exactly zero. It then applies the inverse transformations and reconstructs every original table entry.
+
+Those checks succeeded on positive, signed-coordinate and quadratic-coordinate examples.
+
+Automatic holographic basis discovery has important predecessors; it would be incorrect to present the general idea of searching for a helpful basis as new. The specific contribution established here is the explicit compatibility criterion and its connection to a constructed original-variable consumer. External priority for that combination remains unestablished. :chatgpt-content-reference{index="3"}
+
+## 4. A failed compatibility test need not end the calculation
+
+A nonunit \(R_v\) obstructs the direct edge-only parity representation described above. It does not prove that the original inference problem is hard.
+
+The acquired coordinates also identify the obstruction as a field in a latent Ising representation.
+
+Choose compatible endpoint scalings so that
+
+\[
+W_e=
+\operatorname{diag}(1,r_{v,e})
+\begin{pmatrix}
+a_e&b_e\\
+b_e&a_e
+\end{pmatrix}
+\operatorname{diag}(1,r_{w,e}).
+\]
+
+Then the original partition function becomes
+
+\[
+Z=
+\left(\prod_v w_{v,0}\right)
+\sum_{\sigma\in\{0,1\}^{V}}
+\prod_{e=vw}
+S_e(\sigma_v,\sigma_w)
+\prod_v h_v^{\sigma_v},
+\]
+
+where
+
+\[
+h_v=
+\frac{w_{v,1}}{w_{v,0}}
+\prod_{e\ni v}r_{v,e},
+\qquad
+h_v^2=R_v.
+\]
+
+The \(h_v\) locate the nonzero fields.
+
+Square-root sign choices initially introduce avoidable sign defects. Flipping an edge’s root choices changes the signs at its two endpoints. The implementation solves this incidence-parity problem explicitly, rather than searching exponentially over root signs. After that correction, the remaining field sites correspond to the nonunit magnitude invariants.
+
+If all field sites lie on one face, a single auxiliary spin can be placed in that face and connected to them. Fixing its value supplies the fields; summing over it introduces a known factor of two. This cofacial-field construction is established planar Ising machinery. :chatgpt-content-reference{index="4"}
+
+I tested this mechanism by changing one local mixture coefficient. It produced
+
+\[
+R_0=4,\qquad R_v=1\quad(v\ne0).
+\]
+
+The direct parity-basis criterion correctly failed. The acquired field location nevertheless admitted a one-face sampler, and its original-variable masses agreed exactly with conventional elimination.
+
+That is a useful change in mechanism: the learner can identify and handle the defect instead of treating failure of its first representation as the end of the problem.
+
+### What an original observation does
+
+Fixing an original edge value \(x_e=a\) changes its latent interaction to
+
+\[
+W_e^{(a)}(s,t)
+=
+U_{v,e}(a,s)\,U_{w,e}(a,t).
+\]
+
+This matrix has rank one. Its interaction can be removed and absorbed into endpoint fields.
+
+The observation therefore changes the geometry of the unresolved problem:
+
+- The edge disappears.
+- Its two adjacent regions merge.
+- Its endpoint contributions become fields on the newly exposed boundary.
+
+This is the concrete Ising version of the broader boundary theorem.
+
+For field sites covered by \(k\) faces, I implemented an exact extension using \(k\) auxiliary spins. Enforcing that they agree gives
+
+\[
+Z_{\text{fields}}
+=
+2^{-k}
+\sum_{A\subseteq\{2,\ldots,k\}}
+Z_{\text{augmented}}^{(A)}.
+\]
+
+Each term is a planar zero-field calculation with specified signs changed along paths between auxiliary spins. There are \(2^{k-1}\) terms.
+
+The code obtains an actual face cover and charges its size. It does not assume an optimal cover.
+
+## 5. Why signed coordinates matter
+
+A representation used for exact calculation need not be a probabilistic generative model.
+
+I constructed strictly positive original tables whose unique recovered real rank-two components contain negative entries. A sampler that tries to select a latent component according to those entries is invalid.
+
+The boundary method avoids that operation. It computes complete original-variable prefix masses and samples from their positive ratios.
+
+Signs remain essential inside those calculations. In one executed two-face query, the exact expansion contained one positive and one negative term. Replacing the terms by their absolute values changed the answer by a factor of approximately
+
+\[
+1.1177231989.
+\]
+
+That is an error of about **11.77%**.
+
+The implementation preserves the Pfaffian orientation sign, combines the signed contributions, and conditions only after obtaining the original mass.
+
+Exact planar Ising sampling itself is established work. Earlier algorithms use dimer correspondences, separators and Pfaffian elimination. The role of the present construction is to acquire the transformation and support readout in the original coordinates, including cases where the transformed factors cannot be interpreted as probabilities. :chatgpt-content-reference{index="5"}
+
+## 6. Recognition and arithmetic costs are exposed
+
+The first implementation accepted only rational decompositions. That restriction failed on the simple positive table
+
+\[
+f(000)=f(111)=5,
+\qquad
+f(x)=1\quad\text{otherwise}.
+\]
+
+The hidden decomposition requires a square root. A rational-only decline would have confused an arithmetic limitation with absence of structure.
+
+I added exact arithmetic in one common real quadratic field. On a four-vertex instance using that table, the implementation recovered the representation and obtained
+
+\[
+Z=1728.
+\]
+
+All 127 prefix assignments in the acquired six-edge observation order agreed with direct elimination.
+
+The implemented arithmetic now handles:
+
+- Rational coefficients.
+- A common real quadratic field, including equivalent radicands expressed differently.
+- Exact equality, sign and square-root checks in that supported setting.
+
+Independent quadratic extensions and unsupported nested roots are explicit arithmetic-budget limitations. They are not negative structural certificates.
+
+This remains a material scope boundary. The compatibility theorem can be stated more broadly over algebraic coefficients, but the executable consumer does not silently assume inexpensive arithmetic in an arbitrarily large compositum.
+
+Likewise, the general boundary theorem has polynomial **arithmetic** cost once the representation is available. Polynomial bit cost also requires control of coefficient sizes and exact-field arithmetic. The executed rational and common-quadratic cases satisfy that requirement.
+
+The main implementation uses exact Pfaffian elimination. It constructs and checks the graph embedding, expands the required parity constraints, obtains a Kasteleyn orientation, and retains the correct sign. No floating-point tolerance is used to accept a structural identity.
+
+## 7. Executed construction and conventional comparison
+
+The implementation now includes:
+
+- Raw-table decomposition and exact reconstruction.
+- Vertex compatibility invariants.
+- Construction of compatible edge bases.
