@@ -1,0 +1,29 @@
+Source and exposure
+
+Original package: .astra-dispatch/sources/Review_1853_20261030/DOTS_1800_ORIGINAL/Astra_Research_20261030_1800_UTC.zip, SHA42023793ac1fba8564cae28e78fac581a38b707e018023a719f12430d26ef0e3. Actual cutoff17:54:49UTC30October. The verified receipt identifies the supplied Astra-only message and archive; no Dots contact was made. An inventory delta is not a discovery count.
+
+I read the complete frozen CP-cavity bridge, disjoint-gadget companion and separate review; the atomic capture theorem, V2 same-envelope correction/core and review scope, terminal copy-out review; and the raw chemical finder/coupled-face/carried-launch review statements, critical interfaces and completions. Earlier unchanged dependency chains were not re-audited. I checked the primary Aharonov–Kitaev–Preskill noise model and Aharonov–Ben-Or's stated computational resources. This is source-informed assessment, not a new blind audit or coordinator execution. Later scoped review receipts supersede pre-review headers only for their exact frozen objects.
+
+Noise-to-circuit result
+
+The accepted theorem is finite, bounded and fixed-schedule. Intended simultaneous gates occupy disjoint blocks of at most g sites and duration tau. Perturbations are centered trace-annihilating Hermiticity-preserving maps, each supported on at most q system sites plus a shared finite bath, with bounded incident complete trace norm. The TOTAL joint evolution must be CPTP on every interval; final-time positivity alone is insufficient. Individual perturbations and the raw bath piece need not generate CP dynamics separately.
+
+The substantive construction replaces deletion of a potentially non-CP noise term by a legitimate cavity: trace the selected block against a maximally mixed insertion at generator level, then restore its isolated intended gate. Convex interpolation between these cavities keeps every intermediate propagator completely contractive. Exact Moebius cancellation yields signed fault maps with ordinary location support. Repeated Duhamel derivatives organize into set partitions, and a rooted incidence bound gives inclusive strength x=[2*3^(q-1)*g*eta*tau]^(1/q). There is no exponential in apparatus volume or total runtime. This is a full analytic construction, not extrapolation from the finite checks.
+
+The review explicitly handles nonunital intended gates, non-CP perturbations, repeated physical-qubit use, arbitrary retained correlations and the difference between signed maps and positive fault probabilities. It separately accepts a bad-gadget sieve only for disjoint location sets with supplied good-gadget correctness. That is the accepted scope; overlapping extended rectangles and a complete threshold/factory theorem remain unfinished.
+
+Relation to existing fault tolerance
+
+Aharonov–Kitaev–Preskill already handle shared-bath always-on pair Hamiltonian noise with weak per-qubit interaction sums and root-power effective strength: https://arxiv.org/html/quant-ph/0510231v1 . Thus common-bath tolerance, square-root scaling and fault-path combinatorics are established capabilities. Dots' specific addition is the CP-cavity route for centered HP decompositions whose total generator is physical, in a complete-superoperator convention. The primary Hamiltonian amplitude norm and this signed superoperator interface are different contracts. The unfinished receiving theorem must match actual gadget correctness, overlap and resources; merely citing a threshold does not perform that match. Aharonov–Ben-Or avoids intermediate ideal classical operations in its construction (https://arxiv.org/html/quant-ph/9906129v1), which is relevant machinery, not automatic completion of Dots' source/controller architecture.
+
+Record acquisition and readout
+
+The reviewed V2 theorem now constructs scheduled atomic capture, exponential-in-block-size retention for a declared horizon, and positive simultaneous physical-port error bounds. Its two-parameter moment family keeps phase and root tests under ONE pair of positive envelopes; separate marginal bounds did not close V1. This is a real repaired composition step beyond the earlier abstract record assumption.
+
+The starting outcomes are genuinely classical supplied instrument outputs. Fixed-body majority/reset/copy primitives, bounded incidence and favorable fixed noise parameters are material; constants may be enormous. The final-time port law is not an arbitrary adaptive temporal error process. Terminal reset/pause/two-site copy-out has its own accepted physical-output-qubit guarantee and square-root XOR loss. It supplies neither a qualified external detector nor resumed protected storage after that terminal read. Native two-site majority compilation, quantum waiting/coherent-pointer reception, dense-frame execution and autonomous source/scheduling remain separate.
+
+Chemical result
+
+The previously reported raw reaction-list direction now has source-bound internal acceptance. The restricted finder acquires connector/pool/trace interfaces from raw reactions using exact sufficient coefficient checks and named phase foundations, rather than assuming a decomposition oracle. Successful recognition gives classwise positive recurrence and requested total-count exponential invariant moments. Rejection is inconclusive; enumeration can be exponential/superexponential. JSON output is not a portable serialized full proof.
+
+The accepted coupled-face construction reaches a specified five-species deficiency-two architecture. The carried-launch completion removes only the initial mixed population-clock guard by retaining a non-small initial launch row; it does not resurrect the false uniform-reset claim or drop the other raw guards. These are mathematical stability/acquisition results, not laboratory chemistry or arbitrary-network recurrence. The minimal ordinary deficiency-zero fixture is retained as a conventional control, not a new endpoint.

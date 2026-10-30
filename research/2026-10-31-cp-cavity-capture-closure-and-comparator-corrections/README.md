@@ -1,0 +1,3 @@
+# CP cavities, classical capture, restricted recurrence and generated-cone barriers
+
+Direct intake of the event-verified1800 Dots source archive and released Ultra working snapshots, plus the P1 comparator/source precision. Actual acquired completed internal reviews are carried at their exact scopes; no scientific reproof, new audit/sign-off, novelty investigation, producer contact or routine activity publication is performed. Earlier immutable versions and failed/pending history remain. Source availability is not acceptance, and no physical demonstration or practical advantage is inferred. Chemistry is mathematical/non-operational.
