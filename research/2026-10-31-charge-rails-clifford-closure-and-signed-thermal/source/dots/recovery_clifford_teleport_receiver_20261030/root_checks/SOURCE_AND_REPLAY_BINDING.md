@@ -1,0 +1,4 @@
+# Root source and replay binding
+30 October2026, 20:26UTC. Root read the full on-disk CLIFFORD_TELEPORT_RECEIVER.md and independently computed SHA2561353b50a981a6c1c86295553e24410f4108cca69975fa45fc477593ca6ddd219, exactly the candidate identified in the independent reviewer's full-text audit. The reviewer could not execute local tools; its separate receipt remains an exact-text mathematical audit, not an independently run diagnostic.
+
+Root inspected and executed the author's check_bell_convention.py:748 branches across25 Clifford instances pass. Root also inspected/executed check_cycle_hybrid.py:12-cycle complete-positive example with persistent actual unsafe population passes its additive hybrid and reference-Choi checks. Outputs are saved here and under the whole-cycle root_checks directory. This is root replay of author code, not independent code, a native device simulation, or proof of threshold constants.
