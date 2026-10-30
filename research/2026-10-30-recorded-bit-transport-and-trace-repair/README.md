@@ -1,0 +1,3 @@
+# Recorded-bit transport, exact trace repair and posterior comparison
+
+Separate completed P1 recovery after PR283: two cards and four reusable source-supported units. Current/earlier native prefixes and overlapping tails remain separate, with the executable core preserved as visible response text. Exact transport/trace-law, independent-edit and callback-access conditions, initial trace costs, fixed/depth-tuned comparisons, freshness contracts and corrected posterior work/failure scopes remain explicit. No new independent review, scientific replay, novelty investigation, source export/retry or hardware inference. Provided primary originals remain citation resources, not an implied whole-paper review. Biology held; chemistry non-operational.

@@ -1,0 +1,575 @@
+# Recovered result: exact repair of a cached stochastic simulation
+
+The strongest completed result was an executable way to **update an existing stochastic computation after a local model change, using only fresh samples from its components—even when their probabilities cannot be evaluated and their internal random numbers cannot be replayed**.
+
+The returned trace has the revised model’s **complete joint distribution**. Under an explicit condition limiting propagation, the expected number of new source calls depends on the size of the edit rather than the size of the computation.
+
+The largest fixed-policy execution maintained **1,398,101 binary variables** and averaged **17.42 new source flips per local edit**, compared with **22.31** for the stronger time-only early-stopping comparator and **2,189.01** for independent local resampling. A later comparison with policies tuned by graph depth averaged **16.18 versus 22.10**. That tuning used the benchmark probabilities offline; its acquisition cost was not measured.
+
+Two other completed findings determine the scope:
+
+- I derived a lower bound separating this correlated repair operation from producing a genuinely fresh replicate. The obstruction remains linear under a finite full-joint-law error tolerance.
+- I constructed a valid posterior-sampling extension, but **ordinary independent local proposals won its source-cost–variance comparison**. Exact posterior invariance did not establish a useful inference speedup.
+
+The mathematics below was derived within this role and checked by exact arithmetic and digital executions. It has no new independent review, established priority claim, or hardware validation.
+
+## 1. The operation that made repair possible
+
+The previous coupling algorithm generated a pair with exact Bernoulli marginals. Repair requires a different interface:
+
+> Given a particular bit \(X\) that has already been recorded, generate its coupled replacement \(Y\) while retaining that original \(X\).
+
+We cannot substitute a newly generated first component. Other recorded variables may already depend on the old bit.
+
+Assume access to fresh \(p\)- and \(q\)-coins, with unknown \(p,q\in(0,1)\). The old bit has distribution \(X\sim\operatorname{Bern}(p)\).
+
+### A failed adaptation
+
+The original coupling could return a new common fair bit when its walk returned to zero. Keeping the original recorded \(X\) while using that output gives the wrong conditional coupling.
+
+At \(p=q=1/2\), its disagreement probability becomes
+
+\[
+\frac14+\frac{1}{4L},
+\]
+
+instead of
+
+\[
+\frac{1}{2L}.
+\]
+
+For \(L=4\), that is **0.3125 instead of 0.125**. With four children per node, this difference can determine whether a repair cascade grows or dies out.
+
+### The correction: copy the recorded bit on return to zero
+
+```python
+def transport_existing_bit(
+    old_bit, old_draw, new_draw, L=4, cap_pairs=128
+):
+    first = int(new_draw())
+    walk = first - old_bit
+    pairs = 1
+
+    while walk != 0 and abs(walk) < L and pairs < cap_pairs:
+        a = int(old_draw())
+        b = int(new_draw())
+        walk += b - a
+        pairs += 1
+
+    new_bit = old_bit if walk == 0 else first
+    new_source_calls = 2 * pairs - 1
+    return new_bit, new_source_calls
+```
+
+Here `old_draw` and `new_draw` are sampling callbacks. The algorithm never evaluates their probabilities.
+
+The initial old bit is already paid for. It draws one new \(q\)-coin, then fresh pairs as needed. At the spatial boundary or time cap it returns the first new bit. At zero it copies the recorded bit.
+
+### Exact returned law
+
+For the uncapped walk, write
+
+\[
+a=q(1-p),\qquad b=p(1-q),
+\]
+
+\[
+S_L=\sum_{k=0}^{L-1}a^{L-1-k}b^k,
+\qquad
+g=\frac{a^L}{S_L},
+\qquad
+h=\frac{b^L}{S_L}.
+\]
+
+The joint law of the recorded \(X\) and returned \(Y\) is
+
+\[
+C_{p,q}=
+\begin{array}{c|cc}
+ &Y=0&Y=1\\ \hline
+X=0&1-q-h&g\\
+X=1&h&p-h
+\end{array}.
+\]
+
+Since
+
+\[
+g-h=q-p,
+\]
+
+the two marginals are exactly \(\operatorname{Bern}(p)\) and \(\operatorname{Bern}(q)\). Thus the algorithm implements
+
+\[
+K_{p\to q}(0,1)=\frac{g}{1-p},
+\qquad
+K_{p\to q}(1,0)=\frac{h}{p},
+\]
+
+without evaluating either quotient.
+
+The proof uses path reflection. Reflecting a walk that returns to zero exchanges its initial \(01\) and \(10\) orientations. The returning paths in the two orientations have equal total probability. Copying the old bit transfers these equal masses into \(00\) and \(11\), preserving both marginals. A symmetric deterministic time cap preserves this argument.
+
+The inherited accuracy guarantees therefore survive:
+
+\[
+\Pr(X\ne Y)-|p-q|\le \frac{1}{2L}
+\]
+
+without a cap, and
+
+\[
+\Pr(X\ne Y)-|p-q|
+\le \frac{1}{2L}+\frac{L}{B}
+\]
+
+with a cap of \(B\) pairs.
+
+The expected number of **new** source flips is \(2L-1\) in the uncapped interior case and at most \(2L-1\) with the cap. The capped maximum is \(2B-1\).
+
+Crucially, the expected-cost identity averages over an old bit distributed as \(\operatorname{Bern}(p)\). It is not automatically a bound conditional on an arbitrarily selected recorded bit.
+
+## 2. Composing the operation into exact trace repair
+
+Consider a binary generative computation on a fixed directed acyclic graph. Its old law is
+
+\[
+P(x)=\prod_{i=1}^{N}
+p_i(x_i\mid x_{\mathrm{pa}(i)}),
+\]
+
+and its revised law is
+
+\[
+Q(y)=\prod_{i=1}^{N}
+q_i(y_i\mid y_{\mathrm{pa}(i)}).
+\]
+
+A *trace* is the complete vector of realized bits.
+
+The controller has:
+
+- A paid cached trace \(X\sim P\).
+- The graph and a list of edited nodes.
+- Sampling callbacks for local conditional coins.
+- Access to both old and new model queries at specified parent values.
+
+That last interface is substantive. A simulator exposing only its final output does not automatically provide it. An irreversibly modified physical specimen may also be unable to answer old-model queries. The construction directly applies to a modular stochastic program that can already be executed through these callbacks.
+
+### The repair algorithm
+
+Process a topologically ordered queue:
+
+1. Enqueue the edited nodes.
+2. At a queued node, recover its old and new parent values.
+3. If its complete sampling query is unchanged, retain the bit.
+4. Otherwise, transport its recorded bit using the algorithm above.
+5. If the bit changes, enqueue its children.
+6. Stop when the queue is empty.
+
+A sparse patch stores old values at changed nodes. Together with the current cache, it supplies both versions during repair. A persistent representation can retain completed versions without copying the entire vector.
+
+The queue is deduplicated. Topological processing ensures that all affected parents have settled before their child is processed.
+
+### Proof of the complete new distribution
+
+Let \(C_i\) be the local coupling at node \(i\), conditional on the old and new parent values. For an identical query, use the diagonal coupling that copies the old bit.
+
+Define
+
+\[
+J(x,y)=
+\prod_i
+C_i(x_i,y_i\mid x_{\mathrm{pa}(i)},y_{\mathrm{pa}(i)}).
+\]
+
+The implemented transport kernel obeys
+
+\[
+P(x)K_{P\to Q}(x,y)=J(x,y).
+\]
+
+Sum out the old variables in reverse topological order. Each local column sum produces the corresponding revised conditional probability. Consequently,
+
+\[
+\sum_x J(x,y)
+=
+\prod_i q_i(y_i\mid y_{\mathrm{pa}(i)})
+=
+Q(y).
+\]
+
+This proves the joint trace law, including its correlations and nonlinear events.
+
+**Finite coupling error does not become an error in \(Q\).** It increases the probability of changing a bit and therefore the repair work. The target marginal distribution remains exact.
+
+That is the central useful change in representation: coupling accuracy controls computational propagation, while exact marginals preserve the simulation law.
+
+### Ensemble consequence and its limitation
+
+For \(M\) independent old traces, use independent repair randomness. For a fixed edit—or an edit chosen independently of the ensemble’s simulation randomness—the new ensemble is exactly
+
+\[
+Q^{\otimes M}.
+\]
+
+Hence, for any bounded observable \(f\),
+
+\[
+\operatorname{Var}\!\left[
+\frac1M\sum_{m=1}^{M}f(Y^{(m)})
+\right]
+=
+\frac{\operatorname{Var}_Q(f)}{M}.
+\]
+
+The ensemble retains the statistical quality of \(M\) fresh samples from the revised model. Successive versions of each trace remain correlated, so this does not manufacture additional independent replicas.
+
+The independence condition on edits matters. A checked counterexample started with \(X\sim\operatorname{Bern}(1/2)\), selected \(q=3/4\) when \(X=0\), and retained the identical old query when \(X=1\). With \(L=2\), repair produced
+
+\[
+\Pr(Y=1)=\frac{25}{32},
+\]
+
+whereas a fresh response to that selected query would have probability \(5/8\). Simple repair therefore cannot be treated as a fresh adaptive-experiment oracle.
+
+## 3. When the work depends on the edit rather than the whole trace
+
+Let \(A\) be the number of active nodes requiring repair, \(r\) the number of edited seed nodes, and \(D\) the maximum number of children.
+
+Suppose an active node changes with probability at most \(\rho\), conditional on its generative history before revealing its old bit. Then
+
+\[
+\mathbb E A
+\le r+D\rho\,\mathbb E A.
+\]
+
+If \(D\rho<1\),
+
+\[
+\boxed{\mathbb E A\le \frac{r}{1-D\rho}}
+\]
+
+and, for fixed spatial boundary \(L\),
+
+\[
+\boxed{
+\mathbb E N_{\rm new}
+\le
+(2L-1)\frac{r}{1-D\rho}.
+}
+\]
+
+A branching-process domination also gives an exponential tail for the visited region. With a local cap, each active node has bounded source cost.
+
+### A concrete uniform regime
+
+For all conditional probabilities in
+
+\[
+\left[\frac12-\alpha,\frac12+\alpha\right],
+\]
+
+the spatial walk’s largest uncapped disagreement probability is
+
+\[
+\rho_L^\star
+=
+2\alpha\,
+\coth\!\bigl(2L\,\operatorname{atanh}(2\alpha)\bigr).
+\]
+
+This follows from the finite-walk expression: for a fixed probability gap, disagreement is largest at the midpoint \(1/2\); the resulting expression increases with the gap. The maximum therefore occurs at the interval’s opposite endpoints.
+
+With cap \(B\), a sufficient bound is
+
+\[
+\rho\le \rho_L^\star+\frac{L}{B}.
+\]
+
+For
+
+\[
+\alpha=\frac1{16},\quad D=4,\quad L=4,\quad B=128,
+\]
+
+the calculation gives
+
+\[
+\rho\le0.1949068141,
+\qquad
+D\rho\le0.7796272563,
+\]
+
+and therefore
+
+\[
+\boxed{\mathbb E N_{\rm new}\le31.7644\,r.}
+\]
+
+The bound is independent of total trace size. Initial simulation, graph storage and access to the cached bits remain paid resources.
+
+There is also a more general influence version. If \(b_i\) bounds the direct model change at node \(i\), \(c_{ij}\) bounds parent \(j\)’s influence, and the coupling’s excess disagreement is \(\eta\), define
+
+\[
+\gamma=
+\max_j\sum_{i:j\in\mathrm{pa}(i)}(c_{ij}+\eta).
+\]
+
+For \(\gamma<1\), the expected number of changed bits is bounded by
+
+\[
+\frac{\sum_i b_i+\eta r}{1-\gamma}.
+\]
+
+The narrow probability interval is one sufficient regime, rather than the entire theorem’s scope.
+
+### Allocating correlation according to downstream cost
+
+Strong coupling is often unnecessary near a leaf: changing its bit cannot activate a large descendant computation.
+
+For the tree benchmark, I used
+
+\[
+W_h=
+\min_{\text{stopping rules}}
+\left[c+4mW_{h-1}\right],
+\]
+
+where \(c\) is expected local source cost and \(m\) is local disagreement probability. This selected independent draws near the leaves and stronger coupling higher up.
+
+Both spatial and time-only methods received this optimization. The policies were selected offline using the benchmark probabilities, then supplied as fixed policies to the sample-only implementations. **This was not an online unknown-parameter tuning result.** The fixed-\(L\) theorem above does not require that tuning information.
+
+## 4. What was actually checked and executed
+
+### Exact arithmetic checks
+
+The completed checks included:
+
+- **256 exact rational tests** of the capped recorded-bit transport across different biases, boundaries and time caps.
+- Enumeration of a six-node DAG’s queue and old-value patch behavior. The new trace law matched the revised model with **exact total-variation error zero**.
+- A deliberately incomplete implementation that repaired edited nodes without propagating changes to descendants. Its trace-law error was approximately **0.0103766**.
+
+The failed implementation confirms why updating edited coordinates alone is insufficient.
+
+### Large persistent-trace executions
+
+The benchmark was a four-child tree. Its root probability alternated between \(0.45\) and \(0.54\). A child’s probability was \(7/16\) or \(17/32\), depending on its parent.
+
+The probability values were used for audit calculations. The repair code used sampling callbacks.
+
+The first comparison performed **5,000 successive root edits per method at each size**:
+
+| Variables in the paid initial trace | Spatial walk, \(L=4\), cap 128 | Time-only early stopping, cap 16 | Independent local resampling |
+|---:|---:|---:|---:|
+| 341 | 15.31 | 20.81 | 31.62 |
+| 21,845 | 17.30 | 21.72 | 266.14 |
+| 1,398,101 | 17.42 | 22.31 | 2,189.01 |
+
+Entries are observed mean **new source flips per edit**.
+
+The independent comparator was already local: it resampled activated nodes and propagated only actual changes. It was not a whole-trace redraw used as the only baseline.
+
+The subsequent depth-dependent comparison performed **20,000 edits** on 1,398,101 variables:
+
+| Method | Total new flips | Mean per edit | Largest observed edit |
+|---|---:|---:|---:|
+| Spatial walk with depth-dependent boundaries | 323,536 | **16.1768** | 751 |
+| Time-only walk with depth-dependent stopping | 441,928 | **22.0964** | 1,039 |
+
+The finite-state calculations gave expected costs of approximately **16.6803** and **22.1806**, respectively.
+
+Those expectations average over the initial trace as well as repair randomness. Each execution followed one persistent, correlated trace; its edit costs are not independent replications. The observed maxima are also not universal runtime bounds.
+
+### Stronger and trivial baselines
+
+Several comparisons constrain the interpretation:
+
+- **Keep the old trace:** zero source calls, but total-variation error exactly \(0.09\) in this benchmark. The changed root witnesses that difference.
+- **Full redraw:** 1,398,101 source flips per edit. The initial trace costs that much too.
+- **Known probabilities:** conditional maximal transport can use ordinary private randomness with zero calls to the sample-only oracle. In the large fixed-policy comparison, it visited about 1.53 nodes and made about 3.05 probability evaluations per edit.
+- **Retained early-stopping comparator:** both walk methods make expected repair local. The spatial rule gives a modest further factor, not a different asymptotic class relative to this stronger comparator.
+- **Full output materialization:** copying a million-bit result still costs linear output work. The local guarantee concerns maintaining a cache or persistent trace and returning its changes.
+
+The demonstrated capability is therefore exact repair under sample-only local access. It is not a general speed claim against implementations that expose numeric probabilities or replayable randomness.
+
+## 5. A quantitative boundary between repair and a fresh replicate
+
+Copying an unchanged trace gives a perfect new marginal law. It does not give an independent new experiment.
+
+For \(N\) independent fair bits, the pair \(Y=X\) is at total-variation distance
+
+\[
+1-2^{-N}
+\]
+
+from two independent traces.
+
+I developed two lower bounds to make this distinction operational.
+
+### Exact fresh-output lower bound
+
+Give an algorithm one old record of \(N\) independent unknown Bernoulli coordinates. Its further information about coordinate \(i\)’s bias comes only from counted calls to that coordinate’s oracle.
+
+Require that, conditional on the old record, the returned \(Y\) be a fresh product sample for every admissible probability vector.
+
+Compare two models differing only in \(p_i\). For the complete adaptive execution transcript,
+
+\[
+D_{\mathrm{KL}}(\mathcal T_p\Vert\mathcal T_q)
+=
+\mathbb E_p N_i\,
+\operatorname{kl}(p_i,q_i).
+\]
+
+The returned \(Y_i\) must itself have divergence \(\operatorname{kl}(p_i,q_i)\). Data processing yields
+
+\[
+\mathbb E_p N_i\ge1.
+\]
+
+Therefore
+
+\[
+\boxed{\mathbb E N_{\rm new}\ge N.}
+\]
+
+Ordinary fresh simulation attains this bound.
+
+### A finite-accuracy full-joint-law lower bound
+
+The second result does not demand a conditional error bound for every possible old record.
+
+Assume:
+
+- One cached old trace \(X\), with no additional parameter-dependent source information.
+- Independent unknown coordinate biases
+  \[
+  p_i=\frac12\pm\alpha.
+  \]
+- For every parameter vector, the law of the retained old trace and returned new trace is within \(\delta\) total variation of two independent product samples.
+
+Average over independent fair choices of the signs of the biases. Then
+
+\[
+\boxed{
+\mathbb E N_{\rm new}
+\ge
+N\left[
+1-4\alpha^2-
+\left(\frac2\alpha+4\right)\delta
+\right]_+.
+}
+\]
+
+Consequently, at least one parameter instance incurs this cost.
+
+For
+
+\[
+\alpha=\frac1{16},
+\qquad
+\delta=0.01,
+\]
+
+the coefficient is exactly
+
+\[
+\frac{999}{1600}=0.624375.
+\]
+
+Thus **a 1% full joint-law tolerance still requires a linear number of new source flips in this family**.
+
+### Derivation
+
+Under the two-point prior, after the old bit,
+
+\[
+m_i^0=\mathbb E[p_i\mid X_i]
+=
+\frac12+2\alpha^2(2X_i-1).
+\]
+
+Use the bounded witness
+
+\[
+Z=\sum_i(p_i-m_i^0)Y_i.
+\]
+
+For a genuinely fresh trace,
+
+\[
+\mathbb E Z=N\alpha^2(1-4\alpha^2).
+\]
+
+During an arbitrary adaptive algorithm, let \(m_i\) be the posterior mean of \(p_i\) given all acquired source information. A new flip at coordinate \(i\) changes this mean by expected absolute amount
+
+\[
+\mathbb E[|\Delta m_i|\mid\mathcal H]
+=
+2\operatorname{Var}(p_i\mid\mathcal H)
+\le2\alpha^2.
+\]
+
+The posterior mean is a martingale. Its accumulated variation bounds the algorithm’s witness expectation:
+
+\[
+\mathbb E Z\le\alpha^2\mathbb E N_{\rm new}.
+\]
+
+The range of \(Z\) has width at most
+
+\[
+2N(\alpha+2\alpha^2).
+\]
+
+A total-variation error \(\delta\) changes its expectation by at most this width times \(\delta\). Combining the inequalities proves the displayed lower bound.
+
+The uniform promise over parameter vectors permits the argument to mix over parameter labels as well as data; the prior is a proof device, not a source of information supplied to the algorithm.
+
+I checked the local martingale inequality through **72 exact rational Bellman optimizations**, allowing adaptive choice between two coordinate oracles, stopping, and up to six additional queries. These finite checks support the derivation; they do not replace its general proof.
+
+This is a **one-record** bound. It is not an amortized lower bound after arbitrary prior calibration or after retaining additional source information.
+
+Established sample-amplification research already shows that new-looking data can sometimes be generated without learning the full distribution, and that retaining, modifying or shuffling the original observations changes what is possible. The bound here has a specific retained-record contract and counts additional coordinate-oracle calls. It does not assert that sample amplification is generally impossible. 
+
+## 6. The posterior bridge: valid construction, failed performance destination
+
+The local transport satisfies the symmetry
+
+\[
+C_{p,q}(x,y)=C_{q,p}(y,x).
+\]
+
+With matching stopping rules in the two directions, its composed repair kernel obeys
+
+\[
+\boxed{
+P_\theta(x)K_{\theta,\theta'}(x,y)
+=
+P_{\theta'}(y)K_{\theta',\theta}(y,x).
+}
+\]
+
+That identity cancels the unknown simulator probabilities in a Metropolis ratio.
+
+For
+
+\[
+\Pi(\theta,x)
+\propto
+\pi(\theta)P_\theta(x)w_\theta(x),
+\]
+
+propose \(\theta'\), repair \(x\) into \(y\), and accept with probability
+
+\[
+\min\!\left\{
+1,
+\frac{\pi(\theta')w_{\theta'}(y)q(\theta',\theta)}
+     {\pi(\theta)w_\theta(x)q(\theta,\theta')}
+\right\}.
+\]
+
+The observation factor \(w\) must be computable and warranted. The executed example used an explicitly specified binary-noise observation model. An unkno
