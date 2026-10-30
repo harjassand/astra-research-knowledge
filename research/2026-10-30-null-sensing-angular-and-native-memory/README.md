@@ -1,0 +1,3 @@
+# Null sensing, angular QC and version-bound native-memory results
+
+The preserved P1 six-file return, Dots0240v2 and Dots0440 archives, and Ultra earlier candidate/later accepted angular/controller snapshots remain distinct. Canonical units carry actual acquired whole reviews, reported review/arithmetic scopes, failed sufficient tests, corrections and unacquired originals. Later acceptance does not rewrite frozen pending sources or promote incompatible generators. All existing source-transfer, Dots read-only, biology-hold and non-operational-chemistry boundaries remain. No producer scientific script, source case, solver or new scientific audit was run.
