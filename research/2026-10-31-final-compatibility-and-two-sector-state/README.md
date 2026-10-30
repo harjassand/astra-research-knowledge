@@ -1,0 +1,3 @@
+# Final compatibility coverage and a two-sector state certificate
+
+One new P3 card and five new unit IDs, with four immutable existing Ultra unit advances and two existing card/status/index updates. Ultra4096/symmetry/certificate data are deduplicated; final completion and actual orbit files/receiver assertions/full-covariance qualifier are retained. P3 is visible-only, with reported separate star review and unacquired review body distinguished. Conditional independence, paid scalar/bit/gate/acquisition costs, easy ordinary global sampler and strongest prior comparators remain explicit. No scientific replay, new audit/sign-off, novelty investigation, raw activity, producer contact or access change.
