@@ -1,0 +1,3 @@
+# Posterior experiment value, response operators and acquisition boundaries
+
+Three cards and ten new unit IDs preserve the completed P1 source scopes. Two units carry the actual acquired row01 mathematical adaptive/order audit; no new scientific review/reproof is performed. Thirteen event-verified original rows include distinct DERIVATION files; uncertain history/manifest and prior missing files remain unverified, unretried and excluded from verified source payloads. The synthetic workload,45.16-second adaptive query,2.84%-of-fixed-gain premium,ordinary incremental tie/local-design win,interval regret,parity/profile counterexamples and conditional OuMv scope remain explicit. No routine raw monitoring logs or uncertain history are published.
