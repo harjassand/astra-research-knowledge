@@ -1,0 +1,89 @@
+Independent final-ADC audit
+30 October 2026. Existing learning files left unchanged.
+
+The proposed bound is valid under the existing unit-direction sensing model.
+
+1. Independence.
+Condition on the standardized noisy context G, its packed quantization QG,
+and the acquired coefficient vector. The selected direction w(QG) is fixed
+and unit length, while V and the final sensor noise remain independent of
+that conditioning. Therefore
+
+    Z = w(QG)^T V + noise ~ N(0,1+s)
+
+conditionally, with a law that does not depend on G. Thus Z is independent
+of G and of the acquired model. Its deterministic ADC quantization error
+is also independent of the decoder amplitude. If the coefficient vector
+vanishes, skip the final read, or choose an arbitrary fixed unit direction
+and use zero output amplitude; either convention preserves the argument.
+
+2. Final scalar quantizer.
+Let h_z=8/32767. Round to the nearest multiple of h_z, clipping at +/-8.
+There are 65,535 possible indices, -32767,...,32767, so a signed 16-bit
+index suffices (one possible signed code is unused). For |Z|<=8, squared
+error is at most h_z^2/4. Outside this interval it is (|Z|-8)^2<=Z^2.
+Consequently
+
+    epsilon_z <= h_z^2/4 + E[Z^2 1{|Z|>8}].
+
+Writing sigma=sqrt(1+s), a=8/sigma, standard normal density varphi and
+upper tail Q, the tail term is exactly 2 sigma^2 [a varphi(a)+Q(a)].
+
+3. Output perturbation.
+The existing decoder amplitude is
+
+    A(G)=alpha^2 ||c_hat * phi(QG)||/sqrt(M),  alpha=1/(1+s).
+
+Independence gives the stated L2 bound directly:
+
+    ||A(G)[ADC(Z)-Z]||_2
+       <= alpha^2 sqrt(E||c_hat*phi(QG)||^2/M) sqrt(epsilon_z).
+
+Thus if R_current bounds the current decoder's true MSE, a valid final
+bound is (sqrt(R_current)+the displayed L2 increment)^2. The triangle
+inequality does not require the original prediction error to be independent
+of the ADC perturbation.
+
+4. Conservative numerical check.
+For c=1, r=128, M=8256, s=0.01, context clipping T=6 and step h=0.01:
+
+    h_z                                  0.00024414807580797754
+    final tail second moment             1.1325671179912057e-13
+    epsilon_z bound                      1.4902183986896287e-08
+    context feature MSE upper bound      0.0004113977307983501
+    current MSE upper bound              0.02980915065674825
+
+An elementary amplitude bound suffices, without exact Gaussian-bin moments:
+because |Q(G_i)|<=|G_i|, diagonal-feature second moments are at most 2 and
+off-diagonal-feature second moments at most 1. Therefore
+
+    E||phi(QG)||^2/M <= 1+r/M = 1.0155038759689923.
+
+Using that conservative amplitude bound gives
+
+    ADC L2 increment                     0.00012059325167419472
+    final MSE upper bound                0.02985080683727561 < 0.03.
+
+Using exact scalar Gaussian-bin moments gives E||phi(QG)||^2/M about
+0.9842946864320479 and current MSE about 0.029504335001139897; the resulting
+triangle bound is 0.029545135714821435. The conservative bound above already
+establishes the requested margin.
+
+If the same bounded-error coefficient acquisition as the existing executable
+is included, with per-evaluation nu=1e-7, then
+
+    tau_c <= sqrt(M+r) nu,
+    ||c_hat||_infinity <= 1+sqrt(2M) nu.
+
+Combining these with the existing coefficient-error certificate and scaling
+the conservative amplitude bound by ||c_hat||_infinity^2 gives a final MSE
+upper bound of 0.029851178494014093, also below 0.03.
+
+5. No exact first read is hidden.
+The actuator obtains both its direction and amplitude solely from packed QG
+and the prepared coefficients. It does not need the unquantized context
+value. Standardizing and quantizing the first sensor outputs can equivalently
+be performed by fixed ADC thresholds at the source. The final decoder uses
+only the signed 16-bit final index and that already available amplitude.
+This extension retains the previously declared unit-direction aggregate
+primitive and its charged dense actuator work.

@@ -1,0 +1,304 @@
+INDEPENDENT AUDIT: FINITE CONTROL, NOISY GAUSSIAN READS, AND A GENERAL FIRST STAGE
+Scientific-computation branch, 2026-10-30.
+
+VERDICT
+
+The proposed exact noisy replay reduction is valid under the access contract
+below. The general first-stage decomposition is also valid. The essential
+corrections are explicit decoder knowledge, charged control timing, absence
+of uncharged correlated actuator side information, and separation of
+algorithmic random seeds from the measurement-noise innovations. The replay
+freeze includes the innovations only as a mathematical coupling; the posterior
+calculation must never reveal those innovations to the predictor.
+
+The intended output is at the controller, or at a decoder retaining the same
+first-stage information. The actuator only implements sensing directions and
+returns its readouts. This audit does not broaden the theorem to an
+actuator-only predictor.
+
+1. CONTRACT THAT MAKES THE THEOREM PRECISE
+
+V~N(0,I_n). C is an R^n-valued random variable independent of V with
+E||C||^2<infinity. The controller knows C. The actuator initially has no
+C-dependent information except a declared public context Z, if present.
+For the unconditional version Z is absent or independent of C.
+
+The actuator can take at most q measurements
+
+  Y_t=u_t^T V+xi_t,  ||u_t||<=1,
+  xi_1,...,xi_q iid N(0,s),  s>0.
+
+The innovation sequence is external measurement noise, independent of C,V,
+and all algorithmic random seeds. Its realizations are not available to either
+party except through the readouts. Directions are predictable from the
+actuator's received control bits, previous legal readouts and its algorithmic
+seeds. Feedback can return any function of these readouts and seeds, including
+the entire readout record, but no extra information about V.
+
+The control protocol has at most B binary controller branches on every path,
+so a fixed replay has at most 2^B complete control words. Fixed-length padded
+words with a public state deciding when to request the next bit are a
+convenient equivalent implementation. Any controller-dependent timing,
+stopping, measurement requests, addresses, metadata, or message boundaries
+must be included in this control alphabet. A bare payload-length bound with
+free termination is insufficient.
+
+Hard q and B bounds hold. Counterfactual branches can be totalized by stopping
+or capping at q reads and B bits. This changes no actual admissible behavior
+and gives a feasible replay for every complete word. The theorem is not an
+expected-length or expected-number-of-measurements theorem.
+
+The final decoder retains C, the complete readout transcript, directions, and
+the protocol data necessary to calculate the posterior. Giving it additional
+ALGORITHMIC seeds can only help the lower bound. This does not include xi.
+One-way controller bits are priced here; exact real readout feedback is a
+different channel. Finite return precision is an additional resource to pay.
+
+2. THE GAUSSIAN POSTERIOR IDENTITY
+
+Fix C=c and all algorithmic random seeds R. Along a realized transcript, let
+M have the realized rows u_t and let y contain the measured outputs. All
+controller bits are now deterministic functions of earlier readouts, and all
+directions are predictable. The sequential likelihood at this transcript is,
+as a function of v,
+
+  product_t (2 pi s)^(-1/2) exp(-(y_t-u_t^T v)^2/(2s)).
+
+Indicators that the protocol follows the realized branches depend on c,R,y;
+they do not introduce an additional v-dependent factor. Stopping based on the
+record does not alter that point. Bayes' rule with the standard Gaussian prior
+therefore gives, almost surely,
+
+  V | C,transcript,R ~ N(mu,P),
+  P=(I+M^T M/s)^(-1),  mu=P M^T y/s.                         (1)
+
+The conditional Bayes variance of C^T V is C^T P C. Thus any admissible
+predictor has expected risk at least
+
+  E[ C^T (I+M(C,V,xi,R)^T M(C,V,xi,R)/s)^(-1) C ].             (2)
+
+If the decoder retains the full information in (1), its Bayes estimator
+C^T mu attains (2). Unknown algorithmic seeds can only make its actual risk
+larger, so using (2) is safe for a universal lower bound.
+
+WARNING: conditioning on xi in (1) would make the observations noiseless.
+For example, Y=u^T V+xi together with xi reveals u^T V exactly. The noisy
+covariance in (1) is not the covariance conditional on all replay variables.
+
+3. REPLAY AND EXACT STATIC CODEBOOK REDUCTION
+
+Only after obtaining (2), set omega=(V,xi_1,...,xi_q,R) and fix its value for
+the replay argument. For each complete word w, simulate the actuator, supplying
+the bits of w when requested and the response u_t^T V+xi_t at its t-th read.
+This produces a feasible row matrix M_w(omega). It is independent of C because
+the actuator has no C input other than the supplied word. The same omega is
+used across all counterfactual words. There are at most N=2^B matrices.
+
+For the actual word w(C,omega), define
+
+  ell(c,M)=c^T(I+M^T M/s)^(-1)c.
+
+Pointwise,
+
+  ell(C,M_actual)>=min_w ell(C,M_w(omega)).                    (3)
+
+Omega is independent of C. For each fixed omega, averaging (3) over C gives
+
+  E_C min_w ell(C,M_w(omega))
+     >= inf_{M_1,...,M_N feasible} E_C min_j ell(C,M_j).        (4)
+
+Averaging omega proves the universal lower bound. No false assertion that
+the ACTUAL matrix is independent of C occurs in this proof.
+
+For the converse, fix any feasible static codebook. The controller computes
+the minimizing index j(C), sends it before sensing, and the actuator takes its
+rows and returns the readouts. The decoder evaluates C^T mu with (1).
+This achieves the codebook objective. Consequently
+
+  optimal interactive risk
+    = min_{M_1,...,M_(2^B) feasible}
+        E_C min_j C^T(I+M_j^T M_j/s)^(-1) C.                  (5)
+
+One may write inf instead of min without needing an existence argument.
+For rows of norm <=1, append zero rows to make each matrix q by n. The feasible
+matrix set is compact. Since 0<=ell(c,M)<=||c||^2 and ell is continuous,
+dominated convergence makes the expected codebook objective continuous.
+Hence a minimum exists. If every actual read must have unit rather than
+at-most-unit power, short branches can instead be padded by additional unit
+reads; extra independent data can only lower their risk. The optimal static
+design can use all q reads.
+
+This does not compute an optimal codebook economically. The source law,
+codebook storage, numerical matrix construction, index search, and final
+posterior evaluation remain separate costs. The lower bound grants arbitrary
+pre-shared codebooks and computation, which strengthens rather than weakens it.
+
+Independent but unequal fixed Gaussian noise variances s_t>0 admit the same
+proof, with P=(I+M^T diag(s_t^(-1))M)^(-1) and the variances indexed by read
+number. General non-Gaussian independent noise does not have covariance (1).
+Correlated read noise also needs a separate conditional-innovation analysis;
+the iid formula must not be copied into it.
+
+4. PUBLIC CONTEXT AND FIRST-STAGE RANDOMNESS
+
+If the actuator is given public context Z correlated with C, require
+V independent of (C,Z) and the physical noises independent of everything else.
+Condition on Z=z before replay. The appropriate optimum is
+
+  E_Z [ inf_{M_1(z),...,M_N(z)}
+           E[ min_j ell(C,M_j(z)) | Z ] ].                   (6)
+
+The codebook is allowed to depend on the already available context. If desired,
+use infima over measurable codebook families. A countable dense family of
+rational feasible matrices gives measurable epsilon-minimizers by selecting
+the first candidate within epsilon of the measurable infimum. Thus the
+conditional expression does not require an unproved selection oracle for
+the equality of infima; computational implementation is still not supplied.
+
+Public random seeds generated BEFORE a first stage are a subtle case. Even
+if a seed J is initially independent of X, the resulting conditional coefficient
+C=E[a(X)|H,J] can be correlated with J, because J chooses which information H
+is acquired. Such a seed is public context, not automatically randomization
+independent of the final C. One must condition on it as in (6), or fix its
+value when specifying the first-stage problem.
+
+5. GENERAL FIRST-STAGE DECOMPOSITION: FULL PROOF
+
+Let X be independent of V~N(0,I_n), with
+
+  f(X,V)=g(X)+a(X)^T V,
+  E[g(X)^2]+E||a(X)||^2<infinity.
+
+Let H be the controller's first-stage record. The crucial structural condition
+is that (X,H) is jointly independent of V and of all subsequent physical
+readout noise/algorithmic coins. H may be generated by legal noisy observations
+of X. The controller receives no additional X information after H. The final
+decoder retains H; actuator access to H-derived information is charged through
+the same control budget, except declared public context.
+
+Set
+
+  mu_g(H)=E[g(X)|H],  C(H)=E[a(X)|H],
+  delta_g=g-mu_g,     delta_a=a-C,
+  R0=delta_g+delta_a^T V.
+
+Every subsequent legal transcript T is measurable in (H,V,xi,algorithmic
+coins). Conditional on H, the residual X uncertainty is independent of these
+new variables. Hence
+
+  E[R0 | H,V,xi,coins]=0.                                     (7)
+
+For ANY measurable predictor fhat(H,T), the cross term with R0 therefore
+vanishes, yielding the exact orthogonal decomposition
+
+  E[(f-fhat)^2]
+    = E[R0^2] + E[(mu_g(H)+C(H)^T V-fhat)^2].                 (8)
+
+Because E[V|H]=0 and E[VV^T|H]=I,
+
+  E[R0^2]
+    = E Var(g|H)+E tr Cov(a|H) =: J0.                       (9)
+
+The cross covariance Cov(g,a|H) need not vanish. Its contribution to R0^2 is
+2 Cov(g,a|H)^T V and vanishes only after averaging V. Likewise, conditional
+on a realized later transcript, the irreducible variance need not equal the
+constant J0. Equations (8)--(9) are the averaged exact decomposition; no
+pointwise constant-residual-variance claim is needed or generally true.
+
+Conditional on H and algorithmic coins, the Gaussian likelihood argument from
+Section 2 applies. The optimal controller predictor is
+
+  mu_g(H)+C(H)^T P M^T y/s.
+
+The remaining risk is E[C(H)^T P C(H)]. Even if the control protocol uses all
+of H rather than only C(H), replay constructs matrices independent of H.
+The loss depends on H only through C. Thus the exact optimal total risk is
+
+  J0 + min_{N=2^B static matrices} E_H min_j ell(C(H),M_j).     (10)
+
+With public context Z, replace H by the full decoder record (H,Z) in mu_g,C,J0,
+and use the conditional codebook expression (6). If H or Z contains V
+information, the stated prior-I decomposition is not valid without a revised
+conditional Gaussian model. If later actions acquire more X information,
+J0 is no longer generally irreducible.
+
+Neither mu_g nor C is acquired for free by this identity. For a generic
+implicit model, evaluating either conditional expectation can be the original
+hard inference problem. A Hermite family with explicitly available Gaussian
+conditional moments earns the formula in that family; it does not establish
+an arbitrary-model conditional-mean oracle.
+
+6. THREE SMALL ACCESS COUNTEREXAMPLES
+
+These are warnings about excluded models, not proposed extensions of the
+intended theorem.
+
+(i) If the final actuator alone must predict, take n=q=1, B=0, C uniform on
+{-1,+1}. The actuator sees Y=V+xi and no sign information. Its best prediction
+of C V is zero and its risk is 1. A controller retaining C has risk s/(1+s),
+the value in (5). Thus the output-location condition is mathematically needed.
+
+(ii) If free termination allows the three B=1 strings empty, 0 and 1, take
+n=3, q=1, and C uniform on {e_1,e_2,e_3}. Those three strings select the three
+coordinate directions and give risk s/(1+s). With only two legal control words,
+the best risk is 1-2/[3(1+s)]: for unit directions u_1,u_2,
+sum_i max_j u_(j,i)^2<=2, with equality for two coordinate directions.
+The gap is 1/[3(1+s)]. A proper prefix-free/fixed schedule removes this loophole.
+
+(iii) If the actuator is given Z and C=e_Z, with Z uniform on {1,2}, n=2,
+q=1,B=0, a context-dependent read achieves s/(1+s). An unconditional one-matrix
+codebook has best risk 1-1/[2(1+s)]. Formula (6), rather than (5), is correct.
+
+7. ADDITIONAL SANITY CHECKS AND PRECISION INTERFACE
+
+For q=0, (5) is E||C||^2. For B=0,q=1, its optimum is
+
+  E||C||^2-lambda_max(E[CC^T])/(1+s).
+
+For a deterministic nonzero C, repeating the same unit direction C/||C|| for
+all q reads attains ||C||^2 s/(s+q). This confirms that q noisy reads cannot
+generally be replaced by an unweighted rank-q subspace: repeats matter.
+
+The function ell(c,M) is between 0 and ||c||^2. If a one-shot encoder has an
+approximation Chat with E||C-Chat||^2=delta^2, then for any fixed codebook,
+
+  E[ell(C,M_selected(Chat))-min_j ell(C,M_j)]
+    <=4 sqrt(E||C||^2) delta+2 delta^2.                       (11)
+
+Indeed, for every P_j in [0,I],
+|C^T P_j C-Chat^T P_j Chat|<=2||C||||C-Chat||+||C-Chat||^2;
+using the inequality twice and Cauchy-Schwarz proves (11).
+If the final decoder also substitutes Chat and an approximation muhat_g,
+then, for that one-shot matrix chosen from H, the further error is at most
+delta^2+E|mu_g-muhat_g|^2. Conditional on H, the posterior mean of V has
+covariance I-P and mean zero, proving this claim. These bounds offer an honest
+way to pay approximate conditional-mean computation; they do not compute it.
+
+The noisy matrix posterior is a conventional Gaussian calculation. The new
+candidate, if historically distinct, is the interactive replay reduction.
+This audit establishes its internal validity under the stated model, not
+historical novelty. Primary comparison remains with root's/control branch's
+source ledger; no new priority claim is made here.
+
+8. EXECUTABLE INDEPENDENT CHECK
+
+noisy_control_checks.py uses 100,000 independent replay draws. Its genuinely
+interleaved example takes one noisy V read, sends a coefficient/readout-
+dependent bit, and chooses the second read direction using that bit and the
+first readout. The same V and external noise innovations are reused across
+the two counterfactual words. Observed prediction MSE is 0.4491337 versus
+mean posterior-covariance risk 0.4490451, a paired difference of 0.052 standard
+errors. The replay minimum is pointwise no larger than the actual conditional
+cost in every draw.
+
+A separate example uses H=X+sqrt(0.7)Z, a(X)=(X,X^2-1), and
+g(X)=X^2+0.3X. Conditional Gaussian moments supply C and mu_g explicitly.
+It uses a one-bit choice between two coordinate reads, including the nonzero
+conditional Cov(g,a|H) terms in its independently calculated risk. The total
+risk and J0 checks differ from prediction by 2.009 and 2.064 paired standard
+errors respectively. This is ordinary Monte Carlo variation, not numerical
+proof. The exact equations in Sections 2--5 are the proof.
+
+The fixed seed, all means, paired standard errors, and the closed-form access
+counterexamples are retained in noisy_control_checks_results.json. No optimal
+general codebook search or physical actuator is benchmarked by these checks.
