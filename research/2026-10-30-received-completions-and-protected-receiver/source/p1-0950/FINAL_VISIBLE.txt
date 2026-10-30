@@ -1,0 +1,665 @@
+## The new result: construct useful correlations without learning the unknown probabilities
+
+I chose a different consumer for the binary interface: **coupling two unknown stochastic systems while preserving each system’s law exactly**.
+
+The construction developed here takes independent sample access to two unknown Bernoulli probabilities \(p,q\). It returns a pair with exactly those marginals, while approaching the greatest possible probability of agreement. Its uniform expected source cost is
+
+\[
+\boxed{\Theta(1/\varepsilon)}
+\]
+
+for error \(\varepsilon\) in the joint coupling law. I have an explicit algorithm, its exact output distribution, a matching lower bound on the dependence on \(\varepsilon\), and a deadline modification that preserves the marginals.
+
+I then used it to construct coupled stochastic networks whose trajectories meet rapidly without evaluating their transition probabilities. That is a consumer for which the joint law matters.
+
+The comparisons narrowed the claim. A strong early-stopping batch construction also works, and ordinary simulation is cheaper for the finite-accuracy stationary-average example tested here. **The strongest opening is the correlation operation and its uniform accuracy–cost guarantee.** I have not established a practical speed advantage on the persistent physical specimen.
+
+---
+
+## 1. The obstruction that changed the construction
+
+Suppose we can request fresh flips of two coins with unknown probabilities \(p,q\in[1/4,3/4]\).
+
+The maximal Bernoulli coupling has
+
+\[
+\Pr(X\ne Y)=|p-q|.
+\]
+
+If \(p\le q\), its probabilities are
+
+\[
+\Pr(00)=1-q,\qquad
+\Pr(01)=q-p,\qquad
+\Pr(10)=0,\qquad
+\Pr(11)=p.
+\]
+
+Knowing \(p,q\) makes this easy: draw a common uniform variable and compare it with both probabilities. Sample access alone provides a weaker operation.
+
+**An algorithm using only these flips cannot produce the exact maximal coupling uniformly over unknown \(p,q\), while terminating almost surely.**
+
+Here is the finite-transcript obstruction. At \(p=q=1/2\), maximal coupling requires zero probability of either off-diagonal outcome. But any event on which an algorithm terminates after finitely many flips and returns an off-diagonal outcome has positive probability at \(p=q=1/2\) whenever it has positive probability at another interior parameter pair. Every finite sequence of answers remains possible. At unequal probabilities, exact marginals require positive off-diagonal mass. These requirements conflict.
+
+This does not rule out perfect sampling by other mechanisms. It rules out supplying this particular exact coupling operation from unrestricted interior coin access.
+
+The sign and dither keys of the earlier binary interface remain private. They cannot be treated as an accessible common threshold for the two unknown probabilities. Nor does the earlier physical common-null construction supply a certified test that two unknown probabilities are equal.
+
+The change was therefore to **preserve the marginals exactly and approximate the dependence between them**.
+
+This sits within established Bernoulli-factory research. Nacu and Peres study transformations of unknown coin probabilities and give related stopped-random-walk constructions; exact constrained marginals also appear in combinatorial Bernoulli factories. I derived the specific construction and guarantees below here, but have not established a literature-priority claim. [arxiv.org](https://arxiv.org/pdf/math/0309222?utm_source=chatgpt.com)
+
+## 2. The construction
+
+Choose an integer \(L\ge1\).
+
+1. Draw an initial independent pair \((A_0,B_0)\), with probabilities \(p,q\).
+2. If the bits agree, return them.
+3. Otherwise start an integer walk at
+   \[
+   W=B_0-A_0\in\{-1,+1\}.
+   \]
+   Repeatedly draw fresh pairs \((A,B)\) and add \(B-A\) to \(W\).
+4. Stop when \(W=0\) or \(|W|=L\).
+   - At \(W=0\), draw one fresh fair bit \(Z\) and return \((Z,Z)\).
+   - At \(|W|=L\), return the original pair \((A_0,B_0)\).
+
+The probabilities are never estimated or evaluated. Their ordering is never requested.
+
+Here is runnable code for the central operation. The optional cap is justified below.
+
+```python
+def couple_unknown_coins(pcoin, qcoin, fair, L, pair_cap=None):
+    """
+    pcoin(), qcoin(): fresh conditionally independent 0/1 samples.
+    Their probabilities stay fixed during this invocation.
+    fair(): an independent fair 0/1 bit.
+
+    Returns ((X, Y), number_of_source_pairs).
+    The count is for accounting; the stochastic consumer uses (X, Y).
+    """
+    if L < 1 or int(L) != L:
+        raise ValueError("L must be a positive integer")
+    if pair_cap is not None:
+        if pair_cap < 1 or int(pair_cap) != pair_cap:
+            raise ValueError("pair_cap must be a positive integer")
+
+    first = (pcoin(), qcoin())
+    used = 1
+
+    if first[0] == first[1] or L == 1:
+        return first, used
+
+    walk = first[1] - first[0]
+
+    while walk != 0 and abs(walk) < L:
+        if pair_cap is not None and used >= pair_cap:
+            return first, used
+
+        a, b = pcoin(), qcoin()
+        used += 1
+        walk += b - a
+
+    if walk == 0:
+        z = fair()
+        return (z, z), used
+
+    return first, used
+```
+
+For the uncapped algorithm, let \(C_L(p,q)\) denote the returned pair law and \(C_{\max}(p,q)\) the maximal coupling. With total variation defined as half the sum of absolute probability differences,
+
+\[
+\boxed{
+\begin{aligned}
+X&\sim\operatorname{Bern}(p),\\
+Y&\sim\operatorname{Bern}(q),\\
+\|C_L-C_{\max}\|_{\rm TV}&\le \frac1{2L},\\
+\mathbb E[\text{source flips}]&=2L.
+\end{aligned}}
+\]
+
+These statements hold uniformly over the parameter square. They also hold conditionally on the history before each invocation, provided the requested probabilities remain fixed during that invocation and the source flips satisfy the fresh conditional-law contract.
+
+The accuracy statement concerns the returned bit pair. It does not assert that the internal walk or runtime has the law of a hypothetical instantaneous maximal-coupling oracle.
+
+## 3. Exact law, cost, and lower bound
+
+### Why the marginals stay exact
+
+Write
+
+\[
+a=q(1-p),\qquad b=p(1-q),
+\]
+
+for the probabilities of an upward and downward step, and define
+
+\[
+S_L=\sum_{k=0}^{L-1}a^{L-1-k}b^k.
+\]
+
+The usual finite-interval hitting calculation gives
+
+\[
+g_L=\Pr(\text{return }01)=\frac{a^L}{S_L},
+\qquad
+h_L=\Pr(\text{return }10)=\frac{b^L}{S_L}.
+\]
+
+Their difference is exactly
+
+\[
+g_L-h_L=a-b=q-p.
+\]
+
+More directly, the probability mass removed from each initial off-diagonal orientation is equal:
+
+\[
+c=a-g_L=b-h_L.
+\]
+
+Every walk that returns to zero contains equally many upward and downward steps. Reflecting the path exchanges its initial orientation without changing its probability. The algorithm moves this equal mass from the two off-diagonal outcomes into the two diagonal outcomes.
+
+Thus the full output law is
+
+\[
+\begin{array}{c|c}
+\text{Outcome}&\text{Probability}\\ \hline
+00&(1-p)(1-q)+c\\
+01&a-c\\
+10&b-c\\
+11&pq+c
+\end{array}
+\]
+
+and summing either marginal recovers \(p\) or \(q\) exactly.
+
+### Why the coupling error is small
+
+For Bernoulli marginals,
+
+\[
+\|C_L-C_{\max}\|_{\rm TV}
+=2\min(g_L,h_L).
+\]
+
+Assume \(q\ge p\), so \(a\ge b\). Then
+
+\[
+S_L\ge Lb^{L-1},
+\qquad
+h_L\le\frac bL.
+\]
+
+Also \(b=p(1-q)\le p(1-p)\le1/4\). Consequently,
+
+\[
+\|C_L-C_{\max}\|_{\rm TV}\le\frac1{2L}.
+\]
+
+The bound is attained at \(p=q=1/2\). At that point,
+
+\[
+\Pr(01)=\Pr(10)=\frac1{4L}.
+\]
+
+The same error measures excess disagreement:
+
+\[
+\Pr(X\ne Y)
+=
+|p-q|+\|C_L-C_{\max}\|_{\rm TV}.
+\]
+
+### Why the expected cost is exactly \(2L\)
+
+Let \(\tau\) count source pairs, including the first pair. The walk starts at zero and stops at its first subsequent visit to \(0\) or either boundary.
+
+When \(p\ne q\), its drift is \(q-p\). Therefore
+
+\[
+(q-p)\mathbb E\tau
+=\mathbb E W_\tau
+=L(g_L-h_L)
+=L(q-p),
+\]
+
+so \(\mathbb E\tau=L\).
+
+At \(p=q\), the corresponding quadratic-martingale calculation gives the same result. The finite absorbing walk has finite expectation, so these stopping arguments are valid.
+
+Expected cost and deadline cost differ substantially. At \(p=q=1/2\),
+
+\[
+\operatorname{Var}(\tau)
+=\frac{L(L-1)(2L-1)}3.
+\]
+
+Rare long walks are part of how the algorithm achieves its expected-cost guarantee.
+
+### The dependence on accuracy is optimal
+
+Consider any adaptive algorithm using only the two coin sources and independent internal randomness. Require exact marginals and uniform coupling error at most \(\varepsilon\), with \(0<\varepsilon\le1/8\). Let \(N\) be its number of individual source flips.
+
+Compare
+
+\[
+\theta_0=(1/2,1/2),
+\qquad
+\theta_1=(1/2-\varepsilon,1/2+\varepsilon).
+\]
+
+At \(\theta_0\), exact marginals and the error requirement imply
+
+\[
+\Pr_0(01)\le\varepsilon/2.
+\]
+
+At \(\theta_1\), exact marginals imply
+
+\[
+\Pr_1(01)-\Pr_1(10)=2\varepsilon,
+\]
+
+hence \(\Pr_1(01)\ge2\varepsilon\).
+
+Data processing to this output event, followed by the Hellinger lower bound on relative entropy, gives
+
+\[
+D_{\rm KL}(P_1\|P_0)
+\ge
+\left(\sqrt{2\varepsilon}-\sqrt{\varepsilon/2}\right)^2
+=\frac{\varepsilon}{2}.
+\]
+
+Each source flip contributes at most \(4\varepsilon^2\) to the stopped transcript’s relative entropy. The adaptive chain rule therefore yields
+
+\[
+\boxed{\sup_{p,q}\mathbb E N\ge\frac1{8\varepsilon}.}
+\]
+
+Our choice \(L=\lceil1/(2\varepsilon)\rceil\) uses at most \(1/\varepsilon+2\) expected flips.
+
+This establishes the optimal **order** of expected sample cost in the stated oracle model. It is not a lower bound against hardware that exposes additional analog information, probability evaluations, or a shared threshold operation.
+
+### A hard cap preserves the exact marginals
+
+Cap an invocation at \(B\) source pairs. If it has not reached zero or a boundary, return the original pair.
+
+This fallback preserves the marginals. Reflection still pairs all paths that returned to zero before the symmetric boundary and time cap, so equal mass is removed from the two initial orientations.
+
+Moreover,
+
+\[
+\mathbb E N_{\rm capped}\le2L,\qquad
+N_{\rm capped}\le2B,
+\]
+
+and coupling the capped and uncapped executions gives
+
+\[
+\boxed{
+\|C_{L,B}-C_{\max}\|_{\rm TV}
+\le \frac1{2L}+\frac LB.
+}
+\]
+
+The second term follows from \(\Pr(\tau>B)\le L/B\). This is an available deadline guarantee, not a claim of optimal deadline complexity.
+
+## 4. The ordinary alternatives changed the interpretation
+
+### Known probabilities
+
+With numerical access to \(p,q\), one shared uniform draw gives exact maximal coupling. That is the strongest simple construction under the stronger information model.
+
+General maximal-coupling algorithms likewise often use density evaluations in addition to sampling. Jacob, O’Leary and Atchadé explicitly account for those evaluations in their coupling algorithm. They cannot be charged as free operations when the available interface returns only samples. [arxiv.org](https://arxiv.org/pdf/1708.03625?utm_source=chatgpt.com)
+
+### Batch matching, including its stronger early-stopping implementation
+
+Draw \(m\) samples from each coin, sort each binary list, choose one common uniform position, and return the two entries there.
+
+This has exact unconditional marginals. Its excess disagreement is
+
+\[
+\mathbb E|\widehat p-\widehat q|-|p-q|.
+\]
+
+Its sharp uniform maximum occurs at \(p=q=1/2\), where it equals
+
+\[
+c_m=\frac{\binom{2m}{m}}{4^m}.
+\]
+
+To see why the maximum is there, move the larger probability toward the smaller one; this increases the wrong-order empirical mass. On the diagonal, increasing \(p(1-p)\) makes each difference increment a greater mean-preserving spread, increasing the expected absolute sum.
+
+There is a substantially better implementation than always drawing the entire batch:
+
+- Start with the first pair.
+- Continue the difference walk until it first returns to zero or reaches \(m\) pairs.
+- On return, output a common fair bit.
+- At the time cap, return the original pair.
+
+A ballot-path identity shows that this produces **exactly the same pair law as batch matching**. I checked that equivalence in exact arithmetic. At the fair point its expected source cost is
+
+\[
+4m c_m,
+\]
+
+which is already \(O(1/\varepsilon)\). Away from the diagonal its expected cost can remain \(O(1/\varepsilon^2)\).
+
+For uniform error \(0.01\), exact arithmetic gives the following comparison:
+
+| Construction | Source cost |
+|---|---:|
+| Fixed batch matching, \(m=3183\) | 6,366 flips, deterministically |
+| Early-stopping version of that batch | 127.317 expected flips at \(p=q=1/2\); much higher for separated probabilities |
+| Boundary walk, \(L=50\) | 100 expected flips for every allowed \(p,q\) |
+
+The distinction is **uniform expected cost**, together with the different runtime tails. The early-stopping baseline removes the tempting but misleading claim of an across-the-board quadratic improvement over batch matching.
+
+### Direct mean estimation
+
+The construction provides no improvement for estimating a simple mean difference at the fair point.
+
+For its output difference \(D=Y-X\),
+
+\[
+\operatorname{Var}(D)=\frac1{2L},
+\qquad
+\mathbb E N=2L,
+\]
+
+so variance times expected source cost equals \(1\). An ordinary independent pair has variance \(1/2\), costs two flips, and gives the same product.
+
+That failure changed the consumer. The useful output is a joint stochastic law, rather than a more efficient estimate of \(q-p\).
+
+Zero source calls also remain a baseline. They cannot satisfy exact unknown marginals across the parameter square. If approximation is allowed, returning one fair bit twice has worst-case distance \(1/2\) from the maximal coupling on \([1/4,3/4]^2\).
+
+## 5. A completed adaptive consumer: stochastic networks that meet
+
+Consider a binary network with local stochastic updates. Given the current configuration, each site requests a coin associated with its local input pattern, and sites update independently.
+
+The controller knows the graph and bounds on the transition probabilities. It cannot evaluate those probabilities.
+
+For a concrete family, each site has four incoming neighbours. There are sixteen possible local patterns \(w\), with unknown probabilities
+
+\[
+p_w=\frac12+\frac{\theta_w}{4},
+\qquad
+|\theta_w|\le\frac14.
+\]
+
+Thus
+
+\[
+p_w\in[7/16,9/16].
+\]
+
+Changing one input bit affects at most four output sites. Each affected probability changes by at most \(1/8\), giving total influence at most \(1/2\).
+
+To couple two network configurations:
+
+- At a site whose two local patterns are identical, draw one source bit and share it.
+- At a site with different patterns, invoke the coin coupler.
+- Use fresh randomness across sites.
+
+The equality shortcut uses equality of the **query**, which is known. It does not infer equality of unknown probabilities.
+
+Let \(d_H\) denote Hamming distance. More generally, if total influence is at most \(\kappa\), and one changed bit can affect at most \(D\) queries, then
+
+\[
+\mathbb E[d_H(X',Y')\mid X,Y]
+\le
+\left(\kappa+\frac{D}{2L}\right)d_H(X,Y).
+\]
+
+For the concrete family, \(\kappa=1/2\), \(D=4\). Taking \(L=8\) gives
+
+\[
+\boxed{
+\mathbb E[d_H(X',Y')\mid X,Y]
+\le\frac34d_H(X,Y).
+}
+\]
+
+Both marginal network transition laws are exact. Once configurations meet, sharing identical-query bits keeps them together.
+
+For \(n\) sites and meeting time \(T_{\rm meet}\),
+
+\[
+\Pr(T_{\rm meet}>t)\le n(3/4)^t.
+\]
+
+For \(n=64\), summing this bound gives
+
+\[
+\mathbb E T_{\rm meet}\le19.
+\]
+
+This supplies the meeting operation through repeated coin queries. It does not assume a maximal-coupling oracle or probability evaluation.
+
+### Executed comparison
+
+I implemented a 64-site ring with neighbours at offsets \(-2,-1,+1,+2\), starting one copy at all zeros and the other at all ones.
+
+The hidden test table was
+
+\[
+100\theta=
+(-21,17,8,-24,14,-9,22,-16,3,-18,25,-5,-12,20,-2,11).
+\]
+
+The coin source and auditor knew this table. The sampling algorithms received only source bits; the explicitly stronger known-probability benchmark received the table.
+
+There were 128 runs per method, with an 80-update observation horizon.
+
+| Method | Met by update 80 | Mean updates, capped at 80 | Mean source flips |
+|---|---:|---:|---:|
+| Boundary walk, \(L=8\) | 128/128 | 3.250 | 1,620.52 |
+| Early-stopping batch, cap 128 pairs | 128/128 | 3.125 | 2,860.13 |
+| Independent draws, sharing identical queries | 0/128 | 80.000 | 9,714.02 |
+| Known probabilities and common uniforms | 128/128 | 2.914 | 0; used probability evaluations |
+
+The boundary-walk runs all met within seven updates. The independent runs ended with mean Hamming distance \(28.47\).
+
+These finite simulations support the construction; the contraction proof supplies the guarantee. The gain over the strong sample-only baseline was about a factor of \(1.76\) in source calls in this example, not an enormous speedup.
+
+## 6. Exact stationary expectations—and a direct alternative that is cheaper
+
+Exact marginal chains plus a faithful meeting construction enable the standard lagged-coupling telescoping estimator. This consumer follows the unbiased-estimation work of Glynn–Rhee and Jacob–O’Leary–Atchadé; the operation supplied here is a usable coupling when transition probabilities cannot be evaluated. [web.stanford.edu](https://web.stanford.edu/~glynn/papers/2014/GRhee14.pdf?utm_source=chatgpt.com)
+
+Start \(X_0,Y_0\) from the same initial law, generate \(X_1\), then couple transitions from \(X_t\) and \(Y_{t-1}\). Let
+
+\[
+\tau=\inf\{t\ge1:X_t=Y_{t-1}\}.
+\]
+
+For a bounded observable \(h\), return
+
+\[
+H=h(X_0)+
+\sum_{t=1}^{\tau-1}
+\bigl(h(X_t)-h(Y_{t-1})\bigr).
+\]
+
+Exact marginal laws make the expectations telescope to the stationary expectation \(\pi h\). The geometric meeting bound just proved makes the sum integrable. For \(0\le h\le1\), \(|H|\le\tau\), so its variance is finite.
+
+This returns an unbiased estimator; it does not return an exact stationary sample.
+
+I executed it on the five-site version with \(h(x)=x_0x_1\), using 100,000 runs:
+
+- Separately computed stationary reference: \(0.25210523805\).
+- Estimator mean: \(0.25049\).
+- Estimated standard error: \(0.00161990\).
+- Mean source cost: \(108.73734\) flips.
+- Largest observed lagged meeting time: 12.
+
+The discrepancy was approximately one estimated standard error.
+
+Then I tested the ordinary alternative. The influence bound \(1/2\) means thirteen ordinary updates of this five-site chain cost 65 source flips and give the uniform bias guarantee
+
+\[
+|\mathbb E h(X_{13})-\pi h|
+\le 5(1/2)^{13}
+=0.0006103515625.
+\]
+
+Across another 100,000 runs, that direct method returned mean \(0.2509\), with estimated standard error \(0.00137095\), using 6.5 million source flips versus 10.87 million for the unbiased construction.
+
+**For this finite-accuracy average, ordinary simulation is the stronger practical choice.** The coupling construction establishes exact removal of initialization bias under the stated source model. It does not establish a general advantage in mean-square error per source call.
+
+## 7. Why the full adaptive-experiment guarantee matters
+
+Matching individual unconditional means is insufficient for this consumer.
+
+For a concrete counterexample, choose a hidden fair variable once. Conditional on it, let the source probabilities throughout an invocation be either
+
+\[
+(p,q)=(1/4,3/4)
+\]
+
+or the reversed pair.
+
+Every individual source bit is marginally fair when averaged over that hidden variable. Nevertheless, the returned coupling has disagreement probability at least \(1/2\). Truly fresh fair sources give disagreement only \(1/(2L)\).
+
+At \(L=8\), the returned pair laws therefore differ in total variation by at least
+
+\[
+\frac12-\frac1{16}=\frac7{16}.
+\]
+
+Likewise, learning a probability once and reusing its empirical estimate does not create a fresh coin oracle. If \(m\) fair-coin observations produce \(\widehat p\), two later draws conditionally independent given \(\widehat p\) have covariance
+
+\[
+\operatorname{Var}(\widehat p)=\frac1{4m}.
+\]
+
+Their separate means are correct; their joint law is different.
+
+The earlier binary-interface theorem controls the full returned adaptive transcript. Consequently, its error allowance survives the nonlinear walk, its stopping decisions, and subsequent network queries. This is where that asset has leverage.
+
+## 8. Supplying the operation through an explicit passive construction
+
+There is a concrete passive model for the sixteen unknown response values; they need not be postulated as numerical probability inputs.
+
+Take sixteen lossless two-port cells. Cell \(j\) has unknown fixed \(r_j\in[-1,1]\), retained field \(z_j\), commanded field \(v_j\), and transformation
+
+\[
+\begin{pmatrix}y_j\\z'_j\end{pmatrix}
+=
+\begin{pmatrix}
+r_j&-\sqrt{1-r_j^2}\\
+\sqrt{1-r_j^2}&r_j
+\end{pmatrix}
+\begin{pmatrix}v_j\\z_j\end{pmatrix}.
+\]
+
+Read the normalized output combination
+
+\[
+y=\frac14\sum_{j=1}^{16}y_j.
+\]
+
+Commanding \(v=s e_w\), with a fresh sign \(s\), gives
+
+\[
+y=h+s\frac{r_w}{4},
+\qquad
+h=-\frac14\sum_j\sqrt{1-r_j^2}\,z_j.
+\]
+
+Thus \(\theta_w=r_w/4\), as required by the network construction.
+
+With stored energy and exposed old-field energy
+
+\[
+E=\sum_j z_j^2,
+\qquad
+e=\sum_j(1-r_j^2)z_j^2,
+\]
+
+Cauchy–Schwarz gives \(h^2\le e\). Averaging over the fresh sign gives the required passive balance
+
+\[
+\mathbb E[E'\mid\text{pre-sign history}]
+\le E-e+1
+\]
+
+for an active unit-energy command. No state reset or known relaxation time is used.
+
+This is a specified mathematical architecture with accessible input ports and a calibrated output combination. It does not establish that an earlier physical specimen possesses those ports. I checked 32 signed controls using exact rational cell parameters: energy conservation, the fixed additive response, the exposed-energy bound, and the conditional storage balance all held exactly.
+
+### What transfers to the persistent specimen
+
+For at most \(K\) returned source bits, the retained binary-interface guarantee gives, under its original physical premises,
+
+\[
+\delta_{\rm src}(K)
+=
+\frac{\rho(E_0+JK)}{32U^2}
++\frac{K}{2M},
+\]
+
+using constant activity probability \(\rho\), \(M\) midpoint threshold settings, and the existing normalization.
+
+For one capped coupling, \(K=2B\), so
+
+\[
+\|C^{\rm physical}_{L,B}-C_{\max}\|_{\rm TV}
+\le
+\frac1{2L}+\frac LB+\delta_{\rm src}(2B).
+\]
+
+A useful distinction follows:
+
+\[
+\boxed{
+\text{Each physical marginal incurs only }\delta_{\rm src};
+\text{ the coupling approximation does not add marginal bias.}
+}
+\]
+
+For a whole finite network execution, the same source allowance bounds the discrepancy of the returned trajectory law from the clean-source execution.
+
+There is a limit for the unbounded estimator \(H\): a small total-variation discrepancy alone does not bound the change in its expectation. To obtain a finite physical guarantee, cap each factory and truncate the outer sum at \(T\). If
+
+\[
+\gamma_B=\kappa+D\left(\frac1{2L}+\frac LB\right)<1,
+\]
+
+then for \(0\le h\le1\) a conservative bound is
+
+\[
+|\mathbb E_{\rm physical}H_T-\pi h|
+\le
+n\gamma_B^T+(2T+1)\delta_{\rm src}(K),
+\]
+
+with, for example, \(K\le n+2BnT\). This supplies a bounded executable construction instead of transferring an unjustified exact-unbiasedness claim.
+
+### The physical cost still blocks a performance claim
+
+An illustrative single-pair budget with
+
+\[
+U=J=1,\quad E_0=16,\quad
+L=20,\quad B=2000,\quad
+\rho=1/12550
+\]
+
+has memory allowance \(0.01\). With \(M=2^{19}\), the combined bound is approximately \(0.048815\), but the conservative expected-calendar bound is about \(1.20\) million windows for one returned pair.
+
+Those are calculated allowances, not an executed physical result, and \(2^{19}\) threshold settings are an additional instrument resource.
+
+Keeping \(M=4096\) under that same conservative cap instead gives a bound of approximately \(0.5333\), worse than the \(0.5\) zero-call common-fair-bit baseline. This does not prove physical coupling is intrinsically expensive; it shows that the available composition does not establish a useful implementation at that budget.
+
+I have therefore retained the sampling principle and its completed consumer as the result, rather than claiming a successful physical service.
+
+---
+
+The checks in this turn also included 64 exact absorption-law and expected-cost cases, 108 capped-factory cases, 128 exact comparisons with early-stopping batch matching, and four complete small-network joint kernels covering 4,096 output-pair records. These were checks in this same research role, not an independent review.
+
+The inherited results and failures remain intact: the private binary-interface assumptions; the roughly 2,018-window sign construction versus the 185-probe direct test; the bounded-ADC optimization certificates that failed to beat the zero-experiment \(0.282843\) radius; and the original scope restrictions on physical common nulls, protection, preparation, and readout.
+
+The opening developed here is precise: **approximation can be spent on correlation while preserving each system’s probability law exactly.** That permits useful adaptive joint behavior without reconstructing the unknown response probabilities. The random walk supplies that operation at the optimal expected accuracy scaling, and the network construction shows a setting where it changes what can be executed from sample access alone.
