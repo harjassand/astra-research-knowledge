@@ -1,0 +1,3 @@
+# Finite optical ports, shared-mode gluing and frozen framework study
+
+Nine canonical families group related and duplicate derivations; source-bound units retain exact operations, quantifiers, costs, failures and current/historical boundaries. P2 is a root-working qualified finite-port model; Ultra is an in-progress scoped exact construction; completed local mathematical/control reviews are bound only to their actual subjects. The local method study has no consistent procedure winner. Frozen originals, prompts, unmasked arm mapping and scoped reviews are preserved; active follow-ups, routine monitoring, Dots/P3 boundaries and unrelated private material remain outside. No scientific replay, new sign-off or novelty investigation.
