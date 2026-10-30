@@ -1,0 +1,3 @@
+# Circulation, spatial shear and reachable-ensemble qualification
+
+Completed P1 continuations10-12 with exact received archives, deduplicated predecessor sources, actual version-bound internal reviews and binding corrections. Current cards N1348-N1353 and immutable units expose the physical interfaces, source costs, useful failures and equally informed ordinary alternatives. Calibration history uses the fixed0.16 gate/reference fallback and valid0.17 unconditional bound; the erroneous earlier interpretation remains preserved. Final root fallback completion is distinct from the first reviewed wrapper. No scientific replay, new proof, novelty adjudication, physical acquisition or new scientific sign-off is claimed.
