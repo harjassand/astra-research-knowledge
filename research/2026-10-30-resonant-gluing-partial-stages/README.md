@@ -1,0 +1,3 @@
+# Resonant-gluing interim stages
+
+One new card and two current reusable units,with a historical v0001and currentv0002for the restricted-family/separated-block progress. All three captured source stages and changed bytes remain separate. The own-rays rank obstruction is restricted linear compatibility,the early gluing proposal is numerical,and the later exact receiver/proof scope covers only the specified resonant field class and finite5^j-separatedblocks. No independent scientific audit,globalQC,overlapping-resonance resolution,novelty,reproof/replay,worker contact or new report. Biology held;chemistry non-operational.
