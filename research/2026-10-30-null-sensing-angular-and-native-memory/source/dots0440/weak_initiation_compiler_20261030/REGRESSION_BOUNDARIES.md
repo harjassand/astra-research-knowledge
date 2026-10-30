@@ -1,0 +1,4 @@
+# Regression boundaries
+The intentionally retained `check_effective_wrong_coherent_commit.py` fails its own-commutator assertion because it imports the OLD 12-state fixture, whose acquisition state is coherently coupled directly to the terminal state. The actual new normal form requires a distinct committed C family entered only by a one-way reset; its proof cannot apply to that fixture.
+
+The correct `check_effective_first_order.py` instead implements separate irreversible A2->C commitment. Its cleanup labels are resolved separately, matching the isolated resolvent; coherently combining two cleanup sources into one jump would change the no-jump loss and is not interchangeable. The corrected 27-state fixture passes. This remains a clean finite diagnostic with an abstract joint clock/lock cleanup jump, not a physical native implementation audit.
