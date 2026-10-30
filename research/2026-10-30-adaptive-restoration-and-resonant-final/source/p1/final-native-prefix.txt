@@ -1,0 +1,611 @@
+# P1 result: exact adaptive reuse with a sharp cost for restoring the cache
+
+**I constructed an exact framework for reusing a simulation cache after a decision has been chosen from that cache.** Its central object is the decision’s dependence on the stored computation.
+
+The framework gives three completed mathematical results:
+
+1. **A necessary-and-sufficient condition for a broad class of exact refresh operations.** It characterizes when selected parts of a cache can be resampled while the remainder stays valid, even conditional on the decision and the refresh addresses.
+2. **An information-accounting inequality for arbitrary refresh algorithms.** It applies across adaptive oracle calls and stopping times. When the original cache is restored, the evidence released along the way must be paid for by additional source calls.
+3. **A sharp family with a global decision and sublinear restoration cost.** For a specified recursive decision on \(N=4^h\) independent unknown-source coordinates, the exact worst-case optimum is
+   \[
+   \boxed{3^h=N^{\log_4 3}}
+   \]
+   additional coordinate samples. The lower bound covers algorithms more general than the construction.
+
+There is also an exact wrapper that converts a fixed-change repair kernel into an adaptively selected model update.
+
+These are derivations completed here, supported by exact finite checks. **Historical novelty, independent review of this new package, and practical scientific advantage remain unestablished.** The construction uses established resampling and subcube-partition machinery; the contribution developed here is the operational characterization, its resource accounting, and the resulting optimal restoration theorem.
+
+---
+
+## 1. The question I chose
+
+The recovered theorem asks how to transform a stored sample when the model changes.
+
+I chose a more basic question:
+
+> **After a computation has extracted a decision from a random cache, what must be replenished so that the cache can support another valid adaptive computation?**
+
+This distinguishes two resources that the previous work correctly kept separate:
+
+- **Stored computation:** values and intermediates that may remain useful.
+- **Statistical evidence:** information already exposed through a decision, estimate, model choice, or other record.
+
+A useful cache need not become an independent copy of its entire previous version. What we need for an adaptive interface is a specified conditional law:
+
+\[
+\boxed{\mathcal L(Y\mid \text{released record})=P.}
+\]
+
+Here \(Y\) is the restored cache and \(P\) its intended law.
+
+That condition can permit extensive reuse. It also rules out treating a merely correct marginal as fresh evidence.
+
+The literature already contains relevant mechanisms. Feng, Vishnoi and Yin explicitly handle certain locally adaptive changes through a conditional Gibbs invariant; Harvey and Vondrák formulate resampling oracles that remove conditioning on an event. Those are established foundations, rather than gaps to claim anew. :chatgpt-content-reference{index="0"}
+
+The question pursued below is more specific: **what can be characterized and optimized when the source laws are unknown, fresh samples are charged, and the dependence of the released decision on the cache is known?**
+
+---
+
+## 2. Exact resource contract
+
+Start with a paid cache
+
+\[
+X=(X_1,\ldots,X_n)\sim P=\bigotimes_{i=1}^{n}P_i.
+\]
+
+The coordinates can be finite-valued blocks. A block may contain an entire independent simulator trajectory; its internal variables need not be independent.
+
+The assumptions are:
+
+- The \(P_i\) are unknown.
+- A callback can produce a fresh independent sample from \(P_i\), at charged cost \(c_i\).
+- There is no additional uncharged information about the \(P_i\).
+- A known decision rule releases
+  \[
+  H\sim A(\,\cdot\mid X).
+  \]
+  The rule may be deterministic.
+- The chooser’s future accessible record is specified. It may include \(H\), refresh addresses, and the old values explicitly included in a refresh certificate.
+
+The last condition matters. If another process retains and freely reuses the entire old \(X\), then that information must be included in the conditioning contract. Restoring one hidden copy does not erase an exposed record.
+
+For the first theorem, consider the following class of refresh operations:
+
+1. After observing \(X\) and producing \(H\), choose a subset \(S\subseteq[n]\).
+2. Draw one fresh sample from \(P_i\) for each \(i\in S\).
+3. Keep the old value for each \(i\notin S\).
+
+The subset is chosen before seeing these fresh draws. Later, I give a lower bound that does **not** restrict algorithms to this class.
+
+---
+
+## 3. The central characterization
+
+### 3.1 A positive local decomposition of the decision
+
+Suppose the decision channel has a decomposition
+
+\[
+\boxed{
+A(h\mid x)=\sum_{S\subseteq[n]}d_{h,S}(x_S),
+\qquad d_{h,S}\geq 0.
+}
+\tag{1}
+\]
+
+Each summand depends only on the coordinates named by \(S\). Summing over both \(h\) and \(S\) gives one.
+
+This allows the following retrospective operation. Once the actual decision \(H=h\) has been produced, choose
+
+\[
+\boxed{
+\Pr(S\mid H=h,X=x)
+=
+\frac{d_{h,S}(x_S)}{A(h\mid x)}.
+}
+\tag{2}
+\]
+
+Then refresh \(S\).
+
+The algorithm does not need the numerical probabilities of the source distributions. It needs the decomposition of the **decision rule**.
+
+### Theorem 1 — Exact conditional restoration
+
+For every product law \(P\), the construction satisfies
+
+\[
+\boxed{
+\mathcal L(Y\mid H,S,X_S)=P.
+}
+\tag{3}
+\]
+
+Thus the decision, the refresh addresses, and the replaced old values may all be retained without invalidating the restored cache.
+
+### Proof
+
+Fix \(h,S,u\), where \(u\) is a possible value of \(X_S\). The joint probability of selecting this certificate is
+
+\[
+P_S(u)d_{h,S}(u).
+\]
+
+Because the selection weight depends only on \(u\), the untouched coordinates still have law \(P_{-S}\). The replacement draws have law \(P_S\), independently. Consequently,
+
+\[
+\Pr(H=h,S,X_S=u,Y=y)
+=
+P_S(u)d_{h,S}(u)P(y).
+\]
+
+Dividing by the certificate probability gives (3). ∎
+
+The mechanism is simple, but the guarantee is stronger than marginal correctness. **It restores the complete cache law conditional on the actual record that the next computation can use.**
+
+### 3.2 The converse
+
+The locality condition is also necessary within the stated refresh class.
+
+Let
+
+\[
+b(h,S\mid x)
+\]
+
+be an arbitrary joint rule for the decision and refresh subset. Suppose the operation keeps \(X_{-S}\), independently redraws \(X_S\), and promises
+
+\[
+\mathcal L(Y\mid H,S)=P
+\]
+
+for **every** full-support product law \(P\).
+
+Then
+
+\[
+\boxed{
+b(h,S\mid x)\text{ depends only on }x_S.
+}
+\tag{4}
+\]
+
+To see this, direct calculation gives
+
+\[
+\Pr(H=h,S,Y=y)
+=
+P(y)\sum_u P_S(u)b(h,S\mid u,y_{-S}).
+\]
+
+Conditional correctness requires the sum on the right to be independent of \(y_{-S}\). This must hold for every product distribution \(P_S\). Letting \(P_S\) approach a point mass at each \(u\) forces \(b(h,S\mid u,y_{-S})\) itself to be independent of \(y_{-S}\).
+
+Therefore (1) is a complete characterization for this class, **including correctness when the refresh subset is exposed**.
+
+If the subset is hidden, or the algorithm chooses further calls after inspecting fresh results, this converse does not automatically characterize the larger class.
+
+---
+
+## 4. Exact optimization—and its computational cost
+
+The characterization gives a finite optimization problem.
+
+Write
+
+\[
+c(S)=\sum_{i\in S}c_i.
+\]
+
+The optimal worst-source expected refresh cost in the characterized class is the linear program
+
+\[
+\begin{aligned}
+\text{minimize }&r\\
+\text{subject to }&
+d_{h,S}(u)\geq0,\\
+&\sum_Sd_{h,S}(x_S)=A(h\mid x)
+&&\text{for every }h,x,\\
+&\sum_{h,S}c(S)d_{h,S}(x_S)\leq r
+&&\text{for every }x.
+\end{aligned}
+\tag{5}
+\]
+
+Why does a bound for every \(x\) give the exact worst-source objective? Because product distributions can approach a point mass at any \(x\).
+
+For rational channels and costs, rational primal and dual certificates can be checked exactly. A useful dual form is
+
+\[
+\begin{aligned}
+\text{maximize }&
+\sum_{h,x}\lambda_{h,x}A(h\mid x),\\
+\pi_x&\geq0,\qquad \sum_x\pi_x=1,\\
+\sum_{x:x_S=u}\lambda_{h,x}
+&\leq
+c(S)\sum_{x:x_S=u}\pi_x
+\qquad\text{for every }h,S,u.
+\end{aligned}
+\tag{6}
+\]
+
+The \(\lambda_{h,x}\) may have either sign.
+
+This is a verification interface, not a claim of efficient universal compilation. For \(n\) binary coordinates there are
+
+\[
+|H|\,3^n
+\]
+
+possible local-component variables before exploiting structure. Evaluating the decision rule over all inputs can itself be prohibitive.
+
+Nonnegative local expansions are closely connected to established conical juntas and partition bounds. I am not claiming those mathematical objects as inventions. :chatgpt-content-reference{index="1"}
+
+I also consulted Astra’s [N1073 governing proof](https://github.com/harjassand/astra-research-knowledge/blob/f66688ffb82ca0ae5df72f16fb6e0b0014ac93f1/research/2026-10-23-fresh-programme/intake/capital-integrated-2026-10-23/updates/2026-10-27-observation-physical-and-chemical-operations/source/compiler/originals/compiler/PROOF.md), at the pinned revision shown in the link. Its positive-component-plus-paid-residual construction is relevant. Its original contract has private internal records and a different charged observation interface; the restoration theorem above has its own proof and does not inherit N1073’s review.
+
+A useful implementation consequence of positivity is that **partial decompositions suffice**. If local components satisfy
+
+\[
+\sum_S d_{h,S}(x_S)\leq A(h\mid x),
+\]
+
+the nonnegative remainder can be assigned to \(S=[n]\). That gives a sound full-refresh fallback while retaining whatever local reuse has actually been certified.
+
+---
+
+## 5. The adaptive model-update wrapper
+
+This is the direct connection back to the recovered P1 operation.
+
+Suppose the cache consists of independent blocks \(X_i\sim P_i\). The decision \(H\) selects new block laws \(Q_{i,H}\). For each fixed \(h\), assume an available repair kernel satisfies
+
+\[
+P_iK_{i,h}=Q_{i,h}.
+\]
+
+Use the decomposition above to select \(S\). Then:
+
+- For \(i\in S\), draw directly from the new law \(Q_{i,H}\).
+- For \(i\notin S\), apply \(K_{i,H}\) to the retained \(X_i\), using independent repair randomness.
+
+Conditional on \(H,S,X_S\), the untouched old blocks are independent with their original laws. Therefore
+
+\[
+\boxed{
+\mathcal L(Y\mid H,S,X_S)
+=
+\bigotimes_i Q_{i,H}.
+}
+\tag{7}
+\]
+
+This permits the model change to depend on the stored samples.
+
+It also avoids an unnecessary intermediate operation: selected blocks are drawn directly under the new model, rather than first replenishing them under the old model and then repairing them.
+
+For \(M\) independent cached DAG traces, each **whole trace** can serve as one block. The recovered capped trace-repair kernel then gives
+
+\[
+\boxed{\mathcal L(Y^{1:M}\mid H,S,X_S)=Q_H^M.}
+\]
+
+That is an exact adaptive extension under the new disclosure contract.
+
+It does **not** make all individual nodes of a dependent DAG independent blocks. Applying the theorem at that finer level requires an additional valid factorization or a different conditional-resampling argument.
+
+If a fresh target block costs \(C_i(h)\), and a fixed-\(h\) repair has expected cost \(k_i(h)\) under its proper old law, the conditional expected work is
+
+\[
+\sum_{i\in S}C_i(h)
++
+\sum_{i\notin S}k_i(h).
+\tag{8}
+\]
+
+All costs of constructing and evaluating the decision decomposition remain additional. Fresh sampling should be used whenever it is cheaper than the available repair.
+
+---
+
+## 6. Evidence accounting for arbitrary restoration algorithms
+
+The next result does not assume one-pass subset refresh.
+
+Let an algorithm start with one cache from
+
+\[
+P=\bigotimes_iP_i.
+\]
+
+It may make arbitrary adaptive coordinate-oracle calls, retain internal computations, and stop. Let \(N_i\) be its number of additional calls to source \(i\).
+
+Suppose its final output contains a released record \(R\) and a restored cache satisfying
+
+\[
+\mathcal L_P(Y\mid R)=P.
+\tag{9}
+\]
+
+Consider an alternative source family
+
+\[
+P'=\bigotimes_iP_i'.
+\]
+
+Assume the same algorithm has the same correctness guarantee under \(P'\).
+
+### Theorem 2 — The released evidence must be replenished
+
+For finite alphabets with full support, almost-sure termination, and finite expected charged calls,
+
+\[
+\boxed{
+D\!\left(\mathcal L_P(R)\,\middle\|\,\mathcal L_{P'}(R)\right)
+\leq
+\sum_i\mathbb E_P[N_i]\,D(P_i\|P_i').
+}
+\tag{10}
+\]
+
+Here \(D\) denotes KL divergence.
+
+### Proof
+
+The full experiment begins with information
+
+\[
+D(P\|P')
+\]
+
+in the initial cache. The chain rule for adaptive sampling adds
+
+\[
+\sum_i\mathbb E_P[N_i]D(P_i\|P_i')
+\]
+
+through new source calls. Parameter-independent private randomness adds none.
+
+Data processing bounds the information in the final pair \((R,Y)\) by this total.
+
+But exact restoration gives
+
+\[
+\mathcal L_P(R,Y)=\mathcal L_P(R)\otimes P,
+\]
+
+and likewise under \(P'\). Hence
+
+\[
+D(\mathcal L_P(R,Y)\|\mathcal L_{P'}(R,Y))
+=
+D(\mathcal L_P(R)\|\mathcal L_{P'}(R))
++
+D(P\|P').
+\]
+
+The initial-cache term cancels, yielding (10). ∎
+
+The adaptive sample-count identity is standard sequential change-of-measure machinery; related forms underpin bandit lower bounds. The specific accounting here comes from requiring the original statistical cache to be returned. :chatgpt-content-reference{index="2"}
+
+### Consequence for repeated reuse
+
+Equation (10) applies to an entire finite record of adaptive decisions, provided the cache is restored at the end.
+
+The initial cache can support computation throughout that process. However, when its full statistical resource is returned, **the distinguishability accumulated in the released record is bounded by the intervening source calls**.
+
+This is not a general sample-amplification impossibility after arbitrary calibration. Extra retained parameter-dependent information contributes its own initial KL term and must be accounted for.
+
+For a changed final law \(Q_R\), the corresponding balance is
+
+\[
+\begin{aligned}
+&D(\mathcal L_P(R)\|\mathcal L_{P'}(R))\\
+&\quad+
+\mathbb E_{R\sim P}
+D(Q_{P,R}\|Q_{P',R})\\
+&\leq
+D(P\|P')
++
+\sum_i\mathbb E_P[N_i]D(P_i\|P_i').
+\end{aligned}
+\tag{11}
+\]
+
+That version separates evidence released from information retained in the updated cache.
+
+---
+
+## 7. A general lower bound from Boolean sensitivity
+
+Now let the released decision be deterministic:
+
+\[
+H=f(X),\qquad X_i\sim\operatorname{Bern}(p_i),
+\]
+
+with arbitrary unknown \(p_i\in(0,1)\).
+
+Define
+
+\[
+s(f,x)=
+\left|\{i:f(x)\neq f(x\oplus e_i)\}\right|,
+\qquad
+s(f)=\max_xs(f,x).
+\]
+
+Let \(R_\star(f)\) be the infimum, over all universally correct restoration algorithms, of their worst-source expected number of additional coordinate samples.
+
+### Corollary — Sensitivity lower bound
+
+\[
+\boxed{R_\star(f)\geq s(f).}
+\tag{12}
+\]
+
+This covers algorithms that use repeated calls, adapt to fresh outcomes, rewrite coordinates in more general ways, and keep the refresh mask hidden.
+
+### Proof
+
+Choose an input \(x\), and let the source \(P^\varepsilon\) put probability \(1-\varepsilon\) on each coordinate value \(x_i\).
+
+For a sensitive coordinate \(i\), compare this source with one that leaves all other coordinates unchanged and makes coordinate \(i\) fair.
+
+As \(\varepsilon\to0\):
+
+- The original decision approaches the constant \(f(x)\).
+- Under the alternative, it approaches a fair mixture of \(f(x)\) and \(f(x\oplus e_i)\).
+- Their decision-law KL divergence approaches \(\log2\).
+- The KL divergence of one call to coordinate \(i\) also approaches \(\log2\).
+
+Equation (10) therefore forces
+
+\[
+\liminf_{\varepsilon\to0}
+\mathbb E_{P^\varepsilon}N_i\geq1.
+\]
+
+These bounds hold at the same base source \(P^\varepsilon\) for every sensitive coordinate. Summing proves (12).
+
+This immediately gives a sharper warning than “do not count correlated samples twice”:
+
+> **Releasing one parity bit can force the same worst-case restoration cost as refreshing the entire cache.**
+
+Parity has sensitivity \(n\), so its unrestricted minimax restoration cost is exactly \(n\).
+
+---
+
+## 8. A global decision with an exactly optimal sublinear refresh
+
+The positive example uses an established Boolean function, rather than introducing a favorable new definition.
+
+Let
+
+\[
+g(x_1,x_2,x_3,x_4)
+=
+\mathbf1\{2x_1+x_2+x_3+x_4\geq3\}.
+\tag{13}
+\]
+
+This is four-input majority with the first input breaking ties.
+
+The following eight patterns form a disjoint partition of all sixteen inputs. An asterisk is unrestricted.
+
+| Decision \(0\) | Decision \(1\) |
+|---|---|
+| \(*000\) | \(*111\) |
+| \(01*0\) | \(10*1\) |
+| \(001*\) | \(110*\) |
+| \(0*01\) | \(1*10\) |
+
+Each cell fixes exactly three coordinates and makes \(g\) constant. This partition, and its recursive use, are established in work by Kothari, Racicot-Desloges and Santha. :chatgpt-content-reference{index="3"}
+
+### The restoration operation
+
+Given the cached four-bit input:
+
+1. Release \(g(X)\).
+2. Find its unique partition cell.
+3. Refresh the three fixed coordinates.
+4. Keep the wildcard coordinate.
+
+Theorem 1 proves that the resulting full cache has its original product law conditional on the released decision and cell.
+
+The probabilities \(p_i\) need not be known or equal.
+
+### Recursive construction
+
+Build a complete four-branch tree of height \(h\), with \(g\) at each internal node and independent unknown-source bits at the leaves.
+
+There are
+
+\[
+N=4^h
+\]
+
+leaves.
+
+At each selected internal node, its partition cell fixes three child outputs. Recurse only into those three children. This selects exactly
+
+\[
+k=3^h
+\]
+
+leaf coordinates.
+
+The selected leaves and their old values specify a cylinder on which the global decision is constant. The cylinders partition the complete input space. Refreshing those leaves therefore restores the entire product law.
+
+With the internal node values cached:
+
+- Initial acquisition and construction cost \(O(4^h)\).
+- Persistent storage costs \(O(4^h)\).
+- Each restoration uses exactly \(3^h\) fresh leaf samples.
+- Identifying the selected subtree and updating its summaries costs \(O(3^h)\).
+- Materializing a separate full copy still costs \(O(4^h)\).
+
+No exponentially enumerated LP or partition table is needed for this recursive representation.
+
+### Matching unrestricted lower bound
+
+The base function has maximum sensitivity three. Recursion gives
+
+\[
+s(g_h)=3^h.
+\]
+
+The upper bound follows because at most three child outputs are sensitive at a node. Equality is attained recursively using child-output patterns \((1,0,0,0)\), or their complements, with sensitive configurations inside the three relevant children.
+
+Combining the construction with (12),
+
+\[
+\boxed{
+R_\star(g_h)=3^h.
+}
+\tag{14}
+\]
+
+This is an exact minimax statement in the declared unknown-coordinate-source model.
+
+For scale, \(h=10\) gives
+
+\[
+N=1{,}048{,}576,\qquad k=59{,}049.
+\]
+
+Those are derived counts, not a measured million-coordinate performance result.
+
+### What becomes independent
+
+If the same decision is repeatedly released and the cache is restored between releases, the decision sequence has exactly the law of decisions computed from independent fresh product inputs.
+
+The full cache versions remain correlated.
+
+An exact four-coordinate check makes the distinction visible:
+
+\[
+\Pr(H_1=a,H_2=b)=\frac14
+\]
+
+for all four pairs under fair sources, while
+
+\[
+\Pr(Y=X)=\frac18.
+\]
+
+Two independent four-bit caches would match with probability \(1/16\).
+
+**The decisions are independent evidence at their specified interface; the complete cache versions are not independent records.**
+
+---
+
+## 9. The cost depends on interaction structure
+
+The same characterization gives sharp examples for randomized decisions.
+
+Use \(X_i,H\in\{-1,+1\}\) and unit coordinate costs.
+
+| Decision channel | Exact optimal worst-source cost in the characterized refresh class |
+|---|---:|
+| \(\Pr(H=h\mid x)=\frac12(1+\beta h x_1)\) | \(\beta\) |
+| \(
