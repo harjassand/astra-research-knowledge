@@ -1,0 +1,199 @@
+# Strong ordinary mixed compression already supplies the qualitative decoder
+
+30 October 2026. This is A's primary-source reconstruction and matched-route
+derivation. It retires a claim of a newly enabled generic robust low-nullity
+decoder. It does not retire the explicit direct acquisition upper bound in
+COHERENT_COSET_PROOF.md. No source, tomography, or quantum circuit was run here.
+
+## 1. The actual primary supplier and its definition ambiguity
+
+The controlling source is Chen--Gong--Ye--Zhang, *Stabilizer bootstrapping:
+A recipe for efficient agnostic tomography and magic estimation*,
+arXiv2408.06967v3, Section7, Theorem7.1 and Remark7.15. The exact saved source
+is bound in source_entry.
+The theorem's working class is explicitly the states
+
+    C^* (|0><0|^(m-t) tensor sigma_t) C,                       (1)
+
+with C Clifford and sigma_t any mixed t-qubit state. Section7.1 supplies the
+known Clifford C as well as, optionally, tomography of sigma_t. The latter is
+not needed below. The claimed generic algorithm is quasipolynomial in inverse
+error. Remark7.15 explicitly restores
+
+    poly(m,2^t,1/e,log(1/delta))                              (2)
+
+in the near-realizable regime 1/f <= 1+c e, with c a fixed constant, where f
+is a warranted lower fidelity to (1) and e is the requested additive fidelity
+loss. The ordinary method receives precisely the same independent actual
+Choi copies and known Clifford/product measurements as the direct route.
+
+There is a real convention error in source Definition4.10: invariance under
+conjugation by a Pauli is called isotropic for arbitrary mixed states. The
+maximally mixed state is a counterexample to that assertion. We DO NOT import
+that weak-invariance definition or its false isotropy consequence. Throughout
+this note the target class is exactly (1), equivalently support in the chosen
+sign sector of an isotropic rank m-t Pauli subgroup. The constructive Section7
+proof admits that strong-class restriction, as detailed in Section2. The
+explicit class, projector output and constructive argument carry the port;
+the false general weak-symmetry assertion does not.
+
+For comparison, Grewal--Iyer--Kretschmer--Liang2305.13409v5 AppendixB correctly
+defines mixed strong stabilizers by unit absolute expectation. Its TheoremB.1
+already learns exact mixed low-nullity states in polynomial resources. The
+near-realizable extension above is the stronger incumbent here. Tang--Steckmann
+2610.03307v2's pure-pre-noise weak-invariance route is not the strongest baseline.
+
+## 2. Reconstruction at the strong target class
+
+This section checks the load-bearing algorithm rather than treating the weak
+definition as an accepted mixed-state theorem. All targets and maximizations
+below are over (1). This is a compact finite union of code-state sets, so a
+maximizer exists. For a fixed signed stabilizer projector P,
+
+    max_{sigma supported in P} F(rho,sigma) = Tr(P rho).       (3)
+
+The maximum is achieved by P rho P/Tr(P rho), when the denominator is positive.
+Thus all the source's code fidelities are exactly optimal projector weights.
+
+The relevant constructive spine remains valid as follows.
+
+* Source Lemma5.1: conjugate an evident STRONG rank m-t subgroup to Z on m-t
+  qubits. If its chosen code sector has rho-weight at least f, summing the
+  four-copy Bell Fourier formula over that subgroup leaves nonnegative fourth
+  powers. Keeping the all-zero-sector contribution gives Bell mass at least
+  f^4/4^t. This proof uses the explicit fixed-code sector, not the full weak
+  invariance group of its mixed remainder.
+* Lemma5.2 bounds each Bell-difference atom by 2^(-m). Together with the
+  high-correlation-family routine in Lemma6.7, the dimension/counting proof of
+  Lemma7.7 uses only that evident isotropic strong subgroup. Either the known
+  high-correlation family intersects it in dimension at least m-t', with
+  t'=2t+2+4log(1/f), or Bell sampling has the displayed low-correlation strong
+  target direction with probability Omega(f^4/4^t).
+* The postselected branch in Lemma7.8 preserves (1): the chosen signed target
+  Pauli fixes the target sector, its measurement removes one fixed qubit, and
+  squared fidelity divides by the measured rho-sector probability. The
+  threshold0.7 yields the stated constant fidelity amplification. Lemma7.9
+  charges the postselection copies; no unknown projector is available for free.
+* The inclusion step in Lemma7.13 has the following direct strong-code proof.
+  Let T1,T2 be two signed isotropic groups. If their signs conflict on the
+  common binary subgroup, their code projectors P1,P2 are orthogonal and the
+  asserted lower bound is nonpositive. Otherwise choose a complement B of
+  T1 intersection T2 in T2 and extend T1 by B intersection T1^perp. The result
+  is isotropic, has rank at least rank(T2), and is contained in T1's signed
+  sector. If P3 is the chosen projector of the added commuting T2 subgroup,
+  then P2<=P3 and P1 commutes with P3. Consequently
+
+        P1 P3 >= P1+P3-I >= P1+P2-I.                       (4)
+
+  Taking expectation and using (3) proves the required intersection-fidelity
+  bound. There is no use of a nonisotropic weak group in this argument.
+* Lemma7.14's affine computational samples must retain their SIGN coset:
+  for a sample z0, an annihilating parity has sign (-1)^(parity dot z0).
+  That sign is also obtained by Algorithm4's explicit computational outcome
+  and X correction. Interpreting the annihilator as unsigned +Z alone would
+  be wrong. Conditional samples in the target fixed prefix have the actual
+  residual rho distribution. Lemma4.21 gives a heavy affine span; (4) then
+  gives a high-mass code extension. All these are strong sector statements.
+* The residual algorithm in Lemma7.12 works in t' qubits, with uniform Pauli
+  guesses and the same measured-sector bootstrapping, rather than enumeration
+  of all stabilizer groups. Its exponential dependence is in t', not in m.
+  Repetition and the source's
+  projector-weight tests select a successful known Clifford. Remark7.15
+  replaces t'+1 affine samples by O(t'/e) samples. The extra success cost is
+  f^O(t'/e). When 1/f<=1+c e this is exp(O(t')), recovering (2), since
+  t'=O(t+1) in the near-realizable regime.
+
+This reconstructs the explicit strong-class projector output at the source's
+resource scope. It does not repair or endorse Definition4.10 as a statement
+about arbitrary weak mixed-state symmetries. It also does not infer that all
+states in that mistakenly broader weak class have representation (1).
+
+## 3. From the ordinary compressor to a logical reference frame
+
+Use the actual Choi source of COHERENT_COSET_PROOF.md. Write m=n+q, let J0 be
+the unknown ideal Clifford encoding of q logical qubits with t active mixed
+junk qubits, and suppose Dtr(J,J0)<=eta. J0 belongs to (1), so
+
+    F(J,class(1)) >= F(J,J0) >= (1-eta)^2 >= 1-2eta.           (5)
+
+The ordinary compressor returns a known rank m-t signed isotropic group T
+with joint projector P_T satisfying, on its successful event,
+
+    Tr(P_T J)>=1-lambda,   lambda=2eta+e.                    (6)
+
+This follows even if its final output includes a mixed sigma_t: its fidelity
+is no larger than the weight of the known support projector. We may stop at
+the projector-producing part, or grant the ordinary method its full output.
+
+Let S be the evident ideal STRONG subgroup of J0, including its2q logical
+Bell generators. For every signed a in S, its actual mean is at least1-2eta.
+For EVERY signed g in T, its actual mean is at least1-2lambda, because the
+SAME projector P_T is contained in g's +1 sector. There is no generator-count
+loss. If
+
+    (1-2eta)^2+(1-2lambda)^2 > 1,                            (7)
+
+the anticommuting-Pauli uncertainty inequality forces S subset T^perp at the
+binary level. This holds in the small-error regime specified below.
+
+The known compression Clifford supplies a basis for T^perp/T, with dimension
+2t. Enumerate its4^t Pauli representatives v. For each desired canonical
+reference label r=X_i or Z_i, solve the binary equations
+
+    ref(v)+ref(g)=r,   g in T.                              (8)
+
+Discard representatives for which there is no solution. Choose any fixed
+solution when one exists, multiply with exact Pauli phases, and directly
+validate the resulting individual joint observable on fresh actual J copies.
+
+There is always a good candidate. Choose an ideal a in S with ref(a)=r.
+By (7), a lies in T^perp, so one enumerated v represents its quotient class.
+The candidate c=vg produced by (8) then differs from a by an element g0 of T,
+with an overall sign to be determined. These commute. The wrong-sign event
+for the suitably signed product a g0 is contained in the union of the wrong
+events of a and g0. Consequently
+
+    wrong_probability(c,its_good_sign) <= eta+lambda.        (9)
+
+No enumeration of the2^(m-t) elements of T occurs. Equation(8) is GF2 linear
+algebra; (9) uses the one joint code-projector loss, not the sum of individual
+T-generator errors. A previous version that inferred an O(m lambda) charge
+would be an unnecessarily weakened ordinary comparator.
+
+## 4. One completely polynomial near-realizable schedule
+
+For example choose0<tau<=1/8, eta<=tau/16, and e=tau/16. Then lambda<=3tau/16,
+eta+lambda<=tau/4, and (7) holds. In (5) the fidelity promise f=1-2eta obeys
+1/f<=1+3e, so Remark7.15 supplies polynomial resources at a fixed c=3.
+
+For each of2q canonical reference labels, test at most4^t candidates. A fresh
+near-pass wrong-rate test accepts rates<=tau/4 and rejects rates>=tau using
+O(tau^-1 log(q4^t/delta)) shots per candidate. Either ordinary exact execution
+is assumed, or the explicit finite readout-bias budget is allocated. Learn
+the sign, retain the first passing candidate, and verify exact joint Pauli
+commutation. On the common good event all accepted candidates have near-unit
+means, so the commutation check cannot reject the good candidates. Their
+canonical reference labels imply the physical canonical symplectic relations.
+C's known Clifford compiler then gives
+
+    Fe(R N) >= 1-2q tau.                                    (10)
+
+The additional copy bill, besides the ordinary compressor, is
+
+    O(q4^t tau^-1 log(q4^t/delta)).                          (11)
+
+Classical label work and product-measurement gates pay m, and the compiler
+pays its actual support/gate/routing cost. All source use is offline. The
+same separate root Pauli-rigidity theorem gives an all-input bound when its
+additional global or relevant-channel diamond warrant is actually supplied.
+
+Thus a strong ordinary source-aware method ALREADY supplies the qualitative
+dense, coherently perturbed, low-mixed-nullity reusable classical decoder.
+Our direct coset/hyperplane route avoids reconstructing the whole strong
+code and has a transparent target-specific O(q4^t/tau) copy upper bound up to
+logarithms, with m paid in records/gates. This is an explicit resource port,
+not a demonstrated matched advantage: an equally informed ordinary method
+may derive the same specialization. Historical priority and practical advantage
+remain UNKNOWN. The low-t/global-error promises and all source/control costs
+remain real in both routes; neither solves the full-source noisy-parity case
+with extensive mixed junk.

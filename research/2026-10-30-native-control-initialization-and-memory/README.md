@@ -1,0 +1,3 @@
+# Native control, initialization and scoped memory results
+
+Available P2 originals and normally visible P2/P3 sources are reconciled with their actual root/reported review and missing-original scopes. Both distinct Dots2240base and 0040delta preserve original bytes, revised/current/historical review identities, and the separation between ideal atomic, finite-rate CPTP and real onsite-mixing models. Source admission is not acceptance; component audits do not certify an unreviewed whole compiler. All transfer restrictions, biology hold and non-operational mathematical chemistry boundaries remain. No producer source/code was executed or requested.

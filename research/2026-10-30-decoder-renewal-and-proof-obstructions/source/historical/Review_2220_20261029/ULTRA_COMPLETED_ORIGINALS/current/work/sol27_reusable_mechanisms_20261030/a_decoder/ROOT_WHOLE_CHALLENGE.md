@@ -1,0 +1,163 @@
+# Independent mathematical challenge of root's three decoder mechanisms
+
+30 October2026. Disposition: ACCEPTED at the explicit mathematical/native
+access scopes below. I whole-read all three source proofs and reconstructed
+their mathematical chains. No root source, toy simulation, quantum circuit,
+or producer receiver was rerun. ROOT_REVIEW_INPUTS.json binds the exact bytes.
+Root's constructive overlap with A is disclosed: the scalable proof uses A's
+coherent coset projection, and root supplied the adaptive reference hyperplane
+and ideal Pauli-rigidity refinements. This is a substantive challenge of that
+composition, not an independent discovery or independently implemented source.
+
+## 1. Full-source noisy-parity reduction
+
+Input: NATIVE_NOISY_PARITY.md. For a fixed unknown s and known0<eta<1/2,
+
+    N_s(rho)=2^-n sum_y |y><y| tensor
+                     Z^(s.y) D_eta(rho) Z^(s.y).
+
+One classical LPN example(y,b=s.y+e) implements the submitted-input CPTP map
+by preparing the CLASSICAL flag and applying the known Z^b. This equality is
+complete, including retained references. Replacing each adaptive channel slot
+therefore gives the full interactive simulation; no restriction to product
+or predetermined inputs was introduced. Conversely a |+> input and output X
+measurement produce one LPN example. Quantum logical inputs do not supply
+coherent environment access or an inverse state-preparation unitary.
+
+For any acquired reusable decoder, restricting its flag to a fixed y gives a
+qubit CPTP R_y. Its two I/Z Bell overlaps a_y,b_y satisfy a_y+b_y<=1, since
+they are overlaps of a normalized Choi state with orthogonal Bell states.
+Thus Fe(RN_s)<=eta+(1-2eta)E a_y<=1-eta, with equality for the known-s parity
+correction. A near-optimal gap epsilon forces E a_y>=1-epsilon/(1-2eta).
+
+The decoder itself gives an executable parity predictor: feed it the specified
+classical y and half a known Bell pair, then label the I/Z Bell outcomes.
+Its average error is at most epsilon/(1-2eta). This chooses the INPUT of a
+stored classical circuit, not an output environment of N_s. At average error
+q<1/4, independently predicting at uniform y and y+e_i makes their xor correct
+with probability at least1-2q>1/2. Both marginals are uniform; pointwise error
+control is unnecessary. Fresh reset workspaces and majority vote yield the
+claimed polynomial secret recovery. A consumed unknown quantum programme
+would not give this reusable-circuit argument and is explicitly excluded.
+
+The resulting obstacle is conditional on quantum hardness of LPN with classical
+random examples. It is not an unconditional lower bound, not the LSN one-noisy-
+codeword assumption, and not established by the small classical executions.
+The maximally mixed extensive junk in this construction does not satisfy our
+small mixed-nullity promise. No contradiction with either clean or low-t
+robust acquisition follows. I found no gap at this exact full-source scope.
+
+## 2. Holding a random environment is a genuine paid source upgrade
+
+Input: REPEATED_ENVIRONMENT.md. A BEGIN operation samples one uniform y and
+holds it for r logical calls while the phase-noise bits refresh independently.
+It is weaker than choosing y, but stronger than iid native calls. For
+
+    m=n+ceil(log2(2/delta)),
+    odd r>=2log(2m/delta)/(1-2eta)^2,
+
+the probability of any majority-label error is at mostdelta/2. The uniform
+binary m-by-n matrix has rank failure at most(2^n-1)2^-m<delta/2 by a union
+over nonzero null vectors. These events need not be mutually independent;
+the displayed union bound is valid regardless. Ordinary elimination then
+learns s, paying mr source calls, m holds and the stated bit/storage cost.
+
+The compiled known parity correction attains exactly D_eta on every future
+input/reference. Acquisition failure is one common event for the stored
+circuit, not an independently refreshed failure on each payload. Reusing the
+same phase-error bit in a hold block would invalidate denoising; the source
+explicitly refreshes it. Sorting iid flags does not supply repeated random
+environments. The birthday estimate is only a collision statement, not a
+lower bound against every iid LPN algorithm. This proof is accepted with the
+physical hold/re-noise capability left UNKNOWN, as declared.
+
+## 3. Coherent coset domination and adaptive reference acquisition
+
+Input: SCALABLE_FRAME_AND_RIGIDITY.md. The ideal J0 has an evident STRONG
+signed stabilizer subgroup S of rank m-t, with surjective2q-bit reference
+projection. Dtr(J,J0)<=eta is GLOBAL Choi closeness. It does not supply a
+convex clean component or automatically follow from constant per-site noise.
+
+For any s-qubit mixed rho, Pauli a permutes the Bell labels on one copy.
+Positivity bounds each corresponding off-diagonal entry of rho tensor rho
+by sqrt(p_b p_(b+a)). Cauchy over4^s labels gives
+
+    BellDiff_rho(a)>=|Tr(rho P_a)|^2/4^s.
+
+For any signed commuting H, a+H four-copy event is invariant under a member
+of H acting on ANY individual copy. Its positive event operator commutes with
+Pi_H on each copy and hence dominates its Pi_H^tensor4 compression. This is
+an ANALYTICAL block inequality, not an implemented unknown projection. With
+p=Tr(Pi_H J)>=1-eta and signed a commuting with H, the conditioned mean is at
+least1-2eta/p. An analytical Clifford fixes rank(H) pure qubits; summing over
+their stabilizer labels leaves exactly the active Bell-difference event.
+
+For ANY unfinished adaptive reference span W, choose only in the proof a
+functional phi annihilating W. Its kernel in S has rank m-t-1, so the active
+dimension is t+1, independent of q. The chosen coset has reference outside W.
+The success lower bound is
+
+    (1-eta)^2(1-3eta)^2/4^(t+1) >=1/[2*4^(t+1)].
+
+It remains valid conditional on arbitrary previous accepted rows; those rows
+need not belong to S. There is no uncharged union over adaptive subspaces.
+The proof's eta<=tau/8,tau<=1/8 lies safely inside its eta<=1/16 numerical
+range. The declared per-stage and verification caps give the displayed
+4L+LV actual Choi-copy bill. Root uses an ideal-execution Hoeffding policy;
+A's separate near-pass policy has an explicit finite bias supplier. They are
+different justified upper bounds, not necessary sample costs.
+
+## 4. Exact phase conversion, one joint fidelity charge and rigidity
+
+Every accepted signed mean exceeds1/sqrt2. Two anticommuting Hermitian Pauli
+involutions have squared means summing at most one, so all accepted JOINT rows
+commute exactly. The independent reference labels form a binary basis.
+For each canonical X/Z, multiply the reference and signed physical factors
+in the SAME fixed row order. If the reference product is i^ell times the
+canonical target, ADD ell to the physical raw phase. Ignoring it is wrong;
+subtracting it is also wrong when ell is odd. The resulting Hermitian physical
+pairs have exactly the canonical symplectic relations.
+
+C's signed Clifford compiler is a known classical operation, not unknown-U
+access. After compilation the Bell projector is the SAME intersection of the
+original signed commuting row projectors. Its loss is charged once, giving
+Fe>=1-q tau in root's mean-defect convention. There is no q^2 generator-product
+loss. A's wrong-probability convention instead gives Fe>=1-2q tau.
+
+For the separate ideal rigidity port, nonzero ideal correlation with R_j
+forces U^*B_jU's logical Pauli label to be R_j^T: all other Bell traces vanish.
+This uses ONLY the nonzero condition1-tau-2eta>0, not purity or a junk gap.
+After canonical conversion the junk factors commute with one another because
+the physical and logical symplectic pairings already coincide. The ideal
+decoded channel is therefore Pauli diagonal and CPTP, hence a Pauli channel.
+Its half diamond distance from identity is exactly1-Fe, by an orthogonal Bell
+lower bound and the Pauli-mixture upper bound.
+
+Only with an ADDITIONAL warranted halfdiamond(N,N0)<=Delta may one conclude
+
+    halfdiamond(RN,id)<=Delta+eta+1-Fe(RN).
+
+Small Choi distance by itself does not imply that dimension-free all-input
+claim. The resulting decoder is valid on every later payload for the SAME
+warranted N, with one common acquisition failure event. The claimed global
+conditions and source/measurement precision remain actual obligations.
+
+## 5. Executable scope and strongest ordinary comparison
+
+A independently wrote row_receiver.py and consume_rows.py. The consumer takes
+four signed NONcanonical q=2 reference rows on n=32 physical bits, including
+Y and two-site labels. It binds and reuses C's frozen compiler read-only.
+The exact run checks all16 selected-row products and all64 logical/junk Pauli
+generator images; raw odd phases and wrong even phases are detected by the
+negative controls. This is classical integer/phase postprocessing only:
+zero source calls, zero Bell-difference or validation shots, zero physical
+circuits. It is not a rerun of root's parity simulation or a dense-state model.
+
+ORDINARY_MIXED_COMPOSITION.md supplies the stronger ordinary counter-route:
+the explicit strong-class Section7 mixed agnostic compressor, with its false
+weak-symmetry convention isolated, followed by residual4^t enumeration and
+fresh verification, qualitatively gives the same robust reusable decoder.
+Accordingly no generic novelty, newly enabled capability, or practical
+advantage is accepted. The direct coset port remains an explicit targeted
+copy upper bound and the LPN/hold contrast remains an exact scope distinction.
+No further scientific correction or producer/source run is requested.
