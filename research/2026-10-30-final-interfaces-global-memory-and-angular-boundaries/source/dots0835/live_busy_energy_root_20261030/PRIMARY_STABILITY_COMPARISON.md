@@ -1,0 +1,8 @@
+# Primary stability comparison and scope guard
+2026-10-30. Targeted comparison, not a novelty clearance.
+
+Lucia, Cubitt, Michalakis and Pérez-García, *Rapid mixing renders quantum dissipative systems stable*, arXiv:1409.7809v2, Theorem1 and its hypotheses, https://arxiv.org/html/1409.7809v2, were read directly. Their theorem bounds perturbation changes of local observables uniformly in time and system size under rapid mixing to a unique fixed point. The paper explicitly discusses why general degenerate fixed-point spaces require extra assumptions or a weaker stability notion. It also distinguishes local-observable stability from global state stability. These are established mechanisms, not an absence of prior dissipative robustness theory.
+
+Our proposed BUSY result has a different target: global activity-density tails for an explicitly constructed absorbing-controller architecture with protected DATA degrees of freedom. It does not assume or prove global mixing of logical information, and it should never be described as stability of an arbitrary degenerate dissipative steady-state manifold. The extra actual structure is joint activity-mask preservation, finite local return witnesses and weak activation; the proof is intended to certify controller occupancy rather than convergence of the entire state. Whether this is historically new requires broader checking; no priority claim follows from this contrast.
+
+A recent primary listing, *Is rapid mixing stable?*, arXiv:2609.36016v1 (2026-09-28), https://arxiv.org/abs/2609.36016, reports perturbative mixing counterexamples. Its HTML body failed to render, so it has NOT been used as a governing argument or a detailed comparison here. Do not turn its abstract into a new theorem about this apparatus.
