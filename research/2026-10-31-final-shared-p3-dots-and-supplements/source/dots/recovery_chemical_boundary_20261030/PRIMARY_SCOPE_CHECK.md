@@ -1,0 +1,7 @@
+# Selective primary comparison, 30 October 2026
+
+Fresh primary search reconfirmed Anderson, Cappelletti and Kim, *Stochastically modeled weakly reversible reaction networks with a single linkage class*, Journal of Applied Probability 57 (2020), 792–810, DOI 10.1017/jpr.2020.28. Official abstract: https://www.cambridge.org/core/journals/journal-of-applied-probability/article/abs/stochastically-modeled-weakly-reversible-reaction-networks-with-a-single-linkage-class/5E9F7DAE999525F8D4A3392F80B3F0C9 . Its headline sufficient conditions are binary full reactions and a pure-species complex for every species. The new full network has high-molecularity common catalyst complexes and no pure C complex, so those stated conditions do not settle it.
+
+The pre-existing access denial on the Wisconsin Anderson–Kim 2018 PDF was respected; no new open/download was attempted. A search snippet incidentally surfaced it but is not a new theorem-level reading. No absence-of-literature conclusion follows.
+
+The explicit deficiency-one/non-complex-balance calculation rules out the standard complex-balanced product-Poisson explanation at the specified rates, not all ordinary Foster, tier, stopping-time or multistep arguments. The new local estimates are an application-specific construction; neither stopped kernels nor Neumann inversion is itself claimed new. Historical novelty and full recurrence remain unverified.

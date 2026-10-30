@@ -1,0 +1,8 @@
+# Selective primary-source freshness check for the profile mechanism
+Checked 2026-10-30 around12:38 UTC. This is a limited comparison, not novelty clearance.
+
+- Anderson–Cappelletti–Kim, arXiv1904.08967v2, https://arxiv.org/html/1904.08967v2 : abstract and introduction explicitly impose binary reactions and a pure-species complex for each species for the headline single-linkage recurrence theorem. The new high-molecularity, catalyst-bearing profile test family does not meet those headline hypotheses. No claim is made here about every later general tier criterion; previous whole-review scope documents remain the stronger comparison.
+- Laurence–Robert, https://arxiv.org/html/2310.01949v2 : primary text treats fixed-rate, initial-state scaling and stopping-time/Filonov stability methods. Thus using actual stopping times and positive occupation values is established methodology, not a novelty claim of this project. The application-specific question is the earned incoming-profile transport and return-kernel leakage bound.
+- Fresh search again surfaced the public two-species recurrence claim and arXiv2610.31550 bulk-stability paper; neither makes a three-or-more-species high-molecularity network automatically covered. Earlier primary scope reviews already address their precise limitations.
+
+An attempted primary PDF read at https://web.math.wisc.edu/~dfanderson/papers/AndersonKimSIAP2018.pdf returned explicit Anubis Access Denied (error9e4edb5b6b850c41). No retry or access bypass was attempted. Thus a new direct check of that paper's Theorem16 was NOT completed. Other proof work and accessible-source comparisons continued. The frozen candidate is unchanged.
