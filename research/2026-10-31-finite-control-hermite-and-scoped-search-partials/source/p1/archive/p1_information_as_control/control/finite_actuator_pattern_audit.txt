@@ -1,0 +1,165 @@
+INDEPENDENT AUDIT: FINITE LOCAL ACTUATOR PATTERNS
+2026-10-30. New note; earlier reports and executable outputs unchanged.
+
+VERDICT
+
+The proposed rounding, contraction, coupled-error bound, and uniform final
+ADC bound are valid. For the balanced r=128 cubic instance, the conservative
+bound remains below 0.03. The actual finite patterns have norm AT MOST one;
+this construction therefore uses the unit-ball sensing interface. It does
+not certify an exact-unit-norm hardware interface or physical realization.
+
+1. PATTERN AND BIT COUNT
+
+Let w be the ideal unit direction generated from the packed context QG and
+the prepared coefficients. Put A=2^19, k=ceil(sqrt(M)), and D=A+k. For every
+coordinate choose a nearest integer
+
+    j_i = round(2^18 w_i),     -2^18 <= j_i <= 2^18,
+
+using a fixed tie convention. The applied rational pattern is
+
+    w_tilde_i = 2 j_i / D.
+
+Then ||2j-Aw|| <= sqrt(M), whence
+
+    ||w_tilde|| <= (A+sqrt(M))/(A+k) <= 1,
+    ||w_tilde-w|| <= [sqrt(M)+k]/[A+k] = delta_w.                 (1)
+
+The integer alphabet has 2^19+1 elements, so a conventional signed 20-bit
+entry suffices. The pattern can be represented in 20M bits with D shared as
+a public function of M. This is a concrete encoding upper bound, not a lower
+bound saying every implementation must transmit or store 20M bits. It is a
+local actuator-program resource, separate from the existing 11r remote bits.
+
+If the generated coefficient vector is zero, use any fixed fallback unit w
+and zero decoder amplitude. All bounds remain valid.
+
+2. COUPLED PREDICTION ERROR
+
+Write b(G)=c_hat*phi(QG), t=E||b(G)||^2/M, alpha=1/(1+s), and retain the
+decoder amplitude
+
+    a(G)=alpha^2 ||b(G)||/sqrt(M).
+
+Couple the ideal and actual final reads using the SAME V and sensor noise xi:
+
+    Z=w^T V+xi,       Z_tilde=w_tilde^T V+xi.
+
+Condition on G and the prepared model. V remains standard Gaussian and is
+independent of both selected patterns. The amplitude is fixed under this
+conditioning. Thus
+
+    ||a(G)(Z_tilde-Z)||_L2^2
+      = E[a(G)^2 ||w_tilde-w||^2]
+      <= alpha^4 t delta_w^2.                                  (2)
+
+This uses no independence between the target prediction error and the new
+error. It also does not claim that the retained decoder is Bayes-optimal for
+the contracted pattern. The unit-direction posterior shrinkage formula and
+the exact constant-variance ADC moment formula should not be reapplied to
+the contracted read.
+
+3. FINAL ADC WITHOUT AN INDEPENDENCE CLAIM
+
+Given G and the prepared model,
+
+    Z_tilde ~ N(0, ||w_tilde||^2+s),
+
+so its conditional variance is at most 1+s, but may depend on G. Let Q_z round
+to the nearest grid of spacing h_z=8/32767 and clip at +/-8. For any real z,
+
+    |Q_z(z)-z|^2 <= h_z^2/4 + z^2 1{|z|>8}.
+
+For a Gaussian with standard deviation sigma, the tail second moment on the
+right is increasing in sigma: use Z=sigma N with fixed standard normal N;
+sigma^2 N^2 1{sigma |N|>8} increases pointwise with sigma. Therefore the
+previous bound epsilon_z computed at variance 1+s is a uniform conditional
+upper bound for the ADC MSE. Consequently
+
+    ||a(G)[Q_z(Z_tilde)-Z_tilde]||_L2
+      <= alpha^2 sqrt(t epsilon_z).                             (3)
+
+Conditional expectation justifies (3). Independence of ADC error and a(G)
+is unnecessary and, for a path-dependent pattern norm, generally false.
+
+Combining (2), (3), and the L2 triangle inequality gives
+
+    R_actual <= [sqrt(R_ideal_before_ADC)
+                 + alpha^2 sqrt(t)(delta_w+sqrt(epsilon_z))]^2.   (4)
+
+4. ONE CONSERVATIVE NUMERICAL CERTIFICATE
+
+Balanced c=1, r=128, M=r(r+1)/2=8256, s=0.01, context grid h=0.01, T=6.
+The existing analytic context certificate gives
+
+    D_Q <= 0.0004113977307983501.
+
+Because E||phi(G)||^2/M=1, Minkowski gives
+
+    t <= (1+sqrt(D_Q))^2 = 1.0409772814656983.
+
+Using the existing uniform ADC certificate epsilon_z and the uniform
+pre-ADC risk, a direct scalar calculation gives:
+
+    k                                  91
+    D                                  524379
+    delta_w                            0.0003468150584459034
+    epsilon_z                          1.4902183986896287e-08
+    R_ideal_before_ADC upper bound     0.02980915065674825
+    pattern L2 increment               0.0003468772552839113
+    ADC L2 increment                   0.00012209639428655496
+    final MSE upper bound              0.029971310258641214
+    margin below 0.03                  0.00002868974135878527
+
+Resource counts for this pattern encoding:
+
+    remote control                     1408 bits = 176 bytes
+    local actuator pattern             165120 bits = 20640 bytes
+    final ADC report                   16 bits
+    local pattern entries              8256
+
+If the separate existing coefficient-acquisition certificate with per-value
+error nu=1e-7 is also imposed, it gives
+
+    tau_c <= sqrt(M+r) nu,
+    ||c_hat||_infinity <= 1+sqrt(2M) nu,
+    D_c <= [tau_c+||c_hat||_infinity sqrt(D_Q)]^2.
+
+Using t<=(1+sqrt(D_c))^2 in the same calculation yields
+
+    D_c <= 0.00041177983052972684,
+    final MSE <= 0.02997168362698359 < 0.03.
+
+This last value is conditional on the earlier acquisition-error certificate;
+no additional acquisition experiment was conducted for this audit.
+
+5. COMPUTABILITY AND REMAINING ACCESS LIMIT
+
+The rounding rule specifies finite rational applied weights. If prepared
+coefficients are rational, as stored binary floating-point values are when
+interpreted exactly, the rounding indices can also be generated by exact
+finite arithmetic. For QG_i=z_i/100 and rational prepared coefficients with
+a common denominator, multiply the cubic feature vector by a common scalar
+so its diagonal entries are integers u_i and its off-diagonal entries are
+sqrt(2) times integers u_i. Its squared norm S is an integer. Each normalized
+coordinate is u_i/sqrt(S) or sqrt(2)u_i/sqrt(S). Compare the squares of these
+values against squared half-grid thresholds to locate the nearest index;
+the comparisons are integer comparisons, including exact ties. Thus values
+arbitrarily close to a rounding threshold do not force an unbounded-precision
+real oracle. A bounded integer binary search over each index suffices. This
+observation is a construction, not an executed integer-arithmetic benchmark.
+
+The fixed-experiment lower bound is still valid when the comparator may use
+norm-at-most-one rows: trace(H)<=q and rank(H)<=q imply
+trace[H(H+sI)^(-1)]<=q/(1+s), by the same concavity argument. Allowing the
+contracted patterns therefore does not weaken that equally informed bound.
+
+No physical actuator has been earned by this note. It proves that the chosen
+directions admit finite program words with a certified statistical penalty.
+Exact application of those rational weights, sensor noise calibration,
+coefficient-generation cost, decoder-amplitude arithmetic, output precision,
+and effects of hardware gain error are distinct implementation resources.
+The 11r remote control count relies on local generation and programming of
+the M weights using the shared prepared model; it is not the total digital
+traffic or the cost of a dense aggregate operation.

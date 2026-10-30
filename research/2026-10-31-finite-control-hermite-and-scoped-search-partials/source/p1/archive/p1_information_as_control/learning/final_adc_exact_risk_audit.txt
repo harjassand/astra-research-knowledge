@@ -1,0 +1,73 @@
+Independent audit of root finite_precision.py: exact final-ADC risk
+30 October 2026. Existing files were read and left unchanged; no broad rerun.
+
+The exact risk identity and its implementation are correct.
+
+Define a(G)=c*phi(G)/sqrt(M), b(G)=c_hat*phi(QG)/sqrt(M), and
+w=b/||b||, with an arbitrary unit fallback when b=0. Let alpha=1/(1+s).
+The noisy-context Hermite identity gives E[phi(U)|G]=alpha phi(G).
+Conditionally on G, the final noisy read is Z=w^T V+eta and
+E[V|G,Z]=alpha w Z. Thus
+
+    E[F|G,Z] = alpha^2 (a(G)^T w) Z.
+
+The deployed finite-ADC output is
+
+    F_hat = alpha^2 ||b(G)|| Q_z(Z).
+
+Z has law N(0,1+s) independent of G and of the prepared model. Therefore,
+writing cross=E[a^T b] and second=E||b||^2,
+
+    E[F F_hat] = alpha^4 cross E[Z Q_z(Z)],
+    E[F_hat^2] = alpha^4 second E[Q_z(Z)^2].
+
+Since F has mean zero, its exact squared error is
+
+    R_ADC = Var(F) - 2 alpha^4 cross E[Z Q_z(Z)]
+                     + alpha^4 second E[Q_z(Z)^2].
+
+The zero-amplitude case contributes zero to both terms and creates no issue.
+Setting Q_z(Z)=Z yields E[Z^2]=1/alpha and reduces the formula exactly to
+Var(F)+alpha^3(second-2cross), the earlier unquantized-output result.
+
+Implementation inspection:
+
+* coefficient_moments uses the correct diagonal Hermite cross moment
+  (E[G^2 Q(G)^2]-E[Q(G)^2])/2 and diagonal second moment
+  (E[Q(G)^4]-2E[Q(G)^2]+1)/2. Off-diagonal moments are the corresponding
+  products (E[GQ(G)])^2 and (E[Q(G)^2])^2.
+* adc_moments integrates each positive nearest-rounding bin, doubles by
+  symmetry, ignores the zero-output bin correctly, and extends the final
+  saturation bin to infinity. Its cross and second moments therefore match
+  the actual clipped, nearest-grid int16 implementation.
+* The decoder's direction and amplitude both depend only on decoded packed
+  QG and the acquired coefficients. No exact context value enters prediction.
+* The final read is genuinely serialized to two bytes per scalar and decoded
+  before use. Float64 actuator arithmetic remains the explicitly stated model.
+
+Values read from the completed root result file:
+
+    E[Z Q_z(Z)]                      1.0099999999999982
+    E[Q_z(Z)^2]                      1.0100000049673532
+    scalar ADC MSE                   4.9673567481534064e-09
+
+Acquired r=64 case:
+
+    exact risk before final ADC      0.029689881851146738
+    exact-bin risk with final ADC    0.02968988657990701
+    measured risk                    0.02998562947199614
+    estimated Monte Carlo SE         0.00048211242819847443
+
+The empirical discrepancy is about 0.62 estimated standard errors. This is
+consistent with the exact formula; the SE is not itself a confidence interval.
+
+Balanced c=1, r=128 case:
+
+    exact risk before final ADC      0.029504335001139914
+    exact-bin risk with final ADC    0.029504339699702453
+    earlier triangle upper bound    0.029545135714821456
+    uniform analytic upper bound    0.02985132624703879
+
+The distinction is substantive: 0.02950433970 is the exact-bin prediction
+(evaluated in floating point), while 0.02954514 is a conservative triangle
+upper bound. They should not be reported as two estimates of the same type.
