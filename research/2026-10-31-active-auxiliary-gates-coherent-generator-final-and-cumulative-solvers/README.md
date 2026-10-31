@@ -1,0 +1,3 @@
+# Active auxiliary gates, coherent-generator final and cumulative solvers
+
+Direct intake of supplied completed sources, source-bound existing review scopes and the visible-only P3 capacity report. N1522 and five units receive immutable completed revisions; older interim and failed results remain history. Entire-source encoders, stronger ordinary comparators, actuator/rank promises, modeled warmup, physical-domain qualifications and unacquired total instrument costs remain explicit. Identical predecessor files are reused. No Capital scientific reproof, producer-code replay, novelty investigation or new scientific sign-off; no producer idle gate, source recovery, unavailable attachment acquisition or rejected upload retry. Chemistry remains non-operational.

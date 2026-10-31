@@ -1,0 +1,155 @@
+# Bounded scalar noise, coefficient error, and later log partition functions
+
+This is a secondary proved extension of `ACQUISITION_PROOF.md`. It changes the acquisition contract and is not silently included in the exact-validation routine. It does not assume access to the true energy, masks, derivatives, or a hidden planner.
+
+## 1. No coefficient lattice: exact support, approximate coefficients
+
+Write
+
+\[
+f(x)=c+\sum_{j=1}^{m}\theta_j\chi_{a_j}(x),
+\quad a_j\ne0,
+\quad m\le S-1,
+\quad |\theta_j|\ge\alpha>0.
+\]
+
+The masks and coefficients are unknown. The constant c is unrestricted and need not obey the amplitude floor. Known inputs are n, S, alpha, delta, and a scalar measurement precision epsilon satisfying `2 epsilon < alpha`. A paid measurement returns a rational value v(x) with deterministic absolute error at most epsilon. Measurement errors may be adversarial and correlated.
+
+Include the zero mask in the set that the random hash must separate **even if c is actually zero**. Its total size is at most S. Choose
+
+\[
+b=\left\lceil\log_2\max\{2,{S\choose2}/\delta\}\right\rceil.
+\]
+
+When `b>=n`, use a full Walsh transform of the noisy configuration table. Otherwise use one random subspace experiment exactly as in the exact construction, with `(n+1)2^b` scalar measurements. All hash identities apply to the true unobserved values. Computing a normalized Walsh bucket from the observed values gives
+
+\[
+\widetilde G_t(u)=G_t(u)+\eta_t(u),\qquad
+|\eta_t(u)|\le\epsilon,
+\]
+
+because the transform is an average of signed errors. This remains true for arbitrary correlated errors.
+
+On the collision-free event, which has probability at least `1-delta`:
+
+- `u=0` contains only c; estimate it by `c_hat=G_tilde_0(0)`.
+- Every nonconstant occupied bucket has `|G_tilde_0(u)|>=alpha-epsilon>alpha/2`.
+- Every empty bucket has `|G_tilde_0(u)|<=epsilon<alpha/2`.
+- The signs of `G_tilde_0(u)` and every `G_tilde_ei(u)` are the exact signs of their unperturbed counterparts, since their true magnitudes are at least alpha.
+
+Thus thresholding nonzero buckets at alpha/2 and decoding the relative signs recovers every nonconstant mask exactly. Set `theta_hat_j=G_tilde_0(R^T a_j)`. The output obeys
+
+\[
+|\widehat c-c|\le\epsilon,
+\qquad |\widehat\theta_j-\theta_j|\le\epsilon.
+\]
+
+The full-table case has the same support and coefficient conclusions deterministically, under the measurement promise.
+
+This simple robust construction uses a quadratic-in-S, inverse-delta isolation budget. The exact retry algorithm's equality validation cannot be reused: noisy measurements do not certify equality to an approximately learned candidate. Improving the noisy acquisition confidence dependence requires a separate justified recovery or validation method. The current executable implements exact rational acquisition and the known-lattice rounding extension, not this extra no-lattice variant.
+
+The amplitude floor and precision model are supplied structural/measurement promises. They are not certified by the acquired dataset. If a term is too small relative to the error, exact support is not identifiable from the specified measurements.
+
+## 2. The acquired coefficient bound is a uniform energy bound
+
+For the learned representation
+
+\[
+\widehat f(x)=\widehat c+\sum_j\widehat\theta_j\chi_{a_j}(x),
+\]
+
+the successful acquisition event gives simultaneously for all configurations
+
+\[
+|\widehat f(x)-f(x)|
+\le|\widehat c-c|+\sum_j|\widehat\theta_j-\theta_j|
+\le(m+1)\epsilon\le S\epsilon.
+\]
+
+More generally, any established Fourier coefficient `ell_1` error bound eta implies a pointwise energy error bound eta by Fourier inversion. This is why an `ell_1/ell_1` sparse-transform theorem, such as Cheraghchi–Indyk's under its own exact-query and bit assumptions, is relevant to downstream statistical mechanics. An `ell_2` or mean prediction error cannot be substituted with the same constant; an uncontrolled dimension factor or additional assumption would be needed.
+
+If later tasks are supplied exact replacement coefficients on the acquired masks, initial coefficient-estimation errors no longer enter those tasks. If later tasks multiply the original unknown coefficients by known factors lambda_j, the retained error bound becomes
+
+\[
+\Delta_\lambda
+\le |\lambda_0|\epsilon+\sum_j|\lambda_j|\epsilon,
+\]
+
+where lambda_0 is the constant's multiplier. Every new term outside the acquired support requires its own acquisition or supplied description.
+
+## 3. Conditional partition functions: no rarity factor in this error bound
+
+Let F be any nonempty feasible or evidence set, and beta>=0. Define
+
+\[
+Z_F=\sum_{x\in F}e^{-\beta f(x)},
+\qquad
+\widehat Z_F=\sum_{x\in F}e^{-\beta\widehat f(x)}.
+\]
+
+If `|f-f_hat|<=Delta` on every configuration, termwise comparison gives
+
+\[
+e^{-\beta\Delta}Z_F
+\le\widehat Z_F\le e^{\beta\Delta}Z_F,
+\qquad
+|\log\widehat Z_F-\log Z_F|\le\beta\Delta.
+\]
+
+The statement holds for all nonempty F simultaneously on the successful acquisition event, including an F selected after learning. It has no factor involving the probability of F. This is a consequence of uniform energy control, not of ordinary small average prediction error.
+
+For a relative partition-function error target rho>0, the conservative sufficient measurement precision is
+
+\[
+\epsilon\le\frac{\log(1+\rho)}{\beta S},
+\]
+
+in addition to the support-identification requirement `2 epsilon < alpha`. Obtaining this precision must be charged. Low temperature (large beta) or many terms can make it expensive. For beta>0, the corresponding free-energy error is at most Delta.
+
+For an event probability `P(F)=Z_F/Z_Ω`, the constant energy offset cancels. The learned nonconstant coefficient bound gives
+
+\[
+|\log\widehat P(F)-\log P(F)|\le 2\beta m\epsilon.
+\]
+
+These are accuracy statements. They do not make an arbitrary F computationally tractable. The algebraic interaction between F and the acquired coordinates still determines the inference cost; coordinate evidence can encode hard decoding even when the unconditioned learned model is separable.
+
+## 4. Optimization regret under the same feasible set
+
+Suppose the acquired representation can be optimized exactly over F, producing `x_hat`. Let `x_star` minimize the true energy over the same F. Then
+
+\[
+f(\widehat x)-f(x_*)
+\le2\sup_{x\in F}|f(x)-\widehat f(x)|.
+\]
+
+Since constant offsets cancel from the minimizers and the regret comparison,
+
+\[
+f(\widehat x)-\min_{x\in F}f(x)\le2m\epsilon.
+\]
+
+If the planner solves the learned problem only to additive error gamma, add gamma to this bound. This derivation neither assumes a free planner nor upgrades the tractability of F.
+
+## 5. A rare hidden energy well defeats small mean prediction error
+
+Let `N=2^n`, let the predictor be identically zero, and let the true energy be `f(x)=-M 1{x=z}` at one unknown configuration z. Under uniform configurations, its mean absolute prediction error is `M/N` and its root mean square error is `M/sqrt(N)`.
+
+Yet
+
+\[
+Z=N-1+e^{\beta M},\qquad\widehat Z=N.
+\]
+
+Taking `M=2 log(N)/beta` makes both stated average prediction errors vanish as N grows, while
+
+\[
+\log Z-\log\widehat Z=\log(N-1+N^2)-\log N
+\sim\log N.
+\]
+
+The spike has N small Walsh coefficients whose `ell_1` norm is M. It therefore does not have small coefficient `ell_1` error, despite small coefficient `ell_2` error and tiny average configuration error. This is also the full-grid obstruction behind the need for a valid structural promise in exact finite validation.
+
+## 6. Scope of the extension
+
+The positive statement is conditional but constructive: paid bounded-error scalar experiments acquire the masks and coefficient estimates; their proved error bounds control later energies and partition functions. It supplies no new physical access, no uncharged true-energy evaluations, and no inference advantage over a retaining classical sparse-transform-and-trellis method. The exact algorithm, finite receipt, and known-lattice noise implementation remain in `parity_acquisition.py` and `results.json`.
