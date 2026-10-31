@@ -32,6 +32,29 @@ def inventory(root):
                            if path.is_file()) for folder, pattern in DISCOVERY.items()} | {"selected_public_source_indexes": source_indexes(root)}
 
 
+def authority_layers(claim_base, claim_current, status_base, status_current,
+                     catalog_base, catalog_current):
+    """Keep checkpoint-pinned baselines while replacing current rows explicitly.
+
+    A baseline ID can have one full current row in each existing shard family.
+    All three families must agree on replacements and retain the card identity.
+    Duplicate current rows are errors, rather than filesystem-order precedence.
+    """
+    base = [unique(claim_base, "id"), unique(status_base, "card_id"), unique(catalog_base, "id")]
+    current = [unique(claim_current, "id"), unique(status_current, "card_id"), unique(catalog_current, "id")]
+    replaced = [old.keys() & new.keys() for old, new in zip(base, current)]
+    if not replaced[0] == replaced[1] == replaced[2]:
+        raise ValueError("Current baseline replacements must agree across claim/status/catalog shards")
+    for identifier in replaced[0]:
+        paths = [(base[0][identifier]["path"], current[0][identifier]["path"]),
+                 (base[1][identifier]["card_path"], current[1][identifier]["card_path"]),
+                 (base[2][identifier]["pointers"]["card_local"],
+                  current[2][identifier]["pointers"]["card_local"])]
+        if any(old != new for old, new in paths):
+            raise ValueError("Current baseline replacement changed card identity: " + identifier)
+    return tuple(old | new for old, new in zip(base, current))
+
+
 def sections(text):
     result = defaultdict(list)
     heading = "body"
@@ -177,12 +200,13 @@ def build(root=ROOT):
         if digest(inputs.read("knowledge/runtime/" + name)) != expected:
             raise ValueError("INGESTION FAILED: pinned retrieval model bytes changed: " + name)
     concepts = inputs.json("knowledge/concepts.json")
-    claims = unique(inputs.rows("indexes/claims.jsonl", "indexes/claims.d"), "id")
-    statuses = unique(inputs.rows("frontier/CURRENT_CLAIM_STATUS.jsonl", "frontier/CURRENT_CLAIM_STATUS.d"), "card_id")
-    catalog_rows = inputs.json("indexes/agent_catalog.json")["claims"]
-    for name in discovered["indexes/agent_catalog.d"]:
-        catalog_rows.extend(inputs.json(name)["claims"])
-    catalog = unique(catalog_rows, "id")
+    claims, statuses, catalog = authority_layers(
+        inputs.rows("indexes/claims.jsonl"),
+        [row for name in discovered["indexes/claims.d"] for row in inputs.rows(name)],
+        inputs.rows("frontier/CURRENT_CLAIM_STATUS.jsonl"),
+        [row for name in discovered["frontier/CURRENT_CLAIM_STATUS.d"] for row in inputs.rows(name)],
+        inputs.json("indexes/agent_catalog.json")["claims"],
+        [row for name in discovered["indexes/agent_catalog.d"] for row in inputs.json(name)["claims"]])
     if claims.keys() != statuses.keys() or claims.keys() != catalog.keys():
         raise ValueError("INGESTION FAILED: claim/status/catalog ID sets disagree")
     short_ids = unique([{"short": route_id(identifier), "id": identifier} for identifier in claims], "short")

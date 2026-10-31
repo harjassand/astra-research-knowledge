@@ -25,7 +25,7 @@ INLINE_SOURCE_CONTEXT = "inline-context-v1"
 LINKED_SOURCE_CONTEXT = "linked-current-capsules-v1"
 
 
-def record_menu(lanes, exact, records, limit=5):
+def record_menu(lanes, exact, records, limit=5, declared_routes=()):
     """Fuse support for a scientific family while retaining independent leaders.
 
     Different methods can find a parent and a buried unit of the same result.
@@ -54,14 +54,28 @@ def record_menu(lanes, exact, records, limit=5):
     order = sorted(scores, key=lambda group: (-scores[group], group))
     remaining = limit - len(prefix)
     chosen = [group for group in leaders if group not in represented][:remaining]
+    def representative(group, candidates=None):
+        return min(members[group] if candidates is None else candidates, key=lambda identifier: (
+            -member_scores[identifier], best_rank[identifier],
+            records[identifier].get("kind") == "result", identifier))
+    # An existing qualified common-consumer route is a distinct retrieval
+    # opportunity. Keep one when consensus would otherwise hide every route;
+    # exact requests and independently discovered leader families still govern.
+    declared_routes, routed_members = set(declared_routes), {}
+    if not (set(prefix) & declared_routes or any(
+            representative(group) in declared_routes for group in chosen)):
+        bridge = next((group for group in order if group not in represented
+                       and members[group] & declared_routes), None)
+        if bridge is not None and (bridge in chosen or len(chosen) < remaining):
+            if bridge not in chosen:
+                chosen.append(bridge)
+            routed_members[bridge] = members[bridge] & declared_routes
     for group in order:
         if group not in represented and group not in chosen and len(chosen) < remaining:
             chosen.append(group)
     chosen.sort(key=lambda group: (-scores[group], group))
     for group in chosen:
-        prefix.append(min(members[group], key=lambda identifier: (
-            -member_scores[identifier], best_rank[identifier],
-            records[identifier].get("kind") == "result", identifier)))
+        prefix.append(representative(group, routed_members.get(group)))
     return prefix
 
 
@@ -233,14 +247,20 @@ class ResearchAdapter:
             lanes.append(self.library.search(query, method=method, limit=8)["results"])
             lane_names.append(method)
         records = []
-        selected = record_menu(lanes, exact, self.library.records)
+        candidates = set(exact) | {hit["id"] for lane in lanes for hit in lane}
+        declared_routes = {identifier for identifier in candidates
+                           if self.library.peers(identifier, limit=1)["total_candidates"]}
+        selected = record_menu(lanes, exact, self.library.records,
+                               declared_routes=declared_routes)
         family = lambda identifier: (self.library.records[identifier]["parents"] or [identifier])[0]
         for identifier in selected:
             record = self.library.records[identifier]
             preview = {}
             for field in ("requires", "provides", "assumptions", "costs", "obstruction"):
                 text = flatten(consumer_contract(record).get(field, "UNKNOWN"))
-                preview[field] = {"text": text[:200], "omitted_characters": max(0, len(text) - 200)}
+                # Candidate menus share space with current-scope navigation; complete
+                # conditions remain on the mandatory fetch, with omission counts explicit.
+                preview[field] = {"text": text[:120], "omitted_characters": max(0, len(text) - 120)}
             records.append({"id": self.handle("current", identifier), "title": record["title"],
                 "url": self.record_url(identifier), "metadata": {"record_id": identifier,
                 "content_version": record["content_version"], "kind": record["kind"],
@@ -260,10 +280,15 @@ class ResearchAdapter:
             if current_scope["total_routes"]:
                 for route in current_scope["routes"]:
                     route["fetch_id"] = self.handle("current", route["id"])
-                    route["url"] = self.record_url(route["id"])
+                    route.pop("packet", None)  # the pinned fetch handle already names this route
                 records[-1]["metadata"]["current_scope_navigation"] = current_scope
             navigation = self.interface_view(identifier, preview=True)
             if navigation["routes"] or navigation["total_candidates"]:
+                # The linked consumer contains every peer and complete binding.
+                # Keep the menu's declared route, rather than duplicating three
+                # large peer previews beside its operation preview.
+                navigation["peer_previews_omitted"] = len(navigation["candidates"])
+                navigation["candidates"] = []
                 records[-1]["metadata"]["shared_consumer_navigation"] = navigation
         sources, seen = [], set()
         for hit in evidence_search(self.library, query, limit=20)["results"]:
@@ -273,7 +298,7 @@ class ResearchAdapter:
                 continue
             seen.add(key)
             sources.append({"id": self.register(ref), "title": hit["title"],
-                "url": self.source_url(ref), "metadata": {"source": ref, "citation_locator": self.source_locator(ref),
+                "url": self.source_url(ref), "metadata": {"source": ref,
                 "record_context": sorted(self.contexts[key]), "candidate_only": True}})
             if len(sources) == 3:
                 break
@@ -281,7 +306,8 @@ class ResearchAdapter:
             "revision": self.revision, "method": self.method, "fallback": fallback,
             "exact_identifier_matches": exact[:5], "omitted_identifier_matches": max(0, len(exact) - 5),
             "identifier_scope": "Existing canonical IDs and unambiguous numeric prefixes; no topical alias, acceptance or applicability inferred.",
-            "record_menu_scope": "Family rank fusion retains independent method leaders and avoids duplicate family slots. Exact requested IDs remain first. Family membership is navigation, not compatible composition or inherited acceptance.",
+            "record_menu_scope": "Family rank fusion retains independent method leaders and avoids duplicate family slots. Exact requested IDs remain first. A declared common-consumer opportunity retains an available slot. Family membership is navigation, not compatible composition or inherited acceptance.",
+            "source_menu_scope": "Source fetches retain complete hash-matched artifact selectors and correction context.",
             "scope": "Candidate menu only. Fetch conditions, current corrections and governing passages before reuse; absence is not impossibility."}}
 
     def reference_view(self, ref):

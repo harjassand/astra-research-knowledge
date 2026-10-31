@@ -88,6 +88,26 @@ def historical_integrity(base):
         raise ValueError("Historical public catalog bytes changed")
 
 
+def retained_publication(base, fetch_sources=False):
+    """Validate retained checkpoint evidence before even a preflight can pass."""
+    tracked = set(subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0"))
+    for path in sorted((ROOT / "state/checkpoints").glob("*/*.json")):
+        record = json.loads(path.read_bytes())
+        if "publication" in record:
+            publish_result.validate_publication(record)
+            for ref in record["evidence_refs"]:
+                checkpoints.require(ref["path"] in tracked, "Publication evidence absent from reviewed tree: " + ref["path"])
+        if fetch_sources:
+            for revision in sorted({ref["source_revision"] for ref in record.get("evidence_refs", []) if ref.get("source_revision")}):
+                checkpoints.require(bool(checkpoints.REVISION.fullmatch(revision)), "Invalid source revision")
+                if subprocess.run(["git", "cat-file", "-e", revision + "^{commit}"], cwd=ROOT,
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+                    subprocess.run(["git", "fetch", "--no-tags", "--no-write-fetch-head", "origin", revision], cwd=ROOT, check=True)
+    packet = "research/2026-10-23-fresh-programme/intake/capital-integrated-2026-10-23/updates/2026-10-25-later-completed-sources/verify_manifest.py"
+    run(packet)
+    run("state/publish_checkpoint.py", "validate", "--immutable-base", base)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-revision", required=True)
@@ -102,25 +122,10 @@ def main():
         historical_integrity(args.base_revision)
         public_path_portability(args.base_revision)
         publication_membership()
+        retained_publication(args.base_revision, args.fetch_sources)
         if args.preflight_only:
-            print("Historical/public-source preflight passed. Full publication and scientific-use checks remain required.")
+            print("Historical/public-source and retained-checkpoint evidence preflight passed. Full technical checks remain required.")
             return 0
-        tracked = set(subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0"))
-        for path in sorted((ROOT / "state/checkpoints").glob("*/*.json")):
-            record = json.loads(path.read_bytes())
-            if "publication" in record:
-                publish_result.validate_publication(record)
-                for ref in record["evidence_refs"]:
-                    checkpoints.require(ref["path"] in tracked, "Publication evidence absent from reviewed tree: " + ref["path"])
-            if args.fetch_sources:
-                for revision in sorted({ref["source_revision"] for ref in record.get("evidence_refs", []) if ref.get("source_revision")}):
-                    checkpoints.require(bool(checkpoints.REVISION.fullmatch(revision)), "Invalid source revision")
-                    if subprocess.run(["git", "cat-file", "-e", revision + "^{commit}"], cwd=ROOT,
-                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
-                        subprocess.run(["git", "fetch", "--no-tags", "--no-write-fetch-head", "origin", revision], cwd=ROOT, check=True)
-        packet = "research/2026-10-23-fresh-programme/intake/capital-integrated-2026-10-23/updates/2026-10-25-later-completed-sources/verify_manifest.py"
-        run(packet)
-        run("state/publish_checkpoint.py", "validate", "--immutable-base", args.base_revision)
         run("state/publish_checkpoint.py", "self-test")
         run("-m", "unittest", "discover", "-s", "state", "-p", "test_*.py")
         run("-m", "unittest", "discover", "-s", "knowledge", "-p", "test_*.py")
