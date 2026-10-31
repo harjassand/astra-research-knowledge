@@ -33,6 +33,26 @@ class RecordMenuTests(unittest.TestCase):
         self.assertEqual(record_menu(lanes, ['A', 'UA'], self.records, limit=3), ['A', 'UA', 'B'])
         self.assertEqual(record_menu(lanes, ['A', 'UA', 'C', 'D'], self.records, limit=2), ['A', 'UA'])
 
+    def test_declared_consumer_opportunity_uses_a_slot_without_losing_leaders(self):
+        lanes = [self.lane('A', 'E', 'F', 'G'), self.lane('B', 'E'),
+                 self.lane('C', 'E'), self.lane('D', 'E')]
+        chosen = record_menu(lanes, [], self.records, declared_routes={'F'})
+        self.assertEqual(len(chosen), 5)
+        self.assertTrue({'A', 'B', 'C', 'D', 'F'} <= set(chosen))
+        self.assertNotIn('E', chosen)
+
+    def test_route_keeps_its_actual_member_without_duplicating_the_family(self):
+        chosen = record_menu([self.lane('A', 'B'), self.lane('B', 'UA')],
+                             [], self.records, declared_routes={'UA'})
+        self.assertIn('UA', chosen)
+        self.assertNotIn('A', chosen)
+        self.assertEqual(len(chosen), 2)
+
+    def test_declared_route_cannot_displace_explicit_requested_identities(self):
+        requested = ['A', 'B', 'C', 'D', 'E']
+        self.assertEqual(record_menu([self.lane('G', 'F')], requested,
+                                     self.records, declared_routes={'F'}), requested)
+
     def test_empty_lanes_and_repeat_family_votes_are_bounded(self):
         self.assertEqual(record_menu([[], []], ['A'], self.records), ['A'])
         self.assertEqual(record_menu([self.lane('A', 'UA', 'A'), self.lane('B')], [], self.records), ['A', 'B'])
