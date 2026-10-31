@@ -1,0 +1,295 @@
+DECISION CORES: STRONG BASELINES AND ALIGNED OBSTRUCTIONS
+=======================================================
+
+Task under discussion
+---------------------
+An unknown binary energy has fixed coefficients J and supports later
+inverse-design queries with chosen fields h:
+
+ E_J(x;h) = sum_{i<j} J_ij x_i x_j + sum_i h_i x_i, x_i in {-1,+1}.
+
+The useful output is a configuration with small additive energy regret,
+or an exact optimum if the actual scientific task needs one. A learner
+must pay for its observations and for optimization. A number called
+"ambiguity-core size" is a useful sufficient cost parameter only if
+the core is actually acquired and its residual optimization is executed.
+
+1. The ordinary route is substantially stronger than dominance alone
+---------------------------------------------------------------------
+Local worst-neighbor elimination is classical dead-end elimination
+(DEE). Roof duality / QPBO adds polynomial-time persistent partial
+labelings. Improving mappings unify DEE, QPBO, Kovtun methods and
+iterative pruning: p is improving when E(p(x)) <= E(x) for every x.
+Improving mappings compose, and restricting to their image preserves
+an optimum. Verification for arbitrary mappings is itself NP-hard;
+LP-relaxed sufficient certificates are a conventional tractable route.
+
+Relevant primary sources:
+
+Alexander Shekhovtsov, Maximum Persistency in Energy Minimization,
+CVPR 2014 author slides, especially pages on DEE, QPBO, verification,
+and relaxed improving mappings:
+https://cmp.felk.cvut.cz/~shekhovt/publications/shekhovtsov-14-improving-mapping-slides.pdf
+
+Rother, Kolmogorov, Lempitsky, Szummer, Optimizing Binary MRFs via
+Extended Roof Duality, CVPR 2007, author PDF:
+https://users.cecs.anu.edu.au/~pcarr/qpbo/RotherCVPR2007.pdf
+
+Implementations must compare against these, or state explicitly that a
+weaker elementary implementation is only a proof vehicle. In particular,
+a ferromagnetic graph with zero or tiny fields defeats scalar dominance
+at every vertex, but is globally solvable by a minimum cut. Thus a large
+scalar-dominance core is not evidence of computational hardness.
+
+The statistical half also has a strong existing route. Regard each
+configuration as the feature vector (x_i, x_i x_j). Combinatorial pure
+exploration and transductive linear bandits retain samples and actively
+sample coordinates / experiments whose uncertainty changes the answer.
+Their efficient versions invoke optimization over the feature-action
+set. Here that oracle is the very QUBO we must actually solve.
+
+Tongyi Cao and Akshay Krishnamurthy, Disagreement-Based Combinatorial
+Pure Exploration: Sample Complexity Bounds and an Efficient Algorithm,
+COLT 2019:
+https://proceedings.mlr.press/v99/cao19a.html
+
+Yihan Du, Yuko Kuroki, Wei Chen, Combinatorial Pure Exploration with
+Full-Bandit or Partial Linear Feedback, AAAI 2021:
+https://arxiv.org/abs/2006.07905
+
+Andrew Wagenmaker, Julian Katz-Samuels, Kevin Jamieson, Experimental
+Design for Regret Minimization in Linear Bandits, AISTATS 2021:
+https://proceedings.mlr.press/v130/wagenmaker21a.html
+
+The potentially useful missing operation is therefore earning and
+executing the optimization oracle throughout acquisition. It is not
+merely another confidence interval or sampling only disputed variables.
+Confidence-set alternatives can be harder to optimize than the true
+instance. A cost claim must account for those alternate-model queries.
+
+2. Arbitrary future fields destroy a fixed dominance guarantee
+------------------------------------------------------------
+At a currently unpinned vertex, scalar dominance requires the effective
+field to dominate the sum of absolute incident couplings. If future
+fields are unrestricted, h can cancel every current effective field.
+There is no uniform nonempty elimination set furnished by that rule.
+For h=0 on a connected nontrivial graph, every vertex fails the strict
+test. The same failure happens with arbitrarily small strictly positive
+fields on a connected ferromagnet, despite a unique easy global optimum.
+
+This does not invalidate query-specific cores. It rules out treating a
+small core learned for one field as an all-future-fields capability
+without a restricted field family or a fresh query-dependent certificate.
+
+3. Exact all-fields service would identify real parameters exactly
+-----------------------------------------------------------------
+Already take a single unknown unary coefficient theta and energy
+
+             E_theta(x;h)=(theta+h)x, x in {-1,+1}.
+
+Any service correct for every rational h locates the switching threshold
+-theta exactly by binary search. Thus such a service computes theta
+exactly from its retained state. If theta has a continuous prior and all
+finite observation sequences have likelihood densities with respect to
+a common dominating measure, any almost surely finite noisy data set
+leaves a nonatomic posterior. Additional randomness independent of theta
+cannot identify theta exactly. The probability of the all-fields exact
+service is therefore zero on average over the prior, hence it cannot
+be uniformly at least 1-delta for all theta for any delta<1.
+
+This covers an almost surely finite adaptive acquisition phase as well:
+condition on its stopping time and finite transcript, then sum over the
+countable possible stopping times. The argument does not prohibit fresh
+experiments during later queries, nor a positive decision-margin promise.
+
+For a pairwise interaction J_ij, assume known bounds on total coupling
+strength so sufficiently large chosen fields can force other spins.
+Threshold spin i once with spin j forced to +1 and once with j forced
+to -1, keeping all other forced spins unchanged. Half the difference of
+the two switching thresholds recovers J_ij (up to its known sign
+convention). The nuisance interactions cancel. A numerical model with
+finite fixed calibration therefore cannot promise exact optimization
+over all later arbitrarily tuned fields.
+
+4. Decision precision has a real one-bit cost
+-------------------------------------------
+Suppose the unknown unary theta is either +a or -a. Each direct assay
+observes N(theta,sigma^2); this is an explicitly stated strong source,
+not a presumed property of an arbitrary physical experiment. At h=0,
+selecting the wrong sign costs 2a energy. If epsilon<2a, a uniformly
+delta-correct epsilon-regret algorithm distinguishes the two sources.
+For any adaptive sequential algorithm with finite expected stopping,
+the likelihood-ratio chain rule and data processing imply
+
+ E_{+a}[tau] * (2a^2/sigma^2) >= kl(1-delta,delta),
+
+where kl denotes binary relative entropy. This is a usual testing lower
+bound, not an exactness-specific obstacle. It remains after the entire
+optimization problem has become computationally trivial.
+
+5. Aggregate regret can require cubic-in-dimension scalar observation
+   cost even when there are no interactions to optimize
+--------------------------------------------------------------------
+There are m independent unknown unary coefficients theta_i in {-a,+a}.
+An experiment chooses a coordinate i and returns a Bernoulli bit with
+mean 1/2 + theta_i/(2B), where a<=B/2. Thus 2B X-B is an unbiased noisy
+measurement of theta_i, and the number of source bits is explicitly
+charged. The decision energy is E_theta(x)=sum_i theta_i x_i.
+
+Set a=4 epsilon/m, assuming epsilon<=mB/8. Suppose an algorithm returns
+regret at most epsilon with probability >=1-delta for every theta,
+where delta<=1/16. Under the uniform prior on signs, its expected regret
+is at most epsilon + delta (2am) <= 3epsilon/2.
+
+Let D include the complete adaptively acquired data, stopping time,
+experiment choices, and independent algorithmic random bits. Conditional
+on the past, one observed bit has mutual information about all hidden
+signs at most
+
+ KL(Ber(1/2 +/- a/(2B)) || Ber(1/2)) <= a^2/B^2,
+
+using KL <= chi-square. (The first bound follows by taking the fixed
+fair coin as a reference in the conditional information-radius identity.)
+Consequently I(theta;D) <= (a^2/B^2) E[tau].
+
+For independent prior signs, sum_i I(theta_i;D)<=I(theta;D).
+Pinsker applied to each posterior sign distribution, followed by
+Cauchy-Schwarz, bounds the smallest expected Hamming error H by
+
+ E H >= m/2 - sqrt(m I(theta;D)/2).
+
+If E[tau] <= m B^2/(8a^2), then I<=m/8 and E H>=m/4. The expected
+energy regret is then at least 2a(m/4)=2epsilon, contradicting the
+upper bound. Hence the worst-case expected number of scalar bit assays
+must exceed
+
+                      B^2 m^3/(128 epsilon^2).
+
+This is not a claim that all observation models pay this cost. A single
+full-vector assay can supply m bits, and a different controlled source
+can have much more information. The observation contract must specify
+and charge this distinction. The result shows that small computational
+cores alone do not bound acquisition cost: this instance has no pairwise
+optimization difficulty at all. At per-coordinate regret epsilon rather
+than total regret epsilon, the scaling changes accordingly.
+
+6. Model uncertainty can contain combinatorial hardness at every scale
+---------------------------------------------------------------------
+An interval box J_ij in [-rho,rho] around the identically zero energy
+contains scaled versions of all bounded-weight Max-Cut instances. Exact
+optimization remains NP-hard under arbitrarily small positive scaling.
+This is computational fragility, not evidence that small perturbations
+prevent useful approximate optimization: if total energy oscillation is
+below the allowed regret, every output is acceptable.
+
+More explicitly, for even n, any fixed candidate x, and the complete
+graph, choose J_ij=rho x_i x_j. In coordinates y_i=x_i z_i the candidate
+has y_i=1 for all i and energy rho*n(n-1)/2. A balanced y has energy
+-rho*n/2, so the candidate's regret is rho*n^2/2. A uniform guarantee
+from this interval box by returning an arbitrary candidate therefore
+needs rho<=2epsilon/n^2. This counterexample exposes what a globally
+valid confidence box has to exclude; it is not a general sample lower
+bound because more informative experiments and coupled confidence sets
+can improve the acquisition route.
+
+7. Useful direction after these failures
+----------------------------------------
+Earn a query-specific computational certificate jointly with the
+statistical evidence that makes it valid. The certificate should say
+which concrete downstream computations remain and bound their cost,
+without optimizing all statistically plausible models along the way.
+Strong DEE/QPBO/improving-map and pure-exploration methods should be
+adopted as components. A substantive new result would have to prove an
+information/computation advantage at that interface, or deliver an
+operation those components cannot already supply under the same access.
+
+This note supplies comparators and obstructions. It does not assert
+that such an advantage has yet been constructed.
+
+8. Finite contrasts cannot certify an unrestricted orientation law
+------------------------------------------------------------------
+For the module quotient, fix B*=(1,...,1), whose feasible orbit has
+L=2^k orientations. Consider the zero energy E0 and, for a hidden
+orientation u in that orbit, the alternative
+
+                 Eu(x)=-H 1{x=u},  H>epsilon*(2k).
+
+Take noiseless observations; this is already an allowed subcase of a
+subgaussian observation model. Until u is queried, all absolute readings
+and all paired contrasts are identical in the two worlds. Run any adaptive
+algorithm on E0, including its internal randomness. If it makes at most N
+source queries, its queried set and its later output for (B*,h=0) together
+contain at most N+1 orientations. Choose u uniformly in the orbit before
+running the experiment. Coupling to the zero-world transcript gives
+
+   P(query u or output u) <= (N+1)/2^k.
+
+Otherwise the output has regret H. Hence some fixed u defeats the proposed
+uniform guarantee with failure probability at least 1-(N+1)/2^k. An
+expected-budget version replaces N by the expected number of queries on
+the zero world. If the procedure is a certificate that accepts the zero
+surrogate with probability p on E0, its average false-acceptance probability
+over hidden spikes is at least p-(N+1)/2^k. Rejecting every candidate avoids
+false acceptance but does not acquire a useful service.
+
+The conclusion is a sample-complexity obstruction, not the assertion that
+no finite data set can ever suffice: exhaustive acquisition is finite.
+Polynomially many contrasts cannot certify the unrestricted law class.
+The spike is a higher-degree polynomial on binary controls and violates the
+quadratic-quotient premise. Its invariant orbit mean can be absorbed into g;
+the remaining non-invariant part is still a hidden high-degree spike. Thus
+the low-degree premise is essential and cannot itself be inferred from a
+successful finite residual check.
+
+This failure does not require a hard optimizer. One can instead hide an
+unknown unary preference at one resource context:
+
+   E(x)=H sigma 1{B(x)=B*} q_a(x)/sqrt(2),  B*_a=1.
+
+Each individual resource-constrained problem is linear in its orientations.
+An unobserved B* still leaves its preferred sign undetermined. An arbitrary
+invariant g(B) is harmless for within-context decisions; an arbitrary
+context-dependent coefficient multiplying q_a is not. The generalisation
+boundary is therefore informational as well as computational.
+
+9. Exact all-fields service identifies the full module quotient
+---------------------------------------------------------------
+Section 3 applies directly within a single active module, even with arbitrary
+g. Here is the full module version, clarifying what an exact service would
+implicitly reveal.
+
+Write the non-invariant law as
+
+ Q_perp = sum_a b_a q_a + sum_{a<b} J_ab q_a q_b
+                           + sum_{a!=b} C_ab q_a s_b.
+
+Activate only module a and fix every other module b to occupancy 0 or 2.
+Write t_b=B_b-1 in {-1,+1}. Since q_a=sqrt(2) z_a, its effective orientation
+coefficient, before the chosen physical field difference v, is
+
+            lambda_a(t)=sqrt(2)b_a+2 sum_{b!=a} C_ab t_b.
+
+An exact service for all rational v chooses the sign of -(lambda_a(t)+v).
+Its switching threshold determines lambda_a(t) exactly. Flipping one t_b
+changes lambda_a by 4 C_ab, which identifies every cross coefficient.
+The unary coefficient b_a follows after subtracting these known terms.
+
+Next activate modules a and b. Their qq term is 2 J_ab z_a z_b. With the
+other terms known, force z_b successively to +1 and -1 using sufficiently
+large fields (a known coefficient-range bound suffices). The two switching
+thresholds of z_a differ by 4 J_ab, identifying the qq coefficient. Thus an
+exact all-resource/all-fields service identifies the full non-invariant
+coefficient vector, though it still cannot identify g.
+
+Under a continuous coefficient prior and a finite adaptive acquisition with
+ordinary everywhere-positive noisy likelihoods, the posterior is nonatomic.
+The finite retained state and independent later random bits therefore cannot
+identify those real coefficients exactly with positive uniform confidence.
+Countably many rational field queries already suffice for the threshold
+argument. This is why the selected theorem must promise bounded physical
+regret while computing an exact minimizer only of its fitted surrogate.
+
+For the constructive theorem, completion is for each fixed physical law.
+The dense-tail Markov step E||Ar||_2^2=||r||_2^2 is not one event uniform over
+dense residuals selected after A is known. Fresh validation does provide the
+separate, intended uniformity over all later resource vectors and fields.

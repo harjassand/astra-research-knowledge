@@ -1,0 +1,116 @@
+ORTHOGONAL SCALAR ENERGY ACQUISITION
+Companion to orthogonal_energy_acquisition.py, 31 October 2026
+
+Scope and interface
+-------------------
+The mean response is any binary quadratic law
+
+ E(x)=c+sum_i b_i x_i+sum_{i<j} J_ij x_i x_j,  x in {-1,1}^n.
+
+Each ideal raw report has a conditionally mean-zero sigma-subgaussian error.
+An additional deterministic instrument/transport error has absolute value at
+most tau. The code receives only the public scalar measurement interface,
+dimension, sigma and resource counters. No graph, partition or coefficients
+are supplied. Every raw repeat is actually requested at repetitions=1.
+All full-configuration preparations and actual source costs remain charged.
+
+Exact design
+------------
+For n>1 choose m=ceil(log2 n), q=2^m, and n distinct field elements a_i in F_q.
+Let v_i=(1,a_i,a_i^3) in F_2^(1+2m). For every t in this binary vector space,
+prepare x_i(t)=(-1)^(t dot v_i). Thus N=2^(1+2m)<8n^2. The n=1 case uses
+the two configurations directly. The implementation constructs its field by
+enumerating monic odd degree-m polynomials and testing irreducibility with
+polynomial modular squaring and gcd. Fewer than n candidates suffice to search
+the entire family, so no finite-field oracle is hidden.
+
+Write phi(x) for the D=1+n+n(n-1)/2 constant, unary and pair features. Their
+character labels are 0, v_i, v_i+v_j (i<j). They are distinct: pair sums have
+leading bit zero; equality of pair labels fixes s=a+b !=0 and a^3+b^3. The
+identity a^3+b^3=s^3+abs fixes ab, hence the unordered roots {a,b}. Distinct
+Walsh characters are exactly orthogonal. Therefore Phi^T Phi=N I_D.
+
+This is conventional binary orthogonal-array/BCH design. Carlet, Kiss and Nagy,
+Simplicity conditions for binary orthogonal arrays, Designs Codes Cryptography
+91 (2023),151-163 (published 2022), Remark5 and Lemma6 explicitly describe the
+classical quadratic-size strength-four arrays and feature orthogonality:
+https://doi.org/10.1007/s10623-022-01105-4
+The code uses the transparent construction above, without optimizing constants.
+
+Noise and deterministic precision
+---------------------------------
+Repeat the entire design R times, M=NR. The unrounded estimate is
+
+ theta_hat=(1/M) Phi_M^T reports,   Phi_M^T Phi_M=M I_D.
+
+For any fixed x, prediction noise is a weighted sum of all M fresh errors,
+whose squared weights sum to ||phi(x)||^2/M=D/M. Conditional subgaussianity
+therefore gives the two-sided tail 2exp(-M u^2/(2 sigma^2 D)). A union bound
+over all 2^n x yields, with probability at least 1-delta,
+
+ sup_x |phi(x).(theta_hat-theta)|
+ <= Delta_stat=sigma sqrt{(2D/M)[n ln2+ln(2/delta)]}.
+
+This is one event for all configurations, and consequently for all future
+fields and all later choices of a candidate optimizer. No field is included
+in the learned response or in the source query.
+
+Let p=grid_bits and u=2^(-p-1). Every raw received report is rounded exactly
+to the common grid 2^(-p), contributing at most u additional deterministic
+error. The row-error vector has Euclidean norm at most sqrt(M)(tau+u).
+Because ||Phi_M^T/M||op=1/sqrt(M), its coefficient-error norm is at most
+tau+u. Evaluation at any binary x costs at most sqrt(D)(tau+u), by Cauchy-
+Schwarz. This is sqrt(D), not D, times the report-digitization bound.
+
+After the exact integer Walsh transform, each coefficient is rounded once
+more to the same grid. Its error is at most u, hence prediction error at most
+D u. A sufficient total bound is
+
+ Delta = Delta_stat + sqrt(D)(tau+u)+D u.
+
+Returning an exact minimizer of the acquired law plus any future field has
+physical regret at most 2Delta. If a later executor has surrogate regret eta,
+its physical regret is at most 2Delta+eta on the same event.
+
+All reported certificate bounds are exact rational upper bounds. The code
+uses ln2<7/10 and
+
+ n ln2+ln(2/delta) <= (7/10)[n+ceil(log2(2/delta))],
+
+then integer isqrt and an upward dyadic rounding to bound square roots.
+The first logarithm inequality follows, for example, because the fourth-order
+positive Taylor partial sum for exp(7/10) already exceeds two. No float result
+authorizes the bound. A float rounded outward is included only for display.
+
+Exact output and costs
+----------------------
+Walsh signed sums use arbitrary-precision integers. The returned common
+denominator is 2^p. Off-diagonal A_ij is the acquired J_ij, and
+A_ii=-sum_{j!=i} A_ij. Its diagonal changes only an additive binary constant.
+The output constant is adjusted by sum_{i<j} J_ij, so the full returned model
+represents the acquired quadratic prediction exactly, including its offset.
+
+Requested raw source shots: M. Requested control bits: nM. Source preparation
+cost is the actual source counter/cost, not a free reset assumption. Binary64
+input reports are counted at 64 bits EACH, including every raw repeat. The
+record additionally counts a specified self-delimiting encoding of every
+internally quantized report and the common grid exponent. The transform uses
+N log2(N) integer additions/subtractions; bit lengths are recorded. Its cost
+and response-bit costs can depend on source amplitude.
+
+Files and finite verification
+-----------------------------
+check_orthogonal_energy_acquisition.py writes
+orthogonal_energy_acquisition_results.json. The recorded checks verify:
+
+* Distinct quadratic labels for dimensions up to257 across multiple fields.
+* Phi^T Phi=N I with integer arithmetic at n=1,2,3,5,8,9,16.
+* Exact recovery of a dense dyadic n=8 law; all256 predictions have error0.
+* Noisy n=8, sigma=.15, R=3: observed uniform error0.1182112694;
+  certified physical regret upper bound0.4407405866. All raw reports counted.
+* Integration with latent_design.compile_acquired at n=12: 512 scalar shots,
+  a nontrivial certified contraction, and a query whose returned design is an
+  exhaustive physical optimum to floating precision (raw difference -6.4e-15).
+
+These are implementation checks. The all-future-fields guarantee is the
+inequality above, not inference from the finite numerical comparisons.

@@ -1,0 +1,1 @@
+Historical source19d00c48 and its record preserved verbatim. Its expression (front@M.T)//D could allocate two bulk temporaries, so its one-temporary peak ledger was too small. Current code uses an explicitly in-place division and deletes its temporary after assignment. Full-word mathematical values are unaffected; historical resource record is not current.

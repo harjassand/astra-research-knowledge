@@ -1,0 +1,199 @@
+RESTRICT ONLY INTERACTIONS THAT SURVIVE THE OPERATION
+Ordinary construction and proof, 31 October 2026
+
+1. THE PREVIOUS REPRESENTATION WAS UNNECESSARILY RESTRICTIVE
+
+Keep the physical two-site modules, occupancy-fixed design requests, arbitrary
+site fields, and same-occupancy experiments from MODULE_ORBIT_CERTIFICATE.txt.
+The unknown energy is g(c)+quadratic, with arbitrary unknown occupancy-only g.
+Use q_a=(x_a1-x_a2)/sqrt(2), s_a=(x_a1+x_a2)/sqrt(2).
+
+The previous group-forest model required the joint support of qq, qs and sq
+terms to be a forest. That is not the operation's actual computational
+requirement. Once occupancies are specified, s_b is fixed and q_a is either
+zero or a binary orientation. Every q_a*s_b term is therefore unary in a
+remaining decision. Such terms can have an arbitrary directed support,
+including many cycles or a dense graph, without creating a hard optimization
+interaction. Only qq terms couple simultaneous free decisions.
+
+The acquired family is consequently
+
+ F(x)=sum_a b_a q_a
+       +sum_{(a,b) in T} J_ab q_a q_b
+       +sum_{(a,b) in C} L_ab q_a s_b,
+
+where T is a forest and C is any directed support of size <=t (a!=b). Dense
+cross-context dependence is allowed by taking t=k(k-1), with its honest
+quadratic retention and execution cost. No claim of O(k) execution is made
+when t is dense. The useful qq forest and cross support are both acquired.
+
+2. EXACT PROJECTION, WITH NO STRUCTURE ORACLE
+
+The q/s noninvariant basis is orthonormal under independent uniform original
+site spins. For any fitted coefficient vector theta, squared Euclidean error
+splits into independent sums over unary, qq, and cross coefficients.
+
+The exact best projection onto the stated model is therefore:
+
+ (i) keep all k unary coefficients;
+ (ii) among qq coefficients choose a maximum-weight forest with edge weight
+      J_ab^2, implemented by Kruskal, and retain selected coefficients;
+ (iii) among all k(k-1) directed cross coefficients retain the t largest
+       squared magnitudes.
+
+For any fixed support, keeping the supplied coefficient is its exact least-
+squares projection. Choosing the support minimizes the omitted squared norm,
+equivalently maximizes retained squared weight. The qq support constraint is
+the graphic matroid; the cross support constraint is just a cardinality bound.
+There is no coupling between these two optimizations, proving exactness.
+Tie-breaking can be arbitrary. Sorting/Kruskal and top-t selection have fully
+explicit polynomial cost, e.g. O(k^2 log k) arithmetic with direct sorting.
+The implementation orders absolute coefficient magnitudes instead of forming
+their squares: this is exactly the same ordering and avoids overflow or a
+rounded square comparison for finite binary inputs. Selected coefficients are
+copied unchanged in the unrounded learning projection.
+
+project_conditional_coefficients implements this projection without rounding
+and is the intended IHT integration interface. conditional_iht supplies an
+ordinary projected-gradient helper, explicitly recording the training residual
+history. It does not assert a RIP or turn its training residual into a global
+certificate. The parent construction supplies the acquisition guarantee.
+
+The broad sparse class no longer has the earlier constant-arboricity moment
+property when C is arbitrary. One must not reuse the old group-forest
+restricted sub-Gaussian proof unchanged. The paired noninvariant basis still
+has exact identity covariance and bounded entries, so bounded-orthonormal-
+system sparse recovery is an appropriate conventional acquisition route.
+Its sparsity is s=k+(k-1)+t, with support unions charged in the usual way.
+
+3. ACTUAL EXECUTOR
+
+Write d_a=(x_a1-x_a2)/2 and z_a=(x_a1+x_a2)/2. They belong to {-1,0,+1}.
+For a requested occupancy c_a, z_a=c_a-1 is fixed. If c_a=1 then d_a is a
+free sign; otherwise d_a=0.
+
+The coefficients in these coordinates are
+
+ omega_a=sqrt(2)b_a, K_ab=2J_ab, M_ab=2L_ab.
+
+For active modules A={a:c_a=1}, the design energy, apart from context constants,
+is
+
+ sum_{a in A} [omega_a + h_a1-h_a2
+                   +sum_{(a,b) in C} M_ab(c_b-1)] d_a
+       +sum_{(a,b) in T, a,b in A} K_ab d_a d_b.
+
+Scan each cross coefficient once to form these unary fields. The active qq
+graph is an induced subforest. Two-state tree dynamic programming and
+backtracking return its exact minimizer. Construction, execution, and retained
+storage cost O(k+t), up to coefficient-bit arithmetic. The implementation
+retains only unaries, qq edges, and cross terms; dense coefficient reconstruction
+occurs only through an explicit coefficient_vector() call for learning/debugging.
+
+The arbitrary g(c) never has to be predicted, represented, or evaluated by this
+executor. Choosing c is still outside the learned operation, since changing g
+can alter the best occupancy while leaving every contrast unchanged.
+
+4. FINITE COMPILED OUTPUT AND ROUNDING
+
+The compiled class quantizes omega, K and M onto a declared binary grid of
+denominator 2^B (B=40 in the fixture). This is the actual candidate F that is
+validated afterward. Therefore rounding is not silently added to an earlier
+certificate; any resulting model error is part of the subsequently tested
+residual. The learning projection helper remains unrounded for theoretical IHT.
+
+Evaluation uses integer monomials d_a, z_a. With a proved sum-of-absolute-
+coefficient bound below 2^62, the implementation safely uses int64 arithmetic;
+otherwise it uses Python arbitrary-precision integers. Conversion to a floating
+source-comparison value occurs only at the final division, with its error
+included in the supplied contrast-rounding interval. An unsupported dynamic
+range raises an explicit error rather than silently returning an infinite value.
+
+For each actual design request, finite floating input fields are interpreted
+as their exactly represented binary rationals; Fraction and integer fields
+are also supported. A common denominator for the compiled coefficients and
+requested fields is constructed. The dynamic program uses only exact integer
+addition and comparison, then emits the literal site signs {-1,+1}. This is
+an exact minimizer of the compiled finite candidate for that input, including
+ties. It does not claim to be an exact minimizer of the unknown physical energy;
+the independent operational certificate supplies its stated regret bound.
+The output work record includes actual denominator bit length, largest dynamic-
+program integer bit length, and input-field numerator size, rather than hiding
+large coefficients behind a count of arithmetic operations.
+
+The numerical size of cross terms is not free. Their coefficient bit length,
+query-field denominator, large nuisance energy readout precision, and source
+variance scale are charged. Huge coefficients cannot be hidden behind an
+O(k+t) arithmetic-operation statement.
+
+5. CERTIFICATION, INCLUDING EXACT ACCEPTANCE ARITHMETIC
+
+All quotient residual proofs from MODULE_ORBIT_CERTIFICATE.txt remain valid:
+the candidate is still quadratic, even though its cross support is cyclic or
+dense. The statistical replicate-product validator requires no assumption that
+the residual shares the candidate's forest structure. It tests an unknown dense
+quadratic quotient residual and protects all adaptive occupancy contexts/fields.
+
+The main fixture calls statistical_validate_group_action with
+
+ exact_statistics=True,
+ feature_radius_squared=2*k*k,
+ contrast_rounding_radius=1e-8.
+
+Once the finite observed U,V are formed, products, the deterministic rounding
+correction, block averages, medians and variance-scale addition are evaluated
+as exact rational numbers. Acceptance compares
+
+ 4*(2k^2)*(certified squared quotient norm) <= (epsilon*2k)^2
+
+using exact rational arithmetic; an uncertified square root does not control
+acceptance. Displayed square roots are rounded upward and checked by exact
+rational squaring. The result records numerator/denominator bit sizes.
+
+The physical source is still a simulation with finite floating Gaussian draws.
+The prototype does not claim that an arbitrary physical instrument supplies
+the stipulated mean/variance/readout contracts automatically. Its deterministic
+rounding guard is explicitly supplied; the ordinary theorem supports an actual
+instrument or interval implementation satisfying that bound.
+
+6. STRONG CONVENTIONAL ACQUISITION AND EXECUTED DISCRIMINATING FIXTURE
+
+full_contrast_conditional_regression uses the same fully paid energy oracle to
+learn all D=k+3 choose(k,2) noninvariant coefficients by ordinary full contrast
+least squares. It constructs BOTH candidate families from the same fitted
+vector: the old group forest and the new operation-specific forest+cross model.
+Thus the comparison does not give the new learner extra observations or a
+preselected useful structure.
+
+The main fixture has k=24, hence 48 physical sites and 3^24=282429536481
+occupancy contexts. Its qq support has 23 strong tree edges; it has 96 strong
+directed cross coefficients on several cyclic offsets, plus a dense generic
+noninvariant perturbation. An arbitrary occupancy-only nuisance has amplitude
+10^6. The useful graph and cross supports are not given to either learner.
+
+The full conventional pilot uses 3408 paired design rows / 6816 energy shots
+and learns all 852 noninvariant coefficients. Its singular values and source
+costs are recorded. Exact qq-forest / top-96-cross projection retains only
+24+23+96=143 scalar coefficients. Both candidates receive separate fresh
+statistical validators with a summable confidence allocation.
+
+The group-forest candidate fails its uniform regret certificate and incurs
+observed true regret about 9.18836 on an enumerated context, above the requested
+0.96. The operation-specific candidate passes, with a certificate about
+0.063839; its checked contexts have regret within numerical zero on this fixture.
+The all-active context is executed with exact integer DP, but its full 2^24
+orientation space is not enumerated. Fifteen other requested contexts have at
+most eight active modules and are checked by complete orientation enumeration.
+The results distinguish that finite check from the proved all-context bound.
+
+The full retained OLS route additionally supplies a same-data confidence-ball
+certificate of about 0.094071 with zero extra shots. This remains a serious
+strong ordinary alternative. The sparse IHT route's potential information
+advantage must be compared against this full operation-aware regression,
+not against raw prediction of the arbitrary nuisance g or a naive grouped
+graph learner that fails to use the operation.
+
+Files: conditional_forest.py and conditional_forest_results.json. The proof is
+an operation-specific representation improvement, not a claim that sparse
+regression, maximum-spanning trees, top-t selection, or dynamic programming are
+new individually.

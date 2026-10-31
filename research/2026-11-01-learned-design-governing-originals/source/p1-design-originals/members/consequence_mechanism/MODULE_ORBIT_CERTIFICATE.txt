@@ -1,0 +1,266 @@
+LOCAL OCCUPANCY QUOTIENT: CERTIFICATE, COVARIANCE, AND EXECUTION INTERFACE
+31 October 2026
+
+1. SCIENTIFIC OPERATION
+
+There are k known physical two-site modules, n=2k binary sites. A later design
+request specifies each module's occupancy c_a in {0,1,2} and arbitrary site
+fields h. It asks for the best orientation within that context. There are 3^k
+possible occupancy contexts. The learner receives neither the useful coupling
+graph nor an optimizer for it.
+
+The unknown energy is
+
+ E(x)=g(c_1(x),...,c_k(x))+Q(x),
+
+where g is an entirely arbitrary unknown function on these 3^k contexts and Q
+is an unknown quadratic multilinear polynomial on the 2k sites. g can be huge
+and nonpolynomial. Only orientation-dependent quadratic structure is promised.
+This is an explicit physical model assumption; arbitrary orientation-dependent
+high-order spikes are excluded. Occupancy selection / comparison of absolute
+energies between contexts is a different, unearned operation.
+
+A source experiment prepares all 2k site values and returns an independent
+absolute-energy observation with centered sigma^2-sub-Gaussian error. Every
+shot and preparation is charged. A normalized bit-valued measurement must be
+converted to its true energy noise scale. Readout and arithmetic must retain
+the requested absolute precision despite large g; bit cost includes log of
+the energy magnitude. Mathematical cancellation is not free numerical precision.
+
+2. EXPLICIT ORBIT CONTRAST
+
+Draw X uniformly from {-1,+1}^{2k}. Independently swap the two sites of each
+module with probability 1/2, obtaining Y. Conditional on the entire occupancy
+context, X and Y are independent and uniformly distributed over orientations.
+The algorithm uses k fair bits for the swaps. No unknown conditional sampler,
+reset oracle, or nuisance-model evaluator is needed.
+
+The observation difference E(X)-E(Y) cancels g exactly. It also cancels every
+quadratic component invariant under those local swaps. Define
+
+ q_a=(x_a1-x_a2)/sqrt(2), s_a=(x_a1+x_a2)/sqrt(2).
+
+q_a changes sign under a swap; s_a does not. Under independent uniform site
+spins, q_a,s_a have zero mean, unit second moment, and q_a*s_a=0. The full
+noninvariant degree<=2 orthonormal basis consists of
+
+ q_a,
+ q_a q_b, q_a s_b, s_a q_b  for a<b.
+
+Its dimension is D=k+3 k(k-1)/2. All missing terms are invariant functions of
+occupancy and may be absorbed into g. Denote this feature vector by phi(x).
+This is a known physical coordinate transformation, not the learned forest.
+The useful forest support and its coefficients must still be acquired.
+
+For Z=[phi(X)-phi(Y)]/sqrt(2),
+
+                  E[Z Z^T]=I_D.                          (1)
+
+Proof: the phi components are orthonormal on the uniform original-spin cube.
+Their group averages are zero. Hence E phi(X)phi(Y)^T=0, while both marginal
+second moments are I. Expanding the contrast covariance proves (1). The
+executable checks (1) by enumerating all X and all swap masks for k=3.
+
+3. ORBIT RESIDUAL CERTIFICATE
+
+Let F be any data-dependent quadratic candidate, fixed before its own fresh
+validation data. It may contain only a learned forest of module interactions.
+Let Pi denote averaging over independent within-module swaps. The relevant
+residual is
+
+ r_perp=(I-Pi)(Q-F).
+
+It is still a degree-two polynomial, has conditional mean zero given context,
+and its squared uniform norm is the squared Euclidean norm of its coefficients
+in phi. For a fresh same-context pair,
+
+ D_res=[E(X)-F(X)]-[E(Y)-F(Y)]
+
+has E D_res^2=2v where v=||r_perp||_2^2. The unknown g never appears. The
+Gaussian-replacement proof in OPERATIONAL_RESIDUAL_CERTIFICATE.txt gives
+E r_perp^4<=15v^2. Conditional independence and Jensen yield
+
+ E D_res^4<=120v^2,   Var(D_res^2)<=116v^2.
+
+Use 464 pairs per block and an odd L>=8log(4/delta) independent blocks. At
+each of their 2*464*L configurations average
+
+ M=max(1,ceil[4sigma^2/nu^2 * log(4*464*L/delta)])
+
+energy shots. Define S_cert as the median of observed block residual RMS
+values plus nu. The same Chebyshev / median / bounded-noise proof gives,
+with probability at least 1-delta,
+
+       sqrt(v)<=S_cert<=sqrt(3v)+2nu.                     (2)
+
+This is a sufficient finite constant, not a claimed optimal bill. Every shot
+in the executable is counted and its measurement-noise draw is actually made.
+
+For a context with a occupancy-one modules, direct feature calculation gives
+
+ ||phi(x)||^2=2a+4[choose(k,2)-choose(k-a,2)]
+             =2a(2k-a),                                 (3)
+
+independently of orientations within that context. Therefore the residual
+oscillation in that context is at most
+
+ Gamma_a=2 sqrt[2a(2k-a)] S_cert.
+
+Uniformly over all contexts, Gamma=2sqrt(2)k S_cert. If the implemented
+surrogate solver has regret alpha, its true regret is at most alpha+Gamma_a.
+This one event holds for arbitrary adaptive future contexts and fields. No
+factor involving the probability of a rare context appears. The degree bound
+and feature norm transfer, not an assumption that rare contexts were observed,
+pay for this uniform conclusion.
+
+For requested epsilon*n=2epsilon*k regret, accept S_cert<=epsilon/sqrt(2).
+Taking nu=Theta(epsilon) gives O(log(1/delta)) averaged contrast probes and
+O(sigma^2/epsilon^2) repetitions up to the displayed logarithms. Actual cost
+also includes O(k*464*L) preparation and feature / forest evaluation work.
+
+For adaptive candidate t, use fresh validation and a summable allocation
+delta_t=delta/[t(t+1)]. Conditional on its past, (2) is unchanged. Consequently
+all accepted candidates across an arbitrary search are simultaneously sound
+with probability at least 1-delta. Failed data may train later candidates, but
+no candidate can reuse a holdout it was optimized against as its own fresh test.
+
+4. ACTUAL SOLVER, NOT A PREMISE
+
+Write a forest candidate as
+
+ F(x)=sum_a b_a q_a + sum_{a<b in T}
+       [Jqq_ab q_aq_b + Jqs_ab q_as_b + Jsq_ab s_aq_b],
+
+where T is a forest of modules. For a requested occupancy context, modules
+with occupancy 0 or 2 have q_a=0 and fixed s_a=-sqrt(2) or +sqrt(2). An active
+module has s_a=0 and q_a=sqrt(2) z_a, z_a in {-1,+1}.
+
+Thus every active-active edge contributes 2Jqq_ab z_a z_b. An edge from an
+active module to an inactive module contributes only a known unary field.
+Requested site fields contribute (h_a1-h_a2)z_a to active modules; all remaining
+terms are context constants. The active induced graph is a forest, so ordinary
+two-state tree dynamic programming finds its global minimum in O(k) arithmetic
+and O(k) storage and backtracks all orientations. The executable performs this
+conversion and actual DP, including arbitrary adaptive contexts and fields.
+It does not compare g across contexts, estimate absolute optimum energies,
+or choose occupancy for the user.
+
+5. ACQUISITION GEOMETRY FOR THE PARENT'S SPARSE CONSTRUCTION
+
+For a module forest, expanding each group of three edge coefficients by the
+orthogonal 2x2 Hadamard transform gives four original-site pair coefficients
+with the same total squared norm. Split them into same-site-index edges
+(1-1 and 2-2) and crossed edges (1-2 and 2-1). Each class is a two-fold cover
+of a module forest and hence itself a forest on the original sites.
+
+A union of q module forests therefore splits into 2q ordinary forests. Edge
+products on each ordinary forest are independent Rademachers under uniform X.
+Holder's inequality over those forests and the unary part gives
+
+ E exp(t theta^T phi(X))
+        <=exp[(2q+1)t^2||theta||^2/2].
+
+The difference row in (1), by Cauchy-Schwarz on its two uniform marginals,
+is sub-Gaussian with proxy 2(2q+1)||theta||^2. Standard sphere-net covariance
+concentration and a union bound over supports then give model-RIP for all
+union-q-forest vectors using O(q^2 gamma^-2 k log k) independent rows, up to
+confidence factors. Unlike global-cardinality contrasts, the noninvariant
+module basis has exact covariance I, so no finite-k deterministic projection
+loss remains.
+
+Projection onto module-forest coefficients is explicit: keep all q unaries;
+weight each candidate module edge by Jqq^2+Jqs^2+Jsq^2; take a maximum-weight
+spanning forest by Kruskal; keep all three coefficients on selected edges.
+This is the exact Euclidean projection onto the group-forest model. It is not
+the generally hard problem of finding an arbitrary bounded-treewidth graph.
+
+6. STRONG ORDINARY BASELINE IMPLEMENTED HERE
+
+Full contrast least squares learns all D noninvariant coefficients from the
+same observations, independent of g's magnitude/complexity. The executable
+uses m=8D independent contrast rows, solves the actual least-squares problem,
+checks the realized design singular values, projects by grouped maximum
+spanning forest, and independently validates the result. There is no useful
+graph or solver input. This strong O(k^2) observation / polynomial arithmetic
+route must be compared with the parent's sparse forest-IHT route, which aims
+for O(k polylog k) observations under approximate forest structure.
+
+The full retained least-squares route also supplies a cheaper certificate on
+the finite fixture; it should not be forced to buy the generic holdout. For its
+realized full-column-rank design A, let s_min be the smallest singular value.
+Conditional on A, each direction of the least-squares parameter error has
+sub-Gaussian proxy at most sigma^2/s_min^2. A 1/2-net of the D-dimensional
+unit sphere has size at most 5^D. A union bound gives, with confidence 1-delta,
+
+ ||theta_hat-theta|| <= 2sigma/s_min
+              *sqrt[2(D log 5 + log(2/delta))].
+
+Add this radius to ||theta_hat-theta_forest||. Multiplication by 2sqrt(2)k gives
+a simultaneous all-context regret certificate from the same retained training
+data, with zero additional source observations. It is valid despite adaptive
+forest projection because the parameter ball is uniform. The code implements
+this stronger conventional comparison. On the k=10 fixture its certificate is
+0.0387108 from 2320 pilot energy shots, while the deliberately generic holdout
+certificate is 0.0969682 and costs 47328 extra shots. Both meet the requested
+0.4 regret. These are implementation / comparison results, not a practical
+speedup claim for the generic holdout.
+
+The intended asymptotic opening remains a sparsely acquired candidate plus
+independent certification of an unknown dense tail, which can avoid learning
+all D coefficients. It must be compared against sparse recovery and other
+retaining methods given the same quotient observations, not against raw
+regression that needlessly predicts g.
+
+The verifier may accept a cheap candidate regardless of how it was trained;
+it does not imply every good candidate can be found cheaply. Ordinary
+fixed-composition contrast regression and cluster expansion are especially
+relevant predecessors. The claimed organizing step is acquisition and execution
+in the quotient of the actual operation, with all interfaces paid, rather than
+novelty of invariance, regression, norm estimation, or tree DP themselves.
+
+7. PRESERVED FAILURES
+
+ - A raw global predictor of E must confront arbitrary g on 3^k contexts;
+   successful fixed-context design requires no such prediction. A model can
+   have enormous raw prediction error and a small certified design regret.
+ - This does not allow choosing the context: changing g leaves every contrast
+   unchanged but can change the best occupancy context arbitrarily.
+ - Arbitrary noninvariant high-order errors can hide on rare orientations.
+   Their absence is the essential residual-class promise, not certified from
+   the finite holdout itself.
+ - Typical-context prediction error alone is not a global guarantee; the
+   quotient moment and feature-leverage proof is the required bridge.
+ - The small residual norm certificate remains conservative for certain dense
+   high-rank discrepancies. A stronger operation-specific spectral/SDP
+   certificate could accept them, but must earn its own acquisition and solve.
+
+8. PRIMARY SCIENTIFIC COMPARATORS FOUND DURING CONSTRUCTION
+
+Huang, Urban, Rong, Ding, Luo and Ceder, Construction of ground-state preserving
+sparse lattice models for predictive materials simulations, npj Computational
+Materials 3, 30 (2017), DOI 10.1038/s41524-017-0032-0.
+https://www.nature.com/articles/s41524-017-0032-0
+Author-repository PDF:
+https://research-repository.st-andrews.ac.uk/bitstream/10023/12852/1/Huang_2017_CM_sparselatticemodels_CC.pdf
+They already target preservation of scientific ground-state decisions rather
+than only average energy fit, combining compressive sensing and constrained
+quadratic programming. Their stated exact preservation guarantee applies to
+the input-reference structures; an iterative ground-state search extends the
+checked configurations. Their discussion explicitly identifies the difficulty
+of general out-of-sample global guarantees. This is a strong relevant baseline,
+not evidence that decision-aware model learning itself is new here.
+
+Huang et al., Finding and proving the exact ground state of a generalized Ising
+model by convex optimization and MAX-SAT, Physical Review B 94, 134424 (2016).
+https://journals.aps.org/prb/abstract/10.1103/PhysRevB.94.134424
+Exact combinatorial upper bounds and convex lower bounds are established
+alternatives for the downstream ground-state computation, with their actual
+search cost. They must not be replaced by an artificially weak naive sampler.
+
+Nelson et al., Cluster expansion made easy with Bayesian compressive sensing,
+Physical Review B 88, 155105 (2013).
+https://bsg.byu.edu/docs/papers/BCSCE.pdf
+Sparse cluster-expansion recovery and experimental/training-structure selection
+are established components. The new construction adopts that type of learning
+machinery; its proposed organizing distinction is learning an executable
+quotient operation with a uniform later-task certificate.
