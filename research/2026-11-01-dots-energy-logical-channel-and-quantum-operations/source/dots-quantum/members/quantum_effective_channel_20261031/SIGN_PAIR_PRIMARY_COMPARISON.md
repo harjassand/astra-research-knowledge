@@ -1,0 +1,15 @@
+# Primary comparison for interaction-sign cancellation
+
+31 October 2026. This comparison is scoped and does not establish historical novelty.
+
+## Strong constructive precedent
+
+Campbell, *Shorter gate sequences for quantum computing by mixing unitaries*, arXiv:1612.02689v3 (2017), full primary HTML inspected: https://arxiv.org/html/1612.02689v3 . Theorems1–2 construct positive mixtures of approximate unitary circuits whose diamond error is quadratic in the individual approximation scale, without increasing their stated worst-case circuit-cost bounds. The paper explicitly connects this to earlier coherent-noise mixing and randomized compiling. Thus positive randomization and quadratic error improvement are NOT new principles here. Its stated gate-synthesis setting is not itself the full finite-rate, nonunital open-system reduction theorem being checked in the sign-pair candidate.
+
+Wallman and Emerson, *Noise tailoring for scalable quantum computation via randomized compiling*, arXiv:1512.01098, primary abstract inspected: https://arxiv.org/abs/1512.01098 . It introduces random gates that retain the intended logical circuit while tailoring noise into stochastic Pauli errors. Winick et al., arXiv:2212.07500v1, actual full primary Sec. III.2–III.4 inspected: https://arxiv.org/html/2212.07500v1 . Theorem3 includes a persistent ancillary environment; its local-Pauli description retains environment-dependent weights. Sec. III.3 explicitly discusses failure when gate-dependent noise reveals twirl parity to that environment. Thus memory without resets and privacy limitations are also established concerns, not new principles. This is not cited as a uniform fixed-target channel theorem independent of initial source correlations. An earlier guessed v2 URL returned404; the current v1 was followed from the authoritative abstract page, not an access-denial bypass. These methods must be supplied the same sign/control access and retained knowledge in any future comparison.
+
+## What the present candidate must earn
+
+The proposed operation uses one private sign of the actual centered source-system interaction throughout a complete controlled process. The desired second-order dissipator is preserved, rather than removed as unwanted noise. The narrow work is to derive a complete system/reference/control-record bound despite initial quantum source correlations and arbitrary dark-source recycling, using a fast-centered propagator estimate. It must include actual sign availability, calibration errors, sign-independent source dynamics and the privacy/independence of the coin. A source-output approximation is not promised.
+
+The current toy qutrit target is an ordinary generalized amplitude-damping channel. A direct small-ancilla realization is the stronger operational baseline and remains cheaper there. An improvement over an unrandomized use of that bath is not by itself a new useful capability. No experimentally supported crossover, broad practical superiority, or absence of prior equivalent elimination/symmetrization constructions has been established.
