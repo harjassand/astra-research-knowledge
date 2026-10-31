@@ -1,0 +1,24 @@
+## Governing evidence and actual review
+
+The completed turn is7c990b60-4779-4582-8321-afc9db12d0b6, final82d1300d-3938-58b1-b428-a1a9c9742b03, in Calibrated Native Entangler Results. The exact issued prompt is .astra-dispatch/sources/Warm_resumption_20261031/P2_NEXT_EXACT.txt. It requested the full resource cycle, a stronger protection principle or a better opening and allowed native complementary construction.
+
+Read the full visible final using native/UI captures and the public activity delta. Read the governing absorption, sharp-effect, microscopic-progress, oscillator-return and composition sections in PROTECTED_ABSORPTION.md, the complete PA_MERGED_ADDENDUM.md and relevant reported results. All five original files are preserved in .astra-dispatch/sources/Review_0637_20261031/P2_FINAL_ORIGINALS/. This was an informed continuation review with prior source exposure, not a blind audit. No coordinator execution of the producer code, full reconstruction of OPERATING_THEORY.md, laboratory check or exhaustive priority assessment is claimed. The sharp block inequality, energy-matrix condition and oscillator coercivity algebra were inspected directly.
+
+## What changed
+
+Strong sector preservation lets an imperfectly cooled auxiliary coexist with exponentially decreasing logical measurement error. The actual fine Kraus history must act identically on the three-dimensional triplet information space. Averaged rotation covariance is insufficient. The rank-one singlet may be absorbed and replaced; erasing the triplet information into classical records cannot implement the ideal operation.
+
+With ground absorption p0, renewal drift r,b and unsuccessful-attempt drift u,d, the new sharp effect inequality yields a positive two-coordinate survival/energy recursion. Its sufficient finite-energy contraction condition is ur<1 and b+rd<p0(1-ur). For energy-neutral attempts this permits a fixed nonzero cooler floor below p0 instead of requiring auxiliary purity to improve with requested logical accuracy. This is a real change in resource structure, within the sector-preserving hypothesis.
+
+A short-time microscopic estimate supplies positive progress from bounded actual couplings rather than a cold-state loss-rate substitution. It includes spin-preserving but unobserved jumps, which otherwise invalidate the estimate. A retained counterexample exposes that omission. Fast, noncommuting source evolution can be retained under the stated cross-block bounds; this does not make a physical reservoir broadband.
+
+In an admitted one-dimensional harmonic model, a linear collective force and a separate quadratic force cool centre-of-mass and relative motion. The analytic odd-parity coercivity bound selects the two lowest occupied orbitals; splitting then gives a route back to one atom per port without measuring triplet orientation. The required reservoir separation, transverse domain, sideband approximation and scattering costs remain explicit. It is not an arbitrary three-dimensional warm return theorem.
+
+Composition is evaluated along actual physical prefixes, avoiding a fictitious cold ideal history or retained-source reset. Finite expected absorbing-sector work does not equal total wall time: triplet runs pay the full measurement cap. A fixed nonzero spin-breaking physical error still requires a real correction layer for unbounded reliable computation.
+
+## Hardest remaining scientific obligation
+
+No single material regime earns all the hypotheses. The cold merged-trap diagnostic gives faster nominal singlet loss but a roughly0.0237 sufficient coherent triplet-disturbance budget, plus Raman and molecular-loss hazards. This is neither measured disturbance nor an irreducible lower bound. The molecular spectrum is incomplete; low-energy optical volumes are not the required trapped Franck–Condon matrices. The cold isotropic three-dimensional calculation does not qualify the warm one-dimensional return domain. The same actual molecular/electronic operators must supply sector preservation, progress, heating, renewal and return. Single-atom scalar polarizability cannot supply the pair-level statement.
+
+Known singlet/triplet universality, quantum-channel Lyapunov methods, cavity cooling and two-phonon primitives remain prior machinery. The contribution is the constructed warm-resource law and its operational composition, not inventing those antecedents. Primary bodies consulted include Rudolph–Virmani arXiv2107.03239, the coherence-preserving cooling construction arXiv2410.23430v1, and the actual-cycle distributed-computing methods arXiv2407.00835v1. Established architectures already perform real operations; this proposal has not established an equally complete device advantage. The printed-Hamiltonian dark-state objection is limited to the inspected isolation argument, not a refutation of that whole paper.
+

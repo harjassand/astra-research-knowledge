@@ -1,0 +1,3 @@
+# One-record entropy,warm auxiliary and retained quantum memory
+
+Direct supplied-source intake with completed and interim source versions,exact-byte deduplication,source-bound internal mathematical reviews and informed assessments. Three cumulative Dots ZIPs are one developing family with distinct scoped results. Ultra0552partial/0616final is one result;0659entropy-witness extension remains interim. P3 named attachments remain unacquired;P2 optional Library upload remains held. No Capital scientific execution,reproof,correctness/novelty investigation,new sign-off,producer contact,idle gate or transfer recovery.
