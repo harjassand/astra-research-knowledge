@@ -1,0 +1,254 @@
+CONVENTIONAL SECANT LEARNING COMPARISON
+31 October 2026
+
+Scientific conclusion
+=====================
+
+The robust acquisition contract does not uniquely belong to the halfspace
+update. Ordinary symmetric least-change secant learning (PSB), equipped with
+the same fresh validation, spectral clipping, individual-source information
+reuse, and thresholded updates, also has a finite lifetime correction bound
+against an unknown operator-norm approximate comparator. On the fixed compact
+experiment it slightly beats the halfspace rule in source actions. BFGS also
+matches or beats the halfspace rule empirically, though the Frobenius potential
+used here is not monotone for BFGS and no noisy BFGS lifetime bound is asserted.
+
+The distinction to preserve is therefore the information and service contract:
+imperfect experiments can support reliable, request-adaptive computation with
+finite cumulative correction work even when source-free uniform acquisition
+is information-theoretically expensive. The particular update is an established
+numerical ingredient. It should not be presented as the foundational discovery.
+
+
+1. Exact comparison protocol
+============================
+
+Code: robust_solver/compare_conventional.py
+Data: robust_solver/conventional_comparison_results.json
+Imported root prototype: robust_computation/demand_solver.py (not modified).
+Imported fixed fixture: robust_computation/check_demand_solver.py (not modified).
+
+Each method receives the same 120 fixed pairs (theta,b), generated once from
+seed 32171. The root's separate adaptive modification of every seventh right
+hand side is intentionally absent from this comparison. There are three
+Hermitian positive-definite source operators on N=192 coordinates, scalar
+initializations alpha=(1,1.1,.9), and known spectral interval [.85,2.6]. The
+source matrices have a common rank-five core, different noncommuting core
+matrices with several distinct eigenvalues, and different generic diagonal
+perturbations of norm at most .002. The actual generated algebra need not
+remain small. The learner does not receive the core, the perturbation, their
+basis, or the exact solver.
+
+The callback is the same fixed, continuous, homogeneous but nonlinear masking
+oracle for all methods. Its action error is at most eta=.003 times the input
+norm. The acceptance threshold is tau=.060. Scoring uses the separate exact
+Woodbury solution and the hidden comparator only after each learned answer;
+none of that information enters an algorithmic decision.
+
+All methods freshly validate every returned vector. The accepted certificate
+is (a+eta)/(mu-a-eta), where a=||y-A_model v|| for the learned models and
+a=||A_observed x-b||/||x|| for ordinary CG. Every reported true relative error
+was below its reported certificate. All experiments are floating-point checks,
+not interval-certified executions of the real-arithmetic theorem.
+
+The aggregate halfspace prototype discards the individual y_j after forming
+sum theta_j y_j. Individual halfspace, PSB, and BFGS retain all y_j already paid
+for by that mixed action. After a failing mixed check, every generator whose
+individual defect exceeds tau is updated once. A failing convex mixture must
+contain at least one such generator. Accepted mixed checks need not trigger
+any individual model update.
+
+In directed variants, two additional probes follow the residual direction of
+the generator with largest halfspace gain. Those probes cost one original
+source action each. For that generator the update uses the best of its initial
+and directed observations. Other individually failing generators retain their
+initial observation. No matrix is updated until probe selection is complete.
+This is identical for the individual halfspace, PSB and BFGS variants.
+
+Fresh CG starts each task from the known scalar-initialization solution and
+uses the ordinary CG recurrence with scalar preconditioning. Recursive
+residuals only decide when to request a fresh check; they never certify a
+returned answer. If a recursively small residual fails its fresh check, CG
+restarts from the freshly observed residual. The implementation uses no hidden
+core information and retains no directions between tasks. In this experiment
+there were no residual restarts or positive-curvature failures. No convergence
+theorem for arbitrary nonlinear calibrated oracles is claimed for CG.
+
+
+2. Measured source work and retained dimension
+==============================================
+
+Method                          Actions  Rounds  Indiv.updates  Rank  Last40fails
+Aggregate halfspace               582      74        -          131        9
+Aggregate halfspace +2 probes     504      16        -           32        2
+Individual halfspace              468      36       103         130        2
+Individual halfspace +2 probes    420      12        30          50        0
+Individual PSB                    465      35        95         120        1
+Individual PSB +2 probes          415      11        26          45        0
+Individual BFGS                   453      31        87         109        0
+Individual BFGS +2 probes         420      12        28          48        1
+Fresh checked CG                 1248       -         -           0       39
+
+All 120 tasks returned a certified answer in each row. "Rounds" counts failing
+mixed checks, not individual generator changes. Fresh CG used 183 Krylov
+iterations in addition to 233 fresh solution validations. All actions in both
+categories are counted, as are all directed probes for the retained models.
+Every positive theta_j means a mixed action costs three source actions.
+
+The maximum actual relative errors range from .0388 (CG) to .0547 (individual
+halfspace); maximum reported certificates range from .0772 to .0798. Each method
+aims at the same acceptance threshold, not exactly the same final true error.
+
+The halfspace rule therefore does not win this comparison. Ordinary PSB with
+two directed probes uses five fewer source actions than individual halfspace
+with the same policy, and stores five fewer directions. Without directed
+probes, BFGS has the smallest source count among retained models. No practical
+superiority of one update should be inferred from this small one-seed fixture.
+
+Reported wall times include truth scoring and unequal potential audit costs.
+They are deliberately not used to claim speed. A full-vector source action
+already costs at least the vector output size. Retained coordinates, repeated
+small dense solves, eigendecompositions for clipping, and growing bases are
+real additional costs. The compact storage demonstration does not eliminate
+them. The ordinary secant competitors share the same storage implementation.
+
+
+3. Standard secant formulas used
+================================
+
+For a unit vector v and a cleaned Hermitian-compatible observation y, set
+r=y-Bv, a=||r||, d=Re(v* r). Cleaning removes i Im(v* y) v, the component
+impossible for an exact Hermitian source. It cannot increase the observation
+error. Both v* y and d are then real.
+
+The symmetric least-change secant update (PSB) is
+
+  Delta = r v* + v r* - d v v*,
+  B_new = clip_[mu,L](B+Delta).
+
+Before clipping, (B+Delta)v=y. This is the minimum-Frobenius-norm Hermitian
+correction satisfying that secant equation. The BFGS update is
+
+  B_new = clip_[mu,L](B - (Bv)(Bv)*/(v* Bv) + yy*/(v* y)).
+
+Its denominators are positive here: B>=mu I and a calibrated source A>=mu I
+with eta<mu imply v*Bv>=mu and v*y>=mu-eta. There were no skipped curvature
+pairs. The update rule is conventional; gating and validation provide the
+experiment's service contract.
+
+The clip is Frobenius projection onto {M=M*: mu I<=M<=L I}. Because scalar
+initialization lies inside that set, each update plus clipping changes only
+the current retained span enlarged by v and r. Both formulas thus admit the
+same growing shared-basis implementation as the halfspace update.
+
+
+4. Lifetime theorem for thresholded individual PSB
+=================================================
+
+Let unknown fixed sources A_j satisfy mu I<=A_j<=L I. Each unit-vector source
+observation y_j may depend on all prior history and have error at most eta.
+Let theta range over the simplex. Let C_j be ANY fixed Hermitian comparators
+in [mu I,L I] with ||A_j-C_j||op<=zeta. The algorithm is not given C_j or zeta.
+
+Initialize B_j=alpha_j I. For every failing mixed validation, select at least
+one observed individual pair whose defect a_j exceeds tau and perform its
+clipped PSB update. Any number of other individually failing observations may
+also be updated, including directed observations. Never apply the theorem to
+a stale observation after its own B_j has changed without recomputing its
+residual. In the implementation each selected generator is updated once per
+round, so every selected pair remains current.
+
+Assume tau>4(eta+zeta). Then the total number M of individual matrix updates,
+over any finite or infinite adaptively chosen task sequence, satisfies
+
+  M <= sum_j ||C_j-alpha_j I||F^2 /
+       [tau (tau-4(eta+zeta))].
+
+Consequently the total number of failing mixed validations is at most M.
+For p directed individual probes per failing mixed check, all k generators
+queried at each validation, and T nonzero completed tasks, source work is at
+most kT+(k+p)M. More precisely kT+(k+p)F is the implemented source count when
+there are F failing mixed validations. No source-free uniform model accuracy
+is asserted.
+
+Proof. Write D=B-C and e=y-Cv, so ||e||<=eta+zeta and Dv=e-r. For the PSB
+correction above,
+
+  ||Delta||F^2 = 2a^2-d^2,
+
+  ||B-C||F^2-||B+Delta-C||F^2
+      = 2a^2-d^2 - 2 Re <e,2r-dv>.
+
+Since |d|<=a and ||2r-dv||^2=4a^2-3d^2<=4a^2, this decrease is at least
+
+  a^2-4(eta+zeta)a.
+
+Projection onto the spectral interval cannot increase Frobenius distance to
+the admissible C. Therefore every individually gated update decreases the
+nonnegative product-space potential sum_j||B_j-C_j||F^2 by more than
+tau(tau-4(eta+zeta)). Telescoping proves the claim. A mixed defect is the norm
+of a convex combination of individual defects; if all individual defects were
+at most tau, the mixed defect would also be at most tau. Thus each failing
+mixed check pays for at least one gated update. QED.
+
+This simple constant is not optimal. For example, from the exact decrease,
+when a>=3(eta+zeta) the worst d gives the sharper lower bound
+a(a-2(eta+zeta)). The conservative theorem is sufficient for the comparison.
+It should not be confused with a new update or a claim that all ordinary
+quasi-Newton methods automatically have this contract.
+
+In the fixture eta+zeta=.005, tau=.060, so the conservative condition holds.
+Every individual PSB update's hidden-comparator decrease was checked against
+the stated lower bound. The minimum surplus above that bound was .00430
+without directed probes and .00617 with probes. The corresponding halfspace
+bound was also checked. This is evidence for the code's implementation of the
+proof, not the proof itself.
+
+
+5. Qualifications about BFGS and prior art
+==========================================
+
+BFGS decreases the displayed Frobenius potential on many updates but can
+increase it: the smallest observed decreases were -.0522 without directed
+probes and -.0300 with probes. This defeats a naive transfer of the PSB proof
+to BFGS. Other potentials may apply; none has been established here for this
+full unknown-comparator, calibrated-error, adaptive-family contract.
+
+Learning preconditioners after failed progress and retaining them for multiple
+right hand sides already has strong predecessors. In particular, Dunagan and
+Harvey's 2007 STOC paper is a direct comparator, including reusable rank-one
+updates and amortized multiple-right-hand-side analysis. This must remain in
+the main novelty assessment.
+
+Primary sources supporting attribution and comparison:
+
+J. E. Dennis Jr. and R. B. Schnabel, "Least Change Secant Updates for
+Quasi-Newton Methods," SIAM Review 21(4), 1979.
+https://epubs.siam.org/doi/10.1137/1021091
+
+R. Fletcher, "A new low rank quasi-Newton update scheme for nonlinear
+programming," research manuscript, 2005; displays the conventional BFGS
+formula and its positive-definiteness condition.
+https://optimization-online.org/wp-content/uploads/2005/08/1192.pdf
+
+J. Dunagan and N. J. A. Harvey, "Iteratively Constructing Preconditioners via
+the Conjugate Gradient Method," STOC 2007, especially sections 6 and 7.
+https://www.cs.ubc.ca/~nickhar/papers/CG/DunaganHarvey-CG.pdf
+
+Noise-robust quasi-Newton methods are themselves an established research line;
+for example "Secant Penalized BFGS: A Noise Robust Quasi-Newton Method Via
+Penalizing The Secant Condition," arXiv:2010.01275. This comparison did not
+implement all such methods and does not establish state-of-the-art status.
+https://arxiv.org/abs/2010.01275
+
+
+6. Reproduction
+===============
+
+From the shared project directory run:
+
+  OPENBLAS_NUM_THREADS=1 python robust_solver/compare_conventional.py
+
+The script prints one summary per method and writes detailed records and
+potential audits to conventional_comparison_results.json. There is no external
+data dependency and no use of a learned representation supplied by an oracle.

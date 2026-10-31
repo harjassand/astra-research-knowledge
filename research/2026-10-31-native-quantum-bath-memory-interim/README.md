@@ -1,0 +1,3 @@
+# Completed source cut with historical context
+
+Completed native-bath final,reusable algebra,visible-only spatial entropy,exact exchange/Hubbard check and warm Wnoisy computation retain their distinct source contracts,actual internal reviews,observer-mediated assessments,provenance,corrections,strong ordinary comparators and costs. Native interim snapshots/failures remain history. Wwarm/Fstarted-without-result is not blind or completed W-Fevidence. Five16Octmemory notes are missing historical SOURCEdocuments only,no duplicate theorem/card. P3original proofs/programs/audits remain unreceived under its transfer hold. No new Capital scientific reproof/replay/novelty signoff,producer contact,physical validation or restricted source transfer.

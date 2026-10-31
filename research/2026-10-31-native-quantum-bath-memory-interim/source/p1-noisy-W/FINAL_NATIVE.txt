@@ -1,0 +1,212 @@
+## Result: acquired computation with a bounded lifetime cost of correction
+
+I constructed a reusable solver whose **total correction work is bounded across arbitrarily many future requests**, despite biased, query-dependent experimental error. Its useful structural quantity survives generic full-rank perturbations.
+
+I also proved a complementary obstruction: **at fixed experimental accuracy, preparing a uniformly accurate solver before the future requests are known can require exponentially many experiments—even for condition-number-two operators with algebra dimension two.**
+
+The strongest ordinary-method comparison substantially narrows the novelty claim. Conventional symmetric secant learning supports the same kind of guarantee and slightly wins the controlled experiment. The earned result is a specific relationship between experimental resolution, when task information arrives, retained structure, and reliable computational work.
+
+The complete proofs, programs, comparisons, audits, and useful failures are preserved in **[:chatgpt-content-reference{index="2"}](https://chatgpt.com/library?file_id=libfile_f3b532da52bc8191aba947f80747f163&account_id=personal)**. The central derivation is :chatgpt-content-reference{index="3"}[MAIN_PROOF.txt](producer-workspace/MAIN_PROOF.txt).
+
+## 1. What the learner acquires
+
+The computational capability is to answer adaptively requested systems
+
+\[
+A(\theta)x=b,\qquad A(\theta)=\sum_{j=1}^{k}\theta_jA_j,
+\]
+
+where \(\theta\) lies in the simplex. The operators may be noncommuting and generate the full matrix algebra.
+
+The premises are explicit:
+
+\[
+\mu I\preceq A_j\preceq LI,\qquad
+\|\mathcal O_j(v)-A_jv\|\le \eta\|v\|.
+\]
+
+The spectral bounds and experimental error bound are supplied contracts. Errors may be biased, nonlinear in the query, and dependent on previous experiments. Full-vector actions remain the access model, and every original action is counted.
+
+The learner begins with scalar models \(B_j=\alpha_jI\). For each request it:
+
+1. Solves the current learned model.
+2. Experiments on the normalized candidate solution.
+3. Returns the candidate when its measured defect certifies the requested accuracy.
+4. Otherwise uses that failed check to correct the retained model and retries.
+
+Let \(a\) be the measured normalized defect. An accepted answer has the relative **solution-error** certificate
+
+\[
+\frac{\|x-x_\star\|}{\|x_\star\|}
+\le
+\frac{a+\eta}{\mu-a-\eta}.
+\]
+
+Thus an acceptance threshold \(\tau\) delivers accuracy \(\varepsilon\) whenever
+
+\[
+\eta<\tau,\qquad
+\tau+\eta\le \frac{\varepsilon\mu}{1+\varepsilon}.
+\]
+
+The acquired basis and downstream solver are explicit. Every correction introduces at most two directions. With a common retained basis \(Q\),
+
+\[
+B_j=\alpha_jI+QD_jQ^\ast.
+\]
+
+A future candidate requires vector projections and a solve in the learned span. Neither that span nor a useful reduced solver is supplied in advance.
+
+### The lifetime theorem
+
+For analysis, consider **any unknown** comparison operators \(C_j\) satisfying
+
+\[
+\mu I\preceq C_j\preceq LI,
+\qquad
+\|A_j-C_j\|_{\mathrm{op}}\le\zeta.
+\]
+
+The learner never receives these operators or \(\zeta\). A noise-aware halfspace correction gives
+
+\[
+U\le
+\frac{\sum_j\|C_j-\alpha_jI\|_F^2}
+{(\tau-\eta)(\tau-\eta-2\zeta)},
+\qquad
+\zeta<\frac{\tau-\eta}{2},
+\]
+
+where \(U\) counts individual model corrections over the **entire future request stream**.
+
+The proof tracks the squared distance from the learned models to \(C\). Each failed check earns a sound matrix halfspace. Projecting onto it, followed by spectral clipping, decreases that potential by a fixed positive amount. This remains true for adaptively selected requests and adversarial allowed errors.
+
+For \(T\) nonzero requests and at most \(p\) additional directed probes per failed request, the original-action bill is
+
+\[
+\boxed{\quad kT+(k+p)U.\quad}
+\]
+
+The \(kT\) validation cost remains. The theorem does not identify a time after which all future checks can safely be omitted.
+
+## 2. Structure that survives imperfect experiments
+
+The best comparison energy has an explicit characterization:
+
+\[
+E_\zeta
+=
+\sum_{j,i}
+\left(
+|\lambda_i(A_j)-\alpha_j|-\zeta
+\right)_+^2.
+\]
+
+This measures spectral departure from the simple initialization that remains above the comparison resolution. It is an analytical characterization; computing the eigenvalues is not part of acquisition.
+
+For example, suppose
+
+\[
+A_j=\alpha_jI+K_j+F_j,
+\qquad
+\operatorname{rank}(K_j)\le r_j,\quad
+\|K_j\|\le\beta_j,\quad
+\|F_j\|\le\zeta,
+\]
+
+with the comparison core inside the prescribed spectral interval. Then
+
+\[
+E_\zeta\le\sum_jr_j\beta_j^2.
+\]
+
+The \(F_j\) can be generic and full rank. They can destroy the small exact algebra while leaving the lifetime correction bound useful. This avoids making a numerical closure threshold carry an exact algebraic meaning.
+
+The computational bill also includes the representation. After \(U\) updates, its dimension is at most \(\min(N,2U)\). For retained dimension \(s\ge1\), storage is \(O(Ns+ks^2)\), and a candidate solve costs \(O(Ns+ks^2+s^3)\) local arithmetic, in addition to experiments. These costs can dominate the savings in source actions.
+
+A finite-precision extension requires an acceptance guard band, controlled residual-enclosure width, and a summable matrix-update error budget. Those conditions are proved sufficient in the record. **The supplied NumPy implementation is empirical software, not an outward-rounded implementation of that extension.**
+
+## 3. Why the timing of task information matters
+
+Consider a known unit vector \(e\), an unknown unit vector \(u\perp e\), and
+
+\[
+A_0=I+ee^\ast,\qquad
+A_u=I+ee^\ast+uu^\ast.
+\]
+
+Both sources have condition number two and generated algebra dimension two.
+
+A fixed, continuous, calibrated error rule can hide the extra mode whenever
+
+\[
+|u^\ast v|\le\eta\|v\|.
+\]
+
+Along the resulting baseline transcript, even adaptive probes have no information about \(u\). Sphere concentration then gives the following lower bound.
+
+For \(N\ge3\), \(0<\eta<1\), and success probability \(1-\delta\), acquiring a source-free inverse service that is simultaneously accurate for every future right-hand side, with relative error below \(1/3\), requires
+
+\[
+q\ge
+\frac{1-2\delta}{2}
+\exp\!\left(\frac{(N-1)\eta^2}{2}\right).
+\]
+
+The same obstruction applies to the single positive trace query \(\operatorname{tr}(A-I)\), whose values are one and two. The source and error rule are fixed before the learner’s random coins. The proof covers complex probes as well as real ones.
+
+This establishes an information limitation without a small denominator or ill-conditioned inverse. It specifically concerns calibrated, potentially query-dependent error; it is not a lower bound for unbiased independent noise or a single fixed perturbation matrix.
+
+Buying finer measurements changes the result. Under the explicit price model \(c(\eta)=\eta^{-p}\), detecting the promised additional mode has precision-work dimension dependence
+
+\[
+\Theta(N^{p/2})
+\]
+
+at fixed confidence. The upper bound purchases accuracy proportional to \(N^{-1/2}\). Its scope is promised detection, not arbitrary offline inverse reconstruction.
+
+There is an essential conventional comparator: this particular two-point-spectrum family has an affine inverse formula, so one action on a later right-hand side already suffices for approximate solution. **The example establishes the information boundary; it supplies no performance victory for the learned solver.** The ordinary proof is in :chatgpt-content-reference{index="4"}[NOISY_OFFLINE_OBSTRUCTION.txt](producer-workspace/NOISY_OFFLINE_OBSTRUCTION.txt).
+
+## 4. The ordinary methods changed the conclusion
+
+I compared the construction with retaining PSB and BFGS methods and freshly checked conjugate gradients. All methods received the same 120 requests, source interface, bounded-error callback, initialization, and acceptance threshold.
+
+The fixture used three noncommuting operators on 192 coordinates, a hidden rank-five core, and generic perturbations. All paid individual responses were available equally to the retaining competitors.
+
+| Method | Original source actions | Failed request checks | Retained dimension |
+|---|---:|---:|---:|
+| Individual halfspace correction | 468 | 36 | 130 |
+| Halfspace + two directed probes | 420 | 12 | 50 |
+| Ordinary PSB + two directed probes | **415** | **11** | **45** |
+| Ordinary BFGS + two directed probes | 420 | 12 | 48 |
+| Fresh checked CG | 1,248 | 113 | 0 |
+
+All 120 outputs in every row passed the independent truth checks and their stated error certificates in floating point. Timings included unequal audit work, so these counts do not establish a wall-time advantage.
+
+More decisively, I proved a corresponding lifetime theorem for ordinary PSB under a more conservative noise margin. The halfspace update therefore does not own the acquired capability.
+
+This attribution matters. Passive-aggressive learning already supplies the underlying projection argument; online operator learning already has strong Schatten-norm results and a separation from sequential uniform convergence; and Dunagan–Harvey already acquire reusable preconditioners while solving related systems. :chatgpt-content-reference{index="0"}
+
+The controlled evidence and PSB proof are in :chatgpt-content-reference{index="5"}[CONVENTIONAL_COMPARISON.txt](producer-workspace/CONVENTIONAL_COMPARISON.txt).
+
+## 5. A separate construction earns computation without later experiments
+
+The complementary attack acquires a certified envelope of
+
+\[
+f(u)=\lambda_{\min}\!\left(H_0+\sum_i u_iH_i\right)
+\]
+
+over a fixed, low-dimensional control polytope. Its retained affine witnesses turn future linear-price and polytopal-resource design requests into explicit linear programs.
+
+The uniform certificate checks every vertex of every active-plane cell. On such a cell the envelope is affine and \(f\) is concave, so the approximation gap is convex and controlled by its vertex values. The construction also earns its spectral measurements; an ordinary eigenpair residual is insufficient.
+
+In the 32,768-coordinate numerical example, acquisition retained seven planes and used **17,612 original coefficient actions**. Sixty subsequent design requests required zero additional physical actions. That experiment used coherent fixed-operator errors. The separate general bounded-query-error proof requires substantially finer acquisition precision. These models remain distinct in the preserved construction.
+
+## Scientific conclusion
+
+**The earned computational knowledge is a retained model with an explicit accuracy contract, a concrete downstream algorithm, and a bound on further experimental work.** For the main construction, that knowledge supports reliable adaptive computation through a finite cumulative correction budget. For the separate design construction, stronger acquisition conditions support a reusable representation that eliminates later experiments.
+
+The investigation also rules out several tempting shortcuts: quiet residuals do not establish global knowledge; individually small column errors need not form a comparably small operator perturbation; and the successful rank-one amplification argument does not automatically extend to higher rank.
+
+This is a completed construction and a precise information boundary. It has not yet earned a new general tractability principle or a superior learning algorithm. The conventional successes and the failed extensions are preserved with the proofs, rather than absorbed into an inflated discovery claim.

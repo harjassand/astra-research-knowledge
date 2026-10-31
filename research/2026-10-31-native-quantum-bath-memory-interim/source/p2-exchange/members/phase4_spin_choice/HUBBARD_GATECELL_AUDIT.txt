@@ -1,0 +1,294 @@
+AUDIT OF THE JOINT FINITE-HUBBARD GATE CELL AND CZ COMPILER
+31 October 2026
+
+Disposition
+-----------
+The assembled gate cell is mathematically consistent in the stated
+single-orbital, spin-independent Hubbard model with ideal spin-blind charge
+checks, heralded singlet helpers, independent parallel verifiers, and
+discard of every flagged data block. No sign, normalization, joining, or
+compiler-order error was found. The reported numbers are converged
+numerical evaluations of a proved norm inequality, not a rigorous
+numerical enclosure, measured device fidelity, or a general noise threshold.
+
+Audited root files:
+ phase4_exact_spin/calibrate_hubbard_entangler.py
+ phase4_exact_spin/check_joint_hubbard_cell.py
+ phase4_exact_spin/compile_finite_hubbard_cz.py
+ and their corresponding JSON result files.
+Supporting reads covered the full finite-Hubbard verifier, selected-point
+refinement, helper-pair cycle, and previous failed entangler calculation.
+
+Only one additional numerical check was performed: the compiler's abstract
+local axes were independently propagated in the complete 36-state four-site
+Hubbard sector, then assembled in the actual chronological CZ schedule.
+The 4900-state gate was not re-optimized or redundantly re-run.
+
+1. Exact symmetry reduction and independent full gate check
+---------------------------------------------------------
+The eight-site N_up=N_down=4 Fock sector has dimension4900. The calibration
+does not project away charge fluctuations. It first restricts to the
+specified fermionic site-permutation characters for the four physical
+pairs, then takes the kernel of the spin-raising operator. At total S_z=0,
+this kernel is exactly the total-spin-zero sector. Its dimension86 retains
+all charge configurations within that symmetry sector.
+
+The Hamiltonian respects each of these symmetries: all six internal edges
+of each four-site block are equal, and the four crosslinks couple both
+sites of one selected pair to both sites of the other. The code11 initial
+state is explicitly reconstructed from the reduced basis with residual
+below1e-12. The spin-projector residual is1.55e-14.
+
+Optimizing return of code11 alone would not establish the action on the
+other logical inputs. The separate check_joint_hubbard_cell.py closes
+that gap: it propagates all FOUR logical basis columns in the full4900
+states, so it also covers their coherent superpositions and reference
+entanglement by linearity. Pair-permutation symmetry keeps the accepted
+logical gate diagonal, but its four phases still require calibration.
+The reported off-diagonal norm below2e-13 agrees with that exact symmetry.
+
+The calibrated point is
+
+ U=1,
+ t_internal=.07071067811865475,
+ t_cross=.0759872108429876,
+ turn-on and turn-off time40 each,
+ plateau99.6086847971279,
+ full entangler duration179.60868479712792.
+
+The actual conditional phase is1.3159594443081746, not the earlier ideal-
+spin sqrt7 phase. The compiler consistently uses this calibrated phase.
+The nominal J=4t_internal^2/U is a label for the operating point, not the
+effective exchange used as an unverified replacement in propagation.
+The new joint model's maximum hopping is .0759873U, not the former helper
+ceiling .0707107U; statements about one common ceiling must use the larger
+number. Helpers and local pulses remain below it.
+
+2. The joining charge checks are real operations in the model
+-----------------------------------------------------------
+Let B embed the four logical inputs in the256-dimensional eight-spin
+singly occupied space. Let V_G be the full4900-state gate propagator and
+P_8 the all-eight-sites-singly-occupied projector. The computed matrix G
+is precisely the spin-space representation of P_8 V_G B.
+
+This charge projection occurs only AFTER the completed gate, not between
+its ramps or plateau. All intermediate charge amplitudes are retained.
+On a pass, each data block has exactly four singly occupied sites, which
+is the input domain needed by the subsequent verifier calculations.
+
+For one verifier, the400-state propagation retains all six-site charge
+states at N_up=N_down=3. Its accepted operator is the contraction with
+the appended helper singlet and the final all-six-sites-single/helper-
+singlet event. Thus the contraction already includes the verifier's
+final charge check; it is not an omission of charge leakage.
+
+For disjoint parallel verifiers with all unwanted links OFF, their
+Hamiltonians and local charge/read operations factor. Their accepted data
+operator is K_F tensor K_F. The joined pre-read operation is therefore
+
+                         A=(K_F tensor K_F)G.              (1)
+
+The two disjoint six-site blocks each have even fermion number, so the
+spin-tensor representation does not introduce an untracked fermionic
+exchange sign. The site order used to embed and extract the logical code
+is consistent with the projector reconstruction.
+
+The factorizability does require the specified independent verifier
+controls and isolation. A residual interblock hopping or simultaneous
+spin-sensitive charge detector would be a new physical term; it is not
+included in the numerical point.
+
+3. Why the16-dimensional verifier reconstruction is complete
+-----------------------------------------------------------
+K_F is a16 by16 FOUR-SPIN operator, not an operator on sixteen spins.
+The underlying six-site Hubbard Hamiltonian, helper singlet, and accepted
+charge/read event commute with data SU(2) and permutations of the three
+star leaves. The four-spin space decomposes into four inequivalent
+SU(2)-by-S3 sectors:
+
+ J=0, rest spin1/2, dimension2;
+ J=1, rest spin1/2, dimension6;
+ J=1, rest spin3/2, dimension3;
+ J=2, rest spin3/2, dimension5.
+
+Each sector occurs once as an irreducible product representation, so K_F
+is scalar on each. The m=0 calculation contains every multiplicity; its
+sector scalar coefficients therefore determine the entire spin operator.
+The stated polynomial projectors onto J=0,1,2 and rest spin1/2 are correct.
+The selected numerical residuals from the scalar form are below2e-12.
+
+This argument holds for the chosen verifier with no concurrent extra
+rest hopping. It does NOT restore the exact spin-model concurrency claim
+at finite Hubbard U. The earlier simultaneous-hopping counterexample
+remains applicable. The new complete gate uses sequential local pair
+controls and therefore does not depend on that failed commutation.
+
+4. The conservative helper read factor is correct
+-----------------------------------------------
+The helper spin-to-charge sweep retains the complete singlet basis
+(D_L,S_11,D_R), while every triplet remains in charge(1,1) exactly in the
+stated spin-independent one-orbital model. The joining script deliberately
+accepts ONLY D_R. Let its singlet transition amplitude be r. Then
+
+ |r|^2=1-q,  q=2.443258388507008e-5.
+
+Conditioning one read on D_R multiplies its preceding singlet-projection
+Kraus operator by r. Two independent reads multiply (1) by r^2, whose
+magnitude is1-q. The script's A_read=(1-q)A drops only an overall phase,
+which is irrelevant for the CP map. It is the correct amplitude factor;
+using(1-q)^2 here would incorrectly insert a probability as an amplitude.
+
+This q is a false rejection of a CLEAN helper singlet under D_R-only
+acceptance. It is not the probability of accepting a leaked triplet.
+D_L is also necessarily a singlet in the model, but rejecting it is a
+valid conservative convention. The earlier pair note's slightly smaller
+false-triplet figure accepted either double-charge endpoint; the two
+conventions must not be silently mixed.
+
+The preceding helper preparation is also coherent and complete within
+its three-state singlet sector. Starting from verified D_R, its reversed
+sweep followed by an ideal charge(1,1) herald prepares an exact singlet
+on every successful branch. Failures are reset/retried BEFORE contact with
+unknown data. Their cost is a probability and time resource, not an
+unaccounted coherent helper-state error on a heralded successful run.
+
+5. Proof and precise scope of the accessible-instrument bound
+------------------------------------------------------------
+Let A_r denote the complete accepted operator, including both helper read
+conversions. Let W be the ideal calibrated logical isometry, with any
+chosen overall phase. Suppose
+
+ delta=||A_r-W||,
+ p=||I-A_r^dagger A_r||,
+
+where A_r is a contraction and p is the maximum rejection probability on
+the four-dimensional logical input space. Map every rejected state to an
+orthogonal erasure output, with arbitrary retained classical failure
+records. Its CP subchannel has diamond norm p. For the accepted branch,
+
+ ||A_r(.)A_r^dagger-W(.)W^dagger||_diamond
+    <=(||A_r||+||W||)||A_r-W||<=2delta.
+
+The two flagged output branches occupy orthogonal classical sectors.
+Consequently the complete accessible gate-or-erasure instrument obeys
+
+ (1/2)||E_cell-U_calibrated||_diamond <= delta+p/2.       (2)
+
+This proof includes arbitrary entangled references. Erasing data on
+failure is essential to the claimed task; no identity or logical recovery
+within a failed sector is asserted. An unspecified inaccessible detector
+environment is not certified by (2); the calculation uses ideal charge
+checks and specified final outcomes. A real charge-read instrument error
+must be added separately.
+
+At the160-step gate refinement, the numerical evaluation is
+
+ delta=3.3932406971228574e-5,
+ p=6.786366253042077e-5,
+ delta+p/2=6.786423823643896e-5.
+
+The accepted spin-leakage amplitude is3.75846e-10. It is much smaller
+than the standalone verifier's worst false-accept amplitude because a
+global-singlet gate excursion leaks into coupled NONZERO local spin
+sectors on both blocks, and BOTH verifiers suppress it. This specific
+joint calculation must not be replaced by or advertised as the verifier's
+arbitrary-input accuracy.
+
+Both native-cell statements are restricted to encoded logical inputs,
+which is sufficient for the compiled-gate error sum. A telescoping
+expansion evaluates each E_k-U_k on an IDEAL intermediate encoded state;
+all actual channels after that difference are CPTP contractions. Tiny
+accepted leakage from earlier actual cells therefore does not invalidate
+the sum, provided each physical channel is defined on its full input
+space and erasure flags are absorbing.
+
+6. Compiler signs, local physical axes, and chronology
+-----------------------------------------------------
+The logical basis is |SS> and
+(|T+T->+|T-T+>-|T0T0>)/sqrt3. In this convention a physical pair12
+singlet phase exp(i area P_S12) implements R_z(-area) up to global phase.
+Pair23 implements R_n(area), where n=(sqrt3/2,0,1/2). The compiler uses
+these signs correctly.
+
+The isolated-pair Hamiltonian on(S_11,D_+) is
+
+ H_pair=[[0,-2t],[-2t,U]].
+
+At T=2pi m/sqrt(U^2+16t^2), it returns all singly occupied pair states
+exactly and applies singlet phase pi m(1-U/sqrt(U^2+16t^2)). The selected
+integer and hopping formula is correct, including positive-angle wrapping.
+Every local pulse is below .0707107U.
+
+The targeted independent audit propagates every listed local sequence
+in the full36-state, four-site, N_up=N_down=2 Hubbard model using the
+actual physical edges12 and23. It then assembles the physical local
+operators with the three calibrated native diagonal targets in exactly
+the reported order. Results:
+
+ largest local charge/spin-return amplitude:1.49e-14;
+ largest physical-versus-abstract axis error:1.03e-14;
+ compiled CZ operator error up to overall phase:1.98e-14.
+
+This resolves the plausible physical-axis/sign ambiguity not checked by
+abstract SU(2) multiplication alone. There was no discrepancy requiring
+a root-file change. The exact local controls are RECTANGULAR pair pulses;
+they are valid in the stated finite Hubbard model but do not certify
+band-limited switching or higher-orbital suppression in a real device.
+
+Reproduction: phase4_spin_choice/audit_hubbard_cz_axes.py and
+phase4_spin_choice/hubbard_cz_axes_audit_results.json.
+
+7. Duration and remaining explicitly external operations
+--------------------------------------------------------
+The successful prepared native-cell control time is
+
+ 480 helper preparation
+ +179.6086848 entangler
+ +1370.3430837 parallel verifier control
+ +480 parallel helper read conversion
+ =2509.9517685, all in units1/U.
+
+This sum correctly counts one simultaneous duration for each of the two
+parallel helper/verifier operations. At minimum the protocol additionally
+requires the initial helper loading/charge verification, helper-preparation
+charge heralds, the gate's all-eight-site charge check, both verifiers'
+all-six-site charge checks, and the final helper-charge detection. These
+may have parallel execution but their detector response and settling times
+are not zero. Loading, failed-preparation retries, routing, OFF isolation,
+and flag recovery/replacement are external costs already excluded in the
+reported JSON.
+
+The compiled CZ uses three such cells plus22 local pair pulses, whose
+conservative serial duration is2608.5487372/U. Its specified control time
+is10138.4040428/U, and its formal sum of numerical cell bounds is
+2.0359271471e-4. This is not a total device error estimate. Actual noise
+must act over the entire elapsed cycle, including the excluded waits.
+
+Following a successful D_R read, each helper pair is in a unique pure
+charge/spin state and can be returned through the same heralded separation
+sequence before reuse. This is legitimate reset by a completed record,
+not reuse of an unmeasured correlated auxiliary. No need to count fresh
+reservoir electrons on every successful cell should be inferred, although
+failed cases still require a specified reset/loading path.
+
+8. Numerical confidence and final audit assessment
+-------------------------------------------------
+The gate's80-to160-step refinement changes its complete single-charge
+output operator by1.20e-7. The verifier's matching refinement changes its
+accepted operator by8.48e-8; the main population effects change by about
+1e-10. Norm preservation is around1e-12. These checks resolve the concrete
+integration risk at the displayed accuracy but do not bound all numerical
+roundoff/truncation errors rigorously. The target's global phase is chosen
+separately at each refinement, while the calibrated conditional phase
+changes by only1.4e-9.
+
+The joint result has earned one compatible useful gate-plus-erasure
+instrument and a physical-control compiler in one admitted finite
+interaction model. It replaces the failed naive dense-graph pulse using
+full-graph calibration and correctly retains both double charges. The
+remaining physical boundary is explicit: dense matched hopping graphs,
+spin independence, OFF control, orbital admission, detector quality,
+loading and actual environmental exposure have not been supplied by the
+finite Hubbard calculation. The clean claim is the conditional model
+construction with the paid operations above, not practical advantage or
+fault-tolerant computing hardware.
