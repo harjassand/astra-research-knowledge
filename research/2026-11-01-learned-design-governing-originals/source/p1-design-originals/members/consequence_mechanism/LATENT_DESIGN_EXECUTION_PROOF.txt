@@ -1,0 +1,148 @@
+LATENT VARIABLES ACQUIRED FROM SCALAR ENERGY REPORTS
+
+Contract and scope
+------------------
+The source reports noisy values of a single unknown global quadratic
+ E(x)=c+b.x+(1/2)x^T A x, x in {-1,+1}^n.
+The source can prepare a chosen complete binary configuration. Reports have
+independent mean-zero sigma-subGaussian noise and deterministic absolute
+readout error at most rho. The implementation's floating Gaussian simulator
+exercises this contract but does not itself establish a physical readout-error
+bound. The diagonal of A and c are objective constants and need not be learned.
+Future queries give every site field h_i, with |h_i|<=H. The required operation
+is to return x with E(x)+h.x at most epsilon*n above its true global optimum.
+
+latent_design.py acquires the full quadratic once, PROPOSES a partition without
+receiving a rank/partition/gap, certifies its operation, and retains only the
+partition and a coarse forest. Proposal failure yields no claimed service.
+The full acquired data remain available separately for a retaining baseline.
+
+Paid acquisition and finite coefficients
+---------------------------------------
+For i<j, four fresh batches give
+ A_ij=[E(1)-E(1^i)-E(1^j)+E(1^{ij})]/4.
+For b_i, the four batches are 1,1^i,(-1)^i,-1, with signs +,-,+,-.
+Each uses L reports. Each estimator has noise variance proxy sigma^2/(4L).
+For p=n(n-1)/2+n coefficients, a simultaneous coefficient error a holds with
+probability >=1-delta when
+ L >= sigma^2 log(2p/delta)/(2[a-rho-2^(-bits-1)]^2).
+Every batch is actually queried, even when configurations repeat. There are
+4pL scalar source shots, 4p preparations, and 4pn configuration bits written.
+The source also records actual Hamming control changes and raw readout bits.
+Coefficients are quantized to integers over denominator 2^bits. Setting
+ Ahat_ii=-sum_{j!=i} Ahat_ij
+fixes an objective-constant gauge. On the coefficient event, objective
+oscillation error <=2n^2 a is a conservative bound.
+
+compile_acquired accepts any alternative paid acquisition with full_model
+{A_units,b_units,denominator} and a uniform source_regret_bound. Thus the
+orthogonal-array acquisition can replace polarization directly. Its bound
+must be an oscillation/optimizer-regret bound: if sup_x |E-Ehat|<=Delta after
+removing an arbitrary constant, then source_regret_bound=2Delta suffices.
+The compiler does not require coefficientwise confidence in this interface.
+
+An operation certificate for a proposed partition
+------------------------------------------------
+Let P be its 0/1 membership matrix, D=diag(cluster sizes), W=P D^-1 P^T.
+Let C=P^T Ahat P, alpha=max_a sum_b |C_ab|/D_aa, and
+ beta=||bhat||_infinity+H.
+An exact rational LDL factorization verifies
+ B^T(Ahat-gamma I)B positive definite,
+where B consists of integer differences e_i-e_anchor within each cluster.
+Thus v^T Ahat v>=gamma||v||^2 on the normal space. Gamma may be negative.
+The floating eigensolver only proposes gamma; its answer never authorizes it.
+
+Set F=W Ahat(I-W), g=gamma-2alpha-2beta. Compute exactly
+ G=P^T Ahat(I-W)Ahat P.
+The Frobenius bound is d_F^2=sum_a G_aa/D_aa. A second exact rational LDL
+verifies d_op^2 D-G positive definite. Thus
+ d^2=min(d_F^2,d_op^2) >= ||F||_op^2.
+All quantities used for acceptance are exact fractions of acquired integers.
+
+For any binary x, let u=Wx, v=(I-W)x, t=||v||^2, and let y be the clusterwise
+majority rounding of x. If M counts minority sites, then 2M<=t<=4M.
+The coarse quadratic and linear changes between u and y are at most
+2alpha M and 2beta M. Also ||u||^2=n-t. Consequently, uniformly for every
+permitted h,
+ Ehat_h(x)-Ehat_h(y) >= (g/2)t - d sqrt[t(n-t)]
+                    >= -n(sqrt[g^2+4d^2]-g)/4.
+This holds for ALL real g. A nonpositive g is not an automatic rejection.
+
+The code computes a rational square-root upper bound using integer square
+root. For its rational Lambda, psi=2Lambda/n is verified to satisfy
+ psi>=0, g+psi>=0, psi(g+psi)>=d^2.
+These three rational inequalities are precisely the needed 2x2 PSD condition;
+no floating square-root or eigensolver result controls acceptance.
+
+When g>0 and g^2>4nd^2, the integer minority count gives the stronger bound
+ Ehat_h(x)-Ehat_h(y) >= g M -2d sqrt(n M)>0 for M>=1.
+Then some optimizer is aligned and the contraction loss is zero. The code
+records this exact-alignment flag, but does not require it for task success.
+
+Acquired downstream operation
+-----------------------------
+For aligned y=Pz, Ehat_h(y) is the r-variable quadratic with pair coefficients
+C_ab, unary coefficients (P^T bhat)_a+sum_{i in cluster a}h_i, and an irrelevant
+diagonal constant. The compiler itself runs Kruskal on |C_ab| to keep the
+forest minimizing the sum of dropped absolute pair weights. Dropping these
+weights has objective oscillation at most
+ tau=2 sum_{dropped a<b}|C_ab|.
+The service's exact integer two-state tree dynamic program minimizes the
+remaining forest. Therefore every future adaptive h in the entire field box
+has true regret at most
+ source_regret_bound + Lambda + tau.
+The source event is shared by all queries. No later-query union bound, supplied
+optimizer, given latent partition, or assumed correct spectral output occurs.
+
+The service retains n labels, r unary integers, at most r-1 edge integers,
+the common denominator, H and the certified regret/confidence. It does not
+retain Ahat. A query consumes its n fields, sums them within clusters, makes
+two exact integer comparisons per tree edge, backtracks, and emits n bits:
+O(n+r) arithmetic and O(n+r) retained words. For finite rational fields, the
+code uses their exact common denominator; bit lengths, not merely word counts,
+are recorded. Arbitrary rational denominators may make integer arithmetic
+expensive, which is not concealed. Dyadic bounded-precision fields keep
+denominator and DP lengths bounded by coefficient/field bits plus O(log n).
+
+Proposal and verification costs
+-------------------------------
+The compiler performs one symmetric eigendecomposition, then examines bottom-r
+eigenvector rows for r=1,...,n and three explicit clustering radii. Row distance
+clustering is a proposal, requiring O(n^4) simple arithmetic in the worst case
+over all r. At most 3n distinct proposals need certificates. Exact LDL costs
+O(n^3) rational operations per accepted dimension pair; input coefficient bit
+length and intermediate numerator/denominator bit lengths are charged. The
+code records actual proposal coordinate visits, LDL products and peak bits.
+No asymptotic or empirical claim says the spectral heuristic always finds a
+useful certificate; the persisted fixtures show successful acquisition.
+
+Executed checks and useful failures
+----------------------------------
+Seeded fixtures hide randomly permuted size-four groups, a dense rank n-r
+normal penalty, unknown coarse forest, substantial pure cross coupling and
+generic dense perturbations. The learner sees only scalar reports.
+
+* n=12,r=3: 312 source shots, certified regret .0501005712 versus .24.
+  Ambient graph has all 66 pairs, 26 positive and 40 negative interactions,
+  and 126 frustrated triangles. Retained service has 12 labels and 5 scalars.
+  All 4096 ambient states are checked on 8 later adaptive fields.
+* n=24,r=6: 1200 source shots, regret .0913385390 versus .48. All 276 ambient
+  pairs are nonzero, with 1158 frustrated triangles and normal rank18.
+  Service retains 24 labels and 11 scalars; each query uses 10 integer tree
+  comparisons and consumes all24 fields. Full ambient enumeration is NOT run.
+* A weaker transverse fixture with pure cross amplitude .10 fails the exact
+  alignment criterion but passes the approximate operation certificate:
+  contraction .1827531868 and total .2440890070 versus .48.
+
+For each fixture, every later answer is also checked against all aligned
+states. A deliberately wrong partition fails the certificate. Widening the
+same learned operation's field box from .2 to50 fails recertification. The
+service rejects any out-of-box query. These are real scope boundaries; no
+claim is made for arbitrary h or for a globally nonquadratic source.
+
+The facts that spectral clustering, exact PSD verification, graph contraction,
+maximum forests, and tree dynamic programming are ordinary methods are fully
+retained. A strong retaining solver can use the same acquired matrix and can
+adopt this certificate. The construction's additional object is the acquired,
+query-uniform contraction certificate and the actual compiled operation, not
+a claim that a fresh universal QUBO solver has been discovered.
