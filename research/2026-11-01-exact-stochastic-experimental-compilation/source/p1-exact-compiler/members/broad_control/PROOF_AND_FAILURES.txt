@@ -1,0 +1,166 @@
+SUPPORT-ONLY REACHABILITY CERTIFICATES: A STRONG CONVENTIONAL COMPARATOR
+
+Status: elementary constructive lemma, numerical/exact-rational executable
+check, and decisive acquisition/execution separation. Not proposed as the new
+main Astra capability: qualitative model checking and support learning already
+give much of this power. No priority claim.
+
+1. Desired operation and strongest conventional route
+
+From imperfect transition observations, acquire reusable knowledge supporting
+later infinite-horizon reachability and physical reset/steering questions. The
+strong conventional route is learned support plus qualitative/robust Markov
+decision process model checking, not a finely estimated transition matrix.
+
+Primary references:
+* P. Ashok, J. Kretinsky, M. Weininger, PAC Statistical Model Checking for Markov
+  Decision Processes and Stochastic Games, CAV 2019, arXiv:1905.04403v3.
+  https://arxiv.org/abs/1905.04403
+  It treats unbounded reachability with a known lower bound on nonzero
+  transitions, and also with known graph topology.
+* S. Akshay, S. Bansal, G. Mahla, Certifying Almost-Sure Reachability in Unknown
+  MDPs, arXiv:2610.18119v1, October 2026.
+  https://arxiv.org/html/2610.18119v1
+  Their certificate-transfer route computes hitting times of an estimated
+  model and calibrates transition probabilities finely enough to transfer
+  drift. Its worst-case sufficient calibration can be exponential in graph
+  depth. The elementary support construction below avoids that calibration
+  for producing some valid certificate, without estimating expected hitting
+  times accurately. This does not refute a lower bound for estimating those
+  hitting times or verifying an arbitrary candidate to a prescribed margin.
+* PRISM official documentation, Uncertain Models:
+  https://www.prismmodelchecker.org/manual/PropertySpecification/UncertainModels
+  Robust interval-MDP verification already handles adversarial probability
+  choices and policies; this is a strong executable conventional comparator.
+
+2. Acquiring support
+
+Known finite labelled state set S, |S|=n, known action labels, at most a actions
+per state. A local generative request (s,u) returns a true successor distributed
+as P(.|s,u). All nonzero transitions are known a priori to have probability at
+least rational p in (0,1]. This is a structural observation-resolution promise,
+not something finite observations certify. Trials at a requested row are fresh.
+
+Draw m=ceil(p^{-1} log(n^2 a/delta)) samples from every state-action row, and keep
+only the observed successor sets. A fixed positive edge is missed with probability
+at most exp(-pm). There are at most n^2 a edges. A union bound gives exact support
+recovery with probability >=1-delta. Number of source calls is at most nam.
+Retained support is at most n^2 a bits/indices, and ordinary graph algorithms
+operate on it. On this one event all later support-only questions, including
+adaptively selected policies and targets, are correct. There is no per-query
+statistical union bound after support acquisition.
+
+This API does NOT earn access to each state-action row. Its preparation, reset,
+state-label sensing, and physical transition durations have to be supplied and
+charged separately. Section 6 proves why this qualification matters.
+
+3. Explicit robust ranking certificate without a linear solver
+
+Fix a later memoryless deterministic policy pi and a later nonempty target T.
+In the acquired policy support graph, let d(s) be shortest directed distance to
+T. If any state has infinite distance, a globally valid finite ranking
+supermartingale of the kind below cannot exist. If all distances are finite,
+put D=max_s d(s). For 0<p<1 define
+
+    W_d = (1-p^d)/[(1-p)p^D],       V(s)=W_{d(s)}.
+
+For p=1 use V(s)=d(s). For D=0 all states are targets and V=0 suffices.
+
+Claim: For EVERY transition matrix with exactly this acquired policy support
+and every positive transition at least p,
+
+    V(s) >= 1 + E[V(X_next)|X=s],  s outside T,
+    V(s)=0,                       s in T.
+
+Proof. At every non-target state of distance d, a shortest path begins with a
+successor of distance d-1. Its probability is at least p. All other successor
+values are at most W_D. Since W_{d-1}<=W_D,
+
+    E[V(X_next)|s] <= p W_{d-1} + (1-p) W_D.
+
+Direct algebra gives
+
+    W_d - p W_{d-1} - (1-p)W_D = 1.
+
+This proves the claim. At p=1 each row has a single positive successor and its
+distance is exactly d-1. Stop the chain on T; summing drift up to a finite
+stopping horizon gives E[min(t,tau_T)] <= V(s). Monotone convergence gives
+E[tau_T]<=V(s), hence almost-sure reachability. No unknown probabilities enter
+the construction or its verification.
+
+Finite-bit construction. If p=A/B is given in binary, W_d has a rational
+representation with O(D(log A+log B)+log D) bits. Its numerical magnitude can be
+exponential in D while its description and exact arithmetic are polynomial.
+Breadth-first search acquires all d(s) in O(n+e) graph operations, followed by
+ordinary integer/rational arithmetic. Floating subtraction of nearly equal
+large V values can erase the unit drift; exact rational output avoids that
+problem rather than treating a floating experiment as a rigorous certificate.
+
+4. Policy synthesis when every state can reach the target in the union graph
+
+Suppose every state has some action path to T. Compute shortest distances in
+the union of action-labelled edges. At every non-target s choose an action
+having at least one successor with distance d(s)-1. Other successors can have
+any finite distance. The identical proof supplies a robust finite hitting-time
+certificate for this constructed policy. This condition includes strongly
+connected action-union graphs and every nonempty target in them. More general
+winning subsets require the standard almost-sure reachability graph algorithm
+to remove actions that leave the winning set; no claim of a new planning
+algorithm is made.
+
+5. Executed exact checks
+
+Run: python3 broad_control/support_certificates.py
+Results: support_results.json.
+
+The source fixture has states 0,...,30, target 30, and one action. At s<30 it
+moves to s+1 with probability 1/10, and otherwise returns to 0. State 30 is
+absorbing. The learner gets only successor labels from source calls, recovers
+support, constructs its ranking function, and verifies the worst compatible
+row using exact rational arithmetic. It then executes 200 later target queries
+on the retained support, without additional source calls. Additional random
+support tests check the maximum admissible row expectation exactly, rather than
+checking only one sampled choice of probabilities.
+
+6. Decisive failure: cheap knowledge of reset possibility is not cheap reset
+
+For the progress-reset chain in section 5, reaching state D requires D
+consecutive forward successes. Its exact expected hitting time from state i is
+
+    H_i=(1-p^(D-i))/[(1-p)p^D].
+
+Verify H_D=0 and H_i=1+p H_{i+1}+(1-p)H_0. Thus H_0=W_D and the support-only
+bound is sharp. At p=1/10,D=30, the actual expected physical time is about
+1.111...e30 transitions. There is only one action, so no learner, controller,
+reset strategy, better representation, or stronger inference solver can reduce
+that physical execution cost. The source can have a 100-bit exact certificate
+and still lack feasible physical reset.
+
+If observations come from one uninterrupted trajectory, sampling a row near
+the target is itself exponentially costly in this family. The generative
+row-access abstraction would have hidden precisely the missing experimental
+operation. This is why merely replacing Hoeffding calibration with support
+learning does not complete the user's desired broader bridge.
+
+7. Other routes considered and rejected as principal destinations
+
+Reciprocal/bridge-class learning: path likelihoods modulo endpoint Doob gauges
+are a natural representation invariant under bridge conditioning. But the core
+equivalence and Schrödinger-bridge machinery are established. Learning such a
+class does not automatically provide accessible bridge sampling or efficient
+control; assuming the bridge oracle would import the desired operation.
+Primary starting reference: Conforti and Leonard, Reciprocal Classes of Random
+Walks on Graphs, SPA 2017, DOI 10.1016/j.spa.2016.09.012.
+
+Shared tractability via polymorphisms: finite-valued CSP languages with binary
+symmetric fractional polymorphisms are already solved exactly by BLP; ordinary
+constraint-table acquisition and that theorem cover the naive learned-planning
+endpoint. See Thapper and Zivny, The Complexity of Finite-Valued CSPs, JACM 2016,
+DOI 10.1145/2974019, and the constructive BLP characterization arXiv:1207.7213.
+Neither this route nor the support lemma alone is a new major capability.
+
+Scientific lesson retained: the needed empirical accuracy depends on the
+operation's invariant, not on the magnitude of an intermediate quantity.
+Qualitative support may certify an infinite future with polynomial information
+and arithmetic even when probability-fitting suggests an exponential bill.
+But certificates, numerical answers, and physical execution have distinct costs.

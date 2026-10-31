@@ -1,0 +1,273 @@
+INDEPENDENT AUDIT OF ACQUIRED EXPOSURES AND COMPLETE WIDTH SEARCH
+1 November 2026
+
+Reviewed without editing:
+  new_cascade/acquire_local_rates.py
+  new_cascade/acquire_width.py
+
+Disposition: no mathematical or implementation-scope defect found in the
+reviewed deterministic acquisition and width mechanisms. The strengthened
+approximate-junta theorem is valid at the constants below. The assay's stated
+simultaneous confidence event follows from its fresh Bernoulli experiment
+contract and Hoeffding bounds. The implementation itself uses ordinary floating
+arithmetic; this review does not promote it to validated interval arithmetic.
+
+1. Assay confidence and its actual information contract
+-------------------------------------------------------
+
+The source accepts a node v, a fully specified clamped state of the other nodes,
+a duration t, and a number m of independent fresh resets. It returns only the
+number of threshold crossings. For unit-scale Weibull shape k_v>=1, the success
+probability is 1-exp(-(a_v(S)t)^k_v). Shapes and positive global exposure bounds
+0<lower<=a_v(S)<=upper are supplied scalar promises. The graph and rate tables
+are not supplied. Fresh reset independence and the known threshold family are
+substantive physical premises.
+
+Write D0=max(1,d), alpha=rho/(64D0), and M for the deterministic max_calls cap.
+Each log-rate assay starts at t=1/upper and increases duration by 2^(1/k_v).
+Thus the Weibull dose doubles at each stage. Let each coarse estimate be within
+1/16 of its true probability. At the first observed probability >=1/4, the true
+probability is at least 3/16. If this is the first stage, it is at most 1-e^-1.
+Otherwise the preceding probability was below 5/16, so doubling dose gives
+
+  p <= 1-(11/16)^2 = 135/256 < 1-e^-1.
+
+By stage ceil(k_v log2(upper/lower)), even the slowest admitted exposure has
+dose at least one. The declared additional stages therefore suffice.
+
+The code uses
+
+  m0=ceil(128 log(4M(jmax+1)/delta)).
+
+Hoeffding gives coarse failure probability at most delta/[2M(jmax+1)] per
+stage. The allocated stage failures sum to at most delta/(2M) per distinct
+configuration assay, even though its stopping time is adaptive.
+
+For the final estimate, set beta=min(1/64,k_v alpha/32). The inverse log-rate map
+
+  g(p)=log(-log(1-p))/k_v-log(t)
+
+has derivative at most 9/k_v on [1/8,3/4]. The bracket and beta bound place both
+the true and estimated probabilities inside that interval. Therefore the final
+log-rate error is at most 9 beta/k_v <= 9alpha/32 < alpha. With
+
+  m1=ceil(log(4M/delta)/(2 beta^2)),
+
+its failure probability is at most delta/(2M). A union bound over the capped
+adaptive calls gives simultaneous |h_tilde(S)-h(S)|<=alpha with probability at
+least 1-delta. The proof conditions on each adaptive configuration before using
+the fresh independent trials. Cached estimates cause no extra union bound.
+
+All represented independent resets and total clamped exposure time are charged
+by the code. Aggregate simulated binomial counts do not mean those physical
+resets occurred cheaply. Bracketing uses O(k_v log(upper/lower)+1) stages, not
+just O(log(upper/lower)) uniformly in shape. Calibration/time precision and
+floating transcendental error require their own implementation allowance.
+
+2. Deterministic acquisition on the simultaneous confidence event
+----------------------------------------------------------------
+
+Let h=log a be monotone. For current discovered parents J, each C subset J is
+tested at the two opposite unknown-coordinate corners C and C union U, where
+U is every undiscovered coordinate other than the target node.
+
+If all observed corner gaps are <=rho/2, true monotonicity gives, for every
+original context S with S intersect J=C,
+
+  h(C) <= h(S) <= h(C union U),
+  h(C union U)-h(C) <= rho/2+2alpha.
+
+The returned lower monotone table is
+
+  h_hat(C)=max_(B subset C) [h_tilde(B)-alpha].
+
+It obeys h_hat(C)<=h(C)<=h(S), and h_hat(C)>=h(C)-2alpha. Thus
+
+  0 <= h(S)-h_hat(C) <= rho/2+4alpha <= rho.                   (2.1)
+
+This output accuracy statement does not require an exact or approximate junta
+promise. It follows from the actual stopping tests, monotonicity, and the
+simultaneous assay event. The junta condition is used to earn efficient
+discovery/termination and a sparse graph, not to certify (2.1) after stopping.
+
+3. Robust acquisition near an unknown sparse representation
+-----------------------------------------------------------
+
+Assume an unknown monotone d-junta h0 exists with
+
+  ||h-h0||_infinity <= b <= rho/(64D0).
+
+The true h remains monotone and may have dense exact dependency. No parent
+gap or the identity of the latent scope is supplied. The learner is unchanged.
+For d=0, the true function varies by at most 2b and the corner test immediately
+stops on the confidence event. Now assume d>=1.
+
+The split threshold is kappa=rho/(8d). If an interval in the sorted-coordinate
+chain is not pruned, its observed contrast exceeds kappa; hence
+
+  Delta h > kappa-2alpha = 3rho/(32d) > 2b.
+
+Therefore Delta h0>0 on that interval. In particular, an accepted singleton is
+a genuine parent of h0 (and has a genuine positive effect on h). No latent
+nonparent is added. At each depth, disjoint unpruned intervals can number at
+most d, since each contains a distinct positive h0 chain increment.
+
+It remains to show that a triggered corner gap yields an accepted singleton.
+A trigger has true contrast greater than rho/2-2alpha >=15rho/32. Suppose the
+recursive search reaches no accepted leaf. Its terminal pruned intervals
+partition the full chain. At most d of them contain any h0 change. Each such
+interval has true contrast at most kappa+2alpha, totaling at most 5rho/32.
+
+The other intervals form at most d+1 contiguous runs separated by those
+change-containing intervals. Each run has constant h0 between its endpoints,
+so its total true contrast is at most 2b. Monotonicity of h makes interval
+contrasts nonnegative and permits this aggregation without cancellation.
+Consequently the full chain contrast is at most
+
+  d(kappa+2alpha)+2b(d+1) <= 5rho/32+rho/16 =7rho/32,
+
+contradicting the trigger. A relevant singleton is therefore found.
+
+At most d new parents can be found. Once all latent parents have been found,
+the endpoint contrast for any remaining unknown-coordinate interval is at most
+2b; the observed corner contrast is at most 2b+2alpha<rho/2, so the learner
+stops. It may stop earlier, which is safe by (2.1).
+
+All learned local scopes are subsets of the latent sparse scopes. Their moral
+graph is therefore a subgraph of the latent moral graph. Adding the same event
+factors on both sides preserves this inclusion. Hence a bounded width promise
+on the latent computation graph survives dense monotone perturbations of the
+true physical dependency graph.
+
+The latent approximation can even be initially nonmonotone: if an arbitrary
+d-junta g is uniformly b-close to monotone h, its isotone closure
+g0(S)=max_(B subset S) g(B) is still a d-junta and remains b-close to h.
+Thus existence of a monotone latent approximation costs no extra error in that
+case. This observation is not needed by the reviewed implementation.
+
+4. The distinct-configuration cap is safe
+-----------------------------------------
+
+Over at most d discoveries, the corner tests use at most
+2 sum_(j=0)^d 2^j <2^(d+2) evaluations per target before caching savings.
+Let L=ceil(log2(max(2,n-1))). At each search depth at most d intervals are
+unpruned; their children give at most 2d visited intervals. At most two endpoint
+evaluations occur per visited interval. Across at most d searches this is
+bounded by 2d+4d^2 L, again before caching savings.
+
+The implemented per-node allowance
+
+  2^(d+3)+8 max(1,d)^2(max(1,L)+1)
+
+dominates these counts with slack. Failure of a model promise or the confidence
+event can raise an explicit exception; the cap prevents an unbounded adaptive
+query sequence from invalidating the union bound.
+
+5. Complete width search: soundness and completeness
+---------------------------------------------------
+
+For width k, a state (S,C) has C a connected component whose entire outside
+neighborhood is exactly S. It asks whether G[C union S] has a width-k tree
+decomposition with a bag containing S. The root uses each connected component
+of G with S empty.
+
+The algorithm selects nonempty X subset C with |S union X|<=k+1, sets B=S union
+X, and recursively handles every connected component C_i of C-X with its actual
+outside boundary S_i. The invariant gives S_i subset B. The code explicitly
+checks this boundary condition.
+
+Soundness. Glue each child decomposition to the common root bag B. Each edge
+either lies in B or in one child graph. Occurrences of a shared boundary vertex
+connect through B. This is a valid width-k tree decomposition. Eliminating child
+orders before X gives the returned elimination order: when X is eliminated,
+all live neighbors are in B, so its width is at most k. The implementation
+independently verifies the returned order and width.
+
+Completeness. Take a width-k decomposition of G[C union S] with a root bag
+containing S. The union of bags meeting C is connected because C is connected.
+Let B be its bag nearest the root. For every s in S, some vertex of C is
+adjacent to s. The running-intersection property along the root-to-edge-bag path
+forces s to belong to B. Thus B contains all S and at least one vertex of C.
+Put X=B intersect C. This is one of the algorithm's enumerated choices.
+
+For a component C_i of C-X, its boundary S_i is contained in B. Restricting the
+original decomposition to C_i union S_i gives a width-k decomposition with a
+bag containing S_i. Induction on |C| therefore proves that every child call
+can succeed. The search consequently finds a width-k order whenever one exists.
+
+In particular, a state with |S|=k+1 and nonempty C is correctly rejected: the
+nearest bag meeting C would have to contain S plus another vertex.
+
+6. Width-search cost and scope
+------------------------------
+
+Every cached C is a whole component of G-S, not an arbitrary connected vertex
+subset. For each S there are at most n possibilities for C. Separators have
+size at most k+1, so there are at most O(n^(k+2)) states. Enumerated X choices
+and explicit component/boundary work give a finite n^O(k+1) total bound. A loose
+more concrete counting bound is polynomial(k)*n^(k+4) per tested width: for
+|S|=s, at most n^s choices of S, n components, and O(n^(k+1-s)) choices of X
+occur, each with O(n^2) set/graph work.
+
+This is an elementary XP algorithm, not an efficient modern FPT treewidth
+implementation. Its completeness earns the decomposition interface. Its actual
+cost can dominate for growing width; replacing it by an established faster
+algorithm would strengthen the baseline, not invalidate the construction.
+The relevant n here is the number of variables including event auxiliaries.
+Domains and factor construction costs are charged separately from graph width.
+
+The code assumes ordinary valid scopes with distinct variable indices. No claim
+is made for malformed scopes containing repeated variables or out-of-range
+indices, nor for a zero-variable graph unless explicitly handled by a caller.
+
+7. Executed independent checks
+------------------------------
+
+Run:
+  OPENBLAS_NUM_THREADS=1 python new_hidden_tractability/audit_acquisition_width.py
+
+The acquisition check uses bounded adversarial cached errors at the full allowed
+radius. It includes OR, AND, additive, and threshold-mixture latent functions;
+dense positive influences saturate b=rho/(64 max(1,d)). It exhaustively checks
+all original contexts in each fixture, rather than only the configurations
+queried by the learner.
+
+Saved results:
+  204 fixtures, 180 with dense exact dependency beyond the sparse latent scope;
+  1,233,168 original contexts checked;
+  every learned scope is a subset of its latent scope;
+  every output is a uniformly accurate one-sided lower model;
+  maximum observed log-rate error 0.1923844459 at rho=0.4;
+  largest fraction of the declared assay cap used: 0.1458333333.
+
+The width check compares against every elimination order on every graph with
+1 through 5 vertices (1,099 graphs), plus 36 six/seven-vertex graphs. Every
+returned width equals the brute-force optimum. Every tested cap below that
+optimum is rejected. Largest cached-state count in an individual tested width
+search was 99. These finite checks do not replace the completeness proof.
+
+Artifacts:
+  audit_acquisition_width.py
+  acquisition_width_audit_results.json
+
+No root-owned source file was edited. No failed scientific construction arose
+in this audit; precision and physical-access limitations above remain explicit.
+
+8. Prior-art boundary
+----------------------
+
+Finding relevant junta variables through membership-query contrasts and paths
+in the Hamming cube is established machinery. The audit does not attribute that
+idea to the current construction. Primary routes include:
+
+  Bshouty and Costa, Exact Learning of Juntas from Membership Queries.
+  https://arxiv.org/abs/1706.06934
+  https://doi.org/10.1016/j.tcs.2017.12.032
+
+  Mossel et al., Learning Juntas, author manuscript, Section 5.2.
+  https://www.stat.berkeley.edu/~mossel/publications/learning_k.pdf
+
+The specifically established contract here is the noisy real-valued uniform
+one-sided envelope, without an edge gap, when a monotone true function may have
+dense exact dependency but is uniformly close to an unknown sparse junta.
+Historical priority for that complete contract is not certified by this audit.
