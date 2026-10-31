@@ -1,0 +1,390 @@
+DIRECT ORDINARY ACQUISITION FROM SUCCESSOR-POOL GRAM RETURNS
+31 October 2026. Companion to direct_baseline.py.
+
+Result
+======
+
+A direct ordinary spectral/contraction learner acquires the useful geometry
+on the root's common-stationary four-state fixture much more cheaply than
+first acquiring the 45-atom l1 model. It discovers three actual landmarks,
+constructs its Euclidean coordinates, measures the needed frame floor, fits
+three contraction matrices, and certifies every later word through the
+requested horizon. The useful basis, norm matrix, probes, and operation
+matrices are not provided to this learner.
+
+This is an implemented constructive alternative, not an optimality theorem.
+The large cost ratios below compare the selected conservative calibrations.
+They do not establish a universal efficiency separation. The large absolute
+sample bills also preclude describing this simulation as practically cheap.
+
+1. Interface and acquired objects
+================================
+
+Let T_a be contractions in one Hilbert space and let ||f||<=1. For the actual
+fixture, controls are symmetric four-state Markov kernels sharing the uniform
+stationary law. The physical observable is +/-1; its L2 coordinates are the
+root source's vector (+1/2,+1/2,-1/2,-1/2). A stationary endpoint-product report
+is +/-1 with the requested Gram mean. Both the direct and teacher routes use
+the identical StationaryEndpointSource and acquire_geometry implementations.
+
+The learner only receives the alphabet size, seed-word name, task horizon H,
+accuracy epsilon, confidence budget, and scalar report interface. It does not
+inspect hidden matrices, state coordinates, rank, or source mixing strength.
+The wrapper supplies the latter only to instantiate the source, and inspects
+truth only after acquisition, for separately marked audits.
+
+Maintain actual landmarks W=(w_1,...,w_n), starting with the empty word. Form
+the actual-word pool
+
+  Z = W union {w_i a : i in [n], a in alphabet}.
+
+Literal duplicate words are removed; unobserved semantic equalities are not
+assumed. Acquire the complete symmetric pool Gram matrix freshly at an
+operator-norm tolerance eta. Stage t receives delta_t=delta/[t(t+1)], so all
+stages together consume at most delta, including adaptive landmark choices
+and failed precision attempts. This is the sphere-net sampling schedule
+proved in spectral_baseline.txt, not an uncharged spectral oracle.
+
+The source computes its physical Gram mean in exact rationals before forming
+a binary64 binomial probability. The root's implementation reserves at most
+2^-52 report-mean bias for this coin rounding. The pool schedule subtracts
+|Z|*2^-52 from eta before allocating shots. The simulation batches the law of
+the many reports; it still charges every preparation, primitive control and
+endpoint reading. Batching is not a physical speedup.
+
+The final shot schedule is outward and integer-only. Stage delta is the exact
+Fraction delta/[t(t+1)]. Use ln(9)<3 and ln(x)<=ceil(log2(x)) for x>=1, then
+take the rational ceiling of
+
+  16 [3|Z| + ceil_log2(2/delta_t)] / statistical_eta^2.
+
+The helper gram_shot_schedule performs integer comparisons for ceil_log2 and
+exact rational bias subtraction/ceiling. The preparation-budget preflight
+calls this same helper, so it cannot undercount a stage due to a different
+rounding convention. Superseded floating-log calibrations are discussed at
+the end of this note; every table below uses the corrected integer schedule.
+
+2. Geometry and landmark discovery are checked from those reports
+=================================================================
+
+Retain eigenvalues of Ghat above 2 eta and let X be the proposed square-root
+factor. Numerical eigensolver output is only a proposal. The program forms
+
+  E = Ghat - X*X
+
+in exact rationals using the exact recorded report means and binary input
+entries, then certifies an operator-norm upper bound e on E. Thus, on the
+sampling confidence event,
+
+  ||G_Z-X*X||op <= eta+e = alpha^2.
+
+The polar/square-root argument in spectral_baseline.txt produces an isometry
+Q into an enlarged physical Hilbert space such that
+
+  ||V_Z-QX||op <= alpha.                                    (1)
+
+This is a GLOBAL operator-norm coupling, stronger than a bound on individual
+columns. The isometry Q is a proof witness and is never supplied to the
+learner. A separate exact rational positivity check using the numerical
+eigenvectors proves that the retained dimension is no larger than the actual
+pool rank. It does not assume that the pool already reaches global rank.
+
+When the pool's retained dimension exceeds the number of landmarks, the
+learner ranks actual successors by their numerical residual outside the
+current coordinate span. It does not blindly accept that numerical score.
+For a proposed augmented landmark set J, it verifies
+
+  Ghat[J,J] - eta I > 0                                    (2)
+
+by exact rational LDL' elimination. On the same confidence event, (2) proves
+that the corresponding actual physical vectors are independent. A failed
+candidate is recorded. If no candidate passes, the learner refines eta and
+pays another complete stage. This prevents a redundant noise direction from
+silently becoming a promised basis.
+
+Once X_W has full row rank, the learner obtains a numerical estimate of its
+smallest squared singular value and verifies a slightly smaller lower bound
+lambda by exact positivity of
+
+  X_W X_W* - lambda I > 0.
+
+The resulting sigma=sqrt_lower(lambda)>0 is an ACQUIRED frame floor. Its
+discovery, unsuccessful checks, numerical precision, and all measurements
+needed to make it useful are charged. No particular floor is a premise.
+If finite square-root precision yields a zero lower bound, that stage cannot
+divide by it or pass; it must refine or return bounded failure.
+
+3. Direct operation acquisition and its normalized certificate
+=============================================================
+
+For generator a, let Y_a consist of the columns of X corresponding to the
+actual successors T_a w_i. Fit an ordinary Euclidean contraction A_a to
+
+  minimize over ||A||op<=1: ||A X_W-Y_a||op.                  (3)
+
+The inaccessible comparator Q* T_a Q has residual at most 2 alpha. This
+follows directly from (1) and the contraction of T_a. The executed program
+first proposes a least-squares fit, projects its singular values onto the
+unit interval, then performs exact rational final norm and residual checks.
+If necessary it runs an explicitly bounded projected-subgradient method for
+(3). No efficient optimizer is assumed as an oracle.
+
+For F(A)=||A X_W-Y||op, a subgradient is
+
+  u (X_W v)*,
+
+where u,v are leading singular vectors of the residual. Its Frobenius norm
+is at most ||X_W||op. Starting from zero and projecting onto the spectral
+unit ball gives objective excess at most
+
+  sqrt(k)||X_W||op/sqrt(T)
+
+after T iterations. A spectral residual SVD, an A SVD, and the matrix products
+are all actual computations. The implemented fit uses a declared 200,000
+iteration cap and returns failure if its final certificate does not pass.
+
+Let r_a be the exact-input certified bound on ||A_a X_W-Y_a||op, and let
+r=max_a r_a. Landmark columns in the pool are distinct. Successor columns
+for a fixed a are also distinct literal words. Therefore their column
+selection matrices have operator norm one, and (1) gives
+
+  ||(T_a Q-Q A_a)X_W||op <= 2 alpha+r_a.
+
+Since X_W has full row rank, X_W X_W^+=I. Hence
+
+  ||T_a Q-Q A_a||op <= (2 alpha+r_a)/sigma,
+  kappa := (2 alpha+r)/sigma.                              (4)
+
+The tempting sqrt(n)(2alpha+beta)/sigma bound is unnecessarily loose.
+The global coupling removes sqrt(n) from the two geometry terms. If only
+maximum-column fit residual beta is available, use
+(2alpha+sqrt(n) beta)/sigma. The executable certifies r directly.
+
+Equation (4) is sound without a global rank promise and without asserting
+that an untested infinite family of raw words is exactly closed. All inputs
+to its certificate are acquired from this finite pool and physically valid
+return experiments.
+
+4. Every later word, including numerical execution
+=================================================
+
+Let x_0 be the acquired coordinate of the actual seed f, and S=||x_0||. The
+stored predictor is x_0* A_w x_0. Its physical state error obeys
+
+  ||T_w f-Q A_w x_0|| <= alpha+|w| kappa S,
+
+because all stored A_a are certified contractions. The readout f has norm at
+most one and differs from Q x_0 by at most alpha, so
+
+  |<f,T_w f>-x_0* A_w x_0|
+     <= alpha(1+S)+|w| kappa S.                            (5)
+
+All square-root upper/lower bounds and the final task comparison are formed
+as exact rationals. Stored A matrices are inward-shrunk dyadic matrices with
+exact contraction certificates. Stored X entries are the binary64 numbers
+against which the geometry certificate was evaluated, not unrecorded exact
+eigenvectors. Exact-rational residual calculations include multiplication
+rounding rather than treating a rounded residual array as exact.
+
+For the binary64 matrix-vector implementation, the program adds an explicit
+roundoff allowance to (5). With unit roundoff u=2^-53 and
+gamma_k=ku/(1-ku), one step has relative Euclidean disturbance bounded by
+q=gamma_k sqrt(k). The program bounds repeated growth by (1+q)^H and adds
+an absolute underflow reserve based on k*2^-1074 per coordinate operation.
+The final dot product is also charged. The H=8 allowance is approximately
+4.95e-15 for the rank-three run and 9.99e-16 for the rank-one run. Normal
+finite IEEE arithmetic is used; no exact-real deployment is presumed.
+
+This is a prediction theorem for arbitrary supplied later words. It does
+not construct an efficient optimizer over the exponential space of words.
+Any future planner or control search still has to be executed and paid.
+
+5. Bounded attempts and complete failure scope
+=============================================
+
+The implementation stops successfully only when the acquired bound, including
+numerical evaluation, is no larger than the requested epsilon. Otherwise it
+refines eta by a factor of four, preserving the entire bill and trace.
+
+Declared limits are:
+  - at most 24 acquisition stages;
+  - at most 12 actual landmarks;
+  - at most 10^17 stationary preparations in one direct attempt;
+  - at most 200,000 projected-subgradient iterations per fit;
+  - at most 80 lower-frame-floor checks;
+  - the source's signed-64-bit binomial batch capacity and binary64 coin
+    precision, checked before they can invalidate a claim.
+
+Before executing a Gram stage, its complete preparation charge is calculated.
+If it would exceed the preparation cap, that stage is not run and the attempt
+returns failure. The prior spent work is still returned. With three controls
+and the prefix-connected landmark set, the largest permitted pool has 37
+literal words and return depth at most 24. Thus the preparation cap also
+bounds primitive controls by 24*10^17 and endpoint readings by 2*10^17.
+Actual observed bills are far below these caps.
+
+No expected-work theorem is claimed for an unbounded direct refinement
+procedure. A conditional finite-rank progress argument is not an expected
+runtime proof, especially off the confidence event. The bounded direct
+attempt may precede the earlier finite-work teacher construction as a
+fallback. Such a portfolio pays all failed direct work and splits a common
+failure budget between both learners; it cannot reuse the standalone .01
+budgets and silently retain an overall .01 guarantee. The results below are
+standalone runs, each with total failure budget .01.
+
+6. Executed comparison on the common-stationary fixture
+=====================================================
+
+Both sources use H=8, requested epsilon=.5, and failure budget .01. All source
+preparations, primitive applications, endpoint readings, and unsuccessful
+precision stages are in the saved ledgers.
+
+Mixed controls (mixing=.4), same requested task:
+
+                         Teacher then compression    Direct ordinary learner
+  acquired raw landmarks/atoms       45                         3
+  deployed Euclidean dimension        3                         3
+  attained H=8 error certificate   .273683642663           .372444328386
+  stationary preparations     1,081,795,391,722,246,958    27,064,840,963,173
+  primitive controls        9,559,546,374,721,313,748    97,433,209,451,373
+  endpoint readings         2,163,590,783,444,493,916    54,129,681,926,346
+  scalar jobs                        5,259                     313
+  maximum return depth                 16                       6
+
+The direct learner discovered (), (2), (2,0). Its final pool has ten words,
+its certified sigma lower bound is .297422555304, its acquired alpha is
+.006673103737, and its normalized operation error bound is .044887265299.
+It used 15 least-squares operation proposals, all accepted after projection
+and exact final checks; no iterative-fit fallback was needed. Its observed
+maximum error on the declared-task heldout words was 9.569232589e-6. The
+all-word certificate, not this finite audit, establishes the guarantee.
+
+Paid mixed-source stage history:
+
+ stage  pool  eta           acquired outcome                    preparations
+   1      4   .01          add actual word (2)                      33,600,010
+   2      7   .01          add actual word (2,0)                   143,360,028
+   3     10   .01          error bound 6.11901; refine             369,600,055
+   4     10   .0025        error bound 3.01639; refine           5,913,600,055
+   5     10   .000625      error bound 1.51834; refine          96,870,400,055
+   6     10   .00015625    error bound .750232; refine       1,585,971,200,055
+   7     10   .0000390625  error bound .372444; accept      25,375,539,202,915
+
+The measured preparation ratio is approximately 39,971, and the primitive
+control ratio approximately 98,114, in favor of this direct calibration.
+The teacher's attained certificate is tighter, though both satisfy the same
+requested .5 tolerance. One matched stricter check addresses that distinction:
+
+Set the direct target to the teacher's attained .27368364266349654. One more
+paid stage suffices. The direct attained certificate becomes .186429644963,
+with 433,073,468,347,808 preparations, 1,559,064,268,036,059 primitive controls,
+866,146,936,695,616 endpoint readings, 368 scalar jobs and maximum return depth
+six. Relative to the same teacher run, this is approximately 2,498 times fewer
+preparations and 6,132 times fewer primitive controls while certifying tighter
+error. This is the only additional matched-calibration comparison evaluated;
+it was rerun after the numerical shot-count correction below.
+
+Weak-direction source (mixing=10^-8), same requested .5 task:
+
+  Teacher: one atom, one deployed coordinate, certificate .160001741314;
+    154,009,600,043,775 preparations; 101,580,800,028,874 controls;
+    308,019,200,087,550 endpoint readings; eight scalar jobs; depth two.
+  Direct: one discovered landmark, one deployed coordinate, three paid stages,
+    certificate .452018286619; 10,452,800,030 preparations;
+    15,679,200,045 controls; 20,905,600,060 endpoint readings;
+    30 scalar jobs; depth two.
+
+Here the direct route uses more distinct jobs but much less precision per job,
+and stops as soon as the requested task guarantee passes. Its observed
+declared-task error was 2.143935961e-7. Weak modes are omitted at this task
+resolution; the example does not claim that all normalized latent directions
+have been identified or that their exact reachable rank is one.
+
+Both deployed models were checked on the same style of 844 heldout programs,
+including short exhaustive words and sampled lengths through 512. The source
+ledger remained unchanged during these later predictions. Longer-word error
+bounds continue to grow with word length; the H=8 guarantee is not silently
+extended at constant error to arbitrary lengths.
+
+7. Interpretation and relation to earlier capital
+=================================================
+
+This ordinary learner wins the head-to-head example. It should be presented
+constructively as the direct route, not hidden behind a weak comparator.
+The teacher-to-Euclidean theorem remains useful as a general conversion with
+no unknown positive-Gram-floor cost, and as a possible bounded-attempt
+fallback. It is an expensive route on this particular fixture.
+
+The new direct operation does acquire a measured stability geometry and the
+frame on which its task consequence depends. It pays for making that frame
+useful rather than supplying it. The normalization factor 1/sigma is visible
+and can be arbitrarily expensive on other sources. No general rank-polynomial
+sample claim or condition-number-free direct-discovery claim follows.
+
+There is also a decisive ordinary TABLE comparator for the declared small
+horizon. Enumerate all J=sum_{h=0}^8 3^h=9,841 words and directly estimate
+G(empty,w) for each. Uniform Hoeffding confidence at epsilon=.5 and delta=.01,
+using the same outward integer logarithm and the same 2^-52 coin-bias reserve,
+requires only 169 reports per word. Store their exact rational empirical
+means. This constructs a predictor for every length-at-most-eight word with
+the same requested uniform guarantee and no learned operator matrices.
+
+Its complete analytical bill is:
+  1,663,129 stationary preparations;
+  12,474,228 primitive controls;
+  3,326,258 endpoint readings;
+  9,841 scalar jobs, maximum return depth eight;
+  9,841 retained scalar predictions instead of three Euclidean coordinates.
+
+The function acquire_exhaustive_table implements this comparator. Its bill
+was first calculated in direct_baseline_table_bill.json and then one complete
+source run was executed by table_baseline.py. The exact-count model contains
+all 9,841 predictions. A truth audit performed only after acquisition found
+maximum error .27076923076923076 over the entire declared word set; the
+probabilistic guarantee remains epsilon=.5, delta=.01. The executed report
+and finite-count model are table_baseline_results.json and
+table_baseline_model.json. This comparator is far cheaper than BOTH
+compact learners on the H=8 task. Accordingly the fixture demonstrates the
+acquisition of compact compositional machinery and a direct win over an
+expensive representation route; it does not demonstrate the cheapest complete
+acquisition/execution cost for the declared small-horizon prediction task.
+The table's storage and acquisition grow exponentially with horizon, while
+the direct compact route's measured-frame cost can grow polynomially with
+precision/horizon on favorable instances. That larger-horizon advantage is
+not an operational achievement established by the current H=8 experiment.
+
+Both learners are ordinary learners retaining knowledge. Neither these
+results nor the earlier rank-two exact ordinary win establish a privileged
+architecture advantage. All earlier acquired-operation, physical-return,
+rank-two l1 obstruction, and fully charged recovery-control conclusions remain
+unchanged. The weighted-return interface still requires its own report-range,
+preparation and common-stability justification; the common-stationary bounded
+case here cannot be exported to it for free.
+
+Reproduce the main runs:
+  python geometry_learning/notes/direct_baseline.py
+
+Outputs are direct_baseline_results.json and direct_baseline_models.json.
+The matched run is preserved separately as direct_baseline_matched_results.json
+and direct_baseline_matched_model.json. It calls run_case with mixing=.4,
+horizon=8, seed=20261102, and epsilon=.27368364266349654. The models preserve
+actual word names, stored numerical matrices, and every raw binomial batch
+(word pair, number of reports, count of positive reports), so failed stages
+and exact recorded empirical moments can be reconstructed.
+
+8. Numerical correction preserved
+=================================
+
+The first diagnostic used math.log followed by math.ceil for shot counts.
+Although its counts were numerically conservative to displayed precision,
+that implementation did not prove outward logarithm rounding. An independent
+review identified this as a certification gap. Both root and direct schedules
+were replaced by the exact rational/integer upper schedule described above,
+and the two main sources plus the one matched comparison were rerun.
+
+Superseded mixed-source preparation counts were 19,240,310,406,237 for the
+direct route and 782,911,196,463,435,869 for the teacher route; the matched
+direct count was 310,341,384,251,852. These are not the final certified bills.
+The current tables and JSONs use 27,064,840,963,173; 1,081,795,391,722,246,958;
+and 433,073,468,347,808 respectively. The qualitative comparison survived the
+correction. No new source family or optional experimental extension was added.

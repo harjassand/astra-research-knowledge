@@ -1,0 +1,311 @@
+TASK-SENSITIVE DIRECT ACQUISITION: SCALAR ERROR PAYS FOR LEAVING AND RETURNING
+31 October 2026. Companion to quadratic_scalar_baseline.py.
+
+Finding
+=======
+
+The retaining-table win exposed an unnecessarily strong objective in the
+previous compact learner: controlling the entire physical state vector. For
+scalar tasks whose initial state and readout lie in an acquired subspace,
+self-adjoint physical controls give a sharper certificate. A scalar error
+requires a departure from that subspace and a return. The physical leakage
+contribution is quadratic in the normalized subspace residual.
+
+The new direct learner acquires its actual landmarks, their Gram geometry,
+their conditioning, the transition matrices and the squared leakage bound
+from paid successor-pool returns. It does not assume a global rank. It uses
+ordinary spectral and control calculations constructively; no architecture
+advantage is claimed. The result is a task-sensitive representation theorem
+and an executable same-source acquisition, not a minimum-cost theorem.
+
+1. Scalar compression lemma
+===========================
+
+Let P be an orthogonal projection, let ||f||<=1 and Pf=f, and let each T_a be
+a self-adjoint contraction. Define
+
+  e_a = ||(I-P) T_a P||op.
+
+For a word w=(a_1,...,a_H), compare the true product with stepwise compression
+S_a=P T_a P. A telescoping expansion has one term for each first departure
+from the projected prefix:
+
+  <f,T_H...T_1 f> - <f,S_H...S_1 f>
+    = sum_j <f,T_H...T_{j+1}(I-P)T_j S_{j-1}...S_1 f>.
+
+The right departure in term j has norm at most e_{a_j}. The left vector's
+component outside P has norm at most sum_{i>j} e_{a_i}: reverse the suffix,
+use self-adjointness, and telescope its distance from the stepwise projected
+suffix. All intermediate products contract. Consequently
+
+  |scalar error| <= sum_{j<i} e_{a_j} e_{a_i}
+                 <= H(H-1) e^2/2,                            (1)
+
+where e=max_a e_a. The same proof works for distinct unit-norm seed/readout
+f,g when both belong to P. Common stationarity alone is insufficient for
+this self-adjoint version. More general controls need separately acquired
+backward leakage for their actual adjoints; that additional access and its
+cost are not silently assumed here.
+
+The actual four-state source has symmetric Markov kernels and a common
+stationary law, so the self-adjoint contraction premise is physically valid.
+The subspace P will be the span of actual acquired raw-word landmarks. It
+contains the actual seed exactly, rather than only approximately.
+
+2. Finite observations, relative coordinates and their numerical check
+=====================================================================
+
+For independent actual landmarks V=[v_1,...,v_n], including the seed, acquire
+from one actual successor pool the blocks
+
+  G=V*V, K_a=V*T_a V, D_a=(T_a V)*(T_a V).
+
+One operator-norm confidence bound eta for the pool Gram controls all these
+blocks. Symmetrize the noisy K estimate; since true K is symmetric, its
+operator error remains at most eta. Independence is checked by exact rational
+positive definiteness of Ghat-eta I, not supplied as a basis promise.
+
+Let R be an invertible rational coordinate proposal. The code obtains it as
+the exact rational inverse of a dyadic Cholesky proposal for Ghat. It checks
+
+  B0=R*Ghat R,
+  nu >= ||B0-I||op,
+  z >= eta ||R||op^2,
+  t=nu+z <= 1/2.                                            (2)
+
+All operator-norm upper bounds use a numerical SVD only as a proposal; exact
+rational reconstruction and orthogonality residuals certify the bound.
+Thus E=R*G R satisfies ||E-I||<=t. The inaccessible Q=V R E^{-1/2} is an
+isometry onto the actual landmark span. It is only used in the proof.
+
+For Atilde_a=R*Khat_sym R, the true compressed operator in this aligned gauge
+is A_a^*=E^{-1/2}(R*K_a R)E^{-1/2}, a self-adjoint contraction. Its difference
+from Atilde satisfies
+
+  ||A_a^*-Atilde_a|| <= 3t.                                 (3)
+
+For completeness, writing B=R*K_aR=E^{1/2}A_a^*E^{1/2}, the square-root
+perturbation contribution is at most
+
+  t [sqrt(1+t)+1]/[1+sqrt(1-t)] <= 1.5t
+
+when t<=1/2. The observation contribution is at most z<=t. Thus 3t is a
+conservative convenient bound. No unknown minimum positive Gram eigenvalue
+is supplied: large ||R|| is measured and increases the required acquisition
+precision and physical sampling charge.
+
+The stored matrices A_a are symmetric dyadic contractions, obtained by
+symmetric spectral clipping followed by exact norm certification and inward
+rounding. Let d_a be the checked norm ||A_a-Atilde_a||. Then
+
+  ||A_a-A_a^*|| <= 3t+d_a.                                  (4)
+
+3. Acquired squared leakage, without taking a noisy square root
+==============================================================
+
+Set
+
+  C_a=B0^{-1}Atilde_a,
+  Dtilde_a=R*Dhat_a R,
+  Rhat_a=Dtilde_a-Atilde_a C_a.
+
+These matrices and inverses are calculated as exact rationals. Rhat is
+symmetric. Consider the actual candidate residual T_a V R-V R C_a. Its
+squared Gram differs from Rhat by at most
+
+  z(1+||C_a||)^2.                                           (5)
+
+This follows by expanding the two cross terms and the Gram term. Separate
+block error bounds suffice even after symmetrizing Khat. There is no need
+to presume that the noisy block matrix itself is positive semidefinite.
+
+Projecting this candidate residual outside P can only decrease its norm.
+Normalizing by E>= (1-t)I therefore proves
+
+  e_a^2 <= [lambda_max(Rhat_a)+z(1+||C_a||)^2]/(1-t).         (6)
+
+The implementation uses a checked ||Rhat_a||op in place of lambda_max, a
+conservative upper bound that avoids an unchecked eigenvalue sign. This
+confidence upper bound is linear in the raw moment error. It does not first
+estimate a global state-vector error and then square an asserted estimate.
+
+4. Seed, deployment and completed scalar certificate
+====================================================
+
+Let b0=R^{-1}e_seed. The actual seed coordinate is b_true=E^{1/2}b0 and has norm
+at most one. For t<=1/2,
+
+  ||E^{-1/2}-I||<=t,
+
+so ||b0-b_true||<=t. The code stores a certified unit-ball dyadic seed b and
+checks d_b=||b-b0||. Combining (1), (4) and the two endpoint seed replacements
+gives the acquired all-word bound
+
+  |<f,T_w f>-b^T A_w b|
+    <= binom(|w|,2) max_a e_a^2
+       + |w| max_a(3t+d_a) + 2(t+d_b).                       (7)
+
+An explicit binary64 matrix-vector/dot-product roundoff allowance is added
+before checking the requested task tolerance. It uses the same norm-stable
+bound and underflow reserve as direct_baseline.py. At H=64 that allowance is
+3.73e-14. All comparisons of the total bound against epsilon are rational.
+
+The fixed 1e-7 stored-matrix rounding budget is adequate for these displayed
+tasks. Arbitrarily smaller requested errors require refining that budget and
+the proposal/report arithmetic, or returning explicit bounded failure. The
+current binary64 and source-coin limits are not advertised as an arbitrary-
+precision implementation.
+
+5. Actual acquisition and complete work scope
+============================================
+
+Start with the empty-word landmark. At every stage, execute a fresh complete
+Gram experiment on W union {w a}. First attempt the scalar certificate (7).
+If it does not pass, use the acquired pool factor to propose an actual new
+successor and certify physical independence by Ghat[J,J]-eta I>0. If no
+useful new landmark passes, refine eta by four and pay another stage.
+
+The learner never receives source matrices, latent coordinates, a useful
+frame, global rank, or a planner. It only receives the physical source
+conditions and task H,epsilon. It is capped at 24 stages, 12 landmarks and
+10^17 preparations. Each planned stage is charged before execution and is
+rejected if it would exceed that cap. Failed certificate stages remain in
+the saved trace. No expected-work claim for an unbounded adaptive search is
+inferred from a conditional finite-rank argument.
+
+Stage s receives exact delta/[s(s+1)], and sampling uses the root's outward
+integer/rational Hoeffding-net schedule, including exact coin-bias reserve.
+The guarantee is joint soundness:
+
+  P(any returned certificate is false) <= delta.
+
+It is not a claim that the conditional error probability given acceptance
+is necessarily delta. In the warm run, both accepted horizons share one
+original confidence budget and continued stage indices.
+
+At a fixed acquired exact-invariant frame, bounded conditioning and fixed
+pool size, the dominant squared-leak uncertainty is O(eta). Hence scalar
+accuracy needs eta=O(epsilon/H^2), rather than the O(epsilon^2/H^2) required
+by the global-vector coupling route. The conservative report count scales
+as H^4 epsilon^-2, with explicit conditioning, pool-size, confidence and
+physical-depth factors. This local cost statement does not erase basis
+search, failed acquisition, norm weights, or numerical arithmetic. When the
+actual subspace has nonzero leakage, its irreducible term also remains.
+
+6. Executed H8 and one new H64 task
+==================================
+
+Both use the same mixed-control four-state source, epsilon=.5, and standalone
+failure budget .01. Three actual words were discovered: (), (2), (2,0).
+No global rank was supplied. Maximum native return depth stayed six.
+
+  H=8:
+    six paid stages; three learned coordinates; 258 scalar jobs;
+    1,689,301,760,258 preparations;
+    6,081,268,320,879 primitive controls;
+    3,378,603,520,516 endpoint readings;
+    all-word certificate 0.24575992547793948.
+
+    Its error terms are .199797196343 (quadratic leakage),
+    .042465214307 (estimated operators), .003497514828 (endpoints),
+    plus 4.95e-15 (binary64 execution). The acquired e^2 upper bound is
+    .007135614155 and relative Gram t is .001748735062.
+
+  H=64:
+    nine paid stages; the same three coordinates; 423 scalar jobs;
+    7,076,851,016,432,793 preparations;
+    25,476,663,441,142,005 primitive controls;
+    14,153,702,032,865,586 endpoint readings;
+    all-word certificate 0.23059191452012578.
+
+    Its error terms are .225246819135 (quadratic leakage),
+    .005290404468 (estimated operators), .000054690916 (endpoints),
+    plus 3.73e-14 (binary64 execution). The acquired e^2 bound is
+    .000111729573 and relative Gram t is .000027323106.
+
+There are 5,150,525,730,438,768,726,986,773,633,921 literal words through H=64.
+The compact certificate covers all of them; they were not enumerated during
+learning or verification. Post-acquisition heldout audits found maximum
+task errors 6.55e-5 and 3.89e-6 respectively. These diagnostics do not replace
+the all-word certificate.
+
+The H8 route improves preparation cost by roughly a factor of 16 over the
+preceding global-vector compact calibration, while certifying tighter error.
+The ordinary retaining H8 table still wins: 1,663,129 preparations and
+12,474,228 controls for the same requested .5 task. This win is preserved.
+At H64 the explicit literal table is exponentially large, but this does not
+establish superiority to every strong spectral, PSR or task-sensitive learner:
+the construction itself is an ordinary such learner. Nor are quadrillions
+of physical preparations a practical experimental result.
+
+7. Explicit cumulative continuation, using retained capital
+=========================================================
+
+The separate --warm operation uses ONE source object and ONE delta=.01
+allocation. It first acquires H8, retains its exact Gram means, stages,
+landmarks, geometry and stored model, and re-evaluates those exact observations
+for H64. Their H64 bound is 14.72861736596122, so old precision is insufficient.
+It then executes only refinement stages 7,8,9. Their confidence allocations
+are exactly 1/5600, 1/7200 and 1/9000, continuing the original schedule.
+
+Marginal H8->H64 bill:
+  7,075,161,714,672,535 preparations;
+  25,470,582,172,821,126 primitive controls;
+  14,150,323,429,345,070 endpoint readings;
+  165 new scalar batch jobs.
+
+Total cost equals the independent H64 report above. The old queries are not
+executed a second time in this warm operation. Finer stages use fresh cohorts
+whose full costs are included; the learner does not claim a statistically
+optimal pooling of old and new precision cohorts.
+
+There are no new raw-word types, no new ordered return-pair descriptors, no
+new unordered Gram pairs, and no greater return depth. Ten word types and
+depth six suffice throughout the continuation. The old history contains
+60 ordered (u,v) experiment descriptors because earlier pool orderings used
+both orientations of five pairs; the final ten-word Gram has 55 unordered
+entries. Both distinctions are explicit in the metadata and every ordered
+experiment remains paid.
+
+The acquired Gram tolerance changes from .00015625 to .00000244140625, a
+factor of 64. Maximum denominator lengths of the recorded empirical means
+change from 35 to 47 bits. Selected matrix-entry rational widths are tracked
+separately from final-bound arithmetic: the H8 and H64 final bound fractions
+have 2,698 and 10,148 bits respectively. These labels are not a claim to have
+instrumented the maximum bit length of every temporary arithmetic object.
+
+The warm raw-batch prefix exactly matches the preserved independent H8
+experiment. Its final raw batches and stored matrices/seed exactly match the
+independent H64 experiment. This verifies the continuation against the
+separate executions without another source family or horizon.
+
+On this machine the warm aggregate simulator used .08818 seconds for initial
+acquisition and .05805 seconds for the continuation, including the retained-
+data certificate check. End-to-end time before serialization was .15813
+seconds. These CPU figures are NOT the physical time represented by the
+preparation/control/readout bills.
+
+8. Reproduction, files and limits
+================================
+
+Reproduce the independent comparisons:
+  python geometry_learning/notes/quadratic_scalar_baseline.py
+
+This command took approximately 7.70 seconds in the recorded invocation,
+including post-acquisition diagnostics and serialization. It writes
+quadratic_scalar_baseline_results.json and quadratic_scalar_baseline_models.json.
+
+Then reproduce explicit cumulative reuse:
+  python geometry_learning/notes/quadratic_scalar_baseline.py --warm
+
+The recorded command completed in approximately .16 seconds; its internal
+end-to-end timer was .158 seconds. It writes quadratic_scalar_warm_results.json and
+quadratic_scalar_warm_model.json. The latter preserves retained exact Gram
+means, old/final stored models, the full stage history and all raw batch counts.
+
+Earlier direct, teacher, phase and table results remain preserved. The new
+bound changes which prediction error is acquired; it does not revoke their
+proofs, ordinary-learner wins, representation obstruction, source requirements
+or numerical corrections. Weighted-return settings still need their own
+stability/adjoint access and report-range accounting. No global cheap-basis
+theorem, free long-horizon precision, or efficient arbitrary planner is claimed.

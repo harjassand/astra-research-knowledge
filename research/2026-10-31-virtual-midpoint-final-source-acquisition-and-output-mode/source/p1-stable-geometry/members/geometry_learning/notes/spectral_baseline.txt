@@ -1,0 +1,471 @@
+SPECTRAL/CONTROL COMPARATOR AND AUDIT
+31 October 2026. Child investigation: producer-workspace/spectral_baseline.
+
+Scope. This note audits the root's construction of economical Euclidean
+coordinates after the already-acquired l1-stable raw-word model. It supplies
+an elementary operator-norm sampling bound, a shorter propagation proof,
+readout acquisition, an actual convex optimizer, finite-precision final
+certificates, and primary-source overlap. It does not claim that initial
+dictionary acquisition is polynomial in latent dimension.
+
+Main finding
+============
+
+An acquired l1-stable model can be compressed into a Euclidean-contractive
+model without estimating a minimum positive Gram eigenvalue, inverting a
+Gram matrix, preparing normalized linear combinations, or making additional
+shifted-moment queries. The compressed model has dimension at most the true
+rank of the retained raw-word vectors. Its finite-horizon error is linear in
+the horizon. The construction needs a sufficiently accurate Gram matrix and
+a finite convex fit whose computation and numerical certification are paid.
+
+This is a useful representation result. It does not prove polynomial initial
+acquisition in rank, an advantage over an ordinary learner retaining the same
+observations, or an efficient planner for arbitrary future reward functions.
+
+1. Exact statement and the subtle isometry extension
+===================================================
+
+Let T_a be contractions on a real Hilbert space H. Let V=[v_1,...,v_N] consist
+of actual acquired raw-word features with ||v_i||<=1. Assume the preceding
+acquisition stage has established, simultaneously for every generator a,
+
+  ||M_a||_{1->1} <= 1,
+  max_i ||T_a v_i - V M_a e_i|| <= rho.                         (1)
+
+The old acquisition and all its failed searches remain charged. For a word w
+of length h, c_w=M_w e_i obeys ||c_w||1<=1 and
+
+  ||T_w v_i - V c_w|| <= h rho.                               (2)
+
+Let G=V*V. Acquire a symmetric estimate Ghat satisfying
+
+  ||Ghat-G||op <= eta.                                        (3)
+
+Retain eigenvalues of Ghat strictly above 2 eta, and replace every other
+eigenvalue by zero. Call the resulting PSD matrix B. Factor B=X*X with
+X in R^{k x N}. Then
+
+  k <= rank(G),
+  ||G-B||op <= 3 eta.                                        (4)
+
+Proof. A PSD rank-r G has lambda_{r+1}(G)=0, so every estimated eigenvalue
+beyond r is at most eta. Negative estimated eigenvalues have magnitude at
+most eta. The discarded positive eigenvalues have magnitude at most 2 eta.
+Thus ||Ghat-B||op<=2 eta and the triangle inequality proves (4). No gap
+between two positive eigenvalues, and no positive Gram floor, is required.
+
+Set alpha=sqrt(3 eta). There is an isometry Q:R^k -> H' into an enlarged
+Hilbert space H' such that
+
+  max_i ||v_i-Q x_i|| <= alpha,                               (5)
+
+where x_i=X e_i. This Q is a proof witness, not supplied to the learner.
+
+Detail that should not be omitted: polar decomposition gives V=U G^{1/2}
+with a partial isometry U. If dim(H)<N, U cannot be extended to an isometry
+R^N -> H. Instead embed H into H'=H direct-sum R^N, extend every T_a by zero
+on the extra summand, and extend U to an isometry J:R^N -> H'. If
+B=W Lambda W* and X=Lambda^{1/2}W*, use Q=J W. Then QX=J B^{1/2}, so
+
+  ||V-QX||op = ||G^{1/2}-B^{1/2}||op <= ||G-B||op^{1/2}.
+
+The square-root inequality follows from monotonicity of the positive square
+root: if ||G-B||<=d, then G<=B+dI, whence sqrt(G)<=sqrt(B)+sqrt(d)I;
+reverse the roles for the opposite inequality. This proves (5).
+
+The inaccessible compressed true operator A_a^*=Q* T_a Q is a contraction.
+It is a feasible comparator for the implementable convex problem
+
+  minimize over ||A||op<=1:
+     F_a(A) = max_i ||A x_i - X M_a e_i||2.                    (6)
+
+Indeed insert and subtract v_i, T_a v_i, and VM_a e_i. The three errors are
+at most alpha, rho, and alpha, respectively; the last uses ||M_a e_i||1<=1.
+Therefore
+
+  min F_a <= rho+2 alpha.                                    (7)
+
+Choose an actual computed contraction A_a with attained residual beta_a,
+and beta=max_a beta_a. A completed residual certificate is sufficient;
+optimization success need not be assumed. A finite optimizer below attains
+beta<=rho+2 alpha+zeta in exact arithmetic, and numerical slack is explicit.
+
+2. Removing the spurious H^2 loss
+================================
+
+Let y_w=A_w x_i. Compare y_w to X c_w, not to separately projected true
+prefix states. By (6), ||A_a Xc-XM_a c||<=beta ||c||1. Since old reference
+coefficients have l1 norm at most one and the new A_a contract,
+
+  ||y_w-X c_w|| <= h beta.                                   (8)
+
+This is the whole mechanism: l1 stability controls mixtures in the training
+reference; acquired Euclidean stability controls propagation in deployment.
+The previous H^2 derivation was an avoidable telescoping loss from repeatedly
+projecting true states with already accumulated error.
+
+A physical-state comparison is
+
+  ||T_w v_i-Q y_w|| <= h rho + alpha + h beta.                 (9)
+
+For a dictionary readout v_j, a sharper scalar bound avoids an extra linear
+feature error. Since B=X*X and ||c_w||1<=1,
+
+ |<v_j,T_w v_i> - x_j* A_w x_i|
+ <= h rho + |e_j*(G-B)c_w| + ||x_j|| ||Xc_w-y_w||
+ <= h rho + alpha^2 + (1+alpha) h beta.                     (10)
+
+In particular, no positive eigenvalue of G appears in the bound. Very weak
+modes can be removed when their contribution lies below the requested
+horizon/accuracy resolution. This does not mean weak modes can always be
+ignored: the horizon controls alpha and rho. Rank-two slow rotations retain
+the earlier precision/horizon warning.
+
+For epsilon<=1 and H>=1, the deliberately loose choice
+
+  rho=zeta=epsilon/(16H),
+  alpha=epsilon/[32(H+1)], eta=alpha^2/3
+
+leaves substantial room for observation rounding, matrix factorization,
+optimization, and deployment arithmetic: (7) gives beta<=3epsilon/(16H),
+and (10) is less than epsilon/3 before those additions. A convenient
+implementation can instead demand the attained beta certificate be at most
+epsilon/(4H); that still leaves a large total error budget.
+
+3. Fresh Gram sampling: N^3, not N^4, conservative shot scaling
+=============================================================
+
+Condition on the completed acquisition history and its chosen dictionary.
+For each unordered pair (i,j), take n fresh reports in [-R,R], each with
+conditional expectation G_ij given the entire previous transcript. Set
+Ghat_ij=Ghat_ji to their average. Independence is not needed for the following
+martingale-Hoeffding proof. Fresh sampling is useful because the selected
+dictionary is now fixed; alternatively, a genuinely simultaneous adaptive
+confidence construction may be reused.
+
+For any fixed unit x in R^N,
+
+  x*(Ghat-G)x = sum_{i<=j} a_ij (Ghat_ij-G_ij),
+  a_ii=x_i^2, a_ij=2 x_i x_j for i<j,
+  sum_{i<=j} a_ij^2 = 2 - sum_i x_i^4 <= 2.
+
+Conditional Hoeffding gives
+
+  P(|x*(Ghat-G)x|>t | acquisition history)
+       <= 2 exp[-n t^2/(4R^2)].                              (11)
+
+Take a 1/4-net S of the Euclidean unit sphere with |S|<=9^N. For any
+symmetric E, ||E||op<=2 max_{x in S}|x*Ex|. This follows by choosing a
+unit eigenvector achieving ||E||, then replacing it by a net point and
+bounding the two bilinear differences by 2(1/4)||E||.
+
+Apply (11) with t=eta/2 and union bound. It is sufficient that
+
+  n >= 16 R^2 eta^{-2} [N log 9 + log(2/delta_G)]             (12)
+
+to obtain (3) with conditional probability at least 1-delta_G.
+The net is only used in the proof; it is not enumerated by the learner.
+
+There are J=N(N+1)/2 jobs. Total fresh reports are
+
+  J ceil(16 R^2 eta^{-2}[N log9+log(2/delta_G)])
+    = O(R^2 N^2 (N+log(1/delta_G)) eta^{-2}).                 (13)
+
+At eta=Theta(epsilon^2/H^2), this is, up to logarithmic terms,
+O(R^2 N^3 H^4 epsilon^{-4}). The entrywise-confidence route eta=N tau
+would instead give O(R^2 N^4 H^4 epsilon^{-4}); it is valid but avoidable.
+
+Weighted returns. If job ij has a known valid bound |Y_ij|<=R_ij, take
+
+  n_ij=ceil(16 R_ij^2 eta^{-2}[N log9+log(2/delta_G)]).
+
+The same proof bounds sum a_ij^2 R_ij^2/n_ij, and obtains (3). The complete
+new physical charge is the sum over pairs of n_ij times that job's actual
+preparation, return-word execution, readout, and sampling cost. If raw words
+have maximum length L and adjoints are actual primitives, the return word
+has length at most 2L, in addition to preparation and measurement.
+
+This statistical generalization does NOT manufacture a common contraction
+geometry for weighted interfaces. Common stationarity and bounded endpoint
+reports supply a particularly favorable unknown L2(pi) geometry. A general
+weighted adjoint-return source must separately justify one common norm in
+which the relevant operators contract. Its R_ij may grow exponentially in
+depth; that cost remains in the sum above. Importance weights are not free.
+
+4. The convex fit is an algorithm, not an efficient-oracle premise
+================================================================
+
+Write Y_a=XM_a and Bx=max_i||x_i||<=1+alpha. Over the spectral-norm unit ball,
+F(A)=max_i||A x_i-y_i|| is convex and Bx-Lipschitz in Frobenius norm.
+For a maximizing residual column j of positive norm, use the subgradient
+
+  Z = [(A x_j-y_j)/||A x_j-y_j||] x_j*.
+
+Its Frobenius norm is at most Bx. The Frobenius projection onto the spectral
+unit ball is computed by an SVD and replacing each singular value s by
+min(s,1). Start A_0=0. For T iterations use step size
+
+  s=sqrt(k)/(Bx sqrt(T)),
+  A_{t+1}=Proj(A_t-s Z_t).
+
+Every feasible comparator has Frobenius norm at most sqrt(k), and the usual
+squared-distance telescoping gives
+
+  min_{t<T} F(A_t)-min F <= sqrt(k) Bx / sqrt(T).              (14)
+
+Thus T=ceil(k Bx^2/zeta^2) suffices. Taking the best attained iterate is
+valid; averaging feasible iterates is another option. Per iteration costs
+O(N k^2+k^3) arithmetic operations for residuals and the SVD. Forming each
+Y_a costs O(k nnz(M_a)), not automatically O(kN^2) when old FW columns are
+sparse. Gram eigendecomposition is O(N^3) arithmetic in the conventional
+dense algorithm. These are explicit finite computations. None is a planner.
+
+The adjacent spectral_baseline.py implements this projected subgradient
+algorithm. An early exit based on an attained residual is explicitly marked
+as such; the theoretical iteration budget is also returned. The optimizer is
+ordinary floating point. It does not claim exact-real optimization.
+
+5. Finite precision and actual final certificates
+================================================
+
+Several distinct errors must not be hidden inside the word 'spectral':
+
+  (a) Physical report rounding adds bias or deterministic mean error to Ghat.
+      Budget it before (3), e.g. max-entry rounding b costs at most N b in
+      operator norm. Bounded-report sampling controls stochastic error only.
+
+  (b) Computing X. A finite symmetric eigensolver need not decide an exact
+      equality at the threshold. Approximate eigenpairs to an absolute
+      tolerance nu<<eta; include eigenvalues certified above a threshold
+      in, say, [1.5eta,2.5eta], and permit arbitrary decisions inside a narrow
+      certified threshold interval. All retained values stay above eta,
+      so k<=rank(G); all discarded values stay O(eta), so (4) changes only
+      by a numerical constant. Bounds on reconstruction and orthogonality
+      residuals certify the operator error. No gap between positive target
+      eigenvalues is needed. A rounded factor Xtilde with
+      ||Xtilde-X||op<=nu_X changes (5) to alpha+nu_X.
+
+  (c) Targets. Old M matrices may be exact rationals with known l1 column
+      bounds. Multiplication X M must be evaluated to a known per-column
+      error. Rounding M itself requires its own l1 column perturbation
+      allowance; do not silently turn a floating matrix into an exact old
+      acquisition certificate.
+
+  (d) Optimization. Approximate SVD projections and objective comparisons
+      can be done to error small enough for a preassigned additional zeta.
+      A coarse sufficient prescription makes errors of order zeta/T per
+      iteration; refined standard inexact-subgradient bounds can do better.
+      The required number of bits depends logarithmically on T,N,1/zeta,
+      and the finite input magnitudes, not on lambda_min^+(G). If an attained
+      residual certificate already passes, a convergence proof is not needed
+      for soundness; failed iterations remain charged.
+
+  (e) Final stability. Unchecked floating singular values slightly below one
+      are not an exact contraction certificate. The adjacent program uses a
+      numerical SVD only as a proposal, then checks it with exact rational
+      arithmetic on every binary input number. For a proposed U,S,V*, compute
+      exact rational reconstruction residual and orthogonality residuals.
+      Rational upper square roots give
+
+       ||A|| <= sqrt(1+||U*U-I||F) max(S)
+                sqrt(1+||V*V-I||F) + ||A-U S V*||F.
+
+      This bound is valid even if the SVD proposal is inaccurate. The program
+      scales inward, rounds to a dyadic grid, and proves both ||A_safe||<=1
+      and ||A_safe-A||F<=the prescribed numerical budget using exact rational
+      inequalities. It also evaluates each final column residual in exact
+      rationals and returns an upper square-root bound. These certificates
+      cover supplied X and target arrays; they do not certify source data or
+      replace the factorization-error allowance in (a)-(c).
+
+      The code also includes two independent geometry certificates. First,
+      certified_gram_factor_error forms Ghat-X*X in exact rationals (including
+      matrix-product rounding) and bounds its operator norm from a checked
+      SVD proposal. Thus alpha^2 may be chosen as eta plus this attained
+      factor error. Second, for retained eigenvector proposals W, exact
+      positive definiteness of W*(Ghat-eta I)W proves rank(G)>=number of
+      columns of W on the source confidence event. An exact-rational LDL'
+      check implements this test. Numerical eigenvector orthogonality is
+      not a premise. These certificates still condition on the legitimate
+      source error bound ||G-Ghat||<=eta.
+
+  (f) Deployment. For fixed stored contractions, if each matrix-vector
+      multiplication incurs Euclidean error at most nu_step, total state
+      error after H steps is at most H nu_step plus seed rounding. A final
+      dot-product error is separately charged. Thus O(log(H/epsilon))
+      additional precision, with the dimension-dependent summation factor,
+      suffices. Storage/compute claims need these bits as well as arithmetic
+      operation counts.
+
+The helper was executed successfully on a 29-column, rank-two rotation fit.
+It stopped after 102 iterations with a certified maximum column residual
+0.001119381704. Its final certified norm upper bound was 0.999999768610.
+The rounding/shrink perturbation had Frobenius bound 3.365412122e-7. Twelve
+additional random matrices of dimensions 1,2,4,7 passed exact-rational final
+contraction checks. The factor-error certificate was 1.016788641e-14 and its
+rank-two probe certificate passed. These are algorithm/certificate
+diagnostics, not a noisy physical-source experiment. The root's source
+fixtures are separate.
+
+6. Acquiring a genuinely new readout without a Gram inverse
+=========================================================
+
+Suppose a new task supplies an actual permitted readout g with ||g||<=1 and
+a scalar physical interface for b_i=<g,v_i>. Charge N distinct jobs and all
+their preparation/depth/report-range costs. Acquire bhat_i with simultaneous
+|bhat_i-b_i|<=tau_g. Fit
+
+  minimize over ||h||2<=1: max_i |h*x_i-bhat_i|.               (15)
+
+The inaccessible h*=Q*g is feasible, and by (5) its objective is at most
+alpha+tau_g. An additive-zeta_g optimizer therefore yields a true per-atom
+readout error chi<=alpha+2tau_g+zeta_g. As before, only the attained residual
+and concentration certificate are needed for soundness. This optimization
+also has a direct projected-subgradient method: subgradient +/-x_j and
+projection onto the Euclidean ball. T_g=ceil(Bx^2/zeta_g^2) suffices from zero.
+
+For every later word of length h<=H from an old seed,
+
+  |<g,T_w v_i>-h* A_w x_i| <= h(rho+beta)+chi.                (16)
+
+There is no minimum Gram eigenvalue. Readout data acquisition, optimization,
+failed attempts, and numeric precision are paid. A new arbitrary seed is
+different: it can require expanding the physical dictionary and reacquiring
+closure, so this cheap readout theorem must not be advertised as free new
+initial-condition access.
+
+7. What remains expensive; ordinary retained learners
+=====================================================
+
+The compression theorem consumes an actually acquired model (1). The old
+compiler may require N exponential in rank at the requested rho, with bound
+N roughly (1+O(1/rho))^r on its favorable confidence event. The new Gram
+stage costs roughly N^3 H^4/epsilon^4 reports in the bounded case, before
+physical word lengths. This is a rank-sized deployment theorem with fully
+charged potentially expensive preparation, not a rank-polynomial acquisition
+theorem. A large N is not erased by the fact that only k<=r coordinates
+remain in a deployed predictor.
+
+An ordinary spectral learner retaining the same acquired M and observations
+can run exactly this algorithm. It is the strongest constructive comparator
+here, not an algorithm to rule out. Old exact rank-two closure and signed
+orthonormal-frame wins remain intact. The previous polygon obstruction also
+remains intact: it forbids finite exact l1-contractive raw lifts for irrational
+rotation, but does not forbid Euclidean contraction models.
+
+Future finer accuracy or a longer horizon can require smaller rho/alpha,
+additional raw words, more source samples, and more retained dimensions.
+Fixed rank alone does not make those marginal costs zero. Retaining the
+training dictionary/moments for further expansion has a different memory
+bill from shipping only the compact deployment matrices.
+
+8. Primary research overlap and precise qualifications
+======================================================
+
+The mathematical construction above was derived in this investigation. Its
+novelty in the literature is not established. The following works preclude
+broad claims that shared operators, regularized operator regression,
+stability constraints, task-sensitive exploration, or train-then-distill
+pipelines are themselves new.
+
+A. Balle, Quattoni, Carreras (ICML 2012), 'Local Loss Optimization in Operator
+   Models: A New Insight into Spectral Learning'.
+   Primary PDF: https://arxiv.org/pdf/1206.6393
+   Retrieved references: turn46view0, turn48view2, turn48view3.
+   Their local-loss and convex-relaxation view already learns finite operator
+   models from Hankel blocks. Section 4 also acquires a basis rather than
+   always supplying it: randomly split iid strings from a full-support
+   distribution, then collect prefixes/suffixes. Theorem 5 assumes a finite
+   rank 'strongly bounded' realization (operator norms <=1). Crucially its
+   instance parameter depends on both target and sampling distribution.
+   Appendix A exposes factors kappa(C_p)/sigma_min(C_p) and the analogous
+   suffix covariance factor. Full support guarantees positivity, not a
+   polynomial lower bound. Thus it is a real constructive comparator, but
+   not a dimension-only cheap-discovery theorem. Our cutoff/approximation
+   route deliberately avoids resolving every weak normalized direction.
+
+B. Khosravi (IEEE TAC 2023), 'Representer Theorem for Learning Koopman
+   Operators'.
+   Primary preprint: https://arxiv.org/pdf/2208.01681
+   DOI: https://doi.org/10.1109/TAC.2023.3242325
+   Retrieved: turn51view0, turn52view3.
+   It formulates constrained regularized empirical operator learning and
+   gives finite-dimensional Gram-based reformulations, including operator
+   norm, rank, nuclear norm, and stability constraints. The source consists
+   of a state sequence and measurements of given observables; Assumption 1
+   requires bounded evaluation functionals (e.g. in an RKHS). This is strong
+   direct prior for the finite convex regression step. It does not construct
+   all charged adjoint-return words and a useful raw-word dictionary under
+   our scalar source contract. Do not claim contraction regression itself
+   is the contribution.
+
+C. Liu, Netrapalli, Szepesvari, Jin, OMLE (STOC 2023).
+   Primary: https://arxiv.org/html/2209.14997v3
+   Retrieved: turn48view0; earlier detailed source note in
+   cumulative_intelligence/literature.md.
+   The well-conditioned PSR theory includes reward-free transfer, but uses
+   shared known core tests and a conditioning assumption. General low rank
+   alone has an exponential-horizon sample obstruction in that observation
+   contract. That lower bound cannot be transplanted automatically to our
+   stronger Gram-return contract, which can reveal norm information absent
+   from ordinary trajectory observations. Optimization/planning is also
+   not automatically computationally efficient.
+
+D. Wagenmaker, Simchowitz, Jamieson (ICML 2021), 'Task-Optimal Exploration in
+   Linear Dynamical Systems'.
+   Primary: https://proceedings.mlr.press/v139/wagenmaker21a/wagenmaker21a.pdf
+   Retrieved: turn48view1.
+   This is a real task-sensitive experiment-design algorithm, not an
+   independent-task straw comparator. Its primary setting has observed
+   linear states, stable dynamics, Gaussian process noise and an input-energy
+   constraint, together with smooth decision-loss conditions. It does not
+   supply latent raw-word geometry under the present scalar access contract.
+
+E. Sun, Oymak, Fazel (L4DC 2020), 'Finite Sample System Identification:
+   Improved Rates and the Role of Regularization'.
+   Primary: https://proceedings.mlr.press/v120/sun20a/sun20a.pdf
+   Retrieved: turn46view1, turn48view5.
+   Nuclear-norm Hankel regression improves low-order input-output system
+   identification. Theorem 1 uses multiple zero-initial-state rollouts and
+   scaled iid Gaussian design rows. Its sample-complexity convention counts
+   equations; for our comparison their full input rollouts would be paid.
+   It learns an LTI input-output system, not arbitrary switched word products.
+
+F. Hazan, Lee, Singh, Zhang, Zhang (NeurIPS 2018), 'Spectral Filtering for
+   General Linear Dynamical Systems'.
+   Primary: https://papers.nips.cc/paper_files/paper/2018/file/d6288499d0083cc34e60a077b7c4b3e1-Paper.pdf
+   Retrieved: turn51view2.
+   Polynomial-time online prediction without full identification is already
+   established. Section 2.1 states bounded input/output and parameter norms,
+   stable A, a diagonalization bound, and a bounded-coefficient annihilating
+   polynomial for eigenvalue phases. The online learner receives outputs
+   after prediction and competes in cumulative loss. This is a different
+   guarantee from a frozen model uniformly predicting every future switched
+   word after acquisition. The broad 'avoid full identification' principle
+   is already prior.
+
+G. Galanti, Shah, Fortgang, Hazan (August 2026), 'Spectral Distillation:
+   From Nonlinear Dynamics to Linear State-Space Models'.
+   Primary record: https://arxiv.org/abs/2608.05416
+   Retrieved primary search abstract: turn52academia5.
+   The primary abstract describes OSF convex prediction followed by recurrent
+   LDS distillation, with average prediction error split into learning and
+   distillation terms and governed by observer complexity. It directly
+   precludes claiming a general train-then-compress concept as new.
+   Access limit: repeated direct PDF/HTML/abstract opens returned DisabledError
+   in this session. The full theorem's assumptions were not retrieved; a
+   secondary generated explanation was not used as a theorem source. Only
+   the primary abstract-level comparison is claimed here. Exact overlap with
+   our switched uniform-word theorem remains unassessed from full text.
+
+H. Rabusseau, Balle, Pineau (NeurIPS 2017), 'Multitask Spectral Learning of
+   Weighted Automata'.
+   Primary: https://papers.nips.cc/paper_files/paper/2017/file/e655c7716a4b3ea67f48c6322fc42ed6-Paper.pdf
+   Previously retrieved and preserved in cumulative_intelligence/literature.md.
+   Shared transition maps and task-specific linear readouts are established.
+   The complete finite Hankel block/conditioning and how it is physically
+   acquired remain the comparison points.
+
+End of audit. No earlier theorem, ordinary-learner win, rank-two obstruction,
+or fully charged recovery-control result is withdrawn by this construction.
