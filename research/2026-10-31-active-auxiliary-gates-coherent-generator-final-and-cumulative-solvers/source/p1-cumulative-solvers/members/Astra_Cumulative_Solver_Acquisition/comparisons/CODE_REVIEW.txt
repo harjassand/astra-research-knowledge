@@ -1,0 +1,179 @@
+CODE REVIEW: CUMULATIVE SOLVER EXPERIMENTS
+31 October 2026. Independent inspection of exact_solver.py and
+compare_solvers.py in cumulative_solver/experiments. Root owns the code and
+the final run; this reviewer did not edit those main programs.
+
+SCOPE
+
+Reviewed source access, primitive query accounting, finite arithmetic,
+preconditioner formulas, probability-rule implementation and stopping criteria.
+This is a code/proof audit, not formal verification or an experimental novelty
+claim. The binary64 run is explicitly a diagnostic without interval arithmetic.
+
+EXACT IMPLEMENTATION
+
+The learner receives only ExactSource.apply and affine combinations. The hidden
+component matrices are used separately for the harness's final exact solution
+audit. ExactSource.apply charges every primitive vector multiplication,
+including zero-vector calls that are actually made. Zero-coefficient components
+are skipped before calling the source, which is legitimate.
+
+The retained input vectors need not have Euclidean length one: scaling by their
+maximum absolute entry preserves their span and exact orthogonality. Every new
+input is checked nonzero and perpendicular to previous inputs. Nyström depends
+only on the span, so the rational implementation avoids square-root normalization.
+
+positive_principal_indices selects a nonsingular PSD principal block. Under the
+stated source PSD premise, this retains a basis of the columns K V; the resulting
+Nyström approximation is unchanged. With Y the retained image columns and S the
+positive core matrix, the implemented preconditioner is
+
+  (lambda I + Y S^(-1)Y^T)^(-1)
+  = [I - Y(lambda S+Y^TY)^(-1)Y^T]/lambda.
+
+Its inverse calculations use only acquired quantities. The PSD source property
+is a premise, not inferred from a few scalar tests.
+
+For alpha=1/16, Paley-Zygmund gives one-sign failure probability at most
+1-(1-alpha)^2/3=181/256. The code chooses q so 4^q>=n/alpha, and tests
+||E^qg||^2<=alpha(mu/2)^(2q). Failure gives the needed Rayleigh witness >mu/4.
+The repeated-probe confidence calculation is consistent with these constants.
+The seeded PRNG is correctly identified as a reproducible realization, not a
+standalone proof of the ideal independent-bit probability assertion.
+
+At every exact returned solution, the code uses the true paid residual r and
+the bound
+
+ relative A-energy error squared <=
+ (3/2) (r^T P^(-1)r)/(b^T P^(-1)b).
+
+This is valid on the envelope-certificate event because P<=A<=(3/2)P. The
+subsequent hidden full-matrix exact solve checks the actual error independently
+of the learner's acceptance rule. Selected Fraction counters and recorded bit
+maxima include audit arithmetic and are explicitly not a complete bit-complexity
+or peak-memory bound.
+
+In the original full-batch exact run, the recorded 452 certificate calls were
+448 sign-power calls plus four explicitly charged Rayleigh audit calls. The
+four cache calls and nine solve calls were consistent. Later sequential early
+rejection changes the counts; use the final saved result for the final report.
+That optimization preserves soundness: acceptance still requires all planned
+sign probes to pass, while an early failure already provides a valid witness.
+
+BINARY64 IMPLEMENTATION
+
+The simulator's hidden U and H_j only implement the source, generate the tasks,
+and audit returned solutions. They are not passed to retained or CG learners.
+Eigenvalue decompositions in Retained.build use the small acquired core Q^T KQ,
+not the hidden full matrix. QR uses generated vectors or source outputs. These
+are legitimate acquisition operations.
+
+Block source calls are charged once per input column. Thus full tomography
+costs m*n primitive calls, not m calls, and returns m*n^2 scalar coordinates.
+Subsequent dense factorizations require no new source calls because the entire
+component matrices have been acquired. This is a strong, legitimate competitor
+in the small synthetic regime. Its arithmetic and memory cost must accompany
+its favorable query count.
+
+The eigenvalue cutoff, two-pass reorthogonalization, logarithmic scaling of
+power iterations, and floating residual tests do not implement rigorous
+roundoff certification. The observed tiny negative residual eigenvalues are
+consistent with this limitation. They cannot be silently used as an exact PSD
+certificate. The script already labels the results as binary64 diagnostics.
+
+The retained methods initially acquire the accessible envelope C=sum_j B_j
+for the box 0<=theta_j<=1 and regularization floor lambda>=1. This supports
+the domain-wide corollary. By itself this experiment does not execute learning
+on an arbitrary changing operator stream; a separate online fixture is needed
+for that aspect of the construction.
+
+ERROR CRITERIA AND THE STRENGTHENED COMPARATORS
+
+The original cold-CG criterion used the valid but conservative denominator
+bound (b^Tb)^2/(b^TAb). A targeted check showed a stronger ordinary criterion
+was available at no extra acquisition cost:
+
+  L(x)=2 b^T x-x^T A x = b^T x+x^T r <= b^T A^(-1)b.
+
+Together with A>=lambda I, any positive L(x) gives the certificate
+  relative A-energy error squared <= ||r||^2/(lambda L(x)).
+The code was subsequently strengthened by root to use this rule, recompute the
+paid true residual before returning, and restart from that residual if the
+floating recursive estimate fails validation. This removes the initial Ab
+query and avoids a needlessly weak comparator. A targeted pre-revision run
+used 15,822 calls on the same 512 jobs, versus the original 17,688, while
+meeting the actual energy target. Final results should be read from the current
+ledger rather than these historical counts.
+
+Root also added ordinary PCG for both retained methods. Its measured residual
+criterion uses the same (3/2) preconditioned-energy bound as the exact solver,
+with a paid actual residual and preconditioner application at a candidate stop.
+These algebraic rules are sound on the acquired envelope event in exact
+arithmetic; binary64 remains a numerical diagnostic.
+
+WARM-USE ITEMS IDENTIFIED AND CORRECTED DURING REVIEW
+
+1. Gaussian initialization should occur only when the retained input basis is
+   empty, not unconditionally on every new task. The inspected revision now
+   has that guard.
+2. Fresh random probes across calls require a persistent generator or genuinely
+   separate streams. The inspected revision accepts a persistent Generator.
+3. A global stage counter is appropriate for confidence allocation, but cannot
+   also be capped by n+1 when it includes successful tests on arbitrarily many
+   tasks. The final inspected revision uses a per-invocation stage count for
+   this cap, while preserving the global confidence ledger.
+4. exact_solver.acquire originally used local stages for its one-envelope
+   fixture. The final inspected revision also retains lib.total_stages and
+   certified coefficient boxes, allowing sound ledger continuation with the
+   same global confidence allocation.
+
+FINAL INSPECTED LEDGERS
+
+The later revision contains a third retained comparator, Gaussian range
+proposals, which first applies the source to the Gaussian block. Its proposal
+calls are explicitly charged in their own category. The final inspected totals
+for the 512-task comparison were:
+
+  witness:        24 cache + 630 certificate + 4608 solve = 5262;
+  Gaussian input: 96 cache + 504 certificate + 6129 solve = 6729;
+  Gaussian range: 24 cache + 414 certificate + 4608 solve
+                  + 24 proposal = 5070;
+  cold CG:        15822 solve calls;
+  tomography:     576 acquisition calls.
+
+Every reported actual energy error was below the requested 1e-8. The standard
+Gaussian range comparator beats the witness learner in total calls on this
+fixture, and full tomography is substantially cheaper in query count. These
+outcomes should be preserved rather than compared only against cold CG.
+
+The final exact fixture has 188 certificate calls: 184 power-probe calls plus
+four Rayleigh audit calls; cache=4, solve=9. Its two rejected tests use one probe
+each, and its accepted test uses all 21 planned probes.
+
+online_and_mixture.py now separately executes 75 scheduled tasks in n=12. It
+learns one new direction on each of tasks 1, 26 and 51, performs six tests,
+and reuses earlier domain certificates 72 times. Its counts are 9 cache,
+576 certificate, and 300 solve calls. The persistent random generator and
+global confidence allocation are carried across the stream. Reuse is based
+on known positive-component coefficient domination; it is not inferred from
+unseen data. Enlarging the retained span can only reduce the exact shorted
+residual, so old certificates remain valid. This is a control-flow diagnostic,
+not a demonstration of every adaptive sequence allowed by the theorem.
+
+The primitive-mixture counterexample is mathematically correct: with
+S=span(1,1), A=diag(1,0), B=diag(0,1), both primitive Nyström residuals vanish,
+while E_S(A+B)=0.5[[1,-1],[-1,1]] has eigenvalues 0 and 1. Checking the primitive
+residuals separately therefore cannot replace a genuine common-envelope check.
+
+REPORTING LIMITS
+
+The stored numeric-state count is not peak process memory: temporary factors,
+probe arrays, audit arrays, workspaces and logs also exist. Timings include
+shared truth checks and the simulator exploits hidden low-rank factors to run
+quickly; they are not hardware-independent comparisons. The comparisons should
+be stated for this synthetic family and its explicitly counted oracle model.
+
+No hidden oracle or missing primitive source call was found in the inspected
+core learners. The concrete issues were comparator strength and general warm
+use of the fixture's initialization, random stream, and stage cap. These were
+communicated to root during implementation rather than left as generic caveats.

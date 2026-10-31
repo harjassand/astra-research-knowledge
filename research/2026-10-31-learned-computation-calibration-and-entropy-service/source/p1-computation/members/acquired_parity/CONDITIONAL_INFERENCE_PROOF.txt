@@ -1,0 +1,227 @@
+# Learned parity coordinates: exact conditional inference, MAP, and sampling
+
+This note establishes the downstream theorem after acquisition has recovered a binary matrix `A`. It deliberately uses ordinary binary linear algebra and the conventional syndrome-trellis dynamic program. It is an acquisition-to-tractability benchmark, not a claimed advantage over an ordinary algorithm allowed to retain the same learned representation.
+
+## 1. Inputs and the actual task
+
+An input or fixed-horizon intervention program is `x ∈ F₂ⁿ`. The learned representation has rows `a₁,…,a_s` in `A ∈ F₂^{s×n}`. A future query supplies positive rational local weights
+
+\[
+w_j(0),w_j(1)>0,
+\qquad
+W(x)=\prod_{j=1}^s w_j(a_jx),
+\]
+
+and binary linear evidence `C x = z`, with `C ∈ F₂^{t×n}`. Every numerator and denominator in the query weights has at most `L` bits. The requested operations are:
+
+1. Compute the exact normalizing sum `Z(C,z)=Σ_{x:Cx=z} W(x)`.
+2. Return an input maximizing `W(x)` under the evidence.
+3. Draw an exact sample with probability `W(x)/Z(C,z)` over feasible inputs.
+4. Compute additional parity-event probabilities using ratios of normalizing sums.
+
+Future weight tables are supplied **on the retained learned parity masks**. This scope permits different preferences, temperatures when representable, or local likelihoods over those learned coordinates. It does not promise to discover or optimize an arbitrary new energy function from its name, and it does not assume that a new scalar response oracle has the same support unless that assumption is explicitly made and charged.
+
+The rational model makes bit complexity and exact sampling well-defined. One should not claim that `exp(-βθ)` is an exactly represented rational for arbitrary real `β,θ`. Additive rational energy minimization can instead use the same recurrence over the min-plus semiring.
+
+## 2. Evidence changes the computational parameter
+
+First, binary Gaussian elimination either proves the evidence inconsistent or constructs a particular solution `x₀` and a full-column-rank matrix `N_C` spanning `ker C`. Write
+
+\[
+q=\operatorname{rank}C,\quad m=n-q,\quad
+x=x_0+N_Cu,\quad u\in\mathbb F_2^m.
+\]
+
+Set
+
+\[
+B=AN_C,\qquad y_0=Ax_0,\qquad r_C=\operatorname{rank}B.
+\]
+
+The attainable learned parity vectors are exactly the affine binary code
+
+\[
+y\in y_0+\operatorname{im}B.
+\]
+
+Every attainable `y` has exactly `2^{n-q-r_C}` feasible input preimages. Let `H` have rows forming a basis for the left nullspace of `B`. Then `H` has
+
+\[
+d_C=s-r_C
+\]
+
+independent rows, `im B = ker H`, and the attainable `y` are exactly those satisfying `Hy=Hy₀`.
+
+The exact parameter identity is
+
+\[
+\boxed{
+d_C=s+\operatorname{rank}C-\operatorname{rank}\begin{bmatrix}A\\C\end{bmatrix}
+=d+\dim(\operatorname{row}A\cap\operatorname{row}C),
+\quad d=s-\operatorname{rank}A.
+}
+\]
+
+**Proof.** Restriction of the row functionals of `A` to `ker C` has kernel `row A ∩ row C`, because the annihilator of `ker C` is `row C`. Thus `r_C = rank A - dim(row A ∩ row C)`. Equivalently `rank[A;C] = rank C + rank(A N_C)`. Rank-nullity gives the fiber count. The rows of `H` annihilate `im B`, and both spaces have dimension `r_C`, proving `im B = ker H`. Substitution yields the displayed identities.
+
+This rank identity must be computed for the future query. An unconditioned model with `d=0` need not remain easy under arbitrary evidence.
+
+## 3. Positive syndrome dynamic program
+
+Let `h_j` be column `j` of `H`, viewed as an element of `F₂^{d_C}`, and put `b=Hy₀`. Define
+
+\[
+D_0(a)=\mathbf1[a=0],\qquad
+D_j(a)=w_j(0)D_{j-1}(a)+w_j(1)D_{j-1}(a+h_j).
+\]
+
+Induction on `j` shows that `D_j(a)` is the sum of product weights of assignments to the first `j` coordinates whose accumulated syndrome is `a`. Consequently
+
+\[
+\boxed{Z(C,z)=2^{n-q-r_C}D_s(b).}
+\]
+
+There are `2^{d_C}` states per layer and two incoming transitions per state. Building `H` is part of the charged Gaussian-elimination work; a trellis or planner is not supplied as an oracle. All summands are positive. In particular, the computation does not use a high-temperature expansion whose signed terms might cancel.
+
+Replacing addition by maximum and retaining a maximizing incoming transition gives the MAP parity vector in the same number of states. Solving the resulting linear equations gives a maximizing raw input `x`. Replacing products/sums by sums/minima gives exact rational additive-cost optimization over the same learned modes.
+
+## 4. Simplify for the actual query before paying `2^{d_C}`
+
+The raw parameter above is a valid bound, but it can substantially overestimate the work. On the evidence affine space, an original factor becomes
+
+\[
+w_j(y_{0j}+b_ju),\qquad b_j=\text{row}_j(B).
+\]
+
+Apply the following exact reductions.
+
+1. If `b_j=0`, absorb the fixed weight `w_j(y₀j)` into a constant.
+2. Group identical nonzero projected rows `b_j`. Their product is a single two-entry weight table; an affine offset of one swaps the original table entries before multiplication.
+3. If the resulting two entries of a group coincide, absorb that group into the constant as well.
+
+Let `g` be the remaining number of groups, let `\bar B` contain their distinct nonzero projected rows, and let `\bar r=rank \bar B`. Define
+
+\[
+\boxed{\bar d=g-\bar r\le d_C.}
+\]
+
+The active parity variables are now `v=\bar B u` with a *linear* syndrome constraint `\bar H v=0`, because the affine offsets have been incorporated into the weight tables. The correct fiber factor is recomputed as `2^{n-q-\bar r}`. It is incorrect to keep `r_C` in this factor after dropping a nonconstant row that becomes constant for the current query.
+
+Each deleted zero row or duplicate row can only lower dependency dimension; deletion of another row lowers `g` by one and lowers rank by at most one. This proves `\bar d≤d_C`.
+
+The exact partition and MAP procedures now require `O(g 2^{\bar d})` arithmetic transitions. The parameter is intentionally task-sensitive: evidence can identify rows, and future weights can cancel after grouping.
+
+## 5. Exact rational arithmetic and bit costs
+
+Write `w_j(b)=p_{jb}/q_{jb}` in positive integers. A simple denominator-clearing scheme uses
+
+\[
+u_j(0)=p_{j0}q_{j1},\quad
+u_j(1)=p_{j1}q_{j0},\quad
+Q=\prod_jq_{j0}q_{j1}.
+\]
+
+For every input, `W(x)=Q^{-1}∏_j u_j(a_jx)`. Each `u_j(b)` has at most `2L` bits. Grouping and removing constants preserve a single global denominator `Q`. If the absorbed integer constant is `c` and the remaining integer tables are `U_i`, the reduced DP gives
+
+\[
+Z(C,z)=\frac{2^{n-q-\bar r}\,c\,D_g(0)}{Q}.
+\]
+
+Every DP integer is bounded by `2^g∏_j max(u_j(0),u_j(1))`, so all DP values, denominators, and final numerator have at most
+
+\[
+P=n+2sL+s+2
+\]
+
+bits. This conservative bound includes the final fiber multiplicity. Let `M(P)` denote the bit cost of multiplying `P`-bit integers. A complete conservative upper bound for one future query is
+
+\[
+\boxed{
+O\big((n+s+t)^3+(s+g2^{\bar d})M(P)\big)
+}
+\]
+
+bit operations, plus an optional `O(M(P) log P)` cost to return a reduced fraction. The first term is ordinary dense binary elimination and matrix construction; no word-RAM assumption hides its input length. The arithmetic bound deliberately allows full-width multiplication even where one operand is much smaller.
+
+Partition-only memory is `O(2^{\bar d}P)` bits for two layers, plus polynomial linear-algebra storage. A complete forward table supporting repeated exact samples uses `O((g+1)2^{\bar d}P)` bits. MAP traceback additionally needs only `g2^{\bar d}` choice bits and two value layers. A raw output input has `n` bits and is explicitly reconstructed.
+
+For repeated queries sharing `C`, the elimination and projected grouping keys can be cached. New local weights still require the corresponding grouping products and DP. If a group becomes constant or ceases to be constant, its active rank and dependency parameter must be updated.
+
+## 6. Exact sampling, including the random-bit cost
+
+Use the integer forward table. Starting from final syndrome `a=0`, process groups in reverse. At group `j`, the two branch masses are
+
+\[
+m_0=U_j(0)D_{j-1}(a),\qquad
+m_1=U_j(1)D_{j-1}(a+h_j).
+\]
+
+Choose bit `b` with probability `m_b/(m_0+m_1)`, then update `a←a+b h_j`. One zero branch is chosen deterministically. Otherwise obtain a uniform integer in `{0,…,m₀+m₁−1}` by rejection sampling fair-bit strings of length `ceil(log₂(m₀+m₁))` and compare it with `m₀`.
+
+**Exactness proof.** The branch probabilities telescope along any valid parity assignment, yielding its product weight divided by `D_g(0)`. Invalid assignments cannot be generated because the terminal syndrome is zero. Each valid active parity vector has the same number `2^{n-q-\bar r}` of raw input preimages. A precomputed particular-solution map plus independent fair bits on a basis for the residual kernel chooses a uniform preimage. Multiplying these probabilities gives exactly `W(x)/Z(C,z)`.
+
+Rejection accepts with probability greater than `1/2`, so a nontrivial branch uses fewer than `2P` expected fair bits. Including the uniform kernel lift gives the explicit bound
+
+\[
+\boxed{\mathbb E[\text{fair bits per sample}]
+\le 2gP+(n-q-\bar r).}
+\]
+
+The additional expected arithmetic and reconstruction cost after building the forward table is
+
+\[
+O(gM(P)+n(g+n))
+\]
+
+bit operations under a precomputed linear lift. This bound is conservative; it is not entropy optimal. The exact rejection sampler has no finite deterministic bound on its number of random bits. That is essential to state: arbitrary non-dyadic rational probabilities cannot in general be sampled exactly from a fixed finite number of fair bits.
+
+## 7. Conditional events and the hardness boundary
+
+Additional parity evidence `Dx=e` has probability
+
+\[
+\Pr(Dx=e\mid Cx=z)=
+\frac{Z([C;D],[z;e])}{Z(C,z)}.
+\]
+
+An inconsistent numerator is zero. Inconsistent conditioning evidence makes the conditional law undefined and is reported explicitly. One extra independent parity equation can increase the raw dependency parameter by at most one; a rank-`h` extra evidence block can increase it by at most `h`.
+
+There is no unconditional polynomial guarantee for arbitrary future evidence. Take `A=I_n`, so the unconditioned factors are independent and `d=0`, and use `w_j(0)=1`, `w_j(1)=1/2`. Under evidence `Cx=z`, MAP is exactly
+
+\[
+\arg\min_{x:Cx=z}|x|,
+\]
+
+the general syndrome-decoding problem. Its decision version is NP-complete. Here `d_C=rank C`, so the exponential dependence records a real computational obstacle rather than a proof artifact. Inference also inherits code-weight-enumerator hardness for general evidence; the MAP reduction alone already forbids a blanket polynomial planning claim unless `P=NP`.
+
+The above theorem is compatible with easier instances whose minimal conventional trellis is much smaller than `2^{\bar d}`. A fair retaining comparator may use minimal-span trellises, variable ordering, or further exact factorization. `\bar d` is a sufficient tractability certificate, not a universal lower bound on ordinary inference cost.
+
+## 8. Primary-source context and fair comparator
+
+The downstream operations are conventional coding/inference machinery. The retaining baseline is fully entitled to keep the acquired rows of `A`, perform Gaussian elimination, and run a syndrome trellis or variable elimination.
+
+- J. K. Wolf (1978), “Efficient maximum likelihood decoding of linear block codes using a trellis,” IEEE Transactions on Information Theory 24(1):76–80, DOI `10.1109/TIT.1978.1055821`. Author publication listing: https://cmrr.ucsd.edu/research/faculty-profiles/wolf.html .
+- R. J. McEliece (1994), “The Viterbi decoding complexity of linear block codes.” Primary author archive: https://authors.library.caltech.edu/records/pd322-he088 . This discusses the optimal Wolf–Massey–Muder trellis and minimal-span generators.
+- E. R. Berlekamp, R. J. McEliece, and H. C. A. van Tilborg (1978), “On the inherent intractability of certain coding problems,” IEEE Transactions on Information Theory 24(3):384–386. Primary archive and open paper: https://authors.library.caltech.edu/records/aw9vs-ann16 . DOI `10.1109/TIT.1978.1055873`.
+- M. N. Vyalyi (2003), “Hardness of approximating the weight enumerator of a binary linear code,” https://arxiv.org/abs/cs/0304044 . This is relevant to unrestricted exact normalizing-sum queries, not needed for the MAP reduction above.
+
+For the acquisition side, arbitrary-support sparse Walsh recovery is an established ordinary alternative: M. Cheraghchi and P. Indyk, “Nearly Optimal Deterministic Algorithm for Sparse Walsh-Hadamard Transform,” https://arxiv.org/abs/1504.07648 . This note does not prove its acquisition theorem or treat it as a zero-cost oracle.
+
+## 9. Executed verification
+
+`parity_inference.py` is a standard-library-only exact implementation. It represents binary matrices by integer bit masks and rational weights by `fractions.Fraction`; all DP arithmetic after denominator clearing is integral. It explicitly performs the evidence projection, duplicate and constant simplifications, dependency construction, MAP traceback, exact branch sampling, and uniform kernel lift.
+
+The recorded run in `verification.json` verified:
+
+- 150 exact partition/MAP comparisons against exhaustive raw-input enumeration.
+- 40 complete sampler distributions, obtained by expanding every branch and every kernel lift and comparing exact rational probabilities with the brute-force law.
+- 40 exact additional parity-event probability comparisons.
+- 18,098 total raw inputs in the exhaustive checks.
+- 751 generated samples checked for feasibility, using a reproducible bit source; the full-law checks provide the distribution check without a flaky statistical test.
+- Explicit rejection of inconsistent evidence.
+
+A simplification example has `n=5`, `s=5`, raw `d_C=3`, and effective `\bar d=0` after grouping and constant removal. It gives exact `Z=720` and uses one syndrome state.
+
+A dense example has `n=64`, `s=60`, `rank A=60`, `rank C=8`, `rank(A N_C)=55`, and `d_C=\bar d=5`. Its `2^56=72,057,594,037,927,936` feasible raw inputs are represented by 32 syndrome states and 1,952 forward-table cells. The exact normalizing fraction has a 170-bit numerator and 101-bit denominator. This large example checks feasibility and objective agreement for the returned MAP input; global MAP correctness rests on the proved recurrence and the exhaustive small-instance verification, not on an unavailable exhaustive check of `2^56` inputs.
+
+The complete large instance, result, and weights are stored in the verification JSON. This is a demonstration of the charged downstream compiler; acquisition experiments must be added to any end-to-end cost claim.

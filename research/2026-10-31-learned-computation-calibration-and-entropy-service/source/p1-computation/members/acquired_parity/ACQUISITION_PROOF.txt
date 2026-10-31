@@ -1,0 +1,257 @@
+# Acquiring hidden parity coordinates from paid scalar measurements
+
+**Status.** Complete elementary conditional derivation plus an executable exact-arithmetic finite verifier. This is a construction from classical sparse Walsh recovery ideas, with an explicit finite validation and failure budget. It is not a new sparse-transform complexity claim or evidence of physical experimental access. The downstream use is to retain the acquired parity masks and compile the algebraic relations for later inference/design. Root owns that downstream analysis.
+
+## 1. Exact interface and what is acquired
+
+The configuration space is `F_2^n`, with known `n`. Define
+
+\[
+\chi_a(x)=(-1)^{a^Tx},\qquad
+f(x)=\sum_{a\in F_2^n}\theta_a\chi_a(x).
+\]
+
+The unknown function has at most **S nonzero Walsh coefficients in total**. The constant coefficient `theta_0`, when nonzero, counts toward S. If an application bounds the number of nonconstant terms by m and allows an arbitrary constant, it must supply `S=m+1`.
+
+The learner is supplied only:
+
+- `n`, the valid total sparsity bound `S>=1`, and a failure tolerance `0<delta<1`;
+- an operation that prepares any specified binary configuration x and returns the exact rational scalar f(x);
+- ordinary classical computation and private random bits.
+
+The learner is **not** supplied the masks, coefficients, rank, dependencies, a change of coordinates, or a planner. Every call prepares one explicitly specified n-bit configuration and obtains one scalar. Repeated configurations are charged again in the implemented accounting. This is a substantial active experimental-access premise. Neither this proof nor the program constructs a physical preparation or measurement device.
+
+The output is a list of all nonzero pairs `(a,theta_a)`, including the constant separately, or a reported failure. An accepted output has a probabilistic exactness guarantee under the supplied model promise. A finite randomized validation transcript is not a deterministic proof of equality over the whole configuration space.
+
+## 2. Finite acquisition theorem
+
+Let
+
+\[
+b=\lceil\log_2(2S^2)\rceil,
+\quad T=\lceil\log_4(2/\delta)\rceil,
+\quad L=\lceil 2S\ln(2T/\delta)\rceil.
+\]
+
+If `b>=n`, query the entire `2^n`-point table and apply the full Walsh transform. This returns the exact representation deterministically. It needs `2^n` scalar preparations, not `(n+1)2^n`: every shifted table is already contained in the full table.
+
+If `b<n`, there is a finite algorithm with the following guarantees for **every fixed** S-sparse rational f:
+
+1. Probability of an accepted incorrect representation is at most `delta/2`.
+2. Probability that all T attempts are exhausted without an accepted representation is at most `delta/2`.
+3. Hence probability of returning the exact representation is at least `1-delta`.
+4. The total scalar-query cap is
+
+\[
+Q_{\max}=T\bigl[(n+1)2^b+L\bigr]
+ <T\bigl[4(n+1)S^2+L\bigr].
+\]
+
+5. The expected number of attempts is less than `4/3`, so expected scalar calls are at most `(4/3)[(n+1)2^b+L]`.
+
+The randomization concerns the learner's measurements and validation points. No random-support assumption or continuously distributed coefficient assumption is made.
+
+## 3. Acquiring a candidate from a subspace experiment
+
+Choose an `n by b` binary matrix R with independent uniformly random entries. No full-rank condition is needed. For every `z in F_2^b`, query
+
+\[
+f(Rz),\quad f(Rz+e_1),\ldots,f(Rz+e_n).
+\]
+
+This costs `(n+1)2^b` scalar preparations. For each shift `t` in `{0,e_1,...,e_n}`, compute the normalized b-dimensional Walsh transform
+
+\[
+G_t(u)=2^{-b}\sum_z f(Rz+t)(-1)^{u^Tz}.
+\]
+
+**Hashing identity.** Direct expansion and character orthogonality give
+
+\[
+G_t(u)=\sum_{a:R^Ta=u}\theta_a(-1)^{a^Tt}.
+\]
+
+In particular, if a bucket u contains exactly one nonzero coefficient indexed by a, then
+
+\[
+G_0(u)=\theta_a,\qquad
+G_{e_i}(u)=\theta_a(-1)^{a_i}.
+\]
+
+Thus the scalar coefficient and every bit of its hidden n-bit mask are recovered. This includes `a=0`. A nonconstant mask may also hash to bucket zero, so bucket zero must not be discarded or automatically treated as the constant.
+
+The implemented candidate routine makes the following checks:
+
+- A zero base value must have zero shifted values in that bucket.
+- Each nonzero base value must have shifted values of exactly the same magnitude.
+- Their relative signs specify a candidate mask a; that mask must satisfy `R^T a=u`.
+- The resulting list must contain at most S nonzero terms.
+
+An inconsistent batch is rejected. A consistent batch produces a candidate g with at most S terms. These checks are not a complete collision certificate; fresh validation is required.
+
+### Isolation probability
+
+For any distinct fixed a and a', the nonzero vector `a+a'` satisfies
+
+\[
+\Pr_R[R^Ta=R^Ta']=2^{-b}.
+\]
+
+There are at most `binom(S,2)` supported pairs. Therefore
+
+\[
+\Pr[\text{any collision}]\le {S\choose 2}2^{-b}
+\le \frac{S-1}{4S}<\frac14.
+\]
+
+When there is no collision, the candidate routine returns f exactly. Every independent batch therefore has probability at least `3/4` of returning the exact representation before validation.
+
+## 4. Exact validation from the sparsity promise
+
+Use L new independent uniformly random configurations, independent of the batch that constructed g. Reject g at the first observed `f(x)!=g(x)`; accept it only if all L values agree.
+
+The relevant uncertainty inequality is elementary and is proved here rather than imported as an unexamined oracle.
+
+**Lemma.** If a nonzero function h has k nonzero Walsh coefficients on `F_2^n`, then
+
+\[
+|\operatorname{supp}h|\ge 2^n/k.
+\]
+
+**Proof.** Normalize the Fourier coefficients by `2^{-n}`. Let `M=max_x |h(x)|>0`, and let `p=|supp h|/2^n`. By Fourier inversion, Cauchy-Schwarz, Parseval, and the support bound on h,
+
+\[
+M\le\sum_a|\widehat h(a)|
+\le\sqrt{k}\left(\sum_a|\widehat h(a)|^2\right)^{1/2}
+=\sqrt{k\,\mathbb E h(X)^2}
+\le\sqrt{kp}\,M.
+\]
+
+Canceling M gives `p>=1/k`. This also applies to arbitrary real or complex coefficients; the implementation uses exact rationals. QED.
+
+If `f!=g`, their difference has at most `2S` nonzero Walsh coefficients, so a uniformly random point detects disagreement with probability at least `1/(2S)`. Conditional on any already constructed incorrect candidate, its probability of passing all L fresh checks is at most
+
+\[
+(1-1/(2S))^L\le e^{-L/(2S)}\le\delta/(2T).
+\]
+
+This conditional statement remains valid even when candidates depend on earlier rejected batches. A union bound over at most T attempts gives incorrect-acceptance probability at most `delta/2`.
+
+Whenever a batch is collision-free, its candidate is exactly f and every exact validation check passes. Therefore exhaustion can happen only if all T independently sampled matrices had a collision. Its probability is at most `4^{-T}<=delta/2`.
+
+Finally, surviving beyond attempt j implies that all first j hashes collided. Summing these survival probabilities yields expected attempts at most `sum_{j>=0}4^{-j}=4/3`. This argument includes early acceptance of a wrong model, which can only shorten the stopping time.
+
+### Why a fresh validation step matters even in exact arithmetic
+
+Take
+
+\[
+f(x)=(1-\chi_{e_1}(x))(1-\chi_{e_2}(x))
+=1-\chi_{e_1}(x)-\chi_{e_2}(x)+\chi_{e_1+e_2}(x).
+\]
+
+Choose a legal R whose first two rows are zero. Every queried `Rz` or `Rz+e_i` has at most one of its first two bits equal to one, so every training value is zero. All hash-consistency checks accept the empty candidate `g=0`, although f is nonzero on one quarter of the full domain. The program constructs this exact collision witness and catches it with fresh validation. It rules out treating the shifted-ratio tests alone as an exact certificate for arbitrary rational coefficients.
+
+## 5. Costs, finite precision, and retained information
+
+For one sparse-hash attempt, the program uses `(n+1)2^b` measurements and `O((n+1)b2^b)` exact additions/subtractions for the transforms. Its current implementation retains all shifted arrays, requiring `O((n+1)2^b)` rational numbers temporarily. Candidate validation uses at most L oracle calls and `O(LS)` character evaluations, each involving an n-bit dot product. Binary matrix construction uses `nb` random bits per attempt; validation uses at most `nL` random bits.
+
+Each measurement requests an n-bit configuration. A primitive implementation that writes a whole configuration therefore spends `nQ` configuration-bit writes. Gray-order enumeration or device-specific updates may reduce a device's actual preparation cost, but no such advantage is used in the theorem or the receipt.
+
+If a measurement at x costs `C_prepare(x)+C_measure(x)`, its full cost is charged in addition to arithmetic. The theorem counts calls; it does not imply these costs are constant or polynomial for an arbitrary physical platform. Arbitrary chosen-configuration access is an explicit precondition.
+
+For bit complexity, suppose the numerator and denominator of each nonzero rational coefficient have at most B bits. The product of all at most S denominators has at most `SB` bits and is a common denominator of every true function value. Intermediate transform sums have a polynomial bit bound `O(SB+b+log S)`. Thus the stated arithmetic-operation bounds yield polynomial bit complexity in `n,S,B,log(1/delta)` using ordinary exact rational arithmetic. There is no unbounded-real encoding in the experiment interface. The finite main experiment in fact uses small integers with absolute energy at most 87.
+
+After acquisition, the large experimental arrays can be discarded. The reusable representation has at most S n-bit masks plus S exact coefficients. Retaining all raw measurements is also permitted to the classical comparator. Subsequent algebraic compilation must be separately charged; it is not included for free in acquisition.
+
+The code computes b with integer bit lengths. It also audits the finite T and L confidence inequalities using exact rational comparisons after computing initial logarithmic estimates, preventing a floating-point ceiling boundary from weakening the advertised probability bound.
+
+## 6. A precise bounded-noise extension
+
+Exact recovery under nonzero arbitrary measurement noise needs additional precision structure. One sufficient condition is a known rational lattice spacing `lambda>0` with every coefficient, including the constant, in `lambda Z`. Then every f(x) is in `lambda Z`.
+
+If every scalar measurement v obeys
+
+\[
+|v-f(x)|<\lambda/2,
+\]
+
+rounding v to the nearest multiple of lambda reconstructs the exact scalar f(x). Apply the exact algorithm to these rounded values. The acquisition theorem is unchanged, but the cost of attaining this measurement precision is charged. The verifier uses lattice spacing one and deterministic errors bounded by `1/8`; it recovers every coefficient exactly after rounding.
+
+For an optional stochastic implementation, suppose individual errors are independent, mean-zero, and sigma-sub-Gaussian at every requested x. Averaging R independent measurements gives
+
+\[
+\Pr[|\bar v-f(x)|\ge\lambda/4]
+\le 2\exp[-R\lambda^2/(32\sigma^2)].
+\]
+
+With a finite query cap `Q_max`, choosing
+
+\[
+R\ge \left\lceil\frac{32\sigma^2}{\lambda^2}
+\ln\frac{2Q_{\max}}{\delta_{\rm noise}}\right\rceil
+\]
+
+and at least one measurement per requested value makes every rounding step correct with probability at least `1-delta_noise`, by a union bound. Charge up to `Q_max R` primitive measurements and, if preparation is destructive, the same number of preparations. The overall failure budget is then `delta+delta_noise`. This extension requires the stated noise model; it is not an empirical model of a device.
+
+Without a known lattice or an equivalent separation promise, exact coefficient recovery is impossible under bounded nonzero noise even for constant functions: two distinct constants less than twice the noise bound apart can produce identical measurements at every point. Approximate recovery is a different contract.
+
+## 7. What the sparsity cap contributes—and what it does not
+
+The cap supplies a lower bound on the fraction of points at which a wrong sparse model must disagree. It is not itself acquired or certified by a few validation points. Therefore the output is conditional on a valid cap.
+
+Literal knowledge of S is not universally necessary: full-grid inspection works without it, and another valid promise about disagreement mass could replace it. But without any restriction on alternatives, sub-full-grid exact validation has a sharp hidden-spike obstruction.
+
+For any point z, let `h_z(x)=1{x=z}`. It has `2^n` nonzero Walsh coefficients,
+
+\[
+\widehat h_z(a)=2^{-n}\chi_a(z).
+\]
+
+Every transcript that has not queried z is compatible with both the zero function and this spike. For a uniform unknown z, an algorithm with at most q adaptive point queries hits z with probability at most `q/2^n`. After missing it, its final exact guess can identify at most one of the unqueried spike locations. Hence its average exact-identification success is at most `(q+1)/2^n`. A worst-case success guarantee of `1-delta` over all spikes requires
+
+\[
+q\ge (1-\delta)2^n-1.
+\]
+
+This lower bound applies to randomized algorithms too, by conditioning on their random coins and averaging. It does not contradict the sparse theorem: the spike family violates a small spectral-sparsity promise.
+
+### An information charge even when coefficients have small bounded values
+
+Restrict coefficients to all equal +1 and select exactly m distinct nonconstant masks. Each scalar f(x) lies in the `m+1`-point set `{-m,-m+2,...,m}`. There are `binom(2^n-1,m)` possible distinct spectra. A q-query adaptive decision tree has at most `(m+1)^q` transcripts, so uniform exact support recovery with success at least `1-delta` requires
+
+\[
+q\ge \frac{\log[(1-\delta){2^n-1\choose m}]}{\log(m+1)}.
+\]
+
+For sparse m this is of order `m(n-log m)/log(m+1)`. There is a corresponding family of independent masks when `m<=n`, with size `prod_{i=0}^{m-1}(2^n-2^i)/m!`. Thus even a dependency-free representation is not generally handed to the learner by one small scalar return.
+
+This is a support-identification bound, not a lower bound for every possible downstream task. For example, the partition function of independent parity features is already independent of their masks once the coefficients and rank are known. Full support acquisition may overpay for that narrower query. A task-specific learner should be compared against the same narrower contract.
+
+## 8. Classical comparison and primary-source reading
+
+The strongest relevant classical comparison retains the scalar data, learns sparse Walsh coefficients, and compiles the resulting algebraic model. It acquires exactly the same reusable scientific knowledge. This construction is not an alternative to that classical method; it is an explicit conservative implementation of that route.
+
+- Scheibler, Haghighatshoar, and Vetterli, *A Fast Hadamard Transform for Signals with Sub-linear Sparsity in the Transform Domain*, arXiv:1310.1803v2, 2013, Sections IV and IV.A, Propositions 1–2. The paper derives subspace aliasing and shifted-sign support recovery. Its stronger sparse-peeling performance analysis assumes random support, and its almost-sure collision test uses a continuous-coefficient condition. Our all-support union bound and independent validation avoid importing those assumptions. [Primary full text](https://arxiv.org/pdf/1310.1803).
+- Cheraghchi and Indyk, *Nearly Optimal Deterministic Algorithm for Sparse Walsh-Hadamard Transform*, ECCC TR15-076, 2015; later ACM Transactions on Algorithms 13(3), 2017. Theorem 1 gives deterministic nonadaptive sparse recovery with `k^(1+alpha) poly(log N)` runtime for bounded-bit query values. This is stronger prior art in its stated sparsity dependence than the simple quadratic-in-S construction here. The exact-sparse special case has zero approximation residual. [Primary full text, Theorem 1 and surrounding bit assumptions](https://eccc.weizmann.ac.il/report/2015/076/download/).
+- Donoho and Stark, *Uncertainty Principles and Signal Recovery*, SIAM Journal on Applied Mathematics 49(3), 906–931, 1989. The support uncertainty principle is classical; the Boolean-group inequality needed here is proved in full in Section 4. [Author-hosted primary paper](https://web.stanford.edu/dept/statistics/cgi-bin/donoho/wp-content/uploads/2018/08/UPSR.pdf).
+
+No claim is made that the implemented algorithm is the fastest practical acquisition method. Its purpose is a complete, finite-cost construction with transparent assumptions that can be attached to a downstream tractability theorem.
+
+The Astra repository was task-first inspected at revision `7ec80c290b71ba1e002ae65abeffbc80fda4cf8d`. Its sparse-parity topic routed to N909, an implicit Schur-certificate construction whose representation is supplied and whose task is different. No result from that packet is imported into this proof.
+
+## 9. Exact finite verification receipt
+
+Run `python3 parity_acquisition.py`. The program writes `results.json` in the same directory. It uses standard-library integers and `Fraction`; it does not load hidden masks inside the acquisition routine. Synthetic ground truth is used only to assess the output afterward.
+
+The fixed-seed receipt records:
+
+- Hidden `n=32`, 28 nonconstant terms, one constant, rank 24: `S=29`, `delta=.01`, `b=11`, `T=4`, `L=388`.
+- First attempt rejected a collided bucket; second attempt recovered the exact spectrum and passed all 388 fresh validation points.
+- Actual scalar preparations: **135,556**; finite cap: **271,888**; configuration-bit writes charged: **4,337,792**.
+- A separate known-integer-lattice test with noise bounded by `1/8` recovered all coefficients exactly after rounding.
+- All **6,560** nonzero spectra in `{-1,0,1}^8` satisfy the uncertainty product bound; its minimum observed product is exactly eight. This finite check is not substituted for the proof.
+- The explicit four-term aliasing witness passes every training consistency test but is rejected at the second fresh validation point.
+- Sixty small exhaustive downstream cases and 100 larger reweighting tasks match the retained classical trellis. These downstream checks are supporting implementation checks, not an empirical superiority claim.
+
+Wall-clock values are incidental single-run timings in the current interpreter and include synthetic oracle evaluation; they do not measure physical preparation or measurement cost. The complete task contract and counts, not those timings, are the transferable result.

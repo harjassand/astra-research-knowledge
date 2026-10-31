@@ -1,0 +1,13 @@
+# Independent review: one-bit constant contrast
+
+PASS for the separate one-bit mathematical specialization. I read the complete `ONE_BIT_CONSTANT_CONTRAST.md` and verified SHA-256 `29b6329a6aa3ce1f62c1102c66d99dd27d14581d002d8514756b71c3605173be`. The general theorem and executable calibrator remain unchanged; the executable does not automatically use these sharper constants.
+
+For the symmetric two-label stationary projection, Q(X+,X-)=(D/2,-D/2), so ||QX||=||D||_1<=||X+||_1+||X-||_1, with equality achievable. Thus ||Q||=1, also with any reference. Centered couplings B and -B send (Y,-Y) to equal operator blocks, proving QVQ=0 without commutation assumptions on B and H0. The residual QQ generators are exactly common unitary conjugation plus scalar decays lambda and 2p lambda. With gamma=min(1,2p)>0, both facing bounds therefore have exp(-gamma lambda t)+2b/(gamma sqrt(lambda)), and no high-rate threshold is needed.
+
+The restricted-domain Duhamel argument multiplies these facing factors. Integration gives the displayed lambda T exp(-gamma lambda T), middle 4b(1-exp(-gamma lambda T))/(gamma^2 sqrt(lambda)), and final 4b^2T/gamma^2 terms, each multiplied by eta. The estimate 1-exp(-x)<=sqrt(x) follows by using <=x for x<=1 and <=1 for x>=1. It gives the stated gamma^(-3/2) middle coefficient. Replacing 1/e by 1/2 and gamma^(-3/2) by gamma^(-2) for 0<gamma<=1 is conservative. Lambda=0 is handled separately, with identical processes; gamma=0 is not silently divided by.
+
+The structural restriction eta<=1/4 gives p>=3/8 and gamma>=3/4. Substituting that lower bound avoids using an unknown true p in the calibration decision. Exact rational recomputation gives C_rat=326/225 at b^2T=1/100, eta_target=45/652 and radius=45/2608. The least integer satisfying N radius^2>=24 is 80,613: the previous integer fails. At uniform p, the same confidence event ensures acceptance because twice the chosen radius is below the target. This conclusion assumes the unchanged fixed-sample observation protocol.
+
+For s prescribed intervals, summing the bound and applying sum sqrt(t_j)<=sqrt(sT) proves the final displayed interval coefficient. Arbitrary permitted CQ instruments remain contractive, so the earlier telescoping argument applies.
+
+The contrast is useful negative evidence against interpreting the general 489,982,526 sample count as intrinsic. Both numbers are sufficient bounds from ordinary concentration and different proven perturbation constants; neither is a minimax lower bound, a practical acquisition demonstration or a quantum advantage. No multi-bit refinement, executable specialization, statistical model validation or novelty claim is inferred.

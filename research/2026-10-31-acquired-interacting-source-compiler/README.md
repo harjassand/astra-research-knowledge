@@ -1,0 +1,3 @@
+# Acquired interacting source checkpoint
+
+Known rational chain factors supply exact classical specification acquisition and separately reviewed finite-bit quantum interfaces on paper. General weighted inverse-map coupling/pure preparation is Temme-Wocjan prior machinery. Threshold and direction-merged continuous generators have distinct receiving contracts. Later direct-generator theorem/cost notices have no attached governing source here and retain visible-only status;billions of padded stages do not support practical advantage. Full quantum simulator remains mathematical. No scientific reproof,replay,novelty/sign-off,producer contact or source recovery.

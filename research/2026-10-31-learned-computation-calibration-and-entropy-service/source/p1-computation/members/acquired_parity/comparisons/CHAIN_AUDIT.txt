@@ -1,0 +1,81 @@
+# Audit: discovered triangle paths, retained trellises, and acquisition lower bounds
+
+**Verdict:** the accepted triangle-path certificate proves width at most one, including appended independent features. The retained template supports arbitrary future reweighting and clamps of acquired features, with exact partition functions, MAP configurations, and conditional sampling under the ideal fair-bit model. No counterexample to these scoped statements was found. Two implementation issues found during review were fixed by root and then checked: a mutable weight alias affecting saved samplers, and unnecessary random draws on forced branches.
+
+Reviewed root file: `acquired_parity/experiments/discover_chain.py`, SHA-256 `9e6db22f41d5712d34491c4010620a94c256c4c76fad6e477b36f8aac42d7ec5`. Also reviewed `CompiledTrellis` in `next_independent/parity_acquisition.py` and the `GF2System`/`BitSource` dependencies in `next_causal/parity_inference.py`. No root file was edited by this auditor.
+
+## 1. Why the triangle certificate proves width one
+
+Let the accepted triangle sets in path order be `B_1,...,B_t`. Adjacent triangles intersect in exactly one feature; nonadjacent triangles do not intersect. An internal triangle's left and right shared features must differ, since otherwise the two nonadjacent neighboring triangles would intersect. Thus every internal triangle has one private feature, and every endpoint has two private features. For t=1 all three features are private.
+
+Each triangle's relation vector is independent of the others: its private-feature coordinate occurs in no other relation. Therefore these t vectors are linearly independent. The code separately verifies that their rank equals `d=s-rank(A)`, so they form a basis of **all** relations, not merely a locally observed subset.
+
+In this triangle relation basis, a private feature in B_i has check column e_i, while the shared feature between B_i and B_{i+1} has check column `e_i+e_{i+1}`. A feature outside every triangle has check column zero: because the triangles span every relation, it participates in no hidden additional relation either.
+
+The corrected ordering emits the previous shared feature before opening the next triangle's private feature. Ignoring repeated endpoint private columns, its nonzero check-column pattern is
+
+`e_1, e_1, e_1+e_2, e_2, e_2+e_3, ..., e_{t-1}+e_t, e_t, e_t`.
+
+At every internal cut, the prefix and suffix column spans intersect in at most one coordinate direction. The state dimension is therefore
+
+\[
+\dim(\operatorname{span}H_{\le j}\cap\operatorname{span}H_{>j})\le1.
+\]
+
+For t=1 this is the familiar three-column pattern `e_1,e_1,e_1`. Zero check columns from independent features can be inserted or appended without increasing any cut dimension. Any other full relation basis is obtained by an invertible row transformation, which preserves these intersection dimensions. The argument therefore applies to the basis actually returned by `basis_and_relations`, not only to the illustrative triangle basis.
+
+The explicit `relation_width` computation is an additional exact check. The no-triangle case currently returns UNKNOWN even when all features are independent; that is a harmless incompleteness of the recognizer, not a false hardness claim.
+
+## 2. Correctness of the compiled operation and its reuse
+
+For a full-rank parity-check matrix H, the valid feature vectors are `ker H`. At cut j, any valid feature vector has a partial syndrome in
+
+\[
+S_j=\operatorname{span}(h_1,...,h_j)\cap
+\operatorname{span}(h_{j+1},...,h_s).
+\]
+
+Conversely, the compiled transitions `u -> u+b h_j` from the singleton initial state to the singleton final state encode exactly the vectors in `ker H`. The prefix/suffix intersection construction and its enumeration in `CompiledTrellis` are correct. The helper `intersection_basis` assumes its two inputs are bases; every call from the compiler meets this condition.
+
+An acquired-feature clamp only deletes transitions with the wrong bit. It cannot add states or increase the retained width. Any pattern of such clamps is supported, including inconsistent patterns; zero partition mass is returned, and MAP/sample requests then raise `ValueError`. This closure does not extend to arbitrary new constraints on original coordinates.
+
+Sum-product computes the exact feature-code partition function. Maximum-product computes the maximum weight of one valid feature vector. Each valid feature vector has exactly `2^(n-rank A)` physical configurations, so multiplying the partition sum by that factor is correct. The MAP weight must not receive that multiplicity; the implementation correctly leaves it unchanged.
+
+For sampling, conditioned on a next state, an incoming transition receives mass equal to its previous forward sum times its local weight. These masses sum to the current forward sum. Backward sampling consequently has the exact desired law over feature vectors. Solving for one physical configuration and adding a uniform kernel vector then gives the exact law over physical configurations, since the fibers all have equal size. The arbitrary fixed seeds used in finite checks are for reproducibility; distributional exactness refers to independent ideal fair bits.
+
+## 3. Issues found and corrections checked
+
+**Mutable-weight alias, fixed.** Previously, `TrellisEvaluation` retained the caller's mutable list. Changing that list after evaluation changed sampling weights while leaving the saved forward tables unchanged. Even one feature with original weights `(1,2)` and later mutated weights `(7,1)` produced the wrong saved sampler law. Root now copies the input into immutable pairs. A targeted check confirms that mutating the caller's list no longer changes the saved law.
+
+**Forced-branch random draws, fixed.** Previously, even a single possible transition called `randbelow` on its possibly large mass. This was unbiased but consumed avoidable random bits. Root now directly selects the only branch. A fully clamped single-feature check consumes exactly the one residual fiber bit. Root's reported fully clamped 48-bit example likewise now uses 17 fiber bits per sample.
+
+**Input-shape guards remain scoped.** `RetainedFeatureTrellis.evaluate` checks the number of factors and positivity but does not explicitly enforce length-two integer pairs. Fractions/floats may reach a later type error; extra pair entries are ignored. The standalone lower-level `CompiledTrellis.partition/minimum` also rely on correctly sized input lists, because `zip` otherwise truncates. These do not affect the stated valid-input theorem or the verified experiment, but should be tightened if these functions become a general user-facing API.
+
+## 4. Cost qualifications to retain in the integrated account
+
+- The recognizer is polynomial, but pairwise feature XOR discovery is not its whole cost. If it finds t triangles, overlap checking costs `O(t^2)` small-set comparisons; arbitrary inputs can have `t=O(s^2)`. Relation ranks and cut ranks also incur polynomial binary-linear-algebra work. Accepted path instances have t=d<=s.
+- `relation_width` computes the cut profile before any exponential state allocation. The `max_cells` check bounds the later state tables, not all polynomial preprocessing costs.
+- Compiled edges are at most twice the sum of layer state counts. For width one, this gives linear-size inference tables after the polynomial discovery and compilation work.
+- Each evaluation still scans every retained edge. The recorded `used_edges` counts the transitions on which mass arithmetic is performed after clamping; it does not count skipped-edge inspection. Use `O(E)` as the full per-query arithmetic/scan bound, not merely `O(used_edges)`.
+- The current sampler scans all edges at each respective stage to find incoming transitions, so one sample costs `O(E)` transition inspections, plus exact integer arithmetic and the binary linear lift. Incoming-edge indexing could improve this but is not assumed.
+- Integer arithmetic is not unit-cost bit arithmetic. With s factors of B-bit positive weights, forward masses have `O(s(B+1))` bits, and physical partition values have `O(n+sB)` bits.
+- For `randbelow(M)`, rejection sampling has fewer than two trials in expectation and uses `ceil(log_2 M)` fair bits per trial. Thus general exact sampling has expected polynomial random-bit cost; the probability of the conditioned event does not enter. Only fully forced feature paths reduce this to the residual fiber bits alone.
+- At `beta=ln 2`, the integerized training-energy weights have a known common scale. If `f(x)=c+sum_j c_j chi_j(x)`, then `Z_integer = 2^(c+sum_j|c_j|) Z_f`. The implemented rare-event ratio is unaffected. Any reported absolute physical partition function must undo this scale.
+
+## 5. No-cap and information-lower-bound edge cases
+
+The hidden-spike argument is valid for adaptive and randomized algorithms with a hard cap q. Conditional on a random seed, a spike at an unqueried point produces the same all-zero transcript; a final output can correctly guess at most one unseen spike. This yields success at most `(q+1)/2^n` for uniform spike location. The `+1` is necessary: with an exact-one-spike promise, querying `2^n-1` locations can identify the last location by exclusion. Including the zero function makes zero-versus-spike certification stricter, not weaker.
+
+For the equal-+1 coefficient family with exactly m nonconstant terms, each response has m+1 possible values. The decision-tree counting bound applies for `m>=1`; m=0 is a trivial singleton family and is excluded from the logarithmic formula. Dense or singleton families may give a negative or trivial numerical lower bound, so the stated asymptotic form is explicitly restricted to sparse m. The independent-mask family count `prod_{i=0}^{m-1}(2^n-2^i)/m!` is correct for `1<=m<=n`. These are support-identification lower bounds; the proof correctly does not apply them to every narrower downstream query.
+
+## 6. Targeted finite audit
+
+`audit_discover_chain.py` does not rerun the acquisition benchmark. Its exact receipt is `audit_results.json`:
+
+- Twelve permuted triangle-path inputs with two additional independent features all received width-one certificates.
+- All 81 clamp patterns on one triangle plus an independent feature were checked.
+- All 69 feasible cases matched direct enumeration for partition, MAP, and the complete exact rational sampler law, including uniform physical fibers.
+- All 12 inconsistent cases returned zero mass and rejected MAP/sample requests.
+- The mutable-weight correction and the forced-branch random-bit correction both passed their targeted regression checks.
+
+The review establishes the stated mathematical and implementation scope. It does not establish novelty, optimal discovery complexity, a physical scalar-energy service, or superiority over a retaining classical compiler.
