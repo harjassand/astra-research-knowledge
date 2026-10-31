@@ -79,7 +79,9 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         url = "http://127.0.0.1:%d/mcp" % port
         try:
-            for _ in range(120):
+            # Corpus hash/discovery validation precedes opening the socket.
+            # Match the SDK request budget on slower shared CI runners.
+            for _ in range(600):
                 self.assertIsNone(process.poll(), "HTTP server exited before readiness")
                 try:
                     _, writer = await asyncio.open_connection("127.0.0.1", port)
