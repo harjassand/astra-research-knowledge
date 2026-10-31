@@ -240,7 +240,9 @@ class ResearchAdapter:
             preview = {}
             for field in ("requires", "provides", "assumptions", "costs", "obstruction"):
                 text = flatten(consumer_contract(record).get(field, "UNKNOWN"))
-                preview[field] = {"text": text[:200], "omitted_characters": max(0, len(text) - 200)}
+                # Candidate menus share space with current-scope navigation; complete
+                # conditions remain on the mandatory fetch, with omission counts explicit.
+                preview[field] = {"text": text[:120], "omitted_characters": max(0, len(text) - 120)}
             records.append({"id": self.handle("current", identifier), "title": record["title"],
                 "url": self.record_url(identifier), "metadata": {"record_id": identifier,
                 "content_version": record["content_version"], "kind": record["kind"],
