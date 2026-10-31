@@ -1,0 +1,242 @@
+## Scientific conclusion
+
+I chose **learning reliable computation after rare conditioning** as the new opening.
+
+The construction acquires a conservative model from noisy local experiments, discovers a useful interaction graph, and uses that graph to compute rare-event probabilities and generate conditioned trajectories. Its error bounds do **not** contain an inverse rare-event probability. It also tolerates dense weak interactions that make the system’s exact dependency graph large.
+
+This is a scoped theoretical result with executable prototypes. **Practical advantage is not established:** the conservative calibration protocol is expensive, and an ordinary importance sampler wins on one of the numerical examples.
+
+The complete proofs, code, comparisons, alternative constructions, useful failures, and unchanged earlier solver capital are preserved here:
+
+**[:chatgpt-content-reference{index="6"}](https://chatgpt.com/library?file_id=libfile_4fc31127c7e88191be610fbc69256cde&account_id=personal)**
+
+The main argument is also directly readable in :chatgpt-content-reference{index="7"}[PROOF.txt](producer-workspace/PROOF.txt).
+
+## 1. The capability and the actual opening
+
+The desired operation is concrete:
+
+> Learn an unknown irreversible cascade through noisy interventions, then answer later questions such as “How likely is this collection of failures before this deadline?” and “What do complete trajectories look like, conditioned on that rare outcome?”
+
+The construction addresses systems with individually identifiable components, one irreversible transition per component, and **attractive interactions**: triggering one component can increase, but cannot decrease, another component’s exposure rate. Directed feedback cycles are allowed.
+
+The experimental controls are explicit. An assay fixes the other components in a chosen configuration, freshly resets the tested component, exposes it for a chosen duration, and records one bit: whether it triggered. Preparations, resets, exposure time and timing precision are charged. These controls are substantive assumptions; they are not secretly supplied samples from the rare conditional distribution.
+
+I constructed the conventional routes before treating this as an opening. Continuous-time Bayesian networks already represent local intensities, and importance sampling already supports conditioned trajectory inference. Event-time representations already encode an entire occurrence time in one variable. Those components are adopted here. :chatgpt-content-reference{index="0"}
+
+The closest theoretical predecessor is especially important. Ando’s bounded-treewidth stochastic longest-path work already obtains relative approximation by controlling a discretization’s deadline shift and then using dilation. It also gives an exact algorithm for standard exponential activity durations. The generic “shift, then convert to relative error” idea is therefore not an invention of this investigation. :chatgpt-content-reference{index="1"}
+
+On AND-precedence networks with suitable independent duration laws, existing convex and logconcave integration methods can be stronger still, without a width restriction. Their initialization, geometry and precision requirements must be paid, but that is a substantial existing route. :chatgpt-content-reference{index="2"}
+
+The opening that survived was the combination of:
+
+- **Unknown local mechanisms and unknown useful graph**, acquired from imperfect experiments.
+- **Nonlinear, possibly cyclic interactions**, whose successful threshold region need not be convex.
+- **Relative probability and full conditioned-path guarantees**, including the error introduced by learning.
+- **An explicit executable conditioning operation**, rather than a supplied committor, proposal distribution or downstream solver.
+
+A collaborator constructed width-two OR-cascade examples whose success regions are nonconvex. Repeated gadgets require exponentially many pieces in any exact convex cover. This prevents invoking convex integration or a short convex-mixture representation automatically; it does not establish a lower bound against every nonconvex integration method.
+
+## 2. What is learned: a conservative model with a computational certificate
+
+Write \(a_v(x)\) for component \(v\)’s exposure rate in configuration \(x\). The acquired tables satisfy, simultaneously over **every original configuration**,
+
+\[
+e^{-\rho}a_v(x)
+\;\le\;
+\widehat a_v(x_{J_v})
+\;\le\;
+a_v(x),
+\]
+
+where the scopes \(J_v\) are discovered.
+
+The upper inequality is deliberate. It makes the learned system conservative in a direction that can be used in a path-law comparison. This is stronger and more useful for rare conditioning than merely fitting average prediction error.
+
+### The useful graph can remain sparse when the exact graph is dense
+
+The acquisition theorem does not require exact sparsity.
+
+Suppose each true log-exposure function is uniformly close to some unknown monotone function depending on at most \(d\) variables:
+
+\[
+\left\|\log a_v-h_v^0\right\|_\infty
+\le
+\frac{\rho}{64\max(1,d)}.
+\]
+
+Neither \(h_v^0\) nor its variables are given. The true system may depend on every other component through small positive influences.
+
+The learner maintains a candidate scope and measures opposite corners of the remaining unknown coordinates. Monotonicity makes those corners bound every intermediate configuration. If their gap is small, the omitted influences are uniformly controlled. If the gap is large, a robust search along a sequence of coordinate changes finds another relevant variable.
+
+The proof establishes three properties:
+
+1. **Every discovered variable belongs to the unknown sparse approximation’s scope.**
+2. **No minimum edge-strength assumption is required.**
+3. **Once the corner tests pass, the returned approximation is sound even if the sparse approximation promise was false.**
+
+The sparse promise earns efficient termination and a small retained graph. It is not being used to assume the correctness of a model that has stopped.
+
+Relevant-variable discovery and membership-query junta learning are established machinery. The specific contract developed here is the uniform, one-sided approximation from imperfect real-valued measurements, while retaining sparse scopes despite dense monotone deviations. Historical priority for that complete contract remains unestablished. :chatgpt-content-reference{index="3"}
+
+For a successful scope bound \(d\), the final attempt uses
+
+\[
+O\!\left(n\left(2^d+d^2\log n\right)\right)
+\]
+
+distinct rate assays. The code also discovers the degree cap by trying smaller caps first and charging their failures.
+
+The decomposition is acquired too. I implemented a complete \(n^{O(w)}\) search that constructs an elimination order of width \(w\). It does not receive a tree decomposition or rely on a heuristic attaining the optimum.
+
+## 3. Why learning error does not explode after conditioning
+
+The broader model uses independent exposure thresholds. Component \(v\) triggers when
+
+\[
+\int_0^t a_v(X(s))\,ds
+\]
+
+reaches its threshold \(E_v\).
+
+Exponential thresholds give the irreversible Markov model. Known Weibull thresholds give a generally non-Markov model. Threshold and cumulative-exposure modeling itself has substantial ancestry; it is not the novelty claim. :chatgpt-content-reference{index="4"}
+
+The organizing parameter is a **scaling exponent**. Assume each threshold density obeys
+
+\[
+f_v(cx)\ge c^{\kappa_v-1}f_v(x),
+\qquad 0<c\le1,
+\]
+
+and define
+
+\[
+D=\sum_v\kappa_v.
+\]
+
+For exponential thresholds, \(D=n\). For Weibull shapes \(k_v\ge1\), one may take \(\kappa_v=k_v\).
+
+The main learning result is a comparison of whole timed paths:
+
+\[
+\widehat P \;\ge\; e^{-D\rho}P
+\]
+
+as measures. In words, the learned path law retains at least a fixed fraction of the true probability mass on **every measurable set of paths**.
+
+The proof uses the transformation from trigger times to thresholds. On each possible trigger order, that transformation has a triangular Jacobian. Each triggered component contributes a controlled exposure-rate factor and a controlled threshold-density factor; the survival factors increase under the conservative model.
+
+For an increasing terminal event \(A\), monotonicity also gives
+
+\[
+\widehat P(A)\le P(A).
+\]
+
+Consequently, conditioning preserves the measure comparison:
+
+\[
+\operatorname{TV}
+\!\left(
+\widehat P(\,\cdot\mid A),P(\,\cdot\mid A)
+\right)
+\le
+1-e^{-D\rho}
+\le D\rho.
+\]
+
+**There is no \(1/P(A)\) term.**
+
+This is the central change in what counts as useful learned knowledge: acquire a model whose law remains controlled after conditioning, together with the structure needed to execute that conditioning.
+
+## 4. The rare conditional computation is constructed
+
+Learning the model is only half the task.
+
+Divide a deadline \(T\) into \(N\) bins. During each bin, hold the exposure inputs at their values at its beginning. New triggers influence other components from the next bin.
+
+Using the same thresholds in the held and original systems, the \(j\)-th trigger is delayed by at most \(jT/N\). Scaling all thresholds by \(c\) scales all trigger times by \(c\), and the density condition implies
+
+\[
+p(cT)\ge c^D p(T).
+\]
+
+Combining these facts gives a relative approximation whose grid resolution does not depend on the fastest rate.
+
+The held trajectory is represented by **one trigger-bin variable per component**. Its probability factors over the acquired local scopes, even when the directed interaction graph contains cycles. Ordinary positive variable elimination then computes the event probability and samples conditional bin assignments.
+
+The essential additional step is reconstructing the continuous randomness:
+
+1. Draw a bin assignment conditioned on the requested event.
+2. Draw each original threshold from the interval compatible with that assignment.
+3. Replay the **unheld** learned system using those thresholds.
+
+For a fixed bin assignment, its compatible threshold vectors form a Cartesian product of intervals. This earns the conditional threshold draw explicitly. Returning grid times alone would not earn a continuous-path guarantee.
+
+For the unknown source probability \(p\), the computed held probability \(p_N\), and the resulting ideal conditional path law \(R_N\), the combined theorem is
+
+\[
+e^{-D\rho}
+\left(1-\frac nN\right)^D p
+\;\le\;
+p_N
+\;\le\;
+p,
+\]
+
+and
+
+\[
+\operatorname{TV}\!\left(R_N,P(\,\cdot\mid A)\right)
+\le
+1-e^{-D\rho}
++
+1-\left(1-\frac nN\right)^D
+\le
+D\rho+\frac{Dn}{N}.
+\]
+
+Thus \(\rho=O(\varepsilon/D)\) and \(N=O(Dn/\varepsilon)\) suffice.
+
+For acquired factor width \(w\), preprocessing costs approximately
+
+\[
+O\!\left(n(N+1)^{w+1}\right)
+\]
+
+positive arithmetic operations, with factor construction, event representation, decomposition search and precision charged separately. This is polynomial for fixed width and bounded clock shapes. It can still have a large polynomial degree and large tables.
+
+The acquisition confidence event supports all later adaptive queries at the admitted resolution. The path-TV guarantee is **per requested draw**; errors can accumulate over a long adaptive transcript.
+
+## 5. Executed evidence and the cost reality
+
+The complete run connects the noisy observation interface, scope discovery, decomposition construction, probability computation and conditional sampler. Truth is used only afterward for small-system validation.
+
+| Complete run | Learned structure | Reference probability | Computed lower estimate | Actual relative deficit |
+|---|---|---:|---:|---:|
+| Eight-component cascade with dense weak interactions | Exact graph complete; acquired width \(1\) | \(3.06963\times10^{-23}\) | \(3.03722\times10^{-23}\) | \(1.06\%\) |
+| Three-component cyclic Weibull system | Acquired width \(2\), \(D=6\) | \(6.51913\times10^{-14}\) | \(6.27008\times10^{-14}\) | \(3.82\%\) |
+
+The first reference uses positive full-state uniformization; the second uses independently refined positive quadrature. Neither reference is available to the learner or compiler. Each run generated 250 conditioned trajectories satisfying its deadline. Those checks do not empirically certify total variation; the law bound is analytic. Detailed outputs are in :chatgpt-content-reference{index="8"}[end_to_end_results.json](producer-workspace/end_to_end_results.json).
+
+Independent checks covered **1,233,168 original configurations** across 204 acquisition fixtures, including 180 with dense exact dependence. Every returned model obeyed the one-sided bound, and every learned parent belonged to its latent sparse scope. The complete width search matched brute-force optimal width on all 1,099 graphs with up to five vertices, plus 36 larger small graphs.
+
+**The present acquisition implementation is not economical.** The eight-component run’s conservative Hoeffding protocol represents about **14.9 trillion independent resets**, including failed smaller-degree attempts, and about \(1.81\times10^{13}\) total exposure-time units. These were generated as synthetic aggregate binomial counts—not performed laboratory trials. A tiny local rate still requires inverse-local-rate exposure time.
+
+I also retained the strongest simple empirical counterexample to an advantage claim. On the separate ten-component example with probability around \(3.3\times10^{-37}\), ordinary event-time importance sampling was faster, and its ideal rejection sampler needed only about 81 proposals per conditioned path. **Rarity alone was not an advantage.** The proposed advance is the uniform theorem for the acquired class.
+
+## 6. Boundaries and preserved alternatives
+
+Several limitations are mathematically essential:
+
+- **Inhibition breaks the construction.** Delaying an inhibitory event can create failures that the original process prevents.
+- **Arbitrary evidence is not covered.** Conditioning on “exactly one failure” can change the conditional law by roughly \(0.5\) after a 1% rate change, despite only two components.
+- **The clock scaling condition matters.** A hard incubation threshold can make a small rate change turn a positive deadline probability into zero.
+- **The experiment interface matters.** Fresh reset, independently repeated trials, controllable contexts and the declared clock law are not inferred from finite observations.
+- **The query’s structure must be paid.** A complicated event can make inference hard even when the physical components are independent.
+- **Finite timestamps require a finite-output contract.** A discrete floating-point output law can have TV distance one from a continuous law. I preserved a randomized log-timestamp formulation and a finite-bit construction route; the current software is not an interval-certified implementation.
+
+The capability-originating collaborator began with a fresh conversation context and no prescribed operator-action formulation. It built a different quantum-instrument construction, then found that gate-set tomography and established physical repair methods supplied much of its endpoint. That construction and its failures remain preserved. The separation concerned its starting context; the model, tools and workspace were shared.
+
+The hidden-parity branch is also preserved, including its fixed-noise example where an easily predicted product model becomes computationally hard after conditioning. The previous solver, observability theorem, design consumer and alternatives are included unchanged.
+
+**What is earned is a construction that learns both a robust conditional law and an executable representation for it.** Its theoretical cost avoids inverse global rarity, while retaining explicit dependence on local observability, accuracy and computational width. Making the calibration and retained tables economical remains unresolved.
