@@ -1,0 +1,3 @@
+# Completed finite pulse and native source compiler
+
+Same-lineage completed pulse versions replace the earlier prospective current claim while immutable interim units and raw snapshots remain history. Frozen synthetic acquisitions,shared-principle stronger ordinary postprocessor,static potential-range qualification,amplitude/clock obstructions and physical reset/gate/instrument costs stay explicit. The now received native-source package carries its separate actual source-bound count/whole-receiver/Gibbs/resource reviews;unfavorable padded costs,ordinary wins and the unbound energy-weighted addendum remain distinct. Full quantum execution stays mathematical. No new Capital scientific audit,replay,novelty sign-off or physical observation is inferred.
