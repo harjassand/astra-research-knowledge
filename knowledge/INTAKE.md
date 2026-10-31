@@ -262,3 +262,17 @@ scientific claim uses an immutable scientific revision, rather than this
 input-transcription exception. This remains curator work, not a producer form.
 
 Published readers also support ordinary partial Git clones. Refresh inventories only the selected missing blob identities and fetches them together from the existing validated origin, without changing refs or FETCH_HEAD. The complete committed index is checked without fetching unselected blob contents; every selected source/view still undergoes normal full validation before activation. Independent copied files receive a private staging stat refresh before later read-only snapshot checks. Failed owned stages remain quarantined for diagnosis; they are never registered as served versions. This is part of the same automatic intake path, with no new source metadata, job, key or configuration. Reader-code changes still require reviewed deployment.
+
+## Checkpoint-pinned baselines and current authority rows
+
+The three root claim/status/catalog indexes are immutable checkpoint evidence.
+Keep their pinned bytes at their original paths. A current update to a baseline
+ID uses one complete row in each existing `.d` shard family, with the same card
+identity and a matching current status sidecar. All three replacement sets must
+agree; duplicate current rows fail ingestion. New IDs still use ordinary shards.
+The canonical `knowledge/current` projections combine those explicit current
+authorities with the retained baselines. No producer form is required.
+
+Publication preflight validates retained checkpoint evidence as well as source
+portability and Git membership. A preflight pass is still distinct from the
+terminal actual-base integrity workflow, Pages deployment and live retrieval.

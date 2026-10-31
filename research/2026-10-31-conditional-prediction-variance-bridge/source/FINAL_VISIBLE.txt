@@ -1,0 +1,2376 @@
+The chosen opening: quantum prediction from conditional samples
+
+I developed a general way to use an acquired conditional sampler directly for quantum prediction. The strongest result is a theorem: for a state with known phases, prefix-conditional samples suffice to estimate efficiently described sparse quantum observables with essentially the usual inverse-square Monte Carlo accuracy dependence, while charging the conditional computation.
+
+The key construction is an importance-sampling estimator whose correction variance decreases with the squared amplitude error. That makes increasingly accurate—and increasingly expensive—conditional approximations useful without paying their full cost on every observable sample.
+
+This gives the existing machinery a broader purpose. It can supply nonlocal coherent observables, reduced-state moments, conditional-model comparisons, and some entanglement witnesses through classical computation. The clean coherent interface remains available for outputs that require a quantum state or coherent composition.
+
+I completed a finite implementation that certifies entanglement of its specified pure state at 95% conditional confidence. The constants are substantial: it consumed 931,905,440 conditional draws, and direct computation wins decisively on that small input. The earned advance is the reusable theorem and its verified output interface; a broad practical advantage remains unestablished.
+
+The complete result is preserved in 
+MAIN_RESULT.md
+. The earlier relative-kernel, convex-filter, clean-isometry, pressure-density and failed-route records remain unchanged.
+
+1. What the new theorem actually provides
+
+Write the target state as
+
+∣
+𝜓
+⟩
+=
+∑
+𝑥
+∈
+{
+0
+,
+1
+}
+𝑚
+𝑝
+(
+𝑥
+)
+ 
+𝑒
+𝑖
+𝜃
+(
+𝑥
+)
+∣
+𝑥
+⟩
+.
+∣ψ⟩=
+x∈{0,1}
+m
+∑
+	​
+
+p(x)
+	​
+
+e
+iθ(x)
+∣x⟩.
+
+The phase function 
+𝜃
+θ is supplied and computable. For the inherited positive canonical purifications, it is zero.
+
+The available classical operation is a prefix-conditional sampler: after fixing the first 
+𝑗
+j bits, it can produce samples of the next bit. Its implementation may require a new center, guide table, constrained path calculation, burn-in and finite arithmetic. Those costs remain part of the input to the theorem.
+
+Let 
+𝑂
+O be Hermitian, with efficiently enumerable sparse rows and a certified bound
+
+∥
+𝑂
+∥
+≤
+𝐴
+.
+∥O∥≤A.
+
+Use a power-of-two row-slot bound 
+𝑑
+d, padding unused slots with zeros. This costs less than a factor of two over the actual sparsity and makes row selection an exact finite-bit operation.
+
+The receiver estimates
+
+⟨
+𝜓
+∣
+𝑂
+∣
+𝜓
+⟩
+⟨ψ∣O∣ψ⟩
+
+to additive accuracy 
+𝜖
+ϵ. It needs no supplied target amplitudes or point probabilities.
+
+There are strong antecedents. Adar already constructs lazy distribution simulators from prefix-conditional samples with KL control. Van den Nest already shows how sampling plus amplitude evaluation permits classical simulation of sparse observables. These supply the producer and consumer ideas; they are not discoveries of this turn. 
+arxiv.org
++1
+
+The new derivation connects them with an estimator that controls the cost of improving amplitude accuracy.
+
+Acquiring only the conditional information that is used
+
+At a visited prefix, draw 
+𝑁
+N next-bit samples. If 
+𝐾
+K are ones, store
+
+𝑞
+𝑁
+(
+1
+∣
+𝑦
+)
+=
+𝐾
++
+1
+𝑁
++
+2
+.
+q
+N
+	​
+
+(1∣y)=
+N+2
+K+1
+	​
+
+.
+
+Reuse that value whenever the same prefix is queried within the current estimator replicate. Sampling an output bit uses fresh randomness, independent of the samples used to fit its conditional probability.
+
+Conceptually, every prefix has a preassigned random batch. Together they define one normalized autoregressive distribution 
+𝑞
+𝑁
+q
+N
+	​
+
+. The implementation reveals only the visited prefixes. This deferred-decisions argument avoids constructing an exponential tree and avoids demanding a simultaneous good event at every possible prefix.
+
+The add-one estimate and KL chain rule give
+
+𝐸
+𝐷
+(
+𝑝
+∥
+𝑞
+𝑁
+)
+≤
+𝑚
+log
+⁡
+𝑁
++
+2
+𝑁
++
+1
+≤
+𝑚
+𝑁
++
+1
+.
+ED(p∥q
+N
+	​
+
+)≤mlog
+N+1
+N+2
+	​
+
+≤
+N+1
+m
+	​
+
+.
+
+Consequently,
+
+𝐸
+∥
+𝑞
+𝑁
+𝑒
+𝑖
+𝜃
+−
+𝑝
+ 
+𝑒
+𝑖
+𝜃
+∥
+2
+2
+≤
+𝑚
+𝑁
++
+1
+.
+E
+	​
+
+q
+N
+	​
+
+	​
+
+e
+iθ
+−
+p
+	​
+
+e
+iθ
+	​
+
+2
+2
+	​
+
+≤
+N+1
+m
+	​
+
+.
+
+The finite version also charges the joint-TV error of each conditional batch and rounding of the stored branch probabilities. The ordinary proof is in 
+SPARSE_OBSERVABLE_THEOREM.md
+.
+
+The variance bridge
+
+The simplest form applies to a computable permutation or monomial operator,
+
+(
+𝑃
+𝑎
+)
+𝑥
+=
+𝑤
+𝑥
+𝑎
+𝜋
+(
+𝑥
+)
+,
+∣
+𝑤
+𝑥
+∣
+=
+1.
+(Pa)
+x
+	​
+
+=w
+x
+	​
+
+a
+π(x)
+	​
+
+,∣w
+x
+	​
+
+∣=1.
+
+For two normalized approximate amplitude vectors 
+𝑎
+,
+𝑏
+a,b, define
+
+𝑟
+(
+𝑥
+)
+=
+∣
+𝑎
+𝑥
+∣
+2
++
+∣
+𝑏
+𝑥
+∣
+2
++
+∣
+𝑎
+𝜋
+(
+𝑥
+)
+∣
+2
++
+∣
+𝑏
+𝜋
+(
+𝑥
+)
+∣
+2
+4
+.
+r(x)=
+4
+∣a
+x
+	​
+
+∣
+2
++∣b
+x
+	​
+
+∣
+2
++∣a
+π(x)
+	​
+
+∣
+2
++∣b
+π(x)
+	​
+
+∣
+2
+	​
+
+.
+
+This is an explicit mixture of four sampleable laws. It has no unknown normalizer. Sample 
+𝑥
+∼
+𝑟
+x∼r and return
+
+𝑌
+(
+𝑥
+)
+=
+𝑤
+𝑥
+(
+𝑎
+𝑥
+∗
+𝑎
+𝜋
+(
+𝑥
+)
+−
+𝑏
+𝑥
+∗
+𝑏
+𝜋
+(
+𝑥
+)
+)
+𝑟
+(
+𝑥
+)
+.
+Y(x)=
+r(x)
+w
+x
+	​
+
+(a
+x
+∗
+	​
+
+a
+π(x)
+	​
+
+−b
+x
+∗
+	​
+
+b
+π(x)
+	​
+
+)
+	​
+
+.
+
+Then
+
+𝐸
+𝑌
+=
+⟨
+𝑎
+∣
+𝑃
+∣
+𝑎
+⟩
+−
+⟨
+𝑏
+∣
+𝑃
+∣
+𝑏
+⟩
+,
+∣
+𝑌
+∣
+≤
+2
+,
+EY=⟨a∣P∣a⟩−⟨b∣P∣b⟩,∣Y∣≤2,
+
+and the important bound is
+
+𝐸
+∣
+𝑌
+∣
+2
+≤
+4
+∥
+𝑎
+−
+𝑏
+∥
+2
+2
+.
+E∣Y∣
+2
+≤4∥a−b∥
+2
+2
+	​
+
+.
+	​
+
+
+The proof is short. Set 
+𝐷
+=
+𝑎
+−
+𝑏
+D=a−b and 
+𝑆
+=
+𝑎
++
+𝑏
+S=a+b, so that
+
+𝑎
+𝑥
+∗
+𝑎
+𝜋
+(
+𝑥
+)
+−
+𝑏
+𝑥
+∗
+𝑏
+𝜋
+(
+𝑥
+)
+=
+𝐷
+𝑥
+∗
+𝑆
+𝜋
+(
+𝑥
+)
++
+𝑆
+𝑥
+∗
+𝐷
+𝜋
+(
+𝑥
+)
+2
+.
+a
+x
+∗
+	​
+
+a
+π(x)
+	​
+
+−b
+x
+∗
+	​
+
+b
+π(x)
+	​
+
+=
+2
+D
+x
+∗
+	​
+
+S
+π(x)
+	​
+
++S
+x
+∗
+	​
+
+D
+π(x)
+	​
+
+	​
+
+.
+
+Cauchy–Schwarz bounds the squared numerator using the same four masses that appear in 
+𝑟
+r. Summing over 
+𝑥
+x gives the result.
+
+I extended this to arbitrary row-enumerable sparse Hermitian observables. Sampling an unordered matrix edge gives
+
+𝐸
+𝑌
+2
+≤
+4
+𝑑
+∑
+𝑥
+∣
+𝑎
+𝑥
+−
+𝑏
+𝑥
+∣
+2
+∑
+𝑦
+∣
+𝑂
+𝑥
+𝑦
+∣
+2
+≤
+4
+𝑑
+𝐴
+2
+∥
+𝑎
+−
+𝑏
+∥
+2
+2
+.
+EY
+2
+≤4d
+x
+∑
+	​
+
+∣a
+x
+	​
+
+−b
+x
+	​
+
+∣
+2
+y
+∑
+	​
+
+∣O
+xy
+	​
+
+∣
+2
+≤4dA
+2
+∥a−b∥
+2
+2
+	​
+
+.
+	​
+
+
+The second inequality uses the row-square bound
+
+∑
+𝑦
+∣
+𝑂
+𝑥
+𝑦
+∣
+2
+=
+(
+𝑂
+2
+)
+𝑥
+𝑥
+≤
+𝐴
+2
+∑
+y
+	​
+
+∣O
+xy
+	​
+
+∣
+2
+=(O
+2
+)
+xx
+	​
+
+≤A
+2
+.
+
+This is what makes the construction useful. If the two approximations coincide, the correction is identically zero. Independently subtracting two ordinary observable estimates would retain sampling noise even in that case.
+
+The exact rational checks include complex phases, disjoint supports and probabilities below binary64 range. They also preserve an explicit failure of independent differencing: its variance is approximately 
+0.18372406
+0.18372406 at identical states, while the bridge variance is exactly zero. These checks support the implementation; the general claim rests on the proof.
+
+2. Accuracy, finite constants and full work
+
+Use a geometric sequence of conditional sample budgets. One fully finite schedule proved in the main note is
+
+𝑁
+ℓ
+=
+4
+𝑚
+2
+ℓ
+,
+N
+ℓ
+	​
+
+=4m2
+ℓ
+,
+
+with stored dyadic precision
+
+𝑏
+ℓ
+=
+⌈
+log
+⁡
+2
+ ⁣
+(
+16
+𝑚
+(
+𝑁
+ℓ
++
+2
+)
+2
+ℓ
+)
+⌉
+b
+ℓ
+	​
+
+=⌈log
+2
+	​
+
+(16m(N
+ℓ
+	​
+
++2)2
+ℓ
+)⌉
+
+and conditional-batch joint-TV tolerance
+
+𝜁
+ℓ
+=
+2
+−
+ℓ
+8
+𝑚
+log
+⁡
+(
+𝑁
+ℓ
++
+2
+)
+.
+ζ
+ℓ
+	​
+
+=
+8mlog(N
+ℓ
+	​
+
++2)
+2
+−ℓ
+	​
+
+.
+
+Together these give
+
+𝐸
+∥
+𝑎
+ℓ
+−
+𝜓
+∥
+2
+2
+≤
+1
+2
+ 
+2
+−
+ℓ
+.
+E∥a
+ℓ
+	​
+
+−ψ∥
+2
+2
+	​
+
+≤
+2
+1
+	​
+
+2
+−ℓ
+.
+
+Taking
+
+𝐿
+=
+⌈
+log
+⁡
+2
+32
+𝐴
+2
+𝜖
+2
+⌉
+L=⌈log
+2
+	​
+
+ϵ
+2
+32A
+2
+	​
+
+⌉
+
+makes the final surrogate bias at most 
+𝜖
+/
+4
+ϵ/4.
+
+The observable expectation telescopes:
+
+𝐹
+𝐿
+=
+𝐹
+0
++
+∑
+ℓ
+=
+1
+𝐿
+(
+𝐹
+ℓ
+−
+𝐹
+ℓ
+−
+1
+)
+,
+𝐹
+ℓ
+=
+𝐸
+⟨
+𝑎
+ℓ
+∣
+𝑂
+∣
+𝑎
+ℓ
+⟩
+.
+F
+L
+	​
+
+=F
+0
+	​
+
++
+ℓ=1
+∑
+L
+	​
+
+(F
+ℓ
+	​
+
+−F
+ℓ−1
+	​
+
+),F
+ℓ
+	​
+
+=E⟨a
+ℓ
+	​
+
+∣O∣a
+ℓ
+	​
+
+⟩.
+
+Each difference uses the bridge. Its variance decreases as 
+2
+−
+ℓ
+2
+−ℓ
+, while conditional sampling work increases approximately as 
+2
+ℓ
+2
+ℓ
+. Standard multilevel Monte Carlo allocates many cheap coarse corrections and fewer expensive fine corrections. The allocation principle is established Giles machinery; the application depends on earning the variance bound above. 
+arxiv.org
+
+The cost formula that governs the claim
+
+Let 
+𝑊
+ℓ
+W
+ℓ
+	​
+
+ be the actual capped work of one finite correction sample. It includes conditional setup, conditional draws, row or permutation access, random bits, probability products, phases and numerical evaluation.
+
+A sufficient bound is
+
+𝑊
+ℓ
+≤
+4
+𝑚
+ 
+[
+𝑆
+ℓ
++
+𝑁
+ℓ
+𝐶
+ℓ
+]
++
+𝑊
+r
+o
+w
+,
+ℓ
++
+𝑊
+a
+r
+i
+t
+h
+m
+e
+t
+i
+c
+,
+ℓ
+.
+W
+ℓ
+	​
+
+≤4m[S
+ℓ
+	​
+
++N
+ℓ
+	​
+
+C
+ℓ
+	​
+
+]+W
+row,ℓ
+	​
+
++W
+arithmetic,ℓ
+	​
+
+.
+
+Here 
+𝑆
+ℓ
+S
+ℓ
+	​
+
+ and 
+𝐶
+ℓ
+C
+ℓ
+	​
+
+ are evaluated at the required batch precision. They are not assumed independent of 
+ℓ
+ℓ.
+
+With the conservative rounded variance bounds
+
+𝑉
+ℓ
+=
+25
+𝑑
+𝐴
+2
+ 
+2
+−
+ℓ
+,
+V
+ℓ
+	​
+
+=25dA
+2
+2
+−ℓ
+,
+
+one constant-confidence estimate costs at most
+
+64
+𝜖
+−
+2
+(
+∑
+ℓ
+=
+0
+𝐿
+𝑉
+ℓ
+𝑊
+ℓ
+)
+2
++
+∑
+ℓ
+=
+0
+𝐿
+𝑊
+ℓ
+.
+64ϵ
+−2
+(
+ℓ=0
+∑
+L
+	​
+
+V
+ℓ
+	​
+
+W
+ℓ
+	​
+
+	​
+
+)
+2
++
+ℓ=0
+∑
+L
+	​
+
+W
+ℓ
+	​
+
+.
+	​
+
+
+The second term pays the integer ceilings in the number of samples. An odd number of independent median repetitions at least 
+log
+⁡
+2
+(
+1
+/
+𝛿
+)
+log
+2
+	​
+
+(1/δ) supplies failure probability at most 
+𝛿
+δ. Global representation acquisition and its validity failure are added separately.
+
+Only when uniform source bounds 
+𝑆
+ℓ
+≤
+𝑆
+S
+ℓ
+	​
+
+≤S, 
+𝐶
+ℓ
+≤
+𝐶
+C
+ℓ
+	​
+
+≤C are justified does this simplify, before the displayed ceiling and arithmetic work, to
+
+𝑂
+ ⁣
+(
+𝑑
+𝐴
+2
+𝜖
+2
+[
+𝑚
+𝑆
++
+𝑚
+2
+𝐶
+log
+⁡
+2
+(
+𝐴
+/
+𝜖
+)
+]
+log
+⁡
+1
+𝛿
+)
+.
+O(
+ϵ
+2
+dA
+2
+	​
+
+[mS+m
+2
+Clog
+2
+(A/ϵ)]log
+δ
+1
+	​
+
+).
+
+This is an accuracy theorem for the conditional-sample receiver. It is not an inverse-square bound on the complete physical computation.
+
+A one-bit Bernoulli testing problem gives an 
+Ω
+(
+𝐴
+2
+/
+𝜖
+2
+)
+Ω(A
+2
+/ϵ
+2
+) lower bound in this sample-only model. The same exponent is necessary for additive replica moments in a simple diagonal-state example. I have not established optimality in 
+𝑚
+m, sparsity, logarithms or setup cost.
+
+Inserting the physical solver
+
+I made the physical insertion explicit in 
+PHYSICAL_COST_COMPOSITION.md
+.
+
+It retains:
+
+The acquired interaction decomposition and original-temperature contraction margin.
+The positive retained-mode lattice and its actual node count 
+𝑄
+ℓ
+Q
+ℓ
+	​
+
+.
+The audited finite acceptance floor
+𝑎
+0
+=
+1
+4
+exp
+⁡
+[
+−
+(
+𝑉
++
+1
+)
+/
+2
+−
+1
+]
+.
+a
+0
+	​
+
+=
+4
+1
+	​
+
+exp[−(V+1)/2−1].
+Sampled centers, finite gradient iterations and acceptance validation.
+Coarse full-node guides, AIS moment orders and trajectory lengths.
+Clipping, finite rejection caps and the complete batch-TV allocation.
+Mesh-dependent vector, path, feature and bit work.
+
+For example, the inherited all-node setup enters as
+
+𝑆
+ℓ
+≤
+𝐶
+𝑄
++
+𝑄
+ℓ
+ ⁣
+[
+𝐽
+𝑐
+(
+𝐶
+c
+e
+n
+t
++
+𝑀
+𝑣
+𝐶
+m
+i
+x
+)
++
+1024
+𝑅
+𝑔
+𝐶
+A
+I
+S
+(
+2
+)
++
+𝐶
+g
+u
+i
+d
+e
+]
+.
+S
+ℓ
+	​
+
+≤C
+Q
+	​
+
++Q
+ℓ
+	​
+
+[J
+c
+	​
+
+(C
+cent
+	​
+
++M
+v
+	​
+
+C
+mix
+	​
+
+)+1024R
+g
+	​
+
+C
+AIS
+	​
+
+(2)+C
+guide
+	​
+
+].
+
+The production cost includes the actual rejection cap multiplying a complete AIS trajectory. Thus positive competition and center acquisition can still dominate.
+
+Adding a constant to a likelihood leaves the normalized target and this receiver unchanged. The consequence survives the best likelihood rescaling because it concerns normalized conditional access and a specified output—not an unnecessarily small evidence value.
+
+3. What this lets us compute and infer
+Replica moments from the original conditional source
+
+Let 
+∣
+Ψ
+⟩
+∣Ψ⟩ purify 
+𝜌
+ρ. Cycling a physical subsystem 
+𝐴
+A among 
+𝑘
+k copies gives the established identity
+
+⟨
+Ψ
+∣
+⊗
+𝑘
+𝐶
+𝐴
+(
+𝑘
+)
+∣
+Ψ
+⟩
+⊗
+𝑘
+=
+Tr
+⁡
+(
+𝜌
+𝐴
+𝑘
+)
+.
+⟨Ψ∣
+⊗k
+C
+A
+(k)
+	​
+
+∣Ψ⟩
+⊗k
+=Tr(ρ
+A
+k
+	​
+
+).
+
+Such cycle and SWAP observables have long been used for state functionals and quantum Monte Carlo entanglement calculations. 
+arxiv.org
++1
+
+The useful composition here is precise: order the copies consecutively in the autoregressive string. Then every next-bit conditional of 
+𝑝
+⊗
+𝑘
+p
+⊗k
+ reduces to a prefix conditional of one original copy. This remains true when evaluating a cycle-permuted string.
+
+For an 
+𝑛
+n-spin canonical purification, the receiver has 
+2
+𝑛
+𝑘
+2nk bits, but each source query remains an original single-copy query. It does not acquire a new sewn-replica conditional distribution, a sampler at 
+𝑘
+𝛽
+kβ, or a 
+𝑘
+k-fold coupled retained-mode table.
+
+That is a computational consequence of the already earned prefix closure. It is not a claim that previous replica methods inherently require colder sampling: Humeniuk–Roscilde already developed finite-temperature extended-ensemble methods operating at the temperature of interest. 
+arxiv.org
+
+Mixed-state entanglement witnesses
+
+For disjoint physical regions 
+𝐴
+,
+𝐵
+A,B, opposite cycles give
+
+𝑡
+𝑘
+=
+Tr
+⁡
+ ⁣
+[
+(
+𝜌
+𝐴
+𝐵
+𝑇
+𝐵
+)
+𝑘
+]
+=
+Tr
+⁡
+ ⁣
+[
+𝜌
+𝐴
+𝐵
+⊗
+𝑘
+(
+𝐶
+𝐴
+(
+𝑘
+)
+⊗
+(
+𝐶
+𝐵
+(
+𝑘
+)
+)
+−
+1
+)
+]
+.
+t
+k
+	​
+
+=Tr[(ρ
+AB
+T
+B
+	​
+
+	​
+
+)
+k
+]=Tr[ρ
+AB
+⊗k
+	​
+
+(C
+A
+(k)
+	​
+
+⊗(C
+B
+(k)
+	​
+
+)
+−1
+)].
+
+This is still one computable permutation. The same receiver therefore supplies its additive expectation.
+
+The established 
+𝑝
+3
+p
+3
+	​
+
+-PPT criterion says
+
+𝜌
+𝐴
+𝐵
+𝑇
+𝐵
+⪰
+0
+⟹
+𝑡
+3
+≥
+𝑡
+2
+2
+.
+ρ
+AB
+T
+B
+	​
+
+	​
+
+⪰0⟹t
+3
+	​
+
+≥t
+2
+2
+	​
+
+.
+
+It follows directly from Cauchy–Schwarz on the nonnegative eigenvalues of a positive matrix with trace one. Elben and colleagues give the opposite-cycle formulation and this entanglement criterion in their primary work. 
+preskill.caltech.edu
+
+Jointly valid intervals 
+𝑡
+𝑗
+∈
+[
+ℓ
+𝑗
+,
+𝑢
+𝑗
+]
+t
+j
+	​
+
+∈[ℓ
+j
+	​
+
+,u
+j
+	​
+
+] therefore certify NPT entanglement whenever
+
+max
+⁡
+{
+0
+,
+ℓ
+2
+}
+ 
+2
+>
+𝑢
+3
+.
+max{0,ℓ
+2
+	​
+
+}
+2
+>u
+3
+	​
+
+.
+	​
+
+
+The mixed-state consumer is proved and has exact rational and complex-valued orientation checks. It has not yet been run through the full conditional-sample receiver. It remains separate from the executed pure-state witness below.
+
+Physical approximation remains part of the output
+
+The inherited relative-kernel theorem gives canonical-purification overlap at least 
+sech
+⁡
+𝐸
+sechE. For 
+𝑘
+k copies, the overlap is at least 
+sech
+⁡
+𝑘
+𝐸
+sech
+k
+E, so their trace-norm distance is bounded by
+
+2
+1
+−
+sech
+⁡
+2
+𝑘
+𝐸
+≤
+2
+𝑘
+tanh
+⁡
+𝐸
+≤
+2
+𝑘
+𝐸
+.
+2
+1−sech
+2k
+E
+	​
+
+≤2
+k
+	​
+
+tanhE≤2
+k
+	​
+
+E.
+	​
+
+
+This sharpens the simple linear-in-
+𝑘
+k accumulation.
+
+For physical moment-error allocation 
+𝜂
+p
+h
+y
+s
+η
+phys
+	​
+
+, it suffices to take
+
+𝐸
+≤
+𝜂
+p
+h
+y
+s
+2
+𝑘
+,
+E≤
+2
+k
+	​
+
+η
+phys
+	​
+
+	​
+
+,
+
+then pay the inherited mesh requirement
+
+𝑀
+≥
+max
+⁡
+{
+1
+,
+𝑡
+ℎ
+,
+ 
+2
+𝑘
+ 
+𝑡
+ℎ
+(
+𝑊
++
+2
+𝐺
++
+𝑛
+)
+𝜂
+p
+h
+y
+s
+}
+,
+𝑡
+=
+𝛽
+/
+2.
+M≥max{1,th,
+η
+phys
+	​
+
+2
+k
+	​
+
+th(W+2G+n)
+	​
+
+},t=β/2.
+
+Every source cost is evaluated at this mesh. For a total accuracy request, the physical and receiver budgets are allocated separately and then added.
+
+The output signal also matters. Estimating a moment additively does not give a useful entropy estimate when that moment is exponentially small. Likewise, detecting entanglement through 
+𝑡
+2
+2
+−
+𝑡
+3
+t
+2
+2
+	​
+
+−t
+3
+	​
+
+ requires resolving its actual gap. Ratio estimators, thermodynamic integration, tensor methods and direct quantum measurements remain strong alternatives for those tasks.
+
+Conditional model comparison
+
+A particularly simple inference corollary uses one label bit. Given two prefix sources 
+𝑝
+,
+𝑞
+p,q, define
+
+𝑟
+(
+0
+,
+𝑥
+)
+=
+𝑝
+(
+𝑥
+)
+/
+2
+,
+𝑟
+(
+1
+,
+𝑥
+)
+=
+𝑞
+(
+𝑥
+)
+/
+2.
+r(0,x)=p(x)/2,r(1,x)=q(x)/2.
+
+The label is fair; subsequent conditionals delegate to the selected source. The expectation of label 
+𝑋
+X is
+
+⟨
+𝑋
+l
+a
+b
+e
+l
+⟩
+=
+∑
+𝑥
+𝑝
+(
+𝑥
+)
+𝑞
+(
+𝑥
+)
+.
+⟨X
+label
+	​
+
+⟩=
+x
+∑
+	​
+
+p(x)q(x)
+	​
+
+.
+
+Thus the same receiver estimates Hellinger affinity without supplied point probabilities or fine model normalizers. Acquiring both sources costs the sum of their setup costs.
+
+For the common diagonal-filter quantum family, this affinity of computational-basis marginals equals true root fidelity. That identity belongs to established parallel-model quantum statistics. The contribution here is a scalar receiver from the acquired conditional laws. It does not identify Uhlmann fidelity for unrelated mixed states. 
+arxiv.org
++1
+
+The proof, including the common-kernel physical bias bound 
+2
+𝐸
+2E, is in 
+CONDITIONAL_FIDELITY_COROLLARY.md
+.
+
+4. The completed calculation
+
+The executed source is an explicitly described positive eight-bit state,
+
+∣
+𝜓
+⟩
+=
+∑
+𝑥
+𝑝
+(
+𝑥
+)
+∣
+𝑥
+⟩
+,
+𝑝
+(
+𝑥
+)
+∝
+2
+𝑒
+(
+𝑥
+)
+.
+∣ψ⟩=
+x
+∑
+	​
+
+p(x)
+	​
+
+∣x⟩,p(x)∝2
+e(x)
+.
+
+Its exponent contains a frustrated signed ring, varying fields and the collective penalty
+
+−
+(
+∑
+𝑖
+𝜎
+𝑖
+−
+2
+)
+2
+4
+.
+−
+4
+(∑
+i
+	​
+
+σ
+i
+	​
+
+−2)
+2
+	​
+
+.
+
+The exact coefficients, bit convention and rational acquisition are recorded in the executable and report. All 256 base configurations were enumerated to acquire the source. That acquisition is explicitly exponential in the base bit count.
+
+The receiver then used only conditional Bernoulli samples to estimate the purity of the first four bits through a two-replica SWAP.
+
+Executed resource	Recorded value
+Replica bits	16
+Approximation levels	12
+Independent bridge draws	58,296
+Fresh predictor trees	113,520
+Acquired prefix batches	3,261,455
+Actual conditional source words	931,905,440
+Fresh output words	1,846,612
+Maximum conditional batch	32,768 draws
+Receiver level execution	43.015 seconds
+Full recorded run, including acquisition and reference	43.036 seconds
+
+Every counted conditional draw was generated. A binomial shortcut did not replace the batches, and the receiver did not inspect the source’s masses.
+
+The point estimate was
+
+Tr
+⁡
+𝜌
+𝐴
+2
+^
+=
+0.66050093362969346.
+Trρ
+A
+2
+	​
+
+	​
+
+=0.66050093362969346.
+
+The proved variance bound is 
+1
+/
+256
+1/256. The final surrogate/source bias is at most 
+0.044193217113969924
+0.044193217113969924. Combining these with the finite output-cap and outward arithmetic bounds gives the 95% conditional confidence interval
+
+0.33679921932824980
+≤
+Tr
+⁡
+𝜌
+𝐴
+2
+≤
+0.98420264793113712.
+0.33679921932824980≤Trρ
+A
+2
+	​
+
+≤0.98420264793113712.
+	​
+
+
+Because the described full state is pure, the upper endpoint below one certifies entanglement across that cut. It also gives
+
+𝑆
+2
+(
+𝜌
+𝐴
+)
+,
+ 
+𝑆
+(
+𝜌
+𝐴
+)
+≥
+0.01592346011378789
+ 
+n
+a
+t
+s
+S
+2
+	​
+
+(ρ
+A
+	​
+
+), S(ρ
+A
+	​
+
+)≥0.01592346011378789 nats
+
+on the same confidence event.
+
+This is a statement about the specified pure state with known amplitudes’ phases. It does not certify an unknown device merely because the device reproduces the same computational-basis distribution.
+
+The interval is deliberately conservative. Its 95% half-width is about 
+0.32370
+0.32370; the much smaller observed error is a diagnostic, not the confidence radius. The probability contract assumes independent ideal finite words and the stated arithmetic implementation. The seeded PRNG makes the run reproducible.
+
+The informed direct method wins
+
+The same acquired source permits a direct exact calculation over 65,536 terms. It gives
+
+Tr
+⁡
+𝜌
+𝐴
+2
+=
+0.6756803126319779837722038837258
+…
+Trρ
+A
+2
+	​
+
+=0.6756803126319779837722038837258…
+
+in 0.01750 seconds, after the same 0.00114-second acquisition. The arithmetic reduces to a rational result.
+
+This comparison is retained prominently. The small execution verifies the receiver and its finite confidence contract; it does not establish a useful speed advantage for this source.
+
+The plotted empirical variances are diagnostics. The confidence calculation uses the proved bounds.
+
+The 
+execution report
+, 
+full run record
+ and 
+95% consequence
+ preserve the complete calculation. The exact executed program is retained separately from the current version, which adds a pre-acquisition check rejecting requests finer than its 52-bit source budget supports.
+
+5. What survived the strongest alternatives
+
+The comparison became narrower and more credible as the work progressed.
+
+Exact amplitude access already solves much of this output problem. For a normalized amplitude vector and a permutation, the ordinary amplitude-ratio estimator has second moment at most one. When a tensor representation, analytic formula or exact table makes amplitudes cheap, that method can be preferable.
+
+Conditional amplitude-ratio estimation already exists. Chowdhury and colleagues use conditional auxiliary-variable sampling for neural quantum states, with a correction for finite-inner-sample square-root bias. Their model supplies a joint energy and clamped auxiliary conditionals, which are stronger primitives than an arbitrary next-bit prefix source. This work deserves direct credit. 
+arxiv.org
+
+Standard antithetic nested MLMC can already attain inverse-square accuracy cost under suitable range bounds. If the conditional ratio variable stays in a known interval bounded away from zero, the square-root functional is smooth, and the correction variance can decrease faster than the inner sampling cost grows. Its range, mixing and acquisition constants must be paid. 
+people.maths.ox.ac.uk
+
+The scalar square-root singularity is not an obstruction by itself. Even a one-bit plug-in estimator has uniform inverse-square sample complexity. I retained that counterexample and a randomized-series alternative. Therefore, an 
+𝜖
+−
+4
+ϵ
+−4
+ direct composition is a baseline for one construction—not a lower bound on all alternatives.
+
+The defensible general result is the bridge for arbitrary prefix-only sources and sparse/permutation outputs, with no minimum-probability or bounded-amplitude-ratio promise. Searches did not establish historical priority for this particular combination, and no best-method separation is claimed.
+
+Other failures remain explicit:
+
+Resampling each amplitude evaluation can destroy the common normalized surrogate.
+Sharing predictor randomness with output selection changes the sampled law.
+Reusing one surrogate across all repetitions introduces correlations absent from the stated variance proof.
+Impossible prefixes need a terminating interface.
+Probabilities alone do not supply unknown phases.
+The finite hierarchy does not automatically provide an unbiased infinite-level estimator with both finite work and finite variance.
+Sparse-observable prediction does not simulate arbitrary adaptive quantum measurements.
+
+These attacks are preserved in 
+opportunity_adversarial_comparators.md
+.
+
+6. Two complementary constructions were preserved
+Common-prior quantum barycenters
+
+The information-geometry route produced a useful closure result after primary research identified its established foundations.
+
+For common-prior filtered states with canonical amplitudes 
+𝐴
+𝑖
+A
+i
+	​
+
+, positive cross products make
+
+𝑀
+=
+∑
+𝑖
+𝑤
+𝑖
+𝐴
+𝑖
+,
+𝜌
+ˉ
+=
+𝑀
+𝑀
+†
+∥
+𝑀
+∥
+𝐹
+2
+M=
+i
+∑
+	​
+
+w
+i
+	​
+
+A
+i
+	​
+
+,
+ρ
+ˉ
+	​
+
+=
+∥M∥
+F
+2
+	​
+
+MM
+†
+	​
+
+
+a global maximizer of average root fidelity. This saturates a known general fidelity bound; the geometry and optimization principle are not claimed as new. 
+arxiv.org
+
+The constructive addition is that its generally nonconvex effective filter can be represented through 
+𝑟
+(
+𝑟
++
+1
+)
+/
+2
+r(r+1)/2 convex midpoint components. Their normalizers, centers and prefix tables remain paid.
+
+The crucial correction is that the positive mixture describes squared purification amplitudes. Preparing component quantum states and discarding their labels produces the wrong barycenter. The clean compiler must reconstruct the square root of the full law and erase the temporary information. Standard LCU, supplied with the same earned clean preparations, remains a strong alternative with success at least 
+1
+/
+𝑟
+1/r.
+
+Noncommuting thermal discrimination
+
+The independent discrimination route supplies a complete physical-error and scalar-minimization construction for
+
+𝑄
+(
+𝑠
+)
+=
+Tr
+⁡
+(
+𝑒
+𝑠
+𝛽
+𝐾
+0
+𝑒
+(
+1
+−
+𝑠
+)
+𝛽
+𝐾
+1
+)
+𝑍
+0
+𝑠
+𝑍
+1
+1
+−
+𝑠
+,
+𝜉
+=
+−
+min
+⁡
+𝑠
+∈
+[
+0
+,
+1
+]
+log
+⁡
+𝑄
+(
+𝑠
+)
+.
+Q(s)=
+Z
+0
+s
+	​
+
+Z
+1
+1−s
+	​
+
+Tr(e
+sβK
+0
+	​
+
+e
+(1−s)βK
+1
+	​
+
+)
+	​
+
+,ξ=−
+s∈[0,1]
+min
+	​
+
+logQ(s).
+
+For shared interactions and transverse rates with changing longitudinal fields, this is a switched field on one 
+𝛽
+β-cycle. Wang and colleagues already used the half-cycle expression in quantum Monte Carlo, so the representation itself is credited as prior machinery. 
+journals.aps.org
+
+A completed six-spin frustrated dense calculation certifies
+
+1.0396523550997873
+≤
+𝜉
+≤
+1.0540032485027695.
+1.0396523550997873≤ξ≤1.0540032485027695.
+	​
+
+
+The direct spectral diagnostic is 
+1.0432574420
+1.0432574420. Fixed 
+𝑍
+Z-basis readout gives 
+0.9350860160
+0.9350860160, while incorrectly replacing the switched evolution with an averaged Hamiltonian gives 
+1.0846687368
+1.0846687368. Thus the small computation resolves a real noncommutativity issue. It does not construct the optimal discrimination measurement or execute the general path sampler.
+
+The 
+Chernoff report
+ preserves the physical interval, acquired input, finite arithmetic assumptions and stronger small-instance comparator.
+
+Preserved result and remaining burden
+
+The organizing principle earned here is that a validated conditional sampler can serve as a computational representation for quantum prediction. The receiver can spend accuracy where a particular observable needs it, with a proved variance law and complete conditional-access accounting.
+
+For the inherited physical family, that representation now supports additive replica moments, resolved entanglement witnesses and conditional-model fidelity comparisons while keeping the physical target and its approximation budget explicit. The completed purity run demonstrates one such output through the full finite implementation.
+
+The remaining scientific burden is a physically interesting interacting regime where the acquired source’s actual costs and a resolved nonlocal signal make this receiver competitive with informed direct methods. Positive competition, setup and signal resolution still determine that outcome.
+
+The ordinary proofs, executable work, corrections and useful failures are indexed in 
+RESEARCH_RECORD.md
+. The 
+source record
+ includes Astra’s governing navigation and the primary comparisons. The 
+cost ledger
+ and 
+manifest
+ preserve the measured work, implementation hashes and unchanged numerical dependencies.
