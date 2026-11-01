@@ -1,0 +1,3 @@
+# Predictable-rate resources and partial scalar-acquisition update
+
+ONE received originalcommon-rate archive carries mathematical and repaired-v2whole acceptance with exact positive-box/process/observation/predictable-risk assumptions. OrdinaryPoissonshorttask wins; enormous heads/crossover/fullPsi evaluation costs remain. The separately visible scalar-acquisitionZIP was NOT acquired after one uncertainattempt/no retry; only its description and claimed review scope are stored. Delayed-returnfinalstability remains OPEN. No scientificreproof/replay/noveltysignoff/newexport, chemistrynonoperational/biologyhold/source-accessquarantine remain.

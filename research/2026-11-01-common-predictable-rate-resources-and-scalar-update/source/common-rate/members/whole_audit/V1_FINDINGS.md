@@ -1,0 +1,24 @@
+# Frozen v1 executable boundary — not whole accepted
+
+Source manifest `16c0b44e613b2b779422ac81c7356d6b31ed61f47180d8ad177154527bfe9a44`; executable `a5b1049d3af540c8cf6df2f1cf3f540ccc48827d27bf68830154637daeb1845e`. All 22 bindings match and are preserved in `frozen_v1/`. The independent mathematical gate remains PASS, receipt `6c1793584c66020e3349b7eab76031d695e2c07222557469e3dc8da638f30e7b`; its full copied manifest was verified. These executable failures do not negate its mathematical proof.
+
+## Actual defects and narrower receiving boundary
+
+1. `tail_recipe` includes the original `p['CF_expression']` object in a returned nested expression. Editing that returned coefficient mutates the already acquired scalar certificate and affects future tail recipes. A public result should not alias private/source proof state this way. The exact witness sets only a returned coefficient to zero and observes the next recipe using zero.
+2. `RiskLedger.allocations` exposes its actual mutable list, and `total` / `spent` are publicly writable. List mutation invalidates the recorded positive-allocation invariant; resetting public spent permits further admission despite previous reservations. Protection against Python private-state introspection is not required, but ordinary public views should be immutable/read-only for the advertised ledger contract.
+3. A 1,100-level JSON byte payload leaks RecursionError; a zero-denominator QHEX leaks ZeroDivisionError; malformed tag arity and invalid JSON leak uncategorized parse exceptions. The wire bytes limit alone does not provide a clean structural receiving/refusal boundary. Safe finite-depth/node validation and controlled refusal are required, without materializing an overbudget child stack first.
+4. `receive_resource_budget(raw, claimed)` recomputes N0/horizon/failure from the claim itself, not separately supplied original task parameters. It is a self-contained arithmetic receipt check, not original-request binding. This is distinct from the still-external truth obligation N0>=actual current count. Author agreed to add mandatory external request binding rather than overstate the v1 interface.
+
+Exact source-bound diagnostic: `api_v1_diagnostic.py` and `.json`. No huge allocation was attempted and no source was edited. Author/root were notified promptly; a separately frozen repair is pending. V1 findings remain preserved after any repair.
+
+## Passing unaffected work
+
+All three complete author scripts ran on copied code. Their three result reports and the saved scalar/resource certificates match the original frozen bytes exactly. This includes 14 full-box interval drifts beyond the enormous finite head, the 2^(-200)..2^200 extreme scalar input, and a 30-satellite scalar constructor with face/profile/drift helpers replaced by raising stubs. That deliberate disabling proves those helpers are not used during scalar acquisition; it is not a profile-evaluation test.
+
+Independent arithmetic: 9,375 assertions across 48 actual raw boxes including duplicate channels, row shuffles and nonfirst port axes; all endpoint constants/scalars, 288 independent resource tasks, exact dyadic minima, actual small full profiles and worst-box drift, and the ordinary/Foster crossover neighbors.
+
+Independent core controls: 12,751 assertions with 864 expected exceptions, including 774 full proof-leaf mutations, 6,000 actual rate-to-intensity checks, 2,048 predictable ledger prefixes, immutable RateGuard input/request behavior and strict declared budget types. These passing assertions do not erase the four material v1 boundary findings. Protocol rejection statuses were additionally checked without changing valid prior rates or ledger reservations.
+
+The first independent arithmetic draft sorted hub vectors but not the derived edge-index tuples; its first fixture comparison correctly failed on tuple ordering. The initial script/error are retained. The corrected independent reference sorts edge-index pairs canonically and passes; no candidate formula was changed. One initial shell launch used the wrong copied-script cwd, exited before code execution, and was safely rerun with the explicit correct path; it was not an uncertain/denied action.
+
+The scalar proof acquires a single common function with correct lower/upper endpoint roles. Resource caps are exact binary integers obtained without expanding t^Nstar or enumerating independent sets. The ordinary immigration cap wins at horizon 1 (count 24, firings 116462), and still wins at 2^1121; the common Foster cap wins at 2^1122. This is an astronomically late mathematical crossover, not a practical finite cap or a finite bound on the infinite-future maximum. The external rate/intensity/predictability and received initial-count contracts remain assumptions; a numeric payload does not prove sensors or actual model membership. Source-access quarantine is retained and is not fresh novelty/source-process clearance.

@@ -1,0 +1,278 @@
+--- v1/common_box.py
++++ v2/common_box.py
+@@ -4,6 +4,7 @@
+ from fractions import Fraction as F
+ from hashlib import sha256
+ import json
++from copy import deepcopy
+ 
+ class Unsupported(ValueError): pass
+ class BudgetRefusal(RuntimeError): pass
+@@ -23,25 +24,132 @@
+ def canonical_bytes(x): return (json.dumps(encode(x),sort_keys=True,separators=(',',':'))+'\n').encode()
+ def digest(x): return sha256(canonical_bytes(x)).hexdigest()
+ 
+-def decode(x):
+-    if isinstance(x,list):return [decode(v) for v in x]
+-    if isinstance(x,dict):
+-        if set(x)=={'QHEX'}:
+-            a,b=x['QHEX']
+-            if type(a)is not str or type(b)is not str:raise Unsupported('rational hex strings')
+-            return F(int(a,16),int(b,16))
+-        if set(x)=={'ZHEX'}:
+-            if type(x['ZHEX'])is not str:raise Unsupported('integer hex string')
+-            return int(x['ZHEX'],16)
+-        return {k:decode(v) for k,v in x.items()}
+-    return x
+-
+-def receive_wire(raw,payload,max_bytes=10000000):
++def _limits(max_nodes,max_depth,max_atom_bits,max_string_chars):
++    for name,value in [('nodes',max_nodes),('depth',max_depth),('atom bits',max_atom_bits),('string characters',max_string_chars)]:
++        if type(value)is not int or value<0:raise Unsupported('nonnegative exact integer '+name+' budget')
++
++def _check_tree(x,*,max_nodes=200000,max_depth=64,max_atom_bits=1000000,max_string_chars=1000000,encoded=False):
++    """Iterative finite expanded-tree admission; aliases are charged each visit.
++    Cycles are refused. Exact built-in containers/atoms only. This limits logical
++    work, not all Python heap overhead or trusted raw-constructor arithmetic.
++    """
++    _limits(max_nodes,max_depth,max_atom_bits,max_string_chars)
++    stack=[(x,0,False)];active=set();nodes=0;scheduled=1
++    while stack:
++        value,depth,leaving=stack.pop()
++        if leaving:active.remove(id(value));continue
++        nodes+=1
++        if nodes>max_nodes:raise BudgetRefusal('finite-tree node budget')
++        if depth>max_depth:raise BudgetRefusal('finite-tree depth budget')
++        typ=type(value)
++        if typ is int:
++            if abs(value).bit_length()>max_atom_bits:raise BudgetRefusal('integer atom bit budget')
++        elif typ is F and not encoded:
++            if max(value.numerator.bit_length(),value.denominator.bit_length())>max_atom_bits:raise BudgetRefusal('rational atom bit budget')
++        elif typ is str:
++            if len(value)>max_string_chars:raise BudgetRefusal('string character budget')
++        elif typ is dict or typ is list or (typ is tuple and not encoded):
++            if id(value) in active:raise Unsupported('cyclic receiving tree')
++            children=2*len(value) if typ is dict else len(value)
++            scheduled+=children
++            if scheduled>max_nodes:raise BudgetRefusal('finite-tree expanded node budget')
++            active.add(id(value));stack.append((value,depth,True))
++            if typ is dict:
++                for key,child in reversed(list(value.items())):
++                    if type(key)is not str:raise Unsupported('exact string dictionary keys required')
++                    stack.append((child,depth+1,False));stack.append((key,depth+1,False))
++            else:
++                for child in reversed(value):stack.append((child,depth+1,False))
++        else:raise Unsupported('unsupported receiving atom or container type')
++    return nodes
++
++def _hex_integer(text,max_atom_bits):
++    if type(text)is not str:raise Unsupported('exact hexadecimal string required')
++    body=text[1:] if text.startswith('-') else text
++    if not body.startswith('0x') or len(body)<=2 or any(c not in '0123456789abcdef' for c in body[2:]):
++        raise Unsupported('canonical hexadecimal integer required')
++    if len(body)-2>(max_atom_bits+3)//4:raise BudgetRefusal('hexadecimal atom bit budget')
++    value=int(text,16)
++    if abs(value).bit_length()>max_atom_bits:raise BudgetRefusal('hexadecimal atom bit budget')
++    if hex(value)!=text:raise Unsupported('noncanonical hexadecimal integer')
++    return value
++
++def decode(x,*,max_nodes=200000,max_depth=64,max_atom_bits=1000000,max_string_chars=1000000):
++    """Bounded wire-tree decoding; malformed values have controlled refusals."""
++    _check_tree(x,max_nodes=max_nodes,max_depth=max_depth,max_atom_bits=max_atom_bits,max_string_chars=max_string_chars,encoded=True)
++    def visit(value):
++        if type(value)is list:return [visit(v) for v in value]
++        if type(value)is dict:
++            if 'QHEX' in value:
++                if set(value)!={'QHEX'} or type(value['QHEX'])is not list or len(value['QHEX'])!=2:raise Unsupported('two-entry rational tag required')
++                a,b=value['QHEX'];num=_hex_integer(a,max_atom_bits);den=_hex_integer(b,max_atom_bits)
++                if den<=0:raise Unsupported('positive rational denominator required')
++                out=F(num,den)
++                if hex(out.numerator)!=a or hex(out.denominator)!=b:raise Unsupported('reduced canonical rational required')
++                return out
++            if 'ZHEX' in value:
++                if set(value)!={'ZHEX'}:raise Unsupported('exclusive integer tag required')
++                out=_hex_integer(value['ZHEX'],max_atom_bits)
++                if abs(out).bit_length()<=4096:raise Unsupported('small integer must use canonical JSON decimal')
++                return out
++            return {k:visit(v) for k,v in value.items()}
++        return value
++    try:return visit(x)
++    except (Unsupported,BudgetRefusal):raise
++    except (RecursionError,MemoryError) as exc:raise BudgetRefusal('decoder runtime resource refusal') from exc
++    except (ValueError,TypeError,KeyError,IndexError,ArithmeticError) as exc:raise Unsupported('malformed numeric wire tree') from exc
++
++def _scan_json(payload,max_nodes,max_depth,max_string_chars):
++    """Pre-parser lexical depth/token guard. JSON grammar remains json.loads'."""
++    depth=0;tokens=0;quoted=False;escape=False;word=False;chars=0
++    for c in payload:
++        if quoted:
++            if not escape and c==34:quoted=False;continue
++            chars+=1
++            if chars>max_string_chars:raise BudgetRefusal('wire string byte budget')
++            if escape:escape=False
++            elif c==92:escape=True
++            continue
++        if c==34:
++            quoted=True;chars=0;word=False;tokens+=1
++        elif c in (91,123):
++            depth+=1;word=False;tokens+=1
++            if depth>max_depth:raise BudgetRefusal('wire nesting budget')
++        elif c in (93,125):
++            depth-=1;word=False
++            if depth<0:raise Unsupported('malformed JSON nesting')
++        elif c in (9,10,13,32,44,58):word=False
++        elif not word:word=True;tokens+=1
++        if tokens>max_nodes:raise BudgetRefusal('wire token budget')
++    if quoted or depth:raise Unsupported('incomplete JSON text')
++
++def receive_wire(raw,payload,max_bytes=10000000,*,max_nodes=200000,max_depth=64,max_atom_bits=1000000,max_string_chars=1000000):
+     if type(payload)is not bytes or type(max_bytes)is not int or max_bytes<0:raise Unsupported('bytes and nonnegative integer byte budget')
++    _limits(max_nodes,max_depth,max_atom_bits,max_string_chars)
+     if len(payload)>max_bytes:raise BudgetRefusal('wire byte budget')
+-    claimed=decode(json.loads(payload))
+-    if canonical_bytes(claimed)!=payload:raise Unsupported('noncanonical wire')
+-    return receive(raw,claimed)
++    _scan_json(payload,max_nodes,max_depth,max_string_chars)
++    def no_float(token):raise Unsupported('floating/nonfinite JSON number not admitted')
++    def decimal(token):
++        # Canonical large integers use hexadecimal tags, not Python's decimal
++        # conversion-limit bypass. At most4096bits are legitimate here.
++        if len(token.lstrip('-'))>1234:raise Unsupported('large JSON integer must use hexadecimal tag')
++        out=int(token)
++        if abs(out).bit_length()>min(4096,max_atom_bits):raise BudgetRefusal('decimal atom bit budget')
++        return out
++    def pairs(items):
++        out={}
++        for key,value in items:
++            if key in out:raise Unsupported('duplicate JSON key')
++            out[key]=value
++        return out
++    try:
++        parsed=json.loads(payload,parse_float=no_float,parse_constant=no_float,parse_int=decimal,object_pairs_hook=pairs)
++        claimed=decode(parsed,max_nodes=max_nodes,max_depth=max_depth,max_atom_bits=max_atom_bits,max_string_chars=max_string_chars)
++        if canonical_bytes(claimed)!=payload:raise Unsupported('noncanonical wire')
++        return receive(raw,claimed,max_nodes=max_nodes,max_depth=max_depth,max_atom_bits=max_atom_bits,max_string_chars=max_string_chars)
++    except (Unsupported,BudgetRefusal):raise
++    except (RecursionError,MemoryError) as exc:raise BudgetRefusal('wire runtime resource refusal') from exc
++    except (ValueError,TypeError,KeyError,IndexError,ArithmeticError,UnicodeError) as exc:raise Unsupported('malformed JSON wire') from exc
+ 
+ def recognize(raw):
+     if type(raw) not in (list,tuple) or not raw: raise Unsupported('nonempty channel box list')
+@@ -102,9 +210,13 @@
+        lyapunov_recipe={'sum':'nonempty independent I','face_weight':'K^(n-|I|)','resource':'2M*A+(2M+2)*NearMass+(M+1)*FarMass','tail':'(1-q^(-(J+M)))/(J+M)','other':'1-e*A/(N+1)+H*inactive_indicator','mask_bound':2**n})
+     return p
+ 
+-def receive(raw,claimed):
++def receive(raw,claimed,*,max_nodes=200000,max_depth=64,max_atom_bits=1000000,max_string_chars=1000000):
++    _check_tree(claimed,max_nodes=max_nodes,max_depth=max_depth,max_atom_bits=max_atom_bits,max_string_chars=max_string_chars)
+     expected=construct(raw)
+-    if canonical_bytes(expected)!=canonical_bytes(claimed): raise Unsupported('canonical certificate mismatch')
++    try:matches=canonical_bytes(expected)==canonical_bytes(claimed)
++    except (RecursionError,MemoryError) as exc:raise BudgetRefusal('canonical receiving runtime resource refusal') from exc
++    except (ValueError,TypeError,KeyError,IndexError,ArithmeticError) as exc:raise Unsupported('malformed canonical claim') from exc
++    if not matches:raise Unsupported('canonical certificate mismatch')
+     return {'status':'SAME_AUTHOR_CANONICAL_RECEIVED_NOT_INDEPENDENT','box_sha256':expected['raw']['canonical_box_sha256'],'certificate_sha256':digest(expected)}
+ 
+ def integer_budget(x,name):
+@@ -128,6 +240,8 @@
+     return tuple(out)
+ 
+ def power(q,k,max_exponent=20000,max_bits=200000):
++    q=rat(q)
++    if q<=0 or type(k)is not int:raise Unsupported('positive rational base and exact integer exponent required')
+     integer_budget(max_exponent,'max_exponent');integer_budget(max_bits,'max_bits')
+     bits=abs(k)*(q.numerator.bit_length()+q.denominator.bit_length())
+     if abs(k)>max_exponent or bits>max_bits: raise BudgetRefusal('rational power budget')
+@@ -189,10 +303,10 @@
+     integer_budget(N0,'received initial total upper bound');integer_budget(level,'level');T=rat(horizon)
+     if T<0: raise ValueError('nonnegative horizon')
+     # Symbolic powers are deliberate. This is not a numeric tail computation.
+-    out={'status':'FACTORED_RESOURCE_TAIL_RECIPE','max_count_upper':{'op':'min','args':[1,{'op':'mul','args':[F(4,3),{'op':'pow','base':p['t'],'exponent':-level},{'op':'add','args':[{'op':'mul','args':[p['Htot'],{'op':'pow','base':p['t'],'exponent':N0}]},{'op':'mul','args':[T,p['CF_expression']]}]}]}]},'box_sha256':p['raw']['canonical_box_sha256']}
++    out={'status':'FACTORED_RESOURCE_TAIL_RECIPE','max_count_upper':{'op':'min','args':[1,{'op':'mul','args':[F(4,3),{'op':'pow','base':p['t'],'exponent':-level},{'op':'add','args':[{'op':'mul','args':[p['Htot'],{'op':'pow','base':p['t'],'exponent':N0}]},{'op':'mul','args':[T,deepcopy(p['CF_expression'])]}]}]}]},'box_sha256':p['raw']['canonical_box_sha256']}
+     if event_threshold is not None:
+         integer_budget(event_threshold,'event threshold');r=p['raw'];rate=r['lam_hi']+r['mu_hi']*level+r['Srate_hi']*level**2
+-        out['event_count_upper']={'op':'min','args':[1,{'op':'add','args':[out['max_count_upper'],{'op':'POISSON_UPPER_TAIL','mean':rate*T,'threshold':event_threshold}]}]}
++        out['event_count_upper']={'op':'min','args':[1,{'op':'add','args':[deepcopy(out['max_count_upper']),{'op':'POISSON_UPPER_TAIL','mean':rate*T,'threshold':event_threshold}]}]}
+         out['event_count_scope']='reaction firings only; level exit counted by the first term; controller overhead excluded'
+     return out
+ 
+@@ -244,28 +358,47 @@
+                 guarantee='conditional on continuing history: P(max_count>=count_level OR reaction_firings>=firing_level)<=failure',
+                 excludes='controller decision/observation costs and unverified physical resources')
+ 
+-def receive_resource_budget(raw,claimed):
+-    """Reacquire from raw box, then compare full requested budget receipt.
++def receive_resource_budget(raw,claimed,*,initial_total_upper_bound,horizon,failure,max_nodes=200000,max_depth=64,max_atom_bits=1000000,max_string_chars=1000000):
++    """Bind arithmetic receipt to a separately supplied CLIENT request.
++    This does not certify the observation contract of its count upper bound.
+     Same-author checking, not an independent implementation.
+     """
+     if type(claimed)is not dict:raise Unsupported('budget dictionary required')
+-    expected=resource_budget(construct(raw),claimed['initial_total_upper_bound'],claimed['horizon'],claimed['failure'])
+-    if canonical_bytes(expected)!=canonical_bytes(claimed):raise Unsupported('resource budget mismatch')
+-    return {'status':'SAME_AUTHOR_RESOURCE_BUDGET_RECEIVED','budget_sha256':digest(expected),'box_sha256':expected['box_sha256']}
++    _check_tree(claimed,max_nodes=max_nodes,max_depth=max_depth,max_atom_bits=max_atom_bits,max_string_chars=max_string_chars)
++    try:expected=resource_budget(construct(raw),initial_total_upper_bound,horizon,failure)
++    except (Unsupported,BudgetRefusal):raise
++    except (ValueError,TypeError,KeyError,IndexError,ArithmeticError) as exc:raise Unsupported('malformed external resource request') from exc
++    try:matches=canonical_bytes(expected)==canonical_bytes(claimed)
++    except (RecursionError,MemoryError) as exc:raise BudgetRefusal('resource receiving runtime resource refusal') from exc
++    except (ValueError,TypeError,KeyError,IndexError,ArithmeticError) as exc:raise Unsupported('malformed resource claim') from exc
++    if not matches:raise Unsupported('resource budget or external request mismatch')
++    return {'status':'SAME_AUTHOR_EXTERNALLY_BOUND_RESOURCE_BUDGET_RECEIVED','budget_sha256':digest(expected),'box_sha256':expected['box_sha256']}
+ 
+ class RiskLedger:
+     """Trusted model-level predictable episode allocation; no reset/independence.
+     Only admitted episodes inherit the familywise conditional union guarantee.
++    Public properties/snapshots are immutable; single-owner sequential API.
++    Private-state introspection attacks and unsynchronized concurrent calls are
++    outside this ordinary in-process contract.
+     """
++    __slots__=('_total','_spent','_allocations')
+     def __init__(self,total):
+         total=rat(total)
+         if not 0<total<1:raise ValueError('total failure budget in (0,1)')
+-        self.total=total;self.spent=F(0);self.allocations=[]
++        self._total=total;self._spent=F(0);self._allocations=()
++    @property
++    def total(self):return self._total
++    @property
++    def spent(self):return self._spent
++    @property
++    def allocations(self):return self._allocations
+     def reserve(self,requested):
+         try:
+             a=rat(requested)
+             if not 0<a<1 or self.spent+a>self.total:raise Unsupported('episode risk budget')
+         except (Unsupported,TypeError,ValueError):
+             return {'status':'REJECT_NO_ALLOCATION','spent':self.spent,'remaining':self.total-self.spent}
+-        self.spent+=a;self.allocations.append(a)
++        new_allocations=self._allocations+(a,)
++        new_spent=self._spent+a
++        self._allocations=new_allocations;self._spent=new_spent
+         return {'status':'ADMIT_EPISODE_RISK','episode':len(self.allocations)-1,'failure':a,'spent':self.spent,'remaining':self.total-self.spent}
+--- v1/check_common_box.py
++++ v2/check_common_box.py
+@@ -86,7 +86,7 @@
+ assert sum(after_unreceived_arrival)>stale_bound
+ counts['legal_path_injection_only_upper_bound_checks']=500
+ counts['missed_arrival_ground_truth_counterexample']=1
+-for b in budgets:C.receive_resource_budget(raw,b)
++for b in budgets:C.receive_resource_budget(raw,b,initial_total_upper_bound=b['initial_total_upper_bound'],horizon=b['horizon'],failure=b['failure'])
+ ledger=C.RiskLedger(F(1,10))
+ for j in range(16):assert ledger.reserve(F(1,160))['status']=='ADMIT_EPISODE_RISK'
+ spent=ledger.spent
+--- v1/check_scalar_extremes.py
++++ v2/check_scalar_extremes.py
+@@ -26,9 +26,9 @@
+     assert p['Nstar']>=1+4*r['mu_hi']*p['H']/(p['g']*p['dA'])
+     assert p['nu']<=r['lam_lo'] and p['D']==r['mu_lo']*(1-1/p['t'])
+     assert p['independent_sets_enumerated']==0
+-    b=C.resource_budget(p,17,F(19,7),F(1,1000));C.receive_resource_budget(raw,b)
++    b=C.resource_budget(p,17,F(19,7),F(1,1000));C.receive_resource_budget(raw,b,initial_total_upper_bound=17,horizon=F(19,7),failure=F(1,1000))
+     bad=dict(b);bad['count_level']-=1
+-    try:C.receive_resource_budget(raw,bad)
++    try:C.receive_resource_budget(raw,bad,initial_total_upper_bound=17,horizon=F(19,7),failure=F(1,1000))
+     except C.Unsupported:pass
+     else:raise AssertionError('mutated resource budget received')
+     def scalars(o):

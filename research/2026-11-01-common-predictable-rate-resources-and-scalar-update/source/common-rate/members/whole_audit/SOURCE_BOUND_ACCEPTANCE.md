@@ -1,0 +1,15 @@
+# Source-bound whole executable acceptance — common predictable box v2
+
+**PASS for frozen v2 only. The original v1 remains nonaccepted executable failure history.**
+
+Controlling source: `stochastic_predictable_box_receiver_v2_20261101/AUTHOR_MANIFEST.json`, SHA256 `e54a3514c15a8ce5b0a62c18e28ab0c4b286339f52d880cde952e1c1c40c7112` (33 payloads / 34 strict members). Receiver code SHA256 `774f89413ac6bf3cf2f194c82e06abe878de15b9681fb6c4d36b345f5e41a4bc`.
+
+Controlling review: `WHOLE_REVIEW.md`, 23120 bytes, SHA256 `aba59776675fbffe819583ee57ee9e6798a7612cc7322647be088d5f5c1a3b45`. The unchanged mathematical gate is receipt `6c1793584c66020e3349b7eab76031d695e2c07222557469e3dc8da638f30e7b`, theorem `d53758d6f0a7f311e4a3d06e38882b113680ea5604f74f4e4132d17b8542c7de`; its 4,046 checks are separate from executable evidence.
+
+Actual copied v2 replay passed all four author entrypoints and reproduced all four reports plus both scalar/resource data files byte-for-byte. Independent v2 execution passed **22,367 assertions**, including **1,044 expected negative exception/refusal tests**, complete raw/endpoint/scalar comparisons, 774 scalar proof-leaf mutations, 27 resource proof-leaf mutations, actual rate/intensity and continued-history ledger checks, exact tree/byte/bit budget boundaries, and original external resource-request substitution tests. The v1 alias, public ledger mutation, malformed/deep wire and self-declared-request weaknesses are preserved and independently verified repaired; no numerical/theorem formula changed.
+
+The admitted finite grammar and actual predictable intensity model acquire one common Foster function. They earn conditional per-time moment and finite-horizon count/firing bounds, plus paid repeated-episode risk accounting under the explicit contracts. The actual original short task U=10, T=1, alpha=1/100 chooses the **ordinary immigration Poisson** count level **24** and firing level **116462**. Ordinary still wins at horizon 2^1121; common Foster wins at 2^1122, an astronomical mathematical crossover, not a practical cap.
+
+The resource receiver now binds separately supplied original U/horizon/failure. It does **not** prove U is a true observation, that actual coefficients are predictable/in-box, or that an external episode used a ledger reservation. Those remain model/execution obligations. The rate guard retains the previous admitted rates on rejection; the repaired ledger exposes immutable read-only public views without a private-state or concurrency-security claim. Ledger history copying and all helper/wire budget limits are stated in the full review.
+
+No nonstationary invariant-law, independent/reset episode, finite infinite-future maximum, arbitrary profile cache, controller/observation cost, physical calibration/preparation, operational implementation or novelty claim is accepted. Historical source quarantine remains controlling; this audit made no external retrieval or denied-source retry. All 22 original v1 and 33 v2 payload bindings remain unchanged, and every audit binding is read back before release. No unresolved blocker remains.
