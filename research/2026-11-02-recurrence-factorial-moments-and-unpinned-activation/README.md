@@ -1,0 +1,3 @@
+# Recurrence moments and unpinned activation
+
+Actual authored Sol return with new fractional-factorial/physical-return consequence of accepted terminal-gap premise, and separate paid unpinned activation operation. New conclusions have no independent review. General recurrence/all-face closure remains open. NEWER correction: ordinary deficiency-zero/complex-balance theory already closes recurrence of degree-seven example; old contrary report retained as superseded history. Prior mechanisms credited, original third-party sources linked with rights/provenance; copied fulltexts stay private. Chemistry non-operational.

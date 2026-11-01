@@ -1,0 +1,24 @@
+# Destination and scientific decision
+
+Same sole history-exposed researcher. The preceding capability-origination directory is banked and unchanged. New work in this directory is author-derived, not independent review.
+
+The selected destination is the general structural recurrence principle: for EVERY finite weakly reversible stochastic mass-action reaction list and EVERY positive fixed rate vector, prove nonexplosion and positive recurrence of every actual communicating class. The graph condition already supplies enabled return paths, hence graph-closed classes; nonexplosion and finite mean physical return time still have to be earned. A whole proof would settle the longstanding stochastic recurrence conjecture across arbitrary coupled geometry. It would establish a foundational stability law, not an immediate device or an efficient stationary-distribution algorithm. It is sufficiently consequential to justify sustained depth. Every prescribed exponential stationary moment would be a stronger result and is not inserted into the target by assumption.
+
+A materially different candidate is the exact energy-constrained quantum capacity of a thermal attenuator. The new finite-energy entropy-photon-number theorem and Astra's scoped entropy constructions are substantial assets. However the governing objective is regularized coherent information S(B)-S(E'F), including the thermal purifier and arbitrary multimode inputs. The new unconditional theorem does not give the missing complementary-entropy upper bound or remove regularization. The primary July 2026 non-Gaussian result already beats every single-mode Gaussian input; its small witness is an achieved lower bound, not the full capacity. Astra N586 also preserves a SOURCE-REPORTED explicit positive-conditional-entropy Gaussian counterexample to the naive shared-reference strengthening; this intake did not independently audit it. Thus completing that destination requires at least two distinct major operations, neither newly acquired here. The chemical direction has a more specific newly earned lever: a fixed-width, multiple-linkage bulk receiver. It is retained.
+
+This decision does not declare an advantage by familiarity or score. Primary comparator sources are OpenAI's September 2026 entropy-photon-number manuscript, Mele et al. arXiv:2607.27449v1, and the exact scoped N586 transfer record. Their statements concern different contracts and are not combined into a false capacity consequence.
+
+Source links: [OpenAI's September 24 manuscript](https://github.com/openai/math/tree/main/preprints/The-entropy-photon-number-inequality-September-24-2026), [Mele et al.](https://arxiv.org/abs/2607.27449v1). The N586 governing report is `updates/CH/package/continuation_03_summary/reports/e6_entropy_transfer.txt`, SHA256 `db1d7e70ae9d38ace79728cda7247ed0b4006fef5ecbadd838229b5c7ace0025` in the read-only Astra checkout.
+
+## Work backwards from the whole recurrence theorem
+
+The banked bulk function V0 dissipates in all-high-count states. Its complement is an infinite union of fixed-width low-coordinate strips, their intersections, and classes with conserved finite pools. A compatible global normlike V with LV<=-1 outside a finite set would prove both nonexplosion and finite mean return, and complete the selected target. Merely giving each frozen strip a finite inverse does not produce this V: actual jumps change other inventories, can land in other strips, and feed corrections back into bulk. The missing mathematical object is a global physical-clock return/reward construction, or a representation in which that global construction can be acquired without neighboring profiles.
+
+The one-port conservative-core question remains separate. There u^M already has negative drift at high A. Its low-A face is not solved by the broad bulk theorem, and no infinite-rate homogenization is used to claim equivalence with general recurrence.
+
+Two positive approaches will be developed against the SAME full destination:
+
+1. Acquire actual-time boundary attempts from raw coverability words, keeping all competing reactions and every inventory change. Determine what weighted outward-exit control is still needed to turn those attempts into a global return/reward construction.
+2. Replace phase/fiber transport by finite translated-complex cells with an exact ordinary product-Poisson reference balance. Acquire the local comparison rather than assume it, and determine whether the monotone raw reaction geometry controls global gluing. Neighboring Green-entry ratios are not a premise.
+
+Neither is currently a completed proof. The first requires an inward weighted renewal inequality in addition to an attempt clock. The second requires a global comparison compatible with overlapping cells; local balance and summability alone may be insufficient. Those obligations are diagnostic targets, not supplied interfaces.
