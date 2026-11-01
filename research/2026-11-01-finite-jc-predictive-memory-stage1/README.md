@@ -1,0 +1,3 @@
+# Finite JC predictive-memory receiver: completed solo Stage1
+
+Conditional ALL-classical block encoder comparison at the same source-information cap, contingent on He external tensor converse and supplied component models. Displayed98,304,000pairs/32768-leaf balancedcollector15stages32767combiners,parallelpaths/storage/control paid. Failed transfers/strong ordinary C-to-D credit retained. No new independent composition/converse audit, matched total-resource win or device. All54original source/outputfiles privately frozen; third-party papers/text/pageimages and copied runtime metadata not republished. Complete final replaces never-submitted interim; four truncated command outputs are covered only by actually accessible preserved originals.

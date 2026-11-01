@@ -1,0 +1,130 @@
+FINITE RECIPROCAL OBSERVER AND RENEWAL-BUDGET AUDIT
+2026-11-01. Concrete mathematical and physical-scope review only.
+Read the corrected reference_turnover.py, finite_observer.py and renewal_budget.py.
+The previously identified free-independent-sampling error has been corrected.
+
+1. EXACT FINITE-WINDOW OU SIMULATION IN THE CONTROLLER
+
+Let stationary OU noise have variance v, correlation time tau, and let a=exp(-T/tau).
+Conditional on initial state x0, endpoint noise eta and average noise zeta have
+ Var eta=v(1-a^2),
+ Var zeta=v[2tau/T-4tau^2(1-a)/T^2+tau^2(1-a^2)/T^2],
+ Cov(eta,zeta)=v*tau*(1-a)^2/T.
+The full interval mean has conditional mean tau*(1-a)*x0/T. Root's Gaussian
+construction samples exactly this joint covariance and carries the endpoint
+forward, so correlations between consecutive observation windows are retained.
+The calibration now spends three0.5s zero episodes and two0.5s common-gap episodes,
+followed by1.8s control observation. Actual unload/reload, probe travel, settling,
+latching and part delivery remain explicitly additional time.
+
+2. THE RECIPROCAL ESTIMATOR USES THE STRONG ORDINARY GAUSSIAN SOLUTION
+
+Within held polarity s=+1 or-1, write
+ x_j=rho*x_(j-1)+(1-rho)*s*m+eta_j,
+ y_j=x_j+b+epsilon_j,
+ with eta variance q=v(1-rho^2), independent readout variance R, and arbitrary
+unknown initial state. Then
+ z_j=y_j-rho*y_(j-1)
+    =(1-rho)(s*m+b)+eta_j+epsilon_j-rho*epsilon_(j-1).
+This eliminates the unknown initial state exactly. The covariance is
+ C=qI+R*D*D^T,
+with diagonal q+R(1+rho^2) and adjacent off-diagonal -rho*R. The tridiagonal solve
+in finite_observer.py is correct. Defining h=1^T C^-1 1, the GLS estimate of each
+phase's intercept has variance1/[(1-rho)^2 h]. Independent equal-design phases give
+ Var(m_hat)=1/[2(1-rho)^2 h],
+ with m_hat=(mu_plus_hat-mu_minus_hat)/2 and b_hat=(mu_plus_hat+mu_minus_hat)/2.
+
+This is not a deliberately weakened conventional estimator. In the full Gaussian
+record, each initial-state nuisance contributes the column(1,rho,...,rho^n)^T.
+D annihilates that column and supplies a maximal set of linear invariants. GLS on
+the invariants equals full-record GLS after profiling the two initial-state
+nuisances. It is the BLUE/MLE for the stated linear Gaussian model with known
+response and covariance. A prior, alternative meter, nonlinear inference or an
+additional physical observation changes that model rather than being ignored.
+
+The two phases require independent fresh endpoint readout errors. If an actual
+implementation reuses the same noisy boundary sample as both the last positive
+and first negative reading, its cross-phase covariance must be included. The
+root's34-read implementation gives each phase its own readout, so no such term is
+missing from the stated model. Correlation of the mechanical initial states across
+phases does not itself matter because those states are eliminated.
+
+3. RESPONSE CALIBRATION AND PHYSICAL POLARITY ARE REAL CONDITIONS
+
+Sign reversal must change the physical force-to-meter coupling; multiplying one
+already acquired trace by-1 does not supply a second experiment. The mechanical
+reference, readout offset b and calibrated response must remain valid across both
+holds. Meter gain, time constant, noise covariance, switch transients, latch leakage
+and actuator accuracy are not acquired by the algebra.
+
+In particular, exact annihilation uses calibrated rho. With actual rho different
+from the employed rho_hat, an innovation includes(rho-rho_hat)*x_(j-1). Finite
+calibration error and literally unbounded initial displacement cannot imply
+bounded systematic error. The physical claim should therefore say unknown initial
+states WITHIN a calibrated linear and amplitude range, or provide a bound on rho
+error times initial amplitude. The existing exact-parameter theorem remains valid.
+
+4. THE ALL-COMPLETED-ROUND BOUND IS CORRECT
+
+For the root's fixed cyclic copying protocol, let R_n=w^T r_n with
+w=(0,1/3,2/3), let bar r_n be the arithmetic mean, and D_n=bar r_n-R_n. Starting
+with equal copies, independent Gaussian per-copy errors of variance sigma^2 give
+ Var R_M=4M sigma^2/3,
+ Var D_n=sigma^2[4/27-64^(-(n-1))/432], n>=1.
+The second expression proves Var D_n<=4sigma^2/27 for every n, rather than relying
+on a finite numerical check. It follows from q=(1/3,0,-1/3), qAB=(-1/96,1/48,-1/24)
+and qA^j=(-1/8)^(j-1)qA for j>=1, with qB=(1/12,-1/6,-1/3).
+
+R_n is a Gaussian random walk. Embedding it in Brownian motion and applying the
+reflection bound gives
+ P(max_(n<=M)|R_n|>z_R*sigma*sqrt(4M/3))<=4*Phi(-z_R).
+For D_n, a union bound gives
+ P(max_(n<=M)|D_n|>z_D*sigma*sqrt(4/27))<=2M*Phi(-z_D).
+No independence between R and D or between different D_n is needed. The code's
+z_R=isf(delta_R/4) and z_D=isf(delta_D/(2M)) therefore produce a valid sufficient
+certificate for every completed round. It does not cover mid-repair geometry.
+
+The per-copy error must be TOTAL copying error to apply the result to hardware:
+measurement, write/actuator error, relevant calibration error and correlations.
+The present example declares an observer-limited iid Gaussian case from GLS.
+It should not silently be promoted to the finite motor/latch's complete error law.
+
+The separately listed systematic-bias allowance reserves half the geometric
+precision. The current zero-bias stochastic certificate uses the full precision.
+They cannot be combined without allocating that half to the noise bound as well.
+
+5. THE TERMINAL NECESSARY TIME IS ALSO CORRECT IN THIS ARCHITECTURE
+
+Even ideal continuous observation of the OU path gives conditional Fisher
+information I_m=T/(2v tau) over balanced held-polarity phases. The constant-offset
+cross-information cancels between phases, and arbitrary initial states supply no
+extra prior information. Thus unbiased estimation has variance at least2v tau/T.
+For Gaussian independent copy errors and the fixed cyclic controller, combine it
+with the exact terminal arithmetic-mean variance coefficient c_M to obtain
+ T >= 2v tau*c_M*[Phi^-1(1-delta/2)]^2/precision^2.
+This is the root's necessary-time expression. It distinguishes genuine failure of
+the declared architecture from merely failing a conservative sufficient bound.
+It is not an estimator-independent no-go for biased Bayesian strategies, different
+update rules, correlated-error hardware, additional retained history or standards.
+
+6. OVERLAP EXPOSURE AND THE CODED COMPETITOR
+
+With three renewals per round, two trusted references at risk during each renewal,
+constant independent hazard lambda, and duration Tobs+overhead, no-reference-fault
+survival through M rounds is exactly
+ exp[-6M lambda(Tobs+overhead)].
+The resulting upper window is exact for the chosen no-overlap budget. It is not a
+universal success bound for an architecture that can tolerate, identify or retry
+some faults during a replacement. Stress-dependent hazards, between-round faults,
+common failures and material delivery must be separate physical budgets.
+
+The ordinary coded-reference comparator correctly avoids copy-to-copy accumulation
+if each member is freshly set against retained correct data and a working physical
+dimensional standard. Its arithmetic-mean error variance is sigma_code^2/3 at a
+completed round, and the union-bound calculation is consistent. The standard's
+acquisition, calibration, maintenance and hardware costs remain unpriced; this
+comparison establishes a conditional performance difference, not a total resource
+advantage for either construction.
+
+No concrete algebraic flaw was found in the corrected finite observer or budget.
+The remaining limitations above should remain attached to the final claims.
