@@ -1,0 +1,225 @@
+# A finite two-body meter for feedback-controlled error return
+
+Construction and independent audit, 1 November 2026.
+
+## Purpose
+
+The root investigation proposes storing a sensing qubit in |0_L>=|00>, |1_L>=|11>, allowing sensor jumps J_theta=cos(theta)X+sin(theta)Y to move between even and odd parity, and controlling the scalar jump rate based on imperfect parity information. There is no X correction on the data. Every even total jump history has J_theta factors cancel exactly; theta remains only in odd final parity, which can be erased or removed from the sensing observable.
+
+The challenge is to acquire parity information during continuing sensor noise without a fictitious instantaneous parity oracle or a three-body parity coupling.
+
+## Explicit finite two-body Hamiltonian
+
+Let s be the sensor, a the noiseless reference ancilla, and m a fresh meter initialized in |0>_m. During a finite interval tau use
+
+    H = omega Z_s/2 + g_s Z_s X_m + g_a Z_a X_m,
+    L_theta = sqrt(gamma) J_theta,s.
+
+The two interactions Z_s X_m and Z_a X_m each involve only two qubits. They commute. Their amplitudes are constant during one interval; switching scalar gamma occurs between intervals based on the previous meter outcome.
+
+For a particular sensor jump history, let r(t)=+1 in even parity and -1 in odd parity, and write z=+1/-1 for the ancilla Z eigenvalue, which labels the logical computational basis. Then Z_s(t)=z r(t), while Z_a=z throughout. Put
+
+    Y = integral_0^tau r(t) dt,
+    Phi = g_a tau + g_s Y.
+
+The meter evolution on that logical component is exactly exp(-i z Phi X_m), including jumps during the readout interaction. The signal accumulates exp(-i omega z Y/2).
+
+A final Z_m measurement produces scalar cos(Phi) for outcome 0 or -i z sin(Phi) for outcome 1. With a perfectly reported meter outcome, track a known Z_a frame on outcome 1. Then the meter's action is a scalar on the unknown logical state for EVERY jump history. No logical value has leaked into the retained measurement record. This holds on arbitrary logical-reference inputs. The coherent-erasure extension below removes the assumption that the classical outcome is reported perfectly.
+
+The correction is a software sign frame: Z_a commutes with the signal, sensor jumps, and all subsequent meter interactions. No physical data correction gate is required.
+
+Choose
+
+    g_a tau = pi/4,
+    g_s tau = A,       0 < A <= pi/4.
+
+Then Phi belongs to [0,pi/2], so no unobserved sign ambiguity remains in the scalar amplitudes. Relabel the observed bit as u=+1 for meter outcome 1 and u=-1 for outcome 0. Its trajectory-conditioned probability is
+
+    Pr(u | history) = [1 + u sin(lambda Y)]/2,
+    lambda = 2 g_s.
+
+This is an observation of the integrated parity, not an instantaneous weak endpoint parity measurement. Replacing it by the latter would silently omit sensor faults during interaction. The correct history-dependent observation is tractable exactly.
+
+## Exact observation-transition kernel
+
+For one interval at rate gamma_j define
+
+    q_j = [1-exp(-2 gamma_j tau)]/2,
+    p_j = 1-q_j,
+    d_j = sqrt(gamma_j^2-lambda^2),
+    s_j = lambda exp(-gamma_j tau) sinh(d_j tau)/d_j.
+
+Use the analytic continuation when d_j is imaginary and sinh(d_j tau)/d_j=tau when d_j=0. Since lambda tau<=pi/2, s_j>0 for lambda>0.
+
+Let P_j(r'|r)=p_j for r'=r and q_j for r'=-r. The exact joint kernel of final parity and observed bit is
+
+    K_u^(j)(r'|r) = [P_j(r'|r) + u r s_j 1_{r'=r}]/2.
+
+To prove this, use the telegraph characteristic function. Starting in r=+1, E[sin(lambda Y); even number of jumps]=s_j; the same expectation on odd jump histories is zero by time reversal. Starting at r=-1 changes the sign. This includes all possible jump counts and times.
+
+## Feedback and stationary drift
+
+After u=+1 choose gamma_l for the next interval; after u=-1 choose gamma_h, with 0<gamma_l<gamma_h. The classical hidden state is the pair (current parity r, next rate j), giving a four-state Markov chain.
+
+Set
+
+    Q = q_l+q_h,
+    D = (s_l+s_h) /
+        [2 - (s_l-s_h)(s_l q_h-s_h q_l)/Q].
+
+Define the stationary signed parity populations in each rate setting as
+
+    m_l = Pr(r=+,j=l)-Pr(r=-,j=l) = q_h D/Q,
+    m_h = Pr(r=+,j=h)-Pr(r=-,j=h) = -q_l D/Q.
+
+Then the actual signed sensing exposure per unit elapsed time is
+
+    v = D q_l q_h (1/gamma_l-1/gamma_h)/(tau Q) > 0.
+
+The stationary even-parity probability is
+
+    pi_e = [1 + D(q_h-q_l)/Q]/2.
+
+Derivation: with P_j the total stationary mass at setting j, endpoint stationarity gives q_l m_l+q_h m_h=0. The meter update gives m_l-m_h=s_lP_l+s_hP_h and P_l=[1+s_lm_l+s_hm_h]/2. These three equations yield D above. The expected exposure in an interval beginning at (r,j) is r q_j/gamma_j, which yields v after averaging.
+
+As gamma_j tau tends to zero at fixed lambda tau, s_j tends to sin(lambda tau), and D tends to the same value. Thus the effective weak measurement parameter of the instantaneous idealization is recovered in its controlled limit. At finite tau the actual D is explicitly paid for.
+
+## Final sensing readout without an ideal parity herald
+
+The ideal postselection on even parity would give local information coefficient pi_e v^2. If an exact final parity projection cannot be physically justified, use instead
+
+    A = (X_s Y_a + Y_s X_a)/2.
+
+A equals logical Y within even parity and vanishes within odd parity. Implement its binary POVM by randomly choosing to measure X_s Y_a or Y_s X_a using local Pauli measurements, and discarding the random choice. The resulting two-outcome POVM is (I +/- A)/2. Adjust the final outcome sign by the accumulated meter Z_a frame.
+
+For an initial logical |+> state, its statistics are exactly independent of theta. Near the controlled residual omega=0, the derivative of the expectation is, up to sign,
+
+    derivative_omega <A> = E[Y_total 1_{final even}].
+
+Under the finite-state stationary mixing conditions above,
+
+    E[Y_total 1_{final even}] = pi_e v T + O(1).
+
+The achieved classical Fisher information is therefore
+
+    F = pi_e^2 v^2 T^2 + O(T).
+
+This costs an additional factor pi_e relative to ideal parity heralding, while avoiding a final entangling syndrome extraction. The final local measurement's finite duration and imperfections remain a one-time implementation cost and must be included in an actual device model.
+
+## Physical resources and remaining conditions
+
+* The unknown noise operator must remain the same J_theta under both positive rate settings. The controllable operation changes its scalar rate, not its axis or added error channels.
+* The reference ancilla and meter interactions/readout are ideal in this construction. A real device needs their error model. Constant nonzero logical phase faults per meter cycle can destroy asymptotic quadratic information, so this is not permission to leave them uncharged.
+* Fresh meters prepared in |0> and measured in Z are consumed at rate 1/tau. Preparation/readout delay can be represented by additional classical propagation intervals, but should not be set to zero merely by naming a measurement.
+* Two-body coupling magnitudes are g_a=pi/(4 tau), g_s=A/tau. The weak-measurement limit can trade interaction strength against information and rate contrast.
+* Continuing sensor noise during the full interaction is included exactly in K. It causes no hidden logical leakage because of the meter erasure and known Z_a frame.
+* Meter Z dephasing during the interaction retains the same scalar-or-Z logical structure: it flips the sign of portions of Phi. It weakens/distorts the classical observation but does not itself introduce an unknown logical operation. Meter X faults can change which logical frame is required and are harmful unless detected or protected.
+* Local T^2 information near omega=0 does not provide global phase unwrapping. A controlled compensating Z field and a complete acquisition protocol remain necessary for a global accuracy theorem.
+
+## Extension: coherent erasure, erroneous classical readout, and all deadtime
+
+A classical error in the meter bit would select the wrong Z_a software frame and create a logical fault. It is therefore incorrect simply to insert an erroneous classical readout into the software-frame version and call it a weaker parity meter.
+
+The root construction resolves this with a finite coherent CZ between the reference ancilla and meter before classical measurement:
+
+    U_CZ = I_a tensor |0><0|_m + Z_a tensor |1><1|_m.
+
+On each history it maps the logical-dependent meter state
+
+    cos(Phi)|0> - i z sin(Phi)|1>
+
+to
+
+    cos(Phi)|0> - i sin(Phi)|1>,
+
+which is independent of the unknown logical component. Thus any later meter-only measurement and classical reporting noise acts on an already erased meter. No report-conditioned quantum frame correction is needed.
+
+This CZ uses a two-body ancilla-meter interaction. Its Hamiltonian may be taken proportional to |1><1|_a tensor |1><1|_m, with integrated strength pi. It commutes with continuing sensor signal and sensor jumps. Its nonzero duration, readout latency, and preparation/reset delay are all included in an added duration d during which the OLD selected sensor rate remains active. Set Delta=tau+d.
+
+Suppose the classical bit is flipped independently with probability epsilon<1/2 and put eta=1-2epsilon. Let
+
+    P_j(t) = [[(1+exp(-2 gamma_j t))/2, (1-exp(-2 gamma_j t))/2],
+              [(1-exp(-2 gamma_j t))/2, (1+exp(-2 gamma_j t))/2]],
+    Z = diag(1,-1),
+    b_j=exp(-2 gamma_j d),
+    q_j=(1-exp(-2 gamma_j Delta))/2.
+
+The exact full-cycle observation-transition kernel, using columns for the initial parity, is
+
+    K_u^j(0) = [P_j(Delta) + u eta s_j P_j(d) Z]/2.
+
+The s_j retains the earlier definition from the active meter duration tau. The stored meter information is unaffected by the later parity diffusion, but its correlation with final parity is multiplied by b_j. That distinction is essential.
+
+Define Q=q_l+q_h. The exact stationary coefficient becomes
+
+    D = eta(s_l b_l+s_h b_h) /
+        [2 - eta^2(s_l b_l-s_h b_h)(s_l q_h-s_h q_l)/Q].
+
+Then
+
+    m_l=q_h D/Q,   m_h=-q_l D/Q,
+    v=D q_l q_h (1/gamma_l-1/gamma_h)/(Delta Q),
+    pi_e=[1+D(q_h-q_l)/Q]/2.
+
+These follow from the same stationarity equations, with
+
+    P_l=[1+eta(s_l m_l+s_h m_h)]/2,
+    m_l-m_h=eta(s_l b_l P_l+s_h b_h P_h).
+
+All rates, active interactions, classical readout error, and deadtime are finite. For gamma_h>gamma_l>0, eta>0, lambda tau in (0,pi/2], and finite d, the drift is positive, although it can be very small when the measurement/feedback delay overwhelms the physical noise correlation time.
+
+### Exact nonzero-signal kernel
+
+For executable full likelihoods, define the tilted telegraph propagator
+
+    F_j(omega,t)=exp(t[[-gamma_j-i omega, gamma_j],
+                       [gamma_j, -gamma_j+i omega]]),
+
+and
+
+    S_j(omega,tau) = [F_j(omega-lambda,tau)-F_j(omega+lambda,tau)]/(2i).
+
+The full corrected logical coherence kernel is
+
+    K_u^j(omega)=F_j(omega,d)[F_j(omega,tau)+u eta S_j(omega,tau)]/2,
+
+up to the boundary gauge factor exp[i theta(r-r')] for an input parity r and output parity r'. Those theta factors telescope over every sequence. For final even parity and initial even parity the factor is exactly one.
+
+This formula includes signal accumulation during both active and dead periods, including all hidden jumps. It supplies the actual data likelihood away from the local working point and can support a future global-estimation analysis.
+
+### Independent finite-matrix verification
+
+`verify_sensing_two_body_meter.py` exponentiates the complete 64 by 64 Liouvillian of sensor, reference ancilla and meter, applies the coherent CZ, includes all deadtime sensor noise, and explicitly traces the measured meter. For two rates and two distinct unknown axes, both the population kernel and the logical coherence kernel agree with the stated formulas to below 3e-16.
+
+It also independently solves the four-state stationary chain and confirms the stated D, velocity and even-parity probability to below 3e-16. At gamma_l=0.3, gamma_h=1.2, tau=0.5, d=0.17, A=0.6, epsilon=0.13 it obtains
+
+    D = 0.42075405244053765,
+    v = 0.18377694321338192,
+    pi_e = 0.5872021637510382,
+    pi_e^2 v^2 = 0.011645478598160109.
+
+These numerical examples are finite-dimensional checks of the derivation, not hardware performance predictions. In particular, coherent CZ imperfections and meter/reference faults that are outside the erasure-preserving structure still require explicit bounds and may impose a finite useful operating window.
+
+## General erasure symmetry and the faults it does or does not tolerate
+
+The absence of logical leakage does not require perfectly calibrated equal-axis interactions. For each sensor jump history, suppose the conditional meter Hamiltonian obeys
+
+    Z_m H_m(z,t) Z_m = H_m(-z,t),
+
+and the meter starts in the +1 eigenstate of Z_m. Then time ordering preserves
+
+    U_m(-z)=Z_m U_m(z) Z_m.
+
+Consequently, the two logical components produce the same amplitude on meter state 0 and opposite amplitudes on meter state 1. The coherent CZ erases this relation exactly.
+
+For example, the following family has that symmetry despite arbitrary real, time-dependent coefficients:
+
+    Z_s tensor [a_x(t)X_m+a_y(t)Y_m]
+      + Z_a tensor [b_x(t)X_m+b_y(t)Y_m]
+      + h_z(t) Z_m.
+
+Unknown interaction strengths, unequal transverse meter axes, and meter Z detuning can therefore change the classical observation kernel without necessarily leaking the logical state. A nonzero useful observation bias must still be proved or acquired for the actual controller; symmetry alone does not prove a positive v.
+
+Meter error jumps commuting with Z_m preserve the same trajectory symmetry. Error jumps anticommuting with Z_m add a minus sign between the logical components for each such jump, which becomes an unknown logical Z_a error after coherent erasure. Thus the construction explicitly distinguishes benign meter phase faults in this basis from harmful meter bit faults. The physical hardware basis must be specified before calling its dominant noise benign.
+
+A CZ integrated-angle error also violates the exact erasure. If the intended angle pi is pi+delta, the meter-1 branch retains logical diag(1,exp(-i delta)). With unobserved or erroneous meter outcomes this produces a genuine logical phase channel. Its accumulation is not covered by classical readout robustness and must be budgeted, calibrated, or separately protected.
