@@ -1,0 +1,3 @@
+# Symmetry-protected collective response
+
+Complete supplied final, source-authored theorem/proof and report for a sharp conditional reversible common-equilibrium response enclosure. Exact count-energy quotient, finite-bit/rational solver certificates, source-reported tests, costs and strong ordinary comparisons retained. No source code/testarchive or independent review of new proof received. Proof/report association to displayed attachments is inferred from UI/name/timing after one-click timeouts, not verified download events; no retry or held Library action. Economical general spatial extension, measured material prediction, physical advantage and priority remain unestablished. No Capital scientific reproof/replay/sign-off.
