@@ -1,0 +1,3 @@
+# Source likelihood and linkage barrier: complete visible final, partial originals
+
+Exact17120character nativefinal only; ZIP/PDF/proof/code/audit originals unacquired, saving hold not retried. Specifiedcontrolledrandomsource makes likelihoodobservable; globalall-pathenergybarrier and brakedfinitefeaturepreparation are additionalphysicalcontracts. Separatesyntheticenergy-projectedmap is notlinkagesimulation/continuum/devicecertificate. Full-informationordinarysamplerEXACTTIES, allpreparation/switch/work/overlapcostsretained. Finitedeadlinerisk doesnotearnuncontrolledmeanlifetime. No new scientificreproof/replay/noveltysignoff or accessbypass.

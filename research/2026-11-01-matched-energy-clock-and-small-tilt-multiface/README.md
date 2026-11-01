@@ -1,0 +1,3 @@
+# Matched-energy clock and small-tilt multiface stability
+
+Two newly supplied source-bound completed whole reviews, not two new Capital audits. The same513D/grid retained-state clock meets10%sampled-record TV using new matched witnesses, while continuous-jitter remains vacuous and no actual mean is inferred. Full restricted binary graph family gains recurrence and ONE acquired small-tilt exponential moment, not all-t moments/generalweakreversibility. Real v1/v2 implementation defects and finalv3 repairs/cost/refusals retained. Exact originals and conflicting historical versions preserved. No new science reproof/replay/noveltysignoff/source export. Chemistry non-operational, biology hold/prior source-access quarantine remain.
