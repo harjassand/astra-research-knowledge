@@ -1,0 +1,12 @@
+# Reviewed implementation conventions
+
+1 November 2026. These conventions complete the frozen texts without changing accepted executions or the stated scope. See independent_audit/ACTUAL_RECURSIVE_SAMPLER_BINDING_RECEIPT.md and ABSTRACT_TRACE_POLYMER_RECEIPT.md.
+
+1. Every rejecting local test is a TOTAL deterministic gate: retain a nonzero reject flag and assign remaining outputs deterministically, for example zero correction/coarse outputs. Accepted executions are unchanged. Reject flags are a set of checked outputs, not an unpriced global oracle.
+2. A gate is marked IFF at least one input is nonzero. Nonzero top input objects are marked IFF their bit is1. No extraneous gates, optional zero decorations or inconsistent label assignments are accepted. Every nonzero internal wire must have all its consuming gates included. Complete incident-wire stencils are mandatory even on cancellation gates.
+3. Internal wires may be recorded inside gate stencils or represented as separate objects marked IFF nonzero, equivalently bounded identity-gate subdivision. Use one convention consistently. Their fixed multiplicity/fanout is charged in S and host degree.
+4. Compile the SAME supplied/computable local correction rules and the SAME modified whole-level2 terminal decoder used by the logical frame. Finite-table preprocessing is charged, even if enormous. Do not swap in an unrelated convenient decoder.
+5. The constructive circuit/host is supplied with polynomial construction cost. Near-linear established sampling uses preprocessed random-access local incidence and the source's computational model; finite-bit weights and probability generation are separately charged. The conservative polynomial fallback does not require claiming practical near-linear physical preparation.
+6. Poisson uniformization is capped at ceil(2Rt+2log(1/epsilon_cap)); its tail is at most epsilon_cap. Approximate each event to total-variation error at most epsilon_prob divided by the cap. Charge truncation, mixing, cap and numerical errors separately.
+7. Coherent logical SWAP assumes the incoming input/reference is initially independent of the old memory/bath state. The old memory may have arbitrary logical-gauge-bath correlations. Syndrome computation is uncomputed, not measured.
+8. Physical time, noisy controls, reset/entropy export, injection/readout faults and generic noncommuting bath preparation are unearned. All sampler claims concern the known commuting H0 with the stated supplied encoded input.
