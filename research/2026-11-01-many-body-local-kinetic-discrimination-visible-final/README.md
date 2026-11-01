@@ -1,0 +1,3 @@
+# Many-body local-kinetic discrimination, complete visible final
+
+Source-reported many-body iid and separate known-count laws, whole-cycle records, passive sensitivity/ordinary competitors and extra native joint-label-rate counterresource. Full18209character visible final only; new proof/code/audit originals unreceived, uncertainZIP/failedPDF/rejectedLibrary retries not authorized. Historical predecessor PDF distinct. Exact local-label/common-affinity/initial independence/expected-count/operational-closure boundaries retained; economical joint native operation open. No acquired independent overlay, new reproof/replay/novelty sign-off or physical claim.

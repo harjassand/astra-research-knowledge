@@ -1,0 +1,1741 @@
+Result: predicting a nonlinear network without following its fast reactions
+
+I derived and implemented a way to estimate stationary observables and control responses in a class of interacting stochastic networks, with computational work that does not grow with the population or the magnitudes of the fast interaction rates.
+
+The strongest concrete case is a binary activation network with spontaneous activation rate 
+ℎ
+=
+3
+h=3, decay rate 
+𝛿
+=
+1
+δ=1, and cooperative activation involving pairs of parents. Ordinary transmission and cooperative activation can have arbitrarily large finite rates. For a local query, the construction needs at most 4.5 computational events per unbiased sample in expectation. It also has an explicit bound on the work needed to inspect and update its representation.
+
+That is a sample-cost bound, not the cost of an arbitrarily accurate answer. Accuracy still requires repeated samples, and reading local rules, compiling gates, and processing rate encodings remain charged.
+
+The central principle is:
+
+A bound on the correlations that the physical dynamics can sustain can make their stationary equations computationally contractive, even when the underlying interactions are arbitrarily fast.
+
+Here that correlation bound is derived from the model’s activation and decay dynamics. A stationary distribution, compressed state, favorable sign problem, or known response coefficient is not supplied.
+
+The complete construction, proofs, implementations, numerical comparisons, and retained failures are in:
+
+Activation_Network_Local_Prediction_20261101.zip
+
+The broader objective remains open for weakly seeded collective transitions, general inhibitory dynamics, and relative prediction of rare events. The work below earns a concrete regime in which extensive nonlinear interactions cease to impose a fast-event simulation bill.
+
+1. The question and the mechanism I first tried
+
+I chose the limitation that microscopic simulation often pays for enormous amounts of activity that are irrelevant to the observable being requested.
+
+Suppose we want the eventual activation probability of one component, or the change in a network’s mean activity when a control rate changes. Following every reaction throughout the network can be an expensive route to that answer. Replacing the network by a small effective model might help, but then the difficult operation is acquiring and justifying the reduction.
+
+My first attempt was to eliminate accumulated error using a bounded correction.
+
+If the missing term in a reduced model can be written as
+
+𝑟
+𝑠
+=
+𝐿
+𝑔
+𝑠
+−
+∂
+𝑠
+𝑔
+𝑠
++
+ℎ
+𝑠
+,
+r
+s
+	​
+
+=Lg
+s
+	​
+
+−∂
+s
+	​
+
+g
+s
+	​
+
++h
+s
+	​
+
+,
+
+then its contribution through the Markov semigroup telescopes:
+
+∫
+0
+𝑡
+𝑃
+𝑡
+−
+𝑠
+𝑟
+𝑠
+ 
+𝑑
+𝑠
+=
+𝑃
+𝑡
+𝑔
+0
+−
+𝑔
+𝑡
++
+∫
+0
+𝑡
+𝑃
+𝑡
+−
+𝑠
+ℎ
+𝑠
+ 
+𝑑
+𝑠
+.
+∫
+0
+t
+	​
+
+P
+t−s
+	​
+
+r
+s
+	​
+
+ds=P
+t
+	​
+
+g
+0
+	​
+
+−g
+t
+	​
+
++∫
+0
+t
+	​
+
+P
+t−s
+	​
+
+h
+s
+	​
+
+ds.
+
+The fast part becomes two endpoint terms. It need not accumulate throughout the full elapsed time.
+
+A collaborator substantially constructed this route: for a stirring-and-reaction model, the required correction can be acquired by solving a two-particle problem with 
+(
+𝑁
+2
+)
+(
+2
+N
+	​
+
+) states, rather than a 
+2
+𝑁
+2
+N
+-state microscopic problem. That proof and code are preserved.
+
+Two limitations prevented it from becoming the main result. The general Poisson-corrector approach is established machinery, and a small ordinary prediction error can still give an exponentially wrong rare-event answer. Acquiring a few low-order corrections would not remove the central difficulty.
+
+The genuinely different challenger was to work backward from the requested observable, retaining only its relevant ancestors. Cooperative interactions make those ancestors branch into Boolean alternatives. That led to a positive construction with an explicit storage-cost bound—but its sufficient condition deteriorated as cooperation became stronger.
+
+The surviving construction emerged by changing the normalization of those backward equations. Instead of bounding every intermediate observable pointwise, I bounded its expectation under the laws the physical dynamics can actually produce.
+
+That distinction is what allows strong cooperation to survive the analysis.
+
+2. The precise model and the operation supplied
+
+Each site 
+𝑖
+i has a binary state 
+𝑋
+𝑖
+∈
+{
+0
+,
+1
+}
+X
+i
+	​
+
+∈{0,1}. Its local rules include:
+
+Spontaneous activation: set 
+𝑋
+𝑖
+=
+1
+X
+i
+	​
+
+=1, at rate 
+ℎ
+h.
+Decay: set 
+𝑋
+𝑖
+=
+0
+X
+i
+	​
+
+=0, at rate 
+𝛿
+δ.
+Ordinary transmission:
+𝑋
+𝑖
+←
+𝑋
+𝑖
+∨
+𝑋
+𝑗
+.
+X
+i
+	​
+
+←X
+i
+	​
+
+∨X
+j
+	​
+
+.
+Cooperative activation:
+𝑋
+𝑖
+←
+𝑋
+𝑖
+∨
+(
+𝑋
+𝑗
+∧
+𝑋
+𝑘
+)
+.
+X
+i
+	​
+
+←X
+i
+	​
+
+∨(X
+j
+	​
+
+∧X
+k
+	​
+
+).
+
+The theorem also extends to a finite family of bounded-arity monotone activation gates. “Monotone” means that activating additional parents cannot disable the gate. Feedback loops and arbitrary network topology are allowed.
+
+The input consists of the local rules, their rates, and their parent lists. The population-independent query bound assumes bounded local rule count and arity, with access to the full incoming rule list of a visited site. An explicitly supplied graph still has an input-reading cost. On a succinctly specified graph, those lists can be generated as needed.
+
+For a finite set 
+𝐴
+A, define the vacancy observable
+
+𝐹
+𝐴
+(
+𝑋
+)
+=
+∏
+𝑖
+∈
+𝐴
+(
+1
+−
+𝑋
+𝑖
+)
+.
+F
+A
+	​
+
+(X)=
+i∈A
+∏
+	​
+
+(1−X
+i
+	​
+
+).
+
+Its stationary expectation
+
+𝑢
+𝐴
+=
+𝐸
+𝜋
+𝐹
+𝐴
+u
+A
+	​
+
+=E
+π
+	​
+
+F
+A
+	​
+
+
+is the probability that every site in 
+𝐴
+A is inactive.
+
+The construction supplies an unbiased signed estimator of 
+𝑢
+𝐴
+u
+A
+	​
+
+, together with an estimator of its derivative under a declared rate control. A one-site occupancy probability is simply 
+1
+−
+𝑢
+{
+𝑖
+}
+1−u
+{i}
+	​
+
+.
+
+It does not construct the full stationary configuration. That narrower output is what permits a cost tied to the query rather than to the total population.
+
+3. The decisive operation: acquiring a correlation bound
+
+Consider the simpler process containing only spontaneous activation and decay. Its sites evolve independently, with stationary vacancy probability
+
+𝑧
+0
+=
+𝛿
+ℎ
++
+𝛿
+.
+z
+0
+	​
+
+=
+h+δ
+δ
+	​
+
+.
+
+Couple this process to the interacting network using the same activation and decay marks. Every additional interaction in the network only activates a site. Therefore the interacting process stays above the simpler process coordinate by coordinate.
+
+This gives, for every stationary law of the interacting network,
+
+0
+≤
+𝑢
+𝐴
+≤
+𝑧
+0
+∣
+𝐴
+∣
+.
+0≤u
+A
+	​
+
+≤z
+0
+∣A∣
+	​
+
+.
+	​
+
+
+The interacting sites can be strongly correlated. Their independence has not been assumed. Independence belongs only to the comparison process, whose dynamics are explicitly known.
+
+The bound also does not assume that the interacting process has a unique stationary law. It applies to every candidate invariant law before uniqueness is proved.
+
+Choose a number 
+𝑧
+>
+𝑧
+0
+z>z
+0
+	​
+
+, and normalize:
+
+𝑣
+𝐴
+=
+𝑢
+𝐴
+𝑧
+∣
+𝐴
+∣
+.
+v
+A
+	​
+
+=
+z
+∣A∣
+u
+A
+	​
+
+	​
+
+.
+
+Then
+
+0
+≤
+𝑣
+𝐴
+≤
+1.
+0≤v
+A
+	​
+
+≤1.
+
+This is a bound on the moment vector. The pointwise observable 
+𝐹
+𝐴
+/
+𝑧
+∣
+𝐴
+∣
+F
+A
+	​
+
+/z
+∣A∣
+ can exceed one. Treating it as a bounded observable would be an error.
+
+What happens to a cooperative interaction?
+
+Suppose 
+𝑖
+∈
+𝐴
+i∈A, and a cooperative update at 
+𝑖
+i uses parents 
+𝑗
+,
+𝑘
+j,k.
+
+If either parent is already in 
+𝐴
+A, the update cannot change the queried conjunction: that parent is already required to be vacant. The channel is an exact algebraic no-op and can be removed.
+
+Otherwise the moment replacement is
+
+𝑢
+𝐴
+⟼
+𝑢
+𝐴
+∪
+{
+𝑗
+}
++
+𝑢
+𝐴
+∪
+{
+𝑘
+}
+−
+𝑢
+𝐴
+∪
+{
+𝑗
+,
+𝑘
+}
+.
+u
+A
+	​
+
+⟼u
+A∪{j}
+	​
+
++u
+A∪{k}
+	​
+
+−u
+A∪{j,k}
+	​
+
+.
+
+After normalization, its three coefficients become
+
+𝑧
+,
+𝑧
+,
+−
+𝑧
+2
+.
+z,z,−z
+2
+.
+
+Their total absolute mass is
+
+𝐵
+2
+(
+𝑧
+)
+=
+2
+𝑧
++
+𝑧
+2
+.
+B
+2
+	​
+
+(z)=2z+z
+2
+.
+
+Thus a cooperative interaction, regardless of its physical rate, has a computational continuation mass below one whenever
+
+2
+𝑧
++
+𝑧
+2
+<
+1.
+2z+z
+2
+<1.
+
+The activation-and-decay contribution has continuation probability 
+𝑧
+0
+/
+𝑧
+z
+0
+	​
+
+/z. The entire computation therefore contracts whenever
+
+𝜌
+=
+max
+⁡
+{
+𝑧
+0
+𝑧
+,
+ 
+2
+𝑧
++
+𝑧
+2
+}
+<
+1.
+ρ=max{
+z
+z
+0
+	​
+
+	​
+
+,2z+z
+2
+}<1.
+	​
+
+
+A suitable 
+𝑧
+z exists when
+
+𝑧
+0
+<
+2
+−
+1
+,
+z
+0
+	​
+
+<
+2
+	​
+
+−1,
+
+equivalently,
+
+ℎ
+>
+2
+ 
+𝛿
+.
+h>
+2
+	​
+
+δ.
+	​
+
+
+This is a sufficient condition for this representation. It is not claimed to be the sharp physical or computational threshold.
+
+Crucially, it places no upper bound on the cooperative activation rate.
+
+4. How the algorithm actually runs
+
+The algorithm stores one finite set of sites 
+𝐴
+A and one sign 
+𝑠
+∈
+{
+−
+1
+,
++
+1
+}
+s∈{−1,+1}.
+
+At each step it reads the incoming rules of sites currently in 
+𝐴
+A, removes exact no-ops, and selects among the remaining channels using their original physical rates.
+
+The selected channel is then converted into a computational continuation or termination:
+
+Selected channel	Computational continuation
+Activation/decay contribution at 
+𝑖
+i	Remove 
+𝑖
+i with probability 
+𝑧
+0
+/
+𝑧
+z
+0
+	​
+
+/z; otherwise return zero
+Ordinary transmission from a fresh parent 
+𝑗
+j	Add 
+𝑗
+j with probability 
+𝑧
+z; otherwise return zero
+Cooperative activation from fresh parents 
+𝑗
+,
+𝑘
+j,k	Add 
+𝑗
+j with probability 
+𝑧
+z; add 
+𝑘
+k with probability 
+𝑧
+z; add both and reverse the sign with probability 
+𝑧
+2
+z
+2
+; otherwise return zero
+
+When the support becomes empty, the algorithm returns
+
+𝑌
+=
+𝑠
+ 
+𝑧
+∣
+𝐴
+0
+∣
+,
+Y=sz
+∣A
+0
+	​
+
+∣
+,
+
+where 
+𝐴
+0
+A
+0
+	​
+
+ was the original query support.
+
+Consequently,
+
+𝑌
+∈
+{
+−
+𝑧
+∣
+𝐴
+0
+∣
+,
+0
+,
++
+𝑧
+∣
+𝐴
+0
+∣
+}
+.
+Y∈{−z
+∣A
+0
+	​
+
+∣
+,0,+z
+∣A
+0
+	​
+
+∣
+}.
+
+The negative values are part of an unbiased expectation estimator. They are not interpreted as physical probabilities.
+
+The stationary generator equation shows that the conditional expectation of each step is exactly the normalized moment recursion. The physical product bound supplies bounded terminal values. Since continuation probability is at most 
+𝜌
+<
+1
+ρ<1, the unfinished contribution after 
+𝑛
+n steps has magnitude at most 
+𝑧
+∣
+𝐴
+0
+∣
+𝜌
+𝑛
+z
+∣A
+0
+	​
+
+∣
+ρ
+n
+. Letting 
+𝑛
+n increase proves
+
+𝐸
+𝑌
+=
+𝑢
+𝐴
+0
+.
+EY=u
+A
+0
+	​
+
+	​
+
+.
+	​
+
+
+The same argument shows that all invariant laws have the same finite vacancy moments. Those moments determine the finite-dimensional binary distributions, giving uniqueness under the stated existence conditions.
+
+Why the fast rates disappear from the event count
+
+Let 
+𝐾
+K count computational events, including the terminal event. Then
+
+Pr
+⁡
+(
+𝐾
+>
+𝑛
+)
+≤
+𝜌
+𝑛
+,
+𝐸
+𝐾
+≤
+1
+1
+−
+𝜌
+.
+Pr(K>n)≤ρ
+n
+,EK≤
+1−ρ
+1
+	​
+
+.
+
+The physical rates determine which eligible channel is selected. Every channel individually has a continuation probability bounded below one. Increasing a channel’s rate therefore does not force the computation to follow its repeated physical occurrences.
+
+Removing no-ops before channel selection is essential. Simulating all high-rate clocks and rejecting irrelevant events would reintroduce the cost we are trying to remove.
+
+The explicit 4.5-event regime
+
+For
+
+ℎ
+=
+3
+,
+𝛿
+=
+1
+,
+𝑧
+=
+1
+3
+,
+h=3,δ=1,z=
+3
+1
+	​
+
+,
+
+we obtain
+
+𝑧
+0
+=
+1
+4
+,
+𝜌
+=
+max
+⁡
+{
+3
+4
+,
+7
+9
+}
+=
+7
+9
+.
+z
+0
+	​
+
+=
+4
+1
+	​
+
+,ρ=max{
+4
+3
+	​
+
+,
+9
+7
+	​
+
+}=
+9
+7
+	​
+
+.
+
+Hence
+
+𝐸
+𝐾
+≤
+9
+2
+=
+4.5.
+EK≤
+2
+9
+	​
+
+=4.5.
+	​
+
+
+For a one-site query, the expected number of support sites scanned is at most
+
+1
+1
+−
+𝜌
++
+2
+𝜌
+(
+1
+−
+𝜌
+)
+2
+=
+36.
+1−ρ
+1
+	​
+
++
+(1−ρ)
+2
+2ρ
+	​
+
+=36.
+
+Each scanned site still requires reading its local rules and parents. With one two-parent rule per site, that corresponds to at most 72 parent reads under the stated bound.
+
+The implementation uses exact rational probabilities for the stationary choices. Rate encoding lengths, integer arithmetic, site identifiers, and random-bit generation remain part of the computational bill. The result removes dependence proportional to the numerical rate magnitude; it does not remove the cost of representing that rate.
+
+Accuracy is still paid
+
+For 
+𝑀
+M independent samples,
+
+Pr
+⁡
+ ⁣
+(
+∣
+1
+𝑀
+∑
+ℓ
+=
+1
+𝑀
+𝑌
+ℓ
+−
+𝑢
+𝐴
+∣
+>
+𝜂
+)
+≤
+2
+exp
+⁡
+[
+−
+𝑀
+𝜂
+2
+2
+𝑧
+2
+∣
+𝐴
+∣
+]
+.
+Pr(
+	​
+
+M
+1
+	​
+
+ℓ=1
+∑
+M
+	​
+
+Y
+ℓ
+	​
+
+−u
+A
+	​
+
+	​
+
+>η)≤2exp[−
+2z
+2∣A∣
+Mη
+2
+	​
+
+].
+
+In the explicit one-site regime, about 8,200 samples suffice for one-percentage-point absolute sampling error at 95% confidence under this conservative bound. The corresponding expected event bound is about 37,000, plus the charged local operations.
+
+That cost remains independent of the total population and fast interaction rates.
+
+5. The construction also acquires a control response
+
+Prediction becomes more useful if it tells us how to change the system.
+
+Let a parameter 
+𝜃
+θ multiply a selected family of positive birth rates by 
+𝑒
+𝜃
+e
+θ
+. Keep the activation/decay rates, gate definitions, and normalization 
+𝑧
+z fixed.
+
+At a computational step, let 
+𝑝
+𝐴
+p
+A
+	​
+
+ be the fraction of eligible channel weight belonging to the controlled family. Record
+
+𝑆
+=
+∑
+steps
+[
+1
+{
+selected channel is controlled
+}
+−
+𝑝
+𝐴
+]
+.
+S=
+steps
+∑
+	​
+
+[1{selected channel is controlled}−p
+A
+	​
+
+].
+
+The terminal channel must be included, even when it returns zero.
+
+Differentiating the stopped computation’s path probability gives
+
+∂
+𝑢
+𝐴
+∂
+𝜃
+=
+𝐸
+[
+𝑌
+𝑆
+]
+.
+∂θ
+∂u
+A
+	​
+
+	​
+
+=E[YS].
+	​
+
+
+The response is acquired from the local rules and the same short computation. There is no supplied susceptibility, equilibrium trajectory, or Poisson solution.
+
+Each score increment has conditional mean zero and variance at most 
+1
+/
+4
+1/4. Therefore
+
+𝐸
+[
+(
+𝑌
+𝑆
+)
+2
+]
+≤
+𝑧
+2
+∣
+𝐴
+∣
+4
+(
+1
+−
+𝜌
+)
+.
+E[(YS)
+2
+]≤
+4(1−ρ)
+z
+2∣A∣
+	​
+
+.
+
+For the one-site example,
+
+𝐸
+[
+(
+𝑌
+𝑆
+)
+2
+]
+≤
+1
+8
+.
+E[(YS)
+2
+]≤
+8
+1
+	​
+
+.
+	​
+
+
+The implemented response is directional: it differentiates a declared family of rates. The proof also gives two broader operations.
+
+First, choosing a uniformly random site and querying its occupancy estimates the mean activity of the whole network. This adds a uniform-site sampling requirement, rather than a full-state simulation.
+
+Second, retaining a sparse vector of channel scores yields an unbiased stochastic gradient of that mean with respect to individual log birth rates. Only channels encountered during the local scans need appear in one gradient sample. The proof bounds its squared Euclidean norm independently of population size.
+
+This provides an input to ordinary stochastic optimization. It does not establish global optimality of a resulting design or free simultaneous relative accuracy for every parameter.
+
+6. Stationary preparation is not assumed
+
+A stationary algorithm could conceal another expensive service: waiting for the physical system to equilibrate.
+
+The comparison process supplies an explicit bound from arbitrary initial conditions.
+
+Starting the independent activation/decay process from all zeros gives vacancy probability
+
+𝑧
+𝑏
+(
+𝑡
+)
+=
+𝑧
+0
++
+(
+1
+−
+𝑧
+0
+)
+𝑒
+−
+(
+ℎ
++
+𝛿
+)
+𝑡
+.
+z
+b
+	​
+
+(t)=z
+0
+	​
+
++(1−z
+0
+	​
+
+)e
+−(h+δ)t
+.
+
+After
+
+𝑡
+𝑏
+=
+1
+ℎ
++
+𝛿
+log
+⁡
+1
+−
+𝑧
+0
+𝑧
+−
+𝑧
+0
+,
+t
+b
+	​
+
+=
+h+δ
+1
+	​
+
+log
+z−z
+0
+	​
+
+1−z
+0
+	​
+
+	​
+
+,
+
+the evolved law from any initial configuration has the required moment envelope.
+
+Define
+
+𝑞
+0
+=
+ℎ
++
+𝛿
+−
+𝛿
+𝑧
+>
+0.
+q
+0
+	​
+
+=h+δ−
+z
+δ
+	​
+
+>0.
+
+The normalized signed dynamics then give
+
+∣
+𝐸
+𝜇
+𝐹
+𝐴
+(
+𝑋
+𝑡
+)
+−
+𝐸
+𝜋
+𝐹
+𝐴
+∣
+≤
+𝑧
+∣
+𝐴
+∣
+𝑒
+−
+𝑞
+0
+(
+𝑡
+−
+𝑡
+𝑏
+)
+,
+𝑡
+≥
+𝑡
+𝑏
+.
+∣E
+μ
+	​
+
+F
+A
+	​
+
+(X
+t
+	​
+
+)−E
+π
+	​
+
+F
+A
+	​
+
+∣≤z
+∣A∣
+e
+−q
+0
+	​
+
+(t−t
+b
+	​
+
+)
+,t≥t
+b
+	​
+
+.
+	​
+
+
+For 
+ℎ
+=
+3
+,
+𝛿
+=
+1
+,
+𝑧
+=
+1
+/
+3
+h=3,δ=1,z=1/3,
+
+𝑡
+𝑏
+=
+log
+⁡
+9
+4
+,
+𝑞
+0
+=
+1.
+t
+b
+	​
+
+=
+4
+log9
+	​
+
+,q
+0
+	​
+
+=1.
+
+Thus the stationary predictor can be used for sufficiently late observations from any initial law, with a separately charged deterministic transient error. The bound contains no fast cooperative-rate factor.
+
+This is local moment convergence. It does not imply a population-independent total-variation mixing time for the entire configuration, and it does not solve arbitrary short-time transients.
+
+7. A nontrivial check with a millionfold fast-rate change
+
+A highly active homogeneous network can become almost always occupied. A fast predictor in that setting might merely be returning an obvious answer.
+
+I therefore used a layered system with continuing fluctuations:
+
+Four source sites undergo spontaneous activation and decay.
+Two middle sites activate cooperatively from pairs of sources, at rate 
+𝜅
+κ.
+A target activates cooperatively from the middle sites, at control rate 
+𝛾
+=
+4
+γ=4.
+Every site retains activation rate 
+3
+3 and decay rate 
+1
+1.
+
+The fluctuating sources keep the target probability and its control response nontrivial as 
+𝜅
+κ becomes very large.
+
+An independent implementation ran 160,000 queries at each rate. A full 128-state generator was used only as a numerical comparison.
+
+Fast rate 
+𝜅
+κ	Reference vacancy	Query vacancy ± SE	Reference 
+∂
+log
+⁡
+𝛾
+𝑢
+∂
+logγ
+	​
+
+u	Query response ± SE	Mean query events
+
+1
+1	0.164850	0.164752 ± 0.000450	−0.047733	−0.047585 ± 0.000283	1.923
+
+100
+100	0.138279	0.139096 ± 0.000432	−0.058553	−0.059074 ± 0.000232	2.363
+
+10
+6
+10
+6
+	0.136928	0.136785 ± 0.000431	−0.058829	−0.058979 ± 0.000231	2.376
+
+“SE” denotes one estimated standard error, not a rigorous confidence enclosure. The outputs and discrepancies are retained, including the response estimate at 
+𝜅
+=
+100
+κ=100, which is about 2.24 standard errors from its reference.
+
+The rate-independent cost is a theorem; these experiments check the implementation and show that the tested answer does not become trivial in the fast limit.
+
+Separate checks included:
+
+Exact rational verification of 640 normalized generator identities for several monotone gates and their restrictions.
+117 exact restricted truth-table identities.
+A separate implementation checking 256 pointwise generator identities.
+Exact stationary moment and product-envelope equations for a four-site interacting model.
+
+That four-site check uses cooperation rate 
+100
+100, seed rate 
+2
+2, and decay rate 
+1
+1. The simpler unweighted criterion fails there, while the weighted construction remains valid.
+
+The main implementation uses rational discrete choices. The larger independent Monte Carlo experiment uses floating-point simulation choices and separate exact algebraic checks. Both use seeded pseudorandom generators for reproduction.
+
+8. How far the principle extends
+
+Pair cooperation is the clean explicit case, rather than the boundary of the construction.
+
+For an 
+𝑚
+m-parent AND activation,
+
+𝐵
+𝑚
+(
+𝑧
+)
+=
+(
+1
++
+𝑧
+)
+𝑚
+−
+1.
+B
+m
+	​
+
+(z)=(1+z)
+m
+−1.
+
+The sufficient condition becomes
+
+𝛿
+ℎ
++
+𝛿
+<
+𝑧
+<
+2
+1
+/
+𝑚
+−
+1.
+h+δ
+δ
+	​
+
+<z<2
+1/m
+−1.
+
+The physical seed-to-decay requirement becomes stronger with arity, but the interaction rates remain unrestricted.
+
+For a general monotone activation gate, the compiler considers each restriction induced by parents already required vacant. Every nontrivial restricted vacancy polynomial has zero constant term. Its weighted absolute coefficient mass therefore tends to zero as 
+𝑧
+z decreases. A finite gate family consequently admits the construction at a sufficiently favorable activation/decay ratio.
+
+The compiler’s cost is explicit. Straightforward compilation of every restriction costs 
+𝑂
+(
+𝑚
+3
+𝑚
+)
+O(m3
+m
+) arithmetic operations per 
+𝑚
+m-input gate. Large arity is not free. Structured cooperative gates allow cheaper subset sampling without enumerating all terms.
+
+There is also a heterogeneous extension. With site-specific 
+ℎ
+𝑖
+,
+𝛿
+𝑖
+h
+i
+	​
+
+,δ
+i
+	​
+
+, the acquired envelope is
+
+𝑢
+𝐴
+≤
+∏
+𝑖
+∈
+𝐴
+𝛿
+𝑖
+ℎ
+𝑖
++
+𝛿
+𝑖
+.
+u
+A
+	​
+
+≤
+i∈A
+∏
+	​
+
+h
+i
+	​
+
++δ
+i
+	​
+
+δ
+i
+	​
+
+	​
+
+.
+
+Local normalization weights can then be chosen using inequalities involving the actual parent sets. This permits favorable source sites to support gates whose targets have different physical ratios. For cooperative gates, feasibility of the weights reduces to monotone local inequalities and can be acquired by a scalar search, with graph-reading costs charged.
+
+The general homogeneous gate compiler and directional response are implemented. The heterogeneous weight-selection and sparse-gradient extensions are proved in the accompanying note.
+
+9. What existing research already supplies—and what this derivation adds
+
+The generic ingredients have strong precedents.
+
+Latz and Swart explicitly treat cooperative activation and backward Boolean-function evolution. Their antichain representation already supplies the positive certificate framework. I used it as a serious challenger, rather than treating backward ancestry as a new invention. 
+arxiv.org
+
+Völlering gives a general signed stochastic representation for generators with negative coefficients, including the Feynman–Kac compensation. Converting negative potential into killing is established machinery. 
+arxiv.org
+
+Głuchowski and Menz develop product-basis coefficient criteria for ergodicity and covariance decay. Their continuous-time theorem requires bounded single-site basis values. The present normalized vacancy basis exceeds that pointwise bound, so I supplied a separate proof that its moments are bounded on a physically acquired class of laws, together with a finite entry time from arbitrary starts. I have not proved that every alternative application of their framework fails to recover this regime. 
+arxiv.org
+
+Modern sparse linear solvers also already achieve dimension-independent operations when given suitable matrix-access and contraction conditions. Weare and Webber’s analysis makes those conditions explicit. An informed conventional solver could use the representation constructed here, and may improve on the elementary sampling implementation. 
+arxiv.org
+
+Astra supplied a closely relevant warning. At revision db0969a8586afaa38137a4371b3457c5576fadea, the 
+N807 governing proof already gives bounded nonlinear correction samples, conditional on a certified predictor and global enclosure. Its acquisition limitation remains explicit. That pushed this construction toward obtaining the useful bound directly from the physical rules.
+
+The candidate contribution is therefore specific:
+
+Acquire a locally evaluable, contracting correlation representation directly from activation/decay dynamics, and use it to obtain prediction and response costs independent of arbitrarily large birth-interaction rates.
+
+Historical priority for that complete consequence is not established. Nor has a wall-clock advantage over the strongest suitably informed conventional solver been established. The acquired representation is the main result; generic signed Monte Carlo is not.
+
+10. The decisive unresolved obstruction
+
+The construction works because physical activation and decay supply a correlation envelope strong enough to absorb the absolute coefficients created by nonlinear interactions.
+
+That operation is earned in the stated regime. It is still missing in the regimes most likely to contain difficult collective phenomena.
+
+Three boundaries matter most.
+
+Weak seeding and collective transitions. When the computable continuation bound reaches one, the present cost guarantee fails. That could reflect a poor representation, actual slow dynamics, or multiple infinite-system stationary laws. This work does not distinguish all those possibilities or cross the general transition barrier.
+
+Inhibition and nonmonotone control. General inhibitory rules can leave a constant term in the restricted vacancy polynomial. The weighted coefficient mass may then refuse to fall below one. The preserved unweighted signed construction handles some such gates at limited rates, but it does not provide the arbitrary-strength consequence.
+
+Rare-event relative accuracy. Bounded additive variance does not make an exponentially rare probability cheap to resolve relatively. The retained birth–death counterexample shows how a small local-rate error can induce an exponentially large probability ratio. Nothing here supplies a general rare-lifetime oracle.
+
+The next substantive opening is to acquire a stronger correlation envelope—one that retains enough interacting structure to handle weak fields or inhibition—while keeping its own construction and evaluation affordable. Assuming such an envelope would simply relocate the original many-body problem.
+
+What survives now is a complete theoretical and executable capability: local stationary prediction, late-time prediction from arbitrary starts, and control response for an extensive nonlinear class, with the fast-event cost removed and the remaining computational costs exposed.

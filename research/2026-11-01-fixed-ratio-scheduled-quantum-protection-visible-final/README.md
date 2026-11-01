@@ -1,0 +1,3 @@
+# Later recovered scheduled quantum-protection visible final
+
+Updates existing N1610 and appends four units. Exact normally visible completed final only; claimed627-file archive/proofs/code/results/audits remain unreceived under the existing no-transfer/no-retry hold. Earlier finite-buffer/carrier results and their reported reviews retain historical scope. Later scheduled fixed-ratio mixed reset/live channel and conventional FT family is source-reported, supplied maintained Markov ports/actuators and encoded I/O explicit. No new audit, replay, acquisition, practical advantage or novelty claim.

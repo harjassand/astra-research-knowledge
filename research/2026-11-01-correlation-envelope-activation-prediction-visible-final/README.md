@@ -1,0 +1,3 @@
+# Correlation-envelope activation prediction, normally visible final
+
+Complete24153character visible source, no archive/proof/code/review transfer under existing P3 hold. Source-reported acquired moment envelope and weighted signed local stationary estimator/response/late-time service at explicit local-access/contraction conditions.4.5expected computational events per sample is separate from scans/precision/randomness/accuracy; no full-state/weak-seed/inhibitory/relative rare-event/walltime/physical/priority claim. Mathematical rendering loss explicit. No reproof/replay/new scientific acceptance.

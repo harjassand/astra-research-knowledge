@@ -1,0 +1,3 @@
+# Actual finite clearance and distinct cold clock construction
+
+Two original packages and their changing files preserved; identical content deduplicated. Actual completed independent component/same-path/two-fixture and cold algorithm/cost acceptances at exact scopes. Exactly two populations/separate99percent coverage; complete new prospective abstract cost versus literal event count is narrow, not walltime/physical/retrospective research/strong predictor advantage. Earlier source histories/failed calculations/reserves remain. No Capital reproof, code replay, new scalar solve or novelty sign-off.
