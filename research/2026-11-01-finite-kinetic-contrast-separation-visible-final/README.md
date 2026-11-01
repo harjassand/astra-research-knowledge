@@ -1,0 +1,3 @@
+# Complete visible finite-contrast separation final
+
+The14870-character native final is complete while the original15-page PDF with ordinary proofs has now arrived separately, while archive/code/results/audit files remain unacquired after one uncertain ZIP download and a rejected persistent upload, both no-retry. Source-reported sharp cost and ideal construction retain binary independent-tracer/ideal-mixture finite contrast and shared-affinity conditions throughout, physical-state information scope, history/reset/control burdens, dilute recovery limit and strong conventional comparisons. Finite routing/actuator losses are excluded from the near-bound number. No new Capital scientific reproof/replay/novelty sign-off, hardware result or useful throughput claim.
