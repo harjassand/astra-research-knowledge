@@ -1,0 +1,3 @@
+# Autonomous quantum memory with noisy witnesses
+
+One distinct supplied package with closed independent INTERNAL corrected-criterion/controller/ideal-join/current-lift/finite-join acceptances at exact original versions, preserved DRAFT filenames and failed one-step history. Specified imported Tanner family, minimum-syndrome component, two-step boundary, fixed noise/control ratios, full5n+ancilla budgets and ideal input/output conditions retained. No short-range3D hardware, useful finite-code threshold, native few-body/reset-reservoir realization, practical advantage, historical priority or universal computation. All source/transfer holds preserved; no Capital science replay/reproof/new signoff, contact or export request.
