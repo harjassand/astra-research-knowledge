@@ -1,0 +1,3 @@
+# Chiral composition phase and shared recorder, visible final
+
+Complete16284character source-reported controlled-manifold physical construction only. Exact ideal7state/force-model returns, finite native/rotor tests, balanced filter and equally informed ordinary coherent separator retain different scopes. Conditional populations/omittedstates/field preparation/backaction/escapedrecords/restoration/materialrouting prevent a complete economic advantage claim. OriginalnewPDF/proof/code/audits/archiveunreceived/noPDFretry/noZIPcircumvention/earlierLibraryandtransferholdsmaintained. No Capital reproof/replay/new scientific audit/novelty sign-off.

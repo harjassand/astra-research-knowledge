@@ -1,0 +1,3 @@
+# Collective stationary count enclosure from local rules, visible final
+
+Complete30907character source-reported final plus141supplied rendered math annotations. Acquired spatial correctors and conditional stationary flow give finite relative count enclosures, with separate passage-time arguments. Principal1000site example uses VERYFASTcompletegraph exchange; arbitrarygraph construction has explicit matrix/precision/physicalnorm costs, while useful fixedlocaldiffusion/nucleation remainsOPEN. Sameinformedordinaryflow solver gets samebounds. Originalproof/code/results/audits/archiveUNRECEIVED underP3NOtransfer/export/mirror/repackage/request/retry holds; no acquiredreviewoverlay or new Capital scientific sign-off.
