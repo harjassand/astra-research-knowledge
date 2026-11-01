@@ -1,0 +1,3 @@
+# Response-exact positive rational bath hierarchy
+
+Released authored frozen proof/code/results for one explicit zero-temperature Ohmic Gaussian family. Complete-channel and paid occupation-cutoff constructions are source-reported; new proof not independently reviewed. Exact selected weak thermal zeros do not give all-order coldness: anharmonic two-quantum counterexample preserved. All finite-horizon/input, synthesis/fast-rate/cutoff/full-cycle costs and strongest ordinary comparisons remain. Prior accepted N1510/N1128 scopes retained without importing their verdict into the new interface. No Capital execution/reproof/novelty/signoff; continuing researcher directory and excluded third-party papers untouched.
