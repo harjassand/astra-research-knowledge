@@ -1,0 +1,3 @@
+# Reachable-sector seven-level memory:partial source
+
+Exact20000character prefix only. Seven-levelDATA/tworesetqubits/13number-resolvedexchanges uses simultaneousloss/Markoviannumberdephasing and noisycontrollers. Source-reported exact occupation PLUSseparatecoherenceresponse/calibration are not independently verified here;originalwitness/calibrationmaterial andtailunread/unreceived. Physicalpathindistinguishability/smallerinteractioncountNOTmatchedhardwarewin. P3noattachmenttransfer/upload/export/repackage/previewretry boundary remains;no Capital reproof/replay/noveltysign-off.

@@ -1,0 +1,13 @@
+# Finite coherent receiver with a genuinely released output
+
+Accepted only within the stated supplied model, with a controlling source-branch qualification. Read author/SOURCE_BRANCH_QUALIFICATION.md first, then the two candidate proofs and review/INDEPENDENT_RECEIPT.md. Original CANDIDATE headers remain immutable; the independent receipt binds those exact bytes plus the qualification.
+
+The useful result is a complete finite-source/finite-cavity error certificate that retains endpoint distinguishability, followed by a paid finite chi-off ramp and source-blind SWAP into an isolated output memory while the original source keeps running. The supplied example has complete-error upper 0.009690440319143791 against target 0.01. Its separate 0.001 residual-error allowance is ASSUMED, not earned from calibrated components. The 70-row comparison grid retains failures.
+
+Ordinary coherent feed-forward, coherent-state geometry and exact telegraph handoff are the winning methods. There is no new cancellation engine, hardware acquisition, threshold proof or broad architectural advantage. Here the source is unwanted noise and the intended graph gates are independently supplied; avoiding the source, ordinary DD/QEC or a different architecture may win. The comparison with leaving this same source uncorrected is not a universal advantage.
+
+Physical premises remain substantial: initialized cold source/cavity and vacuum ports, a Markov unidirectional cascade, the dispersive shift over occupied sectors, high routing/external-coupling efficiency, chi switching with specified slew, fast source-blind SWAP, and a separate physically isolated output memory with its own continuing-noise budget. A trace at time T is not that release service. Branch source/field moments are conditional on data Z, never unconditional moments of a data superposition.
+
+Strict allowlist, hashes and original manifests are retained. No optional photon-sector extension or new gate-producing B-squared bus work is included in this accepted receipt.
+
+Portable replay: in a fresh directory merge copies of author/* and review/*; run python certify_scalar_budget.py; python certify_release.py; python check_coherent_cascade.py; python test_coherent_receiver.py; python independent_join_audit.py; python independent_certificate_audit.py. Dependencies: NumPy, SciPy, SymPy, mpmath. Exact rational certificates are distinguished from finite-Fock numerical diagnostics. BUILD_PACKAGE.py records the originating strict build/replay procedure; its source directory names are workspace construction provenance, not needed to run the extracted scripts.

@@ -1,0 +1,14 @@
+# Final source-bound theorem acceptance
+
+**PASS, theorem-only**, for `EXACT_KINETIC_LIFT_CANDIDATE.md`, SHA-256 `7d9841aa8604523aa44f921c90c4da986a5932755408351da161affe890a9242`.
+
+Read this final binding together with `DERIVATION_REVIEW.md`. The exact all-start projected path law, tangent freedom, critical alpha>=1 origin exclusion, full-state nonexplosion, Gibbs stationarity, raw positive-polynomial coercivity grammar, all-pair SPD tangent construction, and fixed clamped-protocol CIR/Laplace/mixture formulas pass at the scopes detailed there. No candidate executable, finite CDF enclosure, autonomous hitting-time solver, adaptive controller, empirical acquisition, hardware realization, or priority claim is accepted.
+
+Two findings were corrected while preserving prior versions:
+
+1. Initial `e14bda94da6bd3993045d1fbeeed439b6a9ffbff058dbdd3fcc47f2204070dc0` did not expressly require nonnegative mixed coefficients. Intermediate `c2118c15d73355d85fd4a0f9fb63464d79400231bea5915ac51e480fe5ad4300` adds strictly positive listed coefficients; omitted monomials are zero. This is the mathematical premise needed by the raw coercivity argument.
+2. The intermediate source attributed target covariance design to Remark 2 while linking arXiv v3, where that remark has a different subject. The final source points to v4 and distinguishes the versions explicitly. I independently opened [Lelièvre–Santet–Stoltz v4](https://arxiv.org/html/2410.00525v4): its Remark 2, “The multidimensional case,” constructs a mobility for a target projected covariance. Proposition 2 and Remark 1 retain projected diffusion scaling and tangent freedom. Thus the final attribution is supported, and the stronger ordinary comparison is retained rather than discarded. The generic drift still involves conditional quantities; the present homogeneous Euler construction closes drift as well. No novelty inference follows.
+
+An exact text comparison verifies that the final change from c2118c15 concerns only this bibliographic version/description block; the mathematical sections and later Gaussian comparison are unchanged. Therefore the previously executed 147 exact symbolic checks apply unchanged. The immutable-snapshot replay also passed all 147 assertions and is reproducible with `python replay_check_lift_algebra.py` from this directory. It reads preserved source snapshots and writes a separate replay result, not candidate implementation outputs.
+
+The full derivation receipt deliberately retains the state of the review before this last citation correction. This final binding resolves that pending reference, not a mathematical gap. All author source versions and all reviewer outputs remain preserved. `AUDIT_SHA256.json` binds the local receipt/check artifacts; `final_input_hash.json` binds the accepted source.

@@ -1,0 +1,11 @@
+# Ordinary monitored phase-resource operation and receiver
+
+Accepted scoped known-model result; no calibrated hardware or novelty claim. The actual finite-source/finite-dead-time detector calculation prepares arbitrary commuting graph/weighted-phase layers with local phase correction. Ordinary environment-assisted correction is the winner, not a new correction principle.
+
+Useful service reduction: at four EXACT stipulated loss values (64,256,1024,4096) with the declared other inputs, a photon-only receiver can omit terminal source measurement and attains the optimal noisy-endpoint risk. The independent review certifies all 16 policy signs, not just matching decimals. This is not a continuum claim for every loss>=64. At loss16 endpoint measurement genuinely helps. For arbitrary-channel echo comparisons with an odd number of X pulses the consumer must receive the known final X frame (or pay its correction).
+
+Read author/CONTROLLED_PHASE_RESOURCE_AND_RECEIVER.md, then review/INDEPENDENT_RECEIPT.md. Original author CANDIDATE headers remain immutable; the receipt binds the exact accepted bytes. Spectral collection, source preparation, target/endpoint controls, local independent detector instruments and continuing-noise handoff remain actual paid requirements. The output is at time T, not a detached stable register. Abstract thermal raising channels are not automatically physically observable ports. No full-source simulator, hardware run, purchase, outreach or publication is included.
+
+All files are literally allowlisted. PACKAGE_MANIFEST.json hashes every other member. Original author/review manifests and bytes are preserved. No unreviewed coherent-cavity continuation is included.
+
+Replay in a FRESH directory: merge copies of author/* and review/*, then run python certify_receiver.py; python monitored_phase.py > replay_sweep.json; python test_monitored_phase.py; python audit_independent.py; python audit_full_graph.py; python audit_high_precision.py. Dependencies are NumPy, SciPy, SymPy, mpmath. Exact certificate paths and rational sign checks differ from floating diagnostics. Do not overwrite historical accepted snapshots. BUILD_PACKAGE.py is the originating allowlist/build/replay script; its workspace-specific source paths are construction provenance, not a portable runner.

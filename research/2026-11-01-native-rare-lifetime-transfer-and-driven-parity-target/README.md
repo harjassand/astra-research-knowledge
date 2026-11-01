@@ -1,0 +1,3 @@
+# Native local information and rare-lifetime transfer
+
+Completed continuation;66earlier files reused. Changedstationaryweights/currents,actualnativeobserver,alltargetmean/deadline transfer and driven80bitreferencequery retainexactcontracts. Highprecisionnativeacquisitionforfinalforecast NOT_PERFORMED,fullbillpaid;ordinarycoupling/codingwins and kineticrareboundarycounterexample remain. Actualcomplementaryaudit scopescarried,notnewCapitalproof/replay/noveltyorphysicalsign-off. Nativefinalcapture explicitlytruncated.

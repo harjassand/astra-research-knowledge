@@ -1,0 +1,317 @@
+FINITE CLASSICAL RECEIVER REFRESH AND LOCAL ACTUATION
+Addendum to REPEATED_MEMORY_RECEIVER.txt — 1 November 2026
+
+Result
+======
+
+The repeated quantum receiver can use a finite classical construction instead
+of a perfect classical controller. Five independent decoder/history/frame
+replicas, each with its OWN majority-of-five refresh circuit, tolerate one
+old erroneous replica state and one new arbitrary replica-domain fault at
+every update. The post-update state again has at most one erroneous replica.
+The final answer remains fivefold encoded, and physical commands are decoded
+only in local actuation domains. A failed local actuator is an actual quantum
+control fault, charged to the quantum cycle's fault budget.
+
+Seven replicas tolerate one fixed permanently bad classical domain plus the
+old-state/new-fault pair. These are ordinary deterministic redundancy results;
+no hardware failure probability, asynchronous consensus result or new general
+classical fault-tolerance principle is claimed.
+
+Executable construction and checks: check_classical_refresh.py.
+Exact ledger: classical_refresh_checks.json.
+
+1. ORDINARY PRECEDENTS AND WHAT IS ACTUALLY CONSTRUCTED
+=====================================================
+
+Classical logic made reliable through redundancy is foundational work, not
+an Astra novelty. See J. von Neumann, Probabilistic Logics and the Synthesis
+of Reliable Organisms from Unreliable Components, Automata Studies (1956),
+pp. 43-98; primary scan:
+https://www.mriedel.ece.umn.edu/wiki/images/a/af/Von_Neumann_Probabilistic_Logics_and_the_Synthesis_of_Reliable_Organisms_from_Unreliable_Components.pdf
+
+John Rushby, Reconfiguration and Transient Recovery in State-Machine
+Architectures, FTCS 26 (1996), pp. 6-15, treats synchronized replicated machines,
+transient recovery, majority-restored state, and the separate issues of
+interactive consistency, clocks and membership:
+https://www.csl.sri.com/papers/ftcs96/
+
+The explicit circuit below is a local synchronous hardware construction with
+direct wires, fixed update phases and a common actually recorded measurement
+input. It does not claim to solve arbitrary network delay or Byzantine clock
+agreement. The useful addition to the quantum work is supplying the finite
+receiver algorithm, replicated state refresh, last-stage fault accounting and
+resource ledger instead of leaving its classical controller perfect.
+
+2. FINITE STATE MACHINE AND PHYSICAL FAULT DOMAINS
+=================================================
+
+Let S_t be the whole classical state required by the quantum receiver:
+same-axis history, agreement counter, snapshot counter, Pauli frame, flag and
+operation phase. Let u_t contain the actual newly recorded detector bits and
+any finite physical-control words. A deterministic finite circuit computes
+
+ S_(t+1) = F(S_t,u_t).
+
+The supplied receiver_update function implements agreement, cap failure,
+minimum-weight repetition decoding, frame translation and switching from the
+X block to the Z block and back. path_snapshot_syndrome builds the stabilizer
+vector from raw path-gauge detector bits. For the spatially redundant graph,
+each replica uses the actual fixed edge-disjoint-path decoder already supplied
+in check_persistent_receiver.py. There is no common trusted syndrome decoder
+before replication.
+
+For each replica i, physically provide:
+
+ * Its own state register and candidate register, each W bits.
+ * Its own copy of F, operating at a fixed bounded combinational latency.
+ * Its own separately buffered inputs from every detector/source channel.
+ * Its own majority circuit for EVERY bit of the refreshed state.
+ * Its own output buffer and isolation from other replicas' supplies/signals.
+
+Each such bundle is one replica, or pod, fault domain. A fault in its memory,
+combinational gates, voter, local clock buffer or output driver may corrupt
+its entire word and may send different wrong values to different recipients.
+The proof never reduces a whole-word fault to one bit flip. A faulty source
+still owns only one input position in each other pod's voter. Electrical
+shorts or common control failures that corrupt multiple source positions
+must be charged to their actual multiple domains.
+
+All mutable state that affects future decisions belongs to W and is refreshed.
+A stale program counter, unrefreshed lookup table or hidden state machine must
+not retain a supposedly corrected error. F may be hardwired finite logic;
+mutable program/configuration words must be included in the encoded state,
+or their persistent failure must be treated as a permanently bad pod.
+
+Refresh is a fixed hardwired operation independent of the possibly corrupt
+application state: every candidate word is voted and latched on each refresh
+phase. A corrupted program counter cannot disable its own repair. With a
+software-only implementation that lets corrupt state skip voting or choose
+the wrong destination addresses, the invariant below would not follow.
+
+3. THE ACTUAL FIVE-POD UPDATE
+============================
+
+Use two local register banks and fixed physical phases:
+
+ (a) Each pod i computes C_i=F(S_i,u_i) into its candidate bank.
+ (b) Hold all candidate banks stable. Every pod j's separate refresh circuit
+     computes each next-state bit as majority(C_1,...,C_5).
+ (c) Each voter writes only its OWN state bank. Candidate and state banks
+     are not a shared writable memory.
+
+The candidate computation, source-to-voter fanout, vote and latch all lie
+inside the update's fault window. A fault at the boundary is assigned to
+one adjacent window. Continuous idle-memory exposure belongs to the next
+window; it is not omitted by labeling the device idle.
+
+Assume at the start of the window all but at most one pod store S_t, and at
+most one fresh pod fault occurs in that window. The old bad pod and fresh
+fault together can supply at most two wrong candidate inputs to any voter.
+At least three source candidates still equal the SAME correct F(S_t,u_t).
+Every nonfaulty voter therefore outputs that whole word exactly.
+
+If the fresh event faults a voter, latch or a whole pod, at most its own
+output bank can remain wrong; all other voters still see a correct majority.
+If it faults only a source or old memory, its incorrect value is outvoted.
+If it occurs after voting and corrupts a stored result, it leaves only that
+one residual bad pod. Thus the next boundary again has at most one bad state.
+
+This proves an invariant for an arbitrary number of updates with one fresh
+pod fault per update. The old residual and next fresh fault are explicitly
+distinct allowances. A whole-word input can be arbitrary and a bad source
+can equivocate; majority is applied independently to every bit, where the
+same three good words are identical. Correlations among failures are allowed
+provided the stated deterministic domain count holds.
+
+There is no single final refresh voter. Five different voters produce five
+encoded output copies. A final logical measurement bit is retained as five
+physical bits; no unprotected 'last reliable bit' is silently appended.
+
+4. PERMANENT BAD PODS AND WHY FIVE IS SOMETIMES INSUFFICIENT
+==========================================================
+
+If b classical pods are permanently arbitrary and at most s new pod domains
+fault per update, use
+
+ N >= 2b+4s+1, N odd.
+
+The boundary admits the b permanent bad pods plus at most s old residual
+transient states. The next update sees at most b+2s bad source positions.
+A strict majority remains correct. Only the b permanent voters and at most
+s newly faulted voters/output registers can then leave bad states, restoring
+the boundary family. The identity of the permanent set need not be known,
+but its actual size must remain bounded throughout the epoch.
+
+For s=1, five pods suffice when b=0; seven suffice when b=1. This is not the
+same b as the quantum block's strong-memory support. They are separate
+physical fault sets with separately stated budgets.
+
+Informative counterexamples are retained:
+
+ * Three replicas can fail with an old bad value 1, a new bad value 1 and the
+   correct value 0: majority(1,1,0)=1.
+ * Five replicas can fail with one permanent, one old and one new bad source:
+   majority(1,1,1,0,0)=1 although the correct bit is 0.
+
+A new permanent circuit/configuration fault must enlarge b, or be counted
+as a fresh bad pod on every update it affects. There is no invisible service
+process that removes accumulated permanent defects.
+
+5. INPUT FANOUT, TIMING AND LOCAL PHYSICAL ACTUATION
+===================================================
+
+Detector information
+--------------------
+
+Each physical edge detector's recorded output is fanned out through isolated
+branches to all pods. Each pod performs its own packing, graph/path decode,
+history comparison and frame calculation. A local buffer/branch failure is
+a pod input fault. A wrong detector bit common to all pods is still an ACTUAL
+measurement-report error; classical replication cannot recreate information
+that was never measured correctly. It enters the quantum receiver's report
+fault analysis or its persistent-edge redundancy contract.
+
+A shared unprotected aggregator for every detector bit would be a larger
+common fault domain. A permanently corrupt such aggregator is not cured by
+five replicas. Use direct per-detector input branches and per-pod aggregation,
+or explicitly charge/protect the actual common aggregation hardware.
+
+Control outputs
+---------------
+
+Every intended single-qubit pulse or local control word stays N-fold encoded
+until a distinct local voter at that physical data port. A good local voter
+sees a correct majority, even with an old bad controller state plus a new
+controller-domain fault. The voter is ordinary finite logic and may fail.
+Its failure can then produce an arbitrary operation at THAT physical port,
+which is a physical data/control fault in the quantum analysis.
+
+To claim one-site support, that port must actually control only its assigned
+data qubit's pulse/couplings, with no shared voter feeding every qubit. Meter
+apparatus-only controls have dedicated edge domains and use the proven edge
+fault algebra. A faulty control that leaves both participants' forces on
+during a basis change can have two-site support: it must be charged as such,
+or the independently voted per-data-port controls/interlocks must physically
+exclude that propagation. Calling an actuator 'local' does not earn locality.
+
+The same applies to operation timing, abort/continue and flags: these remain
+encoded control words and are consumed locally, not by one perfect global
+command decoder. Under the admitted replica budget, their ordinary local
+majorities agree. A failing local command/clock latch is an actual local
+quantum fault. A shared control fault spanning many ports is a larger event.
+
+Important budget separation
+---------------------------
+
+One corrected internal controller fault per classical update can occur
+indefinitely without producing a data fault. It does NOT authorize one bad
+actuator voter at every sub-update while retaining the quantum assumption
+of only one new physical fault per COMPLETE correction cycle. All actual
+failed final actuator domains, meter controls, data faults and detector
+report faults must together satisfy the quantum cycle's s budget or its
+separately earned probabilistic noise condition. No perfect final voter is
+needed, but its real errors are not free.
+
+Timing and common failures
+---------------------------
+
+This finite synchronous circuit uses a real clock/distribution network and
+guard intervals exceeding its stated healthy-component skew, propagation
+and register setup bounds. Candidate banks remain stable during vote/latch;
+quantum actuation samples the encoded command only after the bounded settle
+interval. For the five-input circuit below the vote depth is five gates.
+The actual F latency, wire/fanout delay, latch setup and guard times must be
+added; no zero-time processing is claimed.
+
+A clock-buffer failure confined to one pod or one actuator is a local fault.
+A shared oscillator, power rail or global clock-distribution failure that
+disturbs many replicas is charged to those many domains and can violate the
+contract. It is not asserted impossible or assigned zero failure probability.
+This is the same ordinary locality boundary that must be respected for the
+quantum controls. We do not claim an unconstructed asynchronous consensus or
+Byzantine clock-synchronization mechanism from simple majority refresh.
+
+Initialization and finite precision
+----------------------------------
+
+The initial known frame/history state is loaded independently into the pods;
+at most one faulty initialization leaves the admitted five-pod boundary.
+An arbitrary common wrong program or initial logical state is not corrected.
+For an unknown classical application word, supply it in the encoded boundary
+family or with an actual input error-correction contract.
+
+The algorithm consumes finite recorded bits and finite control words. ADC
+resolution, phase quantization, analog actuator accuracy and signal timing
+remain real physical conditions. Quantization is not declared exact merely
+because the resulting word is replicated. Store/replicate any finite control
+calibration words needed by the chosen physical operation; charge their
+residual physical approximation in that operation's error model.
+
+6. EXPLICIT VOTER CIRCUITS AND RESOURCE COST
+===========================================
+
+For five inputs a,b,c,d,e, use only the following two-input AND/OR gates:
+
+ p=a OR b, q=a AND b, r=c OR d, s=c AND d;
+ A=(q AND r) OR (p AND s);           [at least three of a,b,c,d]
+ B=(q OR s) OR (p AND r);            [at least two of a,b,c,d]
+ M5=A OR (e AND B).
+
+This is exactly majority of five, using 12 two-input gates at depth 5. Five
+physically distinct copies per state bit cost 60 gates per state bit,
+or 60W gates total. No sharing of internal voter gates between pods is used.
+These are explicit upper bounds, not a claim of gate-count optimality.
+
+For seven inputs, a fixed seven-layer odd-even transposition network sorts
+the bits. Each comparator outputs AND and OR. There are 21 comparators,
+42 two-input gates and depth 7; select the middle wire. Seven independent
+voters cost 294W gates. No reliable external comparison oracle is required.
+
+For the five-pod version the state/controller cost is:
+
+ * Five copies of the actual F decoder, with their actual gate cost/latency.
+ * 10W state-plus-candidate register bits, plus independently buffered input
+   words and the actual program/configuration/physical-control resources.
+ * 60W two-input gates for refresh, depth 5, with 25W source-to-voter bit paths.
+ * One additional 12-gate local majority per locally decoded command bit;
+   those gates' failures enter the physical actuation budget.
+
+For seven pods replace these counts by seven copies of F, 14W register bits,
+294W refresh gates at depth 7, 49W source-to-voter paths and 42 gates per local
+command-bit voter. Wiring, loads, buffers, power and timing remain charged.
+
+A concrete receiver-only state for n=5,s=1 uses 25 bits: axis 1, round counter 3,
+run counter 2, last syndrome 4, valid 1, X/Z frames 10, flag 1 and pulse phase 3.
+Its five-pod state/candidate banks contain 250 bits and its refresh circuit
+uses 1500 two-input gates. The n=7 version uses 31 state bits. These counts
+exclude ADC/control precision words, pulse-duration counters, calibration
+tables, extra application payload, input queues and any state required by
+the chosen physical module;
+those actual bits and logic must be added, not assumed absent.
+
+The hardware count is finite and explicit, but it does not imply a competitive
+device area, energy, speed, reliability or temperature. The strongest ordinary
+quantum route can use the identical classical construction.
+
+7. CHECKS
+=========
+
+The executable verifies all 32 majority-of-five inputs and all 128 inputs of
+the seven-input sorting voter. It exhaustively checks 910 receiving-voter
+cases for five replicas and 24528 for seven replicas with one permanently bad
+pod. Each nonfaulty receiver is checked against every possible assignment on
+its bad source channels; this includes per-destination equivocation without
+assuming all faulty fanout branches agree. Whole-word protection follows by
+the same bitwise proof, with no independence between bits.
+
+There are 17408 checks of the actual finite receiver's syndrome/frame update
+for n=5 and n=7, covering every stored component frame and every correctable
+component. The concrete input sequence 0,1,0,1 produces an observed cap flag.
+Insufficient three-pod and five-with-permanent-pod examples are saved.
+
+These checks certify the finite deterministic model and algorithm. They do
+not assign probabilities to physical gates or shared failures. The quantum
+and classical constructions are now connected by an explicit interface:
+recorded detector bits, replicated finite history/frame state, and finite
+local actuation whose remaining faults are counted where they physically act.
