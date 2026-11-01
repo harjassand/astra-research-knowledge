@@ -1,0 +1,3 @@
+# Port-risk protocol and material reference renewal
+
+Two distinct completed Pro sources. P1 complete native final only: matching ZIP unavailable after one timed-out download, persistent upload remains blocked/no retry. Reciprocal linear Gaussian physical family, energy/init/conditionalcalibration/guard/cumulativecharge costs remain. P2 complete visible final and60-member original archive received, nested predecessors reused by identity; four actual companion review scopes carried. Conditional force-reference copying, finite observer, repeated-copy/exposure limits and strong protected coded/calibrated specification remain. No new science replay/reproof/novelty signoff, optionalLibraryretry or device/practicaladvantage.
