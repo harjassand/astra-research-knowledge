@@ -1,0 +1,3 @@
+# Metric-filter activity compiler for coupled Gaussian memory
+
+Sixteen frozen authored source/result files; corrected N1511/N1512 baseline and actual accepted common-loss scopes retained by reference. New finite-network metric occupation/activity, bounded filter, acquired scalar bridge, weighted physical loss clock and full finite-bit/control-duration conjunction remain author-derived. Dark/slow-mode and direct-transfer failures, unfavorable metrics, numerical residuals, all resource costs and strong ordinary alternatives retained. No favorable gapless-continuum metric, independent whole acceptance, practical crossover or Capital scientific replay/reproof/signoff.
