@@ -1,0 +1,3 @@
+# Dots K15 implementation and defect-charged native thermal robustness
+
+Only217listed direct authored members;outer packages/nested prerequisites not transferred. Existing identical canonical source objects linked. Actual independent internal reviews retained at named subject/scope. K15 corrects a conservative design bound;K13 optional noise tradeoff. Full-spectrum same-H beta*v window retains contact/dictionary/cold/residual-event/tilt costs and ideal correlated endpoint. Native noisy WRITE/useful physical tolerances/active advantage open. Physical service and failed communication/nonquantum routes retain their own boundaries. No Capital scientific replay/reproof/novelty audit or new signoff.

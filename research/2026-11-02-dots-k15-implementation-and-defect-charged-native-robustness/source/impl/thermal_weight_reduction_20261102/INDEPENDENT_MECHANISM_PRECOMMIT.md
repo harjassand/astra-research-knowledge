@@ -1,0 +1,7 @@
+# Independent mechanism choice, before inherited technical route
+
+Target: reduce actual check support, hence two-body clock/hook/energy implementation costs, while preserving full finite-temperature protected-memory conclusions. The factual input is a conservative check-weight bound 180 in a 3D CSS family.
+
+Chosen mechanism: use commuting stabilizer **parity subdivision** (local CSS check splitting with ancilla-mediated syndrome parity), not low-energy perturbation gadgets. The first test is exact summation over all auxiliary syndromes, yielding a renormalized source Gibbs interaction, followed by explicit local decoder/noise transfer. Quantum compatibility of simultaneous X and Z subdivision is the main nontrivial gate. I will compare established quantum-LDPC weight reduction, local Clifford/mapping-cylinder subdivisions, and subsystem alternatives before selecting a certified construction. Ground-space isomorphism alone is not evidence of thermal equivalence.
+
+Expected thermodynamic core to test: splitting one stabilizer into a connected tree of independent checks should give tanh(beta J_eff) = product_e tanh(beta J_e), if auxiliary signs can be summed independently at fixed source parity and other check characters. This costs logarithmic-in-tree-size beta J at fixed effective coupling, rather than a support-sized clock. Need verify this identity survives dependencies, geometric locality, bounded congestion, and decoder hook costs, rather than assuming it.
