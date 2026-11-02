@@ -121,6 +121,7 @@ def compile_current_consumers(records):
         if selected:
             record["current_consumer"] = selected
     compile_input_contract_corrections(records)
+    _separate_n1515_capital_role_history(records)
 
 
 def compile_input_contract_corrections(records):
@@ -171,6 +172,38 @@ def compile_input_contract_corrections(records):
             "contract": dict(record["contract"], requires=notice["value"]),
             "scope": notice["clarification"],
             "original_contract_context": "Pinned source-reported input field remains in the original record/history. This source-supported input transcription correction changes no output, condition, scientific identity, review or acceptance.",
+        }
+
+
+def _separate_n1515_capital_role_history(records):
+    """One pinned presentation trial; keep the scientific record untouched."""
+    identifier = "N1515-acquired-bounded-signed-calculus-of-stable-experiments"
+    version = "9925069f1035b91790b31fb613f65c52cf3be4ec568c37f59cf0b3f9bfa63bf2"
+    procedure = ("No Capital scientific reproof,code replay,correctness/novelty "
+                 "investigation,new sign-off,producer contact or transfer recovery.")
+    for record in records:
+        if (record["id"] != identifier or record["content_version"] != version
+                or record.get("current_consumer")):
+            continue
+        contract = dict(record["contract"])
+        for field in ("assumptions", "obstruction"):
+            if contract[field].count(procedure) != 1:
+                raise ValueError("N1515 role-history trial needs its exact original clause")
+            contract[field] = contract[field].replace(procedure + " ", "", 1)
+        record["current_consumer"] = {
+            "subject": {"id": identifier, "content_version": version},
+            "statement": statement_view(record, operation_frame(record))["statement"],
+            "contract": contract,
+            "scope": "Role/history presentation only; no scientific condition, access restriction, review or acceptance changed.",
+            "role_provenance": {
+                "label": "Capital-specific intake history and role restrictions",
+                "verbatim_capital_procedure": procedure,
+                "preserved_access_transfer_restrictions": "No producer contact or transfer recovery by the Capital intake role; all other source and notice access restrictions remain in force.",
+                "original_fields": ["contract.assumptions", "contract.obstruction"],
+                "original_card_route": ["card", identifier],
+                "trial_scope": "One capsule clarity trial; no evidence of an effect on P2 outcomes.",
+            },
+            "original_contract_context": "Original source bytes, scientific content version and complete source-reported contract remain at the record/card history routes. Capital procedures are role metadata, not mathematical hypotheses.",
         }
 
 
