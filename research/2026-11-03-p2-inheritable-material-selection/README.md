@@ -1,0 +1,3 @@
+# P2 common-bath inheritable-material selection stage
+
+Original note/model plus scientific visible return. Proposed genotype-to-abiotic optical phenotype with physical ownership,re-expression and whole resource accounting. Static copying removed as cosmetic;equilibrium computation is not irreversible-product verification. No functional product,common-bath translation,resource/novelty advantage or durable3D material is demonstrated. Conditional chemistry/clonality/photon models and strong incumbents preserved. Code is data,not executed. No lab activity,held-source recovery or new independent audit.
