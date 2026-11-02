@@ -1,0 +1,3 @@
+# P1 corrected Poisson transport and scoped stopped bridge
+
+N1672 current author response now has the exact governing original plus literal visible scientific return. Earlier pending return/clarification remain at prior versions. The earlier viewer capture is private provenance,not the original file. The separate checker was not acquired and is not retried. Finite-input factorial estimates differ from the polynomial low-low corner and qualified noncompact Omega stop. Global recurrence,seams and unready activation remain open. No Capital reproof,replay,new independent audit or full-network claim.
