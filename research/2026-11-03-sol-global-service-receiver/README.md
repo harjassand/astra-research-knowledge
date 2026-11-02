@@ -1,0 +1,3 @@
+# Sol explicit global quadratic service receiver
+
+Scoped canonical receiving-function successor N1671,linked from N1669. Three exact mathematical notes,three scripts and original result JSON are preserved in source/sol/. The service inequality and ready own-profile transport payment do not pay the full growth generator,activation,off-diagonal switches or common return rewards. C=R=100 is only the unit-block/core2,1 demonstration;generic constants depend on raw rates/weights. Source-family component intake with whole-original retrieval;no code execution,new independent audit or recurrence/device claim.
