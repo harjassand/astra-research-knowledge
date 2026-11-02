@@ -74,7 +74,7 @@ Claims9mA/cm² at9mAh/cm² and4.91mAh/cm² Li–S operation using regenerated la
 Sun et al., PNAS115,9672–9677(2018), "Strongly correlated perovskite lithium ion shuttles":
 https://doi.org/10.1073/pnas.1805029115
 https://pmc.ncbi.nlm.nih.gov/articles/PMC6166818/
-Author copy: https://yildizgroup.scripts.mit.edu/home/wp-content/uploads/2020/07/pnas_2018.pdf
+Author copy: https://yildizgroup.scripts.mit.edu/%68ome/wp-content/uploads/2020/07/pnas_2018.pdf
 
 Reported saturated Li-SNO resistivity~10^8mΩ·cm; ionic conductivity3.1e-3S/cm, activation barrier~0.24eV. Films80–200nm; full electronic-insulating/color transition after~2h lithiation. Li:Ni~0.86. Cycling:5μA/cm²,0.5–4.2V vsLi,50 cycles,96.8% mean CE, using liquid electrolyte/polymer separator. Transparency persists through cycling. Synthesis includes500°C,1,500psi oxygen annealing for24h. No acquired evidence establishes equilibrium insertion plateau, stability against Li0, or near-zero-potential reverse Mott reset. Switching charge was not directly acquired.
 
