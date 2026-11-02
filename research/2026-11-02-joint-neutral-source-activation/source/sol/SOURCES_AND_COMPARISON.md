@@ -1,0 +1,29 @@
+# Governing sources, equally informed comparison and access scope
+
+## Marked source-switch construction
+
+The marked factorial identity and carried-target path mechanism come from Alec Kriebel's **unrefereed** August 2026 v1.2.4 preprint, [Positive Recurrence for Single-Linkage Bimolecular Weakly Reversible Stochastic Reaction Networks](https://aleckriebel.com/research/positive-recurrence-bimolecular-reaction-networks/paper-v1.2.4.pdf). Exact public source/TeX and its conditions were read and preserved in the preceding recurrence-principle stage. That primary theorem's binary single-linkage scope does not itself cover the degree-seven coupled union. Historical priority for the present extension has not been investigated or cleared.
+
+The strongest received reusable baseline is the ACCEPTED Astra N1567 terminal-gap constructor, which already covers sufficient multiple-linkage and arbitrary-molecularity lists. The governing theorem and substantive completed internal review remain accepted at their actual scope. Byte-matched copies and binding are under sources/N1567/; theorem SHA256 is 8c54e6aa40e89b22d69cdeef77238c40df95a3c1c3c5b88c2814e259444fdcfb, review SHA256 is 586e7e35f19f899eb66500f753c9227ecea3e81c362e34496a3d23ddbf03e61f. The new code reuses its exact finite cone acquisition and verifies the existing witness rows; this is not a new audit of that accepted result.
+
+The preceding authored MGF_EPISODE_ENVELOPE.md supplies the banked multiplicative scalar inequalities and physical finite-head trace closure at terminal rarity. The new recursion explicitly permits selected SOURCE!=carried TARGET and pays the selected factor. The neutral residual graph, its finite factorial-debt bound, complete outside-profile coverage and actual statewise selector are the new constructions. The new proof does not inherit the predecessor's independent review.
+
+On the actual coupled list, the accepted cone finder is a matched ordinary comparator: it refuses exactly the B face. The new graph repair acquires all missing rows. At all unit rates the ordinary product-Poisson theorem already proves recurrence; those points are calibration only. Compatibility fails for the displayed rate-2/rate-3 instance. Anderson–Craciun–Kurtz's [2010 primary theorem](https://people.math.wisc.edu/~craciun/PAPERS_NEW/Anderson_Craciun_Kurtz_ProdFormFinal_2010.pdf) is the exact established baseline, not a weakened pure-source predecessor.
+
+## Conservative support/persistence and ordinary calibration
+
+The finite-time density/compensated-Poisson method and stopped-observation viewpoint are established ordinary tools. Laurence–Robert's [Scaling Methods for Stochastic Chemical Reaction Networks, arXiv 2310.01949v3](https://arxiv.org/html/2310.01949v3), especially its stated Filonov theorem and warning about nonuniform fluid directions, was read. The public HTML is preserved under sources/ with its original CC BY 4.0 notice. Our support proof derives uniform activation, concentration, physical reward and persistence constants rather than invoking a fluid limit as the missing uniform estimate.
+
+Accepted Astra N1621's exact five-species rate-2 whole-generator Foster construction was read with its completed analytic receipt, copied under sources/N1621/. Its unbounded subexponential multiplier and actual clipping/jump control are valid at their recorded single-model scope; they are not a furnished transport inequality for another moving profile. This changes the decision to retain unbounded debt values as a serious alternative, not to import its receiver into the coupled union.
+
+The complete binding N1469 coupled-face constructions were read and copied under sources/N1469/. Their order-one mixed returns are internal to the actual stage; their true dormant blocks still keep frozen metadata until activation. That exact accepted scope does not provide a law for several unpinned inventories in the new network. The N1567 protected/tilted-support module capsules concern their own service grammars, not marked factorial source switches. Capsule-only comparisons are not used as mathematical premises.
+
+The conservative rate-2 cooperative fixture fails complex balance by exact tree-flux equations. The all-unit version remains the ordinary Poisson baseline. The separate reciprocal-bath proof gives the strongest actual ordinary exact solution for the first incompatible-gate candidate; no purported gap is promoted on that fixture.
+
+## Scope and failures retained
+
+The maximum-source background has a genuine fixed-path transport bound but fails as a general return potential on a conservative fast linkage already identified by N1394's adjoint warning. Exact retagging recovers the ordinary complex-balanced invariant law when its two measures coincide; mere comparability does not prove non-complex-balanced stability. Reversible Petri-net/binomial-ideal reachability was checked as a retrieval lead, but no reachability theorem was used to pay the physical clock. The new finite neutral graph has its own elementary factorial invariant and does not rely on an unavailable path-length oracle.
+
+The banked global ordered-family theorem and its no-exponential-return calibration are preserved unchanged and remain valid at their recorded scope. They disprove universality of the new uniformly multiplicative neutral grammar. The ConStRAINeD project's announced all-two-species recurrence manuscript remains **in preparation** at the read primary project page; no unavailable proof was presumed. Existing results, new same-principal proofs, finite code checks, historical priority, physical validation and mission achievement remain separate claims.
+
+No access denial was bypassed or source permission changed. In particular no previously denied Wisconsin 2020 full PDF was retried through another route. Shared Astra sources were read only; no producer source was edited or programme chat contacted.
