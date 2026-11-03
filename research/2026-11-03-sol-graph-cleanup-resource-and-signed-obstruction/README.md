@@ -1,0 +1,3 @@
+# Sol graph cleanup,resource cap and signed obstruction
+
+Ten new originals only;earlier cleanup/hot-majority/renewal contracts referenced,not re-intaken. Positive local graph cleanup,all-hidden bounded-resource trace and its exact signed receiver failure remain distinct. Current cleanup unit is immutable v3;v1/v2 and separate service theorem retained. Four notes and the complete source index have whole-original native routes;all programs/results are preserved publicly at exact paths in source/INDEX.json. Code is data,not imported or run. No independent audit,P3 transfer,global recurrence or practical solver claim.
