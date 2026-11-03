@@ -1,0 +1,17 @@
+# P1 normally visible phase-coboundary return
+
+For each fixed finite H,R and arbitrary fixed positive raw rates,the author reports a threshold n0,a single sufficiently large existing receiver scalar,and an actual stopping operation for every 0<=A,D<=H,|B-C|,|E-F|<=R,min(B,C,E,F)>=n0,with E[tau+J_nc(tau)+F(X_tau)]<=F(x)-1 in the same proper corner-corrected angular receiver.
+
+Use chi(a)=4floor(a/3)+(a mod3),Z=S-chi(A)-chi(D),and the natural section Sigma={(A,D)=(3,0),(0,3)}. Pathwise Z=Z_initial+N_plus-N_minus;type2 at residue0/1 is plus,type0/1 at residue2 is minus,terminals/core have zero Z increment. A section return retains a four-molecule packet:available canonical deletion is chi(A)+chi(D)-4.
+
+The source reports actual phase return away from Sigma and a first-return defect current on Sigma. Its physical inward path is I3;I0,I1,I1 (the second type1 occurs at anchor2),not a source0 deletion from zero-zero. Inward defect probability is inverse-inventory order,opposing initial anchor3 type2 defect one inverse order smaller in the bounded-gap four-large domain. Uniform physical-time/noncore-count moments and true F0 corner receipts are claimed with repeated/overlapping activations,actual incoming core law and arbitrary core interleaving retained.
+
+Choose the common scalar once for fixed raw rates,H,R,then define F0 using that same scaled terminal Vang. Charge physical residence and every noncore event;no artificial core-event clock,stationary entrance law,frozen core or discarded active peer debt. Thresholds/scales depend on fixed H,R and raw rates;no uniform unbounded-head or unbounded-gap estimate is inferred.
+
+Full positive recurrence and global coverage remain open. One or more nondiverging inventories and intermediate signed/minority configurations outside existing admitted regions remain unresolved. The stated broader phase-coboundary principle is a conditional mechanism requiring its own defect probabilities,receiver slope and physical-cost hypotheses,not an unrestricted weak-reversibility theorem. Earlier signed failure and source scopes remain valid;only the new angular correction was globally core invariant in the earlier construction.
+
+Author-reported completed stopped construction in a normally visible answer capture. Capital source read/integration only;no new independent scientific audit,reproof,code rerun or new Pro call. No separate proof file or download was offered;no attachment sought. Earlier sources retain their actual acceptance/scope.
+
+Source chat: https://chatgpt.com/c/6ae94ff3-b774-83ec-b446-1d958197a3fe
+
+The public scientific source is the literal captured answer span. Raw UI and issued prompt remain private;no separate file or public download was offered. Earlier governing public sources remain linked in N1672.
