@@ -1,0 +1,498 @@
+## Completed result: reuse of an evaluated Gaussian ensemble without knowing either mean
+
+I constructed a way to migrate an existing, expensive ensemble to a new Gaussian input distribution while retaining most of its actual input–response records. The construction produces the **complete independent target ensemble**, and a matching lower bound identifies how much refresh work is unavoidable.
+
+For \(M\) archived inputs in dimension \(d\), with unknown old and new means, known common covariance, and an unavailable historical source, the optimal expected number of novel target inputs has order
+
+\[
+\boxed{
+\min\!\left\{
+M,\;
+M\,\operatorname{TV}(P,Q)+\sqrt{Md}
+\right\}.
+}
+\]
+
+The algorithm acquires exactly \(M\) new source records. Near an unchanged distribution, it requires only \(O(\sqrt{Md})\) new response evaluations. The converse survives arbitrary cache matching, unlimited additional access to the current source, and even being given the current mean for free.
+
+The exact statement concerns the continuous Gaussian model. I also completed a finite-grid implementation with certified arithmetic and an explicit error bound for the whole returned ensemble.
+
+**Deliverables**
+
+- :chatgpt-content-reference{index="6"}[Astra_P2_Gaussian_Ensemble_Migration_20261104.pdf](producer-workspace/Astra_P2_Gaussian_Ensemble_Migration_20261104.pdf) — 21-page report with the construction, proofs, complete costs, comparisons and supporting foundational results.
+- :chatgpt-content-reference{index="7"}[Astra_P2_Gaussian_Ensemble_Migration_20261104.zip](producer-workspace/Astra_P2_Gaussian_Ensemble_Migration_20261104.zip) — executable implementations, validation data, full proof notes and the preceding results preserved unchanged, with a hash manifest.
+
+The general-space selection/atomic-overlap boundary, empirical-transport converse and sharp bit-retention frontiers remain intact. This construction uses an additional, explicit Gaussian-family assumption.
+
+## 1. The setting in which preserving a realization saves completed work
+
+The useful setting is distribution-level propagation through an expensive, fixed response operation.
+
+An instrument previously observed a stable operating state and produced
+
+\[
+X_1,\ldots,X_M\overset{\mathrm{iid}}{\sim}
+P=N(p,\sigma^2I_d).
+\]
+
+Each input has already received its response \(L_i\). That response may be a deterministic calculation \(F(X_i)\), or an independent stochastic response with kernel \(H(X_i,\cdot)\).
+
+The historical operating state is gone. Its true mean \(p\) was never known, and the available historical information consists of these records and functions of them. A current instrument supplies independent observations from
+
+\[
+Q=N(q,\sigma^2I_d),
+\]
+
+with unknown \(q\). The two means are fixed and exogenous; the algorithm must work for every pair.
+
+The requested output is an anonymous ensemble with the complete law
+
+\[
+\boxed{
+\operatorname{Law}(Y_{1:M},L'_{1:M})
+=
+\bigotimes_{i=1}^{M}
+\left[Q(dy_i)\,H(y_i,d\ell_i')\right].
+}
+\]
+
+This contract makes the reuse consequential: retaining an input lets us retain the response already computed at that exact input. It avoids whatever complete execution, preparation or experimental work that response required.
+
+A real scientific software interface exists for this operation. UQpy’s `RunModel`, for example, accepts supplied sample rows, executes Python or external scientific models, and collects their quantities of interest. I implemented and tested a generic callback and batch adapter compatible with that pattern. UQpy itself was not installed or benchmarked here. :chatgpt-content-reference{index="0"}
+
+Several conditions are essential:
+
+- **The consumer needs a sample from the current distribution.** If it needs responses to the particular factual new readings \(W_i\), replacing those readings with differently coupled \(Y_i\) does not satisfy the task.
+- **The response operation stays fixed.** Solver configuration, relevant initial state, and treatment of failures belong to its definition. Changing the response model can invalidate an old response even when its input is unchanged.
+- **The new ensemble may depend on the old archive.** Independence holds within the new ensemble. Independence between versions is not promised.
+- **Gaussianity, common covariance and independent acquisition windows are supplied model premises.** Their calibration costs remain part of preparation. Passing a finite normality test does not certify those premises exactly.
+
+The unavailable old source is a substantive restriction when the input distribution belonged to a historical physical state. If the actual workflow retains additional historical measurements, true density parameters, or replayable generator seeds, those resources must be included. The comparison below explicitly changes when they are available.
+
+## 2. The operation that makes reuse possible
+
+The organizing observation is that an unknown-mean Gaussian batch separates into two different resources:
+
+1. Its sample mean contains the unknown location information.
+2. Its centered residual ensemble has a known, parameter-independent distribution.
+
+Ordinary Gaussian algebra already exploits this separation. Given \(M\) new readings \(W_i\),
+
+\[
+Y_i=X_i-\bar X+\bar W
+\]
+
+has exactly the correct joint iid target law. This is a strong legitimate comparator. Its drawback for an opaque nonlinear response is that it changes every input almost surely, invalidating every literal cached response.
+
+The new construction changes how the conditional residual ensembles are coupled. It preserves many coordinates exactly.
+
+### Conditional Gaussian bridges
+
+Acquire all \(M\) current readings and form
+
+\[
+S_p=\sum_{i=1}^{M}X_i,
+\qquad
+S_q=\sum_{i=1}^{M}W_i.
+\]
+
+Process the archive in its fixed order. When \(m\) records remain, let
+
+\[
+A=S_p-\sum_{j<i}X_j,
+\qquad
+B=S_q-\sum_{j<i}Y_j.
+\]
+
+Conditional on the two totals and the processed history, the actual next old input has distribution
+
+\[
+X_i\sim N(a,s^2I_d),
+\qquad
+a=\frac{A}{m},
+\qquad
+s^2=\sigma^2\frac{m-1}{m}.
+\]
+
+The required next target conditional distribution is
+
+\[
+N(b,s^2I_d),
+\qquad
+b=\frac{B}{m}.
+\]
+
+Both conditional distributions are known even though \(p\) and \(q\) are unknown.
+
+Set \(\delta=b-a\). For \(m>1\), draw a uniform \(U\) and compute
+
+\[
+\ell=
+\frac{\delta^\top(X_i-a)-\|\delta\|^2/2}{s^2}.
+\]
+
+Then return
+
+\[
+Y_i=
+\begin{cases}
+X_i,
+&\log U\le \min(0,\ell),\\[4pt]
+X_i+\delta
+-2\delta\,
+\dfrac{\delta^\top(X_i-a)}{\|\delta\|^2},
+&\text{otherwise}.
+\end{cases}
+\]
+
+If \(\delta=0\), copy directly. At the final record, return the remaining target total \(B\).
+
+This local operation is the established reflection-maximal coupling of equal-covariance Gaussians. The accepted part has density equal to the minimum of the two densities; reflection sends the rejected excess into the missing target excess. No additional Gaussian proposal or residual rejection loop is needed. :chatgpt-content-reference{index="1"}
+
+### Why the entire ensemble is correct
+
+The proof conditions on the information the construction actually uses. Future old records enter only through their remaining sum; processing an earlier record does not reveal additional future-coordinate information once that history is fixed.
+
+Induction gives
+
+\[
+\operatorname{Law}(Y\mid S_p,S_q)
+=
+N\!\left(
+\frac{S_q}{M}\mathbf 1,\,
+\sigma^2
+\left(I_M-\frac{\mathbf1\mathbf1^\top}{M}\right)
+\otimes I_d
+\right).
+\]
+
+This is exactly the Gaussian target batch conditional on its total. Since
+
+\[
+S_q\sim N(Mq,M\sigma^2I_d),
+\]
+
+integrating over \(S_q\) restores the full product distribution \(Q^{\otimes M}\).
+
+The argument establishes all dependencies, rather than only marginal means and variances.
+
+### Why the attached responses remain valid
+
+The coupling never reads response values when deciding what to retain.
+
+Conditional on the complete input coupling:
+
+- A retained response still has law \(H(X_i,\cdot)=H(Y_i,\cdot)\).
+- A changed input receives one independent call to \(H(Y_i,\cdot)\).
+
+Thus the returned responses have conditional product law
+
+\[
+\bigotimes_i H(Y_i,\cdot).
+\]
+
+This proves the complete input–response target law, including stochastic responses. For deterministic responses, the retained record is the actual previously computed object.
+
+## 3. The converse: more current data cannot erase missing historical information
+
+The strongest part of the lower bound is that it does not depend on the sequential algorithm.
+
+Fix the current mean \(q\), and even reveal it to a competing method. Allow that method arbitrary additional current-source draws, arbitrary computation and arbitrary permutations of the archive.
+
+The target ensemble’s distribution must remain independent of the historical mean \(p\). Meanwhile, \(\bar X\) is a complete sufficient statistic for \(p\). Basu’s theorem therefore supplies the constraint
+
+\[
+\boxed{
+\operatorname{Law}(Y_{1:M}\mid\bar X)
+=
+Q^{\otimes M}.
+}
+\]
+
+The independence principle is classical. Its role here is to restrict every possible exact archive-reuse method, including randomized methods with adaptive current-source acquisition. :chatgpt-content-reference{index="2"}
+
+The new quantitative step converts that constraint into unavoidable response work.
+
+Let \(R\) be the number of target inputs absent from the old archive, after the best possible equality matching. For every measurable set \(C\),
+
+\[
+R\ge
+\left|
+\sum_i\mathbf1_{\{X_i\in C\}}
+-
+\sum_i\mathbf1_{\{Y_i\in C\}}
+\right|.
+\]
+
+One unmatched record can change this count by at most one. Consequently, reordering the archive cannot evade the argument.
+
+Conditional on \(\bar X=a\), each old coordinate has distribution
+
+\[
+N\!\left(a,\sigma^2(1-1/M)I_d\right),
+\]
+
+while each target coordinate still has distribution \(Q\). Choosing a suitable halfspace gives, at \(p=q\) and \(M\ge2\),
+
+\[
+\boxed{
+\mathbb E R\ge
+M\,\mathbb E\!\left[
+\Phi\!\left(\frac{\chi_d}{\sqrt{M-1}}\right)-\frac12
+\right]
+=
+\Omega\!\left(\min\{M,\sqrt{Md}\}\right).
+}
+\]
+
+Here \(\chi_d\) is the norm of a standard \(d\)-dimensional Gaussian.
+
+For \(d=1\), this explicit lower bound is
+
+\[
+\frac M\pi
+\arctan\frac1{\sqrt{M-1}}
+\sim \frac{\sqrt M}{\pi}.
+\]
+
+The same order floor holds for every mean displacement. Independently, a count-discrepancy argument gives
+
+\[
+\mathbb E R\ge M\,\operatorname{TV}(P,Q).
+\]
+
+Combining them produces the lower half of the main theorem:
+
+\[
+\mathbb E R=
+\Omega\!\left(
+\min\{M,\,
+M\operatorname{TV}(P,Q)+\sqrt{Md}\}
+\right).
+\]
+
+For the construction, summing its conditional change probabilities gives the matching upper order. An explicit bound is
+
+\[
+\mathbb E K\le
+\min\!\left\{
+M,\,
+1+(M-1)t+
+\sqrt{\frac2\pi}\,\mathbb E\chi_d
+\sum_{r=1}^{M-1}r^{-1/2}
++\frac{\log M}{\sqrt{2\pi e}}
+\right\},
+\]
+
+where \(t=\operatorname{TV}(P,Q)\). The logarithmic term disappears at \(p=q\).
+
+### Current-source acquisition is also necessary
+
+When \(q\) is unknown and its only available source is a fresh \(Q\)-draw, every exact method satisfies
+
+\[
+\boxed{\mathbb E N_Q\ge M.}
+\]
+
+Compare two current means \(q,q'\), keeping \(p\) fixed. Each acquired current record contributes
+
+\[
+\frac{\|q-q'\|^2}{2\sigma^2}
+\]
+
+to the expected stopped transcript’s relative entropy. The required iid output contributes \(M\) times that quantity. Data processing supplies the bound.
+
+The construction attains it with exactly \(M\) actual current-source calls. It does not assume access to a directly generated sample mean of the desired precision.
+
+The uncertainty floor at \(p=q\) applies when equality is **not supplied as a promise**. If equality is known in advance, simply keeping the archive is legitimate.
+
+## 4. Complete work, including preparation and repeated use
+
+Let \(C_P,C_Q\) denote the complete cost of an old or current source vector, including acquisition and resolution. Let \(c(x;\mathcal A)\) be the best legitimate cost of obtaining the response at \(x\), using available numerical state \(\mathcal A\).
+
+The complete bill from creating the old archive through one migration is
+
+\[
+\begin{aligned}
+C_{\rm total}
+={}&B_{\rm setup}
++MC_P
++\sum_i c(X_i;\mathcal A_{\rm old})\\
+&+MC_Q
++C_{\rm coupling}
++\sum_i
+\mathbf1_{\{Y_i\ne X_i\}}
+c(Y_i;\mathcal A_{\rm current})\\
+&+C_{\rm records}
++C_{\rm downstream}.
+\end{aligned}
+\]
+
+Nothing in the theorem removes the original archive bill.
+
+| Component | Work retained in the comparison |
+|---|---|
+| Preparation | Covariance calibration, model setup, applicable certificates and factorization |
+| Original archive | \(M\) old source records and all \(M\) original responses |
+| Current acquisition | Exactly \(M\) new source records |
+| Selection and coupling | One pass through the archive, \(O(Md)\) real arithmetic, at most \(M-1\) auxiliary uniforms |
+| New responses | One call for each changed input |
+| Storage and output | Archive storage, target records and the actual serialized response size |
+| Downstream computation | All analysis performed on the returned ensemble |
+
+There is no hidden nearest-neighbor search. The algorithm processes old records directly. For general known positive-definite covariance, a derived extension uses the fact that all reflection displacements remain collinear with the initial total discrepancy: one paid matrix solve supports \(O(d)\) work per record. The supplied numerical prototype implements the isotropic case.
+
+For flat source and opaque response costs \(C_s,C_r>0\), the optimal incremental oracle-work scale is
+
+\[
+\boxed{
+\Theta\!\left[
+MC_s+
+C_r\min\{M,\,
+M\operatorname{TV}(P,Q)+\sqrt{Md}\}
+\right],
+}
+\]
+
+with arithmetic, output and downstream work added explicitly.
+
+For variable-cost solvers, the correct response bill is
+
+\[
+\mathbb E\sum_i
+\mathbf1_{\{Y_i\ne X_i\}}
+c(Y_i;\mathcal A).
+\]
+
+It cannot generally be replaced by an average solve cost multiplied by the expected number of changed inputs. The residual cases could be especially difficult.
+
+### One migration versus many
+
+Near equal means, one migration changes the combined original-plus-new response bill from
+
+\[
+2MC_r
+\quad\text{to}\quad
+MC_r+O(C_r\sqrt{Md}).
+\]
+
+Thus one migration gives at most roughly a factor of two improvement when counted from the original archive’s creation. The larger saving concerns incremental response work.
+
+Repeated use can produce a larger complete saving. For fixed exogenous means \(q_0,\ldots,q_T\), independent acquisition windows and a fixed response kernel, induction gives valid iid ensembles at every epoch and total expected response calls bounded by
+
+\[
+M+
+O\!\left(
+\sum_{j=1}^{T}
+\min\{M,\,
+M\operatorname{TV}(Q_{j-1},Q_j)+\sqrt{Md}\}
+\right).
+\]
+
+If each change satisfies
+
+\[
+\operatorname{TV}(Q_{j-1},Q_j)
+=O(\sqrt{d/M}),
+\]
+
+this becomes \(M+O(T\sqrt{Md})\), while source acquisitions remain \(M(T+1)\).
+
+The versions are correlated. Downstream time-series inference must account for that dependence. This repeated-use statement is an upper construction; I have not proved optimality against a method retaining every earlier evaluated archive.
+
+If the historical source remains available, additional calibration genuinely changes the tradeoff. Padding to \(N\) old and \(N\) new inputs costs \(N-M\) extra old calls plus \(N\) current calls, and yields \(O(M\sqrt{d/N})\) new responses near equality for \(N\ge2M\). Those source calls are charged.
+
+## 5. The strongest legitimate comparators
+
+The result survives comparison with ordinary methods because their access and output contracts are made explicit.
+
+| Method | Applicability and outcome |
+|---|---|
+| **Direct propagation of current readings** | Always valid here. Uses \(M\) current-source calls and \(M\) new response evaluations. |
+| **Affine Gaussian residual transport** | Uses exactly the same information and already produces the correct full iid law. It changes every input. It can win when responses admit cheap exact updates under translation. |
+| **Known-density maximal coupling / importance mixing** | When true old and new densities are available, expected new responses can be \(M\operatorname{TV}(P,Q)\), including zero at known equality. Known Gaussian means also remove the need to acquire current samples merely to learn their distribution. |
+| **Shared randomness or replayed seeds** | Applicable when the actual source exposes that representation. A physical observation with unknown mean does not identify its latent standardized Gaussian seed. |
+| **Importance weighting and sensitivity estimators** | Can reuse existing simulations with few or no new evaluations when the actual goal is selected expectations and density ratios are available. |
+| **Structured incremental solvers** | Retained factorizations, exact update identities, certified surrogates, warm starts and batching must be used whenever legitimate. Their costs replace an opaque response price. |
+
+Known-density importance mixing is a direct operational antecedent: Sun and colleagues explicitly preserved population members and their expensive fitness evaluations using density ratios. I am not claiming the first method for recycling expensive evaluations. :chatgpt-content-reference{index="3"}
+
+Likewise, density-modification sensitivity methods already reuse an existing simulation ensemble to estimate changes in failure probabilities. If that weaker output satisfies the consumer, it can be the better choice. A complete unweighted iid ensemble should only be required when the downstream task actually needs it. :chatgpt-content-reference{index="4"}
+
+The construction itself uses probabilities—the exact **conditional Gaussian probabilities** warranted by the model and observed totals. It does not estimate unknown density ratios and then treat estimates as exact.
+
+The potential distinct contribution is the assembled result: an unavailable historical Gaussian source, unknown means, preservation of actual expensive responses, complete joint-law correctness, and matching source/response work orders. The Astra and primary-literature search did not establish historical priority for that assembly.
+
+## 6. Finite execution with an explicit error budget
+
+A continuous Gaussian theorem does not automatically give an exact finite-byte implementation. I constructed a separate finite-resolution operation.
+
+Suppose each source coordinate is recorded on the grid \(\Delta\mathbb Z\), and the old responses were evaluated at those recorded controls.
+
+The implementation:
+
+1. Adds an independent uniform dither inside each old and new recording cell.
+2. Runs the Gaussian bridge coupling on the dithered values.
+3. Rounds the proposed controls back to the grid.
+4. Copies an old response when its rounded control is unchanged.
+5. Evaluates the remaining responses only after the whole plan is certified.
+
+For a differentiable density \(f\), its cell-average histogram \(f_\Delta\) satisfies
+
+\[
+\operatorname{TV}(f,f_\Delta)
+\le \frac{\Delta}{4}\int |f'|.
+\]
+
+For a Gaussian coordinate, this is
+
+\[
+\frac{\Delta}{2\sigma\sqrt{2\pi}}.
+\]
+
+Applying the bound to the \(2Md\) source coordinates, then using data processing, proves
+
+\[
+\boxed{
+\operatorname{TV}
+\left(
+\text{returned labelled batch},
+\text{iid rounded target batch with responses}
+\right)
+\le
+\epsilon_\Delta
+:=
+\min\!\left\{
+1,\frac{Md\Delta}{\sigma\sqrt{2\pi}}
+\right\}.
+}
+\]
+
+This controls the whole returned batch.
+
+The response-count guarantee retains the error cost:
+
+\[
+\mathbb E K_\Delta
+\le
+\mathbb E K_{\rm continuous}
++
+M\epsilon_\Delta.
+\]
+
+A sufficient resolution for preserving the \(\sqrt{Md}\) response order is
+
+\[
+\Delta=O\!\left(
+\frac{\sigma}{M^{3/2}\sqrt d}
+\right).
+\]
+
+That resolution must actually exist in the historical records. It cannot be acquired retrospectively from an unavailable source.
+
+### Certified implementation
+
+The finite implementation uses integer controls, rational \(\Delta,\sigma\), growing fair-bit prefixes, outward-rounded rational intervals and certified expon
+
+[TRUNCATED — see original chat for remainder.]
+
