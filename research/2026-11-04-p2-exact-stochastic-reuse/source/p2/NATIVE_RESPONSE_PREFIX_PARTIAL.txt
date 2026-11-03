@@ -1,0 +1,485 @@
+# Result: exact stochastic reuse has an information-dependent boundary
+
+I completed a mathematical characterization of **how much an actual stored random outcome can be preserved when its generating law changes**, together with optimal sampling algorithms for a stored bit.
+
+The useful organising concept is **implementable overlap**: agreement between two distributions that can actually be produced through a specified information interface, with its sampling costs included. Ordinary distributional overlap does not determine this quantity.
+
+Two consequences are sharp:
+
+- **For general distributions, universally exact reuse through independent sampling is limited to their common atoms.** Even when two continuous distributions are identical, the old value cannot be retained with positive probability under this information contract.
+- **For a recorded bit, preserving it to within an additional disagreement probability \(\eta\) requires order \(1/\eta\) samples in expectation, but order \(1/\eta^2\) samples under a guaranteed hard cap.** I obtained matching lower bounds and executable constructions, including the exact optimum for every integer hard cap.
+
+The underlying bit-repair walk was already present in Astra. The completed contribution is its sharp optimality theory, the general-space boundary, and the converse showing when empirical optimal transport is the best possible universally exact operation. Historical priority of these particular results remains unverified.
+
+**Completed deliverables**
+
+- :chatgpt-content-reference{index="7"}[Astra_P2_Exact_Stochastic_Reuse_20261104.pdf](producer-workspace/Astra_P2_Exact_Stochastic_Reuse_20261104.pdf) — the 13-page report, with proofs, constructions, comparison to primary research, and precise limitations.
+- :chatgpt-content-reference{index="8"}[Astra_P2_Sample_Only_Transport_20261104.zip](producer-workspace/Astra_P2_Sample_Only_Transport_20261104.zip) — executable algorithms, verification code and results, independent optimisation checks, full derivation notes, figure, and editable report source.
+
+## 1. The question created by the concept
+
+Suppose an expensive stochastic computation has produced an actual value
+
+\[
+X\sim P.
+\]
+
+Other work may already depend on that particular realization. After a model change, we require an output
+
+\[
+Y\sim Q
+\]
+
+with exactly the new distribution, while disturbing \(X\) as little as possible.
+
+If \(P\) and \(Q\) are fully known, ordinary coupling theory describes the best possible agreement. For a bit, the minimum disagreement is \(|p-q|\). But a coupling’s mathematical existence does not specify an operation available to someone who only has sampling access.
+
+I therefore fixed the information contract:
+
+1. The original, correctly distributed \(X\) is supplied.
+2. Fresh independent draws from \(P\) and \(Q\) can be requested.
+3. The procedure may adaptively choose which source to query and when to stop.
+4. It receives no probabilities, densities, common random seed, or certificate that the two laws agree.
+5. The same procedure must produce exactly \(Q\) for every pair of laws in the declared class.
+
+The original sample is already paid for. All budgets below count **new source draws**.
+
+This distinction matters for cached simulations and stochastic computation. Two output laws can be identical while the permitted interface supplies insufficient information to certify that copying an old realization is a valid universal operation. Conversely, a discrete outcome can sometimes be retained with a rigorously optimal sampling cost.
+
+## 2. General theorem: exact reuse is limited to common atoms
+
+Let the state space be standard Borel—for example, a finite set, the real line, or a Euclidean space. Require exactness for **all probability laws** on that space.
+
+### Universal selection theorem
+
+**Every universally exact procedure that terminates after finitely many queries almost surely must return a value that actually appeared among its target-source draws.**
+
+This is a restriction derived from exactness; selection from the observed target samples is not assumed in advance.
+
+The proof uses finite transcripts. Suppose a procedure sometimes stops and returns a value absent from its target-query list. Some finite query sequence has this property with positive probability. Fix a corresponding tuple of source values for which a positive-measure set of auxiliary random seeds produces that behaviour.
+
+Now choose a finitely supported old distribution containing the old values in that tuple, and a target distribution supported exactly on its queried target values. The same finite transcript and seed event have positive probability under these distributions. The procedure then returns a value outside its target distribution’s support, contradicting exactness.
+
+The argument allows adaptive querying and stopping. It even allows infinite expected work, provided every run still terminates almost surely.
+
+### Sharp atomic-overlap theorem
+
+Define
+
+\[
+A(P,Q)
+=
+\sum_{x:\,P\{x\}>0,\;Q\{x\}>0}
+\min\{P\{x\},Q\{x\}\}.
+\]
+
+Then
+
+\[
+\boxed{
+\sup_{\text{universally exact, a.s.-finite procedures}}
+\Pr(Y=X)
+=
+A(P,Q).
+}
+\]
+
+The supremum need not be attained by a single finite-query procedure.
+
+The upper bound follows from selection. To retain \(X\), a target draw must equal it. A fresh target draw has zero probability of equalling a non-atom of \(Q\), and a countable number of attempts does not change that. At each common atom, agreement cannot exceed either marginal mass.
+
+The bound is approached constructively. Take increasingly large independent old and target batches, include the actual \(X\) in the old batch, and maximally couple the two empirical distributions conditional on that actual \(X\). The output remains exactly \(Q\), while the empirical common mass converges to \(A(P,Q)\).
+
+### Consequence: identical continuous laws can have zero implementable exact reuse
+
+When \(P=Q\) is atomless,
+
+\[
+\boxed{\Pr(Y=X)=0}
+\]
+
+for every procedure in this universal sampling-only class.
+
+Ordinary coupling permits perfect agreement at these same laws. The operational restriction prevents the procedure from exploiting an equality it has not been given.
+
+A mixed example makes the distinction quantitative. If
+
+\[
+P=Q=\tfrac12\delta_0+\tfrac12\operatorname{Uniform}[0,1],
+\]
+
+the best limiting retention probability is \(1/2\), despite the two distributions being identical.
+
+The universal requirement is essential. If equality of the two complete sampling queries is supplied as a promise, copying \(X\) is valid. Likewise, restricting the laws to a known family can provide additional information. The theorem concerns the specified unrestricted interface.
+
+It also concerns **literal equality**. Nearby values, accurate observables, and approximately correct output distributions are different objectives.
+
+## 3. Fixed sampling budgets have a complete transport solution
+
+The atomless result does not prevent an output from being close to the old value. I also resolved that question for fixed numbers of samples from each source.
+
+Suppose there are:
+
+- \(r\) old samples, including the actual \(X\);
+- \(s\) independent target samples.
+
+Write their empirical distributions as \(\widehat P_r\) and \(\widehat Q_s\). For a fixed nonnegative finite-valued measurable displacement cost \(c(x,y)\),
+
+\[
+\boxed{
+\inf_A \mathbb E\,c(X,Y)
+=
+\mathbb E\,\operatorname{OT}_c(\widehat P_r,\widehat Q_s),
+}
+\]
+
+where the infimum ranges over universally exact procedures using these per-source budgets.
+
+**An optimal empirical transport plan, sampled from its row corresponding to the actual \(X\), attains equality for every \(P,Q\) simultaneously.**
+
+The converse is the substantial part. Conditional on the two unordered batches,
+
+\[
+\mathcal L(X\mid\widehat P_r,\widehat Q_s)=\widehat P_r.
+\]
+
+Universal exactness also forces
+
+\[
+\mathcal L(Y\mid\widehat P_r,\widehat Q_s)=\widehat Q_s.
+\]
+
+For finite supports, the latter identity follows by expressing exactness as a polynomial identity in the unknown source probabilities. Uniqueness of its multinomial Bernstein coefficients fixes the conditional output probabilities to the empirical target frequencies. Applying the identities to arbitrary finite sample tuples extends the result to general state spaces.
+
+Thus every admissible procedure induces a coupling of these two empirical measures, and its conditional cost is at least their optimal transport cost.
+
+The completeness machinery is classical, as is the empirical-transport construction. Minibatch coupling already has substantial theory. The result developed here is the **converse over every universally exact procedure with the same information budget**. :chatgpt-content-reference{index="0"}
+
+### A continuous example with an exact constant
+
+Evaluate these universal procedures at
+
+\[
+P=Q=\operatorname{Uniform}[0,1],\qquad r=s=k,
+\]
+
+using squared displacement. Sorting each batch and matching corresponding order statistics gives
+
+\[
+\boxed{
+\min_A \mathbb E(X-Y)^2=\frac{1}{3(k+1)}.
+}
+\]
+
+The order-statistic calculation already appears in the expected-batch optimal-transport literature. Its role here is as an exact operational lower bound over the full universally exact class. :chatgpt-content-reference{index="1"}
+
+So mean-square displacement tends to zero, while the probability of exact equality remains zero.
+
+This theorem uses **fixed per-source budgets**. It does not resolve arbitrary adaptive allocation of one total budget on a general state space. At the most general measurable-cost level, attainment means a measurable randomized kernel; computable execution additionally requires effective cost comparisons and finite empirical optimisation.
+
+## 4. A stored bit has sharp resource laws
+
+Now let
+
+\[
+X\sim\operatorname{Bernoulli}(p),\qquad
+Y\sim\operatorname{Bernoulli}(q),
+\qquad p,q\in(0,1).
+\]
+
+For a procedure \(A\), define
+
+\[
+\delta_A(p,q)=\Pr_A(X\ne Y).
+\]
+
+The unavoidable disagreement with known probabilities is \(|p-q|\). The additional disturbance caused by the information restriction is therefore
+
+\[
+R(A)
+=
+\sup_{p,q}
+\left[\delta_A(p,q)-|p-q|\right].
+\]
+
+Output exactness is maintained throughout. The quantity being reduced is **extra alteration of the stored bit**.
+
+### Optimal uniform expected budget
+
+For every integer \(L\ge1\), put \(C=2L-1\). Then
+
+\[
+\boxed{
+\inf_{A:\,\sup_{p,q}\mathbb E_A[N_p+N_q]\le C}
+R(A)
+=
+\frac{1}{C+1}.
+}
+\]
+
+This solves the uniform expected-budget problem at every odd budget.
+
+### Optimal hard cap
+
+For every integer \(m\ge1\), put
+
+\[
+n=\left\lfloor\frac{m+1}{2}\right\rfloor.
+\]
+
+Then
+
+\[
+\boxed{
+\inf_{A:\,N_p+N_q\le m\;\text{almost surely}}
+R(A)
+=
+\frac{\binom{2n}{n}}{4^n}.
+}
+\]
+
+The lower bound covers arbitrary adaptive choices between the two sources and arbitrary parameter-independent auxiliary randomness.
+
+An immediate consequence is that consecutive odd and even caps have the same minimax value. The extra single draw at an even cap cannot improve this universal worst-case objective.
+
+Since
+
+\[
+\frac{\binom{2n}{n}}{4^n}
+\sim
+\frac{1}{\sqrt{\pi n}},
+\]
+
+the optimal costs for uniformly guaranteeing
+
+\[
+\delta_A(p,q)\le |p-q|+\eta
+\]
+
+obey
+
+\[
+\text{expected budget}\sim\eta^{-1},
+\qquad
+\text{hard cap}\sim\frac{2}{\pi\eta^2}.
+\]
+
+For the following tolerances, the expected budgets fall exactly on the solved odd-budget frontier. The hard caps are the smallest valid integers.
+
+| Maximum extra disagreement \(\eta\) | Optimal uniform mean budget | Minimum hard cap |
+|---:|---:|---:|
+| 10% | 9 | 63 |
+| 5% | 19 | 255 |
+| 1% | 99 | 6,365 |
+| 0.1% | 999 | 636,619 |
+
+At \(p=q\), \(\eta\) bounds the entire probability of changing the old bit. Away from equality, the unavoidable \(|p-q|\) remains.
+
+## 5. The operation that attains the bounds
+
+Both frontiers are attained by a simple excursion construction. Its core recorded-bit mechanism comes from [Astra N1415’s pinned source](https://github.com/harjassand/astra-research-knowledge/blob/02e2d5971a9ae806690e0bd4d5cc803e0c5a3030/research/2026-10-30-recorded-bit-transport-and-trace-repair/source/p1-visible/FINAL_NATIVE_PREFIX.txt).
+
+Start with the actual old bit \(X\).
+
+1. Draw one target bit \(Q_1\).
+2. Set \(S=Q_1-X\).
+3. While the stopping rule permits and \(S\ne0\), draw a fresh old bit \(P_i\) and target bit \(Q_i\), then add \(Q_i-P_i\) to \(S\).
+4. If \(S\) returns to zero, output the actual \(X\). Otherwise output \(Q_1\).
+
+The two stopping rules produce the two resource guarantees:
+
+| Criterion | Continue while |
+|---|---|
+| Expected-budget optimum | \(0<|S|<L\) |
+| Hard-cap optimum | \(S\ne0\) and fewer than \(n\) pairs have been used, counting \((X,Q_1)\) as the first pair |
+
+Neither implementation estimates or evaluates \(p\) or \(q\). Neither needs auxiliary random coins.
+
+For the spatial rule, define
+
+\[
+a=q(1-p),\qquad b=p(1-q),\qquad
+H_L=\sum_{j=0}^{L-1}a^{L-1-j}b^j.
+\]
+
+The two flip probabilities are
+
+\[
+\Pr(X=0,Y=1)=\frac{a^L}{H_L},
+\qquad
+\Pr(X=1,Y=0)=\frac{b^L}{H_L}.
+\]
+
+Their difference is \(a-b=q-p\), proving that the new bit has exactly the required marginal. The expected number of new source calls is exactly \(2L-1\) for every interior pair.
+
+For the temporal rule, a cycle-lemma argument gives
+
+\[
+\delta(p,q)
+=
+\frac1n\,
+\mathbb E\left|
+\operatorname{Bin}(n,p)-\operatorname{Bin}(n,q)
+\right|,
+\]
+
+with independent binomials. This equals the disagreement of maximal coupling between the two empirical binary distributions, and attains the hard-cap optimum.
+
+The hard cap is a ceiling. The temporal procedure stops early on a return to zero. At \(p=q=1/2\), its mean source-call count is
+
+\[
+4n\frac{\binom{2n}{n}}{4^n}-1.
+\]
+
+For the 1% example, the capped implementation averages approximately **126.3 calls** at the fair pair, while guaranteeing no more than 6,365. The mean-optimal spatial implementation averages 99, with an unbounded possible stopping time.
+
+This comparison exposes the actual cost of demanding a guaranteed deadline.
+
+## 6. Why stronger algorithms cannot beat these laws
+
+### The information bound
+
+Let \(N_p,N_q\) count fresh old and target queries, and write
+
+\[
+D=Y-X,\qquad
+\Delta=q-p,\qquad
+\operatorname{Var}(D)=\delta-\Delta^2.
+\]
+
+For every universally exact procedure with finite expected query counts at an interior parameter pair,
+
+\[
+\boxed{
+\delta-(q-p)^2
+\ge
+\frac{p(1-p)}{1+\mathbb E N_p}
++
+\frac{q(1-q)}{\mathbb E N_q}.
+}
+\]
+
+The \(1\) accounts for information already carried by the stored old bit.
+
+Consequently, if \(C=\mathbb E(N_p+N_q)\),
+
+\[
+\delta-(q-p)^2
+\ge
+\frac{
+\left(\sqrt{p(1-p)}+\sqrt{q(1-q)}\right)^2
+}{C+1}.
+\]
+
+At equal laws,
+
+\[
+\boxed{\delta(C+1)\ge4\theta(1-\theta).}
+\]
+
+At the fair pair this becomes \(\delta(C+1)\ge1\), which supplies the expected-budget minimax lower bound. The spatial walk attains equality.
+
+I used a stopped-transcript relative-entropy proof. If \(\mathsf P_{p,q}\) denotes the complete stopped-transcript law, then
+
+\[
+\operatorname{KL}(\mathsf P_{p,q}\Vert\mathsf P_{p',q'})
+=
+(1+\mathbb E N_p)\operatorname{kl}(p\Vert p')
++
+\mathbb E N_q\operatorname{kl}(q\Vert q').
+\]
+
+Exactness fixes \(\mathbb E D=q-p\). A local entropy inequality for this bounded observable converts changes in that mean into the variance bound above.
+
+Sequential information bounds are established Bernoulli-factory machinery. The direct entropy argument matters because unrestricted differentiation through stopping-time expansions can fail; it avoids that regularity gap here. :chatgpt-content-reference{index="2"}
+
+### The hard-cap lower bound
+
+The decisive reduction is to the parameter line
+
+\[
+q=1-p.
+\]
+
+On this line, every requested old bit can be supplied by a fresh \(\operatorname{Bernoulli}(p)\) bit, and every requested target bit by its complement. Adaptive oracle choice therefore becomes an experiment on a single underlying coin.
+
+Pad unused queries to the hard cap \(m\). Including \(X\), there are
+
+\[
+N=m+1
+\]
+
+independent underlying bits. Let \(K\) be their total.
+
+Conditional on \(K=k\), their ordering is uniform and independent of \(p\). Universal exactness forces
+
+\[
+\mathbb E[Y\mid K=k]=1-\frac{k}{N},
+\]
+
+by uniqueness of the Bernstein representation of the function \(1-p\). Exchangeability gives
+
+\[
+\mathbb E[X\mid K=k]=\frac{k}{N}.
+\]
+
+Therefore
+
+\[
+\Pr(X\ne Y\mid K=k)
+\ge
+\left|1-\frac{2k}{N}\right|.
+\]
+
+At the fair pair, averaging produces
+
+\[
+\delta(1/2,1/2)
+\ge
+\mathbb E\left|
+1-\frac{2\operatorname{Bin}(N,1/2)}{N}
+\right|
+=
+\frac{\binom{2n}{n}}{4^n}.
+\]
+
+The construction attains this bound, completing the minimax proof for every cap. The Bernstein machinery has direct precedents in bounded-draw Bernoulli factories; the distinguished stored bit and retention objective produce this particular frontier. :chatgpt-content-reference{index="3"}
+
+## 7. What survived comparison with existing descriptions
+
+The strongest same-information comparator was empirical optimal transport. It survived: it is the optimal operation for fixed per-source budgets. The new work supplies the converse explaining why every universally exact method is constrained to its empirical marginals.
+
+The contribution boundary is explicit:
+
+| Existing work | What it already supplies | Result developed here |
+|---|---|---|
+| Astra N1415 | Actual recorded-bit excursion repair and exact repair on a supplied fixed binary computation graph | Sharp local resource laws and the general-state-space reuse boundary |
+| Bernoulli factories, completeness and sequential information theory | Exact transformations of unknown probabilities, polynomial constraints and information inequalities | Matching bounds for disturbance of the distinguished old sample |
+| Minibatch and expected-batch optimal transport | Empirical couplings, population marginal properties and transport calculations | Optimality over every universally exact procedure with the same fixed per-source information |
+| Known-density maximal coupling | Exact maximal agreement with density access | An ideal benchmark whose stronger information is unavailable in the declared interface |
+| Recent exact output-alignment work | Source sampling with a supplied target attribute law and sharp query-count results | Two unknown laws and the objective of retaining an actual old realization |
+
+The minibatch antecedents include Fatras et al., Pooladian et al., and Boïté et al.; known-density maximal coupling is described by Jacob, O’Leary and Atchadé. The recent work of Jiang et al. is a particularly close access-model antecedent, although its target law and objective differ. :chatgpt-content-reference{index="4"}
+
+The search did not locate these precise retained-sample frontiers in the sources examined. That leaves priority provisional.
+
+### The initial concept was allowed to fail
+
+Before opening Astra or conducting literature searches, I developed a different concrete candidate: finite reference trajectories might cancel unknown shared environmental dynamics.
+
+For a common Riccati flow,
+
+\[
+\dot x=a(t)+b(t)x+c(t)x^2,
+\]
+
+cross ratios of four simultaneous trajectories are invariant. This gives a nontrivial consequence: three references determine a fourth trajectory’s finite-amplitude evolution without identifying the shared time-dependent coefficients.
+
+The central mechanism had strong Lie-superposition and Möbius antecedents, so I rejected its novelty interpretation. :chatgpt-content-reference{index="5"} Two other candidates—unpredictable challenges against adaptation, and simulation cost governed by backward influence—failed to earn, respectively, a universal physical constraint and a new bound beyond existing methods. Their failures are retained in the report.
+
+The opening selected for completion was the precise distinction that remained consequential and constructible: **a relation between distributions and an operation available through sampling can have different possibility boundaries.**
+
+## 8. Verifi
+
+[TRUNCATED — see original chat for remainder.]
+
