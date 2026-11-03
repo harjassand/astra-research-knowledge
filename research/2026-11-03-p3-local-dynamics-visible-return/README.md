@@ -1,0 +1,15 @@
+# P3 normally visible local-dynamics return
+
+For binary-spin stochastic networks with each flip rate0<=c_i(x_Bi)<=Lambda and at mostk incoming variables includingi,the producer constructs exact finite-drive local balance inversion,retained-system sample acquisition,unknown-input hashing and calibrated noisy-reset recovery. Native irreversibility,zero rates,absorbing classes,slow mixing and unbounded outgoing influence are allowed. Within the declared observed-state/control class,the recovered local tables specify the native generator.
+
+Native dynamics keep running while independently clocked calibrated local resets drive chosen target patterns. Local endpoint matrices,not a global equilibrium sampler or independent stationary endpoints,are acquired with explicit holding-time bias and martingale concentration. Observable-only N947 reset machinery is cited at its conditional scope and does not supply arbitrary physical-state resets. N804 is kinetic/acquisition context,not an inferred control implementation.
+
+Known-neighborhood ideal-reset sample count is reported O(2^k k Lambda^2 epsilon^-2 log(n2^k/delta)) COMPLETE snapshots,with nN scalar measurements,n r tau N expected reset-clock activity and tau N serial holding time. Unknown-input response queries have a separate paid QJ snapshot/nQJ readout budget. Constants can be enormous;hash tests use a bounded-response interface,not the full sufficient physical acquisition budget. Calibrated noisy resets add q_min^-k deconvolution and a displayed epsilon^-4 sufficient cost at fixed positive reset error.
+
+A sufficient observed state and calibrated reset/control channel preserving the native law are explicit physical resources. Unknown controller backaction can exactly mask a changed native law. Same incorrect-neighborhood validation can miss omitted inputs. Elementary molecular implementation is unearned:the compiled chemical network is formal,with maintained fuel/waste accounting and symbolic native parameters,not actual molecules or an experiment. Maximum likelihood beat local inversion on the same reported dataset. No broad invention-of-local-learning,priority,practical advantage or civilisation-impact claim.
+
+Producer reports completed mathematical/computational construction,implemented inference,finite experiments and formal reaction-network compilation;visible activity reports independent checking. Only the normally visible final answer is public source here. The56-page PDF,58-file ZIP,original proofs/code/observation histograms/results/chemical manifests/review artifacts are NOT acquired or exported. Existing P3 no-export/transfer hold remains binding;no download,alternate retrieval,transfer,retry or repackaging. No Capital scientific review,reproof,rerun,novelty audit or external gate.
+
+Source chat: https://chatgpt.com/c/6ae98610-3f14-83ec-8172-4c92a2fb69f3
+
+Only the complete normally visible answer has a public source route. The full supplied return,prompt and visible activity are privately frozen. No offered PDF/ZIP,held proof,code,data,histogram,manifest or review artifact is acquired,mirrored,exported,repacked or retried.
