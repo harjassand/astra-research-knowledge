@@ -1,0 +1,7 @@
+# Dots growing-slab gauge obstacle
+
+Latest approximately05:14 visible update: the longer slab associated with the reported complete MATTER spectrum also increases bulk response to a SHARED gauge field. Desired interaction cannot be assumed fixed as device grows. Localizing the gauge field near the surface was tested and creates a NEW UNWANTED MIRROR BOUNDARY in a CONTROLLED LIMIT;that proposed fix does not solve the problem. Gapping the new boundary while retaining gauge field and desired particles is an OPEN question. No interacting chiral gauge theory is established. This adds a genuine gauging/scaling obstacle to the earlier qualified candidate finite-width and proposed polynomial matter-spectrum results;it does not upgrade their confidence or invalidate all possible gauge constructions.
+
+The tested localization failure is scoped to the stated controlled limit,not a theorem ruling out all localization or all gauging. No explicit gauge model,bulk-response scaling exponent,coupling normalization,successful boundary-gapping construction or governing proof package supplied. Candidate/proposed/appears qualifiers,earlier internal-check scopes and extremely costly unquantified resources remain. Dynamical interacting chiral gauge theory remains NOT_ESTABLISHED.
+
+Complete normally visible scientific response,approximately05:14 Brisbane;model/thinking unavailable,no intervening visible human prompt,no ZIP supplied. Original wrapper/prior prompt private. Source-reported test carried without Capital replay,reproof,new review or external gate.
