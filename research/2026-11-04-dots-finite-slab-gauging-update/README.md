@@ -1,0 +1,15 @@
+# Dots 4 November 04:20 finite-slab/gauging scope update
+
+CURRENT 4 November 04:20 visible clarification: the producer retains an internally checked unwanted mirror-boundary gap and desired Weyl-particle signal on the opposite face. It is NOT a completed finite-slab chiral theory or civilisation-level breakthrough. Additional low-energy states in the FULL finite slab have NOT been excluded, and global symmetry does NOT establish a dynamically gauged theory.
+
+Two attempted shortcuts failed; the source explicitly says these failures do not disprove the construction. Their details are not supplied here. Failure to exclude additional states is not a proof that such states exist. The actual completeness obstacle and genuine dynamical gauge coupling remain open; a boundary signal alone does not settle the full low-energy spectrum. No ZIP, governing proof package, explicit finite-slab model, resource evaluation or new quantitative theorem supplied. Earlier internally checked results retain their actual component domains, without global extrapolation.
+
+Complete 04:20 normally visible response only; model and user-visible thinking unavailable. The most recent earlier human prompt and full wrapper are private, with no intervening visible human message reported. Source tests and boundaries are carried as stated without Capital scientific review, reproof, replay, novelty audit, external gate or producer messaging. No archive/proof/code/data/review artifact was supplied or acquired.
+
+The earlier DIFFERENT ungauged construction, finite but unquantified local resources, free bulk beyond a fixed boundary region and different chiral particle set retain their stated scope. No identification with Spin(10), the original sixteen-species neutral state or older residual-spectrum set is inferred. The prior checked nonzero-phase shortcut failure and screened massive-photon model remain separate component claims. Original source files and two immutable units are retained. Current requires/costs distinguish the latest model from predecessor-specific doubled-interface quantities.
+
+The source reports that earlier active agents had stopped after session recovery, their saved work remained, and six assignments were restarted: two checking results, two attacking the chiral obstacle, two exploring independent capabilities. This corrects continuity of reported worker activity; Capital neither verifies live producer workers nor starts agents. Computation candidates did not convincingly beat established alternatives; molecular/biological work still lacks an earned concrete mechanism. No new independent capability is marked established.
+
+Source chat: https://chatgpt.com/dots/e80f65ea-ba9f-4235-9233-fb2e264a73aa~6ad0272c4008819ebb67fc4b4e411b17
+
+Complete visible scientific message only. No ZIP/governing proof package supplied. Earlier sources/unit versions remain at original scope. No full finite-slab completeness,dynamical gauging theorem or new quantitative operation is invented from this brief return.
