@@ -1,0 +1,3 @@
+# Zero-peer returns and arbitrary-input ordered current
+
+Six new exact originals only. New zero-peer/high-anchor/mixed angular returns use the exact source gate/gap/minority domains. Source-switch v2 accepts any actual incoming probability on the admitted finite ordered core;v1 remains valid and immutable. Whole-component coordinate floor,raw retag/source-weight cancellation and unconditional first-source weighting are essential. No higher-dimensional transport,full recurrence,practical advantage or new independent audit. Root read both notes;program/results are data,not run/imported. Prompts private;no P3 held proof.
