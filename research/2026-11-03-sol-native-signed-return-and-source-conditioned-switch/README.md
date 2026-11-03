@@ -1,0 +1,3 @@
+# Native signed bridge and source-conditioned operator
+
+Six new exact originals only;earlier graph/resource/angular source cuts are not duplicated. Native original Vhat return receives the complete signed five-state trace through both genuine corner laws. Angular attachment is only on its zero-gate guard. Source switch uses a real empty B endpoint with peer q unbounded,actual monotone Green density and raw retagged conductances. Earlier increasing-Z failure remains true. Root source read is not independent audit;program/results bytes are preserved without import/rerun. No full recurrence,practical advantage or P3 source transfer. Governing notes/source index are native routes;all program/result originals have public byte-bound links.
