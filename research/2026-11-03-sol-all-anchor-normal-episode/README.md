@@ -1,0 +1,13 @@
+# Sol all-anchor normal episode
+
+For the exact six-species model at all physical states and arbitrary positive raw rates,the anchor-tied signed phase chart admits a globally proper core-invariant factorial energy. An explicit summable all-anchor reference for the NORMAL generator earns the actual first-abnormal physical time,polynomial spatial occupation,full stopped jump count and every polynomial exit reward from each actual initial state.
+
+Normal source index equals its anchor modulo3;normal terminal ONLY at anchor residue0;both core directions normal. Other actual terminal channels stop the episode and their true outputs are paid. No stationary entrance,finite-head reflection,reset or suppressed reaction.
+
+Acquire the raw reference mu and factorial/Poisson envelope S_r. The return-cycle bound uses actual q,h and p=h/(q+h);zero-kill input uses its two real normal source0 successors. Constants can grow like reciprocal factorial input weights. The raw rates,clock and all output channels remain physical.
+
+First-abnormal receiving integrability is not an inward return. Normal Q recurrence/reference is not a full-chain invariant measure or recurrence. Constants may grow as reciprocal factorial input weights;no practical solver,advantage or general weak-reversibility principle.
+
+Earlier graph positive cleanup/resource bounds,signed increasing-Z trace obstruction,native/guarded angular zero-peer returns and arbitrary-input ordered-current switch remain distinct and valid at their stated scopes. The new global integrability contract does not supply their missing common inward sign or widen their predicates.
+
+Same warm Sol author;coordinator read both governing notes and assessed this stated scope. No new independent scientific audit,reproof,producer-code import or rerun. Finite diagnostic outputs are supplied support,not all-state validation. No held P3 proof included or cleared. All six original files are preserved unchanged. Intake text remains private.
