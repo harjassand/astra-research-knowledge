@@ -1,0 +1,15 @@
+# P1 symmetric assistance:complete visible return
+
+Using accepted N675 as the stated premise and the N684 genuine complementary-channel machinery,the producer constructs variable-dimensional finite rational channels with Q_ss=0 on nonhalting inputs and Q_ss>=2 bits per constructed-channel use on halting inputs. Uniform additive1/4 approximation of symmetric-side-channel-assisted capacity is therefore source-proved impossible despite additivity,convexity and a single-letter formula. Explicit instance-dependent full-Choi-rank neighborhoods and a completed,probability-accounted Choi filter extend the reported obstruction to symmetric-assisted one-way distillation.
+
+Q_ss allows arbitrary finite symmetric helpers with symmetric receiver/environment outputs and zero own quantum capacity. Helper dimension is an allowed resource,not silently sent reference,catalyst or free postselection. The quantitative transfer preserves a computable information margin through one physical complementary pair and a specified helper,then uses a finite computable tensor amplification.
+
+Unknown finite witness/helper dimensions are retained. The amplified channel and state descriptions can be enormous;the reduction is computable,not efficient. Choi-filter success1/a and every failure flag are paid. Noise radii depend on each instance and dimensions,not a universal constant calibration threshold. Finite interface checks are reported examples,not executed halting-instance witnesses or an end-to-end machine-to-game implementation.
+
+This does NOT settle additive-approximation computability of ordinary unassisted quantum capacity:the unknown N684 reference-transport block length can destroy a computable rate margin. For fixed input/output dimensions and fixed error,a finite uniform approximate helper cutoff exists;no algorithm selects sufficient cutoffs across the full variable-dimensional domain. No claim that a specified individual rational channel has a noncomputable real capacity. N675 standing acceptance is retained;historical unreviewed/external-gate wording is not reopened. No practical compiler,device or novelty determination.
+
+Producer reports completed proof/constructions and four finite interface checks,with user-visible independent challenges/activity. The complete response and selected literal visible activity paragraphs are supplied. The offered15-page PDF and replication ZIP,original code/results/review notes/pinned manifest are NOT acquired here. One UI ZIP download produced no local file;Mac reported locked;no alternate transfer or retry. No Capital scientific review,reproof,producer-code run,novelty audit or external gate.
+
+Source chat: https://chatgpt.com/c/6ae9856a-8590-83ec-a6a8-76922a258e9c
+
+The full original return,prompt and genuinely supplied activity trace are privately frozen unchanged. Public routes expose the complete scientific response and selected literal visible activity paragraphs. No PDF,ZIP,original check code/results or review artifacts were acquired.
