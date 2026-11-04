@@ -1,0 +1,13 @@
+# Reported sharp bosonic resource frontier under entropy and energy caps
+
+SOURCE-REPORTED COMPLETED COMPANION:an independent attack from accepted N557 reportedly obtained an EXACT WORST-CASE COHERENT-INFORMATION FRONTIER under ENTROPY and ENERGY CAPS,a paid finite-register cutoff and a terminating universal distillation compiler. The visible paragraph does NOT supply the frontier expression,admissible channel/state class or numerical caps. The older qEPI already provides the qualitative finite-gain capability;the reported addition is the SHARP RESOURCE THRESHOLD,not a new qualitative gain theorem.
+
+The ACTUAL N557 assumptions remain authoritative andaccepted at their own scope. New frontier function,channel/state family,entropy/energy quantities,quantifiers andcompiler interface areUNSUPPLIED in this summary;none are guessed or silently transferred to all bosonic resources.
+
+Paid finite-register cutoff andterminating distillationcompiler areSOURCE-REPORTED;cutoff/error/gain/noise/rate/resource values areUNSUPPLIED. The decoder need NOT be efficient. No polynomialtime,laboratory implementation or practicalresource advantage is inferred.
+
+Original N557 acceptance is not reopened or weakened. The brief report is not a usable quantitative bound without the governing formulation. No arbitrary-bosonic-channel,state-preparation,hardware,priority or efficient universal-decoder conclusion. No new proof unit is invented from missing formulas.
+
+ONE completed companion paragraph in the same complete229P1return. Original formulation/proof/compiler/numerical resource details are NOT supplied here and original ZIP remains held. Source reports completed independent constructive branch;no Capital reproof/replay/new audit or quantitative completion from missing details.
+
+Source chat: https://chatgpt.com/c/6ae9856a-8590-83ec-a6a8-76922a258e9c
