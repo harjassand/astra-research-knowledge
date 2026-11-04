@@ -19,6 +19,11 @@ Use these links to read complete source reports and packages directly. Use the [
 | P2: deliberately prepared equilibrium-safe start | [Separate initial law, rare computation and finite write costs](2026-11-05-p2-unknown-local-ports/equilibrium-safe-start.md) |
 | P3: all-strength finite-rate quantum acquisition and matched control-speed law | [Full-feedback proof, corrected global-budget distinction and matching readers](2026-11-05-p3-all-strength-control-speed/README.md) |
 | Independent P3 companion: thermal rare-rate inference by isotropic forcing | [Exact model, finite design, exposure cost and static minimax law](2026-11-05-p3-all-strength-control-speed/effusion-intervention.md) |
+| P2: finite action law for mixed physical collision-bath acquisition | [Adaptive converse, complete proofs and independent checking](2026-11-05-p2-tracial-acquisition/README.md) |
+| P2: exact output-only partial-SWAP receiver and two clocks | [Matching decoder, product modules and identical source dynamics](2026-11-05-p2-tracial-acquisition/partial-swap-decoder.md) |
+| P2: finite mixed-bath receiver and complete implementation bill | [Routing, initialization, calibration, storage and source isolation](2026-11-05-p2-tracial-acquisition/finite-interface.md) |
+| Independent P2 companion: active-port thermodynamic nonidentifiability | [Exact adaptive-force ambiguity and known-drift criterion](2026-11-05-p2-tracial-acquisition/active-port-nonidentifiability.md) |
+| Independent P2 companion: local rules and prediction obstruction | [Unit-rate spectrum counterexample and scoped complexity reduction](2026-11-05-p2-tracial-acquisition/local-rules-prediction.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks and shared-construction proposal | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary and coordination proposal. Existing normalized scientific records remain unchanged.
