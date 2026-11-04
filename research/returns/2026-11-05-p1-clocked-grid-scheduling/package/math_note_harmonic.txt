@@ -1,0 +1,464 @@
+DETERMINISTIC HARMONIC SCHEDULING OF CLOCKED POWER ROUTINES
+Independent mathematical construction, error audit, and prior-art boundary
+Prepared for /root on 2026-11-05. Internal scratch note, not an empirical validation.
+
+1. EMPIRICAL TARGET AND WHAT IS ALREADY EXPLAINED
+
+Hartmann et al., One-minute frequency disturbances from unintended
+synchronization in cyber–physical power systems, Nature Energy, published
+30 October 2026, DOI 10.1038/s41560-026-02144-0, identify clock-synchronized
+software routines in UPS/battery systems as a source of minute-periodic
+power peaks. Their evidence includes propagation across voltage levels and
+a manufacturer software update. Random scheduling, adaptive offsets, and
+event-driven control are already proposed by the empirical paper. The
+causal mechanism itself is not our discovery.
+
+The specific mathematical question here is: given measured, heterogeneous
+periodic power signatures and an allowed start-time interface, can one
+assign one fixed start phase per device so that selected aggregate Fourier
+components are bounded by a few individual-device contributions rather
+than by the number of devices? What calibration, timing, and deadline
+conditions make that statement physically meaningful?
+
+This note supplies a finite constructive answer conditional on that
+interface. It does NOT prove that all UPS firmware exposes the required
+interface, certify the hardware measurements, or demonstrate a field
+deployment. It also does NOT provide a population-independent guarantee
+under fixed arbitrary errors at every device.
+
+2. MODEL AND FOURIER CONVENTION
+
+T is the routine period (60 s in the motivating observation), and
+omega = 2*pi/T. Device i has a T-periodic real incremental power signature
+
+  p_i(t) = c_i0 + 2 Re sum_{k>=1} c_ik exp(i*k*omega*t).
+
+The nominal signature is translated by the chosen offset tau_i; it is not
+amplitude-modulated, shortened, interrupted, or removed. Each required
+routine runs once per period after deployment. The required assumption is
+that changing its start phase leaves its signature unchanged within a
+specified error budget. State-dependent changes, local controller
+interactions, and replenishment/recharge effects must be included in that
+budget, not treated as zero by definition.
+
+For K selected harmonics,
+
+  S_k = sum_i c_ik exp(-i*k*omega*tau_i),  1 <= k <= K.
+
+The retained-band RMS power is sqrt(2 sum_k |S_k|^2). Its peak magnitude is
+at most 2 sum_k |S_k|. These factors of two follow from the complex Fourier
+coefficient convention and must not be dropped.
+
+Take M > K allowed phases tau_m = m*T/M, m=0,...,M-1. More generally the
+devices can have different allowed phase sets, but uniform feasibility
+then requires a separate check.
+
+Choose nonnegative weights w_k, for example w_k=1 for source-power RMS or
+w_k=|H(k*omega)|^2 for a known stable linear frequency response. Define a
+real d=2K dimensional vector
+
+  v_im = (sqrt(w_1) Re[c_i1 exp(-2*pi*i*m/M)],
+          sqrt(w_1) Im[c_i1 exp(-2*pi*i*m/M)], ... ).
+
+The letter i in exp denotes the imaginary unit, while i indexing a device
+is conventional; implementations should use unambiguous variable names.
+
+Every phase vector for device i has the same Euclidean norm
+
+  B_i^2 = sum_{k=1}^K w_k |c_ik|^2.
+
+Because M>K, (1/M) sum_m v_im = 0 for every device independently, regardless
+of its waveform, harmonic phases, or amplitude. This is the only property
+that makes the initial zero target feasible without further optimization.
+
+3. EXACT EXISTENCE AND CONSTRUCTION THEOREM
+
+Theorem. Under the model in section 2, one phase m_i can be assigned to
+each device so that
+
+  sum_k w_k |S_k|^2 <= sum_{i in F} B_i^2 <= sum_largest_min(N,2K) B_i^2,
+
+where F is a constructively obtained set containing at most 2K devices.
+Consequently,
+
+  ||S||_w <= sqrt(2K) max_i B_i,
+
+and the retained-band RMS source power is <= 2 sqrt(K) max_i B_i when
+w_k=1. For equal bounds |c_ik| <= C this is at most 2*K*C in RMS power.
+The first inequality can be sharpened by replacing B_i^2 with the actual
+rounding variance B_i^2 - ||b_i||^2, defined below.
+
+This is an application of Shapley–Folkman/Starr convexification plus
+conditional-expectation rounding. Neither ingredient is claimed new.
+
+Proof, first stage (fractional representation).
+Start with x_im=1/M. It obeys
+
+  x_im >= 0; sum_m x_im=1 for every i; sum_im x_im v_im=0.
+
+An extreme point of this compact feasible polytope has no more than N+d
+positive entries, since there are N simplex equalities and at most d
+independent coupling equalities. Every device has at least one positive
+entry, and every fractional device has at least two. Thus at most d
+devices remain fractional. Rank deficiency only improves this bound.
+
+A direct elimination algorithm provides the same conclusion without
+treating a generic LP solver as a black box:
+
+  (a) While more than d devices have two or more positive weights, select
+      d+1 of them and two positive options a_i,b_i in each selected row.
+  (b) The d+1 vectors v_i,a_i-v_i,b_i are linearly dependent in R^d. Find a
+      nonzero null vector alpha.
+  (c) Change x_i,a_i by t*alpha_i and x_i,b_i by -t*alpha_i. All simplex
+      sums and all aggregate harmonics are preserved.
+  (d) Move t to a nonzero endpoint of the interval preserving
+      nonnegativity. At least one previously positive weight becomes
+      zero. No new nonzero weight is introduced.
+
+There are at most N*(M-1) eliminations. Stop when at most d rows are
+fractional. Pure rows already specify their final physical phases.
+
+Proof, second stage (deterministic rounding).
+For fractional row i define b_i=sum_m x_im v_im. If independently selecting
+Y_i=v_im with probability x_im, then E Y_i=b_i and
+
+  E ||sum_i (Y_i-b_i)||^2
+    = sum_{i in F} (B_i^2-||b_i||^2).
+
+The pure-row contributions plus sum_i b_i are zero, so the expression on
+the left is exactly the squared norm of the final aggregate. At most d
+variance terms remain.
+
+Randomness is not required in implementation. Let s be the sum of
+already-fixed rounding errors. For the next fractional device select the
+positive-weight phase m minimizing ||s+v_im-b_i||^2. Its value cannot exceed
+the average over x_im. The conditional expectation of the final squared
+norm therefore never increases. After every row is fixed, the claimed
+deterministic bound holds.
+
+The actual vector norm or per-harmonic residual obtained by the algorithm
+should be reported rather than merely the conservative worst-case bound.
+
+4. FINITE PRECISION IMPLEMENTATION
+
+The algebra above is exact. It must not be quietly interpreted as infinite
+precision physical timing or exact measured Fourier coefficients.
+
+One explicit numerical construction uses a rational mesh h. Round every
+coordinate of each v_im to the nearest multiple of h, obtaining r_im, and
+then center each device's vectors:
+
+  vtilde_im = r_im - (1/M) sum_l r_il.
+
+The rational vectors have exactly zero uniform average. Since the true
+uniform average is zero, every coordinate differs from the true one by
+at most h; hence ||vtilde_im-v_im|| <= sqrt(d)*h.
+
+Apply the exact rational fractional construction and rounding to vtilde.
+The real-vector aggregate differs from the rational aggregate by at most
+N*sqrt(d)*h, and the maximum vector norm has increased by at most
+sqrt(d)*h. A fully explicit bound is therefore
+
+  ||S||_w <= sqrt(d)*(B_max+sqrt(d)*h) + N*sqrt(d)*h.
+
+Choose h to put this last numerical term below the allocated numerical
+error. Required coefficient precision grows only logarithmically with N
+for a fixed absolute numerical budget. This is a computational precision
+cost; it does not remove the potentially much larger physical calibration
+or timing cost.
+
+The straightforward elimination procedure costs O(N*M*d^3) arithmetic
+operations with dense nullspace calculations; conditional rounding costs
+O(d^2*M). For fixed K,M this is linear in N in arithmetic-operation count.
+Do not advertise the same bound as an exact bit-complexity theorem for a
+naive rational implementation. Standard rational LP algorithms can find a
+basic feasible point in polynomial bit complexity. In practical floating
+point implementations, recompute the final sums using interval or
+otherwise bounded-error arithmetic and certify the result directly.
+
+Memory is O(N*K) measured complex coefficients plus up to O(N*M)
+fractional weights. Each endpoint stores one phase index (ceil(log2 M)
+bits), period and scheduler state. Offline calibration and assignment need
+communication; routine execution subsequently needs no per-period
+communication under fixed membership and valid clocks.
+
+5. WHAT IS IMPROVED OVER RANDOM PHASES
+
+Independent uniform phases give
+
+  E sum_k w_k |S_k|^2 = sum_i B_i^2.
+
+Thus random static assignment has typical retained-band residual of order
+sqrt(N)*B for comparable devices. The deterministic construction bounds
+the same quantity by sqrt(2K)*B under arbitrary measured waveform
+heterogeneity. This is a genuine mathematical difference in the stated
+model, but not evidence of a field performance improvement.
+
+A fixed randomly assigned fleet is still exactly T-periodic. Its ensemble
+mean harmonics vanish; the realized fleet generally retains nonzero
+lines. Randomizing every period spreads energy into sidebands and has a
+different deadline/timing analysis; it is not interchangeable with the
+static comparison above.
+
+For identical common-template waveforms, ordinary equally spaced
+interleaving already cancels the first M-1 harmonics exactly when group
+counts are equal. Even unequal positive amplitudes have a stronger simple
+whole-waveform construction. If p_i(t)=a_i p(t), A=sum_i a_i, place phases
+at weighted quantile midpoints:
+
+  tau_i/T = (sum_{j<i} a_j + a_i/2)/A.
+
+The weighted CDF differs from uniform by at most a_max/(2A). Integration
+by parts gives
+
+  sup_t |sum_i a_i p(t-tau_i) - A*pbar|
+    <= (a_max/2)*TV_circle(p).
+
+For a unit-height rectangular pulse TV_circle(p)=2, so the whole-waveform
+error is <=a_max. This is classical discrepancy/quadrature reasoning.
+It is the relevant comparator in the common-template case. The harmonic
+construction earns waveform heterogeneity and multiple outputs, not an
+advantage over optimal interleaving when all waveforms are identical.
+
+6. PHYSICAL ERRORS, INCLUDING THE POPULATION-SCALING OBSTRUCTION
+
+Let chat_ik be the calibrated coefficients used for scheduling. At run
+time suppose |c_ik-chat_ik| <= e_ik. Write actual timing as the intended
+tau_i plus a common clock offset plus relative offset eta_i, where
+|eta_i|<=delta_i. Let D be missing devices. A common offset merely rotates
+all contributions in harmonic k and does not affect its magnitude.
+
+For the remaining devices the actual harmonic satisfies
+
+  |Sactual_k| <= |Shat_k| + E_k,
+
+  E_k = sum_{i not in D} e_ik
+      + sum_{i not in D} |chat_ik| min(2,k*omega*delta_i)
+      + sum_{i in D} |chat_ik|.
+
+The timing term can be sharpened to
+2 sin(min(k*omega*delta_i/2,pi/2)) in place of min(2,k*omega*delta_i).
+Unmodeled newly arriving devices require an additional sum of their
+harmonic amplitude bounds. Common multiplicative calibration gains in a
+harmonic preserve cancellation; the error budget concerns relative
+mismatch. Missing q devices cost at most q*C_k if |chat_ik|<=C_k.
+
+The retained-band RMS bound is then
+
+  sqrt(2 sum_k (|Shat_k|+E_k)^2),
+
+or the corresponding weighted expression for known transfer gains.
+
+Clock error between resynchronizations separated by R seconds can be
+budgeted as initial relative synchronization error + relative drift rate
+times R + timer quantization/execution jitter. A hardware claim needs
+actual bounds for these terms. The common-mode part is harmless to
+cancellation. Independent or correlated differential errors are not.
+
+Critical limitation: fixed arbitrary per-device errors destroy an
+absolute N-independent guarantee. Arbitrary complex coefficient errors of
+radius e can align after phase shifts and produce N*e residual. Even real
+amplitude errors in [-e,e] have worst-case residual at least (2/pi)*N*e
+for equal-amplitude sources (with e smaller than the nominal amplitude).
+
+There is an equally direct timing lower bound. Let the nominal scheduled
+fundamental contributions a_i all have magnitude C and sum_i a_i=0. Give
+each device a timing error eta_i=-sigma_i*delta, sigma_i in {-1,+1}.
+Then
+
+  Sactual_1 = i*sin(omega*delta) sum_i sigma_i*a_i.
+
+Averaging the absolute projections of a_i over a direction in the complex
+plane gives (2/pi)*sum_i |a_i|. Therefore some choice of signs obeys
+
+  |Sactual_1| >= (2/pi)*N*C*|sin(omega*delta)|.
+
+This is exact, not merely a first-order approximation. Thus bounded
+absolute residual for arbitrary independent device errors requires
+precision that improves with population, an independently justified
+aggregate-error bound, a shared timing/calibration structure, or reserve
+control that pays for the aggregate error. A fixed per-device timing
+tolerance alone is insufficient. Stochastic errors can give sqrt(N)
+scaling under stated independence assumptions but cannot be substituted
+for an adversarial guarantee.
+
+If jitter changes from cycle to cycle, the output has sidebands and the
+static Fourier formulas alone do not certify all spectral energy. One can
+apply them to per-cycle Fourier projections only with an explicit window
+convention and no uncontrolled edge spillover. For a shifted BV waveform,
+the global L1 translation error is <= |eta|*TV(p); for a smooth waveform,
+the L2 translation error is <= |eta|*||p'||_2. Nonsmooth square edges have
+L2 translation error proportional to sqrt(|eta|), so a derivative-based
+bound must not be applied to them without smoothing.
+
+7. DEADLINES, ALLOWED OFFSETS, AND DEPLOYMENT
+
+The full-period phase freedom is an operational requirement, not a free
+mathematical trick. With device-dependent allowed phase sets Phi_i, zero
+is feasible exactly when
+
+  0 belongs to sum_i conv{v_i(phi): phi in Phi_i}.
+
+This is a finite LP feasibility question after discretizing allowed
+phases. If feasible, the same <=2K fractional-device proof applies. If it
+is infeasible, a separating vector lambda supplies a lower bound:
+
+  delta = sum_i min_{phi in Phi_i} lambda dot v_i(phi) > 0
+  implies every physical assignment has norm >= delta/||lambda||.
+
+Example: all original fundamental coefficients have the same phase and
+positive magnitudes, and every allowable start lies in the same window of
+width W<T/2. Rotating to the window midpoint yields
+
+  |S_1| >= cos(pi*W/T) sum_i |c_i1|.
+
+So tightly synchronized deadlines can enforce a macroscopic coherent
+disturbance; randomization cannot overcome this geometry either.
+
+If no zero target is feasible, choose any feasible aggregate target y and
+apply the construction while preserving y. Conditional-expectation
+rounding gives
+
+  ||S||^2 <= ||y||^2 + sum_{i in F} (B_i^2-||b_i||^2).
+
+Selecting y as the closest point of the convexified aggregate set gives a
+useful best-relaxation-plus-rounding certificate, with numerical tolerance
+explicitly added.
+
+Changing an existing schedule must not silently violate its maximum
+inter-test interval. A naive delay can create a gap approaching 2T.
+Instead advance successive test times: use intervals T-a_j, with
+0<=a_j<=T-h_min, where h_min is a required minimum recovery/refractory
+interval. Sum the advances to the required cyclic phase advance, less
+than T. This takes ceil(advance/(T-h_min)) transition intervals if h_min<T
+and preserves both h_min and maximum gap T. If h_min=T, no phase change
+is possible without an extra test or a late test; additional operational
+permission/slack is indispensable.
+
+Stagger the commissioning transitions themselves or certify their
+temporary aggregate power. Store the offset persistently and run the
+routine using a monotonic scheduling clock. Do not shift the system wall
+clock. Restoring a device at its stored phase avoids accidental common
+catch-up bursts. A device outage can invalidate its own test deadline;
+this construction cannot guarantee tests while the device is unavailable.
+The advance-only transition can bring at most one additional execution
+per device into a finite commissioning window compared with the original
+schedule, because the total advance is less than one period. Its energy,
+recovery interval, and aggregate transient must still be paid. Equal
+steady-state work per period does not make commissioning power free.
+
+8. CALIBRATION, HIGHER HARMONICS, AND GRID RESPONSE
+
+The method needs per-device or per-controllable-group signatures, not just
+aggregate grid frequency. If measurement error in one period is bounded
+pointwise by e_i(t), coefficient error is bounded by
+(1/T) integral e_i(t) dt. Statistical averaging needs an actual dependence
+and noise model; samples from a single correlated trace are not independent
+replicates by default.
+
+For uniform time samples with spacing Delta, if the waveform is smooth
+with |p_i'|<=L_i and |p_i|<=P_i, a left-Riemann coefficient estimate has
+quadrature error <= (L_i+k*omega*P_i)*Delta/2. For discontinuous pulses use
+a bounded-variation quadrature bound instead; do not invent a finite
+pointwise derivative. Sampling, meter calibration, and state variation
+must all enter e_ik.
+
+Suppressing the first K harmonics is NOT a whole-waveform peak guarantee.
+The harmonics k>=K+1 can remain coherent and may scale with N. A bound on
+the actual frequency response requires a separately controlled tail, for
+example
+
+  output peak tail <= 2 sum_{k>K} sum_i |H(k*omega)*c_ik|,
+
+when that sum converges. Fourier coefficients of a BV pulse decay only as
+1/k, so absolute summability of source coefficients is not automatic.
+Additional transfer-function decay or a whole-waveform construction is
+needed. RMS-tail bounds also require a measured or proved tail budget.
+
+The source cancellation theorem itself does not require knowledge of grid
+inertia. A frequency-response claim does require a valid transfer model
+or a certified measured gain. It is not a nonlinear grid-stability proof.
+If device locations have different transfer paths to monitored sites,
+stack the complex coefficients H_lik*c_ik for L monitored outputs. The
+dimension becomes 2*K*L, the fractional-device bound becomes 2*K*L, and
+all response-model uncertainty must be included. Aggregate source-power
+cancellation at one boundary alone does not certify feeder voltage or
+every local flow.
+
+9. PRIMARY PRIOR ART AND NOVELTY BOUNDARY
+
+(a) Hartmann et al. (2026), empirical origin and proposed mitigation:
+    https://www.nature.com/articles/s41560-026-02144-0
+    DOI 10.1038/s41560-026-02144-0
+    Search tool refs available to root after reopening: turn31search14;
+    full indexed article also returned under turn31search0.
+
+(b) Hreinsson, Scaglione, Alizadeh, Chen (2021), New Insights From the
+    Shapley-Folkman Lemma on Dispatchable Demand in Energy Markets,
+    IEEE Transactions on Power Systems 36(5), 4028–4041.
+    https://ieeexplore.ieee.org/document/9376954/
+    DOI 10.1109/TPWRS.2021.3065913
+    It explicitly applies SF to heterogeneous nonconvex responsive-load
+    aggregation and operational convex models. Thus even the general
+    application of SF to power-system loads is established prior art.
+    Primary institutional record:
+    https://asu.elsevierpure.com/en/publications/new-insights-from-the-shapley-folkman-lemma-on-dispatchable-deman/
+    Search refs turn38search0, turn39search0, turn39search3.
+
+(c) Aubin and Ekeland (1976), Estimates of the Duality Gap in Nonconvex
+    Optimization, Mathematics of Operations Research 1(3), 225–245.
+    https://pubsonline.informs.org/doi/10.1287/moor.1.3.225
+    DOI 10.1287/moor.1.3.225
+    Classical SF/nonconvex optimization foundation; search turn36search3.
+
+(d) Kerdreux, Colin, d'Aspremont, An Approximate Shapley-Folkman Theorem.
+    https://arxiv.org/abs/1712.08559
+    https://www.di.ens.fr/~aspremon/PDF/ApproxSF.pdf
+    Primary research exposition and modern bounds; turns36academia54,
+    turn36search52. Earlier SF publication is Starr (1969).
+
+(e) Degesys, Rose, Patel, Nagpal (2007), DESYNC: self-organizing
+    desynchronization and TDMA on wireless sensor networks, IPSN 2007.
+    DOI 10.1145/1236360.1236363
+    https://ianthomasrose.com/pubs/desync-ipsn07.pdf
+    Distributed self-maintaining phase spreading predates the proposed
+    UPS application. Search turn36search0, turn36search48.
+
+(f) Carrier-based PWM harmonic cancellation is likewise mature:
+    Opportunities for harmonic cancellation with carrier-based PWM for a
+    two-level and multilevel cascaded inverters, IEEE (2001).
+    https://ieeexplore.ieee.org/document/913724/
+    Search turn31search21. Its switching/access model differs from fixed
+    once-per-minute diagnostic jobs, but ordinary interleaving cannot be
+    presented as a newly discovered principle.
+
+The defendable contribution of this note is a self-contained constructive
+certificate and a complete statement of the error/deadline boundary for
+this observed class of clocked load routines. Novelty of the specific
+Fourier specialization has not been established by this search. It would
+be inappropriate to call this a new physical mechanism or a demonstrated
+civilisation-changing capability. Its strongest value is explaining
+precisely when deterministic desynchronization can outperform random
+phase assignment, and why calibration, differential timing, high-frequency
+tails, and actual firmware access cannot be omitted from that claim.
+
+10. INDEPENDENT NUMERICAL SANITY CHECK (SYNTHETIC, NOT EMPIRICAL)
+
+A small independent implementation of the nullspace elimination and
+conditional-expectation rounding was run with N=200 heterogeneous complex
+coefficient vectors, K=3, and M=4. It required 590 support eliminations,
+left exactly 6 fractional rows, preserved the aggregate constraint to
+7.24e-15 Euclidean numerical error, and produced squared final norm
+2.4478427816 versus the computed variance bound 8.8491111832. This checks
+the construction mechanics on one generated instance; it is not evidence
+about real UPS waveforms.
+
+The timing obstruction was separately checked with N=800 identical-unit
+fundamentals at eight equally populated phases, T=60 seconds, and
+adversarial relative timing offsets +/-0.1 seconds. Nominal residual was
+1.58e-13; actual residual was 5.472818121 in single-device coefficient
+units, above the proved lower bound 5.333235856. This illustrates why the
+ideal cancellation certificate cannot omit differential timing error.
+
+IMPLEMENTATION AUDIT CLARIFICATION (5 November 2026):
+The harmonic_replay.py demonstration scans its whole support array on each elimination, so its actual arithmetic upper bound is O((NM)^2+NM(2K)^3). The O(NM(2K)^3) construction bound stated above requires maintaining the active support locally; it is not a runtime bound for the current unoptimized scan implementation. Final stored results and README retain this correction.

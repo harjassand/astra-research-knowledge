@@ -1,0 +1,185 @@
+# Energy-weighted scheduling of periodic diagnostic loads
+
+## Status and purpose
+
+This note proves a conditional scheduling capability motivated by the one-minute power disturbances measured by Hartmann et al., Nature Energy (2026), DOI 10.1038/s41560-026-02144-0. Their work already identifies a clocked UPS diagnostic mechanism locally, traces its propagation, proposes timing remedies, and reports a partial firmware remedy. The present contribution is an explicit mathematical construction and its implementation conditions. It is not a claim of novel mathematical priority, a newly discovered source mechanism, or completed deployment on a physical fleet.
+
+The central quantity is cumulative excess energy, not merely one Fourier coefficient. A schedule can keep that quantity at the scale of the largest diagnostic event in each waveform class. A stable grid response of bounded variation then gives a bound on the entire frequency waveform. Clock error, waveform mismatch, commissioning, and mean-load changes must be paid separately.
+
+## 1. Model and conventions
+
+All nominal tests have period T > 0. Partition devices into C classes. For device i in class c, the nominal single-event power signature is e_i h_c(t), where e_i > 0 and h_c is a real, possibly signed, integrable function with integral |h_c| = 1. Physical event kernels are causal. Thus e_i has energy units. If h_c is nonnegative and integrates to one, e_i is net event energy; otherwise it is an absolute-energy scale. The complete local diagnostic waveform, including any recharge tail, belongs in h_c.
+
+Write E_c = sum_{i in c} e_i, A_c = E_c/T, and e_max,c = max_{i in c} e_i. A device launches at nominal times nT + phi_i. Its actual launch is nT + phi_i + xi_i,n, with |xi_i,n| <= delta_i <= delta_c. Every intended event occurs exactly once. Timing changes do not change the local diagnostic operation, and operation remains valid at the permitted phases. These are physical interface assumptions requiring manufacturer confirmation.
+
+Allow a fixed per-device waveform residual r_i, so each actual event is e_i h_c + r_i, with integral |r_i| <= eta_i. Fixed means the same residual repeats; it may have either sign and a nonzero integral. Per-cycle changing residuals require a different error assumption, described below.
+
+The proofs first concern a bi-infinite or established schedule. Finite startup and unknown initial grid state are handled separately. All derivatives of cumulative functions can be read as distributional derivatives, allowing impulses and jumps.
+
+## 2. Exact nominal construction
+
+Choose any order within class c. Define S_i = sum_{j preceding i} e_j and assign
+
+    phi_i = T (S_i + e_i/2) / E_c.
+
+For this section suppress c. Let mu = sum_{i,n} e_i delta_(nT+phi_i). A periodic primitive of mu - A is, for 0 <= t < T,
+
+    F(t) = sum_{phi_i <= t} e_i - A t.
+
+Immediately before event i, F = -e_i/2; immediately afterward, F = +e_i/2. Between events F decreases linearly. Consequently
+
+    ||F||_infinity <= e_max/2,
+    osc(F) := sup F - inf F = e_max.
+
+This is exactly optimal for cumulative event-energy oscillation. For any phase assignment, F has a positive jump of at least e_max, so osc(F) >= e_max. Coincident events only enlarge the jump. Weighted midpoints attain the lower bound without searching an optimization problem. Ordering the devices differently does not change this guarantee.
+
+This optimality concerns the unsmoothed event-energy primitive of one class. It does not establish optimal frequency excursion for a particular grid, optimal joint cancellation between classes, or feasibility when phases are restricted.
+
+## 3. Exact minimax effect of per-event timing error
+
+For any nominal periodic positive-weight event train, enumerate its event times s_j and weights w_j. Define the finite local crossing sum
+
+    J(t) = sum_j w_j [1{s_j + xi_j <= t} - 1{s_j <= t}].
+
+Only events within delta of t contribute when |xi_j| <= delta. If F_0 is a nominal primitive, F_xi = F_0 + J is an actual primitive with the same subtracted mean A. Positivity gives the cumulative sandwich
+
+    F_0(t-delta) - A delta <= F_xi(t)
+                              <= F_0(t+delta) + A delta.
+
+Thus osc(F_xi) <= osc(F_0) + 2 A delta. The upper bound is exact as a worst case over arbitrary bounded per-event errors on an unrestricted long schedule. Choose two distant times t_plus and t_minus such that F_0(t_plus+delta) approaches its supremum and F_0(t_minus-delta) approaches its infimum. Their radius-delta windows can be disjoint by periodicity. Advance all events relevant to t_plus by delta and delay all events relevant to t_minus by delta. Both sandwich extremes are then attained or approached. Therefore
+
+    sup_{|xi_j| <= delta} osc(F_xi) = osc(F_0) + 2 A delta,
+
+and consequently
+
+    inf_phases sup_errors osc(F_xi) = e_max + 2 A delta.
+
+For midpoint phases the chosen primitive already satisfies
+
+    ||F_xi||_infinity <= C_c := e_max,c/2 + A_c delta_c.
+
+Reordering across devices causes no point-process difficulty. The matching lower bound is not asserted for short finite horizons, fixed per-device offsets, or extra execution constraints that exclude the constructed errors. One device with a static offset is a counterexample to that extension: its oscillation remains e_i. A constant common clock offset translates a balanced schedule harmlessly; a time-varying common offset can temporarily change event density.
+
+## 4. Signed waveforms and full-spectrum propagation
+
+The nominal-shape power ripple in class c is h_c * (mu_c - A_c). A primitive is U_c = h_c * F_c. Because integral |h_c| = 1,
+
+    ||U_c||_infinity <= C_c.
+
+No nonnegativity, bandwidth cutoff, or minimum pulse width of h_c is needed for this cumulative bound. With several classes, U = sum_c U_c satisfies ||U||_infinity <= sum_c C_c. This controls all harmonics together; it does not discard unbalanced high-frequency terms.
+
+The number of genuinely different classes matters. If every device needs its own class, sum_c e_max,c becomes sum_i e_i, losing the useful population scaling. Approximate grouping must retain its waveform-error bill.
+
+## 5. Correct fixed-waveform mismatch bound
+
+For a single device, its unit-weight nominal event train has a primitive of oscillation one and centred norm 1/2 after subtracting 1/T. Bounded per-event displacement gives a primitive G_i with
+
+    ||G_i||_infinity <= 1/2 + delta_i/T.
+
+The residual power train, after subtracting its own mean (integral r_i)/T, has primitive r_i * G_i. Hence
+
+    ||r_i * G_i||_infinity <= (1/2 + delta_i/T) eta_i.
+
+The complete mean-removed disturbance therefore has a primitive of norm at most B/2, where
+
+    B = sum_c [e_max,c + 2 E_c delta_c/T]
+        + sum_i [(1 + 2 delta_i/T) eta_i].
+
+The factor multiplying eta_i is essential under variable event timing. Simply adding sum_i eta_i to the span bill is not justified in that setting. Fixed event-energy calibration error can be absorbed into r_i: if the only discrepancy is a_i h_c, then eta_i = |a_i|.
+
+The removed mean is the actual mean
+
+    P_bar = [sum_i e_i integral h_c(i) + sum_i integral r_i] / T.
+
+Scheduling does not remove this power demand. Relative to a nominal baseline, the residual DC change is sum_i integral r_i / T and must be supplied or separately included in frequency error.
+
+If r_i,n changes every cycle, a bound on each integral |r_i,n| alone does not imply the preceding finite cumulative bill: persistent mean bias can accumulate indefinitely. A sufficient replacement is an explicit bound osc(W) <= B_extra for a primitive W of the unmodelled, appropriately mean-removed power. Add B_extra to B. Otherwise use an appropriate direct power or stochastic bound, not this theorem.
+
+## 6. General grid kernel and first-order specialization
+
+Assume a common stable causal linear response g from the modelled aggregate power disturbance to the frequency observable. Require g to be an ordinary integrable bounded-variation function, finite g(0+), and g(t) -> 0. Define
+
+    Gamma_g = |g(0+)| + TV_(0,infinity)(g).
+
+For U' = u, integration by parts gives
+
+    (g*u)(t) = g(0+) U(t) + integral_(0,infinity) U(t-s) dg(s).
+
+It follows that
+
+    ||Delta f||_infinity <= (B/2) Gamma_g.
+
+Adding a constant to U leaves the identity unchanged. Signed or oscillatory g is allowed, but resonance can enlarge its total variation. A Dirac feedthrough is excluded and would require an additional instantaneous-power bound.
+
+For M df/dt + D f = -u, with M,D > 0,
+
+    g(t) = -(1/M) exp(-Dt/M),
+    Gamma_g = 2/M,
+    ||Delta f||_infinity <= B/M.
+
+M has units W s/Hz. A DC modelling error d adds equilibrium shift -d/D; a grid-control response may differ. RoCoF is not bounded by event energy alone because df/dt contains instantaneous u/M. The guarantee is the incremental contribution of the controlled fleet, not total frequency in the presence of arbitrary external disturbances.
+
+Different injection locations generally have different transfer kernels. A scalar common g requires an appropriate coherent-grid approximation or an independently bounded kernel mismatch. A full network needs effective-kernel classes, error terms, or multichannel scheduling. The empirical paper's static power-frequency characteristic does not identify Gamma_g. Nonlinear operating limits also require separate validation.
+
+## 7. Finite power and waveform bandwidth
+
+If each h_c, extended by zero outside its physical support, is of bounded variation on the real line, differentiation under convolution yields
+
+    ||u_model||_infinity <= sum_c C_c TV_R(h_c).
+
+This counts endpoint jumps. For example, a rectangular normalized pulse of width w has TV_R(h)=2/w. If each r_i is also BV, add
+
+    sum_i (1/2 + delta_i/T) TV_R(r_i).
+
+An L1 error eta_i alone does not bound instantaneous residual power: its energy can be concentrated into a very narrow spike. Finite slew, converter limits, voltage constraints, and diagnostic validity remain device-level requirements. The schedule changes event timing, not the event waveform, so it requires no new high-bandwidth pulse actuator.
+
+## 8. Service contract and constructive commissioning
+
+Let physical successive launch gaps for device i be required to lie in [T_min,i, T_max,i]. T_min must include pulse duration and recovery time. For independent bounded launch errors, a sufficient steady-state guard is
+
+    T_min,i + 2 delta_i <= T <= T_max,i - 2 delta_i.
+
+Nominal T=60 s with a hard actual maximum of 60 s and arbitrary nonzero jitter is not certified by this guard. One must reduce the nominal interval or enforce a dependent deadline controller and recheck its timing bound.
+
+An actual bridge from old phase a_i to target phase b_i is possible when L_i = T - T_min,i - 2 delta_i > 0. Let d_i = (a_i-b_i) mod T in [0,T). For d_i>0 choose m_i = ceil(d_i/L_i). Following a completed old-schedule test, use m_i nominal intervals of length T-d_i/m_i, then resume nominal period T. The total advance is d_i, giving phase b_i. Every bridge interval respects the same guarded gap limits; the first bridge interval is referenced to the stored old nominal time, with the previous launch error included.
+
+This uses the identical diagnostic operation. It temporarily accelerates tests and advances less than one period of work per device. If exact spacing T is mandatory, migration is impossible without changing that contract. No scientific argument can assume away this service limitation.
+
+The steady balanced bound is not automatically a bound throughout migration. Relative to the old event stream, a device advancing by less than T can advance at most one event's cumulative work at any instant. A conservative transition reserve must therefore account for the old disturbance and up to the total event energy of the migrating fleet, plus timing and waveform errors. The coordinator must check that transient envelope or commission before energization; the tighter steady certificate begins only after the bridge and inherited waveform tails are accounted for.
+
+For the first-order grid, a residual state error x at a settled handover time contributes |x| exp[-D(t-t_h)/M]. Add this to B/M. For a higher-order plant, one frequency sample does not determine hidden governor states: use a state-error envelope or a justified decay bound. Infinite waveform tails require a quantified tail bound rather than an assumed finite clearing time.
+
+## 9. Calibration, timers, and persistence
+
+Commissioning needs the actual input-power signature at the grid-facing interface, not battery current alone. Record waveform families, absolute event energies, allowed phase windows, test gap limits, timing jitter, and operating-state variation. These measurements produce e_i, h_c, eta_i, and delta_i. Repeatability across SOC, temperature, load, and firmware state is part of the claimed uncertainty envelope. The mathematical note does not supply those missing physical measurements.
+
+Computing midpoints requires O(N) arithmetic, O(N) stored phase assignments, and no repeated optimization. Each device stores its phase, period, schedule version, persistent identity, and executed-event sequence state; runtime work per test is constant. Use monotonic execution deadlines and idempotent event IDs. Clock corrections must preserve offsets and avoid duplicate execution or a catch-up burst. An atomic version transition must not silently substitute UTC-minute boundaries for commissioned phases.
+
+If Q clock slots exist per period, some slot carries at least E/Q energy. Thus worst-case cumulative norm is at least max(e_max,E/Q)/2 for narrow events. Nearest-slot rounding of the midpoint schedule gives at most e_max/2 + E/(2Q), before other errors. Timer resolution q=T/Q therefore has an explicit price; phase memory needs at least ceil(log2 Q) bits. Slot aliases can leave higher-frequency comb components even when the minute fundamental is suppressed, which the cumulative bound already includes.
+
+Differential clock error can be budgeted as initial synchronization error plus drift-rate bound times resynchronization interval plus dispatch jitter. Fixed precision does not give a fleet-independent absolute guarantee as E grows on a fixed grid. A common static offset is harmless. Anonymous deterministic devices with identical reset state and common inputs cannot break symmetry; stored unequal assignments or independent randomness are indispensable. A deterministic hash alone has no worst-case guarantee over arbitrary selected fleets.
+
+Calibration uncertainty also has a sharp floor. If Fourier coefficients have independent adversarial uncertainty disks |Delta c_i|<=rho_i, every phase schedule has worst-case coefficient magnitude |sum_i c_hat_i exp(-ik phi_i)| + sum_i rho_i. Rotation cannot shrink the disks. Do not claim cancellation of systematic uncertainty without a justified correlation model or aggregate calibration.
+
+## 10. Failures and interpretation
+
+Missing tests, repeated tests, unbounded clock steps, corrupted phases, mean-load changes, and prolonged outages invalidate particular premises. Bound their additional cumulative disturbance explicitly and add it; otherwise suspend the certificate. Permanent device removal also changes mean power. Arbitrary corruption of a fixed positive fraction of the fleet cannot retain a fleet-independent absolute guarantee without detection, rebalancing, or reserve resources.
+
+Persistent phases permit ordinary reboot recovery only if policy permits waiting for a scheduled test. If every device must test immediately after a simultaneous restart, that burst cannot be removed by stored offsets while preserving the immediate-test requirement. A powered-off device cannot meet a continuous diagnostic deadline. These are interface and resource constraints, not implementation details to omit.
+
+Random fixed independent phases remain a strong benchmark: for harmonic k their aggregate has expected squared amplitude sum_i |c_i,k|^2. For a sufficiently large fleet this may already meet operational needs. Other alternatives include asymmetric interleaving, stronger primary frequency control, and local energy buffering. The proposed advantage is a deterministic cumulative guarantee with simple timer-only deployment under its stated class structure, not exclusive access to mitigation.
+
+## Sources and priority boundary
+
+The proof uses elementary discrepancy, convolution and packetization ideas. Closely related primary sources include:
+
+* Hartmann et al., Nature Energy (2026), observation, causal local UPS investigation and mitigation: https://www.nature.com/articles/s41560-026-02144-0
+* Bennett and Zhang, WF2Q, INFOCOM 1996, maximum-packet service discrepancy: https://www.cs.cmu.edu/afs/cs/project/cmcl/OldFiles/link.nectar/member/hzhang/afs/WWW/papers/INFOCOM96.pdf
+* Le Boudec and Thiran, Network Calculus, section 1.7, packetization and burst bounds: https://infoscience.epfl.ch/record/282/files/netCalBook.pdf?version=1
+* Schuck and Pilawa-Podgurski, asymmetric harmonic-elimination interleaving, IEEE TPEL 2015, DOI 10.1109/TPEL.2015.2393812: https://www.research-collection.ethz.ch/entities/publication/9486adac-93a9-4796-b4eb-4d5e614a04d0
+* Bomela, Zlotnik and Li, phase control of periodic deferrable loads, CDC 2018, DOI 10.1109/CDC.2018.8618923: https://laro.lanl.gov/esploro/outputs/conferenceProceeding/A-Phase-Model-Based-Control-of/9916369922203761
+* Mehta et al., timer-based safe load protocols, 2014, DOI 10.1016/j.enconman.2014.06.049: https://www.sciencedirect.com/science/article/abs/pii/S0196890414005743
+* Udell and Boyd, constructive convexification bounds, 2016: https://stanford.edu/~boyd/papers/duality_bound.html
+* Direct Shapley-Folkman demand-response application, IEEE TPWRS 2021, DOI 10.1109/TPWRS.2021.3065913: https://ieeexplore.ieee.org/document/9376954/
+
+No priority or physical-performance claim follows merely from deriving these inequalities. Their scientific use is a reviewable, conditional operation, a quantitative bill, and clear tests of whether a proposed real deployment satisfies the assumptions.
