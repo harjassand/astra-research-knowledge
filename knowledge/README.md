@@ -20,9 +20,7 @@ python3 knowledge/retrieve.py coverage
 Start with fast portable `--method content`; cross-check `structured` when the
 problem is poorly named or source/field weighting may matter. `--method agent`
 adds semantic relevance, within-family navigation and explicit premise triage.
-It is a complement: fresh evaluation retained cases where either lexical or
-structured search beat the model, and a case every method missed. See
-[the source-use comparison](evaluations/2026-10-27-agent-retrieval/README.md).
+Search methods can disagree. Inspect the full candidate packet and supporting source.
 Agent ranking also compares separate bounded views of each candidate's actual
 requirements, returned capability, conditions, costs, units and obstruction, and
 one query-selected current notice. These excerpts rank relevance only; complete
@@ -31,12 +29,6 @@ ranking terms or discharged assumptions. Notice matches expose `next.notice_sour
 `source <record-ID> --notice <notice-ID> --evidence <index>` reads that notice's
 actual citation, independently of the record's evidence array. The ordinary
 source range/hash checks, complete corrections and byte budget still apply.
-
-The [qualification-view comparison](evaluations/2026-10-28-qualification-views/README.md)
-retains eight source-informed scientific-use problems, the exposed version-review
-regression, lexical comparators, extra navigation steps and measured CPU costs.
-This changes the optional neural lane; portable CLI/web/MCP retrieval remains
-available without that runtime or a private database.
 
 For the optional local agent runtime, once per environment,
 install the free optional CPU runtime with `python3.13 -m venv .astra-local/agent`
@@ -60,8 +52,7 @@ CLS pooling and unit normalization, with a512-token limit per view. Costs,
 units, complete conditions, notices and governing passages remain in packets.
 The public model artifact uses float16 weight storage restored to the original
 float32 graph; provenance, license and exact offline reproduction are in
-`runtime/contextual/` and `store_contextual_weights.py`. The evaluated int8
-alternative lost a chronological-memory case and was not selected.
+`runtime/contextual/` and `store_contextual_weights.py`.
 
 `--object` and `--operation` describe the scientific object and capability.
 Repeat the existing `--available` and `--unavailable` flags to inspect literal
@@ -172,7 +163,6 @@ Edit existing authoritative source/status/card formats, not generated files.
 ```
 python3 knowledge/build.py build
 python3 knowledge/build.py check
-python3 -m unittest discover -s knowledge -p 'test_*.py'
 ```
 
 Build validates all required support before writing anything. Missing bytes,
