@@ -121,14 +121,9 @@ no database, model calls, service, private index or paid dependency is required.
 
 Publish public records and exact artifacts through a dedicated Git branch/PR.
 Use existing [`state/CONTINUITY.md`](../state/CONTINUITY.md) for actual branch
-handoffs, including stale-parent and concurrent-head handling. A technology
-handoff does not bypass that publisher. The pinned baseline has three malformed
-historical checkpoints that currently block repository-wide checkpoint validation
-and publication; see [VALIDATION.md](VALIDATION.md). This layer preserves them and
-does not invent ancestry to repair them. Technology records can still be reviewed
-through Git while that separate source-preserving repair is pending.
+handoffs, including stale-parent and concurrent-head handling. Historical validation
+reports apply only to their recorded baseline; current publication follows
+knowledge/INTAKE.md and the actual PR base.
 
 Follow [WORKFLOW.md](WORKFLOW.md) for stage decisions, the synthetic example and
-public/confidential separation. Research-workflow observations belong in
-[`evaluation/workflows`](../evaluation/workflows/README.md); the existing matched
-evaluation protocol remains the authority for comparative claims.
+public/confidential separation. No evaluation registration is required.
