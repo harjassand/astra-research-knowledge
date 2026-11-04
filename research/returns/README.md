@@ -24,6 +24,11 @@ Use these links to read complete source reports and packages directly. Use the [
 | P2: finite mixed-bath receiver and complete implementation bill | [Routing, initialization, calibration, storage and source isolation](2026-11-05-p2-tracial-acquisition/finite-interface.md) |
 | Independent P2 companion: active-port thermodynamic nonidentifiability | [Exact adaptive-force ambiguity and known-drift criterion](2026-11-05-p2-tracial-acquisition/active-port-nonidentifiability.md) |
 | Independent P2 companion: local rules and prediction obstruction | [Unit-rate spectrum counterexample and scoped complexity reduction](2026-11-05-p2-tracial-acquisition/local-rules-prediction.md) |
+| P1: bounded-component many-body acquisition with fixed local response | [Complete receiver, finite qubit implementation and supplied audits](2026-11-05-p1-bounded-component-acquisition/README.md) |
+| P1: actual first-ingress loss and aggregate spectral-access limits | [Same-Weyl converses, distinct ordinary emitter and attainable attenuation allowance](2026-11-05-p1-bounded-component-acquisition/loss-and-spectral-access.md) |
+| P3: output-only Hamiltonian calibration after first-input capture | [Finite experiment compiler, deferred decoder and correlated-archive composition](2026-11-05-p3-deferred-calibration/README.md) |
+| P3: arbitrary-start calibration without burn-in | [Complete bounded neighborhoods and randomized-node construction](2026-11-05-p3-deferred-calibration/no-burn-in-calibration.md) |
+| Independent P3 reliability companion: all-deadline relative CDF sensitivity | [Common-invariant form theorem and actual implementation precision](2026-11-05-p3-deferred-calibration/reliability-cdf-sensitivity.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks and shared-construction proposal | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary and coordination proposal. Existing normalized scientific records remain unchanged.
