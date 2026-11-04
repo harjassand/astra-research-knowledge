@@ -14,6 +14,11 @@ Use these links to read complete source reports and packages directly. Use the [
 | P3: acquired protected logical readout and signed quantum-learning task | [Code acquisition,full measurement channel,comparison and complete costs](2026-11-05-p3-protected-readout/README.md) |
 | P2: full mean time to first disconnection of independent repairable networks | [Constructed static-to-dynamic algorithm,proof and exact package](2026-11-05-p2-first-failure/README.md) |
 | P2: sharp component calibration and deadline robustness | [Separate theorem,proof,observation cost and model boundary](2026-11-05-p2-first-failure/component-calibration.md) |
+| P2: unknown correlated local rare-failure transitions, including unseen channels | [Prepared acquisition, global uncertainty and full mean computation](2026-11-05-p2-unknown-local-ports/README.md) |
+| P2: finite reciprocal ports and ancillary-factory errors | [Registered endpoint clock, verification and ratewise lifetime bound](2026-11-05-p2-unknown-local-ports/physical-interface.md) |
+| P2: deliberately prepared equilibrium-safe start | [Separate initial law, rare computation and finite write costs](2026-11-05-p2-unknown-local-ports/equilibrium-safe-start.md) |
+| P3: all-strength finite-rate quantum acquisition and matched control-speed law | [Full-feedback proof, corrected global-budget distinction and matching readers](2026-11-05-p3-all-strength-control-speed/README.md) |
+| Independent P3 companion: thermal rare-rate inference by isotropic forcing | [Exact model, finite design, exposure cost and static minimax law](2026-11-05-p3-all-strength-control-speed/effusion-intervention.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks and shared-construction proposal | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary and coordination proposal. Existing normalized scientific records remain unchanged.
