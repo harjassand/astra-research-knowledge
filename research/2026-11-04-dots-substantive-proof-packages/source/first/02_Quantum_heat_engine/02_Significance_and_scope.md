@@ -1,0 +1,17 @@
+# Consequence and capability assessment
+
+## Chiral audit
+
+The discrepancy currently supports a potentially useful paper-specific accounting correction, not a new physical capability. Its general content is already available in established scattering theory: regularize the filled sea consistently; preserve propagating-channel unitarity; include voltage-contact work; and test thermal inputs with passivity/relative entropy. Battista et al., PRB90,085418 (2014), already gives the relevant outgoing energy and full contact-work distinction. Minimal-excitation and phase-controlled electron sources are established constructive operations, not inventions unlocked by the audit: Dubois et al., Nature 502,659 (2013), https://doi.org/10.1038/nature12713 ; Vannucci et al., PRB95,245415 (2017), https://arxiv.org/abs/1704.01812 .
+
+Possible extensions include reliable scattering-energy diagnostics or coherent work recovery. The former is validation infrastructure; the latter requires controlling the same outgoing quantum state before thermalization and is already implicit in unitary inverse operations. Neither presently supplies a credible route to the requested civilisation-scale capability. Do not relabel a consistency check as a general discovery. Preserve the audit and move on unless an independent expert identifies a distinct physical resource or experimentally testable contradiction worth resolving.
+
+## Distinct opening screened: conservative momentum redistribution to extinguish turbulence
+
+Motivation: destroying self-sustaining turbulence once per parcel could avoid continuous actuation and preserve low downstream drag. Candidate operation: decelerate central fast fluid while accelerating near-wall fluid; use an energy-recovering mechanical coupling instead of a dissipative baffle. A force F transferred between streams at velocities u_c>u_w ideally releases F(u_c-u_w) while flattening the profile.
+
+Decisive same-resource comparison: the essential operation is already demonstrated by steady inserts, annular injection, moving walls and stirring. Kühnen et al., Nature Physics14,386 (2018), https://doi.org/10.1038/s41567-017-0018-3 , reports complete turbulence collapse and up to 90% friction reduction. Their detailed pipe study, https://doi.org/10.1007/s10494-018-9896-4 , shows persistent relaminarization to Re6000 and transient effects higher. Subsequent energy-stability-optimized baffles already target total energy savings: https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/stabilising-pipe-flow-by-a-baffle-designed-using-energy-stability/710B452F510CC1CD4F7DC64F3FC94BC1 .
+
+Resource check: a stationary reset is once per parcel, NOT one-time for the whole continuously flowing system. Its pressure loss K*rho*U^2/2 must be compared with downstream saved pressure (f_turb-f_lam)*(L/D)*rho*U^2/2. Positive net savings require L/D>K/(f_turb-f_lam). Regenerative coupling can improve K but does not establish a new robust laminar basin at industrial Reynolds numbers or protect against roughness and downstream fittings. The missing high-consequence operation is robust high-Re state stabilization under realistic continuous perturbations, not profile flattening itself.
+
+Verdict: reject the simple momentum-reset candidate as substantially occupied. A regenerative baffle would be an engineering improvement unless accompanied by a demonstrated new high-Re stability mechanism; no such mechanism was derived here. This screening does not constitute an invention.
