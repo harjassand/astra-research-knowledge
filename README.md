@@ -9,6 +9,7 @@ Capital stores scoped scientific results, reusable constructions, corrections an
 
 ```sh
 python3 knowledge/retrieve.py search "your scientific task" --method content
+python3 knowledge/retrieve.py evidence "mechanism or proof passage"
 python3 knowledge/retrieve.py packet N675
 python3 knowledge/retrieve.py source N675 --evidence 0 --start 2 --end 80
 ```
