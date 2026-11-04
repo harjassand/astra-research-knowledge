@@ -26,6 +26,17 @@ Omega=2 lambda is a boundary of this proof, not an established physical transiti
 
 The numerical files report 24 triangular-meter cases and 60 finite source-receiver evolutions, with 16 scalar optima also recorded. They are floating-point falsification checks, not interval certificates or exhaustive tests. No scientific program, LaTeX build, reproof or novelty audit ran during this publication.
 
+## Independent companion result entries
+
+These are separate substantive constructions, with their own requirements, costs and review scope:
+
+| Result | Scientific entry | Governing complete source |
+|---|---|---|
+| Structured causal reset/export decoder | [Acquired instrument, stopping certificate, exact recovery and finite costs](results/causal-reset-decoder.md) | [Original derivation](package/causal_reset_decoder.txt) |
+| Expander mixed-probe certification and mixed-output memory | [Rigidity witness, trusted finite-data protocol and mixed-stream memory bound](results/expander-mixed-output-memory.md) | [Original derivation](package/expander_mixed_bath_companion.txt) |
+
+The parent's main access theorem uses a summed locality-resolved term-norm budget, which is different from and stronger than the predecessor's total commutator budget. Ordinary block meters match the one-copy weak-control power; the full sample exponent is not matched. Its main-theorem audit is not silently applied to either companion.
+
 ## Separate companion constructions
 
 - [Causal reset/export decoder](package/causal_reset_decoder.txt): a structured discrete-circuit receiver with coherently accessible calibrated pure environment records. Its access differs from the main theorem's hidden-noise model; the generic continuous entangling-Hamiltonian extension is not supplied.
