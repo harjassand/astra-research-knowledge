@@ -1,0 +1,9 @@
+# Finite-memory profile broadcasting and raw Maltsev acquisition
+
+Currentfamilies:N1708 andN1723. Use `python3 knowledge/retrieve.py packet ID` and the newfive finite-memory/three raw-acquisition units. Currentstructuredcontractsareclean;oldervalidscopesstayintheirimmutable source/unitversions and prior-cardhistorylinks.
+
+Finite-memoryresult:source-reported saturation-to-fixed-h normalform andoptimal source-dependent1/k recovery,withpaidqutritofflineBellprotocol. It isnotnewordinarycapacityevaluation,genericPPTdistillability,simultaneousallreceiverstreams orunconstrainedroutingadvantage.
+
+Maltsevresult:fulluniformacquisitionstillopen. SpecificKMRv2globalgluing/alloweddeletioncounterexampledoesnotrefuteallalgorithms/GAC+AIP/cohomology. Rawlinear/unarytransportconstraintsdonotearnglobalactualoutputs.
+
+Completecapture/holdprovenance:[sourceindex](source/INDEX.json). P1ZIP/predecessorandP3PDF remainuncollected;no newdownload,replay,independentaudit,producerrequestorexternalgate. P1visibleendingduplicatedmathpreserved,nocleanconstantformulareconstructed.
