@@ -1,0 +1,430 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=24mm,headheight=15pt]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,tabularx,array,enumitem,graphicx,xcolor,fancyhdr,float}
+\usepackage[hidelinks]{hyperref}
+\definecolor{ink}{HTML}{17324A}
+\definecolor{accent}{HTML}{147D92}
+\definecolor{pale}{HTML}{EEF5F7}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\color{ink}Astra P2 \;|\; First-failure prediction}
+\fancyhead[R]{\small 5 November 2026}
+\fancyfoot[C]{\small\thepage}
+\setlength{\parskip}{5pt}\setlength{\parindent}{0pt}
+\setlist{nosep,leftmargin=18pt}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newcommand{\E}{\mathbb E}
+\newcommand{\Pp}{\mathbb P}
+\newcommand{\one}{\mathbf 1}
+\newcommand{\up}{\mathsf u}
+\newcommand{\dd}{\mathrm d}
+\newcommand{\poly}{\operatorname{poly}}
+\begin{document}
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+\vspace*{12mm}
+{\small\color{accent}\bfseries RESEARCH NOTE \quad / \quad ASTRA P2}\par
+\vspace{8mm}
+{\LARGE\color{ink}\bfseries From static unreliability to the full time of first failure}\par
+\vspace{4mm}
+{\Large A polynomial construction and a sharp law for local calibration}\par
+\vspace{7mm}
+{5 November 2026 \quad | \quad Mathematical construction; physical model conditional}\par
+\vspace{9mm}
+\colorbox{pale}{\parbox{\dimexpr\textwidth-2\fboxsep\relax}{\textbf{Result.}
+For an arbitrary connected undirected network with at least two vertices and independent exponential edge failure and repair, the mean time to the \emph{first} disconnection from the all-working state admits a randomized relative approximation with cost polynomial in graph size, accuracy, confidence, input precision and refresh-rate contrast. The cost contains no factor proportional to the lifetime or the inverse stationary failure probability. A separate sharp theorem propagates local rate uncertainty with a coefficient $2m-1$, where $m$ is the number of components, even though the configuration space has $2^m$ states.}}\par
+\vspace{8mm}
+\textbf{The operation that closes the construction.}
+Sample a disconnected configuration from its correct stationary conditional law, then run a short ordinary repair-and-failure trajectory. Count a success only if its first update repairs the network and it stays connected throughout the remaining short trajectory. Reversibility identifies this probability with a first-passage flux. A spectral estimate proves a useful trial occurs with inverse-polynomial probability, and a refresh-cover coupling accounts for the actual all-working initialization.\par
+\vspace{5mm}
+\textbf{Status and boundaries.}
+The proofs are supplied below and were checked through separate in-session derivations and finite numerical diagnostics. The construction combines established static counting, reactive-flux and spectral machinery with the stated reductions and calibration argument. Historical priority has not been established. There is no physical validation, claim of independence inferred from local data, or demonstrated practical advantage over the strongest specialized methods.
+\vfill
+\textbf{Contents.} Exact model; calibration theorem and proof; static-to-dynamic algorithm; finite resources and confidence; a failure-frequency counterexample; executed diagnostics; scope and sources.
+\end{titlepage}
+\hypersetup{pageanchor=true}
+
+\section{Research choice and precise destination}
+The opening question was whether feasible experiments can certify the reliability of a system whose failures take far longer than the observation horizon. Its indispensable missing operation was a justified passage from accessible local behavior to the full first-failure time, including unseen routes and intermediate residence.
+
+Astra's preserved N1596 source already gives a finite-state, same-support relative deadline comparison and local rate acquisition, while explicitly retaining the complete-state, hidden-route and explicit-state-count obligations \cite{astra}. Repeating a finite-state perturbation bound would therefore not close the consequential gap. The construction here instead addresses a succinct physical representation: $m$ independent repairable components and a known monotone system-failure rule. It supplies both an efficient full-mean algorithm for all-terminal network disconnection and a calibration theorem whose cost depends on $m$, rather than $2^m$.
+
+This resolves a narrower, explicit destination. It does not solve unrestricted physical model validation. Unknown common-cause failures, hidden memory and arbitrary interacting systems remain outside the theorem.
+
+\section{Model and the two main results}
+Each component $i\in\{1,\ldots,m\}$ is either working or failed, with independent, time-homogeneous transitions
+\[
+\text{working}\xrightarrow{a_i}\text{failed},\qquad
+\text{failed}\xrightarrow{b_i}\text{working},\qquad a_i,b_i>0.
+\]
+The failure set $B$ is nonempty and monotone: failing more components cannot restore the system. The all-working state $\up$ is not in $B$. Let
+\[
+\tau_B=\inf\{t\ge0:X_t\in B\},\qquad
+M=\E_{\up}\tau_B,\qquad F(t)=\Pp_{\up}(\tau_B\le t).
+\]
+Repairs occur throughout the evolution until the first system failure. For the network application, components are edges of a known connected undirected graph with at least two vertices and $B$ is the set of configurations whose working edges do not connect all vertices. Parallel edges are allowed. Removing irrelevant self-loops is harmless.
+
+\begin{theorem}[Component calibration, all monotone failure rules]\label{thm:cal}
+If every failure and repair rate is changed by at most $\eta$ in logarithmic magnitude, then
+\begin{align}
+ e^{-(2m-1)\eta}M&\le \widehat M\le e^{(2m-1)\eta}M,\label{eq:meanrobust}\\
+ e^{-2m\eta}F(t)&\le \widehat F(t)\le e^{2m\eta}F(t)\quad(t>0).\label{eq:cdfrobust}
+\end{align}
+The coefficient $2m-1$ in the mean bound is optimal over this model class. The CDF statement is simultaneous robustness, not by itself a polynomial-time CDF solver.
+\end{theorem}
+
+\begin{theorem}[Full first-disconnection prediction]\label{thm:algorithm}
+Given a connected undirected graph with at least two vertices, positive rational edge failure and repair rates, $0<\varepsilon\le1/2$ and $0<\delta<1/2$, there is a randomized algorithm returning $[L,U]$ such that
+\[
+\Pp\{L\le M\le U\}\ge1-\delta,\qquad U/L\le1+\varepsilon,
+\]
+with work polynomial in
+\[
+ |V|,m,\text{input bit length},g^{-1},\varepsilon^{-1},\log\delta^{-1},
+ \qquad
+ g=\frac{\min_i(a_i+b_i)}{\sum_i(a_i+b_i)}.
+\]
+In particular, $g^{-1}\le m\kappa_\gamma$, where
+$\kappa_\gamma=\max_i(a_i+b_i)/\min_i(a_i+b_i)$.
+There is no factor $M$, $1/F(t)$ or $1/\pi(B)$ in the rare branch.
+\end{theorem}
+
+The qualifier on rate contrast is substantive. This is an FPRAS on families with polynomially bounded refresh-rate contrast, and a parameterized polynomial algorithm generally; the proof does not give polynomial dependence on $\log\kappa_\gamma$ alone. An individually rare component failure does not necessarily slow the computational algorithm when its repair rate keeps its refresh rate ordinary. Learning that rare elementary rate physically can still take a long time.
+
+\section{Proof of the sharp calibration theorem}
+\subsection{A whole component has unit failure-rate elasticity}
+Use a graphical representation with independent Poisson marks: a failure mark of component $i$ sets it failed, and a repair mark sets it working. Marks that leave an already matching state unchanged are allowed. This representation generates exactly the stated two-state chain.
+
+Fix component $i$ and deadline $t$. Condition on every other component's complete trajectory and on the repair marks of $i$. If the other trajectories already cause failure even with $i$ forced working, conditional survival is zero. Otherwise, inspect each interval between successive repair marks of $i$, including the initial interval. At any time in that interval when the failed state of $i$ would trigger system failure, a preceding failure mark since the most recent repair is forbidden. The union of these forbidden intervals is a measurable set $D_t\subseteq[0,t]$ independent of $a_i$. Its length is $L_t$.
+
+Writing $G$ for the event that the other trajectories alone are survivable,
+\[
+ S(t):=1-F(t)=\E[\one_G e^{-a_iL_t}].
+\]
+With $W=\one_Ge^{-a_iL_t}$ and $0\log0=0$, concavity of $-w\log w$ gives
+\begin{equation}
+ -a_i\partial_{a_i}S(t)=\E[-W\log W]\le -S(t)\log S(t).\label{eq:entropy}
+\end{equation}
+This argument treats the whole physical-component parameter, which affects many microscopic configuration transitions simultaneously.
+
+\subsection{Integrating the inequality without a lifetime penalty}
+Monotone coupling makes $\up$ the state with the largest survival probability at every deadline. The Markov property therefore gives
+\[
+ S(t+s)\le S(t)S(s).
+\]
+This ``new better than used'' property is classical in maintained-system theory \cite{barlow}; the coupling above proves the needed special case directly. Let
+\[
+ R(t)=\int_t^\infty S(u)\,\dd u,\qquad H(t)=-\log S(t).
+\]
+Then $R(t)\le M S(t)$, and Tonelli's theorem yields
+\begin{align*}
+ \int_0^\infty -S(t)\log S(t)\,\dd t
+ &=\int_0^\infty H'(u)R(u)\,\dd u\\
+ &\le M\int_0^\infty H'(u)S(u)\,\dd u=M.
+\end{align*}
+The finite positive-rate system has an exponentially decaying hitting-time tail; differentiation and integration can be interchanged locally in its positive rate parameters. Combining with \eqref{eq:entropy} gives
+\[
+ -1\le s_i^a:=\partial_{\log a_i}\log M\le0.
+\]
+Monotone coupling also gives $s_i^b:=\partial_{\log b_i}\log M\ge0$.
+
+Scaling all rates scales physical time inversely, so
+\[
+ M(ca,cb)=M(a,b)/c,\qquad \sum_i(s_i^a+s_i^b)=-1.
+\]
+Put $A=-\sum_i s_i^a\le m$. Then $\sum_i s_i^b=A-1$, whence
+\begin{equation}
+ \sum_i(|s_i^a|+|s_i^b|)=2A-1\le2m-1.\label{eq:elasticity}
+\end{equation}
+Integrate this bound along a straight line in log-rate space to prove \eqref{eq:meanrobust}. Generic single-transition response bounds and the time-scaling sum rule have earlier treatments \cite{liang}; the component-group bound is the additional argument here.
+
+\subsection{Deadline robustness and sharpness}
+The same representation gives
+\[
+ 0\le a_i\partial_{a_i}F(t)
+ =\E[\one_Ga_iL_te^{-a_iL_t}]
+ \le\E[\one_G(1-e^{-a_iL_t})]\le F(t).
+\]
+Thus $0\le\partial_{\log a_i}\log F\le1$, while repair sensitivities are nonpositive. Scaling every rate gives
+\[
+ \sum_i\left(\partial_{\log a_i}\log F+
+ \partial_{\log b_i}\log F\right)=tF'(t)/F(t)\ge0.
+\]
+The sum of absolute sensitivities is at most $2m$, proving \eqref{eq:cdfrobust}. It also follows that $tF'(t)/F(t)\le m$.
+
+For $m$ identical parallel edges, with all failed required for disconnection,
+\[
+ M(a,b)\sim\frac{b^{m-1}}{m a^m}\qquad(a/b\to0).
+\]
+Under $a\mapsto ae^{-\eta}$ and $b\mapsto be^{\eta}$, the ratio tends to $e^{(2m-1)\eta}$. This proves optimality of the deterministic mean constant. It does not prove optimality of the statistical sampling budget below.
+
+\section{Physical acquisition and its actual cost}
+For each of the $2m$ local rates $r$, observe $n$ complete exponential sojourns and set $\widehat r=n/\sum_{j=1}^nY_j$. Ordinary alternating up/down cycles supply these observations; rare global failure states need not be physically prepared. For $0<\eta\le1$, the gamma Chernoff bound gives
+\[
+ \Pp\{|\log(\widehat r/r)|>\eta\}\le2e^{-n\eta^2/3}.
+\]
+For completeness, the lower gamma-tail exponent is $e^{-\eta}-1+\eta\ge\eta^2/3$, and the upper exponent is $e^{\eta}-1-\eta\ge\eta^2/2$. Therefore
+\begin{equation}
+ n=\left\lceil3\eta^{-2}\log\frac{4m}{\delta_{\rm acq}}\right\rceil\label{eq:ncal}
+\end{equation}
+suffices for joint log-rate accuracy with confidence $1-\delta_{\rm acq}$.
+
+The total observed sojourn count is $2mn$. Expected aggregate component exposure is
+\begin{equation}
+ n\sum_{i=1}^m\left(a_i^{-1}+b_i^{-1}\right).\label{eq:exposure}
+\end{equation}
+If all rates exceed $r_->0$, this is at most $2mn/r_-$. With all components monitored in parallel, each local record can stop after its required cycles; a simple gamma-tail union bound gives elapsed observation time $O((n+\log(m/\delta))/r_-)$ with high probability. These are distinct aggregate and wall-clock resources. Initial preparation, state discrimination, timestamp resolution, missed events and readout costs are additional experimental obligations. Timing or classification errors must be included in the rate intervals rather than ignored.
+
+Let $\ell=\log(1+\varepsilon)$. Choose total calibration log-radius $\eta=\ell/[4(2m-1)]$, including rounding of the measured rates to positive rationals. Run the model-mean algorithm with interval ratio at most $e^{\ell/2}$. Expanding its lower endpoint by $e^{-(2m-1)\eta}$ and its upper endpoint by $e^{(2m-1)\eta}$ yields overall ratio at most $e^\ell=1+\varepsilon$. Allocate the confidence budget between acquisition and computation by a union bound. This gives
+\[
+ O\!\left(m^3\varepsilon^{-2}\log(m/\delta_{\rm acq})\right)
+\]
+local sojourn observations. Shared parameters or better experimental allocation may reduce this sufficient budget.
+
+\textbf{What this does not acquire.} The data estimate rates \emph{inside} the independent Markov model. They do not establish independence, rule out unobserved simultaneous faults, or prove that the known graph captures every physical failure mechanism.
+
+\section{The static-to-dynamic construction}
+\subsection{Exact uniformization and the stationary problem}
+Set $\gamma_i=a_i+b_i$, $\Lambda=\sum_i\gamma_i$, and $q_i=a_i/\gamma_i$. At each discrete update choose $i$ with probability $\gamma_i/\Lambda$ and redraw that edge failed with probability $q_i$. Let $P$ be this kernel. Independent exponential update times of rate $\Lambda$ recover the original continuous-time chain exactly. If $M_*$ denotes the mean number of updates to failure,
+\begin{equation}
+ M=M_*/\Lambda.\label{eq:uniform}
+\end{equation}
+No holding-time approximation is made. The invariant law is the product distribution $\pi$ with failed-edge probabilities $q_i$. Write $p=\pi(B)$.
+
+Karger's corrected all-terminal unreliability theorem gives a relative approximation to $p$ for arbitrary specified independent edge probabilities in polynomial time \cite{karger}. This is an invoked, constructive static algorithm, not an assumed first-passage solver.
+
+\subsection{Constructing the conditioned starting law}
+A sampler for $\pi(\cdot\mid B)$ follows by self-reduction. Fix edges in order. If the next edge has failed probability $q_i$, evaluate the two conditional unreliabilities $u_0,u_1$ and select the next state proportionally to
+\[
+ (1-q_i)u_0,\qquad q_i u_1.
+\]
+A forced-working edge is contracted and a forced-failed edge is deleted. Each query is therefore another all-terminal unreliability problem. A branch that already forces all vertices connected has unreliability zero, detectable without approximation; an already disconnected residual graph has unreliability one.
+
+For a requested total variation error $\zeta$, use per-query relative error at most $\zeta/(16m)$ and per-query failure probability at most $\zeta/(8m)$. On accurate queries normalization changes a next-bit probability by at most four times its relative input error; bad queries contribute their failure probability. Sequential coupling and a union bound give total variation at most $\zeta$. There are at most $2m$ counting calls per sample. Fresh randomness for each sample makes the approximate starts independent. This avoids conditioning the later concentration calculation on a shared, adaptively generated oracle-good event.
+
+\subsection{Spectral estimates with explicit constants}
+The commuting redraw operators make $P$ reversible and positive semidefinite. Its eigenvalues are
+\[
+ 1-\frac{\sum_{i\in S}\gamma_i}{\Lambda},\qquad S\subseteq\{1,\ldots,m\},
+\]
+so its gap is $g=\min_i\gamma_i/\Lambda$.
+
+Let $P_A$ be its restriction to $A=B^c$, killed at failure. Write its eigenvalues as $1-\lambda_j$, ordered with $\lambda_1=\lambda$. For an orthonormal eigenbasis $\psi_j$ in $L^2(\pi)$, extended by zero on $B$, set $c_j=\langle\one_A,\psi_j\rangle_\pi^2$. Then
+\begin{equation}
+ S_k:=\Pp_\pi(\tau_B>k)=\sum_jc_j(1-\lambda_j)^k,
+ \quad c_j\ge0,\quad \sum_jc_j=1-p.\label{eq:spectral}
+\end{equation}
+The required inequalities are
+\begin{align}
+ gp\le\lambda&\le p/(1-p),\label{eq:lambdabounds}\\
+ 1-c_1&\le\lambda/g,\qquad \lambda_j\ge g\ (j\ge2),\label{eq:weights}\\
+ \lambda^{-1}-g^{-1}\le M_\pi:=\E_\pi\tau_B&\le\lambda^{-1}.\label{eq:statmean}
+\end{align}
+Here and below $\tau_B$ in expressions involving $P$ counts discrete updates. To prove the lower bound in \eqref{eq:lambdabounds}, any $f$ vanishing on $B$ has $\langle f,1\rangle_\pi^2\le(1-p)\|f\|_\pi^2$; apply Poincare to its Rayleigh quotient. For the upper bound, test with $\one_A$: its Dirichlet energy is stationary flow across the boundary, at most $p$. Applying Poincare to the normalized principal eigenfunction proves the coefficient bound; interlacing proves the other eigenvalue bound. Summing \eqref{eq:spectral} proves \eqref{eq:statmean}. These are standard reversible rare-event principles \cite{aldous}; their short proofs are included to expose the constants needed by the algorithm.
+
+\subsection{The actual all-working initialization}
+Let $C$ be the first update at which every edge has been selected. Conditional on all selected labels through $C$, the last redraw mark of each edge is an independent stationary Bernoulli mark. Thus $X_C$ has law $\pi$, independently of $C$. The next labels and marks are independent of this stopped history.
+
+The pathwise inequality $\tau_B\le C+\tau_B\circ\theta_C$ holds even if a failure occurred before $C$. Taking expectations and using monotone coupling yields
+\begin{equation}
+ M_\pi\le M_*\le M_\pi+\E C.\label{eq:join}
+\end{equation}
+When $r$ labels remain unseen, their total selection probability is at least $rg$. Consequently
+\[
+ \E C\le C_0:=H_m/g,\qquad H_m=\sum_{r=1}^m\frac1r\le1+\log m.
+\]
+In particular,
+\begin{equation}
+ \lambda^{-1}-g^{-1}\le M_*\le\lambda^{-1}+C_0.\label{eq:allmean}
+\end{equation}
+No quasi-stationary starting distribution, small-state-probability mixing bound, or conditioning on survival at $C$ is assumed.
+
+\subsection{A short trajectory measures the relevant flux}
+Define $D_k=S_k-S_{k+1}=\Pp_\pi(\tau_B=k+1)$. Perform one trial:
+\begin{enumerate}
+\item Sample $Y_0\sim\pi(\cdot\mid B)$ using the constructed static sampler.
+\item Run $k+1$ ordinary $P$ updates, stopping early on an unsuccessful trial.
+\item Output $Z=1$ precisely when every $Y_1,\ldots,Y_{k+1}$ belongs to $A$.
+\end{enumerate}
+The first update must repair the disconnection; all subsequent updates in the window must avoid another disconnection. Stationarity and reversibility give the exact identity
+\begin{align}
+ p\E Z
+ &=\Pp_\pi(X_0\in B,X_1,\ldots,X_{k+1}\in A)\nonumber\\
+ &=\Pp_\pi(X_0,\ldots,X_k\in A,X_{k+1}\in B)=D_k.\label{eq:reverse}
+\end{align}
+This estimates a positive Bernoulli probability directly, rather than subtracting two nearly equal survival probabilities. Short reactive-flux trajectories and recrossing corrections are established ideas \cite{prinz}; the next bounds earn the uniform sampling and time resources in this specific class.
+
+\subsection{A proved short window and a useful-trial lower bound}
+Choose a small internal accuracy $0<\xi\le1/100$ and
+\begin{equation}
+ k=\left\lceil\frac{H_m+\log(1/\xi)+2}{g}\right\rceil.\label{eq:k}
+\end{equation}
+Suppose a static confidence interval certifies
+\begin{equation}
+ p\le\frac{\xi}{2(k+1)}.\label{eq:rare}
+\end{equation}
+Then $\lambda(k+1)\le\xi$, $\lambda/g\le\xi$ and $\lambda C_0\le\xi$. From \eqref{eq:spectral},
+\[
+ D_k=\sum_j c_j\lambda_j(1-\lambda_j)^k.
+\]
+The principal contribution is at least $\lambda(1-\xi)^2\ge\lambda(1-2\xi)$. For the other terms, $x(1-x)^k$ decreases on $x\ge g$ when $k\ge g^{-1}$. Using $\sum_{j\ge2}c_j\le\lambda/g$ gives
+\[
+ \sum_{j\ge2}c_j\lambda_j(1-\lambda_j)^k
+ \le g(1-g)^k\frac\lambda g\le\xi\lambda.
+\]
+Therefore
+\begin{equation}
+ (1-2\xi)\lambda\le D_k\le(1+\xi)\lambda,
+ \qquad \boxed{\E Z\ge g(1-2\xi).}\label{eq:useful}
+\end{equation}
+The failure-conditioned short trial is not exponentially rare, even when $p$ is. Combining \eqref{eq:allmean} and \eqref{eq:useful} gives
+\begin{equation}
+ 1-3\xi\le M_*D_k\le1+3\xi.\label{eq:productbound}
+\end{equation}
+
+\section{The full algorithm, confidence and finite work}
+\subsection{Rare branch}
+Obtain a static interval $[p_L,p_U]$ with ratio at most $1+\xi/4$. If $p_U$ satisfies \eqref{eq:rare}, estimate $z=\E Z$. Total variation error $\zeta\le\xi g/32$ in each conditional start changes its Bernoulli mean by at most $\zeta$. Since $z\ge g(1-2\xi)$, this is a relative error of order $\xi$.
+
+With fresh independent starts, standard multiplicative concentration requires
+\begin{equation}
+ N=O\!\left(g^{-1}\xi^{-2}\log(1/\delta_{\rm trial})\right)\label{eq:N}
+\end{equation}
+trials. For example, the deliberately conservative constant $4096$ multiplying $g^{-1}\xi^{-2}\log(8/\delta_{\rm trial})$, together with a Chernoff relative radius $\xi/16$ and the additive $\zeta$ allowance, suffices. Allocate a small part of $\xi$ to the static probability interval so multiplication produces $D_k\in[D_L,D_U]$ with ratio at most $1+\xi$.
+
+A valid physical-time interval is
+\begin{equation}
+ \boxed{\left[\frac{1-3\xi}{\Lambda D_U},
+                 \frac{1+3\xi}{\Lambda D_L}\right].}\label{eq:output}
+\end{equation}
+Its endpoint ratio is at most $(1+\xi)(1+3\xi)/(1-3\xi)$. Taking $\xi=\varepsilon_{\rm model}/100$ leaves ample margin for a requested model interval ratio $1+\varepsilon_{\rm model}$.
+
+Ignoring the internal cost of the static counting subroutine, the rare branch uses
+\[
+ O\!\left(g^{-2}\xi^{-2}\log(m/\xi)\log(1/\delta)\right)
+\]
+kernel updates. A connectivity check costs $O(|V|+m)$ by a graph traversal. Each conditional start takes at most $2m$ static counting calls at inverse-polynomial relative precision $O(\xi g/m)$ and inverse-polynomial error probability. These parameters, rather than an unexplained conditioned-state oracle, specify the additional polynomial cost.
+
+\subsection{Nonrare branch: no parameter regime is left open}
+If the upper static endpoint fails \eqref{eq:rare}, the narrow static interval gives an inverse-polynomial lower bound on $p_L$. Equations \eqref{eq:lambdabounds} and \eqref{eq:allmean} then imply
+\begin{equation}
+ \max_x\E_x\tau_B=M_*\le U_0:=\frac1{gp_L}+\frac{H_m}{g}
+ =O\!\left(\frac{k+1}{g\xi}+\frac{H_m}{g}\right).\label{eq:common}
+\end{equation}
+Ordinary all-working first-passage simulations now take polynomial time. The largest-starting-mean property gives
+\[
+ \E_{\up}\tau_B^2
+ =2\E_{\up}\sum_{j=0}^{\tau_B-1}\E_{X_j}\tau_B-\E_{\up}\tau_B
+ \le2M_*^2.
+\]
+Thus $O(\varepsilon_{\rm model}^{-2}\log(1/\delta))$ independent paths with median-of-means estimation suffice for relative accuracy. For bounded work, let $L_0=\lceil2U_0\rceil$. The strong Markov property and Markov's inequality give
+\[
+ \sup_x\Pp_x(\tau_B>rL_0)\le2^{-r}.
+\]
+Cap each of $N_0$ paths after $L_0\lceil\log_2(4N_0/\delta)\rceil$ updates and charge a cap violation to its confidence allocation. This closes the common-failure branch without an unproved tail assumption.
+
+\subsection{Finite arithmetic}
+All computational trajectories use rational categorical and Bernoulli draws. Exact rational sampling by rejection from fair random bits has polynomial expected bit cost; a global bit-work cap can consume an additional failure-probability budget. The logarithm in \eqref{eq:k} may be replaced by the integer $\lceil\log_2(1/\xi)\rceil$, which is larger and obtainable by integer arithmetic. $H_m$, $g$, $\Lambda$ and all update probabilities are rational. Continuous physical time is recovered by the exact division \eqref{eq:uniform}.
+
+For rational input probabilities, $p$ can be tiny, but $\log(1/p)$ is bounded by a polynomial in total input length because the all-failed configuration belongs to $B$. Storing a relative estimate does not require $1/p$ bits. The complexity includes the bit precision of the published static FPRAS. It does not hide the numerical rate contrast inside an input-length claim.
+
+\section{Why stationary failure frequency does not already solve this}
+Heidarzadeh, Sprintson and Singh already give a polynomial all-terminal approximation to stationary failure frequency \cite{frequency}. This is a strong same-information comparator. The operation above must therefore earn more than counting boundary crossings.
+
+Consider two parallel edges with rates
+\[
+ a_1=a,\quad b_1=1,\qquad a_2=b_2=1.
+\]
+The stationary disconnection probability and failure frequency are
+\[
+ p=\frac{a}{2(1+a)},\qquad \nu=\frac{a}{1+a}.
+\]
+The three safe-state mean equations instead give
+\[
+ M=\frac{a^2+3a+4}{a(a+3)},\qquad
+ M\nu=\frac{a^2+3a+4}{(a+3)(a+1)}\longrightarrow\frac43.
+\]
+Thus the reciprocal failure frequency remains wrong by a nonvanishing factor as failures become arbitrarily rare. Both refresh rates remain between one and two. Several crossings can cluster during one rare down episode of the first edge. The short no-return condition in $Z$ removes this excess crossing count.
+
+More pronounced clusters arise with $n$ ordinary parallel edges of rates $a=b=1$ and one additional edge of rates $a=b=n^2$. The ordinary edges occasionally all fail while the faster edge toggles repeatedly. A $2(n+1)$-state count reduction computes the exact model without enumerating its $2^{n+1}$ configurations. The diagnostics below show growing discrepancies between reciprocal crossing frequency and the requested mean.
+
+\section{Executed numerical evidence}
+\subsection{A short-path experiment with a trillion configurations}
+The executed experiment uses 40 parallel edges, all failure and repair rates equal to one. Its conditional failed-state law is exactly the singleton all-down state, so this case needs no approximate static oracle. The stationary failure probability is
+\[
+ p=2^{-40}=9.0949470177\times10^{-13}.
+\]
+The uniformized kernel has $\Lambda=80$, $g=1/40$. We ran 100,000 independent seeded-PRNG trials, each at most 601 updates, stopping unsuccessful trials early. There were 48,642 successful trials and 29,288,065 actual kernel updates. Integer draws and an exact count reduction implement the stipulated kernel.
+
+The rational interval $z\in[0.48092,0.49192]$ has Hoeffding coverage at least 99\% under independent uniform random choices: its half-width is $0.0055$ and $2\exp[-2(100000)(0.0055)^2]<0.01$. We used tighter versions of the proved spectral inequalities. With $a=p/(1-p)$ and $k=600$,
+\[
+ \frac{pz_L}{1+(1-g)^k}\le\lambda\le
+ \min\left\{a,\frac{pz_U}{(1-a/g)(1-ka)}\right\}.
+\]
+All these bounds and the subsequent mean endpoints were evaluated as exact Python fractions. The resulting mean interval is
+\begin{equation}
+ \boxed{[27{,}939{,}289{,}597.80,\quad28{,}578{,}347{,}381.32],}
+\end{equation}
+with endpoint ratio $1.0228731$; displayed decimal endpoints round the stored exact rationals outward.
+
+For this special family a stronger conventional method is available: the exact birth-death formula
+\[
+ M_m=\sum_{i=0}^{m-1}\frac{\sum_{j=0}^i\binom mj}{(m-i)\binom mi}
+\]
+gives $M_{40}=28{,}233{,}101{,}920.1712$, inside the interval. The reciprocal stationary frequency is $27{,}487{,}790{,}694.4$, outside it. One direct uniformized first-failure path has expected length approximately $2.259\times10^{12}$ updates. This is a cost comparison to direct waiting, not a speed claim against the exact birth-death solver, which is better for this symmetric example.
+
+The probability guarantee assumes ideal independent random choices. The actual run uses a seeded NumPy pseudorandom generator for reproducibility. It is a synthetic computational demonstration with known rates, not physical rate data or formal verification of the randomness source.
+
+\subsection{Checks away from the symmetric example}
+The accompanying diagnostics construct 125 independent-component systems with random monotone failure rules and two to six components. They check all component elasticities, the time-scaling identity, 125 finite-change mean comparisons and 160 finite-change deadline comparisons. The largest time-scaling residual is $4.45\times10^{-15}$; observed sign or unit-bound deviations are below $9\times10^{-16}$. These are floating-point diagnostics of the formulas, not proofs.
+
+A heterogeneous six-edge $K_4$ has $p=4.4464\times10^{-6}$. With a 68-step post-repair window, the directly evaluated useful-trial probability is $0.489028$, compared with the proved lower bound $0.131688$. The full-generator mean is $76{,}473.36$ and the reciprocal short flux is $76{,}483.47$, a relative difference of $0.0133\%$. The initial-state excess over the stationary mean is $1.88213$, below the refresh-cover bound $3.03218$.
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+Ordinary edges & Fast rate & True mean & $M\nu$\\
+\midrule
+4 & 16 & 5.77917 & 3.61198\\
+12 & 144 & 396.067 & 7.54229\\
+20 & 400 & 56{,}850.0 & 11.3854\\
+24 & 576 & 746{,}981 & 13.3571\\
+\bottomrule
+\end{tabular}
+\end{center}
+The table uses the faster-edge family above. The rare-branch gate is checked explicitly; for the smaller rows it refuses the rare approximation, and the general algorithm uses its ordinary-simulation branch. The code does not silently accept a plateau outside the theorem's regime.
+
+\begin{figure}[H]
+\centering\includegraphics[width=\textwidth]{figures/reliability_results.pdf}
+\caption{Left: clustered crossings increasingly separate failure frequency from first-failure mean in the specified faster-edge family. Right: the executed 40-edge short-path interval, its exact conventional reference and the uncorrected frequency inverse. All quantities are synthetic.}
+\end{figure}
+
+\section{What is established, and what remains open}
+\textbf{Established in the stated mathematics.} The construction earns a failure-conditioned starting sampler from published static counting; a short ordinary trajectory whose useful probability is bounded below; the recrossing correction; the all-working initial condition; full physical residence through exact uniformization; a common-failure branch; finite confidence and arithmetic; and a component-count calibration law. It requires no supplied committor, enumeration of all cuts, microscopic state table, quasi-stationary initialization or observed rare first-failure path.
+
+\textbf{Existing approaches that already do substantial work.} Static unreliability counting is Karger's contribution. Polynomial stationary failure-frequency approximation is prior work. Reversible spectral first-passage approximations and reactive-flux correction are also established. Temporal-difference methods already demonstrate short-data rare-event prediction in explicit finite-state settings \cite{cheng}. The plausible contribution here is the complete synthesis for a succinct repairable-network model and the sharp component-group calibration proof. The targeted literature search did not establish an earlier identical theorem, but it is not a priority certification.
+
+\textbf{Structural limitations.} The result does not cover unmeasured common-cause jumps, load-dependent cascading failures, finite shared repair crews, non-Markov ageing, unknown vertices or edges, or a failure definition with hidden physical variables. It does not extend automatically to arbitrary terminal subsets, arbitrary monotone predicates without a suitable static counting algorithm, or low-temperature interacting Ising dynamics. The general all-terminal Karger sampler was invoked through its published construction; the executed code implements finite-state diagnostics and the special exact conditional sampler, not a production implementation for arbitrary graphs.
+
+\textbf{Why the original unrestricted opening remains impossible from silence alone.} An independent omitted catastrophe clock of rate $c$ changes the survival law to $e^{-ct}S(t)$ while leaving the observed ordinary component rates unchanged. Seeing no such events for exposure $L$ cannot exclude rates of order $1/L$. A clock of order $1/M$ can materially change an $M$-scale reliability claim. Therefore component calibration cannot itself certify the absence of all rare unmodelled routes. Structural exclusion or a qualified intervention is additional scientific evidence. Astra's earlier complete-excursion source explicitly preserves the same boundary \cite{astra}.
+
+\textbf{Consequence.} Global rarity assembled from ordinary independent local behavior need not impose a waiting-time or configuration-enumeration cost on first-failure prediction. The correct dynamic correction can be acquired from a static failure sampler and short return-avoidance trials. This is a potentially useful algorithmic and foundational result. It is not yet evidence of a civilisation-changing physical technology.
+
+\section*{Reproduction and evidence files}
+\texttt{check\_reliability.py} reproduces the finite generators, sensitivity checks and frequency comparisons. \texttt{parallel\_experiment.py} reproduces the 40-edge experiment and stores exact rational interval endpoints. \texttt{results.json} and \texttt{parallel\_experiment.json} preserve the execution outputs. \texttt{make\_figure.py} creates the figure. This report's editable LaTeX source is included. No external repository was modified or result published during this run.
+
+\begin{thebibliography}{9}
+\bibitem{astra} Astra Research Knowledge, N1596, \emph{Complete-excursion comparison for relative deadline risk, visible prefix}. Governing preserved source: \texttt{FINAL\_PREFIX\_TRUNCATED\_20000.txt}, repository revision \texttt{8457e1084a3bcf3c4f8e3c7e4da9e0f5045a6570}. Packet and source were read; the packet explicitly states that the original report/proof/code archive is unreceived. \url{https://github.com/harjassand/astra-research-knowledge/blob/8457e1084a3bcf3c4f8e3c7e4da9e0f5045a6570/knowledge/current/packets/N1596.json}
+\bibitem{karger} D. R. Karger, \emph{A Randomized Fully Polynomial Time Approximation Scheme for the All-Terminal Network Reliability Problem}, SIAM Review 43 (2001), corrected version of the 1999 article. \url{https://doi.org/10.1137/S0036144501387141}. Author PDF: \url{https://people.csail.mit.edu/karger/Papers/reliability-sirev.pdf}.
+\bibitem{frequency} A. Heidarzadeh, A. Sprintson and C. Singh, \emph{A Fast and Accurate Failure Frequency Approximation for $k$-Terminal Reliability Systems}, IEEE Transactions on Reliability 67(3), 933--950 (2018). \url{https://doi.org/10.1109/TR.2018.2825232}; primary preprint \url{https://arxiv.org/abs/1712.09666}. The primary abstract establishes the all-terminal polynomial frequency scope used in the comparison.
+\bibitem{aldous} D. Aldous and J. A. Fill, \emph{Reversible Markov Chains and Random Walks on Graphs}, Chapter 3 and its notes; classical spectral and quasi-stationary hitting-time results, with credit to Aldous and Brown. \url{https://www.stat.berkeley.edu/~aldous/RWG/Book_Ralph/Ch3.S8.html}.
+\bibitem{prinz} J.-H. Prinz, J. D. Chodera and F. Noe, \emph{Spectral Rate Theory for Two-State Kinetics}, Physical Review X 4, 011020 (2014). \url{https://doi.org/10.1103/PhysRevX.4.011020}; full primary text \url{https://pmc.ncbi.nlm.nih.gov/articles/PMC4209445/}.
+\bibitem{barlow} R. E. Barlow and F. Proschan, \emph{Theory of Maintained Systems: Distribution of Time to First System Failure}, Mathematics of Operations Research 1(1), 32--42 (1976). \url{https://doi.org/10.1287/moor.1.1.32}.
+\bibitem{liang} S. Liang and R. Bao, \emph{A Universal Control Budget for First-Passage Kinetics}, arXiv:2608.06368 (2026). Primary abstract retrieved; cited for its stated single-transition response and scaling laws, not as proof of the grouped-component theorem here. \url{https://arxiv.org/abs/2608.06368}.
+\bibitem{cheng} X. Cheng and J. Weare, \emph{The surprising efficiency of temporal difference learning for rare event prediction}, NeurIPS 2024; arXiv:2405.17638v3 (2025). \url{https://arxiv.org/abs/2405.17638}.
+\end{thebibliography}
+\end{document}
