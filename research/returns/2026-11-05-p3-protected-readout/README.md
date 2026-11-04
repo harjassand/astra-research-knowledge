@@ -142,7 +142,30 @@ It also reports 4,800 noisy Bell rows; an 800-wire/32-logical-qubit data-path ch
 
 One reported conservative analytic point is `k=32, L=19, N=11,552, q=q_c=.003`: 694,998 prepared banks, 75 corrected Bell rows and 866,400 physical Bell gates, with learning/readout error below `.007251` before factory and separate control budgets. Allocating `.002` to those budgets keeps the stated full bound below `.01`. The source explicitly notes billions of wire readouts and substantial classical work. This is not an economical present-day hardware claim.
 
-These are **producer-reported** executions and certificate values from the visible answer. The supplied reproducibility ZIP includes an earlier communication packet and remains **uncollected under the existing transfer hold**. Its programs, records and certificate files have not been acquired or rerun, and no independent review package is supplied with this visible capture. The earlier authorization for a distinct P3 ZIP does not lift this hold. No Library preview or alternate route was used. The complete available derivation is preserved above; its archive availability must not be invented. [Source, lines 504–594](P3_PROTECTED_QUANTUM_READOUT_20261105_RETURN.txt#L504-L594).
+These executions and certificate values were producer-reported in the visible answer. **The subsequently authorized original ZIP and all 21 members are now supplied**, including the complete theorem, program sources, raw simulated calibration records, recorded results and rational-certificate files. They are preserved without execution, recompilation, new reproof or novelty audit. No separate independent reviewer artifact is inferred from the label “finite audit.”
+
+At the initial publication the ZIP was uncollected. A later human instruction authorized collection and the original was supplied. Its nested earlier communication ZIP is byte-identical to the already authorized/public archive (SHA256 `623b20c473c15ea3b58ab3b212b1be68a13774beaffdcdb8aaefbebea270f3d2`). The earlier communication/cavity theorem scopes remain unchanged, and no unrelated source-recovery permission is inferred. The visible return's scientific body is unchanged; only its updated local download locator is replaced with the public path. [Availability chronology and hashes](SOURCES.json).
+
+### Original reproducibility artifacts and distinct algorithm variants
+
+| Artifact | Public file |
+|---|---|
+| Complete theorem and physical costs | [protected_quantum_readout_theorem.txt](package/protected_quantum_readout_theorem.txt) |
+| Reproduction/evidence boundaries | [Packet guide](package/protected_readout_REPRODUCIBILITY.txt), [finite-audit README](package/latent_code_bell_README.md) |
+| Sparse acquisition proof | [Collision lemma](package/latent_code_collision_lemma.md) |
+| Default recorded run | [latent_code_bell_result.json](package/latent_code_bell_result.json) |
+| Preserved comparison runs | [Exhaustive acquisition](package/latent_code_bell_result_exhaustive.json), [dynamic-programming matching](package/latent_code_bell_result_dp.json) |
+| Selected sparse exact certificate | [Recorded certificate](package/latent_code_collision_certificate.json), [program](package/latent_code_collision_certificate.py) |
+| Older all-candidate/minimum-sample certificate | [Recorded certificate](package/latent_code_parameter_certificate.json), [program](package/latent_code_parameter_certificate.py) |
+| Raw finite measurement records | [latent_code_calibration.bin](package/latent_code_calibration.bin) |
+| Learned signs and reference specifications | [Signs](package/latent_code_acquired_signs.json), [reference specifications](package/latent_code_reference_specifications.json) |
+| Main program and licensed matching implementation | [Program](package/latent_code_bell_check.py), [blossom implementation](package/latent_code_blossom.py), [retained BSD notice](package/latent_code_networkx_LICENSE.txt) |
+| Finite scanner sources | [Exhaustive scanner](package/latent_code_scan.cpp), [collision scanner](package/latent_code_hash_scan.cpp) |
+| Original archive and supplied checksums | [ZIP](original/protected_quantum_readout_reproducibility.zip), [SHA256SUMS](package/SHA256SUMS.txt) |
+| Unchanged earlier communication packet | [Nested original ZIP](package/preserved_communication/lossy_measurement_port_reproducibility.zip) |
+
+The selected sparse large analytic point uses 694,998 prepared banks for the signed task. The older all-candidate certificate has a different acquisition/copy count; it is not silently substituted for the sparse learner's runtime claim. The larger point and physical noisy factories were not simulated. The finite C++ scanners are bounded audit implementations (at most 64 wires and 256 rows);the mathematical algorithm uses arbitrary-length bit strings. Statistical statements assume fresh independent shots or uniform conditional versions of their bounds;finite calibration does not certify unrestricted drift. In physical size, the learning lower bound is `exp[Omega(N/log^2 N)]`,not `exp[Omega(N)]`. All preparation,factory,control,waiting and failure costs remain as stated above. [Complete source](package/protected_quantum_readout_theorem.txt).
+
 
 The source credits known stabilizer-code learning, transversal Bell readout, toric-code recovery, protected quantum learning and fault-tolerant uploading. It preserves the earlier lossy assisted-communication theorem and its finite-cavity operating point at their original scopes. Protection, paired-wire access and the declared local noise/factory conditions remain essential; this does not solve arbitrary unknown-code learning, general noisy experimental acquisition or coherent transfer of an already exposed unencoded input.
 
