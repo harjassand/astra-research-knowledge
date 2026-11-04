@@ -27,6 +27,7 @@ Search returns candidate IDs. Read the selected packet's full conditions, curren
 | Add or correct Capital material | [knowledge/INTAKE.md](knowledge/INTAKE.md) |
 | Published branch checkpoint | [state/branches.tsv](state/branches.tsv), [state/CONTINUITY.md](state/CONTINUITY.md) |
 | Technology task | [technology/README.md](technology/README.md) |
+| Complete supplied reports and source packages | [Supplied research returns](research/returns/README.md) |
 | Repository layout and older editions | [DESIGN.md](DESIGN.md), [history/README.md](history/README.md) |
 
 Counts and source availability come from the current manifest and the selected record. This README does not maintain a second inventory or a running intake changelog.
