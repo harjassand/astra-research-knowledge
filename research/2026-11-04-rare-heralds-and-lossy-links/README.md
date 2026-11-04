@@ -1,0 +1,21 @@
+# Rare heralds, lossy links and unknown-state acquisition
+
+Use `python3 knowledge/retrieve.py packet ID` and follow its exact source ranges. These returns select three different scientific questions:
+
+| Card | Result reported by the source | Governing boundary |
+|---|---|---|
+| N1735 | Learn and simulate rare Fock heralds using a positive matching and walk representation | Pure real-positive Gaussian pair amplitudes. Learning needs known support, squeezing gap and a nonzero coupling floor. Physical production still pays the herald probability. |
+| N1737 | Matched acquisition control laws and a collective-register converse | Arbitrary unencoded input exposed to actual hidden Z noise. Every noncommuting source operation is charged; the attaining qutrit exchange requires additional source access. |
+| N1736 | Two-way assisted communication with a linear collection-loss exponent and a finite causal receiver | A specified coherent vacuum Markov port. Alice retains a local memory and prepares entanglement before introducing the payload. This changes the direct unknown-input task. |
+
+Six N1735 units cover the exact PGF, walk sampler, energy/finite random program, unconditioned learning, fidelity/acquisition lower bound, and reported checks/model limits. Seven N1736 units cover direct-recovery obstruction, finite pulse, signal-relative loss/finite ladder, assisted capacity converse, purification/deadline/teleportation, precision/local costs/calibration, and the reported finite-cavity point.
+
+P3's original-state obstruction does not invalidate N1731's stated finite-error instrument. P1's lossless pure-port compiler (N1732) has different premises. Neither return completes general correlated quantum decoding or demonstrates practical quantum-hardware advantage.
+
+[Original source index](source/INDEX.json) retains the supplied complete visible captures. The filenames retain `PARTIAL_NATIVE`, but the updated headers and overlapping endings describe the actual complete visible capture. Native mathematical prefixes are verbatim; broken or duplicated ending glyphs are preserved. [P3 displayed cavity equations](source/P3_DISPLAYED_CAVITY_MATH.json) separately records exact formula strings read from the displayed math elements, with no guessed coefficients.
+
+Per-source provenance: [P2](P2_SOURCE_PROVENANCE.json), [P3](P3_SOURCE_PROVENANCE.json). The specific new [P3 original ZIP](source/originals/lossy_measurement_port_reproducibility.zip) and its [README](source/P3_REPRODUCIBILITY/README.txt), programs, arithmetic audit software and recorded results are retained after explicit human authorization, recorded in [the scoped authority](PUBLICATION_AUTHORIZATION.json). No supplied program was run; the arithmetic audit program is source evidence, not an independent mathematical review. All unrelated prior holds remain and the P2 individual prototype is uncollected. No paper, alternate preview, scientific execution, reproof, novelty audit, worker or producer message was added. Source-reported checks and the cavity numerical certificate are not new Capital audits or experimental measurements.
+
+P1’s [complete recovery capture](source/P1_HUMAN_INTERRUPTION_RECOVERY_20261104_RETURN.txt) and [provenance](P1_SOURCE_PROVENANCE.json) support five N1737 units: integrated action/peak/startup laws, qutrit attainment, a collective-register converse, parallel SWAP cost comparison, and actual-noise/cavity-dilation boundaries. This is not a zero-capacity theorem or a ban on prepared-resource communication. The attaining qutrit is not automatically available through the immutable port. Cavity photon loss is not automatically bare-source Z noise. P1’s predecessor-containing ZIP and individual full-return file remain uncollected. No separate review artifact or new executed validation of its attaining qutrit is supplied.
+
+[Public transport derivative](PUBLIC_TRANSPORT_DERIVATIVE.json): P3’s original wrapper included a local ZIP download path. The public copy replaces only that header locator with the repository archive path. The exact wrapper is retained privately and both hashes are recorded. Scientific response/prompt/glyph bytes and the original ZIP/member bytes are unchanged.
