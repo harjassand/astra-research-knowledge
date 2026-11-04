@@ -1,0 +1,9 @@
+# Bounded-contour residence and full-mean conditioning
+
+Use `python3 knowledge/retrieve.py packet N1722`. Six new units cover bounded-lobe weighted physical current,capacity-compensated relative correction,net-domain pruning/actual-target completion,regular positive-field closed loops,corrected open graph/SOS residence,and full-mean input conditioning. Precise source ranges and conditions are in the packet.
+
+The positive result is the reported relative certificate for the stated repair family; a large analytic transport bound can be compensated by a small physical capacity. The many-small-droplet capacity term,terminal image,divergence error,actual magnetization target and holding/returns are retained. A regular eight-arc positive-field loop law/normalizer is reported acquired; covering all significant critical current and physical transport through unrestricted principal contours/growth remain open. Full polynomial-time prediction remains UNACHIEVED.
+
+The sharper current source join remains Q<=T<=(1+kappaD0)Q+D0 for everykappa>0. This return also quotes the older fractional inequality,whose kappaD0<1 restriction stays with that older formula. New relative certificate separately requiresU_C<kappa. Every-increasing-path voltage control is optional,not a necessary physical-predictor obligation.
+
+[Source index and exact provenance](source/INDEX.json): public copy preserves the complete native P2 scientific answer and exact prompts. ONLY the final unrelated statistics activity section is excluded; full original wrapper remains private and hash-bound. The unrelated tail is not research reasoning or verification. Three corrected labels are source UI only,not an independent audit or proof of model context. Earlier card/status are preserved as history. No ZIP was supplied; offered non-ZIP document/PDF/code holds remain and no Page/preview/alternate access occurred. Detailed constants/definitions absent from the visible answer are not invented here.
