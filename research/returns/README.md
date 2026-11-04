@@ -41,6 +41,11 @@ Use these links to read complete source reports and packages directly. Use the [
 | P3: finite photon-count hardware and timing interface | [Matched oscillator, counters, detector deadtime and timestamp costs](2026-11-05-p3-passive-calibration/finite-photon-count-interface.md) |
 | Independent P3 completion: finite whole first-failure CDF certificate | [Equilibrium-safe curve, changing-law uncertainty and implementation limits](2026-11-05-p3-passive-calibration/reliability-curve-certificate.md) |
 | Independent P3 extension: all-working chosen-deadline query | [Independent-edge snapshot/bridge construction and narrower scope](2026-11-05-p3-passive-calibration/all-working-point-query.md) |
+| P3: finite whole reliability curve for declared correlated Gibbs networks | [Constructed rare static access, pinned mixing and complete CDF join](2026-11-05-p3-correlated-reliability/README.md) |
+| P3: executed correlated static estimator and conditional sampler | [Actual fixture, intervals, primitive counts and implementation limits](2026-11-05-p3-correlated-reliability/static-execution.md) |
+| Independent P3 boundary: passive transport certification | [Exact finite-record/adaptive-stopping obstruction and conditional tail bound](2026-11-05-p3-correlated-reliability/transport-certification.md) |
+| Independent P3 theorem: nonlinear passive-memory residual | [Finite-horizon certificate and unresolved physical acquisition](2026-11-05-p3-correlated-reliability/passive-memory-certificate.md) |
+| Retained P3 route: fixed-law auxiliary certificates | [Known backbone, frozen-versus-switched uncertainty and actual limits](2026-11-05-p3-correlated-reliability/fixed-law-certificates.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks and shared-construction proposal | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary and coordination proposal. Existing normalized scientific records remain unchanged.

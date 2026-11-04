@@ -2,6 +2,8 @@
 
 This independent companion supplies the finite-confidence and finite-arithmetic closure that was **unfinished in the preceding return**. The [complete new proof](package/next2_reliability/PROOF.md) and [calibration/physical extension](package/next2_reliability/CALIBRATION_AND_PHYSICAL_SCOPE.md) now construct one finite certificate for the whole first-failure CDF. The [old sensitivity theorem](../2026-11-05-p3-deferred-calibration/reliability-cdf-sensitivity.md) and its dated unfinished notes remain unchanged as historical artifacts; they are not retroactively labelled complete.
 
+A subsequent [declared correlated-Gibbs extension](../2026-11-05-p3-correlated-reliability/README.md) constructs rare static counting and failure-conditioned sampling from pinned Gibbs operations, then joins them to this finite curve machinery. Its fixed logarithmic contrast, all-pinning mixing and reversible operating-gap premises replace the product-law static interface; the original result and source artifacts here retain their own scope.
+
 ## Precise computational theorem
 
 The main all-terminal model has a known connected undirected graph, rational product invariant law, `0<p=pi(failure)<=1/2`, and a succinct reversible generator comprising supplied local tables and an operating refresh backbone. More generally it needs costed ordinary updates/predicate evaluation, an exit-rate upper bound and positive full-gap lower bound. Start from the **deliberately prepared** `pi(.|safe)` law, with its own physical setup costs. Product rejection has computational acceptance at least one half; physical preparation is not thereby free.
