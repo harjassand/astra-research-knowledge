@@ -29,6 +29,9 @@ Use these links to read complete source reports and packages directly. Use the [
 | P3: output-only Hamiltonian calibration after first-input capture | [Finite experiment compiler, deferred decoder and correlated-archive composition](2026-11-05-p3-deferred-calibration/README.md) |
 | P3: arbitrary-start calibration without burn-in | [Complete bounded neighborhoods and randomized-node construction](2026-11-05-p3-deferred-calibration/no-burn-in-calibration.md) |
 | Independent P3 reliability companion: all-deadline relative CDF sensitivity | [Common-invariant form theorem and actual implementation precision](2026-11-05-p3-deferred-calibration/reliability-cdf-sensitivity.md) |
+| P1: energy scheduling of clock-driven grid disturbances | [Exact cumulative-energy/jitter law, finite compiler and physical execution costs](2026-11-05-p1-clocked-grid-scheduling/README.md) |
+| Independent P1 result: heterogeneous selected-harmonic phase scheduling | [Constructive certificate and calibration/timing/deadline limits](2026-11-05-p1-clocked-grid-scheduling/harmonic-scheduling.md) |
+| P1: published clocked-grid observations and replay evidence | [Measured-data reanalysis, attribution and deployment boundaries](2026-11-05-p1-clocked-grid-scheduling/measurements-and-evidence.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks and shared-construction proposal | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary and coordination proposal. Existing normalized scientific records remain unchanged.
