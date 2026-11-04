@@ -1,3 +1,5 @@
+> Historical report: commands and findings apply to the recorded revision. Current access starts at the repository root `00_START_HERE.txt`; retired tooling is preserved in Git history (see `history/README.md`).
+
 # Astra research access: 20-worker investigation
 
 Twenty GPT-6 Luna workers audited this external research corpus. The implemented result is a smaller task-first reading interface, safer source access, and explicit obligations for proposed mathematical connections. This does not establish better theorem discovery by Astra, an optimal encoding, external correctness, novelty, or learned model weights. All 186 scientific cards and the original evidence remain unchanged.

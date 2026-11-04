@@ -1,3 +1,5 @@
+> Historical report: commands and findings apply to the recorded revision. Current access starts at the repository root `00_START_HERE.txt`; retired tooling is preserved in Git history (see `history/README.md`).
+
 # Implementation and validation receipt
 
 Implemented on branch `codex/technology-development-layer` from the fetched

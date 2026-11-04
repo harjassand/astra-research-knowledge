@@ -110,8 +110,8 @@ Tests exercise real SDK stdio and streamable-HTTP discovery/calls, schemas,
 current acceptance/corrections, source passage use, historical versions,
 continuation and invalid IDs. The existing publication check runs the adapter
 regressions, and the same CI job runs the transport checks. These checks do not
-establish scientific correctness or native ChatGPT Pro behavior. Fresh problem
-comparisons and retained misses are recorded separately in the evaluation.
+establish scientific correctness or native ChatGPT Pro behavior. Historical retrieval comparisons are retained in Git history; see
+[historical editions](../../history/README.md).
 
 The package follows the current [portable plugin format](https://developers.openai.com/plugins/build/plugins)
 and uses the [official MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk).

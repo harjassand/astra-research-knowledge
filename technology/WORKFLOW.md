@@ -61,11 +61,9 @@ omit any demand for an immediate technological application. Sol Ultra can
 reallocate workers to important opportunities while Pro branches retain their
 own objectives; this implementation itself uses no workers or model trial.
 
-Record the exact initiating prompt, available research context, model settings,
-reported inference duration, actual usage receipts, output and verification in
-the optional [workflow trace](../evaluation/workflows/README.md). Unknown facts
-remain unknown. A retrospective trace does not substitute for a frozen matched
-comparison or justify a meta-prompting advantage.
+Retain the source artifacts and measured costs relevant to the claimed result.
+Unknown facts remain unknown; no evaluation registration or workflow trace is
+required. Comparative claims need matched evidence for their actual scope.
 
 ## Exposed end-to-end fixture
 

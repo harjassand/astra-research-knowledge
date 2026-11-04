@@ -1,3 +1,5 @@
+> Historical report: commands and findings apply to the recorded revision. Current access starts at the repository root `00_START_HERE.txt`; retired tooling is preserved in Git history (see `history/README.md`).
+
 # Retrieval integration review and research-use comparison
 
 25 October 2026. Base: merged PR178, `d49387def190cb8c7ce8472baf7181c751d11bf6`.
@@ -46,7 +48,7 @@ No mathematical audit acquires a measurement, device or practical advantage.
 
 ## Evaluation design and retained failures
 
-[comparison.json](evaluation/comparison.json) contains every question, expected
+[comparison.json](https://github.com/harjassand/astra-research-knowledge/blob/1d73a2bc0e10183aebd72695ca799cc9462c99e8/knowledge/evaluation/comparison.json) contains every question, expected
 parent scope, returned IDs/ranks, expansions and followed source route. Cases
 were written outside implementation fixtures at `../research-use/cases.json`;
 their SHA256 is `5ea1108a5a776311c637cdce78b5e30699c31174878138b5ca1aeb08ab110d28`.
@@ -75,7 +77,7 @@ source/status delivery. Field ranking sometimes returns the useful unit
 directly rather than its enclosing result; it also worsens some orderings.
 
 The initial 18-unit field-only run is retained in
-[field-initial.json](evaluation/field-initial.json): 22/23 top-five parent hits,
+[field-initial.json](https://github.com/harjassand/astra-research-knowledge/blob/1d73a2bc0e10183aebd72695ca799cc9462c99e8/knowledge/evaluation/field-initial.json): 22/23 top-five parent hits,
 with a regression on finite equilibrium cooperativity despite the full-card
 baseline finding the right card first. That failure motivated the explicit
 equilibrium obstruction unit, not an unsupported claim of a first-order

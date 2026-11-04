@@ -1,3 +1,5 @@
+> Historical report: commands and findings apply to the recorded revision. Current access starts at the repository root `00_START_HERE.txt`; retired tooling is preserved in Git history (see `history/README.md`).
+
 # N629 development verification pilot
 
 This is a public, exposed development audit of an existing candidate. The finite
