@@ -4,6 +4,7 @@ Describe the problem rather than guessing a card ID:
 
 ```
 python3 knowledge/retrieve.py search "your scientific task" --method content
+python3 knowledge/retrieve.py evidence "mechanism or proof passage"
 python3 knowledge/retrieve.py search "a single experiment distinguishing action choices" --method agent
 python3 knowledge/retrieve.py search "a reduction from hidden moments to a decision bound" --method semantic
 python3 knowledge/retrieve.py search "certify a proposed intervention" --method agent --object "nonlinear conductance matrix" --unavailable "calibration" --available "scalar reaction intervals"
@@ -16,6 +17,10 @@ python3 knowledge/retrieve.py source N675 --evidence 0 --start 2 --end 80
 python3 knowledge/retrieve.py bridge <source-unit-ID> <destination-unit-ID>
 python3 knowledge/retrieve.py coverage
 ```
+
+Use `evidence` for full source-passage discovery, including long comparison and
+continuation collections whose records and full citations remain in problem search.
+It returns the exact source and its citing-record context.
 
 Start with fast portable `--method content`; cross-check `structured` when the
 problem is poorly named or source/field weighting may matter. `--method agent`
