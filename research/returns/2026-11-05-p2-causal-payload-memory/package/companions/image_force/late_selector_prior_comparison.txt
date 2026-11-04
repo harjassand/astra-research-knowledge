@@ -1,0 +1,220 @@
+# Late-selector payload theorem: primary input and physical implementation
+
+Independent follow-up, 5 November 2026. The expander theorem is accepted input;
+this note records its exact primary statement and constructs the resulting
+local implementation. It does not re-prove or numerically validate expansion.
+
+For the final fixed-clock and fixed-order implementation use
+../root/local_expander_instantiation.txt. It adopts the conservative ten-qubit
+source cell and common order 5,...,n,1,...,4. The earlier source scheduling
+discussion below is exploratory and is not the canonical execution bill.
+
+## Exact expander input
+
+Anshu, Balasubramanian, Haferkamp, Harrow and Tan, *Depth-1 expanders on the
+unitary group and applications*, arXiv:2609.01605v1, Theorem 2.2, equations
+(2.1)-(2.6):
+
+https://arxiv.org/html/2609.01605v1
+
+Use n=3s, s>=1, and uniform weights on 16 indexed generators. Their average
+conjugation channel Phi has Hilbert--Schmidt contraction <=1-gamma on traceless
+operators, with gamma>=1/(2*10^8). With C_ab denoting CNOT(control a,target b):
+
+    U1=X1, U2=Z1,
+    U3=C12, U4=C21, U5=C23, U6=C32;
+    {U7,...,U12}={product_(i=0)^(s-1) C_(3i+a,3i+b):
+                                        a,b in {1,2,3}, a!=b};
+    U13=product_i C_(3i+4,3i+2);
+    U14=product_i C_(3i+5,3i+1);
+    U15=product_i C_(3i+5,3i+3);
+    U16=product_i C_(3i+6,3i+2).
+
+Indices are modulo n in {1,...,n}. The products are disjoint-pair layers,
+including the periodic pairs. Ring interaction range is at most four. Every
+generator is a real Hermitian involution. At small s, indexed generators may
+coincide; uniform sampling retains their multiplicities.
+
+Source retrieved directly through the web tool as turn116view0 / turn117view1;
+the parent must open the source itself before using those refs in its final
+citations. The general Definition 1.1 specifies an absolute operator contraction,
+not just an upper bound on the second-largest signed eigenvalue.
+
+## A 17-selector balanced lift (new derivation for this operation)
+
+This optional lift is sufficient for root's abstract theorem. Let D=2^n and
+N=2D. On a flag F and n carriers define
+
+    H0=Z_F tensor I_D,
+    Hj=X_F tensor Uj,  j=1,...,16,
+    p_j=1/17.
+
+Every Hj is balanced and squares to I. Write
+
+    K=I tensor A+X tensor B+Y tensor C+Z tensor E.
+
+The H0 commutator has squared norm 8(||B||_2^2+||C||_2^2). Averaging the other
+commutators gives twice the sum of commutator energies for A,B and
+anticommutator energies for C,E. Expansion yields
+
+    average_j ||[A,Uj]||_2^2 >=2 gamma ||A-Tr(A)I/D||_2^2,
+    average_j ||{A,Uj}||_2^2 >=2 gamma ||A||_2^2.
+
+The second bound uses the absolute gap; the scalar component has energy 4.
+Combining the Pauli blocks therefore proves the root assumption with
+
+    kappa=min(32 gamma/17,4/17).
+
+For the stated certified gamma this is kappa=16/(17*10^8). This small numerical
+constant must be disclosed. A dimension-independent constant is not a practical
+one-percent certificate. Amplifying the gap changes selector, circuit and
+memory costs and is not free.
+
+Take V0=I and Vj=controlled-Uj (H_F tensor I). Then
+Vj(Z_F tensor I)Vj*=Hj. The output is the carriers in temporal order 1,...,n,
+followed by F, followed by the selector. Original preparation labels and bath
+purifiers are unnecessary. This constructed encoded stream is distinct from
+the once-through partial-SWAP source stream; no solution to that open receiver
+is inferred.
+
+## Early selector: exact local eigenmeasurement and payload recovery
+
+CNOT has the product eigenbasis
+
+    |c>_Z tensor |b>_X,   c,b in {0,1},
+    CNOT |c>_Z|b>_X = (-1)^(c b)|c>_Z|b>_X.
+
+Thus no entangled two-qubit eigenmeasurement is needed. For a CNOT-layer
+selector, measure each control in Z, each target in X, and compute the parity
+of the products c*b over its pairs. For U1 or U2, measure the corresponding
+Pauli on the first site; other sites can be discarded. The measured full
+product eigenbasis can refine the eigenspaces: that does not harm this input.
+
+For an outcome with Uj eigenvalue lambda=(-1)^b, the late flag/reference state
+is exactly
+
+    (Z_F^b H_F tensor I_ref) rho_(F,ref) (H_F Z_F^b tensor I_ref),
+
+and the outcome probability is its product-basis rank divided by D, independent
+of the payload/reference. Apply H_F Z_F^b to the flag to recover rho exactly.
+For selector zero, simply retain the flag. This is an instrument-level,
+reference-preserving claim, not just preservation of Z data.
+
+Receiver cost: O(n) one-qubit measurements and Boolean operations; no two-site
+quantum gates; one arriving flag qubit retained for its correction. At most
+three matching edges cross any linear stream cut for these layers, so at most
+three pending classical outcomes and one parity bit suffice. A wrapping edge
+keeps one such bit for O(n) slots. A general address counter costs O(log n)
+classical bits; a known periodic finite controller plus an end marker can avoid
+the counter if that timing interface is physically supplied. The selector uses
+ceil(log2 17)=5 classical bits. Outcomes need not all be retained.
+
+## Source initialization, bounded controls and timing
+
+The source knows j and receives the arbitrary input qubit in F. It prepares
+actual independent tracial carriers, not pure states whose labels are given to
+the receiver. To realize controlled-Uj, when the earlier output position of a
+matched pair is due, create both fresh tracial partners, apply the flag-controlled
+CNOT (a Toffoli), emit the earlier partner, and retain the later partner until
+its output position. Every gate pair is disjoint. At most three pairs straddle
+any output cut; at most two newly prepared carriers are needed for a gate.
+Together with F, six source qubits suffice as a conservative peak bound.
+
+A fixed-size local gate cell can compile each Toffoli into a constant number
+of one- and two-qubit gates; transporting a constant-size register layout costs
+only a constant number of swaps per emitted carrier. This uses bounded local
+control amplitudes and a nonzero gate time. Total gate count and elapsed
+preparation/emission time are O(n), with the actual hardware constants paid.
+The flag and a constant number of wrapping partners must remain protected for
+O(n) slots. Their protection is a supplied resource or separately compiled cost.
+All n carrier preparations, measurement/readout slots, fresh-state errors and
+classical control operations are part of the bill.
+
+The all-data memory decoder after a late selector can use the same product
+eigenmeasurements and correction, but retains n+1 quantum outputs across the
+selector cut. The dimension theorem permits arbitrary better processing and
+arbitrary classical records; it does not restrict the comparator to this decoder.
+
+If a G-operation compiled protocol has worst-case half-diamond error budgets
+e_1,...,e_G, telescoping and contractivity give total error <=sum e_i. A fixed
+total target therefore requires per-operation accuracy O(1/n) absent a better
+structured noise analysis or fault-tolerant compilation. Fixed local physical
+noise is not silently assumed to give a fixed reference-uniform total error.
+
+## Strongest applicable prior comparison
+
+### Ballester--Wehner--Winter: the exact phenomenon already exists
+
+*State Discrimination with Post-Measurement Information*, quant-ph/0608014v2
+(2006), journal version IEEE TIT 54, 4183-4198 (2008), DOI
+10.1109/TIT.2008.928276:
+
+https://arxiv.org/html/quant-ph/0608014v2
+
+Lemma 5.1 and equation (11) characterize exact memory through the commutant of
+the support projectors. Theorem 6.6 constructs three bases for which even one
+balanced Boolean answer requires the full d-dimensional memory after the basis
+is disclosed. Their paragraph following the proof leaves the approximate
+success question open. Consequently a claim that late selection can make a
+single answer require full quantum memory is not new. Root's possible addition
+is an explicit dimension-uniform error law, a local constant-selector physical
+construction, and an arbitrary-reference payload operation. The qubit lower
+bound follows already from its one-bit subtask; reference preservation does not
+create the obstruction by itself.
+
+### Bluhm--Rauber--Wolf: exact compression and nonuniform stability
+
+*Quantum compression relative to a set of measurements*, arXiv:1708.04898v4,
+Ann. Henri Poincare 19 (2018), DOI 10.1007/s00023-018-0660-z:
+
+https://arxiv.org/pdf/1708.04898
+
+Their setup admits unlimited classical side information and a common
+decompression preserving all-state statistics of a chosen observable family.
+Theorems 6.1/7.1 give algebraic bounds, including full incompressibility for a
+full matrix algebra. Theorem 5.1 supplies a positive small-error threshold by
+compactness; it is not a dimension-uniform numerical error law for root's growing
+family. Root cannot directly apply its common-reconstruction theorem to the
+weaker selector-dependent payload task. The Petz witness supplies that missing
+bridge; it need not be an implemented decoder.
+
+### Petz and Barnum--Knill: recovery machinery is established
+
+D. Petz, *Sufficient subalgebras and the relative entropy of states of a von
+Neumann algebra*, CMP 105 (1986), 123-131:
+https://math.bme.hu/~petz/pdf/29suff.pdf
+
+H. Barnum and E. Knill, *Reversing quantum dynamics with near-optimal quantum
+and classical fidelity*, J. Math. Phys. 43 (2002), 2097-2106:
+https://arxiv.org/abs/quant-ph/0004088
+
+Transpose/Petz recovery and near-optimal recovery of quantum or classical
+information are prior machinery. Root's direct weighted Cauchy--Schwarz proof
+can stand on its own. Its contribution is the combination of a common witness,
+the commutator gap and hybrid-memory Kraus rank, not a new recovery map or an
+efficient algorithm for implementing that witness.
+
+### Recent robust orbit incompressibility: related but inapplicable directly
+
+Hayden, Maloney, Wang and Yang, *Quantum minimum description of density
+matrices*, arXiv:2610.06742 (2026), authors' exact proposition page:
+https://wangjinzhao.com/Quantum-Minimum-Description-Length/results/propositions/orbit-sector-compression/
+
+For a Haar orbit in an irreducible representation with a simple largest
+state-eigenvalue gap gamma, this gives dim M>=dim H(1-delta_bar/gamma) under
+common whole-state reconstruction. Root's balanced probes have a degenerate
+top eigenspace; their relevant gap is a commutator-expansion gap. Also the orbit
+proposition counts total Hilbert-space memory, not the per-branch quantum
+dimension with free classical records. Thus it does not replace root's bound.
+
+## Scientific claim that is supportable
+
+If root's abstract proof is accepted, the defensible advance is a quantitative
+and physically compiled version of postmeasurement-information incompressibility:
+a known constant family of shallow local controls can encode one arbitrary
+qubit into a tracial stream such that disclosing the selector before the stream
+admits immediate local measurement and one output qubit, whereas sufficiently
+accurate late-selector recovery forces almost the entire stream's quantum
+dimension across the cut. The certified numerical robustness constant is very
+small. This is not a positive low-memory decoder for the natural partial-SWAP
+stream, and it does not establish a broad practical advantage by itself.
