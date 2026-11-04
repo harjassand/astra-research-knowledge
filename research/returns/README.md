@@ -32,6 +32,11 @@ Use these links to read complete source reports and packages directly. Use the [
 | P1: energy scheduling of clock-driven grid disturbances | [Exact cumulative-energy/jitter law, finite compiler and physical execution costs](2026-11-05-p1-clocked-grid-scheduling/README.md) |
 | Independent P1 result: heterogeneous selected-harmonic phase scheduling | [Constructive certificate and calibration/timing/deadline limits](2026-11-05-p1-clocked-grid-scheduling/harmonic-scheduling.md) |
 | P1: published clocked-grid observations and replay evidence | [Measured-data reanalysis, attribution and deployment boundaries](2026-11-05-p1-clocked-grid-scheduling/measurements-and-evidence.md) |
+| P2: short-record arrival and memory for one arbitrary quantum payload | [Finite-error capacity, causal prefixes and actual expected memory-time](2026-11-05-p2-causal-payload-memory/README.md) |
+| P2: physical early/late readers and two selector families | [Constant-gap logarithmic record, distinct fixed-register family and paid execution](2026-11-05-p2-causal-payload-memory/finite-readers.md) |
+| Independent P2 companion: restricted scalar mixed-bath receiver | [Exact one-tracial-qubit partial-SWAP error floor and excluded architectures](2026-11-05-p2-causal-payload-memory/scalar-receiver-no-go.md) |
+| Independent P2 companion: common thermal-pulse identification | [Unknown OU drift/diffusion and entropy under a new calibrated physical port](2026-11-05-p2-causal-payload-memory/thermal-pulse-identification.md) |
+| Independent P2 companion: calibrated raw-image force query | [Finite moment correction, reciprocal mechanics and acquisition costs](2026-11-05-p2-causal-payload-memory/image-force-query.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks and shared-construction proposal | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary and coordination proposal. Existing normalized scientific records remain unchanged.
