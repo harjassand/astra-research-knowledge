@@ -6,6 +6,8 @@ The proposed full capability accepts a target material, precursors, measured pre
 
 This is a supported selection and concrete opening for construction. A compact transferable interface law, its composition rule, a new synthesis and civilisation-changing discovery have **not** been achieved. The archived materials audit explicitly warns that the endpoint collections do not establish pairwise kinetic closure. That caution is retained alongside the root's decision to pursue the narrower question.
 
+**Later construction return:** [P1 supplies a planar moving-interface operation and completion-dose theorem](../2026-11-05-p1-timed-material-construction/README.md), alongside a failed nominal frozen-law transfer: intermediate disappearance predicted at77.18hours while it remained observable at300hours. The [analytic bound](../2026-11-05-p1-timed-material-construction/completion-dose-theorem.md) reduces competitor-law inputs under stated topology; the [transfer/oxide/resource account](../2026-11-05-p1-timed-material-construction/transfer-oxide-and-resources.md) retains missing constitutive/quality information and0g deliveredmaterial. This does not establish the selected general preparation capability or a universal interface state. The complete visible return is published while the promised original transfer remains tracked; this selection evidence and earlierreflection sources are unchanged.
+
 ## Governing evidence and record
 
 | Entry | Contents |
