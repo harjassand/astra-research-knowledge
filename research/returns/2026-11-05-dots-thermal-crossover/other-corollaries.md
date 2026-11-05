@@ -2,6 +2,8 @@
 
 Sections 5.1–5.2 of the supplied [complete addendum](package/NOTE.md) give two further corollaries, conditional on the [base construction](../2026-11-05-dots-thermal-fourier/README.md). Their [internal-audit status and exact version](SOURCES.json) are retained; publication introduces no new proof check.
 
+The later [accepting-pin uniqueness package](../2026-11-05-dots-unique-phase/README.md) uses a different single-spin model. Its claimed all-Gibbs uniqueness does not contradict or revise the both-branch full nonuniqueness of the original bilayer family discussed here; this addendum remains conditional on its recorded base version.
+
 ## The original family has multiple full states in both branches
 
 Put both exterior Ising layers plus. Conditional bond domination and a Peierls contour estimate give a translation-averaged plus state with common-sign observable `A=(s+r)/2` having mean at least `1-2delta`, where `delta<7.90e-7`. Simultaneous global spin flip gives a distinct negative-mean state. Their equal mixture has zero common mean and nondecaying A correlations, bounded below by `1-8delta`.
