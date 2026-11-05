@@ -4,6 +4,8 @@ P1 constructed a physically timed planar moving-interface operation and proved a
 
 The completed result is model-level mathematics, an executable unitful calculation and a bounded empirical test of transfer. It does not establish the requested general materials-preparation capability, a universal reusable interface state, accepted-product yield or the civilisation-changing discovery. **Delivered material: 0 g.** Earlier selection and reflection results remain at their existing scopes.
 
+**Later 5 November exploratory recovery:** [P1 changed direction to bounded convex relaxation](../2026-11-05-p1-convex-relaxation/README.md), supplying exact planar control, finite-stage optima and a proved faster/noisier tradeoff within an established Langevin model. Initial foundational-novelty claims were defeated by primary literature. This is separate mathematics; it does not repair the failed materials transfer, supply missing material laws or change the completion-dose theorem. Earlier materials/selection/reflection sources remain at their original scopes. The original materials ZIP remains a separate delivery dependency; the new convex-relaxation ZIP does not contain it.
+
 ## Read the supplied record
 
 | Entry | Contents |
