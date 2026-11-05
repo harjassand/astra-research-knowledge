@@ -6,6 +6,8 @@ Read the complete [PDF](package/Astra_Acquired_First_Event_Law.pdf), [main TeX](
 
 The general bridge compares finite chains with common state/support/event sets, common lazy uniformization, certified positive numerical mixing/mass margins and priced static/reverse access. The physical realization uses the declared **pairwise Gibbs binary network, reversible operating clocks and all-terminal disconnection predicate**, with known local closure, faithful copies/clamps, reproducible environments, fields, pins and metrology. The exact-model [earlier first-event theorem](../2026-11-05-p3-first-event/README.md) is retained at its own scope.
 
+A later [direct mean-prevention construction](../2026-11-05-p3-direct-prevention/README.md) uses common-invariant reciprocal controls and certified boundary-return corrections to choose without an absolute forecast or equilibrium preparation in its narrower mean-only regime. It preserves all 229 original package files here unchanged. The broader acquired joint-record operation retains its own objectives and assumptions.
+
 ## Why a whole CDF was insufficient
 
 A three-state chain with rates `Q(a,b1)=lambda r`, `Q(a,b2)=lambda(1-r)` has first-event CDF `1-exp(-lambda t)` for every r, while terminal law is `(r,1-r)`. Moving r from .99 to .01 changes terminal TV by .98. The prior relative whole-CDF certificate therefore cannot be silently exported to terminal damage or marked paths.

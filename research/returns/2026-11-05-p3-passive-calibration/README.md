@@ -16,6 +16,8 @@ These are conditional constructive theorems with declared acquisition costs and 
 
 A subsequent [declared correlated-Gibbs extension](../2026-11-05-p3-correlated-reliability/README.md) constructs rare static counting and failure-conditioned sampling from pinned Gibbs operations, then joins them to this finite curve machinery. Its fixed logarithmic contrast, all-pinning mixing and reversible operating-gap premises replace the product-law static interface; the original result and source artifacts here retain their own scope.
 
+A separate [controlled-source quantum export companion](../2026-11-05-p3-direct-prevention/quantum-export-control.md) adds actual calibrated source rotations and pure coherent three-axis Weyl ports. Its full-output construction retains paid receiver/control costs and discards the correction key. This stronger physical access is distinct from the output-only calibration setting here. Original source files remain unchanged.
+
 ## Static model and actual observations
 
 The known complete nonidentity Pauli list has maximum weight k and candidate degree d. Unknown static coefficients obey a supplied **per-site sum bound** `max_i sum_(P contains i)|theta_P|<=J`. Bounded arity alone does not imply bounded candidate degree. The source has actual ports `L_i,a=sqrt(r)sigma_i,a/2`, independent vacuum inputs, known positive r, calibrated axes/phases/gains and known positive collection efficiency kappa. The full source/port model, stable dynamics throughout exposure and absence of omitted couplings are premises; photon flux alone cannot certify them.
