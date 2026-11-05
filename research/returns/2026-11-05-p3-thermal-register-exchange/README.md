@@ -10,6 +10,8 @@ P3's completed result turns the accepted source-conditional random-embedding BDL
 
 `T` is **total accumulated passive holding time**, capped on every branch. Access count enters actual implementation costs and errors; it does not separately multiply initialization error or the total-exposure term.
 
+**Later 5 November operation:** [P3’s fixed-noise thermal interface](../2026-11-05-p3-noisy-thermal-interface/README.md) supplies a completed circuit route through noisy commissioning/write/read using history-erasing boundary compilation and positive thermal precompensation. The [construction](../2026-11-05-p3-noisy-thermal-interface/boundary-compiler-and-precompensation.md) and [full model/cost comparison](../2026-11-05-p3-noisy-thermal-interface/commissioning-comparators-and-costs.md) retain one-channel commissioned Pauli noise, paid nonlocal controls, raw-port floors, selective coupler access and large constants. This source-conditional reusable-register theorem and its separate TFD/central-sector/sampler results remain unchanged. No total-resource superiority or autonomous continuous-time hierarchy is inferred.
+
 ## Governing files
 
 | Read | Contents |
