@@ -13,6 +13,8 @@ Read the complete [report](package/causal_payload_memory.pdf), [editable proof](
 | Translational force functional from raw blurred images | [Calibrated image-query construction](image-force-query.md) |
 | Original material | [ZIP](original/causal_payload_memory_research_package.zip), [complete captured return](P2_CAUSAL_PAYLOAD_MEMORY_20261105_RETURN.txt), [provenance and hashes](SOURCES.json) |
 
+The subsequent [homogeneous weak-stream memory study](../2026-11-05-p2-weak-stream-memory/README.md) retains this complete package unchanged while returning to the fixed once-through tracial partial-SWAP source. It supplies a general prefix spectral converse and scoped receiver exclusions; the high-fidelity sublinear-memory/processing endpoint remains unresolved. The programmed short-record emitter here remains a different source.
+
 ## Exact task and memory cut
 
 A fixed source encodes one arbitrary input qubit, with external-reference correlations, using a tracial gauge register of dimension D. Selector j chooses `E_j(rho)=V_j(rho tensor I_D/D)V_j^dagger`; the emitted payload dimension is `N=2D`. The physical late decoder may depend on j. Before any selector information arrives, the causal receiver implements one common compression C into dephased classical branches, each with quantum dimension at most m. Classical records may be unlimited. **Every accessible coherent register crossing the cut counts**, including delay lines, ancillas, meters and entanglement halves.
