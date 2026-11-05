@@ -4,6 +4,8 @@ P1 selects reference-preserving access to a three-dimensional passive quantum me
 
 Read the [selection report](package/thermal_memory_selection_20261105.pdf), [complete TeX](package/selection_brief.tex), [independent challenge notes](package/learning_challenge.md), [comparison and physical costs](comparators-and-resources.md), [source audit](package/source_audit.json), [complete captured return](P1_OPPORTUNITY_OPENING_20261105_RETURN.txt), [original ZIP](original/thermal_memory_selection_20261105_package.zip), and [provenance](SOURCES.json). The ZIP arrived after the capture's unavailable-at-download observation, which is retained.
 
+**5 November constructive continuations:** The [P3 reusable-register result](../2026-11-05-p3-thermal-register-exchange/README.md) uses this accepted loader for a complete classically adaptive experiment with once-paid initialization and total passive exposure. Its [actual-check sampler/decoding analysis and TFD alternatives](../2026-11-05-p3-thermal-register-exchange/samplers-and-tfd.md) settle the named structural sampler hypotheses at their stated refinement/depth scopes. [P1 independently supplies an extensive physical-check obstruction](../2026-11-05-p1-burst-constructive-exchange/physical-check-comparison.md) and selects a [completed local burst-recovery theorem](../2026-11-05-p1-burst-constructive-exchange/README.md). Earlier unresolved-comparator labels here remain historical; original conditional loader/bath premises are unchanged. These results do not prove universal Gibbs-sampling hardness or transfer the passive theorem to another noise law.
+
 ## Consequence and source-conditional model
 
 The target has an explicitly known bounded-range commuting stabilizer Hamiltonian in three dimensions,

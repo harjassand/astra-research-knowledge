@@ -4,6 +4,8 @@ P2 selects the optimal cost of repeated causal interventions on a retained therm
 
 Read the [complete captured prompt, answer and activity](P2_OPPORTUNITY_OPENING_20261105_RETURN.txt), [hard examples and competing methods](hard-families-and-comparators.md), [provenance](SOURCES.json), and the accepted [local thermal-trial construction](../2026-11-05-p2-local-thermal-trials/README.md). P2 supplied no ZIP in this response. The capture retains the full rendered return and a native prefix ending during the comparator section; no missing text is reconstructed.
 
+**5 November constructive continuations:** [P1 direct-arm output feedback](../2026-11-05-p1-burst-constructive-exchange/feedback-and-resources.md) and [P3 finite loaded reset-and-mark](../2026-11-05-p3-thermal-register-exchange/acquisition-and-intervention.md) construct calibrated affine operations without identifying the hidden constant force. Their finite instruments, backaction, contemporary/loaded endpoints, record disposal, acquisition and resource bills are explicit. They defeat a universal inference-time lower-bound strategy; this opening’s accepted entropy/waiting certificates remain intact at their own scope. Neither continuation claims the sharp universal nonlinear campaign resource law or a free reset apparatus.
+
 ## Target: a genuine adaptive campaign
 
 Fix nonvanishing strength `0<eta<1`, soft marking probability `a(p)=[1+eta sin(p/sigma)]/2`, and local laws `q_±=[1±eta sin(p/sigma)]G_sigma`. Their mean contrast is `2 eta sigma exp(-1/2)`. Accuracy cannot be obtained by making the intervention vanish.
