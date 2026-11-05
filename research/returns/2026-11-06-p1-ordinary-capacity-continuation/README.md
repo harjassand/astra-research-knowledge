@@ -4,6 +4,8 @@ P1 investigated whether an exact finite channel description admits a terminating
 
 The [actual prompt, complete native response and available activity excerpts](P1_ORDINARY_CAPACITY_20261106_RETURN.txt) are published unchanged. The full expanded activity panel is not captured. The named original `ordinary_capacity_continuation_package.zip` remains on dispatcher transfer hold; its reported eight-page report, editable proof, checks, results, figure and source record are not reconstructed or claimed delivered. See [source metadata](SOURCES.json).
 
+**Later 6 November different exploratory result:** [P1 reports a proposed hard-discrepancy/covariance rounding theorem](../2026-11-06-p1-hard-discrepancy-covariance/README.md),with exact means and one joint law under an exact linear-optimization oracle. The first structural-novelty claim was withdrawn because N752 already supplied that operation;the proposed covariance addition is unreviewed and its enormous general algorithm was not run end to end. This does not resolve the ordinary-capacity question or change these earlier exact obstructions and accepted source conditions. The complete visible response is public;the original rounding bundle remains pending transfer.
+
 ## What the counterexample establishes
 
 For `s=3/4`, `a=4/5` and `n` qubits, the canonical states are `tau_B=(I+s X^tensor n)/2^n` and `tau_E=I/2^n`, with weak observables `Z_i` and `a Z_i`. Their condition numbers are respectively seven and one, independent of block length. The weak labels are exactly independent uniform bits in their classical marginal, while remaining correlated with the quantum reference.
