@@ -12,6 +12,8 @@ The separate recorded-history completion allocation gives at least 99.9% joint c
 
 The original preregistered three-candidate family, its exact endpoints and source outputs remain unchanged. This is a terminal single-basis event, not a full logical Pauli-channel guarantee, arbitrary-state quantum memory, failure at any time, per-cycle rate or hardware reliability certificate.
 
+**6 November, separate code-family theorem:** [The minimum-19 proof package](../2026-11-06-dots-symmetric-code-minimum19/README.md) reports an exclusion of 18 physical qubits for arbitrary complex rank-two codes wholly in the fully symmetric subspace, with exact two-error correction and completed internal exact-certificate reviews. Here 19 is block length, not a surface-code distance. It does not alter this model-conditioned d23 decision, establish a physical memory or resolve autonomous-controller repair.
+
 ## Governing sources
 
 | Read | Contents |
