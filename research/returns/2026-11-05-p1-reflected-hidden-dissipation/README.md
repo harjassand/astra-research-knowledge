@@ -4,6 +4,8 @@ This completed fresh-context return supplies an entropy-rate certificate from re
 
 The constructed binary process has every two-time law of an equilibrium telegraph process and an entirely time-reversal-symmetric observed path law. Its conditional three-time covariance nevertheless excludes all equilibrium realizations in that class. This is a completed mathematical/inference construction with synthetic tests; historical priority, a laboratory capability and civilisation-changing impact are not established.
 
+**Separate 21:28 Brisbane follow-on:** P1’s [evidence-founded reactive-interface selection](../2026-11-05-p1-reactive-interface-selection/README.md) changes the research object to timed materials synthesis. It preserves this completed reflection theorem and selects a concrete construction question; it does not establish a transferable interface law, new synthesis or final discovery. [Evidence/comparators](../2026-11-05-p1-reactive-interface-selection/evidence-and-comparators.md) and [construction/resources](../2026-11-05-p1-reactive-interface-selection/construction-and-resources.md) retain source uncertainty, strong existing explanations and the audit’s closure caution. Original reflection sources and audit scope are unchanged.
+
 ## Governing record
 
 | Read | Contents |
