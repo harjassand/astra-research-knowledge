@@ -4,6 +4,8 @@ The supplied manuscript gives an effective two-dimensional classical model whose
 
 Read the complete [manuscript with Appendices A–F](package/MANUSCRIPT.md), [construction/evidence map](construction-and-evidence.md), [original ZIP](original/thermal_fourier_reduction_20261105.zip), [visible return](DOTS_FINITE_TEMPERATURE_PROOF_20261105_RETURN.txt) and [source metadata](SOURCES.json). The subsequent [crossover addendum](../2026-11-05-dots-thermal-crossover/README.md) adds conditional finite-size and pressure consequences. Its recorded base-version hash differs from this supplied manuscript; both hashes are retained and exact version identity is not asserted.
 
+A later [single-spin accepting-pin construction](../2026-11-05-dots-unique-phase/README.md) supplies a provisional internally-reviewed proof of full all-Gibbs uniqueness in its halting branch. It changes the physical family and is self-contained. The bilayer exchange-odd theorem here,its both-branch full nonuniqueness and the separately recorded addendum version mismatch remain at their original scopes.
+
 ## Exact family and dichotomy
 
 From a deterministic Turing machine and finite input, the compiler produces a finite alphabet, translation-invariant finite-range interaction on the square lattice, an on-site layer-exchange involution and `O=(s-r)/2` taking values -1,0,+1. All physical local energies are **finite nonnegative integers**, with fixed inverse temperature beta=1. The lattice dimension, support shapes and Ising mismatch energy 6 (exponent coefficient J=3) are fixed. The alphabet and explicit energy table depend on the program.
