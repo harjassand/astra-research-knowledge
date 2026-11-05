@@ -1,6 +1,6 @@
 # Whole-channel composition and corrected classical export
 
-[Available-return guide](README.md) · [Exact incomplete excerpt](P3_BOUNDED_FACTORIES_20261106_RETURN.txt) · [Cluster construction and costs](cluster-family-and-resource-boundary.md)
+[Return guide](README.md) · [Complete visible response](P3_BOUNDED_FACTORIES_20261106_VISIBLE_COMPLETE.txt) · [Cluster construction and costs](cluster-family-and-resource-boundary.md)
 
 ## Positive libraries of actual noisy channels
 

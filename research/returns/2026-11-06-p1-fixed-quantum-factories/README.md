@@ -1,8 +1,8 @@
-# Permanent quantum factories: available, explicitly incomplete P1 return
+# Permanent quantum factories: complete visible P1 return, original pending
 
-**This is not the complete response.** The [forwarded capture](P1_FIXED_FACTORY_20261106_RETURN.txt) contains the available actual prompt and a native excerpt capped at 20,000 characters; it ends during section 8's broader compiler deduction. Desktop text transfer timed out and user-visible activity was not captured. No missing tail or activity is reconstructed. The named original `P1_fixed_factory_preparation_record.zip` remains on dispatcher transfer hold; its reported 20-page report, editable source, checks and manifests are not claimed delivered. See [source metadata](SOURCES.json).
+The [complete visible-response capture](P1_FIXED_FACTORY_20261106_VISIBLE_COMPLETE.txt) now covers the native prefix and an overlapping rendered continuation through the ending, with the original assignment included. P1 also supplies selected activity excerpts; the full activity panel is not captured. Mathematical glyph fragmentation and duplication in the rendered portion are preserved as observed. The earlier [truncated capture](P1_FIXED_FACTORY_20261106_RETURN.txt) remains unchanged as delivery history and is not relabelled complete. The original ZIP, standalone report, proof/audit/check files and manifests remain pending dispatcher transfer; none is reconstructed or claimed delivered. See [source metadata](SOURCES.json).
 
-Within that limitation, P1 reports an affirmative construction in the inherited homogeneous stationary independent-Pauli circuit model: fixed finite quantum source cells, selectors and acquisition probes can prepare the supplied fixed-temperature bounded-range 1D Gibbs families to arbitrary global trace accuracy. Growing protection is classical. Constants can be prohibitive and the sufficient noise rate smaller than the full quantum-FT baseline's threshold. No total-resource advantage is established.
+The completed visible response reports an affirmative construction in the inherited homogeneous stationary independent-Pauli circuit model: fixed finite quantum source cells, selectors and acquisition probes can prepare the supplied fixed-temperature bounded-range 1D Gibbs families to arbitrary global trace accuracy. Growing protection is classical. Constants can be prohibitive and the sufficient noise rate smaller than the full quantum-FT baseline's threshold. No total-resource advantage is established.
 
 ## Different apparatus, shared accepted premises
 
@@ -14,4 +14,4 @@ Read the [neutralization and classical-control construction](neutralization-and-
 
 P1's earlier [planar convex-relaxation mathematics](../2026-11-05-p1-convex-relaxation/README.md), materials/reflection results and failed physical transfer remain unchanged. No classical Gaussian theorem is silently transferred to quantum states. The continuous-time autonomous-control/readout contracts remain separate from these synchronous preparation operations.
 
-Both the original ZIP and the missing complete-response tail remain source-delivery dependencies. The public excerpt and navigation pages are available now; no producer chat was reopened, no transfer retried and no scientific code run during this intake.
+The original ZIP remains a source-delivery dependency. The complete visible response and navigation pages are available now; no producer chat was reopened, no transfer retried and no scientific code run during this intake.

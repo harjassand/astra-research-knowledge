@@ -1,6 +1,6 @@
 # Whole inactive states and the actual noisy classical interface
 
-[Available-return guide](README.md) · [Exact incomplete source](P1_FIXED_FACTORY_20261106_RETURN.txt) · [Resource accounting](resources-and-entangled-family.md)
+[Return guide](README.md) · [Complete visible response](P1_FIXED_FACTORY_20261106_VISIBLE_COMPLETE.txt) · [Resource accounting](resources-and-entangled-family.md)
 
 ## Permanent cells avoid random inter-site switches
 

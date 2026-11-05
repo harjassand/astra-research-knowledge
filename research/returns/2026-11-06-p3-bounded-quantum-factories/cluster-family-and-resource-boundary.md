@@ -1,6 +1,6 @@
 # Thermal-cluster example and the available resource boundary
 
-[Available-return guide](README.md) · [Whole-channel compiler](whole-channel-compiler-and-classical-control.md) · [Exact incomplete excerpt](P3_BOUNDED_FACTORIES_20261106_RETURN.txt)
+[Return guide](README.md) · [Whole-channel compiler](whole-channel-compiler-and-classical-control.md) · [Complete visible response](P3_BOUNDED_FACTORIES_20261106_VISIBLE_COMPLETE.txt)
 
 ## A separate six-layer quantum data circuit
 
@@ -16,12 +16,16 @@ Constant-width prefix contraction and absolute-error probability control provide
 
 The excerpt retains a failure example: at the separately specified `p_Q=q=1/200`, `t_i=0.55`, the exact eight-site inverse has three negative entries, minimum about `-2.6064203784e-7`. This invalidates that route's input-label sampler at those settings; it does not rule out all bounded factories.
 
-## What the truncated acquisition section actually supplies
+## Acquisition, full resource bill and remaining limits
 
 Calibration compares the same positive source law, computed from an acquired parameter, through actual and estimated forward fault processes. Data processing and Pinsker bound output discrepancy by square-root relative entropy of `F` native faults plus `K` independent reference roots. History-erasure discrepancy is paid separately. No global inverse-condition-number amplification appears.
 
-On the stated fixed positive-rate domain, `F,K=O(N)` and uniform root sensitivity give sufficient parameter accuracy `O(epsilon/sqrt N)`. The excerpt displays assay shot scaling `O(N epsilon^-2 log(1/delta_acq))` and then **ends mid-sentence**. No uniform zero-rate endpoint, omitted remaining resources, final total bill, optimality result or missing theorem is inferred from that truncated tail.
+On a commissioned fixed positive-rate domain, `F,K=O(N)` and uniform root sensitivity give sufficient parameter accuracy `O(epsilon/sqrt N)` and assay count `O(N epsilon^-2 log(1/delta_acq))` at fixed visibility/domain constants. Near unidentified noise-support boundaries, the completed tail retains conservative `O(N^2 epsilon^-2 log(1/delta_acq))` coupling-based acquisition. The better bound keeps inverse-rate constants and commissioning costs; finite observations do not certify future stationarity.
 
-The activity summary and available introduction explicitly state that noisy classical selection/delivery are paid and no total-resource advantage is earned. Generic block/library constants remain enormous; the explicit cluster route avoids those particular constants but does not establish an engineering or total-cost advantage. Calibration, protected classical randomness/computation, links, history-erasing trees and resets remain substantive resources.
+The complete bill includes every quantum calibration/randomness probe in addition to the `O(N)` bounded quantum data stage, classical source generation, channel simulation, mixture solving, precision, protected copying/routing/synchronization, command-tree leaves, physical decoders, gate-library construction, wiring, startup, reset and record erasure. Classical preparation, calibration and random generation precede the bounded data stage. Energy/spacetime include storage, cooling and links; gate counts do not establish joule advantage.
 
-The full visible response remains in the original producer chat, but Capital did not claim or reopen that tab. The complete response tail and original package are source-delivery dependencies. The archived excerpt is neither labelled complete nor used to reconstruct missing proof/audit/report files.
+For the general family, the inherited efficient source retains its original numerical convention. A separate rational positive-block-net/finite-convex-feasibility fallback closes finite-bit computability with potentially exponential work. The explicit cluster family has its own polynomial finite-bit source; its favorable six-layer/transfer constants do not transfer to arbitrary noncommuting chains.
+
+The complete comparison credits ideal constant-depth block preparation, faster ideal all-temperature sampling, state precompensation, noisy probabilistic synthesis, graph-state noise tools, full FT/qLDPC interfaces and autonomous correction at their actual contracts. An equally informed ordinary preparer can adopt the same known-state compilation; no separation from that comparator or total-resource advantage is earned.
+
+The endpoint is a known mixed state at release. Arbitrary unknown pure-state delivery, additional holding, apparatus drift/general leakage and practical total-cost advantage are not earned. Stationary independent finite-type noise, bounded ports and declared timing, known computable target and paid routing remain premises. The complete visible source is supplied as native prefix plus rendered overlap; the original package and standalone audit/check artifacts remain pending transfer. No Capital source execution or new scientific audit occurred.

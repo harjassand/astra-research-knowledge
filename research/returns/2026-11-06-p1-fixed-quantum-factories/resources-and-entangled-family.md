@@ -1,6 +1,6 @@
 # Resources, finite-bit existence and an interacting entangled family
 
-[Available-return guide](README.md) · [Apparatus composition](neutralization-and-classical-interface.md) · [Exact incomplete source](P1_FIXED_FACTORY_20261106_RETURN.txt)
+[Return guide](README.md) · [Apparatus composition](neutralization-and-classical-interface.md) · [Complete visible response](P1_FIXED_FACTORY_20261106_VISIBLE_COMPLETE.txt)
 
 ## The bill in the available excerpt
 
@@ -24,4 +24,10 @@ The excerpt considers every even open Heisenberg chain `H_N=(1/3) sum_i (XX+YY+Z
 
 At fixed `beta>6 ln2`, the bound is below the fully separable threshold for every even length, so the target family is entangled. The alternating singlets provide a witness, not a substitute output target. This statement does not assert entanglement across every cut or stronger multipartite classifications.
 
-The capture then begins a broader bounded-incidence block-ensemble deduction and **cuts off**. Its missing scope and remaining conclusions are not reconstructed. The full response, claimed report, complete failed-route/source comparison and executable records remain pending transfer. The excerpt itself is explicitly unaudited independently; no new audit or scientific rerun was performed here.
+The completed continuation states the broader bounded-incidence compiler precisely: blocks must have bounded size, each site must belong to boundedly many candidate blocks, and their quantum transport cost must be bounded. One-dimensional intervals earn those conditions; arbitrary bounded-size subsets need not.
+
+The complete comparison retains ideal constant-depth block preparation, faster ideal Gibbs sampling, established precompensation/mixed-state compilation and full FT/qLDPC I/O. Those broader unknown-input capabilities are not reproduced. Constant total qubit overhead differs from fixed coherent processing size/lifetime, and comparators receive the same target information, controls and costs. The new sufficient threshold may be far smaller than the full-FT baseline's; the source does not prove the reduction throughout that baseline's admissible noise interval. Exhaustive priority is unsettled.
+
+Source-reported finite checks include three-site factorization discrepancies at about `1e-16`, an inactive-entangled-pair output defect `3.9932e-4` showing why marginal identity fails, 900 copy-fault cases and 5,120 arbitrary-input validity cases. These finite algebra/fault-spread fixtures do not implement the enormous palette or full Gibbs source and are not physical lifetime evidence. The independently unaudited status remains explicit; no Capital replay was performed.
+
+The operation prepares known mixed states at release, rather than a TFD, chosen purification, unknown reference-entangled input or temperature-uniform threshold down to zero. Subsequent storage/computation has its own costs. Earlier classical/materials results remain at their actual scopes. The full visible response is now included, while original report/code/check/manifests remain pending delivery.
