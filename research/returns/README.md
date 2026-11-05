@@ -80,6 +80,9 @@ Use these links to read complete source reports and packages directly. Use the [
 | Independent P3: active transport information boundary | [All-causal effort obstruction and finite-slew specified-pair certificate](2026-11-05-p3-acquired-first-event/controlled-transport.md) |
 | Dots: new accepting-pin full Gibbs uniqueness theorem | [Halting all-state uniqueness/full connected clustering,nonhalting coexistence](2026-11-05-dots-unique-phase/README.md) |
 | Dots: unique-phase proof and exact finite evidence | [Arbitrary-state local lift,comparison,soup bound,replica swaps and limits](2026-11-05-dots-unique-phase/proof-and-evidence.md) |
+| P2: predictive preparation without equilibration | [Complete proofs,private timing and deterministic-deadline boundary](2026-11-05-p2-predictive-preparation/README.md) |
+| P2: finite prediction and certified planning | [Actual digital certificates,physical schedule and execution limits](2026-11-05-p2-predictive-preparation/execution-costs-and-scope.md) |
+| Independent P2 preparation companions | [Acquired network assembly,sectorial oscillators and noncoercive finite horizons](2026-11-05-p2-predictive-preparation/companion-constructions.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal,9:54AMadaptive-test status later thermal proof packages and 12:27PMnorth-star replies and12:49PMuniqueness proof | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary, coordination proposal and later thermal proof packages with their provisional/conditional scope and recorded base-version mismatch, plus the historical12:27PMreplies and the later12:49PMfull-uniqueness candidate proof for a new model. Existing normalized scientific records remain unchanged.

@@ -6,6 +6,8 @@ Read the complete [report](package/acquired_passive_environment.md), [16-page PD
 
 The capture records that the download was unavailable when collected; the ZIP subsequently appeared and is included unchanged. The full accessibility rendering/activity and truncated native prefix remain verbatim. No absent native text is reconstructed.
 
+A subsequent [predictive-preparation construction](../2026-11-05-p2-predictive-preparation/README.md) changes to a loaded locally dissipative LTI plant and privately randomized finite launch slots. It supplies acquisition without equilibration,a deterministic-deadline obstruction and an exact finite planning operation. The complete original ZIP/report/proofs/certificates are public;the capture preserves its historical unavailable-download header. The nonlinear positive-relaxation and finite-release result here retains its own different physical contract unchanged.
+
 ## Physical class and acquired operation
 
 The observed coordinate obeys
