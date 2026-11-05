@@ -94,6 +94,10 @@ Use these links to read complete source reports and packages directly. Use the [
 | P1: equilibrium inference before relaxation | [Joint minimax effort law and positive adaptive converse](2026-11-05-p1-equilibrium-inference/README.md) |
 | P1: attaining experiment and full physical bill | [Exact finite-ramp compiler, supplied checks, reset/precision/thermal limits](2026-11-05-p1-equilibrium-inference/operation-and-costs.md) |
 | P1: scrambling-collision companion | [Keyed source forgetting versus every-decoder acquisition with paid control/storage](2026-11-05-p1-equilibrium-inference/quantum-companion.md) |
+| P2: local thermal causal trials | [Known randomized momentum input without globally equilibrating the hidden apparatus](2026-11-05-p2-local-thermal-trials/README.md) |
+| P2: finite clock, meter and reuse | [Private timing, full-path backaction, initialization and campaign costs](2026-11-05-p2-local-thermal-trials/clock-meter-and-reuse.md) |
+| P2: comparators and actual receiver evidence | [Stronger weighting/reset baselines and supplied finite Gaussian execution](2026-11-05-p2-local-thermal-trials/comparators-and-evidence.md) |
+| P2: direct decisions and exact preparation uncertainty | [Known-model nuisance elimination and conservative completion with a retained negative precision result](2026-11-05-p2-local-thermal-trials/independent-alternatives.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal,9:54AMadaptive-test status later thermal proof packages and 12:27PMnorth-star replies and12:49PMuniqueness proof | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary, coordination proposal and later thermal proof packages with their provisional/conditional scope and recorded base-version mismatch, plus the historical12:27PMreplies and the later12:49PMfull-uniqueness candidate proof for a new model. Existing normalized scientific records remain unchanged.
