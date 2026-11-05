@@ -4,6 +4,8 @@ The supplied construction acquires a reusable finite-horizon predictor of a reta
 
 The [execution/cost page](execution-costs-and-scope.md) links the supplied exact digital certificates and distinguishes physical simulations. The [independent companion page](companion-constructions.md) retains module composition, sectorial oscillators and a finite-horizon noncoercive extension. The [structural join review](package/structural/random_window_structural_review.md) credits the constructed interfaces at their stated premises without establishing historical priority. No programme or new Capital audit was run; no practical acquisition advantage or realised civilisation-changing performance is inferred.
 
+The later [equilibrium-inference law](../2026-11-05-p1-equilibrium-inference/README.md) concerns zero-state scalar-port trials with supplied rate bounds and independent sensor noise. Its [reset and reuse ledger](../2026-11-05-p1-equilibrium-inference/operation-and-costs.md) does not import retained-loaded-plant preparation here as free arbitrary-plant reset, and distinguishes transient age from full laboratory time. These interfaces and original results retain their separate scopes.
+
 ## Actual physical premises
 
 For observed displacement x, velocity v and additive port force f, the complete causal well-posed LTI plant has a supplied storage function satisfying

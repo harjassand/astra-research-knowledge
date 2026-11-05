@@ -91,6 +91,9 @@ Use these links to read complete source reports and packages directly. Use the [
 | P3: information separation and executed evidence | [Local exposure lower bound, synthetic decisions and full calibration bill](2026-11-05-p3-direct-prevention/information-and-execution.md) |
 | P3: independent completion, assignment and preparation | [Additional objectives/access and stronger relative-density theorem](2026-11-05-p3-direct-prevention/independent-operations.md) |
 | P3: source-control quantum export | [Full output covariance, discarded key and paid pure-port receiver](2026-11-05-p3-direct-prevention/quantum-export-control.md) |
+| P1: equilibrium inference before relaxation | [Joint minimax effort law and positive adaptive converse](2026-11-05-p1-equilibrium-inference/README.md) |
+| P1: attaining experiment and full physical bill | [Exact finite-ramp compiler, supplied checks, reset/precision/thermal limits](2026-11-05-p1-equilibrium-inference/operation-and-costs.md) |
+| P1: scrambling-collision companion | [Keyed source forgetting versus every-decoder acquisition with paid control/storage](2026-11-05-p1-equilibrium-inference/quantum-companion.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal,9:54AMadaptive-test status later thermal proof packages and 12:27PMnorth-star replies and12:49PMuniqueness proof | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary, coordination proposal and later thermal proof packages with their provisional/conditional scope and recorded base-version mismatch, plus the historical12:27PMreplies and the later12:49PMfull-uniqueness candidate proof for a new model. Existing normalized scientific records remain unchanged.
