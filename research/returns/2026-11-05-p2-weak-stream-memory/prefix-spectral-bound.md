@@ -19,6 +19,8 @@ e_epsilon=3epsilon(1-epsilon).
 
 For noninteger D/m, put `a=m/D`, `k=floor(1/a)`; the left side becomes `a sum_(j<k)lambda_j+(1-ka)lambda_k`. This is a **dimension** bound; qubit storage is `ceil(log2 m)`.
 
+The subsequent [all-prefix crossing proof and refined witness](../2026-11-05-p1-causal-recovery/crossing-and-prefix-bound.md) adds a quantitative exp[-4n log n-O_theta(n)] singular-gap lower bound and the sharper logical-qubit energy budget. This yields near-linear fixed-angle memory obstruction while leaving the decisive logarithmic/joint-angle gap. The older theorem below remains at its original version; the later construction does not supply a sufficient compression criterion.
+
 ## Witness, profile and memory tails
 
 A common transpose/Petz witness for the prefix instrument produces a normalized Choi state Z with both marginals `I/D`, `Tr(H_ell Z)<=e_epsilon`, Schmidt number at most m and density cap `0<=Z<=(m/D)I`. The receiver need not implement this witness or reconstruct the entire output. Filling low eigenspaces under the cap gives the profile bound. Dropping further Choi/marginal constraints makes it necessary, not sufficient for compression.

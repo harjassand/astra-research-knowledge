@@ -1,0 +1,139 @@
+ROOT INDEPENDENT CONSTRUCTION -- 2026-11-05
+Status: mathematical derivation for independent binary continuous-time components.
+This is new work, not an assumed completed algorithm from the prior package.
+
+Target: approximate first-disconnection probability by a supplied binary time T,
+starting all edges working, without inverse failure-probability or lifetime cost.
+
+Let edge i have failure/repair rates a_i,b_i>0, gamma_i=a_i+b_i,
+A=sum_i gamma_i, g=min gamma_i/A. The invariant law pi is product, with
+down probability d_i=a_i/gamma_i. The failure predicate B is nonempty monotone
+downward in edge-working coordinates (all-terminal disconnection is the main
+efficient-static-access instance). The graph is initially connected.
+
+1. SHORT-TIME GRID REDUCTION -- RELATIVE, NOT ADDITIVE
+
+Choose grid width delta=T/N with A delta<=alpha, and N>=1 integer. Let
+G_T=Pr(at least one grid state X(j delta), j=1,...,N, lies in B).
+Then exp(-A delta) F_work(T)<=G_T<=F_work(T).
+Proof: after the first failure tau<=T, the next grid point is at most delta
+later. The state stays failed if no component refresh clock rings before it,
+an event of conditional probability at least exp(-A delta). Use the strong
+Markov property at tau. Each refresh can self-loop; this is a safe upper rate.
+
+2. EXACT FINITE-GRID KARP-LUBY PATH SAMPLER
+
+The jth snapshot law mu_j is product, with down probabilities
+d_i(1-exp(-gamma_i*j*delta)). Let p_j=mu_j(B), Z=sum_j p_j.
+Given relative estimators and conditional samplers for these static laws:
+- Choose j with probability p_j/Z.
+- Draw y from mu_j conditioned on B.
+- Draw the path skeleton conditional on X(j delta)=y, starting all working.
+  Components are independent. Backward transition for one component is
+  mu_l(x) P_delta(x,z)/mu_{l+1}(z); forward transitions are ordinary P_delta.
+- Let C be the number of failed grid snapshots (C>=1), return W=1/C.
+The path proposal density relative to the original path is C/Z; hence
+E W=G_T/Z>=1/N. W is in [1/N,1]. Multiplicative bounded-variable concentration
+therefore uses O(N alpha^-2 log(1/delta_conf)) trials. Each trial costs O(mN)
+component transitions and O(N) predicate evaluations, plus the conditional
+static sampler. Thus no inverse p_j appears. Exact static access is analysis;
+all relative/static sampler and finite arithmetic errors must be budgeted.
+
+Approximate p_j within 1+-xi yields pointwise multiplicative mixture-weight
+distortion at most (1+xi)/(1-xi), so it does not require xi~1/N. A conditional
+path proposal TV error tau adds at most tau to E W, hence tau=O(alpha/N)
+suffices. Allocate per-edge/skeleton transition error O(alpha/(mN^2)).
+
+3. ALL-WORKING TO STATIONARY LARGE-TIME COMPARISON
+
+At burn time B0, mu_B0(x)>=prod_i(1-exp(-gamma_i B0))*pi(x)
+>= (1-m exp(-gamma_min B0))*pi(x). This is pointwise, not TV.
+At B0=gamma_min^-1 log(m/alpha), mu_B0 >=(1-alpha)pi.
+Common-refresh monotone coupling gives F_work(t)<=F_pi(t), with initial
+stationary failures counted at time zero. For t>B0, the future-event bound
+gives F_work(t)>=(1-alpha)F_pi(t-B0). Since
+F_pi(t)=p+(1-p)F_safe(t) is concave by the reversible killed spectral mixture,
+F_pi(t-B0)>=(1-B0/t)F_pi(t). Therefore for t>=B0/alpha,
+  (1-alpha)^2 F_pi(t)<=F_work(t)<=F_pi(t).
+No pi(all-working), failure mass or lifetime factor is present.
+
+4. FINITE POINT-QUERY CLOSURE
+
+Choose alpha=epsilon/64. Use the rational upper burn time
+B0=gamma_min^-1 ceil(log_2(m/alpha)); this is sufficient because exp(-x)<=2^-x.
+Set H=B0/alpha. Early T<=H needs N=max(1,ceil(A*T/alpha)), hence
+N=O(g^-1 alpha^-2 log(m/alpha)) grid points. Late T uses the completed
+genuine continuous-time stationary-safe certificate in
+../next2_reliability/PROOF.md, and the interval for p+(1-p)F_safe(T).
+This is uniformization of the actual generator, not a mean-matched clock.
+
+The early finite-arithmetic operation is especially simple. Write
+h_i=1-exp(-gamma_i*T/N). All h_i<=alpha. Compute a positive rational hhat_i
+with relative error at most sigma=alpha/(20*m*N), using the stable rational
+exponential evaluator described in the reliability proof. Set the rational
+two-state transition probabilities to
+  Phat_i(working,failed)=d_i*hhat_i,
+  Phat_i(failed,working)=(1-d_i)*hhat_i,
+with diagonal entries the complementary probabilities. All are valid because
+hhat_i<2alpha. Every nonzero transition probability differs multiplicatively
+from the exact grid transition by at most 1+-2sigma: the off-diagonals use the
+relative h bound and the diagonals are at least 1-alpha. Therefore every
+length-N full component path probability, and every positive path event,
+is distorted by at most exp(+-alpha/4). There is no inverse rare-event factor.
+
+Run the forced-snapshot experiment for this EXACT rational product chain.
+Its jth down probabilities are the exact rational numbers
+  dhat_i,j=d_i*[1-(1-hhat_i)^j].
+Integer powers and all Markov-bridge probabilities are computed exactly;
+their bit lengths are polynomial in N and the supplied rate/deadline bit
+lengths. The zero-time all-working endpoint is imposed exactly, so no
+division by an impossible initial-state mass occurs.
+
+For each j obtain a relative static probability estimate with radius at most
+alpha/32, jointly with confidence 1-delta/4. Their normalized mixture weights
+then distort the ideal inverse-multiplicity proposal pointwise by at most
+(1+alpha/32)/(1-alpha/32). Use the finite conditional failure sampler from
+PROOF.md with TV error at most alpha/(32*N). Given its snapshot, draw the
+component bridges exactly in the rational model. The implemented proposal
+mean differs by at most alpha/(32*N), and its ideal mean is at least 1/N.
+Thus the conditional-sampler bias is relative O(alpha), with no inverse p_j.
+
+Bounded-observable multiplicative concentration uses O(N*alpha^-2*log(1/delta))
+independent forced paths to estimate that mean to relative O(alpha).
+The estimated Z=sum_j p_j has the same relative static interval. Combine
+these intervals, the explicit proposal-weight distortion, exp(+-alpha/4)
+rational-chain distortion and exp(A*T/N) continuous-grid correction.
+Their combined width is below 1+epsilon at alpha=epsilon/64; allocating
+alpha/8 to the mean's statistical relative radius leaves ample slack.
+Finite rejection caps for rational categorical draws and conditional static
+samplers are charged to the remaining confidence budget as in PROOF.md.
+All durations and probabilities are supplied model quantities. The result
+is a relative interval at a chosen binary rational T, with work polynomial
+in graph/rate/deadline bit lengths, g^-1 VALUE, epsilon^-1 and log(1/delta),
+including every static counting call. Each forced path uses O(mN) ordinary
+component-transition operations and N failure-predicate evaluations. This
+point-query construction has not been implemented here.
+
+5. PRECISE SCOPE
+
+The point-query algorithm can serve adaptive queries with confidence budgets
+delta_j=delta/[j(j+1)]. A single finitely materialized curve for all positive
+real times needs separate small-time interpolation/asymptotic work and is not
+silently claimed. All computations use supplied model parameters; natural
+mechanism completeness and physical rate calibration costs remain premises.
+
+An arbitrary small discrepancy intensity does NOT preserve all-working
+relative accuracy at every t>0. For two parallel redundant edges initially
+working, ordinary first disconnection is Theta(a^2*t^2) as t->0. Adding an
+omitted simultaneous two-edge failure at rate v adds a term v*t, whose
+relative effect diverges. Exact/structured model errors or a declared
+minimum deadline are needed; the equilibrium-safe intensity theorem is not
+transferred to this all-working start. The early operation uses independent
+component dynamics, unlike the broader reciprocal-port equilibrium-safe
+certificate. No all-working theorem for arbitrary interacting local ports
+is asserted.
+
+Primary machinery: Karger static all-terminal unreliability approximation and
+conditional failure sampling; Karp-Luby inverse multiplicity; elementary
+independent component Markov bridges; standard reversible spectral mixtures.
+Historical priority of the full composition is not yet established.

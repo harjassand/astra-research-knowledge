@@ -13,6 +13,8 @@ This construction replaces the preceding product-law static oracle with **constr
 
 The main endpoint is a finite-bit computation theorem for a supplied model. It does not measure unknown rare physical rates, discover undeclared failure mechanisms or demonstrate practical superiority, historical firstness or a civilisation-scale device. Capital performs no scientific rerun or new audit.
 
+The subsequent [finite first-event sampler](../2026-11-05-p3-first-event/README.md) uses this declared rare static access to generate a quantized joint event time, terminal state and recent path, with arbitrary supplied starts and possibly directed stationary currents. It is a distinct exact-model joint-TV operation, not an automatic extension of relative changing-law whole-CDF guarantees. All123 original source files here remain byte-identical in the later package.
+
 ## Exact model and the useful contrast condition
 
 A known connected undirected graph has v vertices and m visible binary edge variables, with additional explicitly declared latent bits allowed. The full-support invariant law is `pi(x)=W(x)/Z`, `W=product_f psi_f(x_Sf)`, with positive explicit **rational** factors. Input length includes every table and bit length; exponentially large implicit tables are not free.

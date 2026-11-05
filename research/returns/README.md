@@ -56,6 +56,15 @@ Use these links to read complete source reports and packages directly. Use the [
 | P2: exact restricted receiver limits | [Measured spin/pairs, purified blocks and general nonselective covariant one-qubit updates](2026-11-05-p2-weak-stream-memory/restricted-receivers.md) |
 | P2: virtual statistic and physical causal completion | [Folded-state data processing and measured failure flags](2026-11-05-p2-weak-stream-memory/virtual-statistics.md) |
 | P2: specified spin instruments and exact final decoder | [Actual policy diagnostics, routing, timing and full storage/control bill](2026-11-05-p2-weak-stream-memory/physical-instruments-and-costs.md) |
+| P1: general causal weak-stream memory obstruction | [Fixed-angle near-linear bound and explicit unresolved logarithmic gap](2026-11-05-p1-causal-recovery/README.md) |
+| P1: all-prefix crossing and sharp instrument witness | [Singular-loss proof, independent audits and finite-memory floors](2026-11-05-p1-causal-recovery/crossing-and-prefix-bound.md) |
+| P1: exact flagged carrier-loss extension | [Physical reverse decoder, erasure tolerance and untouched-subset optimum](2026-11-05-p1-causal-recovery/erasure-and-loss.md) |
+| P1: physical candidate and verification scopes | [Four-outcome failure, finite checks and retained failed implication](2026-11-05-p1-causal-recovery/instrument-and-verification.md) |
+| P3: finite joint first-event simulator | [Arbitrary supplied starts, directed currents and recent-path law](2026-11-05-p3-first-event/README.md) |
+| P3: executed rare-event path and integer huge clock | [Actual fixture, finite-bit proof, exact baseline and full cost](2026-11-05-p3-first-event/finite-execution.md) |
+| Independent P3: active acquisition and prevention | [Actual local experiments, safe preparation and exposure obstruction](2026-11-05-p3-first-event/active-acquisition.md) |
+| Independent P3: prediction from one fixed Lipschitz law | [Exact envelope, physical dimension and finite-data certificates](2026-11-05-p3-first-event/fixed-law-prediction.md) |
+| Independent P3: fixed-mechanics thermal ambiguity | [Identical full active port with different reservoir temperatures](2026-11-05-p3-first-event/fixed-mechanics-thermal.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal and9:54AMadaptive-test status | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary and coordination proposal. Existing normalized scientific records remain unchanged.
