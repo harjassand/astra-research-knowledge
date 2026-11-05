@@ -11,6 +11,8 @@ lost:     a_j=a_(j-1),           q_j=d q_(j-1).
 
 An output-only physical reverse decoder achieves `epsilon_Petz=3(1-a_N)/4`. It uses an initialized tracial dummy, inverse encounters with the retained outputs in reverse schedule order, and a dummy depolarizing operation at each erased position. Every decoder obeys `epsilon_opt>=3(1-sqrt(a_N))/4`. The factor-two small-error gap and all preparation, routing, inverse-control and memory-protection costs remain explicit.
 
+The later [coherent energy-window compressor](../2026-11-05-p1-joint-recovery/README.md) attains a strict logical memory saving after processing actual carriers,with its own accuracy/service bill. This does not contradict the pre-access erasure law here. The continuation preserves these original files unchanged.
+
 ## Independent flagged loss
 
 For loss probability ell independent across carriers and of the input, put `f=(1-ell)(1-b)+ell d`. The unconditional flagged-channel coefficient and limiting value are
