@@ -13,6 +13,8 @@ Read the complete [PDF](package/Astra_First_Event_Simulation.pdf), [main TeX](pa
 | Independent stricter thermal ambiguity realization | [Fixed reciprocal mechanics and active-port equivalence](fixed-mechanics-thermal.md) |
 | Complete original material | [ZIP](original/Astra_First_Event_Research_Package.zip), [captured return](P3_FIRST_EVENT_20261105_RETURN.txt), [provenance](SOURCES.json) |
 
+The subsequent [acquired joint first-event operation](../2026-11-05-p3-acquired-first-event/README.md) closes local-evidence-to-marked-law stability and an independent experiment-fed static/dynamic interface,with safe preparation and finite-menu decisions at their actual costs. It preserves all182 original source files here. The exact-model theorem below remains distinct from the acquired realization and its confidence/physical premises.
+
 ## Exact model and target
 
 The input is an irreducible finite rational CTMC Q with full-support invariant law pi, efficiently encoded states and a nonempty proper target B. Its whole ergodic continuation, including B, is supplied even though output stops at the first hit. A genuinely absorbing physical catastrophe requires such a continuation with correct pre-hit dynamics; it is not automatically a valid input.

@@ -8,6 +8,8 @@ After checking certified positive contraction, fixed conditional log contrast, c
 
 Repairable operating evolution is needed during preparation. Optional attractiveness plus a priced minimal-state start can separately control preparation catastrophe exposure; those conditions are not granted to the diagnostic's arbitrary context-dependent clocks. Learning does not protect a live network before acquisition finishes. Acquisition-period safe holding or exposure analysis is an additional resource.
 
+A later [acquired marked-record and decision construction](../2026-11-05-p3-acquired-first-event/README.md) supplies the missing joint-law interface and a distinct fresh-experiment route. The coarse whole-CDF calibration and roughly thirteen-year serial example here are preserved unchanged; their margins do not retroactively certify the full marked record.
+
 ## Matching exposure boundary and actual bill
 
 A one-coordinate controlled-trajectory obstruction requires exposure at least `k_delta exp((B0-H_field)_+) / (64 r eta^2)`, even with full jump observations, adaptive bounded fields and parameter-independent free state resets. A finite-slew refinement integrates information over wall time. Reset work/force side-channel sensing is expressly excluded from this observation model. This is a scoped field-cap barrier, not a general lower bound for every additional sensor or actuator.

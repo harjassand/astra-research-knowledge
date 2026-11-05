@@ -13,6 +13,8 @@ Read the complete [PDF](package/weak_stream_memory.pdf), [TeX proof/report](pack
 
 A subsequent [P1 crossing/interpolation construction](../2026-11-05-p1-causal-recovery/README.md) proves an all-prefix positive singular gap and a fixed-angle Omega(N/log N) peak-memory converse, with a sharper Renes recovery budget, exact loss extension and supplied independent audits. It does not close the logarithmic gap, give a matching linear bound or solve the joint weak-angle regime. The original proofs and diagnostic package here remain unchanged.
 
+A subsequent [acquired passive-environment construction](../2026-11-05-p2-acquired-passive-environment/README.md) changes the scientific question and preserves this complete archive unchanged. It supplies finite mechanical reports,retained initialization and a residual-certified nonlinear prediction within a declared positive relaxation class. It does not resolve the quantum weak-stream receiver tradeoff.
+
 ## Fixed source and accepted acquisition benchmark
 
 One arbitrary input qubit, potentially entangled with an arbitrary reference, meets fresh independent tracial carriers through the same known unitary `U=cos(theta) I+i sin(theta) SWAP`. Each carrier encounters the source once; no preparation key, carrier purifier, return link or altered emitter program is available. The source is eventually discarded. All errors use **half diamond norm**. Every coherent register crossing a physical cut counts, including initialized workspace, waiting carriers and coherent flags; classical records may be unlimited.

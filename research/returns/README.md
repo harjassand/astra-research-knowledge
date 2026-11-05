@@ -70,6 +70,14 @@ Use these links to read complete source reports and packages directly. Use the [
 | Dots: conditional finite-size crossover addendum | [Exact boundary plateau and noncomputable stopping bound; version mismatch recorded](2026-11-05-dots-thermal-crossover/README.md) |
 | Dots: full nonuniqueness and pressure corollaries | [Both-branch common order and computable pressure with undecidable selected derivative](2026-11-05-dots-thermal-crossover/other-corollaries.md) |
 | Dots: north-star, coordination and hypothetical full uniqueness | [Complete replies, unachieved mission and unproved stronger direction](2026-11-05-dots/coordination-and-north-star.md) |
+| P2: acquired unknown positive relaxation environment | [Finite mechanical reports,retained initialization and nonlinear path certificate](2026-11-05-p2-acquired-passive-environment/README.md) |
+| P2: exact fitted model and finite numerical execution | [Actual digital certificate and full physical/computational cost](2026-11-05-p2-acquired-passive-environment/model-and-execution.md) |
+| P2: independent constructive alternatives | [Intervention acquisition,phase races,analytic ridge boundary and preserved quantum scope](2026-11-05-p2-acquired-passive-environment/alternative-constructions.md) |
+| P3: acquired whole first-event record | [Local evidence to marked-pathTV through short proposals](2026-11-05-p3-acquired-first-event/README.md) |
+| P3: experiment-fed true static/dynamic access | [Balanced Gibbs coins,censored operating races and unknown-weight closure](2026-11-05-p3-acquired-first-event/experiment-fed.md) |
+| P3: finite-menu decision and paid safe preparation | [Conditional record guarantees,actual evidence and deployment costs](2026-11-05-p3-acquired-first-event/decisions-and-evidence.md) |
+| Independent P3: exact event under a known global contraction | [Finite rational compiler,shrinking signals and positive-margin boundary](2026-11-05-p3-acquired-first-event/contraction-boundary.md) |
+| Independent P3: active transport information boundary | [All-causal effort obstruction and finite-slew specified-pair certificate](2026-11-05-p3-acquired-first-event/controlled-transport.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal,9:54AMadaptive-test status later thermal proof packages and latest north-star replies | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary, coordination proposal and later thermal proof packages with their provisional/conditional scope and recorded base-version mismatch, plus the latest unachieved-mission and unproved-uniqueness replies. Existing normalized scientific records remain unchanged.

@@ -1,0 +1,104 @@
+\subsection{An executed finite-bit geometric clock}
+The implementation \texttt{next4\_execution/finite\_geometric.py} supplies
+the following finite compiler. Let $0<r<1$ and $0<\kappa<1$ be rational.
+Set
+\[
+t=\ceil{\log_2(1/\kappa)},\quad M=\ceil{t/r},\quad
+D=\ceil{\log_2(M+1)},\quad
+B=\ceil{\log_2(8M/\kappa)},\quad
+A=\ceil{\log_2(16M^2/\kappa)},\quad S=2^A .
+\]
+All logarithm ceilings are computed by integer bit lengths and comparisons.
+The case $r=1$ returns zero exactly.
+
+Write $q=1-r$. Precompute $D$ integers
+\[
+P_0=\lfloor Sq\rfloor,\qquad
+P_{j+1}=\lfloor P_j^2/S\rfloor .
+\]
+For $1\le n\le M$, form $V_n$ by multiplying the $P_j$ selected by the
+binary digits of $n$, starting from $S$ and rounding each product down
+after division by $S$. A draw uses one uniform $B$-bit integer $J$ and
+binary searches the candidates $\{0,\ldots,M\}$. At midpoint $k<M$ it
+goes left exactly when
+\[
+J\,2^{A-B}<S-V_{k+1}.
+\]
+Both sides are integers. Denote the resulting index by $\widehat K$.
+
+\begin{lemma}[Finite-bit geometric compiler]
+Under independent unbiased random bits,
+\[
+\TV(\Law(\widehat K),\operatorname{Geom}_0(r))
+\le
+\frac{3}{4\,2^t}+\frac{M}{2^B}+\frac{M(M+1)}{2^A}
+\le\kappa .
+\]
+Compilation uses $D-1$ fixed-point squarings. Each draw consumes exactly
+$B$ bits, makes at most $D$ CDF queries, and performs at most $D^2$
+fixed-point multiplications on operands of at most $A+1$ bits. The
+power-table payload is at most $D(A+1)$ bits.
+\end{lemma}
+\begin{proof}
+Let $K\sim\operatorname{Geom}_0(r)$ and $K^c=\min(K,M)$. Because $rM\ge t$
+and $e>8/3$,
+\[
+\Prb(K>M)=(1-r)^{M+1}
+\le e^{-t}<(3/8)^t\le \frac34\,2^{-t}\le\frac34\kappa.
+\]
+
+Writing $p_j=P_j/S$, downward rounding gives
+\[
+0\le q^{2^j}-p_j\le(2^{j+1}-1)/S.
+\]
+Indeed, a squaring at most doubles the previous absolute error, and its
+floor adds less than $1/S$. Product errors for factors in $[0,1]$ add.
+Thus, including each product's floor,
+\[
+0\le q^n-V_n/S\le2n/S.
+\]
+For $F(k)=1-q^{k+1}$ and $\widehat F(k)=1-V_{k+1}/S$, this implies
+$F(k)\le\widehat F(k)\le F(k)+2(k+1)/S$.
+
+Couple $J$ to a continuous uniform $U$ by $J=\lfloor2^BU\rfloor$.
+An exact left decision $U<F(k)$ implies the same finite left decision.
+A differing decision requires
+\[
+F(k)\le U<F(k)+2(k+1)/S+2^{-B}.
+\]
+Union bounding over all $M$ possible thresholds gives disagreement
+probability at most
+\[
+M2^{-B}+M(M+1)/S\le\kappa/8+\kappa/8.
+\]
+If no comparison differs, the two binary searches return the same
+index. This argument does not require the rounded thresholds themselves
+to be monotone. The tail estimate and the coupling prove the TV bound.
+
+Each comparison halves the candidate count up to a ceiling, giving
+at most $D$ comparisons. Each queried exponent has at most $D$ bits.
+The stated operation and storage bounds follow. The sizes
+$D=O(1+\log(1/r)+\log(1+\log(1/\kappa)))$ and
+$A,B=O(D+\log(1/\kappa))$ show polynomial bit work, with no loop
+proportional to $r^{-1}$ and no exact rational power of exponent $M$.
+\end{proof}
+
+For the first-event theorem use $\kappa=\eps/128$. Its cap agrees with
+$\ceil{r^{-1}\ceil{\log_2(128/\eps)}}$, and the complete clock error fits
+within the $\eps/64$ allocation. Multiplying the output index by the
+integer cycle length and appending an independent success block is a
+deterministic postprocessing and does not increase TV.
+
+The compiler exposes
+\texttt{sample\_geometric(r, epsilon, rng)} and the reusable class
+\texttt{GeometricClockCompiler}. The latter is intended for repeated
+draws from one calibrated parameter. The ideal-bit assumption is
+explicit; seeded PRNG runs are execution diagnostics.
+
+The executed audit in \texttt{next4\_theory/02\_GEOMETRIC\_CHECKS.json}
+verifies exact finite-output distributions against geometric laws in
+ten small cases. It also executes 1000 draws at $r=2^{-100}$, 1000 at
+$r=10^{-25}$, and two at $r=2^{-1000}$. The first batch used 128 random
+bits and 233-bit fixed-point precision per draw and took about one
+second in this workspace. Numerical distribution diagnostics do not
+replace the analytic TV proof.
