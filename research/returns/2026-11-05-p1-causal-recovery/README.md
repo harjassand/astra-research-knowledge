@@ -4,6 +4,8 @@ The supplied construction evaluates a previously missing all-prefix singular-los
 
 Read the complete [PDF](package/output/pdf/causal_recovery_research_note.pdf), [TeX report](package/output/pdf/causal_recovery_research_note.tex), [crossing proof](crossing-and-prefix-bound.md), [loss/erasure companion](erasure-and-loss.md) and [candidate/verification record](instrument-and-verification.md). The [original ZIP](original/causal_recovery_research.zip), [captured return](P1_CAUSAL_RECOVERY_20261105_RETURN.txt), [package guide](package/README_research.txt) and [provenance](SOURCES.json) preserve every supplied artifact.
 
+A subsequent [joint-recovery continuation](../2026-11-05-p1-joint-recovery/README.md) constructs an arbitrary-accuracy causal energy-window compressor and physical reverse decoder,with a strict weak-angle memory-coefficient saving against store-all after additional acquisition. Retained memory remains quartic and generic block processing exponential;the optimal joint law and fixed-angle logarithmic gap remain unresolved. All original proof files and ZIP here are retained byte-identically in the continuation.
+
 ## Fixed operation and quantifiers
 
 An arbitrary source qubit and arbitrary reference meet fresh independent I/2 carriers once each through the same known `U=cos(theta)I+i sin(theta)SWAP`, with `0<theta<pi/2`. There are no carrier purifiers, preparation keys, return interactions or changed emitter programme; the final source is discarded. Errors are half diamond norm. Quantum memory counts every retained coherent register, including pure workspace and waiting carriers; classical history may be unlimited. Measurements, resets, feedback and arbitrary causal instruments are permitted in the general converse.

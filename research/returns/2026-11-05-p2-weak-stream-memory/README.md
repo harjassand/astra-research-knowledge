@@ -15,6 +15,8 @@ A subsequent [P1 crossing/interpolation construction](../2026-11-05-p1-causal-re
 
 A subsequent [acquired passive-environment construction](../2026-11-05-p2-acquired-passive-environment/README.md) changes the scientific question and preserves this complete archive unchanged. It supplies finite mechanical reports,retained initialization and a residual-certified nonlinear prediction within a declared positive relaxation class. It does not resolve the quantum weak-stream receiver tradeoff.
 
+A later [P1joint-recovery construction](../2026-11-05-p1-joint-recovery/README.md) supplies an actual arbitrary-accuracy causal compressor and an exact general weighted-loss framework. Its strict saving is a weak-angle leading-coefficient improvement against an explicit store-all reader,not smaller-order memory or a solved optimal memory/processing law. The restricted failures and original source package here retain their scopes.
+
 ## Fixed source and accepted acquisition benchmark
 
 One arbitrary input qubit, potentially entangled with an arbitrary reference, meets fresh independent tracial carriers through the same known unitary `U=cos(theta) I+i sin(theta) SWAP`. Each carrier encounters the source once; no preparation key, carrier purifier, return link or altered emitter program is available. The source is eventually discarded. All errors use **half diamond norm**. Every coherent register crossing a physical cut counts, including initialized workspace, waiting carriers and coherent flags; classical records may be unlimited.
