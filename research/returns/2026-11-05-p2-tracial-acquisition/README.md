@@ -13,6 +13,8 @@ Read the complete [report](package/tracial_acquisition.pdf), [editable proof](pa
 | Independent computational companion | [Local unit-rate dynamics, spectral obstruction and prediction hardness](local-rules-prediction.md) |
 | Original material | [ZIP](original/tracial_acquisition_research_package.zip), [complete captured return](P2_TRACIAL_ACQUISITION_20261105_RETURN.txt), [provenance and hashes](SOURCES.json) |
 
+A subsequent [fixed weak-stream memory study](../2026-11-05-p2-weak-stream-memory/README.md) preserves this complete package unchanged and develops a general prefix memory converse, a broader deterministic nonselective covariant one-qubit boundary, and distinct Schur/block/virtual-statistic limits. Retained-outcome feedback and general coherent receivers are not excluded by the one-qubit theorem; the optimal causal tradeoff remains unresolved.
+
 ## Actual physical access
 
 The source has finite dimension `d>=2` and arbitrary input/reference state. Every encounter brings a fresh finite ancilla `E_j` in `I/e_j`, independent of the input, reference, previous outputs and receiver quantum memory, conditional on a genuinely classical history. Initial bath purifiers and operating preparation keys are unavailable. Incoming mixed marginals alone do not establish this freshness contract.

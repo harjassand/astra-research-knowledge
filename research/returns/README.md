@@ -51,6 +51,11 @@ Use these links to read complete source reports and packages directly. Use the [
 | P1: pulse, reverse chemistry and complete turnover | [Signed Poisson response and reversible72state evidence](2026-11-05-p1-autonomous-catalysis/full-cycle-response.md) |
 | Independent P1 geometry route | [Finite capacity brackets and actual passage-time target](2026-11-05-p1-autonomous-catalysis/capacity-and-passage-time.md) |
 | Independent P1 methane route | [Dual-isotope covariance/GLS and retained weak attribution](2026-11-05-p1-autonomous-catalysis/methane-inference.md) |
+| P2: causal memory for the homogeneous weak stream | [Fixed-source operation, completed bounds and unresolved optimal tradeoff](2026-11-05-p2-weak-stream-memory/README.md) |
+| P2: general causal prefix memory converse | [Spectral profile, adaptive branch tails and missing large-prefix estimate](2026-11-05-p2-weak-stream-memory/prefix-spectral-bound.md) |
+| P2: exact restricted receiver limits | [Measured spin/pairs, purified blocks and general nonselective covariant one-qubit updates](2026-11-05-p2-weak-stream-memory/restricted-receivers.md) |
+| P2: virtual statistic and physical causal completion | [Folded-state data processing and measured failure flags](2026-11-05-p2-weak-stream-memory/virtual-statistics.md) |
+| P2: specified spin instruments and exact final decoder | [Actual policy diagnostics, routing, timing and full storage/control bill](2026-11-05-p2-weak-stream-memory/physical-instruments-and-costs.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal and9:54AMadaptive-test status | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary and coordination proposal. Existing normalized scientific records remain unchanged.
