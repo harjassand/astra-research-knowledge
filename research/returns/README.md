@@ -46,7 +46,12 @@ Use these links to read complete source reports and packages directly. Use the [
 | Independent P3 boundary: passive transport certification | [Exact finite-record/adaptive-stopping obstruction and conditional tail bound](2026-11-05-p3-correlated-reliability/transport-certification.md) |
 | Independent P3 theorem: nonlinear passive-memory residual | [Finite-horizon certificate and unresolved physical acquisition](2026-11-05-p3-correlated-reliability/passive-memory-certificate.md) |
 | Retained P3 route: fixed-law auxiliary certificates | [Known backbone, frozen-versus-switched uncertainty and actual limits](2026-11-05-p3-correlated-reliability/fixed-law-certificates.md) |
-| Dots: completed 5 November status reports, reported independent lattice checks and shared-construction proposal | [Complete supplied captures](2026-11-05-dots/README.md) |
+| P1: autonomous reaction-energy routing | [Matched thermal relay, physical scope and output precision costs](2026-11-05-p1-autonomous-catalysis/README.md) |
+| P1: finite thermal-projection and entropy certificate | [Corrected full-cycle response, finite gate construction and both comparators](2026-11-05-p1-autonomous-catalysis/thermal-projection.md) |
+| P1: pulse, reverse chemistry and complete turnover | [Signed Poisson response and reversible72state evidence](2026-11-05-p1-autonomous-catalysis/full-cycle-response.md) |
+| Independent P1 geometry route | [Finite capacity brackets and actual passage-time target](2026-11-05-p1-autonomous-catalysis/capacity-and-passage-time.md) |
+| Independent P1 methane route | [Dual-isotope covariance/GLS and retained weak attribution](2026-11-05-p1-autonomous-catalysis/methane-inference.md) |
+| Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal and9:54AMadaptive-test status | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary and coordination proposal. Existing normalized scientific records remain unchanged.
 The new scalable many-body return has complete directly linked proofs and three scientific entries above. These direct returns are not yet added to generated current retrieval. Supplied completed audits are credited at their stated scope; public source transport checks do not constitute a new scientific audit.
