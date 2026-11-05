@@ -4,6 +4,8 @@
 
 The [exact prompt, complete native response and available activity excerpts](P2_AUTONOMOUS_CLASSICAL_OUTPUT_20261106_RETURN.txt) are published unchanged. The expanded activity panel is not included in full. The named original `autonomous_classical_output_package.zip` remains on dispatcher transfer hold. Its reported PDF, editable proof, code, recorded checks, failure record and nine predecessor files are not reconstructed or claimed delivered. See [source metadata](SOURCES.json).
 
+**Later 6 November different positive operation:** [P2 supplies autonomous classical computation and pointwise local availability under bursts](../2026-11-06-p2-autonomous-classical-bursts/README.md), using a supplied classical task word and Gacs’s deterministic recovery machinery,with a stated r=1 boundary for the local-attempt availability contract. It does not acquire a coherent unknown quantum input or construct the universal quantum-history block left open here. Startup/external compiler/raw receiver costs are retained;no quantum timing-cost avoidance or physical advantage is inferred. This earlier partial source bound and its counterexample remain unchanged.
+
 ## The explicit contract change
 
 The target is a prescribed universal noncommuting quantum circuit on an unknown input, followed by its correct measurement channel, including conditional states of an arbitrary external reference. A local completion record and classical result must agree with that channel throughout a declared readout/retention interval, with a uniform pointwise diamond-error guarantee and no completion postselection or reader catching a fleeting success.
