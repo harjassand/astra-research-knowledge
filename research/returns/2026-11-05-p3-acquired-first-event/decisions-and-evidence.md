@@ -6,6 +6,8 @@ With conditional record error epsilon_law, finite loss-evaluation error epsilon_
 
 The decision occurs **after acquisition and before paid deployment/preparation**. It is not instantaneous control of an unheld live network or unrestricted adaptive policy optimization. Acquisition-period exposure and any safe holding/shutdown remain separate.
 
+The subsequent [mean-only decision and actual preparation](../2026-11-05-p3-direct-prevention/assay-and-commissioning.md) obtain all-safe-start mean bounds and a bounded ordinary warm-up under common-invariant reciprocal controls. This removes forecast/equilibrium requirements for that objective through a direct unbounded-mean comparison; it does not infer mean accuracy from total variation or replace broader marked-record guarantees.
+
 ## Safe mass is a real preparation resource
 
 The inherited repairable-evolution/safe-inspection routine needs stationary safe mass at least **1/2** for each menu item to retain its constant-cost form. A smaller floor s* pays an explicit `O(s*^-1 log(1/delta_prep))` attempt bill; learned safe-state rejection also pays its corresponding floor. Certification exactly on a threshold can need strict slack.

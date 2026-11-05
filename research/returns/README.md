@@ -86,6 +86,11 @@ Use these links to read complete source reports and packages directly. Use the [
 | P1: arbitrary-accuracy physical causal compressor | [Finiteangle/countenergy-window theorem,actual reverse decoder and paid memory comparison](2026-11-05-p1-joint-recovery/README.md) |
 | P1: general acquisition-loss and quantum retention | [Exact weighted ledger,audit correction and duration versus peak width](2026-11-05-p1-joint-recovery/loss-and-retention.md) |
 | P1: actual processing bill and restricted evidence | [Exponential block circuits,queues/protection,limited converses and saved numerical opening](2026-11-05-p1-joint-recovery/processing-and-evidence.md) |
+| P3: direct acquired mean prevention | [Common-invariant boundary decision without absolute forecasts](2026-11-05-p3-direct-prevention/README.md) |
+| P3: finite assays and actual commissioning | [Finite timer/error costs and all-safe-start mean preparation](2026-11-05-p3-direct-prevention/assay-and-commissioning.md) |
+| P3: information separation and executed evidence | [Local exposure lower bound, synthetic decisions and full calibration bill](2026-11-05-p3-direct-prevention/information-and-execution.md) |
+| P3: independent completion, assignment and preparation | [Additional objectives/access and stronger relative-density theorem](2026-11-05-p3-direct-prevention/independent-operations.md) |
+| P3: source-control quantum export | [Full output covariance, discarded key and paid pure-port receiver](2026-11-05-p3-direct-prevention/quantum-export-control.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal,9:54AMadaptive-test status later thermal proof packages and 12:27PMnorth-star replies and12:49PMuniqueness proof | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary, coordination proposal and later thermal proof packages with their provisional/conditional scope and recorded base-version mismatch, plus the historical12:27PMreplies and the later12:49PMfull-uniqueness candidate proof for a new model. Existing normalized scientific records remain unchanged.
