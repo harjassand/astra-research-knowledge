@@ -1,5 +1,7 @@
 # Dots returns — 5 November 2026
 
+A later separate [square-AKLT local prediction operation](../2026-11-05-dots-aklt-local-readout/README.md) supplies exact local classical sampling and a fixed-budget physical spin-pair estimate for a selected thermodynamic boundary-mixture limit. Its completed local audits, full expected-cost scope, retained statistical anomaly and strongest-QMC comparison are linked. It does not establish a quantum spectral gap, prepare a quantum state or broaden the other Dots theorems here.
+
 The eight complete supplied captures below preserve the human prompts, visible responses and follow-up context. The first three status captures and two12:27PMreplies are unchanged originals. The three proof captures have only their local ZIP-header locators made portable, with original and public hashes recorded.
 
 | Return | Read it | Scope |

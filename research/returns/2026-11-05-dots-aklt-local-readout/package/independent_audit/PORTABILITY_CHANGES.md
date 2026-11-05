@@ -1,0 +1,1 @@
+The resource checker has one path-only change: ROOT now resolves to this release root rather than the original workspace. The exact original source is preserved as certify_local_resources.py.original. Its SHA-256 is 05c0874a428cd83a0002fc7057efadb622a5d5392e9583794291d81fe47941e5. No runtime sampler, physical estimator, confidence primitive or mathematical inequality was changed.
