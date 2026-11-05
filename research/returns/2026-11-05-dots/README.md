@@ -1,4 +1,6 @@
 # Dots returns — 5 November 2026
+**5 November, 19:48 Brisbane: separate completed Dots result.** [Finite-confidence surface-code rare-failure estimation](../2026-11-05-dots-surface-code-rare-failure/README.md) now has its original release, code, certificates and completed internal audits published. The [construction/certificate page](../2026-11-05-dots-surface-code-rare-failure/construction-and-certificates.md) and [comparison/resource page](../2026-11-05-dots-surface-code-rare-failure/comparisons-and-resources.md) distinguish the final circuit estimate from earlier pilots, separate model/decoder assumptions, stage costs and known exponential acceptance failures. No hardware certification, matched incumbent speedup or civilisation-changing achievement is claimed. Existing source holds and earlier result scopes remain unchanged.
+
 
 A later separate [square-AKLT local prediction operation](../2026-11-05-dots-aklt-local-readout/README.md) supplies exact local classical sampling and a fixed-budget physical spin-pair estimate for a selected thermodynamic boundary-mixture limit. Its completed local audits, full expected-cost scope, retained statistical anomaly and strongest-QMC comparison are linked. It does not establish a quantum spectral gap, prepare a quantum state or broaden the other Dots theorems here.
 
