@@ -4,6 +4,8 @@ P3's completed return supplies a circuit construction tolerating a fixed nonzero
 
 This is a completed supplied theorem under a specific active-control and holding model. The active fabric is paid and nonlocal; stable switching, selectively isolatable check couplers for the chosen calibration and the accepted commuting-Hamiltonian/Pauli-Davies bath remain substantive premises. A finite-speed bounded-density three-dimensional active deployment, general correlated/coherent control noise and a total-energy or total-spacetime advantage are not established.
 
+**Later 5 November many-body consequence:** [P3 supplies a uniform full-rank block decomposition and noisy preparation route for fixed-temperature bounded-range 1D Gibbs states](../2026-11-05-p3-robust-manybody-preparation/README.md), including noncommuting targets. It reuses this earned boundary compiler, while a supplied digital target removes the new task’s need for a target holding bath/check-isolation. The [mathematical channel radius and physical route](../2026-11-05-p3-robust-manybody-preparation/full-rank-blocks-and-noisy-operation.md) have distinct scopes; [exact endpoint limits and prohibitive full costs](../2026-11-05-p3-robust-manybody-preparation/boundaries-factories-and-costs.md) remain explicit. No total-resource advantage or closure of the separate continuous-time controller theorem is inferred. The complete visible return and original package are public, including the unchanged accepted predecessor; earlier source proofs retain their scope.
+
 ## Governing source and original record
 
 | Entry | Contents |
