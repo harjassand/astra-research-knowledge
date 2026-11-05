@@ -10,6 +10,8 @@ For ambient dimension `d>=2`, Pareto radius exponent `alpha>d+1` and `r=alpha-d>
 
 The error target is fixed and nontrivial, at most `1/4`, and delivery occurs at a declared tick `t_T=T(1+o(1))`. Raw input and output retain an `O(lambda)` error floor. The new register and work exponents improve the preceding dense reusable construction; its diameter exponent was already attained. Matching exponents do not assert matching constants or practical thresholds.
 
+**6 November continuous-time converse:** [P2 now proves a linear-hardware timing/readout cost](../2026-11-06-p2-autonomous-local-readout/README.md) for bounded-strength time-independent local Lindblad dynamics delivering an unknown qubit at a fixed compact port at a predetermined late time. The proof grants known/perfect startup and is separate from arbitrary-junk restart. It includes coherent terms via actual-source replacement noise, but does not construct clock repair, a matching processor or a completion-event receiver. This accepted synchronous construction and its resource exponents remain unchanged at their stated scope.
+
 ## Governing proofs and reusable machinery
 
 | Read | Role |
