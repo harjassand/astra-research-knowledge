@@ -18,4 +18,4 @@ The [whole-channel compiler and repaired classical controller](whole-channel-com
 
 The earlier [full-rank many-body theorem](../2026-11-05-p3-robust-manybody-preparation/README.md) remains earned at its scope. Its warning that full-rank blocks alone do not eliminate growing quantum protection is not removed from the source; this continuation reports the additional complete-channel/control construction needed to address that warning under the new stated apparatus contract. The continuous-time autonomous-controller/readout problems and earlier Gibbs records are unchanged.
 
-Capital used the forwarded excerpt only, without reopening the producer chat, retrying a transfer, running source code or imposing a scientific audit. Original archive delivery remains an explicit source-delivery limitation; the complete visible response is now included.
+Capital used the forwarded excerpt and complete visible-response file, without reopening the producer chat, retrying a transfer, running source code or imposing a scientific audit. Original archive delivery remains an explicit source-delivery limitation; the complete visible response is now included.
