@@ -6,6 +6,8 @@ Read the [complete report](package/equilibrium_inference_20261105.pdf), [editabl
 
 The separate [local thermal-trial theorem](../2026-11-05-p2-local-thermal-trials/README.md) prepares a known randomized local input while keeping an unknown hidden ensemble. It has fresh-thermostat and reference-inclusive entropy premises and does not supply the zero-state trials granted by the minimax sensor-noise inference interface here. Its continuous heat and meter services must not be silently imported into this theorem or its upper-only thermal extension.
 
+P1 later nominated a separate [three-dimensional thermal-memory opening](../2026-11-05-p1-thermal-memory-opening/README.md), with a source-conditional full-syndrome history compiler and reference-preserving loading operation. Existing sampler applicability and practical access remain unresolved; this is a new question selection, not a strengthening of the scalar-port inference theorem here. Earlier quantum and partial-SWAP results keep their own scopes.
+
 ## Model, access and target
 
 The unknown system is `x'=-Ax+bu, y=b^T x`, with symmetric A, supplied bounds `mu I<=A<=Lambda I`, supplied `||b||=1`, and unknown hidden dimension, eigenvalues and modal weights. Its impulse response is a positive spectral mixture
