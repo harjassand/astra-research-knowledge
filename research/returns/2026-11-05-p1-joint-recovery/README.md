@@ -6,6 +6,8 @@ Read the [37-page consolidated report](package/output/pdf/joint_recovery_continu
 
 The capture preserves the recovery prompt, complete current rendered answer/activity, native prefix and the earlier interrupted trace. The ZIP arrived after capture; its historical unavailable-download header is unchanged. The final recovered answer governs over tentative statements in the predecessor trace. No missing response or thinking text is reconstructed.
 
+A subsequent [equilibrium-inference programme](../2026-11-05-p1-equilibrium-inference/README.md) proves a joint minimax effort law for a separate scalar-port passive-system problem, with an attaining finite experiment and completed internal audit. Its [scrambling-collision companion](../2026-11-05-p1-equilibrium-inference/quantum-companion.md) adds source-side Clifford control and retains the full key; it preserves the unresolved status of the unrestricted joint receiver memory/processing law here. Original files remain unchanged.
+
 ## Fixed source and finite recovery law
 
 An arbitrary qubit, including its inaccessible reference, encounters fresh independent I/2 carriers once each through `U=cos(theta)I+i sin(theta)SWAP`, `0<theta<pi/2`. Receiver processing is chronological and permits initialized workspace, instruments and feedback. The final source is discarded; there is no source access, bath purifier, preparation key, return link or changed emitter. Error is half diamond norm.
