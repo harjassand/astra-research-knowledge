@@ -4,6 +4,8 @@ P1's recovery record supplies completed constructive mathematics for an ordinary
 
 The proposed foundational primitives did not survive direct literature comparison. Gradient-flow holonomy, labelled transport and the relevant geometry already have direct treatments. The contribution retained here is the constructive optimization result within established geometry and Langevin dynamics. No new microscopic law, experimental demonstration or civilization-changing capability is established; priority of the combined deductions is not exhaustively settled.
 
+**6 November quantum preparation allocation, incomplete capture:** [P1 reports a separate permanent-factory/noisy-selector construction](../2026-11-06-p1-fixed-quantum-factories/README.md) using accepted mixed-block machinery and whole-inactive-state neutralization. It does not transfer this classical Gaussian theorem to quantum states. The excerpt ends during a broader deduction; original report/checks and complete response tail remain pending. The source explicitly has no independent audit/peer review, and no total-resource advantage is established. These convex-relaxation proofs, prior materials/reflection and failed-novelty boundaries are unchanged.
+
 ## Governing source record
 
 | Read | Contents |

@@ -1,0 +1,17 @@
+# Permanent quantum factories: available, explicitly incomplete P1 return
+
+**This is not the complete response.** The [forwarded capture](P1_FIXED_FACTORY_20261106_RETURN.txt) contains the available actual prompt and a native excerpt capped at 20,000 characters; it ends during section 8's broader compiler deduction. Desktop text transfer timed out and user-visible activity was not captured. No missing tail or activity is reconstructed. The named original `P1_fixed_factory_preparation_record.zip` remains on dispatcher transfer hold; its reported 20-page report, editable source, checks and manifests are not claimed delivered. See [source metadata](SOURCES.json).
+
+Within that limitation, P1 reports an affirmative construction in the inherited homogeneous stationary independent-Pauli circuit model: fixed finite quantum source cells, selectors and acquisition probes can prepare the supplied fixed-temperature bounded-range 1D Gibbs families to arbitrary global trace accuracy. Growing protection is classical. Constants can be prohibitive and the sufficient noise rate smaller than the full quantum-FT baseline's threshold. No total-resource advantage is established.
+
+## Different apparatus, shared accepted premises
+
+P1 starts from actual permanent interval factories rather than the [separate P3 whole-channel schedule](../2026-11-06-p3-bounded-quantum-factories/README.md). Every possible interval of length at most `B` has its own finite source cell and rails. Active factories produce compensated states; inactive factories produce a whole averaged product identity. Actual noisy site selectors then factor into local channels on the intended active blocks. The source derives that factorization from the apparatus; it does not assume an independent output-noise law.
+
+The accepted [uniformly mixed block theorem](../2026-11-05-p3-robust-manybody-preparation/README.md) provides `B,eta` independent of length/accuracy. The target is a digitally supplied bounded-range 1D Gibbs state at fixed finite inverse temperature, with bounded normalized local terms, released physically and unencoded at a prescribed time. Preparation, readout, capture, idles, controls and specified links share the acquired stationary component law. Fixed scheduled circuit locations remain premises; timing jitter, leakage, uncontrolled couplings and drift are outside that contract.
+
+Read the [neutralization and classical-control construction](neutralization-and-classical-interface.md) and [costs, finite-bit fallback and entangled family](resources-and-entangled-family.md). The excerpt explicitly says this is a new construction checked within the work, without independent audit or peer review. Capital preserves that status and does not infer matched replication, independent corroboration, discovery advantage or agreement between the branches from their shared target.
+
+P1's earlier [planar convex-relaxation mathematics](../2026-11-05-p1-convex-relaxation/README.md), materials/reflection results and failed physical transfer remain unchanged. No classical Gaussian theorem is silently transferred to quantum states. The continuous-time autonomous-control/readout contracts remain separate from these synchronous preparation operations.
+
+Both the original ZIP and the missing complete-response tail remain source-delivery dependencies. The public excerpt and navigation pages are available now; no producer chat was reopened, no transfer retried and no scientific code run during this intake.
