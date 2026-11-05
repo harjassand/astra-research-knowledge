@@ -151,15 +151,19 @@ Use these links to read complete source reports and packages directly. Use the [
 | P2 6 November: autonomous readout converse | [Linear hardware for fixed compact-port quantum output at a late public time](2026-11-06-p2-autonomous-local-readout/README.md) |
 | P2 quantum availability and timing | [Actual-source converse,conditional-information budget and coherent-clock inclusion](2026-11-06-p2-autonomous-local-readout/availability-and-timing-proof.md) |
 | P2 readout scope and open construction | [Random-completion/larger-port contracts,prior clock machinery and missing processor](2026-11-06-p2-autonomous-local-readout/interfaces-comparators-and-open-construction.md) |
-| P3 6 November factory return: original pending | [Complete visible return:stated operation and original-transfer limit](2026-11-06-p3-bounded-quantum-factories/README.md) |
-| P3 6 November factory return: original pending | [Actual apparatus/control construction with assumptions and retained failures](2026-11-06-p3-bounded-quantum-factories/whole-channel-compiler-and-classical-control.md) |
-| P3 6 November factory return: original pending | [Explicit family,full cost accounting and remaining limits](2026-11-06-p3-bounded-quantum-factories/cluster-family-and-resource-boundary.md) |
+| P3 6 November factory return: original delivered | [Complete visible return:stated operation and original-transfer limit](2026-11-06-p3-bounded-quantum-factories/README.md) |
+| P3 6 November factory return: original delivered | [Actual apparatus/control construction with assumptions and retained failures](2026-11-06-p3-bounded-quantum-factories/whole-channel-compiler-and-classical-control.md) |
+| P3 6 November factory return: original delivered | [Explicit family,full cost accounting and remaining limits](2026-11-06-p3-bounded-quantum-factories/cluster-family-and-resource-boundary.md) |
 | P1 6 November factory return: original pending | [Complete visible return:stated operation and original-transfer limit](2026-11-06-p1-fixed-quantum-factories/README.md) |
 | P1 6 November factory return: original pending | [Actual apparatus/control construction with assumptions and retained failures](2026-11-06-p1-fixed-quantum-factories/neutralization-and-classical-interface.md) |
 | P1 6 November factory return: original pending | [Explicit family,full cost accounting and remaining limits](2026-11-06-p1-fixed-quantum-factories/resources-and-entangled-family.md) |
 | P2 classical-output continuation: processor incomplete | [Complete native return and proved partial source/receiver results](2026-11-06-p2-autonomous-classical-output/README.md) |
 | P2 actual-source timing interface | [Joint exposure bounds,causal conditions and shared-wait counterexample](2026-11-06-p2-autonomous-classical-output/joint-exposure-and-waiting.md) |
 | P2 terminal receiver and missing history | [Conditional local classical copy and unconstructed autonomous block](2026-11-06-p2-autonomous-classical-output/receiver-and-unfinished-operation.md) |
+| P3 thermal output boundary: completed theorem | [Connected gapped product-ground family and compulsory endpoint strong converse](2026-11-06-p3-thermal-output-boundary/README.md) |
+| P3 thermal boundary: exact and approximate limits | [Operator-order criterion,normalized witness and connected amplification](2026-11-06-p3-thermal-output-boundary/operator-order-and-connected-amplification.md) |
+| P3 thermal boundary: precision and comparison | [Counted geometry,necessary error scaling,prior art and changed endpoints](2026-11-06-p3-thermal-output-boundary/precision-comparators-and-scope.md) |
+| P3 bounded-factory original: transfer resolved | [Original/all32members now delivered from nested source](2026-11-06-p3-bounded-quantum-factories/README.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal,9:54AMadaptive-test status later thermal proof packages and 12:27PMnorth-star replies and12:49PMuniqueness proof | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary, coordination proposal and later thermal proof packages with their provisional/conditional scope and recorded base-version mismatch, plus the historical12:27PMreplies and the later12:49PMfull-uniqueness candidate proof for a new model. Existing normalized scientific records remain unchanged.
