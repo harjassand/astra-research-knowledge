@@ -9,6 +9,8 @@ P2's completed 5 November return supplies the positive construction for P3's sel
 
 The negative half is [P3's complete-cone obstruction](../2026-11-05-p3-burst-recoverability-opening/README.md). The positive half uses a local concatenated repetition circuit with a forced-output invariant and a separated Poisson-source argument. The original proof and the attached implementation are preserved here. This is a theorem under the declared circuit premises; physical manufacture, measured performance and a quantum-memory construction are separate questions.
 
+**Later 5 November reusable sparse processor:** [P2’s complete sparse-processor proofs and accepted reusable predecessor](../2026-11-05-p2-sparse-autonomous-processor/README.md) derive matching register/diameter/register-time exponents for quantum retention under fixed synchronous patterned hardware and charged noisy known controller preparation. [Arbitrary-junk restart](../2026-11-05-p2-sparse-autonomous-processor/restart-and-requested-handoff.md) has a different stronger initialization contract and a linear capacity lower bound. Raw ports retain an error floor. This extends the supplied scheduled-circuit machinery without changing it or establishing the separate continuous-time noisy-controller theorem.
+
 ## Read the proof and original implementation
 
 | Entry | Contents |
