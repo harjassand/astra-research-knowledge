@@ -4,7 +4,7 @@
 
 ## Retain the actual correlated record
 
-The construction imports completed local Gibbs generators and a centered identification theorem from the credited CKG and Yang machinery. Independent-copy learning conclusions from those sources are not relabelled as this result. Truncated generators have exponentially small locality tails; the true parameter appears in the proof, not as an oracle supplied to the learner.
+The construction imports completed local Gibbs generators from [CKG,arXiv:2311.09207](https://arxiv.org/abs/2311.09207) and centered identification/local candidate-channel machinery from [Tai Hsuan Yang,arXiv:2611.01520v1](https://arxiv.org/abs/2611.01520v1). The coordinator supplied the precise Yang bibliographic identification on6November;Capital did not re-evaluate that imported theorem. Independent-copy learning conclusions from those sources are not relabelled as this result. Truncated generators have exponentially small locality tails; the true parameter appears in the proof, not as an oracle supplied to the learner.
 
 For a conditional state, define total defect `D(sigma)=sum_i ||L_i^theta(sigma)||_1`. A local instrument on `S`, retaining every outcome at its actual probability, obeys `sum_y p_y D(sigma_y)<=D(sigma)+C_dis |S|`. After `Q` queries of at most `s` sites, a whole-campaign nonnegative-supermartingale estimate bounds the probability of excessive defect by `C_dis s Q/(N zeta_*)`.
 

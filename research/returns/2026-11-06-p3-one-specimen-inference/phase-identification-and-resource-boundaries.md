@@ -18,6 +18,12 @@ Fixed local metastability alone leaves a confidence floor: a small global wrong-
 
 Unknown readout contrast can confound even a simple field via `m_observed=lambda tanh(beta h)`. Different apparatus/field pairs can give the same record, so universal self-calibration from that specimen alone is not earned. Independent unknown coefficients at every site and an unknown overall temperature/energy scale also change the identifiable task.
 
+## Relation to earlier Astra one-source learning
+
+[Earlier output-only deferred Hamiltonian calibration](../2026-11-05-p3-deferred-calibration/README.md) already learns from one evolving optical source through calibrated coherent Pauli/Weyl ports,with explicit access to replacement-state purifiers and later exported registers. Its finite receiver experiments and deferred recovery have their own access and resource contract.
+
+This new theorem instead uses one thermal specimen with calibrated direct IC measurement or accurate static local candidate circuits. It is a different acquisition operation,not the first one-source learning result in Astra or a superset of that optical interface. The accurate-circuit route does not construct a fixed-component-noise unknown-input loading interface or native readout for an arbitrary unknown material. Both earlier and new results retain their own premises.
+
 ## Strong alternatives and the full bill
 
 Classical one-configuration Ising learning already avoids mixing in broad classes. Strong arbitrary-temperature local quantum learners with independent preparations, quantum score matching, thermal-copy reuse, controlled dynamics/single-trajectory methods and 1D clustering compositions are substantive inputs/competitors, not absent alternatives. Their copies, controlled true-Hamiltonian access, recovery, gap or autocorrelation assumptions require their own bridge to this source contract. The additional scope here includes noncommuting higher-dimensional nonclustering regimes.
