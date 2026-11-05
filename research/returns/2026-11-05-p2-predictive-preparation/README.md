@@ -8,6 +8,8 @@ The later [equilibrium-inference law](../2026-11-05-p1-equilibrium-inference/REA
 
 A subsequent [local thermal-trial construction](../2026-11-05-p2-local-thermal-trials/README.md) uses an actual fresh Langevin momentum thermostat, kinetic Gibbs factorization and reference-inclusive entropy to prepare randomized local inputs on a retained nonlinear source. It does not require global equilibration, but pays private timing, finite measurement/backaction, initialization and reuse. These are different premises from the finite-energy loaded LTI preparation here. This complete original archive is preserved unchanged in the continuation.
 
+The later [productive-control programme](../2026-11-05-p3-productive-control/README.md) includes the exact governing predictive-preparation source at its pinned commit for a task-dependent comparison. Its Markov damage-control and repair contracts do not establish a physical bridge from this loaded LTI/private-timing result, and this result does not supply those contracts. Both keep their separate earned scopes.
+
 ## Actual physical premises
 
 For observed displacement x, velocity v and additive port force f, the complete causal well-posed LTI plant has a supplied storage function satisfying
