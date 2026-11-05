@@ -1,0 +1,9 @@
+# Dots coordination proposal: archived recommendation, no deployment claim
+
+The [complete supplied response and actual human prompt](DOTS_COORDINATION_PROPOSAL_20261106_RETURN.txt) propose a focused invention lab: choose a consequential bottleneck, have three constructors attempt different complete operations, supply a strong existing comparator and adversarial challenge, and try to make the surviving result usable. A proposed small comparison with simpler independent work would test whether coordination helps.
+
+This is a recommendation and candidate experiment, not evidence of reliable breakthroughs, a completed matched trial or a deployed workflow. The response explicitly says no coordination technique can guarantee consistent civilization-changing results. Its suggested practical QEC target has a separately archived [model-conditioned sizing result](../2026-11-06-dots-qec-design-decision/README.md), which does not establish a causal coordination advantage.
+
+The proposal's criteria are source content, not new Capital intake requirements or permission to launch workers, change research assignments or contact another chat. Capital archived the record without executing it. It is not a scientific retask, additional team capacity or an approval gate.
+
+No ZIP was supplied for this response. The file preserves the human prompt, available interim message and complete answer. Dots' model and exact response timestamp were unavailable, and Dots exposed no thinking trace. The recorded capture time and visible source chat remain distinct from an invented completion time. See [source metadata](SOURCES.json).

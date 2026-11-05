@@ -4,6 +4,8 @@ This completed result estimates rare logical failures for specified simulated su
 
 This is a useful model-specific research capability. It does not certify a physical quantum computer, establish a matched speedup over the strongest existing methods or achieve the stated civilisation-changing objective.
 
+**6 November Dots sizing record:** [The supplied compact design-decision packet](../2026-11-06-dots-qec-design-decision/README.md) selects d23 only among {19,21,23} for its exact simulated memory-Z model/decoder/terminal target. The recorded-family 99.9% coverage is conditional on the stated statistical-history inventory, with a narrow d23 margin; no real-hardware sizing or matched guaranteed-accuracy speedup is inferred. Large tables are intentionally omitted and regeneration was not run here. The [coordination proposal](../2026-11-06-dots-coordination-proposal/README.md) is archived separately, without executing or claiming efficacy for it. This earlier rare-failure result and its limits remain unchanged.
+
 ## Start with the final result
 
 | Entry | Contents |
