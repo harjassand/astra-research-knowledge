@@ -4,6 +4,8 @@ P3 supplies a connected planar Gibbs family at fixed inverse temperature `beta=1
 
 This is a completed endpoint theorem with explicit strong-converse and precision consequences. It is not a preparation algorithm, sampling-hardness theorem, experiment, practical resource advantage or civilization-scale capability. The last physical channel and unencoded global target are part of its contract.
 
+**Later 6 November acquisition theorem:** [P3 supplies one-specimen shared-law inference](../2026-11-06-p3-one-specimen-inference/README.md) from a correlated thermal source under explicit exact-source/phase-limit and calibrated-readout or accurate-local-circuit contracts. Fixed noisy snapshots and growing accurate circuits have different costs. This is local-law identification,not global-state delivery,so this final-channel obstruction and earlier preparation scopes are unchanged. The complete visible return is public while the new standalone inference ZIP remains pending transfer.
+
 ## Governing sources
 
 | Read | Contents |
