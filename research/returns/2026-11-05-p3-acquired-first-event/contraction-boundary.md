@@ -1,0 +1,11 @@
+# Known global contraction does not decide exact finite arrival
+
+The independent [full construction](package/next5_fixedlaw/FOUNDATIONAL_CONTRACTION_BOUNDARY.md) and [status](package/next5_fixedlaw/STATUS.md) give a finite rational compiler from two-counter programmes to continuous piecewise-linear maps on **R4**. Each is globally Euclidean 1/2-contracting, has known unique fixed point zero and sends every orbit toward it at rate `2^-n`. Yet exact finite arrival at zero, or entry into the specified fixed homogeneous open halfspace, encodes programme halting.
+
+The construction supplies the complete known law, not an acquisition problem. Continuous triangulation, a convex cone, nonexpansive projection and positive homogeneity establish the global extension/scaling; local decay or discontinuous piecewise-affine simulators alone would not suffice. The compiler has 54m initial tetrahedra and at most 1,890m retained conical cells for m labels, with polynomial programme-description coefficient sizes.
+
+Explicit rational initial-state encoding matters: counter c represented as `2^-c` uses c+1 denominator bits, not merely log(c) bits. Exact event signals shrink exponentially. No fixed-noise physical universal computer, fixed-width four-neuron circuit, smooth/analytic extension or special Bellman-operator result is claimed.
+
+Hazards with a known **positive absolute margin** away from the equilibrium retain an effective logarithmic horizon and polynomial-bit finite-prefix check in the stated model. A rapidly additively approximable event value can still have an undecidable exact zero test. Convergence modulus and exact comparison are different operations.
+
+[Compiler execution](package/next5_fixedlaw/execution_record.json) preserves exact rational diagnostics, not a finite numerical proof of generic nonhalting. General piecewise-affine reachability undecidability is established, and homogeneous scaling may make this contraction consequence an existing corollary; no historical foundational breakthrough is asserted. The earlier [finite-data fixed-law certificate](../2026-11-05-p3-first-event/fixed-law-prediction.md) retains its positive-margin scope and is preserved unchanged. No Capital programme or new audit ran. [Original source package](SOURCES.json).

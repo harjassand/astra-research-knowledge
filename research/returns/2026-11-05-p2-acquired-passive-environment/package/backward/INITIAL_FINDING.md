@@ -1,0 +1,11 @@
+> Superseded by BACKWARD_CONSTRUCTION.md, which proves sharper constants (Hessian bound 4, amplitude 1/8, radius 25 epsilon) and completes the sparse positive counterpart. The older constants below remain a valid looser interim construction.
+
+# Backward attempt: universal certified intervention prediction
+
+Precise question: Can an experimentally acquired scientific model predict the stable equilibrium response to *every* intervention in a d-dimensional bounded domain, at uniform error epsilon, using subexponentially many interventions, given only global strong convexity and smoothness of the underlying energy?
+
+Indispensable operation: learn the entire inverse gradient map G(h) = argmin_x[U(x)-h·x], not merely find one equilibrium or fit average test error. Inputs are a local force oracle or even the more generous exact equilibrium-response oracle. Goal is a uniform, simultaneous guarantee over all h, with confidence 1-delta.
+
+Actual derivation: start U0(x)=||x||²/2. Put disjoint radius-r perturbations U_j(x)=U0(x)+a r² psi((x-c_j)/r), with psi(z)=z_1(1-||z||²)_+³. The Hessian norm of psi is <=42, so a=1/84 keeps every U_j globally 1/2-strongly convex and 3/2-smooth. Outside its radius-r ball, U_j and every available local response equal U0. At h=c_j, the equilibrium shift is at least 2ar/3=r/126. Radius r>252 epsilon makes the required uniform predictors incompatible. N disjoint balls fit with N >= (R/(2r))^d by packing. Coupling adaptive randomized transcripts under U0 and Uj gives n >= (1-2delta) N. This remains true even with exact full-state equilibrium experiments (the inverse gradient is identity outside the same ball).
+
+A complete constructive upper bound will be provided: an epsilon-net of the intervention set with exact equilibrium samples, nearest-neighbor prediction, and an explicit Lipschitz certificate, with cost matching metric entropy up to constants. Strong ordinary alternatives (fresh equilibrium minimization for a single proposed intervention; finite known parametric structure) avoid the uniform pretraining task and will be accounted for. This is a failed attempt at a universal efficiency breakthrough, not a claim that a new law of science has been discovered. Primary antecedents are being checked.

@@ -1,0 +1,89 @@
+\section{Finite calibration, clocks, and execution caps}
+The ideal continuous variables above only define the proof target. The following compiler supplies finite prescribed work. Constants are conservative sufficient bounds, not lower bounds or claims of an economical implementation.
+
+\subsection{Estimating the geometric parameter}
+Set
+\[
+\xi=\eps/128,\quad q_0=g/8,\quad \rho=\xi q_0/64,\quad
+N=\ceil{\frac{128}{q_0\xi^2}\ceil{\log_2(8/\delta)}}.
+\]
+Use Count with relative tolerance $\xi/2$ and failure probability $\delta/4$. In the rare branch take $N$ independent finite Palm proposals. Implement $\one_G/N_B$ with mean bias at most $\xi q_0/8$; the compiler below gives the smaller $2\rho$.
+
+The implemented mean $\widetilde\mu$ is at least $q_0/2$. Bounded-variable multiplicative concentration gives
+\[
+\Prb(|\overline Y-\widetilde\mu|>\xi\widetilde\mu/4)
+\le2\exp(-N\xi^2\widetilde\mu/48)\le\delta/4.
+\]
+Adding bias gives $|\overline Y-\mu_G|\le(\xi/2)\mu_G$. Hence, on one event of probability at least $1-\delta/2$,
+\begin{equation}
+\widehat q=\widehat p(1+L)\overline Y,\qquad
+|\widehat q/q_G-1|\le2\xi. \label{eq:qhat}
+\end{equation}
+To ensure finite behavior on a failed calibration, clip into $[q_{\min}/2,1/2]$, with $q_{\min}=\min\{gL\zeta/4,1/4\}$. On the good rare event, $q_G\ge gL\zeta/4$ and $q_G\le p(1+L)\le1/4$, so clipping changes nothing.
+
+Coupling Bernoulli trials gives
+\[
+\TV(\operatorname{Geom}_0(q),\operatorname{Geom}_0(q'))
+\le |q-q'|/\min(q,q').
+\]
+Using $\widehat q$ therefore adds at most $4\xi=\eps/32$.
+An absolute estimate of $q_G$ would not suffice; its relative estimate is acquired through the bounded Palm mean and static count.
+
+\subsection{Finite conditional path}
+Approximate the Palm proposal, including $G$ and the desired quantized record, to TV $\rho$, and round the acceptance probability with error at most $\rho$. The accepted subprobability law changes by at most $2\rho$; conditioning costs at most $4\rho/q_0=\eps/2048$. Actual acceptance is at least $q_0/2=g/16$.
+Cap attempts at
+\[
+J=\ceil{(16/g)\ceil{\log_2(128/\eps)}}.
+\]
+The cap probability is at most $\eps/128$. A fixed fallback on a cap gives total conditional-block error less than $\eps/64$.
+
+These are unconditional per-draw approximation bounds. Internal randomized conditional-state preprocessing must include its failures in SampleB's TV budget. A shared cache with only a conditional guarantee requires its own outer confidence event.
+
+\subsection{Poisson counts and local updates}
+For integer horizon $U$ and error budget $\theta$, use
+\[
+k_U=\ceil{2U}+\ceil{\log_2(16/\theta)}+1.
+\]
+The exponential Markov bound $\E2^M=e^U\le2^{2U}$ gives tail below $\theta/16$, with the extra one covering the marked branch. In that branch cap the unmarked count at $M\le k_U-1$, so the actual event count $n=M+1$ is at most $k_U$. Conditional Poisson weights on the finite range are rational, proportional to $U^j/j!$; integer weights $U^j k_U!/j!$ suffice. Their bit lengths and arithmetic cost are polynomial in $k_U$ and the horizon encoding.
+
+Finite categorical draws, the mixture coin, marked position, SampleB and at most $k_U$ updates each receive portions of the error budget. A $d$-category rational distribution can be rounded to TV $d2^{-a}$ using $a$ bits; update precision $O(\log(k_Ud/\theta))$ beyond its input arithmetic suffices. Round the bounded observable on a mesh at most $\theta/16$. No update errors accumulate over the geometric waiting index, because those updates are not executed.
+
+\subsection{Finite timestamps}
+For $n\le k_U$, couple the independent uniforms on $(0,U)$ to midpoints of $2^a$ equal cells. Every ordered time moves by at most $d_U=U2^{-a}$. State trajectories depend on order and kernel randomness, not on these values.
+
+An output changes only near an absolute mesh boundary, an age-mesh boundary for a time difference, or a window/prefix boundary. An unordered uniform has density $1/U$; the difference of two independent uniforms has density at most $1/U$. A union bound over at most $(k_U+1)^2$ values gives the sufficient bound
+\[
+64(k_U+1)^2\,2^s d_U.
+\]
+Zero-time and zero-age atoms are handled exactly. Integer $H$ is a mesh boundary. Thus
+\[
+a\ge\ceil{\log_2\!\frac{1024U(k_U+1)^2\,2^s}{\theta}}
+\]
+makes this contribution at most $\theta/16$. Retain event order in midpoint ties. The state at the start of the window changes only when an event crosses the window boundary, already counted.
+
+In the late branch, $2b+K(L+b)$ is an integer. It shifts the absolute mesh index exactly, independently of its enormous value. Output integer bit length is paid. This avoids a lifetime-long clock simulation.
+
+\input{geometric_clock.tex}
+
+\subsection{Final error and resource ledger}
+On the single good calibration event, the rare branch pays:
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Contribution & TV bound\\
+\midrule
+Block replacement, omissions, first hidden buffer & $\eps/32$\\
+Finite initial observed segment & $\eps/64$\\
+Estimated geometric parameter & $\eps/32$\\
+Finite geometric index and cap & $\eps/64$\\
+Conditional path, acceptance and cap & $\eps/64$\\
+\bottomrule
+\end{tabular}
+\end{center}
+The sum is $7\eps/64<\eps$. Direct-branch finite simulation and timeout sum to less than $\eps/32$. Every draw, update count, integer size and loop is capped.
+
+For a rare proposal $k_L=O(L+\log(1/\rho))$. Calibration uses $N=O(g^{-1}\eps^{-2}\log(1/\delta))$ proposals with the displayed constants. Each uses one rare-state draw, $O(k_L)$ updates, arithmetic and sorting. Each event record uses at most $J=O(g^{-1}\log(1/\eps))$ such proposals, one initial horizon-$b$ segment, and the binary clock. Direct-branch records pay $O(T+\log(1/\eps))$ updates.
+
+The numerical inverse gap may be exponential. Long windows pay their value. Static sampling may be expensive. These are explicit costs, not hidden by the polynomial statement. Conditional-state errors enter calibration as bounded-mean bias, rather than requiring every one of its many calls to succeed on a separately union-bounded event.
+
+A fixed physical history window of length $h$ requires $H=\ceil{Rh}$ normalized time units. Its cost therefore includes the actual aggregate update rate $R$, as well as the chosen physical clock mesh. All memory for retained states, local timestamps, finite categorical weights and the binary waiting index is included in these polynomial bounds. No physical receiver or specimen acquisition is implemented by this computational interface.
