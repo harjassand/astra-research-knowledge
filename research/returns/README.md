@@ -164,6 +164,11 @@ Use these links to read complete source reports and packages directly. Use the [
 | P3 thermal boundary: exact and approximate limits | [Operator-order criterion,normalized witness and connected amplification](2026-11-06-p3-thermal-output-boundary/operator-order-and-connected-amplification.md) |
 | P3 thermal boundary: precision and comparison | [Counted geometry,necessary error scaling,prior art and changed endpoints](2026-11-06-p3-thermal-output-boundary/precision-comparators-and-scope.md) |
 | P3 bounded-factory original: transfer resolved | [Original/all32members now delivered from nested source](2026-11-06-p3-bounded-quantum-factories/README.md) |
+| Dots 6 November: gap hierarchy | [Exact Ising/toric plateaus and scoped completeness candidates](2026-11-06-dots-mps-gap/README.md) |
+| Dots 6 November: theorem/review boundaries | [Proper-parent,GNS,weak-parent and restricted higher-dimensional scopes](2026-11-06-dots-mps-gap/subclasses-reviews-and-costs.md) |
+| Dots 6 November: coordination proposal | [Archived recommendation;no efficacy or deployment claim](2026-11-06-dots-coordination-proposal/README.md) |
+| Dots 6 November: QEC design decision | [d23 passes among three tested designs under exact model and confidence contract](2026-11-06-dots-qec-design-decision/README.md) |
+| Dots 6 November: full sizing costs | [History-qualified confidence,uncertified challenger and compact-table omissions](2026-11-06-dots-qec-design-decision/confidence-costs-and-reproduction.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal,9:54AMadaptive-test status later thermal proof packages and 12:27PMnorth-star replies and12:49PMuniqueness proof | [Complete supplied captures](2026-11-05-dots/README.md) |
 
 The Dots captures are available directly on GitHub and are not yet in the generated retrieval index. Their README separates the earlier status, later reported checking progress, finite-lattice boundary, coordination proposal and later thermal proof packages with their provisional/conditional scope and recorded base-version mismatch, plus the historical12:27PMreplies and the later12:49PMfull-uniqueness candidate proof for a new model. Existing normalized scientific records remain unchanged.

@@ -1,0 +1,13 @@
+# Independent constructor: exact confidence-budgeted design decision
+
+Frozen candidate set: d in {19,21,23}; rotated-memory-Z, rounds=d, each of the four circuit noise settings exactly rational 1/1000; initialization and final readout included. Retain only original Z-memory observable and its selected detector family. The acquired quantized integer-weight MWPM decoder and deterministic tie convention are frozen. No monotonicity assumption across distances.
+
+Target: per-d-round modeled logical failure <= 10^-12. Claim smallest only in the candidate set and only when every smaller member is rejected and the chosen member passes. Otherwise report an inconclusive design set.
+
+Family-wise coverage at least 99.9%: allocate alpha=1/3000 separately to d19, d21, and d23. d21 uses its previously precommitted 10,000-shot sample (55 successes), with exact fixed-shot Clopper-Pearson recomputed at this error level. Its existence and prior individual 99.9% result were known when this ladder was selected. It is not a new independent experiment. The fixed choice to reuse that specific sample is not conditional on a new favorable result.
+
+For d19 and d23 use fresh acquired graphs and certified ordered-fault tuple tables, independent predetermined seeds 202611051919 and 202611052323, respectively. Inspect after batches of 250 IID proposal indicators, up to 100,000 trials. Use the uniform-beta mixture likelihood martingale M_n(p)=1/[(n+1) binom(n,k) p^k(1-p)^(n-k)]. The exact confidence sequence is {p: M_n(p)<3000}; compute outward dyadic interval endpoints checked by exact integer inequalities. Multiply by exact normalizer and expand by the exact circuit-conversion/dyadic-TV bound. Stop only when upper <=10^-12 (pass), lower >10^-12 (reject), or resource/sample cap (inconclusive). No fixed-shot interval is used after optional stopping.
+
+Each fresh-distance full acquisition-to-decision process has maximum 1,800 seconds and 2 GiB observed RSS; the latter is a sampled monitor and is not a kernel memory proof. Exceeding a cap returns inconclusive and preserves partial logs. Full acquisition, floating construction, exact integer certification, runtime imports, compilation, sampler, confidence arithmetic, and output are charged. Independent development and review are separately disclosed.
+
+Sequential confidence is standard prior art, not a novelty claim. Purpose is an executed design-selection operation assembled from acquired circuit projection and exact tuple estimation. Guarantees are conditional on the acquired exact-law theorem, fixed minimum-weight decoder, and ideal IID random bits; the executable uses a reproducible PRNG. No hardware, full logical-channel, or per-cycle reliability assertion.
