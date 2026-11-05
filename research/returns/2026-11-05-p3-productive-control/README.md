@@ -4,6 +4,8 @@ The supplied construction uses finite local uncertainty bounds to certify an ent
 
 Read the [complete report](package/Astra_Productive_Control.pdf), [governing TeX](package/report.tex), [acquisition and forecast separation](policy-and-evidence.md), [mission and rare-hazard boundaries](missions-and-rare-hazards.md), [repair and physical resources](productive-repair-and-resources.md), [status](package/STATUS.txt), and [source register](package/sources/GOVERNING_SOURCES.json). The [original ZIP](original/Astra_Productive_Control_Research_Package.zip), [complete captured return](P3_PRODUCTIVE_CONTROL_20261105_RETURN.txt), and [publication provenance](SOURCES.json) retain the supplied evidence. Only the capture header's local ZIP locator is replaced by its public archive path; all prompt, scientific and activity bytes remain unchanged.
 
+A subsequent [spatial burst-recoverability opening](../2026-11-05-p3-burst-recoverability-opening/README.md) changes the fault model and proves a finite-seed causal-cone erasure obstruction. Its matching recovery construction is unproved; the final horizon quantifiers, physical readout floors and strong existing comparisons are linked. No physical reduction from the skip-free or repair models here is assumed. This complete original archive and all nested predecessors are preserved unchanged.
+
 ## A declared actual operating cycle
 
 Damage is i=0,...,N, with failure at N. Each safe cycle lasts a fixed finite Delta and completes positive useful reward r_i(a) before its transition. Action a worsens damage by one with probability p_i(a), repairs by one with probability q_i(a), otherwise holds; downward motion reflects at zero. A uniform `p_i(a)>=p_min>0` is assumed.
