@@ -4,6 +4,8 @@ The strongest live opening in this dossier is continuous-time autonomous quantum
 
 The separate fully frequency-resolved bath obstruction is a proved limitation of a thermal model/transfer argument. It is not a fixed-microscopic-coupling impossibility theorem for physical quantum storage. Earlier Gibbs results remain unchanged and are not equated with stationarity, preparation or memory.
 
+**Separate 5 November circuit construction:** [P3 now supplies a fixed-noise write/thermal-hold/read interface](../2026-11-05-p3-noisy-thermal-interface/README.md) under independent stationary Pauli component noise, a paid nonlocal active fabric, stable switching and the accepted commuting holding model. It uses compensated thermal preparation rather than claiming a generic cold-state basin. This is a distinct operating contract: it does not close this dossier’s time-independent local noisy-controller frontier/protected-idle theorem or refute its fully secular model/transfer obstructions. The original dossier, proofs and earlier Gibbs results are unchanged.
+
 ## Governing sources
 
 | Read | Contents |
