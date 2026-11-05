@@ -6,6 +6,8 @@ The [execution/cost page](execution-costs-and-scope.md) links the supplied exact
 
 The later [equilibrium-inference law](../2026-11-05-p1-equilibrium-inference/README.md) concerns zero-state scalar-port trials with supplied rate bounds and independent sensor noise. Its [reset and reuse ledger](../2026-11-05-p1-equilibrium-inference/operation-and-costs.md) does not import retained-loaded-plant preparation here as free arbitrary-plant reset, and distinguishes transient age from full laboratory time. These interfaces and original results retain their separate scopes.
 
+A subsequent [local thermal-trial construction](../2026-11-05-p2-local-thermal-trials/README.md) uses an actual fresh Langevin momentum thermostat, kinetic Gibbs factorization and reference-inclusive entropy to prepare randomized local inputs on a retained nonlinear source. It does not require global equilibration, but pays private timing, finite measurement/backaction, initialization and reuse. These are different premises from the finite-energy loaded LTI preparation here. This complete original archive is preserved unchanged in the continuation.
+
 ## Actual physical premises
 
 For observed displacement x, velocity v and additive port force f, the complete causal well-posed LTI plant has a supplied storage function satisfying
