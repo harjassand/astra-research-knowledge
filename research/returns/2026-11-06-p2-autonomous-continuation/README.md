@@ -6,6 +6,8 @@ The selected full question remains whether time-independent, bounded-range local
 
 The missing construction must join quantum causality, damaged-clock recovery, liveness, actual-source error accounting, input acquisition and autonomous output. An ideal interleaving, a marginal waiting-time estimate or reliable classical computation does not supply that construction. Changing the requested output to a local classical result does not establish avoidance of the quantum timing cost.
 
+**6 November persistent-destination continuation:** [The subsequent complete P2 return](../2026-11-06-p2-persistent-quantum-cptp/README.md) reports exact support-wise Pauli/Weyl-to-shared-environment-CPTP criteria for a common isometry or sharp logical measurement, and a general-POVM counterexample. The full autonomous processor remains incomplete: causal clock repair, progress, good-event/source bound, acquisition and resident output are not constructed. Earlier classical and other accepted machinery retain their scopes. The unnamed linked attachment and expanded activity remain uninspected while the Mac is locked; complete native response is available.
+
 | Read | Contents |
 |---|---|
 | [Complete visible return and exact prompt](P2_AUTONOMOUS_CONTINUATION_20261106_RETURN.txt) | Full final response, available working-explanation excerpts, source links and visible duration |
