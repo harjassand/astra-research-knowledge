@@ -1,0 +1,9 @@
+# Sources and scope
+
+- **Provisional base proof:** *Exact accepting polymers and a fixed-temperature undecidable order parameter in two dimensions*, 5 November 2026. Delivered separately. This addendum assumes its finite-tableau compiler, exact Fourier identity, and assertion that every translation-invariant physical Gibbs state has zero exchange-odd mean when the encoded machine halts. Base version SHA256: `42b57bfe3212e57db34803dc4f6af6875d5d8a6d3e38f9244958c38a31f0dc0c`. Internal audit only; external peer review remains outstanding.
+
+- **Prior size-driven transitions:** J. Bausch, T. S. Cubitt, A. Lucia, D. Perez-Garcia and M. M. Wolf, “Size-driven quantum phase transitions,” *PNAS* 115 (2018), 19–23. https://doi.org/10.1073/pnas.1705042114 . Full text: https://pmc.ncbi.nlm.nih.gov/articles/PMC5776787/ . Earlier quantum examples already have noncomputably growing crossover scales and a temperature-dependent robustness result. The general concept of size-driven behavior is not claimed new here.
+
+- **Prior uncomputable phase diagrams:** J. Bausch, T. S. Cubitt and J. D. Watson, “Uncomputability of phase diagrams,” *Nature Communications* 12, 452 (2021). https://doi.org/10.1038/s41467-020-20504-6 . Provides a quantum comparison, not the classical fixed-positive-temperature conclusion used in this addendum.
+
+- **Known pressure computability:** L. Gayral, M. Sablik and S. Taati, “Characterisation of the set of ground states of uniformly chaotic finite-range lattice models,” *Nonlinearity* 38 (2025), 075011, especially Proposition 14 and Section 2.4. https://doi.org/10.1088/1361-6544/addbb8 . Author manuscript: https://lgayral.pages.math.cnrs.fr/articles/GaySabTaa25.pdf . Pressure computability is known; the 26/L bound in the addendum is a direct surface estimate for this specific model.
