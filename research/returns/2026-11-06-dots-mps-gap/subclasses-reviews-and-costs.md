@@ -4,7 +4,7 @@
 
 ## Main proper-parent candidate
 
-The main packet proposes convergence of the unrestricted nearest-neighbor Rai Eq.17 hierarchy to the limiting periodic gap for proper injective-MPS parent Hamiltonians. Properness requires sufficiently long open-chain ground spaces to be exactly the MPS boundary spaces. A CPTP boundary repair decodes buffers, discards outer virtual factors and joins the retained factors into a periodic excitation. The claimed comparison is `O(sqrt(log n/n))` with model-dependent constants.
+The main packet proposes convergence of the unrestricted nearest-neighbor Rai Eq.17 hierarchy to the limiting periodic gap for proper injective-MPS parent Hamiltonians. Properness requires sufficiently long open-chain ground spaces to be exactly the MPS boundary spaces. A CPTP boundary repair decodes buffers, discards outer virtual factors and joins the retained factors into a periodic excitation. The claimed comparison is `O(sqrt(log n/n))` with model-dependent constants. This joint end-buffer CPTP repair is a mathematical proof operation, not an asserted local physical implementation.
 
 Three independent internal adversarial audits cover that unrestricted nearest-neighbor theorem. The projected-Y extension was checked by the first auditor only; its literal Appendix-D indexing begins at `n>=4` and finite-level optima are not identified. General level `n=2` is excluded because it can omit a negative overlapping anticommutator; the packet includes an exact AKLT counterexample. Reduced-moment exploratory computations do not establish practical superiority, and the finite-range note is outside the second/third reviews' established scope.
 

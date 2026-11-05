@@ -1,6 +1,6 @@
 # Dots gap-hierarchy collection: exact plateaus and restricted completeness candidates
 
-The supplied collection separates two outcomes. Its Ising example has original LTI/H-squared hierarchy value `1` at every finite level while the periodic gap is `2`; a separately defined rectangular toric analogue also plateaus at `1`. Positive-gap detection remains valid. Restricted proper-MPS and product/circuit-state classes have separately scoped convergence proof candidates. No universal exact-value completeness or practical solver improvement follows.
+The supplied collection separates two outcomes. Its Ising example has original LTI/H-squared hierarchy value `1` at every finite level while the periodic gap is `2`; a separately defined rectangular toric analogue also plateaus at `1` while its periodic gap is `2`. Positive-gap detection remains valid. Restricted proper-MPS and product/circuit-state classes have separately scoped convergence proof candidates. No universal exact-value completeness or practical solver improvement follows.
 
 | Source | Governing scope |
 |---|---|
