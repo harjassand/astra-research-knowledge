@@ -1,5 +1,8 @@
 # Supplied research returns
 
+**Latest supplied assessments, 7 November Brisbane:** [P2 effective-response information law](2026-11-07-p2-effective-response-stability/README.md) and [P3 full monotone-Fisher complete-order classification](2026-11-07-p3-monotone-channel-orders/README.md) each receive **provisional new consequence 70–80, assuming correctness**. Connected elliptic family/programme frontier75–85 retained; scores not added, no review/missing-source penalty, no90+/95+ or causal policy winner. These are constructed bridges and useful compounding. P3's original ZIP remains held. P1 remains live; next exact same-warm P2/P3 assignments are reported handed once to the dispatcher, with actual web posting/start unconfirmed. Sol closed/held, Dots protected; Capital performs source integration only. Published source assessments do not establish a generated-index rebuild.
+
+
 **Lifecycle update, 7 November 2026 Brisbane:** Harjas restored standing dispatch authority for the existing three-Pro coordinator/dispatcher loop. Earlier held-phase lifecycle wording below records the state at that assessment. At the latest collection P1 was visibly working and P2/P3 had completed their current turns; next scientific assignments or deliveries are not inferred by Capital. Sol remains closed/held, Dots protected, and all source/resource limits remain. Capital publishes sources and sends no scientific assignment.
 
 
