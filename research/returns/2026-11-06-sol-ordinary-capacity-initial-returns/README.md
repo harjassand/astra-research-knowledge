@@ -1,5 +1,7 @@
 # Sol pilot initial returns — overlapping finite core, full question unresolved
 
+**Final pilot status:** the [completed lead return and preserved visible records](../2026-11-06-sol-pilot-final-preservation/README.md) now close the bounded activation. Full target NOT_ACHIEVED; four initial attempts and three continuations completed, while r3's second/final turn was resource-interrupted, not a completed fourth or scientific rejection. Earlier running/pending notices below are history. No further Sol research or follow-on cohort is authorised.
+
 **Current credit correction:** the repeated N1687 evaluator/cutoff equivalence earns **0–9 incremental mathematical-discovery credit**, with tooling retained. The earlier20–35 **new-theorem credit is withdrawn**; this is attribution, not an incorrect theorem, verification penalty or loss of prior family capital. r4's independent interval/sparse-Choi positive-polar refinement is **20–35 additional**, replacing the earlier30–45 implication of first underlying failure. See [versioned correction](attribution-correction-20261106-v2.json) and [actual successor retrieval routes](successor-retrieval-routes.md).
 
 
@@ -35,4 +37,4 @@ All17 originals are byte-exact, and the already published common question is unc
 
 Later supplied source: [Completed final r1/r2/r4 turns are linked from the source index; common question remains unresolved.](../2026-11-06-sol-expander-environment-history/README.md)
 
-Final continuations: [r1 environment history](../2026-11-06-sol-expander-environment-history/README.md), [r2 divergence/symmetrization](../2026-11-06-sol-divergence-and-symmetrization/README.md), [r4 own-depth polar obstruction](../2026-11-06-sol-ordinary-code-polar-obstruction/README.md). These supersede the running-phase notices above; r3 remains pending as the latest available notice.
+Final continuations: [r1 environment history](../2026-11-06-sol-expander-environment-history/README.md), [r2 divergence/symmetrization](../2026-11-06-sol-divergence-and-symmetrization/README.md), [r4 own-depth polar obstruction](../2026-11-06-sol-ordinary-code-polar-obstruction/README.md). These supersede the running-phase notices above; r3 later ended resource-interrupted at the approved guard, without a completed continuation.

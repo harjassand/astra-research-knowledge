@@ -1,5 +1,7 @@
 # Sol pilot lead note — conditional environment-excess obstruction
 
+**Final pilot status:** the [completed lead return and preserved visible records](../2026-11-06-sol-pilot-final-preservation/README.md) now close the bounded activation. Full target NOT_ACHIEVED; four initial attempts and three continuations completed, while r3's second/final turn was resource-interrupted, not a completed fourth or scientific rejection. Earlier running/pending notices below are history. No further Sol research or follow-on cohort is authorised.
+
 This is a completed **authored method constraint** within the ongoing authorised Sol pilot. It does **not** settle the common ordinary-capacity evaluator question, construct an evaluator, prove ordinary-capacity noncomputability or establish that every mixer fails. It is published without waiting for the four constructors' developing work and without a new scientific audit or source acquisition.
 
 For any computable ordinary zero-versus-positive quantum-capacity family **whose promise is undecidable**, a proposed stationary input with a computably positive receiver-minus-environment entropy-rate gap cannot also supply an effective true-environment block entropy-excess scale. Together those two operations would give a computable finite-block gap and decide the assumed-undecidable promise.

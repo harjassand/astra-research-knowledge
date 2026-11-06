@@ -1,0 +1,19 @@
+# Lead construction: ordinary capacity under a computable finite description
+
+Target is the unchanged COMMON_QUESTION.md. I begin with both possible resolutions live. Finite block coherent-information maximization is computable by entropy continuity and compact effective state nets, giving an enumerable sequence of rational lower bounds for Q. This does not acquire a terminating upper certificate. A positive evaluator must earn that certificate; a negative reduction must prevent unknown reference/catalyst size from turning its per-use gap into an uncomputable quantity.
+
+The read N1680 source contains an exact finite-stationary-catalyst variational characterization and paid source repair, with an explicitly unresolved signed history-rate term. No stationary return, finite-memory correlation remainder, helper-removal rate or computable truncation is imported beyond the actual source statements. I will develop the full question with the ordinary coding theorem and the genuine resource budget. This file will hold ordinary scientific arguments and failures; the common question contains no preferred solution.
+
+## First full attempts: finite memory and the competing evaluator
+
+The negative direction must retain a physical fixed channel description while the hard witness reference grows. A finite-memory encoder can put unknown dimension into an O(log D) block boundary, but the signed conditional-history remainder may be extensive (the actual N1680 Bell-chain example shows this). A dimension-independent expander gap or small two-point correlations do not themselves bound the conditional information seen by arbitrary long quantum output histories. Quantum expander states make that distinction material. Any use of mixing needs an actual entropy-rate/history bound, not an assumed stationary reference.
+
+The positive direction gives computable finite-block lower bounds and a common computable continuity modulus at fixed channel dimensions. Compactness/Dini alone only yields existence of finite cutoffs, not an algorithm selecting them: an increasing sequence of computable, even constant Lipschitz functions can converge to a noncomputable lower-semicomputable real. The channel-specific step must therefore go beyond compactness, continuity or a strong-converse slogan. The full target remains live in both directions.
+
+## Source comparison and natural first returns
+
+The exact N684 helper compiler on original extracted pages12--15 already removes the logical helper dimension from the physical channel description while retaining a witness-dependent zero-rate simulation length. It does not pay that denominator. The2026 Hirche section4.2 construction similarly transmits its actual quantum reference plus a classical pad through the stated helper; its private rate does not bound this unknown physical resource away. Its smoothed signed-lift theorem does not replace the general unsmoothed order by a finite cutoff.
+
+The actual Beigi--Tomamichel2026 projector-norm code-conversion theorem was read through its section5 proof. It supplies no below-capacity activation cutoff or finite upper certificate. The newer primary mechanism was compared at its actual scope rather than described as a Renyi evaluator.
+
+At natural completed turns, r1,r2,r4 all supplied complete rational finite-block engines and an equivalent computable dimension/precision-only cutoff formulation, with no outer cutoff. Their full reports were read. This is overlapping science, not three separate capacity advances. r1 receives the independently proved one-sided environment-excess constraint because its actual stationary-memory attack can use that bound to reject an overstrong forgetting premise; the full common target is retained. r4 receives only its own-depth template and unchanged question. r3 remains on its original whole construction, without intentional peer exposure.
