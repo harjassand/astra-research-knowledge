@@ -25,4 +25,4 @@ Capital did not rerun checks, contact/restart Dots, wait for producer idle, crea
 
 ## Later update, 6 November at 2:44 pm Brisbane
 
-[The next complete Dots update](../2026-11-06-dots-grid-binary-stars-update/README.md) reports fixed240bus certified-bound results without improving the tighter published numerical comparator, binary-star sensitivity/one compatible companion scenario without detection or gravity verdict, and restricted outage success without a general standard-grid advantage. No ZIP was supplied. This is recent-search reporting, not a new global mission-impact ranking or change to earlier results.
+[The next complete Dots update](../2026-11-06-dots-grid-binary-stars-update/README.md) reports fixed240bus certified-bound results and a reported tighter published numerical gap, with no improvement claimed or matched-cost superiority/inferiority established, binary-star sensitivity/one compatible companion scenario without detection or gravity verdict, and restricted outage success without a general standard-grid advantage. No ZIP was supplied. This is recent-search reporting, not a new global mission-impact ranking or change to earlier results.
