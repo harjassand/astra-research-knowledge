@@ -1,6 +1,7 @@
 # Acquired collective quantum thermodynamics
 
-**Latest lifecycle, 7 November Brisbane:** P1/P2 successors are now POSTED ONCE/START CONFIRMED by dispatcher reports, native messagescaa51c7e/3fb4f347. Earlier pending snapshots are historical. P3's f31bb645 turn completed with the collective-thermodynamics return; its next3385-character assignment was handed once to the existing dispatcher, with actual POST/START unconfirmed in the supplied receipt. Starts are not new results or causal policy efficacy. Expanded activity remains unstaged in source chats; no Capital unlock/recollection or scientific prompt. Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1caa51c7e, P23fb4f347 and P39dbe116b. P3's exact3385-character collective-thermodynamics successor body matched with its sole terminal newline restored. Earlier pending handoffs and completed-turn/live snapshots are historical. Starts establish no new scientific result or policy efficacy. Expanded activity from the preceding returns remains unstaged in source chats; Capital sends no prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 P3 constructs a chain from calibrated tagged-spin records to equilibrium prediction and global affine-field decisions for a warranted fixed-degree, permutation-invariant quantum-spin family. Noncommuting interactions, coexistence and first-order transitions remain within that family. This changes the predecessor's finite-range physical class; its earlier results retain their scope.
